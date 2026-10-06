@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Freight Chain – Desert Run</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<canvas id="world"></canvas>
+<canvas id="cockpit"></canvas>
+<div id="toast"></div>
+<div id="overlay"><div class="panel" id="panel"></div></div>
+
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
+<script type="module" src="js/main.js"></script>
+<script>
+  // If the modules didn't start (typically: index.html opened straight from disk, or no internet for three.js), say so instead of showing a blank page.
+  setTimeout(() => {
+    if (window.__game) return;
+    document.getElementById('panel').innerHTML = '<h1>COULD NOT START</h1><h2>The game scripts did not load.</h2>' +
+      '<div style="margin:6px 0;font-size:15px">Browsers block ES modules on <b>file://</b>. Either:</div>' +
+      '<table><tr><td>A</td><td>run <b>python3 -m http.server 8765</b> in this folder and open <b>http://localhost:8765/</b></td></tr>' +
+      '<tr><td>B</td><td>run <b>node tools/build-standalone.mjs</b> and double-click <b>dist/freightchain.html</b></td></tr></table>' +
+      '<div style="font-size:12px;color:#b9ad8d">three.js is loaded from a CDN, so an internet connection is also required.</div>';
+  }, 2000);
+</script>
+</body>
+</html>

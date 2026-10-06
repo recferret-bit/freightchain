@@ -1,0 +1,45 @@
+# Generated build output (node tools/build-standalone.mjs) – regenerate, don't commit
+dist/
+
+# Dependencies / package-manager leftovers (the game itself has none; tools are run via npx)
+node_modules/
+package-lock.json
+npm-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Test artifacts (tools/e2e-chrome.mjs writes to the OS temp dir by default; these catch local overrides)
+shots/
+screenshots/
+*.log
+coverage/
+.eslintcache
+
+# Secrets / local config
+.env
+.env.*
+!.env.example
+
+# Claude Code local (per-user) settings – CLAUDE.md and .claude/settings.json stay tracked
+.claude/settings.local.json
+CLAUDE.local.md
+
+# Editors / IDEs
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+
+# OS junk
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
