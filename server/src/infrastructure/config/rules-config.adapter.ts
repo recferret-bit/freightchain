@@ -20,6 +20,8 @@ export class EnvRulesConfigAdapter extends RulesConfigPort {
       quoteTtlMs: QUOTE_TTL_MS, nonceTtlMs: NONCE_TTL_MS, demoWallets: env.demoWallets, demoScale: env.demoScale,
       initialSeedLamports: env.initialSeedLamports, treasury: env.treasuryPubkey, appDomain: env.appDomain, appOrigin: env.appOrigin,
       verdictEnforce: env.verdictEnforce, telemetryRetentionDays: env.telemetryRetentionDays,
+      adminWallets: env.adminWallets, adminDomain: env.adminHost ?? env.appDomain,
+      adminOrigin: env.adminHost ? `${new URL(env.appOrigin).protocol}//${env.adminHost}` : env.appOrigin,
     };
   }
 

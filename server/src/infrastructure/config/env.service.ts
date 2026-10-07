@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Injectable, Logger } from '@nestjs/common';
@@ -27,6 +27,9 @@ export class EnvService {
     return this.devSecret;
   }
   get sessionTtlDays(): number { return this.env.SESSION_TTL_DAYS; }
+  /** the admin session's key: ADMIN_JWT_SECRET, else derived from the player secret (never the same bytes – a player token is not an admin token even before the audience check) */
+  get adminJwtSecret(): string { return this.env.ADMIN_JWT_SECRET ?? createHash('sha256').update(`${this.jwtSecret}:admin-session`).digest('hex'); }
+  get adminSessionTtlMinutes(): number { return this.env.ADMIN_SESSION_TTL_MINUTES; }
   get appDomain(): string { return this.env.APP_DOMAIN; }
   get appOrigin(): string { return this.env.APP_ORIGIN; }
   /** the site folder (default: ../client, resolved from this module so it works from src/ and from dist/) */

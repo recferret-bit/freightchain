@@ -1,4 +1,5 @@
 import { ADMIN_BASE, SITE_BASE } from '../js/hosts.js';
+import { b58, provider } from './wallet.js';
 
 /* The admin page: OVERVIEW · REVIEW QUEUE · RIDES · SIGN-INS · LOGS · AUDIT (+ #ride/<id>). Vanilla DOM, no framework.
    Only wallets in the server's ADMIN_WALLETS get answers – to everyone else /api/admin/* is a 404 and this page says so.
@@ -35,7 +36,7 @@ const sol = l => `${(l / 1e9).toFixed(3)} SOL`;
 const bytes = b => (b > 1e6 ? `${(b / 1e6).toFixed(1)} MB` : `${Math.round(b / 1e3)} kB`);
 const badge = (v, overridden) => el('span', { class: `v ${v ?? 'none'}${overridden ? ' ovr' : ''}`, title: overridden ? 'decided by an admin' : '' }, (v ?? 'unjudged').toUpperCase());
 const wallet = w => el('span', { class: 'mono', title: w }, short(w));
-const fail = e => view.replaceChildren(el('div', { class: 'card' }, el('p', { class: 'bad' }, e.message), e.requestId ? el('p', { class: 'dim' }, `request id ${e.requestId}`) : ''));
+const fail = e => (sessionGone(e) ? (store(null), showSignIn('Your admin session ended – sign in again.')) : view.replaceChildren(el('div', { class: 'card' }, el('p', { class: 'bad' }, e.message), e.requestId ? el('p', { class: 'dim' }, `request id ${e.requestId}`) : '')));
 
 /* ───────── shell ───────── */
 const S = { tab: 'overview', me: null };
@@ -182,11 +183,49 @@ async function audit() {
   const { rows } = await api('actions?limit=200');
   view.replaceChildren(el('h2', {}, 'AUDIT · ADMIN ACTIONS'),
     rows.length ? el('div', { class: 'card', style: 'padding:6px 8px;overflow-x:auto' }, el('table', { class: 'dense' },
-      el('thead', {}, el('tr', {}, ...['when', 'admin', 'action', 'ride', 'detail', 'request'].map(h => el('th', {}, h)))),
+      el('thead', {}, el('tr', {}, ...['when', 'admin', 'action', 'target', 'detail', 'request'].map(h => el('th', {}, h)))),
       el('tbody', {}, rows.map(a => el('tr', {}, el('td', { title: time(a.at) }, ago(a.at)), el('td', {}, wallet(a.wallet)), el('td', {}, a.action),
-        el('td', {}, el('a', { href: `#ride/${a.target}`, class: 'mono' }, a.target.slice(0, 8))), el('td', { class: 'dim' }, JSON.stringify(a.detail)), el('td', { class: 'mono dim' }, a.requestId ?? '–'))))))
+        el('td', {}, a.action.startsWith('verdict.') ? el('a', { href: `#ride/${a.target}`, class: 'mono' }, a.target.slice(0, 8)) : wallet(a.target)), el('td', { class: 'dim' }, JSON.stringify(a.detail)), el('td', { class: 'mono dim' }, a.requestId ?? '–'))))))
       : el('div', { class: 'card empty' }, 'No admin actions yet.'));
 }
+
+/* ───────── admin session ─────────
+   The admin page has its OWN sign-in: the wallet signs an "ADMIN sign-in" message, the server sets the fc_admin cookie (httpOnly, this host and /api/admin
+   only, ADMIN_SESSION_TTL_MINUTES long). The player session from the main site grants nothing here. Who / until when is kept in sessionStorage for the chip. */
+const SESSION_KEY = 'freightchain.admin';
+const stored = () => { try { return JSON.parse(sessionStorage.getItem(SESSION_KEY) ?? 'null'); } catch { return null; } };
+const store = v => { try { if (v) sessionStorage.setItem(SESSION_KEY, JSON.stringify(v)); else sessionStorage.removeItem(SESSION_KEY); } catch { /* private mode: the chip just stays empty */ } };
+function paintSession(s) {
+  $('chip-wallet').textContent = s ? `${short(s.wallet)} · until ${new Date(s.expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '';
+  $('signout').hidden = !s;
+}
+async function adminSignIn() {
+  const p = provider();
+  if (!p) throw new Error('No Solana wallet found – install Phantom or Solflare');
+  await p.connect();
+  const walletAddr = p.publicKey.toString();
+  const { message } = await api('auth/nonce', { wallet: walletAddr });
+  const res = await p.signMessage(new TextEncoder().encode(message), 'utf8');   // Phantom: { signature }, Solflare: the bytes
+  return api('auth/verify', { wallet: walletAddr, signature: b58(res.signature ?? res) });
+}
+$('signout').onclick = async () => { try { await api('auth/logout', {}); } finally { store(null); location.reload(); } };
+
+function showSignIn(why) {
+  paintSession(null);
+  document.querySelector('.tabs').hidden = true;
+  const msg = el('p', { class: 'dim' }, why ?? 'This page is for the wallets in the server\'s ADMIN_WALLETS. Sign in with one of them – your wallet signs an ADMIN sign-in message (no transaction, no fee).');
+  const button = el('button', { id: 'admin-signin', onclick: async () => {
+    button.disabled = true; msg.className = 'dim'; msg.textContent = 'Waiting for the wallet…';
+    try { store(await adminSignIn()); location.reload(); } catch (e) {
+      button.disabled = false; msg.className = 'bad';
+      msg.textContent = e.status === 404 ? 'This wallet is not an admin wallet (ADMIN_WALLETS).' : e.message;
+    }
+  } }, 'SIGN IN AS ADMIN');
+  view.replaceChildren(el('div', { class: 'card', id: 'denied' }, el('h2', {}, 'ADMIN SIGN-IN'), msg, el('div', { class: 'actions' }, button),
+    el('p', { class: 'dim' }, el('a', { href: `${SITE_BASE}/` }, 'back to the site'))));
+}
+/* a 404 from the admin API means "no (valid) admin session" – unless it is a ride that does not exist while the session is still fresh */
+const sessionGone = e => e.status === 404 && !(stored()?.expiresAt > Date.now() && S.tab === 'ride');
 
 /* ───────── boot ───────── */
 try {
@@ -194,13 +233,8 @@ try {
   if (ADMIN_BASE && location.origin !== ADMIN_BASE) { location.replace(`${ADMIN_BASE}/${location.hash}`); await new Promise(() => {}); }
   const o = await api('overview');
   paintMode(o.config);
-  const me = await fetch(`${ADMIN_BASE}/api/me`, { credentials: 'include' }).then(r => (r.ok ? r.json() : null));
-  S.me = me; $('chip-wallet').textContent = me ? short(me.wallet) : '';
+  paintSession(stored());
   go();
 } catch (e) {
-  document.querySelector('.tabs').hidden = true;
-  view.replaceChildren(el('div', { class: 'card', id: 'denied' },
-    el('h2', {}, 'NOT AVAILABLE'),
-    el('p', {}, e.status === 404 ? 'This page is for the wallets in the server\'s ADMIN_WALLETS. Sign in with one of them on the main site first, then come back here.' : e.message),
-    el('p', {}, el('a', { href: `${SITE_BASE}/` }, 'Go to the sign-in page'))));
+  if (e.status === 404) { store(null); showSignIn(); } else { document.querySelector('.tabs').hidden = true; fail(e); }
 }

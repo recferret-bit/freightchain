@@ -106,7 +106,7 @@ describe('concurrency (PostgreSQL)', () => {
     const h2 = await createHarness('postgres', { FREE_RIDE_SECONDS: '10', ADMIN_WALLETS: admin.address });
     try {
       const c = bindClient(() => h2);
-      const a = await c.login(), boss = await c.login(admin);
+      const a = await c.login(), boss = await c.loginAdmin(admin);
       const ride = (await a.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
       await a.agent.post(`/api/rides/${ride.id}/start`).expect(200);
       const batches = recording(ride.id, { seconds: 10, distance: 140, batchSeconds: 2 });
@@ -120,7 +120,7 @@ describe('concurrency (PostgreSQL)', () => {
       expect(results.map((r) => r.status)).toEqual(results.map(() => 200));
       expect((await a.agent.get(`/api/rides/${ride.id}`).expect(200)).body.verdict).toMatchObject({ status: 'rejected', override: { by: admin.address, note: 'race' } });
       const p2 = h2.app.get(PrismaService, { strict: false });
-      expect(await p2.adminAction.count()).toBe(1);
+      expect(await p2.adminAction.count({ where: { action: 'verdict.override' } })).toBe(1);
     } finally { await h2.close(); }
   });
 

@@ -22,6 +22,11 @@ export interface RulesConfig {
   verdictEnforce: boolean;
   /** recordings of rides that ended longer ago are deleted (flagged rides excepted); 0 = keep forever */
   telemetryRetentionDays: number;
+  /** wallets that may sign in to the admin page (empty = nobody) */
+  adminWallets: ReadonlySet<string>;
+  /** where the admin page lives – named in the admin sign-in message so the wallet can match it to the page (admin.<apex>; the app's own domain on a single origin) */
+  adminDomain: string;
+  adminOrigin: string;
 }
 
 /** Game and economy tunables (environment-backed in production). */

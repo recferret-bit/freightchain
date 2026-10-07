@@ -38,6 +38,8 @@ import { ListAdminRidesHandler } from './use-cases/admin/list-admin-rides/list-a
 import { ListSignInsHandler } from './use-cases/admin/list-sign-ins/list-sign-ins.handler.js';
 import { OverrideVerdictHandler } from './use-cases/admin/override-verdict/override-verdict.handler.js';
 import { RejudgeRideHandler } from './use-cases/admin/rejudge-ride/rejudge-ride.handler.js';
+import { RequestAdminChallengeHandler } from './use-cases/admin/request-admin-challenge/request-admin-challenge.handler.js';
+import { VerifyAdminSignInHandler } from './use-cases/admin/verify-admin-signin/verify-admin-signin.handler.js';
 
 const services: Provider[] = [AchievementService, PaymentSettlementService, PlayerSessionService, RideLookupService, RoundService, VerdictService];
 
@@ -46,7 +48,7 @@ const handlers: Provider[] = [
   CreateRideHandler, GetRideHandler, GetPendingRideHandler, StartRideHandler, HeartbeatRideHandler, EndRideHandler,
   GetPaymentInstructionsHandler, ConfirmPaymentHandler, ReconcilePaymentHandler,
   UploadBatchHandler, SweepTelemetryHandler,
-  GetAdminOverviewHandler, ListAdminRidesHandler, GetAdminRideHandler, ListSignInsHandler, ListAdminActionsHandler, GetAdminLogsHandler, OverrideVerdictHandler, RejudgeRideHandler,
+  GetAdminOverviewHandler, ListAdminRidesHandler, GetAdminRideHandler, ListSignInsHandler, ListAdminActionsHandler, GetAdminLogsHandler, OverrideVerdictHandler, RejudgeRideHandler, RequestAdminChallengeHandler, VerifyAdminSignInHandler,
   GetTiersHandler, GetPoolHandler, GetLeaderboardHandler,
   GetLiveHandler, GetProfileHandler,
   GetLivenessHandler, GetReadinessHandler,

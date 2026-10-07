@@ -1,4 +1,13 @@
-import { Controller, Get, HttpCode, Post, UseGuards } from '@nestjs/common';
+import { Controller, Get, HttpCode, Post, UseGuards, UseInterceptors } from '@nestjs/common';
+import type { ClientInfo } from '../../domain/auth/sign-in.js';
+import { LogoutCommand, type LogoutResultDto } from '../../application/use-cases/auth/logout/logout.command.js';
+import type { ChallengeDto } from '../../application/use-cases/auth/request-challenge/request-challenge.command.js';
+import { RequestAdminChallengeCommand } from '../../application/use-cases/admin/request-admin-challenge/request-admin-challenge.command.js';
+import { VerifyAdminSignInCommand, type AdminSignInResultDto } from '../../application/use-cases/admin/verify-admin-signin/verify-admin-signin.command.js';
+import { CurrentClient } from '../../infrastructure/http/decorators/client-info.js';
+import { AdminPublic } from '../../infrastructure/http/guards/admin.guard.js';
+import { ClearAdminCookieInterceptor, SetAdminCookieInterceptor } from '../../infrastructure/http/interceptors/admin-cookie.interceptor.js';
+import { challengeBodySchema, verifyBodySchema, type ChallengeBody, type VerifyBody } from '../auth/dto/auth.dto.js';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import type { AdminActionDto, AdminListDto, AdminLogsDto, AdminOverviewDto, AdminRideDetailDto, AdminRideRowDto, SignInRowDto } from '../../domain/admin/admin.dto.js';
 import type { VerdictDto } from '../../domain/verdict/verdict.dto.js';
@@ -21,7 +30,7 @@ import {
   type ActionsQuery, type AdminRidesQuery, type LogsQuery, type OverrideBody, type SignInsQuery,
 } from './dto/admin.dto.js';
 
-/** The admin page's API (/admin.html). Only wallets in ADMIN_WALLETS – to anybody else every route is a 404. Changes need the X-FC-Admin header and are audited. */
+/** The admin page's API (admin.<apex>). An admin session (the admin sign-in below) of a wallet in ADMIN_WALLETS – to anybody else every route is a 404. Changes need the X-FC-Admin header and are audited. */
 @Controller('api/admin')
 @UseGuards(AdminGuard)
 export class AdminHttpController {
@@ -29,6 +38,24 @@ export class AdminHttpController {
     private readonly commandBus: CommandBus,
     private readonly queryBus: QueryBus,
   ) {}
+
+  /** Admin sign-in, step 1: the message for the wallet to sign (404 unless the wallet is in ADMIN_WALLETS). */
+  @Post('auth/nonce') @HttpCode(200) @AdminPublic()
+  nonce(@ZodBody(challengeBodySchema) body: ChallengeBody): Promise<ChallengeDto> {
+    return this.commandBus.execute<RequestAdminChallengeCommand, ChallengeDto>(new RequestAdminChallengeCommand(body.wallet));
+  }
+
+  /** Step 2: the signature → the fc_admin cookie (SetAdminCookieInterceptor); the body says whose session it is and until when. */
+  @Post('auth/verify') @HttpCode(200) @AdminPublic() @UseInterceptors(SetAdminCookieInterceptor)
+  verify(@ZodBody(verifyBodySchema) body: VerifyBody, @CurrentClient() client: ClientInfo, @CurrentRequestId() requestId: string): Promise<AdminSignInResultDto> {
+    return this.commandBus.execute<VerifyAdminSignInCommand, AdminSignInResultDto>(new VerifyAdminSignInCommand(body.wallet, body.signature, client, requestId));
+  }
+
+  /** Ends the admin session (works with an expired one too); the player session is left alone. */
+  @Post('auth/logout') @HttpCode(200) @AdminPublic() @UseInterceptors(ClearAdminCookieInterceptor)
+  logout(): Promise<LogoutResultDto> {
+    return this.commandBus.execute<LogoutCommand, LogoutResultDto>(new LogoutCommand());
+  }
 
   @Get('overview')
   overview(): Promise<AdminOverviewDto> {

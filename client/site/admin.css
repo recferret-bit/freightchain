@@ -21,3 +21,6 @@ button.reject{background:var(--bad);border-color:var(--bad)}
 .log .f{color:var(--dim);word-break:break-all}
 pre.json{background:#0008;border:1px solid var(--line);border-radius:6px;padding:10px;font-size:12px;overflow-x:auto;white-space:pre-wrap;word-break:break-all;max-height:320px}
 @media (max-width:700px){.log .l{grid-template-columns:1fr}.filters input{min-width:0}.kv{grid-template-columns:1fr;gap:0}.kv dt{margin-top:8px;font-size:12px}}
+
+/* the [hidden] attribute loses to display rules above: the sign-in card hides the tabs; empty chips (no session yet) take no room */
+.tabs[hidden], .chip:empty, button[hidden] { display: none; }

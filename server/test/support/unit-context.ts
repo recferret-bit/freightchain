@@ -19,10 +19,12 @@ import { TestHasher } from './recording.js';
 
 /** Fixed rules for unit tests: 10 s free shift (140 m), treasury configured, one demo wallet. */
 export const DEMO_UNIT_WALLET = 'DemoWa11et1111111111111111111111111111111111';
+/** the one wallet in the unit rules' ADMIN_WALLETS (a valid address; specs that sign use their own keypair and pass it in the rules) */
+export const ADMIN_UNIT_WALLET = 'GseaEsNWMLScZ5RH8yQ4xmoCP97H86HjLSA9xkyFCqbn';
 export const unitRules = (over: Partial<RulesConfig> = {}): RulesConfig => ({
   freeOnSignup: 5, freeRidesMax: 5, freeRideSeconds: 10, hbMinIntervalMs: 1000, hbTimeoutMs: 150_000, quoteTtlMs: 600_000, nonceTtlMs: 300_000,
   demoWallets: new Set([DEMO_UNIT_WALLET]), demoScale: 60, initialSeedLamports: 0, treasury: TREASURY, appDomain: 'freight.test', appOrigin: 'https://freight.test',
-  verdictEnforce: true, telemetryRetentionDays: 90,
+  verdictEnforce: true, telemetryRetentionDays: 90, adminWallets: new Set([ADMIN_UNIT_WALLET]), adminDomain: 'freight.test', adminOrigin: 'https://freight.test',
   ...over,
 });
 

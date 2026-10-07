@@ -40,7 +40,10 @@ if (admin) {   // admin.*: nginx basic auth first (credentials from SMOKE_ADMIN_
   if (adminAuth) {
     const a = await at(admin)('/', { headers: adminAuth }), aBody = await a.text();
     check('with the password the admin page answers (admin.* /)', a.status === 200 && /FREIGHT CHAIN · ADMIN/.test(aBody), `${a.status}`);
-    check('…its API stays closed without an admin wallet (404)', (await at(admin)('/api/admin/overview', { headers: adminAuth })).status === 404);
+    check('…its API stays closed without an admin session (404)', (await at(admin)('/api/admin/overview', { headers: adminAuth })).status === 404);
+    const stranger = bs58.encode(nacl.sign.keyPair().publicKey);
+    const nonce = await at(admin)('/api/admin/auth/nonce', { method: 'POST', headers: { ...adminAuth, 'content-type': 'application/json', 'x-fc-admin': '1' }, body: JSON.stringify({ wallet: stranger }) });
+    check('…and its sign-in has nothing for a wallet outside ADMIN_WALLETS (404)', nonce.status === 404, `${nonce.status}`);
     check('a wrong password is refused', (await at(admin)('/', { headers: { authorization: `Basic ${Buffer.from('x:wrong-password').toString('base64')}` } })).status === 401);
   } else console.log('! SMOKE_ADMIN_AUTH not set – the admin page behind the password was not checked');
 }

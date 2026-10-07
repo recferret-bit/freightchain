@@ -23,6 +23,8 @@ import { SignInRepositoryPort } from '../application/ports/auth/sign-in.reposito
 import { AdminActionRepositoryPort } from '../application/ports/admin/admin-action.repository.port.js';
 import { AdminQueryPort } from '../application/ports/admin/admin-query.port.js';
 import { JoseTokenSigner } from './auth/jose.token-signer.js';
+import { JoseAdminTokenSigner } from './auth/jose.admin-token-signer.js';
+import { AdminTokenPort } from '../application/ports/admin/admin-token.port.js';
 import { NaclSignatureVerifier } from './auth/nacl.signature-verifier.js';
 import { EnvRulesConfigAdapter } from './config/rules-config.adapter.js';
 import { NodeEntropy } from './crypto/node.entropy.js';
@@ -51,6 +53,7 @@ import { SolanaChainAdapter } from './solana/solana-chain.adapter.js';
 import { SystemClock } from './time/system.clock.js';
 import { PlayerAuthGuard } from './http/guards/player-auth.guard.js';
 import { ClearSessionCookieInterceptor, SetSessionCookieInterceptor } from './http/interceptors/session-cookie.interceptor.js';
+import { ClearAdminCookieInterceptor, SetAdminCookieInterceptor } from './http/interceptors/admin-cookie.interceptor.js';
 
 /** Every port the application layer declares is bound to its adapter here – the only place that knows which implementation runs. */
 const ports: Provider[] = [
@@ -69,6 +72,7 @@ const ports: Provider[] = [
   { provide: ChallengeRepositoryPort, useClass: ChallengePrismaRepository },
   { provide: SignatureVerifierPort, useClass: NaclSignatureVerifier },
   { provide: TokenSignerPort, useClass: JoseTokenSigner },
+  { provide: AdminTokenPort, useClass: JoseAdminTokenSigner },
   { provide: RideRepositoryPort, useClass: RidePrismaRepository },
   { provide: RideQueryPort, useClass: RideQueryPrismaRepository },
   { provide: RoundRepositoryPort, useClass: RoundPrismaRepository },
@@ -82,7 +86,7 @@ const ports: Provider[] = [
 const portTokens = ports.map((p) => (p as { provide: unknown }).provide as typeof ClockPort);
 
 @Module({
-  providers: [PrismaService, PlayerAuthGuard, AdminGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, { provide: LogRing, useValue: new LogRing() }, JsonLogger, ...ports],
-  exports: [PrismaService, PlayerAuthGuard, AdminGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, LogRing, JsonLogger, ...portTokens],
+  providers: [PrismaService, PlayerAuthGuard, AdminGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, SetAdminCookieInterceptor, ClearAdminCookieInterceptor, { provide: LogRing, useValue: new LogRing() }, JsonLogger, ...ports],
+  exports: [PrismaService, PlayerAuthGuard, AdminGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, SetAdminCookieInterceptor, ClearAdminCookieInterceptor, LogRing, JsonLogger, ...portTokens],
 })
 export class InfrastructureModule {}

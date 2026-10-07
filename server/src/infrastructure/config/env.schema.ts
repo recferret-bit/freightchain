@@ -31,6 +31,10 @@ export const envSchema = z
     INITIAL_SEED_SOL: z.coerce.number().min(0).default(0),
     /** wallets that may open the admin page (/admin.html + /api/admin/*), comma-separated; empty = no admin surface at all (every admin route is a 404) */
     ADMIN_WALLETS: z.string().default(''),
+    /** the admin session's own signing key (rotate it = every admin signed out); unset = derived from JWT_SECRET */
+    ADMIN_JWT_SECRET: optional(z.string().min(32, 'ADMIN_JWT_SECRET must be at least 32 characters')),
+    /** how long an admin sign-in lasts (minutes); there is no silent renewal – the wallet signs again */
+    ADMIN_SESSION_TTL_MINUTES: z.coerce.number().int().positive().max(1440).default(120),
     /** verified play: 'true' = the paid boards rank verified shifts only; 'false' = SHADOW mode – every ride is still judged and the verdict shown, but ranking ignores it */
     VERDICT_ENFORCE: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
     /** days a ride's recording is kept after the ride ended (flagged rides are kept until reviewed); 0 = keep forever */

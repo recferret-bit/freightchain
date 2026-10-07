@@ -1,4 +1,4 @@
-import { bindClient, newWallet, type Rider } from '../support/client.js';
+import { bindClient, newWallet, sign, type Rider } from '../support/client.js';
 import type { Harness } from '../support/harness.js';
 import { recording, upload } from '../support/recording.js';
 
@@ -8,7 +8,9 @@ export const ADMIN = newWallet();
 export const ADMIN_ENV = { FREE_RIDE_SECONDS: '10', ADMIN_WALLETS: ADMIN.address };
 
 export function adminScenarios(h: () => Harness): void {
-  const { anon, login, sec } = bindClient(h);
+  const { anon, login, loginAdmin, sec } = bindClient(h);
+  /** the admin as on the site: signed in as a rider (landing) AND on the admin page (the admin sign-in) */
+  const asAdmin = async () => loginAdmin(ADMIN, (await login(ADMIN)).agent);
   beforeEach(() => h().reset());
 
   /** a completed free shift whose recording covers only 7 of its 10 s → flagged ('recording-gaps') */
@@ -31,8 +33,39 @@ export function adminScenarios(h: () => Harness): void {
     await rider.agent.post('/api/admin/rides/x/verdict').set('x-fc-admin', '1').send({ decision: 'verified' }).expect(404);
   });
 
+  it('the admin session: the player session of an admin wallet grants nothing; the admin sign-in does, for ADMIN_SESSION_TTL_MINUTES (120); sign-out ends it', async () => {
+    const player = await login(ADMIN);
+    await player.agent.get('/api/admin/overview').expect(404);   // the rider cookie of an admin wallet is no admin session
+    const stranger = newWallet();
+    await anon().post('/api/admin/auth/nonce').set('x-fc-admin', '1').send({ wallet: stranger.address }).expect(404);
+    await anon().post('/api/admin/auth/nonce').send({ wallet: ADMIN.address }).expect(403);   // the header, like every admin POST
+
+    const admin = await loginAdmin(ADMIN);
+    expect((await admin.agent.get('/api/admin/overview').expect(200)).body.players).toBe(1);
+    const audit = (await admin.agent.get('/api/admin/actions').expect(200)).body.rows;
+    expect(audit[0]).toMatchObject({ wallet: ADMIN.address, action: 'auth.signin', target: ADMIN.address });
+    await anon().get('/api/me').set('Cookie', `fc_admin=${'x'}`).expect(401);   // and an admin cookie is no player session
+
+    sec(120 * 60 - 1); await admin.agent.get('/api/admin/overview').expect(200);
+    sec(2); await admin.agent.get('/api/admin/overview').expect(404);   // expired: sign in again
+
+    const again = await loginAdmin(ADMIN);
+    await again.agent.post('/api/admin/auth/logout').set('x-fc-admin', '1').expect(200);
+    await again.agent.get('/api/admin/overview').expect(404);
+  });
+
+  it('the admin sign-in: a wrong signature or a replayed one is a 401, the RIDER message signed is no admin sign-in', async () => {
+    const agent = anon();
+    const { body } = await agent.post('/api/admin/auth/nonce').set('x-fc-admin', '1').send({ wallet: ADMIN.address }).expect(200);
+    expect(body.message).toContain('ADMIN sign-in to Freight Chain');
+    await anon().post('/api/admin/auth/verify').set('x-fc-admin', '1').send({ wallet: ADMIN.address, signature: sign(newWallet().kp, body.message) }).expect(401);
+    await anon().post('/api/admin/auth/verify').set('x-fc-admin', '1').send({ wallet: ADMIN.address, signature: sign(ADMIN.kp, body.message) }).expect(401);   // consumed by the failed try
+    const rider = (await anon().post('/api/auth/nonce').send({ wallet: ADMIN.address }).expect(200)).body;
+    await anon().post('/api/admin/auth/verify').set('x-fc-admin', '1').send({ wallet: ADMIN.address, signature: sign(ADMIN.kp, rider.message) }).expect(401);
+  });
+
   it('overview: counts, sign-ins of the last day, the verified-play switches', async () => {
-    const admin = await login(ADMIN);
+    const admin = await asAdmin();
     const rider = await login();
     await flaggedRide(rider);
     const o = (await admin.agent.get('/api/admin/overview').expect(200)).body;
@@ -41,7 +74,7 @@ export function adminScenarios(h: () => Harness): void {
   });
 
   it('the review queue → one ride in full → an override (needs X-FC-Admin), audited and findable in the log by its request id', async () => {
-    const admin = await login(ADMIN);
+    const admin = await asAdmin();
     const rider = await login();
     const id = await flaggedRide(rider);
     const queue = (await admin.agent.get('/api/admin/rides?verdict=flagged').expect(200)).body.rows;
@@ -70,7 +103,7 @@ export function adminScenarios(h: () => Harness): void {
   });
 
   it('sign-ins: who, when, from which IP and browser; filter by wallet', async () => {
-    const admin = await login(ADMIN);
+    const admin = await asAdmin();
     const rider = await login();
     const all = (await admin.agent.get('/api/admin/signins').expect(200)).body.rows;
     expect(all.map((s: { wallet: string }) => s.wallet)).toEqual([rider.address, ADMIN.address]);
@@ -80,22 +113,22 @@ export function adminScenarios(h: () => Harness): void {
   });
 
   it('re-judge: the checks run again at the current rules (replacing a decision), audited; needs the header like every change', async () => {
-    const admin = await login(ADMIN);
+    const admin = await asAdmin();
     const rider = await login();
     const id = await flaggedRide(rider);
     await admin.agent.post(`/api/admin/rides/${id}/verdict`).set('x-fc-admin', '1').send({ decision: 'verified' }).expect(200);
     await admin.agent.post(`/api/admin/rides/${id}/rejudge`).expect(403);
     const again = (await admin.agent.post(`/api/admin/rides/${id}/rejudge`).set('x-fc-admin', '1').expect(200)).body;
     expect(again).toMatchObject({ status: 'flagged', override: null });
-    expect((await admin.agent.get('/api/admin/actions').expect(200)).body.rows.map((a: { action: string }) => a.action)).toEqual(['verdict.rejudge', 'verdict.override']);
+    expect((await admin.agent.get('/api/admin/actions').expect(200)).body.rows.map((a: { action: string }) => a.action)).toEqual(['verdict.rejudge', 'verdict.override', 'auth.signin']);
   });
 
   it('an override of an unknown ride or of a ride without a verdict is a 404 and is not audited', async () => {
-    const admin = await login(ADMIN);
+    const admin = await asAdmin();
     const rider = await login();
     const r = (await rider.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
     await admin.agent.post('/api/admin/rides/00000000-0000-4000-8000-ffffffffffff/verdict').set('x-fc-admin', '1').send({ decision: 'rejected' }).expect(404);
     await admin.agent.post(`/api/admin/rides/${r.id}/verdict`).set('x-fc-admin', '1').send({ decision: 'rejected' }).expect(404);
-    expect((await admin.agent.get('/api/admin/actions').expect(200)).body.rows).toEqual([]);
+    expect((await admin.agent.get('/api/admin/actions').expect(200)).body.rows.map((a: { action: string }) => a.action)).toEqual(['auth.signin']);
   });
 }
