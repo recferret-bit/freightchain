@@ -38,6 +38,7 @@ npm run deploy          # checks → plan → confirm → upload → build → b
 | `deploy/.env` | **no** (gitignored) | the real values; `deploy:init` creates it from the example |
 
 `SOLANA_RPC` must be a **devnet** endpoint: the env check asks it for its genesis hash and refuses anything else (the server builds the payment transactions from it, so mainnet would charge real SOL; `ALLOW_NON_DEVNET=1` overrides). `DEMO_WALLETS` = the wallets whose paid shifts run `DEMO_SCALE`× shorter (the demo payer).
+`POSTHOG_KEY` is the PostHog project token (`phc_…`). Empty turns analytics off. A bad value, including a personal `phx_…` key, is logged and ignored and does not stop the API. `POSTHOG_HOST` defaults to `https://us.i.posthog.com`. `POSTHOG_DISABLED=1` is the kill switch. `POSTHOG_PROJECT_ID` is the project number and is not sent on capture. The real token lives only in `deploy/.env` and `server/.env`.
 `DEPLOY_*` keys stay on your machine; everything else is uploaded as `/srv/freightchain/.env` (chmod 600).
 `APP_DOMAIN`, `APP_ORIGIN`, `APP_PORT`, `COOKIE_DOMAIN`, `CORS_ORIGINS` are derived from `DEPLOY_DOMAIN` / `DEPLOY_APP_PORT` – do not set them. Any value still starting with `CHANGE_ME` makes the scripts refuse to run.
 `deploy/secrets/treasury.json` (gitignored) is the treasury **private key** – back it up; losing it means losing the entry fees.
