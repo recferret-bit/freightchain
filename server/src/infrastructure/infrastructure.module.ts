@@ -38,6 +38,8 @@ import { PoolRepositoryPort } from '../application/ports/economy/pool.repository
 import { PromoRepositoryPort } from '../application/ports/economy/promo.repository.port.js';
 import { RideTicketRepositoryPort } from '../application/ports/players/ride-ticket.repository.port.js';
 import { PoolPrismaRepository } from './prisma/repositories/pool.prisma.repository.js';
+import { TicketOrderRepositoryPort } from '../application/ports/economy/ticket-order.repository.port.js';
+import { TicketOrderPrismaRepository } from './prisma/repositories/ticket-order.prisma.repository.js';
 import { PromoPrismaRepository } from './prisma/repositories/promo.prisma.repository.js';
 import { RideTicketPrismaRepository } from './prisma/repositories/ride-ticket.prisma.repository.js';
 
@@ -62,6 +64,7 @@ const ports: Provider[] = [
   { provide: PoolRepositoryPort, useClass: PoolPrismaRepository },
   { provide: RideTicketRepositoryPort, useClass: RideTicketPrismaRepository },
   { provide: PromoRepositoryPort, useClass: PromoPrismaRepository },
+  { provide: TicketOrderRepositoryPort, useClass: TicketOrderPrismaRepository },
 ];
 
 const portTokens = ports.map((p) => (p as { provide: unknown }).provide as typeof ClockPort);

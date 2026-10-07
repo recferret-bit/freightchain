@@ -18,4 +18,7 @@ export interface TicketOrderProps {
   createdAt: Date;
   paidAt: Date | null;
   refundedAt: Date | null;
+  /** the TicketBought event that paid it: (signature, eventIndex) is unique */
+  signature: string | null;
+  eventIndex: number | null;
 }

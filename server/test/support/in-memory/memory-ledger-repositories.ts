@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { Pool } from '../../../src/domain/economy/pool.entity.js';
 import type { PoolProps } from '../../../src/domain/economy/pool.types.js';
 import { PromoCode } from '../../../src/domain/economy/promo-code.entity.js';
+import { TicketOrder } from '../../../src/domain/economy/ticket-order.entity.js';
+import { TicketOrderRepositoryPort } from '../../../src/application/ports/economy/ticket-order.repository.port.js';
 import { RideTicket } from '../../../src/domain/players/ride-ticket.entity.js';
 import type { TicketGrantProps } from '../../../src/domain/players/ride-ticket.types.js';
 import type { PaidTierId } from '../../../src/domain/rides/ride-tier.js';
@@ -11,7 +13,7 @@ import { PromoRepositoryPort } from '../../../src/application/ports/economy/prom
 import { RideTicketRepositoryPort } from '../../../src/application/ports/players/ride-ticket.repository.port.js';
 import type { MemoryDb } from './memory-db.js';
 
-/* In-memory twins of the pool / ticket / promo repositories (same contracts as the Prisma ones; see memory-repositories.ts). */
+/* In-memory twins of the pool / ticket / promo / order repositories (same contracts as the Prisma ones; see memory-repositories.ts). */
 
 const soonest = (a: PoolProps, b: PoolProps) => a.playDeadline.getTime() - b.playDeadline.getTime() || a.id - b.id;
 const isLive = (p: PoolProps) => p.status === 'open' || p.status === 'active';
@@ -141,5 +143,53 @@ export class MemoryPromoRepository extends PromoRepositoryPort {
 
   async countRedemptions(code: string, wallet: string): Promise<number> {
     return [...this.db.redemptions.keys()].filter((k) => k.startsWith(`${code}|${wallet}|`)).length;
+  }
+}
+
+@Injectable()
+export class MemoryTicketOrderRepository extends TicketOrderRepositoryPort {
+  constructor(private readonly db: MemoryDb) { super(); }
+
+  async insert(order: TicketOrder): Promise<void> {
+    const s = order.snapshot();
+    if (this.db.orders.has(s.id) || (s.signature && this.bySettlement(s.signature, s.eventIndex))) throw new Error('unique violation');
+    this.db.orders.set(s.id, s);
+  }
+
+  async findById(id: string): Promise<TicketOrder | null> {
+    const o = this.db.orders.get(id);
+    return o ? TicketOrder.restore(o) : null;
+  }
+
+  async findBySettlement(signature: string, eventIndex: number): Promise<TicketOrder | null> {
+    const o = this.bySettlement(signature, eventIndex);
+    return o ? TicketOrder.restore(o) : null;
+  }
+
+  async findAwaitingByWallet(wallet: string): Promise<TicketOrder | null> {
+    const o = [...this.db.orders.values()].filter((x) => x.wallet === wallet && x.status === 'awaiting_payment')
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id.localeCompare(a.id))[0];
+    return o ? TicketOrder.restore(o) : null;
+  }
+
+  async listPaid(wallet: string, poolId: number): Promise<TicketOrder[]> {
+    return [...this.db.orders.values()].filter((x) => x.wallet === wallet && x.poolId === poolId && x.status === 'paid')
+      .sort((a, b) => (a.paidAt?.getTime() ?? 0) - (b.paidAt?.getTime() ?? 0) || a.id.localeCompare(b.id)).map((o) => TicketOrder.restore(o));
+  }
+
+  async save(order: TicketOrder): Promise<void> {
+    const s = order.snapshot();
+    const clash = s.signature ? this.bySettlement(s.signature, s.eventIndex) : undefined;
+    if (clash && clash.id !== s.id) throw new Error('unique violation');
+    this.db.orders.set(s.id, s);
+  }
+
+  async totalsOf(wallet: string): Promise<{ lamports: number; tickets: number }> {
+    const paid = [...this.db.orders.values()].filter((x) => x.wallet === wallet && x.status === 'paid');
+    return { lamports: paid.reduce((n, o) => n + o.lamports, 0), tickets: paid.reduce((n, o) => n + o.qty, 0) };
+  }
+
+  private bySettlement(signature: string, eventIndex: number | null) {
+    return [...this.db.orders.values()].find((x) => x.signature === signature && x.eventIndex === eventIndex);
   }
 }

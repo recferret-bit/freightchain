@@ -7,8 +7,9 @@ import { LobbyHttpController } from './lobby/lobby.http.controller.js';
 import { RidesHttpController } from './rides/rides.http.controller.js';
 
 import { PoolsHttpController } from './economy/pools.http.controller.js';
+import { TicketsHttpController } from './economy/tickets.http.controller.js';
 @Module({
   imports: [ApplicationModule],
-  controllers: [HealthHttpController, AuthHttpController, RidesHttpController, EconomyHttpController, PoolsHttpController, LobbyHttpController],
+  controllers: [HealthHttpController, AuthHttpController, RidesHttpController, EconomyHttpController, PoolsHttpController, TicketsHttpController, LobbyHttpController],
 })
 export class PresentationModule {}

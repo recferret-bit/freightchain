@@ -29,17 +29,21 @@ import { ReconcilePaymentHandler } from './use-cases/rides/reconcile-payment/rec
 import { StartRideHandler } from './use-cases/rides/start-ride/start-ride.handler.js';
 
 import { PoolTicketsService } from './services/pool-tickets.service.js';
+import { TicketSettlementService } from './services/ticket-settlement.service.js';
 import { ListPoolsHandler } from './use-cases/pools/list-pools/list-pools.handler.js';
 import { GetPrizePoolHandler } from './use-cases/pools/get-prize-pool/get-prize-pool.handler.js';
 import { RedeemPromoHandler } from './use-cases/players/redeem-promo/redeem-promo.handler.js';
 
+import { CreateTicketOrderHandler } from './use-cases/tickets/create-ticket-order/create-ticket-order.handler.js';
+import { GetTicketOrderHandler } from './use-cases/tickets/get-ticket-order/get-ticket-order.handler.js';
+import { GetPendingTicketOrderHandler } from './use-cases/tickets/get-pending-ticket-order/get-pending-ticket-order.handler.js';
 import { RegisterPoolHandler } from './use-cases/pools/register-pool/register-pool.handler.js';
 import { CreatePromoHandler } from './use-cases/promos/create-promo/create-promo.handler.js';
 import { ListPromosHandler } from './use-cases/promos/list-promos/list-promos.handler.js';
 import { DisablePromoHandler } from './use-cases/promos/disable-promo/disable-promo.handler.js';
 import { GrantTicketsHandler } from './use-cases/players/grant-tickets/grant-tickets.handler.js';
 
-const services: Provider[] = [AchievementService, PaymentSettlementService, PlayerSessionService, PoolTicketsService, RideLookupService, RoundService];
+const services: Provider[] = [AchievementService, PaymentSettlementService, PlayerSessionService, PoolTicketsService, RideLookupService, RoundService, TicketSettlementService];
 
 const handlers: Provider[] = [
   RequestChallengeHandler, VerifySignInHandler, GetMeHandler, LogoutHandler,
@@ -51,6 +55,7 @@ const handlers: Provider[] = [
   GrantDailyFreeRidesHandler,
   ListPoolsHandler, GetPrizePoolHandler, RedeemPromoHandler,
   CreatePromoHandler, ListPromosHandler, DisablePromoHandler, GrantTicketsHandler, RegisterPoolHandler,
+  CreateTicketOrderHandler, GetTicketOrderHandler, GetPendingTicketOrderHandler,
 ];
 
 @Module({

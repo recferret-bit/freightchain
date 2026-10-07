@@ -10,6 +10,7 @@ import { TransactionPort } from '../../src/application/ports/shared/transaction.
 import { RideTicketRepositoryPort } from '../../src/application/ports/players/ride-ticket.repository.port.js';
 import { PromoCode } from '../../src/domain/economy/promo-code.entity.js';
 import { aPool } from '../support/pools.js';
+import { TicketSettlementService, type PurchaseEvent } from '../../src/application/services/ticket-settlement.service.js';
 
 /* What in-memory fakes can never tell you: parallel requests against a real database. Every critical section the old synchronous SQLite server got "for free"
    is exercised here with Promise.all and EXACT counts – one ride, one credit, one successful verify, one round, one payment. */
@@ -90,6 +91,33 @@ describe('concurrency (PostgreSQL)', () => {
       const mine = await parallel(PARALLEL, () => a.agent.post('/api/promo/redeem').send({ code: 'MINE' }));
       expect(mine.filter((r) => r.status === 200)).toHaveLength(1);
       expect(await prisma.rideTicket.findUnique({ where: { wallet_poolId: { wallet: a.address, poolId: 1 } } })).toMatchObject({ balance: 2 });
+    });
+
+    const purchase = (buyer: string, over: Partial<PurchaseEvent> = {}): PurchaseEvent =>
+      ({ kind: 'TicketBought', signature: `sig-${buyer.slice(0, 6)}`, index: 0, slot: 1, poolId: 1, buyer, qty: 1, lamports: 50_000_000, orderId: '', ticketsSold: 1, activated: false, ...over });
+
+    it('the same purchase event settled N times at once (confirm, webhook, poll): credited ONCE, every caller sees it paid', async () => {
+      await seed({ id: 1, status: 'open' }, { code: 'XYZ', credits: 1, maxRedemptions: null });
+      const a = await login();
+      const svc = harness.app.get(TicketSettlementService, { strict: false });
+      const results = await parallel(PARALLEL, () => svc.settlePurchase(purchase(a.address, { qty: 2, lamports: 100_000_000, ticketsSold: 2 })));
+      expect(results.filter((r) => r.outcome === 'applied')).toHaveLength(1);
+      expect(results.filter((r) => r.outcome === 'duplicate')).toHaveLength(PARALLEL - 1);
+      expect(await prisma.rideTicket.findUnique({ where: { wallet_poolId: { wallet: a.address, poolId: 1 } } })).toMatchObject({ balance: 2, bought: 2 });
+      expect(await prisma.ticketOrder.count({ where: { wallet: a.address, status: 'paid' } })).toBe(1);
+      expect(await prisma.pool.findUnique({ where: { id: 1 } })).toMatchObject({ ticketsSold: 2, buyers: 1 });
+    });
+
+    it('purchases racing the pool failing: no deadlock, and every paid ticket ends up voided but still refundable', async () => {
+      await seed({ id: 1, status: 'open', minTickets: 50 }, { code: 'XYZ', credits: 1, maxRedemptions: null });
+      const riders = await parallel(6, () => login());
+      const svc = harness.app.get(TicketSettlementService, { strict: false });
+      await Promise.all([
+        ...riders.map((r, i) => svc.settlePurchase(purchase(r.address, { ticketsSold: i + 1 }))),
+        svc.applyPoolEvent({ kind: 'PoolFailed', signature: 'fail', index: 0, slot: 9, poolId: 1, ticketsSold: 6 }),
+      ]);
+      expect(await prisma.pool.findUnique({ where: { id: 1 } })).toMatchObject({ status: 'refunding' });
+      expect(await prisma.rideTicket.aggregate({ _sum: { balance: true, bought: true } })).toMatchObject({ _sum: { balance: 0, bought: 6 } });
     });
 
     it('a pool voided while its tickets are being spent: no ticket is both voided and ridden', async () => {

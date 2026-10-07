@@ -82,6 +82,11 @@ export class Pool {
     return this.p.status === 'open' && now.getTime() >= this.p.prepDeadline.getTime() && this.p.ticketsSold < this.p.minTickets;
   }
 
+  /** A wallet bought its first ticket of this pool (the mirror's count; PoolSyncService corrects it from the account). */
+  countBuyer(): void {
+    this.p.buyers += 1;
+  }
+
   /** The weekly round an active pool ranks in is decided when it goes active – set once. */
   rankInRound(roundId: number): void {
     if (this.p.roundId === null) this.p.roundId = roundId;

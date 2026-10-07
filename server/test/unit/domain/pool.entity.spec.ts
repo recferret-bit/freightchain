@@ -73,6 +73,11 @@ describe('Pool – progress, pot and the deadline', () => {
     p.rankInRound(4);
     expect(p.roundId).toBe(3);
   });
+  it('counts new buyers', () => {
+    const p = pool({ buyers: 2 });
+    p.countBuyer();
+    expect(p.snapshot().buyers).toBe(3);
+  });
 });
 
 describe('Pool – the state machine replays the program events', () => {

@@ -135,7 +135,10 @@ model TicketOrder {
   createdAt            DateTime
   paidAt               DateTime?
   refundedAt           DateTime?
+  signature            String? // the transaction whose TicketBought event paid it
+  eventIndex           Int? // that event's position in the transaction – (signature, eventIndex) is unique: one purchase event pays one order
 
+  @@unique([signature, eventIndex])
   @@index([wallet, status])
   @@index([poolId])
   @@schema("economy")

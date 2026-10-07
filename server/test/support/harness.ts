@@ -23,7 +23,8 @@ import {
   MemoryAchievementRepository, MemoryChallengeRepository, MemoryHealthProbe, MemoryPaymentRepository, MemoryPlayerRepository,
   MemoryRideQuery, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
 } from './in-memory/memory-repositories.js';
-import { MemoryPoolRepository, MemoryPromoRepository, MemoryRideTicketRepository } from './in-memory/memory-ledger-repositories.js';
+import { MemoryPoolRepository, MemoryPromoRepository, MemoryRideTicketRepository, MemoryTicketOrderRepository } from './in-memory/memory-ledger-repositories.js';
+import { TicketOrderRepositoryPort } from '../../src/application/ports/economy/ticket-order.repository.port.js';
 import { PoolRepositoryPort } from '../../src/application/ports/economy/pool.repository.port.js';
 import { PromoRepositoryPort } from '../../src/application/ports/economy/promo.repository.port.js';
 import { RideTicketRepositoryPort } from '../../src/application/ports/players/ride-ticket.repository.port.js';
@@ -46,7 +47,8 @@ export interface Harness {
 }
 
 /** Everything the app reads from the environment that a test may change – cleared before each harness so files can't leak into each other. */
-const TUNABLES = ['THROTTLE_LIMIT', 'THROTTLE_AUTH_LIMIT', 'FREE_RIDE_SECONDS', 'DEMO_WALLETS', 'DEMO_SCALE', 'INITIAL_SEED_SOL', 'HB_MIN_INTERVAL_MS', 'TRUST_PROXY', 'SOL_USD', 'TREASURY_PUBKEY', 'JWT_SECRET', 'CLIENT_DIR', 'COOKIE_DOMAIN', 'CORS_ORIGINS'];
+const TUNABLES = ['THROTTLE_LIMIT', 'THROTTLE_AUTH_LIMIT', 'FREE_RIDE_SECONDS', 'DEMO_WALLETS', 'DEMO_SCALE', 'INITIAL_SEED_SOL', 'HB_MIN_INTERVAL_MS', 'TRUST_PROXY', 'SOL_USD', 'TREASURY_PUBKEY', 'JWT_SECRET', 'CLIENT_DIR', 'COOKIE_DOMAIN', 'CORS_ORIGINS',
+  'PAYMENT_MODE', 'TICKET_PROGRAM_ID', 'FEE_TREASURY', 'SEED_TREASURY', 'ORDER_TTL_MINUTES', 'WATCH_INTERVAL_MS', 'WEBHOOK_SECRET', 'CRANK_SECRET', 'FEE_PAYER_SECRET', 'SOLANA_COMMITMENT'];
 
 /**
  * Boots the REAL app (every controller, pipe, guard, filter, handler) with a fake clock and a fake chain.
@@ -77,6 +79,7 @@ export async function createHarness(persistence: Persistence, env: Record<string
       .overrideProvider(PoolRepositoryPort).useValue(new MemoryPoolRepository(memory))
       .overrideProvider(RideTicketRepositoryPort).useValue(new MemoryRideTicketRepository(memory))
       .overrideProvider(PromoRepositoryPort).useValue(new MemoryPromoRepository(memory))
+      .overrideProvider(TicketOrderRepositoryPort).useValue(new MemoryTicketOrderRepository(memory))
       .overrideProvider(TransactionPort).useValue(new MemoryTransaction())
       .overrideProvider(HealthProbePort).useValue(new MemoryHealthProbe());
   }

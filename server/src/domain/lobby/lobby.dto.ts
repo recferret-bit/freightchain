@@ -56,7 +56,10 @@ export interface ProfileStatsDto {
   metres: number;
   bestMetres: number;
   paidRides: number;
+  /** legacy pay-per-ride payments + paid (not refunded) ticket orders */
   spentLamports: number;
+  /** paid (not refunded) pool tickets */
+  ticketsBought: number;
 }
 
 export interface RecentRideDto {
