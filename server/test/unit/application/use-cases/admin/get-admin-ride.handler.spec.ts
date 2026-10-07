@@ -12,7 +12,7 @@ describe('GetAdminRideHandler', () => {
     expect(d.ride).toMatchObject({ id: ride.id, wallet: 'bob', status: 'completed', distance: 2400, seed: ride.seed, verdict: 'flagged', overridden: false });
     expect(d.verdict).toMatchObject({ status: 'flagged', override: null, rulesVersion: 1 });
     expect(d.verdict?.reasons.map((r) => r.code)).toContain('uniform-holds');
-    expect((d.verdict?.scores as { human: { presses: number } }).human.presses).toBeGreaterThan(8);
+    expect((d.verdict?.scores as { human?: { presses: number } } | undefined)?.human?.presses).toBeGreaterThan(8);
     expect(d.batches.map((b) => b.seq)).toEqual([...Array(12).keys()]);
     expect(d.batches[0]).toMatchObject({ t0: 0, t1: 15, samples: 150, hashOk: true });
     expect(d.payment).toBeNull();
