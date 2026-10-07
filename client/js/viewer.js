@@ -5,14 +5,12 @@ import { KINDS } from './world/props.js';
 import { buildGantry } from './world/gantry.js';
 import { THEMES } from './themes/index.js';
 import { TYPES } from './themes/_shared/landmarks/index.js';
-import { GAME_BASE } from './hosts.js';
 
 /* Model viewer (viewer.html): a separate scene with every 3D object of the game except the player's own freighter/trailer –
    traffic vehicles, and per route the scenery props, roadside furniture and finish gantry – built by the SAME code the game uses.
    Orbit / zoom / pan are hand-rolled (no extra imports). Selection lives in location.hash so a view can be linked. */
 
 const $ = id => document.getElementById(id);
-$('back').href = `${GAME_BASE}/play.html`;   // on storybook.* the game lives on ride.*
 const scene = new THREE.Scene(); scene.background = new THREE.Color(0x25282c);
 const camera = new THREE.PerspectiveCamera(45, 1, .05, 600);
 const grid = new THREE.GridHelper(60, 60, 0x6a7078, 0x3a3f45); grid.position.y = -.002; scene.add(grid);
@@ -59,9 +57,19 @@ function clearStage() {
   for (const m of wireMats) m.wireframe = false; wireMats = [];
   for (const c of [...stage.children]) stage.remove(c); edgeLines = []; boxHelper = null;
 }
+// headlight/brake/siren glow sprites and ground light-pool planes (world/glow.js) carry a `gain` on their material;
+// they reach tens of metres from the body and would otherwise blow up the auto-frame, so they're excluded from the measured size.
+const isGlowNode = c => (c.isMesh || c.isSprite) && [].concat(c.material).some(m => m?.userData && 'gain' in m.userData);
+function measureBounds(root) {
+  const pulled = []; root.traverse(c => { if (isGlowNode(c)) pulled.push({ p: c.parent, c }); });
+  for (const { p, c } of pulled) p.remove(c);
+  const box = new THREE.Box3().setFromObject(root);
+  for (const { p, c } of pulled) p.add(c);
+  return box.isEmpty() ? new THREE.Box3().setFromObject(root) : box;
+}
 function select(item, keepCam) {
   clearStage(); cur = item; item.obj = obj = item.make(); stage.add(obj);
-  bounds = new THREE.Box3().setFromObject(obj);   // measured before the helper lines are added
+  bounds = measureBounds(obj);   // measured before the helper lines are added
   obj.traverse(c => { if (!c.isMesh) return; for (const m of [].concat(c.material)) if (!wireMats.includes(m)) wireMats.push(m);
     let g = edgeCache.get(c.geometry); if (!g) edgeCache.set(c.geometry, g = new THREE.EdgesGeometry(c.geometry, 25));
     const l = new THREE.LineSegments(g, edgeMat); c.add(l); edgeLines.push(l); });
@@ -79,7 +87,7 @@ function applyOpts() {
   for (const l of edgeLines) l.visible = opts.edges; if (boxHelper) boxHelper.visible = opts.box; grid.visible = opts.grid;
   for (const m of wireMats) m.wireframe = opts.wire;
   const u = obj?.userData ?? {}; if (u.brake) u.brake.visible = opts.brake; if (u.flash && !opts.siren) u.flash.forEach(g => g.visible = false);
-  const rows = [['edges', 'E  edges'], ['grid', 'G  grid (1 m)'], ['box', 'X  bounding box'], ['wire', 'W  wireframe'], ['spin', 'Space  auto-rotate'], ['brake', 'brake lights', !u.brake], ['siren', 'siren flash', !u.flash]];
+  const rows = [['edges', 'E  edges'], ['grid', 'G  grid (1 m)'], ['box', 'X  bounding box'], ['wire', 'V  wireframe'], ['spin', 'Space  auto-rotate'], ['brake', 'brake lights', !u.brake], ['siren', 'siren flash', !u.flash]];
   if (!$('opts').children.length) $('opts').innerHTML = rows.map(([k, t]) => `<label data-k="${k}"><input type="checkbox" data-k="${k}"> ${t}</label>`).join('');
   for (const [k, , off] of rows) { const l = $('opts').querySelector(`label[data-k=${k}]`); l.classList.toggle('off', !!off); l.firstChild.checked = opts[k]; }
 }
@@ -98,7 +106,7 @@ const step = d => select(items[(items.indexOf(cur) + d + items.length) % items.l
 const cam = { target: new THREE.Vector3(), yaw: .6, pitch: .35, dist: 10, min: 1, max: 100 };
 function frame() {
   const s = bounds.getBoundingSphere(new THREE.Sphere());
-  cam.target.copy(s.center); cam.dist = Math.max(s.radius, .3) / Math.sin(THREE.MathUtils.degToRad(camera.fov) / 2) * 1.05; cam.min = s.radius * .2; cam.max = cam.dist * 8; cam.yaw = .6; cam.pitch = .35;
+  cam.target.copy(s.center); cam.dist = Math.max(s.radius, .3) / Math.sin(THREE.MathUtils.degToRad(camera.fov) / 2) * 1.4; cam.min = s.radius * .2; cam.max = cam.dist * 8; cam.yaw = .6; cam.pitch = .35;
 }
 function place() {
   const cp = Math.cos(cam.pitch); camera.position.set(cam.target.x + cam.dist * Math.sin(cam.yaw) * cp, cam.target.y + cam.dist * Math.sin(cam.pitch), cam.target.z + cam.dist * Math.cos(cam.yaw) * cp);
@@ -106,9 +114,15 @@ function place() {
 }
 const cv = $('world'), ptr = new Map(); let pinch = 0;
 const zoom = k => { cam.dist = THREE.MathUtils.clamp(cam.dist * k, cam.min, cam.max); };
+// shared camera-relative axes (right / up / forward), read off the live view matrix – used by both mouse-pan and WASD strafe
+const _right = new THREE.Vector3(), _up = new THREE.Vector3(), _fwd = new THREE.Vector3();
+function basis() {
+  camera.updateMatrixWorld(); const el = camera.matrixWorld.elements;
+  _right.set(el[0], el[1], el[2]); _up.set(el[4], el[5], el[6]); _fwd.set(-el[8], -el[9], -el[10]);
+}
 const pan = (dx, dy) => {
-  camera.updateMatrixWorld(); const k = 2 * cam.dist * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) / innerHeight, e = camera.matrixWorld.elements;
-  cam.target.addScaledVector(new THREE.Vector3(e[0], e[1], e[2]), -dx * k).addScaledVector(new THREE.Vector3(e[4], e[5], e[6]), dy * k);
+  basis(); const k = 2 * cam.dist * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) / innerHeight;
+  cam.target.addScaledVector(_right, -dx * k).addScaledVector(_up, dy * k);
 };
 cv.addEventListener('contextmenu', e => e.preventDefault());
 cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); ptr.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (ptr.size === 2) pinch = dist2(); });
@@ -117,14 +131,27 @@ const dist2 = () => { const [a, b] = [...ptr.values()]; return Math.hypot(a.x - 
 cv.addEventListener('pointermove', e => {
   const p = ptr.get(e.pointerId); if (!p) return; const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
   if (ptr.size === 2) { const d = dist2(); zoom(pinch / d); pinch = d; return; }
-  if (e.shiftKey || e.buttons & 6) pan(dx, dy); else { cam.yaw -= dx * .008; cam.pitch = THREE.MathUtils.clamp(cam.pitch + dy * .008, -1.5, 1.5); }
+  const orbiting = e.pointerType !== 'mouse' || (e.buttons & 2);   // right mouse button, or a single touch/pen
+  if (orbiting) { cam.yaw -= dx * .008; cam.pitch = THREE.MathUtils.clamp(cam.pitch + dy * .008, -1.5, 1.5); } else pan(dx, dy);
 });
 cv.addEventListener('wheel', e => { e.preventDefault(); zoom(Math.exp(e.deltaY * (e.deltaMode ? .05 : .0012))); }, { passive: false });
+const keys = new Set();
 addEventListener('keydown', e => {
-  if (e.metaKey || e.ctrlKey || e.altKey) return; const k = e.key.toLowerCase(), flip = { e: 'edges', g: 'grid', x: 'box', w: 'wire' }[k];
+  if (e.metaKey || e.ctrlKey || e.altKey) return; const k = e.key.toLowerCase();
+  if ('wasd'.includes(k)) { keys.add(k); return; }
+  const flip = { e: 'edges', g: 'grid', x: 'box', v: 'wire' }[k];
   if (k === 'arrowright' || k === 'arrowdown') step(1); else if (k === 'arrowleft' || k === 'arrowup') step(-1); else if (k === 'f' || k === 'r') frame();
   else if (k === ' ') { opts.spin = !opts.spin; applyOpts(); e.preventDefault(); } else if (flip) { opts[flip] = !opts[flip]; applyOpts(); }
 });
+addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
+addEventListener('blur', () => keys.clear());
+document.addEventListener('visibilitychange', () => { if (document.hidden) keys.clear(); });
+function strafe(dt) {
+  if (!keys.size) return;
+  basis(); const spd = cam.dist * 1.1 * dt;
+  if (keys.has('w')) cam.target.addScaledVector(_fwd, spd); if (keys.has('s')) cam.target.addScaledVector(_fwd, -spd);
+  if (keys.has('a')) cam.target.addScaledVector(_right, -spd); if (keys.has('d')) cam.target.addScaledVector(_right, spd);
+}
 
 /* ---------- loop ---------- */
 function resize() { renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
@@ -133,6 +160,7 @@ let last = performance.now(), t = 0;
 renderer.setAnimationLoop(now => {
   const dt = Math.min((now - last) / 1000, .1); last = now; t += dt;
   if (opts.spin && !ptr.size) cam.yaw += dt * .6;
+  strafe(dt);
   const fl = obj?.userData.flash; if (fl && opts.siren) { const on = Math.floor(t * 6) % 2 === 0; fl[0].visible = on; fl[1].visible = !on; }
   place(); renderer.render(scene, camera);
 });

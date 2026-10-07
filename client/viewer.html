@@ -16,7 +16,6 @@
   #world:active { cursor: grabbing; }
   #side { position: fixed; top: 0; left: 0; bottom: 0; width: 230px; overflow-y: auto; background: rgba(20,22,25,.88); border-right: 1px solid #3a3e44; padding: 8px 0 24px; }
   #side h1 { font-size: 13px; margin: 0 12px 6px; color: #ffcf5a; letter-spacing: .08em; }
-  #side a { color: #8fb4d8; margin: 0 12px; font-size: 12px; }
   details { margin-top: 4px; } summary { cursor: pointer; padding: 4px 12px; color: #ffcf5a; text-transform: uppercase; font-size: 11px; letter-spacing: .08em; }
   .item { display: block; padding: 3px 12px 3px 22px; cursor: pointer; color: #d8d4c8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .item:hover { background: #30343a; } .item.on { background: #3d4c60; color: #fff; }
@@ -29,10 +28,10 @@
 </head>
 <body>
 <canvas id="world"></canvas>
-<div id="side"><h1>MODEL VIEWER</h1><a id="back" href="play.html">← back to the game</a><div id="list"></div></div>
+<div id="side"><h1>MODEL VIEWER</h1><div id="list"></div></div>
 <div id="info"></div>
 <div id="opts"></div>
-<div id="help">drag = rotate · wheel / pinch = zoom · right-drag / shift-drag = pan · ←/→ = prev/next · F = re-frame · Space = auto-rotate · E edges · G grid · X box · W wireframe</div>
+<div id="help">right-drag = orbit · left-drag = pan · wheel / pinch = zoom · WASD = strafe · ←/→ = prev/next · F = re-frame · Space = auto-rotate · E edges · G grid · X box · V wireframe</div>
 
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
 <script type="module" src="js/viewer.js"></script>
