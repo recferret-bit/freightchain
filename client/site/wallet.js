@@ -8,10 +8,12 @@ export function b58(bytes) {
   return out;
 }
 
+import { API_BASE } from '../js/hosts.js';
+
 export async function api(path, body) {
-  const r = await fetch(`/api/${path}`, { method: body ? 'POST' : 'GET', headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
+  const r = await fetch(`${API_BASE}/api/${path}`, { credentials: 'include', method: body ? 'POST' : 'GET', headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw Object.assign(new Error(j.message || `server error ${r.status}`), { status: r.status });
+  if (!r.ok) throw Object.assign(new Error(j.detail || j.title || `server error ${r.status}`), { status: r.status, code: j.code });   // RFC 9457 problem+json: { title, detail, code, … }
   return j;
 }
 

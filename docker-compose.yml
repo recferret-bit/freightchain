@@ -1,0 +1,28 @@
+name: freightchain
+
+# Local infrastructure for the server: PostgreSQL only.
+#   docker compose up -d --wait postgres        (or: npm run db:up)
+# Unique project / container / volume / port so it runs beside other projects' databases.
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: freightchain-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${FREIGHT_POSTGRES_USER:-freight}
+      POSTGRES_PASSWORD: ${FREIGHT_POSTGRES_PASSWORD:-freight_dev_password}
+      POSTGRES_DB: ${FREIGHT_POSTGRES_DB:-freightchain}
+    ports:
+      - "127.0.0.1:${FREIGHT_POSTGRES_PORT:-15433}:5432"
+    volumes:
+      - freightchain_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 3s
+
+volumes:
+  freightchain_pg_data:
+    name: freightchain_pg_data

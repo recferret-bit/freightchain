@@ -1,0 +1,11 @@
+// Unlocks are only ever ADDED (a later NFT mint is based on each row, so one must never disappear).
+model AchievementUnlock {
+  wallet        String
+  player        Player   @relation(fields: [wallet], references: [wallet], onDelete: Cascade)
+  achievementId String
+  earnedAt      DateTime
+  rideId        String? // the ride whose end unlocked it (null when found by a later catch-up)
+
+  @@id([wallet, achievementId])
+  @@schema("achievement")
+}

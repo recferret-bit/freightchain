@@ -1,14 +1,12 @@
 import { defineConfig } from 'vitest/config';
-import tsconfigPaths from 'vite-tsconfig-paths';
 
+/** `npm test`: unit specs, architecture audits, migration checks and the HTTP flow suite on in-memory repositories – no Docker needed. */
 export default defineConfig({
-  // Resolves the path aliases declared in tsconfig.json, including the ones
-  // added by `nest g library`.
-  plugins: [tsconfigPaths()],
   test: {
     globals: true,
-    passWithNoTests: true,
     root: './',
-    include: ['**/*.spec.ts'],
+    include: ['test/unit/**/*.spec.ts', 'test/architecture/**/*.spec.ts', 'test/migrations/**/*.spec.ts', 'test/http/**/*.spec.ts'],
+    testTimeout: 20000,
+    hookTimeout: 30000,
   },
 });

@@ -1,4 +1,5 @@
 import { api, signIn } from '../../client/site/wallet.js';   // one sign-in implementation for landing + lobby (Vite bundles it; fs.allow in vite.config.js for dev)
+import { GAME_BASE } from '../../client/js/hosts.js';   // '' on localhost, https://ride.<apex> in production: the game is NOT on the landing's host there
 import { sol, km, left, dur, short, hue, hours, ago, plural, TIER, TIER_LONG, ROUTE } from './format.js';
 
 /* Landing: four chapters (ride · loop · economy · about), fed by the public API only – no session needed to look.
@@ -130,12 +131,15 @@ async function refreshBoard() { S.board = await api('leaderboard?board=round').c
   const dlg = $('demo'), dv = $('demo-video');
   $('demo-btn').onclick = () => {
     if (DEMO_VIDEO) { dv.src = DEMO_VIDEO; $('demo-note').textContent = 'Demo clock ×60 – a paid shift is shortened for the demo wallet; the speed bound is not.'; }
-    else { dv.removeAttribute('src'); $('demo-note').replaceChildren('The demo video is not here yet. ', el('a', { href: '/play.html' }, 'Try the game offline'), ' – no wallet, no server, same truck.'); }
+    else { dv.removeAttribute('src'); $('demo-note').replaceChildren('The demo video is not here yet. ', el('a', { href: `${GAME_BASE}/play.html` }, 'Try the game offline'), ' – no wallet, no server, same truck.'); }
     dlg.showModal(); if (DEMO_VIDEO) dv.play().catch(() => {});
   };
   const close = () => { dv.pause(); dlg.close(); };
   $('demo-x').onclick = close; dlg.onclick = e => { if (e.target === dlg) close(); };
 })();
+
+/* ───── links to the game (static markup says /play.html; on split hosts that lives on ride.<apex>) ───── */
+for (const a of document.querySelectorAll('a[href="/play.html"]')) a.href = `${GAME_BASE}/play.html`;
 
 /* ───── socials ───── */
 for (const [net, url] of Object.entries(SOCIALS)) if (url) $('socials').append(el('a', { href: url, 'data-net': net, target: '_blank', rel: 'noopener' }, net.toUpperCase()));

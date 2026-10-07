@@ -73,3 +73,8 @@ test('class names do not collide with the page-level layout classes (.dot.top on
   for (const c of layout) assert.doesNotMatch(html, new RegExp(`class="[^"]*\\bdot ${c}\\b`), `.dot.${c}`);
   assert.match(css, /\.top\{position:sticky/);
 });
+
+test('split hosts: the game link goes through GAME_BASE and nothing calls a bare /api path', () => {
+  assert.match(main, /GAME_BASE/); assert.doesNotMatch(main, /\/play\.html'/, 'no hard-coded /play.html in a JS string');
+  for (const f of ['src/main.js', 'src/dash-live.js']) assert.doesNotMatch(readFileSync(join(root, f), 'utf8'), /fetch\(|XMLHttpRequest/, `${f}: API calls go through client/site/wallet.js (API_BASE)`);
+});

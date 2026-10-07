@@ -1,7 +1,7 @@
 {
   "name": "freightchain-monorepo",
   "private": true,
-  "description": "Freight Chain – client/ (the game + lobby, vanilla ES modules + three.js), landing/ (the / page, Vite) and server/ (NestJS, serves both). Each has its own package.json; these scripts just delegate.",
+  "description": "Freight Chain – client/ (the game + lobby, vanilla ES modules + three.js), landing/ (the / page, Vite) and server/ (NestJS, Prisma, PostgreSQL; serves both). Each has its own package.json; these scripts just delegate.",
   "scripts": {
     "install:server": "npm --prefix server install",
     "install:landing": "npm --prefix landing install",
@@ -12,10 +12,23 @@
     "treasury:init": "npm --prefix server run treasury:init",
     "server:dev": "npm --prefix server run start:dev",
     "server:build": "npm --prefix server run build",
-    "server:test": "npm --prefix server test && npm --prefix server run test:e2e",
+    "server:test": "npm --prefix server test",
     "client:check": "npm --prefix client run check",
     "client:serve": "client/serve.sh",
-    "build": "npm run landing:build && npm run server:build",
-    "check": "npm run client:check && npm run landing:lint && npm run landing:build && npm run landing:test && npm run server:build && npm run server:test"
+    "check": "npm run client:check && npm run landing:lint && npm run landing:build && npm run landing:test && npm run server:build && npm run server:typecheck && npm run server:test",
+    "db:up": "npm --prefix server run db:up",
+    "db:down": "npm --prefix server run db:down",
+    "db:migrate": "npm --prefix server run prisma:deploy",
+    "server:integration": "npm --prefix server run test:integration:stack",
+    "server:typecheck": "npm --prefix server run typecheck",
+    "deploy": "bash deploy/scripts/deploy.sh",
+    "deploy:init": "bash deploy/scripts/init.sh",
+    "deploy:setup": "bash deploy/scripts/setup.sh",
+    "deploy:status": "bash deploy/scripts/ctl.sh status",
+    "deploy:logs": "bash deploy/scripts/ctl.sh logs",
+    "deploy:backup": "bash deploy/scripts/ctl.sh backup",
+    "deploy:rollback": "bash deploy/scripts/ctl.sh rollback",
+    "deploy:smoke": "bash deploy/scripts/ctl.sh smoke",
+    "build": "npm run landing:build && npm run server:build"
   }
 }
