@@ -17,6 +17,12 @@ export class LobbyService {
     const rows = this.store.db.prepare(`SELECT wallet, tier, route, min_seconds, complete_dist, drive_seconds, last_s, hull, paused, time_scale, started_at, last_hb_at FROM rides
       WHERE status = 'running' AND last_hb_at >= ? ORDER BY started_at DESC LIMIT 50`).all(now - config.hbTimeoutMs) as unknown as {
       wallet: string; tier: string; route: string | null; min_seconds: number; complete_dist: number; drive_seconds: number; last_s: number; hull: number | null; paused: number; time_scale: number; started_at: number; last_hb_at: number }[];
+    // Landing boards: paid shifts bought but not started yet ("next up"), the last finishes (ticker) and all-time totals. Same privacy rule: no ids, no reasons.
+    const upcoming = this.store.db.prepare(`SELECT wallet, tier, min_seconds, paid_at FROM rides WHERE status = 'created' AND tier != 'free' AND paid_at IS NOT NULL ORDER BY paid_at DESC LIMIT 20`)
+      .all() as unknown as { wallet: string; tier: string; min_seconds: number; paid_at: number }[];
+    const recent = this.store.db.prepare(`SELECT wallet, tier, route, status, last_s, ended_at FROM rides WHERE status IN ('completed','abandoned','failed') AND started_at IS NOT NULL ORDER BY ended_at DESC LIMIT 12`)
+      .all() as unknown as { wallet: string; tier: string; route: string | null; status: string; last_s: number; ended_at: number }[];
+    const totals = this.store.db.prepare(`SELECT COUNT(*) AS shifts, COALESCE(SUM(last_s), 0) AS metres, COUNT(DISTINCT wallet) AS drivers FROM rides WHERE status = 'completed'`).get() as unknown as { shifts: number; metres: number; drivers: number };
     return {
       now, rides: rows.map(r => ({
         wallet: r.wallet, tier: r.tier, route: r.route, timeScale: r.time_scale, paused: !!r.paused, hull: r.hull === null ? null : Math.round(r.hull),
@@ -24,6 +30,9 @@ export class LobbyService {
         progress: Math.min(1, r.drive_seconds / r.min_seconds, r.last_s / r.complete_dist),
         sinceBeat: Math.round((now - r.last_hb_at) / 1000), startedAt: r.started_at,
       })),
+      upcoming: upcoming.map(r => ({ wallet: r.wallet, tier: r.tier, minSeconds: r.min_seconds, paidAt: r.paid_at })),
+      recent: recent.map(r => ({ wallet: r.wallet, tier: r.tier, route: r.route, status: r.status, distance: Math.round(r.last_s), endedAt: r.ended_at })),
+      totals: { shifts: totals.shifts, metres: Math.round(totals.metres), drivers: totals.drivers },
     };
   }
 

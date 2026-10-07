@@ -4,66 +4,138 @@
 <meta charset="utf-8">
 <title>Freight Chain – Desert Run</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Pay for a driving shift. The server keeps the clock. Finishers share one weekly pool. Devnet build.">
+<meta name="description" content="Buy a driving shift, drive every minute of it, let the server call the finish. Finishers share one weekly SOL pool. Devnet build.">
+<meta property="og:title" content="Freight Chain – Desert Run">
+<meta property="og:description" content="The road never ends. Your shift does. A paid long-haul shift with one weekly prize pool, on Solana devnet.">
+<meta property="og:image" content="site/media/hero-poster.png">
 <link rel="icon" href="data:,">
-<link rel="stylesheet" href="site/lobby.css">
 <link rel="stylesheet" href="site/landing.css">
 </head>
 <body>
+
+<!-- live ticker (Megapot-style): recent finishes, pot, totals – filled by landing.js, duplicated for the loop -->
+<div class="ticker" aria-hidden="true"><div class="tk" id="ticker"><span>Loading the dispatch…</span></div></div>
+
 <header class="top">
-  <a class="brand" href="/">⛟ FREIGHT CHAIN</a>
-  <div class="chips">
-    <span class="chip live" id="chip-live" title="trucks on the road right now">– on the road</span>
-    <a class="chip" href="/lobby.html#board">LEADERBOARD</a>
+  <a class="brand" href="#ride"><span class="mark">⛟</span> FREIGHT CHAIN <small>DESERT RUN</small></a>
+  <nav class="nav" aria-label="Sections">
+    <a href="#ride"><i>01</i> RIDE</a><a href="#loop"><i>02</i> LOOP</a><a href="#economy"><i>03</i> ECONOMY</a><a href="#about"><i>04</i> ABOUT</a>
+  </nav>
+  <div class="right">
+    <span class="chip lcd" id="chip-live" title="trucks on the road right now">– ON THE ROAD</span>
+    <button class="cta sm" id="play-top">PLAY</button>
   </div>
 </header>
-<main>
-  <section class="hero">
-    <div class="card pool" id="poolbox"><span class="dim">Loading the pool…</span></div>
-    <div class="pitch">
-      <h1>Drive the whole shift.<br>Share the pool.</h1>
-      <p>A truck, an endless road and a clock the server keeps. Pay for a 1, 4 or 8 hour shift, finish it, and your entry competes for one weekly prize pool.</p>
-      <div class="cta">
-        <button id="connect">CONNECT WALLET → 5 FREE RIDES</button>
-        <a class="ghost-link" href="/lobby.html#live">WATCH LIVE</a>
-      </div>
-      <p class="msg dim" id="msg"></p>
-      <p class="dim">Devnet build. Paid rides use devnet SOL, nothing here is real money.</p>
-    </div>
-  </section>
 
-  <h2>HOW IT WORKS</h2>
-  <ol class="steps">
-    <li><b>Pay</b><span>Pick a shift. SOL at the live rate, checked on chain by the server.</span></li>
-    <li><b>Drive</b><span>The full time. The server counts it and caps your speed. Pause is honest, backgrounding earns nothing.</span></li>
-    <li><b>Finish</b><span>The server marks the finish, not your browser.</span></li>
-    <li><b>Share</b><span>Every entry goes into one weekly pool. Finishers compete for it.</span></li>
+<main>
+<!-- ───────── 01 · HERO ───────── -->
+<section class="hero" id="ride">
+  <div class="bg">
+    <video id="hero-video" muted autoplay loop playsinline preload="metadata" poster="site/media/hero-poster.png" hidden></video>
+    <div class="slides" id="slides"><img src="site/media/day.png" alt=""><img src="site/media/hero-poster.png" alt=""><img src="site/media/night.png" alt=""></div>
+    <div class="shade"></div>
+  </div>
+  <div class="hero-in">
+    <p class="eyebrow rv">SOLANA DEVNET · IN YOUR BROWSER · NO DOWNLOAD · <b>5 FREE RIDES</b></p>
+    <h1 class="rv">The road never ends.<br>Your shift does.</h1>
+    <p class="lede rv">Buy a 1, 4 or 8 hour shift. Drive every minute of it – manual gearbox, cold engine, traffic, night. The server keeps the clock and calls the finish. Finishers share one weekly pool.</p>
+    <div class="cta-row rv">
+      <button class="cta" id="connect">CONNECT WALLET → 5 FREE RIDES</button>
+      <button class="cta ghost" id="demo-btn">▶ WATCH THE DEMO</button>
+      <a class="link" href="/play.html">try it offline, no wallet →</a>
+    </div>
+    <p class="msg" id="msg"></p>
+    <div class="stats rv" id="hero-stats">
+      <div class="stat pot"><span class="lbl">IN THE POT THIS WEEK</span><b class="num lcd" id="hero-pot">0.000</b><span class="unit">SOL <em id="hero-usd"></em></span></div>
+      <div class="stat"><span class="lbl">ROUND CLOSES IN</span><b class="num lcd cd" id="hero-cd">–</b><span class="unit">Mon 00:00 UTC</span></div>
+      <div class="stat"><span class="lbl">ON THE ROAD</span><b class="num lcd" id="hero-live">0</b><span class="unit">trucks right now</span></div>
+      <div class="stat"><span class="lbl">DRIVEN, ALL TIME</span><b class="num lcd" id="hero-km">0</b><span class="unit">km · <span id="hero-shifts">0</span> shifts</span></div>
+    </div>
+  </div>
+  <a class="scroll-hint" href="#loop" aria-label="scroll">▼</a>
+</section>
+
+<div class="road" aria-hidden="true"><i></i></div>
+
+<!-- ───────── 02 · LOOP ───────── -->
+<section class="ch" id="loop">
+  <header class="ch-h rv"><i>02</i><h2>CORE MECHANICS &amp; THE LOOP</h2><p>It is Desert Bus with money on the line: the only skill that pays is staying on the road, awake, for the whole shift.</p></header>
+
+  <ol class="flow rv">
+    <li><i>1</i><b>BUY A SHIFT</b><span>Free test ride, or $5 / $15 / $50 in SOL at the live rate. The server checks the transfer on chain and books the entry into this week's pool.</span></li>
+    <li><i>2</i><b>DRIVE ALL OF IT</b><span>Engine off at the depot. Start it, release the parking brake, work the clutch, pull onto the highway. Speed is governed at 100 km/h, so time on the road is the only way to make distance.</span></li>
+    <li><i>3</i><b>SERVER CALLS IT</b><span>Heartbeats every 10 s carry time and distance. Full time and full distance: COMPLETED. Quit early: ABANDONED. Hull gone, head-on, dead signal: FAILED.</span></li>
+    <li><i>4</i><b>SHARE THE POOL</b><span>Every paid entry grows one weekly pot. Finishers compete for the 50% draw and the top-20 distance prize. Monday 00:00 UTC it rolls over.</span></li>
   </ol>
 
-  <h2>SHIFTS</h2>
-  <div class="card"><table class="tbl" id="tiers"><tbody><tr><td class="dim">Loading…</td></tr></tbody></table>
-    <p class="dim" id="price"></p></div>
-
-  <h2>WHERE THE POOL GOES</h2>
-  <div class="card">
-    <div class="split" id="bar"><i class="s-grand" style="width:50%"></i><i class="s-top" style="width:20%"></i><i class="s-seed" style="width:20%"></i><i class="s-fees" style="width:10%"></i></div>
-    <div class="legend"><span class="s-grand"><b>50%</b> grand prize, a draw among finishers weighted by shift length</span><span class="s-top"><b>20%</b> top 20 by distance (skill prize)</span><span class="s-seed"><b>20%</b> seeds next week</span><span class="s-fees"><b>10%</b> platform</span></div>
-    <p class="dim">Prizes are accrued and shown here. The draw and the payouts are not live in this build.</p>
+  <div class="mech rv">
+    <article><h3>MANUAL GEARBOX</h3><p>7 gears, clutch, stalls, launch slip. Lug it and it dies; redline it and the STRAIN lamp charges until the drivetrain gives out.</p></article>
+    <article><h3>HULL &amp; TRAFFIC</h3><p>Poles, guardrails, cacti and other trucks are solid. Scratches and bumps eat hull; a direct hit ends the shift. IDM traffic, crossroads with lights, multi-lane merges.</p></article>
+    <article><h3>WEATHER &amp; ENGINE</h3><p>A −22 °C Trans-Siberian start means a frosted screen, a cold engine with less power, and wear if you rev it. Heater, wipers, washer, battery – all real.</p></article>
+    <article><h3>DAY &amp; NIGHT</h3><p>The clock runs. Headlights, lamp posts, dazzle from oncoming traffic, a cab light. Backgrounding the tab pauses the shift – it earns nothing.</p></article>
+    <article><h3>HOLES, SIGNS, STRAIN</h3><p>Five kinds of road damage with warning signs; straddle a pothole or lose hull and speed. Driving against the parking brake cooks the brakes.</p></article>
+    <article><h3>FIVE ROUTES</h3><p>Same rules, different roads and weather:</p>
+      <ul class="routes">
+        <li><i style="--a:#e6c9a0;--b:#c9a56e"></i>Route 66 · USA</li><li><i style="--a:#d9c6a4;--b:#b4532a"></i>Stuart Hwy · Australia</li><li><i style="--a:#cfd6dc;--b:#e8eef3"></i>Trans-Siberian · Russia</li><li><i style="--a:#bcd9f2;--b:#5d9a42"></i>Brenner Pass · Alps</li><li><i style="--a:#cfd9e8;--b:#ddd3c4"></i>Pan-American · Atacama</li>
+      </ul></article>
   </div>
 
-  <h2>THIS WEEK'S TOP 5</h2>
-  <div class="card"><div id="top5" class="top5"><span class="dim">Loading…</span></div></div>
+  <div class="badges rv"><span class="lbl">BADGES THAT EXIST TODAY</span>
+    <span>First Mile</span><span>Shift Complete</span><span>Night Owl</span><span>Century</span><span>Clean Run</span><span>Cold Start</span><span class="locked">Top 20 · after the first round closes</span></div>
+</section>
 
-  <h2>BADGES</h2>
-  <div class="badges">
-    <span>First Mile</span><span>Shift Complete</span><span>Night Owl</span><span>Century</span><span>Clean Run</span><span>Cold Start</span>
+<div class="road" aria-hidden="true"><i></i></div>
+
+<!-- ───────── 03 · ECONOMY & TECH ───────── -->
+<section class="ch" id="economy">
+  <header class="ch-h rv"><i>03</i><h2>ECONOMY &amp; WHAT THE SERVER CHECKS</h2><p>One pot per UTC week, every tier together. Integer lamports, floored shares, the remainder to fees. Accounted on this build; the draw and payouts come next.</p></header>
+
+  <div class="econ rv">
+    <div class="card pool" id="poolbox"><span class="dim">Loading the pool…</span></div>
+    <div class="card tiers"><h3>SHIFTS</h3><table id="tiers"><tbody><tr><td class="dim">Loading…</td></tr></tbody></table><p class="dim" id="price"></p></div>
   </div>
 
-  <h2>WHY</h2>
-  <p>Desert Bus (1995) was a game about driving a bus across a desert in real time. Nobody should have finished it, and people did. The scarce thing is attention, so that is what this sells.</p>
-  <p class="dim">On cheating: the server keeps the clock and the speed limit. A modified client can still lie inside that limit. Deterministic replay is the next step, not built yet.</p>
+  <div class="boards rv">
+    <div class="card board"><h3><i class="dot live"></i>LIVE NOW</h3><div id="board-live" class="rows"><span class="dim">Loading…</span></div></div>
+    <div class="card board"><h3><i class="dot next"></i>NEXT UP</h3><div id="board-next" class="rows"><span class="dim">Loading…</span></div></div>
+    <div class="card board"><h3><i class="dot top"></i>THIS ROUND · TOP 10</h3><div id="board-top" class="rows"><span class="dim">Loading…</span></div><a class="link" href="/lobby.html#board">all boards →</a></div>
+  </div>
+
+  <h3 class="sub rv">WHAT THE SERVER CHECKS</h3>
+  <div class="trust rv">
+    <article><b>THE CLOCK</b><p>Driven seconds come from heartbeats, capped by wall time. Honest pauses earn nothing. A gap over 150 s fails the ride.</p></article>
+    <article><b>THE SPEED</b><p>Reported distance may grow at most 28 m/s × 1.2 between beats. Faster than the truck can go = FAILED, not a high score.</p></article>
+    <article><b>THE PAYMENT</b><p>A System transfer to the treasury of at least the quoted lamports, with the ride id as memo, from your wallet, confirmed. The signature is the primary key – no double credit.</p></article>
+    <article><b>THE VERDICT</b><p>Completed / abandoned / failed is decided server-side and shown on the result screen. The client only reports.</p></article>
+  </div>
+  <p class="honest rv"><b>Said plainly:</b> this is server-timed telemetry, not proof. A modified client can still lie inside the speed bound. Night, hull and route are client-asserted and only unlock badges – they never move lamports. Next is a fixed-tick, fixed-point replay of the input log, so a paid finish is re-simulated, not reported. The 50% grand prize is a draw and the 20% top-20 is a skill prize; the draw is not live and prizes are not paid in this build.</p>
+</section>
+
+<div class="road" aria-hidden="true"><i></i></div>
+
+<!-- ───────── 04 · ABOUT ───────── -->
+<section class="ch" id="about">
+  <header class="ch-h rv"><i>04</i><h2>ABOUT</h2><p>Freight Chain sells proven time-on-road. Desert Run is the first title.</p></header>
+  <div class="about rv">
+    <article><h3>WHY A TRUCK</h3><p>Desert Bus (1995) was an eight-hour drive from Tucson to Las Vegas at 45 mph for one point. Nobody should have finished it, and people did – and other people watched. The scarce thing was attention. This is that, with the finish decided by a server and the pot in SOL.</p></article>
+    <article><h3>BUILT · CUT · NEXT</h3>
+      <ul class="bcn"><li><i class="ok"></i><b>Built:</b> the sim, Sign-In With Solana, server-timed rides, on-chain payment check, weekly pool accounting, live feed, boards, badges, this page.</li>
+      <li><i class="cut"></i><b>Cut on purpose:</b> Anchor escrow (memo-checked transfer instead), truck upgrades, mint-on-unlock, Telegram, mainnet.</li>
+      <li><i class="next"></i><b>Next:</b> the draw and payouts, deterministic replay, a share page per ride.</li></ul></article>
+    <article><h3>THE STACK</h3><p>Vanilla ES modules + three.js in the browser, no bundler. NestJS + SQLite on the server. Phantom / Solflare, System transfer + Memo, SOL/USD from Coinbase then CoinGecko. Solo build for the Colosseum Crypto World's Fair, Sep–Oct 2026; the driving sim predates it and is disclosed in the README.</p></article>
+  </div>
+  <div class="socials rv" id="socials">
+    <span class="lbl">JOIN THE CONVOY</span>
+    <a href="https://github.com/recferret-bit/freightchain" data-net="github">GITHUB</a>
+    <a href="/lobby.html#live" data-net="live"><i class="dot live"></i><span id="soc-live">–</span>&nbsp;ON THE ROAD · WATCH</a>
+  </div>
+</section>
 </main>
-<footer>Devnet build · <a href="https://github.com/recferret-bit/freightchain">GitHub</a> · <a href="/lobby.html">lobby</a> · <a href="/play.html">offline practice</a></footer>
+
+<footer>Devnet build · nothing here is real money · <a href="/lobby.html">lobby</a> · <a href="/play.html">offline practice</a> · <a href="https://github.com/recferret-bit/freightchain">source</a></footer>
+
+<dialog id="demo" class="demo"><button class="x" id="demo-x" aria-label="close">✕</button><video id="demo-video" controls playsinline poster="site/media/hero-poster.png"></video><p class="dim" id="demo-note"></p></dialog>
+
 <script type="module" src="site/landing.js"></script>
 </body>
 </html>

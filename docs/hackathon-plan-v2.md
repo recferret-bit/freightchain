@@ -165,24 +165,23 @@ Days 0–2 of v1 shipped on Oct 7. The old "Friday = NFTs" day is gone. Dates be
 - [ ] Post the one-minute weekly update on the project: what shipped Oct 7, paid path now either proven on devnet or still blocked, with the blocker named.
 - Done when: a URL you can send a stranger loads the lobby, and one devnet signature is a row in `payments` and in `GET /api/pool`.
 
-### Day 2 – Thu Oct 9 – landing  ·  status: built on `feat/landing` (worktree off `d1b710b`); not deployed, not seen on a phone or with a real wallet
+### Day 2 – Thu Oct 9 – landing  ·  status: built and reworked on `feat/landing` (worktree off `d1b710b`); needs the gameplay video, socials and a deploy
 
-`client/index.html` + `site/landing.js` + `site/landing.css`, reusing `lobby.css`. Public API only, no session needed to look; server text goes in via `textContent`.
+`client/index.html` + `site/landing.js` + `site/landing.css` (own stylesheet now; palette lifted from the cab: dash blacks, amber gear digit `#ffcf5a`, needle orange `#ff7a2e`, cream numerals, LCD green for live numbers). Public API only, no session needed to look; server text via `textContent`. Four chapters with animated road-stripe dividers and scroll-reveal (all off under `prefers-reduced-motion`):
 
-- [x] Hero: live grand prize in SOL and ≈USD, paid entries, countdown to Monday 00:00 UTC (server clock skew from `/api/live`), "N on the road" chip, CTA "Connect wallet → 5 free rides" + WATCH LIVE. Refreshes every 15 s.
-- [x] How it works: Pay → Drive → Finish → Share.
-- [x] Tier table with the live SOL price (`/api/tiers`), 50/20/20/10 bar with the prize wording matching the lobby ("accrued, draw and payouts not live"), top 5 of this round's board.
-- [x] Origin line (Desert Bus) and the cheating line (server clock + speed bound, a modified client can lie inside it, replay is next).
-- [x] Badges strip = the six that exist. No NFT art.
-- [x] Footer: GitHub, lobby, offline practice. **No X handle** ([Q11](#open-questions) unanswered).
-- [x] Signed-in visitors are **not** redirected any more; the CTA turns into "OPEN THE LOBBY →". The pool stays the first frame of the videos.
-- [x] `server/scripts/e2e-lobby.mjs` gained 4 landing checks (stays on `/`, pool shown, 4 shifts + top-5 box, signed-in CTA, pool text = `/api/pool`).
-  *Verified by:* `npm run lint` (client) clean; e2e-lobby **all checks ok, 0 page errors**; desktop (1280) and phone (390) screenshots read, no horizontal scroll at 390.
-- **Needs a human eye:** real phone and Safari; the copy; the hero with a non-zero pool (the test DB was empty, so the "0.000 SOL" state is what was seen and the top-5 empty state).
-- **Not verified:** landing → lobby with a real Phantom/Solflare wallet; a pool number that agrees across landing → lobby → play in one session beyond the API-equality check.
-- Known: a signed-out visit still logs a 401 for `/api/me` in the console (it is how the page learns whether you are signed in).
-- Built on the **frozen `d1b710b` tree** (SQLite server). It only touches `client/`, so it merges onto the Prisma rewrite if [Q6](#open-questions) goes that way. `AGENTS.md` on the dirty tree already describes the rewrite; this branch's copy still says "landing, placeholder", and was updated below.
-- Reference shapes, not copy: PoolTogether (one weekly number), Megapot (jackpot + countdown), a live activity count. The 50% draw is the lottery-shaped part; the 20% top-20 is the skill prize. Say both.
+- [x] **Ticker** above the nav (Megapot-style marquee): last finishes / wrecks, pot + entries, trucks on the road, all-time km, paid shifts waiting. Sticky top bar with numbered section nav, live chip, PLAY.
+- [x] **01 · RIDE** – full-viewport hero: gameplay background (`HERO_VIDEO` in `landing.js`; **null until your clip is in `site/media/hero.mp4`** → Ken Burns crossfade of three screenshots meanwhile), one-line pitch, CTA "Connect wallet → 5 free rides", "▶ Watch the demo" (dialog; `DEMO_VIDEO` null → explains + links offline play), "try it offline", and four LCD counters: pot (SOL + ≈USD, tweened), round countdown (server-skew corrected), trucks on the road, all-time km / shifts.
+- [x] **02 · LOOP** – Buy → Drive → Server calls it → Share the pool, six mechanic cards (gearbox, hull/traffic, weather/engine, day/night, holes/strain, five routes with swatches), the six real badges + a dashed "Top 20 after the first round".
+- [x] **03 · ECONOMY & TECH** – grand prize card (50/20/20/10 bar, legend, entries, countdown, carry), tier table at the live SOL price, three boards: **LIVE NOW** (running rides with progress), **NEXT UP** (paid shifts bought but not started), **THIS ROUND · TOP 10**; "What the server checks" (clock / speed / payment / verdict) + a red-edged "said plainly" paragraph (telemetry not proof, badges never move lamports, draw not live, replay next).
+- [x] **04 · ABOUT** – Desert Bus origin, built / cut / next, the stack + Colosseum disclosure line, "Join the convoy" (GitHub, live count; **X / Discord / Telegram appear only when `SOCIALS` in `landing.js` is filled – Q11**).
+- [x] **Server**: `GET /api/live` now also returns `upcoming` (paid, unstarted: wallet, tier, paidAt), `recent` (last 12 ended rides: wallet, tier, route, status, distance, endedAt) and `totals` (completed shifts, metres, drivers). Same privacy rule – no ids, seeds or reasons. Test extended in `test/lobby.e2e-spec.ts`.
+- [x] `server/scripts/seed-landing.mjs` – seeds a running server with one running + two finished free rides so the boards/ticker have rows for screenshots and the video. `e2e-lobby.mjs` has 7 landing checks (stays on `/`, pool shown, 4 shifts + 3 boards, ticker carries the finished ride + pot, all-time km > 0, signed-in CTA → lobby, pool text = `/api/pool`).
+- [x] Research behind the layout: 10 hyped web3 game / prize-pool landings (Off The Grid, Star Atlas, Shrapnel, Megapot, PoolTogether, Pixels, Big Time, Pudgy World, Parallel, Guild of Guardians). Took: live ticker + one giant number + countdown, sticky play CTA, mono stat strip, numbered chapters, fairness as 4 plain cards, chain named once, social proof at the bottom. Avoided: investor wall, token-first CTA, several autoplay videos.
+  *Verified by:* client `npm run lint` clean (added `IntersectionObserver` to the eslint globals); `e2e-lobby.mjs` all ok, 0 page errors; server unit 12 + e2e 48 green; desktop 1280 and phone 390 full-page screenshots read with seeded rows – no horizontal scroll (fixed two: ticker strip and top-bar chip).
+- **Still to do by you:** record the gameplay loop → `client/site/media/hero.mp4`, set `HERO_VIDEO`; the ≤ 3 min demo → `DEMO_VIDEO`; fill `SOCIALS` (Q11); then eyeball on a real phone + Safari and with a non-zero pot.
+- **Not verified:** real Phantom/Solflare sign-in from the landing; `<video>` path (no clip exists yet – the Ken Burns fallback is what was seen); copy.
+- Known: a signed-out visit still logs a 401 for `/api/me` (how the page learns you are signed in); the free tier shows "0 min" when `FREE_RIDE_SECONDS` is a test value under 60 s.
+- Built on the frozen `d1b710b` tree (SQLite server). Client is portable to the Prisma rewrite; the `/api/live` additions are three SQL queries to port.
 
 ### Day 3 – Fri Oct 10 – words, playtests, only then extras
 

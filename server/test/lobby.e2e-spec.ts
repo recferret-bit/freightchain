@@ -73,8 +73,15 @@ describe('live feed (public)', () => {
     expect(rides).not.toContain(a.address); expect(rides).not.toContain(b.address);
     const c = await login(), idC = await freeRide(c);
     sec(2); await c.agent.post(`/api/rides/${idC}/end`).send({ outcome: 'failed', s: 0, t: 1 }).expect(200);
-    rides = (await request(app.getHttpServer()).get('/api/live')).body.rides.map((r: { wallet: string }) => r.wallet);
+    const body = (await request(app.getHttpServer()).get('/api/live')).body;
+    rides = body.rides.map((r: { wallet: string }) => r.wallet);
     expect(rides).not.toContain(c.address); void idB;
+    // the ended ride moves to the landing's "recent" ticker: status + distance, still no id / reason
+    const rc = body.recent.find((r: { wallet: string }) => r.wallet === c.address);
+    expect(rc).toMatchObject({ tier: 'free', status: 'failed', distance: 0 });
+    expect(Object.keys(rc)).not.toContain('id'); expect(Object.keys(rc)).not.toContain('reason');
+    expect(body.upcoming).toEqual([]);   // free rides are never "next up" – only paid, unstarted shifts
+    expect(body.totals).toMatchObject({ shifts: expect.any(Number), metres: expect.any(Number), drivers: expect.any(Number) });
   });
 
   it('only whitelisted routes are published; junk is ignored', async () => {
