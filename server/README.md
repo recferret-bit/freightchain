@@ -41,7 +41,7 @@ npm run typecheck && npm run lint
 | `GET live` · `GET profile` | public feed of rides on the road · the signed-in wallet's stats, last rides and achievements |
 | `GET health/live` · `GET health/ready` | liveness · readiness (database ping; 503 problem+json when down) |
 
-Payments (Plan A): a plain SOL transfer to the treasury, verified on chain (any matching instruction among the transaction's, `meta.err` null, signer = the wallet, memo = ride id, signature unique). Completion is **server-timed telemetry, not a replay** – see `../docs/hackathon-plan.md`.
+Payments (Plan A): a plain SOL transfer to the treasury, verified on chain (any matching instruction among the transaction's, `meta.err` null, signer = the wallet, memo = ride id, signature unique). Completion is **server-timed telemetry, not a replay** – see `../docs/hackathon-plan-v2.md`.
 
 ## Scripts (`scripts/`)
 

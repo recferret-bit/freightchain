@@ -11,7 +11,7 @@ Vanilla ES modules + three.js r160 from a CDN. No build step, no framework, no b
 client/    the game (everything below up to "Not implemented" is relative to client/) + site pages: index.html (landing, placeholder), lobby.html + site/lobby.js|css (tabs: new ride · live · leaderboard · profile; vanilla DOM, server text only via textContent), play.html (the game), viewer.html, site/wallet.js (sign-in) + pay.js (buy a ride)
 landing/   the / page – its own Vite 7 project (vanilla JS, no framework; ~36 kB gzipped JS, no three.js): sign-in, live pool / boards, 3D dash cards rendered by the game's own cockpit code – full map in "Landing" below
 server/    NestJS 12 + TypeScript (ESM) + Prisma 6 + PostgreSQL, Clean Architecture: src/{app,cli,domain,application,infrastructure,presentation} + main.ts, prisma/ (multi-file schema, one PG schema per context, reviewed SQL migrations), test/ – see docs/backend-architecture.md
-docs/      hackathon-plan.md (day-by-day plan with progress ticks) · backend-architecture.md (the server's layers, rules, race-safety table, test pyramid)
+docs/      hackathon-plan-v2.md (the one plan: status, schedule to Oct 12, submission checklist, open questions) · backend-architecture.md (the server's layers, rules, race-safety table, test pyramid)
 deploy/    semi-automatic deploy to /srv/freightchain on a server (`npm run deploy`, docker + host nginx + certbot; `deploy/.env` real + gitignored, `deploy/.env.example` dummy + tracked) – read deploy/README.md before touching it; ships `git archive HEAD`, so commit first
 docker-compose.yml   local PostgreSQL for the server (project "freightchain", 127.0.0.1:15433)
 ```

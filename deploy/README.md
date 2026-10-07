@@ -91,4 +91,4 @@ gunzip -c ../backups/db-<tag>.sql.gz | docker compose -p freightchain-prod --env
 ## Caveats
 - Nothing is deployed from the working tree – only the commit. `--allow-dirty` just silences the guard.
 - One server, brief downtime while the app container is swapped (no blue/green).
-- Not a security boundary: the mock-era client checks are unchanged; see `docs/hackathon-plan.md`.
+- Not a security boundary: the mock-era client checks are unchanged; see `docs/hackathon-plan-v2.md`.
