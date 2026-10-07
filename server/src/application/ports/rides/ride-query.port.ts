@@ -85,4 +85,6 @@ export abstract class RideQueryPort {
   abstract recent(wallet: string, limit: number): Promise<RecentRideRow[]>;
   /** Completed rides ranked by total distance (ties: more rides, earlier first finish, wallet). `roundId` is required for the 'round' board. */
   abstract leaderboard(board: LeaderboardBoard, roundId: number | null, limit: number): Promise<LeaderboardRow[]>;
+  /** The same ranking over the completed rides paid with one pool's tickets – what that pool's prizes are paid by. */
+  abstract poolRanking(poolId: number, limit: number): Promise<LeaderboardRow[]>;
 }

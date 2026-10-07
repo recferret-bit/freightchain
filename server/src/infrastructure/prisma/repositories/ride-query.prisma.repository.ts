@@ -80,9 +80,17 @@ export class RideQueryPrismaRepository extends RideQueryPort {
 
   async leaderboard(board: LeaderboardBoard, roundId: number | null, limit: number): Promise<LeaderboardRow[]> {
     const tierFilter: Prisma.RideWhereInput = board === 'free' ? { tier: 'free' } : { tier: { not: 'free' }, ...(board === 'round' ? { roundId } : {}) };
+    return this.ranked(tierFilter, limit);
+  }
+
+  async poolRanking(poolId: number, limit: number): Promise<LeaderboardRow[]> {
+    return this.ranked({ poolId }, limit);
+  }
+
+  private async ranked(filter: Prisma.RideWhereInput, limit: number): Promise<LeaderboardRow[]> {
     const groups = await this.prisma.ride.groupBy({
       by: ['wallet'],
-      where: { status: 'completed', ...tierFilter },
+      where: { status: 'completed', ...filter },
       _sum: { lastS: true },
       _count: { _all: true },
       _min: { endedAt: true },

@@ -5,7 +5,7 @@ import type { LeaderboardBoard } from '../../../src/domain/economy/economy.dto.j
 import type { Payment } from '../../../src/domain/economy/payment.entity.js';
 import { Round, type RoundProps } from '../../../src/domain/economy/round.entity.js';
 import { Player } from '../../../src/domain/players/player.entity.js';
-import { Ride } from '../../../src/domain/rides/ride.entity.js';
+import { Ride, type RideProps } from '../../../src/domain/rides/ride.entity.js';
 import { OPEN_RIDE_STATUSES, RideStatus } from '../../../src/domain/rides/ride-status.js';
 import { ConflictError, VersionConflictError } from '../../../src/domain/shared/errors.js';
 import { AchievementRepositoryPort } from '../../../src/application/ports/achievements/achievement.repository.port.js';
@@ -193,8 +193,15 @@ export class MemoryRideQuery extends RideQueryPort {
   }
 
   async leaderboard(board: LeaderboardBoard, roundId: number | null, limit: number): Promise<LeaderboardRow[]> {
-    const done = [...this.db.rides.values()].map((r) => r.props).filter((r) =>
-      r.status === RideStatus.Completed && (board === 'free' ? r.tier === 'free' : r.tier !== 'free' && (board === 'round' ? r.roundId === roundId : true)));
+    return this.ranked((r) => (board === 'free' ? r.tier === 'free' : r.tier !== 'free' && (board === 'round' ? r.roundId === roundId : true)), limit);
+  }
+
+  async poolRanking(poolId: number, limit: number): Promise<LeaderboardRow[]> {
+    return this.ranked((r) => r.poolId === poolId, limit);
+  }
+
+  private ranked(keep: (r: RideProps) => boolean, limit: number): LeaderboardRow[] {
+    const done = [...this.db.rides.values()].map((r) => r.props).filter((r) => r.status === RideStatus.Completed && keep(r));
     const groups = new Map<string, { distance: number; rides: number; first: number }>();
     for (const r of done) {
       const g = groups.get(r.wallet) ?? { distance: 0, rides: 0, first: Number.POSITIVE_INFINITY };
