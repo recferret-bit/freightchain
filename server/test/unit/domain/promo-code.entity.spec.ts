@@ -22,6 +22,11 @@ describe('PromoCode – making codes', () => {
     }
     expect(PromoCode.create({ ...base, maxRedemptions: null, now: NOW }).snapshot().maxRedemptions).toBeNull(); // unlimited is fine
   });
+  it('refuses a code that would be born expired (a time-zone slip in promo:create must fail loudly)', () => {
+    expect(() => PromoCode.create({ ...base, expiresAt: NOW, now: NOW })).toThrow(/must be in the future/);
+    expect(() => PromoCode.create({ ...base, expiresAt: new Date(NOW.getTime() - 1), now: NOW })).toThrow(BadRequestError);
+    expect(PromoCode.create({ ...base, expiresAt: new Date(NOW.getTime() + 1), now: NOW }).snapshot().expiresAt).toEqual(new Date(NOW.getTime() + 1));
+  });
 });
 
 describe('PromoCode – who may redeem', () => {

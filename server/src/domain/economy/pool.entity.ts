@@ -3,9 +3,16 @@ import type { ChainEventRecord } from './chain-events.js';
 import type { PoolProps, PoolStatus } from './pool.types.js';
 
 /**
- * The server's view of an escrowed prize pool (docs/paid-tickets-plan.md §0, §2.6). The chain is the truth: `applyEvent` replays what the program emitted, in order, and the
- * state machine below mirrors the program's – open → active (the minimum is sold) · open → refunding (the preparation period ended short, or an admin cancelled) · active → settled.
- * A repeated event is tolerated (the target state is already reached); a transition the program cannot make is a ConflictError – the watcher then flags the pool for a re-sync.
+ * The server's view of an escrowed prize pool (docs/paid-tickets-plan.md §0, §2.6; programs/freightchain-pools/README.md). The chain is the truth: `applyEvent` replays what
+ * the program emitted, in order. The state machine mirrors the program's:
+ *   open → active      the minimum is sold
+ *   open → refunding   the preparation period ended short (PoolFailed) or an admin cancelled (PoolCancelled)
+ *   active → refunding nobody settled it within the grace period after play_deadline (PoolExpired)
+ *   active → settled   closed and split (PoolClosed, cancelled = false)
+ *   refunding → cancelled  every buyer refunded, the rest swept (PoolClosed, cancelled = true)
+ * Replaying an event is harmless: balances are RECOMPUTED from the program's running totals (tickets sold, sponsored, refunded, prizes paid), never added, and a status the
+ * pool already reached is accepted. A transition the program cannot make is a ConflictError – the caller then re-syncs the pool from its account.
+ * `vaultLamports` is the ESCROW: what the vault holds above its rent-exempt minimum.
  */
 export class Pool {
   private constructor(private readonly p: PoolProps) {}
@@ -34,6 +41,11 @@ export class Pool {
   /** How far the commitment goal is: capped at 100 %. */
   get progress(): { sold: number; min: number; pct: number } {
     return { sold: this.p.ticketsSold, min: this.p.minTickets, pct: Math.min(100, Math.floor((this.p.ticketsSold * 100) / Math.max(1, this.p.minTickets))) };
+  }
+
+  /** The money the split is computed on: every ticket ever sold plus sponsorship (the program's `pot()`). */
+  get pot(): number {
+    return this.p.priceLamports * this.p.ticketsSold + this.p.sponsored;
   }
 
   /** The price of `qty` tickets in lamports. */
@@ -68,41 +80,42 @@ export class Pool {
     switch (e.kind) {
       case 'PoolCreated':
         return;
-      case 'TicketBought':
+      case 'TicketBought': // sales happen only before any refund or prize, so the escrow is the whole pot
         this.mustBe('open', 'active');
-        this.p.ticketsSold = e.ticketsSold;
-        this.p.vaultLamports += e.lamports;
+        this.p.ticketsSold = Math.max(this.p.ticketsSold, e.ticketsSold);
         if (e.activated && this.p.status === 'open') this.p.status = 'active';
+        this.p.vaultLamports = this.pot;
         return;
       case 'PoolActivated':
         if (this.p.status === 'active') return;
         this.mustBe('open');
         this.p.status = 'active';
         this.p.ticketsSold = Math.max(this.p.ticketsSold, e.ticketsSold);
+        this.p.vaultLamports = this.pot;
         return;
       case 'Sponsored':
         this.mustBe('open', 'active');
-        this.p.sponsored += e.lamports;
-        this.p.vaultLamports += e.lamports;
+        this.p.sponsored = Math.max(this.p.sponsored, e.sponsoredTotal);
+        this.p.vaultLamports = this.pot;
         return;
       case 'PoolFailed':
       case 'PoolCancelled':
-        if (this.p.status === 'refunding') return;
-        this.mustBe('open');
-        this.p.status = 'refunding';
+        this.moveTo('refunding', 'open');
         return;
-      case 'Refunded':
+      case 'PoolExpired':
+        this.moveTo('refunding', 'active');
+        return;
+      case 'Refunded': // a refunding pool never paid a prize (failed / cancelled while open, or expired with none paid)
         this.mustBe('refunding');
-        this.p.vaultLamports = Math.max(0, this.p.vaultLamports - e.lamports);
+        this.p.vaultLamports = Math.max(0, this.pot - e.refundedTotal);
         return;
-      case 'PrizePaid':
+      case 'PrizePaid': // an active pool never refunded anyone
         this.mustBe('active');
-        this.p.vaultLamports = Math.max(0, this.p.vaultLamports - e.lamports);
+        this.p.vaultLamports = Math.max(0, this.pot - e.prizesPaidTotal);
         return;
       case 'PoolClosed':
-        if (this.p.status === 'settled') return;
-        this.mustBe('active');
-        this.p.status = 'settled';
+        if (e.cancelled) this.moveTo('cancelled', 'refunding');
+        else this.moveTo('settled', 'active');
         this.p.vaultLamports = 0;
         return;
     }
@@ -110,6 +123,13 @@ export class Pool {
 
   snapshot(): PoolProps {
     return { ...this.p };
+  }
+
+  /** `from` → `to`; already at `to` is a replay and fine. */
+  private moveTo(to: PoolStatus, from: PoolStatus): void {
+    if (this.p.status === to) return;
+    this.mustBe(from);
+    this.p.status = to;
   }
 
   private mustBe(...statuses: PoolStatus[]): void {

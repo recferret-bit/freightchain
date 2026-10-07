@@ -21,7 +21,7 @@ export class EnvRulesConfigAdapter extends RulesConfigPort {
       initialSeedLamports: env.initialSeedLamports, treasury: env.treasuryPubkey, appDomain: env.appDomain, appOrigin: env.appOrigin,
       paymentMode: env.paymentMode, programId: env.ticketProgramId, feeTreasury: env.feeTreasury, seedTreasury: env.seedTreasury, watchIntervalMs: env.watchIntervalMs,
       orderTtlMs: env.orderTtlMs, commitment: env.solanaCommitment, sponsorEnabled: env.feePayerSecret !== undefined, crankEnabled: env.crankSecret !== undefined,
-      sponsorPerWalletPerDay: env.sponsorPerWalletPerDay, priorityFee: { percentile: env.priorityFee.percentile, minMicrolamports: env.priorityFee.minMicrolamports, maxMicrolamports: env.priorityFee.maxMicrolamports },
+      sponsorPerWalletPerDay: env.sponsorPerWalletPerDay, priorityFee: env.priorityFee,
       sessionTtlHours: env.onchainSessionTtlHours,
     };
   }

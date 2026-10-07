@@ -5,7 +5,8 @@ import type { PaidTierId } from '../rides/ride-tier.js';
    sale window, caps) live in the Pool entity of the pools workstream; this file only fixes the shape the ports speak. */
 
 export const POOL_STATUSES = ['open', 'active', 'refunding', 'settled', 'cancelled'] as const;
-/** open = selling, minimum not reached · active = minimum reached, rides count · refunding = failed / cancelled, every buyer can claim back · settled = closed · cancelled = never opened */
+/** open = selling, minimum not reached · active = minimum reached, rides count · refunding = failed, cancelled by the admin or expired unsettled – every buyer can claim back ·
+ *  settled = an active pool closed and split · cancelled = a refunding pool closed after every refund (terminal; the program's status 4) */
 export type PoolStatus = (typeof POOL_STATUSES)[number];
 
 export interface PoolProps {
@@ -33,7 +34,7 @@ export interface PoolProps {
   status: PoolStatus;
   ticketsSold: number;
   buyers: number;
-  /** the escrow balance, sponsorships included */
+  /** the ESCROW: what the vault holds above its rent-exempt minimum (sponsorships included) */
   vaultLamports: number;
   sponsored: number;
   /** the weekly round it ranks in – set when the pool goes active */

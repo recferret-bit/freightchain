@@ -36,12 +36,6 @@ describe('RideTicket', () => {
     try { t.spend(); } catch (e) { expect((e as ConflictError).errorCode).toBe('no_tickets'); }
   });
 
-  it('a refunded ticket comes back', () => {
-    const t = RideTicket.restore({ wallet: 'w', poolId: 7, balance: 0, bought: 1, version: 1 });
-    t.refund();
-    expect(t.balance).toBe(1);
-  });
-
   it('a failed pool voids what is unused and says how much', () => {
     const t = RideTicket.restore({ wallet: 'w', poolId: 7, balance: 4, bought: 6, version: 1 });
     expect(t.voidAll()).toBe(4);

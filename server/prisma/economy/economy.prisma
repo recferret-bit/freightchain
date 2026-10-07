@@ -39,9 +39,9 @@ model Payment {
 enum PoolStatus {
   open // selling tickets, the minimum is not reached yet
   active // minimum reached: rides count, entries keep selling until playDeadline
-  refunding // failed or cancelled: every buyer can claim every lamport back
-  settled // closed: prizes paid, seed and fees sent to their treasuries
-  cancelled // never opened (admin) - kept for the record
+  refunding // failed, cancelled by the admin or expired unsettled: every buyer can claim every lamport back
+  settled // an active pool closed: prizes paid, seed and fees sent to their treasuries
+  cancelled // a refunding pool closed after every refund (terminal; the program's status 4)
 
   @@schema("economy")
 }
@@ -75,7 +75,7 @@ model Pool {
   status        PoolStatus
   ticketsSold   Int           @default(0)
   buyers        Int           @default(0)
-  vaultLamports BigInt        @default(0) // escrow balance incl. sponsorships
+  vaultLamports BigInt        @default(0) // the escrow: vault lamports above its rent-exempt minimum, sponsorships included
   sponsored     BigInt        @default(0)
   roundId       Int? // the weekly round it ranks in (set when it goes active)
   round         Round?        @relation(fields: [roundId], references: [id])

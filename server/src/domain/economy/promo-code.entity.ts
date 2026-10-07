@@ -3,7 +3,8 @@ import type { PromoCodeProps } from './promo.types.js';
 
 const CODE_RE = /^[A-Z0-9_-]{3,32}$/;
 
-/** A promo code (docs/paid-tickets-plan.md §3 W2): tickets of a tier, redeemable a limited number of times overall and per wallet, until it expires or is disabled. */
+/** A promo code (docs/paid-tickets-plan.md §3 W2): tickets of a tier, redeemable a limited number of times overall and per wallet, until it expires or is disabled.
+ *  That a pinned `poolId` really is a pool of `tier` is checked by the use case that creates the code (it needs the pool). */
 export class PromoCode {
   private constructor(private readonly p: PromoCodeProps) {}
 
@@ -22,6 +23,7 @@ export class PromoCode {
     if (!Number.isInteger(input.credits) || input.credits < 1) throw new BadRequestError('a promo code must give at least 1 ticket', 'bad_promo_code');
     if (!Number.isInteger(input.perWallet) || input.perWallet < 1) throw new BadRequestError('perWallet must be at least 1', 'bad_promo_code');
     if (input.maxRedemptions !== null && (!Number.isInteger(input.maxRedemptions) || input.maxRedemptions < 1)) throw new BadRequestError('maxRedemptions must be at least 1 (or unlimited)', 'bad_promo_code');
+    if (input.expiresAt !== null && input.expiresAt.getTime() <= input.now.getTime()) throw new BadRequestError('the expiry date of a promo code must be in the future', 'bad_promo_code');
     const { now, ...rest } = input;
     return new PromoCode({ ...rest, code, redeemed: 0, disabledAt: null, createdAt: now });
   }
