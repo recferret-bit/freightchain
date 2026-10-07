@@ -12,6 +12,10 @@ describe('static cache headers', () => {
     expect(cacheControlFor('/srv/landing/dist/media/day.webp')).toBe('public, max-age=86400');
   });
 
+  it('the icons and the manifest (stable names, not fingerprinted) are cached for a day', () => {
+    for (const f of ['/srv/client/icons/icon-512.png', '/srv/client/favicon.ico', '/srv/client/manifest.webmanifest']) expect(cacheControlFor(f)).toBe('public, max-age=86400');
+  });
+
   it('pages, the game and unknown files are revalidated – a deploy shows up at once', () => {
     for (const f of ['/srv/landing/dist/index.html', '/srv/client/play.html', '/srv/client/js/main.js', '/srv/landing/dist/assets/readme.txt', '/srv/landing/dist/assets/index-CFdaEimR.js.map']) {
       expect(cacheControlFor(f)).toBe('no-cache');

@@ -1,0 +1,52 @@
+[
+  {
+    "id": "horizon",
+    "name": "Horizon",
+    "note": "Road to a setting sun. The classic app-icon read."
+  },
+  {
+    "id": "cab",
+    "name": "Cab",
+    "note": "The semi head-on: windscreen, grille, two headlamps, stacks."
+  },
+  {
+    "id": "chainroad",
+    "name": "Chain Road",
+    "note": "The lane dashes are chain links shrinking to the horizon."
+  },
+  {
+    "id": "hexfc",
+    "name": "Hex FC",
+    "note": "A badge: hexagon + FC monogram built from blocks, no font."
+  },
+  {
+    "id": "container",
+    "name": "Container",
+    "note": "The trailer, side on, with a chain stripe. Freight first."
+  },
+  {
+    "id": "wheel",
+    "name": "Wheel & Sun",
+    "note": "Steering wheel with the sun for a hub. Reads at 16 px."
+  },
+  {
+    "id": "flat",
+    "name": "Flat Sun",
+    "note": "Two colours, one shape. The most minimal; strongest at avatar size."
+  },
+  {
+    "id": "solana",
+    "name": "Solana Road",
+    "note": "Same road, lane markings in the Solana gradient. Says crypto."
+  },
+  {
+    "id": "sunset",
+    "name": "Sunset Rig",
+    "note": "Truck and trailer in silhouette, round crop. Avatar-native."
+  },
+  {
+    "id": "pixel",
+    "name": "Pixel Rig",
+    "note": "16×16 pixel truck on sand. A Desert Bus (1995) nod."
+  }
+]

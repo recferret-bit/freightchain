@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><defs><clipPath id="c"><rect width="512" height="512" rx="112"/></clipPath><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b0f2e"/><stop offset=".55" stop-color="#b34a00"/><stop offset=".62" stop-color="#ffb03a"/></linearGradient></defs>
+    <g clip-path="url(#c)">
+      <rect width="512" height="512" fill="url(#sky)"/>
+      <circle cx="256" cy="262" r="96" fill="#ffcf5a"/>
+      <rect y="262" width="512" height="250" fill="#26221d"/>
+      <polygon points="256,262 40,512 472,512" fill="#4a453b"/>
+      <polygon points="256,262 220,512 292,512" fill="#4a453b"/>
+      <g fill="#ffcf5a"><polygon points="252,300 260,300 262,322 250,322"/><polygon points="248,345 264,345 268,385 244,385"/><polygon points="241,420 271,420 278,512 234,512"/></g>
+    </g></svg>

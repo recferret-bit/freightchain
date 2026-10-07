@@ -92,3 +92,15 @@ test('sign-in: redirect + session UI go through SITE_BASE, the wallet chip exist
   assert.ok(ids.includes('chip-wallet')); assert.match(main, /api\('me'\)\.then\(paintSession/);
   assert.match(main, /catch \(e\) \{ msg\.textContent = e\.message; msg\.className = 'msg bad'; btn\.disabled = false; \}/);
 });
+
+test('the icons the pages name exist (what Phantom, tabs and home screens show for the site)', () => {
+  const client = join(root, '..', 'client');
+  for (const page of [join(root, 'index.html'), join(client, 'lobby.html'), join(client, 'play.html'), join(client, 'viewer.html')]) {
+    const links = [...readFileSync(page, 'utf8').matchAll(/<link rel="(?:icon|apple-touch-icon|manifest)"[^>]*href="(\/[^"]+)"/g)].map(m => m[1]);
+    assert.ok(links.length >= 4, `${page}: icon links`);
+    assert.deepEqual(links.filter(l => !existsSync(join(client, l))), [], page);
+  }
+  const manifest = JSON.parse(readFileSync(join(client, 'manifest.webmanifest'), 'utf8'));
+  assert.deepEqual(manifest.icons.map(i => i.src).filter(l => !existsSync(join(client, l))), []);
+  assert.ok(manifest.icons.some(i => i.sizes === '192x192') && manifest.icons.some(i => i.sizes === '512x512'));
+});
