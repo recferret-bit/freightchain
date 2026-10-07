@@ -1,7 +1,7 @@
-# Generated build output (node tools/build-standalone.mjs) – regenerate, don't commit
+# Generated build output (client: node tools/build-standalone.mjs; landing: vite build; server: nest build) – regenerate, don't commit
 dist/
 
-# Dependencies / package-manager leftovers (the client has none; tools are run via npx). server/package-lock.json IS committed.
+# Dependencies / package-manager leftovers (the client has none; tools are run via npx). server/ and landing/ package-lock.json ARE committed.
 node_modules/
 client/package-lock.json
 npm-debug.log*

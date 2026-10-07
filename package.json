@@ -1,15 +1,20 @@
 {
   "name": "freightchain-monorepo",
   "private": true,
-  "description": "Freight Chain – client/ (vanilla ES modules + three.js) and server/ (NestJS). Each has its own package.json; these scripts just delegate.",
+  "description": "Freight Chain – client/ (the game + lobby, vanilla ES modules + three.js), landing/ (the / page, Vite) and server/ (NestJS, serves both). Each has its own package.json; these scripts just delegate.",
   "scripts": {
     "install:server": "npm --prefix server install",
+    "install:landing": "npm --prefix landing install",
+    "landing:dev": "npm --prefix landing run dev",
+    "landing:build": "npm --prefix landing run build",
+    "landing:lint": "npm --prefix landing run lint",
     "treasury:init": "npm --prefix server run treasury:init",
     "server:dev": "npm --prefix server run start:dev",
     "server:build": "npm --prefix server run build",
     "server:test": "npm --prefix server test && npm --prefix server run test:e2e",
     "client:check": "npm --prefix client run check",
     "client:serve": "client/serve.sh",
-    "check": "npm run client:check && npm run server:build && npm run server:test"
+    "build": "npm run landing:build && npm run server:build",
+    "check": "npm run client:check && npm run landing:lint && npm run landing:build && npm run server:build && npm run server:test"
   }
 }

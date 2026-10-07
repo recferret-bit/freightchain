@@ -1,5 +1,5 @@
 // Click-through of the whole loop FROM THE LOBBY in real headless Chrome (two browsers: a rider and an observer), screenshots of every tab at desktop and phone width.
-// Server: FREE_RIDE_SECONDS=3 SOL_USD=118 TREASURY_PUBKEY=<any address> PORT=3111 DB_PATH=:memory: node dist/main.js     then:   BASE=http://localhost:3111 node scripts/e2e-lobby.mjs
+// Server (after `npm run landing:build` at the root – / is the Vite build): FREE_RIDE_SECONDS=3 SOL_USD=118 TREASURY_PUBKEY=<any address> PORT=3111 DB_PATH=:memory: node dist/main.js     then:   BASE=http://localhost:3111 node scripts/e2e-lobby.mjs
 // No wallet extension: a keypair signs the challenge and the session cookie is handed to Chrome. Paid payments can't be clicked through (no wallet) – covered by vitest / devnet-pay.mjs.
 import nacl from 'tweetnacl'; import bs58 from 'bs58';
 import { launch, sleep } from '../../client/tools/cdp.mjs';

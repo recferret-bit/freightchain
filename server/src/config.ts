@@ -28,6 +28,7 @@ export const config = {
   domain: process.env.APP_DOMAIN ?? 'localhost:3000',   // shown in the sign-in message; set it to the real host when deployed
   origin: process.env.APP_ORIGIN ?? 'http://localhost:3000',
   clientDir: process.env.CLIENT_DIR ?? fileURLToPath(new URL('../../client', import.meta.url)),   // src/ and dist/ both sit one level under server/
+  landingDir: process.env.LANDING_DIR ?? fileURLToPath(new URL('../../landing/dist', import.meta.url)),   // the Vite build of landing/ – serves / (npm run landing:build at the root)
   dbPath,
   treasury: treasury(),                 // '' = paid rides disabled (503)
   solRpc: process.env.SOLANA_RPC ?? 'https://api.devnet.solana.com',

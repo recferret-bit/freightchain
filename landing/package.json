@@ -1,0 +1,16 @@
+{
+  "name": "freightchain-landing",
+  "private": true,
+  "type": "module",
+  "description": "The landing page (/) – a Vite project. Built output (dist/) is served by server/ in front of client/; in dev, Vite proxies everything else to the Nest server.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint src vite.config.js"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.4",
+    "vite": "^7.3.1"
+  }
+}

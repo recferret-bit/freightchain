@@ -1,12 +1,12 @@
-import { api, signIn } from './wallet.js';
+import { api, signIn } from '../../client/site/wallet.js';   // one sign-in implementation for landing + lobby (Vite bundles it; fs.allow in vite.config.js for dev)
 
 /* Landing: four chapters (ride · loop · economy · about), fed by the public API only – no session needed to look.
    Everything from the server goes in with textContent (other riders' wallets are rendered here). */
 
 /* ───── things to fill in ───── */
-const HERO_VIDEO = null;          // e.g. 'site/media/hero.mp4' – a muted gameplay loop; null = the Ken Burns slideshow of screenshots
-const DEMO_VIDEO = null;          // e.g. 'site/media/demo.mp4' – the ≤ 3 min product demo; null = the dialog explains and links to offline play
-const SOCIALS = { x: null, discord: null, telegram: null };   // URLs; null hides the button (Q11 in docs/hackathon-plan-v2.md)
+const HERO_VIDEO = null;          // e.g. '/media/hero.mp4' – a muted gameplay loop; null = the Ken Burns slideshow of screenshots
+const DEMO_VIDEO = null;          // e.g. '/media/demo.mp4' – the ≤ 3 min product demo; null = the dialog explains and links to offline play
+const SOCIALS = { x: null, discord: null, telegram: null };   // URLs; null hides the button (Q11 in docs/hackathon-plan-v2.md; files go in landing/public/media/)
 
 const $ = id => document.getElementById(id);
 function el(tag, attrs = {}, ...kids) {
