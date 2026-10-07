@@ -61,7 +61,6 @@ pub fn handle_buy_ticket(ctx: Context<BuyTicket>, pool_id: u32, qty: u16, order_
         t.pool_id = pool_id;
         t.qty = 0;
         t.lamports = 0;
-        t.refunded = false;
         t.bump = ctx.bumps.ticket;
         pool.buyers = pool.buyers.checked_add(1).ok_or(PoolError::MathOverflow)?;
     }

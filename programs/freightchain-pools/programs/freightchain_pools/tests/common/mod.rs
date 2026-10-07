@@ -62,6 +62,7 @@ pub struct Env {
     pub plat_t: Keypair,
     pub next_pool: u32,
     pub platform_fee_bps: u16,
+    pub plat_t_start: u64,
 }
 
 pub fn pid() -> Pubkey {
@@ -127,7 +128,7 @@ impl Env {
         let seed_t = funded(&mut svm, SOL);
         let fee_t = funded(&mut svm, SOL);
         let plat_t = funded(&mut svm, SOL);
-        let mut e = Env { svm, authority, cranker, seed_t, fee_t, plat_t, next_pool: 0, platform_fee_bps };
+        let mut e = Env { svm, authority, cranker, seed_t, fee_t, plat_t, next_pool: 0, platform_fee_bps, plat_t_start: SOL };
         let i = ix(
             instruction::Initialize { platform_treasury: e.plat_t.pubkey(), platform_fee_bps },
             accounts::Initialize {
@@ -282,7 +283,7 @@ impl Env {
     pub fn cancel(&mut self, id: u32, who: &Keypair) -> Res {
         let i = ix(
             instruction::CancelPool { pool_id: id },
-            accounts::CancelPool { authority: who.pubkey(), pool: pool_pda(id) },
+            accounts::CancelPool { authority: who.pubkey(), config: config_pda(), pool: pool_pda(id) },
         );
         let c = clone_kp(&self.cranker);
         self.send(&[i], &c, &[who])
@@ -329,6 +330,7 @@ impl Env {
             instruction::PayPrize { pool_id: id, lamports, rank },
             accounts::PayPrize {
                 authority: who.pubkey(),
+                config: config_pda(),
                 pool: pool_pda(id),
                 vault: vault_pda(id),
                 to: *to,
@@ -344,7 +346,8 @@ impl Env {
         let i = ix(
             instruction::ClosePool { pool_id: id },
             accounts::ClosePool {
-                authority: who.pubkey(),
+                caller: who.pubkey(),
+                pool_authority: p.authority,
                 config: config_pda(),
                 pool: pool_pda(id),
                 vault: vault_pda(id),
@@ -353,6 +356,30 @@ impl Env {
                 platform_treasury: self.plat_t.pubkey(),
                 system_program: system_program::ID,
             },
+        );
+        self.send(&[i], &c, &[who])
+    }
+
+    pub fn expire(&mut self, id: u32, who: &Keypair) -> Res {
+        let c = clone_kp(&self.cranker);
+        let i = ix(instruction::ExpirePool { pool_id: id }, accounts::ExpirePool { caller: who.pubkey(), pool: pool_pda(id) });
+        self.send(&[i], &c, &[who])
+    }
+
+    pub fn propose_authority(&mut self, who: &Keypair, new_authority: Pubkey) -> Res {
+        let c = clone_kp(&self.cranker);
+        let i = ix(
+            instruction::ProposeAuthority { new_authority },
+            accounts::ProposeAuthority { authority: who.pubkey(), config: config_pda() },
+        );
+        self.send(&[i], &c, &[who])
+    }
+
+    pub fn accept_authority(&mut self, who: &Keypair) -> Res {
+        let c = clone_kp(&self.cranker);
+        let i = ix(
+            instruction::AcceptAuthority {},
+            accounts::AcceptAuthority { new_authority: who.pubkey(), config: config_pda() },
         );
         self.send(&[i], &c, &[who])
     }

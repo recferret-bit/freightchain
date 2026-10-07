@@ -59,6 +59,24 @@ pub struct PoolCancelled {
 }
 
 #[event]
+pub struct PoolExpired {
+    pub pool_id: u32,
+    pub tickets_sold: u32,
+}
+
+#[event]
+pub struct AuthorityProposed {
+    pub authority: Pubkey,
+    pub pending_authority: Pubkey,
+}
+
+#[event]
+pub struct AuthorityChanged {
+    pub old_authority: Pubkey,
+    pub new_authority: Pubkey,
+}
+
+#[event]
 pub struct Refunded {
     pub pool_id: u32,
     pub buyer: Pubkey,

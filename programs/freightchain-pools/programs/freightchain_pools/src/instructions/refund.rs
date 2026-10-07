@@ -43,7 +43,6 @@ pub fn handle_refund(ctx: Context<Refund>, pool_id: u32) -> Result<()> {
         let data = ticket_info.try_borrow_data()?;
         Ticket::try_deserialize(&mut &data[..])?
     };
-    require!(!ticket.refunded, PoolError::AlreadyRefunded);
     require_keys_eq!(ticket.buyer, a.buyer.key(), PoolError::AccountMismatch);
     require_keys_eq!(ticket.rent_payer, a.rent_payer.key(), PoolError::AccountMismatch);
     let lamports = ticket.lamports;
@@ -58,7 +57,7 @@ pub fn handle_refund(ctx: Context<Refund>, pool_id: u32) -> Result<()> {
         lamports,
     )?;
     let refunded_total = a.pool.refunded.checked_add(lamports).ok_or(PoolError::MathOverflow)?;
-    // the account is gone afterwards, so the `refunded` flag can never be seen set; closing IS the idempotency
+    // closing the account IS the refunded state (and the idempotency)
     let dest = a.rent_payer.to_account_info();
     dest.add_lamports(ticket_info.lamports())?;
     **ticket_info.lamports.borrow_mut() = 0;

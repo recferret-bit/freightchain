@@ -30,6 +30,14 @@ pub mod freightchain_pools {
         instructions::admin::handle_set_config(ctx, paused, platform_treasury, platform_fee_bps)
     }
 
+    pub fn propose_authority(ctx: Context<ProposeAuthority>, new_authority: Pubkey) -> Result<()> {
+        instructions::admin::handle_propose_authority(ctx, new_authority)
+    }
+
+    pub fn accept_authority(ctx: Context<AcceptAuthority>) -> Result<()> {
+        instructions::admin::handle_accept_authority(ctx)
+    }
+
     pub fn create_pool(ctx: Context<CreatePool>, params: CreatePoolParams) -> Result<()> {
         instructions::create_pool::handle_create_pool(ctx, params)
     }
@@ -48,6 +56,10 @@ pub mod freightchain_pools {
 
     pub fn cancel_pool(ctx: Context<CancelPool>, pool_id: u32) -> Result<()> {
         instructions::lifecycle::handle_cancel_pool(ctx, pool_id)
+    }
+
+    pub fn expire_pool(ctx: Context<ExpirePool>, pool_id: u32) -> Result<()> {
+        instructions::lifecycle::handle_expire_pool(ctx, pool_id)
     }
 
     pub fn refund(ctx: Context<Refund>, pool_id: u32) -> Result<()> {

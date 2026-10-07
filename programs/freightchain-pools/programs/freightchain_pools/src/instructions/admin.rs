@@ -37,6 +37,7 @@ pub fn handle_initialize(ctx: Context<Initialize>, platform_treasury: Pubkey, pl
     c.pool_count = 0;
     c.paused = false;
     c.bump = ctx.bumps.config;
+    c.pending_authority = None;
     Ok(())
 }
 
@@ -71,5 +72,42 @@ pub fn handle_set_config(
         require!(b <= BPS_DENOM as u16, PoolError::InvalidParams);
         c.platform_fee_bps = b;
     }
+    Ok(())
+}
+
+#[derive(Accounts)]
+pub struct ProposeAuthority<'info> {
+    pub authority: Signer<'info>,
+    #[account(mut, seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ PoolError::Unauthorized)]
+    pub config: Account<'info, Config>,
+}
+
+/// Step 1 of the handover (current authority). Proposing again replaces the pending key.
+pub fn handle_propose_authority(ctx: Context<ProposeAuthority>, new_authority: Pubkey) -> Result<()> {
+    require!(new_authority != Pubkey::default(), PoolError::InvalidParams);
+    ctx.accounts.config.pending_authority = Some(new_authority);
+    emit!(crate::events::AuthorityProposed {
+        authority: ctx.accounts.authority.key(),
+        pending_authority: new_authority,
+    });
+    Ok(())
+}
+
+#[derive(Accounts)]
+pub struct AcceptAuthority<'info> {
+    pub new_authority: Signer<'info>,
+    #[account(mut, seeds = [CONFIG_SEED], bump = config.bump)]
+    pub config: Account<'info, Config>,
+}
+
+/// Step 2 (the pending key signs): it becomes `authority`, pending is cleared.
+pub fn handle_accept_authority(ctx: Context<AcceptAuthority>) -> Result<()> {
+    let c = &mut ctx.accounts.config;
+    let pending = c.pending_authority.ok_or(PoolError::NoPendingAuthority)?;
+    require_keys_eq!(pending, ctx.accounts.new_authority.key(), PoolError::Unauthorized);
+    let old = c.authority;
+    c.authority = pending;
+    c.pending_authority = None;
+    emit!(crate::events::AuthorityChanged { old_authority: old, new_authority: pending });
     Ok(())
 }
