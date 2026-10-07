@@ -6,10 +6,26 @@ Freight Chain – "Desert Run": a browser truck-driving game with a Solana-paid 
 - `landing/` – the `/` page: a small Vite project (wallet sign-in, live pool and boards, dash cards rendered by the game's own cockpit code)
 - `server/` – NestJS + Prisma + PostgreSQL API (`docs/backend-architecture.md`)
 - `deploy/` – semi-automatic deploy to our own server: `npm run deploy` (see `deploy/README.md`)
-- `docs/` – hackathon plan, backend architecture
-- `AGENTS.md` / `CLAUDE.md` – the project map and rules for coding agents
+- `docs/` – hackathon plan, backend architecture, [verified play: next steps + the owner's checklist](docs/verified-play-next-steps.md)
+- `AGENTS.md` / `CLAUDE.md` – the project map and rules for coding agents; `.claude/skills/` – project skills (read-only production logs / database, ride investigation, the whole test run)
 
 Local run: `npm run db:up && npm run server:dev` → http://localhost:3000
+
+## Verified play, admin, observing production
+
+- **Verified play**: on online rides the game records every key press and a 10 Hz sample of the truck (`client/js/telemetry.js`) and uploads hash-chained batches; after a completed shift the server checks that recording – complete, untampered, consistent with the ride, human-timed – and marks it `verified` / `flagged` / `rejected`. Nothing is re-simulated. Only verified paid shifts rank, unless `VERDICT_ENFORCE=false` (shadow mode). Details: `AGENTS.md` → "Verified play".
+- **Admin page**: `/admin.html` for the wallets in `ADMIN_WALLETS` – overview, the review queue of flagged rides (accept / reject, audited), rides, sign-ins, the server's recent logs, the audit log.
+- **Production, read-only**: `npm run ops -- logs --since 30m` · `ops -- logs --errors` · `ops -- query list` / `ops -- query wallet <address>` · `ops -- sql "SELECT …"` (a read-only transaction) · `ops -- ps`. See `deploy/README.md`.
+
+## Tests
+
+There is no CI; run everything locally (the `run-tests` skill does this):
+
+```sh
+npm run check                              # client lint + bundle + headless game · landing · server build, typecheck, unit tests + architecture audits
+npm run server:integration                 # PostgreSQL in Docker, its own freightchain_test database
+bash .claude/skills/run-tests/e2e.sh       # real Chrome: game (VERIFIED ride), lobby, admin page – on a throwaway database, screenshots in the OS temp dir
+```
 
 ## Landing
 

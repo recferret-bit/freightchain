@@ -22,6 +22,13 @@ First time in a fresh checkout / worktree: `npm ci --prefix server && npm ci --p
 npm run server:integration   # starts the compose PostgreSQL (127.0.0.1:15433), uses ITS OWN database freightchain_test
 ```
 
+**From a git worktree** (or any branch whose migrations differ from another checkout's): all checkouts share `freightchain_test`, so another branch's
+tables show up as "drift". Give this checkout its own (created + migrated automatically; the name must end in `_test`):
+
+```sh
+TEST_DATABASE_URL=postgresql://freight:freight_dev_password@localhost:15433/freightchain_<branch>_test npm run server:integration
+```
+
 If it fails with `P3009 … failed migrations` on `freightchain_test`: that database is disposable – mark it rolled back
 (`DATABASE_URL=postgresql://freight:freight_dev_password@localhost:15433/freightchain_test server/node_modules/.bin/prisma migrate resolve --rolled-back <name>` from `server/`) and rerun.
 
