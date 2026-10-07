@@ -1,3 +1,5 @@
+import { CommandBus } from '@nestjs/cqrs';
+import { GrantDailyFreeRidesCommand } from '../../src/application/use-cases/players/grant-daily-free-rides/grant-daily-free-rides.command.js';
 import { PrismaService } from '../../src/infrastructure/prisma/prisma.service.js';
 import { bindClient, newWallet, sign, type Rider } from '../support/client.js';
 import { createHarness, type Harness } from '../support/harness.js';
@@ -53,9 +55,21 @@ describe('concurrency (PostgreSQL)', () => {
 
   it('the daily free ride is granted ONCE however many requests see the new day', async () => {
     const a = await login();
+    await prisma.player.update({ where: { wallet: a.address }, data: { freeRides: 1 } });
     sec(86_400);
     await parallel(PARALLEL, () => a.agent.get('/api/me'));
-    expect(await freeRides(a)).toBe(6); // 5 at signup + 1 for today
+    expect(await freeRides(a)).toBe(2); // 1 + the credit for today, once
+  });
+
+  it('the midnight job racing requests that read, spend and refund credits: ONE credit for the day, none lost, none above the cap', async () => {
+    const a = await login();
+    await a.agent.post('/api/rides').send({ tier: 'free' }).expect(200);   // 4 left
+    sec(86_400);
+    const bus = harness.app.get(CommandBus);
+    await Promise.all([parallel(PARALLEL, () => a.agent.get('/api/me')), parallel(3, () => bus.execute(new GrantDailyFreeRidesCommand()))]);
+    expect(await freeRides(a)).toBe(5);                                    // 4 + one credit for the new day
+    await parallel(PARALLEL, () => a.agent.post('/api/rides').send({ tier: '1h' })); // refunds the unstarted free ride, which would be #6
+    expect(await freeRides(a)).toBe(5);                                    // clamped at the cap
   });
 
   it('a sign-in challenge is single-use: of N parallel verifies exactly ONE wins', async () => {

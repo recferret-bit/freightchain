@@ -1,4 +1,6 @@
+import { CommandBus } from '@nestjs/cqrs';
 import request from 'supertest';
+import { GrantDailyFreeRidesCommand } from '../../src/application/use-cases/players/grant-daily-free-rides/grant-daily-free-rides.command.js';
 import { bindClient, newWallet as wallet, sign } from '../support/client.js';
 import type { Harness } from '../support/harness.js';
 
@@ -55,6 +57,33 @@ export function flowScenarios(h: () => Harness): void {
       sec(86_400);
       expect((await agent.get('/api/me')).body.freeRides).toBe(5);   // +1 for the new day
       expect((await agent.get('/api/me')).body.freeRides).toBe(5);   // …only once
+    });
+
+    it('the midnight job tops up everyone below the cap by one, never above it, once a day; /api/me counts down to the next one', async () => {
+      const grant = () => h().app.get(CommandBus).execute(new GrantDailyFreeRidesCommand()) as Promise<{ day: string; players: number }>;
+      const spendOne = async (agent: ReturnType<typeof request.agent>) => {
+        const r = (await agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
+        await agent.post(`/api/rides/${r.id}/start`).expect(200);
+        await agent.post(`/api/rides/${r.id}/end`).send({ outcome: 'failed', s: 0, reason: 'test' }).expect(200);
+      };
+      const a = await login(), b = await login();
+      const me = async (agent: ReturnType<typeof request.agent>) => (await agent.get('/api/me').expect(200)).body;
+      expect(await me(b.agent)).toMatchObject({ freeRides: 5, freeRidesMax: 5, nextFreeRideAt: null });   // full: no timer
+      await spendOne(a.agent); await spendOne(a.agent);
+      const midnight = Math.floor(h().clock.ms / 86_400_000) * 86_400_000 + 86_400_000;
+      expect(await me(a.agent)).toMatchObject({ freeRides: 3, freeRidesMax: 5, nextFreeRideAt: midnight });
+      expect((await grant()).players).toBe(0);                                      // same UTC day: nothing to give yet
+      h().clock.ms = midnight + 1;                                                 // 00:00:00.001 UTC – nobody has opened the app
+      expect((await grant()).players).toBe(2);
+      expect((await grant()).players).toBe(0);                                      // once a day
+      expect(await me(a.agent)).toMatchObject({ freeRides: 4, nextFreeRideAt: midnight + 86_400_000 });
+      expect(await me(b.agent)).toMatchObject({ freeRides: 5, nextFreeRideAt: null });   // the cap holds
+      sec(86_400); await grant(); await grant();
+      expect((await me(a.agent)).freeRides).toBe(5);
+      expect((await me(a.agent)).nextFreeRideAt).toBeNull();
+      sec(86_400); await grant();
+      expect((await me(a.agent)).freeRides).toBe(5);
+      expect((await a.agent.get('/api/profile')).body).toMatchObject({ freeRides: 5, freeRidesMax: 5, nextFreeRideAt: null });
     });
 
     it('runs out after the free credits are spent', async () => {

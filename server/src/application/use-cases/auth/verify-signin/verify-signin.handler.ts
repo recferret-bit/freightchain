@@ -29,8 +29,9 @@ export class VerifySignInHandler implements ICommandHandler<VerifySignInCommand,
     if (!challenge || challenge.isExpired(this.clock.now())) throw new UnauthorizedError('no valid challenge – request a new nonce');
     if (!this.verifier.verify(challenge.message, command.signature, wallet)) throw new UnauthorizedError('bad signature');
     const session = await this.tokens.sign(wallet);
-    const player = await this.sessions.touch(wallet);
+    const now = this.clock.now();
+    const player = await this.sessions.touch(wallet, now);
     const rules = this.rules.get();
-    return { profile: toMeDto(player, isDemoWallet(rules, wallet), demoScaleOf(rules)), session };
+    return { profile: toMeDto(player, now, isDemoWallet(rules, wallet), demoScaleOf(rules)), session };
   }
 }

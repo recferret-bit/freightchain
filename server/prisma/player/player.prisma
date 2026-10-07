@@ -2,8 +2,9 @@
 model Player {
   wallet       String              @id
   version      Int                 @default(1) // optimistic lock for save()
-  freeRides    Int // credits: 5 at signup, +1 per UTC day (no backlog)
+  freeRides    Int // credits: 5 at signup, +1 per UTC day (no backlog), never above freeRidesMax
   freeDay      String // UTC day (YYYY-MM-DD) of the last daily grant
+  freeRidesMax Int                 @default(5) // the daily grant stops at this many credits
   createdAt    DateTime
   rides        Ride[]
   payments     Payment[]

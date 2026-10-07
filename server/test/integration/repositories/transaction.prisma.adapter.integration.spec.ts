@@ -11,12 +11,12 @@ describe('TransactionPrismaAdapter (PostgreSQL)', () => {
   beforeEach(() => wipe(prisma));
 
   it('commits everything the callback did, and returns its value', async () => {
-    expect(await tx.run(async (h) => { await players.insertIfAbsent(Player.register('a', T0, 5), h); await players.insertIfAbsent(Player.register('b', T0, 5), h); return 'done'; })).toBe('done');
+    expect(await tx.run(async (h) => { await players.insertIfAbsent(Player.register('a', T0, 5, 5), h); await players.insertIfAbsent(Player.register('b', T0, 5, 5), h); return 'done'; })).toBe('done');
     expect(await prisma.player.count()).toBe(2);
   });
 
   it('rolls everything back when the callback throws', async () => {
-    await expect(tx.run(async (h) => { await players.insertIfAbsent(Player.register('a', T0, 5), h); throw new Error('boom'); })).rejects.toThrow('boom');
+    await expect(tx.run(async (h) => { await players.insertIfAbsent(Player.register('a', T0, 5, 5), h); throw new Error('boom'); })).rejects.toThrow('boom');
     expect(await prisma.player.count()).toBe(0);
   });
 });

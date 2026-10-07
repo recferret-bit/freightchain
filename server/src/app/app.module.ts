@@ -9,6 +9,8 @@ import { EnvService } from '../infrastructure/config/env.service.js';
 import { staticHeaders } from '../infrastructure/http/static-cache.js';
 import { throttlerOptions } from '../infrastructure/http/throttling.js';
 import { InfrastructureModule } from '../infrastructure/infrastructure.module.js';
+import { DailyFreeRideScheduler } from '../infrastructure/scheduling/daily-free-ride.scheduler.js';
+import { ApplicationModule } from '../application/application.module.js';
 import { TokenSignerPort } from '../application/ports/auth/token-signer.port.js';
 import { PresentationModule } from '../presentation/presentation.module.js';
 
@@ -20,7 +22,7 @@ export function siteRoots(env: EnvService): ServeStaticModuleOptions[] {
   return [...(landing ? [{ rootPath: env.landingDir, renderPath: '/', exclude, serveStaticOptions }] : []), { rootPath: env.clientDir, exclude, serveStaticOptions }];
 }
 
-/** The composition root: environment, rate limiting, the site served from the same origin as the API, and the presentation layer. */
+/** The composition root: environment, rate limiting, the midnight free-ride job, the site served from the same origin as the API, and the presentation layer. */
 @Module({
   imports: [
     EnvModule,
@@ -29,8 +31,9 @@ export function siteRoots(env: EnvService): ServeStaticModuleOptions[] {
       inject: [EnvService],
       useFactory: siteRoots,
     }),
+    ApplicationModule, // the scheduler dispatches on its bus
     PresentationModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }, DailyFreeRideScheduler],
 })
 export class AppModule {}

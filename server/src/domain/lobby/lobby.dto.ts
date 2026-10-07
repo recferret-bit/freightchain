@@ -73,6 +73,8 @@ export interface ProfileDto {
   wallet: string;
   createdAt: number;
   freeRides: number;
+  freeRidesMax: number;
+  nextFreeRideAt: number | null;
   demo: boolean;
   demoScale: number;
   stats: ProfileStatsDto;

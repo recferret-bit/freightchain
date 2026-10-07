@@ -1,6 +1,8 @@
 export interface RulesConfig {
   /** free rides granted at registration */
   freeOnSignup: number;
+  /** the cap on a wallet's free-ride credits (stored per player; this is the value new wallets start with) */
+  freeRidesMax: number;
   freeRideSeconds: number;
   hbMinIntervalMs: number;
   hbTimeoutMs: number;

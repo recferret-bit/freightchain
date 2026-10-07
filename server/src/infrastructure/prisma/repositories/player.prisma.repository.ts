@@ -30,6 +30,11 @@ export class PlayerPrismaRepository extends PlayerRepositoryPort {
     await clientFor(this.prisma, tx).player.createMany({ data: [PlayerMapper.toCreateData(player)], skipDuplicates: true });
   }
 
+  async grantDailyFreeRides(today: string): Promise<number> {
+    // rows are locked in wallet order, so two instances running at the same midnight queue up instead of deadlocking
+    return this.prisma.$executeRaw`UPDATE "player"."Player" SET "freeRides" = CASE WHEN "freeRides" < "freeRidesMax" THEN "freeRides" + 1 ELSE "freeRides" END, "freeDay" = ${today}, "version" = "version" + 1 WHERE "wallet" IN (SELECT "wallet" FROM "player"."Player" WHERE "freeDay" < ${today} ORDER BY "wallet" FOR UPDATE)`;
+  }
+
   async save(player: Player, tx?: TransactionHandle): Promise<Player> {
     const s = player.snapshot();
     const { count } = await clientFor(this.prisma, tx).player.updateMany({

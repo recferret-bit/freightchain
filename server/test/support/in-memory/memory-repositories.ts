@@ -49,6 +49,16 @@ export class MemoryPlayerRepository extends PlayerRepositoryPort {
     if (!this.db.players.has(player.wallet)) this.db.players.set(player.wallet, player.snapshot());
   }
 
+  async grantDailyFreeRides(today: string): Promise<number> {
+    let touched = 0;
+    for (const [wallet, p] of this.db.players) {
+      if (p.freeDay >= today) continue;
+      this.db.players.set(wallet, { ...p, freeRides: p.freeRides < p.freeRidesMax ? p.freeRides + 1 : p.freeRides, freeDay: today, version: p.version + 1 });
+      touched++;
+    }
+    return touched;
+  }
+
   async save(player: Player): Promise<Player> {
     const s = player.snapshot();
     if (this.db.players.get(s.wallet)?.version !== s.version) throw new VersionConflictError();

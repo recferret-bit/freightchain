@@ -20,8 +20,8 @@ export const at = (seconds: number) => new Date(T0.getTime() + seconds * 1000);
 
 /** rows the foreign keys need */
 export async function seedPlayer(prisma: PrismaService, wallet: string): Promise<void> {
-  const s = Player.register(wallet, T0, 5).snapshot();
-  await prisma.player.create({ data: { wallet: s.wallet, version: s.version, freeRides: s.freeRides, freeDay: s.freeDay, createdAt: s.createdAt } });
+  const s = Player.register(wallet, T0, 5, 5).snapshot();
+  await prisma.player.create({ data: { wallet: s.wallet, version: s.version, freeRides: s.freeRides, freeDay: s.freeDay, freeRidesMax: s.freeRidesMax, createdAt: s.createdAt } });
 }
 
 let n = 0;

@@ -65,7 +65,8 @@ Race-safety, because Prisma is async (every `await` lets other requests run):
 | one ride in hand per wallet; free-credit spend / refund; cancel-and-buy | `SELECT … FOR UPDATE` on the `Player` row inside one transaction (`findByWalletForUpdate`) |
 | a LATE payment on a lapsed order (the wallet already holds a newer ride) | settlement runs under the same player lock: an unstarted free ride is cancelled (credit refunded), another unpaid order lapses. Two **paid** rides may coexist (both are owed) |
 | at most one RUNNING ride per wallet | `StartRideHandler` under the player lock refuses while another ride runs (a stale one – tab gone – is failed first) |
-| daily grant | optimistic `version` on `Player` + retry (`PlayerSessionService`) |
+| daily grant (lazy, on sight) | optimistic `version` on `Player` + retry (`PlayerSessionService`) |
+| daily grant (midnight job) | ONE `UPDATE … WHERE freeDay < today` (idempotent, cap per row, bumps `version` so a concurrent optimistic save loses and re-reads); refunds clamp at `freeRidesMax` |
 | sign-in challenge is single-use | `DELETE … RETURNING` (one atomic statement) |
 | first request of a week | opening runs in one transaction; unique `Round.startsAt`; the loser rolls back and re-reads the winner's round |
 | a payment settling across the week turn | settlement and round-opening both `SELECT … FOR UPDATE` the old round: the payment commits first (and is in the new round's 20 % carry) or finds the round closed and settles into the new one |

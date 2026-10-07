@@ -6,6 +6,8 @@ export interface PlayerProps {
   version: number;
   freeRides: number;
   freeDay: string;
+  /** the most free-ride credits the wallet can hold – the daily grant stops here (column default 5) */
+  freeRidesMax: number;
   createdAt: Date;
 }
 
@@ -14,8 +16,8 @@ export class Player {
   private constructor(private readonly props: PlayerProps) {}
 
   /** First sight of a wallet: the signup free rides. */
-  static register(wallet: string, now: Date, freeOnSignup: number): Player {
-    return new Player({ wallet, version: 1, freeRides: freeOnSignup, freeDay: utcDay(now), createdAt: now });
+  static register(wallet: string, now: Date, freeOnSignup: number, freeRidesMax: number): Player {
+    return new Player({ wallet, version: 1, freeRides: freeOnSignup, freeDay: utcDay(now), freeRidesMax, createdAt: now });
   }
 
   static restore(props: PlayerProps): Player {
@@ -26,13 +28,20 @@ export class Player {
   get version(): number { return this.props.version; }
   get freeRides(): number { return this.props.freeRides; }
   get freeDay(): string { return this.props.freeDay; }
+  get freeRidesMax(): number { return this.props.freeRidesMax; }
   get createdAt(): Date { return this.props.createdAt; }
 
-  /** +1 free ride once per UTC day, no backlog (a rider away for a week still gets one). Returns whether a credit was granted. */
+  /** True when the next daily credit is still to come (below the cap) – the lobby counts down to it. */
+  get awaitsDailyGrant(): boolean { return this.props.freeRides < this.props.freeRidesMax; }
+
+  /**
+   * +1 free ride once per UTC day, never above `freeRidesMax`, no backlog (a rider away for a week still gets one). The day is stamped even at the cap, so the
+   * same rule as the midnight job (`grantDailyFreeRides`) applies. Returns whether anything changed (= the player must be saved). A balance already above the cap is left alone.
+   */
   applyDailyGrant(now: Date): boolean {
     const today = utcDay(now);
     if (this.props.freeDay >= today) return false;
-    this.props.freeRides += 1;
+    if (this.awaitsDailyGrant) this.props.freeRides += 1;
     this.props.freeDay = today;
     return true;
   }
@@ -42,9 +51,12 @@ export class Player {
     this.props.freeRides -= 1;
   }
 
-  /** A credit comes back when the unstarted free ride it paid for is cancelled. */
+  /**
+   * A credit comes back when the unstarted free ride it paid for is cancelled – but a wallet exactly at the cap stays there (the midnight job may have refilled the slot
+   * meanwhile). A balance above the cap (legacy, from before the cap) still gets its credit back.
+   */
   refundFreeRide(): void {
-    this.props.freeRides += 1;
+    if (this.props.freeRides !== this.props.freeRidesMax) this.props.freeRides += 1;
   }
 
   snapshot(): PlayerProps {

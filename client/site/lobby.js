@@ -32,11 +32,13 @@ const left = ms => { const s = Math.max(0, Math.floor(ms / 1000)), d = Math.floo
 /* ───────── state ───────── */
 const S = { me: null, tiers: null, pool: null, live: { rides: [] }, liveAt: 0, skew: 0, sel: null, board: 'round', pending: null, pendingNote: '', tab: 'new', busy: false };
 const now = () => Date.now() + S.skew;   // server clock (skew learned from /api/live)
+const freeLeft = m => `${m.freeRides}/${m.freeRidesMax} free ride${m.freeRides === 1 ? '' : 's'}`;
+const freeCd = m => m.nextFreeRideAt == null ? 'full' : `+1 in ${left(m.nextFreeRideAt - now())}`;   // the daily credit lands at 00:00 UTC, up to the cap
 
 function paintHeader() {
   const m = S.me;
   $('chip-wallet').replaceChildren(el('span', { class: 'dot', style: `background:hsl(${hue(m.wallet)} 60% 50%)` }), short(m.wallet));
-  $('chip-free').textContent = `${m.freeRides} free ride${m.freeRides === 1 ? '' : 's'}`;
+  $('chip-free').textContent = `${freeLeft(m)} · ${freeCd(m)}`;
   $('chip-live').textContent = `${S.live.rides.length} on the road`;
   $('chip-demo').hidden = !m.demo; $('chip-demo').textContent = `DEMO ×${m.demoScale}`;
 }
@@ -96,7 +98,7 @@ const tierInfo = t => {   // what the card shows: a demo wallet's paid shifts ar
 };
 function tierOff(t) {
   if (S.pending) return 'finish the paid ride waiting for you first';
-  if (t.id === 'free') return S.me.freeRides <= 0 ? 'no free rides left – +1 at 00:00 UTC' : '';
+  if (t.id === 'free') return S.me.freeRides <= 0 ? 'no free rides left – the next one at 00:00 UTC' : '';
   return t.available ? '' : 'not available right now';
 }
 function paintTiers() {
@@ -109,7 +111,8 @@ function paintTiers() {
     return el('button', { class: `tier${t.id === S.sel ? ' sel' : ''}`, disabled: !!off || S.busy, 'aria-pressed': String(t.id === S.sel), onclick: () => { S.sel = t.id; paintTiers(); } },
       el('span', { class: 'nm' }, TIER_NAME[t.id]),
       el('span', { class: 'pr' }, t.usd ? `$${t.usd}` : 'FREE'),
-      el('span', { class: 'sub' }, t.usd ? (t.lamports ? sol(t.lamports) : 'price unavailable') : `${S.me.freeRides} left`),
+      el('span', { class: 'sub' }, t.usd ? (t.lamports ? sol(t.lamports) : 'price unavailable') : `${S.me.freeRides}/${S.me.freeRidesMax} left`),
+      t.usd ? '' : el('span', { class: 'sub fr-cd' }, freeCd(S.me)),
       el('span', { class: 'sub' }, `${dur(i.seconds)} · ≥ ${km(i.dist)} km${i.scale > 1 ? ` · DEMO ×${i.scale}` : ''}`),
       off ? el('span', { class: 'tag' }, off) : '');
   }));
@@ -216,10 +219,10 @@ async function renderProfile() {
   let p;
   try { p = await api('profile'); } catch (e) { view.replaceChildren(el('p', { class: 'bad' }, e.message)); return; }
   if (S.tab !== 'profile') return;
-  S.me.freeRides = p.freeRides; paintHeader();
+  Object.assign(S.me, { freeRides: p.freeRides, freeRidesMax: p.freeRidesMax, nextFreeRideAt: p.nextFreeRideAt }); paintHeader();
   const tile = (v, l) => el('div', { class: 'tile' }, el('b', {}, v), el('span', {}, l)), got = p.achievements.filter(a => a.earnedAt).length;
   view.replaceChildren(
-    el('div', { class: 'who', style: 'display:flex;gap:10px;align-items:center' }, avatar(p.wallet), el('div', {}, el('b', {}, short(p.wallet)), el('div', { class: 'dim' }, `rider since ${new Date(p.createdAt).toLocaleDateString()} · ${p.freeRides} free ride${p.freeRides === 1 ? '' : 's'} left`))),
+    el('div', { class: 'who', style: 'display:flex;gap:10px;align-items:center' }, avatar(p.wallet), el('div', {}, el('b', {}, short(p.wallet)), el('div', { class: 'dim' }, `rider since ${new Date(p.createdAt).toLocaleDateString()} · ${freeLeft(p)} left`), el('div', { class: 'dim fr-cd' }, freeCd(p)))),
     el('h2', {}, 'STATS'),
     el('div', { class: 'tiles' }, tile(p.stats.rides, 'rides started'), tile(p.stats.completed, 'shifts finished'), tile(km(p.stats.metres), 'km driven'), tile(km(p.stats.bestMetres), 'best shift, km'), tile(p.stats.paidRides, 'paid rides'), tile(sol(p.stats.spentLamports), 'spent')),
     el('h2', {}, `ACHIEVEMENTS · ${got}/${p.achievements.length}`),
@@ -238,7 +241,17 @@ async function refreshPool() {
   try { S.pool = await api('pool'); } catch { return; }
   if (S.tab === 'new') paintPool();
 }
+function tickFree() {   // the "next free ride" counter; at 00:00 UTC ask the server (it grants, then says when the next one comes)
+  const m = S.me; if (!m) return;
+  $('chip-free').textContent = `${freeLeft(m)} · ${freeCd(m)}`;
+  document.querySelectorAll('.fr-cd').forEach(n => { n.textContent = freeCd(m); });
+  if (m.nextFreeRideAt != null && now() >= m.nextFreeRideAt && (S.meMiss ?? 0) < 3 && Date.now() - (S.meAt ?? 0) > 5000) {   // gives up after 3 refreshes that bring no new time (clock skew); a reload retries
+    S.meAt = Date.now();
+    api('me').then(x => { S.meMiss = x.nextFreeRideAt === m.nextFreeRideAt ? (S.meMiss ?? 0) + 1 : 0; S.me = x; paintHeader(); paintTiers(); }, () => { S.meMiss = (S.meMiss ?? 0) + 1; });
+  }
+}
 function tick() {
+  tickFree();
   if (S.pool) { const c = $('cd'); if (c) c.textContent = left(S.pool.round.endsAt - now()); }
   if (S.tab === 'live' && !document.hidden) tickLive();
 }
