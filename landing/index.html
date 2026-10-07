@@ -5,10 +5,16 @@
 <title>Freight Chain – Desert Run</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="description" content="Buy a driving shift, drive every minute of it, let the server call the finish. Finishers share one weekly SOL pool. Devnet build.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Freight Chain">
 <meta property="og:title" content="Freight Chain – Desert Run">
 <meta property="og:description" content="The road never ends. Your shift does. A paid long-haul shift with one weekly prize pool, on Solana devnet.">
-<meta property="og:image" content="/media/hero-poster.png">
-<link rel="icon" href="data:,">
+<meta property="og:image" content="/media/og.jpg">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0b0a09">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230b0a09'/%3E%3Cpath d='M5 21v-8h12v8m0-6h5l4 4v2' fill='none' stroke='%23ffcf5a' stroke-width='2.4' stroke-linejoin='round'/%3E%3Ccircle cx='10' cy='22' r='2.6' fill='%23ffb03a'/%3E%3Ccircle cx='23' cy='22' r='2.6' fill='%23ffb03a'/%3E%3C/svg%3E">
+<noscript><style>.rv{opacity:1;transform:none}</style></noscript>
 <link rel="stylesheet" href="/src/style.css">
 </head>
 <body>
@@ -31,8 +37,8 @@
 <!-- ───────── 01 · HERO ───────── -->
 <section class="hero" id="ride">
   <div class="bg">
-    <video id="hero-video" muted autoplay loop playsinline preload="metadata" poster="/media/hero-poster.png" hidden></video>
-    <div class="slides" id="slides"><img src="/media/day.png" alt=""><img src="/media/hero-poster.png" alt=""><img src="/media/night.png" alt=""></div>
+    <video id="hero-video" muted autoplay loop playsinline preload="metadata" poster="/media/hero-poster.webp" hidden></video>
+    <div class="slides" id="slides"><img width="1280" height="633" decoding="async" fetchpriority="high" src="/media/day.webp" alt=""><img width="1280" height="633" decoding="async" fetchpriority="low" src="/media/hero-poster.webp" alt=""><img width="1280" height="633" decoding="async" fetchpriority="low" src="/media/night.webp" alt=""></div>
     <div class="shade"></div>
   </div>
   <div class="hero-in">
@@ -84,10 +90,10 @@
   <div class="daytime rv">
     <h3 class="sub">REALTIME DAYTIME</h3>
     <div class="collage">
-      <figure><img src="/media/sky/dawn.jpg" alt="Route 66 at dawn" loading="lazy"><figcaption>DAWN</figcaption></figure>
-      <figure><img src="/media/sky/day.jpg" alt="Route 66 by day" loading="lazy"><figcaption>DAY</figcaption></figure>
-      <figure><img src="/media/sky/dusk.jpg" alt="Route 66 at dusk" loading="lazy"><figcaption>DUSK</figcaption></figure>
-      <figure><img src="/media/sky/night.jpg" alt="Route 66 at night, headlights on" loading="lazy"><figcaption>NIGHT</figcaption></figure>
+      <figure><img width="2160" height="744" decoding="async" src="/media/sky/dawn.webp" alt="Route 66 at dawn" loading="lazy"><figcaption>DAWN</figcaption></figure>
+      <figure><img width="2160" height="744" decoding="async" src="/media/sky/day.webp" alt="Route 66 by day" loading="lazy"><figcaption>DAY</figcaption></figure>
+      <figure><img width="2160" height="744" decoding="async" src="/media/sky/dusk.webp" alt="Route 66 at dusk" loading="lazy"><figcaption>DUSK</figcaption></figure>
+      <figure><img width="2160" height="744" decoding="async" src="/media/sky/night.webp" alt="Route 66 at night, headlights on" loading="lazy"><figcaption>NIGHT</figcaption></figure>
     </div>
     <p class="dim">The clock runs while you drive (×60 by default: a minute of driving is an hour of sky). Each route has its own sunrise, sunset and twilight – Trans-Siberian gets six hours of low sun, Atacama the brightest stars. At night the world is lit only by what has a lamp: your headlights, the lamp posts, oncoming traffic that dazzles you.</p>
   </div>
@@ -96,17 +102,17 @@
   <div class="dash rv">
     <h3 class="sub">THE DASH · HOVER A CARD</h3>
     <div class="cards" id="cards">
-      <article class="card3d" style="--base:-5deg" data-live="key"><div class="img"><img src="/media/cards/key-on.png" alt="ignition key switch, ON" loading="lazy"></div>
+      <article class="card3d" tabindex="0" style="--base:-5deg" data-live="key"><div class="img"><img width="308" height="266" decoding="async" src="/media/cards/key-on.webp" alt="ignition key switch, ON" loading="lazy"></div>
         <footer><b>IGNITION KEY</b><p>Three positions. <em>OFF</em>: nothing works – gauges dead, even the brake pedal. <em>ON</em>: a one-second sweep and bulb check, instruments live, battery draining. <em>START</em>: hold to crank. <kbd>I</kbd> is a one-tap start, <kbd>O</kbd> kills it.</p></footer></article>
-      <article class="card3d" style="--base:4deg" data-live="gear"><div class="img"><img src="/media/cards/gear.png" alt="gear display showing 3 and the rev counter" loading="lazy"></div>
+      <article class="card3d" tabindex="0" style="--base:4deg" data-live="gear"><div class="img"><img width="680" height="474" decoding="async" src="/media/cards/gear.webp" alt="gear display showing 3 and the rev counter" loading="lazy"></div>
         <footer><b>GEARBOX</b><p>Seven gears, clutch in to shift (<kbd>Shift</kbd> + <kbd>E</kbd>/<kbd>Q</kbd>). Every gear pulls in a band: lug a tall one at a crawl and it stalls, sit on the redline and STRAIN charges. <kbd>Q</kbd> from neutral is reverse – stop first.</p></footer></article>
-      <article class="card3d" style="--base:-4deg" data-live="lamps"><div class="img"><img src="/media/cards/lamps.png" alt="warning lamps with COLD, STRAIN and BRAKES lit" loading="lazy"></div>
+      <article class="card3d" tabindex="0" style="--base:-4deg" data-live="lamps"><div class="img"><img width="328" height="268" decoding="async" src="/media/cards/lamps.webp" alt="warning lamps with COLD, STRAIN and BRAKES lit" loading="lazy"></div>
         <footer><b>WARNING LAMPS</b><p>Eight lamps. Amber means watch it, red means fix it now, blinking red means seconds left. COLD cuts power until the engine warms; OFF ROAD gives you five seconds; BRAKES is what driving against the parking brake buys you.</p></footer></article>
-      <article class="card3d" style="--base:5deg" data-live="lights"><div class="img"><img class="fit" src="/media/cards/lights.png" alt="LED bars and the HEAD, NIGHT and HEAT buttons" loading="lazy"></div>
+      <article class="card3d" tabindex="0" style="--base:5deg" data-live="lights"><div class="img"><img width="504" height="214" decoding="async" class="fit" src="/media/cards/lights.webp" alt="LED bars and the HEAD, NIGHT and HEAT buttons" loading="lazy"></div>
         <footer><b>LIGHTS &amp; HEAT</b><p><kbd>L</kbd> HEAD: at night the only thing lighting the road. <kbd>N</kbd> NIGHT jumps the clock. <kbd>H</kbd> HEAT thaws the frost from the vents outward and pulls heat out of the engine. All of it drains the battery with the engine off.</p></footer></article>
-      <article class="card3d" style="--base:-5deg" data-live="park"><div class="img"><img src="/media/cards/park.png" alt="TRAILER and PARK lamps, WIPER and WASH buttons" loading="lazy"></div>
+      <article class="card3d" tabindex="0" style="--base:-5deg" data-live="park"><div class="img"><img width="368" height="300" decoding="async" src="/media/cards/park.webp" alt="TRAILER and PARK lamps, WIPER and WASH buttons" loading="lazy"></div>
         <footer><b>PARK, WIPERS, WASH</b><p><kbd>B</kbd> PARK is a spring brake: ON at every start, holds with the engine off, holds against thrust – and cooks the brakes if you fight it. <kbd>R</kbd> wipers, hold <kbd>X</kbd> to wash. Dry blades barely clear the dust; wipers never clear frost.</p></footer></article>
-      <article class="card3d" style="--base:4deg" data-live="trip"><div class="img"><img src="/media/cards/trip-radio.png" alt="trip computer and cab radio" loading="lazy"></div>
+      <article class="card3d" tabindex="0" style="--base:4deg" data-live="trip"><div class="img"><img width="608" height="320" decoding="async" src="/media/cards/trip-radio.webp" alt="trip computer and cab radio" loading="lazy"></div>
         <footer><b>TRIP &amp; RADIO</b><p>Trip km, shift time over the minimum, outside °C – the server's clock is the one that counts. <kbd>T</kbd> radio: five stations of procedurally generated songs on a wall-clock broadcast, so every cab hears the same song at the same moment.</p></footer></article>
     </div>
   </div>
@@ -123,7 +129,7 @@
 
   <div class="garage rv">
     <aside class="spec">
-      <img src="/media/day.png" alt="the cab of the FC-01 long-hood semi" loading="lazy">
+      <img width="1280" height="633" decoding="async" src="/media/day.webp" alt="the cab of the FC-01 long-hood semi" loading="lazy">
       <div class="spec-h"><span class="lbl">UNIT ON THE ROAD</span><b>FC-01 · CONVENTIONAL LONG-HOOD</b></div>
       <dl>
         <dt>GEARBOX</dt><dd>7-speed, ratios 6.15 → 0.75, clutch</dd>
@@ -171,7 +177,7 @@
   <div class="boards rv">
     <div class="card board"><h3><i class="dot live"></i>LIVE NOW</h3><div id="board-live" class="rows"><span class="dim">Loading…</span></div></div>
     <div class="card board"><h3><i class="dot next"></i>NEXT UP</h3><div id="board-next" class="rows"><span class="dim">Loading…</span></div></div>
-    <div class="card board"><h3><i class="dot top"></i>THIS ROUND · TOP 10</h3><div id="board-top" class="rows"><span class="dim">Loading…</span></div><a class="link" href="/lobby.html#board">all boards →</a></div>
+    <div class="card board"><h3><i class="dot rank"></i>THIS ROUND · TOP 10</h3><div id="board-top" class="rows"><span class="dim">Loading…</span></div><a class="link" href="/lobby.html#board">all boards →</a></div>
   </div>
 
   <h3 class="sub rv">WHAT THE SERVER CHECKS</h3>
@@ -285,7 +291,7 @@
 
 <footer>Devnet build · nothing here is real money · <a href="/lobby.html">lobby</a> · <a href="/play.html">offline practice</a> · <a href="https://github.com/recferret-bit/freightchain">source</a></footer>
 
-<dialog id="demo" class="demo"><button class="x" id="demo-x" aria-label="close">✕</button><video id="demo-video" controls playsinline poster="/media/hero-poster.png"></video><p class="dim" id="demo-note"></p></dialog>
+<dialog id="demo" class="demo"><button class="x" id="demo-x" aria-label="close">✕</button><video id="demo-video" controls playsinline poster="/media/hero-poster.webp"></video><p class="dim" id="demo-note"></p></dialog>
 
 <script type="module" src="/src/main.js"></script>
 </body>

@@ -1,4 +1,5 @@
 import { api, signIn } from '../../client/site/wallet.js';   // one sign-in implementation for landing + lobby (Vite bundles it; fs.allow in vite.config.js for dev)
+import { sol, km, left, dur, short, hue, hours, ago, plural, TIER, TIER_LONG, ROUTE } from './format.js';
 
 /* Landing: four chapters (ride · loop · economy · about), fed by the public API only – no session needed to look.
    Everything from the server goes in with textContent (other riders' wallets are rendered here). */
@@ -15,19 +16,7 @@ function el(tag, attrs = {}, ...kids) {
   for (const c of kids.flat()) if (c != null && c !== false) e.append(c instanceof Node ? c : document.createTextNode(String(c)));
   return e;
 }
-const pad = n => String(Math.floor(n)).padStart(2, '0');
-const sol = l => (l / 1e9).toFixed(l >= 1e9 ? 2 : 3);
-const km = m => (m / 1000).toFixed(m < 10_000 ? 2 : m < 1e6 ? 1 : 0);
-const left = ms => { const s = Math.max(0, Math.floor(ms / 1000)), d = Math.floor(s / 86400); return `${d ? d + 'd ' : ''}${pad((s % 86400) / 3600)}:${pad((s % 3600) / 60)}:${pad(s % 60)}`; };
-const dur = s => { s = Math.max(0, Math.round(s)); return s >= 3600 ? `${Math.floor(s / 3600)}:${pad((s % 3600) / 60)}:${pad(s % 60)}` : `${Math.floor(s / 60)}:${pad(s % 60)}`; };
-const short = w => `${w.slice(0, 4)}…${w.slice(-4)}`;
-const hue = w => { let h = 0; for (const c of w) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
 const avatar = w => el('i', { class: 'av', style: `background:hsl(${hue(w)} 60% 50%)` });
-const TIER = { free: 'TEST', '1h': '1 H', '4h': '4 H', '8h': '8 H' };
-const TIER_LONG = { free: 'Test ride', '1h': '1 hour', '4h': '4 hours', '8h': '8 hours' };
-const ROUTE = { route66: 'Route 66', stuart: 'Stuart Hwy', siberia: 'Trans-Siberian', brenner: 'Brenner', panamerican: 'Pan-American' };
-const hours = s => (s >= 3600 ? `${s / 3600} h` : `${Math.round(s / 60)} min`);
-const ago = ms => { const s = Math.max(0, Math.round(ms / 1000)); return s < 60 ? 'just now' : s < 3600 ? `${Math.floor(s / 60)} min ago` : s < 86400 ? `${Math.floor(s / 3600)} h ago` : `${Math.floor(s / 86400)} d ago`; };
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const S = { pool: null, live: null, board: null, skew: 0, me: null };
@@ -62,7 +51,7 @@ function paintHero() {
 /* the load board (06) and the trip sheet (05): live cells only where the server knows the number */
 function paintBoardsLive() {
   const p = S.pool, l = S.live;
-  if (l) { $('lb-drivers').textContent = `${l.totals.drivers} driver${l.totals.drivers === 1 ? '' : 's'}`; $('lb-live').textContent = `${l.rides.length} on the road now`; $('sheet-km').textContent = km(l.totals.metres); }
+  if (l) { $('lb-drivers').textContent = plural(l.totals.drivers, 'driver'); $('lb-live').textContent = `${l.rides.length} on the road now`; $('sheet-km').textContent = km(l.totals.metres); }
   if (p) { $('lb-entries').textContent = `${p.entries} this round`; $('lb-pot').textContent = `${sol(p.split.grand)} SOL`; }
 }
 
@@ -77,7 +66,7 @@ function paintPool() {
     el('div', { class: 'usd' }, p.usd.grand != null ? `≈ $${p.usd.grand} at the current price${p.solUsd ? ` · SOL $${p.solUsd}` : ''}` : ''),
     el('div', { class: 'split' }, ...['s-grand', 's-top', 's-seed', 's-fees'].map((c, i) => el('i', { class: c, style: `width:${pct[i]}%` }))),
     el('div', { class: 'legend' }, part('s-grand', '50% grand prize · draw, weight = tier', s.grand), part('s-top', '20% top 20 · by distance', s.top20), part('s-seed', '20% seeds next week', s.nextSeed), part('s-fees', '10% platform', s.fees)),
-    el('div', { class: 'meta' }, el('span', {}, el('b', {}, p.entries), ` paid entr${p.entries === 1 ? 'y' : 'ies'}`), el('span', {}, 'closes in ', el('b', { class: 'cd' }, left(p.round.endsAt - now()))), el('span', {}, s.carry ? ['carried from last week: ', el('b', {}, `${sol(s.carry)} SOL`)] : 'first round – nothing carried yet')),
+    el('div', { class: 'meta' }, el('span', {}, el('b', {}, p.entries), ` paid ${p.entries === 1 ? 'entry' : 'entries'}`), el('span', {}, 'closes in ', el('b', { class: 'cd' }, left(p.round.endsAt - now()))), el('span', {}, s.carry ? ['carried from last week: ', el('b', {}, `${sol(s.carry)} SOL`)] : 'first round – nothing carried yet')),
     el('div', { class: 'dim' }, 'Integer lamports, floored shares, remainder to fees. settled: false – the draw and payouts are not live in this build.'));
 }
 
@@ -106,7 +95,7 @@ function paintBoards() {
     const rows = S.board.rows.slice(0, 10);
     $('board-top').replaceChildren(...(rows.length ? rows.map(r => el('div', { class: `r${S.me && r.wallet === S.me.wallet ? ' me' : ''}` },
       el('span', { class: 'n' }, `#${r.rank}`),
-      el('span', { class: 'w' }, avatar(r.wallet), short(r.wallet), el('small', {}, `${r.rides} ride${r.rides === 1 ? '' : 's'}`)),
+      el('span', { class: 'w' }, avatar(r.wallet), short(r.wallet), el('small', {}, plural(r.rides, 'ride'))),
       el('span', { class: 'v' }, `${km(r.distance)} km`))) : empty('No finished paid shift this round yet. The first finisher is #1.')));
   }
 }
@@ -115,10 +104,10 @@ function paintBoards() {
 function paintTicker() {
   const l = S.live, p = S.pool, items = [];
   if (l) for (const r of l.recent.slice(0, 8)) items.push(`${short(r.wallet)} ${r.status === 'completed' ? 'finished' : r.status === 'failed' ? 'wrecked' : 'abandoned'} a ${TIER_LONG[r.tier]?.toLowerCase() ?? r.tier} shift${r.route ? ` on ${ROUTE[r.route] ?? r.route}` : ''} · ${km(r.distance)} km`);
-  if (p) items.push(`${sol(p.split.grand)} SOL in the pot · ${p.entries} paid entr${p.entries === 1 ? 'y' : 'ies'} this round`);
+  if (p) items.push(`${sol(p.split.grand)} SOL in the pot · ${plural(p.entries, 'paid entry', 'paid entries')} this round`);
   if (l) {
-    items.push(`${l.rides.length} truck${l.rides.length === 1 ? '' : 's'} on the road right now`, `${km(l.totals.metres)} km driven by ${l.totals.drivers} driver${l.totals.drivers === 1 ? '' : 's'} all time`);
-    if (l.upcoming.length) items.push(`${l.upcoming.length} paid shift${l.upcoming.length === 1 ? '' : 's'} waiting to start`);
+    items.push(`${plural(l.rides.length, 'truck')} on the road right now`, `${km(l.totals.metres)} km driven by ${plural(l.totals.drivers, 'driver')} all time`);
+    if (l.upcoming.length) items.push(`${plural(l.upcoming.length, 'paid shift')} waiting to start`);
   }
   if (!items.length) items.push('Dispatch is quiet. Connect a wallet, take a free ride, be the first line on this ticker.');
   const nodes = items.map(t => el('span', {}, t));
@@ -152,14 +141,14 @@ async function refreshBoard() { S.board = await api('leaderboard?board=round').c
 for (const [net, url] of Object.entries(SOCIALS)) if (url) $('socials').append(el('a', { href: url, 'data-net': net, target: '_blank', rel: 'noopener' }, net.toUpperCase()));
 
 /* ───── sign-in / CTA ───── */
-const btn = $('connect'), msg = $('msg'), top = $('play-top');
+const btn = $('connect'), msg = $('msg'), playTop = $('play-top');
 const toLobby = () => { location.href = '/lobby.html'; };
 btn.onclick = async () => {
   btn.disabled = true; msg.textContent = 'Approve the sign-in message in your wallet…'; msg.className = 'msg';
   try { await signIn(); toLobby(); } catch (e) { msg.textContent = e.message; msg.className = 'msg bad'; btn.disabled = false; }
 };
-top.onclick = () => { if (S.me) toLobby(); else { location.hash = '#ride'; btn.focus(); } };
-api('me').then(m => { S.me = m; btn.textContent = 'OPEN THE LOBBY →'; btn.onclick = toLobby; top.textContent = 'LOBBY'; paintBoards(); }, () => {});   // signed in already: no forced redirect – the pool is the point of this page
+playTop.onclick = () => { if (S.me) toLobby(); else { location.hash = '#ride'; btn.focus(); } };
+api('me').then(m => { S.me = m; btn.textContent = 'OPEN THE LOBBY →'; btn.onclick = toLobby; playTop.textContent = 'LOBBY'; paintBoards(); }, () => {});   // signed in already: no forced redirect – the pool is the point of this page
 
 /* ───── dash cards: footer colours sampled from the image, tilt follows the pointer ───── */
 function sampleColours(card, img) {
@@ -181,12 +170,14 @@ for (const card of document.querySelectorAll('.card3d')) {
   if (img.complete && img.naturalWidth) sampleColours(card, img); else img.addEventListener('load', () => sampleColours(card, img), { once: true });
   if (reduced) continue;
   const MAX = 11;   // degrees at the card edge
+  let r = null;   // measured once per hover: reading the rect on every pointermove forces a layout each time
+  card.addEventListener('pointerenter', () => { r = card.getBoundingClientRect(); });
   card.addEventListener('pointermove', e => {
-    const r = card.getBoundingClientRect(), px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
+    r ??= card.getBoundingClientRect(); const px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
     card.classList.add('live');
     card.style.setProperty('--rx', `${((.5 - py) * MAX * 2).toFixed(2)}deg`); card.style.setProperty('--ry', `${((px - .5) * MAX * 2).toFixed(2)}deg`);
   });
-  card.addEventListener('pointerleave', () => { card.classList.remove('live'); card.style.setProperty('--rx', '0deg'); card.style.setProperty('--ry', 'var(--base, 0deg)'); });
+  card.addEventListener('pointerleave', () => { r = null; card.classList.remove('live'); card.style.setProperty('--rx', '0deg'); card.style.setProperty('--ry', 'var(--base, 0deg)'); });
 }
 
 /* the cards render with the game's own cockpit code once they are near the viewport (the PNGs above stay as the fallback and the colour source) */
@@ -204,10 +195,10 @@ const so = new IntersectionObserver(es => { for (const e of es) if (e.isIntersec
 document.querySelectorAll('section[id]').forEach(s => so.observe(s));
 
 /* ───── boot ───── */
-await refresh();
+refresh();
 api('tiers').then(paintTiers, () => { $('tiers').replaceChildren(el('tbody', {}, el('tr', {}, el('td', { class: 'dim' }, 'Prices unavailable right now.')))); });
 refreshBoard();
 setInterval(() => { if (!document.hidden) refresh(); }, 10000);
 setInterval(() => { if (!document.hidden) refreshBoard(); }, 30000);
-setInterval(() => { $('lb-clock').textContent = new Date(now()).toISOString().slice(11, 19); if (!S.pool) return; const t = left(S.pool.round.endsAt - now()); $('hero-cd').textContent = t; document.querySelectorAll('.pool .cd').forEach(c => { c.textContent = t; }); }, 1000);
+setInterval(() => { if (document.hidden) return; $('lb-clock').textContent = new Date(now()).toISOString().slice(11, 19); if (!S.pool) return; const t = left(S.pool.round.endsAt - now()); $('hero-cd').textContent = t; document.querySelectorAll('.pool .cd').forEach(c => { c.textContent = t; }); }, 1000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });

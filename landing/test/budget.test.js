@@ -1,0 +1,39 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readdirSync, statSync, existsSync } from 'node:fs';
+import { gzipSync } from 'node:zlib';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+/* Size budget of the production build (run `npm run build` first; skipped when dist/ is missing so `npm test` works on a fresh clone). */
+const dist = new URL('../dist', import.meta.url).pathname, has = existsSync(join(dist, 'index.html'));
+const walk = d => readdirSync(d).flatMap(n => statSync(join(d, n)).isDirectory() ? walk(join(d, n)) : [join(d, n)]);
+const files = has ? walk(dist) : [], gz = f => gzipSync(readFileSync(f)).length;
+const KB = 1024;
+
+test('JS: the eager bundle is small, nothing in dist/assets is large', { skip: !has }, () => {
+  const js = files.filter(f => f.endsWith('.js'));
+  for (const f of js) assert.ok(statSync(f).size <= 30 * KB, `${f} ${statSync(f).size} B > 30 kB`);
+  assert.ok(js.reduce((a, f) => a + gz(f), 0) <= 40 * KB, 'all JS together ≤ 40 kB gzipped (incl. the lazy live-dash chunks)');
+});
+
+test('CSS ≤ 10 kB gzipped, HTML ≤ 14 kB gzipped', { skip: !has }, () => {
+  assert.ok(files.filter(f => f.endsWith('.css')).reduce((a, f) => a + gz(f), 0) <= 10 * KB);
+  assert.ok(gz(join(dist, 'index.html')) <= 14 * KB);
+});
+
+test('media: no single image over 120 kB, all media together ≤ 600 kB', { skip: !has }, () => {
+  const media = files.filter(f => f.includes('/media/'));
+  for (const f of media) assert.ok(statSync(f).size <= 120 * KB, `${f} ${statSync(f).size} B`);
+  assert.ok(media.reduce((a, f) => a + statSync(f).size, 0) <= 600 * KB);
+});
+
+test('the live dash chunks are lazy: the entry bundle does not import the cockpit', { skip: !has }, () => {
+  const entry = readFileSync(join(dist, 'index.html'), 'utf8').match(/src="(\/assets\/index-[\w-]+\.js)"/)?.[1];
+  assert.ok(entry, 'entry script found'); const code = readFileSync(join(dist, entry), 'utf8');
+  assert.doesNotMatch(code, /windscreen|ignitionPanel|drawCockpit/); assert.match(code, /dash-live/);
+});
+
+test('no three.js ends up in the landing', { skip: !has }, () => {
+  for (const f of files.filter(f => f.endsWith('.js'))) assert.doesNotMatch(readFileSync(f, 'utf8'), /WebGLRenderer|THREE\./, f);
+});

@@ -8,6 +8,7 @@
     "landing:dev": "npm --prefix landing run dev",
     "landing:build": "npm --prefix landing run build",
     "landing:lint": "npm --prefix landing run lint",
+    "landing:test": "npm --prefix landing test",
     "treasury:init": "npm --prefix server run treasury:init",
     "server:dev": "npm --prefix server run start:dev",
     "server:build": "npm --prefix server run build",
@@ -15,6 +16,6 @@
     "client:check": "npm --prefix client run check",
     "client:serve": "client/serve.sh",
     "build": "npm run landing:build && npm run server:build",
-    "check": "npm run client:check && npm run landing:lint && npm run landing:build && npm run server:build && npm run server:test"
+    "check": "npm run client:check && npm run landing:lint && npm run landing:build && npm run landing:test && npm run server:build && npm run server:test"
   }
 }

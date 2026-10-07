@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint src tools vite.config.js",
+    "lint": "eslint src test tools vite.config.js",
+    "test": "node --test \"test/*.test.js\"",
     "media": "node tools/capture-media.mjs"
   },
   "devDependencies": {

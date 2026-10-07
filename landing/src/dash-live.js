@@ -1,37 +1,10 @@
-/* Live dash cards: the game's own cockpit renderer (client/js/cockpit) draws into ONE hidden canvas, and every card copies its crop of it.
+/* Live dash cards (what each card shows lives in dash-scenes.js): the game's own cockpit renderer (client/js/cockpit) draws into ONE hidden canvas, and every card copies its crop of it.
    The cockpit modules are singletons that read the global `st` / `dn` / `disp`, so each card keeps its own copy of that state and swaps it in just before its draw.
    No three.js: cockpit/ no longer imports the scene (the windscreen dust colour lives in `weather`). The baked PNGs in the markup stay as the fallback / colour source. */
 
-const W = 1280, H = 633, DPR = 2;   // the design size the crops below were measured at (same as tools/capture-media.mjs)
-const FPS = 30;
-const SONGS = ['Dust Road Blues', 'Night Shift', 'Long Haul Waltz', 'Neon Mile', 'Cold Start'];
-const GEARS = [0, 1, 2, 3, 4, 5, 6, 7, 0, -1];   // the shifter card's loop (0 = neutral, -1 = reverse)
-const KMH_AT_2000 = [10, 14, 20, 28, 40, 57, 80];   // km/h per gear at 2000 rpm (AGENTS.md "Gearbox")
+import { W, H, DPR, SCENES } from './dash-scenes.js';
 
-/* what each card shows: crop = [x, y, w, h] in design px; tick(t, g) scripts the state (t = seconds, g = the swapped-in globals) */
-const SCENES = {
-  key: { crop: [794, 536, 164, 97], tick(t, { st }) {   // OFF → key ON (bulb check) → crank → running → OFF, 5 s loop (was 10)
-    const c = t % 5; st.keyOn = false; st.engineOn = false; st.ign = null;
-    if (c >= .6 && c < 2.9) st.ign = { t: c - .6 }; else if (c >= 2.9 && c < 4.2) { st.engineOn = st.keyOn = true; st.rpm = 700 + Math.sin(t * 9) * 12; } else st.rpm = 0;
-  } },
-  gear: { crop: [598, 403, 226, 158], tick(t, { st }) {   // 1st → 5th, a rev sweep per gear; speed follows from rpm
-    const c = t % 8, g = 1 + Math.floor(c / 1.6), k = (c % 1.6) / 1.6, rpm = 1100 + 1200 * k;
-    Object.assign(st, { gear: g, rpm, v: rpm / 2000 * KMH_AT_2000[g - 1] / 3.6, engineOn: true, keyOn: true, park: false, clutch: k < .06 ? 1 : 0, gas: .4 + .4 * k });
-  } },
-  lamps: { crop: [176, 396, 164, 134], tick(t, { st }) {   // cold engine, strain charging, hot brakes, flat battery; OFF ROAD / OVER-REV / GRIND / STALL now and then
-    Object.assign(st, { engineOn: true, keyOn: true, temp: -30, strain: .2 + .7 * (.5 + .5 * Math.sin(t * .8)), brakeT: .45, batt: .25, off: t % 6 > 3, overrev: t % 7 > 5.5, grind: t % 9 > 8 ? .5 : 0, lug: t % 5 > 3 ? .4 : 0 });
-  } },
-  lights: { crop: [176, 526, 252, 107], tick(t, { st, dn }) {   // night: HEAD / cab light toggling, HEAT warming, pedal bars moving
-    Object.assign(dn, { k: 1, night: true, head: t % 6 < 4, cab: t % 8 < 4 });
-    Object.assign(st, { engineOn: true, keyOn: true, heater: true, heatEff: .5 + .5 * Math.sin(t * .7), clutch: .5 + .5 * Math.sin(t * 1.3), brake: Math.max(0, Math.sin(t * .7)), gas: .5 + .5 * Math.sin(t * .9 + 1), hull: 82 });
-  } },
-  park: { crop: [958, 452, 184, 150], tick(t, { st, wip }) {   // PARK on/off, wipers off → 1 → 2, washer, and the shifter walking N → 1…7 → N → R through the H gate
-    Object.assign(st, { engineOn: true, keyOn: true, park: t % 6 < 3, washing: t % 6 > 4.5, gear: GEARS[Math.floor(t / 1.1) % GEARS.length] }); wip.mode = Math.floor(t / 2) % 3;
-  } },
-  trip: { crop: [798, 398, 304, 160], tick(t, { st, radio }) {   // trip km / shift clock running, radio changing station
-    Object.assign(st, { engineOn: true, keyOn: true, s: 12000 + t * 28, t: 612 + t }); Object.assign(radio, { on: true, idx: Math.floor(t / 4) % 5, song: { title: SONGS[Math.floor(t / 4) % SONGS.length] } });
-  } },
-};
+const FPS = 30;
 
 export async function startLiveDash(cards) {
   const cv = Object.assign(document.createElement('canvas'), { id: 'cockpit', hidden: true, width: W * DPR, height: H * DPR });
@@ -84,6 +57,7 @@ export async function startLiveDash(cards) {
   for (const p of panels) {
     p.el.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') p.active = true; });
     p.el.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') p.active = false; });
+    p.el.addEventListener('focusin', () => { p.active = true; }); p.el.addEventListener('focusout', () => { p.active = false; });   // keyboard: Tab onto a card
     p.el.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') return; const on = !p.active; for (const q of panels) q.active = false; p.active = on; });
   }
   let last = performance.now();
