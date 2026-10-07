@@ -31,6 +31,8 @@ import { StartRideHandler } from './use-cases/rides/start-ride/start-ride.handle
 
 import { PoolTicketsService } from './services/pool-tickets.service.js';
 import { TicketSettlementService } from './services/ticket-settlement.service.js';
+import { PoolRegistryService } from './services/pool-registry.service.js';
+import { SettleChainSignatureHandler } from './use-cases/chain/settle-chain-signature/settle-chain-signature.handler.js';
 import { ListPoolsHandler } from './use-cases/pools/list-pools/list-pools.handler.js';
 import { GetPrizePoolHandler } from './use-cases/pools/get-prize-pool/get-prize-pool.handler.js';
 import { RedeemPromoHandler } from './use-cases/players/redeem-promo/redeem-promo.handler.js';
@@ -44,7 +46,7 @@ import { ListPromosHandler } from './use-cases/promos/list-promos/list-promos.ha
 import { DisablePromoHandler } from './use-cases/promos/disable-promo/disable-promo.handler.js';
 import { GrantTicketsHandler } from './use-cases/players/grant-tickets/grant-tickets.handler.js';
 
-const services: Provider[] = [AchievementService, PaymentSettlementService, PlayerSessionService, PoolTicketsService, RideLookupService, RoundService, TicketSettlementService];
+const services: Provider[] = [AchievementService, PaymentSettlementService, PlayerSessionService, PoolTicketsService, RideLookupService, RoundService, TicketSettlementService, PoolRegistryService];
 
 const handlers: Provider[] = [
   RequestChallengeHandler, VerifySignInHandler, GetMeHandler, LogoutHandler,
@@ -57,6 +59,7 @@ const handlers: Provider[] = [
   ListPoolsHandler, GetPrizePoolHandler, RedeemPromoHandler,
   CreatePromoHandler, ListPromosHandler, DisablePromoHandler, GrantTicketsHandler, RegisterPoolHandler,
   CreateTicketOrderHandler, GetTicketOrderHandler, GetPendingTicketOrderHandler,
+  SettleChainSignatureHandler,
   GetChainFeesHandler,
 ];
 

@@ -5,6 +5,7 @@ import { PaymentSettlementService } from '../../src/application/services/payment
 import { PlayerSessionService } from '../../src/application/services/player-session.service.js';
 import { PoolTicketsService } from '../../src/application/services/pool-tickets.service.js';
 import { TicketSettlementService } from '../../src/application/services/ticket-settlement.service.js';
+import { PoolRegistryService } from '../../src/application/services/pool-registry.service.js';
 import { RideLookupService } from '../../src/application/services/ride-lookup.service.js';
 import { RoundService } from '../../src/application/services/round.service.js';
 import { Player } from '../../src/domain/players/player.entity.js';
@@ -76,6 +77,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const rounds = new RoundService(roundRepo, rulesPort, transactions, clock);
   const achievements = new AchievementService(unlocks, rideQuery, clock);
   const ticketSettlement = new TicketSettlementService(players, pools, tickets, orders, sessions, rounds, transactions, clock, entropy);
+  const registry = new PoolRegistryService(poolChain, pools, clock);
   const settlement = new PaymentSettlementService(rounds, roundRepo, payments, rides, players, lookup, transactions, clock);
 
   const now = () => clock.now();
@@ -102,7 +104,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   return {
     db, clock, chain, entropy, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, health, pools, tickets, promos, orders, poolTickets, ticketSettlement,
     sessions, lookup, rounds, achievements, settlement, now, player, freeRide, paidOrder, reload, storedPlayer,
-    poolChain, chainEvents, chainCursors, sponsoredTxs,
+    poolChain, chainEvents, chainCursors, sponsoredTxs, registry,
   };
 }
 export type UnitContext = ReturnType<typeof unitContext>;

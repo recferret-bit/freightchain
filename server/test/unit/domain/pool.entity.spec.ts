@@ -1,4 +1,4 @@
-import type { ChainEventRecord } from '../../../src/domain/economy/chain-events.js';
+import type { ChainEventRecord, PoolChainState } from '../../../src/domain/economy/chain-events.js';
 import { Pool } from '../../../src/domain/economy/pool.entity.js';
 import type { PoolProps } from '../../../src/domain/economy/pool.types.js';
 import { BadRequestError, ConflictError } from '../../../src/domain/shared/errors.js';
@@ -72,6 +72,12 @@ describe('Pool – progress, pot and the deadline', () => {
     p.rankInRound(3);
     p.rankInRound(4);
     expect(p.roundId).toBe(3);
+  });
+  it('relabels within 1–64 characters', () => {
+    const p = pool();
+    p.relabel('  1 HOUR · week 42 ');
+    expect(p.snapshot().label).toBe('1 HOUR · week 42');
+    expect(() => p.relabel(' ')).toThrow(BadRequestError);
   });
   it('counts new buyers', () => {
     const p = pool({ buyers: 2 });
@@ -203,5 +209,25 @@ describe('Pool.register – the create_pool rules, checked again when a pool ent
     for (const over of [{ id: -1 }, { id: 2 ** 32 }, { prizeBps: 6000 }, { minTickets: 0 }, { maxPerWallet: 0 }, { maxTickets: 1, minTickets: 2 }, { priceLamports: 0 }, { prepDeadline: new Date(PLAY.getTime() + 1) }]) {
       expect(() => Pool.register(props(over)), JSON.stringify(over)).toThrow(BadRequestError);
     }
+  });
+});
+
+describe('Pool.fromChain – the mirror row of an account', () => {
+  const state = (over: Partial<PoolChainState> = {}): PoolChainState => ({
+    poolId: 7, address: 'PoolPda', status: 'active', ticketsSold: 12, buyers: 9, sponsored: 5, prizesPaid: 0, refunded: 0, vaultLamports: 890_880 + 12 * PRICE + 5, escrowLamports: 12 * PRICE + 5,
+    vault: 'VaultPda', authority: 'Admin', tier: 2, priceLamports: PRICE, minTickets: 10, maxTickets: 0, maxPerWallet: 5, prepDeadline: PREP, playDeadline: PLAY,
+    prizeBps: 7000, seedBps: 2000, feeBps: 1000, feeTreasury: 'Fee', seedTreasury: 'Seed', createdAt: T0, ...over,
+  });
+
+  it('takes rules and balances from the account (escrow, not raw vault lamports) and keeps the server\'s label and round', () => {
+    const fresh = Pool.fromChain(state(), PLAY);
+    expect(fresh.snapshot()).toMatchObject({ id: 7, tier: '4h', label: '4H · pool 7', status: 'active', ticketsSold: 12, buyers: 9, vaultLamports: 12 * PRICE + 5, sponsored: 5, roundId: null, syncedAt: PLAY });
+    const existing = pool({ label: 'week 42', roundId: 3 });
+    expect(Pool.fromChain(state(), PLAY, existing).snapshot()).toMatchObject({ label: 'week 42', roundId: 3 });
+  });
+
+  it('refuses an unknown tier byte or broken rules', () => {
+    expect(() => Pool.fromChain(state({ tier: 9 }), PLAY)).toThrow(BadRequestError);
+    expect(() => Pool.fromChain(state({ feeBps: 0 }), PLAY)).toThrow(BadRequestError);
   });
 });

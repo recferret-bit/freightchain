@@ -1,5 +1,5 @@
 import { BadRequestError, ConflictError } from '../shared/errors.js';
-import type { ChainEventRecord } from './chain-events.js';
+import { tierFromChainCode, type ChainEventRecord, type PoolChainState } from './chain-events.js';
 import type { PoolProps, PoolStatus } from './pool.types.js';
 
 /**
@@ -19,6 +19,22 @@ export class Pool {
 
   static restore(props: PoolProps): Pool {
     return new Pool({ ...props });
+  }
+
+  /**
+   * The mirror row of an account read from chain. Rules and balances come from the account (the chain wins); the label and the ranking round are the
+   * server's own and are kept from the existing row. An unknown tier byte is refused.
+   */
+  static fromChain(state: PoolChainState, now: Date, existing: Pool | null = null): Pool {
+    const tier = tierFromChainCode(state.tier);
+    if (!tier) throw new BadRequestError(`pool ${state.poolId}: unknown tier code ${state.tier}`, 'bad_pool');
+    return Pool.register({
+      id: state.poolId, address: state.address, tier, label: existing?.p.label ?? `${tier.toUpperCase()} · pool ${state.poolId}`, priceLamports: state.priceLamports,
+      minTickets: state.minTickets, maxTickets: state.maxTickets, maxPerWallet: state.maxPerWallet, prepDeadline: state.prepDeadline, playDeadline: state.playDeadline,
+      prizeBps: state.prizeBps, seedBps: state.seedBps, feeBps: state.feeBps, feeTreasury: state.feeTreasury, seedTreasury: state.seedTreasury, status: state.status,
+      ticketsSold: state.ticketsSold, buyers: state.buyers, vaultLamports: state.escrowLamports, sponsored: state.sponsored, roundId: existing?.p.roundId ?? null,
+      createdAt: state.createdAt, syncedAt: now,
+    });
   }
 
   /** A pool entering the mirror (read from its account, or seeded for development): the rules the program enforces at create_pool, checked again. */
@@ -80,6 +96,13 @@ export class Pool {
   /** An open pool whose preparation period is over without the minimum: the program lets anyone fail it (and then refund everybody). */
   isPastDeadlineUnderMinimum(now: Date): boolean {
     return this.p.status === 'open' && now.getTime() >= this.p.prepDeadline.getTime() && this.p.ticketsSold < this.p.minTickets;
+  }
+
+  /** The name the lobby shows ("1 HOUR · week 42") – the server's own, not on chain. */
+  relabel(label: string): void {
+    const l = label.trim();
+    if (l.length < 1 || l.length > 64) throw new BadRequestError('a pool label is 1–64 characters', 'bad_pool');
+    this.p.label = l;
   }
 
   /** A wallet bought its first ticket of this pool (the mirror's count; PoolSyncService corrects it from the account). */
