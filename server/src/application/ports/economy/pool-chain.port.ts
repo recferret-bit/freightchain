@@ -39,11 +39,12 @@ export type SignatureStatus = 'processed' | 'confirmed' | 'finalized' | 'expired
  * An RPC failure is a ServiceUnavailableError, never "not found"; a program that is not configured (no TICKET_PROGRAM_ID) is a ServiceUnavailableError too.
  */
 export abstract class PoolChainPort {
-  /** Unsigned `buy_ticket` (+ compute budget). `feePayer` = the sponsor key when one is configured (it also pays the Ticket rent, recorded as `rent_payer`). */
-  abstract buildBuyTransaction(input: { payer: string; poolId: number; qty: number; orderId: string }): Promise<BuiltTransaction>;
+  /** Unsigned `buy_ticket` (+ compute budget). `feePayer` = the sponsor key when one is configured (it also pays the Ticket rent, recorded as `rent_payer`),
+      unless `selfPaid` (the wallet's daily sponsorship cap is used up, or the client fell back to paying its own fee). */
+  abstract buildBuyTransaction(input: { payer: string; poolId: number; qty: number; orderId: string; selfPaid?: boolean }): Promise<BuiltTransaction>;
   /** Unsigned `fail_pool` (when `needsFail`) + `refund` for `buyer`, signed by `caller` (anyone); the price goes to the buyer, the rent to the ticket's rent payer.
       ConflictError when the buyer holds no Ticket account (never bought, or refunded already). */
-  abstract buildRefundTransaction(input: { caller: string; poolId: number; buyer: string; needsFail: boolean }): Promise<BuiltTransaction>;
+  abstract buildRefundTransaction(input: { caller: string; poolId: number; buyer: string; needsFail: boolean; selfPaid?: boolean }): Promise<BuiltTransaction>;
   /** Unsigned `pay_prize` for the admin to sign AND send in Phantom (the admin pays its own fee). */
   abstract buildPayPrizeTransaction(input: { authority: string; poolId: number; to: string; lamports: number; rank: number }): Promise<BuiltTransaction>;
   /** Unsigned `close_pool` (treasuries read from the Pool and Config accounts), signed and paid by `authority`. NotFoundError when the pool does not exist. */

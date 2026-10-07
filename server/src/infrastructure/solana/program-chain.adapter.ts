@@ -71,15 +71,15 @@ export class ProgramChainAdapter extends PoolChainPort {
 
   // ---- builders
 
-  async buildBuyTransaction(i: { payer: string; poolId: number; qty: number; orderId: string }): Promise<BuiltTransaction> {
-    const c = this.codec, feePayer = this.sponsor?.publicKey.toBase58() ?? i.payer;
+  async buildBuyTransaction(i: { payer: string; poolId: number; qty: number; orderId: string; selfPaid?: boolean }): Promise<BuiltTransaction> {
+    const c = this.codec, feePayer = this.feePayerFor(i.payer, i.selfPaid);
     const ix = c.instruction('buy_ticket', {
       buyer: i.payer, fee_payer: feePayer, config: c.configPda(), pool: c.poolPda(i.poolId), vault: c.vaultPda(i.poolId), ticket: c.ticketPda(i.poolId, i.payer),
     }, { pool_id: i.poolId, qty: i.qty, order_id: orderIdToBytes(i.orderId) });
     return this.build([ix], feePayer, i.poolId, CU_LIMITS.buy);
   }
 
-  async buildRefundTransaction(i: { caller: string; poolId: number; buyer: string; needsFail: boolean }): Promise<BuiltTransaction> {
+  async buildRefundTransaction(i: { caller: string; poolId: number; buyer: string; needsFail: boolean; selfPaid?: boolean }): Promise<BuiltTransaction> {
     const c = this.codec, ticket = c.ticketPda(i.poolId, i.buyer);
     const info = await this.rpc.read((x) => x.getAccountInfo(ticket, this.commitment));
     const t = info && info.owner.equals(c.programId) ? c.decodeAccount('Ticket', info.data) : null;
@@ -89,7 +89,7 @@ export class ProgramChainAdapter extends PoolChainPort {
     ixs.push(c.instruction('refund', {
       caller: i.caller, pool: c.poolPda(i.poolId), vault: c.vaultPda(i.poolId), ticket, buyer: i.buyer, rent_payer: String(t['rentPayer']),
     }, { pool_id: i.poolId }));
-    return this.build(ixs, this.sponsor?.publicKey.toBase58() ?? i.caller, i.poolId, CU_LIMITS.refund + (i.needsFail ? CU_LIMITS.fail_pool : 0));
+    return this.build(ixs, this.feePayerFor(i.caller, i.selfPaid), i.poolId, CU_LIMITS.refund + (i.needsFail ? CU_LIMITS.fail_pool : 0));
   }
 
   async buildPayPrizeTransaction(i: { authority: string; poolId: number; to: string; lamports: number; rank: number }): Promise<BuiltTransaction> {
@@ -110,6 +110,11 @@ export class ProgramChainAdapter extends PoolChainPort {
       seed_treasury: String(pool['seedTreasury']), fee_treasury: String(pool['feeTreasury']), platform_treasury: String(config['platformTreasury']),
     }, { pool_id: i.poolId });
     return this.build([ix], i.authority, i.poolId, CU_LIMITS.close_pool);
+  }
+
+  /** the gas sponsor pays for buys and refunds when there is one, unless the caller asks for a self-paid transaction */
+  private feePayerFor(signer: string, selfPaid = false): string {
+    return !selfPaid && this.sponsor ? this.sponsor.publicKey.toBase58() : signer;
   }
 
   /** compute budget first, then the program's instructions; a fresh blockhash per build (it lives ~60–90 s) */

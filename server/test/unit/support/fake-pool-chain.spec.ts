@@ -27,8 +27,9 @@ describe('FakePoolChain', () => {
     chain.sponsor = Keypair.generate();
     const gasless = await chain.buildBuyTransaction(order);
     expect(gasless.feePayer).toBe(chain.sponsor.publicKey.toBase58());
+    expect((await chain.buildBuyTransaction({ ...order, selfPaid: true })).feePayer).toBe(order.payer);
     expect(Transaction.from(Buffer.from(gasless.transaction, 'base64')).serializeMessage().toString('base64')).toBe(gasless.message);
-    expect(chain.built.map((b) => b.kind)).toEqual(['buy', 'buy']);
+    expect(chain.built.map((b) => b.kind)).toEqual(['buy', 'buy', 'buy']);
     expect(chain.built[0]!.input).toEqual(order);
   });
 

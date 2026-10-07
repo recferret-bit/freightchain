@@ -70,11 +70,11 @@ export class FakePoolChain extends PoolChainPort {
 
   // ---- the port
 
-  async buildBuyTransaction(input: { payer: string; poolId: number; qty: number; orderId: string }): Promise<BuiltTransaction> {
-    return this.build('buy', input, this.sponsor?.publicKey.toBase58() ?? input.payer, [input.payer]);
+  async buildBuyTransaction(input: { payer: string; poolId: number; qty: number; orderId: string; selfPaid?: boolean }): Promise<BuiltTransaction> {
+    return this.build('buy', input, this.payerFor(input.payer, input.selfPaid), [input.payer]);
   }
-  async buildRefundTransaction(input: { caller: string; poolId: number; buyer: string; needsFail: boolean }): Promise<BuiltTransaction> {
-    return this.build('refund', input, this.sponsor?.publicKey.toBase58() ?? input.caller, [input.caller]);
+  async buildRefundTransaction(input: { caller: string; poolId: number; buyer: string; needsFail: boolean; selfPaid?: boolean }): Promise<BuiltTransaction> {
+    return this.build('refund', input, this.payerFor(input.caller, input.selfPaid), [input.caller]);
   }
   async buildPayPrizeTransaction(input: { authority: string; poolId: number; to: string; lamports: number; rank: number }): Promise<BuiltTransaction> {
     return this.build('pay_prize', input, input.authority, [input.authority]);
@@ -121,6 +121,10 @@ export class FakePoolChain extends PoolChainPort {
   }
 
   /** a real unsigned transaction: one instruction to FAKE_PROGRAM_ID carrying the input as JSON, signed by `signers` (+ the fee payer) */
+  private payerFor(signer: string, selfPaid = false): string {
+    return !selfPaid && this.sponsor ? this.sponsor.publicKey.toBase58() : signer;
+  }
+
   private up(): void {
     if (this.rpcDown) throw new ServiceUnavailableError('Solana RPC unavailable');
   }

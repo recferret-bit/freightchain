@@ -60,6 +60,8 @@ describe('ProgramChainAdapter – builds what the program accepted', () => {
     expect(tx.feePayer?.toBase58()).toBe(fx.keys.gas);
     expect(tx.serializeMessage().toString('base64')).toBe(built.message); // the bytes /submit compares
     expect(tx.signatures.map((s) => s.publicKey.toBase58())).toEqual([fx.keys.gas, fx.keys.a]);
+    const own = await adapter.buildBuyTransaction({ payer: fx.keys.a, poolId: 0, qty: 2, orderId: ORDER_A, selfPaid: true }); // cap used up / client fallback
+    expect(own.feePayer).toBe(fx.keys.a);
   });
 
   it('a self-paid buy without a sponsor: the buyer is both signers', async () => {
@@ -73,7 +75,8 @@ describe('ProgramChainAdapter – builds what the program accepted', () => {
     const built = await adapter.buildRefundTransaction({ caller: fx.keys.d, poolId: 1, buyer: fx.keys.c, needsFail: true });
     expectIxs(built, fixtureTx('fail_pool + refund').instructions);
     expect(built).toMatchObject({ feePayer: fx.keys.gas, computeUnits: CU_LIMITS.refund + CU_LIMITS.fail_pool });
-    const noFail = await adapter.buildRefundTransaction({ caller: fx.keys.d, poolId: 1, buyer: fx.keys.c, needsFail: false });
+    const noFail = await adapter.buildRefundTransaction({ caller: fx.keys.d, poolId: 1, buyer: fx.keys.c, needsFail: false, selfPaid: true });
+    expect(noFail.feePayer).toBe(fx.keys.d);
     expectIxs(noFail, [fixtureTx('fail_pool + refund').instructions[1]!]);
     const none = adapterWith({ getAccountInfo: async () => null }).adapter;
     await expect(none.buildRefundTransaction({ caller: fx.keys.d, poolId: 1, buyer: fx.keys.c, needsFail: false })).rejects.toMatchObject({ statusCode: 409, errorCode: 'no_ticket' });
