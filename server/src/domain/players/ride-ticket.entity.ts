@@ -1,0 +1,66 @@
+import { ConflictError } from '../shared/errors.js';
+import type { RideTicketProps } from './ride-ticket.types.js';
+
+/**
+ * A wallet's tickets in one pool (docs/paid-tickets-plan.md §2.3). Two ways in: `recordPurchase` – the chain says the wallet paid for `qty` tickets (the program already enforced
+ * the per-wallet cap, so it is never refused here) – and `grant` – an off-chain gift (promo code, admin) that is clamped so the wallet never HOLDS more than the pool's cap.
+ * Out: `spend` (a ride starts), `refund` (an unstarted ticketed ride is given back), `voidAll` (the pool failed: the unused tickets are worthless, the money comes back on chain).
+ */
+export class RideTicket {
+  private constructor(private readonly p: RideTicketProps) {}
+
+  static open(wallet: string, poolId: number): RideTicket {
+    return new RideTicket({ wallet, poolId, balance: 0, bought: 0, version: 1 });
+  }
+
+  static restore(props: RideTicketProps): RideTicket {
+    return new RideTicket({ ...props });
+  }
+
+  get wallet(): string { return this.p.wallet; }
+  get poolId(): number { return this.p.poolId; }
+  get balance(): number { return this.p.balance; }
+  get bought(): number { return this.p.bought; }
+  get version(): number { return this.p.version; }
+
+  /** The wallet paid for `qty` tickets on chain. */
+  recordPurchase(qty: number): void {
+    this.mustBePositive(qty);
+    this.p.balance += qty;
+    this.p.bought += qty;
+  }
+
+  /** A free gift of `n` tickets, clamped so the balance never exceeds `cap`. Returns how many were actually added (0 = already at the cap). `bought` does not move – nothing was paid. */
+  grant(n: number, cap: number): number {
+    this.mustBePositive(n);
+    const added = Math.max(0, Math.min(n, cap - this.p.balance));
+    this.p.balance += added;
+    return added;
+  }
+
+  /** One ticket pays for one ride. */
+  spend(): void {
+    if (this.p.balance <= 0) throw new ConflictError('no tickets left in this pool', 'no_tickets');
+    this.p.balance -= 1;
+  }
+
+  /** The ride it paid for never started: the ticket comes back. */
+  refund(): void {
+    this.p.balance += 1;
+  }
+
+  /** The pool failed. Returns how many unused tickets were voided. */
+  voidAll(): number {
+    const voided = this.p.balance;
+    this.p.balance = 0;
+    return voided;
+  }
+
+  snapshot(): RideTicketProps {
+    return { ...this.p };
+  }
+
+  private mustBePositive(n: number): void {
+    if (!Number.isInteger(n) || n < 1) throw new ConflictError('a ticket count must be a whole number of at least 1');
+  }
+}
