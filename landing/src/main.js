@@ -1,6 +1,7 @@
 import { api, signIn } from '../../client/site/wallet.js';   // one sign-in implementation for landing + lobby (Vite bundles it; fs.allow in vite.config.js for dev)
 import { GAME_BASE, SITE_BASE, STORYBOOK_BASE } from '../../client/js/hosts.js';   // '' on localhost; in production the game is on ride.<apex>, NOT the landing's host, and SITE_BASE is the apex
 import { sol, km, left, dur, short, hue, hours, ago, plural, TIER, TIER_LONG, ROUTE } from './format.js';
+import { explorerUrl, shortAddr, statusChip, progressText, deadline, ESCROW_PAGE } from '../../client/site/pools.js';   // the lobby's pool wording, so both pages say the same thing
 
 /* Landing: four chapters (ride · loop · economy · about), fed by the public API only – no session needed to look.
    Everything from the server goes in with textContent (other riders' wallets are rendered here). */
@@ -70,10 +71,29 @@ function paintPool() {
     el('div', { class: 'dim' }, 'Integer lamports, floored shares, remainder to fees. settled: false – the draw and payouts are not live in this build.'));
 }
 
-function paintTiers(t) {
-  const rows = t.tiers.map(x => el('tr', {}, el('td', {}, TIER_LONG[x.id] ?? x.id), el('td', {}, hours(x.seconds)), el('td', {}, x.usd ? `$${x.usd}` : 'free'), el('td', {}, x.lamports ? `${sol(x.lamports)} SOL` : '–')));
-  $('tiers').replaceChildren(el('thead', {}, el('tr', {}, ...['SHIFT', 'LENGTH', 'PRICE', 'IN SOL'].map(h => el('th', {}, h)))), el('tbody', {}, rows));
-  $('price').textContent = t.solUsd ? `SOL ≈ $${t.solUsd}. The quote is locked for 10 minutes when you order. Devnet SOL only.` : 'SOL price unavailable right now.';
+function paintTiers(t) {   // a tier sold through a pool: the ticket price is the pool's (fixed in lamports on chain); a tier without one: the legacy USD quote
+  const price = x => x.pool ? `${sol(x.pool.priceLamports)} SOL` : x.lamports ? `${sol(x.lamports)} SOL` : '–';
+  const rows = t.tiers.map(x => el('tr', {}, el('td', {}, TIER_LONG[x.id] ?? x.id), el('td', {}, hours(x.seconds)), el('td', {}, x.pool ? 'pool ticket' : x.usd ? `$${x.usd}` : 'free'), el('td', {}, price(x))));
+  $('tiers').replaceChildren(el('thead', {}, el('tr', {}, ...['SHIFT', 'LENGTH', 'PAID WITH', 'IN SOL'].map(h => el('th', {}, h)))), el('tbody', {}, rows));
+  const pooled = t.tiers.some(x => x.pool), legacy = t.tiers.some(x => x.usd && !x.pool);
+  $('price').textContent = [pooled && 'Pool tickets: the price is part of the pool’s rules, fixed when it was created.', legacy && (t.solUsd ? `Pay-per-ride: SOL ≈ $${t.solUsd}, the quote is locked for 10 minutes when you order.` : 'Pay-per-ride: SOL price unavailable right now.'), 'Devnet SOL only.'].filter(Boolean).join(' ');
+}
+
+/* the escrowed pools on sale (the same list as GET /api/pools, carried by /api/pool so the page polls once) */
+function paintPools() {
+  const box = $('pools'), list = S.pool?.pools;
+  if (!list) { box.replaceChildren(...empty('Pools unavailable right now.')); return; }
+  if (!list.length) { box.replaceChildren(...empty('No pool on sale right now – the next one opens with the week.')); return; }
+  const n = now();
+  box.replaceChildren(...list.map(p => {
+    const c = statusChip(p, n), d = deadline(p, n);
+    return el('div', { class: 'r prow' },
+      el('span', { class: 'w' }, el('b', {}, TIER[p.tier] ?? p.tier), el('span', { class: `pst ${c.cls}` }, c.text), el('small', {}, p.label)),
+      el('span', { class: 'v' }, `${sol(p.vaultLamports)} SOL in escrow`),
+      el('span', { class: 'bar' }, el('i', { style: `width:${p.progressPct}%` })),
+      el('span', { class: 'pmeta' }, progressText(p, n), ' · ', `${sol(p.priceLamports)} SOL a ticket`, d.at ? [' · ', d.label, el('b', { class: 'pcd', 'data-at': d.at }, left(d.at - n))] : d.label ? ` · ${d.label}` : '', ' · ',
+        el('a', { href: explorerUrl(p.address), target: '_blank', rel: 'noopener', title: `pool account ${p.address} on the Solana explorer` }, `pool ${shortAddr(p.address)} ↗`)));
+  }));
 }
 
 /* ───── boards ───── */
@@ -105,6 +125,7 @@ function paintTicker() {
   const l = S.live, p = S.pool, items = [];
   if (l) for (const r of l.recent.slice(0, 8)) items.push(`${short(r.wallet)} ${r.status === 'completed' ? 'finished' : r.status === 'failed' ? 'wrecked' : 'abandoned'} a ${TIER_LONG[r.tier]?.toLowerCase() ?? r.tier} shift${r.route ? ` on ${ROUTE[r.route] ?? r.route}` : ''} · ${km(r.distance)} km`);
   if (p) items.push(`${sol(p.split.grand)} SOL in the pot · ${plural(p.entries, 'paid entry', 'paid entries')} this round`);
+  if (p?.pools?.length) items.push(`${sol(p.pools.reduce((a, x) => a + x.vaultLamports, 0))} SOL in escrow across ${plural(p.pools.length, 'prize pool')} · ${plural(p.pools.reduce((a, x) => a + x.toGo, 0), 'more rider')} to go live`);
   if (l) {
     items.push(`${plural(l.rides.length, 'truck')} on the road right now`, `${km(l.totals.metres)} km driven by ${plural(l.totals.drivers, 'driver')} all time`);
     if (l.upcoming.length) items.push(`${plural(l.upcoming.length, 'paid shift')} waiting to start`);
@@ -119,7 +140,7 @@ async function refresh() {
   const [p, l] = await Promise.all([api('pool').catch(() => null), api('live').catch(() => null)]);
   if (p) S.pool = p;
   if (l) { S.live = l; S.skew = l.now - Date.now(); }
-  paintHero(); paintPool(); paintBoards(); paintTicker();
+  paintHero(); paintPool(); paintPools(); paintBoards(); paintTicker();
 }
 async function refreshBoard() { S.board = await api('leaderboard?board=round').catch(() => null); paintBoards(); }
 
@@ -151,7 +172,8 @@ if (document.readyState === 'complete') whenIdle(loadHeroVideo, { timeout: 4000 
 
 /* ───── links to the game (static markup says /play.html; on split hosts that lives on ride.<apex>) ───── */
 for (const a of document.querySelectorAll('a[href="/play.html"]')) a.href = `${GAME_BASE}/play.html`;
-$('storybook-link').href = STORYBOOK_BASE || '/viewer.html';   // the model viewer: storybook.<apex> in production, /viewer.html elsewhere
+$('storybook-link').href = STORYBOOK_BASE || '/viewer.html';
+$('escrow-link').href = `${SITE_BASE}${ESCROW_PAGE}`;   // client/escrow/ (a served copy of docs/pool-escrow), on the apex   // the model viewer: storybook.<apex> in production, /viewer.html elsewhere
 
 /* ───── socials ───── */
 for (const [net, url] of Object.entries(SOCIALS)) if (url) $('socials').append(el('a', { href: url, 'data-net': net, target: '_blank', rel: 'noopener' }, net.toUpperCase()));
@@ -224,5 +246,5 @@ api('tiers').then(paintTiers, () => { $('tiers').replaceChildren(el('tbody', {},
 refreshBoard();
 setInterval(() => { if (!document.hidden) refresh(); }, 10000);
 setInterval(() => { if (!document.hidden) refreshBoard(); }, 30000);
-setInterval(() => { if (document.hidden) return; $('lb-clock').textContent = new Date(now()).toISOString().slice(11, 19); if (!S.pool) return; const t = left(S.pool.round.endsAt - now()); $('hero-cd').textContent = t; document.querySelectorAll('.pool .cd').forEach(c => { c.textContent = t; }); }, 1000);
+setInterval(() => { if (document.hidden) return; $('lb-clock').textContent = new Date(now()).toISOString().slice(11, 19); if (!S.pool) return; const t = left(S.pool.round.endsAt - now()); $('hero-cd').textContent = t; document.querySelectorAll('.pool .cd').forEach(c => { c.textContent = t; }); document.querySelectorAll('#pools .pcd').forEach(c => { c.textContent = left(+c.dataset.at - now()); }); }, 1000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
