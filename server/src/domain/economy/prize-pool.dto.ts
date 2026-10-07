@@ -56,11 +56,13 @@ export interface TicketBalanceDto {
   bought: number;
   /** the pool's per-wallet cap */
   cap: number;
+  /** the pool failed and this wallet paid into it on chain: it can claim its lamports back (cleared when its Refunded event lands – `bought` goes to 0) */
+  refundable: boolean;
 }
 
 export const toTicketBalanceDto = (ticket: RideTicket, pool: Pool): TicketBalanceDto => {
   const s = pool.snapshot();
-  return { poolId: s.id, tier: s.tier, label: s.label, status: s.status, balance: ticket.balance, bought: ticket.bought, cap: s.maxPerWallet };
+  return { poolId: s.id, tier: s.tier, label: s.label, status: s.status, balance: ticket.balance, bought: ticket.bought, cap: s.maxPerWallet, refundable: s.status === 'refunding' && ticket.bought > 0 };
 };
 
 /** One line of the ticket audit trail (/api/profile). */

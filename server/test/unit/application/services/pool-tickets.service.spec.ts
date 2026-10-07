@@ -18,10 +18,22 @@ describe('PoolTicketsService', () => {
     await ctx.pools.upsert(aPool({ id: 3, status: 'settled', maxPerWallet: 9 }));
     await ctx.tickets.open('w', 1); await ctx.tickets.open('w', 2); await give(3, 2); await give(1, 1, 'other');
     expect(await svc.balances('w')).toEqual([
-      { poolId: 1, tier: '1h', label: '1 HOUR · test', status: 'open', balance: 0, bought: 0, cap: 5 },
-      { poolId: 3, tier: '1h', label: '1 HOUR · test', status: 'settled', balance: 2, bought: 2, cap: 9 },
+      { poolId: 1, tier: '1h', label: '1 HOUR · test', status: 'open', balance: 0, bought: 0, cap: 5, refundable: false },
+      { poolId: 3, tier: '1h', label: '1 HOUR · test', status: 'settled', balance: 2, bought: 2, cap: 9, refundable: false },
     ]);
     expect(await svc.balances('nobody')).toEqual([]);
+  });
+
+  it('balances: a failed pool the wallet paid into stays listed as refundable until its refund lands (bought → 0)', async () => {
+    const { ctx, svc, give } = await setup();
+    await ctx.pools.upsert(aPool({ id: 1, status: 'refunding' }));
+    await give(1, 2);
+    const t = (await ctx.tickets.find('w', 1))!;
+    t.voidAll(); await ctx.tickets.save(t);
+    expect(await svc.balances('w')).toMatchObject([{ poolId: 1, status: 'refunding', balance: 0, bought: 2, refundable: true }]);
+    const r = (await ctx.tickets.find('w', 1))!;
+    expect(r.markRefunded()).toBe(2); await ctx.tickets.save(r);
+    expect(await svc.balances('w')).toEqual([]);
   });
 
   it('tierHasPools: only open / active pools count', async () => {

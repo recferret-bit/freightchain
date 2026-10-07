@@ -1,4 +1,4 @@
-import { parsePromoCreate, parseTicketsGrant } from '../../../src/cli/admin-args.js';
+import { parsePoolSeed, parsePromoCreate, parseTicketsGrant } from '../../../src/cli/admin-args.js';
 
 describe('admin CLI arguments', () => {
   it('promo:create – defaults, every option, UTC-midnight dates', () => {
@@ -23,5 +23,16 @@ describe('admin CLI arguments', () => {
     expect(parseTicketsGrant(['W', '3'])).toBe('give WALLET POOL_ID COUNT');
     expect(parseTicketsGrant(['W', 'x', '2'])).toBe('POOL_ID must be a whole number ≥ 0');
     expect(parseTicketsGrant(['W', '3', '0'])).toBe('COUNT must be a whole number ≥ 1');
+  });
+
+  it('pool:seed – defaults and errors', () => {
+    expect(parsePoolSeed(['--id', '1', '--tier', '1h'])).toEqual({ id: 1, tier: '1h', status: 'open', priceLamports: 50_000_000, minTickets: 2, maxTickets: 0, maxPerWallet: 5, prepDays: 7, playDays: 14, sold: 0, label: null });
+    expect(parsePoolSeed(['--id', '2', '--tier', '8h', '--status', 'active', '--sold', '3', '--label', 'Demo'])).toMatchObject({ status: 'active', sold: 3, label: 'Demo' });
+    expect(parsePoolSeed(['--id', '2', '--tier', '8h', '--status', 'active', '--min', '4'])).toMatchObject({ sold: 4 });
+    expect(parsePoolSeed(['--id', '2', '--tier', '8h', '--status', 'active', '--sold', '1'])).toBe('--sold must reach --min for an active pool');
+    expect(parsePoolSeed(['--tier', '1h'])).toBe('--id must be a whole number ≥ 0');
+    expect(parsePoolSeed(['--id', '1', '--tier', '1h', '--status', 'settled'])).toBe('--status must be open or active');
+    expect(parsePoolSeed(['--id', '1', '--tier', '1h', '--price', '100'])).toBe('--price must be a whole number ≥ 890880'); // the program's rent-minimum rule
+    expect(parsePoolSeed(['--id', '1', '--tier', '1h', '--prep-days', '9', '--play-days', '3'])).toBe('--prep-days must not be after --play-days');
   });
 });

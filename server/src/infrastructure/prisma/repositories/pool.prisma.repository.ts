@@ -22,6 +22,11 @@ export class PoolPrismaRepository extends PoolRepositoryPort {
     return row ? PoolMapper.toDomain(row) : null;
   }
 
+  async findByAddress(address: string, tx?: TransactionHandle): Promise<Pool | null> {
+    const row = await clientFor(this.prisma, tx).pool.findUnique({ where: { address } });
+    return row ? PoolMapper.toDomain(row) : null;
+  }
+
   /** One statement: read the row AND lock it until the transaction ends. */
   async findByIdForUpdate(id: number, tx: TransactionHandle): Promise<Pool | null> {
     const rows = await clientFor(this.prisma, tx).$queryRaw<PoolRow[]>`SELECT * FROM "economy"."Pool" WHERE id = ${id} FOR UPDATE`;

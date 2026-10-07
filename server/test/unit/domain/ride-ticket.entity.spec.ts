@@ -43,6 +43,13 @@ describe('RideTicket', () => {
     expect(t.voidAll()).toBe(0);
   });
 
+  it('a refund that landed clears what was paid (and anything left), saying how many paid tickets it was', () => {
+    const t = RideTicket.restore({ wallet: 'w', poolId: 7, balance: 1, bought: 3, version: 1 });
+    expect(t.markRefunded()).toBe(3);
+    expect(t.snapshot()).toMatchObject({ balance: 0, bought: 0 });
+    expect(t.markRefunded()).toBe(0);
+  });
+
   it('rejects counts that are not whole positive numbers', () => {
     const t = RideTicket.open('w', 7);
     for (const n of [0, -2, 1.5]) {

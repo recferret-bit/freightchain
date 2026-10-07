@@ -8,6 +8,8 @@ import type { TransactionHandle } from '../shared/transaction.port.js';
  */
 export abstract class PoolRepositoryPort {
   abstract findById(id: number, tx?: TransactionHandle): Promise<Pool | null>;
+  /** By its PDA (unique). */
+  abstract findByAddress(address: string, tx?: TransactionHandle): Promise<Pool | null>;
   /** `SELECT … FOR UPDATE`: a status change (activate / fail / settle) and the voiding of tickets must not interleave with a settlement into the same pool. */
   abstract findByIdForUpdate(id: number, tx: TransactionHandle): Promise<Pool | null>;
   /** Pools by id (missing ids are left out), by id. */

@@ -22,6 +22,8 @@ Commands:
                Stop a code (tickets already granted stay)
   tickets:grant WALLET POOL_ID COUNT [--note TEXT]
                Gift tickets into a live pool (clamped at its per-wallet cap; audited)
+  pool:seed --id N --tier 1h|4h|8h [--status open|active] [--price LAMPORTS] [--min N] [--max N] [--per-wallet N] [--prep-days D] [--play-days D] [--sold N] [--label TEXT]
+               DEVELOPMENT ONLY (refused in production): a pool in the mirror that is not on chain – for the lobby without a deployed program
   --help       Show this help
 `;
 

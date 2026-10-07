@@ -25,6 +25,11 @@ export class MemoryPoolRepository extends PoolRepositoryPort {
     return p ? Pool.restore(p) : null;
   }
 
+  async findByAddress(address: string): Promise<Pool | null> {
+    const p = [...this.db.pools.values()].find((x) => x.address === address);
+    return p ? Pool.restore(p) : null;
+  }
+
   findByIdForUpdate(id: number): Promise<Pool | null> { return this.findById(id); }
 
   async findMany(ids: number[]): Promise<Pool[]> {

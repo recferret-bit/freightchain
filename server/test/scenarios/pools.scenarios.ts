@@ -52,7 +52,7 @@ export function poolScenarios(h: () => Harness): void {
       await seedPromo('WELCOME');
       const w = await login();
       expect((await redeem(w, ' welcome ').expect(200)).body).toEqual({ code: 'WELCOME', poolId: 1, tier: '1h', added: 2, balance: 2, cap: 5 });
-      expect((await w.agent.get('/api/me').expect(200)).body.tickets).toEqual([{ poolId: 1, tier: '1h', label: '1 HOUR · test', status: 'open', balance: 2, bought: 0, cap: 5 }]);
+      expect((await w.agent.get('/api/me').expect(200)).body.tickets).toEqual([{ poolId: 1, tier: '1h', label: '1 HOUR · test', status: 'open', balance: 2, bought: 0, cap: 5, refundable: false }]);
       const profile = (await w.agent.get('/api/profile').expect(200)).body;
       expect(profile.grants).toEqual([{ poolId: 1, delta: 2, source: 'promo', ref: 'WELCOME', at: now() }]);
       expect((await redeem(w, 'WELCOME').expect(409)).body).toMatchObject({ code: 'promo_unavailable' });

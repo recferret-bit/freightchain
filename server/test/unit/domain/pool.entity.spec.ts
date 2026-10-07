@@ -1,7 +1,7 @@
 import type { ChainEventRecord } from '../../../src/domain/economy/chain-events.js';
 import { Pool } from '../../../src/domain/economy/pool.entity.js';
 import type { PoolProps } from '../../../src/domain/economy/pool.types.js';
-import { ConflictError } from '../../../src/domain/shared/errors.js';
+import { BadRequestError, ConflictError } from '../../../src/domain/shared/errors.js';
 
 const T0 = new Date('2026-10-08T00:00:00.000Z');
 const PREP = new Date('2026-11-07T00:00:00.000Z');
@@ -189,5 +189,14 @@ describe('Pool – the state machine replays the program events', () => {
     const p = pool();
     p.applyEvent(ev('PoolCreated', {}));
     expect(p.snapshot()).toEqual(props());
+  });
+});
+
+describe('Pool.register – the create_pool rules, checked again when a pool enters the mirror', () => {
+  it('accepts a valid pool and refuses broken rules', () => {
+    expect(Pool.register(props()).id).toBe(7);
+    for (const over of [{ id: -1 }, { id: 2 ** 32 }, { prizeBps: 6000 }, { minTickets: 0 }, { maxPerWallet: 0 }, { maxTickets: 1, minTickets: 2 }, { priceLamports: 0 }, { prepDeadline: new Date(PLAY.getTime() + 1) }]) {
+      expect(() => Pool.register(props(over)), JSON.stringify(over)).toThrow(BadRequestError);
+    }
   });
 });

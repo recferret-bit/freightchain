@@ -19,13 +19,15 @@ export class PoolTicketsService {
     private readonly tickets: RideTicketRepositoryPort,
   ) {}
 
-  /** What /api/me and /api/profile list: every pool the wallet holds tickets in, plus the live ones it ever had a row in. */
+  /** What /api/me and /api/profile list: pools the wallet holds tickets in, live pools it has a row in, and failed pools it paid into (refundable). */
   async balances(wallet: string, tx?: TransactionHandle): Promise<TicketBalanceDto[]> {
     const rows = await this.tickets.listByWallet(wallet, tx);
     const pools = new Map((await this.pools.findMany(rows.map((t) => t.poolId), tx)).map((p) => [p.id, p]));
     return rows.flatMap((t) => {
       const pool = pools.get(t.poolId);
-      return pool && (t.balance > 0 || pool.status === 'open' || pool.status === 'active') ? [toTicketBalanceDto(t, pool)] : [];
+      if (!pool) return [];
+      const dto = toTicketBalanceDto(t, pool);
+      return t.balance > 0 || dto.refundable || pool.status === 'open' || pool.status === 'active' ? [dto] : [];
     });
   }
 

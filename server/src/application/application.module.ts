@@ -33,6 +33,7 @@ import { ListPoolsHandler } from './use-cases/pools/list-pools/list-pools.handle
 import { GetPrizePoolHandler } from './use-cases/pools/get-prize-pool/get-prize-pool.handler.js';
 import { RedeemPromoHandler } from './use-cases/players/redeem-promo/redeem-promo.handler.js';
 
+import { RegisterPoolHandler } from './use-cases/pools/register-pool/register-pool.handler.js';
 import { CreatePromoHandler } from './use-cases/promos/create-promo/create-promo.handler.js';
 import { ListPromosHandler } from './use-cases/promos/list-promos/list-promos.handler.js';
 import { DisablePromoHandler } from './use-cases/promos/disable-promo/disable-promo.handler.js';
@@ -49,7 +50,7 @@ const handlers: Provider[] = [
   GetLivenessHandler, GetReadinessHandler,
   GrantDailyFreeRidesHandler,
   ListPoolsHandler, GetPrizePoolHandler, RedeemPromoHandler,
-  CreatePromoHandler, ListPromosHandler, DisablePromoHandler, GrantTicketsHandler,
+  CreatePromoHandler, ListPromosHandler, DisablePromoHandler, GrantTicketsHandler, RegisterPoolHandler,
 ];
 
 @Module({

@@ -1,4 +1,4 @@
-import { ConflictError } from '../shared/errors.js';
+import { BadRequestError, ConflictError } from '../shared/errors.js';
 import type { ChainEventRecord } from './chain-events.js';
 import type { PoolProps, PoolStatus } from './pool.types.js';
 
@@ -18,6 +18,19 @@ export class Pool {
   private constructor(private readonly p: PoolProps) {}
 
   static restore(props: PoolProps): Pool {
+    return new Pool({ ...props });
+  }
+
+  /** A pool entering the mirror (read from its account, or seeded for development): the rules the program enforces at create_pool, checked again. */
+  static register(props: PoolProps): Pool {
+    const bad = (why: string) => { throw new BadRequestError(`pool ${props.id}: ${why}`, 'bad_pool'); };
+    if (!Number.isInteger(props.id) || props.id < 0 || props.id > 0xffff_ffff) bad('the id is a u32');
+    if (props.prizeBps + props.seedBps + props.feeBps !== 10_000) bad('the split must add up to 10 000 bps');
+    if (!Number.isInteger(props.minTickets) || props.minTickets < 1) bad('the minimum is at least 1 ticket');
+    if (!Number.isInteger(props.maxPerWallet) || props.maxPerWallet < 1) bad('at least 1 ticket per wallet');
+    if (props.maxTickets !== 0 && props.maxTickets < props.minTickets) bad('the maximum is below the minimum');
+    if (props.priceLamports < 1) bad('a ticket costs something');
+    if (props.prepDeadline.getTime() > props.playDeadline.getTime()) bad('the preparation deadline is after the play deadline');
     return new Pool({ ...props });
   }
 

@@ -18,6 +18,8 @@ describe('PoolPrismaRepository (PostgreSQL)', () => {
     await repo.upsert(aPool({ ...big, status: 'active', ticketsSold: 4, syncedAt: at(60) }, T0));
     expect((await repo.findById(7))?.snapshot()).toMatchObject({ status: 'active', ticketsSold: 4, syncedAt: at(60) });
     expect(await repo.findById(8)).toBeNull();
+    expect((await repo.findByAddress(big.address))?.id).toBe(7);
+    expect(await repo.findByAddress('nope')).toBeNull();
   });
 
   it('listLive / listLiveOfTier: only open + active, soonest play deadline first; findMany by id', async () => {
