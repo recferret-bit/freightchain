@@ -48,3 +48,4 @@ Desktop.ini
 server/data/
 *.sqlite*
 *.tsbuildinfo
+deploy/secrets/

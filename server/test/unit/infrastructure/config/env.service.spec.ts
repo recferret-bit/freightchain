@@ -12,7 +12,7 @@ const withEnv = (vars: Record<string, string | undefined>) => {
 };
 
 describe('EnvService', () => {
-  const base = { DATABASE_URL: 'postgresql://x/db', NODE_ENV: 'development', JWT_SECRET: undefined, TREASURY_PUBKEY: undefined, DEMO_WALLETS: undefined, TRUST_PROXY: undefined, CLIENT_DIR: undefined };
+  const base = { DATABASE_URL: 'postgresql://x/db', NODE_ENV: 'development', JWT_SECRET: undefined, TREASURY_PUBKEY: undefined, DEMO_WALLETS: undefined, TRUST_PROXY: undefined, CLIENT_DIR: undefined, COOKIE_DOMAIN: undefined, CORS_ORIGINS: undefined };
 
   it('reads the environment at construction (a later change does not leak into an existing instance)', () => {
     const a = withEnv({ ...base, FREE_RIDE_SECONDS: '10' });
@@ -35,6 +35,13 @@ describe('EnvService', () => {
     expect(env.trustProxy).toBe(0);
     expect(env.clientDir).toMatch(/[\\/]client$/);
     expect(withEnv({ ...base, CLIENT_DIR: '/srv/site' }).clientDir).toBe('/srv/site');
+  });
+
+  it('split deployment: cookie domain and the CORS origin allowlist (trimmed, no trailing slash); both off by default', () => {
+    const off = withEnv(base);
+    expect([off.cookieDomain, off.corsOrigins]).toEqual([undefined, []]);
+    const on = withEnv({ ...base, COOKIE_DOMAIN: 'freightchain.fun', CORS_ORIGINS: ' https://freightchain.fun/ , https://ride.freightchain.fun ,' });
+    expect([on.cookieDomain, on.corsOrigins]).toEqual(['freightchain.fun', ['https://freightchain.fun', 'https://ride.freightchain.fun']]);
   });
 
   it('treasury: the env value, else – in development only – data/treasury.json, else none', () => {

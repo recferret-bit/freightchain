@@ -18,6 +18,11 @@ describe('validateEnv', () => {
     expect(() => validateEnv({ ...base, PORT: 'abc' })).toThrow(/PORT/);
     expect(() => validateEnv({ ...base, TREASURY_PUBKEY: 'not-an-address' })).toThrow(/TREASURY_PUBKEY/);
   });
+  it('COOKIE_DOMAIN is a bare host name', () => {
+    expect(validateEnv({ ...base, COOKIE_DOMAIN: 'freightchain.fun' }).COOKIE_DOMAIN).toBe('freightchain.fun');
+    expect(validateEnv({ ...base, COOKIE_DOMAIN: '' }).COOKIE_DOMAIN).toBeUndefined();
+    expect(() => validateEnv({ ...base, COOKIE_DOMAIN: 'https://freightchain.fun' })).toThrow(/COOKIE_DOMAIN/);
+  });
   it('accepts what the old config accepted: SOL_USD=0 (= not pinned) and any NODE_ENV', () => {
     expect(validateEnv({ ...base, SOL_USD: '0' }).SOL_USD).toBe(0);
     expect(validateEnv({ ...base, NODE_ENV: 'staging' }).NODE_ENV).toBe('staging');

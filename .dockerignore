@@ -1,0 +1,15 @@
+# Docker build context = the repo root (the image holds the server AND the site served from client/)
+**/node_modules
+**/dist
+.git
+.claude
+docs
+deploy
+**/.env
+**/.env.*
+server/data
+server/test
+server/scripts
+client/tools
+client/css/*.map
+*.log

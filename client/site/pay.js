@@ -1,4 +1,5 @@
 import { api, provider } from './wallet.js';
+import { API_BASE } from '../js/hosts.js';
 
 /* Paying for a ride: the server builds an unsigned SOL transfer (+ memo = ride id), the wallet signs and sends it, the server verifies it on chain.
    web3.js (IIFE build) is only loaded when a paid ride is actually bought – it is needed to turn the server's bytes into a Transaction the wallet accepts. */
@@ -24,7 +25,7 @@ export async function buyRide(tier, onStep = () => {}) {
   const signature = res.signature ?? res;   // Phantom / Solflare: { signature }
   onStep('Waiting for the network to confirm…');
   for (let i = 0; i < 60; i++) {
-    const r = await fetch(`/api/rides/${ride.id}/confirm`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ signature }) });
+    const r = await fetch(`${API_BASE}/api/rides/${ride.id}/confirm`, { credentials: 'include', method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ signature }) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.detail || j.title || `payment not accepted (${r.status})`);   // RFC 9457 problem+json
     if (j.status === 'paid') return j.ride;

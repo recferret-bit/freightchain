@@ -31,6 +31,9 @@ export class EnvService {
   get appOrigin(): string { return this.env.APP_ORIGIN; }
   /** the site folder (default: ../client, resolved from this module so it works from src/ and from dist/) */
   get clientDir(): string { return this.env.CLIENT_DIR ?? defaultClientDir(); }
+  get cookieDomain(): string | undefined { return this.env.COOKIE_DOMAIN; }
+  /** exact browser origins (scheme + host) that may call the API with the session cookie; empty = CORS off (single origin) */
+  get corsOrigins(): string[] { return this.env.CORS_ORIGINS.split(',').map((o) => o.trim().replace(/\/$/, '')).filter((o) => o.length > 0); }
   get trustProxy(): number { return this.env.TRUST_PROXY ?? 0; }
   get throttleLimit(): number { return this.env.THROTTLE_LIMIT; }
   get throttleAuthLimit(): number { return this.env.THROTTLE_AUTH_LIMIT; }

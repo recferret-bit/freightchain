@@ -1,0 +1,58 @@
+# Production stack: PostgreSQL + the app. Started by deploy/scripts/remote/release.sh – not by hand.
+#   docker compose --env-file /srv/freightchain/.env -f releases/<release>/deploy/docker-compose.prod.yml …
+# Every value comes from the server's /srv/freightchain/.env (uploaded by `npm run deploy`, chmod 600); RELEASE is the image tag of the release.
+name: freightchain-prod
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # no `ports:`: the database is reachable only by the app, over the compose network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+  app:
+    image: freightchain-server:${RELEASE:-latest}
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      JWT_SECRET: ${JWT_SECRET}
+      SESSION_TTL_DAYS: ${SESSION_TTL_DAYS:-7}
+      APP_DOMAIN: ${APP_DOMAIN}
+      APP_ORIGIN: ${APP_ORIGIN}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      TRUST_PROXY: ${TRUST_PROXY:-1}
+      THROTTLE_LIMIT: ${THROTTLE_LIMIT:-600}
+      THROTTLE_AUTH_LIMIT: ${THROTTLE_AUTH_LIMIT:-30}
+      FREE_RIDE_SECONDS: ${FREE_RIDE_SECONDS:-180}
+      TREASURY_PUBKEY: ${TREASURY_PUBKEY}
+      SOLANA_RPC: ${SOLANA_RPC:-https://api.devnet.solana.com}
+      SOL_USD: ${SOL_USD:-}
+      DEMO_WALLETS: ${DEMO_WALLETS:-}
+      DEMO_SCALE: ${DEMO_SCALE:-60}
+      INITIAL_SEED_SOL: ${INITIAL_SEED_SOL:-0}
+    # loopback ONLY: ports Docker publishes bypass ufw, so a bare "3000:3000" would be open to the internet. nginx on the host is the public door.
+    ports:
+      - "127.0.0.1:${APP_PORT:-3000}:3000"
+
+volumes:
+  pgdata:

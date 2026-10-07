@@ -1,5 +1,6 @@
 import { CFG } from './config.js';
 import { st } from './state.js';
+import { API_BASE } from './hosts.js';
 
 /* Online mode – OPT-IN: only when the page was opened as play.html?ride=<id> (made by the lobby). Without it nothing here runs and the game
    behaves exactly like the offline prototype (headless test, e2e, viewer and the file:// build all rely on that).
@@ -7,7 +8,7 @@ import { st } from './state.js';
 export const online = { ride: null, error: '', started: false, done: false, extra: () => ({}) };   // extra: set by ui/game.js → { route, night } for the lobby's live feed (kept out of here so this module needs no world/ imports)
 
 const api = async (path, body) => {
-  const r = await fetch(`/api/${path}`, { signal: AbortSignal.timeout(8000), method: body ? 'POST' : 'GET', headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
+  const r = await fetch(`${API_BASE}/api/${path}`, { credentials: 'include', signal: AbortSignal.timeout(8000), method: body ? 'POST' : 'GET', headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.detail || j.title || `server error ${r.status}`);   // RFC 9457 problem+json
   return j;

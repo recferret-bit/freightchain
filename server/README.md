@@ -1,7 +1,7 @@
 # Freight Chain server
 
 NestJS 12 · TypeScript (ESM) · Prisma 6 · **PostgreSQL** · Zod · CQRS. Layers, rules and the test pyramid: [`../docs/backend-architecture.md`](../docs/backend-architecture.md).
-The server also serves `../client` (the site and the game) from the same origin, so the session cookie needs no CORS.
+The server also serves `../client` (the site and the game) from the same origin in development, so the session cookie needs no CORS. In production (`deploy/`) the site is split over `freightchain.fun` (landing + lobby), `ride.*` (game) and `api.*` (API): then `COOKIE_DOMAIN` (the cookie is shared by the subdomains) and `CORS_ORIGINS` (exact origins, credentials) are set – both are derived by the deploy.
 
 ## Run it
 
@@ -14,7 +14,7 @@ npm run treasury:init           # dev treasury key → data/treasury.json (witho
 npm run start:dev               # http://localhost:3000   (from the repo root: npm run server:dev)
 ```
 
-Production: `npm run build && npm run prisma:deploy && node dist/main.js` with `NODE_ENV=production`, **`JWT_SECRET`** (≥ 32 chars) and **`TREASURY_PUBKEY`** set (both are required then), a PostgreSQL `DATABASE_URL`, `APP_DOMAIN` / `APP_ORIGIN` = the public host, and `TRUST_PROXY=<hops>` behind a reverse proxy (otherwise every rider shares one rate-limit bucket). `node dist/cli/index.js migrate` = `prisma migrate deploy`.
+Production: `npm run build && npm run prisma:deploy && node dist/main.js` with `NODE_ENV=production`, **`JWT_SECRET`** (≥ 32 chars) and **`TREASURY_PUBKEY`** set (both are required then), a PostgreSQL `DATABASE_URL`, `APP_DOMAIN` / `APP_ORIGIN` = the public host, and `COOKIE_DOMAIN` / `CORS_ORIGINS` when the pages and the API live on different (sibling) hosts, and `TRUST_PROXY=<hops>` behind a reverse proxy (otherwise every rider shares one rate-limit bucket). `node dist/cli/index.js migrate` = `prisma migrate deploy`.
 
 ## Test it
 

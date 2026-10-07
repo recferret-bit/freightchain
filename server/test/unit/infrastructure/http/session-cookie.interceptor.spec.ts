@@ -27,10 +27,22 @@ describe('SetSessionCookieInterceptor', () => {
   });
 });
 
+describe('split deployment (COOKIE_DOMAIN)', () => {
+  it('sets and clears the cookie for the shared parent domain, so the lobby, the game and the api all see it', async () => {
+    const env = { isProduction: true, cookieDomain: 'freightchain.fun' } as EnvService;
+    const set = responseSpy();
+    await lastValueFrom(new SetSessionCookieInterceptor(env).intercept(set.ctx, handlerOf({ profile: {}, session: { token: 't', expiresAt: new Date(0) } }) as never));
+    expect((set.calls[0]?.args[2] as { domain?: string }).domain).toBe('freightchain.fun');
+    const clear = responseSpy();
+    await lastValueFrom(new ClearSessionCookieInterceptor(env).intercept(clear.ctx, handlerOf({ ok: true as const })));
+    expect(clear.calls[0]?.args[1]).toEqual({ path: '/', domain: 'freightchain.fun' });
+  });
+});
+
 describe('ClearSessionCookieInterceptor', () => {
   it('clears the cookie and passes the body through', async () => {
     const { calls, ctx } = responseSpy();
-    expect(await lastValueFrom(new ClearSessionCookieInterceptor().intercept(ctx, handlerOf({ ok: true as const })))).toEqual({ ok: true });
+    expect(await lastValueFrom(new ClearSessionCookieInterceptor({} as EnvService).intercept(ctx, handlerOf({ ok: true as const })))).toEqual({ ok: true });
     expect(calls).toEqual([{ method: 'clearCookie', args: ['fc_session', { path: '/' }] }]);
   });
 });

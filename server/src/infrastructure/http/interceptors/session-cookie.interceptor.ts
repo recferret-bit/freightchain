@@ -16,8 +16,8 @@ export class SetSessionCookieInterceptor implements NestInterceptor<SignInResult
     const response = context.switchToHttp().getResponse<Response>();
     return next.handle().pipe(
       map(({ profile, session }) => {
-        // same-origin (the server also serves the site), so SameSite=Lax is enough
-        response.cookie(SESSION_COOKIE, session.token, { httpOnly: true, sameSite: 'lax', secure: this.env.isProduction, expires: session.expiresAt, path: '/' });
+        // landing / game / api are sibling subdomains = the same SITE, so SameSite=Lax is enough; COOKIE_DOMAIN makes the cookie visible to all of them
+        response.cookie(SESSION_COOKIE, session.token, { httpOnly: true, sameSite: 'lax', secure: this.env.isProduction, expires: session.expiresAt, path: '/', ...(this.env.cookieDomain ? { domain: this.env.cookieDomain } : {}) });
         return profile;
       }),
     );
@@ -27,11 +27,13 @@ export class SetSessionCookieInterceptor implements NestInterceptor<SignInResult
 /** Sign-out: clears the cookie, the body is the handler's result. */
 @Injectable()
 export class ClearSessionCookieInterceptor implements NestInterceptor<LogoutResultDto, LogoutResultDto> {
+  constructor(private readonly env: EnvService) {}
+
   intercept(context: ExecutionContext, next: CallHandler<LogoutResultDto>): Observable<LogoutResultDto> {
     const response = context.switchToHttp().getResponse<Response>();
     return next.handle().pipe(
       map((result) => {
-        response.clearCookie(SESSION_COOKIE, { path: '/' });
+        response.clearCookie(SESSION_COOKIE, { path: '/', ...(this.env.cookieDomain ? { domain: this.env.cookieDomain } : {}) });   // must repeat the Domain or the browser keeps the cookie
         return result;
       }),
     );

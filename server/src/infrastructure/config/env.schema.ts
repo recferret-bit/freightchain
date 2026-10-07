@@ -14,6 +14,9 @@ export const envSchema = z
     APP_DOMAIN: z.string().min(1).default('localhost:3000'),
     APP_ORIGIN: z.string().min(1).default('http://localhost:3000'),
     CLIENT_DIR: optional(z.string()),
+    /** Split deployment (landing / game / api on sibling subdomains): the session cookie's Domain (e.g. freightchain.fun, shared by all subdomains) and the browser origins allowed to call the API with it. Unset = single origin. */
+    COOKIE_DOMAIN: optional(z.string().regex(/^[a-z0-9.-]+$/i, 'COOKIE_DOMAIN must be a bare host name (no scheme, no port)')),
+    CORS_ORIGINS: z.string().default(''),
     TRUST_PROXY: optional(z.coerce.number().int().min(0)),
     THROTTLE_LIMIT: z.coerce.number().int().positive().default(600),
     THROTTLE_AUTH_LIMIT: z.coerce.number().int().positive().default(30),

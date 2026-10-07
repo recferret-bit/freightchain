@@ -1,5 +1,6 @@
 import { api, signOut } from './wallet.js';
 import { buyRide } from './pay.js';
+import { GAME_BASE } from '../js/hosts.js';
 
 /* The lobby: NEW RIDE · LIVE · LEADERBOARD · PROFILE. Vanilla DOM, no framework.
    Everything that comes from the server (wallet addresses, route ids, statuses…) goes in with textContent – never innerHTML – because other riders' data is rendered here. */
@@ -86,7 +87,7 @@ async function checkPending() {
 function paintPending() {
   const box = $('pendingbox'); if (!box) return;
   const r = S.pending;
-  box.replaceChildren(r ? el('div', { class: 'note' }, el('span', {}, el('b', {}, `Your paid ${TIER_NAME[r.tier] ?? r.tier} ride is waiting`), S.pendingNote ? ` · ${S.pendingNote}` : ''), el('button', { onclick: () => { location.href = `/play.html?ride=${r.id}`; } }, 'START IT')) : S.pendingNote ? el('p', { class: 'dim' }, S.pendingNote) : '');
+  box.replaceChildren(r ? el('div', { class: 'note' }, el('span', {}, el('b', {}, `Your paid ${TIER_NAME[r.tier] ?? r.tier} ride is waiting`), S.pendingNote ? ` · ${S.pendingNote}` : ''), el('button', { onclick: () => { location.href = `${GAME_BASE}/play.html?ride=${r.id}`; } }, 'START IT')) : S.pendingNote ? el('p', { class: 'dim' }, S.pendingNote) : '');
 }
 
 const tierInfo = t => {   // what the card shows: a demo wallet's paid shifts are shorter
@@ -139,7 +140,7 @@ async function start() {
     if (ride.tier !== id) {   // the server handed back a ride you already own (e.g. a paid one waiting) – never send you into the wrong one silently
       await checkPending(); say(`You already have a ${TIER_NAME[ride.tier] ?? ride.tier} ride ready – start that one first.`, true); return;
     }
-    location.href = `/play.html?ride=${ride.id}`;
+    location.href = `${GAME_BASE}/play.html?ride=${ride.id}`;
   } catch (e) {
     say(e.status === 409 && /in progress/.test(e.message) ? 'You already have a ride on the road (another tab?). It frees up about 2½ minutes after its last signal.' : e.message, true);
   } finally { S.busy = false; if ($('tiers')) paintTiers(); }

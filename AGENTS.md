@@ -11,8 +11,10 @@ Vanilla ES modules + three.js r160 from a CDN. No build step, no framework, no b
 client/    the game (everything below up to "Not implemented" is relative to client/) + site pages: index.html (landing, placeholder), lobby.html + site/lobby.js|css (tabs: new ride · live · leaderboard · profile; vanilla DOM, server text only via textContent), play.html (the game), viewer.html, site/wallet.js (sign-in) + pay.js (buy a ride)
 server/    NestJS 12 + TypeScript (ESM) + Prisma 6 + PostgreSQL, Clean Architecture: src/{app,cli,domain,application,infrastructure,presentation} + main.ts, prisma/ (multi-file schema, one PG schema per context, reviewed SQL migrations), test/ – see docs/backend-architecture.md
 docs/      hackathon-plan.md (day-by-day plan with progress ticks) · backend-architecture.md (the server's layers, rules, race-safety table, test pyramid)
+deploy/    semi-automatic deploy to /srv/freightchain on a server (`npm run deploy`, docker + host nginx + certbot; `deploy/.env` real + gitignored, `deploy/.env.example` dummy + tracked) – read deploy/README.md before touching it; ships `git archive HEAD`, so commit first
 docker-compose.yml   local PostgreSQL for the server (project "freightchain", 127.0.0.1:15433)
 ```
+- **Split hosts in production**: landing + lobby on the apex, the game on `ride.<apex>`, the API on `api.<apex>` (nginx on the box, `deploy/`). All client API calls go through `client/js/hosts.js` (`API_BASE` / `GAME_BASE` / `SITE_BASE`, `''` on localhost / IP / `file://`) with `credentials: 'include'`; the server needs `COOKIE_DOMAIN` + `CORS_ORIGINS` (derived by the deploy). New fetches/links to the game or lobby must use those bases, never a bare `/api/…` or `/play.html`.
 - `npm run server:dev` (root) starts Nest on :3000, which also serves `client/` – the page and `/api` share an origin, so the session cookie needs no CORS. `client/serve.sh` still serves the game alone (offline mode).
 - **Online mode is opt-in**: `play.html?ride=<id>` (`js/online.js`) takes the seed + shift length from the server and heartbeats it; without `?ride` the game is the offline prototype (headless test, e2e, viewer and the `file://` build rely on that).
 - **Server rules (docs/backend-architecture.md, enforced by `server/test/architecture`)**:
@@ -52,6 +54,7 @@ js/road.js            road centre-line ("spine"): curvature → heading → x/z 
 js/net/patterns.js    road PATTERNS (country / highway / arterial / town: lanes, bends, junction spacing, signal odds) – see "Road network"
 js/net/network.js     `net` = RoadNetwork: seeded lazy layout (segments, junctions, start), cross-section `xs(s)`, lanes, `onRoad`, `keepOut`, `roadside`, signals, main-road / side-road frames
 js/net/orchestrator.js `roads` = RoadOrchestrator: newTrip / setTheme / per-frame update (signal clock, generation, chunk streaming, signal lenses, red-light check) / HUD status
+js/hosts.js           `API_BASE` / `GAME_BASE` / `SITE_BASE`: where the API, the game and the lobby live (`api.`/`ride.`/apex on a real domain, '' = same origin elsewhere) – see "Split hosts"
 js/wallet.js          MOCK wallet (localStorage)
 js/world/scene.js     renderer, scene, camera, canvasTex() (nothing route-specific any more)
 js/world/environment.js  `env` = the applied route's sky / terrain / mountains / road material / props / furniture; applyTheme()

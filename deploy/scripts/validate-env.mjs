@@ -1,0 +1,30 @@
+// Checks the PRODUCTION environment (read from stdin as KEY=VALUE lines) with the server's own env schema under production rules – the same code that
+// would refuse to boot on the server. Needs `npm run server:build` first (the schema is imported from server/dist).
+import { createRequire } from 'node:module';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+
+const repo = join(fileURLToPath(new URL('.', import.meta.url)), '..', '..');
+const schema = join(repo, 'server', 'dist', 'infrastructure', 'config', 'env.schema.js');
+if (!existsSync(schema)) { console.error('server/dist is missing – run: npm run server:build'); process.exit(2); }
+const { validateEnv } = await import(pathToFileURL(schema).href);
+const require = createRequire(join(repo, 'server', 'package.json'));
+
+let text = '';
+for await (const chunk of process.stdin) text += chunk;
+const env = {};
+for (const line of text.split('\n')) { const m = /^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/.exec(line); if (m) env[m[1]] = m[2]; }
+
+const problems = [];
+try {
+  // the server builds DATABASE_URL from POSTGRES_* inside compose – stand in with the same shape
+  validateEnv({ ...env, NODE_ENV: 'production', DATABASE_URL: `postgresql://${env.POSTGRES_USER}:${env.POSTGRES_PASSWORD}@postgres:5432/${env.POSTGRES_DB}` });
+} catch (e) { problems.push(String(e.message).replace(/^Configuration validation error:\n/, '')); }
+for (const key of ['POSTGRES_USER', 'POSTGRES_PASSWORD', 'POSTGRES_DB']) if (!env[key]) problems.push(`${key} is empty`);
+if (env.POSTGRES_PASSWORD && !/^[0-9a-f]{16,}$/.test(env.POSTGRES_PASSWORD)) problems.push('POSTGRES_PASSWORD must be lowercase hex, >= 16 chars (it goes into a URL unescaped)');
+if (env.TRUST_PROXY !== '1') problems.push('TRUST_PROXY must be 1 (host nginx is exactly one reverse-proxy hop; any other value mis-reads client IPs)');
+try { require.resolve('tweetnacl'); } catch { problems.push('server/node_modules is missing – run: npm install --prefix server'); }
+
+if (problems.length) { console.error(problems.map((p) => `  - ${p.replace(/\n/g, '\n    ')}`).join('\n')); process.exit(1); }
+console.log('production environment is valid');

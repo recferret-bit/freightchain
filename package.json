@@ -15,6 +15,14 @@
     "db:down": "npm --prefix server run db:down",
     "db:migrate": "npm --prefix server run prisma:deploy",
     "server:integration": "npm --prefix server run test:integration:stack",
-    "server:typecheck": "npm --prefix server run typecheck"
+    "server:typecheck": "npm --prefix server run typecheck",
+    "deploy": "bash deploy/scripts/deploy.sh",
+    "deploy:init": "bash deploy/scripts/init.sh",
+    "deploy:setup": "bash deploy/scripts/setup.sh",
+    "deploy:status": "bash deploy/scripts/ctl.sh status",
+    "deploy:logs": "bash deploy/scripts/ctl.sh logs",
+    "deploy:backup": "bash deploy/scripts/ctl.sh backup",
+    "deploy:rollback": "bash deploy/scripts/ctl.sh rollback",
+    "deploy:smoke": "bash deploy/scripts/ctl.sh smoke"
   }
 }

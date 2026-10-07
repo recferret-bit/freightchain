@@ -12,6 +12,7 @@ import { resetScreen } from '../cockpit/windscreen.js';
 import { routesHTML, bindRoutes, timeHTML, bindTime } from './routes.js';
 import { online, beginOnline, endOnline } from '../online.js';
 import { env } from '../world/environment.js';
+import { SITE_BASE } from '../hosts.js';
 
 /* Ride flow: menu / start / end / pause overlay and per-ride reset. */
 
@@ -52,7 +53,7 @@ function showOnlineMenu(title, sub, extra) {
   overlay.classList.remove('hide');
   if (!over && !bad) { bindRoutes(panel); bindTime(panel); }
   document.getElementById('go').onclick = startRide;
-  document.getElementById('lobby').onclick = () => { location.href = '/lobby.html'; };
+  document.getElementById('lobby').onclick = () => { location.href = `${SITE_BASE}/lobby.html`; };
 }
 export async function startRide() {   // (offline there is no await, so it still runs synchronously)
   if (online.error || online.done) return;
