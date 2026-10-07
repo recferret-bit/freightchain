@@ -25,6 +25,7 @@ Dependencies point inward: `presentation → application → domain` and `infras
 | auth / players | `Player` (free-ride credits, daily grant), `AuthChallenge` (Sign-In With Solana), wallet address | request-challenge, verify-signin, get-me, logout |
 | rides | `Ride` (lifecycle + progress rules), tiers, report | create-ride, get-ride, get-pending-ride, start-ride, heartbeat-ride, end-ride |
 | economy | `Round` (weekly pool), `Payment`, prize split, payment verification | get-payment-instructions, confirm-payment, reconcile-payment, get-tiers, get-pool, get-leaderboard |
+| pools (escrow) | `Pool` (mirror of the on-chain pool account: state machine replayed from program events), `RideTicket` (+ `TicketGrant` audit trail), `PromoCode`, `TicketOrder` | list-pools, get-prize-pool, register-pool, redeem-promo, grant-tickets, create/list/disable-promo, create-ticket-order, get-ticket-order, get-pending-ticket-order; services `PoolTicketsService`, `TicketSettlementService` |
 | achievements | catalogue + rules, `AchievementUnlock` | (evaluated by end-ride / get-profile) |
 | lobby | DTOs for the live feed and the profile | get-live, get-profile |
 | health | – | get-readiness |
@@ -74,6 +75,11 @@ Race-safety, because Prisma is async (every `await` lets other requests run):
 | heartbeat vs end | optimistic `Ride.version`; `end` retries so it always lands; the unlock evaluation after it is best-effort (never turns the saved verdict into a 500) |
 | a pool exhausted by queued lock-waiters | transactions wait up to 8 s for a connection; Prisma's P2028 → 503 and P2034 (write conflict / deadlock) → 409 – both retryable, never a 500 |
 | ties between equal timestamps | `Ride.seq` (BIGSERIAL, insertion order) as the tie-breaker |
+| **lock order for pools** | the wallet's `Player` row → the `Pool` row (`findByIdForUpdate`) → `RideTicket` rows – never the other way round (a void holds the pool, then tickets; nothing waits for a pool while holding a ticket row) |
+| one ticket, one paid ride | the ticket is spent inside `CreateRideHandler`'s player-locked transaction BEFORE anything else changes (a 409 changes nothing); the "one ride in hand" rule hands a re-asked ride back without spending again |
+| a pool failing while its tickets are spent or bought | `voidAllOfPool` runs under the pool lock and bumps every ticket `version`: a racing spend's save conflicts and retries (and then finds 0); a purchase seen after the failure is credited as `bought` (refundable) and voided at once |
+| the last redemption of a promo code | ONE `UPDATE … SET redeemed = redeemed + 1 WHERE … redeemed < maxRedemptions`; the per-wallet limit is the `(code, wallet, n)` primary key; the pool cap is checked before a redemption is taken |
+| a purchase event seen twice (confirm fast path, webhook, poll) | `(signature, eventIndex)` is unique on `TicketOrder`; the settlement checks it under the locks – the loser answers `duplicate` with the paid order, never an error; pool counters are recomputed from the program's running totals, so a replay changes nothing |
 
 ## Tests (`server/test/`) – the pyramid
 
