@@ -1,10 +1,15 @@
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { toRideDto, type RideDto } from '../../../../domain/rides/ride.dto.js';
 import { RideStatus } from '../../../../domain/rides/ride-status.js';
+import { progressMilestones, progressRatio } from '../../../../domain/rides/ride-progress.js';
 import { ConflictError } from '../../../../domain/shared/errors.js';
+import { AnalyticsPort } from '../../../ports/analytics/analytics.port.js';
 import { RulesConfigPort } from '../../../ports/config/rules-config.port.js';
 import { RideRepositoryPort } from '../../../ports/rides/ride.repository.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
+import { rideFailed, rideProgressed } from '../../../services/analytics-events.js';
+import { emitAnalytics } from '../../../services/analytics-emit.js';
+import { isDemoWallet } from '../../../services/demo.js';
 import { RideLookupService } from '../../../services/ride-lookup.service.js';
 import { HeartbeatRideCommand } from './heartbeat-ride.command.js';
 
@@ -16,6 +21,7 @@ export class HeartbeatRideHandler implements ICommandHandler<HeartbeatRideComman
     private readonly rides: RideRepositoryPort,
     private readonly rules: RulesConfigPort,
     private readonly clock: ClockPort,
+    private readonly analytics: AnalyticsPort,
   ) {}
 
   async execute({ wallet, rideId, report }: HeartbeatRideCommand): Promise<RideDto> {
@@ -23,7 +29,17 @@ export class HeartbeatRideHandler implements ICommandHandler<HeartbeatRideComman
     if (!ride.isInStatus(RideStatus.Running)) throw new ConflictError(`ride is ${ride.status}`);
     const now = this.clock.now();
     if (!ride.canAcceptHeartbeat(now, this.rules.get())) return toRideDto(ride);
-    ride.applyReport(report, now, this.rules.get()); // a report that fails the ride is persisted too
-    return toRideDto(await this.rides.save(ride));
+    const before = progressRatio(ride.driveSeconds, ride.minSeconds, ride.distance, ride.completeDist);
+    const accepted = ride.applyReport(report, now, this.rules.get()); // a report that fails the ride is persisted too
+    const saved = await this.rides.save(ride);
+    const props = saved.snapshot();
+    const demo = (): boolean => isDemoWallet(this.rules.get(), wallet);
+    if (!accepted || props.status === RideStatus.Failed) {
+      emitAnalytics(this.analytics, () => rideFailed(props, demo(), 'heartbeat'));
+    } else {
+      const after = progressRatio(props.driveSeconds, props.minSeconds, props.lastS, props.completeDist);
+      for (const milestone of progressMilestones(before, after)) emitAnalytics(this.analytics, () => rideProgressed(props, demo(), milestone, now));
+    }
+    return toRideDto(saved);
   }
 }

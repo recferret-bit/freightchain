@@ -13,6 +13,9 @@ export interface PlayerProps {
 
 /** A rider, identified by the Solana wallet that signed in. Owns the free-ride credits. */
 export class Player {
+  /** Set after `insertIfAbsent` resolves. Not in `snapshot()`, so a later save cannot write it. */
+  private fresh = false;
+
   private constructor(private readonly props: PlayerProps) {}
 
   /** First sight of a wallet: the signup free rides. */
@@ -30,6 +33,10 @@ export class Player {
   get freeDay(): string { return this.props.freeDay; }
   get freeRidesMax(): number { return this.props.freeRidesMax; }
   get createdAt(): Date { return this.props.createdAt; }
+  /** True only when this process inserted the row on the touch that returned this instance. */
+  get isNewPlayer(): boolean { return this.fresh; }
+
+  markNewPlayer(isNew: boolean): void { this.fresh = isNew; }
 
   /** True when the next daily credit is still to come (below the cap) – the lobby counts down to it. */
   get awaitsDailyGrant(): boolean { return this.props.freeRides < this.props.freeRidesMax; }

@@ -26,8 +26,9 @@ export class PlayerPrismaRepository extends PlayerRepositoryPort {
     return rows[0] ? PlayerMapper.toDomain(rows[0]) : null;
   }
 
-  async insertIfAbsent(player: Player, tx?: TransactionHandle): Promise<void> {
-    await clientFor(this.prisma, tx).player.createMany({ data: [PlayerMapper.toCreateData(player)], skipDuplicates: true });
+  async insertIfAbsent(player: Player, tx?: TransactionHandle): Promise<boolean> {
+    const result = await clientFor(this.prisma, tx).player.createMany({ data: [PlayerMapper.toCreateData(player)], skipDuplicates: true });
+    return result.count === 1;
   }
 
   async grantDailyFreeRides(today: string): Promise<number> {

@@ -3,11 +3,13 @@ import { StartRideCommand } from '../../../../../src/application/use-cases/rides
 import { RideStatus } from '../../../../../src/domain/rides/ride-status.js';
 import { ConflictError, NotFoundError } from '../../../../../src/domain/shared/errors.js';
 import { unitContext } from '../../../../support/unit-context.js';
+import { RecordingAnalytics } from '../../../../support/recording-analytics.js';
 
 const setup = () => {
   const ctx = unitContext();
-  const handler = new StartRideHandler(ctx.lookup, ctx.rides, ctx.players, ctx.rules, ctx.transactions, ctx.clock);
-  return { ctx, start: (id: string, wallet = 'w') => handler.execute(new StartRideCommand(wallet, id)) };
+  const analytics = new RecordingAnalytics();
+  const handler = new StartRideHandler(ctx.lookup, ctx.rides, ctx.players, ctx.rules, ctx.transactions, ctx.clock, analytics);
+  return { ctx, analytics, start: (id: string, wallet = 'w') => handler.execute(new StartRideCommand(wallet, id)) };
 };
 
 describe('StartRideHandler', () => {
@@ -28,7 +30,7 @@ describe('StartRideHandler', () => {
   });
 
   it('one RUNNING ride per wallet: a second paid ride waits until the first ends (or its tab vanished)', async () => {
-    const { ctx, start } = setup();
+    const { ctx, analytics, start } = setup();
     const first = await ctx.paidOrder('w');
     first.markPaid(1, ctx.now()); await ctx.rides.save(first);
     const second = await ctx.paidOrder('w');
@@ -38,5 +40,7 @@ describe('StartRideHandler', () => {
     ctx.clock.advance(151); // the first ride's tab is gone
     expect(await start(second.id)).toMatchObject({ status: 'running' });
     expect(await ctx.reload(first.id)).toMatchObject({ status: RideStatus.Failed, reason: 'heartbeat lost' });
+    expect(analytics.named('ride_failed').map((e) => e.properties)).toMatchObject([{ ride_id: first.id, fail_code: 'heartbeat_lost', ended_by: 'stale_on_start' }]);
+    expect(analytics.named('ride_started').map((e) => e.properties['ride_id'])).toEqual([first.id, second.id]);
   });
 });

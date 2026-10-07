@@ -18,6 +18,13 @@ class RoundClosed extends Error {}
 
 const ATTEMPTS = 3;
 
+/** `inserted` is true only when THIS call wrote the Payment. `paidAt` is that row's `at`, and null when another caller already did. */
+export interface SettlementResult {
+  ride: RideDto;
+  inserted: boolean;
+  paidAt: Date | null;
+}
+
 /**
  * Records a VERIFIED payment, in one transaction under the wallet's row lock: the order becomes a ready ride in the current round's pool.
  *  - A paid ride is never lost, and the wallet keeps one ride in hand: an unstarted FREE ride is cancelled (credit refunded) and another unpaid order lapses –
@@ -38,7 +45,7 @@ export class PaymentSettlementService {
     private readonly clock: ClockPort,
   ) {}
 
-  async settle(rideId: string, wallet: string, signature: string): Promise<RideDto> {
+  async settle(rideId: string, wallet: string, signature: string): Promise<SettlementResult> {
     for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
       try {
         return await this.settleOnce(rideId, wallet, signature);
@@ -47,7 +54,7 @@ export class PaymentSettlementService {
         if (error instanceof ConflictError || error instanceof VersionConflictError) {
           // lost a race: if that was THIS payment being recorded by a concurrent request, the outcome is "paid", not an error
           const recorded = await this.payments.findBySignature(signature);
-          if (recorded?.rideId === rideId) return toRideDto(await this.lookup.require(rideId, wallet));
+          if (recorded?.rideId === rideId) return { ride: toRideDto(await this.lookup.require(rideId, wallet)), inserted: false, paidAt: null };
         }
         throw error;
       }
@@ -55,7 +62,7 @@ export class PaymentSettlementService {
     throw new ServiceUnavailableError('the weekly round is turning over – try again');
   }
 
-  private async settleOnce(rideId: string, wallet: string, signature: string): Promise<RideDto> {
+  private async settleOnce(rideId: string, wallet: string, signature: string): Promise<SettlementResult> {
     const now = this.clock.now();
     const round = await this.rounds.ensureRound(now);
     return this.transactions.run(async (tx) => {
@@ -71,7 +78,7 @@ export class PaymentSettlementService {
       }
       // the unique signature / ride keys make a concurrent double-settle fail here with a ConflictError, rolling the whole transaction back
       await this.payments.insert(new Payment({ signature, rideId: ride.id, wallet, lamports: ride.lamports, usd: ride.priceUsd, roundId: round.id, at: now }), tx);
-      return toRideDto(await this.rides.save(ride, tx));
+      return { ride: toRideDto(await this.rides.save(ride, tx)), inserted: true, paidAt: now };
     });
   }
 
