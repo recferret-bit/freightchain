@@ -56,6 +56,14 @@ function paintHero() {
     $('hero-shifts').textContent = l.totals.shifts;
     $('chip-live').textContent = `${l.rides.length} ON THE ROAD`; $('soc-live').textContent = l.rides.length;
   }
+  paintBoardsLive();
+}
+
+/* the load board (06) and the trip sheet (05): live cells only where the server knows the number */
+function paintBoardsLive() {
+  const p = S.pool, l = S.live;
+  if (l) { $('lb-drivers').textContent = `${l.totals.drivers} driver${l.totals.drivers === 1 ? '' : 's'}`; $('lb-live').textContent = `${l.rides.length} on the road now`; $('sheet-km').textContent = km(l.totals.metres); }
+  if (p) { $('lb-entries').textContent = `${p.entries} this round`; $('lb-pot').textContent = `${sol(p.split.grand)} SOL`; }
 }
 
 function paintPool() {
@@ -177,9 +185,15 @@ for (const card of document.querySelectorAll('.card3d')) {
     const r = card.getBoundingClientRect(), px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
     card.classList.add('live');
     card.style.setProperty('--rx', `${((.5 - py) * MAX * 2).toFixed(2)}deg`); card.style.setProperty('--ry', `${((px - .5) * MAX * 2).toFixed(2)}deg`);
-    card.style.setProperty('--gx', `${(px * 100).toFixed(1)}%`); card.style.setProperty('--gy', `${(py * 100).toFixed(1)}%`);
   });
   card.addEventListener('pointerleave', () => { card.classList.remove('live'); card.style.setProperty('--rx', '0deg'); card.style.setProperty('--ry', 'var(--base, 0deg)'); });
+}
+
+/* the cards render with the game's own cockpit code once they are near the viewport (the PNGs above stay as the fallback and the colour source) */
+const liveCards = [...document.querySelectorAll('.card3d[data-live]')];
+if (liveCards.length) {
+  const lio = new IntersectionObserver(es => { if (!es.some(e => e.isIntersecting)) return; lio.disconnect(); import('./dash-live.js').then(m => m.startLiveDash(liveCards)).catch(e => console.warn('live dash cards unavailable', e)); }, { rootMargin: '600px' });
+  lio.observe($('cards'));
 }
 
 /* ───── scroll reveal + section highlight ───── */
@@ -195,5 +209,5 @@ api('tiers').then(paintTiers, () => { $('tiers').replaceChildren(el('tbody', {},
 refreshBoard();
 setInterval(() => { if (!document.hidden) refresh(); }, 10000);
 setInterval(() => { if (!document.hidden) refreshBoard(); }, 30000);
-setInterval(() => { if (!S.pool) return; const t = left(S.pool.round.endsAt - now()); $('hero-cd').textContent = t; document.querySelectorAll('.pool .cd').forEach(c => { c.textContent = t; }); }, 1000);
+setInterval(() => { $('lb-clock').textContent = new Date(now()).toISOString().slice(11, 19); if (!S.pool) return; const t = left(S.pool.round.endsAt - now()); $('hero-cd').textContent = t; document.querySelectorAll('.pool .cd').forEach(c => { c.textContent = t; }); }, 1000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });

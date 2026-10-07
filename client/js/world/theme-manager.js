@@ -9,7 +9,7 @@ import { weather } from '../state.js';
 const KEY = 'freightchain.route';
 export function selectTheme(id, save = true) {
   const t = getTheme(id);
-  Object.assign(weather, { ambient: 25, snow: 0 }, t.weather);   // sim/ and the windscreen read the climate from state, not from the scene
+  Object.assign(weather, { ambient: 25, snow: 0 }, t.weather, { grime: t.grime });   // sim/ and the windscreen read the climate from state, not from the scene
   applyTheme(t); roads.setTheme(t); setLivery(t.livery);
   if (save) store.set(KEY, t.id);
   return t;

@@ -90,11 +90,11 @@ export function uiButton(id, label, x, y, w, h, u, on) {
   ctx.fillStyle = on ? '#9dff8a' : '#bdb59d'; ctx.font = `${1.9 * u}px ${MONO}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(label, x + w / 2, y + h / 2);
 }
 /* Ignition: key switch (OFF / ON / START) + START button. The key follows the engine state (st.ign: 0-1 s key-on, 1-2.3 s cranking), a refused attempt (st.keyDeny) wiggles it. */
-let keyPos = 0, keyT = 0;   // 0 OFF, 1 ON, 2 START (sprung back to ON when the engine catches)
+export const keyAnim = { pos: 0, t: 0 };   // pos 0 OFF, 1 ON, 2 START (sprung back to ON when the engine catches); exported so the landing's dash cards can keep one each
 export function ignitionPanel(x, y, u) {
-  const now = performance.now(), dt = clamp((now - keyT) / 1000, 0, .1); keyT = now;
+  const now = performance.now(), dt = clamp((now - keyAnim.t) / 1000, 0, .1); keyAnim.t = now; let keyPos = keyAnim.pos;
   const ign = st.ign, crank = !!ign && ign.t >= 1.0, target = ign ? (crank ? 2 : 1) : (st.engineOn || st.stalled || st.keyOn) ? 1 : 0;
-  keyPos = approach(keyPos, target, target > keyPos ? (target === 2 ? 9 : 3.5) : 7, dt);
+  keyPos = keyAnim.pos = approach(keyPos, target, target > keyPos ? (target === 2 ? 9 : 3.5) : 7, dt);
   const deny = st.keyDeny || 0, ang = (keyPos - 1) * .9 + (crank ? Math.sin(now / 16) * .035 : 0) + Math.sin(deny * 28) * deny * .3;
   const bg = ctx.createRadialGradient(x, y - u, u, x, y, 4.6 * u); bg.addColorStop(0, '#2b2822'); bg.addColorStop(1, '#0a0908');
   ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(x, y, 4.2 * u, 0, 7); ctx.fill(); ctx.strokeStyle = chromeGrad(x - 4 * u, x + 4 * u); ctx.lineWidth = .6 * u; ctx.stroke();
@@ -138,7 +138,7 @@ export function radioPanel(rx, u, pw) {
 }
 
 /* Tweened gear-lever position. H gate: leave the gear's row, slide across the neutral channel (row 0), then enter the new row. */
-const lever = { col: 0, row: 0, t: 0 }, LEVER_RATE = 28;   // gate units / s
+export const lever = { col: 0, row: 0, t: 0 }, LEVER_RATE = 28;   // gate units / s
 export function leverPos(tcol, trow) {
   const now = performance.now(), dt = clamp((now - lever.t) / 1000, 0, .1); lever.t = now;
   if (Math.abs(lever.col - tcol) > .005) { if (Math.abs(lever.row) > .005) lever.row = approach(lever.row, 0, LEVER_RATE, dt); else lever.col = approach(lever.col, tcol, LEVER_RATE, dt); }

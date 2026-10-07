@@ -2,7 +2,6 @@ import { ctx, view } from './canvas.js';
 import { st, dn, weather } from '../state.js';
 import { CFG } from '../config.js';
 import { ambientC } from '../sim/climate.js';
-import { env } from '../world/environment.js';
 import { toast } from '../ui/toast.js';
 import { clamp, rnd } from '../util.js';
 
@@ -40,7 +39,7 @@ const GW = 512, GH = 256, grime = document.createElement('canvas'); grime.width 
 const gctx = grime.getContext('2d');
 export const wip = { mode: 0, phase: 0, burst: 0, wet: 0, phi: 0, acc: 0, last: performance.now() };
 const drops = [], spray = [], PHI_MAX = 1.75;
-function speck() { gctx.fillStyle = `rgba(${env.theme.grime},${.07 + Math.random() * .14})`; gctx.beginPath(); gctx.arc(Math.random() * GW, Math.random() * GH, 1 + Math.random() * 3.5, 0, 7); gctx.fill(); }
+function speck() { gctx.fillStyle = `rgba(${weather.grime},${.07 + Math.random() * .14})`; gctx.beginPath(); gctx.arc(Math.random() * GW, Math.random() * GH, 1 + Math.random() * 3.5, 0, 7); gctx.fill(); }
 function snowSpeck() { gctx.fillStyle = `rgba(244,248,255,${.3 + Math.random() * .3})`; gctx.beginPath(); gctx.arc(Math.random() * GW, Math.random() * GH, 1.2 + Math.random() * 3.2, 0, 7); gctx.fill(); }
 export function resetScreen() { gctx.clearRect(0, 0, GW, GH); for (let i = 0; i < 250; i++) speck(); Object.assign(wip, { mode: 0, phase: 0, burst: 0, wet: 0, phi: 0, acc: 0, snowAcc: 0 }); drops.length = 0; spray.length = 0; resetFrost(); flakes.length = 0; }
 

@@ -19,7 +19,7 @@
 <header class="top">
   <a class="brand" href="#ride"><span class="mark">⛟</span> FREIGHT CHAIN <small>DESERT RUN</small></a>
   <nav class="nav" aria-label="Sections">
-    <a href="#ride"><i>01</i> RIDE</a><a href="#loop"><i>02</i> LOOP</a><a href="#economy"><i>03</i> ECONOMY</a><a href="#about"><i>04</i> ABOUT</a>
+    <a href="#ride"><i>01</i> RIDE</a><a href="#loop"><i>02</i> LOOP</a><a href="#garage"><i>03</i> FREIGHTER</a><a href="#economy"><i>04</i> ECONOMY</a><a href="#roadmap"><i>05</i> ROADMAP</a><a href="#market"><i>06</i> MARKET</a><a href="#about"><i>07</i> ABOUT</a>
   </nav>
   <div class="right">
     <span class="chip lcd" id="chip-live" title="trucks on the road right now">– ON THE ROAD</span>
@@ -96,17 +96,17 @@
   <div class="dash rv">
     <h3 class="sub">THE DASH · HOVER A CARD</h3>
     <div class="cards" id="cards">
-      <article class="card3d" style="--base:-5deg"><div class="img"><img src="/media/cards/key-on.png" alt="ignition key switch, ON" loading="lazy"><i class="glare"></i></div>
+      <article class="card3d" style="--base:-5deg" data-live="key"><div class="img"><img src="/media/cards/key-on.png" alt="ignition key switch, ON" loading="lazy"></div>
         <footer><b>IGNITION KEY</b><p>Three positions. <em>OFF</em>: nothing works – gauges dead, even the brake pedal. <em>ON</em>: a one-second sweep and bulb check, instruments live, battery draining. <em>START</em>: hold to crank. <kbd>I</kbd> is a one-tap start, <kbd>O</kbd> kills it.</p></footer></article>
-      <article class="card3d" style="--base:4deg"><div class="img"><img src="/media/cards/gear.png" alt="gear display showing 3 and the rev counter" loading="lazy"><i class="glare"></i></div>
+      <article class="card3d" style="--base:4deg" data-live="gear"><div class="img"><img src="/media/cards/gear.png" alt="gear display showing 3 and the rev counter" loading="lazy"></div>
         <footer><b>GEARBOX</b><p>Seven gears, clutch in to shift (<kbd>Shift</kbd> + <kbd>E</kbd>/<kbd>Q</kbd>). Every gear pulls in a band: lug a tall one at a crawl and it stalls, sit on the redline and STRAIN charges. <kbd>Q</kbd> from neutral is reverse – stop first.</p></footer></article>
-      <article class="card3d" style="--base:-4deg"><div class="img"><img src="/media/cards/lamps.png" alt="warning lamps with COLD, STRAIN and BRAKES lit" loading="lazy"><i class="glare"></i></div>
+      <article class="card3d" style="--base:-4deg" data-live="lamps"><div class="img"><img src="/media/cards/lamps.png" alt="warning lamps with COLD, STRAIN and BRAKES lit" loading="lazy"></div>
         <footer><b>WARNING LAMPS</b><p>Eight lamps. Amber means watch it, red means fix it now, blinking red means seconds left. COLD cuts power until the engine warms; OFF ROAD gives you five seconds; BRAKES is what driving against the parking brake buys you.</p></footer></article>
-      <article class="card3d" style="--base:5deg"><div class="img"><img class="fit" src="/media/cards/lights.png" alt="LED bars and the HEAD, NIGHT and HEAT buttons" loading="lazy"><i class="glare"></i></div>
+      <article class="card3d" style="--base:5deg" data-live="lights"><div class="img"><img class="fit" src="/media/cards/lights.png" alt="LED bars and the HEAD, NIGHT and HEAT buttons" loading="lazy"></div>
         <footer><b>LIGHTS &amp; HEAT</b><p><kbd>L</kbd> HEAD: at night the only thing lighting the road. <kbd>N</kbd> NIGHT jumps the clock. <kbd>H</kbd> HEAT thaws the frost from the vents outward and pulls heat out of the engine. All of it drains the battery with the engine off.</p></footer></article>
-      <article class="card3d" style="--base:-5deg"><div class="img"><img src="/media/cards/park.png" alt="TRAILER and PARK lamps, WIPER and WASH buttons" loading="lazy"><i class="glare"></i></div>
+      <article class="card3d" style="--base:-5deg" data-live="park"><div class="img"><img src="/media/cards/park.png" alt="TRAILER and PARK lamps, WIPER and WASH buttons" loading="lazy"></div>
         <footer><b>PARK, WIPERS, WASH</b><p><kbd>B</kbd> PARK is a spring brake: ON at every start, holds with the engine off, holds against thrust – and cooks the brakes if you fight it. <kbd>R</kbd> wipers, hold <kbd>X</kbd> to wash. Dry blades barely clear the dust; wipers never clear frost.</p></footer></article>
-      <article class="card3d" style="--base:4deg"><div class="img"><img src="/media/cards/trip-radio.png" alt="trip computer and cab radio" loading="lazy"><i class="glare"></i></div>
+      <article class="card3d" style="--base:4deg" data-live="trip"><div class="img"><img src="/media/cards/trip-radio.png" alt="trip computer and cab radio" loading="lazy"></div>
         <footer><b>TRIP &amp; RADIO</b><p>Trip km, shift time over the minimum, outside °C – the server's clock is the one that counts. <kbd>T</kbd> radio: five stations of procedurally generated songs on a wall-clock broadcast, so every cab hears the same song at the same moment.</p></footer></article>
     </div>
   </div>
@@ -117,9 +117,51 @@
 
 <div class="road" aria-hidden="true"><i></i></div>
 
-<!-- ───────── 03 · ECONOMY & TECH ───────── -->
+<!-- ───────── 03 · YOUR FREIGHTER (the garage – none of it is in this build) ───────── -->
+<section class="ch" id="garage">
+  <header class="ch-h rv"><i>03</i><h2>YOUR FREIGHTER</h2><p>One truck exists today: the long-hood semi you drive. The garage is where Solana comes in – trucks, upgrades and interior as tokens you own and take from shift to shift. <b>None of it is in this build.</b> Read the rules at the bottom before you get excited.</p></header>
+
+  <div class="garage rv">
+    <aside class="spec">
+      <img src="/media/day.png" alt="the cab of the FC-01 long-hood semi" loading="lazy">
+      <div class="spec-h"><span class="lbl">UNIT ON THE ROAD</span><b>FC-01 · CONVENTIONAL LONG-HOOD</b></div>
+      <dl>
+        <dt>GEARBOX</dt><dd>7-speed, ratios 6.15 → 0.75, clutch</dd>
+        <dt>GOVERNOR</dt><dd>100 km/h – same for every truck, forever</dd>
+        <dt>HULL</dt><dd>100 % · scratches, bumps, direct hits</dd>
+        <dt>POWER</dt><dd>cold-engine curve, redline strain, battery, alternator</dd>
+        <dt>GLASS</dt><dd>dust, frost, washer tank, two wipers (left + centre)</dd>
+        <dt>LIVERY</dt><dd>trailer painted per route (5 in the game)</dd>
+        <dt>OWNER</dt><dd class="dim">— (nothing is tokenised yet)</dd>
+      </dl>
+    </aside>
+
+    <div class="parts">
+      <h3>PARTS CATALOGUE</h3>
+      <div class="parts-grid">
+        <article class="part" data-status="in-game"><i class="glyph truck"></i><div><b>FC-01 CONVENTIONAL</b><span>The truck above. Everyone starts in it; it stays free.</span></div><em>IN THE GAME</em></article>
+        <article class="part" data-status="planned"><i class="glyph cabover"></i><div><b>FC-02 CABOVER <small>NFT</small></b><span>A different cockpit: flat nose, higher seat, more glass, worse mirrors. Same engine, same governor.</span></div><em>PLANNED</em></article>
+        <article class="part" data-status="concept"><i class="glyph roadtrain"></i><div><b>FC-03 ROAD TRAIN <small>NFT</small></b><span>Two trailers in the mirrors, twice the swing in reverse. Stuart Highway native.</span></div><em>CONCEPT</em></article>
+        <article class="part" data-status="planned"><i class="glyph gear"></i><div><b>SPLITTER · 8TH GEAR</b><span>Closer ratios, one more shift. Comfort, not speed – the governor does not move.</span></div><em>PLANNED</em></article>
+        <article class="part" data-status="planned"><i class="glyph radiator"></i><div><b>BIG RADIATOR</b><span>Warms up faster on a −22 °C start, runs cooler at redline. Fewer COLD seconds.</span></div><em>PLANNED</em></article>
+        <article class="part" data-status="planned"><i class="glyph battery"></i><div><b>HEAVY-DUTY BATTERY</b><span>Headlights, heater and radio for longer with the engine off. Starts in the cold.</span></div><em>PLANNED</em></article>
+        <article class="part" data-status="concept"><i class="glyph lamp"></i><div><b>WIDE HEADLIGHTS</b><span>A broader cone at night. You still get dazzled.</span></div><em>CONCEPT</em></article>
+        <article class="part" data-status="planned"><i class="glyph wheel"></i><div><b>GOLDEN WHEEL</b><span>Interior. The steering wheel, in gold. Does nothing. Everyone in your mirrors knows.</span></div><em>PLANNED</em></article>
+        <article class="part" data-status="planned"><i class="glyph gauge"></i><div><b>GAUGE FACES</b><span>Amber, ice-blue or green backlight for the whole cluster. Night shifts look different.</span></div><em>PLANNED</em></article>
+        <article class="part" data-status="concept"><i class="glyph dice"></i><div><b>DASH TRIM &amp; DICE</b><span>Walnut or carbon dash, dice colours, cab-lamp tint, a horn.</span></div><em>CONCEPT</em></article>
+        <article class="part" data-status="planned"><i class="glyph paint"></i><div><b>PAINT SHOP</b><span>Your own trailer livery instead of the route's. Five exist in the game already.</span></div><em>PLANNED</em></article>
+        <article class="part" data-status="in-game"><i class="glyph badge"></i><div><b>BADGES → MINT</b><span>Six badges exist (server-side). Click-to-mint for wallets with a paid ride is the next step – never auto-mint.</span></div><em>IN THE GAME</em></article>
+      </div>
+    </div>
+  </div>
+  <p class="honest rv"><b>Rules of the garage:</b> cosmetics and comfort, never the clock and never the speed. The governor, the minimum time and the distance bar are the same for a golden wheel and a stock one, so a paid part is never pay-to-win. Anything that changes physics (the splitter, the radiator) has to live in the <em>server</em> simulation before it can be sold – that is the replay core on the roadmap, not a client flag. Trucks and parts would be ordinary Solana tokens you can trade; the game only reads what you hold.</p>
+</section>
+
+<div class="road" aria-hidden="true"><i></i></div>
+
+<!-- ───────── 04 · ECONOMY & TECH ───────── -->
 <section class="ch" id="economy">
-  <header class="ch-h rv"><i>03</i><h2>ECONOMY &amp; WHAT THE SERVER CHECKS</h2><p>One pot per UTC week, every tier together. Integer lamports, floored shares, the remainder to fees. Accounted on this build; the draw and payouts come next.</p></header>
+  <header class="ch-h rv"><i>04</i><h2>ECONOMY &amp; WHAT THE SERVER CHECKS</h2><p>One pot per UTC week, every tier together. Integer lamports, floored shares, the remainder to fees. Accounted on this build; the draw and payouts come next.</p></header>
 
   <div class="econ rv">
     <div class="card pool" id="poolbox"><span class="dim">Loading the pool…</span></div>
@@ -144,9 +186,87 @@
 
 <div class="road" aria-hidden="true"><i></i></div>
 
-<!-- ───────── 04 · ABOUT ───────── -->
+<!-- ───────── 05 · ROADMAP (the driver's trip sheet) ───────── -->
+<section class="ch" id="roadmap">
+  <header class="ch-h rv"><i>05</i><h2>ROADMAP</h2><p>Written the way a driver writes a trip sheet: legs, stops, a tick when it is behind us, a stamp when it got cut. Dates only where we have them.</p></header>
+  <div class="clip rv">
+    <div class="clamp"></div>
+    <div class="sheet">
+      <div class="sheet-h"><b>FREIGHT CHAIN · TRIP SHEET</b><span>DRIVER: solo &nbsp;·&nbsp; UNIT: FC-01 &nbsp;·&nbsp; DISPATCH: Colosseum Crypto World's Fair &nbsp;·&nbsp; DUE: Oct 12 2026, 11:59 PT</span></div>
+      <table class="legs">
+        <tbody>
+          <tr class="leg"><th colspan="3">LEG 1 · DEPOT <small>Oct 6–7</small></th><td class="stamp"><span class="st done">DONE</span></td></tr>
+          <tr class="done"><td class="box">☑</td><td>The driving sim – truck, roads, routes, climate, traffic</td><td class="note">pre-existing, disclosed</td><td></td></tr>
+          <tr class="done"><td class="box">☑</td><td>Repo split, NestJS server, Sign-In With Solana</td><td class="note">Day 0</td><td></td></tr>
+          <tr class="done"><td class="box">☑</td><td>Server-timed rides: heartbeats, speed bound, verdict</td><td class="note">Day 0</td><td></td></tr>
+          <tr class="done"><td class="box">☑</td><td>SOL/USD quotes, on-chain payment check, weekly pool accounting, demo clock</td><td class="note">Day 1</td><td></td></tr>
+          <tr class="done"><td class="box">☑</td><td>Lobby: new ride · live · leaderboard · profile; persisted badges</td><td class="note">Day 2</td><td></td></tr>
+          <tr class="done"><td class="box">☑</td><td>This page</td><td class="note">Day 2</td><td></td></tr>
+
+          <tr class="leg"><th colspan="3">LEG 2 · ON THE ROAD <small>Oct 8–12</small></th><td class="stamp"><span class="st now">ROLLING</span></td></tr>
+          <tr class="next"><td class="box">☐</td><td>Deploy to a public URL; a stranger finishes a free ride</td><td class="note">host TBD</td><td></td></tr>
+          <tr class="next"><td class="box">☐</td><td>First real devnet payment into the treasury; pool number moves</td><td class="note">faucet</td><td></td></tr>
+          <tr class="next"><td class="box">☐</td><td>Gameplay loop + ≤ 3 min demo video, 2–3 min pitch</td><td class="note">Oct 11</td><td></td></tr>
+          <tr class="next"><td class="box">☐</td><td>Five playtests outside the team – the only demand number</td><td class="note">Oct 10</td><td></td></tr>
+          <tr class="next"><td class="box">☐</td><td>Submission: form, videos, deck, disclosure</td><td class="note">Oct 12 noon PT</td><td></td></tr>
+
+          <tr class="leg"><th colspan="3">LEG 3 · NEXT FUEL STOP <small>after the fair</small></th><td class="stamp"><span class="st later">BOOKED</span></td></tr>
+          <tr class="later"><td class="box">☐</td><td>The draw and the payouts – commit-and-reveal or a VRF, keys outside the repo</td><td class="note">prizes paid</td><td></td></tr>
+          <tr class="later"><td class="box">☐</td><td>Deterministic replay core: fixed 60 Hz tick, fixed-point maths, 7-byte input log, server re-simulates a paid finish</td><td class="note">anti-cheat</td><td></td></tr>
+          <tr class="later"><td class="box">☐</td><td>Share page per ride (<code>/r/:id</code>), click-to-mint badges for paid wallets</td><td class="note">distribution</td><td></td></tr>
+
+          <tr class="leg"><th colspan="3">LEG 4 · LONG HAUL</th><td class="stamp"><span class="st later">BOOKED</span></td></tr>
+          <tr class="later"><td class="box">☐</td><td>The garage: trucks, upgrades, interior as Solana tokens (chapter 03)</td><td class="note">after replay</td><td></td></tr>
+          <tr class="later"><td class="box">☐</td><td>Mainnet with published rules; gambling question answered per region</td><td class="note"></td><td></td></tr>
+          <tr class="later"><td class="box">☐</td><td>Spectator sabotage from the live feed: fog, wind, a pothole for the driver you are watching</td><td class="note">Desert Bus 3.0</td><td></td></tr>
+          <tr class="later"><td class="box">☐</td><td>Telegram Mini App</td><td class="note"></td><td></td></tr>
+
+          <tr class="leg"><th colspan="3">LEFT AT THE DEPOT <small>cut on purpose</small></th><td class="stamp"><span class="st cut">CUT</span></td></tr>
+          <tr class="cut"><td class="box">☒</td><td>Anchor escrow program – a memo-checked System transfer does the job this week</td><td class="note">toolchain</td><td></td></tr>
+          <tr class="cut"><td class="box">☒</td><td>Truck upgrades and mint-on-unlock in the hackathon build</td><td class="note">pay-to-win risk</td><td></td></tr>
+          <tr class="cut"><td class="box">☒</td><td>A second chain, a React rewrite, the 8-hour spec ride</td><td class="note">focus</td><td></td></tr>
+        </tbody>
+      </table>
+      <div class="sheet-f"><span>Signed: the driver</span><span>Odometer at filing: <b id="sheet-km">–</b> km, all riders</span></div>
+    </div>
+  </div>
+</section>
+
+<div class="road" aria-hidden="true"><i></i></div>
+
+<!-- ───────── 06 · GO TO MARKET (the dispatch load board) ───────── -->
+<section class="ch" id="market">
+  <header class="ch-h rv"><i>06</i><h2>GO TO MARKET</h2><p>Read it like a load board at the depot: every lane is a way a driver finds us, RATE is what it costs, FILL is live wherever the server knows the number. No lane carries a number we made up.</p></header>
+  <div class="loadboard rv">
+    <div class="lb-h"><span>FREIGHT CHAIN DISPATCH · LOAD BOARD</span><span><i class="dot live"></i> LIVE · <b id="lb-clock">--:--:--</b> UTC</span></div>
+    <table class="loads">
+      <thead><tr><th>LANE</th><th>CARGO</th><th>RATE</th><th>FILL</th><th>STATUS</th></tr></thead>
+      <tbody>
+        <tr><td>FREE RIDES</td><td>5 at signup, +1 every UTC day. The habit; its own leaderboard and badges.</td><td>$0</td><td class="num" id="lb-drivers">–</td><td><em class="rolling">ROLLING</em></td></tr>
+        <tr><td>PAID SHIFTS</td><td>1 h / 4 h / 8 h at $5 / $15 / $50 in SOL. Every entry grows the one pot.</td><td>in</td><td class="num" id="lb-entries">–</td><td><em class="rolling">ROLLING · DEVNET</em></td></tr>
+        <tr><td>THE POT</td><td>One global number. Every paid ride changes a page other people are looking at.</td><td>50/20/20/10</td><td class="num" id="lb-pot">–</td><td><em class="rolling">ACCRUING</em></td></tr>
+        <tr><td>LIVE BOARD</td><td>Watch without a wallet: who is driving, how far, PAUSED / NO SIGNAL.</td><td>$0</td><td class="num" id="lb-live">–</td><td><em class="booked">BOOKED</em></td></tr>
+        <tr><td>SHARE PAGE</td><td>One URL per finished ride (<code>/r/:id</code>): route, distance, verdict, pot at the time.</td><td>a page</td><td class="num">–</td><td><em class="bid">BID</em></td></tr>
+        <tr><td>X POSTS</td><td>The pot number, one post per paid finish. Account not named yet.</td><td>time</td><td class="num">–</td><td><em class="bid">BID</em></td></tr>
+        <tr><td>SOLANA CROWDS</td><td>People who already sit through long on-chain spectacles and streams; leaderboard chasers.</td><td>time</td><td class="num">–</td><td><em class="bid">BID</em></td></tr>
+        <tr><td>PLAYTESTS</td><td>Five people outside the team on the public URL, Oct 10. Finishes and paid attempts counted – that is the demand number, whatever it is.</td><td>5 favours</td><td class="num" id="lb-tests">–</td><td><em class="bid">BID</em></td></tr>
+        <tr class="off"><td>PAID ADS</td><td>Not this week.</td><td>–</td><td class="num">–</td><td><em class="unlisted">NOT LISTED</em></td></tr>
+        <tr class="off"><td>MOBILE WALLETS · REGIONS · KYC</td><td>Beyond Phantom / Solflare on desktop: not this week, on purpose.</td><td>–</td><td class="num">–</td><td><em class="unlisted">NOT LISTED</em></td></tr>
+      </tbody>
+    </table>
+    <div class="lb-f">
+      <span><b>COMMISSION</b> 10 % of every weekly pool – the business, once pools pay out.</span>
+      <span><b>SEED</b> 20 % carried into next week so the board never shows zero.</span>
+      <span><b>THESIS</b> attention is the scarce good; a public clock, a public pot and a public board sell it.</span>
+    </div>
+  </div>
+</section>
+
+<div class="road" aria-hidden="true"><i></i></div>
+
+<!-- ───────── 07 · ABOUT ───────── -->
 <section class="ch" id="about">
-  <header class="ch-h rv"><i>04</i><h2>ABOUT</h2><p>Freight Chain sells proven time-on-road. Desert Run is the first title.</p></header>
+  <header class="ch-h rv"><i>07</i><h2>ABOUT</h2><p>Freight Chain sells proven time-on-road. Desert Run is the first title.</p></header>
   <div class="about rv">
     <article><h3>WHY A TRUCK</h3><p>Desert Bus (1995) was an eight-hour drive from Tucson to Las Vegas at 45 mph for one point. Nobody should have finished it, and people did – and other people watched. The scarce thing was attention. This is that, with the finish decided by a server and the pot in SOL.</p></article>
     <article><h3>BUILT · CUT · NEXT</h3>

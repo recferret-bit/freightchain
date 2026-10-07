@@ -20,7 +20,7 @@ export const st = {
 /* day/night: `night` = the chosen mode, `k` = fade 0 (day)..1 (night, lerped by world/daynight.js), `head` = headlights, `hk` = their fade, `cab` = cab lamp, `blind` = dazzle from oncoming headlights 0..1 (bx/by = their screen position). `onChange` lets the menu cards follow the N key. */
 export const dn = { night: false, k: 0, t: 12, scale: 60, run: true, phase: 'day', morning: true, head: true, hk: 1, cab: false, blind: 0, hood: 0, bx: .5, by: .4, onChange: null };
 /* route weather (set by selectTheme from the theme's `weather`): ambient °C and snowfall 0..1; the engine/glass read it from here, so sim/ never imports the scene */
-export const weather = { ambient: 25, snow: 0 };
+export const weather = { ambient: 25, snow: 0, grime: '176,146,104' };   // grime = windscreen dust colour 'r,g,b'
 export const input = { gas: 0, brake: 0, left: 0, right: 0, clutch: 0, wash: 0 };
 /* gauge needles are sprung toward their targets so they sweep instead of snapping */
 export const disp = { v: 0, rpm: 0, air: 0.2, oil: 0, temp: 0.35, fuel: 0.85, volt: 0.56, h2o: 1, vel: { h2o: 0, v: 0, rpm: 0, air: 0, oil: 0, temp: 0, fuel: 0, volt: 0 } };
