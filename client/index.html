@@ -4,26 +4,66 @@
 <meta charset="utf-8">
 <title>Freight Chain – Desert Run</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Pay for a driving shift. The server keeps the clock. Finishers share one weekly pool. Devnet build.">
 <link rel="icon" href="data:,">
-<link rel="stylesheet" href="site/site.css">
+<link rel="stylesheet" href="site/lobby.css">
+<link rel="stylesheet" href="site/landing.css">
 </head>
 <body>
-<main><div class="panel">
-  <h1>FREIGHT CHAIN</h1>
-  <h2>Drive the whole shift. Share the pool. (Placeholder landing – the real one is Day 4 of docs/hackathon-plan.md)</h2>
-  <div class="row"><span>New riders</span><b>5 free rides</b></div>
-  <div class="row"><span>Then</span><b>1 free ride a day</b></div>
-  <div class="btns"><button id="connect">CONNECT WALLET</button></div>
-  <p class="dim" id="msg"></p>
-</div></main>
-<script type="module">
-  import { signIn, api } from './site/wallet.js';
-  const msg = document.getElementById('msg'), btn = document.getElementById('connect');
-  api('me').then(() => { location.href = '/lobby.html'; }, () => { /* not signed in yet */ });   // already has a session
-  btn.onclick = async () => {
-    btn.disabled = true; msg.textContent = 'Approve the sign-in message in your wallet…'; msg.className = 'dim';
-    try { await signIn(); location.href = '/lobby.html'; } catch (e) { msg.textContent = e.message; msg.className = 'bad'; btn.disabled = false; }
-  };
-</script>
+<header class="top">
+  <a class="brand" href="/">⛟ FREIGHT CHAIN</a>
+  <div class="chips">
+    <span class="chip live" id="chip-live" title="trucks on the road right now">– on the road</span>
+    <a class="chip" href="/lobby.html#board">LEADERBOARD</a>
+  </div>
+</header>
+<main>
+  <section class="hero">
+    <div class="card pool" id="poolbox"><span class="dim">Loading the pool…</span></div>
+    <div class="pitch">
+      <h1>Drive the whole shift.<br>Share the pool.</h1>
+      <p>A truck, an endless road and a clock the server keeps. Pay for a 1, 4 or 8 hour shift, finish it, and your entry competes for one weekly prize pool.</p>
+      <div class="cta">
+        <button id="connect">CONNECT WALLET → 5 FREE RIDES</button>
+        <a class="ghost-link" href="/lobby.html#live">WATCH LIVE</a>
+      </div>
+      <p class="msg dim" id="msg"></p>
+      <p class="dim">Devnet build. Paid rides use devnet SOL, nothing here is real money.</p>
+    </div>
+  </section>
+
+  <h2>HOW IT WORKS</h2>
+  <ol class="steps">
+    <li><b>Pay</b><span>Pick a shift. SOL at the live rate, checked on chain by the server.</span></li>
+    <li><b>Drive</b><span>The full time. The server counts it and caps your speed. Pause is honest, backgrounding earns nothing.</span></li>
+    <li><b>Finish</b><span>The server marks the finish, not your browser.</span></li>
+    <li><b>Share</b><span>Every entry goes into one weekly pool. Finishers compete for it.</span></li>
+  </ol>
+
+  <h2>SHIFTS</h2>
+  <div class="card"><table class="tbl" id="tiers"><tbody><tr><td class="dim">Loading…</td></tr></tbody></table>
+    <p class="dim" id="price"></p></div>
+
+  <h2>WHERE THE POOL GOES</h2>
+  <div class="card">
+    <div class="split" id="bar"><i class="s-grand" style="width:50%"></i><i class="s-top" style="width:20%"></i><i class="s-seed" style="width:20%"></i><i class="s-fees" style="width:10%"></i></div>
+    <div class="legend"><span class="s-grand"><b>50%</b> grand prize, a draw among finishers weighted by shift length</span><span class="s-top"><b>20%</b> top 20 by distance (skill prize)</span><span class="s-seed"><b>20%</b> seeds next week</span><span class="s-fees"><b>10%</b> platform</span></div>
+    <p class="dim">Prizes are accrued and shown here. The draw and the payouts are not live in this build.</p>
+  </div>
+
+  <h2>THIS WEEK'S TOP 5</h2>
+  <div class="card"><div id="top5" class="top5"><span class="dim">Loading…</span></div></div>
+
+  <h2>BADGES</h2>
+  <div class="badges">
+    <span>First Mile</span><span>Shift Complete</span><span>Night Owl</span><span>Century</span><span>Clean Run</span><span>Cold Start</span>
+  </div>
+
+  <h2>WHY</h2>
+  <p>Desert Bus (1995) was a game about driving a bus across a desert in real time. Nobody should have finished it, and people did. The scarce thing is attention, so that is what this sells.</p>
+  <p class="dim">On cheating: the server keeps the clock and the speed limit. A modified client can still lie inside that limit. Deterministic replay is the next step, not built yet.</p>
+</main>
+<footer>Devnet build · <a href="https://github.com/recferret-bit/freightchain">GitHub</a> · <a href="/lobby.html">lobby</a> · <a href="/play.html">offline practice</a></footer>
+<script type="module" src="site/landing.js"></script>
 </body>
 </html>

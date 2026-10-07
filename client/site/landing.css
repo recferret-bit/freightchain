@@ -1,0 +1,22 @@
+.hero{display:grid;gap:22px;align-items:center;grid-template-columns:1fr 1fr}
+.pitch h1{margin:0 0 10px;font-size:clamp(26px,5vw,40px);line-height:1.1;color:var(--amber);letter-spacing:1px}
+.pitch p{margin:8px 0}
+.cta{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:16px 0 4px}
+.ghost-link{color:var(--amber);font-size:13px;letter-spacing:1px}
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:10px;grid-template-columns:repeat(4,1fr);counter-reset:s}
+.steps li{counter-increment:s;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;gap:4px;align-content:start}
+.steps li::before{content:counter(s);color:var(--dim);font-size:12px}
+.steps b{color:var(--amber);letter-spacing:1px}
+.steps span{font-size:13px;color:var(--dim)}
+.tbl{width:100%;border-collapse:collapse}
+.tbl td,.tbl th{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line)}
+.tbl th{font-size:12px;color:var(--dim);font-weight:normal;letter-spacing:1px}
+.tbl tr:last-child td{border-bottom:0}
+.top5 .r{display:flex;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.top5 .r:last-child{border-bottom:0}
+.top5 .n{width:1.6em;color:var(--dim)}.top5 .d{margin-left:auto}
+.av{display:inline-block;width:14px;height:14px;border-radius:50%}
+.badges{display:flex;gap:8px;flex-wrap:wrap}
+.badges span{border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:12px;background:#0006}
+main{padding-bottom:20px}
+@media(max-width:720px){.hero{grid-template-columns:1fr}.steps{grid-template-columns:1fr 1fr}}

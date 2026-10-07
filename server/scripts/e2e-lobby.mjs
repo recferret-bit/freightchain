@@ -82,6 +82,14 @@ await rider.shot('board-desktop'); await size(rider, 390, 844, true); await slee
 await rider.send('Page.reload'); check('reload keeps the tab (#board)', await until(async () => (await rider.ev('document.querySelector(".tabs a.on")?.dataset.tab')) === 'board'));
 await obs.send('Page.navigate', { url: `${BASE}/lobby.html#new` }); await sleep(1500);
 
+// ── LANDING (signed in: no forced redirect, CTA becomes the lobby link; public numbers agree with the API)
+await open(obs, B, `${BASE}/`);
+check('landing: stays on / and shows the pool', await until(async () => (await obs.ev('location.pathname')) === '/' && /SOL$/.test(await obs.ev('document.querySelector("#poolbox .big")?.textContent || ""'))));
+check('landing: 4 shifts + top-5 box', (await obs.ev('document.querySelectorAll("#tiers tbody tr").length')) === 4 && !!(await obs.ev('document.getElementById("top5").textContent')));
+check('landing: signed-in CTA opens the lobby', await until(async () => /LOBBY/.test(await obs.ev('document.getElementById("connect").textContent'))));
+check('landing: pool = /api/pool', (await obs.ev('document.querySelector("#poolbox .big").textContent')) === (l => `${(l / 1e9).toFixed(l >= 1e9 ? 2 : 3)} SOL`)((await (await fetch(`${BASE}/api/pool`)).json()).split.grand));
+await obs.shot('landing-desktop'); await size(obs, 390, 844, true); await sleep(300); await obs.shot('landing-phone');
+
 const p1 = rider.filt(), p2 = obs.filt(); check('no page errors (rider, observer)', !p1.length && !p2.length, [...p1, ...p2].join(' | '));
 console.log(`screenshots: ${rider.SHOTS}`);
 const code = fails.length ? 1 : 0;   // every finish() schedules a process.exit – give them all the same code so the first one to fire can't hide a failure
