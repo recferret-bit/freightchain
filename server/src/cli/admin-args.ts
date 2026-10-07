@@ -1,0 +1,57 @@
+import { parseArgs } from 'node:util';
+import { isPaidTierId, type PaidTierId } from '../domain/rides/ride-tier.js';
+
+/* Argument parsing of the admin commands – pure, so it is unit-tested without a database. A parse error is a string (printed with the help). */
+
+export interface PromoCreateArgs {
+  code: string; tier: PaidTierId; poolId: number | null; credits: number; maxRedemptions: number | null; perWallet: number; expiresAt: Date | null; note: string | null;
+}
+export interface TicketsGrantArgs { wallet: string; poolId: number; count: number; note: string | null }
+
+const int = (name: string, raw: string | undefined, min: number): number | string => {
+  const n = Number(raw);
+  return raw !== undefined && Number.isInteger(n) && n >= min ? n : `--${name} must be a whole number ≥ ${min}`;
+};
+
+/** `promo:create CODE --tier 1h --credits 2 [--max 100] [--per-wallet 1] [--expires 2026-10-31] [--pool 7] [--note text]` */
+export function parsePromoCreate(args: readonly string[]): PromoCreateArgs | string {
+  let parsed;
+  try {
+    parsed = parseArgs({
+      args: [...args], allowPositionals: true,
+      options: { tier: { type: 'string' }, credits: { type: 'string' }, max: { type: 'string' }, 'per-wallet': { type: 'string' }, expires: { type: 'string' }, pool: { type: 'string' }, note: { type: 'string' } },
+    });
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+  const { values: v, positionals } = parsed;
+  if (positionals.length !== 1) return 'give exactly one code';
+  if (!isPaidTierId(v.tier)) return '--tier must be 1h, 4h or 8h';
+  const credits = int('credits', v.credits, 1);
+  const perWallet = v['per-wallet'] === undefined ? 1 : int('per-wallet', v['per-wallet'], 1);
+  const max = v.max === undefined ? null : int('max', v.max, 1);
+  const poolId = v.pool === undefined ? null : int('pool', v.pool, 0);
+  for (const x of [credits, perWallet, max, poolId]) if (typeof x === 'string') return x;
+  let expiresAt: Date | null = null;
+  if (v.expires !== undefined) {
+    expiresAt = new Date(/^\d{4}-\d{2}-\d{2}$/.test(v.expires) ? `${v.expires}T00:00:00Z` : v.expires);
+    if (Number.isNaN(expiresAt.getTime())) return '--expires must be a date (YYYY-MM-DD, UTC midnight) or an ISO timestamp';
+  }
+  return { code: positionals[0] as string, tier: v.tier, poolId: poolId as number | null, credits: credits as number, maxRedemptions: max as number | null, perWallet: perWallet as number, expiresAt, note: v.note ?? null };
+}
+
+/** `tickets:grant WALLET POOL_ID COUNT [--note text]` */
+export function parseTicketsGrant(args: readonly string[]): TicketsGrantArgs | string {
+  let parsed;
+  try {
+    parsed = parseArgs({ args: [...args], allowPositionals: true, options: { note: { type: 'string' } } });
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+  const [wallet, pool, count] = parsed.positionals;
+  if (parsed.positionals.length !== 3 || !wallet) return 'give WALLET POOL_ID COUNT';
+  const poolId = int('pool', pool, 0), n = int('count', count, 1);
+  if (typeof poolId === 'string') return 'POOL_ID must be a whole number ≥ 0';
+  if (typeof n === 'string') return 'COUNT must be a whole number ≥ 1';
+  return { wallet, poolId, count: n, note: parsed.values.note ?? null };
+}

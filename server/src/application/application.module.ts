@@ -33,6 +33,11 @@ import { ListPoolsHandler } from './use-cases/pools/list-pools/list-pools.handle
 import { GetPrizePoolHandler } from './use-cases/pools/get-prize-pool/get-prize-pool.handler.js';
 import { RedeemPromoHandler } from './use-cases/players/redeem-promo/redeem-promo.handler.js';
 
+import { CreatePromoHandler } from './use-cases/promos/create-promo/create-promo.handler.js';
+import { ListPromosHandler } from './use-cases/promos/list-promos/list-promos.handler.js';
+import { DisablePromoHandler } from './use-cases/promos/disable-promo/disable-promo.handler.js';
+import { GrantTicketsHandler } from './use-cases/players/grant-tickets/grant-tickets.handler.js';
+
 const services: Provider[] = [AchievementService, PaymentSettlementService, PlayerSessionService, PoolTicketsService, RideLookupService, RoundService];
 
 const handlers: Provider[] = [
@@ -44,6 +49,7 @@ const handlers: Provider[] = [
   GetLivenessHandler, GetReadinessHandler,
   GrantDailyFreeRidesHandler,
   ListPoolsHandler, GetPrizePoolHandler, RedeemPromoHandler,
+  CreatePromoHandler, ListPromosHandler, DisablePromoHandler, GrantTicketsHandler,
 ];
 
 @Module({

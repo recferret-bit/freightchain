@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { PrismaClient } from '@prisma/client';
 import { EnvService } from '../infrastructure/config/env.service.js';
 import { truncateAllTables } from '../infrastructure/prisma/truncate.js';
+import { runAdmin } from './admin-commands.js';
 
 export const HELP = `
 Freight Chain server CLI
@@ -14,6 +15,13 @@ Usage:
 Commands:
   migrate      Apply the database migrations (prisma migrate deploy)
   db:reset     Truncate every table (refused in production)
+  promo:create CODE --tier 1h|4h|8h --credits N [--max N] [--per-wallet N] [--expires YYYY-MM-DD] [--pool ID] [--note TEXT]
+               A promo code: N free tickets per redemption into the tier's live pool (or the pinned --pool)
+  promo:list   Every promo code with its usage
+  promo:disable CODE
+               Stop a code (tickets already granted stay)
+  tickets:grant WALLET POOL_ID COUNT [--note TEXT]
+               Gift tickets into a live pool (clamped at its per-wallet cap; audited)
   --help       Show this help
 `;
 
@@ -63,6 +71,8 @@ export async function runCli(argv: readonly string[]): Promise<number> {
   const [command] = argv;
   if (command === 'migrate') return runMigrate();
   if (command === 'db:reset') return runDbReset();
+  const admin = command ? await runAdmin(command, argv.slice(1)) : null;
+  if (admin !== null) return admin;
   console.log(HELP);
   return command === undefined || command === '--help' ? 0 : 1;
 }
