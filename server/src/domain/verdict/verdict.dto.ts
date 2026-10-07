@@ -17,4 +17,9 @@ export interface VerdictDto {
   status: VerdictStatus;
   reasons: VerdictReason[];
   judgedAt: number;
+  /** set when an admin decided the status by hand (the reasons stay as judged) */
+  override: { by: string; at: number; note: string | null } | null;
 }
+
+/** What an admin may set a verdict to. */
+export type VerdictDecision = VerdictStatus.Verified | VerdictStatus.Rejected;

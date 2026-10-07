@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { RideStatus } from '../../domain/rides/ride-status.js';
 import { RideVerdict } from '../../domain/verdict/ride-verdict.entity.js';
+import type { VerdictDecision } from '../../domain/verdict/verdict.dto.js';
+import { NotFoundError } from '../../domain/shared/errors.js';
+import { AdminActionRepositoryPort } from '../ports/admin/admin-action.repository.port.js';
 import { PlayerRepositoryPort } from '../ports/players/player.repository.port.js';
 import { RideRepositoryPort } from '../ports/rides/ride.repository.port.js';
 import { ClockPort } from '../ports/shared/clock.port.js';
@@ -11,7 +14,7 @@ import { RideVerdictRepositoryPort } from '../ports/verdict/ride-verdict.reposit
 /**
  * Judges a completed ride from its stored recording (RideVerdict.judge) and saves the verdict. Called right after /end and again when a batch lands
  * after the end (the final flush). Runs under the wallet's player row lock, and reads the batches only once it holds it: of two racing judgements
- * the one that saves last has seen every batch the other saw, so a stale verdict can never overwrite a fresher one.
+ * the one that saves last has seen every batch the other saw, so a stale verdict can never overwrite a fresher one. A verdict an admin decided is kept as is.
  */
 @Injectable()
 export class VerdictService {
@@ -22,6 +25,7 @@ export class VerdictService {
     private readonly players: PlayerRepositoryPort,
     private readonly batches: RideBatchRepositoryPort,
     private readonly verdicts: RideVerdictRepositoryPort,
+    private readonly audit: AdminActionRepositoryPort,
     private readonly transactions: TransactionPort,
     private readonly clock: ClockPort,
   ) {}
@@ -32,10 +36,31 @@ export class VerdictService {
       const ride = await this.rides.findById(rideId, tx);
       if (!ride || !ride.isInStatus(RideStatus.Completed)) return null;
       await this.players.findByWalletForUpdate(ride.wallet, tx);
+      const existing = await this.verdicts.findByRide(rideId, tx);
+      if (existing?.isOverridden) return existing; // an admin decided – a late batch or a re-judge never replaces that
       const verdict = RideVerdict.judge(ride, await this.batches.listByRide(rideId, tx), this.clock.now());
       await this.verdicts.save(verdict, tx);
       this.logger.log({ event: 'verdict', msg: `ride ${rideId}: ${verdict.status}`, rideId, wallet: ride.wallet, status: verdict.status, reasons: verdict.reasons.map((r) => r.code) });
       return verdict;
     });
+  }
+
+  /** An admin's decision from the review queue, under the same player lock as judging (so a racing re-judge cannot overwrite it), audited in the same transaction. */
+  async override(rideId: string, decision: VerdictDecision, admin: string, note: string | null, requestId: string | null): Promise<RideVerdict> {
+    const verdict = await this.transactions.run(async (tx) => {
+      const ride = await this.rides.findById(rideId, tx);
+      if (!ride) throw new NotFoundError('ride not found');
+      await this.players.findByWalletForUpdate(ride.wallet, tx);
+      const current = await this.verdicts.findByRide(rideId, tx);
+      if (!current) throw new NotFoundError('this ride has no verdict (only completed shifts are judged)');
+      const before = current.status;
+      const now = this.clock.now();
+      current.override(decision, admin, note, now);
+      await this.verdicts.save(current, tx);
+      await this.audit.insert({ wallet: admin, action: 'verdict.override', target: rideId, detail: { from: before, to: decision, note, rider: ride.wallet }, requestId, at: now }, tx);
+      return current;
+    });
+    this.logger.log({ event: 'admin', msg: `verdict of ride ${rideId} set to ${decision} by ${admin}`, action: 'verdict.override', rideId, admin, decision, requestId });
+    return verdict;
   }
 }

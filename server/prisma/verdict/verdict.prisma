@@ -16,6 +16,9 @@ model RideVerdict {
   scores       Json // what the checks measured
   rulesVersion Int
   judgedAt     DateTime
+  overriddenBy String? // an admin's wallet: the status was set by hand on the admin page (re-judging leaves it alone)
+  overriddenAt DateTime?
+  note         String? // the admin's reason
   version      Int           @default(1)
 
   @@index([status, judgedAt])

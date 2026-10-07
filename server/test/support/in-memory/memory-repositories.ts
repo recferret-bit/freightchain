@@ -22,6 +22,11 @@ import { RideBatch } from '../../../src/domain/telemetry/ride-batch.entity.js';
 import { RideVerdictRepositoryPort } from '../../../src/application/ports/verdict/ride-verdict.repository.port.js';
 import { RideVerdict } from '../../../src/domain/verdict/ride-verdict.entity.js';
 import { VerdictStatus } from '../../../src/domain/verdict/verdict.dto.js';
+import { SignInRepositoryPort } from '../../../src/application/ports/auth/sign-in.repository.port.js';
+import { AdminActionRepositoryPort } from '../../../src/application/ports/admin/admin-action.repository.port.js';
+import { AdminQueryPort, type AdminCounts, type AdminRideRow } from '../../../src/application/ports/admin/admin-query.port.js';
+import type { SignInRecord } from '../../../src/domain/auth/sign-in.js';
+import type { AdminActionRecord, AdminBatchDto, AdminRideFilter } from '../../../src/domain/admin/admin.dto.js';
 import { MemoryDb } from './memory-db.js';
 
 /* In-memory twins of the Prisma repositories: same contracts (optimistic versions, unique keys, orderings), no database.
@@ -325,4 +330,58 @@ export class MemoryAchievementRepository extends AchievementRepositoryPort {
   }
 
   async listByWallet(wallet: string): Promise<AchievementUnlock[]> { return this.db.unlocks.filter((u) => u.wallet === wallet).map((u) => new AchievementUnlock(u.wallet, u.achievementId, u.earnedAt, u.rideId)); }
+}
+
+@Injectable()
+export class MemorySignInRepository extends SignInRepositoryPort {
+  constructor(private readonly db: MemoryDb) { super(); }
+
+  async insert(record: SignInRecord): Promise<void> { this.db.signIns.push({ ...record }); }
+
+  async recent(limit: number, wallet?: string): Promise<SignInRecord[]> {
+    return [...this.db.signIns].reverse().filter((s) => !wallet || s.wallet === wallet).slice(0, limit); // insertion order = time order here
+  }
+
+  async countSince(at: Date): Promise<number> { return this.db.signIns.filter((s) => s.at.getTime() >= at.getTime()).length; }
+}
+
+@Injectable()
+export class MemoryAdminActionRepository extends AdminActionRepositoryPort {
+  constructor(private readonly db: MemoryDb) { super(); }
+
+  async insert(record: AdminActionRecord): Promise<void> { this.db.adminActions.push({ ...record }); }
+  async recent(limit: number): Promise<AdminActionRecord[]> { return [...this.db.adminActions].reverse().slice(0, limit); }
+}
+
+@Injectable()
+export class MemoryAdminQuery extends AdminQueryPort {
+  constructor(private readonly db: MemoryDb) { super(); }
+
+  async counts(): Promise<AdminCounts> {
+    const tally = (values: string[]) => values.reduce<Record<string, number>>((acc, v) => ({ ...acc, [v]: (acc[v] ?? 0) + 1 }), {});
+    const rides = tally([...this.db.rides.values()].map((r) => r.props.status));
+    return {
+      players: this.db.players.size, running: rides['running'] ?? 0, rides, verdicts: tally([...this.db.verdicts.values()].map((v) => v.status)),
+      payments: { count: this.db.payments.length, lamports: this.db.payments.reduce((sum, p) => sum + p.lamports, 0) },
+      telemetry: { batches: this.db.batches.size, bytes: [...this.db.batches.values()].reduce((sum, b) => sum + b.bytes, 0) },
+    };
+  }
+
+  async rides(filter: AdminRideFilter): Promise<AdminRideRow[]> {
+    return [...this.db.rides.values()]
+      .filter(({ props: p }) => (!filter.wallet || p.wallet === filter.wallet) && (!filter.status || p.status === filter.status)
+        && (!filter.verdict || (filter.verdict === 'none' ? !this.db.verdicts.has(p.id) : this.db.verdicts.get(p.id)?.status === filter.verdict)))
+      .sort((a, b) => b.props.createdAt.getTime() - a.props.createdAt.getTime() || b.seq - a.seq)
+      .slice(0, filter.limit)
+      .map(({ props: p }) => {
+        const v = this.db.verdicts.get(p.id);
+        return { id: p.id, wallet: p.wallet, tier: p.tier, status: p.status, reason: p.reason, route: p.route, lastS: p.lastS, driveSeconds: p.driveSeconds, timeScale: p.timeScale,
+          createdAt: p.createdAt, startedAt: p.startedAt, endedAt: p.endedAt, verdict: v?.status ?? null, overridden: (v?.overriddenBy ?? null) !== null };
+      });
+  }
+
+  async batchIndex(rideId: string): Promise<AdminBatchDto[]> {
+    return [...this.db.batches.values()].filter((b) => b.rideId === rideId).sort((a, b) => a.seq - b.seq)
+      .map((b) => ({ seq: b.seq, t0: b.t0, t1: b.t1, samples: b.samples, inputs: b.inputs, bytes: b.bytes, hashOk: b.hashOk, receivedAt: b.receivedAt.getTime() }));
+  }
 }

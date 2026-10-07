@@ -16,10 +16,11 @@ describe('AuthHttpController', () => {
     expect(commands.last()).toEqual(new RequestChallengeCommand(wallet));
   });
 
-  it('POST auth/verify → VerifySignInCommand(wallet, signature)', async () => {
+  it('POST auth/verify → VerifySignInCommand(wallet, signature, where it came from)', async () => {
     const commands = busMock({ profile: {}, session: {} }), queries = busMock();
-    await new AuthHttpController(commands.bus, queries.bus).verify({ wallet, signature: 'sig' });
-    expect(commands.last()).toEqual(new VerifySignInCommand(wallet, 'sig'));
+    const client = { ip: '1.2.3.4', userAgent: 'Firefox' };
+    await new AuthHttpController(commands.bus, queries.bus).verify({ wallet, signature: 'sig' }, client);
+    expect(commands.last()).toEqual(new VerifySignInCommand(wallet, 'sig', client));
   });
 
   it('POST auth/logout → LogoutCommand; GET me → GetMeQuery(the signed-in wallet)', async () => {

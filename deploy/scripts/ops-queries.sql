@@ -15,7 +15,7 @@ SELECT p.wallet, p."createdAt", p."freeRides" || '/' || p."freeRidesMax" AS free
 FROM player."Player" p LEFT JOIN ride."Ride" r ON r.wallet = p.wallet
 GROUP BY p.wallet ORDER BY p."createdAt" DESC LIMIT 30;
 
--- @signins  the newest 50 sign-ins (wallet, time, ip, browser) – needs the SignIn log (migration 0004)
+-- @signins  the newest 50 sign-ins (wallet, time, ip, browser) – needs the SignIn log (migration 0003)
 SELECT wallet, at, ip, left("userAgent", 60) AS browser FROM player."SignIn" ORDER BY at DESC LIMIT 50;
 
 -- @wallet  one wallet: player row, its last 20 rides with verdicts, its payments    (arg: wallet address)
@@ -56,7 +56,7 @@ FROM verdict."RideVerdict" v ORDER BY v."judgedAt" DESC LIMIT 50;
 SELECT ro.id, ro."startsAt"::date, ro."endsAt"::date, ro.status, ro.carry / 1e9 AS carry_sol, count(p.signature) AS entries, coalesce(sum(p.lamports), 0) / 1e9 AS entries_sol
 FROM economy."Round" ro LEFT JOIN economy."Payment" p ON p."roundId" = ro.id GROUP BY ro.id ORDER BY ro.id DESC LIMIT 10;
 
--- @admin  the last 50 admin actions (verdict overrides) – needs the admin audit (migration 0004)
+-- @admin  the last 50 admin actions (verdict overrides) – needs the admin audit (migration 0003)
 SELECT at, wallet, action, target, detail FROM admin."AdminAction" ORDER BY at DESC LIMIT 50;
 
 -- @migrations  applied migrations

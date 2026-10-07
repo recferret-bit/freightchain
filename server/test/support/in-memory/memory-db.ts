@@ -6,6 +6,8 @@ import type { PlayerProps } from '../../../src/domain/players/player.entity.js';
 import type { RideProps } from '../../../src/domain/rides/ride.entity.js';
 import type { RideBatchProps } from '../../../src/domain/telemetry/ride-batch.entity.js';
 import type { RideVerdictProps } from '../../../src/domain/verdict/ride-verdict.entity.js';
+import type { SignInRecord } from '../../../src/domain/auth/sign-in.js';
+import type { AdminActionRecord } from '../../../src/domain/admin/admin.dto.js';
 
 /** The whole "database" of the in-memory suite: plain maps of snapshots (repositories hand out fresh entities, like real rows). */
 export class MemoryDb {
@@ -18,6 +20,8 @@ export class MemoryDb {
   /** key = `${rideId}:${seq}` */
   batches = new Map<string, RideBatchProps>();
   verdicts = new Map<string, RideVerdictProps>();
+  signIns: SignInRecord[] = [];
+  adminActions: AdminActionRecord[] = [];
   private seq = 0;
   private roundSeq = 0;
 
@@ -26,7 +30,7 @@ export class MemoryDb {
 
   reset(): void {
     this.players.clear(); this.challenges.clear(); this.rides.clear(); this.batches.clear(); this.verdicts.clear();
-    this.rounds = []; this.payments = []; this.unlocks = [];
+    this.rounds = []; this.payments = []; this.unlocks = []; this.signIns = []; this.adminActions = [];
     this.seq = 0; this.roundSeq = 0;
   }
 }

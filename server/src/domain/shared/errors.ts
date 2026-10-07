@@ -31,6 +31,15 @@ export class UnauthorizedError extends DomainError {
   }
 }
 
+export class ForbiddenError extends DomainError {
+  readonly statusCode = 403;
+  readonly errorCode = 'forbidden';
+
+  constructor(message = 'Forbidden') {
+    super(message);
+  }
+}
+
 export class NotFoundError extends DomainError {
   readonly statusCode = 404;
   readonly errorCode = 'not_found';

@@ -101,6 +101,29 @@ describe('concurrency (PostgreSQL)', () => {
     expect((await a.agent.get(`/api/rides/${ride.id}`).expect(200)).body.verdict).toMatchObject({ status: 'verified' });
   });
 
+  it('an admin decision racing re-judges from late batches: the decision is what stays', async () => {
+    const admin = newWallet();
+    const h2 = await createHarness('postgres', { FREE_RIDE_SECONDS: '10', ADMIN_WALLETS: admin.address });
+    try {
+      const c = bindClient(() => h2);
+      const a = await c.login(), boss = await c.login(admin);
+      const ride = (await a.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
+      await a.agent.post(`/api/rides/${ride.id}/start`).expect(200);
+      const batches = recording(ride.id, { seconds: 10, distance: 140, batchSeconds: 2 });
+      for (const b of batches.slice(0, 3)) await a.agent.post(`/api/rides/${ride.id}/batches`).send(b).expect(200);
+      c.sec(10);
+      await a.agent.post(`/api/rides/${ride.id}/end`).send({ outcome: 'shift', s: 140, t: 10 }).expect(200);
+      const results = await Promise.all([
+        boss.agent.post(`/api/admin/rides/${ride.id}/verdict`).set('x-fc-admin', '1').send({ decision: 'rejected', note: 'race' }),
+        ...batches.slice(3).map((b) => a.agent.post(`/api/rides/${ride.id}/batches`).send(b)),
+      ]);
+      expect(results.map((r) => r.status)).toEqual(results.map(() => 200));
+      expect((await a.agent.get(`/api/rides/${ride.id}`).expect(200)).body.verdict).toMatchObject({ status: 'rejected', override: { by: admin.address, note: 'race' } });
+      const p2 = h2.app.get(PrismaService, { strict: false });
+      expect(await p2.adminAction.count()).toBe(1);
+    } finally { await h2.close(); }
+  });
+
   it('a sign-in challenge is single-use: of N parallel verifies exactly ONE wins', async () => {
     const w = newWallet();
     const { body } = await anon().post('/api/auth/nonce').send({ wallet: w.address }).expect(200);

@@ -9,6 +9,7 @@ model Player {
   rides        Ride[]
   payments     Payment[]
   achievements AchievementUnlock[]
+  signIns      SignIn[]
 
   @@schema("player")
 }
@@ -19,5 +20,20 @@ model AuthChallenge {
   message   String // the exact text the wallet must sign – built by the server
   expiresAt DateTime
 
+  @@schema("player")
+}
+
+// One row per successful sign-in (verify): the admin page's view of who signs in, when and from where. Sessions themselves are signed cookies
+// (JWT) – there is no session table, and a single session cannot be revoked (rotating JWT_SECRET signs everybody out).
+model SignIn {
+  id        BigInt   @id @default(autoincrement())
+  wallet    String
+  player    Player   @relation(fields: [wallet], references: [wallet], onDelete: Cascade)
+  at        DateTime
+  ip        String? // the client's address as Express sees it (TRUST_PROXY)
+  userAgent String?
+
+  @@index([at])
+  @@index([wallet, at])
   @@schema("player")
 }

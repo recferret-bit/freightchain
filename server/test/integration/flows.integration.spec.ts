@@ -5,6 +5,7 @@ import { LOBBY_ENV, lobbyScenarios } from '../scenarios/lobby.scenarios.js';
 import { PAYMENTS_ENV, paymentScenarios } from '../scenarios/payments.scenarios.js';
 import { TELEMETRY_ENV, telemetryScenarios } from '../scenarios/telemetry.scenarios.js';
 import { VERDICT_ENV, verdictScenarios } from '../scenarios/verdict.scenarios.js';
+import { ADMIN_ENV, adminScenarios } from '../scenarios/admin.scenarios.js';
 
 /* The SAME scenarios as test/http, on the real Prisma repositories + a real PostgreSQL (npm run test:integration:stack).
    Anything the in-memory twins get wrong shows up here. */
@@ -12,6 +13,7 @@ for (const [name, env, scenarios] of [
   ['sign-in, free rides and the ride lifecycle', FLOW_ENV, flowScenarios],
   ['telemetry: recording batches', TELEMETRY_ENV, telemetryScenarios],
   ['verified play: the verdict and the boards', VERDICT_ENV, verdictScenarios],
+  ['admin: review queue, overrides, sign-ins, logs', ADMIN_ENV, adminScenarios],
   ['payments, the prize pool and leaderboards', PAYMENTS_ENV, paymentScenarios],
   ['lobby: live feed, profile, achievements', LOBBY_ENV, lobbyScenarios],
   ['HTTP contract: problem+json, request ids, cookies, health', {}, httpContractScenarios],

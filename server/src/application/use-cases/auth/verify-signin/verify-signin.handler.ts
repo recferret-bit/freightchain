@@ -4,6 +4,7 @@ import { toMeDto } from '../../../../domain/players/player.dto.js';
 import { parseWalletAddress } from '../../../../domain/players/wallet-address.js';
 import { UnauthorizedError } from '../../../../domain/shared/errors.js';
 import { ChallengeRepositoryPort } from '../../../ports/auth/challenge.repository.port.js';
+import { SignInRepositoryPort } from '../../../ports/auth/sign-in.repository.port.js';
 import { SignatureVerifierPort } from '../../../ports/auth/signature-verifier.port.js';
 import { TokenSignerPort } from '../../../ports/auth/token-signer.port.js';
 import { RulesConfigPort } from '../../../ports/config/rules-config.port.js';
@@ -24,6 +25,7 @@ export class VerifySignInHandler implements ICommandHandler<VerifySignInCommand,
     private readonly sessions: PlayerSessionService,
     private readonly rules: RulesConfigPort,
     private readonly clock: ClockPort,
+    private readonly signIns: SignInRepositoryPort,
   ) {}
 
   async execute(command: VerifySignInCommand): Promise<SignInResultDto> {
@@ -35,7 +37,10 @@ export class VerifySignInHandler implements ICommandHandler<VerifySignInCommand,
     const now = this.clock.now();
     const player = await this.sessions.touch(wallet, now);
     const rules = this.rules.get();
-    this.logger.log({ event: 'signin', msg: `signed in ${wallet}`, wallet });
+    this.logger.log({ event: 'signin', msg: `signed in ${wallet}`, wallet, ip: command.client.ip });
+    await this.signIns.insert({ wallet, at: now, ...command.client }).catch((error: unknown) => {   // the log of sign-ins must never block one
+      this.logger.warn(`sign-in of ${wallet} not recorded: ${error instanceof Error ? error.message : String(error)}`);
+    });
     return { profile: toMeDto(player, now, isDemoWallet(rules, wallet), demoScaleOf(rules)), session };
   }
 }

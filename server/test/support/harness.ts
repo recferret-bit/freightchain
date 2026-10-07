@@ -16,6 +16,9 @@ import { ClockPort } from '../../src/application/ports/shared/clock.port.js';
 import { TransactionPort } from '../../src/application/ports/shared/transaction.port.js';
 import { RideBatchRepositoryPort } from '../../src/application/ports/telemetry/ride-batch.repository.port.js';
 import { RideVerdictRepositoryPort } from '../../src/application/ports/verdict/ride-verdict.repository.port.js';
+import { SignInRepositoryPort } from '../../src/application/ports/auth/sign-in.repository.port.js';
+import { AdminActionRepositoryPort } from '../../src/application/ports/admin/admin-action.repository.port.js';
+import { AdminQueryPort } from '../../src/application/ports/admin/admin-query.port.js';
 import { PrismaService } from '../../src/infrastructure/prisma/prisma.service.js';
 import { truncateAllTables } from '../../src/infrastructure/prisma/truncate.js';
 import { FakeChain, TREASURY } from './fake-chain.js';
@@ -23,7 +26,7 @@ import { FakeClock } from './fake-clock.js';
 import { MemoryDb } from './in-memory/memory-db.js';
 import {
   MemoryAchievementRepository, MemoryChallengeRepository, MemoryHealthProbe, MemoryPaymentRepository, MemoryPlayerRepository,
-  MemoryRideBatchRepository, MemoryRideQuery, MemoryRideVerdictRepository, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
+  MemoryRideBatchRepository, MemoryRideQuery, MemoryRideVerdictRepository, MemorySignInRepository, MemoryAdminActionRepository, MemoryAdminQuery, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
 } from './in-memory/memory-repositories.js';
 
 export type Persistence = 'memory' | 'postgres';
@@ -74,6 +77,9 @@ export async function createHarness(persistence: Persistence, env: Record<string
       .overrideProvider(AchievementRepositoryPort).useValue(new MemoryAchievementRepository(memory))
       .overrideProvider(RideBatchRepositoryPort).useValue(new MemoryRideBatchRepository(memory))
       .overrideProvider(RideVerdictRepositoryPort).useValue(new MemoryRideVerdictRepository(memory))
+      .overrideProvider(SignInRepositoryPort).useValue(new MemorySignInRepository(memory))
+      .overrideProvider(AdminActionRepositoryPort).useValue(new MemoryAdminActionRepository(memory))
+      .overrideProvider(AdminQueryPort).useValue(new MemoryAdminQuery(memory))
       .overrideProvider(TransactionPort).useValue(new MemoryTransaction())
       .overrideProvider(HealthProbePort).useValue(new MemoryHealthProbe());
   }

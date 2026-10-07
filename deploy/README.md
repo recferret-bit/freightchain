@@ -54,6 +54,14 @@ npm run deploy          # checks → plan → confirm → upload → build → b
 | `npm run deploy:backup` | `pg_dump` now → `backups/` |
 | `npm run deploy:rollback` | back to the previous release (`-- -y` to skip the question) |
 | `npm run deploy:smoke` | smoke test of the four public URLs: pages, the model viewer + API-host isolation, CORS, a throwaway sign-in + cookie flags/domain (creates one throwaway player) |
+| `npm run ops -- logs [--since 30m] [--grep RE] [--errors] [--service postgres]` | **read-only** app / database log (the app writes one JSON object per line) |
+| `npm run ops -- nginx [--error] [--grep RE]` | **read-only** host nginx access / error log |
+| `npm run ops -- query <name> [arg]` · `ops -- sql "SELECT …"` | **read-only** SQL (a read-only transaction: PostgreSQL refuses writes); canned queries in `scripts/ops-queries.sql` (`ops -- query list`) |
+| `npm run ops -- ps` | containers, restarts, disk |
+
+**Admin page**: `https://<apex>/admin.html` for the wallets in `ADMIN_WALLETS` (sign in on the landing first; everyone else gets a 404 from `/api/admin/*`): overview, the review queue of flagged rides (accept / reject, audited), rides with filters, sign-ins (wallet, time, IP, browser), the server's recent log lines, the audit log.
+**Verified play settings** in `deploy/.env`: `VERDICT_ENFORCE` (`false` = shadow mode while tuning: rides are judged and shown, the boards ignore the verdict), `TELEMETRY_RETENTION_DAYS` (default 90), `ADMIN_WALLETS`.
+Container logs rotate at 5 × 50 MB per service (`logging:` in `docker-compose.prod.yml`).
 
 ## What a release does (on the server, `scripts/remote/release.sh`)
 1. build the image `freightchain-server:<release>` from the uploaded commit (server + `client/` + the landing's Vite build; the landing's tests gate the image – `LANDING_DIR` is set by the Dockerfile)

@@ -23,6 +23,8 @@ The full project map and caveats are in `AGENTS.md` (imported above). The ones t
 - Keep modules **acyclic** and use the shared `view` object for canvas size. Single-sided materials must be tracked (`themes/_shared/mats.js`) or listed in `flipMats()` (`js/world/render.js`) or they break in the mirrors.
 - `mesh.position` is read-only – use `.position.set()`.
 
+- **Observe production read-only with the project skills** (`.claude/skills/`): `prod-logs`, `prod-db`, `ride-investigate`; run everything with `run-tests` (`bash .claude/skills/run-tests/e2e.sh` = real-Chrome e2e on a throwaway database). They never deploy or write; `npm run ops -- …` is the same tooling by hand.
+
 ## Workflow
 
 1. Make the change in the relevant module (see the layout in AGENTS.md); put new tunables in `js/config.js`.

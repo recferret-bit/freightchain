@@ -26,6 +26,7 @@ Dependencies point inward: `presentation → application → domain` and `infras
 | rides | `Ride` (lifecycle + progress rules), tiers, report | create-ride, get-ride, get-pending-ride, start-ride, heartbeat-ride, end-ride |
 | economy | `Round` (weekly pool), `Payment`, prize split, payment verification | get-payment-instructions, confirm-payment, reconcile-payment, get-tiers, get-pool, get-leaderboard |
 | telemetry | `RideBatch` (one ~15 s recording batch: inputs + 10 Hz samples, hash-chained; `HasherPort` recomputes the SHA-256) | upload-batch (`POST /api/rides/:id/batches`) |
+| admin | `AdminActionRecord` (audit), sign-in log, admin read models; `AdminGuard` (allowlist → else 404, `X-FC-Admin` header on changes) | get-admin-overview, list-admin-rides, get-admin-ride, list-sign-ins, list-admin-actions, get-admin-logs, override-verdict |
 | verdict | `RideVerdict` + pure checks (`recording-checks.ts`: chain, bounds, agreement with the ride, coverage, inputs present · `human-checks.ts`: hold variation, repeated intervals, instant presses) – **no re-simulation**; `VerdictService` | judged by end-ride and by a batch landing after the end; read by get-ride, the paid leaderboards (verified only) and the profile |
 | achievements | catalogue + rules, `AchievementUnlock` | (evaluated by end-ride / get-profile) |
 | lobby | DTOs for the live feed and the profile | get-live, get-profile |
@@ -58,7 +59,7 @@ Wire format: paths stay under `/api/…`; timestamps are epoch milliseconds. The
 
 ## Database
 
-PostgreSQL, one PostgreSQL schema per context (`player`, `ride`, `economy`, `achievement`, `telemetry`, `verdict`), a multi-file Prisma schema (`prisma/schema.prisma` + `prisma/<context>/*.prisma`), migrations as reviewed SQL in `prisma/migrations/` (forward-only: no DROP / RENAME – `test/migrations`). A schema change **requires** a migration in the same change; `test/integration/migrations.integration.spec.ts` fails when the migrated database differs from the schema files.
+PostgreSQL, one PostgreSQL schema per context (`player`, `ride`, `economy`, `achievement`, `telemetry`, `verdict`, `admin`), a multi-file Prisma schema (`prisma/schema.prisma` + `prisma/<context>/*.prisma`), migrations as reviewed SQL in `prisma/migrations/` (forward-only: no DROP / RENAME – `test/migrations`). A schema change **requires** a migration in the same change; `test/integration/migrations.integration.spec.ts` fails when the migrated database differs from the schema files.
 
 Race-safety, because Prisma is async (every `await` lets other requests run):
 
@@ -75,6 +76,7 @@ Race-safety, because Prisma is async (every `await` lets other requests run):
 | a transaction pays one ride | `Payment.signature` primary key + unique `Payment.rideId`; settle runs in one transaction; the loser of a confirm/reconcile race answers `paid` (idempotent), never "already used" |
 | heartbeat vs end | optimistic `Ride.version`; `end` retries so it always lands; the unlock evaluation after it is best-effort (never turns the saved verdict into a 500) |
 | a recording batch re-sent / uploaded twice | primary key `(rideId, seq)` + `createMany … skipDuplicates` (one `ON CONFLICT DO NOTHING`): exactly one stores, every caller gets 200 |
+| an admin override racing a re-judge (late batch) | `VerdictService.override` takes the same player row lock and judging skips a verdict an admin decided: the decision always stays |
 | /end judging racing the late final batch | `VerdictService` judges under the player row lock and reads the batches only once it holds it: the judgement that saves last has seen every batch – a stale verdict never overwrites a fresher one |
 | a pool exhausted by queued lock-waiters | transactions wait up to 8 s for a connection; Prisma's P2028 → 503 and P2034 (write conflict / deadlock) → 409 – both retryable, never a 500 |
 | ties between equal timestamps | `Ride.seq` (BIGSERIAL, insertion order) as the tie-breaker |

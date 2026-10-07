@@ -28,6 +28,17 @@ describe('RideVerdictPrismaRepository (PostgreSQL)', () => {
     expect(await repo.findByRide('00000000-0000-4000-8000-ffffffffffff')).toBeNull();
   });
 
+  it('an admin override round-trips (who, when, note) and survives a later save of the same verdict', async () => {
+    const ride = freeRideAt('w'); await rides.insert(ride);
+    const v = verdict(ride.id, VerdictStatus.Flagged);
+    await repo.save(v);
+    v.override(VerdictStatus.Verified, 'ADMIN', 'looks human', at(9));
+    await repo.save(v);
+    const back = await repo.findByRide(ride.id);
+    expect(back?.snapshot()).toMatchObject({ status: 'verified', overriddenBy: 'ADMIN', overriddenAt: at(9), note: 'looks human' });
+    expect(back?.isOverridden).toBe(true);
+  });
+
   it('a verdict goes with its ride (cascade)', async () => {
     const ride = freeRideAt('w'); await rides.insert(ride);
     await repo.save(verdict(ride.id, VerdictStatus.Flagged));

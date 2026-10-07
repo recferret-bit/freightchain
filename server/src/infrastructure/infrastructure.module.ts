@@ -19,6 +19,9 @@ import { LogBufferPort } from '../application/ports/ops/log-buffer.port.js';
 import { TransactionPort } from '../application/ports/shared/transaction.port.js';
 import { RideBatchRepositoryPort } from '../application/ports/telemetry/ride-batch.repository.port.js';
 import { RideVerdictRepositoryPort } from '../application/ports/verdict/ride-verdict.repository.port.js';
+import { SignInRepositoryPort } from '../application/ports/auth/sign-in.repository.port.js';
+import { AdminActionRepositoryPort } from '../application/ports/admin/admin-action.repository.port.js';
+import { AdminQueryPort } from '../application/ports/admin/admin-query.port.js';
 import { JoseTokenSigner } from './auth/jose.token-signer.js';
 import { NaclSignatureVerifier } from './auth/nacl.signature-verifier.js';
 import { EnvRulesConfigAdapter } from './config/rules-config.adapter.js';
@@ -29,6 +32,10 @@ import { LogRing } from './logging/log-ring.js';
 import { RingLogBufferAdapter } from './logging/ring-log-buffer.adapter.js';
 import { RideBatchPrismaRepository } from './prisma/repositories/ride-batch.prisma.repository.js';
 import { RideVerdictPrismaRepository } from './prisma/repositories/ride-verdict.prisma.repository.js';
+import { SignInPrismaRepository } from './prisma/repositories/sign-in.prisma.repository.js';
+import { AdminActionPrismaRepository } from './prisma/repositories/admin-action.prisma.repository.js';
+import { AdminQueryPrismaRepository } from './prisma/repositories/admin-query.prisma.repository.js';
+import { AdminGuard } from './http/guards/admin.guard.js';
 import { PrismaHealthProbe } from './health/prisma.health-probe.js';
 import { AchievementPrismaRepository } from './prisma/repositories/achievement.prisma.repository.js';
 import { ChallengePrismaRepository } from './prisma/repositories/challenge.prisma.repository.js';
@@ -53,6 +60,9 @@ const ports: Provider[] = [
   { provide: LogBufferPort, useClass: RingLogBufferAdapter },
   { provide: RideBatchRepositoryPort, useClass: RideBatchPrismaRepository },
   { provide: RideVerdictRepositoryPort, useClass: RideVerdictPrismaRepository },
+  { provide: SignInRepositoryPort, useClass: SignInPrismaRepository },
+  { provide: AdminActionRepositoryPort, useClass: AdminActionPrismaRepository },
+  { provide: AdminQueryPort, useClass: AdminQueryPrismaRepository },
   { provide: TransactionPort, useClass: TransactionPrismaAdapter },
   { provide: RulesConfigPort, useClass: EnvRulesConfigAdapter },
   { provide: PlayerRepositoryPort, useClass: PlayerPrismaRepository },
@@ -72,7 +82,7 @@ const ports: Provider[] = [
 const portTokens = ports.map((p) => (p as { provide: unknown }).provide as typeof ClockPort);
 
 @Module({
-  providers: [PrismaService, PlayerAuthGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, { provide: LogRing, useValue: new LogRing() }, JsonLogger, ...ports],
-  exports: [PrismaService, PlayerAuthGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, LogRing, JsonLogger, ...portTokens],
+  providers: [PrismaService, PlayerAuthGuard, AdminGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, { provide: LogRing, useValue: new LogRing() }, JsonLogger, ...ports],
+  exports: [PrismaService, PlayerAuthGuard, AdminGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, LogRing, JsonLogger, ...portTokens],
 })
 export class InfrastructureModule {}

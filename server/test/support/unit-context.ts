@@ -13,7 +13,7 @@ import { FakeClock } from './fake-clock.js';
 import { MemoryDb } from './in-memory/memory-db.js';
 import {
   MemoryAchievementRepository, MemoryChallengeRepository, MemoryHealthProbe, MemoryPaymentRepository, MemoryPlayerRepository,
-  MemoryRideBatchRepository, MemoryRideQuery, MemoryRideVerdictRepository, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
+  MemoryRideBatchRepository, MemoryRideQuery, MemoryRideVerdictRepository, MemorySignInRepository, MemoryAdminActionRepository, MemoryAdminQuery, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
 } from './in-memory/memory-repositories.js';
 import { TestHasher } from './recording.js';
 
@@ -60,12 +60,15 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const batches = new MemoryRideBatchRepository(db);
   const hasher = new TestHasher();
   const verdictRepo = new MemoryRideVerdictRepository(db);
+  const signIns = new MemorySignInRepository(db);
+  const adminActions = new MemoryAdminActionRepository(db);
+  const adminQuery = new MemoryAdminQuery(db);
   const health = new MemoryHealthProbe();
   const sessions = new PlayerSessionService(players, rulesPort, clock);
   const lookup = new RideLookupService(rides);
   const rounds = new RoundService(roundRepo, rulesPort, transactions, clock);
   const achievements = new AchievementService(unlocks, rideQuery, clock);
-  const verdicts = new VerdictService(rides, players, batches, verdictRepo, transactions, clock);
+  const verdicts = new VerdictService(rides, players, batches, verdictRepo, adminActions, transactions, clock);
   const settlement = new PaymentSettlementService(rounds, roundRepo, payments, rides, players, lookup, transactions, clock);
 
   const now = () => clock.now();
@@ -90,7 +93,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const storedPlayer = async (wallet: string) => (await players.findByWallet(wallet)) as Player;
 
   return {
-    db, clock, chain, entropy, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, batches, hasher, verdictRepo, verdicts, health,
+    db, clock, chain, entropy, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, batches, hasher, verdictRepo, verdicts, signIns, adminActions, adminQuery, health,
     sessions, lookup, rounds, achievements, settlement, now, player, freeRide, paidOrder, reload, storedPlayer,
   };
 }

@@ -33,7 +33,7 @@ describe('RideVerdict.judge', () => {
     expect(v.snapshot()).toMatchObject({ rideId: 'ride-1', rulesVersion: RULES_VERSION, judgedAt: at(121) });
     expect(v.snapshot().scores.recording).toMatchObject({ batches: 8, samples: 1200, recordedSeconds: 120, coverage: 1 });
     expect(v.snapshot().scores.human.presses).toBeGreaterThan(20);
-    expect(v.toDto()).toEqual({ status: 'verified', reasons: [], judgedAt: at(121).getTime() });
+    expect(v.toDto()).toEqual({ status: 'verified', reasons: [], judgedAt: at(121).getTime(), override: null });
   });
 
   it('no recording at all is REJECTED', () => {
@@ -125,6 +125,17 @@ describe('RideVerdict.judge', () => {
       expect(scores.minHoldCv).toBeGreaterThan(2 * HOLD_CV_MIN);
       expect(scores.repeatShare).toBeLessThan(REPEAT_SHARE_MAX / 4);
     });
+  });
+
+  it('an admin override sets the status by hand, keeps the judged reasons, shows who and why; only verified / rejected', () => {
+    const v = judge(180, 2400, { inputs: 'bot' });
+    expect(v.isOverridden).toBe(false);
+    v.override(VerdictStatus.Verified, 'ADMIN', 'n'.repeat(600), at(200));
+    expect(v.isOverridden).toBe(true);
+    expect(v.toDto()).toMatchObject({ status: 'verified', override: { by: 'ADMIN', at: at(200).getTime() } });
+    expect(v.toDto().override?.note).toHaveLength(500);
+    expect(v.reasons.length).toBeGreaterThan(0);
+    expect(() => v.override(VerdictStatus.Flagged as never, 'ADMIN', null, at(201))).toThrow(/verified or rejected/);
   });
 
   it('restores from a snapshot unchanged', () => {

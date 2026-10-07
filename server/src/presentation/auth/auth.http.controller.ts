@@ -5,7 +5,9 @@ import { GetMeQuery } from '../../application/use-cases/auth/get-me/get-me.query
 import { LogoutCommand, type LogoutResultDto } from '../../application/use-cases/auth/logout/logout.command.js';
 import { RequestChallengeCommand, type ChallengeDto } from '../../application/use-cases/auth/request-challenge/request-challenge.command.js';
 import { VerifySignInCommand, type SignInResultDto } from '../../application/use-cases/auth/verify-signin/verify-signin.command.js';
+import { CurrentClient } from '../../infrastructure/http/decorators/client-info.js';
 import { CurrentPlayer } from '../../infrastructure/http/decorators/current-player.js';
+import type { ClientInfo } from '../../domain/auth/sign-in.js';
 import { ZodBody } from '../../infrastructure/http/decorators/zod.js';
 import { PlayerAuthGuard } from '../../infrastructure/http/guards/player-auth.guard.js';
 import { ClearSessionCookieInterceptor, SetSessionCookieInterceptor } from '../../infrastructure/http/interceptors/session-cookie.interceptor.js';
@@ -27,8 +29,8 @@ export class AuthHttpController {
 
   /** The wire body is the rider's profile (MeDto): SetSessionCookieInterceptor moves the session token into the cookie and unwraps `profile`. */
   @Post('auth/verify') @HttpCode(200) @UseInterceptors(SetSessionCookieInterceptor)
-  verify(@ZodBody(verifyBodySchema) body: VerifyBody): Promise<SignInResultDto> {
-    return this.commandBus.execute<VerifySignInCommand, SignInResultDto>(new VerifySignInCommand(body.wallet, body.signature));
+  verify(@ZodBody(verifyBodySchema) body: VerifyBody, @CurrentClient() client: ClientInfo): Promise<SignInResultDto> {
+    return this.commandBus.execute<VerifySignInCommand, SignInResultDto>(new VerifySignInCommand(body.wallet, body.signature, client));
   }
 
   @Post('auth/logout') @HttpCode(200) @UseInterceptors(ClearSessionCookieInterceptor)

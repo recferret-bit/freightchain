@@ -3,7 +3,8 @@ import type { RideBatch } from '../telemetry/ride-batch.entity.js';
 import { checkHumanTiming, type HumanScores } from './human-checks.js';
 import { checkAgreement, checkChain, checkInputsPresent, checkSamples, recordingScores, type RecordingScores } from './recording-checks.js';
 import { RULES_VERSION } from './verdict-rules.js';
-import { VerdictStatus, type VerdictDto, type VerdictReason } from './verdict.dto.js';
+import { ConflictError } from '../shared/errors.js';
+import { VerdictStatus, type VerdictDecision, type VerdictDto, type VerdictReason } from './verdict.dto.js';
 
 export interface VerdictScores {
   recording: RecordingScores;
@@ -17,8 +18,14 @@ export interface RideVerdictProps {
   scores: VerdictScores;
   rulesVersion: number;
   judgedAt: Date;
+  /** an admin's wallet when the status was decided by hand */
+  overriddenBy: string | null;
+  overriddenAt: Date | null;
+  note: string | null;
   version: number;
 }
+
+export const NOTE_MAX_LENGTH = 500;
 
 /** The server's judgement of a completed ride's recording. Any `reject` reason → rejected; else any `flag` → flagged; else verified. Only verified rides rank for prizes. */
 export class RideVerdict {
@@ -36,21 +43,35 @@ export class RideVerdict {
     const reasons = ordered.length === 0 ? chain : [...chain, ...samples.reasons, ...agreement.reasons, ...checkInputsPresent(facts, ordered), ...human.reasons];
     const status = reasons.some((r) => r.severity === 'reject') ? VerdictStatus.Rejected : reasons.length ? VerdictStatus.Flagged : VerdictStatus.Verified;
     return new RideVerdict({
-      rideId: ride.id, status, reasons, rulesVersion: RULES_VERSION, judgedAt: now, version: 1,
+      rideId: ride.id, status, reasons, rulesVersion: RULES_VERSION, judgedAt: now, version: 1, overriddenBy: null, overriddenAt: null, note: null,
       scores: { recording: recordingScores(ordered, agreement.recordedSeconds, agreement.coverage, samples.maxSpeed), human: human.scores },
     });
   }
 
-  static restore(props: RideVerdictProps): RideVerdict {
-    return new RideVerdict({ ...props });
+  /** (the override fields are optional here so a test can restore a plain judged verdict) */
+  static restore(props: Omit<RideVerdictProps, 'overriddenBy' | 'overriddenAt' | 'note'> & Partial<Pick<RideVerdictProps, 'overriddenBy' | 'overriddenAt' | 'note'>>): RideVerdict {
+    return new RideVerdict({ overriddenBy: null, overriddenAt: null, note: null, ...props });
   }
 
   get rideId(): string { return this.p.rideId; }
   get status(): VerdictStatus { return this.p.status; }
   get reasons(): VerdictReason[] { return this.p.reasons; }
+  get version(): number { return this.p.version; }
+  /** an admin decided this one – judging again must not replace it */
+  get isOverridden(): boolean { return this.p.overriddenBy !== null; }
+
+  /** An admin's decision from the review queue: the status is set by hand, the judged reasons stay for the record. Deciding again replaces the decision. */
+  override(decision: VerdictDecision, by: string, note: string | null, now: Date): void {
+    if (decision !== VerdictStatus.Verified && decision !== VerdictStatus.Rejected) throw new ConflictError('a verdict can only be set to verified or rejected');
+    this.p.status = decision;
+    this.p.overriddenBy = by;
+    this.p.overriddenAt = now;
+    this.p.note = note === null ? null : note.slice(0, NOTE_MAX_LENGTH);
+  }
 
   toDto(): VerdictDto {
-    return { status: this.p.status, reasons: this.p.reasons, judgedAt: this.p.judgedAt.getTime() };
+    const { overriddenBy: by, overriddenAt: at } = this.p;
+    return { status: this.p.status, reasons: this.p.reasons, judgedAt: this.p.judgedAt.getTime(), override: by && at ? { by, at: at.getTime(), note: this.p.note } : null };
   }
 
   snapshot(): RideVerdictProps {

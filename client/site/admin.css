@@ -1,0 +1,23 @@
+/* Admin page – on top of lobby.css (same tokens). Dense tables, a log view, verdict badges. */
+footer{max-width:1180px;margin:0 auto;padding:0 16px 30px}
+main{max-width:1180px}
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.filters input,.filters select,textarea{font:inherit;font-size:13px;background:#0008;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:7px 9px}
+.filters input{min-width:240px;flex:1}
+.filters button,.actions button{padding:7px 12px;font-size:12px}
+table.dense td,table.dense th{padding:6px 8px;font-size:12.5px;vertical-align:top}
+table.dense tr.click{cursor:pointer}table.dense tr.click:hover td{background:#ffcf5a0d}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace;word-break:break-all}
+.v{border-radius:4px;padding:0 6px;font-size:11px;letter-spacing:.5px;border:1px solid currentColor;white-space:nowrap}
+.v.verified{color:var(--good)}.v.flagged{color:var(--amber)}.v.rejected{color:var(--bad)}.v.none{color:var(--dim)}
+.v.ovr::after{content:" ✎"}
+.kv{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;font-size:13px}.kv dt{color:var(--dim)}.kv dd{margin:0;word-break:break-all}
+.reasons{display:grid;gap:6px;margin:8px 0}.reason{border-left:3px solid var(--amber);padding:4px 10px;font-size:13px;background:#0004}.reason.reject{border-color:var(--bad)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;margin-top:12px}
+.actions textarea{flex:1;min-width:220px;min-height:38px}
+button.reject{background:var(--bad);border-color:var(--bad)}
+.log{display:grid;gap:2px;font-size:12px}.log .l{display:grid;grid-template-columns:150px 54px 110px 1fr;gap:8px;padding:3px 6px;border-bottom:1px solid #ffffff0d}
+.log .l.warn{color:var(--amber)}.log .l.error,.log .l.fatal{color:var(--bad)}
+.log .f{color:var(--dim);word-break:break-all}
+pre.json{background:#0008;border:1px solid var(--line);border-radius:6px;padding:10px;font-size:12px;overflow-x:auto;white-space:pre-wrap;word-break:break-all;max-height:320px}
+@media (max-width:700px){.log .l{grid-template-columns:1fr}.filters input{min-width:0}.kv{grid-template-columns:1fr;gap:0}.kv dt{margin-top:8px;font-size:12px}}
