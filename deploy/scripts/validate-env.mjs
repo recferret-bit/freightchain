@@ -26,5 +26,15 @@ if (env.POSTGRES_PASSWORD && !/^[0-9a-f]{16,}$/.test(env.POSTGRES_PASSWORD)) pro
 if (env.TRUST_PROXY !== '1') problems.push('TRUST_PROXY must be 1 (host nginx is exactly one reverse-proxy hop; any other value mis-reads client IPs)');
 try { require.resolve('tweetnacl'); } catch { problems.push('server/node_modules is missing – run: npm install --prefix server'); }
 
+// Devnet only: the server builds every payment transaction from SOLANA_RPC, so a mainnet endpoint would make riders pay REAL SOL. Ask the endpoint which chain it is.
+const DEVNET_GENESIS = 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG';
+if (env.SOLANA_RPC && process.env.ALLOW_NON_DEVNET !== '1') {
+  try {
+    const r = await fetch(env.SOLANA_RPC, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getGenesisHash' }), signal: AbortSignal.timeout(10_000) });
+    const genesis = (await r.json()).result;
+    if (genesis !== DEVNET_GENESIS) problems.push(`SOLANA_RPC is not a devnet endpoint (genesis ${genesis ?? 'unknown'}; devnet is ${DEVNET_GENESIS}) – a mainnet RPC would make riders pay real SOL. Use a DEVNET URL (ALLOW_NON_DEVNET=1 overrides)`);
+  } catch (e) { problems.push(`SOLANA_RPC did not answer getGenesisHash (${e.message}) – check the URL`); }
+}
+
 if (problems.length) { console.error(problems.map((p) => `  - ${p.replace(/\n/g, '\n    ')}`).join('\n')); process.exit(1); }
 console.log('production environment is valid');

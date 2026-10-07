@@ -10,7 +10,7 @@ Deadline: **11:59pm PT, Oct 12, 2026** (runs Sep 14 – Oct 12). Working deadlin
 |---|---|
 | Live site | **Deployed** at <https://freightchain.fun> (landing + lobby), `ride.` (game), `api.` (API only), `storybook.` (model viewer). One Let's Encrypt certificate (expires 2027-01-05, auto-renew on). Several releases shipped; smoke test passes (pages, CORS, sign-in, Secure cookie shared across subdomains). |
 | Production data | 4 players, **all throwaway smoke-test sign-ins**. 0 rides, **0 payments**. Pool round 1, 0 entries. |
-| Production env | `SOLANA_RPC` = the public devnet endpoint (rate-limits). `DEMO_WALLETS` empty (no ×60 demo clock yet). Treasury pubkey set; its key is in `deploy/secrets/treasury.json` on your Mac only. |
+| Production env | `SOLANA_RPC` = a dedicated **QuickNode devnet** endpoint (genesis checked; the URL holds an API key and lives only in `deploy/.env`) – live after the next deploy. `DEMO_WALLETS` = your Phantom `GseaEsNWMLScZ5RH8yQ4xmoCP97H86HjLSA9xkyFCqbn` (5 devnet SOL) in `deploy/.env` + `server/.env` – live after the next deploy. The deploy now refuses any non-devnet RPC (genesis-hash check). Treasury pubkey set; its key is in `deploy/secrets/treasury.json` on your Mac only. |
 | Game (`client/js`) | Pre-existing prototype, unchanged in behaviour. Online mode (`play.html?ride=<id>`) takes seed + shift from the server and heartbeats it. |
 | Server (`server/`) | NestJS 12 + Prisma + PostgreSQL, Clean Architecture + CQRS. 308 Docker-free tests + 108 integration tests, architecture and test-pyramid audits, CORS + cookie domain for split hosts. `docs/backend-architecture.md`. |
 | Money | Memo-checked SOL transfer to the treasury **public key**; one global UTC-week pool in integer lamports. Split in code today: 50% grand · 20% top-20 · 20% next seed · 10% fees, and the copy says the 50% is a **draw** – both change Thursday (see [Economy](#economy-slide-text)). No payment ever made. No settlement or payout code. |
@@ -32,14 +32,14 @@ The critical path: **one real devnet payment, the economy change, two videos, th
 | Q3 | Repo goes **public**, on **submit day**, after I scan the git history for secrets. You flip it (or say "go"). | Sunday task. |
 | Q4 | I draft the bio from what the repo proves; you correct it and add background + location. | Draft below, `[FILL]` marks what only you know. |
 | Q5 | Solana track + overall awards; accelerator "would consider", not the ask. | Ask slide. |
-| Q7 | Your Phantom on devnet is the demo payer; you fund it and send the pubkey. | Wednesday: `DEMO_WALLETS` + redeploy. |
+| Q7 | Your Phantom on devnet is the demo payer: **`GseaEsNWMLScZ5RH8yQ4xmoCP97H86HjLSA9xkyFCqbn`, funded with 5 devnet SOL** (checked on devnet). | In `DEMO_WALLETS`; needs a redeploy. |
 | Q8 | **All payouts are manual from an admin panel**; the admin signs the payout transactions in Phantom, the server holds no secret. Panel = design only. **One filmed manual transfer** from the treasury key in your Phantom before submit, as a preview of that flow. | Saturday shot; economy slide; viability answer. |
 | Q9 | Icon done (Solana Road). A wordmark is optional. | Closed for the portal logo. |
 | Q11 | You create an X account and send the URL. | `SOCIALS` in `landing/src/main.js` waits on it. |
 | Q12 | **Drop the draw.** The 50% becomes skill prizes: **top 3 by verified distance, 25 / 15 / 10%**; the 20% top-20 pool stays. | Thursday code + copy change, before recording. |
 | Q13 | Company frame: **verified-play prize pools** – every paid result is a recorded, checked human performance; Desert Run is the first title. | Presentation, deck, form. Must not overclaim (see ground rules). |
 | Q14 | You name 5 playtesters by Thursday. | Friday playtests. |
-| RPC | You get a free dedicated devnet RPC key (Helius / QuickNode / Triton). | Wednesday: `SOLANA_RPC` + redeploy. |
+| RPC | QuickNode **devnet** endpoint (the first URL was mainnet and was refused). In `deploy/.env` only – never commit it, it holds the API key. | Needs a redeploy. |
 | Scope | Verified play / replay / admin / human checks = **design only** by Oct 12; telemetry playback (not deterministic re-sim). | New design section; roadmap + deck slides. |
 
 ## Prizes (World's Fair page)
@@ -128,8 +128,9 @@ Auth = Sign-In With Solana, httpOnly cookie shared by the subdomains (Domain = a
 ### Wed Oct 8 – account, wallet, RPC, the first real payment
 
 - [ ] **You:** register on Colosseum, join World's Fair, create the project page.
-- [ ] **You:** Phantom → devnet, fund it at <https://faucet.solana.com>, send me the pubkey. Get a free devnet RPC URL and send it (or put it in `deploy/.env` `SOLANA_RPC`).
-- [ ] **Me:** `DEMO_WALLETS=<pubkey>`, `SOLANA_RPC=<url>` → `npm run deploy` → smoke.
+- [x] **You:** Phantom → devnet, funded (5 SOL), pubkey sent. **Me:** `DEMO_WALLETS` set in `deploy/.env` and `server/.env`.
+- [x] **You:** QuickNode devnet RPC URL. **Me:** in `deploy/.env` `SOLANA_RPC` (genesis = devnet, your wallet's 5 SOL visible through it).
+- [ ] **Me:** `npm run deploy` → smoke, so `DEMO_WALLETS` + the RPC go live.
 - [ ] **You (I watch the logs):** landing → CONNECT with the real Phantom → lobby → START FREE RIDE → drive the 3 min → COMPLETED. First real-wallet sign-in.
 - [ ] **You:** lobby → `1H · $5` → approve in Phantom → pool entries 0 → 1 (`GET /api/pool`) → ×60 shift → verdict → leaderboard row. Then the paid "waiting" banner once (pay, don't start, reload).
 - [ ] **Me:** fix whatever those two runs break (Phantom/Solflare shapes have never been run).
@@ -218,6 +219,5 @@ Building the verified-play system (design only) · mainnet · a React rewrite ·
 - Every smoke run creates a throwaway player in production (4 now) – excluded from any user count; Thursday task to stop it.
 - Mid-ride reload is refused and the credit stays spent for up to 150 s (first-build behaviour, re-check Friday).
 - A second payment for one ride may not be credited (no refund); unknown transaction versions make `confirm` return 503; `reconcile` sees only the wallet's latest 25 transactions.
-- The public devnet RPC rate-limits until `SOLANA_RPC` is set (Wednesday).
 - No settlement or payout code; the pool is accounted only. The one filmed payout is made by hand.
 - Landing: a signed-out visit logs a 401 for `/api/me` (by design); the hero loop and demo video do not exist yet.
