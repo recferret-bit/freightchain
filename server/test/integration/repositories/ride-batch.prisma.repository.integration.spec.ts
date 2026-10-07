@@ -33,6 +33,21 @@ describe('RideBatchPrismaRepository (PostgreSQL)', () => {
     expect((await repo.listByRide(ride.id))[0]?.body.samples).toHaveLength(b0!.samples.length);
   });
 
+  it('retention: deletes the batches of rides that ended before the cutoff – except flagged ones; running rides are never touched', async () => {
+    const make = async (endAt: number | null, verdict: 'verified' | 'flagged' | null) => {
+      const r = freeRideAt('w'); r.start(T0);
+      if (endAt !== null) r.finish('failed', 'x', at(endAt));
+      await rides.insert(r);
+      for (const b of recording(r.id, { seconds: 20 })) await repo.insert(RideBatch.accept(r.id, b, hashBatch(b), T0));
+      if (verdict) await prisma.rideVerdict.create({ data: { rideId: r.id, status: verdict, reasons: [], scores: {}, rulesVersion: 1, judgedAt: T0 } });
+      return r.id;
+    };
+    const old = await make(10, 'verified'), oldUnjudged = await make(10, null), oldFlagged = await make(10, 'flagged'), recent = await make(500, null), running = await make(null, null);
+    expect(await repo.deleteForRidesEndedBefore(at(100))).toBe(4);
+    const left = async (id: string) => (await repo.listByRide(id)).length;
+    expect([await left(old), await left(oldUnjudged), await left(oldFlagged), await left(recent), await left(running)]).toEqual([0, 0, 2, 2, 2]);
+  });
+
   it('batches go with their ride (cascade)', async () => {
     const ride = await started();
     const [b0] = recording(ride.id, { seconds: 10 });

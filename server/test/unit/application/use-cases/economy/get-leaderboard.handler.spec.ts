@@ -2,7 +2,7 @@ import { GetLeaderboardHandler } from '../../../../../src/application/use-cases/
 import { GetLeaderboardQuery } from '../../../../../src/application/use-cases/economy/get-leaderboard/get-leaderboard.query.js';
 import { RideVerdict } from '../../../../../src/domain/verdict/ride-verdict.entity.js';
 import { VerdictStatus } from '../../../../../src/domain/verdict/verdict.dto.js';
-import { unitContext, type UnitContext } from '../../../../support/unit-context.js';
+import { unitContext, unitRules, type UnitContext } from '../../../../support/unit-context.js';
 
 /** a completed ride of `metres` for `wallet` (paid into the current round unless free) with a verdict of `verdict` */
 async function completed(ctx: UnitContext, wallet: string, metres: number, free = false, verdict: VerdictStatus | null = VerdictStatus.Verified) {
@@ -30,7 +30,7 @@ describe('GetLeaderboardHandler', () => {
     await completed(ctx, 'bob', 900);
     await completed(ctx, 'alice', 600); // alice: 1100 over two rides
     await completed(ctx, 'carol', 5000, true);
-    const handler = new GetLeaderboardHandler(ctx.rounds, ctx.rideQuery);
+    const handler = new GetLeaderboardHandler(ctx.rounds, ctx.rideQuery, ctx.rules);
     const round = await handler.execute(new GetLeaderboardQuery('round'));
     expect(round).toMatchObject({ board: 'round', prizeRanks: 20 });
     expect(round.rows).toEqual([{ rank: 1, wallet: 'alice', distance: 1100, rides: 2 }, { rank: 2, wallet: 'bob', distance: 900, rides: 1 }]);
@@ -45,16 +45,27 @@ describe('GetLeaderboardHandler', () => {
     await completed(ctx, 'carol', 800, false, VerdictStatus.Rejected);
     await completed(ctx, 'dave', 700, false, null);
     await completed(ctx, 'erin', 300, true, null);
-    const handler = new GetLeaderboardHandler(ctx.rounds, ctx.rideQuery);
+    const handler = new GetLeaderboardHandler(ctx.rounds, ctx.rideQuery, ctx.rules);
     for (const board of ['round', 'all'] as const) expect((await handler.execute(new GetLeaderboardQuery(board))).rows.map((r) => r.wallet)).toEqual(['alice']);
     expect((await handler.execute(new GetLeaderboardQuery('free'))).rows.map((r) => r.wallet)).toEqual(['erin']);
+  });
+
+  it('SHADOW mode (VERDICT_ENFORCE=false): the paid boards rank every completed shift and say so; the verdicts are still there', async () => {
+    const ctx = unitContext(unitRules({ verdictEnforce: false }));
+    await completed(ctx, 'alice', 500);
+    await completed(ctx, 'bob', 900, false, VerdictStatus.Flagged);
+    await completed(ctx, 'carol', 800, false, null);
+    const board = await new GetLeaderboardHandler(ctx.rounds, ctx.rideQuery, ctx.rules).execute(new GetLeaderboardQuery('round'));
+    expect(board.verifiedOnly).toBe(false);
+    expect(board.rows.map((r) => r.wallet)).toEqual(['bob', 'carol', 'alice']);
+    expect((await new GetLeaderboardHandler(ctx.rounds, ctx.rideQuery, unitContext().rules).execute(new GetLeaderboardQuery('round'))).verifiedOnly).toBe(true);
   });
 
   it("'round' is only the CURRENT week", async () => {
     const ctx = unitContext();
     await completed(ctx, 'alice', 500);
     ctx.clock.advance(8 * 86_400);
-    const handler = new GetLeaderboardHandler(ctx.rounds, ctx.rideQuery);
+    const handler = new GetLeaderboardHandler(ctx.rounds, ctx.rideQuery, ctx.rules);
     expect((await handler.execute(new GetLeaderboardQuery('round'))).rows).toEqual([]);
     expect((await handler.execute(new GetLeaderboardQuery('all'))).rows).toHaveLength(1);
   });

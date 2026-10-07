@@ -126,7 +126,7 @@ function paintRules() {
     paid ? [
       el('li', {}, 'Entry ', el('b', {}, `$${t.usd}`), ' in devnet SOL, price locked for 10 minutes once you order. It is ', el('b', {}, 'non-refundable'), ' and always goes into the pool (50% grand · 20% top 20 · 20% next week · 10% fees).'),
       el('li', {}, 'Finished shifts qualify for the weekly prizes (grand prize draw, top 20 by distance). Prizes are accrued, not paid out, in this build.'),
-      el('li', {}, 'The game records your inputs while you drive. After the shift the server checks that recording – complete, consistent with your ride, human-timed – and only ', el('b', {}, 'verified'), ' shifts rank. Flagged shifts wait for a review.'),
+      el('li', {}, 'The game records your inputs while you drive. After the shift the server checks that recording – complete, consistent with your ride, human-timed – and verified shifts rank for prizes (the leaderboard says when that check is switched on). Flagged shifts wait for a review.'),
       i.scale > 1 ? el('li', {}, el('b', { class: 'bad' }, `DEMO ×${i.scale}`), ' – this wallet’s paid shifts are shortened so a demo fits in minutes.') : '',
     ] : [el('li', {}, 'No fee, no prize. Counts for the free leaderboard and achievements. 5 free rides at signup, +1 every UTC day.')]));
 }
@@ -206,7 +206,7 @@ async function renderBoard() {
   const prize = S.board === 'round', mine = j.rows.find(r => r.wallet === S.me.wallet);
   view.replaceChildren(
     el('h2', {}, 'LEADERBOARD'), seg,
-    prize ? el('p', { class: 'dim' }, `Ranked by distance of finished, verified paid shifts. The top ${j.prizeRanks} share `, el('b', {}, '20%'), S.pool ? ` of the round’s entries (${sol(S.pool.split.top20)} so far)` : '', ' · closes in ', el('b', { class: 'cd', id: 'cd' }, left(j.round.endsAt - now()))) : el('p', { class: 'dim' }, S.board === 'all' ? 'All finished, verified paid shifts, all time.' : 'Finished free rides, all time. No prizes – bragging rights.'),
+    prize ? el('p', { class: 'dim' }, `Ranked by distance of finished${j.verifiedOnly ? ', verified' : ''} paid shifts${j.verifiedOnly ? '' : ' (recording checks are shown in your profile, not enforced yet)'}. The top ${j.prizeRanks} share `, el('b', {}, '20%'), S.pool ? ` of the round’s entries (${sol(S.pool.split.top20)} so far)` : '', ' · closes in ', el('b', { class: 'cd', id: 'cd' }, left(j.round.endsAt - now()))) : el('p', { class: 'dim' }, S.board === 'all' ? `All finished${j.verifiedOnly ? ', verified' : ''} paid shifts, all time.` : 'Finished free rides, all time. No prizes – bragging rights.'),
     j.rows.length ? el('div', { class: 'card' }, el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, '#'), el('th', {}, 'RIDER'), el('th', { class: 'r' }, 'KM'), el('th', { class: 'r' }, 'SHIFTS'))),
       el('tbody', {}, j.rows.map(r => el('tr', { class: `${prize ? 'prize' : ''}${r.wallet === S.me.wallet ? ' me' : ''}` },
         el('td', {}, el('span', { class: `rk${r.rank === 1 ? ' g' : r.rank === 2 ? ' s' : r.rank === 3 ? ' b' : ''}` }, r.rank)),

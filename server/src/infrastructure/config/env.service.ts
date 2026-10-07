@@ -44,6 +44,12 @@ export class EnvService {
   get solUsdFixed(): number | undefined { return this.env.SOL_USD || undefined; }
   get demoScale(): number { return this.env.DEMO_SCALE; }
   get initialSeedLamports(): number { return Math.round(this.env.INITIAL_SEED_SOL * 1e9); }
+  get verdictEnforce(): boolean { return this.env.VERDICT_ENFORCE; }
+  get telemetryRetentionDays(): number { return this.env.TELEMETRY_RETENTION_DAYS; }
+  /** who may use the admin page (empty = nobody: the admin routes answer 404) */
+  get adminWallets(): ReadonlySet<string> {
+    return new Set(this.env.ADMIN_WALLETS.split(',').map((w) => w.trim()).filter((w) => w.length > 0));
+  }
 
   get demoWallets(): ReadonlySet<string> {
     return new Set(this.env.DEMO_WALLETS.split(',').map((w) => w.trim()).filter((w) => w.length > 0));

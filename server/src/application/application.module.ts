@@ -29,6 +29,7 @@ import { HeartbeatRideHandler } from './use-cases/rides/heartbeat-ride/heartbeat
 import { ReconcilePaymentHandler } from './use-cases/rides/reconcile-payment/reconcile-payment.handler.js';
 import { StartRideHandler } from './use-cases/rides/start-ride/start-ride.handler.js';
 import { UploadBatchHandler } from './use-cases/telemetry/upload-batch/upload-batch.handler.js';
+import { SweepTelemetryHandler } from './use-cases/telemetry/sweep-telemetry/sweep-telemetry.handler.js';
 
 const services: Provider[] = [AchievementService, PaymentSettlementService, PlayerSessionService, RideLookupService, RoundService, VerdictService];
 
@@ -36,7 +37,7 @@ const handlers: Provider[] = [
   RequestChallengeHandler, VerifySignInHandler, GetMeHandler, LogoutHandler,
   CreateRideHandler, GetRideHandler, GetPendingRideHandler, StartRideHandler, HeartbeatRideHandler, EndRideHandler,
   GetPaymentInstructionsHandler, ConfirmPaymentHandler, ReconcilePaymentHandler,
-  UploadBatchHandler,
+  UploadBatchHandler, SweepTelemetryHandler,
   GetTiersHandler, GetPoolHandler, GetLeaderboardHandler,
   GetLiveHandler, GetProfileHandler,
   GetLivenessHandler, GetReadinessHandler,

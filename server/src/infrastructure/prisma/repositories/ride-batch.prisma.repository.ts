@@ -18,6 +18,13 @@ export class RideBatchPrismaRepository extends RideBatchRepositoryPort {
     return count === 1;
   }
 
+  async deleteForRidesEndedBefore(cutoff: Date): Promise<number> {
+    const { count } = await this.prisma.rideBatch.deleteMany({
+      where: { ride: { endedAt: { lt: cutoff }, OR: [{ verdict: { is: null } }, { verdict: { is: { status: { not: 'flagged' } } } }] } },
+    });
+    return count;
+  }
+
   async listByRide(rideId: string, tx?: TransactionHandle): Promise<RideBatch[]> {
     const rows = await clientFor(this.prisma, tx).rideBatch.findMany({ where: { rideId }, orderBy: { seq: 'asc' } });
     return rows.map((row) => RideBatchMapper.toDomain(row));

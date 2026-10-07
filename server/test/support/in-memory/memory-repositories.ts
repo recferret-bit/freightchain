@@ -197,10 +197,10 @@ export class MemoryRideQuery extends RideQueryPort {
         : []));
   }
 
-  async leaderboard(board: LeaderboardBoard, roundId: number | null, limit: number): Promise<LeaderboardRow[]> {
+  async leaderboard(board: LeaderboardBoard, roundId: number | null, limit: number, verifiedOnly: boolean): Promise<LeaderboardRow[]> {
     const done = [...this.db.rides.values()].map((r) => r.props).filter((r) =>
       r.status === RideStatus.Completed && (board === 'free' ? r.tier === 'free'
-        : r.tier !== 'free' && this.db.verdicts.get(r.id)?.status === VerdictStatus.Verified && (board === 'round' ? r.roundId === roundId : true)));
+        : r.tier !== 'free' && (!verifiedOnly || this.db.verdicts.get(r.id)?.status === VerdictStatus.Verified) && (board === 'round' ? r.roundId === roundId : true)));
     const groups = new Map<string, { distance: number; rides: number; first: number }>();
     for (const r of done) {
       const g = groups.get(r.wallet) ?? { distance: 0, rides: 0, first: Number.POSITIVE_INFINITY };
@@ -277,6 +277,17 @@ export class MemoryRideBatchRepository extends RideBatchRepositoryPort {
     if (this.db.batches.has(key)) return false;
     this.db.batches.set(key, batch.snapshot());
     return true;
+  }
+
+  async deleteForRidesEndedBefore(cutoff: Date): Promise<number> {
+    let deleted = 0;
+    for (const [key, b] of this.db.batches) {
+      const ride = this.db.rides.get(b.rideId)?.props;
+      if (!ride?.endedAt || ride.endedAt.getTime() >= cutoff.getTime() || this.db.verdicts.get(b.rideId)?.status === VerdictStatus.Flagged) continue;
+      this.db.batches.delete(key);
+      deleted++;
+    }
+    return deleted;
   }
 
   async listByRide(rideId: string): Promise<RideBatch[]> {

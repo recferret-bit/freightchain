@@ -58,6 +58,9 @@ services:
       DEMO_WALLETS: ${DEMO_WALLETS:-}
       DEMO_SCALE: ${DEMO_SCALE:-60}
       INITIAL_SEED_SOL: ${INITIAL_SEED_SOL:-0}
+      VERDICT_ENFORCE: ${VERDICT_ENFORCE:-true}
+      TELEMETRY_RETENTION_DAYS: ${TELEMETRY_RETENTION_DAYS:-90}
+      ADMIN_WALLETS: ${ADMIN_WALLETS:-}
     # loopback ONLY: ports Docker publishes bypass ufw, so a bare "3000:3000" would be open to the internet. nginx on the host is the public door.
     ports:
       - "127.0.0.1:${APP_PORT:-3000}:3000"

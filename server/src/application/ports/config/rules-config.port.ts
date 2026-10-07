@@ -18,6 +18,10 @@ export interface RulesConfig {
   treasury: string;
   appDomain: string;
   appOrigin: string;
+  /** false = SHADOW mode: verdicts are judged and shown, but the paid boards rank every completed shift */
+  verdictEnforce: boolean;
+  /** recordings of rides that ended longer ago are deleted (flagged rides excepted); 0 = keep forever */
+  telemetryRetentionDays: number;
 }
 
 /** Game and economy tunables (environment-backed in production). */

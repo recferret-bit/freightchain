@@ -29,8 +29,16 @@ export const envSchema = z
     DEMO_WALLETS: z.string().default(''),
     DEMO_SCALE: z.coerce.number().positive().default(60),
     INITIAL_SEED_SOL: z.coerce.number().min(0).default(0),
+    /** wallets that may open the admin page (/admin.html + /api/admin/*), comma-separated; empty = no admin surface at all (every admin route is a 404) */
+    ADMIN_WALLETS: z.string().default(''),
+    /** verified play: 'true' = the paid boards rank verified shifts only; 'false' = SHADOW mode – every ride is still judged and the verdict shown, but ranking ignores it */
+    VERDICT_ENFORCE: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
+    /** days a ride's recording is kept after the ride ended (flagged rides are kept until reviewed); 0 = keep forever */
+    TELEMETRY_RETENTION_DAYS: z.coerce.number().int().min(0).default(90),
   })
   .superRefine((env, ctx) => {
+    const badAdmin = env.ADMIN_WALLETS.split(',').map((w) => w.trim()).filter((w) => w.length > 0 && !isWalletAddress(w));
+    if (badAdmin.length) ctx.addIssue({ code: 'custom', path: ['ADMIN_WALLETS'], message: `ADMIN_WALLETS must be base58 Solana addresses (bad: ${badAdmin.join(', ')})` });
     if (env.TREASURY_PUBKEY !== undefined && !isWalletAddress(env.TREASURY_PUBKEY)) {
       ctx.addIssue({ code: 'custom', path: ['TREASURY_PUBKEY'], message: 'TREASURY_PUBKEY must be a base58 Solana address' });
     }

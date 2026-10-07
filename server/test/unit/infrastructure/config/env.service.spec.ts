@@ -28,6 +28,16 @@ describe('EnvService', () => {
     expect(withEnv({ ...base, JWT_SECRET: 'z'.repeat(40) }).jwtSecret).toBe('z'.repeat(40));
   });
 
+  it('verified play + admin: enforcement on by default, retention 90 days, admin allowlist trimmed (empty = none)', () => {
+    const env = withEnv({ ...base, ADMIN_WALLETS: undefined, VERDICT_ENFORCE: undefined, TELEMETRY_RETENTION_DAYS: undefined });
+    expect([env.verdictEnforce, env.telemetryRetentionDays, env.adminWallets.size]).toEqual([true, 90, 0]);
+    const w = 'GseaEsNWMLScZ5RH8yQ4xmoCP97H86HjLSA9xkyFCqbn';
+    const set = withEnv({ ...base, ADMIN_WALLETS: ` ${w} ,`, VERDICT_ENFORCE: 'false', TELEMETRY_RETENTION_DAYS: '0' });
+    expect([[...set.adminWallets], set.verdictEnforce, set.telemetryRetentionDays]).toEqual([[w], false, 0]);
+    expect(() => withEnv({ ...base, ADMIN_WALLETS: 'not-a-wallet' })).toThrow(/ADMIN_WALLETS must be base58/);
+    expect(() => withEnv({ ...base, VERDICT_ENFORCE: 'yes' })).toThrow(/VERDICT_ENFORCE/);
+  });
+
   it('demo wallets, lamport seed, defaults for trust proxy and the client folder', () => {
     const env = withEnv({ ...base, DEMO_WALLETS: ' a , b ,', INITIAL_SEED_SOL: '0.5' });
     expect([...env.demoWallets]).toEqual(['a', 'b']);

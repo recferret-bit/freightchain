@@ -78,8 +78,8 @@ export class RideQueryPrismaRepository extends RideQueryPort {
       : []));
   }
 
-  async leaderboard(board: LeaderboardBoard, roundId: number | null, limit: number): Promise<LeaderboardRow[]> {
-    const tierFilter: Prisma.RideWhereInput = board === 'free' ? { tier: 'free' } : { tier: { not: 'free' }, verdict: { is: { status: 'verified' } }, ...(board === 'round' ? { roundId } : {}) }; // paid boards: verified recordings only
+  async leaderboard(board: LeaderboardBoard, roundId: number | null, limit: number, verifiedOnly: boolean): Promise<LeaderboardRow[]> {
+    const tierFilter: Prisma.RideWhereInput = board === 'free' ? { tier: 'free' } : { tier: { not: 'free' }, ...(verifiedOnly ? { verdict: { is: { status: 'verified' } } } : {}), ...(board === 'round' ? { roundId } : {}) }; // paid boards: verified recordings only (unless shadow mode)
     const groups = await this.prisma.ride.groupBy({
       by: ['wallet'],
       where: { status: 'completed', ...tierFilter },

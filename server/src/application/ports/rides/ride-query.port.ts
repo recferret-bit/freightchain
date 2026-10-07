@@ -86,6 +86,6 @@ export abstract class RideQueryPort {
   abstract summary(wallet: string): Promise<RideSummary>;
   abstract recent(wallet: string, limit: number): Promise<RecentRideRow[]>;
   /** Completed rides ranked by total distance (ties: more rides, earlier first finish, wallet). `roundId` is required for the 'round' board.
-      The PAID boards ('round', 'all') count only rides whose recording was verified; the free board counts every completed free ride. */
-  abstract leaderboard(board: LeaderboardBoard, roundId: number | null, limit: number): Promise<LeaderboardRow[]>;
+      `verifiedOnly`: the PAID boards ('round', 'all') count only rides whose recording was verified (false = shadow mode); the free board always counts every completed free ride. */
+  abstract leaderboard(board: LeaderboardBoard, roundId: number | null, limit: number, verifiedOnly: boolean): Promise<LeaderboardRow[]>;
 }
