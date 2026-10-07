@@ -8,7 +8,7 @@ Docker runs the app + PostgreSQL; the host's nginx terminates TLS (Let's Encrypt
 
 | name | what | nginx |
 |---|---|---|
-| `freightchain.fun` | landing + lobby | proxy → app |
+| `freightchain.fun` | landing (`/`, the Vite build in `landing/`) + lobby | proxy → app |
 | `ride.freightchain.fun` | the game (`play.html`) | proxy → app |
 | `api.freightchain.fun` | the API | only `/api/` is proxied, everything else is 404 |
 
@@ -54,7 +54,7 @@ npm run deploy          # checks → plan → confirm → upload → build → b
 | `npm run deploy:smoke` | smoke test of the three public URLs: pages, API-host isolation, CORS, a throwaway sign-in + cookie flags/domain (creates one throwaway player) |
 
 ## What a release does (on the server, `scripts/remote/release.sh`)
-1. build the image `freightchain-server:<release>` from the uploaded commit
+1. build the image `freightchain-server:<release>` from the uploaded commit (server + `client/` + the landing's Vite build; the landing's tests gate the image – `LANDING_DIR` is set by the Dockerfile)
 2. `pg_dump | gzip` → `backups/db-<release>.sql.gz` (skipped on the very first deploy)
 3. one-off `migrate` with the new image (migrations are forward-only)
 4. swap the app container, poll `/api/health/ready` (≤ 60 s)
