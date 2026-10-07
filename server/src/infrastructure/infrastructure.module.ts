@@ -6,6 +6,9 @@ import { TokenSignerPort } from '../application/ports/auth/token-signer.port.js'
 import { RulesConfigPort } from '../application/ports/config/rules-config.port.js';
 import { ChainPort } from '../application/ports/economy/chain.port.js';
 import { PaymentRepositoryPort } from '../application/ports/economy/payment.repository.port.js';
+import { PoolChainPort } from '../application/ports/economy/pool-chain.port.js';
+import { ChainCursorRepositoryPort, ChainEventRepositoryPort } from '../application/ports/economy/chain-event.repository.port.js';
+import { SponsoredTxRepositoryPort } from '../application/ports/economy/sponsored-tx.repository.port.js';
 import { PriceQuotePort } from '../application/ports/economy/price-quote.port.js';
 import { RoundRepositoryPort } from '../application/ports/economy/round.repository.port.js';
 import { HealthProbePort } from '../application/ports/health/health-probe.port.js';
@@ -31,6 +34,10 @@ import { PrismaService } from './prisma/prisma.service.js';
 import { TransactionPrismaAdapter } from './prisma/transaction.prisma.adapter.js';
 import { HttpPriceQuoteAdapter } from './solana/http-price-quote.adapter.js';
 import { SolanaChainAdapter } from './solana/solana-chain.adapter.js';
+import { ProgramChainAdapter } from './solana/program-chain.adapter.js';
+import { ChainCursorPrismaRepository } from './prisma/repositories/chain-cursor.prisma.repository.js';
+import { ChainEventPrismaRepository } from './prisma/repositories/chain-event.prisma.repository.js';
+import { SponsoredTxPrismaRepository } from './prisma/repositories/sponsored-tx.prisma.repository.js';
 import { SystemClock } from './time/system.clock.js';
 import { PlayerAuthGuard } from './http/guards/player-auth.guard.js';
 import { ClearSessionCookieInterceptor, SetSessionCookieInterceptor } from './http/interceptors/session-cookie.interceptor.js';
@@ -53,6 +60,10 @@ const ports: Provider[] = [
   { provide: PriceQuotePort, useClass: HttpPriceQuoteAdapter },
   { provide: ChainPort, useClass: SolanaChainAdapter },
   { provide: HealthProbePort, useClass: PrismaHealthProbe },
+  { provide: PoolChainPort, useClass: ProgramChainAdapter },
+  { provide: ChainEventRepositoryPort, useClass: ChainEventPrismaRepository },
+  { provide: ChainCursorRepositoryPort, useClass: ChainCursorPrismaRepository },
+  { provide: SponsoredTxRepositoryPort, useClass: SponsoredTxPrismaRepository },
 ];
 
 const portTokens = ports.map((p) => (p as { provide: unknown }).provide as typeof ClockPort);
