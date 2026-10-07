@@ -6,6 +6,9 @@ import { AppModule } from '../../src/app/app.module.js';
 import { AchievementRepositoryPort } from '../../src/application/ports/achievements/achievement.repository.port.js';
 import { ChallengeRepositoryPort } from '../../src/application/ports/auth/challenge.repository.port.js';
 import { ChainPort } from '../../src/application/ports/economy/chain.port.js';
+import { PoolChainPort } from '../../src/application/ports/economy/pool-chain.port.js';
+import { ChainCursorRepositoryPort, ChainEventRepositoryPort } from '../../src/application/ports/economy/chain-event.repository.port.js';
+import { SponsoredTxRepositoryPort } from '../../src/application/ports/economy/sponsored-tx.repository.port.js';
 import { PaymentRepositoryPort } from '../../src/application/ports/economy/payment.repository.port.js';
 import { RoundRepositoryPort } from '../../src/application/ports/economy/round.repository.port.js';
 import { HealthProbePort } from '../../src/application/ports/health/health-probe.port.js';
@@ -17,6 +20,7 @@ import { TransactionPort } from '../../src/application/ports/shared/transaction.
 import { PrismaService } from '../../src/infrastructure/prisma/prisma.service.js';
 import { truncateAllTables } from '../../src/infrastructure/prisma/truncate.js';
 import { FakeChain, TREASURY } from './fake-chain.js';
+import { FakePoolChain } from './fake-pool-chain.js';
 import { FakeClock } from './fake-clock.js';
 import { MemoryDb } from './in-memory/memory-db.js';
 import {
@@ -28,6 +32,7 @@ import { TicketOrderRepositoryPort } from '../../src/application/ports/economy/t
 import { PoolRepositoryPort } from '../../src/application/ports/economy/pool.repository.port.js';
 import { PromoRepositoryPort } from '../../src/application/ports/economy/promo.repository.port.js';
 import { RideTicketRepositoryPort } from '../../src/application/ports/players/ride-ticket.repository.port.js';
+import { MemoryChainCursorRepository, MemoryChainEventRepository, MemorySponsoredTxRepository } from './in-memory/memory-repositories.js';
 
 export type Persistence = 'memory' | 'postgres';
 
@@ -39,6 +44,8 @@ export interface Harness {
   app: INestApplication;
   clock: FakeClock;
   chain: FakeChain;
+  /** the pool program (PoolChainPort) */
+  poolChain: FakePoolChain;
   persistence: Persistence;
   server(): Server;
   /** wipes every table / map and the fake chain (the clock keeps running forward) */
@@ -63,9 +70,10 @@ export async function createHarness(persistence: Persistence, env: Record<string
   });
   const clock = new FakeClock();
   const chain = new FakeChain();
+  const poolChain = new FakePoolChain();
   const memory = new MemoryDb();
 
-  let builder = Test.createTestingModule({ imports: [AppModule] }).overrideProvider(ClockPort).useValue(clock).overrideProvider(ChainPort).useValue(chain);
+  let builder = Test.createTestingModule({ imports: [AppModule] }).overrideProvider(ClockPort).useValue(clock).overrideProvider(ChainPort).useValue(chain).overrideProvider(PoolChainPort).useValue(poolChain);
   if (persistence === 'memory') {
     builder = builder
       .overrideProvider(PrismaService).useValue({ $connect: async () => undefined, $disconnect: async () => undefined })
@@ -81,7 +89,10 @@ export async function createHarness(persistence: Persistence, env: Record<string
       .overrideProvider(PromoRepositoryPort).useValue(new MemoryPromoRepository(memory))
       .overrideProvider(TicketOrderRepositoryPort).useValue(new MemoryTicketOrderRepository(memory))
       .overrideProvider(TransactionPort).useValue(new MemoryTransaction())
-      .overrideProvider(HealthProbePort).useValue(new MemoryHealthProbe());
+      .overrideProvider(HealthProbePort).useValue(new MemoryHealthProbe())
+      .overrideProvider(ChainEventRepositoryPort).useValue(new MemoryChainEventRepository(memory))
+      .overrideProvider(ChainCursorRepositoryPort).useValue(new MemoryChainCursorRepository(memory))
+      .overrideProvider(SponsoredTxRepositoryPort).useValue(new MemorySponsoredTxRepository(memory));
   }
   const moduleRef = await builder.compile();
   const app = moduleRef.createNestApplication();
@@ -90,10 +101,11 @@ export async function createHarness(persistence: Persistence, env: Record<string
   const prisma = persistence === 'postgres' ? app.get(PrismaService, { strict: false }) : null;
 
   return {
-    app, clock, chain, persistence,
+    app, clock, chain, poolChain, persistence,
     server: () => app.getHttpServer() as Server,
     reset: async () => {
       chain.reset();
+      poolChain.reset();
       memory.reset();
       if (prisma) await truncateAllTables(prisma);
     },

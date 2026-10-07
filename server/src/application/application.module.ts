@@ -11,6 +11,7 @@ import { GetMeHandler } from './use-cases/auth/get-me/get-me.handler.js';
 import { LogoutHandler } from './use-cases/auth/logout/logout.handler.js';
 import { RequestChallengeHandler } from './use-cases/auth/request-challenge/request-challenge.handler.js';
 import { VerifySignInHandler } from './use-cases/auth/verify-signin/verify-signin.handler.js';
+import { GetChainFeesHandler } from './use-cases/chain/get-chain-fees/get-chain-fees.handler.js';
 import { GetLeaderboardHandler } from './use-cases/economy/get-leaderboard/get-leaderboard.handler.js';
 import { GetPoolHandler } from './use-cases/economy/get-pool/get-pool.handler.js';
 import { GetTiersHandler } from './use-cases/economy/get-tiers/get-tiers.handler.js';
@@ -56,6 +57,7 @@ const handlers: Provider[] = [
   ListPoolsHandler, GetPrizePoolHandler, RedeemPromoHandler,
   CreatePromoHandler, ListPromosHandler, DisablePromoHandler, GrantTicketsHandler, RegisterPoolHandler,
   CreateTicketOrderHandler, GetTicketOrderHandler, GetPendingTicketOrderHandler,
+  GetChainFeesHandler,
 ];
 
 @Module({

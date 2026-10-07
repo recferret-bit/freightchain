@@ -10,6 +10,7 @@ import { RoundService } from '../../src/application/services/round.service.js';
 import { Player } from '../../src/domain/players/player.entity.js';
 import { Ride } from '../../src/domain/rides/ride.entity.js';
 import { FakeChain, TREASURY } from './fake-chain.js';
+import { FakePoolChain } from './fake-pool-chain.js';
 import { FakeClock } from './fake-clock.js';
 import { MemoryDb } from './in-memory/memory-db.js';
 import {
@@ -17,6 +18,7 @@ import {
   MemoryRideQuery, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
 } from './in-memory/memory-repositories.js';
 import { MemoryPoolRepository, MemoryPromoRepository, MemoryRideTicketRepository, MemoryTicketOrderRepository } from './in-memory/memory-ledger-repositories.js';
+import { MemoryChainCursorRepository, MemoryChainEventRepository, MemorySponsoredTxRepository } from './in-memory/memory-repositories.js';
 
 /** Fixed rules for unit tests: 10 s free shift (140 m), treasury configured, one demo wallet. */
 export const DEMO_UNIT_WALLET = 'DemoWa11et1111111111111111111111111111111111';
@@ -65,6 +67,10 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const promos = new MemoryPromoRepository(db);
   const orders = new MemoryTicketOrderRepository(db);
   const poolTickets = new PoolTicketsService(pools, tickets);
+  const poolChain = new FakePoolChain();
+  const chainEvents = new MemoryChainEventRepository(db);
+  const chainCursors = new MemoryChainCursorRepository(db);
+  const sponsoredTxs = new MemorySponsoredTxRepository(db);
   const sessions = new PlayerSessionService(players, rulesPort, clock);
   const lookup = new RideLookupService(rides);
   const rounds = new RoundService(roundRepo, rulesPort, transactions, clock);
@@ -96,6 +102,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   return {
     db, clock, chain, entropy, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, health, pools, tickets, promos, orders, poolTickets, ticketSettlement,
     sessions, lookup, rounds, achievements, settlement, now, player, freeRide, paidOrder, reload, storedPlayer,
+    poolChain, chainEvents, chainCursors, sponsoredTxs,
   };
 }
 export type UnitContext = ReturnType<typeof unitContext>;
