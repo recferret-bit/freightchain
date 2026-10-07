@@ -26,4 +26,4 @@ Uses the same read-only tools as **prod-db** and **prod-logs** (`npm run --silen
 ## What to report
 
 What the player saw, what the server recorded (with the rows/lines), why (which rule), and what can be done: nothing (rule worked), an admin
-override on the admin page (`https://admin.freightchain.fun`, basic auth + admin wallet: accept / reject a flagged ride, or RE-JUDGE – also for a completed shift that was never judged), or a code/threshold fix (say which file). Do not change data yourself.
+override on the admin page (`https://admin.freightchain.fun`: basic auth, then SIGN IN AS ADMIN with the admin wallet; every decision is signed by that wallet: accept / reject a flagged ride, or RE-JUDGE – also for a completed shift that was never judged), or a code/threshold fix (say which file). Do not change data yourself.

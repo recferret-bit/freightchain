@@ -109,13 +109,21 @@ async function ride(id) {
   const kv = (...pairs) => el('dl', { class: 'kv' }, pairs.flatMap(([k, val]) => [el('dt', {}, k), el('dd', {}, val)]));
   const decide = async decision => {
     const note = $('note').value.trim();
-    $('decide-msg').textContent = 'Saving…';
-    try { await api(`rides/${encodeURIComponent(id)}/verdict`, { decision, note: note || undefined }); go(); } catch (e) { $('decide-msg').textContent = e.message; $('decide-msg').className = 'bad'; }
+    $('decide-msg').textContent = 'Sign the decision in your wallet…';
+    try {
+      const signature = await signChange(id, { action: 'override', decision, note: note || undefined });
+      $('decide-msg').textContent = 'Saving…';
+      await api(`rides/${encodeURIComponent(id)}/verdict`, { decision, note: note || undefined, signature }); go();
+    } catch (e) { $('decide-msg').textContent = e.message; $('decide-msg').className = 'bad'; }
   };
   const rejudge = async () => {
     const msg = $('decide-msg') ?? $('judge-msg');
-    msg.textContent = 'Judging…';
-    try { await api(`rides/${encodeURIComponent(id)}/rejudge`, {}); go(); } catch (e) { msg.textContent = e.message; msg.className = 'bad'; }
+    msg.textContent = 'Sign the re-judge in your wallet…';
+    try {
+      const signature = await signChange(id, { action: 'rejudge' });
+      msg.textContent = 'Judging…';
+      await api(`rides/${encodeURIComponent(id)}/rejudge`, { signature }); go();
+    } catch (e) { msg.textContent = e.message; msg.className = 'bad'; }
   };
   view.replaceChildren(
     el('p', {}, el('a', { href: '#queue' }, '← review queue'), ' · ', el('a', { href: `?wallet=${r.wallet}#rides` }, 'this rider\'s rides'), ' · ', el('a', { href: `#signins/${r.wallet}` }, 'sign-ins'), ' · ', el('a', { href: `#logs/${r.id}` }, 'log lines')),
@@ -207,6 +215,18 @@ async function adminSignIn() {
   const { message } = await api('auth/nonce', { wallet: walletAddr });
   const res = await p.signMessage(new TextEncoder().encode(message), 'utf8');   // Phantom: { signature }, Solflare: the bytes
   return api('auth/verify', { wallet: walletAddr, signature: b58(res.signature ?? res) });
+}
+/* every change is signed by the admin wallet for exactly that change: the server's text (ride, decision, note) → the wallet signs → the change carries the
+   signature; the audit keeps both. The wallet must be the signed-in admin's. */
+async function signChange(rideId, intent) {
+  const p = provider();
+  if (!p) throw new Error('No Solana wallet found – changes are signed by your admin wallet (Phantom / Solflare)');
+  await p.connect();
+  const s = stored();
+  if (s && p.publicKey.toString() !== s.wallet) throw new Error(`The wallet is ${short(p.publicKey.toString())}, the admin session is ${short(s.wallet)} – switch the wallet's account`);
+  const { message } = await api(`rides/${encodeURIComponent(rideId)}/challenge`, intent);
+  const res = await p.signMessage(new TextEncoder().encode(message), 'utf8');
+  return b58(res.signature ?? res);
 }
 $('signout').onclick = async () => { try { await api('auth/logout', {}); } finally { store(null); location.reload(); } };
 

@@ -7,7 +7,11 @@ import { ListAdminRidesQuery } from '../../../src/application/use-cases/admin/li
 import { ListSignInsQuery } from '../../../src/application/use-cases/admin/list-sign-ins/list-sign-ins.query.js';
 import { OverrideVerdictCommand } from '../../../src/application/use-cases/admin/override-verdict/override-verdict.command.js';
 import { RejudgeRideCommand } from '../../../src/application/use-cases/admin/rejudge-ride/rejudge-ride.command.js';
-import { actionsQuerySchema, adminRidesQuerySchema, logsQuerySchema, overrideBodySchema, signInsQuerySchema } from '../../../src/presentation/admin/dto/admin.dto.js';
+import { actionChallengeBodySchema, actionsQuerySchema, adminRidesQuerySchema, logsQuerySchema, overrideBodySchema, rejudgeBodySchema, signInsQuerySchema } from '../../../src/presentation/admin/dto/admin.dto.js';
+import { RequestActionChallengeCommand } from '../../../src/application/use-cases/admin/request-action-challenge/request-action-challenge.command.js';
+import { RequestAdminChallengeCommand } from '../../../src/application/use-cases/admin/request-admin-challenge/request-admin-challenge.command.js';
+import { VerifyAdminSignInCommand } from '../../../src/application/use-cases/admin/verify-admin-signin/verify-admin-signin.command.js';
+import { LogoutCommand } from '../../../src/application/use-cases/auth/logout/logout.command.js';
 import { busMock } from '../../support/bus.js';
 
 const W = 'GseaEsNWMLScZ5RH8yQ4xmoCP97H86HjLSA9xkyFCqbn';
@@ -16,6 +20,9 @@ describe('AdminHttpController', () => {
   it('dispatches every route to its query / command (the admin wallet and the request id go with the override)', async () => {
     const commands = busMock({ status: 'verified' }), queries = busMock({ rows: [] });
     const c = new AdminHttpController(commands.bus, queries.bus);
+    await c.nonce({ wallet: W }); expect(commands.last()).toEqual(new RequestAdminChallengeCommand(W));
+    await c.verify({ wallet: W, signature: 'S' }, { ip: '1.2.3.4', userAgent: 'UA' }, 'req-1'); expect(commands.last()).toEqual(new VerifyAdminSignInCommand(W, 'S', { ip: '1.2.3.4', userAgent: 'UA' }, 'req-1'));
+    await c.logout(); expect(commands.last()).toEqual(new LogoutCommand());
     await c.overview(); expect(queries.last()).toEqual(new GetAdminOverviewQuery());
     const filter = adminRidesQuerySchema.parse({ verdict: 'flagged' });
     await c.rides(filter); expect(queries.last()).toEqual(new ListAdminRidesQuery({ limit: 50, verdict: 'flagged' }));
@@ -23,9 +30,13 @@ describe('AdminHttpController', () => {
     await c.signIns({ limit: 10, wallet: W }); expect(queries.last()).toEqual(new ListSignInsQuery(10, W));
     await c.actions({ limit: 5 }); expect(queries.last()).toEqual(new ListAdminActionsQuery(5));
     await c.logs(logsQuerySchema.parse({ level: 'warn', q: 'req-1' })); expect(queries.last()).toEqual(new GetAdminLogsQuery({ limit: 200, minLevel: 'warn', text: 'req-1' }));
-    expect(await c.override({ wallet: 'ADMIN' }, { id: 'r1' }, overrideBodySchema.parse({ decision: 'verified', note: ' looks human ' }), 'req-9')).toEqual({ status: 'verified' });
-    expect(commands.last()).toEqual(new OverrideVerdictCommand('ADMIN', 'r1', 'verified' as never, 'looks human', 'req-9'));
-    await c.rejudge({ wallet: 'ADMIN' }, { id: 'r1' }, 'req-10'); expect(commands.last()).toEqual(new RejudgeRideCommand('ADMIN', 'r1', 'req-10'));
+    await c.challenge({ wallet: 'ADMIN' }, { id: 'r1' }, actionChallengeBodySchema.parse({ action: 'override', decision: 'rejected', note: ' bot ' }));
+    expect(commands.last()).toEqual(new RequestActionChallengeCommand('ADMIN', { action: 'override', rideId: 'r1', decision: 'rejected' as never, note: 'bot' }));
+    await c.challenge({ wallet: 'ADMIN' }, { id: 'r1' }, actionChallengeBodySchema.parse({ action: 'rejudge' }));
+    expect(commands.last()).toEqual(new RequestActionChallengeCommand('ADMIN', { action: 'rejudge', rideId: 'r1' }));
+    expect(await c.override({ wallet: 'ADMIN' }, { id: 'r1' }, overrideBodySchema.parse({ decision: 'verified', note: ' looks human ', signature: 'SIG' }), 'req-9')).toEqual({ status: 'verified' });
+    expect(commands.last()).toEqual(new OverrideVerdictCommand('ADMIN', 'r1', 'verified' as never, 'looks human', 'req-9', 'SIG'));
+    await c.rejudge({ wallet: 'ADMIN' }, { id: 'r1' }, rejudgeBodySchema.parse({ signature: 'SIG2' }), 'req-10'); expect(commands.last()).toEqual(new RejudgeRideCommand('ADMIN', 'r1', 'req-10', 'SIG2'));
   });
 
   describe('DTO schemas', () => {
@@ -41,10 +52,16 @@ describe('AdminHttpController', () => {
       expect(logsQuerySchema.parse({ level: '', q: '' })).toEqual({ limit: 200 });
       expect(logsQuerySchema.safeParse({ level: 'loud' }).success).toBe(false);
     });
-    it('override: verified or rejected only; a blank note is no note; notes are capped', () => {
-      expect(overrideBodySchema.parse({ decision: 'rejected', note: '  ' })).toEqual({ decision: 'rejected', note: null });
-      expect(overrideBodySchema.parse({ decision: 'verified' })).toEqual({ decision: 'verified', note: null });
-      for (const bad of [{ decision: 'flagged' }, {}, { decision: 'verified', note: 'x'.repeat(501) }]) expect(overrideBodySchema.safeParse(bad).success).toBe(false);
+    it('override: verified or rejected only; a blank note is no note; notes are capped; a signature is required', () => {
+      expect(overrideBodySchema.parse({ decision: 'rejected', note: '  ', signature: 's' })).toEqual({ decision: 'rejected', note: null, signature: 's' });
+      expect(overrideBodySchema.parse({ decision: 'verified', signature: 's' })).toEqual({ decision: 'verified', note: null, signature: 's' });
+      for (const bad of [{ decision: 'flagged', signature: 's' }, { signature: 's' }, { decision: 'verified', note: 'x'.repeat(501), signature: 's' }, { decision: 'verified' }, { decision: 'verified', signature: '' }]) expect(overrideBodySchema.safeParse(bad).success, JSON.stringify(bad)).toBe(false);
+      expect(rejudgeBodySchema.safeParse({}).success).toBe(false);
+    });
+    it('challenge: an override (decision + the note normalised like the override\'s) or a re-judge', () => {
+      expect(actionChallengeBodySchema.parse({ action: 'override', decision: 'verified', note: '  ' })).toEqual({ action: 'override', decision: 'verified', note: null });
+      expect(actionChallengeBodySchema.parse({ action: 'rejudge' })).toEqual({ action: 'rejudge' });
+      for (const bad of [{ action: 'override' }, { action: 'delete' }, {}]) expect(actionChallengeBodySchema.safeParse(bad).success, JSON.stringify(bad)).toBe(false);
     });
   });
 });

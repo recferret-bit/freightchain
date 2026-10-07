@@ -7,6 +7,7 @@ import { PlayerSessionService } from './services/player-session.service.js';
 import { RideLookupService } from './services/ride-lookup.service.js';
 import { RoundService } from './services/round.service.js';
 import { VerdictService } from './services/verdict.service.js';
+import { AdminProofService } from './services/admin-proof.service.js';
 import { GrantDailyFreeRidesHandler } from './use-cases/players/grant-daily-free-rides/grant-daily-free-rides.handler.js';
 import { GetMeHandler } from './use-cases/auth/get-me/get-me.handler.js';
 import { LogoutHandler } from './use-cases/auth/logout/logout.handler.js';
@@ -40,15 +41,16 @@ import { OverrideVerdictHandler } from './use-cases/admin/override-verdict/overr
 import { RejudgeRideHandler } from './use-cases/admin/rejudge-ride/rejudge-ride.handler.js';
 import { RequestAdminChallengeHandler } from './use-cases/admin/request-admin-challenge/request-admin-challenge.handler.js';
 import { VerifyAdminSignInHandler } from './use-cases/admin/verify-admin-signin/verify-admin-signin.handler.js';
+import { RequestActionChallengeHandler } from './use-cases/admin/request-action-challenge/request-action-challenge.handler.js';
 
-const services: Provider[] = [AchievementService, PaymentSettlementService, PlayerSessionService, RideLookupService, RoundService, VerdictService];
+const services: Provider[] = [AchievementService, PaymentSettlementService, PlayerSessionService, RideLookupService, RoundService, VerdictService, AdminProofService];
 
 const handlers: Provider[] = [
   RequestChallengeHandler, VerifySignInHandler, GetMeHandler, LogoutHandler,
   CreateRideHandler, GetRideHandler, GetPendingRideHandler, StartRideHandler, HeartbeatRideHandler, EndRideHandler,
   GetPaymentInstructionsHandler, ConfirmPaymentHandler, ReconcilePaymentHandler,
   UploadBatchHandler, SweepTelemetryHandler,
-  GetAdminOverviewHandler, ListAdminRidesHandler, GetAdminRideHandler, ListSignInsHandler, ListAdminActionsHandler, GetAdminLogsHandler, OverrideVerdictHandler, RejudgeRideHandler, RequestAdminChallengeHandler, VerifyAdminSignInHandler,
+  GetAdminOverviewHandler, ListAdminRidesHandler, GetAdminRideHandler, ListSignInsHandler, ListAdminActionsHandler, GetAdminLogsHandler, OverrideVerdictHandler, RejudgeRideHandler, RequestAdminChallengeHandler, VerifyAdminSignInHandler, RequestActionChallengeHandler,
   GetTiersHandler, GetPoolHandler, GetLeaderboardHandler,
   GetLiveHandler, GetProfileHandler,
   GetLivenessHandler, GetReadinessHandler,

@@ -113,8 +113,9 @@ describe('concurrency (PostgreSQL)', () => {
       for (const b of batches.slice(0, 3)) await a.agent.post(`/api/rides/${ride.id}/batches`).send(b).expect(200);
       c.sec(10);
       await a.agent.post(`/api/rides/${ride.id}/end`).send({ outcome: 'shift', s: 140, t: 10 }).expect(200);
+      const text = (await boss.agent.post(`/api/admin/rides/${ride.id}/challenge`).set('x-fc-admin', '1').send({ action: 'override', decision: 'rejected', note: 'race' }).expect(200)).body.message;
       const results = await Promise.all([
-        boss.agent.post(`/api/admin/rides/${ride.id}/verdict`).set('x-fc-admin', '1').send({ decision: 'rejected', note: 'race' }),
+        boss.agent.post(`/api/admin/rides/${ride.id}/verdict`).set('x-fc-admin', '1').send({ decision: 'rejected', note: 'race', signature: sign(admin.kp, text) }),
         ...batches.slice(3).map((b) => a.agent.post(`/api/rides/${ride.id}/batches`).send(b)),
       ]);
       expect(results.map((r) => r.status)).toEqual(results.map(() => 200));

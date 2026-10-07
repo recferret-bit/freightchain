@@ -13,6 +13,11 @@ export function adminScenarios(h: () => Harness): void {
   const asAdmin = async () => loginAdmin(ADMIN, (await login(ADMIN)).agent);
   beforeEach(() => h().reset());
 
+  /** the admin page's signed change: ask for the text, the wallet signs it, the change carries the signature */
+  async function signed(admin: Rider, rideId: string, intent: { action: 'override'; decision: string; note?: string } | { action: 'rejudge' }) {
+    const { body } = await admin.agent.post(`/api/admin/rides/${rideId}/challenge`).set('x-fc-admin', '1').send(intent).expect(200);
+    return { message: body.message as string, signature: sign(admin.kp, body.message) };
+  }
   /** a completed free shift whose recording covers only 7 of its 10 s → flagged ('recording-gaps') */
   async function flaggedRide(rider: Rider) {
     const r = (await rider.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
@@ -30,7 +35,7 @@ export function adminScenarios(h: () => Harness): void {
       await anon().get(`/api/admin/${path}`).expect(404);
       await rider.agent.get(`/api/admin/${path}`).expect(404);
     }
-    await rider.agent.post('/api/admin/rides/x/verdict').set('x-fc-admin', '1').send({ decision: 'verified' }).expect(404);
+    await rider.agent.post('/api/admin/rides/x/verdict').set('x-fc-admin', '1').send({ decision: 'verified', signature: 's' }).expect(404);
   });
 
   it('the admin session: the player session of an admin wallet grants nothing; the admin sign-in does, for ADMIN_SESSION_TTL_MINUTES (120); sign-out ends it', async () => {
@@ -86,14 +91,21 @@ export function adminScenarios(h: () => Harness): void {
     const refused = await admin.agent.post(`/api/admin/rides/${id}/verdict`).send({ decision: 'verified' }).expect(403);
     expect(refused.body.code).toBe('forbidden');
     await admin.agent.post(`/api/admin/rides/${id}/verdict`).set('x-fc-admin', '1').send({ decision: 'maybe' }).expect(400);
-    const ok = await admin.agent.post(`/api/admin/rides/${id}/verdict`).set('x-fc-admin', '1').send({ decision: 'verified', note: 'the tab was hidden for 3 s' }).expect(200);
+    const unsigned = await admin.agent.post(`/api/admin/rides/${id}/verdict`).set('x-fc-admin', '1').send({ decision: 'verified', signature: sign(ADMIN.kp, 'whatever') }).expect(401);   // nothing was issued
+    expect(unsigned.body.code).toBe('unauthorized');
+    const wrong = await signed(admin, id, { action: 'override', decision: 'rejected' });   // signed for REJECT, sent as ACCEPT
+    await admin.agent.post(`/api/admin/rides/${id}/verdict`).set('x-fc-admin', '1').send({ decision: 'verified', signature: wrong.signature }).expect(401);
+    const proof = await signed(admin, id, { action: 'override', decision: 'verified', note: ' the tab was hidden for 3 s ' });
+    expect(proof.message).toContain(`Ride: ${id}\nNote: "the tab was hidden for 3 s"`);
+    const ok = await admin.agent.post(`/api/admin/rides/${id}/verdict`).set('x-fc-admin', '1').send({ decision: 'verified', note: 'the tab was hidden for 3 s', signature: proof.signature }).expect(200);
+    await admin.agent.post(`/api/admin/rides/${id}/verdict`).set('x-fc-admin', '1').send({ decision: 'verified', note: 'the tab was hidden for 3 s', signature: proof.signature }).expect(401);   // a replay
     expect(ok.body).toMatchObject({ status: 'verified', override: { by: ADMIN.address, note: 'the tab was hidden for 3 s' } });
     const requestId = ok.headers['x-request-id'];
 
     expect((await rider.agent.get(`/api/rides/${id}`).expect(200)).body.verdict).toMatchObject({ status: 'verified', override: { by: ADMIN.address } });
     expect((await admin.agent.get('/api/admin/rides?verdict=flagged').expect(200)).body.rows).toEqual([]);
     const audit = (await admin.agent.get('/api/admin/actions').expect(200)).body.rows;
-    expect(audit[0]).toMatchObject({ wallet: ADMIN.address, action: 'verdict.override', target: id, detail: { from: 'flagged', to: 'verified', rider: rider.address }, requestId });
+    expect(audit[0]).toMatchObject({ wallet: ADMIN.address, action: 'verdict.override', target: id, detail: { from: 'flagged', to: 'verified', rider: rider.address, signed: proof }, requestId });
     const log = (await admin.agent.get(`/api/admin/logs?q=${requestId}`).expect(200)).body.entries;
     expect(log.map((e: { event?: string }) => e.event)).toEqual(expect.arrayContaining(['request', 'admin']));
 
@@ -116,9 +128,12 @@ export function adminScenarios(h: () => Harness): void {
     const admin = await asAdmin();
     const rider = await login();
     const id = await flaggedRide(rider);
-    await admin.agent.post(`/api/admin/rides/${id}/verdict`).set('x-fc-admin', '1').send({ decision: 'verified' }).expect(200);
-    await admin.agent.post(`/api/admin/rides/${id}/rejudge`).expect(403);
-    const again = (await admin.agent.post(`/api/admin/rides/${id}/rejudge`).set('x-fc-admin', '1').expect(200)).body;
+    const sig1 = (await signed(admin, id, { action: 'override', decision: 'verified' })).signature;
+    await admin.agent.post(`/api/admin/rides/${id}/verdict`).set('x-fc-admin', '1').send({ decision: 'verified', signature: sig1 }).expect(200);
+    await admin.agent.post(`/api/admin/rides/${id}/rejudge`).send({ signature: 'x' }).expect(403);
+    await admin.agent.post(`/api/admin/rides/${id}/rejudge`).set('x-fc-admin', '1').send({}).expect(400);
+    const sig2 = (await signed(admin, id, { action: 'rejudge' })).signature;
+    const again = (await admin.agent.post(`/api/admin/rides/${id}/rejudge`).set('x-fc-admin', '1').send({ signature: sig2 }).expect(200)).body;
     expect(again).toMatchObject({ status: 'flagged', override: null });
     expect((await admin.agent.get('/api/admin/actions').expect(200)).body.rows.map((a: { action: string }) => a.action)).toEqual(['verdict.rejudge', 'verdict.override', 'auth.signin']);
   });
@@ -127,8 +142,11 @@ export function adminScenarios(h: () => Harness): void {
     const admin = await asAdmin();
     const rider = await login();
     const r = (await rider.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
-    await admin.agent.post('/api/admin/rides/00000000-0000-4000-8000-ffffffffffff/verdict').set('x-fc-admin', '1').send({ decision: 'rejected' }).expect(404);
-    await admin.agent.post(`/api/admin/rides/${r.id}/verdict`).set('x-fc-admin', '1').send({ decision: 'rejected' }).expect(404);
+    const unknown = '00000000-0000-4000-8000-ffffffffffff';
+    const sig3 = (await signed(admin, unknown, { action: 'override', decision: 'rejected' })).signature;
+    await admin.agent.post(`/api/admin/rides/${unknown}/verdict`).set('x-fc-admin', '1').send({ decision: 'rejected', signature: sig3 }).expect(404);
+    const sig4 = (await signed(admin, r.id, { action: 'override', decision: 'rejected' })).signature;
+    await admin.agent.post(`/api/admin/rides/${r.id}/verdict`).set('x-fc-admin', '1').send({ decision: 'rejected', signature: sig4 }).expect(404);
     expect((await admin.agent.get('/api/admin/actions').expect(200)).body.rows.map((a: { action: string }) => a.action)).toEqual(['auth.signin']);
   });
 }

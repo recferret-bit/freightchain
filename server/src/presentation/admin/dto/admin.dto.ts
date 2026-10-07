@@ -31,8 +31,21 @@ export const logsQuerySchema = z
   .transform((l): LogFilter => ({ limit: l.limit, ...(l.level ? { minLevel: l.level as LogFilter['minLevel'] } : {}), ...(l.q ? { text: l.q } : {}) }));
 export type LogsQuery = z.infer<typeof logsQuerySchema>;
 
-export const overrideBodySchema = z.object({
-  decision: z.enum([VerdictStatus.Verified, VerdictStatus.Rejected]).transform((d) => d as VerdictDecision),
-  note: z.preprocess((v) => (typeof v === 'string' && v.trim() === '' ? undefined : v), z.string().trim().max(NOTE_MAX_LENGTH).optional()).transform((n) => n ?? null),
-});
+const decision = z.enum([VerdictStatus.Verified, VerdictStatus.Rejected]).transform((d) => d as VerdictDecision);
+/** a blank note is no note – normalised the SAME way for the text to sign and for the change, or they would not match */
+const note = z.preprocess((v) => (typeof v === 'string' && v.trim() === '' ? undefined : v), z.string().trim().max(NOTE_MAX_LENGTH).optional()).transform((n) => n ?? null);
+/** the wallet's signature (base58) – checked cryptographically by the handler (a wrong one is a 401, not a 400) */
+const signature = z.string().min(1).max(200);
+
+export const overrideBodySchema = z.object({ decision, note, signature });
 export type OverrideBody = z.infer<typeof overrideBodySchema>;
+
+export const rejudgeBodySchema = z.object({ signature });
+export type RejudgeBody = z.infer<typeof rejudgeBodySchema>;
+
+/** POST rides/:id/challenge – which change the text to sign must describe */
+export const actionChallengeBodySchema = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('override'), decision, note }),
+  z.object({ action: z.literal('rejudge') }),
+]);
+export type ActionChallengeBody = z.infer<typeof actionChallengeBodySchema>;

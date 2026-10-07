@@ -6,6 +6,8 @@ import { PlayerSessionService } from '../../src/application/services/player-sess
 import { RideLookupService } from '../../src/application/services/ride-lookup.service.js';
 import { RoundService } from '../../src/application/services/round.service.js';
 import { VerdictService } from '../../src/application/services/verdict.service.js';
+import { AdminProofService } from '../../src/application/services/admin-proof.service.js';
+import { NaclSignatureVerifier } from '../../src/infrastructure/auth/nacl.signature-verifier.js';
 import { Player } from '../../src/domain/players/player.entity.js';
 import { Ride } from '../../src/domain/rides/ride.entity.js';
 import { FakeChain, TREASURY } from './fake-chain.js';
@@ -71,6 +73,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const rounds = new RoundService(roundRepo, rulesPort, transactions, clock);
   const achievements = new AchievementService(unlocks, rideQuery, clock);
   const verdicts = new VerdictService(rides, players, batches, verdictRepo, adminActions, transactions, clock);
+  const proofs = new AdminProofService(challenges, new NaclSignatureVerifier(), rulesPort, clock, entropy);
   const settlement = new PaymentSettlementService(rounds, roundRepo, payments, rides, players, lookup, transactions, clock);
 
   const now = () => clock.now();
@@ -95,7 +98,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const storedPlayer = async (wallet: string) => (await players.findByWallet(wallet)) as Player;
 
   return {
-    db, clock, chain, entropy, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, batches, hasher, verdictRepo, verdicts, signIns, adminActions, adminQuery, health,
+    db, clock, chain, entropy, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, batches, hasher, verdictRepo, verdicts, proofs, signIns, adminActions, adminQuery, health,
     sessions, lookup, rounds, achievements, settlement, now, player, freeRide, paidOrder, reload, storedPlayer,
   };
 }

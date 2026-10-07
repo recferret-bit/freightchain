@@ -108,6 +108,7 @@ await A.shot('ride-desktop');
 await A.ev('document.getElementById("note").value = "e2e: accepted by the admin page"');
 await A.ev('[...document.querySelectorAll(".actions button")].find(b => /ACCEPT/.test(b.textContent)).click()');
 check('ACCEPT: the page shows VERIFIED, decided by the admin', await until(async () => /VERIFIED/.test(await A.ev('document.querySelector(".v")?.textContent || ""')) && /decided by/.test(await A.ev('document.getElementById("view").textContent'))));
+check('ACCEPT was signed by the admin wallet for exactly this ride and decision', (await A.ev(`(window.__lastMessage || '').includes('Action: set the verdict to VERIFIED') && (window.__lastMessage || '').includes('Ride: ${ride.id}')`)) === true);
 const after = (await get(`rides/${ride.id}`, rider.cookie)).j.verdict;
 check('…and the rider sees verified + the override', after?.status === 'verified' && after?.override?.by === admin.address && after.override.note === 'e2e: accepted by the admin page', JSON.stringify(after));
 
@@ -116,7 +117,7 @@ check('RE-JUDGE: the checks run again and replace the decision (FLAGGED again)',
 
 // ── audit, sign-ins, logs, rides
 await A.ev('location.hash = "#audit"');
-check('audit: the admin sign-ins, the override and the re-judge are logged', await until(async () => { const t = await A.ev('document.querySelector("tbody")?.textContent || ""'); return /verdict\.override/.test(t) && /verdict\.rejudge/.test(t) && /auth\.signin/.test(t); }));
+check('audit: the admin sign-ins, the override and the re-judge are logged, the changes with their signatures', await until(async () => { const t = await A.ev('document.querySelector("tbody")?.textContent || ""'); return /verdict\.override/.test(t) && /verdict\.rejudge/.test(t) && /auth\.signin/.test(t) && /"signature"/.test(t); }));
 await A.ev('location.hash = "#signins"');
 check('sign-ins: both wallets with an ip', await until(async () => { const t = await A.ev('document.querySelector("tbody")?.textContent || ""'); return t.includes(rider.short) && t.includes(admin.short); }));
 await A.shot('signins-desktop');

@@ -19,6 +19,7 @@ import { ListAdminRidesQuery } from '../../application/use-cases/admin/list-admi
 import { ListSignInsQuery } from '../../application/use-cases/admin/list-sign-ins/list-sign-ins.query.js';
 import { OverrideVerdictCommand } from '../../application/use-cases/admin/override-verdict/override-verdict.command.js';
 import { RejudgeRideCommand } from '../../application/use-cases/admin/rejudge-ride/rejudge-ride.command.js';
+import { RequestActionChallengeCommand } from '../../application/use-cases/admin/request-action-challenge/request-action-challenge.command.js';
 import { CurrentRequestId } from '../../infrastructure/http/decorators/client-info.js';
 import { CurrentPlayer } from '../../infrastructure/http/decorators/current-player.js';
 import { ZodBody, ZodParams, ZodQuery } from '../../infrastructure/http/decorators/zod.js';
@@ -26,8 +27,8 @@ import { AdminGuard } from '../../infrastructure/http/guards/admin.guard.js';
 import type { PlayerIdentity } from '../../infrastructure/http/types/http-request.js';
 import { rideIdParamsSchema, type RideIdParams } from '../common/dto/common.dto.js';
 import {
-  actionsQuerySchema, adminRidesQuerySchema, logsQuerySchema, overrideBodySchema, signInsQuerySchema,
-  type ActionsQuery, type AdminRidesQuery, type LogsQuery, type OverrideBody, type SignInsQuery,
+  actionChallengeBodySchema, actionsQuerySchema, adminRidesQuerySchema, logsQuerySchema, overrideBodySchema, rejudgeBodySchema, signInsQuerySchema,
+  type ActionChallengeBody, type ActionsQuery, type AdminRidesQuery, type LogsQuery, type OverrideBody, type RejudgeBody, type SignInsQuery,
 } from './dto/admin.dto.js';
 
 /** The admin page's API (admin.<apex>). An admin session (the admin sign-in below) of a wallet in ADMIN_WALLETS – to anybody else every route is a 404. Changes need the X-FC-Admin header and are audited. */
@@ -73,18 +74,25 @@ export class AdminHttpController {
     return this.queryBus.execute<GetAdminRideQuery, AdminRideDetailDto>(new GetAdminRideQuery(params.id));
   }
 
-  /** Accept (verified) or reject a ride's verdict by hand. */
+  /** The text the admin's wallet signs before ONE change of this ride (an override with its decision + note, or a re-judge). */
+  @Post('rides/:id/challenge') @HttpCode(200)
+  challenge(@CurrentPlayer() admin: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodBody(actionChallengeBodySchema) body: ActionChallengeBody): Promise<ChallengeDto> {
+    const intent = body.action === 'override' ? { action: 'override' as const, rideId: params.id, decision: body.decision, note: body.note } : { action: 'rejudge' as const, rideId: params.id };
+    return this.commandBus.execute<RequestActionChallengeCommand, ChallengeDto>(new RequestActionChallengeCommand(admin.wallet, intent));
+  }
+
+  /** Accept (verified) or reject a ride's verdict by hand – with the wallet's signature over the challenge for exactly this decision. */
   @Post('rides/:id/verdict') @HttpCode(200)
   override(
     @CurrentPlayer() admin: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodBody(overrideBodySchema) body: OverrideBody, @CurrentRequestId() requestId: string,
   ): Promise<VerdictDto> {
-    return this.commandBus.execute<OverrideVerdictCommand, VerdictDto>(new OverrideVerdictCommand(admin.wallet, params.id, body.decision, body.note, requestId));
+    return this.commandBus.execute<OverrideVerdictCommand, VerdictDto>(new OverrideVerdictCommand(admin.wallet, params.id, body.decision, body.note, requestId, body.signature));
   }
 
-  /** Judge the ride again at the current rules (replaces a decision). */
+  /** Judge the ride again at the current rules (replaces a decision) – signed like an override. */
   @Post('rides/:id/rejudge') @HttpCode(200)
-  rejudge(@CurrentPlayer() admin: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams, @CurrentRequestId() requestId: string): Promise<VerdictDto> {
-    return this.commandBus.execute<RejudgeRideCommand, VerdictDto>(new RejudgeRideCommand(admin.wallet, params.id, requestId));
+  rejudge(@CurrentPlayer() admin: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodBody(rejudgeBodySchema) body: RejudgeBody, @CurrentRequestId() requestId: string): Promise<VerdictDto> {
+    return this.commandBus.execute<RejudgeRideCommand, VerdictDto>(new RejudgeRideCommand(admin.wallet, params.id, requestId, body.signature));
   }
 
   @Get('signins')

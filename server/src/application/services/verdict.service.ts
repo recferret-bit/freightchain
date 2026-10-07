@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import type { AdminProof } from '../../domain/admin/admin-proof.js';
 import { RideStatus } from '../../domain/rides/ride-status.js';
 import { RideVerdict } from '../../domain/verdict/ride-verdict.entity.js';
 import type { VerdictDecision } from '../../domain/verdict/verdict.dto.js';
@@ -38,12 +39,12 @@ export class VerdictService {
 
   /** An admin's "judge again": the checks at the current rules, replacing any earlier decision – judged and audited in ONE transaction under the player
       lock. 404 for a ride that is not a completed shift; 409 when the retention sweep already deleted the recording (the verdict then stays as it is). */
-  async rejudge(rideId: string, admin: string, requestId: string | null): Promise<RideVerdict> {
+  async rejudge(rideId: string, admin: string, requestId: string | null, proof: AdminProof | null = null): Promise<RideVerdict> {
     const verdict = await this.transactions.run(async (tx) => {
       const result = await this.judgeLocked(rideId, true, tx);
       if (!result) throw new NotFoundError('only a completed shift can be judged');
       const { verdict: v, before } = result;
-      await this.audit.insert({ wallet: admin, action: 'verdict.rejudge', target: rideId, detail: { from: before, to: v.status, reasons: v.reasons.map((r) => r.code) }, requestId, at: this.clock.now() }, tx);
+      await this.audit.insert({ wallet: admin, action: 'verdict.rejudge', target: rideId, detail: { from: before, to: v.status, reasons: v.reasons.map((r) => r.code), ...(proof ? { signed: proof } : {}) }, requestId, at: this.clock.now() }, tx);
       return v;
     });
     this.logger.log({ event: 'admin', msg: `ride ${rideId} re-judged by ${admin}: ${verdict.status}`, action: 'verdict.rejudge', rideId, admin, requestId });
@@ -68,7 +69,7 @@ export class VerdictService {
   }
 
   /** An admin's decision from the review queue, under the same player lock as judging (so a racing re-judge cannot overwrite it), audited in the same transaction. */
-  async override(rideId: string, decision: VerdictDecision, admin: string, note: string | null, requestId: string | null): Promise<RideVerdict> {
+  async override(rideId: string, decision: VerdictDecision, admin: string, note: string | null, requestId: string | null, proof: AdminProof | null = null): Promise<RideVerdict> {
     const verdict = await this.transactions.run(async (tx) => {
       const ride = await this.rides.findById(rideId, tx);
       if (!ride) throw new NotFoundError('ride not found');
@@ -80,7 +81,7 @@ export class VerdictService {
       const now = this.clock.now();
       current.override(decision, admin, note, now);
       await this.verdicts.save(current, tx);
-      await this.audit.insert({ wallet: admin, action: 'verdict.override', target: rideId, detail: { from: before, to: decision, note, rider: ride.wallet }, requestId, at: now }, tx);
+      await this.audit.insert({ wallet: admin, action: 'verdict.override', target: rideId, detail: { from: before, to: decision, note, rider: ride.wallet, ...(proof ? { signed: proof } : {}) }, requestId, at: now }, tx);
       return current;
     });
     this.logger.log({ event: 'admin', msg: `verdict of ride ${rideId} set to ${decision} by ${admin}`, action: 'verdict.override', rideId, admin, decision, requestId });

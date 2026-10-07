@@ -7,5 +7,7 @@ export class OverrideVerdictCommand {
     public readonly decision: VerdictDecision,
     public readonly note: string | null,
     public readonly requestId: string | null,
+    /** the admin wallet's signature over the text issued for exactly this decision (RequestActionChallengeCommand) */
+    public readonly signature: string,
   ) {}
 }

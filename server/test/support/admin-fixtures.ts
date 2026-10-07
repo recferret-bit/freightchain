@@ -1,3 +1,6 @@
+import nacl from 'tweetnacl';
+import bs58 from 'bs58';
+import type { AdminIntent } from '../../src/domain/admin/admin-proof.js';
 import { RideBatch } from '../../src/domain/telemetry/ride-batch.entity.js';
 import { hashBatch, recording, type RecordingOptions } from './recording.js';
 import type { UnitContext } from './unit-context.js';
@@ -14,4 +17,12 @@ export async function judgedRide(ctx: UnitContext, wallet: string, rec: Partial<
   await ctx.rides.save(ride);
   const verdict = await ctx.verdicts.judge(ride.id);
   return { ride: await ctx.reload(ride.id), verdict };
+}
+
+/** An admin with a real keypair (signed actions verify ed25519 signatures): `sign(intent)` asks for the text and signs it, like the admin page does. */
+export function testAdmin(ctx: UnitContext) {
+  const kp = nacl.sign.keyPair(), wallet = bs58.encode(kp.publicKey);
+  const signText = (message: string, key = kp) => bs58.encode(nacl.sign.detached(new TextEncoder().encode(message), key.secretKey));
+  const sign = async (intent: AdminIntent) => signText(await ctx.proofs.issue(wallet, intent));
+  return { kp, wallet, sign, signText };
 }
