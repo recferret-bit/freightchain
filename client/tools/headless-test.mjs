@@ -97,6 +97,9 @@ check(st.batt>bRun+.03,'engine running at cruise: the alternator refills the bat
 batFresh(); fire('keydown','KeyC'); check(!G.dn.cab,'cab light refuses to switch on with the engine off');
 fire('keydown','KeyI'); step(60*2.6); fire('keydown','KeyC'); check(st.engineOn&&G.dn.cab,'cab light switches on once the engine runs');
 fire('keydown','KeyO'); step(30); check(!st.engineOn&&!G.dn.cab,'engine off: the cab light goes out');
+// what the lobby's live feed and Night Owl read from every heartbeat: follows the RUNNING clock (not the last press of N), and the route is a real theme id
+G.dn.run=false; G.setClock(23,true,false); step(60); const nightX=G.online.extra(); G.setClock(12,true,false); step(60); const dayX=G.online.extra();
+check(nightX.night===true&&dayX.night===false&&G.THEMES.some(t=>t.id===dayX.route),'heartbeat extras follow the clock: night at 23:00 ('+nightX.night+'), day at 12:00 ('+dayX.night+'), route '+dayX.route);
 out.push(...checks); out.push('errors='+errors.length+(errors[0]?' '+errors[0].message:''));
 console.log(out.join('\n'));
 const failed=checks.filter(c=>c.startsWith('FAIL'));

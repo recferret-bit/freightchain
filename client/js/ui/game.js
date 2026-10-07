@@ -1,7 +1,7 @@
 import { CFG } from '../config.js';
 import { Wallet } from '../wallet.js';
 import { fmt } from '../util.js';
-import { st, clock, IDLE, resetDisp, rideStart } from '../state.js';
+import { st, clock, IDLE, resetDisp, rideStart, dn } from '../state.js';
 import { audio } from '../sim/audio.js';
 import { ambientC } from '../sim/climate.js';
 import { clearDebris } from '../sim/damage.js';
@@ -11,6 +11,7 @@ import { roads } from '../net/orchestrator.js';
 import { resetScreen } from '../cockpit/windscreen.js';
 import { routesHTML, bindRoutes, timeHTML, bindTime } from './routes.js';
 import { online, beginOnline, endOnline } from '../online.js';
+import { env } from '../world/environment.js';
 
 /* Ride flow: menu / start / end / pause overlay and per-ride reset. */
 
@@ -18,6 +19,8 @@ export function resetRide() {
   Object.assign(st, rideStart({ rpm: CFG.START_ENGINE_OFF ? 0 : IDLE, engineOn: !CFG.START_ENGINE_OFF, temp: ambientC(), pull: Math.random() < .5 ? -1 : 1 }));
   resetDisp(); destroyed.clear(); clearDebris(); roads.newTrip(online.ride?.seed); resetScreen();   // new road layout, depot, traffic
 }
+
+online.extra = () => ({ route: env.theme.id, night: dn.night });   // what the server's public live feed shows next to the ride
 
 /* ───────────────────────── overlay / game flow ───────────────────────── */
 const overlay = document.getElementById('overlay'), panel = document.getElementById('panel');

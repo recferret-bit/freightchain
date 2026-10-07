@@ -7,7 +7,7 @@
     "serve": "./serve.sh",
     "build": "node tools/build-standalone.mjs",
     "bundle:check": "npx esbuild js/main.js --bundle --external:three --format=esm --outfile=${TMPDIR:-/tmp}/fc.js",
-    "lint": "npx eslint js tools",
+    "lint": "npx eslint js site tools",
     "test:headless": "sh tools/trace.sh run",
     "trace:save": "sh tools/trace.sh save",
     "trace:diff": "sh tools/trace.sh diff",

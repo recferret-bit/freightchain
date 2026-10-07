@@ -7,6 +7,7 @@ try { process.loadEnvFile('.env'); } catch { /* no .env – plain environment */
 /* Server tunables. The game constants are mirrored from client/js/config.js (MAX_SPEED, COMPLETE_DIST_K) – keep them in step. */
 const num = (v: string | undefined, d: number) => (v !== undefined && v !== '' && Number.isFinite(+v) ? +v : d);
 
+export const ROUTES = ['route66', 'stuart', 'siberia', 'brenner', 'panamerican'] as const;   // client/js/themes/*/index.js ids – keep in sync (a heartbeat's route is whitelisted against this)
 export const MAX_SPEED = 28;          // m/s, the game's governor (CFG.MAX_SPEED)
 export const COMPLETE_DIST_K = 0.5;   // CFG.COMPLETE_DIST_K: complete = minSeconds driven AND K × MAX_SPEED × minSeconds metres
 

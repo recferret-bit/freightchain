@@ -28,6 +28,6 @@ export class AuthController {
 
   private profile(wallet: string) {
     const u = this.users.touch(wallet);
-    return { wallet: u.wallet, freeRides: u.free_rides, createdAt: u.created_at };
+    return { wallet: u.wallet, freeRides: u.free_rides, createdAt: u.created_at, demo: config.demoWallets.has('*') || config.demoWallets.has(wallet), demoScale: config.demoScale };
   }
 }

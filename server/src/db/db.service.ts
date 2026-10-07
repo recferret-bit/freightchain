@@ -61,12 +61,22 @@ export class DbService implements OnModuleDestroy {
         at         INTEGER NOT NULL
       );
       CREATE INDEX IF NOT EXISTS payments_round ON payments(round_id);
+      CREATE TABLE IF NOT EXISTS achievements (   -- unlocks are only ever ADDED (Day 3 mints an NFT from each row, so one must never disappear)
+        wallet     TEXT NOT NULL REFERENCES users(wallet),
+        id         TEXT NOT NULL,
+        earned_at  INTEGER NOT NULL,
+        ride_id    TEXT,                          -- the ride whose end unlocked it (null when found by a later catch-up)
+        PRIMARY KEY (wallet, id)
+      );
     `);
     // additive migration: CREATE TABLE IF NOT EXISTS never adds columns to a database made by an earlier version
     this.addColumns('rides', {
       time_scale: 'REAL NOT NULL DEFAULT 1',   // demo wallets run paid rides ×N faster (the shift length is divided by it)
       price_usd: 'REAL NOT NULL DEFAULT 0', lamports: 'INTEGER NOT NULL DEFAULT 0', sol_usd: 'REAL', quote_expires_at: 'INTEGER',
       round_id: 'INTEGER', paid_at: 'INTEGER',
+      route: 'TEXT',                                          // theme id reported by the client (whitelisted) – the live feed shows it
+      night_seconds: 'REAL NOT NULL DEFAULT 0',              // drive time credited by reports that said it was night (Night Owl needs the majority of the shift)
+      paused: 'INTEGER NOT NULL DEFAULT 0',                  // the last report's pause flag (the live feed stops the clock)
     });
   }
 

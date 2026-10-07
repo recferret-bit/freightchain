@@ -38,12 +38,12 @@ export class PoolService {
     return { round: { id: r.id, startsAt: r.starts_at, endsAt: r.ends_at }, entries: e.n, split, settled: false };
   }
 
-  /** board 'round' = paid rides completed in the current round, 'free' = free rides, all time. Ranked by total distance of COMPLETED rides. */
+  /** board 'round' = paid rides completed in the current round, 'all' = paid rides, all time, 'free' = free rides, all time. Ranked by total distance of COMPLETED rides. */
   leaderboard(board: string) {
-    const { db } = this.store, free = board === 'free';
+    const { db } = this.store, where = board === 'free' ? "tier = 'free'" : board === 'all' ? "tier != 'free'" : "tier != 'free' AND round_id = ?";
     const rows = db.prepare(`SELECT wallet, SUM(last_s) AS distance, COUNT(*) AS rides, MIN(ended_at) AS first_at FROM rides
-      WHERE status = 'completed' AND ${free ? "tier = 'free'" : "tier != 'free' AND round_id = ?"} GROUP BY wallet ORDER BY distance DESC, rides DESC, first_at ASC LIMIT 20`)
-      .all(...(free ? [] : [this.ensureRound().id])) as unknown as { wallet: string; distance: number; rides: number }[];
+      WHERE status = 'completed' AND ${where} GROUP BY wallet ORDER BY distance DESC, rides DESC, first_at ASC LIMIT 20`)
+      .all(...(board === 'free' || board === 'all' ? [] : [this.ensureRound().id])) as unknown as { wallet: string; distance: number; rides: number }[];
     return rows.map((r, i) => ({ rank: i + 1, wallet: r.wallet, distance: Math.round(r.distance), rides: r.rides }));
   }
 }

@@ -4,16 +4,17 @@ import { DbService } from '../db/db.service.js';
 import { ClockService } from '../clock.service.js';
 import { UsersService } from '../users/users.service.js';
 import { PriceService } from '../solana/price.service.js';
-import { PoolService } from '../pool/pool.service.js';
-import { MAX_SPEED, TIERS, completeDist, config, isTier } from '../config.js';
+import { AchievementsService } from '../achievements/achievements.service.js';
+import { MAX_SPEED, ROUTES, TIERS, completeDist, config, isTier } from '../config.js';
 import { lamportsFor } from '../economy.js';
 
 export interface RideRow {
   id: string; wallet: string; tier: string; seed: number; min_seconds: number; complete_dist: number; status: string; created_at: number;
   time_scale: number; price_usd: number; lamports: number; sol_usd: number | null; quote_expires_at: number | null; round_id: number | null; paid_at: number | null;
+  route: string | null; night_seconds: number; paused: number;
   started_at: number | null; last_hb_at: number | null; last_s: number; last_t: number; drive_seconds: number; hull: number | null; ended_at: number | null; reason: string | null;
 }
-export interface Progress { s?: unknown; t?: unknown; hull?: unknown; paused?: unknown }   // s = metres along the road, t = the game's own driven-seconds clock (st.t)
+export interface Progress { s?: unknown; t?: unknown; hull?: unknown; paused?: unknown; route?: unknown; night?: unknown }   // s = metres along the road, t = the game's own driven-seconds clock (st.t)
 export type Outcome = 'shift' | 'failed';
 
 export const view = (r: RideRow) => ({
@@ -27,7 +28,7 @@ export const view = (r: RideRow) => ({
    This is server-timed telemetry, not a replay: a modified client can still lie within those bounds (see docs/hackathon-plan.md). */
 @Injectable()
 export class RidesService {
-  constructor(private readonly store: DbService, private readonly clock: ClockService, private readonly users: UsersService, private readonly price: PriceService, private readonly pool: PoolService) {}
+  constructor(private readonly store: DbService, private readonly clock: ClockService, private readonly users: UsersService, private readonly price: PriceService, private readonly achievements: AchievementsService) {}
 
   row(id: string, wallet: string): RideRow {
     const r = this.store.db.prepare('SELECT * FROM rides WHERE id = ? AND wallet = ?').get(id, wallet) as unknown as RideRow | undefined;
@@ -47,8 +48,15 @@ export class RidesService {
     db.prepare("UPDATE rides SET status = 'failed', reason = 'heartbeat lost', ended_at = ? WHERE wallet = ? AND status = 'running' AND last_hb_at < ?").run(now, wallet, now - config.hbTimeoutMs);
     const open = db.prepare("SELECT * FROM rides WHERE wallet = ? AND status IN ('created','running','awaiting_payment') ORDER BY CASE status WHEN 'running' THEN 0 WHEN 'created' THEN 1 ELSE 2 END, created_at DESC").get(wallet) as unknown as RideRow | undefined;   // a ready (maybe PAID) ride outranks an unpaid order
     if (open?.status === 'running') throw new ConflictException('a ride is already in progress');
-    if (open?.status === 'created') return view(open);   // ready (free, or already PAID) but never started: hand the same ride back – a paid one must never be lost
-    if (open) {   // awaiting payment: same tier and still quoted → the same order; otherwise let it lapse (a late matching payment is still honoured, see PaymentsService)
+    if (open?.status === 'created') {
+      if (open.tier !== 'free' || def.usd === 0) return view(open);   // ready but never started: hand the same ride back – a PAID one must never be lost
+      // buying while holding an unstarted FREE ride: it hasn't started, so cancel it and give the credit back in one step (no credit lost or duplicated)
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        if (db.prepare("UPDATE rides SET status = 'cancelled', reason = 'replaced by a paid ride', ended_at = ? WHERE id = ? AND status = 'created'").run(now, open.id).changes === 1) db.prepare('UPDATE users SET free_rides = free_rides + 1 WHERE wallet = ?').run(wallet);
+        db.exec('COMMIT');
+      } catch (e) { db.exec('ROLLBACK'); throw e; }
+    } else if (open) {   // awaiting payment: same tier and still quoted → the same order; otherwise let it lapse (a late matching payment is still honoured, see PaymentsService)
       if (open.tier === tier && (open.quote_expires_at ?? 0) > now) return view(open);
       db.prepare("UPDATE rides SET status = 'expired', ended_at = ? WHERE id = ?").run(now, open.id);
     }
@@ -63,6 +71,7 @@ export class RidesService {
       db.prepare("INSERT INTO rides (id, wallet, tier, seed, min_seconds, complete_dist, status, created_at, time_scale, price_usd, lamports, sol_usd, quote_expires_at) VALUES (?, ?, ?, ?, ?, ?, 'awaiting_payment', ?, ?, ?, ?, ?, ?)")
         .run(id, wallet, tier, seed, minSeconds, completeDist(minSeconds), now, scale, def.usd, lamportsFor(def.usd, q.usd), q.usd, now + config.quoteTtlMs);
     }
+    this.achievements.evaluate(wallet, id);
     return view(this.row(id, wallet));
   }
 
@@ -118,7 +127,9 @@ export class RidesService {
     }
     const hasT = Number.isFinite(t) && t >= r.last_t;
     const credit = hasT ? Math.min(t - r.last_t, dt * 1.05 + 1) : (p.paused ? 0 : dt);   // no usable t (old client): fall back to the paused flag
-    this.store.db.prepare('UPDATE rides SET last_s = ?, last_t = ?, hull = ?, last_hb_at = ?, drive_seconds = drive_seconds + ? WHERE id = ?').run(s, hasT ? t : r.last_t, hull, now, credit, r.id);
+    const route = typeof p.route === 'string' && (ROUTES as readonly string[]).includes(p.route) ? p.route : r.route;   // public feed: whitelisted only
+    this.store.db.prepare('UPDATE rides SET last_s = ?, last_t = ?, hull = ?, last_hb_at = ?, drive_seconds = drive_seconds + ?, route = ?, night_seconds = night_seconds + ?, paused = ? WHERE id = ?')
+      .run(s, hasT ? t : r.last_t, hull, now, credit, route, p.night === true ? credit : 0, p.paused ? 1 : 0, r.id);
     return this.row(r.id, r.wallet);
   }
 }

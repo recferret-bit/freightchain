@@ -4,7 +4,7 @@ import { st } from './state.js';
 /* Online mode – OPT-IN: only when the page was opened as play.html?ride=<id> (made by the lobby). Without it nothing here runs and the game
    behaves exactly like the offline prototype (headless test, e2e, viewer and the file:// build all rely on that).
    The server owns the ride: it hands out the seed + the shift length, times the ride from heartbeats and decides the result (server/src/rides). */
-export const online = { ride: null, error: '', started: false, done: false };
+export const online = { ride: null, error: '', started: false, done: false, extra: () => ({}) };   // extra: set by ui/game.js → { route, night } for the lobby's live feed (kept out of here so this module needs no world/ imports)
 
 const api = async (path, body) => {
   const r = await fetch(`/api/${path}`, { signal: AbortSignal.timeout(8000), method: body ? 'POST' : 'GET', headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
@@ -12,7 +12,7 @@ const api = async (path, body) => {
   if (!r.ok) throw new Error(j.message || `server error ${r.status}`);
   return j;
 };
-const progress = () => ({ s: st.s, t: st.t, hull: st.hull, paused: st.mode !== 'drive' });   // t = the game's driven-seconds clock (the server credits its delta, capped by wall time)
+const progress = () => ({ s: st.s, t: st.t, hull: st.hull, paused: st.mode !== 'drive', ...online.extra() });   // t = the game's driven-seconds clock (the server credits its delta, capped by wall time)
 let timer = 0;
 
 export async function initOnline() {

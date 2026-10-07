@@ -12,7 +12,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 /** order → pay → wait for the server to see it on chain. Resolves to the ready (paid) ride. `onStep(text)` reports progress. */
 export async function buyRide(tier, onStep = () => {}) {
-  const w3 = await loadWeb3(), p = provider();
+  const p = provider();
+  if (!p) throw new Error('No Solana wallet found – install Phantom or Solflare (and switch it to Devnet)');   // before ordering: no stray orders
+  const w3 = await loadWeb3();
   onStep('Creating the order…');
   const ride = await api('rides', { tier });
   if (ride.status !== 'awaiting_payment') return ride;   // already paid / ready (e.g. an unstarted ride you already own)

@@ -3,6 +3,7 @@ import { PoolService } from './pool.service.js';
 import { PriceService } from '../solana/price.service.js';
 import { TIERS, config } from '../config.js';
 import { lamportsFor } from '../economy.js';
+import { completeDist } from '../config.js';
 
 /* Public (no session): everything the landing page and the lobby show before / without a wallet. */
 @Controller('api')
@@ -17,7 +18,7 @@ export class PublicController {
     return {
       solUsd: q?.usd ?? null, treasury: config.treasury || null,
       tiers: Object.entries(TIERS).map(([id, t]) => ({
-        id, usd: t.usd, seconds: t.seconds, lamports: t.usd > 0 && q ? lamportsFor(t.usd, q.usd) : null,
+        id, usd: t.usd, seconds: t.seconds, completeDist: completeDist(t.seconds), lamports: t.usd > 0 && q ? lamportsFor(t.usd, q.usd) : null,
         available: t.usd === 0 || (paid && !!q),
       })),
     };
@@ -31,5 +32,8 @@ export class PublicController {
   }
 
   @Get('leaderboard')
-  leaderboard(@Query('board') board?: string) { return { board: board === 'free' ? 'free' : 'round', rows: this.pool.leaderboard(board ?? 'round') }; }
+  leaderboard(@Query('board') board?: string) {
+    const b = board === 'free' || board === 'all' ? board : 'round', r = this.pool.ensureRound();
+    return { board: b, round: { id: r.id, endsAt: r.ends_at }, prizeRanks: 20, rows: this.pool.leaderboard(b) };   // the first `prizeRanks` rows of the round board share the 20 % top-20 pool
+  }
 }

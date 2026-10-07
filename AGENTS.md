@@ -8,8 +8,8 @@ Vanilla ES modules + three.js r160 from a CDN. No build step, no framework, no b
 ## Repo layout (client / server)
 
 ```
-client/    the game (everything below up to "Not implemented" is relative to client/) + site pages: index.html (landing), lobby.html, play.html (the game), viewer.html, site/ (wallet sign-in, css)
-server/    NestJS (TypeScript, ESM, Node ≥ 22 for node:sqlite): src/auth (Sign-In With Solana + httpOnly JWT cookie), src/rides (tiers, free credits, ride lifecycle, payments.service = on-chain payment check + reconcile), src/solana (price quote, RPC), src/pool (weekly prize round, public /api/tiers|pool|leaderboard), src/economy.ts (the 50/20/20/10 maths), src/db; test/*.e2e-spec.ts (fake clock + fake chain), scripts/ (e2e-browser, devnet-pay, check-rpc-shape, treasury-init)
+client/    the game (everything below up to "Not implemented" is relative to client/) + site pages: index.html (landing, placeholder), lobby.html + site/lobby.js|css (tabs: new ride · live · leaderboard · profile; vanilla DOM, server text only via textContent), play.html (the game), viewer.html, site/wallet.js (sign-in) + pay.js (buy a ride)
+server/    NestJS (TypeScript, ESM, Node ≥ 22 for node:sqlite): src/auth (Sign-In With Solana + httpOnly JWT cookie), src/rides (tiers, free credits, ride lifecycle, payments.service = on-chain payment check + reconcile), src/solana (price quote, RPC), src/pool (weekly prize round, public /api/tiers|pool|leaderboard), src/economy.ts (the 50/20/20/10 maths), src/achievements (catalogue + pure rules + persisted unlocks), src/lobby (public /api/live, auth /api/profile), src/db; test/*.e2e-spec.ts (fake clock + fake chain), scripts/ (e2e-browser, e2e-lobby, devnet-pay, check-rpc-shape, treasury-init)
 docs/      hackathon-plan.md (day-by-day plan with progress ticks)
 ```
 - `npm run server:dev` (root) starts Nest on :3000, which also serves `client/` – the page and `/api` share an origin, so the session cookie needs no CORS. `client/serve.sh` still serves the game alone (offline mode).
@@ -250,7 +250,7 @@ Props are **not** pooled as wholes (sizes are continuous and baked into child sc
 
 ## Verifying changes
 
-**Server / full stack** (from the repo root): `npm run check` = client check + `nest build` + the server vitest suite. Real-Chrome full-stack run: `cd server && npm run build && FREE_RIDE_SECONDS=3 PORT=3111 DB_PATH=:memory: node dist/main.js` (other terminal) then `BASE=http://localhost:3111 node scripts/e2e-browser.mjs` (a keypair stands in for the wallet; the script ends the ride before the first heartbeat on purpose). Headless Chrome runs the game clock at ~0.4× wall time, so wait on `__game.st` rather than sleeping.
+**Server / full stack** (from the repo root): `npm run check` = client check + `nest build` + the server vitest suite. Lobby click-through (2 Chromes, 24 checks, screenshots of every tab at desktop + phone width – LOOK at them): same server, then `BASE=http://localhost:3111 node scripts/e2e-lobby.mjs`. Real-Chrome full-stack run: `cd server && npm run build && FREE_RIDE_SECONDS=3 PORT=3111 DB_PATH=:memory: node dist/main.js` (other terminal) then `BASE=http://localhost:3111 node scripts/e2e-browser.mjs` (a keypair stands in for the wallet; the script ends the ride before the first heartbeat on purpose). Headless Chrome runs the game clock at ~0.4× wall time, so wait on `__game.st` rather than sleeping.
 
 Quick path (npm scripts, no installs – tools run through `npx`): **`npm run check`** = eslint (`eslint.config.mjs`: undefined names, unused vars) + esbuild bundle + the headless test.
 Refactor gate: `npm run trace:save` before, `npm run trace:diff` after – "trace identical" = behaviour unchanged. `npm run test:e2e` / `test:viewer` = real Chrome (shared harness: `tools/cdp.mjs`; `PORT=…` if 9333/9334 are taken).
