@@ -44,6 +44,25 @@ app_env() {
   printf 'APP_DOMAIN=%s\nAPP_ORIGIN=https://%s\nAPP_PORT=%s\nCOOKIE_DOMAIN=%s\nCORS_ORIGINS=https://%s,https://ride.%s\n' "$DEPLOY_DOMAIN" "$DEPLOY_DOMAIN" "$DEPLOY_APP_PORT" "$DEPLOY_DOMAIN" "$DEPLOY_DOMAIN" "$DEPLOY_DOMAIN"
 }
 
+# admin.<apex>'s basic auth: DEPLOY_ADMIN_USER / DEPLOY_ADMIN_PASSWORD (local only) → an apr1 hash in /etc/nginx/freightchain-admin.htpasswd on the server.
+# Hashed here and sent over stdin, so the password is on no command line, here or there. Rewritten on every deploy (a changed password applies; nginx reads it per request).
+ADMIN_HTPASSWD=/etc/nginx/freightchain-admin.htpasswd
+check_admin_auth() {
+  [ -n "${DEPLOY_ADMIN_USER:-}" ] && [ -n "${DEPLOY_ADMIN_PASSWORD:-}" ] || die "DEPLOY_ADMIN_USER / DEPLOY_ADMIN_PASSWORD are empty in $ENV_FILE (the basic auth of admin.${DEPLOY_DOMAIN}) – see deploy/.env.example"
+  case "$DEPLOY_ADMIN_USER" in *:*|*' '*) die "DEPLOY_ADMIN_USER must not contain ':' or spaces" ;; esac
+  [ "${#DEPLOY_ADMIN_PASSWORD}" -ge 16 ] || die "DEPLOY_ADMIN_PASSWORD must be at least 16 characters"
+  need_cmd openssl
+}
+push_admin_auth() {
+  check_admin_auth
+  local hash
+  hash="$(printf '%s\n' "$DEPLOY_ADMIN_PASSWORD" | openssl passwd -apr1 -stdin)" || die "openssl could not hash the admin password"
+  # readable by the nginx workers (group www-data on Debian / Ubuntu; elsewhere world-readable – it is only a hash); swapped in atomically
+  printf '%s:%s\n' "$DEPLOY_ADMIN_USER" "$hash" \
+    | rsh "f='$ADMIN_HTPASSWD'; umask 077; cat > \"\$f.new\" && { { chgrp www-data \"\$f.new\" 2>/dev/null && chmod 640 \"\$f.new\"; } || chmod 644 \"\$f.new\"; } && mv \"\$f.new\" \"\$f\"" \
+    || die "could not write $ADMIN_HTPASSWD on the server"
+}
+
 SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=15)
 # run a command on the server
 rsh() { ssh "${SSH_OPTS[@]}" "${DEPLOY_USER}@${DEPLOY_HOST}" "$@"; }

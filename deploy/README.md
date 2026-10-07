@@ -3,8 +3,8 @@
 Semi-automatic deploy to one Linux server: **you run one command, it shows the plan, asks, then does everything**.
 Docker runs the app + PostgreSQL; the host's nginx terminates TLS (Let's Encrypt, no Cloudflare) and proxies to `127.0.0.1`.
 
-## Four names, one app
-`DEPLOY_DOMAIN` is the **apex** (`freightchain.fun`); the other three names are added automatically:
+## Five names, one app
+`DEPLOY_DOMAIN` is the **apex** (`freightchain.fun`); the other four names are added automatically:
 
 | name | what | nginx |
 |---|---|---|
@@ -12,8 +12,9 @@ Docker runs the app + PostgreSQL; the host's nginx terminates TLS (Let's Encrypt
 | `ride.freightchain.fun` | the game (`play.html`) | proxy → app |
 | `api.freightchain.fun` | the API | only `/api/` is proxied, everything else is 404 |
 | `storybook.freightchain.fun` | the model viewer (`client/viewer.html`) | `/` → `viewer.html`, static files proxied, `/api/` is 404 – its own site file `freightchain-storybook` (template `nginx/storybook.conf.template`) |
+| `admin.freightchain.fun` | the admin page (`client/admin.html`) **and the only host of `/api/admin/*`** | **HTTP basic auth** on everything (not on certbot's ACME path), `/` → `admin.html`, the rest proxied (the page calls the API on its own host) – its own site file `freightchain-admin` (template `nginx/admin.conf.template`) |
 
-One certificate covers all four. The pages call the API cross-origin: the client derives `api.<apex>` / `ride.<apex>` from its own host (`client/js/hosts.js`; on localhost / an IP / `file://` everything stays one origin),
+One certificate covers all five. The pages call the API cross-origin: the client derives `api.<apex>` / `ride.<apex>` from its own host (`client/js/hosts.js`; on localhost / an IP / `file://` everything stays one origin),
 the server allows exactly `https://<apex>` and `https://ride.<apex>` (`CORS_ORIGINS`) with credentials, and the session cookie is issued for the apex (`COOKIE_DOMAIN`) so the lobby, the game and the API share it.
 `APP_DOMAIN` (shown in the wallet's sign-in message) is the apex, because riders sign in on the lobby. All of these are derived from `DEPLOY_DOMAIN` – never set them by hand.
 **Another domain / subdomain later:** add a template under `deploy/nginx/` like `storybook.conf.template` (its own site file installed by `scripts/remote/setup.sh` when absent, so a server that is already set up gets it too), add the name to `NAMES` there + the DNS record, add a smoke check, make `client/js/hosts.js` strip its prefix, then run `npm run deploy:setup` (`deploy` also runs it by itself while a site file is missing) – and add its origin to `CORS_ORIGINS` if its pages call the API.
@@ -27,7 +28,7 @@ npm run deploy          # checks → plan → confirm → upload → build → b
 
 ## Prerequisites
 - ssh key access: `ssh root@<DEPLOY_HOST>` works without a password prompt.
-- **Four DNS `A` records** (`@`, `ride`, `api`, `storybook`) pointing at the server IP. The session cookie is `Secure` in production, so the site must be https; certbot needs the DNS to resolve first (setup stops with exit 3 and names the record that doesn't).
+- **Five DNS `A` records** (`@`, `ride`, `api`, `storybook`, `admin`) pointing at the server IP. The session cookie is `Secure` in production, so the site must be https; certbot needs the DNS to resolve first (setup stops with exit 3 and names the record that doesn't).
 - Locally: node, npm, git, docker is **not** needed (the server builds the image). `server/node_modules` must be installed (`npm ci` in `server/`) – the env is validated with the server's own production schema.
 - On the server: docker + compose plugin, nginx, certbot (`python3-certbot-nginx`). Setup does not install them.
 
@@ -53,13 +54,13 @@ npm run deploy          # checks → plan → confirm → upload → build → b
 | `npm run deploy:logs` | app logs (`-- -f` to follow) |
 | `npm run deploy:backup` | `pg_dump` now → `backups/` |
 | `npm run deploy:rollback` | back to the previous release (`-- -y` to skip the question) |
-| `npm run deploy:smoke` | smoke test of the four public URLs: pages, the model viewer + API-host isolation, CORS, a throwaway sign-in + cookie flags/domain (creates one throwaway player) |
+| `npm run deploy:smoke` | smoke test of the five public URLs: pages, the model viewer + API-host isolation, the admin host (401 without the password, the page with it, its API closed without an admin wallet, `api.*` never serves `/api/admin/*`), CORS, a throwaway sign-in + cookie flags/domain (creates one throwaway player) |
 | `npm run ops -- logs [--since 30m] [--grep RE] [--errors] [--service postgres]` | **read-only** app / database log (the app writes one JSON object per line) |
 | `npm run ops -- nginx [--error] [--grep RE]` | **read-only** host nginx access / error log |
 | `npm run ops -- query <name> [arg]` · `ops -- sql "SELECT …"` | **read-only** SQL (a read-only transaction: PostgreSQL refuses writes); canned queries in `scripts/ops-queries.sql` (`ops -- query list`) |
 | `npm run ops -- ps` | containers, restarts, disk |
 
-**Admin page**: `https://<apex>/admin.html` for the wallets in `ADMIN_WALLETS` (sign in on the landing first; everyone else gets a 404 from `/api/admin/*`): overview, the review queue of flagged rides (accept / reject, audited), rides with filters, sign-ins (wallet, time, IP, browser), the server's recent log lines, the audit log.
+**Admin page**: `https://admin.<apex>` – two locks: the **basic-auth password** (`DEPLOY_ADMIN_USER` / `DEPLOY_ADMIN_PASSWORD` in `deploy/.env`, local only; every deploy writes an apr1 hash to `/etc/nginx/freightchain-admin.htpasswd`, so to rotate it: change it in `deploy/.env` and deploy; `deploy:init` generates one) **and** a session wallet in `ADMIN_WALLETS` (sign in on the landing first – the cookie is shared with `admin.*`). The server answers `/api/admin/*` only when nginx's `Host` is `admin.<COOKIE_DOMAIN>` (`AdminGuard`; `X-Forwarded-Host` is ignored), so `api.<apex>/api/admin/*` is a 404 even for an admin, and `/admin.html` on the apex moves to `admin.*`. Contents: overview, the review queue of flagged rides (accept / reject, audited), rides with filters, sign-ins (wallet, time, IP, browser), the server's recent log lines, the audit log.
 **Verified play settings** in `deploy/.env`: `VERDICT_ENFORCE` (`false` = shadow mode while tuning: rides are judged and shown, the boards ignore the verdict – **the default when the key is missing**; set `true` to enforce), `TELEMETRY_RETENTION_DAYS` (default 90), `ADMIN_WALLETS`.
 Container logs rotate at 5 × 50 MB per service (`logging:` in `docker-compose.prod.yml`).
 
@@ -84,8 +85,8 @@ Docker project `freightchain-prod`: `postgres` (no published port, named volume 
 
 ## What the first deploy changes on the server
 - creates `/srv/freightchain/…`
-- adds `/etc/nginx/sites-*/freightchain` (apex, `ride.`, `api.`) and `freightchain-storybook` (`storybook.`) (each only if absent; removed again if `nginx -t` fails) and reloads nginx
-- runs `certbot --nginx -d <apex> -d ride.<apex> -d api.<apex> -d storybook.<apex> --redirect` (re-runs with `--expand` if the certificate lacks a name)
+- adds `/etc/nginx/sites-*/freightchain` (apex, `ride.`, `api.`), `freightchain-storybook` (`storybook.`) and `freightchain-admin` (`admin.`, after writing `/etc/nginx/freightchain-admin.htpasswd`) (each only if absent; removed again if `nginx -t` fails) and reloads nginx – a server set up before a site existed gets it on the next deploy
+- runs `certbot --nginx -d <apex> -d ride.<apex> -d api.<apex> -d storybook.<apex> -d admin.<apex> --redirect` (re-runs with `--expand` if the certificate lacks a name)
 - starts two containers and one volume
 
 It touches nothing else (other nginx sites, other containers).

@@ -56,6 +56,12 @@ describe('EnvService', () => {
     expect([on.cookieDomain, on.corsOrigins]).toEqual(['freightchain.fun', ['https://freightchain.fun', 'https://ride.freightchain.fun']]);
   });
 
+  it('the admin host: admin.<cookie domain> on a split deployment, none (any host) on a single origin', () => {
+    expect(withEnv(base).adminHost).toBeNull();
+    expect(withEnv({ ...base, COOKIE_DOMAIN: 'FreightChain.fun' }).adminHost).toBe('admin.freightchain.fun');
+    expect(withEnv({ ...base, COOKIE_DOMAIN: '.freightchain.fun' }).adminHost).toBe('admin.freightchain.fun');
+  });
+
   it('treasury: the env value, else – in development only – data/treasury.json, else none', () => {
     expect(withEnv({ ...base, TREASURY_PUBKEY: '11111111111111111111111111111111' }).treasuryPubkey).toBe('11111111111111111111111111111111');
     expect(withEnv({ ...base, NODE_ENV: 'test' }).treasuryPubkey).toBe('');

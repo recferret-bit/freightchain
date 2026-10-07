@@ -50,6 +50,8 @@ export class EnvService {
   get adminWallets(): ReadonlySet<string> {
     return new Set(this.env.ADMIN_WALLETS.split(',').map((w) => w.trim()).filter((w) => w.length > 0));
   }
+  /** split deployment: the only host the admin API answers on (admin.<COOKIE_DOMAIN>, behind nginx basic auth); null = single origin, any host */
+  get adminHost(): string | null { return this.env.COOKIE_DOMAIN ? `admin.${this.env.COOKIE_DOMAIN.replace(/^\./, '')}`.toLowerCase() : null; }
 
   get demoWallets(): ReadonlySet<string> {
     return new Set(this.env.DEMO_WALLETS.split(',').map((w) => w.trim()).filter((w) => w.length > 0));

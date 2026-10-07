@@ -26,7 +26,7 @@ Dependencies point inward: `presentation → application → domain` and `infras
 | rides | `Ride` (lifecycle + progress rules), tiers, report | create-ride, get-ride, get-pending-ride, start-ride, heartbeat-ride, end-ride |
 | economy | `Round` (weekly pool), `Payment`, prize split, payment verification | get-payment-instructions, confirm-payment, reconcile-payment, get-tiers, get-pool, get-leaderboard |
 | telemetry | `RideBatch` (one ~15 s recording batch: inputs + 10 Hz samples, hash-chained; `HasherPort` recomputes the SHA-256) | upload-batch (`POST /api/rides/:id/batches`) |
-| admin | `AdminActionRecord` (audit), sign-in log, admin read models; `AdminGuard` (allowlist → else 404, `X-FC-Admin` header on changes) | get-admin-overview, list-admin-rides, get-admin-ride, list-sign-ins, list-admin-actions, get-admin-logs, override-verdict, rejudge-ride |
+| admin | `AdminActionRecord` (audit), sign-in log, admin read models; `AdminGuard` (split deployment: only `Host` = `admin.<COOKIE_DOMAIN>`, the basic-auth nginx site; allowlist → else 404; `X-FC-Admin` header on changes) | get-admin-overview, list-admin-rides, get-admin-ride, list-sign-ins, list-admin-actions, get-admin-logs, override-verdict, rejudge-ride |
 | verdict | `RideVerdict` + pure checks (`recording-checks.ts`: chain, bounds, agreement with the ride, coverage, inputs present · `human-checks.ts`: hold variation, repeated intervals, instant presses) – **no re-simulation**; `VerdictService` | judged by end-ride and by a batch landing after the end; read by get-ride, the paid leaderboards (verified only) and the profile |
 | achievements | catalogue + rules, `AchievementUnlock` | (evaluated by end-ride / get-profile) |
 | lobby | DTOs for the live feed and the profile | get-live, get-profile |

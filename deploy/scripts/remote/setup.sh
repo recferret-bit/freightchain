@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs ON THE SERVER (piped over ssh by deploy/scripts/setup.sh). First-time, idempotent:
-#   /srv/freightchain/{releases,backups,state}  ·  nginx sites for the names (apex, ride., api. | storybook.)  ·  a Let's Encrypt certificate.
+#   /srv/freightchain/{releases,backups,state}  ·  nginx sites for the names (apex, ride., api. | storybook. | admin.)  ·  a Let's Encrypt certificate.
 # Touches nothing else: other nginx sites, ufw and the other containers are left as they are.
 set -euo pipefail
 for kv in "$@"; do export "$kv"; done
@@ -41,7 +41,21 @@ else
   say "nginx site for storybook.$DOMAIN installed and reloaded"
 fi
 
-NAMES="$DOMAIN ride.$DOMAIN api.$DOMAIN storybook.$DOMAIN"
+# admin.<apex> (the admin page, basic auth) is its own site file too; the deploy writes its password file before this runs (nginx would answer 500 without it).
+AD=/etc/nginx/sites-available/freightchain-admin
+if [ -f "$AD" ]; then
+  say "nginx site $AD exists – left as it is"
+else
+  [ -f "$DEPLOY_PATH/state/admin.conf.template" ] || fail "the admin nginx template was not uploaded"
+  [ -s /etc/nginx/freightchain-admin.htpasswd ] || fail "/etc/nginx/freightchain-admin.htpasswd is missing – set DEPLOY_ADMIN_USER / DEPLOY_ADMIN_PASSWORD in deploy/.env and run the deploy again"
+  sed -e "s/__ROOT__/$DOMAIN/g" -e "s/__PORT__/$APP_PORT/g" "$DEPLOY_PATH/state/admin.conf.template" > "$AD"
+  ln -sfn "$AD" /etc/nginx/sites-enabled/freightchain-admin
+  if ! nginx -t 2>/dev/null; then rm -f /etc/nginx/sites-enabled/freightchain-admin "$AD"; nginx -t || true; fail "nginx rejected the admin site – removed it again; nothing changed"; fi
+  systemctl reload nginx
+  say "nginx site for admin.$DOMAIN installed and reloaded (basic auth)"
+fi
+
+NAMES="$DOMAIN ride.$DOMAIN api.$DOMAIN storybook.$DOMAIN admin.$DOMAIN"
 COVERED=1
 if [ -f "/etc/letsencrypt/live/$DOMAIN/cert.pem" ]; then
   for n in $NAMES; do openssl x509 -in "/etc/letsencrypt/live/$DOMAIN/cert.pem" -noout -ext subjectAltName 2>/dev/null | grep -q "DNS:$n\b" || COVERED=0; done

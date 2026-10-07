@@ -1,4 +1,4 @@
-// Smoke test of a RUNNING deployment: node smoke.mjs <site-url> [--api <url>] [--game <url>] [--storybook <url>] [--treasury <pubkey>] [--no-signin]
+// Smoke test of a RUNNING deployment: [SMOKE_ADMIN_AUTH=user:pass] node smoke.mjs <site-url> [--api <url>] [--game <url>] [--storybook <url>] [--admin <url>] [--treasury <pubkey>] [--no-signin]
 // <site-url> = the apex (landing + lobby); --api / --game default to it (single-origin run, e.g. a local server). The sign-in goes to the API with the site's Origin, like the browser does.
 // Checks the page, health, the price list and – the check that catches the "Secure cookie over http" trap – a real wallet sign-in with a throwaway keypair:
 // the session cookie's flags, then an authenticated call with it. (The sign-in creates ONE throwaway player row in the target database.)
@@ -8,10 +8,11 @@ import { join } from 'node:path';
 
 const args = process.argv.slice(2);
 const base = (args.find((a) => /^https?:\/\//.test(a)) ?? '').replace(/\/$/, '');
-if (!base) { console.error('usage: node smoke.mjs <site-url> [--api <url>] [--game <url>] [--storybook <url>] [--treasury <pubkey>] [--no-signin]'); process.exit(2); }
+if (!base) { console.error('usage: node smoke.mjs <site-url> [--api <url>] [--game <url>] [--storybook <url>] [--admin <url>] [--treasury <pubkey>] [--no-signin]'); process.exit(2); }
 const flag = (n) => (args.includes(n) ? args[args.indexOf(n) + 1] : undefined);
 const api = (flag('--api') ?? base).replace(/\/$/, ''), game = flag('--game')?.replace(/\/$/, '');
-const storybook = flag('--storybook')?.replace(/\/$/, '');
+const storybook = flag('--storybook')?.replace(/\/$/, ''), admin = flag('--admin')?.replace(/\/$/, '');
+const adminAuth = process.env.SMOKE_ADMIN_AUTH ? { authorization: `Basic ${Buffer.from(process.env.SMOKE_ADMIN_AUTH).toString('base64')}` } : null;
 const split = api !== base;
 const treasury = args.includes('--treasury') ? args[args.indexOf('--treasury') + 1] : undefined;
 const https = base.startsWith('https://');
@@ -33,7 +34,18 @@ if (storybook) {
   check('the model viewer answers (storybook.* /)', s.status === 200 && /MODEL VIEWER/.test(sBody), `${s.status}`);
   check('the model viewer host does not expose the API', (await at(storybook)('/api/health/live')).status === 404);
 }
+if (admin) {   // admin.*: nginx basic auth first (credentials from SMOKE_ADMIN_AUTH=user:pass – never argv), then the app's own wallet gate
+  const bare = await at(admin)('/');
+  check('the admin host asks for a password (401 + Basic)', bare.status === 401 && /^Basic/i.test(bare.headers.get('www-authenticate') ?? ''), `${bare.status}`);
+  if (adminAuth) {
+    const a = await at(admin)('/', { headers: adminAuth }), aBody = await a.text();
+    check('with the password the admin page answers (admin.* /)', a.status === 200 && /FREIGHT CHAIN · ADMIN/.test(aBody), `${a.status}`);
+    check('…its API stays closed without an admin wallet (404)', (await at(admin)('/api/admin/overview', { headers: adminAuth })).status === 404);
+    check('a wrong password is refused', (await at(admin)('/', { headers: { authorization: `Basic ${Buffer.from('x:wrong-password').toString('base64')}` } })).status === 401);
+  } else console.log('! SMOKE_ADMIN_AUTH not set – the admin page behind the password was not checked');
+}
 if (split) check('the API host serves no pages (GET / is 404)', (await get('/')).status === 404);
+if (split) check('the API host does not serve the admin API (only admin.* does)', (await get('/api/admin/overview')).status === 404);
 const ready = await get('/api/health/ready'), readyBody = await ready.json().catch(() => ({}));
 check('readiness: the app is up and reaches its database', ready.status === 200 && readyBody.checks?.database?.status === 'up', `${ready.status} ${JSON.stringify(readyBody.checks ?? readyBody)}`);
 check('every response carries X-Request-Id', !!ready.headers.get('x-request-id'));

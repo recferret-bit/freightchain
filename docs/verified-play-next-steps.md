@@ -1,6 +1,6 @@
 # Verified play – status, your checklist, next steps
 
-As of **Oct 7, 2026**. Branch `worktree-verified-play` (worktree `.claude/worktrees/verified-play`), rebased on `main`. **Not merged, not pushed, not deployed.**
+As of **Oct 7, 2026**. Branch `worktree-verified-play` (worktree `.claude/worktrees/verified-play`), rebased on `main`. **Deployed Oct 7 (release `20261007-204725-e530d13`, shadow mode) from the branch – `main` not fast-forwarded yet, not pushed.** The admin page on `admin.<apex>` (basic auth) comes with the next deploy.
 How it works is in `AGENTS.md` → "Verified play" / "Admin page" / "Logs" / "Observing production"; the server side in `docs/backend-architecture.md`.
 
 ## What is built
@@ -11,9 +11,9 @@ How it works is in `AGENTS.md` → "Verified play" / "Admin page" / "Logs" / "Ob
 | Verdict on every completed shift: `verified` / `flagged` / `rejected` with reasons – recording validation (rejects) + human-timing statistics (flags only); **no re-simulation** | `server/src/domain/verdict/`, thresholds in `verdict-rules.ts` | tested; **thresholds are first guesses, not tuned on real rides** |
 | Paid boards rank verified shifts only; `VERDICT_ENFORCE=false` = shadow mode | leaderboard query, `LeaderboardDto.verifiedOnly`, lobby copy | tested |
 | Recording retention: daily 00:30 UTC sweep after `TELEMETRY_RETENTION_DAYS` (default 90), flagged rides kept | `SweepTelemetryCommand`, `TelemetryRetentionScheduler` | tested |
-| Admin page `/admin.html` (`ADMIN_WALLETS` only, 404 for everyone else): overview, review queue → accept / reject / re-judge (audited), rides, sign-ins, live log ring, audit | `client/admin.html`, `client/site/admin.js`, `/api/admin/*` | tested (unit, PostgreSQL, real Chrome) |
+| Admin page on `https://admin.<apex>` (nginx basic auth `DEPLOY_ADMIN_USER` / `DEPLOY_ADMIN_PASSWORD` + a wallet in `ADMIN_WALLETS`; the server answers `/api/admin/*` on no other host, 404 for everyone else): overview, review queue → accept / reject / re-judge (audited), rides, sign-ins, live log ring, audit | `client/admin.html`, `client/site/admin.js`, `/api/admin/*` | tested (unit, PostgreSQL, real Chrome) |
 | Sign-in log (wallet, time, IP, browser) | `player."SignIn"` | tested |
-| JSON logs: one line per event, one per API request (status, ms, request id, wallet), rotated 5 × 50 MB | `JsonLogger`, `requestLogMiddleware`, `docker-compose.prod.yml` | tested locally; production still runs the old text logs until deployed |
+| JSON logs: one line per event, one per API request (status, ms, request id, wallet), rotated 5 × 50 MB | `JsonLogger`, `requestLogMiddleware`, `docker-compose.prod.yml` | tested; live in production since the Oct 7 deploy |
 | Read-only production tooling + Claude skills | `npm run ops -- …`, `deploy/scripts/ops*.{sh,sql}`, `.claude/skills/` | `ps` / `logs` / `nginx` / `sql` / `query` tried once on production (read-only); the queries on the new tables need the deploy |
 
 Migrations added (forward-only, additive): `20261008000002_verified_play` (schemas `telemetry`, `verdict`), `20261008000003_admin` (schema `admin`, `player."SignIn"`, override columns on `RideVerdict`).
@@ -21,12 +21,10 @@ Migrations added (forward-only, additive): `20261008000002_verified_play` (schem
 ## Your part (only you can do these)
 
 - [ ] Skim the review findings below (two reviews, twenty findings, all fixed; two follow-ups are listed).
-- [ ] **`deploy/.env`** (on your machine, not in git) – add:
-  - [ ] `ADMIN_WALLETS=<your wallet address>` (comma-separated for more)
-  - [ ] nothing for `VERDICT_ENFORCE` yet – production defaults to **shadow mode** (`false`) when the key is missing; add `VERDICT_ENFORCE=true` only after the tuning week. (Rides from before verified play have no verdict and rank only in shadow mode.)
-  - [ ] optional: `TELEMETRY_RETENTION_DAYS=90` (the default)
-- [ ] **Merge** `worktree-verified-play` into `main` (or tell me to), then **deploy**: `npm run deploy -- --dry-run` (safe), then `npm run deploy`. The deploy ships the committed `main`.
-- [ ] After the deploy: open `https://freightchain.fun/admin.html` signed in with your admin wallet; check the overview loads and `npm run ops -- logs --lines 20` shows JSON lines.
+- [x] **`deploy/.env`** (on your machine, not in git): `ADMIN_WALLETS` (your wallet), `DEPLOY_ADMIN_USER` / `DEPLOY_ADMIN_PASSWORD` (the basic auth of `admin.*`, generated – read it with `grep DEPLOY_ADMIN deploy/.env`; change it there + deploy to rotate). Nothing for `VERDICT_ENFORCE` yet – production defaults to **shadow mode**; add `VERDICT_ENFORCE=true` only after the tuning week. (Rides from before verified play have no verdict and rank only in shadow mode.)
+- [x] Deploy (Oct 7, `e530d13`): migrations applied, smoke green, JSON logs live.
+- [ ] **Fast-forward `main`** to the branch – production runs a commit `main` does not have yet, and a deploy from `main` would roll verified play back: `git -C /Users/ferretrec/work/freightchain merge --ff-only worktree-verified-play`.
+- [ ] After the `admin.*` deploy: open `https://admin.freightchain.fun` (browser asks for the basic-auth user / password), signed in on the landing with your admin wallet; check the overview loads.
 - [ ] **Play 5–10 real rides** on the live site: a full free ride, a demo paid ride, one on a slow / old machine, one with the tab hidden for a while, one on a phone-tethered laptop. Then tell me "tune the verdict thresholds".
 - [ ] When the tuning week shows no false flags: set `VERDICT_ENFORCE=true` in `deploy/.env` and redeploy.
 - [ ] Decide: should the free board also rank verified rides only? (today it ranks every completed free ride)

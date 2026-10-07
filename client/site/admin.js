@@ -1,4 +1,4 @@
-import { API_BASE, SITE_BASE } from '../js/hosts.js';
+import { ADMIN_BASE, SITE_BASE } from '../js/hosts.js';
 
 /* The admin page: OVERVIEW · REVIEW QUEUE · RIDES · SIGN-INS · LOGS · AUDIT (+ #ride/<id>). Vanilla DOM, no framework.
    Only wallets in the server's ADMIN_WALLETS get answers – to everyone else /api/admin/* is a 404 and this page says so.
@@ -18,7 +18,7 @@ function el(tag, attrs = {}, ...kids) {
   return e;
 }
 async function api(path, body) {
-  const r = await fetch(`${API_BASE}/api/admin/${path}`, {
+  const r = await fetch(`${ADMIN_BASE}/api/admin/${path}`, {
     credentials: 'include', method: body ? 'POST' : 'GET',
     headers: body ? { 'content-type': 'application/json', 'x-fc-admin': '1' } : {},   // the header proves the change came from this page (CSRF)
     body: body ? JSON.stringify(body) : undefined,
@@ -190,15 +190,17 @@ async function audit() {
 
 /* ───────── boot ───────── */
 try {
+  // on a real domain the admin page lives on admin.<apex> only (the server answers /api/admin/* nowhere else): /admin.html on the apex moves there
+  if (ADMIN_BASE && location.origin !== ADMIN_BASE) { location.replace(`${ADMIN_BASE}/${location.hash}`); await new Promise(() => {}); }
   const o = await api('overview');
   paintMode(o.config);
-  const me = await fetch(`${API_BASE}/api/me`, { credentials: 'include' }).then(r => (r.ok ? r.json() : null));
+  const me = await fetch(`${ADMIN_BASE}/api/me`, { credentials: 'include' }).then(r => (r.ok ? r.json() : null));
   S.me = me; $('chip-wallet').textContent = me ? short(me.wallet) : '';
   go();
 } catch (e) {
   document.querySelector('.tabs').hidden = true;
   view.replaceChildren(el('div', { class: 'card', id: 'denied' },
     el('h2', {}, 'NOT AVAILABLE'),
-    el('p', {}, e.status === 404 ? 'This page is for the wallets in the server\'s ADMIN_WALLETS. Sign in with one of them first.' : e.message),
+    el('p', {}, e.status === 404 ? 'This page is for the wallets in the server\'s ADMIN_WALLETS. Sign in with one of them on the main site first, then come back here.' : e.message),
     el('p', {}, el('a', { href: `${SITE_BASE}/` }, 'Go to the sign-in page'))));
 }
