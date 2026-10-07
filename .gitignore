@@ -1,9 +1,9 @@
 # Generated build output (node tools/build-standalone.mjs) – regenerate, don't commit
 dist/
 
-# Dependencies / package-manager leftovers (the game itself has none; tools are run via npx)
+# Dependencies / package-manager leftovers (the client has none; tools are run via npx). server/package-lock.json IS committed.
 node_modules/
-package-lock.json
+client/package-lock.json
 npm-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
@@ -43,3 +43,8 @@ CLAUDE.local.md
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+# Server runtime data (SQLite) and build output
+server/data/
+*.sqlite*
+*.tsbuildinfo

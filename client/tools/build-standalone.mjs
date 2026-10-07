@@ -2,7 +2,7 @@
 // three.js is still loaded from the CDN via the importmap, so it needs internet. Usage: node tools/build-standalone.mjs
 import { execFileSync } from 'node:child_process'; import fs from 'node:fs'; import path from 'node:path'; import os from 'node:os';
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
-const viewer = process.argv[2] === 'viewer', entry = viewer ? 'viewer' : 'main', page = viewer ? 'viewer.html' : 'index.html', out = viewer ? 'dist/viewer.html' : 'dist/freightchain.html';   // `node tools/build-standalone.mjs viewer` → dist/viewer.html
+const viewer = process.argv[2] === 'viewer', entry = viewer ? 'viewer' : 'main', page = viewer ? 'viewer.html' : 'play.html', out = viewer ? 'dist/viewer.html' : 'dist/freightchain.html';   // `node tools/build-standalone.mjs viewer` → dist/viewer.html
 const tmp = path.join(os.tmpdir(), `fc-bundle-${entry}.js`);
 execFileSync('npx', ['--yes', 'esbuild', `js/${entry}.js`, '--bundle', '--external:three', '--format=esm', `--outfile=${tmp}`, '--log-level=warning'], { cwd: root, stdio: 'inherit' });
 const bundle = fs.readFileSync(tmp, 'utf8').replace(/<\/script/gi, '<\\/script');

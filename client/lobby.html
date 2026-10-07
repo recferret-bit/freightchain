@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lobby – Freight Chain</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="site/site.css">
+</head>
+<body>
+<main><div class="panel">
+  <h1>LOBBY</h1>
+  <h2>Placeholder – tabs (leaderboard, live rides, profile) are Day 2 of docs/hackathon-plan.md</h2>
+  <div class="row"><span>Wallet</span><b id="wallet">…</b></div>
+  <div class="row"><span>Free rides left</span><b id="free">…</b></div>
+  <div class="btns"><button id="go" disabled>START FREE RIDE (3 min)</button><button class="alt" id="out">SIGN OUT</button></div>
+  <p class="dim" id="msg"></p>
+</div></main>
+<script type="module">
+  import { api, signOut } from './site/wallet.js';
+  const $ = id => document.getElementById(id), msg = $('msg');
+  let me;
+  try { me = await api('me'); } catch { location.href = '/'; }
+  if (me) {
+    $('wallet').textContent = me.wallet.slice(0, 4) + '…' + me.wallet.slice(-4); $('free').textContent = me.freeRides; $('go').disabled = false;
+    $('go').onclick = async () => {
+      $('go').disabled = true;
+      try { const ride = await api('rides', { tier: 'free' }); location.href = `/play.html?ride=${ride.id}`; } catch (e) { msg.textContent = e.message; msg.className = 'bad'; $('go').disabled = false; }
+    };
+    $('out').onclick = async () => { await signOut(); location.href = '/'; };
+  }
+</script>
+</body>
+</html>

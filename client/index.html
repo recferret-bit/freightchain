@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Freight Chain – Desert Run</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="site/site.css">
+</head>
+<body>
+<main><div class="panel">
+  <h1>FREIGHT CHAIN</h1>
+  <h2>Drive the whole shift. Share the pool. (Placeholder landing – the real one is Day 4 of docs/hackathon-plan.md)</h2>
+  <div class="row"><span>New riders</span><b>5 free rides</b></div>
+  <div class="row"><span>Then</span><b>1 free ride a day</b></div>
+  <div class="btns"><button id="connect">CONNECT WALLET</button></div>
+  <p class="dim" id="msg"></p>
+</div></main>
+<script type="module">
+  import { signIn, api } from './site/wallet.js';
+  const msg = document.getElementById('msg'), btn = document.getElementById('connect');
+  api('me').then(() => { location.href = '/lobby.html'; }, () => { /* not signed in yet */ });   // already has a session
+  btn.onclick = async () => {
+    btn.disabled = true; msg.textContent = 'Approve the sign-in message in your wallet…'; msg.className = 'dim';
+    try { await signIn(); location.href = '/lobby.html'; } catch (e) { msg.textContent = e.message; msg.className = 'bad'; btn.disabled = false; }
+  };
+</script>
+</body>
+</html>

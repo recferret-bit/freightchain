@@ -1,10 +1,10 @@
 // Real-Chrome end-to-end check: launches headless Chrome (software WebGL), drives the game over the DevTools protocol
 // (start ride, engine start, gears, washer, off-road, a screenshot of every route), records JS exceptions / console errors, and saves screenshots.
-//   node tools/e2e-chrome.mjs [url]       default url http://localhost:8765/index.html (run ./serve.sh first)
+//   node tools/e2e-chrome.mjs [url]       default url http://localhost:8765/play.html (run ./serve.sh first)
 //   env: CHROME=/path/to/chrome  SHOTS=/dir/for/screenshots (default: <tmp>/fc-shots)
 // Exits 1 if anything threw. Needs Node >= 22 (global WebSocket/fetch). Look at the screenshots – the script can't judge visuals.
 import { launch, sleep } from './cdp.mjs';
-const PORT=+process.env.PORT||9333, URL=process.argv[2]||'http://localhost:8765/index.html';
+const PORT=+process.env.PORT||9333, URL=process.argv[2]||'http://localhost:8765/play.html';
 const { send, ev, shot, filt, problems, SHOTS, finish } = await launch({ port: PORT, shotsDir: 'fc-shots', args: ['--autoplay-policy=no-user-gesture-required'], evalProblems: true });
 const key=async(code,type)=>{ const map={KeyW:87,KeyS:83,KeyA:65,KeyD:68,KeyE:69,KeyQ:81,KeyI:73,KeyB:66,KeyR:82,KeyX:88,KeyV:86,KeyN:78,KeyL:76,KeyG:71,KeyC:67,KeyH:72,ShiftLeft:16}; await send('Input.dispatchKeyEvent',{type:type==='up'?'keyUp':'keyDown',code,key:code.replace('Key','').toLowerCase(),windowsVirtualKeyCode:map[code]}); };
 await send('Page.navigate',{url:URL}); await sleep(3500);

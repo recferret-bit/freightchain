@@ -17,6 +17,7 @@ import { HOLES, holeAt, holesNear, clearHoleCache } from './world/holes.js';
 import { updateDayNight, setNight, setPhase, setClock, savedClock } from './world/daynight.js';
 import { selectTheme, savedThemeId } from './world/theme-manager.js';
 import { THEMES } from './themes/index.js';
+import { initOnline } from './online.js';
 import './ui/input.js';
 import './ui/tuning.js';
 
@@ -29,6 +30,7 @@ function frame(now) {
 }
 selectTheme(savedThemeId() ?? THEMES[0].id, false);   // the route chosen last time (menu: click a route card to change it)
 setClock(savedClock(), true, false);   // the last clock time (default noon); the menu has Day/Dusk/Night/Dawn cards, F2 the time scale
+await initOnline();   // only with ?ride=<id> (see online.js); offline it returns at once
 resize(); resetRide(); showMenu('DESERT RUN', 'Freight Chain · long-haul simulator');
 requestAnimationFrame(frame);
 window.__game = { radio, roadObjects, roads, net, st, disp, CFG, Wallet, input, tryShift, ignition, startRide, curv, spawn, traffic: cars, selectTheme, THEMES, setNight, setPhase, setClock, dn, weather, holes: { HOLES, holeAt, holesNear, clearHoleCache } };   // handy for console debugging

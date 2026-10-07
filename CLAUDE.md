@@ -4,7 +4,8 @@
 
 The full project map and caveats are in `AGENTS.md` (imported above). The ones that bite most often:
 
-- **Serve over http** (`./serve.sh`); `file://` can't load the ES modules (use `node tools/build-standalone.mjs` → `dist/freightchain.html` for a double-clickable build, and rebuild it after changes).
+- **Repo is split**: `client/` = the game + site pages (everything in AGENTS.md below is relative to it), `server/` = NestJS API (auth, rides). Run client commands from `client/`.
+- **Serve over http** (`client/serve.sh` for the game alone, or `npm run server:dev` – Nest serves `client/` and the API on :3000); `file://` can't load the ES modules (use `node tools/build-standalone.mjs` (in `client/`) → `client/dist/freightchain.html` for a double-clickable build, and rebuild it after changes).
 - You can test in a **real browser even without the Chrome extension**: `node tools/e2e-chrome.mjs` (use `PORT=<free port>` if another session may be running it – they share :9333) drives headless Chrome and saves screenshots (read them with the Read tool). Use it after visual/gameplay changes.
   Say plainly what was and wasn't verified – it can't judge "feel" (shake, smoke density…), so tell the user what to eyeball.
 - **The sim is not deterministic or server-replayable** (floats, variable `dt`, `Math.random`), unlike what `technical_design_document.html` specifies for production – see AGENTS.md "Prototype vs. the design doc". Don't add more `Math.random()` to gameplay logic without noting it.
