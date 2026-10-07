@@ -1,6 +1,7 @@
 import { CFG } from './config.js';
 import { st } from './state.js';
 import { API_BASE } from './hosts.js';
+import { startTelemetry, flushTelemetry } from './telemetry.js';
 
 /* Online mode – OPT-IN: only when the page was opened as play.html?ride=<id> (made by the lobby). Without it nothing here runs and the game
    behaves exactly like the offline prototype (headless test, e2e, viewer and the file:// build all rely on that).
@@ -31,6 +32,7 @@ export async function beginOnline() {
   if (!online.ride || online.started) return;
   online.started = true;
   await api(`rides/${online.ride.id}/start`, {});
+  startTelemetry(online.ride.id);   // inputs + 10 Hz samples, uploaded in hash-chained batches (the server's verdict reads them)
   timer = setInterval(() => api(`rides/${online.ride.id}/heartbeat`, progress()).catch(() => { /* a lost beat is the server's call (timeout) */ }), 10_000);
 }
 
@@ -38,5 +40,7 @@ export async function beginOnline() {
 export async function endOnline(outcome, reason = '') {
   if (!online.ride || !online.started || online.done) return null;
   online.done = true; clearInterval(timer);
-  try { return await api(`rides/${online.ride.id}/end`, { outcome, reason, ...progress() }); } catch (e) { return { status: 'unknown', reason: e.message }; }
+  const report = progress();   // taken now: the flush below is async
+  await flushTelemetry().catch(() => { /* a lost tail costs coverage in the verdict, never the end call */ });
+  try { return await api(`rides/${online.ride.id}/end`, { outcome, reason, ...report }); } catch (e) { return { status: 'unknown', reason: e.message }; }
 }
