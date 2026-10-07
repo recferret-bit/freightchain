@@ -9,7 +9,7 @@ Core instructions only; the phase-2 session / deposit instructions (plan 2.6 / 2
 ```sh
 export PATH="$HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$HOME/.avm/bin:$PATH"
 anchor build --arch v0     # root: npm run program:build
-cargo test                 # root: npm run program:test   (42 tests, LiteSVM, no network)
+cargo test                 # root: npm run program:test   (44 tests, LiteSVM, no network)
 npm run program:idl        # copies target/idl/freightchain_pools.json -> idl/
 ```
 
@@ -47,14 +47,14 @@ Signers: Anchor accounts marked (S). `system_program` is omitted below. Error nu
 | `refund(pool_id)` | caller (S), pool (mut), vault (mut), ticket (mut), buyer (mut), rent_payer (mut) | permissionless; Refunding; price `ticket.lamports` -> `buyer`, Ticket rent -> `ticket.rent_payer`, Ticket closed | NotRefunding, AlreadyRefunded, AccountMismatch, BelowRentMin |
 | `close_ticket(pool_id)` | caller (S), pool, ticket (mut), rent_payer (mut) | permissionless; pool Settled; Ticket rent -> `rent_payer` | NotSettled, AccountMismatch |
 | `pay_prize(pool_id, lamports, rank)` | authority (S), config, pool (mut), vault (mut), to (mut) | `config.authority`; Active; `now >= play_deadline`; `lamports > 0`; `prizes_paid + lamports <= prize_share`; `to.lamports + lamports >= rent_min`; vault keeps >= rent_min or 0 | Unauthorized, PoolNotActive, TooEarly, InvalidParams, PrizeExceedsShare, BelowRentMin, AccountMismatch (to == vault) |
-| `close_pool(pool_id)` | caller (S), pool_authority (mut, = `pool.authority`, not a signer), config, pool (mut), vault (mut), seed_treasury (mut), fee_treasury (mut), platform_treasury (mut) | Active: `now >= play_deadline`, and caller = `config.authority` until `play_deadline + SETTLE_GRACE_SECS`, **anyone** after it. Refunding: **anyone**, once every ticket is refunded. Money only goes to the declared treasuries; the vault rent minimum to `pool_authority`; the vault ends at exactly 0 | Unauthorized, PoolNotActive, TooEarly, RefundsPending, AccountMismatch, BelowRentMin |
+| `close_pool(pool_id)` | caller (S), pool_authority (mut, = `pool.authority`, not a signer), config, pool (mut), vault (mut), seed_treasury (mut), fee_treasury (mut), platform_treasury (mut) | Active: `now >= play_deadline`; `config.authority` any time after that; **anyone else** only after `play_deadline + SETTLE_GRACE_SECS` **and only if `prizes_paid > 0`** (else `MustExpire`). Refunding: **anyone**, once every ticket is refunded. Money only goes to the declared treasuries; the vault rent minimum to `pool_authority`; the vault ends at exactly 0 | Unauthorized, MustExpire, PoolNotActive, TooEarly, RefundsPending, AccountMismatch, BelowRentMin |
 
 ### Settle grace (no admin needed in the end)
 
 `SETTLE_GRACE_SECS = 14 * 86_400` (constants.rs). An Active pool whose admin key is lost is never locked: after `play_deadline + 14 days`
-- if no prize was paid, anyone can `expire_pool` it -> Refunding -> anyone cranks `refund`, every ticket comes back in full, then anyone `close_pool`s it (Cancelled);
-- in any case anyone can `close_pool` it: the split goes to the treasuries the pool declared at creation (unclaimed prize to the seed treasury), never to the caller.
-Before the grace ends an Active pool is settled only by `config.authority` (`pay_prize`, `close_pool`). A pool with some prizes paid cannot be expired (the refund maths assumes nothing left the vault), only closed.
+- **no prize paid** (`prizes_paid == 0`): the only permissionless path is `expire_pool` -> Refunding -> anyone cranks `refund`, every ticket comes back in full, then anyone `close_pool`s the refunded pool (Cancelled). A permissionless `close_pool` is refused with `MustExpire`: it would sweep the whole prize share to the seed treasury as "unclaimed", and the operator controls that treasury, so an absent operator could still take the players' money;
+- **some prizes paid**: anyone can `close_pool` it; the rest of the split goes to the treasuries the pool declared at creation (unclaimed prize to the seed treasury), never to the caller. Such a pool cannot be expired (the refund maths assumes nothing left the vault).
+`config.authority` may `close_pool` any time after `play_deadline`, with or without prizes paid (the normal settlement). Before the grace ends nobody else can close an Active pool (`Unauthorized`).
 
 ### Authority handover
 
@@ -66,7 +66,7 @@ Anchor account names are the IDL names (`buyer`, `fee_payer`, `rent_payer`, `see
 
 ### Errors (code = 6000 + index)
 
-Paused 6000 · Unauthorized 6001 · InvalidParams 6002 · BpsSum 6003 · PriceBelowRentMin 6004 · TreasuryNotRentExempt 6005 · PoolNotOpen 6006 · SoldOut 6007 · WalletCap 6008 · TooLate 6009 · TooEarly 6010 · NotFailable 6011 · NotRefunding 6012 · AlreadyRefunded 6013 · PoolNotActive 6014 · NotSettled 6015 · PrizeExceedsShare 6016 · BelowRentMin 6017 · RefundsPending 6018 · AccountMismatch 6019 · MathOverflow 6020 · PrizesAlreadyPaid 6021 · NoPendingAuthority 6022.
+Paused 6000 · Unauthorized 6001 · InvalidParams 6002 · BpsSum 6003 · PriceBelowRentMin 6004 · TreasuryNotRentExempt 6005 · PoolNotOpen 6006 · SoldOut 6007 · WalletCap 6008 · TooLate 6009 · TooEarly 6010 · NotFailable 6011 · NotRefunding 6012 · AlreadyRefunded 6013 · PoolNotActive 6014 · NotSettled 6015 · PrizeExceedsShare 6016 · BelowRentMin 6017 · RefundsPending 6018 · AccountMismatch 6019 · MathOverflow 6020 · PrizesAlreadyPaid 6021 · NoPendingAuthority 6022 · MustExpire 6023.
 Anchor constraint failures keep Anchor's own codes (for example 2006 seeds mismatch, 3012 account not initialized).
 
 ## Events
@@ -141,12 +141,12 @@ Measured by `compute_units_are_in_budget` (`cargo test -- --nocapture` prints th
 
 Set `setComputeUnitLimit` from the simulation (`unitsConsumed * 1.2`) as planned; the test asserts only loose ceilings (buy < 40k, refund < 30k, pay_prize < 25k).
 
-## Tests (`programs/freightchain_pools/tests/`, 40 LiteSVM + 2 unit)
+## Tests (`programs/freightchain_pools/tests/`, 42 LiteSVM + 2 unit)
 
 `create_and_buy.rs` create_pool validation / authority / unfunded treasury, buy to exactly min activates (events decoded), sponsored buy credits the buyer and records the rent payer, wallet cap, sold out, deadlines.
 `refunds.rs` fail_pool conditions, refund exact price + rent to a separate rent payer, wrong receivers, refund when not Refunding, refund twice, batch of 8 + re-sent batch + partial progress, close_pool after refunds, cancel_pool, sponsor.
 `settle.rs` pay_prize authority-only / before play_deadline / bounded by the prize share / receiver rent, close_pool exact split for random amounts, close guards, unclaimed prize and stray lamports to the seed, close_ticket rent to rent_payer.
-`grace_and_authority.rs` sponsor cut-off on Open pools, expire before / after the grace and with prizes paid, refunds after expiry, permissionless close after the grace (refused before, rent receiver must be the creator), permissionless close of a refunded pool, propose / accept authority, a rotated key taking over existing pools.
+`grace_and_authority.rs` sponsor cut-off on Open pools, expire before / after the grace and with prizes paid, refunds after expiry, permissionless close after the grace (refused before, `MustExpire` without paid prizes, outputs sum to the vault with paid prizes, rent receiver must be the creator), unpaid pool after the grace: `MustExpire` -> expire -> refunds -> close, the authority closing an unpaid pool at and after the grace, permissionless close of a refunded pool, propose / accept authority, a rotated key taking over existing pools.
 `admin_rent_cu.rs` pause, set_config, the vault-rent rule, compute units, IDL event discriminators, raw log decoding.
 The clock is warped with `svm.set_sysvar::<Clock>()`; no test waits.
 

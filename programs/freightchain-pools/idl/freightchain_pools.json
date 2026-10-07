@@ -1450,6 +1450,11 @@
       "code": 6022,
       "name": "NoPendingAuthority",
       "msg": "No authority handover is pending"
+    },
+    {
+      "code": 6023,
+      "name": "MustExpire",
+      "msg": "No prize was paid: an unsettled pool must be expired and refunded, not closed"
     }
   ],
   "types": [

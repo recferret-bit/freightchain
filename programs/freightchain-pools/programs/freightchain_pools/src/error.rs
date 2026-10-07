@@ -48,4 +48,6 @@ pub enum PoolError {
     PrizesAlreadyPaid,
     #[msg("No authority handover is pending")]
     NoPendingAuthority,
+    #[msg("No prize was paid: an unsettled pool must be expired and refunded, not closed")]
+    MustExpire,
 }

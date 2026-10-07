@@ -148,14 +148,61 @@ fn permissionless_close_only_after_grace_and_money_to_declared_treasuries() {
     );
     assert_err!(e.send(&[bad], &stranger, &[]), PoolError::AccountMismatch);
 
+    // no prize paid: a permissionless close would sweep the prize share to the seed treasury -> refused
+    assert_err!(e.close_pool(id, &stranger), PoolError::MustExpire);
+
+    // the authority pays part of the prize share; now the declared split may be closed by anyone
+    let w = funded(&mut e.svm, SOL);
+    e.pay_prize(id, &auth, &w.pubkey(), 100_000_000, 1).unwrap();
     let (s0, f0, a0, x0) =
         (e.bal(&e.seed_t.pubkey()), e.bal(&e.fee_t.pubkey()), e.bal(&auth.pubkey()), e.bal(&stranger.pubkey()));
+    let vault_before = e.vault(id);
     e.close_pool(id, &stranger).unwrap();
-    assert_eq!(e.bal(&e.seed_t.pubkey()) - s0, 125_000_000 + 300_000_000, "seed share + unclaimed prize");
-    assert_eq!(e.bal(&e.fee_t.pubkey()) - f0, 75_000_000);
-    assert_eq!(e.bal(&auth.pubkey()) - a0, e.rent_min());
+    let (ds, df, da) = (e.bal(&e.seed_t.pubkey()) - s0, e.bal(&e.fee_t.pubkey()) - f0, e.bal(&auth.pubkey()) - a0);
+    assert_eq!(ds, 125_000_000 + 200_000_000, "seed share + unclaimed prize");
+    assert_eq!(df, 75_000_000);
+    assert_eq!(da, e.rent_min());
+    assert_eq!(ds + df + da + (e.bal(&e.plat_t.pubkey()) - e.plat_t_start), vault_before, "outputs sum to the vault");
     assert_eq!(e.bal(&stranger.pubkey()), x0, "the caller gets nothing");
     assert_eq!((e.vault(id), e.pool(id).status), (0, 3));
+}
+
+#[test]
+fn unpaid_pool_after_grace_must_expire_then_refunds_end_to_end() {
+    let mut e = Env::new();
+    let (id, buyers) = active(&mut e);
+    let stranger = funded(&mut e.svm, SOL);
+    e.warp(GRACE_END);
+    let (seed0, v0) = (e.bal(&e.seed_t.pubkey()), e.vault(id));
+    assert_err!(e.close_pool(id, &stranger), PoolError::MustExpire);
+    assert_eq!((e.bal(&e.seed_t.pubkey()), e.vault(id)), (seed0, v0), "nothing moved");
+    e.expire(id, &stranger).unwrap();
+    for (b, q) in buyers.iter().zip([2u64, 3]) {
+        let b0 = e.bal(&b.pubkey());
+        let rent = e.bal(&ticket_pda(id, &b.pubkey()));
+        e.refund(id, &b.pubkey(), &b.pubkey()).unwrap();
+        assert_eq!(e.bal(&b.pubkey()), b0 + q * PRICE + rent, "full price back");
+    }
+    let auth = e.authority_kp();
+    let a0 = e.bal(&auth.pubkey());
+    e.close_pool(id, &stranger).unwrap();
+    assert_eq!(e.bal(&e.seed_t.pubkey()), seed0, "the seed treasury got nothing");
+    assert_eq!(e.bal(&auth.pubkey()), a0 + e.rent_min());
+    assert_eq!((e.vault(id), e.pool(id).status), (0, 4));
+}
+
+#[test]
+fn authority_can_close_unpaid_pool_any_time_after_play_deadline() {
+    for at in [PLAY, GRACE_END + 1] {
+        let mut e = Env::new();
+        let (id, _) = active(&mut e);
+        let auth = e.authority_kp();
+        e.warp(at);
+        let s0 = e.bal(&e.seed_t.pubkey());
+        e.close_pool(id, &auth).unwrap();
+        assert_eq!(e.bal(&e.seed_t.pubkey()) - s0, 125_000_000 + 300_000_000);
+        assert_eq!((e.vault(id), e.pool(id).status), (0, 3));
+    }
 }
 
 #[test]

@@ -87,9 +87,12 @@ pub fn handle_close_pool(mut ctx: Context<ClosePool>, pool_id: u32) -> Result<()
         STATUS_ACTIVE => {
             require!(now >= a.pool.play_deadline, PoolError::TooEarly);
             let grace_end = a.pool.play_deadline.checked_add(SETTLE_GRACE_SECS).ok_or(PoolError::MathOverflow)?;
-            // the money only goes to the declared treasuries, so after the grace nobody's key is needed
-            if now < grace_end {
-                require_keys_eq!(a.caller.key(), a.config.authority, PoolError::Unauthorized);
+            // The authority settles any time after play_deadline. Anyone else only after the grace, and only
+            // if prizes were paid: with prizes_paid == 0 the whole prize share would be swept to the
+            // (operator-controlled) seed treasury as "unclaimed", so that pool must go expire_pool -> refunds.
+            if a.caller.key() != a.config.authority {
+                require!(now >= grace_end, PoolError::Unauthorized);
+                require!(a.pool.prizes_paid > 0, PoolError::MustExpire);
             }
             false
         }
