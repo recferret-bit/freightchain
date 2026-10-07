@@ -9,6 +9,7 @@ import { ListAdminActionsQuery } from '../../application/use-cases/admin/list-ad
 import { ListAdminRidesQuery } from '../../application/use-cases/admin/list-admin-rides/list-admin-rides.query.js';
 import { ListSignInsQuery } from '../../application/use-cases/admin/list-sign-ins/list-sign-ins.query.js';
 import { OverrideVerdictCommand } from '../../application/use-cases/admin/override-verdict/override-verdict.command.js';
+import { RejudgeRideCommand } from '../../application/use-cases/admin/rejudge-ride/rejudge-ride.command.js';
 import { CurrentRequestId } from '../../infrastructure/http/decorators/client-info.js';
 import { CurrentPlayer } from '../../infrastructure/http/decorators/current-player.js';
 import { ZodBody, ZodParams, ZodQuery } from '../../infrastructure/http/decorators/zod.js';
@@ -51,6 +52,12 @@ export class AdminHttpController {
     @CurrentPlayer() admin: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodBody(overrideBodySchema) body: OverrideBody, @CurrentRequestId() requestId: string,
   ): Promise<VerdictDto> {
     return this.commandBus.execute<OverrideVerdictCommand, VerdictDto>(new OverrideVerdictCommand(admin.wallet, params.id, body.decision, body.note, requestId));
+  }
+
+  /** Judge the ride again at the current rules (replaces a decision). */
+  @Post('rides/:id/rejudge') @HttpCode(200)
+  rejudge(@CurrentPlayer() admin: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams, @CurrentRequestId() requestId: string): Promise<VerdictDto> {
+    return this.commandBus.execute<RejudgeRideCommand, VerdictDto>(new RejudgeRideCommand(admin.wallet, params.id, requestId));
   }
 
   @Get('signins')

@@ -50,7 +50,7 @@ function inputEvents(seconds: number, kind: 'human' | 'bot', rnd: () => number):
   const ev: InputEvent[] = [];
   const press = (t: number, code: string, hold: number) => { ev.push([round(t, 1), code, 1], [round(t + hold, 1), code, 0]); };
   press(800, 'ShiftLeft', jitter(1400, 0.3)); press(1100, 'KeyE', jitter(90, 0.4));
-  let t = 2500;
+  let t = kind === 'bot' ? 2537.3 : 2500;   // (a bot's times are exact but not on a coarse-timer grid)
   const end = seconds * 1000;
   while (t < end) {
     const hold = jitter(4000, 0.6), gap = jitter(900, 0.7);

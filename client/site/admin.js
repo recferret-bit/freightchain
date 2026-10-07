@@ -111,6 +111,11 @@ async function ride(id) {
     $('decide-msg').textContent = 'Saving…';
     try { await api(`rides/${encodeURIComponent(id)}/verdict`, { decision, note: note || undefined }); go(); } catch (e) { $('decide-msg').textContent = e.message; $('decide-msg').className = 'bad'; }
   };
+  const rejudge = async () => {
+    const msg = $('decide-msg') ?? $('judge-msg');
+    msg.textContent = 'Judging…';
+    try { await api(`rides/${encodeURIComponent(id)}/rejudge`, {}); go(); } catch (e) { msg.textContent = e.message; msg.className = 'bad'; }
+  };
   view.replaceChildren(
     el('p', {}, el('a', { href: '#queue' }, '← review queue'), ' · ', el('a', { href: `?wallet=${r.wallet}#rides` }, 'this rider\'s rides'), ' · ', el('a', { href: `#signins/${r.wallet}` }, 'sign-ins'), ' · ', el('a', { href: `#logs/${r.id}` }, 'log lines')),
     el('h2', {}, 'RIDE'),
@@ -125,9 +130,12 @@ async function ride(id) {
       v.reasons.length ? el('div', { class: 'reasons' }, v.reasons.map(x => el('div', { class: `reason ${x.severity}` }, el('b', {}, `${x.code} `), el('span', { class: 'dim' }, `(${x.severity}) `), x.detail))) : el('p', { class: 'good' }, 'No reasons – the recording passed every check.'),
       el('details', {}, el('summary', { class: 'dim' }, 'scores'), el('pre', { class: 'json' }, JSON.stringify(v.scores, null, 2))),
       el('div', { class: 'actions' }, el('textarea', { id: 'note', placeholder: 'note (why) – kept in the audit log', maxlength: '500' }),
-        el('button', { onclick: () => decide('verified') }, 'ACCEPT · VERIFIED'), el('button', { class: 'reject', onclick: () => decide('rejected') }, 'REJECT')),
-      el('p', { id: 'decide-msg', class: 'dim' }, 'Your decision replaces the status; later re-judging (a late batch) leaves it alone.'))
-      : el('div', { class: 'card dim' }, 'Not judged – only completed shifts are.'),
+        el('button', { onclick: () => decide('verified') }, 'ACCEPT · VERIFIED'), el('button', { class: 'reject', onclick: () => decide('rejected') }, 'REJECT'),
+        el('button', { class: 'ghost', onclick: rejudge, title: 'run the checks again at the current rules – replaces a decision' }, 'RE-JUDGE')),
+      el('p', { id: 'decide-msg', class: 'dim' }, 'Your decision replaces the status; a late batch leaves it alone, RE-JUDGE replaces it.'))
+      : r.status === 'completed'
+        ? el('div', { class: 'card' }, el('p', { class: 'bad' }, 'Completed but not judged (judging failed after the ride ended).'), el('div', { class: 'actions' }, el('button', { onclick: rejudge }, 'JUDGE NOW')), el('p', { id: 'judge-msg', class: 'dim' }))
+        : el('div', { class: 'card dim' }, 'Not judged – only completed shifts are.'),
     el('h2', {}, `RECORDING · ${d.batches.length} BATCHES`),
     d.batches.length ? el('div', { class: 'card', style: 'padding:6px 8px;overflow-x:auto' }, el('table', { class: 'dense' },
       el('thead', {}, el('tr', {}, ...['seq', 'game s', 'samples', 'inputs', 'size', 'hash', 'received'].map(h => el('th', { class: ['samples', 'inputs', 'size'].includes(h) ? 'r' : null }, h)))),

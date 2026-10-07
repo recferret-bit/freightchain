@@ -8,23 +8,24 @@ import { API_BASE } from './hosts.js';
    (server/src/domain/verdict). Batch shape + canonical text must match server/src/domain/telemetry/ride-batch.entity.ts. */
 
 const rec = { on: false, rideId: '', seq: 0, prevHash: '', t0: 0, acc: 0, wall0: 0, samples: [], inputs: [], queue: [], sealing: Promise.resolve(), sending: null };
-const r = (v, p) => Math.round(v / p) * p + 0;   // + 0: never -0 (JSON writes it as 0, the server would hash a different text)
+const r = (v, decimals) => { const f = 10 ** decimals; return Math.round(v * f) / f; };   // the shortest JSON (x / 100, not x * 0.01: no 0.30000000000000004)
 
 /** One input event: ms since the ride started (wall clock – human timing is measured in real time), the key code or dash button, 1 = down / 0 = up. */
 export function recordInput(code, down) {
   if (!rec.on || st.mode !== 'drive') return;
-  rec.inputs.push([r(performance.now() - rec.wall0, 0.1), String(code).slice(0, 32), down ? 1 : 0]);
+  rec.inputs.push([r(performance.now() - rec.wall0, 1), String(code || 'Unidentified').slice(0, 32), down ? 1 : 0]);   // some OEM / IME keys have no code
 }
 
 /** Called every frame after the sim step: a sample every 1/TELEMETRY_HZ of GAME time, a batch every TELEMETRY_BATCH_SECONDS. */
 export function tickTelemetry(dt) {
   if (!rec.on || st.mode !== 'drive') return;
   rec.acc += dt;
-  if (rec.acc >= 1 / CFG.TELEMETRY_HZ) { rec.acc = 0; rec.samples.push(sample()); }
+  const period = 1 / CFG.TELEMETRY_HZ;
+  if (rec.acc >= period) { rec.acc -= period; if (rec.acc >= period) rec.acc = 0; rec.samples.push(sample()); }   // keep the remainder: a true 10 Hz at any frame rate
   if (st.t - rec.t0 >= CFG.TELEMETRY_BATCH_SECONDS) cut();
 }
 /** [t, s, d, psi, v, rpm, gear, hull, gas, brake, steer, clutch] – the order the server reads */
-const sample = () => [r(st.t, .01), r(st.s, .1), r(st.d, .01), r(st.psi, .001), r(st.v, .01), Math.round(st.rpm), st.gear, r(st.hull, .1), r(st.gas, .01), r(st.brake, .01), r(st.steer, .01), r(st.clutch, .01)];
+const sample = () => [r(st.t, 2), r(st.s, 1), r(st.d, 2), r(st.psi, 3), r(st.v, 2), Math.round(st.rpm), st.gear, r(st.hull, 1), r(st.gas, 2), r(st.brake, 2), r(st.steer, 2), r(st.clutch, 2)];
 
 export function startTelemetry(rideId) {
   Object.assign(rec, { on: true, rideId, seq: 0, prevHash: rideId, t0: st.t, acc: 0, wall0: performance.now(), samples: [], inputs: [], queue: [], sealing: Promise.resolve(), sending: null });
@@ -32,7 +33,7 @@ export function startTelemetry(rideId) {
 
 /** Seal what is recorded so far into a batch (chained after the previous one) and send. */
 function cut() {
-  const body = { seq: rec.seq++, prevHash: '', t0: r(rec.t0, .01), t1: r(Math.max(st.t, rec.t0), .01), samples: rec.samples, inputs: rec.inputs };
+  const body = { seq: rec.seq++, prevHash: '', t0: r(rec.t0, 2), t1: r(Math.max(st.t, rec.t0), 2), samples: rec.samples, inputs: rec.inputs };
   rec.t0 = st.t; rec.samples = []; rec.inputs = [];
   rec.sealing = rec.sealing.then(async () => {   // the hash of batch n is the prevHash of n+1, so batches are sealed one after another
     body.prevHash = rec.prevHash;
@@ -75,7 +76,12 @@ export async function flushTelemetry() {
   rec.on = false;
   await rec.sealing;
   await send();
-  if (rec.queue.length) await send();   // one retry for a batch a flaky network dropped
+  if (rec.queue.length) await send();   // one quick retry before /end …
+  if (rec.queue.length) retryInBackground(Date.now() + GRACE_MS);   // … then keep trying: the server takes batches for a minute after the end and re-judges on each
+}
+const GRACE_MS = 55_000, RETRY_MS = 5_000;   // < the server's RECORDING_GRACE_MS (60 s)
+function retryInBackground(until) {
+  setTimeout(async () => { await send(); if (rec.queue.length && Date.now() < until) retryInBackground(until); }, RETRY_MS);
 }
 
 export const telemetry = rec;   // debug / e2e: __game.telemetry

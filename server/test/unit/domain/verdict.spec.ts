@@ -1,6 +1,6 @@
 import { Ride } from '../../../src/domain/rides/ride.entity.js';
 import { RideBatch, type BatchBody, type InputEvent } from '../../../src/domain/telemetry/ride-batch.entity.js';
-import { checkHumanTiming, holdsByCode } from '../../../src/domain/verdict/human-checks.js';
+import { checkHumanTiming, holdsByCode, timerStepMs } from '../../../src/domain/verdict/human-checks.js';
 import { RideVerdict } from '../../../src/domain/verdict/ride-verdict.entity.js';
 import { HOLD_CV_MIN, REPEAT_SHARE_MAX, RULES_VERSION } from '../../../src/domain/verdict/verdict-rules.js';
 import { VerdictStatus } from '../../../src/domain/verdict/verdict.dto.js';
@@ -108,9 +108,23 @@ describe('RideVerdict.judge', () => {
       expect(checkHumanTiming(events).reasons.map((r) => r.code)).toContain('instant-presses');
     });
 
+    it('a coarse browser clock (Firefox resistFingerprinting / Tor) is detected and does not make a person look scripted', () => {
+      const rnd = (i: number) => ((i * 7919) % 97) / 97; // deterministic spread
+      const human: InputEvent[] = Array.from({ length: 30 }, (_, i) => {
+        const down = Math.round((i * 1300 + rnd(i) * 900) / 100) * 100, hold = Math.round((40 + rnd(i + 3) * 300) / 100) * 100; // everything on a 100 ms grid
+        return [[down, i % 2 ? 'KeyA' : 'KeyW', 1], [down + hold, i % 2 ? 'KeyA' : 'KeyW', 0]] as InputEvent[];
+      }).flat();
+      const { reasons, scores } = checkHumanTiming(human);
+      expect(scores.timerStepMs).toBe(100);
+      expect(reasons.map((r) => r.code)).not.toContain('instant-presses');
+      expect(reasons.map((r) => r.code)).not.toContain('repeated-timings');
+      expect(timerStepMs(recording('ride-1', { seconds: 120, seed: 5 }).flatMap((b) => b.inputs.map((e) => e[0])))).toBe(0); // a fine-grained clock
+      expect(timerStepMs([1000 / 60, 2000 / 60, 50, 100, 1000 / 6, 200, 250, 300].map((t) => Math.round(t * 10) / 10))).toBeGreaterThanOrEqual(10);
+    });
+
     it('has no opinion below 8 presses (a 60 s demo ride must not flag itself)', () => {
       const few: InputEvent[] = [[0, 'KeyW', 1], [1000, 'KeyW', 0], [2000, 'KeyW', 1], [3000, 'KeyW', 0]];
-      expect(checkHumanTiming(few)).toEqual({ reasons: [], scores: { presses: 2, minHoldCv: null, repeatShare: null, instantShare: null } });
+      expect(checkHumanTiming(few)).toEqual({ reasons: [], scores: { presses: 2, minHoldCv: null, repeatShare: null, instantShare: null, timerStepMs: 0 } });
     });
 
     it('pairs presses with their releases per key; a press still held at the end is dropped', () => {

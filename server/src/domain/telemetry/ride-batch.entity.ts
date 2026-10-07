@@ -1,5 +1,5 @@
 import { BadRequestError } from '../shared/errors.js';
-import { BATCH_MAX_BYTES, SAMPLE_COUNT_SLACK, SAMPLE_HZ, SAMPLE_RATE_SLACK } from './telemetry-rules.js';
+import { BATCH_MAX_BYTES, SAMPLE_COUNT_SLACK, SAMPLE_HZ, SAMPLE_RATE_SLACK, type RecordingAllowance } from './telemetry-rules.js';
 
 /** One input event: milliseconds since the ride started (wall time), the key / dash-button code, 1 = pressed 0 = released. */
 export type InputEvent = [t: number, code: string, down: 0 | 1];
@@ -43,9 +43,12 @@ export class RideBatch {
     return JSON.stringify({ seq: body.seq, prevHash: body.prevHash, t0: body.t0, t1: body.t1, samples: body.samples, inputs: body.inputs });
   }
 
-  /** Accept an upload: sane time span and sample count for it, size cap; `serverHash` = the server's own SHA-256 of the canonical text. */
-  static accept(rideId: string, body: BatchBody, serverHash: string, now: Date): RideBatch {
+  /** Accept an upload: sane time span and sample count for it, size cap, and – given the ride's `allowance` – no more game time or batches than the
+      wall time since the start allows. `serverHash` = the server's own SHA-256 of the canonical text. */
+  static accept(rideId: string, body: BatchBody, serverHash: string, now: Date, allowance?: RecordingAllowance): RideBatch {
     if (body.t1 < body.t0) throw new BadRequestError('batch ends before it starts', 'bad_batch');
+    if (allowance && body.t1 > allowance.maxGameSeconds) throw new BadRequestError('batch claims more driving than time has passed since the start', 'bad_batch');
+    if (allowance && body.seq > allowance.maxSeq) throw new BadRequestError('too many batches for the time since the start', 'bad_batch');
     if (body.samples.length > (body.t1 - body.t0) * SAMPLE_HZ * SAMPLE_RATE_SLACK + SAMPLE_COUNT_SLACK) throw new BadRequestError('too many samples for the time span', 'bad_batch');
     const bytes = RideBatch.canonical(body).length;
     if (bytes > BATCH_MAX_BYTES) throw new BadRequestError('batch too large', 'bad_batch');

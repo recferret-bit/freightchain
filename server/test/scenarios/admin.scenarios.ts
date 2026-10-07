@@ -79,6 +79,17 @@ export function adminScenarios(h: () => Harness): void {
     await admin.agent.get('/api/admin/signins?wallet=nope').expect(400);
   });
 
+  it('re-judge: the checks run again at the current rules (replacing a decision), audited; needs the header like every change', async () => {
+    const admin = await login(ADMIN);
+    const rider = await login();
+    const id = await flaggedRide(rider);
+    await admin.agent.post(`/api/admin/rides/${id}/verdict`).set('x-fc-admin', '1').send({ decision: 'verified' }).expect(200);
+    await admin.agent.post(`/api/admin/rides/${id}/rejudge`).expect(403);
+    const again = (await admin.agent.post(`/api/admin/rides/${id}/rejudge`).set('x-fc-admin', '1').expect(200)).body;
+    expect(again).toMatchObject({ status: 'flagged', override: null });
+    expect((await admin.agent.get('/api/admin/actions').expect(200)).body.rows.map((a: { action: string }) => a.action)).toEqual(['verdict.rejudge', 'verdict.override']);
+  });
+
   it('an override of an unknown ride or of a ride without a verdict is a 404 and is not audited', async () => {
     const admin = await login(ADMIN);
     const rider = await login();

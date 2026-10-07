@@ -14,7 +14,7 @@ describe('RideVerdictPrismaRepository (PostgreSQL)', () => {
   const verdict = (rideId: string, status: VerdictStatus, when = T0) => RideVerdict.restore({
     rideId, status, rulesVersion: 1, judgedAt: when, version: 1,
     reasons: status === VerdictStatus.Verified ? [] : [{ code: 'no-recording', detail: 'none', severity: 'reject' }],
-    scores: { recording: { batches: 0, samples: 0, inputs: 0, recordedSeconds: 0, coverage: 0, maxSpeed: 0 }, human: { presses: 0, minHoldCv: null, repeatShare: null, instantShare: null } },
+    scores: { recording: { batches: 0, samples: 0, inputs: 0, recordedSeconds: 0, coverage: 0, maxSpeed: 0 }, human: { presses: 0, minHoldCv: null, repeatShare: null, instantShare: null, timerStepMs: 0 } },
   });
 
   it('round-trips a verdict (enum, JSON reasons and scores, time); a second save replaces it and bumps the version', async () => {

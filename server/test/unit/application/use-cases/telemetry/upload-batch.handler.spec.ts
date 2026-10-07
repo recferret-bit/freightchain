@@ -7,7 +7,7 @@ import { unitContext } from '../../../../support/unit-context.js';
 describe('UploadBatchHandler', () => {
   const setup = () => {
     const ctx = unitContext();
-    const handler = new UploadBatchHandler(ctx.lookup, ctx.batches, ctx.hasher, ctx.verdicts, ctx.clock);
+    const handler = new UploadBatchHandler(ctx.lookup, ctx.batches, ctx.hasher, ctx.verdicts, ctx.clock, ctx.players, ctx.transactions);
     return { ctx, up: (wallet: string, id: string, b: Parameters<typeof handler.execute>[0]['body']) => handler.execute(new UploadBatchCommand(wallet, id, b)) };
   };
 
@@ -42,6 +42,32 @@ describe('UploadBatchHandler', () => {
     await expect(up('w', ride.id, { ...b0!, seq: 1 })).rejects.toThrow(new ConflictError('ride is failed'));
     const unstarted = await ctx.freeRide('w');
     await expect(up('w', unstarted.id, b0!)).rejects.toThrow(new ConflictError('ride is created'));
+  });
+
+  it('a ride cannot hold more recording than the wall time since its start allows (storage cap per ride)', async () => {
+    const { ctx, up } = setup();
+    const ride = await ctx.freeRide('w', true);
+    const [b0] = recording(ride.id, { seconds: 120 }); // claims 15 s of game time right at the start: within the 30 s slack
+    expect(await up('w', ride.id, b0!)).toMatchObject({ stored: true });
+    const far = recording(ride.id, { seconds: 120 });
+    await expect(up('w', ride.id, far[3]!)).rejects.toThrow(/more driving than time has passed/); // t1 = 60 s after 0 s of wall time
+    await expect(up('w', ride.id, { ...b0!, seq: 11, prevHash: 'x' })).rejects.toThrow(/too many batches/); // seq 11 > 0 / 5 + 10
+    ctx.clock.advance(60);
+    expect(await up('w', ride.id, far[3]!)).toMatchObject({ stored: true });
+  });
+
+  it('a batch for a ride that already ended re-judges it (the final flush after /end)', async () => {
+    const { ctx, up } = setup();
+    const ride = await ctx.freeRide('w', true);
+    const batches = recording(ride.id, { seconds: 20, distance: 140 });
+    await up('w', ride.id, batches[0]!);
+    ctx.clock.advance(20);
+    ride.applyReport({ s: 140, t: 20, hull: 100, paused: false, route: null, night: false }, ctx.now(), ctx.rules.get());
+    ride.finish('shift', null, ctx.now());
+    await ctx.rides.save(ride);
+    expect((await ctx.verdicts.judge(ride.id))?.status).not.toBe('verified');
+    await up('w', ride.id, batches[1]!);
+    expect((await ctx.verdictRepo.findByRide(ride.id))?.status).toBe('verified');
   });
 
   it("someone else's ride is not found; a malformed batch is a 400", async () => {

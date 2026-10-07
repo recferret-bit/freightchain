@@ -6,6 +6,7 @@ import { ListAdminActionsQuery } from '../../../src/application/use-cases/admin/
 import { ListAdminRidesQuery } from '../../../src/application/use-cases/admin/list-admin-rides/list-admin-rides.query.js';
 import { ListSignInsQuery } from '../../../src/application/use-cases/admin/list-sign-ins/list-sign-ins.query.js';
 import { OverrideVerdictCommand } from '../../../src/application/use-cases/admin/override-verdict/override-verdict.command.js';
+import { RejudgeRideCommand } from '../../../src/application/use-cases/admin/rejudge-ride/rejudge-ride.command.js';
 import { actionsQuerySchema, adminRidesQuerySchema, logsQuerySchema, overrideBodySchema, signInsQuerySchema } from '../../../src/presentation/admin/dto/admin.dto.js';
 import { busMock } from '../../support/bus.js';
 
@@ -24,6 +25,7 @@ describe('AdminHttpController', () => {
     await c.logs(logsQuerySchema.parse({ level: 'warn', q: 'req-1' })); expect(queries.last()).toEqual(new GetAdminLogsQuery({ limit: 200, minLevel: 'warn', text: 'req-1' }));
     expect(await c.override({ wallet: 'ADMIN' }, { id: 'r1' }, overrideBodySchema.parse({ decision: 'verified', note: ' looks human ' }), 'req-9')).toEqual({ status: 'verified' });
     expect(commands.last()).toEqual(new OverrideVerdictCommand('ADMIN', 'r1', 'verified' as never, 'looks human', 'req-9'));
+    await c.rejudge({ wallet: 'ADMIN' }, { id: 'r1' }, 'req-10'); expect(commands.last()).toEqual(new RejudgeRideCommand('ADMIN', 'r1', 'req-10'));
   });
 
   describe('DTO schemas', () => {

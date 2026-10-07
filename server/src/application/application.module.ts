@@ -37,6 +37,7 @@ import { ListAdminActionsHandler } from './use-cases/admin/list-admin-actions/li
 import { ListAdminRidesHandler } from './use-cases/admin/list-admin-rides/list-admin-rides.handler.js';
 import { ListSignInsHandler } from './use-cases/admin/list-sign-ins/list-sign-ins.handler.js';
 import { OverrideVerdictHandler } from './use-cases/admin/override-verdict/override-verdict.handler.js';
+import { RejudgeRideHandler } from './use-cases/admin/rejudge-ride/rejudge-ride.handler.js';
 
 const services: Provider[] = [AchievementService, PaymentSettlementService, PlayerSessionService, RideLookupService, RoundService, VerdictService];
 
@@ -45,7 +46,7 @@ const handlers: Provider[] = [
   CreateRideHandler, GetRideHandler, GetPendingRideHandler, StartRideHandler, HeartbeatRideHandler, EndRideHandler,
   GetPaymentInstructionsHandler, ConfirmPaymentHandler, ReconcilePaymentHandler,
   UploadBatchHandler, SweepTelemetryHandler,
-  GetAdminOverviewHandler, ListAdminRidesHandler, GetAdminRideHandler, ListSignInsHandler, ListAdminActionsHandler, GetAdminLogsHandler, OverrideVerdictHandler,
+  GetAdminOverviewHandler, ListAdminRidesHandler, GetAdminRideHandler, ListSignInsHandler, ListAdminActionsHandler, GetAdminLogsHandler, OverrideVerdictHandler, RejudgeRideHandler,
   GetTiersHandler, GetPoolHandler, GetLeaderboardHandler,
   GetLiveHandler, GetProfileHandler,
   GetLivenessHandler, GetReadinessHandler,

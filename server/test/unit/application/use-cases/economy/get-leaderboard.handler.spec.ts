@@ -18,7 +18,7 @@ async function completed(ctx: UnitContext, wallet: string, metres: number, free 
   if (verdict) {
     await ctx.verdictRepo.save(RideVerdict.restore({
       rideId: done.id, status: verdict, reasons: [], rulesVersion: 1, judgedAt: ctx.now(), version: 1,
-      scores: { recording: { batches: 0, samples: 0, inputs: 0, recordedSeconds: 0, coverage: 0, maxSpeed: 0 }, human: { presses: 0, minHoldCv: null, repeatShare: null, instantShare: null } },
+      scores: { recording: { batches: 0, samples: 0, inputs: 0, recordedSeconds: 0, coverage: 0, maxSpeed: 0 }, human: { presses: 0, minHoldCv: null, repeatShare: null, instantShare: null, timerStepMs: 0 } },
     }));
   }
 }

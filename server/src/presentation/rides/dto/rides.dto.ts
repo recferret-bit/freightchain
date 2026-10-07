@@ -44,7 +44,8 @@ export const heartbeatBodySchema = z
   .transform((b): RideReport => ({ s: b.s, t: b.t, hull: b.hull, paused: b.paused, route: b.route, night: b.night }));
 export type HeartbeatBody = z.infer<typeof heartbeatBodySchema>;
 
-/* A recording batch is STRICT (the client re-sends on a 400 only if it has a bug – nothing here is user input). Array caps keep a hostile client from storing junk. */
+/* A recording batch is STRICT (the client re-sends on a 400 only if it has a bug – nothing here is user input). Array caps keep a hostile client from storing junk.
+   An input's code may be empty: some OEM / IME / virtual-keyboard keys have no KeyboardEvent.code. */
 const gameSeconds = z.number().finite().min(0).max(MAX_GAME_SECONDS);
 export const batchBodySchema = z
   .object({
@@ -53,7 +54,7 @@ export const batchBodySchema = z
     t0: gameSeconds,
     t1: gameSeconds,
     samples: z.array(z.array(z.number().finite()).max(SAMPLE_MAX_WIDTH)).max(BATCH_MAX_SAMPLES),
-    inputs: z.array(z.tuple([z.number().finite().min(0), z.string().min(1).max(INPUT_CODE_MAX_LENGTH), z.union([z.literal(0), z.literal(1)])])).max(BATCH_MAX_INPUTS),
+    inputs: z.array(z.tuple([z.number().finite().min(0), z.string().max(INPUT_CODE_MAX_LENGTH), z.union([z.literal(0), z.literal(1)])])).max(BATCH_MAX_INPUTS),
     hash: z.string().regex(/^[0-9a-f]{64}$/, 'must be a lowercase hex SHA-256').nullish(),
   })
   .transform((b): BatchBody => ({ seq: b.seq, prevHash: b.prevHash, t0: b.t0, t1: b.t1, samples: b.samples, inputs: b.inputs, hash: b.hash ?? null }));

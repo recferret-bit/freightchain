@@ -34,3 +34,9 @@ export const REPEAT_SHARE_MAX = 0.6;
 /** presses released within this many ms (a script's down+up in one tick) */
 export const INSTANT_HOLD_MS = 10;
 export const INSTANT_SHARE_MAX = 0.3;
+/** Coarse timers: some browsers round performance.now() (Firefox with resistFingerprinting / Tor: 16.7–100 ms). On such a clock quick taps read as 0 ms
+    and intervals fall into a few buckets, so 'instant-presses' and 'repeated-timings' would flag real people – they are skipped when ≥ TIMER_ALIGN_SHARE of
+    the event times sit on a multiple of one of TIMER_STEPS_MS (≥ COARSE_TIMER_MS). The hold-variation check still runs. */
+export const TIMER_STEPS_MS: readonly number[] = [100, 50, 20, 1000 / 60, 10];
+export const COARSE_TIMER_MS = 10;
+export const TIMER_ALIGN_SHARE = 0.95;

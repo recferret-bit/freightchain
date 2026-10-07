@@ -78,9 +78,12 @@ check('ACCEPT: the page shows VERIFIED, decided by the admin', await until(async
 const after = (await get(`rides/${ride.id}`, rider.cookie)).j.verdict;
 check('…and the rider sees verified + the override', after?.status === 'verified' && after?.override?.by === admin.address && after.override.note === 'e2e: accepted by the admin page', JSON.stringify(after));
 
+await A.ev('[...document.querySelectorAll(".actions button")].find(b => /RE-JUDGE/.test(b.textContent)).click()');
+check('RE-JUDGE: the checks run again and replace the decision (FLAGGED again)', await until(async () => /FLAGGED/.test(await A.ev('document.querySelector(".v")?.textContent || ""')) && !/decided by/.test(await A.ev('document.getElementById("view").textContent'))));
+
 // ── audit, sign-ins, logs, rides
 await A.ev('location.hash = "#audit"');
-check('audit: the override is logged', await until(async () => /verdict\.override/.test(await A.ev('document.querySelector("tbody")?.textContent || ""'))));
+check('audit: the override and the re-judge are logged', await until(async () => { const t = await A.ev('document.querySelector("tbody")?.textContent || ""'); return /verdict\.override/.test(t) && /verdict\.rejudge/.test(t); }));
 await A.ev('location.hash = "#signins"');
 check('sign-ins: both wallets with an ip', await until(async () => { const t = await A.ev('document.querySelector("tbody")?.textContent || ""'); return t.includes(rider.short) && t.includes(admin.short); }));
 await A.shot('signins-desktop');

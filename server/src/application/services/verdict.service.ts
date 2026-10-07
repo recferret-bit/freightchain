@@ -30,19 +30,29 @@ export class VerdictService {
     private readonly clock: ClockPort,
   ) {}
 
-  /** null = nothing to judge (only completed shifts can rank, so only they are judged). */
-  async judge(rideId: string): Promise<RideVerdict | null> {
+  /** null = nothing to judge (only completed shifts can rank, so only they are judged). `force` re-judges even a verdict an admin decided (the admin's re-judge). */
+  async judge(rideId: string, force = false): Promise<RideVerdict | null> {
     return this.transactions.run(async (tx) => {
       const ride = await this.rides.findById(rideId, tx);
       if (!ride || !ride.isInStatus(RideStatus.Completed)) return null;
       await this.players.findByWalletForUpdate(ride.wallet, tx);
       const existing = await this.verdicts.findByRide(rideId, tx);
-      if (existing?.isOverridden) return existing; // an admin decided – a late batch or a re-judge never replaces that
+      if (existing?.isOverridden && !force) return existing; // an admin decided – a late batch never replaces that
       const verdict = RideVerdict.judge(ride, await this.batches.listByRide(rideId, tx), this.clock.now());
       await this.verdicts.save(verdict, tx);
       this.logger.log({ event: 'verdict', msg: `ride ${rideId}: ${verdict.status}`, rideId, wallet: ride.wallet, status: verdict.status, reasons: verdict.reasons.map((r) => r.code) });
       return verdict;
     });
+  }
+
+  /** An admin's "judge again": the checks at the current rules, replacing any earlier decision; audited. 404 for a ride that is not a completed shift. */
+  async rejudge(rideId: string, admin: string, requestId: string | null): Promise<RideVerdict> {
+    const before = (await this.verdicts.findByRide(rideId))?.status ?? null;
+    const verdict = await this.judge(rideId, true);
+    if (!verdict) throw new NotFoundError('only a completed shift can be judged');
+    await this.audit.insert({ wallet: admin, action: 'verdict.rejudge', target: rideId, detail: { from: before, to: verdict.status, reasons: verdict.reasons.map((r) => r.code) }, requestId, at: this.clock.now() });
+    this.logger.log({ event: 'admin', msg: `ride ${rideId} re-judged by ${admin}: ${verdict.status}`, action: 'verdict.rejudge', rideId, admin, requestId });
+    return verdict;
   }
 
   /** An admin's decision from the review queue, under the same player lock as judging (so a racing re-judge cannot overwrite it), audited in the same transaction. */
@@ -51,7 +61,8 @@ export class VerdictService {
       const ride = await this.rides.findById(rideId, tx);
       if (!ride) throw new NotFoundError('ride not found');
       await this.players.findByWalletForUpdate(ride.wallet, tx);
-      const current = await this.verdicts.findByRide(rideId, tx);
+      // a completed shift whose judgement failed after /end (best-effort) has no verdict yet: judge it now, then decide
+      const current = (await this.verdicts.findByRide(rideId, tx)) ?? (ride.isInStatus(RideStatus.Completed) ? RideVerdict.judge(ride, await this.batches.listByRide(rideId, tx), this.clock.now()) : null);
       if (!current) throw new NotFoundError('this ride has no verdict (only completed shifts are judged)');
       const before = current.status;
       const now = this.clock.now();

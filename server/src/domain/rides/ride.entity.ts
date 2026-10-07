@@ -2,6 +2,7 @@ import { ConflictError } from '../shared/errors.js';
 import { RideStatus, type RideOutcome } from './ride-status.js';
 import type { RideTierId } from './ride-tier.js';
 import type { RideReport } from './ride-report.js';
+import { BATCH_SEQ_SLACK, GAME_TIME_FACTOR, GAME_TIME_SLACK_SECONDS, MIN_BATCH_SECONDS, type RecordingAllowance } from '../telemetry/telemetry-rules.js';
 import {
   DRIVE_CREDIT_SLACK, DRIVE_CREDIT_SLACK_SECONDS, MAX_SPEED, REASON_MAX_LENGTH, SLACK_METRES, SPEED_SLACK,
   completeDist, isRouteId, type RideTimingRules,
@@ -113,6 +114,12 @@ export class Ride {
   acceptsRecording(now: Date, graceMs: number): boolean {
     if (this.p.status === RideStatus.Running) return true;
     return this.p.startedAt !== null && this.p.endedAt !== null && now.getTime() - this.p.endedAt.getTime() <= graceMs;
+  }
+
+  /** How much recording the ride may hold by `now`, from the server's wall time since the start (see telemetry-rules). */
+  recordingAllowance(now: Date): RecordingAllowance {
+    const elapsed = Math.max(0, (now.getTime() - (this.p.startedAt ?? now).getTime()) / 1000);
+    return { maxGameSeconds: elapsed * GAME_TIME_FACTOR + GAME_TIME_SLACK_SECONDS, maxSeq: Math.floor(elapsed / MIN_BATCH_SECONDS) + BATCH_SEQ_SLACK };
   }
 
   /** Heartbeats closer together than hbMinIntervalMs are ignored – no free progress by spamming. */

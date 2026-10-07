@@ -35,6 +35,10 @@ FROM ride."Ride" r LEFT JOIN verdict."RideVerdict" v ON v."rideId" = r.id WHERE 
 SELECT id, wallet, tier, route, round("lastS") AS metres, round("driveSeconds") AS driven_s, now() - "lastHbAt" AS since_beat, paused
 FROM ride."Ride" WHERE status = 'running' ORDER BY "startedAt" DESC;
 
+-- @unjudged  completed shifts without a verdict (judging failed after /end) – fix with RE-JUDGE on the admin page
+SELECT r."endedAt", r.id, r.wallet, r.tier, round(r."lastS") AS metres FROM ride."Ride" r LEFT JOIN verdict."RideVerdict" v ON v."rideId" = r.id
+WHERE r.status = 'completed' AND v."rideId" IS NULL ORDER BY r."endedAt" DESC LIMIT 50;
+
 -- @recent  the last 30 rides that ended, with their verdicts
 SELECT r."endedAt", r.wallet, r.tier, r.status, round(r."lastS") AS metres, round(r."driveSeconds") AS driven_s, v.status AS verdict,
        (SELECT string_agg(x->>'code', ',') FROM jsonb_array_elements(v.reasons) x) AS reasons
@@ -49,7 +53,7 @@ SELECT x->>'code' AS code, x->>'severity' AS severity, count(*) AS rides FROM ve
 
 -- @scores  the human-timing scores of the last 50 judged rides (tuning data)
 SELECT v."judgedAt", v.status, v.scores->'human'->>'presses' AS presses, v.scores->'human'->>'minHoldCv' AS hold_cv, v.scores->'human'->>'repeatShare' AS repeat,
-       v.scores->'human'->>'instantShare' AS instant, v.scores->'recording'->>'coverage' AS coverage, v.scores->'recording'->>'batches' AS batches
+       v.scores->'human'->>'instantShare' AS instant, v.scores->'human'->>'timerStepMs' AS timer_step, v.scores->'recording'->>'coverage' AS coverage, v.scores->'recording'->>'batches' AS batches
 FROM verdict."RideVerdict" v ORDER BY v."judgedAt" DESC LIMIT 50;
 
 -- @pool  the rounds: entries, carry, status

@@ -66,7 +66,8 @@ describe('RidesHttpController', () => {
       const [b0] = recording('ride-1', { seconds: 10 });
       expect(batchBodySchema.parse(b0)).toEqual(b0);
       expect(batchBodySchema.parse({ ...b0, hash: undefined }).hash).toBeNull();
-      for (const bad of [{ ...b0, seq: 1.5 }, { ...b0, seq: -1 }, { ...b0, prevHash: '' }, { ...b0, hash: 'ABC' }, { ...b0, t0: -1 }, { ...b0, inputs: [[1, '', 1]] }, { ...b0, inputs: [[1, 'KeyW', 2]] }, { ...b0, samples: [['x']] }, { ...b0, samples: Array.from({ length: 401 }, () => [0]) }]) {
+      expect(batchBodySchema.parse({ ...b0, inputs: [[1, '', 1]] }).inputs).toEqual([[1, '', 1]]); // a key without a KeyboardEvent.code (OEM / IME)
+      for (const bad of [{ ...b0, seq: 1.5 }, { ...b0, seq: -1 }, { ...b0, prevHash: '' }, { ...b0, hash: 'ABC' }, { ...b0, t0: -1 }, { ...b0, inputs: [[1, 'x'.repeat(33), 1]] }, { ...b0, inputs: [[1, 'KeyW', 2]] }, { ...b0, samples: [['x']] }, { ...b0, samples: Array.from({ length: 401 }, () => [0]) }]) {
         expect(batchBodySchema.safeParse(bad).success, JSON.stringify(bad).slice(0, 80)).toBe(false);
       }
     });

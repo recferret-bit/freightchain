@@ -12,7 +12,7 @@ async function recordedRide(ctx: UnitContext, end: boolean, verdict?: VerdictSta
   if (end) { ride.finish('failed', 'x', ctx.now()); await ctx.rides.save(ride); }
   if (verdict) {
     await ctx.verdictRepo.save(RideVerdict.restore({ rideId: ride.id, status: verdict, reasons: [], rulesVersion: 1, judgedAt: ctx.now(), version: 1,
-      scores: { recording: { batches: 2, samples: 0, inputs: 0, recordedSeconds: 0, coverage: 0, maxSpeed: 0 }, human: { presses: 0, minHoldCv: null, repeatShare: null, instantShare: null } } }));
+      scores: { recording: { batches: 2, samples: 0, inputs: 0, recordedSeconds: 0, coverage: 0, maxSpeed: 0 }, human: { presses: 0, minHoldCv: null, repeatShare: null, instantShare: null, timerStepMs: 0 } } }));
   }
   return ride;
 }
