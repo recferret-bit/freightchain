@@ -29,6 +29,7 @@
   </nav>
   <div class="right">
     <span class="chip lcd" id="chip-live" title="trucks on the road right now">– ON THE ROAD</span>
+    <span class="chip wallet" id="chip-wallet" hidden></span>
     <button class="cta sm" id="play-top">PLAY</button>
   </div>
 </header>
@@ -37,7 +38,7 @@
 <!-- ───────── 01 · HERO ───────── -->
 <section class="hero" id="ride">
   <div class="bg">
-    <video id="hero-video" muted autoplay loop playsinline preload="metadata" poster="/media/hero-poster.webp" hidden></video>
+    <video id="hero-video" data-src="" muted loop playsinline preload="none" aria-hidden="true" tabindex="-1"></video>
     <div class="slides" id="slides"><img width="1280" height="633" decoding="async" fetchpriority="high" src="/media/day.webp" alt=""><img width="1280" height="633" decoding="async" fetchpriority="low" src="/media/hero-poster.webp" alt=""><img width="1280" height="633" decoding="async" fetchpriority="low" src="/media/night.webp" alt=""></div>
     <div class="shade"></div>
   </div>
@@ -291,7 +292,7 @@
 
 <footer>Devnet build · nothing here is real money · <a href="/lobby.html">lobby</a> · <a href="/play.html">offline practice</a> · <a href="https://github.com/recferret-bit/freightchain">source</a></footer>
 
-<dialog id="demo" class="demo"><button class="x" id="demo-x" aria-label="close">✕</button><video id="demo-video" controls playsinline poster="/media/hero-poster.webp"></video><p class="dim" id="demo-note"></p></dialog>
+<dialog id="demo" class="demo"><button class="x" id="demo-x" aria-label="close">✕</button><video id="demo-video" controls playsinline preload="none" poster="/media/hero-poster.webp"></video><p class="dim" id="demo-note"></p></dialog>
 
 <script type="module" src="/src/main.js"></script>
 </body>

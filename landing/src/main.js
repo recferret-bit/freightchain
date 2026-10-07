@@ -1,14 +1,13 @@
 import { api, signIn } from '../../client/site/wallet.js';   // one sign-in implementation for landing + lobby (Vite bundles it; fs.allow in vite.config.js for dev)
-import { GAME_BASE } from '../../client/js/hosts.js';   // '' on localhost, https://ride.<apex> in production: the game is NOT on the landing's host there
+import { GAME_BASE, SITE_BASE } from '../../client/js/hosts.js';   // '' on localhost; in production the game is on ride.<apex>, NOT the landing's host, and SITE_BASE is the apex
 import { sol, km, left, dur, short, hue, hours, ago, plural, TIER, TIER_LONG, ROUTE } from './format.js';
 
 /* Landing: four chapters (ride · loop · economy · about), fed by the public API only – no session needed to look.
    Everything from the server goes in with textContent (other riders' wallets are rendered here). */
 
 /* ───── things to fill in ───── */
-const HERO_VIDEO = null;          // e.g. '/media/hero.mp4' – a muted gameplay loop; null = the Ken Burns slideshow of screenshots
 const DEMO_VIDEO = null;          // e.g. '/media/demo.mp4' – the ≤ 3 min product demo; null = the dialog explains and links to offline play
-const SOCIALS = { x: null, discord: null, telegram: null };   // URLs; null hides the button (Q11 in docs/hackathon-plan-v2.md; files go in landing/public/media/)
+const SOCIALS = { x: null, discord: null, telegram: null };   // URLs; null hides the button (Q11 in docs/hackathon-plan-v2.md; files go in landing/public/media/; the hero loop is `data-src` on #hero-video in index.html)
 
 const $ = id => document.getElementById(id);
 function el(tag, attrs = {}, ...kids) {
@@ -124,10 +123,22 @@ async function refresh() {
 }
 async function refreshBoard() { S.board = await api('leaderboard?board=round').catch(() => null); paintBoards(); }
 
-/* ───── hero video / demo dialog ───── */
+/* ───── hero video: never on the critical path ─────
+   The slideshow (WebP posters) is the hero. A gameplay loop – `data-src` on #hero-video, empty = none – is fetched only AFTER the page has loaded and the browser is idle, never on
+   data-saver / reduced motion / phones, and it fades in over the slideshow once it is actually playing; if it errors, the slideshow simply stays. */
+const heroVideo = $('hero-video');
+function loadHeroVideo() {
+  const src = heroVideo.dataset.src;
+  if (!src || reduced || navigator.connection?.saveData || matchMedia('(max-width: 700px)').matches) return;
+  heroVideo.addEventListener('playing', () => { heroVideo.classList.add('on'); $('slides').classList.add('off'); }, { once: true });
+  heroVideo.addEventListener('error', () => heroVideo.removeAttribute('src'), { once: true });
+  heroVideo.src = src; heroVideo.play().catch(() => {});
+}
+const whenIdle = window.requestIdleCallback ?? (f => setTimeout(f, 1200));
+if (document.readyState === 'complete') whenIdle(loadHeroVideo, { timeout: 4000 }); else addEventListener('load', () => whenIdle(loadHeroVideo, { timeout: 4000 }), { once: true });
+
+/* ───── demo dialog ───── */
 (() => {
-  const v = $('hero-video');
-  if (HERO_VIDEO && !reduced) { v.src = HERO_VIDEO; v.hidden = false; $('slides').hidden = true; v.onerror = () => { v.hidden = true; $('slides').hidden = false; }; }
   const dlg = $('demo'), dv = $('demo-video');
   $('demo-btn').onclick = () => {
     if (DEMO_VIDEO) { dv.src = DEMO_VIDEO; $('demo-note').textContent = 'Demo clock ×60 – a paid shift is shortened for the demo wallet; the speed bound is not.'; }
@@ -144,15 +155,23 @@ for (const a of document.querySelectorAll('a[href="/play.html"]')) a.href = `${G
 /* ───── socials ───── */
 for (const [net, url] of Object.entries(SOCIALS)) if (url) $('socials').append(el('a', { href: url, 'data-net': net, target: '_blank', rel: 'noopener' }, net.toUpperCase()));
 
-/* ───── sign-in / CTA ───── */
-const btn = $('connect'), msg = $('msg'), playTop = $('play-top');
-const toLobby = () => { location.href = '/lobby.html'; };
+/* ───── sign-in / CTA ─────
+   CONNECT asks the injected wallet (Phantom / Solflare) to sign the server's challenge; the server verifies the ed25519 signature and sets the httpOnly session cookie
+   (Domain = the apex in production, so the lobby, the game and the API share it). The landing never sees the token: it only asks /api/me who is signed in. */
+const btn = $('connect'), msg = $('msg'), playTop = $('play-top'), chip = $('chip-wallet');
+const toLobby = () => { location.href = `${SITE_BASE}/lobby.html`; };
+function paintSession(me) {
+  S.me = me; btn.textContent = 'OPEN THE LOBBY →'; btn.onclick = toLobby; playTop.textContent = 'LOBBY';
+  chip.textContent = short(me.wallet); chip.title = `signed in: ${me.wallet}`; chip.hidden = false;
+  msg.textContent = `Signed in as ${short(me.wallet)} · ${plural(me.freeRides, 'free ride')} left`; msg.className = 'msg';
+  paintBoards();
+}
 btn.onclick = async () => {
   btn.disabled = true; msg.textContent = 'Approve the sign-in message in your wallet…'; msg.className = 'msg';
-  try { await signIn(); toLobby(); } catch (e) { msg.textContent = e.message; msg.className = 'msg bad'; btn.disabled = false; }
+  try { await signIn(); msg.textContent = 'Signed in – opening the lobby…'; toLobby(); } catch (e) { msg.textContent = e.message; msg.className = 'msg bad'; btn.disabled = false; }
 };
 playTop.onclick = () => { if (S.me) toLobby(); else { location.hash = '#ride'; btn.focus(); } };
-api('me').then(m => { S.me = m; btn.textContent = 'OPEN THE LOBBY →'; btn.onclick = toLobby; playTop.textContent = 'LOBBY'; paintBoards(); }, () => {});   // signed in already: no forced redirect – the pool is the point of this page
+api('me').then(paintSession, () => {});   // signed in already: no forced redirect – the pool is the point of this page
 
 /* ───── dash cards: footer colours sampled from the image, tilt follows the pointer ───── */
 function sampleColours(card, img) {

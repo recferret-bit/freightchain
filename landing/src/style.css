@@ -28,12 +28,13 @@ button:focus-visible,a:focus-visible,.card3d:focus-visible{outline:2px solid #ff
 .brand{color:var(--amber);font-weight:700;letter-spacing:2px;text-decoration:none;display:flex;align-items:center;gap:8px;white-space:nowrap}
 .brand .mark{font-size:20px;color:var(--gear)}.brand small{font-size:10px;letter-spacing:3px;color:var(--dim);font-weight:400}
 .nav{display:flex;gap:2px}
-.nav a{color:var(--dim);text-decoration:none;font-size:11px;letter-spacing:1.5px;padding:8px 9px;border-radius:4px}
+.nav a{color:var(--dim);text-decoration:none;font-size:11px;letter-spacing:1.5px;padding:8px 9px;border-radius:4px;white-space:nowrap}
 .nav a i{font-style:normal;color:var(--needle);margin-right:6px}
 .nav a:hover,.nav a.on{color:var(--cream);background:#ffffff0a}
 .right{display:flex;gap:10px;align-items:center}
 .chip{border:1px solid var(--line2);border-radius:999px;padding:3px 10px;font-size:11px;letter-spacing:1px;white-space:nowrap;background:#0006}
 .chip.lcd{background:var(--lcd-bg);border-color:#1e4a22}
+.chip.wallet{color:var(--amber);border-color:var(--amber)}
 .chip.lcd::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--lcd);margin-right:7px;animation:pulse 1.6s infinite;vertical-align:1px}
 @keyframes pulse{50%{opacity:.25}}
 
@@ -49,7 +50,9 @@ button:focus-visible,a:focus-visible,.card3d:focus-visible{outline:2px solid #ff
 .hero{position:relative;min-height:calc(100svh - 86px);display:grid;align-items:center;padding:60px 20px 90px;overflow:hidden;isolation:isolate}
 .bg{position:absolute;inset:0;z-index:-1;background:#000}
 .bg video,.bg .slides img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.bg video[hidden],.slides[hidden]{display:none}
+.bg video{opacity:0;transition:opacity 1s}.bg video.on{opacity:1}
+.slides.off{opacity:0;visibility:hidden;transition:opacity 1s .2s,visibility 0s 1.2s}   /* the gameplay loop took over */
+[hidden]{display:none!important}
 .slides img{opacity:0;animation:kb 24s infinite;transform-origin:50% 60%}
 .slides img:nth-child(2){animation-delay:8s}.slides img:nth-child(3){animation-delay:16s}
 @keyframes kb{0%{opacity:0;transform:scale(1.05)}8%{opacity:1}33%{opacity:1}41%{opacity:0;transform:scale(1.18)}100%{opacity:0}}
@@ -282,6 +285,7 @@ footer{width:min(1100px,100%);margin:0 auto;padding:30px 20px 50px;color:var(--d
   .card3d{transform:none!important;transition:none}.collage figure{transition:none}
   html{scroll-behavior:auto}
 }
+@media (max-width:1360px){.nav a i{display:none}.nav a{padding:8px 7px}.brand small{display:none}}   /* the wallet chip + live chip + PLAY leave less room for the numbered nav */
 @media (max-width:1080px){.nav{display:none}}
 @media (max-width:900px){
   .stats{grid-template-columns:1fr 1fr}

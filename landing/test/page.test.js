@@ -78,3 +78,17 @@ test('split hosts: the game link goes through GAME_BASE and nothing calls a bare
   assert.match(main, /GAME_BASE/); assert.doesNotMatch(main, /\/play\.html'/, 'no hard-coded /play.html in a JS string');
   for (const f of ['src/main.js', 'src/dash-live.js']) assert.doesNotMatch(readFileSync(join(root, f), 'utf8'), /fetch\(|XMLHttpRequest/, `${f}: API calls go through client/site/wallet.js (API_BASE)`);
 });
+
+test('hero video is off the critical path: no src, no autoplay, preload none, loaded after `load` when idle', () => {
+  const tag = html.match(/<video id="hero-video"[^>]*>/)[0];
+  assert.match(tag, /data-src=""/); assert.match(tag, /preload="none"/); assert.doesNotMatch(tag, /\ssrc=|autoplay|poster=/);
+  assert.match(main, /requestIdleCallback/); assert.match(main, /addEventListener\('load'/); assert.match(main, /saveData/);
+  assert.equal((main.match(/heroVideo\.src = /g) ?? []).length, 1, 'the src is assigned in exactly one place (loadHeroVideo)');
+  assert.match(html.match(/<video id="demo-video"[^>]*>/)[0], /preload="none"/);
+});
+
+test('sign-in: redirect + session UI go through SITE_BASE, the wallet chip exists, errors are shown not thrown', () => {
+  assert.match(main, /SITE_BASE\}\/lobby\.html/); assert.doesNotMatch(main, /href = '\/lobby\.html'/);
+  assert.ok(ids.includes('chip-wallet')); assert.match(main, /api\('me'\)\.then\(paintSession/);
+  assert.match(main, /catch \(e\) \{ msg\.textContent = e\.message; msg\.className = 'msg bad'; btn\.disabled = false; \}/);
+});
