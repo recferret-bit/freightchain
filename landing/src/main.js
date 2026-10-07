@@ -1,5 +1,5 @@
 import { api, signIn } from '../../client/site/wallet.js';   // one sign-in implementation for landing + lobby (Vite bundles it; fs.allow in vite.config.js for dev)
-import { GAME_BASE, SITE_BASE } from '../../client/js/hosts.js';   // '' on localhost; in production the game is on ride.<apex>, NOT the landing's host, and SITE_BASE is the apex
+import { GAME_BASE, SITE_BASE, STORYBOOK_BASE } from '../../client/js/hosts.js';   // '' on localhost; in production the game is on ride.<apex>, NOT the landing's host, and SITE_BASE is the apex
 import { sol, km, left, dur, short, hue, hours, ago, plural, TIER, TIER_LONG, ROUTE } from './format.js';
 
 /* Landing: four chapters (ride · loop · economy · about), fed by the public API only – no session needed to look.
@@ -151,6 +151,7 @@ if (document.readyState === 'complete') whenIdle(loadHeroVideo, { timeout: 4000 
 
 /* ───── links to the game (static markup says /play.html; on split hosts that lives on ride.<apex>) ───── */
 for (const a of document.querySelectorAll('a[href="/play.html"]')) a.href = `${GAME_BASE}/play.html`;
+$('storybook-link').href = STORYBOOK_BASE || '/viewer.html';   // the model viewer: storybook.<apex> in production, /viewer.html elsewhere
 
 /* ───── socials ───── */
 for (const [net, url] of Object.entries(SOCIALS)) if (url) $('socials').append(el('a', { href: url, 'data-net': net, target: '_blank', rel: 'noopener' }, net.toUpperCase()));

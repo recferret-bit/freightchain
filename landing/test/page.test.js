@@ -75,6 +75,7 @@ test('class names do not collide with the page-level layout classes (.dot.top on
 });
 
 test('split hosts: the game link goes through GAME_BASE and nothing calls a bare /api path', () => {
+  assert.match(main, /STORYBOOK_BASE/); assert.match(html, /id="storybook-link"/, 'footer links to the model viewer');
   assert.match(main, /GAME_BASE/); assert.doesNotMatch(main, /\/play\.html'/, 'no hard-coded /play.html in a JS string');
   for (const f of ['src/main.js', 'src/dash-live.js']) assert.doesNotMatch(readFileSync(join(root, f), 'utf8'), /fetch\(|XMLHttpRequest/, `${f}: API calls go through client/site/wallet.js (API_BASE)`);
 });

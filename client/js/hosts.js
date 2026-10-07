@@ -6,4 +6,5 @@ const split = /^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(root) && !/^\d+(\.\d+){3}$/.te
 const proto = typeof location === 'undefined' ? 'https:' : location.protocol;
 export const API_BASE = split ? `${proto}//api.${root}` : '';
 export const GAME_BASE = split ? `${proto}//ride.${root}` : '';
+export const STORYBOOK_BASE = split ? `${proto}//storybook.${root}` : '';   // '' = same origin: /viewer.html
 export const SITE_BASE = split ? `${proto}//${root}` : '';
