@@ -20,6 +20,8 @@ export const DEMO_UNIT_WALLET = 'DemoWa11et1111111111111111111111111111111111';
 export const unitRules = (over: Partial<RulesConfig> = {}): RulesConfig => ({
   freeOnSignup: 5, freeRidesMax: 5, freeRideSeconds: 10, hbMinIntervalMs: 1000, hbTimeoutMs: 150_000, quoteTtlMs: 600_000, nonceTtlMs: 300_000,
   demoWallets: new Set([DEMO_UNIT_WALLET]), demoScale: 60, initialSeedLamports: 0, treasury: TREASURY, appDomain: 'freight.test', appOrigin: 'https://freight.test',
+  paymentMode: 'transfer', programId: '', feeTreasury: '', seedTreasury: '', watchIntervalMs: 0, orderTtlMs: 3_600_000, commitment: 'confirmed', sponsorEnabled: false, crankEnabled: false,
+  sponsorPerWalletPerDay: 20, priorityFee: { percentile: 75, minMicrolamports: 0, maxMicrolamports: 50_000 }, sessionTtlHours: 24,
   ...over,
 });
 

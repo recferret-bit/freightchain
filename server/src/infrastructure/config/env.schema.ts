@@ -29,11 +29,39 @@ export const envSchema = z
     DEMO_WALLETS: z.string().default(''),
     DEMO_SCALE: z.coerce.number().positive().default(60),
     INITIAL_SEED_SOL: z.coerce.number().min(0).default(0),
+    // ---- paid tickets (docs/paid-tickets-plan.md §2.1). Nothing here is required yet: today's deploy keeps booting; the workstreams add their own production checks.
+    /** 'program' = escrow pools through the Anchor program, 'transfer' = plain transfers to the treasuries (fallback). Unset: 'program' when TICKET_PROGRAM_ID is set, else 'transfer'. */
+    PAYMENT_MODE: optional(z.enum(['program', 'transfer'])),
+    TICKET_PROGRAM_ID: optional(z.string()),
+    /** defaults for new pools' treasury variables, and the destinations in 'transfer' mode – PUBLIC keys */
+    FEE_TREASURY: optional(z.string()),
+    SEED_TREASURY: optional(z.string()),
+    SOLANA_WS: optional(z.string()),
+    SOLANA_RPC_FALLBACKS: z.string().default(''),
+    SOLANA_COMMITMENT: z.enum(['confirmed', 'finalized']).default('confirmed'),
+    WATCH_INTERVAL_MS: z.coerce.number().int().min(0).default(15_000), // 0 = the program watcher is off (tests)
+    /** secrets: read through EnvService only, never through RulesConfig */
+    WEBHOOK_SECRET: optional(z.string().min(16, 'WEBHOOK_SECRET must be at least 16 characters')),
+    CRANK_SECRET: optional(z.string().min(32)), // base58 keypair that pays fees for the permissionless cranks (fail_pool, refund)
+    FEE_PAYER_SECRET: optional(z.string().min(32)), // base58 keypair of the gas sponsor – fee money only
+    FEE_PAYER_MIN_SOL: z.coerce.number().min(0).default(0.05),
+    SPONSOR_PER_WALLET_PER_DAY: z.coerce.number().int().min(0).default(20),
+    PRIORITY_FEE_PERCENTILE: z.coerce.number().int().min(1).max(99).default(75),
+    PRIORITY_FEE_MIN_MICROLAMPORTS: z.coerce.number().int().min(0).default(0), // 0 on devnet; 1000 on mainnet
+    PRIORITY_FEE_MAX_MICROLAMPORTS: z.coerce.number().int().min(0).default(50_000),
+    ORDER_TTL_MINUTES: z.coerce.number().int().positive().default(60),
+    ONCHAIN_SESSION_TTL_HOURS: z.coerce.number().int().positive().max(168).default(24),
   })
   .superRefine((env, ctx) => {
     if (env.TREASURY_PUBKEY !== undefined && !isWalletAddress(env.TREASURY_PUBKEY)) {
       ctx.addIssue({ code: 'custom', path: ['TREASURY_PUBKEY'], message: 'TREASURY_PUBKEY must be a base58 Solana address' });
     }
+    for (const key of ['TICKET_PROGRAM_ID', 'FEE_TREASURY', 'SEED_TREASURY'] as const) {
+      const value = env[key];
+      if (value !== undefined && !isWalletAddress(value)) ctx.addIssue({ code: 'custom', path: [key], message: `${key} must be a base58 Solana address` });
+    }
+    if (env.PRIORITY_FEE_MIN_MICROLAMPORTS > env.PRIORITY_FEE_MAX_MICROLAMPORTS) ctx.addIssue({ code: 'custom', path: ['PRIORITY_FEE_MIN_MICROLAMPORTS'], message: 'PRIORITY_FEE_MIN_MICROLAMPORTS must not exceed PRIORITY_FEE_MAX_MICROLAMPORTS' });
+    if (env.PAYMENT_MODE === 'program' && !env.TICKET_PROGRAM_ID) ctx.addIssue({ code: 'custom', path: ['TICKET_PROGRAM_ID'], message: 'TICKET_PROGRAM_ID must be set when PAYMENT_MODE=program' });
     if (env.NODE_ENV === 'production') {
       if (!env.JWT_SECRET) ctx.addIssue({ code: 'custom', path: ['JWT_SECRET'], message: 'JWT_SECRET must be set in production' });
       if (!env.TREASURY_PUBKEY) ctx.addIssue({ code: 'custom', path: ['TREASURY_PUBKEY'], message: 'TREASURY_PUBKEY must be set in production' });

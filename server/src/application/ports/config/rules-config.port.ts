@@ -18,6 +18,27 @@ export interface RulesConfig {
   treasury: string;
   appDomain: string;
   appOrigin: string;
+  /** 'program' = escrow pools via the Anchor program; 'transfer' = plain transfers to the treasuries (fallback) */
+  paymentMode: 'program' | 'transfer';
+  /** the deployed pool program ('' = none) */
+  programId: string;
+  /** defaults for new pools' treasury variables ('' = unset) */
+  feeTreasury: string;
+  seedTreasury: string;
+  /** program-log poll interval, 0 = the watcher is off */
+  watchIntervalMs: number;
+  /** a paid-ticket order lapses after this long unpaid (the price is on the pool, so there is no quote to expire) */
+  orderTtlMs: number;
+  /** credit tickets at 'confirmed'; 'finalized' also gates rides on finality (mainnet) */
+  commitment: 'confirmed' | 'finalized';
+  /** is a gas sponsor / crank key configured? (the keys themselves stay in EnvService) */
+  sponsorEnabled: boolean;
+  crankEnabled: boolean;
+  /** sponsored transactions per wallet per UTC day */
+  sponsorPerWalletPerDay: number;
+  priorityFee: { percentile: number; minMicrolamports: number; maxMicrolamports: number };
+  /** how long an on-chain session key is valid (hours) */
+  sessionTtlHours: number;
 }
 
 /** Game and economy tunables (environment-backed in production). */

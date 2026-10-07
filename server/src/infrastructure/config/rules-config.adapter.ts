@@ -19,6 +19,10 @@ export class EnvRulesConfigAdapter extends RulesConfigPort {
       freeOnSignup: FREE_ON_SIGNUP, freeRidesMax: FREE_RIDES_MAX, freeRideSeconds: env.freeRideSeconds, hbMinIntervalMs: env.hbMinIntervalMs, hbTimeoutMs: HEARTBEAT_TIMEOUT_MS,
       quoteTtlMs: QUOTE_TTL_MS, nonceTtlMs: NONCE_TTL_MS, demoWallets: env.demoWallets, demoScale: env.demoScale,
       initialSeedLamports: env.initialSeedLamports, treasury: env.treasuryPubkey, appDomain: env.appDomain, appOrigin: env.appOrigin,
+      paymentMode: env.paymentMode, programId: env.ticketProgramId, feeTreasury: env.feeTreasury, seedTreasury: env.seedTreasury, watchIntervalMs: env.watchIntervalMs,
+      orderTtlMs: env.orderTtlMs, commitment: env.solanaCommitment, sponsorEnabled: env.feePayerSecret !== undefined, crankEnabled: env.crankSecret !== undefined,
+      sponsorPerWalletPerDay: env.sponsorPerWalletPerDay, priorityFee: { percentile: env.priorityFee.percentile, minMicrolamports: env.priorityFee.minMicrolamports, maxMicrolamports: env.priorityFee.maxMicrolamports },
+      sessionTtlHours: env.onchainSessionTtlHours,
     };
   }
 
