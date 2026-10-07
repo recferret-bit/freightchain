@@ -14,11 +14,21 @@ const mat = hex => { let m = matCache.get(hex); if (!m) { m = new THREE.MeshBasi
 const lampCache = new Map();
 const lampMat = hex => { let m = lampCache.get(hex); if (!m) { m = new THREE.MeshBasicMaterial({ color: hex, toneMapped: false }); lampCache.set(hex, m); vehicleMats.push(m); } return m; };
 const AMBER = 0xff9a10;
-const GLASS = 0x1d2a36, TYRE = 0x151515, TAIL = 0x8a1410, BRAKE = 0xff3020, HEAD = 0xfff2c0, RED = 0xe02020, BLUE = 0x2a5cff, WHITE = 0xf0f0ea;
+const GLASS = 0x1d2a36, TYRE = 0x151515, RIM = 0xc4c8ce, TAIL = 0x8a1410, BRAKE = 0xff3020, HEAD = 0xfff2c0, RED = 0xe02020, BLUE = 0x2a5cff, WHITE = 0xf0f0ea;
 const CAR_COLORS = [0xb8bcc2, 0x2f4a7a, 0x9a2b2b, 0xe0d8c0, 0x3d5a3a, 0x1e1e22, 0xc9a227];
 
 /* body styles: each adds its meshes to g and may register `flash` (siren) meshes, returning nothing */
-function wheels(g, w, zs, r = .4) { for (const z of zs) for (const x of [-1, 1]) { const m = mk(GEO.cyl, mat(TYRE), r * 2, .3, r * 2, x * (w / 2 - .1), r, z); m.rotation.z = Math.PI / 2; g.add(m); } }
+const WHEEL = new THREE.CylinderGeometry(1, 1, 1, 20);   // round (GEO.cyl has 7 sides), axis = y, rotated onto x below
+/* tyre + silver rim disc + coloured hub cap per wheel; the tyre's outer face sits just inside the hull side (w/2), only the thin rim/hub discs poke out past it */
+function wheels(g, w, zs, r = .32, hub = 0x6a7078) {
+  const tw = r * .75, xo = w / 2 - .02;   // tyre width, outer face of the tyre
+  for (const z of zs) for (const x of [-1, 1]) {
+    const part = (m, rad, th, off) => { const a = mk(WHEEL, m, rad, th, rad, x * (xo - tw / 2 + off), r, z); a.rotation.z = Math.PI / 2; g.add(a); };
+    part(mat(TYRE), r, tw, 0);
+    part(mat(RIM), r * .64, tw, .035);
+    part(mat(hub), r * .26, tw, .06);
+  }
+}
 function lights(g, w, len, y, brakeY = y) {   // head lights (front, -z) and tail lights; brake lights are a separate group toggled by the AI
   for (const x of [-1, 1]) {
     g.add(mk(GEO.box, lampMat(HEAD), .3, .18, .08, x * (w / 2 - .3), y, -len / 2 - .02)); g.add(mk(GEO.box, lampMat(TAIL), .3, .18, .08, x * (w / 2 - .3), y, len / 2 + .02));
@@ -37,13 +47,13 @@ function siren(g, w, y, z) {   // light bar: red left, blue right, flashing alte
 function carBody(g, d, color) {
   const { len, w } = d; g.add(mk(GEO.box, mat(color), w, .7, len, 0, .65, 0));
   g.add(mk(GEO.box, mat(GLASS), w * .86, .6, len * .5, 0, 1.3, len * .06)); g.add(mk(GEO.box, mat(color), w * .88, .06, len * .46, 0, 1.63, len * .06));
-  wheels(g, w, [-len * .32, len * .32]); lights(g, w, len, .75, .85);
+  wheels(g, w, [-len * .32, len * .32], .32, color === 0xb8bcc2 ? 0x2f4a7a : color); lights(g, w, len, .75, .85);
 }
 function boxBody(g, d, color, cargo) {   // cab + cargo box (box truck, ambulance, fire engine)
   const { len, w } = d, cabL = Math.min(2.4, len * .3); g.add(mk(GEO.box, mat(color), w, 1.1, len, 0, .9, 0));
   g.add(mk(GEO.box, mat(color), w, 1.3, cabL, 0, 2.1, -len / 2 + cabL / 2)); g.add(mk(GEO.box, mat(GLASS), w * .9, .6, .06, 0, 2.3, -len / 2 - .02));
   g.add(mk(GEO.box, mat(cargo), w * .98, d.h - 1.7, len - cabL - .1, 0, 1.45 + (d.h - 1.7) / 2, cabL / 2 + .05));
-  wheels(g, w, [-len / 2 + 1.4, len / 2 - 1.5], .5); lights(g, w, len, 1, 1.5);
+  wheels(g, w, [-len / 2 + 1.4, len / 2 - 1.5], .42, color); lights(g, w, len, 1, 1.5);
 }
 const STYLES = {
   sedan: (g, d) => carBody(g, d, CAR_COLORS[g.userData.pick % CAR_COLORS.length]),
@@ -53,13 +63,13 @@ const STYLES = {
   fire(g, d) { boxBody(g, d, RED, RED); g.add(mk(GEO.box, mat(0xc8c8c0), .5, .25, d.len * .6, 0, d.h + .1, d.len * .1)); g.add(mk(GEO.box, mat(0xe8c020), d.w * 1.01, .15, d.len * .6, 0, 1.6, d.len * .12)); siren(g, d.w, d.h + .15, -d.len * .3); },
   bus(g, d) {
     const { len, w, h } = d; g.add(mk(GEO.box, mat(0xd89a20), w, h - .6, len, 0, (h + .6) / 2, 0)); g.add(mk(GEO.box, mat(GLASS), w * 1.01, .8, len * .9, 0, 2.1, 0)); g.add(mk(GEO.box, mat(GLASS), w * .9, 1, .06, 0, 1.9, -len / 2 - .02));
-    wheels(g, w, [-len / 2 + 1.6, len / 2 - 2.5], .5); lights(g, w, len, .9, 1.2);
+    wheels(g, w, [-len / 2 + 1.6, len / 2 - 2.5], .42, 0x8a5a14); lights(g, w, len, .9, 1.2);
   },
   freighter(g, d) {   // semi: cab + 13 m trailer with the game's livery colours
     const { len, w } = d, cabL = 2.8; g.add(mk(GEO.box, mat(0x20406a), w, 1.5, cabL, 0, 1.75, -len / 2 + cabL / 2)); g.add(mk(GEO.box, mat(GLASS), w * .9, .7, .06, 0, 2.2, -len / 2 - .02));
     g.add(mk(GEO.box, mat(0x151515), w * .9, .5, len - 1, 0, .8, .5)); g.add(mk(GEO.box, mat(0xe3e1d9), w, d.h - 1.6, len - cabL - .8, 0, 1.6 + (d.h - 1.6) / 2, cabL / 2 + .4));
     g.add(mk(GEO.box, mat(0x1d3a5c), w * 1.01, .35, len - cabL - .8, 0, 1.9, cabL / 2 + .4));
-    wheels(g, w, [-len / 2 + 1.6, len / 2 - 1.2, len / 2 - 2.5], .5); lights(g, w, len, 1.1, 1.3);
+    wheels(g, w, [-len / 2 + 1.6, len / 2 - 1.2, len / 2 - 2.5], .42, 0x20406a); lights(g, w, len, 1.1, 1.3);
   },
 };
 /* types: size (m), mass = hull-damage multiplier, v = cruise speed range m/s (truck governor is 28), presets = weighted AI behaviours, rare = spawn weight */
@@ -75,7 +85,7 @@ export const VEHICLES = {
 for (const [k, d] of Object.entries(VEHICLES)) { d.type = k; }
 // create every material up front so FLIP_MATS (snapshotted by render.js at load) is complete
 for (const c of [HEAD, TAIL, BRAKE, RED, BLUE, AMBER]) lampMat(c);
-for (const c of [GLASS, TYRE, RED, WHITE, 0x15191f, 0x4a5a6a, 0xd8d4c8, 0xc8c8c0, 0xe8c020, 0xd89a20, 0x20406a, 0xe3e1d9, 0x1d3a5c, ...CAR_COLORS]) mat(c);
+for (const c of [GLASS, TYRE, RIM, 0x6a7078, 0x8a5a14, RED, WHITE, 0x15191f, 0x4a5a6a, 0xd8d4c8, 0xc8c8c0, 0xe8c020, 0xd89a20, 0x20406a, 0xe3e1d9, 0x1d3a5c, ...CAR_COLORS]) mat(c);
 
 /* builds a vehicle group in the scene; `pick` selects the sedan colour */
 export function buildVehicle(def, pick = 0) {
