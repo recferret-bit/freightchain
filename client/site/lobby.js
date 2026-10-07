@@ -1,6 +1,10 @@
 import { api, signOut } from './wallet.js';
-import { buyRide } from './pay.js';
-import { GAME_BASE } from '../js/hosts.js';
+import { buyRide, buyTickets, claimRefund, waitPaid, ORDER_SIG } from './pay.js';
+import { salesOpen, pendingOrder, getOrder } from './tickets-api.js';
+import { ESCROW_PAGE, explorerTx, rideError, promoError, promoOk, buyError, sol, left } from './pools.js';
+import { poolCard, escrowSummary, refundRows, profileTickets } from './lobby-pools.js';
+import { el } from './dom.js';
+import { GAME_BASE, SITE_BASE } from '../js/hosts.js';
 
 /* The lobby: NEW RIDE · LIVE · LEADERBOARD · PROFILE. Vanilla DOM, no framework.
    Everything that comes from the server (wallet addresses, route ids, statuses…) goes in with textContent – never innerHTML – because other riders' data is rendered here. */
@@ -11,26 +15,15 @@ const TIER_NAME = { free: 'TEST RIDE', '1h': '1 HOUR', '4h': '4 HOURS', '8h': '8
 const TABS = ['new', 'live', 'board', 'profile'];
 
 /* ───────── helpers ───────── */
-function el(tag, attrs = {}, ...kids) {
-  const e = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs)) {
-    if (v === false || v == null) continue;
-    if (k === 'class') e.className = v; else if (k.startsWith('on')) e.addEventListener(k.slice(2), v); else e.setAttribute(k, v === true ? '' : v);
-  }
-  for (const c of kids.flat()) if (c != null && c !== false) e.append(c instanceof Node ? c : document.createTextNode(String(c)));
-  return e;
-}
 const short = w => `${w.slice(0, 4)}…${w.slice(-4)}`;
 const hue = w => { let h = 0; for (const c of w) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
 const avatar = w => el('span', { class: 'av', style: `background:hsl(${hue(w)} 60% 50%)` });
 const pad = n => String(Math.floor(n)).padStart(2, '0');
 const dur = s => { s = Math.max(0, Math.round(s)); return s >= 3600 ? `${Math.floor(s / 3600)}:${pad((s % 3600) / 60)}:${pad(s % 60)}` : `${Math.floor(s / 60)}:${pad(s % 60)}`; };
 const km = m => (m / 1000).toFixed(m < 10_000 ? 2 : 1);
-const sol = l => `${(l / 1e9).toFixed(l >= 1e9 ? 2 : 3)} SOL`;
-const left = ms => { const s = Math.max(0, Math.floor(ms / 1000)), d = Math.floor(s / 86400); return `${d ? d + 'd ' : ''}${pad((s % 86400) / 3600)}:${pad((s % 3600) / 60)}:${pad(s % 60)}`; };
 
 /* ───────── state ───────── */
-const S = { me: null, tiers: null, pool: null, live: { rides: [] }, liveAt: 0, skew: 0, sel: null, board: 'round', pending: null, pendingNote: '', tab: 'new', busy: false };
+const S = { me: null, tiers: null, pool: null, live: { rides: [] }, liveAt: 0, skew: 0, board: 'round', pending: null, pendingNote: '', tab: 'new', busy: null, qty: {}, msgs: {}, poolInfo: {}, order: null, focus: null };
 const now = () => Date.now() + S.skew;   // server clock (skew learned from /api/live)
 const freeLeft = m => `${m.freeRides}/${m.freeRidesMax} free ride${m.freeRides === 1 ? '' : 's'}`;
 const freeCd = m => m.nextFreeRideAt == null ? 'full' : `+1 in ${left(m.nextFreeRideAt - now())}`;   // the daily credit lands at 00:00 UTC, up to the cap
@@ -50,20 +43,29 @@ function go() {
   ({ new: renderNew, live: renderLive, board: renderBoard, profile: renderProfile })[S.tab]();
 }
 
-/* ───────── NEW RIDE ───────── */
+/* ───────── NEW RIDE ─────────
+   One card per shift. A paid tier with an escrowed pool (tiers[].pool) is ridden with a TICKET (RIDE spends one, the ride is ready at once); buying tickets / refunds go through
+   pay.js → tickets-api.js (not built server-side yet: shown as SOON). A paid tier without a pool keeps the legacy pay-per-ride order (buyRide). */
 function renderNew() {
   view.replaceChildren(
-    el('div', { class: 'card pool', id: 'poolbox' }), el('div', { id: 'pendingbox' }),
+    el('div', { class: 'card pool', id: 'poolbox' }), el('div', { id: 'pendingbox' }), el('div', { id: 'orderbox' }), el('div', { id: 'refunds' }),
     el('h2', {}, 'CHOOSE YOUR SHIFT'), el('div', { class: 'tiers', id: 'tiers' }),
-    el('div', { class: 'card', id: 'rules', style: 'margin-top:12px' }),
-    el('button', { class: 'start', id: 'start', onclick: start }), el('p', { class: 'msg dim', id: 'msg' }));
-  paintPool(); paintPending(); paintTiers();
-  api('me').then(m => { S.me = m; paintHeader(); paintTiers(); }, () => {});   // free-ride count after a ride / refund
+    el('h2', {}, 'PROMO CODE'),
+    el('form', { class: 'card promo', id: 'promo', onsubmit: redeem },
+      el('label', { for: 'promo-code' }, 'Got a code? It puts free tickets into a pool.'),
+      el('div', { class: 'row' }, el('input', { id: 'promo-code', name: 'code', autocomplete: 'off', autocapitalize: 'characters', spellcheck: 'false', maxlength: 64, placeholder: 'e.g. WELCOME', 'aria-describedby': 'promo-msg' }), el('button', { id: 'promo-go', type: 'submit' }, 'REDEEM')),
+      el('p', { class: 'msg dim', id: 'promo-msg', role: 'status' })),
+    el('div', { class: 'card', id: 'rules', style: 'margin-top:12px' }));
+  paintPool(); paintPending(); paintTiers(); paintRules();
+  refreshMe();   // free-ride count + tickets after a ride / refund
+  if (salesOpen(S.tiers)) checkOrder();
 }
+const refreshMe = () => api('me').then(m => { S.me = m; paintHeader(); paintTiers(); }, () => {});
 
 function paintPool() {
   const box = $('poolbox'), p = S.pool; if (!box) return;
   if (!p) { box.replaceChildren(el('span', { class: 'dim' }, 'Prize pool unavailable right now.')); return; }
+  if (p.pools?.length) { box.replaceChildren(...escrowSummary(p, now())); return; }
   const s = p.split, parts = [s.grand, s.top20, s.nextSeed, s.fees], total = parts.reduce((x, y) => x + y, 0), w = parts.map(x => (total ? (x / total) * 100 : 0)), pct = total ? w : [50, 20, 20, 10];
   const part = (cls, label, l, usd) => el('span', { class: cls }, `${label} `, el('b', {}, sol(l)), usd != null ? ` ≈ $${usd}` : '');
   box.replaceChildren(
@@ -92,9 +94,26 @@ function paintPending() {
   box.replaceChildren(r ? el('div', { class: 'note' }, el('span', {}, el('b', {}, `Your paid ${TIER_NAME[r.tier] ?? r.tier} ride is waiting`), S.pendingNote ? ` · ${S.pendingNote}` : ''), el('button', { onclick: () => { location.href = `${GAME_BASE}/play.html?ride=${r.id}`; } }, 'START IT')) : S.pendingNote ? el('p', { class: 'dim' }, S.pendingNote) : '');
 }
 
+/* a ticket payment in flight (GET /api/tickets/pending – only once sales are on): RETRY CONFIRM uses the signature this browser kept */
+async function checkOrder() {
+  try { S.order = (await pendingOrder()).order; } catch { S.order = null; }
+  paintOrder();
+}
+function paintOrder() {
+  const box = $('orderbox'), o = S.order; if (!box) return;
+  if (!o || o.status === 'paid') { box.replaceChildren(); return; }
+  let sig = null; try { sig = localStorage.getItem(ORDER_SIG(o.id)); } catch { /* private mode */ }
+  const retry = () => busy('order', async () => {
+    try { if (sig) { const r = await waitPaid(o.id, sig); S.order = r.status === 'paid' ? null : o; } else S.order = await getOrder(o.id); await refreshMe(); } catch (e) { say('order', buyError(e), true); }
+    paintOrder();
+  });
+  box.replaceChildren(el('div', { class: 'note' }, el('span', {}, el('b', {}, `A payment for ${o.qty} ticket${o.qty === 1 ? '' : 's'} is in flight`), ` · ${sol(o.lamports)} · ${o.status}`),
+    el('button', { disabled: !!S.busy, onclick: retry }, sig ? 'RETRY CONFIRM' : 'CHECK AGAIN'), el('p', { class: 'msg dim', id: 'msg-order' })));
+}
+
 const tierInfo = t => {   // what the card shows: a demo wallet's paid shifts are shorter
-  const scale = S.me.demo && t.usd > 0 ? S.me.demoScale : 1;
-  return { seconds: t.seconds / scale, dist: t.completeDist / scale, scale };
+  const scale = S.me.demo && t.id !== 'free' ? S.me.demoScale : 1, seconds = t.seconds / scale, dist = t.completeDist / scale;
+  return { seconds, dist, scale, name: TIER_NAME[t.id] ?? t.id, shift: `${dur(seconds)} · ≥ ${km(dist)} km${scale > 1 ? ` · DEMO ×${scale}` : ''}` };
 };
 function tierOff(t) {
   if (S.pending) return 'finish the paid ride waiting for you first';
@@ -104,49 +123,87 @@ function tierOff(t) {
 function paintTiers() {
   const box = $('tiers'); if (!box) return;
   if (!S.tiers) { box.replaceChildren(el('p', { class: 'bad' }, 'Could not load the ride list. Reload the page.')); return; }
-  const list = S.tiers.tiers;
-  if (!S.sel || tierOff(list.find(t => t.id === S.sel) ?? {})) S.sel = (list.find(t => !tierOff(t)) ?? list[1]).id;
-  box.replaceChildren(...list.map(t => {
-    const i = tierInfo(t), off = tierOff(t);
-    return el('button', { class: `tier${t.id === S.sel ? ' sel' : ''}`, disabled: !!off || S.busy, 'aria-pressed': String(t.id === S.sel), onclick: () => { S.sel = t.id; paintTiers(); } },
-      el('span', { class: 'nm' }, TIER_NAME[t.id]),
-      el('span', { class: 'pr' }, t.usd ? `$${t.usd}` : 'FREE'),
-      el('span', { class: 'sub' }, t.usd ? (t.lamports ? sol(t.lamports) : 'price unavailable') : `${S.me.freeRides}/${S.me.freeRidesMax} left`),
-      t.usd ? '' : el('span', { class: 'sub fr-cd' }, freeCd(S.me)),
-      el('span', { class: 'sub' }, `${dur(i.seconds)} · ≥ ${km(i.dist)} km${i.scale > 1 ? ` · DEMO ×${i.scale}` : ''}`),
-      off ? el('span', { class: 'tag' }, off) : '');
-  }));
-  paintRules(); paintStart();
+  const ctx = { me: S.me, solUsd: S.tiers.solUsd, now: now(), busy: S.busy || S.pending, sales: salesOpen(S.tiers), focus: S.focus, act: { ride, buy, refund, qty: (id, n) => { S.qty[id] = n; paintTiers(); } } };
+  box.replaceChildren(...S.tiers.tiers.map(t => t.pool ? poolCard(t, tierInfo(t), { ...ctx, qty: S.qty[t.id] ?? 1 }) : t.id === 'free' ? freeCard(t) : legacyCard(t)));
+  for (const [k, m] of Object.entries(S.msgs)) say(k, ...m);   // messages survive a repaint
+  paintRefunds(); tickCountdowns();
+}
+function freeCard(t) {
+  const off = tierOff(t), i = tierInfo(t);
+  return el('article', { class: 'tier free', id: 'tier-free' },
+    el('div', { class: 'hd' }, el('span', { class: 'nm' }, TIER_NAME.free), el('span', { class: 'st done' }, 'NO PRIZE')),
+    el('span', { class: 'pr' }, 'FREE'), el('span', { class: 'sub' }, `${S.me.freeRides}/${S.me.freeRidesMax} left · `, el('span', { class: 'fr-cd' }, freeCd(S.me))), el('span', { class: 'sub' }, i.shift),
+    el('span', { class: 'sub' }, 'Counts for the free leaderboard and achievements.'),
+    off ? el('span', { class: 'tag' }, off) : '',
+    el('button', { class: 'go', id: 'start', disabled: !!off || !!S.busy, onclick: startFree }, S.busy === 'free' ? 'WORKING…' : 'START FREE RIDE'),
+    el('p', { class: 'msg dim', id: 'msg-free' }));
+}
+function legacyCard(t) {   // a paid tier with no pool registered: pay per ride (the old flow; removed with W3's order routes)
+  const off = tierOff(t), i = tierInfo(t);
+  return el('article', { class: 'tier legacy', id: `tier-${t.id}` },
+    el('div', { class: 'hd' }, el('span', { class: 'nm' }, i.name), el('span', { class: 'st done' }, 'PAY PER RIDE')),
+    el('span', { class: 'pr' }, `$${t.usd}`, el('small', {}, t.lamports ? ` · ${sol(t.lamports)}` : ' · price unavailable')), el('span', { class: 'sub' }, i.shift),
+    el('ul', { class: 'rules' }, el('li', {}, 'Price locked for 10 minutes once you order. ', el('b', {}, 'Non-refundable'), ' – it goes into the weekly round (50% grand · 20% top 20 · 20% next week · 10% fees).'),
+      i.scale > 1 ? el('li', {}, el('b', { class: 'bad' }, `DEMO ×${i.scale}`), ' – this wallet’s paid shifts are shortened so a demo fits in minutes.') : ''),
+    off ? el('span', { class: 'tag' }, off) : '',
+    el('button', { class: 'go', disabled: !!off || !!S.busy, onclick: () => startLegacy(t.id) }, S.busy === t.id ? 'WORKING…' : `PAY $${t.usd}${t.lamports ? ` · ${sol(t.lamports)}` : ''} & START`),
+    el('p', { class: 'msg dim', id: `msg-${t.id}` }));
+}
+async function paintRefunds() {   // failed pools no card shows any more (a card shows its own pool's refund)
+  const box = $('refunds'); if (!box) return;
+  const shown = new Set(S.tiers?.tiers.map(t => t.pool?.id)), rows = (S.me.tickets ?? []).filter(t => t.refundable && !shown.has(t.poolId));
+  box.replaceChildren(...refundRows(rows, S.poolInfo, S.busy, refund));
+  const missing = rows.filter(r => !(r.poolId in S.poolInfo));
+  if (!missing.length) return;
+  await Promise.all(missing.map(r => api(`pools/${r.poolId}`).then(d => { S.poolInfo[r.poolId] = d; }, () => { S.poolInfo[r.poolId] = null; })));
+  if ($('refunds') === box) box.replaceChildren(...refundRows(rows, S.poolInfo, S.busy, refund));
 }
 function paintRules() {
-  const t = S.tiers.tiers.find(x => x.id === S.sel), i = tierInfo(t), paid = t.usd > 0;
-  $('rules').replaceChildren(el('b', {}, 'CONDITIONS'), el('ul', { class: 'rules' },
-    el('li', {}, 'Drive the whole shift: ', el('b', {}, dur(i.seconds)), ' AND at least ', el('b', {}, `${km(i.dist)} km`), '. Speed is capped at 100 km/h, so idling can’t bank it.'),
-    el('li', {}, 'End the shift early, abandon it or crash and it does ', el('b', {}, 'not'), ' count as finished.'),
-    paid ? [
-      el('li', {}, 'Entry ', el('b', {}, `$${t.usd}`), ' in devnet SOL, price locked for 10 minutes once you order. It is ', el('b', {}, 'non-refundable'), ' and always goes into the pool (50% grand · 20% top 20 · 20% next week · 10% fees).'),
-      el('li', {}, 'Finished shifts qualify for the weekly prizes (grand prize draw, top 20 by distance). Prizes are accrued, not paid out, in this build.'),
-      i.scale > 1 ? el('li', {}, el('b', { class: 'bad' }, `DEMO ×${i.scale}`), ' – this wallet’s paid shifts are shortened so a demo fits in minutes.') : '',
-    ] : [el('li', {}, 'No fee, no prize. Counts for the free leaderboard and achievements. 5 free rides at signup, +1 every UTC day.')]));
+  const box = $('rules'); if (!box) return;
+  box.replaceChildren(el('b', {}, 'CONDITIONS'), el('ul', { class: 'rules' },
+    el('li', {}, 'Drive the whole shift: its time ', el('b', {}, 'AND'), ' its distance. Speed is capped at 100 km/h, so idling can’t bank it.'),
+    el('li', {}, 'End the shift early, abandon it or crash and it does ', el('b', {}, 'not'), ' count as finished. A ticket is spent when its ride is created.'),
+    el('li', {}, 'Pool tickets: your entry sits in the pool’s vault on chain, not with us. A pool that misses its goal refunds every ticket in full; in a live pool the finished shifts rank for its prize share. ', el('a', { href: `${SITE_BASE}${ESCROW_PAGE}`, target: '_blank', rel: 'noopener' }, 'How the escrow works →')),
+    el('li', {}, 'Free rides: no fee, no prize. 5 at signup, +1 every UTC day.')));
 }
-function paintStart() {
-  const t = S.tiers.tiers.find(x => x.id === S.sel), b = $('start'); if (!b) return;
-  b.disabled = S.busy || !!tierOff(t);
-  b.textContent = S.busy ? 'WORKING…' : t.usd ? `PAY $${t.usd}${t.lamports ? ` · ${sol(t.lamports)}` : ''} & START` : 'START FREE RIDE';
+/* per-card message lines (msg-<key>); kept in S.msgs so a repaint (poll, +/−) does not wipe them */
+function say(key, text, bad = false, link = null) {   // link = { href, text } appended after the text (an explorer link)
+  if (text) S.msgs[key] = [text, bad, link]; else delete S.msgs[key];
+  const m = $(`msg-${key}`); if (m) { m.replaceChildren(text, link ? el('a', { href: link.href, target: '_blank', rel: 'noopener' }, link.text) : ''); m.className = `msg ${bad ? 'bad' : 'dim'}`; }
 }
-const say = (text, bad = false) => { const m = $('msg'); if (m) { m.textContent = text; m.className = `msg ${bad ? 'bad' : 'dim'}`; } };
-
-async function start() {
-  const id = S.sel; S.busy = true; paintTiers(); say('');
+async function busy(key, fn) {
+  if (S.busy) return;
+  S.busy = key; for (const k of Object.keys(S.msgs)) say(k, ''); paintTiers();
+  try { await fn(); } finally { S.busy = null; if ($('tiers')) paintTiers(); }
+}
+function play(r, tier) {
+  if (r.tier !== tier) { checkPending(); say(tier, `You already have a ${TIER_NAME[r.tier] ?? r.tier} ride ready – start that one first.`, true); return; }   // never send you into the wrong ride silently
+  location.href = `${GAME_BASE}/play.html?ride=${r.id}`;
+}
+const startFree = () => busy('free', async () => { try { play(await api('rides', { tier: 'free' }), 'free'); } catch (e) { say('free', rideError(e, 'free'), true); } });
+const startLegacy = id => busy(id, async () => { try { play(await buyRide(id, text => say(id, text)), id); } catch (e) { say(id, rideError(e, id), true); } });
+const ride = tier => busy(tier, async () => {   // spends one ticket: the ride is ready at once
+  say(tier, 'Spending a ticket…');
+  try { play(await api('rides', { tier }), tier); } catch (e) { say(tier, rideError(e, tier), true); await refreshMe(); }
+});
+const buy = (tier, poolId, qty) => busy(tier, async () => {
+  try { await buyTickets(poolId, qty, text => say(tier, text)); S.qty[tier] = 1; await refreshMe(); say(tier, `Paid – ${qty} ticket${qty === 1 ? '' : 's'} credited.`); } catch (e) { say(tier, buyError(e), true); }
+});
+const refund = (poolId, key) => busy(key, async () => {
   try {
-    const ride = id === 'free' ? await api('rides', { tier: 'free' }) : await buyRide(id, text => say(text));
-    if (ride.tier !== id) {   // the server handed back a ride you already own (e.g. a paid one waiting) – never send you into the wrong one silently
-      await checkPending(); say(`You already have a ${TIER_NAME[ride.tier] ?? ride.tier} ride ready – start that one first.`, true); return;
-    }
-    location.href = `${GAME_BASE}/play.html?ride=${ride.id}`;
-  } catch (e) {
-    say(e.status === 409 && /in progress/.test(e.message) ? 'You already have a ride on the road (another tab?). It frees up about 2½ minutes after its last signal.' : e.message, true);
-  } finally { S.busy = false; if ($('tiers')) paintTiers(); }
+    const sig = await claimRefund(poolId, text => say(key, text)); await refreshMe();
+    say(key, 'Refund sent – the lamports land in your wallet when it confirms: ', false, { href: explorerTx(sig), text: `${sig.slice(0, 8)}… ↗` });
+  } catch (e) { say(key, e.notConfigured ? 'Refunds through the lobby are not switched on in this build yet. Once a pool has failed, the program lets ANY wallet send the refund for you – nobody can keep the money.' : buyError(e), true); }
+});
+
+async function redeem(e) {
+  e.preventDefault();
+  const input = $('promo-code'), go = $('promo-go'), code = input.value.trim(), m = $('promo-msg');
+  const show = (text, cls) => { m.textContent = text; m.className = `msg ${cls}`; };
+  if (!code) { show('Type a promo code first.', 'bad'); return; }
+  go.disabled = true; show('Redeeming…', 'dim');
+  try { const r = await api('promo/redeem', { code }); input.value = ''; show(promoOk(r), 'good'); S.focus = r.tier; await refreshMe(); }
+  catch (err) { show(promoError(err), 'bad'); } finally { go.disabled = false; }
 }
 
 /* ───────── LIVE ───────── */
@@ -219,12 +276,13 @@ async function renderProfile() {
   let p;
   try { p = await api('profile'); } catch (e) { view.replaceChildren(el('p', { class: 'bad' }, e.message)); return; }
   if (S.tab !== 'profile') return;
-  Object.assign(S.me, { freeRides: p.freeRides, freeRidesMax: p.freeRidesMax, nextFreeRideAt: p.nextFreeRideAt }); paintHeader();
+  Object.assign(S.me, { freeRides: p.freeRides, freeRidesMax: p.freeRidesMax, nextFreeRideAt: p.nextFreeRideAt, tickets: p.tickets }); paintHeader();
   const tile = (v, l) => el('div', { class: 'tile' }, el('b', {}, v), el('span', {}, l)), got = p.achievements.filter(a => a.earnedAt).length;
   view.replaceChildren(
     el('div', { class: 'who', style: 'display:flex;gap:10px;align-items:center' }, avatar(p.wallet), el('div', {}, el('b', {}, short(p.wallet)), el('div', { class: 'dim' }, `rider since ${new Date(p.createdAt).toLocaleDateString()} · ${freeLeft(p)} left`), el('div', { class: 'dim fr-cd' }, freeCd(p)))),
     el('h2', {}, 'STATS'),
     el('div', { class: 'tiles' }, tile(p.stats.rides, 'rides started'), tile(p.stats.completed, 'shifts finished'), tile(km(p.stats.metres), 'km driven'), tile(km(p.stats.bestMetres), 'best shift, km'), tile(p.stats.paidRides, 'paid rides'), tile(sol(p.stats.spentLamports), 'spent')),
+    ...profileTickets(p, S.busy, refund),
     el('h2', {}, `ACHIEVEMENTS · ${got}/${p.achievements.length}`),
     el('div', { class: 'ach' }, p.achievements.map(a => el('div', { class: `a${a.earnedAt ? '' : ' lock'}${a.awardedAtRoundClose ? ' soon' : ''}` }, el('span', { class: 'ic' }, a.icon), el('span', { class: 'nm' }, a.name), el('span', { class: 'ds' }, a.desc),
       el('span', { class: 'when' }, a.earnedAt ? `unlocked ${new Date(a.earnedAt).toLocaleDateString()}` : a.awardedAtRoundClose ? 'awarded when the round closes' : 'locked')))),
@@ -237,10 +295,13 @@ async function renderProfile() {
 }
 
 /* ───────── refresh + 1 s tick ───────── */
-async function refreshPool() {
-  try { S.pool = await api('pool'); } catch { return; }
-  if (S.tab === 'new') paintPool();
+async function refreshPool() {   // the pot + every pool's progress (sold / escrow) – both are public and move while you look
+  const [p, t] = await Promise.all([api('pool').catch(() => null), S.tab === 'new' ? api('tiers').catch(() => null) : null]);
+  if (p) S.pool = p;
+  if (t) S.tiers = t;
+  if (S.tab === 'new') { paintPool(); if (t && !S.busy) paintTiers(); }
 }
+function tickCountdowns() { const n = now(); document.querySelectorAll('.pcd[data-at]').forEach(c => { c.textContent = left(+c.dataset.at - n); }); }
 function tickFree() {   // the "next free ride" counter; at 00:00 UTC ask the server (it grants, then says when the next one comes)
   const m = S.me; if (!m) return;
   $('chip-free').textContent = `${freeLeft(m)} · ${freeCd(m)}`;
@@ -253,6 +314,7 @@ function tickFree() {   // the "next free ride" counter; at 00:00 UTC ask the se
 function tick() {
   tickFree();
   if (S.pool) { const c = $('cd'); if (c) c.textContent = left(S.pool.round.endsAt - now()); }
+  if (S.tab === 'new') tickCountdowns();
   if (S.tab === 'live' && !document.hidden) tickLive();
 }
 
@@ -260,6 +322,7 @@ function tick() {
 try { S.me = await api('me'); } catch { location.href = '/'; }
 if (S.me) {
   paintHeader();
+  for (const a of document.querySelectorAll('a[href="/play.html"]')) a.href = `${GAME_BASE}/play.html`;   // the static footer link: the game is on ride.<apex> in production
   $('out').onclick = async () => { await signOut(); location.href = '/'; };
   [S.tiers, S.pool] = await Promise.all([api('tiers').catch(() => null), api('pool').catch(() => null)]);
   await pollLive();
