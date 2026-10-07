@@ -26,8 +26,9 @@ export async function buyRide(tier, onStep = () => {}) {
   for (let i = 0; i < 60; i++) {
     const r = await fetch(`/api/rides/${ride.id}/confirm`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ signature }) });
     const j = await r.json().catch(() => ({}));
-    if (r.status === 200 && j.status === 'paid') return j.ride;
-    if (r.status !== 202) throw new Error(j.message || `payment not accepted (${r.status})`);
+    if (!r.ok) throw new Error(j.detail || j.title || `payment not accepted (${r.status})`);   // RFC 9457 problem+json
+    if (j.status === 'paid') return j.ride;
+    if (j.status !== 'pending') throw new Error(`unexpected payment status: ${j.status}`);   // 'pending' = not on chain yet: ask again
     await sleep(1500);
   }
   throw new Error(`still not confirmed – your transaction ${signature} may land later; reopen the lobby (a paid ride is kept)`);

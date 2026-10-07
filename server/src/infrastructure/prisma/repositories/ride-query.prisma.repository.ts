@@ -1,0 +1,70 @@
+import { Injectable } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
+import type { LeaderboardBoard } from '../../../domain/economy/economy.dto.js';
+import {
+  RideQueryPort, type LeaderboardRow, type LiveRideRow, type RecentRideRow, type RideSummary,
+} from '../../../application/ports/rides/ride-query.port.js';
+import { PrismaService } from '../prisma.service.js';
+
+const CLEAN_HULL = 99.5;
+const NIGHT_SHARE = 0.5;
+const SIBERIA = 'siberia';
+
+/** The read side over rides: projections that no aggregate needs. */
+@Injectable()
+export class RideQueryPrismaRepository extends RideQueryPort {
+  constructor(private readonly prisma: PrismaService) {
+    super();
+  }
+
+  async live(heartbeatSince: Date, limit: number): Promise<LiveRideRow[]> {
+    const rows = await this.prisma.ride.findMany({
+      where: { status: 'running', lastHbAt: { gte: heartbeatSince } },
+      orderBy: [{ startedAt: 'desc' }, { seq: 'desc' }],
+      take: limit,
+    });
+    return rows.flatMap((r) => (r.startedAt && r.lastHbAt
+      ? [{ wallet: r.wallet, tier: r.tier, route: r.route, minSeconds: r.minSeconds, completeDist: r.completeDist, driveSeconds: r.driveSeconds, lastS: r.lastS, hull: r.hull,
+        paused: r.paused, timeScale: r.timeScale, startedAt: r.startedAt, lastHbAt: r.lastHbAt }]
+      : []));
+  }
+
+  /** Two queries: one aggregate over the started rides, and the completed rides themselves (few per wallet) for the per-ride achievement facts. */
+  async summary(wallet: string): Promise<RideSummary> {
+    const [started, done] = await Promise.all([
+      this.prisma.ride.aggregate({ where: { wallet, startedAt: { not: null } }, _count: { _all: true }, _sum: { lastS: true } }),
+      this.prisma.ride.findMany({ where: { wallet, status: 'completed' }, select: { lastS: true, hull: true, route: true, nightSeconds: true, driveSeconds: true } }),
+    ]);
+    const metres = started._sum.lastS ?? 0;
+    return {
+      stats: { started: started._count._all, completed: done.length, metres, best: done.reduce((max, r) => Math.max(max, r.lastS), 0) },
+      facts: {
+        started: started._count._all, completed: done.length, totalMetres: metres,
+        completedAtNight: done.some((r) => r.driveSeconds > 0 && r.nightSeconds >= NIGHT_SHARE * r.driveSeconds), // most of the shift in the dark: pressing N just before the end doesn't count
+        cleanRun: done.some((r) => r.hull !== null && r.hull >= CLEAN_HULL),
+        completedSiberia: done.some((r) => r.route === SIBERIA),
+      },
+    };
+  }
+
+  async recent(wallet: string, limit: number): Promise<RecentRideRow[]> {
+    const rows = await this.prisma.ride.findMany({ where: { wallet, startedAt: { not: null } }, orderBy: [{ startedAt: 'desc' }, { seq: 'desc' }], take: limit });
+    return rows.flatMap((r) => (r.startedAt
+      ? [{ tier: r.tier, status: r.status, lastS: r.lastS, hull: r.hull, route: r.route, timeScale: r.timeScale, startedAt: r.startedAt, endedAt: r.endedAt }]
+      : []));
+  }
+
+  async leaderboard(board: LeaderboardBoard, roundId: number | null, limit: number): Promise<LeaderboardRow[]> {
+    const tierFilter: Prisma.RideWhereInput = board === 'free' ? { tier: 'free' } : { tier: { not: 'free' }, ...(board === 'round' ? { roundId } : {}) };
+    const groups = await this.prisma.ride.groupBy({
+      by: ['wallet'],
+      where: { status: 'completed', ...tierFilter },
+      _sum: { lastS: true },
+      _count: { _all: true },
+      _min: { endedAt: true },
+      orderBy: [{ _sum: { lastS: 'desc' } }, { _count: { wallet: 'desc' } }, { _min: { endedAt: 'asc' } }, { wallet: 'asc' }],
+      take: limit,
+    });
+    return groups.map((g) => ({ wallet: g.wallet, distance: g._sum.lastS ?? 0, rides: g._count._all }));
+  }
+}

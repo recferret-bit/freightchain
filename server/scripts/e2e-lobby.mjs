@@ -1,5 +1,5 @@
 // Click-through of the whole loop FROM THE LOBBY in real headless Chrome (two browsers: a rider and an observer), screenshots of every tab at desktop and phone width.
-// Server: FREE_RIDE_SECONDS=3 SOL_USD=118 TREASURY_PUBKEY=<any address> PORT=3111 DB_PATH=:memory: node dist/main.js     then:   BASE=http://localhost:3111 node scripts/e2e-lobby.mjs
+// Server: FREE_RIDE_SECONDS=3 SOL_USD=118 TREASURY_PUBKEY=<any address> PORT=3111 node dist/main.js  (PostgreSQL up + migrated: npm run db:up && npm run prisma:deploy)     then:   BASE=http://localhost:3111 node scripts/e2e-lobby.mjs
 // No wallet extension: a keypair signs the challenge and the session cookie is handed to Chrome. Paid payments can't be clicked through (no wallet) – covered by vitest / devnet-pay.mjs.
 import nacl from 'tweetnacl'; import bs58 from 'bs58';
 import { launch, sleep } from '../../client/tools/cdp.mjs';
@@ -77,7 +77,7 @@ await rider.shot('profile-desktop'); await size(rider, 390, 844, true); await sl
 // ── LEADERBOARD (free board) + reload keeps the tab
 await rider.ev('location.hash = "#board"'); await until(async () => (await rider.ev('document.querySelectorAll(".seg button").length')) === 3);
 await rider.ev('[...document.querySelectorAll(".seg button")][2].click()');
-check('LEADERBOARD › FREE: the rider is #1 and highlighted', await until(async () => /1/.test(await rider.ev('document.querySelector("tr.me .rk")?.textContent || ""'))));
+check('LEADERBOARD › FREE: the rider is on the board and highlighted (the database persists between runs, so not necessarily #1)', await until(async () => /^\d+$/.test(await rider.ev('document.querySelector("tr.me .rk")?.textContent || ""'))));
 await rider.shot('board-desktop'); await size(rider, 390, 844, true); await sleep(300); await rider.shot('board-phone'); await size(rider, 1100, 900, false);
 await rider.send('Page.reload'); check('reload keeps the tab (#board)', await until(async () => (await rider.ev('document.querySelector(".tabs a.on")?.dataset.tab')) === 'board'));
 await obs.send('Page.navigate', { url: `${BASE}/lobby.html#new` }); await sleep(1500);

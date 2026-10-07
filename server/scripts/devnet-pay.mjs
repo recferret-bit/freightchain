@@ -1,5 +1,5 @@
 // REAL devnet run of the Day-1 loop: fund a fresh wallet from the faucet, sign in, order a 1 h ride, pay it on chain, let the server verify it, ride it (demo-scaled), check pool + leaderboard.
-// Server (other terminal):  DB_PATH=<dir>/fc.sqlite  (run `node scripts/treasury-init.mjs <dir>/treasury.json` once)  DEMO_WALLETS='*' DEMO_SCALE=600  PORT=3112  node dist/main.js
+// Server (other terminal; PostgreSQL up + migrated):  TREASURY_PUBKEY=<any address, or run `npm run treasury:init`>  DEMO_WALLETS='*' DEMO_SCALE=600  PORT=3112  node dist/main.js
 //   (DEMO_SCALE=600 → the 1 h shift is 6 s / 84 m).  Then:  BASE=http://localhost:3112 node scripts/devnet-pay.mjs
 // The public devnet faucet is rate-limited: if the airdrop fails this prints the address – fund it at https://faucet.solana.com and re-run with WALLET_SECRET=<that base58 secret>.
 import { Connection, Keypair, Transaction, LAMPORTS_PER_SOL } from '@solana/web3.js'; import nacl from 'tweetnacl'; import bs58 from 'bs58';
@@ -26,7 +26,7 @@ const ride = (await api('rides', { tier: '1h' })).j; check('ordered a 1 h ride',
 check('cannot start unpaid', (await api(`rides/${ride.id}/start`, {})).status === 409);
 const p = (await api(`rides/${ride.id}/payment`)).j, tx = Transaction.from(Buffer.from(p.transaction, 'base64')); tx.partialSign(kp);
 const sig = await conn.sendRawTransaction(tx.serialize()); console.log(`sent ${sig}  https://explorer.solana.com/tx/${sig}?cluster=devnet`);
-let paid; for (let i = 0; i < 40; i++) { const r = await api(`rides/${ride.id}/confirm`, { signature: sig }); if (r.status !== 202) { paid = r; break; } await sleep(1500); }
+let paid; for (let i = 0; i < 40; i++) { const r = await api(`rides/${ride.id}/confirm`, { signature: sig }); if (r.j.status !== 'pending') { paid = r; break; } await sleep(1500); }
 check('server verified the payment on devnet', paid?.status === 200 && paid.j.status === 'paid', JSON.stringify(paid?.j).slice(0, 160));
 const poolAfter = (await api('pool')).j;
 check('pool went up', poolAfter.split.entries - poolBefore.split.entries === ride.lamports, `+${poolAfter.split.entries - poolBefore.split.entries} lamports → grand ${poolAfter.split.grand} (≈ $${poolAfter.usd.grand})`);

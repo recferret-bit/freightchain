@@ -1,0 +1,21 @@
+import { QueryHandler, type IQueryHandler } from '@nestjs/cqrs';
+import { toMeDto, type MeDto } from '../../../../domain/players/player.dto.js';
+import { RulesConfigPort } from '../../../ports/config/rules-config.port.js';
+import { PlayerSessionService } from '../../../services/player-session.service.js';
+import { demoScaleOf, isDemoWallet } from '../../../services/demo.js';
+import { GetMeQuery } from './get-me.query.js';
+
+/** Who am I. Seeing a wallet also applies the lazy daily grant (+1 free ride per UTC day) – that is intentional, not a read-side accident. */
+@QueryHandler(GetMeQuery)
+export class GetMeHandler implements IQueryHandler<GetMeQuery, MeDto> {
+  constructor(
+    private readonly sessions: PlayerSessionService,
+    private readonly rules: RulesConfigPort,
+  ) {}
+
+  async execute(query: GetMeQuery): Promise<MeDto> {
+    const player = await this.sessions.touch(query.wallet);
+    const rules = this.rules.get();
+    return toMeDto(player, isDemoWallet(rules, query.wallet), demoScaleOf(rules));
+  }
+}

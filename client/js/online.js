@@ -9,7 +9,7 @@ export const online = { ride: null, error: '', started: false, done: false, extr
 const api = async (path, body) => {
   const r = await fetch(`/api/${path}`, { signal: AbortSignal.timeout(8000), method: body ? 'POST' : 'GET', headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.message || `server error ${r.status}`);
+  if (!r.ok) throw new Error(j.detail || j.title || `server error ${r.status}`);   // RFC 9457 problem+json
   return j;
 };
 const progress = () => ({ s: st.s, t: st.t, hull: st.hull, paused: st.mode !== 'drive', ...online.extra() });   // t = the game's driven-seconds clock (the server credits its delta, capped by wall time)

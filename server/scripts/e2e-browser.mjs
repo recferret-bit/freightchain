@@ -1,6 +1,6 @@
 // Full-stack check in REAL headless Chrome against a RUNNING server (no wallet extension: a tweetnacl keypair signs the challenge, the session cookie is
 // handed to Chrome): sign in → create a free ride → play.html?ride=… takes the server's seed + shift length → START → heartbeats → pause → END SHIFT → server verdict.
-// Usage: FREE_RIDE_SECONDS=3 PORT=3111 node dist/main  (other terminal)   then   BASE=http://localhost:3111 node scripts/e2e-browser.mjs
+// Usage: FREE_RIDE_SECONDS=3 SOL_USD=118 TREASURY_PUBKEY=<any address> PORT=3111 node dist/main.js  (other terminal; PostgreSQL up + migrated: npm run db:up && npm run prisma:deploy)   then   BASE=http://localhost:3111 node scripts/e2e-browser.mjs
 import nacl from 'tweetnacl'; import bs58 from 'bs58';
 import { launch, sleep } from '../../client/tools/cdp.mjs';
 const BASE = process.env.BASE || 'http://localhost:3111', MIN = +(process.env.FREE_RIDE_SECONDS || 3);
