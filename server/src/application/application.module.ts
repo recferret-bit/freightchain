@@ -32,6 +32,9 @@ import { StartRideHandler } from './use-cases/rides/start-ride/start-ride.handle
 import { PoolTicketsService } from './services/pool-tickets.service.js';
 import { TicketSettlementService } from './services/ticket-settlement.service.js';
 import { PoolRegistryService } from './services/pool-registry.service.js';
+import { GetTicketPaymentHandler } from './use-cases/tickets/get-ticket-payment/get-ticket-payment.handler.js';
+import { ConfirmTicketOrderHandler } from './use-cases/tickets/confirm-ticket-order/confirm-ticket-order.handler.js';
+import { SubmitTicketOrderHandler } from './use-cases/tickets/submit-ticket-order/submit-ticket-order.handler.js';
 import { SettleChainSignatureHandler } from './use-cases/chain/settle-chain-signature/settle-chain-signature.handler.js';
 import { ListPoolsHandler } from './use-cases/pools/list-pools/list-pools.handler.js';
 import { GetPrizePoolHandler } from './use-cases/pools/get-prize-pool/get-prize-pool.handler.js';
@@ -59,7 +62,7 @@ const handlers: Provider[] = [
   ListPoolsHandler, GetPrizePoolHandler, RedeemPromoHandler,
   CreatePromoHandler, ListPromosHandler, DisablePromoHandler, GrantTicketsHandler, RegisterPoolHandler,
   CreateTicketOrderHandler, GetTicketOrderHandler, GetPendingTicketOrderHandler,
-  SettleChainSignatureHandler,
+  SettleChainSignatureHandler, GetTicketPaymentHandler, ConfirmTicketOrderHandler, SubmitTicketOrderHandler,
   GetChainFeesHandler,
 ];
 
