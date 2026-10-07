@@ -7,7 +7,7 @@ for kv in "$@"; do export "$kv"; done
 : "${DEPLOY_PATH:?}" "${RELEASE:?}" "${APP_PORT:?}" "${KEEP_RELEASES:?}" "${KEEP_BACKUPS:?}"
 ROOT="$DEPLOY_PATH"; ENVF="$ROOT/.env"; STATE="$ROOT/state"
 say() { printf '  [server] %s\n' "$*"; }
-cc() { local tag="$1"; shift; RELEASE="$tag" APP_PORT="$APP_PORT" docker compose --env-file "$ENVF" -f "$ROOT/releases/$tag/deploy/docker-compose.prod.yml" "$@"; }
+cc() { local tag="$1"; shift; RELEASE="$tag" APP_PORT="$APP_PORT" docker compose --env-file "$ENVF" -f "$ROOT/releases/$tag/deploy/docker-compose.prod.yml" "$@" </dev/null; }   # </dev/null: the script itself arrives on stdin (ssh) – a compose command must not swallow the rest of it
 wait_healthy() {
   local i; for i in $(seq 1 30); do
     curl -fsS -m 5 "http://127.0.0.1:$APP_PORT/api/health/ready" >/dev/null 2>&1 && return 0; sleep 2

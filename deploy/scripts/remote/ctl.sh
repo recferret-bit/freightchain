@@ -6,7 +6,7 @@ for kv in "$@"; do export "$kv"; done
 : "${DEPLOY_PATH:?}" "${APP_PORT:?}"
 ROOT="$DEPLOY_PATH"; ENVF="$ROOT/.env"; STATE="$ROOT/state"
 CURRENT="$(cat "$STATE/current" 2>/dev/null || true)"; PREVIOUS="$(cat "$STATE/previous" 2>/dev/null || true)"
-cc() { local tag="$1"; shift; RELEASE="$tag" APP_PORT="$APP_PORT" docker compose --env-file "$ENVF" -f "$ROOT/releases/$tag/deploy/docker-compose.prod.yml" "$@"; }
+cc() { local tag="$1"; shift; RELEASE="$tag" APP_PORT="$APP_PORT" docker compose --env-file "$ENVF" -f "$ROOT/releases/$tag/deploy/docker-compose.prod.yml" "$@" </dev/null; }   # </dev/null: the script itself arrives on stdin (ssh) – a compose command must not swallow the rest of it
 healthy() { curl -fsS -m 5 "http://127.0.0.1:$APP_PORT/api/health/ready" >/dev/null 2>&1; }
 
 case "$CMD" in

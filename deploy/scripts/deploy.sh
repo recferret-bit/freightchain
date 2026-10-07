@@ -60,6 +60,8 @@ info "releasing $RELEASE on the server"
 rscript "$DEPLOY_DIR/scripts/remote/release.sh" "DEPLOY_PATH=$DEPLOY_PATH" "RELEASE=$RELEASE" "APP_PORT=$DEPLOY_APP_PORT" "KEEP_RELEASES=$DEPLOY_KEEP_RELEASES" "KEEP_BACKUPS=$DEPLOY_KEEP_BACKUPS" \
   || die "the release failed on the server (output above). If it said it rolled back, the previous version is serving."
 
+[ "$(rsh "cat '$DEPLOY_PATH/state/current' 2>/dev/null" || true)" = "$RELEASE" ] || die "the server script ended without finishing release $RELEASE (state/current is not it) – nothing is half-promoted; see the output above"
+
 # ---- 7. is it really up, through nginx and TLS, with a working sign-in?
 if [ "$SMOKE" = "1" ]; then info "smoke test against https://${DEPLOY_DOMAIN}"; node "$DEPLOY_DIR/scripts/smoke.mjs" "https://${DEPLOY_DOMAIN}" --api "https://api.${DEPLOY_DOMAIN}" --game "https://ride.${DEPLOY_DOMAIN}" --treasury "$TREASURY_PUBKEY" || die "the smoke test failed – the release is up on the server, but the public site is not right (see above). Roll back with: npm run deploy:rollback"; fi
 ok "deployed ${RELEASE} → https://${DEPLOY_DOMAIN}"
