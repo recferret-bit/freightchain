@@ -113,6 +113,8 @@ describe('RideQueryPrismaRepository (PostgreSQL)', () => {
     expect((await query.leaderboard('all', null, 20)).map((r) => r.wallet)).toEqual(['alice']);
     expect((await query.leaderboard('free', null, 20)).map((r) => r.wallet)).toEqual(['carol']);
     expect((await query.recent('bob', 5))[0]?.verdict).toBe('flagged');
-    expect((await query.recent('carol', 5)).map((r) => r.verdict).sort()).toEqual(['rejected', null].sort());
+    const carol = await query.recent('carol', 5);
+    expect(carol).toHaveLength(2);
+    expect(carol.map((r) => r.verdict)).toEqual(expect.arrayContaining(['rejected', null])); // the free ride's verdict, the unjudged paid one
   });
 });

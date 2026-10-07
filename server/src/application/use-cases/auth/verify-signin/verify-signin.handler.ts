@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { toMeDto } from '../../../../domain/players/player.dto.js';
 import { parseWalletAddress } from '../../../../domain/players/wallet-address.js';
@@ -14,6 +15,8 @@ import { VerifySignInCommand, type SignInResultDto } from './verify-signin.comma
 /** Step 2: the wallet signed the stored challenge. The challenge is consumed on the FIRST attempt (pass or fail) and atomically – single use, even under concurrency. */
 @CommandHandler(VerifySignInCommand)
 export class VerifySignInHandler implements ICommandHandler<VerifySignInCommand, SignInResultDto> {
+  private readonly logger = new Logger('SignIn');
+
   constructor(
     private readonly challenges: ChallengeRepositoryPort,
     private readonly verifier: SignatureVerifierPort,
@@ -32,6 +35,7 @@ export class VerifySignInHandler implements ICommandHandler<VerifySignInCommand,
     const now = this.clock.now();
     const player = await this.sessions.touch(wallet, now);
     const rules = this.rules.get();
+    this.logger.log({ event: 'signin', msg: `signed in ${wallet}`, wallet });
     return { profile: toMeDto(player, now, isDemoWallet(rules, wallet), demoScaleOf(rules)), session };
   }
 }

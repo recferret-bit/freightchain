@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { RideStatus } from '../../domain/rides/ride-status.js';
 import { RideVerdict } from '../../domain/verdict/ride-verdict.entity.js';
 import { PlayerRepositoryPort } from '../ports/players/player.repository.port.js';
@@ -15,6 +15,8 @@ import { RideVerdictRepositoryPort } from '../ports/verdict/ride-verdict.reposit
  */
 @Injectable()
 export class VerdictService {
+  private readonly logger = new Logger(VerdictService.name);
+
   constructor(
     private readonly rides: RideRepositoryPort,
     private readonly players: PlayerRepositoryPort,
@@ -32,6 +34,7 @@ export class VerdictService {
       await this.players.findByWalletForUpdate(ride.wallet, tx);
       const verdict = RideVerdict.judge(ride, await this.batches.listByRide(rideId, tx), this.clock.now());
       await this.verdicts.save(verdict, tx);
+      this.logger.log({ event: 'verdict', msg: `ride ${rideId}: ${verdict.status}`, rideId, wallet: ride.wallet, status: verdict.status, reasons: verdict.reasons.map((r) => r.code) });
       return verdict;
     });
   }

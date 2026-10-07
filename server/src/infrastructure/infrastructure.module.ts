@@ -15,6 +15,7 @@ import { RideRepositoryPort } from '../application/ports/rides/ride.repository.p
 import { ClockPort } from '../application/ports/shared/clock.port.js';
 import { EntropyPort } from '../application/ports/shared/entropy.port.js';
 import { HasherPort } from '../application/ports/shared/hasher.port.js';
+import { LogBufferPort } from '../application/ports/ops/log-buffer.port.js';
 import { TransactionPort } from '../application/ports/shared/transaction.port.js';
 import { RideBatchRepositoryPort } from '../application/ports/telemetry/ride-batch.repository.port.js';
 import { RideVerdictRepositoryPort } from '../application/ports/verdict/ride-verdict.repository.port.js';
@@ -23,6 +24,9 @@ import { NaclSignatureVerifier } from './auth/nacl.signature-verifier.js';
 import { EnvRulesConfigAdapter } from './config/rules-config.adapter.js';
 import { NodeEntropy } from './crypto/node.entropy.js';
 import { NodeHasher } from './crypto/node.hasher.js';
+import { JsonLogger } from './logging/json-logger.js';
+import { LogRing } from './logging/log-ring.js';
+import { RingLogBufferAdapter } from './logging/ring-log-buffer.adapter.js';
 import { RideBatchPrismaRepository } from './prisma/repositories/ride-batch.prisma.repository.js';
 import { RideVerdictPrismaRepository } from './prisma/repositories/ride-verdict.prisma.repository.js';
 import { PrismaHealthProbe } from './health/prisma.health-probe.js';
@@ -46,6 +50,7 @@ const ports: Provider[] = [
   { provide: ClockPort, useClass: SystemClock },
   { provide: EntropyPort, useClass: NodeEntropy },
   { provide: HasherPort, useClass: NodeHasher },
+  { provide: LogBufferPort, useClass: RingLogBufferAdapter },
   { provide: RideBatchRepositoryPort, useClass: RideBatchPrismaRepository },
   { provide: RideVerdictRepositoryPort, useClass: RideVerdictPrismaRepository },
   { provide: TransactionPort, useClass: TransactionPrismaAdapter },
@@ -67,7 +72,7 @@ const ports: Provider[] = [
 const portTokens = ports.map((p) => (p as { provide: unknown }).provide as typeof ClockPort);
 
 @Module({
-  providers: [PrismaService, PlayerAuthGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, ...ports],
-  exports: [PrismaService, PlayerAuthGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, ...portTokens],
+  providers: [PrismaService, PlayerAuthGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, { provide: LogRing, useValue: new LogRing() }, JsonLogger, ...ports],
+  exports: [PrismaService, PlayerAuthGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, LogRing, JsonLogger, ...portTokens],
 })
 export class InfrastructureModule {}
