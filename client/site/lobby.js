@@ -1,6 +1,7 @@
 import { api, signOut } from './wallet.js';
 import { buyRide } from './pay.js';
 import { GAME_BASE } from '../js/hosts.js';
+import { track, flushSoon } from '../js/analytics.js';
 
 /* The lobby: NEW RIDE · LIVE · LEADERBOARD · PROFILE. Vanilla DOM, no framework.
    Everything that comes from the server (wallet addresses, route ids, statuses…) goes in with textContent – never innerHTML – because other riders' data is rendered here. */
@@ -46,6 +47,7 @@ function paintHeader() {
 function go() {
   const t = location.hash.slice(1).split('/')[0];
   S.tab = TABS.includes(t) ? t : 'new';
+  track('lobby_tab_viewed', { tab: S.tab });   // hash enter, not the 1 s tick
   document.querySelectorAll('.tabs a').forEach(a => { const on = a.dataset.tab === S.tab; a.classList.toggle('on', on); a.setAttribute('aria-selected', on); });
   ({ new: renderNew, live: renderLive, board: renderBoard, profile: renderProfile })[S.tab]();
 }
@@ -58,7 +60,7 @@ function renderNew() {
     el('div', { class: 'card', id: 'rules', style: 'margin-top:12px' }),
     el('button', { class: 'start', id: 'start', onclick: start }), el('p', { class: 'msg dim', id: 'msg' }));
   paintPool(); paintPending(); paintTiers();
-  api('me').then(m => { S.me = m; paintHeader(); paintTiers(); }, () => {});   // free-ride count after a ride / refund
+  api('me', undefined, { report: false }).then(m => { S.me = m; paintHeader(); paintTiers(); }, () => {});   // free-ride count after a ride / refund; not a session restore
 }
 
 function paintPool() {
@@ -76,7 +78,7 @@ function paintPool() {
 
 async function checkPending() {
   try {
-    let { ride } = await api('rides/pending');
+    let { ride } = await api('rides/pending', undefined, { report: false });
     if (ride && ride.status !== 'created') {   // an order that may have been paid with the page closed: look for the payment ONCE
       S.pendingNote = 'Checking for an earlier payment…'; paintPending();
       const r = await api(`rides/${ride.id}/reconcile`, {}); ride = r.status === 'paid' ? r.ride : null;
@@ -86,10 +88,13 @@ async function checkPending() {
   } catch (e) { S.pendingNote = `Could not check for earlier payments (${e.message}).`; }
   paintPending(); paintTiers();
 }
+const pendingShown = new Set();   // one pending_ride_shown per ride per load
 function paintPending() {
   const box = $('pendingbox'); if (!box) return;
   const r = S.pending;
-  box.replaceChildren(r ? el('div', { class: 'note' }, el('span', {}, el('b', {}, `Your paid ${TIER_NAME[r.tier] ?? r.tier} ride is waiting`), S.pendingNote ? ` · ${S.pendingNote}` : ''), el('button', { onclick: () => { location.href = `${GAME_BASE}/play.html?ride=${r.id}`; } }, 'START IT')) : S.pendingNote ? el('p', { class: 'dim' }, S.pendingNote) : '');
+  if (r && !pendingShown.has(r.id)) { pendingShown.add(r.id); track('pending_ride_shown', { ride_id: r.id, tier_id: r.tier }); }
+  const startIt = () => { track('pending_ride_start_clicked', { ride_id: r.id }); flushSoon(); location.href = `${GAME_BASE}/play.html?ride=${r.id}`; };
+  box.replaceChildren(r ? el('div', { class: 'note' }, el('span', {}, el('b', {}, `Your paid ${TIER_NAME[r.tier] ?? r.tier} ride is waiting`), S.pendingNote ? ` · ${S.pendingNote}` : ''), el('button', { onclick: startIt }, 'START IT')) : S.pendingNote ? el('p', { class: 'dim' }, S.pendingNote) : '');
 }
 
 const tierInfo = t => {   // what the card shows: a demo wallet's paid shifts are shorter
@@ -108,7 +113,7 @@ function paintTiers() {
   if (!S.sel || tierOff(list.find(t => t.id === S.sel) ?? {})) S.sel = (list.find(t => !tierOff(t)) ?? list[1]).id;
   box.replaceChildren(...list.map(t => {
     const i = tierInfo(t), off = tierOff(t);
-    return el('button', { class: `tier${t.id === S.sel ? ' sel' : ''}`, disabled: !!off || S.busy, 'aria-pressed': String(t.id === S.sel), onclick: () => { S.sel = t.id; paintTiers(); } },
+    return el('button', { class: `tier${t.id === S.sel ? ' sel' : ''}`, disabled: !!off || S.busy, 'aria-pressed': String(t.id === S.sel), onclick: () => { track('tier_selected', { tier_id: t.id, is_free: t.id === 'free', price_usd: t.usd ?? 0, lamports: t.lamports ?? null }); S.sel = t.id; paintTiers(); } },
       el('span', { class: 'nm' }, TIER_NAME[t.id]),
       el('span', { class: 'pr' }, t.usd ? `$${t.usd}` : 'FREE'),
       el('span', { class: 'sub' }, t.usd ? (t.lamports ? sol(t.lamports) : 'price unavailable') : `${S.me.freeRides}/${S.me.freeRidesMax} left`),
@@ -137,13 +142,15 @@ function paintStart() {
 const say = (text, bad = false) => { const m = $('msg'); if (m) { m.textContent = text; m.className = `msg ${bad ? 'bad' : 'dim'}`; } };
 
 async function start() {
-  const id = S.sel; S.busy = true; paintTiers(); say('');
+  const id = S.sel, tier = S.tiers?.tiers.find(x => x.id === id);
+  track('ride_buy_clicked', { tier_id: id, is_free: id === 'free', price_usd: tier?.usd ?? 0, is_demo: !!S.me?.demo });
+  S.busy = true; paintTiers(); say('');
   try {
-    const ride = id === 'free' ? await api('rides', { tier: 'free' }) : await buyRide(id, text => say(text));
+    const ride = id === 'free' ? await api('rides', { tier: 'free' }) : await buyRide(id, text => say(text));   // free create reports; buyRide opts out and emits payment_*
     if (ride.tier !== id) {   // the server handed back a ride you already own (e.g. a paid one waiting) – never send you into the wrong one silently
       await checkPending(); say(`You already have a ${TIER_NAME[ride.tier] ?? ride.tier} ride ready – start that one first.`, true); return;
     }
-    location.href = `${GAME_BASE}/play.html?ride=${ride.id}`;
+    flushSoon(); location.href = `${GAME_BASE}/play.html?ride=${ride.id}`;
   } catch (e) {
     say(e.status === 409 && /in progress/.test(e.message) ? 'You already have a ride on the road (another tab?). It frees up about 2½ minutes after its last signal.' : e.message, true);
   } finally { S.busy = false; if ($('tiers')) paintTiers(); }
@@ -189,7 +196,7 @@ function tickLive() {   // between polls: run the clock and the truck forward fr
   }
 }
 async function pollLive() {
-  try { const j = await api('live'); S.live = j; S.liveAt = Date.now(); S.skew = j.now - Date.now(); } catch { return; }
+  try { const j = await api('live', undefined, { report: false }); S.live = j; S.liveAt = Date.now(); S.skew = j.now - Date.now(); } catch { return; }
   const n = S.live.rides.length;
   $('chip-live').textContent = `${n} on the road`; $('tab-live-n').textContent = n || '';
   if (S.tab === 'live') paintLive();
@@ -199,8 +206,9 @@ async function pollLive() {
 async function renderBoard() {
   view.replaceChildren(el('p', { class: 'dim' }, 'Loading…'));
   let j;
-  try { j = await api(`leaderboard?board=${S.board}`); } catch (e) { view.replaceChildren(el('p', { class: 'bad' }, e.message)); return; }
+  try { j = await api(`leaderboard?board=${S.board}`, undefined, { report: false }); } catch (e) { view.replaceChildren(el('p', { class: 'bad' }, e.message)); return; }
   if (S.tab !== 'board') return;   // switched away while loading
+  track('leaderboard_filtered', { board: S.board });
   const seg = el('div', { class: 'seg' }, ...[['round', 'THIS ROUND'], ['all', 'ALL TIME'], ['free', 'FREE RIDES']].map(([id, label]) => el('button', { class: id === S.board ? 'on' : '', onclick: () => { S.board = id; renderBoard(); } }, label)));
   const prize = S.board === 'round', mine = j.rows.find(r => r.wallet === S.me.wallet);
   view.replaceChildren(
@@ -217,7 +225,7 @@ async function renderBoard() {
 async function renderProfile() {
   view.replaceChildren(el('p', { class: 'dim' }, 'Loading…'));
   let p;
-  try { p = await api('profile'); } catch (e) { view.replaceChildren(el('p', { class: 'bad' }, e.message)); return; }
+  try { p = await api('profile', undefined, { report: false }); } catch (e) { view.replaceChildren(el('p', { class: 'bad' }, e.message)); return; }
   if (S.tab !== 'profile') return;
   Object.assign(S.me, { freeRides: p.freeRides, freeRidesMax: p.freeRidesMax, nextFreeRideAt: p.nextFreeRideAt }); paintHeader();
   const tile = (v, l) => el('div', { class: 'tile' }, el('b', {}, v), el('span', {}, l)), got = p.achievements.filter(a => a.earnedAt).length;
@@ -238,7 +246,7 @@ async function renderProfile() {
 
 /* ───────── refresh + 1 s tick ───────── */
 async function refreshPool() {
-  try { S.pool = await api('pool'); } catch { return; }
+  try { S.pool = await api('pool', undefined, { report: false }); } catch { return; }
   if (S.tab === 'new') paintPool();
 }
 function tickFree() {   // the "next free ride" counter; at 00:00 UTC ask the server (it grants, then says when the next one comes)
@@ -247,7 +255,7 @@ function tickFree() {   // the "next free ride" counter; at 00:00 UTC ask the se
   document.querySelectorAll('.fr-cd').forEach(n => { n.textContent = freeCd(m); });
   if (m.nextFreeRideAt != null && now() >= m.nextFreeRideAt && (S.meMiss ?? 0) < 3 && Date.now() - (S.meAt ?? 0) > 5000) {   // gives up after 3 refreshes that bring no new time (clock skew); a reload retries
     S.meAt = Date.now();
-    api('me').then(x => { S.meMiss = x.nextFreeRideAt === m.nextFreeRideAt ? (S.meMiss ?? 0) + 1 : 0; S.me = x; paintHeader(); paintTiers(); }, () => { S.meMiss = (S.meMiss ?? 0) + 1; });
+    api('me', undefined, { report: false }).then(x => { S.meMiss = x.nextFreeRideAt === m.nextFreeRideAt ? (S.meMiss ?? 0) + 1 : 0; S.me = x; paintHeader(); paintTiers(); }, () => { S.meMiss = (S.meMiss ?? 0) + 1; });
   }
 }
 function tick() {
@@ -257,11 +265,16 @@ function tick() {
 }
 
 /* ───────── boot (last on purpose: everything above is `const`, initialised only once the module has run that far) ───────── */
-try { S.me = await api('me'); } catch { location.href = '/'; }
+for (const a of document.querySelectorAll('a[href="/play.html"]')) a.addEventListener('click', () => { track('offline_practice_clicked'); flushSoon(); });
+try { S.me = await api('me'); } catch { flushSoon(); location.href = '/'; }   // reporting GET: a failure here is api_request_failed, then back to the landing
 if (S.me) {
+  track('session_restored', { surface: 'lobby', wallet: S.me.wallet, ...(S.me.demo ? { is_demo: true } : {}) });
+  const viewed = { is_demo: !!S.me.demo };
+  if (S.pool?.round?.id != null) viewed.round_id = S.pool.round.id;   // pool is not loaded yet; do not delay the pageview for it
+  track('lobby_viewed', viewed);
   paintHeader();
-  $('out').onclick = async () => { await signOut(); location.href = '/'; };
-  [S.tiers, S.pool] = await Promise.all([api('tiers').catch(() => null), api('pool').catch(() => null)]);
+  $('out').onclick = async () => { track('player_signed_out'); flushSoon(); await signOut(); location.href = '/'; };
+  [S.tiers, S.pool] = await Promise.all([api('tiers', undefined, { report: false }).catch(() => null), api('pool', undefined, { report: false }).catch(() => null)]);
   await pollLive();
   go();
   checkPending();   // once: an RPC lookup may run here, so never on a timer
