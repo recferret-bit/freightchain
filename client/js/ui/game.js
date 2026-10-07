@@ -44,7 +44,7 @@ export function showMenu(title, sub, extra = '') {
 function showOnlineMenu(title, sub, extra) {
   const over = online.done, bad = !!online.error;
   panel.innerHTML = `<h1>${title}</h1><h2>${sub}</h2>${extra}${over || bad ? '' : routesHTML() + timeHTML()}
-    ${bad ? `<div class="row"><span>Ride</span><span class="bad">${online.error}</span></div>` : `<div class="row"><span>Shift (server-timed)</span><b>${fmt(CFG.RIDE_MIN_SECONDS)} · ${(CFG.COMPLETE_DIST / 1000).toFixed(1)} km</b></div>`}${over || bad ? '' : CONTROLS}
+    ${bad ? `<div class="row"><span>Ride</span><span class="bad">${online.error}</span></div>` : `<div class="row"><span>Shift (server-timed)</span><b>${fmt(CFG.RIDE_MIN_SECONDS)} · ${(CFG.COMPLETE_DIST / 1000).toFixed(1)} km${online.ride.timeScale > 1 ? ` · DEMO ×${online.ride.timeScale}` : ''}</b></div>`}${over || bad ? '' : CONTROLS}
     <div class="btns"><button id="go" ${bad || over ? 'disabled' : ''}>START RIDE</button><button class="alt" id="lobby">${over || bad ? 'BACK TO LOBBY' : 'LOBBY'}</button></div>`;
   overlay.classList.remove('hide');
   if (!over && !bad) { bindRoutes(panel); bindTime(panel); }

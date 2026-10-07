@@ -1,19 +1,24 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { DbService } from '../db/db.service.js';
 import { ClockService } from '../clock.service.js';
 import { UsersService } from '../users/users.service.js';
-import { MAX_SPEED, completeDist, config } from '../config.js';
+import { PriceService } from '../solana/price.service.js';
+import { PoolService } from '../pool/pool.service.js';
+import { MAX_SPEED, TIERS, completeDist, config, isTier } from '../config.js';
+import { lamportsFor } from '../economy.js';
 
 export interface RideRow {
   id: string; wallet: string; tier: string; seed: number; min_seconds: number; complete_dist: number; status: string; created_at: number;
+  time_scale: number; price_usd: number; lamports: number; sol_usd: number | null; quote_expires_at: number | null; round_id: number | null; paid_at: number | null;
   started_at: number | null; last_hb_at: number | null; last_s: number; last_t: number; drive_seconds: number; hull: number | null; ended_at: number | null; reason: string | null;
 }
 export interface Progress { s?: unknown; t?: unknown; hull?: unknown; paused?: unknown }   // s = metres along the road, t = the game's own driven-seconds clock (st.t)
 export type Outcome = 'shift' | 'failed';
 
-const view = (r: RideRow) => ({
+export const view = (r: RideRow) => ({
   id: r.id, tier: r.tier, seed: r.seed, status: r.status, minSeconds: r.min_seconds, completeDist: r.complete_dist,
+  timeScale: r.time_scale, priceUsd: r.price_usd, lamports: r.lamports, quoteExpiresAt: r.quote_expires_at, roundId: r.round_id,   // timeScale > 1 = a DEMO ride (the shift is that many times shorter)
   driveSeconds: Math.round(r.drive_seconds * 10) / 10, distance: Math.round(r.last_s), reason: r.reason,
 });
 
@@ -22,9 +27,9 @@ const view = (r: RideRow) => ({
    This is server-timed telemetry, not a replay: a modified client can still lie within those bounds (see docs/hackathon-plan.md). */
 @Injectable()
 export class RidesService {
-  constructor(private readonly store: DbService, private readonly clock: ClockService, private readonly users: UsersService) {}
+  constructor(private readonly store: DbService, private readonly clock: ClockService, private readonly users: UsersService, private readonly price: PriceService, private readonly pool: PoolService) {}
 
-  private row(id: string, wallet: string): RideRow {
+  row(id: string, wallet: string): RideRow {
     const r = this.store.db.prepare('SELECT * FROM rides WHERE id = ? AND wallet = ?').get(id, wallet) as unknown as RideRow | undefined;
     if (!r) throw new NotFoundException('ride not found');
     return r;
@@ -33,20 +38,39 @@ export class RidesService {
     this.store.db.prepare('UPDATE rides SET status = ?, reason = ?, ended_at = ? WHERE id = ?').run(status, reason, this.clock.now(), r.id);
   }
 
-  create(wallet: string, tier: unknown) {
-    if (tier !== 'free') throw new BadRequestException('only the free tier is available yet (paid rides arrive with payments)');
-    const { db } = this.store, now = this.clock.now();
+  async create(wallet: string, tier: unknown) {
+    if (!isTier(tier)) throw new BadRequestException(`tier must be one of ${Object.keys(TIERS).join(', ')}`);
+    const { db } = this.store, now = this.clock.now(), def = TIERS[tier];
+    if (def.usd > 0 && !config.treasury) throw new ServiceUnavailableException('paid rides are not configured on this server (no treasury)');
     this.users.touch(wallet);
     // a tab that vanished mid-ride must not block the wallet forever
     db.prepare("UPDATE rides SET status = 'failed', reason = 'heartbeat lost', ended_at = ? WHERE wallet = ? AND status = 'running' AND last_hb_at < ?").run(now, wallet, now - config.hbTimeoutMs);
-    const open = db.prepare("SELECT * FROM rides WHERE wallet = ? AND status IN ('created','running') ORDER BY created_at DESC").get(wallet) as unknown as RideRow | undefined;
+    const open = db.prepare("SELECT * FROM rides WHERE wallet = ? AND status IN ('created','running','awaiting_payment') ORDER BY CASE status WHEN 'running' THEN 0 WHEN 'created' THEN 1 ELSE 2 END, created_at DESC").get(wallet) as unknown as RideRow | undefined;   // a ready (maybe PAID) ride outranks an unpaid order
     if (open?.status === 'running') throw new ConflictException('a ride is already in progress');
-    if (open) return view(open);   // created but never started: hand the same ride (and its free credit) back
-    // atomic: the decrement only succeeds while a credit is left
-    if (db.prepare('UPDATE users SET free_rides = free_rides - 1 WHERE wallet = ? AND free_rides > 0').run(wallet).changes !== 1) throw new ConflictException('no free rides left');
-    const minSeconds = config.freeRideSeconds, id = randomUUID(), seed = randomBytes(4).readUInt32BE();
-    db.prepare("INSERT INTO rides (id, wallet, tier, seed, min_seconds, complete_dist, status, created_at) VALUES (?, ?, 'free', ?, ?, ?, 'created', ?)").run(id, wallet, seed, minSeconds, completeDist(minSeconds), now);
+    if (open?.status === 'created') return view(open);   // ready (free, or already PAID) but never started: hand the same ride back – a paid one must never be lost
+    if (open) {   // awaiting payment: same tier and still quoted → the same order; otherwise let it lapse (a late matching payment is still honoured, see PaymentsService)
+      if (open.tier === tier && (open.quote_expires_at ?? 0) > now) return view(open);
+      db.prepare("UPDATE rides SET status = 'expired', ended_at = ? WHERE id = ?").run(now, open.id);
+    }
+    const scale = def.usd > 0 && (config.demoWallets.has('*') || config.demoWallets.has(wallet)) ? config.demoScale : 1;   // demo wallets only, never the free tier
+    const minSeconds = def.seconds / scale, id = randomUUID(), seed = randomBytes(4).readUInt32BE();
+    if (def.usd === 0) {
+      // atomic: the decrement only succeeds while a credit is left
+      if (db.prepare('UPDATE users SET free_rides = free_rides - 1 WHERE wallet = ? AND free_rides > 0').run(wallet).changes !== 1) throw new ConflictException('no free rides left');
+      db.prepare("INSERT INTO rides (id, wallet, tier, seed, min_seconds, complete_dist, status, created_at) VALUES (?, ?, 'free', ?, ?, ?, 'created', ?)").run(id, wallet, seed, minSeconds, completeDist(minSeconds), now);
+    } else {
+      const q = await this.price.solUsd();   // the price is locked onto the order together with its expiry
+      db.prepare("INSERT INTO rides (id, wallet, tier, seed, min_seconds, complete_dist, status, created_at, time_scale, price_usd, lamports, sol_usd, quote_expires_at) VALUES (?, ?, ?, ?, ?, ?, 'awaiting_payment', ?, ?, ?, ?, ?, ?)")
+        .run(id, wallet, tier, seed, minSeconds, completeDist(minSeconds), now, scale, def.usd, lamportsFor(def.usd, q.usd), q.usd, now + config.quoteTtlMs);
+    }
     return view(this.row(id, wallet));
+  }
+
+  /** A paid order the wallet may still be owed: unpaid / lapsed (≤ 24 h, a payment could be in flight) or paid but never started. null if none. */
+  pending(wallet: string) {
+    const r = this.store.db.prepare("SELECT * FROM rides WHERE wallet = ? AND tier != 'free' AND (status IN ('awaiting_payment','created') OR (status = 'expired' AND created_at > ?)) ORDER BY CASE status WHEN 'created' THEN 0 ELSE 1 END, created_at DESC")
+      .get(wallet, this.clock.now() - 86_400_000) as unknown as RideRow | undefined;
+    return r ? view(r) : null;
   }
 
   get(wallet: string, id: string) { return view(this.row(id, wallet)); }

@@ -44,7 +44,35 @@ export class DbService implements OnModuleDestroy {
         reason        TEXT
       );
       CREATE INDEX IF NOT EXISTS rides_wallet ON rides(wallet, status);
+      CREATE TABLE IF NOT EXISTS rounds (       -- one global weekly prize round (UTC Monday → Monday)
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        starts_at   INTEGER NOT NULL,
+        ends_at     INTEGER NOT NULL,
+        carry       INTEGER NOT NULL,          -- lamports seeded in from the previous round (its 20 % "next ride start")
+        status      TEXT NOT NULL              -- open | closed (settlement / draw is not built yet)
+      );
+      CREATE TABLE IF NOT EXISTS payments (
+        signature  TEXT PRIMARY KEY,           -- a transaction can pay for exactly one ride
+        ride_id    TEXT NOT NULL UNIQUE REFERENCES rides(id),
+        wallet     TEXT NOT NULL,
+        lamports   INTEGER NOT NULL,           -- what was ordered (the verified transfer was at least this)
+        usd        REAL NOT NULL,
+        round_id   INTEGER NOT NULL REFERENCES rounds(id),
+        at         INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS payments_round ON payments(round_id);
     `);
+    // additive migration: CREATE TABLE IF NOT EXISTS never adds columns to a database made by an earlier version
+    this.addColumns('rides', {
+      time_scale: 'REAL NOT NULL DEFAULT 1',   // demo wallets run paid rides ×N faster (the shift length is divided by it)
+      price_usd: 'REAL NOT NULL DEFAULT 0', lamports: 'INTEGER NOT NULL DEFAULT 0', sol_usd: 'REAL', quote_expires_at: 'INTEGER',
+      round_id: 'INTEGER', paid_at: 'INTEGER',
+    });
+  }
+
+  private addColumns(table: string, cols: Record<string, string>) {
+    const have = new Set((this.db.prepare(`PRAGMA table_info(${table})`).all() as unknown as { name: string }[]).map(c => c.name));
+    for (const [name, ddl] of Object.entries(cols)) if (!have.has(name)) this.db.exec(`ALTER TABLE ${table} ADD COLUMN ${name} ${ddl}`);
   }
 
   onModuleDestroy() { this.db.close(); }

@@ -9,11 +9,12 @@ Vanilla ES modules + three.js r160 from a CDN. No build step, no framework, no b
 
 ```
 client/    the game (everything below up to "Not implemented" is relative to client/) + site pages: index.html (landing), lobby.html, play.html (the game), viewer.html, site/ (wallet sign-in, css)
-server/    NestJS (TypeScript, ESM, Node ≥ 22 for node:sqlite): src/auth (Sign-In With Solana + httpOnly JWT cookie), src/rides (free-ride credits, ride lifecycle), src/db, test/flow.e2e-spec.ts
+server/    NestJS (TypeScript, ESM, Node ≥ 22 for node:sqlite): src/auth (Sign-In With Solana + httpOnly JWT cookie), src/rides (tiers, free credits, ride lifecycle, payments.service = on-chain payment check + reconcile), src/solana (price quote, RPC), src/pool (weekly prize round, public /api/tiers|pool|leaderboard), src/economy.ts (the 50/20/20/10 maths), src/db; test/*.e2e-spec.ts (fake clock + fake chain), scripts/ (e2e-browser, devnet-pay, check-rpc-shape, treasury-init)
 docs/      hackathon-plan.md (day-by-day plan with progress ticks)
 ```
 - `npm run server:dev` (root) starts Nest on :3000, which also serves `client/` – the page and `/api` share an origin, so the session cookie needs no CORS. `client/serve.sh` still serves the game alone (offline mode).
 - **Online mode is opt-in**: `play.html?ride=<id>` (`js/online.js`) takes the seed + shift length from the server and heartbeats it; without `?ride` the game is the offline prototype (headless test, e2e, viewer and the `file://` build rely on that).
+- Money: one global weekly round (UTC Mon→Mon); every paid entry (whatever the ride's outcome) is a `payments` row; shares are floored integer lamports, remainder to fees; the grand prize shown is what has *accrued* – no draw/settlement/payout code yet. Demo wallets (`DEMO_WALLETS`) get paid shifts ÷`DEMO_SCALE` (`timeScale` on the ride; the speed bound is not scaled).
 - Server checks: `npm run server:test` (vitest + supertest, in-memory SQLite, fake clock, tweetnacl keypair standing in for Phantom). The server mirrors `MAX_SPEED` / `COMPLETE_DIST_K` in `server/src/config.ts` – keep them equal to `client/js/config.js`.
 
 ## Run it

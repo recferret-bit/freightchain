@@ -13,11 +13,15 @@
   <h2>Placeholder – tabs (leaderboard, live rides, profile) are Day 2 of docs/hackathon-plan.md</h2>
   <div class="row"><span>Wallet</span><b id="wallet">…</b></div>
   <div class="row"><span>Free rides left</span><b id="free">…</b></div>
+  <div class="row"><span>Prize pool (accrued)</span><b id="pool">…</b></div>
   <div class="btns"><button id="go" disabled>START FREE RIDE (3 min)</button><button class="alt" id="out">SIGN OUT</button></div>
+  <div class="btns" id="paid"></div>
   <p class="dim" id="msg"></p>
+  <p class="dim">Paid rides use <b>devnet</b> SOL – switch your wallet to Solana Devnet. Prices are locked for 10 min when you order.</p>
 </div></main>
 <script type="module">
   import { api, signOut } from './site/wallet.js';
+  import { buyRide } from './site/pay.js';
   const $ = id => document.getElementById(id), msg = $('msg');
   let me;
   try { me = await api('me'); } catch { location.href = '/'; }
@@ -28,6 +32,27 @@
       try { const ride = await api('rides', { tier: 'free' }); location.href = `/play.html?ride=${ride.id}`; } catch (e) { msg.textContent = e.message; msg.className = 'bad'; $('go').disabled = false; }
     };
     $('out').onclick = async () => { await signOut(); location.href = '/'; };
+    // a paid ride you are owed (payment sent but the page was closed, or paid and never started)
+    try {
+      let { ride } = await api('rides/pending');
+      if (ride && ride.status !== 'created') { msg.textContent = 'Checking for an earlier payment…'; const r = await api(`rides/${ride.id}/reconcile`, {}); ride = r.status === 'paid' ? r.ride : null; }
+      if (ride?.status === 'created') {
+        const b = document.createElement('button'); b.textContent = `START YOUR PAID ${ride.tier.toUpperCase()} RIDE`; b.onclick = () => { location.href = `/play.html?ride=${ride.id}`; }; $('paid').before(b); msg.textContent = '';
+      } else msg.textContent = '';
+    } catch (e) { msg.textContent = e.message; }
+    // pool + paid tiers (Day 1: functional, not pretty – the real lobby is Day 2)
+    const sol = l => (l / 1e9).toFixed(3) + ' SOL';
+    const pool = await api('pool').catch(() => null); if (pool) $('pool').textContent = `${sol(pool.split.grand)}${pool.usd.grand != null ? ` ≈ $${pool.usd.grand}` : ''}`;
+    const { tiers } = await api('tiers').catch(() => ({ tiers: [] }));
+    for (const t of tiers.filter(t => t.usd > 0)) {
+      const b = document.createElement('button'); b.textContent = `${t.id.toUpperCase()} · $${t.usd}${t.lamports ? ` (${sol(t.lamports)})` : ''}`; b.disabled = !t.available;
+      b.onclick = async () => {
+        document.querySelectorAll('button').forEach(x => x.disabled = true); msg.className = 'dim';
+        try { const ride = await buyRide(t.id, text => { msg.textContent = text; }); location.href = `/play.html?ride=${ride.id}`; }
+        catch (e) { msg.textContent = e.message; msg.className = 'bad'; document.querySelectorAll('button').forEach(x => x.disabled = false); }
+      };
+      $('paid').append(b);
+    }
   }
 </script>
 </body>
