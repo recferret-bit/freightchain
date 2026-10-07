@@ -1,0 +1,20 @@
+// One uploaded recording batch of a ride (~15 s of the client's input events and 10 Hz samples), hash-chained to the one before it.
+// Stored as the client sent it (gzip JSON) – the verdict engine reads the whole chain back. (rideId, seq) is the key: a re-sent batch is a no-op.
+model RideBatch {
+  rideId     String
+  ride       Ride     @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  seq        Int
+  prevHash   String // the previous batch's hash; the ride id for seq 0
+  hash       String? // the client's SHA-256 of the canonical body; null = the client could not hash (no WebCrypto)
+  hashOk     Boolean // the server recomputed the same hash
+  t0         Float // game clock (driven seconds) at the first sample
+  t1         Float
+  samples    Int
+  inputs     Int
+  bytes      Int // uncompressed JSON size
+  payload    Bytes // gzip of the JSON body
+  receivedAt DateTime
+
+  @@id([rideId, seq])
+  @@schema("telemetry")
+}

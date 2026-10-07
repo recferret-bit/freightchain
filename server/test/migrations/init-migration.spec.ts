@@ -24,9 +24,9 @@ describe('prisma migrations', () => {
   });
 
   it('creates every PostgreSQL schema and every model of the Prisma schema', () => {
-    for (const schema of ['player', 'ride', 'economy', 'achievement']) expect(sql).toContain(`CREATE SCHEMA IF NOT EXISTS "${schema}"`);
+    for (const schema of ['player', 'ride', 'economy', 'achievement', 'telemetry', 'verdict']) expect(sql).toContain(`CREATE SCHEMA IF NOT EXISTS "${schema}"`);
     const models = schemaModels();
-    expect(models.map((m) => m.model).sort()).toEqual(['AchievementUnlock', 'AuthChallenge', 'Payment', 'Player', 'Ride', 'Round']);
+    expect(models.map((m) => m.model).sort()).toEqual(['AchievementUnlock', 'AuthChallenge', 'Payment', 'Player', 'Ride', 'RideBatch', 'RideVerdict', 'Round']);
     for (const { schema, model } of models) expect(sql, `${schema}.${model}`).toContain(`CREATE TABLE "${schema}"."${model}"`);
   });
 
@@ -36,6 +36,8 @@ describe('prisma migrations', () => {
     expect(sql).toMatch(/CONSTRAINT "Payment_pkey" PRIMARY KEY \("signature"\)/); // a transaction pays one ride
     expect(sql).toMatch(/PRIMARY KEY \("wallet",\s*"achievementId"\)/); // unlocks are idempotent
     expect(sql).toMatch(/"seq" BIGSERIAL NOT NULL/); // insertion order breaks timestamp ties
+    expect(sql).toMatch(/CONSTRAINT "RideBatch_pkey" PRIMARY KEY \("rideId",\s*"seq"\)/); // a re-sent recording batch is a no-op
+    expect(sql).toMatch(/CONSTRAINT "RideVerdict_pkey" PRIMARY KEY \("rideId"\)/); // one verdict per ride
   });
 
   it('is forward-only: nothing is dropped, renamed or truncated', () => {

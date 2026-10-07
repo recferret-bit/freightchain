@@ -10,13 +10,16 @@ import { GetRideQuery } from '../../application/use-cases/rides/get-ride/get-rid
 import { HeartbeatRideCommand } from '../../application/use-cases/rides/heartbeat-ride/heartbeat-ride.command.js';
 import { ReconcilePaymentCommand, type ReconcilePaymentResultDto } from '../../application/use-cases/rides/reconcile-payment/reconcile-payment.command.js';
 import { StartRideCommand } from '../../application/use-cases/rides/start-ride/start-ride.command.js';
+import { UploadBatchCommand } from '../../application/use-cases/telemetry/upload-batch/upload-batch.command.js';
+import type { BatchBody } from '../../domain/telemetry/ride-batch.entity.js';
+import type { BatchReceiptDto } from '../../domain/telemetry/telemetry.dto.js';
 import { CurrentPlayer } from '../../infrastructure/http/decorators/current-player.js';
 import { ZodBody, ZodParams } from '../../infrastructure/http/decorators/zod.js';
 import { PlayerAuthGuard } from '../../infrastructure/http/guards/player-auth.guard.js';
 import type { PlayerIdentity } from '../../infrastructure/http/types/http-request.js';
 import { rideIdParamsSchema, type RideIdParams } from '../common/dto/common.dto.js';
 import {
-  confirmPaymentBodySchema, createRideBodySchema, endRideBodySchema, heartbeatBodySchema,
+  batchBodySchema, confirmPaymentBodySchema, createRideBodySchema, endRideBodySchema, heartbeatBodySchema,
   type ConfirmPaymentBody, type CreateRideBody, type EndRideBody, type HeartbeatBody,
 } from './dto/rides.dto.js';
 
@@ -70,6 +73,12 @@ export class RidesHttpController {
   @Post(':id/heartbeat') @HttpCode(200)
   heartbeat(@CurrentPlayer() player: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodBody(heartbeatBodySchema) report: HeartbeatBody): Promise<RideDto> {
     return this.commandBus.execute<HeartbeatRideCommand, RideDto>(new HeartbeatRideCommand(player.wallet, params.id, report));
+  }
+
+  /** One ~15 s recording batch (input events + 10 Hz samples), hash-chained to the previous one. Taken while the ride runs and for a minute after it ended; a re-sent seq is a no-op. */
+  @Post(':id/batches') @HttpCode(200)
+  batch(@CurrentPlayer() player: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodBody(batchBodySchema) body: BatchBody): Promise<BatchReceiptDto> {
+    return this.commandBus.execute<UploadBatchCommand, BatchReceiptDto>(new UploadBatchCommand(player.wallet, params.id, body));
   }
 
   @Post(':id/end') @HttpCode(200)

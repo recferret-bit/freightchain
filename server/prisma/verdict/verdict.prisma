@@ -1,0 +1,23 @@
+enum VerdictStatus {
+  pending
+  verified
+  flagged
+  rejected
+
+  @@schema("verdict")
+}
+
+// The server's judgement of a finished ride's recording: input validation and human-likeness only (no re-simulation). Only `verified` rides rank for prizes.
+model RideVerdict {
+  rideId       String        @id
+  ride         Ride          @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  status       VerdictStatus
+  reasons      Json // [{ code, detail }]
+  scores       Json // what the checks measured
+  rulesVersion Int
+  judgedAt     DateTime
+  version      Int           @default(1)
+
+  @@index([status, judgedAt])
+  @@schema("verdict")
+}

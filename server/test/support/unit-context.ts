@@ -12,8 +12,9 @@ import { FakeClock } from './fake-clock.js';
 import { MemoryDb } from './in-memory/memory-db.js';
 import {
   MemoryAchievementRepository, MemoryChallengeRepository, MemoryHealthProbe, MemoryPaymentRepository, MemoryPlayerRepository,
-  MemoryRideQuery, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
+  MemoryRideBatchRepository, MemoryRideQuery, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
 } from './in-memory/memory-repositories.js';
+import { TestHasher } from './recording.js';
 
 /** Fixed rules for unit tests: 10 s free shift (140 m), treasury configured, one demo wallet. */
 export const DEMO_UNIT_WALLET = 'DemoWa11et1111111111111111111111111111111111';
@@ -54,6 +55,8 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const roundRepo = new MemoryRoundRepository(db);
   const payments = new MemoryPaymentRepository(db);
   const unlocks = new MemoryAchievementRepository(db);
+  const batches = new MemoryRideBatchRepository(db);
+  const hasher = new TestHasher();
   const health = new MemoryHealthProbe();
   const sessions = new PlayerSessionService(players, rulesPort, clock);
   const lookup = new RideLookupService(rides);
@@ -83,7 +86,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const storedPlayer = async (wallet: string) => (await players.findByWallet(wallet)) as Player;
 
   return {
-    db, clock, chain, entropy, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, health,
+    db, clock, chain, entropy, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, batches, hasher, health,
     sessions, lookup, rounds, achievements, settlement, now, player, freeRide, paidOrder, reload, storedPlayer,
   };
 }

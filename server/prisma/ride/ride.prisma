@@ -43,6 +43,8 @@ model Ride {
   reason         String?
   version        Int        @default(1) // optimistic lock: heartbeat vs end
   payment        Payment?
+  batches        RideBatch[]
+  verdict        RideVerdict?
 
   @@index([wallet, status])
   @@index([status, lastHbAt])

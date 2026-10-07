@@ -3,6 +3,7 @@ import { GrantDailyFreeRidesCommand } from '../../src/application/use-cases/play
 import { PrismaService } from '../../src/infrastructure/prisma/prisma.service.js';
 import { bindClient, newWallet, sign, type Rider } from '../support/client.js';
 import { createHarness, type Harness } from '../support/harness.js';
+import { recording } from '../support/recording.js';
 import { TREASURY } from '../support/fake-chain.js';
 
 /* What in-memory fakes can never tell you: parallel requests against a real database. Every critical section the old synchronous SQLite server got "for free"
@@ -70,6 +71,17 @@ describe('concurrency (PostgreSQL)', () => {
     expect(await freeRides(a)).toBe(5);                                    // 4 + one credit for the new day
     await parallel(PARALLEL, () => a.agent.post('/api/rides').send({ tier: '1h' })); // refunds the unstarted free ride, which would be #6
     expect(await freeRides(a)).toBe(5);                                    // clamped at the cap
+  });
+
+  it('N parallel uploads of the same recording batch store it ONCE (and every caller gets a 200)', async () => {
+    const a = await login();
+    const ride = (await a.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
+    await a.agent.post(`/api/rides/${ride.id}/start`).expect(200);
+    const [b0] = recording(ride.id, { seconds: 10 });
+    const results = await parallel(PARALLEL, () => a.agent.post(`/api/rides/${ride.id}/batches`).send(b0));
+    expect(results.every((r) => r.status === 200)).toBe(true);
+    expect(results.filter((r) => r.body.stored === true)).toHaveLength(1);
+    expect(await prisma.rideBatch.count({ where: { rideId: ride.id } })).toBe(1);
   });
 
   it('a sign-in challenge is single-use: of N parallel verifies exactly ONE wins', async () => {

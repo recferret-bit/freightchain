@@ -14,6 +14,7 @@ import { RideQueryPort } from '../../src/application/ports/rides/ride-query.port
 import { RideRepositoryPort } from '../../src/application/ports/rides/ride.repository.port.js';
 import { ClockPort } from '../../src/application/ports/shared/clock.port.js';
 import { TransactionPort } from '../../src/application/ports/shared/transaction.port.js';
+import { RideBatchRepositoryPort } from '../../src/application/ports/telemetry/ride-batch.repository.port.js';
 import { PrismaService } from '../../src/infrastructure/prisma/prisma.service.js';
 import { truncateAllTables } from '../../src/infrastructure/prisma/truncate.js';
 import { FakeChain, TREASURY } from './fake-chain.js';
@@ -21,7 +22,7 @@ import { FakeClock } from './fake-clock.js';
 import { MemoryDb } from './in-memory/memory-db.js';
 import {
   MemoryAchievementRepository, MemoryChallengeRepository, MemoryHealthProbe, MemoryPaymentRepository, MemoryPlayerRepository,
-  MemoryRideQuery, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
+  MemoryRideBatchRepository, MemoryRideQuery, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
 } from './in-memory/memory-repositories.js';
 
 export type Persistence = 'memory' | 'postgres';
@@ -70,6 +71,7 @@ export async function createHarness(persistence: Persistence, env: Record<string
       .overrideProvider(RoundRepositoryPort).useValue(new MemoryRoundRepository(memory))
       .overrideProvider(PaymentRepositoryPort).useValue(new MemoryPaymentRepository(memory))
       .overrideProvider(AchievementRepositoryPort).useValue(new MemoryAchievementRepository(memory))
+      .overrideProvider(RideBatchRepositoryPort).useValue(new MemoryRideBatchRepository(memory))
       .overrideProvider(TransactionPort).useValue(new MemoryTransaction())
       .overrideProvider(HealthProbePort).useValue(new MemoryHealthProbe());
   }

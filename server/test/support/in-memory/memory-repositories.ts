@@ -17,6 +17,8 @@ import { PlayerRepositoryPort } from '../../../src/application/ports/players/pla
 import { RideQueryPort, type FinishedRideRow, type LeaderboardRow, type LiveRideRow, type RecentRideRow, type RideSummary, type RideTotalsRow, type UpcomingRideRow } from '../../../src/application/ports/rides/ride-query.port.js';
 import { RideRepositoryPort } from '../../../src/application/ports/rides/ride.repository.port.js';
 import { TransactionPort } from '../../../src/application/ports/shared/transaction.port.js';
+import { RideBatchRepositoryPort } from '../../../src/application/ports/telemetry/ride-batch.repository.port.js';
+import { RideBatch } from '../../../src/domain/telemetry/ride-batch.entity.js';
 import { MemoryDb } from './memory-db.js';
 
 /* In-memory twins of the Prisma repositories: same contracts (optimistic versions, unique keys, orderings), no database.
@@ -259,6 +261,22 @@ export class MemoryPaymentRepository extends PaymentRepositoryPort {
   async totalsOf(wallet: string): Promise<{ lamports: number; count: number }> {
     const mine = this.db.payments.filter((p) => p.wallet === wallet);
     return { lamports: mine.reduce((sum, p) => sum + p.lamports, 0), count: mine.length };
+  }
+}
+
+@Injectable()
+export class MemoryRideBatchRepository extends RideBatchRepositoryPort {
+  constructor(private readonly db: MemoryDb) { super(); }
+
+  async insert(batch: RideBatch): Promise<boolean> {
+    const key = `${batch.rideId}:${batch.seq}`;
+    if (this.db.batches.has(key)) return false;
+    this.db.batches.set(key, batch.snapshot());
+    return true;
+  }
+
+  async listByRide(rideId: string): Promise<RideBatch[]> {
+    return [...this.db.batches.values()].filter((b) => b.rideId === rideId).sort((a, b) => a.seq - b.seq).map((b) => RideBatch.restore(b));
   }
 }
 

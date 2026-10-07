@@ -109,6 +109,12 @@ export class Ride {
     return this.p.status === RideStatus.Running && (this.p.lastHbAt?.getTime() ?? 0) < now.getTime() - rules.hbTimeoutMs;
   }
 
+  /** Recording batches are taken while the ride runs and for `graceMs` after it ended (the client flushes its last batch around /end). */
+  acceptsRecording(now: Date, graceMs: number): boolean {
+    if (this.p.status === RideStatus.Running) return true;
+    return this.p.startedAt !== null && this.p.endedAt !== null && now.getTime() - this.p.endedAt.getTime() <= graceMs;
+  }
+
   /** Heartbeats closer together than hbMinIntervalMs are ignored – no free progress by spamming. */
   canAcceptHeartbeat(now: Date, rules: RideTimingRules): boolean {
     return now.getTime() - (this.p.lastHbAt?.getTime() ?? 0) >= rules.hbMinIntervalMs;
