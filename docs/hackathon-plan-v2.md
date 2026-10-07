@@ -85,7 +85,7 @@ chain           not a program: SystemProgram.transfer + Memo, checked by the ser
 /r/:id          public ride page — only if time allows
 ```
 
-On localhost, an IP or `file://` the three hosts collapse into one origin (`client/js/hosts.js`), and `npm run server:dev` serves everything on :3000.
+On localhost, an IP or `file://` the hosts (apex, `ride.`, `api.`, `storybook.`) collapse into one origin (`client/js/hosts.js`), and `npm run server:dev` serves everything on :3000.
 
 - **Auth** — done. Sign-In With Solana: server-built challenge (5 min, single use) → wallet `signMessage` → ed25519 verified over the stored message → httpOnly `fc_session` cookie (Domain = apex in production). Verified end to end from the landing with a fake wallet that signs with WebCrypto ed25519, including a forged signature being refused. **Never run with a real Phantom or Solflare.**
 - **Ride lifecycle** — done. Server owns `seed`, `minSeconds`, `completeDist`, and the verdict `completed / abandoned / failed`. Heartbeat every 10 s. A gap > 150 s fails the ride. Distance may grow at ≤ 28 m/s · 1.2. This is server-timed telemetry; a modified client can still lie inside the speed bound. Fixed-point replay (`technical_design_document.html`) is roadmap.

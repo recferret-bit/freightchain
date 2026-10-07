@@ -5,12 +5,14 @@ import { KINDS } from './world/props.js';
 import { buildGantry } from './world/gantry.js';
 import { THEMES } from './themes/index.js';
 import { TYPES } from './themes/_shared/landmarks/index.js';
+import { GAME_BASE } from './hosts.js';
 
 /* Model viewer (viewer.html): a separate scene with every 3D object of the game except the player's own freighter/trailer –
    traffic vehicles, and per route the scenery props, roadside furniture and finish gantry – built by the SAME code the game uses.
    Orbit / zoom / pan are hand-rolled (no extra imports). Selection lives in location.hash so a view can be linked. */
 
 const $ = id => document.getElementById(id);
+$('back').href = `${GAME_BASE}/play.html`;   // on storybook.* the game lives on ride.*
 const scene = new THREE.Scene(); scene.background = new THREE.Color(0x25282c);
 const camera = new THREE.PerspectiveCamera(45, 1, .05, 600);
 const grid = new THREE.GridHelper(60, 60, 0x6a7078, 0x3a3f45); grid.position.y = -.002; scene.add(grid);

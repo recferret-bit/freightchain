@@ -1,0 +1,31 @@
+# nginx site for storybook.__ROOT__ – the model viewer (client/viewer.html), one more name for the same app container. Installed as its OWN site file
+# (/etc/nginx/sites-available/freightchain-storybook) by deploy/scripts/remote/setup.sh when absent, so an already-installed main site (and certbot's edits to it) is never rewritten.
+# `/` shows viewer.html (the app would serve the landing there); static files come from the app; the API is not exposed on this name.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name storybook.__ROOT__;
+
+    client_max_body_size 1m;
+
+    location = / {
+        proxy_pass http://127.0.0.1:__PORT__/viewer.html;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /api/ { return 404; }
+
+    location / {
+        proxy_pass http://127.0.0.1:__PORT__;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+    }
+}

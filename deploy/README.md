@@ -3,19 +3,20 @@
 Semi-automatic deploy to one Linux server: **you run one command, it shows the plan, asks, then does everything**.
 Docker runs the app + PostgreSQL; the host's nginx terminates TLS (Let's Encrypt, no Cloudflare) and proxies to `127.0.0.1`.
 
-## Three names, one app
-`DEPLOY_DOMAIN` is the **apex** (`freightchain.fun`); the other two names are added automatically:
+## Four names, one app
+`DEPLOY_DOMAIN` is the **apex** (`freightchain.fun`); the other three names are added automatically:
 
 | name | what | nginx |
 |---|---|---|
 | `freightchain.fun` | landing (`/`, the Vite build in `landing/`) + lobby | proxy → app |
 | `ride.freightchain.fun` | the game (`play.html`) | proxy → app |
 | `api.freightchain.fun` | the API | only `/api/` is proxied, everything else is 404 |
+| `storybook.freightchain.fun` | the model viewer (`client/viewer.html`) | `/` → `viewer.html`, static files proxied, `/api/` is 404 – its own site file `freightchain-storybook` (template `nginx/storybook.conf.template`) |
 
-One certificate covers all three. The pages call the API cross-origin: the client derives `api.<apex>` / `ride.<apex>` from its own host (`client/js/hosts.js`; on localhost / an IP / `file://` everything stays one origin),
+One certificate covers all four. The pages call the API cross-origin: the client derives `api.<apex>` / `ride.<apex>` from its own host (`client/js/hosts.js`; on localhost / an IP / `file://` everything stays one origin),
 the server allows exactly `https://<apex>` and `https://ride.<apex>` (`CORS_ORIGINS`) with credentials, and the session cookie is issued for the apex (`COOKIE_DOMAIN`) so the lobby, the game and the API share it.
 `APP_DOMAIN` (shown in the wallet's sign-in message) is the apex, because riders sign in on the lobby. All of these are derived from `DEPLOY_DOMAIN` – never set them by hand.
-**Another domain / subdomain later:** add a `server` block to `deploy/nginx/site.conf.template` (and, on the server, to `/etc/nginx/sites-available/freightchain` + `certbot --nginx --expand -d …`), and add its origin to `CORS_ORIGINS` if its pages call the API.
+**Another domain / subdomain later:** add a template under `deploy/nginx/` like `storybook.conf.template` (its own site file installed by `scripts/remote/setup.sh` when absent, so a server that is already set up gets it too), add the name to `NAMES` there + the DNS record, add a smoke check, make `client/js/hosts.js` strip its prefix, then run `npm run deploy:setup` (`deploy` also runs it by itself while a site file is missing) – and add its origin to `CORS_ORIGINS` if its pages call the API.
 
 ```sh
 npm run deploy:init     # once: creates deploy/.env (secrets generated) + deploy/secrets/treasury.json
@@ -26,7 +27,7 @@ npm run deploy          # checks → plan → confirm → upload → build → b
 
 ## Prerequisites
 - ssh key access: `ssh root@<DEPLOY_HOST>` works without a password prompt.
-- **Three DNS `A` records** (`@`, `ride`, `api`) pointing at the server IP. The session cookie is `Secure` in production, so the site must be https; certbot needs the DNS to resolve first (setup stops with exit 3 and names the record that doesn't).
+- **Four DNS `A` records** (`@`, `ride`, `api`, `storybook`) pointing at the server IP. The session cookie is `Secure` in production, so the site must be https; certbot needs the DNS to resolve first (setup stops with exit 3 and names the record that doesn't).
 - Locally: node, npm, git, docker is **not** needed (the server builds the image). `server/node_modules` must be installed (`npm ci` in `server/`) – the env is validated with the server's own production schema.
 - On the server: docker + compose plugin, nginx, certbot (`python3-certbot-nginx`). Setup does not install them.
 
@@ -51,7 +52,7 @@ npm run deploy          # checks → plan → confirm → upload → build → b
 | `npm run deploy:logs` | app logs (`-- -f` to follow) |
 | `npm run deploy:backup` | `pg_dump` now → `backups/` |
 | `npm run deploy:rollback` | back to the previous release (`-- -y` to skip the question) |
-| `npm run deploy:smoke` | smoke test of the three public URLs: pages, API-host isolation, CORS, a throwaway sign-in + cookie flags/domain (creates one throwaway player) |
+| `npm run deploy:smoke` | smoke test of the four public URLs: pages, the model viewer + API-host isolation, CORS, a throwaway sign-in + cookie flags/domain (creates one throwaway player) |
 
 ## What a release does (on the server, `scripts/remote/release.sh`)
 1. build the image `freightchain-server:<release>` from the uploaded commit (server + `client/` + the landing's Vite build; the landing's tests gate the image – `LANDING_DIR` is set by the Dockerfile)
@@ -74,8 +75,8 @@ Docker project `freightchain-prod`: `postgres` (no published port, named volume 
 
 ## What the first deploy changes on the server
 - creates `/srv/freightchain/…`
-- adds `/etc/nginx/sites-*/freightchain` with the three names (only if absent; removed again if `nginx -t` fails) and reloads nginx
-- runs `certbot --nginx -d <apex> -d ride.<apex> -d api.<apex> --redirect` (re-runs with `--expand` if the certificate lacks a name)
+- adds `/etc/nginx/sites-*/freightchain` (apex, `ride.`, `api.`) and `freightchain-storybook` (`storybook.`) (each only if absent; removed again if `nginx -t` fails) and reloads nginx
+- runs `certbot --nginx -d <apex> -d ride.<apex> -d api.<apex> -d storybook.<apex> --redirect` (re-runs with `--expand` if the certificate lacks a name)
 - starts two containers and one volume
 
 It touches nothing else (other nginx sites, other containers).
