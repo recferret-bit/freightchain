@@ -5,7 +5,8 @@ export const sleep = (ms: number): Promise<void> => new Promise((resolve) => set
 
 /* The RPC endpoints (docs/paid-tickets-plan.md §2.9 "Congestion"): READS go to the primary and, when it fails, to each SOLANA_RPC_FALLBACKS endpoint in turn with an
    exponential backoff (250 ms, 500 ms, …); WRITES (sending a transaction) only ever go to the primary – a public fallback must never be the one that relays our
-   transactions. A failure everywhere is "unavailable" (503), never "not found". */
+   transactions – and so do reads whose "nothing there" answer would be acted on (is a signature unknown? a fallback without full history would say so wrongly).
+   A failure everywhere is "unavailable" (503), never "not found". */
 export class SolanaRpc {
   constructor(
     readonly primary: Connection,
@@ -27,7 +28,8 @@ export class SolanaRpc {
     throw new ServiceUnavailableError('Solana RPC unavailable');
   }
 
-  async write<T>(call: (c: Connection) => Promise<T>): Promise<T> {
+  /** the primary only: sends, and reads that must not come from a node with less history */
+  async primaryOnly<T>(call: (c: Connection) => Promise<T>): Promise<T> {
     try {
       return await call(this.primary);
     } catch {

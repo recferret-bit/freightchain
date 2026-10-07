@@ -22,11 +22,11 @@ describe('SolanaRpc', () => {
     await expect(rpc.read(async () => { throw new Error('down'); })).rejects.toBeInstanceOf(ServiceUnavailableError);
   });
 
-  it('writes go to the primary only', async () => {
+  it('writes (and history-sensitive reads) go to the primary only', async () => {
     const rpc = new SolanaRpc(conn('primary'), [conn('f1')], async () => undefined);
     const asked: string[] = [];
-    await expect(rpc.write(async (c) => { asked.push(nameOf(c)); throw new Error('down'); })).rejects.toBeInstanceOf(ServiceUnavailableError);
+    await expect(rpc.primaryOnly(async (c) => { asked.push(nameOf(c)); throw new Error('down'); })).rejects.toBeInstanceOf(ServiceUnavailableError);
     expect(asked).toEqual(['primary']);
-    expect(await rpc.write(async (c) => nameOf(c))).toBe('primary');
+    expect(await rpc.primaryOnly(async (c) => nameOf(c))).toBe('primary');
   });
 });

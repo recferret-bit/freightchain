@@ -180,7 +180,7 @@ describe('ProgramChainAdapter – the gas sponsor', () => {
     tx.partialSign(buyer); // what Phantom's signTransaction does
     return { ...h, built, signed: tx.serialize({ requireAllSignatures: false, verifySignatures: false }).toString('base64') };
   }
-  const healthy = (statuses: unknown[], sent: Buffer[] = [], height = 100) => ({
+  const healthy = (statuses: unknown[], sent: Buffer[] = [], height = 4100) => ({
     getBlockHeight: async () => height, getBalance: async () => 1e9,
     simulateTransaction: async () => ({ value: { err: null, logs: [] } }),
     sendRawTransaction: async (raw: Buffer) => { sent.push(raw); return 'x'; },
@@ -216,12 +216,31 @@ describe('ProgramChainAdapter – the gas sponsor', () => {
     await expect(self.adapter.cosignAndSend({ signedTransaction: stale.signed, expectedMessage: stale.built.message, lastValidBlockHeight: 4242 })).rejects.toBeInstanceOf(ServiceUnavailableError);
   });
 
-  it('dropped (blockhash gone, never seen) → 409 expired; landed but failed → 409 failed', async () => {
+  it('dropped (blockhash gone, never seen) → 409 dropped; landed but failed → 409 failed', async () => {
     let height = 4000;
     const dropped = await signedBuy({ ...healthy([]), getBlockHeight: async () => (height += 200) });
-    await expect(dropped.adapter.cosignAndSend({ signedTransaction: dropped.signed, expectedMessage: dropped.built.message, lastValidBlockHeight: 4242 })).rejects.toMatchObject({ statusCode: 409, errorCode: 'transaction_expired' });
+    await expect(dropped.adapter.cosignAndSend({ signedTransaction: dropped.signed, expectedMessage: dropped.built.message, lastValidBlockHeight: 4242 })).rejects.toMatchObject({ statusCode: 409, errorCode: 'transaction_dropped' });
     const failed = await signedBuy(healthy([{ confirmationStatus: 'confirmed', err: { InstructionError: [2, { Custom: 6006 }] } }]));
     await expect(failed.adapter.cosignAndSend({ signedTransaction: failed.signed, expectedMessage: failed.built.message, lastValidBlockHeight: 4242 })).rejects.toMatchObject({ errorCode: 'transaction_failed' });
+  });
+
+  it('an inflated lastValidBlockHeight (not the stored one) is 400 before anything is sent; a network that never answers ends the loop (409 unconfirmed)', async () => {
+    const sent: Buffer[] = [];
+    const inflated = await signedBuy(healthy([], sent));
+    await expect(inflated.adapter.cosignAndSend({ signedTransaction: inflated.signed, expectedMessage: inflated.built.message, lastValidBlockHeight: 1_000_000 }))
+      .rejects.toMatchObject({ statusCode: 400, errorCode: 'block_height_invalid' });
+    expect(sent.length).toBe(0);
+    const silent = await signedBuy(healthy([], sent, 4000));
+    await expect(silent.adapter.cosignAndSend({ signedTransaction: silent.signed, expectedMessage: silent.built.message, lastValidBlockHeight: 4242 }))
+      .rejects.toMatchObject({ statusCode: 409, errorCode: 'transaction_unconfirmed' });
+    expect(sent.length).toBe(60);
+  });
+
+  it('signatureStatus never says expired on a fallback\'s word: the primary down is 503', async () => {
+    const h = adapterWith({ getSignatureStatuses: async () => { throw new Error('down'); } }, { solanaRpcFallbacks: ['http://127.0.0.1:2'] });
+    const fallback = (h.adapter as unknown as { rpc: { fallbacks: object[] } }).rpc.fallbacks[0]!;
+    Object.assign(fallback, { getSignatureStatuses: async () => ({ value: [null] }), getBlockHeight: async () => 1e9 });
+    await expect(h.adapter.signatureStatus('sig', 100)).rejects.toBeInstanceOf(ServiceUnavailableError);
   });
 
   it('signatureStatus: the commitment when known, expired past the block height, unknown before', async () => {

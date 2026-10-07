@@ -19,6 +19,10 @@ export const CU_LIMITS = { buy: 30_000, refund: 18_000, fail_pool: 6_000, pay_pr
 /** keep the sponsor able to pay a fee + one Ticket rent (~0.0015 SOL, returned at refund) */
 const SPONSOR_SPEND_FLOOR_LAMPORTS = 2_000_000;
 const RESEND_MS = 2_000;
+/** a real lastValidBlockHeight is ~150 blocks ahead of the chain; anything far beyond is not the one stored with the order */
+const MAX_BLOCKS_AHEAD = 300;
+/** 60 × 2 s ≈ the life of a blockhash: the loop ends even if the network never answers */
+const MAX_RESENDS = 60;
 const MAX_SIGNATURE_PAGES = 10;
 const STATUS = ['open', 'active', 'refunding', 'settled', 'cancelled'] as const;
 
@@ -228,6 +232,7 @@ export class ProgramChainAdapter extends PoolChainPort {
       this.rpc.read((x) => x.getBalance(sponsor.publicKey, this.commitment)),
     ]);
     if (height > i.lastValidBlockHeight) throw new BadRequestError('the transaction\'s blockhash expired – rebuild it', 'transaction_expired');
+    if (i.lastValidBlockHeight - height > MAX_BLOCKS_AHEAD) throw new BadRequestError('lastValidBlockHeight is not the one the transaction was built with', 'block_height_invalid');
     if (balance < this.env.feePayerMinSol * 1e9) this.logger.warn(`gas sponsor ${sponsor.publicKey.toBase58()} is low: ${balance} lamports – top it up`);
     if (balance < SPONSOR_SPEND_FLOOR_LAMPORTS) throw new ServiceUnavailableError('the gas sponsor is out of funds – pay the network fee yourself');
     const raw = Buffer.from(addFeePayerSignature(wire, sponsor.secretKey));
@@ -235,14 +240,15 @@ export class ProgramChainAdapter extends PoolChainPort {
     const sim = await this.rpc.read((x) => x.simulateTransaction(VersionedTransaction.deserialize(raw), { sigVerify: true, commitment: this.commitment }));
     if (sim.value.err) throw new ConflictError(`the transaction would fail: ${this.reason(sim.value.err, sim.value.logs ?? [])}`, 'transaction_would_fail');
     // send with maxRetries 0 and re-send ourselves until it lands or its blockhash is gone (the recommended pattern under congestion)
-    for (;;) {
-      await this.rpc.write((x) => x.sendRawTransaction(raw, { skipPreflight: true, maxRetries: 0 })).catch((e: unknown) => this.logger.debug(`re-send: ${(e as Error).message}`));
+    for (let n = 0; n < MAX_RESENDS; n++) {
+      await this.rpc.primaryOnly((x) => x.sendRawTransaction(raw, { skipPreflight: true, maxRetries: 0 })).catch((e: unknown) => this.logger.debug(`re-send: ${(e as Error).message}`));
       await this.wait(RESEND_MS);
       const { status, err } = await this.status(signature, i.lastValidBlockHeight);
       if (err) throw new ConflictError(`the transaction failed on chain: ${this.reason(err, [])}`, 'transaction_failed');
       if (status === 'finalized' || (status === 'confirmed' && this.commitment === 'confirmed')) return { signature, lastValidBlockHeight: i.lastValidBlockHeight };
-      if (status === 'expired') throw new ConflictError('the network dropped the transaction – nothing was charged; rebuild it', 'transaction_expired');
+      if (status === 'expired') throw new ConflictError('the network dropped the transaction – nothing was charged; rebuild it', 'transaction_dropped');
     }
+    throw new ConflictError(`transaction ${signature} was sent but is not confirmed yet – it is credited when it lands`, 'transaction_unconfirmed');
   }
 
   /** A landed transaction reports its commitment even when it failed (readEvents calls that one invalid). */
@@ -250,11 +256,13 @@ export class ProgramChainAdapter extends PoolChainPort {
     return (await this.status(signature, lastValidBlockHeight)).status;
   }
 
+  /** Both answers from the PRIMARY: 'expired' voids credited tickets, so "unknown signature" must not come from a fallback with less history (503 = ask again later). */
   private async status(signature: string, lastValidBlockHeight: number): Promise<{ status: SignatureStatus; err: unknown }> {
-    const { value } = await this.rpc.read((x) => x.getSignatureStatuses([signature], { searchTransactionHistory: true }));
-    const s = value[0];
-    if (s?.confirmationStatus) return { status: s.confirmationStatus, err: s.err };
-    const height = await this.rpc.read((x) => x.getBlockHeight(this.commitment));
-    return { status: height > lastValidBlockHeight ? 'expired' : 'unknown', err: null };
+    return this.rpc.primaryOnly(async (x) => {
+      const s = (await x.getSignatureStatuses([signature], { searchTransactionHistory: true })).value[0];
+      if (s?.confirmationStatus) return { status: s.confirmationStatus, err: s.err };
+      const height = await x.getBlockHeight(this.commitment);
+      return { status: height > lastValidBlockHeight ? 'expired' : 'unknown', err: null };
+    });
   }
 }
