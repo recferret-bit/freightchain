@@ -189,8 +189,8 @@ export class ProgramChainAdapter extends PoolChainPort {
   }
 
   async feeQuote(i: { poolId: number | null; kind: ChainTxKind }): Promise<FeeQuote> {
-    const c = this.codec;
-    const hot = i.poolId === null ? [c.programId.toBase58()] : [c.poolPda(i.poolId).toBase58(), c.vaultPda(i.poolId).toBase58()];
+    // no pool: the program's own recent fees – or, with no program configured (transfer mode), the network's
+    const hot = i.poolId !== null ? [this.codec.poolPda(i.poolId).toBase58(), this.codec.vaultPda(i.poolId).toBase58()] : this.env.ticketProgramId ? [this.codec.programId.toBase58()] : [];
     const priorityMicrolamports = await this.fees.priorityMicrolamports(hot);
     const computeUnits = i.kind === 'refund' ? CU_LIMITS.refund + CU_LIMITS.fail_pool : CU_LIMITS[i.kind];
     const signatures = this.sponsor && (i.kind === 'buy' || i.kind === 'refund') ? 2 : 1;

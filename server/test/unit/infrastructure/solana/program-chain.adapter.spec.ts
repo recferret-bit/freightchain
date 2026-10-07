@@ -148,6 +148,8 @@ describe('ProgramChainAdapter – reads', () => {
     expect((await adapterWith(rpc, sponsored).adapter.feeQuote({ poolId: null, kind: 'buy' })).estimatedFeeLamports).toBe(10_300);
     expect(asked).toEqual([fx.programId]);
     expect((await adapterWith(rpc, sponsored).adapter.feeQuote({ poolId: 0, kind: 'pay_prize' })).estimatedFeeLamports).toBe(5_000 + 170);
+    await adapterWith(rpc, { ticketProgramId: '' }).adapter.feeQuote({ poolId: null, kind: 'buy' }); // transfer mode: the network's own recent fees
+    expect(asked).toEqual([]);
   });
 
   it('simulate names the program error; an RPC failure is 503; no program configured is 503', async () => {

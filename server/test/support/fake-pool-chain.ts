@@ -38,6 +38,10 @@ export class FakePoolChain extends PoolChainPort {
   blockHeight = 100;
   lastValidBlockHeight = 250;
   readCount = 0;
+  /** every feeQuote input, in order */
+  readonly feeQuotes: { poolId: number | null; kind: ChainTxKind }[] = [];
+  /** true = the RPC is down: every network call is a 503 */
+  rpcDown = false;
   private slot = 0;
 
   reset(): void {
@@ -45,6 +49,7 @@ export class FakePoolChain extends PoolChainPort {
     this.quote = { priorityMicrolamports: 1_000, computeUnits: 30_000, estimatedFeeLamports: 5_030 };
     this.simulation = { ok: true, unitsConsumed: 20_000 };
     this.sponsor = null; this.cosignResult = null; this.blockHeight = 100; this.lastValidBlockHeight = 250; this.readCount = 0; this.slot = 0;
+    this.feeQuotes.length = 0; this.rpcDown = false;
   }
 
   // ---- scripting
@@ -79,12 +84,14 @@ export class FakePoolChain extends PoolChainPort {
   }
 
   async readEvents(signature: string): Promise<ReadEventsAnswer> {
+    this.up();
     this.readCount++;
     return this.events.get(signature) ?? 'pending';
   }
-  async readPool(poolId: number): Promise<PoolChainState | null> { return this.pools.get(poolId) ?? null; }
+  async readPool(poolId: number): Promise<PoolChainState | null> { this.up(); return this.pools.get(poolId) ?? null; }
 
   async recentProgramSignatures(after: string | null, limit: number): Promise<ProgramSignature[]> {
+    this.up();
     if (after === null) return this.signatures.slice(-limit);
     const at = this.signatures.findIndex((s) => s.signature === after);
     return this.signatures.slice(at + 1, at + 1 + limit);
@@ -95,10 +102,11 @@ export class FakePoolChain extends PoolChainPort {
     return () => { this.listeners.delete(onSignature); };
   }
 
-  async feeQuote(): Promise<FeeQuote> { return { ...this.quote }; }
-  async simulate(_tx: UnsignedPaymentTx): Promise<{ ok: true; unitsConsumed: number } | { ok: false; reason: string }> { return this.simulation; }
+  async feeQuote(input: { poolId: number | null; kind: ChainTxKind }): Promise<FeeQuote> { this.up(); this.feeQuotes.push(input); return { ...this.quote }; }
+  async simulate(_tx: UnsignedPaymentTx): Promise<{ ok: true; unitsConsumed: number } | { ok: false; reason: string }> { this.up(); return this.simulation; }
 
   async cosignAndSend(input: { signedTransaction: string; expectedMessage: string; lastValidBlockHeight: number }): Promise<{ signature: string; lastValidBlockHeight: number }> {
+    this.up();
     if (this.cosignResult instanceof Error) throw this.cosignResult;
     if (!this.sponsor) throw new ServiceUnavailableError('no gas sponsor is configured – pay the network fee yourself');
     const wire = checkUserSignedTransaction(Buffer.from(input.signedTransaction, 'base64'), Buffer.from(input.expectedMessage, 'base64'), this.sponsor.publicKey);
@@ -108,11 +116,17 @@ export class FakePoolChain extends PoolChainPort {
   }
 
   async signatureStatus(signature: string, lastValidBlockHeight: number): Promise<SignatureStatus> {
+    this.up();
     return this.statuses.get(signature) ?? (this.blockHeight > lastValidBlockHeight ? 'expired' : 'unknown');
   }
 
   /** a real unsigned transaction: one instruction to FAKE_PROGRAM_ID carrying the input as JSON, signed by `signers` (+ the fee payer) */
+  private up(): void {
+    if (this.rpcDown) throw new ServiceUnavailableError('Solana RPC unavailable');
+  }
+
   private build(kind: ChainTxKind, input: Record<string, unknown>, feePayer: string, signers: string[]): BuiltTransaction {
+    this.up();
     const blockhash = Keypair.generate().publicKey.toBase58();
     const ix = new TransactionInstruction({
       programId: new PublicKey(FAKE_PROGRAM_ID), data: Buffer.from(JSON.stringify({ kind, ...input })),
