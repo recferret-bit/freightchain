@@ -1,3 +1,4 @@
+import { RecordingAnalytics } from './recording-analytics.js';
 import { RulesConfigPort, type RulesConfig } from '../../src/application/ports/config/rules-config.port.js';
 import { EntropyPort } from '../../src/application/ports/shared/entropy.port.js';
 import { AchievementService } from '../../src/application/services/achievement.service.js';
@@ -55,9 +56,10 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const payments = new MemoryPaymentRepository(db);
   const unlocks = new MemoryAchievementRepository(db);
   const health = new MemoryHealthProbe();
-  const sessions = new PlayerSessionService(players, rulesPort, clock);
+  const analytics = new RecordingAnalytics();
+  const sessions = new PlayerSessionService(players, rulesPort, clock, analytics);
   const lookup = new RideLookupService(rides);
-  const rounds = new RoundService(roundRepo, rulesPort, transactions, clock);
+  const rounds = new RoundService(roundRepo, rulesPort, transactions, clock, analytics);
   const achievements = new AchievementService(unlocks, rideQuery, clock);
   const settlement = new PaymentSettlementService(rounds, roundRepo, payments, rides, players, lookup, transactions, clock);
 
@@ -83,7 +85,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const storedPlayer = async (wallet: string) => (await players.findByWallet(wallet)) as Player;
 
   return {
-    db, clock, chain, entropy, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, health,
+    db, clock, chain, entropy, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, health, analytics,
     sessions, lookup, rounds, achievements, settlement, now, player, freeRide, paidOrder, reload, storedPlayer,
   };
 }

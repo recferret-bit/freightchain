@@ -45,8 +45,10 @@ export class MemoryPlayerRepository extends PlayerRepositoryPort {
 
   findByWalletForUpdate(wallet: string): Promise<Player | null> { return this.findByWallet(wallet); }
 
-  async insertIfAbsent(player: Player): Promise<void> {
-    if (!this.db.players.has(player.wallet)) this.db.players.set(player.wallet, player.snapshot());
+  async insertIfAbsent(player: Player): Promise<boolean> {
+    if (this.db.players.has(player.wallet)) return false;
+    this.db.players.set(player.wallet, player.snapshot());
+    return true;
   }
 
   async grantDailyFreeRides(today: string): Promise<number> {

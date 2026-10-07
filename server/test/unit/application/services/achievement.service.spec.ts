@@ -15,18 +15,19 @@ describe('AchievementService', () => {
       listByWallet = (w: string) => ctx.unlocks.listByWallet(w);
     }
     const service = new AchievementService(new Counting(), ctx.rideQuery, ctx.clock);
-    expect(await service.evaluate('w', 'r1', facts({ started: 1, completed: 1, cleanRun: true }))).toEqual(['first-mile', 'shift-complete', 'clean-run']);
+    const ids = (rows: { id: string }[]) => rows.map((u) => u.id);
+    expect(ids(await service.evaluate('w', 'r1', facts({ started: 1, completed: 1, cleanRun: true })))).toEqual(['first-mile', 'shift-complete', 'clean-run']);
     expect(inserts).toBe(1);
-    expect(await service.evaluate('w', 'r2', facts({ started: 2, completed: 2, cleanRun: true }))).toEqual([]);
+    expect(ids(await service.evaluate('w', 'r2', facts({ started: 2, completed: 2, cleanRun: true })))).toEqual([]);
     expect(inserts).toBe(1); // nothing new → no insert at all
-    expect(await service.evaluate('w', null, facts({}))).toEqual([]); // weaker facts later never remove
+    expect(ids(await service.evaluate('w', null, facts({})))).toEqual([]); // weaker facts later never remove
     expect((await ctx.unlocks.listByWallet('w')).map((u) => u.rideId)).toEqual(['r1', 'r1', 'r1']);
   });
 
   it('reads the facts itself when the caller has none', async () => {
     const ctx = unitContext();
     await ctx.freeRide('w', true);
-    expect(await ctx.achievements.evaluate('w')).toEqual(['first-mile']);
+    expect((await ctx.achievements.evaluate('w')).map((u) => u.id)).toEqual(['first-mile']);
   });
 
   it('lists the whole catalogue with the unlock times; top 20 is marked "awarded at round close"', async () => {

@@ -5,8 +5,11 @@ import { UnauthorizedError } from '../../../../domain/shared/errors.js';
 import { ChallengeRepositoryPort } from '../../../ports/auth/challenge.repository.port.js';
 import { SignatureVerifierPort } from '../../../ports/auth/signature-verifier.port.js';
 import { TokenSignerPort } from '../../../ports/auth/token-signer.port.js';
+import { AnalyticsPort } from '../../../ports/analytics/analytics.port.js';
 import { RulesConfigPort } from '../../../ports/config/rules-config.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
+import { playerSignedIn } from '../../../services/analytics-events.js';
+import { emitAnalytics } from '../../../services/analytics-emit.js';
 import { PlayerSessionService } from '../../../services/player-session.service.js';
 import { demoScaleOf, isDemoWallet } from '../../../services/demo.js';
 import { VerifySignInCommand, type SignInResultDto } from './verify-signin.command.js';
@@ -21,6 +24,7 @@ export class VerifySignInHandler implements ICommandHandler<VerifySignInCommand,
     private readonly sessions: PlayerSessionService,
     private readonly rules: RulesConfigPort,
     private readonly clock: ClockPort,
+    private readonly analytics: AnalyticsPort,
   ) {}
 
   async execute(command: VerifySignInCommand): Promise<SignInResultDto> {
@@ -32,6 +36,10 @@ export class VerifySignInHandler implements ICommandHandler<VerifySignInCommand,
     const now = this.clock.now();
     const player = await this.sessions.touch(wallet, now);
     const rules = this.rules.get();
-    return { profile: toMeDto(player, now, isDemoWallet(rules, wallet), demoScaleOf(rules)), session };
+    const result = { profile: toMeDto(player, now, isDemoWallet(rules, wallet), demoScaleOf(rules)), session };
+    emitAnalytics(this.analytics, () => playerSignedIn({
+      wallet, now, isNewPlayer: player.isNewPlayer, isDemo: isDemoWallet(rules, wallet), freeRides: player.freeRides, freeRidesMax: player.freeRidesMax, demoScale: demoScaleOf(rules), createdAt: player.createdAt,
+    }));
+    return result;
   }
 }

@@ -1,14 +1,25 @@
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { toRideDto, type RideDto } from '../../../../domain/rides/ride.dto.js';
+import type { RideProps } from '../../../../domain/rides/ride.entity.js';
 import { RideStatus } from '../../../../domain/rides/ride-status.js';
 import { ConflictError, NotFoundError } from '../../../../domain/shared/errors.js';
+import { AnalyticsPort } from '../../../ports/analytics/analytics.port.js';
 import { RulesConfigPort } from '../../../ports/config/rules-config.port.js';
 import { PlayerRepositoryPort } from '../../../ports/players/player.repository.port.js';
 import { RideRepositoryPort } from '../../../ports/rides/ride.repository.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
 import { TransactionPort } from '../../../ports/shared/transaction.port.js';
+import { rideFailed, rideStarted } from '../../../services/analytics-events.js';
+import { emitAnalytics } from '../../../services/analytics-emit.js';
+import { isDemoWallet } from '../../../services/demo.js';
 import { RideLookupService } from '../../../services/ride-lookup.service.js';
 import { StartRideCommand } from './start-ride.command.js';
+
+interface StartFacts {
+  dto: RideDto;
+  started: RideProps;
+  failed: RideProps | null;
+}
 
 /**
  * The game page pressed START: the server clock for this ride starts now. Under the wallet's row lock, so at most ONE ride per wallet runs at a time
@@ -23,23 +34,31 @@ export class StartRideHandler implements ICommandHandler<StartRideCommand, RideD
     private readonly rules: RulesConfigPort,
     private readonly transactions: TransactionPort,
     private readonly clock: ClockPort,
+    private readonly analytics: AnalyticsPort,
   ) {}
 
-  execute({ wallet, rideId }: StartRideCommand): Promise<RideDto> {
-    return this.transactions.run(async (tx) => {
+  async execute({ wallet, rideId }: StartRideCommand): Promise<RideDto> {
+    const facts = await this.transactions.run(async (tx) => {
       const now = this.clock.now();
       if (!(await this.players.findByWalletForUpdate(wallet, tx))) throw new NotFoundError('ride not found');
       const ride = await this.lookup.require(rideId, wallet, tx);
       if (!ride.isInStatus(RideStatus.Created)) throw new ConflictError(`ride is ${ride.status}`); // its own precondition first: unpaid, running, ended…
       const running = (await this.rides.listOpenByWallet(wallet, tx)).find((r) => r.id !== ride.id && r.isInStatus(RideStatus.Running));
+      let failed: RideProps | null = null;
       if (running?.isStaleRunning(now, this.rules.get())) { // a tab that vanished mid-ride must not block the next one
         running.failHeartbeatLost(now);
         await this.rides.save(running, tx);
+        failed = running.snapshot();
       } else if (running) {
         throw new ConflictError('another ride is in progress');
       }
       ride.start(now);
-      return toRideDto(await this.rides.save(ride, tx));
+      const saved = await this.rides.save(ride, tx);
+      return { dto: toRideDto(saved), started: saved.snapshot(), failed } satisfies StartFacts;
     });
+    const demo = (): boolean => isDemoWallet(this.rules.get(), wallet);
+    if (facts.failed) { const failed = facts.failed; emitAnalytics(this.analytics, () => rideFailed(failed, demo(), 'stale_on_start')); }
+    emitAnalytics(this.analytics, () => rideStarted(facts.started, demo()));
+    return facts.dto;
   }
 }

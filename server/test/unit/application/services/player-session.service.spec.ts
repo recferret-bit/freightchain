@@ -3,6 +3,7 @@ import { PlayerSessionService } from '../../../../src/application/services/playe
 import { Player } from '../../../../src/domain/players/player.entity.js';
 import { VersionConflictError } from '../../../../src/domain/shared/errors.js';
 import { FakeClock } from '../../../support/fake-clock.js';
+import { RecordingAnalytics } from '../../../support/recording-analytics.js';
 import { FixedRules, unitContext } from '../../../support/unit-context.js';
 
 describe('PlayerSessionService', () => {
@@ -32,7 +33,7 @@ describe('PlayerSessionService', () => {
       saves = 0;
       async findByWallet() { return Player.restore(this.stored.snapshot()); }
       async findByWalletForUpdate() { return this.findByWallet(); }
-      async insertIfAbsent() { /* exists */ }
+      async insertIfAbsent() { return false; }
       async grantDailyFreeRides() { return 0; }
       async save(p: Player): Promise<Player> {
         this.saves++;
@@ -41,7 +42,7 @@ describe('PlayerSessionService', () => {
       }
     }
     const players = new Racing();
-    const player = await new PlayerSessionService(players, new FixedRules(), clock).touch('w');
+    const player = await new PlayerSessionService(players, new FixedRules(), clock, new RecordingAnalytics()).touch('w');
     expect(players.saves).toBe(1);
     expect(player.freeRides).toBe(5);
   });
@@ -52,10 +53,10 @@ describe('PlayerSessionService', () => {
     class AlwaysLosing extends PlayerRepositoryPort {
       async findByWallet() { return Player.register('w', new Date(clock.ms - (++day + 1) * 86_400_000), 5, 5); } // always "yesterday or older"
       async findByWalletForUpdate() { return this.findByWallet(); }
-      async insertIfAbsent() { /* exists */ }
+      async insertIfAbsent() { return false; }
       async grantDailyFreeRides() { return 0; }
       async save(): Promise<Player> { throw new VersionConflictError(); }
     }
-    await expect(new PlayerSessionService(new AlwaysLosing(), new FixedRules(), clock).touch('w')).rejects.toBeInstanceOf(VersionConflictError);
+    await expect(new PlayerSessionService(new AlwaysLosing(), new FixedRules(), clock, new RecordingAnalytics()).touch('w')).rejects.toBeInstanceOf(VersionConflictError);
   });
 });

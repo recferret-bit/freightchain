@@ -29,6 +29,13 @@ export const envSchema = z
     DEMO_WALLETS: z.string().default(''),
     DEMO_SCALE: z.coerce.number().positive().default(60),
     INITIAL_SEED_SOL: z.coerce.number().min(0).default(0),
+    /** Project token (`phc_…`). Empty is unset. A non-token is refused by EnvService, not by this schema, so a pasted personal key cannot stop boot. */
+    POSTHOG_KEY: optional(z.string()),
+    POSTHOG_HOST: z.preprocess((v) => (v === '' ? undefined : v), z.string().url().default('https://us.i.posthog.com')),
+    /** Kill switch. `1` / `true` disable capture. `0` / `false` / empty leave it to the key. Not a coerced boolean (`"false"` must not become true). */
+    POSTHOG_DISABLED: optional(z.enum(['1', 'true', '0', 'false'])),
+    /** Stored for operators. Never sent on capture. */
+    POSTHOG_PROJECT_ID: optional(z.string()),
   })
   .superRefine((env, ctx) => {
     if (env.TREASURY_PUBKEY !== undefined && !isWalletAddress(env.TREASURY_PUBKEY)) {

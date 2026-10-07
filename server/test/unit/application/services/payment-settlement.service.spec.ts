@@ -12,7 +12,9 @@ describe('PaymentSettlementService', () => {
     const ctx = unitContext();
     const order = await ctx.paidOrder('w');
     const dto = await ctx.settlement.settle(order.id, 'w', 'sig-1');
-    expect(dto).toMatchObject({ status: 'created', roundId: 1 });
+    expect(dto.inserted).toBe(true);
+    expect(dto.paidAt).toEqual(ctx.now());
+    expect(dto.ride).toMatchObject({ status: 'created', roundId: 1 });
     expect(await ctx.payments.findBySignature('sig-1')).toMatchObject({ rideId: order.id, lamports: order.lamports, roundId: 1 });
   });
 
@@ -47,7 +49,7 @@ describe('PaymentSettlementService', () => {
     const ctx = unitContext();
     const order = await ctx.paidOrder('w');
     await ctx.settlement.settle(order.id, 'w', 'sig-1');
-    expect(await ctx.settlement.settle(order.id, 'w', 'sig-1')).toMatchObject({ id: order.id, status: 'created' });
+    expect(await ctx.settlement.settle(order.id, 'w', 'sig-1')).toMatchObject({ inserted: false, paidAt: null, ride: { id: order.id, status: 'created' } });
   });
 
   it('a signature that already paid ANOTHER ride is a conflict', async () => {
@@ -77,7 +79,7 @@ describe('PaymentSettlementService', () => {
       }
     }
     const settlement = new PaymentSettlementService(ctx.rounds, new TurningRounds(), ctx.payments, ctx.rides, ctx.players, ctx.lookup, ctx.transactions, ctx.clock);
-    expect(await settlement.settle(order.id, 'w', 'sig-1')).toMatchObject({ roundId: 2 });
+    expect(await settlement.settle(order.id, 'w', 'sig-1')).toMatchObject({ inserted: true, ride: { roundId: 2 } });
   });
 
   it('a conflict that is NOT this payment being recorded is passed on', async () => {

@@ -7,6 +7,7 @@ import { PlayerSessionService } from './services/player-session.service.js';
 import { RideLookupService } from './services/ride-lookup.service.js';
 import { RoundService } from './services/round.service.js';
 import { GrantDailyFreeRidesHandler } from './use-cases/players/grant-daily-free-rides/grant-daily-free-rides.handler.js';
+import { RecordTelemetryHandler } from './use-cases/telemetry/record-telemetry/record-telemetry.handler.js';
 import { GetMeHandler } from './use-cases/auth/get-me/get-me.handler.js';
 import { LogoutHandler } from './use-cases/auth/logout/logout.handler.js';
 import { RequestChallengeHandler } from './use-cases/auth/request-challenge/request-challenge.handler.js';
@@ -38,6 +39,7 @@ const handlers: Provider[] = [
   GetLiveHandler, GetProfileHandler,
   GetLivenessHandler, GetReadinessHandler,
   GrantDailyFreeRidesHandler,
+  RecordTelemetryHandler,
 ];
 
 @Module({

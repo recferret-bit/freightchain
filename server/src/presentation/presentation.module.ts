@@ -5,9 +5,10 @@ import { EconomyHttpController } from './economy/economy.http.controller.js';
 import { HealthHttpController } from './health/health.http.controller.js';
 import { LobbyHttpController } from './lobby/lobby.http.controller.js';
 import { RidesHttpController } from './rides/rides.http.controller.js';
+import { TelemetryHttpController } from './telemetry/telemetry.http.controller.js';
 
 @Module({
   imports: [ApplicationModule],
-  controllers: [HealthHttpController, AuthHttpController, RidesHttpController, EconomyHttpController, LobbyHttpController],
+  controllers: [HealthHttpController, AuthHttpController, RidesHttpController, EconomyHttpController, LobbyHttpController, TelemetryHttpController],
 })
 export class PresentationModule {}

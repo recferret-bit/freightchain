@@ -12,9 +12,11 @@ import { HealthProbePort } from '../application/ports/health/health-probe.port.j
 import { PlayerRepositoryPort } from '../application/ports/players/player.repository.port.js';
 import { RideQueryPort } from '../application/ports/rides/ride-query.port.js';
 import { RideRepositoryPort } from '../application/ports/rides/ride.repository.port.js';
+import { AnalyticsPort } from '../application/ports/analytics/analytics.port.js';
 import { ClockPort } from '../application/ports/shared/clock.port.js';
 import { EntropyPort } from '../application/ports/shared/entropy.port.js';
 import { TransactionPort } from '../application/ports/shared/transaction.port.js';
+import { PostHogAnalyticsAdapter } from './analytics/posthog-analytics.adapter.js';
 import { JoseTokenSigner } from './auth/jose.token-signer.js';
 import { NaclSignatureVerifier } from './auth/nacl.signature-verifier.js';
 import { EnvRulesConfigAdapter } from './config/rules-config.adapter.js';
@@ -32,6 +34,7 @@ import { TransactionPrismaAdapter } from './prisma/transaction.prisma.adapter.js
 import { HttpPriceQuoteAdapter } from './solana/http-price-quote.adapter.js';
 import { SolanaChainAdapter } from './solana/solana-chain.adapter.js';
 import { SystemClock } from './time/system.clock.js';
+import { OptionalSessionGuard } from './http/guards/optional-session.guard.js';
 import { PlayerAuthGuard } from './http/guards/player-auth.guard.js';
 import { ClearSessionCookieInterceptor, SetSessionCookieInterceptor } from './http/interceptors/session-cookie.interceptor.js';
 
@@ -53,12 +56,13 @@ const ports: Provider[] = [
   { provide: PriceQuotePort, useClass: HttpPriceQuoteAdapter },
   { provide: ChainPort, useClass: SolanaChainAdapter },
   { provide: HealthProbePort, useClass: PrismaHealthProbe },
+  { provide: AnalyticsPort, useClass: PostHogAnalyticsAdapter },
 ];
 
 const portTokens = ports.map((p) => (p as { provide: unknown }).provide as typeof ClockPort);
 
 @Module({
-  providers: [PrismaService, PlayerAuthGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, ...ports],
-  exports: [PrismaService, PlayerAuthGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, ...portTokens],
+  providers: [PrismaService, PlayerAuthGuard, OptionalSessionGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, ...ports],
+  exports: [PrismaService, PlayerAuthGuard, OptionalSessionGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, ...portTokens],
 })
 export class InfrastructureModule {}

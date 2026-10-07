@@ -3,21 +3,27 @@ import { CreateRideCommand } from '../../../../../src/application/use-cases/ride
 import { RideStatus } from '../../../../../src/domain/rides/ride-status.js';
 import { ConflictError, ServiceUnavailableError } from '../../../../../src/domain/shared/errors.js';
 import { FixedRules, DEMO_UNIT_WALLET, unitContext, unitRules } from '../../../../support/unit-context.js';
+import { RecordingAnalytics } from '../../../../support/recording-analytics.js';
 import { StubPrice } from '../../../../support/stub-price.js';
 
 const setup = (price = new StubPrice(), rules = unitRules()) => {
   const ctx = unitContext(rules);
-  const handler = new CreateRideHandler(ctx.players, ctx.rides, ctx.sessions, price, new FixedRules(rules), ctx.transactions, ctx.clock, ctx.entropy);
-  return { ctx, handler, create: (tier: 'free' | '1h' | '4h' | '8h', wallet = 'w') => handler.execute(new CreateRideCommand(wallet, tier)) };
+  const analytics = new RecordingAnalytics();
+  const handler = new CreateRideHandler(ctx.players, ctx.rides, ctx.sessions, price, new FixedRules(rules), ctx.transactions, ctx.clock, ctx.entropy, analytics);
+  return { ctx, analytics, handler, create: (tier: 'free' | '1h' | '4h' | '8h', wallet = 'w') => handler.execute(new CreateRideCommand(wallet, tier)) };
 };
 
 describe('CreateRideHandler', () => {
   it('a free ride: ready at once, one credit spent, a re-ask hands back the same ride', async () => {
-    const { ctx, create } = setup();
+    const { ctx, analytics, create } = setup();
     const ride = await create('free');
     expect(ride).toMatchObject({ tier: 'free', status: 'created', minSeconds: 10, completeDist: 140, lamports: 0 });
     expect((await create('free')).id).toBe(ride.id);
     expect((await ctx.storedPlayer('w')).freeRides).toBe(4);
+    expect(analytics.named('ride_ordered')).toHaveLength(1);
+    expect(analytics.named('ride_ordered')[0]?.properties).toMatchObject({ is_free: true, is_demo: false, time_scale: 1, lamports: 0, free_rides_left: 4, ride_id: ride.id });
+    expect(analytics.named('ride_resumed')).toHaveLength(1);
+    expect(analytics.named('ride_resumed')[0]?.properties).toMatchObject({ ride_id: ride.id, status: 'created' });
   });
 
   it('no credits left → 409', async () => {
@@ -30,29 +36,40 @@ describe('CreateRideHandler', () => {
   });
 
   it('a paid order is priced at the quote, held 10 min, scaled only for demo wallets', async () => {
-    const { ctx, create } = setup();
+    const { ctx, analytics, create } = setup();
     expect(await create('1h')).toMatchObject({ status: 'awaiting_payment', lamports: 50_000_000, priceUsd: 5, timeScale: 1, minSeconds: 3600, quoteExpiresAt: ctx.clock.ms + 600_000 });
+    expect(analytics.named('ride_ordered')).toHaveLength(1);
+    expect(analytics.named('ride_ordered')[0]?.properties).toMatchObject({ is_demo: false, lamports: 50_000_000, price_usd: 5, sol_usd_cents: 10000 });
     expect(await create('1h', DEMO_UNIT_WALLET)).toMatchObject({ timeScale: 60, minSeconds: 60, completeDist: 840 });
+    expect(analytics.named('ride_ordered')).toHaveLength(2);
+    expect(analytics.named('ride_ordered')[1]?.properties).toMatchObject({ is_demo: true, time_scale: 60 });
   });
 
   it('the same unpaid order while it is quoted; another tier (or a lapsed quote) lets it expire', async () => {
-    const { ctx, create } = setup();
+    const { ctx, analytics, create } = setup();
     const first = await create('1h');
     expect((await create('1h')).id).toBe(first.id);
+    expect(analytics.named('ride_ordered')).toHaveLength(1);
+    expect(analytics.named('ride_resumed')).toHaveLength(1);
     const second = await create('4h');
+    expect(analytics.named('ride_ordered')).toHaveLength(2);
+    expect(analytics.named('ride_expired')).toHaveLength(1);
     expect((await ctx.reload(first.id)).status).toBe(RideStatus.Expired);
     ctx.clock.advance(601);
     expect((await create('4h')).id).not.toBe(second.id);
   });
 
   it('buying while holding an unstarted free ride cancels it and refunds the credit; a paid ready ride is never replaced', async () => {
-    const { ctx, create } = setup();
+    const { ctx, analytics, create } = setup();
     const free = await create('free');
     const order = await create('1h');
     expect((await ctx.reload(free.id)).status).toBe(RideStatus.Cancelled);
     expect((await ctx.storedPlayer('w')).freeRides).toBe(5);
     const paid = await ctx.reload(order.id); paid.markPaid(1, ctx.now()); await ctx.rides.save(paid);
+    const ordered = analytics.named('ride_ordered').length;
     for (const tier of ['free', '4h'] as const) expect((await create(tier)).id).toBe(order.id);
+    expect(analytics.named('ride_ordered')).toHaveLength(ordered);
+    expect(analytics.named('ride_resumed').length).toBeGreaterThanOrEqual(2);
   });
 
   it('a running ride blocks a new one – unless its tab vanished (then it fails and the new ride goes ahead)', async () => {
