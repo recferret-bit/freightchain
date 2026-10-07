@@ -8,6 +8,45 @@
   },
   "instructions": [
     {
+      "name": "accept_authority",
+      "discriminator": [
+        107,
+        86,
+        198,
+        91,
+        33,
+        12,
+        107,
+        160
+      ],
+      "accounts": [
+        {
+          "name": "new_authority",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "buy_ticket",
       "discriminator": [
         11,
@@ -166,8 +205,26 @@
           "name": "authority",
           "signer": true,
           "relations": [
-            "pool"
+            "config"
           ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "pool",
@@ -212,15 +269,15 @@
       ],
       "accounts": [
         {
-          "name": "authority",
+          "name": "caller",
           "docs": [
-            "Also receives the vault's rent-exempt minimum back (it funded it at create_pool)."
+            "`config.authority` while the settle grace runs; anyone after it, and anyone for a fully refunded pool."
           ],
-          "writable": true,
-          "signer": true,
-          "relations": [
-            "pool"
-          ]
+          "signer": true
+        },
+        {
+          "name": "pool_authority",
+          "writable": true
         },
         {
           "name": "config",
@@ -501,6 +558,55 @@
       ]
     },
     {
+      "name": "expire_pool",
+      "discriminator": [
+        197,
+        132,
+        108,
+        174,
+        19,
+        201,
+        67,
+        78
+      ],
+      "accounts": [
+        {
+          "name": "caller",
+          "docs": [
+            "Anyone: the exit when the admin never settles."
+          ],
+          "signer": true
+        },
+        {
+          "name": "pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "pool_id"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "pool_id",
+          "type": "u32"
+        }
+      ]
+    },
+    {
       "name": "fail_pool",
       "discriminator": [
         57,
@@ -622,8 +728,26 @@
           "name": "authority",
           "signer": true,
           "relations": [
-            "pool"
+            "config"
           ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "pool",
@@ -689,6 +813,53 @@
         {
           "name": "rank",
           "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "propose_authority",
+      "discriminator": [
+        20,
+        148,
+        236,
+        198,
+        76,
+        119,
+        99,
+        142
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "new_authority",
+          "type": "pubkey"
         }
       ]
     },
@@ -1008,6 +1179,32 @@
   ],
   "events": [
     {
+      "name": "AuthorityChanged",
+      "discriminator": [
+        31,
+        19,
+        174,
+        152,
+        4,
+        82,
+        215,
+        226
+      ]
+    },
+    {
+      "name": "AuthorityProposed",
+      "discriminator": [
+        244,
+        117,
+        94,
+        112,
+        53,
+        151,
+        35,
+        89
+      ]
+    },
+    {
       "name": "PoolActivated",
       "discriminator": [
         201,
@@ -1057,6 +1254,19 @@
         220,
         157,
         82
+      ]
+    },
+    {
+      "name": "PoolExpired",
+      "discriminator": [
+        115,
+        21,
+        47,
+        101,
+        131,
+        21,
+        67,
+        210
       ]
     },
     {
@@ -1230,9 +1440,51 @@
       "code": 6020,
       "name": "MathOverflow",
       "msg": "Arithmetic overflow"
+    },
+    {
+      "code": 6021,
+      "name": "PrizesAlreadyPaid",
+      "msg": "Prizes were already paid from this pool"
+    },
+    {
+      "code": 6022,
+      "name": "NoPendingAuthority",
+      "msg": "No authority handover is pending"
     }
   ],
   "types": [
+    {
+      "name": "AuthorityChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "old_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_authority",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AuthorityProposed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "pending_authority",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
     {
       "name": "Config",
       "type": {
@@ -1264,6 +1516,15 @@
           {
             "name": "bump",
             "type": "u8"
+          },
+          {
+            "name": "pending_authority",
+            "docs": [
+              "Two-step authority handover: set by `propose_authority`, consumed by `accept_authority`."
+            ],
+            "type": {
+              "option": "pubkey"
+            }
           }
         ]
       }
@@ -1330,6 +1591,9 @@
           },
           {
             "name": "authority",
+            "docs": [
+              "Creator record (receives the vault rent minimum at close). Admin rights come from `Config.authority`."
+            ],
             "type": "pubkey"
           },
           {
@@ -1583,6 +1847,22 @@
       }
     },
     {
+      "name": "PoolExpired",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool_id",
+            "type": "u32"
+          },
+          {
+            "name": "tickets_sold",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
       "name": "PoolFailed",
       "type": {
         "kind": "struct",
@@ -1706,10 +1986,6 @@
           {
             "name": "lamports",
             "type": "u64"
-          },
-          {
-            "name": "refunded",
-            "type": "bool"
           },
           {
             "name": "bump",

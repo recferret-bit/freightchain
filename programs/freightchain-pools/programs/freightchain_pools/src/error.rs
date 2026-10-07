@@ -44,4 +44,8 @@ pub enum PoolError {
     AccountMismatch,
     #[msg("Arithmetic overflow")]
     MathOverflow,
+    #[msg("Prizes were already paid from this pool")]
+    PrizesAlreadyPaid,
+    #[msg("No authority handover is pending")]
+    NoPendingAuthority,
 }

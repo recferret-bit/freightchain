@@ -12,12 +12,15 @@ pub struct Config {
     pub pool_count: u32,
     pub paused: bool,
     pub bump: u8,
+    /// Two-step authority handover: set by `propose_authority`, consumed by `accept_authority`.
+    pub pending_authority: Option<Pubkey>,
 }
 
 #[account]
 #[derive(InitSpace)]
 pub struct Pool {
     pub pool_id: u32,
+    /// Creator record (receives the vault rent minimum at close). Admin rights come from `Config.authority`.
     pub authority: Pubkey,
     pub tier: u8,
     pub price_lamports: u64,
@@ -51,7 +54,6 @@ pub struct Ticket {
     pub pool_id: u32,
     pub qty: u16,
     pub lamports: u64,
-    pub refunded: bool,
     pub bump: u8,
 }
 

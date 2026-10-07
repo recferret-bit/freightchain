@@ -159,6 +159,9 @@ fn event_discriminators_match_the_idl() {
     check::<Refunded>("Refunded");
     check::<PrizePaid>("PrizePaid");
     check::<PoolClosed>("PoolClosed");
+    check::<PoolExpired>("PoolExpired");
+    check::<AuthorityProposed>("AuthorityProposed");
+    check::<AuthorityChanged>("AuthorityChanged");
 }
 
 #[test]

@@ -180,7 +180,7 @@ fn resent_batch_after_partial_progress_is_rebuilt_from_remaining() {
     let all: Vec<_> = buyers.iter().map(|(b, s)| e.refund_ix(id, &c.pubkey(), &b.pubkey(), &s.pubkey())).collect();
     e.refund(id, &buyers[0].0.pubkey(), &buyers[0].1.pubkey()).unwrap();
     assert_err!(e.send(&all, &c, &[]), PoolError::AlreadyRefunded);
-    assert_eq!(e.ticket(id, &buyers[1].0.pubkey()).unwrap().refunded, false, "second buyer untouched");
+    assert!(e.ticket(id, &buyers[1].0.pubkey()).is_some(), "second buyer untouched");
     e.send(&all[1..], &c, &[]).unwrap();
     assert_eq!(e.pool(id).refunded, 2 * PRICE);
 }

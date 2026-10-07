@@ -12,12 +12,9 @@ use crate::{
 #[instruction(pool_id: u32)]
 pub struct PayPrize<'info> {
     pub authority: Signer<'info>,
-    #[account(
-        mut,
-        seeds = [POOL_SEED, &pool_id.to_le_bytes()],
-        bump = pool.bump,
-        has_one = authority @ PoolError::Unauthorized
-    )]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ PoolError::Unauthorized)]
+    pub config: Account<'info, Config>,
+    #[account(mut, seeds = [POOL_SEED, &pool_id.to_le_bytes()], bump = pool.bump)]
     pub pool: Account<'info, Pool>,
     /// CHECK: the escrow, a zero-data system account at the vault PDA
     #[account(mut, seeds = [VAULT_SEED, &pool_id.to_le_bytes()], bump = pool.vault_bump)]
@@ -57,17 +54,14 @@ pub fn handle_pay_prize(mut ctx: Context<PayPrize>, pool_id: u32, lamports: u64,
 #[derive(Accounts)]
 #[instruction(pool_id: u32)]
 pub struct ClosePool<'info> {
-    /// Also receives the vault's rent-exempt minimum back (it funded it at create_pool).
-    #[account(mut)]
-    pub authority: Signer<'info>,
+    /// `config.authority` while the settle grace runs; anyone after it, and anyone for a fully refunded pool.
+    pub caller: Signer<'info>,
+    /// CHECK: the pool's creator (`pool.authority`); receives the vault's rent-exempt minimum back (it funded it)
+    #[account(mut, address = pool.authority @ PoolError::AccountMismatch)]
+    pub pool_authority: UncheckedAccount<'info>,
     #[account(seeds = [CONFIG_SEED], bump = config.bump)]
     pub config: Account<'info, Config>,
-    #[account(
-        mut,
-        seeds = [POOL_SEED, &pool_id.to_le_bytes()],
-        bump = pool.bump,
-        has_one = authority @ PoolError::Unauthorized
-    )]
+    #[account(mut, seeds = [POOL_SEED, &pool_id.to_le_bytes()], bump = pool.bump)]
     pub pool: Account<'info, Pool>,
     /// CHECK: the escrow, a zero-data system account at the vault PDA
     #[account(mut, seeds = [VAULT_SEED, &pool_id.to_le_bytes()], bump = pool.vault_bump)]
@@ -92,10 +86,15 @@ pub fn handle_close_pool(mut ctx: Context<ClosePool>, pool_id: u32) -> Result<()
     let cancelled = match a.pool.status {
         STATUS_ACTIVE => {
             require!(now >= a.pool.play_deadline, PoolError::TooEarly);
+            let grace_end = a.pool.play_deadline.checked_add(SETTLE_GRACE_SECS).ok_or(PoolError::MathOverflow)?;
+            // the money only goes to the declared treasuries, so after the grace nobody's key is needed
+            if now < grace_end {
+                require_keys_eq!(a.caller.key(), a.config.authority, PoolError::Unauthorized);
+            }
             false
         }
         STATUS_REFUNDING => {
-            // every buyer must have been refunded first
+            // permissionless; every buyer must have been refunded first
             require!(a.pool.refunded == a.pool.tickets_lamports()?, PoolError::RefundsPending);
             true
         }
@@ -124,7 +123,7 @@ pub fn handle_close_pool(mut ctx: Context<ClosePool>, pool_id: u32) -> Result<()
     raw_from_vault(&vault, &a.fee_treasury.to_account_info(), &sys, pool_id, vb, fee_out)?;
     raw_from_vault(&vault, &a.platform_treasury.to_account_info(), &sys, pool_id, vb, platform_out)?;
     raw_from_vault(&vault, &a.seed_treasury.to_account_info(), &sys, pool_id, vb, seed_out)?;
-    raw_from_vault(&vault, &a.authority.to_account_info(), &sys, pool_id, vb, min)?;
+    raw_from_vault(&vault, &a.pool_authority.to_account_info(), &sys, pool_id, vb, min)?;
     require!(a.vault.lamports() == 0, PoolError::BelowRentMin);
 
     a.pool.status = if cancelled { STATUS_CANCELLED } else { STATUS_SETTLED };
