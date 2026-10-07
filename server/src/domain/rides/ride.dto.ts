@@ -13,6 +13,8 @@ export interface RideDto {
   lamports: number;
   quoteExpiresAt: number | null;
   roundId: number | null;
+  /** the prize pool whose ticket paid for it (null = free or a legacy order) */
+  poolId: number | null;
   driveSeconds: number;
   distance: number;
   reason: string | null;
@@ -30,6 +32,7 @@ export const toRideDto = (r: Ride): RideDto => ({
   lamports: r.lamports,
   quoteExpiresAt: r.quoteExpiresAt?.getTime() ?? null,
   roundId: r.roundId,
+  poolId: r.poolId,
   driveSeconds: Math.round(r.driveSeconds * 10) / 10,
   distance: Math.round(r.distance),
   reason: r.reason,

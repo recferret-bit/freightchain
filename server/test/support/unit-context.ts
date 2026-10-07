@@ -3,6 +3,7 @@ import { EntropyPort } from '../../src/application/ports/shared/entropy.port.js'
 import { AchievementService } from '../../src/application/services/achievement.service.js';
 import { PaymentSettlementService } from '../../src/application/services/payment-settlement.service.js';
 import { PlayerSessionService } from '../../src/application/services/player-session.service.js';
+import { PoolTicketsService } from '../../src/application/services/pool-tickets.service.js';
 import { RideLookupService } from '../../src/application/services/ride-lookup.service.js';
 import { RoundService } from '../../src/application/services/round.service.js';
 import { Player } from '../../src/domain/players/player.entity.js';
@@ -14,6 +15,7 @@ import {
   MemoryAchievementRepository, MemoryChallengeRepository, MemoryHealthProbe, MemoryPaymentRepository, MemoryPlayerRepository,
   MemoryRideQuery, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
 } from './in-memory/memory-repositories.js';
+import { MemoryPoolRepository, MemoryPromoRepository, MemoryRideTicketRepository } from './in-memory/memory-ledger-repositories.js';
 
 /** Fixed rules for unit tests: 10 s free shift (140 m), treasury configured, one demo wallet. */
 export const DEMO_UNIT_WALLET = 'DemoWa11et1111111111111111111111111111111111';
@@ -57,6 +59,10 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const payments = new MemoryPaymentRepository(db);
   const unlocks = new MemoryAchievementRepository(db);
   const health = new MemoryHealthProbe();
+  const pools = new MemoryPoolRepository(db);
+  const tickets = new MemoryRideTicketRepository(db);
+  const promos = new MemoryPromoRepository(db);
+  const poolTickets = new PoolTicketsService(pools, tickets);
   const sessions = new PlayerSessionService(players, rulesPort, clock);
   const lookup = new RideLookupService(rides);
   const rounds = new RoundService(roundRepo, rulesPort, transactions, clock);
@@ -85,7 +91,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const storedPlayer = async (wallet: string) => (await players.findByWallet(wallet)) as Player;
 
   return {
-    db, clock, chain, entropy, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, health,
+    db, clock, chain, entropy, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, health, pools, tickets, promos, poolTickets,
     sessions, lookup, rounds, achievements, settlement, now, player, freeRide, paidOrder, reload, storedPlayer,
   };
 }

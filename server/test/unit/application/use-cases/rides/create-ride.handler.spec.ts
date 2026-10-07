@@ -4,10 +4,11 @@ import { RideStatus } from '../../../../../src/domain/rides/ride-status.js';
 import { ConflictError, ServiceUnavailableError } from '../../../../../src/domain/shared/errors.js';
 import { FixedRules, DEMO_UNIT_WALLET, unitContext, unitRules } from '../../../../support/unit-context.js';
 import { StubPrice } from '../../../../support/stub-price.js';
+import { aPool } from '../../../../support/pools.js';
 
 const setup = (price = new StubPrice(), rules = unitRules()) => {
   const ctx = unitContext(rules);
-  const handler = new CreateRideHandler(ctx.players, ctx.rides, ctx.sessions, price, new FixedRules(rules), ctx.transactions, ctx.clock, ctx.entropy);
+  const handler = new CreateRideHandler(ctx.players, ctx.rides, ctx.sessions, price, new FixedRules(rules), ctx.transactions, ctx.clock, ctx.entropy, ctx.poolTickets, ctx.rounds);
   return { ctx, handler, create: (tier: 'free' | '1h' | '4h' | '8h', wallet = 'w') => handler.execute(new CreateRideCommand(wallet, tier)) };
 };
 
@@ -74,5 +75,62 @@ describe('CreateRideHandler', () => {
     expect((await create('1h')).id).toBe(order.id);
     expect(price.calls).toBe(1); // handing back the order in hand never waits on the price feeds
     await expect(create('4h')).rejects.toThrow('no SOL/USD price available right now');
+  });
+
+  describe('a tier sold through escrowed pools – paid with a ticket', () => {
+    const withPools = async (...pools: Parameters<typeof aPool>[0][]) => {
+      const t = setup(new StubPrice(null), unitRules({ treasury: '' })); // neither price nor treasury is needed on this path
+      for (const p of pools) await t.ctx.pools.upsert(aPool(p, t.ctx.now()));
+      const give = async (poolId: number, n: number, wallet = 'w') => { const k = await t.ctx.tickets.open(wallet, poolId); k.recordPurchase(n); await t.ctx.tickets.save(k); };
+      return { ...t, give };
+    };
+
+    it('spends one ticket: a ready ride in the pool and its round, an audit line, and a re-ask hands back the same ride without spending again', async () => {
+      const { ctx, create, give } = await withPools({ id: 1, status: 'active', roundId: 7 });
+      await give(1, 2);
+      const ride = await create('1h');
+      expect(ride).toMatchObject({ tier: '1h', status: 'created', poolId: 1, roundId: 7, lamports: 0, minSeconds: 3600, timeScale: 1 });
+      expect((await create('1h')).id).toBe(ride.id);
+      expect((await ctx.tickets.find('w', 1))?.balance).toBe(1);
+      expect(await ctx.tickets.recentGrants('w', 5)).toEqual([{ wallet: 'w', poolId: 1, delta: -1, source: 'spend', ref: ride.id, at: ctx.now() }]);
+    });
+
+    it('the soonest-ending active pool the wallet holds tickets in goes first; a pool with no round ranks in the current one; demo wallets get the short shift', async () => {
+      const { ctx, create, give } = await withPools({ id: 1, status: 'active', playDeadline: new Date(Date.UTC(2036, 9, 20)) }, { id: 2, status: 'active', playDeadline: new Date(Date.UTC(2036, 9, 15)) });
+      await give(1, 1, DEMO_UNIT_WALLET); await give(2, 1, DEMO_UNIT_WALLET); await give(1, 1);
+      const first = await create('1h', DEMO_UNIT_WALLET);
+      const round = await ctx.rounds.ensureRound();
+      expect(first).toMatchObject({ poolId: 2, roundId: round.id, timeScale: 60, minSeconds: 60 });
+      expect((await create('1h')).poolId).toBe(1);
+    });
+
+    it('409 no_tickets with none, 409 pool_not_live when the only tickets wait for the minimum – and nothing else changed', async () => {
+      const { ctx, create, give } = await withPools({ id: 1, status: 'open', minTickets: 10, ticketsSold: 7 }, { id: 2, tier: '4h', status: 'active' });
+      await expect(create('8h')).rejects.toBeInstanceOf(ServiceUnavailableError); // no 8h pool, no treasury: the legacy order path
+      await expect(create('4h')).rejects.toThrow(new ConflictError('no 4h tickets left', 'no_tickets'));
+      await give(1, 1);
+      const free = await create('free');
+      await expect(create('1h')).rejects.toThrow(new ConflictError('pool not live yet – 3 more tickets needed', 'pool_not_live'));
+      expect((await ctx.reload(free.id)).status).toBe(RideStatus.Created); // the unstarted free ride was not cancelled
+      expect((await ctx.storedPlayer('w')).freeRides).toBe(4);
+      expect((await ctx.tickets.find('w', 1))?.balance).toBe(1);
+    });
+
+    it('an active pool past its play deadline is not ridden from', async () => {
+      const { ctx, create, give } = await withPools({ id: 1, status: 'active' });
+      await give(1, 1);
+      ctx.clock.advance(15 * 86_400);
+      await expect(create('1h')).rejects.toThrow(new ConflictError('no 1h tickets left', 'no_tickets'));
+    });
+
+    it('buying with a ticket while holding an unstarted free ride cancels it and refunds the credit', async () => {
+      const { ctx, create, give } = await withPools({ id: 1, status: 'active' });
+      await give(1, 1);
+      const free = await create('free');
+      const paid = await create('1h');
+      expect(paid.poolId).toBe(1);
+      expect((await ctx.reload(free.id)).status).toBe(RideStatus.Cancelled);
+      expect((await ctx.storedPlayer('w')).freeRides).toBe(5);
+    });
   });
 });

@@ -23,6 +23,10 @@ import {
   MemoryAchievementRepository, MemoryChallengeRepository, MemoryHealthProbe, MemoryPaymentRepository, MemoryPlayerRepository,
   MemoryRideQuery, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
 } from './in-memory/memory-repositories.js';
+import { MemoryPoolRepository, MemoryPromoRepository, MemoryRideTicketRepository } from './in-memory/memory-ledger-repositories.js';
+import { PoolRepositoryPort } from '../../src/application/ports/economy/pool.repository.port.js';
+import { PromoRepositoryPort } from '../../src/application/ports/economy/promo.repository.port.js';
+import { RideTicketRepositoryPort } from '../../src/application/ports/players/ride-ticket.repository.port.js';
 
 export type Persistence = 'memory' | 'postgres';
 
@@ -70,6 +74,9 @@ export async function createHarness(persistence: Persistence, env: Record<string
       .overrideProvider(RoundRepositoryPort).useValue(new MemoryRoundRepository(memory))
       .overrideProvider(PaymentRepositoryPort).useValue(new MemoryPaymentRepository(memory))
       .overrideProvider(AchievementRepositoryPort).useValue(new MemoryAchievementRepository(memory))
+      .overrideProvider(PoolRepositoryPort).useValue(new MemoryPoolRepository(memory))
+      .overrideProvider(RideTicketRepositoryPort).useValue(new MemoryRideTicketRepository(memory))
+      .overrideProvider(PromoRepositoryPort).useValue(new MemoryPromoRepository(memory))
       .overrideProvider(TransactionPort).useValue(new MemoryTransaction())
       .overrideProvider(HealthProbePort).useValue(new MemoryHealthProbe());
   }

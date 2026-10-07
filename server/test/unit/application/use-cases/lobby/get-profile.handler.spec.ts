@@ -1,12 +1,13 @@
 import { GetProfileHandler } from '../../../../../src/application/use-cases/lobby/get-profile/get-profile.handler.js';
 import { GetProfileQuery } from '../../../../../src/application/use-cases/lobby/get-profile/get-profile.query.js';
 import { unitContext } from '../../../../support/unit-context.js';
+import { aPool } from '../../../../support/pools.js';
 
 describe('GetProfileHandler', () => {
   it('a fresh wallet: zero stats, 5 credits, every achievement locked', async () => {
     const ctx = unitContext();
-    const p = await new GetProfileHandler(ctx.sessions, ctx.achievements, ctx.rideQuery, ctx.payments, ctx.rules, ctx.clock).execute(new GetProfileQuery('w'));
-    expect(p).toMatchObject({ wallet: 'w', freeRides: 5, freeRidesMax: 5, nextFreeRideAt: null, demo: false, stats: { rides: 0, completed: 0, metres: 0, bestMetres: 0, paidRides: 0, spentLamports: 0 }, recent: [] });
+    const p = await new GetProfileHandler(ctx.sessions, ctx.achievements, ctx.rideQuery, ctx.payments, ctx.rules, ctx.clock, ctx.poolTickets, ctx.tickets).execute(new GetProfileQuery('w'));
+    expect(p).toMatchObject({ wallet: 'w', freeRides: 5, freeRidesMax: 5, nextFreeRideAt: null, demo: false, stats: { rides: 0, completed: 0, metres: 0, bestMetres: 0, paidRides: 0, spentLamports: 0 }, recent: [], tickets: [], grants: [] });
     expect(p.achievements.every((a) => a.earnedAt === null)).toBe(true);
   });
 
@@ -17,9 +18,19 @@ describe('GetProfileHandler', () => {
     ride.applyReport({ s: 60, t: 5, hull: 90, paused: false, route: 'brenner', night: false }, ctx.now(), ctx.rules.get());
     ride.failHeartbeatLost(ctx.now());
     await ctx.rides.save(ride);
-    const p = await new GetProfileHandler(ctx.sessions, ctx.achievements, ctx.rideQuery, ctx.payments, ctx.rules, ctx.clock).execute(new GetProfileQuery('w'));
+    const p = await new GetProfileHandler(ctx.sessions, ctx.achievements, ctx.rideQuery, ctx.payments, ctx.rules, ctx.clock, ctx.poolTickets, ctx.tickets).execute(new GetProfileQuery('w'));
     expect(p.stats).toMatchObject({ rides: 1, completed: 0, metres: 60, bestMetres: 0 });
     expect(p.recent[0]).toMatchObject({ tier: 'free', status: 'failed', distance: 60, hull: 90, route: 'brenner', endedAt: ctx.clock.ms });
     expect(p.achievements.find((a) => a.id === 'first-mile')?.earnedAt).toBe(ctx.clock.ms);
+  });
+
+  it('tickets per pool and the newest lines of the ticket audit trail', async () => {
+    const ctx = unitContext();
+    await ctx.pools.upsert(aPool({ id: 1, status: 'open' }));
+    await ctx.tickets.open('w', 1);
+    await ctx.tickets.appendGrant({ wallet: 'w', poolId: 1, delta: 2, source: 'promo', ref: 'HELLO', at: ctx.now() });
+    const p = await new GetProfileHandler(ctx.sessions, ctx.achievements, ctx.rideQuery, ctx.payments, ctx.rules, ctx.clock, ctx.poolTickets, ctx.tickets).execute(new GetProfileQuery('w'));
+    expect(p.tickets).toMatchObject([{ poolId: 1, balance: 0, status: 'open' }]);
+    expect(p.grants).toEqual([{ poolId: 1, delta: 2, source: 'promo', ref: 'HELLO', at: ctx.clock.ms }]);
   });
 });

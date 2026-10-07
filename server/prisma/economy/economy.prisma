@@ -83,6 +83,7 @@ model Pool {
   syncedAt      DateTime?
   tickets       RideTicket[]
   orders        TicketOrder[]
+  rides         Ride[]
 
   @@index([status, prepDeadline])
   @@index([roundId])

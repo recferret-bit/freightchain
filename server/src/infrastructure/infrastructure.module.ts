@@ -34,6 +34,12 @@ import { SolanaChainAdapter } from './solana/solana-chain.adapter.js';
 import { SystemClock } from './time/system.clock.js';
 import { PlayerAuthGuard } from './http/guards/player-auth.guard.js';
 import { ClearSessionCookieInterceptor, SetSessionCookieInterceptor } from './http/interceptors/session-cookie.interceptor.js';
+import { PoolRepositoryPort } from '../application/ports/economy/pool.repository.port.js';
+import { PromoRepositoryPort } from '../application/ports/economy/promo.repository.port.js';
+import { RideTicketRepositoryPort } from '../application/ports/players/ride-ticket.repository.port.js';
+import { PoolPrismaRepository } from './prisma/repositories/pool.prisma.repository.js';
+import { PromoPrismaRepository } from './prisma/repositories/promo.prisma.repository.js';
+import { RideTicketPrismaRepository } from './prisma/repositories/ride-ticket.prisma.repository.js';
 
 /** Every port the application layer declares is bound to its adapter here – the only place that knows which implementation runs. */
 const ports: Provider[] = [
@@ -53,6 +59,9 @@ const ports: Provider[] = [
   { provide: PriceQuotePort, useClass: HttpPriceQuoteAdapter },
   { provide: ChainPort, useClass: SolanaChainAdapter },
   { provide: HealthProbePort, useClass: PrismaHealthProbe },
+  { provide: PoolRepositoryPort, useClass: PoolPrismaRepository },
+  { provide: RideTicketRepositoryPort, useClass: RideTicketPrismaRepository },
+  { provide: PromoRepositoryPort, useClass: PromoPrismaRepository },
 ];
 
 const portTokens = ports.map((p) => (p as { provide: unknown }).provide as typeof ClockPort);

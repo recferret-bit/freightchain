@@ -29,6 +29,8 @@ model Ride {
   quoteExpiresAt DateTime?
   roundId        Int?
   round          Round?     @relation(fields: [roundId], references: [id])
+  poolId         Int? // the prize pool whose ticket paid for this ride (null = free, or a legacy pay-per-ride order)
+  pool           Pool?      @relation(fields: [poolId], references: [id])
   paidAt         DateTime?
   route          String? // theme id reported by the client (whitelisted)
   nightSeconds   Float      @default(0)
@@ -48,5 +50,6 @@ model Ride {
   @@index([status, lastHbAt])
   @@index([roundId, status])
   @@index([wallet, startedAt])
+  @@index([poolId, status])
   @@schema("ride")
 }

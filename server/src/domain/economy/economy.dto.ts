@@ -1,3 +1,4 @@
+import type { PrizePoolDto } from './prize-pool.dto.js';
 import type { Split } from './prize-split.js';
 
 export interface TierDto {
@@ -8,11 +9,15 @@ export interface TierDto {
   /** null for the free tier or when no price is available */
   lamports: number | null;
   available: boolean;
+  /** paid tiers: the escrowed pool its tickets are sold into right now (null = none registered – the legacy pay-per-ride order applies) */
+  pool: PrizePoolDto | null;
 }
 
 export interface TiersDto {
   solUsd: number | null;
   treasury: string | null;
+  /** 'program' = escrow pools via the Anchor program, 'transfer' = plain transfers (fallback) */
+  paymentMode: 'program' | 'transfer';
   tiers: TierDto[];
 }
 
@@ -25,6 +30,8 @@ export interface PoolDto {
   solUsd: number | null;
   /** "≈ at the current price" – lamports are the truth */
   usd: { grand: number | null; top20: number | null; nextSeed: number | null; fees: number | null; entries: number | null };
+  /** the escrowed pools on sale or running (the landing's pot = the sum of their escrow) */
+  pools: PrizePoolDto[];
 }
 
 export type LeaderboardBoard = 'round' | 'all' | 'free';

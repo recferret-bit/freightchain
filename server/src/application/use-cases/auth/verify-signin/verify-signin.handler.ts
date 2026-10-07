@@ -8,6 +8,7 @@ import { TokenSignerPort } from '../../../ports/auth/token-signer.port.js';
 import { RulesConfigPort } from '../../../ports/config/rules-config.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
 import { PlayerSessionService } from '../../../services/player-session.service.js';
+import { PoolTicketsService } from '../../../services/pool-tickets.service.js';
 import { demoScaleOf, isDemoWallet } from '../../../services/demo.js';
 import { VerifySignInCommand, type SignInResultDto } from './verify-signin.command.js';
 
@@ -21,6 +22,7 @@ export class VerifySignInHandler implements ICommandHandler<VerifySignInCommand,
     private readonly sessions: PlayerSessionService,
     private readonly rules: RulesConfigPort,
     private readonly clock: ClockPort,
+    private readonly tickets: PoolTicketsService,
   ) {}
 
   async execute(command: VerifySignInCommand): Promise<SignInResultDto> {
@@ -32,6 +34,6 @@ export class VerifySignInHandler implements ICommandHandler<VerifySignInCommand,
     const now = this.clock.now();
     const player = await this.sessions.touch(wallet, now);
     const rules = this.rules.get();
-    return { profile: toMeDto(player, now, isDemoWallet(rules, wallet), demoScaleOf(rules)), session };
+    return { profile: toMeDto(player, now, isDemoWallet(rules, wallet), demoScaleOf(rules), await this.tickets.balances(wallet)), session };
   }
 }

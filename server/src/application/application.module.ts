@@ -28,7 +28,12 @@ import { HeartbeatRideHandler } from './use-cases/rides/heartbeat-ride/heartbeat
 import { ReconcilePaymentHandler } from './use-cases/rides/reconcile-payment/reconcile-payment.handler.js';
 import { StartRideHandler } from './use-cases/rides/start-ride/start-ride.handler.js';
 
-const services: Provider[] = [AchievementService, PaymentSettlementService, PlayerSessionService, RideLookupService, RoundService];
+import { PoolTicketsService } from './services/pool-tickets.service.js';
+import { ListPoolsHandler } from './use-cases/pools/list-pools/list-pools.handler.js';
+import { GetPrizePoolHandler } from './use-cases/pools/get-prize-pool/get-prize-pool.handler.js';
+import { RedeemPromoHandler } from './use-cases/players/redeem-promo/redeem-promo.handler.js';
+
+const services: Provider[] = [AchievementService, PaymentSettlementService, PlayerSessionService, PoolTicketsService, RideLookupService, RoundService];
 
 const handlers: Provider[] = [
   RequestChallengeHandler, VerifySignInHandler, GetMeHandler, LogoutHandler,
@@ -38,6 +43,7 @@ const handlers: Provider[] = [
   GetLiveHandler, GetProfileHandler,
   GetLivenessHandler, GetReadinessHandler,
   GrantDailyFreeRidesHandler,
+  ListPoolsHandler, GetPrizePoolHandler, RedeemPromoHandler,
 ];
 
 @Module({

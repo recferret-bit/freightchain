@@ -16,7 +16,7 @@ class StubTokens extends TokenSignerPort {
 
 describe('VerifySignInHandler', () => {
   const ctx = unitContext();
-  const handler = new VerifySignInHandler(ctx.challenges, new NaclSignatureVerifier(), new StubTokens(), ctx.sessions, ctx.rules, ctx.clock);
+  const handler = new VerifySignInHandler(ctx.challenges, new NaclSignatureVerifier(), new StubTokens(), ctx.sessions, ctx.rules, ctx.clock, ctx.poolTickets);
   const challenge = new RequestChallengeHandler(ctx.challenges, ctx.rules, ctx.clock, ctx.entropy);
   const kp = nacl.sign.keyPair(), wallet = bs58.encode(kp.publicKey);
   const sign = (m: string, key = kp) => bs58.encode(nacl.sign.detached(new TextEncoder().encode(m), key.secretKey));
