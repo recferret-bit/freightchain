@@ -622,7 +622,7 @@ Real code, not required for the five judge numbers. The Dedupe key column is the
 | `pending_ride_start_clicked` | client | the START IT button in `paintPending` | — | `ride_id`. |
 | `route_selected` | client | `bindRoutes` click, only if `online.ride` | — | `route_id`. Fires before start. Server still learns the route on the heartbeat. |
 | `phase_selected` | client | `bindTime` / `setPhase`, only if `online.ride` | — | `phase`. Low value; include so the menu is not a hole. P1. |
-| `ride_paused` / `ride_resumed` | client | `setPaused` transitions in `game.js`, only if `online.ride` | — | `source: "key" \| "visibility"` (`visibilitychange` auto-pauses). Not per frame. |
+| `ride_paused` / `ride_unpaused` | client | `setPaused` transitions in `game.js`, only if `online.ride` | — | `source: "key" \| "visibility"` (`visibilitychange` auto-pauses). Not per frame. The unpause name is not `ride_resumed`: that name is the server event above, and the relay drops every server name. |
 | `ride_end_requested` | client | `endRide` when `online.ride` is set, **before** `endOnline` | — | `outcome: shift \| failed`, `client_complete` (bool, `st.complete`), `fail_code` using the same mapper on the client reason. **Never a completion metric.** Useful only to see “client painted COMPLETE, server said abandoned”. |
 | `player_signed_out` | client | `#out` click in `lobby.js`, before `signOut()` | — | Server `LogoutHandler` has no wallet and no guard. P0 does not change auth to learn it. |
 

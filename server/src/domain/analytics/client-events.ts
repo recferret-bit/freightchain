@@ -1,4 +1,5 @@
-/** P0 client plane. The relay forwards only these names, and only the properties listed. */
+/** Client plane (P0, P1, P2). The relay forwards only these names, and only the properties listed.
+ *  Pause-menu resume is `ride_unpaused`. `ride_resumed` is the server event for an existing open ride, and the relay drops it. */
 export const CLIENT_EVENTS = [
   'landing_viewed',
   'landing_chapter_viewed',
@@ -19,6 +20,22 @@ export const CLIENT_EVENTS = [
   'ride_load_failed',
   'ride_start_clicked',
   'ride_start_failed',
+  'hero_video_started',
+  'hero_video_failed',
+  'demo_dialog_opened',
+  'play_top_clicked',
+  'leaderboard_filtered',
+  'pending_ride_shown',
+  'pending_ride_start_clicked',
+  'route_selected',
+  'phase_selected',
+  'ride_paused',
+  'ride_unpaused',
+  'ride_end_requested',
+  'player_signed_out',
+  'offline_practice_clicked',
+  'storybook_link_clicked',
+  'social_clicked',
 ] as const;
 
 export type ClientEventName = (typeof CLIENT_EVENTS)[number];
@@ -53,6 +70,22 @@ const ALLOW: Record<ClientEventName, readonly string[]> = {
   ride_load_failed: ['stage', 'http_status', 'code'],
   ride_start_clicked: ['ride_id', 'route_id', 'phase'],
   ride_start_failed: ['ride_id', 'http_status', 'code'],
+  hero_video_started: [],
+  hero_video_failed: [],
+  demo_dialog_opened: ['has_video'],
+  play_top_clicked: ['signed_in'],
+  leaderboard_filtered: ['board'],
+  pending_ride_shown: ['ride_id', 'tier_id'],
+  pending_ride_start_clicked: ['ride_id'],
+  route_selected: ['route_id'],
+  phase_selected: ['phase'],
+  ride_paused: ['source'],
+  ride_unpaused: ['source'],
+  ride_end_requested: ['outcome', 'client_complete', 'fail_code'],
+  player_signed_out: [],
+  offline_practice_clicked: [],
+  storybook_link_clicked: [],
+  social_clicked: ['net'],
 };
 
 const MAX_KEYS = 20;

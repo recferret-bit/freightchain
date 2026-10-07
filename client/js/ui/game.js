@@ -112,7 +112,7 @@ export function setPaused(p, source = 'key') {
   }
   else if (!p && st.mode === 'paused') {
     st.mode = 'drive'; overlay.classList.add('hide'); clock.last = performance.now();
-    if (online.ride) track('ride_resumed', { source });
+    if (online.ride) track('ride_unpaused', { source });   // not ride_resumed: that name is the server event for an existing open ride, and the relay drops it
   }
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden) setPaused(true, 'visibility'); });

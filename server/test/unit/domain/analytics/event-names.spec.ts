@@ -7,5 +7,8 @@ describe('analytics event names', () => {
     expect(both).toEqual([]);
     expect(new Set(CLIENT_EVENTS).size).toBe(CLIENT_EVENTS.length);
     expect(new Set(SERVER_EVENTS).size).toBe(SERVER_EVENTS.length);
+    expect(CLIENT_EVENTS).toContain('ride_unpaused');
+    expect(CLIENT_EVENTS).not.toContain('ride_resumed');
+    expect(SERVER_EVENTS).toContain('ride_resumed');
   });
 });

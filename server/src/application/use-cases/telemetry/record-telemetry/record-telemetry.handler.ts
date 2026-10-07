@@ -19,7 +19,7 @@ export class RecordTelemetryHandler implements ICommandHandler<RecordTelemetryCo
     private readonly clock: ClockPort,
   ) {}
 
-  execute({ wallet, anonId, events }: RecordTelemetryCommand): TelemetryAckDto {
+  async execute({ wallet, anonId, events }: RecordTelemetryCommand): Promise<TelemetryAckDto> {
     const enabled = this.analytics.enabled();
     if (!enabled) return { enabled: false, accepted: 0, dropped: 0 };
     if (events.length === 0) return { enabled: true, accepted: 0, dropped: 0 };
