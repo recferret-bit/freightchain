@@ -17,12 +17,14 @@ import { EntropyPort } from '../application/ports/shared/entropy.port.js';
 import { HasherPort } from '../application/ports/shared/hasher.port.js';
 import { TransactionPort } from '../application/ports/shared/transaction.port.js';
 import { RideBatchRepositoryPort } from '../application/ports/telemetry/ride-batch.repository.port.js';
+import { RideVerdictRepositoryPort } from '../application/ports/verdict/ride-verdict.repository.port.js';
 import { JoseTokenSigner } from './auth/jose.token-signer.js';
 import { NaclSignatureVerifier } from './auth/nacl.signature-verifier.js';
 import { EnvRulesConfigAdapter } from './config/rules-config.adapter.js';
 import { NodeEntropy } from './crypto/node.entropy.js';
 import { NodeHasher } from './crypto/node.hasher.js';
 import { RideBatchPrismaRepository } from './prisma/repositories/ride-batch.prisma.repository.js';
+import { RideVerdictPrismaRepository } from './prisma/repositories/ride-verdict.prisma.repository.js';
 import { PrismaHealthProbe } from './health/prisma.health-probe.js';
 import { AchievementPrismaRepository } from './prisma/repositories/achievement.prisma.repository.js';
 import { ChallengePrismaRepository } from './prisma/repositories/challenge.prisma.repository.js';
@@ -45,6 +47,7 @@ const ports: Provider[] = [
   { provide: EntropyPort, useClass: NodeEntropy },
   { provide: HasherPort, useClass: NodeHasher },
   { provide: RideBatchRepositoryPort, useClass: RideBatchPrismaRepository },
+  { provide: RideVerdictRepositoryPort, useClass: RideVerdictPrismaRepository },
   { provide: TransactionPort, useClass: TransactionPrismaAdapter },
   { provide: RulesConfigPort, useClass: EnvRulesConfigAdapter },
   { provide: PlayerRepositoryPort, useClass: PlayerPrismaRepository },

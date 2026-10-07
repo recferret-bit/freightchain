@@ -5,6 +5,7 @@ import { PaymentSettlementService } from '../../src/application/services/payment
 import { PlayerSessionService } from '../../src/application/services/player-session.service.js';
 import { RideLookupService } from '../../src/application/services/ride-lookup.service.js';
 import { RoundService } from '../../src/application/services/round.service.js';
+import { VerdictService } from '../../src/application/services/verdict.service.js';
 import { Player } from '../../src/domain/players/player.entity.js';
 import { Ride } from '../../src/domain/rides/ride.entity.js';
 import { FakeChain, TREASURY } from './fake-chain.js';
@@ -12,7 +13,7 @@ import { FakeClock } from './fake-clock.js';
 import { MemoryDb } from './in-memory/memory-db.js';
 import {
   MemoryAchievementRepository, MemoryChallengeRepository, MemoryHealthProbe, MemoryPaymentRepository, MemoryPlayerRepository,
-  MemoryRideBatchRepository, MemoryRideQuery, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
+  MemoryRideBatchRepository, MemoryRideQuery, MemoryRideVerdictRepository, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
 } from './in-memory/memory-repositories.js';
 import { TestHasher } from './recording.js';
 
@@ -57,11 +58,13 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const unlocks = new MemoryAchievementRepository(db);
   const batches = new MemoryRideBatchRepository(db);
   const hasher = new TestHasher();
+  const verdictRepo = new MemoryRideVerdictRepository(db);
   const health = new MemoryHealthProbe();
   const sessions = new PlayerSessionService(players, rulesPort, clock);
   const lookup = new RideLookupService(rides);
   const rounds = new RoundService(roundRepo, rulesPort, transactions, clock);
   const achievements = new AchievementService(unlocks, rideQuery, clock);
+  const verdicts = new VerdictService(rides, players, batches, verdictRepo, transactions, clock);
   const settlement = new PaymentSettlementService(rounds, roundRepo, payments, rides, players, lookup, transactions, clock);
 
   const now = () => clock.now();
@@ -86,7 +89,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const storedPlayer = async (wallet: string) => (await players.findByWallet(wallet)) as Player;
 
   return {
-    db, clock, chain, entropy, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, batches, hasher, health,
+    db, clock, chain, entropy, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, batches, hasher, verdictRepo, verdicts, health,
     sessions, lookup, rounds, achievements, settlement, now, player, freeRide, paidOrder, reload, storedPlayer,
   };
 }

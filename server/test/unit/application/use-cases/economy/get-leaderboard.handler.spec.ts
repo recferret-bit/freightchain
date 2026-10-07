@@ -1,9 +1,11 @@
 import { GetLeaderboardHandler } from '../../../../../src/application/use-cases/economy/get-leaderboard/get-leaderboard.handler.js';
 import { GetLeaderboardQuery } from '../../../../../src/application/use-cases/economy/get-leaderboard/get-leaderboard.query.js';
+import { RideVerdict } from '../../../../../src/domain/verdict/ride-verdict.entity.js';
+import { VerdictStatus } from '../../../../../src/domain/verdict/verdict.dto.js';
 import { unitContext, type UnitContext } from '../../../../support/unit-context.js';
 
-/** a completed ride of `metres` for `wallet` (paid into the current round unless free) */
-async function completed(ctx: UnitContext, wallet: string, metres: number, free = false) {
+/** a completed ride of `metres` for `wallet` (paid into the current round unless free) with a verdict of `verdict` */
+async function completed(ctx: UnitContext, wallet: string, metres: number, free = false, verdict: VerdictStatus | null = VerdictStatus.Verified) {
   const ride = free ? await ctx.freeRide(wallet) : await ctx.paidOrder(wallet);
   if (!free) ride.markPaid((await ctx.rounds.ensureRound()).id, ctx.now());
   ride.start(ctx.now());
@@ -13,6 +15,12 @@ async function completed(ctx: UnitContext, wallet: string, metres: number, free 
   const { Ride } = await import('../../../../../src/domain/rides/ride.entity.js');
   const done = Ride.restore({ ...p, lastS: metres, status: 'completed' as never, endedAt: ctx.now() });
   await ctx.rides.save(done);
+  if (verdict) {
+    await ctx.verdictRepo.save(RideVerdict.restore({
+      rideId: done.id, status: verdict, reasons: [], rulesVersion: 1, judgedAt: ctx.now(), version: 1,
+      scores: { recording: { batches: 0, samples: 0, inputs: 0, recordedSeconds: 0, coverage: 0, maxSpeed: 0 }, human: { presses: 0, minHoldCv: null, repeatShare: null, instantShare: null } },
+    }));
+  }
 }
 
 describe('GetLeaderboardHandler', () => {
@@ -28,6 +36,18 @@ describe('GetLeaderboardHandler', () => {
     expect(round.rows).toEqual([{ rank: 1, wallet: 'alice', distance: 1100, rides: 2 }, { rank: 2, wallet: 'bob', distance: 900, rides: 1 }]);
     expect((await handler.execute(new GetLeaderboardQuery('free'))).rows).toEqual([{ rank: 1, wallet: 'carol', distance: 5000, rides: 1 }]);
     expect((await handler.execute(new GetLeaderboardQuery('all'))).rows.map((r) => r.wallet)).toEqual(['alice', 'bob']);
+  });
+
+  it('paid boards count only VERIFIED shifts (flagged, rejected and unjudged are left out); the free board counts every completed free ride', async () => {
+    const ctx = unitContext();
+    await completed(ctx, 'alice', 500);
+    await completed(ctx, 'bob', 900, false, VerdictStatus.Flagged);
+    await completed(ctx, 'carol', 800, false, VerdictStatus.Rejected);
+    await completed(ctx, 'dave', 700, false, null);
+    await completed(ctx, 'erin', 300, true, null);
+    const handler = new GetLeaderboardHandler(ctx.rounds, ctx.rideQuery);
+    for (const board of ['round', 'all'] as const) expect((await handler.execute(new GetLeaderboardQuery(board))).rows.map((r) => r.wallet)).toEqual(['alice']);
+    expect((await handler.execute(new GetLeaderboardQuery('free'))).rows.map((r) => r.wallet)).toEqual(['erin']);
   });
 
   it("'round' is only the CURRENT week", async () => {

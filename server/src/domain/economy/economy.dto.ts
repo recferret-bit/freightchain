@@ -39,7 +39,7 @@ export interface LeaderboardRowDto {
 export interface LeaderboardDto {
   board: LeaderboardBoard;
   round: { id: number; endsAt: number };
-  /** the first `prizeRanks` rows of the round board share the 20 % top-20 pool */
+  /** the first `prizeRanks` rows of the round board share the 20 % top-20 pool. Paid boards rank only shifts whose recording the server verified. */
   prizeRanks: number;
   rows: LeaderboardRowDto[];
 }

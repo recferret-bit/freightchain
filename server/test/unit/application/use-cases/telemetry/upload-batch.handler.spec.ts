@@ -7,7 +7,7 @@ import { unitContext } from '../../../../support/unit-context.js';
 describe('UploadBatchHandler', () => {
   const setup = () => {
     const ctx = unitContext();
-    const handler = new UploadBatchHandler(ctx.lookup, ctx.batches, ctx.hasher, ctx.clock);
+    const handler = new UploadBatchHandler(ctx.lookup, ctx.batches, ctx.hasher, ctx.verdicts, ctx.clock);
     return { ctx, up: (wallet: string, id: string, b: Parameters<typeof handler.execute>[0]['body']) => handler.execute(new UploadBatchCommand(wallet, id, b)) };
   };
 

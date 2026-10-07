@@ -24,17 +24,26 @@ await ev('document.getElementById("go").click()'); await sleep(800);
 check('ride started on the server', (await (await fetch(`${BASE}/api/rides/${ride.id}`, { headers: { cookie } })).json()).status === 'running');
 check('road seed = the server seed', (await ev('__game.roads.seed')) === ride.seed, `${await ev('__game.roads.seed')} vs ${ride.seed}`);
 await shot('online-drive');
-await ev('__game.st.s = 90');   // headless can't really drive: fake the distance the beat will report (≤ MAX_SPEED·Δt, so the server accepts it)
+check('the ride is being recorded', await ev('__game.telemetry.on === true && __game.telemetry.rideId === ' + JSON.stringify(ride.id)));
+// headless can't really drive: grow the distance with the GAME clock at 20 m/s (under the governor, so neither the heartbeat check nor the recording's teleport check trips)
+await ev('(() => { let last = __game.st.t; setInterval(() => { const g = __game.st; if (g.mode === "drive") g.s += 20 * Math.max(0, g.t - last); last = g.t; }, 50); })()');
+// …and press keys the way a person does (real CDP key events through the game's own listeners, jittered holds and gaps) – the verdict reads their timing
+const press = async (code, key, hold) => { await send('Input.dispatchKeyEvent', { type: 'keyDown', code, key }); await sleep(hold); await send('Input.dispatchKeyEvent', { type: 'keyUp', code, key }); };
+const KEYS = [['KeyW', 'w'], ['KeyA', 'a'], ['KeyD', 'd'], ['KeyW', 'w'], ['ArrowUp', 'ArrowUp']];
 // wait on the GAME's clock (software-rendered headless Chrome runs at ~half real time), then end before the first 10 s heartbeat: the final /end alone must carry the time
-const t0 = Date.now(); while (!(await ev('__game.st.complete')) && Date.now() - t0 < 30000) await sleep(200);
+const t0 = Date.now();
+for (let i = 0; !(await ev('__game.st.complete')) && Date.now() - t0 < 30000 + MIN * 3000; i++) {   /* headless runs the game clock at ~0.4× */ const [code, key] = KEYS[i % KEYS.length]; await press(code, key, 60 + Math.random() * 340); await sleep(80 + Math.random() * 420); }
 const waited = (Date.now() - t0) / 1000; console.log(waited < 9 ? `ok   ended before the first 10 s heartbeat (${waited.toFixed(1)} s) – only /end carried the time` : `NOTE ${waited.toFixed(1)} s after START: a heartbeat had already fired (slow machine) – this run did not isolate the /end-only path (vitest does)`);
 await ev('document.dispatchEvent(new KeyboardEvent("keydown", { key: "p", code: "KeyP", bubbles: true })); window.dispatchEvent(new KeyboardEvent("keydown", { key: "p", code: "KeyP", bubbles: true }))'); await sleep(500);
 check('shift is complete in the client', await ev('__game.st.complete'), `t=${await ev('__game.st.t.toFixed(1)')} s`);
 await ev('document.getElementById("endshift")?.click()'); await sleep(1500);
 const verdict = await ev('document.getElementById("verdict")?.textContent');
-check('server verdict = COMPLETED', verdict === 'COMPLETED', String(verdict));
+check('server verdict = COMPLETED · VERIFIED', verdict === 'COMPLETED · VERIFIED', String(verdict));
 await shot('online-done');
 const now = await (await fetch(`${BASE}/api/rides/${ride.id}`, { headers: { cookie } })).json();
 check('server state', now.status === 'completed', `${now.status}, ${now.driveSeconds} s, ${now.distance} m`);
+// the WebCrypto hash chain the game built must be the one the server recomputes (a mismatch would be 'hash-mismatch' / 'chain-broken')
+check('recording verified by the server (chain hashed alike in the browser and in Node)', now.verdict?.status === 'verified', JSON.stringify(now.verdict));
+check('every batch uploaded', (await ev('__game.telemetry.queue.length')) === 0 && (await ev('__game.telemetry.seq')) >= 1, `${await ev('__game.telemetry.seq')} batch(es), ${await ev('__game.telemetry.queue.length')} queued`);
 const probs = filt(); check('no page errors', probs.length === 0, probs.join(' | '));
 console.log(`screenshots: ${SHOTS}`); finish(fails.length ? 1 : 0);

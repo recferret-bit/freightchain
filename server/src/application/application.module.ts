@@ -6,6 +6,7 @@ import { PaymentSettlementService } from './services/payment-settlement.service.
 import { PlayerSessionService } from './services/player-session.service.js';
 import { RideLookupService } from './services/ride-lookup.service.js';
 import { RoundService } from './services/round.service.js';
+import { VerdictService } from './services/verdict.service.js';
 import { GrantDailyFreeRidesHandler } from './use-cases/players/grant-daily-free-rides/grant-daily-free-rides.handler.js';
 import { GetMeHandler } from './use-cases/auth/get-me/get-me.handler.js';
 import { LogoutHandler } from './use-cases/auth/logout/logout.handler.js';
@@ -29,7 +30,7 @@ import { ReconcilePaymentHandler } from './use-cases/rides/reconcile-payment/rec
 import { StartRideHandler } from './use-cases/rides/start-ride/start-ride.handler.js';
 import { UploadBatchHandler } from './use-cases/telemetry/upload-batch/upload-batch.handler.js';
 
-const services: Provider[] = [AchievementService, PaymentSettlementService, PlayerSessionService, RideLookupService, RoundService];
+const services: Provider[] = [AchievementService, PaymentSettlementService, PlayerSessionService, RideLookupService, RoundService, VerdictService];
 
 const handlers: Provider[] = [
   RequestChallengeHandler, VerifySignInHandler, GetMeHandler, LogoutHandler,

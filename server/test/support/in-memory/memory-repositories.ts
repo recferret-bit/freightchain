@@ -19,6 +19,9 @@ import { RideRepositoryPort } from '../../../src/application/ports/rides/ride.re
 import { TransactionPort } from '../../../src/application/ports/shared/transaction.port.js';
 import { RideBatchRepositoryPort } from '../../../src/application/ports/telemetry/ride-batch.repository.port.js';
 import { RideBatch } from '../../../src/domain/telemetry/ride-batch.entity.js';
+import { RideVerdictRepositoryPort } from '../../../src/application/ports/verdict/ride-verdict.repository.port.js';
+import { RideVerdict } from '../../../src/domain/verdict/ride-verdict.entity.js';
+import { VerdictStatus } from '../../../src/domain/verdict/verdict.dto.js';
 import { MemoryDb } from './memory-db.js';
 
 /* In-memory twins of the Prisma repositories: same contracts (optimistic versions, unique keys, orderings), no database.
@@ -190,13 +193,14 @@ export class MemoryRideQuery extends RideQueryPort {
       .sort((a, b) => (b.props.startedAt?.getTime() ?? 0) - (a.props.startedAt?.getTime() ?? 0) || b.seq - a.seq)
       .slice(0, limit)
       .flatMap(({ props: p }) => (p.startedAt
-        ? [{ tier: p.tier, status: p.status, lastS: p.lastS, hull: p.hull, route: p.route, timeScale: p.timeScale, startedAt: p.startedAt, endedAt: p.endedAt }]
+        ? [{ tier: p.tier, status: p.status, lastS: p.lastS, hull: p.hull, route: p.route, timeScale: p.timeScale, startedAt: p.startedAt, endedAt: p.endedAt, verdict: this.db.verdicts.get(p.id)?.status ?? null }]
         : []));
   }
 
   async leaderboard(board: LeaderboardBoard, roundId: number | null, limit: number): Promise<LeaderboardRow[]> {
     const done = [...this.db.rides.values()].map((r) => r.props).filter((r) =>
-      r.status === RideStatus.Completed && (board === 'free' ? r.tier === 'free' : r.tier !== 'free' && (board === 'round' ? r.roundId === roundId : true)));
+      r.status === RideStatus.Completed && (board === 'free' ? r.tier === 'free'
+        : r.tier !== 'free' && this.db.verdicts.get(r.id)?.status === VerdictStatus.Verified && (board === 'round' ? r.roundId === roundId : true)));
     const groups = new Map<string, { distance: number; rides: number; first: number }>();
     for (const r of done) {
       const g = groups.get(r.wallet) ?? { distance: 0, rides: 0, first: Number.POSITIVE_INFINITY };
@@ -277,6 +281,21 @@ export class MemoryRideBatchRepository extends RideBatchRepositoryPort {
 
   async listByRide(rideId: string): Promise<RideBatch[]> {
     return [...this.db.batches.values()].filter((b) => b.rideId === rideId).sort((a, b) => a.seq - b.seq).map((b) => RideBatch.restore(b));
+  }
+}
+
+@Injectable()
+export class MemoryRideVerdictRepository extends RideVerdictRepositoryPort {
+  constructor(private readonly db: MemoryDb) { super(); }
+
+  async save(verdict: RideVerdict): Promise<void> {
+    const prev = this.db.verdicts.get(verdict.rideId);
+    this.db.verdicts.set(verdict.rideId, { ...verdict.snapshot(), version: prev ? prev.version + 1 : 1 });
+  }
+
+  async findByRide(rideId: string): Promise<RideVerdict | null> {
+    const v = this.db.verdicts.get(rideId);
+    return v ? RideVerdict.restore(v) : null;
   }
 }
 

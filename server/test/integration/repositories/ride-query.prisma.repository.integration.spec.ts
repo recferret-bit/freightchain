@@ -17,7 +17,7 @@ describe('RideQueryPrismaRepository (PostgreSQL)', () => {
   });
 
   /** drive a ride to an end state at t seconds: `metres` along, given flags */
-  async function ride(wallet: string, opts: { paid?: boolean; metres: number; seconds?: number; hull?: number; route?: string; night?: boolean; outcome?: 'shift' | 'failed' | 'running'; start?: number }) {
+  async function ride(wallet: string, opts: { paid?: boolean; metres: number; seconds?: number; hull?: number; route?: string; night?: boolean; outcome?: 'shift' | 'failed' | 'running'; start?: number; verdict?: 'verified' | 'flagged' | 'rejected' | null }) {
     const r: Ride = opts.paid ? orderAt(wallet, at(opts.start ?? 0)) : freeRideAt(wallet, at(opts.start ?? 0));
     if (opts.paid) r.markPaid(1, at(opts.start ?? 0));
     const t0 = opts.start ?? 0, secs = opts.seconds ?? (opts.paid ? 3600 : 10);
@@ -30,6 +30,8 @@ describe('RideQueryPrismaRepository (PostgreSQL)', () => {
     const ended = opts.outcome === 'shift' ? RideClass.restore({ ...moved.snapshot(), status: 'completed' as never, reason: 'shift complete', endedAt: at(t0 + secs) })
       : opts.outcome === 'failed' ? RideClass.restore({ ...moved.snapshot(), status: 'failed' as never, reason: 'x', endedAt: at(t0 + secs) }) : moved;
     await rides.insert(ended);
+    const verdict = opts.verdict === undefined ? (opts.outcome === 'shift' ? 'verified' : null) : opts.verdict;
+    if (verdict) await prisma.rideVerdict.create({ data: { rideId: ended.id, status: verdict, reasons: [], scores: {}, rulesVersion: 1, judgedAt: at(t0 + secs) } });
     return ended;
   }
 
@@ -100,5 +102,17 @@ describe('RideQueryPrismaRepository (PostgreSQL)', () => {
     expect((await query.leaderboard('all', null, 20)).map((r) => r.wallet)).toEqual(['bob', 'alice']);
     expect(await query.leaderboard('free', null, 20)).toEqual([{ wallet: 'carol', distance: 140, rides: 1 }]);
     expect(await query.leaderboard('all', null, 1)).toHaveLength(1);
+  });
+
+  it('leaderboard: the paid boards join the verdict – flagged, rejected or unjudged shifts do not rank; free rides rank whatever their verdict', async () => {
+    await ride('alice', { paid: true, metres: 500, outcome: 'shift', verdict: 'verified' });
+    await ride('bob', { paid: true, metres: 900, outcome: 'shift', verdict: 'flagged' });
+    await ride('carol', { paid: true, metres: 800, outcome: 'shift', verdict: null });
+    await ride('carol', { metres: 140, outcome: 'shift', verdict: 'rejected' });
+    expect((await query.leaderboard('round', 1, 20)).map((r) => r.wallet)).toEqual(['alice']);
+    expect((await query.leaderboard('all', null, 20)).map((r) => r.wallet)).toEqual(['alice']);
+    expect((await query.leaderboard('free', null, 20)).map((r) => r.wallet)).toEqual(['carol']);
+    expect((await query.recent('bob', 5))[0]?.verdict).toBe('flagged');
+    expect((await query.recent('carol', 5)).map((r) => r.verdict).sort()).toEqual(['rejected', null].sort());
   });
 });

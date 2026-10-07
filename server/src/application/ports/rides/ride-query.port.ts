@@ -63,6 +63,8 @@ export interface RecentRideRow {
   timeScale: number;
   startedAt: Date;
   endedAt: Date | null;
+  /** the verdict's status (null = not judged) */
+  verdict: string | null;
 }
 
 export interface LeaderboardRow {
@@ -83,6 +85,7 @@ export abstract class RideQueryPort {
   abstract totals(): Promise<RideTotalsRow>;
   abstract summary(wallet: string): Promise<RideSummary>;
   abstract recent(wallet: string, limit: number): Promise<RecentRideRow[]>;
-  /** Completed rides ranked by total distance (ties: more rides, earlier first finish, wallet). `roundId` is required for the 'round' board. */
+  /** Completed rides ranked by total distance (ties: more rides, earlier first finish, wallet). `roundId` is required for the 'round' board.
+      The PAID boards ('round', 'all') count only rides whose recording was verified; the free board counts every completed free ride. */
   abstract leaderboard(board: LeaderboardBoard, roundId: number | null, limit: number): Promise<LeaderboardRow[]>;
 }

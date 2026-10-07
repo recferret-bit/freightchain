@@ -5,6 +5,7 @@ import type { RoundProps } from '../../../src/domain/economy/round.entity.js';
 import type { PlayerProps } from '../../../src/domain/players/player.entity.js';
 import type { RideProps } from '../../../src/domain/rides/ride.entity.js';
 import type { RideBatchProps } from '../../../src/domain/telemetry/ride-batch.entity.js';
+import type { RideVerdictProps } from '../../../src/domain/verdict/ride-verdict.entity.js';
 
 /** The whole "database" of the in-memory suite: plain maps of snapshots (repositories hand out fresh entities, like real rows). */
 export class MemoryDb {
@@ -16,6 +17,7 @@ export class MemoryDb {
   unlocks: AchievementUnlock[] = [];
   /** key = `${rideId}:${seq}` */
   batches = new Map<string, RideBatchProps>();
+  verdicts = new Map<string, RideVerdictProps>();
   private seq = 0;
   private roundSeq = 0;
 
@@ -23,7 +25,7 @@ export class MemoryDb {
   nextRoundId(): number { return ++this.roundSeq; }
 
   reset(): void {
-    this.players.clear(); this.challenges.clear(); this.rides.clear(); this.batches.clear();
+    this.players.clear(); this.challenges.clear(); this.rides.clear(); this.batches.clear(); this.verdicts.clear();
     this.rounds = []; this.payments = []; this.unlocks = [];
     this.seq = 0; this.roundSeq = 0;
   }

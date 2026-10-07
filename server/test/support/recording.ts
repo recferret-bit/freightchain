@@ -37,8 +37,8 @@ export interface RecordingOptions {
   seed?: number;
   /** 'human' = jittered holds and pauses · 'bot' = metronome timings · 'none' = no input events at all */
   inputs?: 'human' | 'bot' | 'none';
-  /** cruise speed, m/s */
-  speed?: number;
+  /** metres the recording ends at – the distance the ride reports at /end (default 14 m/s × seconds) */
+  distance?: number;
 }
 
 const round = (v: number, p: number) => Math.round(v / p) * p + 0; // + 0: no -0 (JSON writes it as 0, so a round trip would not compare equal)
@@ -62,12 +62,11 @@ function inputEvents(seconds: number, kind: 'human' | 'bot', rnd: () => number):
   return ev.sort((a, b) => a[0] - b[0]);
 }
 
-/** `samples` rows: [t, s, d, psi, v, rpm, gear, hull, gas, brake, steer, clutch] at 10 Hz of game time. */
-function sampleRows(t0: number, t1: number, speed: number, rnd: () => number): number[][] {
-  const rows: number[][] = [];
+/** `samples` rows: [t, s, d, psi, v, rpm, gear, hull, gas, brake, steer, clutch] at 10 Hz of game time – a steady drive that reaches `distance` at `seconds`. */
+function sampleRows(t0: number, t1: number, seconds: number, distance: number, rnd: () => number): number[][] {
+  const rows: number[][] = [], v = distance / seconds;
   for (let t = t0; t < t1 - 1e-9; t = round(t + 0.1, 0.1)) {
-    const v = Math.min(speed, t * 1.2); // a gentle launch, then cruise
-    rows.push([round(t, 0.1), round(v * t * 0.5 + (t > speed / 1.2 ? 0 : 0), 0.1), round(2.4 + (rnd() - 0.5) * 0.6, 0.01), round((rnd() - 0.5) * 0.02, 0.001), round(v, 0.01), Math.round(900 + v * 60), v < 3 ? 1 : v < 10 ? 3 : 5, 100, v < speed ? 1 : 0.6, 0, round((rnd() - 0.5) * 0.3, 0.01), 0]);
+    rows.push([round(t, 0.1), round((distance * t) / seconds, 0.1), round(2.4 + (rnd() - 0.5) * 0.6, 0.01), round((rnd() - 0.5) * 0.02, 0.001), round(v, 0.01), Math.round(900 + v * 60), 5, 100, 0.6, 0, round((rnd() - 0.5) * 0.3, 0.01), 0]);
   }
   return rows;
 }
@@ -81,7 +80,7 @@ export function recording(rideId: string, opts: RecordingOptions): BatchBody[] {
   for (let seq = 0, t0 = 0; t0 < opts.seconds; seq++, t0 += batchSeconds) {
     const t1 = Math.min(opts.seconds, t0 + batchSeconds);
     const inputs = events.filter((e) => e[0] >= t0 * 1000 && e[0] < t1 * 1000);
-    const body = { seq, prevHash, t0, t1, samples: sampleRows(t0, t1, opts.speed ?? 24, rnd), inputs };
+    const body = { seq, prevHash, t0, t1, samples: sampleRows(t0, t1, opts.seconds, opts.distance ?? 14 * opts.seconds, rnd), inputs };
     const hash = hashBatch(body);
     batches.push({ ...body, hash });
     prevHash = hash;

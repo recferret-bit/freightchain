@@ -84,6 +84,23 @@ describe('concurrency (PostgreSQL)', () => {
     expect(await prisma.rideBatch.count({ where: { rideId: ride.id } })).toBe(1);
   });
 
+  it('/end racing the late final batch and parallel re-sends: the verdict that stays has seen every batch', async () => {
+    const a = await login();
+    const ride = (await a.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
+    await a.agent.post(`/api/rides/${ride.id}/start`).expect(200);
+    const batches = recording(ride.id, { seconds: 40, distance: 560 });
+    for (const b of batches.slice(0, -1)) await a.agent.post(`/api/rides/${ride.id}/batches`).send(b).expect(200);
+    sec(40);
+    const last = batches.at(-1);
+    const results = await Promise.all([
+      a.agent.post(`/api/rides/${ride.id}/end`).send({ outcome: 'shift', s: 560, t: 40 }),
+      ...Array.from({ length: 4 }, () => a.agent.post(`/api/rides/${ride.id}/batches`).send(last)),
+    ]);
+    expect(results.map((r) => r.status).every((s) => s === 200 || s === 409)).toBe(true); // a batch that beat /end is 200; after it, within the grace minute, 200 too
+    expect(await prisma.rideBatch.count({ where: { rideId: ride.id } })).toBe(batches.length);
+    expect((await a.agent.get(`/api/rides/${ride.id}`).expect(200)).body.verdict).toMatchObject({ status: 'verified' });
+  });
+
   it('a sign-in challenge is single-use: of N parallel verifies exactly ONE wins', async () => {
     const w = newWallet();
     const { body } = await anon().post('/api/auth/nonce').send({ wallet: w.address }).expect(200);

@@ -2,6 +2,7 @@ import { Keypair, SystemProgram, Transaction } from '@solana/web3.js';
 import { newSignature, TREASURY, type PaymentOptions } from '../support/fake-chain.js';
 import { bindClient, newWallet, type Rider } from '../support/client.js';
 import type { Harness } from '../support/harness.js';
+import { recording, upload } from '../support/recording.js';
 
 /* Tiers + SOL quote, paying a ride on chain, the weekly prize pool, demo scale, leaderboards. The chain is a FAKE (transactions we craft),
    the price is pinned (SOL_USD=100 → $5 = 0.05 SOL); a real devnet run is scripts/devnet-pay.mjs. */
@@ -251,7 +252,7 @@ export function paymentScenarios(h: () => Harness): void {
       expect(next.split).toMatchObject({ entries: 0, carry: s.nextSeed, grand: s.nextSeed });
     });
 
-    it('ranks completed paid rides by distance this round; free rides have their own board', async () => {
+    it('ranks completed (verified) paid rides by distance this round; free rides have their own board', async () => {
       const d = await login(DEMO_WALLET);
       const r = await order(d, '1h'); // demo: 60 s / 840 m
       await d.agent.post(`/api/rides/${r.id}/confirm`).send({ signature: pay(d, r) }).expect(200);
@@ -260,6 +261,7 @@ export function paymentScenarios(h: () => Harness): void {
         sec(10);
         await d.agent.post(`/api/rides/${r.id}/heartbeat`).send({ s: i * 130, t: i * 10, hull: 100 }).expect(200);
       }
+      await upload(d.agent, r.id, recording(r.id, { seconds: 70, distance: 910 })); // what the game records – the paid boards rank verified shifts only
       expect((await d.agent.post(`/api/rides/${r.id}/end`).send({ outcome: 'shift', s: 910, t: 70, hull: 100 }).expect(200)).body.status).toBe('completed');
       const board = (await anon().get('/api/leaderboard').expect(200)).body;
       expect(board.board).toBe('round');

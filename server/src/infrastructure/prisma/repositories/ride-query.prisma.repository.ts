@@ -72,14 +72,14 @@ export class RideQueryPrismaRepository extends RideQueryPort {
   }
 
   async recent(wallet: string, limit: number): Promise<RecentRideRow[]> {
-    const rows = await this.prisma.ride.findMany({ where: { wallet, startedAt: { not: null } }, orderBy: [{ startedAt: 'desc' }, { seq: 'desc' }], take: limit });
+    const rows = await this.prisma.ride.findMany({ where: { wallet, startedAt: { not: null } }, orderBy: [{ startedAt: 'desc' }, { seq: 'desc' }], take: limit, include: { verdict: { select: { status: true } } } });
     return rows.flatMap((r) => (r.startedAt
-      ? [{ tier: r.tier, status: r.status, lastS: r.lastS, hull: r.hull, route: r.route, timeScale: r.timeScale, startedAt: r.startedAt, endedAt: r.endedAt }]
+      ? [{ tier: r.tier, status: r.status, lastS: r.lastS, hull: r.hull, route: r.route, timeScale: r.timeScale, startedAt: r.startedAt, endedAt: r.endedAt, verdict: r.verdict?.status ?? null }]
       : []));
   }
 
   async leaderboard(board: LeaderboardBoard, roundId: number | null, limit: number): Promise<LeaderboardRow[]> {
-    const tierFilter: Prisma.RideWhereInput = board === 'free' ? { tier: 'free' } : { tier: { not: 'free' }, ...(board === 'round' ? { roundId } : {}) };
+    const tierFilter: Prisma.RideWhereInput = board === 'free' ? { tier: 'free' } : { tier: { not: 'free' }, verdict: { is: { status: 'verified' } }, ...(board === 'round' ? { roundId } : {}) }; // paid boards: verified recordings only
     const groups = await this.prisma.ride.groupBy({
       by: ['wallet'],
       where: { status: 'completed', ...tierFilter },
