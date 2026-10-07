@@ -5,22 +5,44 @@ Browser game inspired by *Desert Bus* (1995): a 2D truck cockpit drawn over a 3D
 endlessly from road patterns (crossroads with traffic lights, 1–3 lanes per direction…) and the ride starts at a depot.
 Vanilla ES modules + three.js r160 from a CDN. No build step, no framework, no bundler.
 
+## Repo layout (client / server)
+
+```
+client/    the game (everything below up to "Not implemented" is relative to client/) + site pages: index.html (landing, placeholder), lobby.html + site/lobby.js|css (tabs: new ride · live · leaderboard · profile; vanilla DOM, server text only via textContent), play.html (the game), viewer.html, site/wallet.js (sign-in) + pay.js (buy a ride)
+server/    NestJS 12 + TypeScript (ESM) + Prisma 6 + PostgreSQL, Clean Architecture: src/{app,cli,domain,application,infrastructure,presentation} + main.ts, prisma/ (multi-file schema, one PG schema per context, reviewed SQL migrations), test/ – see docs/backend-architecture.md
+docs/      hackathon-plan.md (day-by-day plan with progress ticks) · backend-architecture.md (the server's layers, rules, race-safety table, test pyramid)
+docker-compose.yml   local PostgreSQL for the server (project "freightchain", 127.0.0.1:15433)
+```
+- `npm run server:dev` (root) starts Nest on :3000, which also serves `client/` – the page and `/api` share an origin, so the session cookie needs no CORS. `client/serve.sh` still serves the game alone (offline mode).
+- **Online mode is opt-in**: `play.html?ride=<id>` (`js/online.js`) takes the seed + shift length from the server and heartbeats it; without `?ride` the game is the offline prototype (headless test, e2e, viewer and the `file://` build rely on that).
+- **Server rules (docs/backend-architecture.md, enforced by `server/test/architecture`)**:
+  - Layers point inward: `domain` is pure (entity classes `Ride`/`Player`/`Round`/`Payment`… – rules live in their methods), `application` = abstract-class ports + CQRS handlers + services, `infrastructure` implements the ports, `presentation` = thin controllers. Prisma rows ⇄ entities only in `infrastructure/prisma/mappers`.
+  - HTTP: every request part through `@ZodBody/@ZodQuery/@ZodParams`; every route returns a typed, non-empty DTO **produced through the bus** (`commandBus`/`queryBus.execute`); no Nest `HttpException` – throw `DomainError`s, the one `ProblemDetailsFilter` renders RFC 9457 problem+json; every response has `X-Request-Id`.
+  - Every timestamp from `ClockPort` (rows, JWTs, cookies – only `infrastructure/time/system.clock.ts` reads the wall clock); `process.env` only in `infrastructure/config/` (`EnvService`); files ≤ 500 lines.
+  - **Race-safety is part of the design**: anything a wallet does to its rides / credits / payments runs in a transaction under `findByWalletForUpdate` (the player row lock); rounds are locked when paid into or closed; aggregates use optimistic versions. A new critical section needs a test in `test/integration/concurrency.integration.spec.ts`.
+  - **A Prisma schema change needs a migration in the same change** (forward-only SQL; `test/integration/migrations.integration.spec.ts` fails on drift).
+  - **The test pyramid is mandatory** (`test/architecture/test-pyramid.spec.ts`, no allow-list): every new controller, CQRS handler, service, guard, interceptor, filter or adapter ships with its own unit spec (`test/unit/**/<file>.spec.ts`), every class that talks to PostgreSQL with its own integration spec (`test/integration/**/<file>.integration.spec.ts`); new behaviour also gets an HTTP scenario in `test/scenarios/` (runs on in-memory AND PostgreSQL).
+  - Rate limits (`THROTTLE_LIMIT` per signed-in wallet or IP, `THROTTLE_AUTH_LIMIT` on `/api/auth/*`) count per IP correctly only with `TRUST_PROXY` set – production requires it, with `JWT_SECRET` and `TREASURY_PUBKEY`.
+- Money: one global weekly round (UTC Mon→Mon); every paid entry (whatever the ride's outcome) is a `Payment` row; shares are floored integer lamports, remainder to fees; the grand prize shown is what has *accrued* – no draw/settlement/payout code yet. Demo wallets (`DEMO_WALLETS`) get paid shifts ÷`DEMO_SCALE` (`timeScale` on the ride; the speed bound is not scaled).
+- Server checks: `npm run server:test` (Docker-free: controller / handler / service / domain / infrastructure unit specs, architecture + pyramid audits, migration SQL, the whole HTTP surface on in-memory repositories) and `npm run server:integration` (Docker: repository specs, the same HTTP scenarios on real PostgreSQL, concurrency, schema drift – in its own `freightchain_test` database). The server mirrors `MAX_SPEED` / `COMPLETE_DIST_K` / the route ids in `server/src/domain/rides/ride-rules.ts` – keep them equal to `client/js/config.js` and `client/js/themes`.
+
 ## Run it
 
 ```sh
+# from client/
 ./serve.sh                       # python http server on :8765 + opens the browser (or: python3 -m http.server 8765)
 node tools/build-standalone.mjs  # optional: one self-contained dist/freightchain.html that works when double-clicked
 ```
 
-- The multi-file version **must be served over http**. Opening `index.html` via `file://` is blocked by CORS (blank page; after 2 s a "COULD NOT START" panel explains why).
+- The multi-file version **must be served over http**. Opening `play.html` via `file://` is blocked by CORS (blank page; after 2 s a "COULD NOT START" panel explains why).
   `dist/freightchain.html` (built by `tools/build-standalone.mjs`, needs `npx esbuild`) inlines everything and does work from `file://` – rebuild it after code changes; it is not committed/updated automatically.
-- It needs internet: three.js is loaded from jsdelivr (version pinned in the `importmap` in `index.html`).
+- It needs internet: three.js is loaded from jsdelivr (version pinned in the `importmap` in `play.html`).
 - Debug handle in the console: `window.__game` (`holes`, `st`, `disp`, `CFG`, `Wallet`, `input`, `startRide`, `tryShift`, `ignition`, `curv`, `selectTheme(id)`, `THEMES`, plus traffic's `spawn`/`traffic`).
 
 ## Layout
 
 ```
-index.html            markup + importmap + <script type="module" src="js/main.js">
+play.html             the game page: markup + importmap + <script type="module" src="js/main.js">
 css/style.css         HUD, toast, menu overlay
 js/main.js            entry: wires modules, runs the frame loop
 js/config.js          CFG – every tunable constant (ride length, fare, shake strengths…)
@@ -236,6 +258,8 @@ Props are **not** pooled as wholes (sizes are continuous and baked into child sc
 - Exhaust smoke (`drawExhaust`) only exists in the semi cockpit.
 
 ## Verifying changes
+
+**Server / full stack** (from the repo root): `npm run check` = client check + `nest build` + typecheck + the server's Docker-free tests; **`npm run server:integration`** (starts the compose PostgreSQL, then – in its OWN `freightchain_test` database, created and migrated by the suite, never the dev one – runs the repository specs, the same HTTP scenarios on real Prisma repositories, the concurrency tests and the migration-drift check) must also be green before a server change is done. Test layout and what each level proves: `docs/backend-architecture.md` → "Tests – the pyramid". Real-Chrome runs against a LIVE server (PostgreSQL up + migrated – `npm run db:up && npm run db:migrate`): `cd server && npm run build && FREE_RIDE_SECONDS=3 SOL_USD=118 TREASURY_PUBKEY=<any address> PORT=3111 node dist/main.js` (other terminal), then `BASE=http://localhost:3111 node scripts/e2e-browser.mjs` (the game: a keypair stands in for the wallet; ends the ride before the first heartbeat on purpose) and `BASE=http://localhost:3111 node scripts/e2e-lobby.mjs` (the whole lobby click-through, 3 Chromes, 26 checks, screenshots of every tab at desktop + phone width – LOOK at them). The database persists between runs (`npm run db:reset` after `build` wipes it). Headless Chrome runs the game clock at ~0.4× wall time, so wait on `__game.st` rather than sleeping.
 
 Quick path (npm scripts, no installs – tools run through `npx`): **`npm run check`** = eslint (`eslint.config.mjs`: undefined names, unused vars) + esbuild bundle + the headless test.
 Refactor gate: `npm run trace:save` before, `npm run trace:diff` after – "trace identical" = behaviour unchanged. `npm run test:e2e` / `test:viewer` = real Chrome (shared harness: `tools/cdp.mjs`; `PORT=…` if 9333/9334 are taken).

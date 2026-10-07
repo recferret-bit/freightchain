@@ -1,18 +1,20 @@
 {
-  "name": "freightchain",
+  "name": "freightchain-monorepo",
   "private": true,
-  "type": "module",
-  "description": "Freight Chain \u2013 Desert Run (no runtime deps; three.js comes from a CDN)",
+  "description": "Freight Chain \u2013 client/ (vanilla ES modules + three.js) and server/ (NestJS, Prisma, PostgreSQL). Each has its own package.json; these scripts just delegate.",
   "scripts": {
-    "serve": "./serve.sh",
-    "build": "node tools/build-standalone.mjs",
-    "bundle:check": "npx esbuild js/main.js --bundle --external:three --format=esm --outfile=${TMPDIR:-/tmp}/fc.js",
-    "lint": "npx eslint js tools",
-    "test:headless": "sh tools/trace.sh run",
-    "trace:save": "sh tools/trace.sh save",
-    "trace:diff": "sh tools/trace.sh diff",
-    "test:e2e": "node tools/e2e-chrome.mjs",
-    "check": "npm run lint && npm run bundle:check && npm run test:headless",
-    "test:viewer": "node tools/e2e-viewer.mjs"
+    "install:server": "npm --prefix server install",
+    "treasury:init": "npm --prefix server run treasury:init",
+    "server:dev": "npm --prefix server run start:dev",
+    "server:build": "npm --prefix server run build",
+    "server:test": "npm --prefix server test",
+    "client:check": "npm --prefix client run check",
+    "client:serve": "client/serve.sh",
+    "check": "npm run client:check && npm run server:build && npm run server:typecheck && npm run server:test",
+    "db:up": "npm --prefix server run db:up",
+    "db:down": "npm --prefix server run db:down",
+    "db:migrate": "npm --prefix server run prisma:deploy",
+    "server:integration": "npm --prefix server run test:integration:stack",
+    "server:typecheck": "npm --prefix server run typecheck"
   }
 }

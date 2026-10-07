@@ -1,0 +1,90 @@
+import { RulesConfigPort, type RulesConfig } from '../../src/application/ports/config/rules-config.port.js';
+import { EntropyPort } from '../../src/application/ports/shared/entropy.port.js';
+import { AchievementService } from '../../src/application/services/achievement.service.js';
+import { PaymentSettlementService } from '../../src/application/services/payment-settlement.service.js';
+import { PlayerSessionService } from '../../src/application/services/player-session.service.js';
+import { RideLookupService } from '../../src/application/services/ride-lookup.service.js';
+import { RoundService } from '../../src/application/services/round.service.js';
+import { Player } from '../../src/domain/players/player.entity.js';
+import { Ride } from '../../src/domain/rides/ride.entity.js';
+import { FakeChain, TREASURY } from './fake-chain.js';
+import { FakeClock } from './fake-clock.js';
+import { MemoryDb } from './in-memory/memory-db.js';
+import {
+  MemoryAchievementRepository, MemoryChallengeRepository, MemoryHealthProbe, MemoryPaymentRepository, MemoryPlayerRepository,
+  MemoryRideQuery, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
+} from './in-memory/memory-repositories.js';
+
+/** Fixed rules for unit tests: 10 s free shift (140 m), treasury configured, one demo wallet. */
+export const DEMO_UNIT_WALLET = 'DemoWa11et1111111111111111111111111111111111';
+export const unitRules = (over: Partial<RulesConfig> = {}): RulesConfig => ({
+  freeOnSignup: 5, freeRideSeconds: 10, hbMinIntervalMs: 1000, hbTimeoutMs: 150_000, quoteTtlMs: 600_000, nonceTtlMs: 300_000,
+  demoWallets: new Set([DEMO_UNIT_WALLET]), demoScale: 60, initialSeedLamports: 0, treasury: TREASURY, appDomain: 'freight.test', appOrigin: 'https://freight.test',
+  ...over,
+});
+
+export class FixedRules extends RulesConfigPort {
+  constructor(private readonly rules: RulesConfig = unitRules()) { super(); }
+  get(): RulesConfig { return this.rules; }
+}
+
+/** Deterministic ids, nonces and seeds. */
+export class SequenceEntropy extends EntropyPort {
+  private n = 0;
+  uuid(): string { this.n++; return `00000000-0000-4000-8000-${String(this.n).padStart(12, '0')}`; }
+  hex(bytes: number): string { this.n++; return String(this.n).padStart(bytes * 2, '0'); }
+  seed31(): number { this.n++; return 1000 + this.n; }
+}
+
+/**
+ * The application layer on in-memory ports: real services, fake clock / chain / entropy, in-memory repositories. Handler and service specs construct the
+ * class under test from these, so they test real behaviour without a database (the repositories have their own integration specs on PostgreSQL).
+ */
+export function unitContext(rules: RulesConfig = unitRules()) {
+  const db = new MemoryDb();
+  const clock = new FakeClock();
+  const chain = new FakeChain();
+  const entropy = new SequenceEntropy();
+  const rulesPort = new FixedRules(rules);
+  const transactions = new MemoryTransaction();
+  const players = new MemoryPlayerRepository(db);
+  const challenges = new MemoryChallengeRepository(db);
+  const rides = new MemoryRideRepository(db);
+  const rideQuery = new MemoryRideQuery(db);
+  const roundRepo = new MemoryRoundRepository(db);
+  const payments = new MemoryPaymentRepository(db);
+  const unlocks = new MemoryAchievementRepository(db);
+  const health = new MemoryHealthProbe();
+  const sessions = new PlayerSessionService(players, rulesPort, clock);
+  const lookup = new RideLookupService(rides);
+  const rounds = new RoundService(roundRepo, rulesPort, transactions, clock);
+  const achievements = new AchievementService(unlocks, rideQuery, clock);
+  const settlement = new PaymentSettlementService(rounds, roundRepo, payments, rides, players, lookup, transactions, clock);
+
+  const now = () => clock.now();
+  /** a registered player (5 credits) */
+  const player = async (wallet: string) => sessions.touch(wallet);
+  /** a stored free ride, optionally started */
+  const freeRide = async (wallet: string, started = false) => {
+    await player(wallet);
+    const ride = Ride.createFree({ id: entropy.uuid(), wallet, seed: entropy.seed31(), minSeconds: rules.freeRideSeconds, now: now() });
+    if (started) ride.start(now());
+    await rides.insert(ride);
+    return ride;
+  };
+  /** a stored paid order (awaiting payment) */
+  const paidOrder = async (wallet: string, lamports = 50_000_000) => {
+    await player(wallet);
+    const ride = Ride.createPaidOrder({ id: entropy.uuid(), wallet, tier: '1h', seed: entropy.seed31(), minSeconds: 3600, timeScale: 1, priceUsd: 5, lamports, solUsd: 100, now: now(), quoteTtlMs: rules.quoteTtlMs });
+    await rides.insert(ride);
+    return ride;
+  };
+  const reload = async (id: string) => (await rides.findById(id)) as Ride;
+  const storedPlayer = async (wallet: string) => (await players.findByWallet(wallet)) as Player;
+
+  return {
+    db, clock, chain, entropy, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, health,
+    sessions, lookup, rounds, achievements, settlement, now, player, freeRide, paidOrder, reload, storedPlayer,
+  };
+}
+export type UnitContext = ReturnType<typeof unitContext>;

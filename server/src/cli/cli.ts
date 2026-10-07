@@ -1,0 +1,68 @@
+import { spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+import { PrismaClient } from '@prisma/client';
+import { EnvService } from '../infrastructure/config/env.service.js';
+import { truncateAllTables } from '../infrastructure/prisma/truncate.js';
+
+export const HELP = `
+Freight Chain server CLI
+
+Usage:
+  node dist/cli/index.js <command>
+
+Commands:
+  migrate      Apply the database migrations (prisma migrate deploy)
+  db:reset     Truncate every table (refused in production)
+  --help       Show this help
+`;
+
+/** The server's own prisma binary (cwd is the server folder when started via npm scripts). */
+function prismaBin(): string {
+  const local = join(process.cwd(), 'node_modules', '.bin', 'prisma');
+  return existsSync(local) ? local : 'prisma';
+}
+
+/** The validated environment – the same rules as the server (DATABASE_URL required, production checks). */
+function environment(): EnvService | null {
+  try {
+    return new EnvService();
+  } catch (error) {
+    console.error(`[cli] ${error instanceof Error ? error.message : String(error)}`);
+    return null;
+  }
+}
+
+export function runMigrate(): number {
+  if (!environment()) return 1;
+  console.log('[cli] prisma migrate deploy …');
+  return spawnSync(prismaBin(), ['migrate', 'deploy'], { stdio: 'inherit' }).status ?? 1; // the child inherits the environment
+}
+
+export async function runDbReset(): Promise<number> {
+  const env = environment();
+  if (!env) return 1;
+  if (env.isProduction) {
+    console.error('[cli] refusing to truncate the database in production');
+    return 1;
+  }
+  const prisma = new PrismaClient({ datasources: { db: { url: env.databaseUrl } } });
+  try {
+    await truncateAllTables(prisma, { force: true }); // explicit: this IS the developer asking to wipe their database
+    console.log('[cli] all tables truncated.');
+    return 0;
+  } catch (error) {
+    console.error(`[cli] ${error instanceof Error ? error.message : String(error)}`);
+    return 1;
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+export async function runCli(argv: readonly string[]): Promise<number> {
+  const [command] = argv;
+  if (command === 'migrate') return runMigrate();
+  if (command === 'db:reset') return runDbReset();
+  console.log(HELP);
+  return command === undefined || command === '--help' ? 0 : 1;
+}

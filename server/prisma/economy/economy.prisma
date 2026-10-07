@@ -1,0 +1,36 @@
+enum RoundStatus {
+  open
+  closed
+
+  @@schema("economy")
+}
+
+// ONE global weekly prize round (UTC Monday → Monday).
+model Round {
+  id       Int         @id @default(autoincrement())
+  startsAt DateTime    @unique // a unique start makes concurrent "first request of the week" safe
+  endsAt   DateTime
+  carry    BigInt // lamports seeded in from the previous round (its 20 % "next ride start")
+  status   RoundStatus
+  payments Payment[]
+  rides    Ride[]
+
+  @@schema("economy")
+}
+
+model Payment {
+  signature String   @id // a transaction can pay for exactly one ride
+  rideId    String   @unique
+  ride      Ride     @relation(fields: [rideId], references: [id])
+  wallet    String
+  player    Player   @relation(fields: [wallet], references: [wallet])
+  lamports  BigInt // what was ordered (the verified transfer was at least this)
+  usd       Float
+  roundId   Int
+  round     Round    @relation(fields: [roundId], references: [id])
+  at        DateTime
+
+  @@index([roundId])
+  @@index([wallet])
+  @@schema("economy")
+}

@@ -1,0 +1,18 @@
+{
+  "name": "freightchain",
+  "private": true,
+  "type": "module",
+  "description": "Freight Chain \u2013 Desert Run (no runtime deps; three.js comes from a CDN)",
+  "scripts": {
+    "serve": "./serve.sh",
+    "build": "node tools/build-standalone.mjs",
+    "bundle:check": "npx esbuild js/main.js --bundle --external:three --format=esm --outfile=${TMPDIR:-/tmp}/fc.js",
+    "lint": "npx eslint js site tools",
+    "test:headless": "sh tools/trace.sh run",
+    "trace:save": "sh tools/trace.sh save",
+    "trace:diff": "sh tools/trace.sh diff",
+    "test:e2e": "node tools/e2e-chrome.mjs",
+    "check": "npm run lint && npm run bundle:check && npm run test:headless",
+    "test:viewer": "node tools/e2e-viewer.mjs"
+  }
+}

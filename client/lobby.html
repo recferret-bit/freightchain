@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lobby – Freight Chain</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="site/lobby.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/">⛟ FREIGHT CHAIN</a>
+  <div class="chips">
+    <span class="chip" id="chip-wallet" title="your wallet"></span>
+    <span class="chip" id="chip-free" title="free rides left (5 at signup, +1 a day)"></span>
+    <span class="chip live" id="chip-live" title="trucks on the road right now"></span>
+    <span class="chip demo" id="chip-demo" hidden title="paid shifts are shortened for this wallet so a demo fits in minutes"></span>
+    <button class="ghost" id="out">SIGN OUT</button>
+  </div>
+</header>
+<nav class="tabs" role="tablist" aria-label="Lobby">
+  <a role="tab" href="#new" data-tab="new">NEW RIDE</a>
+  <a role="tab" href="#live" data-tab="live">LIVE <b id="tab-live-n"></b></a>
+  <a role="tab" href="#board" data-tab="board">LEADERBOARD</a>
+  <a role="tab" href="#profile" data-tab="profile">PROFILE</a>
+</nav>
+<main id="view" aria-live="polite"><p class="dim">Loading…</p></main>
+<footer>Devnet build · paid rides use devnet SOL · <a href="/play.html">offline practice</a></footer>
+<script type="module" src="site/lobby.js"></script>
+</body>
+</html>

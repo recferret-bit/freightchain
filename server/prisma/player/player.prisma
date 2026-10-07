@@ -1,0 +1,22 @@
+// A rider = a Solana wallet. The wallet address IS the primary key (it is the identity; there is no email / password).
+model Player {
+  wallet       String              @id
+  version      Int                 @default(1) // optimistic lock for save()
+  freeRides    Int // credits: 5 at signup, +1 per UTC day (no backlog)
+  freeDay      String // UTC day (YYYY-MM-DD) of the last daily grant
+  createdAt    DateTime
+  rides        Ride[]
+  payments     Payment[]
+  achievements AchievementUnlock[]
+
+  @@schema("player")
+}
+
+// Sign-In With Solana challenge: one pending per wallet, consumed (deleted) by the first verify attempt.
+model AuthChallenge {
+  wallet    String   @id
+  message   String // the exact text the wallet must sign – built by the server
+  expiresAt DateTime
+
+  @@schema("player")
+}
