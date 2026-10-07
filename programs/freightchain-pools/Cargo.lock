@@ -1320,6 +1320,7 @@ dependencies = [
  "anchor-lang",
  "base64 0.22.1",
  "litesvm",
+ "serde_json",
  "solana-keypair",
  "solana-message",
  "solana-signer",
