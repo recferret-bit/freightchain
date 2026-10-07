@@ -2,12 +2,12 @@ import { Injectable, Logger } from '@nestjs/common';
 import { RideStatus } from '../../domain/rides/ride-status.js';
 import { RideVerdict } from '../../domain/verdict/ride-verdict.entity.js';
 import type { VerdictDecision } from '../../domain/verdict/verdict.dto.js';
-import { NotFoundError } from '../../domain/shared/errors.js';
+import { ConflictError, NotFoundError } from '../../domain/shared/errors.js';
 import { AdminActionRepositoryPort } from '../ports/admin/admin-action.repository.port.js';
 import { PlayerRepositoryPort } from '../ports/players/player.repository.port.js';
 import { RideRepositoryPort } from '../ports/rides/ride.repository.port.js';
 import { ClockPort } from '../ports/shared/clock.port.js';
-import { TransactionPort } from '../ports/shared/transaction.port.js';
+import { TransactionPort, type TransactionHandle } from '../ports/shared/transaction.port.js';
 import { RideBatchRepositoryPort } from '../ports/telemetry/ride-batch.repository.port.js';
 import { RideVerdictRepositoryPort } from '../ports/verdict/ride-verdict.repository.port.js';
 
@@ -30,29 +30,41 @@ export class VerdictService {
     private readonly clock: ClockPort,
   ) {}
 
-  /** null = nothing to judge (only completed shifts can rank, so only they are judged). `force` re-judges even a verdict an admin decided (the admin's re-judge). */
-  async judge(rideId: string, force = false): Promise<RideVerdict | null> {
-    return this.transactions.run(async (tx) => {
-      const ride = await this.rides.findById(rideId, tx);
-      if (!ride || !ride.isInStatus(RideStatus.Completed)) return null;
-      await this.players.findByWalletForUpdate(ride.wallet, tx);
-      const existing = await this.verdicts.findByRide(rideId, tx);
-      if (existing?.isOverridden && !force) return existing; // an admin decided – a late batch never replaces that
-      const verdict = RideVerdict.judge(ride, await this.batches.listByRide(rideId, tx), this.clock.now());
-      await this.verdicts.save(verdict, tx);
-      this.logger.log({ event: 'verdict', msg: `ride ${rideId}: ${verdict.status}`, rideId, wallet: ride.wallet, status: verdict.status, reasons: verdict.reasons.map((r) => r.code) });
-      return verdict;
-    });
+  /** null = nothing to judge (only completed shifts can rank, so only they are judged). A verdict an admin decided is returned as is. */
+  async judge(rideId: string): Promise<RideVerdict | null> {
+    const result = await this.transactions.run((tx) => this.judgeLocked(rideId, false, tx));
+    return result?.verdict ?? null;
   }
 
-  /** An admin's "judge again": the checks at the current rules, replacing any earlier decision; audited. 404 for a ride that is not a completed shift. */
+  /** An admin's "judge again": the checks at the current rules, replacing any earlier decision – judged and audited in ONE transaction under the player
+      lock. 404 for a ride that is not a completed shift; 409 when the retention sweep already deleted the recording (the verdict then stays as it is). */
   async rejudge(rideId: string, admin: string, requestId: string | null): Promise<RideVerdict> {
-    const before = (await this.verdicts.findByRide(rideId))?.status ?? null;
-    const verdict = await this.judge(rideId, true);
-    if (!verdict) throw new NotFoundError('only a completed shift can be judged');
-    await this.audit.insert({ wallet: admin, action: 'verdict.rejudge', target: rideId, detail: { from: before, to: verdict.status, reasons: verdict.reasons.map((r) => r.code) }, requestId, at: this.clock.now() });
+    const verdict = await this.transactions.run(async (tx) => {
+      const result = await this.judgeLocked(rideId, true, tx);
+      if (!result) throw new NotFoundError('only a completed shift can be judged');
+      const { verdict: v, before } = result;
+      await this.audit.insert({ wallet: admin, action: 'verdict.rejudge', target: rideId, detail: { from: before, to: v.status, reasons: v.reasons.map((r) => r.code) }, requestId, at: this.clock.now() }, tx);
+      return v;
+    });
     this.logger.log({ event: 'admin', msg: `ride ${rideId} re-judged by ${admin}: ${verdict.status}`, action: 'verdict.rejudge', rideId, admin, requestId });
     return verdict;
+  }
+
+  /** Judge inside the caller's transaction, under the player lock; batches are read only once the lock is held. `force` replaces an admin decision. */
+  private async judgeLocked(rideId: string, force: boolean, tx: TransactionHandle): Promise<{ verdict: RideVerdict; before: string | null } | null> {
+    const ride = await this.rides.findById(rideId, tx);
+    if (!ride || !ride.isInStatus(RideStatus.Completed)) return null;
+    await this.players.findByWalletForUpdate(ride.wallet, tx);
+    const existing = await this.verdicts.findByRide(rideId, tx);
+    if (existing?.isOverridden && !force) return { verdict: existing, before: existing.status }; // an admin decided – a late batch never replaces that
+    const batches = await this.batches.listByRide(rideId, tx);
+    if (force && existing && batches.length === 0 && existing.snapshot().scores.recording.batches > 0) {
+      throw new ConflictError('the recording of this ride was deleted by the retention sweep – its verdict stays as it is', 'recording_deleted');
+    }
+    const verdict = RideVerdict.judge(ride, batches, this.clock.now());
+    await this.verdicts.save(verdict, tx);
+    this.logger.log({ event: 'verdict', msg: `ride ${rideId}: ${verdict.status}`, rideId, wallet: ride.wallet, status: verdict.status, reasons: verdict.reasons.map((r) => r.code) });
+    return { verdict, before: existing?.status ?? null };
   }
 
   /** An admin's decision from the review queue, under the same player lock as judging (so a racing re-judge cannot overwrite it), audited in the same transaction. */

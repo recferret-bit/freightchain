@@ -288,7 +288,8 @@ export class MemoryRideBatchRepository extends RideBatchRepositoryPort {
     let deleted = 0;
     for (const [key, b] of this.db.batches) {
       const ride = this.db.rides.get(b.rideId)?.props;
-      if (!ride?.endedAt || ride.endedAt.getTime() >= cutoff.getTime() || this.db.verdicts.get(b.rideId)?.status === VerdictStatus.Flagged) continue;
+      const verdict = this.db.verdicts.get(b.rideId);
+      if (!ride?.endedAt || ride.endedAt.getTime() >= cutoff.getTime() || verdict?.status === VerdictStatus.Flagged || (!verdict && ride.status === RideStatus.Completed)) continue;
       this.db.batches.delete(key);
       deleted++;
     }

@@ -26,6 +26,15 @@ describe('RejudgeRideHandler', () => {
     await expect(new RejudgeRideHandler(ctx.verdicts).execute(new RejudgeRideCommand('ADMIN', running.id, null))).rejects.toBeInstanceOf(NotFoundError);
   });
 
+  it('after the retention sweep deleted the recording, RE-JUDGE refuses (409) and the verdict stays', async () => {
+    const ctx = unitContext();
+    const { ride } = await judgedRide(ctx, 'alice');
+    ctx.db.batches.clear(); // swept
+    await expect(new RejudgeRideHandler(ctx.verdicts).execute(new RejudgeRideCommand('ADMIN', ride.id, null))).rejects.toThrow(/deleted by the retention sweep/);
+    expect((await ctx.verdictRepo.findByRide(ride.id))?.status).toBe('verified');
+    expect(ctx.db.adminActions).toEqual([]);
+  });
+
   it('an override of a completed shift without a verdict judges it first, then decides', async () => {
     const ctx = unitContext();
     const { ride } = await judgedRide(ctx, 'alice');

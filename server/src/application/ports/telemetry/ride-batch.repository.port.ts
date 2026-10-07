@@ -6,6 +6,7 @@ export abstract class RideBatchRepositoryPort {
   abstract insert(batch: RideBatch, tx?: TransactionHandle): Promise<boolean>;
   /** Every batch of the ride, by seq ascending. */
   abstract listByRide(rideId: string, tx?: TransactionHandle): Promise<RideBatch[]>;
-  /** Retention: deletes the batches of rides that ENDED before `cutoff`, except rides whose verdict is flagged (kept for review). Returns how many were deleted. */
+  /** Retention: deletes the batches of rides that ENDED before `cutoff`, except rides whose verdict is flagged (kept for review) and completed shifts
+      that were never judged. Returns how many were deleted. */
   abstract deleteForRidesEndedBefore(cutoff: Date): Promise<number>;
 }

@@ -60,7 +60,7 @@ npm run deploy          # checks → plan → confirm → upload → build → b
 | `npm run ops -- ps` | containers, restarts, disk |
 
 **Admin page**: `https://<apex>/admin.html` for the wallets in `ADMIN_WALLETS` (sign in on the landing first; everyone else gets a 404 from `/api/admin/*`): overview, the review queue of flagged rides (accept / reject, audited), rides with filters, sign-ins (wallet, time, IP, browser), the server's recent log lines, the audit log.
-**Verified play settings** in `deploy/.env`: `VERDICT_ENFORCE` (`false` = shadow mode while tuning: rides are judged and shown, the boards ignore the verdict), `TELEMETRY_RETENTION_DAYS` (default 90), `ADMIN_WALLETS`.
+**Verified play settings** in `deploy/.env`: `VERDICT_ENFORCE` (`false` = shadow mode while tuning: rides are judged and shown, the boards ignore the verdict – **the default when the key is missing**; set `true` to enforce), `TELEMETRY_RETENTION_DAYS` (default 90), `ADMIN_WALLETS`.
 Container logs rotate at 5 × 50 MB per service (`logging:` in `docker-compose.prod.yml`).
 
 ## What a release does (on the server, `scripts/remote/release.sh`)

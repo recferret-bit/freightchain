@@ -64,13 +64,15 @@ export function checkSamples(batches: readonly RideBatch[]): { reasons: VerdictR
   return { reasons: [], maxSpeed };
 }
 
-/** The recording must end where the ride said it ended, and cover the time the server credited. */
+/** The recording must end where the ride said it ended, and cover the time the server credited. A recording whose LAST batch never arrived ends early:
+    the distance the truck could have covered in the missing seconds (governor × slack) is allowed, so a lost tail only costs coverage – it does not reject. */
 export function checkAgreement(ride: RideFacts, batches: readonly RideBatch[]): { reasons: VerdictReason[]; recordedSeconds: number; coverage: number } {
   const recordedSeconds = batches.reduce((sum, b) => sum + Math.max(0, b.t1 - b.t0), 0);
   const coverage = ride.driveSeconds > 0 ? recordedSeconds / ride.driveSeconds : 1;
   const out: VerdictReason[] = [];
   const last = batches.flatMap((b) => b.body.samples).at(-1);
-  if (last && Math.abs((last[1] ?? 0) - ride.distance) > AGREE_METRES + AGREE_SHARE * ride.distance) {
+  const missingSeconds = Math.max(0, ride.driveSeconds - (last?.[0] ?? 0));
+  if (last && Math.abs((last[1] ?? 0) - ride.distance) > AGREE_METRES + AGREE_SHARE * ride.distance + MAX_SPEED * TELEPORT_FACTOR * missingSeconds) {
     out.push(reject('recording-mismatch', `the recording ends at ${Math.round(last[1] ?? 0)} m, the ride at ${Math.round(ride.distance)} m`));
   }
   if (coverage < COVERAGE_REJECT) out.push(reject('recording-incomplete', `the recording covers ${Math.round(coverage * 100)} % of the ${Math.round(ride.driveSeconds)} s driven`));

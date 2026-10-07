@@ -5,6 +5,7 @@ import { AdminQueryPort } from '../../../ports/admin/admin-query.port.js';
 import { PaymentRepositoryPort } from '../../../ports/economy/payment.repository.port.js';
 import { RideRepositoryPort } from '../../../ports/rides/ride.repository.port.js';
 import { RideVerdictRepositoryPort } from '../../../ports/verdict/ride-verdict.repository.port.js';
+import { adminRowOf, toAdminRideRow } from '../admin-ride-row.js';
 import { GetAdminRideQuery } from './get-admin-ride.query.js';
 
 /** One ride for review: the row, its verdict with every reason and score (and an admin decision, if any), the recording's batch index, the payment. Any rider's ride. */
@@ -24,9 +25,7 @@ export class GetAdminRideHandler implements IQueryHandler<GetAdminRideQuery, Adm
     const p = ride.snapshot(), v = verdict?.snapshot();
     return {
       ride: {
-        id: p.id, wallet: p.wallet, tier: p.tier, status: p.status, reason: p.reason, route: p.route, distance: Math.round(p.lastS), driveSeconds: Math.round(p.driveSeconds * 10) / 10,
-        timeScale: p.timeScale, createdAt: p.createdAt.getTime(), startedAt: p.startedAt?.getTime() ?? null, endedAt: p.endedAt?.getTime() ?? null,
-        verdict: verdict?.status ?? null, overridden: verdict?.isOverridden ?? false,
+        ...toAdminRideRow(adminRowOf(ride, verdict?.status ?? null, verdict?.isOverridden ?? false)),
         seed: p.seed, minSeconds: p.minSeconds, completeDist: p.completeDist, hull: p.hull, lastHbAt: p.lastHbAt?.getTime() ?? null, lamports: p.lamports, roundId: p.roundId,
       },
       verdict: verdict && v ? { ...verdict.toDto(), scores: v.scores, rulesVersion: v.rulesVersion } : null,

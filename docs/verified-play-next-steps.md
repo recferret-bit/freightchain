@@ -20,10 +20,10 @@ Migrations added (forward-only, additive): `20261008000002_verified_play` (schem
 
 ## Your part (only you can do these)
 
-- [ ] Skim the review findings below (all ten are fixed; three follow-ups are listed).
+- [ ] Skim the review findings below (two reviews, twenty findings, all fixed; two follow-ups are listed).
 - [ ] **`deploy/.env`** (on your machine, not in git) – add:
   - [ ] `ADMIN_WALLETS=<your wallet address>` (comma-separated for more)
-  - [ ] `VERDICT_ENFORCE=false` – **shadow mode for the tuning week.** Without it the default is `true`: rides that fail the untuned checks drop off the paid boards from the first deploy.
+  - [ ] nothing for `VERDICT_ENFORCE` yet – production defaults to **shadow mode** (`false`) when the key is missing; add `VERDICT_ENFORCE=true` only after the tuning week. (Rides from before verified play have no verdict and rank only in shadow mode.)
   - [ ] optional: `TELEMETRY_RETENTION_DAYS=90` (the default)
 - [ ] **Merge** `worktree-verified-play` into `main` (or tell me to), then **deploy**: `npm run deploy -- --dry-run` (safe), then `npm run deploy`. The deploy ships the committed `main`.
 - [ ] After the deploy: open `https://freightchain.fun/admin.html` signed in with your admin wallet; check the overview loads and `npm run ops -- logs --lines 20` shows JSON lines.
@@ -35,7 +35,7 @@ Migrations added (forward-only, additive): `20261008000002_verified_play` (schem
 
 ## Next steps (Claude can do these, in this order)
 
-1. **The three review follow-ups** below (none blocks a devnet deploy).
+1. **The two review follow-ups** below (neither blocks a devnet deploy).
 2. **Tune the thresholds** from the first real rides: `npm run ops -- query reasons` / `query scores` (prod-db skill) → adjust `server/src/domain/verdict/verdict-rules.ts`, bump `RULES_VERSION`, redeploy. Then RE-JUDGE (admin page) applies the new rules to a ride already judged.
 3. **Bulk re-judge** after a threshold change (today: one ride at a time with RE-JUDGE on the admin page, or `npm run ops -- query unjudged` for the ones that were never judged).
 4. **Challenge prompts** (plan Phase 3, Option A): server-issued prompts in the heartbeat response ("flash the headlights now"), answered in the recording, reaction time checked – the strongest human signal without re-simulation.
@@ -45,7 +45,9 @@ Migrations added (forward-only, additive): `20261008000002_verified_play` (schem
 8. **CI** (skipped on purpose for now): a GitHub Actions workflow running `npm run check` + the PostgreSQL suite on push, the Chrome e2e nightly – when you want it.
 9. Housekeeping: delete the stale `docs/day-1.md`, `package.json#prisma` → `prisma.config.ts` (Prisma 7 deprecation warning).
 
-## Review findings (Oct 7, `code-review` at high effort over `main...HEAD`)
+## Review findings
+
+### First review (Oct 7, `code-review` at high effort over `main...HEAD`)
 
 All ten were confirmed and **fixed** on this branch; each fix has a test.
 
@@ -62,11 +64,27 @@ All ten were confirmed and **fixed** on this branch; each fix has a test.
 | 9 | float noise (`0.30000000000000004`) roughly doubled the batch size | round by decimals (`x / 100`) |
 | 10 | coarse browser timers (Firefox resistFingerprinting, Tor: 16.7–100 ms) made real people look scripted | the clock step is detected (`scores.human.timerStepMs`); ≥ 10 ms skips `instant-presses` and `repeated-timings` |
 
+### Second review (Oct 7, `/code-review` over `main...HEAD`)
+
+Ten more; nine real, one partly (the 413 case cannot happen – batches are capped below Express's 100 kB). All **fixed**:
+
+| # | finding | fix |
+|---|---|---|
+| 1 | a lost LAST batch made the "recording ends elsewhere" check **reject** the ride (the client assumed it only costs coverage) | the distance the missing seconds explain (28 m/s × 1.2 × the seconds after the last sample) is allowed – a lost tail now only flags `recording-gaps` |
+| 2 | the 90-day sweep deleted recordings that JUDGE NOW / RE-JUDGE still needed → "no recording" reject | the sweep keeps completed shifts that were never judged; RE-JUDGE refuses (409 `recording_deleted`) once a recording is gone and keeps the verdict |
+| 3 | after a refused batch (400) the client kept sending → a broken chain with no explanation | any refusing 4xx stops the recording and keeps the reason in `telemetry.refused`; the server logs `event:'batch-refused'` with the detail (admin page → logs → ride id); NaN samples are sent as 0 instead of `null` |
+| 4 | a missing `VERDICT_ENFORCE` in `deploy/.env` meant enforcement, and older paid rides (no verdict) would vanish from the boards | production defaults to shadow mode (`${VERDICT_ENFORCE:-false}` in compose); enforcement only when `deploy/.env` says `true` |
+| 5 | input times were taken when a slow frame handled the key → 0 ms holds on slow machines / trackpad taps | the events' own `timeStamp` (same clock as `performance.now()`) |
+| 6 | `/end` waited for the final uploads; a player leaving early turned a finished shift into "heartbeat lost" | `/end` waits ≤ 3 s (`FLUSH_WAIT_MS`); uploads keep retrying in the background for 55 s |
+| 7 | RE-JUDGE wrote its audit row outside the judging transaction | judged and audited in one transaction under the player lock |
+| 8 | one failed hash step stopped the recording for the rest of the ride | each step catches: a failed digest sends the batch unhashed, the chain goes on |
+| 9 | the batch's canonical text was built twice per upload (and judging parses everything under the lock) | built once; the judging cost stays a follow-up (below) |
+| 10 | two copies of the admin ride-row mapping and of the ride-status list | one mapper (`admin-ride-row.ts`); statuses from the `RideStatus` enum |
+
 **Follow-ups (not blocking a devnet deploy):**
-- Judging loads, inflates and parses the whole recording inside the player-lock transaction: ≈ 2–4 MB of JSON for a 1 h shift, ≈ 15–30 MB for an 8 h one (the 4 h / 8 h tiers make this the first follow-up). Keep per-batch summaries (counts, last sample, input timing stats) at upload time and judge from those.
-- The per-ride cap allows ≈ 20 kB/s of recording per running ride at worst (a hostile client); add a per-ride byte budget if storage ever matters.
+- Judging loads, inflates and parses the whole recording inside the player-lock transaction: ≈ 2–4 MB of JSON for a 1 h shift, ≈ 15–30 MB for an 8 h one (the 4 h / 8 h tiers make this the first follow-up). Keep per-batch summaries (counts, last sample, input timing stats) at upload time and judge from those. The per-ride cap still allows ≈ 20 kB/s of recording per running ride from a hostile client; a per-ride byte budget goes with it.
 - `player."SignIn"` has no retention (IP addresses) – prune with the telemetry sweep once you decide the period.
 
 **Test note:** all checkouts and worktrees share the compose PostgreSQL and its `freightchain_test` database. During this review another branch's migrations (the paid-tickets tables) were in it, and the drift check failed for that reason alone. On a branch: `TEST_DATABASE_URL=postgresql://freight:freight_dev_password@localhost:15433/freightchain_<branch>_test npm run server:integration`.
 
-**Checked after the fixes:** `npm run check` (411 unit + architecture audits, client headless trace identical), the PostgreSQL suite (147, on its own test database), real Chrome: game (COMPLETED · VERIFIED), lobby (33 checks), admin (18 checks incl. accept + re-judge).
+**Checked after both rounds of fixes:** `npm run check` (413 unit + architecture audits, landing, client lint + headless; the offline game's trace identical), the PostgreSQL suite (147, on this worktree's own test database), real Chrome: game (COMPLETED · VERIFIED, every batch uploaded, none refused), lobby (33 checks), admin (18 checks incl. accept + re-judge).

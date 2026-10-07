@@ -44,6 +44,6 @@ const now = await (await fetch(`${BASE}/api/rides/${ride.id}`, { headers: { cook
 check('server state', now.status === 'completed', `${now.status}, ${now.driveSeconds} s, ${now.distance} m`);
 // the WebCrypto hash chain the game built must be the one the server recomputes (a mismatch would be 'hash-mismatch' / 'chain-broken')
 check('recording verified by the server (chain hashed alike in the browser and in Node)', now.verdict?.status === 'verified', JSON.stringify(now.verdict));
-check('every batch uploaded', (await ev('__game.telemetry.queue.length')) === 0 && (await ev('__game.telemetry.seq')) >= 1, `${await ev('__game.telemetry.seq')} batch(es), ${await ev('__game.telemetry.queue.length')} queued`);
+check('every batch uploaded, none refused', (await ev('__game.telemetry.queue.length')) === 0 && (await ev('__game.telemetry.seq')) >= 1 && (await ev('__game.telemetry.refused === null')) === true, `${await ev('__game.telemetry.seq')} batch(es), ${await ev('__game.telemetry.queue.length')} queued`);
 const probs = filt(); check('no page errors', probs.length === 0, probs.join(' | '));
 console.log(`screenshots: ${SHOTS}`); finish(fails.length ? 1 : 0);

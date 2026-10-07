@@ -77,6 +77,12 @@ describe('RideVerdict.judge', () => {
       const v = RideVerdict.judge(completedRide(60, 1600), stored(recording('ride-1', { seconds: 60, distance: 800 })), T0);
       expect(codes(v)).toContain('recording-mismatch');
     });
+    it('a lost LAST batch (the final flush never arrived) only costs coverage – the recording ending early is not a mismatch', () => {
+      const v = judge(120, 1600, {}, (b) => b.slice(0, -1)); // 105 of 120 s: the last sample is ~200 m short of the ride's end
+      expect(codes(v)).toEqual(['recording-gaps']);
+      expect(v.status).toBe(VerdictStatus.Flagged);
+    });
+
     it('a recording covering under half of the driven time; 50–90 % only flags', () => {
       const half = RideVerdict.judge(completedRide(120, 600), stored(recording('ride-1', { seconds: 45, distance: 600 })), T0);
       expect(codes(half)).toContain('recording-incomplete');

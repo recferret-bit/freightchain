@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { ADMIN_LIST_MAX, type AdminRideFilter } from '../../../domain/admin/admin.dto.js';
 import { LOG_LEVELS, type LogFilter } from '../../../domain/ops/log-entry.js';
+import { RideStatus } from '../../../domain/rides/ride-status.js';
 import { NOTE_MAX_LENGTH } from '../../../domain/verdict/ride-verdict.entity.js';
 import { VerdictStatus, type VerdictDecision } from '../../../domain/verdict/verdict.dto.js';
 import { walletAddressSchema } from '../../common/dto/common.dto.js';
@@ -8,12 +9,11 @@ import { walletAddressSchema } from '../../common/dto/common.dto.js';
 const limit = (fallback: number) => z.coerce.number().int().min(1).max(ADMIN_LIST_MAX).default(fallback);
 const optionalText = (max: number) => z.preprocess((v) => (v === '' ? undefined : v), z.string().max(max).optional());
 
-const RIDE_STATUSES = ['created', 'awaiting_payment', 'running', 'completed', 'abandoned', 'failed', 'expired', 'cancelled'] as const;
 
 export const adminRidesQuerySchema = z
   .object({
     wallet: z.preprocess((v) => (v === '' ? undefined : v), walletAddressSchema.optional()),
-    status: z.preprocess((v) => (v === '' ? undefined : v), z.enum(RIDE_STATUSES).optional()),
+    status: z.preprocess((v) => (v === '' ? undefined : v), z.nativeEnum(RideStatus).optional()),
     verdict: z.preprocess((v) => (v === '' ? undefined : v), z.enum(['pending', 'verified', 'flagged', 'rejected', 'none']).optional()),
     limit: limit(50),
   })

@@ -45,12 +45,12 @@ export class RideBatch {
 
   /** Accept an upload: sane time span and sample count for it, size cap, and – given the ride's `allowance` – no more game time or batches than the
       wall time since the start allows. `serverHash` = the server's own SHA-256 of the canonical text. */
-  static accept(rideId: string, body: BatchBody, serverHash: string, now: Date, allowance?: RecordingAllowance): RideBatch {
+  static accept(rideId: string, body: BatchBody, serverHash: string, now: Date, allowance?: RecordingAllowance, canonicalText?: string): RideBatch {
     if (body.t1 < body.t0) throw new BadRequestError('batch ends before it starts', 'bad_batch');
     if (allowance && body.t1 > allowance.maxGameSeconds) throw new BadRequestError('batch claims more driving than time has passed since the start', 'bad_batch');
     if (allowance && body.seq > allowance.maxSeq) throw new BadRequestError('too many batches for the time since the start', 'bad_batch');
     if (body.samples.length > (body.t1 - body.t0) * SAMPLE_HZ * SAMPLE_RATE_SLACK + SAMPLE_COUNT_SLACK) throw new BadRequestError('too many samples for the time span', 'bad_batch');
-    const bytes = RideBatch.canonical(body).length;
+    const bytes = (canonicalText ?? RideBatch.canonical(body)).length; // the caller usually built the text already, to hash it
     if (bytes > BATCH_MAX_BYTES) throw new BadRequestError('batch too large', 'bad_batch');
     return new RideBatch({
       rideId, seq: body.seq, prevHash: body.prevHash, hash: body.hash, hashOk: body.hash !== null && body.hash === serverHash,
