@@ -20,8 +20,9 @@ coverage/
 .env.*
 !.env.example
 
-# Claude Code local (per-user) settings – CLAUDE.md and .claude/settings.json stay tracked
+# Claude Code local (per-user) settings – CLAUDE.md, .claude/settings.json and .claude/skills/ stay tracked
 .claude/settings.local.json
+.claude/worktrees/
 CLAUDE.local.md
 
 # Editors / IDEs
