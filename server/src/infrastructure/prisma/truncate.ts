@@ -27,6 +27,6 @@ export async function truncateAllTables(prisma: Db, options: TruncateOptions = {
   const name = await connectedDatabase(prisma);
   if (!options.force && !name.endsWith('_test')) throw new Error(`refusing to truncate "${name}": only databases named *_test are wiped automatically (db:reset passes force)`);
   await prisma.$executeRawUnsafe(
-    'TRUNCATE "achievement"."AchievementUnlock", "economy"."Payment", "ride"."Ride", "economy"."Round", "player"."AuthChallenge", "player"."Player" RESTART IDENTITY CASCADE',
+    'TRUNCATE "achievement"."AchievementUnlock", "economy"."Payment", "ride"."Ride", "economy"."Round", "player"."AuthChallenge", "player"."Player", "player"."TicketGrant", "economy"."PromoCode", "economy"."ChainCursor", "economy"."ChainEvent", "economy"."SponsoredTx" RESTART IDENTITY CASCADE',
   );
 }

@@ -26,7 +26,7 @@ describe('prisma migrations', () => {
   it('creates every PostgreSQL schema and every model of the Prisma schema', () => {
     for (const schema of ['player', 'ride', 'economy', 'achievement']) expect(sql).toContain(`CREATE SCHEMA IF NOT EXISTS "${schema}"`);
     const models = schemaModels();
-    expect(models.map((m) => m.model).sort()).toEqual(['AchievementUnlock', 'AuthChallenge', 'Payment', 'Player', 'Ride', 'Round']);
+    expect(models.map((m) => m.model).sort()).toEqual(['AchievementUnlock', 'AuthChallenge', 'ChainCursor', 'ChainEvent', 'Payment', 'Player', 'Pool', 'PromoCode', 'PromoRedemption', 'Ride', 'RideTicket', 'Round', 'SponsoredTx', 'TicketGrant', 'TicketOrder']);
     for (const { schema, model } of models) expect(sql, `${schema}.${model}`).toContain(`CREATE TABLE "${schema}"."${model}"`);
   });
 
