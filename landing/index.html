@@ -80,6 +80,37 @@
       </ul></article>
   </div>
 
+  <!-- realtime daytime: the same spot on Route 66 at four times of day, sliced at an angle -->
+  <div class="daytime rv">
+    <h3 class="sub">REALTIME DAYTIME</h3>
+    <div class="collage">
+      <figure><img src="/media/sky/dawn.jpg" alt="Route 66 at dawn" loading="lazy"><figcaption>DAWN</figcaption></figure>
+      <figure><img src="/media/sky/day.jpg" alt="Route 66 by day" loading="lazy"><figcaption>DAY</figcaption></figure>
+      <figure><img src="/media/sky/dusk.jpg" alt="Route 66 at dusk" loading="lazy"><figcaption>DUSK</figcaption></figure>
+      <figure><img src="/media/sky/night.jpg" alt="Route 66 at night, headlights on" loading="lazy"><figcaption>NIGHT</figcaption></figure>
+    </div>
+    <p class="dim">The clock runs while you drive (×60 by default: a minute of driving is an hour of sky). Each route has its own sunrise, sunset and twilight – Trans-Siberian gets six hours of low sun, Atacama the brightest stars. At night the world is lit only by what has a lamp: your headlights, the lamp posts, oncoming traffic that dazzles you.</p>
+  </div>
+
+  <!-- the dash: 3D tilt cards, 70 % in-game crop / 30 % footer coloured from the image (main.js samples it) -->
+  <div class="dash rv">
+    <h3 class="sub">THE DASH · HOVER A CARD</h3>
+    <div class="cards" id="cards">
+      <article class="card3d" style="--base:-5deg"><div class="img"><img src="/media/cards/key-on.png" alt="ignition key switch, ON" loading="lazy"><i class="glare"></i></div>
+        <footer><b>IGNITION KEY</b><p>Three positions. <em>OFF</em>: nothing works – gauges dead, even the brake pedal. <em>ON</em>: a one-second sweep and bulb check, instruments live, battery draining. <em>START</em>: hold to crank. <kbd>I</kbd> is a one-tap start, <kbd>O</kbd> kills it.</p></footer></article>
+      <article class="card3d" style="--base:4deg"><div class="img"><img src="/media/cards/gear.png" alt="gear display showing 3 and the rev counter" loading="lazy"><i class="glare"></i></div>
+        <footer><b>GEARBOX</b><p>Seven gears, clutch in to shift (<kbd>Shift</kbd> + <kbd>E</kbd>/<kbd>Q</kbd>). Every gear pulls in a band: lug a tall one at a crawl and it stalls, sit on the redline and STRAIN charges. <kbd>Q</kbd> from neutral is reverse – stop first.</p></footer></article>
+      <article class="card3d" style="--base:-4deg"><div class="img"><img src="/media/cards/lamps.png" alt="warning lamps with COLD, STRAIN and BRAKES lit" loading="lazy"><i class="glare"></i></div>
+        <footer><b>WARNING LAMPS</b><p>Eight lamps. Amber means watch it, red means fix it now, blinking red means seconds left. COLD cuts power until the engine warms; OFF ROAD gives you five seconds; BRAKES is what driving against the parking brake buys you.</p></footer></article>
+      <article class="card3d" style="--base:5deg"><div class="img"><img class="fit" src="/media/cards/lights.png" alt="LED bars and the HEAD, NIGHT and HEAT buttons" loading="lazy"><i class="glare"></i></div>
+        <footer><b>LIGHTS &amp; HEAT</b><p><kbd>L</kbd> HEAD: at night the only thing lighting the road. <kbd>N</kbd> NIGHT jumps the clock. <kbd>H</kbd> HEAT thaws the frost from the vents outward and pulls heat out of the engine. All of it drains the battery with the engine off.</p></footer></article>
+      <article class="card3d" style="--base:-5deg"><div class="img"><img src="/media/cards/park.png" alt="TRAILER and PARK lamps, WIPER and WASH buttons" loading="lazy"><i class="glare"></i></div>
+        <footer><b>PARK, WIPERS, WASH</b><p><kbd>B</kbd> PARK is a spring brake: ON at every start, holds with the engine off, holds against thrust – and cooks the brakes if you fight it. <kbd>R</kbd> wipers, hold <kbd>X</kbd> to wash. Dry blades barely clear the dust; wipers never clear frost.</p></footer></article>
+      <article class="card3d" style="--base:4deg"><div class="img"><img src="/media/cards/trip-radio.png" alt="trip computer and cab radio" loading="lazy"><i class="glare"></i></div>
+        <footer><b>TRIP &amp; RADIO</b><p>Trip km, shift time over the minimum, outside °C – the server's clock is the one that counts. <kbd>T</kbd> radio: five stations of procedurally generated songs on a wall-clock broadcast, so every cab hears the same song at the same moment.</p></footer></article>
+    </div>
+  </div>
+
   <div class="badges rv"><span class="lbl">BADGES THAT EXIST TODAY</span>
     <span>First Mile</span><span>Shift Complete</span><span>Night Owl</span><span>Century</span><span>Clean Run</span><span>Cold Start</span><span class="locked">Top 20 · after the first round closes</span></div>
 </section>

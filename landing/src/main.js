@@ -153,6 +153,35 @@ btn.onclick = async () => {
 top.onclick = () => { if (S.me) toLobby(); else { location.hash = '#ride'; btn.focus(); } };
 api('me').then(m => { S.me = m; btn.textContent = 'OPEN THE LOBBY →'; btn.onclick = toLobby; top.textContent = 'LOBBY'; paintBoards(); }, () => {});   // signed in already: no forced redirect – the pool is the point of this page
 
+/* ───── dash cards: footer colours sampled from the image, tilt follows the pointer ───── */
+function sampleColours(card, img) {
+  try {
+    const cv = document.createElement('canvas'), w = cv.width = 48, h = cv.height = 48, g = cv.getContext('2d', { willReadFrequently: true });
+    g.drawImage(img, 0, 0, w, h); const d = g.getImageData(0, 0, w, h).data;
+    const avg = (y0, y1) => { let r = 0, gg = 0, b = 0, n = 0; for (let y = y0; y < y1; y++) for (let x = 0; x < w; x++) { const i = (y * w + x) * 4; r += d[i]; gg += d[i + 1]; b += d[i + 2]; n++; } return [r / n, gg / n, b / n]; };
+    const lift = ([r, g2, b], k) => `rgb(${Math.round(r * k + 22)} ${Math.round(g2 * k + 19)} ${Math.round(b * k + 16)})`;   // the crops are mostly dash-black: lift so the footer reads as a tint, not a void
+    const top = avg(0, h >> 1), bottom = avg(h >> 1, h);
+    const vivid = (() => { let best = null, bs = -1; for (let i = 0; i < d.length; i += 16) { const r = d[i], g2 = d[i + 1], b = d[i + 2], mx = Math.max(r, g2, b), mn = Math.min(r, g2, b), sat = mx ? (mx - mn) / mx : 0, score = sat * mx; if (score > bs) { bs = score; best = [r, g2, b]; } } return best; })();
+    card.style.setProperty('--c1', lift(vivid ? vivid.map((v, i) => v * .55 + top[i] * .45) : top, .8));
+    card.style.setProperty('--c2', lift(vivid ? vivid.map((v, i) => v * .2 + bottom[i] * .8) : bottom, .7));
+    const lum = ([r, g2, b]) => (.2126 * r + .7152 * g2 + .0722 * b) / 255;
+    card.style.setProperty('--fg', lum(top) > .5 ? '#1b1408' : 'var(--cream)');
+  } catch { /* cross-origin or decode failure: keep the default dash colours */ }
+}
+for (const card of document.querySelectorAll('.card3d')) {
+  const img = card.querySelector('img');
+  if (img.complete && img.naturalWidth) sampleColours(card, img); else img.addEventListener('load', () => sampleColours(card, img), { once: true });
+  if (reduced) continue;
+  const MAX = 11;   // degrees at the card edge
+  card.addEventListener('pointermove', e => {
+    const r = card.getBoundingClientRect(), px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
+    card.classList.add('live');
+    card.style.setProperty('--rx', `${((.5 - py) * MAX * 2).toFixed(2)}deg`); card.style.setProperty('--ry', `${((px - .5) * MAX * 2).toFixed(2)}deg`);
+    card.style.setProperty('--gx', `${(px * 100).toFixed(1)}%`); card.style.setProperty('--gy', `${(py * 100).toFixed(1)}%`);
+  });
+  card.addEventListener('pointerleave', () => { card.classList.remove('live'); card.style.setProperty('--rx', '0deg'); card.style.setProperty('--ry', 'var(--base, 0deg)'); });
+}
+
 /* ───── scroll reveal + section highlight ───── */
 const io = new IntersectionObserver(es => { for (const e of es) if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }, { rootMargin: '0px 0px -8% 0px' });
 document.querySelectorAll('.rv').forEach(n => io.observe(n));

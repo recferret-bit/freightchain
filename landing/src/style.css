@@ -98,6 +98,37 @@ h3.sub{margin:40px 0 14px}
 .mech p{margin:6px 0 0;font-size:13px;color:var(--dim)}
 .routes{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:5px;font-size:13px;color:var(--cream)}
 .routes i{display:inline-block;width:26px;height:10px;border-radius:2px;margin-right:9px;background:linear-gradient(180deg,var(--a) 0 55%,var(--b) 55%)}
+/* realtime daytime collage: four slices cut at an angle, overlapping, the hovered one widens */
+.daytime .sub{margin-top:36px}
+.collage{--skew:5%;display:flex;height:clamp(170px,26vw,320px);border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--bg2)}
+.collage figure{position:relative;flex:1 1 0;margin:0;min-width:0;transition:flex-grow .5s cubic-bezier(.2,.8,.2,1);clip-path:polygon(var(--skew) 0,100% 0,calc(100% - var(--skew)) 100%,0 100%);margin-left:calc(var(--skew) * -1)}
+.collage figure:first-child{margin-left:0;clip-path:polygon(0 0,100% 0,calc(100% - var(--skew)) 100%,0 100%)}
+.collage figure:last-child{clip-path:polygon(var(--skew) 0,100% 0,100% 100%,0 100%)}
+.collage figure:hover{flex-grow:2.2}
+.collage img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 55%}
+.collage figcaption{position:absolute;left:calc(var(--skew) + 10px);bottom:10px;padding:3px 9px;background:var(--lcd-bg);color:var(--lcd);font-size:11px;letter-spacing:2px;border-radius:3px;text-shadow:0 0 8px #7cff7c66}
+.collage figure:first-child figcaption{left:10px}
+.daytime p{margin:12px 0 0;max-width:820px}
+
+/* dash cards: perspective tilt follows the pointer (main.js), footer gradient sampled from the image */
+.dash .sub{margin-top:36px}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;perspective:1100px}
+.card3d{--rx:0deg;--ry:var(--base,0deg);--gx:50%;--gy:50%;--c1:#26221d;--c2:#17130f;--fg:var(--cream);
+  display:grid;grid-template-rows:7fr 3fr;aspect-ratio:3/4;border-radius:12px;overflow:hidden;border:1px solid var(--line2);background:var(--panel);
+  transform:rotateX(var(--rx)) rotateY(var(--ry));transform-style:preserve-3d;transition:transform .5s cubic-bezier(.2,.8,.2,1),box-shadow .5s;box-shadow:0 18px 40px #000a;will-change:transform}
+.card3d.live{transition:transform .08s linear,box-shadow .5s}
+.card3d:hover{box-shadow:0 26px 60px #000c,0 0 40px #ffb02e22}
+.card3d .img{position:relative;overflow:hidden;background:#0b0a09}
+.card3d .img img{width:100%;height:100%;object-fit:cover;object-position:50% 50%;display:block;transform:translateZ(0)}
+.card3d .img img.fit{object-fit:contain}   /* wide strips (the button row) letterbox on dash-black instead of zooming in */
+.card3d .glare{position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at var(--gx) var(--gy),#fff3 0,#fff0 45%);opacity:0;transition:opacity .4s}
+.card3d:hover .glare{opacity:1}
+.card3d footer{padding:12px 14px 13px;background:linear-gradient(135deg,var(--c1),var(--c2));color:var(--fg);display:grid;gap:5px;align-content:start;border-top:1px solid #fff1}
+.card3d footer b{font-size:11px;letter-spacing:2px}
+.card3d footer p{margin:0;font-size:12px;line-height:1.4;opacity:.9}
+.card3d footer em{font-style:normal;font-weight:700}
+.card3d kbd{font:inherit;font-size:11px;padding:0 5px;border:1px solid currentColor;border-radius:3px;opacity:.9}
+
 .badges{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:28px}
 .badges .lbl{margin-right:8px}
 .badges span:not(.lbl){border:1px solid var(--line2);border-radius:999px;padding:4px 12px;font-size:12px;background:#0006;color:var(--amber)}
@@ -168,13 +199,14 @@ footer{width:min(1100px,100%);margin:0 auto;padding:30px 20px 50px;color:var(--d
   .tk,.road i,.slides img,.scroll-hint,.chip.lcd::before,.dot.live{animation:none}
   .slides img:first-child{opacity:1}
   .rv{opacity:1;transform:none;transition:none}
+  .card3d{transform:none!important;transition:none}.collage figure{transition:none}
   html{scroll-behavior:auto}
 }
 @media (max-width:900px){
   .nav{display:none}
   .stats{grid-template-columns:1fr 1fr}
   .flow{grid-template-columns:1fr 1fr}.flow li:nth-child(2)::after{display:none}
-  .mech,.about,.trust,.boards{grid-template-columns:1fr 1fr}
+  .mech,.about,.trust,.boards,.cards{grid-template-columns:1fr 1fr}
   .econ{grid-template-columns:1fr}
 }
 @media (max-width:560px){
@@ -182,6 +214,8 @@ footer{width:min(1100px,100%);margin:0 auto;padding:30px 20px 50px;color:var(--d
   .hero{padding:40px 16px 80px}
   .ch{padding:50px 16px 40px}
   .stats,.flow,.mech,.about,.trust,.boards{grid-template-columns:1fr}
+  .cards{grid-template-columns:1fr;max-width:380px}
+  .collage{--skew:0%;flex-wrap:wrap;height:auto}.collage figure{flex:1 1 50%;aspect-ratio:16/9;margin:0;clip-path:none}
   .flow li::after{display:none!important}
   .ch-h{grid-template-columns:1fr}.ch-h i{grid-row:auto}
   .legend{grid-template-columns:1fr}
