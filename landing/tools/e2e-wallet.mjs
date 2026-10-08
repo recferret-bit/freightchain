@@ -90,6 +90,22 @@ await send('Page.navigate', { url: BASE + '/' }); await sleep(1500);
 const wantGame = API !== BASE ? `http://ride.${new URL(BASE).hostname}/play.html` : '/play.html';   // split hosts: the game lives on ride.<apex>
 check(`"try it offline" link targets the game host (${wantGame})`, (await ev(`document.querySelector('a.link[href$="/play.html"]')?.getAttribute('href')`)) === wantGame);
 
+// 7 · the promo invite block: /?promo=CODE pre-fills it, the code survives the sign-in and lands pre-filled (never redeemed) on the lobby's PROMO tab
+await send('Network.clearBrowserCookies'); await open('ok', '/?promo=GoldWheel');
+check('invite link: the field is pre-filled and the status says the code is ready', (await ev(`document.getElementById('invite-code').value`)) === 'GoldWheel' && /GOLDWHEEL is ready/.test(await ev(`document.getElementById('invite-msg').textContent`)), await ev(`document.getElementById('invite-msg').textContent`));
+await ev(`document.getElementById('invite-code').value = ''; document.getElementById('invite').requestSubmit()`);
+check('invite: an empty field is explained, nothing happens', /Type the code first/.test(await ev(`document.getElementById('invite-msg').textContent`)) && (await ev('location.pathname')) === '/');
+await ev(`document.getElementById('invite-code').value = ' bluepaint '; document.getElementById('invite').requestSubmit()`);
+check('invite (signed out): the code is kept and the CONNECT button takes focus', /BLUEPAINT saved/.test(await ev(`document.getElementById('invite-msg').textContent`)) && (await ev(`document.activeElement?.id`)) === 'connect');
+await click();
+check('invite: after the sign-in the lobby opens on the PROMO tab with the code typed in – and the URL is clean', await until(`location.pathname === '/lobby.html' && location.hash === '#promo' && location.search === '' && document.getElementById('promo-code')?.value === 'bluepaint'`, 12000), await ev('location.href'));
+await shot('lobby-invite');
+const mine = await ev(`fetch(${JSON.stringify(API + '/api/promo/mine')}, { credentials: 'include' }).then(r => r.json())`);
+check('…and nothing was redeemed by the link itself', Array.isArray(mine.redemptions) && mine.redemptions.length === 0, JSON.stringify(mine));
+await send('Page.navigate', { url: BASE + '/' }); await sleep(1500); await until(`!document.getElementById('chip-wallet').hidden`);
+await ev(`document.getElementById('invite-code').value = 'welcome'; document.getElementById('invite').requestSubmit()`);
+check('invite (signed in): straight to the lobby PROMO tab with the code', await until(`location.pathname === '/lobby.html' && location.hash === '#promo' && document.getElementById('promo-code')?.value === 'welcome'`), await ev('location.href'));
+
 const problems = c.filt().filter(p => !/401|Failed to load resource/.test(p));
 check('no page errors', problems.length === 0, problems.join(' | ').slice(0, 200));
 console.log(fails ? `\n${fails} FAILED` : '\nall ok'); c.finish(fails ? 1 : 0);

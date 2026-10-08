@@ -115,9 +115,40 @@ check('…and the rider sees verified + the override', after?.status === 'verifi
 await A.ev('[...document.querySelectorAll(".actions button")].find(b => /RE-JUDGE/.test(b.textContent)).click()');
 check('RE-JUDGE: the checks run again and replace the decision (FLAGGED again)', await until(async () => /FLAGGED/.test(await A.ev('document.querySelector(".v")?.textContent || ""')) && !/decided by/.test(await A.ev('document.getElementById("view").textContent'))));
 
+// ── PROMO CODES: create with the form (signed), see it active, a player redeems it, who used it, disable (signed)
+await A.ev('location.hash = "#promos"');
+check('promos: the tab renders with the ACTIVE filter, an empty list and the form', await until(async () => (await A.ev('!!document.getElementById("promo-form")')) === true) && (await A.ev('document.querySelector("#promo-states .on")?.dataset.state')) === 'active' && /No active promo codes/.test(await A.ev('document.getElementById("view").textContent')));
+const setField = (id, v) => A.ev(`(() => { const e = document.getElementById(${JSON.stringify(id)}); e.value = ${JSON.stringify(v)}; e.dispatchEvent(new Event('input', { bubbles: true })); e.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+const submitPromo = () => A.ev('document.getElementById("promo-form").requestSubmit()');
+await A.ev('[...document.querySelectorAll(".presets button")].find(b => /3 free rides/.test(b.textContent)).click()');
+await setField('pf-code', ' e2e three '); await setField('pf-desc', 'E2E: three rides'); await setField('pf-max', '5'); await setField('pf-end', '2099-01-01T00:00');
+const signedBefore = await A.ev('window.__signed');
+await submitPromo();
+check('promos: SIGN & CREATE → the code is listed ACTIVE with what it gives and its text', await until(async () => /E2ETHREE/.test(await A.ev('document.getElementById("promo-table")?.textContent || ""'))) && /3 free rides/.test(await A.ev('document.getElementById("promo-table").textContent')) && /ACTIVE/.test(await A.ev('document.getElementById("promo-table").textContent')) && /E2E: three rides/.test(await A.ev('document.getElementById("promo-table").textContent')), await A.ev('document.getElementById("view").textContent.slice(0, 300)'));
+check('promos: the wallet signed the text of exactly this code (every field in one JSON line)', (await A.ev('window.__signed')) === signedBefore + 1 && (await A.ev(`(window.__lastMessage || '').includes('Action: CREATE promo code E2ETHREE') && (window.__lastMessage || '').includes('Gives: 3 free rides') && (window.__lastMessage || '').includes('"maxRedemptions":5')`)) === true);
+const promoRider = await signIn(nacl.sign.keyPair());
+const first = await post('promo/redeem', { code: 'e2e three' }, promoRider.cookie);
+check('promos: a player redeems it (+3 free rides)', first.r.status === 200 && first.j.kind === 'free_rides' && first.j.freeRides === 8, JSON.stringify(first.j));
+await A.ev('document.getElementById("refresh").click()');   // reload the tab (a player redeemed meanwhile)
+check('promos: the list counts the use (1 / 5) and USED BY PLAYERS shows the wallet and what it got', await until(async () => /1 \/ 5/.test(await A.ev('document.getElementById("promo-table")?.textContent || ""')) && (await A.ev('document.getElementById("promo-used")?.textContent || ""')).includes(promoRider.short) && /3 free rides/.test(await A.ev('document.getElementById("promo-used").textContent'))));
+await setField('pf-code', 'E2E-WHEEL'); await setField('pf-kind', 'cosmetic'); await setField('pf-slot', 'wheel'); await setField('pf-item', 'gold');
+await submitPromo();
+check('promos: a cosmetic code through the same form (wheel: gold)', await until(async () => /E2E-WHEEL/.test(await A.ev('document.getElementById("promo-table")?.textContent || ""')) && /wheel: gold/.test(await A.ev('document.getElementById("promo-table").textContent'))));
+await setField('pf-code', ''); await submitPromo();
+check('promos: a form mistake is explained on the page and nothing is signed', await until(async () => /Give the code a name/.test(await A.ev('document.getElementById("promo-note")?.textContent || ""'))) && (await A.ev('window.__signed')) === signedBefore + 2, await A.ev('document.getElementById("promo-note")?.textContent'));
+await A.shot('promos-desktop');
+await A.ev('[...document.querySelectorAll("#promo-table tr")].find(r => r.dataset.code === "E2ETHREE").querySelector("button.reject").click()');
+check('promos: DISABLE (signed) removes it from the ACTIVE list', await until(async () => !/E2ETHREE/.test(await A.ev('document.getElementById("promo-table")?.textContent || ""'))));
+check('promos: …the wallet signed the disable of exactly this code', (await A.ev(`(window.__lastMessage || '').includes('Action: DISABLE promo code E2ETHREE')`)) === true);
+await A.ev('[...document.querySelectorAll("#promo-states button")].find(b => b.dataset.state === "disabled").click()');
+check('promos: the DISABLED filter lists it', await until(async () => /E2ETHREE/.test(await A.ev('document.getElementById("promo-table")?.textContent || ""')) && /DISABLED/.test(await A.ev('document.getElementById("promo-table").textContent'))));
+const second = await post('promo/redeem', { code: 'e2e three' }, (await signIn(nacl.sign.keyPair())).cookie);
+check('promos: a disabled code is refused to players (409, "no longer valid")', second.r.status === 409 && /no longer valid/.test(second.j.detail), JSON.stringify(second.j));
+await size(A, 390, 844, true); await sleep(300); await A.shot('promos-phone'); await size(A, 1200, 900, false);
+
 // ── audit, sign-ins, logs, rides
 await A.ev('location.hash = "#audit"');
-check('audit: the admin sign-ins, the override and the re-judge are logged, the changes with their signatures', await until(async () => { const t = await A.ev('document.querySelector("tbody")?.textContent || ""'); return /verdict\.override/.test(t) && /verdict\.rejudge/.test(t) && /auth\.signin/.test(t) && /"signature"/.test(t); }));
+check('audit: the admin sign-ins, the override and the re-judge are logged, the changes with their signatures', await until(async () => { const t = await A.ev('document.querySelector("tbody")?.textContent || ""'); return /verdict\.override/.test(t) && /verdict\.rejudge/.test(t) && /auth\.signin/.test(t) && /promo\.create/.test(t) && /promo\.disable/.test(t) && /"signature"/.test(t); }));
 await A.ev('location.hash = "#signins"');
 check('sign-ins: both wallets with an ip', await until(async () => { const t = await A.ev('document.querySelector("tbody")?.textContent || ""'); return t.includes(rider.short) && t.includes(admin.short); }));
 await A.shot('signins-desktop');
