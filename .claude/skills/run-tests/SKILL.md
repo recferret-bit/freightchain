@@ -40,14 +40,15 @@ builds the landing + server, starts the server on a free port, runs `server/scri
 `server/scripts/e2e-watch.mjs` (live streams, two Chromes: a driver + a spectator – replay, chat on the CB, mock NIGHT + SINKHOLE donations applied and seen in the replay; ~3 min)
 and `server/scripts/e2e-replay.mjs` (a finished ride's replay from the landing's ticker link: speeds, seeks, the night and the paid hole from history; ~4 min) and `server/scripts/e2e-live-flags.mjs` (the LIVE_* flags: production's paid donations with a fake wallet, then chat + donations off – two servers; all three are also the `replay-test` skill),
 and `landing/tools/e2e-wallet.mjs` twice – `wallet` (one origin) and `wallet-split` (landing on `app.localhost`, API on `api.app.localhost`, one cookie on the apex): the landing's sign-in, the redirect and the promo invite block,
+and `server/scripts/e2e-live-board.mjs` (online / on the road / the replays history on the landing and in the lobby, fed by `scripts/sim-rides.mjs`; the `live-board-test` skill),
 then stops the server and drops the database – also on failure.
 
 ```sh
-bash .claude/skills/run-tests/e2e.sh            # all eight
-bash .claude/skills/run-tests/e2e.sh browser    # one of: browser | lobby | admin | watch | replay | flags | wallet | wallet-split
+bash .claude/skills/run-tests/e2e.sh            # all nine
+bash .claude/skills/run-tests/e2e.sh browser    # one of: browser | lobby | admin | watch | replay | flags | wallet | wallet-split | board
 ```
 
-Then **look at the screenshots** it prints (`fc-online-shots`, `fc-lobby-shots`, `fc-admin-shots`, `fc-watch-shots`, `fc-replay-shots`, `fc-flags-shots` in the OS temp dir) with the Read tool – the scripts
+Then **look at the screenshots** it prints (`fc-online-shots`, `fc-lobby-shots`, `fc-admin-shots`, `fc-watch-shots`, `fc-replay-shots`, `fc-flags-shots`, `fc-board-shots` in the OS temp dir) with the Read tool – the scripts
 cannot judge layout. Say plainly what passed, what failed (with output), and what still needs a human eye.
 
 ## Reporting

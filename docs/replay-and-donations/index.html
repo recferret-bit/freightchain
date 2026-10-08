@@ -145,6 +145,42 @@
   </div>
 </section>
 
+<section aria-labelledby="s-board">
+  <div class="head">
+    <span class="eyebrow">Online and history</span>
+    <h2 id="s-board">Who is here, what is on the road, what can be replayed</h2>
+    <p class="soft">The landing's chip and the lobby's header say <i>N online · M on the road</i>; LIVE NOW and the lobby's LIVE tab list every ride on the air; the lobby's REPLAYS tab and the landing's RECENT RIDES list every ride that ended.</p>
+  </div>
+  <div class="cols">
+    <div class="card">
+      <div class="top"><h3>On the road – accurately</h3></div>
+      <ul class="checks">
+        <li><b>On the air = a heartbeat in the last 150 s</b><span class="soft">The game beats every ~10 s (a paused or hidden tab keeps beating). Each ride shows how many watch it (👁) and its signal: live, PAUSED, or WEAK SIGNAL after 40 s without a beat.</span><span class="c">HB_TIMEOUT_MS · WEAK_SIGNAL_SECONDS</span></li>
+        <li><b>Abandoned rides are closed</b><span class="soft">A ride silent for the timeout can never resume – its next heartbeat would fail it – so the stale-ride sweeper ends it (every 30 s) as <i>failed · heartbeat lost</i>, shown as “signal lost”. It used to stay “running” until its wallet started another ride.</span></li>
+        <li><b>Join</b><span class="soft">▶ WATCH on any row, or WATCH A RANDOM ONE in the lobby – sorted newest / most watched / furthest, filtered by route.</span></li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="top"><h3>Who is online – a soft number</h3></div>
+      <ul class="checks">
+        <li><b>Counted from the pages' own polls</b><span class="soft">The landing and the lobby send a random id with their live-feed poll, the watch page with its own; the server counts distinct ids for 30 s – browsing, watching, driving – and the signed-in wallets among them.</span></li>
+        <li><b>Hard to pump, easy to reset</b><span class="soft">At most 3 ids per address count (one office or family = up to 3). Kept in the app's memory: a deploy or restart starts from zero, and a second app instance would count separately.</span></li>
+      </ul>
+    </div>
+  </div>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>The history</th><th>How</th></tr></thead>
+      <tbody>
+        <tr><td><code>GET /api/replays</code><span class="c">?before=&lt;cursor&gt;&amp;limit&amp;wallet&amp;status</span></td><td>Public. Every ride that started and ended – completed, abandoned, failed (a vanished tab included) – newest end first, paged by a stable cursor, filtered by driver or outcome. Each row carries the fail <i>code</i> (never the reason text) and <code>replay</code>: its recording is still kept, so ▶ REPLAY opens it on the watch page.</td></tr>
+        <tr><td>In the lobby</td><td>REPLAYS: everyone / mine, all / completed / abandoned / failed, LOAD MORE.</td></tr>
+        <tr><td>On the landing</td><td>RECENT RIDES: the last eight, a ▶ REPLAY link where a recording is kept.</td></tr>
+        <tr><td>Tested by</td><td><code>bash .claude/skills/live-board-test/run.sh</code> – the ride simulator (<code>server/scripts/sim-rides.mjs</code>: drivers that drive, pause, abandon or complete, visitors, watchers) against a fresh server, checked on the landing and in the lobby.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
 <section aria-labelledby="s-don">
   <div class="head">
     <span class="eyebrow">Donations</span>
