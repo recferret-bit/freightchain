@@ -2,6 +2,9 @@ import { PoolsHttpController } from '../../../src/presentation/economy/pools.htt
 import { ListPoolsQuery } from '../../../src/application/use-cases/pools/list-pools/list-pools.query.js';
 import { GetPrizePoolQuery } from '../../../src/application/use-cases/pools/get-prize-pool/get-prize-pool.query.js';
 import { RedeemPromoCommand } from '../../../src/application/use-cases/players/redeem-promo/redeem-promo.command.js';
+import { GetRefundTransactionQuery } from '../../../src/application/use-cases/pools/get-refund-transaction/get-refund-transaction.query.js';
+import { GetPayoutTransactionsQuery } from '../../../src/application/use-cases/pools/get-payout-transactions/get-payout-transactions.query.js';
+import { SettleChainSignatureCommand } from '../../../src/application/use-cases/chain/settle-chain-signature/settle-chain-signature.command.js';
 import { poolIdParamsSchema, redeemPromoBodySchema } from '../../../src/presentation/economy/dto/pools.dto.js';
 import { busMock } from '../../support/bus.js';
 
@@ -13,6 +16,9 @@ describe('PoolsHttpController', () => {
     await c.get({ id: 4 }); expect(queries.last()).toEqual(new GetPrizePoolQuery(4));
     expect(await c.redeem({ wallet: 'w' }, { code: 'hello' })).toEqual({ added: 2 });
     expect(commands.last()).toEqual(new RedeemPromoCommand('w', 'hello'));
+    await c.refund({ wallet: 'w' }, { id: 3 }); expect(queries.last()).toEqual(new GetRefundTransactionQuery('w', 3));
+    await c.payout({ wallet: 'w' }, { id: 3 }); expect(queries.last()).toEqual(new GetPayoutTransactionsQuery('w', 3));
+    await c.settle({ signature: 'sig' }); expect(commands.last()).toEqual(new SettleChainSignatureCommand('sig'));
   });
 
   it('a pool id is a u32; a promo code is a short non-empty string', () => {

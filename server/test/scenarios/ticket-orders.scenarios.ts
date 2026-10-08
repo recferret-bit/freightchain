@@ -66,4 +66,23 @@ export function ticketOrderScenarios(h: () => Harness): void {
     await other.agent.get(`/api/tickets/orders/${mine.id}`).expect(404);
     await w.agent.get('/api/tickets/orders/not-a-uuid').expect(400);
   });
+
+  it('the wallet path end to end on the (fake) chain: payment transaction → confirm → paid; refund transaction after the pool failed → settle', async () => {
+    await seedPool({ id: 1, status: 'open', minTickets: 5 });
+    const w = await login();
+    const order = (await w.agent.post('/api/tickets').send({ poolId: 1, qty: 2 }).expect(200)).body;
+    const pay = (await w.agent.get(`/api/tickets/orders/${order.id}/payment`).expect(200)).body;
+    expect(pay).toMatchObject({ orderId: order.id, poolId: 1, lamports: 100_000_000, sponsored: false, feePayer: w.address });
+    expect(h().poolChain.built[0]).toMatchObject({ kind: 'buy', input: { payer: w.address, orderId: order.id, qty: 2 } });
+    const sig = h().poolChain.addEvent('TicketBought', { poolId: 1, buyer: w.address, qty: 2, lamports: 100_000_000, orderId: order.id, ticketsSold: 2, activated: false });
+    expect((await w.agent.post(`/api/tickets/orders/${order.id}/confirm`).send({ signature: sig }).expect(200)).body).toMatchObject({ status: 'paid', order: { status: 'paid' } });
+    await w.agent.get(`/api/pools/1/refund`).expect(409); // still open, before its deadline
+    const failed = h().poolChain.addEvent('PoolFailed', { poolId: 1, ticketsSold: 2 });
+    expect((await w.agent.post('/api/chain/settle').send({ signature: failed }).expect(200)).body).toMatchObject({ status: 'done', events: [{ kind: 'PoolFailed', outcome: 'applied' }] });
+    expect((await w.agent.get(`/api/pools/1/refund`).expect(200)).body).toMatchObject({ poolId: 1, needsFail: false, lamports: 100_000_000 });
+    const refunded = h().poolChain.addEvent('Refunded', { poolId: 1, buyer: w.address, rentPayer: w.address, qty: 2, lamports: 100_000_000, refundedTotal: 100_000_000 });
+    await w.agent.post('/api/chain/settle').send({ signature: refunded }).expect(200);
+    expect((await w.agent.get(`/api/tickets/orders/${order.id}`)).body.status).toBe('refunded');
+    expect((await w.agent.get('/api/pools/1/payout')).status).toBe(403); // not the admin
+  });
 }
