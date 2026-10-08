@@ -67,7 +67,7 @@ The overall awards are judged as startups (seven factors: the form is a venture 
 - **Demo-time multiplier.** `DEMO_WALLETS` runs a paid shift ×60 shorter. Say "demo clock ×60" out loud in the demo video.
 - **Pitch matches the build – stricter now.** The frame is "verified play", so every sentence has to say which checks exist **today** (server clock, heartbeat gap ≤ 150 s, distance ≤ 28 m/s · 1.2 of wall time, server-issued seed) and which are **designed next** (input/telemetry batches, bot and human scoring, replay viewer, admin payouts). Never say a ride is "proven human" or "replayable" in this build.
 - **Keep the front end vanilla.** No React / Next. One NestJS backend.
-- **Plan A is the chain story.** Memo-checked SOL transfer to a treasury pubkey; no Anchor program (cut on purpose, said so).
+- **Plan A is the chain story.** ~~Memo-checked SOL transfer to a treasury pubkey; no Anchor program~~ → **superseded Oct 7 by escrowed prize pools** (an Anchor program holds the entry fees; minimum tickets to play, refunds if it fails) – see `paid-tickets-plan.md` / `paid-tickets-status.md`. The memo transfer stays as the `PAYMENT_MODE=transfer` fallback.
 - **One product.** Telegram, spectator sabotage, mainnet stay on the roadmap.
 - **Cut order if behind** (first to go → last): wordmark → hero gameplay loop → `/r/:id` → the filmed manual payout → the weekly update. The economy change, the real devnet payment, both videos and the form do not get cut.
 
@@ -204,12 +204,12 @@ Record on real Chrome, clean profile, the live URL.
 - **P2 Go-to-market.** Solana users who sit through on-chain spectacles and streams, plus anyone who will do a 3-minute free ride for a leaderboard. Loop: 5 free rides → 1 a day → $5 / $15 / $50 shifts. Distribution: the public live board (no account to watch), one X post per finished paid ride, the pool number. Missing on purpose: paid acquisition, mobile wallet flows beyond Phantom/Solflare, KYC.
 - **P3 Demand validation = Friday's count.** "N people outside the team finished a free ride on the public URL on Oct 10; M paid a devnet shift. No revenue, devnet only." If nobody plays: "No users yet; the live demo is the validation we can offer." No invented waitlist.
 - **P4 Viability.** The 10% fee has to cover hosting and, later, the verification and payout operations. Path: manual admin payouts on devnet → verified-play scoring → mainnet with published rules. Skill prizes only (no draw) is part of viability.
-- **P5 Keep the cuts visible.** Anchor, truck upgrades, NFT badges, Telegram, deterministic re-sim, mainnet – cut or later, on purpose.
-- **P6 Solana track.** Cheap entries, wallets people have, a memo the server checks without a program.
+- **P5 Keep the cuts visible.** ~~Anchor~~ (now built – escrowed pools), truck upgrades, NFT badges, Telegram, deterministic re-sim, mainnet – cut or later, on purpose.
+- **P6 Solana track.** Cheap entries, wallets people have, entry fees escrowed by our own program with trustless refunds, gas-sponsored buys.
 
 ## What not to do this week
 
-Building the verified-play system (design only) · mainnet · a React rewrite · Telegram · Anchor · a second chain · NFT mint · claiming rides are "verified" or "replayable" in this build · any sentence with "draw" or "jackpot" · a single video that is both pitch and demo · putting the treasury key on the server · `npm run deploy` without the smoke test.
+Building the verified-play system (design only) · mainnet · a React rewrite · Telegram · ~~Anchor~~ (built for the pools) · a second chain · NFT mint · claiming rides are "verified" or "replayable" in this build · any sentence with "draw" or "jackpot" · a single video that is both pitch and demo · putting the treasury key on the server · `npm run deploy` without the smoke test.
 
 ## Known gaps to mention if asked
 

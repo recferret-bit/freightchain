@@ -50,6 +50,21 @@ services:
       DEMO_WALLETS: ${DEMO_WALLETS:-}
       DEMO_SCALE: ${DEMO_SCALE:-60}
       INITIAL_SEED_SOL: ${INITIAL_SEED_SOL:-0}
+      # escrowed pools (docs/paid-tickets-status.md) – all optional: unset TICKET_PROGRAM_ID = the legacy transfer mode
+      PAYMENT_MODE: ${PAYMENT_MODE:-}
+      TICKET_PROGRAM_ID: ${TICKET_PROGRAM_ID:-}
+      FEE_TREASURY: ${FEE_TREASURY:-}
+      SEED_TREASURY: ${SEED_TREASURY:-}
+      SOLANA_WS: ${SOLANA_WS:-}
+      SOLANA_RPC_FALLBACKS: ${SOLANA_RPC_FALLBACKS:-}
+      SOLANA_COMMITMENT: ${SOLANA_COMMITMENT:-confirmed}
+      WATCH_INTERVAL_MS: ${WATCH_INTERVAL_MS:-15000}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET:-}
+      FEE_PAYER_SECRET: ${FEE_PAYER_SECRET:-}
+      CRANK_SECRET: ${CRANK_SECRET:-}
+      SPONSOR_PER_WALLET_PER_DAY: ${SPONSOR_PER_WALLET_PER_DAY:-20}
+      PRIORITY_FEE_MIN_MICROLAMPORTS: ${PRIORITY_FEE_MIN_MICROLAMPORTS:-0}
+      PRIORITY_FEE_MAX_MICROLAMPORTS: ${PRIORITY_FEE_MAX_MICROLAMPORTS:-50000}
     # loopback ONLY: ports Docker publishes bypass ufw, so a bare "3000:3000" would be open to the internet. nginx on the host is the public door.
     ports:
       - "127.0.0.1:${APP_PORT:-3000}:3000"

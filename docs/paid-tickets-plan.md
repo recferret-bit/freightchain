@@ -1,6 +1,6 @@
 # Paid tickets – escrowed prize pools on Solana, full integration before Oct 12 (multi-agent plan)
 
-Branch `paid-tickets` (worktree `.claude/worktrees/paid-tickets`, from `main` @ e08bcda). Status: **plan, nothing built**. Written Oct 7, 2026 (evening); submission Sun Oct 12 noon PT.
+Branch `paid-tickets` (worktree `.claude/worktrees/paid-tickets`, from `main` @ e08bcda). Status: **W0–W5 built and merged (Oct 8); devnet deploy next** – current state, open questions and how to test: [`paid-tickets-status.md`](paid-tickets-status.md). Written Oct 7, 2026 (evening); submission Sun Oct 12 noon PT.
 
 ## 0. The idea (what the judges see)
 
