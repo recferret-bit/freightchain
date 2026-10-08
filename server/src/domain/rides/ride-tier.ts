@@ -29,3 +29,8 @@ export function rideTier(id: RideTierId, freeRideSeconds: number): RideTierDef {
 }
 
 export const isPaidTier = (id: RideTierId): boolean => id !== 'free';
+
+/** The tiers that cost money – each is sold as tickets into a pool (docs/paid-tickets-plan.md). */
+export const PAID_TIER_IDS = ['1h', '4h', '8h'] as const;
+export type PaidTierId = (typeof PAID_TIER_IDS)[number];
+export const isPaidTierId = (v: unknown): v is PaidTierId => typeof v === 'string' && (PAID_TIER_IDS as readonly string[]).includes(v);

@@ -7,3 +7,6 @@ export const nextUtcMidnight = (at: Date): Date => new Date(Math.floor(at.getTim
 
 /** UTC calendar day (YYYY-MM-DD) of an instant – the unit of the daily free ride. */
 export const utcDay = (at: Date): string => at.toISOString().slice(0, 10);
+
+/** 00:00 UTC of the day `at` falls in – where per-UTC-day caps (the gas sponsor's per-wallet budget) start counting. */
+export const startOfUtcDay = (at: Date): Date => new Date(Math.floor(at.getTime() / DAY_MS) * DAY_MS);

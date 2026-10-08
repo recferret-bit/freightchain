@@ -3,6 +3,9 @@ import { EntropyPort } from '../../src/application/ports/shared/entropy.port.js'
 import { AchievementService } from '../../src/application/services/achievement.service.js';
 import { PaymentSettlementService } from '../../src/application/services/payment-settlement.service.js';
 import { PlayerSessionService } from '../../src/application/services/player-session.service.js';
+import { PoolTicketsService } from '../../src/application/services/pool-tickets.service.js';
+import { TicketSettlementService } from '../../src/application/services/ticket-settlement.service.js';
+import { PoolRegistryService } from '../../src/application/services/pool-registry.service.js';
 import { RideLookupService } from '../../src/application/services/ride-lookup.service.js';
 import { RoundService } from '../../src/application/services/round.service.js';
 import { VerdictService } from '../../src/application/services/verdict.service.js';
@@ -11,12 +14,15 @@ import { NaclSignatureVerifier } from '../../src/infrastructure/auth/nacl.signat
 import { Player } from '../../src/domain/players/player.entity.js';
 import { Ride } from '../../src/domain/rides/ride.entity.js';
 import { FakeChain, TREASURY } from './fake-chain.js';
+import { FakePoolChain } from './fake-pool-chain.js';
 import { FakeClock } from './fake-clock.js';
 import { MemoryDb } from './in-memory/memory-db.js';
 import {
   MemoryAchievementRepository, MemoryChallengeRepository, MemoryHealthProbe, MemoryPaymentRepository, MemoryPlayerRepository,
   MemoryRideBatchRepository, MemoryRideQuery, MemoryRideVerdictRepository, MemorySignInRepository, MemoryAdminActionRepository, MemoryAdminQuery, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
 } from './in-memory/memory-repositories.js';
+import { MemoryPoolRepository, MemoryPromoRepository, MemoryRideTicketRepository, MemoryTicketOrderRepository } from './in-memory/memory-ledger-repositories.js';
+import { MemoryChainCursorRepository, MemoryChainEventRepository, MemorySponsoredTxRepository } from './in-memory/memory-repositories.js';
 import { TestHasher } from './recording.js';
 
 /** Fixed rules for unit tests: 10 s free shift (140 m), treasury configured, one demo wallet. */
@@ -26,6 +32,8 @@ export const ADMIN_UNIT_WALLET = 'GseaEsNWMLScZ5RH8yQ4xmoCP97H86HjLSA9xkyFCqbn';
 export const unitRules = (over: Partial<RulesConfig> = {}): RulesConfig => ({
   freeOnSignup: 5, freeRidesMax: 5, freeRideSeconds: 10, hbMinIntervalMs: 1000, hbTimeoutMs: 150_000, quoteTtlMs: 600_000, nonceTtlMs: 300_000,
   demoWallets: new Set([DEMO_UNIT_WALLET]), demoScale: 60, initialSeedLamports: 0, treasury: TREASURY, appDomain: 'freight.test', appOrigin: 'https://freight.test',
+  paymentMode: 'transfer', programId: '', feeTreasury: '', seedTreasury: '', watchIntervalMs: 0, orderTtlMs: 3_600_000, commitment: 'confirmed', sponsorEnabled: false, crankEnabled: false,
+  sponsorPerWalletPerDay: 20, priorityFee: { percentile: 75, minMicrolamports: 0, maxMicrolamports: 50_000 }, sessionTtlHours: 24,
   verdictEnforce: true, telemetryRetentionDays: 90, adminWallets: new Set([ADMIN_UNIT_WALLET]), adminDomain: 'freight.test', adminOrigin: 'https://freight.test',
   ...over,
 });
@@ -68,10 +76,21 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const adminActions = new MemoryAdminActionRepository(db);
   const adminQuery = new MemoryAdminQuery(db);
   const health = new MemoryHealthProbe();
+  const pools = new MemoryPoolRepository(db);
+  const tickets = new MemoryRideTicketRepository(db);
+  const promos = new MemoryPromoRepository(db);
+  const orders = new MemoryTicketOrderRepository(db);
+  const poolTickets = new PoolTicketsService(pools, tickets);
+  const poolChain = new FakePoolChain();
+  const chainEvents = new MemoryChainEventRepository(db);
+  const chainCursors = new MemoryChainCursorRepository(db);
+  const sponsoredTxs = new MemorySponsoredTxRepository(db);
   const sessions = new PlayerSessionService(players, rulesPort, clock);
   const lookup = new RideLookupService(rides);
   const rounds = new RoundService(roundRepo, rulesPort, transactions, clock);
   const achievements = new AchievementService(unlocks, rideQuery, clock);
+  const ticketSettlement = new TicketSettlementService(players, pools, tickets, orders, sessions, rounds, transactions, clock, entropy);
+  const registry = new PoolRegistryService(poolChain, pools, clock);
   const verdicts = new VerdictService(rides, players, batches, verdictRepo, adminActions, transactions, clock);
   const proofs = new AdminProofService(challenges, new NaclSignatureVerifier(), rulesPort, clock, entropy);
   const settlement = new PaymentSettlementService(rounds, roundRepo, payments, rides, players, lookup, transactions, clock);
@@ -99,7 +118,9 @@ export function unitContext(rules: RulesConfig = unitRules()) {
 
   return {
     db, clock, chain, entropy, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, batches, hasher, verdictRepo, verdicts, proofs, signIns, adminActions, adminQuery, health,
+    pools, tickets, promos, orders, poolTickets, ticketSettlement,
     sessions, lookup, rounds, achievements, settlement, now, player, freeRide, paidOrder, reload, storedPlayer,
+    poolChain, chainEvents, chainCursors, sponsoredTxs, registry,
   };
 }
 export type UnitContext = ReturnType<typeof unitContext>;

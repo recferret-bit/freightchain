@@ -1,0 +1,71 @@
+# Paid tickets – status, open questions, next steps, how to test
+
+Branch `paid-tickets` (worktree `.claude/worktrees/paid-tickets`). Written Oct 8, 2026 (head f4c50db + this file). Submission: Sun Oct 12 noon PT.
+The plan and the as-built notes per workstream are in [`paid-tickets-plan.md`](paid-tickets-plan.md); the explainer for judges is [`pool-escrow/index.html`](pool-escrow/index.html) (also served at `/escrow/`).
+
+## 1. Current status
+
+**Built, merged on this branch, and verified together. Not deployed, not run against a real chain.**
+
+| part | what it does | state |
+|---|---|---|
+| **Solana program** `programs/freightchain-pools/` (Anchor 1.2, Rust) | one program, many pools; each pool = its own escrow vault (PDA, no private key) with fixed rules: price, minimum tickets to play, max per wallet, preparation + play deadlines, prize / seed / fee split, two treasury addresses. Instructions: `initialize`, two-step authority handover, `pause`, `create_pool`, `cancel_pool`, `buy_ticket` (separate fee payer = gasless), `sponsor`, `fail_pool` / `refund` / `close_ticket` / `expire_pool` (anyone), `pay_prize` (capped at the prize share), `close_pool` | 47 LiteSVM tests green. **Program id is a placeholder** (`anchor keys sync` before deploy). Not audited. Session keys (phase 2) not built |
+| **Server: pools, tickets, promo** | mirror of the pool accounts; tickets per wallet per pool (capped like free rides, audit trail); promo codes add tickets of a tier; a paid ride spends one ticket; admin CLI | done |
+| **Server: orders, settlement** | order → server-built transaction (gas-sponsored under a daily cap, else self-paid) → confirm or gasless `/submit` → the program's `TicketBought` event credits the tickets; refunds; admin payout transactions (top 3 25/15/10 + top-20 share) | done |
+| **Server: chain** | IDL-driven codec checked byte for byte against the program; fee estimator (priority fees); gas-sponsor co-sign that signs only the exact bytes it built; **program-log watcher** (the "callback when a ticket is paid": credits even if the tab closed), webhook for QuickNode / Helius, finality pass (dropped transactions are undone), pool sync (the chain wins) | done; **crank** (server-side `fail_pool` with `CRANK_SECRET`) not built |
+| **Client** | lobby pool cards (progress "7 / 10 committed", countdowns, split, explorer links, RIDE / BUY / CLAIM REFUND), promo input, profile tickets + history; landing pools board + "how the escrow works" | done against the real API shapes; buy / refund only exercised against a stub + fake wallet |
+
+Tests after merging `main` (verified play + admin) into this branch: `npm run check` green (client trace, landing 59, server 777 unit), server integration 205 (fresh DB, migration order init → free_ride_cap → verified_play → admin → pools_tickets → ride_pool → order_settlement), program 47; e2e-lobby (56 checks) + e2e-wallet green against a live server (seeded pools, transfer mode). Screenshots looked at (desktop + phone). Pool payouts rank like the paid boards: verified recordings only when `VERDICT_ENFORCE` is on, every completed ride in shadow mode.
+
+Kept on purpose: the legacy pay-per-ride routes (`/api/rides/:id/payment|confirm|reconcile`) as the `PAYMENT_MODE=transfer` fallback. In `program` mode paid rides are ticket-only.
+
+## 2. What is needed from you
+
+| # | what | when | notes |
+|---|---|---|---|
+| 1 | **Program keypair** – or OK for me to generate one inside the repo (gitignored) | before the devnet deploy (Oct 9) | never your global Solana config / `~/.config/solana/id.json` |
+| 2 | **~5 devnet SOL** on that keypair (deploy ≈ 3 SOL) | same | faucets give 1–2 SOL/day/address; QuickNode faucet too |
+| 3 | **Phantom on devnet** = the admin authority (`TREASURY_PUBKEY`): sign `initialize`, each `create_pool`, later `pay_prize` / `close_pool` | at deploy, and at payout time | the server never holds this key |
+| 4 | **Seed + fee treasury addresses** (any wallets you control; devnet is fine) | before `create_pool` | written into every pool, never changeable |
+| 5 | **Pool settings**: price, minimum, preparation / play deadlines for the week pools + a short demo pool | before `create_pool` | suggestion: 0.05 SOL, min 10, prep to Oct 31; demo pool 1h, min 2, deadlines in 1–2 days so a refund or payout can be shown live |
+| 6 | **RPC provider**: `SOLANA_RPC` (+ `SOLANA_WS`) URL, e.g. QuickNode devnet; optionally a Streams webhook → `POST /api/chain/webhook` with `WEBHOOK_SECRET` | before the devnet run | the public devnet RPC works for a test, rate-limited |
+| 7 | **Gas sponsor keypair** (`FEE_PAYER_SECRET`, fee money only, ~0.2 devnet SOL) – or say "no sponsor" (buyers pay their own fee) | before the devnet run | |
+| 8 | Answers to the open questions below | any time; Q1, Q2, Q5 by Oct 9 | |
+
+## 3. Open questions
+
+| # | question | my recommendation |
+|---|---|---|
+| Q1 | Delete the legacy pay-per-ride routes now, or keep them as the transfer-mode fallback until devnet is green? | keep until the devnet run is green, then delete (one commit) |
+| Q2 | Refunds are **self-paid** (the buyer sends the refund and pays ~5 000 lamports). The plan said "a refund must never cost the victim a fee". Sponsor them (needs a stored-message path like `/submit`) or keep? | keep self-paid for the hackathon: a refund then never depends on our server; the closed ticket account returns its rent (more than the fee) to whoever paid it |
+| Q3 | Crank: should the server fail expired pools by itself (`CRANK_SECRET`, a new signing path)? Today any refund transaction includes `fail_pool` when needed, so a player can always do it | skip for the hackathon |
+| Q4 | Session keys (phase 2 of §2.10): go / no-go | no-go – the gas sponsor already removes the fee step; too risky for the time left |
+| Q5 | Landing / lobby copy that runs ahead of the build ("Program written and tested; devnet deploy next", dev-seeded pools shown as "IN ESCROW ON CHAIN") and the old "50 % grand prize · draw" legend (the top-3 change is planned on `main`) – who changes it and when? | I adjust it right after the devnet deploy, together with the top-3 rebase |
+| Q6 | Merge order with `main` / `verified-play`: our migrations are `20261009000000…02`, after verified-play's `20261008000002/3` | merge `verified-play` first if it is ready, then rebase this branch and re-run the drift test |
+| Q7 | Mainnet: the program is not audited. Say so in the submission ("devnet only, not audited")? | yes |
+| Q8 | Small known gaps – fix now or after the submission? `profile.stats.paidRides` stays 0 for ticket rides; 409 problems carry `title: "Error"`; `pool:seed` cannot make a `refunding` pool; a dropped transaction with no order (pool-only event / explorer purchase) is never undone, only re-synced | fix `paidRides` before recording; the rest after |
+
+## 4. What to do next
+
+1. **Devnet deploy** (needs §2 items 1–4): `anchor keys sync` → `npm run program:build` → `npm run program:idl` → `node server/scripts/vendor-idl.mjs` → regenerate the codec fixture (`FC_FIXTURES_OUT=$PWD/../../server/test/fixtures/chain cargo test --test export_fixtures` in `programs/freightchain-pools`) → all suites green → `anchor deploy --provider.cluster devnet` → `initialize` → `create_pool` for the week pools + the demo pool (signed in Phantom).
+2. **Register the pools**: `node dist/cli/index.js pool:register <id> --label "1 HOUR · week 42"` per pool.
+3. **Real devnet run** (server in `program` mode, `TICKET_PROGRAM_ID` set): buy sponsored + self-paid from the lobby with Phantom, the watcher credits it, ride with the ticket; let the demo pool fail → CLAIM REFUND; a live pool past its deadline → admin payout + close. Write `server/scripts/devnet-pool.mjs` (replaces `devnet-pay.mjs`) to repeat it headless.
+4. Delete the legacy pay-per-ride routes (Q1), fix `paidRides` (Q8), copy pass (Q5).
+5. Deploy: `deploy/.env.example` + `init.sh` (program id, treasuries, sponsor / crank keys, webhook secret), smoke check (program, Config, pools, sponsor balance), `deploy/README.md` "Program" section; then `npm run deploy` (with you).
+6. Submission material: AGENTS.md / backend-architecture final pass, `hackathon-plan-v2.md` (architecture line, "escrowed pools" slide), demo video of buy → ride → refund / payout.
+
+## 5. How to test it
+
+All from the repo root unless noted. PostgreSQL: `npm run db:up` (127.0.0.1:15433).
+
+| what | command | proves |
+|---|---|---|
+| everything Docker-free | `npm run check` (once: `npm run install:landing`) | client lint + bundle + headless trace, landing lint / build / tests, server build + typecheck + 654 unit / audit / in-memory HTTP tests |
+| server on PostgreSQL | `cd server && TEST_DATABASE_URL=postgresql://freight:freight_dev_password@localhost:15433/freightchain_paidtickets_test npm run test:integration` (create the DB once: `docker compose exec -T postgres psql -U freight -d postgres -c 'CREATE DATABASE freightchain_paidtickets_test'`) | repositories, the same HTTP scenarios, concurrency (one ticket = one ride, last promo redemption, duplicate events credited once, purchases racing a failing pool), migration drift. **Use this branch's own DB** – the shared `freightchain_test` is also used by the verified-play worktree |
+| the program | `export PATH="$HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$HOME/.avm/bin:$PATH"` then `npm run program:build && npm run program:test` | 47 LiteSVM tests: escrow, refunds, settle, grace / expiry, authority, rent, CU, the shared money table |
+| lobby + landing in real Chrome | `cd server && npm run build`; own DB: `DATABASE_URL=…/freightchain_paidtickets_e2e npx prisma migrate deploy`; start `DATABASE_URL=… FREE_RIDE_SECONDS=3 SOL_USD=118 TREASURY_PUBKEY=<any address> PORT=3128 node dist/main.js`; then `DATABASE_URL=… SEED=1 PORT=9361 BASE=http://localhost:3128 node scripts/e2e-lobby.mjs` and `PORT=9367 BASE=http://localhost:3128 node ../landing/tools/e2e-wallet.mjs` (`npm run landing:build` first) | seeded pools (1h live, 4h open 7/10), promo redeem, ride with a ticket, 409 messages, profile tickets, landing pools board, `/escrow/`, sign-in. Look at the screenshots |
+| buy / refund flows without a chain | `cd server && node scripts/e2e-tickets-stub.mjs` | the lobby's sponsored buy, sponsor-down fallback, self-paid buy, CLAIM REFUND – against `scripts/stub-api.mjs` and a fake wallet |
+| by hand, no chain | dev CLI on your DB: `node dist/cli/index.js pool:seed --id 1 --tier 1h --status active --min 2` · `promo:create WELCOME --tier 1h --credits 2` · `tickets:grant <wallet> 1 2` · `promo:list` | lobby without a deployed program (also the demo fallback) |
+| devnet (after §4.1) | server with `PAYMENT_MODE=program TICKET_PROGRAM_ID=<id> SOLANA_RPC=<devnet url> FEE_PAYER_SECRET=<sponsor> WATCH_INTERVAL_MS=15000`, Phantom on devnet | the real thing: buy, watcher credit, ride, refund, payout |
+
+Stop servers by PID, never `pkill -f` (other sessions run servers too). Never point tests at the dev database `freightchain`.

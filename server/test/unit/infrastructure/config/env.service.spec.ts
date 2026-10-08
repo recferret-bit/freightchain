@@ -99,3 +99,27 @@ describe('EnvService', () => {
     });
   });
 });
+
+describe('EnvService – paid tickets', () => {
+  const base = { DATABASE_URL: 'postgresql://x/db', NODE_ENV: 'development', JWT_SECRET: undefined, TREASURY_PUBKEY: undefined, TRUST_PROXY: undefined, TICKET_PROGRAM_ID: undefined, PAYMENT_MODE: undefined, FEE_TREASURY: undefined, SEED_TREASURY: undefined, SOLANA_WS: undefined, SOLANA_RPC_FALLBACKS: undefined, WEBHOOK_SECRET: undefined, CRANK_SECRET: undefined, FEE_PAYER_SECRET: undefined };
+  const program = Keypair.generate().publicKey.toBase58();
+
+  it('payment mode: plain transfers until a program is configured, then the program; PAYMENT_MODE=transfer forces the fallback', () => {
+    expect(withEnv(base).paymentMode).toBe('transfer');
+    expect(withEnv({ ...base, TICKET_PROGRAM_ID: program }).paymentMode).toBe('program');
+    expect(withEnv({ ...base, TICKET_PROGRAM_ID: program, PAYMENT_MODE: 'transfer' }).paymentMode).toBe('transfer');
+    expect(withEnv({ ...base, TICKET_PROGRAM_ID: program }).ticketProgramId).toBe(program);
+  });
+  it('unset values read as empty / off and the numbers have their defaults', () => {
+    const env = withEnv(base);
+    expect([env.feeTreasury, env.seedTreasury, env.solanaWs, env.solanaRpcFallbacks]).toEqual(['', '', '', []]);
+    expect([env.webhookSecret, env.crankSecret, env.feePayerSecret]).toEqual([undefined, undefined, undefined]);
+    expect([env.watchIntervalMs, env.orderTtlMs, env.solanaCommitment, env.sponsorPerWalletPerDay, env.onchainSessionTtlHours]).toEqual([15_000, 3_600_000, 'confirmed', 20, 24]);
+    expect(env.priorityFee).toEqual({ percentile: 75, minMicrolamports: 0, maxMicrolamports: 50_000 });
+  });
+  it('RPC fallbacks are a trimmed comma list; the secrets are read through the service', () => {
+    const env = withEnv({ ...base, SOLANA_RPC_FALLBACKS: ' https://a.example , ,https://b.example', WEBHOOK_SECRET: 'w'.repeat(20), CRANK_SECRET: 'c'.repeat(40), FEE_PAYER_SECRET: 'f'.repeat(40) });
+    expect(env.solanaRpcFallbacks).toEqual(['https://a.example', 'https://b.example']);
+    expect([env.webhookSecret, env.crankSecret, env.feePayerSecret]).toEqual(['w'.repeat(20), 'c'.repeat(40), 'f'.repeat(40)]);
+  });
+});

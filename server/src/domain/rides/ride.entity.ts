@@ -23,6 +23,8 @@ export interface RideProps {
   solUsd: number | null;
   quoteExpiresAt: Date | null;
   roundId: number | null;
+  /** the prize pool whose ticket paid for this ride (null = free, or a legacy pay-per-ride order) */
+  poolId: number | null;
   paidAt: Date | null;
   route: string | null;
   nightSeconds: number;
@@ -39,6 +41,9 @@ export interface RideProps {
 }
 
 export interface FreeRideInput { id: string; wallet: string; seed: number; minSeconds: number; now: Date }
+export interface TicketRideInput {
+  id: string; wallet: string; tier: RideTierId; seed: number; minSeconds: number; timeScale: number; poolId: number; roundId: number; now: Date;
+}
 export interface PaidOrderInput {
   id: string; wallet: string; tier: RideTierId; seed: number; minSeconds: number; timeScale: number;
   priceUsd: number; lamports: number; solUsd: number; now: Date; quoteTtlMs: number;
@@ -54,7 +59,7 @@ export class Ride {
 
   private static blank(): Omit<RideProps, 'id' | 'wallet' | 'tier' | 'seed' | 'minSeconds' | 'completeDist' | 'status' | 'createdAt'> {
     return {
-      timeScale: 1, priceUsd: 0, lamports: 0, solUsd: null, quoteExpiresAt: null, roundId: null, paidAt: null, route: null, nightSeconds: 0, paused: false,
+      timeScale: 1, priceUsd: 0, lamports: 0, solUsd: null, quoteExpiresAt: null, roundId: null, poolId: null, paidAt: null, route: null, nightSeconds: 0, paused: false,
       startedAt: null, lastHbAt: null, lastS: 0, lastT: 0, driveSeconds: 0, hull: null, endedAt: null, reason: null, version: 1,
     };
   }
@@ -62,6 +67,15 @@ export class Ride {
   /** A free ride is ready at once (its credit is spent by the caller). */
   static createFree(i: FreeRideInput): Ride {
     return new Ride({ ...Ride.blank(), id: i.id, wallet: i.wallet, tier: 'free', seed: i.seed, minSeconds: i.minSeconds, completeDist: completeDist(i.minSeconds), status: RideStatus.Created, createdAt: i.now });
+  }
+
+  /** A paid ride bought with a pool ticket (the money is already in the pool's escrow): ready at once, ranked in the pool's round. The caller spends the ticket. */
+  static createFromTicket(i: TicketRideInput): Ride {
+    if (i.tier === 'free') throw new ConflictError('a free ride is not paid with a ticket');
+    return new Ride({
+      ...Ride.blank(), id: i.id, wallet: i.wallet, tier: i.tier, seed: i.seed, minSeconds: i.minSeconds, completeDist: completeDist(i.minSeconds),
+      status: RideStatus.Created, createdAt: i.now, timeScale: i.timeScale, poolId: i.poolId, roundId: i.roundId, paidAt: i.now,
+    });
   }
 
   /** A paid order: priced in SOL at the moment of ordering, awaiting the on-chain payment. */
@@ -89,6 +103,7 @@ export class Ride {
   get lamports(): number { return this.p.lamports; }
   get quoteExpiresAt(): Date | null { return this.p.quoteExpiresAt; }
   get roundId(): number | null { return this.p.roundId; }
+  get poolId(): number | null { return this.p.poolId; }
   get paidAt(): Date | null { return this.p.paidAt; }
   get driveSeconds(): number { return this.p.driveSeconds; }
   get distance(): number { return this.p.lastS; }

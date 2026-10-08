@@ -31,15 +31,6 @@ export class UnauthorizedError extends DomainError {
   }
 }
 
-export class ForbiddenError extends DomainError {
-  readonly statusCode = 403;
-  readonly errorCode = 'forbidden';
-
-  constructor(message = 'Forbidden') {
-    super(message);
-  }
-}
-
 export class NotFoundError extends DomainError {
   readonly statusCode = 404;
   readonly errorCode = 'not_found';
@@ -66,6 +57,27 @@ export class VersionConflictError extends DomainError {
 
   constructor(message = 'The record was changed by another request – retry') {
     super(message);
+  }
+}
+
+export class ForbiddenError extends DomainError {
+  readonly statusCode = 403;
+  readonly errorCode: string;
+
+  constructor(message = 'Forbidden', errorCode = 'forbidden') {
+    super(message);
+    this.errorCode = errorCode;
+  }
+}
+
+/** A per-wallet quota (e.g. the gas sponsor's daily cap) is used up – try again later or another way. */
+export class TooManyRequestsError extends DomainError {
+  readonly statusCode = 429;
+  readonly errorCode: string;
+
+  constructor(message = 'Too many requests', errorCode = 'rate_limited') {
+    super(message);
+    this.errorCode = errorCode;
   }
 }
 

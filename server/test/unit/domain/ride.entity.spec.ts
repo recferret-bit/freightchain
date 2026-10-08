@@ -22,6 +22,14 @@ describe('Ride – creation', () => {
     expect(o.quoteIsLive(at(599))).toBe(true);
     expect(o.quoteIsLive(at(600))).toBe(false);
   });
+
+  it('a ticket ride is paid and ready at once, in its pool and the pool\'s round; never for the free tier', () => {
+    const r = Ride.createFromTicket({ id: 'ride-3', wallet: 'w', tier: '4h', seed: 3, minSeconds: 240, timeScale: 60, poolId: 9, roundId: 4, now: T0 });
+    expect(r).toMatchObject({ status: RideStatus.Created, tier: '4h', poolId: 9, roundId: 4, isFree: false, lamports: 0, minSeconds: 240, timeScale: 60 });
+    expect(r.snapshot()).toMatchObject({ paidAt: T0, quoteExpiresAt: null, completeDist: 3360 });
+    expect(freeRide().poolId).toBeNull();
+    expect(() => Ride.createFromTicket({ id: 'x', wallet: 'w', tier: 'free', seed: 1, minSeconds: 10, timeScale: 1, poolId: 1, roundId: 1, now: T0 })).toThrow(ConflictError);
+  });
 });
 
 describe('Ride – lifecycle guards', () => {

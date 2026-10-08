@@ -14,6 +14,7 @@ model Round {
   status   RoundStatus
   payments Payment[]
   rides    Ride[]
+  pools    Pool[]
 
   @@schema("economy")
 }
@@ -32,5 +33,157 @@ model Payment {
 
   @@index([roundId])
   @@index([wallet])
+  @@schema("economy")
+}
+
+enum PoolStatus {
+  open // selling tickets, the minimum is not reached yet
+  active // minimum reached: rides count, entries keep selling until playDeadline
+  refunding // failed, cancelled by the admin or expired unsettled: every buyer can claim every lamport back
+  settled // an active pool closed: prizes paid, seed and fees sent to their treasuries
+  cancelled // a refunding pool closed after every refund (terminal; the program's status 4)
+
+  @@schema("economy")
+}
+
+enum OrderStatus {
+  awaiting_payment
+  paid
+  expired
+  refunded
+
+  @@schema("economy")
+}
+
+// The server's mirror of an ON-CHAIN pool account (the chain is the truth; the watcher and PoolSyncService keep this row in step).
+model Pool {
+  id            Int           @id // the on-chain pool_id (u32 chosen at creation) - not generated here
+  address       String        @unique // the Pool PDA
+  tier          String // '1h' | '4h' | '8h'
+  label         String
+  priceLamports BigInt
+  minTickets    Int
+  maxTickets    Int // 0 = unlimited
+  maxPerWallet  Int
+  prepDeadline  DateTime // the minimum must be sold by then, else the pool fails
+  playDeadline  DateTime // entries and rides count until then
+  prizeBps      Int
+  seedBps       Int
+  feeBps        Int
+  feeTreasury   String
+  seedTreasury  String
+  status        PoolStatus
+  ticketsSold   Int           @default(0)
+  buyers        Int           @default(0)
+  vaultLamports BigInt        @default(0) // the escrow: vault lamports above its rent-exempt minimum, sponsorships included
+  sponsored     BigInt        @default(0)
+  roundId       Int? // the weekly round it ranks in (set when it goes active)
+  round         Round?        @relation(fields: [roundId], references: [id])
+  createdAt     DateTime
+  syncedAt      DateTime?
+  tickets       RideTicket[]
+  orders        TicketOrder[]
+  rides         Ride[]
+
+  @@index([status, prepDeadline])
+  @@index([roundId])
+  @@schema("economy")
+}
+
+// A promo code adds tickets (an off-chain grant into a pool - a sponsored entry; it does not count towards the pool's minimum).
+model PromoCode {
+  code           String            @id // stored upper-case without spaces; redeemed case-insensitively
+  poolId         Int? // null = the newest open/active pool of `tier`
+  tier           String
+  credits        Int // tickets per redemption
+  maxRedemptions Int? // null = unlimited
+  redeemed       Int               @default(0)
+  perWallet      Int               @default(1)
+  expiresAt      DateTime?
+  disabledAt     DateTime?
+  note           String?
+  createdAt      DateTime
+  redemptions    PromoRedemption[]
+
+  @@schema("economy")
+}
+
+model PromoRedemption {
+  code   String
+  promo  PromoCode @relation(fields: [code], references: [code])
+  wallet String
+  n      Int // the n-th redemption of this code by this wallet (1..perWallet): the primary key IS the per-wallet limit
+  at     DateTime
+
+  @@id([code, wallet, n])
+  @@index([wallet])
+  @@schema("economy")
+}
+
+// An order for tickets: the wallet says "n tickets of pool X", the server builds the transaction, the chain event settles it.
+model TicketOrder {
+  id                   String      @id @default(uuid()) // = the on-chain order_id (the uuid's 16 bytes)
+  wallet               String
+  player               Player      @relation(fields: [wallet], references: [wallet])
+  poolId               Int
+  pool                 Pool        @relation(fields: [poolId], references: [id])
+  qty                  Int
+  lamports             BigInt // price x qty at order time (the price is fixed on the pool)
+  status               OrderStatus
+  txMessage            String? // base64 of the message the server built - /submit accepts only a transaction carrying exactly this (the fee-payer guard)
+  lastValidBlockHeight BigInt?
+  createdAt            DateTime
+  paidAt               DateTime?
+  refundedAt           DateTime?
+  signature            String? // the transaction whose TicketBought event paid it
+  eventIndex           Int? // that event's position in the transaction – (signature, eventIndex) is unique: one purchase event pays one order
+
+  @@unique([signature, eventIndex])
+  @@index([wallet, status])
+  @@index([poolId])
+  @@schema("economy")
+}
+
+// Where the program-log watcher stopped (key 'program'): the newest signature it has fully handled.
+model ChainCursor {
+  key       String   @id
+  signature String?
+  slot      BigInt?
+  at        DateTime
+
+  @@schema("economy")
+}
+
+// Every program event the server saw, one row per event: nothing observed on chain is ever lost silently. The (signature, index) key makes handling idempotent.
+model ChainEvent {
+  signature            String
+  index                Int
+  kind                 String // TicketBought | PoolActivated | PoolFailed | Refunded | Sponsored | PrizePaid | PoolClosed | PoolCreated | PoolCancelled
+  poolId               Int?
+  wallet               String?
+  orderId              String?
+  lamports             BigInt?
+  outcome              String // settled | unmatched | invalid | duplicate | applied | dropped
+  detail               String?
+  at                   DateTime
+  finalizedAt          DateTime? // stamped by the finality pass
+  lastValidBlockHeight BigInt?
+
+  @@id([signature, index])
+  @@index([outcome, at])
+  @@index([finalizedAt])
+  @@index([poolId])
+  @@schema("economy")
+}
+
+// The gas sponsor's ledger: what the fee payer paid for whom (per-wallet daily cap, balance alarms, audit).
+model SponsoredTx {
+  signature   String   @id
+  wallet      String
+  kind        String // buy | refund | session | deposit
+  feeLamports BigInt
+  at          DateTime
+
+  @@index([wallet, at])
   @@schema("economy")
 }

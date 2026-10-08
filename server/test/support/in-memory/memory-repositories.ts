@@ -5,7 +5,7 @@ import type { LeaderboardBoard } from '../../../src/domain/economy/economy.dto.j
 import type { Payment } from '../../../src/domain/economy/payment.entity.js';
 import { Round, type RoundProps } from '../../../src/domain/economy/round.entity.js';
 import { Player } from '../../../src/domain/players/player.entity.js';
-import { Ride } from '../../../src/domain/rides/ride.entity.js';
+import { Ride, type RideProps } from '../../../src/domain/rides/ride.entity.js';
 import { OPEN_RIDE_STATUSES, RideStatus } from '../../../src/domain/rides/ride-status.js';
 import { ConflictError, VersionConflictError } from '../../../src/domain/shared/errors.js';
 import { AchievementRepositoryPort } from '../../../src/application/ports/achievements/achievement.repository.port.js';
@@ -203,9 +203,18 @@ export class MemoryRideQuery extends RideQueryPort {
   }
 
   async leaderboard(board: LeaderboardBoard, roundId: number | null, limit: number, verifiedOnly: boolean): Promise<LeaderboardRow[]> {
-    const done = [...this.db.rides.values()].map((r) => r.props).filter((r) =>
-      r.status === RideStatus.Completed && (board === 'free' ? r.tier === 'free'
-        : r.tier !== 'free' && (!verifiedOnly || this.db.verdicts.get(r.id)?.status === VerdictStatus.Verified) && (board === 'round' ? r.roundId === roundId : true)));
+    return this.ranked((r) => (board === 'free' ? r.tier === 'free'
+      : r.tier !== 'free' && (!verifiedOnly || this.verified(r)) && (board === 'round' ? r.roundId === roundId : true)), limit);
+  }
+
+  async poolRanking(poolId: number, limit: number, verifiedOnly: boolean): Promise<LeaderboardRow[]> {
+    return this.ranked((r) => r.poolId === poolId && (!verifiedOnly || this.verified(r)), limit);
+  }
+
+  private verified(r: RideProps): boolean { return this.db.verdicts.get(r.id)?.status === VerdictStatus.Verified; }
+
+  private ranked(keep: (r: RideProps) => boolean, limit: number): LeaderboardRow[] {
+    const done = [...this.db.rides.values()].map((r) => r.props).filter((r) => r.status === RideStatus.Completed && keep(r));
     const groups = new Map<string, { distance: number; rides: number; first: number }>();
     for (const r of done) {
       const g = groups.get(r.wallet) ?? { distance: 0, rides: 0, first: Number.POSITIVE_INFINITY };
@@ -333,6 +342,7 @@ export class MemoryAchievementRepository extends AchievementRepositoryPort {
   async listByWallet(wallet: string): Promise<AchievementUnlock[]> { return this.db.unlocks.filter((u) => u.wallet === wallet).map((u) => new AchievementUnlock(u.wallet, u.achievementId, u.earnedAt, u.rideId)); }
 }
 
+export { MemoryChainCursorRepository, MemoryChainEventRepository, MemorySponsoredTxRepository } from './memory-chain-repositories.js';
 @Injectable()
 export class MemorySignInRepository extends SignInRepositoryPort {
   constructor(private readonly db: MemoryDb) { super(); }

@@ -1,0 +1,334 @@
+<!doctype html>
+<!-- A served COPY of docs/pool-escrow/index.html (+ the site icons) – edit the docs version and copy it over; landing/test/escrow-page.test.js fails when the bodies drift. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Freight Chain Pool Escrow</title>
+<meta name="theme-color" content="#0b0a09">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="pool-escrow.css">
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <span class="eyebrow">Freight Chain · Solana program <span class="mono">freightchain_pools</span></span>
+    <h1>Pool escrow</h1>
+    <p class="lede col">Every paid ride is a ticket into a prize pool. The pool is an account on Solana that holds the entry fees itself and publishes its rules once: price, minimum riders, deadlines, the split, and where the money may go. If not enough riders commit in time, everyone gets their money back, and nobody needs our permission to make that happen.</p>
+    <div class="status" aria-label="Build status">
+      <span class="chip"><i class="ok"></i>Program written · 44 tests pass</span>
+      <span class="chip"><i class="next"></i>Devnet deploy next</span>
+      <span class="chip"><i class="no"></i>Not audited · not on mainnet</span>
+    </div>
+  </header>
+
+  <section class="section">
+    <span class="eyebrow">Where the money goes</span>
+    <h2>The vault holds it, the rules move it</h2>
+    <p class="col">A player's ticket payment goes straight into the pool's vault. The vault is a program-derived address: no private key exists for it, so only the program's own rules can move money out. Four exits exist, and each one is a rule written into the program. The game server watches what happens and prepares transactions for people to sign. It never holds or moves the money.</p>
+    <figure>
+      <div class="plate">
+        <svg viewBox="0 0 960 440" role="img" aria-label="Money flow: player wallets pay into the pool vault; the vault pays out only through refund to buyers, pay_prize to winners, and close_pool to the declared seed and fee treasuries; the game server only reads events and builds unsigned transactions.">
+          <defs>
+            <marker id="f-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="m-ink"/></marker>
+            <marker id="f-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="m-amber"/></marker>
+            <marker id="f-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="m-muted"/></marker>
+          </defs>
+
+          <!-- rules -->
+          <rect x="370" y="12" width="220" height="76" rx="4" class="d-box"/>
+          <text x="480" y="38" text-anchor="middle" class="d-title">Pool rules</text>
+          <text x="480" y="58" text-anchor="middle" class="d-sub">price · minimum · deadlines</text>
+          <text x="480" y="76" text-anchor="middle" class="d-sub">split · treasuries · fixed at creation</text>
+          <line x1="480" y1="88" x2="480" y2="132" class="e-dash" marker-end="url(#f-muted)"/>
+          <text x="492" y="116" class="d-mono-m">governs</text>
+
+          <!-- vault -->
+          <rect x="370" y="136" width="220" height="120" rx="6" class="d-vault"/>
+          <text x="480" y="174" text-anchor="middle" class="d-big">Pool vault</text>
+          <text x="480" y="198" text-anchor="middle" class="d-on-amber">program-owned account</text>
+          <text x="480" y="218" text-anchor="middle" class="d-on-amber">no private key exists</text>
+          <text x="480" y="240" text-anchor="middle" class="d-on-amber-m">PDA ["vault", pool_id]</text>
+
+          <!-- players in -->
+          <rect x="20" y="164" width="190" height="64" rx="4" class="d-box"/>
+          <text x="115" y="191" text-anchor="middle" class="d-title">Player wallets</text>
+          <text x="115" y="212" text-anchor="middle" class="d-sub">each purchase signed by the player</text>
+          <line x1="210" y1="196" x2="364" y2="196" class="e-amber" marker-end="url(#f-amber)"/>
+          <text x="288" y="184" text-anchor="middle" class="d-amber-t">buy_ticket</text>
+          <text x="288" y="216" text-anchor="middle" class="d-mono-m">price × qty</text>
+
+          <!-- exits -->
+          <rect x="770" y="30" width="170" height="70" rx="4" class="d-box"/>
+          <text x="855" y="52" text-anchor="middle" class="d-title">Buyers</text>
+          <text x="855" y="71" text-anchor="middle" class="d-teal-t">refund</text>
+          <text x="855" y="89" text-anchor="middle" class="d-sub">full price, if the pool fails</text>
+
+          <rect x="770" y="118" width="170" height="70" rx="4" class="d-box"/>
+          <text x="855" y="140" text-anchor="middle" class="d-title">Winners</text>
+          <text x="855" y="159" text-anchor="middle" class="d-mono">pay_prize</text>
+          <text x="855" y="177" text-anchor="middle" class="d-sub">admin-signed, capped</text>
+
+          <rect x="770" y="206" width="170" height="70" rx="4" class="d-box"/>
+          <text x="855" y="228" text-anchor="middle" class="d-title">Seed treasury</text>
+          <text x="855" y="247" text-anchor="middle" class="d-mono">close_pool</text>
+          <text x="855" y="265" text-anchor="middle" class="d-sub">seeds the next pool</text>
+
+          <rect x="770" y="294" width="170" height="70" rx="4" class="d-box"/>
+          <text x="855" y="316" text-anchor="middle" class="d-title">Fee treasury</text>
+          <text x="855" y="335" text-anchor="middle" class="d-mono">close_pool</text>
+          <text x="855" y="353" text-anchor="middle" class="d-sub">operating fee</text>
+
+          <line x1="590" y1="156" x2="764" y2="66" class="e-teal" marker-end="url(#f-ink)"/>
+          <line x1="590" y1="184" x2="764" y2="153" class="e-ink" marker-end="url(#f-ink)"/>
+          <line x1="590" y1="212" x2="764" y2="241" class="e-ink" marker-end="url(#f-ink)"/>
+          <line x1="590" y1="240" x2="764" y2="328" class="e-ink" marker-end="url(#f-ink)"/>
+
+          <!-- server -->
+          <rect x="370" y="340" width="220" height="84" rx="4" class="d-box-dash"/>
+          <text x="480" y="368" text-anchor="middle" class="d-title">Game server</text>
+          <text x="480" y="390" text-anchor="middle" class="d-sub">reads events, credits tickets,</text>
+          <text x="480" y="408" text-anchor="middle" class="d-sub">builds unsigned transactions</text>
+          <line x1="480" y1="256" x2="480" y2="334" class="e-dash" marker-end="url(#f-muted)"/>
+          <text x="492" y="300" class="d-mono-m">events, read-only</text>
+          <polyline points="370,382 115,382 115,234" class="e-dash" marker-end="url(#f-muted)"/>
+          <text x="242" y="372" text-anchor="middle" class="d-mono-m">transaction to sign</text>
+        </svg>
+      </div>
+      <figcaption><b>Every arrow that moves money starts or ends at the vault.</b> None of them touches the game server: its two lines are dashed because it only reads what the program announced and hands players transactions to sign in their own wallet.</figcaption>
+    </figure>
+  </section>
+
+  <section class="section">
+    <span class="eyebrow">The life of a pool</span>
+    <h2>Five states, and who can move it</h2>
+    <p class="col">A pool opens with a commitment goal, for example 10 riders. It goes live the moment the 10th ticket is bought. If the deadline passes first, it turns into a refund pool. Every path ends either with the pot split by the rules or with every buyer paid back.</p>
+    <figure>
+      <div class="plate">
+        <svg viewBox="0 0 960 360" role="img" aria-label="Pool state machine: Open becomes Active automatically when the minimum is sold; Open becomes Refunding when the deadline is missed (anyone) or the admin cancels; Active becomes Settled through close_pool; Active becomes Refunding through expire_pool, which anyone may call 14 days after the play deadline if no prize was paid; Refunding becomes Cancelled once every ticket is refunded.">
+          <defs>
+            <marker id="s-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="m-ink"/></marker>
+            <marker id="s-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="m-amber"/></marker>
+            <marker id="s-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="m-teal"/></marker>
+          </defs>
+
+          <!-- legend -->
+          <line x1="40" y1="22" x2="80" y2="22" class="e-amber"/><text x="88" y="27" class="d-sub">automatic</text>
+          <line x1="180" y1="22" x2="220" y2="22" class="e-teal"/><text x="228" y="27" class="d-sub">anyone can trigger</text>
+          <line x1="370" y1="22" x2="410" y2="22" class="e-admin"/><text x="418" y="27" class="d-sub">admin only</text>
+          <rect x="520" y="12" width="26" height="20" rx="3" class="d-term"/><text x="554" y="27" class="d-sub">final state</text>
+
+          <!-- nodes -->
+          <rect x="40" y="70" width="160" height="60" rx="4" class="d-box"/><text x="120" y="106" text-anchor="middle" class="d-title">Open</text>
+          <rect x="400" y="70" width="160" height="60" rx="4" class="d-vault"/><text x="480" y="107" text-anchor="middle" class="d-big">Active</text>
+          <rect x="760" y="70" width="160" height="60" rx="4" class="d-term"/><text x="840" y="106" text-anchor="middle" class="d-title">Settled</text>
+          <rect x="400" y="250" width="160" height="60" rx="4" class="d-net"/><text x="480" y="286" text-anchor="middle" class="d-title">Refunding</text>
+          <rect x="760" y="250" width="160" height="60" rx="4" class="d-term"/><text x="840" y="286" text-anchor="middle" class="d-title">Cancelled</text>
+
+          <!-- Open -> Active -->
+          <line x1="200" y1="100" x2="394" y2="100" class="e-amber" marker-end="url(#s-amber)"/>
+          <text x="298" y="88" text-anchor="middle" class="d-amber-t">minimum sold</text>
+          <text x="298" y="121" text-anchor="middle" class="d-sub">on the purchase that reaches it</text>
+
+          <!-- Active -> Settled -->
+          <line x1="560" y1="100" x2="754" y2="100" class="e-admin" marker-end="url(#s-ink)"/>
+          <text x="658" y="88" text-anchor="middle" class="d-mono">close_pool</text>
+          <text x="658" y="121" text-anchor="middle" class="d-sub">admin, after the play deadline</text>
+          <text x="658" y="138" text-anchor="middle" class="d-sub">anyone after +14 d, if prizes paid</text>
+
+          <!-- Open -> Refunding -->
+          <polyline points="120,130 120,280 394,280" class="e-teal" marker-end="url(#s-teal)"/>
+          <text x="258" y="268" text-anchor="middle" class="d-teal-t">fail_pool</text>
+          <text x="258" y="300" text-anchor="middle" class="d-sub">deadline missed: anyone</text>
+          <text x="258" y="317" text-anchor="middle" class="d-sub">or cancel_pool: admin</text>
+
+          <!-- Active -> Refunding -->
+          <line x1="480" y1="130" x2="480" y2="244" class="e-teal" marker-end="url(#s-teal)"/>
+          <text x="492" y="176" class="d-teal-t">expire_pool</text>
+          <text x="492" y="196" class="d-sub">anyone, 14 days after the</text>
+          <text x="492" y="213" class="d-sub">play deadline, no prize paid</text>
+
+          <!-- Refunding -> Cancelled -->
+          <line x1="560" y1="280" x2="754" y2="280" class="e-teal" marker-end="url(#s-teal)"/>
+          <text x="658" y="268" text-anchor="middle" class="d-teal-t">close_pool</text>
+          <text x="658" y="300" text-anchor="middle" class="d-sub">anyone, once all refunded</text>
+
+          <text x="480" y="340" text-anchor="middle" class="d-sub">while Refunding: anyone can send refund, the money always lands with the buyer</text>
+        </svg>
+      </div>
+      <figcaption><b>Both ways out of a stuck pool are teal.</b> A pool that misses its goal and a pool the operator abandons after it went live both end in refunds that anyone can trigger. Only the normal settlement of a live pool needs the admin.</figcaption>
+    </figure>
+  </section>
+
+  <section class="section">
+    <span class="eyebrow">The clock</span>
+    <h2>Deadlines are written into the pool</h2>
+    <p class="col">The program reads the chain's own clock, so these windows are enforced on chain and cannot be moved later. The durations below are the proposed defaults; each pool fixes its own at creation.</p>
+    <figure>
+      <div class="plate">
+        <svg viewBox="0 0 960 230" role="img" aria-label="Timeline: from create_pool to prep_deadline the pool is open and must reach its minimum; from prep_deadline to play_deadline it is active and rides count; from play_deadline the admin settles; 14 days after play_deadline anyone can expire or close it.">
+          <line x1="40" y1="90" x2="930" y2="90" class="e-ink"/>
+          <line x1="50" y1="80" x2="50" y2="100" class="e-ink"/>
+          <line x1="330" y1="80" x2="330" y2="100" class="e-ink"/>
+          <line x1="580" y1="80" x2="580" y2="100" class="e-ink"/>
+          <line x1="800" y1="80" x2="800" y2="100" class="e-ink"/>
+          <text x="50" y="64" class="d-mono">create_pool</text>
+          <text x="330" y="64" text-anchor="middle" class="d-mono">prep_deadline</text>
+          <text x="580" y="64" text-anchor="middle" class="d-mono">play_deadline</text>
+          <text x="800" y="64" text-anchor="middle" class="d-teal-t">+14 days</text>
+          <text x="190" y="116" text-anchor="middle" class="d-mono-m">about 30 days</text>
+          <text x="455" y="116" text-anchor="middle" class="d-mono-m">for example 7 days</text>
+          <text x="690" y="116" text-anchor="middle" class="d-mono-m">14-day grace</text>
+
+          <rect x="50" y="132" width="276" height="78" rx="3" class="d-box"/>
+          <text x="66" y="156" class="d-title">Open</text>
+          <text x="66" y="177" class="d-sub">tickets sell; the pool must reach</text>
+          <text x="66" y="195" class="d-sub">its minimum or everyone is refunded</text>
+
+          <rect x="334" y="132" width="242" height="78" rx="3" class="d-vault"/>
+          <text x="350" y="156" class="d-big" style="font-size:17px">Active</text>
+          <text x="350" y="177" class="d-on-amber">rides count for prizes,</text>
+          <text x="350" y="195" class="d-on-amber">tickets still sell</text>
+
+          <rect x="584" y="132" width="212" height="78" rx="3" class="d-box"/>
+          <text x="600" y="156" class="d-title">Settlement</text>
+          <text x="600" y="177" class="d-sub">admin pays the winners</text>
+          <text x="600" y="195" class="d-sub">and closes the pool</text>
+
+          <rect x="804" y="132" width="126" height="78" rx="3" class="d-net"/>
+          <text x="818" y="156" class="d-title">Safety net</text>
+          <text x="818" y="177" class="d-sub">anyone can expire</text>
+          <text x="818" y="195" class="d-sub">or close it</text>
+        </svg>
+      </div>
+      <figcaption><b>The last window needs nobody's key.</b> If the operator never settles, 14 days after the play deadline any wallet can start the refunds (no prize paid yet) or finish the split to the declared treasuries (some prizes paid).</figcaption>
+    </figure>
+  </section>
+
+  <section class="section">
+    <span class="eyebrow">The split</span>
+    <h2>A 1 SOL pot, cut by the rules</h2>
+    <p class="col">The pot is every ticket sold plus any sponsorship. The pool states its split in basis points when it is created; this example uses the proposed 70 / 20 / 10. Shares are rounded down, and the rounding remainder goes to fees, so the pieces always add up to the pot exactly.</p>
+    <figure>
+      <div class="plate">
+        <svg viewBox="0 0 960 220" role="img" aria-label="A 1 SOL pot split: 70 percent prize share (0.25 first, 0.15 second, 0.10 third, 0.20 top 20), 20 percent to the seed treasury, 10 percent fees.">
+          <!-- brackets -->
+          <polyline points="40,76 40,68 656,68 656,76" class="d-bracket"/>
+          <text x="348" y="56" text-anchor="middle" class="d-txt">Prize share 70% · pay_prize, capped on chain</text>
+          <polyline points="660,76 660,68 920,68 920,76" class="d-bracket"/>
+          <text x="790" y="56" text-anchor="middle" class="d-txt">close_pool · declared treasuries</text>
+
+          <rect x="40" y="86" width="220" height="60" class="s1"/>
+          <rect x="260" y="86" width="132" height="60" class="s2"/>
+          <rect x="392" y="86" width="88" height="60" class="s3"/>
+          <rect x="480" y="86" width="176" height="60" class="s4"/>
+          <rect x="656" y="86" width="176" height="60" class="s-seed"/>
+          <rect x="832" y="86" width="88" height="60" class="s-fee"/>
+
+          <text x="150" y="112" text-anchor="middle" class="d-on-amber">1st place</text><text x="150" y="133" text-anchor="middle" class="d-on-amber-m">0.25 SOL</text>
+          <text x="326" y="112" text-anchor="middle" class="d-on-amber">2nd</text><text x="326" y="133" text-anchor="middle" class="d-on-amber-m">0.15 SOL</text>
+          <text x="436" y="112" text-anchor="middle" class="d-on-amber">3rd</text><text x="436" y="133" text-anchor="middle" class="d-on-amber-m">0.10</text>
+          <text x="568" y="112" text-anchor="middle" class="d-txt">Top 20</text><text x="568" y="133" text-anchor="middle" class="d-mono">0.20 SOL</text>
+          <text x="744" y="112" text-anchor="middle" class="d-txt">Next pool seed</text><text x="744" y="133" text-anchor="middle" class="d-mono">0.20 SOL</text>
+          <text x="876" y="112" text-anchor="middle" class="d-txt">Fees</text><text x="876" y="133" text-anchor="middle" class="d-mono">0.10</text>
+
+          <text x="40" y="178" class="d-mono-m">Example pot: 20 tickets × 0.04 SOL + 0.20 SOL sponsorship = 1.00 SOL</text>
+          <text x="40" y="200" class="d-sub">The 25 / 15 / 10 / 20 cut inside the prize share comes from the game's ranking. The program enforces the 70% ceiling.</text>
+        </svg>
+      </div>
+      <figcaption><b>The program caps the total, not the ranking.</b> Prize payouts can never add up to more than the prize share. Which wallets win is decided off chain from the server-checked results and signed by the admin, so that part is trust in the operator, stated below.</figcaption>
+    </figure>
+  </section>
+
+  <section class="section">
+    <span class="eyebrow">What a player can count on</span>
+    <h2>Guarantees, and the rule behind each</h2>
+    <div class="rules">
+      <div class="rule">
+        <div><h3>Your entry fee is held by the program, not by us.</h3><p class="muted">It sits in the pool's vault from the moment you buy.</p></div>
+        <div class="how"><b>Enforced by</b>The vault is a program-derived address with no private key. Only the program's instructions can sign for it.</div>
+      </div>
+      <div class="rule">
+        <div><h3>If the pool misses its goal, you get every lamport back.</h3><p class="muted">You don't have to wait for us to start it.</p></div>
+        <div class="how"><b>Enforced by</b><code>fail_pool</code> and <code>refund</code> are open to any wallet once the deadline passes under the minimum. The refund pays the full ticket price to you and returns the ticket account's rent to whoever paid it.</div>
+      </div>
+      <div class="rule">
+        <div><h3>Nobody can redirect your refund.</h3><p class="muted">Whoever sends the refund, the money lands in your wallet.</p></div>
+        <div class="how"><b>Enforced by</b>The ticket account's address is derived from your wallet, and the program checks the receiver against it. Each ticket refunds once: refunding closes it.</div>
+      </div>
+      <div class="rule">
+        <div><h3>The rules can't change after you buy.</h3><p class="muted">Price, minimum, deadlines, split and treasuries are fixed.</p></div>
+        <div class="how"><b>Enforced by</b>These pool fields are written at <code>create_pool</code> and no instruction can edit them. Only the status and the counters move.</div>
+      </div>
+      <div class="rule">
+        <div><h3>Prizes can never exceed the prize share.</h3><p class="muted">The pot can't be paid out twice or drained through payouts.</p></div>
+        <div class="how"><b>Enforced by</b><code>pay_prize</code> refuses any payout that would take the running total above the prize share of the pot, and refuses payouts before the play deadline.</div>
+      </div>
+      <div class="rule">
+        <div><h3>An operator who disappears can't trap or take the money.</h3><p class="muted">Lost keys or a shutdown still end in refunds or the declared split.</p></div>
+        <div class="how"><b>Enforced by</b>14 days after the play deadline, anyone can call <code>expire_pool</code> to refund an unpaid pool. Sweeping an unpaid prize share to a treasury is refused with <code>MustExpire</code>. The admin key can also be handed over in two signed steps.</div>
+      </div>
+      <div class="rule">
+        <div><h3>Money only goes where the pool said it would.</h3><p class="muted">No instruction can send funds to an address of the caller's choosing.</p></div>
+        <div class="how"><b>Enforced by</b><code>close_pool</code> checks each receiver against the treasuries stored in the pool, and it must leave the vault at exactly zero.</div>
+      </div>
+      <div class="rule">
+        <div><h3>A pause can't block your refund.</h3><p class="muted">Pausing exists for emergencies, not for holding money.</p></div>
+        <div class="how"><b>Enforced by</b>The pause switch stops new pools, ticket sales and sponsorship only. Refunds, prizes and closing always work.</div>
+      </div>
+      <div class="rule">
+        <div><h3>You pay the ticket price and nothing else.</h3><p class="muted">Account rent comes back, and network fees can be covered for you.</p></div>
+        <div class="how"><b>Enforced by</b>The buyer and the fee payer are separate signers, so a sponsor can pay the fee and the ticket rent. Rent is returned to whoever paid it. Server-side gas sponsorship is designed, not built yet.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <span class="eyebrow">Who can do what</span>
+    <h2>Permissions at a glance</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Action</th><th>Who</th><th>When</th><th>Money goes to</th></tr></thead>
+        <tbody>
+          <tr><td>Buy a ticket</td><td class="who"><span class="tag ply">Player</span></td><td>Open pool before its prep deadline, active pool before its play deadline</td><td>The vault</td></tr>
+          <tr><td>Sponsor a pool</td><td class="who"><span class="tag any">Anyone</span></td><td>Same windows as buying</td><td>The vault</td></tr>
+          <tr><td>Fail a pool that missed its goal</td><td class="who"><span class="tag any">Anyone</span></td><td>After the prep deadline, under the minimum</td><td>Nothing moves yet</td></tr>
+          <tr><td>Refund a ticket</td><td class="who"><span class="tag any">Anyone</span></td><td>While the pool is refunding</td><td>The buyer, plus rent back to its payer</td></tr>
+          <tr><td>Cancel an open pool</td><td class="who"><span class="tag adm">Admin</span></td><td>Before it goes live</td><td>Nothing moves yet; refunds follow</td></tr>
+          <tr><td>Pay a prize</td><td class="who"><span class="tag adm">Admin</span></td><td>After the play deadline</td><td>A winner, within the prize share</td></tr>
+          <tr><td>Close and split</td><td class="who"><span class="tag adm">Admin</span> <span class="tag any">Anyone</span></td><td>Admin after the play deadline; anyone 14 days later if prizes were paid</td><td>The declared seed and fee treasuries</td></tr>
+          <tr><td>Expire an unsettled pool</td><td class="who"><span class="tag any">Anyone</span></td><td>14 days after the play deadline, no prize paid</td><td>Nothing moves yet; full refunds follow</td></tr>
+          <tr><td>Move any money</td><td class="who"><span class="tag srv">Game server</span></td><td>Never</td><td>It holds no key that can</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="limits">
+      <span class="eyebrow">What the program does not promise</span>
+      <h2>Where trust in us is still needed</h2>
+      <ul class="col">
+        <li><b>Who wins.</b> Rankings come from the game server's checks: a server-kept clock and a speed limit on reported distance. That is not proof of human play, and a modified game client can still lie within those limits. The admin signs each payout.</li>
+        <li><b>Which winner gets paid.</b> The program caps the total paid out. It cannot tell a rightful winner from any other wallet, so the admin could pay a wrong address within the cap.</li>
+        <li><b>The treasuries.</b> The seed and fee treasuries are wallets the operator controls. The pool fixes their addresses, not what happens to the money afterwards.</li>
+        <li><b>Maturity.</b> The program is tested on a local Solana simulator (44 tests). It is not deployed yet, not audited, and planned for devnet only.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <span>Source: <span class="mono">programs/freightchain-pools</span> (Anchor 1.2, Rust). Program README holds the account layouts, error codes and the money maths.</span>
+    <span>Figures use proposed defaults: 70 / 20 / 10 split, 30-day preparation, 14-day settle grace (fixed in the program).</span>
+  </footer>
+</div>
+</body>
+</html>

@@ -49,7 +49,7 @@
   <div class="hero-in">
     <p class="eyebrow rv">SOLANA DEVNET · IN YOUR BROWSER · NO DOWNLOAD · <b>5 FREE RIDES</b></p>
     <h1 class="rv">The road never ends.<br>Your shift does.</h1>
-    <p class="lede rv">Buy a 1, 4 or 8 hour shift. Drive every minute of it – manual gearbox, cold engine, traffic, night. The server keeps the clock and calls the finish. Finishers share one weekly pool.</p>
+    <p class="lede rv">Buy a 1, 4 or 8 hour shift. Drive every minute of it – manual gearbox, cold engine, traffic, night. The server keeps the clock and calls the finish. Your ticket sits in an escrowed prize pool on Solana – not with us.</p>
     <div class="cta-row rv">
       <button class="cta" id="connect">CONNECT WALLET → 5 FREE RIDES</button>
       <button class="cta ghost" id="demo-btn">▶ WATCH THE DEMO</button>
@@ -57,7 +57,7 @@
     </div>
     <p class="msg" id="msg"></p>
     <div class="stats rv" id="hero-stats">
-      <div class="stat pot"><span class="lbl">IN THE POT THIS WEEK</span><b class="num lcd" id="hero-pot">0.000</b><span class="unit">SOL <em id="hero-usd"></em></span></div>
+      <div class="stat pot"><span class="lbl" id="hero-pot-lbl">IN THE POT THIS WEEK</span><b class="num lcd" id="hero-pot">0.000</b><span class="unit">SOL <em id="hero-usd"></em></span></div>
       <div class="stat"><span class="lbl">ROUND CLOSES IN</span><b class="num lcd cd" id="hero-cd">–</b><span class="unit">Mon 00:00 UTC</span></div>
       <div class="stat"><span class="lbl">ON THE ROAD</span><b class="num lcd" id="hero-live">0</b><span class="unit">trucks right now</span></div>
       <div class="stat"><span class="lbl">DRIVEN, ALL TIME</span><b class="num lcd" id="hero-km">0</b><span class="unit">km · <span id="hero-shifts">0</span> shifts</span></div>
@@ -172,11 +172,27 @@
 
 <!-- ───────── 04 · ECONOMY & TECH ───────── -->
 <section class="ch" id="economy">
-  <header class="ch-h rv"><i>04</i><h2>ECONOMY &amp; WHAT THE SERVER CHECKS</h2><p>One pot per UTC week, every tier together. Integer lamports, floored shares, the remainder to fees. Accounted on this build; the draw and payouts come next.</p></header>
+  <header class="ch-h rv"><i>04</i><h2>ECONOMY &amp; WHAT THE SERVER CHECKS</h2><p>Paid shifts are tickets into escrowed prize pools – one Solana account per pool holds the entry fees and states its rules in public. Integer lamports, floored shares, the remainder to fees.</p></header>
 
   <div class="econ rv">
     <div class="card pool" id="poolbox"><span class="dim">Loading the pool…</span></div>
     <div class="card tiers"><h3>SHIFTS</h3><table id="tiers"><tbody><tr><td class="dim">Loading…</td></tr></tbody></table><p class="dim" id="price"></p></div>
+  </div>
+
+  <h3 class="sub rv">PRIZE POOLS · ESCROWED ON SOLANA</h3>
+  <div class="escrow rv">
+    <div class="card board"><h3><i class="dot live"></i>POOLS ON SALE</h3><div id="pools" class="rows"><span class="dim">Loading…</span></div></div>
+    <div class="card how">
+      <h3>HOW THE ESCROW WORKS</h3>
+      <ul>
+        <li><b>The program holds the money, not us.</b> A ticket goes straight into the pool’s vault – a program-derived account no one has a key to. Only the program’s rules move it.</li>
+        <li><b>The rules are fixed on day one.</b> Price, minimum riders, deadlines, the split and the treasuries are written when the pool is created; no instruction edits them.</li>
+        <li><b>Missed goal = every lamport back.</b> Too few riders by the deadline and the pool fails: anyone can trigger the refunds, the money lands with each buyer.</li>
+        <li><b>A live pool splits as declared</b> – e.g. 70% prizes (payouts capped on chain), 20% seeds the next pool, 10% fees, to the treasuries the pool named.</li>
+      </ul>
+      <p class="dim" id="escrow-status">Program written and tested; devnet deploy next. Not audited, not on mainnet.</p>
+      <a class="link" id="escrow-link" href="/escrow/">The whole escrow, with diagrams →</a>
+    </div>
   </div>
 
   <div class="boards rv">
@@ -189,7 +205,7 @@
   <div class="trust rv">
     <article><b>THE CLOCK</b><p>Driven seconds come from heartbeats, capped by wall time. Honest pauses earn nothing. A gap over 150 s fails the ride.</p></article>
     <article><b>THE SPEED</b><p>Reported distance may grow at most 28 m/s × 1.2 between beats. Faster than the truck can go = FAILED, not a high score.</p></article>
-    <article><b>THE PAYMENT</b><p>A System transfer to the treasury of at least the quoted lamports, with the ride id as memo, from your wallet, confirmed. The signature is the primary key – no double credit.</p></article>
+    <article><b>THE TICKET</b><p>A ride spends one ticket of a live pool, under a lock – two tabs can’t spend it twice. Tickets are credited from the program’s events; the server never holds the money.</p></article>
     <article><b>THE VERDICT</b><p>Completed / abandoned / failed is decided server-side and shown on the result screen. The client only reports.</p></article>
   </div>
   <p class="honest rv"><b>Said plainly:</b> this is server-timed telemetry, not proof. A modified client can still lie inside the speed bound. Night, hull and route are client-asserted and only unlock badges – they never move lamports. Next is a fixed-tick, fixed-point replay of the input log, so a paid finish is re-simulated, not reported. The 50% grand prize is a draw and the 20% top-20 is a skill prize; the draw is not live and prizes are not paid in this build.</p>

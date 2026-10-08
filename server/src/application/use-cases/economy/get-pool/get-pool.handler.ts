@@ -3,6 +3,8 @@ import type { PoolDto } from '../../../../domain/economy/economy.dto.js';
 import { LAMPORTS_PER_SOL, splitPool } from '../../../../domain/economy/prize-split.js';
 import { PriceQuotePort } from '../../../ports/economy/price-quote.port.js';
 import { RoundRepositoryPort } from '../../../ports/economy/round.repository.port.js';
+import { PoolRepositoryPort } from '../../../ports/economy/pool.repository.port.js';
+import { toPrizePoolDto } from '../../../../domain/economy/prize-pool.dto.js';
 import { RoundService } from '../../../services/round.service.js';
 import { GetPoolQuery } from './get-pool.query.js';
 
@@ -13,6 +15,7 @@ export class GetPoolHandler implements IQueryHandler<GetPoolQuery, PoolDto> {
     private readonly roundService: RoundService,
     private readonly rounds: RoundRepositoryPort,
     private readonly price: PriceQuotePort,
+    private readonly pools: PoolRepositoryPort,
   ) {}
 
   async execute(): Promise<PoolDto> {
@@ -25,6 +28,7 @@ export class GetPoolHandler implements IQueryHandler<GetPoolQuery, PoolDto> {
       round: { id: round.id, startsAt: round.startsAt.getTime(), endsAt: round.endsAt.getTime() },
       entries: entries.count, split, settled: false, solUsd: quote?.usd ?? null,
       usd: { grand: usd(split.grand), top20: usd(split.top20), nextSeed: usd(split.nextSeed), fees: usd(split.fees), entries: usd(split.entries) },
+      pools: (await this.pools.listLive()).map(toPrizePoolDto),
     };
   }
 }

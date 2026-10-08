@@ -6,6 +6,9 @@ import { AppModule } from '../../src/app/app.module.js';
 import { AchievementRepositoryPort } from '../../src/application/ports/achievements/achievement.repository.port.js';
 import { ChallengeRepositoryPort } from '../../src/application/ports/auth/challenge.repository.port.js';
 import { ChainPort } from '../../src/application/ports/economy/chain.port.js';
+import { PoolChainPort } from '../../src/application/ports/economy/pool-chain.port.js';
+import { ChainCursorRepositoryPort, ChainEventRepositoryPort } from '../../src/application/ports/economy/chain-event.repository.port.js';
+import { SponsoredTxRepositoryPort } from '../../src/application/ports/economy/sponsored-tx.repository.port.js';
 import { PaymentRepositoryPort } from '../../src/application/ports/economy/payment.repository.port.js';
 import { RoundRepositoryPort } from '../../src/application/ports/economy/round.repository.port.js';
 import { HealthProbePort } from '../../src/application/ports/health/health-probe.port.js';
@@ -22,12 +25,19 @@ import { AdminQueryPort } from '../../src/application/ports/admin/admin-query.po
 import { PrismaService } from '../../src/infrastructure/prisma/prisma.service.js';
 import { truncateAllTables } from '../../src/infrastructure/prisma/truncate.js';
 import { FakeChain, TREASURY } from './fake-chain.js';
+import { FakePoolChain } from './fake-pool-chain.js';
 import { FakeClock } from './fake-clock.js';
 import { MemoryDb } from './in-memory/memory-db.js';
 import {
   MemoryAchievementRepository, MemoryChallengeRepository, MemoryHealthProbe, MemoryPaymentRepository, MemoryPlayerRepository,
   MemoryRideBatchRepository, MemoryRideQuery, MemoryRideVerdictRepository, MemorySignInRepository, MemoryAdminActionRepository, MemoryAdminQuery, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
 } from './in-memory/memory-repositories.js';
+import { MemoryPoolRepository, MemoryPromoRepository, MemoryRideTicketRepository, MemoryTicketOrderRepository } from './in-memory/memory-ledger-repositories.js';
+import { TicketOrderRepositoryPort } from '../../src/application/ports/economy/ticket-order.repository.port.js';
+import { PoolRepositoryPort } from '../../src/application/ports/economy/pool.repository.port.js';
+import { PromoRepositoryPort } from '../../src/application/ports/economy/promo.repository.port.js';
+import { RideTicketRepositoryPort } from '../../src/application/ports/players/ride-ticket.repository.port.js';
+import { MemoryChainCursorRepository, MemoryChainEventRepository, MemorySponsoredTxRepository } from './in-memory/memory-repositories.js';
 
 export type Persistence = 'memory' | 'postgres';
 
@@ -39,6 +49,8 @@ export interface Harness {
   app: INestApplication;
   clock: FakeClock;
   chain: FakeChain;
+  /** the pool program (PoolChainPort) */
+  poolChain: FakePoolChain;
   persistence: Persistence;
   server(): Server;
   /** wipes every table / map and the fake chain (the clock keeps running forward) */
@@ -47,7 +59,8 @@ export interface Harness {
 }
 
 /** Everything the app reads from the environment that a test may change – cleared before each harness so files can't leak into each other. */
-const TUNABLES = ['THROTTLE_LIMIT', 'THROTTLE_AUTH_LIMIT', 'FREE_RIDE_SECONDS', 'DEMO_WALLETS', 'DEMO_SCALE', 'INITIAL_SEED_SOL', 'HB_MIN_INTERVAL_MS', 'TRUST_PROXY', 'SOL_USD', 'TREASURY_PUBKEY', 'JWT_SECRET', 'CLIENT_DIR', 'COOKIE_DOMAIN', 'CORS_ORIGINS', 'ADMIN_WALLETS', 'ADMIN_JWT_SECRET', 'ADMIN_SESSION_TTL_MINUTES', 'VERDICT_ENFORCE', 'TELEMETRY_RETENTION_DAYS'];
+const TUNABLES = ['THROTTLE_LIMIT', 'THROTTLE_AUTH_LIMIT', 'FREE_RIDE_SECONDS', 'DEMO_WALLETS', 'DEMO_SCALE', 'INITIAL_SEED_SOL', 'HB_MIN_INTERVAL_MS', 'TRUST_PROXY', 'SOL_USD', 'TREASURY_PUBKEY', 'JWT_SECRET', 'CLIENT_DIR', 'COOKIE_DOMAIN', 'CORS_ORIGINS', 'ADMIN_WALLETS', 'ADMIN_JWT_SECRET', 'ADMIN_SESSION_TTL_MINUTES', 'VERDICT_ENFORCE', 'TELEMETRY_RETENTION_DAYS',
+  'PAYMENT_MODE', 'TICKET_PROGRAM_ID', 'FEE_TREASURY', 'SEED_TREASURY', 'ORDER_TTL_MINUTES', 'WATCH_INTERVAL_MS', 'WEBHOOK_SECRET', 'CRANK_SECRET', 'FEE_PAYER_SECRET', 'SOLANA_COMMITMENT'];
 
 /**
  * Boots the REAL app (every controller, pipe, guard, filter, handler) with a fake clock and a fake chain.
@@ -57,14 +70,16 @@ export async function createHarness(persistence: Persistence, env: Record<string
   for (const key of TUNABLES) delete process.env[key];
   Object.assign(process.env, {
     NODE_ENV: 'test', JWT_SECRET: 'test-secret-'.padEnd(48, 'x'), SOL_USD: '100', TREASURY_PUBKEY: TREASURY, THROTTLE_LIMIT: '1000000', THROTTLE_AUTH_LIMIT: '1000000',
+    WATCH_INTERVAL_MS: '0', // the program watcher off: scenarios settle through the webhook / their own calls
     DATABASE_URL: persistence === 'postgres' ? testDatabaseUrl() : 'postgresql://unused:unused@127.0.0.1:1/unused_test',   // NEVER the shell's DATABASE_URL
     ...env,
   });
   const clock = new FakeClock();
   const chain = new FakeChain();
+  const poolChain = new FakePoolChain();
   const memory = new MemoryDb();
 
-  let builder = Test.createTestingModule({ imports: [AppModule] }).overrideProvider(ClockPort).useValue(clock).overrideProvider(ChainPort).useValue(chain);
+  let builder = Test.createTestingModule({ imports: [AppModule] }).overrideProvider(ClockPort).useValue(clock).overrideProvider(ChainPort).useValue(chain).overrideProvider(PoolChainPort).useValue(poolChain);
   if (persistence === 'memory') {
     builder = builder
       .overrideProvider(PrismaService).useValue({ $connect: async () => undefined, $disconnect: async () => undefined })
@@ -75,13 +90,20 @@ export async function createHarness(persistence: Persistence, env: Record<string
       .overrideProvider(RoundRepositoryPort).useValue(new MemoryRoundRepository(memory))
       .overrideProvider(PaymentRepositoryPort).useValue(new MemoryPaymentRepository(memory))
       .overrideProvider(AchievementRepositoryPort).useValue(new MemoryAchievementRepository(memory))
+      .overrideProvider(PoolRepositoryPort).useValue(new MemoryPoolRepository(memory))
+      .overrideProvider(RideTicketRepositoryPort).useValue(new MemoryRideTicketRepository(memory))
+      .overrideProvider(PromoRepositoryPort).useValue(new MemoryPromoRepository(memory))
+      .overrideProvider(TicketOrderRepositoryPort).useValue(new MemoryTicketOrderRepository(memory))
       .overrideProvider(RideBatchRepositoryPort).useValue(new MemoryRideBatchRepository(memory))
       .overrideProvider(RideVerdictRepositoryPort).useValue(new MemoryRideVerdictRepository(memory))
       .overrideProvider(SignInRepositoryPort).useValue(new MemorySignInRepository(memory))
       .overrideProvider(AdminActionRepositoryPort).useValue(new MemoryAdminActionRepository(memory))
       .overrideProvider(AdminQueryPort).useValue(new MemoryAdminQuery(memory))
       .overrideProvider(TransactionPort).useValue(new MemoryTransaction())
-      .overrideProvider(HealthProbePort).useValue(new MemoryHealthProbe());
+      .overrideProvider(HealthProbePort).useValue(new MemoryHealthProbe())
+      .overrideProvider(ChainEventRepositoryPort).useValue(new MemoryChainEventRepository(memory))
+      .overrideProvider(ChainCursorRepositoryPort).useValue(new MemoryChainCursorRepository(memory))
+      .overrideProvider(SponsoredTxRepositoryPort).useValue(new MemorySponsoredTxRepository(memory));
   }
   const moduleRef = await builder.compile();
   const app = moduleRef.createNestApplication();
@@ -90,10 +112,11 @@ export async function createHarness(persistence: Persistence, env: Record<string
   const prisma = persistence === 'postgres' ? app.get(PrismaService, { strict: false }) : null;
 
   return {
-    app, clock, chain, persistence,
+    app, clock, chain, poolChain, persistence,
     server: () => app.getHttpServer() as Server,
     reset: async () => {
       chain.reset();
+      poolChain.reset();
       memory.reset();
       if (prisma) await truncateAllTables(prisma);
     },

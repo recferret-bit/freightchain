@@ -1,3 +1,4 @@
+import type { TicketBalanceDto, TicketGrantDto } from '../economy/prize-pool.dto.js';
 import type { AchievementDto } from '../achievements/achievement-unlock.entity.js';
 
 /** One truck on the road. No ride id, seed or free-text reason: this feed is public. */
@@ -55,7 +56,10 @@ export interface ProfileStatsDto {
   metres: number;
   bestMetres: number;
   paidRides: number;
+  /** legacy pay-per-ride payments + paid (not refunded) ticket orders */
   spentLamports: number;
+  /** paid (not refunded) pool tickets */
+  ticketsBought: number;
 }
 
 export interface RecentRideDto {
@@ -82,9 +86,13 @@ export interface ProfileDto {
   stats: ProfileStatsDto;
   recent: RecentRideDto[];
   achievements: AchievementDto[];
+  tickets: TicketBalanceDto[];
+  /** the newest lines of the ticket audit trail */
+  grants: TicketGrantDto[];
 }
 
 export const LIVE_FEED_LIMIT = 50;
 export const UPCOMING_LIMIT = 20;
 export const FINISHED_LIMIT = 12;
 export const RECENT_RIDES_LIMIT = 10;
+export const RECENT_GRANTS_LIMIT = 20;

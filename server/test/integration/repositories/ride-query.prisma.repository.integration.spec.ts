@@ -118,4 +118,20 @@ describe('RideQueryPrismaRepository (PostgreSQL)', () => {
     expect(carol).toHaveLength(2);
     expect(carol.map((r) => r.verdict)).toEqual(expect.arrayContaining(['rejected', null])); // the free ride's verdict, the unjudged paid one
   });
+
+  it('poolRanking: the same ranking over the completed rides of one pool only', async () => {
+    const { PoolPrismaRepository } = await import('../../../src/infrastructure/prisma/repositories/pool.prisma.repository.js');
+    const { aPool } = await import('../../support/pools.js');
+    const pools = new PoolPrismaRepository(prisma);
+    for (const id of [1, 2]) await pools.upsert(aPool({ id }, at(0)));
+    const inPool = async (poolId: number, wallet: string, metres: number, outcome: 'shift' | 'failed' = 'shift') => {
+      const r = await ride(wallet, { paid: true, metres, outcome });
+      await prisma.ride.update({ where: { id: r.id }, data: { poolId } });
+    };
+    await inPool(1, 'alice', 300); await inPool(1, 'bob', 200); await inPool(1, 'bob', 200); await inPool(1, 'carol', 900, 'failed'); await inPool(2, 'carol', 1000);
+    await ride('carol', { paid: true, metres: 5000, outcome: 'shift' }); // a paid ride of no pool
+    expect(await query.poolRanking(1, 20, false)).toEqual([{ wallet: 'bob', distance: 400, rides: 2 }, { wallet: 'alice', distance: 300, rides: 1 }]);
+    expect(await query.poolRanking(2, 20, false)).toEqual([{ wallet: 'carol', distance: 1000, rides: 1 }]);
+    expect(await query.poolRanking(1, 1, false)).toHaveLength(1);
+  });
 });

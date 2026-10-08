@@ -11,6 +11,8 @@ const NIGHT_SHARE = 0.5;
 const SIBERIA = 'siberia';
 
 /** The read side over rides: projections that no aggregate needs. */
+const VERIFIED: Prisma.RideWhereInput = { verdict: { is: { status: 'verified' } } };
+
 @Injectable()
 export class RideQueryPrismaRepository extends RideQueryPort {
   constructor(private readonly prisma: PrismaService) {
@@ -79,10 +81,18 @@ export class RideQueryPrismaRepository extends RideQueryPort {
   }
 
   async leaderboard(board: LeaderboardBoard, roundId: number | null, limit: number, verifiedOnly: boolean): Promise<LeaderboardRow[]> {
-    const tierFilter: Prisma.RideWhereInput = board === 'free' ? { tier: 'free' } : { tier: { not: 'free' }, ...(verifiedOnly ? { verdict: { is: { status: 'verified' } } } : {}), ...(board === 'round' ? { roundId } : {}) }; // paid boards: verified recordings only (unless shadow mode)
+    const tierFilter: Prisma.RideWhereInput = board === 'free' ? { tier: 'free' } : { tier: { not: 'free' }, ...(verifiedOnly ? VERIFIED : {}), ...(board === 'round' ? { roundId } : {}) }; // paid boards: verified recordings only (unless shadow mode)
+    return this.ranked(tierFilter, limit);
+  }
+
+  async poolRanking(poolId: number, limit: number, verifiedOnly: boolean): Promise<LeaderboardRow[]> {
+    return this.ranked({ poolId, ...(verifiedOnly ? VERIFIED : {}) }, limit);
+  }
+
+  private async ranked(filter: Prisma.RideWhereInput, limit: number): Promise<LeaderboardRow[]> {
     const groups = await this.prisma.ride.groupBy({
       by: ['wallet'],
-      where: { status: 'completed', ...tierFilter },
+      where: { status: 'completed', ...filter },
       _sum: { lastS: true },
       _count: { _all: true },
       _min: { endedAt: true },

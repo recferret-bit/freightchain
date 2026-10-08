@@ -46,6 +46,29 @@ export class EnvService {
   get solanaRpc(): string { return this.env.SOLANA_RPC; }
   get solUsdFixed(): number | undefined { return this.env.SOL_USD || undefined; }
   get demoScale(): number { return this.env.DEMO_SCALE; }
+
+  // ---- paid tickets (docs/paid-tickets-plan.md §2.1)
+  get ticketProgramId(): string { return this.env.TICKET_PROGRAM_ID ?? ''; }
+  /** the program when one is configured (unless forced to 'transfer'), else plain transfers */
+  get paymentMode(): 'program' | 'transfer' { return this.env.PAYMENT_MODE ?? (this.env.TICKET_PROGRAM_ID ? 'program' : 'transfer'); }
+  get feeTreasury(): string { return this.env.FEE_TREASURY ?? ''; }
+  get seedTreasury(): string { return this.env.SEED_TREASURY ?? ''; }
+  /** the websocket endpoint ('' = derive wss:// from SOLANA_RPC) */
+  get solanaWs(): string { return this.env.SOLANA_WS ?? ''; }
+  get solanaRpcFallbacks(): string[] { return this.env.SOLANA_RPC_FALLBACKS.split(',').map((u) => u.trim()).filter((u) => u.length > 0); }
+  get solanaCommitment(): 'confirmed' | 'finalized' { return this.env.SOLANA_COMMITMENT; }
+  get watchIntervalMs(): number { return this.env.WATCH_INTERVAL_MS; }
+  get feePayerMinSol(): number { return this.env.FEE_PAYER_MIN_SOL; }
+  get sponsorPerWalletPerDay(): number { return this.env.SPONSOR_PER_WALLET_PER_DAY; }
+  get priorityFee(): { percentile: number; minMicrolamports: number; maxMicrolamports: number } {
+    return { percentile: this.env.PRIORITY_FEE_PERCENTILE, minMicrolamports: this.env.PRIORITY_FEE_MIN_MICROLAMPORTS, maxMicrolamports: this.env.PRIORITY_FEE_MAX_MICROLAMPORTS };
+  }
+  get orderTtlMs(): number { return this.env.ORDER_TTL_MINUTES * 60_000; }
+  get onchainSessionTtlHours(): number { return this.env.ONCHAIN_SESSION_TTL_HOURS; }
+  /** SECRETS – used only by the infrastructure that signs / authenticates; never copied into RulesConfig or logged. undefined = the feature is off. */
+  get webhookSecret(): string | undefined { return this.env.WEBHOOK_SECRET; }
+  get crankSecret(): string | undefined { return this.env.CRANK_SECRET; }
+  get feePayerSecret(): string | undefined { return this.env.FEE_PAYER_SECRET; }
   get initialSeedLamports(): number { return Math.round(this.env.INITIAL_SEED_SOL * 1e9); }
   get verdictEnforce(): boolean { return this.env.VERDICT_ENFORCE; }
   get telemetryRetentionDays(): number { return this.env.TELEMETRY_RETENTION_DAYS; }

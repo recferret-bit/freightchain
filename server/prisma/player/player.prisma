@@ -9,6 +9,8 @@ model Player {
   rides        Ride[]
   payments     Payment[]
   achievements AchievementUnlock[]
+  tickets      RideTicket[]
+  orders       TicketOrder[]
   signIns      SignIn[]
 
   @@schema("player")
@@ -20,6 +22,47 @@ model AuthChallenge {
   message   String // the exact text the wallet must sign – built by the server
   expiresAt DateTime
 
+  @@schema("player")
+}
+
+enum TicketSource {
+  payment
+  promo
+  admin
+  spend
+  refund
+  void
+
+  @@schema("player")
+}
+
+// A wallet's tickets in ONE pool (balance = still unused, bought = ever paid on chain, so the pool's per-wallet cap can be checked). Mirrors Player.freeRides.
+model RideTicket {
+  wallet  String
+  player  Player @relation(fields: [wallet], references: [wallet], onDelete: Cascade)
+  poolId  Int
+  pool    Pool   @relation(fields: [poolId], references: [id])
+  balance Int    @default(0)
+  bought  Int    @default(0)
+  version Int    @default(1) // optimistic lock for save()
+
+  @@id([wallet, poolId])
+  @@index([poolId])
+  @@schema("player")
+}
+
+// Every change of a ticket balance – append-only audit trail (admin panel, support, "why do I have N tickets").
+model TicketGrant {
+  id     String       @id @default(uuid())
+  wallet String
+  poolId Int
+  delta  Int // +n (payment / promo / admin / refund), -1 (spend), -n (void); 0 = a payment that hit the cap (see ref)
+  source TicketSource
+  ref    String? // Payment.signature, PromoCode.code, admin note or Ride.id
+  at     DateTime
+
+  @@index([wallet, at])
+  @@index([poolId])
   @@schema("player")
 }
 
