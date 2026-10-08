@@ -16,5 +16,5 @@ export default defineTheme({
   grime: '208,214,220', finishText: 'VLADIVOSTOK PORT',
   livery: { body: '#dfe5ea', stripe: '#b5121b', accent: '#ffffff', text: 'TRANS-SIBERIAN FREIGHT', sub: 'M-58 AMUR  •  RUSSIA' },
   furniture: { lamp: { color: 0x55595d, light: 0xdfe9ff, every: 2, side: 0 }, post: { body: 0xf2f2ea, cap: 0x1a1a1a }, pole: { color: 0x8d8f91, every: 2 } },
-  landmarks: { chance: .2, weights: { hotel: .6, police: 1.6 }, pal: { walls: ['#c9c2b0', '#8c9aa3', '#a45a3e'], roof: '#e8eef3', trim: '#e6e9ec', lot: '#6e7276', accent: '#b5121b', accent2: '#1f4a9a', leaf: '#24432e' }, names: { motel: ['ГОСТИНИЦА', 'МОТЕЛЬ'], hotel: ['ОТЕЛЬ', 'ГОСТИНИЦА'], restaurant: ['КАФЕ', 'СТОЛОВАЯ', 'ПЕЛЬМЕНИ'], gas: ['АЗС', 'ТОПЛИВО'], police: ['ДПС', 'ПОСТ ГАИ'] } },
+  landmarks: { chance: .2, flag: 'ru', weights: { hotel: .6, police: 1.6 }, pal: { walls: ['#c9c2b0', '#8c9aa3', '#a45a3e'], roof: '#e8eef3', trim: '#e6e9ec', lot: '#6e7276', accent: '#b5121b', accent2: '#1f4a9a', leaf: '#24432e' }, names: { motel: ['ГОСТИНИЦА', 'МОТЕЛЬ'], hotel: ['ОТЕЛЬ', 'ГОСТИНИЦА'], restaurant: ['КАФЕ', 'СТОЛОВАЯ', 'ПЕЛЬМЕНИ'], gas: ['АЗС', 'ТОПЛИВО'], police: ['ДПС', 'ПОСТ ГАИ'] } },
 }, { road, sky, terrain, mountains, props });

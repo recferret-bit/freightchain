@@ -1,4 +1,5 @@
-import { box, hip, cyl, pole, palm } from './parts.js';
+import { box, hip, cyl, pole } from './parts.js';
+import { spruce } from '../props-basic.js';
 
 /* Motels and hotels. Each implementation: { id, hl, hd (half footprint along / across the road, m), make(g, c) }.
    c = { m (theme materials), wall (this site's wall material), wi, sign(style, w, h, x, y, z[, text]), facade(cols, rows) }. */
@@ -33,11 +34,11 @@ export const hotel = [
     g.add(box(m.accent, 3, .25, 6, -7, 3.1, 0)); g.add(pole(m.trim, 3, -8.3, -2.7, .2)); g.add(pole(m.trim, 3, -8.3, 2.7, .2));
     g.add(c.sign('neon', 7, 2, 1.5, 22.4, 0));
   } },
-  { id: 'hotel-resort', hl: 14, hd: 7, make(g, c) {   // wide three-storey resort: portico with columns, palms, rooftop sign
+  { id: 'hotel-resort', hl: 14, hd: 7, make(g, c) {   // wide three-storey resort: portico with columns, spruce, rooftop sign
     const { m } = c;
     g.add(box(c.facade(14, 4), 9, 9, 26, 2.5, 0, 0)); g.add(box(m.roof, 9.6, .4, 26.6, 2.5, 9, 0)); g.add(box(m.trim, 3, 4.2, 8, -2.4, 0, 0)); g.add(box(m.glass, .1, 2.6, 5, -3.92, .3, 0));
     g.add(box(m.accent, 5.5, .4, 9, -4.4, 4.2, 0)); for (const z of [-4, -1.3, 1.3, 4]) g.add(cyl(m.trim, .3, 4.2, -6.4, 0, z));
-    palm(g, m, -5, -10.5); palm(g, m, -5, 10.5, 6); palm(g, m, -6.2, -7, 4);
+    for (const [x, z, h] of [[-5, -10.5, 5], [-5, 10.5, 6], [-6.2, -7, 4]]) { const t = spruce(h, m.trunk, m.leaf); t.position.set(x, 0, z); g.add(t); }
     g.add(c.sign('red', 8, 1.8, 2.5, 9.4, 0));
   } },
 ];

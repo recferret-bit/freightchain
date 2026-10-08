@@ -1,5 +1,4 @@
 import { box, hip, cyl, pole } from './parts.js';
-import { mk, GEO } from '../../../world/props.js';
 
 /* Gas stations: canopy, truck stop, old-school kiosk. */
 const pump = (g, m, x, z, h = 1.5) => { g.add(box(m.accent, .7, h, .5, x, .2, z)); g.add(box(m.dark, .72, .45, .52, x, .2 + h * .6, z)); };
@@ -21,10 +20,12 @@ export const gas = [
     g.add(pole(m.metal, 11, -8.6, -13, .45)); g.add(c.sign('blue', 4, 3, -8.6, 11, -13));
   } },
   { id: 'gas-kiosk', hl: 7, hd: 6, make(g, c) {   // old-school kiosk with a hip roof, two globe-top pumps and a round sign on a pole
-    const { m } = c;
-    g.add(box(c.wall, 4, 3, 5, 3.5, 0, 0)); g.add(hip(m.roof, 5.2, 1.6, 6.2, 3.5, 3, 0)); g.add(box(m.glass, .1, 1.2, 3, 1.48, 1, 0)); g.add(box(m.door, .1, 2, 1, 1.48, 0, 1.6));
+    const { m } = c, r = 1.5, y = 6.4;   // disc centre; the stem stops at y − r so it meets the rim and does not cross the face
+    g.add(box(c.wall, 4, 3, 5, 3.5, 0, 0)); g.add(hip(m.roof, 5.2, 1.6, 6.2, 3.5, 3, 0));
+    g.add(box(m.glass, .1, 1.2, 3, 1.48, 1, -.7));   // front wall is z −2.5…2.5, door is z 1.1…2.1: centre −0.7 leaves 0.3 m each side, toward the road's left corner and the door
+    g.add(box(m.door, .1, 2, 1, 1.48, 0, 1.6));
     g.add(box(m.trim, 5, .25, 7, -.8, 3.6, 0)); for (const z of [-3.2, 3.2]) g.add(pole(m.trim, 3.6, -3, z, .3));
     for (const z of [-1.6, 1.6]) { g.add(box(m.accent, .6, 1.4, .6, -.8, 0, z)); g.add(cyl(m.white, .38, .5, -.8, 1.4, z)); }
-    g.add(pole(m.metal, 6, -4.8, 5, .25)); const d = mk(GEO.cyl, m.accent, 1.5, .2, 1.5, -4.8, 6.4, 5); d.rotation.z = Math.PI / 2; g.add(d);
+    g.add(pole(m.metal, y - r, -4.8, 5, .25)); g.add(c.disk('red', r, -4.8, y, 5, 'GAS'));
   } },
 ];

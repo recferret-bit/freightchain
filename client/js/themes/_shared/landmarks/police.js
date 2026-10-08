@@ -23,8 +23,10 @@ export const police = [
   { id: 'police-station', hl: 10, hd: 6, make(g, c) {   // small station house with a blue band, flag pole, rooftop lamp and two cruisers
     const { m } = c;
     g.add(box(c.wall, 7, 3.4, 12, 2.5, 0, 3)); g.add(box(m.roof, 7.6, .3, 12.6, 2.5, 3.4, 3)); g.add(box(m.blue, .1, .7, 12, -1.02, 2.2, 3)); g.add(box(m.glass, .1, 1.3, 5, -1.02, .8, 3)); g.add(box(m.door, .1, 2.1, 1.2, -1.02, 0, 6.8));
-    g.add(box(m.blue, .8, .5, .8, 2.5, 3.7, 3)); g.add(pole(m.metal, 8, -3.5, -5, .2)); g.add(box(m.red, .06, 1, 1.6, -3.5, 7, -5.8)); g.add(box(m.white, .06, .33, 1.6, -3.5, 7.33, -5.8));
+    g.add(box(m.blue, .8, .5, .8, 2.5, 3.7, 3));   // roof joint, top at 4.2 — the banner used to float at x=-1, half a metre above the eave
+    g.add(c.sign('blue', 4, 1.3, 2.5, 4.18, 3));   // centred on the joint, 2 cm into it so the shared top plane does not flicker
+    g.add(pole(m.metal, 8, -3.5, -5, .2));
+    (c.flags.length ? c.flags : [[m.red, m.red]]).forEach((pair, i) => g.add(mk(GEO.box, [pair[0], pair[1], pair[0], pair[0], pair[0], pair[0]], .06, 1, 1.6, -3.5, 7.5 - i * 1.15, -5.88)));   // hoist overlaps the pole by 2 cm; a second country hangs below
     car(g, m, -3, -1.5, 0); car(g, m, -3, 3.6, 0, false);
-    g.add(c.sign('blue', 4, 1.3, -1, 4.2, 3));
   } },
 ];

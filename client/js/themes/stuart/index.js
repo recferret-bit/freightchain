@@ -16,5 +16,5 @@ export default defineTheme({
   grime: '170,88,48', finishText: 'DARWIN PORT',
   livery: { body: '#f2f0e8', stripe: '#c2481f', accent: '#f0b323', text: 'OUTBACK ROAD TRAINS', sub: 'STUART HIGHWAY  •  NT' },
   furniture: { lamp: { color: 0x7a7f84, light: 0xffd9a0, every: 6, side: 1 }, post: { body: 0xf2f2ea, cap: 0xd22a22 }, pole: { color: 0x6a5a48, every: 4 } },
-  landmarks: { chance: .14, weights: { hotel: 0, motel: .6, restaurant: 1.6, gas: 1.4, police: .5 }, pal: { walls: ['#c9c4b5', '#a8553b', '#d6cfa8'], roof: '#7a8087', accent: '#b8321f', leaf: '#6a7a3a' }, names: { motel: ['MOTEL', 'OUTBACK INN'], restaurant: ['ROADHOUSE', 'PUB', 'OUTBACK CAFE'], gas: ['ROADHOUSE FUEL', 'DIESEL', 'ROAD TRAIN FUEL'], police: ['POLICE'] } },
+  landmarks: { chance: .14, flag: 'au', weights: { hotel: 0, motel: .6, restaurant: 1.6, gas: 1.4, police: .5 }, pal: { walls: ['#c9c4b5', '#a8553b', '#d6cfa8'], roof: '#7a8087', accent: '#b8321f', leaf: '#6a7a3a' }, names: { motel: ['MOTEL', 'OUTBACK INN'], restaurant: ['ROADHOUSE', 'PUB', 'OUTBACK CAFE'], gas: ['ROADHOUSE FUEL', 'DIESEL', 'ROAD TRAIN FUEL'], police: ['POLICE'] } },
 }, { road, sky, terrain, mountains, props });

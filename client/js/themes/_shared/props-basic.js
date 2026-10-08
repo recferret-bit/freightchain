@@ -41,6 +41,11 @@ export function gumTree(h, trunk, leaf) {   // eucalyptus / ghost gum: pale slim
 export function birch(h, trunk, mark) {   // winter birch: white trunk with dark marks and bare twigs
   const g = grp('tree', h, trunk, 'birch'); g.add(mk(GEO.cyl, trunk, .13, h, .13, 0, h / 2, 0));
   for (const y of [.15, .32, .5, .68]) g.add(mk(GEO.box, mark, .16, .07, .16, 0, h * y, 0));
-  for (const [y, a] of [[.7, .7], [.82, -.6], [.9, .4]]) { const b = mk(GEO.box, trunk, .05, h * .22, .05, Math.sin(a) * h * .06, h * y, 0); b.rotation.z = -a; g.add(b); }
+  // The twig is a long box spun about its own centre. That centre has to sit out past the bark,
+  // or the inner half of the box comes out the far side of the trunk.
+  const half = h * .11, R = .13;
+  for (const [y, a] of [[.7, .7], [.82, -.6], [.9, .4]]) {
+    const s = Math.sin(a), b = mk(GEO.box, trunk, .05, h * .22, .05, Math.sign(s) * R + s * half, h * y, 0); b.rotation.z = -a; g.add(b);
+  }
   return g;
 }

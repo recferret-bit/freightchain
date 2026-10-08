@@ -303,7 +303,7 @@ Ratio is `Math.min(driveSeconds / minSeconds, distance / completeDist)` using en
 | contains `cold` | `cold_engine` | “The engine gave out – you pushed it hard while it was still cold.” |
 | contains `hull` | `hull` | “Your truck was wrecked – the hull gave out.” |
 | contains `off the road` | `off_road` | “You spent too long off the road – the truck is stuck in the sand.” |
-| contains `collision`, `crashed into`, `drove into`, or `ran into` | `crash` | `traffic.js` `contact` / `alignedContact`. The stored sentences end with a period (quoted under `ride_failed`). Vehicle names: car, truck, bus, freighter, police car, ambulance, fire engine. Do not parse the noun into a property. `contains` still matches. |
+| contains `collision`, `crashed into`, `drove into`, or `ran into` | `crash` | `traffic.js` `contact` / `alignedContact`. The stored sentences end with a period (quoted under `ride_failed`). Vehicle names: car, truck, bus, freighter, police car, ambulance, fire truck. Do not parse the noun into a property. `contains` still matches. |
 | anything else non-null on a failed ride | `other` | forward-compat for a new client string, still sliced at 200 |
 | `shift complete` / `shift abandoned…` / `replaced by a paid ride` / null | not a `fail_code` | those are other events |
 
