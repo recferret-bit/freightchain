@@ -6,8 +6,9 @@ Freight Chain – "Desert Run": a browser truck-driving game with a Solana-paid 
 - `landing/` – the `/` page: a small Vite project (wallet sign-in, live pool and boards, dash cards rendered by the game's own cockpit code)
 - `server/` – NestJS + Prisma + PostgreSQL API (`docs/backend-architecture.md`)
 - `deploy/` – semi-automatic deploy to our own server: `npm run deploy` (see `deploy/README.md`)
+- `video/` – promo clip maker: real gameplay → mp4 (≤ 15 s) + gif (≤ 20 MB) with landing-styled captions and transitions; the finished intro is `video/out/intro/` (see "Promo videos" below)
 - `docs/` – hackathon plan, backend architecture, [verified play: next steps + the owner's checklist](docs/verified-play-next-steps.md)
-- `AGENTS.md` / `CLAUDE.md` – the project map and rules for coding agents; `.claude/skills/` – project skills (read-only production logs / database, ride investigation, the whole test run)
+- `AGENTS.md` / `CLAUDE.md` – the project map and rules for coding agents; `.claude/skills/` – project skills (read-only production logs / database, ride investigation, the whole test run, `gameplay-video`)
 
 Local run: `npm run db:up && npm run server:dev` → http://localhost:3000
 
@@ -40,3 +41,15 @@ npm run landing:test                   # formatters, card scripts, page integrit
 - **Media**: WebP only; `node landing/tools/to-webp.mjs <files>` converts, `npm --prefix landing run media` re-captures the dash and sky shots from the running game.
 - **Hero video**: set `data-src` on `#hero-video` in `landing/index.html` (a muted loop in `landing/public/media/`); it loads after the page, when idle, never on phones, data-saver or reduced motion.
 - **Deploy**: the Docker image builds the landing (its tests gate the build) and the server serves it with long-lived caching for the hashed assets.
+
+## Promo videos
+
+[`video/out/intro/intro.mp4`](video/out/intro/intro.mp4) (14.8 s) and [`intro.gif`](video/out/intro/intro.gif) are made from real gameplay by the `video/` harness: a JSON spec of scenes (gears, a crash, night lights, Siberian frost, Australian dust, an end card), captions in the landing's style, transitions, a Solana badge – the same input renders the same bytes.
+
+```sh
+npm --prefix video install                  # once (Node >= 22, Chrome; ffmpeg comes from npm)
+npm run video -- video/specs/intro.json     # ~30 s on a Mac GPU → video/out/intro/{intro.mp4,intro.gif,contact.jpg}
+npm --prefix video run preview              # half-size look, not committed
+```
+
+New clip: ask Claude for one (the `gameplay-video` skill turns a text description into a spec, previews it and reports duration / size), or copy `video/specs/intro.json`. Limits are enforced: total ≤ 15 s, gif file ≤ 20 MB (it shrinks, then trims). Render on a real GPU – software GL makes the road flash. Details: `AGENTS.md` → "Promo videos".

@@ -8,6 +8,13 @@ npm-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# Promo videos (video/): the finished clips in video/out/<name>/ ARE committed; scratch output is not
+video/out/*-preview/
+video/out/*-partial/
+video/out/*/frames/
+video/out/*/spec.resolved.json
+video/out/*/*.raw
+
 # Test artifacts (tools/e2e-chrome.mjs writes to the OS temp dir by default; these catch local overrides)
 shots/
 screenshots/
