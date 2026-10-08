@@ -25,6 +25,7 @@ function crankWith(rpc: Rpc = {}, env: Partial<EnvService> = {}) {
     sendRawTransaction: async (raw: Buffer) => { sent.push(Buffer.from(raw)); return 'sig'; },
     getSignatureStatuses: async () => ({ value: [{ confirmationStatus: 'confirmed', err: null }] }),
     getBlockHeight: async () => 100,
+    getMinimumBalanceForRentExemption: async () => 890_880,
     ...rpc,
   });
   return { adapter, sent };

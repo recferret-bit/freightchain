@@ -61,10 +61,11 @@ export class ProgramCrankAdapter extends PoolCrankChainPort {
     const cfg = config?.owner.equals(c.programId) ? c.decodeAccount('Config', config.data) : null;
     if (!cfg) return []; // not initialized yet
     const count = cfg['poolCount'] as number, out: PoolChainState[] = [];
+    const rentMin = await this.rpc.read((x) => x.getMinimumBalanceForRentExemption(0, this.commitment));
     for (let from = 0; from < count; from += POOLS_PER_READ) {
       const ids = Array.from({ length: Math.min(POOLS_PER_READ, count - from) }, (_, i) => from + i);
       const infos = await this.rpc.read((x) => x.getMultipleAccountsInfo(ids.flatMap((id) => [c.poolPda(id), c.vaultPda(id)]), this.commitment));
-      ids.forEach((id, i) => { const s = poolStateOf(c, id, infos[2 * i] ?? null, infos[2 * i + 1] ?? null); if (s) out.push(s); });
+      ids.forEach((id, i) => { const s = poolStateOf(c, id, infos[2 * i] ?? null, infos[2 * i + 1] ?? null, rentMin); if (s) out.push(s); });
     }
     return out;
   }

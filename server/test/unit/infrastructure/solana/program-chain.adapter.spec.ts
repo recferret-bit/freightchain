@@ -25,6 +25,7 @@ function adapterWith(rpc: Rpc = {}, env: Partial<EnvService> = {}) {
     getLatestBlockhash: async () => ({ blockhash: BLOCKHASH, lastValidBlockHeight: 4242 }),
     getRecentPrioritizationFees: async () => [{ slot: 1, prioritizationFee: 1_500 }, { slot: 2, prioritizationFee: 0 }],
     _rpcRequest: async () => ({ error: { code: -32601, message: 'Method not found' } }),
+    getMinimumBalanceForRentExemption: async () => 890_880,   // mainnet / local validator; devnet answers 650 240
     ...rpc,
   });
   return { adapter, waits };
@@ -126,6 +127,12 @@ describe('ProgramChainAdapter – reads', () => {
       prepDeadline: new Date(Number(d['prepDeadline']) * 1000), playDeadline: new Date(Number(d['playDeadline']) * 1000), prizeBps: 6000, seedBps: 2500, feeBps: 1500,
       feeTreasury: fx.keys.feeTreasury, seedTreasury: fx.keys.seedTreasury, createdAt: new Date(Number(d['createdAt']) * 1000),
     });
+    // the rent minimum is the cluster's own (read once): devnet's is lower than mainnet's, so the escrow there is vault − 650 240
+    let rentReads = 0;
+    const devnet = adapterWith({ getMinimumBalanceForRentExemption: async () => { rentReads++; return 650_240; }, getMultipleAccountsInfo: async () => [accountInfo('pool 0 active'), { lamports: 650_240 + 350_000_000 }] }).adapter;
+    expect((await devnet.readPool(0))?.escrowLamports).toBe(350_000_000);
+    await devnet.readPool(0);
+    expect(rentReads).toBe(1);
     expect(await adapterWith({ getMultipleAccountsInfo: async () => [null, null] }).adapter.readPool(5)).toBeNull();
     expect(await adapterWith({ getMultipleAccountsInfo: async () => [{ ...accountInfo('pool 0 active'), owner: PublicKey.default }, null] }).adapter.readPool(0)).toBeNull();
   });

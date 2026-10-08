@@ -100,9 +100,9 @@ psql_admin "CREATE DATABASE \"$DB\"" >/dev/null
 (cd "$SERVER" && DATABASE_URL="$URL" ./node_modules/.bin/prisma migrate deploy >/dev/null)
 
 # Every key the server reads is set here, so a stray server/.env (dotenv never overrides) cannot point it at devnet or the dev database.
-export DATABASE_URL="$URL" PAYMENT_MODE=program TICKET_PROGRAM_ID="$PROGRAM_ID" SOLANA_RPC="$RPC" SOLANA_WS="$WS" SOLANA_RPC_FALLBACKS= SOLANA_COMMITMENT=confirmed \
+export DATABASE_URL="$URL" PAYMENT_MODE=program TICKET_PROGRAM_ID="$PROGRAM_ID" SOLANA_RPC="$RPC" SOLANA_WS="$WS" SOLANA_RPC_FALLBACKS="$([ "$TARGET" = devnet ] && echo https://api.devnet.solana.com)" SOLANA_COMMITMENT=confirmed \
   FEE_PAYER_SECRET="$(cat "$TMP/keys/sponsor.json")" CRANK_SECRET="$(cat "$TMP/keys/crank.json")" CRANK_INTERVAL_MS=0 TREASURY_PUBKEY="$(pub admin)" FEE_TREASURY="$(pub fee)" SEED_TREASURY="$(pub seed)" \
-  WEBHOOK_SECRET="$(node -e 'console.log(require("crypto").randomBytes(24).toString("base64url"))')" WATCH_INTERVAL_MS=2000 SOL_USD=118 DEMO_WALLETS='*' DEMO_SCALE=1200 FREE_RIDE_SECONDS=3 VERDICT_ENFORCE=true POSTHOG_ENABLED=0 PRIORITY_FEE_MAX_MICROLAMPORTS="$([ "$TARGET" = devnet ] && echo 50000 || echo 0)" \
+  WEBHOOK_SECRET="$(node -e 'console.log(require("crypto").randomBytes(24).toString("base64url"))')" WATCH_INTERVAL_MS="$([ "$TARGET" = devnet ] && echo 5000 || echo 2000)" SOL_USD=118 DEMO_WALLETS='*' DEMO_SCALE=1200 FREE_RIDE_SECONDS=3 VERDICT_ENFORCE=true POSTHOG_ENABLED=0 PRIORITY_FEE_MAX_MICROLAMPORTS="$([ "$TARGET" = devnet ] && echo 50000 || echo 0)" \
   ADMIN_WALLETS= NODE_ENV=development
 PORT="$(free_port)"; BASE="http://localhost:$PORT"
 (cd "$SERVER" && PORT="$PORT" exec node dist/main.js > "$TMP/server.log" 2>&1) &

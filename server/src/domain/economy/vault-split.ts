@@ -11,6 +11,8 @@
 
 export const BPS_DENOM = 10_000;
 /** Rent::minimum_balance(0): what the zero-data vault keeps while the pool lives. The escrow is the vault's balance minus this. */
+/** Mainnet's / a local validator's rent minimum of the 0-byte vault – the default here only. Devnet's is LOWER (650 240 today): the chain adapters read the
+    cluster's own value (`getMinimumBalanceForRentExemption(0)`) and pass it as `rentMin`. */
 export const VAULT_RENT_MIN_LAMPORTS = 890_880;
 
 const U64_MAX = (1n << 64n) - 1n;

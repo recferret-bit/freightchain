@@ -4,7 +4,7 @@ import bs58 from 'bs58';
 import type { UnsignedPaymentTx } from '../../domain/economy/chain-transaction.js';
 import type { ChainEventRecord, PoolChainState } from '../../domain/economy/chain-events.js';
 import { orderIdToBytes } from '../../domain/economy/ticket-purchase-verification.js';
-import { VAULT_RENT_MIN_LAMPORTS, escrowOf } from '../../domain/economy/vault-split.js';
+import { escrowOf } from '../../domain/economy/vault-split.js';
 import { BadRequestError, ConflictError, NotFoundError, ServiceUnavailableError } from '../../domain/shared/errors.js';
 import { ClockPort } from '../../application/ports/shared/clock.port.js';
 import { PoolChainPort, type BuiltTransaction, type ChainTxKind, type FeeQuote, type ProgramSignature, type SignatureStatus } from '../../application/ports/economy/pool-chain.port.js';
@@ -26,8 +26,9 @@ const MAX_RESENDS = 60;
 const MAX_SIGNATURE_PAGES = 10;
 const STATUS = ['open', 'active', 'refunding', 'settled', 'cancelled'] as const;
 
-/** A Pool account (+ its vault's balance, read in the same slot) as the domain's PoolChainState; null = not this program's pool. Shared with the crank adapter. */
-export function poolStateOf(c: PoolProgramCodec, poolId: number, info: AccountInfo<Buffer> | null, vaultInfo: AccountInfo<Buffer> | null): PoolChainState | null {
+/** A Pool account (+ its vault's balance, read in the same slot) as the domain's PoolChainState; null = not this program's pool. Shared with the crank adapter.
+    `rentMin` = the cluster's rent-exempt minimum of a 0-byte account (the vault keeps it): 890 880 on mainnet / a local validator, 650 240 on devnet today. */
+export function poolStateOf(c: PoolProgramCodec, poolId: number, info: AccountInfo<Buffer> | null, vaultInfo: AccountInfo<Buffer> | null, rentMin: number): PoolChainState | null {
   if (!info || !info.owner.equals(c.programId)) return null;
   const p = c.decodeAccount('Pool', info.data);
   if (!p) return null;
@@ -37,7 +38,7 @@ export function poolStateOf(c: PoolProgramCodec, poolId: number, info: AccountIn
   return {
     poolId: p['poolId'] as number, address: c.poolPda(poolId).toBase58(), status, ticketsSold: p['ticketsSold'] as number, buyers: p['buyers'] as number,
     sponsored: p['sponsored'] as number, prizesPaid: p['prizesPaid'] as number, refunded: p['refunded'] as number,
-    vaultLamports, escrowLamports: escrowOf(vaultLamports, VAULT_RENT_MIN_LAMPORTS), vault: c.vaultPda(poolId).toBase58(), authority: p['authority'] as string, tier: p['tier'] as number,
+    vaultLamports, escrowLamports: escrowOf(vaultLamports, rentMin), vault: c.vaultPda(poolId).toBase58(), authority: p['authority'] as string, tier: p['tier'] as number,
     priceLamports: p['priceLamports'] as number, minTickets: p['minTickets'] as number, maxTickets: p['maxTickets'] as number, maxPerWallet: p['maxPerWallet'] as number,
     prepDeadline: p['prepDeadline'] as Date, playDeadline: p['playDeadline'] as Date, prizeBps: p['prizeBps'] as number, seedBps: p['seedBps'] as number,
     feeBps: p['feeBps'] as number, feeTreasury: p['feeTreasury'] as string, seedTreasury: p['seedTreasury'] as string, createdAt: p['createdAt'] as Date,
@@ -64,6 +65,7 @@ export class ProgramChainAdapter extends PoolChainPort {
   private readonly sponsor: Keypair | null;
   private readonly fees: FeeEstimator;
   private codecCache: PoolProgramCodec | null = null;
+  private rentMinCache: Promise<number> | null = null;
   /** overridable in specs */
   protected wait: (ms: number) => Promise<void> = sleep;
 
@@ -175,8 +177,15 @@ export class ProgramChainAdapter extends PoolChainPort {
 
   async readPool(poolId: number): Promise<PoolChainState | null> {
     const c = this.codec;
-    const [info, vaultInfo] = await this.rpc.read((x) => x.getMultipleAccountsInfo([c.poolPda(poolId), c.vaultPda(poolId)], this.commitment));
-    return poolStateOf(c, poolId, info, vaultInfo);
+    const [[info, vaultInfo], rentMin] = await Promise.all([
+      this.rpc.read((x) => x.getMultipleAccountsInfo([c.poolPda(poolId), c.vaultPda(poolId)], this.commitment)), this.vaultRentMin(),
+    ]);
+    return poolStateOf(c, poolId, info, vaultInfo ?? null, rentMin);
+  }
+
+  /** The cluster's rent-exempt minimum of the 0-byte vault, read once (it differs between clusters: devnet's is lower than mainnet's). */
+  async vaultRentMin(): Promise<number> {
+    return (this.rentMinCache ??= this.rpc.read((x) => x.getMinimumBalanceForRentExemption(0, this.commitment)).catch((e: unknown) => { this.rentMinCache = null; throw e; }));
   }
 
   /** getSignaturesForAddress pages newest → oldest; walk back (`before`) until the cursor, so nothing between the cursor and the head is skipped. */

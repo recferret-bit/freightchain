@@ -13,7 +13,8 @@
 // --program <id> (default: the IDL address). `+secs` is relative to the CHAIN clock (Clock sysvar), not this machine's. Prints one JSON line.
 // Never reads the global Solana config: --url and -k are required; a mainnet URL is refused. Phantom-signed admin actions are not covered here (keypair files only).
 import { readFileSync } from 'node:fs'; import crypto from 'node:crypto';
-import { Connection, Keypair, PublicKey, SYSVAR_CLOCK_PUBKEY, Transaction, sendAndConfirmTransaction } from '@solana/web3.js';
+import { ComputeBudgetProgram, Connection, Keypair, PublicKey, SYSVAR_CLOCK_PUBKEY, Transaction } from '@solana/web3.js';
+import bs58 from 'bs58';
 import { PoolProgramCodec } from '../dist/infrastructure/solana/pool-program.codec.js';
 import { POOL_PROGRAM_IDL } from '../dist/infrastructure/solana/pool-program.idl.js';
 
@@ -43,7 +44,28 @@ const chainNow = async () => Number((await conn.getAccountInfo(SYSVAR_CLOCK_PUBK
 const when = async name => { const v = opt[name]; if (!v) die(`--${name} <unix|+secs> is required`); return v.startsWith('+') ? (await chainNow()) + Number(v.slice(1)) : Number(v); };
 const account = async (name, address) => { const a = await conn.getAccountInfo(address); return a ? codec.decodeAccount(name, a.data) : null; };
 const config = () => account('Config', codec.configPda());
-const send = async (signer, ix, more = []) => sendAndConfirmTransaction(conn, new Transaction().add(ix), [signer, ...more], { commitment: 'confirmed' });
+// a small priority fee + re-send every 2 s until confirmed; a fresh blockhash when one expires (a real cluster drops some transactions) – up to 3 tries
+const PRIORITY = +(process.env.PRIORITY_MICROLAMPORTS || 5_000);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function send(signer, ix, more = []) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash('confirmed');
+    const tx = new Transaction({ feePayer: signer.publicKey, blockhash, lastValidBlockHeight }).add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: PRIORITY }), ix);
+    tx.sign(signer, ...more);
+    const sim = await conn.simulateTransaction(tx);
+    if (sim.value.err) throw Object.assign(new Error(`simulation failed: ${JSON.stringify(sim.value.err)}`), { logs: sim.value.logs ?? [] });
+    const raw = tx.serialize(), sig = bs58.encode(tx.signature);
+    for (;;) {
+      await conn.sendRawTransaction(raw, { skipPreflight: true, maxRetries: 0 }).catch(() => undefined);
+      await sleep(2_000);
+      const st = (await conn.getSignatureStatuses([sig])).value[0];
+      if (st?.err) throw new Error(`transaction ${sig} failed: ${JSON.stringify(st.err)}`);
+      if (st?.confirmationStatus === 'confirmed' || st?.confirmationStatus === 'finalized') return sig;
+      if (!st && (await conn.getBlockHeight('confirmed')) > lastValidBlockHeight) break;   // dropped: new blockhash
+    }
+  }
+  throw new Error('not confirmed after 3 blockhashes – the cluster is dropping transactions; try again');
+}
 const file = path => Keypair.fromSecretKey(Uint8Array.from(JSON.parse(readFileSync(path, 'utf8'))));
 const out = o => console.log(JSON.stringify(o, (_, v) => (v instanceof PublicKey ? v.toBase58() : typeof v === 'bigint' ? Number(v) : v)));
 
