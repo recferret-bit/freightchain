@@ -22,6 +22,11 @@ export function chainScenarios(h: () => Harness): void {
     expect(res.body).toMatchObject({ code: 'validation_error', detail: 'poolId must be a pool id', errors: [{ path: 'poolId' }] });
   });
 
+  it('POST /api/chain/webhook without WEBHOOK_SECRET configured: 404, whatever secret is sent', async () => {
+    const res = await anon().post('/api/chain/webhook').set('x-webhook-secret', 'anything-anything-anything').send([]).expect(404);
+    expect(res.body).toMatchObject({ status: 404, code: 'not_found' });
+  });
+
   it('the RPC down is a 503 problem, not a 500', async () => {
     h().poolChain.rpcDown = true;
     const res = await anon().get('/api/chain/fees').expect(503);
