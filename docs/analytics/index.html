@@ -39,6 +39,7 @@
     <li><a href="#s-identity">Identity</a></li>
     <li><a href="#s-relay">The relay</a></li>
     <li><a href="#s-board">The board</a></li>
+    <li><a href="#s-vitals">Page speed</a></li>
     <li><a href="#s-env">Keys</a></li>
     <li><a href="#s-promise">What you can count on</a></li>
     <li><a href="#s-limits">What this does not do</a></li>
@@ -376,7 +377,24 @@
       </tbody>
     </table>
   </div>
-  <p class="soft">Create the board from Blank. Product analytics, Product health, Growth, B2B, B2C, Landing, Real time, Revenue, Stripe, and AI prompts are the wrong templates. Loop health, when someone makes it, is a second blank board: flush-failure note, <code>api_request_failed</code> by route, <code>sign_in_failed</code> by stage, <code>payment_failed</code> by stage, ride load and start failures, median <code>drive_ms</code> against <code>min_ms</code>, progress counts by milestone, <code>session_restored</code> against <code>player_signed_in</code>, the chapter breakdown, and <code>web_vital</code> by <code>metric</code> and <code>surface</code> (CLS <code>value</code> is the score × 1000). It is not this URL.</p>
+  <p class="soft">Create the board from Blank. Product analytics, Product health, Growth, B2B, B2C, Landing, Real time, Revenue, Stripe, and AI prompts are the wrong templates. Loop health, when someone makes it, is a second blank board: flush-failure note, <code>api_request_failed</code> by route, <code>sign_in_failed</code> by stage, <code>payment_failed</code> by stage, ride load and start failures, median <code>drive_ms</code> against <code>min_ms</code>, progress counts by milestone, <code>session_restored</code> against <code>player_signed_in</code>, the chapter breakdown, and the Page speed trend below. It is not this URL. Page speed stays off dashboard 1006663.</p>
+</section>
+
+<section aria-labelledby="s-vitals">
+  <div class="head">
+    <span class="eyebrow">One chart · web_vital</span>
+    <h2 id="s-vitals">Page speed</h2>
+    <p>One Trends insight, not five. It describes the landing, the whitepaper, and the lobby. It says nothing about a ride. PostHog's own Web Vitals page reads <code>$web_vitals</code> from <code>posthog-js</code>, which this site does not load, so that page stays empty on purpose.</p>
+  </div>
+  <ul class="limits">
+    <li><b>The insight.</b><span>New Trends insight. Event <code>web_vital</code>. Aggregation <b>Total count</b>. Date range of your choice. <b>+ Add breakdown</b> on the event property <code>metric</code>, then again on the event property <code>rating</code>. Chart type: the bar chart that totals the whole date range. Save it as <b>Page speed</b>. Do not add it to dashboard 1006663.</span></li>
+    <li><b>How to read it.</b><span>Each bar is a pair such as <code>LCP / good</code>. <code>good</code> is fine, <code>needs-improvement</code> is slow, <code>poor</code> is something a visitor will notice. If <code>good</code> is the taller bar, most visits are fine. Open it after a change to one of the three pages. A third breakdown, <code>surface</code>, says landing, whitepaper, or lobby. A handful of events is not a verdict.</span></li>
+    <li><b>TTFB, Time to First Byte.</b><span>How long until the page's HTML starts to arrive. A poor value means the wait happens before anything can draw.</span></li>
+    <li><b>FCP, First Contentful Paint.</b><span>When the first text or image appears.</span></li>
+    <li><b>LCP, Largest Contentful Paint.</b><span>When the main thing appears: the hero on the landing, the article on the whitepaper, the lobby itself. This is the one people feel as "the page is slow."</span></li>
+    <li><b>INP, Interaction to Next Paint.</b><span>How long a click or a key takes to show a response. It is only recorded after someone actually does that, and it is sent when they leave. An empty INP bar is normal.</span></li>
+    <li><b>CLS, Cumulative Layout Shift.</b><span>How much the page jumps after it has appeared. This one is not a time. <code>0</code> means nothing moved. In the raw <code>value</code>, <code>100</code> means a score of <code>0.1</code>. Needs-improvement is a score above <code>0.1</code> and at most <code>0.25</code> (<code>value</code> 101–250).</span></li>
+  </ul>
 </section>
 
 <section aria-labelledby="s-env">
@@ -436,7 +454,7 @@
   <span>Freight Chain · product analytics</span>
   <span>on main</span>
   <span><a href="https://eu.posthog.com/project/297915/dashboard/1006663">EU dashboard 1006663</a></span>
-  <span>as of Oct 8, 2026</span>
+  <span>as of Oct 9, 2026</span>
 </footer>
 
 </div>
