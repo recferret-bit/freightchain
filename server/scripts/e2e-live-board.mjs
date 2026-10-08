@@ -7,6 +7,7 @@
 import nacl from 'tweetnacl'; import bs58 from 'bs58';
 import { launch, sleep } from '../../client/tools/cdp.mjs';
 import { simulate } from './sim-rides.mjs';
+import fs from 'node:fs'; import path from 'node:path';
 const BASE = process.env.BASE || 'http://localhost:3111', CP = +process.env.CHROME_PORT || 9395;
 const fails = []; const check = (name, ok, extra = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${extra ? ' – ' + extra : ''}`); if (!ok) fails.push(name); };
 const until = async (fn, ms, step = 400) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await fn()) return true; await sleep(step); } return false; };
@@ -32,6 +33,13 @@ await post(`rides/${mine.id}/start`, {}, cookie); await sleep(1500);
 await post(`rides/${mine.id}/end`, { outcome: 'failed', s: 5, t: 1, reason: 'You ran off the road.' }, cookie);
 
 const B = await launch({ port: CP, shotsDir: 'fc-board-shots', evalProblems: true });
+/* a screenshot of just one element (the landing's boards sit far below the fold and reveal on scroll) */
+const shotOf = async (sel, name) => {
+  const clip = await B.ev(`(() => { document.querySelectorAll('.rv').forEach(n => n.classList.add('in')); const r = document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect(); return { x: Math.max(0, r.left - 8), y: r.top + scrollY - 8, width: r.width + 16, height: r.height + 16, scale: 1 }; })()`);
+  await sleep(900);
+  const shot = await B.send('Page.captureScreenshot', { format: 'png', clip, captureBeyondViewport: true });
+  fs.writeFileSync(path.join(B.SHOTS, `${name}.png`), Buffer.from(shot.data, 'base64'));
+};
 const [cn, cv] = cookie.split('=');
 await B.send('Network.setCookie', { name: cn, value: cv, url: BASE, httpOnly: true });
 
@@ -41,7 +49,7 @@ const chip = () => B.ev(`document.getElementById('chip-live')?.textContent ?? ''
 check('landing: the chip says how many are online and on the road (from the live feed)', await until(async () => /^\d+ ONLINE · 5 ON THE ROAD$/.test(await chip()), 20_000), await chip());
 check('landing: this page itself is counted online', await until(async () => (await api('live')).online.browsing >= 6, 15_000), JSON.stringify((await api('live')).online));
 check('landing: LIVE NOW lists the 5 rides as watch links, the watched one with 👁 2', await until(() => B.ev(`document.querySelectorAll('#board-live a.r[href*="watch="]').length === 5 && [...document.querySelectorAll('#board-live a.r')].some(a => a.href.includes(${JSON.stringify(watched)}) && a.textContent.includes('👁 2'))`), 15_000));
-await B.shot('landing-boards');
+await shotOf('.boards', 'landing-boards');
 
 // ── the lobby: LIVE (sort, viewers, join) ──
 await B.send('Page.navigate', { url: `${BASE}/lobby.html#live` });
@@ -76,7 +84,7 @@ check('▶ REPLAY opens the finished ride as a replay with its recording', await
 // ── the landing's RECENT RIDES ──
 await B.send('Page.navigate', { url: `${BASE}/` });
 check('landing RECENT RIDES: the finished rides, the recorded one as a ▶ REPLAY link', await until(() => B.ev(`!!document.querySelector('#board-recent a.r[href*="watch=${finisher}"]') && /signal lost/.test(document.getElementById('board-recent').textContent)`), 20_000));
-await B.shot('landing-recent');
+await shotOf('.boards', 'landing-recent');
 await B.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
 await B.send('Page.navigate', { url: `${BASE}/lobby.html#replays` }); await sleep(2500); await B.shot('lobby-replays-phone');
 
