@@ -48,6 +48,7 @@ import { GrantTicketsHandler } from './use-cases/players/grant-tickets/grant-tic
 import { FinalityService } from './services/finality.service.js';
 import { PollProgramHandler } from './use-cases/chain/poll-program/poll-program.handler.js';
 import { SyncPoolsHandler } from './use-cases/chain/sync-pools/sync-pools.handler.js';
+import { ReceiveChainWebhookHandler } from './use-cases/chain/receive-chain-webhook/receive-chain-webhook.handler.js';
 
 const services: Provider[] = [AchievementService, PaymentSettlementService, PlayerSessionService, PoolTicketsService, RideLookupService, RoundService, TicketSettlementService, PoolRegistryService, FinalityService];
 
@@ -64,7 +65,7 @@ const handlers: Provider[] = [
   CreateTicketOrderHandler, GetTicketOrderHandler, GetPendingTicketOrderHandler,
   SettleChainSignatureHandler,
   GetChainFeesHandler,
-  PollProgramHandler, SyncPoolsHandler,
+  PollProgramHandler, SyncPoolsHandler, ReceiveChainWebhookHandler,
 ];
 
 @Module({
