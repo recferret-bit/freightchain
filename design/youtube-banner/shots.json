@@ -1,0 +1,22 @@
+{
+  "name": "yt-shots", "fps": 24, "width": 1920, "height": 1080, "maxSeconds": 40, "look": "big",
+  "scenes": [
+    { "id": "r66-day", "dur": 2.2, "route": "route66", "time": "day", "speed": 24, "traffic": true,
+      "events": [ { "t": 0.1, "do": "spawn", "type": "sedan", "preset": "cruise", "zone": "oncoming", "dist": 140 }, { "t": 0.2, "do": "spawn", "type": "freighter", "preset": "cruise", "zone": "oncoming", "dist": 220 } ] },
+    { "id": "r66-night", "dur": 2.2, "route": "route66", "time": "night", "lights": true, "speed": 20,
+      "events": [ { "t": 0.2, "do": "spawn", "type": "sedan", "preset": "cruise", "zone": "oncoming", "dist": 120 } ] },
+    { "id": "siberia-frost", "dur": 2.0, "route": "siberia", "time": "day", "cold": true, "preroll": 12, "speed": 18 },
+    { "id": "stuart-dust", "dur": 2.2, "route": "stuart", "time": "day", "preroll": 14, "speed": 22,
+      "events": [ { "t": 0.3, "do": "wipers", "mode": 2 }, { "t": 0.8, "do": "washer", "on": true }, { "t": 1.6, "do": "washer", "on": false } ] },
+    { "id": "brenner-dusk", "dur": 2.2, "route": "brenner", "time": "dusk", "speed": 16,
+      "events": [ { "t": 0.2, "do": "spawn", "type": "bus", "preset": "cruise", "zone": "oncoming", "dist": 120 } ] },
+    { "id": "pan-dawn", "dur": 2.0, "route": "panamerican", "time": "dawn", "speed": 22 },
+    { "id": "crash", "dur": 2.2, "route": "route66", "time": "day", "speed": 25, "damage": true, "sway": 0,
+      "events": [ { "t": 0.05, "do": "spawn", "type": "truck", "preset": "slow", "zone": "ahead", "dist": 20 } ] },
+    { "id": "stuart-night", "dur": 2.2, "route": "stuart", "time": "night", "lights": true, "cab": true, "speed": 20,
+      "events": [ { "t": 0.2, "do": "spawn", "type": "freighter", "preset": "cruise", "zone": "oncoming", "dist": 130 } ] },
+    { "id": "siberia-night", "dur": 2.0, "route": "siberia", "time": "night", "lights": true, "preroll": 3, "speed": 18 },
+    { "id": "pan-day", "dur": 2.0, "route": "panamerican", "time": "day", "speed": 24,
+      "events": [ { "t": 0.1, "do": "spawn", "type": "police", "preset": "cruise", "zone": "oncoming", "dist": 150 } ] }
+  ]
+}
