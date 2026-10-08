@@ -8,7 +8,8 @@ import type { PaidTierId } from '../../../domain/rides/ride-tier.js';
 const effectOf = (row: PromoCodeRow): PromoEffect => {
   if (row.kind === 'free_rides') return { kind: 'free_rides', count: row.freeRides ?? 0 };
   if (row.kind === 'cosmetic' && isCosmeticSlot(row.cosmeticSlot)) return { kind: 'cosmetic', slot: row.cosmeticSlot, item: row.cosmeticItem ?? '' };
-  return { kind: 'tickets', tier: row.tier as PaidTierId, poolId: row.poolId, credits: row.credits ?? 0 };
+  if (row.kind !== 'tickets' || row.tier === null || row.credits === null) throw new Error(`promo code ${row.code}: unreadable effect (kind ${row.kind})`);   // never guess a grant from a row the catalog no longer knows
+  return { kind: 'tickets', tier: row.tier as PaidTierId, poolId: row.poolId, credits: row.credits };
 };
 
 export class PromoMapper {

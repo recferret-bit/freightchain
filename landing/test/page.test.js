@@ -98,7 +98,9 @@ test('promo invite: a form in the hero (no new heading or chapter), the code rid
   for (const id of ['invite', 'invite-code', 'invite-go', 'invite-msg']) assert.ok(ids.includes(id), id);
   assert.match(html, /<form class="invite[^"]*" id="invite"/);
   assert.match(main, /new URLSearchParams\(location\.search\)\.get\('promo'\)/, 'an invite link: /?promo=CODE pre-fills the field');
-  assert.match(main, /\$\{SITE_BASE\}\/lobby\.html\$\{invite \? `\?promo=\$\{encodeURIComponent\(invite\)\}#promo` : ''\}/, 'the lobby is opened on #promo with the code, url-encoded');
+  assert.match(main, /\$\{SITE_BASE\}\/lobby\.html\$\{code \? `\?promo=\$\{encodeURIComponent\(code\)\}#promo` : ''\}/, 'the lobby is opened on #promo with the code, url-encoded');
+  assert.match(main, /const code = inviteIn\.value\.trim\(\) \|\| invite;/, 'a code typed but not submitted survives CONNECT');
+  assert.match(main, /const CODE_SHAPE = \/\^\[A-Z0-9_-\]\{3,32\}\$\//, 'only a code-shaped string is tracked');
   assert.match(main, /\$\('invite'\)\.onsubmit/);
   assert.match(main, /track\('promo_invite_viewed'/); assert.match(main, /track\('promo_invite_submitted'/);   // the funnel's first two steps (docs/analytics, funnel 9)
   assert.doesNotMatch(main, /inviteMsg\.(innerHTML|insertAdjacentHTML)/);

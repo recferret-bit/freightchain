@@ -1,6 +1,6 @@
 import { BadRequestError } from '../shared/errors.js';
 import { isPaidTierId } from '../rides/ride-tier.js';
-import { isCosmeticSlot, isUnlockableCosmetic } from './cosmetics.js';
+import { COSMETIC_SLOTS, isCosmeticSlot, isUnlockableCosmetic } from './cosmetics.js';
 import type { PromoCodeProps, PromoEffect, PromoState } from './promo.types.js';
 
 const CODE_RE = /^[A-Z0-9_-]{3,32}$/;
@@ -32,7 +32,7 @@ export class PromoCode {
     } else if (e.kind === 'free_rides') {
       if (!Number.isInteger(e.count) || e.count < 1 || e.count > MAX_FREE_RIDES_PER_CODE) throw new BadRequestError(`free rides: 1–${MAX_FREE_RIDES_PER_CODE} per redemption`, 'bad_promo_code');
     } else if (e.kind === 'cosmetic') {
-      if (!isCosmeticSlot(e.slot)) throw new BadRequestError('cosmetic slot must be wheel, truck_color or gearbox', 'bad_promo_code');
+      if (!isCosmeticSlot(e.slot)) throw new BadRequestError(`cosmetic slot must be one of ${COSMETIC_SLOTS.join(', ')}`, 'bad_promo_code');
       if (!isUnlockableCosmetic(e.slot, e.item)) throw new BadRequestError(`${String(e.item)} is not an unlockable ${e.slot}`, 'bad_promo_code');
     } else {
       throw new BadRequestError('unknown promo effect', 'bad_promo_code');

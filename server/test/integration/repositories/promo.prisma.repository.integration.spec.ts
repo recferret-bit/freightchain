@@ -82,6 +82,11 @@ describe('PromoPrismaRepository (PostgreSQL)', () => {
     expect((await repo.findByCode('OLD'))?.snapshot()).toMatchObject({ effect: { kind: 'tickets', tier: '1h', poolId: null, credits: 2 }, startsAt: at(3), description: null });
   });
 
+  it('a row the catalog cannot read (an unknown kind, a ticket code without a tier) is an error, never a guessed grant', async () => {
+    await prisma.$executeRaw`INSERT INTO "economy"."PromoCode" ("code", "kind", "createdAt", "startsAt") VALUES ('WEIRD', 'cash', ${at(1)}, ${at(1)})`;
+    await expect(repo.findByCode('WEIRD')).rejects.toThrow(/unreadable effect/);
+  });
+
   it('listRedemptions: newest first, narrowed by code and / or wallet, limited', async () => {
     await repo.insert(promo('AAA', { perWallet: 2 })); await repo.insert(promo('BBB'));
     for (const [code, wallet, n, t] of [['AAA', 'a', 1, 1], ['BBB', 'a', 1, 2], ['AAA', 'b', 1, 3], ['AAA', 'a', 2, 4]] as const) await inTx(prisma, (tx) => repo.insertRedemption(code, wallet, n, at(t), tx));

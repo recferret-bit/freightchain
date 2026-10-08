@@ -1,6 +1,6 @@
 /* The cosmetics catalog: what a promo code can unlock and a player can wear in the cab. VISUALS ONLY – no item changes handling, shifting or any rule of the game, and for
-   now only COLOURS differ (the shapes are fixed in client/js/cockpit/rig.js). Three slots, each its own kind of promo code: the steering `wheel` (rim, sheen ring, spokes, hub),
-   the `truck_color` (the hood and fenders you look over, and the trim of the windscreen frame and dashboard edge) and the `gearbox` (the floor shifter: knob, boot, lever).
+   now only COLOURS differ (the shapes are fixed in client/js/cockpit/rig.js). Five slots, each its own kind of promo code: the steering `wheel` (rim, sheen ring, spokes, hub),
+   the `truck_color` (the hood and fenders you look over, and the trim of the windscreen frame and dashboard edge) and the `gearbox` (the floor shifter: knob, boot, lever), the `dice` hanging from the mirror and the `needle`s of the big gauges.
    Later an NFT will replace / extend these items – the slot model stays, so more slots or items from a collection can be added without touching the plumbing.
    Mirrored by client/js/cosmetics.js (a leaf module: the landing's dash cards run the cockpit without three.js) – keep the ids and defaults equal;
    test/unit/domain/economy/cosmetics.spec.ts reads that file and fails on drift. To add an item: append it here AND in the client module and give it a palette in LOOKS there.

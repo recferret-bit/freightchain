@@ -4,8 +4,9 @@ import { unitContext } from '../../../../support/unit-context.js';
 
 const setup = async () => {
   const ctx = unitContext();
+  await ctx.player('w'); await ctx.player('thief');
   for (const [slot, item] of [['wheel', 'gold'], ['dice', 'pink'], ['needle', 'lime']] as const) await ctx.cosmetics.unlock({ wallet: 'w', slot, item, code: item.toUpperCase(), at: ctx.now() });
-  const handler = new SaveGarageHandler(ctx.cosmetics, ctx.transactions, ctx.clock, ctx.analytics);
+  const handler = new SaveGarageHandler(ctx.cosmetics, ctx.players, ctx.transactions, ctx.clock, ctx.analytics);
   return { ctx, save: (parts: ConstructorParameters<typeof SaveGarageCommand>[1], wallet = 'w') => handler.execute(new SaveGarageCommand(wallet, parts)) };
 };
 
@@ -38,6 +39,11 @@ describe('SaveGarageHandler', () => {
     await expect(save({ wheel: 'racing' })).rejects.toMatchObject({ errorCode: 'bad_cosmetic', statusCode: 400 });
     await expect(save({})).rejects.toMatchObject({ errorCode: 'bad_cosmetic', statusCode: 400 });
     expect(await ctx.cosmetics.listEquipped('w')).toEqual({});
+  });
+
+  it('a wallet that never signed in is a 404', async () => {
+    const { save } = await setup();
+    await expect(save({ wheel: 'classic' }, 'ghost')).rejects.toMatchObject({ statusCode: 404 });
   });
 
   it('another wallet cannot wear this wallet\'s parts', async () => {

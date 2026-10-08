@@ -1,5 +1,5 @@
 /* Cosmetics: what a promo code can unlock and the cockpit draws – VISUALS ONLY, no item changes handling or shifting, and for now only COLOURS differ (the shapes are fixed in
-   cockpit/rig.js). Three slots, each its own kind of promo code: the steering `wheel` (rim, sheen ring, spokes, hub), the `truck_color` (the hood and fenders you look over, plus
+   cockpit/rig.js). Five slots, each its own kind of promo code: the steering `wheel` (rim, sheen ring, spokes, hub), the `truck_color` (the hood and fenders you look over, plus
    the trim of the windscreen frame and the dashboard edge) and the `gearbox` (the floor shifter: knob, boot, lever). Later an NFT replaces / extends the items – the slot model stays.
    A leaf module (no imports: the landing's dash cards run cockpit/* without three.js). The catalog mirrors server/src/domain/economy/cosmetics.ts – a server test
    (cosmetics.spec.ts) reads COSMETICS below and fails on drift. The first item of a slot is its default. To add an item: append its id here and in the server file and give it a palette

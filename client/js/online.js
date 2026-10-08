@@ -26,7 +26,7 @@ export async function initOnline() {
     if (r.status !== 'created') throw new Error(`this ride is ${r.status} – start a new one in the lobby`);
     online.ride = r;
     CFG.RIDE_MIN_SECONDS = r.minSeconds; CFG.COMPLETE_DIST = r.completeDist;   // both: COMPLETE_DIST was derived from RIDE_MIN_SECONDS at load
-    api('wardrobe').then(w => setLoadout(w.equipped), () => { /* the default cockpit: a promo cosmetic is only a look */ });   // what the lobby's PROMO tab equipped; not awaited – the menu must not wait for a look
+    api('wardrobe').then(w => { if (!online.started) setLoadout(w.equipped); }, () => { /* the default cockpit: a promo cosmetic is only a look */ });   // what the lobby's PROMO tab equipped; not awaited – the menu must not wait for a look
   } catch (e) {
     online.status = typeof e.status === 'number' ? e.status : null;
     online.code = typeof e.code === 'string' ? e.code : null;

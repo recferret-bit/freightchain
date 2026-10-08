@@ -4,7 +4,7 @@ import type { CosmeticSlot } from './cosmetics.js';
 /* What redeeming a promo code does (one effect per code):
    - tickets: free paid-ride tickets of a tier – an off-chain grant into a pool, i.e. a sponsored entry; it does NOT count towards the pool's minimum (docs/paid-tickets-plan.md §8)
    - free_rides: extra FREE rides on top of the daily ones – may take the balance above `freeRidesMax` (the daily refill only adds below the cap and never takes anything away)
-   - cosmetic: unlocks one visual (wheel / truck colour / gearbox) and equips it – docs/promocodes.md */
+   - cosmetic: unlocks one colour part of the cockpit (wheel / truck colour / gearbox / dice / needle) and equips it – docs/promocodes.md */
 export type PromoEffect =
   | { kind: 'tickets'; tier: PaidTierId; /** null = the live pool of the tier still selling at redemption time */ poolId: number | null; /** tickets per redemption */ credits: number }
   | { kind: 'free_rides'; count: number }

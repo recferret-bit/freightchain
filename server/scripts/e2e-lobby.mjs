@@ -148,7 +148,7 @@ check('PROMO: the NEW RIDE form links to the PROMO tab and the GARAGE', await un
 await obs.ev('location.hash = "#promo"');
 check('PROMO tab: the form, a link to the garage, no codes yet', await until(async () => /Parts you unlock are waiting in your garage/.test(await txt(obs, '#view')) && /No codes redeemed yet/.test(await txt(obs, '#my-codes'))));
 const promoGo = async code => { await obs.ev(`document.getElementById("promo-code").value = ${JSON.stringify(code)}; document.getElementById("promo-go").click()`); await until(async () => !/Redeeming/.test(await txt(obs, '#promo-msg')) && (await txt(obs, '#promo-msg')) !== ''); return txt(obs, '#promo-msg'); };
-check('PROMO: THREE → +3 free rides, the chip shows 8 of 5 (above the daily cap)', /^\+3 free rides \(THREE\) · you now have 8/.test(await promoGo('three')) && await until(async () => /8\/5 free rides/.test(await txt(obs, '#chip-free'))), await txt(obs, '#chip-free'));
+check('PROMO: THREE → +3 free rides, the chip shows 8 as a bonus (above the daily cap)', /^\+3 free rides \(THREE\) · you now have 8/.test(await promoGo('three')) && await until(async () => /8 free rides \(bonus\)/.test(await txt(obs, '#chip-free'))), await txt(obs, '#chip-free'));
 check('PROMO: …and the next daily credit is not counted down (at / above the cap)', /full/.test(await txt(obs, '#chip-free')), await txt(obs, '#chip-free'));
 check('PROMO: THREE again is refused with the reason', /already redeemed/.test(await promoGo('THREE')), await txt(obs, '#promo-msg'));
 check('PROMO: GOLDWHEEL → unlocked and worn, with a pointer to the garage', /^Unlocked wheel: gold \(GOLDWHEEL\)/.test(await promoGo('goldwheel')) && /GARAGE/.test(await txt(obs, '#promo-msg')), await txt(obs, '#promo-msg'));

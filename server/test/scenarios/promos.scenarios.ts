@@ -265,8 +265,9 @@ export function promoScenarios(h: () => Harness): void {
       const bad = { ...promo, effect: { kind: 'free_rides', count: 0 } };
       await post({ promo: bad, signature: 'x' }).expect(400); // not even a promo
       const tooEarly = { ...promo, expiresAt: now() - 1 };
-      const early = await signed(admin, 'create', { action: 'promo_create', promo: tooEarly });
-      expect((await post({ promo: tooEarly, signature: early.signature }).expect(400)).body).toMatchObject({ code: 'bad_promo_code' });
+      // what the entity would refuse is refused when the TEXT is asked for – the wallet is never asked to sign it, no signature is spent
+      expect((await admin.agent.post('/api/admin/promos/challenge').set('x-fc-admin', '1').send({ action: 'promo_create', promo: tooEarly }).expect(400)).body).toMatchObject({ code: 'bad_promo_code' });
+      expect((await admin.agent.post('/api/admin/promos/challenge').set('x-fc-admin', '1').send({ action: 'promo_create', promo: { ...promo, description: 'x'.repeat(201) } }).expect(400)).body).toMatchObject({ code: 'bad_promo_code' });
       expect((await admin.agent.get('/api/admin/promos').expect(200)).body.promos).toEqual([]);
       expect((await admin.agent.get('/api/admin/actions').expect(200)).body.rows.map((r: { action: string }) => r.action)).toEqual(['auth.signin']);
     });

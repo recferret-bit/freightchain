@@ -1,8 +1,9 @@
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { COSMETIC_SLOTS, defaultCosmetic, isCosmeticItem } from '../../../../domain/economy/cosmetics.js';
 import { toGarageDto, type GarageDto } from '../../../../domain/economy/garage.dto.js';
-import { BadRequestError, ConflictError } from '../../../../domain/shared/errors.js';
+import { BadRequestError, ConflictError, NotFoundError } from '../../../../domain/shared/errors.js';
 import { AnalyticsPort } from '../../../ports/analytics/analytics.port.js';
+import { PlayerRepositoryPort } from '../../../ports/players/player.repository.port.js';
 import { CosmeticRepositoryPort } from '../../../ports/players/cosmetic.repository.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
 import { TransactionPort } from '../../../ports/shared/transaction.port.js';
@@ -18,6 +19,7 @@ import { SaveGarageCommand } from './save-garage.command.js';
 export class SaveGarageHandler implements ICommandHandler<SaveGarageCommand, GarageDto> {
   constructor(
     private readonly cosmetics: CosmeticRepositoryPort,
+    private readonly players: PlayerRepositoryPort,
     private readonly transactions: TransactionPort,
     private readonly clock: ClockPort,
     private readonly analytics: AnalyticsPort,
@@ -27,6 +29,7 @@ export class SaveGarageHandler implements ICommandHandler<SaveGarageCommand, Gar
     const picks = COSMETIC_SLOTS.flatMap((slot) => (parts[slot] === undefined ? [] : [[slot, parts[slot] as string] as const]));
     if (picks.length === 0) throw new BadRequestError('pick at least one part', 'bad_cosmetic');
     const saved = await this.transactions.run(async (tx) => {
+      if (!(await this.players.findByWalletForUpdate(wallet, tx))) throw new NotFoundError('player not found');   // the player row lock, like every wallet change
       const unlocked = await this.cosmetics.listUnlocked(wallet, tx);
       for (const [slot, item] of picks) {
         if (!isCosmeticItem(slot, item)) throw new BadRequestError(`no such ${slot}: ${item}`, 'bad_cosmetic');

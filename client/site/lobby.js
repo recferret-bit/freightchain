@@ -27,7 +27,7 @@ const km = m => (m / 1000).toFixed(m < 10_000 ? 2 : 1);
 /* ───────── state ───────── */
 const S = { me: null, tiers: null, pool: null, live: { rides: [] }, liveAt: 0, skew: 0, board: 'round', pending: null, pendingNote: '', tab: 'new', busy: null, qty: {}, msgs: {}, poolInfo: {}, order: null, focus: null };
 const now = () => Date.now() + S.skew;   // server clock (skew learned from /api/live)
-const freeLeft = m => `${m.freeRides}/${m.freeRidesMax} free ride${m.freeRides === 1 ? '' : 's'}`;
+const freeLeft = m => (m.freeRides > m.freeRidesMax ? `${m.freeRides} free rides (bonus)` : `${m.freeRides}/${m.freeRidesMax} free ride${m.freeRides === 1 ? '' : 's'}`);   // a promo can take the balance above the daily cap
 const freeCd = m => m.nextFreeRideAt == null ? 'full' : `+1 in ${left(m.nextFreeRideAt - now())}`;   // the daily credit lands at 00:00 UTC, up to the cap
 
 function paintHeader() {
@@ -207,7 +207,7 @@ async function redeem(e) {
   const input = $('promo-code'), go = $('promo-go'), code = input.value.trim(), m = $('promo-msg');
   const show = (text, cls) => { m.textContent = text; m.className = `msg ${cls}`; };
   if (!code) { show('Type a promo code first.', 'bad'); return; }
-  track('promo_redeem_clicked', { surface: S.tab === 'promo' ? 'promo' : 'new', prefilled: !!S.invited && code.replace(/\s+/g, '').toUpperCase() === S.invited });   // before the request; the server's promo_redeemed is the outcome
+  track('promo_redeem_clicked', { surface: S.tab === 'promo' ? 'promo' : 'new', prefilled: !!S.invited && code.replace(/\s+/g, '').toUpperCase() === S.invited }); S.invited = null;   // before the request; the server's promo_redeemed is the outcome
   go.disabled = true; show('Redeeming…', 'dim');
   try {
     const r = await api('promo/redeem', { code }); input.value = ''; show(promoOk(r), 'good'); if (r.kind === 'tickets') S.focus = r.tier;
