@@ -86,6 +86,7 @@ Docker project `freightchain-prod`: `postgres` (no published port, named volume 
 ## What the first deploy changes on the server
 - creates `/srv/freightchain/…`
 - adds `/etc/nginx/sites-*/freightchain` (apex, `ride.`, `api.`), `freightchain-storybook` (`storybook.`) and `freightchain-admin` (`admin.`, after writing `/etc/nginx/freightchain-admin.htpasswd`) (each only if absent; removed again if `nginx -t` fails) and reloads nginx – a server set up before a site existed gets it on the next deploy
+- writes the managed media cache (`/etc/nginx/conf.d/freightchain-media.conf` = `proxy_cache_path`, `/etc/nginx/snippets/freightchain-media.conf` = the `/media/*.mp4` cache location) and adds ONE `include` of that snippet after the `server_name <apex> ride.<apex>;` line of the apex site – also into a site installed earlier, certbot's 443 block included (idempotent; restored if `nginx -t` fails). `deploy` runs setup by itself while that include is missing
 - runs `certbot --nginx -d <apex> -d ride.<apex> -d api.<apex> -d storybook.<apex> -d admin.<apex> --redirect` (re-runs with `--expand` if the certificate lacks a name)
 - starts two containers and one volume
 

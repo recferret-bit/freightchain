@@ -6,26 +6,13 @@
 # The app serves client/ and /api on all three; the browser reaches the API on api.* with CORS + the session cookie of the shared parent domain (COOKIE_DOMAIN / CORS_ORIGINS in the app env).
 # To add a domain/subdomain later: add a server block here (+ `certbot --nginx --expand -d ...`), and its origin to CORS_ORIGINS if the browser calls the API from it.
 
-# The landing's hero loop (/media/hero.mp4, ~2.7 MB, fetched lazily after `load`): nginx caches it and answers the browser's Range requests itself, so the app is hit once per release.
-proxy_cache_path /var/cache/nginx/freightchain_media levels=1:2 keys_zone=fc_media:1m max_size=64m inactive=7d use_temp_path=off;
-
 server {
     listen 80;
     listen [::]:80;
     server_name __ROOT__ ride.__ROOT__;
+    include /etc/nginx/snippets/freightchain-media.conf;   # the cached hero loop (/media/*.mp4) – written by remote/setup.sh, which also adds this line to an already installed site
 
     client_max_body_size 1m;
-
-    location ~* ^/media/[\w.-]+\.mp4$ {
-        proxy_pass http://127.0.0.1:__PORT__;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_cache fc_media;
-        proxy_cache_valid 200 1d;
-        proxy_cache_lock on;
-        add_header X-Cache $upstream_cache_status;
-        add_header Cache-Control "public, max-age=86400";
-    }
 
     location / {
         proxy_pass http://127.0.0.1:__PORT__;

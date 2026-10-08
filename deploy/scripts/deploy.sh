@@ -29,7 +29,7 @@ app_env | node "$DEPLOY_DIR/scripts/validate-env.mjs" || die "deploy/.env is not
 
 # ---- 3. the server
 info "checking ssh to ${DEPLOY_USER}@${DEPLOY_HOST}"; check_ssh
-SETUP_DONE=1; rsh "test -f '$DEPLOY_PATH/state/setup-done' && test -f /etc/nginx/sites-available/freightchain-storybook && test -f /etc/nginx/sites-available/freightchain-admin" 2>/dev/null || SETUP_DONE=0
+SETUP_DONE=1; rsh "test -f '$DEPLOY_PATH/state/setup-done' && test -f /etc/nginx/sites-available/freightchain-storybook && test -f /etc/nginx/sites-available/freightchain-admin && test -f /etc/nginx/snippets/freightchain-media.conf && grep -q freightchain-media /etc/nginx/sites-available/freightchain" 2>/dev/null || SETUP_DONE=0
 CURRENT="$(rsh "cat '$DEPLOY_PATH/state/current' 2>/dev/null || true")"
 
 cat <<PLAN

@@ -16,6 +16,26 @@ mkdir -p "$DEPLOY_PATH/releases" "$DEPLOY_PATH/backups" "$DEPLOY_PATH/state"
 chmod 700 "$DEPLOY_PATH/backups" "$DEPLOY_PATH/state"
 say "folders ready under $DEPLOY_PATH"
 
+# The landing's hero loop (/media/hero.mp4, ~2.7 MB, fetched lazily after `load`): nginx caches it and answers Range requests itself, so the app is hit once per release.
+# Two managed files (rewritten on every setup) + ONE include line in the apex/ride. server blocks – added to an already installed site too (certbot's 443 copy included), idempotent, undone if nginx -t fails.
+mkdir -p /var/cache/nginx/freightchain_media /etc/nginx/snippets /etc/nginx/conf.d
+cat > /etc/nginx/conf.d/freightchain-media.conf <<'CONF'
+proxy_cache_path /var/cache/nginx/freightchain_media levels=1:2 keys_zone=fc_media:1m max_size=64m inactive=7d use_temp_path=off;
+CONF
+cat > /etc/nginx/snippets/freightchain-media.conf <<CONF
+location ~* ^/media/[\\w.-]+\\.mp4\$ {
+    proxy_pass http://127.0.0.1:$APP_PORT;
+    proxy_http_version 1.1;
+    proxy_set_header Host \$host;
+    proxy_cache fc_media;
+    proxy_cache_valid 200 1d;
+    proxy_cache_lock on;
+    add_header X-Cache \$upstream_cache_status;
+    add_header Cache-Control "public, max-age=86400";
+}
+CONF
+say "media cache + snippet written"
+
 SITE=/etc/nginx/sites-available/freightchain
 if [ -f "$SITE" ]; then
   say "nginx site $SITE exists – left as it is (certbot's TLS block lives in it)"
@@ -26,6 +46,17 @@ else
   if ! nginx -t 2>/dev/null; then rm -f /etc/nginx/sites-enabled/freightchain "$SITE"; nginx -t || true; fail "nginx rejected the new site – removed it again; nothing changed"; fi
   systemctl reload nginx
   say "nginx site for $DOMAIN, ride.$DOMAIN, api.$DOMAIN installed and reloaded (the default site is untouched)"
+fi
+
+# An existing site predates the include: add it after every `server_name <apex> ride.<apex>;` (the :80 block and certbot's :443 copy).
+if [ -f "$SITE" ] && ! grep -q 'snippets/freightchain-media.conf' "$SITE"; then
+  cp "$SITE" "$SITE.bak-media"
+  awk -v pat="^[[:space:]]*server_name $DOMAIN ride\\.$DOMAIN;" '{ print } $0 ~ pat { print "    include /etc/nginx/snippets/freightchain-media.conf;" }' "$SITE.bak-media" > "$SITE"
+  if grep -q 'snippets/freightchain-media.conf' "$SITE" && nginx -t 2>/dev/null; then
+    systemctl reload nginx; rm -f "$SITE.bak-media"; say "media cache include added to $SITE and nginx reloaded"
+  else
+    mv "$SITE.bak-media" "$SITE"; nginx -t || true; fail "could not add the media include to $SITE – restored it; nothing changed"
+  fi
 fi
 
 # storybook.<apex> (the model viewer) is its own site file, so it can be added to a server that already has the main site; certbot --expand below adds its TLS block.
