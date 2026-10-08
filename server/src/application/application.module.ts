@@ -46,6 +46,8 @@ import { ListPromosHandler } from './use-cases/promos/list-promos/list-promos.ha
 import { DisablePromoHandler } from './use-cases/promos/disable-promo/disable-promo.handler.js';
 import { GrantTicketsHandler } from './use-cases/players/grant-tickets/grant-tickets.handler.js';
 import { FinalityService } from './services/finality.service.js';
+import { PollProgramHandler } from './use-cases/chain/poll-program/poll-program.handler.js';
+import { SyncPoolsHandler } from './use-cases/chain/sync-pools/sync-pools.handler.js';
 
 const services: Provider[] = [AchievementService, PaymentSettlementService, PlayerSessionService, PoolTicketsService, RideLookupService, RoundService, TicketSettlementService, PoolRegistryService, FinalityService];
 
@@ -62,6 +64,7 @@ const handlers: Provider[] = [
   CreateTicketOrderHandler, GetTicketOrderHandler, GetPendingTicketOrderHandler,
   SettleChainSignatureHandler,
   GetChainFeesHandler,
+  PollProgramHandler, SyncPoolsHandler,
 ];
 
 @Module({
