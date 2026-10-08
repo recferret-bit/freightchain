@@ -83,7 +83,7 @@ Until then production stays as it is (`PAYMENT_MODE=transfer`, no escrow keys in
 
 ### Phase 0 – local (no chain, no money)
 - [ ] Merge `localnet-e2e` into `main` – Q-A. Rebased on `main` and green (`npm run check` 901 tests, localnet 80 checks, devnet path 70) on Oct 8; the fast-forward waits for the main checkout's uncommitted `landing/src/main.js` edits (another session) – then `git merge --ff-only localnet-e2e` there. After the merge, rerun `devnet.sh env` in the main checkout (`server/.env.devnet` is per checkout)
-- [ ] `npm run program:verify` in the main checkout; `npm run test:localnet` green there
+- [x] `npm run program:verify` in the main checkout (Oct 8: reproduced `8846f590…`, 49 tests, clippy, audit) – `npm run test:localnet` there after the merge
 - [x] Deploy smoke test: program-mode checks (no pay-per-ride fallback, pools listed, the webhook refuses a call without its secret, the fee quote answers) – `deploy/scripts/smoke.mjs`, run at the end of every `test:localnet`
 - [x] `server/scripts/devnet-payout.mjs` (`devnet.sh payout <poolId> [--yes]`): signs in as the admin, pays the ranked prizes, closes, settles each
 - [x] The rehearsal: the localnet scenario itself runs against devnet (`devnet.sh rehearse` = `TARGET=devnet run.sh`: no validator / baked pools, players funded by `funder` and swept back, small prices, own server on a throwaway DB); `LIKE_DEVNET=1` tests that path on the local validator
