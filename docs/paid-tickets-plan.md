@@ -99,6 +99,8 @@ model TicketGrant { id String @id @default(uuid()); wallet String; poolId Int; d
 | `GET /api/me`, `/api/profile` | + `tickets: [{ poolId, tier, label, balance, bought, cap, status }]`; profile + `grants` (last 20) | W2 |
 | `POST /api/rides {tier}` | spends a ticket of the newest **active** pool of that tier (409 `no <tier> tickets left`; 409 `pool not live yet – n more tickets needed` if the wallet's only tickets are in an `open` pool) | W2 |
 | `POST /api/promo/redeem {code}` | `{ poolId, added, balance, cap }` · 404 / 409 as before | W2 |
+
+> **Later (promo codes branch, Oct 8):** a code now has ONE of three effects – tickets (this section), extra free rides, a cosmetic – plus a start time and a description, and the answer carries `kind` (`{kind:'tickets', code, label, poolId, tier, added, balance, cap}` …). The ticket semantics here are unchanged. Everything new is in `docs/promocodes.md`.
 | `POST /api/tickets {poolId, qty}` | `TicketOrderDto { id, poolId, qty, lamports, status, paidAt, refundedAt }` · 409 pool not open / over cap / another order live · 503 chain not configured | W3; no price quote any more – the price is on the pool |
 | `GET /api/tickets/orders/:id` | `TicketOrderDto` (the client polls until `paid`) | W3 |
 | `GET /api/tickets/orders/:id/payment` | `{ mode, programId, pool, lamports, blockhash, lastValidBlockHeight, transaction }` | W3 → W4 |
