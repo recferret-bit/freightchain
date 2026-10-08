@@ -56,5 +56,6 @@ model Ride {
   @@index([roundId, status])
   @@index([wallet, startedAt])
   @@index([poolId, status])
+  @@index([status, endedAt]) // the replays history: ended rides, newest end first
   @@schema("ride")
 }

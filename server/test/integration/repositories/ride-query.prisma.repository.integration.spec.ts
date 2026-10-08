@@ -53,6 +53,22 @@ describe('RideQueryPrismaRepository (PostgreSQL)', () => {
     expect(await query.staleRunning(at(100), 1)).toHaveLength(1);
   });
 
+  it('history: ended rides newest end first, a stable (endedAt, seq) cursor, wallet / status filters, and whether a recording is kept – in one query', async () => {
+    const a = await ride('alice', { metres: 50, outcome: 'shift', start: 0 });        // ended at 10
+    const b = await ride('bob', { metres: 70, outcome: 'failed', start: 0 });         // ended at 10 too: the seq breaks the tie
+    const c = await ride('carol', { metres: 10, outcome: 'failed', start: 20 });      // ended at 30
+    await ride('alice', { metres: 5, outcome: 'running', start: 40 });
+    await prisma.rideBatch.create({ data: { rideId: a.id, seq: 0, prevHash: a.id, hash: null, hashOk: false, t0: 0, t1: 1, samples: 0, inputs: 0, bytes: 2, payload: Buffer.from([0x1f, 0x8b]), receivedAt: at(1) } });
+    const all = await query.history({ before: null, limit: 10, wallet: null, status: null });
+    expect(all.map((r) => r.id)).toEqual([c.id, b.id, a.id]);
+    expect(all.map((r) => r.recorded)).toEqual([false, false, true]);
+    const second = await query.history({ before: { endedAt: all[1]!.endedAt, seq: all[1]!.seq }, limit: 10, wallet: null, status: null });
+    expect(second.map((r) => r.id)).toEqual([a.id]);   // same endedAt as b, an older seq
+    expect((await query.history({ before: null, limit: 10, wallet: 'alice', status: null })).map((r) => r.id)).toEqual([a.id]);
+    expect((await query.history({ before: null, limit: 10, wallet: null, status: 'failed' })).map((r) => r.id)).toEqual([c.id, b.id]);
+    expect(await query.history({ before: null, limit: 1, wallet: null, status: null })).toHaveLength(1);
+  });
+
   it('upcoming: only paid, not-yet-started shifts, most recently paid first – free and started rides never queue', async () => {
     const a = orderAt('alice', at(0)); a.markPaid(1, at(10)); await rides.insert(a);
     const b = orderAt('bob', at(5)); b.markPaid(1, at(20)); await rides.insert(b);

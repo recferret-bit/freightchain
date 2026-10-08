@@ -39,6 +39,7 @@ import { GetInboxHandler } from './use-cases/live/get-inbox/get-inbox.handler.js
 import { WatchRideHandler } from './use-cases/live/watch-ride/watch-ride.handler.js';
 import { MuteWalletHandler } from './use-cases/live/mute-wallet/mute-wallet.handler.js';
 import { SweepStaleRidesHandler } from './use-cases/rides/sweep-stale-rides/sweep-stale-rides.handler.js';
+import { GetReplaysHandler } from './use-cases/lobby/get-replays/get-replays.handler.js';
 import { CreateDonationOrderHandler } from './use-cases/live/create-donation-order/create-donation-order.handler.js';
 import { ConfirmDonationHandler } from './use-cases/live/confirm-donation/confirm-donation.handler.js';
 import { LiveAccessService } from './services/live-access.service.js';
@@ -91,7 +92,7 @@ const handlers: Provider[] = [
   CreateRideHandler, GetRideHandler, GetPendingRideHandler, StartRideHandler, HeartbeatRideHandler, EndRideHandler,
   GetPaymentInstructionsHandler, ConfirmPaymentHandler, ReconcilePaymentHandler,
   UploadBatchHandler, SweepTelemetryHandler,
-  PostRideEventHandler, AckEffectHandler, GetInboxHandler, WatchRideHandler, MuteWalletHandler, CreateDonationOrderHandler, ConfirmDonationHandler, SweepStaleRidesHandler,
+  PostRideEventHandler, AckEffectHandler, GetInboxHandler, WatchRideHandler, MuteWalletHandler, CreateDonationOrderHandler, ConfirmDonationHandler, SweepStaleRidesHandler, GetReplaysHandler,
   GetAdminOverviewHandler, ListAdminRidesHandler, GetAdminRideHandler, ListSignInsHandler, ListAdminActionsHandler, GetAdminLogsHandler, OverrideVerdictHandler, RejudgeRideHandler, RequestAdminChallengeHandler, VerifyAdminSignInHandler, RequestActionChallengeHandler,
   GetTiersHandler, GetPoolHandler, GetLeaderboardHandler,
   GetLiveHandler, GetProfileHandler,

@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
+import type { Prisma, RideStatus as RideStatusRow } from '@prisma/client';
 import type { LeaderboardBoard } from '../../../domain/economy/economy.dto.js';
 import {
-  RideQueryPort, type FinishedRideRow, type LeaderboardRow, type LiveRideRow, type RecentRideRow, type RideSummary, type RideTotalsRow, type UpcomingRideRow,
+  RideQueryPort, type FinishedRideRow, type HistoryFilter, type HistoryRideRow, type LeaderboardRow, type LiveRideRow, type RecentRideRow, type RideSummary, type RideTotalsRow, type UpcomingRideRow,
 } from '../../../application/ports/rides/ride-query.port.js';
 import { PrismaService } from '../prisma.service.js';
 
@@ -29,6 +29,23 @@ export class RideQueryPrismaRepository extends RideQueryPort {
       ? [{ id: r.id, wallet: r.wallet, tier: r.tier, route: r.route, minSeconds: r.minSeconds, completeDist: r.completeDist, driveSeconds: r.driveSeconds, lastS: r.lastS, hull: r.hull,
         paused: r.paused, timeScale: r.timeScale, startedAt: r.startedAt, lastHbAt: r.lastHbAt }]
       : []));
+  }
+
+  /** One query: the page of ended rides + whether each still has a recording (a relation count, no N+1). Uses the (status, endedAt) index. */
+  async history(f: HistoryFilter): Promise<HistoryRideRow[]> {
+    const ended = f.status ? [f.status] : ['completed', 'abandoned', 'failed'];
+    const rows = await this.prisma.ride.findMany({
+      where: {
+        status: { in: ended as RideStatusRow[] }, startedAt: { not: null }, endedAt: { not: null }, ...(f.wallet ? { wallet: f.wallet } : {}),
+        ...(f.before ? { OR: [{ endedAt: { lt: f.before.endedAt } }, { endedAt: f.before.endedAt, seq: { lt: f.before.seq } }] } : {}),
+      },
+      orderBy: [{ endedAt: 'desc' }, { seq: 'desc' }], take: f.limit,
+      include: { _count: { select: { batches: true } } },
+    });
+    return rows.map((r) => ({
+      id: r.id, seq: r.seq, wallet: r.wallet, tier: r.tier, route: r.route, status: r.status, reason: r.reason, lastS: r.lastS, driveSeconds: r.driveSeconds,
+      minSeconds: r.minSeconds, timeScale: r.timeScale, startedAt: r.startedAt as Date, endedAt: r.endedAt as Date, recorded: r._count.batches > 0,
+    }));
   }
 
   async staleRunning(cutoff: Date, limit: number): Promise<{ id: string; wallet: string }[]> {

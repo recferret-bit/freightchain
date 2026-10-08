@@ -1,20 +1,34 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
 import { QueryBus } from '@nestjs/cqrs';
-import type { LiveFeedDto, ProfileDto } from '../../domain/lobby/lobby.dto.js';
+import type { LiveFeedDto, ProfileDto, ReplaysDto } from '../../domain/lobby/lobby.dto.js';
 import { GetLiveQuery } from '../../application/use-cases/lobby/get-live/get-live.query.js';
 import { GetProfileQuery } from '../../application/use-cases/lobby/get-profile/get-profile.query.js';
 import { CurrentPlayer } from '../../infrastructure/http/decorators/current-player.js';
 import { PlayerAuthGuard } from '../../infrastructure/http/guards/player-auth.guard.js';
+import { OptionalSessionGuard } from '../../infrastructure/http/guards/optional-session.guard.js';
+import { OptionalSession } from '../../infrastructure/http/decorators/optional-session.js';
+import { CurrentClient } from '../../infrastructure/http/decorators/client-info.js';
+import { ZodQuery } from '../../infrastructure/http/decorators/zod.js';
+import type { ClientInfo } from '../../domain/auth/sign-in.js';
+import { liveQuerySchema, replaysQuerySchema, type LiveQuery, type ReplaysQuery } from './dto/lobby.dto.js';
+import { GetReplaysQuery } from '../../application/use-cases/lobby/get-replays/get-replays.query.js';
 import type { PlayerIdentity } from '../../infrastructure/http/types/http-request.js';
 
 @Controller('api')
 export class LobbyHttpController {
   constructor(private readonly queryBus: QueryBus) {}
 
-  /** Public – the "who is on the road" feed (poll every ~5 s; no RPC behind it). */
-  @Get('live')
-  live(): Promise<LiveFeedDto> {
-    return this.queryBus.execute<GetLiveQuery, LiveFeedDto>(new GetLiveQuery());
+  /** Public – the "who is on the road" feed (poll every ~5 s; no RPC behind it). `visitor` + `page` count the polling page as online; the session cookie,
+      when sent, counts it as a signed-in player (OptionalSessionGuard never refuses). */
+  @Get('live') @UseGuards(OptionalSessionGuard)
+  live(@ZodQuery(liveQuerySchema) query: LiveQuery, @CurrentClient() client: ClientInfo, @OptionalSession() wallet: string | null): Promise<LiveFeedDto> {
+    return this.queryBus.execute<GetLiveQuery, LiveFeedDto>(new GetLiveQuery(query.visitor, query.page, client.ip ?? '', wallet));
+  }
+
+  /** Public – the replays history: rides that ended, newest first, `before`-paged, each saying whether it can still be replayed (play.html?watch=<id>). */
+  @Get('replays')
+  replays(@ZodQuery(replaysQuerySchema) query: ReplaysQuery): Promise<ReplaysDto> {
+    return this.queryBus.execute<GetReplaysQuery, ReplaysDto>(new GetReplaysQuery(query.before, query.limit, query.wallet, query.status));
   }
 
   @Get('profile') @UseGuards(PlayerAuthGuard)

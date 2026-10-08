@@ -36,6 +36,33 @@ export interface FinishedRideRow {
   endedAt: Date | null;
 }
 
+/** One ended ride in the replays history. `seq` is the insertion order – with endedAt, the stable cursor. */
+export interface HistoryRideRow {
+  id: string;
+  seq: bigint;
+  wallet: string;
+  tier: string;
+  route: string | null;
+  status: string;
+  reason: string | null;
+  lastS: number;
+  driveSeconds: number;
+  minSeconds: number;
+  timeScale: number;
+  startedAt: Date;
+  endedAt: Date;
+  /** its recording is still kept (a replay exists) */
+  recorded: boolean;
+}
+
+export interface HistoryFilter {
+  /** only rides that ended before this point (the previous page's last row) */
+  before: { endedAt: Date; seq: bigint } | null;
+  limit: number;
+  wallet: string | null;
+  status: 'completed' | 'abandoned' | 'failed' | null;
+}
+
 /** All-time numbers over completed rides. */
 export interface RideTotalsRow {
   shifts: number;
@@ -85,6 +112,8 @@ export abstract class RideQueryPort {
   abstract upcoming(limit: number): Promise<UpcomingRideRow[]>;
   /** The last rides that started and then ended, newest first. */
   abstract finished(limit: number): Promise<FinishedRideRow[]>;
+  /** The replays history: rides that started and ended, newest end first (ties: newer first), filtered, paged by a cursor. */
+  abstract history(filter: HistoryFilter): Promise<HistoryRideRow[]>;
   /** Completed rides: how many, how far, by how many different wallets. */
   abstract totals(): Promise<RideTotalsRow>;
   abstract summary(wallet: string): Promise<RideSummary>;
