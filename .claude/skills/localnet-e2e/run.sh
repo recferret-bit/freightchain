@@ -5,6 +5,9 @@
 # Env: SO=<path to the .so> (default target/deploy, should be the pinned verifiable build), KEEP=1 keeps the scratch dir (keys, ledger, logs),
 #      PREP_A / PLAY_A / PREP_B = pool deadlines in seconds from creation (defaults in e2e-localnet.mjs).
 # Never touches devnet, the global Solana config or ~/.config/solana/id.json: every key is generated into the scratch dir, every call has an explicit URL.
+# TARGET=devnet (= `bash server/scripts/devnet.sh rehearse`): the SAME scenario against the program on DEVNET – no validator, no baked pools; the RPC and the
+#   program id from server/.env.devnet, the role keys from deploy/secrets/devnet/ (players funded by `funder`, swept back at the end), small prices, its own
+#   server on a throwaway database with the crank schedule off (the scenario runs `pool:crank`). Needs the program deployed + initialized (Phase 1).
 # Needs: the compose PostgreSQL (npm run db:up), server/ dependencies, Chrome, solana-test-validator (Agave 4.1.2), internet once (web3.js + three.js CDNs).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
@@ -31,6 +34,23 @@ cleanup() {
 }
 trap cleanup EXIT
 
+TARGET="${TARGET:-localnet}"
+if [ "$TARGET" = devnet ]; then
+  ENVF="$SERVER/.env.devnet"; [ -f "$ENVF" ] || fail "no server/.env.devnet – bash server/scripts/devnet.sh env"
+  envkey() { grep -E "^$1=" "$ENVF" | head -1 | cut -d= -f2- | sed 's/[[:space:]]*#.*$//'; }   # by key name, never printed
+  MAIN="$(cd "$(dirname "$(git -C "$ROOT" rev-parse --path-format=absolute --git-common-dir)")" && pwd)"; DKEYS="${KEYS_DIR:-$MAIN/deploy/secrets/devnet}"
+  RPC="$(envkey SOLANA_RPC)"; WS="$(envkey SOLANA_WS)"; DEV_PROGRAM="$(envkey TICKET_PROGRAM_ID)"
+  [ -n "$RPC" ] && [ -n "$DEV_PROGRAM" ] || fail "SOLANA_RPC and TICKET_PROGRAM_ID must be set in server/.env.devnet (Phase 1: deploy + devnet.sh env)"
+  [ "$DEV_PROGRAM" = "$PROGRAM_ID" ] || fail "the code is built for $PROGRAM_ID but .env.devnet says $DEV_PROGRAM – run anchor keys sync + rebuild (program-deploy.md step 1–3)"
+  genesis="$(curl -sS -X POST -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"getGenesisHash"}' "$RPC" | node -pe 'JSON.parse(require("fs").readFileSync(0)).result')"
+  [ "$genesis" = EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG ] || fail "SOLANA_RPC is not devnet (genesis $genesis) – refusing"
+  mkdir -p "$TMP/keys"; for r in admin sponsor crank fee seed plat; do cp "$DKEYS/$r.json" "$TMP/keys/$r.json"; done; cp "$DKEYS/funder.json" "$TMP/keys/mint.json"
+  pub() { solana-keygen pubkey "$TMP/keys/$1.json"; }
+  echo "▸ devnet: program $PROGRAM_ID (RPC from server/.env.devnet), keys from $DKEYS"
+  (cd "$SERVER" && npm run --silent build >/dev/null)
+  (cd "$SERVER" && node scripts/pool-admin.mjs show --url "$RPC" | node -e 'const j=JSON.parse(require("fs").readFileSync(0)); if (!j.config) { console.error("the program is not initialized on devnet (Phase 1)"); process.exit(1) } if (j.config.authority !== process.argv[1]) { console.error("Config.authority is not the devnet admin key"); process.exit(1) }' "$(pub admin)") || fail "devnet program not ready"
+  FIXTURES=""
+else
 command -v solana-test-validator >/dev/null || fail "solana-test-validator missing (Agave CLI, see AGENTS.md 'Escrowed pools')"
 [ -f "$SO" ] || fail "$SO missing – build the verifiable binary first: npm run program:verify"
 if command -v solana-verify >/dev/null; then
@@ -71,6 +91,8 @@ ACCOUNTS=(); for f in "$TMP"/accounts/*.json; do [ "$(basename "$f")" = fixtures
 echo "▸ phase 2 – a fresh ledger with the program + the baked Config, pools, vaults and tickets (${#ACCOUNTS[@]} args)"
 start_validator "$TMP/ledger" "${ACCOUNTS[@]}"
 echo "  rpc $RPC"
+FIXTURES="$TMP/accounts/fixtures.json"
+fi
 
 echo "▸ throwaway database $DB"
 nc -z localhost 15433 || (cd "$ROOT" && npm run --silent db:up)
@@ -80,7 +102,7 @@ psql_admin "CREATE DATABASE \"$DB\"" >/dev/null
 # Every key the server reads is set here, so a stray server/.env (dotenv never overrides) cannot point it at devnet or the dev database.
 export DATABASE_URL="$URL" PAYMENT_MODE=program TICKET_PROGRAM_ID="$PROGRAM_ID" SOLANA_RPC="$RPC" SOLANA_WS="$WS" SOLANA_RPC_FALLBACKS= SOLANA_COMMITMENT=confirmed \
   FEE_PAYER_SECRET="$(cat "$TMP/keys/sponsor.json")" CRANK_SECRET="$(cat "$TMP/keys/crank.json")" CRANK_INTERVAL_MS=0 TREASURY_PUBKEY="$(pub admin)" FEE_TREASURY="$(pub fee)" SEED_TREASURY="$(pub seed)" \
-  WATCH_INTERVAL_MS=2000 SOL_USD=118 DEMO_WALLETS='*' DEMO_SCALE=1200 FREE_RIDE_SECONDS=3 VERDICT_ENFORCE=true POSTHOG_ENABLED=0 PRIORITY_FEE_MAX_MICROLAMPORTS=0 \
+  WEBHOOK_SECRET="$(node -e 'console.log(require("crypto").randomBytes(24).toString("base64url"))')" WATCH_INTERVAL_MS=2000 SOL_USD=118 DEMO_WALLETS='*' DEMO_SCALE=1200 FREE_RIDE_SECONDS=3 VERDICT_ENFORCE=true POSTHOG_ENABLED=0 PRIORITY_FEE_MAX_MICROLAMPORTS="$([ "$TARGET" = devnet ] && echo 50000 || echo 0)" \
   ADMIN_WALLETS= NODE_ENV=development
 PORT="$(free_port)"; BASE="http://localhost:$PORT"
 (cd "$SERVER" && PORT="$PORT" exec node dist/main.js > "$TMP/server.log" 2>&1) &
@@ -90,4 +112,11 @@ curl -sf "$BASE/api/health/live" >/dev/null || { tail -30 "$TMP/server.log"; fai
 echo "  server $BASE (log: $TMP/server.log)"
 
 echo "▸ scenario"
-(cd "$SERVER" && BASE="$BASE" RPC="$RPC" KEYS="$TMP/keys" FIXTURES="$TMP/accounts/fixtures.json" CHROME_PORT="$(free_port)" node scripts/e2e-localnet.mjs) || { echo "--- server log (tail) ---"; tail -40 "$TMP/server.log"; exit 1; }
+# LIKE_DEVNET=1: the devnet settings on the local validator (funder + sweep, small prices, no baked pools) – tests the devnet code path offline
+[ "${LIKE_DEVNET:-0}" = 1 ] && FIXTURES=""
+DEVNET_ENV=(); { [ "$TARGET" = devnet ] || [ "${LIKE_DEVNET:-0}" = 1 ]; } && DEVNET_ENV=(FUND_FROM="$TMP/keys/mint.json" FUND_LAMPORTS="${FUND_LAMPORTS:-60000000}" SWEEP=1 PRICE_A="${PRICE_A:-2000000}" PRICE_B="${PRICE_B:-1000000}" \
+  SPONSOR_A="${SPONSOR_A:-1000000}" SPONSOR_C="${SPONSOR_C:-1000000}" PLAY_A="${PLAY_A:-240}" PREP_B="${PREP_B:-70}" PREP_C="${PREP_C:-80}")
+(cd "$SERVER" && env ${DEVNET_ENV[@]+"${DEVNET_ENV[@]}"} BASE="$BASE" RPC="$RPC" KEYS="$TMP/keys" FIXTURES="$FIXTURES" CHROME_PORT="$(free_port)" node scripts/e2e-localnet.mjs) || { echo "--- server log (tail) ---"; tail -40 "$TMP/server.log"; exit 1; }
+
+echo "▸ deploy smoke (deploy/scripts/smoke.mjs) against this program-mode server – its escrow checks"
+node "$ROOT/deploy/scripts/smoke.mjs" "$BASE" --no-signin || fail "smoke"

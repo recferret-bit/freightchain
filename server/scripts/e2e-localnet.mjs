@@ -8,7 +8,7 @@
 //                       the baked pool that paid a prize is closed by a stranger after the grace (MustExpire refused for the unpaid one)
 // Deadlines run on the validator's clock (no warp): the run is paced by them (PREP_A / PLAY_A / PREP_B / PREP_C seconds, defaults below).
 import nacl from 'tweetnacl'; import bs58 from 'bs58'; import { readFileSync, writeFileSync } from 'node:fs'; import { execFileSync } from 'node:child_process';
-import { Connection, Keypair, PublicKey, SYSVAR_CLOCK_PUBKEY, Transaction } from '@solana/web3.js';
+import { Connection, Keypair, PublicKey, SYSVAR_CLOCK_PUBKEY, SystemProgram, Transaction, sendAndConfirmTransaction } from '@solana/web3.js';
 import { launch, sleep } from '../../client/tools/cdp.mjs';
 import { PoolProgramCodec } from '../dist/infrastructure/solana/pool-program.codec.js';
 import { POOL_PROGRAM_IDL } from '../dist/infrastructure/solana/pool-program.idl.js';
@@ -19,8 +19,11 @@ const { BASE, RPC, KEYS } = process.env;
 if (!BASE || !RPC || !KEYS) { console.error('run it through .claude/skills/localnet-e2e/run.sh (needs BASE, RPC, KEYS)'); process.exit(2); }
 const CDP = +(process.env.CHROME_PORT || 9371);
 const PREP_A = +(process.env.PREP_A || 100), PLAY_A = +(process.env.PLAY_A || 170), PREP_B = +(process.env.PREP_B || 45), PREP_C = +(process.env.PREP_C || 50);
-const SPONSOR_A = 30_000_000, SPONSOR_C = 20_000_000;
-const PRICE_A = 100_000_000, PRICE_B = 50_000_000;   // 0.1 / 0.05 SOL
+// amounts: localnet defaults; TARGET=devnet passes small ones (devnet SOL is scarce) – a price must stay ≥ the 890 880-lamport rent minimum
+const SPONSOR_A = +(process.env.SPONSOR_A || 30_000_000), SPONSOR_C = +(process.env.SPONSOR_C || 20_000_000);
+const PRICE_A = +(process.env.PRICE_A || 100_000_000), PRICE_B = +(process.env.PRICE_B || 50_000_000);   // 0.1 / 0.05 SOL
+const solTxt = l => `${(l / 1e9).toFixed(l >= 1e9 ? 2 : 3)} SOL`;   // the lobby's format
+const ON_DEVNET = !!process.env.FUND_FROM;   // devnet: other pools may exist, players are funded by transfer and swept back
 const T0 = Date.now(), fails = [];
 const check = (n, ok, x = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'} [${((Date.now() - T0) / 1000).toFixed(0)} s] ${n}${x ? ' – ' + x : ''}`); if (!ok) fails.push(n); return ok; };
 const until = async (fn, ms = 30000, step = 500) => { for (let i = 0; i <= ms / step; i++) { const v = await fn(); if (v) return v; await sleep(step); } return false; };
@@ -45,9 +48,13 @@ const api = async (path, { body, cookie, method } = {}) => {
   const j = await r.json().catch(() => ({}));
   return { status: r.status, ok: r.ok, j };
 };
-async function player(lamports = 5e9) {
+const players = [];
+const funder = process.env.FUND_FROM ? Keypair.fromSecretKey(Uint8Array.from(JSON.parse(readFileSync(process.env.FUND_FROM, 'utf8')))) : null;
+async function player(lamports = +(process.env.FUND_LAMPORTS || 5e9)) {
   const kp = Keypair.generate(), wallet = kp.publicKey.toBase58();
-  await conn.confirmTransaction(await conn.requestAirdrop(kp.publicKey, lamports), 'confirmed');
+  if (funder) await sendAndConfirmTransaction(conn, new Transaction().add(SystemProgram.transfer({ fromPubkey: funder.publicKey, toPubkey: kp.publicKey, lamports })), [funder], { commitment: 'confirmed' });
+  else await conn.confirmTransaction(await conn.requestAirdrop(kp.publicKey, lamports), 'confirmed');
+  players.push(kp);
   const { j } = await api('auth/nonce', { body: { wallet } });
   const r = await fetch(`${BASE}/api/auth/verify`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ wallet, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(j.message), kp.secretKey)) }) });
   if (!r.ok) throw new Error(`sign-in failed: ${r.status} ${await r.text()}`);
@@ -122,14 +129,17 @@ const refuses = (args, re) => { try { admintool(args); return false; } catch (e)
 
 try {
   // ── 0. the stack, the baked "three weeks old" pools (phase 1 of run.sh made them with the real program, then moved their deadlines back)
-  const FX = JSON.parse(readFileSync(process.env.FIXTURES, 'utf8'));
+  const FX = process.env.FIXTURES ? JSON.parse(readFileSync(process.env.FIXTURES, 'utf8')) : null;   // devnet: no baked pools
   const tiers = (await api('tiers')).j;
   check('server sells tickets through the program (paymentMode = program)', tiers.paymentMode === 'program', String(tiers.paymentMode));
   const cfg = await account('Config', codec.configPda());
-  check('Config (baked): admin = TREASURY_PUBKEY, named by the upgrade authority in phase 1; platform cut 500 bps', cfg?.authority === addr('admin') && cfg?.platformFeeBps === 500 && cfg?.poolCount === FX.poolCount, JSON.stringify(cfg));
-  for (const [id, label] of [[FX.expirePool, 'BAKED EXPIRE'], [FX.gracePool, 'BAKED GRACE']]) execFileSync('node', ['dist/cli/index.js', 'pool:register', String(id), '--label', label], { stdio: 'ignore' });
-  const [px, py] = [await poolAcc(FX.expirePool), await poolAcc(FX.gracePool)];
-  check('baked pools: active on chain, play deadline 16 days ago, one with a prize paid', px?.status === 1 && py?.status === 1 && px.prizesPaid === 0 && py.prizesPaid === FX.prizePaid && px.playDeadline.getTime() === FX.back * 1000);
+  const PLAT_BPS = cfg?.platformFeeBps ?? 0;
+  check(`Config: admin = TREASURY_PUBKEY (named by the upgrade authority), platform cut ${PLAT_BPS} bps`, cfg?.authority === addr('admin') && (!FX || (cfg.platformFeeBps === 500 && cfg.poolCount === FX.poolCount)), JSON.stringify(cfg));
+  if (FX) {
+    for (const [id, label] of [[FX.expirePool, 'BAKED EXPIRE'], [FX.gracePool, 'BAKED GRACE']]) execFileSync('node', ['dist/cli/index.js', 'pool:register', String(id), '--label', label], { stdio: 'ignore' });
+    const [px, py] = [await poolAcc(FX.expirePool), await poolAcc(FX.gracePool)];
+    check('baked pools: active on chain, play deadline 16 days ago, one with a prize paid', px?.status === 1 && py?.status === 1 && px.prizesPaid === 0 && py.prizesPaid === FX.prizePaid && px.playDeadline.getTime() === FX.back * 1000);
+  }
 
   // ── 1. pools created now by the admin: A (1h, goes live), B (4h, misses its goal), C (8h, misses its goal – left to the crank)
   const treas = ['--fee-treasury', addr('fee'), '--seed-treasury', addr('seed'), '-k', `${KEYS}/admin.json`];
@@ -137,7 +147,7 @@ try {
   const A = mk('1h', PRICE_A, 3, PREP_A, PLAY_A, '7000/2000/1000');
   const B = mk('4h', PRICE_B, 5, PREP_B, PREP_B + 60, '6000/2500/1500', 2);
   const C = mk('8h', PRICE_B, 5, PREP_C, PREP_C + 60, '7000/2000/1000', 2);
-  check('new pools get ids after the baked ones (Config.pool_count)', A === FX.poolCount && C === A + 2, `${A} ${B} ${C}`);
+  check('new pools get consecutive ids from Config.pool_count (after the baked ones on localnet)', (!FX || A === FX.poolCount) && C === A + 2, `${A} ${B} ${C}`);
   for (const [id, label] of [[A, 'LOCAL 1H'], [B, 'LOCAL 4H'], [C, 'LOCAL 8H']]) execFileSync('node', ['dist/cli/index.js', 'pool:register', String(id), '--label', label], { stdio: 'ignore' });
   check('…open on chain and on the server, vaults hold exactly the rent minimum', (await Promise.all([A, B, C].map(async id => (await poolAcc(id))?.status === 0 && (await serverPool(id)).status === 'open' && (await bal(codec.vaultPda(id))) === VAULT_RENT_MIN_LAMPORTS)))
     .every(Boolean));
@@ -149,7 +159,7 @@ try {
   check('lobby: the pooled tier cards render', await h1.lobby());
   let before = await bals({ p1: P1.wallet, sp: addr('sponsor'), vault: vA });
   await h1.ev('document.querySelector("#tier-1h .qty button:last-child").click()');
-  check('lobby: BUY 2 TICKETS · 0.200 SOL', /BUY 2 TICKETS · 0\.200 SOL/.test(await h1.txt('#tier-1h .buyb')), await h1.txt('#tier-1h .buyb'));
+  check(`lobby: BUY 2 TICKETS · ${solTxt(2 * PRICE_A)}`, (await h1.txt('#tier-1h .buyb')) === `BUY 2 TICKETS · ${solTxt(2 * PRICE_A)}`, await h1.txt('#tier-1h .buyb'));
   await h1.ev('document.querySelector("#tier-1h .buyb").click()');
   check('lobby: paid + 2 tickets credited', await until(async () => /Paid – 2 tickets credited/.test(await h1.txt('#msg-1h')), 60000), await h1.txt('#msg-1h'));
   check('…the wallet was only asked to SIGN (gasless)', (await h1.ev('JSON.stringify(__asked)')) === '["signTransaction"]', await h1.ev('JSON.stringify(__asked)'));
@@ -182,7 +192,16 @@ try {
   check('P4 buys 1 of pool B self-paid', (await buySelf(P4, B)).paid);
   check('P5 buys 1 of pool C gasless, P6 1 self-paid', (await buyGasless(P5, C)).paid && (await buySelf(P6, C)).paid);
   admintool(['sponsor', '--pool', String(C), '--lamports', String(SPONSOR_C), '-k', S.keyfile]);
-  check('pool C: 2 tickets + a sponsorship in the vault', (await bal(vC)) === VAULT_RENT_MIN_LAMPORTS + 2 * PRICE_B + SPONSOR_C);
+  // the WEBHOOK path (QuickNode Streams → POST /api/chain/webhook): a buy straight on chain (no order – nothing calls /confirm), the server told by the webhook
+  const W = await player(), hookUrl = `${BASE}/api/chain/webhook`;
+  const direct = admintool(['buy', '-k', W.keyfile, '--pool', String(C)]);
+  const hook = (headers) => fetch(hookUrl, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify([{ signature: direct.signature }]) });
+  check('webhook: refused without the secret (401) and with a wrong one', (await hook({})).status === 401 && (await hook({ 'x-webhook-secret': 'wrong-secret-wrong-secret' })).status === 401);
+  const hr = await hook({ 'x-webhook-secret': process.env.WEBHOOK_SECRET });
+  const hj = await hr.json().catch(() => ({}));
+  check('webhook: with the secret the signature is read back from the chain and settled', hr.status === 200 && hj.received === 1, JSON.stringify(hj));
+  check('…the on-chain buy (no order) is credited to the wallet', !!(await until(async () => (await myTickets(W, C))?.bought === 1, 20000)), JSON.stringify(await myTickets(W, C)));
+  check('pool C: 3 tickets + a sponsorship in the vault', (await bal(vC)) === VAULT_RENT_MIN_LAMPORTS + 3 * PRICE_B + SPONSOR_C);
   const X = await player(), spX = await bal(addr('sponsor'));
   check('a tampered transaction is refused by the sponsor boundary (/submit with other bytes), nothing sent', await (async () => {
     const o = await api('tickets', { body: { poolId: B, qty: 1 }, cookie: X.cookie }); const pay = await api(`tickets/orders/${o.j.id}/payment`, { cookie: X.cookie });
@@ -202,10 +221,13 @@ try {
   check('chain: pool B still open past its deadline (no crank has run)', (await poolAcc(B)).status === 0);
   const h3 = await browser(P3, CDP + 2);
   await h3.lobby();
-  check('lobby: the missed-goal pool card offers CLAIM REFUND before anyone failed it', await until(async () => (await h3.txt('#tier-4h .go')) === 'CLAIM REFUND', 20000), await h3.txt('#tier-4h .go'));
+  // the 4h card shows pool B unless another 4h pool still sells (devnet): then B's claim sits in the refunds strip
+  const claimAt = await until(async () => (await h3.txt('#tier-4h .go')) === 'CLAIM REFUND' ? 'card' : /CLAIM REFUND/.test(await h3.txt('#refunds')) ? 'strip' : null, 20000);
+  check(`lobby: the missed-goal pool offers CLAIM REFUND before anyone failed it (${claimAt || 'nowhere'})`, claimAt === 'card' || (ON_DEVNET && claimAt === 'strip'), await h3.txt('#tier-4h .go'));
+  const claimBtn = claimAt === 'strip' ? '#refunds button' : '#tier-4h .go', claimMsg = claimAt === 'strip' ? `#msg-refund-${B}` : '#msg-4h';
   before = await bals({ p3: P3.wallet, sp: addr('sponsor') });
-  await h3.ev('document.querySelector("#tier-4h .go").click()');
-  check('lobby: refunded (fail_pool + refund signed and sent by the wallet)', await until(async () => /Refund(ed| sent)/.test(await h3.txt('#msg-4h')), 60000), await h3.txt('#msg-4h'));
+  await h3.ev(`document.querySelector(${JSON.stringify(claimBtn)}).click()`);
+  check('lobby: refunded (fail_pool + refund signed and sent by the wallet)', await until(async () => /Refund(ed| sent)/.test(await h3.txt(claimMsg)) || (claimAt === 'strip' && !/CLAIM REFUND/.test(await h3.txt('#refunds'))), 60000), await h3.txt(claimMsg));
   await h3.shot('2-lobby-refunded');
   check('…the wallet was asked to sign AND send (self-paid)', (await h3.ev('JSON.stringify(__asked)')) === '["signAndSendTransaction"]');
   const sigR3 = (await conn.getSignaturesForAddress(P3.kp.publicKey, { limit: 1 }, 'confirmed'))[0]?.signature;
@@ -227,42 +249,54 @@ try {
 
   // ── 8. ticket-only: with B gone the 4h tier has no live pool – nothing on sale, no pay-per-ride fallback
   const t4 = (await api('tiers')).j.tiers.find(t => t.id === '4h');
+  if (t4.pool) console.log(`NOTE ticket-only checks skipped: another 4h pool (#${t4.pool.id}) is live on this cluster`);
+  else {
   check('GET /api/tiers: 4h not available, no pay-per-ride price', t4.available === false && t4.lamports === null && t4.pool === null, JSON.stringify(t4));
   check('POST /api/rides 4h without a pool: 409 no_tickets', (await api('rides', { body: { tier: '4h' }, cookie: P3.cookie })).status === 409);
   await h3.lobby();
   check('lobby: the 4h card says NO POOL and sells nothing', await until(async () => /NO POOL/.test(await h3.txt('#tier-4h .st')) && (await h3.ev('document.querySelector("#tier-4h .go").disabled')) === true, 15000), await h3.txt('#tier-4h'));
   await h3.shot('3-lobby-no-pool');
+  }
 
-  // ── 9. the CRANK (CRANK_SECRET, one pass from the CLI): fails pool C and refunds it, expires the baked pool and refunds it, closes both
+  // ── 9. the CRANK (CRANK_SECRET, one pass from the CLI): fails pool C and refunds it (and on localnet expires the baked pool and refunds it), closes them
   await untilChain(Number((await poolAcc(C)).prepDeadline.getTime() / 1000), 'pool C prep deadline');
-  check('the baked unpaid pool: a stranger may not close it after the grace (MustExpire – it would sweep the prize share)', refuses(['close-pool', '--pool', String(FX.expirePool), '-k', Z.keyfile], /MustExpire|0x1787/));
-  const xb = { e1: addr('expire-buyer-1'), e2: addr('expire-buyer-2') };
+  if (FX) check('the baked unpaid pool: a stranger may not close it after the grace (MustExpire – it would sweep the prize share)', refuses(['close-pool', '--pool', String(FX.expirePool), '-k', Z.keyfile], /MustExpire|0x1787/));
+  const xb = FX ? { e1: addr('expire-buyer-1'), e2: addr('expire-buyer-2') } : {};
   before = await bals({ crank: addr('crank'), p5: P5.wallet, p6: P6.wallet, sp: addr('sponsor'), seed: addr('seed'), admin: addr('admin'), ...xb });
   const pass = crankPass();
   after = await bals({ crank: addr('crank'), p5: P5.wallet, p6: P6.wallet, sp: addr('sponsor'), seed: addr('seed'), admin: addr('admin'), ...xb });
-  const steps = pass.actions.map(a => `${a.step}#${a.poolId}${a.error ? '✗' : ''}`);
-  check('crank pass: fail + refund + close pool C, expire + refund + close the baked pool – nothing else', JSON.stringify(steps) === JSON.stringify([`expire_pool#${FX.expirePool}`, `refund#${FX.expirePool}`, `close_pool#${FX.expirePool}`, `fail_pool#${C}`, `refund#${C}`, `close_pool#${C}`]) && pass.actions.every(a => a.settled === 'done'), steps.join(' '));
+  const ours = new Set([C, ...(FX ? [FX.expirePool] : [])]);
+  const stepsOf = id => pass.actions.filter(a => a.poolId === id).map(a => `${a.step}${a.error ? '✗' : ''}`).join(' ');
+  const others = pass.actions.filter(a => !ours.has(a.poolId));
+  check('crank pass: pool C fail + refund + close' + (FX ? ', the baked pool expire + refund + close' : ''), stepsOf(C) === 'fail_pool refund close_pool' && (!FX || stepsOf(FX.expirePool) === 'expire_pool refund close_pool')
+    && pass.actions.every(a => !a.error && a.settled === 'done'), pass.actions.map(a => `${a.step}#${a.poolId}${a.error ? '✗' : ''}`).join(' '));
+  if (others.length) console.log(`NOTE the crank also handled other pools on this cluster: ${others.map(a => `${a.step}#${a.poolId}`).join(' ')} – the balance checks below are skipped where they would mix in`);
   check('…judged by the chain clock it reported', Math.abs(pass.chainNow / 1000 - (await chainNow())) < 30);
-  const crankFees = (await Promise.all(pass.actions.map(a => fee(a.signature)))).reduce((a, b) => a + b, 0);
+  const crankFees = (await Promise.all(pass.actions.filter(a => a.signature).map(a => fee(a.signature)))).reduce((a, b) => a + b, 0);
   check('the crank key paid every fee and nothing else', before.crank - after.crank === crankFees, `${before.crank - after.crank} vs ${crankFees}`);
   check('pool C refunds: P5 +price (its rent went back to the sponsor), P6 +price +its own rent', after.p5 - before.p5 === PRICE_B && after.p6 - before.p6 === PRICE_B + ticketRent);
-  check('baked pool refunds: e1 +price +its own rent, e2 +price (rent to the sponsor)', after.e1 - before.e1 === PRICE_B + ticketRent && after.e2 - before.e2 === PRICE_B);
-  check('the sponsor got back the Ticket rent it paid for P5 and e2', after.sp - before.sp === 2 * ticketRent, `${after.sp - before.sp}`);
-  check('closes: the seed gets C\'s sponsorship, the creator both vault rent minimums', after.seed - before.seed === SPONSOR_C && after.admin - before.admin === 2 * VAULT_RENT_MIN_LAMPORTS, `${after.seed - before.seed} / ${after.admin - before.admin}`);
-  check('chain: both cancelled, vaults 0', (await poolAcc(C)).status === 4 && (await poolAcc(FX.expirePool)).status === 4 && (await bal(vC)) === 0 && (await bal(codec.vaultPda(FX.expirePool))) === 0);
-  check('server mirror: both cancelled', await until(async () => (await serverPool(C)).status === 'cancelled' && (await serverPool(FX.expirePool)).status === 'cancelled'));
-  check('a second crank pass has nothing to do', crankPass().actions.length === 0);
+  if (FX) check('baked pool refunds: e1 +price +its own rent, e2 +price (rent to the sponsor)', after.e1 - before.e1 === PRICE_B + ticketRent && after.e2 - before.e2 === PRICE_B);
+  if (!others.length) {
+    const sponsorRents = FX ? 2 : 1, creatorRents = FX ? 2 : 1;
+    check(`the sponsor got back the Ticket rent it paid (${sponsorRents})`, after.sp - before.sp === sponsorRents * ticketRent, `${after.sp - before.sp}`);
+    check('closes: the seed gets C\'s sponsorship, the creator the vault rent minimum(s)', after.seed - before.seed === SPONSOR_C && after.admin - before.admin === creatorRents * VAULT_RENT_MIN_LAMPORTS, `${after.seed - before.seed} / ${after.admin - before.admin}`);
+  }
+  check('chain: cancelled, vault(s) 0', (await poolAcc(C)).status === 4 && (await bal(vC)) === 0 && (!FX || ((await poolAcc(FX.expirePool)).status === 4 && (await bal(codec.vaultPda(FX.expirePool))) === 0)));
+  check('server mirror: cancelled', await until(async () => (await serverPool(C)).status === 'cancelled' && (!FX || (await serverPool(FX.expirePool)).status === 'cancelled')));
+  check('a second crank pass has nothing to do for our pools', crankPass().actions.filter(a => ours.has(a.poolId)).length === 0);
 
-  // ── 10. the baked pool that paid a prize: after the grace ANYONE may close it – money only to the treasuries it declared
-  const gy = await poolAcc(FX.gracePool), gyVault = await bal(codec.vaultPda(FX.gracePool));
-  const gLegs = closeSplit({ priceLamports: gy.priceLamports, ticketsSold: gy.ticketsSold, sponsored: gy.sponsored, prizeBps: gy.prizeBps, seedBps: gy.seedBps, platformFeeBps: 500, prizesPaid: gy.prizesPaid, vaultLamports: gyVault, cancelled: false });
-  before = await bals({ fee: addr('fee'), plat: addr('plat'), seed: addr('seed'), admin: addr('admin'), stranger: Z.wallet });
-  const cy = admintool(['close-pool', '--pool', String(FX.gracePool), '-k', Z.keyfile]);
-  after = await bals({ fee: addr('fee'), plat: addr('plat'), seed: addr('seed'), admin: addr('admin'), stranger: Z.wallet });
-  check('grace close by a stranger: settled, vault 0', cy.pool.status === 3 && cy.vaultLamports === 0);
-  check('…legs exact (fee / platform / seed incl. the unclaimed prize / creator rent), the stranger only paid its fee', after.fee - before.fee === gLegs.fee && after.plat - before.plat === gLegs.platformFee && after.seed - before.seed === gLegs.seed
-    && after.admin - before.admin === VAULT_RENT_MIN_LAMPORTS && before.stranger - after.stranger === (await fee(cy.signature)),
-    JSON.stringify({ got: Object.fromEntries(Object.keys(after).map(k => [k, after[k] - before[k]])), legs: gLegs, closeFee: await fee(cy.signature) }));
+  // ── 10. (localnet) the baked pool that paid a prize: after the grace ANYONE may close it – money only to the treasuries it declared
+  if (FX) {
+    const gy = await poolAcc(FX.gracePool), gyVault = await bal(codec.vaultPda(FX.gracePool));
+    const gLegs = closeSplit({ priceLamports: gy.priceLamports, ticketsSold: gy.ticketsSold, sponsored: gy.sponsored, prizeBps: gy.prizeBps, seedBps: gy.seedBps, platformFeeBps: PLAT_BPS, prizesPaid: gy.prizesPaid, vaultLamports: gyVault, cancelled: false });
+    before = await bals({ fee: addr('fee'), plat: addr('plat'), seed: addr('seed'), admin: addr('admin'), stranger: Z.wallet });
+    const cy = admintool(['close-pool', '--pool', String(FX.gracePool), '-k', Z.keyfile]);
+    after = await bals({ fee: addr('fee'), plat: addr('plat'), seed: addr('seed'), admin: addr('admin'), stranger: Z.wallet });
+    check('grace close by a stranger: settled, vault 0', cy.pool.status === 3 && cy.vaultLamports === 0);
+    check('…legs exact (fee / platform / seed incl. the unclaimed prize / creator rent), the stranger only paid its fee', after.fee - before.fee === gLegs.fee && after.plat - before.plat === gLegs.platformFee && after.seed - before.seed === gLegs.seed
+      && after.admin - before.admin === VAULT_RENT_MIN_LAMPORTS && before.stranger - after.stranger === (await fee(cy.signature)),
+      JSON.stringify({ got: Object.fromEntries(Object.keys(after).map(k => [k, after[k] - before[k]])), legs: gLegs, closeFee: await fee(cy.signature) }));
+  }
 
   // ── 11. pool A after its play deadline: the admin pays the ranked prizes, then closes – the sponsorship is in the pot
   await untilChain(Number((await poolAcc(A)).playDeadline.getTime() / 1000), 'pool A play deadline');
@@ -285,13 +319,13 @@ try {
   const po2 = await api(`pools/${A}/payout`, { cookie: ADM.cookie });
   check('every rank paid → close_pool offered', po2.j.close && po2.j.transactions.length === 0 && po2.j.ranks.every(r => r.paid));
   const vaultBefore = await bal(vA), paidOnChain = (await poolAcc(A)).prizesPaid;
-  const legs = closeSplit({ priceLamports: PRICE_A, ticketsSold: chainA.ticketsSold, sponsored: chainA.sponsored, prizeBps: 7000, seedBps: 2000, platformFeeBps: 500, prizesPaid: paidOnChain, vaultLamports: vaultBefore, cancelled: false });
+  const legs = closeSplit({ priceLamports: PRICE_A, ticketsSold: chainA.ticketsSold, sponsored: chainA.sponsored, prizeBps: 7000, seedBps: 2000, platformFeeBps: PLAT_BPS, prizesPaid: paidOnChain, vaultLamports: vaultBefore, cancelled: false });
   before = await bals({ fee: addr('fee'), plat: addr('plat'), seed: addr('seed'), admin: addr('admin') });
   const sigC = await sendSigned(signedB64(po2.j.close.transaction, admin)); await settle(sigC, ADM.cookie);
   after = await bals({ fee: addr('fee'), plat: addr('plat'), seed: addr('seed'), admin: addr('admin') });
   check('prizes on chain = what was paid', paidOnChain === paidTotal, `${paidOnChain} vs ${paidTotal}`);
   check('close_pool: fee treasury exact', after.fee - before.fee === legs.fee, `${after.fee - before.fee} vs ${legs.fee}`);
-  check('close_pool: platform treasury exact (500 bps of the fee share)', after.plat - before.plat === legs.platformFee && legs.platformFee > 0, `${after.plat - before.plat} vs ${legs.platformFee}`);
+  check(`close_pool: platform treasury exact (${PLAT_BPS} bps of the fee share)`, after.plat - before.plat === legs.platformFee && (PLAT_BPS === 0 || legs.platformFee > 0), `${after.plat - before.plat} vs ${legs.platformFee}`);
   check('close_pool: seed treasury = seed share + unclaimed prize', after.seed - before.seed === legs.seed && legs.unclaimed === bound - paidTotal, `${after.seed - before.seed} vs ${legs.seed} (unclaimed ${legs.unclaimed})`);
   check('close_pool: creator +rent minimum − the close fee', after.admin - before.admin === VAULT_RENT_MIN_LAMPORTS - (await fee(sigC)), `${after.admin - before.admin}`);
   check('vault A = 0, pool settled on chain and on the server', (await bal(vA)) === 0 && (await poolAcc(A)).status === 3 && await until(async () => (await serverPool(A)).status === 'settled'));
@@ -303,6 +337,15 @@ try {
   console.log(`screenshots: ${browsers[0]?.SHOTS}`);
 } catch (e) {
   check('scenario threw', false, e?.stack ?? String(e));
+}
+if (process.env.SWEEP && funder) {   // devnet: what the throwaway players hold goes back to the funder (devnet SOL is scarce)
+  let back = 0;
+  for (const kp of players) {
+    const l = await bal(kp.publicKey.toBase58()).catch(() => 0);
+    if (l <= 5_000) continue;
+    try { await sendAndConfirmTransaction(conn, new Transaction().add(SystemProgram.transfer({ fromPubkey: kp.publicKey, toPubkey: funder.publicKey, lamports: l - 5_000 })), [kp], { commitment: 'confirmed' }); back += l - 5_000; } catch { /* a ticket-rent account etc. – leave it */ }
+  }
+  console.log(`swept ${(back / 1e9).toFixed(4)} SOL back to the funder`);
 }
 console.log(fails.length ? `\n✗ ${fails.length} failed: ${fails.join(' · ')}` : '\n✓ all money flows verified on the local chain');
 const code = fails.length ? 1 : 0;

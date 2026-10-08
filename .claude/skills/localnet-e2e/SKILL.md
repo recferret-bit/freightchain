@@ -11,7 +11,14 @@ The walkthrough for people: `docs/localnet-e2e/index.html`. This file is the run
 npm run program:verify                           # once: the verifiable .so in target/deploy (the run warns when it is not the pinned build)
 bash .claude/skills/localnet-e2e/run.sh          # root: npm run test:localnet   (~4 min, paced by the pools' deadlines)
 KEEP=1 bash .claude/skills/localnet-e2e/run.sh   # keep the scratch dir: keys/, both ledgers + their logs, server.log, accounts/
+LIKE_DEVNET=1 bash .claude/skills/localnet-e2e/run.sh   # the devnet settings on the local validator (funder + sweep, small prices, no baked pools)
+bash server/scripts/devnet.sh rehearse           # = TARGET=devnet: the same scenario against the program on DEVNET (Phase 2 of docs/escrow-open-items.md)
 ```
+
+**TARGET=devnet** needs the program deployed + initialized on devnet with the code built for its id, `server/.env.devnet` (`devnet.sh env`) and the funded keys
+in the main checkout's `deploy/secrets/devnet/` (`funder` pays the throwaway players, swept back at the end). It refuses a non-devnet RPC. Other pools on the
+cluster are tolerated: the ticket-only checks and the crank's balance checks are skipped (with a NOTE) when another live pool would mix in. Every run ends
+with `deploy/scripts/smoke.mjs` against its program-mode server (the escrow checks the production deploy will run).
 
 Local and throwaway: keys are generated into a scratch dir, ledgers live there, the database is `freightchain_localnet_<pid>` (dropped at the end), ports
 are free ones. Nothing touches devnet, the global Solana config or `~/.config/solana/id.json` – every call passes an explicit URL. Needs Docker (compose

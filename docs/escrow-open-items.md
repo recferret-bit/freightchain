@@ -84,15 +84,15 @@ Until then production stays as it is (`PAYMENT_MODE=transfer`, no escrow keys in
 ### Phase 0 – local (no chain, no money)
 - [ ] Merge `localnet-e2e` into `main` (rebase on the current `main` first) – Q-A
 - [ ] `npm run program:verify` in the main checkout; `npm run test:localnet` green there
-- [ ] Deploy smoke test: checks for program mode (tiers report `paymentMode: program`, pools listed, sponsor + crank balances, the webhook refuses a bad secret) – used in Phase 3
-- [ ] `server/scripts/devnet-payout.mjs`: sign in with the admin keypair, fetch `GET /api/pools/:id/payout`, sign + send each `pay_prize`, then `close_pool`, settle each
-- [ ] `server/scripts/devnet-rehearsal.mjs`: the localnet scenario's API steps (buy gasless + self-paid, sponsor, refund, crank, payout) against any RPC + server, throwaway wallets, no browser
-- [ ] A local devnet profile for the server (`server/.env.devnet.example`: program mode, devnet RPC + WS, sponsor, crank, treasuries, webhook secret; a separate local database `freightchain_devnet`)
+- [x] Deploy smoke test: program-mode checks (no pay-per-ride fallback, pools listed, the webhook refuses a call without its secret, the fee quote answers) – `deploy/scripts/smoke.mjs`, run at the end of every `test:localnet`
+- [x] `server/scripts/devnet-payout.mjs` (`devnet.sh payout <poolId> [--yes]`): signs in as the admin, pays the ranked prizes, closes, settles each
+- [x] The rehearsal: the localnet scenario itself runs against devnet (`devnet.sh rehearse` = `TARGET=devnet run.sh`: no validator / baked pools, players funded by `funder` and swept back, small prices, own server on a throwaway DB); `LIKE_DEVNET=1` tests that path on the local validator
+- [x] The local devnet profile: `server/.env.devnet.example` → `devnet.sh env` writes `server/.env.devnet` (600, gitignored); the server / CLI read it with `ENV_FILE=.env.devnet`; database `freightchain_devnet` (`devnet.sh db`); `devnet.sh check-rpc` checks the endpoint
 
 ### Phase 1 – the program on devnet
-- [ ] Keys into `deploy/secrets/` (gitignored, never printed): program id, deploy wallet (= upgrade authority), admin (also imported into Phantom), sponsor, crank, fee + seed treasuries – Q-B
-- [ ] Fund them on devnet (faucet – QuickNode's faucet or faucet.solana.com): deploy ~5 SOL, sponsor ~1, crank ~0.5, admin ~0.5, treasuries 0.002 each
-- [ ] QuickNode: a Solana **devnet** endpoint (HTTP + WSS); check on it: `getProgramAccounts` answers (the crank), `getRecentPrioritizationFees`; optionally enable the Priority Fee API add-on
+- [x] Keys generated (Oct 8) into the main checkout's `deploy/secrets/devnet/` (gitignored, 600): program-id `9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx`, deploy, admin, sponsor, crank, fee, seed, plat, funder – `devnet.sh keys` lists the addresses. **Back the folder up** (the program-id and deploy keys can't be recreated)
+- [ ] **Owner:** fund them on devnet (faucet.solana.com / QuickNode's faucet – the public CLI faucet is rate-limited): deploy ~5 SOL, sponsor ~1, crank ~0.3, admin ~0.5, funder ~1, fee / seed / plat 0.01 each – `devnet.sh balances` shows them
+- [ ] **Owner:** a QuickNode Solana **devnet** endpoint (HTTPS + WSS) → `RPC=… WS=… devnet.sh env` → `devnet.sh check-rpc` (getProgramAccounts for the crank, fees; the Priority Fee add-on is optional). The profile currently points at the public devnet RPC as a placeholder (check-rpc passed on it)
 - [ ] Program id into the code: `anchor keys sync` → `program:build` → `program:idl` → `vendor-idl` → `UPDATE_PIN=1 npm run program:verify` → codec fixture → `npm run check` + `npm run test:localnet` → commit
 - [ ] Deploy the verifiable `.so` (hash guard first) – `program-deploy.md` step 4
 - [ ] `initialize` (deploy wallet signs, `--admin` = the admin key, platform 0) and read `Config.authority` back

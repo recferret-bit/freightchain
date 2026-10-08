@@ -70,6 +70,17 @@ check('tiers + price list', tiers.status === 200 && Array.isArray(tiersBody.tier
 check('paid tiers are on (a treasury is configured)', !!tiersBody.treasury);
 if (treasury) check('the treasury is the configured wallet', tiersBody.treasury === treasury, tiersBody.treasury ?? 'none');
 
+// escrowed pools (only when the server sells tickets – PAYMENT_MODE=program): ticket-only tiers, the pools listed, the webhook guarded, the gas sponsor answers
+if (tiersBody.paymentMode === 'program') {
+  check('program mode: no paid tier falls back to pay-per-ride (a tier without a live pool has no price)', tiersBody.tiers.filter((t) => t.id !== 'free' && !t.pool).every((t) => !t.available && t.lamports === null));
+  const poolsBody = await (await get('/api/pools')).json().catch(() => ({}));
+  check('program mode: GET /api/pools lists the pools with their vaults', Array.isArray(poolsBody.pools) && poolsBody.pools.every((p) => typeof p.vaultLamports === 'number' && typeof p.address === 'string'), `${poolsBody.pools?.length ?? 0} pool(s) on sale`);
+  const hook = await post('/api/chain/webhook', { signatures: [] });
+  check('program mode: the chain webhook refuses a call without its secret (401; 404 = WEBHOOK_SECRET unset, the watcher alone credits)', hook.status === 401 || hook.status === 404, `${hook.status}`);
+  const fees = await (await get('/api/chain/fees')).json().catch(() => ({}));
+  check('program mode: the network-fee quote answers (the RPC is reachable)', typeof fees.estimatedFeeLamports === 'number', JSON.stringify(fees).slice(0, 120));
+} else console.log(`• payment mode ${tiersBody.paymentMode ?? '?'}: the escrow checks are skipped`);
+
 if (!args.includes('--no-signin')) {
   const kp = nacl.sign.keyPair(), wallet = bs58.encode(kp.publicKey);
   if (split) {   // the browser's CORS preflight from the site (and from the game) must pass, with the cookie allowed

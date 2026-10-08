@@ -15,38 +15,61 @@ The full list (not done, open questions, todo): [`escrow-open-items.md`](escrow-
 4. **Make the repo public** (or a public mirror) if you want the explorer's "verified" badge.
 5. After the devnet run is green: decide what happens to the upgrade authority (keep it on a hardware wallet / multisig, or make the program immutable – see below) and whether to get an audit before any mainnet talk.
 
-## Deploy (first time)
+## Devnet first (the program on devnet, the server on your machine)
 
-Run it in the **main checkout** (a worktree's `deploy/secrets/` and `target/` go away with the worktree), on a committed `main`.
+Run it in the **main checkout** (keys live in its gitignored `deploy/secrets/devnet/`; a worktree's `target/` goes away with it). Everything goes through
+`server/scripts/devnet.sh` – it never prints a secret and never touches production or the global Solana config.
 
 ```sh
 export PATH="$HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$HOME/.avm/bin:$PATH"
-# 1. program id: one keypair in deploy/secrets (-s: don't print the seed phrase); anchor keys sync writes it into declare_id! + Anchor.toml
-solana-keygen new -s --no-bip39-passphrase -o deploy/secrets/program-id.json
-mkdir -p programs/freightchain-pools/target/deploy
-cp deploy/secrets/program-id.json programs/freightchain-pools/target/deploy/freightchain_pools-keypair.json
+D=server/scripts/devnet.sh; K=deploy/secrets/devnet
+# 0. keys (once) – prints the addresses and how much SOL each needs; fund them (faucet.solana.com / QuickNode's faucet; `$D airdrop deploy 2` tries the public one)
+bash $D keys && bash $D balances
+# 1. the profile: your QuickNode devnet endpoint (HTTPS + WSS) → server/.env.devnet (600, gitignored), then check the endpoint
+RPC='https://…solana-devnet.quiknode.pro/…/' WS='wss://…solana-devnet.quiknode.pro/…/' bash $D env && bash $D check-rpc && bash $D db
+# 2. the program id into the code: anchor keys sync, IDL, its server copy
+mkdir -p programs/freightchain-pools/target/deploy && cp $K/program-id.json programs/freightchain-pools/target/deploy/freightchain_pools-keypair.json
 (cd programs/freightchain-pools && anchor keys sync)
-# 2. IDL + its server copy (the IDL carries the new address)
 npm run program:build && npm run program:idl && (cd server && node scripts/vendor-idl.mjs)
-# 3. the deployable binary + its new pin (Docker), THEN the codec fixture from that binary, then all suites
+# 3. the deployable binary + its new pin (Docker), THEN the codec fixture from that binary, then all suites; commit
 UPDATE_PIN=1 npm run program:verify
 (cd programs/freightchain-pools && FC_FIXTURES_OUT=$PWD/../../server/test/fixtures/chain cargo test --test export_fixtures)
-npm run check && npm run server:integration
+npm run check && npm run server:integration && npm run test:localnet
 git add -A programs server/test/fixtures/chain server/src && git commit -m "Program: devnet program id"   # id, IDL, fixture, verifiable-build.hash
 # 4. guard: the file about to be deployed IS the pinned build, then deploy it (the deploy wallet pays ~3 SOL rent and is the upgrade authority)
 SO=programs/freightchain-pools/target/deploy/freightchain_pools.so
 [ "$(solana-verify get-executable-hash $SO)" = "$(cut -c1-64 programs/freightchain-pools/verifiable-build.hash)" ] && echo "pinned build ✓ – deploy it" || echo "STOP: not the pinned build"
-solana program deploy --url devnet \
-  --keypair deploy/secrets/program-deploy.json --upgrade-authority deploy/secrets/program-deploy.json \
-  --program-id deploy/secrets/program-id.json $SO
+solana program deploy --url "$(grep -E '^SOLANA_RPC=' server/.env.devnet | cut -d= -f2-)" \
+  --keypair $K/deploy.json --upgrade-authority $K/deploy.json --program-id $K/program-id.json $SO
+# 5. initialize: the deploy wallet (upgrade authority) signs, names the admin key, platform cut 0 – then read Config.authority back
+bash $D admin initialize -k $PWD/$K/deploy.json --admin "$(solana-keygen pubkey $K/admin.json)" --platform-treasury "$(solana-keygen pubkey $K/plat.json)" --platform-fee-bps 0
+bash $D admin show
+# 6. the deployed bytes = the pin (read-only)
+PROGRAM_ID=$(solana-keygen pubkey $K/program-id.json) RPC_URL="$(grep -E '^SOLANA_RPC=' server/.env.devnet | cut -d= -f2-)" bash .claude/skills/program-check/check.sh onchain
+# 7. the program id into the profile, then the server on this machine (http://localhost:3000) – it registers pools from chain by itself
+TICKET_PROGRAM_ID=$(solana-keygen pubkey $K/program-id.json) RPC='…' WS='…' bash $D env && bash $D server
+# 8. pools (admin key): short test deadlines, plus one meant to miss its goal
+bash $D admin create-pool -k $PWD/$K/admin.json --tier 1h --price 2000000 --min 2 --per-wallet 3 --prep +3600 --play +7200 \
+  --fee-treasury "$(solana-keygen pubkey $K/fee.json)" --seed-treasury "$(solana-keygen pubkey $K/seed.json)"
+# 9. the whole money scenario against devnet (its own server on a throwaway DB, players funded by `funder` and swept back)
+bash $D rehearse
 ```
 
-5. **`initialize`** (`(cd server && node scripts/pool-admin.mjs initialize --url <devnet rpc> -k ../deploy/secrets/program-deploy.json --admin <Phantom address> --platform-treasury <address>)`), signed by the upgrade authority (`deploy/secrets/program-deploy.json`) with `authority` = your Phantom address (`TREASURY_PUBKEY`) and the platform treasury; it also passes the program and its ProgramData account (`[program id]` under the upgradeable loader). Read `Config.authority` back: it must be the Phantom address.
-6. Check the chain has exactly the committed bytes (read-only): `PROGRAM_ID=$(solana-keygen pubkey deploy/secrets/program-id.json) bash .claude/skills/program-check/check.sh onchain`.
-7. `create_pool` per pool (admin), then `node dist/cli/index.js pool:register <id> --label "…"` on the server.
-8. Server env (`deploy/.env`, then `npm run deploy` when you ask for it): `PAYMENT_MODE=program`, `TICKET_PROGRAM_ID`, `FEE_TREASURY`, `SEED_TREASURY`, `FEE_PAYER_SECRET` (gas sponsor), `CRANK_SECRET` (a new keypair with ~0.5 devnet SOL – it pays the crank's fees and nothing else) + `CRANK_INTERVAL_MS` (60000), `WEBHOOK_SECRET`, `SOLANA_RPC` (one that allows `getProgramAccounts` – the crank lists tickets with it).
-9. Optional, public "verified" badge (writes a PDA, signed by the upgrade authority; repo must be public):
-   `solana-verify -u https://api.devnet.solana.com verify-from-repo --program-id <id> --mount-path programs/freightchain-pools --library-name freightchain_pools --commit-hash <sha> -k deploy/secrets/program-deploy.json <https repo url>`, then `solana-verify -u https://api.devnet.solana.com remote submit-job --program-id <id> --uploader <deploy wallet pubkey>`.
+- **The admin key in Phantom**: import `deploy/secrets/devnet/admin.json` (Phantom → Add account → Import private key; the file's JSON array is the key) – then
+  you sign in to the lobby / admin page as the admin (`TREASURY_PUBKEY`) and can sign payouts there. Without UI buttons: `bash $D payout <poolId>` (plan) and `--yes`.
+- **Callbacks**: the lobby's fast path (`/submit`, `/confirm`), the watcher (polls every `WATCH_INTERVAL_MS`, websocket with `SOLANA_WS`) and the QuickNode
+  Stream → `POST /api/chain/webhook` with header `x-webhook-secret: <WEBHOOK_SECRET from .env.devnet>` (dataset *Logs*, filtered on the program id; a tunnel –
+  cloudflared / ngrok – to reach localhost). To test one path alone: `bash $D admin buy -k <wallet.json> --pool N` (no order – only the watcher / webhook can
+  credit it), or restart with `WATCH_INTERVAL_MS=0` to leave it to the webhook.
+- **Optional, public "verified" badge** (writes a PDA, signed by the upgrade authority; repo must be public):
+  `solana-verify -u <devnet rpc> verify-from-repo --program-id <id> --mount-path programs/freightchain-pools --library-name freightchain_pools --commit-hash <sha> -k deploy/secrets/devnet/deploy.json <https repo url>`, then `solana-verify -u <devnet rpc> remote submit-job --program-id <id> --uploader <deploy wallet pubkey>`.
+
+## Production (only after the Colosseum results and the devnet exit list – `escrow-open-items.md` Phase 3)
+
+`deploy/.env` gets `PAYMENT_MODE=program`, `TICKET_PROGRAM_ID`, `TREASURY_PUBKEY` (= the admin), `FEE_TREASURY`, `SEED_TREASURY`, `FEE_PAYER_SECRET`, `CRANK_SECRET`
+(fee money only) + `CRANK_INTERVAL_MS`, `SOLANA_RPC` + `SOLANA_WS` (QuickNode devnet – production still runs on devnet), `WEBHOOK_SECRET`; then `npm run deploy -- --dry-run`
+and, on an explicit "deploy", `npm run deploy`. The smoke test checks the escrow when the server reports program mode. The QuickNode Stream then points at
+`https://api.freightchain.fun/api/chain/webhook`.
 
 ## Operate it later
 
@@ -59,7 +82,7 @@ solana program deploy --url devnet \
 | Failed / expired pools | automatic: the **crank** (`CRANK_SECRET` set on the server, every `CRANK_INTERVAL_MS`) fails missed pools, expires unsettled ones 14 days after their play deadline, refunds every ticket (8 per tx) and closes them; by hand: `node dist/cli/index.js pool:crank` (one pass, prints what it sent) or `scripts/pool-admin.mjs fail-pool / expire-pool / close-pool`. Players can always CLAIM REFUND themselves | the crank key (fees only) / anyone |
 | Rotate the admin | `propose_authority(new)` → `accept_authority()` from the new key; takes over every pool at once. Then set `TREASURY_PUBKEY` on the server | old admin, then new |
 | Change platform cut / treasury | `set_config(…)` (applies to pools at close time) | admin |
-| Move or drop upgrade rights | `solana program set-upgrade-authority --url devnet -k deploy/secrets/program-deploy.json --upgrade-authority deploy/secrets/program-deploy.json <id> --new-upgrade-authority <key>` (a key you can sign with; for a multisig / PDA add `--skip-new-upgrade-authority-signer-check` and triple-check the address); `--final` instead of the new key = immutable forever, only after an audit | upgrade authority |
-| Reclaim the rent of a dead devnet program | `solana program close --url devnet -k deploy/secrets/program-deploy.json --authority deploy/secrets/program-deploy.json --recipient <your address> <id> --bypass-warning` – destroys it and strands every pool with it | upgrade authority |
+| Move or drop upgrade rights | `solana program set-upgrade-authority --url devnet -k deploy/secrets/devnet/deploy.json --upgrade-authority deploy/secrets/devnet/deploy.json <id> --new-upgrade-authority <key>` (a key you can sign with; for a multisig / PDA add `--skip-new-upgrade-authority-signer-check` and triple-check the address); `--final` instead of the new key = immutable forever, only after an audit | upgrade authority |
+| Reclaim the rent of a dead devnet program | `solana program close --url devnet -k deploy/secrets/devnet/deploy.json --authority deploy/secrets/devnet/deploy.json --recipient <your address> <id> --bypass-warning` – destroys it and strands every pool with it | upgrade authority |
 
-Two keys, two jobs: the **upgrade authority** (`deploy/secrets/program-deploy.json`) can replace the code; the **admin** (`Config.authority`, your Phantom) runs pools. Neither can take escrowed money outside the rules – except through an upgrade, which is why the upgrade key matters most and why every deployed hash should match `verifiable-build.hash`.
+Two keys, two jobs: the **upgrade authority** (`deploy/secrets/devnet/deploy.json`) can replace the code; the **admin** (`Config.authority`, your Phantom) runs pools. Neither can take escrowed money outside the rules – except through an upgrade, which is why the upgrade key matters most and why every deployed hash should match `verifiable-build.hash`.
