@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Payment } from '../../domain/economy/payment.entity.js';
 import { toRideDto, type RideDto } from '../../domain/rides/ride.dto.js';
-import type { Ride } from '../../domain/rides/ride.entity.js';
+import type { Ride, RideProps } from '../../domain/rides/ride.entity.js';
 import { RideStatus } from '../../domain/rides/ride-status.js';
 import { ConflictError, NotFoundError, ServiceUnavailableError, VersionConflictError } from '../../domain/shared/errors.js';
 import { PaymentRepositoryPort } from '../ports/economy/payment.repository.port.js';
@@ -17,6 +17,16 @@ import { RoundService } from './round.service.js';
 class RoundClosed extends Error {}
 
 const ATTEMPTS = 3;
+
+/** `inserted` is true only when THIS call wrote the Payment. `paidAt` is that row's `at`, and null when another caller already did.
+ *  `cancelled` / `expired` are sibling rides THIS insert closed. Both stay empty when `inserted` is false: the race loser did not close them. */
+export interface SettlementResult {
+  ride: RideDto;
+  inserted: boolean;
+  paidAt: Date | null;
+  cancelled: RideProps[];
+  expired: RideProps[];
+}
 
 /**
  * Records a VERIFIED payment, in one transaction under the wallet's row lock: the order becomes a ready ride in the current round's pool.
@@ -38,7 +48,7 @@ export class PaymentSettlementService {
     private readonly clock: ClockPort,
   ) {}
 
-  async settle(rideId: string, wallet: string, signature: string): Promise<RideDto> {
+  async settle(rideId: string, wallet: string, signature: string): Promise<SettlementResult> {
     for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
       try {
         return await this.settleOnce(rideId, wallet, signature);
@@ -47,7 +57,7 @@ export class PaymentSettlementService {
         if (error instanceof ConflictError || error instanceof VersionConflictError) {
           // lost a race: if that was THIS payment being recorded by a concurrent request, the outcome is "paid", not an error
           const recorded = await this.payments.findBySignature(signature);
-          if (recorded?.rideId === rideId) return toRideDto(await this.lookup.require(rideId, wallet));
+          if (recorded?.rideId === rideId) return { ride: toRideDto(await this.lookup.require(rideId, wallet)), inserted: false, paidAt: null, cancelled: [], expired: [] };
         }
         throw error;
       }
@@ -55,7 +65,7 @@ export class PaymentSettlementService {
     throw new ServiceUnavailableError('the weekly round is turning over – try again');
   }
 
-  private async settleOnce(rideId: string, wallet: string, signature: string): Promise<RideDto> {
+  private async settleOnce(rideId: string, wallet: string, signature: string): Promise<SettlementResult> {
     const now = this.clock.now();
     const round = await this.rounds.ensureRound(now);
     return this.transactions.run(async (tx) => {
@@ -64,32 +74,34 @@ export class PaymentSettlementService {
       if (!(await this.roundRepo.lockOpen(round.id, tx))) throw new RoundClosed();
       const ride = await this.lookup.require(rideId, wallet, tx); // re-read under the lock
       ride.markPaid(round.id, now);
-      const refunded = await this.makeRoomFor(ride, now, tx);
-      if (refunded) {
+      const room = await this.makeRoomFor(ride, now, tx);
+      if (room.refunded) {
         player.refundFreeRide();
         await this.players.save(player, tx);
       }
       // the unique signature / ride keys make a concurrent double-settle fail here with a ConflictError, rolling the whole transaction back
       await this.payments.insert(new Payment({ signature, rideId: ride.id, wallet, lamports: ride.lamports, usd: ride.priceUsd, roundId: round.id, at: now }), tx);
-      return toRideDto(await this.rides.save(ride, tx));
+      return { ride: toRideDto(await this.rides.save(ride, tx)), inserted: true, paidAt: now, cancelled: room.cancelled, expired: room.expired };
     });
   }
 
-  /** Cancel an unstarted free ride (→ true: refund its credit) and let other unpaid orders lapse. Running and other paid rides stay. */
-  private async makeRoomFor(paid: Ride, now: Date, tx: TransactionHandle): Promise<boolean> {
-    let refunded = false;
+  /** Cancel an unstarted free ride (refund its credit) and let other unpaid orders lapse. Running and other paid rides stay. */
+  private async makeRoomFor(paid: Ride, now: Date, tx: TransactionHandle): Promise<{ refunded: boolean; cancelled: RideProps[]; expired: RideProps[] }> {
+    const cancelled: RideProps[] = [];
+    const expired: RideProps[] = [];
     for (const other of await this.rides.listOpenByWallet(paid.wallet, tx)) {
       if (other.id === paid.id) continue;
       if (other.isFree && other.isInStatus(RideStatus.Created)) {
         other.cancelReplaced(now);
-        refunded = true;
+        cancelled.push(other.snapshot());
       } else if (other.isInStatus(RideStatus.AwaitingPayment)) {
         other.expire(now);
+        expired.push(other.snapshot());
       } else {
         continue;
       }
       await this.rides.save(other, tx);
     }
-    return refunded;
+    return { refunded: cancelled.length > 0, cancelled, expired };
   }
 }

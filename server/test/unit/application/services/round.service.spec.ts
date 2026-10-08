@@ -4,12 +4,15 @@ import { Payment } from '../../../../src/domain/economy/payment.entity.js';
 import { Round, RoundStatus } from '../../../../src/domain/economy/round.entity.js';
 import { MemoryTransaction } from '../../../support/in-memory/memory-repositories.js';
 import { FakeClock } from '../../../support/fake-clock.js';
+import { RecordingAnalytics } from '../../../support/recording-analytics.js';
 import { FixedRules, unitContext, unitRules } from '../../../support/unit-context.js';
 
 describe('RoundService', () => {
   it('the first round of all is seeded with the configured initial seed', async () => {
     const ctx = unitContext(unitRules({ initialSeedLamports: 777 }));
     expect((await ctx.rounds.ensureRound()).carry).toBe(777);
+    expect(ctx.analytics.named('round_opened')).toHaveLength(1);
+    expect(ctx.analytics.named('round_closed')).toEqual([]);
   });
 
   it('a new week closes the old round and carries its 20 % – an empty week passes its own carry on', async () => {
@@ -39,8 +42,10 @@ describe('RoundService', () => {
       async entriesOf(): Promise<RoundEntries> { return { lamports: 0, count: 0 }; }
       async lockOpen() { return true; }
     }
-    expect((await new RoundService(new Racing(), new FixedRules(), new MemoryTransaction(), clock).ensureRound()).id).toBe(2);
+    const analytics = new RecordingAnalytics();
+    expect((await new RoundService(new Racing(), new FixedRules(), new MemoryTransaction(), clock, analytics).ensureRound()).id).toBe(2);
     expect(saves).toBe(0);
+    expect(analytics.events).toEqual([]);
   });
 
   it('locks the previous round before reading its entries (so a payment settling into it is counted)', async () => {
@@ -56,7 +61,7 @@ describe('RoundService', () => {
       entriesOf = async (id: number) => { order.push('entries'); return ctx.roundRepo.entriesOf(id); };
       lockOpen = async (id: number) => { order.push('lock'); return ctx.roundRepo.lockOpen(id); };
     }
-    await new RoundService(new Spy(), ctx.rules, ctx.transactions, ctx.clock).ensureRound();
+    await new RoundService(new Spy(), ctx.rules, ctx.transactions, ctx.clock, new RecordingAnalytics()).ensureRound();
     expect(order).toEqual(['lock', 'entries']);
   });
 });

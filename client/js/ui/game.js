@@ -14,6 +14,7 @@ import { radio } from '../sim/radio.js';
 import { routesHTML, bindRoutes, timeHTML, bindTime } from './routes.js';
 import { online, beginOnline, endOnline } from '../online.js';
 import { startLiveFeed, stopLiveFeed } from './live-feed.js';
+import { track, flushSoon } from '../analytics.js';
 import { env } from '../world/environment.js';
 import { SITE_BASE } from '../hosts.js';
 
@@ -62,9 +63,32 @@ function showOnlineMenu(title, sub, extra) {
   document.getElementById('go').onclick = startRide;
   document.getElementById('lobby').onclick = () => { location.href = `${SITE_BASE}/lobby.html`; };
 }
+/* Same strings the server stores, so a client "I finished" can be compared with the verdict. Not a completion metric. */
+function failCode(outcome, reason) {
+  if (outcome !== 'failed' || typeof reason !== 'string' || !reason) return null;
+  if (reason.startsWith('heartbeat lost')) return 'heartbeat_lost';
+  if (reason.startsWith('implausible progress (')) return 'implausible_progress';
+  if (reason.startsWith('shift complete') || reason.startsWith('shift abandoned') || reason.startsWith('Shift abandoned') || reason === 'replaced by a paid ride') return null;
+  if (reason.includes('brakes')) return 'brakes';
+  if (reason.includes('blew') || reason.includes('max revs')) return 'engine_blown';
+  if (reason.includes('cold')) return 'cold_engine';
+  if (reason.includes('hull')) return 'hull';
+  if (reason.includes('off the road')) return 'off_road';
+  if (reason.includes('collision') || reason.includes('crashed into') || reason.includes('drove into') || reason.includes('ran into')) return 'crash';
+  return 'other';
+}
 export async function startRide() {   // (offline there is no await, so it still runs synchronously)
   if (online.error || online.done) return;
-  if (online.ride) { try { await beginOnline(); } catch (e) { online.error = e.message; showMenu('RIDE REFUSED', 'The server did not accept this ride.'); return; } startLiveFeed(); }   // spectators' chat + effects (live streams)
+  if (online.ride) {
+    track('ride_start_clicked', { ride_id: online.ride.id, route_id: env.theme.id, phase: dn.phase });
+    try { await beginOnline(); } catch (e) {
+      online.error = e.message;
+      track('ride_start_failed', { ride_id: online.ride.id, http_status: typeof e.status === 'number' ? e.status : null, code: typeof e.code === 'string' ? e.code : null });
+      showMenu('RIDE REFUSED', 'The server did not accept this ride.');
+      return;
+    }
+    startLiveFeed();   // spectators' chat + effects (live streams)
+  }
   else if (!Wallet.charge(CFG.FARE)) return;
   resetRide(); st.mode = 'drive'; audio.start(); overlay.classList.add('hide');
   toast(CFG.START_ENGINE_OFF ? 'Press I to start the engine and B to release the parking brake, then SHIFT (clutch) → E (1st) → W (gas) → ease the clutch out' : 'Release the parking brake (B), then hold SHIFT (clutch) → E (1st gear) → W (gas) → ease the clutch out', 6000);
@@ -74,6 +98,7 @@ export async function startRide() {   // (offline there is no await, so it still
    (st.complete: RIDE_MIN_SECONDS driven AND CFG.COMPLETE_DIST covered, set in sim/physics.js). */
 export function endRide(ok, reason, outcome = ok ? 'shift' : 'failed') {   // outcome: what the server is told – abandoning a shift is 'shift' (the server judges it), a crash is 'failed'
   if (st.mode !== 'drive' && st.mode !== 'paused') return;
+  if (online.ride) { track('ride_end_requested', { outcome, client_complete: !!st.complete, fail_code: failCode(outcome, reason) }); flushSoon(); }   // before endOnline; the server verdict is the completion metric
   st.mode = 'done'; stopLiveFeed();
   const verdict = endOnline(outcome, reason);   // null offline
   if (ok && !online.ride) Wallet.credit(CFG.REWARD);
@@ -94,12 +119,16 @@ const verdictText = v => {
   return `${outcome} · ${v.verdict.status.toUpperCase()}${why ? ` – ${why}` : ''}`;
 };
 const endShift = () => st.complete ? endRide(true) : endRide(false, `Shift abandoned before it was complete (${fmt(CFG.RIDE_MIN_SECONDS)} and ${(CFG.COMPLETE_DIST / 1000).toFixed(1)} km).`, 'shift');
-export function setPaused(p) {
+export function setPaused(p, source = 'key') {
   if (st.watch) return;   // a spectator has nothing to pause: the watch panel has its own play / pause
   if (p && st.mode === 'drive') {
     st.mode = 'paused'; panel.innerHTML = `<h1>PAUSED</h1><h2>Time does not accrue while paused. The road never ends – end the shift here.</h2><div class="btns"><button id="resume">RESUME</button><button class="alt" id="endshift">${st.complete ? 'END SHIFT (complete)' : 'ABANDON SHIFT'}</button></div>`;
     overlay.classList.remove('hide'); document.getElementById('resume').onclick = () => setPaused(false); document.getElementById('endshift').onclick = endShift;
+    if (online.ride) { track('ride_paused', { source }); if (source === 'visibility') flushSoon(); }   // transition only, not per frame
   }
-  else if (!p && st.mode === 'paused') { st.mode = 'drive'; overlay.classList.add('hide'); clock.last = performance.now(); }
+  else if (!p && st.mode === 'paused') {
+    st.mode = 'drive'; overlay.classList.add('hide'); clock.last = performance.now();
+    if (online.ride) track('ride_unpaused', { source });   // not ride_resumed: that name is the server event for an existing open ride, and the relay drops it
+  }
 }
-document.addEventListener('visibilitychange', () => { if (document.hidden) setPaused(true); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) setPaused(true, 'visibility'); });

@@ -6,12 +6,15 @@ import { defaultClientDir, defaultLandingDir } from './client-dir.js';
 import { validateEnv, type EnvConfig } from './env.schema.js';
 import { isWalletAddress } from '../../domain/players/wallet-address.js';
 
+const PROJECT_TOKEN = /^phc_[A-Za-z0-9]+$/;
+
 /** Typed access to the environment, validated with the Zod schema when the app is created (so every app instance – and every test harness – sees the env as it is NOW). */
 @Injectable()
 export class EnvService {
   private readonly env: EnvConfig = validateEnv(process.env);
   private readonly treasury: string = this.resolveTreasury();
   private devSecret?: string;
+  private posthogKeyWarned = false;
 
   get port(): number { return this.env.PORT; }
   get nodeEnv(): string { return this.env.NODE_ENV; }
@@ -89,6 +92,32 @@ export class EnvService {
   get treasuryPubkey(): string {
     return this.treasury;
   }
+
+  /** `phc_…` project token, or null. A missing key and a non-token (a pasted `phx_`) are both "off" – the value is never logged. */
+  get posthogKey(): string | null {
+    const key = this.env.POSTHOG_KEY;
+    if (!key) return null;
+    if (PROJECT_TOKEN.test(key)) return key;
+    if (!this.posthogKeyWarned) {
+      this.posthogKeyWarned = true;
+      new Logger('EnvService').warn('analytics disabled: POSTHOG_KEY is not a project token');
+    }
+    return null;
+  }
+
+  get posthogHost(): string { return this.env.POSTHOG_HOST; }
+
+  /** Global opt-in. Only `1` or `true` may send. Unset, empty, `0`, and `false` stay off even with a project token. */
+  get posthogEnabled(): boolean { return this.env.POSTHOG_ENABLED === '1' || this.env.POSTHOG_ENABLED === 'true'; }
+
+  /** Kill switch. `1` or `true` force capture off even when POSTHOG_ENABLED is on. */
+  get posthogDisabled(): boolean { return this.env.POSTHOG_DISABLED === '1' || this.env.POSTHOG_DISABLED === 'true'; }
+
+  /** Operator id. Not part of the capture body. */
+  get posthogProjectId(): string | null { return this.env.POSTHOG_PROJECT_ID ?? null; }
+
+  /** Capture runs only with a real project token, POSTHOG_ENABLED of `1` or `true`, and the kill switch off. */
+  get analyticsEnabled(): boolean { return this.posthogKey !== null && this.posthogEnabled && !this.posthogDisabled; }
 
   /** TREASURY_PUBKEY, else – outside production and tests – data/treasury.json written by `npm run treasury:init`. A file that is there but invalid stops the boot. */
   private resolveTreasury(): string {

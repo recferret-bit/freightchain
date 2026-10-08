@@ -5,6 +5,11 @@ import { AchievementRepositoryPort } from '../ports/achievements/achievement.rep
 import { RideQueryPort } from '../ports/rides/ride-query.port.js';
 import { ClockPort } from '../ports/shared/clock.port.js';
 
+export interface FreshUnlock {
+  id: string;
+  earnedAt: Date;
+}
+
 @Injectable()
 export class AchievementService {
   constructor(
@@ -15,14 +20,13 @@ export class AchievementService {
 
   /** Persist every unlock the wallet has earned and not yet got (idempotent, never removes) – one read and at most one insert. Returns the NEW ids.
       Pass `facts` when the caller already read them (the profile does). */
-  async evaluate(wallet: string, rideId: string | null = null, facts?: Facts): Promise<string[]> {
+  async evaluate(wallet: string, rideId: string | null = null, facts?: Facts): Promise<FreshUnlock[]> {
     const known = new Set((await this.unlocks.listByWallet(wallet)).map((u) => u.achievementId));
-    const fresh = earnedIds(facts ?? (await this.rideQuery.summary(wallet)).facts).filter((id) => !known.has(id));
-    if (fresh.length > 0) {
-      const now = this.clock.now();
-      await this.unlocks.insertAll(fresh.map((id) => new AchievementUnlock(wallet, id, now, rideId)));
-    }
-    return fresh;
+    const fresh = earnedIds(facts ?? (await this.rideQuery.summary(wallet)).facts).filter((id) => !known.has(id) && id !== 'top-20');
+    if (fresh.length === 0) return [];
+    const now = this.clock.now();
+    const inserted = new Set(await this.unlocks.insertAll(fresh.map((id) => new AchievementUnlock(wallet, id, now, rideId))));
+    return fresh.filter((id) => inserted.has(id)).map((id) => ({ id, earnedAt: now }));
   }
 
   /** The whole catalogue with the wallet's unlocks (earnedAt null = locked). */

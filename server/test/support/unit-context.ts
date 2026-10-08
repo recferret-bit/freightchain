@@ -1,3 +1,4 @@
+import { RecordingAnalytics } from './recording-analytics.js';
 import { RulesConfigPort, type RulesConfig } from '../../src/application/ports/config/rules-config.port.js';
 import { EntropyPort } from '../../src/application/ports/shared/entropy.port.js';
 import { AchievementService } from '../../src/application/services/achievement.service.js';
@@ -78,6 +79,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const adminActions = new MemoryAdminActionRepository(db);
   const adminQuery = new MemoryAdminQuery(db);
   const health = new MemoryHealthProbe();
+  const analytics = new RecordingAnalytics();
   const pools = new MemoryPoolRepository(db);
   const tickets = new MemoryRideTicketRepository(db);
   const promos = new MemoryPromoRepository(db);
@@ -89,9 +91,9 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const sponsoredTxs = new MemorySponsoredTxRepository(db);
   const rideEvents = new MemoryRideEventRepository(db);
   const viewers = new MemoryViewerPresenceAdapter();
-  const sessions = new PlayerSessionService(players, rulesPort, clock);
+  const sessions = new PlayerSessionService(players, rulesPort, clock, analytics);
   const lookup = new RideLookupService(rides);
-  const rounds = new RoundService(roundRepo, rulesPort, transactions, clock);
+  const rounds = new RoundService(roundRepo, rulesPort, transactions, clock, analytics);
   const achievements = new AchievementService(unlocks, rideQuery, clock);
   const ticketSettlement = new TicketSettlementService(players, pools, tickets, orders, sessions, rounds, transactions, clock, entropy);
   const registry = new PoolRegistryService(poolChain, pools, clock);
@@ -121,7 +123,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const storedPlayer = async (wallet: string) => (await players.findByWallet(wallet)) as Player;
 
   return {
-    db, clock, chain, entropy, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, batches, hasher, verdictRepo, verdicts, proofs, signIns, adminActions, adminQuery, health,
+    db, clock, chain, entropy, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, batches, hasher, verdictRepo, verdicts, proofs, signIns, adminActions, adminQuery, health, analytics,
     pools, tickets, promos, orders, poolTickets, ticketSettlement,
     sessions, lookup, rounds, achievements, settlement, now, player, freeRide, paidOrder, reload, storedPlayer,
     poolChain, chainEvents, chainCursors, sponsoredTxs, registry, rideEvents, viewers,

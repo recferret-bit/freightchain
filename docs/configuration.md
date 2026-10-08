@@ -107,9 +107,9 @@ A new setting therefore touches **four** places: `env.schema.ts`, `server/.env.e
 
 The admin API additionally requires: host = `admin.<apex>` (nginx basic auth, `DEPLOY_ADMIN_USER` / `DEPLOY_ADMIN_PASSWORD` ≥ 16 chars), a wallet sign-in, and a wallet signature for every change.
 
-### Product analytics (read on `plan/posthog-integration`; stripped on `main`)
+### Product analytics
 
-The capture code is not on `main`. `env.schema.ts` here does not declare these keys, so Zod strips them and boot is unchanged. They are still listed in `server/.env.example`, `deploy/.env.example`, and `deploy/docker-compose.prod.yml` `app.environment`, because a key missing from compose never reaches the container once the branch is merged. Full behaviour: [`docs/analytics/index.html`](analytics/index.html).
+`env.schema.ts` declares these keys. They are listed in `server/.env.example`, `deploy/.env.example`, and `deploy/docker-compose.prod.yml` `app.environment`, because a key missing from compose never reaches the container. Full behaviour: [`docs/analytics/index.html`](analytics/index.html).
 
 | Key | Default | Notes |
 |---|---|---|
@@ -183,5 +183,5 @@ npm run server:dev                   # :3000 – site, game and API on one origi
 
 ## Known drift
 
-- `POSTHOG_*` in the gitignored env files is intentional and the two files differ. Local `server/.env` pins `POSTHOG_ENABLED=0` (the local compose file is Postgres only and must not turn capture on). Production `deploy/.env` sets `POSTHOG_ENABLED=1`, EU host, project 297915, token not tracked. On `main` the schema strips the keys, so the live site ignores them until `plan/posthog-integration` is the image production runs. Do not point the host at `us.i.posthog.com`. Do not delete the keys to “clean up” — the analytics branch reads them. `POSTHOG_DISABLED=1` still wins after that deploy.
+- `POSTHOG_*` in the gitignored env files is intentional and the two files differ. Local `server/.env` pins `POSTHOG_ENABLED=0` (the local compose file is Postgres only and must not turn capture on). Production `deploy/.env` sets `POSTHOG_ENABLED=1`, EU host, project 297915, token not tracked. The live site sends when the running image includes this code. Do not point the host at `us.i.posthog.com`. Do not delete the keys to “clean up”. `POSTHOG_DISABLED=1` still wins.
 - `deploy/.env.example` omits `FEE_PAYER_*` / `CRANK_SECRET` / `POSTHOG_KEY` real values on purpose (dummies and an empty token) and does not list `COOKIE_DOMAIN` / `CORS_ORIGINS` / `APP_*` (derived).

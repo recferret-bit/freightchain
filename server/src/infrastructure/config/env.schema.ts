@@ -29,6 +29,15 @@ export const envSchema = z
     DEMO_WALLETS: z.string().default(''),
     DEMO_SCALE: z.coerce.number().positive().default(60),
     INITIAL_SEED_SOL: z.coerce.number().min(0).default(0),
+    /** Project token (`phc_…`). Empty is unset. A non-token is refused by EnvService, not by this schema, so a pasted personal key cannot stop boot. */
+    POSTHOG_KEY: optional(z.string()),
+    POSTHOG_HOST: z.preprocess((v) => (v === '' ? undefined : v), z.string().url().default('https://eu.i.posthog.com')),
+    /** Global opt-in. Only `1` / `true` may send. `0` / `false` / empty / unset stay off even with a project token. Not a coerced boolean. */
+    POSTHOG_ENABLED: optional(z.enum(['1', 'true', '0', 'false'])),
+    /** Kill switch. `1` / `true` disable capture even when POSTHOG_ENABLED is on. Not a coerced boolean (`"false"` must not become true). */
+    POSTHOG_DISABLED: optional(z.enum(['1', 'true', '0', 'false'])),
+    /** Stored for operators. Never sent on capture. */
+    POSTHOG_PROJECT_ID: optional(z.string()),
     // ---- paid tickets (docs/paid-tickets-plan.md §2.1). Nothing here is required yet: today's deploy keeps booting; the workstreams add their own production checks.
     /** 'program' = escrow pools through the Anchor program, 'transfer' = plain transfers to the treasuries (fallback). Unset: 'program' when TICKET_PROGRAM_ID is set, else 'transfer'. */
     PAYMENT_MODE: optional(z.enum(['program', 'transfer'])),

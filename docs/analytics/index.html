@@ -19,8 +19,8 @@
   <h1>Product analytics</h1>
   <p class="lede">Two planes, one PostHog project. The browser may say what the player clicked. The server is the only writer of a sign-in, a payment, and a finished shift. Money and completion quoted to anyone come from the server events, and they have to match the database.</p>
   <div class="status">
-    <span class="pill">code <b>plan/posthog-integration</b></span>
-    <span class="pill">not on <b>main</b> · not live</span>
+    <span class="pill">code on <b>main</b></span>
+    <span class="pill">sends when this image is <b>deployed</b></span>
     <span class="pill">cloud <b>EU</b> · project 297915</span>
     <span class="pill">ingest <b>eu.i.posthog.com</b></span>
   </div>
@@ -28,7 +28,7 @@
     <a class="pill" href="https://eu.posthog.com/project/297915/dashboard/1006663">EU board · dashboard 1006663</a>
     <span class="pill">private · login wall · no public share</span>
   </div>
-  <p class="soft">The board stays at zero until that branch is deployed. Production <code>deploy/.env</code> already sets <code>POSTHOG_ENABLED=1</code> and <code>POSTHOG_HOST=https://eu.i.posthog.com</code>. Local <code>server/.env</code> pins <code>POSTHOG_ENABLED=0</code>, and the local compose file does not run the API. <code>main</code> strips these keys, so the live site sends nothing until that deploy. Events sent to the US ingest host never appear on it. A US app URL is the wrong project. Loop health is a second blank dashboard and does not exist yet.</p>
+  <p class="soft">The board stays empty until someone adds tiles. Events show in Activity. Production <code>deploy/.env</code> sets <code>POSTHOG_ENABLED=1</code> and <code>POSTHOG_HOST=https://eu.i.posthog.com</code>. Local <code>server/.env</code> pins <code>POSTHOG_ENABLED=0</code>, and the local compose file does not run the API. The live site sends once the running image includes this code. Events sent to the US ingest host never appear on the EU board. A US app URL is the wrong project. Loop health is a second blank dashboard and does not exist yet.</p>
 
   <ul class="toc">
     <li><a href="#s-planes">Two planes</a></li>
@@ -49,7 +49,7 @@
   <div class="head">
     <span class="eyebrow">Where a fact is born</span>
     <h2 id="s-planes">The browser proposes, the server disposes</h2>
-    <p class="soft">Built on <code>plan/posthog-integration</code> (commit <code>6774faf</code>, plus uncommitted EU-host edits). <code>main</code> has no capture code. Production does not send events. This page describes that branch as it stands on 8 Oct 2026. Verified-play verdicts, escrow tickets, and live-stream chat are later work on <code>main</code> and are not events here.</p>
+    <p class="soft">Capture is on this checkout as of 8 Oct 2026. Verified-play verdicts, escrow ticket buys, and live-stream chat are still not events. <code>payment_confirmed</code> is the memo-transfer confirm and reconcile. A ticket ride emits <code>ride_ordered</code>, which is the ride, not the purchase.</p>
   </div>
   <div class="pipe four">
     <div class="step"><span class="n">1</span><span class="where">Browser</span><h3>Click</h3><p>Landing, lobby, and the online ride page post an allowlisted batch. Offline play and the model viewer send nothing.</p></div>
@@ -369,7 +369,7 @@
       </tbody>
     </table>
   </div>
-  <p class="soft">On <code>main</code> the schema does not declare these keys, so Zod strips them and the server boots as before. Both example files and <code>deploy/docker-compose.prod.yml</code> list them anyway: a key present in <code>deploy/.env</code> but missing from compose never reaches the container. Merging the branch without that list would leave the production opt-in in the file and off in the process. A shell <code>POSTHOG_ENABLED=1</code> wins over the local <code>0</code> for that process. <code>POSTHOG_DISABLED=1</code> still wins after the branch is deployed.</p>
+  <p class="soft">The schema declares these keys. Both example files and <code>deploy/docker-compose.prod.yml</code> list them: a key present in <code>deploy/.env</code> but missing from compose never reaches the container. A shell <code>POSTHOG_ENABLED=1</code> wins over the local <code>0</code> for that process. <code>POSTHOG_DISABLED=1</code> still wins.</p>
 </section>
 
 <section aria-labelledby="s-promise">
@@ -395,9 +395,9 @@
     <h2 id="s-limits">What this does not do</h2>
   </div>
   <ul class="limits">
-    <li><b>It is not live.</b><span>The capture code is on <code>plan/posthog-integration</code>. <code>main</code> ignores the keys. Deploying <code>main</code> does not turn the board on. Tiles stay at zero until that branch is deployed with the EU host.</span></li>
+    <li><b>The board has no tiles.</b><span>Dashboard 1006663 is blank. Ingested events show in Activity, not on that board, until someone adds tiles. Capture sends when the running image includes this code and <code>POSTHOG_ENABLED=1</code>.</span></li>
     <li><b>It does not record the drive.</b><span>Session replay and ride replay belong to verified play (<code>client/js/telemetry.js</code>, the hash-chained batches). This work does not add <code>posthog-js</code>, a second project, or an nginx <code>/ingest/</code> proxy. Replay stays off <code>play.html</code>.</span></li>
-    <li><b>It does not know about tickets, verdicts, or the live stream.</b><span>Those landed on <code>main</code> after this branch was cut. <code>payment_confirmed</code> on the branch is the memo-transfer confirm and reconcile. Escrow ticket buys, <code>verified</code> / <code>flagged</code> / <code>rejected</code>, and spectator chat are not events. Adding them is a later change, on the code that actually has them.</span></li>
+    <li><b>It does not know about tickets, verdicts, or the live stream.</b><span><code>payment_confirmed</code> is the memo-transfer confirm and reconcile. Escrow ticket buys, <code>verified</code> / <code>flagged</code> / <code>rejected</code>, and spectator chat are not events. A ticket ride emits <code>ride_ordered</code>.</span></li>
     <li><b>It does not pay anyone.</b><span>There is no settlement event, no payout event, and no <code>top-20</code> achievement. <code>round_closed</code> is the round rolling over.</span></li>
     <li><b>The alias direction is unresolved.</b><span>See the callout above. The acquisition funnel is not a number until one real session is inspected.</span></li>
     <li><b>The board is not public.</b><span>Dashboard 1006663 is behind the PostHog login. Do not open the share dialog. Loop health does not have a URL yet.</span></li>
@@ -407,7 +407,7 @@
 
 <footer>
   <span>Freight Chain · product analytics</span>
-  <span>branch plan/posthog-integration · 6774faf</span>
+  <span>on main</span>
   <span><a href="https://eu.posthog.com/project/297915/dashboard/1006663">EU dashboard 1006663</a></span>
   <span>as of Oct 8, 2026</span>
 </footer>

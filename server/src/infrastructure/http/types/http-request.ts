@@ -17,3 +17,8 @@ export interface PlayerIdentity {
 export interface RequestWithPlayer extends Request {
   player: PlayerIdentity;
 }
+
+/** Set by OptionalSessionGuard. Null when the cookie is missing or does not verify. */
+export interface RequestWithOptionalSession extends Request {
+  optionalWallet: string | null;
+}

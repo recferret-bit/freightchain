@@ -1,5 +1,6 @@
-import { api, signIn } from '../../client/site/wallet.js';   // one sign-in implementation for landing + lobby (Vite bundles it; fs.allow in vite.config.js for dev)
+import { api, signIn, walletName } from '../../client/site/wallet.js';   // one sign-in implementation for landing + lobby (Vite bundles it; fs.allow in vite.config.js for dev)
 import { GAME_BASE, SITE_BASE, STORYBOOK_BASE } from '../../client/js/hosts.js';   // '' on localhost; in production the game is on ride.<apex>, NOT the landing's host, and SITE_BASE is the apex
+import { track, flushSoon } from '../../client/js/analytics.js';
 import { sol, km, left, dur, short, hue, hours, ago, plural, TIER, TIER_LONG, ROUTE } from './format.js';
 import { explorerUrl, shortAddr, statusChip, progressText, deadline, ESCROW_PAGE } from '../../client/site/pools.js';   // the lobby's pool wording, so both pages say the same thing
 
@@ -142,12 +143,12 @@ function paintTicker() {
 
 /* ───── data ───── */
 async function refresh() {
-  const [p, l] = await Promise.all([api('pool').catch(() => null), api('live').catch(() => null)]);
+  const [p, l] = await Promise.all([api('pool', undefined, { report: false }).catch(() => null), api('live', undefined, { report: false }).catch(() => null)]);
   if (p) S.pool = p;
   if (l) { S.live = l; S.skew = l.now - Date.now(); }
   paintHero(); paintPool(); paintPools(); paintBoards(); paintTicker();
 }
-async function refreshBoard() { S.board = await api('leaderboard?board=round').catch(() => null); paintBoards(); }
+async function refreshBoard() { S.board = await api('leaderboard?board=round', undefined, { report: false }).catch(() => null); paintBoards(); }
 
 /* ───── hero video: never on the critical path ─────
    The slideshow (WebP posters) is the hero. A gameplay loop – `data-src` on #hero-video, empty = none – is fetched only AFTER the page has loaded and the browser is idle, never on
@@ -156,8 +157,8 @@ const heroVideo = $('hero-video');
 function loadHeroVideo() {
   const src = heroVideo.dataset.src;
   if (!src || reduced || navigator.connection?.saveData || matchMedia('(max-width: 700px)').matches) return;
-  heroVideo.addEventListener('playing', () => { heroVideo.classList.add('on'); $('slides').classList.add('off'); }, { once: true });
-  heroVideo.addEventListener('error', () => heroVideo.removeAttribute('src'), { once: true });
+  heroVideo.addEventListener('playing', () => { track('hero_video_started'); heroVideo.classList.add('on'); $('slides').classList.add('off'); }, { once: true });
+  heroVideo.addEventListener('error', () => { track('hero_video_failed'); heroVideo.removeAttribute('src'); }, { once: true });
   heroVideo.src = src; heroVideo.play().catch(() => {});
 }
 const whenIdle = window.requestIdleCallback ?? (f => setTimeout(f, 1200));
@@ -167,8 +168,14 @@ if (document.readyState === 'complete') whenIdle(loadHeroVideo, { timeout: 4000 
 (() => {
   const dlg = $('demo'), dv = $('demo-video');
   $('demo-btn').onclick = () => {
+    track('demo_dialog_opened', { has_video: DEMO_VIDEO != null });
     if (DEMO_VIDEO) { dv.src = DEMO_VIDEO; $('demo-note').textContent = 'Demo clock ×60 – a paid shift is shortened for the demo wallet; the speed bound is not.'; }
-    else { dv.removeAttribute('src'); $('demo-note').replaceChildren('The demo video is not here yet. ', el('a', { href: `${GAME_BASE}/play.html` }, 'Try the game offline'), ' – no wallet, no server, same truck.'); }
+    else {
+      dv.removeAttribute('src');
+      const practice = el('a', { href: `${GAME_BASE}/play.html` }, 'Try the game offline');
+      practice.addEventListener('click', () => { track('offline_practice_clicked'); flushSoon(); });
+      $('demo-note').replaceChildren('The demo video is not here yet. ', practice, ' – no wallet, no server, same truck.');
+    }
     dlg.showModal(); if (DEMO_VIDEO) dv.play().catch(() => {});
   };
   const close = () => { dv.pause(); dlg.close(); };
@@ -176,30 +183,43 @@ if (document.readyState === 'complete') whenIdle(loadHeroVideo, { timeout: 4000 
 })();
 
 /* ───── links to the game (static markup says /play.html; on split hosts that lives on ride.<apex>) ───── */
-for (const a of document.querySelectorAll('a[href="/play.html"]')) a.href = `${GAME_BASE}/play.html`;
-$('storybook-link').href = STORYBOOK_BASE || '/viewer.html';
-$('escrow-link').href = `${SITE_BASE}${ESCROW_PAGE}`;   // client/escrow/ (a served copy of docs/pool-escrow), on the apex   // the model viewer: storybook.<apex> in production, /viewer.html elsewhere
+for (const a of document.querySelectorAll('a[href="/play.html"]')) {
+  a.href = `${GAME_BASE}/play.html`;
+  a.addEventListener('click', () => { track('offline_practice_clicked'); flushSoon(); });
+}
+$('storybook-link').href = STORYBOOK_BASE || '/viewer.html';   // the model viewer: storybook.<apex> in production, /viewer.html elsewhere
+$('storybook-link').addEventListener('click', () => track('storybook_link_clicked'));
+$('escrow-link').href = `${SITE_BASE}${ESCROW_PAGE}`;   // client/escrow/ (a served copy of docs/pool-escrow), on the apex
 
 /* ───── socials ───── */
-for (const [net, url] of Object.entries(SOCIALS)) if (url) $('socials').append(el('a', { href: url, 'data-net': net, target: '_blank', rel: 'noopener' }, net.toUpperCase()));
+for (const [net, url] of Object.entries(SOCIALS)) if (url) {
+  const a = el('a', { href: url, 'data-net': net, target: '_blank', rel: 'noopener' }, net.toUpperCase());
+  a.addEventListener('click', () => track('social_clicked', { net }));   // nodes exist only when a URL is set; today all three are null
+  $('socials').append(a);
+}
 
 /* ───── sign-in / CTA ─────
    CONNECT asks the injected wallet (Phantom / Solflare) to sign the server's challenge; the server verifies the ed25519 signature and sets the httpOnly session cookie
    (Domain = the apex in production, so the lobby, the game and the API share it). The landing never sees the token: it only asks /api/me who is signed in. */
 const btn = $('connect'), msg = $('msg'), playTop = $('play-top'), chip = $('chip-wallet');
-const toLobby = () => { location.href = `${SITE_BASE}/lobby.html`; };
+const toLobby = () => { flushSoon(); location.href = `${SITE_BASE}/lobby.html`; };
+/* Both click assignments: signed-out runs signIn, signed-in (paintSession) opens the lobby. Classification stays inside signIn. */
+const onConnect = async () => {
+  if (S.me) { track('lobby_open_clicked', { surface: 'landing' }); toLobby(); return; }
+  track('wallet_connect_clicked', { surface: 'landing', wallet_name: walletName() });
+  btn.disabled = true; msg.textContent = 'Approve the sign-in message in your wallet…'; msg.className = 'msg';
+  try { await signIn(); msg.textContent = 'Signed in – opening the lobby…'; toLobby(); } catch (e) { msg.textContent = e.message; msg.className = 'msg bad'; btn.disabled = false; }
+};
 function paintSession(me) {
-  S.me = me; btn.textContent = 'OPEN THE LOBBY →'; btn.onclick = toLobby; playTop.textContent = 'LOBBY';
+  S.me = me; btn.textContent = 'OPEN THE LOBBY →'; btn.onclick = onConnect; playTop.textContent = 'LOBBY';
   chip.textContent = short(me.wallet); chip.title = `signed in: ${me.wallet}`; chip.hidden = false;
   msg.textContent = `Signed in as ${short(me.wallet)} · ${plural(me.freeRides, 'free ride')} left`; msg.className = 'msg';
   paintBoards();
 }
-btn.onclick = async () => {
-  btn.disabled = true; msg.textContent = 'Approve the sign-in message in your wallet…'; msg.className = 'msg';
-  try { await signIn(); msg.textContent = 'Signed in – opening the lobby…'; toLobby(); } catch (e) { msg.textContent = e.message; msg.className = 'msg bad'; btn.disabled = false; }
-};
-playTop.onclick = () => { if (S.me) toLobby(); else { location.hash = '#ride'; btn.focus(); } };
-api('me').then(paintSession, () => {});   // signed in already: no forced redirect – the pool is the point of this page
+btn.onclick = onConnect;
+playTop.onclick = () => { track('play_top_clicked', { signed_in: !!S.me }); if (S.me) toLobby(); else { location.hash = '#ride'; btn.focus(); } };
+track('landing_viewed', { surface: 'landing' });   // once per load, not on the 10 s refresh, and not after /api/pool
+api('me', undefined, { report: false }).then(me => { track('session_restored', { surface: 'landing', wallet: me.wallet, ...(me.demo ? { is_demo: true } : {}) }); paintSession(me); }, () => {});   // signed in already: no forced redirect – the pool is the point of this page. Anonymous 401 stays a quiet GET.
 
 /* ───── dash cards: footer colours sampled from the image, tilt follows the pointer ───── */
 function sampleColours(card, img) {
@@ -242,12 +262,20 @@ if (liveCards.length) {
 const io = new IntersectionObserver(es => { for (const e of es) if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }, { rootMargin: '0px 0px -8% 0px' });
 document.querySelectorAll('.rv').forEach(n => io.observe(n));
 const nav = [...document.querySelectorAll('.nav a')];
-const so = new IntersectionObserver(es => { for (const e of es) if (e.isIntersecting) nav.forEach(a => a.classList.toggle('on', a.getAttribute('href') === `#${e.target.id}`)); }, { rootMargin: '-40% 0px -55% 0px' });
+const seenChapter = new Set();
+const so = new IntersectionObserver(es => {
+  for (const e of es) if (e.isIntersecting) {
+    nav.forEach(a => a.classList.toggle('on', a.getAttribute('href') === `#${e.target.id}`));
+    if (seenChapter.has(e.target.id)) continue;
+    seenChapter.add(e.target.id);
+    track('landing_chapter_viewed', { chapter: e.target.id });   // once per section id per load; nav clicks are not a second event
+  }
+}, { rootMargin: '-40% 0px -55% 0px' });
 document.querySelectorAll('section[id]').forEach(s => so.observe(s));
 
 /* ───── boot ───── */
 refresh();
-api('tiers').then(paintTiers, () => { $('tiers').replaceChildren(el('tbody', {}, el('tr', {}, el('td', { class: 'dim' }, 'Prices unavailable right now.')))); });
+api('tiers', undefined, { report: false }).then(paintTiers, () => { $('tiers').replaceChildren(el('tbody', {}, el('tr', {}, el('td', { class: 'dim' }, 'Prices unavailable right now.')))); });
 refreshBoard();
 setInterval(() => { if (!document.hidden) refresh(); }, 10000);
 setInterval(() => { if (!document.hidden) refreshBoard(); }, 30000);

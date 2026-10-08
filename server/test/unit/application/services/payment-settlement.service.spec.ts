@@ -12,7 +12,9 @@ describe('PaymentSettlementService', () => {
     const ctx = unitContext();
     const order = await ctx.paidOrder('w');
     const dto = await ctx.settlement.settle(order.id, 'w', 'sig-1');
-    expect(dto).toMatchObject({ status: 'created', roundId: 1 });
+    expect(dto.inserted).toBe(true);
+    expect(dto.paidAt).toEqual(ctx.now());
+    expect(dto.ride).toMatchObject({ status: 'created', roundId: 1 });
     expect(await ctx.payments.findBySignature('sig-1')).toMatchObject({ rideId: order.id, lamports: order.lamports, roundId: 1 });
   });
 
@@ -23,7 +25,11 @@ describe('PaymentSettlementService', () => {
     const free = await ctx.freeRide('w');
     const player = await ctx.storedPlayer('w'); player.spendFreeRide(); await ctx.players.save(player); // the credit the free ride cost
     const otherOrder = await ctx.paidOrder('w');
-    await ctx.settlement.settle(order.id, 'w', 'sig-late');
+    const settled = await ctx.settlement.settle(order.id, 'w', 'sig-late');
+    expect(settled.cancelled.map((r) => r.id)).toEqual([free.id]);
+    expect(settled.cancelled[0]).toMatchObject({ status: RideStatus.Cancelled, reason: 'replaced by a paid ride' });
+    expect(settled.expired.map((r) => r.id)).toEqual([otherOrder.id]);
+    expect(settled.expired[0]?.status).toBe(RideStatus.Expired);
     expect((await ctx.reload(order.id)).snapshot()).toMatchObject({ status: RideStatus.Created, endedAt: null, reason: null });
     expect((await ctx.reload(free.id)).status).toBe(RideStatus.Cancelled);
     expect((await ctx.reload(otherOrder.id)).status).toBe(RideStatus.Expired);
@@ -47,7 +53,7 @@ describe('PaymentSettlementService', () => {
     const ctx = unitContext();
     const order = await ctx.paidOrder('w');
     await ctx.settlement.settle(order.id, 'w', 'sig-1');
-    expect(await ctx.settlement.settle(order.id, 'w', 'sig-1')).toMatchObject({ id: order.id, status: 'created' });
+    expect(await ctx.settlement.settle(order.id, 'w', 'sig-1')).toMatchObject({ inserted: false, paidAt: null, cancelled: [], expired: [], ride: { id: order.id, status: 'created' } });
   });
 
   it('a signature that already paid ANOTHER ride is a conflict', async () => {
@@ -77,7 +83,7 @@ describe('PaymentSettlementService', () => {
       }
     }
     const settlement = new PaymentSettlementService(ctx.rounds, new TurningRounds(), ctx.payments, ctx.rides, ctx.players, ctx.lookup, ctx.transactions, ctx.clock);
-    expect(await settlement.settle(order.id, 'w', 'sig-1')).toMatchObject({ roundId: 2 });
+    expect(await settlement.settle(order.id, 'w', 'sig-1')).toMatchObject({ inserted: true, ride: { roundId: 2 } });
   });
 
   it('a conflict that is NOT this payment being recorded is passed on', async () => {

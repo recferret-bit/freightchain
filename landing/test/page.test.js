@@ -90,7 +90,7 @@ test('hero video is off the critical path: no src, no autoplay, preload none, lo
 
 test('sign-in: redirect + session UI go through SITE_BASE, the wallet chip exists, errors are shown not thrown', () => {
   assert.match(main, /SITE_BASE\}\/lobby\.html/); assert.doesNotMatch(main, /href = '\/lobby\.html'/);
-  assert.ok(ids.includes('chip-wallet')); assert.match(main, /api\('me'\)\.then\(paintSession/);
+  assert.ok(ids.includes('chip-wallet')); assert.match(main, /api\('me', undefined, \{ report: false \}\)[\s\S]{0,500}?paintSession/);
   assert.match(main, /catch \(e\) \{ msg\.textContent = e\.message; msg\.className = 'msg bad'; btn\.disabled = false; \}/);
 });
 

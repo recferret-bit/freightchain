@@ -55,8 +55,10 @@ export class MemoryPlayerRepository extends PlayerRepositoryPort {
 
   findByWalletForUpdate(wallet: string): Promise<Player | null> { return this.findByWallet(wallet); }
 
-  async insertIfAbsent(player: Player): Promise<void> {
-    if (!this.db.players.has(player.wallet)) this.db.players.set(player.wallet, player.snapshot());
+  async insertIfAbsent(player: Player): Promise<boolean> {
+    if (this.db.players.has(player.wallet)) return false;
+    this.db.players.set(player.wallet, player.snapshot());
+    return true;
   }
 
   async grantDailyFreeRides(today: string): Promise<number> {
@@ -338,12 +340,12 @@ export class MemoryRideVerdictRepository extends RideVerdictRepositoryPort {
 export class MemoryAchievementRepository extends AchievementRepositoryPort {
   constructor(private readonly db: MemoryDb) { super(); }
 
-  async insertAll(unlocks: readonly AchievementUnlock[]): Promise<number> {
-    let added = 0;
+  async insertAll(unlocks: readonly AchievementUnlock[]): Promise<readonly string[]> {
+    const added: string[] = [];
     for (const unlock of unlocks) {
       if (this.db.unlocks.some((u) => u.wallet === unlock.wallet && u.achievementId === unlock.achievementId)) continue;
       this.db.unlocks.push(unlock);
-      added++;
+      added.push(unlock.achievementId);
     }
     return added;
   }

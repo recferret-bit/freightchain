@@ -10,6 +10,8 @@ Everything goes through `npm run ops -- …` (`deploy/scripts/ops.sh` → `deplo
 
 Never run `npm run deploy`, `deploy:rollback`, `deploy:backup` or `deploy:smoke` (the smoke test creates a player) from this skill – they are the user's call.
 
+Product-analytics ingest (the boot line, one probe, the flush log) is the `posthog-prod` skill. This skill only reads logs.
+
 ## Commands (run from the repo root)
 
 | what | command |

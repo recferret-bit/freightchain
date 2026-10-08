@@ -9,6 +9,7 @@ import { RoundService } from './services/round.service.js';
 import { VerdictService } from './services/verdict.service.js';
 import { AdminProofService } from './services/admin-proof.service.js';
 import { GrantDailyFreeRidesHandler } from './use-cases/players/grant-daily-free-rides/grant-daily-free-rides.handler.js';
+import { RecordTelemetryHandler } from './use-cases/telemetry/record-telemetry/record-telemetry.handler.js';
 import { GetMeHandler } from './use-cases/auth/get-me/get-me.handler.js';
 import { LogoutHandler } from './use-cases/auth/logout/logout.handler.js';
 import { RequestChallengeHandler } from './use-cases/auth/request-challenge/request-challenge.handler.js';
@@ -91,6 +92,7 @@ const handlers: Provider[] = [
   GetLiveHandler, GetProfileHandler,
   GetLivenessHandler, GetReadinessHandler,
   GrantDailyFreeRidesHandler,
+  RecordTelemetryHandler,
   ListPoolsHandler, GetPrizePoolHandler, RedeemPromoHandler,
   CreatePromoHandler, ListPromosHandler, DisablePromoHandler, GrantTicketsHandler, RegisterPoolHandler,
   CreateTicketOrderHandler, GetTicketOrderHandler, GetPendingTicketOrderHandler,

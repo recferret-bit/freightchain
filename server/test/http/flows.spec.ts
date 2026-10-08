@@ -8,6 +8,7 @@ import { TICKET_ORDERS_ENV, ticketOrderScenarios } from '../scenarios/ticket-ord
 import { CHAIN_ENV, chainScenarios } from '../scenarios/chain.scenarios.js';
 import { WEBHOOK_ENV, webhookScenarios } from '../scenarios/webhook.scenarios.js';
 import { TELEMETRY_ENV, telemetryScenarios } from '../scenarios/telemetry.scenarios.js';
+import { analyticsScenarios } from '../scenarios/analytics.scenarios.js';
 import { VERDICT_ENV, verdictScenarios } from '../scenarios/verdict.scenarios.js';
 import { ADMIN_ENV, adminScenarios } from '../scenarios/admin.scenarios.js';
 import { LIVE_ENV, liveScenarios } from '../scenarios/live.scenarios.js';
@@ -26,6 +27,7 @@ for (const [name, env, scenarios] of [
   ['HTTP contract: problem+json, request ids, cookies, health', {}, httpContractScenarios],
   ['chain: network fees', CHAIN_ENV, chainScenarios],
   ['chain: the webhook settles what the chain did', WEBHOOK_ENV, webhookScenarios],
+  ['client telemetry relay', {}, analyticsScenarios],
 ] as const) {
   describe(`HTTP (in-memory) · ${name}`, () => {
     let harness: Harness;
@@ -34,3 +36,16 @@ for (const [name, env, scenarios] of [
     scenarios(() => harness);
   });
 }
+
+describe('HTTP (in-memory) · telemetry relay with analytics on', () => {
+  let harness: Harness;
+  beforeAll(async () => {
+    vi.stubGlobal('fetch', async () => ({ ok: true, status: 200, body: { cancel: async () => undefined } }));
+    harness = await createHarness('memory', { POSTHOG_KEY: 'phc_test', POSTHOG_HOST: 'https://posthog.test', POSTHOG_ENABLED: '1' });
+  });
+  afterAll(async () => {
+    await harness.close();
+    vi.unstubAllGlobals();
+  });
+  analyticsScenarios(() => harness);
+});

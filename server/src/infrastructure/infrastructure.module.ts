@@ -15,6 +15,7 @@ import { HealthProbePort } from '../application/ports/health/health-probe.port.j
 import { PlayerRepositoryPort } from '../application/ports/players/player.repository.port.js';
 import { RideQueryPort } from '../application/ports/rides/ride-query.port.js';
 import { RideRepositoryPort } from '../application/ports/rides/ride.repository.port.js';
+import { AnalyticsPort } from '../application/ports/analytics/analytics.port.js';
 import { ClockPort } from '../application/ports/shared/clock.port.js';
 import { EntropyPort } from '../application/ports/shared/entropy.port.js';
 import { HasherPort } from '../application/ports/shared/hasher.port.js';
@@ -25,6 +26,7 @@ import { RideVerdictRepositoryPort } from '../application/ports/verdict/ride-ver
 import { SignInRepositoryPort } from '../application/ports/auth/sign-in.repository.port.js';
 import { AdminActionRepositoryPort } from '../application/ports/admin/admin-action.repository.port.js';
 import { AdminQueryPort } from '../application/ports/admin/admin-query.port.js';
+import { PostHogAnalyticsAdapter } from './analytics/posthog-analytics.adapter.js';
 import { JoseTokenSigner } from './auth/jose.token-signer.js';
 import { JoseAdminTokenSigner } from './auth/jose.admin-token-signer.js';
 import { AdminTokenPort } from '../application/ports/admin/admin-token.port.js';
@@ -58,6 +60,7 @@ import { ChainCursorPrismaRepository } from './prisma/repositories/chain-cursor.
 import { ChainEventPrismaRepository } from './prisma/repositories/chain-event.prisma.repository.js';
 import { SponsoredTxPrismaRepository } from './prisma/repositories/sponsored-tx.prisma.repository.js';
 import { SystemClock } from './time/system.clock.js';
+import { OptionalSessionGuard } from './http/guards/optional-session.guard.js';
 import { PlayerAuthGuard } from './http/guards/player-auth.guard.js';
 import { ClearSessionCookieInterceptor, SetSessionCookieInterceptor } from './http/interceptors/session-cookie.interceptor.js';
 import { PoolRepositoryPort } from '../application/ports/economy/pool.repository.port.js';
@@ -110,12 +113,13 @@ const ports: Provider[] = [
   { provide: SponsoredTxRepositoryPort, useClass: SponsoredTxPrismaRepository },
   { provide: RideEventRepositoryPort, useClass: RideEventPrismaRepository },
   { provide: ViewerPresencePort, useClass: MemoryViewerPresenceAdapter },
+  { provide: AnalyticsPort, useClass: PostHogAnalyticsAdapter },
 ];
 
 const portTokens = ports.map((p) => (p as { provide: unknown }).provide as typeof ClockPort);
 
 @Module({
-  providers: [PrismaService, PlayerAuthGuard, AdminGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, SetAdminCookieInterceptor, ClearAdminCookieInterceptor, { provide: LogRing, useValue: new LogRing() }, JsonLogger, ...ports],
-  exports: [PrismaService, PlayerAuthGuard, AdminGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, SetAdminCookieInterceptor, ClearAdminCookieInterceptor, LogRing, JsonLogger, ...portTokens],
+  providers: [PrismaService, PlayerAuthGuard, AdminGuard, OptionalSessionGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, SetAdminCookieInterceptor, ClearAdminCookieInterceptor, { provide: LogRing, useValue: new LogRing() }, JsonLogger, ...ports],
+  exports: [PrismaService, PlayerAuthGuard, AdminGuard, OptionalSessionGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, SetAdminCookieInterceptor, ClearAdminCookieInterceptor, LogRing, JsonLogger, ...portTokens],
 })
 export class InfrastructureModule {}

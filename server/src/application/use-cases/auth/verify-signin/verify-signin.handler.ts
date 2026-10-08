@@ -7,8 +7,11 @@ import { ChallengeRepositoryPort } from '../../../ports/auth/challenge.repositor
 import { SignInRepositoryPort } from '../../../ports/auth/sign-in.repository.port.js';
 import { SignatureVerifierPort } from '../../../ports/auth/signature-verifier.port.js';
 import { TokenSignerPort } from '../../../ports/auth/token-signer.port.js';
+import { AnalyticsPort } from '../../../ports/analytics/analytics.port.js';
 import { RulesConfigPort } from '../../../ports/config/rules-config.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
+import { playerSignedIn } from '../../../services/analytics-events.js';
+import { emitAnalytics } from '../../../services/analytics-emit.js';
 import { PlayerSessionService } from '../../../services/player-session.service.js';
 import { PoolTicketsService } from '../../../services/pool-tickets.service.js';
 import { demoScaleOf, isDemoWallet } from '../../../services/demo.js';
@@ -28,6 +31,7 @@ export class VerifySignInHandler implements ICommandHandler<VerifySignInCommand,
     private readonly clock: ClockPort,
     private readonly signIns: SignInRepositoryPort,
     private readonly tickets: PoolTicketsService,
+    private readonly analytics: AnalyticsPort,
   ) {}
 
   async execute(command: VerifySignInCommand): Promise<SignInResultDto> {
@@ -43,6 +47,9 @@ export class VerifySignInHandler implements ICommandHandler<VerifySignInCommand,
     await this.signIns.insert({ wallet, at: now, ...command.client }).catch((error: unknown) => {   // the log of sign-ins must never block one
       this.logger.warn(`sign-in of ${wallet} not recorded: ${error instanceof Error ? error.message : String(error)}`);
     });
+    emitAnalytics(this.analytics, () => playerSignedIn({
+      wallet, now, isNewPlayer: player.isNewPlayer, isDemo: isDemoWallet(rules, wallet), freeRides: player.freeRides, freeRidesMax: player.freeRidesMax, demoScale: demoScaleOf(rules), createdAt: player.createdAt,
+    }));
     return { profile: toMeDto(player, now, isDemoWallet(rules, wallet), demoScaleOf(rules), await this.tickets.balances(wallet)), session };
   }
 }

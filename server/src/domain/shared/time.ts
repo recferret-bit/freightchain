@@ -10,3 +10,6 @@ export const utcDay = (at: Date): string => at.toISOString().slice(0, 10);
 
 /** 00:00 UTC of the day `at` falls in – where per-UTC-day caps (the gas sponsor's per-wallet budget) start counting. */
 export const startOfUtcDay = (at: Date): Date => new Date(Math.floor(at.getTime() / DAY_MS) * DAY_MS);
+
+/** Midnight UTC of a `utcDay` string. PostHog dedupes on timestamp, so a once-per-day key needs this instant, not the request clock. */
+export const utcDayStart = (day: string): Date => new Date(`${day}T00:00:00.000Z`);
