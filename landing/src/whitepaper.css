@@ -174,3 +174,18 @@ footer{padding:34px 20px 50px;text-align:center;color:var(--dim);font-size:12px;
   .tblwrap{overflow:visible}
   a{color:inherit}
 }
+
+/* escrow: the core idea line, claim tiles, who-can-do-what lanes */
+.core{margin:10px 0 16px;font-size:clamp(17px,2vw,21px);line-height:1.45;color:var(--cream);padding:12px 18px;border-left:3px solid var(--amber);background:var(--bg2);border-radius:0 8px 8px 0}.core b{color:var(--amber)}
+.claims{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:0 0 16px}
+.claim{display:grid;gap:5px;align-content:start;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.claim em{font-style:normal;font-size:11px;letter-spacing:2px;color:var(--lcd);border:1px solid #1e4a22;background:var(--lcd-bg);border-radius:4px;padding:1px 7px;justify-self:start}
+.claim b{font-size:15px;color:var(--cream)}.claim span{font-size:13.5px;color:var(--dim)}
+.roles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:0 0 16px}
+.role{display:grid;gap:6px;align-content:start;background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--dim);border-radius:10px;padding:14px 16px}
+.role>b{font-size:14px;letter-spacing:2px}.role>span{font-size:13px;color:var(--dim)}
+.role ul{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:7px}.role li{font-size:13.5px;color:var(--cream);padding:7px 10px;background:var(--bg2);border:1px solid var(--line);border-radius:6px}
+.role li small{color:var(--dim);font-size:11.5px;margin-left:4px}.role li.no{color:#ff8a7a;border-color:#d2222255}
+.role.pl{border-top-color:var(--blue)}.role.pl>b{color:var(--blue)}.role.any{border-top-color:var(--lcd)}.role.any>b{color:var(--lcd)}.role.adm{border-top-color:var(--needle)}.role.adm>b{color:var(--needle)}.role.srv{border-top-style:dashed}.role.srv>b{color:var(--cream)}
+@media (max-width:900px){.claims{grid-template-columns:1fr 1fr}.roles{grid-template-columns:1fr 1fr}}
+@media (max-width:560px){.claims,.roles{grid-template-columns:1fr}}

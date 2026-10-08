@@ -428,38 +428,28 @@
   <p class="dim">The program reads the chain's own clock, so these windows are enforced on chain and cannot be moved later.</p>
 
   <h3 class="sub">WHY IT IS SAFE – AND THE RULE BEHIND EACH CLAIM</h3>
-  <div class="tblwrap"><table class="tbl guar">
-    <thead><tr><th>You can count on</th><th>Because the program…</th></tr></thead>
-    <tbody>
-      <tr><td><b>Your fee is held by the program, not by us.</b></td><td>keeps it in a vault PDA with no private key; only the program's instructions can sign for it.</td></tr>
-      <tr><td><b>A missed goal returns every lamport.</b></td><td>lets <em>any wallet</em> call <code>fail_pool</code> then <code>refund</code> once the deadline passes under the minimum. You do not wait for us to start it.</td></tr>
-      <tr><td><b>Nobody can redirect your refund.</b></td><td>derives the ticket's address from your wallet and checks the receiver against it. Whoever sends the refund, the money lands with you; each ticket refunds once (refunding closes it).</td></tr>
-      <tr><td><b>The rules cannot change after you buy.</b></td><td>writes price, minimum, deadlines, split and treasuries at <code>create_pool</code>; no instruction edits them. Only the status and counters move.</td></tr>
-      <tr><td><b>Prizes can never exceed the prize share.</b></td><td>makes <code>pay_prize</code> refuse any payout that would take the running total above it, and any payout before the play deadline.</td></tr>
-      <tr><td><b>A vanished operator cannot trap the money.</b></td><td>lets anyone call <code>expire_pool</code> 14 days after the play deadline. The admin key can also be handed over in two signed steps.</td></tr>
-      <tr><td><b>Money only goes where the pool said.</b></td><td>checks every receiver in <code>close_pool</code> against the treasuries stored in the pool and leaves the vault at exactly zero.</td></tr>
-      <tr><td><b>A pause cannot block your refund.</b></td><td>makes the pause switch stop only new pools, ticket sales and sponsorship. Refunds, prizes and closing always work.</td></tr>
-      <tr><td><b>You pay the ticket price and nothing else.</b></td><td>separates the buyer and the fee payer, so a sponsor can pay network fees and the ticket's rent; rent returns to whoever paid it.</td></tr>
-    </tbody>
-  </table></div>
-  <p>Technical posture: 14 instructions, 12 events, 24 error codes; all arithmetic in 128-bit integers with overflow checks on in release builds; every pool-money amount is an integer of lamports; Anchor 1.2.1, Solana 4.1.2 toolchain, SBPF v0. The binary is meant to be deployed only from a <code>solana-verify</code> reproducible build whose hash is pinned in the repository, so anyone can rebuild the source and compare it with what is on chain.</p>
+  <p class="core">You do not have to trust us: <b>the program holds the money and the rules cannot change after you buy.</b></p>
+  <div class="claims">
+    <article class="claim"><em>VAULT</em><b>Held by the program</b><span>A vault with no private key. Only the program can move it.</span></article>
+    <article class="claim"><em>REFUND</em><b>Missed goal, money back</b><span>Any wallet can trigger it. You never wait for us.</span></article>
+    <article class="claim"><em>RECEIVER</em><b>Nobody redirects a refund</b><span>The ticket is tied to your wallet. It lands with you, once.</span></article>
+    <article class="claim"><em>FIXED</em><b>Rules never change</b><span>Price, deadlines, split and treasuries are written at creation.</span></article>
+    <article class="claim"><em>CAP</em><b>Prizes have a ceiling</b><span>No payout can take the total above the prize share.</span></article>
+    <article class="claim"><em>NO TRAP</em><b>A vanished operator can't trap it</b><span>14 days after the play deadline anyone can expire the pool.</span></article>
+    <article class="claim"><em>ADDRESSES</em><b>Money goes where declared</b><span>Only to the treasuries stored in the pool; the vault ends at zero.</span></article>
+    <article class="claim"><em>PAUSE</em><b>A pause can't block a refund</b><span>It stops new sales only. Refunds and closing always work.</span></article>
+    <article class="claim"><em>FEES</em><b>Only the ticket price</b><span>Rent comes back; a sponsor can cover network fees.</span></article>
+  </div>
+  <p class="dim">Technical posture: 14 instructions · 12 events · 24 error codes · integer lamports with overflow checks · Anchor 1.2.1, SBPF v0 · deployed only from a <code>solana-verify</code> reproducible build whose hash is pinned in the repository, so anyone can rebuild it and compare.</p>
 
   <h3 class="sub">WHO CAN DO WHAT</h3>
-  <div class="tblwrap"><table class="tbl compact">
-    <thead><tr><th>Action</th><th>Who</th><th>When</th><th>Money goes to</th></tr></thead>
-    <tbody>
-      <tr><td>Buy a ticket</td><td>Player</td><td>Open pool before its prep deadline, active pool before its play deadline</td><td>The vault</td></tr>
-      <tr><td>Sponsor a pool</td><td>Anyone</td><td>Same windows as buying</td><td>The vault</td></tr>
-      <tr><td>Fail a pool that missed its goal</td><td>Anyone</td><td>After the prep deadline, under the minimum</td><td>Nothing moves yet</td></tr>
-      <tr><td>Refund a ticket</td><td>Anyone</td><td>While the pool is refunding</td><td>The buyer, plus rent back to its payer</td></tr>
-      <tr><td>Cancel an open pool</td><td>Admin</td><td>Before it goes live</td><td>Nothing moves yet; refunds follow</td></tr>
-      <tr><td>Pay a prize</td><td>Admin</td><td>After the play deadline</td><td>A winner, within the prize share</td></tr>
-      <tr><td>Close and split</td><td>Admin · anyone</td><td>Admin after the play deadline; anyone 14 days later if prizes were paid</td><td>The declared seed and fee treasuries</td></tr>
-      <tr><td>Expire an unsettled pool</td><td>Anyone</td><td>14 days after the play deadline, no prize paid</td><td>Nothing moves yet; full refunds follow</td></tr>
-      <tr><td>Create a pool · pause</td><td>Admin</td><td>Pause never blocks refunds</td><td>–</td></tr>
-      <tr><td>Move any money</td><td><b>The game server: never</b></td><td>Never</td><td>It holds no key that can</td></tr>
-    </tbody>
-  </table></div>
+  <p class="core"><b>Anyone can rescue the money. Only the admin can pay it out. The game server can do neither.</b></p>
+  <div class="roles">
+    <div class="role pl"><b>PLAYER</b><span>puts money in</span><ul><li>Buy a ticket</li></ul></div>
+    <div class="role any"><b>ANYONE</b><span>can rescue it</span><ul><li>Sponsor a pool</li><li>Fail a pool that missed its goal</li><li>Refund a ticket – it lands with the buyer</li><li>Expire a stuck pool <small>+14 days</small></li></ul></div>
+    <div class="role adm"><b>ADMIN</b><span>can pay it out</span><ul><li>Create · cancel · pause</li><li>Pay a prize <small>within the cap</small></li><li>Close and split <small>anyone after +14 days</small></li></ul></div>
+    <div class="role srv"><b>GAME SERVER</b><span>holds no key</span><ul><li>Reads events</li><li>Builds transactions for you to sign</li><li class="no">Moves money: never</li></ul></div>
+  </div>
 
   <h3 class="sub">WHAT THE PROGRAM DOES NOT PROMISE</h3>
   <ul class="honest">
