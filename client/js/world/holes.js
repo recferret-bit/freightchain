@@ -21,14 +21,16 @@ export const HOLES = {
 };
 const IDS = Object.keys(HOLES).filter(k => HOLES[k].cones), SIGN_LAT = 7.6;   // beyond the delineator posts (6.6) and guardrails (6.9)
 
-const cache = new Map();
+const cache = new Map(), placed = new Map();   // placed: holes put on the road by a spectator's donation (live streams) – they replace the chunk's own roll
+const shape = (id, ci, type, s, lat) => { const T = HOLES[type]; return { id, ci, type, s, lat, ells: T.ells, l0: lat + Math.min(...T.ells.map(e => e.dl - e.b)), l1: lat + Math.max(...T.ells.map(e => e.dl + e.b)), ext: Math.max(...T.ells.map(e => Math.abs(e.ds) + e.a)) }; };
 export function holeAt(ci) {   // → { id, ci, type, s, lat, ells, l0, l1, ext } | null; l0..l1 = lateral extent, ext = half length along the road
+  if (placed.has(ci)) return placed.get(ci);
   if (cache.has(ci)) return cache.get(ci);
   let h = null; const q = k => rnd(ci * 97.13 + k * 3.71), s = ci * CH + 4 + q(1) * 24;   // (rnd on ci*13+k clusters badly: sin hash)
   if (CFG.HOLES && ci >= 0 && q(2) < CFG.HOLE_CHANCE && s >= net.Sm + CFG.HOLE_FIRST && net.plain(s, 70)) {   // never on the depot road, at a junction or in a lane taper
     const type = IDS[Math.floor(q(3) * IDS.length)], T = HOLES[type], r = q(4), j = q(5) - .5, dir = T.lane ? (r < .7 ? 1 : -1) : r < .6 ? 1 : -1, lane = laneLat(dir, Math.floor(q(6) * net.lanes(s, dir)));
     const lat = T.lane ? lane : r < .85 ? lane + j * 1.6 : j * 1.2;   // lane-wide: own side 70 %; small: own side 60 %, oncoming 25 %, centre line 15 %
-    h = { id: 'h' + ci, ci, type, s, lat, ells: T.ells, l0: lat + Math.min(...T.ells.map(e => e.dl - e.b)), l1: lat + Math.max(...T.ells.map(e => e.dl + e.b)), ext: Math.max(...T.ells.map(e => Math.abs(e.ds) + e.a)) };
+    h = shape('h' + ci, ci, type, s, lat);
   }
   cache.set(ci, h); return h;
 }
@@ -37,7 +39,18 @@ export function holesNear(s0, s1) {
   for (let ci = Math.floor((s0 - 8) / CH); ci <= Math.floor((s1 + 8) / CH); ci++) { const h = holeAt(ci); if (h) out.push(h); }
   return out;
 }
-export const clearHoleCache = () => cache.clear();   // new road layout (net/orchestrator.js), or CFG.HOLES / HOLE_CHANCE / HOLE_FIRST changed at runtime (debug)
+export const clearHoleCache = () => { cache.clear(); placed.clear(); };   // new road layout (net/orchestrator.js), or CFG.HOLES / HOLE_CHANCE / HOLE_FIRST changed at runtime (debug)
+/* A spectator's obstacle (ui/live-feed.js on the driver's side, watch.js in a replay): `type` from HOLES at road position s / lateral lat, exactly where the
+   driver's game put it – the stamp the server keeps – so every replay has it in the same place. Returns its chunk index (the caller rebuilds that chunk if built). */
+export function placeHole(type, s, lat, id) {
+  if (!HOLES[type]) return null;
+  const ci = Math.floor(s / CH); placed.set(ci, shape(id ?? 'live' + ci, ci, type, s, lat)); return ci;
+}
+/** the first chunk at or after s where a placed obstacle fits: past the depot turn, not at a junction or a lane taper (same rule as the natural holes) */
+export function obstacleSpot(s) {
+  for (let ci = Math.ceil(s / CH); ci < Math.ceil(s / CH) + 40; ci++) { const at = ci * CH + CH / 2; if (at >= net.Sm + CFG.HOLE_FIRST && net.plain(at, 70) && !placed.has(ci)) return at; }
+  return null;
+}
 
 /* ───────────────────────── meshes ───────────────────────── */
 /* Route-independent materials, DoubleSide (so the mirror pass leaves them alone). Drawn just above the road ribbon (y .03) with a polygon offset against z-fighting. */

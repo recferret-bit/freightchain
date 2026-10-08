@@ -22,7 +22,7 @@ class RoadOrchestrator {
     net.reset(this.seed); clearHoleCache(); roadObjects.startTrip(); resetTraffic(); this.lastS = st.s;
   }
   update(dt) {
-    if (st.mode === 'drive') { net.clock += dt; this.redLight(); }
+    if (st.mode === 'drive') { if (!st.watch) net.clock += dt; this.redLight(); }   // a replay sets the signal clock from the recording (watch.js)
     net.ensure(st.s + 2000);
     roadObjects.update(st.s); updateSignals();
     this.lastS = st.s;

@@ -8,20 +8,27 @@ import { clearDebris } from '../sim/damage.js';
 import { toast } from './toast.js';
 import { destroyed } from '../world/props.js';
 import { roads } from '../net/orchestrator.js';
-import { resetScreen } from '../cockpit/windscreen.js';
+import { resetScreen, wip } from '../cockpit/windscreen.js';
+import { telemetry, FLAGS } from '../telemetry.js';
+import { radio } from '../sim/radio.js';
 import { routesHTML, bindRoutes, timeHTML, bindTime } from './routes.js';
 import { online, beginOnline, endOnline } from '../online.js';
+import { startLiveFeed, stopLiveFeed } from './live-feed.js';
 import { env } from '../world/environment.js';
 import { SITE_BASE } from '../hosts.js';
 
 /* Ride flow: menu / start / end / pause overlay and per-ride reset. */
 
-export function resetRide() {
+export function resetRide(seed = online.ride?.seed) {   // seed: the server's for an online ride, the watched ride's for a replay (watch.js), random offline
   Object.assign(st, rideStart({ rpm: CFG.START_ENGINE_OFF ? 0 : IDLE, engineOn: !CFG.START_ENGINE_OFF, temp: ambientC(), pull: Math.random() < .5 ? -1 : 1 }));
-  resetDisp(); destroyed.clear(); clearDebris(); roads.newTrip(online.ride?.seed); resetScreen();   // new road layout, depot, traffic
+  resetDisp(); destroyed.clear(); clearDebris(); roads.newTrip(seed); resetScreen();   // new road layout, depot, traffic
 }
 
 online.extra = () => ({ route: env.theme.id, night: dn.night });   // what the server's public live feed shows next to the ride
+/* the recording's two replay columns (telemetry.js): the hour of the day + the cab's switches, so a spectator sees the lights / wipers the driver had */
+telemetry.extra = () => [Math.round(dn.t * 100) / 100,
+  (st.engineOn ? FLAGS.engine : 0) | (st.keyOn ? FLAGS.key : 0) | (st.park ? FLAGS.park : 0) | (dn.head ? FLAGS.head : 0) | (dn.cab ? FLAGS.cab : 0) | (st.heater ? FLAGS.heater : 0)
+  | (st.washing ? FLAGS.washing : 0) | (wip.mode === 1 ? FLAGS.wipeSlow : wip.mode === 2 ? FLAGS.wipeFast : 0) | (radio.on ? FLAGS.radio : 0) | (st.rev ? FLAGS.rev : 0)];
 
 /* ───────────────────────── overlay / game flow ───────────────────────── */
 const overlay = document.getElementById('overlay'), panel = document.getElementById('panel');
@@ -57,7 +64,7 @@ function showOnlineMenu(title, sub, extra) {
 }
 export async function startRide() {   // (offline there is no await, so it still runs synchronously)
   if (online.error || online.done) return;
-  if (online.ride) { try { await beginOnline(); } catch (e) { online.error = e.message; showMenu('RIDE REFUSED', 'The server did not accept this ride.'); return; } }
+  if (online.ride) { try { await beginOnline(); } catch (e) { online.error = e.message; showMenu('RIDE REFUSED', 'The server did not accept this ride.'); return; } startLiveFeed(); }   // spectators' chat + effects (live streams)
   else if (!Wallet.charge(CFG.FARE)) return;
   resetRide(); st.mode = 'drive'; audio.start(); overlay.classList.add('hide');
   toast(CFG.START_ENGINE_OFF ? 'Press I to start the engine and B to release the parking brake, then SHIFT (clutch) → E (1st) → W (gas) → ease the clutch out' : 'Release the parking brake (B), then hold SHIFT (clutch) → E (1st gear) → W (gas) → ease the clutch out', 6000);
@@ -67,7 +74,7 @@ export async function startRide() {   // (offline there is no await, so it still
    (st.complete: RIDE_MIN_SECONDS driven AND CFG.COMPLETE_DIST covered, set in sim/physics.js). */
 export function endRide(ok, reason, outcome = ok ? 'shift' : 'failed') {   // outcome: what the server is told – abandoning a shift is 'shift' (the server judges it), a crash is 'failed'
   if (st.mode !== 'drive' && st.mode !== 'paused') return;
-  st.mode = 'done';
+  st.mode = 'done'; stopLiveFeed();
   const verdict = endOnline(outcome, reason);   // null offline
   if (ok && !online.ride) Wallet.credit(CFG.REWARD);
   showMenu(ok ? 'SHIFT COMPLETE' : 'RIDE FAILED', ok ? 'Freight on its way. Another one?' : 'Fare is non-refundable.',
@@ -88,6 +95,7 @@ const verdictText = v => {
 };
 const endShift = () => st.complete ? endRide(true) : endRide(false, `Shift abandoned before it was complete (${fmt(CFG.RIDE_MIN_SECONDS)} and ${(CFG.COMPLETE_DIST / 1000).toFixed(1)} km).`, 'shift');
 export function setPaused(p) {
+  if (st.watch) return;   // a spectator has nothing to pause: the watch panel has its own play / pause
   if (p && st.mode === 'drive') {
     st.mode = 'paused'; panel.innerHTML = `<h1>PAUSED</h1><h2>Time does not accrue while paused. The road never ends – end the shift here.</h2><div class="btns"><button id="resume">RESUME</button><button class="alt" id="endshift">${st.complete ? 'END SHIFT (complete)' : 'ABANDON SHIFT'}</button></div>`;
     overlay.classList.remove('hide'); document.getElementById('resume').onclick = () => setPaused(false); document.getElementById('endshift').onclick = endShift;

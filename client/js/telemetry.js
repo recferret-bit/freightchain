@@ -7,7 +7,7 @@ import { API_BASE } from './hosts.js';
    The server does not re-simulate anything: it checks the chain, that the recording agrees with what was reported, and how human the input timing looks
    (server/src/domain/verdict). Batch shape + canonical text must match server/src/domain/telemetry/ride-batch.entity.ts. */
 
-const rec = { on: false, rideId: '', seq: 0, prevHash: '', t0: 0, acc: 0, wall0: 0, samples: [], inputs: [], queue: [], sealing: Promise.resolve(), sending: null, refused: null };
+const rec = { extra: () => [], on: false, rideId: '', seq: 0, prevHash: '', t0: 0, acc: 0, wall0: 0, samples: [], inputs: [], queue: [], sealing: Promise.resolve(), sending: null, refused: null };
 const r = (v, decimals) => { if (!Number.isFinite(v)) return 0; const f = 10 ** decimals; return Math.round(v * f) / f; };   // NaN would serialise as null and the server refuses the batch   // the shortest JSON (x / 100, not x * 0.01: no 0.30000000000000004)
 
 /** One input event: ms since the ride started (wall clock – human timing is measured in real time), the key code or dash button, 1 = down / 0 = up.
@@ -27,8 +27,11 @@ export function tickTelemetry(dt) {
   if (rec.acc >= period) { rec.acc -= period; if (rec.acc >= period) rec.acc = 0; rec.samples.push(sample()); }   // keep the remainder: a true 10 Hz at any frame rate
   if (st.t - rec.t0 >= CFG.TELEMETRY_BATCH_SECONDS) cut();
 }
-/** [t, s, d, psi, v, rpm, gear, hull, gas, brake, steer, clutch] – the order the server reads */
-const sample = () => [r(st.t, 2), r(st.s, 1), r(st.d, 2), r(st.psi, 3), r(st.v, 2), Math.round(st.rpm), st.gear, r(st.hull, 1), r(st.gas, 2), r(st.brake, 2), r(st.steer, 2), r(st.clutch, 2)];
+/** [t, s, d, psi, v, rpm, gear, hull, gas, brake, steer, clutch, clock, flags] – the order the server reads (the verdict uses the first 12; the last two are only
+    for spectators' replays (watch.js): the hour of the day and the cab's switches, so a replay shows the lights and wipers the driver had). Append, never insert. */
+const sample = () => [r(st.t, 2), r(st.s, 1), r(st.d, 2), r(st.psi, 3), r(st.v, 2), Math.round(st.rpm), st.gear, r(st.hull, 1), r(st.gas, 2), r(st.brake, 2), r(st.steer, 2), r(st.clutch, 2), ...rec.extra()];
+/* set by ui/game.js (it can see the day/night, wiper and radio state; this module stays below world/ and cockpit/): [clock hour, FLAGS bitmask] */
+export const FLAGS = { engine: 1, key: 2, park: 4, head: 8, cab: 16, heater: 32, washing: 64, wipeSlow: 128, wipeFast: 256, radio: 512, rev: 1024 };
 
 export function startTelemetry(rideId) {
   Object.assign(rec, { on: true, rideId, seq: 0, prevHash: rideId, t0: st.t, acc: 0, wall0: performance.now(), samples: [], inputs: [], queue: [], sealing: Promise.resolve(), sending: null, refused: null });

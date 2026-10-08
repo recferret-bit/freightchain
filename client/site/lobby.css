@@ -90,6 +90,7 @@ td .av{width:18px;height:18px;margin-right:6px}
 .road .fill{position:absolute;left:0;top:0;bottom:0;background:#ffcf5a1f;transition:width 1s linear}
 .road .truck{position:absolute;top:0;font-size:16px;line-height:22px;transition:left 1s linear}
 .stats{grid-column:1/-1;display:flex;gap:4px 16px;flex-wrap:wrap;font-size:12px;color:var(--dim)}.stats b{color:var(--text);font-weight:normal}
+.stats .watch{margin-left:auto;color:var(--accent,#ffcf5a);font-weight:bold;text-decoration:none;letter-spacing:1px}.stats .watch:hover{text-decoration:underline}
 .empty{text-align:center;padding:40px 10px;color:var(--dim)}
 
 /* board */

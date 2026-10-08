@@ -127,7 +127,7 @@ export function update(dt) {
   // air tank (compressor runs with the engine), coolant, trailer articulation
   if (st.engineOn) st.air = Math.min(.9, st.air + dt * .06);   // engine off: air pressure stays frozen (the gauge doesn't drift)
   updateClimate(dt); updateBattery(dt);   // engine temperature (cools towards ambient when off), heater, cold-engine wear
-  { const hd = roadAt(st.s).t + st.psi; st.tyaw = clamp(st.tyaw + st.vel / 8 * Math.sin(hd - st.tyaw) * dt, hd - 1.2, hd + 1.2); }   // reversing makes the trailer swing out (jackknife, limited)
+  trailerYaw(dt);
 
   // lateral (road frame: s along the centre-line, d across; ds/dt = v·cosψ / (1 − k·d), so the inside of a tight junction turn is shorter)
   const k = curv(st.s), gain = steerGain();
@@ -142,11 +142,7 @@ export function update(dt) {
   if (off && !st._offWarned) { toast('OFF ROAD!'); st._offWarned = true; } if (!off) st._offWarned = false;
   if (!st.complete && st.t >= CFG.RIDE_MIN_SECONDS && st.s >= CFG.COMPLETE_DIST) { st.complete = true; toast('SHIFT COMPLETE – the road goes on. Keep driving, or P → END SHIFT to collect.', 6000); }
 
-  // body sway: spring-damper driven by longitudinal accel (brake dives, throttle squats) and cornering. The ACTUAL change of velocity, not the net force `a`:
-  // a stationary truck held by the brake / a dead engine feels a force but doesn't accelerate, so the cab must not dive (and flip when R is selected).
-  { const w = 2 * Math.PI * T.SWAY_HZ, z = T.SWAY_DAMP, ax = (st.vel - vel0) / Math.max(dt, 1e-3), ay = st.vel * st.vel * st.ste * gain;
-    st.pitchV += (-w * w * (st.pitch - clamp(ax, -10, 6) * T.PITCH_GAIN) - 2 * z * w * st.pitchV) * dt; st.pitch += st.pitchV * dt;
-    st.rollV += (-w * w * (st.roll - clamp(ay, -8, 8) * T.ROLL_GAIN) - 2 * z * w * st.rollV) * dt; st.roll += st.rollV * dt; }
+  bodySway(dt, vel0, gain);
 
   collide(dt); hitHoles(dt);
   const fatal = updateTraffic(dt);   // other vehicles; a direct hit returns the reason the ride is over
@@ -160,6 +156,17 @@ export function update(dt) {
   else if (st.hull <= 0) endRide(false, st.blown ? (st.blownWhy === 'brakes' ? 'The drivetrain gave out – you drove against the brakes for too long.' : 'The engine blew – it was held at max revs for too long.') : st.coldT > 0 ? 'The engine gave out – you pushed it hard while it was still cold.' : 'Your truck was wrecked – the hull gave out.');
   else if (st.offT > CFG.OFFROAD_FAIL_SECONDS || Math.abs(st.d) > 80) endRide(false, 'You spent too long off the road – the truck is stuck in the sand.');
 }
+
+/* body sway: spring-damper driven by longitudinal accel (brake dives, throttle squats) and cornering. The ACTUAL change of velocity, not the net force `a`:
+   a stationary truck held by the brake / a dead engine feels a force but doesn't accelerate, so the cab must not dive (and flip when R is selected).
+   Also run by a replay (watch.js) on the recorded speed, so a spectator's cab moves like the driver's. */
+export function bodySway(dt, vel0, gain = steerGain()) {
+  const T = CFG.TRUCK, w = 2 * Math.PI * T.SWAY_HZ, z = T.SWAY_DAMP, ax = (st.vel - vel0) / Math.max(dt, 1e-3), ay = st.vel * st.vel * st.ste * gain;
+  st.pitchV += (-w * w * (st.pitch - clamp(ax, -10, 6) * T.PITCH_GAIN) - 2 * z * w * st.pitchV) * dt; st.pitch += st.pitchV * dt;
+  st.rollV += (-w * w * (st.roll - clamp(ay, -8, 8) * T.ROLL_GAIN) - 2 * z * w * st.rollV) * dt; st.roll += st.rollV * dt;
+}
+/* trailer articulation from the truck's heading; reversing makes the trailer swing out (jackknife, limited) */
+export function trailerYaw(dt) { const hd = roadAt(st.s).t + st.psi; st.tyaw = clamp(st.tyaw + st.vel / 8 * Math.sin(hd - st.tyaw) * dt, hd - 1.2, hd + 1.2); }
 
 /* parking brake (B key / PARK button on the dash) */
 export function toggleParkingBrake() { st.park = !st.park; toast(st.park ? 'Parking brake ON' : 'Parking brake released', 1200); }

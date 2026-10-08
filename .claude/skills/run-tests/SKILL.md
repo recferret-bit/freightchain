@@ -1,6 +1,6 @@
 ---
 name: run-tests
-description: Run the WHOLE Freight Chain test suite locally, in order – lint/bundle/headless game check, landing tests, server unit + architecture audits, the PostgreSQL integration suite, then the real-Chrome end-to-end runs (game + lobby, and admin) against a freshly built server on a throwaway database – and report pass/fail with the failing output. Use before a commit, before a deploy, when asked to "run the tests", "check everything", or to verify a change end to end. This is the project's test automation (there is no CI).
+description: Run the WHOLE Freight Chain test suite locally, in order – lint/bundle/headless game check, landing tests, server unit + architecture audits, the PostgreSQL integration suite, then the real-Chrome end-to-end runs (game + lobby, admin, and live streams) against a freshly built server on a throwaway database – and report pass/fail with the failing output. Use before a commit, before a deploy, when asked to "run the tests", "check everything", or to verify a change end to end. This is the project's test automation (there is no CI).
 ---
 
 # Run every test (local, no CI)
@@ -36,15 +36,16 @@ If it fails with `P3009 … failed migrations` on `freightchain_test`: that data
 
 `.claude/skills/run-tests/e2e.sh` does all of it: creates a throwaway database `freightchain_e2e_<pid>` in the same container, migrates it,
 builds the landing + server, starts the server on a free port, runs `server/scripts/e2e-browser.mjs` (20 s ride, asserts COMPLETED · VERIFIED),
-`server/scripts/e2e-lobby.mjs` (3 s rides, 33 checks, screenshots) and `server/scripts/e2e-admin.mjs` (admin page: allowlist, queue, override, audit),
+`server/scripts/e2e-lobby.mjs` (3 s rides, the dev pool seeds via `SEED=1`, screenshots), `server/scripts/e2e-admin.mjs` (admin page: allowlist, queue, override, audit)
+and `server/scripts/e2e-watch.mjs` (live streams, two Chromes: a driver + a spectator – replay, chat on the CB, mock NIGHT + SINKHOLE donations applied and seen in the replay; ~3 min),
 then stops the server and drops the database – also on failure.
 
 ```sh
-bash .claude/skills/run-tests/e2e.sh            # all three
-bash .claude/skills/run-tests/e2e.sh browser    # one of: browser | lobby | admin
+bash .claude/skills/run-tests/e2e.sh            # all four
+bash .claude/skills/run-tests/e2e.sh browser    # one of: browser | lobby | admin | watch
 ```
 
-Then **look at the screenshots** it prints (`fc-online-shots`, `fc-lobby-shots`, `fc-admin-shots` in the OS temp dir) with the Read tool – the scripts
+Then **look at the screenshots** it prints (`fc-online-shots`, `fc-lobby-shots`, `fc-admin-shots`, `fc-watch-shots` in the OS temp dir) with the Read tool – the scripts
 cannot judge layout. Say plainly what passed, what failed (with output), and what still needs a human eye.
 
 ## Reporting

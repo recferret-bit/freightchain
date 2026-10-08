@@ -19,7 +19,7 @@ button:focus-visible,a:focus-visible,.card3d:focus-visible{outline:2px solid #ff
 /* ── ticker ── */
 .ticker{position:sticky;top:0;z-index:40;height:26px;overflow:hidden;width:100%;contain:paint;background:var(--lcd-bg);border-bottom:1px solid #1e4a22;font-size:12px;color:var(--lcd);letter-spacing:.5px}
 .tk{position:absolute;left:0;top:0;display:inline-flex;white-space:nowrap;padding:4px 0;animation:tk 60s linear infinite}
-.tk span{padding:0 28px;position:relative}.tk span::after{content:"◆";position:absolute;right:-5px;opacity:.5;font-size:9px;top:2px}
+.tk span,.tk a{padding:0 28px;position:relative}.tk span::after,.tk a::after{content:"◆";position:absolute;right:-5px;opacity:.5;font-size:9px;top:2px}.tk a{color:inherit;text-decoration:none}.tk a:hover{color:var(--cream);text-decoration:underline}
 @keyframes tk{to{transform:translateX(-50%)}}
 .ticker:hover .tk{animation-play-state:paused}
 
@@ -168,6 +168,7 @@ h3.sub{margin:40px 0 14px}
 .r .bar{grid-column:1/-1;height:3px;background:var(--dash);border-radius:2px;overflow:hidden;margin-top:-2px}.r .bar i{display:block;height:100%;background:var(--lcd)}
 .r .n{color:var(--dim);width:2.2em}
 .r.me{background:#ffcf5a0d}
+a.r{color:inherit;text-decoration:none}a.r:hover,a.r:focus-visible{background:#ffcf5a12}.r .watch{color:var(--dim);font-size:11px;letter-spacing:1px;text-align:right}a.r:hover .watch{color:var(--cream)}
 .board .link{display:inline-block;margin-top:10px;font-size:12px}
 .escrow{display:grid;grid-template-columns:3fr 2fr;gap:12px}
 .prow{grid-template-columns:1fr auto}.prow .w{flex-wrap:wrap;gap:4px 8px}.prow .w b{color:var(--amber);white-space:nowrap}

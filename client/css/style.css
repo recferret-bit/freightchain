@@ -32,3 +32,40 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .tcard:hover{border-color:#ffcf5a99}
 .tcard.sel{border-color:#ffcf5a;background:#ffcf5a22;color:#ffcf5a}
 #roadwrap{white-space:nowrap}
+/* live streams: the driver's CB panel (ui/live-feed.js) and the spectator's watch panel (ui/watch-panel.js) */
+#cb{position:absolute;left:max(12px,8vw);top:10px;max-width:min(400px,28vw);z-index:4;pointer-events:none;font-size:13px;text-shadow:0 1px 2px #000}
+#cb .cb-head{display:inline-block;padding:3px 8px;border-radius:4px;background:#000a;border:1px solid #ffcf5a66;color:#ffcf5a;font-size:11px;letter-spacing:1px}
+#cb .cb-line{margin-top:4px;padding:4px 8px;border-radius:4px;background:#000a;transition:opacity 2s;overflow-wrap:anywhere}
+#cb .cb-line b{color:#ffcf5a}#cb .cb-line.gift{border-left:3px solid #7be07b}#cb .cb-line.old{opacity:0}
+#watch{position:absolute;top:0;right:0;bottom:0;width:340px;z-index:6;display:flex;flex-direction:column;gap:8px;padding:14px;box-sizing:border-box;
+       background:#120f0ce6;border-left:2px solid #ffcf5a88;font-size:13px;overflow:hidden}
+#watch button{flex:0 0 auto;font-size:12px;padding:6px 9px}
+#watch button.sel{background:#ffcf5a;color:#1b1408}
+#watch .w-top{display:flex;justify-content:space-between;align-items:flex-start}
+#watch .w-k{font-size:10px;letter-spacing:2px;color:#b9ad8d}
+#watch .w-who{font-size:20px;color:#ffcf5a;letter-spacing:1px}
+#watch .w-meta{color:#d9ccaa}
+#watch .w-badges{display:flex;gap:8px;flex-wrap:wrap}
+#watch .w-badge{padding:2px 8px;border-radius:4px;border:1px solid #fff3;font-size:11px;letter-spacing:1px}
+#watch .w-badge.on{border-color:#ff6b5a;color:#ff6b5a}
+#watch .w-stats{display:flex;gap:12px;flex-wrap:wrap}#watch .w-stats b{color:#efe6cf}
+#watch input[type=range]{width:100%;accent-color:#ffcf5a}
+#watch .w-ctl{display:flex;gap:6px;flex-wrap:wrap}
+#watch .w-feed{flex:1;min-height:80px;overflow-y:auto;border:1px solid #fff2;border-radius:6px;padding:6px;background:#0005}
+#watch .w-line{padding:3px 0;border-bottom:1px solid #fff1;overflow-wrap:anywhere}
+#watch .w-line b{color:#ffcf5a}#watch .w-line.gift{color:#c9f0c9}#watch .w-line.me b{color:#7be07b}
+#watch .w-say{display:flex;gap:6px}
+#watch input:not([type=range]){flex:1;min-width:0;width:100%;box-sizing:border-box;font:inherit;font-size:13px;padding:7px;border-radius:5px;border:1px solid #ffcf5a88;background:#0008;color:#efe6cf}
+#watch .w-fx{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin:4px 0}
+#watch .w-fx button{display:flex;flex-direction:column;align-items:center;gap:2px}#watch .w-fx small{font-weight:normal;opacity:.8}
+#watch .w-small{font-size:11px;margin:2px 0;min-height:1em}
+#watch .w-foot{display:flex;justify-content:space-between;gap:8px;font-size:11px}#watch a{color:#ffcf5a}
+#watch.folded{width:auto;bottom:auto}#watch.folded>*:not(.w-top){display:none}
+#watch.w-error{justify-content:center;align-items:flex-start}
+body:has(#watch:not(.folded)) #toast{left:calc(50% - 170px)}
+@media (max-width:720px){
+  #watch{top:auto;left:0;width:auto;height:46vh;border-left:0;border-top:2px solid #ffcf5a88;padding:10px 12px}
+  #watch.folded{height:auto;left:auto}
+  #cb{max-width:44vw;font-size:11px}
+  body:has(#watch:not(.folded)) #toast{left:50%;top:6%}
+}

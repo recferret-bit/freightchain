@@ -73,6 +73,10 @@ class RoadObjectManager {
     meshPool.prewarm(CFG.POOL_MESHES); groupPool.prewarm(CFG.POOL_GROUPS); stripPool.prewarm(CFG.POOL_CHUNKS * 2);
     this.update(0);
   }
+  /* a chunk's content changed after it was built (a spectator's obstacle arrived late in a replay): rebuild it and the ones before it that carry its warning sign */
+  rebuild(ci) {
+    for (let k = ci - Math.ceil(CFG.HOLE_WARN / CH) - 1; k <= ci; k++) { const g = chunks.get(k); if (g) { releaseChunk(g); chunks.set(k, buildChunk(k)); } }
+  }
   /* on the fly: build what came into range, recycle what fell out of it */
   update(s) {
     const lo = Math.floor((s - BEHIND) / CH), hi = Math.floor((s + AHEAD) / CH);
