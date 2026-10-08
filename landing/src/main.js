@@ -12,7 +12,7 @@ reportWebVitals('landing');   // before the first track(), so the leave flush in
 
 /* ───── things to fill in ───── */
 const DEMO_VIDEO = null;          // e.g. '/media/demo.mp4' – the ≤ 3 min product demo; null = the dialog explains and links to offline play
-const SOCIALS = { x: null, discord: null, telegram: null };   // URLs; null hides the button (Q11 in docs/hackathon-plan-v2.md; files go in landing/public/media/; the hero loop is `data-src` on #hero-video in index.html)
+const SOCIALS = { x: 'https://x.com/FreightChainSol', youtube: 'https://www.youtube.com/@FreightChainGame', discord: null, telegram: null };   // URLs; null hides the button (Q11 in docs/hackathon-plan-v2.md; files go in landing/public/media/; the hero loop is `data-src` on #hero-video in index.html)
 
 const $ = id => document.getElementById(id);
 function el(tag, attrs = {}, ...kids) {

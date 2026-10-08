@@ -201,39 +201,49 @@
   <div class="clip rv">
     <div class="clamp"></div>
     <div class="sheet">
-      <div class="sheet-h"><b>FREIGHT CHAIN · TRIP SHEET</b><span>DRIVER: solo &nbsp;·&nbsp; UNIT: FC-01 &nbsp;·&nbsp; DISPATCH: Colosseum Crypto World's Fair &nbsp;·&nbsp; DUE: Oct 12 2026, 11:59 PT</span></div>
+      <div class="sheet-h"><b>FREIGHT CHAIN · TRIP SHEET</b><span>DRIVER: solo, one seat open &nbsp;·&nbsp; UNIT: FC-01 &nbsp;·&nbsp; DISPATCHED: mid-Sep 2026 &nbsp;·&nbsp; NEXT STOP: Colosseum Crypto World's Fair, Oct 12 2026, 11:59 PT &nbsp;·&nbsp; DESTINATION: mainnet, Dec 2026</span></div>
       <table class="legs">
         <tbody>
-          <tr class="leg"><th colspan="3">LEG 1 · DEPOT <small>Oct 6–7</small></th><td class="stamp"><span class="st done">DONE</span></td></tr>
-          <tr class="done"><td class="box">☑</td><td>The driving sim – truck, roads, routes, climate, traffic</td><td class="note">pre-existing, disclosed</td><td></td></tr>
-          <tr class="done"><td class="box">☑</td><td>Repo split, NestJS server, Sign-In With Solana</td><td class="note">Day 0</td><td></td></tr>
-          <tr class="done"><td class="box">☑</td><td>Server-timed rides: heartbeats, speed bound, verdict</td><td class="note">Day 0</td><td></td></tr>
-          <tr class="done"><td class="box">☑</td><td>SOL/USD quotes, on-chain payment check, weekly pool accounting, demo clock</td><td class="note">Day 1</td><td></td></tr>
-          <tr class="done"><td class="box">☑</td><td>Lobby: new ride · live · leaderboard · profile; persisted badges</td><td class="note">Day 2</td><td></td></tr>
-          <tr class="done"><td class="box">☑</td><td>This page</td><td class="note">Day 2</td><td></td></tr>
+          <tr class="leg"><th colspan="3">LEG 1 · DEPOT <small>mid-Sep – Oct 5</small></th><td class="stamp"><span class="st done">DONE</span></td></tr>
+          <tr class="done"><td class="box">☑</td><td>The driving sim – cab, five routes, endless generated roads, climate, traffic, holes</td><td class="note">pre-existing, disclosed</td><td></td></tr>
+          <tr class="done"><td class="box">☑</td><td>Repo split; NestJS + PostgreSQL server; Sign-In With Solana; six hosts under one cookie</td><td class="note">September</td><td></td></tr>
+          <tr class="done"><td class="box">☑</td><td>Server-timed rides: heartbeats, speed bound, 5 free rides a day, SOL/USD quotes</td><td class="note">September</td><td></td></tr>
+          <tr class="done"><td class="box">☑</td><td>Lobby: new ride · live · leaderboard · profile, persisted badges; this page</td><td class="note">September</td><td></td></tr>
 
-          <tr class="leg"><th colspan="3">LEG 2 · ON THE ROAD <small>Oct 8–12</small></th><td class="stamp"><span class="st now">ROLLING</span></td></tr>
-          <tr class="next"><td class="box">☐</td><td>Deploy to a public URL; a stranger finishes a free ride</td><td class="note">host TBD</td><td></td></tr>
-          <tr class="next"><td class="box">☐</td><td>First real devnet payment into the treasury; pool number moves</td><td class="note">faucet</td><td></td></tr>
-          <tr class="next"><td class="box">☐</td><td>Gameplay loop + ≤ 3 min demo video, 2–3 min pitch</td><td class="note">Oct 11</td><td></td></tr>
-          <tr class="next"><td class="box">☐</td><td>Five playtests outside the team – the only demand number</td><td class="note">Oct 10</td><td></td></tr>
-          <tr class="next"><td class="box">☐</td><td>Submission: form, videos, deck, disclosure</td><td class="note">Oct 12 noon PT</td><td></td></tr>
+          <tr class="leg"><th colspan="3">LEG 2 · THE FAIR <small>Oct 6–12</small></th><td class="stamp"><span class="st now">ROLLING</span></td></tr>
+          <tr class="done"><td class="box">☑</td><td>Verified play: every input recorded, a server verdict, shadow mode, a signed admin review queue</td><td class="note">Oct 7</td><td></td></tr>
+          <tr class="done"><td class="box">☑</td><td>Live streams + replays: watch any ride 25 s behind, CB chat, paid night / potholes, the history</td><td class="note">Oct 8</td><td></td></tr>
+          <tr class="done"><td class="box">☑</td><td>Escrowed pools: the Anchor program (50 tests), tickets, refunds, gasless buys, the crank – written, not deployed</td><td class="note">Oct 8</td><td></td></tr>
+          <tr class="done"><td class="box">☑</td><td>Garage (5 slots), promo codes, cosmetics; the storybook and the whitepaper; the admin page</td><td class="note">Oct 8</td><td></td></tr>
+          <tr class="done"><td class="box">☑</td><td>X, YouTube, a trailer cut from real gameplay with its own 8-bit soundtrack</td><td class="note">Oct 9</td><td></td></tr>
+          <tr class="next"><td class="box">☐</td><td>Product analytics: the PostHog relay and nine funnels are wired, half the board reads</td><td class="note">50 %</td><td></td></tr>
+          <tr class="next"><td class="box">☐</td><td>Submission: 2–3 min pitch, ≤ 3 min demo, form, disclosure</td><td class="note">Oct 12 noon PT</td><td></td></tr>
 
-          <tr class="leg"><th colspan="3">LEG 3 · NEXT FUEL STOP <small>after the fair</small></th><td class="stamp"><span class="st later">BOOKED</span></td></tr>
-          <tr class="later"><td class="box">☐</td><td>The draw and the payouts – commit-and-reveal or a VRF, keys outside the repo</td><td class="note">prizes paid</td><td></td></tr>
-          <tr class="later"><td class="box">☐</td><td>Deterministic replay core: fixed 60 Hz tick, fixed-point maths, 7-byte input log, server re-simulates a paid finish</td><td class="note">anti-cheat</td><td></td></tr>
-          <tr class="later"><td class="box">☐</td><td>Share page per ride (<code>/r/:id</code>), click-to-mint badges for paid wallets</td><td class="note">distribution</td><td></td></tr>
+          <tr class="leg"><th colspan="3">LEG 3 · DEVNET RELEASE <small>Oct 13 – Nov 30</small></th><td class="stamp"><span class="st later">BOOKED</span></td></tr>
+          <tr class="later"><td class="box">☐</td><td>The verifiable program build on devnet; the first real pools: tickets bought, a missed goal refunded, prizes paid from the admin's Phantom</td><td class="note">first SOL moves</td><td></td></tr>
+          <tr class="later"><td class="box">☐</td><td>Verdict thresholds tuned on real rides, then enforced – shadow mode off</td><td class="note">anti-cheat</td><td></td></tr>
+          <tr class="later"><td class="box">☐</td><td>PostHog finished: the nine funnels read every week, each decision written down</td><td class="note">analytics</td><td></td></tr>
+          <tr class="later"><td class="box">☐</td><td>Twenty drivers outside the team finish a shift; finishes and ticket buys counted, the number shown on the board below</td><td class="note">demand</td><td></td></tr>
+          <tr class="later"><td class="box">☐</td><td>Crew: a CPO / COO hybrid who owns product, marketing and user performance</td><td class="note">hiring</td><td></td></tr>
 
-          <tr class="leg"><th colspan="3">LEG 4 · LONG HAUL</th><td class="stamp"><span class="st later">BOOKED</span></td></tr>
-          <tr class="later"><td class="box">☐</td><td>The garage: trucks, upgrades, interior as Solana tokens</td><td class="note">after replay</td><td></td></tr>
-          <tr class="later"><td class="box">☐</td><td>Mainnet with published rules; gambling question answered per region</td><td class="note"></td><td></td></tr>
-          <tr class="later"><td class="box">☐</td><td>Spectator sabotage from the live feed: fog, wind, a pothole for the driver you are watching</td><td class="note">design doc</td><td></td></tr>
-          <tr class="later"><td class="box">☐</td><td>Telegram Mini App</td><td class="note"></td><td></td></tr>
+          <tr class="leg"><th colspan="3">LEG 4 · MAINNET <small>Dec 2026</small></th><td class="stamp"><span class="st later">BOOKED</span></td></tr>
+          <tr class="later"><td class="box">☐</td><td>Legal review of skill prizes – top 3 by verified distance, no draw; regions blocked where needed</td><td class="note">the gate</td><td></td></tr>
+          <tr class="later"><td class="box">☐</td><td>Program review on the published verifiable build; admin and treasury keys off the laptop</td><td class="note">security</td><td></td></tr>
+          <tr class="later"><td class="box">☐</td><td>Mainnet pools with published rules; the first prizes in real SOL</td><td class="note">Dec 2026</td><td></td></tr>
+          <tr class="later"><td class="box">☐</td><td>A public Dune board of the program: pools, tickets, prizes, refunds</td><td class="note">after mainnet</td><td></td></tr>
+
+          <tr class="leg"><th colspan="3">LEG 5 · LONG HAUL <small>2027</small></th><td class="stamp"><span class="st later">BOOKED</span></td></tr>
+          <tr class="later"><td class="box">☐</td><td>Garage parts and promo cosmetics as NFTs the wallet owns and trades</td><td class="note">cosmetics only</td><td></td></tr>
+          <tr class="later"><td class="box">☐</td><td>Achievements on chain: verified-play badges attested per wallet</td><td class="note">proof</td><td></td></tr>
+          <tr class="later"><td class="box">☐</td><td>Spectator economy on top of today's tips: sponsors, per-km pledges, convoys</td><td class="note">streams</td><td></td></tr>
+          <tr class="later"><td class="box">☐</td><td>Storybook workshop: pay SOL for attempts at a new prop, vehicle or landmark; drivers vote, winners ship, the maker is credited</td><td class="note">community assets</td><td></td></tr>
+          <tr class="later"><td class="box">☐</td><td>Deterministic replay core: fixed tick, fixed-point maths, a paid finish re-simulated</td><td class="note">design doc</td><td></td></tr>
 
           <tr class="leg"><th colspan="3">LEFT AT THE DEPOT <small>cut on purpose</small></th><td class="stamp"><span class="st cut">CUT</span></td></tr>
-          <tr class="cut"><td class="box">☒</td><td>Anchor escrow program – a memo-checked System transfer does the job this week</td><td class="note">toolchain</td><td></td></tr>
-          <tr class="cut"><td class="box">☒</td><td>Truck upgrades and mint-on-unlock in the hackathon build</td><td class="note">pay-to-win risk</td><td></td></tr>
-          <tr class="cut"><td class="box">☒</td><td>A second chain, a React rewrite, the 8-hour spec ride</td><td class="note">focus</td><td></td></tr>
+          <tr class="cut"><td class="box">☒</td><td>Performance upgrades bought for SOL – a part never changes the clock or the speed</td><td class="note">pay-to-win</td><td></td></tr>
+          <tr class="cut"><td class="box">☒</td><td>Mobile, touch controls, a Telegram Mini App – desktop browser, Phantom / Solflare</td><td class="note">focus</td><td></td></tr>
+          <tr class="cut"><td class="box">☒</td><td>Paid ads before someone owns growth</td><td class="note">see the board</td><td></td></tr>
+          <tr class="cut"><td class="box">☒</td><td>A token, a second chain, a React rewrite, the 8-hour spec ride</td><td class="note">focus</td><td></td></tr>
         </tbody>
       </table>
       <div class="sheet-f"><span>Signed: the driver</span><span>Odometer at filing: <b id="sheet-km">–</b> km, all riders</span></div>
@@ -251,22 +261,24 @@
     <table class="loads">
       <thead><tr><th>LANE</th><th>CARGO</th><th>RATE</th><th>FILL</th><th>STATUS</th></tr></thead>
       <tbody>
-        <tr><td>FREE RIDES</td><td>5 at signup, +1 every UTC day. The habit; its own leaderboard and badges.</td><td>$0</td><td class="num" id="lb-drivers">–</td><td><em class="rolling">ROLLING</em></td></tr>
-        <tr><td>PAID SHIFTS</td><td>1 h / 4 h / 8 h at $5 / $15 / $50 in SOL. Every entry grows the one pot.</td><td>in</td><td class="num" id="lb-entries">–</td><td><em class="rolling">ROLLING · DEVNET</em></td></tr>
-        <tr><td>THE POT</td><td>One global number. Every paid ride changes a page other people are looking at.</td><td>50/20/20/10</td><td class="num" id="lb-pot">–</td><td><em class="rolling">ACCRUING</em></td></tr>
-        <tr><td>LIVE BOARD</td><td>Watch without a wallet: who is driving, how far, PAUSED / NO SIGNAL.</td><td>$0</td><td class="num" id="lb-live">–</td><td><em class="booked">BOOKED</em></td></tr>
-        <tr><td>SHARE PAGE</td><td>One URL per finished ride (<code>/r/:id</code>): route, distance, verdict, pot at the time.</td><td>a page</td><td class="num">–</td><td><em class="bid">BID</em></td></tr>
-        <tr><td>X POSTS</td><td>The pot number, one post per paid finish. Account not named yet.</td><td>time</td><td class="num">–</td><td><em class="bid">BID</em></td></tr>
-        <tr><td>SOLANA CROWDS</td><td>People who already sit through long on-chain spectacles and streams; leaderboard chasers.</td><td>time</td><td class="num">–</td><td><em class="bid">BID</em></td></tr>
-        <tr><td>PLAYTESTS</td><td>Five people outside the team on the public URL, Oct 10. Finishes and paid attempts counted – that is the demand number, whatever it is.</td><td>5 favours</td><td class="num" id="lb-tests">–</td><td><em class="bid">BID</em></td></tr>
-        <tr class="off"><td>PAID ADS</td><td>Not this week.</td><td>–</td><td class="num">–</td><td><em class="unlisted">NOT LISTED</em></td></tr>
-        <tr class="off"><td>MOBILE WALLETS · REGIONS · KYC</td><td>Beyond Phantom / Solflare on desktop: not this week, on purpose.</td><td>–</td><td class="num">–</td><td><em class="unlisted">NOT LISTED</em></td></tr>
+        <tr><td>FREE RIDES</td><td>5 at signup, +1 every UTC day, more with a promo code. The habit; its own leaderboard and badges.</td><td>$0</td><td class="num" id="lb-drivers">–</td><td><em class="rolling">ROLLING</em></td></tr>
+        <tr><td>TICKETS</td><td>A paid shift is a ticket into an escrowed pool of its tier. Too few sold by the deadline: everyone is refunded, on chain.</td><td>SOL</td><td class="num" id="lb-entries">–</td><td><em class="rolling">ROLLING · DEVNET</em></td></tr>
+        <tr><td>THE POOLS</td><td>One public number per pool. Prize 70 % – the top 3 by verified distance take 25 / 15 / 10, the top 20 share the rest – seed 20 %, fee 10 %.</td><td>70/20/10</td><td class="num" id="lb-pot">–</td><td><em class="rolling">ACCRUING</em></td></tr>
+        <tr><td>WATCH</td><td>No wallet needed: who is driving, 25 s behind, every finish replayable. A spectator talks on the CB and buys the driver a night or a pothole.</td><td>$0</td><td class="num" id="lb-live">–</td><td><em class="rolling">ROLLING</em></td></tr>
+        <tr><td>REPLAY LINKS</td><td>One URL per ride is the share page: the watch link, with the route, the distance and the verdict.</td><td>a link</td><td class="num">–</td><td><em class="rolling">ROLLING</em></td></tr>
+        <tr><td><a href="https://x.com/FreightChainSol" target="_blank" rel="noopener">X</a></td><td>@FreightChainSol: clips, pool numbers, finishes as they happen.</td><td>time</td><td class="num">–</td><td><em class="rolling">ROLLING</em></td></tr>
+        <tr><td><a href="https://www.youtube.com/@FreightChainGame" target="_blank" rel="noopener">YOUTUBE</a></td><td>@FreightChainGame: the trailer, shift recordings, how the escrow works.</td><td>time</td><td class="num">–</td><td><em class="rolling">ROLLING</em></td></tr>
+        <tr><td>SOLANA CROWDS</td><td>The fair's audience, Solana gaming communities, leaderboard chasers – people who already sit through long on-chain spectacles.</td><td>time</td><td class="num">–</td><td><em class="bid">BID</em></td></tr>
+        <tr><td>PLAYTESTS</td><td>Twenty drivers outside the team on the devnet release. Finishes and ticket buys counted – that is the demand number, whatever it is.</td><td>20 favours</td><td class="num" id="lb-tests">–</td><td><em class="bid">BID</em></td></tr>
+        <tr><td>CREW WANTED</td><td>A CPO / COO hybrid: owns product, marketing and user performance; the founder keeps the code. Write to <a href="https://x.com/FreightChainSol" target="_blank" rel="noopener">X DMs</a>.</td><td>a seat</td><td class="num">1 open</td><td><em class="booked">OPEN SEAT</em></td></tr>
+        <tr class="off"><td>PAID ADS</td><td>Not before someone owns growth; organic until then.</td><td>–</td><td class="num">–</td><td><em class="unlisted">NOT LISTED</em></td></tr>
+        <tr class="off"><td>MOBILE · KYC</td><td>Desktop Phantom / Solflare only; regions are decided by the legal review before mainnet.</td><td>–</td><td class="num">–</td><td><em class="unlisted">NOT LISTED</em></td></tr>
       </tbody>
     </table>
     <div class="lb-f">
-      <span><b>COMMISSION</b> 10 % of every weekly pool – the business, once pools pay out.</span>
-      <span><b>SEED</b> 20 % carried into next week so the board never shows zero.</span>
-      <span><b>THESIS</b> attention is the scarce good; a public clock, a public pot and a public board sell it.</span>
+      <span><b>COMMISSION</b> 10 % of every pool – the business, once pools pay out.</span>
+      <span><b>SEED</b> 20 % carried into the next pool so the board never shows zero.</span>
+      <span><b>THESIS</b> attention is the scarce good; a public clock, a public pool and a public board sell it.</span>
     </div>
   </div>
 </section>
@@ -279,10 +291,10 @@
   <div class="about rv">
     <article><h3>WHY A TRUCK</h3><p>Desert Bus (1995) was an eight-hour drive from Tucson to Las Vegas at 45 mph for one point. Nobody should have finished it, and people did – and other people watched. The scarce thing was attention. This is that, with the finish decided by a server and the pot in SOL.</p></article>
     <article><h3>BUILT · CUT · NEXT</h3>
-      <ul class="bcn"><li><i class="ok"></i><b>Built:</b> the sim, Sign-In With Solana, server-timed rides, on-chain payment check, weekly pool accounting, live feed, boards, badges, this page.</li>
-      <li><i class="cut"></i><b>Cut on purpose:</b> Anchor escrow (memo-checked transfer instead), truck upgrades, mint-on-unlock, Telegram, mainnet.</li>
-      <li><i class="next"></i><b>Next:</b> the draw and payouts, deterministic replay, a share page per ride.</li></ul></article>
-    <article><h3>THE STACK</h3><p>Vanilla ES modules + three.js in the browser, no bundler. NestJS + SQLite on the server. Phantom / Solflare, System transfer + Memo, SOL/USD from Coinbase then CoinGecko. Solo build for the Colosseum Crypto World's Fair, Sep–Oct 2026; the driving sim predates it and is disclosed in the README.</p></article>
+      <ul class="bcn"><li><i class="ok"></i><b>Built:</b> the sim, Sign-In With Solana, server-timed rides, verified play, live streams and replays, the escrow program and its server mirror, garage, promo codes, analytics, this page.</li>
+      <li><i class="cut"></i><b>Cut on purpose:</b> performance upgrades, mobile / Telegram, paid ads before a growth hire, a token, mainnet before a legal review.</li>
+      <li><i class="next"></i><b>Next:</b> the program on devnet with real pools, a CPO / COO hire, mainnet in December.</li></ul></article>
+    <article><h3>THE STACK</h3><p>Vanilla ES modules + three.js in the browser, no bundler. NestJS + PostgreSQL on the server. An Anchor (Rust) escrow program, one vault per pool. Phantom / Solflare, SOL/USD from Coinbase then CoinGecko. Solo build since mid-September 2026, entered in the Colosseum Crypto World's Fair; the driving sim predates it and is disclosed in the README.</p></article>
   </div>
   <div class="socials rv" id="socials">
     <span class="lbl">JOIN THE CONVOY</span>
