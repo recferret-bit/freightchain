@@ -205,6 +205,8 @@ const btn = $('connect'), msg = $('msg'), playTop = $('play-top'), chip = $('chi
 /* The invite block: a code typed here (or arriving as /?promo=CODE – a shareable invite link) rides along to the lobby's PROMO tab, where it only pre-fills the field. */
 const inviteIn = $('invite-code'), inviteMsg = $('invite-msg');
 let invite = (new URLSearchParams(location.search).get('promo') ?? '').trim().slice(0, 64);
+const linkCode = invite;   // what the invite link carried (analytics: was the submit the link's own code?)
+const codeOf = v => v.replace(/\s+/g, '').toUpperCase().slice(0, 32);   // the same normalising as the server; the code is a marketing string, never a secret of the visitor
 if (invite) { inviteIn.value = invite; inviteMsg.textContent = `Code ${invite.toUpperCase()} is ready – connect your wallet to claim it.`; }
 const toLobby = () => { flushSoon(); location.href = `${SITE_BASE}/lobby.html${invite ? `?promo=${encodeURIComponent(invite)}#promo` : ''}`; };
 /* Both click assignments: signed-out runs signIn, signed-in (paintSession) opens the lobby. Classification stays inside signIn. */
@@ -223,6 +225,7 @@ function paintSession(me) {
 $('invite').onsubmit = e => {
   e.preventDefault();
   invite = inviteIn.value.trim();
+  if (invite) track('promo_invite_submitted', { code: codeOf(invite), signed_in: !!S.me, from_link: !!linkCode && codeOf(invite) === codeOf(linkCode) });
   if (!invite) { inviteMsg.textContent = 'Type the code first.'; inviteMsg.className = 'hint bad'; inviteIn.focus(); return; }
   inviteMsg.className = 'hint';
   if (S.me) { toLobby(); return; }
@@ -231,7 +234,8 @@ $('invite').onsubmit = e => {
 };
 btn.onclick = onConnect;
 playTop.onclick = () => { track('play_top_clicked', { signed_in: !!S.me }); if (S.me) toLobby(); else { location.hash = '#ride'; btn.focus(); } };
-track('landing_viewed', { surface: 'landing' });   // once per load, not on the 10 s refresh, and not after /api/pool
+track('landing_viewed', { surface: 'landing' });
+if (linkCode) track('promo_invite_viewed', { code: codeOf(linkCode) });   // an invite link was opened   // once per load, not on the 10 s refresh, and not after /api/pool
 api('me', undefined, { report: false }).then(me => { track('session_restored', { surface: 'landing', wallet: me.wallet, ...(me.demo ? { is_demo: true } : {}) }); paintSession(me); }, () => {});   // signed in already: no forced redirect – the pool is the point of this page. Anonymous 401 stays a quiet GET.
 
 /* ───── dash cards: footer colours sampled from the image, tilt follows the pointer ───── */

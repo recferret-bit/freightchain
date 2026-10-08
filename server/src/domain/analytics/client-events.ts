@@ -36,6 +36,9 @@ export const CLIENT_EVENTS = [
   'offline_practice_clicked',
   'storybook_link_clicked',
   'social_clicked',
+  'promo_invite_viewed',
+  'promo_invite_submitted',
+  'promo_redeem_clicked',
 ] as const;
 
 export type ClientEventName = (typeof CLIENT_EVENTS)[number];
@@ -86,6 +89,9 @@ const ALLOW: Record<ClientEventName, readonly string[]> = {
   offline_practice_clicked: [],
   storybook_link_clicked: [],
   social_clicked: ['net'],
+  promo_invite_viewed: ['code'],
+  promo_invite_submitted: ['code', 'signed_in', 'from_link'],
+  promo_redeem_clicked: ['surface', 'prefilled'],
 };
 
 const MAX_KEYS = 20;

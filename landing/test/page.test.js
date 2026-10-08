@@ -100,6 +100,7 @@ test('promo invite: a form in the hero (no new heading or chapter), the code rid
   assert.match(main, /new URLSearchParams\(location\.search\)\.get\('promo'\)/, 'an invite link: /?promo=CODE pre-fills the field');
   assert.match(main, /\$\{SITE_BASE\}\/lobby\.html\$\{invite \? `\?promo=\$\{encodeURIComponent\(invite\)\}#promo` : ''\}/, 'the lobby is opened on #promo with the code, url-encoded');
   assert.match(main, /\$\('invite'\)\.onsubmit/);
+  assert.match(main, /track\('promo_invite_viewed'/); assert.match(main, /track\('promo_invite_submitted'/);   // the funnel's first two steps (docs/analytics, funnel 9)
   assert.doesNotMatch(main, /inviteMsg\.(innerHTML|insertAdjacentHTML)/);
 });
 

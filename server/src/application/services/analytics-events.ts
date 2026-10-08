@@ -5,6 +5,8 @@ import type { RideProps } from '../../domain/rides/ride.entity.js';
 import type { ProgressMilestone } from '../../domain/rides/ride-progress.js';
 import { utcDayStart } from '../../domain/shared/time.js';
 import { emitAnalytics } from './analytics-emit.js';
+import type { PromoEffect } from '../../domain/economy/promo.types.js';
+import type { PromoRedeemedDto } from '../use-cases/players/redeem-promo/redeem-promo.command.js';
 
 /** Aggregate events (a grant count, a round) are not a wallet. */
 export const SYSTEM_DISTINCT_ID = 'freightchain';
@@ -69,8 +71,8 @@ export function rideCancelled(v: RideProps, isDemo: boolean): AnalyticsEvent {
 export function rideStarted(v: RideProps, isDemo: boolean): AnalyticsEvent {
   if (!v.startedAt) throw new Error('ride has no startedAt');
   return serverEvent('ride_started', v.wallet, `ride:${v.id}:started`, v.startedAt, {
-    ...identity(v, isDemo), round_id: v.roundId, lamports: v.lamports, price_usd: v.priceUsd, min_ms: ms(v.minSeconds), complete_dist_m: Math.round(v.completeDist),
-  });
+    ...identity(v, isDemo), round_id: v.roundId, lamports: v.lamports, price_usd: v.priceUsd, min_ms: ms(v.minSeconds), complete_dist_m: Math.round(v.completeDist), cabin: v.cabin ?? 'classic',
+  }, v.cabin ? { cabin: v.cabin } : undefined);
 }
 
 export function rideProgressed(v: RideProps, isDemo: boolean, milestone: ProgressMilestone, now: Date): AnalyticsEvent {
@@ -141,6 +143,33 @@ export function freeRideGranted(wallet: string, day: string, isDemo: boolean, no
 
 export function achievementUnlocked(wallet: string, achievementId: string, earnedAt: Date, rideId: string | null, isDemo: boolean): AnalyticsEvent {
   return serverEvent('achievement_unlocked', wallet, `ach:${wallet}:${achievementId}`, earnedAt, { achievement_id: achievementId, ride_id: rideId, is_demo: isDemo });
+}
+
+/** A promo code was redeemed (after the commit). `n` = this wallet's n-th use of the code. The code is a marketing string, not a secret of the wallet; free text (the description, the note) never goes. */
+export function promoRedeemed(p: { wallet: string; code: string; n: number; isDemo: boolean; now: Date; result: PromoRedeemedDto }): AnalyticsEvent {
+  const r = p.result, base = { code: p.code, kind: r.kind, redemption_n: p.n, is_demo: p.isDemo };
+  const properties: Props = r.kind === 'tickets' ? { ...base, tier_id: r.tier, pool_id: r.poolId, tickets_added: r.added, ticket_balance: r.balance }
+    : r.kind === 'free_rides' ? { ...base, rides_added: r.added, free_rides: r.freeRides } : { ...base, slot: r.slot, item: r.item };
+  const set: Props | undefined = r.kind === 'free_rides' ? { free_rides: r.freeRides } : r.kind === 'cosmetic' ? { cabin: r.item } : undefined;
+  return serverEvent('promo_redeemed', p.wallet, `promo:${p.code}:${p.wallet}:${p.n}`, p.now, properties, set);
+}
+
+/** The wallet put a cosmetic on (the wardrobe's WEAR button; a redemption also wears it but is `promo_redeemed`). */
+export function cosmeticEquipped(wallet: string, slot: string, item: string, isDefault: boolean, now: Date): AnalyticsEvent {
+  return serverEvent('cosmetic_equipped', wallet, null, now, { slot, item, is_default: isDefault }, { [slot]: item });
+}
+
+/** An admin made a code (signed + audited). Aggregate, not a player: no wallet, no free text. */
+export function promoCreated(p: { code: string; effect: PromoEffect; maxRedemptions: number | null; perWallet: number; startsAt: Date; expiresAt: Date | null; now: Date }): AnalyticsEvent {
+  const e = p.effect;
+  const effect: Props = e.kind === 'tickets' ? { tier_id: e.tier, pool_id: e.poolId, credits: e.credits } : e.kind === 'free_rides' ? { rides: e.count } : { slot: e.slot, item: e.item };
+  return serverEvent('promo_created', SYSTEM_DISTINCT_ID, `promo:${p.code}:created`, p.now, {
+    code: p.code, kind: e.kind, ...effect, max_redemptions: p.maxRedemptions, per_wallet: p.perWallet, starts_at: p.startsAt.getTime(), expires_at: p.expiresAt?.getTime() ?? null,
+  });
+}
+
+export function promoDisabled(code: string, kind: string, redeemed: number, now: Date): AnalyticsEvent {
+  return serverEvent('promo_disabled', SYSTEM_DISTINCT_ID, `promo:${code}:disabled`, now, { code, kind, redeemed });
 }
 
 export function roundOpened(roundId: number, startsAt: Date, endsAt: Date, carryLamports: number): AnalyticsEvent {

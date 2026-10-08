@@ -25,6 +25,26 @@ export function analyticsScenarios(h: () => Harness): void {
     expect(res.body.accepted).toBe(1);
   });
 
+  it('the promo funnel: the three browser events pass (with their allowlisted properties only), the four server events cannot be minted from the browser', async () => {
+    const res = await anon().post('/api/telemetry').send({
+      anon_id: ANON,
+      events: [
+        { event: 'promo_invite_viewed', properties: { code: 'WELCOME' } },
+        { event: 'promo_invite_submitted', properties: { code: 'WELCOME', signed_in: false, from_link: true, signature: 'never' } },
+        { event: 'promo_redeem_clicked', properties: { surface: 'promo', prefilled: true } },
+        { event: 'promo_redeemed', properties: { code: 'WELCOME', kind: 'free_rides' } },
+        { event: 'cosmetic_equipped', properties: { item: 'noir' } },
+        { event: 'promo_created', properties: { code: 'X' } },
+        { event: 'promo_disabled', properties: { code: 'X' } },
+      ],
+    }).expect(200);
+    if (res.body.enabled === false) {
+      expect(res.body).toEqual({ enabled: false, accepted: 0, dropped: 0 });
+      return;
+    }
+    expect(res.body).toMatchObject({ enabled: true, accepted: 3, dropped: 4 });
+  });
+
   it('anonymous with analytics disabled returns enabled false', async () => {
     const res = await anon().post('/api/telemetry').send({
       anon_id: ANON,

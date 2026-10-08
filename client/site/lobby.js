@@ -206,6 +206,7 @@ async function redeem(e) {
   const input = $('promo-code'), go = $('promo-go'), code = input.value.trim(), m = $('promo-msg');
   const show = (text, cls) => { m.textContent = text; m.className = `msg ${cls}`; };
   if (!code) { show('Type a promo code first.', 'bad'); return; }
+  track('promo_redeem_clicked', { surface: S.tab === 'promo' ? 'promo' : 'new', prefilled: !!S.invited && code.replace(/\s+/g, '').toUpperCase() === S.invited });   // before the request; the server's promo_redeemed is the outcome
   go.disabled = true; show('Redeeming…', 'dim');
   try {
     const r = await api('promo/redeem', { code }); input.value = ''; show(promoOk(r), 'good'); if (r.kind === 'tickets') S.focus = r.tier;
@@ -221,7 +222,7 @@ function renderPromo() {
   view.replaceChildren(el('h2', {}, 'REDEEM A CODE'), promoForm({ onSubmit: redeem, value: S.invite ?? '' }),
     el('h2', {}, 'YOUR CABIN'), el('div', { id: 'wardrobebox' }, el('p', { class: 'dim' }, 'Loading…')),
     el('h2', {}, 'CODES YOU REDEEMED'), el('div', { id: 'mycodes' }, el('p', { class: 'dim' }, 'Loading…')));
-  if (S.invite) { S.invite = null; $('promo-code').focus(); }
+  if (S.invite) { S.invited = S.invite.replace(/\s+/g, '').toUpperCase(); S.invite = null; $('promo-code').focus(); }
   paintPromoLists();
 }
 async function paintPromoLists() {

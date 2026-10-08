@@ -5,7 +5,7 @@ import { testAdmin } from '../../../../support/admin-fixtures.js';
 import { unitContext, type UnitContext } from '../../../../support/unit-context.js';
 import { promoInput } from '../../../../support/promos.js';
 
-const handlerOf = (ctx: UnitContext) => new CreateAdminPromoHandler(ctx.promoCreation, ctx.proofs, ctx.adminActions, ctx.transactions, ctx.clock);
+const handlerOf = (ctx: UnitContext) => new CreateAdminPromoHandler(ctx.promoCreation, ctx.proofs, ctx.adminActions, ctx.transactions, ctx.clock, ctx.analytics);
 
 describe('CreateAdminPromoHandler', () => {
   it('creates the code the wallet signed for, and audits it with the request id, the effect and the signed text', async () => {
@@ -18,6 +18,17 @@ describe('CreateAdminPromoHandler', () => {
     const [row] = ctx.db.adminActions;
     expect(row).toMatchObject({ wallet: admin.wallet, action: 'promo.create', target: 'CABIN-1', detail: { effect: { kind: 'cosmetic', slot: 'cabin', item: 'noir' }, signed: { signature } }, requestId: 'req-7', at: ctx.now() });
     expect((row?.detail['signed'] as { message: string }).message).toContain('Action: CREATE promo code CABIN-1');
+  });
+
+  it('tells PostHog about the new code once it is stored – aggregate, no wallet, no free text; nothing when it was refused', async () => {
+    const ctx = unitContext(), admin = testAdmin(ctx);
+    const input = promoInput({ code: 'tix', effect: { kind: 'tickets', tier: '4h', poolId: null, credits: 2 }, description: 'secret text', note: 'private', maxRedemptions: 5, expiresAt: new Date(ctx.clock.ms + 86_400_000) });
+    await handlerOf(ctx).execute(new CreateAdminPromoCommand(admin.wallet, input, null, await admin.sign({ action: 'promo_create', promo: input })));
+    const [e] = ctx.analytics.named('promo_created');
+    expect(e).toMatchObject({ distinctId: 'freightchain', dedupeKey: 'promo:TIX:created', timestamp: ctx.now(), properties: { code: 'TIX', kind: 'tickets', tier_id: '4h', credits: 2, max_redemptions: 5, per_wallet: 1, starts_at: ctx.clock.ms, expires_at: ctx.clock.ms + 86_400_000, source: 'server' } });
+    expect(JSON.stringify(e)).not.toMatch(/secret text|private|signature/);
+    await expect(handlerOf(ctx).execute(new CreateAdminPromoCommand(admin.wallet, input, null, await admin.sign({ action: 'promo_create', promo: input })))).rejects.toBeDefined(); // a duplicate
+    expect(ctx.analytics.named('promo_created')).toHaveLength(1);
   });
 
   it('no code without the right signature: another field, a replay, a forged key → 401, nothing created or audited', async () => {

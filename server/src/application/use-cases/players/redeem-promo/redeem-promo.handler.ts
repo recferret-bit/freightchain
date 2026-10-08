@@ -12,6 +12,11 @@ import { PlayerRepositoryPort } from '../../../ports/players/player.repository.p
 import { RideTicketRepositoryPort } from '../../../ports/players/ride-ticket.repository.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
 import { TransactionPort, type TransactionHandle } from '../../../ports/shared/transaction.port.js';
+import { AnalyticsPort } from '../../../ports/analytics/analytics.port.js';
+import { RulesConfigPort } from '../../../ports/config/rules-config.port.js';
+import { emitAnalytics } from '../../../services/analytics-emit.js';
+import { promoRedeemed } from '../../../services/analytics-events.js';
+import { isDemoWallet } from '../../../services/demo.js';
 import { PlayerSessionService } from '../../../services/player-session.service.js';
 import { PoolTicketsService } from '../../../services/pool-tickets.service.js';
 import { withVersionRetry } from '../../../services/version-retry.js';
@@ -35,13 +40,15 @@ export class RedeemPromoHandler implements ICommandHandler<RedeemPromoCommand, P
     private readonly sessions: PlayerSessionService,
     private readonly transactions: TransactionPort,
     private readonly clock: ClockPort,
+    private readonly rules: RulesConfigPort,
+    private readonly analytics: AnalyticsPort,
   ) {}
 
   async execute({ wallet, code: typed }: RedeemPromoCommand): Promise<PromoRedeemedDto> {
     const code = PromoCode.normalize(typed);
     if (!PromoCode.isValidCode(code)) throw new NotFoundError('no such promo code');
     await this.sessions.touch(wallet);
-    return withVersionRetry(() => this.transactions.run(async (tx) => {
+    const done = await withVersionRetry(() => this.transactions.run(async (tx) => {
       const now = this.clock.now();
       const player = await this.players.findByWalletForUpdate(wallet, tx);
       if (!player) throw new NotFoundError('player not found');
@@ -56,8 +63,10 @@ export class RedeemPromoHandler implements ICommandHandler<RedeemPromoCommand, P
       const apply = await this.prepare(e, wallet, now, tx);
       if (!(await this.promos.takeRedemption(code, now, tx))) throw new ConflictError('this promo code has been fully redeemed', 'promo_unavailable');
       if (!(await this.promos.insertRedemption(code, wallet, used + 1, now, tx))) throw new ConflictError('you have already redeemed this promo code', 'promo_unavailable');
-      return apply(player, code, label);
+      return { result: await apply(player, code, label), n: used + 1, now };
     }));
+    emitAnalytics(this.analytics, () => promoRedeemed({ wallet, code, n: done.n, isDemo: isDemoWallet(this.rules.get(), wallet), now: done.now, result: done.result }));   // after the commit
+    return done.result;
   }
 
   /** Checks what the effect needs and returns the step that grants it. */

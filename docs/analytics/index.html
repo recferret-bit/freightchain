@@ -99,7 +99,7 @@
 <section aria-labelledby="s-funnels">
   <div class="head">
     <span class="eyebrow">Person-scoped funnels</span>
-    <h2 id="s-funnels">Eight funnels, each with a window</h2>
+    <h2 id="s-funnels">Nine funnels, each with a window</h2>
     <p class="soft">A drop means that person did not fire the next event inside the window. That is sometimes a product bug and sometimes a judge who only looked at the pool. Click-together: Funnels → step → property filter → the window written here → breakdown one of <code>is_demo</code>, <code>is_free</code>, <code>tier_id</code>, <code>stage</code>, <code>fail_code</code>. Leave “exclude events between steps” off except where an exclusion is written. Ordered steps are already the order. PostHog does not OR a step, so free and paid are two funnels, and session restore is two funnels.</p>
   </div>
 
@@ -196,11 +196,29 @@
     </div>
     <p>A missing cookie (<code>SESSION_TTL_DAYS</code>, default 7) or a visitor who read the pool and left is a drop. Leaving after the public board is a success for the pitch, not a bug. <code>#play-top</code> is a different event (<code>play_top_clicked</code>) and is not step 3.</p>
   </article>
+  <article class="card">
+    <div class="top"><h3>9 · Promo codes</h3><span class="chip ok">7 days</span></div>
+    <div class="cols">
+      <div class="funnel"><p><b>9a · From an invite.</b> A shared link or the landing's invite block, to a redeemed code.</p><ol>
+        <li><span class="n">1</span><span><code>promo_invite_viewed</code> or <code>promo_invite_submitted</code> · breakdown <code>code</code></span></li>
+        <li><span class="n">2</span><span><code>player_signed_in</code> (server) or <code>session_restored</code></span></li>
+        <li><span class="n">3</span><span><code>lobby_tab_viewed</code> · <code>tab=promo</code></span></li>
+        <li><span class="n">4</span><span><code>promo_redeem_clicked</code> · <code>prefilled=true</code></span></li>
+        <li><span class="n">5</span><span><code>promo_redeemed</code> (server) · breakdown <code>kind</code></span></li>
+      </ol></div>
+      <div class="funnel"><p><b>9b · Redeem to ride.</b> Does a cabin or a free ride turn into play?</p><ol>
+        <li><span class="n">1</span><span><code>promo_redeemed</code> · <code>kind=cosmetic</code> or <code>free_rides</code></span></li>
+        <li><span class="n">2</span><span><code>ride_started</code> · breakdown <code>cabin</code></span></li>
+        <li><span class="n">3</span><span><code>ride_completed</code></span></li>
+      </ol></div>
+    </div>
+    <p><code>promo_redeem_clicked</code> without a later <code>promo_redeemed</code> is a refusal: read <code>api_request_failed</code> for <code>route=/api/promo/redeem</code> (<code>http_status</code> 404 unknown code, 409 with <code>code</code> <code>promo_unavailable</code>, <code>no_open_pool</code>, <code>ticket_cap</code>, <code>already_owned</code>). Unknown codes are not stored anywhere on the server side of PostHog – only the click and the failure class. Operations: <code>promo_created</code> / <code>promo_disabled</code> (aggregate, distinct id <code>freightchain</code>) say when a code went live or stopped and how much it had been used.</p>
+  </article>
 </section>
 
 <section aria-labelledby="s-server">
   <div class="head">
-    <span class="eyebrow">Server events · 20</span>
+    <span class="eyebrow">Server events · 24</span>
     <h2 id="s-server">What the database already decided</h2>
     <p class="soft">Emitted only after the save resolves, inside <code>emitAnalytics</code>. <code>dedupe_key</code> is a property. The capture <code>uuid</code> is a UUID v5 of <code>https://freightchain.fun/analytics/</code> plus that key, computed in the adapter. Handlers pass <code>uuid: null</code>. Timestamp is the column named here, from <code>ClockPort</code>, except the reconcile-miss row. No <code>$insert_id</code>, no <code>sent_at</code>, no <code>$groups</code>. <code>round_id</code> is a property and is null until a payment sets it.</p>
   </div>
@@ -213,7 +231,7 @@
         <tr><td><code>ride_ordered</code></td><td>A new ride row was inserted (free <code>created</code>, or paid <code>awaiting_payment</code>). Returning an existing open ride is <code>ride_resumed</code>, not this.</td><td><code>ride:&lt;id&gt;:ordered</code> · <code>createdAt</code></td><td><code>ride_id</code>, <code>tier_id</code> (<code>free|1h|4h|8h</code>), <code>is_free</code>, <code>is_demo</code>, <code>time_scale</code>, <code>price_usd</code>, <code>lamports</code>, <code>min_ms</code>, <code>complete_dist_m</code>, <code>free_rides_left</code>.</td></tr>
         <tr><td><code>payment_confirmed</code></td><td><code>settle()</code> returned <code>inserted</code> and a <code>paidAt</code>. Confirm path sets <code>via=confirm</code>. Reconcile sets <code>via=reconcile</code>. The same signature seen again emits nothing. A race loser emits nothing.</td><td><code>payment:&lt;signature&gt;</code> · <code>paidAt</code></td><td><code>payment_id</code> (the signature, server-side only), <code>ride_id</code>, <code>round_id</code>, <code>lamports</code>, <code>via</code>, <code>quote_expired</code>. This is the SOL-in event.</td></tr>
         <tr><td><code>payment_rejected</code></td><td>Confirm is about to throw because <code>verifyPayment</code> failed. Five codes and no others: <code>amount</code>, <code>memo</code>, <code>signer</code>, <code>chain_failed</code>, <code>no_metadata</code>. Pending is not a rejection. Conflicts are <code>payment_conflict</code>.</td><td><code>payment:&lt;signature&gt;:rejected:&lt;reason_code&gt;</code> · request clock</td><td><code>ride_id</code>, <code>reason_code</code>, <code>tier_id</code>, <code>lamports</code> (ordered, not observed). No raw reason string, no RPC URL.</td></tr>
-        <tr><td><code>ride_started</code></td><td><code>ride.start</code> committed. A 409 emits nothing. A stale sibling failed in the same transaction also emits <code>ride_failed</code> with <code>ended_by=stale_on_start</code>.</td><td><code>ride:&lt;id&gt;:started</code> · <code>startedAt</code></td><td><code>ride_id</code>, <code>tier_id</code>, <code>is_free</code>, <code>is_demo</code>, <code>round_id</code>, <code>min_ms</code>, <code>complete_dist_m</code>. Route is not known yet.</td></tr>
+        <tr><td><code>ride_started</code></td><td><code>ride.start</code> committed. A 409 emits nothing. A stale sibling failed in the same transaction also emits <code>ride_failed</code> with <code>ended_by=stale_on_start</code>.</td><td><code>ride:&lt;id&gt;:started</code> · <code>startedAt</code></td><td><code>ride_id</code>, <code>tier_id</code>, <code>is_free</code>, <code>is_demo</code>, <code>round_id</code>, <code>min_ms</code>, <code>complete_dist_m</code>, <code>cabin</code> (the cabin colour scheme the ride is driven in: classic, midnight, forest, sunset, arctic, noir – also stamped on the ride for replays; person property <code>cabin</code>). Route is not known yet.</td></tr>
         <tr><td><code>ride_progressed</code></td><td>A saved report crossed 25, 50, or 75 percent. One event per band. A long gap can cross all three at once. There is no milestone 100, and there is no event per heartbeat.</td><td><code>ride:&lt;id&gt;:progress:&lt;milestone&gt;</code> · the beat’s <code>now</code></td><td><code>milestone</code> 25|50|75, <code>drive_ms</code>, <code>distance_m</code>, <code>route_id</code>, <code>paused</code>, <code>hull</code>.</td></tr>
         <tr><td><code>ride_completed</code></td><td>The server stored reason <code>shift complete</code>: drive time and distance both met, and the driver ended the shift. This is the north star.</td><td><code>ride:&lt;id&gt;:completed</code> · <code>endedAt</code></td><td>Same ride shape as the start, plus <code>drive_ms</code>, <code>distance_m</code>, <code>route_id</code>, <code>hull</code>, <code>night_s</code>. <code>night_s</code> is client-reported and is not a judge metric.</td></tr>
         <tr><td><code>ride_abandoned</code></td><td>The driver ended early. Stored reason starts with <code>shift abandoned</code>. The client’s longer sentence is not what is stored.</td><td><code>ride:&lt;id&gt;:abandoned</code> · <code>endedAt</code></td><td>Same shape as completed, plus <code>reason_code=abandoned</code>. “Abandoned at 10% vs 90%” is <code>drive_ms / min_ms</code>, not a new event.</td></tr>
@@ -235,6 +253,9 @@
         <tr><td><code>free_rides_granted</code></td><td>The midnight job updated at least one player.</td><td><code>free-grant:&lt;day&gt;</code></td><td>Distinct id <code>freightchain</code>. Property <code>players</code> is a count. Wallet addresses are not in the event.</td></tr>
         <tr><td><code>free_ride_granted</code></td><td>The lazy grant inside <code>touch</code> actually moved the balance.</td><td><code>free-grant:&lt;wallet&gt;:&lt;day&gt;</code></td><td>Once per wallet per UTC day. Silent when the midnight job already ran.</td></tr>
         <tr><td><code>achievement_unlocked</code></td><td>This statement inserted the achievement id.</td><td><code>ach:&lt;wallet&gt;:&lt;id&gt;</code></td><td>Ids: <code>first-mile</code>, <code>shift-complete</code>, <code>night-owl</code>, <code>century</code>, <code>clean-run</code>, <code>cold-start</code>. Never <code>top-20</code>.</td></tr>
+        <tr><td><code>promo_redeemed</code></td><td>A promo code was redeemed: the transaction committed (the grant, the redemption and the per-wallet key). A refusal emits nothing.</td><td><code>promo:&lt;CODE&gt;:&lt;wallet&gt;:&lt;n&gt;</code> · the redemption's <code>now</code><span class="c">n = this wallet's n-th use</span></td><td><code>code</code>, <code>kind</code> (tickets, free_rides, cosmetic), <code>redemption_n</code>, <code>is_demo</code>; tickets: <code>tier_id</code>, <code>pool_id</code>, <code>tickets_added</code>, <code>ticket_balance</code>; free rides: <code>rides_added</code>, <code>free_rides</code> (the balance, may exceed the daily cap); cosmetic: <code>slot</code> (cabin), <code>item</code>. Person properties: <code>free_rides</code> / <code>cabin</code>. Never the description or the note.</td></tr>
+        <tr><td><code>cosmetic_equipped</code></td><td>The wallet pressed WEAR in the lobby wardrobe (an owned cabin, or the classic one again). A redemption also wears the item but is <code>promo_redeemed</code>.</td><td>none · the request's <code>now</code></td><td><code>slot</code>, <code>item</code>, <code>is_default</code>. Person property <code>cabin</code>.</td></tr>
+        <tr><td><code>promo_created</code> / <code>promo_disabled</code></td><td>An admin's signed create / disable of a code committed (the audit row is in the same transaction).</td><td><code>promo:&lt;CODE&gt;:created</code> / <code>…:disabled</code> · <code>now</code></td><td>Distinct id <code>freightchain</code> – no wallet. Created: <code>code</code>, <code>kind</code>, the effect (<code>tier_id</code>/<code>credits</code>/<code>pool_id</code>, <code>rides</code>, or <code>slot</code>/<code>item</code>), <code>max_redemptions</code>, <code>per_wallet</code>, <code>starts_at</code>, <code>expires_at</code>. Disabled: <code>code</code>, <code>kind</code>, <code>redeemed</code>. No free text.</td></tr>
         <tr><td><code>round_opened</code></td><td>This process inserted the round. The race loser emits nothing.</td><td><code>round-open:&lt;startsAt&gt;</code></td><td>Distinct id <code>freightchain</code>. <code>carry_lamports</code> is what was passed forward. A round-turning 503 emits nothing.</td></tr>
         <tr><td><code>round_closed</code></td><td>The previous round’s close saved in that same transaction.</td><td><code>round-close:&lt;roundId&gt;</code></td><td>Not a payout. No prize is sent.</td></tr>
       </tbody>
@@ -244,7 +265,7 @@
 
 <section aria-labelledby="s-client">
   <div class="head">
-    <span class="eyebrow">Browser events · 35 names, allowlisted properties</span>
+    <span class="eyebrow">Browser events · 38 names, allowlisted properties</span>
     <h2 id="s-client">What the player did before the server knew</h2>
     <p class="soft">The relay stamps <code>source=client</code> and, when the cookie verifies, the session wallet. Properties are strings of at most 200 characters, or an integer, a boolean, or null. A float drops that event, not the whole batch. At most 20 keys. Anything not in the allowlist is removed. These names are hard-deleted even if someone allowlists them later: <code>signature</code>, <code>transaction</code>, <code>seed</code>, <code>nonce</code>, <code>message</code>, <code>token</code>, <code>cookie</code>, <code>authorization</code>, <code>detail</code>, <code>secret</code>, <code>anon_id</code>.</p>
   </div>
@@ -281,6 +302,9 @@
     <table>
       <thead><tr><th>Event</th><th>When</th><th>Properties</th></tr></thead>
       <tbody>
+        <tr><td><code>promo_invite_viewed</code></td><td>The landing opened with <code>/?promo=CODE</code> (a shared invite link).</td><td><code>code</code> (upper-case, ≤ 32 characters)</td></tr>
+        <tr><td><code>promo_invite_submitted</code></td><td>CLAIM on the landing's invite block with a non-empty code, before anything else happens (signed out: the code waits for the sign-in).</td><td><code>code</code>, <code>signed_in</code>, <code>from_link</code> (the code is the one the link carried)</td></tr>
+        <tr><td><code>promo_redeem_clicked</code></td><td>REDEEM in the lobby with a code typed, before the request. The outcome is the server's <code>promo_redeemed</code>, or <code>api_request_failed</code>.</td><td><code>surface</code>: new (the NEW RIDE form) or promo (the PROMO tab), <code>prefilled</code> (the code came from an invite link)</td></tr>
         <tr><td><code>hero_video_started</code> / <code>hero_video_failed</code></td><td>The hero video element, and only when <code>data-src</code> is set. Today it is empty, so these stay at zero.</td><td>none</td></tr>
         <tr><td><code>demo_dialog_opened</code></td><td>The demo button.</td><td><code>has_video</code></td></tr>
         <tr><td><code>play_top_clicked</code></td><td>The top play control.</td><td><code>signed_in</code></td></tr>

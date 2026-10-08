@@ -12,7 +12,7 @@ describe('RedeemPromoHandler', () => {
   const setup = async (promo: Partial<PromoCreateInput> = {}) => {
     const ctx = unitContext();
     await ctx.promos.insert(aPromo(ctx.now(), promo));
-    const handler = new RedeemPromoHandler(ctx.players, ctx.promos, ctx.pools, ctx.tickets, ctx.cosmetics, ctx.poolTickets, ctx.sessions, ctx.transactions, ctx.clock);
+    const handler = new RedeemPromoHandler(ctx.players, ctx.promos, ctx.pools, ctx.tickets, ctx.cosmetics, ctx.poolTickets, ctx.sessions, ctx.transactions, ctx.clock, ctx.rules, ctx.analytics);
     const redeem = (code = 'HELLO', wallet = 'w') => handler.execute(new RedeemPromoCommand(wallet, code));
     return { ctx, redeem };
   };
@@ -99,6 +99,36 @@ describe('RedeemPromoHandler', () => {
       await redeem(); await redeem('NOIR');
       expect(await ctx.cosmetics.listEquipped('w')).toEqual({ cabin: 'noir' });
       expect(await ctx.cosmetics.has('w', 'cabin', 'midnight')).toBe(true);
+    });
+  });
+
+  describe('PostHog', () => {
+    it('a redeemed code is one promo_redeemed per kind, after the commit, with what it gave – and the person is updated', async () => {
+      const { ctx, redeem } = await setup({ effect: { kind: 'free_rides', count: 3 } });
+      await ctx.promos.insert(aPromo(ctx.now(), { code: 'CAB', effect: { kind: 'cosmetic', slot: 'cabin', item: 'noir' } }));
+      await ctx.promos.insert(aPromo(ctx.now(), { code: 'TIX', effect: ticketEffect({ credits: 2 }) }));
+      await ctx.pools.upsert(aPool({ id: 1, status: 'active' }));
+      await redeem(); await redeem('CAB'); await redeem('TIX');
+      const [rides, cabin, tickets] = ctx.analytics.named('promo_redeemed');
+      expect(rides).toMatchObject({ distinctId: 'w', dedupeKey: 'promo:HELLO:w:1', timestamp: ctx.now(), set: { free_rides: 8 }, properties: { code: 'HELLO', kind: 'free_rides', redemption_n: 1, rides_added: 3, free_rides: 8, is_demo: false, source: 'server' } });
+      expect(cabin).toMatchObject({ dedupeKey: 'promo:CAB:w:1', set: { cabin: 'noir' }, properties: { kind: 'cosmetic', slot: 'cabin', item: 'noir' } });
+      expect(tickets).toMatchObject({ properties: { kind: 'tickets', tier_id: '1h', pool_id: 1, tickets_added: 2, ticket_balance: 2 } });
+      expect(tickets?.set).toBeUndefined();
+    });
+    it('the n-th use of a code by one wallet has its own dedupe key; a refusal tells nothing; a broken or switched-off adapter never changes the answer', async () => {
+      const { ctx, redeem } = await setup({ effect: { kind: 'free_rides', count: 1 }, perWallet: 2 });
+      await redeem(); await redeem();
+      expect(ctx.analytics.named('promo_redeemed').map((e) => e.dedupeKey)).toEqual(['promo:HELLO:w:1', 'promo:HELLO:w:2']);
+      await expect(redeem()).rejects.toBeDefined();
+      await expect(redeem('NOPE')).rejects.toBeDefined();
+      expect(ctx.analytics.named('promo_redeemed')).toHaveLength(2);
+      ctx.analytics.throwOnCapture = true;
+      await ctx.promos.insert(aPromo(ctx.now(), { code: 'MORE', effect: { kind: 'free_rides', count: 1 } }));
+      expect(await redeem('MORE')).toMatchObject({ kind: 'free_rides' });
+      ctx.analytics.throwOnCapture = false; ctx.analytics.on = false;
+      await ctx.promos.insert(aPromo(ctx.now(), { code: 'OFF', effect: { kind: 'free_rides', count: 1 } }));
+      expect(await redeem('OFF')).toMatchObject({ kind: 'free_rides' });
+      expect(ctx.analytics.named('promo_redeemed')).toHaveLength(2);
     });
   });
 

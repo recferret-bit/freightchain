@@ -32,6 +32,18 @@ describe('StartRideHandler', () => {
     expect((await ctx.reload(styled.id)).cabin).toBe('noir');
   });
 
+  it('ride_started tells PostHog which cabin the ride is driven in, and keeps it on the person (classic for a wallet that wears nothing)', async () => {
+    const { ctx, analytics, start } = setup();
+    const plain = await ctx.freeRide('w');
+    await start(plain.id);
+    expect(analytics.named('ride_started')[0]).toMatchObject({ properties: { ride_id: plain.id, cabin: 'classic' }, set: { cabin: 'classic' } });
+    await ctx.cosmetics.unlock({ wallet: 'v', slot: 'cabin', item: 'arctic', code: 'X', at: ctx.now() });
+    await ctx.cosmetics.equip('v', 'cabin', 'arctic');
+    const styled = await ctx.freeRide('v');
+    await start(styled.id, 'v');
+    expect(analytics.named('ride_started')[1]).toMatchObject({ properties: { cabin: 'arctic' }, set: { cabin: 'arctic' } });
+  });
+
   it('a cabin that is worn but not owned (a stale row) is never stamped; changing the cabin later does not change a started ride', async () => {
     const { ctx, start } = setup();
     await ctx.cosmetics.equip('w', 'cabin', 'arctic');   // no unlock row
