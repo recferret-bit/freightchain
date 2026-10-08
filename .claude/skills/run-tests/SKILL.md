@@ -35,20 +35,24 @@ If it fails with `P3009 … failed migrations` on `freightchain_test`: that data
 ## 3. Real Chrome end to end (~5 min)
 
 `.claude/skills/run-tests/e2e.sh` does all of it: creates a throwaway database `freightchain_e2e_<pid>` in the same container, migrates it,
-builds the landing + server, starts the server on a free port, runs `server/scripts/e2e-browser.mjs` (20 s ride, asserts COMPLETED · VERIFIED),
+builds the landing + server into PRIVATE copies (`server/.e2e-build-<pid>/`, a temp dir for the landing – another session's `npm run build` /
+`npm run check` empties `server/dist` + `landing/dist` mid-run, which once killed a suite with "Cannot find module dist/main.js"), starts the server on a free port, runs `server/scripts/e2e-browser.mjs` (20 s ride, asserts COMPLETED · VERIFIED),
 `server/scripts/e2e-lobby.mjs` (3 s rides, the dev pool seeds via `SEED=1`, screenshots), `server/scripts/e2e-admin.mjs` (admin page: allowlist, queue, override, audit)
 `server/scripts/e2e-watch.mjs` (live streams, two Chromes: a driver + a spectator – replay, chat on the CB, mock NIGHT + SINKHOLE donations applied and seen in the replay; ~3 min)
 and `server/scripts/e2e-replay.mjs` (a finished ride's replay from the landing's ticker link: speeds, seeks, the night and the paid hole from history; ~4 min) and `server/scripts/e2e-live-flags.mjs` (the LIVE_* flags: production's paid donations with a fake wallet, then chat + donations off – two servers; all three are also the `replay-test` skill),
 and `landing/tools/e2e-wallet.mjs` twice – `wallet` (one origin) and `wallet-split` (landing on `app.localhost`, API on `api.app.localhost`, one cookie on the apex): the landing's sign-in, the redirect and the promo invite block,
 and `server/scripts/e2e-live-board.mjs` (online / on the road / the replays history on the landing and in the lobby, fed by `scripts/sim-rides.mjs`; the `live-board-test` skill),
+and `server/scripts/e2e-close.mjs` twice – `close` (one origin) and `close-split` (landing + lobby on `app.localhost`, the game on `ride.app.localhost`, the API on
+`api.app.localhost`): a closed landing / lobby / watch page leaves "online" at once, a game tab closed mid-ride ends ABANDONED, Back to it comes from the
+back/forward cache and reloads, a COMPLETE shift whose tab closes is COMPLETED + VERIFIED (~2 min each),
 then stops the server and drops the database – also on failure.
 
 ```sh
-bash .claude/skills/run-tests/e2e.sh            # all nine
-bash .claude/skills/run-tests/e2e.sh browser    # one of: browser | lobby | admin | watch | replay | flags | wallet | wallet-split | board
+bash .claude/skills/run-tests/e2e.sh            # all eleven
+bash .claude/skills/run-tests/e2e.sh browser    # one of: browser | lobby | admin | watch | replay | flags | wallet | wallet-split | board | close | close-split
 ```
 
-Then **look at the screenshots** it prints (`fc-online-shots`, `fc-lobby-shots`, `fc-admin-shots`, `fc-watch-shots`, `fc-replay-shots`, `fc-flags-shots`, `fc-board-shots` in the OS temp dir) with the Read tool – the scripts
+Then **look at the screenshots** it prints (`fc-online-shots`, `fc-lobby-shots`, `fc-admin-shots`, `fc-watch-shots`, `fc-replay-shots`, `fc-flags-shots`, `fc-board-shots`, `fc-close-shots` in the OS temp dir) with the Read tool – the scripts
 cannot judge layout. Say plainly what passed, what failed (with output), and what still needs a human eye.
 
 ## 4. Optional: the money on a local chain (~4 min)

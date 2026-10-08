@@ -1,6 +1,6 @@
 ---
 name: live-board-test
-description: Test Freight Chain's live board end to end – who is online, which rides are on the road (viewers, paused / weak signal), joining one, abandoned rides being swept, and the replayable ride history – on the landing and in the lobby, in headless Chrome, against a fresh server fed by the ride simulator (fake drivers, visitors and watchers over the API). Also how to run that simulator by hand against a dev server. Use after touching GET /api/live, /api/replays, the stale-ride sweeper, presence counting, the lobby's LIVE / REPLAYS tabs, the landing's boards / chip, or when asked to "test online / live rides / replays history", "simulate rides", or /live-board-test.
+description: Test Freight Chain's live board end to end – who is online, which rides are on the road (viewers, paused / weak signal), joining one, abandoned rides being swept, a CLOSED page / game tab leaving at once (one origin and split hosts), and the replayable ride history – on the landing and in the lobby, in headless Chrome, against a fresh server fed by the ride simulator (fake drivers, visitors and watchers over the API). Also how to run that simulator by hand against a dev server. Use after touching GET /api/live, /api/replays, the stale-ride sweeper, presence counting, the lobby's LIVE / REPLAYS tabs, the landing's boards / chip, or when asked to "test online / live rides / replays history", "simulate rides", or /live-board-test.
 ---
 
 # The live board – online, on the road, replays
@@ -12,10 +12,10 @@ the lobby's LIVE tab (sort, route filter, ▶ WATCH / WATCH A RANDOM ONE = join)
 ## Run the e2e
 
 ```sh
-bash .claude/skills/live-board-test/run.sh        # ≈ 2 min
+bash .claude/skills/live-board-test/run.sh        # ≈ 6 min: e2e.sh board close close-split
 ```
 
-It goes through `.claude/skills/run-tests/e2e.sh board`: a throwaway database (dropped at the end, also on failure), the landing + server built, the server
+It goes through `.claude/skills/run-tests/e2e.sh board close close-split`: a throwaway database (dropped at the end, also on failure), the landing + server built, the server
 started with `FREE_RIDE_SECONDS=20 TRUST_PROXY=1 HB_TIMEOUT_MS=15000` – TRUST_PROXY so each simulated visitor counts from its own X-Forwarded-For address
 (the online counter takes ≤ 3 ids per address), a 15 s heartbeat timeout so the abandoned ride is swept within ~20 s. Then `server/scripts/e2e-live-board.mjs`:
 
@@ -28,11 +28,23 @@ started with `FREE_RIDE_SECONDS=20 TRUST_PROXY=1 HB_TIMEOUT_MS=15000` – TRUST_
 6. REPLAYS: the abandoned ride as *FAILED · signal lost*, the completed one with ▶ REPLAY, MINE = the player's own ride (*off the road*, no recording),
    the COMPLETED filter; ▶ REPLAY opens it as a replay with its samples;
 7. the landing's RECENT RIDES: the finished rides, the recorded one as a ▶ REPLAY link; a phone-width shot;
-8. closing pages: navigating the lobby away drops it from `online.browsing` within 5 s (the `pagehide` → `leave=1` poll), and closing a real game tab
-   mid-ride ends that ride at once as ABANDONED (the `sendBeacon` to `/end`) – off LIVE, one driver less, in REPLAYS; Back to that tab does not drive on
-   (a back/forward-cache restore reloads: "this ride is abandoned"); no page errors.
+8. no page errors.
 
-Then **look at the screenshots** (`$TMPDIR/fc-board-shots/`: `landing-boards`, `landing-recent`, `lobby-live`, `lobby-replays`, `lobby-replays-phone`):
+Then **closing pages** – `server/scripts/e2e-close.mjs` (no simulator; a 20 s free shift), once on one origin (`close`) and once on SPLIT HOSTS (`close-split`:
+landing + lobby on `app.localhost`, the game + watch page on `ride.app.localhost`, the API on `api.app.localhost`, the session cookie on the apex – what
+production does; Chrome resolves `*.localhost`, `--host-resolver-rules` sends port 80 to the server). Each check has a 5–8 s budget (without the close
+signal it would take 30 s / 3 min):
+1. the landing and the lobby: counted in `online.browsing` while open, gone after `about:blank` (= closing the tab: `pagehide` → the poll with `leave=1`);
+2. the watch page: the ride's 👁 and `online.watching` drop to 0 (it waits until the page is fully booted – a close mid-boot, while software WebGL holds the
+   main thread, can lose the beacon and falls back to the 30 s window);
+3. a game tab closed mid-ride: the ride is ABANDONED at once (the `sendBeacon` to `/end`), off LIVE, one driver less;
+4. Back to it: the page comes from the back/forward cache and `pageshow` reloads it (navigation type `reload` – proves the cache path, not a fresh load),
+   showing "this ride is abandoned" and no START;
+5. a COMPLETE shift whose tab closes right after a batch went up: COMPLETED (no END SHIFT) and VERIFIED – a lost tail only costs coverage (a whole lost
+   batch of a short shift is FLAGGED `recording-gaps`, never rejected: `verdict.scenarios.ts`);
+6. split hosts only: the game really ran on `ride.<apex>` with `API_BASE = api.<apex>`; no page errors.
+
+Then **look at the screenshots** (`$TMPDIR/fc-board-shots/` – e2e-close has no screenshots worth a look: `landing-boards`, `landing-recent`, `lobby-live`, `lobby-replays`, `lobby-replays-phone`):
 the boards are readable (2 × 2 on the landing), filters show which one is on, the badges (PAUSED, FAILED · signal lost, COMPLETED) are clear.
 
 ## The simulator by hand

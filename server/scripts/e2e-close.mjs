@@ -49,7 +49,11 @@ const live = await ride(driver);
 await post(`rides/${live.id}/start`, {}, driver.cookie); await post(`rides/${live.id}/heartbeat`, { s: 0, t: 0, hull: 100 }, driver.cookie);
 const viewers = async () => (await api('live')).rides.find(r => r.id === live.id)?.viewers ?? -1;
 await B.send('Page.navigate', { url: `${GAME}/play.html?watch=${live.id}` });
-check('watch page: counted as a viewer of the ride while open', await until(async () => (await viewers()) === 1 && (await online()).watching === 1, 20_000), `viewers ${await viewers()}`);
+// wait until the page is really up (the scene built, the panel drawn) – closing it mid-boot, while software WebGL holds the main thread, can lose the
+// pagehide beacon; that case falls back to the 30 s window, like a crash
+const up = `document.readyState === 'complete' && !!window.__game?.watch?.ride && !!document.getElementById('watch')`;
+check('watch page: counted as a viewer of the ride while open', await until(async () => (await B.ev(up)) && (await viewers()) === 1 && (await online()).watching === 1, 30_000), `viewers ${await viewers()}`);
+await sleep(1000);
 await away();
 check('watch page: closing it drops the viewer at once', await until(async () => (await viewers()) === 0 && (await online()).watching === 0, 5000), `viewers ${await viewers()}`);
 await post(`rides/${live.id}/end`, { outcome: 'failed', s: 0, t: 1, reason: 'test over' }, driver.cookie);
@@ -58,6 +62,8 @@ await post(`rides/${live.id}/end`, { outcome: 'failed', s: 0, t: 1, reason: 'tes
 const boot = async () => { await until(() => B.ev(`!!document.getElementById('go') && !!window.__game`), 30_000); };
 const quit = await ride(me);
 await B.send('Page.navigate', { url: `${GAME}/play.html?ride=${quit.id}` }); await boot();
+if (split) check('split hosts: the game runs on ride.<apex> and talks to api.<apex> (the beacons below cross subdomains, on the apex cookie)',
+  (await B.ev('location.hostname')) === `ride.${apex}` && (await B.ev(`import('/js/hosts.js').then(h => h.API_BASE)`)) === `http://api.${apex}`, await B.ev('location.hostname'));
 await B.ev(`document.getElementById('go').click()`);
 check('game tab: the ride is on the road', await until(async () => (await api('live')).rides.some(r => r.id === quit.id), 15_000));
 const driving = (await online()).driving;

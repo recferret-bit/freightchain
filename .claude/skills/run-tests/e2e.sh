@@ -13,7 +13,7 @@ ADMIN_KP="$(mktemp -t fc-admin-XXXXXX).json"
 # A PRIVATE build of the server and the landing: other checkouts / sessions build into server/dist + landing/dist while this runs (nest's deleteOutDir
 # empties dist/ mid-run – "Cannot find module dist/main.js"). Same depth as dist/, so the server's ../../../../client still finds the repo; a dot
 # directory, so the server's own tsc (no include list) never type-checks it.
-BUILD=".e2e-build-$$"; TSCONFIG=".e2e-tsconfig-$$.json"; LANDING_OUT="$(mktemp -d -t fc-landing-XXXXXX)"
+BUILD=".e2e-build-$$"; TSCONFIG=".e2e-tsconfig-$$.json"; LANDING_OUT="$(mktemp -d "${TMPDIR:-/tmp}/fc-landing-XXXXXX")"
 PID=""
 free_port() { node -e 'const s=require("net").createServer();s.listen(0,()=>{console.log(s.address().port);s.close()})'; }
 psql_admin() { docker exec freightchain-postgres psql -U freight -d postgres -v ON_ERROR_STOP=1 -tAc "$1"; }
