@@ -8,7 +8,7 @@ keys live in `deploy/secrets/` (gitignored); **deploy only the `solana-verify bu
 
 1. **`initialize` is safe now**: only the program's upgrade authority (the deploy wallet) can run it, and it names the admin – pass your Phantom address as `authority` (step 5). No front-run window after the deploy.
 2. **Provide the keys** (or say "generate them"): the program id keypair, an upgrade-authority / deploy wallet with ~5 devnet SOL, your Phantom on devnet as the admin (`TREASURY_PUBKEY`), the seed + fee treasury addresses (fixed per pool forever).
-3. **Admin tooling is missing**: `initialize`, `create_pool`, `set_config` (pause), `propose/accept_authority` have no script or UI yet; payouts have a server route but no button. Ask for `programs/scripts/` (Phantom-signed) before the deploy.
+3. **Admin tooling, keypair half done**: `server/scripts/pool-admin.mjs` (`initialize`, `create-pool`, `set-config`, `close-pool`, `show`) signs with keypair FILES – fine for the deploy wallet's `initialize`. A Phantom admin still has no UI for `create_pool` / pause / `propose/accept_authority`; payouts have a server route but no button. Rehearse the whole thing locally first: `npm run test:localnet`.
 4. **Make the repo public** (or a public mirror) if you want the explorer's "verified" badge.
 5. After the devnet run is green: decide what happens to the upgrade authority (keep it on a hardware wallet / multisig, or make the program immutable – see below) and whether to get an audit before any mainnet talk.
 
@@ -38,7 +38,7 @@ solana program deploy --url devnet \
   --program-id deploy/secrets/program-id.json $SO
 ```
 
-5. **`initialize`**, signed by the upgrade authority (`deploy/secrets/program-deploy.json`) with `authority` = your Phantom address (`TREASURY_PUBKEY`) and the platform treasury; it also passes the program and its ProgramData account (`[program id]` under the upgradeable loader). Read `Config.authority` back: it must be the Phantom address.
+5. **`initialize`** (`(cd server && node scripts/pool-admin.mjs initialize --url <devnet rpc> -k ../deploy/secrets/program-deploy.json --admin <Phantom address> --platform-treasury <address>)`), signed by the upgrade authority (`deploy/secrets/program-deploy.json`) with `authority` = your Phantom address (`TREASURY_PUBKEY`) and the platform treasury; it also passes the program and its ProgramData account (`[program id]` under the upgradeable loader). Read `Config.authority` back: it must be the Phantom address.
 6. Check the chain has exactly the committed bytes (read-only): `PROGRAM_ID=$(solana-keygen pubkey deploy/secrets/program-id.json) bash .claude/skills/program-check/check.sh onchain`.
 7. `create_pool` per pool (admin), then `node dist/cli/index.js pool:register <id> --label "…"` on the server.
 8. Server env (`deploy/.env`, then `npm run deploy` when you ask for it): `PAYMENT_MODE=program`, `TICKET_PROGRAM_ID`, `FEE_TREASURY`, `SEED_TREASURY`, `FEE_PAYER_SECRET` (gas sponsor), `CRANK_SECRET`, `WEBHOOK_SECRET`, `SOLANA_RPC`.

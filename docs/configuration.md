@@ -149,6 +149,7 @@ DNS: six A records (apex, `ride`, `api`, `storybook`, `whitepaper`, `admin`) →
 | `CHROME_PORT` | `e2e-browser.mjs` (9335), `e2e-admin.mjs` (9351) | Same, for those two |
 | `CHROME` | `client/tools/cdp.mjs` | Chrome binary (default: macOS Google Chrome) |
 | `SHOTS` | `cdp.mjs` | Screenshot folder (default: OS temp dir) |
+| `SO`, `KEEP`, `PREP_A`, `PLAY_A`, `PREP_B` | `.claude/skills/localnet-e2e/run.sh` (`npm run test:localnet`) | The program binary to load (default the verifiable `target/deploy` build), keep the scratch dir (keys, ledger, logs), the test pools' deadlines in seconds. The script sets every server chain key itself (local RPC, sponsor, treasuries, program mode) – `server/.env` is not used for them |
 | `API`, `RESOLVE` | `e2e-wallet.mjs` | Split-host recipe (see the script's header) |
 | `ADMIN_KEYPAIR` | `e2e-admin.mjs` | JSON keypair file of a wallet in `ADMIN_WALLETS` |
 | `SEED=1` | `e2e-lobby.mjs` | Dev-only seed data via the admin CLI |
