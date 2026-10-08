@@ -299,7 +299,7 @@ try {
   // ── 10. (localnet) the baked pool that paid a prize: after the grace ANYONE may close it – money only to the treasuries it declared
   if (FX) {
     const gy = await poolAcc(FX.gracePool), gyVault = await bal(codec.vaultPda(FX.gracePool));
-    const gLegs = closeSplit({ priceLamports: gy.priceLamports, ticketsSold: gy.ticketsSold, sponsored: gy.sponsored, prizeBps: gy.prizeBps, seedBps: gy.seedBps, platformFeeBps: PLAT_BPS, prizesPaid: gy.prizesPaid, vaultLamports: gyVault, cancelled: false });
+    const gLegs = closeSplit({ priceLamports: gy.priceLamports, ticketsSold: gy.ticketsSold, sponsored: gy.sponsored, prizeBps: gy.prizeBps, seedBps: gy.seedBps, platformFeeBps: PLAT_BPS, prizesPaid: gy.prizesPaid, vaultLamports: gyVault, cancelled: false, rentMin: RENT0 });
     before = await bals({ fee: addr('fee'), plat: addr('plat'), seed: addr('seed'), admin: addr('admin'), stranger: Z.wallet });
     const cy = admintool(['close-pool', '--pool', String(FX.gracePool), '-k', Z.keyfile]);
     after = await bals({ fee: addr('fee'), plat: addr('plat'), seed: addr('seed'), admin: addr('admin'), stranger: Z.wallet });
@@ -330,7 +330,7 @@ try {
   const po2 = await api(`pools/${A}/payout`, { cookie: ADM.cookie });
   check('every rank paid → close_pool offered', po2.j.close && po2.j.transactions.length === 0 && po2.j.ranks.every(r => r.paid));
   const vaultBefore = await bal(vA), paidOnChain = (await poolAcc(A)).prizesPaid;
-  const legs = closeSplit({ priceLamports: PRICE_A, ticketsSold: chainA.ticketsSold, sponsored: chainA.sponsored, prizeBps: 7000, seedBps: 2000, platformFeeBps: PLAT_BPS, prizesPaid: paidOnChain, vaultLamports: vaultBefore, cancelled: false });
+  const legs = closeSplit({ priceLamports: PRICE_A, ticketsSold: chainA.ticketsSold, sponsored: chainA.sponsored, prizeBps: 7000, seedBps: 2000, platformFeeBps: PLAT_BPS, prizesPaid: paidOnChain, vaultLamports: vaultBefore, cancelled: false, rentMin: RENT0 });
   before = await bals({ fee: addr('fee'), plat: addr('plat'), seed: addr('seed'), admin: addr('admin') });
   const sigC = await sendSigned(signedB64(po2.j.close.transaction, admin)); await settle(sigC, ADM.cookie);
   after = await bals({ fee: addr('fee'), plat: addr('plat'), seed: addr('seed'), admin: addr('admin') });

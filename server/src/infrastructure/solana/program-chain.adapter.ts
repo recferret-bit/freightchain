@@ -14,8 +14,12 @@ import { PoolProgramCodec, UnrepresentableValueError } from './pool-program.code
 import { SolanaRpc, sleep } from './solana-rpc.js';
 import { addFeePayerSignature, checkUserSignedTransaction } from './transaction-cosigner.js';
 
-/** Compute-unit limits: the LiteSVM measurements (README, server/test/fixtures/chain) × ~1.3 – real PDA bump searches cost a few k more – plus the two budget instructions. */
-export const CU_LIMITS = { buy: 30_000, refund: 18_000, fail_pool: 6_000, expire_pool: 6_000, pay_prize: 17_000, close_pool: 24_000 } as const;
+/** Compute-unit limits: the LiteSVM measurements (README, server/test/fixtures/chain) + headroom for the Ticket PDA's bump SEARCH. `buy_ticket` (init_if_needed) and
+    `refund` derive the Ticket address with find_program_address in the program: every bump tried costs 1 500 CU, and how many it takes is fixed per wallet and pool
+    (a wallet needing k extra tries has probability 2^-k). With 30k / 18k an unlucky wallet (~1 in 128 for buys, ~1 in 8 for refunds) could NEVER buy / be refunded
+    by a server-built transaction – found by the devnet rehearsal ("exceeded CUs meter"). 60k / 45k leave ≥ 20 extra tries (2^-20). The limit is a cap, not a charge
+    (the fee is priority price × limit, ~0 on devnet). */
+export const CU_LIMITS = { buy: 60_000, refund: 45_000, fail_pool: 6_000, expire_pool: 6_000, pay_prize: 17_000, close_pool: 24_000 } as const;
 /** keep the sponsor able to pay a fee + one Ticket rent (~0.0015 SOL, returned at refund) */
 const SPONSOR_SPEND_FLOOR_LAMPORTS = 2_000_000;
 const RESEND_MS = 2_000;

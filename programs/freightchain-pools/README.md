@@ -9,7 +9,7 @@ Core instructions only; the phase-2 session / deposit instructions (plan 2.6 / 2
 ```sh
 export PATH="$HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$HOME/.avm/bin:$PATH"
 anchor build --arch v0     # root: npm run program:build
-cargo test                 # root: npm run program:test   (49 tests: 47 LiteSVM + 2 unit, no network)
+cargo test                 # root: npm run program:test   (50 tests: 48 LiteSVM + 2 unit, no network)
 npm run program:idl        # copies target/idl/freightchain_pools.json -> idl/
 ```
 
@@ -137,6 +137,8 @@ Decisions:
 
 ## Compute units (LiteSVM, release `.so`, SBPF v0)
 
+**The Ticket PDA's bump search** (`buy_ticket`'s `init_if_needed`, `refund`'s `seeds … bump`) costs ~1 600 CU per bump tried, and how many tries a wallet needs is fixed per wallet and pool (k extra tries: probability 2^-k). A buyer with ≥ 10 extra tries measured **36 166 CU to buy, 30 324 to refund** (`an_unlucky_buyers_ticket_bump_search_fits_the_server_limits`) – above the server's old limits (30 000 / 18 000), so such a wallet could never buy / be refunded by a server-built transaction (found on devnet). The server now sets 60 000 / 45 000 (`CU_LIMITS`).
+
 Measured by `compute_units_are_in_budget` (`cargo test -- --nocapture` prints them). The numbers move by ~1-2k between runs because the test keys are random and the PDA bump search costs differ; one run after the review fixes:
 
 | instruction | CU | plan |
@@ -150,7 +152,7 @@ Measured by `compute_units_are_in_budget` (`cargo test -- --nocapture` prints th
 
 Set `setComputeUnitLimit` from the simulation (`unitsConsumed * 1.2`) as planned; the test asserts only loose ceilings (buy < 40k, refund < 30k, pay_prize < 25k).
 
-## Tests (`programs/freightchain_pools/tests/`, 47 LiteSVM incl. the fixture exporter + 2 unit)
+## Tests (`programs/freightchain_pools/tests/`, 48 LiteSVM incl. the fixture exporter + 2 unit)
 
 `create_and_buy.rs` create_pool validation / authority / unfunded treasury, buy to exactly min activates (events decoded), sponsored buy credits the buyer and records the rent payer, wallet cap, sold out, deadlines.
 `refunds.rs` fail_pool conditions, refund exact price + rent to a separate rent payer, wrong receivers, refund when not Refunding, refund twice, batch of 8 + re-sent batch + partial progress, close_pool after refunds, cancel_pool, sponsor.

@@ -153,9 +153,9 @@ describe('ProgramChainAdapter – reads', () => {
   it('feeQuote: the CU price of the hot accounts, the CU limit and the fee; two signatures when the sponsor pays', async () => {
     let asked: string[] = [];
     const rpc = { getRecentPrioritizationFees: async (o: { lockedWritableAccounts: PublicKey[] }) => { asked = o.lockedWritableAccounts.map((k) => k.toBase58()); return [{ slot: 1, prioritizationFee: 10_000 }]; } };
-    expect(await adapterWith(rpc).adapter.feeQuote({ poolId: 0, kind: 'buy' })).toEqual({ priorityMicrolamports: 10_000, computeUnits: CU_LIMITS.buy, estimatedFeeLamports: 5_000 + 300 });
+    expect(await adapterWith(rpc).adapter.feeQuote({ poolId: 0, kind: 'buy' })).toEqual({ priorityMicrolamports: 10_000, computeUnits: CU_LIMITS.buy, estimatedFeeLamports: 5_000 + 600 });
     expect(asked).toEqual([fixtureAccount('pool 0 active').address, fixtureTx('buy_ticket sponsored').instructions[0]!.accounts[4]!.pubkey]);
-    expect((await adapterWith(rpc, sponsored).adapter.feeQuote({ poolId: null, kind: 'buy' })).estimatedFeeLamports).toBe(10_300);
+    expect((await adapterWith(rpc, sponsored).adapter.feeQuote({ poolId: null, kind: 'buy' })).estimatedFeeLamports).toBe(10_600);
     expect(asked).toEqual([fx.programId]);
     expect((await adapterWith(rpc, sponsored).adapter.feeQuote({ poolId: 0, kind: 'pay_prize' })).estimatedFeeLamports).toBe(5_000 + 170);
     await adapterWith(rpc, { ticketProgramId: '' }).adapter.feeQuote({ poolId: null, kind: 'buy' }); // transfer mode: the network's own recent fees

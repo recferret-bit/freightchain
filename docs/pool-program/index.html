@@ -36,7 +36,7 @@
     <h1>freightchain_pools</h1>
     <p class="lede col">One Anchor program that runs many prize pools. Each pool owns a vault that holds the ticket money, and its rules are fixed when the pool is created. A pool that misses its minimum refunds every buyer, and anyone can trigger that. A live pool pays capped prizes, then splits what is left to the treasuries it declared. This page is the contract's spec sheet. For the plain-language version, see <a href="../pool-escrow/index.html">Pool escrow</a>.</p>
     <div class="status" aria-label="Build status">
-      <span class="chip"><i class="ok"></i>49 tests pass on the verified binary</span>
+      <span class="chip"><i class="ok"></i>50 tests pass on the verified binary</span>
       <span class="chip"><i class="ok"></i>Reproducible build · solana-verify</span>
       <span class="chip"><i class="next"></i>Devnet deploy next</span>
       <span class="chip"><i class="no"></i>Not audited · not on mainnet</span>
@@ -309,7 +309,7 @@ close_pool (Active) pays, vault ends at 0:
     <div class="hash">27c0cb40f5052c0922cc16bf7b726c6be0d9516bdb68b316fd7987475ba3b65b</div>
     <ul class="checks col">
       <li class="y"><span>A clean rebuild from source reproduces this hash (checked 2026-10-08, two builds from an empty SBF target).</span></li>
-      <li class="y"><span>The 49 tests (47 LiteSVM + 2 unit) load exactly this file (<code>target/deploy/freightchain_pools.so</code>), so the tested bytes and the bytes to deploy are the same.</span></li>
+      <li class="y"><span>The 50 tests (48 LiteSVM + 2 unit) load exactly this file (<code>target/deploy/freightchain_pools.so</code>), so the tested bytes and the bytes to deploy are the same.</span></li>
       <li class="y"><span><code>cargo clippy -D warnings</code> is clean on the program. <code>cargo audit</code> finds no RustSec vulnerabilities, only six unmaintained or unsound warnings in transitive Solana and Anchor dependencies.</span></li>
       <li class="n"><span>On-chain match: not possible yet, because nothing is deployed. After the deploy, <code>solana-verify get-program-hash</code> must print the same hash.</span></li>
       <li class="n"><span>Public "verified" status (OtterSec API): needs the repository public and an upload signed by the upgrade authority. That is the owner's call.</span></li>

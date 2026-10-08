@@ -1,7 +1,7 @@
 #[macro_use]
 mod common;
 
-use anchor_lang::{Discriminator, Event};
+use anchor_lang::{prelude::Pubkey, Discriminator, Event};
 use common::*;
 use freightchain_pools::{
     error::PoolError,
@@ -239,4 +239,30 @@ fn events_decode_from_raw_logs_using_idl_discriminators() {
     assert_eq!(&b[36..68], sp.pubkey().as_ref());
     assert_eq!(u64::from_le_bytes(b[70..78].try_into().unwrap()), PRICE);
     assert_eq!(u64::from_le_bytes(b[78..86].try_into().unwrap()), PRICE);
+}
+
+#[test]
+fn an_unlucky_buyers_ticket_bump_search_fits_the_server_limits() {
+    // buy_ticket (init_if_needed) and refund find the Ticket PDA with find_program_address: every bump tried costs 1 500 CU and how many it takes is fixed
+    // per wallet and pool. The server's limits (CU_LIMITS in server/src/infrastructure/solana/program-chain.adapter.ts: buy 60 000, refund 45 000) must cover
+    // a wallet that needs >= 10 extra tries (1 wallet in 1 024) – the devnet rehearsal hit "exceeded CUs meter" with the old 30 000 / 18 000.
+    let mut e = Env::new();
+    let id = e.create_pool(default_params().tap(|x| {
+        x.min_tickets = 40;
+        x.max_tickets = 0;
+        x.max_per_wallet = 100;
+    }));
+    let unlucky = (0..500_000)
+        .map(|_| Keypair::new())
+        .find(|k| Pubkey::find_program_address(&[b"ticket", pool_pda(id).as_ref(), k.pubkey().as_ref()], &pid()).1 <= 245)
+        .expect("a buyer whose Ticket PDA needs >= 10 extra bump tries");
+    e.svm.airdrop(&unlucky.pubkey(), 20 * SOL).unwrap();
+    let buy = e.buy(id, &unlucky, 1).unwrap().compute_units_consumed;
+    e.warp(PREP);
+    e.fail(id).unwrap();
+    let refund = e.refund(id, &unlucky.pubkey(), &unlucky.pubkey()).unwrap().compute_units_consumed;
+    println!("unlucky buyer (>= 10 extra bump tries): buy_ticket {buy} CU, refund {refund} CU");
+    assert!(buy < 60_000, "buy_ticket {buy} CU must fit the server's 60 000 limit");
+    assert!(refund < 45_000, "refund {refund} CU must fit the server's 45 000 limit");
+    assert!(refund > 18_000, "the old 18 000 refund limit would have refused this wallet ({refund} CU)");
 }

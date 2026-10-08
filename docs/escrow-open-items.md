@@ -47,7 +47,7 @@ Related: [deploy + operate](program-deploy.md) · [paid tickets status](paid-tic
 - The sponsor-down fallback against the real server (only `e2e-tickets-stub.mjs` covers it).
 
 **Small known gaps**
-- `docs/pool-escrow` (and its served copy `client/escrow/`) still says "44 tests" – now 49 (47 LiteSVM + 2 unit); the landing drift test needs both edited together.
+- `docs/pool-escrow` (and its served copy `client/escrow/`) still says "44 tests" – now 50 (48 LiteSVM + 2 unit); the landing drift test needs both edited together.
 - The lobby's "N pools on sale" counts active pools whose play window already closed.
 - An unfinished ticket order has no CANCEL – it lapses after `ORDER_TTL_MINUTES` (60).
 - The legacy pay-per-ride routes still exist (status Q1: delete after the devnet run is green).
@@ -91,11 +91,18 @@ Until then production stays as it is (`PAYMENT_MODE=transfer`, no escrow keys in
 
 ### Phase 1 – the program on devnet
 - [x] Keys generated (Oct 8) into the main checkout's `deploy/secrets/devnet/` (gitignored, 600): program-id `9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx`, deploy, admin, sponsor, crank, fee, seed, plat, funder – `devnet.sh keys` lists the addresses. **Back the folder up** (the program-id and deploy keys can't be recreated)
-- [ ] **Owner:** fund ONLY the deploy wallet `XaKtQ98xWSkZQ9RRTbK7v2yU97AniLBYEKcUHRcQy5k` with ~9 devnet SOL (faucet.solana.com / QuickNode's faucet – the CLI faucet is rate-limited); then `devnet.sh distribute` tops up admin 0.5, sponsor 1, crank 0.3, funder 1, fee / seed / plat 0.01 from it – `devnet.sh balances` shows them
+- [x] Funded (Oct 8): 10 SOL to the deploy wallet, `devnet.sh distribute` topped up the others
 - [x] QuickNode Solana devnet endpoint (HTTPS + WSS) in `server/.env.devnet` (Oct 8, worktree `localnet-e2e`; redo `devnet.sh env` in the main checkout after the merge). `check-rpc`: devnet ✓, getProgramAccounts ✓, fees ✓, Priority Fee add-on not enabled (optional)
 - [x] Program id into the code (Oct 8): `anchor keys sync` → `program:build` → `program:idl` → `vendor-idl` → new pin → codec fixture → suites → commit
-- [ ] `devnet.sh deploy` – one command: the pinned-hash guard (`27c0cb40…`), `solana program deploy`, `initialize` (deploy wallet signs, admin = the admin key, platform 0), `Config.authority` read back, `check.sh onchain`
+- [x] `devnet.sh deploy` (Oct 8): **the program is on devnet** – `9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx`, deploy tx `2uBQ1fCa…`, `initialize` (admin = the admin key, platform 0), the deployed bytes = the pin `27c0cb40…` (`check.sh onchain`)
 - [ ] Pools: one each of 1h / 4h / 8h with short test deadlines, plus a "fail" pool (min high, prep ~15 min) – `pool-admin.mjs create-pool -k admin.json`
+
+### Devnet findings (Oct 8 – fixed, each with a test)
+- **The vault rent minimum differs per cluster**: devnet 650 240 lamports, mainnet / local 890 880. The server had it hard-coded → every pool's escrow under-reported on devnet. Now read from the cluster (`getMinimumBalanceForRentExemption(0)`, cached).
+- **Unlucky wallets could never buy / be refunded**: the Ticket PDA bump search costs ~1 600 CU per try, fixed per wallet + pool; the server's compute limits (30 000 / 18 000) were too tight for ~1 in 128 buyers / ~1 in 8 refunds. Now 60 000 / 45 000; program test with a ≥ 10-extra-tries buyer: 36 166 / 30 324 CU.
+- **QuickNode rate limit (429)** under polling: reads now fall back to the public devnet RPC (`SOLANA_RPC_FALLBACKS`); sends stay on QuickNode. **Production needs a plan with enough requests/s, or fallbacks** (Q-F).
+- **QuickNode refuses `solana program deploy`'s batches (413)**: `devnet.sh deploy` uploads through the public devnet RPC.
+- **Dropped transactions** on a real cluster: the admin CLI and the scenario re-send until confirmed (new blockhash when one expires).
 
 ### Phase 2 – real tests on devnet (server on your machine – Q-J)
 - [ ] Server against devnet with the devnet profile; pools appear by themselves (the watcher registers them) or `pool:register --label`
@@ -107,7 +114,7 @@ Until then production stays as it is (`PAYMENT_MODE=transfer`, no escrow keys in
 - [ ] Missed goal: the "fail" pool shows CLAIM REFUND right after its deadline; one buyer claims from the lobby, the crank (`pool:crank`, then the 60 s scheduler) refunds the rest and closes it
 - [ ] Sponsorship: `pool-admin.mjs sponsor` → the pot and prize cap grow on the pool card
 - [ ] Payout: after a play deadline, ranked `pay_prize` (admin page in Phantom or `devnet-payout.mjs`), then `close_pool`; treasuries match `closeSplit`
-- [ ] `devnet-rehearsal.mjs` green against devnet
+- [x] `devnet.sh rehearse` green against devnet (Oct 8, run 5: 65 checks + the deploy smoke; the crank also cleaned the leftover pools of the interrupted runs; leftovers #0 / #3 closed by the admin – every devnet pool is terminal now)
 - [ ] Optional: public verification (repo public, `solana-verify verify-from-repo`) – Q-E
 - [ ] Record the Phase 2 Phantom run (buy → ride → refund → payout) + explorer links for the Colosseum submission – Q-L
 
@@ -132,7 +139,7 @@ Until then production stays as it is (`PAYMENT_MODE=transfer`, no escrow keys in
 - [ ] Session keys / deposits (phase 2 of the plan) – only if still wanted
 
 ### Small fixes (any time)
-- [ ] `docs/pool-escrow` + `client/escrow/`: 44 → 49 tests
+- [ ] `docs/pool-escrow` + `client/escrow/`: 44 → 50 tests
 - [ ] Lobby "pools on sale" count: only pools that still sell
 - [ ] CANCEL for an unfinished ticket order
 - [ ] Status Q8 items (`paidRides`, problem titles, `pool:seed refunding`)
