@@ -7,6 +7,7 @@ export interface PromoCreateArgs {
   code: string; tier: PaidTierId; poolId: number | null; credits: number; maxRedemptions: number | null; perWallet: number; expiresAt: Date | null; note: string | null;
 }
 export interface TicketsGrantArgs { wallet: string; poolId: number; count: number; note: string | null }
+export interface PoolRegisterArgs { poolId: number; label: string | null }
 export interface PoolSeedArgs {
   id: number; tier: PaidTierId; status: 'open' | 'active'; priceLamports: number; minTickets: number; maxTickets: number; maxPerWallet: number;
   prepDays: number; playDays: number; sold: number; label: string | null;
@@ -88,4 +89,20 @@ export function parsePoolSeed(args: readonly string[]): PoolSeedArgs | string {
   if (n.prepDays > n.playDays) return '--prep-days must not be after --play-days';
   if (status === 'active' && n.sold < n.minTickets) return '--sold must reach --min for an active pool';
   return { ...n, tier: v.tier, status, label: v.label ?? null };
+}
+
+/** `pool:register POOL_ID [--label TEXT]` */
+export function parsePoolRegister(args: readonly string[]): PoolRegisterArgs | string {
+  let parsed;
+  try {
+    parsed = parseArgs({ args: [...args], allowPositionals: true, options: { label: { type: 'string' } } });
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+  const [pool] = parsed.positionals;
+  if (parsed.positionals.length !== 1) return 'give exactly one POOL_ID';
+  const poolId = int('pool', pool, 0);
+  if (typeof poolId === 'string' || poolId > 0xffff_ffff) return 'POOL_ID must be a whole number from 0 to 4294967295';
+  const label = parsed.values.label?.trim() || null;
+  return { poolId, label };
 }

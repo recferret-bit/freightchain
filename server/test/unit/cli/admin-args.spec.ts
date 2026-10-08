@@ -1,4 +1,4 @@
-import { parsePoolSeed, parsePromoCreate, parseTicketsGrant } from '../../../src/cli/admin-args.js';
+import { parsePoolRegister, parsePoolSeed, parsePromoCreate, parseTicketsGrant } from '../../../src/cli/admin-args.js';
 
 describe('admin CLI arguments', () => {
   it('promo:create – defaults, every option, UTC-midnight dates', () => {
@@ -34,5 +34,14 @@ describe('admin CLI arguments', () => {
     expect(parsePoolSeed(['--id', '1', '--tier', '1h', '--status', 'settled'])).toBe('--status must be open or active');
     expect(parsePoolSeed(['--id', '1', '--tier', '1h', '--price', '100'])).toBe('--price must be a whole number ≥ 890880'); // the program's rent-minimum rule
     expect(parsePoolSeed(['--id', '1', '--tier', '1h', '--prep-days', '9', '--play-days', '3'])).toBe('--prep-days must not be after --play-days');
+  });
+
+  it('pool:register POOL_ID [--label TEXT]', () => {
+    expect(parsePoolRegister(['7'])).toEqual({ poolId: 7, label: null });
+    expect(parsePoolRegister(['0', '--label', ' 1 HOUR · week 42 '])).toEqual({ poolId: 0, label: '1 HOUR · week 42' });
+    expect(parsePoolRegister([])).toBe('give exactly one POOL_ID');
+    expect(parsePoolRegister(['1', '2'])).toBe('give exactly one POOL_ID');
+    for (const bad of ['x', '1.5', String(2 ** 32)]) expect(parsePoolRegister([bad]), bad).toBe('POOL_ID must be a whole number from 0 to 4294967295');
+    expect(parsePoolRegister(['1', '--nope'])).toMatch(/Unknown option/);
   });
 });
