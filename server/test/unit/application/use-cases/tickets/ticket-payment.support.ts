@@ -8,7 +8,7 @@ import { aPool } from '../../../../support/pools.js';
 
 /** Shared setup of the payment / confirm / submit specs: a program-mode server, one open pool, a buyer with a real keypair and one live order. */
 export async function paymentSetup(over: Parameters<typeof unitRules>[0] = {}) {
-  const rules = unitRules({ paymentMode: 'program', programId: 'B79YYUKFd3QC3HdRkSX1W3C6sGBDFEkgFGQcMShiFSKa', ...over });
+  const rules = unitRules({ paymentMode: 'program', programId: '9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx', ...over });
   const ctx = unitContext(rules);
   const buyer = Keypair.generate();
   const wallet = buyer.publicKey.toBase58();

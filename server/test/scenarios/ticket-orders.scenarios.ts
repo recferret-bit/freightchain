@@ -7,7 +7,7 @@ import { aPool } from '../support/pools.js';
 
 /* Buying tickets: an order over HTTP, then the program's TicketBought event settles it. The event is handed to the settlement service directly – the
    stand-in for the chain watcher / the confirm fast path until the chain adapter lands. */
-export const TICKET_ORDERS_ENV = { FREE_RIDE_SECONDS: '10', PAYMENT_MODE: 'program', TICKET_PROGRAM_ID: 'B79YYUKFd3QC3HdRkSX1W3C6sGBDFEkgFGQcMShiFSKa', ORDER_TTL_MINUTES: '60' };
+export const TICKET_ORDERS_ENV = { FREE_RIDE_SECONDS: '10', PAYMENT_MODE: 'program', TICKET_PROGRAM_ID: '9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx', ORDER_TTL_MINUTES: '60' };
 
 export function ticketOrderScenarios(h: () => Harness): void {
   const { anon, login, now } = bindClient(h);

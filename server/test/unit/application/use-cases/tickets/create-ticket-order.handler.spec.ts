@@ -4,7 +4,7 @@ import { ConflictError, NotFoundError, ServiceUnavailableError } from '../../../
 import { FixedRules, unitContext, unitRules } from '../../../../support/unit-context.js';
 import { aPool } from '../../../../support/pools.js';
 
-const PROGRAM = unitRules({ paymentMode: 'program', programId: 'B79YYUKFd3QC3HdRkSX1W3C6sGBDFEkgFGQcMShiFSKa' });
+const PROGRAM = unitRules({ paymentMode: 'program', programId: '9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx' });
 
 describe('CreateTicketOrderHandler', () => {
   const setup = async (rules = PROGRAM) => {

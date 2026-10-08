@@ -11,7 +11,7 @@ pub use constants::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("B79YYUKFd3QC3HdRkSX1W3C6sGBDFEkgFGQcMShiFSKa");
+declare_id!("9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx");
 
 #[program]
 pub mod freightchain_pools {

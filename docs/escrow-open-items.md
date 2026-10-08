@@ -9,15 +9,15 @@ Related: [deploy + operate](program-deploy.md) · [paid tickets status](paid-tic
 
 | what | where | state |
 |---|---|---|
-| program: verifiable build, `initialize` by the upgrade authority, `play_deadline` cap | `main` | merged; hash `8846f590…` in `programs/freightchain-pools/verifiable-build.hash` |
+| program: verifiable build, `initialize` by the upgrade authority, `play_deadline` cap | `main` | merged; placeholder-id build `8846f590…` (superseded on the branch by the devnet-id build `27c0cb40…` in `verifiable-build.hash`) |
 | `program-check` skill, `docs/pool-program/`, `docs/program-deploy.md` | `main` | merged |
 | localnet money test, pool crank, ticket-only program mode, refundable missed goals, `docs/localnet-e2e/`, this file | branch `localnet-e2e` (worktree `.claude/worktrees/localnet-e2e`) | **not merged**: `main` moved since – rebase (AGENTS.md / CLAUDE.md skill lines conflict, re-apply ours on top) then fast-forward |
-| devnet / production | – | **nothing deployed**: program id is a placeholder, production runs `PAYMENT_MODE=transfer` |
+| devnet / production | – | **nothing deployed**: the code carries the devnet program id `9e7ph…BSvx` (keys made, not funded yet), production runs `PAYMENT_MODE=transfer` |
 
 ## Not done
 
 **Deploy and keys**
-- The program is not on devnet. `declare_id!` is the placeholder `B79YY…`; the program-id keypair, the deploy / upgrade-authority wallet (~5 devnet SOL), the crank key and the seed / fee treasury addresses do not exist yet (`program-deploy.md` steps 1–9).
+- The program is not on devnet yet. The keys exist (`deploy/secrets/devnet/`) and the code carries the devnet id `9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx`; the wallets are unfunded, so nothing is deployed (`program-deploy.md` devnet runbook).
 - Production env not set for the escrow: `PAYMENT_MODE=program`, `TICKET_PROGRAM_ID`, `FEE_TREASURY`, `SEED_TREASURY`, `FEE_PAYER_SECRET`, `CRANK_SECRET` (+ `CRANK_INTERVAL_MS`), `WEBHOOK_SECRET`, an RPC that allows `getProgramAccounts` (the crank lists tickets with it).
 - No public "verified" badge: `solana-verify verify-from-repo` + `remote submit-job` need the repo public and a PDA signed by the upgrade authority.
 - The main checkout has no verifiable `.so` in `target/deploy` yet – run `npm run program:verify` there before `npm run test:localnet` or a deploy.
@@ -91,12 +91,10 @@ Until then production stays as it is (`PAYMENT_MODE=transfer`, no escrow keys in
 
 ### Phase 1 – the program on devnet
 - [x] Keys generated (Oct 8) into the main checkout's `deploy/secrets/devnet/` (gitignored, 600): program-id `9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx`, deploy, admin, sponsor, crank, fee, seed, plat, funder – `devnet.sh keys` lists the addresses. **Back the folder up** (the program-id and deploy keys can't be recreated)
-- [ ] **Owner:** fund them on devnet (faucet.solana.com / QuickNode's faucet – the public CLI faucet is rate-limited): deploy ~5 SOL, sponsor ~1, crank ~0.3, admin ~0.5, funder ~1, fee / seed / plat 0.01 each – `devnet.sh balances` shows them
-- [ ] **Owner:** a QuickNode Solana **devnet** endpoint (HTTPS + WSS) → `RPC=… WS=… devnet.sh env` → `devnet.sh check-rpc` (getProgramAccounts for the crank, fees; the Priority Fee add-on is optional). The profile currently points at the public devnet RPC as a placeholder (check-rpc passed on it)
-- [ ] Program id into the code: `anchor keys sync` → `program:build` → `program:idl` → `vendor-idl` → `UPDATE_PIN=1 npm run program:verify` → codec fixture → `npm run check` + `npm run test:localnet` → commit
-- [ ] Deploy the verifiable `.so` (hash guard first) – `program-deploy.md` step 4
-- [ ] `initialize` (deploy wallet signs, `--admin` = the admin key, platform 0) and read `Config.authority` back
-- [ ] `check.sh onchain`: the deployed bytes = the pin
+- [ ] **Owner:** fund ONLY the deploy wallet `XaKtQ98xWSkZQ9RRTbK7v2yU97AniLBYEKcUHRcQy5k` with ~9 devnet SOL (faucet.solana.com / QuickNode's faucet – the CLI faucet is rate-limited); then `devnet.sh distribute` tops up admin 0.5, sponsor 1, crank 0.3, funder 1, fee / seed / plat 0.01 from it – `devnet.sh balances` shows them
+- [x] QuickNode Solana devnet endpoint (HTTPS + WSS) in `server/.env.devnet` (Oct 8, worktree `localnet-e2e`; redo `devnet.sh env` in the main checkout after the merge). `check-rpc`: devnet ✓, getProgramAccounts ✓, fees ✓, Priority Fee add-on not enabled (optional)
+- [x] Program id into the code (Oct 8): `anchor keys sync` → `program:build` → `program:idl` → `vendor-idl` → new pin → codec fixture → suites → commit
+- [ ] `devnet.sh deploy` – one command: the pinned-hash guard (`27c0cb40…`), `solana program deploy`, `initialize` (deploy wallet signs, admin = the admin key, platform 0), `Config.authority` read back, `check.sh onchain`
 - [ ] Pools: one each of 1h / 4h / 8h with short test deadlines, plus a "fail" pool (min high, prep ~15 min) – `pool-admin.mjs create-pool -k admin.json`
 
 ### Phase 2 – real tests on devnet (server on your machine – Q-J)

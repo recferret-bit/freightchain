@@ -42,11 +42,11 @@
       <span class="chip"><i class="no"></i>Not audited · not on mainnet</span>
     </div>
     <dl class="spec">
-      <div><dt>Program id</dt><dd>B79YYUKFd3QC3HdRkSX1W3C6sGBDFEkgFGQcMShiFSKa <span class="muted">(placeholder)</span></dd></div>
+      <div><dt>Program id</dt><dd>9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx <span class="muted">(devnet)</span></dd></div>
       <div><dt>Framework</dt><dd>Anchor 1.2.1 · Rust 1.89</dd></div>
       <div><dt>Target</dt><dd>SBPF v0 · Solana 4.1.2 toolchain</dd></div>
       <div><dt>Surface</dt><dd>14 instructions · 12 events · 24 errors</dd></div>
-      <div><dt>Binary</dt><dd>385 008 bytes · hash 8846f590…</dd></div>
+      <div><dt>Binary</dt><dd>385 008 bytes · hash 27c0cb40…</dd></div>
       <div><dt>Source</dt><dd>programs/freightchain-pools</dd></div>
     </dl>
   </header>
@@ -306,7 +306,7 @@ close_pool (Active) pays, vault ends at 0:
     <span class="eyebrow">09 · Verifiable build</span>
     <h2>The bytes come from this source</h2>
     <p class="col">The binary is built with <a href="https://github.com/solana-foundation/solana-verifiable-build">solana-verify</a> 0.5.2 inside the Solana Foundation's pinned Docker image for Solana 4.1.2. The image is chosen from <code>[workspace.metadata.cli]</code> in the program's <code>Cargo.toml</code>. Its <b>executable hash</b> (solana-verify's: sha256 of the <code>.so</code> without its trailing zero padding, so not what <code>sha256sum</code> prints) is committed as <code>programs/freightchain-pools/verifiable-build.hash</code>:</p>
-    <div class="hash">8846f59029b010ecca5b1801bce4a3c7a8cb963795f566cb1a34a6ce0dbe7e4b</div>
+    <div class="hash">27c0cb40f5052c0922cc16bf7b726c6be0d9516bdb68b316fd7987475ba3b65b</div>
     <ul class="checks col">
       <li class="y"><span>A clean rebuild from source reproduces this hash (checked 2026-10-08, two builds from an empty SBF target).</span></li>
       <li class="y"><span>The 49 tests (47 LiteSVM + 2 unit) load exactly this file (<code>target/deploy/freightchain_pools.so</code>), so the tested bytes and the bytes to deploy are the same.</span></li>
@@ -323,7 +323,7 @@ PROGRAM_ID=&lt;id&gt; bash .claude/skills/program-check/check.sh onchain   # rea
     <span class="eyebrow">10 · Limits</span>
     <h2>What this program does not do yet</h2>
     <ul class="col">
-      <li><b>Not audited</b>, not deployed, devnet only. The id in <code>declare_id!</code> is a placeholder.</li>
+      <li><b>Not audited</b>, not deployed, devnet only. The id in <code>declare_id!</code> is the devnet one; nothing is deployed yet.</li>
       <li>The program caps prize payouts but cannot tell a rightful winner from any other wallet. The admin signs each <code>pay_prize</code>, and may close a pool after its play deadline without paying prizes (the prize share then goes to the seed treasury). The escape hatches protect against an absent admin, not a dishonest one.</li>
       <li>There is no <code>refund_sponsor</code>. Sponsorship of a failed pool goes to the seed treasury at close.</li>
       <li>The Pool account is never closed, so explorers and the server can still read it after settlement.</li>

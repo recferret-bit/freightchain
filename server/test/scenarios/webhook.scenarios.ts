@@ -8,7 +8,7 @@ import { aPool } from '../support/pools.js';
 /* The chain pushing to us: POST /api/chain/webhook through the REAL app (guard, Zod, filter); the pool program is the FakePoolChain, so a delivery only
    NAMES signatures and the server reads each transaction back from "the chain". No client call settles anything here. */
 export const WEBHOOK_SECRET = 'scenario-webhook-secret-0123';
-export const WEBHOOK_ENV = { FREE_RIDE_SECONDS: '10', PAYMENT_MODE: 'program', TICKET_PROGRAM_ID: 'B79YYUKFd3QC3HdRkSX1W3C6sGBDFEkgFGQcMShiFSKa', ORDER_TTL_MINUTES: '60', WEBHOOK_SECRET };
+export const WEBHOOK_ENV = { FREE_RIDE_SECONDS: '10', PAYMENT_MODE: 'program', TICKET_PROGRAM_ID: '9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx', ORDER_TTL_MINUTES: '60', WEBHOOK_SECRET };
 
 export function webhookScenarios(h: () => Harness): void {
   const { anon, login, now } = bindClient(h);

@@ -29,7 +29,7 @@ if [ "$MODE" = onchain ]; then
   PROGRAM_ID="${PROGRAM_ID:-$(grep -oE 'declare_id!\("[1-9A-HJ-NP-Za-km-z]+"\)' "$WS/programs/$LIB/src/lib.rs" | cut -d'"' -f2 || true)}"
   want="$(pinned)"; [ -n "$want" ] || fail "no pinned hash in $PIN"
   [ -n "$PROGRAM_ID" ] || fail "no PROGRAM_ID (and none found in declare_id!)"
-  step "on-chain hash of $PROGRAM_ID ($RPC_URL)"
+  step "on-chain hash of $PROGRAM_ID ($(printf %s "$RPC_URL" | sed -E 's#^([a-z]+://[^/]+).*#\1/…#'))"   # host only: a provider URL carries its API token
   got="$(solana-verify -u "$RPC_URL" get-program-hash "$PROGRAM_ID" 2>&1 | tail -1 || true)"
   echo "  deployed $got"; echo "  pinned   $want"
   [ "$got" = "$want" ] && { echo "✓ the deployed program is the verifiable build of this commit"; exit 0; }

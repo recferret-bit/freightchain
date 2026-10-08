@@ -7,12 +7,11 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-freightchain_pools = "B79YYUKFd3QC3HdRkSX1W3C6sGBDFEkgFGQcMShiFSKa"
+freightchain_pools = "9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx"
 
 [provider]
 cluster = "localnet"
-# gitignored upgrade-authority keypair; not needed for `anchor build` / `cargo test`
-wallet = "../../deploy/secrets/program-deploy.json"
+wallet = "~/work/freightchain/.claude/worktrees/localnet-e2e/programs/freightchain-pools/../../deploy/secrets/program-deploy.json"
 
 [scripts]
 test = "cargo test"

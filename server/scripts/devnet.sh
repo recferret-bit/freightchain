@@ -12,6 +12,8 @@
 #   bash server/scripts/devnet.sh payout <poolId> [--yes]   pay a pool's ranked prizes + close it with the admin key (the server must be running)
 #   bash server/scripts/devnet.sh rehearse            the localnet money scenario against DEVNET (own server on a throwaway DB, players funded by `funder`)
 #   bash server/scripts/devnet.sh airdrop <role> [SOL] try the public devnet faucet for one key (rate-limited; faucet.solana.com is the fallback)
+#   bash server/scripts/devnet.sh distribute          fund the deploy wallet only (~9 SOL); this tops up every other key from it to its target
+#   bash server/scripts/devnet.sh deploy              the guarded program deploy: pinned hash check → solana program deploy → initialize → on-chain hash = pin
 set -euo pipefail
 SERVER="$(cd "$(dirname "$0")/.." && pwd)"
 MAIN="$(cd "$(dirname "$(git -C "$SERVER" rev-parse --path-format=absolute --git-common-dir)")" && pwd)"   # the main checkout, also from a worktree
@@ -92,6 +94,33 @@ case "${1:-help}" in
     r="${2:?role, e.g. deploy}"; amt="${3:-1}"
     solana airdrop --url https://api.devnet.solana.com "$amt" "$(pub "$r")" || echo "faucet refused (rate limit) – use https://faucet.solana.com for $(pub "$r")"
     ;;
+  distribute)
+    # target balances in lamports; only the missing part is sent, from the deploy wallet (which keeps the rest for the program deploy)
+    for pair in admin:500000000 sponsor:1000000000 crank:300000000 funder:1000000000 fee:10000000 seed:10000000 plat:10000000; do
+      r="${pair%%:*}"; want="${pair##*:}"
+      have=$(call getBalance "[\"$(pub "$r")\"]" | node -pe 'JSON.parse(require("fs").readFileSync(0)).result.value')
+      [ "$have" -ge "$want" ] && { echo "  $r has enough"; continue; }
+      amt=$(node -pe "(($want - $have) / 1e9).toFixed(9)")
+      solana transfer --url "$(rpc)" -k "$KEYS/deploy.json" --allow-unfunded-recipient --fee-payer "$KEYS/deploy.json" "$(pub "$r")" "$amt" >/dev/null && echo "  $r +$amt SOL" || fail "transfer to $r failed (is the deploy wallet funded?)"
+    done
+    ;;
+  deploy)
+    SO="$SERVER/../programs/freightchain-pools/target/deploy/freightchain_pools.so"; PIN="$SERVER/../programs/freightchain-pools/verifiable-build.hash"
+    export PATH="$HOME/.cargo/bin:$PATH"
+    [ -f "$SO" ] || fail "no $SO – npm run program:verify"
+    [ "$(solana-verify get-executable-hash "$SO" | tail -1)" = "$(cut -c1-64 "$PIN")" ] || fail "the .so is not the pinned verifiable build – npm run program:verify (never deploy an anchor build)"
+    [ "$(node -p 'require(process.argv[1]).address' "$SERVER/../programs/freightchain-pools/idl/freightchain_pools.json")" = "$(pub program-id)" ] || fail "the code is not built for $(pub program-id) – anchor keys sync + rebuild"
+    echo "▸ deploy (or upgrade) $(pub program-id) – the deploy wallet pays the rent and is the upgrade authority"
+    solana program deploy --url "$(rpc)" --keypair "$KEYS/deploy.json" --upgrade-authority "$KEYS/deploy.json" --program-id "$KEYS/program-id.json" "$SO"
+    cd "$SERVER" && npm run --silent build >/dev/null
+    if node scripts/pool-admin.mjs show --url "$(rpc)" | node -e 'process.exit(JSON.parse(require("fs").readFileSync(0)).config ? 0 : 1)'; then echo "• Config exists already (initialize skipped)"
+    else
+      echo "▸ initialize: the upgrade authority names the admin, platform cut 0"
+      node scripts/pool-admin.mjs initialize --url "$(rpc)" -k "$KEYS/deploy.json" --admin "$(pub admin)" --platform-treasury "$(pub plat)" --platform-fee-bps 0 >/dev/null
+    fi
+    node scripts/pool-admin.mjs show --url "$(rpc)" | node -e 'const c=JSON.parse(require("fs").readFileSync(0)).config; if (c.authority !== process.argv[1]) { console.error("✗ Config.authority is NOT the devnet admin – someone else initialized: redeploy under a new id"); process.exit(1) } console.log("✓ Config.authority = the admin key, platform cut " + c.platformFeeBps + " bps")' "$(pub admin)"
+    PROGRAM_ID="$(pub program-id)" RPC_URL="$(rpc)" bash "$SERVER/../.claude/skills/program-check/check.sh" onchain
+    ;;
   *)
-    sed -n '2,16p' "$0"; exit 1 ;;
+    sed -n '2,18p' "$0"; exit 1 ;;
 esac
