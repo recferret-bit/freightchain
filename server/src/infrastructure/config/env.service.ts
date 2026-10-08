@@ -71,14 +71,17 @@ export class EnvService {
 
   get posthogHost(): string { return this.env.POSTHOG_HOST; }
 
-  /** Kill switch on (`1` or `true`). `false` / `0` / unset leave capture to the key. */
+  /** Global opt-in. Only `1` or `true` may send. Unset, empty, `0`, and `false` stay off even with a project token. */
+  get posthogEnabled(): boolean { return this.env.POSTHOG_ENABLED === '1' || this.env.POSTHOG_ENABLED === 'true'; }
+
+  /** Kill switch. `1` or `true` force capture off even when POSTHOG_ENABLED is on. */
   get posthogDisabled(): boolean { return this.env.POSTHOG_DISABLED === '1' || this.env.POSTHOG_DISABLED === 'true'; }
 
   /** Operator id. Not part of the capture body. */
   get posthogProjectId(): string | null { return this.env.POSTHOG_PROJECT_ID ?? null; }
 
-  /** Capture runs only with a real project token and the kill switch off. */
-  get analyticsEnabled(): boolean { return this.posthogKey !== null && !this.posthogDisabled; }
+  /** Capture runs only with a real project token, POSTHOG_ENABLED of `1` or `true`, and the kill switch off. */
+  get analyticsEnabled(): boolean { return this.posthogKey !== null && this.posthogEnabled && !this.posthogDisabled; }
 
   /** TREASURY_PUBKEY, else – outside production and tests – data/treasury.json written by `npm run treasury:init`. A file that is there but invalid stops the boot. */
   private resolveTreasury(): string {

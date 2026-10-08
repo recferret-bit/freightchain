@@ -3,7 +3,7 @@ import type { Harness } from '../support/harness.js';
 
 const ANON = 'anon_00000000-0000-4000-8000-000000000000';
 
-/** Anonymous-ok relay. The same scenarios run with analytics off (default harness) and on (POSTHOG_KEY set, fetch stubbed before boot). */
+/** Anonymous-ok relay. The same scenarios run with analytics off (default harness) and on (POSTHOG_KEY plus POSTHOG_ENABLED=1, fetch stubbed before boot). A project token alone stays off. */
 export function telemetryScenarios(h: () => Harness): void {
   const { anon } = bindClient(h);
   beforeEach(() => h().reset());

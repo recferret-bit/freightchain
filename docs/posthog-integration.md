@@ -4,9 +4,9 @@
 |---|---|
 | Author | TBD (Freight Chain) |
 | Date | 2026-10-07 |
-| Status | Implemented |
+| Status | Implemented. Capture is opt-in: `POSTHOG_ENABLED` of `1` or `true`, plus a `phc_` token. Local `server/.env` pins `0`. Production `deploy/.env` sets `1`. `POSTHOG_DISABLED=1` still wins. A token alone sends nothing. The live site sends nothing until this branch is the image production runs. |
 | Deadline | Colosseum submission, Sunday 12 Oct 2026, noon PT (official close 23:59 PT) |
-| Scope | Implemented on `plan/posthog-integration`: relay, server capture, client hooks, and env placeholders. Dashboards stay a manual PostHog step. |
+| Scope | Implemented on `plan/posthog-integration`: relay, server capture, client hooks, and env placeholders. Dashboards stay a manual PostHog step. The judge-facing write-up (events, funnels, the EU board) is `docs/analytics/index.html` on `main`; this branch does not contain that page. |
 | Source tree | This branch. `main` does not contain the capture code. |
 | Companion plan | `docs/hackathon-plan-v2.md` (the schedule this must not displace) |
 | Server rules | `docs/backend-architecture.md` |
@@ -15,9 +15,9 @@
 
 Freight Chain has a live loop and no instrumented one. A judge can open `https://freightchain.fun`, connect a Solana wallet, start a free ride or pay a devnet memo transfer, and drive a server-timed shift, but the only numbers we can defend today are SQL counts and `GET /api/pool`. Production on 7 Oct 2026 is 4 throwaway sign-ins, 0 rides, 0 payments (`docs/hackathon-plan-v2.md`). PostHog is how the Saturday video and the written form show that loop without inventing a waitlist.
 
-The design is two planes on one PostHog Cloud (US) project. The browser records only what the server cannot see: chapter views, button presses, wallet-prompt outcomes, tab changes. The server records identity, orders, payments, and ride verdicts, and it is the only source the Colosseum dashboard is allowed to quote for money and completion. The analytics object is built and emitted only after the database commit (`transactions.run`, `withVersionRetry`, or `rides.save`) has resolved, both inside try/catch, never inside the player-row lock. A throw there cannot roll back a payment or a ride. The project API key stays on the server. The browser posts an allowlisted batch to `POST /api/telemetry`; it never talks to `posthog.com` and it cannot mint `ride_completed` or `payment_confirmed`. Session replay and ride replay are the telemetry task, not this plan.
+The design is two planes on one PostHog Cloud (EU) project. The browser records only what the server cannot see: chapter views, button presses, wallet-prompt outcomes, tab changes. The server records identity, orders, payments, and ride verdicts, and it is the only source the Colosseum dashboard is allowed to quote for money and completion. The analytics object is built and emitted only after the database commit (`transactions.run`, `withVersionRetry`, or `rides.save`) has resolved, both inside try/catch, never inside the player-row lock. A throw there cannot roll back a payment or a ride. The project API key stays on the server. The browser posts an allowlisted batch to `POST /api/telemetry`; it never talks to `posthog.com` and it cannot mint `ride_completed` or `payment_confirmed`. Session replay and ride replay are the telemetry task, not this plan.
 
-This is winnable beside the existing week. Wednesday’s real devnet payment, Thursday’s prize-split change, the two videos, and the form stay on the critical path. Analytics ships dark (no key, no events) and turns on with one env var. If the week slips, analytics is what gets cut, not the payment.
+This is winnable beside the existing week. Wednesday’s real devnet payment, Thursday’s prize-split change, the two videos, and the form stay on the critical path. Local development stays off: `server/.env` pins `POSTHOG_ENABLED=0`, and the local compose file is Postgres only. Production `deploy/.env` sets `POSTHOG_ENABLED=1` with a `phc_` token and the EU host. A token alone does not send. `POSTHOG_DISABLED=1` forces capture back off. The live site still sends nothing until this branch is deployed, because `main` strips the keys. If the week slips, analytics is what gets cut, not the payment.
 
 ## Background & Motivation
 
@@ -56,7 +56,7 @@ From `docs/hackathon-plan-v2.md`: one real devnet payment, the Thursday economy 
 - Judge-facing metrics whose formulas use **server** events only for: wallets signed in, paid confirms, rides started, rides completed, completion rate, and lamports in.
 - `is_demo` on every server event so the founder’s `DEMO_WALLETS` Phantom (the Wednesday payment, `time_scale` 60) is labelled and filterable, not mixed into “real riders” and not hidden.
 - A capture path that obeys Clean Architecture, the test pyramid, the 40 KiB landing budget, and the race-safety table.
-- A kill switch that needs no feature-flag product: `POSTHOG_DISABLED=1`.
+- A global opt-in and a kill switch that need no feature-flag product: `POSTHOG_ENABLED=1` to send, `POSTHOG_DISABLED=1` to force off.
 - A dashboard a person can click together in PostHog before Saturday, plus the five sentences the video is allowed to say.
 
 ### Non-goals
@@ -76,7 +76,7 @@ From `docs/hackathon-plan-v2.md`: one real devnet payment, the Thursday economy 
 
 ## Key Decisions
 
-1. **PostHog Cloud, US, one new project, not self-hosted.** Operating PostHog is not a five-day hackathon task. EU only if a later legal reason appears. The capture key is the project token (`phc_…`). A personal key (`phx_…`) is not stored in the app, the repo, or `deploy/.env`. Dashboards are clicked in the UI. A pasted `phx_` (or any other non-`phc_` string) does **not** refuse boot. `EnvService` logs once and treats the key as unset, so confirm and payments stay up. The key is never required. Empty `POSTHOG_KEY=` is unset, via the existing `optional()` preprocess. See the env table and the risk row.
+1. **PostHog Cloud, EU, project 297915, not self-hosted.** Operating PostHog is not a five-day hackathon task. The project the founder created is EU Cloud, so capture goes to `https://eu.i.posthog.com`. A US ingest host would accept the token and drop the events on the wrong continent. The capture key is the project token (`phc_…`). A personal key (`phx_…`) is not stored in the app, the repo, or `deploy/.env`. Dashboards are clicked in the UI. A pasted `phx_` (or any other non-`phc_` string) does **not** refuse boot. `EnvService` logs once and treats the key as unset, so confirm and payments stay up. The key is never required. Empty `POSTHOG_KEY=` is unset, via the existing `optional()` preprocess. See the env table and the risk row.
 
 2. **Two planes, disjoint event names.** Client plane = UX. Server plane = identity, money, lifecycle, grants. Judge tiles filter `source = server`. The sets of names are disjoint and a unit test fails if they are not. Where both sides see one moment they use different verbs (`wallet_connect_clicked` vs `player_signed_in`, `payment_submitted` vs `payment_confirmed`). There is no “both” event that must be deduped across planes.
 
@@ -88,11 +88,11 @@ From `docs/hackathon-plan-v2.md`: one real devnet payment, the Thursday economy 
 
 6. **Landing does not bundle `posthog-js`.** P0 is `client/js/analytics.js`, a side-effect-free ESM module, statically imported. Expected cost ≈ 1–1.5 KiB gzipped on top of 26,827 bytes, under the 40,960-byte cap, and the entry file stays under 30 KiB raw. `fetch(` lives in `analytics.js`, not in `landing/src/main.js` or `landing/src/dash-live.js`, so `page.test.js` stays green. The sign-in `catch` in `main.js` stays byte-identical; classification lives in `client/site/wallet.js` `signIn`. Autocapture is not loaded. `play.html` does not record a session and does not sample FPS. Session recording is the telemetry task.
 
-7. **First-party ingest.** P0 does not add an nginx `location`. `POST /api/telemetry` is already under `location /api/` on `api.<apex>`, inherits exact-origin CORS and the session cookie, and is invisible to filters that block `posthog.com`. The server then calls `POSTHOG_HOST` (default `https://us.i.posthog.com`) `/batch/`. Local dev with the key set calls PostHog directly from the adapter; with the key unset it no-ops. This plan adds no nginx location.
+7. **First-party ingest.** P0 does not add an nginx `location`. `POST /api/telemetry` is already under `location /api/` on `api.<apex>`, inherits exact-origin CORS and the session cookie, and is invisible to filters that block `posthog.com`. The server then calls `POSTHOG_HOST` (default `https://eu.i.posthog.com`) `/batch/`. Local dev does not call PostHog: `server/.env` pins `POSTHOG_ENABLED=0`, and `docker-compose.yml` runs Postgres only. Production `deploy/.env` sets `POSTHOG_ENABLED=1`. A shell export of `1` still wins for that process (the smoke test). Otherwise the adapter no-ops. This plan adds no nginx location.
 
 8. **Autocapture off. Pageviews are ours.** Custom events only. One `landing_viewed` and one `lobby_viewed` per document load. No pageview on `play.html` frames. One `ride_page_viewed` when `initOnline` actually got a `created` ride. Game canvas and cockpit buttons are not autocaptured because there is no autocapture.
 
-9. **No flag SDK, one kill switch.** `POSTHOG_DISABLED` of `1` or `true`, an empty `POSTHOG_KEY`, or a key that is not `phc_…` makes `capture()` return without queueing. Checked only in `EnvService` / the adapter. A bad key does not stop the process. Nothing in `client/js/sim/*` or the frame loop reads a flag. Flags, experiments, surveys, and error tracking are out of this plan.
+9. **No flag SDK. One opt-in, one kill switch.** `EnvService.analyticsEnabled` is true only when the key matches `^phc_[A-Za-z0-9]+$`, `POSTHOG_ENABLED` is `1` or `true`, and `POSTHOG_DISABLED` is not `1` or `true`. Unset, empty, `0`, and `false` on `POSTHOG_ENABLED` stay off even with a project token. The kill switch wins. Both values are `optional(z.enum(['1','true','0','false']))`, not coerced booleans. Application code does not read `process.env`. `emitAnalytics` returns before the factory when `AnalyticsPort.enabled()` is false, and the adapter's `capture()` no-ops again. The relay answers `{ enabled: false, accepted: 0, dropped: 0 }`, which silences the browser for that document. A bad key does not stop the process. Nothing in `client/js/sim/*` or the frame loop reads a flag. There is no client `.env`. Flags, experiments, surveys, and error tracking are out of this plan.
 
 10. **Hackathon narrative quotes server events and the site, and does not fake traction.** The five numbers are defined below as PostHog formulas **and** as the SQL/API check they must match. `is_demo = true` is the Wednesday devnet payment until a non-demo wallet pays. If that count is 1, the video says 1. Demo-wallet events stay in the data; the Colosseum board shows them on a tile labelled DEMO and the non-demo tile beside it, even when the second tile is 0.
 
@@ -120,7 +120,7 @@ flowchart LR
   subgraph db [PostgreSQL]
     Rows[(Player Ride Payment Round)]
   end
-  subgraph ph [PostHog Cloud US]
+  subgraph ph [PostHog Cloud EU]
     Proj[Server project phc key]
   end
   L --> A
@@ -176,11 +176,16 @@ export interface AnalyticsEvent {
 export abstract class AnalyticsPort {
   /** Enqueue. Never throws. Never returns a promise to the caller. */
   abstract capture(event: AnalyticsEvent): void;
+  /** False when the opt-in is off, the key is missing or not phc_, or the kill switch is on. */
+  abstract enabled(): boolean;
 }
 
-/** Call only after the commit await. The factory and capture share one try/catch. */
+/** Call only after the commit await. Off skips the factory. The check, the factory, and capture share one try/catch. */
 export function emitAnalytics(port: AnalyticsPort, build: () => AnalyticsEvent): void {
-  try { port.capture(build()); } catch { /* the command result is already decided */ }
+  try {
+    if (!port.enabled()) return;
+    port.capture(build());
+  } catch { /* the command result is already decided */ }
 }
 ```
 
@@ -190,7 +195,7 @@ export function emitAnalytics(port: AnalyticsPort, build: () => AnalyticsEvent):
 
 The transaction callback returns the command result plus a plain `CommittedFacts` snapshot: ids, statuses, reason strings, and the `Date`s already on the aggregates (`createdAt`, `startedAt`, `endedAt`, `Payment.at`). `RideDto` drops those timestamps (`ride.dto.ts`), so the snapshot has to carry them. No property bag, no `failCode()`. Copying fields that are already on the entity is the whole snapshot. Early returns (the in-hand ride) come back as `inserted: false`.
 
-After `transactions.run`, `withVersionRetry`, or `rides.save` resolves, the handler calls `emitAnalytics(port, () => event)`. Both the build and the emit sit in that helper’s try/catch. A unit test builds a confirm path where the factory throws and the handler still returns `{ status: 'paid', ride }`. Never `await` PostHog. Never call `capture` on the `TransactionHandle`.
+After `transactions.run`, `withVersionRetry`, or `rides.save` resolves, the handler calls `emitAnalytics(port, () => event)`. When `port.enabled()` is false the factory is not called. When it is true, the build and the emit sit in that helper’s try/catch. A unit test builds a confirm path where the factory throws and the handler still returns `{ status: 'paid', ride }`. Never `await` PostHog. Never call `capture` on the `TransactionHandle`.
 
 `PaymentSettlementService` does not take the port. `settle()` returns `{ ride: RideDto, inserted: boolean, paidAt: Date | null }`. `inserted` is true only on the path that inserted the `Payment` in this call. `paidAt` is the `ClockPort` instant stored on `Payment.at`, and it is null when `inserted` is false. The race loser (lines 47–50, `findBySignature` already has this signature) returns `inserted: false`. Confirm lines 30–31 return `paid` without calling `settle` and emit nothing. Line 32 throws and is not a verification failure. `ConfirmPaymentHandler` and `ReconcilePaymentHandler` emit `payment_confirmed` only when `inserted` is true, with `timestamp: paidAt` and `via` set by whichever handler inserted. The other caller emits nothing, so a confirm/reconcile race does not double-count. The crash window (insert committed, process dies before emit) stays accepted; emitting again on `inserted: false` would double-count the winner. Do not close that window in P0.
 
@@ -198,7 +203,7 @@ After `transactions.run`, `withVersionRetry`, or `rides.save` resolves, the hand
 
 `CreateRideHandler` (`transactions.run` at line 47), `StartRideHandler` (line 29), and `settleOnce` (lines 61–75, `findByWalletForUpdate`) are the player-row lock. A throw while building an event inside those callbacks aborts the callback before commit. That is the bug this rule exists to prevent, including a `BigInt` lamport or a null `roundId` after Solana has already accepted the memo.
 
-The adapter queues and flushes with `setTimeout` (1 s or 20 events). `onApplicationShutdown` flushes with a 500 ms budget, then drops. Flush failure logs the event name and HTTP status, not the body, and does not throw. `POSTHOG_DISABLED`, a missing key, or a key `EnvService` refused (including `phx_`): `capture` is a no-op. The process still listens.
+The adapter queues and flushes with `setTimeout` (1 s or 20 events). `onApplicationShutdown` flushes with a 500 ms budget, then drops. Flush failure logs the event name and HTTP status, not the body, and does not throw. `POSTHOG_ENABLED` unset / `0` / `false`, `POSTHOG_DISABLED` of `1` or `true`, a missing key, or a key `EnvService` refused (including `phx_`): `capture` is a no-op. The process still listens.
 
 **Wire body.** One event:
 
@@ -749,7 +754,7 @@ No metric divides by a draw, a top-3 rank, or a payout. Those are not built.
 |---|---|---|---|---|
 | Forged completion | Client tried to write a server event | `dropped` on the relay is not in PostHog. Adapter log line is the signal. A PostHog trend of `ride_completed` with `source=client` must be **zero** because the relay will not forward it. Check once after the first deploy. | ops | P0 |
 | Delivery failure | PostHog HTTP failed | count of adapter warn logs `analytics flush failed` | ops | P0 |
-| Kill switch | Capture off | `GET` is not provided. `POST /api/telemetry` returns `enabled: false` when the key is empty, the key is not a `phc_` token, or `POSTHOG_DISABLED` is `1` or `true`. | ops | P0 |
+| Kill switch | Capture off | `GET` is not provided. `POST /api/telemetry` returns `enabled: false` when `POSTHOG_ENABLED` is unset, `0`, or `false`, the key is empty or not a `phc_` token, or `POSTHOG_DISABLED` is `1` or `true`. | ops | P0 |
 | FPS | not collected | — | — | — |
 
 ## Funnels
@@ -856,7 +861,7 @@ Funnels → Add step → event name → set property filters on the step → con
 
 ## Dashboards
 
-Two dashboards. Shared with the founder’s PostHog user. Not embedded in the public site.
+Two dashboards. Shared with the founder’s PostHog user. Not embedded in the public site. The Colosseum board that exists is EU project 297915 dashboard 1006663: https://eu.posthog.com/project/297915/dashboard/1006663 (private; the share dialog stays closed). Loop health does not exist yet.
 
 ### Colosseum (read-only share, if a share exists at all)
 
@@ -920,7 +925,7 @@ Empty batch, analytics on:
 { "enabled": true, "accepted": 0, "dropped": 0 }
 ```
 
-Disabled (empty key, bad key, or `POSTHOG_DISABLED`):
+Disabled (`POSTHOG_ENABLED` unset / `0` / `false`, empty key, bad key, or `POSTHOG_DISABLED`):
 
 ```json
 { "enabled": false, "accepted": 0, "dropped": 0 }
@@ -937,12 +942,13 @@ Added to `server/src/infrastructure/config/env.schema.ts` and read only through 
 | Variable | Rule | Default |
 |---|---|---|
 | `POSTHOG_KEY` | `optional(z.string())`. `optional()` maps `''` to `undefined` before the schema, so a commented `POSTHOG_KEY=` boots. Unset means off. A set value is a project token only if it matches `^phc_[A-Za-z0-9]+$`. Anything else, including `phx_`, does **not** fail `validateEnv`. | unset |
-| `POSTHOG_HOST` | `optional` https URL | `https://us.i.posthog.com` |
-| `POSTHOG_DISABLED` | `optional(z.enum(['1','true','0','false']))`. Not `z.coerce.boolean()`: `Boolean("false")` is `true`, and the kill switch would stick on. | unset, treated as off |
+| `POSTHOG_HOST` | `optional` https URL | `https://eu.i.posthog.com` |
+| `POSTHOG_ENABLED` | `optional(z.enum(['1','true','0','false']))`. Not a coerced boolean. Only `1` and `true` may send. Unset, empty, `0`, and `false` stay off even with a project token. Local `server/.env` and `server/.env.example` set `0`. Production `deploy/.env` and `deploy/.env.example` set `1`. | unset in the schema, treated as off |
+| `POSTHOG_DISABLED` | `optional(z.enum(['1','true','0','false']))`. Not `z.coerce.boolean()`: `Boolean("false")` is `true`, and the kill switch would stick on. `1` / `true` win over `POSTHOG_ENABLED`. | unset, treated as off |
 
-`EnvService` is the gate, not the schema. `posthogKey()` returns the string only when it matches `^phc_[A-Za-z0-9]+$`. Otherwise it returns null and logs once: `analytics disabled: POSTHOG_KEY is not a project token`. The log does not print the value. `posthogDisabled()` is true only for `1` and `true`. The adapter no-ops when the key getter is null or the flag is true. `validateEnv` still throws on a bad `JWT_SECRET` or a bad `COOKIE_DOMAIN`; it does not throw on these three. The API, including confirm, keeps listening. The key is not required in production. A deploy with no analytics block boots exactly as today. `process.env` stays inside `infrastructure/config/`. Domain and application do not read the values.
+`EnvService` is the gate, not the schema. `posthogKey()` returns the string only when it matches `^phc_[A-Za-z0-9]+$`. Otherwise it returns null and logs once: `analytics disabled: POSTHOG_KEY is not a project token`. The log does not print the value. `posthogEnabled()` is true only for `1` and `true`. `posthogDisabled()` is true only for `1` and `true`. `analyticsEnabled` needs all three: a real token, the opt-in, and the kill switch off. The adapter copies that boolean at boot and no-ops when it is false. `emitAnalytics` asks `enabled()` and skips the factory when it is false, so application code never reads `process.env`. `validateEnv` still throws on a bad `JWT_SECRET` or a bad `COOKIE_DOMAIN`; it does not throw on these four. The API, including confirm, keeps listening. The key is not required in production. A deploy with no analytics block, or with `POSTHOG_ENABLED` left empty or `0`, boots with capture off. The production file sets `1`; the local file sets `0`. `process.env` stays inside `infrastructure/config/`. Domain and application do not read the values.
 
-`deploy/.env.example` gains the three keys with blanks and a comment: project token only, dummy empty, empty is off, a bad token is ignored and logged, never a personal key, never a real `phc_` committed. The real token lives in `deploy/.env` (gitignored), same as `SOLANA_RPC`. Fixing a bad key is a `deploy/.env` edit and a container recreate when you want analytics back. It is not how you bring payments back, because payments never went down.
+The two tracked examples differ. `server/.env.example` (local) sets `POSTHOG_ENABLED=0` and leaves the key blank. `deploy/.env.example` (production) sets `POSTHOG_ENABLED=1` and leaves the key blank: a fresh `deploy:init` intends to send, and still sends nothing until the gitignored file has a `phc_` token. Never commit a real token. The real token lives in both gitignored files, same as `SOLANA_RPC`. Local `server/.env` pins `POSTHOG_ENABLED=0`. Production `deploy/.env` sets `POSTHOG_ENABLED=1`, the EU host, and leaves `POSTHOG_DISABLED` unset. The local compose file does not run the API and must not set `POSTHOG_ENABLED`. `deploy/docker-compose.prod.yml` interpolates the production file; an empty value stays off. Fixing a bad key is a `deploy/.env` edit and a container recreate. It is not how you bring payments back, because payments never went down. A deploy of `main` strips the keys, so the live site sends nothing until this branch is the image.
 
 ### Client
 
@@ -977,9 +983,9 @@ The tiny module plus server batch is more code (one port, one route, an allowlis
 
 ### C. Self-host vs cloud
 
-Self-hosting PostHog means ClickHouse, Kafka or Redis, a reverse proxy, backups, and an upgrade track on a box that is already running the game, Postgres, and nginx for a hackathon that ends in five days. Cloud US is free at this volume (tens of thousands of events against a one-million monthly allowance). The cost of cloud is a vendor and a public-cloud region. The cost of self-host is the week. Cloud wins. The ingest host is configurable (`POSTHOG_HOST`) so a later move does not require a code change.
+Self-hosting PostHog means ClickHouse, Kafka or Redis, a reverse proxy, backups, and an upgrade track on a box that is already running the game, Postgres, and nginx for a hackathon that ends in five days. Cloud EU is free at this volume (tens of thousands of events against a one-million monthly allowance). The cost of cloud is a vendor and a public-cloud region. The cost of self-host is the week. Cloud wins. The ingest host is configurable (`POSTHOG_HOST`) so a later move does not require a code change.
 
-**Recommendation:** alternative B on PostHog Cloud US (which is also decision 1 and 3). Not A, not C, and not `posthog-js`.
+**Recommendation:** alternative B on PostHog Cloud EU, project 297915 (which is also decision 1 and 3). Not A, not C, and not `posthog-js`.
 
 ## Security & Privacy Considerations
 
@@ -1007,8 +1013,8 @@ Self-hosting PostHog means ClickHouse, Kafka or Redis, a reverse proxy, backups,
 
 ## Observability
 
-- **Logs.** `PostHogAnalyticsAdapter` uses Nest `Logger`. Info is off for individual events (volume, and wallets in the message). Warn once per failed flush: `analytics flush failed status=<n> events=<count>`. No properties, no distinct ids, no response body (PostHog errors can echo the payload).
-- **Disabled.** One info line at boot: `analytics disabled` (unset key, bad key, or `POSTHOG_DISABLED`) or `analytics enabled host=<host>`. A bad key adds `POSTHOG_KEY is not a project token` and does not print the value. The process still listens.
+- **Logs.** `PostHogAnalyticsAdapter` uses Nest `Logger`. One line per flush, not per event: `analytics flush ok status=<n> events=<count> name=<event,event>` or `analytics flush failed …` at warn. Names only. No properties, no distinct ids, no response body (PostHog errors can echo the payload), no project token.
+- **Disabled.** One info line at boot: `analytics disabled` (opt-in unset, unset key, bad key, or `POSTHOG_DISABLED`) or `analytics enabled host=<host>`. A bad key adds `POSTHOG_KEY is not a project token` and does not print the value. The process still listens.
 - **Health.** `/api/health` readiness does not call PostHog. A down ingest must not flip the deploy smoke test.
 - **Request id.** The relay does not need to put `X-Request-Id` on the PostHog event. If a correlation is needed during the one real-payment debug, add `request_id` as an optional server-only property later. Not P0.
 - **Metrics.** No Prometheus in this stack. The warn line is the alert. If flushes fail around the Wednesday payment, set `POSTHOG_DISABLED=1` and restart. The payment path does not read the response.
@@ -1016,14 +1022,14 @@ Self-hosting PostHog means ClickHouse, Kafka or Redis, a reverse proxy, backups,
 
 ## Rollout Plan
 
-Analytics is off until `POSTHOG_KEY` is set. Merging the code is safe on any day. Turning it on is a `deploy/.env` edit and a redeploy, and it is not Wednesday’s goal.
+Local development stays off (`server/.env` is `POSTHOG_ENABLED=0`; the local compose file has no app env). Production `deploy/.env` is `POSTHOG_ENABLED=1` with a `phc_` token. Merging the code is safe on any day. The live site sends only after a deploy of this branch, because `main` strips the keys. That deploy is not Wednesday’s goal. `POSTHOG_DISABLED=1` still wins.
 
 1. **Wed 8 Oct — do not block.** Register, deploy `DEMO_WALLETS` + QuickNode, first SIWS, first devnet payment. The only analytics ride-along is PR 1, and only if it is green and dark (no key, no handler edits, no client hooks). PR 2–4 do not ride along. If PR 1 is not green, nothing analytics rides along.
 2. **Thu 9 Oct — economy change and the prize-split copy land first.** PR 2 waits until that devnet payment is known-good and its tests are green. It edits the payment handlers. PR 3 waits until Thursday’s copy commit has landed, then rebases. It edits `landing/src/main.js`, `lobby.js`, `pay.js`, and `wallet.js`, the same files as that copy. It does not merge in parallel with the copy, and it does not merge while a payment test is red.
-3. **Key.** Create the US project (open question 1). Put `phc_…` in `deploy/.env` only. Leave `POSTHOG_DISABLED` unset. Redeploy when the payment path is already known-good.
+3. **Key.** The EU project 297915 already exists. The `phc_…` token is in gitignored `deploy/.env` (production, `POSTHOG_ENABLED=1`) and `server/.env` (local, `POSTHOG_ENABLED=0`). Leave `POSTHOG_DISABLED` unset. Capture host is `https://eu.i.posthog.com`. The private board is https://eu.posthog.com/project/297915/dashboard/1006663. A deploy of this branch uploads the production file and starts capture. Do that only after the payment path is known-good. A US ingest host never appears on that board.
 4. **Smoke.** One founder sign-in. Expect one `player_signed_in` with `is_demo=true`. Start and abandon a free ride if time. Expect `ride_ordered`, `ride_started`, `ride_abandoned`. No heartbeat spam (at most three `ride_progressed` if the ride was long enough; a 180 s free ride crosses bands slowly — 25% is ~45 s and ~630 m, so a short abandon may have **zero** milestones, which is correct).
 5. **Fri 10 Oct — playtests.** Dashboards exist before testers arrive so the five numbers are not assembled in a panic on Saturday. The form’s demand sentence still comes from the DB, excluding smoke wallets, as the hackathon plan already says.
-6. **Kill.** `POSTHOG_DISABLED=1` in `deploy/.env` and recreate the app container. In-flight queue drops. No migration to roll back. Alternatively unset `POSTHOG_KEY`.
+6. **Kill.** `POSTHOG_DISABLED=1` in `deploy/.env` and recreate the app container. In-flight queue drops. No migration to roll back. Alternatively set `POSTHOG_ENABLED=0` or clear `POSTHOG_KEY`. Empty `POSTHOG_ENABLED` is off. Local `server/.env` is already `0`.
 7. **Rollback of code.** Revert the analytics PRs. No schema. Ride and payment behaviour is unchanged because capture cannot affect return values (tested).
 8. **Cut.** If Thursday night is on fire, stop at PR 1 or at nothing. Drop analytics before the published cut order (wordmark first). The video uses the live pool. None of PR 1–4 merge on a red payment test. Target PR 1–3 by Friday only if Wednesday’s payment is done.
 
@@ -1054,7 +1060,7 @@ Do not say “verified human”, “replayable”, “users love it”, or a wai
 | Alias not wired, acquisition funnel lies | Medium | One `$create_alias` on `session_restored`. The funnel stays unpublished until one real alias is checked in the UI. Until then quote `player_signed_in`. |
 | Flush loses the last events on a crash or a fast restart | Low | Accept. SQL is canonical. UUID v5 plus the row timestamp can collapse a later manual resend. P0 does not build it. `inserted: false` does not re-emit. |
 | `via` wrong when confirm and reconcile race | Low | Only the call with `inserted: true` emits, so the count is one and `via` is that caller. |
-| A bad `POSTHOG_KEY` (`phx_` or other) takes the API down | Medium | It does not. Log once, treat as unset, keep listening. `POSTHOG_DISABLED` is an enum, so the string `false` does not stick the kill switch on. The key is never required. Empty string is unset via `optional()`. |
+| A bad `POSTHOG_KEY` (`phx_` or other) takes the API down | Medium | It does not. Log once, treat as unset, keep listening. `POSTHOG_ENABLED` and `POSTHOG_DISABLED` are enums, so the string `false` does not stick either switch on. The key is never required. Empty string is unset via `optional()`. A token without `POSTHOG_ENABLED=1` sends nothing. |
 | Throttle 600/min hides a bug by 429ing telemetry | Low | Telemetry 429 is swallowed by the client. Ride routes have their own budget. Do not share a single global counter that lets telemetry starve confirm; `@nestjs/throttler` in this repo is per route (`docs/backend-architecture.md`). Confirm stays on its own bucket. |
 | Thursday split change makes a hardcoded 50% tile wrong | Medium | Tiles sum lamports. They do not recompute `prize-split.ts`. |
 | Night / route properties treated as verified | Medium | They are client-reported, already disclosed as such. Not in the five numbers. |
@@ -1092,7 +1098,7 @@ Only decisions a human has to make. The architecture above does not wait on them
 
 ## PR Plan
 
-Each PR is reviewable alone, stays dark until `POSTHOG_KEY` is set, and leaves payments working when PostHog is down or the key is bad. P0 is PR 1–PR 4. None of PR 1–4 merge while a payment test is red. Wednesday ride-along is PR 1 only. PR 2 waits until the devnet payment is known-good. PR 3 waits until Thursday’s copy commit has landed, then rebases. Target: PR 1–PR 3 merged by Friday 10 Oct only if Wednesday’s payment is done; otherwise they slip past Sunday and the video uses SQL. If Thursday night is on fire, stop at PR 1 or at nothing. Analytics is dropped before the published cut order, not as an item inside it.
+Each PR is reviewable alone, stays dark until `POSTHOG_ENABLED` is `1` or `true` and `POSTHOG_KEY` is a project token, and leaves payments working when PostHog is down or the key is bad. P0 is PR 1–PR 4. None of PR 1–4 merge while a payment test is red. Wednesday ride-along is PR 1 only. PR 2 waits until the devnet payment is known-good. PR 3 waits until Thursday’s copy commit has landed, then rebases. Target: PR 1–PR 3 merged by Friday 10 Oct only if Wednesday’s payment is done; otherwise they slip past Sunday and the video uses SQL. If Thursday night is on fire, stop at PR 1 or at nothing. Analytics is dropped before the published cut order, not as an item inside it.
 
 ### PR 0 — Docs: PostHog integration plan
 
@@ -1106,7 +1112,7 @@ Each PR is reviewable alone, stays dark until `POSTHOG_KEY` is set, and leaves p
 - **Title:** `feat(server): dark PostHog analytics port`
 - **Files:** `server/src/application/ports/analytics/analytics.port.ts`; `server/src/application/services/analytics-emit.ts`; `server/src/domain/analytics/client-events.ts`; `server/src/domain/analytics/server-events.ts`; `server/src/domain/rides/fail-code.ts`; `server/src/domain/rides/ride-progress.ts`; `server/src/infrastructure/analytics/posthog-analytics.adapter.ts`; `server/src/infrastructure/analytics/noop-or` the same adapter no-ops when disabled (one class, not two, so the pyramid has one spec); `server/src/infrastructure/config/env.schema.ts`; `server/src/infrastructure/config/env.service.ts`; `server/src/infrastructure/infrastructure.module.ts`; `server/test/unit/infrastructure/analytics/posthog-analytics.adapter.spec.ts`; `server/test/unit/infrastructure/config/env.schema.spec.ts` (or the existing env spec); `server/test/unit/domain/rides/fail-code.spec.ts`; `server/test/unit/domain/rides/ride-progress.spec.ts`; a one-file unit test that `CLIENT_EVENTS` and `SERVER_EVENTS` are disjoint.
 - **Depends on:** PR 0 for the names, not for the build.
-- **Changes:** `capture()` queues and flushes via fakeable `fetch`. No handler calls it yet. No client hooks. Unset key and `POSTHOG_DISABLED=1` enqueue nothing. A `phx_` value does not throw at boot; the getter returns null and logs once. The adapter file does not contain the identifier `PrismaService`, does not import the Prisma client, and does not call `Date.now` or `new Date()`. Spec covers: disabled, empty key, bad key still constructs `EnvService`, `POSTHOG_DISABLED=false` is off and `true` is on, flush body has `uuid` (a real UUID) and `dedupe_key` and `source`, and has neither `$insert_id` nor `sent_at` nor `$groups`, flush HTTP 500 swallowed, throwing `fetch` swallowed. `npm run server:test` green. No deploy env change yet. This is the only PR that may ride along on Wednesday, and only if that test is green.
+- **Changes:** `capture()` queues and flushes via fakeable `fetch`. No handler calls it yet. No client hooks. Unset key and `POSTHOG_DISABLED=1` enqueue nothing. A `phx_` value does not throw at boot; the getter returns null and logs once. The adapter file does not contain the identifier `PrismaService`, does not import the Prisma client, and does not call `Date.now` or `new Date()`. Spec covers: disabled, empty key, a `phc_` token without `POSTHOG_ENABLED` stays off, `POSTHOG_ENABLED` of `1` or `true` turns capture on, `POSTHOG_DISABLED` of `1` or `true` wins, bad key still constructs `EnvService`, flush body has `uuid` (a real UUID) and `dedupe_key` and `source`, and has neither `$insert_id` nor `sent_at` nor `$groups`, flush HTTP 500 swallowed, throwing `fetch` swallowed. `npm run server:test` green. No deploy env change yet. This is the only PR that may ride along on Wednesday, and only if that test is green.
 
 ### PR 2 — P0 server events on the existing handlers
 
@@ -1127,7 +1133,7 @@ Each PR is reviewable alone, stays dark until `POSTHOG_KEY` is set, and leaves p
 - **Title:** `chore(deploy): document empty PostHog env`
 - **Files:** `deploy/.env.example`; a short paragraph in `deploy/README.md` only if that file already documents env keys (it does — follow its voice). No real key. No nginx change.
 - **Depends on:** PR 1 (names of the variables).
-- **Changes:** commented `POSTHOG_KEY=`, `POSTHOG_HOST=https://us.i.posthog.com`, `POSTHOG_DISABLED=`. Comment says empty is off, a project token is `phc_`, a bad value including `phx_` is logged and ignored and does not refuse boot, do not commit a real token. `deploy/scripts/validate-env.mjs` must tolerate the new keys if it allowlists unknown names; if it ignores unknown keys, no change. Do not make the key required. No nginx change.
+- **Changes:** `server/.env.example` pins `POSTHOG_ENABLED=0`. `deploy/.env.example` sets `POSTHOG_ENABLED=1` with a blank key. Both set `POSTHOG_HOST=https://eu.i.posthog.com` and leave `POSTHOG_DISABLED` empty. Comment says local stays off, production sends when this branch is the image, a project token is `phc_`, a token alone does not send, a bad value including `phx_` is logged and ignored and does not refuse boot, do not commit a real token. `deploy/scripts/validate-env.mjs` tolerates the keys (the schema strips unknown names on `main` and accepts `1` on this branch). Do not make the key required. No nginx change. The gitignored files follow the same split.
 
 ### PR 5 — P1 server events (after the fair, or Friday if P0 is bored and green)
 

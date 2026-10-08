@@ -3,6 +3,9 @@ name: freightchain
 # Local infrastructure for the server: PostgreSQL only.
 #   docker compose up -d --wait postgres        (or: npm run db:up)
 # Unique project / container / volume / port so it runs beside other projects' databases.
+# PostHog stays off here. This file does not run the API and must not set POSTHOG_ENABLED.
+# `npm run server:dev` reads server/.env, which pins POSTHOG_ENABLED=0.
+# Production capture is deploy/.env (POSTHOG_ENABLED=1) through deploy/docker-compose.prod.yml.
 services:
   postgres:
     image: postgres:17-alpine

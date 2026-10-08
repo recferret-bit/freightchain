@@ -50,6 +50,13 @@ services:
       DEMO_WALLETS: ${DEMO_WALLETS:-}
       DEMO_SCALE: ${DEMO_SCALE:-60}
       INITIAL_SEED_SOL: ${INITIAL_SEED_SOL:-0}
+      # PostHog. Production deploy/.env sets POSTHOG_ENABLED=1 with a phc_ key and the EU host.
+      # Empty or 0 stays off. POSTHOG_DISABLED=1 still wins. Local server/.env pins 0; this file is production only.
+      POSTHOG_KEY: ${POSTHOG_KEY:-}
+      POSTHOG_HOST: ${POSTHOG_HOST:-https://eu.i.posthog.com}
+      POSTHOG_PROJECT_ID: ${POSTHOG_PROJECT_ID:-297915}
+      POSTHOG_ENABLED: ${POSTHOG_ENABLED:-}
+      POSTHOG_DISABLED: ${POSTHOG_DISABLED:-}
     # loopback ONLY: ports Docker publishes bypass ufw, so a bare "3000:3000" would be open to the internet. nginx on the host is the public door.
     ports:
       - "127.0.0.1:${APP_PORT:-3000}:3000"

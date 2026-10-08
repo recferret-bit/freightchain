@@ -25,7 +25,7 @@ describe('HTTP (in-memory) · telemetry relay with analytics on', () => {
   let harness: Harness;
   beforeAll(async () => {
     vi.stubGlobal('fetch', async () => ({ ok: true, status: 200, body: { cancel: async () => undefined } }));
-    harness = await createHarness('memory', { POSTHOG_KEY: 'phc_test', POSTHOG_HOST: 'https://posthog.test' });
+    harness = await createHarness('memory', { POSTHOG_KEY: 'phc_test', POSTHOG_HOST: 'https://posthog.test', POSTHOG_ENABLED: '1' });
   });
   afterAll(async () => {
     await harness.close();

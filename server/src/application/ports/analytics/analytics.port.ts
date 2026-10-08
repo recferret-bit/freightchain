@@ -18,6 +18,6 @@ export interface AnalyticsEvent {
 export abstract class AnalyticsPort {
   /** Enqueue. Never throws. Never returns a promise to the caller. */
   abstract capture(event: AnalyticsEvent): void;
-  /** False when the key is missing, not a `phc_` token, or the kill switch is on. The relay answers `{ enabled: false }` without queueing. */
+  /** False when POSTHOG_ENABLED is unset, `0`, or `false`, the key is missing or not a `phc_` token, or the kill switch is on. The relay answers `{ enabled: false }` without queueing. */
   abstract enabled(): boolean;
 }

@@ -11,10 +11,12 @@ describe('validateEnv', () => {
     expect(() => validateEnv({})).toThrow(/DATABASE_URL/);
   });
   it('treats KEY= (empty) as not set for optional keys', () => {
-    expect(validateEnv({ ...base, JWT_SECRET: '', TREASURY_PUBKEY: '', SOL_USD: '', CLIENT_DIR: '', TRUST_PROXY: '', POSTHOG_KEY: '', POSTHOG_HOST: '', POSTHOG_DISABLED: '', POSTHOG_PROJECT_ID: '' })).toMatchObject({ JWT_SECRET: undefined, TREASURY_PUBKEY: undefined, SOL_USD: undefined, CLIENT_DIR: undefined, TRUST_PROXY: undefined, POSTHOG_KEY: undefined, POSTHOG_HOST: 'https://us.i.posthog.com', POSTHOG_DISABLED: undefined, POSTHOG_PROJECT_ID: undefined });
+    expect(validateEnv({ ...base, JWT_SECRET: '', TREASURY_PUBKEY: '', SOL_USD: '', CLIENT_DIR: '', TRUST_PROXY: '', POSTHOG_KEY: '', POSTHOG_HOST: '', POSTHOG_ENABLED: '', POSTHOG_DISABLED: '', POSTHOG_PROJECT_ID: '' })).toMatchObject({ JWT_SECRET: undefined, TREASURY_PUBKEY: undefined, SOL_USD: undefined, CLIENT_DIR: undefined, TRUST_PROXY: undefined, POSTHOG_KEY: undefined, POSTHOG_HOST: 'https://eu.i.posthog.com', POSTHOG_ENABLED: undefined, POSTHOG_DISABLED: undefined, POSTHOG_PROJECT_ID: undefined });
   });
-  it('POSTHOG_DISABLED is an enum, not a coerced boolean, and a non-token key does not fail the schema', () => {
-    expect(validateEnv({ ...base, POSTHOG_DISABLED: 'false', POSTHOG_KEY: 'not-a-token' })).toMatchObject({ POSTHOG_DISABLED: 'false', POSTHOG_KEY: 'not-a-token' });
+  it('POSTHOG_ENABLED and POSTHOG_DISABLED are enums, not coerced booleans, and a non-token key does not fail the schema', () => {
+    expect(validateEnv({ ...base, POSTHOG_ENABLED: 'false', POSTHOG_DISABLED: '0', POSTHOG_KEY: 'not-a-token' })).toMatchObject({ POSTHOG_ENABLED: 'false', POSTHOG_DISABLED: '0', POSTHOG_KEY: 'not-a-token' });
+    expect(validateEnv({ ...base, POSTHOG_ENABLED: '1', POSTHOG_DISABLED: 'true' })).toMatchObject({ POSTHOG_ENABLED: '1', POSTHOG_DISABLED: 'true' });
+    expect(() => validateEnv({ ...base, POSTHOG_ENABLED: 'yes' })).toThrow(/POSTHOG_ENABLED/);
     expect(() => validateEnv({ ...base, POSTHOG_DISABLED: 'yes' })).toThrow(/POSTHOG_DISABLED/);
   });
   it('coerces numbers and rejects nonsense', () => {

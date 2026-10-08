@@ -9,7 +9,7 @@ const SHUTDOWN_MS = 500;
 
 /**
  * Best-effort PostHog batch. `capture` enqueues and returns. A full queue or a 1s timer flushes.
- * Shutdown spends 500ms then drops. A failed flush logs the event name and the HTTP status, never the body.
+ * Shutdown spends 500ms then drops. A flush logs status, count and event names. Never the body or the key.
  */
 @Injectable()
 export class PostHogAnalyticsAdapter extends AnalyticsPort implements OnApplicationShutdown {
@@ -67,7 +67,8 @@ export class PostHogAnalyticsAdapter extends AnalyticsPort implements OnApplicat
         signal: budgetMs > 0 ? ac.signal : undefined,
       });
       await res.body?.cancel?.().catch(() => undefined);
-      if (!res.ok) this.warn(res.status, batch);
+      if (res.ok) this.note(res.status, batch);
+      else this.warn(res.status, batch);
     } catch {
       this.warn(0, batch);
     } finally {
@@ -75,9 +76,18 @@ export class PostHogAnalyticsAdapter extends AnalyticsPort implements OnApplicat
     }
   }
 
+  private note(status: number, batch: AnalyticsEvent[]): void {
+    this.log.log(this.outcome('ok', status, batch));
+  }
+
   private warn(status: number, batch: AnalyticsEvent[]): void {
+    this.log.warn(this.outcome('failed', status, batch));
+  }
+
+  /** Status, count, names. The request body and the project token never reach the log. */
+  private outcome(kind: 'ok' | 'failed', status: number, batch: AnalyticsEvent[]): string {
     const names = batch.map((event) => event.event).join(',');
-    this.log.warn(`analytics flush failed status=${status} events=${batch.length} name=${names}`);
+    return `analytics flush ${kind} status=${status} events=${batch.length} name=${names}`;
   }
 
   private wire(event: AnalyticsEvent): Record<string, unknown> {
