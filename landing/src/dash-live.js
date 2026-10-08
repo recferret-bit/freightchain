@@ -6,7 +6,8 @@ import { W, H, DPR, SCENES } from './dash-scenes.js';
 
 const FPS = 30;
 
-export async function startLiveDash(cards) {
+/* `scenes` = which table the cards' data-live names come from (the landing's by default); `lazy` = a card draws its first still frame only once it is near the viewport (the whitepaper has two dozen of them and no poster images). A scene may add `fit` (object-fit of its canvas), `t0` (the loop second of the still frame) and `mark(t)` (a rect, design px, outlined in amber). Call it ONCE with every card: the cockpit modules are singletons. */
+export async function startLiveDash(cards, scenes = SCENES, { lazy = false } = {}) {
   const cv = Object.assign(document.createElement('canvas'), { id: 'cockpit', hidden: true, width: W * DPR, height: H * DPR });
   const toast = Object.assign(document.createElement('div'), { id: 'toast', hidden: true });
   document.body.append(cv, toast);   // the cockpit modules look these up at import time
@@ -30,12 +31,13 @@ export async function startLiveDash(cards) {
   };
   const panels = [];
   for (const el of cards) {
-    const sc = SCENES[el.dataset.live]; if (!sc) continue;
+    const sc = scenes[el.dataset.live]; if (!sc) continue;
     const [, , cw, ch] = sc.crop, canvas = Object.assign(document.createElement('canvas'), { width: cw * DPR, height: ch * DPR, className: 'live-cv' });
+    if (sc.fit) canvas.style.objectFit = sc.fit;   // 'contain' for a crop much wider than the card
     el.querySelector('.img').append(canvas);
-    baseline(); const g = { st, dn, weather, wip, radio }; sc.tick(0, g);
+    const t0 = sc.t0 ?? Math.random() * 4; baseline(); const g = { st, dn, weather, wip, radio }; sc.tick(t0, g);
     for (let i = 0; i < 60; i++) updateDisp(.05);   // gauges start where the script puts them, not sweeping up from 0
-    panels.push({ el, sc, canvas, c2: canvas.getContext('2d'), s: take(), t: Math.random() * 4, seen: false, active: false, shown: false });
+    panels.push({ el, sc, canvas, c2: canvas.getContext('2d'), s: take(), t: t0, seen: false, active: false, shown: false });
   }
 
   const draw = (p, dt) => {
@@ -45,7 +47,10 @@ export async function startLiveDash(cards) {
     ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.beginPath(); ctx.rect(cx * DPR, cy * DPR, cw * DPR, ch * DPR); ctx.clip();   // rasterise only this card's crop
     drawCockpit();
     ctx.restore();
+    p.c2.clearRect(0, 0, p.canvas.width, p.canvas.height);   // the cockpit canvas is see-through at the windscreen: without this every frame's glow piles up there
     p.c2.drawImage(cv, cx * DPR, cy * DPR, cw * DPR, ch * DPR, 0, 0, p.canvas.width, p.canvas.height);
+    const m = p.sc.mark?.(p.t);
+    if (m) { const k = p.canvas.width / cw, c2 = p.c2; c2.save(); c2.globalAlpha = .6 + .4 * Math.sin(p.t * 6); c2.strokeStyle = '#ffcf5a'; c2.lineWidth = 1.5 * DPR; c2.beginPath(); c2.roundRect((m[0] - cx) * k, (m[1] - cy) * k, m[2] * k, m[3] * k, 5 * DPR); c2.stroke(); c2.restore(); }
     p.s = take();
     if (!p.shown) { p.shown = true; p.el.classList.add('rendered'); }
   };
@@ -65,7 +70,7 @@ export async function startLiveDash(cards) {
     requestAnimationFrame(frame);
     const dt = (now - last) / 1000; if (dt < 1 / FPS - .002 || document.hidden) return;
     last = now; const step = Math.min(dt, .1);
-    for (const p of panels) if (!p.shown || (p.seen && p.active && !still)) draw(p, step);   // every card draws one still frame first; reduced motion keeps it that way
+    for (const p of panels) if ((!p.shown && (p.seen || !lazy)) || (p.seen && p.active && !still)) draw(p, step);   // every card draws one still frame first; reduced motion keeps it that way
   };
   requestAnimationFrame(frame);
 }

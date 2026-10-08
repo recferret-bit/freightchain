@@ -36,7 +36,7 @@ test('head basics, icons that exist, no inline scripts or handlers, noopener on 
 });
 
 test('images: local WebP, alt, intrinsic size, async decode, and the files exist', () => {
-  const tags = html.match(/<img [^>]*>/g) ?? []; assert.ok(tags.length >= 2);
+  const tags = html.match(/<img [^>]*>/g) ?? [];   // chapter 02's dash cards are canvases, not images
   for (const t of tags) { assert.match(t, /\balt="[^"]+"/, t); assert.match(t, /\bwidth="\d+"/, t); assert.match(t, /\bheight="\d+"/, t); assert.match(t, /decoding="async"/, t); assert.match(t, /src="\/media\/[\w./-]+\.webp"/, t); }
   for (const f of [...html.matchAll(/src="(\/media\/[\w./-]+)"/g)].map(m => m[1])) assert.ok(existsSync(join(root, 'public', f)), f);
 });

@@ -189,3 +189,69 @@ footer{padding:34px 20px 50px;text-align:center;color:var(--dim);font-size:12px;
 .role.pl{border-top-color:var(--blue)}.role.pl>b{color:var(--blue)}.role.any{border-top-color:var(--lcd)}.role.any>b{color:var(--lcd)}.role.adm{border-top-color:var(--needle)}.role.adm>b{color:var(--needle)}.role.srv{border-top-style:dashed}.role.srv>b{color:var(--cream)}
 @media (max-width:900px){.claims{grid-template-columns:1fr 1fr}.roles{grid-template-columns:1fr 1fr}}
 @media (max-width:560px){.claims,.roles{grid-template-columns:1fr}}
+
+/* dash cards (chapter 02): the landing's tilt cards, a live cockpit crop on top and the control's text below. .path = the ordered first minute with arrows, .cards3 = a plain grid */
+.path,.cards3{list-style:none;padding:0;display:grid;grid-template-columns:repeat(3,1fr);perspective:1100px}
+.path{counter-reset:st}
+.path>li{position:relative;counter-increment:st}
+.path>li::before{content:counter(st);position:absolute;z-index:3;left:10px;top:10px;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--needle);color:#1b1408;font-weight:700;font-size:13px;pointer-events:none}
+.path>li:not(:last-child)::after{content:"→";position:absolute;z-index:4;right:calc(var(--gap) / -2 - 14px);top:70px;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--bg);border:1px solid var(--needle);color:var(--needle);font-size:16px;pointer-events:none}
+.card3d{--rx:0deg;--ry:0deg;display:grid;grid-template-rows:auto 1fr;height:100%;border-radius:12px;overflow:hidden;border:1px solid var(--line2);background:var(--panel);transform:rotateX(var(--rx)) rotateY(var(--ry));transform-style:preserve-3d;transition:transform .5s cubic-bezier(.2,.8,.2,1),box-shadow .5s;box-shadow:0 14px 34px #000a;will-change:transform;outline-offset:3px}
+.card3d.live{transition:transform .08s linear,box-shadow .5s}
+.card3d:hover,.card3d:focus-visible{box-shadow:0 22px 50px #000c,0 0 36px #ffb02e22;border-color:var(--amber)}
+.card3d .img{position:relative;aspect-ratio:3/2;overflow:hidden;background:#0d0b0a}
+.card3d .img::after{content:"HOVER";position:absolute;right:8px;top:8px;padding:2px 8px;border-radius:999px;background:#000a;border:1px solid var(--line2);color:var(--dim);font-size:10px;letter-spacing:2px;transition:opacity .3s;pointer-events:none}
+.card3d:hover .img::after,.card3d:focus-within .img::after{opacity:0}
+.card3d canvas.live-cv{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .5s;transform:translateZ(0)}
+.card3d.rendered canvas.live-cv{opacity:1}
+.card3d footer{margin:0;text-align:left;padding:14px 16px 16px;background:#1f1b16;border-top:1px solid #fff1;display:grid;gap:6px;align-content:start}
+.card3d footer b{font-size:12px;letter-spacing:2px;color:var(--amber)}
+.card3d footer p{margin:0;font-size:13px;line-height:1.5;color:var(--cream)}
+.card3d:hover kbd,.card3d:focus-within kbd{animation:kb 1.3s ease-in-out infinite}
+@keyframes kb{50%{color:#1b1408;background:var(--amber);border-color:var(--amber)}}
+@media (prefers-reduced-motion:reduce){.card3d{transition:none}.card3d:hover kbd,.card3d:focus-within kbd{animation:none}}
+/* the path is a snake, so the arrows always lead to the next number: 1→2→3, down, 4←5←6, down, 7→8→9 (two columns: 1→2, down, 3←4, down, 5→6, …; one column: all down) */
+.path{--cg:52px;--rg:64px;gap:var(--rg) var(--cg)}
+ol.path{margin-bottom:84px}
+.path>li:nth-child(1){grid-area:1/1}.path>li:nth-child(2){grid-area:1/2}.path>li:nth-child(3){grid-area:1/3}
+.path>li:nth-child(4){grid-area:2/3}.path>li:nth-child(5){grid-area:2/2}.path>li:nth-child(6){grid-area:2/1}
+.path>li:nth-child(7){grid-area:3/1}.path>li:nth-child(8){grid-area:3/2}.path>li:nth-child(9){grid-area:3/3}
+.path>li:not(:last-child)::after{right:calc(var(--cg) / -2 - 14px)}
+.path>li:nth-child(3)::after,.path>li:nth-child(6)::after{content:"↓";right:auto;left:calc(50% - 14px);top:auto;bottom:calc(var(--rg) / -2 - 14px)}
+.path>li:nth-child(4)::after,.path>li:nth-child(5)::after{content:"←";right:auto;left:calc(var(--cg) / -2 - 14px)}
+@media (min-width:561px) and (max-width:760px){
+  .path,.cards3{grid-template-columns:1fr 1fr}.path{--cg:44px;--rg:56px}
+  .path>li:nth-child(1){grid-area:1/1}.path>li:nth-child(2){grid-area:1/2}.path>li:nth-child(3){grid-area:2/2}.path>li:nth-child(4){grid-area:2/1}.path>li:nth-child(5){grid-area:3/1}
+  .path>li:nth-child(6){grid-area:3/2}.path>li:nth-child(7){grid-area:4/2}.path>li:nth-child(8){grid-area:4/1}.path>li:nth-child(9){grid-area:5/1}
+  .path>li:not(:last-child)::after{content:"→";right:calc(var(--cg) / -2 - 14px);left:auto;top:70px;bottom:auto}
+  .path>li:nth-child(2)::after,.path>li:nth-child(4)::after,.path>li:nth-child(6)::after,.path>li:nth-child(8)::after{content:"↓";right:auto;left:calc(50% - 14px);top:auto;bottom:calc(var(--rg) / -2 - 14px)}
+  .path>li:nth-child(3)::after,.path>li:nth-child(7)::after{content:"←";right:auto;left:calc(var(--cg) / -2 - 14px);top:70px;bottom:auto}
+}
+@media (max-width:560px){
+  .path,.cards3{grid-template-columns:1fr}.path{--rg:52px}
+  .path>li{grid-area:auto}
+  .path>li:not(:last-child)::after{content:"↓";right:auto;left:calc(50% - 14px);top:auto;bottom:calc(var(--rg) / -2 - 14px)}
+}
+
+/* vertical rhythm: every block (table, card grid, diagram, list, callout) gets the same generous air; tune --blk / --gap here */
+:root{--blk:36px;--gap:18px}
+p{margin-bottom:20px}
+.ch{padding:96px 0 48px}
+.ch-h{margin-bottom:44px}
+h3.sub{margin:64px 0 22px;padding-top:26px}
+.path,.cards3,.stats,.tblwrap,.grid3,.split2,.rules,.tips,.steps,.flow,.lamps,.routes2,.honest,.ideas,.legs,.legal,.split,.states,.diagram,.core,.claims,.roles,.note,.shot{margin-top:var(--blk);margin-bottom:var(--blk)}
+p.dim.note{margin-top:var(--blk)}
+.cards3,.grid3,.split2,.claims,.roles,.lamps,.steps,.flow,.rules,.tips,.legs{gap:var(--gap)}
+.states{gap:14px}
+.honest,.ideas{gap:14px}
+.routes2{gap:12px}
+.card,.claim,.role{padding:20px 22px}
+.stat{padding:16px 18px}
+.diagram{padding:18px}
+.diagram figcaption{padding-top:14px}
+.rules li,.tips li,.legs li{padding-top:16px;padding-bottom:16px}
+@media (max-width:560px){
+  :root{--blk:28px;--gap:14px}
+  .ch{padding:64px 0 32px}
+  h3.sub{margin-top:48px}
+}
