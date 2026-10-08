@@ -16,13 +16,26 @@ mkdir -p "$DEPLOY_PATH/releases" "$DEPLOY_PATH/backups" "$DEPLOY_PATH/state"
 chmod 700 "$DEPLOY_PATH/backups" "$DEPLOY_PATH/state"
 say "folders ready under $DEPLOY_PATH"
 
-# The landing's hero loop (/media/hero-preview.mp4, ~2.2 MB, fetched lazily after `load`): nginx caches it and answers Range requests itself, so the app is hit once per release.
+# The landing's hero loop (/media/hero-preview.mp4, ~2.2 MB, fetched lazily after `load`) and the game's sound effects (/audio/sfx/*.mp3, ~75 kB, fetched in the background): nginx caches them and answers Range requests itself, so the app is hit once per release.
 # Two managed files (rewritten on every setup) + ONE include line in the apex/ride. server blocks – added to an already installed site too (certbot's 443 copy included), idempotent, undone if nginx -t fails.
 mkdir -p /var/cache/nginx/freightchain_media /etc/nginx/snippets /etc/nginx/conf.d
 cat > /etc/nginx/conf.d/freightchain-media.conf <<'CONF'
 proxy_cache_path /var/cache/nginx/freightchain_media levels=1:2 keys_zone=fc_media:1m max_size=64m inactive=7d use_temp_path=off;
 CONF
+[ -f /etc/nginx/snippets/freightchain-media.conf ] && cp /etc/nginx/snippets/freightchain-media.conf /etc/nginx/snippets/freightchain-media.conf.bak
 cat > /etc/nginx/snippets/freightchain-media.conf <<CONF
+# fc-audio: the game's sound effects (/audio/sfx/<id>.<hash>.mp3, ~75 kB in all, immutable names) – the first request fills the cache, every later one is answered by nginx
+location ~* "^/audio/sfx/[\\w-]+\\.[0-9a-f]{8}\\.mp3\$" {   # quoted: nginx reads a bare { in a regex as a block
+    proxy_pass http://127.0.0.1:$APP_PORT;
+    proxy_http_version 1.1;
+    proxy_set_header Host \$host;
+    proxy_cache fc_media;
+    proxy_cache_valid 200 30d;
+    proxy_cache_lock on;
+    add_header X-Cache \$upstream_cache_status;
+    add_header Cache-Control "public, max-age=31536000, immutable";
+    types { audio/mpeg mp3; }
+}
 location ~* ^/media/[\\w.-]+\\.mp4\$ {
     proxy_pass http://127.0.0.1:$APP_PORT;
     proxy_http_version 1.1;
@@ -34,7 +47,11 @@ location ~* ^/media/[\\w.-]+\\.mp4\$ {
     add_header Cache-Control "public, max-age=86400";
 }
 CONF
-say "media cache + snippet written"
+if nginx -t 2>/dev/null; then systemctl reload nginx; rm -f /etc/nginx/snippets/freightchain-media.conf.bak; say "media cache + snippet written (mp4 loop + game sound effects), nginx reloaded"
+else
+  if [ -f /etc/nginx/snippets/freightchain-media.conf.bak ]; then mv /etc/nginx/snippets/freightchain-media.conf.bak /etc/nginx/snippets/freightchain-media.conf; else rm -f /etc/nginx/snippets/freightchain-media.conf; fi
+  nginx -t || true; fail "nginx rejected the media snippet – restored the old one; nothing changed"
+fi
 
 SITE=/etc/nginx/sites-available/freightchain
 if [ -f "$SITE" ]; then

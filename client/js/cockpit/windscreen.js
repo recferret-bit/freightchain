@@ -3,6 +3,7 @@ import { st, dn, weather } from '../state.js';
 import { CFG } from '../config.js';
 import { ambientC } from '../sim/climate.js';
 import { toast } from '../ui/toast.js';
+import { audio } from '../sim/audio.js';
 import { clamp, rnd } from '../util.js';
 
 /* Windscreen layer: cracks + hood smoke, dust (grime canvas), washer water, wipers, and exhaust-stack smoke. */
@@ -101,7 +102,7 @@ function washAll() {
   for (let i = st.bugs.length - 1; i >= 0; i--) if (Math.random() < .5) st.bugs.splice(i, 1);
   for (const d of drops) d.run = true;   // the water runs off down the glass
 }
-export function cycleWipers() { wip.mode = (wip.mode + 1) % 3; toast('Wipers: ' + ['off', 'slow', 'fast'][wip.mode], 900); }
+export function cycleWipers() { wip.mode = (wip.mode + 1) % 3; audio.play(wip.mode ? 'wiper' : 'switch-off', wip.mode === 2 ? 1 : .8, wip.mode === 2 ? 1.25 : 1); toast('Wipers: ' + ['off', 'slow', 'fast'][wip.mode], 900); }
 /* bug splat: lobed body + darker core + radial splash streaks + a few flung droplets, all from the bug's seed `n` (stable between frames). `sm` 0..1 = smeared by a dry wiper pass (stretched, paler) */
 export function drawBug(b, u) {
   const { W, H } = view, x = W * b.x, y = H * .06 + b.y * H * .45, r = Math.max(b.r * W, .5 * u), sm = b.sm || 0, f = k => rnd(b.n + k * 7.31);

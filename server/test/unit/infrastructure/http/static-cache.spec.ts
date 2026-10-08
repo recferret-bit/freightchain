@@ -8,6 +8,13 @@ describe('static cache headers', () => {
     }
   });
 
+  it('the game sound effects carry a content hash: immutable; the manifest that names them is revalidated', () => {
+    expect(cacheControlFor('/srv/client/audio/sfx/crash.4b6e550c.mp3')).toBe('public, max-age=31536000, immutable');
+    expect(cacheControlFor('/srv/client/audio/sfx/engine-off.be4d05f3.mp3')).toBe('public, max-age=31536000, immutable');
+    expect(cacheControlFor('/srv/client/audio/sfx/manifest.json')).toBe('no-cache');
+    expect(cacheControlFor('/srv/client/audio/sfx/crash.mp3')).toBe('no-cache');
+  });
+
   it('un-fingerprinted media is cached for a day', () => {
     expect(cacheControlFor('/srv/landing/dist/media/day.webp')).toBe('public, max-age=86400');
   });

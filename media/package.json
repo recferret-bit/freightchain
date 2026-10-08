@@ -13,6 +13,7 @@
     "intro:audio": "node make.mjs specs/intro.json --audio-only",
     "intro:compress": "node make.mjs specs/intro.json --compress",
     "store": "node audio/cli.mjs store",
+    "game-sfx": "node audio/cli.mjs game",
     "test": "node --test test/*.test.mjs",
     "lint": "eslint make.mjs video audio test"
   },

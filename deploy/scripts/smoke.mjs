@@ -29,6 +29,15 @@ const post = (path, body, cookie) => get(path, { method: 'POST', headers: { 'con
 const page = await at(base)('/');
 check('the site answers (GET /)', page.status === 200 && /html/.test(page.headers.get('content-type') ?? ''), `${page.status}`);
 if (game) { const g = await at(game)('/play.html'); check('the game answers (ride.* /play.html)', g.status === 200 && /html/.test(g.headers.get('content-type') ?? ''), `${g.status}`); }
+if (game) {   // the game's sound effects: the manifest, a fingerprinted mp3 with an immutable cache header, and (behind nginx) the second request answered from nginx's cache
+  const man = await at(game)('/audio/sfx/manifest.json'); const items = man.status === 200 ? (await man.json()).items ?? {} : {}; const first = Object.values(items)[0];
+  check('sound effects: the manifest lists the samples (ride.* /audio/sfx/manifest.json)', man.status === 200 && Object.keys(items).length >= 20, `${man.status} · ${Object.keys(items).length} sounds`);
+  if (first) {
+    const url = `/audio/sfx/${first.file}`, a = await at(game)(url), bytes = (await a.arrayBuffer()).byteLength, b = await at(game)(url);
+    check('sound effects: an mp3 is served as audio/mpeg, cached for good', a.status === 200 && /audio\/mpeg/.test(a.headers.get('content-type') ?? '') && /immutable/.test(a.headers.get('cache-control') ?? '') && bytes === first.bytes, `${a.status} ${a.headers.get('content-type')} ${bytes} B ${a.headers.get('cache-control')}`);
+    if (https) check('sound effects: nginx answers the repeat request from its cache (X-Cache: HIT)', b.headers.get('x-cache') === 'HIT', `X-Cache: ${b.headers.get('x-cache') ?? 'none'}`);
+  }
+}
 if (game) { const w = await at(game)('/play.html?watch=00000000-0000-4000-8000-000000000000'); check('the watch page answers (ride.* /play.html?watch=…)', w.status === 200, `${w.status}`); }
 if (storybook) {
   const s = await at(storybook)('/'), sBody = await s.text();

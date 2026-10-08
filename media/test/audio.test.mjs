@@ -78,3 +78,32 @@ test('the sound store is current: every recipe + score is on disk, byte for byte
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'store-'));
   for (const it of man.items) { const b = it.kind === 'music' ? renderScore(SCORES[it.id]) : SFX[it.id].make(), f = writeWav(path.join(tmp, 'x.wav'), b, SR); assert.ok(fs.readFileSync(f).equals(fs.readFileSync(path.join(store, it.file))), `${it.id} differs from out/audio/_store/${it.file}: run \`npm run media:store\``); }
 });
+
+// ---- the game's own sound effects (client/audio/sfx, built by `npm run game-sfx`, played by client/js/sim/audio.js)
+import crypto from 'node:crypto'; import { GAME_SFX, GAME_SFX_IDS } from '../audio/game-sfx.mjs';
+const sfxDir = path.resolve(root, '../client/audio/sfx'), sfxMan = () => JSON.parse(fs.readFileSync(path.join(sfxDir, 'manifest.json'), 'utf8')).items;
+
+test('game sfx: every recipe is finite, audible, under the clip limit and deterministic', () => {
+  for (const [id, s] of Object.entries(GAME_SFX)) {
+    const a = s.make(), b = s.make(); assert.ok(a.every(Number.isFinite), id); assert.ok(peak(a) > .2 && peak(a) <= .9 + 1e-6, `${id} peak ${peak(a)}`); assert.ok(a.length / SR <= 1.5, `${id} is longer than 1.5 s`);
+    assert.deepEqual(a, b, `${id} is not deterministic`); assert.ok(s.vol > 0 && s.vol <= 1.2, id);
+  }
+});
+
+test('game sfx: the committed files match the recipes – hashed names, sizes, ≤ 120 kB in all (run `npm run game-sfx`)', () => {
+  const items = sfxMan(); assert.deepEqual(Object.keys(items).sort(), [...GAME_SFX_IDS].sort(), 'manifest ids ≠ recipes');
+  let total = 0;
+  for (const [id, it] of Object.entries(items)) {
+    const data = fs.readFileSync(path.join(sfxDir, it.file)); total += data.length;
+    assert.equal(it.file, `${id}.${crypto.createHash('sha1').update(data).digest('hex').slice(0, 8)}.mp3`, `${id}: the file name is not its content hash`); assert.equal(it.bytes, data.length, id);
+    assert.equal(it.ms, Math.round(GAME_SFX[id].make().length / SR * 1000), `${id}: duration drifted from the recipe`); assert.equal(it.vol, GAME_SFX[id].vol, id);
+  }
+  assert.ok(total <= 120_000, `${total} bytes of game sounds`); assert.deepEqual(fs.readdirSync(sfxDir).filter(f => f !== 'manifest.json').sort(), Object.values(items).map(i => i.file).sort(), 'stray files in client/audio/sfx');
+});
+
+test('game sfx: every audio.play(id) in the client names a sound that exists', () => {
+  const ids = new Set(Object.keys(sfxMan())), used = new Set(), walk = d => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) walk(p); else if (p.endsWith('.js')) for (const m of fs.readFileSync(p, 'utf8').matchAll(/audio\.play\('([\w-]+)'/g)) used.add(m[1]); else void 0; } };
+  walk(path.resolve(root, '../client/js')); assert.ok(used.size >= 15, `only ${used.size} sounds are used`);
+  for (const id of used) assert.ok(ids.has(id), `audio.play('${id}') has no sample`);
+  const first = /const FIRST = \[([^\]]*)\]/.exec(fs.readFileSync(path.resolve(root, '../client/js/sim/audio.js'), 'utf8'))[1].match(/[\w-]+/g); for (const id of first) assert.ok(ids.has(id), `FIRST lists ${id}`);
+});

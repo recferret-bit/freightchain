@@ -43,7 +43,7 @@ export function hurt(dmg, iv, label = 'IMPACT') {
   glassHit(dmg);
 }
 function destroyProp(c) {
-  c.dead = true; destroyed.add(c.id);
+  audio.play('smash', c.kind === 'rock' || c.kind === 'tree' ? 1 : .8); c.dead = true; destroyed.add(c.id);
   if (c.kind === 'lamp' && c.obj.userData.glow) c.obj.userData.glow.visible = false;
   if (c.kind === 'post' || c.kind === 'pole' || c.kind === 'lamp' || c.kind === 'sign') falls.push({ obj: c.obj, ang: 0, w: 0 });   // snaps and topples forward
   else if (c.kind === 'guard') falls.push({ obj: c.obj, ang: 0, w: 0, axis: 'z', sign: -Math.sign(c.lat) });   // rail segment falls outward, away from the road
@@ -76,7 +76,7 @@ export function hitHoles(dt) {
 }
 function dropInto(T, axle, side) {
   const sc = clamp(st.v / 28, 0, 1.2) ** 2 * (axle ? .6 : 1);
-  st.jolt = Math.max(st.jolt, T.jolt * clamp(st.v / 14, .25, 1));
+  st.jolt = Math.max(st.jolt, T.jolt * clamp(st.v / 14, .25, 1)); audio.play('pothole', .4 + .6 * clamp(st.v / 20, 0, 1));
   if (st.v < 3) return;   // crawling through: just a bump
   st.v *= 1 - T.slow * sc; st.psi += side * T.kick * sc * 4;
   const dmg = T.dmg * sc;
@@ -121,7 +121,7 @@ function scratch() {   // thin slightly curved line, mostly sweeping horizontall
 }
 function glassHit(dmg) {
   const sev = Math.min(1, dmg / 12);
-  if (dmg >= 2) crackAt(rr(.2, .8), rr(.08, .48), Math.max(.2, sev));
+  if (dmg >= 2) { audio.play('glass', .5 + sev * .5); crackAt(rr(.2, .8), rr(.08, .48), Math.max(.2, sev)); }
   for (let i = 0, n = 1 + Math.round(sev * 4); i < n; i++) scratch();
   const lost = 100 - st.hull;   // top up so the glass never looks healthier than the hull
   while (st.cracks.length < Math.min(10, Math.floor(lost / CFG.GLASS_CRACK_STEP))) crackAt(rr(.1, .9), rr(.08, .5), rr(.05, .3));

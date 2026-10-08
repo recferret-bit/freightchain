@@ -12,7 +12,7 @@ import { updateClimate } from './climate.js';
 import { updateBattery } from './battery.js';
 import { endRide } from '../ui/game.js';
 
-let beepT = 0;
+let beepT = 0, washT = 0;
 const LUG_RPM = 900;   // below this (gear in, clutch out) the engine labours
 /* Drivetrain (clutch / gears / stall / ignition sequence), steering and ride end conditions. */
 
@@ -23,22 +23,23 @@ const ENGINE_BRAKE_EXP = .4, THRUST_REF = Math.pow(RATIOS[1], ENGINE_BRAKE_EXP);
 function steerGain() { const T = CFG.TRUCK; return T.STEER_GAIN + ((T.STEER_GAIN_LOW ?? T.STEER_GAIN) - T.STEER_GAIN) * clamp(1 - st.v / (T.STEER_LOW_V || 1), 0, 1); }
 export function tryShift(to) {
   if (st.mode !== 'drive' || to < -1 || to > MAX_GEAR || to === st.gear) return;
-  if (st.clutch < 0.8) { st.grind = 0.5; st.jolt = 1; toast('⚠ GRIND! Hold the clutch (SHIFT) to change gear'); return; }
-  if (to !== 0 && st.v > .8 && (to < 0) !== st.rev) { st.grind = 0.5; st.jolt = 1; toast('⚠ GRIND! Stop before changing between forward and reverse'); return; }
+  if (st.clutch < 0.8) { st.grind = 0.5; st.jolt = 1; audio.play('grind'); toast('⚠ GRIND! Hold the clutch (SHIFT) to change gear'); return; }
+  if (to !== 0 && st.v > .8 && (to < 0) !== st.rev) { st.grind = 0.5; st.jolt = 1; audio.play('grind'); toast('⚠ GRIND! Stop before changing between forward and reverse'); return; }
   if (st.shiftT > 0) return;   // still moving the lever
   if (to !== 0) st.shiftT = CFG.TRUCK.SHIFT_TIME;
+  audio.play('shift', to === 0 ? .6 : 1, to === 0 ? .85 : 1);
   st.gear = to;
 }
 export function ignition(manual = false) {   // manual = key held with the mouse: cranks only while held (~1 s), release aborts
   if (st.mode !== 'drive' || st.engineOn || st.ign) return;
   if (st.batt < CFG.BATT.START_MIN) { st.keyDeny = 1; toast('Battery too flat to crank the engine', 2500); return; }
   if (st.gear !== 0 && st.clutch < 0.8) { st.keyDeny = 1; toast('Press the clutch (SHIFT) or select neutral to start'); return; }
-  st.ign = { t: manual ? (st.keyOn ? 1.0 : .6) : 0, manual }; st.keyOn = true; st.test = 1; st.rpm = 0; st.stalled = false; st.shiftT = 0; st.stall = 0;   // 0-1 s key-on gauge sweep + bulb check, 1-2.3 s starter cranking, then the engine catches
+  audio.play('key'); st.ign = { t: manual ? (st.keyOn ? 1.0 : .6) : 0, manual }; st.keyOn = true; st.test = 1; st.rpm = 0; st.stalled = false; st.shiftT = 0; st.stall = 0;   // 0-1 s key-on gauge sweep + bulb check, 1-2.3 s starter cranking, then the engine catches
 }
 export function keySwitch(on) {   // OFF / ON zones of the ignition (the engine, if running, is switched off by OFF)
   if (st.mode !== 'drive' || st.ign) return;
   if (!on && st.engineOn) { engineOff(); return; }
-  if (on && !st.keyOn) st.test = 0;   // gauge sweep + bulb check
+  if (on && !st.keyOn) { st.test = 0; audio.play('key'); }   // gauge sweep + bulb check
   st.keyOn = on; if (!on) st.stalled = false;
 }
 export function releaseKey() {
@@ -48,7 +49,7 @@ export function releaseKey() {
 export function engineOff() {
   if (st.mode !== 'drive' || !st.engineOn) return;
   st.engineOn = false; st.keyOn = false; st.stallT = 0; st.lug = 0; st.jolt = Math.max(st.jolt, SHAKE_START); st.rumble = Math.max(st.rumble, .6);   // key off: shut-off shudder, no STALL banner
-  toast('Engine off', 1200);
+  audio.play('engine-off'); toast('Engine off', 1200);
 }
 
 export function update(dt) {
@@ -63,7 +64,7 @@ export function update(dt) {
   const tgt = input.right - input.left, T = CFG.TRUCK;
   st.steer = approach(st.steer, tgt, tgt ? T.STEER_RATE : T.STEER_RETURN, dt);
   st.keyDeny = Math.max(0, (st.keyDeny || 0) - dt * 2.5); st.grind = Math.max(0, st.grind - dt); st.jolt = Math.max(0, st.jolt - dt * 2.5); st.rumble = Math.max(0, st.rumble - dt * .7); st.crash = Math.max(0, st.crash - dt * 2.2); st.flash = Math.max(0, st.flash - dt * 1.6);
-  st.washing = !!input.wash && st.wash > .02; st.wash = clamp(st.wash + (st.washing ? -.15 : .02) * dt, 0, 1);   // washer-fluid tank
+  const wasWashing = st.washing; st.washing = !!input.wash && st.wash > .02; if (st.washing && (!wasWashing || (washT -= dt) <= 0)) { washT = .55; audio.play('washer'); } st.wash = clamp(st.wash + (st.washing ? -.15 : .02) * dt, 0, 1);   // washer-fluid tank
 
   // engine
   const g = st.gear, ratio = g < 0 ? REV_RATIO : RATIOS[g], c = 1 - st.clutch, wheelRpm = st.v * ratio * K_RPM;
@@ -139,8 +140,8 @@ export function update(dt) {
   st.s += ds;
   if (st.s < 0) { st.s = 0; st.v = st.vel = 0; toast('Loading dock – no further back'); }
   st.offT = off ? st.offT + dt : Math.max(0, st.offT - dt * 2);
-  if (off && !st._offWarned) { toast('OFF ROAD!'); st._offWarned = true; } if (!off) st._offWarned = false;
-  if (!st.complete && st.t >= CFG.RIDE_MIN_SECONDS && st.s >= CFG.COMPLETE_DIST) { st.complete = true; toast('SHIFT COMPLETE – the road goes on. Keep driving, or P → END SHIFT to collect.', 6000); }
+  if (off && !st._offWarned) { audio.play('warn'); toast('OFF ROAD!'); st._offWarned = true; } if (!off) st._offWarned = false;
+  if (!st.complete && st.t >= CFG.RIDE_MIN_SECONDS && st.s >= CFG.COMPLETE_DIST) { st.complete = true; audio.play('complete'); toast('SHIFT COMPLETE – the road goes on. Keep driving, or P → END SHIFT to collect.', 6000); }
 
   bodySway(dt, vel0, gain);
 
@@ -169,4 +170,4 @@ export function bodySway(dt, vel0, gain = steerGain()) {
 export function trailerYaw(dt) { const hd = roadAt(st.s).t + st.psi; st.tyaw = clamp(st.tyaw + st.vel / 8 * Math.sin(hd - st.tyaw) * dt, hd - 1.2, hd + 1.2); }
 
 /* parking brake (B key / PARK button on the dash) */
-export function toggleParkingBrake() { st.park = !st.park; toast(st.park ? 'Parking brake ON' : 'Parking brake released', 1200); }
+export function toggleParkingBrake() { st.park = !st.park; audio.play(st.park ? 'park' : 'park-off'); toast(st.park ? 'Parking brake ON' : 'Parking brake released', 1200); }

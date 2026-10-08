@@ -68,8 +68,8 @@ export const radio = {
   get station() { return STATIONS[this.idx]; },
   /* audible = ride in progress, dash powered, not muted */
   get audible() { return this.on && st.mode === 'drive' && powered() && !audio.muted; },
-  toggle() { this.on = !this.on; this.save(); if (this.on) this._tune(false); else this._cut(); return this.on; },
-  seek(dir) { this.idx = (this.idx + dir + STATIONS.length) % STATIONS.length; this.on = true; this.save(); this._tune(true); },
+  toggle() { audio.play('radio', .6); this.on = !this.on; this.save(); if (this.on) this._tune(false); else this._cut(); return this.on; },
+  seek(dir) { audio.play('radio'); this.idx = (this.idx + dir + STATIONS.length) % STATIONS.length; this.on = true; this.save(); this._tune(true); },
   volume(d) { this.vol = clamp(+(this.vol + d).toFixed(2), .1, 1); this.save(); },
   _setup() {
     const c = audio.ctx; if (!c || this._bus) return !!this._bus;

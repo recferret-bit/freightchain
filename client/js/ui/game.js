@@ -92,7 +92,7 @@ export async function startRide() {   // (offline there is no await, so it still
     startLiveFeed();   // spectators' chat + effects (live streams)
   }
   else if (!Wallet.charge(CFG.FARE)) return;
-  resetRide(); st.mode = 'drive'; audio.start(); overlay.classList.add('hide');
+  resetRide(); st.mode = 'drive'; audio.start(); audio.play('start'); overlay.classList.add('hide');
   toast(CFG.START_ENGINE_OFF ? 'Press I to start the engine and B to release the parking brake, then SHIFT (clutch) → E (1st) → W (gas) → ease the clutch out' : 'Release the parking brake (B), then hold SHIFT (clutch) → E (1st gear) → W (gas) → ease the clutch out', 6000);
   setTimeout(() => { if (st.mode === 'drive' && st.s < 60) toast('Loaded. Drive slowly to the main road, stop at the line, turn RIGHT into a gap', 7000); }, 6500);
 }
@@ -101,7 +101,7 @@ export async function startRide() {   // (offline there is no await, so it still
 export function endRide(ok, reason, outcome = ok ? 'shift' : 'failed') {   // outcome: what the server is told – abandoning a shift is 'shift' (the server judges it), a crash is 'failed'
   if (st.mode !== 'drive' && st.mode !== 'paused') return;
   if (online.ride) { track('ride_end_requested', { outcome, client_complete: !!st.complete, fail_code: failCode(outcome, reason) }); flushSoon(); }   // before endOnline; the server verdict is the completion metric
-  st.mode = 'done'; stopLiveFeed();
+  st.mode = 'done'; stopLiveFeed(); if (!ok) audio.play('game-over');
   const verdict = endOnline(outcome, reason);   // null offline
   if (ok && !online.ride) Wallet.credit(CFG.REWARD);
   showMenu(ok ? 'SHIFT COMPLETE' : 'RIDE FAILED', ok ? 'Freight on its way. Another one?' : 'Fare is non-refundable.',

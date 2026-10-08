@@ -2,6 +2,7 @@ import { CFG } from '../config.js';
 import { clamp, approach } from '../util.js';
 import { st, dn, weather, powered, coldK, REDLINE } from '../state.js';
 import { toast } from '../ui/toast.js';
+import { audio } from './audio.js';
 
 /* Climate: ambient temperature, the engine's heat balance (°C), the cab heater and the penalty for abusing a cold engine.
    Windscreen frost + snow are drawn in cockpit/windscreen.js from `weather`, `ambientC()` and `st.heatEff`. */
@@ -9,7 +10,7 @@ import { toast } from '../ui/toast.js';
 export const ambientC = () => weather.ambient - CFG.NIGHT_CHILL * dn.k;
 
 export function toggleHeater() {
-  st.heater = !st.heater;
+  st.heater = !st.heater; audio.play(st.heater ? 'switch' : 'switch-off');
   toast(st.heater ? (powered() ? 'Heater on' + (st.heatEff < .15 ? ' – blowing cold until the engine warms up' : '') : 'Heater on (key is off)') : 'Heater off', 1400);
 }
 
@@ -44,18 +45,18 @@ export function updateClimate(dt) {
   // sustained max revs: strain builds while the engine sits near redline, eases off below it; full = the engine blows
   if (st.fight) {   // driving against the brakes: the drivetrain takes the load, a different failure from max revs
     const was = st.strain; st.strain = Math.min(1, st.strain + dt / CFG.FIGHT_TIME);
-    if (was < .4 && st.strain >= .4) toast('Straining against the brakes – release the clutch or the parking brake!', 2500);
+    if (was < .4 && st.strain >= .4) audio.play('alarm'), toast('Straining against the brakes – release the clutch or the parking brake!', 2500);
     if (st.strain >= 1 && !st.blown) { st.blown = true; st.blownWhy = 'brakes'; st.hull = 0; }
   } else if (on && st.rpm >= REDLINE * CFG.STRAIN_RPM) {
     const was = st.strain;
     st.strain = Math.min(1, st.strain + dt / CFG.STRAIN_TIME);
-    if (was < .4 && st.strain >= .4) toast('Engine is straining at max revs – ease off the throttle!', 2500);
+    if (was < .4 && st.strain >= .4) audio.play('alarm'), toast('Engine is straining at max revs – ease off the throttle!', 2500);
     if (st.strain >= 1 && !st.blown) { st.blown = true; st.hull = 0; }
   } else st.strain = Math.max(0, st.strain - dt * CFG.STRAIN_RECOVER / CFG.STRAIN_TIME);
 
   // brakes: friction heat ∝ pedal × speed², cooled by moving air; hot brakes fade (brakeEff() in state.js)
   const vk = st.v / CFG.MAX_SPEED, was = st.brakeT;
   st.brakeT = clamp(st.brakeT + (CFG.BRAKE_HEAT * st.brake * vk * vk + (st.fight ? CFG.FIGHT_HEAT : 0) - st.brakeT * CFG.BRAKE_COOL * (1 + CFG.BRAKE_COOL_AIR * vk)) * dt, 0, 1);
-  if (was < .5 && st.brakeT >= .5 && !st._brakeWarned) { st._brakeWarned = true; toast('Brakes are overheating – they are fading! Use engine braking and let them cool', 3000); }
+  if (was < .5 && st.brakeT >= .5 && !st._brakeWarned) { st._brakeWarned = true; audio.play('warn'); toast('Brakes are overheating – they are fading! Use engine braking and let them cool', 3000); }
   if (st.brakeT < .25) st._brakeWarned = false;
 }

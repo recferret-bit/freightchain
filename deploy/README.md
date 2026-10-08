@@ -56,7 +56,7 @@ npm run deploy          # checks → plan → confirm → upload → build → b
 | `npm run deploy:logs` | app logs (`-- -f` to follow) |
 | `npm run deploy:backup` | `pg_dump` now → `backups/` |
 | `npm run deploy:rollback` | back to the previous release (`-- -y` to skip the question) |
-| `npm run deploy:smoke` | smoke test of the five public URLs: pages, the model viewer + API-host isolation, the admin host (401 without the password, the page with it, its API closed without an admin wallet, `api.*` never serves `/api/admin/*`), CORS, a throwaway sign-in + cookie flags/domain (creates one throwaway player) |
+| `npm run deploy:smoke` | smoke test of the five public URLs: pages, the model viewer + API-host isolation, the admin host (401 without the password, the page with it, its API closed without an admin wallet, `api.*` never serves `/api/admin/*`), the game's sound effects (manifest, immutable mp3, nginx `X-Cache: HIT`), CORS, a throwaway sign-in + cookie flags/domain (creates one throwaway player) |
 | `npm run ops -- logs [--since 30m] [--grep RE] [--errors] [--service postgres]` | **read-only** app / database log (the app writes one JSON object per line) |
 | `npm run ops -- nginx [--error] [--grep RE]` | **read-only** host nginx access / error log |
 | `npm run ops -- query <name> [arg]` · `ops -- sql "SELECT …"` | **read-only** SQL (a read-only transaction: PostgreSQL refuses writes); canned queries in `scripts/ops-queries.sql` (`ops -- query list`) |
@@ -88,7 +88,7 @@ Docker project `freightchain-prod`: `postgres` (no published port, named volume 
 ## What the first deploy changes on the server
 - creates `/srv/freightchain/…`
 - adds `/etc/nginx/sites-*/freightchain` (apex, `ride.`, `api.`), `freightchain-storybook` (`storybook.`), `freightchain-whitepaper` (`whitepaper.`) and `freightchain-admin` (`admin.`, after writing `/etc/nginx/freightchain-admin.htpasswd`) (each only if absent; removed again if `nginx -t` fails) and reloads nginx – a server set up before a site existed gets it on the next deploy
-- writes the managed media cache (`/etc/nginx/conf.d/freightchain-media.conf` = `proxy_cache_path`, `/etc/nginx/snippets/freightchain-media.conf` = the `/media/*.mp4` cache location) and adds ONE `include` of that snippet after the `server_name <apex> ride.<apex>;` line of the apex site – also into a site installed earlier, certbot's 443 block included (idempotent; restored if `nginx -t` fails). `deploy` runs setup by itself while that include is missing
+- writes the managed media cache (`/etc/nginx/conf.d/freightchain-media.conf` = `proxy_cache_path`, `/etc/nginx/snippets/freightchain-media.conf` = the `/media/*.mp4` cache location + the game's `/audio/sfx/*.mp3` sound effects, marker `fc-audio`; nginx is reloaded after a rewrite and the old snippet restored if `nginx -t` fails) and adds ONE `include` of that snippet after the `server_name <apex> ride.<apex>;` line of the apex site – also into a site installed earlier, certbot's 443 block included (idempotent; restored if `nginx -t` fails). `deploy` runs setup by itself while that include (or the `fc-audio` marker in the snippet) is missing
 - runs `certbot --nginx -d <apex> -d ride.<apex> -d api.<apex> -d storybook.<apex> -d whitepaper.<apex> -d admin.<apex> --redirect` (re-runs with `--expand` if the certificate lacks a name)
 - starts two containers and one volume
 

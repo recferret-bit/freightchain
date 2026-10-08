@@ -5,6 +5,7 @@ import { roadAt } from '../road.js';
 import { net, laneLat, edgeOf } from '../net/network.js';
 import { VEHICLES, buildVehicle, removeVehicle } from '../world/vehicles.js';
 import { hurt } from './damage.js';
+import { audio } from './audio.js';
 import { HOLES, holesNear } from '../world/holes.js';
 
 /* Moving traffic: vehicle types live in world/vehicles.js, behaviour in the PRESETS below. Each vehicle is a plain record in the coordinates of ITS road
@@ -206,7 +207,10 @@ function place(a) {
   m.position.set(p.x + Math.cos(p.t) * a.lat, 0, p.z + Math.sin(p.t) * a.lat);
   m.rotation.y = -(p.t + (a.dir < 0 ? Math.PI : 0) + a.dir * Math.atan2(a.lv, Math.max(a.v, 3)));
   const u = m.userData; if (u.brake) u.brake.visible = a.brake;
-  if (u.ind) { const dl = (a.target - a.lat) * a.dir, sig = Math.abs(a.target - a.lat) > .5 ? (dl > 0 ? 'r' : 'l') : '', on = Math.floor(a.t * 3) % 2 === 0; u.ind.r.visible = sig === 'r' && on; u.ind.l.visible = sig === 'l' && on; }
+  if (u.ind) {   // indicate where the car is going, including a hole dodge (dLat). Using the lane centre lights the return direction while it is still swerving out.
+    const aim = a.dLat ?? a.target, dl = (aim - a.lat) * a.dir, sig = Math.abs(aim - a.lat) > .4 ? (dl > 0 ? 'r' : 'l') : '', on = Math.floor(a.t * 3) % 2 === 0;
+    u.ind.r.visible = sig === 'r' && on; u.ind.l.visible = sig === 'l' && on;
+  }
   if (u.flash) { const on = Math.floor(a.t * 6) % 2 === 0; u.flash[0].visible = on; u.flash[1].visible = !on; }
 }
 
@@ -214,36 +218,42 @@ function place(a) {
 /* Truck running along the main road (aligned): direct hit = the truck's nose engaged >= CRASH_OVERLAP of the narrower vehicle's width, closing >= CRASH_CLOSING -> ride over;
    slower nose contact or a hit from behind = bump (hull damage, speed loss); anything else (alongside / corner clip) = scratch.
    Anything at an angle (turning out of the depot, side-road traffic in a crossroads): closing speed >= CRASH_CLOSING = ride over, else a bump. Returns a failure reason or null. */
+/* damage and the scrape sound once per contact; the overlap itself is cleared every frame. Skipping the
+   whole test for a.cool (0.8 s) let a car keep its speed and drive through the truck after the first bump. */
+function freshHit(a) { if (a.cool > 0) return false; a.cool = .8; return true; }
 function contact(a, tb) {
   const { def } = a, penS = Math.min(tb.s1, a.s + def.len / 2) - Math.max(tb.s0, a.s - def.len / 2), penL = Math.min(tb.l1, a.lat + def.w / 2) - Math.max(tb.l0, a.lat - def.w / 2);
   if (penS <= 0 || penL <= 0) return null;
   if (a.road.main && tb.ali > .94) return alignedContact(a, tb, penS, penL);
   const p = a.road.at(a.s), rvx = Math.sin(p.t) * a.dir * a.v - TK.vx, rvz = -Math.cos(p.t) * a.dir * a.v - TK.vz;   // relative velocity (world)
   const w = a.road.at(tb.s), dx = w.x + Math.cos(w.t) * tb.lat - (p.x + Math.cos(p.t) * a.lat), dz = w.z + Math.sin(w.t) * tb.lat - (p.z + Math.sin(p.t) * a.lat), dl = Math.hypot(dx, dz) || 1;
-  const closing = Math.max(0, (rvx * dx + rvz * dz) / dl);
-  a.cool = .8;
-  if (closing >= CFG.CRASH_CLOSING) {
+  const closing = Math.max(0, (rvx * dx + rvz * dz) / dl), hit = freshHit(a);
+  if (hit && closing >= CFG.CRASH_CLOSING) {
     const why = a.v > st.v ? `A ${def.name} crashed into your truck${a.road.main ? '' : ' at the crossroads'}.` : `You drove into a ${def.name}${a.road.main ? ' on the main road' : ' at the crossroads'}.`;
     hurt(st.hull, closing, 'COLLISION'); st.v = 0; a.v = 0; return why;
   }
-  hurt(bumpDmg(def, closing), closing, 'BUMP');
-  a.v = Math.min(a.v, 1); a.s -= a.dir * Math.min(penS, 1.5); st.v *= .7;
+  if (hit) { hurt(bumpDmg(def, closing), closing, 'BUMP'); st.v *= .7; }
+  a.v = Math.min(a.v, 1); a.s -= a.dir * penS;
   return null;
 }
 function alignedContact(a, tb, penS, penL) {
   const { def } = a, rel = a.s - tb.es, vs = a.dir * a.v, closing = rel > 0 ? tb.v - vs : vs - tb.v, frac = penL / Math.min(2.5, def.w), sgn = Math.sign(a.lat - tb.el) || 1;
   if (frac >= CFG.CRASH_OVERLAP && rel > TRUCK_FRONT / 2) {   // nose to nose / nose to tail
-    if (closing >= CFG.CRASH_CLOSING) { hurt(st.hull, closing, 'COLLISION'); st.v = 0; return a.dir < 0 ? `Head-on collision with a ${def.name}.` : `You ran into the back of a ${def.name}.`; }
-    a.cool = .8; hurt(bumpDmg(def, Math.max(closing, 0)), Math.max(closing, 0), 'BUMP');
-    st.s -= Math.min(penS, 1.5); st.v = Math.min(st.v, Math.max(0, vs) * .9); return null;
+    const hit = freshHit(a), push = Math.sign(rel) || 1;
+    if (hit && closing >= CFG.CRASH_CLOSING) { hurt(st.hull, closing, 'COLLISION'); st.v = 0; return a.dir < 0 ? `Head-on collision with a ${def.name}.` : `You ran into the back of a ${def.name}.`; }
+    if (hit) hurt(bumpDmg(def, Math.max(closing, 0)), Math.max(closing, 0), 'BUMP');
+    st.s -= push * penS * .5; a.s += push * penS * .5;   // full overlap, both ways — a 1.5 m cap left the car inside the cab
+    if (a.dir > 0) st.v = Math.min(st.v, a.v); else { st.v = Math.min(st.v, 0); a.v = 0; }
+    return null;
   }
-  a.cool = .8;
+  const hit = freshHit(a);
   if (frac >= CFG.CRASH_OVERLAP && rel < -TRAILER_BACK + 1) {   // something ran into the trailer's tail
-    hurt(bumpDmg(def, Math.max(closing, 0)), Math.max(closing, 0), 'BUMP'); a.s -= a.dir * penS; a.v = Math.min(a.v, st.v * .9); return null;
+    if (hit) hurt(bumpDmg(def, Math.max(closing, 0)), Math.max(closing, 0), 'BUMP');
+    a.s -= a.dir * penS; a.v = Math.min(a.v, Math.max(0, st.v)); return null;
   }
   const rv = Math.abs(vs - tb.v);   // sideswipe: scrape, push apart, a little speed lost
-  hurt(CFG.SCRATCH_DMG * clamp(rv / 10, .4, 2) * Math.sqrt(def.mass), rv * .3, 'SCRATCH');
-  st.d -= sgn * penL * .5; a.lat += sgn * penL * .5; st.psi -= sgn * .03; st.v *= .98;
+  if (hit) { audio.play('scrape', .7); hurt(CFG.SCRATCH_DMG * clamp(rv / 10, .4, 2) * Math.sqrt(def.mass), rv * .3, 'SCRATCH'); st.psi -= sgn * .03; st.v *= .98; }
+  st.d -= sgn * penL * .5; a.lat += sgn * penL * .5; if ((a.lat - tb.el) * a.lv < 0) a.lv = 0;
   return null;
 }
 
@@ -276,7 +286,7 @@ export function updateTraffic(dt) {
     const a = cars[i], tb = boxFor(a.road); a.t += dt; a.cool = Math.max(0, a.cool - dt); think(a, dt, tb); place(a);
     const gone = a.road.main ? a.s < TK.m - 300 || a.s > TK.m + 900 || a.s < net.Sm - 1450 : Math.abs(a.s) > a.road.j.len - 5 || Math.abs(a.road.j.s - TK.m) > 1100;
     if (gone) { removeVehicle(a.mesh); cars.splice(i, 1); continue; }
-    if (!fatal && tb && a.cool <= 0 && Math.abs(a.s - tb.s) < 25 + a.def.len + tb.len / 2) fatal = contact(a, tb);
+    if (!fatal && tb && Math.abs(a.s - tb.s) < 25 + a.def.len + tb.len / 2) fatal = contact(a, tb);
   }
   return fatal;
 }
