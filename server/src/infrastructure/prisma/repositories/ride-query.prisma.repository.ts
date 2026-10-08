@@ -26,7 +26,7 @@ export class RideQueryPrismaRepository extends RideQueryPort {
       take: limit,
     });
     return rows.flatMap((r) => (r.startedAt && r.lastHbAt
-      ? [{ wallet: r.wallet, tier: r.tier, route: r.route, minSeconds: r.minSeconds, completeDist: r.completeDist, driveSeconds: r.driveSeconds, lastS: r.lastS, hull: r.hull,
+      ? [{ id: r.id, wallet: r.wallet, tier: r.tier, route: r.route, minSeconds: r.minSeconds, completeDist: r.completeDist, driveSeconds: r.driveSeconds, lastS: r.lastS, hull: r.hull,
         paused: r.paused, timeScale: r.timeScale, startedAt: r.startedAt, lastHbAt: r.lastHbAt }]
       : []));
   }
@@ -46,7 +46,7 @@ export class RideQueryPrismaRepository extends RideQueryPort {
       orderBy: [{ endedAt: { sort: 'desc', nulls: 'last' } }, { seq: 'desc' }],
       take: limit,
     });
-    return rows.map((r) => ({ wallet: r.wallet, tier: r.tier, route: r.route, status: r.status, lastS: r.lastS, endedAt: r.endedAt }));
+    return rows.map((r) => ({ id: r.id, wallet: r.wallet, tier: r.tier, route: r.route, status: r.status, lastS: r.lastS, endedAt: r.endedAt }));
   }
 
   async totals(): Promise<RideTotalsRow> {

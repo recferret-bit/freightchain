@@ -32,6 +32,10 @@ import { ReconcilePaymentHandler } from './use-cases/rides/reconcile-payment/rec
 import { StartRideHandler } from './use-cases/rides/start-ride/start-ride.handler.js';
 import { UploadBatchHandler } from './use-cases/telemetry/upload-batch/upload-batch.handler.js';
 import { SweepTelemetryHandler } from './use-cases/telemetry/sweep-telemetry/sweep-telemetry.handler.js';
+import { PostRideEventHandler } from './use-cases/live/post-ride-event/post-ride-event.handler.js';
+import { AckEffectHandler } from './use-cases/live/ack-effect/ack-effect.handler.js';
+import { GetInboxHandler } from './use-cases/live/get-inbox/get-inbox.handler.js';
+import { WatchRideHandler } from './use-cases/live/watch-ride/watch-ride.handler.js';
 import { GetAdminLogsHandler } from './use-cases/admin/get-admin-logs/get-admin-logs.handler.js';
 import { GetAdminOverviewHandler } from './use-cases/admin/get-admin-overview/get-admin-overview.handler.js';
 import { GetAdminRideHandler } from './use-cases/admin/get-admin-ride/get-admin-ride.handler.js';
@@ -81,6 +85,7 @@ const handlers: Provider[] = [
   CreateRideHandler, GetRideHandler, GetPendingRideHandler, StartRideHandler, HeartbeatRideHandler, EndRideHandler,
   GetPaymentInstructionsHandler, ConfirmPaymentHandler, ReconcilePaymentHandler,
   UploadBatchHandler, SweepTelemetryHandler,
+  PostRideEventHandler, AckEffectHandler, GetInboxHandler, WatchRideHandler,
   GetAdminOverviewHandler, ListAdminRidesHandler, GetAdminRideHandler, ListSignInsHandler, ListAdminActionsHandler, GetAdminLogsHandler, OverrideVerdictHandler, RejudgeRideHandler, RequestAdminChallengeHandler, VerifyAdminSignInHandler, RequestActionChallengeHandler,
   GetTiersHandler, GetPoolHandler, GetLeaderboardHandler,
   GetLiveHandler, GetProfileHandler,

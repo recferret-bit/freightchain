@@ -150,7 +150,7 @@ export class MemoryRideQuery extends RideQueryPort {
       .sort((a, b) => (b.props.startedAt?.getTime() ?? 0) - (a.props.startedAt?.getTime() ?? 0) || b.seq - a.seq)
       .slice(0, limit)
       .flatMap(({ props: p }) => (p.startedAt && p.lastHbAt
-        ? [{ wallet: p.wallet, tier: p.tier, route: p.route, minSeconds: p.minSeconds, completeDist: p.completeDist, driveSeconds: p.driveSeconds, lastS: p.lastS, hull: p.hull, paused: p.paused, timeScale: p.timeScale, startedAt: p.startedAt, lastHbAt: p.lastHbAt }]
+        ? [{ id: p.id, wallet: p.wallet, tier: p.tier, route: p.route, minSeconds: p.minSeconds, completeDist: p.completeDist, driveSeconds: p.driveSeconds, lastS: p.lastS, hull: p.hull, paused: p.paused, timeScale: p.timeScale, startedAt: p.startedAt, lastHbAt: p.lastHbAt }]
         : []));
   }
 
@@ -168,7 +168,7 @@ export class MemoryRideQuery extends RideQueryPort {
       .filter((r) => ended.includes(r.props.status) && r.props.startedAt)
       .sort((a, b) => (b.props.endedAt?.getTime() ?? Number.NEGATIVE_INFINITY) - (a.props.endedAt?.getTime() ?? Number.NEGATIVE_INFINITY) || b.seq - a.seq)
       .slice(0, limit)
-      .map(({ props: p }) => ({ wallet: p.wallet, tier: p.tier, route: p.route, status: p.status, lastS: p.lastS, endedAt: p.endedAt }));
+      .map(({ props: p }) => ({ id: p.id, wallet: p.wallet, tier: p.tier, route: p.route, status: p.status, lastS: p.lastS, endedAt: p.endedAt }));
   }
 
   async totals(): Promise<RideTotalsRow> {
@@ -307,6 +307,15 @@ export class MemoryRideBatchRepository extends RideBatchRepositoryPort {
 
   async listByRide(rideId: string): Promise<RideBatch[]> {
     return [...this.db.batches.values()].filter((b) => b.rideId === rideId).sort((a, b) => a.seq - b.seq).map((b) => RideBatch.restore(b));
+  }
+
+  async listFrom(rideId: string, fromSeq: number, limit: number): Promise<RideBatch[]> {
+    return (await this.listByRide(rideId)).filter((b) => b.seq >= fromSeq).slice(0, limit);
+  }
+
+  async extent(rideId: string): Promise<{ lastSeq: number | null; t1: number }> {
+    const all = [...this.db.batches.values()].filter((b) => b.rideId === rideId);
+    return { lastSeq: all.length ? Math.max(...all.map((b) => b.seq)) : null, t1: all.length ? Math.max(...all.map((b) => b.t1)) : 0 };
   }
 }
 

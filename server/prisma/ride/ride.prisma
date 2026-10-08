@@ -46,6 +46,7 @@ model Ride {
   version        Int          @default(1) // optimistic lock: heartbeat vs end
   payment        Payment?
   batches        RideBatch[]
+  events         RideEvent[]
   verdict        RideVerdict?
 
   @@index([wallet, status])

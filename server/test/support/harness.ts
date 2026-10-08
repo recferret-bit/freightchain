@@ -38,6 +38,8 @@ import { PoolRepositoryPort } from '../../src/application/ports/economy/pool.rep
 import { PromoRepositoryPort } from '../../src/application/ports/economy/promo.repository.port.js';
 import { RideTicketRepositoryPort } from '../../src/application/ports/players/ride-ticket.repository.port.js';
 import { MemoryChainCursorRepository, MemoryChainEventRepository, MemorySponsoredTxRepository } from './in-memory/memory-repositories.js';
+import { MemoryRideEventRepository } from './in-memory/memory-live-repositories.js';
+import { RideEventRepositoryPort } from '../../src/application/ports/live/ride-event.repository.port.js';
 
 export type Persistence = 'memory' | 'postgres';
 
@@ -103,7 +105,8 @@ export async function createHarness(persistence: Persistence, env: Record<string
       .overrideProvider(HealthProbePort).useValue(new MemoryHealthProbe())
       .overrideProvider(ChainEventRepositoryPort).useValue(new MemoryChainEventRepository(memory))
       .overrideProvider(ChainCursorRepositoryPort).useValue(new MemoryChainCursorRepository(memory))
-      .overrideProvider(SponsoredTxRepositoryPort).useValue(new MemorySponsoredTxRepository(memory));
+      .overrideProvider(SponsoredTxRepositoryPort).useValue(new MemorySponsoredTxRepository(memory))
+      .overrideProvider(RideEventRepositoryPort).useValue(new MemoryRideEventRepository(memory));
   }
   const moduleRef = await builder.compile();
   const app = moduleRef.createNestApplication();

@@ -108,6 +108,11 @@ export class Ride {
   get driveSeconds(): number { return this.p.driveSeconds; }
   get distance(): number { return this.p.lastS; }
   get reason(): string | null { return this.p.reason; }
+  get route(): string | null { return this.p.route; }
+  get startedAt(): Date | null { return this.p.startedAt; }
+  get endedAt(): Date | null { return this.p.endedAt; }
+  get lastHbAt(): Date | null { return this.p.lastHbAt; }
+  get hull(): number | null { return this.p.hull; }
   get version(): number { return this.p.version; }
   get isFree(): boolean { return this.p.tier === 'free'; }
 

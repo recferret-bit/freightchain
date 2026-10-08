@@ -2,6 +2,7 @@ import type { Facts } from '../../../domain/achievements/achievements.js';
 import type { LeaderboardBoard } from '../../../domain/economy/economy.dto.js';
 
 export interface LiveRideRow {
+  id: string;
   wallet: string;
   tier: string;
   route: string | null;
@@ -26,6 +27,7 @@ export interface UpcomingRideRow {
 
 /** A ride that ended (completed, abandoned or failed) – the landing's ticker. */
 export interface FinishedRideRow {
+  id: string;
   wallet: string;
   tier: string;
   route: string | null;

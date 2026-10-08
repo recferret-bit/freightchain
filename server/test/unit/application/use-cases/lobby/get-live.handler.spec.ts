@@ -2,7 +2,7 @@ import { GetLiveHandler } from '../../../../../src/application/use-cases/lobby/g
 import { unitContext } from '../../../../support/unit-context.js';
 
 describe('GetLiveHandler', () => {
-  it('running rides with a recent heartbeat, newest first, without ids or reasons', async () => {
+  it('running rides with a recent heartbeat, newest first, with the ride id (the watch link) but no seed or reason', async () => {
     const ctx = unitContext();
     const first = await ctx.freeRide('alice', true);
     ctx.clock.advance(1);
@@ -15,7 +15,8 @@ describe('GetLiveHandler', () => {
     expect(feed.now).toBe(ctx.clock.ms);
     expect(feed.rides.map((r) => r.wallet)).toEqual(['bob', 'alice']);
     expect(feed.rides[1]).toMatchObject({ tier: 'free', route: 'siberia', paused: true, hull: 80, distance: 70, driveSeconds: 5, minSeconds: 10, completeDist: 140, sinceBeat: 0, progress: 0.5 });
-    expect(Object.keys(feed.rides[1] ?? {})).not.toContain('id');
+    expect(feed.rides[1]?.id).toBe(first.id);
+    expect(Object.keys(feed.rides[1] ?? {})).not.toContain('seed'); expect(Object.keys(feed.rides[1] ?? {})).not.toContain('reason');
   });
 
   it('drops a ride whose heartbeats stopped longer than the timeout ago', async () => {
@@ -37,7 +38,7 @@ describe('GetLiveHandler', () => {
     expect(upcoming).toEqual([{ wallet: 'alice', tier: '1h', minSeconds: 3600, paidAt: ctx.clock.ms }]);
   });
 
-  it('recent finishes: outcome and rounded distance of rides that ended, newest first, without ids or reasons', async () => {
+  it('recent finishes: outcome, rounded distance and the id (the replay link) of rides that ended, newest first, without reasons', async () => {
     const ctx = unitContext();
     const end = async (wallet: string, metres: number) => {
       const r = await ctx.freeRide(wallet, true); ctx.clock.advance(2);
@@ -46,7 +47,7 @@ describe('GetLiveHandler', () => {
     await end('alice', 12.4); ctx.clock.advance(5); await end('bob', 7);
     const { recent } = await feed(ctx);
     expect(recent.map((r) => [r.wallet, r.status, r.distance])).toEqual([['bob', 'failed', 7], ['alice', 'failed', 12]]);
-    expect(Object.keys(recent[0] ?? {}).sort()).toEqual(['distance', 'endedAt', 'route', 'status', 'tier', 'wallet']);
+    expect(Object.keys(recent[0] ?? {}).sort()).toEqual(['distance', 'endedAt', 'id', 'route', 'status', 'tier', 'wallet']);
   });
 
   it('totals: zeros on an empty feed', async () => {

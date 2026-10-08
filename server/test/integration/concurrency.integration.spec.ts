@@ -333,6 +333,43 @@ describe('concurrency (PostgreSQL)', () => {
     expect(results.filter((r) => r.status === 200).length).toBeLessThanOrEqual(1);
   });
 
+  describe('live streams', () => {
+    const liveRide = async () => {
+      const driver = await login();
+      const ride = (await driver.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
+      await driver.agent.post(`/api/rides/${ride.id}/start`).expect(200);
+      return { driver, ride };
+    };
+
+    it('N spectators paying for an effect in the same window: ONE effect stored, every other caller a 429 (no lock – the unique window does it)', async () => {
+      const { ride } = await liveRide();
+      const fans = await parallel(PARALLEL, () => login());
+      const results = await parallel(PARALLEL, (i) => fans[i]!.agent.post(`/api/watch/${ride.id}/donations`).send({ effect: i % 2 ? 'night' : 'sinkhole' }));
+      expect(results.filter((r) => r.status === 200)).toHaveLength(1);
+      expect(results.filter((r) => r.status === 429)).toHaveLength(PARALLEL - 1);
+      expect(await prisma.rideEvent.count({ where: { rideId: ride.id } })).toBe(1);
+    });
+
+    it('one wallet spamming the same line in parallel stores it ONCE', async () => {
+      const { ride } = await liveRide();
+      const fan = await login();
+      const results = await parallel(PARALLEL, () => fan.agent.post(`/api/watch/${ride.id}/messages`).send({ text: 'spam' }));
+      expect(results.filter((r) => r.status === 200)).toHaveLength(1);
+      expect(await prisma.rideEvent.count({ where: { rideId: ride.id, kind: 'message' } })).toBe(1);
+    });
+
+    it('N parallel "applied" acks of one effect (re-sends): ONE stamp, every caller gets that same stamp', async () => {
+      const { driver, ride } = await liveRide();
+      const fan = await login();
+      const gift = (await fan.agent.post(`/api/watch/${ride.id}/donations`).send({ effect: 'trench' }).expect(200)).body;
+      const results = await parallel(PARALLEL, (i) => driver.agent.post(`/api/rides/${ride.id}/effects/${gift.id}/applied`).send({ t: 10 + i, s: 900 + i, lat: 2.4 }));
+      expect(results.every((r) => r.status === 200)).toBe(true);
+      expect(new Set(results.map((r) => JSON.stringify(r.body.applied))).size).toBe(1);
+      const row = await prisma.rideEvent.findUniqueOrThrow({ where: { id: gift.id } });
+      expect(row.appliedS).toBe(results[0]!.body.applied.s);
+    });
+  });
+
   it('a double START starts the ride once', async () => {
     const a = await login();
     const ride = (await a.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;

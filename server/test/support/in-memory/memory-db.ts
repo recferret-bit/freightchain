@@ -15,6 +15,7 @@ import type { RideBatchProps } from '../../../src/domain/telemetry/ride-batch.en
 import type { RideVerdictProps } from '../../../src/domain/verdict/ride-verdict.entity.js';
 import type { SignInRecord } from '../../../src/domain/auth/sign-in.js';
 import type { AdminActionRecord } from '../../../src/domain/admin/admin.dto.js';
+import type { RideEventProps } from '../../../src/domain/live/ride-event.entity.js';
 
 /** The whole "database" of the in-memory suite: plain maps of snapshots (repositories hand out fresh entities, like real rows). */
 export class MemoryDb {
@@ -40,6 +41,8 @@ export class MemoryDb {
   verdicts = new Map<string, RideVerdictProps>();
   signIns: SignInRecord[] = [];
   adminActions: AdminActionRecord[] = [];
+  /** live feed, in id order */
+  rideEvents: RideEventProps[] = [];
   private seq = 0;
   private roundSeq = 0;
 
@@ -52,5 +55,6 @@ export class MemoryDb {
     this.seq = 0; this.roundSeq = 0;
     this.pools.clear(); this.tickets.clear(); this.grants = []; this.promos.clear(); this.redemptions.clear(); this.orders.clear();
     this.chainEvents = []; this.chainCursors.clear(); this.sponsoredTxs = [];
+    this.rideEvents = [];
   }
 }

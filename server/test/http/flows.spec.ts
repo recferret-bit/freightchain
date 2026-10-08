@@ -10,11 +10,13 @@ import { WEBHOOK_ENV, webhookScenarios } from '../scenarios/webhook.scenarios.js
 import { TELEMETRY_ENV, telemetryScenarios } from '../scenarios/telemetry.scenarios.js';
 import { VERDICT_ENV, verdictScenarios } from '../scenarios/verdict.scenarios.js';
 import { ADMIN_ENV, adminScenarios } from '../scenarios/admin.scenarios.js';
+import { LIVE_ENV, liveScenarios } from '../scenarios/live.scenarios.js';
 
 /* The whole HTTP surface on in-memory repositories (no Docker). test/integration/flows.integration.spec.ts runs these same scenarios on PostgreSQL. */
 for (const [name, env, scenarios] of [
   ['sign-in, free rides and the ride lifecycle', FLOW_ENV, flowScenarios],
   ['telemetry: recording batches', TELEMETRY_ENV, telemetryScenarios],
+  ['live streams: watch, chat, donations, effects', LIVE_ENV, liveScenarios],
   ['verified play: the verdict and the boards', VERDICT_ENV, verdictScenarios],
   ['admin: review queue, overrides, sign-ins, logs', ADMIN_ENV, adminScenarios],
   ['payments, the prize pool and leaderboards', PAYMENTS_ENV, paymentScenarios],

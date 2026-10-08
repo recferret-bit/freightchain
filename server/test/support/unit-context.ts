@@ -24,6 +24,8 @@ import {
 import { MemoryPoolRepository, MemoryPromoRepository, MemoryRideTicketRepository, MemoryTicketOrderRepository } from './in-memory/memory-ledger-repositories.js';
 import { MemoryChainCursorRepository, MemoryChainEventRepository, MemorySponsoredTxRepository } from './in-memory/memory-repositories.js';
 import { TestHasher } from './recording.js';
+import { MemoryRideEventRepository } from './in-memory/memory-live-repositories.js';
+import { MemoryViewerPresenceAdapter } from '../../src/infrastructure/live/viewer-presence.memory.adapter.js';
 
 /** Fixed rules for unit tests: 10 s free shift (140 m), treasury configured, one demo wallet. */
 export const DEMO_UNIT_WALLET = 'DemoWa11et1111111111111111111111111111111111';
@@ -85,6 +87,8 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const chainEvents = new MemoryChainEventRepository(db);
   const chainCursors = new MemoryChainCursorRepository(db);
   const sponsoredTxs = new MemorySponsoredTxRepository(db);
+  const rideEvents = new MemoryRideEventRepository(db);
+  const viewers = new MemoryViewerPresenceAdapter();
   const sessions = new PlayerSessionService(players, rulesPort, clock);
   const lookup = new RideLookupService(rides);
   const rounds = new RoundService(roundRepo, rulesPort, transactions, clock);
@@ -120,7 +124,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
     db, clock, chain, entropy, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, batches, hasher, verdictRepo, verdicts, proofs, signIns, adminActions, adminQuery, health,
     pools, tickets, promos, orders, poolTickets, ticketSettlement,
     sessions, lookup, rounds, achievements, settlement, now, player, freeRide, paidOrder, reload, storedPlayer,
-    poolChain, chainEvents, chainCursors, sponsoredTxs, registry,
+    poolChain, chainEvents, chainCursors, sponsoredTxs, registry, rideEvents, viewers,
   };
 }
 export type UnitContext = ReturnType<typeof unitContext>;

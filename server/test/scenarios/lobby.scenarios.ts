@@ -17,14 +17,14 @@ export function lobbyScenarios(h: () => Harness): void {
     return (await w.agent.post(`/api/rides/${id}/end`).send({ outcome: 'shift', s: 150, t: 15, hull, ...extra }).expect(200)).body;
   }
   describe('live feed (public)', () => {
-    it('shows running rides with route, progress and pause state – and no ids or reasons', async () => {
+    it('shows running rides with route, progress, pause state and the ride id (the watch link) – no seed or reason', async () => {
       const w = await login(), id = await freeRide(w);
       sec(5); await w.agent.post(`/api/rides/${id}/heartbeat`).send({ s: 70, t: 5, hull: 80, route: 'brenner', night: false }).expect(200);
       const { body } = await anon().get('/api/live').expect(200);   // no cookie
       const mine = body.rides.find((r: { wallet: string }) => r.wallet === w.address);
       expect(mine).toMatchObject({ tier: 'free', route: 'brenner', distance: 70, hull: 80, paused: false, driveSeconds: 5, minSeconds: 10, completeDist: 140, timeScale: 1 });
       expect(mine.progress).toBeCloseTo(0.5, 2);
-      expect(Object.keys(mine)).not.toContain('id'); expect(Object.keys(mine)).not.toContain('reason'); expect(Object.keys(mine)).not.toContain('seed');
+      expect(mine.id).toBe(id); expect(Object.keys(mine)).not.toContain('reason'); expect(Object.keys(mine)).not.toContain('seed');
       sec(5); await w.agent.post(`/api/rides/${id}/heartbeat`).send({ s: 70, t: 5, hull: 80, paused: true }).expect(200);
       expect((await anon().get('/api/live')).body.rides.find((r: { wallet: string }) => r.wallet === w.address).paused).toBe(true);
     });
@@ -39,10 +39,10 @@ export function lobbyScenarios(h: () => Harness): void {
       const body = (await anon().get('/api/live')).body;
       rides = body.rides.map((r: { wallet: string }) => r.wallet);
       expect(rides).not.toContain(c.address); void idB;
-      // the ended ride moves to the landing's "recent" ticker: status + distance, still no id / reason
+      // the ended ride moves to the landing's "recent" ticker: status + distance + id (its replay), still no reason
       const rc = body.recent.find((r: { wallet: string }) => r.wallet === c.address);
       expect(rc).toMatchObject({ tier: 'free', status: 'failed', distance: 0 });
-      expect(Object.keys(rc)).not.toContain('id'); expect(Object.keys(rc)).not.toContain('reason');
+      expect(rc.id).toBe(idC); expect(Object.keys(rc)).not.toContain('reason');
       expect(body.upcoming).toEqual([]);   // free rides are never "next up" – only paid, unstarted shifts
       expect(body.totals).toMatchObject({ shifts: expect.any(Number), metres: expect.any(Number), drivers: expect.any(Number) });
     });

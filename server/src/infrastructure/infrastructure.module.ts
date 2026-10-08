@@ -69,6 +69,10 @@ import { TicketOrderPrismaRepository } from './prisma/repositories/ticket-order.
 import { PromoPrismaRepository } from './prisma/repositories/promo.prisma.repository.js';
 import { RideTicketPrismaRepository } from './prisma/repositories/ride-ticket.prisma.repository.js';
 import { ClearAdminCookieInterceptor, SetAdminCookieInterceptor } from './http/interceptors/admin-cookie.interceptor.js';
+import { RideEventRepositoryPort } from '../application/ports/live/ride-event.repository.port.js';
+import { ViewerPresencePort } from '../application/ports/live/viewer-presence.port.js';
+import { RideEventPrismaRepository } from './prisma/repositories/ride-event.prisma.repository.js';
+import { MemoryViewerPresenceAdapter } from './live/viewer-presence.memory.adapter.js';
 
 /** Every port the application layer declares is bound to its adapter here – the only place that knows which implementation runs. */
 const ports: Provider[] = [
@@ -104,6 +108,8 @@ const ports: Provider[] = [
   { provide: ChainEventRepositoryPort, useClass: ChainEventPrismaRepository },
   { provide: ChainCursorRepositoryPort, useClass: ChainCursorPrismaRepository },
   { provide: SponsoredTxRepositoryPort, useClass: SponsoredTxPrismaRepository },
+  { provide: RideEventRepositoryPort, useClass: RideEventPrismaRepository },
+  { provide: ViewerPresencePort, useClass: MemoryViewerPresenceAdapter },
 ];
 
 const portTokens = ports.map((p) => (p as { provide: unknown }).provide as typeof ClockPort);

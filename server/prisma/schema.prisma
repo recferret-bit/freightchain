@@ -1,9 +1,9 @@
 // Multi-file Prisma schema: this file holds only the datasource + generator; the models live in one folder per bounded context,
-// each in its own PostgreSQL schema (player · ride · economy · achievement · telemetry · verdict · admin). Migrations are hand-reviewed SQL under prisma/migrations.
+// each in its own PostgreSQL schema (player · ride · economy · achievement · telemetry · verdict · admin · live). Migrations are hand-reviewed SQL under prisma/migrations.
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  schemas  = ["player", "ride", "economy", "achievement", "telemetry", "verdict", "admin"]
+  schemas  = ["player", "ride", "economy", "achievement", "telemetry", "verdict", "admin", "live"]
 }
 
 generator client {

@@ -11,8 +11,9 @@ import { RidesHttpController } from './rides/rides.http.controller.js';
 import { PoolsHttpController } from './economy/pools.http.controller.js';
 import { TicketsHttpController } from './economy/tickets.http.controller.js';
 import { ChainWebhookHttpController } from './chain/chain-webhook.http.controller.js';
+import { LiveHttpController } from './live/live.http.controller.js';
 @Module({
   imports: [ApplicationModule],
-  controllers: [HealthHttpController, AuthHttpController, RidesHttpController, EconomyHttpController, PoolsHttpController, TicketsHttpController, LobbyHttpController, ChainHttpController, ChainWebhookHttpController, AdminHttpController],
+  controllers: [HealthHttpController, AuthHttpController, RidesHttpController, EconomyHttpController, PoolsHttpController, TicketsHttpController, LobbyHttpController, ChainHttpController, ChainWebhookHttpController, AdminHttpController, LiveHttpController],
 })
 export class PresentationModule {}

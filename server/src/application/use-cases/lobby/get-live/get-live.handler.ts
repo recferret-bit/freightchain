@@ -23,10 +23,10 @@ export class GetLiveHandler implements IQueryHandler<GetLiveQuery, LiveFeedDto> 
     return {
       now: now.getTime(),
       upcoming: upcoming.map((r) => ({ wallet: r.wallet, tier: r.tier, minSeconds: r.minSeconds, paidAt: r.paidAt.getTime() })),
-      recent: finished.map((r) => ({ wallet: r.wallet, tier: r.tier, route: r.route, status: r.status, distance: Math.round(r.lastS), endedAt: r.endedAt?.getTime() ?? null })),
+      recent: finished.map((r) => ({ id: r.id, wallet: r.wallet, tier: r.tier, route: r.route, status: r.status, distance: Math.round(r.lastS), endedAt: r.endedAt?.getTime() ?? null })),
       totals: { shifts: totals.shifts, metres: Math.round(totals.metres), drivers: totals.drivers },
       rides: rows.map((r) => ({
-        wallet: r.wallet, tier: r.tier, route: r.route, timeScale: r.timeScale, paused: r.paused,
+        id: r.id, wallet: r.wallet, tier: r.tier, route: r.route, timeScale: r.timeScale, paused: r.paused,
         hull: r.hull === null ? null : Math.round(r.hull), driveSeconds: Math.round(r.driveSeconds), minSeconds: r.minSeconds,
         distance: Math.round(r.lastS), completeDist: r.completeDist,
         progress: Math.min(1, r.driveSeconds / r.minSeconds, r.lastS / r.completeDist),

@@ -1,0 +1,25 @@
+// The live feed of a ride (spectators – docs: AGENTS.md "Live streams"): a chat line or a MOCK donation (nothing is charged, no chain yet), optionally with an
+// effect the driver's game applies (night / day / an obstacle on the road). Append-only, except for the driver's "applied" stamp.
+// Rate limits without a lock: (rideId, slotKey, slot) is unique – slotKey 'fx' = one effect per ride per window, 'msg:<wallet>' / 'tip:<wallet>' = one line per
+// wallet per window – so two racing posts cannot both take the same window (domain/live/live-rules.ts).
+model RideEvent {
+  id         Int       @id @default(autoincrement())
+  rideId     String
+  ride       Ride      @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  wallet     String // the spectator who posted it
+  kind       String // message | donation
+  text       String?
+  effect     String? // donations: tip | night | day | potholes | trench | sinkhole
+  lamports   BigInt    @default(0) // MOCK amount – shown, never charged
+  slotKey    String
+  slot       Int // createdAt / the window length of slotKey
+  createdAt  DateTime
+  appliedAt  DateTime? // effects: when the driver's game applied it …
+  appliedT   Float? // … at that game time (driven seconds)
+  appliedS   Float? // … where on the road (an obstacle: its position, so a replay puts it in the same place)
+  appliedLat Float? // … and across the road (obstacles)
+
+  @@unique([rideId, slotKey, slot])
+  @@index([rideId, id])
+  @@schema("live")
+}

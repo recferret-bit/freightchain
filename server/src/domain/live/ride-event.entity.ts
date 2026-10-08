@@ -1,0 +1,100 @@
+import { BadRequestError } from '../shared/errors.js';
+import {
+  APPLIED_MAX_LAT, APPLIED_MAX_S, EFFECTS, EFFECT_WINDOW_MS, LINE_WINDOW_MS, MESSAGE_MAX_LENGTH, NOTE_MAX_LENGTH, type EffectId,
+} from './live-rules.js';
+
+export type RideEventKind = 'message' | 'donation';
+
+/** Where and when the driver's game applied an effect: game time (driven seconds), road position s, and across the road (obstacles). */
+export interface EffectApplied {
+  at: Date;
+  t: number;
+  s: number;
+  lat: number | null;
+}
+
+export interface RideEventProps {
+  /** null until stored (the database numbers the feed) */
+  id: number | null;
+  rideId: string;
+  wallet: string;
+  kind: RideEventKind;
+  text: string | null;
+  effect: EffectId | null;
+  lamports: number;
+  /** the rate-limit window this line took: unique per (rideId, slotKey, slot) */
+  slotKey: string;
+  slot: number;
+  createdAt: Date;
+  applied: EffectApplied | null;
+}
+
+/** Spectator text as it will be shown: control characters out, whitespace collapsed, trimmed. The clients render it as text, never as HTML. */
+export function cleanText(raw: string): string {
+  // oxlint-disable-next-line no-control-regex -- stripping control characters is the point
+  return raw.replace(/[\u0000-\u001f\u007f-\u009f​-‏‪-‮⁦-⁩]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+const windowOf = (now: Date, ms: number): number => Math.floor(now.getTime() / ms);
+
+/** One line in a ride's live feed. Created by a spectator (never the driver), stamped once by the driver's game when it applied the effect. */
+export class RideEvent {
+  private constructor(private readonly p: RideEventProps) {}
+
+  static message(i: { rideId: string; wallet: string; text: string; now: Date }): RideEvent {
+    const text = cleanText(i.text);
+    if (!text) throw new BadRequestError('the message is empty', 'bad_message');
+    if (text.length > MESSAGE_MAX_LENGTH) throw new BadRequestError(`a message is at most ${MESSAGE_MAX_LENGTH} characters`, 'bad_message');
+    return new RideEvent({
+      id: null, rideId: i.rideId, wallet: i.wallet, kind: 'message', text, effect: null, lamports: 0,
+      slotKey: `msg:${i.wallet}`, slot: windowOf(i.now, LINE_WINDOW_MS), createdAt: i.now, applied: null,
+    });
+  }
+
+  /** A MOCK donation: priced from EFFECTS, nothing is charged. A game effect takes the ride's one effect window; a tip only the wallet's line window. */
+  static donation(i: { rideId: string; wallet: string; effect: EffectId; note?: string | null; now: Date }): RideEvent {
+    const note = i.note ? cleanText(i.note) : '';
+    if (note.length > NOTE_MAX_LENGTH) throw new BadRequestError(`a donation note is at most ${NOTE_MAX_LENGTH} characters`, 'bad_message');
+    const rule = EFFECTS[i.effect];
+    return new RideEvent({
+      id: null, rideId: i.rideId, wallet: i.wallet, kind: 'donation', text: note || null, effect: i.effect, lamports: rule.lamports,
+      slotKey: rule.game ? 'fx' : `tip:${i.wallet}`, slot: windowOf(i.now, rule.game ? EFFECT_WINDOW_MS : LINE_WINDOW_MS), createdAt: i.now, applied: null,
+    });
+  }
+
+  static restore(props: RideEventProps): RideEvent {
+    return new RideEvent({ ...props, applied: props.applied ? { ...props.applied } : null });
+  }
+
+  /** ms until this line's rate-limit window is over (the Retry-After of a refused post) */
+  static retryAfterMs(slotKey: string, now: Date): number {
+    const ms = slotKey === 'fx' ? EFFECT_WINDOW_MS : LINE_WINDOW_MS;
+    return ms - (now.getTime() % ms);
+  }
+
+  get id(): number | null { return this.p.id; }
+  get rideId(): string { return this.p.rideId; }
+  get wallet(): string { return this.p.wallet; }
+  get kind(): RideEventKind { return this.p.kind; }
+  get effect(): EffectId | null { return this.p.effect; }
+  get slotKey(): string { return this.p.slotKey; }
+  get applied(): EffectApplied | null { return this.p.applied; }
+  /** something the driver's game has to do */
+  get needsGame(): boolean { return this.p.effect !== null && EFFECTS[this.p.effect].game; }
+
+  /** The driver's game applied it. First stamp wins (a re-sent ack changes nothing → false); only game effects take one; an obstacle needs its position. */
+  markApplied(report: { t: number; s: number; lat: number | null }, now: Date): boolean {
+    if (!this.needsGame) throw new BadRequestError('this event has nothing to apply', 'not_an_effect');
+    if (this.p.applied) return false;
+    const { t, s } = report, lat = report.lat ?? null;
+    if (!Number.isFinite(t) || t < 0 || !Number.isFinite(s) || s < 0 || s > APPLIED_MAX_S) throw new BadRequestError('applied at an impossible time or place', 'bad_applied');
+    const obstacle = EFFECTS[this.p.effect as EffectId].obstacle;
+    if (obstacle && (lat === null || !Number.isFinite(lat) || Math.abs(lat) > APPLIED_MAX_LAT)) throw new BadRequestError('an obstacle needs its place across the road', 'bad_applied');
+    this.p.applied = { at: now, t, s, lat: obstacle ? lat : null };
+    return true;
+  }
+
+  snapshot(): RideEventProps {
+    return { ...this.p, applied: this.p.applied ? { ...this.p.applied } : null };
+  }
+}

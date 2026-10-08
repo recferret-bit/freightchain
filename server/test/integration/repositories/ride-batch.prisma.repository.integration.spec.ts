@@ -50,6 +50,17 @@ describe('RideBatchPrismaRepository (PostgreSQL)', () => {
     expect([await left(old), await left(oldUnjudged), await left(oldFlagged), await left(recent), await left(running), await left(oldCompletedUnjudged)]).toEqual([0, 0, 2, 2, 2, 2]);
   });
 
+  it('listFrom pages the replay by seq; extent is the last seq and the latest game time without inflating', async () => {
+    const ride = await started();
+    expect(await repo.extent(ride.id)).toEqual({ lastSeq: null, t1: 0 });
+    const bodies = recording(ride.id, { seconds: 60 });
+    for (const b of bodies) await repo.insert(RideBatch.accept(ride.id, b, hashBatch(b), at(b.seq)));
+    expect((await repo.listFrom(ride.id, 1, 2)).map((b) => b.seq)).toEqual([1, 2]);
+    expect((await repo.listFrom(ride.id, 3, 10)).map((b) => [b.seq, b.body.samples.length])).toEqual([[3, bodies[3]!.samples.length]]);
+    expect(await repo.listFrom(ride.id, 9, 10)).toEqual([]);
+    expect(await repo.extent(ride.id)).toEqual({ lastSeq: 3, t1: bodies[3]!.t1 });
+  });
+
   it('batches go with their ride (cascade)', async () => {
     const ride = await started();
     const [b0] = recording(ride.id, { seconds: 10 });

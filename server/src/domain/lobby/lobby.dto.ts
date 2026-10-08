@@ -1,8 +1,10 @@
 import type { TicketBalanceDto, TicketGrantDto } from '../economy/prize-pool.dto.js';
 import type { AchievementDto } from '../achievements/achievement-unlock.entity.js';
 
-/** One truck on the road. No ride id, seed or free-text reason: this feed is public. */
+/** One truck on the road. Public, so no seed or free-text reason. The ride id IS here (since live streams): it is what the watch page takes, and every
+    owner-side route checks the wallet anyway – an id grants nothing (docs/solana-features-plan.md F5 publishes ride pages by id too). */
 export interface LiveRideDto {
+  id: string;
   wallet: string;
   tier: string;
   route: string | null;
@@ -26,8 +28,9 @@ export interface UpcomingRideDto {
   paidAt: number;
 }
 
-/** A ride that just ended, for the landing's ticker: outcome + distance, never the id or the reason. */
+/** A ride that just ended, for the landing's ticker: outcome + distance + the id (its replay on the watch page), never the reason. */
 export interface FinishedRideDto {
+  id: string;
   wallet: string;
   tier: string;
   route: string | null;
