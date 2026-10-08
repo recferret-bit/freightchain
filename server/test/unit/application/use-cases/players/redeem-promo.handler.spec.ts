@@ -75,29 +75,30 @@ describe('RedeemPromoHandler', () => {
   });
 
   describe('cosmetics', () => {
-    const wheel = { kind: 'cosmetic', slot: 'wheel', item: 'sport' } as const;
+    const cabin = { kind: 'cosmetic', slot: 'cabin', item: 'midnight' } as const;
 
-    it('unlocks the item and puts it on', async () => {
-      const { ctx, redeem } = await setup({ effect: wheel });
-      expect(await redeem()).toEqual({ kind: 'cosmetic', code: 'HELLO', label: 'wheel: sport', slot: 'wheel', item: 'sport' });
-      expect(await ctx.cosmetics.has('w', 'wheel', 'sport')).toBe(true);
-      expect(await ctx.cosmetics.listEquipped('w')).toEqual({ wheel: 'sport' });
+    it('unlocks the cabin and puts it on', async () => {
+      const { ctx, redeem } = await setup({ effect: cabin });
+      expect(await redeem()).toEqual({ kind: 'cosmetic', code: 'HELLO', label: 'cabin: midnight', slot: 'cabin', item: 'midnight' });
+      expect(await ctx.cosmetics.has('w', 'cabin', 'midnight')).toBe(true);
+      expect(await ctx.cosmetics.listEquipped('w')).toEqual({ cabin: 'midnight' });
       expect((await ctx.cosmetics.listUnlocked('w'))[0]).toMatchObject({ code: 'HELLO', at: ctx.now() });
     });
 
-    it('a wallet that already owns it is refused BEFORE a redemption is taken – another code for the same item', async () => {
-      const { ctx, redeem } = await setup({ effect: wheel, maxRedemptions: 5 });
-      await ctx.promos.insert(aPromo(ctx.now(), { code: 'AGAIN', effect: wheel, maxRedemptions: 5 }));
+    it('a wallet that already owns it is refused BEFORE a redemption is taken – another code for the same cabin', async () => {
+      const { ctx, redeem } = await setup({ effect: cabin, maxRedemptions: 5 });
+      await ctx.promos.insert(aPromo(ctx.now(), { code: 'AGAIN', effect: cabin, maxRedemptions: 5 }));
       await redeem();
       await expect(redeem('AGAIN')).rejects.toMatchObject({ errorCode: 'already_owned', message: 'you already own this item' });
       expect((await ctx.promos.findByCode('AGAIN'))?.snapshot().redeemed).toBe(0);
     });
 
-    it('a second code for another slot keeps the first item', async () => {
-      const { ctx, redeem } = await setup({ effect: wheel });
-      await ctx.promos.insert(aPromo(ctx.now(), { code: 'BOX', effect: { kind: 'cosmetic', slot: 'gearbox', item: 'chrome' } }));
-      await redeem(); await redeem('BOX');
-      expect(await ctx.cosmetics.listEquipped('w')).toEqual({ wheel: 'sport', gearbox: 'chrome' });
+    it('a second cabin code unlocks and wears the newer cabin, the older one stays owned', async () => {
+      const { ctx, redeem } = await setup({ effect: cabin });
+      await ctx.promos.insert(aPromo(ctx.now(), { code: 'NOIR', effect: { kind: 'cosmetic', slot: 'cabin', item: 'noir' } }));
+      await redeem(); await redeem('NOIR');
+      expect(await ctx.cosmetics.listEquipped('w')).toEqual({ cabin: 'noir' });
+      expect(await ctx.cosmetics.has('w', 'cabin', 'midnight')).toBe(true);
     });
   });
 

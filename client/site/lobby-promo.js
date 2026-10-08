@@ -4,13 +4,13 @@ import { COSMETICS, LOOKS, SLOTS } from '../js/cosmetics.js';
 /* The lobby's PROMO tab (docs/promocodes.md): the code form, what this wallet redeemed, and the wardrobe – every cosmetic a code unlocked, one click to wear it.
    Pure builders: lobby.js owns the state and the API calls and hands in callbacks. Server text (codes, descriptions) goes in with textContent only. */
 
-export const SLOT_NAME = { wheel: 'STEERING WHEEL', truck_color: 'TRUCK PAINT', gearbox: 'SHIFTER' };
-const ITEM_NAME = { classic: 'Classic', sport: 'Sport', wood: 'Wood', gold: 'Gold', red: 'Red', blue: 'Blue', green: 'Green', black: 'Black', yellow: 'Yellow', stick: 'Stock', chrome: 'Chrome', racing: 'Racing' };
+export const SLOT_NAME = { cabin: 'CABIN' };
+const ITEM_NAME = { classic: 'Classic', midnight: 'Midnight', forest: 'Forest', sunset: 'Sunset', arctic: 'Arctic', noir: 'Noir' };
 export const itemName = item => ITEM_NAME[item] ?? item;
 const KIND_ICON = { tickets: '🎟', free_rides: '⛟', cosmetic: '✦' };
 
 /** The code field (also on NEW RIDE: same ids, only one is on the page at a time). `value` pre-fills it – a code from the landing's invite block. */
-export function promoForm({ onSubmit, value = '', hint = 'Got a code? It gives free rides, tickets or a new look for your truck.' }) {
+export function promoForm({ onSubmit, value = '', hint = 'Got a code? It gives free rides, free tickets or a new cabin look.' }) {
   return el('form', { class: 'card promo', id: 'promo', onsubmit: onSubmit },
     el('label', { for: 'promo-code' }, hint),
     el('div', { class: 'row' },
@@ -27,13 +27,13 @@ export function redemptionList(rows) {
     el('span', { class: 'dim' }, new Date(r.at).toLocaleString()))));
 }
 
-/** A small picture of one item from its look (colours only – the real thing is drawn in the cockpit). */
+/** A small picture of one cabin from its palette (colours only – the real thing is drawn in the cockpit): interior, hood, dashboard and a wheel ring. */
 export function swatch(slot, item) {
   const l = LOOKS[slot]?.[item];
   if (!l) return el('span', { class: 'sw' });
-  if (slot === 'truck_color') return el('span', { class: 'sw hood', style: `background:linear-gradient(${l.top},${l.bottom})` });
-  if (slot === 'wheel') return el('span', { class: 'sw wheel', style: `border-color:${l.rim};box-shadow:inset 0 0 0 3px ${l.sheen};background:radial-gradient(circle,${l.hub} 0 28%,${l.spoke} 29% 100%)` });
-  return el('span', { class: 'sw knob', style: `background:${l.knob};border-color:${l.rim}` });
+  return el('span', {
+    class: 'sw cab', style: `background:linear-gradient(180deg,${l.interior[0]} 0 34%,${l.hood.top} 34% 52%,${l.dash[1]} 52% 100%);border-color:${l.dashEdge};box-shadow:inset 0 -9px 0 -5px ${l.wheel.sheen}`,
+  });
 }
 
 /** GET /api/wardrobe → one row per slot: every item of the catalog, worn / owned / locked. `onEquip(slot, item)`; `busy` disables the buttons while a call runs. */

@@ -8,13 +8,13 @@ import { COSMETICS, LOOKS, SLOTS, defaultLoadout, loadout, look, setLoadout } fr
 
 /* The admin page's promo form, the lobby's wardrobe wording and the client cosmetics catalog (mirrored from server/src/domain/economy/cosmetics.ts – the server's
    cosmetics.spec.ts compares the lists; here: every item has a look, junk never breaks the cockpit). */
-const base = { code: ' welcome ', kind: 'free_rides', rides: '3', tier: '1h', credits: '1', poolId: '', slot: 'wheel', item: 'sport', description: '  Hi ', start: '', end: '', max: '', perWallet: '', note: '' };
+const base = { code: ' welcome ', kind: 'free_rides', rides: '3', tier: '1h', credits: '1', poolId: '', slot: 'cabin', item: 'midnight', description: '  Hi ', start: '', end: '', max: '', perWallet: '', note: '' };
 
 test('the form → a promo body: trimmed text, blank = none, per wallet defaults to 1', () => {
   assert.deepEqual(promoFromForm(base), { code: 'welcome', effect: { kind: 'free_rides', count: 3 }, description: 'Hi', maxRedemptions: null, perWallet: 1, startsAt: null, expiresAt: null, note: null });
   assert.deepEqual(promoFromForm({ ...base, kind: 'tickets', tier: '4h', credits: '2', poolId: '7', max: '50', perWallet: '2', note: ' vip ' }),
     { code: 'welcome', effect: { kind: 'tickets', tier: '4h', poolId: 7, credits: 2 }, description: 'Hi', maxRedemptions: 50, perWallet: 2, startsAt: null, expiresAt: null, note: 'vip' });
-  assert.deepEqual(promoFromForm({ ...base, kind: 'cosmetic', slot: 'truck_color', item: 'blue' }).effect, { kind: 'cosmetic', slot: 'truck_color', item: 'blue' });
+  assert.deepEqual(promoFromForm({ ...base, kind: 'cosmetic', slot: 'cabin', item: 'noir' }).effect, { kind: 'cosmetic', slot: 'cabin', item: 'noir' });
 });
 
 test('1 and 3 free rides are the presets – any whole number up works, nonsense is a sentence, not a signature request', () => {
@@ -28,7 +28,7 @@ test('1 and 3 free rides are the presets – any whole number up works, nonsense
 });
 
 test('cosmetics: only an item of the slot that is not its default can be given', () => {
-  for (const item of [COSMETICS.wheel[0], 'racing', '']) assert.throws(() => promoFromForm({ ...base, kind: 'cosmetic', slot: 'wheel', item }), /Pick an item/, item);
+  for (const item of [COSMETICS.cabin[0], 'racing', '']) assert.throws(() => promoFromForm({ ...base, kind: 'cosmetic', slot: 'cabin', item }), /Pick an item/, item);
 });
 
 test('times: a datetime-local value is the admin\'s own time; the end must come after the start', () => {
@@ -41,20 +41,27 @@ test('times: a datetime-local value is the admin\'s own time; the end must come 
   assert.throws(() => promoFromForm({ ...base, start: 'later' }), /not a valid date/);
 });
 
-test('the client catalog: three slots, every item has a look and a name, the default is the first of each', () => {
-  assert.deepEqual(SLOTS, ['wheel', 'truck_color', 'gearbox']);
-  for (const slot of SLOTS) {
-    assert.ok(SLOT_NAME[slot], slot);
-    assert.deepEqual(Object.keys(LOOKS[slot]), COSMETICS[slot], `${slot}: LOOKS lists the same items in the same order`);
-    for (const item of COSMETICS[slot]) assert.notEqual(itemName(item), undefined, item);
+test('the client catalog: one slot (the cabin), every item has a palette with the same keys as the classic one and a name, the default is the first', () => {
+  assert.deepEqual(SLOTS, ['cabin']);
+  assert.ok(SLOT_NAME.cabin);
+  assert.deepEqual(Object.keys(LOOKS.cabin), COSMETICS.cabin, 'LOOKS lists the same cabins in the same order');
+  const shape = o => Object.entries(o).map(([k, v]) => (v && typeof v === 'object' && !Array.isArray(v) ? `${k}{${shape(v)}}` : k)).join(',');
+  for (const item of COSMETICS.cabin) {
+    assert.equal(shape(LOOKS.cabin[item]), shape(LOOKS.cabin.classic), `${item}: same palette keys`);
+    assert.notEqual(itemName(item), undefined, item);
+    for (const c of [...LOOKS.cabin[item].interior, ...LOOKS.cabin[item].dash, LOOKS.cabin[item].frame, LOOKS.cabin[item].hood.top, LOOKS.cabin[item].wheel.rim]) assert.match(c, /^#[0-9a-f]{6}$/i, `${item}: ${c}`);
   }
-  assert.deepEqual(defaultLoadout(), { wheel: 'classic', truck_color: 'red', gearbox: 'stick' });
+  const looks = COSMETICS.cabin.map(i => JSON.stringify(LOOKS.cabin[i]));
+  assert.equal(new Set(looks).size, looks.length, 'no two cabins look the same');
+  assert.deepEqual(defaultLoadout(), { cabin: 'classic' });
 });
 
 test('setLoadout keeps what is known and falls back to the default for junk (a hostile or stale server value cannot break the cockpit)', () => {
-  setLoadout({ wheel: 'gold', truck_color: '<script>', gearbox: 7, seat: 'x' });
-  assert.deepEqual({ ...loadout }, { wheel: 'gold', truck_color: 'red', gearbox: 'stick' });
-  assert.equal(look('wheel').rim, LOOKS.wheel.gold.rim);
+  setLoadout({ cabin: 'noir', seat: 'x' });
+  assert.deepEqual({ ...loadout }, { cabin: 'noir' });
+  assert.equal(look('cabin').wheel.sheen, LOOKS.cabin.noir.wheel.sheen);
+  setLoadout({ cabin: '<script>' });
+  assert.deepEqual({ ...loadout }, { cabin: 'classic' });
   setLoadout(null);
   assert.deepEqual({ ...loadout }, defaultLoadout());
 });

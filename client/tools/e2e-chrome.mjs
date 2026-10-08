@@ -40,11 +40,12 @@ if(await ev('typeof window.__game')==='object' && await ev('Array.isArray(__game
     await sleep(1800); await shot('route-'+t);
   }
 }
-// cosmetics (promo wardrobe): a few wheel / paint / shifter combinations (cosmetic-<n>.png) – look at them; the default one must look like the plain cockpit
+// cosmetics (promo wardrobe): every cabin colour scheme, day (cabin-<id>.png) and one at night – look at them; the classic one must look like the plain cockpit
 if(await ev('typeof window.__game')==='object' && await ev('typeof __game.cosmetics')==='object'){
   await ev(`__game.selectTheme('route66', false); __game.st.mode='drive'; __game.st.s=__game.net.Sm+260; __game.st.d=2.6; __game.st.v=0; __game.st.gear=3; document.getElementById('overlay').classList.add('hide')`);
-  const combos=[{wheel:'sport',truck_color:'blue',gearbox:'chrome'},{wheel:'wood',truck_color:'black',gearbox:'wood'},{wheel:'gold',truck_color:'green',gearbox:'racing'},{wheel:'classic',truck_color:'yellow',gearbox:'stick'},{wheel:'classic',truck_color:'red',gearbox:'stick'}];
-  let n=0; for(const c of combos){ await ev(`__game.cosmetics.setLoadout(${JSON.stringify(c)})`); await sleep(700); await shot('cosmetic-'+(++n)); }
+  for(const id of await ev('__game.cosmetics.COSMETICS.cabin')){ await ev(`__game.cosmetics.setLoadout({cabin:${JSON.stringify(id)}})`); await sleep(700); await shot('cabin-'+id); }
+  await ev(`__game.cosmetics.setLoadout({cabin:'noir'}); __game.setNight(true,true,false)`); await sleep(1200); await shot('cabin-noir-night');
+  await ev(`__game.setNight(false,true,false); __game.cosmetics.setLoadout(null)`);
   console.log('cosmetics worn:',await ev('JSON.stringify(__game.cosmetics.loadout)'));
 }
 // road network: the depot (start), waiting at the depot exit with main-road traffic, a signalled crossroads, a multi-lane stretch (net-*.png) – look at them

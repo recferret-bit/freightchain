@@ -8,7 +8,7 @@ import { RecordingAnalytics } from '../../../../support/recording-analytics.js';
 const setup = () => {
   const ctx = unitContext();
   const analytics = new RecordingAnalytics();
-  const handler = new StartRideHandler(ctx.lookup, ctx.rides, ctx.players, ctx.rules, ctx.transactions, ctx.clock, analytics);
+  const handler = new StartRideHandler(ctx.lookup, ctx.rides, ctx.players, ctx.cosmetics, ctx.rules, ctx.transactions, ctx.clock, analytics);
   return { ctx, analytics, start: (id: string, wallet = 'w') => handler.execute(new StartRideCommand(wallet, id)) };
 };
 
@@ -18,6 +18,28 @@ describe('StartRideHandler', () => {
     const ride = await ctx.freeRide('w');
     expect(await start(ride.id)).toMatchObject({ status: 'running' });
     expect((await ctx.reload(ride.id)).snapshot().startedAt).toEqual(ctx.now());
+  });
+
+  it('the ride keeps the cabin the wallet wears at the start (the classic one when it wears nothing) – and the answer says which, for the game', async () => {
+    const { ctx, start } = setup();
+    const plain = await ctx.freeRide('w');
+    expect(await start(plain.id)).toMatchObject({ cabin: 'classic' });
+    expect((await ctx.reload(plain.id)).cabin).toBe('classic');
+    await ctx.cosmetics.unlock({ wallet: 'v', slot: 'cabin', item: 'noir', code: 'X', at: ctx.now() });
+    await ctx.cosmetics.equip('v', 'cabin', 'noir');
+    const styled = await ctx.freeRide('v');
+    expect(await start(styled.id, 'v')).toMatchObject({ cabin: 'noir' });
+    expect((await ctx.reload(styled.id)).cabin).toBe('noir');
+  });
+
+  it('a cabin that is worn but not owned (a stale row) is never stamped; changing the cabin later does not change a started ride', async () => {
+    const { ctx, start } = setup();
+    await ctx.cosmetics.equip('w', 'cabin', 'arctic');   // no unlock row
+    const ride = await ctx.freeRide('w');
+    expect((await start(ride.id)).cabin).toBe('classic');
+    await ctx.cosmetics.unlock({ wallet: 'w', slot: 'cabin', item: 'forest', code: 'X', at: ctx.now() });
+    await ctx.cosmetics.equip('w', 'cabin', 'forest');
+    expect((await ctx.reload(ride.id)).cabin).toBe('classic');
   });
 
   it('only a "created" ride starts: twice, unpaid or someone else\'s is refused', async () => {

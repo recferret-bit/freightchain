@@ -22,6 +22,17 @@ describe('RidePrismaRepository (PostgreSQL)', () => {
     expect(await repo.findById('00000000-0000-4000-8000-ffffffffffff')).toBeNull();
   });
 
+  it('the cabin a ride started in is saved with the start and read back (null before it, and for rides that never had one)', async () => {
+    const ride = freeRideAt('w');
+    await repo.insert(ride);
+    expect((await repo.findById(ride.id))?.cabin).toBeNull();
+    const started = (await repo.findById(ride.id))!;
+    started.start(at(1), 'noir');
+    await repo.save(started);
+    expect((await repo.findById(ride.id))?.cabin).toBe('noir');
+    expect((await repo.findById(ride.id))?.snapshot()).toEqual(started.snapshot().version === 1 ? { ...started.snapshot(), version: 2 } : started.snapshot());
+  });
+
   it('save writes the mutable fields and bumps the version; a stale entity is a VersionConflictError', async () => {
     const ride = freeRideAt('w');
     await repo.insert(ride);

@@ -10,14 +10,14 @@ const handlerOf = (ctx: UnitContext) => new CreateAdminPromoHandler(ctx.promoCre
 describe('CreateAdminPromoHandler', () => {
   it('creates the code the wallet signed for, and audits it with the request id, the effect and the signed text', async () => {
     const ctx = unitContext(), admin = testAdmin(ctx);
-    const input = promoInput({ code: 'wheel-1', effect: { kind: 'cosmetic', slot: 'wheel', item: 'gold' }, description: 'A golden wheel', maxRedemptions: 100 });
+    const input = promoInput({ code: 'cabin-1', effect: { kind: 'cosmetic', slot: 'cabin', item: 'noir' }, description: 'A black and gold cabin', maxRedemptions: 100 });
     const signature = await admin.sign({ action: 'promo_create', promo: input });
     const dto = await handlerOf(ctx).execute(new CreateAdminPromoCommand(admin.wallet, input, 'req-7', signature));
-    expect(dto).toMatchObject({ code: 'WHEEL-1', label: 'wheel: gold', state: 'active', description: 'A golden wheel' });
-    expect(await ctx.promos.findByCode('WHEEL-1')).not.toBeNull();
+    expect(dto).toMatchObject({ code: 'CABIN-1', label: 'cabin: noir', state: 'active', description: 'A black and gold cabin' });
+    expect(await ctx.promos.findByCode('CABIN-1')).not.toBeNull();
     const [row] = ctx.db.adminActions;
-    expect(row).toMatchObject({ wallet: admin.wallet, action: 'promo.create', target: 'WHEEL-1', detail: { effect: { kind: 'cosmetic', slot: 'wheel', item: 'gold' }, signed: { signature } }, requestId: 'req-7', at: ctx.now() });
-    expect((row?.detail['signed'] as { message: string }).message).toContain('Action: CREATE promo code WHEEL-1');
+    expect(row).toMatchObject({ wallet: admin.wallet, action: 'promo.create', target: 'CABIN-1', detail: { effect: { kind: 'cosmetic', slot: 'cabin', item: 'noir' }, signed: { signature } }, requestId: 'req-7', at: ctx.now() });
+    expect((row?.detail['signed'] as { message: string }).message).toContain('Action: CREATE promo code CABIN-1');
   });
 
   it('no code without the right signature: another field, a replay, a forged key → 401, nothing created or audited', async () => {

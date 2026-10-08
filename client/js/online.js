@@ -37,7 +37,8 @@ export async function initOnline() {
 export async function beginOnline() {
   if (!online.ride || online.started) return;
   online.started = true;
-  await api(`rides/${online.ride.id}/start`, {});
+  const started = await api(`rides/${online.ride.id}/start`, {});
+  setLoadout({ cabin: started.cabin });   // the cabin the server stamped on the ride (what spectators and replays draw) – normally the one the menu already wore
   startTelemetry(online.ride.id);   // inputs + 10 Hz samples, uploaded in hash-chained batches (the server's verdict reads them)
   timer = setInterval(() => api(`rides/${online.ride.id}/heartbeat`, progress()).catch(() => { /* a lost beat is the server's call (timeout) */ }), 10_000);
 }

@@ -13,15 +13,15 @@ import { look } from '../cosmetics.js';
 export function drawCockpitRig() {
   const { W, H, DPR } = view;
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.clearRect(0, 0, W, H);
-  const u = Math.min(H / 100, W / 150), cx = W / 2, driving = st.mode === 'drive', off = st.off;
+  const u = Math.min(H / 100, W / 150), cx = W / 2, driving = st.mode === 'drive', off = st.off, cab = look('cabin');   // the worn cabin's colours (js/cosmetics.js): the default cabin draws exactly what was always drawn
   const vib = driving ? (Math.random() - .5) * (st.v * .012 * SHAKE_MOVING + (off ? .7 : 0) + st.jolt * 1.5 + engineVib()) * u * .4 : 0;
   ctx.save(); ctx.translate(0, vib);
   const top = 4 * u, edgeY = 62 * u, ctrlY = 58 * u;
   const wsPath = () => { ctx.moveTo(W * .11, top); ctx.lineTo(W * .89, top); ctx.lineTo(W * .92, edgeY); ctx.quadraticCurveTo(cx, ctrlY, W * .08, edgeY); ctx.closePath(); };
   // cab interior (everything except the glass)
-  const fg = ctx.createLinearGradient(0, 0, 0, H); fg.addColorStop(0, '#26221d'); fg.addColorStop(1, '#0c0a08');
+  const fg = ctx.createLinearGradient(0, 0, 0, H); fg.addColorStop(0, cab.interior[0]); fg.addColorStop(1, cab.interior[1]);
   ctx.fillStyle = fg; ctx.beginPath(); ctx.rect(-20, -20, W + 40, H + 40); wsPath(); ctx.fill('evenodd');
-  ctx.beginPath(); wsPath(); ctx.strokeStyle = '#3d372f'; ctx.lineWidth = .9 * u; ctx.stroke();
+  ctx.beginPath(); wsPath(); ctx.strokeStyle = cab.frame; ctx.lineWidth = .9 * u; ctx.stroke();
   // big west-coast mirrors
   for (const m of mirrorRects()) {
     const { x: mx, y: my, w: mw, h: mh, side } = m;
@@ -37,7 +37,7 @@ export function drawCockpitRig() {
   ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H);
   const vg = ctx.createLinearGradient(0, top, 0, top + 10 * u); vg.addColorStop(0, 'rgba(10,30,26,.7)'); vg.addColorStop(1, 'rgba(10,30,26,0)'); ctx.fillStyle = vg; ctx.fillRect(0, top, W, 10 * u);   // tinted sun band
   // long hood
-  const hy = 47 * u, hb = 64 * u, paint = look('truck_color');   // the promo cosmetics (js/cosmetics.js): the default loadout draws exactly what was always drawn
+  const hy = 47 * u, hb = 64 * u, paint = cab.hood;
   ctx.fillStyle = paint.fender; ctx.beginPath(); ctx.moveTo(cx - 12 * u, hy + 2 * u); ctx.lineTo(cx - 36 * u, hb); ctx.lineTo(cx + 36 * u, hb); ctx.lineTo(cx + 12 * u, hy + 2 * u); ctx.closePath(); ctx.fill();     // fenders
   const hg = ctx.createLinearGradient(0, hy, 0, hb); hg.addColorStop(0, paint.top); hg.addColorStop(1, paint.bottom);
   ctx.fillStyle = hg; ctx.beginPath(); ctx.moveTo(cx - 9 * u, hy); ctx.lineTo(cx - 23 * u, hb); ctx.lineTo(cx + 23 * u, hb); ctx.lineTo(cx + 9 * u, hy); ctx.closePath(); ctx.fill();
@@ -72,13 +72,13 @@ export function drawCockpitRig() {
     ctx.fillStyle = '#b11'; for (const [dx, dy] of [[-2.7, .5], [-.7, 2.5], [.7, 1.5], [2.7, 3.5]]) { ctx.beginPath(); ctx.arc(dx * u, dy * u, .35 * u, 0, 7); ctx.fill(); } ctx.restore(); }
 
   // dashboard top
-  const dg = ctx.createLinearGradient(0, 58 * u, 0, H); dg.addColorStop(0, '#4b473f'); dg.addColorStop(.1, '#27241f'); dg.addColorStop(.3, '#14120f'); dg.addColorStop(1, '#0a0908');
+  const dg = ctx.createLinearGradient(0, 58 * u, 0, H); dg.addColorStop(0, cab.dash[0]); dg.addColorStop(.1, cab.dash[1]); dg.addColorStop(.3, cab.dash[2]); dg.addColorStop(1, cab.dash[3]);
   ctx.fillStyle = dg; ctx.beginPath(); ctx.moveTo(-20, 66 * u); ctx.lineTo(W * .08, edgeY); ctx.quadraticCurveTo(cx, ctrlY, W * .92, edgeY); ctx.lineTo(W + 20, 66 * u); ctx.lineTo(W + 20, H + 20); ctx.lineTo(-20, H + 20); ctx.fill();
-  ctx.strokeStyle = '#5a554a'; ctx.lineWidth = .5 * u; ctx.beginPath(); ctx.moveTo(W * .08, edgeY); ctx.quadraticCurveTo(cx, ctrlY, W * .92, edgeY); ctx.stroke();
+  ctx.strokeStyle = cab.dashEdge; ctx.lineWidth = .5 * u; ctx.beginPath(); ctx.moveTo(W * .08, edgeY); ctx.quadraticCurveTo(cx, ctrlY, W * .92, edgeY); ctx.stroke();
   const pw = powered();
   // instrument binnacle
-  ctx.fillStyle = '#0b0a08'; ctx.beginPath(); ctx.roundRect(cx - 47 * u, 63.5 * u, 94 * u, 25 * u, 3 * u); ctx.fill();
-  ctx.strokeStyle = '#34302a'; ctx.lineWidth = .6 * u; ctx.stroke();
+  ctx.fillStyle = cab.binnacle; ctx.beginPath(); ctx.roundRect(cx - 47 * u, 63.5 * u, 94 * u, 25 * u, 3 * u); ctx.fill();
+  ctx.strokeStyle = cab.binnacleEdge; ctx.lineWidth = .6 * u; ctx.stroke();
   gauge(cx - 14 * u, 76 * u, 11 * u, disp.v, 120, 20, 0, 'km/h', u);
   gauge(cx + 14 * u, 76 * u, 11 * u, disp.rpm, 3000, 500, 2800, 'RPM×100', u);
   for (const gx of [cx - 14 * u, cx + 14 * u]) { ctx.strokeStyle = chromeGrad(gx - 11 * u, gx + 11 * u); ctx.lineWidth = .6 * u; ctx.beginPath(); ctx.arc(gx, 76 * u, 11 * u, 0, 7); ctx.stroke(); }
@@ -116,10 +116,10 @@ export function drawCockpitRig() {
   // steering column + big wheel
   ctx.fillStyle = '#12100e'; ctx.beginPath(); ctx.moveTo(cx - 6 * u, 88 * u); ctx.lineTo(cx + 6 * u, 88 * u); ctx.lineTo(cx + 9 * u, 112 * u); ctx.lineTo(cx - 9 * u, 112 * u); ctx.fill();
   ctx.save(); ctx.translate(cx, 106 * u); ctx.scale(1, .62); ctx.rotate(st.steer * CFG.TRUCK.WHEEL_TURNS * 2 * Math.PI);
-  const R = 27 * u, wl = look('wheel'); ctx.lineCap = 'round';
-  ctx.strokeStyle = wl.rim; ctx.lineWidth = wl.rimW * u; ctx.beginPath(); ctx.arc(0, 0, R, 0, 7); ctx.stroke();
-  ctx.strokeStyle = wl.sheen; ctx.lineWidth = wl.sheenW * u; ctx.stroke();
-  ctx.strokeStyle = wl.spoke; ctx.lineWidth = wl.spokeW * u; for (let i = 0; i < wl.spokes; i++) { const an = Math.PI / 4 + i * (2 * Math.PI / wl.spokes); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(an) * R, Math.sin(an) * R); ctx.stroke(); }
+  const R = 27 * u, wl = cab.wheel; ctx.lineCap = 'round';
+  ctx.strokeStyle = wl.rim; ctx.lineWidth = 5.4 * u; ctx.beginPath(); ctx.arc(0, 0, R, 0, 7); ctx.stroke();
+  ctx.strokeStyle = wl.sheen; ctx.lineWidth = 2.6 * u; ctx.stroke();
+  ctx.strokeStyle = wl.spoke; ctx.lineWidth = 3 * u; for (let i = 0; i < 4; i++) { const an = Math.PI / 4 + i * Math.PI / 2; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(an) * R, Math.sin(an) * R); ctx.stroke(); }
   ctx.fillStyle = wl.hub; ctx.beginPath(); ctx.arc(0, 0, 7.5 * u, 0, 7); ctx.fill(); ctx.strokeStyle = chromeGrad(-7 * u, 7 * u); ctx.lineWidth = .6 * u; ctx.stroke();
   ctx.fillStyle = wl.mark; ctx.font = `bold ${5 * u}px ${MONO}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('FC', 0, 0);
   ctx.fillStyle = wl.mark; ctx.beginPath(); ctx.arc(0, -R, 1.2 * u, 0, 7); ctx.fill();   // 12-o'clock marker
@@ -128,10 +128,10 @@ export function drawCockpitRig() {
   { const bx = cx + 70 * u, g = st.gear;
     const col = g === 0 ? 0 : g < 0 ? 1.5 : [-1.5, -1.5, -.5, -.5, .5, .5, 1.5][g - 1], row = g === 0 ? 0 : g < 0 ? 1 : [-1, 1, -1, 1, -1, 1, -1][g - 1];   // R: right, back
     const lv = leverPos(col, row), kx = bx + lv.col * 2.6 * u, ky = 86 * u + lv.row * 2.6 * u;   // tweened through the neutral channel
-    const gb = look('gearbox');
+    const gb = cab.shifter;
     ctx.fillStyle = gb.boot; ctx.beginPath(); ctx.ellipse(bx, 100 * u, 6 * u, 2.6 * u, 0, 0, 7); ctx.fill();
     ctx.strokeStyle = gb.lever ?? chromeGrad(bx - 1 * u, bx + 1 * u); ctx.lineWidth = 1.4 * u; ctx.beginPath(); ctx.moveTo(bx, 100 * u); ctx.lineTo(kx, ky); ctx.stroke();
-    ctx.fillStyle = gb.knob; ctx.beginPath(); ctx.arc(kx, ky, gb.knobR * u, 0, 7); ctx.fill(); ctx.strokeStyle = gb.rim; ctx.lineWidth = .3 * u; ctx.stroke();
+    ctx.fillStyle = gb.knob; ctx.beginPath(); ctx.arc(kx, ky, 2.8 * u, 0, 7); ctx.fill(); ctx.strokeStyle = gb.rim; ctx.lineWidth = .3 * u; ctx.stroke();
     ctx.fillStyle = gb.text; ctx.font = `bold ${2.6 * u}px ${MONO}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(gearName(g), kx, ky); }
   ctx.restore();
 }

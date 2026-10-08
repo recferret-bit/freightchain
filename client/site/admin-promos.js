@@ -86,7 +86,7 @@ function form(ctx, { say, reload }) {
   const inp = (id, attrs = {}) => el('input', { id, ...attrs });
   const sel = (id, opts, attrs = {}) => el('select', { id, ...attrs }, opts.map(([v, l]) => el('option', { value: v }, l)));
   const code = inp('pf-code', { maxlength: 32, placeholder: 'e.g. WELCOME', autocapitalize: 'characters', spellcheck: 'false', autocomplete: 'off' });
-  const kind = sel('pf-kind', [['free_rides', 'Free rides'], ['tickets', 'Free paid-ride tickets'], ['cosmetic', 'Truck look (wheel / paint / shifter)']]);
+  const kind = sel('pf-kind', [['free_rides', 'Free rides'], ['tickets', 'Free paid-ride tickets'], ['cosmetic', 'Cabin colours (the whole cab interior)']]);
   const rides = inp('pf-rides', { type: 'number', min: 1, max: 20, value: 1 });
   const presets = el('span', { class: 'presets' }, [1, 3].map(n => el('button', { type: 'button', class: 'ghost', onclick: () => { rides.value = n; } }, `${n} free ride${n === 1 ? '' : 's'}`)));
   const tier = sel('pf-tier', PAID.map(t => [t, { '1h': '1 hour', '4h': '4 hours', '8h': '8 hours' }[t]])), credits = inp('pf-credits', { type: 'number', min: 1, max: 100, value: 1 }), poolId = inp('pf-pool', { type: 'number', min: 0, placeholder: 'live pool of the tier' });

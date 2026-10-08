@@ -216,10 +216,10 @@ async function redeem(e) {
 
 /* ───────── PROMO ─────────
    The code field (a code from the landing's invite block arrives as ?promo=CODE and only PRE-FILLS it – the player clicks REDEEM), what this wallet redeemed,
-   and the wardrobe: cosmetics are visuals only; the one worn is what the cockpit draws (the game reads GET /api/wardrobe when a ride loads). */
+   and the wardrobe: a cabin is a colour scheme for the whole cab, visuals only; the one worn is what the cockpit draws (the ride takes a snapshot of it when it starts – spectators and replays see the same one). */
 function renderPromo() {
   view.replaceChildren(el('h2', {}, 'REDEEM A CODE'), promoForm({ onSubmit: redeem, value: S.invite ?? '' }),
-    el('h2', {}, 'YOUR TRUCK'), el('div', { id: 'wardrobebox' }, el('p', { class: 'dim' }, 'Loading…')),
+    el('h2', {}, 'YOUR CABIN'), el('div', { id: 'wardrobebox' }, el('p', { class: 'dim' }, 'Loading…')),
     el('h2', {}, 'CODES YOU REDEEMED'), el('div', { id: 'mycodes' }, el('p', { class: 'dim' }, 'Loading…')));
   if (S.invite) { S.invite = null; $('promo-code').focus(); }
   paintPromoLists();

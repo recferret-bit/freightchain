@@ -14,8 +14,8 @@ describe('admin CLI arguments', () => {
 
   it('promo:create – free rides and cosmetics', () => {
     expect(parsePromoCreate(['THREE', '--free-rides', '3'])).toMatchObject({ code: 'THREE', effect: { kind: 'free_rides', count: 3 } });
-    expect(parsePromoCreate(['GOLD', '--cosmetic', 'wheel:gold'])).toMatchObject({ effect: { kind: 'cosmetic', slot: 'wheel', item: 'gold' } });
-    expect(parsePromoCreate(['PAINT', '--cosmetic', 'truck_color:blue'])).toMatchObject({ effect: { kind: 'cosmetic', slot: 'truck_color', item: 'blue' } });
+    expect(parsePromoCreate(['NOIR', '--cosmetic', 'cabin:noir'])).toMatchObject({ effect: { kind: 'cosmetic', slot: 'cabin', item: 'noir' } });
+    expect(parsePromoCreate(['BLUE', '--cosmetic', 'cabin:midnight'])).toMatchObject({ effect: { kind: 'cosmetic', slot: 'cabin', item: 'midnight' } });
   });
 
   it('promo:create – readable errors', () => {
@@ -27,10 +27,10 @@ describe('admin CLI arguments', () => {
     expect(parsePromoCreate(['A1', '--tier', '1h', '--credits', '1', '--start', 'soon'])).toMatch(/--start must be a date/);
     expect(parsePromoCreate(['A1', '--bogus'])).toMatch(/Unknown option/);
     expect(parsePromoCreate(['A1'])).toMatch(/exactly one effect/);
-    expect(parsePromoCreate(['A1', '--free-rides', '2', '--cosmetic', 'wheel:gold'])).toMatch(/exactly one effect/);
+    expect(parsePromoCreate(['A1', '--free-rides', '2', '--cosmetic', 'cabin:noir'])).toMatch(/exactly one effect/);
     expect(parsePromoCreate(['A1', '--free-rides', '0'])).toBe('--free-rides must be a whole number ≥ 1');
     expect(parsePromoCreate(['A1', '--cosmetic', 'seat:x'])).toMatch(/--cosmetic must be/);
-    expect(parsePromoCreate(['A1', '--cosmetic', 'wheel'])).toMatch(/--cosmetic must be/);
+    expect(parsePromoCreate(['A1', '--cosmetic', 'cabin'])).toMatch(/--cosmetic must be/);
   });
 
   it('tickets:grant', () => {

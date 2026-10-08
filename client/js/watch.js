@@ -1,3 +1,4 @@
+import { setLoadout } from './cosmetics.js';
 import { CFG } from './config.js';
 import { st, dn } from './state.js';
 import { API_BASE } from './hosts.js';
@@ -57,7 +58,7 @@ async function poll(from) {
   const j = await get(from);
   const first = !watch.ride;
   watch.ride = j.ride; watch.now = j.now; watch.skew = j.now - Date.now(); watch.rec = j.recording; watch.totals = j.totals; watch.viewers = j.viewers;
-  if (first) { CFG.RIDE_MIN_SECONDS = j.ride.minSeconds; CFG.COMPLETE_DIST = j.ride.completeDist; watch.follow = j.ride.live; }
+  if (first) { CFG.RIDE_MIN_SECONDS = j.ride.minSeconds; CFG.COMPLETE_DIST = j.ride.completeDist; watch.follow = j.ride.live; setLoadout({ cabin: j.ride.cabin }); }   // the driver's cab (null = the classic one): a replay draws the cockpit it was really driven in
   if (watch.started && j.ride.route && j.ride.route !== env.theme?.id && THEMES.some(t => t.id === j.ride.route)) { selectTheme(j.ride.route, false); replaceObstacles(); }   // the route arrives with the driver's first heartbeat (it re-rolls the road: obstacles again)
   if (j.batches.length) addBatches(j.batches);
   for (const e of j.events) addEvent(e);

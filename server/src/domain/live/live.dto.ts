@@ -45,6 +45,8 @@ export interface WatchRideDto {
   wallet: string;
   tier: string;
   route: string | null;
+  /** the cabin colour scheme the driver wore (null = the classic one) */
+  cabin: string | null;
   seed: number;
   status: string;
   /** running and still sending heartbeats */

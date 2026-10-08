@@ -1,17 +1,15 @@
-/* The cosmetics catalog: what a promo code can unlock and a player can equip. VISUALS ONLY – no item changes handling, shifting or any rule of the game.
+/* The cosmetics catalog: what a promo code can unlock and a player can wear. VISUALS ONLY – no item changes handling, shifting or any rule of the game.
+   Today there is ONE slot, `cabin`: a colour scheme for the whole inside of the cab (cab interior, hood and fenders, dashboard, steering wheel, shifter). Later an
+   NFT will replace / extend these items – the slot model stays so more slots (or items from a collection) can be added without touching the plumbing.
    Mirrored by client/js/cosmetics.js (a leaf module: the landing's dash cards run the cockpit without three.js) – keep the ids and defaults equal;
-   test/unit/domain/cosmetics.spec.ts reads that file and fails on drift. To add an item: append it here AND in the client module, then draw it in the
-   cockpit (steering wheel / hood / shifter live in client/js/cockpit/rig.js). The first item of a slot is its default: everybody owns it, no code gives it. */
-export const COSMETIC_SLOTS = ['wheel', 'truck_color', 'gearbox'] as const;
+   test/unit/domain/economy/cosmetics.spec.ts reads that file and fails on drift. To add an item: append it here AND in the client module and give it a palette
+   in LOOKS there. The first item of a slot is its default: everybody owns it, no code gives it. */
+export const COSMETIC_SLOTS = ['cabin'] as const;
 export type CosmeticSlot = (typeof COSMETIC_SLOTS)[number];
 
 export const COSMETIC_ITEMS: Readonly<Record<CosmeticSlot, readonly string[]>> = {
-  /** the steering wheel: rim, spokes, hub */
-  wheel: ['classic', 'sport', 'wood', 'gold'],
-  /** the hood and fender paint */
-  truck_color: ['red', 'blue', 'green', 'black', 'yellow'],
-  /** the floor shifter: knob and boot */
-  gearbox: ['stick', 'chrome', 'wood', 'racing'],
+  /** the cab: classic (today's cab), midnight (blue), forest (green), sunset (orange), arctic (ice white), noir (black and gold) */
+  cabin: ['classic', 'midnight', 'forest', 'sunset', 'arctic', 'noir'],
 };
 
 export const isCosmeticSlot = (v: unknown): v is CosmeticSlot => typeof v === 'string' && (COSMETIC_SLOTS as readonly string[]).includes(v);
@@ -22,4 +20,4 @@ export const isUnlockableCosmetic = (slot: CosmeticSlot, item: unknown): boolean
 
 /** What a wallet wears, every slot always set. */
 export type Loadout = Record<CosmeticSlot, string>;
-export const defaultLoadout = (): Loadout => ({ wheel: defaultCosmetic('wheel'), truck_color: defaultCosmetic('truck_color'), gearbox: defaultCosmetic('gearbox') });
+export const defaultLoadout = (): Loadout => ({ cabin: defaultCosmetic('cabin') });

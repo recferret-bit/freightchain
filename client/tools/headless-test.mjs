@@ -100,14 +100,16 @@ fire('keydown','KeyO'); step(30); check(!st.engineOn&&!G.dn.cab,'engine off: the
 // what the lobby's live feed and Night Owl read from every heartbeat: follows the RUNNING clock (not the last press of N), and the route is a real theme id
 G.dn.run=false; G.setClock(23,true,false); step(60); const nightX=G.online.extra(); G.setClock(12,true,false); step(60); const dayX=G.online.extra();
 check(nightX.night===true&&dayX.night===false&&G.THEMES.some(t=>t.id===dayX.route),'heartbeat extras follow the clock: night at 23:00 ('+nightX.night+'), day at 12:00 ('+dayX.night+'), route '+dayX.route);
-// cosmetics (promo wardrobe): the default loadout draws exactly the colours the cockpit always had; junk values fall back; every item draws without an exception
-{ const C=G.cosmetics, l=C.look; C.setLoadout(null);
-  check(l('truck_color').top==='#b0281f'&&l('truck_color').bottom==='#6e130f'&&l('truck_color').fender==='#5c120e'&&l('truck_color').line==='rgba(255,200,190,.35)','default hood paint = the original red');
-  check(l('wheel').rim==='#0e0d0b'&&l('wheel').sheen==='#2b2722'&&l('wheel').spoke==='#1b1814'&&l('wheel').hub==='#26221d'&&l('wheel').mark==='#ffcf5a'&&l('wheel').rimW===5.4&&l('wheel').sheenW===2.6&&l('wheel').spokeW===3&&l('wheel').spokes===4,'default steering wheel = the original');
-  check(l('gearbox').knob==='#17150f'&&l('gearbox').knobR===2.8&&l('gearbox').rim==='#555'&&l('gearbox').boot==='#0c0b0a'&&l('gearbox').lever===null&&l('gearbox').text==='#e8e2cf','default shifter = the original');
-  C.setLoadout({wheel:'gold',truck_color:'nonsense',gearbox:7,seat:'x'}); check(C.loadout.wheel==='gold'&&C.loadout.truck_color==='red'&&C.loadout.gearbox==='stick'&&!('seat' in C.loadout),'a loadout keeps what is known and falls back to the default for junk');
-  let worn=0; for(const slot of Object.keys(C.COSMETICS)) for(const item of C.COSMETICS[slot]){ C.setLoadout({[slot]:item}); step(2); worn++; }
-  C.setLoadout(null); check(worn>=10&&errors.length===0,'every cosmetic item draws without an exception ('+worn+' worn)'); }
+// cosmetics (promo wardrobe): the CLASSIC cabin draws exactly the colours the cockpit always had; junk values fall back; every cabin draws without an exception
+{ const C=G.cosmetics, cab=()=>C.look('cabin'); C.setLoadout(null);
+  const c=cab();
+  check(c.interior.join()==='#26221d,#0c0a08'&&c.frame==='#3d372f'&&c.dash.join()==='#4b473f,#27241f,#14120f,#0a0908'&&c.dashEdge==='#5a554a'&&c.binnacle==='#0b0a08'&&c.binnacleEdge==='#34302a','classic cabin: the original interior, window frame, dashboard and instrument housing');
+  check(c.hood.top==='#b0281f'&&c.hood.bottom==='#6e130f'&&c.hood.fender==='#5c120e'&&c.hood.line==='rgba(255,200,190,.35)','classic cabin: the original red hood');
+  check(c.wheel.rim==='#0e0d0b'&&c.wheel.sheen==='#2b2722'&&c.wheel.spoke==='#1b1814'&&c.wheel.hub==='#26221d'&&c.wheel.mark==='#ffcf5a'&&c.shifter.knob==='#17150f'&&c.shifter.rim==='#555'&&c.shifter.boot==='#0c0b0a'&&c.shifter.lever===null&&c.shifter.text==='#e8e2cf','classic cabin: the original steering wheel and shifter');
+  C.setLoadout({cabin:'noir',seat:'x'}); check(C.loadout.cabin==='noir'&&!('seat' in C.loadout),'a loadout keeps a known cabin and drops what it does not know');
+  C.setLoadout({cabin:'<script>'}); check(C.loadout.cabin==='classic','a junk cabin falls back to the classic one');
+  let worn=0; for(const item of C.COSMETICS.cabin){ C.setLoadout({cabin:item}); step(2); worn++; }
+  C.setLoadout(null); check(worn>=6&&errors.length===0,'every cabin draws without an exception ('+worn+' worn)'); }
 out.push(...checks); out.push('errors='+errors.length+(errors[0]?' '+errors[0].message:''));
 console.log(out.join('\n'));
 const failed=checks.filter(c=>c.startsWith('FAIL'));

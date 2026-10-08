@@ -117,7 +117,7 @@ check('RE-JUDGE: the checks run again and replace the decision (FLAGGED again)',
 
 // ── PROMO CODES: create with the form (signed), see it active, a player redeems it, who used it, disable (signed)
 await A.ev('location.hash = "#promos"');
-check('promos: the tab renders with the ACTIVE filter, an empty list and the form', await until(async () => (await A.ev('!!document.getElementById("promo-form")')) === true) && (await A.ev('document.querySelector("#promo-states .on")?.dataset.state')) === 'active' && /No active promo codes/.test(await A.ev('document.getElementById("view").textContent')));
+check('promos: the tab renders with the ACTIVE filter, the list (or its empty card – other suites may have seeded codes) and the form', await until(async () => (await A.ev('!!document.getElementById("promo-form")')) === true) && (await A.ev('document.querySelector("#promo-states .on")?.dataset.state')) === 'active' && ((await A.ev('!!document.getElementById("promo-table")')) || /No active promo codes/.test(await A.ev('document.getElementById("view").textContent'))));
 const setField = (id, v) => A.ev(`(() => { const e = document.getElementById(${JSON.stringify(id)}); e.value = ${JSON.stringify(v)}; e.dispatchEvent(new Event('input', { bubbles: true })); e.dispatchEvent(new Event('change', { bubbles: true })); })()`);
 const submitPromo = () => A.ev('document.getElementById("promo-form").requestSubmit()');
 await A.ev('[...document.querySelectorAll(".presets button")].find(b => /3 free rides/.test(b.textContent)).click()');
@@ -131,9 +131,9 @@ const first = await post('promo/redeem', { code: 'e2e three' }, promoRider.cooki
 check('promos: a player redeems it (+3 free rides)', first.r.status === 200 && first.j.kind === 'free_rides' && first.j.freeRides === 8, JSON.stringify(first.j));
 await A.ev('document.getElementById("refresh").click()');   // reload the tab (a player redeemed meanwhile)
 check('promos: the list counts the use (1 / 5) and USED BY PLAYERS shows the wallet and what it got', await until(async () => /1 \/ 5/.test(await A.ev('document.getElementById("promo-table")?.textContent || ""')) && (await A.ev('document.getElementById("promo-used")?.textContent || ""')).includes(promoRider.short) && /3 free rides/.test(await A.ev('document.getElementById("promo-used").textContent'))));
-await setField('pf-code', 'E2E-WHEEL'); await setField('pf-kind', 'cosmetic'); await setField('pf-slot', 'wheel'); await setField('pf-item', 'gold');
+await setField('pf-code', 'E2E-CABIN'); await setField('pf-kind', 'cosmetic'); await setField('pf-slot', 'cabin'); await setField('pf-item', 'noir');
 await submitPromo();
-check('promos: a cosmetic code through the same form (wheel: gold)', await until(async () => /E2E-WHEEL/.test(await A.ev('document.getElementById("promo-table")?.textContent || ""')) && /wheel: gold/.test(await A.ev('document.getElementById("promo-table").textContent'))));
+check('promos: a cabin code through the same form (cabin: noir)', await until(async () => /E2E-CABIN/.test(await A.ev('document.getElementById("promo-table")?.textContent || ""')) && /cabin: noir/.test(await A.ev('document.getElementById("promo-table").textContent'))));
 await setField('pf-code', ''); await submitPromo();
 check('promos: a form mistake is explained on the page and nothing is signed', await until(async () => /Give the code a name/.test(await A.ev('document.getElementById("promo-note")?.textContent || ""'))) && (await A.ev('window.__signed')) === signedBefore + 2, await A.ev('document.getElementById("promo-note")?.textContent'));
 await A.shot('promos-desktop');

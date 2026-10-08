@@ -5,6 +5,8 @@ import { RideStatus } from '../../../../domain/rides/ride-status.js';
 import { ConflictError, NotFoundError } from '../../../../domain/shared/errors.js';
 import { AnalyticsPort } from '../../../ports/analytics/analytics.port.js';
 import { RulesConfigPort } from '../../../ports/config/rules-config.port.js';
+import { toWardrobeDto } from '../../../../domain/economy/wardrobe.dto.js';
+import { CosmeticRepositoryPort } from '../../../ports/players/cosmetic.repository.port.js';
 import { PlayerRepositoryPort } from '../../../ports/players/player.repository.port.js';
 import { RideRepositoryPort } from '../../../ports/rides/ride.repository.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
@@ -24,6 +26,7 @@ interface StartFacts {
 /**
  * The game page pressed START: the server clock for this ride starts now. Under the wallet's row lock, so at most ONE ride per wallet runs at a time
  * (a wallet can own two PAID ready rides when a late payment lands – both are owed, but they run one after the other). A ride that is not "created" is a 409.
+ * The ride also keeps the cabin the wallet wears at this moment (a visual – the game wears the one in the answer).
  */
 @CommandHandler(StartRideCommand)
 export class StartRideHandler implements ICommandHandler<StartRideCommand, RideDto> {
@@ -31,6 +34,7 @@ export class StartRideHandler implements ICommandHandler<StartRideCommand, RideD
     private readonly lookup: RideLookupService,
     private readonly rides: RideRepositoryPort,
     private readonly players: PlayerRepositoryPort,
+    private readonly cosmetics: CosmeticRepositoryPort,
     private readonly rules: RulesConfigPort,
     private readonly transactions: TransactionPort,
     private readonly clock: ClockPort,
@@ -52,7 +56,8 @@ export class StartRideHandler implements ICommandHandler<StartRideCommand, RideD
       } else if (running) {
         throw new ConflictError('another ride is in progress');
       }
-      ride.start(now);
+      const wardrobe = toWardrobeDto(await this.cosmetics.listUnlocked(wallet, tx), await this.cosmetics.listEquipped(wallet, tx));
+      ride.start(now, wardrobe.equipped.cabin);   // the cabin worn right now (owned ones only) goes with the ride: live streams and replays draw it
       const saved = await this.rides.save(ride, tx);
       return { dto: toRideDto(saved), started: saved.snapshot(), failed } satisfies StartFacts;
     });

@@ -64,9 +64,9 @@ describe('PromoPrismaRepository (PostgreSQL)', () => {
 
   it('every effect kind and the new fields round-trip: free rides, a cosmetic, a pinned pool, description, start', async () => {
     await repo.insert(promo('RIDES', { effect: { kind: 'free_rides', count: 3 }, description: 'Three rides', startsAt: at(5) }));
-    await repo.insert(promo('WHEEL', { effect: { kind: 'cosmetic', slot: 'wheel', item: 'gold' } }));
+    await repo.insert(promo('WHEEL', { effect: { kind: 'cosmetic', slot: 'cabin', item: 'noir' } }));
     await repo.insert(promo('PIN', { effect: ticketEffect({ tier: '4h', poolId: 7, credits: 3 }), note: 'private' }));
-    for (const code of ['RIDES', 'WHEEL', 'PIN']) expect((await repo.findByCode(code))?.snapshot(), code).toEqual(promo(code, code === 'RIDES' ? { effect: { kind: 'free_rides', count: 3 }, description: 'Three rides', startsAt: at(5) } : code === 'WHEEL' ? { effect: { kind: 'cosmetic', slot: 'wheel', item: 'gold' } } : { effect: ticketEffect({ tier: '4h', poolId: 7, credits: 3 }), note: 'private' }).snapshot());
+    for (const code of ['RIDES', 'WHEEL', 'PIN']) expect((await repo.findByCode(code))?.snapshot(), code).toEqual(promo(code, code === 'RIDES' ? { effect: { kind: 'free_rides', count: 3 }, description: 'Three rides', startsAt: at(5) } : code === 'WHEEL' ? { effect: { kind: 'cosmetic', slot: 'cabin', item: 'noir' } } : { effect: ticketEffect({ tier: '4h', poolId: 7, credits: 3 }), note: 'private' }).snapshot());
   });
 
   it('takeRedemption never before startsAt – and takes from that very instant', async () => {

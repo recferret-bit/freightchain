@@ -40,7 +40,7 @@ export class WatchRideHandler implements IQueryHandler<WatchRideQuery, WatchDto>
     return {
       now: now.getTime(),
       ride: {
-        id: ride.id, wallet: ride.wallet, tier: ride.tier, route: ride.route, seed: ride.seed, status: ride.status, live, timeScale: ride.timeScale,
+        id: ride.id, wallet: ride.wallet, tier: ride.tier, route: ride.route, cabin: ride.cabin, seed: ride.seed, status: ride.status, live, timeScale: ride.timeScale,
         minSeconds: ride.minSeconds, completeDist: ride.completeDist, startedAt: ride.startedAt.getTime(), endedAt: ride.endedAt?.getTime() ?? null,
         driveSeconds: Math.round(ride.driveSeconds), distance: Math.round(ride.distance), hull: ride.hull === null ? null : Math.round(ride.hull),
       },

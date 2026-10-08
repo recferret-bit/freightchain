@@ -33,6 +33,15 @@ describe('Ride – creation', () => {
 });
 
 describe('Ride – lifecycle guards', () => {
+  it('starting stamps the cabin the ride is driven in (none = null, the classic one for everything before cabins)', () => {
+    const r = freeRide();
+    expect(r.cabin).toBeNull();
+    r.start(T0, 'noir');
+    expect(r.cabin).toBe('noir');
+    const plain = freeRide(); plain.start(T0);
+    expect(plain.cabin).toBeNull();
+  });
+
   it('cannot start twice, nor start an unpaid order', () => {
     const r = running();
     expect(() => r.start(at(1))).toThrow(new ConflictError('ride is running'));

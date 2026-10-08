@@ -35,8 +35,8 @@ describe('AdminPromosHttpController', () => {
         code: 'welcome', effect: { kind: 'free_rides', count: 3 }, description: 'Hi', maxRedemptions: 50, perWallet: 2,
         startsAt: new Date(1_800_000_000_000), expiresAt: new Date(1_800_086_400_000), note: null,
       });
-      expect(promoBodySchema.parse({ code: 'X1Y', effect: { kind: 'cosmetic', slot: 'wheel', item: 'gold' } })).toEqual({
-        code: 'X1Y', effect: { kind: 'cosmetic', slot: 'wheel', item: 'gold' }, description: null, maxRedemptions: null, perWallet: 1, startsAt: null, expiresAt: null, note: null,
+      expect(promoBodySchema.parse({ code: 'X1Y', effect: { kind: 'cosmetic', slot: 'cabin', item: 'noir' } })).toEqual({
+        code: 'X1Y', effect: { kind: 'cosmetic', slot: 'cabin', item: 'noir' }, description: null, maxRedemptions: null, perWallet: 1, startsAt: null, expiresAt: null, note: null,
       });
     });
     it('tickets: a missing / blank pool id is "the live pool of the tier" – and the parse is the same for the text to sign and the change (key order is the schema\'s)', () => {
