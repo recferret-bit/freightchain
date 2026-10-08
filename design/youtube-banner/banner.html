@@ -1,0 +1,171 @@
+<!doctype html>
+<!-- YouTube channel banner, 2048×1152. ?v=1..5 picks the layout; ?guides=1 draws YouTube's safe areas. Rendered by build.mjs.
+     Safe areas at 2048 wide (YouTube's 2560 template × .8): TV = everything · desktop = the full-width strip y 407–745 · phone + text/logo = the centre 1235×338 (x 406–1641). -->
+<html><head><meta charset="utf-8"><title>Freight Chain banner</title>
+<style>
+@font-face{font-family:SFM;src:url(file:///System/Library/Fonts/SFNSMono.ttf);font-weight:100 900}
+:root{--bg:#0b0a09;--panel:#17130f;--dash:#26221d;--line:#4a453b55;--amber:#ffcf5a;--gear:#ffb03a;--needle:#ff7a2e;--cream:#e8e2cf;--dim:#9d957f;
+  --lcd:#7cff7c;--lcd-bg:#0d2410;--red:#ff3b30;--sand:#e6c9a0;--asphalt:#34322f;--s1:#9945FF;--s2:#14F195;--sol:linear-gradient(90deg,var(--s1),var(--s2));
+  --mono:SFM,Menlo,ui-monospace,monospace}
+*{box-sizing:border-box;margin:0}
+html,body{width:2048px;height:1152px;overflow:hidden;background:var(--bg);color:var(--cream);font:400 24px/1.3 var(--mono)}
+.v{position:absolute;inset:0;overflow:hidden;display:none}.v.on{display:block}
+.shot{position:absolute;background-size:cover;background-position:center 30%;background-repeat:no-repeat}
+.abs{position:absolute}
+/* shared pieces (landing style) */
+.logo{display:flex;align-items:center;gap:16px;color:var(--amber);font-weight:800;letter-spacing:5px;font-size:34px;white-space:nowrap}
+.logo svg{width:62px;height:62px;flex:none;filter:drop-shadow(0 0 14px #9945ff88)}.logo small{font-size:15px;letter-spacing:5px;color:var(--dim);font-weight:500;margin-left:4px}
+h1{font-weight:900;color:var(--amber);line-height:.98;letter-spacing:-1px;text-shadow:0 4px 0 #7a4a00,0 0 46px #ffb02e66,0 6px 30px #000}
+h1 b{color:var(--cream);font-weight:900;text-shadow:0 4px 0 #3b362c,0 6px 30px #000}
+.chips{display:flex;gap:12px;flex-wrap:nowrap}
+.chip{border:2px solid #1e4a22;background:var(--lcd-bg);color:var(--lcd);text-shadow:0 0 10px #7cff7c88;border-radius:999px;padding:6px 18px;font-size:20px;font-weight:700;letter-spacing:2px;white-space:nowrap}
+.chip.dot::before{content:"";display:inline-block;width:11px;height:11px;border-radius:50%;background:var(--lcd);margin-right:10px;box-shadow:0 0 10px var(--lcd);vertical-align:1px}
+.chip.am{border-color:#ffcf5a66;background:#1b1408cc;color:var(--amber);text-shadow:0 0 10px #ffb02e66}
+.sol{display:inline-flex;align-items:center;gap:12px;padding:7px 20px 7px 14px;border-radius:999px;background:#0b0a09e6;border:2px solid transparent;
+  background-image:linear-gradient(#0b0a09f0,#0b0a09f0),var(--sol);background-origin:border-box;background-clip:padding-box,border-box;font-size:19px;font-weight:700;letter-spacing:3px;white-space:nowrap}
+.sol svg{width:30px;height:24px}.sol span{background:var(--sol);-webkit-background-clip:text;color:transparent}
+.cta{display:inline-block;background:var(--amber);color:#1b1408;font-weight:900;letter-spacing:2px;border-radius:8px;padding:14px 28px;font-size:26px;box-shadow:0 0 34px #ffb02e66,0 4px 0 #7a4a00;white-space:nowrap}
+.url{color:var(--cream);font-weight:700;letter-spacing:3px;font-size:22px}.url i{font-style:normal;color:var(--amber)}
+.solbar{position:absolute;left:0;right:0;height:6px;background:var(--sol);box-shadow:0 0 24px #9945ff99}
+.stamp{display:inline-block;border:6px solid var(--red);color:var(--red);font-weight:900;letter-spacing:6px;padding:4px 22px;transform:rotate(-6deg);background:#1a0605d0;box-shadow:0 0 40px #ff3b3055}
+.grain::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,#0000 0 3px,#0000000f 3px 4px)}
+/* the landing's road divider: asphalt, two edge lines, dashed centre */
+.road{position:absolute;left:0;right:0;height:46px;background:linear-gradient(180deg,#0000 0,var(--asphalt) 18%,var(--asphalt) 82%,#0000 100%)}
+.road::before,.road::after{content:"";position:absolute;left:0;right:0;height:3px;background:var(--cream);opacity:.85}.road::before{top:10px}.road::after{bottom:10px}
+.road i{position:absolute;left:0;right:0;top:50%;margin-top:-1.5px;height:3px;background:repeating-linear-gradient(90deg,var(--cream) 0 56px,#0000 56px 112px)}
+.gd{position:absolute;top:407px;height:338px;outline:3px dashed #0ff;z-index:99;left:0;right:0}.gd+.gd{left:406px;right:auto;width:1235px;outline-color:#f0f}
+
+/* ── 1 · MOSAIC: skewed wall of gameplay, dash plate in the middle ── */
+#v1 .wall{position:absolute;left:-180px;right:-180px;top:-40px;bottom:-40px;display:grid;grid-template-columns:repeat(6,1fr);grid-template-rows:417px 358px 417px;gap:14px;transform:skewX(-9deg)}
+#v1 .wall div{background-size:cover;background-position:center 28%;filter:saturate(1.15) brightness(.5)}
+#v1 .wall div.mid{filter:saturate(1.2) brightness(1)}
+#v1 .plate{left:430px;width:1188px;top:392px;height:368px;background:linear-gradient(180deg,#120f0cf5,#0b0a09f8);border:2px solid #ffcf5a40;border-radius:18px;box-shadow:0 0 0 10px #0b0a0999,0 30px 80px #000;
+  display:grid;grid-template-columns:auto 1fr;gap:0 40px;align-content:center;padding:0 44px;transform:skewX(-9deg)}
+#v1 .plate>*{transform:skewX(9deg)}
+#v1 h1{font-size:76px;grid-column:1/3;margin:16px 0 18px}
+#v1 .row{grid-column:1/3;display:flex;justify-content:space-between;align-items:center}
+
+/* ── 2 · NIGHT DRIVE: one big windscreen, headlights, text on the dark side ── */
+#v2 .shot{inset:-180px -40px -220px -130px;background-position:0 0;background-size:2468px auto}
+#v2 .fade{position:absolute;inset:0;background:linear-gradient(90deg,#0000 36%,#0b0a09cc 50%,#0b0a09 66%,#0b0a09 100%),linear-gradient(180deg,#0b0a09 0,#0000 26%,#0000 72%,#0b0a09 100%)}
+#v2 .txt{left:922px;top:407px;width:719px;height:338px;display:flex;flex-direction:column;justify-content:center;gap:16px}
+#v2 h1{font-size:50px}
+#v2 .cta{font-size:22px;padding:12px 22px}
+#v2 .glow{position:absolute;left:420px;top:420px;width:900px;height:420px;background:radial-gradient(closest-side,#9945ff38,#0000);mix-blend-mode:screen}
+
+/* ── 3 · FIVE ROUTES: five slices, one per route ── */
+#v3 .sl{position:absolute;top:0;bottom:0;transform:skewX(-10deg);overflow:hidden;border-left:6px solid var(--bg)}
+#v3 .sl .shot{inset:0 -160px;transform:skewX(10deg);background-size:auto 1400px;background-position:center 211px;background-color:var(--bg);filter:saturate(1.2)}
+#v3 .sl::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,#0b0a09 0,#0b0a09 30%,#0b0a09e6 40%,#0b0a0999 50%,#0000 58%,#0000 68%,#0b0a09aa 76%,#0b0a09 100%)}
+#v3 .lab{position:absolute;top:688px;font-size:19px;font-weight:800;letter-spacing:3px;color:var(--cream);background:#0b0a09d9;border:2px solid #ffcf5a55;border-radius:6px;padding:5px 12px;white-space:nowrap;z-index:2}
+#v3 .lab i{font-style:normal;color:var(--amber)}
+#v3 .head{left:436px;width:1180px;top:410px;display:flex;align-items:flex-start;justify-content:space-between;z-index:3}
+#v3 h1{font-size:48px;white-space:nowrap}
+#v3 .side{position:absolute;right:0;top:0;display:flex;flex-direction:column;align-items:flex-end;gap:12px;padding-top:4px}
+
+/* ── 4 · DASH: headline + fanned gameplay cards + LCD trip computer, over a Solana glow ── */
+#v4 .sky{inset:0;background-size:cover;background-position:center 70%;opacity:.8;filter:saturate(1.2)}
+#v4 .dark{position:absolute;inset:0;background:linear-gradient(180deg,#0b0a09 0,#0b0a0966 30%,#0b0a0955 55%,#0b0a09 85%),linear-gradient(90deg,#0b0a09 0,#0b0a09aa 35%,#0000 60%)}
+#v4 .glow{position:absolute;left:1080px;top:260px;width:900px;height:620px;background:radial-gradient(closest-side,#9945ffaa,#9945ff22 60%,#0000);filter:blur(10px)}
+#v4 .glow2{position:absolute;left:1500px;top:480px;width:600px;height:420px;background:radial-gradient(closest-side,#14f19555,#0000)}
+#v4 .txt{left:436px;top:407px;width:630px;height:338px;display:flex;flex-direction:column;justify-content:center;gap:16px}
+#v4 h1{font-size:66px}
+#v4 .card{position:absolute;width:420px;height:236px;border-radius:14px;background-size:cover;background-position:center 30%;border:3px solid #ffcf5a;box-shadow:0 0 0 6px #0b0a09,0 26px 60px #000c}
+#v4 .card em{position:absolute;left:12px;top:10px;font-style:normal;font-size:16px;font-weight:800;letter-spacing:2px;color:var(--lcd);background:var(--lcd-bg);border:2px solid #1e4a22;border-radius:5px;padding:2px 9px;text-shadow:0 0 8px #7cff7c88}
+
+/* ── 5 · ONE MISTAKE: the crash (left, the game's own SHIFT OVER stamp) vs. the clean drive (right) ── */
+#v5 .a{inset:0 1000px 0 0;background-color:var(--bg);background-size:auto 900px;background-position:-200px -10px;clip-path:polygon(0 0,100% 0,88% 100%,0 100%);-webkit-mask-image:linear-gradient(180deg,#000 66%,#0000 76%)}
+#v5 .b{inset:0 -100px 0 940px;background-size:auto 1250px;background-position:50% -60px;filter:saturate(1.15)}
+#v5 .split{position:absolute;top:0;bottom:0;left:985px;width:12px;background:var(--sol);transform:skewX(-5.7deg);box-shadow:0 0 30px #9945ffcc}
+#v5 .fade{position:absolute;inset:0;background:linear-gradient(180deg,#0b0a09 0,#0b0a0900 30%,#0b0a0900 70%,#0b0a09 100%),linear-gradient(90deg,#0000 50%,#0b0a09cc 56%,#0b0a09cc 78%,#0b0a0966 84%,#0000 90%)}
+#v5 .txt{left:1040px;top:407px;width:600px;height:338px;display:flex;flex-direction:column;justify-content:center;gap:14px}
+#v5 h1{font-size:60px}
+#v5 h1 .r{color:var(--red);text-shadow:0 4px 0 #5a0d08,0 0 46px #ff3b3088,0 6px 30px #000}
+#v5 .tag{font-size:21px;font-weight:700;letter-spacing:1px;color:var(--cream);text-shadow:0 2px 10px #000}#v5 .tag i{font-style:normal;color:var(--lcd)}
+</style></head>
+<body class="grain">
+
+<template id="t-logo"><div class="logo"><svg viewBox="0 0 512 512"><defs><clipPath id="c"><rect width="512" height="512" rx="112"/></clipPath><radialGradient id="glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#9945FF" stop-opacity=".9"/><stop offset="1" stop-color="#9945FF" stop-opacity="0"/></radialGradient><linearGradient id="lane" x1="0" y1="206" x2="0" y2="512" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#9945FF"/><stop offset="1" stop-color="#14F195"/></linearGradient></defs><rect width="512" height="512" rx="112" fill="#0b0a09"/><g clip-path="url(#c)"><ellipse cx="256" cy="206" rx="300" ry="120" fill="url(#glow)"/><polygon points="256,206 36,512 476,512" fill="#26221d"/><polygon points="256,206 36,512 70,512" fill="url(#lane)"/><polygon points="256,206 442,512 476,512" fill="url(#lane)"/><g fill="url(#lane)"><polygon points="252,250 260,250 263,286 249,286"/><polygon points="246,320 266,320 273,380 239,380"/><polygon points="234,420 278,420 290,512 222,512"/></g></g></svg><span>FREIGHT CHAIN <small>DESERT RUN</small></span></div></template>
+<template id="t-sol"><div class="sol"><svg viewBox="0 0 30 24"><defs><linearGradient id="sg" x1="0" x2="1"><stop offset="0" stop-color="#9945FF"/><stop offset="1" stop-color="#14F195"/></linearGradient></defs><g fill="url(#sg)"><path d="M6 0h24l-6 6H0z"/><path d="M0 9h24l6 6H6z"/><path d="M6 18h24l-6 6H0z"/></g></svg><span>BUILT ON SOLANA · DEVNET</span></div></template>
+
+<!-- 1 · MOSAIC -->
+<section class="v" id="v1">
+  <div class="wall">
+    <div style="background-image:url(shots/brenner-dusk.jpg)"></div><div style="background-image:url(shots/r66-day.jpg)"></div><div style="background-image:url(shots/siberia-night.jpg)"></div><div style="background-image:url(shots/pan-day.jpg)"></div><div style="background-image:url(shots/stuart-dust.jpg)"></div><div style="background-image:url(shots/r66-night.jpg)"></div>
+    <div class="mid" style="background-image:url(shots/stuart-night.jpg)"></div><div class="mid" style="background-image:url(shots/siberia-frost.jpg)"></div><div class="mid"></div><div class="mid"></div><div class="mid" style="background-image:url(shots/brenner-dusk.jpg)"></div><div class="mid" style="background-image:url(shots/stuart-dust.jpg)"></div>
+    <div style="background-image:url(shots/pan-dawn.jpg)"></div><div style="background-image:url(shots/crash.jpg)"></div><div style="background-image:url(shots/r66-day.jpg)"></div><div style="background-image:url(shots/brenner-dusk.jpg)"></div><div style="background-image:url(shots/siberia-frost.jpg)"></div><div style="background-image:url(shots/stuart-night.jpg)"></div>
+  </div>
+  <div class="solbar" style="top:382px"></div><div class="solbar" style="top:764px"></div>
+  <div class="plate abs">
+    <slot data-t="logo"></slot><div style="justify-self:end;align-self:center"><slot data-t="sol"></slot></div>
+    <h1>THE ROAD NEVER ENDS.<br><b>YOUR SHIFT DOES.</b></h1>
+    <div class="row"><div class="chips"><span class="chip dot">5 FREE RIDES</span><span class="chip">5 ROUTES</span><span class="chip am">WEEKLY SOL POOL</span></div><span class="url">PLAY ▸ <i>freightchain.fun</i></span></div>
+  </div>
+</section>
+
+<!-- 2 · NIGHT DRIVE -->
+<section class="v" id="v2">
+  <div class="shot" style="background-image:url(shots/r66-night.jpg)"></div>
+  <div class="glow"></div><div class="fade"></div>
+  <div class="solbar" style="top:1146px"></div>
+  <div class="txt abs">
+    <slot data-t="logo"></slot>
+    <h1>THE ROAD NEVER ENDS.<br><b>YOUR SHIFT DOES.</b></h1>
+    <div style="display:flex;gap:16px;align-items:center"><span class="cta">5 FREE RIDES ▸</span><slot data-t="sol"></slot></div>
+  </div>
+</section>
+
+<!-- 3 · FIVE ROUTES -->
+<section class="v" id="v3">
+  <div class="sl" style="left:-120px;width:700px"><div class="shot" style="background-image:url(shots/r66-day.jpg)"></div></div>
+  <div class="sl" style="left:590px;width:330px"><div class="shot" style="background-image:url(shots/stuart-dust.jpg)"></div></div>
+  <div class="sl" style="left:900px;width:330px"><div class="shot" style="background-image:url(shots/siberia-frost.jpg)"></div></div>
+  <div class="sl" style="left:1210px;width:330px"><div class="shot" style="background-image:url(shots/brenner-dusk.jpg)"></div></div>
+  <div class="sl" style="left:1520px;width:700px"><div class="shot" style="background-image:url(shots/pan-day.jpg)"></div></div>
+  <span class="lab" style="left:450px"><i>01</i> ROUTE 66</span>
+  <span class="lab" style="left:712px"><i>02</i> OUTBACK</span>
+  <span class="lab" style="left:1010px"><i>03</i> SIBERIA</span>
+  <span class="lab" style="left:1300px"><i>04</i> ALPS</span>
+  <span class="lab" style="left:1458px"><i>05</i> ATACAMA</span>
+  <div class="solbar" style="top:0"></div><div class="solbar" style="top:1146px"></div>
+  <div class="head abs">
+    <div><slot data-t="logo"></slot><h1 style="margin-top:16px">5 ROUTES. NO FINISH LINE.<br><b>ONE WEEKLY SOL POOL.</b></h1></div>
+    <div class="side"><span class="chip dot">5 FREE RIDES</span><slot data-t="sol"></slot></div>
+  </div>
+</section>
+
+<!-- 4 · DASH -->
+<section class="v" id="v4">
+  <div class="shot sky" style="background-image:url(../../landing/public/media/sky/dusk.webp)"></div>
+  <div class="dark"></div><div class="glow"></div><div class="glow2"></div>
+  <div class="road" style="top:770px"><i></i></div>
+  <div class="card" style="left:1060px;top:470px;transform:rotate(-8deg);background-image:url(shots/siberia-frost.jpg)"><em>SIBERIA −22°C</em></div>
+  <div class="card" style="left:1420px;top:470px;transform:rotate(7deg);background-image:url(shots/stuart-night.jpg)"><em>NIGHT SHIFT</em></div>
+  <div class="card" style="left:1230px;top:425px;transform:rotate(-1deg);background-image:url(shots/r66-day.jpg);z-index:2;width:440px;height:248px"><em>ROUTE 66</em></div>
+  <div class="txt abs">
+    <slot data-t="logo"></slot>
+    <h1>DRIVE THE<br>SHIFT. <b>SPLIT</b><br><b>THE SOL POOL.</b></h1>
+    <div style="display:flex;gap:12px;align-items:center"><span class="chip dot">5 FREE RIDES</span><slot data-t="sol"></slot></div>
+  </div>
+</section>
+
+<!-- 5 · ONE MISTAKE -->
+<section class="v" id="v5">
+  <div class="shot a" style="background-image:url(shots/crash.jpg)"></div>
+  <div class="shot b" style="background-image:url(shots/stuart-dust.jpg)"></div>
+  <div class="split"></div><div class="fade"></div>
+  <div class="txt abs">
+    <slot data-t="logo"></slot>
+    <h1><span class="r">ONE MISTAKE</span><br><b>ENDS THE SHIFT.</b></h1>
+    <div class="tag">Drive it clean. <i>Finishers split<br>the weekly SOL pool.</i></div>
+    <div style="display:flex;gap:14px;align-items:center"><span class="chip dot">5 FREE RIDES</span><slot data-t="sol"></slot></div>
+  </div>
+</section>
+
+<script>
+const q = new URLSearchParams(location.search), v = q.get('v') || '1';
+for (const sec of document.querySelectorAll('section.v')) sec.id === 'v' + v ? sec.classList.add('on') : sec.remove();   // drop the others: duplicate SVG gradient ids must resolve to the visible copy
+if (q.get('guides')) document.body.insertAdjacentHTML('beforeend', '<div class="gd"></div><div class="gd"></div>');
+for (const s of document.querySelectorAll('slot[data-t]')) s.replaceWith(document.getElementById('t-' + s.dataset.t).content.cloneNode(true));
+</script>
+</body></html>
