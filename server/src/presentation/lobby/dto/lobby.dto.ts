@@ -6,6 +6,7 @@ import { walletAddressSchema } from '../../common/dto/common.dto.js';
 export const liveQuerySchema = z.object({
   visitor: z.string().regex(/^[A-Za-z0-9_-]{8,64}$/).optional().catch(undefined).transform((v) => v ?? ''),
   page: z.enum(['landing', 'lobby']).optional().catch(undefined).transform((v) => v ?? ''),
+  leave: z.literal('1').optional().catch(undefined).transform((v) => v === '1'),   // the page is closing
 });
 export type LiveQuery = z.infer<typeof liveQuerySchema>;
 

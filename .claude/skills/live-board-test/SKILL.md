@@ -27,7 +27,9 @@ started with `FREE_RIDE_SECONDS=20 TRUST_PROXY=1 HB_TIMEOUT_MS=15000` – TRUST_
 5. the sweep: the abandoned ride is ended (failed · heartbeat lost) and leaves the feed; the completer is COMPLETED with a recording;
 6. REPLAYS: the abandoned ride as *FAILED · signal lost*, the completed one with ▶ REPLAY, MINE = the player's own ride (*off the road*, no recording),
    the COMPLETED filter; ▶ REPLAY opens it as a replay with its samples;
-7. the landing's RECENT RIDES: the finished rides, the recorded one as a ▶ REPLAY link; a phone-width shot; no page errors.
+7. the landing's RECENT RIDES: the finished rides, the recorded one as a ▶ REPLAY link; a phone-width shot;
+8. closing pages: navigating the lobby away drops it from `online.browsing` within 5 s (the `pagehide` → `leave=1` poll), and closing a real game tab
+   mid-ride ends that ride at once as ABANDONED (the `sendBeacon` to `/end`) – off LIVE, one driver less, in REPLAYS; no page errors.
 
 Then **look at the screenshots** (`$TMPDIR/fc-board-shots/`: `landing-boards`, `landing-recent`, `lobby-live`, `lobby-replays`, `lobby-replays-phone`):
 the boards are readable (2 × 2 on the landing), filters show which one is on, the badges (PAUSED, FAILED · signal lost, COMPLETED) are clear.

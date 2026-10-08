@@ -3,6 +3,15 @@ import { MemorySitePresenceAdapter } from '../../../../src/infrastructure/live/s
 describe('MemorySitePresenceAdapter', () => {
   const T = 1_000_000_000_000, at = (ms: number) => new Date(T + ms);
 
+  it('leave(): a closing page stops counting at once and frees its address slot', () => {
+    const p = new MemorySitePresenceAdapter();
+    p.seen('ip1', 'a', 'lobby', 'W1', at(0)); p.seen('ip1', 'b', 'landing', null, at(0));
+    p.leave('ip1', 'a');
+    expect(p.snapshot(at(1)).visitors).toBe(1); expect(p.snapshot(at(1)).wallets.size).toBe(0);
+    p.leave('ip9', 'nobody');   // unknown: nothing happens
+    expect(p.snapshot(at(1)).visitors).toBe(1);
+  });
+
   it('distinct visitors within 30 s, ≤ 3 ids per address, signed-in wallets among them; a visitor who stops polling drops out', () => {
     const p = new MemorySitePresenceAdapter();
     p.seen('ip1', 'a', 'landing', null, at(0));

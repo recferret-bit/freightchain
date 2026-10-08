@@ -33,7 +33,7 @@ export class LiveHttpController {
 
   @Get('watch/:id')
   watch(@ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodQuery(watchQuerySchema) query: WatchQuery, @CurrentClient() client: ClientInfo): Promise<WatchDto> {
-    return this.queryBus.execute<WatchRideQuery, WatchDto>(new WatchRideQuery(params.id, query.from, query.after, query.viewer, query.since, client.ip ?? ''));
+    return this.queryBus.execute<WatchRideQuery, WatchDto>(new WatchRideQuery(params.id, query.from, query.after, query.viewer, query.since, client.ip ?? '', query.leave));
   }
 
   @Post('watch/:id/messages') @HttpCode(200) @UseGuards(PlayerAuthGuard)

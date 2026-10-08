@@ -6,9 +6,9 @@ import { poolCard, escrowSummary, refundRows, profileTickets } from './lobby-poo
 import { promoForm, redemptionList } from './lobby-promo.js';
 import { dirty, garageActions, garagePreview, garageProgress, garageSlots } from './lobby-garage.js';
 import { el } from './dom.js';
-import { livePath } from './presence.js';
+import { livePath, leaveOnClose } from './presence.js';
 import { renderReplays } from './lobby-replays.js';
-import { GAME_BASE, SITE_BASE } from '../js/hosts.js';
+import { API_BASE, GAME_BASE, SITE_BASE } from '../js/hosts.js';
 import { track, flushSoon } from '../js/analytics.js';
 
 /* The lobby: NEW RIDE · LIVE · LEADERBOARD · GARAGE · PROMO · PROFILE. Vanilla DOM, no framework.
@@ -422,6 +422,7 @@ if (S.me) {
   addEventListener('hashchange', go);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { pollLive(); refreshPool(); } });
   setInterval(() => { if (!document.hidden) pollLive(); }, 5000);
+  leaveOnClose(() => `${API_BASE}/api/${livePath('lobby')}&leave=1`);   // closing the lobby leaves "N online" at once
   setInterval(() => { if (!document.hidden && (S.tab === 'new' || S.tab === 'board')) refreshPool(); }, 15000);
   setInterval(tick, 1000);
 }

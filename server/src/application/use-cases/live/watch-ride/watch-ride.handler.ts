@@ -30,7 +30,7 @@ export class WatchRideHandler implements IQueryHandler<WatchRideQuery, WatchDto>
     private readonly clock: ClockPort,
   ) {}
 
-  async execute({ rideId, from, after, viewer, since, source }: WatchRideQuery): Promise<WatchDto> {
+  async execute({ rideId, from, after, viewer, since, source, leave }: WatchRideQuery): Promise<WatchDto> {
     const ride = await this.rides.findById(rideId);
     if (!ride || !ride.startedAt) throw new NotFoundError('ride not found'); // not started yet: nothing to watch (and no seed handed out early)
     const now = this.clock.now();
@@ -51,7 +51,7 @@ export class WatchRideHandler implements IQueryHandler<WatchRideQuery, WatchDto>
       batches: page.map((b) => ({ seq: b.seq, t0: b.t0, t1: b.t1, samples: b.body.samples, ...(b.body.traffic ? { traffic: b.body.traffic } : {}) })),
       events: withoutMuted(events.map(toRideEventDto), muted),
       totals,
-      viewers: !live ? 0 : viewer ? this.viewers.seen(ride.id, source, viewer, now) : this.viewers.count(ride.id, now),
+      viewers: !live ? 0 : viewer && leave ? (this.viewers.leave(ride.id, source, viewer), this.viewers.count(ride.id, now)) : viewer ? this.viewers.seen(ride.id, source, viewer, now) : this.viewers.count(ride.id, now),
       features: liveFeatures(this.rules.get().live, ride),
     };
   }

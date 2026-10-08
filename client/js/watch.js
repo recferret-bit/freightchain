@@ -13,7 +13,7 @@ import { selectTheme } from './world/theme-manager.js';
 import { env } from './world/environment.js';
 import { THEMES } from './themes/index.js';
 import { EFFECT_INFO, advanceCursor } from './live-effects.js';
-import { visitorId } from '../site/presence.js';
+import { visitorId, leaveOnClose } from '../site/presence.js';
 import { VEHICLES, buildVehicle, removeVehicle } from './world/vehicles.js';
 import { TRAFFIC_TYPES } from './sim/traffic.js';
 
@@ -45,6 +45,7 @@ export async function initWatch() {
   const id = typeof location === 'undefined' ? null : new URL(location.href).searchParams.get('watch');
   if (!id) return false;
   watch.id = id; st.watch = true;
+  leaveOnClose(() => `${API_BASE}/api/watch/${encodeURIComponent(id)}?viewer=${encodeURIComponent(viewerId())}&leave=1`);   // closing the page: no longer watching
   try { await poll(0); } catch (e) { watch.error = e.message; }
   return true;
 }

@@ -92,6 +92,20 @@ export function lobbyScenarios(h: () => Harness): void {
       await anon().get('/api/replays').query({ status: 'running' }).expect(400);
     });
 
+    it('a closing page leaves at once: the lobby / landing beacon (leave=1), and the game tab\'s /end beacon (text/plain) ends its ride now', async () => {
+      const w = await login(), id = await freeRide(w);
+      await w.agent.get('/api/live').query({ visitor: 'closing-visitor-1', page: 'lobby' }).expect(200);
+      expect((await anon().get('/api/live').expect(200)).body.online).toMatchObject({ browsing: 1, driving: 1 });
+      await w.agent.get('/api/live').query({ visitor: 'closing-visitor-1', page: 'lobby', leave: '1' }).expect(200);
+      sec(3);
+      const beacon = await w.agent.post(`/api/rides/${id}/end`).set('content-type', 'text/plain;charset=UTF-8').send(JSON.stringify({ outcome: 'shift', s: 20, t: 3, reason: 'the driver closed the game' })).expect(200);
+      expect(beacon.body.status).toBe('abandoned');   // the shift was not complete: abandoned (a complete one would be completed)
+      const feed = (await anon().get('/api/live').expect(200)).body;
+      expect(feed.online).toMatchObject({ browsing: 0, driving: 0 });
+      expect(feed.rides.map((r: { id: string }) => r.id)).not.toContain(id);
+      await anon().post(`/api/rides/${id}/end`).set('content-type', 'text/plain').send('{"outcome":"shift"}').expect(401);   // a beacon still needs the session cookie
+    });
+
     it('only whitelisted routes are published; junk is ignored', async () => {
       const w = await login(), id = await freeRide(w);
       sec(2); await w.agent.post(`/api/rides/${id}/heartbeat`).send({ s: 10, t: 2, route: '<img src=x onerror=alert(1)>' }).expect(200);

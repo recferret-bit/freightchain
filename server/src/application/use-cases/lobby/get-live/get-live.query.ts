@@ -6,5 +6,7 @@ export class GetLiveQuery {
     public readonly page = '',
     public readonly source = '',
     public readonly wallet: string | null = null,
+    /** the page is closing: it leaves the online count now */
+    public readonly leave = false,
   ) {}
 }

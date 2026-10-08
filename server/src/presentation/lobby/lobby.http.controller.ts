@@ -22,7 +22,7 @@ export class LobbyHttpController {
       when sent, counts it as a signed-in player (OptionalSessionGuard never refuses). */
   @Get('live') @UseGuards(OptionalSessionGuard)
   live(@ZodQuery(liveQuerySchema) query: LiveQuery, @CurrentClient() client: ClientInfo, @OptionalSession() wallet: string | null): Promise<LiveFeedDto> {
-    return this.queryBus.execute<GetLiveQuery, LiveFeedDto>(new GetLiveQuery(query.visitor, query.page, client.ip ?? '', wallet));
+    return this.queryBus.execute<GetLiveQuery, LiveFeedDto>(new GetLiveQuery(query.visitor, query.page, client.ip ?? '', wallet, query.leave));
   }
 
   /** Public – the replays history: rides that ended, newest first, `before`-paged, each saying whether it can still be replayed (play.html?watch=<id>). */

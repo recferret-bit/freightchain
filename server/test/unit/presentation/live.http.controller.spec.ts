@@ -12,8 +12,8 @@ describe('LiveHttpController', () => {
   it('dispatches every route to the bus with the signed-in wallet where there is one', async () => {
     const commands = busMock({ id: 1 }), queries = busMock({ now: 1 });
     const c = new LiveHttpController(commands.bus, queries.bus);
-    expect(await c.watch({ id: 'R' }, { from: 3, after: 7, viewer: 'v', since: 99 }, { ip: '10.0.0.1', userAgent: null })).toEqual({ now: 1 });
-    expect(queries.last()).toEqual(new WatchRideQuery('R', 3, 7, 'v', 99, '10.0.0.1'));
+    expect(await c.watch({ id: 'R' }, { from: 3, after: 7, viewer: 'v', since: 99, leave: true }, { ip: '10.0.0.1', userAgent: null })).toEqual({ now: 1 });
+    expect(queries.last()).toEqual(new WatchRideQuery('R', 3, 7, 'v', 99, '10.0.0.1', true));
     await c.inbox({ wallet: 'D' }, { id: 'R' }, { after: 5 });
     expect(queries.last()).toEqual(new GetInboxQuery('D', 'R', 5));
     expect(await c.message({ wallet: 'F' }, { id: 'R' }, { text: 'hi' })).toEqual({ id: 1 });

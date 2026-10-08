@@ -10,6 +10,7 @@ export const watchQuerySchema = z.object({
   from: cursor, // first recording batch seq wanted
   after: cursor, // last feed event id already seen
   since: z.coerce.number().int().min(0).max(8.64e15).default(0), // epoch ms: also return events stamped after it (0 = none)
+  leave: z.literal('1').optional().catch(undefined).transform((v) => v === '1'), // the watch page is closing
   viewer: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/, 'letters, digits, - and _ only').optional().transform((v) => v ?? ''), // '' = not counted
 });
 export type WatchQuery = z.infer<typeof watchQuerySchema>;

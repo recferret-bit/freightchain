@@ -156,14 +156,14 @@
       <div class="top"><h3>On the road – accurately</h3></div>
       <ul class="checks">
         <li><b>On the air = a heartbeat in the last 150 s</b><span class="soft">The game beats every ~10 s (a paused or hidden tab keeps beating). Each ride shows how many watch it (👁) and its signal: live, PAUSED, or WEAK SIGNAL after 40 s without a beat.</span><span class="c">HB_TIMEOUT_MS · WEAK_SIGNAL_SECONDS</span></li>
-        <li><b>Abandoned rides are closed</b><span class="soft">A ride silent for the timeout can never resume – its next heartbeat would fail it – so the stale-ride sweeper ends it (every 30 s) as <i>failed · heartbeat lost</i>, shown as “signal lost”. It used to stay “running” until its wallet started another ride.</span></li>
+        <li><b>Abandoned rides are closed</b><span class="soft">A ride silent for the timeout can never resume – its next heartbeat would fail it – so the stale-ride sweeper ends it (every 30 s) as <i>failed · heartbeat lost</i>, shown as “signal lost”. It used to stay “running” until its wallet started another ride. Closing the game tab ends the ride at once (a beacon to <code>/end</code>: abandoned); the sweeper is the fallback for a crash or a lost network.</span></li>
         <li><b>Join</b><span class="soft">▶ WATCH on any row, or WATCH A RANDOM ONE in the lobby – sorted newest / most watched / furthest, filtered by route.</span></li>
       </ul>
     </div>
     <div class="card">
       <div class="top"><h3>Who is online – a soft number</h3></div>
       <ul class="checks">
-        <li><b>Counted from the pages' own polls</b><span class="soft">The landing and the lobby send a random id with their live-feed poll, the watch page with its own; the server counts distinct ids for 30 s – browsing, watching, driving – and the signed-in wallets among them.</span></li>
+        <li><b>Counted from the pages' own polls</b><span class="soft">The landing and the lobby send a random id with their live-feed poll, the watch page with its own; the server counts distinct ids for 30 s – browsing, watching, driving – and the signed-in wallets among them. A page that closes says so (<code>pagehide</code> → the same poll with <code>leave=1</code>), so it drops out at the next poll of the others, not 30 s later.</span></li>
         <li><b>Hard to pump, easy to reset</b><span class="soft">At most 3 ids per address count (one office or family = up to 3). Kept in the app's memory: a deploy or restart starts from zero, and a second app instance would count separately.</span></li>
       </ul>
     </div>

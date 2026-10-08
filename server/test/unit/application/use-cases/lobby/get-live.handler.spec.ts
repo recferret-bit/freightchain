@@ -68,6 +68,14 @@ describe('GetLiveHandler', () => {
     expect((await handler.execute(new GetLiveQuery())).rides[0]?.signal).toBe('weak');   // 46 s without a heartbeat
   });
 
+  it('a closing page (leave) stops counting at once', async () => {
+    const ctx = unitContext();
+    const handler = new GetLiveHandler(ctx.rideQuery, ctx.rules, ctx.clock, ctx.sitePresence, ctx.viewers);
+    await handler.execute(new GetLiveQuery('visitor-aaaa', 'lobby', '10.0.0.1', 'W'));
+    expect((await handler.execute(new GetLiveQuery())).online.browsing).toBe(1);
+    expect((await handler.execute(new GetLiveQuery('visitor-aaaa', 'lobby', '10.0.0.1', 'W', true))).online).toMatchObject({ browsing: 0, players: 0 });
+  });
+
   it('totals: zeros on an empty feed', async () => {
     expect(await feed(unitContext())).toMatchObject({ rides: [], upcoming: [], recent: [], totals: { shifts: 0, metres: 0, drivers: 0 } });
   });

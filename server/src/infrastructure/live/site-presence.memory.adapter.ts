@@ -26,6 +26,10 @@ export class MemorySitePresenceAdapter extends SitePresencePort {
     this.visitors.set(key, { source, page, wallet, at });
   }
 
+  leave(source: string, visitor: string): void {
+    this.drop(`${source}|${visitor}`);
+  }
+
   snapshot(now: Date): { visitors: number; wallets: Set<string> } {
     this.expire(now.getTime());
     const wallets = new Set<string>();

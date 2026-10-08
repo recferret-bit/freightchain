@@ -43,6 +43,16 @@ export async function beginOnline() {
   timer = setInterval(() => api(`rides/${online.ride.id}/heartbeat`, progress()).catch(() => { /* a lost beat is the server's call (timeout) */ }), 10_000);
 }
 
+/* The game tab closes (or reloads, or navigates away) mid-ride: the ride can never resume – a running ride is not re-opened – so END it now, as if the
+   driver had ended the shift (the server decides completed / abandoned), instead of leaving it "on the road" until the heartbeat timeout and the sweep.
+   A beacon is the one request a closing page can still send; it is text/plain (no CORS preflight) – the server reads it on this route only
+   (server/src/infrastructure/http/middleware/beacon-body.middleware.ts). The last recording batch may not make it – that only costs coverage. */
+if (typeof addEventListener === 'function') addEventListener('pagehide', () => {
+  if (!online.ride || !online.started || online.done) return;   // also into the back/forward cache: the ride could not resume from there either (its beats would stop)
+  online.done = true; clearInterval(timer);
+  try { navigator.sendBeacon(`${API_BASE}/api/rides/${online.ride.id}/end`, new Blob([JSON.stringify({ outcome: 'shift', reason: 'the driver closed the game', ...progress() })], { type: 'text/plain' })); } catch { /* the timeout + sweep still end it */ }
+});
+
 /** outcome 'shift' = the driver ended the shift (the server decides complete / abandoned); 'failed' = crash etc. Idempotent. Resolves to the server's verdict. */
 export async function endOnline(outcome, reason = '') {
   if (!online.ride || !online.started || online.done) return null;

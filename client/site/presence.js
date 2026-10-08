@@ -13,3 +13,10 @@ export function visitorId() {
 }
 /** the /api/live path with this page counted online */
 export const livePath = page => `live?visitor=${encodeURIComponent(visitorId())}&page=${page}`;
+
+/** When this page goes away (pagehide: closed, reloaded, navigated off – also into the back/forward cache, where nobody is looking at it either), tell
+    the server it left, so "N online" drops now instead of after the 30 s window; a page restored from that cache simply counts again with its next poll.
+    `url()` = the full URL of a GET the server reads as "leave" (a keepalive GET: survives the page, needs no preflight). */
+export function leaveOnClose(url) {
+  addEventListener('pagehide', () => { try { fetch(url(), { keepalive: true, credentials: 'include' }).catch(() => {}); } catch { /* best effort: the window catches it */ } });
+}

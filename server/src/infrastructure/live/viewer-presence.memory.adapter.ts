@@ -31,6 +31,11 @@ export class MemoryViewerPresenceAdapter extends ViewerPresencePort {
     return this.count(rideId, now);
   }
 
+  leave(rideId: string, source: string, viewer: string): void {
+    const w = this.rides.get(rideId);
+    if (w) this.drop(w, `${source}|${viewer}`);
+  }
+
   count(rideId: string, now: Date): number {
     const w = this.rides.get(rideId);
     if (!w) return 0;

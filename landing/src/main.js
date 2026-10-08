@@ -1,7 +1,7 @@
 import { api, signIn, walletName } from '../../client/site/wallet.js';   // one sign-in implementation for landing + lobby (Vite bundles it; fs.allow in vite.config.js for dev)
-import { GAME_BASE, SITE_BASE, STORYBOOK_BASE, WHITEPAPER_BASE } from '../../client/js/hosts.js';   // '' on localhost; in production the game is on ride.<apex>, NOT the landing's host, and SITE_BASE is the apex
+import { API_BASE, GAME_BASE, SITE_BASE, STORYBOOK_BASE, WHITEPAPER_BASE } from '../../client/js/hosts.js';   // '' on localhost; in production the game is on ride.<apex>, NOT the landing's host, and SITE_BASE is the apex
 import { track, flushSoon } from '../../client/js/analytics.js';
-import { livePath } from '../../client/site/presence.js';   // this page counts as online in the live feed
+import { livePath, leaveOnClose } from '../../client/site/presence.js';   // this page counts as online in the live feed – and leaves it when closed
 import { sol, km, left, dur, short, hue, hours, ago, plural, TIER, TIER_LONG, ROUTE } from './format.js';
 import { explorerUrl, shortAddr, statusChip, progressText, deadline, ESCROW_PAGE } from '../../client/site/pools.js';   // the lobby's pool wording, so both pages say the same thing
 
@@ -293,6 +293,7 @@ refresh();
 api('tiers', undefined, { report: false }).then(paintTiers, () => { $('tiers').replaceChildren(el('tbody', {}, el('tr', {}, el('td', { class: 'dim' }, 'Prices unavailable right now.')))); });
 refreshBoard();
 setInterval(() => { if (!document.hidden) refresh(); }, 10000);
+leaveOnClose(() => `${API_BASE}/api/${livePath('landing')}&leave=1`);
 setInterval(() => { if (!document.hidden) refreshBoard(); }, 30000);
 setInterval(() => { if (document.hidden) return; $('lb-clock').textContent = new Date(now()).toISOString().slice(11, 19); if (!S.pool) return; const t = left(S.pool.round.endsAt - now()); $('hero-cd').textContent = t; document.querySelectorAll('.pool .cd').forEach(c => { c.textContent = t; }); document.querySelectorAll('#pools .pcd').forEach(c => { c.textContent = left(+c.dataset.at - now()); }); }, 1000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });

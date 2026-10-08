@@ -22,9 +22,10 @@ export class GetLiveHandler implements IQueryHandler<GetLiveQuery, LiveFeedDto> 
     private readonly viewers: ViewerPresencePort,
   ) {}
 
-  async execute({ visitor, page, source, wallet }: GetLiveQuery = new GetLiveQuery()): Promise<LiveFeedDto> {
+  async execute({ visitor, page, source, wallet, leave }: GetLiveQuery = new GetLiveQuery()): Promise<LiveFeedDto> {
     const now = this.clock.now();
-    if (visitor && PAGES.has(page)) this.presence.seen(source, visitor, page, wallet, now);
+    if (visitor && leave) this.presence.leave(source, visitor);   // a closing page's beacon
+    else if (visitor && PAGES.has(page)) this.presence.seen(source, visitor, page, wallet, now);
     const [rows, upcoming, finished, totals] = await Promise.all([
       this.rideQuery.live(new Date(now.getTime() - this.rules.get().hbTimeoutMs), LIVE_FEED_LIMIT),
       this.rideQuery.upcoming(UPCOMING_LIMIT), this.rideQuery.finished(FINISHED_LIMIT), this.rideQuery.totals(),

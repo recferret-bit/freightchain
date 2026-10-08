@@ -25,6 +25,13 @@ describe('MemoryViewerPresenceAdapter', () => {
     expect(p.seen('r', 'bot', 'new', at(VIEWER_WINDOW_MS + 50))).toBe(2); // the bot's first ids expired; person + 'new'
   });
 
+  it('leave(): a closing watch page stops counting at once', () => {
+    const p = new MemoryViewerPresenceAdapter();
+    p.seen('r', 'ip1', 'a', at(0)); p.seen('r', 'ip2', 'b', at(0));
+    p.leave('r', 'ip1', 'a'); p.leave('other', 'ip1', 'a');
+    expect(p.count('r', at(1))).toBe(1);
+  });
+
   it('watching(): distinct viewers across every ride – the same viewer on two rides counts once; expired ones drop out', () => {
     const p = new MemoryViewerPresenceAdapter();
     p.seen('r1', 'ip1', 'a', at(0)); p.seen('r2', 'ip1', 'a', at(0)); p.seen('r2', 'ip2', 'b', at(1000));

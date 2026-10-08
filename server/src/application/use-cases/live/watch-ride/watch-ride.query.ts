@@ -8,5 +8,7 @@ export class WatchRideQuery {
     public readonly viewer: string,
     public readonly since = 0,
     public readonly source = '',
+    /** the watch page is closing: this viewer stops counting now */
+    public readonly leave = false,
   ) {}
 }
