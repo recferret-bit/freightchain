@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Real-Chrome end-to-end runs against a freshly built server on a THROWAWAY database (dropped at the end, also on failure).
-#   bash .claude/skills/run-tests/e2e.sh [browser|lobby|admin|watch|replay|flags|wallet|wallet-split ...]   (default: all eight)
+#   bash .claude/skills/run-tests/e2e.sh [browser|lobby|admin|watch|replay|flags|wallet|wallet-split|board ...]   (default: all nine)
 # Needs: the compose PostgreSQL (npm run db:up), server/ and landing/ dependencies installed, Chrome.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 SERVER="$ROOT/server"
-SUITES=("$@"); [ ${#SUITES[@]} -gt 0 ] || SUITES=(browser lobby admin watch replay flags wallet wallet-split)
+SUITES=("$@"); [ ${#SUITES[@]} -gt 0 ] || SUITES=(browser lobby admin watch replay flags wallet wallet-split board)
 DB="freightchain_e2e_$$"
 URL="postgresql://freight:freight_dev_password@localhost:15433/$DB"
 TREASURY=GseaEsNWMLScZ5RH8yQ4xmoCP97H86HjLSA9xkyFCqbn   # any valid address: paid clicks never reach the chain here
@@ -43,6 +43,7 @@ for suite in "${SUITES[@]}"; do
       start 3 "$wallet"; (cd "$SERVER" && BASE="http://localhost:$PORT" ADMIN_KEYPAIR="$ADMIN_KP" CHROME_PORT="$(free_port)" node scripts/e2e-admin.mjs) || fails=$((fails + 1)) ;;
     watch)   start 300; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" node scripts/e2e-watch.mjs) || fails=$((fails + 1)) ;;
     replay)  start 300; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" node scripts/e2e-replay.mjs) || fails=$((fails + 1)) ;;
+    board)   EXTRA_ENV="TRUST_PROXY=1 HB_TIMEOUT_MS=15000" start 20; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" node scripts/e2e-live-board.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;   # online / live / replays fed by scripts/sim-rides.mjs
     flags)   # the LIVE_* flags in a real browser: production's (paid donations, effects on free rides only), then chat + donations off
       EXTRA_ENV="LIVE_FREE_DONATIONS=off LIVE_EFFECTS=free" start 300; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" MODE=paid node scripts/e2e-live-flags.mjs) || fails=$((fails + 1)); stop
       EXTRA_ENV="LIVE_CHAT=off LIVE_DONATIONS=off" start 300; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" MODE=off node scripts/e2e-live-flags.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
@@ -50,7 +51,7 @@ for suite in "${SUITES[@]}"; do
     wallet-split)   # the same on split hosts: landing on app.localhost, API on api.app.localhost, one cookie on the apex (Chrome resolves *.localhost, see the script's header)
       APP_DOMAIN=app.localhost COOKIE_DOMAIN=app.localhost CORS_ORIGINS=http://app.localhost,http://ride.app.localhost start 3
       (cd "$ROOT" && RESOLVE="MAP app.localhost 127.0.0.1:$PORT, MAP api.app.localhost 127.0.0.1:$PORT" BASE=http://app.localhost API=http://api.app.localhost PORT="$(free_port)" node landing/tools/e2e-wallet.mjs) || fails=$((fails + 1)) ;;
-    *) echo "unknown suite $suite (browser | lobby | admin | watch | replay | flags | wallet | wallet-split)"; fails=$((fails + 1)) ;;
+    *) echo "unknown suite $suite (browser | lobby | admin | watch | replay | flags | wallet | wallet-split | board)"; fails=$((fails + 1)) ;;
   esac
   stop
 done

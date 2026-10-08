@@ -13,7 +13,7 @@ import { selectTheme } from './world/theme-manager.js';
 import { env } from './world/environment.js';
 import { THEMES } from './themes/index.js';
 import { EFFECT_INFO, advanceCursor } from './live-effects.js';
-import { store } from './util.js';
+import { visitorId } from '../site/presence.js';
 import { VEHICLES, buildVehicle, removeVehicle } from './world/vehicles.js';
 import { TRAFFIC_TYPES } from './sim/traffic.js';
 
@@ -29,7 +29,7 @@ export const LIVE_LAG = 25;                 // s behind the newest recorded seco
 const PREFETCH = 90;                        // s of recording kept loaded ahead of the playhead in a replay
 const GAP = 2;                              // s between two samples = a hole in what is loaded (a seek) – hold there until it is fetched
 
-const viewerId = () => { let v = store.get('freightchain.viewer'); if (!v || !/^[A-Za-z0-9_-]{8,64}$/.test(v)) { v = Math.random().toString(36).slice(2, 12) + Date.now().toString(36); store.set('freightchain.viewer', v); } return v; };
+const viewerId = visitorId;   // the same id the landing / lobby send (site/presence.js): one person counts once wherever they are
 
 export const watch = {
   id: null, ride: null, error: '', now: 0, skew: 0,

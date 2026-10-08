@@ -155,7 +155,7 @@ h3.sub{margin:40px 0 14px}
 .tiers td,.tiers th{text-align:left;padding:8px 4px;border-bottom:1px solid var(--line);font-size:14px}
 .tiers th{font-size:11px;color:var(--dim);font-weight:400;letter-spacing:1px}
 .tiers tr:last-child td{border-bottom:0}.tiers td:last-child{color:var(--lcd);text-align:right}.tiers td.dim{color:var(--dim);text-align:left}.tiers th:last-child{text-align:right}
-.boards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px}
+.boards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:12px}
 .board h3{display:flex;align-items:center;gap:8px}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%}
 .dot.live{background:var(--lcd);box-shadow:0 0 8px var(--lcd);animation:pulse 1.6s infinite}.dot.next{background:var(--blue)}.dot.rank{background:var(--gear)}
@@ -325,3 +325,4 @@ footer{width:min(1100px,100%);margin:0 auto;padding:30px 20px 50px;color:var(--d
 .invite input{flex:1 1 150px;min-width:0;background:#0b0a0999;border:1px solid #ffffff30;border-radius:6px;color:inherit;padding:8px 10px;font:inherit;text-transform:uppercase;letter-spacing:1px}
 .invite input:focus-visible{outline:2px solid #ffcf5a;outline-offset:1px}
 .invite .hint{flex-basis:100%;font-size:12px;color:var(--dim,#9d957f)}.invite .hint.bad{color:#ff8a7a}
+.dot.done{background:var(--dim)}

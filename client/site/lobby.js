@@ -6,6 +6,8 @@ import { poolCard, escrowSummary, refundRows, profileTickets } from './lobby-poo
 import { promoForm, redemptionList } from './lobby-promo.js';
 import { dirty, garageActions, garagePreview, garageProgress, garageSlots } from './lobby-garage.js';
 import { el } from './dom.js';
+import { livePath } from './presence.js';
+import { renderReplays } from './lobby-replays.js';
 import { GAME_BASE, SITE_BASE } from '../js/hosts.js';
 import { track, flushSoon } from '../js/analytics.js';
 
@@ -15,7 +17,7 @@ const $ = id => document.getElementById(id);
 const view = $('view');
 const ROUTES = { route66: 'Route 66', stuart: 'Stuart Hwy', siberia: 'Trans-Siberian', brenner: 'Brenner Pass', panamerican: 'Pan-American' };   // = client/js/themes ids
 const TIER_NAME = { free: 'TEST RIDE', '1h': '1 HOUR', '4h': '4 HOURS', '8h': '8 HOURS' };
-const TABS = ['new', 'live', 'board', 'garage', 'promo', 'profile'];
+const TABS = ['new', 'live', 'replays', 'board', 'garage', 'promo', 'profile'];
 
 /* ───────── helpers ───────── */
 const hue = w => { let h = 0; for (const c of w) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
@@ -34,7 +36,7 @@ function paintHeader() {
   const m = S.me;
   $('chip-wallet').replaceChildren(el('span', { class: 'dot', style: `background:hsl(${hue(m.wallet)} 60% 50%)` }), short(m.wallet));
   $('chip-free').textContent = `${freeLeft(m)} · ${freeCd(m)}`;
-  $('chip-live').textContent = `${S.live.rides.length} on the road`;
+  $('chip-live').textContent = liveChip();
   $('chip-demo').hidden = !m.demo; $('chip-demo').textContent = `DEMO ×${m.demoScale}`;
 }
 
@@ -43,7 +45,7 @@ function go() {
   S.tab = TABS.includes(t) ? t : 'new';
   track('lobby_tab_viewed', { tab: S.tab });   // hash enter, not the 1 s tick
   document.querySelectorAll('.tabs a').forEach(a => { const on = a.dataset.tab === S.tab; a.classList.toggle('on', on); a.setAttribute('aria-selected', on); });
-  ({ new: renderNew, live: renderLive, board: renderBoard, garage: renderGarage, promo: renderPromo, profile: renderProfile })[S.tab]();
+  ({ new: renderNew, live: renderLive, replays: () => renderReplays(view, { me: S.me, ROUTES, TIER_NAME, dur, km, avatar }), board: renderBoard, garage: renderGarage, promo: renderPromo, profile: renderProfile })[S.tab]();
 }
 
 /* ───────── NEW RIDE ─────────
@@ -265,50 +267,70 @@ async function saveGarage() {
   S.saving = false; paintGarage(note);
 }
 
-/* ───────── LIVE ───────── */
+/* ───────── LIVE ─────────
+   Every ride on the air (the stale-ride sweeper ends the ones whose tab vanished), with how many watch it and its signal; sort / filter to pick one and
+   ▶ WATCH it (the "join": the watch page, ~25 s behind the driver – chat and donations from there). */
 const rows = new Map();   // wallet|startedAt → { root, … }
+const liveChip = () => { const o = S.live.online; return `${o ? `${o.total} online · ` : ''}${S.live.rides.length} on the road`; };
+const SORTS = { newest: (a, b) => b.startedAt - a.startedAt, watched: (a, b) => b.viewers - a.viewers || b.startedAt - a.startedAt, furthest: (a, b) => b.distance - a.distance };
+function liveControls() {
+  const sort = el('select', { id: 'live-sort', 'aria-label': 'sort the rides', onchange: e => { S.liveSort = e.target.value; paintLive(); } },
+    ...[['newest', 'newest first'], ['watched', 'most watched'], ['furthest', 'furthest']].map(([v, t]) => el('option', { value: v, selected: (S.liveSort ?? 'newest') === v }, t)));
+  const route = el('select', { id: 'live-route', 'aria-label': 'only one route', onchange: e => { S.liveRoute = e.target.value; paintLive(); } },
+    el('option', { value: '' }, 'every route'), ...Object.entries(ROUTES).map(([v, t]) => el('option', { value: v, selected: S.liveRoute === v }, t)));
+  const random = el('button', { type: 'button', class: 'alt', id: 'live-random', title: 'open a ride on the air at random', onclick: () => {
+    const pool = S.live.rides.filter(r => r.signal !== 'weak' && r.wallet !== S.me.wallet); if (!pool.length) return;
+    location.href = `${GAME_BASE}/play.html?watch=${encodeURIComponent(pool[Math.floor(Math.random() * pool.length)].id)}`;
+  } }, '▶ WATCH A RANDOM ONE');
+  return el('div', { class: 'filters' }, el('label', {}, 'Sort ', sort), el('label', {}, 'Route ', route), random);
+}
 function renderLive() {
   rows.clear();
-  view.replaceChildren(el('h2', {}, 'TRUCKS ON THE ROAD'), el('div', { class: 'rides', id: 'rides' }), el('p', { class: 'dim' }, 'Updates every 5 seconds. Paused or backgrounded rides show as such. WATCH replays a ride about 25 s behind the driver; signed in, you can write to them and send (mock) donations that change their ride.'));
+  view.replaceChildren(el('h2', {}, 'TRUCKS ON THE ROAD'), el('p', { class: 'dim', id: 'live-online' }), liveControls(), el('div', { class: 'rides', id: 'rides' }), el('p', { class: 'dim' }, 'Updates every 5 seconds. Paused or backgrounded rides show as such. WATCH replays a ride about 25 s behind the driver; signed in, you can write to them and send (mock) donations that change their ride.'));
   paintLive();
 }
 function paintLive() {
   const box = $('rides'); if (!box) return;
   const rides = S.live.rides, keys = new Set();
-  if (!rides.length) { rows.clear(); box.replaceChildren(el('div', { class: 'card empty' }, 'No trucks on the road right now.', el('br'), el('a', { href: '#new' }, 'Be the first →'))); return; }
+  const o = S.live.online; if ($('live-online')) $('live-online').textContent = o ? `${o.total} online now: ${o.browsing} looking around, ${o.watching} watching, ${o.driving} driving (${o.players} signed in).` : '';
+  if ($('live-random')) $('live-random').disabled = !rides.some(r => r.signal !== 'weak' && r.wallet !== S.me.wallet);
+  if (!rides.length) { rows.clear(); box.replaceChildren(el('div', { class: 'card empty' }, 'No trucks on the road right now.', el('br'), el('a', { href: '#new' }, 'Be the first →'), ' · ', el('a', { href: '#replays' }, 'or watch a replay →'))); return; }
   box.querySelector('.empty')?.remove();
   for (const r of rides) {
     const k = `${r.wallet}|${r.startedAt}`; keys.add(k);
     let row = rows.get(k);
     if (!row) {
-      row = { fill: el('div', { class: 'fill' }), truck: el('span', { class: 'truck' }, '⛟'), time: el('b'), dist: el('b'), hull: el('b'), badge: el('span', { class: 'badge' }) };
+      row = { fill: el('div', { class: 'fill' }), truck: el('span', { class: 'truck' }, '⛟'), time: el('b'), dist: el('b'), hull: el('b'), eyes: el('b'), badge: el('span', { class: 'badge' }) };
       row.root = el('div', { class: 'card ride' }, avatar(r.wallet),
         el('div', { class: 'who' }, el('b', {}, short(r.wallet), r.wallet === S.me.wallet ? ' (you)' : ''), el('span', { class: `badge${r.tier === 'free' ? '' : ' p'}` }, TIER_NAME[r.tier] ?? r.tier), r.route ? el('span', { class: 'badge' }, ROUTES[r.route] ?? '') : '', r.timeScale > 1 ? el('span', { class: 'badge d' }, `DEMO ×${r.timeScale}`) : '', row.badge),
         el('div', { class: 'road' }, row.fill, row.truck),
-        el('div', { class: 'stats' }, el('span', {}, '⏱ ', row.time), el('span', {}, '↦ ', row.dist), el('span', {}, 'hull ', row.hull),
+        el('div', { class: 'stats' }, el('span', {}, '⏱ ', row.time), el('span', {}, '↦ ', row.dist), el('span', {}, 'hull ', row.hull), el('span', { title: 'watching now' }, '👁 ', row.eyes),
           el('a', { class: 'watch', href: `${GAME_BASE}/play.html?watch=${encodeURIComponent(r.id)}`, title: 'watch this ride live – chat with the driver, send donations' }, '▶ WATCH')));
       rows.set(k, row); box.append(row.root);
     }
     row.r = r;
   }
   for (const [k, row] of rows) if (!keys.has(k)) { row.root.remove(); rows.delete(k); }
+  const shown = [...rows.values()].sort((a, b) => SORTS[S.liveSort ?? 'newest'](a.r, b.r));
+  for (const row of shown) { row.root.hidden = !!S.liveRoute && row.r.route !== S.liveRoute; box.append(row.root); }   // append = move: the DOM follows the sort
   tickLive();
 }
 function tickLive() {   // between polls: run the clock and the truck forward from the last report (corrected by the next poll)
   const since = (Date.now() - S.liveAt) / 1000;
-  for (const { r, fill, truck, time, dist, hull, badge } of rows.values()) {
-    const stalled = r.paused || r.sinceBeat > 40, extra = stalled ? 0 : Math.min(r.sinceBeat + since, 15);
+  for (const { r, fill, truck, time, dist, hull, eyes, badge } of rows.values()) {
+    const stalled = r.signal !== 'live', extra = stalled ? 0 : Math.min(r.sinceBeat + since, 15);
     const secs = r.driveSeconds + extra, avg = r.driveSeconds > 0 ? r.distance / r.driveSeconds : 0, d = r.distance + avg * extra;
     const pct = Math.min(1, secs / r.minSeconds, d / r.completeDist) * 100;
     fill.style.width = `${pct}%`; truck.style.left = `calc(${pct}% - ${pct * 0.2}px)`;   // the glyph stays inside the road at 0 % and 100 %
     time.textContent = `${dur(secs)} / ${dur(r.minSeconds)}`; dist.textContent = `${km(d)} / ${km(r.completeDist)} km`; hull.textContent = r.hull == null ? '–' : `${r.hull}%`;
-    badge.textContent = r.paused ? 'PAUSED' : r.sinceBeat > 40 ? 'NO SIGNAL' : ''; badge.className = `badge${badge.textContent ? ' w' : ''}`; badge.hidden = !badge.textContent;
+    eyes.textContent = String(r.viewers ?? 0);
+    badge.textContent = r.signal === 'paused' ? 'PAUSED' : r.signal === 'weak' ? 'WEAK SIGNAL' : ''; badge.className = `badge${badge.textContent ? ' w' : ''}`; badge.hidden = !badge.textContent;
   }
 }
 async function pollLive() {
-  try { const j = await api('live', undefined, { report: false }); S.live = j; S.liveAt = Date.now(); S.skew = j.now - Date.now(); } catch { return; }
+  try { const j = await api(livePath('lobby'), undefined, { report: false }); S.live = j; S.liveAt = Date.now(); S.skew = j.now - Date.now(); } catch { return; }
   const n = S.live.rides.length;
-  $('chip-live').textContent = `${n} on the road`; $('tab-live-n').textContent = n || '';
+  $('chip-live').textContent = liveChip(); $('tab-live-n').textContent = n || '';
   if (S.tab === 'live') paintLive();
 }
 
