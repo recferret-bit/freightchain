@@ -16,8 +16,8 @@ export function loadSpec(raw) {
     if (!(o.dur > 0)) bad.push(`${o.id}: dur must be > 0`);
     o.transition = { type: 'cut', dur: .3, ...(typeof sc.transition === 'string' ? { type: sc.transition } : sc.transition) };
     if (!TRANSITIONS.includes(o.transition.type)) bad.push(`${o.id}: transition "${o.transition.type}" not in ${TRANSITIONS}`);
-    for (const c of o.captions) if (!(c.head && (s.look === 'big' || (c.sub && c.n))) || c.at + c.dur > o.dur + 1e-6) bad.push(`${o.id}: caption "${c.head}" needs head (+ n/sub unless look is big) and must end inside the scene (at+dur <= ${o.dur})`);
-    if (o.card && !(o.card.title?.length && o.card.steps?.length && o.card.cta)) bad.push(`${o.id}: card needs title[], steps[], cta`);
+    for (const c of o.captions) if (!(c.head && (s.look === 'big' || c.sub)) || c.at + c.dur > o.dur + 1e-6) bad.push(`${o.id}: caption "${c.head}" needs head (+ sub unless look is big) and must end inside the scene (at+dur <= ${o.dur})`);
+    if (o.card && !o.card.cta) bad.push(`${o.id}: card needs cta`);
     for (const e of o.events) if (e.t > o.dur) bad.push(`${o.id}: event "${e.do}" at ${e.t}s is after the scene ends`);
     for (const e of o.events) if (!EVENTS.includes(e.do)) bad.push(`${o.id}: event "${e.do}" not in ${EVENTS}`);
     return o;

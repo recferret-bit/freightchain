@@ -16,7 +16,7 @@ mkdir -p "$DEPLOY_PATH/releases" "$DEPLOY_PATH/backups" "$DEPLOY_PATH/state"
 chmod 700 "$DEPLOY_PATH/backups" "$DEPLOY_PATH/state"
 say "folders ready under $DEPLOY_PATH"
 
-# The landing's hero loop (/media/hero.mp4, ~2.7 MB, fetched lazily after `load`): nginx caches it and answers Range requests itself, so the app is hit once per release.
+# The landing's hero loop (/media/hero-preview.mp4, ~2.2 MB, fetched lazily after `load`): nginx caches it and answers Range requests itself, so the app is hit once per release.
 # Two managed files (rewritten on every setup) + ONE include line in the apex/ride. server blocks – added to an already installed site too (certbot's 443 copy included), idempotent, undone if nginx -t fails.
 mkdir -p /var/cache/nginx/freightchain_media /etc/nginx/snippets /etc/nginx/conf.d
 cat > /etc/nginx/conf.d/freightchain-media.conf <<'CONF'

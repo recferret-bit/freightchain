@@ -40,6 +40,7 @@ window.__dir = (() => {
 #fx .card{inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:${px(20)};text-align:center;background:radial-gradient(ellipse at 50% 40%,#0b0a0966,#0b0a09ee 75%)}
 #fx .card .mk{color:var(--gear);font-size:${px(54)};line-height:1;text-shadow:0 0 ${px(30)} #ffb03a88} #fx .card .nm{font-size:${px(22)};letter-spacing:7px;color:var(--amber);font-weight:700}
 #fx .card h1{margin:0;font-size:${px(66)};line-height:1.04;letter-spacing:2px;font-weight:700} #fx .card h1 b{color:var(--amber);text-shadow:0 0 ${px(34)} #ffb02e66}
+#fx .card h1 .ok{display:inline-block;padding:${px(8)} ${px(26)};border:${px(7)} solid var(--lcd);color:var(--lcd);font-size:${px(78)};letter-spacing:6px;background:#0009;text-shadow:0 0 ${px(30)} #1c8;transform:rotate(-4deg);white-space:nowrap}
 #fx .card ol{list-style:none;display:flex;gap:${px(14)};margin:${px(6)} 0 0;padding:0}
 #fx .card li{display:flex;gap:${px(10)};align-items:center;padding:${px(11)} ${px(18)};background:#17130fe6;border:1px solid #ffcf5a33;border-radius:${px(8)};font-size:${px(19)};font-weight:700;letter-spacing:1px}
 #fx .card li i{font-style:normal;color:var(--needle)}
@@ -131,7 +132,7 @@ window.__dir = (() => {
     } else if (cap) {
       const l = local - cap.at, inn = back(l / .35), out = clamp((cap.dur - l) / .2), n = Math.floor(l * 34), head = cap.head.slice(0, n);
       fxEl.cap.style.opacity = out; fxEl.cap.style.transform = `translateX(${(inn - 1) * 60 * U}px)`;
-      fxEl.n.textContent = `STEP ${cap.n}`; fxEl.h.textContent = head + (n < cap.head.length || Math.floor(T * 6) % 2 ? '▌' : ' ');
+      fxEl.n.textContent = cap.n ? `STEP ${cap.n}` : ''; fxEl.n.style.display = cap.n ? '' : 'none'; fxEl.h.textContent = head + (n < cap.head.length || Math.floor(T * 6) % 2 ? '▌' : ' ');
       fxEl.p.style.opacity = clamp((l - cap.head.length / 34) / .25); fxEl.p.textContent = cap.sub;
       fxEl.bar.style.transform = `scaleX(${clamp(l / cap.dur)})`;
     }
@@ -139,8 +140,8 @@ window.__dir = (() => {
     const c = s.card; fxEl.card.style.display = c ? 'flex' : 'none';
     if (c) {
       const r = (i, d = .12) => ease((local - i * d) / .4);
-      fxEl.t.innerHTML = c.title.map((t, i) => i ? `<b>${t}</b>` : t).join('<br>'); if (spec.look === 'big') fxEl.t.style.fontSize = fit(c.title, 130) + 'px'; fxEl.t.style.opacity = r(0); fxEl.t.style.transform = `translateY(${(1 - r(0)) * 30 * U}px)`;
-      if (!fxEl.steps.children.length) fxEl.steps.innerHTML = c.steps.map((t, i) => `<li><i>${i + 1}</i>${t}</li>`).join('');
+      fxEl.t.innerHTML = c.badge ? `<span class="ok">${c.badge}</span>` : (c.title ?? []).map((t, i) => i ? `<b>${t}</b>` : t).join('<br>'); if (spec.look === 'big' && c.title) fxEl.t.style.fontSize = fit(c.title, 130) + 'px'; fxEl.t.style.opacity = r(0); fxEl.t.style.transform = `translateY(${(1 - r(0)) * 30 * U}px)`;
+      if (!fxEl.steps.children.length) fxEl.steps.innerHTML = (c.steps ?? []).map((t, i) => `<li><i>${i + 1}</i>${t}</li>`).join('');
       [...fxEl.steps.children].forEach((li, i) => { li.style.opacity = r(i + 1); li.style.transform = `translateY(${(1 - r(i + 1)) * 24 * U}px)`; });
       fxEl.cta.textContent = c.cta; const q = r(4, .1); fxEl.cta.style.opacity = q; fxEl.cta.style.transform = `scale(${(.7 + .3 * back(q)) * (1 + .035 * Math.sin(T * 9) * q)})`; fxEl.cta.style.boxShadow = `0 0 ${(26 + 16 * Math.sin(T * 9)) * U}px #ffb02e88`;
       fxEl.ft.lastChild.textContent = c.foot; fxEl.ft.style.opacity = r(5, .1);
@@ -158,8 +159,9 @@ window.__dir = (() => {
     // transitions (envelope peaks at the cut, T = starts[k] ± dur/2)
     const tr = s.transition, prevEnd = starts[k], half = tr.dur / 2, off = T - prevEnd;
     let e = tr.type === 'cut' ? 0 : clamp(1 - Math.abs(off) / half), side = off < 0 ? -1 : 1;
-        const next = starts[k + 1] != null ? spec.scenes[k + 1].transition : null;   // the NEXT scene's transition starts before the cut, while we still show this scene
-    const t2 = next && next.type !== 'cut' && T > starts[k + 1] - next.dur / 2 ? (e2 => ({ type: next.type, e: e2, side: -1 }))(clamp(1 - Math.abs(T - starts[k + 1]) / (next.dur / 2))) : null;
+    const wrap = spec.loop && k === starts.length - 1, nextAt = wrap ? starts[k] + sc.dur : starts[k + 1];   // loop: the last scene runs into scene 0's transition, whose second half opens the clip
+    const next = wrap ? spec.scenes[0].transition : starts[k + 1] != null ? spec.scenes[k + 1].transition : null;   // the NEXT scene's transition starts before the cut, while we still show this scene
+    const t2 = next && next.type !== 'cut' && T > nextAt - next.dur / 2 ? (e2 => ({ type: next.type, e: e2, side: -1 }))(clamp(1 - Math.abs(T - nextAt) / (next.dur / 2))) : null;
     const T1 = e > 0 ? { type: tr.type, e, side } : t2;
     const bars = fxEl.bars.children; for (const b of bars) b.style.opacity = 0;
     if (T1) {
