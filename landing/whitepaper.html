@@ -250,7 +250,33 @@
 
   <h3 class="sub">HOW A POOL'S MONEY IS SPLIT (EXAMPLE)</h3>
   <p>A pool is every ticket sold plus any sponsorship. Its split is written in basis points when it is created and cannot be changed. The proposed default is <b>70 % prizes · 20 % seeds the next pool · 10 % fees</b>. Shares are rounded down and the rounding remainder goes to fees, so the pieces always add up to the pot exactly.</p>
-  <div class="split" aria-hidden="true"><i class="s-top" style="width:70%"></i><i class="s-seed" style="width:20%"></i><i class="s-fees" style="width:10%"></i></div>
+  <figure class="diagram wide">
+    <svg viewBox="0 0 960 220" role="img" aria-label="A 1 SOL pot split: 70 percent prize share (0.25 first, 0.15 second, 0.10 third, 0.20 top 20), 20 percent to the seed treasury, 10 percent fees.">
+          <!-- brackets -->
+          <polyline points="40,76 40,68 656,68 656,76" class="ln br"/>
+          <text x="348" y="56" text-anchor="middle" class="tx">Prize share 70% · pay_prize, capped on chain</text>
+          <polyline points="660,76 660,68 920,68 920,76" class="ln br"/>
+          <text x="790" y="56" text-anchor="middle" class="tx">close_pool · declared treasuries</text>
+
+          <rect x="40" y="86" width="220" height="60" class="sp s1"/>
+          <rect x="260" y="86" width="132" height="60" class="sp s2"/>
+          <rect x="392" y="86" width="88" height="60" class="sp s3"/>
+          <rect x="480" y="86" width="176" height="60" class="sp s4"/>
+          <rect x="656" y="86" width="176" height="60" class="sp seed"/>
+          <rect x="832" y="86" width="88" height="60" class="sp fee"/>
+
+          <text x="150" y="112" text-anchor="middle" class="tx">1st place</text><text x="150" y="133" text-anchor="middle" class="tx s">0.25 SOL</text>
+          <text x="326" y="112" text-anchor="middle" class="tx">2nd</text><text x="326" y="133" text-anchor="middle" class="tx s">0.15 SOL</text>
+          <text x="436" y="112" text-anchor="middle" class="tx">3rd</text><text x="436" y="133" text-anchor="middle" class="tx s">0.10</text>
+          <text x="568" y="112" text-anchor="middle" class="tx">Top 20</text><text x="568" y="133" text-anchor="middle" class="tx m">0.20 SOL</text>
+          <text x="744" y="112" text-anchor="middle" class="tx">Next pool seed</text><text x="744" y="133" text-anchor="middle" class="tx m">0.20 SOL</text>
+          <text x="876" y="112" text-anchor="middle" class="tx">Fees</text><text x="876" y="133" text-anchor="middle" class="tx m">0.10</text>
+
+          <text x="40" y="178" class="tx s">Example pot: 20 tickets × 0.04 SOL + 0.20 SOL sponsorship = 1.00 SOL</text>
+          <text x="40" y="200" class="tx s">The 25 / 15 / 10 / 20 cut inside the prize share comes from the game's ranking. The program enforces the 70% ceiling.</text>
+        </svg>
+    <figcaption><b>The program caps the total, not the ranking.</b> Prize payouts can never add up to more than the prize share. Which wallets win is decided off chain from the server-checked results and signed by the admin.</figcaption>
+  </figure>
   <div class="tblwrap"><table class="tbl compact">
     <thead><tr><th>Example pot: 20 tickets × 0.04 SOL + 0.20 SOL sponsorship = 1.00 SOL</th><th>Share</th></tr></thead>
     <tbody>
@@ -300,23 +326,100 @@
 
   <h3 class="sub">THE LIFE OF A POOL</h3>
   <p>A pool opens with a commitment goal, for example 10 riders. It goes live the moment the 10th ticket is bought. If its deadline passes first, it becomes a refund pool. Every path ends in one of two final states: the pot split by the rules, or every buyer paid back.</p>
-  <div class="states">
-    <div class="stt open"><b>OPEN</b><span>tickets sell; must reach its minimum</span></div>
-    <div class="arr">→ minimum sold<small>automatic, on the buying transaction</small></div>
-    <div class="stt act"><b>ACTIVE</b><span>rides count; tickets still sell</span></div>
-    <div class="arr">→ close_pool<small>admin after the play deadline; anyone after +14 days if a prize was paid</small></div>
-    <div class="stt fin"><b>SETTLED</b><span>vault = 0, pot split as declared</span></div>
-  </div>
-  <div class="states">
-    <div class="stt open"><b>OPEN</b><span>deadline missed under the minimum</span></div>
-    <div class="arr">→ fail_pool<small>anyone</small></div>
-    <div class="stt ref"><b>REFUNDING</b><span>each buyer's full price comes back</span></div>
-    <div class="arr">→ close_pool<small>anyone, once all refunded</small></div>
-    <div class="stt fin"><b>CANCELLED</b><span>vault = 0</span></div>
-  </div>
+  <figure class="diagram wide">
+    <svg viewBox="0 0 960 360" role="img" aria-label="Pool state machine: Open becomes Active automatically when the minimum is sold; Open becomes Refunding when the deadline is missed (anyone) or the admin cancels; Active becomes Settled through close_pool; Active becomes Refunding through expire_pool, which anyone may call 14 days after the play deadline if no prize was paid; Refunding becomes Cancelled once every ticket is refunded.">
+          <defs>
+            <marker id="st-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="ah i"/></marker>
+            <marker id="st-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="ah a"/></marker>
+            <marker id="st-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="ah g"/></marker>
+          </defs>
+
+          <!-- legend -->
+          <line x1="40" y1="22" x2="80" y2="22" class="ln a"/><text x="88" y="27" class="tx s">automatic</text>
+          <line x1="180" y1="22" x2="220" y2="22" class="ln g"/><text x="228" y="27" class="tx s">anyone can trigger</text>
+          <line x1="370" y1="22" x2="410" y2="22" class="ln"/><text x="418" y="27" class="tx s">admin only</text>
+          <rect x="520" y="12" width="26" height="20" rx="3" class="bx term"/><text x="554" y="27" class="tx s">final state</text>
+
+          <!-- nodes -->
+          <rect x="40" y="70" width="160" height="60" rx="4" class="bx"/><text x="120" y="106" text-anchor="middle" class="tx t">Open</text>
+          <rect x="400" y="70" width="160" height="60" rx="4" class="bx hi"/><text x="480" y="107" text-anchor="middle" class="tx b big">Active</text>
+          <rect x="760" y="70" width="160" height="60" rx="4" class="bx term"/><text x="840" y="106" text-anchor="middle" class="tx t">Settled</text>
+          <rect x="400" y="250" width="160" height="60" rx="4" class="bx net"/><text x="480" y="286" text-anchor="middle" class="tx t">Refunding</text>
+          <rect x="760" y="250" width="160" height="60" rx="4" class="bx term"/><text x="840" y="286" text-anchor="middle" class="tx t">Cancelled</text>
+
+          <!-- Open -> Active -->
+          <line x1="200" y1="100" x2="394" y2="100" class="ln a" marker-end="url(#st-amber)"/>
+          <text x="298" y="88" text-anchor="middle" class="tx a">minimum sold</text>
+          <text x="298" y="121" text-anchor="middle" class="tx s">on that purchase</text>
+
+          <!-- Active -> Settled -->
+          <line x1="560" y1="100" x2="754" y2="100" class="ln" marker-end="url(#st-ink)"/>
+          <text x="658" y="88" text-anchor="middle" class="tx m">close_pool</text>
+          <text x="658" y="121" text-anchor="middle" class="tx s">admin after play deadline</text>
+          <text x="658" y="138" text-anchor="middle" class="tx s">anyone +14 d, if paid</text>
+
+          <!-- Open -> Refunding -->
+          <polyline points="120,130 120,280 394,280" class="ln g" marker-end="url(#st-teal)"/>
+          <text x="258" y="268" text-anchor="middle" class="tx g">fail_pool</text>
+          <text x="258" y="300" text-anchor="middle" class="tx s">deadline missed: anyone</text>
+          <text x="258" y="317" text-anchor="middle" class="tx s">or cancel_pool: admin</text>
+
+          <!-- Active -> Refunding -->
+          <line x1="480" y1="130" x2="480" y2="244" class="ln g" marker-end="url(#st-teal)"/>
+          <text x="492" y="176" class="tx g">expire_pool</text>
+          <text x="492" y="196" class="tx s">anyone, 14 days after the</text>
+          <text x="492" y="213" class="tx s">play deadline, no prize paid</text>
+
+          <!-- Refunding -> Cancelled -->
+          <line x1="560" y1="280" x2="754" y2="280" class="ln g" marker-end="url(#st-teal)"/>
+          <text x="658" y="268" text-anchor="middle" class="tx g">close_pool</text>
+          <text x="658" y="300" text-anchor="middle" class="tx s">anyone, once all refunded</text>
+
+          <text x="480" y="340" text-anchor="middle" class="tx s">while Refunding: anyone can send refund, the money always lands with the buyer</text>
+        </svg>
+    <figcaption><b>Both ways out of a stuck pool are green.</b> A pool that misses its goal and a pool the operator abandons after it went live both end in refunds that anyone can trigger. Only the normal settlement of a live pool needs the admin.</figcaption>
+  </figure>
+
   <p>An ACTIVE pool the operator never settles is not a trap: 14 days after the play deadline anyone can call <code>expire_pool</code> (no prize paid yet) and every ticket is refunded, or finish the split to the declared treasuries (some prize paid). Sweeping an unpaid prize share to a treasury is refused.</p>
 
   <h3 class="sub">THE CLOCK</h3>
+  <figure class="diagram wide">
+    <svg viewBox="0 0 960 230" role="img" aria-label="Timeline: from create_pool to prep_deadline the pool is open and must reach its minimum; from prep_deadline to play_deadline it is active and rides count; from play_deadline the admin settles; 14 days after play_deadline anyone can expire or close it.">
+          <line x1="40" y1="90" x2="930" y2="90" class="ln i"/>
+          <line x1="50" y1="80" x2="50" y2="100" class="ln i"/>
+          <line x1="330" y1="80" x2="330" y2="100" class="ln i"/>
+          <line x1="580" y1="80" x2="580" y2="100" class="ln i"/>
+          <line x1="800" y1="80" x2="800" y2="100" class="ln i"/>
+          <text x="50" y="64" class="tx m">create_pool</text>
+          <text x="330" y="64" text-anchor="middle" class="tx m">prep_deadline</text>
+          <text x="580" y="64" text-anchor="middle" class="tx m">play_deadline</text>
+          <text x="800" y="64" text-anchor="middle" class="tx g">+14 days</text>
+          <text x="190" y="116" text-anchor="middle" class="tx s">about 30 days</text>
+          <text x="455" y="116" text-anchor="middle" class="tx s">for example 7 days</text>
+          <text x="690" y="116" text-anchor="middle" class="tx s">14-day grace</text>
+
+          <rect x="50" y="132" width="276" height="78" rx="3" class="bx"/>
+          <text x="66" y="156" class="tx t">Open</text>
+          <text x="66" y="177" class="tx s">tickets sell; the pool must reach</text>
+          <text x="66" y="195" class="tx s">its minimum or everyone is refunded</text>
+
+          <rect x="334" y="132" width="242" height="78" rx="3" class="bx hi"/>
+          <text x="350" y="156" class="tx b big" style="font-size:17px">Active</text>
+          <text x="350" y="177" class="tx">rides count for prizes,</text>
+          <text x="350" y="195" class="tx">tickets still sell</text>
+
+          <rect x="584" y="132" width="212" height="78" rx="3" class="bx"/>
+          <text x="600" y="156" class="tx t">Settlement</text>
+          <text x="600" y="177" class="tx s">admin pays the winners</text>
+          <text x="600" y="195" class="tx s">and closes the pool</text>
+
+          <rect x="804" y="132" width="126" height="78" rx="3" class="bx net"/>
+          <text x="818" y="156" class="tx t">Safety net</text>
+          <text x="818" y="177" class="tx s">anyone can expire</text>
+          <text x="818" y="195" class="tx s">or close it</text>
+        </svg>
+    <figcaption><b>The last window needs nobody's key.</b> If the operator never settles, 14 days after the play deadline any wallet can start the refunds (no prize paid yet) or finish the split to the declared treasuries (some prizes paid). Durations are the proposed defaults; each pool fixes its own.</figcaption>
+  </figure>
   <div class="grid3">
     <article class="card"><h3>PREPARATION DEADLINE</h3><p>Tickets sell; the pool must reach its minimum or everyone is refunded. Written into the pool, e.g. 7 days out.</p></article>
     <article class="card"><h3>PLAY DEADLINE</h3><p>Rides count for prizes, tickets still sell. After it the admin pays winners and closes. At most 365 days after creation.</p></article>
@@ -343,14 +446,18 @@
 
   <h3 class="sub">WHO CAN DO WHAT</h3>
   <div class="tblwrap"><table class="tbl compact">
-    <thead><tr><th>Action</th><th>Who</th><th>When</th></tr></thead>
+    <thead><tr><th>Action</th><th>Who</th><th>When</th><th>Money goes to</th></tr></thead>
     <tbody>
-      <tr><td>Buy a ticket · sponsor a pool</td><td>Anyone with a wallet</td><td>Before the pool's deadlines, under the caps</td></tr>
-      <tr><td>Fail a pool that missed its goal · refund a ticket</td><td>Anyone</td><td>After the preparation deadline, under the minimum · while refunding</td></tr>
-      <tr><td>Expire an unsettled pool</td><td>Anyone</td><td>14 days after the play deadline, no prize paid</td></tr>
-      <tr><td>Pay a prize · close and split</td><td>Admin</td><td>After the play deadline · (anyone after +14 days if a prize was paid)</td></tr>
-      <tr><td>Create or cancel a pool · pause</td><td>Admin</td><td>Cancel only while Open; pause never blocks refunds</td></tr>
-      <tr><td>Move any money</td><td><b>The game server: never</b></td><td>It holds no key that can</td></tr>
+      <tr><td>Buy a ticket</td><td>Player</td><td>Open pool before its prep deadline, active pool before its play deadline</td><td>The vault</td></tr>
+      <tr><td>Sponsor a pool</td><td>Anyone</td><td>Same windows as buying</td><td>The vault</td></tr>
+      <tr><td>Fail a pool that missed its goal</td><td>Anyone</td><td>After the prep deadline, under the minimum</td><td>Nothing moves yet</td></tr>
+      <tr><td>Refund a ticket</td><td>Anyone</td><td>While the pool is refunding</td><td>The buyer, plus rent back to its payer</td></tr>
+      <tr><td>Cancel an open pool</td><td>Admin</td><td>Before it goes live</td><td>Nothing moves yet; refunds follow</td></tr>
+      <tr><td>Pay a prize</td><td>Admin</td><td>After the play deadline</td><td>A winner, within the prize share</td></tr>
+      <tr><td>Close and split</td><td>Admin · anyone</td><td>Admin after the play deadline; anyone 14 days later if prizes were paid</td><td>The declared seed and fee treasuries</td></tr>
+      <tr><td>Expire an unsettled pool</td><td>Anyone</td><td>14 days after the play deadline, no prize paid</td><td>Nothing moves yet; full refunds follow</td></tr>
+      <tr><td>Create a pool · pause</td><td>Admin</td><td>Pause never blocks refunds</td><td>–</td></tr>
+      <tr><td>Move any money</td><td><b>The game server: never</b></td><td>Never</td><td>It holds no key that can</td></tr>
     </tbody>
   </table></div>
 
@@ -375,7 +482,6 @@
     <li><b>A pool crank and session keys.</b> A server-side <code>fail_pool</code> and wallet session keys. Not needed for safety: a player can always trigger the refund.</li>
     <li><b>Badges as tokens.</b> Non-transferable badges that encode the shift (“8 hours on the Trans-Siberian at night”), minted on request.</li>
   </ul>
-  <p><a class="link" id="escrow-link" data-to="site" data-path="/escrow/" href="/escrow/">The escrow explainer, with diagrams →</a></p>
 </section>
 
 <!-- ───────── 06 · VALIDATION ───────── -->

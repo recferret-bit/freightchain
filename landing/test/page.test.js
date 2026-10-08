@@ -132,9 +132,9 @@ test('the icons the pages name exist (what Phantom, tabs and home screens show f
 
 test('pools: the live board + the escrow block exist, the explainer is linked through SITE_BASE, the pool wording is the lobby\'s', () => {
   assert.ok(ids.includes('pools') && ids.includes('escrow-link'));
-  assert.match(main, /\$\('escrow-link'\)\.href = `\$\{SITE_BASE\}\$\{ESCROW_PAGE\}`/);
+  assert.match(main, /\$\('escrow-link'\)\.href = `\$\{WHITEPAPER_BASE \|\| '\/whitepaper\.html'\}#onchain`/, 'the escrow link goes to the whitepaper chapter 05');
   assert.match(main, /from '\.\.\/\.\.\/client\/site\/pools\.js'/);
-  assert.match(html, /href="\/escrow\/"/, 'static fallback before the script runs');
+  assert.match(html, /id="escrow-link" href="\/whitepaper\.html#onchain"/, "static fallback before the script runs");
   assert.ok(existsSync(join(root, '..', 'client', 'escrow', 'index.html')), 'the explainer is served from client/escrow/');
   assert.doesNotMatch(main, /class: `st /, 'the pool chip is .pst – .st is the roadmap\'s rubber stamp');
 });
