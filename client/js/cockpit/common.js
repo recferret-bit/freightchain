@@ -101,10 +101,10 @@ export function ignitionPanel(x, y, u) {
   ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(x, y, 4.2 * u, 0, 7); ctx.fill(); ctx.strokeStyle = chromeGrad(x - 4 * u, x + 4 * u); ctx.lineWidth = .6 * u; ctx.stroke();
   ctx.font = `${1.3 * u}px ${MONO}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   [['OFF', 0, 'key-off'], ['ON', 1, 'key-on'], ['START', 2, 'key-start']].forEach(([t, i, id]) => {   // the three labels are the clickable zones
-    const a = (i - 1) * .9, lx = x + Math.sin(a) * (i === 1 ? 8 : 9) * u, ly = y - Math.cos(a) * (i === 1 ? 8 : 9) * u + (i === 1 ? 0 : 1.2 * u), w = (t.length * .95 + 1.6) * u, h = 2.6 * u, act = Math.abs(keyPos - i) < .3;
+    const a = (i - 1) * .9, lx = x + Math.sin(a) * (i === 1 ? 6.6 : 9) * u, ly = y - Math.cos(a) * (i === 1 ? 6.6 : 9) * u + (i === 1 ? 0 : 1.2 * u), sm = i === 1, w = (t.length * (sm ? .8 : .95) + (sm ? 1.2 : 1.6)) * u, h = (sm ? 2 : 2.6) * u, act = Math.abs(keyPos - i) < .3;
     uiBtns.push({ id, x: lx - w / 2, y: ly - h / 2, w, h });
     ctx.fillStyle = act ? 'rgba(124,214,106,.12)' : 'rgba(255,255,255,.04)'; ctx.beginPath(); ctx.roundRect(lx - w / 2, ly - h / 2, w, h, .5 * u); ctx.fill(); ctx.strokeStyle = act ? '#7cd66a' : '#4a453b'; ctx.lineWidth = .2 * u; ctx.stroke();
-    ctx.fillStyle = act ? (i ? '#9dff8a' : '#ffb03a') : '#a39b84'; ctx.fillText(t, lx, ly);
+    ctx.fillStyle = act ? (i ? '#9dff8a' : '#ffb03a') : '#a39b84'; ctx.font = `${(sm ? 1.05 : 1.3) * u}px ${MONO}`; ctx.fillText(t, lx, ly);
   });
   ctx.fillStyle = '#050403'; ctx.beginPath(); ctx.arc(x, y, 1.6 * u, 0, 7); ctx.fill();
   ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.scale(.62, .62);
