@@ -62,10 +62,12 @@ Related: [deploy + operate](program-deploy.md) · [paid tickets status](paid-tic
 | Q-C | Upgrade authority long term: keep on the deploy keypair, move to a hardware wallet / Squads multisig, or make the program immutable (`--final`) after an audit? | devnet: keep; before any real money: multisig; `--final` only after an audit |
 | Q-D | Audit before mainnet – and is mainnet a goal at all? | devnet only, "not audited" said plainly in the submission (status Q7) |
 | Q-E | Make the repo (or a public mirror) public for the explorer's "verified" badge? | yes after the devnet deploy, if the code may be public |
-| Q-F | Turn the crank on in production right away (`CRANK_SECRET` + 60 s), and which RPC provider (needs `getProgramAccounts`, e.g. QuickNode devnet)? | yes, with QuickNode; the public devnet RPC is rate-limited |
-| Q-G | Build the admin UI (create pool, pause, payout buttons, Phantom-signed) before the devnet demo, or run admin actions from the CLI? | CLI for the first devnet run, UI if time allows before Oct 12 |
+| Q-F | Which devnet RPC (needs `getProgramAccounts` for the crank + a websocket): QuickNode devnet, Helius, or the public endpoint? | QuickNode devnet (the public one is rate-limited); the same provider later for production |
+| Q-G | Admin actions during the devnet phase: CLI (`pool-admin.mjs`) + the admin keypair imported into Phantom, or build the admin UI first? | CLI + imported keypair for devnet; the UI before production |
 | Q-H | Who creates each week's pools – by hand, or a scheduled job (needs the admin key on the server, which the design avoids)? | by hand / CLI, with a reminder; no admin key on the server |
 | Q-I | `MAX_POOL_SECS` = 365 days – right cap? | fine for weekly pools; lower to ~60 days if you prefer |
+| Q-J | Where does the devnet-phase server run: your machine (`npm run server:dev` against devnet, local DB, Phantom on localhost) or a separate staging host? | your machine; a tunnel (cloudflared / ngrok) only to test the QuickNode webhook |
+| Q-K | What counts as "real tests passed" before production? | the Phase 2 exit list below, run twice on two different days, no manual fixes in between |
 | Q9 | `pay_prize` to a program-owned account: allow (Squads winners) or refuse (system accounts only)? | allow; the admin checks the address |
 | Q10 | Should the crank also close prize-paid pools after the 14-day grace (money only to the declared treasuries)? | no – the admin closes after paying; keeps "the crank never sweeps prize money" simple |
 | Q11 | Deploy SBPF v0 (what is tested) or v3? | v0 for devnet |
@@ -75,26 +77,59 @@ Related: [deploy + operate](program-deploy.md) · [paid tickets status](paid-tic
 
 ## Todo
 
-**Before the devnet demo**
+**Rule: devnet first. Production is switched only after the devnet phase passes its exit list – and only on an explicit "deploy" from the owner.**
+Until then production stays as it is (`PAYMENT_MODE=transfer`, no escrow keys in `deploy/.env`).
+
+### Phase 0 – local (no chain, no money)
 - [ ] Merge `localnet-e2e` into `main` (rebase on the current `main` first) – Q-A
-- [ ] `npm run program:verify` in the main checkout
-- [ ] Keys: program id, deploy wallet, crank key, seed + fee treasuries (rent-exempt) – Q-B
-- [ ] Devnet deploy of the verifiable `.so`, `initialize` (deploy wallet signs, Phantom = admin), `check.sh onchain` – `program-deploy.md` steps 1–6
-- [ ] Create + `pool:register` the week's pools and a short demo pool
-- [ ] Production env for program mode + crank (Q-F), then `npm run deploy` **when you ask for it**
-- [ ] A real devnet run with Phantom: buy (gasless + self-paid), ride, CLAIM REFUND on a failed pool, payout + close
+- [ ] `npm run program:verify` in the main checkout; `npm run test:localnet` green there
+- [ ] Deploy smoke test: checks for program mode (tiers report `paymentMode: program`, pools listed, sponsor + crank balances, the webhook refuses a bad secret) – used in Phase 3
+- [ ] `server/scripts/devnet-payout.mjs`: sign in with the admin keypair, fetch `GET /api/pools/:id/payout`, sign + send each `pay_prize`, then `close_pool`, settle each
+- [ ] `server/scripts/devnet-rehearsal.mjs`: the localnet scenario's API steps (buy gasless + self-paid, sponsor, refund, crank, payout) against any RPC + server, throwaway wallets, no browser
+- [ ] A local devnet profile for the server (`server/.env.devnet.example`: program mode, devnet RPC + WS, sponsor, crank, treasuries, webhook secret; a separate local database `freightchain_devnet`)
+
+### Phase 1 – the program on devnet
+- [ ] Keys into `deploy/secrets/` (gitignored, never printed): program id, deploy wallet (= upgrade authority), admin (also imported into Phantom), sponsor, crank, fee + seed treasuries – Q-B
+- [ ] Fund them on devnet (faucet): deploy ~5 SOL, sponsor ~1, crank ~0.5, admin ~0.5, treasuries 0.002 each
+- [ ] Program id into the code: `anchor keys sync` → `program:build` → `program:idl` → `vendor-idl` → `UPDATE_PIN=1 npm run program:verify` → codec fixture → `npm run check` + `npm run test:localnet` → commit
+- [ ] Deploy the verifiable `.so` (hash guard first) – `program-deploy.md` step 4
+- [ ] `initialize` (deploy wallet signs, `--admin` = the admin key, platform 0) and read `Config.authority` back
+- [ ] `check.sh onchain`: the deployed bytes = the pin
+- [ ] Pools: one each of 1h / 4h / 8h with short test deadlines, plus a "fail" pool (min high, prep ~15 min) – `pool-admin.mjs create-pool -k admin.json`
+
+### Phase 2 – real tests on devnet (server on your machine – Q-J)
+- [ ] Server against devnet with the devnet profile; pools appear by themselves (the watcher registers them) or `pool:register --label`
+- [ ] Phantom on devnet, lobby on localhost: buy gasless (only "sign"), buy self-paid (sponsor drained or cap reached), ride a ticket to VERIFIED
+- [ ] Callbacks, each path alone:
+  - [ ] fast path: lobby buy → "Paid – N tickets credited" at once
+  - [ ] watcher: `pool-admin.mjs buy` straight on chain (no order) → credited within ~15 s; with `SOLANA_WS` set, sooner
+  - [ ] webhook: QuickNode Stream on the program id → tunnel → `POST /api/chain/webhook`; `curl` without the header = 401, with a real signature = settled; a buy with `WATCH_INTERVAL_MS=0` credited by the webhook alone
+- [ ] Missed goal: the "fail" pool shows CLAIM REFUND right after its deadline; one buyer claims from the lobby, the crank (`pool:crank`, then the 60 s scheduler) refunds the rest and closes it
+- [ ] Sponsorship: `pool-admin.mjs sponsor` → the pot and prize cap grow on the pool card
+- [ ] Payout: after a play deadline, ranked `pay_prize` (admin page in Phantom or `devnet-payout.mjs`), then `close_pool`; treasuries match `closeSplit`
+- [ ] `devnet-rehearsal.mjs` green against devnet
+- [ ] Optional: public verification (repo public, `solana-verify verify-from-repo`) – Q-E
+
+**Phase 2 exit list** (all, twice, on two different days – Q-K): every box above ticked · no manual DB or chain fix needed · `npm run ops`-style logs clean (no `crank: … ✗`, no `batch-refused`, no 5xx) · lamports reconciled for each pool (vault 0 after close, treasuries = `closeSplit`) · the explorer shows the program as the pinned hash.
+
+### Phase 3 – production (only after Phase 2 passes, only on "deploy")
+- [ ] Decide the RPC for production (Q-F) and fund the production sponsor + crank (devnet SOL – production still runs on devnet)
+- [ ] `deploy/.env`: `PAYMENT_MODE=program`, `TICKET_PROGRAM_ID`, `TREASURY_PUBKEY` = admin, `FEE_TREASURY`, `SEED_TREASURY`, `FEE_PAYER_SECRET`, `CRANK_SECRET`, `CRANK_INTERVAL_MS`, `SOLANA_RPC`, `SOLANA_WS`, `WEBHOOK_SECRET`
+- [ ] Settle the legacy weekly round first (Q13)
+- [ ] `npm run deploy -- --dry-run` → the owner says "deploy" → `npm run deploy` → smoke (with the new program checks)
+- [ ] QuickNode Stream → `https://api.freightchain.fun/api/chain/webhook`
+- [ ] The Phase 2 Phantom run once more on freightchain.fun; rollback = `PAYMENT_MODE=transfer` + redeploy (money stays refundable on chain)
 - [ ] Say "devnet only, not audited" in the submission
 
-**After the demo / before real money**
+### Later (before any real money)
 - [ ] Admin UI: create pool, pause, payout + close buttons (Phantom-signed) – Q-G
 - [ ] Crank: failures and the crank key's balance on the admin page
 - [ ] Delete the legacy pay-per-ride routes (status Q1)
-- [ ] Public verification (repo public, `verify-from-repo`) – Q-E
 - [ ] Upgrade authority to a multisig – Q-C
 - [ ] Audit – Q-D
-- [ ] Session keys / deposits (phase 2) – only if still wanted
+- [ ] Session keys / deposits (phase 2 of the plan) – only if still wanted
 
-**Small fixes**
+### Small fixes (any time)
 - [ ] `docs/pool-escrow` + `client/escrow/`: 44 → 49 tests
 - [ ] Lobby "pools on sale" count: only pools that still sell
 - [ ] CANCEL for an unfinished ticket order

@@ -6,7 +6,7 @@ keys live in `deploy/secrets/` (gitignored); **deploy only the `solana-verify bu
 
 ## Your next steps (owner)
 
-The full list (not done, open questions, todo): [`escrow-open-items.md`](escrow-open-items.md).
+The full list (not done, open questions, todo): [`escrow-open-items.md`](escrow-open-items.md). **Order: devnet first** – the program on devnet and real tests with the server on your machine (its Phases 0–2); production is configured only after that passes (Phase 3).
 
 
 1. **`initialize` is safe now**: only the program's upgrade authority (the deploy wallet) can run it, and it names the admin – pass your Phantom address as `authority` (step 5). No front-run window after the deploy.
