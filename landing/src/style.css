@@ -96,12 +96,13 @@ h3.sub{margin:40px 0 14px}
 .flow li b{font-size:12px;letter-spacing:2px;color:var(--amber)}
 .flow li span{font-size:15px;color:var(--dim)}
 .flow li:not(:last-child)::after{content:"→";position:absolute;right:-13px;top:22px;color:var(--needle);font-size:18px;z-index:1}
-.mech{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:28px}
-.mech article{background:var(--bg2);border:1px solid var(--line);border-left:3px solid var(--dash);border-radius:8px;padding:14px 16px}
-.mech article:hover{border-left-color:var(--needle)}
-.mech p{margin:6px 0 0;font-size:15px;color:var(--dim)}
-.routes{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:5px;font-size:15px;color:var(--cream)}
-.routes i{display:inline-block;width:26px;height:10px;border-radius:2px;margin-right:9px;background:linear-gradient(180deg,var(--a) 0 55%,var(--b) 55%)}
+.rt-wrap{margin-top:44px}.rt-wrap .sub{margin-bottom:18px}
+.rt{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.rt article{position:relative;display:grid;gap:4px;align-content:start;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:0 0 16px;overflow:hidden;transition:transform .2s,border-color .2s}
+.rt article:hover{transform:translateY(-3px);border-color:var(--needle)}
+.rt i{display:block;height:74px;margin-bottom:12px;background:linear-gradient(180deg,var(--a) 0 55%,var(--b) 55%)}
+.rt b,.rt span,.rt em,.rt u{padding:0 14px}.rt b{font-size:15px;color:var(--cream)}.rt span{font-size:12px;letter-spacing:2px;color:var(--dim);text-transform:uppercase}
+.rt em{font-style:normal;font-size:15px;color:var(--sand);margin-top:6px}.rt u{text-decoration:none;color:var(--needle);letter-spacing:2px;margin-top:4px}
 /* realtime daytime collage: four slices cut at an angle, overlapping, the hovered one widens */
 .daytime,.dash{margin-top:72px;padding-top:44px;border-top:1px solid var(--line2)}
 .daytime .sub,.dash .sub{margin-top:0;margin-bottom:18px}
@@ -260,7 +261,7 @@ footer{width:min(1100px,100%);margin:0 auto;padding:30px 20px 50px;color:var(--d
 @media (max-width:900px){
   .stats{grid-template-columns:1fr 1fr}
   .flow{grid-template-columns:1fr 1fr}.flow li:nth-child(2)::after{display:none}
-  .mech,.about,.boards,.cards{grid-template-columns:1fr 1fr}
+  .about,.boards,.cards{grid-template-columns:1fr 1fr}.rt{grid-template-columns:repeat(3,1fr)}
   .econ,.escrow{grid-template-columns:1fr}.lb-f{grid-template-columns:1fr}
   .loads th:nth-child(3),.loads td:nth-child(3){display:none}
 }
@@ -268,7 +269,7 @@ footer{width:min(1100px,100%);margin:0 auto;padding:30px 20px 50px;color:var(--d
   .top{padding:10px 14px}.brand small{display:none}.right .chip{display:none}
   .hero{padding:40px 16px 80px}
   .ch{padding:50px 16px 40px}
-  .stats,.flow,.mech,.about,.boards{grid-template-columns:1fr}
+  .stats,.flow,.about,.boards{grid-template-columns:1fr}.rt{grid-template-columns:1fr 1fr}
   .cards{grid-template-columns:1fr;max-width:380px}
 .sheet{padding:34px 14px 14px;transform:none}.legs .note{display:none}.legs .stamp{width:70px}
   /* load board → one card per lane */
