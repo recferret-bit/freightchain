@@ -51,8 +51,9 @@ await B.ev(`(() => { const s = document.getElementById('live-sort'); s.value = '
 check('lobby LIVE: sorting by "most watched" puts the watched ride first', await until(() => B.ev(`document.querySelector('#rides .ride:not([hidden]) a.watch')?.href.includes(${JSON.stringify(watched)})`), 8000));
 check('lobby LIVE: a paused ride shows PAUSED', await B.ev(`[...document.querySelectorAll('#rides .ride .badge')].some(b => b.textContent === 'PAUSED')`));
 await B.shot('lobby-live');
+const onBoard = await B.ev(`[...document.querySelectorAll('#rides .ride a.watch')].map(a => new URL(a.href).searchParams.get('watch'))`);
 await B.ev(`document.getElementById('live-random').click()`);
-check('lobby LIVE: WATCH A RANDOM ONE joins a live ride on its watch page', await until(() => B.ev(`location.pathname === '/play.html' && /watch=/.test(location.search) && !!window.__game?.watch?.ride?.live`), 20_000), await B.ev('location.href'));
+check('lobby LIVE: WATCH A RANDOM ONE joins one of the rides on the board, on its watch page', await until(() => B.ev(`location.pathname === '/play.html' && ${JSON.stringify(onBoard)}.includes(window.__game?.watch?.ride?.id) && !!document.getElementById('watch')`), 20_000), await B.ev('location.href'));
 
 // ── an abandoned ride: swept, off the boards, in the history as "signal lost"; the completed one replays ──
 check('the abandoned ride is ENDED by the stale-ride sweeper (failed · heartbeat lost)', await until(async () => (await api(`replays?limit=50`)).rows.some(r => r.id === gone && r.failCode === 'heartbeat_lost'), 60_000));
