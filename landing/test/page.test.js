@@ -95,9 +95,10 @@ test('sign-in: redirect + session UI go through SITE_BASE, the wallet chip exist
   assert.match(main, /catch \(e\) \{ msg\.textContent = e\.message; msg\.className = 'msg bad'; btn\.disabled = false; \}/);
 });
 
-test('promo invite: a form in the hero (no new heading or chapter), the code rides to the lobby PROMO tab through SITE_BASE, shown with textContent only', () => {
+test('promo invite: a form in its own band right after the hero (an <aside>, not a chapter – no nav link, no h2), the code rides to the lobby PROMO tab through SITE_BASE, shown with textContent only', () => {
   for (const id of ['invite', 'invite-code', 'invite-go', 'invite-msg']) assert.ok(ids.includes(id), id);
   assert.match(html, /<form class="invite[^"]*" id="invite"/);
+  assert.match(html, /<\/section>\s*<!--[^>]*PROMO CODE[^>]*-->\s*<aside class="promo-band" id="promo-band"[\s\S]*?<form class="invite[\s\S]*?<\/aside>\s*<div class="road"/, 'the band sits between the hero and the road to chapter 02');
   assert.match(main, /new URLSearchParams\(location\.search\)\.get\('promo'\)/, 'an invite link: /?promo=CODE pre-fills the field');
   assert.match(main, /\$\{SITE_BASE\}\/lobby\.html\$\{code \? `\?promo=\$\{encodeURIComponent\(code\)\}#promo` : ''\}/, 'the lobby is opened on #promo with the code, url-encoded');
   assert.match(main, /const code = inviteIn\.value\.trim\(\) \|\| invite;/, 'a code typed but not submitted survives CONNECT');

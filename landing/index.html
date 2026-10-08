@@ -56,12 +56,6 @@
       <a class="link" href="/play.html">try it offline, no wallet →</a>
     </div>
     <p class="msg" id="msg"></p>
-    <form class="invite rv" id="invite" autocomplete="off">
-      <label for="invite-code">HAVE A PROMO CODE?</label>
-      <input id="invite-code" name="code" maxlength="64" autocapitalize="characters" spellcheck="false" placeholder="WELCOME" aria-describedby="invite-msg">
-      <button class="cta sm" id="invite-go" type="submit">CLAIM →</button>
-      <span class="hint" id="invite-msg" role="status">Free rides, free tickets or a new look for your cockpit.</span>
-    </form>
     <div class="stats rv" id="hero-stats">
       <div class="stat pot"><span class="lbl" id="hero-pot-lbl">IN THE POT THIS WEEK</span><b class="num lcd" id="hero-pot">0.000</b><span class="unit">SOL <em id="hero-usd"></em></span></div>
       <div class="stat"><span class="lbl">ROUND CLOSES IN</span><b class="num lcd cd" id="hero-cd">–</b><span class="unit">Mon 00:00 UTC</span></div>
@@ -71,6 +65,29 @@
   </div>
   <a class="scroll-hint" href="#loop" aria-label="scroll">▼</a>
 </section>
+
+<!-- ───────── PROMO CODE (its own band after the hero – not a chapter) ───────── -->
+<aside class="promo-band" id="promo-band" aria-labelledby="promo-h">
+  <div class="promo-in">
+    <div class="promo-copy rv">
+      <p class="eyebrow">INVITE · PROMO CODE</p>
+      <h3 id="promo-h">Got a code? Cash it in.</h3>
+      <ul class="perks">
+        <li><b>FREE RIDES</b><span>1 or 3 extra shifts, on top of your daily five</span></li>
+        <li><b>FREE TICKETS</b><span>a seat in the 1, 4 or 8 hour prize pool</span></li>
+        <li><b>COCKPIT PARTS</b><span>wheel, truck paint, shifter, dice, gauge needles</span></li>
+      </ul>
+    </div>
+    <form class="invite rv" id="invite" autocomplete="off">
+      <label for="invite-code">YOUR CODE</label>
+      <div class="invite-row">
+        <input id="invite-code" name="code" maxlength="64" autocapitalize="characters" spellcheck="false" placeholder="WELCOME" aria-describedby="invite-msg">
+        <button class="cta" id="invite-go" type="submit">CLAIM →</button>
+      </div>
+      <span class="hint" id="invite-msg" role="status">Type it here, connect your wallet, and it is waiting in the lobby.</span>
+    </form>
+  </div>
+</aside>
 
 <div class="road" aria-hidden="true"><i></i></div>
 

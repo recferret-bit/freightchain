@@ -69,7 +69,7 @@ Race-safety: redeeming runs in ONE transaction under the player row lock. The re
 ## The player's side
 
 - **Lobby → PROMO**: the code field and "CODES YOU REDEEMED"; the parts themselves are in **GARAGE** (docs/garage.md: progress, preview, pick + SAVE). NEW RIDE keeps its code field too (same ids) with a link to PROMO.
-- **Landing invite block** (in the hero, no new chapter): type a code → signed in: straight to `lobby.html?promo=CODE#promo`; signed out: the code is kept, the CONNECT button gets focus, and the sign-in redirect carries it. `/?promo=CODE` is a shareable invite link that pre-fills the block. **A link never redeems by itself** – the lobby only pre-fills the field and the player clicks REDEEM. Codes are never listed publicly.
+- **Landing invite block** (its own `<aside id="promo-band">` right after the hero – not a chapter, no nav link, no h2): type a code → signed in: straight to `lobby.html?promo=CODE#promo`; signed out: the code is kept, the CONNECT button gets focus, and the sign-in redirect carries it. `/?promo=CODE` is a shareable invite link that pre-fills the block. **A link never redeems by itself** – the lobby only pre-fills the field and the player clicks REDEEM. Codes are never listed publicly.
 - Analytics (PostHog, `docs/analytics/index.html` funnel 9): browser `promo_invite_viewed`, `promo_invite_submitted`, `promo_redeem_clicked`; server `promo_redeemed` (per kind, after the commit, sets person `free_rides` or the slot's property), `cosmetic_equipped`, `promo_created` / `promo_disabled` (aggregate, no wallet), and `ride_started` with one property per slot (`wheel`, `truck_color`, `gearbox`). Free text (descriptions, notes) never goes; refusals are read from the existing `api_request_failed`.
 
 ## Tests
