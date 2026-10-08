@@ -7,7 +7,7 @@ import { GAME_BASE } from '../js/hosts.js';
    newest first, filtered (everyone / mine, the outcome), "load more" pages back; a ride whose recording is still kept opens as a replay on the watch page. */
 const STATUS = { completed: 'COMPLETED', abandoned: 'ABANDONED', failed: 'FAILED' };
 const FAIL = { heartbeat_lost: 'signal lost', crash: 'crash', off_road: 'off the road', hull: 'wrecked', engine_blown: 'engine blown', cold_engine: 'cold engine', brakes: 'brakes', implausible_progress: 'implausible progress', other: 'failed' };
-const R = { who: 'all', status: '', rows: [], next: null, loading: false, error: '' };
+const R = { who: 'all', status: '', rows: [], next: null, loading: false, error: '', req: 0 };   // req: only the newest request's answer is painted
 const ago = ms => { const s = Math.max(0, Math.round(ms / 1000)); return s < 90 ? `${s} s ago` : s < 5400 ? `${Math.round(s / 60)} min ago` : s < 129_600 ? `${Math.round(s / 3600)} h ago` : `${Math.round(s / 86_400)} d ago`; };
 
 export function renderReplays(view, ctx) {
@@ -25,15 +25,16 @@ export function renderReplays(view, ctx) {
 }
 
 async function load(ctx, fresh) {
-  if (R.loading) return;
+  if (R.loading && !fresh) return;   // "load more" twice: once is enough; a filter change always wins over what is in flight
+  const req = ++R.req;
   R.loading = true; R.error = '';
   if (fresh) { R.rows = []; R.next = null; }
   const q = new URLSearchParams({ limit: '20' });
   if (!fresh && R.next) q.set('before', R.next);
   if (R.who === 'mine' && ctx.me?.wallet) q.set('wallet', ctx.me.wallet);
   if (R.status) q.set('status', R.status);
-  try { const j = await api(`replays?${q}`, undefined, { report: false }); R.rows.push(...j.rows); R.next = j.next; }
-  catch (e) { R.error = e.message; }
+  try { const j = await api(`replays?${q}`, undefined, { report: false }); if (req !== R.req) return; R.rows.push(...j.rows); R.next = j.next; }
+  catch (e) { if (req !== R.req) return; R.error = e.message; }
   R.loading = false;
   paint(ctx);
 }
