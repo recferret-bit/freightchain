@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Freight Chain product analytics</title>
+<meta name="description" content="How Freight Chain measures the loop: which events the server owns, which the browser may send, the funnels, and the EU PostHog board.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../verified-play/style.css">
+<link rel="stylesheet" href="analytics.css">
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <span class="eyebrow">Freight Chain · how the loop is measured</span>
+  <h1>Product analytics</h1>
+  <p class="lede">Two planes, one PostHog project. The browser may say what the player clicked. The server is the only writer of a sign-in, a payment, and a finished shift. Money and completion quoted to anyone come from the server events, and they have to match the database.</p>
+  <div class="status">
+    <span class="pill">code <b>plan/posthog-integration</b></span>
+    <span class="pill">not on <b>main</b> · not live</span>
+    <span class="pill">cloud <b>EU</b> · project 297915</span>
+    <span class="pill">ingest <b>eu.i.posthog.com</b></span>
+  </div>
+  <div class="board">
+    <a class="pill" href="https://eu.posthog.com/project/297915/dashboard/1006663">EU board · dashboard 1006663</a>
+    <span class="pill">private · login wall · no public share</span>
+  </div>
+  <p class="soft">The board stays at zero until that branch is deployed with <code>POSTHOG_HOST=https://eu.i.posthog.com</code>. Events sent to the US ingest host never appear on it. A US app URL is the wrong project. Loop health is a second blank dashboard and does not exist yet.</p>
+
+  <ul class="toc">
+    <li><a href="#s-planes">Two planes</a></li>
+    <li><a href="#s-numbers">The numbers</a></li>
+    <li><a href="#s-funnels">Funnels</a></li>
+    <li><a href="#s-server">Server events</a></li>
+    <li><a href="#s-client">Browser events</a></li>
+    <li><a href="#s-identity">Identity</a></li>
+    <li><a href="#s-relay">The relay</a></li>
+    <li><a href="#s-board">The board</a></li>
+    <li><a href="#s-env">Keys</a></li>
+    <li><a href="#s-promise">What you can count on</a></li>
+    <li><a href="#s-limits">What this does not do</a></li>
+  </ul>
+</header>
+
+<section aria-labelledby="s-planes">
+  <div class="head">
+    <span class="eyebrow">Where a fact is born</span>
+    <h2 id="s-planes">The browser proposes, the server disposes</h2>
+    <p class="soft">Built on <code>plan/posthog-integration</code> (commit <code>6774faf</code>, plus uncommitted EU-host edits). <code>main</code> has no capture code. Production does not send events. This page describes that branch as it stands on 8 Oct 2026. Verified-play verdicts, escrow tickets, and live-stream chat are later work on <code>main</code> and are not events here.</p>
+  </div>
+  <div class="pipe four">
+    <div class="step"><span class="n">1</span><span class="where">Browser</span><h3>Click</h3><p>Landing, lobby, and the online ride page post an allowlisted batch. Offline play and the model viewer send nothing.</p></div>
+    <div class="step"><span class="n">2</span><span class="where">POST /api/telemetry</span><h3>Relay</h3><p>Anonymous is fine. The relay keeps client names, drops every server name, and strips signatures, seeds, and tokens.</p></div>
+    <div class="step"><span class="n">3</span><span class="where">After the commit</span><h3>Server</h3><p>Handlers emit only once the database write has succeeded. A PostHog failure cannot roll back a payment.</p></div>
+    <div class="step"><span class="n">4</span><span class="where">eu.i.posthog.com</span><h3>Board</h3><p>Batch ingest. The project token never leaves the server. The Colosseum board is the EU link above.</p></div>
+  </div>
+  <div class="cols">
+    <article class="card">
+      <div class="top"><h3>Server plane</h3><span class="chip ok">quotes money</span></div>
+      <p>Distinct id is the session wallet. <code>source</code> is <code>server</code>. Nine P0 events cover sign-in, order, payment, start, progress, complete, abandon, fail. Eleven more cover resume, expiry, conflicts, free-ride grants, achievements, and round open/close.</p>
+    </article>
+    <article class="card">
+      <div class="top"><h3>Browser plane</h3><span class="chip pen">explains the drop</span></div>
+      <p>Distinct id starts as <code>anon_&lt;uuid v4&gt;</code> in <code>localStorage</code> key <code>freightchain.anon</code>. Nineteen P0 events cover the landing, the wallet prompt, the lobby, and the ride page. P1 and P2 are polish. They never decide a finish.</p>
+    </article>
+  </div>
+</section>
+
+<section aria-labelledby="s-numbers">
+  <div class="head">
+    <span class="eyebrow">What a judge is allowed to hear</span>
+    <h2 id="s-numbers">Five numbers, plus the lamports</h2>
+    <p class="soft">Date range for the fair: 8 Oct 2026 through 12 Oct 2026, UTC. Every one of these filters <code>source = server</code>. <code>is_demo</code> is a property on the event, so a demo ride stays demo even if the person update was missed. Split real and demo. Do not add the two tiles into one sentence.</p>
+  </div>
+  <div class="outcomes">
+    <article class="out ok"><h3>Completed shifts</h3><p>North star. Count of server <code>ride_completed</code>, free and paid. No <code>round_id</code> filter — a free finish has no round, and filtering it away hides the only finish a playtester can reach before Sunday.</p></article>
+    <article class="out"><h3>Wallets</h3><p>Unique users on <code>player_signed_in</code>. One tile <code>is_demo=false</code>, one tile <code>is_demo=true</code> titled DEMO WALLET (×60 clock).</p></article>
+    <article class="out flag"><h3>Lamports in</h3><p>Sum of <code>payment_confirmed.lamports</code> for the open <code>round_id</code>. That sum is <code>GET /api/pool</code> → <code>split.entries</code>. It is not the entries count, and it is not <code>split.grand</code>.</p></article>
+  </div>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>#</th><th>Name</th><th>Event</th><th>How to read it</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Wallets connected</td><td><code>player_signed_in</code></td><td>Unique users. Tile A <code>is_demo=false</code>. Tile B <code>is_demo=true</code>.</td></tr>
+        <tr><td>2</td><td>Paid rides confirmed</td><td><code>payment_confirmed</code></td><td>Count. One event per inserted payment. The count is not the money.</td></tr>
+        <tr><td>3</td><td>Rides started</td><td><code>ride_started</code></td><td>Count. Break down <code>is_free</code> and <code>is_demo</code>.</td></tr>
+        <tr><td>4</td><td>Rides completed</td><td><code>ride_completed</code></td><td>Count. The stored reason is exactly <code>shift complete</code>. This is the north star.</td></tr>
+        <tr><td>5</td><td>Completion rate</td><td><code>ride_completed</code> / <code>ride_started</code></td><td>Same <code>is_demo</code> and <code>is_free</code> on both steps. Publish the all-tier rate and the paid rate separately. Window 7 days if you use a funnel.</td></tr>
+        <tr><td>+</td><td>Lamports in</td><td>sum <code>payment_confirmed.lamports</code></td><td>Filter <code>round_id</code> to the open round. Cross-check <code>SELECT count(*), sum(lamports) FROM economy."Payment"</code>. If PostHog and SQL disagree, quote SQL.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="soft">A Trends insight on a client event named <code>ride_completed</code> is empty on purpose: the relay drops that name. Completion rate uses the two server events. There is no payout property. <code>round_settled</code>, <code>payout_signed</code>, and <code>prize_awarded</code> do not exist.</p>
+</section>
+
+<section aria-labelledby="s-funnels">
+  <div class="head">
+    <span class="eyebrow">Person-scoped funnels</span>
+    <h2 id="s-funnels">Eight funnels, each with a window</h2>
+    <p class="soft">A drop means that person did not fire the next event inside the window. That is sometimes a product bug and sometimes a judge who only looked at the pool. Click-together: Funnels → step → property filter → the window written here → breakdown one of <code>is_demo</code>, <code>is_free</code>, <code>tier_id</code>, <code>stage</code>, <code>fail_code</code>. Leave “exclude events between steps” off except where an exclusion is written. Ordered steps are already the order. PostHog does not OR a step, so free and paid are two funnels, and session restore is two funnels.</p>
+  </div>
+
+  <article class="card">
+    <div class="top"><h3>1 · Judge / acquisition</h3><span class="chip flag">unpublished</span></div>
+    <div class="funnel"><ol>
+      <li><span class="n">1</span><span><code>landing_viewed</code></span></li>
+      <li><span class="n">2</span><span><code>wallet_connect_clicked</code></span></li>
+      <li><span class="n">3</span><span><code>player_signed_in</code> · <code>source=server</code></span></li>
+      <li><span class="n">4</span><span><code>lobby_viewed</code></span></li>
+    </ol></div>
+    <div class="meta"><span class="chip pen">window 1 hour</span><span class="chip pen">also a 24 hour copy</span></div>
+    <p>1→2 the page did not convince, or the button was off screen. 2→3 the wallet was missing, the prompt was rejected, the nonce failed, or the signature was bad — read <code>sign_in_failed.stage</code>. 3→4 the redirect to the lobby failed or the tab closed. Step 2 and step 3 join only because <code>$create_alias</code> merges the anonymous id into the wallet. Until one real <code>session_restored</code> has been checked in the PostHog UI, this funnel under-counts. Leave it unpublished and quote sign-ins from <code>player_signed_in</code> alone. A 7 day window is wrong: yesterday’s landing would convert into today’s click.</p>
+  </article>
+
+  <div class="cols">
+    <article class="card">
+      <div class="top"><h3>2a · Activation, free</h3><span class="chip ok">7 days</span></div>
+      <div class="funnel"><ol>
+        <li><span class="n">1</span><span><code>lobby_tab_viewed</code> · <code>tab=new</code></span></li>
+        <li><span class="n">2</span><span><code>ride_buy_clicked</code> · <code>is_free=true</code></span></li>
+        <li><span class="n">3</span><span><code>ride_ordered</code> · <code>is_free=true</code></span></li>
+        <li><span class="n">4</span><span><code>ride_started</code></span></li>
+        <li><span class="n">5</span><span><code>ride_completed</code></span></li>
+      </ol></div>
+      <p><code>tier_selected</code> is optional and stays off the published funnel: a rider who accepts the default tier never fires it. A free ride on this branch is 180 seconds and about 2.5 km, so one sitting fits. A 3 minute window is enough for a demo; the 7 day window is so free and paid share one clock.</p>
+    </article>
+    <article class="card">
+      <div class="top"><h3>2b · Activation, paid</h3><span class="chip ok">7 days</span></div>
+      <div class="funnel"><ol>
+        <li><span class="n">1</span><span><code>lobby_tab_viewed</code> · <code>tab=new</code></span></li>
+        <li><span class="n">2</span><span><code>ride_buy_clicked</code> · <code>is_free=false</code></span></li>
+        <li><span class="n">3</span><span><code>ride_ordered</code> · <code>is_free=false</code></span></li>
+        <li><span class="n">4</span><span><code>payment_confirmed</code></span></li>
+        <li><span class="n">5</span><span><code>ride_started</code></span></li>
+        <li><span class="n">6</span><span><code>ride_completed</code></span></li>
+      </ol></div>
+      <p>Quote TTL is 10 minutes, but reconcile can land on a later visit, and a real 1 h / 4 h / 8 h shift is longer than a sitting. Demo wallets finish the paid drive in about a minute (<code>DEMO_SCALE</code> 60). Everyone else cannot finish an 8 hour tier before the deadline. Say that in the caption. The video uses the demo board and says “demo clock ×60”.</p>
+    </article>
+  </div>
+  <p class="soft">Drops on activation: buy → order is a 409 (a ride is already running), a 503 on price or treasury, or <code>ride_resumed</code> because they already held the order. Order → payment is a wallet reject, a wrong amount, a memo mismatch, an RPC that has not shown the transaction, or a give-up. Payment → start means they paid and did not press START RIDE. Start → complete is abandon, fail, or still on the road. The main funnel does not exclude fails. An “honest finish” copy may exclude <code>ride_failed</code> with <code>fail_code=implausible_progress</code>.</p>
+
+  <div class="cols">
+    <article class="card">
+      <div class="top"><h3>3 · Payment reliability</h3><span class="chip pen">30 min</span></div>
+      <div class="funnel"><ol>
+        <li><span class="n">1</span><span><code>ride_buy_clicked</code> · <code>is_free=false</code></span></li>
+        <li><span class="n">2</span><span><code>payment_submitted</code></span></li>
+        <li><span class="n">3</span><span><code>payment_confirmed</code></span></li>
+      </ol></div>
+      <p>In-session path: quote TTL 10 minutes, poll budget 90 seconds, wallet prompts run long. A second insight is the recovery: <code>payment_confirm_gave_up</code> → <code>payment_confirmed</code> where <code>via=reconcile</code>, window 7 days. Break <code>payment_rejected</code> down by <code>reason_code</code> on its own Trends bar, and <code>payment_failed.stage</code> for the gap before submit. Keep a real-payer copy (<code>is_demo=false</code>) and a demo copy.</p>
+    </article>
+    <article class="card">
+      <div class="top"><h3>4 · Free vs paid</h3><span class="chip pen">same window</span></div>
+      <p>Funnels 2a and 2b are the comparison. A combined funnel with breakdown <code>is_free</code> on <code>ride_started</code> → <code>ride_completed</code> is the one tile that puts them side by side. Free completion is reachable in one sitting. Paid non-demo completion is not, except the demo wallet.</p>
+      <div class="top" style="margin-top:8px"><h3>5 · Real vs demo</h3><span class="chip pen">a filter, not a shape</span></div>
+      <p>Every funnel above gets <code>is_demo=false</code> for playtesters and <code>is_demo=true</code> for the demo clock. The submission video uses the demo board. An unfiltered funnel mixes a one-minute demo finish with an eight-hour shift.</p>
+    </article>
+  </div>
+
+  <div class="cols">
+    <article class="card">
+      <div class="top"><h3>6 · Weekly return</h3><span class="chip flag">a definition</span></div>
+      <div class="funnel"><ol>
+        <li><span class="n">1</span><span><code>ride_completed</code></span></li>
+        <li><span class="n">2</span><span><code>lobby_viewed</code></span></li>
+        <li><span class="n">3</span><span><code>ride_started</code></span></li>
+      </ol></div>
+      <p>Window 7 days, one UTC round. Optional filter <code>is_free=true</code> for the daily free ride. Paid same-round return will be about zero this week. With Friday playtests and a Sunday deadline this is not a slide unless someone actually comes back. Breakdown <code>is_demo</code>.</p>
+    </article>
+    <article class="card">
+      <div class="top"><h3>7 · Signature rejection</h3><span class="chip pen">15 min</span></div>
+      <div class="funnel"><ol>
+        <li><span class="n">1</span><span><code>wallet_connect_clicked</code></span></li>
+        <li><span class="n">2</span><span><code>wallet_signature_requested</code></span></li>
+        <li><span class="n">3</span><span><code>player_signed_in</code></span></li>
+      </ol></div>
+      <p>Parallel failure view: <code>wallet_connect_clicked</code> → <code>sign_in_failed</code>, exclusion <code>player_signed_in</code> inside the window, breakdown <code>stage</code>. 1→2 is no provider or a rejected connect, before a nonce existed. 2→3 is a rejected SIWS message, verify 401, or a nonce that expired (5 minutes).</p>
+    </article>
+  </div>
+
+  <article class="card">
+    <div class="top"><h3>8 · Session restore</h3><span class="chip pen">1 hour each</span></div>
+    <div class="cols">
+      <div class="funnel"><p><b>8a · Landing.</b> The page does not auto-redirect.</p><ol>
+        <li><span class="n">1</span><span><code>landing_viewed</code></span></li>
+        <li><span class="n">2</span><span><code>session_restored</code> · <code>surface=landing</code></span></li>
+        <li><span class="n">3</span><span><code>lobby_open_clicked</code></span></li>
+      </ol></div>
+      <div class="funnel"><p><b>8b · Lobby URL.</b> Someone who opens the lobby directly never hits 8a.</p><ol>
+        <li><span class="n">1</span><span><code>session_restored</code> · <code>surface=lobby</code></span></li>
+        <li><span class="n">2</span><span><code>lobby_viewed</code></span></li>
+      </ol></div>
+    </div>
+    <p>A missing cookie (<code>SESSION_TTL_DAYS</code>, default 7) or a visitor who read the pool and left is a drop. Leaving after the public board is a success for the pitch, not a bug. <code>#play-top</code> is a different event (<code>play_top_clicked</code>) and is not step 3.</p>
+  </article>
+</section>
+
+<section aria-labelledby="s-server">
+  <div class="head">
+    <span class="eyebrow">Server events · 20</span>
+    <h2 id="s-server">What the database already decided</h2>
+    <p class="soft">Emitted only after the save resolves, inside <code>emitAnalytics</code>. <code>dedupe_key</code> is a property. The capture <code>uuid</code> is a UUID v5 of <code>https://freightchain.fun/analytics/</code> plus that key, computed in the adapter. Handlers pass <code>uuid: null</code>. Timestamp is the column named here, from <code>ClockPort</code>, except the reconcile-miss row. No <code>$insert_id</code>, no <code>sent_at</code>, no <code>$groups</code>. <code>round_id</code> is a property and is null until a payment sets it.</p>
+  </div>
+  <h3>P0 · the nine the board is allowed to quote</h3>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Event</th><th>When it fires</th><th>Dedupe key · timestamp</th><th>Properties that matter</th></tr></thead>
+      <tbody>
+        <tr><td><code>player_signed_in</code></td><td>SIWS verified and <code>touch</code> returned. Not on the nonce, not on <code>/api/me</code>, not on logout.</td><td>none · the <code>now</code> passed into <code>touch</code><span class="c">each successful verify is a new session</span></td><td><code>is_new_player</code>, <code>is_demo</code>, <code>free_rides</code>, <code>free_rides_max</code>, <code>demo_scale</code>. Person <code>$set</code> those three, <code>$set_once first_seen_at</code>.</td></tr>
+        <tr><td><code>ride_ordered</code></td><td>A new ride row was inserted (free <code>created</code>, or paid <code>awaiting_payment</code>). Returning an existing open ride is <code>ride_resumed</code>, not this.</td><td><code>ride:&lt;id&gt;:ordered</code> · <code>createdAt</code></td><td><code>ride_id</code>, <code>tier_id</code> (<code>free|1h|4h|8h</code>), <code>is_free</code>, <code>is_demo</code>, <code>time_scale</code>, <code>price_usd</code>, <code>lamports</code>, <code>min_ms</code>, <code>complete_dist_m</code>, <code>free_rides_left</code>.</td></tr>
+        <tr><td><code>payment_confirmed</code></td><td><code>settle()</code> returned <code>inserted</code> and a <code>paidAt</code>. Confirm path sets <code>via=confirm</code>. Reconcile sets <code>via=reconcile</code>. The same signature seen again emits nothing. A race loser emits nothing.</td><td><code>payment:&lt;signature&gt;</code> · <code>paidAt</code></td><td><code>payment_id</code> (the signature, server-side only), <code>ride_id</code>, <code>round_id</code>, <code>lamports</code>, <code>via</code>, <code>quote_expired</code>. This is the SOL-in event.</td></tr>
+        <tr><td><code>payment_rejected</code></td><td>Confirm is about to throw because <code>verifyPayment</code> failed. Five codes and no others: <code>amount</code>, <code>memo</code>, <code>signer</code>, <code>chain_failed</code>, <code>no_metadata</code>. Pending is not a rejection. Conflicts are <code>payment_conflict</code>.</td><td><code>payment:&lt;signature&gt;:rejected:&lt;reason_code&gt;</code> · request clock</td><td><code>ride_id</code>, <code>reason_code</code>, <code>tier_id</code>, <code>lamports</code> (ordered, not observed). No raw reason string, no RPC URL.</td></tr>
+        <tr><td><code>ride_started</code></td><td><code>ride.start</code> committed. A 409 emits nothing. A stale sibling failed in the same transaction also emits <code>ride_failed</code> with <code>ended_by=stale_on_start</code>.</td><td><code>ride:&lt;id&gt;:started</code> · <code>startedAt</code></td><td><code>ride_id</code>, <code>tier_id</code>, <code>is_free</code>, <code>is_demo</code>, <code>round_id</code>, <code>min_ms</code>, <code>complete_dist_m</code>. Route is not known yet.</td></tr>
+        <tr><td><code>ride_progressed</code></td><td>A saved report crossed 25, 50, or 75 percent. One event per band. A long gap can cross all three at once. There is no milestone 100, and there is no event per heartbeat.</td><td><code>ride:&lt;id&gt;:progress:&lt;milestone&gt;</code> · the beat’s <code>now</code></td><td><code>milestone</code> 25|50|75, <code>drive_ms</code>, <code>distance_m</code>, <code>route_id</code>, <code>paused</code>, <code>hull</code>.</td></tr>
+        <tr><td><code>ride_completed</code></td><td>The server stored reason <code>shift complete</code>: drive time and distance both met, and the driver ended the shift. This is the north star.</td><td><code>ride:&lt;id&gt;:completed</code> · <code>endedAt</code></td><td>Same ride shape as the start, plus <code>drive_ms</code>, <code>distance_m</code>, <code>route_id</code>, <code>hull</code>, <code>night_s</code>. <code>night_s</code> is client-reported and is not a judge metric.</td></tr>
+        <tr><td><code>ride_abandoned</code></td><td>The driver ended early. Stored reason starts with <code>shift abandoned</code>. The client’s longer sentence is not what is stored.</td><td><code>ride:&lt;id&gt;:abandoned</code> · <code>endedAt</code></td><td>Same shape as completed, plus <code>reason_code=abandoned</code>. “Abandoned at 10% vs 90%” is <code>drive_ms / min_ms</code>, not a new event.</td></tr>
+        <tr><td><code>ride_failed</code></td><td>A save set the ride to failed. <code>ended_by</code> is <code>end</code>, <code>heartbeat</code>, <code>stale_on_create</code>, or <code>stale_on_start</code>. A ride fails once.</td><td><code>ride:&lt;id&gt;:failed</code> · <code>endedAt</code></td><td><code>fail_code</code>: <code>heartbeat_lost</code>, <code>implausible_progress</code>, <code>brakes</code>, <code>engine_blown</code>, <code>cold_engine</code>, <code>hull</code>, <code>off_road</code>, <code>crash</code>, or <code>other</code>. Breakdowns use the code. <code>reason</code> is the stored string, capped at 200 characters.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>P1 · real, and not required for the five numbers</h3>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Event</th><th>When</th><th>Dedupe</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td><code>ride_resumed</code></td><td>Create ride returned an existing open ride instead of inserting one.</td><td>none, one per request</td><td>This is not unpausing the truck. Unpause is the client event <code>ride_unpaused</code>. The two names stay disjoint so the relay can drop this one.</td></tr>
+        <tr><td><code>ride_expired</code></td><td>An open quote died on the next create (TTL or the tier changed).</td><td><code>ride:&lt;id&gt;:expired</code></td><td>A later matching payment can still mark it paid.</td></tr>
+        <tr><td><code>ride_cancelled</code></td><td>An unstarted free ride was replaced by a paid order. Emitted only when <code>settle().inserted</code> is true.</td><td><code>ride:&lt;id&gt;:cancelled</code></td><td><code>reason_code=replaced_by_paid</code>. The race loser returns an empty list and emits nothing.</td></tr>
+        <tr><td><code>payment_reconcile_missed</code></td><td>Reconcile returned <code>not_found</code>.</td><td><code>ride:&lt;id&gt;:reconcile-miss:&lt;utcDay&gt;</code></td><td>Timestamp is 00:00:00.000Z of that UTC day, so lobby reloads share one row. PostHog dedupes on uuid, event, timestamp, and distinct id.</td></tr>
+        <tr><td><code>payment_conflict</code></td><td>Confirm is about to throw <code>ConflictError</code>.</td><td><code>payment:&lt;signature&gt;:conflict:&lt;reason_code&gt;</code></td><td><code>already_paid</code>, <code>signature_reused</code>, <code>bad_status</code>. Not part of the reject rate. The early return “this signature already paid” emits nothing.</td></tr>
+        <tr><td><code>free_rides_granted</code></td><td>The midnight job updated at least one player.</td><td><code>free-grant:&lt;day&gt;</code></td><td>Distinct id <code>freightchain</code>. Property <code>players</code> is a count. Wallet addresses are not in the event.</td></tr>
+        <tr><td><code>free_ride_granted</code></td><td>The lazy grant inside <code>touch</code> actually moved the balance.</td><td><code>free-grant:&lt;wallet&gt;:&lt;day&gt;</code></td><td>Once per wallet per UTC day. Silent when the midnight job already ran.</td></tr>
+        <tr><td><code>achievement_unlocked</code></td><td>This statement inserted the achievement id.</td><td><code>ach:&lt;wallet&gt;:&lt;id&gt;</code></td><td>Ids: <code>first-mile</code>, <code>shift-complete</code>, <code>night-owl</code>, <code>century</code>, <code>clean-run</code>, <code>cold-start</code>. Never <code>top-20</code>.</td></tr>
+        <tr><td><code>round_opened</code></td><td>This process inserted the round. The race loser emits nothing.</td><td><code>round-open:&lt;startsAt&gt;</code></td><td>Distinct id <code>freightchain</code>. <code>carry_lamports</code> is what was passed forward. A round-turning 503 emits nothing.</td></tr>
+        <tr><td><code>round_closed</code></td><td>The previous round’s close saved in that same transaction.</td><td><code>round-close:&lt;roundId&gt;</code></td><td>Not a payout. No prize is sent.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section aria-labelledby="s-client">
+  <div class="head">
+    <span class="eyebrow">Browser events · 35 names, allowlisted properties</span>
+    <h2 id="s-client">What the player did before the server knew</h2>
+    <p class="soft">The relay stamps <code>source=client</code> and, when the cookie verifies, the session wallet. Properties are strings of at most 200 characters, or an integer, a boolean, or null. A float drops that event, not the whole batch. At most 20 keys. Anything not in the allowlist is removed. These names are hard-deleted even if someone allowlists them later: <code>signature</code>, <code>transaction</code>, <code>seed</code>, <code>nonce</code>, <code>message</code>, <code>token</code>, <code>cookie</code>, <code>authorization</code>, <code>detail</code>, <code>secret</code>, <code>anon_id</code>.</p>
+  </div>
+  <h3>P0 · nineteen</h3>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Event</th><th>When</th><th>Properties</th></tr></thead>
+      <tbody>
+        <tr><td><code>landing_viewed</code></td><td>Once per document load. Not on the 10 second refresh.</td><td><code>surface=landing</code></td></tr>
+        <tr><td><code>landing_chapter_viewed</code></td><td>First time a chapter section intersects. Once per id per load.</td><td><code>chapter</code>: ride, loop, garage, economy, roadmap, market, about</td></tr>
+        <tr><td><code>wallet_connect_clicked</code></td><td>CONNECT while signed out, before <code>signIn()</code>.</td><td><code>surface</code>, <code>wallet_name</code> (phantom, solflare, injected, none) — the same provider <code>signIn</code> uses</td></tr>
+        <tr><td><code>lobby_open_clicked</code></td><td>The same button once a session is already painted (OPEN THE LOBBY).</td><td><code>surface=landing</code></td></tr>
+        <tr><td><code>wallet_signature_requested</code></td><td>Connect succeeded, the nonce returned, and the wallet is about to be asked to sign.</td><td><code>wallet_name</code>. No message, no nonce, no pubkey.</td></tr>
+        <tr><td><code>sign_in_failed</code></td><td><code>signIn()</code> threw. The landing’s error text stays the raw message; the event gets a stage.</td><td><code>stage</code>: <code>no_provider</code>, <code>connect_rejected</code>, <code>nonce_failed</code>, <code>sign_rejected</code>, <code>verify_failed</code>, <code>unknown</code>. Plus <code>http_status</code>, <code>code</code>, <code>wallet_name</code>.</td></tr>
+        <tr><td><code>session_restored</code></td><td>The first <code>/api/me</code> on the landing or the lobby succeeded, and this document did not just finish <code>signIn()</code>.</td><td><code>surface</code> landing|lobby, <code>request_alias</code> (boolean; the string <code>"true"</code> does not alias), <code>is_demo</code>. The only client event that may ask for an alias.</td></tr>
+        <tr><td><code>lobby_viewed</code></td><td>Once, after the lobby has a session, before the first tab paint.</td><td><code>is_demo</code>, <code>round_id</code> if the pool is already loaded</td></tr>
+        <tr><td><code>lobby_tab_viewed</code></td><td><code>go()</code> actually switches. First paint and hash changes. Not the live poll.</td><td><code>tab</code>: new, live, board, profile</td></tr>
+        <tr><td><code>tier_selected</code></td><td>The rider clicked a tier. The automatic default selection does not fire it.</td><td><code>tier_id</code>, <code>is_free</code>, <code>price_usd</code>, <code>lamports</code></td></tr>
+        <tr><td><code>ride_buy_clicked</code></td><td><code>start()</code> begins, before the order or the wallet.</td><td><code>tier_id</code>, <code>is_free</code>, <code>price_usd</code>, <code>is_demo</code></td></tr>
+        <tr><td><code>payment_submitted</code></td><td>The wallet finished <code>signAndSendTransaction</code>.</td><td><code>ride_id</code>, <code>tier_id</code>. The signature is in scope and is not sent.</td></tr>
+        <tr><td><code>payment_failed</code></td><td><code>buyRide</code> threw, other than the 90 second give-up.</td><td><code>stage</code>: <code>no_provider</code>, <code>web3_load_failed</code>, <code>order_failed</code>, <code>instructions_failed</code>, <code>wallet_rejected</code>, <code>confirm_rejected</code>, <code>unexpected_status</code>. Plus <code>http_status</code>, <code>code</code>. Not also <code>api_request_failed</code>.</td></tr>
+        <tr><td><code>payment_confirm_gave_up</code></td><td>The confirm loop hit 60 iterations.</td><td><code>ride_id</code>, <code>tier_id</code>, <code>attempts=60</code>. Later reconcile can still become <code>payment_confirmed</code> <code>via=reconcile</code>.</td></tr>
+        <tr><td><code>api_request_failed</code></td><td><code>api()</code> threw and the caller did not pass <code>report: false</code>. Boot <code>/api/me</code> on the lobby reports. The landing’s anonymous 401 does not. Heartbeats, pool, live, leaderboard, tiers, and pending do not.</td><td><code>route</code> (the template, not the id), <code>http_status</code>, <code>code</code>, <code>surface</code></td></tr>
+        <tr><td><code>ride_page_viewed</code></td><td>An online ride loaded with status <code>created</code>.</td><td><code>ride_id</code>, <code>tier_id</code>, <code>is_free</code>, <code>time_scale</code>, <code>min_ms</code>, <code>complete_dist_m</code></td></tr>
+        <tr><td><code>ride_load_failed</code></td><td><code>initOnline</code> failed.</td><td><code>stage</code>: <code>not_signed_in</code>, <code>bad_status</code>, <code>http</code>, <code>unknown</code></td></tr>
+        <tr><td><code>ride_start_clicked</code></td><td>START RIDE on an online ride, before the server start.</td><td><code>ride_id</code>, <code>route_id</code>, <code>phase</code> (day, dusk, night, dawn)</td></tr>
+        <tr><td><code>ride_start_failed</code></td><td>The server refused the start (typical 409 or 401).</td><td><code>ride_id</code>, <code>http_status</code>, <code>code</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>P1 and P2 · polish, already allowlisted</h3>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Event</th><th>When</th><th>Properties</th></tr></thead>
+      <tbody>
+        <tr><td><code>hero_video_started</code> / <code>hero_video_failed</code></td><td>The hero video element, and only when <code>data-src</code> is set. Today it is empty, so these stay at zero.</td><td>none</td></tr>
+        <tr><td><code>demo_dialog_opened</code></td><td>The demo button.</td><td><code>has_video</code></td></tr>
+        <tr><td><code>play_top_clicked</code></td><td>The top play control.</td><td><code>signed_in</code></td></tr>
+        <tr><td><code>leaderboard_filtered</code></td><td>A board render succeeded.</td><td><code>board</code>: round, all, free</td></tr>
+        <tr><td><code>pending_ride_shown</code> / <code>pending_ride_start_clicked</code></td><td>The waiting-ride banner, once per ride per load, and its START IT button.</td><td><code>ride_id</code>, and <code>tier_id</code> on the shown event</td></tr>
+        <tr><td><code>route_selected</code> / <code>phase_selected</code></td><td>Menu clicks during an online ride, before the server knows them.</td><td><code>route_id</code> / <code>phase</code></td></tr>
+        <tr><td><code>ride_paused</code> / <code>ride_unpaused</code></td><td>Pause transitions on an online ride. Not per frame.</td><td><code>source</code>: key or visibility. The unpause name is not <code>ride_resumed</code>.</td></tr>
+        <tr><td><code>ride_end_requested</code></td><td>The client asked to end, before the server answered.</td><td><code>outcome</code> shift|failed, <code>client_complete</code>, <code>fail_code</code>. Never a completion metric. It exists to see “the browser painted COMPLETE, the server said abandoned”.</td></tr>
+        <tr><td><code>player_signed_out</code></td><td>The lobby sign-out click, before the request.</td><td>none. The server logout handler has no wallet, so there is no server twin.</td></tr>
+        <tr><td><code>offline_practice_clicked</code></td><td>A link to <code>play.html</code> without <code>?ride</code>.</td><td>none. The offline page itself loads no analytics.</td></tr>
+        <tr><td><code>storybook_link_clicked</code></td><td>The model-viewer link.</td><td>none. <code>viewer.html</code> does not load analytics.</td></tr>
+        <tr><td><code>social_clicked</code></td><td>A rendered social link.</td><td><code>net</code>. The three links are null today, so the nodes do not exist.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section aria-labelledby="s-identity">
+  <div class="head">
+    <span class="eyebrow">One person, two ids</span>
+    <h2 id="s-identity">Anonymous until the cookie, then one alias</h2>
+  </div>
+  <div class="pipe three">
+    <div class="step"><span class="n">1</span><span class="where">First visit</span><h3>Anon</h3><p><code>anon_</code> plus a UUID v4, stored with <code>store()</code> under <code>freightchain.anon</code>. Version nibble 4, variant 8, 9, a, or b. Anything else is ignored.</p></div>
+    <div class="step"><span class="n">2</span><span class="where">session_restored</span><h3>Alias</h3><p>Only when the cookie wallet is present, the anon id matches, and <code>request_alias</code> is the boolean true. One alias. No <code>$identify</code> for the merge.</p></div>
+    <div class="step"><span class="n">3</span><span class="where">After that</span><h3>Wallet</h3><p>Server events use the session wallet. System events use the distinct id <code>freightchain</code>. The anon id is never a property.</p></div>
+  </div>
+  <div class="callout">
+    <b>Open bug. Leave the payload as the plan wrote it.</b>
+    <span>The code sends <code>distinct_id</code> = the anonymous id and <code>properties.alias</code> = the wallet. PostHog’s ingestion page says an alias merges into <code>distinct_id</code>, which would fold the wallet into the anon. The capture API example says the opposite. The identity-resolution example uses <code>distinct_id</code> = the real user and <code>alias</code> = the anon id. Do not flip the call until that conflict is decided. The acquisition funnel stays unpublished until one real <code>session_restored</code> is checked in the UI and the two ids are one person.</span>
+  </div>
+</section>
+
+<section aria-labelledby="s-relay">
+  <div class="head">
+    <span class="eyebrow">POST /api/telemetry</span>
+    <h2 id="s-relay">The only door the browser has</h2>
+  </div>
+  <div class="admin">
+    <div class="lock"><span class="n">1</span><b>Optional session</b><span><code>OptionalSessionGuard</code> is the route guard, not an app-wide guard. No cookie is a 200. No player-row lock.</span></div>
+    <div class="lock"><span class="n">2</span><b>Ten events</b><span>Zod body. The response is <code>{ enabled, accepted, dropped }</code>. Floats and oversize strings drop the event. A bad name is a drop, not a 400.</span></div>
+    <div class="lock"><span class="n">3</span><b>Client only</b><span><code>source</code> is forced to <code>client</code>. Every server event name is dropped, including <code>ride_completed</code> and <code>payment_confirmed</code>.</span></div>
+    <div class="lock"><span class="n">4</span><b>Quiet when off</b><span>Empty key, a non-<code>phc_</code> key, or <code>POSTHOG_DISABLED</code> of <code>1</code> or <code>true</code> returns <code>enabled: false</code>. The API still boots.</span></div>
+  </div>
+  <p class="soft">Default throttle is the global 600 per minute. The adapter flushes at 20 events or 1 second. Shutdown flushes for 500 ms, then drops the queue. Logs name the host, the status, the count, and the event names. They never print the key or the body. Tests stub <code>fetch</code> to <code>https://posthog.test</code> with <code>phc_test</code>. CI does not call PostHog.</p>
+</section>
+
+<section aria-labelledby="s-board">
+  <div class="head">
+    <span class="eyebrow">PostHog Cloud EU · project 297915</span>
+    <h2 id="s-board">One blank board, read by a person</h2>
+    <p>The Colosseum board is <a href="https://eu.posthog.com/project/297915/dashboard/1006663">eu.posthog.com/project/297915/dashboard/1006663</a>. It is private. The share dialog stays closed. The Saturday video uses a screenshot. There is no embed on the public site and no person table.</p>
+  </div>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Tile</th><th>What it shows</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Four numbers, <code>is_demo=false</code>: wallets, paid confirms, starts, completes. Caption the completion rate under them.</td></tr>
+        <tr><td>2</td><td>The same four, <code>is_demo=true</code>, title <b>DEMO WALLET (×60 clock)</b>.</td></tr>
+        <tr><td>3</td><td>Lamports sum on <code>payment_confirmed</code> for this <code>round_id</code>, next to the sentence “Site hero is <code>split.grand</code>, not this sum.”</td></tr>
+        <tr><td>4</td><td>Acquisition funnel, 1 hour. Unpublished until the alias check.</td></tr>
+        <tr><td>5</td><td>Paid activation and free activation, 7 days.</td></tr>
+        <tr><td>6</td><td>Payment reliability, 30 minutes, plus <code>payment_rejected</code> by <code>reason_code</code>.</td></tr>
+        <tr><td>7</td><td><code>ride_failed</code> by <code>fail_code</code>.</td></tr>
+        <tr><td>8</td><td>Fixed text: “Server events only. No heartbeat stream. No payout event exists. Demo wallet is labelled. If this board disagrees with the database, the database wins.”</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="soft">Create the board from Blank. Product analytics, Product health, Growth, B2B, B2C, Landing, Real time, Revenue, Stripe, and AI prompts are the wrong templates. Loop health, when someone makes it, is a second blank board: flush-failure note, <code>api_request_failed</code> by route, <code>sign_in_failed</code> by stage, <code>payment_failed</code> by stage, ride load and start failures, median <code>drive_ms</code> against <code>min_ms</code>, progress counts by milestone, <code>session_restored</code> against <code>player_signed_in</code>, and the chapter breakdown. It is not this URL.</p>
+</section>
+
+<section aria-labelledby="s-env">
+  <div class="head">
+    <span class="eyebrow">Keys</span>
+    <h2 id="s-env">What turns capture on</h2>
+  </div>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Key</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><code>POSTHOG_KEY</code></td><td>Project token, <code>phc_…</code>. Empty turns capture off. A personal <code>phx_…</code> key, or any other string, logs once (<code>analytics disabled: POSTHOG_KEY is not a project token</code>) and is treated as unset. It does not refuse boot. The real token lives only in gitignored <code>server/.env</code> and <code>deploy/.env</code>. Tracked examples keep it empty.</td></tr>
+        <tr><td><code>POSTHOG_HOST</code></td><td><code>https://eu.i.posthog.com</code>. Capture posts to <code>{host}/batch/</code>. The US host is the wrong continent for this project.</td></tr>
+        <tr><td><code>POSTHOG_PROJECT_ID</code></td><td><code>297915</code>. Notes for humans. Capture does not send it.</td></tr>
+        <tr><td><code>POSTHOG_DISABLED</code></td><td><code>1</code> or <code>true</code> turns capture off. <code>0</code>, <code>false</code>, or empty leaves it on when the key is a project token. It is an enum, not a coerced boolean, so the string <code>false</code> does not stick the kill switch on.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="soft">On <code>main</code> the schema does not declare these keys, so Zod strips them and the server boots as before. Both example files and <code>deploy/docker-compose.prod.yml</code> list them anyway: a key present in <code>deploy/.env</code> but missing from compose never reaches the container. Merging the branch without that list would turn the key on in the file and off in the process.</p>
+</section>
+
+<section aria-labelledby="s-promise">
+  <div class="head">
+    <span class="eyebrow">For anyone quoting a number</span>
+    <h2 id="s-promise">What you can count on</h2>
+  </div>
+  <ul class="promises">
+    <li><b>A finish is a server row</b><span><code>ride_completed</code> exists only after the ride saved as <code>shift complete</code>. The browser cannot mint it.</span></li>
+    <li><b>A payment is an inserted row</b><span><code>payment_confirmed</code> fires only when <code>settle()</code> inserted the payment. A second confirm and a race loser are silent.</span></li>
+    <li><b>Capture cannot undo the write</b><span>The event is built after the commit, in try/catch. PostHog being down leaves the ride and the payment as they were.</span></li>
+    <li><b>A bad key does not take the API down</b><span>Empty, <code>phx_</code>, or <code>POSTHOG_DISABLED=1</code> disables capture and the process still listens.</span></li>
+    <li><b>Demo and real are separate</b><span><code>is_demo</code> is on the event. The video board is the demo tile and says the clock is ×60.</span></li>
+    <li><b>The database wins</b><span>Lamports on the board are checked against <code>economy.Payment</code> and <code>split.entries</code> before anyone says the number.</span></li>
+    <li><b>Secrets stay out of the event</b><span>No signature on a client event, no seed, no nonce, no token, no raw error detail. The project token is never logged.</span></li>
+    <li><b>Heartbeats are not a stream</b><span>Progress is three bands. A short abandon can have zero <code>ride_progressed</code> events, and that is correct.</span></li>
+  </ul>
+</section>
+
+<section aria-labelledby="s-limits">
+  <div class="head">
+    <span class="eyebrow">Limits</span>
+    <h2 id="s-limits">What this does not do</h2>
+  </div>
+  <ul class="limits">
+    <li><b>It is not live.</b><span>The capture code is on <code>plan/posthog-integration</code>. <code>main</code> ignores the keys. Deploying <code>main</code> does not turn the board on. Tiles stay at zero until that branch is deployed with the EU host.</span></li>
+    <li><b>It does not record the drive.</b><span>Session replay and ride replay belong to verified play (<code>client/js/telemetry.js</code>, the hash-chained batches). This work does not add <code>posthog-js</code>, a second project, or an nginx <code>/ingest/</code> proxy. Replay stays off <code>play.html</code>.</span></li>
+    <li><b>It does not know about tickets, verdicts, or the live stream.</b><span>Those landed on <code>main</code> after this branch was cut. <code>payment_confirmed</code> on the branch is the memo-transfer confirm and reconcile. Escrow ticket buys, <code>verified</code> / <code>flagged</code> / <code>rejected</code>, and spectator chat are not events. Adding them is a later change, on the code that actually has them.</span></li>
+    <li><b>It does not pay anyone.</b><span>There is no settlement event, no payout event, and no <code>top-20</code> achievement. <code>round_closed</code> is the round rolling over.</span></li>
+    <li><b>The alias direction is unresolved.</b><span>See the callout above. The acquisition funnel is not a number until one real session is inspected.</span></li>
+    <li><b>The board is not public.</b><span>Dashboard 1006663 is behind the PostHog login. Do not open the share dialog. Loop health does not have a URL yet.</span></li>
+    <li><b>Ad blockers never see PostHog.</b><span>The browser posts to our API. That is why a blocked <code>posthog.com</code> does not drop the client events, and why the server is the one that calls EU ingest.</span></li>
+  </ul>
+</section>
+
+<footer>
+  <span>Freight Chain · product analytics</span>
+  <span>branch plan/posthog-integration · 6774faf</span>
+  <span><a href="https://eu.posthog.com/project/297915/dashboard/1006663">EU dashboard 1006663</a></span>
+  <span>as of Oct 8, 2026</span>
+</footer>
+
+</div>
+</body>
+</html>

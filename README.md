@@ -7,7 +7,7 @@ Freight Chain – "Desert Run": a browser truck-driving game with a Solana-paid 
 - `server/` – NestJS + Prisma + PostgreSQL API (`docs/backend-architecture.md`)
 - `deploy/` – semi-automatic deploy to our own server: `npm run deploy` (see `deploy/README.md`)
 - `video/` – promo clip maker: real gameplay → mp4 (≤ 15 s) + gif (≤ 20 MB) with landing-styled captions and transitions; the finished intro is `video/out/intro/` (see "Promo videos" below)
-- `docs/` – hackathon plan, backend architecture, [verified play: next steps + the owner's checklist](docs/verified-play-next-steps.md)
+- `docs/` – hackathon plan, backend architecture, [verified play: next steps + the owner's checklist](docs/verified-play-next-steps.md), [product analytics: events, funnels, the EU board](docs/analytics/index.html)
 - `AGENTS.md` / `CLAUDE.md` – the project map and rules for coding agents; `.claude/skills/` – project skills (read-only production logs / database, ride investigation, the whole test run, `gameplay-video`)
 
 Local run: `npm run db:up && npm run server:dev` → http://localhost:3000
@@ -17,6 +17,10 @@ Local run: `npm run db:up && npm run server:dev` → http://localhost:3000
 - **Verified play**: on online rides the game records every key press and a 10 Hz sample of the truck (`client/js/telemetry.js`) and uploads hash-chained batches; after a completed shift the server checks that recording – complete, untampered, consistent with the ride, human-timed – and marks it `verified` / `flagged` / `rejected`. Nothing is re-simulated. Only verified paid shifts rank, unless `VERDICT_ENFORCE=false` (shadow mode). Details: `AGENTS.md` → "Verified play".
 - **Admin page**: `https://admin.<apex>` (locally `/admin.html`) behind HTTP basic auth (`DEPLOY_ADMIN_USER` / `DEPLOY_ADMIN_PASSWORD`), its own wallet sign-in for `ADMIN_WALLETS` (a 2 h admin session) and a wallet signature on every change – overview, the review queue of flagged rides (accept / reject, audited), rides, sign-ins, the server's recent logs, the audit log.
 - **Production, read-only**: `npm run ops -- logs --since 30m` · `ops -- logs --errors` · `ops -- query list` / `ops -- query wallet <address>` · `ops -- sql "SELECT …"` (a read-only transaction) · `ops -- ps`. See `deploy/README.md`.
+
+## Product analytics
+
+How the loop is measured — every event, the eight funnels, what the server owns, what the browser may say — is [docs/analytics/index.html](docs/analytics/index.html). Capture is built on branch `plan/posthog-integration` and is not on `main` and not live. The private EU board is [project 297915 / dashboard 1006663](https://eu.posthog.com/project/297915/dashboard/1006663). Ingest is `https://eu.i.posthog.com`. The project token stays in the gitignored env files; the tracked examples keep `POSTHOG_KEY` empty.
 
 ## Tests
 

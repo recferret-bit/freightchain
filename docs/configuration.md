@@ -107,6 +107,17 @@ A new setting therefore touches **four** places: `env.schema.ts`, `server/.env.e
 
 The admin API additionally requires: host = `admin.<apex>` (nginx basic auth, `DEPLOY_ADMIN_USER` / `DEPLOY_ADMIN_PASSWORD` ≥ 16 chars), a wallet sign-in, and a wallet signature for every change.
 
+### Product analytics (read on `plan/posthog-integration`; stripped on `main`)
+
+The capture code is not on `main`. `env.schema.ts` here does not declare these keys, so Zod strips them and boot is unchanged. They are still listed in `server/.env.example`, `deploy/.env.example`, and `deploy/docker-compose.prod.yml` `app.environment`, because a key missing from compose never reaches the container once the branch is merged. Full behaviour: [`docs/analytics/index.html`](analytics/index.html).
+
+| Key | Default | Notes |
+|---|---|---|
+| `POSTHOG_KEY` | unset | Project token `phc_…`. Empty = capture off. A `phx_…` or any other non-token is logged once and ignored, and does not stop the API. **Never commit or print it.** Tracked examples stay empty. The real value is only in gitignored `server/.env` and `deploy/.env`. |
+| `POSTHOG_HOST` | `https://eu.i.posthog.com` | Ingest. Capture posts to `{host}/batch/`. Project 297915 is EU Cloud. The US ingest host accepts the token and the events never appear on the board. |
+| `POSTHOG_PROJECT_ID` | `297915` | Notes only. Not a secret. Not sent on capture. |
+| `POSTHOG_DISABLED` | unset | `1` or `true` turns capture off. `0`, `false`, or empty leaves it on when the key is a project token. An enum, not a coerced boolean (`"false"` must not stick the switch on). |
+
 ## Deploy-only keys (`deploy/.env`, never reach the app)
 
 `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_PATH` (must be under `/srv`), `DEPLOY_DOMAIN` (bare apex – `ride.`, `api.`, `storybook.`, `admin.` are added), `DEPLOY_LETSENCRYPT_EMAIL`, `DEPLOY_APP_PORT`, `DEPLOY_KEEP_RELEASES` (3), `DEPLOY_KEEP_BACKUPS` (7), `DEPLOY_ADMIN_USER`, `DEPLOY_ADMIN_PASSWORD`.
@@ -148,7 +159,7 @@ npm run server:dev                   # :3000 – site, game and API on one origi
 - **`client/js/config.js` (`CFG`)** – every gameplay constant, with comments. Deliberate values not to touch without asking: `SHAKE_START 0.5`, `SHAKE_MOVING 0.1`, `SHAKE_RPM 0.35`, `START_ENGINE_OFF true`.
   `RIDE_MIN_SECONDS` is **300 (a test value); production = 1800**. Tuning requests are relative to the current value.
 - **Hosts** – never hard-code `/api/…` or `/play.html`; use `API_BASE` / `GAME_BASE` / `SITE_BASE` / `STORYBOOK_BASE` / `ADMIN_BASE` from `client/js/hosts.js`. On localhost, an IP or `file://` they are `''` (one origin).
-- **Browser `localStorage` keys** (per player, not config you ship): `freightchain.wallet.v1` (mock wallet), `freightchain.route` (last route), `freightchain.truck` (F2 handling tuning), `freightchain.time` / `freightchain.daycycle` (day-night clock), `freightchain.radio`, `freightchain.admin`.
+- **Browser `localStorage` keys** (per player, not config you ship): `freightchain.wallet.v1` (mock wallet), `freightchain.route` (last route), `freightchain.truck` (F2 handling tuning), `freightchain.time` / `freightchain.daycycle` (day-night clock), `freightchain.radio`, `freightchain.admin`. The analytics branch also writes `freightchain.anon` (`anon_<uuid v4>`).
   A stale value is the first suspect for "works in a fresh browser only" – clear them.
 - **In-game F2 panel** – live sliders for truck handling and the time of day.
 - Server rules that mirror the client (`MAX_SPEED`, `COMPLETE_DIST_K`, route ids) live in `server/src/domain/rides/ride-rules.ts` – change both together.
@@ -171,5 +182,5 @@ npm run server:dev                   # :3000 – site, game and API on one origi
 
 ## Known drift
 
-- A local `deploy/.env` and `server/.env` may contain `POSTHOG_*` keys. Nothing on `main` reads them (the PostHog work is on the `plan/posthog-*` branches); remove them or keep them for those branches.
-- `deploy/.env.example` omits `FEE_PAYER_*` secrets' real values on purpose (dummies only) and does not list `COOKIE_DOMAIN` / `CORS_ORIGINS` / `APP_*` (derived).
+- `POSTHOG_*` in the gitignored `server/.env` and `deploy/.env` is intentional (EU host, project 297915, token not tracked). On `main` the schema strips them, so the running server ignores them until `plan/posthog-integration` is merged. Do not point the host at `us.i.posthog.com`. Do not delete the keys to “clean up” — the analytics branch reads them.
+- `deploy/.env.example` omits `FEE_PAYER_*` / `CRANK_SECRET` / `POSTHOG_KEY` real values on purpose (dummies and an empty token) and does not list `COOKIE_DOMAIN` / `CORS_ORIGINS` / `APP_*` (derived).

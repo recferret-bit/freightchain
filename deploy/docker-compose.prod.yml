@@ -83,6 +83,11 @@ services:
       ADMIN_WALLETS: ${ADMIN_WALLETS:-}
       ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET:-}   # empty = derived from JWT_SECRET
       ADMIN_SESSION_TTL_MINUTES: ${ADMIN_SESSION_TTL_MINUTES:-120}
+      # PostHog (docs/analytics/index.html). Empty key = off. main's schema strips these; listing them is what keeps a later merge from dropping the token on the way into the container.
+      POSTHOG_KEY: ${POSTHOG_KEY:-}
+      POSTHOG_HOST: ${POSTHOG_HOST:-https://eu.i.posthog.com}
+      POSTHOG_PROJECT_ID: ${POSTHOG_PROJECT_ID:-297915}
+      POSTHOG_DISABLED: ${POSTHOG_DISABLED:-}
     # loopback ONLY: ports Docker publishes bypass ufw, so a bare "3000:3000" would be open to the internet. nginx on the host is the public door.
     ports:
       - "127.0.0.1:${APP_PORT:-3000}:3000"
