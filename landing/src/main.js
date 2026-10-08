@@ -1,12 +1,14 @@
 import { api, signIn, walletName } from '../../client/site/wallet.js';   // one sign-in implementation for landing + lobby (Vite bundles it; fs.allow in vite.config.js for dev)
 import { API_BASE, GAME_BASE, SITE_BASE, STORYBOOK_BASE, WHITEPAPER_BASE } from '../../client/js/hosts.js';   // '' on localhost; in production the game is on ride.<apex>, NOT the landing's host, and SITE_BASE is the apex
 import { track, flushSoon } from '../../client/js/analytics.js';
+import { reportWebVitals } from '../../client/js/web-vitals.js';
 import { livePath, leaveOnClose } from '../../client/site/presence.js';   // this page counts as online in the live feed – and leaves it when closed
 import { sol, km, left, short, hue, hours, ago, plural, TIER, TIER_LONG, ROUTE } from './format.js';
 import { explorerUrl, shortAddr, statusChip, progressText, deadline } from '../../client/site/pools.js';   // the lobby's pool wording, so both pages say the same thing
 
 /* Landing: four chapters (ride · loop · economy · about), fed by the public API only – no session needed to look.
    Everything from the server goes in with textContent (other riders' wallets are rendered here). */
+reportWebVitals('landing');   // before the first track(), so the leave flush includes the final metrics
 
 /* ───── things to fill in ───── */
 const DEMO_VIDEO = null;          // e.g. '/media/demo.mp4' – the ≤ 3 min product demo; null = the dialog explains and links to offline play

@@ -1,4 +1,4 @@
-import { allowClientProperties, isClientEvent } from '../../../../src/domain/analytics/client-events.js';
+import { CLIENT_EVENTS, allowClientProperties, isClientEvent } from '../../../../src/domain/analytics/client-events.js';
 
 describe('the promo events of the browser plane', () => {
   it('are allowlisted, with only the properties named', () => {
@@ -12,5 +12,14 @@ describe('the promo events of the browser plane', () => {
     expect(allowClientProperties('promo_redeem_clicked', { surface: 'promo', prefilled: 1.5 })).toBeNull();
     expect(allowClientProperties('promo_invite_viewed', { code: 'x'.repeat(201) })).toBeNull();
     for (const name of ['promo_redeemed', 'cosmetic_equipped', 'garage_saved', 'promo_created', 'promo_disabled']) expect(isClientEvent(name), name).toBe(false);
+  });
+  it('keeps one web vital and drops a float value', () => {
+    expect(CLIENT_EVENTS).toHaveLength(40);
+    expect(isClientEvent('web_vital')).toBe(true);
+    expect(allowClientProperties('web_vital', { surface: 'whitepaper', metric: 'LCP', value: 1234, rating: 'good', navigation: 'navigate', extra: true })).toEqual({
+      surface: 'whitepaper', metric: 'LCP', value: 1234, rating: 'good', navigation: 'navigate',
+    });
+    expect(allowClientProperties('web_vital', { surface: 'landing', metric: 'CLS', value: 0, rating: 'good' })).toEqual({ surface: 'landing', metric: 'CLS', value: 0, rating: 'good' });
+    expect(allowClientProperties('web_vital', { surface: 'lobby', metric: 'CLS', value: 0.12, rating: 'needs-improvement' })).toBeNull();
   });
 });

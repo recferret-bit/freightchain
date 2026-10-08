@@ -58,7 +58,7 @@ A new setting therefore touches **four** places: `env.schema.ts`, `server/.env.e
 | `APP_DOMAIN` / `APP_ORIGIN` | `localhost:3000` / `http://localhost:3000` | Shown in the wallet's sign-in message – must be the page the rider signs in on (derived in prod) |
 | `CLIENT_DIR` / `LANDING_DIR` | `../client` / `../landing/dist` | Static roots. No landing build = `/` serves the placeholder `client/index.html` |
 | `COOKIE_DOMAIN` | unset (host-only cookie) | Split hosts only: the apex, so all subdomains share the session. Bare host, no scheme/port |
-| `CORS_ORIGINS` | empty (CORS off) | Split hosts only: comma-separated origins allowed to call the API with the cookie |
+| `CORS_ORIGINS` | empty (CORS off) | Split hosts only: comma-separated origins allowed to call the API with the cookie. Derived as `https://<apex>,https://ride.<apex>,https://whitepaper.<apex>` (`deploy/scripts/lib.sh`). The whitepaper origin is for web vitals. |
 | `TRUST_PROXY` | – (**required in prod**) | Reverse-proxy hops. Production nginx = `1` (the deploy check insists). Wrong value = per-IP rate limits wrong |
 | `THROTTLE_LIMIT` / `THROTTLE_AUTH_LIMIT` | `600` / `30` | Requests per minute per wallet-or-IP; the second applies to `/api/auth/*` |
 

@@ -52,7 +52,7 @@
     <p class="soft">Capture is on this checkout as of 8 Oct 2026. Verified-play verdicts, escrow ticket buys, and live-stream chat are still not events. <code>payment_confirmed</code> is the memo-transfer confirm and reconcile. A ticket ride emits <code>ride_ordered</code>, which is the ride, not the purchase.</p>
   </div>
   <div class="pipe four">
-    <div class="step"><span class="n">1</span><span class="where">Browser</span><h3>Click</h3><p>Landing, lobby, and the online ride page post an allowlisted batch. Offline play and the model viewer send nothing.</p></div>
+    <div class="step"><span class="n">1</span><span class="where">Browser</span><h3>Click</h3><p>Landing, whitepaper, lobby, and the online ride page post an allowlisted batch. Offline play and the model viewer send nothing. Web vitals are the landing, the whitepaper, and the lobby only.</p></div>
     <div class="step"><span class="n">2</span><span class="where">POST /api/telemetry</span><h3>Relay</h3><p>Anonymous is fine. The relay keeps client names, drops every server name, and strips signatures, seeds, and tokens.</p></div>
     <div class="step"><span class="n">3</span><span class="where">After the commit</span><h3>Server</h3><p>Handlers emit only once the database write has succeeded. A PostHog failure cannot roll back a payment.</p></div>
     <div class="step"><span class="n">4</span><span class="where">eu.i.posthog.com</span><h3>Board</h3><p>Batch ingest. The project token never leaves the server. The Colosseum board is the EU link above.</p></div>
@@ -319,6 +319,7 @@
         <tr><td><code>offline_practice_clicked</code></td><td>A link to <code>play.html</code> without <code>?ride</code>.</td><td>none. The offline page itself loads no analytics.</td></tr>
         <tr><td><code>storybook_link_clicked</code></td><td>The model-viewer link.</td><td>none. <code>viewer.html</code> does not load analytics.</td></tr>
         <tr><td><code>social_clicked</code></td><td>A rendered social link.</td><td><code>net</code>. The three links are null today, so the nodes do not exist.</td></tr>
+        <tr><td><code>web_vital</code></td><td>Once per metric per document, on the landing, the whitepaper, and the lobby. FCP and TTFB as soon as they exist. LCP at the first input or when the page hides. CLS and INP when the page hides. No interaction means no INP. Not on <code>play.html</code> or <code>viewer.html</code>.</td><td><code>surface</code> landing|whitepaper|lobby, <code>metric</code> LCP|INP|CLS|FCP|TTFB, <code>value</code> (milliseconds, except CLS which is the score × 1000, so 0.1 is <code>100</code>), <code>rating</code> good|needs-improvement|poor, <code>navigation</code> navigate|reload|back_forward|prerender. A float is dropped, same as every other client event. Not one of the five judge numbers.</td></tr>
       </tbody>
     </table>
   </div>
@@ -375,7 +376,7 @@
       </tbody>
     </table>
   </div>
-  <p class="soft">Create the board from Blank. Product analytics, Product health, Growth, B2B, B2C, Landing, Real time, Revenue, Stripe, and AI prompts are the wrong templates. Loop health, when someone makes it, is a second blank board: flush-failure note, <code>api_request_failed</code> by route, <code>sign_in_failed</code> by stage, <code>payment_failed</code> by stage, ride load and start failures, median <code>drive_ms</code> against <code>min_ms</code>, progress counts by milestone, <code>session_restored</code> against <code>player_signed_in</code>, and the chapter breakdown. It is not this URL.</p>
+  <p class="soft">Create the board from Blank. Product analytics, Product health, Growth, B2B, B2C, Landing, Real time, Revenue, Stripe, and AI prompts are the wrong templates. Loop health, when someone makes it, is a second blank board: flush-failure note, <code>api_request_failed</code> by route, <code>sign_in_failed</code> by stage, <code>payment_failed</code> by stage, ride load and start failures, median <code>drive_ms</code> against <code>min_ms</code>, progress counts by milestone, <code>session_restored</code> against <code>player_signed_in</code>, the chapter breakdown, and <code>web_vital</code> by <code>metric</code> and <code>surface</code> (CLS <code>value</code> is the score × 1000). It is not this URL.</p>
 </section>
 
 <section aria-labelledby="s-env">
@@ -422,7 +423,7 @@
   </div>
   <ul class="limits">
     <li><b>The board has no tiles.</b><span>Dashboard 1006663 is blank. Ingested events show in Activity, not on that board, until someone adds tiles. Capture sends when the running image includes this code and <code>POSTHOG_ENABLED=1</code>.</span></li>
-    <li><b>It does not record the drive.</b><span>Session replay and ride replay belong to verified play (<code>client/js/telemetry.js</code>, the hash-chained batches). This work does not add <code>posthog-js</code>, a second project, or an nginx <code>/ingest/</code> proxy. Replay stays off <code>play.html</code>.</span></li>
+    <li><b>It does not record the drive.</b><span>Session replay and ride replay belong to verified play (<code>client/js/telemetry.js</code>, the hash-chained batches). This work does not add <code>posthog-js</code>, a second project, or an nginx <code>/ingest/</code> proxy. Replay stays off <code>play.html</code>. <code>web_vital</code> is five numbers about the page load, measured in the browser and posted to the same relay. It is not a recording.</span></li>
     <li><b>It does not know about tickets, verdicts, or the live stream.</b><span><code>payment_confirmed</code> is the memo-transfer confirm and reconcile. Escrow ticket buys, <code>verified</code> / <code>flagged</code> / <code>rejected</code>, and spectator chat are not events. A ticket ride emits <code>ride_ordered</code>.</span></li>
     <li><b>It does not pay anyone.</b><span>There is no settlement event, no payout event, and no <code>top-20</code> achievement. <code>round_closed</code> is the round rolling over.</span></li>
     <li><b>The alias direction is unresolved.</b><span>See the callout above. The acquisition funnel is not a number until one real session is inspected.</span></li>

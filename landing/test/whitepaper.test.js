@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-/* Static checks on whitepaper.html + src/whitepaper.js (the page is static: no API calls) and on the numbers it quotes – they must stay equal to the code they come from. */
+/* Static checks on whitepaper.html + src/whitepaper.js and on the numbers it quotes – they must stay equal to the code they come from.
+   The page has no fetch of its own. Web vitals is the one request, and it lives in client/js/web-vitals.js → analytics.js (API_BASE, so production posts to api.<apex>). */
 const root = new URL('..', import.meta.url).pathname, repo = join(root, '..');
 const html = readFileSync(join(root, 'whitepaper.html'), 'utf8'), js = readFileSync(join(root, 'src/whitepaper.js'), 'utf8');
 const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map(m => m[1]);
@@ -41,8 +42,9 @@ test('images: local WebP, alt, intrinsic size, async decode, and the files exist
   for (const f of [...html.matchAll(/src="(\/media\/[\w./-]+)"/g)].map(m => m[1])) assert.ok(existsSync(join(root, 'public', f)), f);
 });
 
-test('links that leave the page go through the host bases; the page is static', () => {
+test('links that leave the page go through the host bases; web vitals is the only request', () => {
   assert.match(js, /from '\.\.\/\.\.\/client\/js\/hosts\.js'/); for (const b of ['GAME_BASE', 'SITE_BASE', 'STORYBOOK_BASE']) assert.match(js, new RegExp(b));
+  assert.match(js, /reportWebVitals\('whitepaper'\)/);
   assert.doesNotMatch(js, /fetch\(|XMLHttpRequest|innerHTML|outerHTML|insertAdjacentHTML|document\.write/);
   for (const tag of html.match(/<a [^>]*href="\/(?:play|lobby|viewer)\.html"[^>]*>|<a [^>]*href="\/(?:escrow\/|)"[^>]*>/g) ?? []) assert.match(tag, /data-to="(site|game|storybook)"/, tag);
   const back = html.match(/<a [^>]*id="landing-top"[^>]*>/)[0];

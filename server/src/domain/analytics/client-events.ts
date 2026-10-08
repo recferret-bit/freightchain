@@ -40,6 +40,7 @@ export const CLIENT_EVENTS = [
   'promo_invite_submitted',
   'promo_redeem_clicked',
   'garage_part_clicked',
+  'web_vital',
 ] as const;
 
 export type ClientEventName = (typeof CLIENT_EVENTS)[number];
@@ -94,6 +95,8 @@ const ALLOW: Record<ClientEventName, readonly string[]> = {
   promo_invite_submitted: ['code', 'signed_in', 'from_link'],
   promo_redeem_clicked: ['surface', 'prefilled'],
   garage_part_clicked: ['slot', 'item', 'owned'],
+  /* value is ms, except CLS where it is the score × 1000 (0.1 → 100). The relay only accepts integers. */
+  web_vital: ['surface', 'metric', 'value', 'rating', 'navigation'],
 };
 
 const MAX_KEYS = 20;

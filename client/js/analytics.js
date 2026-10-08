@@ -14,7 +14,7 @@ const BANNED = new Set(['signature', 'nonce', 'message', 'token', 'seed', 'cooki
 
 let disabled = false;   // document lifetime, not localStorage: one probe, then silence
 let timer = 0;
-let sending = false;
+let inflight = 0;
 let leaveHooked = false;
 let aliasWallet = null;   // freightchain.aliased is written only after { enabled: true }
 const queue = [];
@@ -70,21 +70,28 @@ export function track(event, properties) {
   const ev = { event, properties: props };
   if (requestAlias) ev.request_alias = true;   // sibling of properties; only this event, only when not yet aliased
   queue.push(ev);
-  if (queue.length >= 10) void flush();
-  else if (!timer) timer = setTimeout(() => { timer = 0; void flush(); }, 300);
+  if (queue.length >= 10) pump(false);
+  else if (!timer) timer = setTimeout(() => { timer = 0; pump(false); }, 300);
 }
 
+/* `force` starts the request even while one is in flight. pagehide must call fetch synchronously:
+   a timer armed from the previous request's finally does not run once the document is gone. */
 export function flushSoon() {
   if (timer) { clearTimeout(timer); timer = 0; }
-  void flush();
+  pump(true);
 }
 
-async function flush() {
-  if (sending || !queue.length || !live()) return;
-  sending = true;
+function pump(force) {
+  if (disabled || !queue.length || !live()) return;
+  if (inflight && !force) return;
   if (timer) { clearTimeout(timer); timer = 0; }
   const events = queue.splice(0, 10);
   const marking = events.some(e => e.request_alias) ? aliasWallet : null;
+  inflight++;
+  void finish(events, marking);
+}
+
+async function finish(events, marking) {
   try {
     const r = await fetch(`${API_BASE}/api/telemetry`, { credentials: 'include', keepalive: true, method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ anon_id: anonId(), events }) });
     const j = await r.json().catch(() => null);
@@ -92,10 +99,10 @@ async function flush() {
     if (r.ok && j && j.enabled === true && marking) store.set(ALIASED, marking);
   } catch { /* a telemetry failure must not surface in the UI */ }
   finally {
-    sending = false;
-    if (!disabled && queue.length) {
-      if (queue.length >= 10) void flush();
-      else if (!timer) timer = setTimeout(() => { timer = 0; void flush(); }, 300);
+    inflight--;
+    if (!disabled && inflight === 0 && queue.length) {
+      if (queue.length >= 10) pump(false);
+      else if (!timer) timer = setTimeout(() => { timer = 0; pump(false); }, 300);
     }
   }
 }

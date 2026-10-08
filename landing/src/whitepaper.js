@@ -1,4 +1,7 @@
 import { GAME_BASE, SITE_BASE, STORYBOOK_BASE } from '../../client/js/hosts.js';   // '' on localhost; on a real domain the game is on ride.<apex>, the lobby on the apex, the model viewer on storybook.<apex>
+import { reportWebVitals } from '../../client/js/web-vitals.js';   // the page's one request: POST /api/telemetry on API_BASE (api.<apex> in production)
+
+reportWebVitals('whitepaper');
 
 /* Links that leave this page: the HTML carries a same-origin fallback (works with no script), the bases make them point at the right host in production. */
 const BASES = { site: SITE_BASE, game: GAME_BASE };

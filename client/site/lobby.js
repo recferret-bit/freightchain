@@ -10,9 +10,11 @@ import { livePath, leaveOnClose } from './presence.js';
 import { renderReplays } from './lobby-replays.js';
 import { API_BASE, GAME_BASE, SITE_BASE } from '../js/hosts.js';
 import { track, flushSoon } from '../js/analytics.js';
+import { reportWebVitals } from '../js/web-vitals.js';
 
 /* The lobby: NEW RIDE · LIVE · LEADERBOARD · GARAGE · PROMO · PROFILE. Vanilla DOM, no framework.
    Everything that comes from the server (wallet addresses, route ids, statuses…) goes in with textContent – never innerHTML – because other riders' data is rendered here. */
+reportWebVitals('lobby');   // before the session check, so a bounce back to the landing still reports the load
 const $ = id => document.getElementById(id);
 const view = $('view');
 const ROUTES = { route66: 'Route 66', stuart: 'Stuart Hwy', siberia: 'Trans-Siberian', brenner: 'Brenner Pass', panamerican: 'Pan-American' };   // = client/js/themes ids

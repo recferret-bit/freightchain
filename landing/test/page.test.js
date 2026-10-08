@@ -105,6 +105,7 @@ test('promo invite: a form in its own band right after the hero (an <aside>, not
   assert.match(main, /const CODE_SHAPE = \/\^\[A-Z0-9_-\]\{3,32\}\$\//, 'only a code-shaped string is tracked');
   assert.match(main, /\$\('invite'\)\.onsubmit/);
   assert.match(main, /track\('promo_invite_viewed'/); assert.match(main, /track\('promo_invite_submitted'/);   // the funnel's first two steps (docs/analytics, funnel 9)
+  assert.match(main, /reportWebVitals\('landing'\)/);
   assert.doesNotMatch(main, /inviteMsg\.(innerHTML|insertAdjacentHTML)/);
 });
 
@@ -114,6 +115,7 @@ test('the lobby has the PROMO tab and takes the invite code only as a pre-fill',
   assert.match(lobby, /const TABS = \['new', 'live', 'replays', 'board', 'garage', 'promo', 'profile'\]/);
   assert.match(lobbyHtml, /<a role="tab" href="#garage" data-tab="garage">GARAGE<\/a>/);
   assert.match(lobby, /api\('garage\/loadout'/); assert.match(lobby, /track\('garage_part_clicked'/);
+  assert.match(lobby, /reportWebVitals\('lobby'\)/);
   assert.match(lobby, /new URLSearchParams\(location\.search\)\.get\('promo'\)/);
   assert.doesNotMatch(lobby, /get\('promo'\)[\s\S]{0,200}api\('promo\/redeem'/, 'a link never redeems by itself');
 });
