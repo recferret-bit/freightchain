@@ -7,7 +7,6 @@
 import nacl from 'tweetnacl'; import bs58 from 'bs58';
 import { launch, sleep } from '../../client/tools/cdp.mjs';
 import { simulate } from './sim-rides.mjs';
-import fs from 'node:fs'; import path from 'node:path';
 const BASE = process.env.BASE || 'http://localhost:3111', CP = +process.env.CHROME_PORT || 9395;
 const fails = []; const check = (name, ok, extra = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${extra ? ' – ' + extra : ''}`); if (!ok) fails.push(name); };
 const until = async (fn, ms, step = 400) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await fn()) return true; await sleep(step); } return false; };
@@ -33,12 +32,11 @@ await post(`rides/${mine.id}/start`, {}, cookie); await sleep(1500);
 await post(`rides/${mine.id}/end`, { outcome: 'failed', s: 5, t: 1, reason: 'You ran off the road.' }, cookie);
 
 const B = await launch({ port: CP, shotsDir: 'fc-board-shots', evalProblems: true });
-/* a screenshot of just one element (the landing's boards sit far below the fold and reveal on scroll) */
+/* the landing's boards sit far below the fold and reveal on scroll: jump there (no smooth scroll), reveal, then a normal shot */
 const shotOf = async (sel, name) => {
-  const clip = await B.ev(`(() => { document.querySelectorAll('.rv').forEach(n => n.classList.add('in')); const r = document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect(); return { x: Math.max(0, r.left - 8), y: r.top + scrollY - 8, width: r.width + 16, height: r.height + 16, scale: 1 }; })()`);
-  await sleep(900);
-  const shot = await B.send('Page.captureScreenshot', { format: 'png', clip, captureBeyondViewport: true });
-  fs.writeFileSync(path.join(B.SHOTS, `${name}.png`), Buffer.from(shot.data, 'base64'));
+  await B.ev(`(() => { document.documentElement.style.scrollBehavior = 'auto'; document.querySelectorAll('.rv').forEach(n => n.classList.add('in')); const r = document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect(); window.scrollTo(0, r.top + scrollY - 90); })()`);
+  await sleep(1200);
+  await B.shot(name);
 };
 const [cn, cv] = cookie.split('=');
 await B.send('Network.setCookie', { name: cn, value: cv, url: BASE, httpOnly: true });
