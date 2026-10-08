@@ -45,6 +45,9 @@ test('links that leave the page go through the host bases; the page is static', 
   assert.match(js, /from '\.\.\/\.\.\/client\/js\/hosts\.js'/); for (const b of ['GAME_BASE', 'SITE_BASE', 'STORYBOOK_BASE']) assert.match(js, new RegExp(b));
   assert.doesNotMatch(js, /fetch\(|XMLHttpRequest|innerHTML|outerHTML|insertAdjacentHTML|document\.write/);
   for (const tag of html.match(/<a [^>]*href="\/(?:play|lobby|viewer)\.html"[^>]*>|<a [^>]*href="\/(?:escrow\/|)"[^>]*>/g) ?? []) assert.match(tag, /data-to="(site|game|storybook)"/, tag);
+  const back = html.match(/<a [^>]*id="landing-top"[^>]*>/)[0];
+  assert.match(back, /data-to="site"/); assert.match(back, /data-path="\/"/); assert.match(back, /class="[^"]*\bcta\b[^"]*\bghost\b/);
+  assert.match(html, /id="landing-top"[^>]*>← <span class="hide-sm">LANDING<\/span><\/a>/);
 });
 
 test('host wiring: hosts.js knows the whitepaper prefix and exports its base; vite builds both pages', () => {
