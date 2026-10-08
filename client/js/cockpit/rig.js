@@ -88,7 +88,6 @@ export function drawCockpitRig() {
   miniGauge(cx - 41 * u, 82 * u, 4.4 * u, disp.h2o, null, 'H2O', 'E', 'F', u, 0);
   miniGauge(cx + 31 * u, 72 * u, 4.4 * u, disp.fuel, null, 'FUEL', 'E', 'F', u, 0);
   miniGauge(cx + 41 * u, 72 * u, 4.4 * u, disp.volt, null, 'VOLT', '8', '16', u, 0);
-  ctx.fillStyle = '#050403'; ctx.fillRect(cx - 3 * u, 72 * u, 6 * u, 8 * u); litRect(cx - 3 * u, 72 * u, 6 * u, 8 * u);
   ctx.fillStyle = !pw ? '#1d1409' : st.engineOn ? '#ffb03a' : '#5a3a14'; ctx.font = `bold ${6 * u}px ${MONO}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(gearName(st.gear), cx, 77 * u);
   ctx.fillStyle = '#9d957f'; ctx.font = `${1.5 * u}px ${MONO}`; ctx.fillText('GEAR', cx, 73.2 * u);
   // trip LCD
@@ -105,12 +104,11 @@ export function drawCockpitRig() {
   radioPanel(rx, u, pw);
   uiButton('wiper', wip.mode ? 'WIPER ' + wip.mode : 'WIPER', rx + 1.5 * u, 76 * u, 9.5 * u, 5 * u, u, wip.mode > 0);
   uiButton('wash', 'WASH', rx + 11.5 * u, 76 * u, 9.5 * u, 5 * u, u, st.washing);
-  { const vx = rx + 3 * u, vy = 85 * u;
-    ctx.fillStyle = '#e8b800'; ctx.beginPath(); ctx.moveTo(vx, vy - 3.4 * u); ctx.lineTo(vx + 3.4 * u, vy); ctx.lineTo(vx, vy + 3.4 * u); ctx.lineTo(vx - 3.4 * u, vy); ctx.fill(); ctx.strokeStyle = '#222'; ctx.lineWidth = .3 * u; ctx.stroke();
-    const px = rx + 11.5 * u; uiBtns.push({ id: 'park', x: px - 3.6 * u, y: vy - 3.6 * u, w: 7.2 * u, h: 10.4 * u }); ctx.fillStyle = st.park ? '#ff3a2a' : '#6b1f1a'; ctx.beginPath(); for (let i = 0; i < 8; i++) { const an = Math.PI / 8 + i * Math.PI / 4; ctx.lineTo(px + Math.cos(an) * 3.4 * u, vy + Math.sin(an) * 3.4 * u); } ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#9d957f'; ctx.font = `${1.5 * u}px ${MONO}`; ctx.fillText('TRAILER', vx, vy + 5.2 * u); ctx.fillStyle = st.park ? '#ff8a7a' : '#9d957f'; ctx.fillText('PARK', px, vy + 5.2 * u); }
-  ignitionPanel(cx + 37 * u, 94.5 * u, u);
-  { const bw = 8.4 * u, bh = 4 * u, gx = cx - 53 * u, gy = 90.8 * u, gap = .8 * u;   // 2x2 switch grid left of the wheel
+  { const vy = 85 * u, px = rx + 11.5 * u;
+    uiBtns.push({ id: 'park', x: px - 3.6 * u, y: vy - 3.6 * u, w: 7.2 * u, h: 10.4 * u }); ctx.fillStyle = st.park ? '#ff3a2a' : '#6b1f1a'; ctx.beginPath(); for (let i = 0; i < 8; i++) { const an = Math.PI / 8 + i * Math.PI / 4; ctx.lineTo(px + Math.cos(an) * 3.4 * u, vy + Math.sin(an) * 3.4 * u); } ctx.closePath(); ctx.fill(); ctx.strokeStyle = '#222'; ctx.lineWidth = .3 * u; ctx.stroke();
+    ctx.fillStyle = st.park ? '#ff8a7a' : '#9d957f'; ctx.font = `${1.5 * u}px ${MONO}`; ctx.fillText('PARK', px, vy + 5.2 * u); }
+  ignitionPanel(cx + 37 * u, 95.5 * u, u);
+  { const bw = 8.4 * u, bh = 4 * u, gx = cx - 48 * u, gy = 90.8 * u, gap = .8 * u;   // 2x2 switch grid left of the wheel
     uiButton('head', 'HEAD', gx, gy, bw, bh, u, dn.head); uiButton('night', 'NIGHT', gx + bw + gap, gy, bw, bh, u, dn.night);
     heatButton(gx, gy + bh + gap, 2 * bw + gap, bh, u); }   // (the cab light has no button: click the dome lamp in the overhead console, or press C)
   // steering column + big wheel

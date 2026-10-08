@@ -3,7 +3,7 @@ import { buyRide, buyTickets, claimRefund, waitPaid, ORDER_SIG } from './pay.js'
 import { salesOpen, pendingOrder } from './tickets-api.js';
 import { ESCROW_PAGE, explorerTx, rideError, promoError, promoOk, buyError, sol, left, shortAddr as short } from './pools.js';
 import { poolCard, escrowSummary, refundRows, profileTickets } from './lobby-pools.js';
-import { promoForm, redemptionList } from './lobby-promo.js';
+import { redemptionList } from './lobby-promo.js';
 import { dirty, garageActions, garagePreview, garageProgress, garageSlots } from './lobby-garage.js';
 import { el } from './dom.js';
 import { livePath, leaveOnClose } from './presence.js';
@@ -30,6 +30,7 @@ const km = m => (m / 1000).toFixed(m < 10_000 ? 2 : 1);
 
 /* ───────── state ───────── */
 const S = { me: null, tiers: null, pool: null, live: { rides: [] }, liveAt: 0, skew: 0, board: 'round', pending: null, pendingNote: '', tab: 'new', busy: null, qty: {}, msgs: {}, poolInfo: {}, order: null, focus: null };
+let seq = 0;   // one number per tab render: an answer that comes back after the player moved on (or re-asked) is dropped, not painted over the new tab
 const now = () => Date.now() + S.skew;   // server clock (skew learned from /api/live)
 const freeLeft = m => (m.freeRides > m.freeRidesMax ? `${m.freeRides} free rides (bonus)` : `${m.freeRides}/${m.freeRidesMax} free ride${m.freeRides === 1 ? '' : 's'}`);   // a promo can take the balance above the daily cap
 const freeCd = m => m.nextFreeRideAt == null ? 'full' : `+1 in ${left(m.nextFreeRideAt - now())}`;   // the daily credit lands at 00:00 UTC, up to the cap
@@ -44,7 +45,7 @@ function paintHeader() {
 
 function go() {
   const t = location.hash.slice(1).split('/')[0];
-  S.tab = TABS.includes(t) ? t : 'new';
+  S.tab = TABS.includes(t) ? t : 'new'; seq++;
   track('lobby_tab_viewed', { tab: S.tab });   // hash enter, not the 1 s tick
   document.querySelectorAll('.tabs a').forEach(a => { const on = a.dataset.tab === S.tab; a.classList.toggle('on', on); a.setAttribute('aria-selected', on); });
   ({ new: renderNew, live: renderLive, replays: () => renderReplays(view, { me: S.me, ROUTES, TIER_NAME, dur, km, avatar }), board: renderBoard, garage: renderGarage, promo: renderPromo, profile: renderProfile })[S.tab]();
@@ -56,9 +57,7 @@ function go() {
 function renderNew() {
   view.replaceChildren(
     el('div', { class: 'card pool', id: 'poolbox' }), el('div', { id: 'pendingbox' }), el('div', { id: 'orderbox' }), el('div', { id: 'refunds' }),
-    el('h2', {}, 'CHOOSE YOUR SHIFT'), el('div', { class: 'tiers', id: 'tiers' }),
-    el('h2', {}, 'PROMO CODE'),
-    promoForm({ onSubmit: redeem }), el('p', { class: 'dim' }, el('a', { href: '#promo' }, 'Your codes →'), ' · ', el('a', { href: '#garage' }, 'Your garage →')),
+    el('div', { id: 'freebox' }), el('h2', {}, 'PAID SHIFTS'), el('div', { class: 'tiers', id: 'tiers' }),
     el('div', { class: 'card', id: 'rules', style: 'margin-top:12px' }));
   paintPool(); paintPending(); paintTiers(); paintRules();
   refreshMe();   // free-ride count + tickets after a ride / refund
@@ -123,7 +122,7 @@ function paintOrder() {
 
 const tierInfo = t => {   // what the card shows: a demo wallet's paid shifts are shorter
   const scale = S.me.demo && t.id !== 'free' ? S.me.demoScale : 1, seconds = t.seconds / scale, dist = t.completeDist / scale;
-  return { seconds, dist, scale, name: TIER_NAME[t.id] ?? t.id, shift: `${dur(seconds)} · ≥ ${km(dist)} km${scale > 1 ? ` · DEMO ×${scale}` : ''}` };
+  return { seconds, dist, scale, name: TIER_NAME[t.id] ?? t.id, shift: `${dur(seconds)} · ≥ ${km(dist)} km` };
 };
 function tierOff(t) {
   if (S.pending) return 'finish the paid ride waiting for you first';
@@ -131,20 +130,23 @@ function tierOff(t) {
   return t.available ? '' : 'not available right now';
 }
 function paintTiers() {
-  const box = $('tiers'); if (!box) return;
+  const box = $('tiers'), fbox = $('freebox'); if (!box) return;
   if (!S.tiers) { box.replaceChildren(el('p', { class: 'bad' }, 'Could not load the ride list. Reload the page.')); return; }
   const ctx = { me: S.me, solUsd: S.tiers.solUsd, now: now(), busy: S.busy || S.pending, sales: salesOpen(S.tiers), focus: S.focus, act: { ride, buy, refund, qty: (id, n) => { S.qty[id] = n; paintTiers(); } } };
-  box.replaceChildren(...S.tiers.tiers.map(t => t.pool ? poolCard(t, tierInfo(t), { ...ctx, qty: S.qty[t.id] ?? 1 }) : t.id === 'free' ? freeCard(t) : salesOpen(S.tiers) ? noPoolCard(t) : legacyCard(t)));
+  const free = S.tiers.tiers.find(t => t.id === 'free');
+  fbox.replaceChildren(...(free ? [freeCard(free)] : []));
+  box.replaceChildren(...S.tiers.tiers.filter(t => t.id !== 'free').map(t => t.pool ? poolCard(t, tierInfo(t), { ...ctx, qty: S.qty[t.id] ?? 1 }) : salesOpen(S.tiers) ? noPoolCard(t) : legacyCard(t)));
   for (const [k, m] of Object.entries(S.msgs)) say(k, ...m);   // messages survive a repaint
   paintRefunds(); tickCountdowns();
 }
 function freeCard(t) {
   const off = tierOff(t), i = tierInfo(t);
   return el('article', { class: 'tier free', id: 'tier-free' },
-    el('div', { class: 'hd' }, el('span', { class: 'nm' }, TIER_NAME.free), el('span', { class: 'st done' }, 'NO PRIZE')),
-    el('span', { class: 'pr' }, 'FREE'), el('span', { class: 'sub' }, `${S.me.freeRides}/${S.me.freeRidesMax} left · `, el('span', { class: 'fr-cd' }, freeCd(S.me))), el('span', { class: 'sub' }, i.shift),
-    el('span', { class: 'sub' }, 'Counts for the free leaderboard and achievements.'),
-    off ? el('span', { class: 'tag' }, off) : '',
+    el('div', { class: 'freeinfo' },
+      el('div', { class: 'hd' }, el('span', { class: 'nm' }, TIER_NAME.free), el('span', { class: 'st done' }, 'NO PRIZE')),
+      el('span', { class: 'sub' }, i.shift),
+      el('span', { class: 'sub more' }, 'Counts for the free leaderboard and achievements.'),
+      off ? el('span', { class: 'tag' }, off) : ''),
     el('button', { class: 'go', id: 'start', disabled: !!off || !!S.busy, onclick: startFree }, S.busy === 'free' ? 'WORKING…' : 'START FREE RIDE'),
     el('p', { class: 'msg dim', id: 'msg-free' }));
 }
@@ -152,7 +154,7 @@ function noPoolCard(t) {   // program mode is ticket-only: a paid tier whose poo
   const i = tierInfo(t);
   return el('article', { class: 'tier legacy', id: `tier-${t.id}` },
     el('div', { class: 'hd' }, el('span', { class: 'nm' }, i.name), el('span', { class: 'st done' }, 'NO POOL')), el('span', { class: 'sub' }, i.shift),
-    el('span', { class: 'sub' }, 'No pool is on sale for this shift right now – the next one opens soon. Paid shifts are ridden with tickets only.'),
+    el('span', { class: 'sub' }, 'No pool open right now.'),
     el('button', { class: 'go', disabled: true }, 'NEXT POOL SOON'),
     el('p', { class: 'msg dim', id: `msg-${t.id}` }));
 }
@@ -161,8 +163,7 @@ function legacyCard(t) {   // a paid tier with no pool registered: pay per ride 
   return el('article', { class: 'tier legacy', id: `tier-${t.id}` },
     el('div', { class: 'hd' }, el('span', { class: 'nm' }, i.name), el('span', { class: 'st done' }, 'PAY PER RIDE')),
     el('span', { class: 'pr' }, `$${t.usd}`, el('small', {}, t.lamports ? ` · ${sol(t.lamports)}` : ' · price unavailable')), el('span', { class: 'sub' }, i.shift),
-    el('ul', { class: 'rules' }, el('li', {}, 'Price locked for 10 minutes once you order. ', el('b', {}, 'Non-refundable'), ' – it goes into the weekly round (50% grand · 20% top 20 · 20% next week · 10% fees).'),
-      i.scale > 1 ? el('li', {}, el('b', { class: 'bad' }, `DEMO ×${i.scale}`), ' – this wallet’s paid shifts are shortened so a demo fits in minutes.') : ''),
+    el('span', { class: 'sub more' }, 'Price locked 10 min after you order. ', el('b', {}, 'Non-refundable'), ': goes to the weekly round (50% grand · 20% top 20 · 20% next week · 10% fees).', i.scale > 1 ? ` DEMO ×${i.scale}: shifts shortened for demos.` : ''),
     off ? el('span', { class: 'tag' }, off) : '',
     el('button', { class: 'go', disabled: !!off || !!S.busy, onclick: () => startLegacy(t.id) }, S.busy === t.id ? 'WORKING…' : `PAY $${t.usd}${t.lamports ? ` · ${sol(t.lamports)}` : ''} & START`),
     el('p', { class: 'msg dim', id: `msg-${t.id}` }));
@@ -235,15 +236,14 @@ async function redeem(e) {
 /* ───────── PROMO ─────────
    The code field (a code from the landing's invite block arrives as ?promo=CODE and only PRE-FILLS it – the player clicks REDEEM) and what this wallet redeemed. The parts are in the GARAGE. */
 function renderPromo() {
-  view.replaceChildren(el('h2', {}, 'REDEEM A CODE'), promoForm({ onSubmit: redeem, value: S.invite ?? '' }),
-    el('p', { class: 'dim' }, 'Parts you unlock are waiting in your ', el('a', { href: '#garage' }, 'garage →')),
+  view.replaceChildren(el('p', { class: 'dim' }, 'Redeem codes in the box at the top. Parts you unlock are waiting in your ', el('a', { href: '#garage' }, 'garage →')),
     el('h2', {}, 'CODES YOU REDEEMED'), el('div', { id: 'mycodes' }, el('p', { class: 'dim' }, 'Loading…')));
-  if (S.invite) { S.invited = S.invite.replace(/\s+/g, '').toUpperCase(); S.invite = null; $('promo-code').focus(); }
+  if (S.invite) { $('promo-code').value = S.invite; S.invited = S.invite.replace(/\s+/g, '').toUpperCase(); S.invite = null; $('promo-code').focus(); }
   paintPromoLists();
 }
 async function paintPromoLists() {
-  const mine = await api('promo/mine', undefined, { report: false }).catch(e => e);
-  if (S.tab !== 'promo') return;
+  const my = seq, mine = await api('promo/mine', undefined, { report: false }).catch(e => e);
+  if (my !== seq) return;
   const codes = $('mycodes'); if (!codes) return;
   codes.replaceChildren(mine instanceof Error ? el('p', { class: 'bad' }, `Could not load your codes (${mine.message}).`) : redemptionList(mine.redemptions));
 }
@@ -253,10 +253,11 @@ async function paintPromoLists() {
    database (POST /api/garage/loadout) and the next ride starts with it. S.garage = the server's answer, S.pick = what is selected now (not saved until SAVE). */
 async function renderGarage() {
   view.replaceChildren(el('p', { class: 'dim' }, 'Loading…'));
+  const my = seq;
   if (!S.garage) {
-    try { S.garage = await api('garage', undefined, { report: false }); S.pick = { ...S.garage.equipped }; } catch (e) { view.replaceChildren(el('p', { class: 'bad' }, e.message)); return; }
+    try { const g = await api('garage', undefined, { report: false }); if (my !== seq) return; S.garage = g; S.pick = { ...g.equipped }; } catch (e) { if (my === seq) view.replaceChildren(el('p', { class: 'bad' }, e.message)); return; }
   }
-  if (S.tab === 'garage') paintGarage();
+  if (my === seq) paintGarage();
 }
 function paintGarage(note) {
   const g = S.garage; if (!g || S.tab !== 'garage') return;
@@ -350,9 +351,9 @@ async function pollLive() {
 /* ───────── LEADERBOARD ───────── */
 async function renderBoard() {
   view.replaceChildren(el('p', { class: 'dim' }, 'Loading…'));
-  let j;
-  try { j = await api(`leaderboard?board=${S.board}`, undefined, { report: false }); } catch (e) { view.replaceChildren(el('p', { class: 'bad' }, e.message)); return; }
-  if (S.tab !== 'board') return;   // switched away while loading
+  let j; const my = ++seq;
+  try { j = await api(`leaderboard?board=${S.board}`, undefined, { report: false }); } catch (e) { if (my === seq) view.replaceChildren(el('p', { class: 'bad' }, e.message)); return; }
+  if (my !== seq) return;   // switched away (or re-asked) while loading
   track('leaderboard_filtered', { board: S.board });
   const seg = el('div', { class: 'seg' }, ...[['round', 'THIS ROUND'], ['all', 'ALL TIME'], ['free', 'FREE RIDES']].map(([id, label]) => el('button', { class: id === S.board ? 'on' : '', onclick: () => { S.board = id; renderBoard(); } }, label)));
   const prize = S.board === 'round', mine = j.rows.find(r => r.wallet === S.me.wallet);
@@ -369,13 +370,13 @@ async function renderBoard() {
 /* ───────── PROFILE ───────── */
 async function renderProfile() {
   view.replaceChildren(el('p', { class: 'dim' }, 'Loading…'));
-  let p;
-  try { p = await api('profile', undefined, { report: false }); } catch (e) { view.replaceChildren(el('p', { class: 'bad' }, e.message)); return; }
-  if (S.tab !== 'profile') return;
+  let p; const my = seq;
+  try { p = await api('profile', undefined, { report: false }); } catch (e) { if (my === seq) view.replaceChildren(el('p', { class: 'bad' }, e.message)); return; }
+  if (my !== seq) return;
   Object.assign(S.me, { freeRides: p.freeRides, freeRidesMax: p.freeRidesMax, nextFreeRideAt: p.nextFreeRideAt, tickets: p.tickets }); paintHeader();
   const tile = (v, l) => el('div', { class: 'tile' }, el('b', {}, v), el('span', {}, l)), got = p.achievements.filter(a => a.earnedAt).length;
   view.replaceChildren(
-    el('div', { class: 'who', style: 'display:flex;gap:10px;align-items:center' }, avatar(p.wallet), el('div', {}, el('b', {}, short(p.wallet)), el('div', { class: 'dim' }, `rider since ${new Date(p.createdAt).toLocaleDateString()} · ${freeLeft(p)} left`), el('div', { class: 'dim fr-cd' }, freeCd(p)))),
+    el('div', { class: 'who', style: 'display:flex;gap:10px;align-items:center' }, avatar(p.wallet), el('div', {}, el('b', {}, short(p.wallet)), el('div', { class: 'dim' }, `rider since ${new Date(p.createdAt).toLocaleDateString()}`))),
     el('h2', {}, 'STATS'),
     el('div', { class: 'tiles' }, tile(p.stats.rides, 'rides started'), tile(p.stats.completed, 'shifts finished'), tile(km(p.stats.metres), 'km driven'), tile(km(p.stats.bestMetres), 'best shift, km'), tile(p.stats.paidRides, 'paid rides'), tile(sol(p.stats.spentLamports), 'spent'), p.stats.ticketsBought != null ? tile(p.stats.ticketsBought, 'tickets bought') : ''),
     ...profileTickets(p, S.busy, refund),
@@ -383,8 +384,7 @@ async function renderProfile() {
     el('div', { class: 'ach' }, p.achievements.map(a => el('div', { class: `a${a.earnedAt ? '' : ' lock'}${a.awardedAtRoundClose ? ' soon' : ''}` }, el('span', { class: 'ic' }, a.icon), el('span', { class: 'nm' }, a.name), el('span', { class: 'ds' }, a.desc),
       el('span', { class: 'when' }, a.earnedAt ? `unlocked ${new Date(a.earnedAt).toLocaleDateString()}` : a.awardedAtRoundClose ? 'awarded when the round closes' : 'locked')))),
     el('p', { class: 'dim' }, 'Achievements become NFTs in your wallet soon – they are recorded now and can’t be lost.'),
-    el('h2', {}, 'TRUCK UPGRADES'), el('div', { class: 'card empty' }, 'Engine tune, winter pack, reinforced bumper… coming soon.'),
-    el('h2', {}, 'RECENT RIDES'),
+        el('h2', {}, 'RECENT RIDES'),
     p.recent.length ? el('div', { class: 'hist' }, p.recent.map(r => el('div', { class: 'hrow' },
       el('span', {}, new Date(r.startedAt).toLocaleString(), ' · ', TIER_NAME[r.tier] ?? r.tier, r.route ? ` · ${ROUTES[r.route] ?? ''}` : '', r.timeScale > 1 ? ` · DEMO ×${r.timeScale}` : ''),
       el('span', {}, `${km(r.distance)} km · `, el('b', { class: r.status === 'completed' ? 'good' : 'bad' }, r.status.toUpperCase()),
@@ -425,6 +425,7 @@ if (S.me) {
   track('lobby_viewed', viewed);
   paintHeader();
   for (const a of document.querySelectorAll('a[href="/play.html"]')) a.href = `${GAME_BASE}/play.html`;   // the static footer link: the game is on ride.<apex> in production
+  $('promo').onsubmit = redeem;
   $('out').onclick = async () => { track('player_signed_out'); flushSoon(); await signOut(); location.href = '/'; };
   [S.tiers, S.pool] = await Promise.all([api('tiers', undefined, { report: false }).catch(() => null), api('pool', undefined, { report: false }).catch(() => null)]);
   await pollLive();

@@ -26,7 +26,7 @@ export function gauge(cx, cy, r, val, max, step, redFrom, label, u) {
     ctx.beginPath(); ctx.moveTo(cx + Math.cos(an) * r * .78, cy + Math.sin(an) * r * .78); ctx.lineTo(cx + Math.cos(an) * r * .92, cy + Math.sin(an) * r * .92); ctx.stroke();
     ctx.fillStyle = red ? '#ff6a58' : '#e8e2cf'; ctx.fillText(label === 'RPM×100' ? v / 100 : v, cx + Math.cos(an) * r * .62, cy + Math.sin(an) * r * .62);
   }
-  ctx.fillStyle = '#9d957f'; ctx.fillText(label, cx, cy + r * .45);
+  ctx.fillStyle = '#9d957f'; if (label === 'RPM×100') { ctx.font = `${r * .12}px ui-monospace,Menlo,monospace`; ctx.fillText(label, cx, cy + r * .5); } else ctx.fillText(label, cx, cy + r * .45);
   const isRpm = label === 'RPM×100', pw = powered();
   let k = 0;   // 0..1 how deep into the max-rev zone: the needle trembles instead of sitting on the stop
   if (isRpm && redFrom) {
@@ -101,13 +101,13 @@ export function ignitionPanel(x, y, u) {
   ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(x, y, 4.2 * u, 0, 7); ctx.fill(); ctx.strokeStyle = chromeGrad(x - 4 * u, x + 4 * u); ctx.lineWidth = .6 * u; ctx.stroke();
   ctx.font = `${1.3 * u}px ${MONO}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   [['OFF', 0, 'key-off'], ['ON', 1, 'key-on'], ['START', 2, 'key-start']].forEach(([t, i, id]) => {   // the three labels are the clickable zones
-    const a = (i - 1) * .9, lx = x + Math.sin(a) * (i === 1 ? 7.2 : 9) * u, ly = y - Math.cos(a) * (i === 1 ? 7.2 : 9) * u + (i === 1 ? 0 : 1.2 * u), w = (t.length * .95 + 1.6) * u, h = 2.6 * u, act = Math.abs(keyPos - i) < .3;
+    const a = (i - 1) * .9, lx = x + Math.sin(a) * (i === 1 ? 8 : 9) * u, ly = y - Math.cos(a) * (i === 1 ? 8 : 9) * u + (i === 1 ? 0 : 1.2 * u), w = (t.length * .95 + 1.6) * u, h = 2.6 * u, act = Math.abs(keyPos - i) < .3;
     uiBtns.push({ id, x: lx - w / 2, y: ly - h / 2, w, h });
     ctx.fillStyle = act ? 'rgba(124,214,106,.12)' : 'rgba(255,255,255,.04)'; ctx.beginPath(); ctx.roundRect(lx - w / 2, ly - h / 2, w, h, .5 * u); ctx.fill(); ctx.strokeStyle = act ? '#7cd66a' : '#4a453b'; ctx.lineWidth = .2 * u; ctx.stroke();
     ctx.fillStyle = act ? (i ? '#9dff8a' : '#ffb03a') : '#a39b84'; ctx.fillText(t, lx, ly);
   });
   ctx.fillStyle = '#050403'; ctx.beginPath(); ctx.arc(x, y, 1.6 * u, 0, 7); ctx.fill();
-  ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.scale(.8, .8);
+  ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.scale(.62, .62);
   const rr = (x0, y0, w, h, r) => { ctx.beginPath(); ctx.roundRect(x0 * u, y0 * u, w * u, h * u, r * u); };
   ctx.save(); ctx.translate(.45 * u, .7 * u); ctx.globalAlpha = .45; ctx.fillStyle = '#000'; rr(-1.8, -7, 3.6, 4.2, 1); ctx.fill(); ctx.fillRect(-.6 * u, -3.4 * u, 1.2 * u, 3.4 * u); ctx.restore();   // drop shadow on the dash
   const bl = chromeGrad(-.7 * u, .7 * u); ctx.fillStyle = bl; ctx.fillRect(-.6 * u, -3.6 * u, 1.2 * u, 3.6 * u);   // blade

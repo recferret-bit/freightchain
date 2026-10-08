@@ -14,16 +14,6 @@ const ITEM_NAME = {
 export const itemName = item => ITEM_NAME[item] ?? item;
 const KIND_ICON = { tickets: '🎟', free_rides: '⛟', cosmetic: '✦' };
 
-/** The code field (also on NEW RIDE: same ids, only one is on the page at a time). `value` pre-fills it – a code from the landing's invite block. */
-export function promoForm({ onSubmit, value = '', hint = 'Got a code? It gives free rides, free tickets or a new part for your garage.' }) {
-  return el('form', { class: 'card promo', id: 'promo', onsubmit: onSubmit },
-    el('label', { for: 'promo-code' }, hint),
-    el('div', { class: 'row' },
-      el('input', { id: 'promo-code', name: 'code', autocomplete: 'off', autocapitalize: 'characters', spellcheck: 'false', maxlength: 64, placeholder: 'e.g. WELCOME', value, 'aria-describedby': 'promo-msg' }),
-      el('button', { id: 'promo-go', type: 'submit' }, 'REDEEM')),
-    el('p', { class: 'msg dim', id: 'promo-msg', role: 'status' }));
-}
-
 /** GET /api/promo/mine → the list. */
 export function redemptionList(rows) {
   if (!rows.length) return el('div', { class: 'card empty', id: 'my-codes' }, 'No codes redeemed yet.');
