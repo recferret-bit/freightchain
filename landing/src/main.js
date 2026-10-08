@@ -36,8 +36,10 @@ function count(elm, target, fmt) {
 function paintHero() {
   const p = S.pool, l = S.live;
   if (p) {
-    count($('hero-pot'), p.split.grand, v => sol(v));
-    $('hero-usd').textContent = p.usd.grand != null ? `≈ $${p.usd.grand}` : '';
+    const esc = p.pools?.length ? p.pools.reduce((a, x) => a + x.vaultLamports, 0) : null, pot = esc ?? p.split.grand;   // escrowed pools on sale: their vaults ARE the pot
+    $('hero-pot-lbl').textContent = esc != null ? `IN ESCROW · ${plural(p.pools.length, 'POOL')}` : 'IN THE POT THIS WEEK';
+    count($('hero-pot'), pot, v => sol(v));
+    $('hero-usd').textContent = esc != null ? (p.solUsd ? `≈ $${((esc / 1e9) * p.solUsd).toFixed(2)}` : '') : p.usd.grand != null ? `≈ $${p.usd.grand}` : '';
     $('hero-cd').textContent = left(p.round.endsAt - now());
   }
   if (l) {
