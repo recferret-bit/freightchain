@@ -33,7 +33,7 @@ model Ride {
   pool           Pool?        @relation(fields: [poolId], references: [id])
   paidAt         DateTime?
   route          String? // theme id reported by the client (whitelisted)
-  cabin          String? // the cabin colour scheme worn when the ride STARTED (promo cosmetics, visuals only): spectators and replays draw it; null = the classic cabin
+  loadout        Json? // what the driver wore when the ride STARTED ({ wheel, truck_color, gearbox } – promo cosmetics, visuals only): spectators and replays draw it; null = everything classic
   nightSeconds   Float        @default(0)
   paused         Boolean      @default(false)
   startedAt      DateTime?

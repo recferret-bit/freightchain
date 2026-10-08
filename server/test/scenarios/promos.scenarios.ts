@@ -47,60 +47,75 @@ export function promoScenarios(h: () => Harness): void {
   });
 
   describe('cosmetics and the wardrobe', () => {
-    it('a newcomer wears the classic cabin; a code unlocks AND wears its cabin; the wardrobe lists it', async () => {
-      await seedPromo('NOIRCAB', { effect: { kind: 'cosmetic', slot: 'cabin', item: 'noir' } });
+    it('a newcomer wears the classics; a code unlocks AND wears its item; the wardrobe lists it', async () => {
+      await seedPromo('GOLDWHEEL', { effect: { kind: 'cosmetic', slot: 'wheel', item: 'gold' } });
       const w = await login();
-      expect((await w.agent.get('/api/wardrobe').expect(200)).body).toEqual({ equipped: { cabin: 'classic' }, unlocked: { cabin: ['classic'] } });
-      expect((await redeem(w, 'noircab').expect(200)).body).toEqual({ kind: 'cosmetic', code: 'NOIRCAB', label: 'cabin: noir', slot: 'cabin', item: 'noir' });
-      expect((await w.agent.get('/api/wardrobe').expect(200)).body).toEqual({ equipped: { cabin: 'noir' }, unlocked: { cabin: ['classic', 'noir'] } });
+      expect((await w.agent.get('/api/wardrobe').expect(200)).body).toEqual({
+        equipped: { wheel: 'classic', truck_color: 'red', gearbox: 'stick' }, unlocked: { wheel: ['classic'], truck_color: ['red'], gearbox: ['stick'] },
+      });
+      expect((await redeem(w, 'goldwheel').expect(200)).body).toEqual({ kind: 'cosmetic', code: 'GOLDWHEEL', label: 'wheel: gold', slot: 'wheel', item: 'gold' });
+      expect((await w.agent.get('/api/wardrobe').expect(200)).body).toMatchObject({ equipped: { wheel: 'gold', truck_color: 'red', gearbox: 'stick' }, unlocked: { wheel: ['classic', 'gold'] } });
     });
 
     it('equip: swap back and forth between what you own; what you do not own is 409, what does not exist 400; signed-out 401', async () => {
-      await seedPromo('BLUE', { effect: { kind: 'cosmetic', slot: 'cabin', item: 'midnight' } });
+      await seedPromo('BLUE', { effect: { kind: 'cosmetic', slot: 'truck_color', item: 'blue' } });
       const w = await login();
       await redeem(w, 'BLUE').expect(200);
       const equip = (slot: string, item: string) => w.agent.post('/api/wardrobe/equip').send({ slot, item });
-      expect((await equip('cabin', 'classic').expect(200)).body.equipped.cabin).toBe('classic');
-      expect((await equip('cabin', 'midnight').expect(200)).body.equipped.cabin).toBe('midnight');
-      expect((await equip('cabin', 'forest').expect(409)).body).toMatchObject({ code: 'not_owned' });
-      expect((await equip('cabin', 'racing').expect(400)).body).toMatchObject({ code: 'bad_cosmetic' });
+      expect((await equip('truck_color', 'red').expect(200)).body.equipped.truck_color).toBe('red');
+      expect((await equip('truck_color', 'blue').expect(200)).body.equipped.truck_color).toBe('blue');
+      expect((await equip('truck_color', 'green').expect(409)).body).toMatchObject({ code: 'not_owned' });
+      expect((await equip('truck_color', 'racing').expect(400)).body).toMatchObject({ code: 'bad_cosmetic' }); // a shifter, not a paint
+      expect((await equip('wheel', 'blue').expect(400)).body).toMatchObject({ code: 'bad_cosmetic' });        // a paint, not a wheel
       await equip('seat', 'x').expect(400);
-      await equip('wheel', 'gold').expect(400); // the old per-part slots are gone
-      await w.agent.post('/api/wardrobe/equip').send({ slot: 'cabin' }).expect(400);
-      await anon().post('/api/wardrobe/equip').send({ slot: 'cabin', item: 'classic' }).expect(401);
+      await equip('cabin', 'noir').expect(400); // not a slot
+      await w.agent.post('/api/wardrobe/equip').send({ slot: 'wheel' }).expect(400);
+      await anon().post('/api/wardrobe/equip').send({ slot: 'wheel', item: 'classic' }).expect(401);
       await anon().get('/api/wardrobe').expect(401);
-      expect((await w.agent.get('/api/wardrobe').expect(200)).body.equipped.cabin).toBe('midnight');
+      expect((await w.agent.get('/api/wardrobe').expect(200)).body.equipped.truck_color).toBe('blue');
     });
 
-    it('a wardrobe is the wallet\'s own, and a second code for a cabin it owns is refused without using the code up', async () => {
-      await seedPromo('PAINT', { effect: { kind: 'cosmetic', slot: 'cabin', item: 'forest' } });
-      await seedPromo('PAINT2', { effect: { kind: 'cosmetic', slot: 'cabin', item: 'forest' } });
+    it('the three slots are independent: a wheel code and a shifter code both stay on', async () => {
+      await seedPromo('RING', { effect: { kind: 'cosmetic', slot: 'wheel', item: 'ocean' } });
+      await seedPromo('BOX', { effect: { kind: 'cosmetic', slot: 'gearbox', item: 'chrome' } });
+      const w = await login();
+      await redeem(w, 'RING').expect(200); await redeem(w, 'BOX').expect(200);
+      expect((await w.agent.get('/api/wardrobe').expect(200)).body.equipped).toEqual({ wheel: 'ocean', truck_color: 'red', gearbox: 'chrome' });
+    });
+
+    it('a wardrobe is the wallet\'s own, and a second code for an item it owns is refused without using the code up', async () => {
+      await seedPromo('PAINT', { effect: { kind: 'cosmetic', slot: 'truck_color', item: 'green' } });
+      await seedPromo('PAINT2', { effect: { kind: 'cosmetic', slot: 'truck_color', item: 'green' } });
       const a = await login(), b = await login();
       await redeem(a, 'PAINT').expect(200);
-      expect((await b.agent.get('/api/wardrobe').expect(200)).body.equipped.cabin).toBe('classic');
+      expect((await b.agent.get('/api/wardrobe').expect(200)).body.equipped.truck_color).toBe('red');
       expect((await redeem(a, 'PAINT2').expect(409)).body).toMatchObject({ code: 'already_owned' });
       expect((await promos().findByCode('PAINT2'))?.snapshot().redeemed).toBe(0);
       await redeem(b, 'PAINT2').expect(200);
     });
   });
 
-  describe('the cabin follows the ride', () => {
-    it('a ride keeps the cabin it was started in: the start answer, the ride, and the PUBLIC watch API (what spectators and replays draw) – later changes do not rewrite it', async () => {
-      await seedPromo('NOIRCAB', { effect: { kind: 'cosmetic', slot: 'cabin', item: 'noir' } });
+  describe('the cockpit follows the ride', () => {
+    it('a ride keeps what it was started with: the start answer, the ride, and the PUBLIC watch API (what spectators and replays draw) – later changes do not rewrite it', async () => {
+      await seedPromo('GOLDWHEEL', { effect: { kind: 'cosmetic', slot: 'wheel', item: 'gold' } });
+      await seedPromo('BLUE', { effect: { kind: 'cosmetic', slot: 'truck_color', item: 'blue' } });
       const w = await login();
+      const classic = { wheel: 'classic', truck_color: 'red', gearbox: 'stick' };
       const plain = (await w.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
-      expect(plain.cabin).toBeNull(); // not started yet
-      expect((await w.agent.post(`/api/rides/${plain.id}/start`).expect(200)).body.cabin).toBe('classic');
-      expect((await anon().get(`/api/watch/${plain.id}`).expect(200)).body.ride.cabin).toBe('classic');
+      expect(plain.loadout).toBeNull(); // not started yet
+      expect((await w.agent.post(`/api/rides/${plain.id}/start`).expect(200)).body.loadout).toEqual(classic);
+      expect((await anon().get(`/api/watch/${plain.id}`).expect(200)).body.ride.loadout).toEqual(classic);
       await w.agent.post(`/api/rides/${plain.id}/end`).send({ outcome: 'failed', s: 0, t: 1 }).expect(200);
-      await redeem(w, 'NOIRCAB').expect(200);   // wears the noir cabin from now on
+      await redeem(w, 'GOLDWHEEL').expect(200); await redeem(w, 'BLUE').expect(200);   // wears them from now on
       const styled = (await w.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
-      expect((await w.agent.post(`/api/rides/${styled.id}/start`).expect(200)).body.cabin).toBe('noir');
-      await w.agent.post('/api/wardrobe/equip').send({ slot: 'cabin', item: 'classic' }).expect(200);
-      expect((await w.agent.get(`/api/rides/${styled.id}`).expect(200)).body.cabin).toBe('noir');
-      expect((await anon().get(`/api/watch/${styled.id}`).expect(200)).body.ride).toMatchObject({ cabin: 'noir', wallet: w.address });
+      const worn = { wheel: 'gold', truck_color: 'blue', gearbox: 'stick' };
+      expect((await w.agent.post(`/api/rides/${styled.id}/start`).expect(200)).body.loadout).toEqual(worn);
+      await w.agent.post('/api/wardrobe/equip').send({ slot: 'wheel', item: 'classic' }).expect(200);
+      await w.agent.post('/api/wardrobe/equip').send({ slot: 'truck_color', item: 'red' }).expect(200);
+      expect((await w.agent.get(`/api/rides/${styled.id}`).expect(200)).body.loadout).toEqual(worn);
+      expect((await anon().get(`/api/watch/${styled.id}`).expect(200)).body.ride).toMatchObject({ loadout: worn, wallet: w.address });
       await w.agent.post(`/api/rides/${styled.id}/end`).send({ outcome: 'failed', s: 0, t: 1 }).expect(200);
-      expect((await anon().get(`/api/watch/${styled.id}`).expect(200)).body.ride.cabin).toBe('noir'); // the replay of the finished ride
+      expect((await anon().get(`/api/watch/${styled.id}`).expect(200)).body.ride.loadout).toEqual(worn); // the replay of the finished ride
     });
   });
 
@@ -118,12 +133,12 @@ export function promoScenarios(h: () => Harness): void {
 
     it('/api/promo/mine lists what the wallet redeemed, newest first, with what it gave and the code\'s description', async () => {
       await seedPromo('FIRST', { effect: { kind: 'free_rides', count: 2 }, description: 'Welcome gift' });
-      await seedPromo('SECOND', { effect: { kind: 'cosmetic', slot: 'cabin', item: 'arctic' } });
+      await seedPromo('SECOND', { effect: { kind: 'cosmetic', slot: 'gearbox', item: 'chrome' } });
       const w = await login();
       expect((await w.agent.get('/api/promo/mine').expect(200)).body).toEqual({ redemptions: [] });
       await redeem(w, 'FIRST').expect(200); sec(5); await redeem(w, 'SECOND').expect(200);
       expect((await w.agent.get('/api/promo/mine').expect(200)).body.redemptions).toEqual([
-        { code: 'SECOND', label: 'cabin: arctic', description: null, kind: 'cosmetic', at: now() },
+        { code: 'SECOND', label: 'gearbox: chrome', description: null, kind: 'cosmetic', at: now() },
         { code: 'FIRST', label: '2 free rides', description: 'Welcome gift', kind: 'free_rides', at: now() - 5000 },
       ]);
       await anon().get('/api/promo/mine').expect(401);
@@ -137,7 +152,7 @@ export function promoScenarios(h: () => Harness): void {
       const { body } = await admin.agent.post('/api/admin/promos/challenge').set('x-fc-admin', '1').send(challenge).expect(200);
       return { message: body.message as string, signature: sign(key, body.message) };
     };
-    const wheelPromo = () => ({ code: ' early bird ', effect: { kind: 'cosmetic', slot: 'cabin', item: 'midnight' }, description: 'For the first hundred', maxRedemptions: 100, perWallet: 1, startsAt: null, expiresAt: now() + 86_400_000, note: 'launch' });
+    const wheelPromo = () => ({ code: ' early bird ', effect: { kind: 'cosmetic', slot: 'wheel', item: 'crimson' }, description: 'For the first hundred', maxRedemptions: 100, perWallet: 1, startsAt: null, expiresAt: now() + 86_400_000, note: 'launch' });
 
     it('does not exist for anyone but an admin: signed out or a rider → 404 on every route', async () => {
       const rider = await login();
@@ -154,19 +169,19 @@ export function promoScenarios(h: () => Harness): void {
       const admin = await asAdmin();
       const promo = wheelPromo();
       const proof = await signed(admin, 'create', { action: 'promo_create', promo });
-      expect(proof.message).toContain('Action: CREATE promo code EARLYBIRD\nGives: cabin: midnight\nPromo: {"code":"EARLYBIRD"');
+      expect(proof.message).toContain('Action: CREATE promo code EARLYBIRD\nGives: wheel: crimson\nPromo: {"code":"EARLYBIRD"');
       await admin.agent.post('/api/admin/promos').send({ promo, signature: proof.signature }).expect(403); // the header, like every admin change
       const ok = await admin.agent.post('/api/admin/promos').set('x-fc-admin', '1').send({ promo, signature: proof.signature }).expect(200);
-      expect(ok.body).toMatchObject({ code: 'EARLYBIRD', label: 'cabin: midnight', state: 'active', description: 'For the first hundred', maxRedemptions: 100, redeemed: 0, startsAt: now(), note: 'launch' });
+      expect(ok.body).toMatchObject({ code: 'EARLYBIRD', label: 'wheel: crimson', state: 'active', description: 'For the first hundred', maxRedemptions: 100, redeemed: 0, startsAt: now(), note: 'launch' });
       await admin.agent.post('/api/admin/promos').set('x-fc-admin', '1').send({ promo, signature: proof.signature }).expect(401); // a replay
 
       expect((await admin.agent.get('/api/admin/promos?state=active').expect(200)).body.promos.map((p: { code: string }) => p.code)).toEqual(['EARLYBIRD']);
       expect((await admin.agent.get('/api/admin/promos?state=ended').expect(200)).body.promos).toEqual([]);
       const rider = await login();
-      expect((await redeem(rider, 'earlybird').expect(200)).body).toMatchObject({ kind: 'cosmetic', item: 'midnight' });
+      expect((await redeem(rider, 'earlybird').expect(200)).body).toMatchObject({ kind: 'cosmetic', item: 'crimson' });
 
       const audit = (await admin.agent.get('/api/admin/actions').expect(200)).body.rows;
-      expect(audit[0]).toMatchObject({ wallet: PROMOS_ADMIN.address, action: 'promo.create', target: 'EARLYBIRD', detail: { effect: { kind: 'cosmetic', slot: 'cabin', item: 'midnight' }, signed: { message: proof.message, signature: proof.signature } } });
+      expect(audit[0]).toMatchObject({ wallet: PROMOS_ADMIN.address, action: 'promo.create', target: 'EARLYBIRD', detail: { effect: { kind: 'cosmetic', slot: 'wheel', item: 'crimson' }, signed: { message: proof.message, signature: proof.signature } } });
     });
 
     it('no code without a signature for exactly this code: another field, another wallet\'s key, a rider-less call, a bad field', async () => {
@@ -216,11 +231,11 @@ export function promoScenarios(h: () => Harness): void {
     it('redemptions: who used which code, newest first – narrowed by code or wallet', async () => {
       const admin = await asAdmin();
       await seedPromo('AAA', { effect: { kind: 'free_rides', count: 2 }, perWallet: 2 });
-      await seedPromo('BBB', { effect: { kind: 'cosmetic', slot: 'cabin', item: 'sunset' } });
+      await seedPromo('BBB', { effect: { kind: 'cosmetic', slot: 'gearbox', item: 'racing' } });
       const a = await login(), b = await login();
       await redeem(a, 'AAA').expect(200); sec(1); await redeem(b, 'AAA').expect(200); sec(1); await redeem(a, 'BBB').expect(200); sec(1); await redeem(a, 'AAA').expect(200);
       const rows = (q = '') => admin.agent.get(`/api/admin/promos/redemptions${q}`).expect(200).then((r) => r.body.rows as { code: string; wallet: string; n: number; label: string; at: number }[]);
-      expect((await rows()).map((r) => [r.code, r.wallet, r.n, r.label])).toEqual([['AAA', a.address, 2, '2 free rides'], ['BBB', a.address, 1, 'cabin: sunset'], ['AAA', b.address, 1, '2 free rides'], ['AAA', a.address, 1, '2 free rides']]);
+      expect((await rows()).map((r) => [r.code, r.wallet, r.n, r.label])).toEqual([['AAA', a.address, 2, '2 free rides'], ['BBB', a.address, 1, 'gearbox: racing'], ['AAA', b.address, 1, '2 free rides'], ['AAA', a.address, 1, '2 free rides']]);
       expect((await rows('?code=bbb')).map((r) => r.wallet)).toEqual([a.address]);
       expect((await rows(`?wallet=${b.address}`)).map((r) => r.code)).toEqual(['AAA']);
       expect(await rows('?limit=1')).toHaveLength(1);

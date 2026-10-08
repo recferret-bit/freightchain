@@ -11,11 +11,11 @@ describe('PromosHttpController', () => {
     const c = new PromosHttpController(commands.bus, queries.bus);
     expect(await c.mine({ wallet: 'w' })).toEqual({ redemptions: [] }); expect(queries.last()).toEqual(new GetMyPromosQuery('w'));
     await c.wardrobe({ wallet: 'w' }); expect(queries.last()).toEqual(new GetWardrobeQuery('w'));
-    await c.equip({ wallet: 'w' }, equipCosmeticBodySchema.parse({ slot: 'cabin', item: ' noir ' })); expect(commands.last()).toEqual(new EquipCosmeticCommand('w', 'cabin', 'noir'));
+    await c.equip({ wallet: 'w' }, equipCosmeticBodySchema.parse({ slot: 'wheel', item: ' gold ' })); expect(commands.last()).toEqual(new EquipCosmeticCommand('w', 'wheel', 'gold'));
   });
 
   it('equip takes a known slot and a short item', () => {
-    expect(equipCosmeticBodySchema.safeParse({ slot: 'cabin', item: 'midnight' }).success).toBe(true);
-    for (const bad of [{ slot: 'seat', item: 'x' }, { slot: 'wheel', item: 'gold' }, { slot: 'cabin' }, { slot: 'cabin', item: '' }, { slot: 'cabin', item: 'x'.repeat(33) }, {}]) expect(equipCosmeticBodySchema.safeParse(bad).success, JSON.stringify(bad)).toBe(false);
+    expect(equipCosmeticBodySchema.safeParse({ slot: 'truck_color', item: 'blue' }).success).toBe(true);
+    for (const bad of [{ slot: 'seat', item: 'x' }, { slot: 'cabin', item: 'noir' }, { slot: 'wheel' }, { slot: 'wheel', item: '' }, { slot: 'wheel', item: 'x'.repeat(33) }, {}]) expect(equipCosmeticBodySchema.safeParse(bad).success, JSON.stringify(bad)).toBe(false);
   });
 });

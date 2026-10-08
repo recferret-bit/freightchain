@@ -1,3 +1,4 @@
+import type { Loadout } from '../economy/cosmetics.js';
 import type { EffectId } from './live-rules.js';
 import type { RideEvent } from './ride-event.entity.js';
 
@@ -45,8 +46,8 @@ export interface WatchRideDto {
   wallet: string;
   tier: string;
   route: string | null;
-  /** the cabin colour scheme the driver wore (null = the classic one) */
-  cabin: string | null;
+  /** what the driver wore (null = all classic) – a spectator's / replay's cockpit draws it */
+  loadout: Loadout | null;
   seed: number;
   status: string;
   /** running and still sending heartbeats */

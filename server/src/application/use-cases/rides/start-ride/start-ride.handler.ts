@@ -26,7 +26,7 @@ interface StartFacts {
 /**
  * The game page pressed START: the server clock for this ride starts now. Under the wallet's row lock, so at most ONE ride per wallet runs at a time
  * (a wallet can own two PAID ready rides when a late payment lands – both are owed, but they run one after the other). A ride that is not "created" is a 409.
- * The ride also keeps the cabin the wallet wears at this moment (a visual – the game wears the one in the answer).
+ * The ride also keeps what the wallet wears at this moment (visuals – the game wears the loadout in the answer).
  */
 @CommandHandler(StartRideCommand)
 export class StartRideHandler implements ICommandHandler<StartRideCommand, RideDto> {
@@ -57,7 +57,7 @@ export class StartRideHandler implements ICommandHandler<StartRideCommand, RideD
         throw new ConflictError('another ride is in progress');
       }
       const wardrobe = toWardrobeDto(await this.cosmetics.listUnlocked(wallet, tx), await this.cosmetics.listEquipped(wallet, tx));
-      ride.start(now, wardrobe.equipped.cabin);   // the cabin worn right now (owned ones only) goes with the ride: live streams and replays draw it
+      ride.start(now, wardrobe.equipped);   // what is worn right now (owned items only) goes with the ride: live streams and replays draw it
       const saved = await this.rides.save(ride, tx);
       return { dto: toRideDto(saved), started: saved.snapshot(), failed } satisfies StartFacts;
     });

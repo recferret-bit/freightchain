@@ -54,11 +54,11 @@ describe('PromoCode – the effect', () => {
     expect(make({ kind: 'free_rides', count: 3 })().effect).toEqual({ kind: 'free_rides', count: 3 });
     for (const count of [0, 21, 1.5, -1]) expect(make({ kind: 'free_rides', count }), String(count)).toThrow(/free rides: 1–20/);
   });
-  it('cosmetic: a known slot and an item of it that is not its default', () => {
-    expect(make({ kind: 'cosmetic', slot: 'cabin', item: 'midnight' })().effect).toEqual({ kind: 'cosmetic', slot: 'cabin', item: 'midnight' });
-    expect(make({ kind: 'cosmetic', slot: 'cabin', item: 'noir' })().effect).toMatchObject({ slot: 'cabin', item: 'noir' });
-    expect(make({ kind: 'cosmetic', slot: 'cabin', item: 'classic' })).toThrow(/not an unlockable cabin/); // the default is everybody's
-    expect(make({ kind: 'cosmetic', slot: 'cabin', item: 'racing' })).toThrow(/not an unlockable cabin/); // not in the catalog
+  it('cosmetic: a known slot and an item of that slot that is not its default', () => {
+    expect(make({ kind: 'cosmetic', slot: 'wheel', item: 'gold' })().effect).toEqual({ kind: 'cosmetic', slot: 'wheel', item: 'gold' });
+    expect(make({ kind: 'cosmetic', slot: 'gearbox', item: 'racing' })().effect).toMatchObject({ slot: 'gearbox' });
+    expect(make({ kind: 'cosmetic', slot: 'wheel', item: 'classic' })).toThrow(/not an unlockable wheel/); // the default is everybody's
+    expect(make({ kind: 'cosmetic', slot: 'wheel', item: 'racing' })).toThrow(/not an unlockable wheel/); // another slot's item
     expect(make({ kind: 'cosmetic', slot: 'seat', item: 'x' })).toThrow(/cosmetic slot/);
   });
   it('an unknown kind is refused', () => {

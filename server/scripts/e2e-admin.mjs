@@ -131,9 +131,9 @@ const first = await post('promo/redeem', { code: 'e2e three' }, promoRider.cooki
 check('promos: a player redeems it (+3 free rides)', first.r.status === 200 && first.j.kind === 'free_rides' && first.j.freeRides === 8, JSON.stringify(first.j));
 await A.ev('document.getElementById("refresh").click()');   // reload the tab (a player redeemed meanwhile)
 check('promos: the list counts the use (1 / 5) and USED BY PLAYERS shows the wallet and what it got', await until(async () => /1 \/ 5/.test(await A.ev('document.getElementById("promo-table")?.textContent || ""')) && (await A.ev('document.getElementById("promo-used")?.textContent || ""')).includes(promoRider.short) && /3 free rides/.test(await A.ev('document.getElementById("promo-used").textContent'))));
-await setField('pf-code', 'E2E-CABIN'); await setField('pf-kind', 'cosmetic'); await setField('pf-slot', 'cabin'); await setField('pf-item', 'noir');
+await setField('pf-code', 'E2E-WHEEL'); await setField('pf-kind', 'cosmetic'); await setField('pf-slot', 'wheel'); await setField('pf-item', 'gold');
 await submitPromo();
-check('promos: a cabin code through the same form (cabin: noir)', await until(async () => /E2E-CABIN/.test(await A.ev('document.getElementById("promo-table")?.textContent || ""')) && /cabin: noir/.test(await A.ev('document.getElementById("promo-table").textContent'))));
+check('promos: a wheel code through the same form (wheel: gold)', await until(async () => /E2E-WHEEL/.test(await A.ev('document.getElementById("promo-table")?.textContent || ""')) && /wheel: gold/.test(await A.ev('document.getElementById("promo-table").textContent'))));
 await setField('pf-code', ''); await submitPromo();
 check('promos: a form mistake is explained on the page and nothing is signed', await until(async () => /Give the code a name/.test(await A.ev('document.getElementById("promo-note")?.textContent || ""'))) && (await A.ev('window.__signed')) === signedBefore + 2, await A.ev('document.getElementById("promo-note")?.textContent'));
 await A.shot('promos-desktop');

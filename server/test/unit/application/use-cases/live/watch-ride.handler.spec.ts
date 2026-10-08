@@ -23,7 +23,7 @@ describe('WatchRideHandler', () => {
     ride.applyReport({ s: 140, t: 60, hull: 90, paused: false, route: 'siberia', night: false }, ctx.now(), ctx.rules.get()); await ctx.rides.save(ride);
     await ctx.rideEvents.insert(RideEvent.message({ rideId: ride.id, wallet: 'fan', text: 'hi', now: ctx.now() }));
     const view = await watch(ride.id, 1, 0, 'viewer-1');
-    expect(view.ride).toMatchObject({ id: ride.id, wallet: 'driver', seed: ride.seed, route: 'siberia', cabin: null, status: 'running', live: true, distance: 140, hull: 90, endedAt: null });
+    expect(view.ride).toMatchObject({ id: ride.id, wallet: 'driver', seed: ride.seed, route: 'siberia', loadout: null, status: 'running', live: true, distance: 140, hull: 90, endedAt: null });
     expect(view.recording).toEqual({ lastSeq: 3, t1: bodies[3]!.t1 });
     expect(view.batches.map((b) => b.seq)).toEqual([1, 2, 3]);
     expect(Object.keys(view.batches[0]!).sort()).toEqual(['samples', 'seq', 't0', 't1']);
@@ -34,11 +34,11 @@ describe('WatchRideHandler', () => {
     expect((await watch(ride.id, 0, 0, '')).viewers).toBe(2); // no viewer id: not counted
   });
 
-  it('the cab the driver wore goes with it, so spectators and replays draw the real cockpit', async () => {
+  it('what the driver wore goes with it, so spectators and replays draw the real cockpit', async () => {
     const { ctx, watch } = setup();
     const ride = await ctx.freeRide('driver');
-    ride.start(ctx.now(), 'midnight'); await ctx.rides.save(ride);
-    expect((await watch(ride.id)).ride.cabin).toBe('midnight');
+    ride.start(ctx.now(), { wheel: 'gold', truck_color: 'blue', gearbox: 'stick' }); await ctx.rides.save(ride);
+    expect((await watch(ride.id)).ride.loadout).toEqual({ wheel: 'gold', truck_color: 'blue', gearbox: 'stick' });
   });
 
   it('pages the recording (a long replay is fetched as it plays); an ended ride is a replay with no viewers', async () => {

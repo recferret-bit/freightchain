@@ -8,7 +8,7 @@ describe('PromoCreationService', () => {
     const ctx = unitContext();
     await ctx.promoCreation.create(promoInput({ code: 'TIX', effect: ticketEffect() }));
     await ctx.promoCreation.create(promoInput({ code: 'RIDES', effect: { kind: 'free_rides', count: 3 } }));
-    await ctx.promoCreation.create(promoInput({ code: 'CABIN', effect: { kind: 'cosmetic', slot: 'cabin', item: 'noir' } }));
+    await ctx.promoCreation.create(promoInput({ code: 'WHEEL', effect: { kind: 'cosmetic', slot: 'wheel', item: 'gold' } }));
     expect((await ctx.promos.list()).map((p) => p.effect.kind).sort()).toEqual(['cosmetic', 'free_rides', 'tickets']);
   });
 

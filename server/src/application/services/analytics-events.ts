@@ -5,6 +5,7 @@ import type { RideProps } from '../../domain/rides/ride.entity.js';
 import type { ProgressMilestone } from '../../domain/rides/ride-progress.js';
 import { utcDayStart } from '../../domain/shared/time.js';
 import { emitAnalytics } from './analytics-emit.js';
+import { defaultLoadout } from '../../domain/economy/cosmetics.js';
 import type { PromoEffect } from '../../domain/economy/promo.types.js';
 import type { PromoRedeemedDto } from '../use-cases/players/redeem-promo/redeem-promo.command.js';
 
@@ -70,9 +71,10 @@ export function rideCancelled(v: RideProps, isDemo: boolean): AnalyticsEvent {
 
 export function rideStarted(v: RideProps, isDemo: boolean): AnalyticsEvent {
   if (!v.startedAt) throw new Error('ride has no startedAt');
+  const worn: Props = { ...(v.loadout ?? defaultLoadout()) };   // wheel / truck_color / gearbox: the cosmetics the ride is driven with, and the person's current look
   return serverEvent('ride_started', v.wallet, `ride:${v.id}:started`, v.startedAt, {
-    ...identity(v, isDemo), round_id: v.roundId, lamports: v.lamports, price_usd: v.priceUsd, min_ms: ms(v.minSeconds), complete_dist_m: Math.round(v.completeDist), cabin: v.cabin ?? 'classic',
-  }, v.cabin ? { cabin: v.cabin } : undefined);
+    ...identity(v, isDemo), round_id: v.roundId, lamports: v.lamports, price_usd: v.priceUsd, min_ms: ms(v.minSeconds), complete_dist_m: Math.round(v.completeDist), ...worn,
+  }, worn);
 }
 
 export function rideProgressed(v: RideProps, isDemo: boolean, milestone: ProgressMilestone, now: Date): AnalyticsEvent {
@@ -150,7 +152,7 @@ export function promoRedeemed(p: { wallet: string; code: string; n: number; isDe
   const r = p.result, base = { code: p.code, kind: r.kind, redemption_n: p.n, is_demo: p.isDemo };
   const properties: Props = r.kind === 'tickets' ? { ...base, tier_id: r.tier, pool_id: r.poolId, tickets_added: r.added, ticket_balance: r.balance }
     : r.kind === 'free_rides' ? { ...base, rides_added: r.added, free_rides: r.freeRides } : { ...base, slot: r.slot, item: r.item };
-  const set: Props | undefined = r.kind === 'free_rides' ? { free_rides: r.freeRides } : r.kind === 'cosmetic' ? { cabin: r.item } : undefined;
+  const set: Props | undefined = r.kind === 'free_rides' ? { free_rides: r.freeRides } : r.kind === 'cosmetic' ? { [r.slot]: r.item } : undefined;
   return serverEvent('promo_redeemed', p.wallet, `promo:${p.code}:${p.wallet}:${p.n}`, p.now, properties, set);
 }
 

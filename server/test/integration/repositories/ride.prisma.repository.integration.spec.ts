@@ -22,14 +22,14 @@ describe('RidePrismaRepository (PostgreSQL)', () => {
     expect(await repo.findById('00000000-0000-4000-8000-ffffffffffff')).toBeNull();
   });
 
-  it('the cabin a ride started in is saved with the start and read back (null before it, and for rides that never had one)', async () => {
+  it('what a ride started with (wheel, truck colour, gearbox) is saved with the start and read back (null before it, and for rides that never had one)', async () => {
     const ride = freeRideAt('w');
     await repo.insert(ride);
-    expect((await repo.findById(ride.id))?.cabin).toBeNull();
+    expect((await repo.findById(ride.id))?.loadout).toBeNull();
     const started = (await repo.findById(ride.id))!;
-    started.start(at(1), 'noir');
+    started.start(at(1), { wheel: 'gold', truck_color: 'blue', gearbox: 'stick' });
     await repo.save(started);
-    expect((await repo.findById(ride.id))?.cabin).toBe('noir');
+    expect((await repo.findById(ride.id))?.loadout).toEqual({ wheel: 'gold', truck_color: 'blue', gearbox: 'stick' });
     expect((await repo.findById(ride.id))?.snapshot()).toEqual(started.snapshot().version === 1 ? { ...started.snapshot(), version: 2 } : started.snapshot());
   });
 

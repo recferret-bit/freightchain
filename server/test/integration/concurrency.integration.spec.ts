@@ -99,7 +99,7 @@ describe('concurrency (PostgreSQL)', () => {
     });
 
     it('a cosmetic code redeemed N times at once by one wallet unlocks it once and uses ONE redemption', async () => {
-      await promos().insert(aPromo(harness.clock.now(), { code: 'WHEEL', effect: { kind: 'cosmetic', slot: 'cabin', item: 'noir' }, maxRedemptions: null, perWallet: 3 }));
+      await promos().insert(aPromo(harness.clock.now(), { code: 'WHEEL', effect: { kind: 'cosmetic', slot: 'wheel', item: 'gold' }, maxRedemptions: null, perWallet: 3 }));
       const a = await login();
       const results = await parallel(PARALLEL, () => a.agent.post('/api/promo/redeem').send({ code: 'WHEEL' }));
       expect(results.filter((r) => r.status === 200)).toHaveLength(1);

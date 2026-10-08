@@ -1,3 +1,4 @@
+import type { Loadout } from '../economy/cosmetics.js';
 import { ConflictError } from '../shared/errors.js';
 import { RideStatus, type RideOutcome } from './ride-status.js';
 import type { RideTierId } from './ride-tier.js';
@@ -27,8 +28,8 @@ export interface RideProps {
   poolId: number | null;
   paidAt: Date | null;
   route: string | null;
-  /** the cabin colour scheme worn when the ride started (null = the classic one) */
-  cabin: string | null;
+  /** the cosmetics worn when the ride started (null = all classic) */
+  loadout: Loadout | null;
   nightSeconds: number;
   paused: boolean;
   startedAt: Date | null;
@@ -61,7 +62,7 @@ export class Ride {
 
   private static blank(): Omit<RideProps, 'id' | 'wallet' | 'tier' | 'seed' | 'minSeconds' | 'completeDist' | 'status' | 'createdAt'> {
     return {
-      timeScale: 1, priceUsd: 0, lamports: 0, solUsd: null, quoteExpiresAt: null, roundId: null, poolId: null, paidAt: null, route: null, cabin: null, nightSeconds: 0, paused: false,
+      timeScale: 1, priceUsd: 0, lamports: 0, solUsd: null, quoteExpiresAt: null, roundId: null, poolId: null, paidAt: null, route: null, loadout: null, nightSeconds: 0, paused: false,
       startedAt: null, lastHbAt: null, lastS: 0, lastT: 0, driveSeconds: 0, hull: null, endedAt: null, reason: null, version: 1,
     };
   }
@@ -112,7 +113,7 @@ export class Ride {
   get reason(): string | null { return this.p.reason; }
   get route(): string | null { return this.p.route; }
   get startedAt(): Date | null { return this.p.startedAt; }
-  get cabin(): string | null { return this.p.cabin; }
+  get loadout(): Loadout | null { return this.p.loadout; }
   get endedAt(): Date | null { return this.p.endedAt; }
   get lastHbAt(): Date | null { return this.p.lastHbAt; }
   get hull(): number | null { return this.p.hull; }
@@ -150,11 +151,11 @@ export class Ride {
     return now.getTime() - (this.p.lastHbAt?.getTime() ?? 0) >= rules.hbMinIntervalMs;
   }
 
-  /** `cabin`: the cabin the wallet wears right now – the ride keeps it, so a replay shows the cab it was really driven in. */
-  start(now: Date, cabin: string | null = null): void {
+  /** `loadout`: what the wallet wears right now – the ride keeps it, so a replay shows the cockpit it was really driven in. */
+  start(now: Date, loadout: Loadout | null = null): void {
     this.mustBe(RideStatus.Created);
     this.p.status = RideStatus.Running;
-    this.p.cabin = cabin;
+    this.p.loadout = loadout;
     this.p.startedAt = now;
     this.p.lastHbAt = now;
   }

@@ -1,3 +1,4 @@
+import type { Loadout } from '../economy/cosmetics.js';
 import type { VerdictDto } from '../verdict/verdict.dto.js';
 import type { Ride } from './ride.entity.js';
 
@@ -19,8 +20,8 @@ export interface RideDto {
   driveSeconds: number;
   distance: number;
   reason: string | null;
-  /** the cabin colour scheme the ride was started in (null = not started yet / the classic one) – the game wears it */
-  cabin: string | null;
+  /** what the driver wore when the ride started (null = not started yet / all classic) – the game wears it */
+  loadout: Loadout | null;
   /** the server's check of the recording (verified play); null = not judged – only completed shifts are */
   verdict: VerdictDto | null;
 }
@@ -41,7 +42,7 @@ export const toRideDto = (r: Ride, verdict: VerdictDto | null = null): RideDto =
   driveSeconds: Math.round(r.driveSeconds * 10) / 10,
   distance: Math.round(r.distance),
   reason: r.reason,
-  cabin: r.cabin,
+  loadout: r.loadout,
   verdict,
 });
 

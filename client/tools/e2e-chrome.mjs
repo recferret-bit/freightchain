@@ -40,11 +40,13 @@ if(await ev('typeof window.__game')==='object' && await ev('Array.isArray(__game
     await sleep(1800); await shot('route-'+t);
   }
 }
-// cosmetics (promo wardrobe): every cabin colour scheme, day (cabin-<id>.png) and one at night – look at them; the classic one must look like the plain cockpit
+// cosmetics (promo wardrobe): every colour of the wheel, the truck paint and the shifter (cosmetic-<slot>-<item>.png; the wheel is cut off by the 1280x633 viewport but its ring shows) – look at them
 if(await ev('typeof window.__game')==='object' && await ev('typeof __game.cosmetics')==='object'){
   await ev(`__game.selectTheme('route66', false); __game.st.mode='drive'; __game.st.s=__game.net.Sm+260; __game.st.d=2.6; __game.st.v=0; __game.st.gear=3; document.getElementById('overlay').classList.add('hide')`);
-  for(const id of await ev('__game.cosmetics.COSMETICS.cabin')){ await ev(`__game.cosmetics.setLoadout({cabin:${JSON.stringify(id)}})`); await sleep(700); await shot('cabin-'+id); }
-  await ev(`__game.cosmetics.setLoadout({cabin:'noir'}); __game.setNight(true,true,false)`); await sleep(1200); await shot('cabin-noir-night');
+  const C=await ev('__game.cosmetics.COSMETICS');
+  for(const slot of Object.keys(C)) for(const id of C[slot]){ await ev(`__game.cosmetics.setLoadout({${slot}:${JSON.stringify(id)}})`); await sleep(450); await shot(`cosmetic-${slot}-${id}`); }
+  await ev(`__game.cosmetics.setLoadout({wheel:'gold',truck_color:'black',gearbox:'gold'})`); await sleep(500); await shot('cosmetic-set-gold-black');
+  await ev(`__game.cosmetics.setLoadout({wheel:'ocean',truck_color:'blue',gearbox:'chrome'}); __game.setNight(true,true,false)`); await sleep(1200); await shot('cosmetic-set-blue-night');
   await ev(`__game.setNight(false,true,false); __game.cosmetics.setLoadout(null)`);
   console.log('cosmetics worn:',await ev('JSON.stringify(__game.cosmetics.loadout)'));
 }

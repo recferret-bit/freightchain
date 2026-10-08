@@ -28,7 +28,7 @@ const tickets = new Map([[1, { balance: 1, bought: 1 }], [2, { balance: 0, bough
 const grants = [{ poolId: 3, delta: 2, source: 'payment', ref: sig(), at: t0 - 3 * DAY }, { poolId: 5, delta: 1, source: 'payment', ref: sig(), at: t0 - 4 * DAY }, { poolId: 1, delta: 1, source: 'promo', ref: 'WELCOME', at: t0 - DAY }];
 const orders = new Map(), polls = new Map(), built = new Map(), refunds = new Map(), rides = new Map();
 let freeRides = 5;
-const redeemed = [], owned = { cabin: ['classic'] }, worn = { cabin: 'classic' };   // promo codes: what this wallet redeemed + its wardrobe (one slot: the cabin colour scheme)
+const redeemed = [], owned = { wheel: ['classic'], truck_color: ['red'], gearbox: ['stick'] }, worn = { wheel: 'classic', truck_color: 'red', gearbox: 'stick' };   // promo codes: what this wallet redeemed + its wardrobe
 
 const toGo = p => (p.status === 'open' ? Math.max(0, p.minTickets - p.sold) : 0);
 const vault = p => (p.sold - (p.refundedTickets ?? 0)) * p.priceLamports + p.sponsoredLamports;   // the escrow: what is still in the vault
@@ -69,14 +69,14 @@ const R = [
     const r = { id: `stub-${rides.size + 1}`, tier, seed: 1, status: 'created', minSeconds: 300, completeDist: 4200, timeScale: 1, priceUsd: 0, lamports: 0, quoteExpiresAt: null, roundId: 1, poolId: null, driveSeconds: 0, distance: 0, reason: null };
     rides.set(r.id, r); return { status: 201, body: r };
   }],
-  ['POST', /^promo\/redeem$/, (m, b) => {   // STUB = 2 tickets · RIDES = +3 free rides (above the cap) · NOIR / MIDNIGHT = a cabin (a second try: 409 already_owned)
+  ['POST', /^promo\/redeem$/, (m, b) => {   // STUB = 2 tickets · RIDES = +3 free rides (above the cap) · GOLD / BLUE / RACING = a wheel / paint / shifter (a second try: 409 already_owned)
     const code = String(b.code).replace(/\s+/g, '').toUpperCase();
     if (code === 'RIDES') { freeRides += 3; redeemed.unshift({ code, label: '3 free rides', description: 'Three extra rides', kind: 'free_rides', at: NOW() }); return { body: { kind: 'free_rides', code, label: '3 free rides', added: 3, freeRides } }; }
-    if (code === 'NOIR' || code === 'MIDNIGHT') {
-      const slot = 'cabin', item = code.toLowerCase();
+    if (code === 'GOLD' || code === 'BLUE' || code === 'RACING') {
+      const [slot, item] = { GOLD: ['wheel', 'gold'], BLUE: ['truck_color', 'blue'], RACING: ['gearbox', 'racing'] }[code];
       if (owned[slot].includes(item)) return problem(409, 'already_owned', 'you already own this item');
-      owned[slot].push(item); worn[slot] = item; redeemed.unshift({ code, label: `cabin: ${item}`, description: null, kind: 'cosmetic', at: NOW() });
-      return { body: { kind: 'cosmetic', code, label: `cabin: ${item}`, slot, item } };
+      owned[slot].push(item); worn[slot] = item; redeemed.unshift({ code, label: `${slot.replace('_', ' ')}: ${item}`, description: null, kind: 'cosmetic', at: NOW() });
+      return { body: { kind: 'cosmetic', code, label: `${slot.replace('_', ' ')}: ${item}`, slot, item } };
     }
     if (code !== 'STUB') return problem(404, 'not_found', 'no such promo code');
     const t = tickets.get(1), add = Math.min(2, 5 - t.balance); t.balance += add; grants.push({ poolId: 1, delta: add, source: 'promo', ref: 'STUB', at: NOW() });
@@ -153,4 +153,4 @@ http.createServer(async (req, res) => {
   let out = problem(404, 'not_found', `Cannot ${req.method} /api/${p}`);
   for (const [m, re, h] of R) { const hit = m === req.method && p.match(re); if (hit) { out = h(hit, body, query); break; } }
   res.writeHead(out.status ?? 200, { 'content-type': out.status >= 400 ? 'application/problem+json' : 'application/json' }); res.end(JSON.stringify(out.body));
-}).listen(PORT, () => console.log(`stub API + site on http://localhost:${PORT}/lobby.html (wallet ${WALLET.toBase58()}, sponsored ${SPONSORED}, sales ${SALES}) – promo codes STUB (2 tickets) · RIDES (+3 free rides) · NOIR / MIDNIGHT (a cabin)`));
+}).listen(PORT, () => console.log(`stub API + site on http://localhost:${PORT}/lobby.html (wallet ${WALLET.toBase58()}, sponsored ${SPONSORED}, sales ${SALES}) – promo codes STUB (2 tickets) · RIDES (+3 free rides) · GOLD / BLUE / RACING (a wheel / truck paint / shifter)`));

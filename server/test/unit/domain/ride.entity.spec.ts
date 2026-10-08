@@ -33,13 +33,13 @@ describe('Ride – creation', () => {
 });
 
 describe('Ride – lifecycle guards', () => {
-  it('starting stamps the cabin the ride is driven in (none = null, the classic one for everything before cabins)', () => {
+  it('starting stamps what the ride is driven with (none = null = all classic, for everything before cosmetics)', () => {
     const r = freeRide();
-    expect(r.cabin).toBeNull();
-    r.start(T0, 'noir');
-    expect(r.cabin).toBe('noir');
+    expect(r.loadout).toBeNull();
+    r.start(T0, { wheel: 'gold', truck_color: 'red', gearbox: 'stick' });
+    expect(r.loadout).toEqual({ wheel: 'gold', truck_color: 'red', gearbox: 'stick' });
     const plain = freeRide(); plain.start(T0);
-    expect(plain.cabin).toBeNull();
+    expect(plain.loadout).toBeNull();
   });
 
   it('cannot start twice, nor start an unpaid order', () => {

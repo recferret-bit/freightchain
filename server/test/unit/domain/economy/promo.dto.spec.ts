@@ -14,9 +14,9 @@ describe('describeEffect – the one line a code is known by', () => {
     expect(describeEffect({ kind: 'free_rides', count: 1 })).toBe('1 free ride');
     expect(describeEffect({ kind: 'free_rides', count: 3 })).toBe('3 free rides');
   });
-  it('cosmetics – the slot and the item', () => {
-    expect(describeEffect({ kind: 'cosmetic', slot: 'cabin', item: 'midnight' })).toBe('cabin: midnight');
-    expect(describeEffect({ kind: 'cosmetic', slot: 'cabin', item: 'noir' })).toBe('cabin: noir');
+  it('cosmetics – the slot reads as words', () => {
+    expect(describeEffect({ kind: 'cosmetic', slot: 'truck_color', item: 'blue' })).toBe('truck color: blue');
+    expect(describeEffect({ kind: 'cosmetic', slot: 'gearbox', item: 'chrome' })).toBe('gearbox: chrome');
   });
 });
 
