@@ -126,5 +126,13 @@ tr.cut td{border-top:2px dashed var(--amber)}
 .item.on{border-color:var(--amber);box-shadow:0 0 0 1px var(--amber) inset}.item.on .st{color:var(--amber)}
 .item.lock{opacity:.5;cursor:not-allowed}.item:disabled{cursor:default}.item:not(:disabled):hover{border-color:var(--amber)}
 
+/* garage */
+.item .sw.dice{border-radius:4px;width:30px;height:30px;font-size:20px;line-height:30px;text-align:center;border:1px solid #ffffff30}.item .sw.needle{border-radius:50%;border:2px solid #cfc8b4;background:#e8e2cf;position:relative}
+.item .sw.needle::after{content:"";position:absolute;left:50%;top:50%;width:13px;height:3px;background:var(--n);transform:rotate(-35deg);transform-origin:0 50%;border-radius:2px}
+.item.on{border-color:var(--amber);box-shadow:0 0 0 1px var(--amber) inset}.item.saved .st{color:var(--good)}
+.gprog .big{font-size:24px;color:var(--amber)}.gprog .big small{font-size:13px;color:var(--dim)}.bar{height:8px;border-radius:4px;background:#ffffff14;margin:8px 0}.bar i{display:block;height:100%;border-radius:4px;background:var(--amber)}
+.gslots{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:12px;color:var(--dim)}.gslots b{color:var(--text)}.slot .cnt{color:var(--text);font-weight:normal}
+.gprog,.gprev,#garage-slots .slot{margin-bottom:10px}.gprev{padding:8px}.gprev svg{display:block;width:100%;max-width:520px;margin:0 auto;border-radius:6px}
+
 @media (max-width:560px){.top{padding:10px 12px}.tabs{padding:0 6px;gap:0}.tabs a{padding:11px 8px;letter-spacing:0;font-size:12px}.tier .pr{font-size:19px}td,th{padding:8px 4px;font-size:13px}.tiers{grid-template-columns:1fr}.tix th:nth-child(4),.tix td:nth-child(4){display:none}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}

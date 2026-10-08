@@ -4,10 +4,10 @@ import { COSMETIC_ITEMS, COSMETIC_SLOTS, defaultCosmetic, defaultLoadout, isCosm
 const clientSource = () => readFileSync(new URL('../../../../../client/js/cosmetics.js', import.meta.url), 'utf8');
 
 describe('the cosmetics catalog', () => {
-  it('three slots – the steering wheel, the truck paint, the shifter – each with a default (its first item) and several colours to unlock', () => {
-    expect(COSMETIC_SLOTS).toEqual(['wheel', 'truck_color', 'gearbox']);
+  it('five slots – steering wheel, truck paint, shifter, hanging dice, gauge needles – each with a default (its first item) and several colours to unlock', () => {
+    expect(COSMETIC_SLOTS).toEqual(['wheel', 'truck_color', 'gearbox', 'dice', 'needle']);
     for (const slot of COSMETIC_SLOTS) expect(COSMETIC_ITEMS[slot].length, slot).toBeGreaterThan(3);
-    expect(defaultLoadout()).toEqual({ wheel: 'classic', truck_color: 'red', gearbox: 'stick' });
+    expect(defaultLoadout()).toEqual({ wheel: 'classic', truck_color: 'red', gearbox: 'stick', dice: 'white', needle: 'orange' });
   });
 
   it('knows its slots and items – an item belongs to its slot (a name may repeat across slots: gold wheel, gold shifter)', () => {
@@ -33,7 +33,7 @@ describe('the cosmetics catalog', () => {
   });
 
   it('a stored loadout is read back whole: known items kept, anything else the default, a non-object is none', () => {
-    expect(parseLoadout({ wheel: 'gold', truck_color: 'nonsense', gearbox: 7, seat: 'x' })).toEqual({ wheel: 'gold', truck_color: 'red', gearbox: 'stick' });
+    expect(parseLoadout({ wheel: 'gold', truck_color: 'nonsense', gearbox: 7, seat: 'x' })).toEqual({ wheel: 'gold', truck_color: 'red', gearbox: 'stick', dice: 'white', needle: 'orange' });
     expect(parseLoadout({})).toEqual(defaultLoadout());
     for (const bad of [null, undefined, 'gold', 5, [], ['wheel']]) expect(parseLoadout(bad), String(bad)).toBeNull();
   });

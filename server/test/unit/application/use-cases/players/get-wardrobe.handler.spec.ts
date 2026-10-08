@@ -8,7 +8,7 @@ describe('GetWardrobeHandler', () => {
     expect((await get()).unlocked.wheel).toEqual(['classic']);
     await ctx.cosmetics.unlock({ wallet: 'w', slot: 'wheel', item: 'gold', code: 'X', at: ctx.now() });
     await ctx.cosmetics.equip('w', 'wheel', 'gold');
-    expect(await get()).toMatchObject({ equipped: { wheel: 'gold', truck_color: 'red', gearbox: 'stick' }, unlocked: { wheel: ['classic', 'gold'] } });
+    expect(await get()).toMatchObject({ equipped: { wheel: 'gold', truck_color: 'red', gearbox: 'stick', dice: 'white', needle: 'orange' }, unlocked: { wheel: ['classic', 'gold'] } });
   });
   it('other wallets\' items are not mine', async () => {
     const ctx = unitContext();

@@ -5,13 +5,16 @@
    Mirrored by client/js/cosmetics.js (a leaf module: the landing's dash cards run the cockpit without three.js) – keep the ids and defaults equal;
    test/unit/domain/economy/cosmetics.spec.ts reads that file and fails on drift. To add an item: append it here AND in the client module and give it a palette in LOOKS there.
    The first item of a slot is its default: everybody owns it, no code gives it. */
-export const COSMETIC_SLOTS = ['wheel', 'truck_color', 'gearbox'] as const;
+// the Garage added `dice` (the dice hanging from the mirror) and `needle` (the colour of the gauge needles)
+export const COSMETIC_SLOTS = ['wheel', 'truck_color', 'gearbox', 'dice', 'needle'] as const;
 export type CosmeticSlot = (typeof COSMETIC_SLOTS)[number];
 
 export const COSMETIC_ITEMS: Readonly<Record<CosmeticSlot, readonly string[]>> = {
   wheel: ['classic', 'crimson', 'ocean', 'moss', 'gold', 'ivory'],
   truck_color: ['red', 'blue', 'green', 'black', 'yellow', 'white'],
   gearbox: ['stick', 'chrome', 'wood', 'racing', 'gold', 'carbon'],
+  dice: ['white', 'red', 'blue', 'gold', 'pink', 'black'],
+  needle: ['orange', 'red', 'lime', 'cyan', 'white', 'gold'],
 };
 
 export const isCosmeticSlot = (v: unknown): v is CosmeticSlot => typeof v === 'string' && (COSMETIC_SLOTS as readonly string[]).includes(v);
@@ -22,7 +25,10 @@ export const isUnlockableCosmetic = (slot: CosmeticSlot, item: unknown): boolean
 
 /** What a wallet wears, every slot always set. */
 export type Loadout = Record<CosmeticSlot, string>;
-export const defaultLoadout = (): Loadout => ({ wheel: defaultCosmetic('wheel'), truck_color: defaultCosmetic('truck_color'), gearbox: defaultCosmetic('gearbox') });
+export const defaultLoadout = (): Loadout => Object.fromEntries(COSMETIC_SLOTS.map((slot) => [slot, defaultCosmetic(slot)])) as Loadout;
+
+/** How many items of a slot a code can unlock (everything but the default) – the Garage's progression counts these. */
+export const unlockableCount = (slot: CosmeticSlot): number => COSMETIC_ITEMS[slot].length - 1;
 
 /** A stored loadout (the JSON column of a ride): known slots with known items, the default for anything else; null when it is not an object at all. */
 export function parseLoadout(v: unknown): Loadout | null {

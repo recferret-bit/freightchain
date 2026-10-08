@@ -7,8 +7,8 @@ describe('EquipCosmeticHandler', () => {
     const ctx = unitContext(), equip = (slot: 'wheel' | 'truck_color', item: string) => new EquipCosmeticHandler(ctx.cosmetics, ctx.clock, ctx.analytics).execute(new EquipCosmeticCommand('w', slot, item));
     await ctx.cosmetics.unlock({ wallet: 'w', slot: 'wheel', item: 'gold', code: 'X', at: ctx.now() });
     await ctx.cosmetics.unlock({ wallet: 'w', slot: 'truck_color', item: 'blue', code: 'Y', at: ctx.now() });
-    expect((await equip('wheel', 'gold')).equipped).toEqual({ wheel: 'gold', truck_color: 'red', gearbox: 'stick' });
-    expect((await equip('truck_color', 'blue')).equipped).toEqual({ wheel: 'gold', truck_color: 'blue', gearbox: 'stick' });
+    expect((await equip('wheel', 'gold')).equipped).toEqual({ wheel: 'gold', truck_color: 'red', gearbox: 'stick', dice: 'white', needle: 'orange' });
+    expect((await equip('truck_color', 'blue')).equipped).toEqual({ wheel: 'gold', truck_color: 'blue', gearbox: 'stick', dice: 'white', needle: 'orange' });
     expect((await equip('wheel', 'classic')).equipped.wheel).toBe('classic');
   });
   it('tells PostHog what the wallet put on (and sets it on the person); a refused equip tells nothing', async () => {

@@ -13,10 +13,11 @@ import { PoolsHttpController } from './economy/pools.http.controller.js';
 import { TicketsHttpController } from './economy/tickets.http.controller.js';
 import { ChainWebhookHttpController } from './chain/chain-webhook.http.controller.js';
 import { AdminPromosHttpController } from './admin/admin-promos.http.controller.js';
+import { GarageHttpController } from './economy/garage.http.controller.js';
 import { PromosHttpController } from './economy/promos.http.controller.js';
 import { LiveHttpController } from './live/live.http.controller.js';
 @Module({
   imports: [ApplicationModule],
-  controllers: [HealthHttpController, AuthHttpController, RidesHttpController, EconomyHttpController, PoolsHttpController, TicketsHttpController, LobbyHttpController, ChainHttpController, ChainWebhookHttpController, AdminHttpController, AdminPromosHttpController, PromosHttpController, LiveHttpController, TelemetryHttpController],
+  controllers: [HealthHttpController, AuthHttpController, RidesHttpController, EconomyHttpController, PoolsHttpController, TicketsHttpController, LobbyHttpController, ChainHttpController, ChainWebhookHttpController, AdminHttpController, AdminPromosHttpController, PromosHttpController, GarageHttpController, LiveHttpController, TelemetryHttpController],
 })
 export class PresentationModule {}

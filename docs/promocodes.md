@@ -10,7 +10,7 @@ Status: built on branch `promocodes`, server + lobby + admin + landing + cockpit
 |---|---|---|
 | `free_rides` | `+count` free rides (1–20; the admin form has **1** and **3** presets) | added **on top of** the daily ones and **may exceed `freeRidesMax`** (5). The cap only limits the daily refill (`Player.applyDailyGrant`, the midnight SQL): it adds below the cap and never takes anything away, and the lobby countdown shows "full" at or above it. A refund of an unstarted free ride adds one unless the wallet is exactly at the cap. Rule chosen with the owner's brief in mind ("+3 rides" must be worth 3). |
 | `tickets` | `credits` free paid-ride tickets of a tier (`1h` / `4h` / `8h`), into the live pool of that tier or a pinned pool | the old promo. An off-chain grant (a sponsored entry): it does **not** count towards the pool's on-chain minimum. Clamped at the pool's per-wallet cap; a wallet already at the cap is refused (409 `ticket_cap`) **before** a redemption is used. Free tickets "per type of ride" = one code per tier. |
-| `cosmetic` | unlocks one colour for the **steering wheel**, the **truck paint** or the **shifter** and **wears it** (one code kind per slot: "a new wheel", "a new truck colour", "a new gearbox") | visuals only – no item changes handling, shifting or any rule. A wallet that already owns the item is refused (409 `already_owned`) before a redemption is used. |
+| `cosmetic` | unlocks one colour part – **steering wheel**, **truck paint**, **shifter**, **hanging dice** or **gauge needles** – and **wears it** (one code kind per slot: "a new wheel", "a new truck colour", "a new gearbox", …). The parts live in the lobby's GARAGE (docs/garage.md) | visuals only – no item changes handling, shifting or any rule. A wallet that already owns the item is refused (409 `already_owned`) before a redemption is used. |
 
 Common fields: `code` (3–32 of `A–Z 0–9 - _`, stored upper-case, typed case- and space-insensitively), `description` (player-facing, ≤ 200), `maxRedemptions` (empty = unlimited), `perWallet` (default 1), `startsAt` (default now) → `expiresAt` (empty = no end), `note` (private, ≤ 500).
 
@@ -20,7 +20,7 @@ State of a code at an instant (`PromoCode.stateAt`): `disabled` › `ended` › 
 
 ## The cosmetics catalog
 
-A cosmetic is a **colour** for one part of the cab you look at. Visuals only – no item changes handling, shifting or any rule – and **for now only colours differ**: the shapes are fixed in `cockpit/rig.js`. Three slots, each its own kind of promo code; the slot model stays so more slots, or items minted as NFTs, can be added later without touching the plumbing (an item id is the thing an NFT will replace).
+A cosmetic is a **colour** for one part of the cab you look at. Visuals only – no item changes handling, shifting or any rule – and **for now only colours differ**: the shapes are fixed in `cockpit/rig.js`. Five slots, each its own kind of promo code (the Garage – docs/garage.md – shows them all with the collection progress and saves the selection); the slot model stays so more slots, or items minted as NFTs, can be added later without touching the plumbing (an item id is the thing an NFT will replace).
 
 Server: `server/src/domain/economy/cosmetics.ts`. Client mirror: `client/js/cosmetics.js` (a leaf module – the landing's dash cards run the cockpit without three.js) with the palettes in `LOOKS`. `server/test/unit/domain/economy/cosmetics.spec.ts` reads the client file and fails on drift (the lists AND a palette per item); `landing/test/promos.test.js` checks every palette has its slot's keys and no two items of a slot look alike.
 
@@ -29,13 +29,15 @@ Server: `server/src/domain/economy/cosmetics.ts`. Client mirror: `client/js/cosm
 | `wheel` | the steering wheel: rim, sheen ring, spokes, hub, the FC mark | `classic` `crimson` `ocean` `moss` `gold` `ivory` |
 | `truck_color` | the hood and fenders you look over, the centre highlight, and the trim: the windscreen frame and the dashboard's top edge | `red` `blue` `green` `black` `yellow` `white` |
 | `gearbox` | the floor shifter: knob, its outline, the boot, the lever, the gear letter | `stick` `chrome` `wood` `racing` `gold` `carbon` |
+| `dice` | the dice hanging from the mirror: body and pips | `white` `red` `blue` `gold` `pink` `black` |
+| `needle` | the needles of the two big gauges | `orange` `red` `lime` `cyan` `white` `gold` |
 
-What stays the same in every look: the cab interior, the dashboard body, the instrument housing, the gauges (decision: only the three promo slots recolour; a whole-cab skin can be a fourth slot later – e.g. the NFT).
+What stays the same in every look: the cab interior, the dashboard body, the instrument housing, the gauge faces (decision: only the five slots recolour; a whole-cab skin can be another slot later – e.g. the NFT).
 
 **Add an item**: append its id to `COSMETIC_ITEMS` (server) and `COSMETICS` (client), give it a palette with the same keys in `LOOKS[slot]`. Then `npm run check` (the headless test pins the default colours and draws every item; the drift tests compare the lists and the palettes) and look at `cosmetic-<slot>-<item>.png` from `node tools/e2e-chrome.mjs`. **The default items must keep drawing exactly what the cockpit always drew** (the committed promo clips and the landing's dash cards depend on it).
 
 **Where it is read** – the ride keeps what it was driven with:
-- `StartRideHandler` stamps the wallet's worn (and owned) items on the ride (`ride.Ride.loadout`, JSON `{wheel, truck_color, gearbox}`, migration `20261012000000_ride_loadout`; null = every ride from before cosmetics = all classic) and answers it in the ride DTO; `online.js` wears the start answer (the menu already wore `GET /api/wardrobe`).
+- `StartRideHandler` stamps the wallet's worn (and owned) items on the ride (`ride.Ride.loadout`, JSON, one entry per slot, migration `20261012000000_ride_loadout`; null = every ride from before cosmetics = all classic) and answers it in the ride DTO; `online.js` wears the start answer (the menu already wore `GET /api/wardrobe`).
 - `GET /api/watch/:id` (public) carries `ride.loadout`; `watch.js` wears it on the first poll – **live spectators and replays draw the driver's real cockpit**, whatever the driver wears today. Changing the wardrobe later never rewrites a started ride.
 - Offline play, the model viewer and the video tool wear the defaults.
 
@@ -44,7 +46,7 @@ What stays the same in every look: the cab interior, the dashboard body, the ins
 Player (signed in):
 - `POST /api/promo/redeem {code}` → a union on `kind`: `{kind:'tickets', code, label, poolId, tier, added, balance, cap}` · `{kind:'free_rides', code, label, added, freeRides}` · `{kind:'cosmetic', code, label, slot, item}`. 404 unknown · 409 `promo_unavailable` (disabled / ended / **not active yet** / used up / already redeemed by you) · `no_open_pool` · `ticket_cap` · `already_owned`.
 - `GET /api/promo/mine` → `{redemptions: [{code, label, description, kind, at}]}` (newest first, ≤ 100).
-- `GET /api/wardrobe` → `{equipped: {wheel, truck_color, gearbox}, unlocked: {slot: [default, …]}}` (every slot always set).
+- `GET /api/wardrobe` → `{equipped: {slot: part}, unlocked: {slot: [default, …]}}` (every slot always set). **The Garage API** (`GET /api/garage`, `POST /api/garage/loadout` – catalog + progress, save a whole selection all-or-nothing) is in docs/garage.md.
 - `POST /api/wardrobe/equip {slot, item}` → the wardrobe · 400 `bad_cosmetic` · 409 `not_owned`.
 
 Admin (`/api/admin/promos…`, same guard as the rest: admin host, `fc_admin` session, `X-FC-Admin` on changes):
@@ -57,7 +59,7 @@ Admin (`/api/admin/promos…`, same guard as the rest: admin host, `fc_admin` se
 | layer | files |
 |---|---|
 | domain | `economy/promo-code.entity.ts` (rules, `stateAt`, `whyNotRedeemable`), `promo.types.ts` (`PromoEffect`), `promo.dto.ts` (`describeEffect`, DTOs), `cosmetics.ts`, `wardrobe.dto.ts`, `admin/admin-proof.ts` (intents), `players/player.entity.ts` (`grantFreeRides`) |
-| application | `use-cases/players/{redeem-promo,get-my-promos,get-wardrobe,equip-cosmetic}`, `use-cases/admin/{create-admin-promo,disable-admin-promo,list-promo-redemptions}`, `use-cases/promos/*` (CLI), `services/promo-creation.service.ts`, ports `promo.repository.port.ts`, `cosmetic.repository.port.ts` |
+| application | `use-cases/players/{redeem-promo,get-my-promos,get-wardrobe,equip-cosmetic,get-garage,save-garage}`, `use-cases/admin/{create-admin-promo,disable-admin-promo,list-promo-redemptions}`, `use-cases/promos/*` (CLI), `services/promo-creation.service.ts`, ports `promo.repository.port.ts`, `cosmetic.repository.port.ts` |
 | infrastructure | Prisma repos + `promo.mapper.ts` (the effect is stored flat: `kind` + nullable columns), migration `20261011000000_promo_effects` (`economy.PromoCode` + `startsAt`, `description`, `kind`, `freeRides`, `cosmeticSlot/Item`; `player.CosmeticUnlock`, `player.CosmeticEquip`) |
 | presentation | `economy/promos.http.controller.ts`, `admin/admin-promos.http.controller.ts` (+ DTO schemas) |
 | client | `site/lobby-promo.js` + the PROMO tab in `site/lobby.js`; `site/admin-promos.js` + the PROMO CODES tab in `site/admin.js`; the landing's invite form (`landing/index.html`, `src/main.js`); `js/cosmetics.js`, `js/cockpit/rig.js`, `js/online.js` |
@@ -66,7 +68,7 @@ Race-safety: redeeming runs in ONE transaction under the player row lock. The re
 
 ## The player's side
 
-- **Lobby → PROMO**: the code field, "YOUR TRUCK" (every catalog item: worn / WEAR / locked 🔒 – one click wears it) and "CODES YOU REDEEMED". NEW RIDE keeps its code field too (same ids) with a link to PROMO.
+- **Lobby → PROMO**: the code field and "CODES YOU REDEEMED"; the parts themselves are in **GARAGE** (docs/garage.md: progress, preview, pick + SAVE). NEW RIDE keeps its code field too (same ids) with a link to PROMO.
 - **Landing invite block** (in the hero, no new chapter): type a code → signed in: straight to `lobby.html?promo=CODE#promo`; signed out: the code is kept, the CONNECT button gets focus, and the sign-in redirect carries it. `/?promo=CODE` is a shareable invite link that pre-fills the block. **A link never redeems by itself** – the lobby only pre-fills the field and the player clicks REDEEM. Codes are never listed publicly.
 - Analytics (PostHog, `docs/analytics/index.html` funnel 9): browser `promo_invite_viewed`, `promo_invite_submitted`, `promo_redeem_clicked`; server `promo_redeemed` (per kind, after the commit, sets person `free_rides` or the slot's property), `cosmetic_equipped`, `promo_created` / `promo_disabled` (aggregate, no wallet), and `ride_started` with one property per slot (`wheel`, `truck_color`, `gearbox`). Free text (descriptions, notes) never goes; refusals are read from the existing `api_request_failed`.
 

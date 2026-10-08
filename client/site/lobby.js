@@ -3,18 +3,19 @@ import { buyRide, buyTickets, claimRefund, waitPaid, ORDER_SIG } from './pay.js'
 import { salesOpen, pendingOrder } from './tickets-api.js';
 import { ESCROW_PAGE, explorerTx, rideError, promoError, promoOk, buyError, sol, left, shortAddr as short } from './pools.js';
 import { poolCard, escrowSummary, refundRows, profileTickets } from './lobby-pools.js';
-import { promoForm, redemptionList, wardrobe } from './lobby-promo.js';
+import { promoForm, redemptionList } from './lobby-promo.js';
+import { dirty, garageActions, garagePreview, garageProgress, garageSlots } from './lobby-garage.js';
 import { el } from './dom.js';
 import { GAME_BASE, SITE_BASE } from '../js/hosts.js';
 import { track, flushSoon } from '../js/analytics.js';
 
-/* The lobby: NEW RIDE · LIVE · LEADERBOARD · PROMO · PROFILE. Vanilla DOM, no framework.
+/* The lobby: NEW RIDE · LIVE · LEADERBOARD · GARAGE · PROMO · PROFILE. Vanilla DOM, no framework.
    Everything that comes from the server (wallet addresses, route ids, statuses…) goes in with textContent – never innerHTML – because other riders' data is rendered here. */
 const $ = id => document.getElementById(id);
 const view = $('view');
 const ROUTES = { route66: 'Route 66', stuart: 'Stuart Hwy', siberia: 'Trans-Siberian', brenner: 'Brenner Pass', panamerican: 'Pan-American' };   // = client/js/themes ids
 const TIER_NAME = { free: 'TEST RIDE', '1h': '1 HOUR', '4h': '4 HOURS', '8h': '8 HOURS' };
-const TABS = ['new', 'live', 'board', 'promo', 'profile'];
+const TABS = ['new', 'live', 'board', 'garage', 'promo', 'profile'];
 
 /* ───────── helpers ───────── */
 const hue = w => { let h = 0; for (const c of w) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
@@ -42,7 +43,7 @@ function go() {
   S.tab = TABS.includes(t) ? t : 'new';
   track('lobby_tab_viewed', { tab: S.tab });   // hash enter, not the 1 s tick
   document.querySelectorAll('.tabs a').forEach(a => { const on = a.dataset.tab === S.tab; a.classList.toggle('on', on); a.setAttribute('aria-selected', on); });
-  ({ new: renderNew, live: renderLive, board: renderBoard, promo: renderPromo, profile: renderProfile })[S.tab]();
+  ({ new: renderNew, live: renderLive, board: renderBoard, garage: renderGarage, promo: renderPromo, profile: renderProfile })[S.tab]();
 }
 
 /* ───────── NEW RIDE ─────────
@@ -53,7 +54,7 @@ function renderNew() {
     el('div', { class: 'card pool', id: 'poolbox' }), el('div', { id: 'pendingbox' }), el('div', { id: 'orderbox' }), el('div', { id: 'refunds' }),
     el('h2', {}, 'CHOOSE YOUR SHIFT'), el('div', { class: 'tiers', id: 'tiers' }),
     el('h2', {}, 'PROMO CODE'),
-    promoForm({ onSubmit: redeem }), el('p', { class: 'dim' }, el('a', { href: '#promo' }, 'Your codes and truck wardrobe →')),
+    promoForm({ onSubmit: redeem }), el('p', { class: 'dim' }, el('a', { href: '#promo' }, 'Your codes →'), ' · ', el('a', { href: '#garage' }, 'Your garage →')),
     el('div', { class: 'card', id: 'rules', style: 'margin-top:12px' }));
   paintPool(); paintPending(); paintTiers(); paintRules();
   refreshMe();   // free-ride count + tickets after a ride / refund
@@ -211,35 +212,58 @@ async function redeem(e) {
   try {
     const r = await api('promo/redeem', { code }); input.value = ''; show(promoOk(r), 'good'); if (r.kind === 'tickets') S.focus = r.tier;
     await refreshMe();
-    if (S.tab === 'promo') await paintPromoLists();   // the new code in the list, the new item in the wardrobe
+    S.garage = null;   // a new part: the GARAGE reloads next time it is opened
+    if (S.tab === 'promo') await paintPromoLists();   // the new code in the list
   } catch (err) { show(promoError(err), 'bad'); } finally { go.disabled = false; }
 }
 
 /* ───────── PROMO ─────────
-   The code field (a code from the landing's invite block arrives as ?promo=CODE and only PRE-FILLS it – the player clicks REDEEM), what this wallet redeemed,
-   and the wardrobe: colours for the steering wheel, the truck paint and the shifter, visuals only; what is worn is what the cockpit draws (the ride takes a snapshot of it when it starts – spectators and replays see the same one). */
+   The code field (a code from the landing's invite block arrives as ?promo=CODE and only PRE-FILLS it – the player clicks REDEEM) and what this wallet redeemed. The parts are in the GARAGE. */
 function renderPromo() {
   view.replaceChildren(el('h2', {}, 'REDEEM A CODE'), promoForm({ onSubmit: redeem, value: S.invite ?? '' }),
-    el('h2', {}, 'YOUR COCKPIT'), el('div', { id: 'wardrobebox' }, el('p', { class: 'dim' }, 'Loading…')),
+    el('p', { class: 'dim' }, 'Parts you unlock are waiting in your ', el('a', { href: '#garage' }, 'garage →')),
     el('h2', {}, 'CODES YOU REDEEMED'), el('div', { id: 'mycodes' }, el('p', { class: 'dim' }, 'Loading…')));
   if (S.invite) { S.invited = S.invite.replace(/\s+/g, '').toUpperCase(); S.invite = null; $('promo-code').focus(); }
   paintPromoLists();
 }
 async function paintPromoLists() {
-  const [w, mine] = await Promise.all([api('wardrobe', undefined, { report: false }).catch(e => e), api('promo/mine', undefined, { report: false }).catch(e => e)]);
+  const mine = await api('promo/mine', undefined, { report: false }).catch(e => e);
   if (S.tab !== 'promo') return;
-  const box = $('wardrobebox'), codes = $('mycodes'); if (!box || !codes) return;
-  S.wardrobe = w instanceof Error ? null : w;
-  box.replaceChildren(S.wardrobe ? wardrobe(S.wardrobe, equip, !!S.equipping) : el('p', { class: 'bad' }, `Could not load your wardrobe (${w.message}).`), el('p', { class: 'msg dim', id: 'wardrobe-msg', role: 'status' }));
+  const codes = $('mycodes'); if (!codes) return;
   codes.replaceChildren(mine instanceof Error ? el('p', { class: 'bad' }, `Could not load your codes (${mine.message}).`) : redemptionList(mine.redemptions));
 }
-const equip = async (slot, item) => {   // not busy(): that one belongs to the ride cards
-  if (S.equipping) return;
-  S.equipping = true;
-  try { S.wardrobe = await api('wardrobe/equip', { slot, item }); } catch (e) { S.equipErr = e.message; }
-  S.equipping = false;
-  if (S.tab === 'promo') { await paintPromoLists(); const m = $('wardrobe-msg'); if (m && S.equipErr) { m.textContent = S.equipErr; m.className = 'msg bad'; } S.equipErr = null; }
-};
+
+/* ───────── GARAGE ─────────
+   Every part of the catalog, what this wallet owns (and from which code), the collection progress, a preview with the parts picked, and SAVE: the selection goes to the
+   database (POST /api/garage/loadout) and the next ride starts with it. S.garage = the server's answer, S.pick = what is selected now (not saved until SAVE). */
+async function renderGarage() {
+  view.replaceChildren(el('p', { class: 'dim' }, 'Loading…'));
+  if (!S.garage) {
+    try { S.garage = await api('garage', undefined, { report: false }); S.pick = { ...S.garage.equipped }; } catch (e) { view.replaceChildren(el('p', { class: 'bad' }, e.message)); return; }
+  }
+  if (S.tab === 'garage') paintGarage();
+}
+function paintGarage(note) {
+  const g = S.garage; if (!g || S.tab !== 'garage') return;
+  view.replaceChildren(el('h2', {}, 'YOUR GARAGE'), garageProgress(g), garagePreview(S.pick), garageSlots(g, S.pick, pickPart),
+    garageActions({ garage: g, pick: S.pick, busy: !!S.saving, onSave: saveGarage, onReset: () => { S.pick = { ...g.equipped }; paintGarage(); } }));
+  if (note) { const m = $('garage-msg'); m.textContent = note.text; m.className = `msg ${note.bad ? 'bad' : 'good'}`; }
+}
+function pickPart(slot, part) {
+  track('garage_part_clicked', { slot, item: part.id, owned: part.owned });
+  if (!part.owned) { paintGarage({ text: `${part.id} is locked – a promo code unlocks it. Redeem one on the PROMO tab.`, bad: true }); return; }
+  S.pick = { ...S.pick, [slot]: part.id };
+  paintGarage();
+}
+async function saveGarage() {
+  if (S.saving || !S.garage || !dirty(S.garage, S.pick)) return;
+  S.saving = true; paintGarage();
+  const picks = Object.fromEntries(Object.entries(S.pick).filter(([slot, item]) => item !== S.garage.equipped[slot]));
+  let note;
+  try { S.garage = await api('garage/loadout', { loadout: picks }); S.pick = { ...S.garage.equipped }; note = { text: 'Saved – your next ride starts with this loadout.' }; }
+  catch (e) { note = { text: e.message, bad: true }; }
+  S.saving = false; paintGarage(note);
+}
 
 /* ───────── LIVE ───────── */
 const rows = new Map();   // wallet|startedAt → { root, … }

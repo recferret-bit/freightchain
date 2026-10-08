@@ -24,7 +24,7 @@ const dateArg = (name: string, raw: string): Date | string => {
 
 /**
  * `promo:create CODE <effect> [--desc TEXT] [--start DATE] [--expires DATE] [--max N] [--per-wallet N] [--note TEXT]` with ONE effect:
- * `--tier 1h|4h|8h --credits N [--pool ID]` (tickets) · `--free-rides N` · `--cosmetic wheel|truck_color|gearbox:ITEM`
+ * `--tier 1h|4h|8h --credits N [--pool ID]` (tickets) · `--free-rides N` · `--cosmetic wheel|truck_color|gearbox|dice|needle:ITEM`
  */
 export function parsePromoCreate(args: readonly string[]): PromoCreateInput | string {
   let parsed;
@@ -50,7 +50,7 @@ export function parsePromoCreate(args: readonly string[]): PromoCreateInput | st
     effect = { kind: 'free_rides', count };
   } else if (v.cosmetic !== undefined) {
     const [slot, item] = v.cosmetic.split(':');
-    if (!isCosmeticSlot(slot) || !item) return '--cosmetic must be wheel|truck_color|gearbox followed by :ITEM, e.g. wheel:gold';
+    if (!isCosmeticSlot(slot) || !item) return '--cosmetic must be wheel|truck_color|gearbox|dice|needle followed by :ITEM, e.g. wheel:gold';
     effect = { kind: 'cosmetic', slot, item };
   } else {
     if (!isPaidTierId(v.tier)) return '--tier must be 1h, 4h or 8h';

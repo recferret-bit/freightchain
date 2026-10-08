@@ -93,7 +93,7 @@ export function promoError(e) {
 /** What a redemption did, as one sentence – the answer is `{ kind: 'tickets' | 'free_rides' | 'cosmetic', code, label, … }`. */
 export function promoOk(r) {
   if (r.kind === 'free_rides') return `+${plural(r.added, 'free ride')} (${r.code}) · you now have ${r.freeRides}`;
-  if (r.kind === 'cosmetic') return `Unlocked ${r.label} (${r.code}) – it is on your truck now. Change it any time in the wardrobe below.`;
+  if (r.kind === 'cosmetic') return `Unlocked ${r.label} (${r.code}) – it is on your truck now. Pick parts in the GARAGE.`;
   return `+${plural(r.added, 'ticket')} (${r.code}) in pool #${r.poolId} · you hold ${r.balance} · cap ${r.cap}${r.added === 0 ? ' – you are at the cap, nothing added' : ''}`;
 }
 

@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { promoFromForm, localToMs } from '../../client/site/admin-promos.js';
 import { itemName, SLOT_NAME } from '../../client/site/lobby-promo.js';
+import { dirty } from '../../client/site/lobby-garage.js';
 import { COSMETICS, LOOKS, SLOTS, defaultLoadout, loadout, look, setLoadout } from '../../client/js/cosmetics.js';
 
 /* The admin page's promo form, the lobby's wardrobe wording and the client cosmetics catalog (mirrored from server/src/domain/economy/cosmetics.ts – the server's
@@ -42,7 +43,7 @@ test('times: a datetime-local value is the admin\'s own time; the end must come 
 });
 
 test('the client catalog: three slots, every item has a palette with the same keys as its slot\'s default and a name, the default is the first', () => {
-  assert.deepEqual(SLOTS, ['wheel', 'truck_color', 'gearbox']);
+  assert.deepEqual(SLOTS, ['wheel', 'truck_color', 'gearbox', 'dice', 'needle']);
   const shape = o => Object.keys(o).join(',');
   for (const slot of SLOTS) {
     assert.ok(SLOT_NAME[slot], slot);
@@ -55,15 +56,15 @@ test('the client catalog: three slots, every item has a palette with the same ke
     const looks = COSMETICS[slot].map(i => JSON.stringify(LOOKS[slot][i]));
     assert.equal(new Set(looks).size, looks.length, `${slot}: no two items look the same`);
   }
-  assert.deepEqual(defaultLoadout(), { wheel: 'classic', truck_color: 'red', gearbox: 'stick' });
+  assert.deepEqual(defaultLoadout(), { wheel: 'classic', truck_color: 'red', gearbox: 'stick', dice: 'white', needle: 'orange' });
 });
 
 test('setLoadout keeps what is known and falls back to the default of a slot for junk (a hostile or stale server value cannot break the cockpit)', () => {
   setLoadout({ wheel: 'gold', truck_color: '<script>', gearbox: 7, seat: 'x' });
-  assert.deepEqual({ ...loadout }, { wheel: 'gold', truck_color: 'red', gearbox: 'stick' });
+  assert.deepEqual({ ...loadout }, { wheel: 'gold', truck_color: 'red', gearbox: 'stick', dice: 'white', needle: 'orange' });
   assert.equal(look('wheel').rim, LOOKS.wheel.gold.rim);
   setLoadout({ gearbox: 'gold', wheel: 'racing' });   // 'racing' is a shifter, not a wheel
-  assert.deepEqual({ ...loadout }, { wheel: 'classic', truck_color: 'red', gearbox: 'gold' });
+  assert.deepEqual({ ...loadout }, { wheel: 'classic', truck_color: 'red', gearbox: 'gold', dice: 'white', needle: 'orange' });
   setLoadout(null);
   assert.deepEqual({ ...loadout }, defaultLoadout());
 });
@@ -71,4 +72,16 @@ test('setLoadout keeps what is known and falls back to the default of a slot for
 test('the cockpit is the only place that draws cosmetics; the module stays a leaf (the landing\'s dash cards run the cockpit without three.js)', () => {
   const src = readFileSync(join(new URL('..', import.meta.url).pathname, '..', 'client', 'js', 'cosmetics.js'), 'utf8');
   assert.doesNotMatch(src, /^import /m, 'no imports');
+});
+
+test('the garage: SAVE is only offered when the pick differs from what is saved, in any slot', () => {
+  const garage = { equipped: defaultLoadout() };
+  assert.equal(dirty(garage, defaultLoadout()), false);
+  for (const slot of SLOTS) assert.equal(dirty(garage, { ...defaultLoadout(), [slot]: COSMETICS[slot][1] }), true, slot);
+});
+
+test('the garage module builds the DOM only through el() / createElementNS – never innerHTML – and every slot has a lobby name', () => {
+  const src = readFileSync(join(new URL('..', import.meta.url).pathname, '..', 'client', 'site', 'lobby-garage.js'), 'utf8');
+  assert.doesNotMatch(src, /\.(innerHTML|outerHTML)\s*[+]?=|insertAdjacentHTML\(|document\.write\(/);
+  for (const slot of SLOTS) assert.ok(SLOT_NAME[slot], slot);
 });

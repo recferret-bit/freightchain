@@ -13,7 +13,7 @@ import { look } from '../cosmetics.js';
 export function drawCockpitRig() {
   const { W, H, DPR } = view;
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.clearRect(0, 0, W, H);
-  const u = Math.min(H / 100, W / 150), cx = W / 2, driving = st.mode === 'drive', off = st.off, paint = look('truck_color'), wl = look('wheel'), gb = look('gearbox');   // the worn cosmetics' colours (js/cosmetics.js): the defaults draw exactly what was always drawn
+  const u = Math.min(H / 100, W / 150), cx = W / 2, driving = st.mode === 'drive', off = st.off, paint = look('truck_color'), wl = look('wheel'), gb = look('gearbox'), dc = look('dice');   // the worn cosmetics' colours (js/cosmetics.js): the defaults draw exactly what was always drawn
   const vib = driving ? (Math.random() - .5) * (st.v * .012 * SHAKE_MOVING + (off ? .7 : 0) + st.jolt * 1.5 + engineVib()) * u * .4 : 0;
   ctx.save(); ctx.translate(0, vib);
   const top = 4 * u, edgeY = 62 * u, ctrlY = 58 * u;
@@ -68,8 +68,8 @@ export function drawCockpitRig() {
     ctx.fillStyle = dn.cab ? '#fff1cf' : '#3a352d'; ctx.beginPath(); ctx.roundRect(lx - 8 * u, ly - 1.7 * u, 16 * u, 3.4 * u, 1.2 * u); ctx.fill(); if (dn.cab) litRect(lx - 8 * u, ly - 1.7 * u, 16 * u, 3.4 * u); }
   { const sw = -st.steer * .35 * clamp(st.v / 12, 0, 1) + Math.sin(performance.now() / 700) * .03 + vib * .02;
     ctx.save(); ctx.translate(cx - 34 * u, 1 * u); ctx.rotate(sw); ctx.strokeStyle = '#ddd'; ctx.lineWidth = .25 * u; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 9 * u); ctx.stroke();
-    ctx.translate(0, 9 * u); ctx.fillStyle = '#f4f1e8'; ctx.beginPath(); ctx.roundRect(-3.2 * u, 0, 3 * u, 3 * u, .5 * u); ctx.roundRect(.2 * u, 1 * u, 3 * u, 3 * u, .5 * u); ctx.fill();
-    ctx.fillStyle = '#b11'; for (const [dx, dy] of [[-2.7, .5], [-.7, 2.5], [.7, 1.5], [2.7, 3.5]]) { ctx.beginPath(); ctx.arc(dx * u, dy * u, .35 * u, 0, 7); ctx.fill(); } ctx.restore(); }
+    ctx.translate(0, 9 * u); ctx.fillStyle = dc.body; ctx.beginPath(); ctx.roundRect(-3.2 * u, 0, 3 * u, 3 * u, .5 * u); ctx.roundRect(.2 * u, 1 * u, 3 * u, 3 * u, .5 * u); ctx.fill();
+    ctx.fillStyle = dc.pip; for (const [dx, dy] of [[-2.7, .5], [-.7, 2.5], [.7, 1.5], [2.7, 3.5]]) { ctx.beginPath(); ctx.arc(dx * u, dy * u, .35 * u, 0, 7); ctx.fill(); } ctx.restore(); }
 
   // dashboard top
   const dg = ctx.createLinearGradient(0, 58 * u, 0, H); dg.addColorStop(0, '#4b473f'); dg.addColorStop(.1, '#27241f'); dg.addColorStop(.3, '#14120f'); dg.addColorStop(1, '#0a0908');

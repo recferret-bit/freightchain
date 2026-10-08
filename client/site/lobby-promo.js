@@ -1,20 +1,21 @@
 import { el } from './dom.js';
-import { COSMETICS, LOOKS, SLOTS } from '../js/cosmetics.js';
+import { LOOKS } from '../js/cosmetics.js';
 
-/* The lobby's PROMO tab (docs/promocodes.md): the code form, what this wallet redeemed, and the wardrobe – every cosmetic a code unlocked (steering wheel, truck paint, shifter), one click to wear it.
+/* The lobby's PROMO tab (docs/promocodes.md): the code form and what this wallet redeemed – the parts themselves live in the GARAGE tab (lobby-garage.js, which reuses the names + swatches below).
    Pure builders: lobby.js owns the state and the API calls and hands in callbacks. Server text (codes, descriptions) goes in with textContent only. */
 
-export const SLOT_NAME = { wheel: 'STEERING WHEEL', truck_color: 'TRUCK PAINT', gearbox: 'SHIFTER' };
+export const SLOT_NAME = { wheel: 'STEERING WHEEL', truck_color: 'TRUCK PAINT', gearbox: 'SHIFTER', dice: 'HANGING DICE', needle: 'GAUGE NEEDLES' };
 const ITEM_NAME = {
   classic: 'Classic', crimson: 'Crimson', ocean: 'Ocean', moss: 'Moss', gold: 'Gold', ivory: 'Ivory',
   red: 'Red', blue: 'Blue', green: 'Green', black: 'Black', yellow: 'Yellow', white: 'White',
   stick: 'Stock', chrome: 'Chrome', wood: 'Wood', racing: 'Racing', carbon: 'Carbon',
+  pink: 'Pink', orange: 'Orange', lime: 'Lime', cyan: 'Cyan',
 };
 export const itemName = item => ITEM_NAME[item] ?? item;
 const KIND_ICON = { tickets: '🎟', free_rides: '⛟', cosmetic: '✦' };
 
 /** The code field (also on NEW RIDE: same ids, only one is on the page at a time). `value` pre-fills it – a code from the landing's invite block. */
-export function promoForm({ onSubmit, value = '', hint = 'Got a code? It gives free rides, free tickets or a new look for your wheel, truck paint or shifter.' }) {
+export function promoForm({ onSubmit, value = '', hint = 'Got a code? It gives free rides, free tickets or a new part for your garage.' }) {
   return el('form', { class: 'card promo', id: 'promo', onsubmit: onSubmit },
     el('label', { for: 'promo-code' }, hint),
     el('div', { class: 'row' },
@@ -37,18 +38,7 @@ export function swatch(slot, item) {
   if (!l) return el('span', { class: 'sw' });
   if (slot === 'truck_color') return el('span', { class: 'sw hood', style: `background:linear-gradient(${l.top},${l.bottom});border-color:${l.frame}` });
   if (slot === 'wheel') return el('span', { class: 'sw wheel', style: `border-color:${l.rim};box-shadow:inset 0 0 0 3px ${l.sheen};background:radial-gradient(circle,${l.hub} 0 28%,${l.spoke} 29% 100%)` });
+  if (slot === 'dice') return el('span', { class: 'sw dice', style: `background:${l.body};color:${l.pip}` }, '⠿');
+  if (slot === 'needle') return el('span', { class: 'sw needle', style: `--n:${l.color}` });
   return el('span', { class: 'sw knob', style: `background:${l.knob};border-color:${l.rim}` });
-}
-
-/** GET /api/wardrobe → one row per slot: every item of the catalog, worn / owned / locked. `onEquip(slot, item)`; `busy` disables the buttons while a call runs. */
-export function wardrobe(w, onEquip, busy = false) {
-  return el('div', { id: 'wardrobe' }, SLOTS.map(slot => el('div', { class: 'card slot', 'data-slot': slot },
-    el('div', { class: 'lbl' }, SLOT_NAME[slot] ?? slot),
-    el('div', { class: 'items' }, COSMETICS[slot].map(item => {
-      const owned = w.unlocked[slot]?.includes(item), worn = w.equipped[slot] === item;
-      return el('button', {
-        class: `item${worn ? ' on' : ''}${owned ? '' : ' lock'}`, 'data-item': item, disabled: busy || !owned || worn, 'aria-pressed': String(worn),
-        title: owned ? (worn ? 'you wear this' : `wear ${itemName(item).toLowerCase()}`) : 'locked – a promo code unlocks it', onclick: () => onEquip(slot, item),
-      }, swatch(slot, item), el('span', { class: 'nm' }, itemName(item)), el('span', { class: 'st' }, worn ? 'WORN' : owned ? 'WEAR' : '🔒'));
-    })))));
 }

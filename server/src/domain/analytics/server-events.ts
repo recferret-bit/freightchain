@@ -18,6 +18,7 @@ export const SERVER_EVENTS = [
   'free_ride_granted',
   'promo_redeemed',
   'cosmetic_equipped',
+  'garage_saved',
   'promo_created',
   'promo_disabled',
   'achievement_unlocked',

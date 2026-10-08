@@ -9,14 +9,17 @@ export const COSMETICS = {
   wheel: ['classic', 'crimson', 'ocean', 'moss', 'gold', 'ivory'],
   truck_color: ['red', 'blue', 'green', 'black', 'yellow', 'white'],
   gearbox: ['stick', 'chrome', 'wood', 'racing', 'gold', 'carbon'],
+  dice: ['white', 'red', 'blue', 'gold', 'pink', 'black'],
+  needle: ['orange', 'red', 'lime', 'cyan', 'white', 'gold'],
 };
 
 export const SLOTS = Object.keys(COSMETICS);
-export const defaultLoadout = () => ({ wheel: 'classic', truck_color: 'red', gearbox: 'stick' });
+export const defaultLoadout = () => ({ wheel: 'classic', truck_color: 'red', gearbox: 'stick', dice: 'white', needle: 'orange' });
 
 /* wheel: rim, sheen (the inner ring), spoke, hub, mark (the FC letters + the 12-o'clock dot).
    truck_color: top / bottom (the hood gradient), fender, line (the centre highlight), frame (the windscreen edge), dashEdge (the dashboard's top edge).
-   gearbox: knob, rim (its outline), boot, lever (null = the chrome gradient), text (the gear letter). */
+   gearbox: knob, rim (its outline), boot, lever (null = the chrome gradient), text (the gear letter).
+   dice: body, pip (the dice hanging from the mirror). needle: color (the needles of the big gauges). */
 export const LOOKS = {
   wheel: {
     classic: { rim: '#0e0d0b', sheen: '#2b2722', spoke: '#1b1814', hub: '#26221d', mark: '#ffcf5a' },
@@ -42,6 +45,22 @@ export const LOOKS = {
     gold: { knob: '#d4af37', rim: '#fff2b0', boot: '#050506', lever: null, text: '#1a160a' },
     carbon: { knob: '#2a2c31', rim: '#7a7f88', boot: '#0a0a0c', lever: '#4a4d55', text: '#e8e2cf' },
   },
+  dice: {
+    white: { body: '#f4f1e8', pip: '#b11' },
+    red: { body: '#c9301f', pip: '#ffffff' },
+    blue: { body: '#2a63b8', pip: '#ffffff' },
+    gold: { body: '#d4af37', pip: '#3a2c06' },
+    pink: { body: '#f08ab8', pip: '#ffffff' },
+    black: { body: '#1c1c20', pip: '#f4f1e8' },
+  },
+  needle: {
+    orange: { color: '#ff7a2e' },
+    red: { color: '#ff3a2a' },
+    lime: { color: '#9dff3a' },
+    cyan: { color: '#3ad8ff' },
+    white: { color: '#ffffff' },
+    gold: { color: '#ffd24a' },
+  },
 };
 
 /* What the cockpit wears right now. Mutated in place (the cockpit reads it every frame); set from the ride's loadout by online.js / watch.js, or by hand. */
@@ -54,5 +73,5 @@ export function setLoadout(next) {
   return loadout;
 }
 
-/** The palette of the worn item of `slot` ('wheel' | 'truck_color' | 'gearbox'). */
+/** The palette of the worn item of `slot` (wheel | truck_color | gearbox | dice | needle). */
 export const look = (slot) => LOOKS[slot][loadout[slot]] ?? LOOKS[slot][COSMETICS[slot][0]];

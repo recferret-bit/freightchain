@@ -39,6 +39,7 @@ export const CLIENT_EVENTS = [
   'promo_invite_viewed',
   'promo_invite_submitted',
   'promo_redeem_clicked',
+  'garage_part_clicked',
 ] as const;
 
 export type ClientEventName = (typeof CLIENT_EVENTS)[number];
@@ -92,6 +93,7 @@ const ALLOW: Record<ClientEventName, readonly string[]> = {
   promo_invite_viewed: ['code'],
   promo_invite_submitted: ['code', 'signed_in', 'from_link'],
   promo_redeem_clicked: ['surface', 'prefilled'],
+  garage_part_clicked: ['slot', 'item', 'owned'],
 };
 
 const MAX_KEYS = 20;

@@ -37,8 +37,8 @@ describe('WatchRideHandler', () => {
   it('what the driver wore goes with it, so spectators and replays draw the real cockpit', async () => {
     const { ctx, watch } = setup();
     const ride = await ctx.freeRide('driver');
-    ride.start(ctx.now(), { wheel: 'gold', truck_color: 'blue', gearbox: 'stick' }); await ctx.rides.save(ride);
-    expect((await watch(ride.id)).ride.loadout).toEqual({ wheel: 'gold', truck_color: 'blue', gearbox: 'stick' });
+    ride.start(ctx.now(), { wheel: 'gold', truck_color: 'blue', gearbox: 'stick', dice: 'white', needle: 'orange' }); await ctx.rides.save(ride);
+    expect((await watch(ride.id)).ride.loadout).toEqual({ wheel: 'gold', truck_color: 'blue', gearbox: 'stick', dice: 'white', needle: 'orange' });
   });
 
   it('pages the recording (a long replay is fetched as it plays); an ended ride is a replay with no viewers', async () => {

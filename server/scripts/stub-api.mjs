@@ -28,7 +28,20 @@ const tickets = new Map([[1, { balance: 1, bought: 1 }], [2, { balance: 0, bough
 const grants = [{ poolId: 3, delta: 2, source: 'payment', ref: sig(), at: t0 - 3 * DAY }, { poolId: 5, delta: 1, source: 'payment', ref: sig(), at: t0 - 4 * DAY }, { poolId: 1, delta: 1, source: 'promo', ref: 'WELCOME', at: t0 - DAY }];
 const orders = new Map(), polls = new Map(), built = new Map(), refunds = new Map(), rides = new Map();
 let freeRides = 5;
-const redeemed = [], owned = { wheel: ['classic'], truck_color: ['red'], gearbox: ['stick'] }, worn = { wheel: 'classic', truck_color: 'red', gearbox: 'stick' };   // promo codes: what this wallet redeemed + its wardrobe
+const CATALOG = {   // = server/src/domain/economy/cosmetics.ts (the first item of a slot is its default)
+  wheel: ['classic', 'crimson', 'ocean', 'moss', 'gold', 'ivory'], truck_color: ['red', 'blue', 'green', 'black', 'yellow', 'white'], gearbox: ['stick', 'chrome', 'wood', 'racing', 'gold', 'carbon'],
+  dice: ['white', 'red', 'blue', 'gold', 'pink', 'black'], needle: ['orange', 'red', 'lime', 'cyan', 'white', 'gold'],
+};
+const redeemed = [], owned = Object.fromEntries(Object.entries(CATALOG).map(([k, v]) => [k, [v[0]]])), worn = Object.fromEntries(Object.entries(CATALOG).map(([k, v]) => [k, v[0]])), earned = {};   // promo codes: what this wallet redeemed + its parts
+const wardrobeDto = () => ({ equipped: { ...worn }, unlocked: Object.fromEntries(Object.entries(owned).map(([k, v]) => [k, [...v]])) });
+const garageDto = () => {
+  const slots = Object.entries(CATALOG).map(([slot, ids]) => {
+    const parts = ids.map((id, i) => ({ id, isDefault: i === 0, owned: owned[slot].includes(id), worn: worn[slot] === id, unlockedAt: earned[`${slot}:${id}`]?.at ?? null, code: earned[`${slot}:${id}`]?.code ?? null }));
+    return { slot, parts, collected: parts.filter(p => !p.isDefault && p.owned).length, total: ids.length - 1 };
+  });
+  const collected = slots.reduce((n, x) => n + x.collected, 0), total = slots.reduce((n, x) => n + x.total, 0);
+  return { equipped: { ...worn }, slots, progress: { collected, total, percent: Math.floor((collected * 100) / total) } };
+};
 
 const toGo = p => (p.status === 'open' ? Math.max(0, p.minTickets - p.sold) : 0);
 const vault = p => (p.sold - (p.refundedTickets ?? 0)) * p.priceLamports + p.sponsoredLamports;   // the escrow: what is still in the vault
@@ -75,7 +88,7 @@ const R = [
     if (code === 'GOLD' || code === 'BLUE' || code === 'RACING') {
       const [slot, item] = { GOLD: ['wheel', 'gold'], BLUE: ['truck_color', 'blue'], RACING: ['gearbox', 'racing'] }[code];
       if (owned[slot].includes(item)) return problem(409, 'already_owned', 'you already own this item');
-      owned[slot].push(item); worn[slot] = item; redeemed.unshift({ code, label: `${slot.replace('_', ' ')}: ${item}`, description: null, kind: 'cosmetic', at: NOW() });
+      owned[slot].push(item); worn[slot] = item; earned[`${slot}:${item}`] = { code, at: NOW() }; redeemed.unshift({ code, label: `${slot.replace('_', ' ')}: ${item}`, description: null, kind: 'cosmetic', at: NOW() });
       return { body: { kind: 'cosmetic', code, label: `${slot.replace('_', ' ')}: ${item}`, slot, item } };
     }
     if (code !== 'STUB') return problem(404, 'not_found', 'no such promo code');
@@ -85,11 +98,20 @@ const R = [
   }],
   ['POST', /^telemetry$/, () => ({ body: { enabled: false, accepted: 0, dropped: 0 } })],   // the pages' analytics relay (off here: the browser stops posting)
   ['GET', /^promo\/mine$/, () => ({ body: { redemptions: redeemed } })],
-  ['GET', /^wardrobe$/, () => ({ body: { equipped: { ...worn }, unlocked: Object.fromEntries(Object.entries(owned).map(([k, v]) => [k, [...v]])) } })],
+  ['GET', /^wardrobe$/, () => ({ body: wardrobeDto() })],
   ['POST', /^wardrobe\/equip$/, (m, b) => {
     if (!owned[b.slot]) return problem(400, 'bad_request', 'no such slot');
     if (!owned[b.slot].includes(b.item)) return problem(409, 'not_owned', 'you do not own this item – redeem a promo code for it');
-    worn[b.slot] = b.item; return { body: { equipped: { ...worn }, unlocked: Object.fromEntries(Object.entries(owned).map(([k, v]) => [k, [...v]])) } };
+    worn[b.slot] = b.item; return { body: wardrobeDto() };
+  }],
+  ['GET', /^garage$/, () => ({ body: garageDto() })],
+  ['POST', /^garage\/loadout$/, (m, b) => {
+    const picks = Object.entries(b.loadout ?? {});
+    if (!picks.length || picks.some(([slot]) => !CATALOG[slot])) return problem(400, 'bad_cosmetic', 'pick at least one known part');
+    if (picks.some(([slot, item]) => !CATALOG[slot].includes(item))) return problem(400, 'bad_cosmetic', 'no such part');
+    if (picks.some(([slot, item]) => !owned[slot].includes(item))) return problem(409, 'not_owned', 'you do not own that part – redeem a promo code for it');
+    for (const [slot, item] of picks) worn[slot] = item;
+    return { body: garageDto() };
   }],
   ['POST', /^auth\/logout$/, () => ({ body: { ok: true } })],
   // ── W3 / W4 routes, shapes as built on paid-tickets @ b860f9d ──

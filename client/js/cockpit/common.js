@@ -1,3 +1,4 @@
+import { look } from '../cosmetics.js';
 import { ctx } from './canvas.js';
 import { st, powered, bulbCheck } from '../state.js';
 import { clamp, approach, MONO } from '../util.js';
@@ -68,7 +69,7 @@ export function miniGauge(x, y, r, f, f2, label, lo, hi, u, red) {
   ctx.fillStyle = '#bdb59d'; ctx.font = `${r * .34}px ${MONO}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(lo, x - r * .55, y + r * .72); ctx.fillText(hi, x + r * .55, y + r * .72); ctx.fillText(label, x, y + r * .36);
   const needle = (ff, col) => { const an = a0 + sw * clamp(ff, 0, 1); ctx.strokeStyle = col; ctx.lineWidth = u * .35; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(an) * r * .78, y + Math.sin(an) * r * .78); ctx.stroke(); };
-  if (f2 != null) needle(f2, '#e8e2cf'); needle(f, '#ff7a2e');
+  if (f2 != null) needle(f2, '#e8e2cf'); needle(f, look('needle').color);
   ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(x, y, r * .12, 0, 7); ctx.fill();
 }
 export function ledBar(x, y, w, h, val, col, label, u) {

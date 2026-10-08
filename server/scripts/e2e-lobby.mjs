@@ -1,7 +1,7 @@
 // Click-through of the whole loop FROM THE LOBBY in real headless Chrome (four browsers: a rider, an observer, a wallet with an unpaid legacy order, a ticket holder), screenshots of every tab at desktop and phone width.
 // Server (after `npm run landing:build` at the root – / is the Vite build): FREE_RIDE_SECONDS=3 SOL_USD=118 TREASURY_PUBKEY=<any address> PORT=3111 node dist/main.js  (PostgreSQL up + migrated: npm run db:up && npm run prisma:deploy)     then:   BASE=http://localhost:3111 node scripts/e2e-lobby.mjs
 // Escrowed pools (dev-only seeds, same DATABASE_URL as the server – or run this script with SEED=1 and that DATABASE_URL, it runs them and ignores "already exists"):
-//   node dist/cli/index.js pool:seed --id 1 --tier 1h --status active --min 2 · pool:seed --id 2 --tier 4h --status open --min 10 --sold 7 · promo:create WELCOME --tier 1h --credits 2 · promo:create OPEN4H --tier 4h --pool 2 --credits 1 · promo:create THREE --free-rides 3 · promo:create GOLDWHEEL --cosmetic wheel:gold --desc "A golden wheel" · promo:create BLUEPAINT --cosmetic truck_color:blue · promo:create RACEBOX --cosmetic gearbox:racing
+//   node dist/cli/index.js pool:seed --id 1 --tier 1h --status active --min 2 · pool:seed --id 2 --tier 4h --status open --min 10 --sold 7 · promo:create WELCOME --tier 1h --credits 2 · promo:create OPEN4H --tier 4h --pool 2 --credits 1 · promo:create THREE --free-rides 3 · promo:create GOLDWHEEL --cosmetic wheel:gold --desc "A golden wheel" · promo:create BLUEPAINT --cosmetic truck_color:blue · promo:create PINKDICE --cosmetic dice:pink · promo:create RACEBOX --cosmetic gearbox:racing
 //   → 1h = a LIVE pool, 4h = an OPEN pool 7/10, 8h = no pool (the legacy pay-per-ride card). `refunding` can't be seeded (open|active only): its card states are unit-tested (landing/test/pools.test.js) and shown by scripts/stub-api.mjs.
 // No wallet extension: a keypair signs the challenge and the session cookie is handed to Chrome. Paid payments can't be clicked through (no wallet) – covered by vitest / devnet-pay.mjs.
 // PORT = the first of four DevTools ports (default 9341); SHOTS = where the screenshots go (default $TMPDIR/fc-lobby-shots).
@@ -26,7 +26,7 @@ const expected = p => /status of (404|409)/.test(p) && /\/api\/(promo\/redeem|ri
 const problems = h => h.filt().filter(p => !expected(p));
 
 if (process.env.SEED === '1') {   // dev-only seeds through the admin CLI (refused in production); "already exists" is fine
-  for (const args of [['pool:seed', '--id', '1', '--tier', '1h', '--status', 'active', '--min', '2'], ['pool:seed', '--id', '2', '--tier', '4h', '--status', 'open', '--min', '10', '--sold', '7'], ['promo:create', 'WELCOME', '--tier', '1h', '--credits', '2'], ['promo:create', 'OPEN4H', '--tier', '4h', '--pool', '2', '--credits', '1'], ['promo:create', 'THREE', '--free-rides', '3'], ['promo:create', 'GOLDWHEEL', '--cosmetic', 'wheel:gold', '--desc', 'A golden wheel'], ['promo:create', 'BLUEPAINT', '--cosmetic', 'truck_color:blue'], ['promo:create', 'RACEBOX', '--cosmetic', 'gearbox:racing']]) {
+  for (const args of [['pool:seed', '--id', '1', '--tier', '1h', '--status', 'active', '--min', '2'], ['pool:seed', '--id', '2', '--tier', '4h', '--status', 'open', '--min', '10', '--sold', '7'], ['promo:create', 'WELCOME', '--tier', '1h', '--credits', '2'], ['promo:create', 'OPEN4H', '--tier', '4h', '--pool', '2', '--credits', '1'], ['promo:create', 'THREE', '--free-rides', '3'], ['promo:create', 'GOLDWHEEL', '--cosmetic', 'wheel:gold', '--desc', 'A golden wheel'], ['promo:create', 'BLUEPAINT', '--cosmetic', 'truck_color:blue'], ['promo:create', 'PINKDICE', '--cosmetic', 'dice:pink'], ['promo:create', 'RACEBOX', '--cosmetic', 'gearbox:racing']]) {
     try { execFileSync('node', ['dist/cli/index.js', ...args], { cwd: new URL('..', import.meta.url).pathname, stdio: 'pipe' }); console.log(`seeded: ${args.join(' ')}`); } catch { console.log(`seed skipped (exists?): ${args.join(' ')}`); }
   }
 }
@@ -144,36 +144,54 @@ await obs.send('Page.navigate', { url: `${BASE}/lobby.html#new` }); await sleep(
 // ── PROMO: free rides above the cap, a cosmetic unlocked + worn, the wardrobe, an invite link that only pre-fills (fresh wallet, the observer's browser)
 const P = await wallet(); await size(obs, 1100, 900, false);
 await open(obs, P, `${BASE}/lobby.html#new`);
-check('PROMO: the NEW RIDE form links to the PROMO tab', await until(async () => /Your codes and truck wardrobe/.test(await txt(obs, '#view'))));
+check('PROMO: the NEW RIDE form links to the PROMO tab and the GARAGE', await until(async () => /Your codes → · Your garage →/.test(await txt(obs, '#view'))));
 await obs.ev('location.hash = "#promo"');
-check('PROMO tab: the form, a wardrobe (wheel · paint · shifter) with the classics worn and the other fifteen locked, no codes yet', await until(async () => (await obs.ev('document.querySelectorAll("#wardrobe .slot").length')) === 3) && (await obs.ev('[...document.querySelectorAll("#wardrobe .item.on")].map(n => n.dataset.item).join()')) === 'classic,red,stick' && (await obs.ev('document.querySelectorAll("#wardrobe .item.lock").length')) === 15 && /No codes redeemed yet/.test(await txt(obs, '#my-codes')));
+check('PROMO tab: the form, a link to the garage, no codes yet', await until(async () => /Parts you unlock are waiting in your garage/.test(await txt(obs, '#view')) && /No codes redeemed yet/.test(await txt(obs, '#my-codes'))));
 const promoGo = async code => { await obs.ev(`document.getElementById("promo-code").value = ${JSON.stringify(code)}; document.getElementById("promo-go").click()`); await until(async () => !/Redeeming/.test(await txt(obs, '#promo-msg')) && (await txt(obs, '#promo-msg')) !== ''); return txt(obs, '#promo-msg'); };
 check('PROMO: THREE → +3 free rides, the chip shows 8 of 5 (above the daily cap)', /^\+3 free rides \(THREE\) · you now have 8/.test(await promoGo('three')) && await until(async () => /8\/5 free rides/.test(await txt(obs, '#chip-free'))), await txt(obs, '#chip-free'));
 check('PROMO: …and the next daily credit is not counted down (at / above the cap)', /full/.test(await txt(obs, '#chip-free')), await txt(obs, '#chip-free'));
 check('PROMO: THREE again is refused with the reason', /already redeemed/.test(await promoGo('THREE')), await txt(obs, '#promo-msg'));
-check('PROMO: GOLDWHEEL → unlocked and worn (the gold wheel is on, the classic one can be put back)', /^Unlocked wheel: gold \(GOLDWHEEL\)/.test(await promoGo('goldwheel')) && await until(async () => (await obs.ev('document.querySelector("#wardrobe [data-slot=wheel] [data-item=gold]")?.classList.contains("on")')) === true) && (await obs.ev('document.querySelector("#wardrobe [data-slot=wheel] [data-item=classic]").disabled')) === false, await txt(obs, '#promo-msg'));
+check('PROMO: GOLDWHEEL → unlocked and worn, with a pointer to the garage', /^Unlocked wheel: gold \(GOLDWHEEL\)/.test(await promoGo('goldwheel')) && /GARAGE/.test(await txt(obs, '#promo-msg')), await txt(obs, '#promo-msg'));
 check('PROMO: the list of redeemed codes shows both with what they gave', await until(async () => /THREE.*3 free rides/.test(await txt(obs, '#my-codes')) && /GOLDWHEEL.*wheel: gold.*A golden wheel/.test(await txt(obs, '#my-codes'))), await txt(obs, '#my-codes'));
-await obs.ev('document.querySelector("#wardrobe [data-slot=wheel] [data-item=classic]").click()');
-check('PROMO: wearing the classic wheel again is saved on the server', await until(async () => (await get('wardrobe', P.cookie)).equipped.wheel === 'classic') && await until(async () => (await obs.ev('document.querySelector("#wardrobe [data-slot=wheel] [data-item=classic]")?.classList.contains("on")')) === true));
-check('PROMO: a locked item cannot be worn (button disabled) and the API refuses it (409 not_owned)', (await obs.ev('document.querySelector("#wardrobe [data-slot=gearbox] [data-item=chrome]").disabled')) === true && (await post('wardrobe/equip', { slot: 'gearbox', item: 'chrome' }, P.cookie)).r.status === 409);
-await obs.ev('document.querySelector("#wardrobe [data-slot=wheel] [data-item=gold]").click()'); await until(async () => (await get('wardrobe', P.cookie)).equipped.wheel === 'gold');
-await obs.shot('promo-desktop'); await size(obs, 390, 844, true); await sleep(300); await obs.shot('promo-phone'); await size(obs, 1100, 900, false);
+
+// ── GARAGE: the catalog, the progression, picking parts, SAVE into the database
+const part = (slot, item) => `document.querySelector("#garage-slots [data-slot=${slot}] [data-item=${item}]")`;
+await obs.ev('location.hash = "#garage"');
+check('GARAGE: five slots × six parts, the progression (1 of 25 parts: the gold wheel), classics + the gold wheel marked, 24 locked', await until(async () => (await obs.ev('document.querySelectorAll("#garage-slots .slot").length')) === 5) && (await obs.ev('document.querySelectorAll("#garage-slots .item").length')) === 30 && /^COLLECTION1 \/ 25/.test(await txt(obs, '#garage-progress')) && (await obs.ev('document.querySelectorAll("#garage-slots .item.lock").length')) === 24 && (await obs.ev(`${part('wheel', 'gold')}.classList.contains('on') && ${part('wheel', 'gold')}.classList.contains('saved')`)) === true, await txt(obs, '#garage-progress'));
+check('GARAGE: an owned part says which code unlocked it; the default says everybody has it; the preview is there', /Unlocked by GOLDWHEEL/.test(await obs.ev(`${part('wheel', 'gold')}.title`)) && /Everybody has this one/.test(await obs.ev(`${part('wheel', 'classic')}.title`)) && (await obs.ev('!!document.querySelector("#garage-preview svg")')) === true);
+check('GARAGE: nothing to save yet (SAVE disabled)', (await obs.ev('document.getElementById("garage-save").disabled')) === true);
+await obs.ev(`${part('needle', 'cyan')}.click()`);
+check('GARAGE: a locked part explains itself and cannot be picked – the API refuses it too (409 not_owned, nothing saved)', await until(async () => /locked/.test(await txt(obs, '#garage-msg'))) && (await obs.ev('document.getElementById("garage-save").disabled')) === true && (await post('garage/loadout', { loadout: { needle: 'cyan', wheel: 'classic' } }, P.cookie)).r.status === 409 && (await get('garage', P.cookie)).equipped.wheel === 'gold');
+await obs.ev(`${part('wheel', 'classic')}.click()`);
+check('GARAGE: picking a part marks it SELECTED, enables SAVE / RESET and says "Not saved yet"', await until(async () => (await obs.ev(`${part('wheel', 'classic')}.classList.contains('on')`)) === true) && /SELECTED/.test(await obs.ev(`${part('wheel', 'classic')}.textContent`)) && (await obs.ev('document.getElementById("garage-save").disabled')) === false && /Not saved yet/.test(await txt(obs, '#garage-actions')));
+await obs.ev('document.getElementById("garage-reset").click()');
+check('GARAGE: RESET puts the saved selection back – and the database never changed', await until(async () => (await obs.ev(`${part('wheel', 'gold')}.classList.contains('on')`)) === true) && (await obs.ev('document.getElementById("garage-save").disabled')) === true && (await get('garage', P.cookie)).equipped.wheel === 'gold');
+await obs.ev(`${part('wheel', 'classic')}.click()`); await obs.ev('document.getElementById("garage-save").click()');
+check('GARAGE: SAVE LOADOUT stores it in the database (GET /api/garage and /api/wardrobe agree) and says so', await until(async () => /Saved/.test(await txt(obs, '#garage-msg'))) && (await get('garage', P.cookie)).equipped.wheel === 'classic' && (await get('wardrobe', P.cookie)).equipped.wheel === 'classic');
+await obs.shot('garage-desktop'); await size(obs, 390, 844, true); await sleep(300); await obs.shot('garage-phone'); await size(obs, 1100, 900, false);
 await obs.send('Page.navigate', { url: `${BASE}/lobby.html?promo=bluepaint` });
 check('PROMO: an invite link (lobby.html?promo=CODE) opens the PROMO tab with the code typed in – and only that', await until(async () => (await obs.ev('document.querySelector(".tabs a.on")?.dataset.tab')) === 'promo' && (await obs.ev('document.getElementById("promo-code")?.value')) === 'bluepaint') && (await obs.ev('location.search')) === '' && !JSON.stringify((await get('promo/mine', P.cookie)).redemptions).includes('BLUEPAINT'));
 await obs.ev('document.getElementById("promo-go").click()'); await until(async () => /Unlocked/.test(await txt(obs, '#promo-msg')));
-check('PROMO: …then REDEEM puts the blue paint on the truck, the gold wheel stays', /^Unlocked truck color: blue \(BLUEPAINT\)/.test(await txt(obs, '#promo-msg')) && JSON.stringify((await get('wardrobe', P.cookie)).equipped) === JSON.stringify({ wheel: 'gold', truck_color: 'blue', gearbox: 'stick' }), `${await txt(obs, '#promo-msg')} | ${JSON.stringify((await get('wardrobe', P.cookie)).equipped)}`);
-// the whole point of a cosmetic: the game wears what the ride was started with (start answer = what is stamped on the ride) – and a spectator / the replay draws the SAME from the public watch API
-const worn = { wheel: 'gold', truck_color: 'blue', gearbox: 'stick' }, wornJson = JSON.stringify(worn);
+check('PROMO: …then REDEEM puts the blue paint on the truck (the wheel stays what was saved)', /^Unlocked truck color: blue \(BLUEPAINT\)/.test(await txt(obs, '#promo-msg')) && (await get('wardrobe', P.cookie)).equipped.truck_color === 'blue' && (await get('wardrobe', P.cookie)).equipped.wheel === 'classic', await txt(obs, '#promo-msg'));
+// two slots in ONE save: the gold wheel back on and the pink dice (a part unlocked meanwhile, by the API)
+await post('promo/redeem', { code: 'PINKDICE' }, P.cookie);
+await obs.send('Page.navigate', { url: `${BASE}/lobby.html#garage` });
+check('GARAGE: it opens at 3 of 25 (gold wheel, blue paint, pink dice)', await until(async () => /^COLLECTION3 \/ 25/.test(await txt(obs, '#garage-progress'))), await txt(obs, '#garage-progress'));
+await obs.ev(`${part('wheel', 'gold')}.click()`); await obs.ev(`${part('dice', 'pink')}.click()`); await obs.ev(`${part('dice', 'pink')}.click()`);
+await obs.ev('document.getElementById("garage-save").click()');
+const worn = { wheel: 'gold', truck_color: 'blue', gearbox: 'stick', dice: 'pink', needle: 'orange' }, wornJson = JSON.stringify(worn);
+check('GARAGE: two parts picked together are saved together', await until(async () => JSON.stringify((await get('garage', P.cookie)).equipped) === wornJson), JSON.stringify((await get('garage', P.cookie)).equipped));
+// the whole point of a part: the game wears what the ride was started with (start answer = what is stamped on the ride) – and a spectator / the replay draws the SAME from the public watch API
 const cosRide = await post('rides', { tier: 'free' }, P.cookie);
 await obs.send('Page.navigate', { url: `${BASE}/play.html?ride=${cosRide.j.id}` });
-check('PROMO: the game opens a ride of that wallet already wearing its items (gold wheel, blue paint, stock shifter)', await until(async () => JSON.stringify(await obs.ev('window.__game?.cosmetics ? { ...__game.cosmetics.loadout } : null')) === wornJson), JSON.stringify(await obs.ev('window.__game?.cosmetics ? { ...__game.cosmetics.loadout } : null')));
+check('PROMO: the game opens a ride of that wallet already wearing its parts (gold wheel, blue paint, pink dice)', await until(async () => JSON.stringify(await obs.ev('window.__game?.cosmetics ? { ...__game.cosmetics.loadout } : null')) === wornJson), JSON.stringify(await obs.ev('window.__game?.cosmetics ? { ...__game.cosmetics.loadout } : null')));
 await post(`rides/${cosRide.j.id}/start`, {}, P.cookie);
 check('PROMO: the started ride carries the loadout, and so does the PUBLIC watch API (live streams + replays)', JSON.stringify((await get(`rides/${cosRide.j.id}`, P.cookie)).loadout) === wornJson && JSON.stringify((await get(`watch/${cosRide.j.id}`)).ride.loadout) === wornJson);
-await post('wardrobe/equip', { slot: 'wheel', item: 'classic' }, P.cookie); await post('wardrobe/equip', { slot: 'truck_color', item: 'red' }, P.cookie);   // the driver changes back AFTER the start: the ride keeps what it was driven with
+await post('garage/loadout', { loadout: { wheel: 'classic', truck_color: 'red', dice: 'white' } }, P.cookie);   // the driver changes back AFTER the start: the ride keeps what it was driven with
 await obs.send('Page.navigate', { url: `${BASE}/play.html?watch=${cosRide.j.id}` });
 check('PROMO: a spectator\'s game wears what the ride was driven with (the watch page never reads a wardrobe – only the ride\'s loadout), though the driver now wears the classics', await until(async () => JSON.stringify(await obs.ev('window.__game?.watch?.ride?.loadout')) === wornJson && JSON.stringify(await obs.ev('({ ...__game.cosmetics.loadout })')) === wornJson), JSON.stringify(await obs.ev('({ w: window.__game?.watch?.ride?.loadout, c: window.__game?.cosmetics ? { ...__game.cosmetics.loadout } : null })')));
 await sleep(1200); await obs.shot('promo-in-game');
-check('…and no unexpected page errors (promo)', problems(obs).length === 0, problems(obs).join(' | '));
+check('…and no unexpected page errors (promo, garage)', problems(obs).length === 0, problems(obs).join(' | '));
 await obs.send('Page.navigate', { url: `${BASE}/lobby.html#new` }); await sleep(800);
 
 // ── LANDING (signed in: no forced redirect, CTA becomes the lobby link; public numbers agree with the API)

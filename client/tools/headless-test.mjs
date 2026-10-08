@@ -106,9 +106,10 @@ check(nightX.night===true&&dayX.night===false&&G.THEMES.some(t=>t.id===dayX.rout
   check(t.top==='#b0281f'&&t.bottom==='#6e130f'&&t.fender==='#5c120e'&&t.line==='rgba(255,200,190,.35)'&&t.frame==='#3d372f'&&t.dashEdge==='#5a554a','default truck paint = the original red hood, window frame and dashboard edge');
   check(w.rim==='#0e0d0b'&&w.sheen==='#2b2722'&&w.spoke==='#1b1814'&&w.hub==='#26221d'&&w.mark==='#ffcf5a','default steering wheel = the original');
   check(g.knob==='#17150f'&&g.rim==='#555'&&g.boot==='#0c0b0a'&&g.lever===null&&g.text==='#e8e2cf','default shifter = the original');
-  C.setLoadout({wheel:'gold',truck_color:'<script>',gearbox:7,seat:'x'}); check(C.loadout.wheel==='gold'&&C.loadout.truck_color==='red'&&C.loadout.gearbox==='stick'&&!('seat' in C.loadout),'a loadout keeps the known items and falls back to the default of a slot for junk');
+  check(l('dice').body==='#f4f1e8'&&l('dice').pip==='#b11'&&l('needle').color==='#ff7a2e','default hanging dice and gauge needles = the original');
+  C.setLoadout({wheel:'gold',truck_color:'<script>',gearbox:7,seat:'x'}); check(C.loadout.wheel==='gold'&&C.loadout.truck_color==='red'&&C.loadout.gearbox==='stick'&&C.loadout.dice==='white'&&C.loadout.needle==='orange'&&!('seat' in C.loadout),'a loadout keeps the known items and falls back to the default of a slot for junk');
   let worn=0; for(const slot of Object.keys(C.COSMETICS)) for(const item of C.COSMETICS[slot]){ C.setLoadout({[slot]:item}); step(2); worn++; }
-  C.setLoadout(null); check(worn>=18&&errors.length===0,'every item of every slot draws without an exception ('+worn+' worn)'); }
+  C.setLoadout(null); check(worn>=30&&errors.length===0,'every item of every slot draws without an exception ('+worn+' worn)'); }
 out.push(...checks); out.push('errors='+errors.length+(errors[0]?' '+errors[0].message:''));
 console.log(out.join('\n'));
 const failed=checks.filter(c=>c.startsWith('FAIL'));

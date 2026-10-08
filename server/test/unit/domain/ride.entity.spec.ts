@@ -36,8 +36,8 @@ describe('Ride – lifecycle guards', () => {
   it('starting stamps what the ride is driven with (none = null = all classic, for everything before cosmetics)', () => {
     const r = freeRide();
     expect(r.loadout).toBeNull();
-    r.start(T0, { wheel: 'gold', truck_color: 'red', gearbox: 'stick' });
-    expect(r.loadout).toEqual({ wheel: 'gold', truck_color: 'red', gearbox: 'stick' });
+    r.start(T0, { wheel: 'gold', truck_color: 'red', gearbox: 'stick', dice: 'white', needle: 'orange' });
+    expect(r.loadout).toEqual({ wheel: 'gold', truck_color: 'red', gearbox: 'stick', dice: 'white', needle: 'orange' });
     const plain = freeRide(); plain.start(T0);
     expect(plain.loadout).toBeNull();
   });

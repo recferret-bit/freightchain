@@ -161,6 +161,11 @@ export function cosmeticEquipped(wallet: string, slot: string, item: string, isD
   return serverEvent('cosmetic_equipped', wallet, null, now, { slot, item, is_default: isDefault }, { [slot]: item });
 }
 
+/** The player saved a selection in the Garage (all slots of the loadout that is worn now, and how many parts the save touched). */
+export function garageSaved(wallet: string, worn: Record<string, string>, changed: number, now: Date): AnalyticsEvent {
+  return serverEvent('garage_saved', wallet, null, now, { ...worn, parts_saved: changed }, { ...worn });
+}
+
 /** An admin made a code (signed + audited). Aggregate, not a player: no wallet, no free text. */
 export function promoCreated(p: { code: string; effect: PromoEffect; maxRedemptions: number | null; perWallet: number; startsAt: Date; expiresAt: Date | null; now: Date }): AnalyticsEvent {
   const e = p.effect;
