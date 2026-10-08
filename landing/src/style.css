@@ -103,7 +103,8 @@ h3.sub{margin:40px 0 14px}
 .routes{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:5px;font-size:15px;color:var(--cream)}
 .routes i{display:inline-block;width:26px;height:10px;border-radius:2px;margin-right:9px;background:linear-gradient(180deg,var(--a) 0 55%,var(--b) 55%)}
 /* realtime daytime collage: four slices cut at an angle, overlapping, the hovered one widens */
-.daytime .sub{margin-top:36px}
+.daytime,.dash{margin-top:72px;padding-top:44px;border-top:1px solid var(--line2)}
+.daytime .sub,.dash .sub{margin-top:0;margin-bottom:18px}
 .collage{--skew:5%;display:flex;height:clamp(170px,26vw,320px);border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--bg2)}
 .collage figure{position:relative;flex:1 1 0;margin:0;min-width:0;transition:flex-grow .5s cubic-bezier(.2,.8,.2,1);clip-path:polygon(var(--skew) 0,100% 0,calc(100% - var(--skew)) 100%,0 100%);margin-left:calc(var(--skew) * -1)}
 .collage figure:first-child{margin-left:0;clip-path:polygon(0 0,100% 0,calc(100% - var(--skew)) 100%,0 100%)}
@@ -115,7 +116,6 @@ h3.sub{margin:40px 0 14px}
 .daytime .lead{margin:18px 0 0;max-width:860px;font-size:clamp(18px,2.2vw,24px);line-height:1.45;color:var(--cream)}
 
 /* dash cards: perspective tilt follows the pointer (main.js); every footer is the same dash colour */
-.dash .sub{margin-top:36px}
 .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;perspective:1100px}
 .card3d{--rx:0deg;--ry:var(--base,0deg);--gx:50%;--gy:50%;--c1:#26221d;--c2:#17130f;--fg:var(--cream);
   display:grid;grid-template-rows:7fr 3fr;aspect-ratio:3/4;border-radius:12px;overflow:hidden;border:1px solid var(--line2);background:var(--panel);
