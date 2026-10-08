@@ -8,6 +8,11 @@ resolver = "2"
 edition = "2021"
 rust-version = "1.89.0"
 
+# solana-verify picks its Docker image from this (else from Cargo.lock: solana-account-info 3.1.1 -> the wrong 3.1.1 image).
+# Keep it equal to the local solana CLI the program is built and tested with.
+[workspace.metadata.cli]
+solana = "4.1.2"
+
 [profile.release]
 overflow-checks = true
 lto = "fat"
