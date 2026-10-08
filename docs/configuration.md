@@ -113,7 +113,7 @@ Enforced by the server (a refused post is `403 live_feature_off`) and sent to th
 
 | Key | Default | Notes |
 |---|---|---|
-| `ADMIN_WALLETS` | empty | Comma-separated base58 wallets allowed on the admin page. **Empty = no admin surface at all** (every admin route 404s) |
+| `ADMIN_WALLETS` | empty | Comma-separated base58 wallets allowed on the admin page. **Empty = no admin surface at all** (every admin route 404s). Local test without a wallet extension: put `64GheTAtcPoz6Re29qwWxzKU2gtZCTF6gC1NBPVgaL2N` in `server/.env` and press **DEV WALLET (local)** on the admin sign-in – `client/site/dev-wallet.js` signs with a fixed public test key through WebCrypto (the server still verifies every signature); it installs on localhost / 127.0.0.1 only and never belongs in `deploy/.env` |
 | `ADMIN_JWT_SECRET` | derived from `JWT_SECRET` | ≥ 32 chars. Rotating it signs all admins out. |
 | `ADMIN_SESSION_TTL_MINUTES` | `120` | max 1440; no silent renewal. |
 

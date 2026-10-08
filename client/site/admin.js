@@ -2,6 +2,8 @@ import { ADMIN_BASE, SITE_BASE } from '../js/hosts.js';
 import { b58, provider } from './wallet.js';
 import { shortAddr } from './pools.js';
 import { promosTab } from './admin-promos.js';
+import { devWanted, installDevWallet, isLocal, DEV_ADMIN_WALLET } from './dev-wallet.js';
+if (devWanted()) installDevWallet();   // localhost only: a dev wallet chosen earlier in this tab stays in place after a reload
 
 /* The admin page: OVERVIEW · REVIEW QUEUE · RIDES · PROMO CODES · SIGN-INS · LOGS · AUDIT (+ #ride/<id>). Vanilla DOM, no framework.
    Only wallets in the server's ADMIN_WALLETS get answers – to everyone else /api/admin/* is a 404 and this page says so.
@@ -244,7 +246,8 @@ function showSignIn(why) {
       msg.textContent = e.status === 404 ? 'This wallet is not an admin wallet (ADMIN_WALLETS).' : e.message;
     }
   } }, 'SIGN IN AS ADMIN');
-  view.replaceChildren(el('div', { class: 'card', id: 'denied' }, el('h2', {}, 'ADMIN SIGN-IN'), msg, el('div', { class: 'actions' }, button),
+  const dev = !isLocal() ? '' : el('button', { id: 'admin-dev', class: 'ghost', title: `local test wallet ${DEV_ADMIN_WALLET} – needs it in the server's ADMIN_WALLETS`, onclick: () => { installDevWallet(); button.click(); } }, 'DEV WALLET (local)');
+  view.replaceChildren(el('div', { class: 'card', id: 'denied' }, el('h2', {}, 'ADMIN SIGN-IN'), msg, el('div', { class: 'actions' }, button, dev),
     el('p', { class: 'dim' }, el('a', { href: `${SITE_BASE}/` }, 'back to the site'))));
 }
 /* a 404 from the admin API means "no (valid) admin session" – unless it is a ride that does not exist while the session is still fresh */
