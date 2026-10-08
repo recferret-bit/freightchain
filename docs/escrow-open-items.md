@@ -82,7 +82,7 @@ Related: [deploy + operate](program-deploy.md) · [paid tickets status](paid-tic
 Until then production stays as it is (`PAYMENT_MODE=transfer`, no escrow keys in `deploy/.env`).
 
 ### Phase 0 – local (no chain, no money)
-- [ ] Merge `localnet-e2e` into `main` (rebase on the current `main` first) – Q-A
+- [ ] Merge `localnet-e2e` into `main` – Q-A. Rebased on `main` and green (`npm run check` 901 tests, localnet 80 checks, devnet path 70) on Oct 8; the fast-forward waits for the main checkout's uncommitted `landing/src/main.js` edits (another session) – then `git merge --ff-only localnet-e2e` there. After the merge, rerun `devnet.sh env` in the main checkout (`server/.env.devnet` is per checkout)
 - [ ] `npm run program:verify` in the main checkout; `npm run test:localnet` green there
 - [x] Deploy smoke test: program-mode checks (no pay-per-ride fallback, pools listed, the webhook refuses a call without its secret, the fee quote answers) – `deploy/scripts/smoke.mjs`, run at the end of every `test:localnet`
 - [x] `server/scripts/devnet-payout.mjs` (`devnet.sh payout <poolId> [--yes]`): signs in as the admin, pays the ranked prizes, closes, settles each
