@@ -3,8 +3,8 @@
 Semi-automatic deploy to one Linux server: **you run one command, it shows the plan, asks, then does everything**.
 Docker runs the app + PostgreSQL; the host's nginx terminates TLS (Let's Encrypt, no Cloudflare) and proxies to `127.0.0.1`.
 
-## Five names, one app
-`DEPLOY_DOMAIN` is the **apex** (`freightchain.fun`); the other four names are added automatically:
+## Six names, one app
+`DEPLOY_DOMAIN` is the **apex** (`freightchain.fun`); the other five names are added automatically:
 
 | name | what | nginx |
 |---|---|---|
@@ -12,9 +12,10 @@ Docker runs the app + PostgreSQL; the host's nginx terminates TLS (Let's Encrypt
 | `ride.freightchain.fun` | the game (`play.html`) | proxy → app |
 | `api.freightchain.fun` | the API | only `/api/` is proxied, everything else is 404 |
 | `storybook.freightchain.fun` | the model viewer (`client/viewer.html`) | `/` → `viewer.html`, static files proxied, `/api/` is 404 – its own site file `freightchain-storybook` (template `nginx/storybook.conf.template`) |
+| `whitepaper.freightchain.fun` | the whitepaper (`landing/whitepaper.html`, the landing's second Vite page – built into the same `landing/dist`) | `/` → `whitepaper.html`, its hashed `/assets` + `/media` proxied, `/api/` is 404 – its own site file `freightchain-whitepaper` (template `nginx/whitepaper.conf.template`); static, it calls no API, so `CORS_ORIGINS` is untouched |
 | `admin.freightchain.fun` | the admin page (`client/admin.html`) **and the only host of `/api/admin/*`** | **HTTP basic auth** on everything (not on certbot's ACME path), `/` → `admin.html`, the rest proxied (the page calls the API on its own host) – its own site file `freightchain-admin` (template `nginx/admin.conf.template`) |
 
-One certificate covers all five. The pages call the API cross-origin: the client derives `api.<apex>` / `ride.<apex>` from its own host (`client/js/hosts.js`; on localhost / an IP / `file://` everything stays one origin),
+One certificate covers all six. The pages call the API cross-origin: the client derives `api.<apex>` / `ride.<apex>` from its own host (`client/js/hosts.js`; on localhost / an IP / `file://` everything stays one origin),
 the server allows exactly `https://<apex>` and `https://ride.<apex>` (`CORS_ORIGINS`) with credentials, and the session cookie is issued for the apex (`COOKIE_DOMAIN`) so the lobby, the game and the API share it.
 `APP_DOMAIN` (shown in the wallet's sign-in message) is the apex, because riders sign in on the lobby. All of these are derived from `DEPLOY_DOMAIN` – never set them by hand.
 **Another domain / subdomain later:** add a template under `deploy/nginx/` like `storybook.conf.template` (its own site file installed by `scripts/remote/setup.sh` when absent, so a server that is already set up gets it too), add the name to `NAMES` there + the DNS record, add a smoke check, make `client/js/hosts.js` strip its prefix, then run `npm run deploy:setup` (`deploy` also runs it by itself while a site file is missing) – and add its origin to `CORS_ORIGINS` if its pages call the API.
@@ -28,7 +29,7 @@ npm run deploy          # checks → plan → confirm → upload → build → b
 
 ## Prerequisites
 - ssh key access: `ssh root@<DEPLOY_HOST>` works without a password prompt.
-- **Five DNS `A` records** (`@`, `ride`, `api`, `storybook`, `admin`) pointing at the server IP. The session cookie is `Secure` in production, so the site must be https; certbot needs the DNS to resolve first (setup stops with exit 3 and names the record that doesn't).
+- **Six DNS `A` records** (`@`, `ride`, `api`, `storybook`, `whitepaper`, `admin`) pointing at the server IP. The session cookie is `Secure` in production, so the site must be https; certbot needs the DNS to resolve first (setup stops with exit 3 and names the record that doesn't).
 - Locally: node, npm, git, docker is **not** needed (the server builds the image). `server/node_modules` must be installed (`npm ci` in `server/`) – the env is validated with the server's own production schema.
 - On the server: docker + compose plugin, nginx, certbot (`python3-certbot-nginx`). Setup does not install them.
 
@@ -86,9 +87,9 @@ Docker project `freightchain-prod`: `postgres` (no published port, named volume 
 
 ## What the first deploy changes on the server
 - creates `/srv/freightchain/…`
-- adds `/etc/nginx/sites-*/freightchain` (apex, `ride.`, `api.`), `freightchain-storybook` (`storybook.`) and `freightchain-admin` (`admin.`, after writing `/etc/nginx/freightchain-admin.htpasswd`) (each only if absent; removed again if `nginx -t` fails) and reloads nginx – a server set up before a site existed gets it on the next deploy
+- adds `/etc/nginx/sites-*/freightchain` (apex, `ride.`, `api.`), `freightchain-storybook` (`storybook.`), `freightchain-whitepaper` (`whitepaper.`) and `freightchain-admin` (`admin.`, after writing `/etc/nginx/freightchain-admin.htpasswd`) (each only if absent; removed again if `nginx -t` fails) and reloads nginx – a server set up before a site existed gets it on the next deploy
 - writes the managed media cache (`/etc/nginx/conf.d/freightchain-media.conf` = `proxy_cache_path`, `/etc/nginx/snippets/freightchain-media.conf` = the `/media/*.mp4` cache location) and adds ONE `include` of that snippet after the `server_name <apex> ride.<apex>;` line of the apex site – also into a site installed earlier, certbot's 443 block included (idempotent; restored if `nginx -t` fails). `deploy` runs setup by itself while that include is missing
-- runs `certbot --nginx -d <apex> -d ride.<apex> -d api.<apex> -d storybook.<apex> -d admin.<apex> --redirect` (re-runs with `--expand` if the certificate lacks a name)
+- runs `certbot --nginx -d <apex> -d ride.<apex> -d api.<apex> -d storybook.<apex> -d whitepaper.<apex> -d admin.<apex> --redirect` (re-runs with `--expand` if the certificate lacks a name)
 - starts two containers and one volume
 
 It touches nothing else (other nginx sites, other containers).

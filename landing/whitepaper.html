@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Freight Chain – Whitepaper</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="The Freight Chain whitepaper: how to drive, the rides and the rules, the rewards, the escrow program on Solana, how every shift is validated, and how a ride is streamed. Devnet, v0.1.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Freight Chain">
+<meta property="og:title" content="Freight Chain – Whitepaper">
+<meta property="og:description" content="A long-haul driving game with a public clock, a server-checked finish and an escrowed prize pool on Solana. Read how it works and where it stops.">
+<meta property="og:image" content="/media/og.jpg">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0b0a09">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="stylesheet" href="/src/whitepaper.css">
+</head>
+<body>
+
+<header class="top">
+  <a class="brand" href="#abstract"><span class="mark">⛟</span> FREIGHT CHAIN <small>WHITEPAPER</small></a>
+  <div class="right">
+    <span class="chip">v0.1 · OCT 8 2026</span>
+    <span class="chip warn">DEVNET · NO TOKEN</span>
+    <a class="cta sm" id="play-top" data-to="game" data-path="/play.html" href="/play.html">PLAY</a>
+  </div>
+</header>
+
+<div class="wrap">
+<nav class="toc" aria-label="Contents">
+  <b class="lbl">CONTENTS</b>
+  <a href="#abstract"><i>00</i> Abstract</a>
+  <a href="#thesis"><i>01</i> Thesis</a>
+  <a href="#drive"><i>02</i> How to drive</a>
+  <a href="#rides"><i>03</i> Rides &amp; rules</a>
+  <a href="#rewards"><i>04</i> Rewards</a>
+  <a href="#onchain"><i>05</i> On-chain</a>
+  <a href="#verify"><i>06</i> Validation</a>
+  <a href="#stream"><i>07</i> Streaming</a>
+  <a href="#risks"><i>08</i> Limits &amp; risks</a>
+</nav>
+
+<main class="doc">
+
+<!-- ───────── 00 · ABSTRACT ───────── -->
+<section id="abstract" class="ch lead">
+  <p class="eyebrow">FREIGHT CHAIN · WHITEPAPER v0.1 · SOLANA DEVNET</p>
+  <h1>A long drive with a public clock and a pool nobody can reach into.</h1>
+  <p class="lede">Freight Chain is a browser game in which you drive a manual-gearbox truck down a road that never ends. A shift costs a ticket and lasts a fixed, real amount of time – one, four or eight hours. Nothing is skipped and nothing can be bought to speed it up. A server keeps the clock and judges the finish; the money for paid shifts sits in an escrow program on Solana, not with the operator.</p>
+  <p>This paper describes the game as it is built today and says plainly which parts are live on devnet, which are written but not deployed, and which are only plans. It is written for players who want to know how to drive and what the rules are, for people who might put in money (on devnet, for now) and want to know where it goes, and for reviewers who want to check the claims against the source.</p>
+  <div class="stats">
+    <div class="stat"><span class="lbl">SHIFTS</span><b class="num lcd">FREE · 1 · 4 · 8 H</b><span class="unit">real time, no fast-forward</span></div>
+    <div class="stat"><span class="lbl">SPEED GOVERNOR</span><b class="num lcd">28 m/s</b><span class="unit">100.8 km/h for every truck</span></div>
+    <div class="stat"><span class="lbl">RECORDING</span><b class="num lcd">10 Hz</b><span class="unit">sealed in 15 s hash-chained batches</span></div>
+    <div class="stat"><span class="lbl">STREAM DELAY</span><b class="num lcd">≈ 25 s</b><span class="unit">anyone can watch any ride</span></div>
+  </div>
+  <h3 class="sub">STATUS AT A GLANCE</h3>
+  <div class="tblwrap"><table class="tbl status">
+    <thead><tr><th>Part</th><th>State</th><th>Where it is described</th></tr></thead>
+    <tbody>
+      <tr><td>The driving game, five routes, free rides</td><td><span class="pill ok">LIVE</span></td><td><a href="#drive">02</a>, <a href="#rides">03</a></td></tr>
+      <tr><td>Server-timed shifts, recording, verdicts (shadow mode)</td><td><span class="pill ok">LIVE</span></td><td><a href="#verify">06</a></td></tr>
+      <tr><td>Live streams, replays, chat, paid donations to the driver</td><td><span class="pill ok">LIVE · DEVNET SOL</span></td><td><a href="#stream">07</a></td></tr>
+      <tr><td>Escrowed prize pools (Anchor program)</td><td><span class="pill wip">WRITTEN, TESTED · NOT DEPLOYED</span></td><td><a href="#onchain">05</a></td></tr>
+      <tr><td>Prize payouts, the garage, badges as tokens, mainnet</td><td><span class="pill plan">PLANNED</span></td><td><a href="#rewards">04</a>, <a href="#risks">08</a></td></tr>
+    </tbody>
+  </table></div>
+  <p class="dim note">There is no Freight Chain token and none is planned in this document. Nothing here is an offer to sell anything, or financial advice. Read <a href="#risks">section 08</a> before you put anything in.</p>
+</section>
+
+<!-- ───────── 01 · THESIS ───────── -->
+<section id="thesis" class="ch">
+  <header class="ch-h"><i>01</i><h2>Thesis</h2><p>Attention is the scarce good. A public clock, a public pool and a public board sell it.</p></header>
+  <p><em>Desert Bus</em> (1995) was an eight-hour drive from Tucson to Las Vegas at 45 mph for one point. Nobody should have finished it, and people did – and other people watched. What made it famous was not the driving; it was that the cost was time, in public, and a finish could not be faked.</p>
+  <p>Freight Chain keeps that and adds the two things that were missing: a <b>finish decided by a server</b> instead of a promise, and <b>a pot that is held by a program</b> instead of a company. The design follows from four rules:</p>
+  <ol class="rules">
+    <li><b>Time is the price.</b> A shift is complete only after its minimum real time <em>and</em> a minimum distance. The truck is governed at 28 m/s, so distance cannot be banked by idling, and a hidden tab earns nothing.</li>
+    <li><b>The finish is not self-reported.</b> The browser records the drive; the server checks the recording. It does not trust a score. It also does not pretend to re-play the physics (see <a href="#verify">06</a> for the limit).</li>
+    <li><b>Money is held by rules, not by us.</b> Paid tickets go into a program-owned vault with fixed, public rules and a refund path nobody needs permission for (<a href="#onchain">05</a>).</li>
+    <li><b>Everything is watchable.</b> Any ride can be streamed live or replayed from the same recording the verdict is made from. Spectators can talk to the driver and, on devnet, tip them (<a href="#stream">07</a>).</li>
+  </ol>
+  <div class="grid3">
+    <article class="card"><h3>WHO IT IS FOR</h3><p>Players who like manual-gearbox sims and long, quiet challenges; people who watch streams of them; and Solana users who want to see escrow and verification done in the open.</p></article>
+    <article class="card"><h3>WHAT IT IS NOT</h3><p>Not a token launch, not a yield product and not a casino game: the drive is skill and patience, the finish is verified, and no outcome depends on a random draw in the current design.</p></article>
+    <article class="card"><h3>WHERE IT RUNS</h3><p>In a desktop browser, no download. Wallet: Phantom or Solflare. Network: Solana <b>devnet</b>. Mobile wallets and touch controls are not built.</p></article>
+  </div>
+</section>
+
+<!-- ───────── 02 · HOW TO DRIVE ───────── -->
+<section id="drive" class="ch">
+  <header class="ch-h"><i>02</i><h2>How to drive</h2><p>Inputs, indicators and advice. The truck is a long-hood semi with a seven-speed manual gearbox, a cold engine and a handbrake that is on when you start.</p></header>
+
+  <h3 class="sub">THE FIRST MINUTE</h3>
+  <ol class="steps">
+    <li><i>1</i><b>KEY ON</b><span>Turn the ignition to ON (click the key). A one-second self-test sweeps the gauges. With the key OFF every gauge, lamp and even the brake pedal is dead.</span></li>
+    <li><i>2</i><b>START</b><span>Press <kbd>I</kbd> for a one-tap start, or hold the START zone of the key for about a second. <kbd>O</kbd> switches the engine off.</span></li>
+    <li><i>3</i><b>PARK BRAKE OFF</b><span>Press <kbd>B</kbd>. The red PARK octagon on the dash goes dark. It is ON at the start of every ride and it holds even against the engine.</span></li>
+    <li><i>4</i><b>CLUTCH, 1st, GAS</b><span>Hold <kbd>Shift</kbd> or <kbd>Space</kbd>, press <kbd>1</kbd>, ease the clutch out while on <kbd>W</kbd>. Shift up at about 2300 rpm.</span></li>
+  </ol>
+
+  <h3 class="sub">INPUTS</h3>
+  <div class="tblwrap"><table class="tbl keys">
+    <thead><tr><th>Control</th><th>Key</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Gas</td><td><kbd>W</kbd> <kbd>↑</kbd></td><td>Torque peaks around 2000 rpm and is nearly gone at 1200.</td></tr>
+      <tr><td>Service brake</td><td><kbd>S</kbd> <kbd>↓</kbd></td><td>Does nothing with the engine off or stalled – the air system needs it running.</td></tr>
+      <tr><td>Steer</td><td><kbd>A</kbd> <kbd>D</kbd> <kbd>←</kbd> <kbd>→</kbd></td><td>Steering is stronger at walking pace so the depot turn is possible.</td></tr>
+      <tr><td>Clutch (hold)</td><td><kbd>Shift</kbd> <kbd>Space</kbd></td><td>Must be in to change gear.</td></tr>
+      <tr><td>Gear up / down</td><td><kbd>E</kbd> / <kbd>Q</kbd></td><td><kbd>1</kbd>–<kbd>7</kbd> select a gear, <kbd>0</kbd> neutral. <kbd>Q</kbd> from neutral, or <kbd>G</kbd>, is reverse – stop first.</td></tr>
+      <tr><td>Parking brake</td><td><kbd>B</kbd></td><td>A spring brake: works with the engine off, holds against thrust.</td></tr>
+      <tr><td>Engine</td><td><kbd>I</kbd> start · <kbd>O</kbd> off</td><td>Also after a stall.</td></tr>
+      <tr><td>Headlights · cab light · night</td><td><kbd>L</kbd> · <kbd>C</kbd> · <kbd>N</kbd></td><td><kbd>N</kbd> jumps the clock between day and night. The cab light works only with the engine running or starting.</td></tr>
+      <tr><td>Heater</td><td><kbd>H</kbd></td><td>Thaws the windscreen from the vents outward; draws heat out of the engine.</td></tr>
+      <tr><td>Wipers · washer</td><td><kbd>R</kbd> · hold <kbd>X</kbd></td><td>Off / slow / fast. Dry blades barely clear dust; they never clear frost.</td></tr>
+      <tr><td>Radio</td><td><kbd>T</kbd> · <kbd>,</kbd> <kbd>.</kbd> · <kbd>−</kbd> <kbd>=</kbd></td><td>On/off · station · volume. Needs the key ON. Five stations; everyone hears the same song at the same moment.</td></tr>
+      <tr><td>Pause · mute · CB panel</td><td><kbd>P</kbd> · <kbd>M</kbd> · <kbd>K</kbd></td><td>Pause leads to END SHIFT. <kbd>K</kbd> folds the spectator chat panel (<a href="#stream">07</a>).</td></tr>
+    </tbody>
+  </table></div>
+  <p class="dim">Every dash button (HEAD, NIGHT, HEAT, WIPER, WASH, PARK, the key, the radio) can also be clicked.</p>
+
+  <h3 class="sub">INDICATORS</h3>
+  <div class="split2">
+    <figure class="shot"><img src="/media/cards/lamps.webp" width="328" height="268" decoding="async" loading="lazy" alt="The dashboard warning lamps and pedal LED bars"><figcaption>The warning lamps (COLD, STRAIN and BRAKES lit).</figcaption></figure>
+    <figure class="shot"><img src="/media/cards/trip-radio.webp" width="608" height="320" decoding="async" loading="lazy" alt="The trip computer and the radio panel on the dash"><figcaption>Trip computer and radio.</figcaption></figure>
+  </div>
+  <div class="tblwrap"><table class="tbl">
+    <thead><tr><th>Indicator</th><th>What it shows</th><th>What to do</th></tr></thead>
+    <tbody>
+      <tr><td><b>km/h</b> dial</td><td>Speed, 0–120. The governor stops the truck at about 100 km/h.</td><td>Nothing gets you past it; do not chase it.</td></tr>
+      <tr><td><b>RPM×100</b> dial</td><td>Engine speed. Idle 700, red zone from 2800.</td><td>Stay between 1000 and 2500. Below about 450 in gear with the clutch out, it stalls.</td></tr>
+      <tr><td><b>GEAR</b> window</td><td>Current gear; amber when the engine runs.</td><td>7 gears, ratio 6.15 → 0.75.</td></tr>
+      <tr><td><b>TRIP</b> LCD</td><td>Kilometres driven, shift time over the minimum (<code>mm:ss / mm:ss</code>) and outside °C.</td><td>The server's clock is the one that counts; this one is your guide.</td></tr>
+      <tr><td><b>TEMP</b></td><td>Engine temperature in °C; red from about 98 °C.</td><td>Warm up gently when it is cold; it plateaus at 85–95 °C.</td></tr>
+      <tr><td><b>VOLT</b></td><td>Battery. Lights, heater, radio and instruments drain it; the alternator refills it only while the engine runs.</td><td>Do not sit with everything on and the engine off.</td></tr>
+      <tr><td><b>H2O</b></td><td>Washer fluid tank; drains while you spray, refills slowly.</td><td>Spray in short bursts.</td></tr>
+      <tr><td><b>AIR</b>, <b>OIL</b>, <b>FUEL</b></td><td>Air pressure and oil pressure follow the engine. FUEL drifts down with distance as a display – the truck never runs dry.</td><td>Informational.</td></tr>
+      <tr><td><b>CLU · BRK · GAS · HUL</b> bars</td><td>Four LED columns: clutch, brake and gas pedal positions, and hull integrity in %.</td><td>Hull below 100 % cuts power (down to 40 %) and pulls the steering to one side; 0 % ends the shift.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 class="sub">WARNING LAMPS</h3>
+  <p>Amber means watch it, red means fix it now, blinking red means seconds left.</p>
+  <div class="lamps">
+    <article><b class="lp red">STALL</b><p>Gear in, clutch mostly out and revs under 450. Clutch in, restart with <kbd>I</kbd>.</p></article>
+    <article><b class="lp blue">COLD</b><p>The engine is below working temperature: less power, and revving high costs hull. Drive gently until it goes out.</p></article>
+    <article><b class="lp amber">STRAIN</b><p>Charges while you hold 92 % of redline or more; full means the engine blows and the shift ends. Shift up. (Charge time is a test value today.)</p></article>
+    <article><b class="lp amber">OFF ROAD</b><p>Wheels off the tarmac, sand drags the truck. Time accumulates and drains twice as fast once you are back; about 20 s in total loses the ride.</p></article>
+    <article><b class="lp amber">BRAKES</b><p>Hot brakes: hard stops from speed, or driving against a held brake. Hot brakes fade, the parking brake too. Full strain ends the shift.</p></article>
+    <article><b class="lp red">OVER-REV</b><p>Revs above the red zone. Change up or lift.</p></article>
+    <article><b class="lp amber">GRIND</b><p>A shift attempted without the clutch, or forward ↔ reverse while still rolling.</p></article>
+    <article><b class="lp amber">BAT</b><p>Battery below 30 % (red and blinking below 15 %). Below 1 % lights, radio and heater cut out and the engine will not start.</p></article>
+  </div>
+
+  <h3 class="sub">ADVICE FROM THE LONG HAUL</h3>
+  <ol class="tips">
+    <li><b>Release the parking brake first.</b> Driving against it cooks the brakes and charges STRAIN; with the pedal instead, the engine just stalls.</li>
+    <li><b>Start gently in the cold.</b> On the Trans-Siberian route (−22 °C) idle alone never warms the engine; driving gently does. Do not rev a COLD engine.</li>
+    <li><b>Pick the gear for the speed.</b> 30 km/h wants 4th. A tall gear at a crawl lugs and stalls instead of pulling; standing starts belong to 1st or 2nd.</li>
+    <li><b>Do not live on the redline.</b> Upshift near 2300 rpm. STRAIN charges above 92 % of redline.</li>
+    <li><b>Straddle potholes, slow for trenches.</b> A yellow sign comes about 90 m before every hole. A small pothole can be passed between the wheels; a trench or sinkhole needs a lane change or a crawl.</li>
+    <li><b>Keep the truck on the road.</b> Poles, guardrails, cacti and other trucks are solid; scratches and bumps cost hull, a direct hit ends the shift.</li>
+    <li><b>Lights at night.</b> With no lights the world is black outside the lamp posts; oncoming traffic dazzles you. At night the headlights are the only thing lighting the road.</li>
+    <li><b>Mind the battery.</b> Headlights, heater and radio with the engine off flatten it in minutes.</li>
+    <li><b>Wash the glass, then wipe.</b> Dust builds up; the washer makes each wiper pass clear far more. Frost needs the heater, not wipers.</li>
+    <li><b>Do not alt-tab on a paid shift.</b> A hidden tab pauses the game and earns nothing; the server will not credit those seconds.</li>
+    <li><b>Respect the crossroads.</b> Junctions have signals and cross traffic, and a direct hit with another vehicle ends the shift on the spot.</li>
+  </ol>
+
+  <h3 class="sub">FIVE ROUTES</h3>
+  <p>All routes share the same rules and road generator; they change scenery, weather and the bend style. The road is generated endlessly from a seed (crossroads, one to three lanes per direction, towns, lights).</p>
+  <ul class="routes2">
+    <li><i style="--a:#d9b27a;--b:#a87f4f"></i><b>Route 66 · USA</b> sand, saguaros, gentle bends</li>
+    <li><i style="--a:#c26a3a;--b:#8f3f22"></i><b>Stuart Highway · Australia</b> red earth, nearly straight, red dust</li>
+    <li><i style="--a:#c9d4de;--b:#7e8b97"></i><b>Trans-Siberian · Russia</b> snow, −22 °C, frost and short visibility</li>
+    <li><i style="--a:#6aa56a;--b:#3f6f3f"></i><b>Brenner Pass · Alps</b> tight serpentines, guardrails</li>
+    <li><i style="--a:#e9e2d4;--b:#b8aa92"></i><b>Pan-American · Atacama</b> salt flats, long sweepers, thin bright air</li>
+  </ul>
+</section>
+
+<!-- ───────── 03 · RIDES & RULES ───────── -->
+<section id="rides" class="ch">
+  <header class="ch-h"><i>03</i><h2>Rides &amp; rules of participation</h2><p>What a shift is, the kinds there are, how it ends, and what you accept by taking part.</p></header>
+
+  <h3 class="sub">THE FOUR KINDS OF SHIFT</h3>
+  <div class="tblwrap"><table class="tbl tiers2">
+    <thead><tr><th>Tier</th><th>Minimum time</th><th>List price</th><th>What it is</th></tr></thead>
+    <tbody>
+      <tr><td><b>FREE</b></td><td>a few minutes (test-sized)</td><td>$0</td><td>The habit. Five free rides at sign-up, +1 every 00:00 UTC, never above five. Its own leaderboard and badges. No pool.</td></tr>
+      <tr><td><b>1 H</b></td><td>1 hour</td><td>$5</td><td>A ticket into a 1-hour pool.</td></tr>
+      <tr><td><b>4 H</b></td><td>4 hours</td><td>$15</td><td>A ticket into a 4-hour pool.</td></tr>
+      <tr><td><b>8 H</b></td><td>8 hours</td><td>$50</td><td>The full Desert Bus: a ticket into an 8-hour pool.</td></tr>
+    </tbody>
+  </table></div>
+  <p class="dim">List prices are in US dollars and are settled in devnet SOL at the quoted rate. Once pools are on sale, each pool fixes its own price in lamports at creation and that price never changes. Devnet SOL has no value.</p>
+
+  <h3 class="sub">HOW A SHIFT RUNS</h3>
+  <ol class="flow">
+    <li><i>1</i><b>SIGN IN</b><span>Sign a message with Phantom or Solflare. No transaction, no fee. A cookie keeps the session; the site never sees your key.</span></li>
+    <li><i>2</i><b>START</b><span>Free: spend a free ride. Paid: spend one ticket of that tier's live pool. The server issues a signed ride with a seed and a start time.</span></li>
+    <li><i>3</i><b>DRIVE</b><span>The game heartbeats the server. Driven seconds come from those beats, capped by wall time. The recording uploads every 15 s.</span></li>
+    <li><i>4</i><b>FINISH</b><span>After the minimum time <em>and</em> the minimum distance the shift is <em>complete</em>. You may keep driving, then end it (P → END SHIFT).</span></li>
+  </ol>
+  <p><b>The completion rule.</b> A shift completes when its minimum time has been driven <em>and</em> the distance reaches ½ × 28 m/s × that time (for 1 hour: 50.4 km). The governor is the same for everyone, so this distance cannot be reached faster than half the time.</p>
+
+  <h3 class="sub">HOW IT ENDS</h3>
+  <div class="grid3">
+    <article class="card"><h3 class="ok">COMPLETED</h3><p>Minimum time and distance reached, then you ended it. The recording is judged (<a href="#verify">06</a>); only <em>verified</em> completed paid shifts rank on a paid board.</p></article>
+    <article class="card"><h3>ABANDONED</h3><p>You ended it before it completed. No rank. A paid ticket is spent.</p></article>
+    <article class="card"><h3 class="bad">FAILED</h3><p>A direct hit, hull at 0 %, a blown engine or drivetrain, about 20 s off the road, no heartbeat for 150 s (the tab is gone), or a reported distance faster than the truck can go.</p></article>
+  </div>
+
+  <h3 class="sub">RULES OF PARTICIPATION</h3>
+  <ol class="rules">
+    <li><b>You need a wallet, not a balance, to look around.</b> Watching a ride, the boards and this paper need no sign-in. Driving, chatting and tipping need one signature.</li>
+    <li><b>One account is one wallet.</b> Free rides, tickets, badges and rank belong to the wallet that signed in. A session cookie is not revocable one by one; sign out of shared computers.</li>
+    <li><b>A ticket is spent when the shift starts.</b> A paid ticket is not returned if you crash or abandon. It is returned only if the <em>pool</em> fails: if too few riders buy in before the pool's preparation deadline, every buyer is refunded in full (<a href="#onchain">05</a>). Starting a ride while one is open resumes it.</li>
+    <li><b>Per-wallet cap.</b> A pool states how many tickets one wallet may hold; the program and the server both enforce it. Promo codes add tickets of a tier and count against the same cap.</li>
+    <li><b>Drive by hand, in the real game.</b> The browser records your key presses and the truck's state; timing that looks scripted is <em>flagged</em> for a person to review, and recordings that are impossible are <em>rejected</em>. Using bots, macros or a modified client is against the rules and is the thing the validation is built to catch (<a href="#verify">06</a>).</li>
+    <li><b>Keep the tab visible.</b> Time with the tab hidden is not driven time. Slow computers are not penalised: times come from the browser's event clock, and if the game runs below real time it simply takes longer.</li>
+    <li><b>Spectators may talk and tip.</b> An online ride can be streamed live and replayed by anyone for 90 days – the road, your truck's state and the traffic around you; your key presses are never shown (<a href="#stream">07</a>). You may mute any chat wallet.</li>
+    <li><b>Rankings are provisional while the rules are tuned.</b> Verdict rules v1 run in <em>shadow mode</em>: verdicts are stored and shown, but boards do not yet depend on them. A person reviews flagged rides and every decision is signed and logged.</li>
+    <li><b>It is a devnet build.</b> Nothing here is real money. Before any mainnet version exists, whether a prize game is lawful where you live is a question you and the operator both have to answer (<a href="#risks">08</a>).</li>
+  </ol>
+</section>
+
+<!-- ───────── 04 · REWARDS ───────── -->
+<section id="rewards" class="ch">
+  <header class="ch-h"><i>04</i><h2>Rewards &amp; promotion</h2><p>What can come back to a driver. Everything is a possibility with a stated state – none of it is a promise.</p></header>
+  <p class="note">No payout amount is guaranteed or advertised. The prize figures below are <b>proposed defaults</b> from the pool design; each pool fixes its own at creation. No prize has been paid out in this build.</p>
+
+  <div class="tblwrap"><table class="tbl">
+    <thead><tr><th>Reward</th><th>Who gets it</th><th>State</th></tr></thead>
+    <tbody>
+      <tr><td><b>Free rides</b> – 5 at sign-up, +1 each UTC day</td><td>Every wallet</td><td><span class="pill ok">LIVE</span></td></tr>
+      <tr><td><b>Free board</b> – every completed free ride ranks</td><td>Free drivers</td><td><span class="pill ok">LIVE</span></td></tr>
+      <tr><td><b>Badges</b> – First Mile, Shift Complete, Night Owl, Century, Clean Run, Cold Start; Top 20 after a round closes</td><td>Wallets that earn them</td><td><span class="pill ok">LIVE (server-side)</span></td></tr>
+      <tr><td><b>Tips and effects from spectators</b> – SOL from a viewer's wallet straight to yours</td><td>The driver being watched</td><td><span class="pill ok">LIVE · DEVNET</span></td></tr>
+      <tr><td><b>Promo codes</b> – free tickets of a tier</td><td>Whoever holds a code</td><td><span class="pill wip">BUILT</span></td></tr>
+      <tr><td><b>Pool prizes</b> – the prize share of a pool, to the top of its board</td><td>Verified finishers of that pool</td><td><span class="pill wip">PROGRAM WRITTEN · NOT DEPLOYED</span></td></tr>
+      <tr><td><b>Sponsorship</b> – anyone adds SOL to a pool's pot</td><td>The pool, split by its rules</td><td><span class="pill wip">PROGRAM WRITTEN · NOT DEPLOYED</span></td></tr>
+      <tr><td><b>Click-to-mint badges</b> – a badge you choose to mint, never auto-minted</td><td>Wallets with a paid ride</td><td><span class="pill plan">PLANNED</span></td></tr>
+      <tr><td><b>The garage</b> – cosmetic and comfort parts (gold wheel, gauge faces, paint, a heavier battery)</td><td>Owners</td><td><span class="pill plan">PLANNED</span></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 class="sub">HOW A POOL'S MONEY IS SPLIT (EXAMPLE)</h3>
+  <p>A pool is every ticket sold plus any sponsorship. Its split is written in basis points when it is created and cannot be changed. The proposed default is <b>70 % prizes · 20 % seeds the next pool · 10 % fees</b>. Shares are rounded down and the rounding remainder goes to fees, so the pieces always add up to the pot exactly.</p>
+  <div class="split" aria-hidden="true"><i class="s-top" style="width:70%"></i><i class="s-seed" style="width:20%"></i><i class="s-fees" style="width:10%"></i></div>
+  <div class="tblwrap"><table class="tbl compact">
+    <thead><tr><th>Example pot: 20 tickets × 0.04 SOL + 0.20 SOL sponsorship = 1.00 SOL</th><th>Share</th></tr></thead>
+    <tbody>
+      <tr><td>1st place</td><td class="r">0.25 SOL</td></tr>
+      <tr><td>2nd place</td><td class="r">0.15 SOL</td></tr>
+      <tr><td>3rd place</td><td class="r">0.10 SOL</td></tr>
+      <tr><td>Top-20 share</td><td class="r">0.20 SOL</td></tr>
+      <tr><td>Seeds the next pool</td><td class="r">0.20 SOL</td></tr>
+      <tr><td>Fees</td><td class="r">0.10 SOL</td></tr>
+    </tbody>
+  </table></div>
+  <p>The 25 / 15 / 10 / 20 inside the prize share comes from the game's ranking, which happens off chain. The program enforces the <em>ceiling</em>: payouts can never total more than the prize share (<a href="#onchain">05</a>). Ranking is by verified paid shifts (<a href="#verify">06</a>).</p>
+
+  <h3 class="sub">PROMOTION &amp; GROWTH</h3>
+  <div class="grid3">
+    <article class="card"><h3>FREE FIRST</h3><p>Five free rides and a daily refill are the on-ramp: no wallet balance is needed to find out whether you like the drive.</p></article>
+    <article class="card"><h3>WATCH BEFORE YOU BUY</h3><p>Every ride has a public live page and a replay. A visitor sees real drivers, real distances and the real board before connecting a wallet.</p></article>
+    <article class="card"><h3>PROMO &amp; SPONSORS</h3><p>Promo codes hand out tickets of a tier. Sponsors can add SOL to a pool; it is split like ticket money and visibly raises the pot.</p></article>
+  </div>
+  <p class="dim">What is deliberately not on this list: paid advertising, a referral token, staking, and anything that promises a return. The business is the fee share of a pool, only once pools pay out.</p>
+</section>
+
+<!-- ───────── 05 · ON-CHAIN ───────── -->
+<section id="onchain" class="ch">
+  <header class="ch-h"><i>05</i><h2>On-chain: the escrow program</h2><p>One Solana program, many prize pools. The vault holds the money; the rules move it.</p></header>
+  <p class="note"><b>Status.</b> The program <code>freightchain_pools</code> (Anchor 1.2, Rust) is written and has 49 passing tests on a local Solana simulator against the reproducible build. It is <b>not deployed</b> (the program id in the repository is a placeholder), <b>not audited</b>, and planned for devnet only. Nothing on this page is live on a public network yet.</p>
+
+  <h3 class="sub">WHERE THE MONEY GOES</h3>
+  <figure class="diagram">
+    <svg viewBox="0 0 860 330" role="img" aria-labelledby="d1t d1d">
+      <title id="d1t">Escrow money flow</title><desc id="d1d">Players buy tickets into the pool vault. The vault pays refunds to buyers, capped prizes to winners, and the remainder to the seed and fee treasuries at close. The game server only reads events and builds unsigned transactions.</desc>
+      <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ah"/></marker></defs>
+      <rect class="bx" x="20" y="120" width="170" height="80" rx="8"/><text class="tx b" x="105" y="150" text-anchor="middle">Player wallets</text><text class="tx s" x="105" y="172" text-anchor="middle">each purchase signed</text>
+      <rect class="bx hi" x="345" y="105" width="190" height="110" rx="8"/><text class="tx b" x="440" y="135" text-anchor="middle">Pool vault</text><text class="tx s" x="440" y="156" text-anchor="middle">program-owned account</text><text class="tx s" x="440" y="174" text-anchor="middle">PDA ["vault", pool_id]</text><text class="tx s" x="440" y="192" text-anchor="middle">no private key exists</text>
+      <rect class="bx" x="670" y="20" width="170" height="60" rx="8"/><text class="tx b" x="755" y="56" text-anchor="middle">Buyers (refund)</text>
+      <rect class="bx" x="670" y="105" width="170" height="60" rx="8"/><text class="tx b" x="755" y="141" text-anchor="middle">Winners (pay_prize)</text>
+      <rect class="bx" x="670" y="190" width="170" height="60" rx="8"/><text class="tx b" x="755" y="226" text-anchor="middle">Seed treasury</text>
+      <rect class="bx" x="670" y="262" width="170" height="56" rx="8"/><text class="tx b" x="755" y="295" text-anchor="middle">Fee treasury</text>
+      <path class="ln" d="M190 160H345" marker-end="url(#ar)"/><text class="tx s" x="268" y="150" text-anchor="middle">buy_ticket</text>
+      <path class="ln" d="M535 130L670 55" marker-end="url(#ar)"/><path class="ln" d="M535 160H670" marker-end="url(#ar)"/><path class="ln" d="M535 190L670 220" marker-end="url(#ar)"/><path class="ln" d="M535 205L670 285" marker-end="url(#ar)"/>
+      <text class="tx s" x="568" y="82" text-anchor="middle">full price</text><text class="tx s" x="603" y="152" text-anchor="middle">capped</text><text class="tx s" x="590" y="268" text-anchor="middle">close_pool</text>
+      <rect class="bx dash" x="20" y="250" width="420" height="64" rx="8"/><text class="tx b" x="230" y="278" text-anchor="middle">Game server</text><text class="tx s" x="230" y="298" text-anchor="middle">reads events · credits tickets · holds no key</text>
+      <path class="ln dsh" d="M440 215V250" marker-end="url(#ar)"/>
+    </svg>
+    <figcaption>Every arrow that moves money starts or ends at the vault. The server's link is dashed because it only reads what the program announced and hands players transactions to sign.</figcaption>
+  </figure>
+
+  <h3 class="sub">THE LIFE OF A POOL</h3>
+  <p>A pool opens with a commitment goal, for example 10 riders. It goes live the moment the 10th ticket is bought. If its deadline passes first, it becomes a refund pool. Every path ends in one of two final states: the pot split by the rules, or every buyer paid back.</p>
+  <div class="states">
+    <div class="stt open"><b>OPEN</b><span>tickets sell; must reach its minimum</span></div>
+    <div class="arr">→ minimum sold<small>automatic, on the buying transaction</small></div>
+    <div class="stt act"><b>ACTIVE</b><span>rides count; tickets still sell</span></div>
+    <div class="arr">→ close_pool<small>admin after the play deadline; anyone after +14 days if a prize was paid</small></div>
+    <div class="stt fin"><b>SETTLED</b><span>vault = 0, pot split as declared</span></div>
+  </div>
+  <div class="states">
+    <div class="stt open"><b>OPEN</b><span>deadline missed under the minimum</span></div>
+    <div class="arr">→ fail_pool<small>anyone</small></div>
+    <div class="stt ref"><b>REFUNDING</b><span>each buyer's full price comes back</span></div>
+    <div class="arr">→ close_pool<small>anyone, once all refunded</small></div>
+    <div class="stt fin"><b>CANCELLED</b><span>vault = 0</span></div>
+  </div>
+  <p>An ACTIVE pool the operator never settles is not a trap: 14 days after the play deadline anyone can call <code>expire_pool</code> (no prize paid yet) and every ticket is refunded, or finish the split to the declared treasuries (some prize paid). Sweeping an unpaid prize share to a treasury is refused.</p>
+
+  <h3 class="sub">THE CLOCK</h3>
+  <div class="grid3">
+    <article class="card"><h3>PREPARATION DEADLINE</h3><p>Tickets sell; the pool must reach its minimum or everyone is refunded. Written into the pool, e.g. 7 days out.</p></article>
+    <article class="card"><h3>PLAY DEADLINE</h3><p>Rides count for prizes, tickets still sell. After it the admin pays winners and closes. At most 365 days after creation.</p></article>
+    <article class="card"><h3>14-DAY SAFETY NET</h3><p>After the play deadline plus 14 days the last window needs nobody's key: anyone can expire or close the pool.</p></article>
+  </div>
+  <p class="dim">The program reads the chain's own clock, so these windows are enforced on chain and cannot be moved later.</p>
+
+  <h3 class="sub">WHY IT IS SAFE – AND THE RULE BEHIND EACH CLAIM</h3>
+  <div class="tblwrap"><table class="tbl guar">
+    <thead><tr><th>You can count on</th><th>Because the program…</th></tr></thead>
+    <tbody>
+      <tr><td><b>Your fee is held by the program, not by us.</b></td><td>keeps it in a vault PDA with no private key; only the program's instructions can sign for it.</td></tr>
+      <tr><td><b>A missed goal returns every lamport.</b></td><td>lets <em>any wallet</em> call <code>fail_pool</code> then <code>refund</code> once the deadline passes under the minimum. You do not wait for us to start it.</td></tr>
+      <tr><td><b>Nobody can redirect your refund.</b></td><td>derives the ticket's address from your wallet and checks the receiver against it. Whoever sends the refund, the money lands with you; each ticket refunds once (refunding closes it).</td></tr>
+      <tr><td><b>The rules cannot change after you buy.</b></td><td>writes price, minimum, deadlines, split and treasuries at <code>create_pool</code>; no instruction edits them. Only the status and counters move.</td></tr>
+      <tr><td><b>Prizes can never exceed the prize share.</b></td><td>makes <code>pay_prize</code> refuse any payout that would take the running total above it, and any payout before the play deadline.</td></tr>
+      <tr><td><b>A vanished operator cannot trap the money.</b></td><td>lets anyone call <code>expire_pool</code> 14 days after the play deadline. The admin key can also be handed over in two signed steps.</td></tr>
+      <tr><td><b>Money only goes where the pool said.</b></td><td>checks every receiver in <code>close_pool</code> against the treasuries stored in the pool and leaves the vault at exactly zero.</td></tr>
+      <tr><td><b>A pause cannot block your refund.</b></td><td>makes the pause switch stop only new pools, ticket sales and sponsorship. Refunds, prizes and closing always work.</td></tr>
+      <tr><td><b>You pay the ticket price and nothing else.</b></td><td>separates the buyer and the fee payer, so a sponsor can pay network fees and the ticket's rent; rent returns to whoever paid it.</td></tr>
+    </tbody>
+  </table></div>
+  <p>Technical posture: 14 instructions, 12 events, 24 error codes; all arithmetic in 128-bit integers with overflow checks on in release builds; every pool-money amount is an integer of lamports; Anchor 1.2.1, Solana 4.1.2 toolchain, SBPF v0. The binary is meant to be deployed only from a <code>solana-verify</code> reproducible build whose hash is pinned in the repository, so anyone can rebuild the source and compare it with what is on chain.</p>
+
+  <h3 class="sub">WHO CAN DO WHAT</h3>
+  <div class="tblwrap"><table class="tbl compact">
+    <thead><tr><th>Action</th><th>Who</th><th>When</th></tr></thead>
+    <tbody>
+      <tr><td>Buy a ticket · sponsor a pool</td><td>Anyone with a wallet</td><td>Before the pool's deadlines, under the caps</td></tr>
+      <tr><td>Fail a pool that missed its goal · refund a ticket</td><td>Anyone</td><td>After the preparation deadline, under the minimum · while refunding</td></tr>
+      <tr><td>Expire an unsettled pool</td><td>Anyone</td><td>14 days after the play deadline, no prize paid</td></tr>
+      <tr><td>Pay a prize · close and split</td><td>Admin</td><td>After the play deadline · (anyone after +14 days if a prize was paid)</td></tr>
+      <tr><td>Create or cancel a pool · pause</td><td>Admin</td><td>Cancel only while Open; pause never blocks refunds</td></tr>
+      <tr><td>Move any money</td><td><b>The game server: never</b></td><td>It holds no key that can</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 class="sub">WHAT THE PROGRAM DOES NOT PROMISE</h3>
+  <ul class="honest">
+    <li><b>Who wins.</b> Rankings come from the game server's checks (<a href="#verify">06</a>). That is not proof of human play, and a modified client can still lie within the limits.</li>
+    <li><b>Which winner gets paid.</b> The program caps the total. It cannot tell a rightful winner from any other wallet, so the admin could pay a wrong address within the cap. Each payout is signed by the admin's wallet.</li>
+    <li><b>The treasuries.</b> The seed and fee treasuries are wallets the operator controls. A pool fixes their addresses, not what happens to the money afterwards.</li>
+    <li><b>Maturity.</b> Not deployed, not audited, devnet only.</li>
+  </ul>
+
+  <h3 class="sub">HOW THE GAME SERVER FITS</h3>
+  <p>The server <em>mirrors</em> pools and tickets; the chain wins any disagreement. A ticket is credited from the program's own <code>TicketBought</code> event, reached by three routes: the confirm / gasless-submit fast path, a program-log watcher (so a closed tab does not lose a payment) and a signed webhook. Credits are idempotent on <code>(signature, event index)</code>. The optional <b>gas sponsor</b> co-signs only the exact transaction bytes the server built for that order, so buyers need no SOL for network fees. The server never holds the admin or treasury key; the admin signs pool creation and payouts from a browser wallet.</p>
+
+  <h3 class="sub">IDEAS ON THE TABLE</h3>
+  <p class="dim">Not built; ordered roughly by fit, from the Solana feature plan.</p>
+  <ul class="ideas">
+    <li><b>Per-kilometre pledges.</b> A sponsor pledges lamports per km for a live driver, capped upfront and settled against the server-recorded distance – paying for finishing, not for entering.</li>
+    <li><b>Convoys.</b> Three to five wallets ride the same round and share a side pot by combined distance.</li>
+    <li><b>Blinks.</b> A Solana Action in a social post that opens “enter / sponsor this week's pool”.</li>
+    <li><b>Chain-anchored seeds and receipts.</b> A ride seed derived from a block hash recorded at start, and payout transactions that carry the ride's recording root in a memo.</li>
+    <li><b>A pool crank and session keys.</b> A server-side <code>fail_pool</code> and wallet session keys. Not needed for safety: a player can always trigger the refund.</li>
+    <li><b>Badges as tokens.</b> Non-transferable badges that encode the shift (“8 hours on the Trans-Siberian at night”), minted on request.</li>
+  </ul>
+  <p><a class="link" id="escrow-link" data-to="site" data-path="/escrow/" href="/escrow/">The escrow explainer, with diagrams →</a></p>
+</section>
+
+<!-- ───────── 06 · VALIDATION ───────── -->
+<section id="verify" class="ch">
+  <header class="ch-h"><i>06</i><h2>Telemetry &amp; ride validation</h2><p>The server does not replay your drive. It checks that the recording is complete, physically possible, matches the ride, and was driven by a person.</p></header>
+  <p class="note"><b>Mode.</b> Rules v1 run in <b>shadow mode</b> in production: every completed shift is judged and the verdict is shown, but the boards do not depend on it yet. The thresholds are first estimates and will be tuned on real rides. Bump the rules version and the verdict stores which one it used.</p>
+
+  <h3 class="sub">FROM YOUR KEYBOARD TO THE BOARD</h3>
+  <ol class="flow">
+    <li><i>1</i><b>RECORD</b><span>While an online ride is on the road: every key press and release, and the truck's state 10 times a second.</span></li>
+    <li><i>2</i><b>SEAL · 15 s</b><span>The game packs the last 15 s into a batch, fingerprints it with SHA-256 and links it to the batch before.</span></li>
+    <li><i>3</i><b>STORE</b><span>The server recomputes the fingerprint, checks the batch's shape and limits, and stores it. Stored batches never change.</span></li>
+    <li><i>4</i><b>JUDGE</b><span>When the shift completes: the chain, the physics, the distance, the coverage and the timing of your hands are checked together.</span></li>
+  </ol>
+
+  <h3 class="sub">WHAT IS RECORDED – AND WHAT IS NOT</h3>
+  <div class="split2 wide">
+    <article class="card"><h3>TRUCK SAMPLE · 10 PER SECOND</h3><p class="mono">t · road distance · lane offset · heading · speed · rpm · gear · hull · gas · brake · steer · clutch · clock hour · switches</p><p class="dim">14 numbers. The first twelve are judged; the last two (hour of day and the cab's switches) exist so spectators can replay the ride as you saw it and are never judged. At most 400 per batch.</p></article>
+    <article class="card"><h3>INPUT EVENT</h3><p class="mono">time since start · key or button · down / up</p><p class="dim">Times come from the browser's own event clock, so a slow frame cannot make a normal tap look like a 0 ms press. At most 2000 per batch.</p></article>
+  </div>
+  <p class="dim"><b>Never recorded:</b> mouse movement, your screen, other tabs or apps, microphone or camera, anything after the ride. The offline game records nothing.</p>
+
+  <h3 class="sub">THE CHAIN</h3>
+  <p>Each batch carries the SHA-256 fingerprint of the batch before it; the first links to the ride's own id. Change one number anywhere and that fingerprint changes, so the next link no longer matches – the verdict says <code>chain-broken</code> and the ride is rejected. The server recomputes every fingerprint itself on arrival, so a batch cannot claim a fingerprint it does not have, and sending the same batch number again is ignored.</p>
+
+  <h3 class="sub">TWO SETS OF CHECKS WITH DIFFERENT POWERS</h3>
+  <p>Checks on the recording itself can <b>reject</b>, because a broken or impossible recording proves something is wrong. Checks on how human your timing looks can only <b>flag</b>, because statistics can be wrong about a real driver.</p>
+  <div class="tblwrap"><table class="tbl">
+    <thead><tr><th>Check</th><th>Rule</th><th>Outcome · code</th></tr></thead>
+    <tbody>
+      <tr><td>Complete and in order</td><td>Every batch present, every link matching, every fingerprint correct, samples in time order.</td><td class="bad">reject · <code>no-recording</code> <code>missing-batches</code> <code>chain-broken</code> <code>hash-mismatch</code> <code>sample-out-of-order</code> <code>bad-sample</code></td></tr>
+      <tr><td>Under the governor</td><td>The truck is limited to 28 m/s (100.8 km/h). A sample above 29.4 m/s (105.8 km/h) is impossible.</td><td class="bad">reject · <code>over-governor</code></td></tr>
+      <tr><td>No teleports</td><td>Between two samples the truck cannot move further than top speed allows (×1.2, plus 2 m).</td><td class="bad">reject · <code>teleport</code></td></tr>
+      <tr><td>Ends where the ride ended</td><td>The last recorded distance matches the reported distance within 30 m + 1 %, allowing for seconds whose final upload never arrived.</td><td class="bad">reject · <code>recording-mismatch</code></td></tr>
+      <tr><td>Covers the drive</td><td>Under 50 % of the driven time recorded rejects; under 90 % only flags.</td><td>reject · <code>recording-incomplete</code> / flag · <code>recording-gaps</code></td></tr>
+      <tr><td>Someone drove</td><td>A truck that moved more than 50 m needs key presses, and gas among them.</td><td class="bad">reject · <code>no-inputs</code> <code>no-throttle-input</code></td></tr>
+      <tr><td>Holds vary</td><td>If one key's hold lengths barely vary (spread under 8 %, over 6+ holds) it looks scripted.</td><td class="warnc">flag · <code>uniform-holds</code></td></tr>
+      <tr><td>Rhythm isn't a loop</td><td>If the 3 most common gaps between presses (to the millisecond) make up more than 60 % of all gaps, a script is cycling fixed delays.</td><td class="warnc">flag · <code>repeated-timings</code></td></tr>
+      <tr><td>Presses take time</td><td>More than 30 % of presses released within 10 ms were sent, not pressed.</td><td class="warnc">flag · <code>instant-presses</code></td></tr>
+    </tbody>
+  </table></div>
+  <p class="dim">Fair to real people: with fewer than 8 presses the timing checks have no opinion. Browsers that round their clock (Firefox privacy mode, Tor) are detected and the two checks a coarse clock would break are skipped.</p>
+  <div class="grid3">
+    <article class="card"><h3 class="ok">VERIFIED</h3><p>Nothing found. The shift ranks on the paid board.</p></article>
+    <article class="card"><h3 class="warnc">FLAGGED</h3><p>Something looked off but proves nothing. It waits in a review queue and does not rank until an admin accepts it.</p></article>
+    <article class="card"><h3 class="bad">REJECTED</h3><p>The recording is missing, broken or impossible. It does not rank. An admin can still look and reverse it.</p></article>
+  </div>
+
+  <h3 class="sub">THE SERVER'S OWN CLOCK</h3>
+  <ul class="honest">
+    <li><b>Driven seconds</b> come from heartbeats, capped by wall time. A gap over 150 s fails the ride.</li>
+    <li><b>Reported distance</b> may grow at most 28 m/s × 1.2 between beats. Faster than the truck can go is a failure, not a high score.</li>
+    <li><b>A recording cannot hold more time than the wall allows:</b> game seconds ≤ wall × 1.05 + 30, batches ≤ wall ÷ 5 + 10. Uploading faster than real time is refused.</li>
+    <li><b>Limits per batch:</b> 96 kB, 400 samples, 2000 events, plus the API rate limits.</li>
+    <li><b>Races:</b> uploads and judging take the same per-player lock, so every stored batch is part of a verdict, and a batch arriving after the end triggers a new judgement.</li>
+    <li><b>A bad connection at the finish</b> is not fatal: ending waits up to 3 s for the last upload, the game retries for 55 s, the server accepts batches for 60 s. If the final batch never comes, only coverage drops.</li>
+  </ul>
+
+  <h3 class="sub">WHO REVIEWS, AND HOW THAT POWER IS LOCKED</h3>
+  <ol class="flow">
+    <li><i>1</i><b>OWN SITE + PASSWORD</b><span>The admin page lives on its own address behind a password. The admin API answers nowhere else.</span></li>
+    <li><i>2</i><b>ADMIN WALLET</b><span>Only listed wallets can sign in, for 2 hours. A player login opens nothing.</span></li>
+    <li><i>3</i><b>EVERY DECISION SIGNED</b><span>Accept, reject and re-judge are each signed by the admin's wallet for that exact ride and decision.</span></li>
+    <li><i>4</i><b>AUDIT LOG</b><span>Who decided what, when, why, and the signature are kept for good. A late upload never overturns a human decision.</span></li>
+  </ol>
+
+  <h3 class="sub">LIMITS, SAID PLAINLY</h3>
+  <ul class="honest">
+    <li><b>No re-simulation.</b> The game runs on your computer; its physics use floats, a variable time step and some randomness, so the server cannot re-run it. A careful bot playing the real game with human-like timing could pass the automatic checks. That is why flagged shifts go to a person and why the checks keep tightening.</li>
+    <li><b>The target is a fixed-tick, fixed-point replay core</b> that re-simulates a paid finish from its input log. It is on the roadmap, not in the build.</li>
+    <li><b>Verdicts decide ranking only.</b> Whether you can win money is decided by the pool's rules, not by this section.</li>
+    <li><b>Retention.</b> Recordings are deleted 90 days after the ride (flagged ones are kept until reviewed). Chat and donations are kept with the ride.</li>
+  </ul>
+</section>
+
+<!-- ───────── 07 · STREAMING ───────── -->
+<section id="stream" class="ch">
+  <header class="ch-h"><i>07</i><h2>Streaming: live rides and replays</h2><p>Nothing is filmed. The watch page rebuilds the driver's road and replays the same recording the verdict is made from.</p></header>
+
+  <h3 class="sub">ONE RECORDING, THREE USES</h3>
+  <ol class="flow">
+    <li><i>1</i><b>DRIVER</b><span>The game records the truck at 10 Hz and, twice a second, the nearest ≤ 16 vehicles within 400 m. There is no second stream.</span></li>
+    <li><i>2</i><b>SERVER</b><span>The batch is sealed, hashed, chained and stored – the same upload the verdict judges. Traffic rides beside it, outside the fingerprint, and is dropped, never refused, if malformed.</span></li>
+    <li><i>3</i><b>WATCH PAGE · every 4 s</b><span>It polls for the next batches and the chat feed, builds the road from the ride's seed and route, and writes the truck's state from the samples. Nothing is simulated.</span></li>
+    <li><i>4</i><b>REPLAY</b><span>Once the ride has ended, the same page is a replay with a timeline and 1×, 4× and 16× speeds, for as long as the recording is kept (90 days).</span></li>
+  </ol>
+  <p><b>Live is slightly behind.</b> The page plays about 25 s behind the newest recorded second: one 15 s batch plus its upload, with room for a late one. If the next batch has not arrived, the last frame holds and the panel says so. A paused game records no game time, so a pause never shows as a gap. Anyone can watch any ride that has started; a ride that has not started is a 404, so a seed is never handed out early.</p>
+  <p>The road is endless but deterministic – its whole layout is a pure function of the ride's seed and route – so only the truck needs to be recorded. Gauges, trailer swing, wipers, dust and lights react as they do for the driver because they read the same state. Not replayed: windscreen cracks, debris, the radio, and the raw key presses (they are what the human-timing check measures, so they are never published).</p>
+
+  <h3 class="sub">CHAT: A CB RADIO IN THE CAB</h3>
+  <div class="grid3">
+    <article class="card"><h3>SPECTATOR SIDE</h3><p>Sign in with a wallet on the watch page. Lines are up to 140 characters, one per wallet per 3 s; control characters are stripped and everything is shown as text, never as HTML.</p></article>
+    <article class="card"><h3>DRIVER SIDE</h3><p>A small panel shows the last four lines, a viewer count and the total donated. <kbd>K</kbd> or a click folds it. Drivers cannot post into their own feed – their hands are on the wheel.</p></article>
+    <article class="card"><h3>MUTE</h3><p>Every spectator line has a MUTE button. A muted wallet cannot post on that ride, its lines vanish from every feed and its donation notes are blanked. An obstacle it already paid for stays on the road, because replays need it.</p></article>
+  </div>
+
+  <h3 class="sub">DONATIONS THAT CHANGE THE ROAD</h3>
+  <div class="tblwrap"><table class="tbl compact">
+    <thead><tr><th>Button</th><th>Price (devnet)</th><th>Effect</th></tr></thead>
+    <tbody>
+      <tr><td>💰 Tip</td><td>0.01 SOL</td><td>Money only; shows in the feed and on the CB.</td></tr>
+      <tr><td>🌙 Night</td><td>0.02 SOL</td><td>The driver's clock jumps to night. Headlights matter from here on.</td></tr>
+      <tr><td>☀ Day</td><td>0.02 SOL</td><td>Back to day. Undoes a night.</td></tr>
+      <tr><td>🕳 Potholes</td><td>0.02 SOL</td><td>Three small pits across the lane; up to 1.8 % hull per axle at full speed.</td></tr>
+      <tr><td>🚧 Trench</td><td>0.03 SOL</td><td>A lane-wide trench; up to 6 % hull per axle and 15 % of speed at 100 km/h.</td></tr>
+      <tr><td>⚠ Sinkhole</td><td>0.05 SOL</td><td>Lane-wide with cones; up to 14 % hull per axle and 35 % of speed. At full speed it can wreck a damaged truck.</td></tr>
+    </tbody>
+  </table></div>
+  <p>A donation may carry a note of up to 80 characters. In production it is a <b>real devnet SOL transfer from the spectator's wallet to the driver's</b>: the server builds the unsigned transaction (with a memo naming the order), the wallet signs and sends it, and the donation exists in the feed only once the server has seen it on chain. The platform never touches the money. One conditional update claims the order once (signatures are unique), so two tabs confirming at once make one donation.</p>
+  <p><b>Money that moved is never refused.</b> If the effect can no longer happen when the payment is confirmed – another effect landed, effects were switched off, or the ride ended – the donation is delivered as a tip and its text says why.</p>
+  <p><b>Where a paid hole goes.</b> Past the stretch of road already built (so it never pops into view), plus the warning sign's 90 m, in the lane the truck is in – about 940 m ahead. The driver's game reports back where and when it landed (“the stamp”, first report wins), and every replay then puts the hole exactly there, now or in a month. If there is no suitable chunk within about 1.3 km, the effect fizzles and says so.</p>
+
+  <h3 class="sub">RULES AND FEATURE FLAGS</h3>
+  <div class="tblwrap"><table class="tbl compact">
+    <thead><tr><th>Rule</th><th>What the server does</th></tr></thead>
+    <tbody>
+      <tr><td>Anyone may watch</td><td>Public; no session. Ended rides stay watchable as replays.</td></tr>
+      <tr><td>Only a signed-in spectator writes</td><td>Chat and donations need the player session; the wallet is the author of every line.</td></tr>
+      <tr><td>Not your own ride</td><td>The driver cannot chat to or donate to themselves.</td></tr>
+      <tr><td>Only rides on the air</td><td>Running with a heartbeat in the last 150 s.</td></tr>
+      <tr><td>One game effect per ride per 20 s</td><td>A sliding window checked under a per-ride lock, so two simultaneous clicks never both pass; the second is told how long to wait. It keeps a ride drivable.</td></tr>
+      <tr><td>One chat line per wallet per 3 s</td><td>Spam control.</td></tr>
+      <tr><td>The stamp is the driver's, and final</td><td>Only the ride's owner can report where an effect landed.</td></tr>
+    </tbody>
+  </table></div>
+  <p>Four server switches decide what a ride offers; the server refuses what is off and tells the page what is on. In production today: <b>chat on for every ride, donations on and paid (real devnet SOL to the driver), game effects on free rides only</b> – never on a paid ticket ride – with tips available everywhere.</p>
+  <p class="dim">Open: a paid donation whose page closed before confirmation has no chain watcher yet, and a real Phantom on the game's own host is still to be tried by hand.</p>
+  <p><a class="link" data-to="game" data-path="/play.html" href="/play.html">Open the game, then use a ride's WATCH link from the lobby's Live tab →</a></p>
+</section>
+
+<!-- ───────── 08 · LIMITS & RISKS ───────── -->
+<section id="risks" class="ch">
+  <header class="ch-h"><i>08</i><h2>Limits, risks &amp; roadmap</h2><p>The honest list. If a limit matters to you, it matters here.</p></header>
+
+  <h3 class="sub">RISKS</h3>
+  <div class="tblwrap"><table class="tbl">
+    <thead><tr><th>Risk</th><th>What it means</th><th>Mitigation today</th></tr></thead>
+    <tbody>
+      <tr><td><b>Smart-contract</b></td><td>Bugs in an unaudited program can lose funds.</td><td>Devnet only; reproducible build; 49 tests; refund paths that need no key. An independent audit is a precondition for mainnet.</td></tr>
+      <tr><td><b>Cheating</b></td><td>A modified or scripted client could still pass inside the checks.</td><td>Chain, physics and timing checks; human review of flags; replay core planned (<a href="#verify">06</a>).</td></tr>
+      <tr><td><b>Operator trust</b></td><td>The admin picks pay_prize receivers within the cap and holds the treasuries.</td><td>Signed, audited decisions; payouts capped on chain; all of it readable on chain.</td></tr>
+      <tr><td><b>Availability</b></td><td>A long shift can be lost if your tab or connection dies for more than 150 s.</td><td>Resume of an open ride; honest pauses cost nothing; final upload retries.</td></tr>
+      <tr><td><b>Regulation</b></td><td>Paid prize games are regulated differently around the world.</td><td>Devnet, no value. The mainnet question is answered per region before any mainnet launch.</td></tr>
+      <tr><td><b>Tuning</b></td><td>Verdict thresholds and some game values (e.g. strain time) are first guesses.</td><td>Shadow mode; versioned rules; values flagged as test values.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 class="sub">ROADMAP</h3>
+  <ol class="legs">
+    <li class="done"><b>Built</b> The driving sim; sign-in with Solana; server-timed rides; verified-play recording and verdicts (shadow); admin review; live streams, replays, chat, paid donations; the escrow program and its server mirror, written and tested.</li>
+    <li class="now"><b>Next</b> Deploy the verified program build to devnet; create the first pools; a real end-to-end ticket purchase, refund and payout on devnet; tune the verdict thresholds on real rides, then enforce them.</li>
+    <li><b>After that</b> A deterministic replay core so a paid finish is re-simulated, not reported; a share page per ride; click-to-mint badges; a program audit.</li>
+    <li><b>Long haul</b> The garage (cosmetic and comfort parts that never change the clock or the speed); mainnet with published rules and a legal answer per region; spectator sabotage extensions; mobile wallets and touch controls.</li>
+  </ol>
+  <p class="dim">Cut on purpose: a token, pay-to-win parts, an eight-hour mandatory ride with forced stops, a second chain.</p>
+
+  <h3 class="sub">DISCLAIMER</h3>
+  <p class="legal">This document is informational. Freight Chain runs on Solana <b>devnet</b>; devnet SOL has no monetary value. There is no Freight Chain token, and nothing in this paper is an offer or solicitation to buy or sell any asset, an investment contract, or financial, legal or tax advice. Statements about the future describe intentions, not commitments, and may change. Smart contracts, wallets and browsers can fail; the program has not been audited. Prices, splits and deadlines shown are proposed defaults, and each pool fixes its own. You are responsible for complying with the laws that apply to you. The source of truth for every number is the code; where this paper and the code disagree, the code wins.</p>
+
+  <h3 class="sub">SOURCES</h3>
+  <p class="dim">The rules quoted here are mirrored from the source: <code>server/src/domain/rides/ride-tier.ts</code> (tiers), <code>…/verdict/verdict-rules.ts</code> (validation thresholds), <code>…/live/live-rules.ts</code> (streaming), <code>programs/freightchain-pools</code> (the escrow program), <code>client/js/config.js</code> (the game). Longer explainers: the escrow page, and the verified-play, replay and program spec sheets in the repository's <code>docs/</code> folder.</p>
+  <p><a href="https://github.com/recferret-bit/freightchain" target="_blank" rel="noopener">source on GitHub</a> · <a id="lobby-link" data-to="site" data-path="/lobby.html" href="/lobby.html">lobby</a> · <a id="storybook-link" data-to="storybook" data-path="/viewer.html" href="/viewer.html">model viewer</a></p>
+</section>
+
+</main>
+</div>
+
+<footer>FREIGHT CHAIN · WHITEPAPER v0.1 · Oct 8 2026 · devnet build, nothing here is real money · <a id="home-link" data-to="site" data-path="/" href="/">home</a></footer>
+
+<script type="module" src="/src/whitepaper.js"></script>
+</body>
+</html>

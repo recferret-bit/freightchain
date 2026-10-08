@@ -18,7 +18,7 @@ Everything in Freight Chain that can be configured, where it lives, and what to 
 | Ride rules mirrored from client | `server/src/domain/rides/ride-rules.ts` | yes | `MAX_SPEED`, `COMPLETE_DIST_K`, route ids – keep equal to the client |
 | Solana program | `programs/freightchain-pools/Anchor.toml` | yes | program id, deploy wallet path |
 | Landing build | `landing/vite.config.js` | yes | dev proxy to Nest, build output |
-| nginx | `deploy/nginx/*.conf.template` | yes | the five hosts in production |
+| nginx | `deploy/nginx/*.conf.template` | yes | the six hosts in production |
 | Claude Code skills | `.claude/skills/*` | yes | read-only prod tooling + the test runner |
 | Claude local settings | `.claude/settings.local.json`, `CLAUDE.local.md` | no | per-person |
 
@@ -132,10 +132,10 @@ The admin API additionally requires: host = `admin.<apex>` (nginx basic auth, `D
 
 ## Deploy-only keys (`deploy/.env`, never reach the app)
 
-`DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_PATH` (must be under `/srv`), `DEPLOY_DOMAIN` (bare apex – `ride.`, `api.`, `storybook.`, `admin.` are added), `DEPLOY_LETSENCRYPT_EMAIL`, `DEPLOY_APP_PORT`, `DEPLOY_KEEP_RELEASES` (3), `DEPLOY_KEEP_BACKUPS` (7), `DEPLOY_ADMIN_USER`, `DEPLOY_ADMIN_PASSWORD`.
+`DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_PATH` (must be under `/srv`), `DEPLOY_DOMAIN` (bare apex – `ride.`, `api.`, `storybook.`, `whitepaper.`, `admin.` are added), `DEPLOY_LETSENCRYPT_EMAIL`, `DEPLOY_APP_PORT`, `DEPLOY_KEEP_RELEASES` (3), `DEPLOY_KEEP_BACKUPS` (7), `DEPLOY_ADMIN_USER`, `DEPLOY_ADMIN_PASSWORD`.
 Also read by the compose file on the server: `POSTGRES_USER`, `POSTGRES_DB`, `POSTGRES_PASSWORD` (hex only), `APP_PORT` (derived), `RELEASE` (set by the deploy).
 
-DNS: five A records (apex, `ride`, `api`, `storybook`, `admin`) → `DEPLOY_HOST`. The session cookie is `Secure`, so https only.
+DNS: six A records (apex, `ride`, `api`, `storybook`, `whitepaper`, `admin`) → `DEPLOY_HOST`. The session cookie is `Secure`, so https only.
 
 ## Local development helpers
 
@@ -170,7 +170,7 @@ npm run server:dev                   # :3000 – site, game and API on one origi
 
 - **`client/js/config.js` (`CFG`)** – every gameplay constant, with comments. Deliberate values not to touch without asking: `SHAKE_START 0.5`, `SHAKE_MOVING 0.1`, `SHAKE_RPM 0.35`, `START_ENGINE_OFF true`.
   `RIDE_MIN_SECONDS` is **300 (a test value); production = 1800**. Tuning requests are relative to the current value.
-- **Hosts** – never hard-code `/api/…` or `/play.html`; use `API_BASE` / `GAME_BASE` / `SITE_BASE` / `STORYBOOK_BASE` / `ADMIN_BASE` from `client/js/hosts.js`. On localhost, an IP or `file://` they are `''` (one origin).
+- **Hosts** – never hard-code `/api/…` or `/play.html`; use `API_BASE` / `GAME_BASE` / `SITE_BASE` / `STORYBOOK_BASE` / `WHITEPAPER_BASE` / `ADMIN_BASE` from `client/js/hosts.js`. On localhost, an IP or `file://` they are `''` (one origin).
 - **Browser `localStorage` keys** (per player, not config you ship): `freightchain.wallet.v1` (mock wallet), `freightchain.route` (last route), `freightchain.truck` (F2 handling tuning), `freightchain.time` / `freightchain.daycycle` (day-night clock), `freightchain.radio`, `freightchain.admin`. The analytics branch also writes `freightchain.anon` (`anon_<uuid v4>`).
   A stale value is the first suspect for "works in a fresh browser only" – clear them.
 - **In-game F2 panel** – live sliders for truck handling and the time of day.
@@ -188,7 +188,7 @@ npm run server:dev                   # :3000 – site, game and API on one origi
 ## Checklist: first production deploy
 
 1. `npm run deploy:init` → edit `deploy/.env` (domain, e-mail, host; `ADMIN_WALLETS`; dedicated devnet `SOLANA_RPC`).
-2. Five DNS A records → `DEPLOY_HOST`.
+2. Six DNS A records → `DEPLOY_HOST`.
 3. `npm run deploy -- --dry-run` and read the plan.
 4. Only then `npm run deploy` (needs the explicit go-ahead; see AGENTS.md "Deploying to production").
 

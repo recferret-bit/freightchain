@@ -33,7 +33,7 @@ test('every local /media file the page names exists in public/', () => {
 });
 
 test('no orphan media: every file in public/media is used by the page or the scripts', () => {
-  const src = html + main + readFileSync(join(root, 'src/dash-scenes.js'), 'utf8');
+  const src = html + main + readFileSync(join(root, 'src/dash-scenes.js'), 'utf8') + readFileSync(join(root, 'whitepaper.html'), 'utf8');   // the whitepaper reuses the dash card shots
   const walk = d => readdirSync(d).flatMap(n => statSync(join(d, n)).isDirectory() ? walk(join(d, n)).map(x => `${n}/${x}`) : [n]);
   assert.deepEqual(walk(join(root, 'public/media')).filter(f => !src.includes(`/media/${f}`)), []);
 });
@@ -76,6 +76,7 @@ test('class names do not collide with the page-level layout classes (.dot.top on
 
 test('split hosts: the game link goes through GAME_BASE and nothing calls a bare /api path', () => {
   assert.match(main, /STORYBOOK_BASE/); assert.match(html, /id="storybook-link"/, 'footer links to the model viewer');
+  assert.match(main, /WHITEPAPER_BASE/); assert.match(html, /id="whitepaper-link"/, 'footer links to the whitepaper');
   assert.match(main, /GAME_BASE/); assert.doesNotMatch(main, /\/play\.html'/, 'no hard-coded /play.html in a JS string');
   for (const f of ['src/main.js', 'src/dash-live.js']) assert.doesNotMatch(readFileSync(join(root, f), 'utf8'), /fetch\(|XMLHttpRequest/, `${f}: API calls go through client/site/wallet.js (API_BASE)`);
 });

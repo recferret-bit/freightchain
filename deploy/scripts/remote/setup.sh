@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs ON THE SERVER (piped over ssh by deploy/scripts/setup.sh). First-time, idempotent:
-#   /srv/freightchain/{releases,backups,state}  ·  nginx sites for the names (apex, ride., api. | storybook. | admin.)  ·  a Let's Encrypt certificate.
+#   /srv/freightchain/{releases,backups,state}  ·  nginx sites for the names (apex, ride., api. | storybook. | whitepaper. | admin.)  ·  a Let's Encrypt certificate.
 # Touches nothing else: other nginx sites, ufw and the other containers are left as they are.
 set -euo pipefail
 for kv in "$@"; do export "$kv"; done
@@ -72,6 +72,19 @@ else
   say "nginx site for storybook.$DOMAIN installed and reloaded"
 fi
 
+# whitepaper.<apex> (the whitepaper page) is its own site file too; same pattern as storybook.
+WP=/etc/nginx/sites-available/freightchain-whitepaper
+if [ -f "$WP" ]; then
+  say "nginx site $WP exists – left as it is"
+else
+  [ -f "$DEPLOY_PATH/state/whitepaper.conf.template" ] || fail "the whitepaper nginx template was not uploaded"
+  sed -e "s/__ROOT__/$DOMAIN/g" -e "s/__PORT__/$APP_PORT/g" "$DEPLOY_PATH/state/whitepaper.conf.template" > "$WP"
+  ln -sfn "$WP" /etc/nginx/sites-enabled/freightchain-whitepaper
+  if ! nginx -t 2>/dev/null; then rm -f /etc/nginx/sites-enabled/freightchain-whitepaper "$WP"; nginx -t || true; fail "nginx rejected the whitepaper site – removed it again; nothing changed"; fi
+  systemctl reload nginx
+  say "nginx site for whitepaper.$DOMAIN installed and reloaded"
+fi
+
 # admin.<apex> (the admin page, basic auth) is its own site file too; the deploy writes its password file before this runs (nginx would answer 500 without it).
 AD=/etc/nginx/sites-available/freightchain-admin
 if [ -f "$AD" ]; then
@@ -86,7 +99,7 @@ else
   say "nginx site for admin.$DOMAIN installed and reloaded (basic auth)"
 fi
 
-NAMES="$DOMAIN ride.$DOMAIN api.$DOMAIN storybook.$DOMAIN admin.$DOMAIN"
+NAMES="$DOMAIN ride.$DOMAIN api.$DOMAIN storybook.$DOMAIN whitepaper.$DOMAIN admin.$DOMAIN"
 COVERED=1
 if [ -f "/etc/letsencrypt/live/$DOMAIN/cert.pem" ]; then
   for n in $NAMES; do openssl x509 -in "/etc/letsencrypt/live/$DOMAIN/cert.pem" -noout -ext subjectAltName 2>/dev/null | grep -q "DNS:$n\b" || COVERED=0; done
