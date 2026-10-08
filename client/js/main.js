@@ -1,3 +1,4 @@
+import * as cosmetics from './cosmetics.js';
 import { CFG } from './config.js';
 import { Wallet } from './wallet.js';
 import { curv } from './road.js';
@@ -51,6 +52,6 @@ if (await initWatch()) {   // only with ?watch=<id> (see watch.js): the watched 
   mountWatchPanel();
 } else { resize(); resetRide(); showMenu('DESERT RUN', 'Freight Chain · long-haul simulator'); }
 requestAnimationFrame(frame);
-window.__game = { online, telemetry, watch, liveFeed, radio, roadObjects, roads, net, st, disp, CFG, Wallet, input, tryShift, ignition, startRide, curv, spawn, traffic: cars, selectTheme, THEMES, setNight, setPhase, setClock, dn, weather, holes: { HOLES, holeAt, holesNear, clearHoleCache } };   // handy for console debugging
+window.__game = { cosmetics, online, telemetry, watch, liveFeed, radio, roadObjects, roads, net, st, disp, CFG, Wallet, input, tryShift, ignition, startRide, curv, spawn, traffic: cars, selectTheme, THEMES, setNight, setPhase, setClock, dn, weather, holes: { HOLES, holeAt, holesNear, clearHoleCache } };   // handy for console debugging
 
  

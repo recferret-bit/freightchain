@@ -40,6 +40,13 @@ if(await ev('typeof window.__game')==='object' && await ev('Array.isArray(__game
     await sleep(1800); await shot('route-'+t);
   }
 }
+// cosmetics (promo wardrobe): a few wheel / paint / shifter combinations (cosmetic-<n>.png) – look at them; the default one must look like the plain cockpit
+if(await ev('typeof window.__game')==='object' && await ev('typeof __game.cosmetics')==='object'){
+  await ev(`__game.selectTheme('route66', false); __game.st.mode='drive'; __game.st.s=__game.net.Sm+260; __game.st.d=2.6; __game.st.v=0; __game.st.gear=3; document.getElementById('overlay').classList.add('hide')`);
+  const combos=[{wheel:'sport',truck_color:'blue',gearbox:'chrome'},{wheel:'wood',truck_color:'black',gearbox:'wood'},{wheel:'gold',truck_color:'green',gearbox:'racing'},{wheel:'classic',truck_color:'yellow',gearbox:'stick'},{wheel:'classic',truck_color:'red',gearbox:'stick'}];
+  let n=0; for(const c of combos){ await ev(`__game.cosmetics.setLoadout(${JSON.stringify(c)})`); await sleep(700); await shot('cosmetic-'+(++n)); }
+  console.log('cosmetics worn:',await ev('JSON.stringify(__game.cosmetics.loadout)'));
+}
 // road network: the depot (start), waiting at the depot exit with main-road traffic, a signalled crossroads, a multi-lane stretch (net-*.png) – look at them
 if(await ev('typeof window.__game')==='object' && await ev('typeof __game.net')==='object'){
   const hold=s=>`clearInterval(window.__hold2); window.__hold2=setInterval(()=>{ const g=__game; g.st.v=0; g.st.hull=100; g.st.offT=0; ${s} },50)`;

@@ -6,6 +6,7 @@ import { ambientC } from '../sim/climate.js';
 import { CFG } from '../config.js';
 import { clamp, fmt, gearName, MONO } from '../util.js';
 import { SHAKE_MOVING, engineVib } from '../sim/shake.js';
+import { look } from '../cosmetics.js';
 
 /* Style 2 (default): conventional long-hood semi cab – hood, chrome stacks, mirrors, air gauges, CB, brake valves. */
 
@@ -36,11 +37,11 @@ export function drawCockpitRig() {
   ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H);
   const vg = ctx.createLinearGradient(0, top, 0, top + 10 * u); vg.addColorStop(0, 'rgba(10,30,26,.7)'); vg.addColorStop(1, 'rgba(10,30,26,0)'); ctx.fillStyle = vg; ctx.fillRect(0, top, W, 10 * u);   // tinted sun band
   // long hood
-  const hy = 47 * u, hb = 64 * u;
-  ctx.fillStyle = '#5c120e'; ctx.beginPath(); ctx.moveTo(cx - 12 * u, hy + 2 * u); ctx.lineTo(cx - 36 * u, hb); ctx.lineTo(cx + 36 * u, hb); ctx.lineTo(cx + 12 * u, hy + 2 * u); ctx.closePath(); ctx.fill();     // fenders
-  const hg = ctx.createLinearGradient(0, hy, 0, hb); hg.addColorStop(0, '#b0281f'); hg.addColorStop(1, '#6e130f');
+  const hy = 47 * u, hb = 64 * u, paint = look('truck_color');   // the promo cosmetics (js/cosmetics.js): the default loadout draws exactly what was always drawn
+  ctx.fillStyle = paint.fender; ctx.beginPath(); ctx.moveTo(cx - 12 * u, hy + 2 * u); ctx.lineTo(cx - 36 * u, hb); ctx.lineTo(cx + 36 * u, hb); ctx.lineTo(cx + 12 * u, hy + 2 * u); ctx.closePath(); ctx.fill();     // fenders
+  const hg = ctx.createLinearGradient(0, hy, 0, hb); hg.addColorStop(0, paint.top); hg.addColorStop(1, paint.bottom);
   ctx.fillStyle = hg; ctx.beginPath(); ctx.moveTo(cx - 9 * u, hy); ctx.lineTo(cx - 23 * u, hb); ctx.lineTo(cx + 23 * u, hb); ctx.lineTo(cx + 9 * u, hy); ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = 'rgba(255,200,190,.35)'; ctx.lineWidth = .5 * u; ctx.beginPath(); ctx.moveTo(cx, hy); ctx.lineTo(cx, hb); ctx.stroke();
+  ctx.strokeStyle = paint.line; ctx.lineWidth = .5 * u; ctx.beginPath(); ctx.moveTo(cx, hy); ctx.lineTo(cx, hb); ctx.stroke();
   ctx.strokeStyle = chromeGrad(cx - 23 * u, cx + 23 * u); ctx.lineWidth = .7 * u; ctx.beginPath(); ctx.moveTo(cx - 9 * u, hy); ctx.lineTo(cx - 23 * u, hb); ctx.moveTo(cx + 9 * u, hy); ctx.lineTo(cx + 23 * u, hb); ctx.stroke();
   ctx.fillStyle = '#e8ecef'; ctx.beginPath(); ctx.moveTo(cx, hy - 2.5 * u); ctx.lineTo(cx + 1.2 * u, hy + .5 * u); ctx.lineTo(cx - 1.2 * u, hy + .5 * u); ctx.fill();  // ornament
   { const hd = CFG.HOOD_DARK * dn.k * (dn.cab ? 0 : 1 - dn.hood);   // night: the bonnet nearly vanishes unless the cab light / an outside lamp lights it. Drawn HERE (hood + fenders only, before the dash is painted over it), not as a later overlay: that one darkened a wedge of the cowl/dash around the bonnet
@@ -115,21 +116,22 @@ export function drawCockpitRig() {
   // steering column + big wheel
   ctx.fillStyle = '#12100e'; ctx.beginPath(); ctx.moveTo(cx - 6 * u, 88 * u); ctx.lineTo(cx + 6 * u, 88 * u); ctx.lineTo(cx + 9 * u, 112 * u); ctx.lineTo(cx - 9 * u, 112 * u); ctx.fill();
   ctx.save(); ctx.translate(cx, 106 * u); ctx.scale(1, .62); ctx.rotate(st.steer * CFG.TRUCK.WHEEL_TURNS * 2 * Math.PI);
-  const R = 27 * u; ctx.lineCap = 'round';
-  ctx.strokeStyle = '#0e0d0b'; ctx.lineWidth = 5.4 * u; ctx.beginPath(); ctx.arc(0, 0, R, 0, 7); ctx.stroke();
-  ctx.strokeStyle = '#2b2722'; ctx.lineWidth = 2.6 * u; ctx.stroke();
-  ctx.strokeStyle = '#1b1814'; ctx.lineWidth = 3 * u; for (let i = 0; i < 4; i++) { const an = Math.PI / 4 + i * Math.PI / 2; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(an) * R, Math.sin(an) * R); ctx.stroke(); }
-  ctx.fillStyle = '#26221d'; ctx.beginPath(); ctx.arc(0, 0, 7.5 * u, 0, 7); ctx.fill(); ctx.strokeStyle = chromeGrad(-7 * u, 7 * u); ctx.lineWidth = .6 * u; ctx.stroke();
-  ctx.fillStyle = '#ffcf5a'; ctx.font = `bold ${5 * u}px ${MONO}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('FC', 0, 0);
-  ctx.fillStyle = '#ffcf5a'; ctx.beginPath(); ctx.arc(0, -R, 1.2 * u, 0, 7); ctx.fill();   // 12-o'clock marker
+  const R = 27 * u, wl = look('wheel'); ctx.lineCap = 'round';
+  ctx.strokeStyle = wl.rim; ctx.lineWidth = wl.rimW * u; ctx.beginPath(); ctx.arc(0, 0, R, 0, 7); ctx.stroke();
+  ctx.strokeStyle = wl.sheen; ctx.lineWidth = wl.sheenW * u; ctx.stroke();
+  ctx.strokeStyle = wl.spoke; ctx.lineWidth = wl.spokeW * u; for (let i = 0; i < wl.spokes; i++) { const an = Math.PI / 4 + i * (2 * Math.PI / wl.spokes); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(an) * R, Math.sin(an) * R); ctx.stroke(); }
+  ctx.fillStyle = wl.hub; ctx.beginPath(); ctx.arc(0, 0, 7.5 * u, 0, 7); ctx.fill(); ctx.strokeStyle = chromeGrad(-7 * u, 7 * u); ctx.lineWidth = .6 * u; ctx.stroke();
+  ctx.fillStyle = wl.mark; ctx.font = `bold ${5 * u}px ${MONO}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('FC', 0, 0);
+  ctx.fillStyle = wl.mark; ctx.beginPath(); ctx.arc(0, -R, 1.2 * u, 0, 7); ctx.fill();   // 12-o'clock marker
   ctx.restore();
   // floor shifter (H pattern, 4 columns: 1/2, 3/4, 5/6, 7/R)
   { const bx = cx + 70 * u, g = st.gear;
     const col = g === 0 ? 0 : g < 0 ? 1.5 : [-1.5, -1.5, -.5, -.5, .5, .5, 1.5][g - 1], row = g === 0 ? 0 : g < 0 ? 1 : [-1, 1, -1, 1, -1, 1, -1][g - 1];   // R: right, back
     const lv = leverPos(col, row), kx = bx + lv.col * 2.6 * u, ky = 86 * u + lv.row * 2.6 * u;   // tweened through the neutral channel
-    ctx.fillStyle = '#0c0b0a'; ctx.beginPath(); ctx.ellipse(bx, 100 * u, 6 * u, 2.6 * u, 0, 0, 7); ctx.fill();
-    ctx.strokeStyle = chromeGrad(bx - 1 * u, bx + 1 * u); ctx.lineWidth = 1.4 * u; ctx.beginPath(); ctx.moveTo(bx, 100 * u); ctx.lineTo(kx, ky); ctx.stroke();
-    ctx.fillStyle = '#17150f'; ctx.beginPath(); ctx.arc(kx, ky, 2.8 * u, 0, 7); ctx.fill(); ctx.strokeStyle = '#555'; ctx.lineWidth = .3 * u; ctx.stroke();
-    ctx.fillStyle = '#e8e2cf'; ctx.font = `bold ${2.6 * u}px ${MONO}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(gearName(g), kx, ky); }
+    const gb = look('gearbox');
+    ctx.fillStyle = gb.boot; ctx.beginPath(); ctx.ellipse(bx, 100 * u, 6 * u, 2.6 * u, 0, 0, 7); ctx.fill();
+    ctx.strokeStyle = gb.lever ?? chromeGrad(bx - 1 * u, bx + 1 * u); ctx.lineWidth = 1.4 * u; ctx.beginPath(); ctx.moveTo(bx, 100 * u); ctx.lineTo(kx, ky); ctx.stroke();
+    ctx.fillStyle = gb.knob; ctx.beginPath(); ctx.arc(kx, ky, gb.knobR * u, 0, 7); ctx.fill(); ctx.strokeStyle = gb.rim; ctx.lineWidth = .3 * u; ctx.stroke();
+    ctx.fillStyle = gb.text; ctx.font = `bold ${2.6 * u}px ${MONO}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(gearName(g), kx, ky); }
   ctx.restore();
 }

@@ -2,6 +2,7 @@ import { CFG } from './config.js';
 import { st } from './state.js';
 import { API_BASE } from './hosts.js';
 import { startTelemetry, flushTelemetry, FLUSH_WAIT_MS } from './telemetry.js';
+import { setLoadout } from './cosmetics.js';
 
 /* Online mode – OPT-IN: only when the page was opened as play.html?ride=<id> (made by the lobby). Without it nothing here runs and the game
    behaves exactly like the offline prototype (headless test, e2e, viewer and the file:// build all rely on that).
@@ -25,6 +26,7 @@ export async function initOnline() {
     if (r.status !== 'created') throw new Error(`this ride is ${r.status} – start a new one in the lobby`);
     online.ride = r;
     CFG.RIDE_MIN_SECONDS = r.minSeconds; CFG.COMPLETE_DIST = r.completeDist;   // both: COMPLETE_DIST was derived from RIDE_MIN_SECONDS at load
+    api('wardrobe').then(w => setLoadout(w.equipped), () => { /* the default cockpit: a promo cosmetic is only a look */ });   // what the lobby's PROMO tab equipped; not awaited – the menu must not wait for a look
   } catch (e) {
     online.status = typeof e.status === 'number' ? e.status : null;
     online.code = typeof e.code === 'string' ? e.code : null;
