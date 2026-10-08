@@ -109,7 +109,7 @@ export function drawCockpitRig() {
     ctx.fillStyle = st.park ? '#ffe9e4' : '#c9a29c'; ctx.font = `bold ${4.4 * u}px ${MONO}`; const tb = ctx.textBaseline; ctx.textBaseline = 'middle'; ctx.fillText('P', px, vy + .2 * u); ctx.textBaseline = tb;
     ctx.fillStyle = st.park ? '#ff8a7a' : '#9d957f'; ctx.font = `${1.5 * u}px ${MONO}`; ctx.fillText('PARK', px, vy + 5.2 * u); }
   ignitionPanel(cx + 37 * u, 95.5 * u, u);
-  { const bw = 8.4 * u, bh = 4 * u, gx = cx - 48 * u, gy = 90.8 * u, gap = .8 * u;   // 2x2 switch grid left of the wheel
+  { const bw = 8.4 * u, bh = 4 * u, gx = cx - 49 * u, gy = 90.8 * u, gap = .8 * u;   // 2x2 switch grid left of the wheel
     uiButton('head', 'HEAD', gx, gy, bw, bh, u, dn.head); uiButton('night', 'NIGHT', gx + bw + gap, gy, bw, bh, u, dn.night);
     heatButton(gx, gy + bh + gap, 2 * bw + gap, bh, u); }   // (the cab light has no button: click the dome lamp in the overhead console, or press C)
   // steering column + big wheel
