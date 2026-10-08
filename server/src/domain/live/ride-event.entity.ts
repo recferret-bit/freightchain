@@ -28,6 +28,15 @@ export interface RideEventProps {
   slot: number;
   createdAt: Date;
   applied: EffectApplied | null;
+  /** a PAID donation's transfer (LIVE_FREE_DONATIONS=off); null = a mock donation or a chat line */
+  signature: string | null;
+}
+
+/** A donation that was paid on chain: its order (a unique rate-limit key, so a paid tip never collides with a bucket), the transfer, the amount paid. */
+export interface PaidWith {
+  orderId: string;
+  signature: string;
+  lamports: number;
 }
 
 /** Spectator text as it will be shown: control characters out, whitespace collapsed, trimmed. The clients render it as text, never as HTML. */
@@ -48,18 +57,19 @@ export class RideEvent {
     if (text.length > MESSAGE_MAX_LENGTH) throw new BadRequestError(`a message is at most ${MESSAGE_MAX_LENGTH} characters`, 'bad_message');
     return new RideEvent({
       id: null, rideId: i.rideId, wallet: i.wallet, kind: 'message', text, effect: null, lamports: 0,
-      slotKey: `msg:${i.wallet}`, slot: windowOf(i.now, LINE_WINDOW_MS), createdAt: i.now, applied: null,
+      slotKey: `msg:${i.wallet}`, slot: windowOf(i.now, LINE_WINDOW_MS), createdAt: i.now, applied: null, signature: null,
     });
   }
 
   /** A MOCK donation: priced from EFFECTS, nothing is charged. A game effect takes the ride's one effect window; a tip only the wallet's line window. */
-  static donation(i: { rideId: string; wallet: string; effect: EffectId; note?: string | null; now: Date }): RideEvent {
+  static donation(i: { rideId: string; wallet: string; effect: EffectId; note?: string | null; now: Date; paid?: PaidWith }): RideEvent {
     const note = i.note ? cleanText(i.note) : '';
     if (note.length > NOTE_MAX_LENGTH) throw new BadRequestError(`a donation note is at most ${NOTE_MAX_LENGTH} characters`, 'bad_message');
     const rule = EFFECTS[i.effect];
+    const slotKey = rule.game ? 'fx' : i.paid ? `paid:${i.paid.orderId}` : `tip:${i.wallet}`;   // a paid tip is never refused: the money already moved
     return new RideEvent({
-      id: null, rideId: i.rideId, wallet: i.wallet, kind: 'donation', text: note || null, effect: i.effect, lamports: rule.lamports,
-      slotKey: rule.game ? 'fx' : `tip:${i.wallet}`, slot: windowOf(i.now, rule.game ? EFFECT_WINDOW_MS : LINE_WINDOW_MS), createdAt: i.now, applied: null,
+      id: null, rideId: i.rideId, wallet: i.wallet, kind: 'donation', text: note || null, effect: i.effect, lamports: i.paid?.lamports ?? rule.lamports,
+      slotKey, slot: rule.game ? windowOf(i.now, EFFECT_WINDOW_MS) : i.paid ? 0 : windowOf(i.now, LINE_WINDOW_MS), createdAt: i.now, applied: null, signature: i.paid?.signature ?? null,
     });
   }
 
@@ -80,6 +90,7 @@ export class RideEvent {
   get effect(): EffectId | null { return this.p.effect; }
   get slotKey(): string { return this.p.slotKey; }
   get applied(): EffectApplied | null { return this.p.applied; }
+  get signature(): string | null { return this.p.signature; }
   /** something the driver's game has to do */
   get needsGame(): boolean { return this.p.effect !== null && EFFECTS[this.p.effect].game; }
 

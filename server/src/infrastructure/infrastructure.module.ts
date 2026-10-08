@@ -77,6 +77,8 @@ import { ViewerPresencePort } from '../application/ports/live/viewer-presence.po
 import { RideEventPrismaRepository } from './prisma/repositories/ride-event.prisma.repository.js';
 import { RideMuteRepositoryPort } from '../application/ports/live/ride-mute.repository.port.js';
 import { RideMutePrismaRepository } from './prisma/repositories/ride-mute.prisma.repository.js';
+import { DonationOrderRepositoryPort } from '../application/ports/live/donation-order.repository.port.js';
+import { DonationOrderPrismaRepository } from './prisma/repositories/donation-order.prisma.repository.js';
 import { MemoryViewerPresenceAdapter } from './live/viewer-presence.memory.adapter.js';
 
 /** Every port the application layer declares is bound to its adapter here – the only place that knows which implementation runs. */
@@ -116,6 +118,7 @@ const ports: Provider[] = [
   { provide: RideEventRepositoryPort, useClass: RideEventPrismaRepository },
   { provide: ViewerPresencePort, useClass: MemoryViewerPresenceAdapter },
   { provide: RideMuteRepositoryPort, useClass: RideMutePrismaRepository },
+  { provide: DonationOrderRepositoryPort, useClass: DonationOrderPrismaRepository },
   { provide: AnalyticsPort, useClass: PostHogAnalyticsAdapter },
 ];
 

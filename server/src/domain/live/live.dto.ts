@@ -16,6 +16,8 @@ export interface RideEventDto {
   /** game effects: where / when the driver's game applied it (null = not yet – the driver is paused, offline or the ride ended first);
       placed false = an obstacle the driver's game found no room for (not on the road) */
   applied: { t: number; s: number; lat: number | null; placed: boolean } | null;
+  /** a PAID donation: the transfer's signature (an explorer link); null = mock, or a chat line */
+  signature: string | null;
 }
 
 export const toRideEventDto = (e: RideEvent): RideEventDto => {
@@ -23,6 +25,7 @@ export const toRideEventDto = (e: RideEvent): RideEventDto => {
   return {
     id: p.id ?? 0, kind: p.kind, wallet: p.wallet, text: p.text, effect: p.effect, lamports: p.lamports, at: p.createdAt.getTime(),
     applied: p.applied ? { t: p.applied.t, s: p.applied.s, lat: p.applied.lat, placed: !e.missed } : null,
+    signature: p.signature,
   };
 };
 
@@ -96,6 +99,15 @@ export interface InboxDto {
   /** the wallets the driver muted on this ride */
   muted: string[];
 }
+
+/** A paid donation's order: what to pay, to whom, with which memo – and the unsigned transfer the wallet signs and sends. */
+export interface DonationOrderDto {
+  order: { id: string; effect: EffectId; lamports: number; to: string; memo: string };
+  transaction: { transaction: string; blockhash: string; lastValidBlockHeight: number };
+}
+
+/** 'pending' = the transfer is not visible on chain yet (ask again) · 'paid' = the donation is in the feed (possibly delivered as a tip – its text says why). */
+export type ConfirmDonationResultDto = { status: 'pending' } | { status: 'paid'; event: RideEventDto };
 
 /** The answer to a (un)mute. */
 export interface MuteDto {

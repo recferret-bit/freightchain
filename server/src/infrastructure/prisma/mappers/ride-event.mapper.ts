@@ -9,6 +9,7 @@ export class RideEventMapper {
       id: row.id, rideId: row.rideId, wallet: row.wallet, kind: row.kind as RideEventKind, text: row.text, effect: isEffectId(row.effect) ? row.effect : null,
       lamports: Number(row.lamports), slotKey: row.slotKey, slot: row.slot, createdAt: row.createdAt,
       applied: row.appliedAt && row.appliedT !== null && row.appliedS !== null ? { at: row.appliedAt, t: row.appliedT, s: row.appliedS, lat: row.appliedLat } : null,
+      signature: row.signature,
     });
   }
 
@@ -16,7 +17,7 @@ export class RideEventMapper {
     const p = event.snapshot();
     return {
       rideId: p.rideId, wallet: p.wallet, kind: p.kind, text: p.text, effect: p.effect, lamports: BigInt(p.lamports), slotKey: p.slotKey, slot: p.slot, createdAt: p.createdAt,
-      appliedAt: p.applied?.at ?? null, appliedT: p.applied?.t ?? null, appliedS: p.applied?.s ?? null, appliedLat: p.applied?.lat ?? null,
+      appliedAt: p.applied?.at ?? null, appliedT: p.applied?.t ?? null, appliedS: p.applied?.s ?? null, appliedLat: p.applied?.lat ?? null, signature: p.signature,
     };
   }
 }

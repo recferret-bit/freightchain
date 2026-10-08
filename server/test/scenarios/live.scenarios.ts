@@ -116,7 +116,7 @@ export const LIVE_FLAGS_ENV = { FREE_RIDE_SECONDS: '10', LIVE_CHAT: 'free', LIVE
 export const LIVE_OFF_ENV = { FREE_RIDE_SECONDS: '10', LIVE_CHAT: 'off', LIVE_DONATIONS: 'off' };
 
 export function liveFlagsScenarios(h: () => Harness): void {
-  const { anon, login } = bindClient(h);
+  const { anon, login, sec } = bindClient(h);
   beforeEach(() => h().reset());
 
   it('free rides: chat and effects allowed, donations need a real transfer (payment chain); the flags reach the watch page', async () => {
@@ -126,6 +126,33 @@ export function liveFlagsScenarios(h: () => Harness): void {
     expect((await anon().get(`/api/watch/${ride.id}`).expect(200)).body.features).toEqual({ chat: true, donations: true, payment: 'chain', effects: true });
     const fan = await login();
     await fan.agent.post(`/api/watch/${ride.id}/messages`).send({ text: 'hi' }).expect(200);
+  });
+
+  it('a PAID donation: order → the spectator\'s transfer to the driver (memo) → confirm → it enters the feed; nothing before; the free route refuses', async () => {
+    const driver = await login(), fan = await login();
+    const ride = (await driver.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
+    await driver.agent.post(`/api/rides/${ride.id}/start`).expect(200);
+    expect((await fan.agent.post(`/api/watch/${ride.id}/donations`).send({ effect: 'tip' }).expect(403)).body.code).toBe('payment_required');
+    const { order, transaction } = (await fan.agent.post(`/api/watch/${ride.id}/donation-orders`).send({ effect: 'night', note: 'lights' }).expect(200)).body;
+    expect(order).toMatchObject({ effect: 'night', lamports: 20_000_000, to: driver.address, memo: `fc-donation:${order.id}` });
+    expect(typeof transaction.transaction).toBe('string');
+    expect((await anon().get(`/api/watch/${ride.id}`).expect(200)).body.events).toEqual([]);   // nothing until paid
+    const confirm = (signature: string) => fan.agent.post(`/api/watch/${ride.id}/donation-orders/${order.id}/confirm`).send({ signature });
+    const sig = h().chain.addPayment({ payer: fan.address, destination: driver.address, lamports: order.lamports, memo: order.memo });
+    expect((await confirm('5'.repeat(88)).expect(200)).body).toEqual({ status: 'pending' });
+    const paid = (await confirm(sig).expect(200)).body;
+    expect(paid).toMatchObject({ status: 'paid', event: { effect: 'night', signature: sig, lamports: 20_000_000, text: 'lights' } });
+    const feed = (await anon().get(`/api/watch/${ride.id}`).expect(200)).body;
+    expect(feed.events.map((e: { id: number }) => e.id)).toEqual([paid.event.id]);
+    expect(feed.totals).toMatchObject({ donations: 1, lamports: 20_000_000 });
+    const inbox = (await driver.agent.get(`/api/rides/${ride.id}/inbox`).expect(200)).body;
+    expect(inbox.events[0]).toMatchObject({ effect: 'night', applied: null });   // the driver's game applies it like any effect
+    expect((await confirm(sig).expect(200)).body).toEqual(paid);
+    sec(1);
+    const other = (await fan.agent.post(`/api/watch/${ride.id}/donation-orders`).send({ effect: 'tip' }).expect(200)).body.order;
+    expect((await fan.agent.post(`/api/watch/${ride.id}/donation-orders/${other.id}/confirm`).send({ signature: sig }).expect(409)).body.code).toBe('signature_reused');
+    const wrong = h().chain.addPayment({ payer: fan.address, lamports: other.lamports, memo: other.memo });   // to the treasury, not the driver
+    expect((await fan.agent.post(`/api/watch/${ride.id}/donation-orders/${other.id}/confirm`).send({ signature: wrong }).expect(400)).body.detail).toBe('no transfer of the donation from your wallet to the driver');
   });
 }
 

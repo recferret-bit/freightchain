@@ -59,6 +59,16 @@ describe('RideEventPrismaRepository (PostgreSQL)', () => {
     expect(await repo.listAppliedSince(ride.id, at(50), 10)).toEqual([]);
   });
 
+  it('a paid donation keeps its signature: findBySignature finds it, a second event with the same transfer is refused (null)', async () => {
+    const ride = await started();
+    const paid = { orderId: 'o-1', signature: 'sig-1', lamports: 123 };
+    const e = await repo.insert(RideEvent.donation({ rideId: ride.id, wallet: 'fan', effect: 'tip', now: T0, paid }));
+    expect(e?.snapshot()).toMatchObject({ signature: 'sig-1', lamports: 123, slotKey: 'paid:o-1' });
+    expect((await repo.findBySignature('sig-1'))?.id).toBe(e?.id);
+    expect(await repo.findBySignature('nope')).toBeNull();
+    expect(await repo.insert(RideEvent.donation({ rideId: ride.id, wallet: 'fan', effect: 'tip', now: at(9), paid: { ...paid, orderId: 'o-2' } }))).toBeNull();
+  });
+
   it('saveApplied: the first stamp wins, a second is false and changes nothing', async () => {
     const ride = await started();
     const stored = (await repo.insert(RideEvent.donation({ rideId: ride.id, wallet: 'fan', effect: 'potholes', now: T0 })))!;

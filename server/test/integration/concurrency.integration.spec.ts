@@ -358,6 +358,25 @@ describe('concurrency (PostgreSQL)', () => {
       expect(await prisma.rideEvent.count({ where: { rideId: ride.id, kind: 'message' } })).toBe(1);
     });
 
+    it('N parallel confirms of one PAID donation (two tabs, retries): ONE feed event, every caller the same answer', async () => {
+      await harness.close();
+      harness = await createHarness('postgres', { FREE_RIDE_SECONDS: '10', LIVE_FREE_DONATIONS: 'off' });
+      prisma = harness.app.get(PrismaService, { strict: false });
+      const { ride } = await liveRide();
+      const driverWallet = (await prisma.ride.findUniqueOrThrow({ where: { id: ride.id } })).wallet;
+      const fan = await login();
+      const { order } = (await fan.agent.post(`/api/watch/${ride.id}/donation-orders`).send({ effect: 'sinkhole' }).expect(200)).body;
+      const signature = harness.chain.addPayment({ payer: fan.address, destination: driverWallet, lamports: order.lamports, memo: order.memo });
+      const results = await parallel(PARALLEL, () => fan.agent.post(`/api/watch/${ride.id}/donation-orders/${order.id}/confirm`).send({ signature }));
+      expect(results.every((r) => r.status === 200)).toBe(true);
+      const ids = new Set(results.filter((r) => r.body.status === 'paid').map((r) => r.body.event.id));
+      expect(ids.size).toBe(1);
+      expect(await prisma.rideEvent.count({ where: { rideId: ride.id } })).toBe(1);
+      await harness.close();
+      harness = await createHarness('postgres', { FREE_RIDE_SECONDS: '10' });
+      prisma = harness.app.get(PrismaService, { strict: false });
+    });
+
     it('N parallel mutes of one wallet by the driver leave ONE row (and every caller a 200)', async () => {
       const { driver, ride } = await liveRide();
       const troll = await login();

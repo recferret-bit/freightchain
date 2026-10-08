@@ -8,7 +8,7 @@ import type { LiveFlags } from '../../../../../src/domain/live/live-features.js'
 describe('PostRideEventHandler', () => {
   const setup = (live?: Partial<LiveFlags>) => {
     const ctx = unitContext(unitRules({ live: { chat: 'all', donations: true, freeDonations: true, effects: 'all', ...live } }));
-    const handler = new PostRideEventHandler(ctx.rides, ctx.rideEvents, ctx.rideMutes, ctx.rules, ctx.clock);
+    const handler = new PostRideEventHandler(ctx.liveAccess, ctx.rideEvents, ctx.clock);
     return { ctx, post: (wallet: string, id: string, input: RideEventInput) => handler.execute(new PostRideEventCommand(wallet, id, input)) };
   };
   const say = (text: string): RideEventInput => ({ kind: 'message', text });
@@ -70,6 +70,13 @@ describe('PostRideEventHandler', () => {
     await expect(freeOnly.post('fan', paid.id, say('hi'))).rejects.toThrow(/chat is off/);
     await expect(freeOnly.post('fan', paid.id, give('sinkhole'))).rejects.toThrow(/effects are off/);
     expect(await freeOnly.post('fan2', paid.id, give('tip'))).toMatchObject({ effect: 'tip' });
+  });
+
+  it('when donations must be paid (LIVE_FREE_DONATIONS=off) the free route refuses them – 403 payment_required; chat is unaffected', async () => {
+    const { ctx, post } = setup({ freeDonations: false });
+    const ride = await ctx.freeRide('driver', true);
+    await expect(post('fan', ride.id, give('tip'))).rejects.toThrow(new ForbiddenError('donations are paid with a real transfer here – use a donation order', 'payment_required'));
+    expect(await post('fan', ride.id, say('hi'))).toMatchObject({ kind: 'message' });
   });
 
   it('a wallet the driver muted cannot post on that ride (403 muted) – on other rides it can', async () => {

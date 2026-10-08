@@ -38,7 +38,8 @@ import { PoolRepositoryPort } from '../../src/application/ports/economy/pool.rep
 import { PromoRepositoryPort } from '../../src/application/ports/economy/promo.repository.port.js';
 import { RideTicketRepositoryPort } from '../../src/application/ports/players/ride-ticket.repository.port.js';
 import { MemoryChainCursorRepository, MemoryChainEventRepository, MemorySponsoredTxRepository } from './in-memory/memory-repositories.js';
-import { MemoryRideEventRepository, MemoryRideMuteRepository } from './in-memory/memory-live-repositories.js';
+import { MemoryDonationOrderRepository, MemoryRideEventRepository, MemoryRideMuteRepository } from './in-memory/memory-live-repositories.js';
+import { DonationOrderRepositoryPort } from '../../src/application/ports/live/donation-order.repository.port.js';
 import { RideMuteRepositoryPort } from '../../src/application/ports/live/ride-mute.repository.port.js';
 import { RideEventRepositoryPort } from '../../src/application/ports/live/ride-event.repository.port.js';
 
@@ -109,7 +110,8 @@ export async function createHarness(persistence: Persistence, env: Record<string
       .overrideProvider(ChainCursorRepositoryPort).useValue(new MemoryChainCursorRepository(memory))
       .overrideProvider(SponsoredTxRepositoryPort).useValue(new MemorySponsoredTxRepository(memory))
       .overrideProvider(RideEventRepositoryPort).useValue(new MemoryRideEventRepository(memory))
-      .overrideProvider(RideMuteRepositoryPort).useValue(new MemoryRideMuteRepository(memory));
+      .overrideProvider(RideMuteRepositoryPort).useValue(new MemoryRideMuteRepository(memory))
+      .overrideProvider(DonationOrderRepositoryPort).useValue(new MemoryDonationOrderRepository(memory));
   }
   const moduleRef = await builder.compile();
   const app = moduleRef.createNestApplication();

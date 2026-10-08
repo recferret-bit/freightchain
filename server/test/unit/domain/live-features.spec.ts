@@ -23,7 +23,7 @@ describe('live features (LIVE_* flags resolved per ride)', () => {
   });
 
   it('withoutMuted: a muted wallet\'s lines vanish and its notes blank; everyone else is untouched', () => {
-    const e = (id: number, kind: 'message' | 'donation', wallet: string, text: string | null): RideEventDto => ({ id, kind, wallet, text, effect: kind === 'donation' ? 'sinkhole' : null, lamports: 0, at: 0, applied: null });
+    const e = (id: number, kind: 'message' | 'donation', wallet: string, text: string | null): RideEventDto => ({ id, kind, wallet, text, effect: kind === 'donation' ? 'sinkhole' : null, lamports: 0, at: 0, applied: null, signature: null });
     const feed = [e(1, 'message', 'troll', 'boo'), e(2, 'donation', 'troll', 'note'), e(3, 'message', 'fan', 'hi')];
     expect(withoutMuted(feed, new Set())).toBe(feed);
     expect(withoutMuted(feed, new Set(['troll'])).map((x) => [x.id, x.text])).toEqual([[2, null], [3, 'hi']]);
