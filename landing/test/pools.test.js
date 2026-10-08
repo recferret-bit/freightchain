@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { explorerUrl, explorerTx, statusChip, progressText, deadline, splitParts, rulesText, tierTickets, buyRoom, cardAction, rideError, promoError, promoOk, buyError, usd, pct, sol } from '../../client/site/pools.js';
-import { salesOpen, ORDERS_BUILT } from '../../client/site/tickets-api.js';
+import { salesOpen } from '../../client/site/tickets-api.js';
 
 /* The pool wording the lobby AND the landing show (client/site/pools.js is pure). Every pool status – incl. `refunding`, which the dev seeds can't produce – is pinned here. */
 const DAY = 86_400_000, NOW = Date.UTC(2026, 9, 8, 12);
@@ -84,11 +84,17 @@ test('promo redeem: 404 / every 409 code / success', () => {
   assert.match(promoOk({ code: 'X', poolId: 1, tier: '1h', added: 0, balance: 5, cap: 5 }), /at the cap, nothing added/);
 });
 
-test('ticket sales: off until the server says so (GET /api/tiers → ticketSales) or the constant flips; the refusals name the fix', () => {
-  assert.equal(salesOpen({}), ORDERS_BUILT); assert.equal(salesOpen({ ticketSales: true }), true); assert.equal(salesOpen({ ticketSales: false }), false); assert.equal(salesOpen(null), ORDERS_BUILT);
+test('ticket sales: on when the server sells through the program (tiers.paymentMode), a ticketSales flag would win; every refusal names the fix', () => {
+  assert.equal(salesOpen({ paymentMode: 'transfer' }), false); assert.equal(salesOpen({ paymentMode: 'program' }), true); assert.equal(salesOpen(null), false);
+  assert.equal(salesOpen({ paymentMode: 'program', ticketSales: false }), false); assert.equal(salesOpen({ paymentMode: 'transfer', ticketSales: true }), true);
   assert.match(buyError({ notConfigured: true }), /not switched on/);
-  assert.match(buyError(problem(429, 'too_many', 'cap')), /pay the network fee yourself/);
+  assert.match(buyError(problem(429, 'sponsor_cap', 'cap')), /pay the network fee yourself/);
   assert.match(buyError(Object.assign(new Error('User rejected the request.'), { code: 4001 })), /declined/);
+  assert.match(buyError(problem(409, 'not_sellable', 'the pool is past its deadline')), /^This pool doesn’t sell tickets right now .*: the pool is past its deadline\.$/);
+  assert.match(buyError(problem(409, 'order_closed', 'x')), /start a new purchase/);
+  assert.match(buyError(problem(400, 'transaction_mismatch', 'x')), /different transaction/);
+  assert.match(buyError(problem(409, 'not_refundable', 'x')), /not refundable/);
+  assert.match(buyError(problem(409, 'nothing_to_refund', 'x')), /paid back already/);
 });
 
 test('the lobby and the landing never call a bare /api path or render with innerHTML', () => {

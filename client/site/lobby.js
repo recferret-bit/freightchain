@@ -1,6 +1,6 @@
 import { api, signOut } from './wallet.js';
 import { buyRide, buyTickets, claimRefund, waitPaid, ORDER_SIG } from './pay.js';
-import { salesOpen, pendingOrder, getOrder } from './tickets-api.js';
+import { salesOpen, pendingOrder } from './tickets-api.js';
 import { ESCROW_PAGE, explorerTx, rideError, promoError, promoOk, buyError, sol, left } from './pools.js';
 import { poolCard, escrowSummary, refundRows, profileTickets } from './lobby-pools.js';
 import { el } from './dom.js';
@@ -102,9 +102,9 @@ async function checkOrder() {
 function paintOrder() {
   const box = $('orderbox'), o = S.order; if (!box) return;
   if (!o || o.status === 'paid') { box.replaceChildren(); return; }
-  let sig = null; try { sig = localStorage.getItem(ORDER_SIG(o.id)); } catch { /* private mode */ }
+  let sig = o.signature; try { sig ??= localStorage.getItem(ORDER_SIG(o.id)); } catch { /* private mode */ }
   const retry = () => busy('order', async () => {
-    try { if (sig) { const r = await waitPaid(o.id, sig); S.order = r.status === 'paid' ? null : o; } else S.order = await getOrder(o.id); await refreshMe(); } catch (e) { say('order', buyError(e), true); }
+    try { const r = await waitPaid(o.id, sig, { selfPaid: !!sig }); S.order = r.status === 'paid' ? null : r.order; await refreshMe(); } catch (e) { say('order', buyError(e), true); }
     paintOrder();
   });
   box.replaceChildren(el('div', { class: 'note' }, el('span', {}, el('b', {}, `A payment for ${o.qty} ticket${o.qty === 1 ? '' : 's'} is in flight`), ` · ${sol(o.lamports)} · ${o.status}`),
@@ -191,8 +191,8 @@ const buy = (tier, poolId, qty) => busy(tier, async () => {
 });
 const refund = (poolId, key) => busy(key, async () => {
   try {
-    const sig = await claimRefund(poolId, text => say(key, text)); await refreshMe();
-    say(key, 'Refund sent – the lamports land in your wallet when it confirms: ', false, { href: explorerTx(sig), text: `${sig.slice(0, 8)}… ↗` });
+    const { signature: sig, settled } = await claimRefund(poolId, text => say(key, text)); await refreshMe();
+    say(key, settled ? 'Refunded – the lamports are back in your wallet: ' : 'Refund sent – the lamports land in your wallet when it confirms: ', false, { href: explorerTx(sig), text: `${sig.slice(0, 8)}… ↗` });
   } catch (e) { say(key, e.notConfigured ? 'Refunds through the lobby are not switched on in this build yet. Once a pool has failed, the program lets ANY wallet send the refund for you – nobody can keep the money.' : buyError(e), true); }
 });
 
@@ -281,7 +281,7 @@ async function renderProfile() {
   view.replaceChildren(
     el('div', { class: 'who', style: 'display:flex;gap:10px;align-items:center' }, avatar(p.wallet), el('div', {}, el('b', {}, short(p.wallet)), el('div', { class: 'dim' }, `rider since ${new Date(p.createdAt).toLocaleDateString()} · ${freeLeft(p)} left`), el('div', { class: 'dim fr-cd' }, freeCd(p)))),
     el('h2', {}, 'STATS'),
-    el('div', { class: 'tiles' }, tile(p.stats.rides, 'rides started'), tile(p.stats.completed, 'shifts finished'), tile(km(p.stats.metres), 'km driven'), tile(km(p.stats.bestMetres), 'best shift, km'), tile(p.stats.paidRides, 'paid rides'), tile(sol(p.stats.spentLamports), 'spent')),
+    el('div', { class: 'tiles' }, tile(p.stats.rides, 'rides started'), tile(p.stats.completed, 'shifts finished'), tile(km(p.stats.metres), 'km driven'), tile(km(p.stats.bestMetres), 'best shift, km'), tile(p.stats.paidRides, 'paid rides'), tile(sol(p.stats.spentLamports), 'spent'), p.stats.ticketsBought != null ? tile(p.stats.ticketsBought, 'tickets bought') : ''),
     ...profileTickets(p, S.busy, refund),
     el('h2', {}, `ACHIEVEMENTS · ${got}/${p.achievements.length}`),
     el('div', { class: 'ach' }, p.achievements.map(a => el('div', { class: `a${a.earnedAt ? '' : ' lock'}${a.awardedAtRoundClose ? ' soon' : ''}` }, el('span', { class: 'ic' }, a.icon), el('span', { class: 'nm' }, a.name), el('span', { class: 'ds' }, a.desc),

@@ -1,12 +1,13 @@
-// A STUB of the API for front-end work on the ticket flows the real server can't show yet (docs/paid-tickets-plan.md §2.4, W5): pools in EVERY status (open, active,
-// refunding – which the dev seeds can't make), and the provisional order / payment / confirm / submit / refund routes of W3/W4 with real (unsigned, never sent) web3.js
+// A STUB of the API for front-end work on the ticket flows without a chain (docs/paid-tickets-plan.md §2.4, W5): pools in EVERY status (open, active,
+// refunding – which the dev seeds can't make), and the order / payment / confirm / submit / refund / settle routes of W3/W4 with real (unsigned, never sent) web3.js
 // transactions, so client/site/pay.js runs end to end against a fake wallet. Serves landing/dist at / (if built) and client/ like Nest. One signed-in wallet, no auth, all in memory.
 // Nothing touches a network or a chain: the "chain" here is a counter. Usage (from server/): PORT=3150 node scripts/stub-api.mjs   then open http://localhost:3150/lobby.html
-// Knobs: SPONSORED=0 (self-paid path), SALES=0 (ticket sales switched off, as on the real server today), CONFIRM_PENDING=n (confirm answers `pending` n times first, default 1).
+// Knobs: SPONSORED=0 (self-paid path), SUBMIT_FAIL=1 (the sponsor refuses: the client must fall back to self-paid), SALES=0 (paymentMode 'transfer' + 503 on POST /api/tickets, as on a
+// server without the program), CONFIRM_PENDING=n (confirm / the order answer `pending` n times first, default 1). Shapes = the routes as built on paid-tickets @ b860f9d.
 import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path';
 import web3 from '@solana/web3.js';
 const { Keypair, PublicKey, SystemProgram, Transaction } = web3;
-const PORT = +(process.env.PORT || 3150), SPONSORED = process.env.SPONSORED !== '0', SALES = process.env.SALES !== '0', PENDING = +(process.env.CONFIRM_PENDING ?? 1);
+const PORT = +(process.env.PORT || 3150), SPONSORED = process.env.SPONSORED !== '0', SALES = process.env.SALES !== '0', SUBMIT_FAIL = process.env.SUBMIT_FAIL === '1', PENDING = +(process.env.CONFIRM_PENDING ?? 1);
 const ROOT = new URL('../..', import.meta.url).pathname, SITES = [path.join(ROOT, 'landing/dist'), path.join(ROOT, 'client')].filter(d => fs.existsSync(d));
 const DAY = 86_400_000, NOW = () => Date.now(), SOL_USD = 118, B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 const sig = () => Array.from({ length: 88 }, () => B58[Math.floor(Math.random() * 58)]).join('');   // looks like a signature; it is not one
@@ -25,7 +26,7 @@ const pools = [
 ];
 const tickets = new Map([[1, { balance: 1, bought: 1 }], [2, { balance: 0, bought: 0 }], [3, { balance: 0, bought: 2 }], [5, { balance: 0, bought: 1 }]]);
 const grants = [{ poolId: 3, delta: 2, source: 'payment', ref: sig(), at: t0 - 3 * DAY }, { poolId: 5, delta: 1, source: 'payment', ref: sig(), at: t0 - 4 * DAY }, { poolId: 1, delta: 1, source: 'promo', ref: 'WELCOME', at: t0 - DAY }];
-const orders = new Map(), rides = new Map();
+const orders = new Map(), polls = new Map(), refunds = new Map(), rides = new Map();
 let freeRides = 5;
 
 const toGo = p => (p.status === 'open' ? Math.max(0, p.minTickets - p.sold) : 0);
@@ -37,15 +38,20 @@ const me = () => ({ wallet: WALLET.toBase58(), freeRides, freeRidesMax: 5, nextF
 const TIERS = [{ id: 'free', usd: 0, seconds: 300, completeDist: 4200 }, { id: '1h', usd: 5, seconds: 3600, completeDist: 50400 }, { id: '4h', usd: 15, seconds: 14400, completeDist: 201600 }, { id: '8h', usd: 50, seconds: 28800, completeDist: 403200 }];
 const problem = (status, code, detail) => ({ status, body: { type: `/problems/${code}`, title: 'Error', status, code, detail } });
 const tx = (lamports, to, feePayer) => {   // a real, unsigned legacy transaction (a plain transfer standing in for buy_ticket / refund); never sent anywhere
-  const t = new Transaction({ feePayer, recentBlockhash: Keypair.generate().publicKey.toBase58() }).add(SystemProgram.transfer({ fromPubkey: WALLET, toPubkey: to, lamports }));
-  return t.serialize({ requireAllSignatures: false, verifySignatures: false }).toString('base64');
+  const blockhash = Keypair.generate().publicKey.toBase58(), t = new Transaction({ feePayer, recentBlockhash: blockhash }).add(SystemProgram.transfer({ fromPubkey: WALLET, toPubkey: to, lamports }));
+  return { transaction: t.serialize({ requireAllSignatures: false, verifySignatures: false }).toString('base64'), message: t.serializeMessage().toString('base64'), blockhash, signatureHint: blockhash };
 };
+function pay(o) {   // the chain confirmed the order's payment: credit the tickets, move the pool (an open pool goes live at its minimum)
+  const p = pools.find(x => x.id === o.poolId), t = tickets.get(o.poolId) ?? { balance: 0, bought: 0 }; tickets.set(o.poolId, t);
+  t.balance += o.qty; t.bought += o.qty; p.sold += o.qty; if (p.status === 'open' && p.sold >= p.minTickets) p.status = 'active';
+  o.status = 'paid'; o.paidAt = NOW(); grants.push({ poolId: p.id, delta: o.qty, source: 'payment', ref: o.signature, at: NOW() });
+}
 
 /* ───── routes: [method, regex, handler(match, body) → { status?, body }] ───── */
 const R = [
   ['GET', /^me$/, () => ({ body: me() })],
-  ['GET', /^profile$/, () => ({ body: { ...me(), stats: { rides: 3, completed: 1, metres: 4200, bestMetres: 4200, paidRides: 2, spentLamports: 940_000_000 }, recent: [], achievements: [], grants: [...grants].sort((a, b) => b.at - a.at).slice(0, 20) } })],
-  ['GET', /^tiers$/, () => ({ body: { solUsd: SOL_USD, treasury: TREASURY.fee, paymentMode: 'program', ticketSales: SALES, tiers: TIERS.map(t => { const p = t.id === 'free' ? null : onSale(t.id); return { ...t, lamports: p?.priceLamports ?? null, available: true, pool: p && poolDto(p) }; }) } })],
+  ['GET', /^profile$/, () => ({ body: { ...me(), stats: { rides: 3, completed: 1, metres: 4200, bestMetres: 4200, paidRides: 2, spentLamports: 940_000_000, ticketsBought: [...tickets.values()].reduce((a, t) => a + t.bought, 0) }, recent: [], achievements: [], grants: [...grants].sort((a, b) => b.at - a.at).slice(0, 20) } })],
+  ['GET', /^tiers$/, () => ({ body: { solUsd: SOL_USD, treasury: TREASURY.fee, paymentMode: SALES ? 'program' : 'transfer', tiers: TIERS.map(t => { const p = t.id === 'free' ? null : onSale(t.id); return { ...t, lamports: p?.priceLamports ?? null, available: true, pool: p && poolDto(p) }; }) } })],
   ['GET', /^pool$/, () => ({ body: { round: { id: 1, startsAt: t0 - 3 * DAY, endsAt: t0 + 4 * DAY }, entries: 0, split: { entries: 0, carry: 0, grand: 0, top20: 0, nextSeed: 0, fees: 0 }, settled: false, solUsd: SOL_USD, usd: { grand: 0, top20: 0, nextSeed: 0, fees: 0, entries: 0 }, pools: pools.filter(p => p.status === 'open' || p.status === 'active').map(poolDto) } })],
   ['GET', /^pools$/, () => ({ body: { pools: pools.filter(p => p.status === 'open' || p.status === 'active').map(poolDto) } })],
   ['GET', /^pools\/(\d+)$/, m => { const p = pools.find(x => x.id === +m[1]); return p ? { body: poolDto(p) } : problem(404, 'not_found', 'no such pool'); }],
@@ -68,34 +74,46 @@ const R = [
     return { body: { code: 'STUB', poolId: 1, tier: '1h', added: add, balance: t.balance, cap: 5 } };
   }],
   ['POST', /^auth\/logout$/, () => ({ body: { ok: true } })],
-  // ── provisional W3 / W4 routes (§2.4) ──
+  // ── W3 / W4 routes, shapes as built on paid-tickets @ b860f9d ──
   ['GET', /^chain\/fees$/, () => ({ body: { priorityMicrolamports: 0, computeUnits: 40_000, estimatedFeeLamports: 5_000, sponsored: SPONSORED, blockhashTtlSeconds: 60 } })],
   ['POST', /^tickets$/, (m, b) => {
-    if (!SALES) return problem(503, 'service_unavailable', 'the chain is not configured on this server');
+    if (!SALES) return problem(503, 'service_unavailable', 'the pool program is not configured on this server');
     const p = pools.find(x => x.id === b.poolId), t = tickets.get(b.poolId);
-    if (!p || !(p.status === 'open' || p.status === 'active')) return problem(409, 'pool_not_open', 'this pool does not sell tickets');
-    if ((t?.bought ?? 0) + b.qty > p.maxPerWallet) return problem(409, 'over_cap', `at most ${p.maxPerWallet} tickets per wallet`);
-    const o = { id: `ord-${orders.size + 1}`, poolId: p.id, qty: b.qty, lamports: p.priceLamports * b.qty, status: 'awaiting_payment', paidAt: null, refundedAt: null, polls: 0 };
-    orders.set(o.id, o); return { status: 201, body: o };
+    if (!p) return problem(404, 'not_found', 'no such pool');
+    if (!(p.status === 'open' || p.status === 'active')) return problem(409, 'not_sellable', 'this pool does not sell tickets');
+    if ((t?.bought ?? 0) + b.qty > p.maxPerWallet) return problem(409, 'not_sellable', `at most ${p.maxPerWallet} tickets per wallet`);
+    const o = { id: `ord-${orders.size + 1}`, poolId: p.id, qty: b.qty, lamports: p.priceLamports * b.qty, status: 'awaiting_payment', createdAt: NOW(), expiresAt: NOW() + 3_600_000, paidAt: null, refundedAt: null, signature: null };
+    orders.set(o.id, o); polls.set(o.id, 0); return { body: o };
   }],
   ['GET', /^tickets\/pending$/, () => ({ body: { order: [...orders.values()].find(o => o.status === 'awaiting_payment') ?? null } })],
-  ['GET', /^tickets\/orders\/([\w-]+)$/, m => (orders.has(m[1]) ? { body: orders.get(m[1]) } : problem(404, 'not_found', 'no such order'))],
-  ['GET', /^tickets\/orders\/([\w-]+)\/payment$/, m => { const o = orders.get(m[1]); if (!o) return problem(404, 'not_found', 'no such order'); const p = pools.find(x => x.id === o.poolId);
-    return { body: { mode: 'program', programId: PROGRAM, pool: p.address, lamports: o.lamports, blockhash: 'stub', lastValidBlockHeight: 1, transaction: tx(o.lamports, new PublicKey(p.address), SPONSORED ? SPONSOR : WALLET) } }; }],
-  ['POST', /^tickets\/orders\/([\w-]+)\/submit$/, (m, b) => (orders.has(m[1]) && typeof b.signedTransaction === 'string' && Transaction.from(Buffer.from(b.signedTransaction, 'base64')) ? { body: { signature: sig() } } : problem(400, 'bad_request', 'not the transaction built for this order'))],
-  ['POST', /^tickets\/orders\/([\w-]+)\/confirm$/, m => {
+  ['GET', /^tickets\/orders\/([\w-]+)$/, m => { const o = orders.get(m[1]); if (!o) return problem(404, 'not_found', 'no such order'); if (o.status === 'awaiting_payment' && o.signature && polls.get(o.id) >= PENDING) pay(o); else polls.set(o.id, polls.get(o.id) + 1); return { body: o }; }],
+  ['GET', /^tickets\/orders\/([\w-]+)\/payment$/, (m, b, q) => { const o = orders.get(m[1]); if (!o) return problem(404, 'not_found', 'no such order'); if (o.status !== 'awaiting_payment') return problem(409, 'order_closed', `the order is ${o.status}`);
+    const p = pools.find(x => x.id === o.poolId), sponsored = SPONSORED && q.get('selfPaid') !== '1', feePayer = sponsored ? SPONSOR : WALLET, t = tx(o.lamports, new PublicKey(p.address), feePayer);
+    return { body: { orderId: o.id, mode: 'program', programId: PROGRAM, poolId: p.id, lamports: o.lamports, transaction: t.transaction, message: t.message, feePayer: feePayer.toBase58(), sponsored, computeUnits: 40_000, priorityMicrolamports: 0, blockhash: t.blockhash, lastValidBlockHeight: 1 } }; }],
+  ['POST', /^tickets\/orders\/([\w-]+)\/submit$/, (m, b) => {
     const o = orders.get(m[1]); if (!o) return problem(404, 'not_found', 'no such order');
-    if (o.status === 'paid') return { body: { status: 'paid', order: o, tickets: ticketDto(o.poolId) } };
-    if (o.polls++ < PENDING) return { body: { status: 'pending' } };
-    const p = pools.find(x => x.id === o.poolId), t = tickets.get(o.poolId) ?? { balance: 0, bought: 0 }; tickets.set(o.poolId, t);
-    t.balance += o.qty; t.bought += o.qty; p.sold += o.qty; if (p.status === 'open' && p.sold >= p.minTickets) p.status = 'active';
-    o.status = 'paid'; o.paidAt = NOW(); grants.push({ poolId: p.id, delta: o.qty, source: 'payment', ref: sig(), at: NOW() });
-    return { body: { status: 'paid', order: o, tickets: ticketDto(o.poolId) } };
+    if (SUBMIT_FAIL) return problem(503, 'service_unavailable', 'the fee sponsor is empty');
+    try { Transaction.from(Buffer.from(String(b.signedTransaction), 'base64')); } catch { return problem(400, 'transaction_mismatch', 'not the transaction built for this order'); }
+    o.signature = sig(); pay(o); return { body: { signature: o.signature, status: 'paid', order: o } };
+  }],
+  ['POST', /^tickets\/orders\/([\w-]+)\/confirm$/, (m, b) => {
+    const o = orders.get(m[1]); if (!o) return problem(404, 'not_found', 'no such order');
+    if (typeof b.signature !== 'string' || !b.signature) return problem(400, 'transaction_invalid', 'no signature');
+    o.signature ??= b.signature;
+    if (o.status === 'awaiting_payment' && polls.get(o.id) >= PENDING) pay(o); else polls.set(o.id, polls.get(o.id) + 1);
+    return { body: { status: o.status === 'paid' ? 'paid' : 'pending', order: o } };
   }],
   ['GET', /^pools\/(\d+)\/refund$/, m => { const p = pools.find(x => x.id === +m[1]), t = tickets.get(+m[1]);
-    if (!p || p.status !== 'refunding' || !t?.bought) return problem(409, 'not_refundable', 'nothing to refund in this pool');
-    return { body: { transaction: tx(t.bought * p.priceLamports, WALLET, SPONSORED ? SPONSOR : WALLET), sponsored: SPONSORED } }; }],
-  ['POST', /^pools\/(\d+)\/refund\/submit$/, m => { const t = tickets.get(+m[1]); if (!t?.bought) return problem(409, 'not_refundable', 'nothing to refund'); const p = pools.find(x => x.id === +m[1]); p.refundedTickets = (p.refundedTickets ?? 0) + t.bought; grants.push({ poolId: p.id, delta: 0, source: 'refund', ref: sig(), at: NOW() }); t.bought = 0; return { body: { signature: sig() } }; }],
+    if (!p || p.status !== 'refunding') return problem(409, 'not_refundable', 'this pool is not refunding');
+    if (!t?.bought) return problem(409, 'nothing_to_refund', 'nothing to refund for this wallet');
+    const r = tx(t.bought * p.priceLamports, WALLET, WALLET); refunds.set(r.signatureHint, p.id);
+    return { body: { poolId: p.id, needsFail: false, lamports: t.bought * p.priceLamports, transaction: r.transaction, message: r.message, feePayer: WALLET.toBase58(), sponsored: false, lastValidBlockHeight: 1 } }; }],
+  ['POST', /^chain\/settle$/, (m, b) => {   // the stub can't read a signature: any refund the wallet just sent is taken as landed (the last one built)
+    const poolId = [...refunds.values()].pop(); if (poolId == null) return { body: { signature: b.signature, status: 'invalid', detail: 'not a pool program transaction', events: [] } };
+    refunds.clear(); const p = pools.find(x => x.id === poolId), t = tickets.get(poolId);
+    if (t.bought) { p.refundedTickets = (p.refundedTickets ?? 0) + t.bought; grants.push({ poolId, delta: 0, source: 'refund', ref: b.signature, at: NOW() }); t.bought = 0; }
+    return { body: { signature: b.signature, status: 'done', detail: null, events: [{ index: 0, kind: 'Refunded', poolId, outcome: 'applied', orderId: null, detail: null }] } };
+  }],
 ];
 
 /* ───── server ───── */
@@ -111,8 +129,8 @@ function file(res, url) {
 http.createServer(async (req, res) => {
   if (!req.url.startsWith('/api/')) return file(res, req.url);
   let raw = ''; for await (const c of req) raw += c;
-  const p = req.url.slice(5).split('?')[0], body = raw ? JSON.parse(raw) : {};
+  const [p, qs = ''] = req.url.slice(5).split('?'), body = raw ? JSON.parse(raw) : {}, query = new URLSearchParams(qs);
   let out = problem(404, 'not_found', `Cannot ${req.method} /api/${p}`);
-  for (const [m, re, h] of R) { const hit = m === req.method && p.match(re); if (hit) { out = h(hit, body); break; } }
+  for (const [m, re, h] of R) { const hit = m === req.method && p.match(re); if (hit) { out = h(hit, body, query); break; } }
   res.writeHead(out.status ?? 200, { 'content-type': out.status >= 400 ? 'application/problem+json' : 'application/json' }); res.end(JSON.stringify(out.body));
 }).listen(PORT, () => console.log(`stub API + site on http://localhost:${PORT}/lobby.html (wallet ${WALLET.toBase58()}, sponsored ${SPONSORED}, sales ${SALES}) – promo code STUB`));

@@ -97,6 +97,11 @@ export function buyError(e) {
   if (e?.status === 503) return 'The chain is not reachable from the server right now – nothing was charged. Try again in a minute.';
   if (e?.status === 429) return 'Too many sponsored transactions today – pay the network fee yourself (≈ 0.0001 SOL).';
   if (e?.code === 'user_rejected' || e?.code === 4001) return 'You declined in the wallet – nothing was charged.';
+  if (e?.code === 'not_sellable') return `This pool doesn’t sell tickets right now (closed, full or past its deadline)${e.message ? `: ${e.message}` : ''}.`;
+  if (e?.code === 'order_closed') return 'That order is closed – start a new purchase (nothing was charged twice).';
+  if (e?.code === 'transaction_mismatch' || e?.code === 'transaction_invalid') return 'The network or the wallet returned a different transaction – nothing was credited for it. Try again.';
+  if (e?.code === 'not_refundable') return 'This pool is not refundable – only a pool that failed its goal (or expired unsettled) pays back.';
+  if (e?.code === 'nothing_to_refund') return 'Nothing left to refund for this wallet in this pool – it was paid back already.';
   return e?.message ?? String(e);
 }
 
