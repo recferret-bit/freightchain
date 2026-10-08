@@ -65,6 +65,7 @@ pub fn handle_create_pool(ctx: Context<CreatePool>, p: CreatePoolParams) -> Resu
     require!(p.max_tickets == 0 || p.max_tickets >= p.min_tickets, PoolError::InvalidParams);
     require!(p.max_per_wallet >= 1, PoolError::InvalidParams);
     require!(p.prep_deadline > now && p.play_deadline >= p.prep_deadline, PoolError::InvalidParams);
+    require!(p.play_deadline - now <= MAX_POOL_SECS, PoolError::InvalidParams);
     let sum = p.prize_bps as u32 + p.seed_bps as u32 + p.fee_bps as u32;
     require!(sum == BPS_DENOM as u32, PoolError::BpsSum);
     for t in [&a.fee_treasury, &a.seed_treasury, &a.platform_treasury] {

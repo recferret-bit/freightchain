@@ -20,7 +20,7 @@ bash .claude/skills/program-check/check.sh fast     # no Docker: IDL + tests on 
 |---|---|---|
 | verifiable build | [`solana-verify`](https://github.com/solana-foundation/solana-verifiable-build) 0.5.2 (Solana Foundation) – clean `cargo build-sbf` in the pinned `solanafoundation/solana-verifiable-build` image for `[workspace.metadata.cli] solana` (4.1.2), SBPF v0 | the build fails, or its hash ≠ `programs/freightchain-pools/verifiable-build.hash` |
 | IDL | `anchor idl build` | the committed `idl/freightchain_pools.json` is stale |
-| tests | `cargo test` (47: 45 LiteSVM + 2 unit) – they `include_bytes!` `target/deploy/freightchain_pools.so`, so after stage 1 they run **on the verifiable artifact**, the bytes a deploy ships | any test fails |
+| tests | `cargo test` (49: 47 LiteSVM + 2 unit) – they `include_bytes!` `target/deploy/freightchain_pools.so`, so after stage 1 they run **on the verifiable artifact**, the bytes a deploy ships | any test fails |
 | lint | `cargo clippy --lib -D warnings` (program code only; the test harness trips `result_large_err` on LiteSVM's error type) | any warning |
 | dependencies | [`cargo audit`](https://github.com/rustsec/rustsec) 0.22.2 (RustSec advisory DB) | a vulnerability; `unmaintained` / `unsound` warnings are printed, not fatal (below) |
 
@@ -33,7 +33,7 @@ and commit `verifiable-build.hash` with the change. A hash change you did not ca
 The pin is what makes "the deployed program is this source" checkable by anyone.
 
 **Deploy rule this enforces**: deploy only `target/deploy/freightchain_pools.so` from `solana-verify build`. A local `anchor build --arch v0` gives
-different bytes (host toolchain; it was `a89fa844…` vs the verifiable `055e337c…` on 2026-10-08) and would never verify.
+different bytes (host toolchain; it was `a89fa844…` vs the verifiable `055e337c…` for the same source on 2026-10-08, before the initialize fix) and would never verify.
 
 **Known `cargo audit` warnings** (2026-10-08, all transitive through `anchor-lang` / Solana crates, none reachable as a vulnerability in the program):
 `ansi_term` RUSTSEC-2021-0139, `bincode` 1.3.3 RUSTSEC-2025-0141, `derivative` RUSTSEC-2024-0388, `libsecp256k1` 0.6 RUSTSEC-2025-0161,

@@ -72,7 +72,7 @@ step "IDL (anchor idl build – does not touch the .so) = the committed idl/"
 # the event-discriminator tests read target/idl; a fresh checkout / worktree only has the committed copy
 mkdir -p "$WS/target/idl"
 (cd "$WS" && anchor idl build -o "target/idl/$LIB.json" >/dev/null 2>&1) || fail "anchor idl build failed – (cd programs/freightchain-pools && ANCHOR_LOG=true anchor idl build)"
-diff -q "$WS/target/idl/$LIB.json" "$WS/idl/$LIB.json" >/dev/null || fail "the committed idl/$LIB.json is stale – npm run program:idl, then node server/scripts/vendor-idl.mjs"
+diff -q "$WS/target/idl/$LIB.json" "$WS/idl/$LIB.json" >/dev/null || fail "the committed idl/$LIB.json is stale – npm run program:idl, then (cd server && node scripts/vendor-idl.mjs)"
 echo "✓ IDL unchanged"
 
 step "tests (LiteSVM + unit) on target/deploy/$LIB.so ($(exe_hash "$SO" | cut -c1-12)…)"

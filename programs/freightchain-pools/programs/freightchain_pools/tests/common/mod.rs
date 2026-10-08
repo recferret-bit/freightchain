@@ -4,7 +4,7 @@
 use {
     anchor_lang::{
         prelude::{Clock, Pubkey},
-        solana_program::{instruction::Instruction, system_program},
+        solana_program::{bpf_loader_upgradeable, instruction::Instruction, system_program},
         AccountDeserialize, AnchorDeserialize, Discriminator, Event, InstructionData, ToAccountMetas,
     },
     base64::Engine,
@@ -68,6 +68,22 @@ pub struct Env {
 pub fn pid() -> Pubkey {
     freightchain_pools::id()
 }
+/// The program's ProgramData account (upgradeable loader), where the upgrade authority lives.
+pub fn programdata_pda() -> Pubkey {
+    Pubkey::find_program_address(&[pid().as_ref()], &bpf_loader_upgradeable::ID).0
+}
+
+/// LiteSVM loads the program with no upgrade authority; write one into the ProgramData metadata
+/// (bincode: u32 tag 3, u64 slot, Option<Pubkey> = 1 tag byte + 32 bytes, at offset 12).
+pub fn set_upgrade_authority(svm: &mut LiteSVM, who: &Pubkey) {
+    let addr = programdata_pda();
+    let mut acc = svm.get_account(&addr).expect("ProgramData");
+    assert_eq!(acc.data[0..4], [3, 0, 0, 0], "not a ProgramData account");
+    acc.data[12] = 1;
+    acc.data[13..45].copy_from_slice(who.as_ref());
+    svm.set_account(addr, acc).unwrap();
+}
+
 pub fn config_pda() -> Pubkey {
     Pubkey::find_program_address(&[b"config"], &pid()).0
 }
@@ -113,6 +129,15 @@ impl Env {
     }
 
     pub fn with_platform_fee(platform_fee_bps: u16) -> Env {
+        let mut e = Env::uninitialized(platform_fee_bps);
+        let upgrader = clone_kp(&e.authority);
+        let admin = e.authority.pubkey();
+        e.initialize(&upgrader, admin).unwrap();
+        e
+    }
+
+    /// Program loaded with `authority` as its upgrade authority (written into ProgramData), clock at T0, no Config yet.
+    pub fn uninitialized(platform_fee_bps: u16) -> Env {
         let mut svm = LiteSVM::new();
         let bytes = include_bytes!(concat!(env!("CARGO_TARGET_TMPDIR"), "/../deploy/freightchain_pools.so"));
         assert!(
@@ -124,23 +149,29 @@ impl Env {
         c.unix_timestamp = T0;
         svm.set_sysvar(&c);
         let authority = funded(&mut svm, 1_000 * SOL);
+        set_upgrade_authority(&mut svm, &authority.pubkey());
         let cranker = funded(&mut svm, 100 * SOL);
         let seed_t = funded(&mut svm, SOL);
         let fee_t = funded(&mut svm, SOL);
         let plat_t = funded(&mut svm, SOL);
-        let mut e = Env { svm, authority, cranker, seed_t, fee_t, plat_t, next_pool: 0, platform_fee_bps, plat_t_start: SOL };
+        Env { svm, authority, cranker, seed_t, fee_t, plat_t, next_pool: 0, platform_fee_bps, plat_t_start: SOL }
+    }
+
+    /// `initialize` signed by `upgrader` (must be the program's upgrade authority), naming `admin` as `config.authority`.
+    pub fn initialize(&mut self, upgrader: &Keypair, admin: Pubkey) -> Res {
         let i = ix(
-            instruction::Initialize { platform_treasury: e.plat_t.pubkey(), platform_fee_bps },
+            instruction::Initialize { authority: admin, platform_treasury: self.plat_t.pubkey(), platform_fee_bps: self.platform_fee_bps },
             accounts::Initialize {
-                authority: e.authority.pubkey(),
+                upgrade_authority: upgrader.pubkey(),
+                program: pid(),
+                program_data: programdata_pda(),
                 config: config_pda(),
-                platform_treasury_account: e.plat_t.pubkey(),
+                platform_treasury_account: self.plat_t.pubkey(),
                 system_program: system_program::ID,
             },
         );
-        let (a, cr) = (clone_kp(&e.authority), clone_kp(&e.cranker));
-        e.send(&[i], &cr, &[&a]).unwrap();
-        e
+        let cr = clone_kp(&self.cranker);
+        self.send(&[i], &cr, &[upgrader])
     }
 
     pub fn send(&mut self, ixs: &[Instruction], payer: &Keypair, extra: &[&Keypair]) -> Res {

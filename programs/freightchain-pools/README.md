@@ -9,7 +9,7 @@ Core instructions only; the phase-2 session / deposit instructions (plan 2.6 / 2
 ```sh
 export PATH="$HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$HOME/.avm/bin:$PATH"
 anchor build --arch v0     # root: npm run program:build
-cargo test                 # root: npm run program:test   (47 tests: 45 LiteSVM + 2 unit, no network)
+cargo test                 # root: npm run program:test   (49 tests: 47 LiteSVM + 2 unit, no network)
 npm run program:idl        # copies target/idl/freightchain_pools.json -> idl/
 ```
 
@@ -17,9 +17,9 @@ npm run program:idl        # copies target/idl/freightchain_pools.json -> idl/
 
 `npm run program:verify` (= `bash .claude/skills/program-check/check.sh`, the `program-check` skill) runs `solana-verify build --library-name freightchain_pools` (solana-verify 0.5.2, Docker) in the Solana Foundation image for the version in `[workspace.metadata.cli] solana` (`Cargo.toml`, 4.1.2 – without it solana-verify would pick the 3.1.1 image from `Cargo.lock`), from a clean SBF target, and compares its solana-verify executable hash (sha256 of the `.so` without trailing zero padding – not `sha256sum`) with `verifiable-build.hash` (committed). Then the IDL drift check, `cargo test` on that exact `.so`, `cargo clippy --lib -D warnings` and `cargo audit`. `check.sh fast` skips Docker; `PROGRAM_ID=<id> check.sh onchain` compares the deployed program (read-only).
 
-- **Deploy only that `.so`.** `anchor build --arch v0` on the host gives different bytes (a89fa844… vs 055e337c… on 2026-10-08) and would never verify.
+- **Deploy only that `.so`.** `anchor build --arch v0` on the host gives different bytes (a89fa844… vs 055e337c… for the same source on 2026-10-08, before the initialize fix) and would never verify.
 - A changed program, `Cargo.lock`, pinned Solana version or program id (`anchor keys sync`) changes the hash: rerun with `UPDATE_PIN=1` and commit the new pin with the change.
-- Deploying and operating it (keys, `initialize` right after the deploy, upgrades, pause, authority rotation): `docs/program-deploy.md`.
+- Deploying and operating it (keys, `initialize` by the upgrade authority naming the admin, upgrades, pause, authority rotation): `docs/program-deploy.md`.
 - Public verification (`solana-verify verify-from-repo … --mount-path programs/freightchain-pools --library-name freightchain_pools --commit-hash <sha>`) writes a PDA on chain signed by the upgrade authority and needs the repo public – the owner's step, after the deploy.
 
 **`--arch v0` is required.** `anchor build` 1.2.1 defaults to SBPF **v3**, which LiteSVM 0.10 (the newest version that compiles on Rust 1.89) refuses to load (`InvalidAccountData` from `add_program`; the plan's `anchor init` probe fails the same way). The tests assert the ELF flags and say so. v0 is accepted by every cluster; if the final deploy should be v3, build that artifact separately for the deploy only.
@@ -43,11 +43,11 @@ Signers: Anchor accounts marked (S). `system_program` is omitted below. Error nu
 
 | instruction (args) | accounts | rules | errors |
 |---|---|---|---|
-| `initialize(platform_treasury, platform_fee_bps)` | authority (S, mut), config (init), platform_treasury_account | once; `platform_fee_bps <= 10000`; treasury must hold >= rent_min | InvalidParams, AccountMismatch, TreasuryNotRentExempt |
+| `initialize(authority, platform_treasury, platform_fee_bps)` | upgrade_authority (S, mut), program, program_data, config (init), platform_treasury_account | once; the signer must be the program's **upgrade authority** (`program_data.upgrade_authority_address`; an immutable program cannot be initialized); `authority` (the admin, e.g. Phantom) not the default key; `platform_fee_bps <= 10000`; treasury must hold >= rent_min | Unauthorized, InvalidParams, AccountMismatch, TreasuryNotRentExempt |
 | `propose_authority(new_authority)` | authority (S), config (mut) | current `config.authority`; sets `pending_authority` (proposing again replaces it); emits `AuthorityProposed` | Unauthorized, InvalidParams (default key) |
 | `accept_authority()` | new_authority (S), config (mut) | signer must equal `pending_authority`; becomes `authority`, pending cleared; emits `AuthorityChanged` | NoPendingAuthority, Unauthorized |
 | `set_config(paused?, platform_treasury?, platform_fee_bps?)` | authority (S), config, new_platform_treasury | authority only; a changed treasury must be rent-exempt (pass any account otherwise) | Unauthorized, InvalidParams, AccountMismatch, TreasuryNotRentExempt |
-| `create_pool(params)` | authority (S, mut), config (mut), pool (init), vault (mut), fee_treasury, seed_treasury, platform_treasury | not paused; `price >= rent_min`, `min_tickets >= 1`, `max_tickets == 0 or >= min`, `max_per_wallet >= 1`, `prep_deadline > now`, `play_deadline >= prep_deadline`, bps sum 10000; all three treasuries hold >= rent_min; the authority funds the vault with exactly rent_min; id = `config.pool_count` (then incremented) | Paused, Unauthorized, InvalidParams, PriceBelowRentMin, BpsSum, TreasuryNotRentExempt |
+| `create_pool(params)` | authority (S, mut), config (mut), pool (init), vault (mut), fee_treasury, seed_treasury, platform_treasury | not paused; `price >= rent_min`, `min_tickets >= 1`, `max_tickets == 0 or >= min`, `max_per_wallet >= 1`, `prep_deadline > now`, `play_deadline >= prep_deadline`, `play_deadline <= now + MAX_POOL_SECS` (365 days; a far-future deadline would lock an Active pool's tickets), bps sum 10000; all three treasuries hold >= rent_min; the authority funds the vault with exactly rent_min; id = `config.pool_count` (then incremented) | Paused, Unauthorized, InvalidParams, PriceBelowRentMin, BpsSum, TreasuryNotRentExempt |
 | `buy_ticket(pool_id, qty, order_id[16])` | buyer (S, mut), fee_payer (S, mut), config, pool (mut), vault (mut), ticket (init_if_needed) | not paused; status Open/Active; `now < play_deadline`; **an Open pool is closed from `prep_deadline` on**; `tickets_sold + qty <= max_tickets`; `ticket.qty + qty <= max_per_wallet`; buyer pays `price*qty`; fee_payer pays the Ticket rent (`rent_payer`, set on first buy only); Open and `tickets_sold >= min` becomes Active | Paused, InvalidParams (qty 0), PoolNotOpen, TooLate, SoldOut, WalletCap |
 | `sponsor(pool_id, lamports)` | sponsor (S, mut), config, pool (mut), vault (mut) | not paused; Open/Active; `now < play_deadline`; **an Open pool rejects it from `prep_deadline` on** (same rule as `buy_ticket`); `lamports > 0`; `pool.sponsored += lamports` | Paused, InvalidParams, PoolNotOpen, TooLate |
 | `fail_pool(pool_id)` | caller (S), pool (mut) | permissionless; `Open && now >= prep_deadline && tickets_sold < min` -> Refunding | NotFailable |
@@ -150,13 +150,13 @@ Measured by `compute_units_are_in_budget` (`cargo test -- --nocapture` prints th
 
 Set `setComputeUnitLimit` from the simulation (`unitsConsumed * 1.2`) as planned; the test asserts only loose ceilings (buy < 40k, refund < 30k, pay_prize < 25k).
 
-## Tests (`programs/freightchain_pools/tests/`, 45 LiteSVM incl. the fixture exporter + 2 unit)
+## Tests (`programs/freightchain_pools/tests/`, 47 LiteSVM incl. the fixture exporter + 2 unit)
 
 `create_and_buy.rs` create_pool validation / authority / unfunded treasury, buy to exactly min activates (events decoded), sponsored buy credits the buyer and records the rent payer, wallet cap, sold out, deadlines.
 `refunds.rs` fail_pool conditions, refund exact price + rent to a separate rent payer, wrong receivers, refund when not Refunding, refund twice, batch of 8 + re-sent batch + partial progress, close_pool after refunds, cancel_pool, sponsor.
 `settle.rs` pay_prize authority-only / before play_deadline / bounded by the prize share / receiver rent, close_pool exact split for random amounts, close guards, unclaimed prize and stray lamports to the seed, close_ticket rent to rent_payer.
 `grace_and_authority.rs` sponsor cut-off on Open pools, expire before / after the grace and with prizes paid, refunds after expiry, permissionless close after the grace (refused before, `MustExpire` without paid prizes, outputs sum to the vault with paid prizes, rent receiver must be the creator), unpaid pool after the grace: `MustExpire` -> expire -> refunds -> close, the authority closing an unpaid pool at and after the grace, permissionless close of a refunded pool, propose / accept authority, a rotated key taking over existing pools.
-`admin_rent_cu.rs` pause, set_config, the vault-rent rule, compute units, IDL event discriminators, raw log decoding.
+`admin_rent_cu.rs` initialize only by the upgrade authority (a stranger first: `Unauthorized`; an immutable program: `Unauthorized`; names another wallet as admin), pause, set_config, the vault-rent rule, compute units, IDL event discriminators, raw log decoding.
 The clock is warped with `svm.set_sysvar::<Clock>()`; no test waits.
 
 ## Not built / notes
@@ -164,3 +164,4 @@ The clock is warped with `svm.set_sysvar::<Clock>()`; no test waits.
 - Session keys, `Balance`, `deposit` / `withdraw`, `buy_ticket_with_session` (phase 2).
 - No `refund_sponsor`, no `sweep`, no Pool account close. `Pool.authority` is copied from the signer of `create_pool` and never changes.
 - Deploy, `initialize` and pool creation on devnet are not done (task scope).
+- Trust in the admin is by design: after `play_deadline` it may close a pool without paying prizes (the prize share goes to the seed treasury), and `pay_prize` pays whatever `to` it signs (capped). The escape hatches protect against an absent admin, not a malicious one. `buy_ticket`'s `dup` markers are documentation only (Anchor 1.2.1 checks duplicates for `Account` types, not signers).

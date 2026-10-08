@@ -5,7 +5,7 @@ use common::*;
 use freightchain_pools::{
     error::PoolError,
     events::{PoolActivated, PoolCreated, TicketBought},
-    CreatePoolParams,
+    CreatePoolParams, MAX_POOL_SECS,
 };
 use solana_keypair::Keypair;
 use solana_signer::Signer;
@@ -47,6 +47,8 @@ fn create_pool_validation() {
     assert_err!(e.try_create_pool(p(|x| x.price_lamports = 1_000)), PoolError::PriceBelowRentMin);
     assert_err!(e.try_create_pool(p(|x| x.max_tickets = 2)), PoolError::InvalidParams);
     assert_err!(e.try_create_pool(p(|x| x.max_per_wallet = 0)), PoolError::InvalidParams);
+    // a play deadline beyond MAX_POOL_SECS would lock an Active pool's tickets that long
+    assert_err!(e.try_create_pool(p(|x| x.play_deadline = T0 + MAX_POOL_SECS + 1)), PoolError::InvalidParams);
     // nothing was created
     assert_eq!(e.config().pool_count, 0);
     // play_deadline == prep_deadline is allowed, unlimited tickets (0) is allowed
@@ -54,6 +56,8 @@ fn create_pool_validation() {
         x.play_deadline = PREP;
         x.max_tickets = 0;
     }));
+    // exactly MAX_POOL_SECS out is allowed
+    e.create_pool(p(|x| x.play_deadline = T0 + MAX_POOL_SECS));
 }
 
 #[test]

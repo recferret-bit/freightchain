@@ -30,7 +30,8 @@ are the Trail of Bits scanner's job; these are the ones only someone who knows t
 - [ ] `max_per_wallet` and `max_tickets` are enforced with checked adds before the transfer.
 
 ## Authority and the escape hatches
-- [ ] **`initialize` is first-come** (open as of 2026-10-08): any signer can create the `["config"]` PDA and become `config.authority` – nothing ties it to the program's upgrade authority. Until that is fixed (a `program_data` account constrained to `upgrade_authority_address == authority`), run `initialize` right after the deploy and check `Config.authority` before creating pools; a front-run means redeploy under a new id.
+- [ ] `initialize` is signed by the program's upgrade authority (`program` + `program_data` accounts, `programdata_address()` match, `upgrade_authority_address == Some(signer)`) and names the admin as an argument; an immutable program cannot be initialized (`admin_rent_cu.rs` `initialize_only_by_the_upgrade_authority`). Fixed 2026-10-08 – it used to be first-come.
+- [ ] `create_pool` caps `play_deadline` at `now + MAX_POOL_SECS` (365 d), so no Active pool can lock tickets for years.
 - [ ] Admin rights come from `config.authority` only (`has_one`); `pool.authority` is just the creator record that gets the vault rent back.
 - [ ] Handover is two-step (`propose_authority` → `accept_authority` signed by the new key); a rotation takes over existing pools.
 - [ ] After `play_deadline + SETTLE_GRACE_SECS` (14 days) a lost admin cannot lock money: no prize paid → `expire_pool` → full refunds; prizes paid → anyone may `close_pool`, and money still goes only to the declared treasuries. A permissionless close with `prizes_paid == 0` must fail (`MustExpire`), otherwise the prize share would be swept to the operator's seed treasury.

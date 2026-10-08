@@ -11,6 +11,37 @@ use solana_keypair::Keypair;
 use solana_signer::Signer;
 
 #[test]
+fn initialize_only_by_the_upgrade_authority() {
+    let mut e = Env::uninitialized(0);
+    let stranger = funded(&mut e.svm, 10 * SOL);
+    let admin = Keypair::new().pubkey();
+    // anyone else: refused (the first-come front-run after a deploy)
+    let s = clone_kp(&stranger);
+    assert_err!(e.initialize(&s, stranger.pubkey()), PoolError::Unauthorized);
+    // the upgrade authority must name a real admin
+    let up = clone_kp(&e.authority);
+    assert_err!(e.initialize(&up, Default::default()), PoolError::InvalidParams);
+    // the upgrade authority names another wallet (e.g. Phantom) as the admin in one transaction
+    e.initialize(&up, admin).unwrap();
+    assert_eq!(e.config().authority, admin);
+    // a second initialize cannot replace it (the Config PDA exists)
+    assert!(e.initialize(&up, up.pubkey()).is_err());
+    assert_eq!(e.config().authority, admin);
+}
+
+#[test]
+fn initialize_refuses_a_program_without_upgrade_authority() {
+    let mut e = Env::uninitialized(0);
+    // an immutable program (no upgrade authority) cannot be initialized by anyone
+    let addr = programdata_pda();
+    let mut acc = e.svm.get_account(&addr).unwrap();
+    acc.data[12..45].fill(0);
+    e.svm.set_account(addr, acc).unwrap();
+    let up = clone_kp(&e.authority);
+    assert_err!(e.initialize(&up, up.pubkey()), PoolError::Unauthorized);
+}
+
+#[test]
 fn pause_blocks_buys_and_pool_creation_not_refunds() {
     let mut e = Env::new();
     let id = e.create_pool(default_params());

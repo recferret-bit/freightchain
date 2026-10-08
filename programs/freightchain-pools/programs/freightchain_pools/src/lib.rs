@@ -17,8 +17,8 @@ declare_id!("B79YYUKFd3QC3HdRkSX1W3C6sGBDFEkgFGQcMShiFSKa");
 pub mod freightchain_pools {
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>, platform_treasury: Pubkey, platform_fee_bps: u16) -> Result<()> {
-        instructions::admin::handle_initialize(ctx, platform_treasury, platform_fee_bps)
+    pub fn initialize(ctx: Context<Initialize>, authority: Pubkey, platform_treasury: Pubkey, platform_fee_bps: u16) -> Result<()> {
+        instructions::admin::handle_initialize(ctx, authority, platform_treasury, platform_fee_bps)
     }
 
     pub fn set_config(

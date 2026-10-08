@@ -6,7 +6,7 @@ keys live in `deploy/secrets/` (gitignored); **deploy only the `solana-verify bu
 
 ## Your next steps (owner)
 
-1. **Decide the `initialize` fix** – today the first caller becomes the admin. Either fix it in the program first (ties `initialize` to the upgrade authority; a small change + test), or deploy as is and run `initialize` right after the deploy (step 5 below).
+1. **`initialize` is safe now**: only the program's upgrade authority (the deploy wallet) can run it, and it names the admin – pass your Phantom address as `authority` (step 5). No front-run window after the deploy.
 2. **Provide the keys** (or say "generate them"): the program id keypair, an upgrade-authority / deploy wallet with ~5 devnet SOL, your Phantom on devnet as the admin (`TREASURY_PUBKEY`), the seed + fee treasury addresses (fixed per pool forever).
 3. **Admin tooling is missing**: `initialize`, `create_pool`, `set_config` (pause), `propose/accept_authority` have no script or UI yet; payouts have a server route but no button. Ask for `programs/scripts/` (Phantom-signed) before the deploy.
 4. **Make the repo public** (or a public mirror) if you want the explorer's "verified" badge.
@@ -24,7 +24,7 @@ mkdir -p programs/freightchain-pools/target/deploy
 cp deploy/secrets/program-id.json programs/freightchain-pools/target/deploy/freightchain_pools-keypair.json
 (cd programs/freightchain-pools && anchor keys sync)
 # 2. IDL + its server copy (the IDL carries the new address)
-npm run program:build && npm run program:idl && node server/scripts/vendor-idl.mjs
+npm run program:build && npm run program:idl && (cd server && node scripts/vendor-idl.mjs)
 # 3. the deployable binary + its new pin (Docker), THEN the codec fixture from that binary, then all suites
 UPDATE_PIN=1 npm run program:verify
 (cd programs/freightchain-pools && FC_FIXTURES_OUT=$PWD/../../server/test/fixtures/chain cargo test --test export_fixtures)
@@ -38,7 +38,7 @@ solana program deploy --url devnet \
   --program-id deploy/secrets/program-id.json $SO
 ```
 
-5. **`initialize` at once**, signed by the admin wallet (Phantom = `TREASURY_PUBKEY`), then read `Config.authority` back – if it is not you, someone was first: redeploy under a new id.
+5. **`initialize`**, signed by the upgrade authority (`deploy/secrets/program-deploy.json`) with `authority` = your Phantom address (`TREASURY_PUBKEY`) and the platform treasury; it also passes the program and its ProgramData account (`[program id]` under the upgradeable loader). Read `Config.authority` back: it must be the Phantom address.
 6. Check the chain has exactly the committed bytes (read-only): `PROGRAM_ID=$(solana-keygen pubkey deploy/secrets/program-id.json) bash .claude/skills/program-check/check.sh onchain`.
 7. `create_pool` per pool (admin), then `node dist/cli/index.js pool:register <id> --label "…"` on the server.
 8. Server env (`deploy/.env`, then `npm run deploy` when you ask for it): `PAYMENT_MODE=program`, `TICKET_PROGRAM_ID`, `FEE_TREASURY`, `SEED_TREASURY`, `FEE_PAYER_SECRET` (gas sponsor), `CRANK_SECRET`, `WEBHOOK_SECRET`, `SOLANA_RPC`.

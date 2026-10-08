@@ -669,9 +669,16 @@
       ],
       "accounts": [
         {
-          "name": "authority",
+          "name": "upgrade_authority",
           "writable": true,
           "signer": true
+        },
+        {
+          "name": "program",
+          "address": "B79YYUKFd3QC3HdRkSX1W3C6sGBDFEkgFGQcMShiFSKa"
+        },
+        {
+          "name": "program_data"
         },
         {
           "name": "config",
@@ -701,6 +708,10 @@
         }
       ],
       "args": [
+        {
+          "name": "authority",
+          "type": "pubkey"
+        },
         {
           "name": "platform_treasury",
           "type": "pubkey"

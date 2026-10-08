@@ -1,14 +1,22 @@
 use anchor_lang::prelude::*;
 
-use crate::{constants::*, error::PoolError, state::Config, vault::rent_min};
+use anchor_lang::prelude::ProgramData;
 
+use crate::{constants::*, error::PoolError, program::FreightchainPools, state::Config, vault::rent_min};
+
+/// Only the program's upgrade authority can create the Config (else the first caller after a deploy would own it).
+/// It names the admin (`authority` argument, e.g. a Phantom wallet) in the same transaction.
 #[derive(Accounts)]
 pub struct Initialize<'info> {
     #[account(mut)]
-    pub authority: Signer<'info>,
+    pub upgrade_authority: Signer<'info>,
+    #[account(constraint = program.programdata_address()? == Some(program_data.key()) @ PoolError::AccountMismatch)]
+    pub program: Program<'info, FreightchainPools>,
+    #[account(constraint = program_data.upgrade_authority_address == Some(upgrade_authority.key()) @ PoolError::Unauthorized)]
+    pub program_data: Account<'info, ProgramData>,
     #[account(
         init,
-        payer = authority,
+        payer = upgrade_authority,
         space = 8 + Config::INIT_SPACE,
         seeds = [CONFIG_SEED],
         bump
@@ -19,7 +27,8 @@ pub struct Initialize<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handle_initialize(ctx: Context<Initialize>, platform_treasury: Pubkey, platform_fee_bps: u16) -> Result<()> {
+pub fn handle_initialize(ctx: Context<Initialize>, authority: Pubkey, platform_treasury: Pubkey, platform_fee_bps: u16) -> Result<()> {
+    require!(authority != Pubkey::default(), PoolError::InvalidParams);
     require!(platform_fee_bps <= BPS_DENOM as u16, PoolError::InvalidParams);
     require_keys_eq!(
         ctx.accounts.platform_treasury_account.key(),
@@ -31,7 +40,7 @@ pub fn handle_initialize(ctx: Context<Initialize>, platform_treasury: Pubkey, pl
         PoolError::TreasuryNotRentExempt
     );
     let c = &mut ctx.accounts.config;
-    c.authority = ctx.accounts.authority.key();
+    c.authority = authority;
     c.platform_treasury = platform_treasury;
     c.platform_fee_bps = platform_fee_bps;
     c.pool_count = 0;
