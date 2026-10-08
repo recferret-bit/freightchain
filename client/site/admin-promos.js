@@ -88,12 +88,12 @@ function form(ctx, { say, reload }) {
   const code = inp('pf-code', { maxlength: 32, placeholder: 'e.g. WELCOME', autocapitalize: 'characters', spellcheck: 'false', autocomplete: 'off' });
   const kind = sel('pf-kind', [['free_rides', 'Free rides'], ['tickets', 'Free paid-ride tickets'], ['cosmetic', 'Cockpit part (wheel / paint / shifter / dice / needles)']]);
   const rides = inp('pf-rides', { type: 'number', min: 1, max: 20, value: 1 });
-  const presets = el('span', { class: 'presets' }, [1, 3].map(n => el('button', { type: 'button', class: 'ghost', onclick: () => { rides.value = n; } }, `${n} free ride${n === 1 ? '' : 's'}`)));
+  const presets = el('div', { class: 'presets' }, el('span', {}, 'Quick set'), el('div', {}, [1, 3].map(n => el('button', { type: 'button', class: 'ghost', onclick: () => { rides.value = n; } }, `${n} free ride${n === 1 ? '' : 's'}`))));
   const tier = sel('pf-tier', PAID.map(t => [t, { '1h': '1 hour', '4h': '4 hours', '8h': '8 hours' }[t]])), credits = inp('pf-credits', { type: 'number', min: 1, max: 100, value: 1 }), poolId = inp('pf-pool', { type: 'number', min: 0, placeholder: 'live pool of the tier' });
   const slot = sel('pf-slot', Object.keys(COSMETICS).map(s => [s, SLOT_NAME[s] ?? s])), item = sel('pf-item', []);
   const fillItems = () => item.replaceChildren(...COSMETICS[slot.value].slice(1).map(i => el('option', { value: i }, itemName(i))));
   slot.onchange = fillItems; fillItems();
-  const groups = { free_rides: el('div', { class: 'grp' }, field('Rides per redemption', rides), presets), tickets: el('div', { class: 'grp' }, field('Ride length', tier), field('Tickets per redemption', credits), field('Pin to pool #', poolId, 'empty = the live pool of that length')), cosmetic: el('div', { class: 'grp' }, field('Slot', slot), field('Item', item)) };
+  const groups = { free_rides: el('div', { class: 'grp g3' }, field('Rides per redemption', rides, '1–20; may go above the daily 5'), presets), tickets: el('div', { class: 'grp g3' }, field('Ride length', tier), field('Tickets per redemption', credits), field('Pin to pool #', poolId, 'empty = the live pool of that length')), cosmetic: el('div', { class: 'grp g3' }, field('Slot', slot), field('Item', item)) };
   const showKind = () => { for (const [k, g] of Object.entries(groups)) g.hidden = k !== kind.value; };
   kind.onchange = showKind; showKind();
   const description = inp('pf-desc', { maxlength: 200, placeholder: 'shown to players, e.g. "Welcome gift"' }), start = inp('pf-start', { type: 'datetime-local' }), end = inp('pf-end', { type: 'datetime-local' });
@@ -114,8 +114,11 @@ function form(ctx, { say, reload }) {
       const n = document.getElementById('promo-note'); if (n) { n.textContent = `Created ${created.code} – ${created.label}.`; n.className = 'msg good'; }
     } catch (err) { say(err.message, true); go.disabled = false; }
   };
-  return el('form', { class: 'card', id: 'promo-form', onsubmit: submit },
-    el('div', { class: 'grid' }, field('Code', code, '3–32 letters, digits, - or _; case does not matter'), field('Effect', kind), ...Object.values(groups)),
-    el('div', { class: 'grid' }, field('Players see', description), field('Starts (your time)', start, 'empty = now'), field('Ends (your time)', end, 'empty = never'), field('Max redemptions', max), field('Per wallet', perWallet), field('Note', note)),
-    el('div', { class: 'actions' }, go), el('p', { class: 'dim' }, 'A code cannot be edited once created – only disabled. Everything it already gave stays.'));
+  const sec = (title, sub, ...kids) => el('section', { class: 'fsec' }, el('h3', {}, title, el('small', {}, sub)), ...kids);
+  return el('form', { class: 'card pform', id: 'promo-form', onsubmit: submit },
+    sec('1 · What it gives', 'the code and its effect', el('div', { class: 'g2' }, field('Code', code, '3–32 letters, digits, - or _; case does not matter'), field('Effect', kind)), ...Object.values(groups)),
+    sec('2 · When it works', 'times are in your time zone', el('div', { class: 'g2' }, field('Starts', start, 'empty = now'), field('Ends', end, 'empty = never'))),
+    sec('3 · Limits', 'how often it can be used', el('div', { class: 'g2' }, field('Max redemptions (all players)', max, 'empty = unlimited'), field('Per wallet', perWallet, 'times one player can use it'))),
+    sec('4 · Text', 'what players and the team read', el('div', { class: 'g2' }, field('Players see', description, 'shown in the lobby next to the code'), field('Note', note, 'private, only on this page'))),
+    el('div', { class: 'actions pgo' }, go, el('span', { class: 'dim' }, 'A code cannot be edited once created – only disabled. Everything it already gave stays.')));
 }

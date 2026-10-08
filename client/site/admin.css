@@ -23,9 +23,14 @@ pre.json{background:#0008;border:1px solid var(--line);border-radius:6px;padding
 @media (max-width:700px){.log .l{grid-template-columns:1fr}.filters input{min-width:0}.kv{grid-template-columns:1fr;gap:0}.kv dt{margin-top:8px;font-size:12px}}
 
 /* promo codes */
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px 14px;margin-bottom:10px}.grp{display:contents}.grp[hidden]{display:none}
+.grp[hidden]{display:none}
+.pform{padding:6px 18px 16px}.fsec{padding:14px 0;border-bottom:1px solid var(--line)}.fsec h3{margin:0 0 10px;font-size:13px;letter-spacing:1.5px;color:var(--amber)}.fsec h3 small{margin-left:10px;font-size:11px;letter-spacing:0;font-weight:400;color:var(--dim)}
+.g2,.g3{display:grid;gap:12px 16px;align-items:start}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr));margin-top:12px}
+.presets{display:grid;gap:4px;font-size:12px;color:var(--dim)}.presets div{display:flex;gap:6px;flex-wrap:wrap}
+.pgo{align-items:center;margin-top:16px}.pgo .dim{font-size:12px}
+@media (max-width:700px){.g2,.g3{grid-template-columns:1fr}}
 .fld{display:grid;gap:4px;font-size:12px;color:var(--dim)}.fld input,.fld select{font:inherit;font-size:13px;background:#0008;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:7px 9px}
-.fld input,.fld select{width:100%;min-width:0;box-sizing:border-box}.fld small{font-size:11px}.presets{display:flex;gap:6px;align-items:end}.presets button{padding:7px 10px;font-size:12px}
+.fld input,.fld select{width:100%;min-width:0;box-sizing:border-box}.fld small{font-size:11px}.presets button{padding:7px 10px;font-size:12px}
 
 /* the [hidden] attribute loses to display rules above: the sign-in card hides the tabs; empty chips (no session yet) take no room */
 .tabs[hidden], .chip:empty, button[hidden] { display: none; }
