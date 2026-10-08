@@ -8,19 +8,20 @@ export function duration(file) {   // ffmpeg-static ships no ffprobe: read "Dura
 }
 const mb = f => fs.statSync(f).size / 1048576;
 
-export function encodeMp4(frames, fps, out, maxSeconds) {
-  const r = run(['-framerate', String(fps), '-i', path.join(frames, '%05d.jpg'), '-t', String(maxSeconds), '-c:v', 'libx264', '-preset', 'slow', '-crf', '18', '-pix_fmt', 'yuv420p', '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2', '-movflags', '+faststart', out]);
+const CROP = { square: 'crop=ih:ih,' };   // the centre square of the 16:9 capture (the cockpit stays laid out as usual, the overlay knows)
+export function encodeMp4(frames, fps, out, maxSeconds, crop) {
+  const r = run(['-framerate', String(fps), '-i', path.join(frames, '%05d.jpg'), '-t', String(maxSeconds), '-c:v', 'libx264', '-preset', 'slow', '-crf', '18', '-pix_fmt', 'yuv420p', '-vf', (CROP[crop] ?? '') + 'scale=trunc(iw/2)*2:trunc(ih/2)*2', '-movflags', '+faststart', out]);
   if (r.status) throw new Error('mp4 encode failed: ' + r.stderr);
   const d = duration(out); if (!(d <= maxSeconds + 0.02)) throw new Error(`mp4 is ${d}s, over the ${maxSeconds}s limit`);
   return { file: out, seconds: d, mb: mb(out) };
 }
 
 // The limit is on the .gif FILE (the user's "20 MB"). Ladder: spec size/fps first, then smaller / slower; if even the last rung is over, trim the clip.
-export function encodeGif(frames, srcFps, out, { maxMB, width, fps }, seconds) {
+export function encodeGif(frames, srcFps, out, { maxMB, width, fps }, seconds, crop) {
   const ladder = [[width, fps], [width, Math.min(fps, 12)], [Math.round(width * .8), 12], [Math.round(width * .75), 10], [Math.round(width * .6), 10], [Math.round(width * .5), 8]];
   const tried = [];
   for (let trim = seconds; ; trim *= .85) { if (trim < Math.min(3, seconds)) break; for (const [w, f] of ladder) {
-    const vf = `fps=${f},scale=${w}:-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff:max_colors=200[p];[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle`;
+    const vf = `${CROP[crop] ?? ''}fps=${f},scale=${w}:-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff:max_colors=200[p];[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle`;
     const r = run(['-framerate', String(srcFps), '-i', path.join(frames, '%05d.jpg'), '-t', trim.toFixed(2), '-vf', vf, '-loop', '0', out]);
     if (r.status) throw new Error('gif encode failed: ' + r.stderr);
     const size = mb(out); tried.push(`${w}px@${f}fps${trim < seconds ? ' trimmed to ' + trim.toFixed(1) + 's' : ''} = ${size.toFixed(1)} MB`);

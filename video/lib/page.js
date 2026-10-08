@@ -10,6 +10,7 @@ window.__dir = (() => {
   const RATIOS = [0, 6.15, 4.33, 3.05, 2.15, 1.51, 1.065, 0.75], K_RPM = 2400 / (30 * .75);   // mirror of client/js/state.js: rpm = K_RPM · v · ratio
   const gearFor = v => { for (let i = 1; i <= 7; i++) if (K_RPM * v * RATIOS[i] <= 2200) return i; return 7; };   // lowest gear that is not screaming at this speed
   const px = n => `calc(${n}px*var(--u))`;
+  const fit = (lines, max, share = .84) => Math.min(max, share * (spec.crop === 'square' ? spec.height : spec.width) / U / (Math.max(...lines.map(l => l.length)) * .64)) * U;   // mono ≈ .6 em + letter-spacing
 
   /* ───────── overlay DOM (landing tokens: --amber --gear --cream --dim --lcd --lcd-bg, mono) ───────── */
   function build() {
@@ -44,7 +45,14 @@ window.__dir = (() => {
 #fx .card li i{font-style:normal;color:var(--needle)}
 #fx .cta{margin-top:${px(8)};border:2px solid var(--amber);background:var(--amber);color:#1b1408;font-weight:700;letter-spacing:3px;border-radius:${px(8)};padding:${px(15)} ${px(44)};font-size:${px(30)}}
 #fx .card .ft{display:flex;gap:${px(12)};align-items:center;color:var(--dim);font-size:${px(16)};letter-spacing:1px}
-#fx .card .ft svg{width:${px(20)};height:${px(16)}}`;
+#fx .card .ft svg{width:${px(20)};height:${px(16)}}
+#fx.sq{left:${(spec.width - spec.height) / 2}px;right:${(spec.width - spec.height) / 2}px}
+#fx.big .tick,#fx.big .brand,#fx.big .sol,#fx.big .cap .n,#fx.big .cap p,#fx.big .cap .bar,#fx.big .card .nm,#fx.big .card ol,#fx.big .card .ft{display:none}
+#fx.big .cap{left:0;right:0;top:30%;bottom:auto;max-width:none;padding:0;background:none;border:0;border-radius:0;box-shadow:none;text-align:center}
+#fx.big .cap h2,#fx.big .card h1{margin:0;min-height:0;white-space:pre-line;line-height:.98;letter-spacing:${px(3)};-webkit-text-stroke:${px(2)} #1b1408;text-shadow:0 ${px(5)} 0 #000,0 0 ${px(10)} #000,0 0 ${px(44)} #000d}
+#fx.big .card h1 b{text-shadow:0 ${px(5)} 0 #000,0 0 ${px(10)} #000,0 0 ${px(44)} #ffb02e88}
+#fx.big .card .mk{font-size:${px(96)}} #fx.big .cta{font-size:${px(44)};padding:${px(16)} ${px(40)}}
+#fx.big .stamp{top:62%;font-size:${px(64)};padding:${px(6)} ${px(20)};border-width:${px(6)}}`;
     const sol = '<svg viewBox="0 0 24 22"><defs><linearGradient id="sg" x1="0" x2="1"><stop offset="0" stop-color="#9945FF"/><stop offset="1" stop-color="#14F195"/></linearGradient></defs><path fill="url(#sg)" d="M4 0H24L20 6H0Z M0 8H20L24 14H4Z M4 16H24L20 22H0Z"/></svg>';
     document.head.insertAdjacentHTML('beforeend', `<style>${css}</style>`);
     document.body.insertAdjacentHTML('beforeend', `<div id="fx">
@@ -57,6 +65,7 @@ window.__dir = (() => {
       <div class="a card" id="fx-card"><div class="mk">⛟</div><div class="nm">FREIGHT CHAIN</div><h1 id="fx-t"></h1><ol id="fx-steps"></ol><div class="cta" id="fx-cta"></div><div class="ft" id="fx-ft">${sol}<span></span></div></div>
       <div class="a bars" id="fx-bars">${'<div></div>'.repeat(7)}</div>
       <div class="a cover" id="fx-cover"></div></div>`);
+    const fx = document.getElementById('fx'); if (spec.look === 'big') fx.classList.add('big'); if (spec.crop === 'square') fx.classList.add('sq');
     for (const id of ['tk', 'route', 'cap', 'n', 'h', 'p', 'bar', 'stamp', 'card', 't', 'steps', 'cta', 'ft', 'bars', 'cover']) fxEl[id] = document.getElementById('fx-' + id);
   }
 
@@ -115,7 +124,11 @@ window.__dir = (() => {
     // captions
     let cap = null; for (const c of s.captions) if (local >= c.at && local < c.at + c.dur) cap = c;
     fxEl.cap.style.display = cap ? 'block' : 'none';
-    if (cap) {
+    if (cap && spec.look === 'big') {   // one huge word block that slams in (no typewriter: the whole word reads at once)
+      const l = local - cap.at, out = clamp((cap.dur - l) / .2), z = 1.6 - .6 * back(l / .3);
+      fxEl.h.textContent = cap.head; fxEl.h.style.fontSize = fit(cap.head.split('\n'), 150) + 'px';
+      fxEl.cap.style.opacity = clamp(l / .08) * out; fxEl.cap.style.transform = `translateY(-50%) scale(${z})`;
+    } else if (cap) {
       const l = local - cap.at, inn = back(l / .35), out = clamp((cap.dur - l) / .2), n = Math.floor(l * 34), head = cap.head.slice(0, n);
       fxEl.cap.style.opacity = out; fxEl.cap.style.transform = `translateX(${(inn - 1) * 60 * U}px)`;
       fxEl.n.textContent = `STEP ${cap.n}`; fxEl.h.textContent = head + (n < cap.head.length || Math.floor(T * 6) % 2 ? '▌' : ' ');
@@ -126,7 +139,7 @@ window.__dir = (() => {
     const c = s.card; fxEl.card.style.display = c ? 'flex' : 'none';
     if (c) {
       const r = (i, d = .12) => ease((local - i * d) / .4);
-      fxEl.t.innerHTML = c.title.map((t, i) => i ? `<b>${t}</b>` : t).join('<br>'); fxEl.t.style.opacity = r(0); fxEl.t.style.transform = `translateY(${(1 - r(0)) * 30 * U}px)`;
+      fxEl.t.innerHTML = c.title.map((t, i) => i ? `<b>${t}</b>` : t).join('<br>'); if (spec.look === 'big') fxEl.t.style.fontSize = fit(c.title, 130) + 'px'; fxEl.t.style.opacity = r(0); fxEl.t.style.transform = `translateY(${(1 - r(0)) * 30 * U}px)`;
       if (!fxEl.steps.children.length) fxEl.steps.innerHTML = c.steps.map((t, i) => `<li><i>${i + 1}</i>${t}</li>`).join('');
       [...fxEl.steps.children].forEach((li, i) => { li.style.opacity = r(i + 1); li.style.transform = `translateY(${(1 - r(i + 1)) * 24 * U}px)`; });
       fxEl.cta.textContent = c.cta; const q = r(4, .1); fxEl.cta.style.opacity = q; fxEl.cta.style.transform = `scale(${(.7 + .3 * back(q)) * (1 + .035 * Math.sin(T * 9) * q)})`; fxEl.cta.style.boxShadow = `0 0 ${(26 + 16 * Math.sin(T * 9)) * U}px #ffb02e88`;

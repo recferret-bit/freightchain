@@ -1,0 +1,35 @@
+{
+  "name": "intro-square",
+  "look": "big", "crop": "square",
+  "fps": 24, "width": 1280, "height": 720, "maxSeconds": 15,
+  "gif": { "maxMB": 20, "width": 640, "fps": 15 },
+  "scenes": [
+    { "id": "day-gears", "dur": 2.8, "route": "route66", "time": "day", "speed": [5, 24], "push": 0.08,
+      "transition": { "type": "flash", "dur": 0.4 },
+      "captions": [ { "at": 0.25, "dur": 2.4, "head": "PAID\nRIDES" } ] },
+
+    { "id": "crash", "dur": 2.4, "route": "route66", "time": "day", "speed": 25, "damage": true, "sway": 0,
+      "transition": { "type": "whip", "dur": 0.3 },
+      "events": [ { "t": 0.05, "do": "spawn", "type": "truck", "preset": "slow", "zone": "ahead", "dist": 20 } ],
+      "captions": [ { "at": 0.1, "dur": 2.2, "head": "ONE\nMISTAKE" } ] },
+
+    { "id": "night-lights", "dur": 2.8, "route": "route66", "time": "night", "lights": false, "speed": 20,
+      "transition": { "type": "glitch", "dur": 0.4 },
+      "events": [ { "t": 0.45, "do": "lights", "on": true }, { "t": 0.9, "do": "spawn", "type": "sedan", "preset": "cruise", "zone": "oncoming", "dist": 110 },
+                  { "t": 1.05, "do": "cab", "on": true }, { "t": 1.65, "do": "cab", "on": false }, { "t": 2.05, "do": "lights", "on": false }, { "t": 2.4, "do": "lights", "on": true } ],
+      "captions": [ { "at": 0.2, "dur": 2.5, "head": "LONG\nHAUL" } ] },
+
+    { "id": "russia-frost", "dur": 2.4, "route": "siberia", "time": "day", "cold": true, "preroll": 12, "speed": 18, "push": 0.06,
+      "transition": { "type": "zoom", "dur": 0.4 },
+      "captions": [ { "at": 0.2, "dur": 2.1, "head": "EVERY\nROUTE" } ] },
+
+    { "id": "australia-dust", "dur": 2.2, "route": "stuart", "time": "day", "preroll": 14, "speed": 22,
+      "transition": { "type": "whip", "dur": 0.3 },
+      "events": [ { "t": 0.35, "do": "wipers", "mode": 2 }, { "t": 0.9, "do": "washer", "on": true }, { "t": 1.5, "do": "washer", "on": false } ],
+      "captions": [ { "at": 0.15, "dur": 1.95, "head": "WIN\nPRIZES" } ] },
+
+    { "id": "end-card", "dur": 2.2, "route": "brenner", "time": "dusk", "speed": 16,
+      "transition": { "type": "flash", "dur": 0.4 },
+      "card": { "title": ["FREIGHT", "CHAIN"], "steps": ["-"], "cta": "RIDE NOW ▸" } }
+  ]
+}

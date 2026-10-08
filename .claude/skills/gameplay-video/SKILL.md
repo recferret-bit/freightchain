@@ -26,12 +26,14 @@ Everything is deterministic (virtual clock + seeded `Math.random`): the same spe
 - No audio track (the game's synth audio is muted). If asked for music, add it with `ffmpeg -i x.mp4 -i track.mp3 -shortest …` from `video/node_modules/ffmpeg-static/ffmpeg`; don't bake unlicensed music into the repo.
 
 ## Spec vocabulary (`lib/spec.mjs` validates it)
-Top level: `name`, `fps` (24), `width`/`height` (1280×720), `maxSeconds`, `gif {maxMB,width,fps}`, `ticker` (scrolling LCD strip text), `scenes[]`.
+Top level: `name`, `fps` (24), `width`/`height` (1280×720), `maxSeconds`, `gif {maxMB,width,fps}`, `ticker` (scrolling LCD strip text), `look`, `crop`, `scenes[]`.
+- **`look`**: `classic` (default: ticker, brand + route chip, Solana badge, numbered typewriter captions with a sub line, end card with step chips + footer) or `big` – **no small text**: all of that is hidden, each caption is ONE huge word block (`head` only, `\n` = line break, auto-fitted to the frame, slams in), the end card is just the truck mark + `title` lines + the CTA. For icons / thumbnails. `specs/intro-square.json` is the worked example.
+- **`crop`**: `"square"` = capture at the usual 16:9 (the cockpit keeps its normal layout – a native square viewport shrinks the windscreen and wastes the bottom on the steering wheel) and encode only the centre `height×height` square; the overlay lays itself out inside that square. Mirrors and the side switches fall outside the crop.
 
 Scene: `id`, `dur` (s), `route` (`route66|stuart|siberia|brenner|panamerican`), `time` (`day|night|dusk|dawn`), `speed` (m/s, or `[from,to]` ramp), `gear` (omit = chosen from the speed; the driver upshifts by itself at ~2350 rpm with real clutch dips), `lights` (headlights; default on at night), `cab`, `cold` (engine starts at ambient, for frost), `preroll` (s of un-captured game time so frost/dust has built up), `traffic`, `damage` (let hits hurt – needed for a crash), `sway`, `push` (slow zoom-in, 0.08 = 8 %), `grade` (CSS filter string), `transition` (INTO this scene: `"flash"` or `{type,dur}`), `events[]`, `captions[]`, `card`.
 - **transition types:** `cut flash flash-red glitch whip zoom dip` (the cut is hidden under the peak; dur ≈ 0.3–0.4 s).
 - **events** `{t, do, …}` (t = scene-local seconds): `gear {value}`, `lights {on}`, `cab {on}`, `wipers {mode 0|1|2}`, `washer {on}`, `heater`, `night {on}`, `phase {value}`, `spawn {type,preset,zone,dist,lat}` (see AGENTS.md "Traffic": a `truck`/`slow` spawned `ahead` at ~20 m while driving 25 m/s is a guaranteed direct hit = the ride-over stamp and red flash appear by themselves), `steer {value}`.
-- **captions** `{n:"01", at, dur, head, sub}`: typewriter headline + sub line + progress bar, bottom-left.
+- **captions** `{n:"01", at, dur, head, sub}`: typewriter headline + sub line + progress bar, bottom-left (`look: big`: only `{at, dur, head}`, centred over the windscreen).
 - **card** (end card, layered over the blurred road): `{title:[line1, accentLine], steps:[3 chips], cta, foot}`.
 
 ## House style and copy rules
@@ -41,4 +43,5 @@ Look = the landing (`landing/src/style.css` tokens: dash black, amber `#ffcf5a`,
 - New effect/transition: `draw()` in `video/lib/page.js` (pure function of the video time `T`; never use CSS animations or timers – the clock is virtual). New game action: `fire()` there + add the name to `EVENTS` in `lib/spec.mjs`.
 - The page code depends on `window.__game` (client/js/main.js) and the physics rules in `client/js/sim/physics.js` (`input.clutch` is boolean, `shiftT` holds the clutch ≥ .9) – re-run the preview after touching those.
 - **Rendering:** capture uses the real GPU (`--use-angle=metal`, macOS) by default. Software GL (SwiftShader) z-fights the road ribbon against the ground, so the asphalt blinks while moving (and night headlight pools flicker); `GPU=0` forces software rendering – don't use it for final renders. If a clip shows flashing road, check this first.
+- **Render committed clips from committed game code**: the capture serves the working tree's `client/`, so uncommitted game changes (another session's WIP) end up in the footage. If `git status client` is dirty, render in a clean `git worktree add --detach <dir> HEAD` with the `video/` changes copied in and `video/node_modules` symlinked, then copy `out/<name>/` back.
 - Output goes to `video/out/` (gitignored). Chrome: `CHROME=/path`, debug port `PORT` (default 9555; `client/tools/cdp.mjs`).
