@@ -38,15 +38,16 @@ If it fails with `P3009 … failed migrations` on `freightchain_test`: that data
 builds the landing + server, starts the server on a free port, runs `server/scripts/e2e-browser.mjs` (20 s ride, asserts COMPLETED · VERIFIED),
 `server/scripts/e2e-lobby.mjs` (3 s rides, the dev pool seeds via `SEED=1`, screenshots), `server/scripts/e2e-admin.mjs` (admin page: allowlist, queue, override, audit)
 `server/scripts/e2e-watch.mjs` (live streams, two Chromes: a driver + a spectator – replay, chat on the CB, mock NIGHT + SINKHOLE donations applied and seen in the replay; ~3 min)
-and `server/scripts/e2e-replay.mjs` (a finished ride's replay from the landing's ticker link: speeds, seeks, the night and the paid hole from history; ~4 min) and `server/scripts/e2e-live-flags.mjs` (the LIVE_* flags: production's paid donations with a fake wallet, then chat + donations off – two servers; all three are also the `replay-test` skill),
+and `server/scripts/e2e-replay.mjs` (a finished ride's replay from the landing's ticker link: speeds, seeks, the night and the paid hole from history; ~4 min) and `server/scripts/e2e-live-flags.mjs` (the LIVE_* flags: production's paid donations with a fake wallet, then chat + donations off – two servers; all three are also the `replay-test` skill)
+and `server/scripts/e2e-live-board.mjs` (online / on the road / the replays history on the landing and in the lobby, fed by `scripts/sim-rides.mjs`; the `live-board-test` skill),
 then stops the server and drops the database – also on failure.
 
 ```sh
-bash .claude/skills/run-tests/e2e.sh            # all six
-bash .claude/skills/run-tests/e2e.sh browser    # one of: browser | lobby | admin | watch | replay | flags
+bash .claude/skills/run-tests/e2e.sh            # all seven
+bash .claude/skills/run-tests/e2e.sh browser    # one of: browser | lobby | admin | watch | replay | flags | board
 ```
 
-Then **look at the screenshots** it prints (`fc-online-shots`, `fc-lobby-shots`, `fc-admin-shots`, `fc-watch-shots`, `fc-replay-shots`, `fc-flags-shots` in the OS temp dir) with the Read tool – the scripts
+Then **look at the screenshots** it prints (`fc-online-shots`, `fc-lobby-shots`, `fc-admin-shots`, `fc-watch-shots`, `fc-replay-shots`, `fc-flags-shots`, `fc-board-shots` in the OS temp dir) with the Read tool – the scripts
 cannot judge layout. Say plainly what passed, what failed (with output), and what still needs a human eye.
 
 ## Reporting

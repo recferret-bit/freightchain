@@ -119,7 +119,7 @@ function paintBoards() {
     $('board-recent').replaceChildren(...(S.replays.length ? S.replays.map(r => el(r.replay ? 'a' : 'div', { class: 'r', ...(r.replay ? { href: watchUrl(r.id), title: `replay ${short(r.wallet)}'s ride` } : {}) },
       el('span', { class: 'w' }, avatar(r.wallet), short(r.wallet), el('small', {}, TIER[r.tier] ?? r.tier, r.route ? ` · ${ROUTE[r.route] ?? r.route}` : '')),
       el('span', { class: 'watch' }, r.replay ? '▶ REPLAY' : ''),
-      el('span', { class: 'v' }, r.status === 'completed' ? `${km(r.distance)} km ✓` : r.status === 'failed' ? (r.failCode === 'heartbeat_lost' ? 'signal lost' : 'wrecked') : 'abandoned'))) : empty('No finished rides yet – the first one shows up here, ready to replay.')));
+      el('span', { class: 'v' }, r.status === 'completed' ? `${km(r.distance)} km ✓` : r.status === 'failed' ? (r.failCode === 'heartbeat_lost' ? 'signal lost' : 'failed') : 'abandoned'))) : empty('No finished rides yet – the first one shows up here, ready to replay.')));
   }
   if (S.board) {
     const rows = S.board.rows.slice(0, 10);
