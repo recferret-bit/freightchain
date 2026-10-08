@@ -10,6 +10,8 @@ describe('MemorySitePresenceAdapter', () => {
     expect(p.snapshot(at(1)).visitors).toBe(1); expect(p.snapshot(at(1)).wallets.size).toBe(0);
     p.leave('ip9', 'nobody');   // unknown: nothing happens
     expect(p.snapshot(at(1)).visitors).toBe(1);
+    p.seen('ip1', 'c', 'lobby', null, at(2)); p.seen('ip1', 'd', 'lobby', null, at(2)); p.seen('ip1', 'e', 'lobby', null, at(2));
+    expect(p.snapshot(at(3)).visitors).toBe(3);   // a's slot was freed: b, c, d count (3 per address), e does not
   });
 
   it('distinct visitors within 30 s, ≤ 3 ids per address, signed-in wallets among them; a visitor who stops polling drops out', () => {

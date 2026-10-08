@@ -104,6 +104,10 @@ check('closing the game tab ENDS its ride at once (abandoned) – off the road, 
   const [l, h] = await Promise.all([api('live'), api(`replays?limit=50&wallet=${me}`)]);
   return !l.rides.some(r => r.id === drive.id) && l.online.driving === driving - 1 && h.rows.some(r => r.id === drive.id && r.status === 'abandoned');
 }, 8000));
+const hist = await B.send('Page.getNavigationHistory');   // Back: the back/forward cache may hand the game page back – its ride is over, so it must not drive on
+await B.send('Page.navigateToHistoryEntry', { entryId: hist.entries[hist.currentIndex - 1].id });
+check('Back to the closed game tab: it does not drive on – the page says the ride is abandoned', await until(async () => /abandoned/.test(await B.ev(`document.getElementById('overlay')?.textContent || ''`)) && await B.ev(`!!document.getElementById('go')?.disabled`), 15_000),
+  await B.ev(`(document.getElementById('overlay')?.textContent || '').slice(0, 120)`));
 
 await sim.stop();
 const probs = B.filt().filter(p => !/401.*\/api\/me/.test(p));

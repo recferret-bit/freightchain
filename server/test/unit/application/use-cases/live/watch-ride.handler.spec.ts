@@ -11,7 +11,7 @@ describe('WatchRideHandler', () => {
   const setup = () => {
     const ctx = unitContext();
     const handler = new WatchRideHandler(ctx.rides, ctx.batches, ctx.rideEvents, ctx.viewers, ctx.rideMutes, ctx.rules, ctx.clock);
-    return { ctx, watch: (id: string, from = 0, after = 0, viewer = '', since = 0, source = '10.0.0.1') => handler.execute(new WatchRideQuery(id, from, after, viewer, since, source)) };
+    return { ctx, watch: (id: string, from = 0, after = 0, viewer = '', since = 0, source = '10.0.0.1', leave = false) => handler.execute(new WatchRideQuery(id, from, after, viewer, since, source, leave)) };
   };
 
   it('a running ride: its seed + route for the road, the recording page from `from` (samples only, no inputs), the feed and the viewers', async () => {
@@ -74,6 +74,15 @@ describe('WatchRideHandler', () => {
     const ride = await ctx.freeRide('driver', true);
     for (let i = 0; i < 10; i++) await watch(ride.id, 0, 0, `fake-${i}`, 0, '10.9.9.9');
     expect((await watch(ride.id, 0, 0, 'real', 0, '10.0.0.2')).viewers).toBe(4);
+  });
+
+  it('a closing watch page (leave) stops counting at once – only its own id from its own address', async () => {
+    const { ctx, watch } = setup();
+    const ride = await ctx.freeRide('driver', true);
+    await watch(ride.id, 0, 0, 'viewer-a', 0, '10.0.0.1'); await watch(ride.id, 0, 0, 'viewer-b', 0, '10.0.0.2');
+    expect((await watch(ride.id, 0, 0, 'viewer-a', 0, '10.0.0.9', true)).viewers).toBe(2);   // another address cannot make viewer-a leave
+    expect((await watch(ride.id, 0, 0, 'viewer-a', 0, '10.0.0.1', true)).viewers).toBe(1);
+    expect((await watch(ride.id)).viewers).toBe(1);   // and the leave registered nobody
   });
 
   it('carries the ride\'s features and hides what the driver muted (lines gone, notes blanked, donations kept)', async () => {

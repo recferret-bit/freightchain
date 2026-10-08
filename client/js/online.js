@@ -7,7 +7,7 @@ import { setLoadout } from './cosmetics.js';
 /* Online mode – OPT-IN: only when the page was opened as play.html?ride=<id> (made by the lobby). Without it nothing here runs and the game
    behaves exactly like the offline prototype (headless test, e2e, viewer and the file:// build all rely on that).
    The server owns the ride: it hands out the seed + the shift length, times the ride from heartbeats and decides the result (server/src/rides). */
-export const online = { ride: null, error: '', status: null, code: null, started: false, done: false, extra: () => ({}) };   // extra: set by ui/game.js → { route, night } for the lobby's live feed (kept out of here so this module needs no world/ imports). status/code ride along on a failed load so the page can classify it without the message.
+export const online = { ride: null, error: '', status: null, code: null, started: false, done: false, closed: false, extra: () => ({}) };   // extra: set by ui/game.js → { route, night } for the lobby's live feed (kept out of here so this module needs no world/ imports). status/code ride along on a failed load so the page can classify it without the message.
 
 const api = async (path, body) => {
   const r = await fetch(`${API_BASE}/api/${path}`, { credentials: 'include', signal: AbortSignal.timeout(8000), method: body ? 'POST' : 'GET', headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
@@ -48,10 +48,14 @@ export async function beginOnline() {
    A beacon is the one request a closing page can still send; it is text/plain (no CORS preflight) – the server reads it on this route only
    (server/src/infrastructure/http/middleware/beacon-body.middleware.ts). The last recording batch may not make it – that only costs coverage. */
 if (typeof addEventListener === 'function') addEventListener('pagehide', () => {
-  if (!online.ride || !online.started || online.done) return;   // also into the back/forward cache: the ride could not resume from there either (its beats would stop)
-  online.done = true; clearInterval(timer);
+  if (!online.ride || !online.started || online.done) return;   // also into the back/forward cache: that page COULD come back and beat on, but we can't
+  online.done = online.closed = true; clearInterval(timer);      // know it will – counting it "on the road" is what made the board wrong; 'pageshow' below
   try { navigator.sendBeacon(`${API_BASE}/api/rides/${online.ride.id}/end`, new Blob([JSON.stringify({ outcome: 'shift', reason: 'the driver closed the game', ...progress() })], { type: 'text/plain' })); } catch { /* the timeout + sweep still end it */ }
 });
+
+/* Back to a game page the back/forward cache kept after that beacon: its ride is over on the server, so don't let it drive on unrecorded – reload, and
+   the page says what became of the ride (initOnline: "this ride is abandoned – start a new one in the lobby"). */
+if (typeof addEventListener === 'function') addEventListener('pageshow', e => { if (e.persisted && online.closed) location.reload(); });
 
 /** outcome 'shift' = the driver ended the shift (the server decides complete / abandoned); 'failed' = crash etc. Idempotent. Resolves to the server's verdict. */
 export async function endOnline(outcome, reason = '') {
