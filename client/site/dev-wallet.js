@@ -10,11 +10,11 @@ export const devWanted = () => { try { return isLocal() && sessionStorage.getIte
 export function installDevWallet() {
   if (!isLocal()) return false;
   try { sessionStorage.setItem(FLAG, '1'); } catch { /* the wallet just won't survive a reload */ }
-  const key = crypto.subtle.importKey('jwk', JWK, { name: 'Ed25519' }, false, ['sign']);
+  const key = globalThis.crypto.subtle.importKey('jwk', JWK, { name: 'Ed25519' }, false, ['sign']);
   window.__fcDevWallet = {   // not window.solana: a real Phantom owns it read-only – wallet.js's provider() looks at __fcDevWallet first
     isPhantom: true, isDevWallet: true, publicKey: null,
     async connect() { this.publicKey = { toString: () => DEV_ADMIN_WALLET }; return { publicKey: this.publicKey }; },
-    async signMessage(msg) { return { signature: new Uint8Array(await crypto.subtle.sign('Ed25519', await key, msg)) }; },
+    async signMessage(msg) { return { signature: new Uint8Array(await globalThis.crypto.subtle.sign('Ed25519', await key, msg)) }; },
     async disconnect() {},
   };
   return true;
