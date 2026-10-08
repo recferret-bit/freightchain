@@ -80,16 +80,22 @@ export function rideError(e, tier) {
   return e?.message ?? String(e);
 }
 
-/** …and of POST /api/promo/redeem (404 unknown; 409 promo_unavailable / no_open_pool / ticket_cap – the details are already sentences). */
+/** …and of POST /api/promo/redeem (404 unknown; 409 promo_unavailable / no_open_pool / ticket_cap / already_owned – the details are already sentences). */
 export function promoError(e) {
   if (e?.status === 404) return 'Unknown promo code – check the spelling.';
   if (e?.code === 'promo_unavailable') return `This code can’t be used: ${e.message}.`;
   if (e?.code === 'no_open_pool') return `No pool to put these tickets in: ${e.message}.`;
   if (e?.code === 'ticket_cap') return `Wallet cap reached: ${e.message}.`;
+  if (e?.code === 'already_owned') return 'You already own this item – the code was not used up.';
   if (e?.status === 400) return 'Type a promo code first.';
   return e?.message ?? String(e);
 }
-export const promoOk = r => `+${plural(r.added, 'ticket')} (${r.code}) in pool #${r.poolId} · you hold ${r.balance} · cap ${r.cap}${r.added === 0 ? ' – you are at the cap, nothing added' : ''}`;
+/** What a redemption did, as one sentence – the answer is `{ kind: 'tickets' | 'free_rides' | 'cosmetic', code, label, … }`. */
+export function promoOk(r) {
+  if (r.kind === 'free_rides') return `+${plural(r.added, 'free ride')} (${r.code}) · you now have ${r.freeRides}`;
+  if (r.kind === 'cosmetic') return `Unlocked ${r.label} (${r.code}) – it is on your truck now. Change it any time in the wardrobe below.`;
+  return `+${plural(r.added, 'ticket')} (${r.code}) in pool #${r.poolId} · you hold ${r.balance} · cap ${r.cap}${r.added === 0 ? ' – you are at the cap, nothing added' : ''}`;
+}
 
 /** …and of the (provisional, §2.4) ticket order / refund routes. */
 export function buyError(e) {

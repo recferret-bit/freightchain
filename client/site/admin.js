@@ -1,13 +1,14 @@
 import { ADMIN_BASE, SITE_BASE } from '../js/hosts.js';
 import { b58, provider } from './wallet.js';
 import { shortAddr } from './pools.js';
+import { promosTab } from './admin-promos.js';
 
-/* The admin page: OVERVIEW · REVIEW QUEUE · RIDES · SIGN-INS · LOGS · AUDIT (+ #ride/<id>). Vanilla DOM, no framework.
+/* The admin page: OVERVIEW · REVIEW QUEUE · RIDES · PROMO CODES · SIGN-INS · LOGS · AUDIT (+ #ride/<id>). Vanilla DOM, no framework.
    Only wallets in the server's ADMIN_WALLETS get answers – to everyone else /api/admin/* is a 404 and this page says so.
    Everything from the server goes in with textContent (wallets, reasons, log lines are other people's data) – never innerHTML. */
 const $ = id => document.getElementById(id);
 const view = $('view');
-const TABS = ['overview', 'queue', 'rides', 'signins', 'logs', 'audit'];
+const TABS = ['overview', 'queue', 'rides', 'promos', 'signins', 'logs', 'audit'];
 
 /* ───────── helpers ───────── */
 function el(tag, attrs = {}, ...kids) {
@@ -47,7 +48,7 @@ async function go() {
   document.querySelectorAll('.tabs a').forEach(a => { const on = a.dataset.tab === S.tab; a.classList.toggle('on', on); a.setAttribute('aria-selected', on); });
   view.replaceChildren(el('p', { class: 'dim' }, 'Loading…'));
   refreshQueueCount();
-  try { await ({ overview, queue, rides, signins, logs, audit, ride: () => ride(arg) })[S.tab](); } catch (e) { fail(e); }
+  try { await ({ overview, queue, rides, promos: () => promosTab({ api, el, view, signAt, time, ago, wallet }), signins, logs, audit, ride: () => ride(arg) })[S.tab](); } catch (e) { fail(e); }
 }
 addEventListener('hashchange', go);
 $('refresh').onclick = go;
@@ -194,7 +195,7 @@ async function audit() {
     rows.length ? el('div', { class: 'card', style: 'padding:6px 8px;overflow-x:auto' }, el('table', { class: 'dense' },
       el('thead', {}, el('tr', {}, ...['when', 'admin', 'action', 'target', 'detail', 'request'].map(h => el('th', {}, h)))),
       el('tbody', {}, rows.map(a => el('tr', {}, el('td', { title: time(a.at) }, ago(a.at)), el('td', {}, wallet(a.wallet)), el('td', {}, a.action),
-        el('td', {}, a.action.startsWith('verdict.') ? el('a', { href: `#ride/${a.target}`, class: 'mono' }, a.target.slice(0, 8)) : wallet(a.target)), el('td', { class: 'dim' }, JSON.stringify(a.detail)), el('td', { class: 'mono dim' }, a.requestId ?? '–'))))))
+        el('td', {}, a.action.startsWith('verdict.') ? el('a', { href: `#ride/${a.target}`, class: 'mono' }, a.target.slice(0, 8)) : a.action.startsWith('promo.') ? el('a', { href: '#promos', class: 'mono' }, a.target) : wallet(a.target)), el('td', { class: 'dim' }, JSON.stringify(a.detail)), el('td', { class: 'mono dim' }, a.requestId ?? '–'))))))
       : el('div', { class: 'card empty' }, 'No admin actions yet.'));
 }
 
@@ -217,18 +218,19 @@ async function adminSignIn() {
   const res = await p.signMessage(new TextEncoder().encode(message), 'utf8');   // Phantom: { signature }, Solflare: the bytes
   return api('auth/verify', { wallet: walletAddr, signature: b58(res.signature ?? res) });
 }
-/* every change is signed by the admin wallet for exactly that change: the server's text (ride, decision, note) → the wallet signs → the change carries the
-   signature; the audit keeps both. The wallet must be the signed-in admin's. */
-async function signChange(rideId, intent) {
+/* every change is signed by the admin wallet for exactly that change: the server's text (ride + decision + note, or every field of a promo code) → the wallet signs →
+   the change carries the signature; the audit keeps both. The wallet must be the signed-in admin's. `path` is the challenge route of the thing being changed. */
+async function signAt(path, intent) {
   const p = provider();
   if (!p) throw new Error('No Solana wallet found – changes are signed by your admin wallet (Phantom / Solflare)');
   await p.connect();
   const s = stored();
   if (s && p.publicKey.toString() !== s.wallet) throw new Error(`The wallet is ${short(p.publicKey.toString())}, the admin session is ${short(s.wallet)} – switch the wallet's account`);
-  const { message } = await api(`rides/${encodeURIComponent(rideId)}/challenge`, intent);
+  const { message } = await api(path, intent);
   const res = await p.signMessage(new TextEncoder().encode(message), 'utf8');
   return b58(res.signature ?? res);
 }
+const signChange = (rideId, intent) => signAt(`rides/${encodeURIComponent(rideId)}/challenge`, intent);
 $('signout').onclick = async () => { try { await api('auth/logout', {}); } finally { store(null); location.reload(); } };
 
 function showSignIn(why) {

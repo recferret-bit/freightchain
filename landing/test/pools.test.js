@@ -84,6 +84,15 @@ test('promo redeem: 404 / every 409 code / success', () => {
   assert.match(promoOk({ code: 'X', poolId: 1, tier: '1h', added: 0, balance: 5, cap: 5 }), /at the cap, nothing added/);
 });
 
+test('promo redeem: every kind of effect reads as one sentence; an item you own is refused without using the code up', () => {
+  assert.equal(promoOk({ kind: 'tickets', code: 'WELCOME', label: '2 × 1h ride tickets', poolId: 1, tier: '1h', added: 2, balance: 2, cap: 5 }), '+2 tickets (WELCOME) in pool #1 · you hold 2 · cap 5');
+  assert.equal(promoOk({ kind: 'free_rides', code: 'THREE', label: '3 free rides', added: 3, freeRides: 8 }), '+3 free rides (THREE) · you now have 8');
+  assert.equal(promoOk({ kind: 'free_rides', code: 'ONE', label: '1 free ride', added: 1, freeRides: 6 }), '+1 free ride (ONE) · you now have 6');
+  assert.match(promoOk({ kind: 'cosmetic', code: 'GOLD', label: 'wheel: gold', slot: 'wheel', item: 'gold' }), /^Unlocked wheel: gold \(GOLD\) – it is on your truck now/);
+  assert.match(promoError(problem(409, 'already_owned', 'you already own this item')), /already own this item – the code was not used up/);
+  assert.match(promoError(problem(409, 'promo_unavailable', 'this promo code is not active yet')), /not active yet/);
+});
+
 test('ticket sales: on when the server sells through the program (tiers.paymentMode), a ticketSales flag would win; every refusal names the fix', () => {
   assert.equal(salesOpen({ paymentMode: 'transfer' }), false); assert.equal(salesOpen({ paymentMode: 'program' }), true); assert.equal(salesOpen(null), false);
   assert.equal(salesOpen({ paymentMode: 'program', ticketSales: false }), false); assert.equal(salesOpen({ paymentMode: 'transfer', ticketSales: true }), true);
@@ -99,7 +108,7 @@ test('ticket sales: on when the server sells through the program (tiers.paymentM
 
 test('the lobby and the landing never call a bare /api path or render with innerHTML', () => {
   const site = join(new URL('..', import.meta.url).pathname, '..', 'client', 'site');
-  for (const f of ['lobby.js', 'lobby-pools.js', 'pools.js', 'tickets-api.js', 'pay.js', 'dom.js']) {
+  for (const f of ['lobby.js', 'lobby-pools.js', 'lobby-promo.js', 'pools.js', 'tickets-api.js', 'pay.js', 'dom.js', 'admin.js', 'admin-promos.js']) {
     const src = readFileSync(join(site, f), 'utf8');
     assert.doesNotMatch(src, /\.(innerHTML|outerHTML)\s*[+]?=|insertAdjacentHTML\(|document\.write\(/, f);
     assert.doesNotMatch(src, /['"`]\/api\//, `${f}: API calls go through wallet.js (API_BASE)`);

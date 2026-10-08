@@ -56,6 +56,12 @@
       <a class="link" href="/play.html">try it offline, no wallet →</a>
     </div>
     <p class="msg" id="msg"></p>
+    <form class="invite rv" id="invite" autocomplete="off">
+      <label for="invite-code">HAVE A PROMO CODE?</label>
+      <input id="invite-code" name="code" maxlength="64" autocapitalize="characters" spellcheck="false" placeholder="WELCOME" aria-describedby="invite-msg">
+      <button class="cta sm" id="invite-go" type="submit">CLAIM →</button>
+      <span class="hint" id="invite-msg" role="status">Free rides, free tickets or a new look for your truck.</span>
+    </form>
     <div class="stats rv" id="hero-stats">
       <div class="stat pot"><span class="lbl" id="hero-pot-lbl">IN THE POT THIS WEEK</span><b class="num lcd" id="hero-pot">0.000</b><span class="unit">SOL <em id="hero-usd"></em></span></div>
       <div class="stat"><span class="lbl">ROUND CLOSES IN</span><b class="num lcd cd" id="hero-cd">–</b><span class="unit">Mon 00:00 UTC</span></div>

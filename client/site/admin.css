@@ -22,5 +22,10 @@ button.reject{background:var(--bad);border-color:var(--bad)}
 pre.json{background:#0008;border:1px solid var(--line);border-radius:6px;padding:10px;font-size:12px;overflow-x:auto;white-space:pre-wrap;word-break:break-all;max-height:320px}
 @media (max-width:700px){.log .l{grid-template-columns:1fr}.filters input{min-width:0}.kv{grid-template-columns:1fr;gap:0}.kv dt{margin-top:8px;font-size:12px}}
 
+/* promo codes */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px 14px;margin-bottom:10px}.grp{display:contents}.grp[hidden]{display:none}
+.fld{display:grid;gap:4px;font-size:12px;color:var(--dim)}.fld input,.fld select{font:inherit;font-size:13px;background:#0008;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:7px 9px}
+.fld small{font-size:11px}.presets{display:flex;gap:6px;align-items:end}.presets button{padding:7px 10px;font-size:12px}
+
 /* the [hidden] attribute loses to display rules above: the sign-in card hides the tabs; empty chips (no session yet) take no room */
 .tabs[hidden], .chip:empty, button[hidden] { display: none; }

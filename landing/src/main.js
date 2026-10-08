@@ -202,7 +202,11 @@ for (const [net, url] of Object.entries(SOCIALS)) if (url) {
    CONNECT asks the injected wallet (Phantom / Solflare) to sign the server's challenge; the server verifies the ed25519 signature and sets the httpOnly session cookie
    (Domain = the apex in production, so the lobby, the game and the API share it). The landing never sees the token: it only asks /api/me who is signed in. */
 const btn = $('connect'), msg = $('msg'), playTop = $('play-top'), chip = $('chip-wallet');
-const toLobby = () => { flushSoon(); location.href = `${SITE_BASE}/lobby.html`; };
+/* The invite block: a code typed here (or arriving as /?promo=CODE – a shareable invite link) rides along to the lobby's PROMO tab, where it only pre-fills the field. */
+const inviteIn = $('invite-code'), inviteMsg = $('invite-msg');
+let invite = (new URLSearchParams(location.search).get('promo') ?? '').trim().slice(0, 64);
+if (invite) { inviteIn.value = invite; inviteMsg.textContent = `Code ${invite.toUpperCase()} is ready – connect your wallet to claim it.`; }
+const toLobby = () => { flushSoon(); location.href = `${SITE_BASE}/lobby.html${invite ? `?promo=${encodeURIComponent(invite)}#promo` : ''}`; };
 /* Both click assignments: signed-out runs signIn, signed-in (paintSession) opens the lobby. Classification stays inside signIn. */
 const onConnect = async () => {
   if (S.me) { track('lobby_open_clicked', { surface: 'landing' }); toLobby(); return; }
@@ -216,6 +220,15 @@ function paintSession(me) {
   msg.textContent = `Signed in as ${short(me.wallet)} · ${plural(me.freeRides, 'free ride')} left`; msg.className = 'msg';
   paintBoards();
 }
+$('invite').onsubmit = e => {
+  e.preventDefault();
+  invite = inviteIn.value.trim();
+  if (!invite) { inviteMsg.textContent = 'Type the code first.'; inviteMsg.className = 'hint bad'; inviteIn.focus(); return; }
+  inviteMsg.className = 'hint';
+  if (S.me) { toLobby(); return; }
+  inviteMsg.textContent = `Code ${invite.toUpperCase()} saved – connect your wallet to claim it.`;
+  btn.scrollIntoView({ block: 'center' }); btn.focus();   // the code goes with the sign-in below
+};
 btn.onclick = onConnect;
 playTop.onclick = () => { track('play_top_clicked', { signed_in: !!S.me }); if (S.me) toLobby(); else { location.hash = '#ride'; btn.focus(); } };
 track('landing_viewed', { surface: 'landing' });   // once per load, not on the 10 s refresh, and not after /api/pool

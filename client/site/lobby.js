@@ -3,17 +3,18 @@ import { buyRide, buyTickets, claimRefund, waitPaid, ORDER_SIG } from './pay.js'
 import { salesOpen, pendingOrder } from './tickets-api.js';
 import { ESCROW_PAGE, explorerTx, rideError, promoError, promoOk, buyError, sol, left, shortAddr as short } from './pools.js';
 import { poolCard, escrowSummary, refundRows, profileTickets } from './lobby-pools.js';
+import { promoForm, redemptionList, wardrobe } from './lobby-promo.js';
 import { el } from './dom.js';
 import { GAME_BASE, SITE_BASE } from '../js/hosts.js';
 import { track, flushSoon } from '../js/analytics.js';
 
-/* The lobby: NEW RIDE · LIVE · LEADERBOARD · PROFILE. Vanilla DOM, no framework.
+/* The lobby: NEW RIDE · LIVE · LEADERBOARD · PROMO · PROFILE. Vanilla DOM, no framework.
    Everything that comes from the server (wallet addresses, route ids, statuses…) goes in with textContent – never innerHTML – because other riders' data is rendered here. */
 const $ = id => document.getElementById(id);
 const view = $('view');
 const ROUTES = { route66: 'Route 66', stuart: 'Stuart Hwy', siberia: 'Trans-Siberian', brenner: 'Brenner Pass', panamerican: 'Pan-American' };   // = client/js/themes ids
 const TIER_NAME = { free: 'TEST RIDE', '1h': '1 HOUR', '4h': '4 HOURS', '8h': '8 HOURS' };
-const TABS = ['new', 'live', 'board', 'profile'];
+const TABS = ['new', 'live', 'board', 'promo', 'profile'];
 
 /* ───────── helpers ───────── */
 const hue = w => { let h = 0; for (const c of w) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
@@ -41,7 +42,7 @@ function go() {
   S.tab = TABS.includes(t) ? t : 'new';
   track('lobby_tab_viewed', { tab: S.tab });   // hash enter, not the 1 s tick
   document.querySelectorAll('.tabs a').forEach(a => { const on = a.dataset.tab === S.tab; a.classList.toggle('on', on); a.setAttribute('aria-selected', on); });
-  ({ new: renderNew, live: renderLive, board: renderBoard, profile: renderProfile })[S.tab]();
+  ({ new: renderNew, live: renderLive, board: renderBoard, promo: renderPromo, profile: renderProfile })[S.tab]();
 }
 
 /* ───────── NEW RIDE ─────────
@@ -52,10 +53,7 @@ function renderNew() {
     el('div', { class: 'card pool', id: 'poolbox' }), el('div', { id: 'pendingbox' }), el('div', { id: 'orderbox' }), el('div', { id: 'refunds' }),
     el('h2', {}, 'CHOOSE YOUR SHIFT'), el('div', { class: 'tiers', id: 'tiers' }),
     el('h2', {}, 'PROMO CODE'),
-    el('form', { class: 'card promo', id: 'promo', onsubmit: redeem },
-      el('label', { for: 'promo-code' }, 'Got a code? It puts free tickets into a pool.'),
-      el('div', { class: 'row' }, el('input', { id: 'promo-code', name: 'code', autocomplete: 'off', autocapitalize: 'characters', spellcheck: 'false', maxlength: 64, placeholder: 'e.g. WELCOME', 'aria-describedby': 'promo-msg' }), el('button', { id: 'promo-go', type: 'submit' }, 'REDEEM')),
-      el('p', { class: 'msg dim', id: 'promo-msg', role: 'status' })),
+    promoForm({ onSubmit: redeem }), el('p', { class: 'dim' }, el('a', { href: '#promo' }, 'Your codes and truck wardrobe →')),
     el('div', { class: 'card', id: 'rules', style: 'margin-top:12px' }));
   paintPool(); paintPending(); paintTiers(); paintRules();
   refreshMe();   // free-ride count + tickets after a ride / refund
@@ -209,9 +207,38 @@ async function redeem(e) {
   const show = (text, cls) => { m.textContent = text; m.className = `msg ${cls}`; };
   if (!code) { show('Type a promo code first.', 'bad'); return; }
   go.disabled = true; show('Redeeming…', 'dim');
-  try { const r = await api('promo/redeem', { code }); input.value = ''; show(promoOk(r), 'good'); S.focus = r.tier; await refreshMe(); }
-  catch (err) { show(promoError(err), 'bad'); } finally { go.disabled = false; }
+  try {
+    const r = await api('promo/redeem', { code }); input.value = ''; show(promoOk(r), 'good'); if (r.kind === 'tickets') S.focus = r.tier;
+    await refreshMe();
+    if (S.tab === 'promo') await paintPromoLists();   // the new code in the list, the new item in the wardrobe
+  } catch (err) { show(promoError(err), 'bad'); } finally { go.disabled = false; }
 }
+
+/* ───────── PROMO ─────────
+   The code field (a code from the landing's invite block arrives as ?promo=CODE and only PRE-FILLS it – the player clicks REDEEM), what this wallet redeemed,
+   and the wardrobe: cosmetics are visuals only; the one worn is what the cockpit draws (the game reads GET /api/wardrobe when a ride loads). */
+function renderPromo() {
+  view.replaceChildren(el('h2', {}, 'REDEEM A CODE'), promoForm({ onSubmit: redeem, value: S.invite ?? '' }),
+    el('h2', {}, 'YOUR TRUCK'), el('div', { id: 'wardrobebox' }, el('p', { class: 'dim' }, 'Loading…')),
+    el('h2', {}, 'CODES YOU REDEEMED'), el('div', { id: 'mycodes' }, el('p', { class: 'dim' }, 'Loading…')));
+  if (S.invite) { S.invite = null; $('promo-code').focus(); }
+  paintPromoLists();
+}
+async function paintPromoLists() {
+  const [w, mine] = await Promise.all([api('wardrobe', undefined, { report: false }).catch(e => e), api('promo/mine', undefined, { report: false }).catch(e => e)]);
+  if (S.tab !== 'promo') return;
+  const box = $('wardrobebox'), codes = $('mycodes'); if (!box || !codes) return;
+  S.wardrobe = w instanceof Error ? null : w;
+  box.replaceChildren(S.wardrobe ? wardrobe(S.wardrobe, equip, !!S.equipping) : el('p', { class: 'bad' }, `Could not load your wardrobe (${w.message}).`), el('p', { class: 'msg dim', id: 'wardrobe-msg', role: 'status' }));
+  codes.replaceChildren(mine instanceof Error ? el('p', { class: 'bad' }, `Could not load your codes (${mine.message}).`) : redemptionList(mine.redemptions));
+}
+const equip = async (slot, item) => {   // not busy(): that one belongs to the ride cards
+  if (S.equipping) return;
+  S.equipping = true;
+  try { S.wardrobe = await api('wardrobe/equip', { slot, item }); } catch (e) { S.equipErr = e.message; }
+  S.equipping = false;
+  if (S.tab === 'promo') { await paintPromoLists(); const m = $('wardrobe-msg'); if (m && S.equipErr) { m.textContent = S.equipErr; m.className = 'msg bad'; } S.equipErr = null; }
+};
 
 /* ───────── LIVE ───────── */
 const rows = new Map();   // wallet|startedAt → { root, … }
@@ -341,6 +368,8 @@ if (S.me) {
   $('out').onclick = async () => { track('player_signed_out'); flushSoon(); await signOut(); location.href = '/'; };
   [S.tiers, S.pool] = await Promise.all([api('tiers', undefined, { report: false }).catch(() => null), api('pool', undefined, { report: false }).catch(() => null)]);
   await pollLive();
+  const invite = new URLSearchParams(location.search).get('promo');   // the landing's invite block: lobby.html?promo=CODE – pre-fills the PROMO tab, never redeems by itself
+  if (invite?.trim()) { S.invite = invite.trim().slice(0, 64); history.replaceState(null, '', `${location.pathname}#promo`); }
   go();
   checkPending();   // once: an RPC lookup may run here, so never on a timer
   addEventListener('hashchange', go);

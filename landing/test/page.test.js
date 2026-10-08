@@ -94,6 +94,23 @@ test('sign-in: redirect + session UI go through SITE_BASE, the wallet chip exist
   assert.match(main, /catch \(e\) \{ msg\.textContent = e\.message; msg\.className = 'msg bad'; btn\.disabled = false; \}/);
 });
 
+test('promo invite: a form in the hero (no new heading or chapter), the code rides to the lobby PROMO tab through SITE_BASE, shown with textContent only', () => {
+  for (const id of ['invite', 'invite-code', 'invite-go', 'invite-msg']) assert.ok(ids.includes(id), id);
+  assert.match(html, /<form class="invite[^"]*" id="invite"/);
+  assert.match(main, /new URLSearchParams\(location\.search\)\.get\('promo'\)/, 'an invite link: /?promo=CODE pre-fills the field');
+  assert.match(main, /\$\{SITE_BASE\}\/lobby\.html\$\{invite \? `\?promo=\$\{encodeURIComponent\(invite\)\}#promo` : ''\}/, 'the lobby is opened on #promo with the code, url-encoded');
+  assert.match(main, /\$\('invite'\)\.onsubmit/);
+  assert.doesNotMatch(main, /inviteMsg\.(innerHTML|insertAdjacentHTML)/);
+});
+
+test('the lobby has the PROMO tab and takes the invite code only as a pre-fill', () => {
+  const lobbyHtml = readFileSync(join(root, '..', 'client', 'lobby.html'), 'utf8'), lobby = readFileSync(join(root, '..', 'client', 'site', 'lobby.js'), 'utf8');
+  assert.match(lobbyHtml, /<a role="tab" href="#promo" data-tab="promo">PROMO<\/a>/);
+  assert.match(lobby, /const TABS = \['new', 'live', 'board', 'promo', 'profile'\]/);
+  assert.match(lobby, /new URLSearchParams\(location\.search\)\.get\('promo'\)/);
+  assert.doesNotMatch(lobby, /get\('promo'\)[\s\S]{0,200}api\('promo\/redeem'/, 'a link never redeems by itself');
+});
+
 test('the icons the pages name exist (what Phantom, tabs and home screens show for the site)', () => {
   const client = join(root, '..', 'client');
   for (const page of [join(root, 'index.html'), join(client, 'lobby.html'), join(client, 'play.html'), join(client, 'viewer.html'), join(client, 'escrow', 'index.html')]) {
