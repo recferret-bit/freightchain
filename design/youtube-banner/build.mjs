@@ -1,6 +1,6 @@
 // YouTube channel banners (2048×1152, JPEG ≤ 6 MB): node design/youtube-banner/build.mjs [1-5 …]
 //   → design/youtube-banner/banner-<n>-<name>.jpg   GUIDES=1 also writes banner-<n>-guides.png (YouTube safe areas drawn) into $SHOTS (default /tmp/fc-banner)
-// banner.html holds the five layouts (?v=n, &guides=1 = safe areas); shots/ = real gameplay frames: (cd video && node lib/capture.mjs ../design/youtube-banner/shots.json <dir>) then pick frames (build.mjs does not re-capture). Needs Chrome + macOS (sips, SF Mono).
+// banner.html holds the five layouts (?v=n, &guides=1 = safe areas); shots/ = real gameplay frames: (cd media && node video/capture.mjs ../design/youtube-banner/shots.json <dir>) then pick frames (build.mjs does not re-capture). Needs Chrome + macOS (sips, SF Mono).
 import { execFileSync } from 'node:child_process'; import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
 import { launch } from '../../client/tools/cdp.mjs';
 const here = path.dirname(fileURLToPath(import.meta.url)), W = 2048, H = 1152, MAX = 6e6;

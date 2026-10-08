@@ -1,0 +1,135 @@
+{
+ "sampleRate": 32000,
+ "channels": 1,
+ "bits": 16,
+ "items": [
+  {
+   "id": "ignition",
+   "kind": "sfx",
+   "file": "sfx/ignition.wav",
+   "seconds": 0.8,
+   "note": "key turn + starter + engine catch, 0.5–0.9 s (dur option)"
+  },
+  {
+   "id": "shift",
+   "kind": "sfx",
+   "file": "sfx/shift.wav",
+   "seconds": 0.22,
+   "note": "gear lever clunk"
+  },
+  {
+   "id": "crash",
+   "kind": "sfx",
+   "file": "sfx/crash.wav",
+   "seconds": 1.3,
+   "note": "the impact"
+  },
+  {
+   "id": "game-over",
+   "kind": "sfx",
+   "file": "sfx/game-over.wav",
+   "seconds": 1.35,
+   "note": "SHIFT OVER phrase"
+  },
+  {
+   "id": "tr-flash",
+   "kind": "transition",
+   "file": "sfx/tr-flash.wav",
+   "seconds": 0.4,
+   "note": "transition sound (dur option = the transition length)"
+  },
+  {
+   "id": "tr-flash-red",
+   "kind": "transition",
+   "file": "sfx/tr-flash-red.wav",
+   "seconds": 0.4,
+   "note": "transition sound (dur option = the transition length)"
+  },
+  {
+   "id": "tr-whip",
+   "kind": "transition",
+   "file": "sfx/tr-whip.wav",
+   "seconds": 0.3,
+   "note": "transition sound (dur option = the transition length)"
+  },
+  {
+   "id": "tr-glitch",
+   "kind": "transition",
+   "file": "sfx/tr-glitch.wav",
+   "seconds": 0.4,
+   "note": "transition sound (dur option = the transition length)"
+  },
+  {
+   "id": "tr-zoom",
+   "kind": "transition",
+   "file": "sfx/tr-zoom.wav",
+   "seconds": 0.4,
+   "note": "transition sound (dur option = the transition length)"
+  },
+  {
+   "id": "tr-dip",
+   "kind": "transition",
+   "file": "sfx/tr-dip.wav",
+   "seconds": 0.4,
+   "note": "transition sound (dur option = the transition length)"
+  },
+  {
+   "id": "caption",
+   "kind": "sfx",
+   "file": "sfx/caption.wav",
+   "seconds": 0.16,
+   "note": "headline beep"
+  },
+  {
+   "id": "tick",
+   "kind": "sfx",
+   "file": "sfx/tick.wav",
+   "seconds": 0.03,
+   "note": "typewriter tick"
+  },
+  {
+   "id": "slam",
+   "kind": "sfx",
+   "file": "sfx/slam.wav",
+   "seconds": 0.35,
+   "note": "big-word thump"
+  },
+  {
+   "id": "click",
+   "kind": "sfx",
+   "file": "sfx/click.wav",
+   "seconds": 0.07,
+   "note": "dash switch"
+  },
+  {
+   "id": "wiper",
+   "kind": "sfx",
+   "file": "sfx/wiper.wav",
+   "seconds": 0.85,
+   "note": "two wiper sweeps"
+  },
+  {
+   "id": "washer",
+   "kind": "sfx",
+   "file": "sfx/washer.wav",
+   "seconds": 0.6,
+   "note": "washer spray (dur option)"
+  },
+  {
+   "id": "card",
+   "kind": "sfx",
+   "file": "sfx/card.wav",
+   "seconds": 0.8,
+   "note": "end card arpeggio + CTA hit"
+  },
+  {
+   "id": "road-rush",
+   "kind": "music",
+   "file": "music/road-rush.wav",
+   "seconds": 14.118,
+   "bpm": 136,
+   "bars": 8,
+   "note": "ROAD RUSH – chiptune loop-length score; a clip fits its tempo to the video"
+  }
+ ]
+}

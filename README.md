@@ -6,7 +6,7 @@ Freight Chain – "Desert Run": a browser truck-driving game with a Solana-paid 
 - `landing/` – the `/` page and the whitepaper (`whitepaper.html`, `whitepaper.<apex>` in production; a second page of the same Vite build): a small Vite project (wallet sign-in, live pool and boards, dash cards rendered by the game's own cockpit code)
 - `server/` – NestJS + Prisma + PostgreSQL API (`docs/backend-architecture.md`)
 - `deploy/` – semi-automatic deploy to our own server: `npm run deploy` (see `deploy/README.md`)
-- `video/` – promo clip maker: real gameplay → mp4 (≤ 15 s) + gif (≤ 20 MB) with landing-styled captions and transitions; the finished intro is `video/out/intro/` (see "Promo videos" below)
+- `media/` – promo clip + sound maker: `media/video/` real gameplay → mp4 (≤ 15 s) + gif (≤ 20 MB) with landing-styled captions and transitions, `media/audio/` chiptune music + engine + sound effects synthesised offline, `media/out/audio/_store/` the reusable sound library; the finished intro (with sound) is `media/out/video/intro/` (see "Promo videos" below)
 - `docs/` – hackathon plan, backend architecture, [verified play: next steps + the owner's checklist](docs/verified-play-next-steps.md), [product analytics: events, funnels, the EU board](docs/analytics/index.html), [replays & donations: how rides are watched and how spectators change them](docs/replay-and-donations/index.html)
 - `AGENTS.md` / `CLAUDE.md` – the project map and rules for coding agents; `.claude/skills/` – project skills (read-only production logs / database, ride investigation, the whole test run, the live-stream / replay e2e `replay-test`, the PostHog local smoke and the production check, `gameplay-video`)
 
@@ -63,12 +63,14 @@ The whitepaper is `landing/whitepaper.html` (open `http://localhost:5173/whitepa
 
 ## Promo videos
 
-[`video/out/intro/intro.mp4`](video/out/intro/intro.mp4) (14.8 s) and [`intro.gif`](video/out/intro/intro.gif) (compressed look-alikes: [`intro.min.mp4`](video/out/intro/intro.min.mp4) 2.6 MB, [`intro.min.gif`](video/out/intro/intro.min.gif) 9.3 MB, [`intro.tiny.gif`](video/out/intro/intro.tiny.gif) 476 kB) are made from real gameplay by the `video/` harness: a JSON spec of scenes (gears, a crash, night lights, Siberian frost, Australian dust, an end card), captions in the landing's style, transitions, a Solana badge – the same input renders the same bytes.
+[`media/out/video/intro/intro.mp4`](media/out/video/intro/intro.mp4) (14.8 s, with sound: key + engine start, 8-bit music, gear / crash / transition effects) and [`intro.gif`](media/out/video/intro/intro.gif) (silent; compressed look-alikes: [`intro.min.mp4`](media/out/video/intro/intro.min.mp4), [`intro.min.gif`](media/out/video/intro/intro.min.gif), [`intro.tiny.gif`](media/out/video/intro/intro.tiny.gif) 481 kB) are made from real gameplay by the `media/` app: a JSON spec of scenes (gears, a crash, night lights, Siberian frost, Australian dust, an end card), captions in the landing's style, transitions, a Solana badge, and an `audio` block. The audio is saved as separate files too ([`media/out/audio/intro/`](media/out/audio/intro): `mix`, `music`, `sfx`, `engine` WAVs + the cue sheet) and the reusable sounds live in [`media/out/audio/_store/`](media/out/audio/_store).
 
 ```sh
-npm --prefix video install                  # once (Node >= 22, Chrome; ffmpeg comes from npm)
-npm run video -- video/specs/intro.json     # ~30 s on a Mac GPU → video/out/intro/{intro.mp4,intro.gif,contact.jpg} + intro.min.{mp4,gif} (compressed look-alikes) + intro.tiny.gif (≤ 500 kB)
-npm --prefix video run preview              # half-size look, not committed
+npm --prefix media install                  # once (Node >= 22, Chrome; ffmpeg comes from npm)
+npm run media -- media/specs/intro.json     # ~30 s on a Mac GPU → media/out/video/intro/{intro.mp4 (+ sound),intro.gif,contact.jpg,timeline.json} + the sound in media/out/audio/intro/{mix,music,sfx,engine}.wav, cues.json + intro.min.{mp4,gif} + intro.tiny.gif (≤ 500 kB)
+npm run media -- media/specs/intro.json --audio-only   # only the sound: rebuild from the saved timeline and remux onto the mp4 (seconds)
+npm run media:store                         # re-render the sound library media/out/audio/_store
+npm --prefix media run preview              # half-size look, not committed
 ```
 
-New clip: ask Claude for one (the `gameplay-video` skill turns a text description into a spec, previews it and reports duration / size), or copy `video/specs/intro.json`. Limits are enforced: total ≤ 15 s, gif file ≤ 20 MB (it shrinks, then trims). Render on a real GPU – software GL makes the road flash. Details: `AGENTS.md` → "Promo videos".
+New clip: ask Claude for one (the `gameplay-video` skill turns a text description into a spec, previews it and reports duration / size), or copy `media/specs/intro.json`. Limits are enforced: total ≤ 15 s, gif file ≤ 20 MB (it shrinks, then trims). Render on a real GPU – software GL makes the road flash. Details: `AGENTS.md` → "Promo videos".

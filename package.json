@@ -15,7 +15,7 @@
     "server:test": "npm --prefix server test",
     "client:check": "npm --prefix client run check",
     "client:serve": "client/serve.sh",
-    "check": "npm run client:check && npm run landing:lint && npm run landing:build && npm run landing:test && npm run server:build && npm run server:typecheck && npm run server:test",
+    "check": "npm run client:check && npm run landing:lint && npm run landing:build && npm run landing:test && npm run server:build && npm run server:typecheck && npm run server:test && npm run media:check",
     "db:up": "npm --prefix server run db:up",
     "db:down": "npm --prefix server run db:down",
     "db:migrate": "npm --prefix server run prisma:deploy",
@@ -35,7 +35,10 @@
     "deploy:rollback": "bash deploy/scripts/ctl.sh rollback",
     "deploy:smoke": "bash deploy/scripts/ctl.sh smoke",
     "ops": "bash deploy/scripts/ops.sh",
-    "video": "node video/make.mjs",
+    "media": "node media/make.mjs",
+    "media:store": "node media/audio/cli.mjs store",
+    "media:check": "npm --prefix media run lint && npm --prefix media test",
+    "install:media": "npm --prefix media install",
     "build": "npm run landing:build && npm run server:build"
   }
 }

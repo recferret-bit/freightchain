@@ -11,12 +11,15 @@ npm-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# Promo videos (video/): the finished clips in video/out/<name>/ ARE committed; scratch output is not
-video/out/*-preview/
-video/out/*-partial/
-video/out/*/frames/
-video/out/*/spec.resolved.json
-video/out/*/*.raw
+# Media (media/): the finished clips in media/out/video/<name>/ (mp4 + gif + timeline.json), their sound in media/out/audio/<name>/ (stems + cues.json) and the sound store media/out/audio/_store ARE committed; scratch output is not
+media/out/*/*-preview/
+media/out/*/*-partial/
+media/out/video/*/frames/
+media/out/video/*/spec.resolved.json
+media/out/*/*/*.raw
+media/out/video/*/*.mux.mp4
+media/out/audio/_store/**/*.png
+media/out/audio/*/*.png
 
 # Test artifacts (tools/e2e-chrome.mjs writes to the OS temp dir by default; these catch local overrides)
 shots/
