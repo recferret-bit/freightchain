@@ -111,7 +111,9 @@ case "${1:-help}" in
     [ "$(solana-verify get-executable-hash "$SO" | tail -1)" = "$(cut -c1-64 "$PIN")" ] || fail "the .so is not the pinned verifiable build – npm run program:verify (never deploy an anchor build)"
     [ "$(node -p 'require(process.argv[1]).address' "$SERVER/../programs/freightchain-pools/idl/freightchain_pools.json")" = "$(pub program-id)" ] || fail "the code is not built for $(pub program-id) – anchor keys sync + rebuild"
     echo "▸ deploy (or upgrade) $(pub program-id) – the deploy wallet pays the rent and is the upgrade authority"
-    solana program deploy --url "$(rpc)" --keypair "$KEYS/deploy.json" --upgrade-authority "$KEYS/deploy.json" --program-id "$KEYS/program-id.json" "$SO"
+    # the upload goes through the public devnet RPC: QuickNode answers the CLI's large write batches with 413 (DEPLOY_RPC overrides; devnet only)
+    DEPLOY_RPC="${DEPLOY_RPC:-https://api.devnet.solana.com}"
+    solana program deploy --url "$DEPLOY_RPC" --keypair "$KEYS/deploy.json" --upgrade-authority "$KEYS/deploy.json" --program-id "$KEYS/program-id.json" "$SO"
     cd "$SERVER" && npm run --silent build >/dev/null
     if node scripts/pool-admin.mjs show --url "$(rpc)" | node -e 'process.exit(JSON.parse(require("fs").readFileSync(0)).config ? 0 : 1)'; then echo "• Config exists already (initialize skipped)"
     else
