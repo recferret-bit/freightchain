@@ -104,8 +104,9 @@ export function drawCockpitRig() {
   radioPanel(rx, u, pw);
   uiButton('wiper', wip.mode ? 'WIPER ' + wip.mode : 'WIPER', rx + 1.5 * u, 76 * u, 9.5 * u, 5 * u, u, wip.mode > 0);
   uiButton('wash', 'WASH', rx + 11.5 * u, 76 * u, 9.5 * u, 5 * u, u, st.washing);
-  { const vy = 85 * u, px = rx + 11.5 * u;
+  { const vy = 85 * u, px = rx + 6.25 * u;   // centred under the WIPER button
     uiBtns.push({ id: 'park', x: px - 3.6 * u, y: vy - 3.6 * u, w: 7.2 * u, h: 10.4 * u }); ctx.fillStyle = st.park ? '#ff3a2a' : '#6b1f1a'; ctx.beginPath(); for (let i = 0; i < 8; i++) { const an = Math.PI / 8 + i * Math.PI / 4; ctx.lineTo(px + Math.cos(an) * 3.4 * u, vy + Math.sin(an) * 3.4 * u); } ctx.closePath(); ctx.fill(); ctx.strokeStyle = '#222'; ctx.lineWidth = .3 * u; ctx.stroke();
+    ctx.fillStyle = st.park ? '#ffe9e4' : '#c9a29c'; ctx.font = `bold ${4.4 * u}px ${MONO}`; const tb = ctx.textBaseline; ctx.textBaseline = 'middle'; ctx.fillText('P', px, vy + .2 * u); ctx.textBaseline = tb;
     ctx.fillStyle = st.park ? '#ff8a7a' : '#9d957f'; ctx.font = `${1.5 * u}px ${MONO}`; ctx.fillText('PARK', px, vy + 5.2 * u); }
   ignitionPanel(cx + 37 * u, 95.5 * u, u);
   { const bw = 8.4 * u, bh = 4 * u, gx = cx - 48 * u, gy = 90.8 * u, gap = .8 * u;   // 2x2 switch grid left of the wheel
@@ -123,7 +124,7 @@ export function drawCockpitRig() {
   ctx.fillStyle = wl.mark; ctx.beginPath(); ctx.arc(0, -R, 1.2 * u, 0, 7); ctx.fill();   // 12-o'clock marker
   ctx.restore();
   // floor shifter (H pattern, 4 columns: 1/2, 3/4, 5/6, 7/R)
-  { const bx = cx + 70 * u, g = st.gear;
+  { const bx = cx + 68 * u, g = st.gear;
     const col = g === 0 ? 0 : g < 0 ? 1.5 : [-1.5, -1.5, -.5, -.5, .5, .5, 1.5][g - 1], row = g === 0 ? 0 : g < 0 ? 1 : [-1, 1, -1, 1, -1, 1, -1][g - 1];   // R: right, back
     const lv = leverPos(col, row), kx = bx + lv.col * 2.6 * u, ky = 86 * u + lv.row * 2.6 * u;   // tweened through the neutral channel
     ctx.fillStyle = gb.boot; ctx.beginPath(); ctx.ellipse(bx, 100 * u, 6 * u, 2.6 * u, 0, 0, 7); ctx.fill();
