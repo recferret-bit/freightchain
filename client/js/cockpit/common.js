@@ -42,7 +42,7 @@ export function gauge(cx, cy, r, val, max, step, redFrom, label, u) {
   const an = a0 + sw * clamp(val / max, 0, 1.03);
   ctx.save(); ctx.lineCap = 'round';
   if (isRpm) { ctx.shadowColor = k > 0 ? '#ff4a2a' : 'rgba(0,0,0,.6)'; ctx.shadowBlur = k > 0 ? r * (.2 + .3 * k) : r * .08; ctx.shadowOffsetY = k > 0 ? 0 : r * .03; }
-  ctx.strokeStyle = k > .3 ? '#ff5a3a' : '#ff7a2e'; ctx.lineWidth = u * .55;
+  ctx.strokeStyle = k > .3 ? '#ff5a3a' : look('needle').color; ctx.lineWidth = u * .55;   // (the over-rev warning stays red whatever the needle colour)
   ctx.beginPath(); ctx.moveTo(cx - Math.cos(an) * r * .12, cy - Math.sin(an) * r * .12); ctx.lineTo(cx + Math.cos(an) * r * .8, cy + Math.sin(an) * r * .8); ctx.stroke(); ctx.restore();
   ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(cx, cy, r * .09, 0, 7); ctx.fill();
 }
