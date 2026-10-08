@@ -37,15 +37,16 @@ If it fails with `P3009 … failed migrations` on `freightchain_test`: that data
 `.claude/skills/run-tests/e2e.sh` does all of it: creates a throwaway database `freightchain_e2e_<pid>` in the same container, migrates it,
 builds the landing + server, starts the server on a free port, runs `server/scripts/e2e-browser.mjs` (20 s ride, asserts COMPLETED · VERIFIED),
 `server/scripts/e2e-lobby.mjs` (3 s rides, the dev pool seeds via `SEED=1`, screenshots), `server/scripts/e2e-admin.mjs` (admin page: allowlist, queue, override, audit)
-and `server/scripts/e2e-watch.mjs` (live streams, two Chromes: a driver + a spectator – replay, chat on the CB, mock NIGHT + SINKHOLE donations applied and seen in the replay; ~3 min),
+`server/scripts/e2e-watch.mjs` (live streams, two Chromes: a driver + a spectator – replay, chat on the CB, mock NIGHT + SINKHOLE donations applied and seen in the replay; ~3 min)
+and `server/scripts/e2e-replay.mjs` (a finished ride's replay from the landing's ticker link: speeds, seeks, the night and the paid hole from history; ~4 min – both are also the `replay-test` skill),
 then stops the server and drops the database – also on failure.
 
 ```sh
-bash .claude/skills/run-tests/e2e.sh            # all four
-bash .claude/skills/run-tests/e2e.sh browser    # one of: browser | lobby | admin | watch
+bash .claude/skills/run-tests/e2e.sh            # all five
+bash .claude/skills/run-tests/e2e.sh browser    # one of: browser | lobby | admin | watch | replay
 ```
 
-Then **look at the screenshots** it prints (`fc-online-shots`, `fc-lobby-shots`, `fc-admin-shots`, `fc-watch-shots` in the OS temp dir) with the Read tool – the scripts
+Then **look at the screenshots** it prints (`fc-online-shots`, `fc-lobby-shots`, `fc-admin-shots`, `fc-watch-shots`, `fc-replay-shots` in the OS temp dir) with the Read tool – the scripts
 cannot judge layout. Say plainly what passed, what failed (with output), and what still needs a human eye.
 
 ## Reporting

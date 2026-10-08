@@ -303,7 +303,7 @@ appliedAt · appliedT · appliedS · appliedLat   the stamp</pre>
         <tr><td>Placed holes</td><td><code>client/js/world/holes.js</code> <code>placeHole</code> / <code>obstacleSpot</code>, <code>client/js/world/chunks.js</code> <code>rebuild</code></td></tr>
         <tr><td>The two replay columns</td><td><code>client/js/telemetry.js</code> (<code>FLAGS</code>), filled in <code>client/js/ui/game.js</code></td></tr>
         <tr><td>Server</td><td><code>server/src/{domain,application,infrastructure,presentation}/**/live</code>, the table in <code>server/prisma/live/live.prisma</code></td></tr>
-        <tr><td>Tests</td><td>unit specs per handler, the repository's PostgreSQL spec, HTTP scenarios (<code>server/test/scenarios/live.scenarios.ts</code>), three races in the concurrency suite, and <code>server/scripts/e2e-watch.mjs</code> – a driver and a spectator in two real Chromes (<code>bash .claude/skills/run-tests/e2e.sh watch</code>)</td></tr>
+        <tr><td>Tests</td><td>unit specs per handler, the repository's PostgreSQL spec, HTTP scenarios (<code>server/test/scenarios/live.scenarios.ts</code>), three races in the concurrency suite, <code>server/scripts/e2e-watch.mjs</code> – a driver and a spectator in two real Chromes on a live ride – and <code>server/scripts/e2e-replay.mjs</code> – a finished ride opened from the landing's ticker: speeds, seeks across a paid night, the paid hole from history, the end. Both run with the <code>replay-test</code> skill: <code>bash .claude/skills/replay-test/run.sh</code></td></tr>
       </tbody>
     </table>
   </div>

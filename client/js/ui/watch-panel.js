@@ -61,7 +61,7 @@ function paint() {
   const live = r.live && watch.follow, state = $('w-state');
   state.textContent = r.live ? (live ? `● LIVE · ~${LIVE_LAG} s behind` : '● LIVE · you are behind') : `REPLAY · ${STATUS[r.status] ?? r.status}`;
   state.className = `w-badge${r.live ? ' on' : ''}`;
-  $('w-viewers').textContent = r.live ? `👁 ${watch.viewers}` : '';
+  $('w-viewers').textContent = r.live ? `👁 ${watch.viewers}` : ''; $('w-viewers').hidden = !r.live;
   $('w-live').hidden = !r.live; $('w-live').classList.toggle('sel', live);
   $('w-play').textContent = watch.playing ? '❚❚' : '▶';
   for (const b of P.root.querySelectorAll('.spd')) { b.hidden = live; b.classList.toggle('sel', !live && watch.speed === +b.dataset.x); }

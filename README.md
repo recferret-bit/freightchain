@@ -7,8 +7,8 @@ Freight Chain – "Desert Run": a browser truck-driving game with a Solana-paid 
 - `server/` – NestJS + Prisma + PostgreSQL API (`docs/backend-architecture.md`)
 - `deploy/` – semi-automatic deploy to our own server: `npm run deploy` (see `deploy/README.md`)
 - `video/` – promo clip maker: real gameplay → mp4 (≤ 15 s) + gif (≤ 20 MB) with landing-styled captions and transitions; the finished intro is `video/out/intro/` (see "Promo videos" below)
-- `docs/` – hackathon plan, backend architecture, [verified play: next steps + the owner's checklist](docs/verified-play-next-steps.md), [product analytics: events, funnels, the EU board](docs/analytics/index.html)
-- `AGENTS.md` / `CLAUDE.md` – the project map and rules for coding agents; `.claude/skills/` – project skills (read-only production logs / database, ride investigation, the whole test run, the PostHog local smoke and the production check, `gameplay-video`)
+- `docs/` – hackathon plan, backend architecture, [verified play: next steps + the owner's checklist](docs/verified-play-next-steps.md), [product analytics: events, funnels, the EU board](docs/analytics/index.html), [replays & donations: how rides are watched and how spectators change them](docs/replay-and-donations/index.html)
+- `AGENTS.md` / `CLAUDE.md` – the project map and rules for coding agents; `.claude/skills/` – project skills (read-only production logs / database, ride investigation, the whole test run, the live-stream / replay e2e `replay-test`, the PostHog local smoke and the production check, `gameplay-video`)
 
 Local run: `npm run db:up && npm run server:dev` → http://localhost:3000
 
@@ -17,6 +17,12 @@ Local run: `npm run db:up && npm run server:dev` → http://localhost:3000
 - **Verified play**: on online rides the game records every key press and a 10 Hz sample of the truck (`client/js/telemetry.js`) and uploads hash-chained batches; after a completed shift the server checks that recording – complete, untampered, consistent with the ride, human-timed – and marks it `verified` / `flagged` / `rejected`. Nothing is re-simulated. Only verified paid shifts rank, unless `VERDICT_ENFORCE=false` (shadow mode). Details: `AGENTS.md` → "Verified play".
 - **Admin page**: `https://admin.<apex>` (locally `/admin.html`) behind HTTP basic auth (`DEPLOY_ADMIN_USER` / `DEPLOY_ADMIN_PASSWORD`), its own wallet sign-in for `ADMIN_WALLETS` (a 2 h admin session) and a wallet signature on every change – overview, the review queue of flagged rides (accept / reject, audited), rides, sign-ins, the server's recent logs, the audit log.
 - **Production, read-only**: `npm run ops -- logs --since 30m` · `ops -- logs --errors` · `ops -- query list` / `ops -- query wallet <address>` · `ops -- sql "SELECT …"` (a read-only transaction) · `ops -- ps`. See `deploy/README.md`.
+
+## Live streams: replays and donations
+
+- **Watch any ride**: `play.html?watch=<rideId>` – linked from the landing's ticker and LIVE NOW board and the lobby's Live tab. No video: the page rebuilds the driver's road from the ride's seed + route and replays the verified-play recording (10 Hz samples, uploaded every 15 s), so a live view runs ~25 s behind; a finished ride plays as a replay with a timeline and 1× / 4× / 16× (as long as its recording is kept, 90 days). Traffic is not recorded, so a replay drives an empty road.
+- **Chat and donations** (signed in with a Solana wallet, not on your own ride, only while it is on the road): chat lines show on a CB panel in the driver's cab; donations are a **mock** (shown in SOL, nothing is charged) – a tip, NIGHT / DAY (the driver's clock jumps), or POTHOLES / TRENCH / SINKHOLE (a hole in the driver's lane ~1 km ahead, warning sign first). The driver's game reports where it put each hole, so every replay has it in the same place. One game effect per ride per 20 s.
+- How it all works, the rules, the API and the limits: [docs/replay-and-donations/index.html](docs/replay-and-donations/index.html). Test it end to end: `bash .claude/skills/replay-test/run.sh` (the `replay-test` skill).
 
 ## Product analytics
 
@@ -29,7 +35,8 @@ There is no CI; run everything locally (the `run-tests` skill does this):
 ```sh
 npm run check                              # client lint + bundle + headless game · landing · server build, typecheck, unit tests + architecture audits
 npm run server:integration                 # PostgreSQL in Docker, its own freightchain_test database
-bash .claude/skills/run-tests/e2e.sh       # real Chrome: game (VERIFIED ride), lobby, admin page – on a throwaway database, screenshots in the OS temp dir
+bash .claude/skills/run-tests/e2e.sh       # real Chrome: game (VERIFIED ride), lobby, admin page, live stream, replay – on a throwaway database, screenshots in the OS temp dir
+bash .claude/skills/replay-test/run.sh     # only the live stream + replay suites (driver + spectator Chromes, ~7 min)
 bash .claude/skills/posthog-test/smoke.sh  # PostHog locally: headless Chrome, throwaway database, EU batch must return 200
 bash .claude/skills/posthog-prod/check.sh   # PostHog on production, read-only: boot line, one probe, flush log
 ```

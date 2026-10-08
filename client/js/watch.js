@@ -145,6 +145,8 @@ export function stepWatch(dt) {
   if (!watch.started || !watch.rows.length) return;
   const live = watch.ride?.live && watch.follow;
   const R = watch.rows;
+  /* the effects the sim would fade (it never runs here): a hit's shake, red flash and rumble must die away, or one recorded hit tints the replay for good */
+  st.jolt = Math.max(0, st.jolt - dt * 2.5); st.crash = Math.max(0, st.crash - dt * 2.2); st.flash = Math.max(0, st.flash - dt * 1.6); st.rumble = Math.max(0, st.rumble - dt * .7);
   if (watch.seeking) {   // hold the target until a sample at (or right before) it is loaded – the frame keeps the last picture meanwhile
     if (live) watch.wt = liveTarget();
     const i = find(watch.wt), a = R[i], b = R[i + 1];
@@ -179,7 +181,8 @@ function apply(a, b, k, dt) {
   st.vel = st.rev ? -st.v : st.v; st.ign = null; st.test = 1; st.stalled = false;
   st.off = !net.onRoad(st.s, st.d); net.clock = st.t;   // the signal lights show what the driver saw
   st.complete = st.t >= CFG.RIDE_MIN_SECONDS && st.s >= CFG.COMPLETE_DIST;
-  if (st.hull < watch.lastHull - .4 && !watch.jumped) { st.jolt = 1; st.crash = Math.min(1, (watch.lastHull - st.hull) / 8); st.flash = .6; }   // a hit: shake + the red flash
+  const drop = watch.lastHull - st.hull;
+  if (drop > .2 && !watch.jumped) { st.jolt = Math.min(1, st.jolt + .3 + drop / 10); st.crash = Math.min(1, st.crash + drop / 8 + .15); st.flash = Math.min(1, st.flash + drop / 12 + .15); }   // a hit, sized like sim/damage.js hurt(): a scrape flickers, a crash flashes
   watch.lastHull = st.hull;
   if (watch.jumped || Math.abs(st.s - s0) > 60) { st.tyaw = roadAt(st.s).t + st.psi; st.pitch = st.roll = st.pitchV = st.rollV = 0; watch.jumped = false; }
   else if (dt > 0) { trailerYaw(dt); bodySway(dt, vel0); }
