@@ -80,6 +80,8 @@ Race-safety, because Prisma is async (every `await` lets other requests run):
 | a pool failing while its tickets are spent or bought | `voidAllOfPool` runs under the pool lock and bumps every ticket `version`: a racing spend's save conflicts and retries (and then finds 0); a purchase seen after the failure is credited as `bought` (refundable) and voided at once |
 | the last redemption of a promo code | ONE `UPDATE … SET redeemed = redeemed + 1 WHERE … redeemed < maxRedemptions`; the per-wallet limit is the `(code, wallet, n)` primary key; the pool cap is checked before a redemption is taken |
 | a purchase event seen twice (confirm fast path, webhook, poll) | `(signature, eventIndex)` is unique on `TicketOrder`; the settlement checks it under the locks – the loser answers `duplicate` with the paid order, never an error; pool counters are recomputed from the program's running totals, so a replay changes nothing |
+| the program watcher's polls (interval, websocket trigger, webhook in parallel) | in-process: one poll at a time, asks during a poll coalesce into one more (`ProgramWatcher`); across processes / the webhook: settling is idempotent (row above), the cursor moves only past done / invalid transactions, a `pending` one stops the batch |
+| the finality pass dropping a transaction (never landed) while its tickets are ridden or it is dropped twice | `FinalityService.drop`: ONE transaction, the buyers' player rows (sorted) → the pool rows → THEN the event rows are re-read (already `dropped` = no-op) → order reopened (adopted → `expired`), `RideTicket.revokePurchase` voids only what is unused; never dropped on `unknown` status |
 
 ## Tests (`server/test/`) – the pyramid
 

@@ -1,8 +1,7 @@
 import { Controller, Get, HttpCode, Post, UseGuards } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
-import type { PrizePoolDto } from '../../domain/economy/prize-pool.dto.js';
 import { RedeemPromoCommand, type PromoRedeemedDto } from '../../application/use-cases/players/redeem-promo/redeem-promo.command.js';
-import { GetPrizePoolQuery } from '../../application/use-cases/pools/get-prize-pool/get-prize-pool.query.js';
+import { GetPrizePoolQuery, type PrizePoolDetailDto } from '../../application/use-cases/pools/get-prize-pool/get-prize-pool.query.js';
 import { ListPoolsQuery, type PoolListDto } from '../../application/use-cases/pools/list-pools/list-pools.query.js';
 import { SettleChainSignatureCommand, type SettledSignatureDto } from '../../application/use-cases/chain/settle-chain-signature/settle-chain-signature.command.js';
 import { GetPayoutTransactionsQuery, type PayoutTransactionsDto } from '../../application/use-cases/pools/get-payout-transactions/get-payout-transactions.query.js';
@@ -27,8 +26,8 @@ export class PoolsHttpController {
   }
 
   @Get('pools/:id')
-  get(@ZodParams(poolIdParamsSchema) params: PoolIdParams): Promise<PrizePoolDto> {
-    return this.queryBus.execute<GetPrizePoolQuery, PrizePoolDto>(new GetPrizePoolQuery(params.id));
+  get(@ZodParams(poolIdParamsSchema) params: PoolIdParams): Promise<PrizePoolDetailDto> {
+    return this.queryBus.execute<GetPrizePoolQuery, PrizePoolDetailDto>(new GetPrizePoolQuery(params.id));
   }
 
   /** 200 `{ poolId, added, balance, cap }` · 404 unknown code · 409 used up / expired / already redeemed / at the pool's cap / no open pool. */

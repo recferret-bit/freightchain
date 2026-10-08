@@ -13,7 +13,8 @@ import { ClockPort } from '../application/ports/shared/clock.port.js';
 import { RegisterPoolCommand } from '../application/use-cases/pools/register-pool/register-pool.command.js';
 import type { PoolProps } from '../domain/economy/pool.types.js';
 import { EnvService } from '../infrastructure/config/env.service.js';
-import { parsePoolSeed, parsePromoCreate, parseTicketsGrant, type PoolSeedArgs } from './admin-args.js';
+import { RegisterPoolFromChainCommand } from '../application/use-cases/pools/register-pool-from-chain/register-pool-from-chain.command.js';
+import { parsePoolRegister, parsePoolSeed, parsePromoCreate, parseTicketsGrant, type PoolSeedArgs } from './admin-args.js';
 
 /** The application layer without HTTP: the admin commands go through the same handlers (validation, locks, audit lines) as the API. */
 @Module({ imports: [EnvModule, ApplicationModule] })
@@ -60,6 +61,10 @@ export async function runAdmin(command: string, args: readonly string[]): Promis
         if (env.isProduction) throw new Error('pool:seed is for development – in production pools come from the chain (pool:register)');
         return commands.execute(new RegisterPoolCommand(seededPool(p, app.get(ClockPort).now(), env)));
       });
+    }
+    case 'pool:register': {
+      const r = parsePoolRegister(args);
+      return typeof r === 'string' ? usage(r) : withBuses(({ commands }) => commands.execute(new RegisterPoolFromChainCommand(r.poolId, r.label)));
     }
     default:
       return null;

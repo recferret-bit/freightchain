@@ -52,6 +52,16 @@ export class RideTicket {
     return voided;
   }
 
+  /** A credited purchase of `qty` never landed (the finality pass saw its transaction dropped): it no longer counts as bought, and as many of its tickets as are
+      still unused are taken back (one already ridden stays ridden – the ride was honest). Returns how many unused tickets were voided. */
+  revokePurchase(qty: number): number {
+    this.mustBePositive(qty);
+    const voided = Math.min(qty, this.p.balance);
+    this.p.balance -= voided;
+    this.p.bought = Math.max(0, this.p.bought - qty);
+    return voided;
+  }
+
   /** The program refunded this wallet (its Ticket account is closed – every lamport it paid came back): nothing paid is held any more. Returns how many paid tickets that was. */
   markRefunded(): number {
     const refunded = this.p.bought;

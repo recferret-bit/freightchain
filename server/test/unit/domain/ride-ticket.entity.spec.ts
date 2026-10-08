@@ -50,6 +50,17 @@ describe('RideTicket', () => {
     expect(t.markRefunded()).toBe(0);
   });
 
+  it('a dropped purchase is revoked: no longer bought, its unused tickets voided, a ridden one stays ridden', () => {
+    const t = RideTicket.restore({ wallet: 'w', poolId: 7, balance: 3, bought: 4, version: 1 });
+    expect(t.revokePurchase(2)).toBe(2);
+    expect(t.snapshot()).toMatchObject({ balance: 1, bought: 2 });
+    expect(t.revokePurchase(2)).toBe(1); // one of these two was already ridden
+    expect(t.snapshot()).toMatchObject({ balance: 0, bought: 0 });
+    expect(t.revokePurchase(1)).toBe(0);
+    expect(t.snapshot()).toMatchObject({ balance: 0, bought: 0 });
+    expect(() => t.revokePurchase(0)).toThrow(ConflictError);
+  });
+
   it('rejects counts that are not whole positive numbers', () => {
     const t = RideTicket.open('w', 7);
     for (const n of [0, -2, 1.5]) {

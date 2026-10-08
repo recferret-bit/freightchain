@@ -50,8 +50,13 @@ import { CreatePromoHandler } from './use-cases/promos/create-promo/create-promo
 import { ListPromosHandler } from './use-cases/promos/list-promos/list-promos.handler.js';
 import { DisablePromoHandler } from './use-cases/promos/disable-promo/disable-promo.handler.js';
 import { GrantTicketsHandler } from './use-cases/players/grant-tickets/grant-tickets.handler.js';
+import { FinalityService } from './services/finality.service.js';
+import { PollProgramHandler } from './use-cases/chain/poll-program/poll-program.handler.js';
+import { SyncPoolsHandler } from './use-cases/chain/sync-pools/sync-pools.handler.js';
+import { ReceiveChainWebhookHandler } from './use-cases/chain/receive-chain-webhook/receive-chain-webhook.handler.js';
+import { RegisterPoolFromChainHandler } from './use-cases/pools/register-pool-from-chain/register-pool-from-chain.handler.js';
 
-const services: Provider[] = [AchievementService, PaymentSettlementService, PlayerSessionService, PoolTicketsService, RideLookupService, RoundService, TicketSettlementService, PoolRegistryService];
+const services: Provider[] = [AchievementService, PaymentSettlementService, PlayerSessionService, PoolTicketsService, RideLookupService, RoundService, TicketSettlementService, PoolRegistryService, FinalityService];
 
 const handlers: Provider[] = [
   RequestChallengeHandler, VerifySignInHandler, GetMeHandler, LogoutHandler,
@@ -67,6 +72,7 @@ const handlers: Provider[] = [
   SettleChainSignatureHandler, GetTicketPaymentHandler, ConfirmTicketOrderHandler, SubmitTicketOrderHandler,
   GetRefundTransactionHandler, GetPayoutTransactionsHandler,
   GetChainFeesHandler,
+  PollProgramHandler, SyncPoolsHandler, ReceiveChainWebhookHandler, RegisterPoolFromChainHandler,
 ];
 
 @Module({

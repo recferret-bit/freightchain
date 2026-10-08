@@ -11,6 +11,10 @@ import { RideTicketRepositoryPort } from '../../src/application/ports/players/ri
 import { PromoCode } from '../../src/domain/economy/promo-code.entity.js';
 import { aPool } from '../support/pools.js';
 import { TicketSettlementService, type PurchaseEvent } from '../../src/application/services/ticket-settlement.service.js';
+import { FinalityService } from '../../src/application/services/finality.service.js';
+import { ChainEventRepositoryPort } from '../../src/application/ports/economy/chain-event.repository.port.js';
+import { PollProgramCommand, type PollProgramResultDto } from '../../src/application/use-cases/chain/poll-program/poll-program.command.js';
+import { ReceiveChainWebhookCommand, type ChainWebhookResultDto } from '../../src/application/use-cases/chain/receive-chain-webhook/receive-chain-webhook.command.js';
 
 /* What in-memory fakes can never tell you: parallel requests against a real database. Every critical section the old synchronous SQLite server got "for free"
    is exercised here with Promise.all and EXACT counts – one ride, one credit, one successful verify, one round, one payment. */
@@ -118,6 +122,45 @@ describe('concurrency (PostgreSQL)', () => {
       ]);
       expect(await prisma.pool.findUnique({ where: { id: 1 } })).toMatchObject({ status: 'refunding' });
       expect(await prisma.rideTicket.aggregate({ _sum: { balance: true, bought: true } })).toMatchObject({ _sum: { balance: 0, bought: 6 } });
+    });
+
+    it('the webhook and the poll settle the same transaction at once: credited ONCE, one order, the pool activated once, one log row per event', async () => {
+      await seed({ id: 1, status: 'open', minTickets: 2 }, { code: 'XYZ', credits: 1, maxRedemptions: null });
+      const a = await login();
+      const sig = harness.poolChain.addTransaction([
+        { kind: 'TicketBought', poolId: 1, buyer: a.address, qty: 2, lamports: 100_000_000, orderId: '', ticketsSold: 2, activated: true },
+        { kind: 'PoolActivated', poolId: 1, ticketsSold: 2 },
+      ]);
+      const bus = harness.app.get(CommandBus, { strict: false });
+      const results = await Promise.all([
+        ...Array.from({ length: 4 }, () => bus.execute<ReceiveChainWebhookCommand, ChainWebhookResultDto>(new ReceiveChainWebhookCommand([sig]))),
+        ...Array.from({ length: 4 }, () => bus.execute<PollProgramCommand, PollProgramResultDto>(new PollProgramCommand())),
+      ]);
+      expect(results.slice(0, 4).every((r) => (r as ChainWebhookResultDto).settled === 1)).toBe(true);
+      expect(results.slice(4).every((r) => (r as PollProgramResultDto).cursor === sig)).toBe(true);
+      expect(await prisma.rideTicket.findUnique({ where: { wallet_poolId: { wallet: a.address, poolId: 1 } } })).toMatchObject({ balance: 2, bought: 2 });
+      expect(await prisma.ticketOrder.count({ where: { wallet: a.address } })).toBe(1);
+      expect(await prisma.ticketGrant.count({ where: { wallet: a.address, source: 'payment' } })).toBe(1);
+      expect(await prisma.pool.findUnique({ where: { id: 1 } })).toMatchObject({ status: 'active', ticketsSold: 2, buyers: 1 });
+      expect(await prisma.chainEvent.count({ where: { signature: sig } })).toBe(2);
+      expect(await prisma.chainCursor.findUnique({ where: { key: 'program' } })).toMatchObject({ signature: sig });
+    });
+
+    it('a dropped purchase (finality pass, N at once) racing a ride on its tickets: each ticket voided or ridden, never both; dropped once', async () => {
+      await seed({ id: 1, status: 'active' }, { code: 'XYZ', credits: 1, maxRedemptions: null });
+      const a = await login();
+      const sig = harness.poolChain.addEvent('TicketBought', { poolId: 1, buyer: a.address, qty: 2, lamports: 100_000_000, orderId: '', ticketsSold: 2, activated: false });
+      const bus = harness.app.get(CommandBus, { strict: false });
+      await bus.execute(new ReceiveChainWebhookCommand([sig]));
+      const rows = await harness.app.get(ChainEventRepositoryPort, { strict: false }).listUnfinalized(10);
+      const finality = harness.app.get(FinalityService, { strict: false });
+      const [ride, ...voided] = await Promise.all([a.agent.post('/api/rides').send({ tier: '1h' }), ...Array.from({ length: 4 }, () => finality.drop(sig, rows))]);
+      const ridden = ride.status === 200 ? 1 : 0;
+      expect(voided.reduce((x, y) => x + y, 0) + ridden).toBe(2);
+      expect(await prisma.rideTicket.findUnique({ where: { wallet_poolId: { wallet: a.address, poolId: 1 } } })).toMatchObject({ balance: 0, bought: 0 });
+      expect(await prisma.ticketGrant.count({ where: { wallet: a.address, source: 'void' } })).toBe(1);
+      expect(await prisma.ticketOrder.findFirst({ where: { wallet: a.address } })).toMatchObject({ status: 'expired', signature: null }); // adopted → closed
+      expect(await prisma.chainEvent.findFirst({ where: { signature: sig } })).toMatchObject({ outcome: 'dropped' });
     });
 
     it('a pool voided while its tickets are being spent: no ticket is both voided and ridden', async () => {
