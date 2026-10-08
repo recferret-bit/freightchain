@@ -1,32 +1,38 @@
 #!/usr/bin/env bash
 # Real-Chrome end-to-end runs against a freshly built server on a THROWAWAY database (dropped at the end, also on failure).
-#   bash .claude/skills/run-tests/e2e.sh [browser|lobby|admin|watch|replay|flags|wallet|wallet-split|board ...]   (default: all nine)
+#   bash .claude/skills/run-tests/e2e.sh [browser|lobby|admin|watch|replay|flags|wallet|wallet-split|board|close|close-split ...]   (default: all eleven)
 # Needs: the compose PostgreSQL (npm run db:up), server/ and landing/ dependencies installed, Chrome.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 SERVER="$ROOT/server"
-SUITES=("$@"); [ ${#SUITES[@]} -gt 0 ] || SUITES=(browser lobby admin watch replay flags wallet wallet-split board)
+SUITES=("$@"); [ ${#SUITES[@]} -gt 0 ] || SUITES=(browser lobby admin watch replay flags wallet wallet-split board close close-split)
 DB="freightchain_e2e_$$"
 URL="postgresql://freight:freight_dev_password@localhost:15433/$DB"
 TREASURY=GseaEsNWMLScZ5RH8yQ4xmoCP97H86HjLSA9xkyFCqbn   # any valid address: paid clicks never reach the chain here
 ADMIN_KP="$(mktemp -t fc-admin-XXXXXX).json"
+# A PRIVATE build of the server and the landing: other checkouts / sessions build into server/dist + landing/dist while this runs (nest's deleteOutDir
+# empties dist/ mid-run – "Cannot find module dist/main.js"). Same depth as dist/, so the server's ../../../../client still finds the repo; a dot
+# directory, so the server's own tsc (no include list) never type-checks it.
+BUILD=".e2e-build-$$"; TSCONFIG=".e2e-tsconfig-$$.json"; LANDING_OUT="$(mktemp -d -t fc-landing-XXXXXX)"
 PID=""
 free_port() { node -e 'const s=require("net").createServer();s.listen(0,()=>{console.log(s.address().port);s.close()})'; }
 psql_admin() { docker exec freightchain-postgres psql -U freight -d postgres -v ON_ERROR_STOP=1 -tAc "$1"; }
 stop() { if [ -n "$PID" ]; then kill "$PID" 2>/dev/null || true; wait "$PID" 2>/dev/null || true; fi; PID=""; }   # wait returns 143 for a killed server – not a failure
-cleanup() { stop; psql_admin "DROP DATABASE IF EXISTS \"$DB\" WITH (FORCE)" >/dev/null 2>&1 || true; rm -f "$ADMIN_KP"; }
+cleanup() { stop; psql_admin "DROP DATABASE IF EXISTS \"$DB\" WITH (FORCE)" >/dev/null 2>&1 || true; rm -rf "$ADMIN_KP" "$SERVER/$BUILD" "$SERVER/$TSCONFIG" "$LANDING_OUT"; }
 trap cleanup EXIT
 
 nc -z localhost 15433 || (cd "$ROOT" && npm run --silent db:up)
 psql_admin "CREATE DATABASE \"$DB\"" >/dev/null
 (cd "$SERVER" && DATABASE_URL="$URL" ./node_modules/.bin/prisma migrate deploy >/dev/null)
-echo "▸ building the landing and the server"
-(cd "$ROOT" && npm run --silent landing:build >/dev/null) && (cd "$SERVER" && npm run --silent build >/dev/null)
+echo "▸ building the landing and the server (private copies: $LANDING_OUT, server/$BUILD)"
+(cd "$ROOT/landing" && ./node_modules/.bin/vite build --outDir "$LANDING_OUT" --emptyOutDir >/dev/null)
+printf '{ "extends": "./tsconfig.build.json", "compilerOptions": { "outDir": "./%s" } }\n' "$BUILD" > "$SERVER/$TSCONFIG"
+(cd "$SERVER" && ./node_modules/.bin/nest build -p "$TSCONFIG" >/dev/null)
 
 # start the server: $1 = FREE_RIDE_SECONDS, $2 = ADMIN_WALLETS, $EXTRA_ENV = more server env
 start() {
   PORT="$(free_port)"
-  (cd "$SERVER" && exec env ${EXTRA_ENV:-} DATABASE_URL="$URL" FREE_RIDE_SECONDS="$1" ADMIN_WALLETS="${2:-}" SOL_USD=118 TREASURY_PUBKEY="$TREASURY" PORT="$PORT" node dist/main.js > "/tmp/fc-e2e-$DB.log" 2>&1) &   # exec: $! is the server itself, so stop() really stops it; EXTRA_ENV="K=V …" = more server env (the live flags suite)
+  (cd "$SERVER" && exec env ${EXTRA_ENV:-} DATABASE_URL="$URL" FREE_RIDE_SECONDS="$1" ADMIN_WALLETS="${2:-}" SOL_USD=118 TREASURY_PUBKEY="$TREASURY" PORT="$PORT" LANDING_DIR="$LANDING_OUT" node "$BUILD/main.js" > "/tmp/fc-e2e-$DB.log" 2>&1) &   # exec: $! is the server itself, so stop() really stops it; EXTRA_ENV="K=V …" = more server env (the live flags suite)
   PID=$!
   for _ in $(seq 1 60); do curl -sf "http://localhost:$PORT/api/health/live" >/dev/null && return 0; sleep 0.5; done
   echo "server did not start:"; tail -30 "/tmp/fc-e2e-$DB.log"; exit 1
@@ -51,7 +57,11 @@ for suite in "${SUITES[@]}"; do
     wallet-split)   # the same on split hosts: landing on app.localhost, API on api.app.localhost, one cookie on the apex (Chrome resolves *.localhost, see the script's header)
       APP_DOMAIN=app.localhost COOKIE_DOMAIN=app.localhost CORS_ORIGINS=http://app.localhost,http://ride.app.localhost start 3
       (cd "$ROOT" && RESOLVE="MAP app.localhost 127.0.0.1:$PORT, MAP api.app.localhost 127.0.0.1:$PORT" BASE=http://app.localhost API=http://api.app.localhost PORT="$(free_port)" node landing/tools/e2e-wallet.mjs) || fails=$((fails + 1)) ;;
-    *) echo "unknown suite $suite (browser | lobby | admin | watch | replay | flags | wallet | wallet-split | board)"; fails=$((fails + 1)) ;;
+    close)   start 20; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" node scripts/e2e-close.mjs) || fails=$((fails + 1)) ;;   # a closed landing / lobby / watch page / game tab leaves the board at once
+    close-split)   # the same on split hosts (the cookie on the apex, the beacons cross-subdomain to api.*) – what production does
+      APP_DOMAIN=app.localhost COOKIE_DOMAIN=app.localhost CORS_ORIGINS=http://app.localhost,http://ride.app.localhost start 20
+      (cd "$SERVER" && SERVER="http://localhost:$PORT" BASE=http://app.localhost RESOLVE="MAP app.localhost 127.0.0.1:$PORT, MAP *.app.localhost 127.0.0.1:$PORT" CHROME_PORT="$(free_port)" node scripts/e2e-close.mjs) || fails=$((fails + 1)) ;;
+    *) echo "unknown suite $suite (browser | lobby | admin | watch | replay | flags | wallet | wallet-split | board | close | close-split)"; fails=$((fails + 1)) ;;
   esac
   stop
 done

@@ -31,6 +31,23 @@ export function verdictScenarios(h: () => Harness): void {
     expect((await d.agent.get('/api/profile').expect(200)).body.recent[0]).toMatchObject({ status: 'completed', verdict: 'verified' });
   });
 
+  it('a complete shift whose tab CLOSES: the /end beacon (text/plain) completes it; the last batch that never left only costs coverage', async () => {
+    const closeAfter = async (d: Rider, recorded: number) => {   // driven 70 s / 910 m; the batches up to `recorded` s arrived, the rest died with the tab
+      const r = (await d.agent.post('/api/rides').send({ tier: '1h' }).expect(200)).body;
+      await d.agent.post(`/api/rides/${r.id}/confirm`).send({ signature: h().chain.addPayment({ payer: d.address, lamports: r.lamports, memo: r.id }) }).expect(200);
+      await d.agent.post(`/api/rides/${r.id}/start`).expect(200);
+      for (let i = 1; i <= 7; i++) { sec(10); await d.agent.post(`/api/rides/${r.id}/heartbeat`).send({ s: i * 130, t: i * 10, hull: 100 }).expect(200); }
+      await upload(d.agent, r.id, recording(r.id, { seconds: recorded, distance: (910 * recorded) / 70 }));
+      return (await d.agent.post(`/api/rides/${r.id}/end`).set('content-type', 'text/plain;charset=UTF-8')
+        .send(JSON.stringify({ outcome: 'shift', s: 910, t: 70, hull: 100, reason: 'the driver closed the game' })).expect(200)).body;
+    };
+    const d = await login(VERDICT_DEMO);
+    expect(await closeAfter(d, 64)).toMatchObject({ status: 'completed', verdict: { status: 'verified', reasons: [] } });   // 6 s lost of 70 (91 %): still verified
+    const short = await closeAfter(d, 55);   // a whole 15 s batch lost of a SHORT shift (79 %) – flagged for review, never rejected; at 30 min one batch is < 1 %
+    expect(short).toMatchObject({ status: 'completed', verdict: { status: 'flagged' } });
+    expect(short.verdict.reasons.map((x: { code: string }) => x.code)).toEqual(['recording-gaps']);
+  });
+
   it('no recording → REJECTED, still COMPLETED, but not on the paid boards', async () => {
     const d = await login(VERDICT_DEMO);
     const end = await paidShift(d, null);

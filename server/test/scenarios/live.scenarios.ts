@@ -17,6 +17,16 @@ export function liveScenarios(h: () => Harness): void {
     return { driver, ride };
   };
 
+  it('a closing watch page (leave=1) stops counting at once – in the ride\'s viewers and in "watching"', async () => {
+    const { ride } = await onTheRoad();
+    const viewersOf = async () => ((await anon().get('/api/live').expect(200)).body.rides as { id: string; viewers: number }[]).find((r) => r.id === ride.id)?.viewers;
+    expect((await anon().get(`/api/watch/${ride.id}`).query({ viewer: 'closing-viewer' }).expect(200)).body.viewers).toBe(1);
+    expect(await viewersOf()).toBe(1);
+    expect((await anon().get(`/api/watch/${ride.id}`).query({ viewer: 'closing-viewer', leave: '1' }).expect(200)).body.viewers).toBe(0);
+    expect(await viewersOf()).toBe(0);
+    expect((await anon().get('/api/live').expect(200)).body.online.watching).toBe(0);
+  });
+
   it('anyone can watch a started ride from the public live feed: seed + route for the road, the recording as samples only, paged by seq', async () => {
     const { driver, ride } = await onTheRoad();
     const batches = recording(ride.id, { seconds: 30 });

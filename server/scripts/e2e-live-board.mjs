@@ -86,29 +86,7 @@ await shotOf('.boards', 'landing-recent');
 await B.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
 await B.send('Page.navigate', { url: `${BASE}/lobby.html#replays` }); await sleep(2500); await B.shot('lobby-replays-phone');
 
-// ── closing a page: it leaves at once (the user's report: "closed the second browser, the counters stayed for minutes") ──
-await B.send('Emulation.clearDeviceMetricsOverride');
-await B.send('Page.navigate', { url: `${BASE}/lobby.html#live` });
-await until(() => B.ev(`!!document.getElementById('chip-live')?.textContent`), 15_000); await sleep(1500);
-const before = (await api('live')).online.browsing;
-await B.send('Page.navigate', { url: 'about:blank' });
-check('closing the lobby drops this visitor from "online" at once (pagehide beacon)', await until(async () => (await api('live')).online.browsing === before - 1, 5000), `${before} → ${(await api('live')).online.browsing}`);
-const drive = await (await post('rides', { tier: 'free' }, cookie)).json();
-await B.send('Page.navigate', { url: `${BASE}/play.html?ride=${drive.id}` });
-await until(() => B.ev(`!!document.getElementById('go')`), 20_000);
-await B.ev(`document.getElementById('go').click()`);
-check('a game tab drives a ride (on the road)', await until(async () => (await api('live')).rides.some(r => r.id === drive.id), 15_000));
-const driving = (await api('live')).online.driving;
-await B.send('Page.navigate', { url: 'about:blank' });   // the game tab closes mid-ride
-check('closing the game tab ENDS its ride at once (abandoned) – off the road, one driver less', await until(async () => {
-  const [l, h] = await Promise.all([api('live'), api(`replays?limit=50&wallet=${me}`)]);
-  return !l.rides.some(r => r.id === drive.id) && l.online.driving === driving - 1 && h.rows.some(r => r.id === drive.id && r.status === 'abandoned');
-}, 8000));
-const hist = await B.send('Page.getNavigationHistory');   // Back: the back/forward cache may hand the game page back – its ride is over, so it must not drive on
-await B.send('Page.navigateToHistoryEntry', { entryId: hist.entries[hist.currentIndex - 1].id });
-check('Back to the closed game tab: it does not drive on – the page says the ride is abandoned', await until(async () => /abandoned/.test(await B.ev(`document.getElementById('overlay')?.textContent || ''`)) && await B.ev(`!!document.getElementById('go')?.disabled`), 15_000),
-  await B.ev(`(document.getElementById('overlay')?.textContent || '').slice(0, 120)`));
-
+// (closing a page – the landing / lobby / watch page leave, the game tab's /end beacon, Back – is scripts/e2e-close.mjs: e2e.sh close close-split)
 await sim.stop();
 const probs = B.filt().filter(p => !/401.*\/api\/me/.test(p));
 check('no page errors', probs.length === 0, probs.join(' | '));
