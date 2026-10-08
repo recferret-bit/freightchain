@@ -14,7 +14,7 @@ export default defineTheme({
   weather: { ambient: 26, snow: 0 },
   daylight: { rise: 6, set: 19.5, tw: 1.1, peak: .9, warm: [1, .5, .2], stars: 1 },
   grime: '176,146,104', finishText: 'SANTA MONICA PIER',
-  livery: { body: '#e9e7df', stripe: '#1d3a5c', accent: '#ffcf5a', text: 'ROUTE 66 EXPRESS', sub: 'LONG HAUL  •  DESERT RUN' },
+  livery: { body: '#e9e7df', stripe: '#1d3a5c', accent: '#ffcf5a', text: 'ROUTE 66 EXPRESS', sub: 'LONG HAUL  •  FREIGHT CHAIN' },
   furniture: { lamp: { color: 0x6a6f74, light: 0xffa84a, every: 3, side: 0 }, post: { body: 0xf2f2ea, cap: 0xd22a22 }, pole: { color: 0x5a4630, every: 2 } },
   landmarks: { chance: .24, pal: { walls: ['#e8d9b8', '#d9b99a', '#b9d4cf'], roof: '#8a4b38' }, names: { motel: ['MOTEL', 'ROUTE 66 INN', 'DESERT LODGE'], restaurant: ['DINER', 'ROUTE 66 CAFE', 'GRILL'], gas: ['GAS', 'FUEL', 'ROUTE 66 GAS'] } },
 }, { road, sky, terrain, mountains, props });

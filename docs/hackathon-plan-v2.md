@@ -37,7 +37,7 @@ The critical path: **one real devnet payment, the economy change, two videos, th
 | Q9 | Icon done (Solana Road). A wordmark is optional. | Closed for the portal logo. |
 | Q11 | You create an X account and send the URL. | `SOCIALS` in `landing/src/main.js` waits on it. |
 | Q12 | **Drop the draw.** The 50% becomes skill prizes: **top 3 by verified distance, 25 / 15 / 10%**; the 20% top-20 pool stays. | Thursday code + copy change, before recording. |
-| Q13 | Company frame: **verified-play prize pools** – every paid result is a recorded, checked human performance; Desert Run is the first title. | Presentation, deck, form. Must not overclaim (see ground rules). |
+| Q13 | Company frame: **verified-play prize pools** – every paid result is a recorded, checked human performance; the driving sim is the first title. | Presentation, deck, form. Must not overclaim (see ground rules). |
 | Q14 | You name 5 playtesters by Thursday. | Friday playtests. |
 | RPC | QuickNode **devnet** endpoint (the first URL was mainnet and was refused). In `deploy/.env` only – never commit it, it holds the API key. | Needs a redeploy. |
 | Scope | Verified play / replay / admin / human checks = **design only** by Oct 12; telemetry playback (not deterministic re-sim). | New design section; roadmap + deck slides. |
@@ -162,7 +162,7 @@ Record on real Chrome, clean profile, the live URL.
 - [ ] **The manual payout preview:** you import `deploy/secrets/treasury.json` into a separate Phantom account, send a small devnet prize to the demo wallet with memo `round 1 prize`; I show the signature on the explorer. Said as: "this is what the admin panel will build and you will sign".
 - [ ] **Presentation, 2–3 min** (seven factors, no UI tour):
   1. Insight – Desert Bus: people watch a boring drive; the scarce thing is a proven human performance.
-  2. Product – verified-play prize pools; Desert Run is the first title. Pay a shift, the server keeps the clock, the best verified drivers of the week share the pool.
+  2. Product – verified-play prize pools; the driving sim is the first title. Pay a shift, the server keeps the clock, the best verified drivers of the week share the pool.
   3. Why you – bio.
   4. Market – skill-prize gaming with Solana wallets as the way in; one number, labelled a wedge.
   5. Money – 10% of every weekly pool; 20% seeds the next week.
@@ -182,7 +182,7 @@ Record on real Chrome, clean profile, the live URL.
 ## Submission portal
 
 - [ ] Colosseum account + World's Fair (solo).
-- [ ] Name + one line: "Freight Chain – verified-play prize pools on Solana. Desert Run is the first title: pay for a driving shift, the server keeps the clock, the best drivers of the week share the pool."
+- [ ] Name + one line: "Freight Chain – verified-play prize pools on Solana. the driving sim is the first title: pay for a driving shift, the server keeps the clock, the best drivers of the week share the pool."
 - [ ] Logo: `client/icons/icon-512.png` (Solana Road).
 - [ ] Chains and tools: Solana devnet, Phantom / Solflare, Sign-In With Solana (`tweetnacl`), System transfer + Memo, Coinbase → CoinGecko for SOL/USD, NestJS, Prisma, PostgreSQL, Docker, nginx + Let's Encrypt. Not integrated: Anchor, Metaplex, Pyth, VRF.
 - [ ] GitHub <https://github.com/recferret-bit/freightchain>, public on submit day, `main`.
@@ -196,11 +196,11 @@ Record on real Chrome, clean profile, the live URL.
 - [ ] Founder bio + location (draft below).
 
 **Bio draft (you correct; `[FILL]` = only you know):**
-> Solo founder, `[FILL: location]`. `[FILL: background – role, years, domain]`. Built the Desert Run driving sim before the hackathon; during it, shipped the Solana money loop (Sign-In With Solana, memo-checked SOL entries, a weekly prize pool in integer lamports), a NestJS + PostgreSQL backend with 400+ tests, the lobby, the landing and a one-command deploy to a live HTTPS site.
+> Solo founder, `[FILL: location]`. `[FILL: background – role, years, domain]`. Built the driving sim before the hackathon; during it, shipped the Solana money loop (Sign-In With Solana, memo-checked SOL entries, a weekly prize pool in integer lamports), a NestJS + PostgreSQL backend with 400+ tests, the lobby, the landing and a one-command deploy to a live HTTPS site.
 
 ## Proposals (form language)
 
-- **P1 Company sentence.** "Freight Chain runs prize pools where every paid result is a recorded, checked human performance. Desert Run is the first title." Today's checks are server-side timing and bounds; the full verification is the next milestone – say both.
+- **P1 Company sentence.** "Freight Chain runs prize pools where every paid result is a recorded, checked human performance. the driving sim is the first title." Today's checks are server-side timing and bounds; the full verification is the next milestone – say both.
 - **P2 Go-to-market.** Solana users who sit through on-chain spectacles and streams, plus anyone who will do a 3-minute free ride for a leaderboard. Loop: 5 free rides → 1 a day → $5 / $15 / $50 shifts. Distribution: the public live board (no account to watch), one X post per finished paid ride, the pool number. Missing on purpose: paid acquisition, mobile wallet flows beyond Phantom/Solflare, KYC.
 - **P3 Demand validation = Friday's count.** "N people outside the team finished a free ride on the public URL on Oct 10; M paid a devnet shift. No revenue, devnet only." If nobody plays: "No users yet; the live demo is the validation we can offer." No invented waitlist.
 - **P4 Viability.** The 10% fee has to cover hosting and, later, the verification and payout operations. Path: manual admin payouts on devnet → verified-play scoring → mainnet with published rules. Skill prizes only (no draw) is part of viability.

@@ -1,4 +1,4 @@
-# Freight Chain – "Desert Run"
+# Freight Chain
 
 Browser game inspired by *Desert Bus* (1995): a 2D truck cockpit drawn over a 3D desert road. The product idea is a crypto
 "hype" game where each ride **costs money and takes a minimum real time** (`RIDE_MIN_SECONDS`, 30 min in production). The road **never ends**: it is generated
@@ -124,6 +124,7 @@ js/world/daynight.js  day/night: exposure + night sky/fog fade (`dn.k`, re-appli
 js/world/theme-manager.js  selectTheme(id): applies a route + its road curvature + trailer livery, rebuilds chunks, remembers the choice
 js/world/props.js     shared geometry, mk(), KINDS (destructible-prop table: hp/r/dmg/slow per kind), `destroyed` set
 js/world/pool.js      object pools (`ObjectPool`, `mesh()`, `group()`, `releaseTree()`) – leaf module, see "Object pools"
+js/world/spacing.js   the roadside spacing rule (leaf, no three.js): footprints, ranks (building > furniture > hole-warning sign > scenery), GAP 1.2 m, `insideChunk` – chunks.js places in rank order and DROPS what would stand inside / too close to something else; unit-tested (`client/test/spacing.test.mjs`, `npm run test:unit`) and re-checked on every route x layout by the headless test ("road content …")
 js/world/chunks.js    `RoadObjectManager` (`roadObjects`): 32 m road chunks streamed around the truck (road strips + junctions + depot + the route's props/furniture), built from / recycled into the pools
 js/world/roadmesh.js  pooled rewritable strip meshes (`stripPool`): spine surface, markings (atlas), side roads; `buildSpine`, `markLines`, `strip`, `bar`
 js/world/junctions.js junction aprons, side roads, stop lines, traffic-light masts (`heads`, `updateSignals`), STOP signs, the main road behind the depot turn

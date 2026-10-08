@@ -22,7 +22,6 @@ window.__dir = (() => {
 #fx .a{position:absolute}
 #fx .tick{left:0;right:0;top:0;height:${px(30)};background:var(--lcd-bg);border-bottom:1px solid #1e4a22;color:var(--lcd);font-size:${px(14)};letter-spacing:.5px;white-space:nowrap;overflow:hidden;line-height:${px(30)}}
 #fx .brand{left:${px(24)};top:${px(44)};display:flex;gap:${px(10)};align-items:center;color:var(--amber);font-weight:700;letter-spacing:2px;font-size:${px(20)};text-shadow:0 2px 12px #000}
-#fx .brand small{font-size:${px(11)};letter-spacing:3px;color:var(--dim);font-weight:400}
 #fx .chip{border:1px solid #ffcf5a55;border-radius:999px;padding:${px(3)} ${px(12)};font-size:${px(13)};letter-spacing:1px;background:#000a;white-space:nowrap}
 #fx .chip.lcd{background:var(--lcd-bg);border-color:#1e4a22;color:var(--lcd)} #fx .chip.lcd::before{content:"";display:inline-block;width:${px(7)};height:${px(7)};border-radius:50%;background:var(--lcd);margin-right:${px(7)}}
 #fx .sol{right:${px(24)};top:${px(44)};display:flex;align-items:center;gap:${px(9)};padding:${px(6)} ${px(14)};border-radius:999px;background:#0b0a09d9;border:1.5px solid transparent;background-clip:padding-box;position:absolute;font-weight:700;letter-spacing:2px;font-size:${px(15)}}
@@ -60,7 +59,7 @@ window.__dir = (() => {
     document.body.insertAdjacentHTML('beforeend', `<div id="fx">
       <div class="a vig"></div><div class="a scan"></div>
       <div class="a tick"><span id="fx-tk"></span></div>
-      <div class="a brand"><span style="color:var(--gear)">⛟</span> FREIGHT CHAIN <small>DESERT RUN</small><span class="chip lcd" id="fx-route"></span></div>
+      <div class="a brand"><span style="color:var(--gear)">⛟</span> FREIGHT CHAIN<span class="chip lcd" id="fx-route"></span></div>
       <div class="sol">${sol} SOLANA</div>
       <div class="a cap" id="fx-cap"><div class="n" id="fx-n"></div><h2 id="fx-h"></h2><p id="fx-p"></p><div class="bar" id="fx-bar"></div></div>
       <div class="a stamp" id="fx-stamp">✖ SHIFT OVER</div>
@@ -74,6 +73,7 @@ window.__dir = (() => {
   /* ───────── scene setup / per-step hook ───────── */
   async function setup(s) {
     const G = g(), { st, CFG, dn } = G;
+    window.__reseed?.(7919 * (k + 1) + (s.seed ?? 0));   // every scene draws from its OWN random stream (traffic, dust…): a change to the world generator or to an earlier scene no longer reshuffles this one; `seed` on a scene re-rolls just it
     G.Wallet.credit(100); G.CFG.TRAFFIC = s.traffic; st.mode = 'done';
     G.selectTheme(s.route, false);
     if (s.time === 'night' || s.time === 'day') G.setNight(s.time === 'night', true, false); else G.setPhase(s.time);
@@ -99,7 +99,7 @@ window.__dir = (() => {
     if (st.mode === 'drive') {
       st.v = a[0] + (a[1] - a[0]) * p; st.engineOn = true; st.park = false; G.input.gas = .5; if (!cur.shift) st.slip = false; st.d =   /* the scripted v overrides physics, so the clutch must not stay in 'slip' (rpm would sit at idle) */  2.4 + (s.sway ?? .35) * Math.sin(cur.t * 1.4) + (cur.steer ?? 0); st.psi = 0;
       if (!s.damage) { st.hull = 100; st.offT = 0; st.cracks.length = 0; }   // scenes that are not about damage stay clean
-    } else if (!cur.crashed) { cur.crashed = true; cur.crashT = cur.t; log.push({ t: now(), type: 'crash' }); }
+    } else if (!cur.crashed) { cur.crashed = true; cur.crashT = cur.t; log.push({ t: now(), type: 'crash', why: (document.getElementById('overlay')?.textContent || '').replace(/\s+/g, ' ').slice(0, 140) }); }
     document.getElementById('overlay').classList.add('hide');
     cur.t += dt;
   }

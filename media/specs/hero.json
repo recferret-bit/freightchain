@@ -30,7 +30,7 @@
      "at": 0.25,
      "dur": 2.4,
      "head": "TAKE A PAID RIDE",
-     "sub": "Buy a shift in SOL. Row the gears. Hit the road."
+     "sub": "A shift costs SOL. You work the clutch and the gearbox yourself."
     }
    ]
   },
@@ -61,7 +61,7 @@
      "at": 0.1,
      "dur": 1.5,
      "head": "ONE MISTAKE ENDS IT",
-     "sub": "Traffic. Potholes. Red lights. A crash = shift over."
+     "sub": "Plough into traffic and the shift is over on the spot."
     }
    ]
   },
@@ -116,7 +116,7 @@
      "at": 0.2,
      "dur": 2.5,
      "head": "SURVIVE THE LONG HAUL",
-     "sub": "30-minute shifts. Night falls. Lights on, eyes open."
+     "sub": "Thirty minutes at the wheel, and the sun goes down halfway."
     }
    ]
   },
@@ -138,7 +138,7 @@
      "at": 0.2,
      "dur": 2.1,
      "head": "COMPETE ON EVERY ROUTE",
-     "sub": "Siberia, -22 °C. The glass freezes shut."
+     "sub": "Siberia at −22 °C: frost creeps across the windscreen."
     }
    ]
   },
@@ -175,7 +175,7 @@
      "at": 0.15,
      "dur": 1.95,
      "head": "WIN WEEKLY PRIZES",
-     "sub": "Outlast the red dust. Finishers split the SOL pool."
+     "sub": "Finish the shift and you share the weekly SOL pool."
     }
    ]
   },

@@ -9,7 +9,8 @@ import { spawn, cars } from './sim/traffic.js';
 import { audio } from './sim/audio.js';
 import { radio } from './sim/radio.js';
 import { resize, renderWorld } from './world/render.js';
-import { roadObjects } from './world/chunks.js';
+import { roadObjects, chunks } from './world/chunks.js';
+import * as spacing from './world/spacing.js';
 import { roads } from './net/orchestrator.js';
 import { net } from './net/network.js';
 import { drawCockpit } from './cockpit/index.js';
@@ -50,8 +51,8 @@ if (await initWatch()) {   // only with ?watch=<id> (see watch.js): the watched 
   if (watch.ride) { selectTheme(THEMES.some(t => t.id === watch.ride.route) ? watch.ride.route : THEMES[0].id, false); resize(); resetRide(watch.ride.seed); st.mode = 'drive'; startWatch(); }
   else resize();
   mountWatchPanel();
-} else { resize(); resetRide(); showMenu('DESERT RUN', 'Freight Chain · long-haul simulator'); }
+} else { resize(); resetRide(); showMenu('FREIGHT CHAIN', 'Long-haul truck simulator'); }
 requestAnimationFrame(frame);
-window.__game = { cosmetics, online, telemetry, watch, liveFeed, radio, roadObjects, roads, net, st, disp, CFG, Wallet, input, tryShift, ignition, startRide, curv, spawn, traffic: cars, selectTheme, THEMES, setNight, setPhase, setClock, dn, weather, holes: { HOLES, holeAt, holesNear, clearHoleCache } };   // handy for console debugging
+window.__game = { cosmetics, online, telemetry, watch, liveFeed, radio, roadObjects, chunks, spacing, roads, net, st, disp, CFG, Wallet, input, tryShift, ignition, startRide, curv, spawn, traffic: cars, selectTheme, THEMES, setNight, setPhase, setClock, dn, weather, holes: { HOLES, holeAt, holesNear, clearHoleCache } };   // handy for console debugging
 
  

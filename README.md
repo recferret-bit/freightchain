@@ -1,6 +1,6 @@
 # freightchain
 
-Freight Chain – "Desert Run": a browser truck-driving game with a Solana-paid lobby.
+Freight Chain: a browser truck-driving game with a Solana-paid lobby.
 
 - `client/` – the game and the lobby (vanilla ES modules + three.js)
 - `landing/` – the `/` page and the whitepaper (`whitepaper.html`, `whitepaper.<apex>` in production; a second page of the same Vite build): a small Vite project (wallet sign-in, live pool and boards, dash cards rendered by the game's own cockpit code)

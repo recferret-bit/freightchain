@@ -58,6 +58,12 @@ Object.assign(st,{s:60000,d:2.4,psi:0,v:20,hull:100,offT:0}); drive(3,'60 km out
 st.d=12; st.psi=0; for(let i=0;i<60&&st.mode==='drive';i++){ step(6); } snap('roadside run');
 // every route: switch, start a ride, drive a bit on the main road (exercises sky/terrain/props/furniture/road build for each theme)
 for(const t of G.THEMES){ G.selectTheme(t.id,false); G.st.mode='done'; G.startRide(); st.park=false; G.st.s=net.Sm+300; G.st.v=14; step(90); out.push(`route ${t.id.padEnd(12)} s=${G.st.s.toFixed(1)} chunks ok`); }
+// road content never overlaps: over every route x several layouts, no two objects (props, furniture, warning signs, buildings) stand inside each other or closer than CFG-free GAP (world/spacing.js)
+{ const { overlap } = G.spacing; let pairs=0, bad=[], n=0;
+  for(const t of G.THEMES) for(const sd of [3,11,29,57,101,1337]) { G.selectTheme(t.id,false); net.reset(sd); G.holes.clearHoleCache(); for(const at of [0,2500,9000]) { G.roadObjects.update(at+net.Sm);
+    const cs=[]; for(const [,g] of G.chunks) cs.push(...g.userData.layout); n+=cs.length;
+    cs.sort((a,b)=>a.s-b.s); for(let i=0;i<cs.length;i++) for(let j=i+1;j<cs.length&&cs[j].s-cs[i].s<12;j++) { pairs++; const o=overlap(cs[i],cs[j]); if(o) bad.push(`${t.id}#${sd} ${cs[i].kind}@${cs[i].s.toFixed(0)}/${cs[i].l.toFixed(1)} ~ ${cs[j].kind}@${cs[j].s.toFixed(0)}/${cs[j].l.toFixed(1)}`); } } }
+  check(n>2000&&bad.length===0,`road content: ${n} objects over 5 routes x 6 layouts, ${pairs} close pairs checked, ${bad.length} overlapping or too close`+(bad.length?' e.g. '+bad.slice(0,4).join(' | '):'')); }
 snap('end');
 // launch with the SHIPPED handling (not the old values above): clutch in, gear, gas, release the clutch, 5 s later the truck must be rolling (no gas / 6th = stall)
 Object.assign(G.CFG.TRUCK,TRUCK0); G.selectTheme('route66',false);

@@ -6,6 +6,7 @@ import { scene } from './scene.js';
 import { KINDS, destroyed } from './props.js';
 import { env } from './environment.js';
 import { buildHoles } from './holes.js';
+import { footprintOf, insideChunk, occupancy } from './spacing.js';
 import { buildJunction, heads } from './junctions.js';
 import { buildDepot } from './depot.js';
 import { stripPool, strips, finish, buildSpine } from './roadmesh.js';
@@ -27,23 +28,27 @@ function buildChunk(ci) {
   buildSpine(surf, marks, s0, s0 + CH);
 
   const raw = (obj, s, lat, yaw) => { const p = roadAt(s); obj.position.set(p.x + Math.cos(p.t) * lat, 0, p.z + Math.sin(p.t) * lat); obj.rotation.y = yaw ?? -p.t; grp.add(obj); };
-  const place = (obj, s, lat, yaw) => { const l = net.roadside(s, lat); if (net.keepOut(s, l)) releaseTree(obj); else raw(obj, s, l, yaw); };
+  const occ = occupancy(); grp.userData.layout = occ.items;   // what was laid out and where (world/spacing.js): the rule that nothing stands in, or too close to, anything else
+  const claim = (obj, s, l) => { const u = obj.userData, k = KINDS[u.kind]; if (!k) return true; const f = footprintOf(u.kind, k(u.size), s, l); f.obj = obj; return occ.claim(f); };
+  const place = (obj, s, lat, yaw) => { const l = net.roadside(s, lat); if (net.keepOut(s, l) || !claim(obj, s, l)) releaseTree(obj); else raw(obj, s, l, yaw); };
   const colliders = []; grp.userData.colliders = colliders; grp.userData.heads = [];
   const rawReg = (obj, id, s, lat, extra) => { if (obj.parent !== grp) return; const u = obj.userData, d = KINDS[u.kind](u.size); colliders.push({ obj, id, s, lat, kind: u.kind, size: u.size, hp: d.hp, r: d.r, rf: d.rf ?? d.r, rl: d.rl ?? d.r, dmg: d.dmg, slow: d.slow, cool: 0, dead: false, ...extra }); };
-  const reg = (obj, id, s, lat, extra) => rawReg(obj, id, s, net.roadside(s, lat), extra);
+  const reg = (obj, id, s, lat, extra) => { if (extra?.rf) { const f = occ.items.find(o => o.obj === obj); if (f) { f.rf = extra.rf; f.rl = extra.rl; } } rawReg(obj, id, s, net.roadside(s, lat), extra); };   // a building's real footprint comes with its reg
   const siteAt = k => net.busy(k * CH - 20, k * CH + CH + 20) ? null : env.landmarks?.site(k, k * CH) ?? null;
   const lm = siteAt(ci);   // at most one building per chunk; ordinary props stay out of its footprint
-  // roadside scenery (kinds, density and distances come from the route's props.js)
-  for (let k = 0; k < pr.slots; k++) {
-    const key = ci * 10 + k; if (rnd(key) > pr.density) continue;
-    const s = s0 + (k + rnd(key + .5)) * CH / pr.slots, side = rnd(key + .7) < 0.5 ? -1 : 1, off = pr.near + Math.pow(rnd(key + .9), 1.6) * pr.span;
-    if (lm && side === lm.side && Math.abs(s - lm.s) < lm.hl + 3 && off < lm.near + lm.hd * 2 + 3) continue;
-    const id = ci + ':' + k; if (destroyed.has(id)) continue;
-    const prop = pr.pick(rnd(key + .3), rnd(key + .1)); place(prop, s, side * off, rnd(key) * 6); reg(prop, id, s, side * off);
-  }
   env.landmarks?.build(lm, ci, { place, reg, destroyed });
   env.furniture.build({ ci, s0, place, reg, destroyed, lm, lms: [ci - 1, ci, ci + 1].map(k => k === ci ? lm : siteAt(k)).filter(Boolean) });   // delineator posts / poles / guardrails
   buildHoles(ci, s0, { place, raw, reg, destroyed });   // road holes + the warning signs before them
+  // roadside scenery (kinds, density and distances come from the route's props.js); placed LAST, so it is the one that gives way to buildings, guardrails and warning signs
+  for (let k = 0; k < pr.slots; k++) {
+    const key = ci * 10 + k; if (rnd(key) > pr.density) continue;
+    let s = s0 + (k + rnd(key + .5)) * CH / pr.slots; const side = rnd(key + .7) < 0.5 ? -1 : 1, off = pr.near + Math.pow(rnd(key + .9), 1.6) * pr.span;
+    const id = ci + ':' + k; if (destroyed.has(id)) continue;
+    const prop = pr.pick(rnd(key + .3), rnd(key + .1)), u = prop.userData, d = KINDS[u.kind](u.size);
+    s = insideChunk(s, d.rf ?? d.r, s0, CH);
+    if (lm && side === lm.side && Math.abs(s - lm.s) < lm.hl + 3 && off < lm.near + lm.hd * 2 + 3) { releaseTree(prop); continue; }
+    place(prop, s, side * off, rnd(key) * 6); reg(prop, id, s, side * off);
+  }
   for (const j of net.near(s0, s0 + CH)) if (j.s < s0 + CH) buildJunction(j, { surf, pad, marks, place: raw, reg: rawReg, destroyed, heads: grp.userData.heads });
   if (ci === 0) buildDepot({ place: raw, reg: rawReg, destroyed });
   grp.userData.strips = [];
