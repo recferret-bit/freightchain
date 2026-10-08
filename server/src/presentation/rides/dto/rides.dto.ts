@@ -5,7 +5,7 @@ import { MAX_REPORTED_DISTANCE } from '../../../domain/rides/ride-rules.js';
 import { RIDE_TIER_IDS } from '../../../domain/rides/ride-tier.js';
 import { REASON_MAX_LENGTH } from '../../../domain/rides/ride-rules.js';
 import type { BatchBody } from '../../../domain/telemetry/ride-batch.entity.js';
-import { BATCH_MAX_INPUTS, BATCH_MAX_SAMPLES, BATCH_MAX_SEQ, INPUT_CODE_MAX_LENGTH, MAX_GAME_SECONDS, SAMPLE_MAX_WIDTH } from '../../../domain/telemetry/telemetry-rules.js';
+import { BATCH_MAX_INPUTS, BATCH_MAX_SAMPLES, BATCH_MAX_SEQ, INPUT_CODE_MAX_LENGTH, MAX_GAME_SECONDS, SAMPLE_MAX_WIDTH, TRAFFIC_MAX_FRAMES, TRAFFIC_MAX_ROW } from '../../../domain/telemetry/telemetry-rules.js';
 
 export const createRideBodySchema = z.object({ tier: z.enum(RIDE_TIER_IDS) });
 export type CreateRideBody = z.infer<typeof createRideBodySchema>;
@@ -56,8 +56,10 @@ export const batchBodySchema = z
     samples: z.array(z.array(z.number().finite()).max(SAMPLE_MAX_WIDTH)).max(BATCH_MAX_SAMPLES),
     inputs: z.array(z.tuple([z.number().finite().min(0), z.string().max(INPUT_CODE_MAX_LENGTH), z.union([z.literal(0), z.literal(1)])])).max(BATCH_MAX_INPUTS),
     hash: z.string().regex(/^[0-9a-f]{64}$/, 'must be a lowercase hex SHA-256').nullish(),
+    // replays' traffic track: LENIENT – anything malformed is dropped (.catch), never a 400 (a refused batch would break the recording's chain)
+    traffic: z.array(z.array(z.number().finite()).max(TRAFFIC_MAX_ROW)).max(TRAFFIC_MAX_FRAMES).optional().catch(undefined),
   })
-  .transform((b): BatchBody => ({ seq: b.seq, prevHash: b.prevHash, t0: b.t0, t1: b.t1, samples: b.samples, inputs: b.inputs, hash: b.hash ?? null }));
+  .transform((b): BatchBody => ({ seq: b.seq, prevHash: b.prevHash, t0: b.t0, t1: b.t1, samples: b.samples, inputs: b.inputs, hash: b.hash ?? null, ...(b.traffic?.length ? { traffic: b.traffic } : {}) }));
 export type BatchBodyInput = z.infer<typeof batchBodySchema>;
 
 export const endRideBodySchema = z

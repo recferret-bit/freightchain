@@ -29,7 +29,7 @@ const PRESETS = {
 const BEHIND_OK = ['tailgate', 'overtake', 'emergency'], CROSS_OK = ['cruise', 'slow', 'tailgate'];   // presets for vehicles spawning behind the truck / on side roads
 export const cars = [];   // live vehicles (debug handle: window.__game.traffic)
 export const MAIN = { main: true, at: m => net.mainAt(m), coords: (x, z, hint) => net.mainCoords(x, z, hint) };
-const T = { rng: Math.random, seed: 0, spawnT: 0, cross: new Map() };
+const T = { rng: Math.random, seed: 0, spawnT: 0, cross: new Map(), ids: 0 };   // ids: a stable number per vehicle for the recording (no rng draw)
 const TK = { pts: [], x: 0, z: 0, vx: 0, vz: 0, th: 0, m: 0 };   // the truck this step: world corners, eye, velocity, heading, main-road coordinate
 
 const bumpDmg = (def, closing) => Math.min(25, 4 * def.mass * (closing / CFG.CRASH_CLOSING) ** 2 + .5);   // hull % lost in a bump: ∝ mass · closing speed²
@@ -73,7 +73,7 @@ function spawnAt(type, preset, road, dir, s, lat) {
   const home = lat ?? laneLat(dir, lane);
   for (const o of cars) if (o.road === road && Math.abs(o.lat - home) < 2.5 && Math.abs(o.s - s) < 40 + (o.def.len + def.len) / 2) return null;
   let vDes = Math.min(34, (def.v[0] + T.rng() * (def.v[1] - def.v[0])) * P.speed); if (!road.main) vDes = Math.min(vDes, 15 + T.rng() * 3);
-  const mesh = buildVehicle(def, T.rng() * 100 | 0), a = { def, P, preset, road, dir, s, lat: home, lane, target: home, lv: 0, v: vDes, vDes, brake: false, mesh, lcT: 0, ph: T.rng() * 6.28, t: 0, cool: 0, over: false, dV: Infinity };
+  const pick = T.rng() * 100 | 0, mesh = buildVehicle(def, pick), a = { id: ++T.ids, pick, def, P, preset, road, dir, s, lat: home, lane, target: home, lv: 0, v: vDes, vDes, brake: false, mesh, lcT: 0, ph: T.rng() * 6.28, t: 0, cool: 0, over: false, dV: Infinity };
   cars.push(a); place(a); return a;
 }
 function pickType(ok) {
@@ -91,7 +91,7 @@ function spawnCross(j, c) {
   return spawnAt(tp[0], tp[1], line, dir, c ?? -dir * (j.len - 25));
 }
 export function resetTraffic(seed) {
-  for (const a of cars) removeVehicle(a.mesh); cars.length = 0; T.cross.clear();
+  for (const a of cars) removeVehicle(a.mesh); cars.length = 0; T.cross.clear(); T.ids = 0;
   if (!CFG.TRAFFIC) return;   // (no Math.random() draw when off, so the headless trace stays comparable)
   T.seed = seed ?? Math.random() * 4294967296 >>> 0; T.rng = mulberry32(T.seed); T.spawnT = CFG.TRAFFIC_GAP;
   truckPose();
@@ -279,4 +279,20 @@ export function updateTraffic(dt) {
     if (!fatal && tb && a.cool <= 0 && Math.abs(a.s - tb.s) < 25 + a.def.len + tb.len / 2) fatal = contact(a, tb);
   }
   return fatal;
+}
+
+/* the traffic around the truck for a spectator's replay (live streams – telemetry.js records it at TRAFFIC_HZ, watch.js redraws it): the nearest
+   vehicles within `range` m as flat rows of 7 – [id, type, colour pick, x, z, yaw, flags (1 brake · 2 siren)] in WORLD coordinates. Display only:
+   the verdict never reads it. */
+export const TRAFFIC_TYPES = Object.keys(VEHICLES);
+export function trafficSnapshot(range = 400, max = 16) {
+  const p = roadAt(st.s), tx = p.x + Math.cos(p.t) * st.d, tz = p.z + Math.sin(p.t) * st.d, near = [];
+  for (const a of cars) { const m = a.mesh.position, d = Math.hypot(m.x - tx, m.z - tz); if (d <= range) near.push([d, a]); }
+  near.sort((x, y) => x[0] - y[0]);
+  const out = [], r = (v, k) => Math.round(v * k) / k;
+  for (const [, a] of near.slice(0, max)) {
+    const m = a.mesh, u = m.userData;
+    out.push(a.id, TRAFFIC_TYPES.indexOf(a.def.type), a.pick, r(m.position.x, 10), r(m.position.z, 10), r(m.rotation.y, 1000), (a.brake ? 1 : 0) | (u.flash ? 2 : 0));
+  }
+  return out;
 }

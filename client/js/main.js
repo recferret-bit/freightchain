@@ -45,7 +45,7 @@ if (online.ride) {
   track('ride_load_failed', { stage, http_status: typeof online.status === 'number' ? online.status : null, code: typeof online.code === 'string' ? online.code : null });
 }
 if (await initWatch()) {   // only with ?watch=<id> (see watch.js): the watched ride's route + seed, no menu, the watch panel instead
-  CFG.TRAFFIC = false;   // traffic is the driver's own unrecorded sim: a replay shows an empty road rather than cars that were never there
+  CFG.TRAFFIC = false;   // no traffic SIM in a replay: watch.js draws the traffic the driver's game RECORDED (an empty road for recordings from before that)
   if (watch.ride) { selectTheme(THEMES.some(t => t.id === watch.ride.route) ? watch.ride.route : THEMES[0].id, false); resize(); resetRide(watch.ride.seed); st.mode = 'drive'; startWatch(); }
   else resize();
   mountWatchPanel();

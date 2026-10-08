@@ -11,6 +11,7 @@ import { roads } from '../net/orchestrator.js';
 import { resetScreen, wip } from '../cockpit/windscreen.js';
 import { telemetry, FLAGS } from '../telemetry.js';
 import { radio } from '../sim/radio.js';
+import { trafficSnapshot } from '../sim/traffic.js';
 import { routesHTML, bindRoutes, timeHTML, bindTime } from './routes.js';
 import { online, beginOnline, endOnline } from '../online.js';
 import { startLiveFeed, stopLiveFeed } from './live-feed.js';
@@ -27,6 +28,7 @@ export function resetRide(seed = online.ride?.seed) {   // seed: the server's fo
 
 online.extra = () => ({ route: env.theme.id, night: dn.night });   // what the server's public live feed shows next to the ride
 /* the recording's two replay columns (telemetry.js): the hour of the day + the cab's switches, so a spectator sees the lights / wipers the driver had */
+telemetry.trafficOf = () => trafficSnapshot();   // the cars around the truck, recorded beside each batch for spectators' replays
 telemetry.extra = () => [Math.round(dn.t * 100) / 100,
   (st.engineOn ? FLAGS.engine : 0) | (st.keyOn ? FLAGS.key : 0) | (st.park ? FLAGS.park : 0) | (dn.head ? FLAGS.head : 0) | (dn.cab ? FLAGS.cab : 0) | (st.heater ? FLAGS.heater : 0)
   | (st.washing ? FLAGS.washing : 0) | (wip.mode === 1 ? FLAGS.wipeSlow : wip.mode === 2 ? FLAGS.wipeFast : 0) | (radio.on ? FLAGS.radio : 0) | (st.rev ? FLAGS.rev : 0)];

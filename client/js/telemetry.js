@@ -7,7 +7,7 @@ import { API_BASE } from './hosts.js';
    The server does not re-simulate anything: it checks the chain, that the recording agrees with what was reported, and how human the input timing looks
    (server/src/domain/verdict). Batch shape + canonical text must match server/src/domain/telemetry/ride-batch.entity.ts. */
 
-const rec = { extra: () => [], on: false, rideId: '', seq: 0, prevHash: '', t0: 0, acc: 0, wall0: 0, samples: [], inputs: [], queue: [], sealing: Promise.resolve(), sending: null, refused: null };
+const rec = { extra: () => [], trafficOf: () => [], traffic: [], tacc: 0, on: false, rideId: '', seq: 0, prevHash: '', t0: 0, acc: 0, wall0: 0, samples: [], inputs: [], queue: [], sealing: Promise.resolve(), sending: null, refused: null };
 const r = (v, decimals) => { if (!Number.isFinite(v)) return 0; const f = 10 ** decimals; return Math.round(v * f) / f; };   // NaN would serialise as null and the server refuses the batch   // the shortest JSON (x / 100, not x * 0.01: no 0.30000000000000004)
 
 /** One input event: ms since the ride started (wall clock – human timing is measured in real time), the key code or dash button, 1 = down / 0 = up.
@@ -25,6 +25,8 @@ export function tickTelemetry(dt) {
   rec.acc += dt;
   const period = 1 / CFG.TELEMETRY_HZ;
   if (rec.acc >= period) { rec.acc -= period; if (rec.acc >= period) rec.acc = 0; rec.samples.push(sample()); }   // keep the remainder: a true 10 Hz at any frame rate
+  rec.tacc += dt;
+  if (rec.tacc >= 1 / TRAFFIC_HZ) { rec.tacc = 0; rec.traffic.push([r(st.t, 2), ...rec.trafficOf()]); }   // the cars around the truck, for replays (not judged)
   if (st.t - rec.t0 >= CFG.TELEMETRY_BATCH_SECONDS) cut();
 }
 /** [t, s, d, psi, v, rpm, gear, hull, gas, brake, steer, clutch, clock, flags] – the order the server reads (the verdict uses the first 12; the last two are only
@@ -34,18 +36,19 @@ const sample = () => [r(st.t, 2), r(st.s, 1), r(st.d, 2), r(st.psi, 3), r(st.v, 
 export const FLAGS = { engine: 1, key: 2, park: 4, head: 8, cab: 16, heater: 32, washing: 64, wipeSlow: 128, wipeFast: 256, radio: 512, rev: 1024 };
 
 export function startTelemetry(rideId) {
-  Object.assign(rec, { on: true, rideId, seq: 0, prevHash: rideId, t0: st.t, acc: 0, wall0: performance.now(), samples: [], inputs: [], queue: [], sealing: Promise.resolve(), sending: null, refused: null });
+  Object.assign(rec, { on: true, rideId, seq: 0, prevHash: rideId, t0: st.t, acc: 0, tacc: 0, wall0: performance.now(), samples: [], inputs: [], traffic: [], queue: [], sealing: Promise.resolve(), sending: null, refused: null });
 }
 
 /** Seal what is recorded so far into a batch (chained after the previous one) and send. */
 function cut() {
   const body = { seq: rec.seq++, prevHash: '', t0: r(rec.t0, 2), t1: r(Math.max(st.t, rec.t0), 2), samples: rec.samples, inputs: rec.inputs };
-  rec.t0 = st.t; rec.samples = []; rec.inputs = [];
+  const traffic = rec.traffic; rec.t0 = st.t; rec.samples = []; rec.inputs = []; rec.traffic = [];
   rec.sealing = rec.sealing.then(async () => {   // the hash of batch n is the prevHash of n+1, so batches are sealed one after another
     body.prevHash = rec.prevHash;
     const text = JSON.stringify({ seq: body.seq, prevHash: body.prevHash, t0: body.t0, t1: body.t1, samples: body.samples, inputs: body.inputs });
     body.hash = await sha256(text).catch(() => null);   // a failed digest must not stop the chain: the batch goes unhashed (the server marks it untrusted)
     rec.prevHash = body.hash ?? `unhashed-${body.seq}`;
+    if (traffic.length && text.length + JSON.stringify(traffic).length < TRAFFIC_BODY_BUDGET) body.traffic = traffic;   // beside the hashed text, never in it; dropped rather than risk the 100 kB body limit
     if (!rec.refused) { rec.queue.push(body); send(); }
   }).catch(() => { /* never let one step break the chain of later ones */ });
 }
@@ -94,5 +97,9 @@ export const FLUSH_WAIT_MS = 3000;   // /end waits this long for the final uploa
 function retryInBackground(until) {
   setTimeout(async () => { await send(); if (rec.queue.length && Date.now() < until) retryInBackground(until); }, RETRY_MS);
 }
+
+/* replays' traffic track (live streams): TRAFFIC_HZ frames [t, …7 numbers per nearby vehicle] per batch, OUTSIDE the canonical (hashed) text –
+   keep TRAFFIC_HZ and the budget in step with TRAFFIC_MAX_* in server/src/domain/telemetry/telemetry-rules.ts */
+const TRAFFIC_HZ = 2, TRAFFIC_BODY_BUDGET = 90_000;
 
 export const telemetry = rec;   // debug / e2e: __game.telemetry

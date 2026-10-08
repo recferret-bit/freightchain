@@ -48,7 +48,7 @@ export class WatchRideHandler implements IQueryHandler<WatchRideQuery, WatchDto>
         driveSeconds: Math.round(ride.driveSeconds), distance: Math.round(ride.distance), hull: ride.hull === null ? null : Math.round(ride.hull),
       },
       recording: extent,
-      batches: page.map((b) => ({ seq: b.seq, t0: b.t0, t1: b.t1, samples: b.body.samples })),
+      batches: page.map((b) => ({ seq: b.seq, t0: b.t0, t1: b.t1, samples: b.body.samples, ...(b.body.traffic ? { traffic: b.body.traffic } : {}) })),
       events: withoutMuted(events.map(toRideEventDto), muted),
       totals,
       viewers: !live ? 0 : viewer ? this.viewers.seen(ride.id, source, viewer, now) : this.viewers.count(ride.id, now),

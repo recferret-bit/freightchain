@@ -49,6 +49,8 @@ export interface WatchBatchDto {
   t0: number;
   t1: number;
   samples: number[][];
+  /** the nearby traffic, 2 frames per game second: [t, …(id, type, colour, x, z, yaw, flags) per vehicle] (absent = not recorded) */
+  traffic?: number[][];
 }
 
 export interface WatchRideDto {

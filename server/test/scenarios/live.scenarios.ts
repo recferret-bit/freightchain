@@ -41,6 +41,18 @@ export function liveScenarios(h: () => Harness): void {
     await anon().get(`/api/watch/${ride.id}`).query({ viewer: '<script>' }).expect(400);
   });
 
+  it('the replays\' traffic track: uploaded beside a batch (outside its hash), served back with it; a malformed one is dropped – the batch is still taken', async () => {
+    const { driver, ride } = await onTheRoad();
+    const [b0, b1] = recording(ride.id, { seconds: 30 });
+    sec(30);
+    const traffic = [[0.5, 3, 1, 4, 120.5, -10, 1.571, 1]];
+    expect((await driver.agent.post(`/api/rides/${ride.id}/batches`).send({ ...b0, traffic }).expect(200)).body).toMatchObject({ stored: true, hashOk: true });
+    expect((await driver.agent.post(`/api/rides/${ride.id}/batches`).send({ ...b1, traffic: 'garbage' }).expect(200)).body).toMatchObject({ stored: true, hashOk: true });
+    const { batches } = (await anon().get(`/api/watch/${ride.id}`).expect(200)).body;
+    expect(batches[0].traffic).toEqual(traffic);
+    expect(Object.keys(batches[1])).not.toContain('traffic');
+  });
+
   it('a signed-in spectator writes and donates; the driver reads it in its inbox, stamps the obstacle it placed, and every watcher sees where', async () => {
     const { driver, ride } = await onTheRoad();
     const fan = await login();

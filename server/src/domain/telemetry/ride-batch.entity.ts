@@ -1,5 +1,5 @@
 import { BadRequestError } from '../shared/errors.js';
-import { BATCH_MAX_BYTES, SAMPLE_COUNT_SLACK, SAMPLE_HZ, SAMPLE_RATE_SLACK, type RecordingAllowance } from './telemetry-rules.js';
+import { BATCH_MAX_BYTES, SAMPLE_COUNT_SLACK, SAMPLE_HZ, SAMPLE_RATE_SLACK, TRAFFIC_MAX_BYTES, TRAFFIC_MAX_FRAMES, type RecordingAllowance } from './telemetry-rules.js';
 
 /** One input event: milliseconds since the ride started (wall time), the key / dash-button code, 1 = pressed 0 = released. */
 export type InputEvent = [t: number, code: string, down: 0 | 1];
@@ -15,6 +15,8 @@ export interface BatchBody {
   inputs: InputEvent[];
   /** the client's SHA-256 of `RideBatch.canonical(body)`; null = it could not hash */
   hash: string | null;
+  /** the nearby traffic for replays (frames [t, …7 numbers per vehicle]) – not part of the canonical text, never judged; absent = none recorded */
+  traffic?: number[][];
 }
 
 export interface RideBatchProps {
@@ -52,6 +54,7 @@ export class RideBatch {
     if (body.samples.length > (body.t1 - body.t0) * SAMPLE_HZ * SAMPLE_RATE_SLACK + SAMPLE_COUNT_SLACK) throw new BadRequestError('too many samples for the time span', 'bad_batch');
     const bytes = (canonicalText ?? RideBatch.canonical(body)).length; // the caller usually built the text already, to hash it
     if (bytes > BATCH_MAX_BYTES) throw new BadRequestError('batch too large', 'bad_batch');
+    if (body.traffic && (body.traffic.length > TRAFFIC_MAX_FRAMES || JSON.stringify(body.traffic).length > TRAFFIC_MAX_BYTES)) body = { ...body, traffic: undefined };   // dropped, never refused
     return new RideBatch({
       rideId, seq: body.seq, prevHash: body.prevHash, hash: body.hash, hashOk: body.hash !== null && body.hash === serverHash,
       t0: body.t0, t1: body.t1, samples: body.samples.length, inputs: body.inputs.length, bytes, body, receivedAt: now,

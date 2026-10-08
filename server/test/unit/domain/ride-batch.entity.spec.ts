@@ -34,6 +34,16 @@ describe('RideBatch', () => {
     expect(() => RideBatch.accept('r', big, 'x', NOW)).toThrow(/too large/);
   });
 
+  it('the replays\' traffic track is OUTSIDE the canonical text (same hash with or without it), kept when sane, DROPPED – never refused – when too big', () => {
+    const [b0] = recording('ride-x', { seconds: 10 });
+    const traffic = [[0.5, 7, 0, 12, 100.5, -200.2, 1.571, 1], [1, 7, 0, 12, 101.5, -201.2, 1.571, 0]];
+    expect(RideBatch.canonical({ ...b0!, traffic } as never)).toBe(RideBatch.canonical(b0!));
+    expect(RideBatch.accept('ride-x', { ...b0!, traffic }, hashBatch(b0!), NOW).body.traffic).toEqual(traffic);
+    expect(RideBatch.accept('ride-x', { ...b0!, traffic }, hashBatch(b0!), NOW).hashOk).toBe(true);
+    const huge = Array.from({ length: 81 }, (_, i) => [i / 2]);
+    expect(RideBatch.accept('ride-x', { ...b0!, traffic: huge }, hashBatch(b0!), NOW).body.traffic).toBeUndefined();
+  });
+
   it('a synthetic recording chains: prevHash of each batch is the hash of the one before, the first one the ride id', () => {
     const batches = recording('ride-9', { seconds: 40, batchSeconds: 15 });
     expect(batches.map((b) => [b.seq, b.t0, b.t1])).toEqual([[0, 0, 15], [1, 15, 30], [2, 30, 40]]);
