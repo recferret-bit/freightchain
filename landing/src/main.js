@@ -197,7 +197,7 @@ for (const a of document.querySelectorAll('a[href="/play.html"]')) {
   a.addEventListener('click', () => { track('offline_practice_clicked'); flushSoon(); });
 }
 $('storybook-link').href = STORYBOOK_BASE || '/viewer.html';   // the model viewer: storybook.<apex> in production, /viewer.html elsewhere
-$('whitepaper-link').href = WHITEPAPER_BASE || '/whitepaper.html';   // the whitepaper: whitepaper.<apex> in production, /whitepaper.html elsewhere
+$('whitepaper-link').href = $('whitepaper-cta').href = WHITEPAPER_BASE || '/whitepaper.html';   // the whitepaper: whitepaper.<apex> in production, /whitepaper.html elsewhere
 $('storybook-link').addEventListener('click', () => track('storybook_link_clicked'));
 $('escrow-link').href = `${SITE_BASE}${ESCROW_PAGE}`;   // client/escrow/ (a served copy of docs/pool-escrow), on the apex
 

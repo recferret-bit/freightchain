@@ -93,7 +93,7 @@
 
 <!-- ───────── 02 · LOOP ───────── -->
 <section class="ch" id="loop">
-  <header class="ch-h rv"><i>02</i><h2>CORE MECHANICS &amp; THE LOOP</h2><p>It is Desert Bus with money on the line: the only skill that pays is staying on the road, awake, for the whole shift.</p></header>
+  <header class="ch-h rv"><i>02</i><h2>CORE MECHANICS &amp; THE LOOP</h2><p>Freight Chain puts money on the line: the only skill that pays is staying on the road, awake, for the whole shift.</p></header>
 
   <ol class="flow rv">
     <li><i>1</i><b>BUY A SHIFT</b><span>Free test ride, or $5 / $15 / $50 in SOL at the live rate. The server checks the transfer on chain and books the entry into this week's pool.</span></li>
@@ -153,7 +153,7 @@
 
 <!-- ───────── 03 · ECONOMY & TECH ───────── -->
 <section class="ch" id="economy">
-  <header class="ch-h rv"><i>03</i><h2>ECONOMY &amp; WHAT THE SERVER CHECKS</h2><p>Paid shifts are tickets into escrowed prize pools – one Solana account per pool holds the entry fees and states its rules in public. Integer lamports, floored shares, the remainder to fees.</p></header>
+  <header class="ch-h rv"><i>03</i><h2>ECONOMY</h2><p>Paid shifts are tickets into escrowed prize pools – one Solana account per pool holds the entry fees and states its rules in public. Integer lamports, floored shares, the remainder to fees.</p></header>
 
   <div class="econ rv">
     <div class="card pool" id="poolbox"><span class="dim">Loading the pool…</span></div>
@@ -183,14 +183,10 @@
     <div class="card board"><h3><i class="dot done"></i>RECENT RIDES</h3><div id="board-recent" class="rows"><span class="dim">Loading…</span></div><a class="link" href="/lobby.html#replays">all replays →</a></div>
   </div>
 
-  <h3 class="sub rv">WHAT THE SERVER CHECKS</h3>
-  <div class="trust rv">
-    <article><b>THE CLOCK</b><p>Driven seconds come from heartbeats, capped by wall time. Honest pauses earn nothing. A gap over 150 s fails the ride.</p></article>
-    <article><b>THE SPEED</b><p>Reported distance may grow at most 28 m/s × 1.2 between beats. Faster than the truck can go = FAILED, not a high score.</p></article>
-    <article><b>THE TICKET</b><p>A ride spends one ticket of a live pool, under a lock – two tabs can’t spend it twice. Tickets are credited from the program’s events; the server never holds the money.</p></article>
-    <article><b>THE VERDICT</b><p>Completed / abandoned / failed is decided server-side and shown on the result screen. The client only reports.</p></article>
-  </div>
-  <p class="honest rv"><b>Said plainly:</b> this is server-timed telemetry, not proof. A modified client can still lie inside the speed bound. Night, hull and route are client-asserted and only unlock badges – they never move lamports. Next is a fixed-tick, fixed-point replay of the input log, so a paid finish is re-simulated, not reported. The 50% grand prize is a draw and the 20% top-20 is a skill prize; the draw is not live and prizes are not paid in this build.</p>
+  <aside class="wp-invite rv" aria-labelledby="wp-h">
+    <div><h3 id="wp-h">Want the full picture?</h3><p>How a shift is timed, what the server checks, how the escrow pools work and what is built or still planned – all in the whitepaper.</p></div>
+    <a class="cta" id="whitepaper-cta" href="/whitepaper.html">READ THE WHITEPAPER →</a>
+  </aside>
 </section>
 
 <div class="road" aria-hidden="true"><i></i></div>
@@ -227,7 +223,7 @@
           <tr class="leg"><th colspan="3">LEG 4 · LONG HAUL</th><td class="stamp"><span class="st later">BOOKED</span></td></tr>
           <tr class="later"><td class="box">☐</td><td>The garage: trucks, upgrades, interior as Solana tokens</td><td class="note">after replay</td><td></td></tr>
           <tr class="later"><td class="box">☐</td><td>Mainnet with published rules; gambling question answered per region</td><td class="note"></td><td></td></tr>
-          <tr class="later"><td class="box">☐</td><td>Spectator sabotage from the live feed: fog, wind, a pothole for the driver you are watching</td><td class="note">Desert Bus 3.0</td><td></td></tr>
+          <tr class="later"><td class="box">☐</td><td>Spectator sabotage from the live feed: fog, wind, a pothole for the driver you are watching</td><td class="note">design doc</td><td></td></tr>
           <tr class="later"><td class="box">☐</td><td>Telegram Mini App</td><td class="note"></td><td></td></tr>
 
           <tr class="leg"><th colspan="3">LEFT AT THE DEPOT <small>cut on purpose</small></th><td class="stamp"><span class="st cut">CUT</span></td></tr>
