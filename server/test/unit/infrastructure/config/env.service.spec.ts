@@ -13,7 +13,7 @@ const withEnv = (vars: Record<string, string | undefined>) => {
 };
 
 describe('EnvService', () => {
-  const base = { DATABASE_URL: 'postgresql://x/db', NODE_ENV: 'development', JWT_SECRET: undefined, TREASURY_PUBKEY: undefined, DEMO_WALLETS: undefined, TRUST_PROXY: undefined, CLIENT_DIR: undefined, COOKIE_DOMAIN: undefined, CORS_ORIGINS: undefined, POSTHOG_KEY: undefined, POSTHOG_HOST: undefined, POSTHOG_ENABLED: undefined, POSTHOG_DISABLED: undefined, POSTHOG_PROJECT_ID: undefined };
+  const base = { DATABASE_URL: 'postgresql://x/db', NODE_ENV: 'development', JWT_SECRET: undefined, TREASURY_PUBKEY: undefined, DEMO_WALLETS: undefined, TRUST_PROXY: undefined, CLIENT_DIR: undefined, COOKIE_DOMAIN: undefined, CORS_ORIGINS: undefined, POSTHOG_KEY: undefined, POSTHOG_HOST: undefined, POSTHOG_ENABLED: undefined, POSTHOG_DISABLED: undefined, POSTHOG_PROJECT_ID: undefined, ADMIN_JWT_SECRET: undefined, ADMIN_SESSION_TTL_MINUTES: undefined };
 
   it('reads the environment at construction (a later change does not leak into an existing instance)', () => {
     const a = withEnv({ ...base, FREE_RIDE_SECONDS: '10' });
