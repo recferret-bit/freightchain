@@ -3,7 +3,7 @@
 Freight Chain – "Desert Run": a browser truck-driving game with a Solana-paid lobby.
 
 - `client/` – the game and the lobby (vanilla ES modules + three.js)
-- `landing/` – the `/` page: a small Vite project (wallet sign-in, live pool and boards, dash cards rendered by the game's own cockpit code)
+- `landing/` – the `/` page and the whitepaper (`whitepaper.html`, `whitepaper.<apex>` in production; a second page of the same Vite build): a small Vite project (wallet sign-in, live pool and boards, dash cards rendered by the game's own cockpit code)
 - `server/` – NestJS + Prisma + PostgreSQL API (`docs/backend-architecture.md`)
 - `deploy/` – semi-automatic deploy to our own server: `npm run deploy` (see `deploy/README.md`)
 - `video/` – promo clip maker: real gameplay → mp4 (≤ 15 s) + gif (≤ 20 MB) with landing-styled captions and transitions; the finished intro is `video/out/intro/` (see "Promo videos" below)
@@ -48,8 +48,10 @@ bash .claude/skills/posthog-prod/check.sh   # PostHog on production, read-only: 
 npm run install:landing                # once
 npm run landing:dev                    # Vite on :5173, proxies /api and the other pages to the server on :3000
 npm run landing:build                  # → landing/dist, served by the server at /  (without it, / is the placeholder client/index.html)
-npm run landing:test                   # formatters, card scripts, page integrity, size budget of dist/
+npm run landing:test                   # formatters, card scripts, page integrity, size budget of dist/, the whitepaper's numbers vs the code
 ```
+
+The whitepaper is `landing/whitepaper.html` (open `http://localhost:5173/whitepaper.html` under `landing:dev`): a static read on driving, rides and rules, rewards, the escrow program, verified play and live streams. Its figures are asserted against the server rules by `landing/test/whitepaper.test.js`, so change both together.
 
 - **Sign-in**: the CONNECT button asks Phantom / Solflare to sign the server's challenge; the backend verifies the signature, sets the httpOnly session cookie and the page redirects to the lobby. On the landing the same session shows the wallet and turns the button into "OPEN THE LOBBY". Check it in real Chrome with `node landing/tools/e2e-wallet.mjs` (fake wallet; single origin or split hosts – recipe in the script's header).
 - **Media**: WebP only; `node landing/tools/to-webp.mjs <files>` converts, `npm --prefix landing run media` re-captures the dash and sky shots from the running game.

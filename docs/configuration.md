@@ -178,7 +178,7 @@ npm run server:dev                   # :3000 – site, game and API on one origi
 
 ## Other things you can configure
 
-- **Landing** (`landing/`): dev proxy in `vite.config.js`; `LANDING_DIR` on the server; size budget enforced by `landing/test`.
+- **Landing** (`landing/`): dev proxy in `vite.config.js`; `LANDING_DIR` on the server; size budget enforced by `landing/test`. The whitepaper (`whitepaper.html`) is the second Vite input of the same build, served by the same `LANDING_DIR`; host `whitepaper.<apex>` comes from `DEPLOY_DOMAIN`, no env key of its own.
 - **App icon**: generated – edit `design/icons/build-app-icons.mjs` and rerun, never the PNGs.
 - **nginx / certificates**: `deploy/nginx/*.conf.template`, applied by `npm run deploy:setup` (a new host = new template + `setup.sh` + smoke check + `hosts.js` prefix).
 - **Anchor program**: `programs/freightchain-pools/Anchor.toml` (program id, `wallet` → `deploy/secrets/program-deploy.json`, gitignored). Building: `npm run program:build`, `program:test`, `program:idl`.
