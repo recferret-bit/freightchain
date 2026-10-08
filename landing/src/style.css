@@ -126,8 +126,6 @@ h3.sub{margin:40px 0 14px}
 .card3d .img img{width:100%;height:100%;object-fit:cover;object-position:50% 50%;display:block;transform:translateZ(0)}
 .card3d .img canvas.live-cv{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .5s;transform:translateZ(0)}
 .card3d.rendered .img canvas.live-cv{opacity:1}
-.card3d[data-live] .img:has(img.fit) canvas.live-cv{object-fit:contain}
-.card3d .img img.fit{object-fit:contain}   /* wide strips (the button row) letterbox on dash-black instead of zooming in */
 .card3d footer{padding:16px 18px 18px;background:#1f1b16;color:var(--cream);display:grid;gap:8px;align-content:start;border-top:1px solid #fff1}
 .card3d footer b{font-size:14px;letter-spacing:2px;color:var(--amber)}
 .card3d footer p{margin:0;font-size:16px;line-height:1.45}
