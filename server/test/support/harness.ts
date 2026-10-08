@@ -32,9 +32,10 @@ import {
   MemoryAchievementRepository, MemoryChallengeRepository, MemoryHealthProbe, MemoryPaymentRepository, MemoryPlayerRepository,
   MemoryRideBatchRepository, MemoryRideQuery, MemoryRideVerdictRepository, MemorySignInRepository, MemoryAdminActionRepository, MemoryAdminQuery, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
 } from './in-memory/memory-repositories.js';
-import { MemoryPoolRepository, MemoryPromoRepository, MemoryRideTicketRepository, MemoryTicketOrderRepository } from './in-memory/memory-ledger-repositories.js';
+import { MemoryCosmeticRepository, MemoryPoolRepository, MemoryPromoRepository, MemoryRideTicketRepository, MemoryTicketOrderRepository } from './in-memory/memory-ledger-repositories.js';
 import { TicketOrderRepositoryPort } from '../../src/application/ports/economy/ticket-order.repository.port.js';
 import { PoolRepositoryPort } from '../../src/application/ports/economy/pool.repository.port.js';
+import { CosmeticRepositoryPort } from '../../src/application/ports/players/cosmetic.repository.port.js';
 import { PromoRepositoryPort } from '../../src/application/ports/economy/promo.repository.port.js';
 import { RideTicketRepositoryPort } from '../../src/application/ports/players/ride-ticket.repository.port.js';
 import { MemoryChainCursorRepository, MemoryChainEventRepository, MemorySponsoredTxRepository } from './in-memory/memory-repositories.js';
@@ -96,6 +97,7 @@ export async function createHarness(persistence: Persistence, env: Record<string
       .overrideProvider(PoolRepositoryPort).useValue(new MemoryPoolRepository(memory))
       .overrideProvider(RideTicketRepositoryPort).useValue(new MemoryRideTicketRepository(memory))
       .overrideProvider(PromoRepositoryPort).useValue(new MemoryPromoRepository(memory))
+      .overrideProvider(CosmeticRepositoryPort).useValue(new MemoryCosmeticRepository(memory))
       .overrideProvider(TicketOrderRepositoryPort).useValue(new MemoryTicketOrderRepository(memory))
       .overrideProvider(RideBatchRepositoryPort).useValue(new MemoryRideBatchRepository(memory))
       .overrideProvider(RideVerdictRepositoryPort).useValue(new MemoryRideVerdictRepository(memory))

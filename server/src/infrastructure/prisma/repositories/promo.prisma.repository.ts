@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { PromoCode } from '../../../domain/economy/promo-code.entity.js';
-import { PromoRepositoryPort } from '../../../application/ports/economy/promo.repository.port.js';
+import { PromoRepositoryPort, type PromoRedemptionRecord } from '../../../application/ports/economy/promo.repository.port.js';
 import type { TransactionHandle } from '../../../application/ports/shared/transaction.port.js';
 import { PromoMapper } from '../mappers/promo.mapper.js';
 import { clientFor, isUniqueViolation } from '../prisma-client.js';
@@ -36,7 +36,7 @@ export class PromoPrismaRepository extends PromoRepositoryPort {
   /** The WHERE clause is the whole rule: a concurrent last redemption sees the incremented row (Postgres re-checks it after the row lock) and updates nothing. */
   async takeRedemption(code: string, now: Date, tx: TransactionHandle): Promise<boolean> {
     const n = await clientFor(this.prisma, tx).$executeRaw`UPDATE "economy"."PromoCode" SET redeemed = redeemed + 1
-      WHERE code = ${code} AND "disabledAt" IS NULL AND ("expiresAt" IS NULL OR "expiresAt" > ${now}) AND ("maxRedemptions" IS NULL OR redeemed < "maxRedemptions")`;
+      WHERE code = ${code} AND "disabledAt" IS NULL AND "startsAt" <= ${now} AND ("expiresAt" IS NULL OR "expiresAt" > ${now}) AND ("maxRedemptions" IS NULL OR redeemed < "maxRedemptions")`;
     return n === 1;
   }
 
@@ -52,5 +52,9 @@ export class PromoPrismaRepository extends PromoRepositoryPort {
 
   async countRedemptions(code: string, wallet: string, tx?: TransactionHandle): Promise<number> {
     return clientFor(this.prisma, tx).promoRedemption.count({ where: { code, wallet } });
+  }
+
+  async listRedemptions({ code, wallet, limit }: { code?: string; wallet?: string; limit: number }, tx?: TransactionHandle): Promise<PromoRedemptionRecord[]> {
+    return clientFor(this.prisma, tx).promoRedemption.findMany({ where: { ...(code ? { code } : {}), ...(wallet ? { wallet } : {}) }, orderBy: [{ at: 'desc' }, { code: 'asc' }, { n: 'desc' }], take: limit });
   }
 }

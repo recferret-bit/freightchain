@@ -50,6 +50,13 @@ import { VerifyAdminSignInHandler } from './use-cases/admin/verify-admin-signin/
 import { RequestActionChallengeHandler } from './use-cases/admin/request-action-challenge/request-action-challenge.handler.js';
 
 import { PoolTicketsService } from './services/pool-tickets.service.js';
+import { PromoCreationService } from './services/promo-creation.service.js';
+import { CreateAdminPromoHandler } from './use-cases/admin/create-admin-promo/create-admin-promo.handler.js';
+import { DisableAdminPromoHandler } from './use-cases/admin/disable-admin-promo/disable-admin-promo.handler.js';
+import { ListPromoRedemptionsHandler } from './use-cases/admin/list-promo-redemptions/list-promo-redemptions.handler.js';
+import { EquipCosmeticHandler } from './use-cases/players/equip-cosmetic/equip-cosmetic.handler.js';
+import { GetMyPromosHandler } from './use-cases/players/get-my-promos/get-my-promos.handler.js';
+import { GetWardrobeHandler } from './use-cases/players/get-wardrobe/get-wardrobe.handler.js';
 import { TicketSettlementService } from './services/ticket-settlement.service.js';
 import { PoolRegistryService } from './services/pool-registry.service.js';
 import { GetTicketPaymentHandler } from './use-cases/tickets/get-ticket-payment/get-ticket-payment.handler.js';
@@ -78,7 +85,7 @@ import { RegisterPoolFromChainHandler } from './use-cases/pools/register-pool-fr
 
 const services: Provider[] = [
   AchievementService, PaymentSettlementService, PlayerSessionService, RideLookupService, RoundService, VerdictService, AdminProofService,
-  PoolTicketsService, TicketSettlementService, PoolRegistryService, FinalityService,
+  PoolTicketsService, PromoCreationService, TicketSettlementService, PoolRegistryService, FinalityService,
 ];
 
 const handlers: Provider[] = [
@@ -93,7 +100,8 @@ const handlers: Provider[] = [
   GetLivenessHandler, GetReadinessHandler,
   GrantDailyFreeRidesHandler,
   RecordTelemetryHandler,
-  ListPoolsHandler, GetPrizePoolHandler, RedeemPromoHandler,
+  ListPoolsHandler, GetPrizePoolHandler, RedeemPromoHandler, GetMyPromosHandler, GetWardrobeHandler, EquipCosmeticHandler,
+  CreateAdminPromoHandler, DisableAdminPromoHandler, ListPromoRedemptionsHandler,
   CreatePromoHandler, ListPromosHandler, DisablePromoHandler, GrantTicketsHandler, RegisterPoolHandler,
   CreateTicketOrderHandler, GetTicketOrderHandler, GetPendingTicketOrderHandler,
   SettleChainSignatureHandler, GetTicketPaymentHandler, ConfirmTicketOrderHandler, SubmitTicketOrderHandler,

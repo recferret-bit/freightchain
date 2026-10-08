@@ -6,6 +6,7 @@ import type { PlayerProps } from '../../../src/domain/players/player.entity.js';
 import type { RideProps } from '../../../src/domain/rides/ride.entity.js';
 import type { PoolProps } from '../../../src/domain/economy/pool.types.js';
 import type { PromoCodeProps } from '../../../src/domain/economy/promo.types.js';
+import type { CosmeticUnlockRecord } from '../../../src/application/ports/players/cosmetic.repository.port.js';
 import type { TicketOrderProps } from '../../../src/domain/economy/ticket-order.types.js';
 import type { RideTicketProps, TicketGrantProps } from '../../../src/domain/players/ride-ticket.types.js';
 import type { ChainEventRow } from '../../../src/domain/economy/chain-events.js';
@@ -33,6 +34,10 @@ export class MemoryDb {
   /** key `${code}|${wallet}|${n}` */
   redemptions = new Map<string, Date>();
   orders = new Map<string, TicketOrderProps>();
+  /** key `${wallet}|${slot}|${item}` */
+  cosmeticUnlocks = new Map<string, CosmeticUnlockRecord>();
+  /** key `${wallet}|${slot}` → item */
+  cosmeticEquipped = new Map<string, string>();
   chainEvents: ChainEventRow[] = [];
   chainCursors = new Map<string, ChainCursorRow>();
   sponsoredTxs: SponsoredTxRow[] = [];
@@ -53,7 +58,7 @@ export class MemoryDb {
     this.players.clear(); this.challenges.clear(); this.rides.clear(); this.batches.clear(); this.verdicts.clear();
     this.rounds = []; this.payments = []; this.unlocks = []; this.signIns = []; this.adminActions = [];
     this.seq = 0; this.roundSeq = 0;
-    this.pools.clear(); this.tickets.clear(); this.grants = []; this.promos.clear(); this.redemptions.clear(); this.orders.clear();
+    this.pools.clear(); this.tickets.clear(); this.grants = []; this.promos.clear(); this.redemptions.clear(); this.orders.clear(); this.cosmeticUnlocks.clear(); this.cosmeticEquipped.clear();
     this.chainEvents = []; this.chainCursors.clear(); this.sponsoredTxs = [];
     this.rideEvents = [];
   }

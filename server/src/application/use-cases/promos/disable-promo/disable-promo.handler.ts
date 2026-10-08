@@ -6,7 +6,7 @@ import { PromoRepositoryPort } from '../../../ports/economy/promo.repository.por
 import { ClockPort } from '../../../ports/shared/clock.port.js';
 import { DisablePromoCommand, type PromoDisabledDto } from './disable-promo.command.js';
 
-/** Admin (CLI): stop a code. Tickets already granted stay; disabling twice keeps the first date. */
+/** Admin (CLI): stop a code. Tickets, rides and cosmetics already granted stay; disabling twice keeps the first date. */
 @CommandHandler(DisablePromoCommand)
 export class DisablePromoHandler implements ICommandHandler<DisablePromoCommand, PromoDisabledDto> {
   constructor(
@@ -16,7 +16,8 @@ export class DisablePromoHandler implements ICommandHandler<DisablePromoCommand,
 
   async execute({ code: typed }: DisablePromoCommand): Promise<PromoDisabledDto> {
     const code = PromoCode.normalize(typed);
-    if (!(await this.promos.disable(code, this.clock.now()))) throw new NotFoundError('no such promo code');
-    return toPromoDto((await this.promos.findByCode(code)) as PromoCode);
+    const now = this.clock.now();
+    if (!(await this.promos.disable(code, now))) throw new NotFoundError('no such promo code');
+    return toPromoDto((await this.promos.findByCode(code)) as PromoCode, now);
   }
 }

@@ -11,6 +11,7 @@ import { TELEMETRY_ENV, telemetryScenarios } from '../scenarios/telemetry.scenar
 import { analyticsScenarios } from '../scenarios/analytics.scenarios.js';
 import { VERDICT_ENV, verdictScenarios } from '../scenarios/verdict.scenarios.js';
 import { ADMIN_ENV, adminScenarios } from '../scenarios/admin.scenarios.js';
+import { PROMOS_ENV, promoScenarios } from '../scenarios/promos.scenarios.js';
 import { LIVE_ENV, liveScenarios } from '../scenarios/live.scenarios.js';
 
 /* The SAME scenarios as test/http, on the real Prisma repositories + a real PostgreSQL (npm run test:integration:stack).
@@ -24,6 +25,7 @@ for (const [name, env, scenarios] of [
   ['payments, the prize pool and leaderboards', PAYMENTS_ENV, paymentScenarios],
   ['lobby: live feed, profile, achievements', LOBBY_ENV, lobbyScenarios],
   ['escrowed pools, promo codes and ticket rides', POOLS_ENV, poolScenarios],
+  ['promo codes: free rides, cosmetics, scheduling, the admin tab', PROMOS_ENV, promoScenarios],
   ['ticket orders settled by purchase events', TICKET_ORDERS_ENV, ticketOrderScenarios],
   ['HTTP contract: problem+json, request ids, cookies, health', {}, httpContractScenarios],
   ['chain: network fees', CHAIN_ENV, chainScenarios],

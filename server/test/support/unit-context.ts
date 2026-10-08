@@ -4,6 +4,7 @@ import { EntropyPort } from '../../src/application/ports/shared/entropy.port.js'
 import { AchievementService } from '../../src/application/services/achievement.service.js';
 import { PaymentSettlementService } from '../../src/application/services/payment-settlement.service.js';
 import { PlayerSessionService } from '../../src/application/services/player-session.service.js';
+import { PromoCreationService } from '../../src/application/services/promo-creation.service.js';
 import { PoolTicketsService } from '../../src/application/services/pool-tickets.service.js';
 import { TicketSettlementService } from '../../src/application/services/ticket-settlement.service.js';
 import { PoolRegistryService } from '../../src/application/services/pool-registry.service.js';
@@ -22,7 +23,7 @@ import {
   MemoryAchievementRepository, MemoryChallengeRepository, MemoryHealthProbe, MemoryPaymentRepository, MemoryPlayerRepository,
   MemoryRideBatchRepository, MemoryRideQuery, MemoryRideVerdictRepository, MemorySignInRepository, MemoryAdminActionRepository, MemoryAdminQuery, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
 } from './in-memory/memory-repositories.js';
-import { MemoryPoolRepository, MemoryPromoRepository, MemoryRideTicketRepository, MemoryTicketOrderRepository } from './in-memory/memory-ledger-repositories.js';
+import { MemoryCosmeticRepository, MemoryPoolRepository, MemoryPromoRepository, MemoryRideTicketRepository, MemoryTicketOrderRepository } from './in-memory/memory-ledger-repositories.js';
 import { MemoryChainCursorRepository, MemoryChainEventRepository, MemorySponsoredTxRepository } from './in-memory/memory-repositories.js';
 import { TestHasher } from './recording.js';
 import { MemoryRideEventRepository } from './in-memory/memory-live-repositories.js';
@@ -83,6 +84,8 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const pools = new MemoryPoolRepository(db);
   const tickets = new MemoryRideTicketRepository(db);
   const promos = new MemoryPromoRepository(db);
+  const cosmetics = new MemoryCosmeticRepository(db);
+  const promoCreation = new PromoCreationService(promos, pools, clock);
   const orders = new MemoryTicketOrderRepository(db);
   const poolTickets = new PoolTicketsService(pools, tickets);
   const poolChain = new FakePoolChain();
@@ -124,7 +127,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
 
   return {
     db, clock, chain, entropy, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, batches, hasher, verdictRepo, verdicts, proofs, signIns, adminActions, adminQuery, health, analytics,
-    pools, tickets, promos, orders, poolTickets, ticketSettlement,
+    pools, tickets, promos, cosmetics, promoCreation, orders, poolTickets, ticketSettlement,
     sessions, lookup, rounds, achievements, settlement, now, player, freeRide, paidOrder, reload, storedPlayer,
     poolChain, chainEvents, chainCursors, sponsoredTxs, registry, rideEvents, viewers,
   };

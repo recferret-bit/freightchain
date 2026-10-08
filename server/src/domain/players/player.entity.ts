@@ -53,6 +53,12 @@ export class Player {
     return true;
   }
 
+  /** Extra free rides from a promo code, on top of the daily ones. They may take the balance above `freeRidesMax`: the cap only limits the daily refill, which adds below it and never takes anything away. */
+  grantFreeRides(count: number): void {
+    if (!Number.isInteger(count) || count < 1) throw new Error('grantFreeRides needs a whole number ≥ 1');
+    this.props.freeRides += count;
+  }
+
   spendFreeRide(): void {
     if (this.props.freeRides <= 0) throw new ConflictError('no free rides left');
     this.props.freeRides -= 1;

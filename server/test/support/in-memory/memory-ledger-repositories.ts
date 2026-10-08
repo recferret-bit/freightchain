@@ -9,7 +9,9 @@ import type { TicketGrantProps } from '../../../src/domain/players/ride-ticket.t
 import type { PaidTierId } from '../../../src/domain/rides/ride-tier.js';
 import { VersionConflictError } from '../../../src/domain/shared/errors.js';
 import { PoolRepositoryPort } from '../../../src/application/ports/economy/pool.repository.port.js';
-import { PromoRepositoryPort } from '../../../src/application/ports/economy/promo.repository.port.js';
+import { PromoRepositoryPort, type PromoRedemptionRecord } from '../../../src/application/ports/economy/promo.repository.port.js';
+import { CosmeticRepositoryPort, type CosmeticUnlockRecord } from '../../../src/application/ports/players/cosmetic.repository.port.js';
+import type { CosmeticSlot } from '../../../src/domain/economy/cosmetics.js';
 import { RideTicketRepositoryPort } from '../../../src/application/ports/players/ride-ticket.repository.port.js';
 import type { MemoryDb } from './memory-db.js';
 
@@ -129,7 +131,7 @@ export class MemoryPromoRepository extends PromoRepositoryPort {
 
   async takeRedemption(code: string, now: Date): Promise<boolean> {
     const p = this.db.promos.get(code);
-    if (!p || p.disabledAt || (p.expiresAt && p.expiresAt.getTime() <= now.getTime()) || (p.maxRedemptions !== null && p.redeemed >= p.maxRedemptions)) return false;
+    if (!p || p.disabledAt || p.startsAt.getTime() > now.getTime() || (p.expiresAt && p.expiresAt.getTime() <= now.getTime()) || (p.maxRedemptions !== null && p.redeemed >= p.maxRedemptions)) return false;
     this.db.promos.set(code, { ...p, redeemed: p.redeemed + 1 });
     return true;
   }
@@ -143,6 +145,40 @@ export class MemoryPromoRepository extends PromoRepositoryPort {
 
   async countRedemptions(code: string, wallet: string): Promise<number> {
     return [...this.db.redemptions.keys()].filter((k) => k.startsWith(`${code}|${wallet}|`)).length;
+  }
+
+  async listRedemptions({ code, wallet, limit }: { code?: string; wallet?: string; limit: number }): Promise<PromoRedemptionRecord[]> {
+    return [...this.db.redemptions.entries()]
+      .map(([key, at]) => { const [c, w, n] = key.split('|') as [string, string, string]; return { code: c, wallet: w, n: Number(n), at }; })
+      .filter((r) => (!code || r.code === code) && (!wallet || r.wallet === wallet))
+      .sort((a, b) => b.at.getTime() - a.at.getTime() || a.code.localeCompare(b.code) || b.n - a.n)
+      .slice(0, limit);
+  }
+}
+
+@Injectable()
+export class MemoryCosmeticRepository extends CosmeticRepositoryPort {
+  constructor(private readonly db: MemoryDb) { super(); }
+
+  async unlock(r: CosmeticUnlockRecord): Promise<boolean> {
+    const key = `${r.wallet}|${r.slot}|${r.item}`;
+    if (this.db.cosmeticUnlocks.has(key)) return false;
+    this.db.cosmeticUnlocks.set(key, { ...r });
+    return true;
+  }
+
+  async has(wallet: string, slot: CosmeticSlot, item: string): Promise<boolean> { return this.db.cosmeticUnlocks.has(`${wallet}|${slot}|${item}`); }
+
+  async listUnlocked(wallet: string): Promise<CosmeticUnlockRecord[]> {
+    return [...this.db.cosmeticUnlocks.values()].filter((r) => r.wallet === wallet).sort((a, b) => a.at.getTime() - b.at.getTime() || a.slot.localeCompare(b.slot) || a.item.localeCompare(b.item));
+  }
+
+  async equip(wallet: string, slot: CosmeticSlot, item: string): Promise<void> { this.db.cosmeticEquipped.set(`${wallet}|${slot}`, item); }
+
+  async listEquipped(wallet: string): Promise<Partial<Record<CosmeticSlot, string>>> {
+    const out: Partial<Record<CosmeticSlot, string>> = {};
+    for (const [key, item] of this.db.cosmeticEquipped) { const [w, slot] = key.split('|') as [string, CosmeticSlot]; if (w === wallet) out[slot] = item; }
+    return out;
   }
 }
 

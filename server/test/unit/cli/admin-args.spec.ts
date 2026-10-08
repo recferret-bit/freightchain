@@ -1,12 +1,21 @@
 import { parsePoolRegister, parsePoolSeed, parsePromoCreate, parseTicketsGrant } from '../../../src/cli/admin-args.js';
 
 describe('admin CLI arguments', () => {
-  it('promo:create – defaults, every option, UTC-midnight dates', () => {
-    expect(parsePromoCreate(['WELCOME', '--tier', '1h', '--credits', '2'])).toEqual({ code: 'WELCOME', tier: '1h', poolId: null, credits: 2, maxRedemptions: null, perWallet: 1, expiresAt: null, note: null });
-    expect(parsePromoCreate(['VIP', '--tier', '8h', '--credits', '1', '--max', '50', '--per-wallet', '2', '--expires', '2026-10-31', '--pool', '0', '--note', 'judges'])).toEqual({
-      code: 'VIP', tier: '8h', poolId: 0, credits: 1, maxRedemptions: 50, perWallet: 2, expiresAt: new Date(Date.UTC(2026, 9, 31)), note: 'judges',
+  it('promo:create – tickets: defaults, every option, UTC-midnight dates', () => {
+    expect(parsePromoCreate(['WELCOME', '--tier', '1h', '--credits', '2'])).toEqual({
+      code: 'WELCOME', effect: { kind: 'tickets', tier: '1h', poolId: null, credits: 2 }, description: null, maxRedemptions: null, perWallet: 1, startsAt: null, expiresAt: null, note: null,
+    });
+    expect(parsePromoCreate(['VIP', '--tier', '8h', '--credits', '1', '--max', '50', '--per-wallet', '2', '--start', '2026-10-20', '--expires', '2026-10-31', '--pool', '0', '--note', 'judges', '--desc', 'For judges'])).toEqual({
+      code: 'VIP', effect: { kind: 'tickets', tier: '8h', poolId: 0, credits: 1 }, description: 'For judges', maxRedemptions: 50, perWallet: 2,
+      startsAt: new Date(Date.UTC(2026, 9, 20)), expiresAt: new Date(Date.UTC(2026, 9, 31)), note: 'judges',
     });
     expect((parsePromoCreate(['X1Y', '--tier', '4h', '--credits', '1', '--expires', '2026-10-31T18:00:00Z']) as { expiresAt: Date }).expiresAt).toEqual(new Date(Date.UTC(2026, 9, 31, 18)));
+  });
+
+  it('promo:create – free rides and cosmetics', () => {
+    expect(parsePromoCreate(['THREE', '--free-rides', '3'])).toMatchObject({ code: 'THREE', effect: { kind: 'free_rides', count: 3 } });
+    expect(parsePromoCreate(['GOLD', '--cosmetic', 'wheel:gold'])).toMatchObject({ effect: { kind: 'cosmetic', slot: 'wheel', item: 'gold' } });
+    expect(parsePromoCreate(['PAINT', '--cosmetic', 'truck_color:blue'])).toMatchObject({ effect: { kind: 'cosmetic', slot: 'truck_color', item: 'blue' } });
   });
 
   it('promo:create – readable errors', () => {
@@ -15,7 +24,13 @@ describe('admin CLI arguments', () => {
     expect(parsePromoCreate(['A1', '--tier', '1h'])).toBe('--credits must be a whole number ≥ 1');
     expect(parsePromoCreate(['A1', '--tier', '1h', '--credits', '1', '--max', '0'])).toBe('--max must be a whole number ≥ 1');
     expect(parsePromoCreate(['A1', '--tier', '1h', '--credits', '1', '--expires', 'soon'])).toMatch(/--expires must be a date/);
+    expect(parsePromoCreate(['A1', '--tier', '1h', '--credits', '1', '--start', 'soon'])).toMatch(/--start must be a date/);
     expect(parsePromoCreate(['A1', '--bogus'])).toMatch(/Unknown option/);
+    expect(parsePromoCreate(['A1'])).toMatch(/exactly one effect/);
+    expect(parsePromoCreate(['A1', '--free-rides', '2', '--cosmetic', 'wheel:gold'])).toMatch(/exactly one effect/);
+    expect(parsePromoCreate(['A1', '--free-rides', '0'])).toBe('--free-rides must be a whole number ≥ 1');
+    expect(parsePromoCreate(['A1', '--cosmetic', 'seat:x'])).toMatch(/--cosmetic must be/);
+    expect(parsePromoCreate(['A1', '--cosmetic', 'wheel'])).toMatch(/--cosmetic must be/);
   });
 
   it('tickets:grant', () => {

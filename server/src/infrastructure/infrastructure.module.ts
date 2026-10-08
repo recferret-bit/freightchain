@@ -69,6 +69,8 @@ import { RideTicketRepositoryPort } from '../application/ports/players/ride-tick
 import { PoolPrismaRepository } from './prisma/repositories/pool.prisma.repository.js';
 import { TicketOrderRepositoryPort } from '../application/ports/economy/ticket-order.repository.port.js';
 import { TicketOrderPrismaRepository } from './prisma/repositories/ticket-order.prisma.repository.js';
+import { CosmeticRepositoryPort } from '../application/ports/players/cosmetic.repository.port.js';
+import { CosmeticPrismaRepository } from './prisma/repositories/cosmetic.prisma.repository.js';
 import { PromoPrismaRepository } from './prisma/repositories/promo.prisma.repository.js';
 import { RideTicketPrismaRepository } from './prisma/repositories/ride-ticket.prisma.repository.js';
 import { ClearAdminCookieInterceptor, SetAdminCookieInterceptor } from './http/interceptors/admin-cookie.interceptor.js';
@@ -106,6 +108,7 @@ const ports: Provider[] = [
   { provide: PoolRepositoryPort, useClass: PoolPrismaRepository },
   { provide: RideTicketRepositoryPort, useClass: RideTicketPrismaRepository },
   { provide: PromoRepositoryPort, useClass: PromoPrismaRepository },
+  { provide: CosmeticRepositoryPort, useClass: CosmeticPrismaRepository },
   { provide: TicketOrderRepositoryPort, useClass: TicketOrderPrismaRepository },
   { provide: PoolChainPort, useClass: ProgramChainAdapter },
   { provide: ChainEventRepositoryPort, useClass: ChainEventPrismaRepository },

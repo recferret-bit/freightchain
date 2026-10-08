@@ -9,7 +9,7 @@ import { PoolRepositoryPort } from '../../src/application/ports/economy/pool.rep
 import { PromoRepositoryPort } from '../../src/application/ports/economy/promo.repository.port.js';
 import { TransactionPort } from '../../src/application/ports/shared/transaction.port.js';
 import { RideTicketRepositoryPort } from '../../src/application/ports/players/ride-ticket.repository.port.js';
-import { PromoCode } from '../../src/domain/economy/promo-code.entity.js';
+import { aPromo, ticketEffect } from '../support/promos.js';
 import { aPool } from '../support/pools.js';
 import { TicketSettlementService, type PurchaseEvent } from '../../src/application/services/ticket-settlement.service.js';
 import { FinalityService } from '../../src/application/services/finality.service.js';
@@ -65,11 +65,54 @@ describe('concurrency (PostgreSQL)', () => {
     expect(await prisma.ride.count({ where: { wallet: a.address, status: 'awaiting_payment' } })).toBe(1);
   });
 
+  describe('promo codes beyond tickets', () => {
+    const promos = () => harness.app.get(PromoRepositoryPort, { strict: false });
+
+    it('a free-ride code racing the midnight grant: the rides are added once and the grant never takes them back', async () => {
+      await promos().insert(aPromo(harness.clock.now(), { code: 'RIDES', effect: { kind: 'free_rides', count: 3 }, maxRedemptions: null }));
+      const a = await login();
+      sec(86_400); // tomorrow: the daily grant is due for everyone
+      const bus = harness.app.get(CommandBus, { strict: false });
+      const [redeems] = await Promise.all([
+        parallel(PARALLEL, () => a.agent.post('/api/promo/redeem').send({ code: 'RIDES' })),
+        bus.execute(new GrantDailyFreeRidesCommand()),
+        a.agent.get('/api/me'),
+      ]);
+      expect(redeems.filter((r) => r.status === 200)).toHaveLength(1);
+      expect(redeems.filter((r) => r.status === 409)).toHaveLength(PARALLEL - 1);
+      expect(await freeRides(a)).toBe(8); // 5 (already at the cap, the grant adds nothing) + 3
+      expect(await prisma.promoRedemption.count({ where: { wallet: a.address } })).toBe(1);
+    });
+
+    it('the last redemption of a scheduled code at the instant it starts goes to ONE wallet; one second earlier to nobody', async () => {
+      const now = harness.clock.now();
+      await promos().insert(aPromo(now, { code: 'OPENING', effect: { kind: 'free_rides', count: 1 }, maxRedemptions: 1, startsAt: new Date(now.getTime() + 60_000) }));
+      const riders = await parallel(PARALLEL, () => login());
+      const redeem = () => Promise.all(riders.map((r) => r.agent.post('/api/promo/redeem').send({ code: 'OPENING' })));
+      sec(59);
+      expect((await redeem()).every((r) => r.status === 409)).toBe(true);
+      expect(await prisma.promoCode.findUnique({ where: { code: 'OPENING' } })).toMatchObject({ redeemed: 0 });
+      sec(1);
+      const results = await redeem();
+      expect(results.filter((r) => r.status === 200)).toHaveLength(1);
+      expect(await prisma.promoCode.findUnique({ where: { code: 'OPENING' } })).toMatchObject({ redeemed: 1 });
+    });
+
+    it('a cosmetic code redeemed N times at once by one wallet unlocks it once and uses ONE redemption', async () => {
+      await promos().insert(aPromo(harness.clock.now(), { code: 'WHEEL', effect: { kind: 'cosmetic', slot: 'wheel', item: 'gold' }, maxRedemptions: null, perWallet: 3 }));
+      const a = await login();
+      const results = await parallel(PARALLEL, () => a.agent.post('/api/promo/redeem').send({ code: 'WHEEL' }));
+      expect(results.filter((r) => r.status === 200)).toHaveLength(1);
+      expect(await prisma.cosmeticUnlock.count({ where: { wallet: a.address } })).toBe(1);
+      expect(await prisma.promoCode.findUnique({ where: { code: 'WHEEL' } })).toMatchObject({ redeemed: 1 });
+    });
+  });
+
   describe('escrowed pool tickets', () => {
     const seed = async (pool: Parameters<typeof aPool>[0], promo: { code: string; credits: number; maxRedemptions: number | null }) => {
       const now = harness.clock.now();
       await harness.app.get(PoolRepositoryPort, { strict: false }).upsert(aPool(pool, now));
-      await harness.app.get(PromoRepositoryPort, { strict: false }).insert(PromoCode.create({ ...promo, poolId: null, tier: '1h', perWallet: 1, expiresAt: null, note: null, now }));
+      await harness.app.get(PromoRepositoryPort, { strict: false }).insert(aPromo(now, { code: promo.code, effect: ticketEffect({ credits: promo.credits }), maxRedemptions: promo.maxRedemptions }));
     };
 
     it('N parallel paid-ride requests with ONE ticket: one ride, the ticket spent once, one spend line', async () => {
@@ -91,7 +134,7 @@ describe('concurrency (PostgreSQL)', () => {
       expect(results.filter((r) => r.status === 200)).toHaveLength(1);
       expect(results.filter((r) => r.status === 409)).toHaveLength(PARALLEL - 1);
       expect(await prisma.promoCode.findUnique({ where: { code: 'LAST' } })).toMatchObject({ redeemed: 1 });
-      await harness.app.get(PromoRepositoryPort, { strict: false }).insert(PromoCode.create({ code: 'MINE', poolId: null, tier: '1h', credits: 2, maxRedemptions: null, perWallet: 1, expiresAt: null, note: null, now: harness.clock.now() }));
+      await harness.app.get(PromoRepositoryPort, { strict: false }).insert(aPromo(harness.clock.now(), { code: 'MINE', maxRedemptions: null }));
       const a = await login();
       const mine = await parallel(PARALLEL, () => a.agent.post('/api/promo/redeem').send({ code: 'MINE' }));
       expect(mine.filter((r) => r.status === 200)).toHaveLength(1);

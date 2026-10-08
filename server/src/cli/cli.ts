@@ -15,8 +15,9 @@ Usage:
 Commands:
   migrate      Apply the database migrations (prisma migrate deploy)
   db:reset     Truncate every table (refused in production)
-  promo:create CODE --tier 1h|4h|8h --credits N [--max N] [--per-wallet N] [--expires YYYY-MM-DD] [--pool ID] [--note TEXT]
-               A promo code: N free tickets per redemption into the tier's live pool (or the pinned --pool)
+  promo:create CODE <effect> [--desc TEXT] [--start DATE] [--expires DATE] [--max N] [--per-wallet N] [--note TEXT]
+               A promo code with ONE effect: --tier 1h|4h|8h --credits N [--pool ID] (free tickets into the tier's live pool, or the pinned pool)
+               · --free-rides N (extra free rides) · --cosmetic wheel|truck_color|gearbox:ITEM (unlocks a visual)
   promo:list   Every promo code with its usage
   promo:disable CODE
                Stop a code (tickets already granted stay)

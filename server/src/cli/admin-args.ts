@@ -1,11 +1,10 @@
 import { parseArgs } from 'node:util';
+import { isCosmeticSlot } from '../domain/economy/cosmetics.js';
+import type { PromoCreateInput, PromoEffect } from '../domain/economy/promo.types.js';
 import { isPaidTierId, type PaidTierId } from '../domain/rides/ride-tier.js';
 
 /* Argument parsing of the admin commands – pure, so it is unit-tested without a database. A parse error is a string (printed with the help). */
 
-export interface PromoCreateArgs {
-  code: string; tier: PaidTierId; poolId: number | null; credits: number; maxRedemptions: number | null; perWallet: number; expiresAt: Date | null; note: string | null;
-}
 export interface TicketsGrantArgs { wallet: string; poolId: number; count: number; note: string | null }
 export interface PoolRegisterArgs { poolId: number; label: string | null }
 export interface PoolSeedArgs {
@@ -18,31 +17,59 @@ const int = (name: string, raw: string | undefined, min: number): number | strin
   return raw !== undefined && Number.isInteger(n) && n >= min ? n : `--${name} must be a whole number ≥ ${min}`;
 };
 
-/** `promo:create CODE --tier 1h --credits 2 [--max 100] [--per-wallet 1] [--expires 2026-10-31] [--pool 7] [--note text]` */
-export function parsePromoCreate(args: readonly string[]): PromoCreateArgs | string {
+const dateArg = (name: string, raw: string): Date | string => {
+  const d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(raw) ? `${raw}T00:00:00Z` : raw);
+  return Number.isNaN(d.getTime()) ? `--${name} must be a date (YYYY-MM-DD, UTC midnight) or an ISO timestamp` : d;
+};
+
+/**
+ * `promo:create CODE <effect> [--desc TEXT] [--start DATE] [--expires DATE] [--max N] [--per-wallet N] [--note TEXT]` with ONE effect:
+ * `--tier 1h|4h|8h --credits N [--pool ID]` (tickets) · `--free-rides N` · `--cosmetic wheel|truck_color|gearbox:ITEM`
+ */
+export function parsePromoCreate(args: readonly string[]): PromoCreateInput | string {
   let parsed;
   try {
     parsed = parseArgs({
       args: [...args], allowPositionals: true,
-      options: { tier: { type: 'string' }, credits: { type: 'string' }, max: { type: 'string' }, 'per-wallet': { type: 'string' }, expires: { type: 'string' }, pool: { type: 'string' }, note: { type: 'string' } },
+      options: {
+        tier: { type: 'string' }, credits: { type: 'string' }, pool: { type: 'string' }, 'free-rides': { type: 'string' }, cosmetic: { type: 'string' },
+        desc: { type: 'string' }, start: { type: 'string' }, expires: { type: 'string' }, max: { type: 'string' }, 'per-wallet': { type: 'string' }, note: { type: 'string' },
+      },
     });
   } catch (error) {
     return error instanceof Error ? error.message : String(error);
   }
   const { values: v, positionals } = parsed;
   if (positionals.length !== 1) return 'give exactly one code';
-  if (!isPaidTierId(v.tier)) return '--tier must be 1h, 4h or 8h';
-  const credits = int('credits', v.credits, 1);
+  const kinds = [v.tier !== undefined || v.credits !== undefined || v.pool !== undefined, v['free-rides'] !== undefined, v.cosmetic !== undefined].filter(Boolean).length;
+  if (kinds !== 1) return 'give exactly one effect: --tier + --credits (tickets), --free-rides N, or --cosmetic slot:item';
+  let effect: PromoEffect;
+  if (v['free-rides'] !== undefined) {
+    const count = int('free-rides', v['free-rides'], 1);
+    if (typeof count === 'string') return count;
+    effect = { kind: 'free_rides', count };
+  } else if (v.cosmetic !== undefined) {
+    const [slot, item] = v.cosmetic.split(':');
+    if (!isCosmeticSlot(slot) || !item) return '--cosmetic must be wheel|truck_color|gearbox followed by :ITEM, e.g. wheel:sport';
+    effect = { kind: 'cosmetic', slot, item };
+  } else {
+    if (!isPaidTierId(v.tier)) return '--tier must be 1h, 4h or 8h';
+    const credits = int('credits', v.credits, 1);
+    const poolId = v.pool === undefined ? null : int('pool', v.pool, 0);
+    if (typeof credits === 'string') return credits;
+    if (typeof poolId === 'string') return poolId;
+    effect = { kind: 'tickets', tier: v.tier, poolId, credits };
+  }
   const perWallet = v['per-wallet'] === undefined ? 1 : int('per-wallet', v['per-wallet'], 1);
   const max = v.max === undefined ? null : int('max', v.max, 1);
-  const poolId = v.pool === undefined ? null : int('pool', v.pool, 0);
-  for (const x of [credits, perWallet, max, poolId]) if (typeof x === 'string') return x;
-  let expiresAt: Date | null = null;
-  if (v.expires !== undefined) {
-    expiresAt = new Date(/^\d{4}-\d{2}-\d{2}$/.test(v.expires) ? `${v.expires}T00:00:00Z` : v.expires);
-    if (Number.isNaN(expiresAt.getTime())) return '--expires must be a date (YYYY-MM-DD, UTC midnight) or an ISO timestamp';
-  }
-  return { code: positionals[0] as string, tier: v.tier, poolId: poolId as number | null, credits: credits as number, maxRedemptions: max as number | null, perWallet: perWallet as number, expiresAt, note: v.note ?? null };
+  for (const x of [perWallet, max]) if (typeof x === 'string') return x;
+  const startsAt = v.start === undefined ? null : dateArg('start', v.start);
+  const expiresAt = v.expires === undefined ? null : dateArg('expires', v.expires);
+  for (const x of [startsAt, expiresAt]) if (typeof x === 'string') return x;
+  return {
+    code: positionals[0] as string, effect, description: v.desc ?? null, maxRedemptions: max as number | null, perWallet: perWallet as number,
+    startsAt: startsAt as Date | null, expiresAt: expiresAt as Date | null, note: v.note ?? null,
+  };
 }
 
 /** `tickets:grant WALLET POOL_ID COUNT [--note text]` */

@@ -1,4 +1,7 @@
 import { AuthChallenge } from '../auth/auth-challenge.entity.js';
+import { PromoCode } from '../economy/promo-code.entity.js';
+import { describeEffect } from '../economy/promo.dto.js';
+import type { PromoCreateInput } from '../economy/promo.types.js';
 
 /* What an admin's wallet signs. Pending challenges share the rider sign-in's store (one per key), under their own keys so an admin sign-in never
    replaces a rider sign-in of the same wallet, and a message of one kind can never be consumed as the other. */
@@ -30,13 +33,24 @@ export const adminActionKey = (wallet: string): string => `action:${wallet}`;
 
 export type AdminIntent =
   | { action: 'override'; rideId: string; decision: 'verified' | 'rejected'; note: string | null }
-  | { action: 'rejudge'; rideId: string };
+  | { action: 'rejudge'; rideId: string }
+  | { action: 'promo_create'; promo: PromoCreateInput }
+  | { action: 'promo_disable'; code: string };
 
-/** What the action does, one fact per line; the note is JSON-quoted (it may hold newlines or look like another line). */
+/** EVERY field of a new promo code as one JSON line, keys in a fixed order, dates as ISO strings – the signature binds the whole code, not a summary of it. */
+export const promoJson = (p: PromoCreateInput): string => JSON.stringify({
+  code: PromoCode.normalize(p.code), effect: p.effect, description: p.description, maxRedemptions: p.maxRedemptions, perWallet: p.perWallet,
+  startsAt: p.startsAt?.toISOString() ?? null, expiresAt: p.expiresAt?.toISOString() ?? null, note: p.note,
+});
+
+/** What the action does, one fact per line; free text (a note, a description) only ever appears JSON-quoted (it may hold newlines or look like another line). */
 export function intentLines(intent: AdminIntent): string[] {
-  return intent.action === 'override'
-    ? [`Action: set the verdict to ${intent.decision.toUpperCase()}`, `Ride: ${intent.rideId}`, `Note: ${intent.note === null ? '(none)' : JSON.stringify(intent.note)}`]
-    : ['Action: RE-JUDGE at the current rules (replaces any decision)', `Ride: ${intent.rideId}`];
+  switch (intent.action) {
+    case 'override': return [`Action: set the verdict to ${intent.decision.toUpperCase()}`, `Ride: ${intent.rideId}`, `Note: ${intent.note === null ? '(none)' : JSON.stringify(intent.note)}`];
+    case 'rejudge': return ['Action: RE-JUDGE at the current rules (replaces any decision)', `Ride: ${intent.rideId}`];
+    case 'promo_create': return [`Action: CREATE promo code ${PromoCode.normalize(intent.promo.code)}`, `Gives: ${describeEffect(intent.promo.effect)}`, `Promo: ${promoJson(intent.promo)}`];
+    case 'promo_disable': return [`Action: DISABLE promo code ${PromoCode.normalize(intent.code)}`];
+  }
 }
 
 /** Everything up to the nonce: if a stored message starts with this, it was issued for exactly this admin, host and change. */

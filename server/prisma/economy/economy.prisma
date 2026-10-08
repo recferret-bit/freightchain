@@ -90,18 +90,25 @@ model Pool {
   @@schema("economy")
 }
 
-// A promo code adds tickets (an off-chain grant into a pool - a sponsored entry; it does not count towards the pool's minimum).
+// A promo code has ONE effect (kind): tickets (an off-chain grant into a pool - a sponsored entry; it does not count towards the pool's minimum), free_rides
+// (extra free rides, may exceed freeRidesMax) or cosmetic (unlocks + equips a wheel / truck colour / gearbox). Immutable once created, apart from disabledAt.
 model PromoCode {
   code           String            @id // stored upper-case without spaces; redeemed case-insensitively
-  poolId         Int? // null = the newest open/active pool of `tier`
-  tier           String
-  credits        Int // tickets per redemption
+  kind           String            @default("tickets") // tickets | free_rides | cosmetic
+  poolId         Int? // tickets: null = the newest open/active pool of `tier`
+  tier           String? // tickets
+  credits        Int? // tickets: tickets per redemption
+  freeRides      Int? // free_rides: rides per redemption
+  cosmeticSlot   String? // cosmetic
+  cosmeticItem   String? // cosmetic
+  description    String? // player-facing text
   maxRedemptions Int? // null = unlimited
   redeemed       Int               @default(0)
   perWallet      Int               @default(1)
-  expiresAt      DateTime?
+  startsAt       DateTime // redeemable from here ...
+  expiresAt      DateTime? // ... until here (null = no end)
   disabledAt     DateTime?
-  note           String?
+  note           String? // the admin's private note
   createdAt      DateTime
   redemptions    PromoRedemption[]
 
@@ -117,6 +124,7 @@ model PromoRedemption {
 
   @@id([code, wallet, n])
   @@index([wallet])
+  @@index([at])
   @@schema("economy")
 }
 

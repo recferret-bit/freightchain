@@ -12,7 +12,33 @@ model Player {
   tickets      RideTicket[]
   orders       TicketOrder[]
   signIns      SignIn[]
+  cosmetics    CosmeticUnlock[]
+  equipped     CosmeticEquip[]
 
+  @@schema("player")
+}
+
+// A visual a promo code unlocked (wheel / truck_color / gearbox – the catalog is domain/economy/cosmetics.ts; the DEFAULT of a slot is implicit and never stored).
+model CosmeticUnlock {
+  wallet String
+  player Player   @relation(fields: [wallet], references: [wallet], onDelete: Cascade)
+  slot   String
+  item   String
+  code   String // the promo code that gave it
+  at     DateTime
+
+  @@id([wallet, slot, item])
+  @@schema("player")
+}
+
+// What a wallet wears: one row per slot it changed from the default.
+model CosmeticEquip {
+  wallet String
+  player Player @relation(fields: [wallet], references: [wallet], onDelete: Cascade)
+  slot   String
+  item   String
+
+  @@id([wallet, slot])
   @@schema("player")
 }
 

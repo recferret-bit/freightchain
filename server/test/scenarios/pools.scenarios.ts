@@ -2,11 +2,12 @@ import { PoolRepositoryPort } from '../../src/application/ports/economy/pool.rep
 import { PromoRepositoryPort } from '../../src/application/ports/economy/promo.repository.port.js';
 import { RideTicketRepositoryPort } from '../../src/application/ports/players/ride-ticket.repository.port.js';
 import { TransactionPort } from '../../src/application/ports/shared/transaction.port.js';
-import { PromoCode } from '../../src/domain/economy/promo-code.entity.js';
 import type { PoolProps } from '../../src/domain/economy/pool.types.js';
 import { bindClient, type Rider } from '../support/client.js';
 import type { Harness } from '../support/harness.js';
 import { aPool } from '../support/pools.js';
+import { aPromo, ticketEffect } from '../support/promos.js';
+import type { PromoCreateInput } from '../../src/domain/economy/promo.types.js';
 
 /* Escrowed pools as the API shows them, promo codes that add tickets, and paid rides that spend a ticket. Pools are seeded straight into the mirror
    (in production the chain watcher writes them); tickets come from promo codes here – the on-chain purchase path is the order workstream's. */
@@ -20,8 +21,7 @@ export function poolScenarios(h: () => Harness): void {
   const tickets = () => h().app.get(RideTicketRepositoryPort, { strict: false });
   const promos = () => h().app.get(PromoRepositoryPort, { strict: false });
   const seedPool = (over: Partial<PoolProps>) => pools().upsert(aPool(over, new Date(now())));
-  const seedPromo = (code: string, over: Partial<Parameters<typeof PromoCode.create>[0]> = {}) =>
-    promos().insert(PromoCode.create({ code, poolId: null, tier: '1h', credits: 2, maxRedemptions: null, perWallet: 1, expiresAt: null, note: null, now: new Date(now()), ...over }));
+  const seedPromo = (code: string, over: Partial<PromoCreateInput> = {}) => promos().insert(aPromo(new Date(now()), { code, maxRedemptions: null, ...over }));
   const redeem = (w: Rider, code: string) => w.agent.post('/api/promo/redeem').send({ code });
   const ride = (w: Rider, tier: string) => w.agent.post('/api/rides').send({ tier });
 
@@ -51,7 +51,7 @@ export function poolScenarios(h: () => Harness): void {
       await seedPool({ id: 1, status: 'open' });
       await seedPromo('WELCOME');
       const w = await login();
-      expect((await redeem(w, ' welcome ').expect(200)).body).toEqual({ code: 'WELCOME', poolId: 1, tier: '1h', added: 2, balance: 2, cap: 5 });
+      expect((await redeem(w, ' welcome ').expect(200)).body).toEqual({ kind: 'tickets', code: 'WELCOME', label: '2 × 1h ride tickets', poolId: 1, tier: '1h', added: 2, balance: 2, cap: 5 });
       expect((await w.agent.get('/api/me').expect(200)).body.tickets).toEqual([{ poolId: 1, tier: '1h', label: '1 HOUR · test', status: 'open', balance: 2, bought: 0, cap: 5, refundable: false }]);
       const profile = (await w.agent.get('/api/profile').expect(200)).body;
       expect(profile.grants).toEqual([{ poolId: 1, delta: 2, source: 'promo', ref: 'WELCOME', at: now() }]);
@@ -63,14 +63,14 @@ export function poolScenarios(h: () => Harness): void {
       await redeem(w, 'NOPE').expect(404);
       await anon().post('/api/promo/redeem').send({ code: 'NOPE' }).expect(401);
       await w.agent.post('/api/promo/redeem').send({}).expect(400);
-      await seedPromo('LATER', { tier: '8h' });
+      await seedPromo('LATER', { effect: ticketEffect({ tier: '8h' }) });
       expect((await redeem(w, 'LATER').expect(409)).body).toMatchObject({ code: 'no_open_pool' });
     });
 
     it('the last redemption of a limited code goes to one wallet only, and a wallet at the cap does not burn one', async () => {
       await seedPool({ id: 1, status: 'active', maxPerWallet: 2 });
       await seedPromo('ONE', { maxRedemptions: 1 });
-      await seedPromo('MORE', { credits: 2 });
+      await seedPromo('MORE', { effect: ticketEffect({ credits: 2 }) });
       const a = await login(), b = await login();
       await redeem(a, 'ONE').expect(200);
       await redeem(b, 'ONE').expect(409);
@@ -82,7 +82,7 @@ export function poolScenarios(h: () => Harness): void {
   describe('paid rides spend tickets', () => {
     it('one ticket = one ready ride in the pool; a re-ask hands the same ride back; at zero → 409 no_tickets', async () => {
       await seedPool({ id: 1, status: 'active' });
-      await seedPromo('ONE', { credits: 1 });
+      await seedPromo('ONE', { effect: ticketEffect({ credits: 1 }) });
       const w = await login();
       await redeem(w, 'ONE').expect(200);
       const r = (await ride(w, '1h').expect(200)).body;
@@ -96,7 +96,7 @@ export function poolScenarios(h: () => Harness): void {
 
     it('tickets in a pool still short of its minimum cannot be ridden yet (409 pool_not_live); once it is active they can', async () => {
       await seedPool({ id: 1, status: 'open', minTickets: 3, ticketsSold: 1 });
-      await seedPromo('WAIT', { credits: 1 });
+      await seedPromo('WAIT', { effect: ticketEffect({ credits: 1 }) });
       const w = await login();
       await redeem(w, 'WAIT').expect(200);
       expect((await ride(w, '1h').expect(409)).body).toMatchObject({ code: 'pool_not_live', detail: 'pool not live yet – 2 more tickets needed' });
