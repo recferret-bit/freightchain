@@ -47,7 +47,7 @@ Kept on purpose: the legacy pay-per-ride routes (`/api/rides/:id/payment|confirm
 
 ## 4. What to do next
 
-1. **Devnet deploy** (needs §2 items 1–4): `anchor keys sync` → `npm run program:build` → `npm run program:idl` → `node server/scripts/vendor-idl.mjs` → regenerate the codec fixture (`FC_FIXTURES_OUT=$PWD/../../server/test/fixtures/chain cargo test --test export_fixtures` in `programs/freightchain-pools`) → all suites green → `anchor deploy --provider.cluster devnet` → `initialize` → `create_pool` for the week pools + the demo pool (signed in Phantom).
+1. **Devnet deploy** (needs §2 items 1–4; the step-by-step, the `initialize` caveat and how to operate the program afterwards: `docs/program-deploy.md`): `anchor keys sync` → `npm run program:build` → `npm run program:idl` → `node server/scripts/vendor-idl.mjs` → regenerate the codec fixture (`FC_FIXTURES_OUT=$PWD/../../server/test/fixtures/chain cargo test --test export_fixtures` in `programs/freightchain-pools`) → all suites green → `anchor deploy --provider.cluster devnet` → `initialize` → `create_pool` for the week pools + the demo pool (signed in Phantom).
 2. **Register the pools**: `node dist/cli/index.js pool:register <id> --label "1 HOUR · week 42"` per pool.
 3. **Real devnet run** (server in `program` mode, `TICKET_PROGRAM_ID` set): buy sponsored + self-paid from the lobby with Phantom, the watcher credits it, ride with the ticket; let the demo pool fail → CLAIM REFUND; a live pool past its deadline → admin payout + close. Write `server/scripts/devnet-pool.mjs` (replaces `devnet-pay.mjs`) to repeat it headless.
 4. Delete the legacy pay-per-ride routes (Q1), fix `paidRides` (Q8), copy pass (Q5).
