@@ -10,6 +10,7 @@
     "make": "node make.mjs",
     "preview": "node make.mjs specs/intro.json --preview",
     "intro": "node make.mjs specs/intro.json",
+    "intro:compress": "node make.mjs specs/intro.json --compress",
     "lint": "eslint make.mjs lib"
   },
   "devDependencies": {

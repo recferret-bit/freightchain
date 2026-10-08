@@ -44,11 +44,11 @@ npm run landing:test                   # formatters, card scripts, page integrit
 
 ## Promo videos
 
-[`video/out/intro/intro.mp4`](video/out/intro/intro.mp4) (14.8 s) and [`intro.gif`](video/out/intro/intro.gif) are made from real gameplay by the `video/` harness: a JSON spec of scenes (gears, a crash, night lights, Siberian frost, Australian dust, an end card), captions in the landing's style, transitions, a Solana badge – the same input renders the same bytes.
+[`video/out/intro/intro.mp4`](video/out/intro/intro.mp4) (14.8 s) and [`intro.gif`](video/out/intro/intro.gif) (compressed look-alikes: [`intro.min.mp4`](video/out/intro/intro.min.mp4) 2.6 MB, [`intro.min.gif`](video/out/intro/intro.min.gif) 9.3 MB, [`intro.tiny.gif`](video/out/intro/intro.tiny.gif) 476 kB) are made from real gameplay by the `video/` harness: a JSON spec of scenes (gears, a crash, night lights, Siberian frost, Australian dust, an end card), captions in the landing's style, transitions, a Solana badge – the same input renders the same bytes.
 
 ```sh
 npm --prefix video install                  # once (Node >= 22, Chrome; ffmpeg comes from npm)
-npm run video -- video/specs/intro.json     # ~30 s on a Mac GPU → video/out/intro/{intro.mp4,intro.gif,contact.jpg}
+npm run video -- video/specs/intro.json     # ~30 s on a Mac GPU → video/out/intro/{intro.mp4,intro.gif,contact.jpg} + intro.min.{mp4,gif} (compressed look-alikes) + intro.tiny.gif (≤ 500 kB)
 npm --prefix video run preview              # half-size look, not committed
 ```
 
