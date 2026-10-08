@@ -60,8 +60,8 @@ FROM verdict."RideVerdict" v ORDER BY v."judgedAt" DESC LIMIT 50;
 SELECT ro.id, ro."startsAt"::date, ro."endsAt"::date, ro.status, ro.carry / 1e9 AS carry_sol, count(p.signature) AS entries, coalesce(sum(p.lamports), 0) / 1e9 AS entries_sol
 FROM economy."Round" ro LEFT JOIN economy."Payment" p ON p."roundId" = ro.id GROUP BY ro.id ORDER BY ro.id DESC LIMIT 10;
 
--- @admin  the last 50 admin actions (verdict overrides) – needs the admin audit (migration 0003)
-SELECT at, wallet, action, target, detail FROM admin."AdminAction" ORDER BY at DESC LIMIT 50;
+-- @admin  the last 50 admin actions (admin sign-ins, verdict overrides, re-judges; signed = the decision carries the admin wallet's signature, the full text is in detail->'signed') – needs the admin audit (migration 0003)
+SELECT at, wallet, action, target, detail - 'signed' AS detail, detail ? 'signed' AS signed FROM admin."AdminAction" ORDER BY at DESC LIMIT 50;
 
 -- @migrations  applied migrations
 SELECT migration_name, finished_at, rolled_back_at FROM public._prisma_migrations ORDER BY started_at;

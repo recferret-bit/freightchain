@@ -35,7 +35,7 @@ Quote every identifier – Prisma keeps camelCase: `ride."Ride"."lastS"`.
 - `telemetry."RideBatch"` (rideId+seq PK, prevHash, hash, hashOk, t0/t1 game s, samples, inputs, bytes, payload gzip JSON)
 - `verdict."RideVerdict"` (rideId PK, status pending|verified|flagged|rejected, reasons jsonb `[{code,detail,severity}]`, scores jsonb `{recording,human}`, rulesVersion, judgedAt, overriddenBy, overriddenAt, note)
 - `economy."Round"` (weekly, carry lamports, open|closed) · `economy."Payment"` (signature PK, rideId, wallet, lamports, roundId)
-- `achievement."AchievementUnlock"` · `admin."AdminAction"` (wallet, action, target, detail, at)
+- `achievement."AchievementUnlock"` · `admin."AdminAction"` (wallet, action `auth.signin` / `verdict.override` / `verdict.rejudge`, target = the wallet / the ride id, detail jsonb – for decisions `signed: {message, signature}`, the text the admin wallet signed, at)
 
 Lamports: divide by 1e9 for SOL. Times are UTC.
 

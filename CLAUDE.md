@@ -23,6 +23,7 @@ The full project map and caveats are in `AGENTS.md` (imported above). The ones t
 - Keep modules **acyclic** and use the shared `view` object for canvas size. Single-sided materials must be tracked (`themes/_shared/mats.js`) or listed in `flipMats()` (`js/world/render.js`) or they break in the mirrors.
 - `mesh.position` is read-only – use `.position.set()`.
 
+- **The admin API is its own security zone**: `AdminGuard` takes only the ADMIN session (`fc_admin` from `/api/admin/auth/*`, `AdminTokenPort`) – never the player's `fc_session` – and on a split deployment only `Host` = `admin.<COOKIE_DOMAIN>` (read `headers.host`, never `req.hostname` / `X-Forwarded-Host`); every admin change needs a wallet signature over `POST admin/rides/:id/challenge`'s text (`AdminProofService`). New admin routes: guarded by default (`@AdminPublic()` only for the sign-in), changes signed + audited. Tests: `loginAdmin` (`test/support/client.ts`), `testAdmin` (`test/support/admin-fixtures.ts`), the fake Phantom in `server/scripts/e2e-admin.mjs`. Player-facing explanation: `docs/verified-play/index.html` – update it when the checks change.
 - **Observe production read-only with the project skills** (`.claude/skills/`): `prod-logs`, `prod-db`, `ride-investigate`; run everything with `run-tests` (`bash .claude/skills/run-tests/e2e.sh` = real-Chrome e2e on a throwaway database). They never deploy or write; `npm run ops -- …` is the same tooling by hand.
 
 ## Workflow

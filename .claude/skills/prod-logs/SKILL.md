@@ -21,6 +21,8 @@ Never run `npm run deploy`, `deploy:rollback`, `deploy:backup` or `deploy:smoke`
 | one request | `npm run --silent ops -- logs --since 24h --grep '<request-id>'` (every response carries `X-Request-Id`; problem+json errors carry `requestId`) |
 | one wallet / ride | `npm run --silent ops -- logs --since 24h --grep '<wallet or ride id>'` |
 | sign-ins | `npm run --silent ops -- logs --since 24h --grep '"event":"signin"'` |
+| admin sign-ins / admin decisions | `npm run --silent ops -- logs --since 24h --grep '"event":"admin-signin"'` · `--grep '"event":"admin"'` (also in the audit: `npm run ops -- query admin`) |
+| refused recording batches | `npm run --silent ops -- logs --since 24h --grep '"event":"batch-refused"'` (the reason a ride's chain broke) |
 | the database container | `npm run --silent ops -- logs --service postgres --lines 100` |
 | nginx (all sites on the box share these files) | `npm run --silent ops -- nginx --lines 100` · `npm run --silent ops -- nginx --error --lines 50` · `--grep '/api/rides'` |
 
