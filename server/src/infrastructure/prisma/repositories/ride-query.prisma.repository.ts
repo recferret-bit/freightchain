@@ -31,6 +31,10 @@ export class RideQueryPrismaRepository extends RideQueryPort {
       : []));
   }
 
+  async staleRunning(cutoff: Date, limit: number): Promise<{ id: string; wallet: string }[]> {
+    return this.prisma.ride.findMany({ where: { status: 'running', OR: [{ lastHbAt: { lt: cutoff } }, { lastHbAt: null }] }, orderBy: [{ lastHbAt: { sort: 'asc', nulls: 'first' } }], take: limit, select: { id: true, wallet: true } });
+  }
+
   async upcoming(limit: number): Promise<UpcomingRideRow[]> {
     const rows = await this.prisma.ride.findMany({
       where: { status: 'created', tier: { not: 'free' }, paidAt: { not: null } },

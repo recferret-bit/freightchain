@@ -3,7 +3,7 @@ import type { EnvService } from '../../../../src/infrastructure/config/env.servi
 
 const env = (over: Record<string, unknown> = {}) => ({
   freeRideSeconds: 10, hbMinIntervalMs: 500, demoWallets: new Set(['d']), demoScale: 30, initialSeedLamports: 7, treasuryPubkey: 'T', appDomain: 'd.example', appOrigin: 'https://d.example',
-  verdictEnforce: false, telemetryRetentionDays: 30, adminWallets: new Set(['A']), adminHost: null, gameHost: null, liveFlags: { chat: 'free', donations: true, freeDonations: false, effects: 'off' },
+  verdictEnforce: false, telemetryRetentionDays: 30, adminWallets: new Set(['A']), adminHost: null, gameHost: null, hbTimeoutMs: 150_000, liveFlags: { chat: 'free', donations: true, freeDonations: false, effects: 'off' },
   paymentMode: 'transfer', ticketProgramId: '', feeTreasury: '', seedTreasury: '', watchIntervalMs: 15_000, orderTtlMs: 3_600_000, solanaCommitment: 'confirmed',
   feePayerSecret: undefined, crankSecret: undefined, sponsorPerWalletPerDay: 20, priorityFee: { percentile: 75, minMicrolamports: 0, maxMicrolamports: 50_000 }, onchainSessionTtlHours: 24,
   ...over,

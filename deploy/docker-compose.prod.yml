@@ -84,6 +84,7 @@ services:
       ORDER_TTL_MINUTES: ${ORDER_TTL_MINUTES:-60}
       ONCHAIN_SESSION_TTL_HOURS: ${ONCHAIN_SESSION_TTL_HOURS:-24}
       HB_MIN_INTERVAL_MS: ${HB_MIN_INTERVAL_MS:-1000}
+      HB_TIMEOUT_MS: ${HB_TIMEOUT_MS:-150000}            # the heartbeat timeout: off the live feed + ended by the stale-ride sweeper
       ADMIN_WALLETS: ${ADMIN_WALLETS:-}
       ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET:-}   # empty = derived from JWT_SECRET
       ADMIN_SESSION_TTL_MINUTES: ${ADMIN_SESSION_TTL_MINUTES:-120}

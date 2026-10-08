@@ -1,4 +1,5 @@
 import { CommandBus } from '@nestjs/cqrs';
+import { SweepStaleRidesCommand } from '../../src/application/use-cases/rides/sweep-stale-rides/sweep-stale-rides.command.js';
 import { GrantDailyFreeRidesCommand } from '../../src/application/use-cases/players/grant-daily-free-rides/grant-daily-free-rides.command.js';
 import { PrismaService } from '../../src/infrastructure/prisma/prisma.service.js';
 import { bindClient, newWallet, sign, type Rider } from '../support/client.js';
@@ -395,6 +396,28 @@ describe('concurrency (PostgreSQL)', () => {
       const row = await prisma.rideEvent.findUniqueOrThrow({ where: { id: gift.id } });
       expect(row.appliedS).toBe(results[0]!.body.applied.s);
     });
+  });
+
+  it('the stale-ride sweep racing a late heartbeat and /end: the ride ends exactly once, consistently, and nothing errors', async () => {
+    for (let round = 0; round < 4; round++) {
+      const a = await login();
+      const ride = (await a.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
+      await a.agent.post(`/api/rides/${ride.id}/start`).expect(200);
+      sec(160);   // silent past the 150 s timeout: abandoned
+      const bus = harness.app.get(CommandBus);
+      const results = await Promise.all([
+        bus.execute(new SweepStaleRidesCommand()), bus.execute(new SweepStaleRidesCommand()),
+        a.agent.post(`/api/rides/${ride.id}/heartbeat`).send({ s: 30, t: 3, hull: 100 }),
+        a.agent.post(`/api/rides/${ride.id}/end`).send({ outcome: 'shift', s: 30, t: 3 }),
+      ]);
+      const [s1, s2, hb, end] = results as [{ ended: number }, { ended: number }, { status: number }, { status: number; body: { status: string } }];
+      expect(s1.ended + s2.ended).toBeLessThanOrEqual(1);   // never ended twice by the sweep
+      expect(hb.status).toBeLessThan(500); expect([200, 409]).toContain(end.status);   // /end lands, or finds the ride the sweep already ended (409)
+      const row = await prisma.ride.findUniqueOrThrow({ where: { id: ride.id } });
+      expect(row.status).not.toBe('running'); expect(row.endedAt).not.toBeNull();
+      if (s1.ended + s2.ended === 1) expect(row).toMatchObject({ status: 'failed', reason: 'heartbeat lost' });
+      if (end.status === 409) expect(row).toMatchObject({ status: 'failed', reason: 'heartbeat lost' });   // refused only because the sweep – or the late heartbeat itself (Ride.applyReport) – had ended it
+    }
   });
 
   it('a double START starts the ride once', async () => {

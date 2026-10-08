@@ -68,6 +68,7 @@ A new setting therefore touches **four** places: `env.schema.ts`, `server/.env.e
 |---|---|---|
 | `FREE_RIDE_SECONDS` | `180` | Free-ride length. Test/demo override |
 | `HB_MIN_INTERVAL_MS` | `1000` | Minimum spacing of ride heartbeats |
+| `HB_TIMEOUT_MS` | `150000` | A running ride with no heartbeat this long has lost its tab – it could not resume anyway (its next heartbeat would fail it): it leaves the live feed and the stale-ride sweeper (every min(30 s, timeout / 3)) ends it as *failed · heartbeat lost*. Tests set it low |
 | `DEMO_WALLETS` | empty | Comma-separated wallets (or `*`) whose **paid** rides run `DEMO_SCALE`× shorter – for demo videos |
 | `DEMO_SCALE` | `60` | |
 | `INITIAL_SEED_SOL` | `0` | SOL the very first prize round starts with |

@@ -79,6 +79,8 @@ export interface LeaderboardRow {
 export abstract class RideQueryPort {
   /** Running rides whose last heartbeat is at or after `heartbeatSince`, newest first. */
   abstract live(heartbeatSince: Date, limit: number): Promise<LiveRideRow[]>;
+  /** Running rides whose last heartbeat is OLDER than `cutoff` (their tab vanished) – oldest first; the sweeper ends them. */
+  abstract staleRunning(cutoff: Date, limit: number): Promise<{ id: string; wallet: string }[]>;
   /** Paid rides that are bought but not started yet (free rides never queue), most recently paid first. */
   abstract upcoming(limit: number): Promise<UpcomingRideRow[]>;
   /** The last rides that started and then ended, newest first. */

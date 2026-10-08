@@ -47,6 +47,7 @@ export class EnvService {
   get throttleAuthLimit(): number { return this.env.THROTTLE_AUTH_LIMIT; }
   get freeRideSeconds(): number { return this.env.FREE_RIDE_SECONDS; }
   get hbMinIntervalMs(): number { return this.env.HB_MIN_INTERVAL_MS; }
+  get hbTimeoutMs(): number { return this.env.HB_TIMEOUT_MS; }
   get solanaRpc(): string { return this.env.SOLANA_RPC; }
   get solUsdFixed(): number | undefined { return this.env.SOL_USD || undefined; }
   get demoScale(): number { return this.env.DEMO_SCALE; }

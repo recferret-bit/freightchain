@@ -1,3 +1,5 @@
+import { CommandBus } from '@nestjs/cqrs';
+import { SweepStaleRidesCommand } from '../../src/application/use-cases/rides/sweep-stale-rides/sweep-stale-rides.command.js';
 import { bindClient, type Rider } from '../support/client.js';
 import type { Harness } from '../support/harness.js';
 
@@ -45,6 +47,19 @@ export function lobbyScenarios(h: () => Harness): void {
       expect(rc.id).toBe(idC); expect(Object.keys(rc)).not.toContain('reason');
       expect(body.upcoming).toEqual([]);   // free rides are never "next up" – only paid, unstarted shifts
       expect(body.totals).toMatchObject({ shifts: expect.any(Number), metres: expect.any(Number), drivers: expect.any(Number) });
+    });
+
+    it('a ride whose tab vanished is ENDED by the stale-ride sweep (failed · heartbeat lost): off the live feed, in the recent finishes, a late heartbeat refused', async () => {
+      const w = await login(), id = await freeRide(w);
+      sec(5); await w.agent.post(`/api/rides/${id}/heartbeat`).send({ s: 70, t: 5, hull: 100 }).expect(200);
+      sec(160);
+      expect(await h().app.get(CommandBus).execute(new SweepStaleRidesCommand())).toEqual({ ended: 1, skipped: 0 });
+      expect((await w.agent.get(`/api/rides/${id}`).expect(200)).body).toMatchObject({ status: 'failed', reason: 'heartbeat lost' });
+      const feed = (await anon().get('/api/live').expect(200)).body;
+      expect(feed.rides.map((r: { id: string }) => r.id)).not.toContain(id);
+      expect(feed.recent.find((r: { id: string }) => r.id === id)).toMatchObject({ status: 'failed', distance: 70 });
+      await w.agent.post(`/api/rides/${id}/heartbeat`).send({ s: 80, t: 6, hull: 100 }).expect(409);
+      expect((await w.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body.status).toBe('created');   // the wallet is free for its next ride
     });
 
     it('only whitelisted routes are published; junk is ignored', async () => {

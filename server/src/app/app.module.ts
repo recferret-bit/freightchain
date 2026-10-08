@@ -12,6 +12,7 @@ import { InfrastructureModule } from '../infrastructure/infrastructure.module.js
 import { DailyFreeRideScheduler } from '../infrastructure/scheduling/daily-free-ride.scheduler.js';
 import { ProgramWatcher } from '../infrastructure/scheduling/program-watcher.js';
 import { TelemetryRetentionScheduler } from '../infrastructure/scheduling/telemetry-retention.scheduler.js';
+import { StaleRideScheduler } from '../infrastructure/scheduling/stale-ride.scheduler.js';
 import { ApplicationModule } from '../application/application.module.js';
 import { TokenSignerPort } from '../application/ports/auth/token-signer.port.js';
 import { PresentationModule } from '../presentation/presentation.module.js';
@@ -36,6 +37,6 @@ export function siteRoots(env: EnvService): ServeStaticModuleOptions[] {
     ApplicationModule, // the scheduler dispatches on its bus
     PresentationModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }, DailyFreeRideScheduler, TelemetryRetentionScheduler, ProgramWatcher],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }, DailyFreeRideScheduler, TelemetryRetentionScheduler, StaleRideScheduler, ProgramWatcher],
 })
 export class AppModule {}

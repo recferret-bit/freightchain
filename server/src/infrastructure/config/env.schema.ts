@@ -23,6 +23,7 @@ export const envSchema = z
     THROTTLE_AUTH_LIMIT: z.coerce.number().int().positive().default(30),
     FREE_RIDE_SECONDS: z.coerce.number().positive().default(180),
     HB_MIN_INTERVAL_MS: z.coerce.number().int().min(0).default(1000),
+    HB_TIMEOUT_MS: z.coerce.number().int().min(5000).default(150_000), // no heartbeat for this long = the tab is gone: off the live feed, its next heartbeat would fail it, the stale-ride sweeper ends it (failed · heartbeat lost)
     TREASURY_PUBKEY: optional(z.string()),
     SOLANA_RPC: z.string().min(1).default('https://api.devnet.solana.com'),
     SOL_USD: optional(z.coerce.number().min(0)), // 0 = not pinned (live price), as before

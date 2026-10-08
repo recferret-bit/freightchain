@@ -156,6 +156,11 @@ export class MemoryRideQuery extends RideQueryPort {
         : []));
   }
 
+  async staleRunning(cutoff: Date, limit: number): Promise<{ id: string; wallet: string }[]> {
+    return [...this.db.rides.values()].filter((r) => r.props.status === RideStatus.Running && (r.props.lastHbAt?.getTime() ?? 0) < cutoff.getTime())
+      .sort((a, b) => (a.props.lastHbAt?.getTime() ?? 0) - (b.props.lastHbAt?.getTime() ?? 0)).slice(0, limit).map(({ props: p }) => ({ id: p.id, wallet: p.wallet }));
+  }
+
   async upcoming(limit: number): Promise<UpcomingRideRow[]> {
     return [...this.db.rides.values()]
       .filter((r) => r.props.status === RideStatus.Created && r.props.tier !== 'free' && r.props.paidAt)

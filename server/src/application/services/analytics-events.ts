@@ -10,7 +10,7 @@ import { emitAnalytics } from './analytics-emit.js';
 export const SYSTEM_DISTINCT_ID = 'freightchain';
 
 type Props = Record<string, AnalyticsValue>;
-type EndedBy = 'end' | 'heartbeat' | 'stale_on_create' | 'stale_on_start';
+type EndedBy = 'end' | 'heartbeat' | 'stale_on_create' | 'stale_on_start' | 'stale_sweep';
 
 const ms = (seconds: number): number => Math.round(seconds * 1000);
 const cents = (solUsd: number | null): number | null => (solUsd === null ? null : Math.round(solUsd * 100));

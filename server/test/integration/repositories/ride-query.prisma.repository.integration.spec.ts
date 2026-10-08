@@ -44,6 +44,15 @@ describe('RideQueryPrismaRepository (PostgreSQL)', () => {
     expect(await query.live(at(0), 1)).toHaveLength(1);
   });
 
+  it('staleRunning: running rides whose last heartbeat is older than the cut-off, oldest first – never ended or fresh ones', async () => {
+    const a = await ride('alice', { metres: 50, outcome: 'running', start: 0 });     // last beat at 10
+    const b = await ride('bob', { metres: 70, outcome: 'running', start: 20 });      // last beat at 30
+    await ride('carol', { metres: 10, outcome: 'failed', start: 0 });
+    expect(await query.staleRunning(at(20), 50)).toEqual([{ id: a.id, wallet: 'alice' }]);
+    expect((await query.staleRunning(at(100), 50)).map((r) => r.id)).toEqual([a.id, b.id]);
+    expect(await query.staleRunning(at(100), 1)).toHaveLength(1);
+  });
+
   it('upcoming: only paid, not-yet-started shifts, most recently paid first – free and started rides never queue', async () => {
     const a = orderAt('alice', at(0)); a.markPaid(1, at(10)); await rides.insert(a);
     const b = orderAt('bob', at(5)); b.markPaid(1, at(20)); await rides.insert(b);
