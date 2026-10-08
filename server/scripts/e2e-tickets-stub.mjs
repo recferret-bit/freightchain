@@ -1,7 +1,7 @@
 // The lobby's ticket flows (W3 orders / W4 chain) without a chain, in real headless Chrome against scripts/stub-api.mjs with a FAKE wallet:
 // BUY (gasless signTransaction → /submit · sponsor down → ?selfPaid=1 fallback · self-paid signAndSend → /confirm), a buy that takes an open pool live, CLAIM REFUND (signAndSend → /api/chain/settle) on a failed pool (card + strip), the grant trail, SOON without the program.
 // Needs internet once for web3.js (jsdelivr, as pay.js loads it). Nothing is signed for real and nothing is sent to any chain.   Usage (from server/): node scripts/e2e-tickets-stub.mjs
-// PORT = the DevTools port (default 9351), STUB_PORT = the stub's first port (default 3150; the other runs use +1…+3), SHOTS = screenshot dir (default $TMPDIR/fc-tickets-shots).
+// PORT = the DevTools port (default 9351), STUB_PORT = the stub's first port (default 3150; the other runs use +1…+4), SHOTS = screenshot dir (default $TMPDIR/fc-tickets-shots).
 import { spawn } from 'node:child_process';
 import { launch, sleep } from '../../client/tools/cdp.mjs';
 const CDP = +(process.env.PORT || 9351), STUB = +(process.env.STUB_PORT || 3150);
@@ -64,8 +64,17 @@ await fresh(STUB + 2, { SPONSORED: '0' });
 await click('#tier-1h .buyb');
 check('BUY (self-paid): signAndSendTransaction, confirm, credited', await until(async () => /Paid – 1 ticket credited/.test(await txt('#msg-1h')), 30000) && (await asked()) === '["signAndSendTransaction"]', `${await txt('#msg-1h')} ${await asked()}`);
 
+// ── a payment in flight survives a reload: GET /api/tickets/pending → the banner → RETRY CONFIRM (the signature this browser kept) → paid
+await fresh(STUB + 3, { SPONSORED: '0', CONFIRM_PENDING: '8' });
+await click('#tier-1h .buyb');
+await until(async () => /Waiting for the network/.test(await txt('#msg-1h')));
+await h.send('Page.reload'); await until(async () => (await h.ev('document.querySelectorAll(".tier").length')) === 4);
+check('after a reload: "a payment for 1 ticket is in flight" + RETRY CONFIRM', await until(async () => /A payment for 1 ticket is in flight/.test(await txt('#orderbox')) && (await txt('#orderbox button')) === 'RETRY CONFIRM'), await txt('#orderbox'));
+await click('#orderbox button');
+check('…RETRY CONFIRM lands it: the banner goes, the ticket is there', await until(async () => (await txt('#orderbox')) === '' && (await txt('#tier-1h .go')) === 'RIDE (2 left)', 30000), `${await txt('#orderbox')} / ${await txt('#tier-1h .go')}`);
+
 // ── a server without the program (paymentMode transfer): BUY is SOON and disabled
-await fresh(STUB + 3, { SALES: '0' });
+await fresh(STUB + 4, { SALES: '0' });
 check('no program: BUY TICKETS · SOON, disabled', /SOON/.test(await txt('#tier-1h .buyb')) && await h.ev('document.querySelector("#tier-1h .buyb").disabled'), await txt('#tier-1h .buyb'));
 
 const pr = h.filt().filter(p => !/status of 409/.test(p) && !(/status of 503/.test(p) && /\/submit/.test(p)));   // the 503 is the point of the fallback run

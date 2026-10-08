@@ -26,7 +26,7 @@ const pools = [
 ];
 const tickets = new Map([[1, { balance: 1, bought: 1 }], [2, { balance: 0, bought: 0 }], [3, { balance: 0, bought: 2 }], [5, { balance: 0, bought: 1 }]]);
 const grants = [{ poolId: 3, delta: 2, source: 'payment', ref: sig(), at: t0 - 3 * DAY }, { poolId: 5, delta: 1, source: 'payment', ref: sig(), at: t0 - 4 * DAY }, { poolId: 1, delta: 1, source: 'promo', ref: 'WELCOME', at: t0 - DAY }];
-const orders = new Map(), polls = new Map(), refunds = new Map(), rides = new Map();
+const orders = new Map(), polls = new Map(), built = new Map(), refunds = new Map(), rides = new Map();
 let freeRides = 5;
 
 const toGo = p => (p.status === 'open' ? Math.max(0, p.minTickets - p.sold) : 0);
@@ -89,11 +89,13 @@ const R = [
   ['GET', /^tickets\/orders\/([\w-]+)$/, m => { const o = orders.get(m[1]); if (!o) return problem(404, 'not_found', 'no such order'); if (o.status === 'awaiting_payment' && o.signature && polls.get(o.id) >= PENDING) pay(o); else polls.set(o.id, polls.get(o.id) + 1); return { body: o }; }],
   ['GET', /^tickets\/orders\/([\w-]+)\/payment$/, (m, b, q) => { const o = orders.get(m[1]); if (!o) return problem(404, 'not_found', 'no such order'); if (o.status !== 'awaiting_payment') return problem(409, 'order_closed', `the order is ${o.status}`);
     const p = pools.find(x => x.id === o.poolId), sponsored = SPONSORED && q.get('selfPaid') !== '1', feePayer = sponsored ? SPONSOR : WALLET, t = tx(o.lamports, new PublicKey(p.address), feePayer);
+    built.set(o.id, t.message);   // /submit accepts exactly these message bytes (the real server's fee-payer-drain guard)
     return { body: { orderId: o.id, mode: 'program', programId: PROGRAM, poolId: p.id, lamports: o.lamports, transaction: t.transaction, message: t.message, feePayer: feePayer.toBase58(), sponsored, computeUnits: 40_000, priorityMicrolamports: 0, blockhash: t.blockhash, lastValidBlockHeight: 1 } }; }],
   ['POST', /^tickets\/orders\/([\w-]+)\/submit$/, (m, b) => {
     const o = orders.get(m[1]); if (!o) return problem(404, 'not_found', 'no such order');
     if (SUBMIT_FAIL) return problem(503, 'service_unavailable', 'the fee sponsor is empty');
-    try { Transaction.from(Buffer.from(String(b.signedTransaction), 'base64')); } catch { return problem(400, 'transaction_mismatch', 'not the transaction built for this order'); }
+    let msg = null; try { msg = Transaction.from(Buffer.from(String(b.signedTransaction), 'base64')).serializeMessage().toString('base64'); } catch { /* not a transaction */ }
+    if (!msg || msg !== built.get(o.id)) return problem(400, 'transaction_mismatch', 'not the transaction built for this order');
     o.signature = sig(); pay(o); return { body: { signature: o.signature, status: 'paid', order: o } };
   }],
   ['POST', /^tickets\/orders\/([\w-]+)\/confirm$/, (m, b) => {
