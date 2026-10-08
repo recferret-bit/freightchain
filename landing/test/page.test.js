@@ -96,7 +96,7 @@ test('sign-in: redirect + session UI go through SITE_BASE, the wallet chip exist
 
 test('the icons the pages name exist (what Phantom, tabs and home screens show for the site)', () => {
   const client = join(root, '..', 'client');
-  for (const page of [join(root, 'index.html'), join(client, 'lobby.html'), join(client, 'play.html'), join(client, 'viewer.html')]) {
+  for (const page of [join(root, 'index.html'), join(client, 'lobby.html'), join(client, 'play.html'), join(client, 'viewer.html'), join(client, 'escrow', 'index.html')]) {
     const links = [...readFileSync(page, 'utf8').matchAll(/<link rel="(?:icon|apple-touch-icon|manifest)"[^>]*href="(\/[^"]+)"/g)].map(m => m[1]);
     assert.ok(links.length >= 4, `${page}: icon links`);
     assert.deepEqual(links.filter(l => !existsSync(join(client, l))), [], page);
@@ -104,4 +104,13 @@ test('the icons the pages name exist (what Phantom, tabs and home screens show f
   const manifest = JSON.parse(readFileSync(join(client, 'manifest.webmanifest'), 'utf8'));
   assert.deepEqual(manifest.icons.map(i => i.src).filter(l => !existsSync(join(client, l))), []);
   assert.ok(manifest.icons.some(i => i.sizes === '192x192') && manifest.icons.some(i => i.sizes === '512x512'));
+});
+
+test('pools: the live board + the escrow block exist, the explainer is linked through SITE_BASE, the pool wording is the lobby\'s', () => {
+  assert.ok(ids.includes('pools') && ids.includes('escrow-link'));
+  assert.match(main, /\$\('escrow-link'\)\.href = `\$\{SITE_BASE\}\$\{ESCROW_PAGE\}`/);
+  assert.match(main, /from '\.\.\/\.\.\/client\/site\/pools\.js'/);
+  assert.match(html, /href="\/escrow\/"/, 'static fallback before the script runs');
+  assert.ok(existsSync(join(root, '..', 'client', 'escrow', 'index.html')), 'the explainer is served from client/escrow/');
+  assert.doesNotMatch(main, /class: `st /, 'the pool chip is .pst – .st is the roadmap\'s rubber stamp');
 });

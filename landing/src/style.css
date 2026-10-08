@@ -169,6 +169,13 @@ h3.sub{margin:40px 0 14px}
 .r .n{color:var(--dim);width:2.2em}
 .r.me{background:#ffcf5a0d}
 .board .link{display:inline-block;margin-top:10px;font-size:12px}
+.escrow{display:grid;grid-template-columns:3fr 2fr;gap:12px}
+.prow{grid-template-columns:1fr auto}.prow .w{flex-wrap:wrap;gap:4px 8px}.prow .w b{color:var(--amber);white-space:nowrap}
+.prow .pmeta{grid-column:1/-1;font-size:11px;color:var(--dim);overflow-wrap:anywhere}.prow .pmeta b{color:var(--cream);font-weight:400}
+.pst{border:1px solid currentColor;border-radius:4px;padding:0 6px;font-size:10px;letter-spacing:1px;white-space:nowrap}   /* not .st: that is the roadmap's rubber stamp */
+.pst.live{color:var(--lcd)}.pst.open{color:var(--amber)}.pst.fail{color:var(--needle)}.pst.done{color:var(--dim)}
+.prow .bar i{background:linear-gradient(90deg,var(--needle),var(--amber))}
+.how ul{margin:10px 0;padding-left:18px;font-size:13px;color:var(--dim)}.how li{margin:6px 0}.how li b{color:var(--cream);font-weight:400}
 .trust{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
 .trust article{background:var(--bg2);border:1px solid var(--line);border-top:3px solid var(--blue);border-radius:8px;padding:14px 16px}
 .trust b{font-size:12px;letter-spacing:2px;color:var(--cream)}
@@ -291,7 +298,7 @@ footer{width:min(1100px,100%);margin:0 auto;padding:30px 20px 50px;color:var(--d
   .stats{grid-template-columns:1fr 1fr}
   .flow{grid-template-columns:1fr 1fr}.flow li:nth-child(2)::after{display:none}
   .mech,.about,.trust,.boards,.cards{grid-template-columns:1fr 1fr}
-  .econ,.garage{grid-template-columns:1fr}.parts-grid{grid-template-columns:1fr 1fr}.lb-f{grid-template-columns:1fr}
+  .econ,.escrow,.garage{grid-template-columns:1fr}.parts-grid{grid-template-columns:1fr 1fr}.lb-f{grid-template-columns:1fr}
   .loads th:nth-child(3),.loads td:nth-child(3){display:none}
 }
 @media (max-width:560px){
