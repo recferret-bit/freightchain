@@ -2,7 +2,7 @@ import { api, signIn, walletName } from '../../client/site/wallet.js';   // one 
 import { API_BASE, GAME_BASE, SITE_BASE, STORYBOOK_BASE, WHITEPAPER_BASE } from '../../client/js/hosts.js';   // '' on localhost; in production the game is on ride.<apex>, NOT the landing's host, and SITE_BASE is the apex
 import { track, flushSoon } from '../../client/js/analytics.js';
 import { livePath, leaveOnClose } from '../../client/site/presence.js';   // this page counts as online in the live feed – and leaves it when closed
-import { sol, km, left, dur, short, hue, hours, ago, plural, TIER, TIER_LONG, ROUTE } from './format.js';
+import { sol, km, left, short, hue, hours, ago, plural, TIER, TIER_LONG, ROUTE } from './format.js';
 import { explorerUrl, shortAddr, statusChip, progressText, deadline, ESCROW_PAGE } from '../../client/site/pools.js';   // the lobby's pool wording, so both pages say the same thing
 
 /* Landing: four chapters (ride · loop · economy · about), fed by the public API only – no session needed to look.
@@ -106,11 +106,6 @@ const empty = txt => [el('span', { class: 'dim' }, txt)];
 function paintBoards() {
   const l = S.live;
   if (l) {
-    $('board-live').replaceChildren(...(l.rides.length ? l.rides.slice(0, 8).map(r => el('a', { class: 'r', href: watchUrl(r.id), title: `watch ${short(r.wallet)} drive – live` },
-      el('span', { class: 'w' }, avatar(r.wallet), short(r.wallet), el('small', {}, TIER[r.tier] ?? r.tier, r.route ? ` · ${ROUTE[r.route] ?? r.route}` : '')),
-      el('span', { class: 'watch' }, '▶ WATCH', r.viewers ? ` · 👁 ${r.viewers}` : ''),
-      el('span', { class: 'v lcd' }, r.paused ? 'PAUSED' : `${dur(r.driveSeconds)} / ${dur(r.minSeconds)}`),
-      el('span', { class: 'bar' }, el('i', { style: `width:${Math.round(r.progress * 100)}%` })))) : empty('Nobody on the road right now. Start a free ride and be the first row.')));
     $('board-next').replaceChildren(...(l.upcoming.length ? l.upcoming.slice(0, 8).map(r => el('div', { class: 'r' },
       el('span', { class: 'w' }, avatar(r.wallet), short(r.wallet), el('small', {}, TIER[r.tier] ?? r.tier)),
       el('span', {}, ''),

@@ -7,7 +7,7 @@ description: Test Freight Chain's live board end to end – who is online, which
 
 What it covers: `GET /api/live` (`online { total, browsing, watching, driving, players }`, each ride's `viewers` and `signal`), the stale-ride sweeper
 (a ride whose tab vanished is ended as *failed · heartbeat lost*), `GET /api/replays` (the history, paged, filtered, `replay` = a recording is kept),
-the lobby's LIVE tab (sort, route filter, ▶ WATCH / WATCH A RANDOM ONE = join) and REPLAYS tab, the landing's chip, LIVE NOW and RECENT RIDES boards.
+the lobby's LIVE tab (sort, route filter, ▶ WATCH / WATCH A RANDOM ONE = join) and REPLAYS tab, the landing's chip, ticker (live rides link to the watch page) and RECENT RIDES board.
 
 ## Run the e2e
 
@@ -21,7 +21,7 @@ started with `FREE_RIDE_SECONDS=20 TRUST_PROXY=1 HB_TIMEOUT_MS=15000` – TRUST_
 
 1. starts the simulator: 2 drivers driving (one watched by 2 watchers), 1 that ABANDONS after 12 s, 1 that COMPLETES its 20 s shift, 1 paused; 5 visitors;
 2. the API: 5 rides with viewers + signal, `online` = 5 browsing + 2 watching + 5 driving = 12, 5 players; the watched ride shows 👁 2, the paused one `paused`;
-3. the landing: the chip `N ONLINE · 5 ON THE ROAD`, this page counted online, LIVE NOW = the 5 rides as watch links (the watched one with 👁 2);
+3. the landing: the chip `N ONLINE · 5 ON THE ROAD`, this page counted online, the ticker links live rides as watch links (the LIVE NOW card was removed);
 4. the lobby (a signed-in player of its own): the header chip, LIVE with 5 rows (👁, WATCH), sort *most watched* puts the watched ride first, PAUSED shows,
    WATCH A RANDOM ONE opens one of them on its watch page (the "join");
 5. the sweep: the abandoned ride is ended (failed · heartbeat lost) and leaves the feed; the completer is COMPLETED with a recording;

@@ -46,7 +46,7 @@ await B.send('Page.navigate', { url: `${BASE}/` });
 const chip = () => B.ev(`document.getElementById('chip-live')?.textContent ?? ''`);
 check('landing: the chip says how many are online and on the road (from the live feed)', await until(async () => /^\d+ ONLINE · 5 ON THE ROAD$/.test(await chip()), 20_000), await chip());
 check('landing: this page itself is counted online', await until(async () => (await api('live')).online.browsing >= 6, 15_000), JSON.stringify((await api('live')).online));
-check('landing: LIVE NOW lists the 5 rides as watch links, the watched one with 👁 2', await until(() => B.ev(`document.querySelectorAll('#board-live a.r[href*="watch="]').length === 5 && [...document.querySelectorAll('#board-live a.r')].some(a => a.href.includes(${JSON.stringify(watched)}) && a.textContent.includes('👁 2'))`), 15_000));
+check('landing: the running ticker links the live rides (the LIVE NOW card is gone – the ticker and the lobby LIVE tab carry it)', await until(() => B.ev(`document.querySelectorAll('.ticker a[href*="watch="]').length > 0 && !document.getElementById('board-live')`), 15_000));
 await shotOf('.boards', 'landing-boards');
 
 // ── the lobby: LIVE (sort, viewers, join) ──
