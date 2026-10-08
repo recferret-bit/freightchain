@@ -34,11 +34,13 @@ Kept on purpose: the legacy pay-per-ride routes (`/api/rides/:id/payment|confirm
 
 ## 3. Open questions
 
+The current list of what is not done, the newer open questions (Q-A … Q13) and the todo list: [`escrow-open-items.md`](escrow-open-items.md).
+
 | # | question | my recommendation |
 |---|---|---|
 | Q1 | Delete the legacy pay-per-ride routes now, or keep them as the transfer-mode fallback until devnet is green? | keep until the devnet run is green, then delete (one commit) |
 | Q2 | Refunds are **self-paid** (the buyer sends the refund and pays ~5 000 lamports). The plan said "a refund must never cost the victim a fee". Sponsor them (needs a stored-message path like `/submit`) or keep? | keep self-paid for the hackathon: a refund then never depends on our server; the closed ticket account returns its rent (more than the fee) to whoever paid it |
-| Q3 | Crank: should the server fail expired pools by itself (`CRANK_SECRET`, a new signing path)? Today any refund transaction includes `fail_pool` when needed, so a player can always do it | skip for the hackathon |
+| Q3 | Crank: should the server fail expired pools by itself (`CRANK_SECRET`)? | **answered – built** on Oct 8: `pool:crank` + `CRANK_INTERVAL_MS` (fail, expire, refunds, close) |
 | Q4 | Session keys (phase 2 of §2.10): go / no-go | no-go – the gas sponsor already removes the fee step; too risky for the time left |
 | Q5 | Landing / lobby copy that runs ahead of the build ("Program written and tested; devnet deploy next", dev-seeded pools shown as "IN ESCROW ON CHAIN") and the old "50 % grand prize · draw" legend (the top-3 change is planned on `main`) – who changes it and when? | I adjust it right after the devnet deploy, together with the top-3 rebase |
 | Q6 | Merge order with `main` / `verified-play`: our migrations are `20261009000000…02`, after verified-play's `20261008000002/3` | merge `verified-play` first if it is ready, then rebase this branch and re-run the drift test |

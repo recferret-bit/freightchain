@@ -6,6 +6,9 @@ keys live in `deploy/secrets/` (gitignored); **deploy only the `solana-verify bu
 
 ## Your next steps (owner)
 
+The full list (not done, open questions, todo): [`escrow-open-items.md`](escrow-open-items.md).
+
+
 1. **`initialize` is safe now**: only the program's upgrade authority (the deploy wallet) can run it, and it names the admin – pass your Phantom address as `authority` (step 5). No front-run window after the deploy.
 2. **Provide the keys** (or say "generate them"): the program id keypair, an upgrade-authority / deploy wallet with ~5 devnet SOL, your Phantom on devnet as the admin (`TREASURY_PUBKEY`), the seed + fee treasury addresses (fixed per pool forever).
 3. **Admin tooling, keypair half done**: `server/scripts/pool-admin.mjs` (`initialize`, `create-pool`, `set-config`, `sponsor`, `buy`, `pay-prize`, `fail-pool`, `expire-pool`, `close-pool`, `show`) signs with keypair FILES – fine for the deploy wallet's `initialize`. A Phantom admin still has no UI for `create_pool` / pause / `propose/accept_authority`; payouts have a server route but no button. Rehearse the whole thing locally first: `npm run test:localnet`.
