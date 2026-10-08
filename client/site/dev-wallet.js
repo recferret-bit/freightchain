@@ -11,7 +11,7 @@ export function installDevWallet() {
   if (!isLocal()) return false;
   try { sessionStorage.setItem(FLAG, '1'); } catch { /* the wallet just won't survive a reload */ }
   const key = crypto.subtle.importKey('jwk', JWK, { name: 'Ed25519' }, false, ['sign']);
-  window.solana = {
+  window.__fcDevWallet = window.solana = {   // a real Phantom owns window.solana (read-only) and wins provider() – wallet.js looks at __fcDevWallet first
     isPhantom: true, isDevWallet: true, publicKey: null,
     async connect() { this.publicKey = { toString: () => DEV_ADMIN_WALLET }; return { publicKey: this.publicKey }; },
     async signMessage(msg) { return { signature: new Uint8Array(await crypto.subtle.sign('Ed25519', await key, msg)) }; },

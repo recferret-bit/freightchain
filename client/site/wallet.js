@@ -41,7 +41,7 @@ function surface() {
   return 'landing';
 }
 
-export const provider = () => window.phantom?.solana ?? window.solana ?? window.solflare;
+export const provider = () => window.__fcDevWallet ?? window.phantom?.solana ?? window.solana ?? window.solflare;   // __fcDevWallet: site/dev-wallet.js, localhost only
 
 /* none / phantom / solflare / injected. Do not look at window.solflare until provider() has chosen. */
 export function walletName(p = provider()) {
