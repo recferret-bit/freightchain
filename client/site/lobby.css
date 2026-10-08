@@ -119,3 +119,8 @@ tr.cut td{border-top:2px dashed var(--amber)}
 
 @media (max-width:560px){.top{padding:10px 12px}.tabs{padding:0 6px;gap:0}.tabs a{padding:11px 8px;letter-spacing:0;font-size:12px}.tier .pr{font-size:19px}td,th{padding:8px 4px;font-size:13px}.tiers{grid-template-columns:1fr}.tix th:nth-child(4),.tix td:nth-child(4){display:none}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.filters{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin:0 0 12px}.filters label{font-size:12px;color:var(--dim)}
+.filters select{font:inherit;font-size:12px;background:#000a;color:var(--text);border:1px solid var(--line);border-radius:4px;padding:4px 6px}
+.filters .f{padding:4px 9px;font-size:11px}.filters .f.on{background:var(--amber,#ffcf5a);color:#1b1408}.filters .sep{flex:0 0 1px;height:18px;background:var(--line)}
+.badge.st.completed{color:var(--good,#7be07b);border-color:var(--good,#7be07b)}.badge.st.failed{color:var(--bad);border-color:var(--bad)}
+.ride.replay .norec{margin-left:auto;font-size:11px}.more{display:flex;justify-content:center;margin:12px 0}
