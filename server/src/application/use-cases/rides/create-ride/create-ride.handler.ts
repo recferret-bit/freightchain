@@ -28,7 +28,7 @@ import { CreateRideCommand } from './create-ride.command.js';
  *   ready (created)        → the same ride back – a PAID one is never lost; an unstarted FREE one is cancelled (credit refunded) when a paid tier is bought
  *   awaiting payment       → the same order while its tier matches and the price is still held; otherwise it lapses (a late matching payment is still honoured)
  * A paid tier that sells through escrowed pools (a pool of it is registered) is paid with a TICKET: one is spent in the same locked transaction and the ride
- * is ready at once (409 `no_tickets` / `pool_not_live`). Without a pool the legacy pay-per-ride order still applies (removed with the order workstream).
+ * is ready at once (409 `no_tickets` / `pool_not_live`). In `program` payment mode that is the only way; in `transfer` mode a tier with no pool still uses the legacy pay-per-ride order.
  */
 @CommandHandler(CreateRideCommand)
 export class CreateRideHandler implements ICommandHandler<CreateRideCommand, RideDto> {
@@ -49,7 +49,8 @@ export class CreateRideHandler implements ICommandHandler<CreateRideCommand, Rid
     const rules = this.rules.get();
     const paid = isPaidTier(tier);
     await this.sessions.touch(wallet); // makes sure the player exists (and applies the daily grant)
-    const viaTickets = paid && (await this.poolTickets.tierHasPools(tier as PaidTierId));
+    // program mode sells paid rides ONLY as pool tickets (a tier whose pools all failed has none to ride, never a fallback order); transfer mode keeps the legacy order where no pool is registered
+    const viaTickets = paid && (rules.paymentMode === 'program' || (await this.poolTickets.tierHasPools(tier as PaidTierId)));
     if (paid && !viaTickets && !rules.treasury) throw new ServiceUnavailableError('paid rides are not configured on this server (no treasury)');
     const round = viaTickets ? await this.rounds.ensureRound() : null; // the round a ticket ride ranks in when its pool has none yet (outside the lock: it may insert)
     // The price is fetched BEFORE the transaction (no row lock is held across an HTTP call) and only when a NEW order will be needed – re-asking for the

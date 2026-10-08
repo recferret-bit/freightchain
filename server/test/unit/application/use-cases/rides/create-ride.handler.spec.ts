@@ -116,6 +116,13 @@ describe('CreateRideHandler', () => {
       expect((await ctx.tickets.find('w', 1))?.balance).toBe(1);
     });
 
+    it('program mode: a tier whose only pool failed has no tickets to ride – never the legacy order', async () => {
+      const t = setup(new StubPrice(), unitRules({ paymentMode: 'program', programId: 'B79YYUKFd3QC3HdRkSX1W3C6sGBDFEkgFGQcMShiFSKa' }));
+      await t.ctx.pools.upsert(aPool({ id: 1, status: 'refunding' }, t.ctx.now()));
+      await expect(t.create('1h')).rejects.toMatchObject({ errorCode: 'no_tickets' });
+      await expect(t.create('8h')).rejects.toMatchObject({ errorCode: 'no_tickets' }); // no pool at all
+    });
+
     it('an active pool past its play deadline is not ridden from', async () => {
       const { ctx, create, give } = await withPools({ id: 1, status: 'active' });
       await give(1, 1);
