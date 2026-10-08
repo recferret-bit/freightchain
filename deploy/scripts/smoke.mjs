@@ -29,6 +29,7 @@ const post = (path, body, cookie) => get(path, { method: 'POST', headers: { 'con
 const page = await at(base)('/');
 check('the site answers (GET /)', page.status === 200 && /html/.test(page.headers.get('content-type') ?? ''), `${page.status}`);
 if (game) { const g = await at(game)('/play.html'); check('the game answers (ride.* /play.html)', g.status === 200 && /html/.test(g.headers.get('content-type') ?? ''), `${g.status}`); }
+if (game) { const w = await at(game)('/play.html?watch=00000000-0000-4000-8000-000000000000'); check('the watch page answers (ride.* /play.html?watch=…)', w.status === 200, `${w.status}`); }
 if (storybook) {
   const s = await at(storybook)('/'), sBody = await s.text();
   check('the model viewer answers (storybook.* /)', s.status === 200 && /MODEL VIEWER/.test(sBody), `${s.status}`);
@@ -50,6 +51,11 @@ if (admin) {   // admin.*: nginx basic auth first (credentials from SMOKE_ADMIN_
 if (split) check('the API host serves no pages (GET / is 404)', (await get('/')).status === 404);
 if (split) check('the API host does not serve the admin API (only admin.* does)', (await get('/api/admin/overview')).status === 404);
 const ready = await get('/api/health/ready'), readyBody = await ready.json().catch(() => ({}));
+// live streams (read-only): the public watch API is mounted (an unknown ride is a 404 problem, not a route miss) and the live feed carries ride ids
+const watchMiss = await get('/api/watch/00000000-0000-4000-8000-000000000000'), watchBody = await watchMiss.json().catch(() => ({}));
+check('live streams: GET /api/watch/:id is public and answers an unknown ride with 404 problem+json', watchMiss.status === 404 && watchBody.detail === 'ride not found', `${watchMiss.status} ${watchBody.detail ?? ''}`);
+const liveFeed = await (await get('/api/live')).json().catch(() => ({}));
+check('live streams: /api/live rides and recent finishes carry the ride id (the watch links)', Array.isArray(liveFeed.rides) && [...liveFeed.rides, ...(liveFeed.recent ?? [])].every((r) => typeof r.id === 'string'), `${liveFeed.rides?.length ?? '?'} live, ${liveFeed.recent?.length ?? '?'} recent`);
 check('readiness: the app is up and reaches its database', ready.status === 200 && readyBody.checks?.database?.status === 'up', `${ready.status} ${JSON.stringify(readyBody.checks ?? readyBody)}`);
 check('every response carries X-Request-Id', !!ready.headers.get('x-request-id'));
 const tiers = await get('/api/tiers'), tiersBody = await tiers.json().catch(() => ({}));
@@ -66,6 +72,10 @@ if (!args.includes('--no-signin')) {
     }
     const evil = await get('/api/health/live', { headers: { origin: 'https://evil.example' } });
     check('CORS: a stranger origin is not allowed', !evil.headers.get('access-control-allow-origin'));
+  }
+  if (game && split) {   // the watch page signs in on ride.*: its message must name that host (asked FIRST – the site's nonce below replaces this one)
+    const fromGame = await (await get('/api/auth/nonce', { method: 'POST', headers: { 'content-type': 'application/json', origin: game }, body: JSON.stringify({ wallet }) })).json();
+    check('the sign-in message from the game host names the game host (live streams)', typeof fromGame.message === 'string' && fromGame.message.startsWith(`${new URL(game).host} wants you`), fromGame.message?.split('\n')[0]);
   }
   const nonce = await (await post('/api/auth/nonce', { wallet })).json();
   check('the sign-in message names the site', typeof nonce.message === 'string' && nonce.message.includes(new URL(base).host), nonce.message?.split('\n')[0]);
