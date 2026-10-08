@@ -162,6 +162,12 @@ await obs.send('Page.navigate', { url: `${BASE}/lobby.html?promo=bluepaint` });
 check('PROMO: an invite link (lobby.html?promo=CODE) opens the PROMO tab with the code typed in – and only that', await until(async () => (await obs.ev('document.querySelector(".tabs a.on")?.dataset.tab')) === 'promo' && (await obs.ev('document.getElementById("promo-code")?.value')) === 'bluepaint') && (await obs.ev('location.search')) === '' && !JSON.stringify((await get('promo/mine', P.cookie)).redemptions).includes('BLUEPAINT'));
 await obs.ev('document.getElementById("promo-go").click()'); await until(async () => /Unlocked/.test(await txt(obs, '#promo-msg')));
 check('PROMO: …then REDEEM puts the blue paint on the truck', /^Unlocked truck color: blue \(BLUEPAINT\)/.test(await txt(obs, '#promo-msg')) && (await get('wardrobe', P.cookie)).equipped.truck_color === 'blue', `${await txt(obs, '#promo-msg')} | ${JSON.stringify((await get('wardrobe', P.cookie)).equipped)}`);
+// the whole point of a cosmetic: the game loads the worn items when a ride opens (online.js → GET /api/wardrobe → cosmetics.setLoadout) – wallet P wears the gold wheel + the blue paint
+const cosRide = await post('rides', { tier: 'free' }, P.cookie);
+await obs.send('Page.navigate', { url: `${BASE}/play.html?ride=${cosRide.j.id}` });
+check('PROMO: the game opens a ride of that wallet wearing its cosmetics (gold wheel, blue paint, stock shifter)', await until(async () => JSON.stringify(await obs.ev('window.__game?.cosmetics ? { ...__game.cosmetics.loadout } : null')) === JSON.stringify({ wheel: 'gold', truck_color: 'blue', gearbox: 'stick' })), JSON.stringify(await obs.ev('window.__game?.cosmetics ? { ...__game.cosmetics.loadout } : null')));
+await sleep(1500); await obs.shot('promo-in-game');
+await obs.send('Page.navigate', { url: `${BASE}/lobby.html#new` }); await sleep(800);
 check('…and no unexpected page errors (promo)', problems(obs).length === 0, problems(obs).join(' | '));
 await obs.send('Page.navigate', { url: `${BASE}/lobby.html#new` }); await sleep(800);
 
