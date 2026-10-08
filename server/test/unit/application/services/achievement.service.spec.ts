@@ -24,6 +24,16 @@ describe('AchievementService', () => {
     expect((await ctx.unlocks.listByWallet('w')).map((u) => u.rideId)).toEqual(['r1', 'r1', 'r1']);
   });
 
+  it('returns only the ids this call inserted, so a concurrent insert is not emitted twice', async () => {
+    const ctx = unitContext();
+    class Partial extends AchievementRepositoryPort {
+      insertAll = async (u: readonly AchievementUnlock[]) => u.filter((row) => row.achievementId !== 'shift-complete').map((row) => row.achievementId);
+      listByWallet = () => ctx.unlocks.listByWallet('w');
+    }
+    const service = new AchievementService(new Partial(), ctx.rideQuery, ctx.clock);
+    expect((await service.evaluate('w', 'r1', facts({ started: 1, completed: 1 }))).map((u) => u.id)).toEqual(['first-mile']);
+  });
+
   it('reads the facts itself when the caller has none', async () => {
     const ctx = unitContext();
     await ctx.freeRide('w', true);

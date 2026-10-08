@@ -9,14 +9,14 @@ describe('AchievementPrismaRepository (PostgreSQL)', () => {
   afterAll(() => prisma.$disconnect());
   beforeEach(async () => { await wipe(prisma); await seedPlayer(prisma, 'w'); });
 
-  it('insertAll: one statement, existing unlocks skipped (never overwritten), returns how many were new', async () => {
-    expect(await repo.insertAll([new AchievementUnlock('w', 'first-mile', T0, 'r1'), new AchievementUnlock('w', 'clean-run', T0, null)])).toBe(2);
-    expect(await repo.insertAll([new AchievementUnlock('w', 'first-mile', at(99), 'r9'), new AchievementUnlock('w', 'century', at(5), null)])).toBe(1);
+  it('insertAll: one statement, existing unlocks skipped (never overwritten), returns the ids this call inserted', async () => {
+    expect(await repo.insertAll([new AchievementUnlock('w', 'first-mile', T0, 'r1'), new AchievementUnlock('w', 'clean-run', T0, null)])).toEqual(['first-mile', 'clean-run']);
+    expect(await repo.insertAll([new AchievementUnlock('w', 'first-mile', at(99), 'r9'), new AchievementUnlock('w', 'century', at(5), null)])).toEqual(['century']);
     const list = await repo.listByWallet('w');
     expect(list.map((u) => [u.achievementId, u.earnedAt.getTime(), u.rideId]).sort((x, y) => String(x[0]).localeCompare(String(y[0])))).toEqual([
       ['century', at(5).getTime(), null], ['clean-run', T0.getTime(), null], ['first-mile', T0.getTime(), 'r1'],
     ]);
-    expect(await repo.insertAll([])).toBe(0);
+    expect(await repo.insertAll([])).toEqual([]);
     expect(await repo.listByWallet('nobody')).toEqual([]);
   });
 });

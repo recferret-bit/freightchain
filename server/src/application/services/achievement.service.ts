@@ -25,8 +25,8 @@ export class AchievementService {
     const fresh = earnedIds(facts ?? (await this.rideQuery.summary(wallet)).facts).filter((id) => !known.has(id) && id !== 'top-20');
     if (fresh.length === 0) return [];
     const now = this.clock.now();
-    await this.unlocks.insertAll(fresh.map((id) => new AchievementUnlock(wallet, id, now, rideId)));
-    return fresh.map((id) => ({ id, earnedAt: now }));
+    const inserted = new Set(await this.unlocks.insertAll(fresh.map((id) => new AchievementUnlock(wallet, id, now, rideId))));
+    return fresh.filter((id) => inserted.has(id)).map((id) => ({ id, earnedAt: now }));
   }
 
   /** The whole catalogue with the wallet's unlocks (earnedAt null = locked). */

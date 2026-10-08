@@ -8,7 +8,7 @@ import { RulesConfigPort } from '../../../ports/config/rules-config.port.js';
 import { ChainPort } from '../../../ports/economy/chain.port.js';
 import { PaymentRepositoryPort } from '../../../ports/economy/payment.repository.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
-import { paymentConfirmed, paymentReconcileMissed } from '../../../services/analytics-events.js';
+import { emitClosedRides, paymentConfirmed, paymentReconcileMissed } from '../../../services/analytics-events.js';
 import { emitAnalytics } from '../../../services/analytics-emit.js';
 import { isDemoWallet } from '../../../services/demo.js';
 import { PaymentSettlementService } from '../../../services/payment-settlement.service.js';
@@ -50,11 +50,12 @@ export class ReconcilePaymentHandler implements ICommandHandler<ReconcilePayment
             wallet, signature, ride: ride.snapshot(), roundId, paidAt, via: 'reconcile', isDemo: isDemoWallet(this.rules.get(), wallet), quoteExpired: !ride.quoteIsLive(paidAt),
           }));
         }
+        if (settled.inserted) emitClosedRides(this.analytics, () => isDemoWallet(this.rules.get(), wallet), settled);
         return { status: 'paid', ride: settled.ride };
       }
     }
     const day = utcDay(now);
-    emitAnalytics(this.analytics, () => paymentReconcileMissed(ride.snapshot(), isDemoWallet(this.rules.get(), wallet), day, now));
+    emitAnalytics(this.analytics, () => paymentReconcileMissed(ride.snapshot(), isDemoWallet(this.rules.get(), wallet), day));
     return { status: 'not_found' };
   }
 }

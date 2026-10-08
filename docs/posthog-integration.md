@@ -4,10 +4,10 @@
 |---|---|
 | Author | TBD (Freight Chain) |
 | Date | 2026-10-07 |
-| Status | Draft |
+| Status | Implemented |
 | Deadline | Colosseum submission, Sunday 12 Oct 2026, noon PT (official close 23:59 PT) |
-| Scope | Plan only. No code in this change. |
-| Source tree | Handlers pinned at `main` @ `8700d55`. Review re-checked `main` @ `7ff5a8e` (one docs commit ahead; handlers, landing tests, and deploy scripts unchanged). |
+| Scope | Implemented on `plan/posthog-integration`: relay, server capture, client hooks, and env placeholders. Dashboards stay a manual PostHog step. |
+| Source tree | This branch. `main` does not contain the capture code. |
 | Companion plan | `docs/hackathon-plan-v2.md` (the schedule this must not displace) |
 | Server rules | `docs/backend-architecture.md` |
 
@@ -61,7 +61,7 @@ From `docs/hackathon-plan-v2.md`: one real devnet payment, the Thursday economy 
 
 ### Non-goals
 
-- Implementing any of this in the repo as part of the plan.
+- PostHog dashboards and a public share link. Capture is in this branch; the board is still clicked in the PostHog UI.
 - Emitting an event per heartbeat, per live poll (5 s), per pool poll (10–15 s), or per leaderboard poll (30 s).
 - PostHog session replay, `posthog-js`, a second PostHog project, and an nginx `/ingest/` proxy. Ride replay and session recording belong to the telemetry task. This document does not add them.
 - Feature flags, surveys, and the PostHog error-tracking SDK. The kill switch is an env var. `api_request_failed` covers a broken loop.
@@ -606,7 +606,7 @@ Real code, not required for the five judge numbers. The Dedupe key column is the
 | `ride_resumed` | server | `CreateRideHandler` returned an existing open ride instead of inserting | none (one per request) | Properties: `ride_id`, `tier_id`, `status`, `is_free`, `is_demo`. Stops the activation funnel from looking like a drop when the rider clicks START on a ride they already hold. |
 | `ride_expired` | server | `open.expire(now)` inside create, quote no longer live or tier changed | `ride:<id>:expired` | Status `expired`, reason null. A later matching payment can still `markPaid`. |
 | `ride_cancelled` | server | `cancelReplaced` on an unstarted free ride when a paid tier is ordered | `ride:<id>:cancelled` | Reason on the row: `replaced by a paid ride`. Property `reason_code: "replaced_by_paid"`. Credit refund happens in the same transaction. |
-| `payment_reconcile_missed` | server | `ReconcilePaymentHandler` returns `{ status: "not_found" }` | `ride:<id>:reconcile-miss:<utcDay>` | Once per ride per day so lobby reloads do not stack. History window is `HISTORY_LIMIT` 25 signatures. Still no `payment_rejected` on reconcile. |
+| `payment_reconcile_missed` | server | `ReconcilePaymentHandler` returns `{ status: "not_found" }` | `ride:<id>:reconcile-miss:<utcDay>` | Once per ride per day so lobby reloads do not stack. `timestamp` is 00:00:00.000Z of that UTC day, not the request clock: PostHog dedupes on `(uuid, event, timestamp, distinct_id)`. History window is `HISTORY_LIMIT` 25 signatures. Still no `payment_rejected` on reconcile. |
 | `payment_conflict` | server | `ConfirmPaymentHandler` is about to throw `ConflictError`, after the decision and inside try/catch, then rethrows | `payment:<signature>:conflict:<reason_code>` | `reason_code`: `already_paid` (line 32, a different signature), `signature_reused`, `bad_status`. Not in the `payment_rejected` rate. Lines 30–31 emit nothing. Omit the whole row rather than folding it into `payment_rejected`. PR 2 omits it; PR 5 may add it. |
 | `free_rides_granted` | server | `GrantDailyFreeRidesHandler` returned `players > 0` | `free-grant:<day>` | Properties: `day` (`utcDay` string), `players` (int, rows touched). Not per wallet; the SQL does not return wallets. |
 | `free_ride_granted` | server | `Player.applyDailyGrant` returned true inside `touch`, after that save | `free-grant:<wallet>:<day>` | The lazy path. Once per wallet per UTC day. Do not emit when the midnight job already moved `freeDay` (apply returns false). Not on the P0 hot path; add only if the emit stays outside any player lock and is sync. |

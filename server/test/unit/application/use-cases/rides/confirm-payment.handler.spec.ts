@@ -75,6 +75,24 @@ describe('ConfirmPaymentHandler', () => {
     expect(analytics.named('payment_confirmed')[0]?.properties).toMatchObject({ quote_expired: true });
   });
 
+  it('a late payment emits the sibling rides this insert closed', async () => {
+    const { ctx, analytics, confirm } = setup();
+    const order = await ctx.paidOrder('w');
+    order.expire(ctx.now()); await ctx.rides.save(order);
+    const free = await ctx.freeRide('w');
+    const player = await ctx.storedPlayer('w'); player.spendFreeRide(); await ctx.players.save(player);
+    const other = await ctx.paidOrder('w');
+    const sig = ctx.chain.addPayment({ payer: 'w', lamports: order.lamports, memo: order.id });
+    expect(await confirm(order.id, sig)).toMatchObject({ status: 'paid' });
+    expect(analytics.named('ride_cancelled')).toMatchObject([{ dedupeKey: `ride:${free.id}:cancelled`, properties: { reason_code: 'replaced_by_paid' } }]);
+    expect(analytics.named('ride_expired')).toMatchObject([{ dedupeKey: `ride:${other.id}:expired` }]);
+    expect(analytics.named('payment_confirmed')).toHaveLength(1);
+    expect(await confirm(order.id, sig)).toMatchObject({ status: 'paid' });
+    expect(analytics.named('ride_cancelled')).toHaveLength(1);
+    expect(analytics.named('ride_expired')).toHaveLength(1);
+    expect(analytics.named('payment_confirmed')).toHaveLength(1);
+  });
+
   it('inserted false emits no payment_confirmed', async () => {
     const ctx = unitContext();
     const analytics = new RecordingAnalytics();
@@ -84,6 +102,8 @@ describe('ConfirmPaymentHandler', () => {
     const handler = new ConfirmPaymentHandler(ctx.lookup, ctx.payments, ctx.chain, settlement as never, ctx.rules, ctx.clock, analytics);
     expect(await handler.execute(new ConfirmPaymentCommand('w', order.id, sig))).toMatchObject({ status: 'paid' });
     expect(analytics.named('payment_confirmed')).toEqual([]);
+    expect(analytics.named('ride_cancelled')).toEqual([]);
+    expect(analytics.named('ride_expired')).toEqual([]);
   });
 
   it('a throwing capture still returns paid and keeps the payment', async () => {

@@ -1,8 +1,10 @@
-import type { AnalyticsEvent, AnalyticsValue } from '../ports/analytics/analytics.port.js';
+import type { AnalyticsEvent, AnalyticsPort, AnalyticsValue } from '../ports/analytics/analytics.port.js';
 import { isRouteId } from '../../domain/rides/ride-rules.js';
 import { failCode } from '../../domain/rides/fail-code.js';
 import type { RideProps } from '../../domain/rides/ride.entity.js';
 import type { ProgressMilestone } from '../../domain/rides/ride-progress.js';
+import { utcDayStart } from '../../domain/shared/time.js';
+import { emitAnalytics } from './analytics-emit.js';
 
 /** Aggregate events (a grant count, a round) are not a wallet. */
 export const SYSTEM_DISTINCT_ID = 'freightchain';
@@ -119,8 +121,14 @@ export function paymentConflict(p: { wallet: string; signature: string; ride: Ri
   });
 }
 
-export function paymentReconcileMissed(ride: RideProps, isDemo: boolean, day: string, now: Date): AnalyticsEvent {
-  return serverEvent('payment_reconcile_missed', ride.wallet, `ride:${ride.id}:reconcile-miss:${day}`, now, { ride_id: ride.id, is_demo: isDemo, day });
+export function paymentReconcileMissed(ride: RideProps, isDemo: boolean, day: string): AnalyticsEvent {
+  return serverEvent('payment_reconcile_missed', ride.wallet, `ride:${ride.id}:reconcile-miss:${day}`, utcDayStart(day), { ride_id: ride.id, is_demo: isDemo, day });
+}
+
+/** Sibling rides a payment insert closed. The race loser (`inserted: false`) must not call this. */
+export function emitClosedRides(port: AnalyticsPort, isDemo: () => boolean, closed: { cancelled: readonly RideProps[]; expired: readonly RideProps[] }): void {
+  for (const ride of closed.cancelled) emitAnalytics(port, () => rideCancelled(ride, isDemo()));
+  for (const ride of closed.expired) emitAnalytics(port, () => rideExpired(ride, isDemo()));
 }
 
 export function freeRidesGranted(day: string, players: number, now: Date): AnalyticsEvent {

@@ -268,12 +268,12 @@ export class MemoryPaymentRepository extends PaymentRepositoryPort {
 export class MemoryAchievementRepository extends AchievementRepositoryPort {
   constructor(private readonly db: MemoryDb) { super(); }
 
-  async insertAll(unlocks: readonly AchievementUnlock[]): Promise<number> {
-    let added = 0;
+  async insertAll(unlocks: readonly AchievementUnlock[]): Promise<readonly string[]> {
+    const added: string[] = [];
     for (const unlock of unlocks) {
       if (this.db.unlocks.some((u) => u.wallet === unlock.wallet && u.achievementId === unlock.achievementId)) continue;
       this.db.unlocks.push(unlock);
-      added++;
+      added.push(unlock.achievementId);
     }
     return added;
   }
