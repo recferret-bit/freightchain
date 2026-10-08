@@ -14,7 +14,7 @@ import { PaymentRepositoryPort } from '../../../src/application/ports/economy/pa
 import { RoundRepositoryPort, type RoundEntries } from '../../../src/application/ports/economy/round.repository.port.js';
 import { HealthProbePort } from '../../../src/application/ports/health/health-probe.port.js';
 import { PlayerRepositoryPort } from '../../../src/application/ports/players/player.repository.port.js';
-import { RideQueryPort, type FinishedRideRow, type LeaderboardRow, type LiveRideRow, type RecentRideRow, type RideSummary, type RideTotalsRow, type UpcomingRideRow } from '../../../src/application/ports/rides/ride-query.port.js';
+import { RideQueryPort, type FinishedRideRow, type LeaderboardRow, type LiveRideRow, type RecentRideRow, type RideSummary, type RideTotalsRow, type UpcomingRideRow , type HistoryFilter, type HistoryRideRow } from '../../../src/application/ports/rides/ride-query.port.js';
 import { RideRepositoryPort } from '../../../src/application/ports/rides/ride.repository.port.js';
 import { TransactionPort } from '../../../src/application/ports/shared/transaction.port.js';
 import { RideBatchRepositoryPort } from '../../../src/application/ports/telemetry/ride-batch.repository.port.js';
@@ -154,6 +154,23 @@ export class MemoryRideQuery extends RideQueryPort {
       .flatMap(({ props: p }) => (p.startedAt && p.lastHbAt
         ? [{ id: p.id, wallet: p.wallet, tier: p.tier, route: p.route, minSeconds: p.minSeconds, completeDist: p.completeDist, driveSeconds: p.driveSeconds, lastS: p.lastS, hull: p.hull, paused: p.paused, timeScale: p.timeScale, startedAt: p.startedAt, lastHbAt: p.lastHbAt }]
         : []));
+  }
+
+  async history(f: HistoryFilter): Promise<HistoryRideRow[]> {
+    const ended = f.status ? [f.status] : ['completed', 'abandoned', 'failed'];
+    return [...this.db.rides.values()]
+      .filter(({ props: p }) => ended.includes(p.status) && p.startedAt && p.endedAt && (!f.wallet || p.wallet === f.wallet))
+      .filter(({ props: p, seq }) => !f.before || p.endedAt!.getTime() < f.before.endedAt.getTime() || (p.endedAt!.getTime() === f.before.endedAt.getTime() && BigInt(seq) < f.before.seq))
+      .sort((a, b) => b.props.endedAt!.getTime() - a.props.endedAt!.getTime() || b.seq - a.seq).slice(0, f.limit)
+      .map(({ props: p, seq }) => ({
+        id: p.id, seq: BigInt(seq), wallet: p.wallet, tier: p.tier, route: p.route, status: p.status, reason: p.reason, lastS: p.lastS, driveSeconds: p.driveSeconds,
+        minSeconds: p.minSeconds, timeScale: p.timeScale, startedAt: p.startedAt!, endedAt: p.endedAt!, recorded: [...this.db.batches.values()].some((b) => b.rideId === p.id),
+      }));
+  }
+
+  async staleRunning(cutoff: Date, limit: number): Promise<{ id: string; wallet: string }[]> {
+    return [...this.db.rides.values()].filter((r) => r.props.status === RideStatus.Running && (r.props.lastHbAt?.getTime() ?? 0) < cutoff.getTime())
+      .sort((a, b) => (a.props.lastHbAt?.getTime() ?? 0) - (b.props.lastHbAt?.getTime() ?? 0)).slice(0, limit).map(({ props: p }) => ({ id: p.id, wallet: p.wallet }));
   }
 
   async upcoming(limit: number): Promise<UpcomingRideRow[]> {

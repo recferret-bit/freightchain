@@ -1,4 +1,5 @@
 import { GetLiveHandler } from '../../../../../src/application/use-cases/lobby/get-live/get-live.handler.js';
+import { GetLiveQuery } from '../../../../../src/application/use-cases/lobby/get-live/get-live.query.js';
 import { unitContext } from '../../../../support/unit-context.js';
 
 describe('GetLiveHandler', () => {
@@ -11,7 +12,7 @@ describe('GetLiveHandler', () => {
     first.applyReport({ s: 70, t: 5, hull: 80, paused: true, route: 'siberia', night: false }, ctx.now(), ctx.rules.get());
     await ctx.rides.save(first);
     await ctx.freeRide('carol'); // not started
-    const feed = await new GetLiveHandler(ctx.rideQuery, ctx.rules, ctx.clock).execute();
+    const feed = await new GetLiveHandler(ctx.rideQuery, ctx.rules, ctx.clock, ctx.sitePresence, ctx.viewers).execute();
     expect(feed.now).toBe(ctx.clock.ms);
     expect(feed.rides.map((r) => r.wallet)).toEqual(['bob', 'alice']);
     expect(feed.rides[1]).toMatchObject({ tier: 'free', route: 'siberia', paused: true, hull: 80, distance: 70, driveSeconds: 5, minSeconds: 10, completeDist: 140, sinceBeat: 0, progress: 0.5 });
@@ -23,10 +24,10 @@ describe('GetLiveHandler', () => {
     const ctx = unitContext();
     await ctx.freeRide('alice', true);
     ctx.clock.advance(151);
-    expect((await new GetLiveHandler(ctx.rideQuery, ctx.rules, ctx.clock).execute()).rides).toEqual([]);
+    expect((await new GetLiveHandler(ctx.rideQuery, ctx.rules, ctx.clock, ctx.sitePresence, ctx.viewers).execute()).rides).toEqual([]);
   });
 
-  const feed = (ctx: ReturnType<typeof unitContext>) => new GetLiveHandler(ctx.rideQuery, ctx.rules, ctx.clock).execute();
+  const feed = (ctx: ReturnType<typeof unitContext>) => new GetLiveHandler(ctx.rideQuery, ctx.rules, ctx.clock, ctx.sitePresence, ctx.viewers).execute();
 
   it('next up: paid shifts that have not started, as wallet + tier + length + paid time – no ride id', async () => {
     const ctx = unitContext();
@@ -48,6 +49,23 @@ describe('GetLiveHandler', () => {
     const { recent } = await feed(ctx);
     expect(recent.map((r) => [r.wallet, r.status, r.distance])).toEqual([['bob', 'failed', 7], ['alice', 'failed', 12]]);
     expect(Object.keys(recent[0] ?? {}).sort()).toEqual(['distance', 'endedAt', 'id', 'route', 'status', 'tier', 'wallet']);
+  });
+
+  it('who is online: the polling page counts (≤ 3 ids per address), signed-in wallets and drivers are players, watchers from the watch pages', async () => {
+    const ctx = unitContext();
+    const handler = new GetLiveHandler(ctx.rideQuery, ctx.rules, ctx.clock, ctx.sitePresence, ctx.viewers);
+    const ride = await ctx.freeRide('driver', true);
+    ctx.viewers.seen(ride.id, '10.0.0.9', 'watcher-1', ctx.now());
+    await handler.execute(new GetLiveQuery('visitor-aaaa', 'landing', '10.0.0.1', null));
+    for (let i = 0; i < 6; i++) await handler.execute(new GetLiveQuery(`bot-${i}-xxxxxx`, 'lobby', '10.0.0.2', null));
+    const feed = await handler.execute(new GetLiveQuery('visitor-bbbb', 'lobby', '10.0.0.3', 'fan'));
+    expect(feed.online).toEqual({ total: 1 + 3 + 1 + 1 + 1, browsing: 5, watching: 1, driving: 1, players: 2 });
+    expect(feed.rides[0]).toMatchObject({ id: ride.id, viewers: 1, signal: 'live' });
+    ctx.clock.advance(31);   // the visitors' window (30 s) passed; the ride beat 31 s ago
+    const later = await handler.execute(new GetLiveQuery());
+    expect(later.online).toMatchObject({ browsing: 0, driving: 1 });
+    ctx.clock.advance(15);
+    expect((await handler.execute(new GetLiveQuery())).rides[0]?.signal).toBe('weak');   // 46 s without a heartbeat
   });
 
   it('totals: zeros on an empty feed', async () => {

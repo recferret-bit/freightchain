@@ -32,6 +32,11 @@ export class RideEventPrismaRepository extends RideEventRepositoryPort {
     }
   }
 
+  async findBySignature(signature: string): Promise<RideEvent | null> {
+    const row = await this.prisma.rideEvent.findUnique({ where: { signature } });
+    return row ? RideEventMapper.toDomain(row) : null;
+  }
+
   async lastEffectAt(rideId: string): Promise<Date | null> {
     const last = await this.prisma.rideEvent.findFirst({ where: { rideId, slotKey: 'fx' }, orderBy: { createdAt: 'desc' }, select: { createdAt: true } });
     return last?.createdAt ?? null;

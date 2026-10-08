@@ -66,6 +66,8 @@ check('replay: it starts at the beginning of the ride', await until(() => S.ev('
 check('replay: speeds shown, LIVE hidden, the timeline spans the recording', await S.ev(`[...document.querySelectorAll('.spd')].every(b => !b.hidden) && document.getElementById('w-live').hidden && Math.abs(+document.getElementById('w-seek').max - ${Math.floor(rec.t1)}) <= 1`));
 check('replay: the feed is read-only and has the line + both stamped donations', await until(() => S.ev(`!document.getElementById('w-text') && document.querySelectorAll('.w-line').length === 3 && document.querySelectorAll('.w-ap').length === 2 && [...document.querySelectorAll('.w-ap')].every(a => a.textContent.includes('on the road'))`), 10_000));
 check('replay: the sample rows carry the clock + switch columns', await S.ev('__game.watch.rows[0].length === 14'));
+check('replay: the driver\'s traffic was recorded beside the batches (2 per second)', await S.ev('__game.watch.tframes.length > 20'), `${await S.ev('__game.watch.tframes.length')} frames`);
+check('replay: the recorded vehicles are on the replayed road', await until(() => S.ev('__game.watch.cars.size > 0'), 8000), `${await S.ev('__game.watch.cars.size')} vehicles`);
 await S.shot('replay-start');
 
 const rate = async () => { const a = await S.ev('__game.st.t'), t0 = Date.now(); await sleep(3000); return ((await S.ev('__game.st.t')) - a) / ((Date.now() - t0) / 1000); };
@@ -94,7 +96,7 @@ check('replay: playing to the end holds the last frame and says the ride is over
 const minHull = await S.ev('Math.min(...__game.watch.rows.map(r => r[7]))');
 await sleep(1500);
 check('replay: a recorded hit\'s red flash and shake fade (the sim that fades them never runs in a replay)', await S.ev('__game.st.flash < .01 && __game.st.jolt < .01'), `flash ${(await S.ev('__game.st.flash'))?.toFixed?.(2)}, lowest recorded hull ${minHull}`);
-check('replay: no traffic on a replayed road (it is not recorded)', await S.ev('__game.traffic.length === 0 && __game.CFG.TRAFFIC === false'));
+check('replay: no traffic SIMULATION in a replay – only the recorded vehicles', await S.ev('__game.traffic.length === 0 && __game.CFG.TRAFFIC === false'));
 await S.shot('replay-end');
 await S.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 780, deviceScaleFactor: 2, mobile: true }); await sleep(1200);
 await S.shot('replay-phone');

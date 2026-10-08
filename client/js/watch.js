@@ -14,13 +14,16 @@ import { env } from './world/environment.js';
 import { THEMES } from './themes/index.js';
 import { EFFECT_INFO, advanceCursor } from './live-effects.js';
 import { store } from './util.js';
+import { VEHICLES, buildVehicle, removeVehicle } from './world/vehicles.js';
+import { TRAFFIC_TYPES } from './sim/traffic.js';
 
 /* Live streams, the SPECTATOR's side: play.html?watch=<rideId>. OPT-IN like online.js – without ?watch nothing here runs.
    No video and no WebSockets: the page polls GET /api/watch/:id and REPLAYS the ride's verified-play recording (10 Hz samples, uploaded every ~15 s) on its
    own copy of the road – the layout is a pure function of the seed + route, so it is the driver's road. A live view therefore runs about LIVE_LAG behind.
    What is replayed: the truck (position, heading, speed, revs, gear, pedals, hull), the clock hour, lights / wipers / heater / parking brake, the signal
-   clock, the obstacles spectators paid for (placed where the driver's game stamped them). What is NOT: traffic (it is the driver's own unrecorded sim –
-   a replay runs none), windscreen cracks, debris, the radio. Nothing is simulated: st is written from the samples every frame (st.watch stops the sim and input). */
+   clock, the obstacles spectators paid for (placed where the driver's game stamped them), the traffic around the truck (recorded at 2 Hz beside each batch –
+   recordings from before that show an empty road). What is NOT: windscreen cracks, debris, the radio. Nothing is simulated: st is written from the samples
+   every frame (st.watch stops the sim and input). */
 const POLL_LIVE_MS = 4000, POLL_REPLAY_MS = 10_000;
 export const LIVE_LAG = 25;                 // s behind the newest recorded second: one ~15 s batch + its upload, with room for jitter
 const PREFETCH = 90;                        // s of recording kept loaded ahead of the playhead in a replay
@@ -30,7 +33,8 @@ const viewerId = () => { let v = store.get('freightchain.viewer'); if (!v || !/^
 
 export const watch = {
   id: null, ride: null, error: '', now: 0, skew: 0,
-  rec: { lastSeq: null, t1: 0 }, batches: new Map(), rows: [], rowsSeq: -1, events: new Map(), cursor: 0, since: 0, totals: { messages: 0, donations: 0, lamports: 0 }, viewers: 0,
+  features: { chat: true, donations: true, payment: 'mock', effects: true },   // what spectators may do on THIS ride (the server's LIVE_* flags)
+  rec: { lastSeq: null, t1: 0 }, batches: new Map(), rows: [], tframes: [], cars: new Map(), rowsSeq: -1, events: new Map(), cursor: 0, since: 0, totals: { messages: 0, donations: 0, lamports: 0 }, viewers: 0,
   wt: 0, playing: true, speed: 1, follow: true, buffering: false, seeking: false, started: false, jumped: true, lastHull: 100, timer: 0, polling: null,
   onUpdate: null, onEvent: null,   // set by ui/watch-panel.js: repaint the panel / a new feed line
 };
@@ -57,7 +61,7 @@ async function get(from) {
 async function poll(from) {
   const j = await get(from);
   const first = !watch.ride;
-  watch.ride = j.ride; watch.now = j.now; watch.skew = j.now - Date.now(); watch.rec = j.recording; watch.totals = j.totals; watch.viewers = j.viewers;
+  watch.ride = j.ride; watch.now = j.now; watch.skew = j.now - Date.now(); watch.rec = j.recording; watch.totals = j.totals; watch.viewers = j.viewers; if (j.features) watch.features = j.features;
   if (first) { CFG.RIDE_MIN_SECONDS = j.ride.minSeconds; CFG.COMPLETE_DIST = j.ride.completeDist; watch.follow = j.ride.live; setLoadout(j.ride.loadout); }   // what the driver wore (null = all classic): a replay draws the cockpit it was really driven in
   if (watch.started && j.ride.route && j.ride.route !== env.theme?.id && THEMES.some(t => t.id === j.ride.route)) { selectTheme(j.ride.route, false); replaceObstacles(); }   // the route arrives with the driver's first heartbeat (it re-rolls the road: obstacles again)
   if (j.batches.length) addBatches(j.batches);
@@ -76,8 +80,8 @@ function addBatches(list) {
   for (const b of fresh) watch.batches.set(b.seq, b);
   let pruned = false;
   if (watch.batches.size > KEEP_BATCHES) for (const [seq, b] of watch.batches) if (b.t1 < watch.wt - KEEP_AROUND || b.t0 > watch.wt + PREFETCH + KEEP_AROUND) { watch.batches.delete(seq); pruned = true; }
-  if (!pruned && fresh[0].seq === watch.rowsSeq + 1 && fresh.every((b, i) => b.seq === fresh[0].seq + i)) for (const b of fresh) watch.rows.push(...b.samples.filter(usable));
-  else watch.rows = [...watch.batches.values()].sort((a, b) => a.seq - b.seq).flatMap(b => b.samples).filter(usable);
+  if (!pruned && fresh[0].seq === watch.rowsSeq + 1 && fresh.every((b, i) => b.seq === fresh[0].seq + i)) for (const b of fresh) { watch.rows.push(...b.samples.filter(usable)); watch.tframes.push(...(b.traffic ?? []).filter(usable)); }
+  else { const all = [...watch.batches.values()].sort((a, b) => a.seq - b.seq); watch.rows = all.flatMap(b => b.samples).filter(usable); watch.tframes = all.flatMap(b => b.traffic ?? []).filter(usable); }
   watch.rowsSeq = Math.max(...watch.batches.keys());
 }
 /** a feed event, new or seen again with its stamp (also the panel's own posts – it shows them at once) */
@@ -132,8 +136,8 @@ export const liveTarget = () => Math.max(watch.rows[0]?.[0] ?? 0, watch.rec.t1 -
 export function seek(t) { watch.follow = false; watch.wt = Math.max(0, Math.min(t, watch.rec.t1)); watch.jumped = true; watch.seeking = true; schedule(0); }
 export function goLive() { watch.follow = true; watch.speed = 1; watch.playing = true; watch.wt = liveTarget(); watch.jumped = true; watch.seeking = true; schedule(0); }
 
-function find(t) {   // index of the last sample at or before t (binary search)
-  const R = watch.rows; let lo = 0, hi = R.length - 1;
+function find(t, R = watch.rows) {   // index of the last row at or before t (binary search)
+  let lo = 0, hi = R.length - 1;
   if (!R.length || t < R[0][0]) return -1;
   while (lo < hi) { const m = (lo + hi + 1) >> 1; if (R[m][0] <= t) lo = m; else hi = m - 1; }
   return lo;
@@ -166,6 +170,32 @@ export function stepWatch(dt) {
   if (watch.buffering) watch.wt = a[0];
   const k = watch.buffering ? 0 : (watch.wt - a[0]) / Math.max(1e-6, b[0] - a[0]);
   apply(a, b ?? a, k, dt);
+  drawTraffic(watch.wt);
+}
+
+/* the recorded traffic (2 frames per game second beside each batch, [t, …(id, type, colour, x, z, yaw, flags) per vehicle]): every vehicle of the frame
+   at or before t, interpolated towards the next frame, as the same mesh the driver saw (type + colour pick); gone from the frame = removed. No frames near
+   t (a recording from before traffic was recorded, or a gap) = an empty road, as before. */
+const TGAP = 1.5;
+function drawTraffic(t) {
+  const F = watch.tframes, i = find(t, F), a = F[i], b = F[i + 1], seen = new Set();
+  if (a && t - a[0] <= TGAP) {
+    const k = b && b[0] - a[0] <= TGAP ? Math.min(1, (t - a[0]) / Math.max(1e-6, b[0] - a[0])) : 0, next = new Map();
+    if (k > 0) for (let j = 1; j + 6 < b.length; j += 7) next.set(b[j], j);
+    for (let j = 1; j + 6 < a.length; j += 7) {
+      const id = a[j], type = TRAFFIC_TYPES[a[j + 1]], def = VEHICLES[type]; if (!def) continue;
+      let car = watch.cars.get(id);
+      if (!car) { car = { mesh: buildVehicle(def, a[j + 2]) }; watch.cars.set(id, car); }
+      const n = next.get(id), lerpTo = (q, v) => (n === undefined ? v : v + (b[n + q] - v) * k);
+      let yaw = a[j + 5]; if (n !== undefined) { let d = b[n + 5] - yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); yaw += d * k; }
+      car.mesh.position.set(lerpTo(3, a[j + 3]), 0, lerpTo(4, a[j + 4])); car.mesh.rotation.y = yaw;
+      const u = car.mesh.userData, f = a[j + 6];
+      if (u.brake) u.brake.visible = !!(f & 1);
+      if (u.flash) { const on = Math.floor(t * 6) % 2 === 0; u.flash[0].visible = on && !!(f & 2); u.flash[1].visible = !on && !!(f & 2); }
+      seen.add(id);
+    }
+  }
+  for (const [id, car] of watch.cars) if (!seen.has(id)) { removeVehicle(car.mesh); watch.cars.delete(id); }
 }
 
 /* write st from two samples – the row layout of client/js/telemetry.js: [t, s, d, psi, v, rpm, gear, hull, gas, brake, steer, clutch, clock?, flags?] */

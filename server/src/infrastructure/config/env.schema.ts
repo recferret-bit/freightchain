@@ -23,6 +23,7 @@ export const envSchema = z
     THROTTLE_AUTH_LIMIT: z.coerce.number().int().positive().default(30),
     FREE_RIDE_SECONDS: z.coerce.number().positive().default(180),
     HB_MIN_INTERVAL_MS: z.coerce.number().int().min(0).default(1000),
+    HB_TIMEOUT_MS: z.coerce.number().int().min(5000).default(150_000), // no heartbeat for this long = the tab is gone: off the live feed, its next heartbeat would fail it, the stale-ride sweeper ends it (failed · heartbeat lost)
     TREASURY_PUBKEY: optional(z.string()),
     SOLANA_RPC: z.string().min(1).default('https://api.devnet.solana.com'),
     SOL_USD: optional(z.coerce.number().min(0)), // 0 = not pinned (live price), as before
@@ -70,6 +71,11 @@ export const envSchema = z
     VERDICT_ENFORCE: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
     /** days a ride's recording is kept after the ride ended (flagged rides are kept until reviewed); 0 = keep forever */
     TELEMETRY_RETENTION_DAYS: z.coerce.number().int().min(0).default(90),
+    // live streams (spectators) – feature flags, enforced here and sent to the watch page / the driver's game (domain/live/live-features.ts)
+    LIVE_CHAT: z.enum(['all', 'free', 'off']).default('all'), // spectators' chat: on every ride · only on free test rides · nowhere
+    LIVE_DONATIONS: z.enum(['on', 'off']).default('on'), // any donation at all
+    LIVE_FREE_DONATIONS: z.enum(['on', 'off']).default('on'), // on = MOCK donations (nothing charged) · off = a real SOL transfer to the driver, verified on chain
+    LIVE_EFFECTS: z.enum(['all', 'free', 'off']).default('all'), // donations that change the ride (night / day / holes): every ride · free test rides only · none (tips only)
   })
   .superRefine((env, ctx) => {
     const badAdmin = env.ADMIN_WALLETS.split(',').map((w) => w.trim()).filter((w) => w.length > 0 && !isWalletAddress(w));

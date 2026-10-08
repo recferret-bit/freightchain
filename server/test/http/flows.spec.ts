@@ -12,13 +12,15 @@ import { analyticsScenarios } from '../scenarios/analytics.scenarios.js';
 import { VERDICT_ENV, verdictScenarios } from '../scenarios/verdict.scenarios.js';
 import { ADMIN_ENV, adminScenarios } from '../scenarios/admin.scenarios.js';
 import { PROMOS_ENV, promoScenarios } from '../scenarios/promos.scenarios.js';
-import { LIVE_ENV, liveScenarios } from '../scenarios/live.scenarios.js';
+import { LIVE_ENV, LIVE_FLAGS_ENV, LIVE_OFF_ENV, liveFlagsScenarios, liveOffScenarios, liveScenarios } from '../scenarios/live.scenarios.js';
 
 /* The whole HTTP surface on in-memory repositories (no Docker). test/integration/flows.integration.spec.ts runs these same scenarios on PostgreSQL. */
 for (const [name, env, scenarios] of [
   ['sign-in, free rides and the ride lifecycle', FLOW_ENV, flowScenarios],
   ['telemetry: recording batches', TELEMETRY_ENV, telemetryScenarios],
   ['live streams: watch, chat, donations, effects', LIVE_ENV, liveScenarios],
+  ['live streams: the production flags (chat + effects on free rides, paid donations)', LIVE_FLAGS_ENV, liveFlagsScenarios],
+  ['live streams: chat and donations switched off', LIVE_OFF_ENV, liveOffScenarios],
   ['verified play: the verdict and the boards', VERDICT_ENV, verdictScenarios],
   ['admin: review queue, overrides, sign-ins, logs', ADMIN_ENV, adminScenarios],
   ['payments, the prize pool and leaderboards', PAYMENTS_ENV, paymentScenarios],

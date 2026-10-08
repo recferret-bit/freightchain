@@ -26,8 +26,10 @@ import {
 import { MemoryCosmeticRepository, MemoryPoolRepository, MemoryPromoRepository, MemoryRideTicketRepository, MemoryTicketOrderRepository } from './in-memory/memory-ledger-repositories.js';
 import { MemoryChainCursorRepository, MemoryChainEventRepository, MemorySponsoredTxRepository } from './in-memory/memory-repositories.js';
 import { TestHasher } from './recording.js';
-import { MemoryRideEventRepository } from './in-memory/memory-live-repositories.js';
+import { MemoryDonationOrderRepository, MemoryRideEventRepository, MemoryRideMuteRepository } from './in-memory/memory-live-repositories.js';
 import { MemoryViewerPresenceAdapter } from '../../src/infrastructure/live/viewer-presence.memory.adapter.js';
+import { MemorySitePresenceAdapter } from '../../src/infrastructure/live/site-presence.memory.adapter.js';
+import { LiveAccessService } from '../../src/application/services/live-access.service.js';
 
 /** Fixed rules for unit tests: 10 s free shift (140 m), treasury configured, one demo wallet. */
 export const DEMO_UNIT_WALLET = 'DemoWa11et1111111111111111111111111111111111';
@@ -38,7 +40,7 @@ export const unitRules = (over: Partial<RulesConfig> = {}): RulesConfig => ({
   demoWallets: new Set([DEMO_UNIT_WALLET]), demoScale: 60, initialSeedLamports: 0, treasury: TREASURY, appDomain: 'freight.test', appOrigin: 'https://freight.test', gameDomain: null, gameOrigin: null,
   paymentMode: 'transfer', programId: '', feeTreasury: '', seedTreasury: '', watchIntervalMs: 0, orderTtlMs: 3_600_000, commitment: 'confirmed', sponsorEnabled: false, crankEnabled: false,
   sponsorPerWalletPerDay: 20, priorityFee: { percentile: 75, minMicrolamports: 0, maxMicrolamports: 50_000 }, sessionTtlHours: 24,
-  verdictEnforce: true, telemetryRetentionDays: 90, adminWallets: new Set([ADMIN_UNIT_WALLET]), adminDomain: 'freight.test', adminOrigin: 'https://freight.test',
+  verdictEnforce: true, telemetryRetentionDays: 90, live: { chat: 'all', donations: true, freeDonations: true, effects: 'all' }, adminWallets: new Set([ADMIN_UNIT_WALLET]), adminDomain: 'freight.test', adminOrigin: 'https://freight.test',
   ...over,
 });
 
@@ -94,6 +96,10 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const sponsoredTxs = new MemorySponsoredTxRepository(db);
   const rideEvents = new MemoryRideEventRepository(db);
   const viewers = new MemoryViewerPresenceAdapter();
+  const sitePresence = new MemorySitePresenceAdapter();
+  const rideMutes = new MemoryRideMuteRepository(db);
+  const donationOrders = new MemoryDonationOrderRepository(db);
+  const liveAccess = new LiveAccessService(rides, rideMutes, rulesPort);
   const sessions = new PlayerSessionService(players, rulesPort, clock, analytics);
   const lookup = new RideLookupService(rides);
   const rounds = new RoundService(roundRepo, rulesPort, transactions, clock, analytics);
@@ -129,7 +135,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
     db, clock, chain, entropy, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, batches, hasher, verdictRepo, verdicts, proofs, signIns, adminActions, adminQuery, health, analytics,
     pools, tickets, promos, cosmetics, promoCreation, orders, poolTickets, ticketSettlement,
     sessions, lookup, rounds, achievements, settlement, now, player, freeRide, paidOrder, reload, storedPlayer,
-    poolChain, chainEvents, chainCursors, sponsoredTxs, registry, rideEvents, viewers,
+    poolChain, chainEvents, chainCursors, sponsoredTxs, registry, rideEvents, viewers, sitePresence, rideMutes, donationOrders, liveAccess,
   };
 }
 export type UnitContext = ReturnType<typeof unitContext>;

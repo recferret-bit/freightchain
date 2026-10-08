@@ -9,6 +9,12 @@ export const BATCH_MAX_BYTES = 98_304; // canonical JSON; below Express's defaul
 export const BATCH_MAX_SEQ = 100_000;
 export const MAX_GAME_SECONDS = 1e7;
 export const INPUT_CODE_MAX_LENGTH = 32;
+/* The traffic track beside a batch (live streams' replays: client/js/telemetry.js TRAFFIC_HZ = 2 frames per game second, each [t, …7 numbers per nearby
+   vehicle, ≤ 16 vehicles]). Display only – OUTSIDE the canonical (hashed) text, never judged; one that breaks these limits is DROPPED, never refused
+   (a refused batch would break the recording's chain for something the verdict does not even read). */
+export const TRAFFIC_MAX_FRAMES = 80;
+export const TRAFFIC_MAX_ROW = 1 + 7 * 16;
+export const TRAFFIC_MAX_BYTES = 48_000;
 /* What a ride may have uploaded by now, from the SERVER's wall clock since the start (caps storage per ride: a client cannot stream data faster than it drives).
    The game clock never runs ahead of wall time (frames are clamped, the tab pauses when hidden), so: */
 /** a batch's game time may not exceed the wall seconds since the start × this + GAME_TIME_SLACK_SECONDS */

@@ -1,3 +1,5 @@
+import { CommandBus } from '@nestjs/cqrs';
+import { SweepStaleRidesCommand } from '../../src/application/use-cases/rides/sweep-stale-rides/sweep-stale-rides.command.js';
 import { bindClient, type Rider } from '../support/client.js';
 import type { Harness } from '../support/harness.js';
 
@@ -45,6 +47,49 @@ export function lobbyScenarios(h: () => Harness): void {
       expect(rc.id).toBe(idC); expect(Object.keys(rc)).not.toContain('reason');
       expect(body.upcoming).toEqual([]);   // free rides are never "next up" – only paid, unstarted shifts
       expect(body.totals).toMatchObject({ shifts: expect.any(Number), metres: expect.any(Number), drivers: expect.any(Number) });
+    });
+
+    it('a ride whose tab vanished is ENDED by the stale-ride sweep (failed · heartbeat lost): off the live feed, in the recent finishes, a late heartbeat refused', async () => {
+      const w = await login(), id = await freeRide(w);
+      sec(5); await w.agent.post(`/api/rides/${id}/heartbeat`).send({ s: 70, t: 5, hull: 100 }).expect(200);
+      sec(160);
+      expect(await h().app.get(CommandBus).execute(new SweepStaleRidesCommand())).toEqual({ ended: 1, skipped: 0 });
+      expect((await w.agent.get(`/api/rides/${id}`).expect(200)).body).toMatchObject({ status: 'failed', reason: 'heartbeat lost' });
+      const feed = (await anon().get('/api/live').expect(200)).body;
+      expect(feed.rides.map((r: { id: string }) => r.id)).not.toContain(id);
+      expect(feed.recent.find((r: { id: string }) => r.id === id)).toMatchObject({ status: 'failed', distance: 70 });
+      await w.agent.post(`/api/rides/${id}/heartbeat`).send({ s: 80, t: 6, hull: 100 }).expect(409);
+      expect((await w.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body.status).toBe('created');   // the wallet is free for its next ride
+    });
+
+    it('who is online: the landing / lobby polls count (a signed-in one as a player), drivers and watchers too; junk presence params never fail the feed', async () => {
+      const w = await login(), id = await freeRide(w);
+      const fan = await login();
+      await anon().get('/api/live').query({ visitor: 'landing-visitor-1', page: 'landing' }).expect(200);
+      await fan.agent.get('/api/live').query({ visitor: 'lobby-visitor-01', page: 'lobby' }).expect(200);
+      await anon().get(`/api/watch/${id}`).query({ viewer: 'watcher-0000001' }).expect(200);
+      const feed = (await anon().get('/api/live').query({ visitor: '<junk>', page: 'nope' }).expect(200)).body;   // junk: not counted, not an error
+      expect(feed.online).toEqual({ total: 4, browsing: 2, watching: 1, driving: 1, players: 2 });
+      expect(feed.rides.find((r: { id: string }) => r.id === id)).toMatchObject({ viewers: 1, signal: 'live' });
+    });
+
+    it('the replays history is public: every ride that ended – a swept one too – newest first, paged, filtered, with its replay flag; a bad cursor is a 400', async () => {
+      const a = await login(), b = await login();
+      const ids: string[] = [];
+      for (const w of [a, b, a]) {
+        const id = await freeRide(w); sec(2);
+        await w.agent.post(`/api/rides/${id}/end`).send({ outcome: 'failed', s: 10, t: 1, reason: 'crashed into a truck' }).expect(200); ids.push(id);
+      }
+      const gone = await freeRide(b); sec(160); await h().app.get(CommandBus).execute(new SweepStaleRidesCommand());
+      const p1 = (await anon().get('/api/replays').query({ limit: 3 }).expect(200)).body;
+      expect(p1.rows.map((r: { id: string }) => r.id)).toEqual([gone, ids[2], ids[1]]);
+      expect(p1.rows[0]).toMatchObject({ status: 'failed', failCode: 'heartbeat_lost', replay: false });
+      expect(p1.rows[1]).toMatchObject({ failCode: 'crash' }); expect(Object.keys(p1.rows[1])).not.toContain('reason');
+      const p2 = (await anon().get('/api/replays').query({ limit: 3, before: p1.next }).expect(200)).body;
+      expect(p2.rows.map((r: { id: string }) => r.id)).toEqual([ids[0]]); expect(p2.next).toBeNull();
+      expect((await anon().get('/api/replays').query({ wallet: a.address }).expect(200)).body.rows.map((r: { id: string }) => r.id)).toEqual([ids[2], ids[0]]);
+      await anon().get('/api/replays').query({ before: 'yesterday' }).expect(400);
+      await anon().get('/api/replays').query({ status: 'running' }).expect(400);
     });
 
     it('only whitelisted routes are published; junk is ignored', async () => {

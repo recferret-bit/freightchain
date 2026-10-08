@@ -3,6 +3,7 @@ import type { INestApplication } from '@nestjs/common';
 import type { Server } from 'node:http';
 import { configureApp } from '../../src/app/configure-app.js';
 import { AppModule } from '../../src/app/app.module.js';
+import { StaleRideScheduler } from '../../src/infrastructure/scheduling/stale-ride.scheduler.js';
 import { AchievementRepositoryPort } from '../../src/application/ports/achievements/achievement.repository.port.js';
 import { ChallengeRepositoryPort } from '../../src/application/ports/auth/challenge.repository.port.js';
 import { ChainPort } from '../../src/application/ports/economy/chain.port.js';
@@ -39,7 +40,9 @@ import { CosmeticRepositoryPort } from '../../src/application/ports/players/cosm
 import { PromoRepositoryPort } from '../../src/application/ports/economy/promo.repository.port.js';
 import { RideTicketRepositoryPort } from '../../src/application/ports/players/ride-ticket.repository.port.js';
 import { MemoryChainCursorRepository, MemoryChainEventRepository, MemorySponsoredTxRepository } from './in-memory/memory-repositories.js';
-import { MemoryRideEventRepository } from './in-memory/memory-live-repositories.js';
+import { MemoryDonationOrderRepository, MemoryRideEventRepository, MemoryRideMuteRepository } from './in-memory/memory-live-repositories.js';
+import { DonationOrderRepositoryPort } from '../../src/application/ports/live/donation-order.repository.port.js';
+import { RideMuteRepositoryPort } from '../../src/application/ports/live/ride-mute.repository.port.js';
 import { RideEventRepositoryPort } from '../../src/application/ports/live/ride-event.repository.port.js';
 
 export type Persistence = 'memory' | 'postgres';
@@ -62,8 +65,8 @@ export interface Harness {
 }
 
 /** Everything the app reads from the environment that a test may change – cleared before each harness so files can't leak into each other. */
-const TUNABLES = ['THROTTLE_LIMIT', 'THROTTLE_AUTH_LIMIT', 'FREE_RIDE_SECONDS', 'DEMO_WALLETS', 'DEMO_SCALE', 'INITIAL_SEED_SOL', 'HB_MIN_INTERVAL_MS', 'TRUST_PROXY', 'SOL_USD', 'TREASURY_PUBKEY', 'JWT_SECRET', 'CLIENT_DIR', 'COOKIE_DOMAIN', 'CORS_ORIGINS', 'ADMIN_WALLETS', 'ADMIN_JWT_SECRET', 'ADMIN_SESSION_TTL_MINUTES', 'VERDICT_ENFORCE', 'TELEMETRY_RETENTION_DAYS',
-  'PAYMENT_MODE', 'TICKET_PROGRAM_ID', 'FEE_TREASURY', 'SEED_TREASURY', 'ORDER_TTL_MINUTES', 'WATCH_INTERVAL_MS', 'WEBHOOK_SECRET', 'CRANK_SECRET', 'FEE_PAYER_SECRET', 'SOLANA_COMMITMENT',
+const TUNABLES = ['THROTTLE_LIMIT', 'THROTTLE_AUTH_LIMIT', 'HB_TIMEOUT_MS', 'FREE_RIDE_SECONDS', 'DEMO_WALLETS', 'DEMO_SCALE', 'INITIAL_SEED_SOL', 'HB_MIN_INTERVAL_MS', 'TRUST_PROXY', 'SOL_USD', 'TREASURY_PUBKEY', 'JWT_SECRET', 'CLIENT_DIR', 'COOKIE_DOMAIN', 'CORS_ORIGINS', 'ADMIN_WALLETS', 'ADMIN_JWT_SECRET', 'ADMIN_SESSION_TTL_MINUTES', 'VERDICT_ENFORCE', 'TELEMETRY_RETENTION_DAYS',
+  'LIVE_CHAT', 'LIVE_DONATIONS', 'LIVE_FREE_DONATIONS', 'LIVE_EFFECTS', 'PAYMENT_MODE', 'TICKET_PROGRAM_ID', 'FEE_TREASURY', 'SEED_TREASURY', 'ORDER_TTL_MINUTES', 'WATCH_INTERVAL_MS', 'WEBHOOK_SECRET', 'CRANK_SECRET', 'FEE_PAYER_SECRET', 'SOLANA_COMMITMENT',
   'POSTHOG_KEY', 'POSTHOG_HOST', 'POSTHOG_ENABLED', 'POSTHOG_DISABLED', 'POSTHOG_PROJECT_ID'];
 
 /**
@@ -83,7 +86,8 @@ export async function createHarness(persistence: Persistence, env: Record<string
   const poolChain = new FakePoolChain();
   const memory = new MemoryDb();
 
-  let builder = Test.createTestingModule({ imports: [AppModule] }).overrideProvider(ClockPort).useValue(clock).overrideProvider(ChainPort).useValue(chain).overrideProvider(PoolChainPort).useValue(poolChain);
+  // the stale-ride sweep runs on a REAL timer – it would race the fake clock; scenarios run SweepStaleRidesCommand themselves
+  let builder = Test.createTestingModule({ imports: [AppModule] }).overrideProvider(StaleRideScheduler).useValue({}).overrideProvider(ClockPort).useValue(clock).overrideProvider(ChainPort).useValue(chain).overrideProvider(PoolChainPort).useValue(poolChain);
   if (persistence === 'memory') {
     builder = builder
       .overrideProvider(PrismaService).useValue({ $connect: async () => undefined, $disconnect: async () => undefined })
@@ -109,7 +113,9 @@ export async function createHarness(persistence: Persistence, env: Record<string
       .overrideProvider(ChainEventRepositoryPort).useValue(new MemoryChainEventRepository(memory))
       .overrideProvider(ChainCursorRepositoryPort).useValue(new MemoryChainCursorRepository(memory))
       .overrideProvider(SponsoredTxRepositoryPort).useValue(new MemorySponsoredTxRepository(memory))
-      .overrideProvider(RideEventRepositoryPort).useValue(new MemoryRideEventRepository(memory));
+      .overrideProvider(RideEventRepositoryPort).useValue(new MemoryRideEventRepository(memory))
+      .overrideProvider(RideMuteRepositoryPort).useValue(new MemoryRideMuteRepository(memory))
+      .overrideProvider(DonationOrderRepositoryPort).useValue(new MemoryDonationOrderRepository(memory));
   }
   const moduleRef = await builder.compile();
   const app = moduleRef.createNestApplication();

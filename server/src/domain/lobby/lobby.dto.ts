@@ -18,6 +18,27 @@ export interface LiveRideDto {
   progress: number;
   sinceBeat: number;
   startedAt: number;
+  /** spectators on its watch page right now */
+  viewers: number;
+  /** 'live' = beating · 'paused' = the driver paused · 'weak' = no heartbeat for WEAK_SIGNAL_SECONDS (a tab in the background, a bad connection) */
+  signal: 'live' | 'paused' | 'weak';
+}
+
+/** heartbeats come every ~10 s; this long without one the live feed calls the ride's signal weak (the ride leaves the feed at HB_TIMEOUT_MS) */
+export const WEAK_SIGNAL_SECONDS = 40;
+
+/** Who is on the site right now – SOFT numbers from the pages' own polls, kept in memory by one app process (a restart starts from zero). */
+export interface OnlineDto {
+  /** total = browsing + watching + driving */
+  total: number;
+  /** on the landing or the lobby (their /api/live poll, ≤ 3 per address) */
+  browsing: number;
+  /** on a watch page */
+  watching: number;
+  /** rides on the air */
+  driving: number;
+  /** signed-in wallets among them (browsing signed in, or driving) */
+  players: number;
 }
 
 /** A paid shift waiting for its driver to turn the key. Public, so: no ride id. */
@@ -39,6 +60,34 @@ export interface FinishedRideDto {
   endedAt: number | null;
 }
 
+/** One ended ride of the replays history. Public: the fail CODE, never the free-text reason. */
+export interface ReplayRideDto {
+  id: string;
+  wallet: string;
+  tier: string;
+  route: string | null;
+  status: string;
+  /** failed rides: heartbeat_lost · crash · off_road · hull · … (domain/rides/fail-code.ts); null otherwise */
+  failCode: string | null;
+  distance: number;
+  driveSeconds: number;
+  minSeconds: number;
+  timeScale: number;
+  startedAt: number;
+  endedAt: number;
+  /** its recording is still kept – it can be replayed on the watch page (TELEMETRY_RETENTION_DAYS) */
+  replay: boolean;
+}
+
+export interface ReplaysDto {
+  rows: ReplayRideDto[];
+  /** pass as `before` for the next (older) page; null = the end */
+  next: string | null;
+}
+
+export const REPLAYS_PAGE = 20;
+export const REPLAYS_MAX_PAGE = 50;
+
 export interface LiveTotalsDto {
   shifts: number;
   metres: number;
@@ -51,6 +100,7 @@ export interface LiveFeedDto {
   upcoming: UpcomingRideDto[];
   recent: FinishedRideDto[];
   totals: LiveTotalsDto;
+  online: OnlineDto;
 }
 
 export interface ProfileStatsDto {

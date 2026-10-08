@@ -1,3 +1,4 @@
+import type { LiveFlags } from '../../domain/live/live-features.js';
 import { createHash, randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -46,6 +47,7 @@ export class EnvService {
   get throttleAuthLimit(): number { return this.env.THROTTLE_AUTH_LIMIT; }
   get freeRideSeconds(): number { return this.env.FREE_RIDE_SECONDS; }
   get hbMinIntervalMs(): number { return this.env.HB_MIN_INTERVAL_MS; }
+  get hbTimeoutMs(): number { return this.env.HB_TIMEOUT_MS; }
   get solanaRpc(): string { return this.env.SOLANA_RPC; }
   get solUsdFixed(): number | undefined { return this.env.SOL_USD || undefined; }
   get demoScale(): number { return this.env.DEMO_SCALE; }
@@ -75,6 +77,9 @@ export class EnvService {
   get initialSeedLamports(): number { return Math.round(this.env.INITIAL_SEED_SOL * 1e9); }
   get verdictEnforce(): boolean { return this.env.VERDICT_ENFORCE; }
   get telemetryRetentionDays(): number { return this.env.TELEMETRY_RETENTION_DAYS; }
+  get liveFlags(): LiveFlags {
+    return { chat: this.env.LIVE_CHAT, donations: this.env.LIVE_DONATIONS === 'on', freeDonations: this.env.LIVE_FREE_DONATIONS === 'on', effects: this.env.LIVE_EFFECTS };
+  }
   /** who may use the admin page (empty = nobody: the admin routes answer 404) */
   get adminWallets(): ReadonlySet<string> {
     return new Set(this.env.ADMIN_WALLETS.split(',').map((w) => w.trim()).filter((w) => w.length > 0));

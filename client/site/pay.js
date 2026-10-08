@@ -142,3 +142,11 @@ export async function claimRefund(poolId, onStep = () => {}) {
   }
   return { signature, settled: false };
 }
+
+/** Sign and send a transaction the SERVER built (base64, unsigned) with the injected wallet → its signature. Live streams: a paid donation to a driver. */
+export async function signAndSend(transactionB64) {
+  const p = provider();
+  if (!p) throw noWallet();
+  const w3 = await loadWeb3();
+  return selfPay(p, w3.Transaction.from(fromB64(transactionB64)));
+}

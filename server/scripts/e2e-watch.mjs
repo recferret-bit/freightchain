@@ -97,14 +97,25 @@ await S.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 780, de
 await S.shot('watch-phone');
 await S.send('Emulation.clearDeviceMetricsOverride');
 
+// chat safety: the driver folds the CB away with K and back; then MUTES the spectator from its line – the spectator's next line is refused
+await D.send('Input.dispatchKeyEvent', { type: 'keyDown', code: 'KeyK', key: 'k' }); await D.send('Input.dispatchKeyEvent', { type: 'keyUp', code: 'KeyK', key: 'k' });
+check('driver: K folds the CB panel away', await until(() => D.ev('document.getElementById("cb").classList.contains("folded")'), 3000));
+await D.ev('document.querySelector("#cb .cb-head").click()');
+check('driver: a click on its header unfolds it', await until(() => D.ev('!document.getElementById("cb").classList.contains("folded")'), 3000));
+await D.ev(`[...document.querySelectorAll('#cb .cb-line')].find(l => l.dataset.wallet === ${JSON.stringify(fan.wallet)})?.querySelector('.cb-mute')?.click()`);
+const muted = await until(async () => (await (await fetch(`${BASE}/api/watch/${ride.id}`)).json()).events.every(e => e.kind !== 'message'), 8000);
+check('driver: MUTE on a CB line hides the spectator\'s chat from every feed', muted);
+await S.ev('document.getElementById("w-text").value = "can you hear me"; document.querySelector(".w-say button").click()'); await sleep(800);
+check('spectator: muted – its next line is refused', /muted you/.test(await S.ev('document.getElementById("w-msg").textContent')), await S.ev('document.getElementById("w-msg").textContent'));
+
 // the driver ends; the watch page turns into a read-only replay
 driving = false;
 await D.ev('window.dispatchEvent(new KeyboardEvent("keydown", { key: "p", code: "KeyP", bubbles: true }))'); await sleep(400);
 await D.ev('document.getElementById("endshift")?.click()'); await sleep(1500);
 check('spectator: the ended ride becomes a replay, the feed read-only', await until(() => S.ev('__game.watch.ride.live === false && /REPLAY/.test(document.getElementById("w-state").textContent) && !document.getElementById("w-text")'), 20_000));
 const inbox = await (await fetch(`${BASE}/api/watch/${ride.id}`)).json();
-check('server: the ride\'s feed is kept (1 line + the mock donations)', inbox.totals.messages === 1 && inbox.totals.donations === gifts + 1, JSON.stringify(inbox.totals));
-const pd = D.filt(), ps = S.filt().filter(p => !/401.*\/api\/me|429.*\/donations/.test(p));   // by design: the signed-out probe of /api/me (as in landing/tools/e2e-wallet.mjs) and the refused second effect above
+check('server: the ride\'s feed is kept (1 line + the mock donations)', inbox.totals.messages === 1 && inbox.totals.donations === gifts + 1, JSON.stringify(inbox.totals));   // totals count everything; a muted wallet's lines are only hidden
+const pd = D.filt(), ps = S.filt().filter(p => !/401.*\/api\/me|429.*\/donations|403.*\/messages/.test(p));   // by design: the signed-out probe of /api/me (as in landing/tools/e2e-wallet.mjs), the refused second effect, the muted line
 check('no page errors (driver)', pd.length === 0, pd.join(' | '));
 check('no page errors (spectator)', ps.length === 0, ps.join(' | '));
 console.log(`screenshots: ${S.SHOTS}`);

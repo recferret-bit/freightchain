@@ -34,11 +34,13 @@ button:disabled{opacity:.4;cursor:not-allowed}
 #roadwrap{white-space:nowrap}
 /* live streams: the driver's CB panel (ui/live-feed.js) and the spectator's watch panel (ui/watch-panel.js) */
 #cb{position:absolute;left:max(12px,8vw);top:10px;max-width:min(400px,28vw);z-index:4;pointer-events:none;font-size:13px;text-shadow:0 1px 2px #000}
-#cb .cb-head{display:inline-block;padding:3px 8px;border-radius:4px;background:#000a;border:1px solid #ffcf5a66;color:#ffcf5a;font-size:11px;letter-spacing:1px}
+#cb .cb-head{display:inline-block;flex:0 0 auto;font:inherit;font-weight:normal;padding:3px 8px;border-radius:4px;background:#000a;border:1px solid #ffcf5a66;color:#ffcf5a;font-size:11px;letter-spacing:1px;cursor:pointer;pointer-events:auto}
+#cb.folded .cb-lines{display:none}
+#cb .cb-mute{flex:0 0 auto;margin-left:8px;padding:0 6px;font:inherit;font-size:10px;font-weight:normal;border-radius:3px;border:1px solid #ff6b5a88;background:transparent;color:#ff9a8a;cursor:pointer;pointer-events:auto;opacity:.5}#cb .cb-mute:hover{opacity:1}
 #cb .cb-line{margin-top:4px;padding:4px 8px;border-radius:4px;background:#000a;transition:opacity 2s;overflow-wrap:anywhere}
 #cb .cb-line b{color:#ffcf5a}#cb .cb-line.gift{border-left:3px solid #7be07b}#cb .cb-line.old{opacity:0}
 #watch{position:absolute;top:0;right:0;bottom:0;width:340px;z-index:6;display:flex;flex-direction:column;gap:8px;padding:14px;box-sizing:border-box;
-       background:#120f0ce6;border-left:2px solid #ffcf5a88;font-size:13px;overflow:hidden}
+       background:#120f0ce6;border-left:2px solid #ffcf5a88;font-size:13px;overflow-y:auto;overscroll-behavior:contain}
 #watch button{flex:0 0 auto;font-size:12px;padding:6px 9px}
 #watch button.sel{background:#ffcf5a;color:#1b1408}
 #watch .w-top{display:flex;justify-content:space-between;align-items:flex-start}

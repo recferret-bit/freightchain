@@ -29,7 +29,7 @@ app_env | node "$DEPLOY_DIR/scripts/validate-env.mjs" || die "deploy/.env is not
 
 # ---- 3. the server
 info "checking ssh to ${DEPLOY_USER}@${DEPLOY_HOST}"; check_ssh
-SETUP_DONE=1; rsh "test -f '$DEPLOY_PATH/state/setup-done' && test -f /etc/nginx/sites-available/freightchain-storybook && test -f /etc/nginx/sites-available/freightchain-admin && test -f /etc/nginx/snippets/freightchain-media.conf && grep -q freightchain-media /etc/nginx/sites-available/freightchain" 2>/dev/null || SETUP_DONE=0
+SETUP_DONE=1; rsh "test -f '$DEPLOY_PATH/state/setup-done' && test -f /etc/nginx/sites-available/freightchain-storybook && test -f /etc/nginx/sites-available/freightchain-whitepaper && test -f /etc/nginx/sites-available/freightchain-admin && test -f /etc/nginx/snippets/freightchain-media.conf && grep -q freightchain-media /etc/nginx/sites-available/freightchain" 2>/dev/null || SETUP_DONE=0
 CURRENT="$(rsh "cat '$DEPLOY_PATH/state/current' 2>/dev/null || true")"
 
 cat <<PLAN
@@ -37,7 +37,7 @@ cat <<PLAN
 ${C_BOLD}Deploy plan${C_OFF}
   commit      $SHA  ($BRANCH)   release $RELEASE
   server      ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}
-  site        https://${DEPLOY_DOMAIN}  (landing + lobby)  ·  https://ride.${DEPLOY_DOMAIN}  (game)  ·  https://api.${DEPLOY_DOMAIN}  (API)  ·  https://storybook.${DEPLOY_DOMAIN}  (model viewer)  ·  https://admin.${DEPLOY_DOMAIN}  (admin, basic auth as ${DEPLOY_ADMIN_USER})
+  site        https://${DEPLOY_DOMAIN}  (landing + lobby)  ·  https://ride.${DEPLOY_DOMAIN}  (game)  ·  https://api.${DEPLOY_DOMAIN}  (API)  ·  https://storybook.${DEPLOY_DOMAIN}  (model viewer)  ·  https://whitepaper.${DEPLOY_DOMAIN}  (whitepaper)  ·  https://admin.${DEPLOY_DOMAIN}  (admin, basic auth as ${DEPLOY_ADMIN_USER})
   serving now ${CURRENT:-nothing (first deploy)}
   first-time setup (nginx sites + TLS certificate): $([ "$SETUP_DONE" = "1" ] && echo "already done" || echo "WILL RUN (a missing site is added, the certificate expanded)")
   steps       admin password file → upload code + env → build image → backup database → migrate → swap → health check (auto-rollback on failure) → smoke test
@@ -64,5 +64,5 @@ rscript "$DEPLOY_DIR/scripts/remote/release.sh" "DEPLOY_PATH=$DEPLOY_PATH" "RELE
 [ "$(rsh "cat '$DEPLOY_PATH/state/current' 2>/dev/null" || true)" = "$RELEASE" ] || die "the server script ended without finishing release $RELEASE (state/current is not it) – nothing is half-promoted; see the output above"
 
 # ---- 7. is it really up, through nginx and TLS, with a working sign-in?
-if [ "$SMOKE" = "1" ]; then info "smoke test against https://${DEPLOY_DOMAIN}"; SMOKE_ADMIN_AUTH="${DEPLOY_ADMIN_USER}:${DEPLOY_ADMIN_PASSWORD}" node "$DEPLOY_DIR/scripts/smoke.mjs" "https://${DEPLOY_DOMAIN}" --api "https://api.${DEPLOY_DOMAIN}" --game "https://ride.${DEPLOY_DOMAIN}" --storybook "https://storybook.${DEPLOY_DOMAIN}" --admin "https://admin.${DEPLOY_DOMAIN}" --treasury "$TREASURY_PUBKEY" || die "the smoke test failed – the release is up on the server, but the public site is not right (see above). Roll back with: npm run deploy:rollback"; fi
+if [ "$SMOKE" = "1" ]; then info "smoke test against https://${DEPLOY_DOMAIN}"; SMOKE_ADMIN_AUTH="${DEPLOY_ADMIN_USER}:${DEPLOY_ADMIN_PASSWORD}" node "$DEPLOY_DIR/scripts/smoke.mjs" "https://${DEPLOY_DOMAIN}" --api "https://api.${DEPLOY_DOMAIN}" --game "https://ride.${DEPLOY_DOMAIN}" --storybook "https://storybook.${DEPLOY_DOMAIN}" --whitepaper "https://whitepaper.${DEPLOY_DOMAIN}" --admin "https://admin.${DEPLOY_DOMAIN}" --treasury "$TREASURY_PUBKEY" || die "the smoke test failed – the release is up on the server, but the public site is not right (see above). Roll back with: npm run deploy:rollback"; fi
 ok "deployed ${RELEASE} → https://${DEPLOY_DOMAIN}"

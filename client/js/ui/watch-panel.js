@@ -7,6 +7,8 @@ import { watch, seek, goLive, addEvent, LIVE_LAG } from '../watch.js';
 import { EFFECT_INFO, short, solText } from '../live-effects.js';
 import { el } from '../../site/dom.js';
 import { api, signIn } from '../../site/wallet.js';
+import { signAndSend } from '../../site/pay.js';
+import { explorerTx } from '../../site/pools.js';
 
 /* The watch page's panel (play.html?watch=<id>): who / where / how far, the timeline (live edge or replay with speeds), the ride's feed, and – signed in –
    the chat box and the MOCK donation buttons. Server text only through el() / textContent. Spectator actions go to /api/watch/:id/* (server/src/presentation/live). */
@@ -84,7 +86,8 @@ function paintClock() {
 function feedLine(e) {
   const box = $('w-feed'); if (!box) return;
   const fx = EFFECT_INFO[e.effect], mine = P.me && e.wallet === P.me.wallet;
-  const body = e.kind === 'message' ? [e.text] : [`${fx?.icon ?? '💰'} ${fx?.says ?? 'donated'} · ${solText(e.lamports)} `, el('small', {}, '(mock)'), e.text ? ` – “${e.text}”` : ''];
+  const body = e.kind === 'message' ? [e.text] : [`${fx?.icon ?? '💰'} ${fx?.says ?? 'donated'} · ${solText(e.lamports)} `,
+    e.signature ? el('a', { href: explorerTx(e.signature), target: '_blank', rel: 'noopener', title: 'the transfer to the driver on the Solana explorer (devnet)' }, 'paid ↗') : el('small', {}, '(mock)'), e.text ? ` – “${e.text}”` : ''];
   const row = el('div', { class: `w-line${e.kind === 'donation' ? ' gift' : ''}${mine ? ' me' : ''}`, 'data-id': e.id },
     el('b', { title: e.wallet }, `${short(e.wallet)}${e.wallet === watch.ride?.wallet ? ' (driver)' : ''}: `), ...body,
     e.kind === 'donation' && e.effect !== 'tip' ? el('span', { class: 'w-ap dim' }, appliedText(e)) : '');
@@ -106,15 +109,19 @@ function paintMe() {
     return;
   }
   if (P.me.wallet === r.wallet) { box.replaceChildren(el('p', { class: 'dim w-small' }, 'This is your own ride – spectators write here.')); return; }
-  if (box.dataset.ready === P.me.wallet) return;   // built once per signed-in wallet (keeps what is being typed)
-  box.dataset.ready = P.me.wallet;
-  const text = el('input', { id: 'w-text', maxlength: 140, placeholder: 'say something to the driver…', autocomplete: 'off', onkeydown: e => { if (e.key === 'Enter') send(); } });
-  const note = el('input', { id: 'w-note-in', maxlength: 80, placeholder: 'note with a donation (optional)', autocomplete: 'off' });
-  box.replaceChildren(
-    el('div', { class: 'w-say' }, text, el('button', { onclick: send }, 'SEND')),
-    el('div', { class: 'w-k' }, 'DONATE · mock SOL – nothing is charged · one effect per 20 s on a ride'),
-    el('div', { class: 'w-fx' }, ...Object.entries(EFFECT_INFO).map(([id, fx]) => el('button', { class: 'alt', title: fx.says, onclick: () => donate(id) }, `${fx.icon} ${fx.label}`, el('small', {}, `${fx.sol} SOL`)))),
-    note, el('div', { id: 'w-msg', class: 'w-small' }), el('div', { class: 'dim w-small' }, `signed in as ${short(P.me.wallet)}`));
+  const f = watch.features, key = `${P.me.wallet}|${JSON.stringify(f)}`;
+  if (box.dataset.ready === key) return;   // built once per signed-in wallet and feature set (keeps what is being typed)
+  box.dataset.ready = key;
+  const parts = [];
+  if (f.chat) parts.push(el('div', { class: 'w-say' }, el('input', { id: 'w-text', maxlength: 140, placeholder: 'say something to the driver…', autocomplete: 'off', onkeydown: e => { if (e.key === 'Enter') send(); } }), el('button', { onclick: send }, 'SEND')));
+  else parts.push(el('p', { class: 'dim w-small' }, 'Chat is off on this ride.'));
+  if (f.donations) {
+    const fx = Object.entries(EFFECT_INFO).filter(([id]) => f.effects || id === 'tip'), chain = f.payment === 'chain';
+    parts.push(el('div', { class: 'w-k' }, chain ? 'DONATE · devnet SOL, sent from your wallet to the driver' : 'DONATE · mock SOL – nothing is charged', f.effects ? ' · one effect per 20 s on a ride' : ' · effects are off on this ride – tips only'),
+      el('div', { class: 'w-fx' }, ...fx.map(([id, e]) => el('button', { class: 'alt', title: `${e.says}${chain ? ' – paid to the driver in devnet SOL' : ''}`, onclick: () => donate(id) }, `${e.icon} ${e.label}`, el('small', {}, `${e.sol} SOL`)))),
+      el('input', { id: 'w-note-in', maxlength: 80, placeholder: 'note with a donation (optional)', autocomplete: 'off' }));
+  } else parts.push(el('p', { class: 'dim w-small' }, 'Donations are off.'));
+  box.replaceChildren(...parts, el('div', { id: 'w-msg', class: 'w-small' }), el('div', { class: 'dim w-small' }, `signed in as ${short(P.me.wallet)}`));
 }
 const say = (text, cls = 'dim') => { const m = $('w-msg'); if (m) { m.textContent = text; m.className = `w-small ${cls}`; } };
 async function connect() {
@@ -127,13 +134,30 @@ async function send() {
   try { const e = await api(`watch/${encodeURIComponent(watch.id)}/messages`, { text: t.value }); t.value = ''; say(''); addOwn(e); }
   catch (e) { say(e.message, 'bad'); if (e.status === 401) refreshMe(); }
 }
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const sent = (effect, how) => (effect === 'tip' ? `Tip sent (${how}).` : `${EFFECT_INFO[effect].label} sent (${how}) – it happens when the driver's game picks it up; you see it here ~${LIVE_LAG} s later.`);
 async function donate(effect) {
-  const n = $('w-note-in');
+  if (P.busy) return;
+  const n = $('w-note-in'), note = n?.value.trim() || null, id = encodeURIComponent(watch.id);
+  P.busy = true;
   try {
-    const e = await api(`watch/${encodeURIComponent(watch.id)}/donations`, { effect, note: n?.value.trim() || null });
+    if (watch.features.payment !== 'chain') {   // MOCK: nothing is charged
+      addOwn(await api(`watch/${id}/donations`, { effect, note })); say(sent(effect, 'mock'), 'good');
+    } else {   // PAID: the server builds the transfer to the driver, your wallet signs and sends it, the server sees it on chain
+      say('Preparing the transfer…');
+      const { order, transaction } = await api(`watch/${id}/donation-orders`, { effect, note });
+      say(`Approve ${solText(order.lamports)} (devnet) to the driver in your wallet…`);
+      const signature = await signAndSend(transaction.transaction);
+      say('Sent – waiting for the network to confirm…');
+      for (let i = 0; i < 60; i++) {
+        const r = await api(`watch/${id}/donation-orders/${order.id}/confirm`, { signature });
+        if (r.status === 'paid') { if (n) n.value = ''; addOwn(r.event); say(r.event.effect === effect ? sent(effect, 'paid') : `Paid – ${r.event.text ?? 'delivered as a tip'}.`, 'good'); return; }
+        await sleep(1500);
+      }
+      say('The network has not confirmed it yet – it appears in the feed once it does (reload to check).', 'dim');
+    }
     if (n) n.value = '';
-    say(effect === 'tip' ? 'Tip sent (mock).' : `${EFFECT_INFO[effect].label} sent (mock) – it happens when the driver's game picks it up; you see it here ~${LIVE_LAG} s later.`, 'good');
-    addOwn(e);
   } catch (e) { say(e.message, 'bad'); if (e.status === 401) refreshMe(); }
+  finally { P.busy = false; }
 }
 const addOwn = e => addEvent(e);   // shown at once (onEvent paints it); the next poll knows the id

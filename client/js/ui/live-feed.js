@@ -8,12 +8,13 @@ import { roadObjects, AHEAD, CH } from '../world/chunks.js';
 import { net, laneLat } from '../net/network.js';
 import { EFFECT_INFO, short, solText, advanceCursor } from '../live-effects.js';
 import { api as siteApi } from '../../site/wallet.js';
+import { store } from '../util.js';
 
 /* Live streams, the DRIVER's side (online rides only): poll the ride's inbox (what spectators sent – server/src/application/use-cases/live), show the chat on
    the CB panel, apply the paid effects (night / day / an obstacle ahead) and stamp each one back – where an obstacle went is what every replay puts there.
    No WebSockets: one GET every POLL_MS. Offline nothing here runs. */
 const POLL_MS = 4000, CB_LINES = 4, CB_TTL = 25_000;
-const feed = { on: false, cursor: 0, seen: new Set(), pending: [], timer: 0, viewers: 0, totals: null, box: null, lines: null, head: null };
+const feed = { on: false, cursor: 0, seen: new Set(), pending: [], timer: 0, viewers: 0, totals: null, features: null, muted: new Set(), hidden: store.get('freightchain.cb') === 'hidden', box: null, lines: null, head: null };
 
 const api = (path, body) => siteApi(path, body, { timeoutMs: 8000 });
 
@@ -27,14 +28,15 @@ export function stopLiveFeed() { feed.on = false; clearTimeout(feed.timer); if (
 
 async function poll() {
   const j = await api(`rides/${online.ride.id}/inbox?after=${feed.cursor}`);
-  feed.viewers = j.viewers; feed.totals = j.totals;
+  feed.viewers = j.viewers; feed.totals = j.totals; feed.features = j.features ?? feed.features; feed.muted = new Set(j.muted ?? []);
   for (const e of j.events) {
     if (feed.seen.has(e.id)) continue;
     feed.seen.add(e.id);
-    if (e.kind === 'message') cb(short(e.wallet), e.text);
+    if (feed.muted.has(e.wallet) && e.kind === 'message') continue;
+    if (e.kind === 'message') cb(short(e.wallet), e.text, '', e.wallet);
     else {
       const fx = EFFECT_INFO[e.effect] ?? { label: e.effect, icon: '💰', says: 'donated' };
-      cb(short(e.wallet), `${fx.icon} ${fx.says} · ${solText(e.lamports)} (mock)${e.text ? ` – “${e.text}”` : ''}`, 'gift');
+      cb(short(e.wallet), `${fx.icon} ${fx.says} · ${solText(e.lamports)}${feed.features?.payment === 'chain' ? '' : ' (mock)'}${e.text ? ` – “${e.text}”` : ''}`, 'gift', e.wallet);
       if (e.effect !== 'tip' && !e.applied) feed.pending.push({ e, stamp: null });
     }
   }
@@ -81,24 +83,40 @@ function apply(e) {
 }
 
 /* the CB panel: the last few lines from the spectators + how many are watching (server text only through textContent) */
+/* chat safety for the driver: K (or a click on the header) folds the panel away – remembered – and every spectator line has a MUTE button: that wallet's
+   lines vanish from every feed and it can't post on this ride any more (POST /api/rides/:id/mutes). #cb lets clicks through except on those two. */
 function mountCB() {
   if (feed.box) { feed.box.hidden = false; return; }
   feed.box = document.createElement('div'); feed.box.id = 'cb'; feed.box.setAttribute('aria-live', 'polite');
-  feed.head = document.createElement('div'); feed.head.className = 'cb-head';
+  feed.head = document.createElement('button'); feed.head.className = 'cb-head'; feed.head.type = 'button'; feed.head.title = 'fold / unfold the CB (K)';
+  feed.head.addEventListener('click', toggleCB); feed.head.addEventListener('keydown', e => e.preventDefault());   // Space / Enter belong to the truck
   feed.lines = document.createElement('div'); feed.lines.className = 'cb-lines';
   feed.box.append(feed.head, feed.lines); document.body.append(feed.box); paintHead();
 }
+export function toggleCB() { feed.hidden = !feed.hidden; store.set('freightchain.cb', feed.hidden ? 'hidden' : 'shown'); paintHead(); feed.head?.blur(); }
+addEventListener('keydown', e => { if (e.code === 'KeyK' && feed.on && !e.repeat && !e.target.closest?.('input, textarea')) toggleCB(); });
 function paintHead() {
   if (!feed.head) return;
-  const t = feed.totals;
-  feed.head.textContent = `CB · 👁 ${feed.viewers} watching${t && (t.messages || t.donations) ? ` · ${t.messages} msg · ${solText(t.lamports)} (mock)` : ''}`;
+  const t = feed.totals, f = feed.features, quiet = f && !f.chat && !f.donations;
+  feed.box.classList.toggle('folded', feed.hidden);
+  feed.head.textContent = `CB ${feed.hidden ? '▸' : '▾'} · 👁 ${feed.viewers} watching${t && (t.messages || t.donations) ? ` · ${t.messages} msg · ${solText(t.lamports)}${f?.payment === 'chain' ? '' : ' (mock)'}` : ''}${quiet ? ' · spectators can\'t write on this ride' : ''}${feed.hidden ? ' · K' : ''}`;
 }
-function cb(who, text, cls = '') {
+function cb(who, text, cls = '', wallet = '') {
   if (!feed.lines) return;
-  const line = document.createElement('div'); line.className = `cb-line ${cls}`;
+  const line = document.createElement('div'); line.className = `cb-line ${cls}`; line.dataset.wallet = wallet;
   const name = document.createElement('b'); name.textContent = `${who}: `;
-  line.append(name, document.createTextNode(text)); feed.lines.append(line);
+  line.append(name, document.createTextNode(text));
+  if (wallet) { const m = document.createElement('button'); m.type = 'button'; m.className = 'cb-mute'; m.textContent = 'mute'; m.title = `mute ${who} on this ride`; m.addEventListener('click', () => mute(wallet, who)); line.append(m); }
+  feed.lines.append(line);
   while (feed.lines.children.length > CB_LINES) feed.lines.firstChild.remove();
   setTimeout(() => line.classList.add('old'), CB_TTL);
+}
+async function mute(wallet, who) {
+  try {
+    await api(`rides/${online.ride.id}/mutes`, { wallet, muted: true });
+    feed.muted.add(wallet);
+    for (const l of [...feed.lines.children]) if (l.dataset.wallet === wallet && !l.classList.contains('gift')) l.remove();
+    toast(`Muted ${who} on this ride`, 1800);
+  } catch (e) { toast(`Could not mute: ${e.message}`, 2500); }
 }
 export const liveFeed = feed;   // debug / e2e: __game.liveFeed

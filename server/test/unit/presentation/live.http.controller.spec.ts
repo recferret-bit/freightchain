@@ -3,6 +3,9 @@ import { AckEffectCommand } from '../../../src/application/use-cases/live/ack-ef
 import { GetInboxQuery } from '../../../src/application/use-cases/live/get-inbox/get-inbox.query.js';
 import { PostRideEventCommand } from '../../../src/application/use-cases/live/post-ride-event/post-ride-event.command.js';
 import { WatchRideQuery } from '../../../src/application/use-cases/live/watch-ride/watch-ride.query.js';
+import { MuteWalletCommand } from '../../../src/application/use-cases/live/mute-wallet/mute-wallet.command.js';
+import { CreateDonationOrderCommand } from '../../../src/application/use-cases/live/create-donation-order/create-donation-order.command.js';
+import { ConfirmDonationCommand } from '../../../src/application/use-cases/live/confirm-donation/confirm-donation.command.js';
 import { busMock } from '../../support/bus.js';
 
 describe('LiveHttpController', () => {
@@ -19,5 +22,11 @@ describe('LiveHttpController', () => {
     expect(commands.last()).toEqual(new PostRideEventCommand('F', 'R', { kind: 'donation', effect: 'night', note: null }));
     await c.applied({ wallet: 'D' }, { id: 'R', eventId: 9 }, { t: 1, s: 2, lat: null, missed: true });
     expect(commands.last()).toEqual(new AckEffectCommand('D', 'R', 9, { t: 1, s: 2, lat: null, missed: true }));
+    await c.mute({ wallet: 'D' }, { id: 'R' }, { wallet: 'T', muted: true });
+    expect(commands.last()).toEqual(new MuteWalletCommand('D', 'R', 'T', true));
+    await c.order({ wallet: 'F' }, { id: 'R' }, { effect: 'night', note: 'n' });
+    expect(commands.last()).toEqual(new CreateDonationOrderCommand('F', 'R', 'night', 'n'));
+    await c.confirm({ wallet: 'F' }, { id: 'R', orderId: 'O' }, { signature: 'S' });
+    expect(commands.last()).toEqual(new ConfirmDonationCommand('F', 'R', 'O', 'S'));
   });
 });

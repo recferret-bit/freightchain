@@ -37,6 +37,12 @@ import { PostRideEventHandler } from './use-cases/live/post-ride-event/post-ride
 import { AckEffectHandler } from './use-cases/live/ack-effect/ack-effect.handler.js';
 import { GetInboxHandler } from './use-cases/live/get-inbox/get-inbox.handler.js';
 import { WatchRideHandler } from './use-cases/live/watch-ride/watch-ride.handler.js';
+import { MuteWalletHandler } from './use-cases/live/mute-wallet/mute-wallet.handler.js';
+import { SweepStaleRidesHandler } from './use-cases/rides/sweep-stale-rides/sweep-stale-rides.handler.js';
+import { GetReplaysHandler } from './use-cases/lobby/get-replays/get-replays.handler.js';
+import { CreateDonationOrderHandler } from './use-cases/live/create-donation-order/create-donation-order.handler.js';
+import { ConfirmDonationHandler } from './use-cases/live/confirm-donation/confirm-donation.handler.js';
+import { LiveAccessService } from './services/live-access.service.js';
 import { GetAdminLogsHandler } from './use-cases/admin/get-admin-logs/get-admin-logs.handler.js';
 import { GetAdminOverviewHandler } from './use-cases/admin/get-admin-overview/get-admin-overview.handler.js';
 import { GetAdminRideHandler } from './use-cases/admin/get-admin-ride/get-admin-ride.handler.js';
@@ -87,7 +93,7 @@ import { RegisterPoolFromChainHandler } from './use-cases/pools/register-pool-fr
 
 const services: Provider[] = [
   AchievementService, PaymentSettlementService, PlayerSessionService, RideLookupService, RoundService, VerdictService, AdminProofService,
-  PoolTicketsService, PromoCreationService, TicketSettlementService, PoolRegistryService, FinalityService,
+  PoolTicketsService, PromoCreationService, TicketSettlementService, PoolRegistryService, FinalityService, LiveAccessService,
 ];
 
 const handlers: Provider[] = [
@@ -95,7 +101,7 @@ const handlers: Provider[] = [
   CreateRideHandler, GetRideHandler, GetPendingRideHandler, StartRideHandler, HeartbeatRideHandler, EndRideHandler,
   GetPaymentInstructionsHandler, ConfirmPaymentHandler, ReconcilePaymentHandler,
   UploadBatchHandler, SweepTelemetryHandler,
-  PostRideEventHandler, AckEffectHandler, GetInboxHandler, WatchRideHandler,
+  PostRideEventHandler, AckEffectHandler, GetInboxHandler, WatchRideHandler, MuteWalletHandler, CreateDonationOrderHandler, ConfirmDonationHandler, SweepStaleRidesHandler, GetReplaysHandler,
   GetAdminOverviewHandler, ListAdminRidesHandler, GetAdminRideHandler, ListSignInsHandler, ListAdminActionsHandler, GetAdminLogsHandler, OverrideVerdictHandler, RejudgeRideHandler, RequestAdminChallengeHandler, VerifyAdminSignInHandler, RequestActionChallengeHandler,
   GetTiersHandler, GetPoolHandler, GetLeaderboardHandler,
   GetLiveHandler, GetProfileHandler,

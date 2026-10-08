@@ -5,4 +5,6 @@ export abstract class ViewerPresencePort {
   abstract seen(rideId: string, source: string, viewer: string, now: Date): number;
   /** the count without registering anyone (the driver's own poll) */
   abstract count(rideId: string, now: Date): number;
+  /** distinct viewers on ANY watch page right now (a viewer id on two rides counts once) */
+  abstract watching(now: Date): number;
 }

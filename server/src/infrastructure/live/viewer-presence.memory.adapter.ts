@@ -39,6 +39,12 @@ export class MemoryViewerPresenceAdapter extends ViewerPresencePort {
     return w.viewers.size;
   }
 
+  watching(now: Date): number {
+    const all = new Set<string>();
+    for (const rideId of [...this.rides.keys()]) { this.count(rideId, now); for (const key of this.rides.get(rideId)?.viewers.keys() ?? []) all.add(key); }
+    return all.size;
+  }
+
   private drop(w: Watched, key: string): void {
     const v = w.viewers.get(key);
     if (!v) return;

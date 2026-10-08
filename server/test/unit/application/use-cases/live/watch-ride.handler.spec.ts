@@ -10,7 +10,7 @@ import { unitContext } from '../../../../support/unit-context.js';
 describe('WatchRideHandler', () => {
   const setup = () => {
     const ctx = unitContext();
-    const handler = new WatchRideHandler(ctx.rides, ctx.batches, ctx.rideEvents, ctx.viewers, ctx.rules, ctx.clock);
+    const handler = new WatchRideHandler(ctx.rides, ctx.batches, ctx.rideEvents, ctx.viewers, ctx.rideMutes, ctx.rules, ctx.clock);
     return { ctx, watch: (id: string, from = 0, after = 0, viewer = '', since = 0, source = '10.0.0.1') => handler.execute(new WatchRideQuery(id, from, after, viewer, since, source)) };
   };
 
@@ -74,6 +74,17 @@ describe('WatchRideHandler', () => {
     const ride = await ctx.freeRide('driver', true);
     for (let i = 0; i < 10; i++) await watch(ride.id, 0, 0, `fake-${i}`, 0, '10.9.9.9');
     expect((await watch(ride.id, 0, 0, 'real', 0, '10.0.0.2')).viewers).toBe(4);
+  });
+
+  it('carries the ride\'s features and hides what the driver muted (lines gone, notes blanked, donations kept)', async () => {
+    const { ctx, watch } = setup();
+    const ride = await ctx.freeRide('driver', true);
+    await ctx.rideEvents.insert(RideEvent.message({ rideId: ride.id, wallet: 'troll', text: 'boo', now: ctx.now() }));
+    await ctx.rideEvents.insert(RideEvent.donation({ rideId: ride.id, wallet: 'troll', effect: 'tip', note: 'rude', now: ctx.now() }));
+    await ctx.rideMutes.set(ride.id, 'troll', true, ctx.now());
+    const view = await watch(ride.id);
+    expect(view.events.map((e) => [e.kind, e.text])).toEqual([['donation', null]]);
+    expect(view.features).toEqual({ chat: true, donations: true, payment: 'mock', effects: true });
   });
 
   it('nothing to watch before the start (no seed handed out early), and an unknown id is 404', async () => {

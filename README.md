@@ -3,7 +3,7 @@
 Freight Chain – "Desert Run": a browser truck-driving game with a Solana-paid lobby.
 
 - `client/` – the game and the lobby (vanilla ES modules + three.js)
-- `landing/` – the `/` page: a small Vite project (wallet sign-in, live pool and boards, dash cards rendered by the game's own cockpit code)
+- `landing/` – the `/` page and the whitepaper (`whitepaper.html`, `whitepaper.<apex>` in production; a second page of the same Vite build): a small Vite project (wallet sign-in, live pool and boards, dash cards rendered by the game's own cockpit code)
 - `server/` – NestJS + Prisma + PostgreSQL API (`docs/backend-architecture.md`)
 - `deploy/` – semi-automatic deploy to our own server: `npm run deploy` (see `deploy/README.md`)
 - `video/` – promo clip maker: real gameplay → mp4 (≤ 15 s) + gif (≤ 20 MB) with landing-styled captions and transitions; the finished intro is `video/out/intro/` (see "Promo videos" below)
@@ -21,7 +21,8 @@ Local run: `npm run db:up && npm run server:dev` → http://localhost:3000
 ## Live streams: replays and donations
 
 - **Watch any ride**: `play.html?watch=<rideId>` – linked from the landing's ticker and LIVE NOW board and the lobby's Live tab. No video: the page rebuilds the driver's road from the ride's seed + route and replays the verified-play recording (10 Hz samples, uploaded every 15 s), so a live view runs ~25 s behind; a finished ride plays as a replay with a timeline and 1× / 4× / 16× (as long as its recording is kept, 90 days). Traffic is not recorded, so a replay drives an empty road.
-- **Chat and donations** (signed in with a Solana wallet, not on your own ride, only while it is on the road): chat lines show on a CB panel in the driver's cab; donations are a **mock** (shown in SOL, nothing is charged) – a tip, NIGHT / DAY (the driver's clock jumps), or POTHOLES / TRENCH / SINKHOLE (a hole in the driver's lane ~1 km ahead, warning sign first). The driver's game reports where it put each hole, so every replay has it in the same place. One game effect per ride per 20 s.
+- **Chat and donations** (signed in with a Solana wallet, not on your own ride, only while it is on the road): chat lines show on a CB panel in the driver's cab (the driver folds it with K and can mute any spectator). Donations: a tip, NIGHT / DAY (the driver's clock jumps), or POTHOLES / TRENCH / SINKHOLE (a hole in the driver's lane ~1 km ahead, warning sign first) – the driver's game reports where it put each hole, so every replay has it in the same place. One game effect per ride per 20 s. Replays also show the traffic (recorded at 2 Hz).
+- **Feature flags** (server env, `docs/configuration.md`): `LIVE_CHAT` (all | free | off), `LIVE_DONATIONS` (on | off), `LIVE_FREE_DONATIONS` (on = mock, nothing charged · off = each donation is a real devnet SOL transfer from the spectator to the driver, verified on chain), `LIVE_EFFECTS` (all | free | off); `free` = only on free test rides. Production defaults: chat everywhere, donations paid on chain, effects only on free rides.
 - How it all works, the rules, the API and the limits: [docs/replay-and-donations/index.html](docs/replay-and-donations/index.html). Test it end to end: `bash .claude/skills/replay-test/run.sh` (the `replay-test` skill).
 
 ## Product analytics
@@ -35,8 +36,8 @@ There is no CI; run everything locally (the `run-tests` skill does this):
 ```sh
 npm run check                              # client lint + bundle + headless game · landing · server build, typecheck, unit tests + architecture audits
 npm run server:integration                 # PostgreSQL in Docker, its own freightchain_test database
-bash .claude/skills/run-tests/e2e.sh       # real Chrome: game (VERIFIED ride), lobby, admin page, live stream, replay – on a throwaway database, screenshots in the OS temp dir
-bash .claude/skills/replay-test/run.sh     # only the live stream + replay suites (driver + spectator Chromes, ~7 min)
+bash .claude/skills/run-tests/e2e.sh       # real Chrome: game (VERIFIED ride), lobby, admin page, live stream, replay, live flags – on a throwaway database, screenshots in the OS temp dir
+bash .claude/skills/replay-test/run.sh     # only the live stream, replay and LIVE_* flag suites (driver + spectator Chromes, ~9 min)
 bash .claude/skills/posthog-test/smoke.sh  # PostHog locally: headless Chrome, throwaway database, EU batch must return 200
 bash .claude/skills/posthog-prod/check.sh   # PostHog on production, read-only: boot line, one probe, flush log
 ```
@@ -47,8 +48,10 @@ bash .claude/skills/posthog-prod/check.sh   # PostHog on production, read-only: 
 npm run install:landing                # once
 npm run landing:dev                    # Vite on :5173, proxies /api and the other pages to the server on :3000
 npm run landing:build                  # → landing/dist, served by the server at /  (without it, / is the placeholder client/index.html)
-npm run landing:test                   # formatters, card scripts, page integrity, size budget of dist/
+npm run landing:test                   # formatters, card scripts, page integrity, size budget of dist/, the whitepaper's numbers vs the code
 ```
+
+The whitepaper is `landing/whitepaper.html` (open `http://localhost:5173/whitepaper.html` under `landing:dev`): a static read on driving, rides and rules, rewards, the escrow program, verified play and live streams. Its figures are asserted against the server rules by `landing/test/whitepaper.test.js`, so change both together.
 
 - **Sign-in**: the CONNECT button asks Phantom / Solflare to sign the server's challenge; the backend verifies the signature, sets the httpOnly session cookie and the page redirects to the lobby. On the landing the same session shows the wallet and turns the button into "OPEN THE LOBBY". Check it in real Chrome with `node landing/tools/e2e-wallet.mjs` (fake wallet; single origin or split hosts – recipe in the script's header).
 - **Media**: WebP only; `node landing/tools/to-webp.mjs <files>` converts, `npm --prefix landing run media` re-captures the dash and sky shots from the running game.

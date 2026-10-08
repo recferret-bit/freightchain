@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Real-Chrome end-to-end runs against a freshly built server on a THROWAWAY database (dropped at the end, also on failure).
-#   bash .claude/skills/run-tests/e2e.sh [browser|lobby|admin|watch|replay|wallet|wallet-split ...]   (default: all seven)
+#   bash .claude/skills/run-tests/e2e.sh [browser|lobby|admin|watch|replay|flags|wallet|wallet-split ...]   (default: all eight)
 # Needs: the compose PostgreSQL (npm run db:up), server/ and landing/ dependencies installed, Chrome.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 SERVER="$ROOT/server"
-SUITES=("$@"); [ ${#SUITES[@]} -gt 0 ] || SUITES=(browser lobby admin watch replay wallet wallet-split)
+SUITES=("$@"); [ ${#SUITES[@]} -gt 0 ] || SUITES=(browser lobby admin watch replay flags wallet wallet-split)
 DB="freightchain_e2e_$$"
 URL="postgresql://freight:freight_dev_password@localhost:15433/$DB"
 TREASURY=GseaEsNWMLScZ5RH8yQ4xmoCP97H86HjLSA9xkyFCqbn   # any valid address: paid clicks never reach the chain here
@@ -23,10 +23,10 @@ psql_admin "CREATE DATABASE \"$DB\"" >/dev/null
 echo "▸ building the landing and the server"
 (cd "$ROOT" && npm run --silent landing:build >/dev/null) && (cd "$SERVER" && npm run --silent build >/dev/null)
 
-# start the server: $1 = FREE_RIDE_SECONDS, $2 = ADMIN_WALLETS
+# start the server: $1 = FREE_RIDE_SECONDS, $2 = ADMIN_WALLETS, $EXTRA_ENV = more server env
 start() {
   PORT="$(free_port)"
-  (cd "$SERVER" && DATABASE_URL="$URL" FREE_RIDE_SECONDS="$1" ADMIN_WALLETS="${2:-}" SOL_USD=118 TREASURY_PUBKEY="$TREASURY" PORT="$PORT" exec node dist/main.js > "/tmp/fc-e2e-$DB.log" 2>&1) &   # exec: $! is the server itself, so stop() really stops it
+  (cd "$SERVER" && exec env ${EXTRA_ENV:-} DATABASE_URL="$URL" FREE_RIDE_SECONDS="$1" ADMIN_WALLETS="${2:-}" SOL_USD=118 TREASURY_PUBKEY="$TREASURY" PORT="$PORT" node dist/main.js > "/tmp/fc-e2e-$DB.log" 2>&1) &   # exec: $! is the server itself, so stop() really stops it; EXTRA_ENV="K=V …" = more server env (the live flags suite)
   PID=$!
   for _ in $(seq 1 60); do curl -sf "http://localhost:$PORT/api/health/live" >/dev/null && return 0; sleep 0.5; done
   echo "server did not start:"; tail -30 "/tmp/fc-e2e-$DB.log"; exit 1
@@ -43,11 +43,14 @@ for suite in "${SUITES[@]}"; do
       start 3 "$wallet"; (cd "$SERVER" && BASE="http://localhost:$PORT" ADMIN_KEYPAIR="$ADMIN_KP" CHROME_PORT="$(free_port)" node scripts/e2e-admin.mjs) || fails=$((fails + 1)) ;;
     watch)   start 300; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" node scripts/e2e-watch.mjs) || fails=$((fails + 1)) ;;
     replay)  start 300; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" node scripts/e2e-replay.mjs) || fails=$((fails + 1)) ;;
+    flags)   # the LIVE_* flags in a real browser: production's (paid donations, effects on free rides only), then chat + donations off
+      EXTRA_ENV="LIVE_FREE_DONATIONS=off LIVE_EFFECTS=free" start 300; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" MODE=paid node scripts/e2e-live-flags.mjs) || fails=$((fails + 1)); stop
+      EXTRA_ENV="LIVE_CHAT=off LIVE_DONATIONS=off" start 300; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" MODE=off node scripts/e2e-live-flags.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
     wallet)  start 3;  (cd "$ROOT" && BASE="http://localhost:$PORT" PORT="$(free_port)" node landing/tools/e2e-wallet.mjs) || fails=$((fails + 1)) ;;   # the landing's sign-in + the promo invite, one origin
     wallet-split)   # the same on split hosts: landing on app.localhost, API on api.app.localhost, one cookie on the apex (Chrome resolves *.localhost, see the script's header)
       APP_DOMAIN=app.localhost COOKIE_DOMAIN=app.localhost CORS_ORIGINS=http://app.localhost,http://ride.app.localhost start 3
       (cd "$ROOT" && RESOLVE="MAP app.localhost 127.0.0.1:$PORT, MAP api.app.localhost 127.0.0.1:$PORT" BASE=http://app.localhost API=http://api.app.localhost PORT="$(free_port)" node landing/tools/e2e-wallet.mjs) || fails=$((fails + 1)) ;;
-    *) echo "unknown suite $suite (browser | lobby | admin | watch | replay | wallet | wallet-split)"; fails=$((fails + 1)) ;;
+    *) echo "unknown suite $suite (browser | lobby | admin | watch | replay | flags | wallet | wallet-split)"; fails=$((fails + 1)) ;;
   esac
   stop
 done

@@ -18,9 +18,9 @@
   <h1>Replays &amp; Donations</h1>
   <p class="lede">Any ride can be watched – live while it is on the road, or as a replay once it has ended. Nothing is filmed: the watch page rebuilds the driver's road from the ride's seed and replays the same 10-per-second recording that verified play already uploads. Signed-in spectators can write to the driver and send donations that change the driver's ride – night, day, or a hole in the road ahead.</p>
   <div class="status">
-    <span class="pill">money <b>MOCK</b> · shown, never charged</span>
+    <span class="pill">money <b>MOCK or devnet SOL</b> · a feature flag</span>
     <span class="pill">live view <b>~25 s</b> behind the driver</span>
-    <span class="pill">effects <b>1 per 20 s</b> per ride</span>
+    <span class="pill">effects <b>1 per 20 s</b> per ride · production: free rides only</span>
     <span class="pill">replays kept <b>90 days</b> · the feed for good</span>
     <span class="pill">transport <b>polling</b> · no WebSockets</span>
   </div>
@@ -110,8 +110,8 @@
       </div>
     </div>
   </div>
+  <p class="soft">The <b>traffic</b> is replayed too: the driver's game records the nearest vehicles (up to 16 within 400 m – type, colour, position, heading, brake lights, sirens) twice a second beside each batch. That track sits <i>outside</i> the batch's fingerprint and is never judged; one that is too big or malformed is dropped, never refused. The replay draws the same vehicles and interpolates them. Recordings from before this have an empty road.</p>
   <div class="notlist" aria-label="what a replay does not show">
-    <span class="no"><s>traffic</s> – the driver's cars are their own unrecorded simulation; a replay drives an empty road rather than show cars that were never there</span>
     <span class="no"><s>windscreen cracks, debris</s></span>
     <span class="no"><s>the radio</s></span>
     <span class="no"><s>the raw key presses</s> – they are what the verdict's human-timing check measures, so they are never published</span>
@@ -149,7 +149,7 @@
   <div class="head">
     <span class="eyebrow">Donations</span>
     <h2 id="s-don">Six buttons, three kinds of effect</h2>
-    <p class="soft">Prices are a <b>mock</b>: they are shown and added up per ride, nothing is charged and no transaction is made. A donation can carry a note of up to 80 characters. The real version – a wallet-to-wallet transfer the server only counts once the chain shows it – is item F1 of <code>docs/solana-features-plan.md</code>.</p>
+    <p class="soft">How a donation is paid is a feature flag (<code>LIVE_FREE_DONATIONS</code>). <b>Mock</b>: the price is shown and added up, nothing is charged. <b>Paid</b> (production): every donation is a real <b>devnet SOL transfer from the spectator's wallet to the driver's</b> – the server builds it, the wallet signs and sends it, and the donation only exists once the server has seen it on chain. The platform never touches the money. A donation can carry a note of up to 80 characters.</p>
   </div>
   <div class="fx">
     <div class="fxc tip"><h3>💰 Tip <small>0.01 SOL</small></h3><p>Money only. It shows on the driver's CB panel and in the feed. No effect on the ride.</p><span class="k">not limited by the effect window – one per wallet per 3 s</span></div>
@@ -203,6 +203,44 @@
   </div>
 </section>
 
+<section aria-labelledby="s-paid">
+  <div class="head">
+    <span class="eyebrow">Paid donations</span>
+    <h2 id="s-paid">Money that moved is never refused</h2>
+    <p class="soft">With <code>LIVE_FREE_DONATIONS=off</code> a click doesn't post a donation – it opens an <b>order</b>. Nothing is in the feed until the transfer is seen on chain.</p>
+  </div>
+  <div class="pipe">
+    <div class="step"><span class="n">1</span><span class="where">Spectator</span><h3>Order</h3><p>Same checks as any post. The server answers with the price, the driver's wallet, a memo <code>fc-donation:&lt;order&gt;</code> and the unsigned transfer.</p></div>
+    <div class="step"><span class="n">2</span><span class="where">Wallet</span><h3>Pay</h3><p>Phantom signs and sends the transfer – spectator → driver, devnet SOL. The platform never holds it.</p></div>
+    <div class="step"><span class="n">3</span><span class="where">Server</span><h3>Verify</h3><p>From your wallet, to the driver, at least the price, the order's memo, signed, not failed. Not visible yet → “pending”, ask again.</p></div>
+    <div class="step"><span class="n">4</span><span class="where">Server</span><h3>Claim</h3><p>One conditional update marks the order paid by this transaction (signatures are unique) – two tabs confirming at once make one donation.</p></div>
+    <div class="step"><span class="n">5</span><span class="where">Feed</span><h3>Deliver</h3><p>A new feed event, with a link to the transfer on the explorer. If its effect can no longer happen, it arrives as a tip saying why.</p></div>
+  </div>
+  <ul class="limits">
+    <li><b>The effect window is checked twice.</b><span>When the order is made (so nobody pays for an effect that visibly can't happen – 429 with the wait) and again when it is confirmed. Another effect in between, effects switched off, or the ride ended: the money already reached the driver, so the donation is delivered as a <b>tip</b> and its text says what happened.</span></li>
+    <li><b>Why an order and not a pending feed line.</b><span>Feed cursors move past ids a few seconds old; a line that only became visible minutes later would be skipped. A paid order becomes a brand-new event when it is confirmed.</span></li>
+  </ul>
+</section>
+
+<section aria-labelledby="s-flags">
+  <div class="head">
+    <span class="eyebrow">Feature flags</span>
+    <h2 id="s-flags">Four switches, enforced by the server</h2>
+    <p class="soft">Server env (<code>docs/configuration.md</code>). The server refuses what is off (403 <code>live_feature_off</code>) and sends each ride's resolved <code>features</code> with every watch poll and to the driver's game, so the panel and the CB only offer what is on. <i>free</i> = only on free test rides, never on paid ticket rides.</p>
+  </div>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Flag</th><th>Values · code default · <b>production default</b></th></tr></thead>
+      <tbody>
+        <tr><td><code>LIVE_CHAT</code><span class="c">spectators' chat</span></td><td>all · free · off — code <code>all</code> · <b>all</b></td></tr>
+        <tr><td><code>LIVE_DONATIONS</code><span class="c">any donation</span></td><td>on · off — code <code>on</code> · <b>on</b></td></tr>
+        <tr><td><code>LIVE_FREE_DONATIONS</code><span class="c">mock (on) or paid on chain (off)</span></td><td>on · off — code <code>on</code> · <b>off</b>: every donation is a real transfer to the driver</td></tr>
+        <tr><td><code>LIVE_EFFECTS</code><span class="c">night / day / holes</span></td><td>all · free · off — code <code>all</code> · <b>free</b>: never on a paid ride; <i>off</i> = tips only</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
 <section aria-labelledby="s-chat">
   <div class="head">
     <span class="eyebrow">Chat</span>
@@ -220,7 +258,8 @@
     <div class="card">
       <div class="top"><h3>Driver side</h3></div>
       <ul class="checks">
-        <li><b>The CB panel</b><span class="soft">Top left, out of the mirrors' way: the last four lines, each fading after 25 s, and a header with how many are watching, the message count and the mock total.</span></li>
+        <li><b>The CB panel</b><span class="soft">Top left, out of the mirrors' way: the last four lines, each fading after 25 s, and a header with how many are watching, the message count and the total donated. <b>K</b> or a click on the header folds it away (remembered).</span></li>
+        <li><b>Mute</b><span class="soft">Every spectator line has a <i>mute</i> button. A muted wallet can't post on that ride any more, its chat lines vanish from every feed and its donation notes are blanked – an obstacle it already paid for stays on the road (replays need it).</span></li>
         <li><b>Toasts for effects</b><span class="soft">“⚠ 7xKX…gAsU opened a sinkhole ahead – 1.0 km ahead, in your lane”, “🌙 … turned the day into night”.</span></li>
         <li><b>Nothing to type</b><span class="soft">The driver cannot post into their own ride's feed (403) – their hands are on the wheel.</span></li>
       </ul>
@@ -244,6 +283,9 @@
         <tr><td>One game effect per ride per 20 s<span class="c">429 live_rate_limited + Retry-After</span></td><td>A sliding window: the check and the insert run inside one short transaction holding a per-ride database advisory lock, so two spectators clicking at the same moment never both get through – the second is told how many seconds to wait. Keeps a paid ride drivable.</td></tr>
         <tr><td>One chat line (or tip) per wallet per 3 s<span class="c">429</span></td><td>A unique 3-second bucket per wallet in the table – one insert, no lock. Spam control, so two lines may land close together across a bucket edge.</td></tr>
         <tr><td>The applied stamp is the driver's, and final<span class="c">POST /api/rides/:id/effects/:eventId/applied</span></td><td>Only the ride's owner, only while it runs, under the owner's player row lock; the first stamp wins and a re-sent one changes nothing.</td></tr>
+        <tr><td>The feature flags<span class="c">403 live_feature_off</span></td><td>Chat, donations and effects can each be switched off, or limited to free test rides (see Feature flags). A paid server refuses mock donations (403 <code>payment_required</code>).</td></tr>
+        <tr><td>The driver can mute<span class="c">403 muted</span></td><td>Owner-only, under the owner's player row lock; idempotent; the muted wallet's lines are filtered by one function for the watch page and the driver's inbox alike.</td></tr>
+        <tr><td>One transfer, one donation<span class="c">409 signature_reused</span></td><td>A paid order is claimed by one conditional update and the signature is unique on orders and on events – racing confirms of one transfer make exactly one donation.</td></tr>
         <tr><td>The viewer count can't be pumped<span class="c">👁 N watching</span></td><td>Counted per client IP, at most 3 viewer ids per address, over the last 20 s. Kept in memory: a server restart starts from zero.</td></tr>
         <tr><td>What the public stream contains</td><td>The ride's seed, route, tier, status, distance, hull, the recording's samples, and the feed. Never: the raw key presses, the end reason, payment data.</td></tr>
       </tbody>
@@ -260,10 +302,13 @@
     <table>
       <thead><tr><th>Route</th><th>Who · what</th></tr></thead>
       <tbody>
-        <tr><td><code>GET /api/watch/:id</code><span class="c">?from=&lt;seq&gt; &amp;after=&lt;eventId&gt; &amp;since=&lt;ms&gt; &amp;viewer=&lt;id&gt;</span></td><td>Public. <code>{ now, ride, recording: { lastSeq, t1 }, batches: [{ seq, t0, t1, samples }], events, totals, viewers }</code> – <code>ride</code> carries the driver's <code>loadout</code> (wheel, truck colour, shifter, hanging dice, gauge needles: the cockpit the spectator and the replay draw; null = all classic), up to 20 batches from <code>from</code>, the feed after <code>after</code>, plus every event <b>stamped</b> after <code>since</code>.</td></tr>
+        <tr><td><code>GET /api/watch/:id</code><span class="c">?from=&lt;seq&gt; &amp;after=&lt;eventId&gt; &amp;since=&lt;ms&gt; &amp;viewer=&lt;id&gt;</span></td><td>Public. <code>{ now, ride, recording: { lastSeq, t1 }, batches: [{ seq, t0, t1, samples, traffic? }], events, totals, viewers, features }</code> – <code>ride</code> carries the driver's <code>loadout</code> (wheel, truck colour, shifter, hanging dice, gauge needles: the cockpit the spectator and the replay draw; null = all classic), up to 20 batches from <code>from</code>, the feed after <code>after</code>, plus every event <b>stamped</b> after <code>since</code>.</td></tr>
         <tr><td><code>POST /api/watch/:id/messages</code><span class="c">{ text }</span></td><td>Signed-in spectator. Returns the stored line.</td></tr>
         <tr><td><code>POST /api/watch/:id/donations</code><span class="c">{ effect, note? }</span></td><td>Signed-in spectator. effect = tip · night · day · potholes · trench · sinkhole.</td></tr>
-        <tr><td><code>GET /api/rides/:id/inbox</code><span class="c">?after=&lt;eventId&gt;</span></td><td>The ride's owner (the driver's game, every 4 s): <code>{ now, events, totals, viewers }</code>.</td></tr>
+        <tr><td><code>POST /api/watch/:id/donation-orders</code><span class="c">{ effect, note? }</span></td><td>Signed-in spectator, paid servers only: <code>{ order: { id, effect, lamports, to, memo }, transaction }</code> – the unsigned transfer to the driver.</td></tr>
+        <tr><td><code>POST /api/watch/:id/donation-orders/:orderId/confirm</code><span class="c">{ signature }</span></td><td><code>{ status: 'pending' }</code> (not on chain yet – ask again) or <code>{ status: 'paid', event }</code> · 400 the transfer doesn't pay this order · 409 already used.</td></tr>
+        <tr><td><code>POST /api/rides/:id/mutes</code><span class="c">{ wallet, muted }</span></td><td>The ride's owner mutes / unmutes a spectator.</td></tr>
+        <tr><td><code>GET /api/rides/:id/inbox</code><span class="c">?after=&lt;eventId&gt;</span></td><td>The ride's owner (the driver's game, every 4 s): <code>{ now, events, totals, viewers, features, muted }</code>.</td></tr>
         <tr><td><code>POST /api/rides/:id/effects/:eventId/applied</code><span class="c">{ t, s, lat?, missed? }</span></td><td>The ride's owner. Stamps the effect; answers with the stored stamp (<code>applied: { t, s, lat, placed }</code>).</td></tr>
         <tr><td><code>GET /api/live</code></td><td>The public live feed – its rides and recent finishes now carry the ride <code>id</code>: the ▶ WATCH / ▶ replay links on the landing ticker, the LIVE NOW board and the lobby's Live tab.</td></tr>
       </tbody>
@@ -283,7 +328,9 @@ effect    tip | night | day | potholes | trench | sinkhole
 lamports  the MOCK amount
 slotKey · slot   the rate-limit bucket (unique per ride)
 createdAt
-appliedAt · appliedT · appliedS · appliedLat   the stamp</pre>
+appliedAt · appliedT · appliedS · appliedLat   the stamp
+signature   a paid donation's transfer (unique)
++ live.DonationOrder (a paid donation in flight) · live.RideMute</pre>
     </div>
   </div>
 </section>
@@ -298,12 +345,15 @@ appliedAt · appliedT · appliedS · appliedLat   the stamp</pre>
       <tbody>
         <tr><td>Spectator: replay engine</td><td><code>client/js/watch.js</code> – polling, loading, interpolation into the truck state, seeks, obstacles from stamps</td></tr>
         <tr><td>Spectator: the panel</td><td><code>client/js/ui/watch-panel.js</code> – status, timeline, feed, chat box, donation buttons, wallet sign-in</td></tr>
-        <tr><td>Driver: inbox, CB panel, effects</td><td><code>client/js/ui/live-feed.js</code></td></tr>
+        <tr><td>Driver: inbox, CB panel (fold, mute), effects</td><td><code>client/js/ui/live-feed.js</code></td></tr>
+        <tr><td>Paid donations (client)</td><td><code>client/js/ui/watch-panel.js</code> <code>donate()</code> + <code>client/site/pay.js</code> <code>signAndSend</code></td></tr>
+        <tr><td>Recorded traffic</td><td><code>client/js/sim/traffic.js</code> <code>trafficSnapshot</code> → <code>client/js/telemetry.js</code> (beside each batch) → <code>client/js/watch.js</code> <code>drawTraffic</code></td></tr>
+        <tr><td>Feature flags</td><td><code>server/src/domain/live/live-features.ts</code> (resolved per ride) · <code>server/src/application/services/live-access.service.ts</code> (the one gate)</td></tr>
         <tr><td>The effect table (both sides)</td><td><code>client/js/live-effects.js</code> ⇄ <code>server/src/domain/live/live-rules.ts</code> (prices, windows) – keep them in step</td></tr>
         <tr><td>Placed holes</td><td><code>client/js/world/holes.js</code> <code>placeHole</code> / <code>obstacleSpot</code>, <code>client/js/world/chunks.js</code> <code>rebuild</code></td></tr>
         <tr><td>The two replay columns</td><td><code>client/js/telemetry.js</code> (<code>FLAGS</code>), filled in <code>client/js/ui/game.js</code></td></tr>
         <tr><td>Server</td><td><code>server/src/{domain,application,infrastructure,presentation}/**/live</code>, the table in <code>server/prisma/live/live.prisma</code></td></tr>
-        <tr><td>Tests</td><td>unit specs per handler, the repository's PostgreSQL spec, HTTP scenarios (<code>server/test/scenarios/live.scenarios.ts</code>), three races in the concurrency suite, <code>server/scripts/e2e-watch.mjs</code> – a driver and a spectator in two real Chromes on a live ride – and <code>server/scripts/e2e-replay.mjs</code> – a finished ride opened from the landing's ticker: speeds, seeks across a paid night, the paid hole from history, the end. Both run with the <code>replay-test</code> skill: <code>bash .claude/skills/replay-test/run.sh</code></td></tr>
+        <tr><td>Tests</td><td>unit specs per handler, the repository's PostgreSQL spec, HTTP scenarios (<code>server/test/scenarios/live.scenarios.ts</code>), three races in the concurrency suite, <code>server/scripts/e2e-watch.mjs</code> – a driver and a spectator in two real Chromes on a live ride – and <code>server/scripts/e2e-replay.mjs</code> – a finished ride opened from the landing's ticker: speeds, seeks across a paid night, the paid hole from history, the end. and <code>server/scripts/e2e-live-flags.mjs</code> – the production flags (a paid donation signed by a fake wallet) and everything off. All three run with the <code>replay-test</code> skill: <code>bash .claude/skills/replay-test/run.sh</code></td></tr>
       </tbody>
     </table>
   </div>
@@ -315,9 +365,9 @@ appliedAt · appliedT · appliedS · appliedLat   the stamp</pre>
     <h2 id="s-limits">What this build does not do yet</h2>
   </div>
   <ul class="limits">
-    <li><b>Donations are a mock.</b><span>Nothing is charged; the amounts are trusted as clicked. Real tips need a wallet transfer that the server credits only once the chain shows it (features plan F1 + the treasury watcher F8), and the effect should fire only after that.</span></li>
-    <li><b>Traffic is not in the replay.</b><span>A spectator's road is empty. A crash into another vehicle shows as the truck stopping with a hull drop, not the car it hit. Recording nearby traffic would fix it.</span></li>
-    <li><b>Paid obstacles can hurt a paid ride.</b><span>That is the point of the feature, but it is also a griefing lever. The 20 s window and the prices are the controls – set them deliberately before real money flows.</span></li>
+    <li><b>Paid donations are devnet SOL, confirmed by the spectator's own page.</b><span>If the page is closed between paying and confirming, the money reached the driver but the donation never shows: there is no chain watcher for donations yet (features plan F8) and no "reconcile" button. The order stays pending.</span></li>
+    <li><b>Mock donations still exist as a switch.</b><span><code>LIVE_FREE_DONATIONS=on</code> makes sabotage free again – keep it off wherever paid rides are played. Production's default is off, and effects are limited to free rides.</span></li>
+    <li><b>The traffic in a replay is recorded at 2 Hz.</b><span>Smooth enough to watch, not a physics record: the nearest 16 within 400 m, interpolated – a car further away or a very sharp manoeuvre can look simplified.</span></li>
     <li><b>The seed of a live ride is public.</b><span>Spectators need it to rebuild the road. A future seed commitment (plan F6) would have to reveal at the start of a ride, not at its end.</span></li>
     <li><b>Replays expire with their recording.</b><span>After 90 days (TELEMETRY_RETENTION_DAYS) the recording is swept; the feed stays, the replay says no recording was kept.</span></li>
     <li><b>Not yet tried with a real Phantom on the live game host.</b><span>The sign-in message names <code>ride.&lt;domain&gt;</code> there (checked locally on split hosts); a real wallet's domain check on production is still to be seen.</span></li>
@@ -327,7 +377,7 @@ appliedAt · appliedT · appliedS · appliedLat   the stamp</pre>
 <footer>
   <span>Freight Chain · replays &amp; donations</span>
   <span>see also: <a href="../verified-play/index.html">Verified Play</a> – how the same recording is judged</span>
-  <span>numbers as of the first build: live lag 25 s · poll 4 s · effect window 20 s · chat 140 chars</span>
+  <span>live lag 25 s · poll 4 s · effect window 20 s · chat 140 chars · traffic 2 Hz</span>
 </footer>
 
 </div>

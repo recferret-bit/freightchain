@@ -1,6 +1,9 @@
 import { Controller, Get, HttpCode, Post, UseGuards } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
-import type { InboxDto, RideEventDto, WatchDto } from '../../domain/live/live.dto.js';
+import type { ConfirmDonationResultDto, DonationOrderDto, InboxDto, MuteDto, RideEventDto, WatchDto } from '../../domain/live/live.dto.js';
+import { CreateDonationOrderCommand } from '../../application/use-cases/live/create-donation-order/create-donation-order.command.js';
+import { ConfirmDonationCommand } from '../../application/use-cases/live/confirm-donation/confirm-donation.command.js';
+import { MuteWalletCommand } from '../../application/use-cases/live/mute-wallet/mute-wallet.command.js';
 import { AckEffectCommand } from '../../application/use-cases/live/ack-effect/ack-effect.command.js';
 import { GetInboxQuery } from '../../application/use-cases/live/get-inbox/get-inbox.query.js';
 import { PostRideEventCommand } from '../../application/use-cases/live/post-ride-event/post-ride-event.command.js';
@@ -13,8 +16,8 @@ import { PlayerAuthGuard } from '../../infrastructure/http/guards/player-auth.gu
 import type { PlayerIdentity } from '../../infrastructure/http/types/http-request.js';
 import { rideIdParamsSchema, type RideIdParams } from '../common/dto/common.dto.js';
 import {
-  appliedBodySchema, donationBodySchema, effectParamsSchema, inboxQuerySchema, messageBodySchema, watchQuerySchema,
-  type AppliedBody, type DonationBody, type EffectParams, type InboxQuery, type MessageBody, type WatchQuery,
+  appliedBodySchema, confirmDonationBodySchema, donationBodySchema, effectParamsSchema, inboxQuerySchema, messageBodySchema, muteBodySchema, orderParamsSchema, watchQuerySchema,
+  type AppliedBody, type ConfirmDonationBody, type DonationBody, type EffectParams, type InboxQuery, type MessageBody, type MuteBody, type OrderParams, type WatchQuery,
 } from './dto/live.dto.js';
 
 /**
@@ -44,9 +47,27 @@ export class LiveHttpController {
     return this.commandBus.execute<PostRideEventCommand, RideEventDto>(new PostRideEventCommand(player.wallet, params.id, { kind: 'donation', effect: body.effect, note: body.note }));
   }
 
+  /** A PAID donation (LIVE_FREE_DONATIONS=off), step 1: the order + the unsigned transfer to the driver, for the wallet to sign and send. */
+  @Post('watch/:id/donation-orders') @HttpCode(200) @UseGuards(PlayerAuthGuard)
+  order(@CurrentPlayer() player: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodBody(donationBodySchema) body: DonationBody): Promise<DonationOrderDto> {
+    return this.commandBus.execute<CreateDonationOrderCommand, DonationOrderDto>(new CreateDonationOrderCommand(player.wallet, params.id, body.effect, body.note));
+  }
+
+  /** Step 2: 200 `{status:'paid', event}` or `{status:'pending'}` (not on chain yet – ask again) · 400 the transfer does not pay this order · 409 already used. */
+  @Post('watch/:id/donation-orders/:orderId/confirm') @HttpCode(200) @UseGuards(PlayerAuthGuard)
+  confirm(@CurrentPlayer() player: PlayerIdentity, @ZodParams(orderParamsSchema) params: OrderParams, @ZodBody(confirmDonationBodySchema) body: ConfirmDonationBody): Promise<ConfirmDonationResultDto> {
+    return this.commandBus.execute<ConfirmDonationCommand, ConfirmDonationResultDto>(new ConfirmDonationCommand(player.wallet, params.id, params.orderId, body.signature));
+  }
+
   @Get('rides/:id/inbox') @UseGuards(PlayerAuthGuard)
   inbox(@CurrentPlayer() player: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodQuery(inboxQuerySchema) query: InboxQuery): Promise<InboxDto> {
     return this.queryBus.execute<GetInboxQuery, InboxDto>(new GetInboxQuery(player.wallet, params.id, query.after));
+  }
+
+  /** Chat safety: the driver mutes / unmutes a spectator on its ride (their lines vanish from every feed, they can't post there). */
+  @Post('rides/:id/mutes') @HttpCode(200) @UseGuards(PlayerAuthGuard)
+  mute(@CurrentPlayer() player: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodBody(muteBodySchema) body: MuteBody): Promise<MuteDto> {
+    return this.commandBus.execute<MuteWalletCommand, MuteDto>(new MuteWalletCommand(player.wallet, params.id, body.wallet, body.muted));
   }
 
   @Post('rides/:id/effects/:eventId/applied') @HttpCode(200) @UseGuards(PlayerAuthGuard)

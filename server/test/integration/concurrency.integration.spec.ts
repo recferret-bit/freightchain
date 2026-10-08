@@ -1,4 +1,5 @@
 import { CommandBus } from '@nestjs/cqrs';
+import { SweepStaleRidesCommand } from '../../src/application/use-cases/rides/sweep-stale-rides/sweep-stale-rides.command.js';
 import { GrantDailyFreeRidesCommand } from '../../src/application/use-cases/players/grant-daily-free-rides/grant-daily-free-rides.command.js';
 import { PrismaService } from '../../src/infrastructure/prisma/prisma.service.js';
 import { bindClient, newWallet, sign, type Rider } from '../support/client.js';
@@ -401,6 +402,33 @@ describe('concurrency (PostgreSQL)', () => {
       expect(await prisma.rideEvent.count({ where: { rideId: ride.id, kind: 'message' } })).toBe(1);
     });
 
+    it('N parallel confirms of one PAID donation (two tabs, retries): ONE feed event, every caller the same answer', async () => {
+      await harness.close();
+      harness = await createHarness('postgres', { FREE_RIDE_SECONDS: '10', LIVE_FREE_DONATIONS: 'off' });
+      prisma = harness.app.get(PrismaService, { strict: false });
+      const { ride } = await liveRide();
+      const driverWallet = (await prisma.ride.findUniqueOrThrow({ where: { id: ride.id } })).wallet;
+      const fan = await login();
+      const { order } = (await fan.agent.post(`/api/watch/${ride.id}/donation-orders`).send({ effect: 'sinkhole' }).expect(200)).body;
+      const signature = harness.chain.addPayment({ payer: fan.address, destination: driverWallet, lamports: order.lamports, memo: order.memo });
+      const results = await parallel(PARALLEL, () => fan.agent.post(`/api/watch/${ride.id}/donation-orders/${order.id}/confirm`).send({ signature }));
+      expect(results.every((r) => r.status === 200)).toBe(true);
+      const ids = new Set(results.filter((r) => r.body.status === 'paid').map((r) => r.body.event.id));
+      expect(ids.size).toBe(1);
+      expect(await prisma.rideEvent.count({ where: { rideId: ride.id } })).toBe(1);
+      await harness.close();
+      harness = await createHarness('postgres', { FREE_RIDE_SECONDS: '10' });
+      prisma = harness.app.get(PrismaService, { strict: false });
+    });
+
+    it('N parallel mutes of one wallet by the driver leave ONE row (and every caller a 200)', async () => {
+      const { driver, ride } = await liveRide();
+      const troll = await login();
+      const results = await parallel(PARALLEL, () => driver.agent.post(`/api/rides/${ride.id}/mutes`).send({ wallet: troll.address, muted: true }));
+      expect(results.every((r) => r.status === 200)).toBe(true);
+      expect(await prisma.rideMute.count({ where: { rideId: ride.id } })).toBe(1);
+    });
+
     it('N parallel "applied" acks of one effect (re-sends): ONE stamp, every caller gets that same stamp', async () => {
       const { driver, ride } = await liveRide();
       const fan = await login();
@@ -411,6 +439,28 @@ describe('concurrency (PostgreSQL)', () => {
       const row = await prisma.rideEvent.findUniqueOrThrow({ where: { id: gift.id } });
       expect(row.appliedS).toBe(results[0]!.body.applied.s);
     });
+  });
+
+  it('the stale-ride sweep racing a late heartbeat and /end: the ride ends exactly once, consistently, and nothing errors', async () => {
+    for (let round = 0; round < 4; round++) {
+      const a = await login();
+      const ride = (await a.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
+      await a.agent.post(`/api/rides/${ride.id}/start`).expect(200);
+      sec(160);   // silent past the 150 s timeout: abandoned
+      const bus = harness.app.get(CommandBus);
+      const results = await Promise.all([
+        bus.execute(new SweepStaleRidesCommand()), bus.execute(new SweepStaleRidesCommand()),
+        a.agent.post(`/api/rides/${ride.id}/heartbeat`).send({ s: 30, t: 3, hull: 100 }),
+        a.agent.post(`/api/rides/${ride.id}/end`).send({ outcome: 'shift', s: 30, t: 3 }),
+      ]);
+      const [s1, s2, hb, end] = results as [{ ended: number }, { ended: number }, { status: number }, { status: number; body: { status: string } }];
+      expect(s1.ended + s2.ended).toBeLessThanOrEqual(1);   // never ended twice by the sweep
+      expect(hb.status).toBeLessThan(500); expect([200, 409]).toContain(end.status);   // /end lands, or finds the ride the sweep already ended (409)
+      const row = await prisma.ride.findUniqueOrThrow({ where: { id: ride.id } });
+      expect(row.status).not.toBe('running'); expect(row.endedAt).not.toBeNull();
+      if (s1.ended + s2.ended === 1) expect(row).toMatchObject({ status: 'failed', reason: 'heartbeat lost' });
+      if (end.status === 409) expect(row).toMatchObject({ status: 'failed', reason: 'heartbeat lost' });   // refused only because the sweep – or the late heartbeat itself (Ride.applyReport) – had ended it
+    }
   });
 
   it('a double START starts the ride once', async () => {

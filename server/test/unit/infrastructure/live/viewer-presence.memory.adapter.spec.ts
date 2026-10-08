@@ -25,6 +25,13 @@ describe('MemoryViewerPresenceAdapter', () => {
     expect(p.seen('r', 'bot', 'new', at(VIEWER_WINDOW_MS + 50))).toBe(2); // the bot's first ids expired; person + 'new'
   });
 
+  it('watching(): distinct viewers across every ride – the same viewer on two rides counts once; expired ones drop out', () => {
+    const p = new MemoryViewerPresenceAdapter();
+    p.seen('r1', 'ip1', 'a', at(0)); p.seen('r2', 'ip1', 'a', at(0)); p.seen('r2', 'ip2', 'b', at(1000));
+    expect(p.watching(at(1000))).toBe(2);
+    expect(p.watching(at(VIEWER_WINDOW_MS + 500))).toBe(1);
+  });
+
   it('memory stays bounded: rides nobody polls are forgotten, and the stalest beyond the ride cap', () => {
     const p = new MemoryViewerPresenceAdapter();
     for (let i = 0; i < 2000; i++) p.seen(`r${i}`, `ip${i}`, 'v', at(i));

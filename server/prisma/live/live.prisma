@@ -18,8 +18,43 @@ model RideEvent {
   appliedT   Float? // … at that game time (driven seconds)
   appliedS   Float? // … where on the road (an obstacle: its position, so a replay puts it in the same place)
   appliedLat Float? // … and across the road (obstacles)
+  signature  String?   @unique // a PAID donation: the transfer that paid it (LIVE_FREE_DONATIONS=off) – one transaction pays one event
 
   @@unique([rideId, slotKey, slot])
   @@index([rideId, id])
+  @@schema("live")
+}
+
+// The driver muted this spectator on this ride: the wallet can no longer post there, its chat lines are hidden from every feed and its donation notes
+// blanked (its applied effects stay – every replay still needs where an obstacle went). Set / cleared by the ride's owner only.
+model RideMute {
+  rideId  String
+  ride    Ride     @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  wallet  String
+  mutedAt DateTime
+
+  @@id([rideId, wallet])
+  @@schema("live")
+}
+
+// A paid donation in flight (LIVE_FREE_DONATIONS=off): created when the spectator clicks, paid by a SOL transfer from the spectator to the driver with
+// memo `fc-donation:<id>`, and only then turned into a RideEvent (a new id – a feed cursor never skips it). The claim is ONE conditional update
+// (pending → paid, the signature unique), so two racing confirms of one transaction create one event.
+model DonationOrder {
+  id        String    @id
+  rideId    String
+  ride      Ride      @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  wallet    String // the spectator who pays
+  recipient String // the driver's wallet – the transfer's destination
+  effect    String
+  note      String?
+  lamports  BigInt
+  status    String // pending | paid
+  signature String?   @unique
+  eventId   Int? // the RideEvent it became
+  createdAt DateTime
+  paidAt    DateTime?
+
+  @@index([rideId])
   @@schema("live")
 }

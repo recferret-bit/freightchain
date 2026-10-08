@@ -18,7 +18,7 @@ Everything in Freight Chain that can be configured, where it lives, and what to 
 | Ride rules mirrored from client | `server/src/domain/rides/ride-rules.ts` | yes | `MAX_SPEED`, `COMPLETE_DIST_K`, route ids – keep equal to the client |
 | Solana program | `programs/freightchain-pools/Anchor.toml` | yes | program id, deploy wallet path |
 | Landing build | `landing/vite.config.js` | yes | dev proxy to Nest, build output |
-| nginx | `deploy/nginx/*.conf.template` | yes | the five hosts in production |
+| nginx | `deploy/nginx/*.conf.template` | yes | the six hosts in production |
 | Claude Code skills | `.claude/skills/*` | yes | read-only prod tooling + the test runner |
 | Claude local settings | `.claude/settings.local.json`, `CLAUDE.local.md` | no | per-person |
 
@@ -68,11 +68,23 @@ A new setting therefore touches **four** places: `env.schema.ts`, `server/.env.e
 |---|---|---|
 | `FREE_RIDE_SECONDS` | `180` | Free-ride length. Test/demo override |
 | `HB_MIN_INTERVAL_MS` | `1000` | Minimum spacing of ride heartbeats |
+| `HB_TIMEOUT_MS` | `150000` | A running ride with no heartbeat this long has lost its tab – it could not resume anyway (its next heartbeat would fail it): it leaves the live feed and the stale-ride sweeper (every min(30 s, timeout / 3)) ends it as *failed · heartbeat lost*. Tests set it low |
 | `DEMO_WALLETS` | empty | Comma-separated wallets (or `*`) whose **paid** rides run `DEMO_SCALE`× shorter – for demo videos |
 | `DEMO_SCALE` | `60` | |
 | `INITIAL_SEED_SOL` | `0` | SOL the very first prize round starts with |
 | `VERDICT_ENFORCE` | code `true`, **prod compose `false`** | `false` = shadow mode: rides are judged and shown but boards ignore the verdict |
 | `TELEMETRY_RETENTION_DAYS` | `90` | Recordings swept after this; flagged ones kept until reviewed; `0` = forever |
+
+### Live streams (spectators – feature flags)
+
+Enforced by the server (a refused post is `403 live_feature_off`) and sent to the pages per ride (`features` in `GET /api/watch/:id` and the driver's inbox), so the watch panel and the driver's CB show only what is on. How the feature works: `docs/replay-and-donations/index.html`.
+
+| Key | Default | Notes |
+|---|---|---|
+| `LIVE_CHAT` | `all` | Spectators' chat: `all` rides · `free` = only on free test rides · `off` |
+| `LIVE_DONATIONS` | `on` | `off` = no donations at all (tips and effects) |
+| `LIVE_FREE_DONATIONS` | code `on`, **prod compose `off`** | `on` = MOCK donations (nothing charged) · `off` = each donation is a real SOL transfer from the spectator to the driver, verified on chain before it counts |
+| `LIVE_EFFECTS` | code `all`, **prod compose `free`** | Donations that change the ride (night / day / holes): `all` rides · `free` = only free test rides, never paid ones · `off` = tips only |
 
 ### Solana & payments
 
@@ -121,10 +133,10 @@ The admin API additionally requires: host = `admin.<apex>` (nginx basic auth, `D
 
 ## Deploy-only keys (`deploy/.env`, never reach the app)
 
-`DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_PATH` (must be under `/srv`), `DEPLOY_DOMAIN` (bare apex – `ride.`, `api.`, `storybook.`, `admin.` are added), `DEPLOY_LETSENCRYPT_EMAIL`, `DEPLOY_APP_PORT`, `DEPLOY_KEEP_RELEASES` (3), `DEPLOY_KEEP_BACKUPS` (7), `DEPLOY_ADMIN_USER`, `DEPLOY_ADMIN_PASSWORD`.
+`DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_PATH` (must be under `/srv`), `DEPLOY_DOMAIN` (bare apex – `ride.`, `api.`, `storybook.`, `whitepaper.`, `admin.` are added), `DEPLOY_LETSENCRYPT_EMAIL`, `DEPLOY_APP_PORT`, `DEPLOY_KEEP_RELEASES` (3), `DEPLOY_KEEP_BACKUPS` (7), `DEPLOY_ADMIN_USER`, `DEPLOY_ADMIN_PASSWORD`.
 Also read by the compose file on the server: `POSTGRES_USER`, `POSTGRES_DB`, `POSTGRES_PASSWORD` (hex only), `APP_PORT` (derived), `RELEASE` (set by the deploy).
 
-DNS: five A records (apex, `ride`, `api`, `storybook`, `admin`) → `DEPLOY_HOST`. The session cookie is `Secure`, so https only.
+DNS: six A records (apex, `ride`, `api`, `storybook`, `whitepaper`, `admin`) → `DEPLOY_HOST`. The session cookie is `Secure`, so https only.
 
 ## Local development helpers
 
@@ -159,7 +171,7 @@ npm run server:dev                   # :3000 – site, game and API on one origi
 
 - **`client/js/config.js` (`CFG`)** – every gameplay constant, with comments. Deliberate values not to touch without asking: `SHAKE_START 0.5`, `SHAKE_MOVING 0.1`, `SHAKE_RPM 0.35`, `START_ENGINE_OFF true`.
   `RIDE_MIN_SECONDS` is **300 (a test value); production = 1800**. Tuning requests are relative to the current value.
-- **Hosts** – never hard-code `/api/…` or `/play.html`; use `API_BASE` / `GAME_BASE` / `SITE_BASE` / `STORYBOOK_BASE` / `ADMIN_BASE` from `client/js/hosts.js`. On localhost, an IP or `file://` they are `''` (one origin).
+- **Hosts** – never hard-code `/api/…` or `/play.html`; use `API_BASE` / `GAME_BASE` / `SITE_BASE` / `STORYBOOK_BASE` / `WHITEPAPER_BASE` / `ADMIN_BASE` from `client/js/hosts.js`. On localhost, an IP or `file://` they are `''` (one origin).
 - **Browser `localStorage` keys** (per player, not config you ship): `freightchain.wallet.v1` (mock wallet), `freightchain.route` (last route), `freightchain.truck` (F2 handling tuning), `freightchain.time` / `freightchain.daycycle` (day-night clock), `freightchain.radio`, `freightchain.admin`. The analytics branch also writes `freightchain.anon` (`anon_<uuid v4>`).
   A stale value is the first suspect for "works in a fresh browser only" – clear them.
 - **In-game F2 panel** – live sliders for truck handling and the time of day.
@@ -167,7 +179,7 @@ npm run server:dev                   # :3000 – site, game and API on one origi
 
 ## Other things you can configure
 
-- **Landing** (`landing/`): dev proxy in `vite.config.js`; `LANDING_DIR` on the server; size budget enforced by `landing/test`.
+- **Landing** (`landing/`): dev proxy in `vite.config.js`; `LANDING_DIR` on the server; size budget enforced by `landing/test`. The whitepaper (`whitepaper.html`) is the second Vite input of the same build, served by the same `LANDING_DIR`; host `whitepaper.<apex>` comes from `DEPLOY_DOMAIN`, no env key of its own.
 - **App icon**: generated – edit `design/icons/build-app-icons.mjs` and rerun, never the PNGs.
 - **nginx / certificates**: `deploy/nginx/*.conf.template`, applied by `npm run deploy:setup` (a new host = new template + `setup.sh` + smoke check + `hosts.js` prefix).
 - **Anchor program**: `programs/freightchain-pools/Anchor.toml` (program id, `wallet` → `deploy/secrets/program-deploy.json`, gitignored). Building: `npm run program:build`, `program:test`, `program:idl`.
@@ -177,7 +189,7 @@ npm run server:dev                   # :3000 – site, game and API on one origi
 ## Checklist: first production deploy
 
 1. `npm run deploy:init` → edit `deploy/.env` (domain, e-mail, host; `ADMIN_WALLETS`; dedicated devnet `SOLANA_RPC`).
-2. Five DNS A records → `DEPLOY_HOST`.
+2. Six DNS A records → `DEPLOY_HOST`.
 3. `npm run deploy -- --dry-run` and read the plan.
 4. Only then `npm run deploy` (needs the explicit go-ahead; see AGENTS.md "Deploying to production").
 

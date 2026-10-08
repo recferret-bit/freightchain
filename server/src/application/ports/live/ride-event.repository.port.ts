@@ -11,6 +11,8 @@ export abstract class RideEventRepositoryPort {
   /** events of the ride whose applied stamp is newer than `since`, oldest stamp first */
   abstract listAppliedSince(rideId: string, since: Date, limit: number): Promise<RideEvent[]>;
   abstract findById(id: number, tx?: TransactionHandle): Promise<RideEvent | null>;
+  /** the paid donation this transfer paid (null = none) */
+  abstract findBySignature(signature: string): Promise<RideEvent | null>;
   /** The driver's game applied it: stores the stamp unless one is there already (first wins). True = this call stored it. */
   abstract saveApplied(event: RideEvent, tx?: TransactionHandle): Promise<boolean>;
   /** The ride's feed after event id `afterId`, oldest first, at most `limit`. */
