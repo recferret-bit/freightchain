@@ -53,7 +53,7 @@ test('head basics: lang, title, description, viewport, theme colour, social prev
 
 test('exactly one h1 (the hero) and one h2 per remaining chapter', () => {
   assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
-  assert.equal((html.match(/<h2[\s>]/g) ?? []).length, 6, 'chapters 02–07');
+  assert.equal((html.match(/<h2[\s>]/g) ?? []).length, 5, 'chapters 02–06');
 });
 
 test('no inline event handlers or inline scripts (strict-CSP friendly)', () => {

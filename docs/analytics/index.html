@@ -276,7 +276,7 @@
       <thead><tr><th>Event</th><th>When</th><th>Properties</th></tr></thead>
       <tbody>
         <tr><td><code>landing_viewed</code></td><td>Once per document load. Not on the 10 second refresh.</td><td><code>surface=landing</code></td></tr>
-        <tr><td><code>landing_chapter_viewed</code></td><td>First time a chapter section intersects. Once per id per load.</td><td><code>chapter</code>: ride, loop, garage, economy, roadmap, market, about</td></tr>
+        <tr><td><code>landing_chapter_viewed</code></td><td>First time a chapter section intersects. Once per id per load.</td><td><code>chapter</code>: ride, loop, economy, roadmap, market, about</td></tr>
         <tr><td><code>wallet_connect_clicked</code></td><td>CONNECT while signed out, before <code>signIn()</code>.</td><td><code>surface</code>, <code>wallet_name</code> (phantom, solflare, injected, none) — the same provider <code>signIn</code> uses</td></tr>
         <tr><td><code>lobby_open_clicked</code></td><td>The same button once a session is already painted (OPEN THE LOBBY).</td><td><code>surface=landing</code></td></tr>
         <tr><td><code>wallet_signature_requested</code></td><td>Connect succeeded, the nonce returned, and the wallet is about to be asked to sign.</td><td><code>wallet_name</code>. No message, no nonce, no pubkey.</td></tr>
