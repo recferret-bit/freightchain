@@ -1,6 +1,7 @@
 import { Controller, Get, HttpCode, Post, UseGuards } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
-import type { InboxDto, RideEventDto, WatchDto } from '../../domain/live/live.dto.js';
+import type { InboxDto, MuteDto, RideEventDto, WatchDto } from '../../domain/live/live.dto.js';
+import { MuteWalletCommand } from '../../application/use-cases/live/mute-wallet/mute-wallet.command.js';
 import { AckEffectCommand } from '../../application/use-cases/live/ack-effect/ack-effect.command.js';
 import { GetInboxQuery } from '../../application/use-cases/live/get-inbox/get-inbox.query.js';
 import { PostRideEventCommand } from '../../application/use-cases/live/post-ride-event/post-ride-event.command.js';
@@ -13,8 +14,8 @@ import { PlayerAuthGuard } from '../../infrastructure/http/guards/player-auth.gu
 import type { PlayerIdentity } from '../../infrastructure/http/types/http-request.js';
 import { rideIdParamsSchema, type RideIdParams } from '../common/dto/common.dto.js';
 import {
-  appliedBodySchema, donationBodySchema, effectParamsSchema, inboxQuerySchema, messageBodySchema, watchQuerySchema,
-  type AppliedBody, type DonationBody, type EffectParams, type InboxQuery, type MessageBody, type WatchQuery,
+  appliedBodySchema, donationBodySchema, effectParamsSchema, inboxQuerySchema, messageBodySchema, muteBodySchema, watchQuerySchema,
+  type AppliedBody, type DonationBody, type EffectParams, type InboxQuery, type MessageBody, type MuteBody, type WatchQuery,
 } from './dto/live.dto.js';
 
 /**
@@ -47,6 +48,12 @@ export class LiveHttpController {
   @Get('rides/:id/inbox') @UseGuards(PlayerAuthGuard)
   inbox(@CurrentPlayer() player: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodQuery(inboxQuerySchema) query: InboxQuery): Promise<InboxDto> {
     return this.queryBus.execute<GetInboxQuery, InboxDto>(new GetInboxQuery(player.wallet, params.id, query.after));
+  }
+
+  /** Chat safety: the driver mutes / unmutes a spectator on its ride (their lines vanish from every feed, they can't post there). */
+  @Post('rides/:id/mutes') @HttpCode(200) @UseGuards(PlayerAuthGuard)
+  mute(@CurrentPlayer() player: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodBody(muteBodySchema) body: MuteBody): Promise<MuteDto> {
+    return this.commandBus.execute<MuteWalletCommand, MuteDto>(new MuteWalletCommand(player.wallet, params.id, body.wallet, body.muted));
   }
 
   @Post('rides/:id/effects/:eventId/applied') @HttpCode(200) @UseGuards(PlayerAuthGuard)

@@ -6,6 +6,8 @@ import { EFFECT_WINDOW_MS, LINE_WINDOW_MS } from '../../../../domain/live/live-r
 import { toRideEventDto, type RideEventDto } from '../../../../domain/live/live.dto.js';
 import { ConflictError, ForbiddenError, NotFoundError, TooManyRequestsError } from '../../../../domain/shared/errors.js';
 import { RideEventRepositoryPort } from '../../../ports/live/ride-event.repository.port.js';
+import { RideMuteRepositoryPort } from '../../../ports/live/ride-mute.repository.port.js';
+import { liveFeatures, refusalFor } from '../../../../domain/live/live-features.js';
 import { RideRepositoryPort } from '../../../ports/rides/ride.repository.port.js';
 import { RulesConfigPort } from '../../../ports/config/rules-config.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
@@ -24,6 +26,7 @@ export class PostRideEventHandler implements ICommandHandler<PostRideEventComman
   constructor(
     private readonly rides: RideRepositoryPort,
     private readonly events: RideEventRepositoryPort,
+    private readonly mutes: RideMuteRepositoryPort,
     private readonly rules: RulesConfigPort,
     private readonly clock: ClockPort,
   ) {}
@@ -34,6 +37,11 @@ export class PostRideEventHandler implements ICommandHandler<PostRideEventComman
     if (!ride || !ride.startedAt) throw new NotFoundError('ride not found');
     if (ride.wallet === wallet) throw new ForbiddenError('this is your own ride – spectators write here', 'own_ride');
     if (!ride.isInStatus(RideStatus.Running) || ride.isStaleRunning(now, this.rules.get())) throw new ConflictError(`the ride is ${ride.isInStatus(RideStatus.Running) ? 'off the air' : ride.status}`, 'ride_not_live');
+    const features = liveFeatures(this.rules.get().live, ride);
+    const refused = refusalFor(features, input);
+    if (refused) throw new ForbiddenError(refused, 'live_feature_off');
+    if (input.kind === 'donation' && features.payment === 'chain') throw new ForbiddenError('donations must be paid with a real transfer – not available in this build yet', 'live_feature_off');
+    if (await this.mutes.isMuted(rideId, wallet)) throw new ForbiddenError('the driver muted you on this ride', 'muted');
     const event = input.kind === 'message'
       ? RideEvent.message({ rideId, wallet, text: input.text, now })
       : RideEvent.donation({ rideId, wallet, effect: input.effect, note: input.note, now });

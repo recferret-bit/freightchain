@@ -1,5 +1,6 @@
 import type { EffectId } from './live-rules.js';
 import type { RideEvent } from './ride-event.entity.js';
+import type { LiveFeaturesDto } from './live-features.js';
 
 /* Live streams – what spectators and the driver's game read. All of it is PUBLIC (the watch page needs no sign-in), so: no reason text, no payment data. */
 
@@ -24,6 +25,13 @@ export const toRideEventDto = (e: RideEvent): RideEventDto => {
     applied: p.applied ? { t: p.applied.t, s: p.applied.s, lat: p.applied.lat, placed: !e.missed } : null,
   };
 };
+
+/** The feed as everyone sees it once the driver muted someone: their chat lines are gone, their donation notes blanked – their donations (and an applied
+    obstacle's stamp, which every replay needs) stay. ONE function for the watch page and the driver's inbox, so both always agree. */
+export function withoutMuted(events: RideEventDto[], muted: Set<string>): RideEventDto[] {
+  if (!muted.size) return events;
+  return events.filter((e) => !(e.kind === 'message' && muted.has(e.wallet))).map((e) => (muted.has(e.wallet) && e.text ? { ...e, text: null } : e));
+}
 
 export interface LiveTotalsByRide {
   messages: number;
@@ -74,6 +82,8 @@ export interface WatchDto {
   events: RideEventDto[];
   totals: LiveTotalsByRide;
   viewers: number;
+  /** what spectators may do on THIS ride (LIVE_* flags resolved for it) – the panel shows only these */
+  features: LiveFeaturesDto;
 }
 
 /** The driver's poll: what the spectators sent since `after`. */
@@ -82,4 +92,13 @@ export interface InboxDto {
   events: RideEventDto[];
   totals: LiveTotalsByRide;
   viewers: number;
+  features: LiveFeaturesDto;
+  /** the wallets the driver muted on this ride */
+  muted: string[];
+}
+
+/** The answer to a (un)mute. */
+export interface MuteDto {
+  wallet: string;
+  muted: boolean;
 }

@@ -106,15 +106,19 @@ function paintMe() {
     return;
   }
   if (P.me.wallet === r.wallet) { box.replaceChildren(el('p', { class: 'dim w-small' }, 'This is your own ride – spectators write here.')); return; }
-  if (box.dataset.ready === P.me.wallet) return;   // built once per signed-in wallet (keeps what is being typed)
-  box.dataset.ready = P.me.wallet;
-  const text = el('input', { id: 'w-text', maxlength: 140, placeholder: 'say something to the driver…', autocomplete: 'off', onkeydown: e => { if (e.key === 'Enter') send(); } });
-  const note = el('input', { id: 'w-note-in', maxlength: 80, placeholder: 'note with a donation (optional)', autocomplete: 'off' });
-  box.replaceChildren(
-    el('div', { class: 'w-say' }, text, el('button', { onclick: send }, 'SEND')),
-    el('div', { class: 'w-k' }, 'DONATE · mock SOL – nothing is charged · one effect per 20 s on a ride'),
-    el('div', { class: 'w-fx' }, ...Object.entries(EFFECT_INFO).map(([id, fx]) => el('button', { class: 'alt', title: fx.says, onclick: () => donate(id) }, `${fx.icon} ${fx.label}`, el('small', {}, `${fx.sol} SOL`)))),
-    note, el('div', { id: 'w-msg', class: 'w-small' }), el('div', { class: 'dim w-small' }, `signed in as ${short(P.me.wallet)}`));
+  const f = watch.features, key = `${P.me.wallet}|${JSON.stringify(f)}`;
+  if (box.dataset.ready === key) return;   // built once per signed-in wallet and feature set (keeps what is being typed)
+  box.dataset.ready = key;
+  const parts = [];
+  if (f.chat) parts.push(el('div', { class: 'w-say' }, el('input', { id: 'w-text', maxlength: 140, placeholder: 'say something to the driver…', autocomplete: 'off', onkeydown: e => { if (e.key === 'Enter') send(); } }), el('button', { onclick: send }, 'SEND')));
+  else parts.push(el('p', { class: 'dim w-small' }, 'Chat is off on this ride.'));
+  if (f.donations) {
+    const fx = Object.entries(EFFECT_INFO).filter(([id]) => f.effects || id === 'tip'), chain = f.payment === 'chain';
+    parts.push(el('div', { class: 'w-k' }, chain ? 'DONATE · devnet SOL, sent from your wallet to the driver' : 'DONATE · mock SOL – nothing is charged', f.effects ? ' · one effect per 20 s on a ride' : ' · effects are off on this ride – tips only'),
+      el('div', { class: 'w-fx' }, ...fx.map(([id, e]) => el('button', { class: 'alt', title: `${e.says}${chain ? ' – paid to the driver in devnet SOL' : ''}`, onclick: () => donate(id) }, `${e.icon} ${e.label}`, el('small', {}, `${e.sol} SOL`)))),
+      el('input', { id: 'w-note-in', maxlength: 80, placeholder: 'note with a donation (optional)', autocomplete: 'off' }));
+  } else parts.push(el('p', { class: 'dim w-small' }, 'Donations are off.'));
+  box.replaceChildren(...parts, el('div', { id: 'w-msg', class: 'w-small' }), el('div', { class: 'dim w-small' }, `signed in as ${short(P.me.wallet)}`));
 }
 const say = (text, cls = 'dim') => { const m = $('w-msg'); if (m) { m.textContent = text; m.className = `w-small ${cls}`; } };
 async function connect() {

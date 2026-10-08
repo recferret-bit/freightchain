@@ -74,6 +74,17 @@ A new setting therefore touches **four** places: `env.schema.ts`, `server/.env.e
 | `VERDICT_ENFORCE` | code `true`, **prod compose `false`** | `false` = shadow mode: rides are judged and shown but boards ignore the verdict |
 | `TELEMETRY_RETENTION_DAYS` | `90` | Recordings swept after this; flagged ones kept until reviewed; `0` = forever |
 
+### Live streams (spectators – feature flags)
+
+Enforced by the server (a refused post is `403 live_feature_off`) and sent to the pages per ride (`features` in `GET /api/watch/:id` and the driver's inbox), so the watch panel and the driver's CB show only what is on. How the feature works: `docs/replay-and-donations/index.html`.
+
+| Key | Default | Notes |
+|---|---|---|
+| `LIVE_CHAT` | `all` | Spectators' chat: `all` rides · `free` = only on free test rides · `off` |
+| `LIVE_DONATIONS` | `on` | `off` = no donations at all (tips and effects) |
+| `LIVE_FREE_DONATIONS` | code `on`, **prod compose `off`** | `on` = MOCK donations (nothing charged) · `off` = each donation is a real SOL transfer from the spectator to the driver, verified on chain before it counts |
+| `LIVE_EFFECTS` | code `all`, **prod compose `free`** | Donations that change the ride (night / day / holes): `all` rides · `free` = only free test rides, never paid ones · `off` = tips only |
+
 ### Solana & payments
 
 | Key | Default | Notes |

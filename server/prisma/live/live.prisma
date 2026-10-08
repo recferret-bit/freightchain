@@ -23,3 +23,15 @@ model RideEvent {
   @@index([rideId, id])
   @@schema("live")
 }
+
+// The driver muted this spectator on this ride: the wallet can no longer post there, its chat lines are hidden from every feed and its donation notes
+// blanked (its applied effects stay – every replay still needs where an obstacle went). Set / cleared by the ride's owner only.
+model RideMute {
+  rideId  String
+  ride    Ride     @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  wallet  String
+  mutedAt DateTime
+
+  @@id([rideId, wallet])
+  @@schema("live")
+}

@@ -47,6 +47,7 @@ model Ride {
   payment        Payment?
   batches        RideBatch[]
   events         RideEvent[]
+  mutes          RideMute[]
   verdict        RideVerdict?
 
   @@index([wallet, status])

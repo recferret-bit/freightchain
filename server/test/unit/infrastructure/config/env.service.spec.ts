@@ -73,6 +73,9 @@ describe('EnvService', () => {
     expect(withEnv({ ...base, COOKIE_DOMAIN: 'FreightChain.fun' }).adminHost).toBe('admin.freightchain.fun');
     expect(withEnv({ ...base, COOKIE_DOMAIN: '.freightchain.fun' }).adminHost).toBe('admin.freightchain.fun');
     expect(withEnv(base).gameHost).toBeNull();
+    expect(withEnv(base).liveFlags).toEqual({ chat: 'all', donations: true, freeDonations: true, effects: 'all' });
+    expect(withEnv({ ...base, LIVE_CHAT: 'free', LIVE_DONATIONS: 'off', LIVE_FREE_DONATIONS: 'off', LIVE_EFFECTS: 'off' }).liveFlags).toEqual({ chat: 'free', donations: false, freeDonations: false, effects: 'off' });
+    expect(() => withEnv({ ...base, LIVE_CHAT: 'maybe' })).toThrow();
     expect(withEnv({ ...base, COOKIE_DOMAIN: '.FreightChain.fun' }).gameHost).toBe('ride.freightchain.fun');
   });
 

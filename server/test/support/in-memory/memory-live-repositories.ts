@@ -1,4 +1,5 @@
 import { RideEventRepositoryPort } from '../../../src/application/ports/live/ride-event.repository.port.js';
+import { RideMuteRepositoryPort } from '../../../src/application/ports/live/ride-mute.repository.port.js';
 import type { LiveTotalsByRide } from '../../../src/domain/live/live.dto.js';
 import { RideEvent } from '../../../src/domain/live/ride-event.entity.js';
 import type { MemoryDb } from './memory-db.js';
@@ -50,5 +51,22 @@ export class MemoryRideEventRepository extends RideEventRepositoryPort {
   async totals(rideId: string): Promise<LiveTotalsByRide> {
     const mine = this.db.rideEvents.filter((e) => e.rideId === rideId), gifts = mine.filter((e) => e.kind === 'donation');
     return { messages: mine.length - gifts.length, donations: gifts.length, lamports: gifts.reduce((a, e) => a + e.lamports, 0) };
+  }
+}
+
+/** RideMute's in-memory twin: a set of `${rideId}|${wallet}`. */
+export class MemoryRideMuteRepository extends RideMuteRepositoryPort {
+  constructor(private readonly db: MemoryDb) { super(); }
+
+  async set(rideId: string, wallet: string, muted: boolean, _now?: Date): Promise<boolean> {
+    const key = `${rideId}|${wallet}`, had = this.db.rideMutes.has(key);
+    if (muted) this.db.rideMutes.add(key); else this.db.rideMutes.delete(key);
+    return had !== muted;
+  }
+
+  async isMuted(rideId: string, wallet: string): Promise<boolean> { return this.db.rideMutes.has(`${rideId}|${wallet}`); }
+
+  async list(rideId: string): Promise<Set<string>> {
+    return new Set([...this.db.rideMutes].filter((k) => k.startsWith(`${rideId}|`)).map((k) => k.slice(rideId.length + 1)));
   }
 }

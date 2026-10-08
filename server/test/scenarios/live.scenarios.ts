@@ -83,4 +83,63 @@ export function liveScenarios(h: () => Harness): void {
     expect(replay).toMatchObject({ ride: { live: false, status: 'failed' }, viewers: 0, recording: { lastSeq: null } });
     expect(replay.events).toHaveLength(1);
   });
+
+  it('the driver mutes a spectator: their lines vanish from the watch page and the inbox, they cannot post there; unmute lets them back', async () => {
+    const { driver, ride } = await onTheRoad();
+    const troll = await login(), fan = await login();
+    await troll.agent.post(`/api/watch/${ride.id}/messages`).send({ text: 'boo' }).expect(200);
+    await fan.agent.post(`/api/watch/${ride.id}/messages`).send({ text: 'go go' }).expect(200);
+    expect((await driver.agent.post(`/api/rides/${ride.id}/mutes`).send({ wallet: troll.address, muted: true }).expect(200)).body).toEqual({ wallet: troll.address, muted: true });
+    const texts = (b: { events: { text: string }[] }) => b.events.map((e) => e.text);
+    expect(texts((await anon().get(`/api/watch/${ride.id}`).expect(200)).body)).toEqual(['go go']);
+    const inbox = (await driver.agent.get(`/api/rides/${ride.id}/inbox`).expect(200)).body;
+    expect(texts(inbox)).toEqual(['go go']); expect(inbox.muted).toEqual([troll.address]);
+    sec(4);
+    expect((await troll.agent.post(`/api/watch/${ride.id}/messages`).send({ text: 'again' }).expect(403)).body.code).toBe('muted');
+    await fan.agent.post(`/api/rides/${ride.id}/mutes`).send({ wallet: troll.address, muted: false }).expect(404); // not the driver
+    await driver.agent.post(`/api/rides/${ride.id}/mutes`).send({ wallet: 'not-a-wallet', muted: true }).expect(400);
+    await driver.agent.post(`/api/rides/${ride.id}/mutes`).send({ wallet: troll.address, muted: false }).expect(200);
+    await troll.agent.post(`/api/watch/${ride.id}/messages`).send({ text: 'sorry' }).expect(200);
+  });
+
+  it('every view carries the ride\'s features (the default flags: everything on, mock donations)', async () => {
+    const { driver, ride } = await onTheRoad();
+    const all = { chat: true, donations: true, payment: 'mock', effects: true };
+    expect((await anon().get(`/api/watch/${ride.id}`).expect(200)).body.features).toEqual(all);
+    expect((await driver.agent.get(`/api/rides/${ride.id}/inbox`).expect(200)).body.features).toEqual(all);
+  });
+}
+
+/* The LIVE_* feature flags as production runs them by default (deploy/docker-compose.prod.yml): chat everywhere, effects only on free test rides,
+   donations paid on chain (no free mock) – here with chat on free rides only, to see every refusal. */
+export const LIVE_FLAGS_ENV = { FREE_RIDE_SECONDS: '10', LIVE_CHAT: 'free', LIVE_EFFECTS: 'free', LIVE_FREE_DONATIONS: 'off' };
+export const LIVE_OFF_ENV = { FREE_RIDE_SECONDS: '10', LIVE_CHAT: 'off', LIVE_DONATIONS: 'off' };
+
+export function liveFlagsScenarios(h: () => Harness): void {
+  const { anon, login } = bindClient(h);
+  beforeEach(() => h().reset());
+
+  it('free rides: chat and effects allowed, donations need a real transfer (payment chain); the flags reach the watch page', async () => {
+    const driver = await login();
+    const ride = (await driver.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
+    await driver.agent.post(`/api/rides/${ride.id}/start`).expect(200);
+    expect((await anon().get(`/api/watch/${ride.id}`).expect(200)).body.features).toEqual({ chat: true, donations: true, payment: 'chain', effects: true });
+    const fan = await login();
+    await fan.agent.post(`/api/watch/${ride.id}/messages`).send({ text: 'hi' }).expect(200);
+  });
+}
+
+export function liveOffScenarios(h: () => Harness): void {
+  const { anon, login } = bindClient(h);
+  beforeEach(() => h().reset());
+
+  it('chat and donations switched off: every post is a 403 live_feature_off, watching still works', async () => {
+    const driver = await login();
+    const ride = (await driver.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
+    await driver.agent.post(`/api/rides/${ride.id}/start`).expect(200);
+    const fan = await login();
+    expect((await fan.agent.post(`/api/watch/${ride.id}/messages`).send({ text: 'hi' }).expect(403)).body).toMatchObject({ code: 'live_feature_off', detail: 'chat is off on this ride' });
+    expect((await fan.agent.post(`/api/watch/${ride.id}/donations`).send({ effect: 'tip' }).expect(403)).body.detail).toBe('donations are off');
+    expect((await anon().get(`/api/watch/${ride.id}`).expect(200)).body.features).toEqual({ chat: false, donations: false, payment: 'mock', effects: false });
+  });
 }

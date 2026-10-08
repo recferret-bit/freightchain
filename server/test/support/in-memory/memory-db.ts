@@ -43,6 +43,8 @@ export class MemoryDb {
   adminActions: AdminActionRecord[] = [];
   /** live feed, in id order */
   rideEvents: RideEventProps[] = [];
+  /** `${rideId}|${wallet}` */
+  rideMutes = new Set<string>();
   private seq = 0;
   private roundSeq = 0;
 
@@ -55,6 +57,6 @@ export class MemoryDb {
     this.seq = 0; this.roundSeq = 0;
     this.pools.clear(); this.tickets.clear(); this.grants = []; this.promos.clear(); this.redemptions.clear(); this.orders.clear();
     this.chainEvents = []; this.chainCursors.clear(); this.sponsoredTxs = [];
-    this.rideEvents = [];
+    this.rideEvents = []; this.rideMutes.clear();
   }
 }

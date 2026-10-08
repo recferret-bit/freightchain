@@ -358,6 +358,14 @@ describe('concurrency (PostgreSQL)', () => {
       expect(await prisma.rideEvent.count({ where: { rideId: ride.id, kind: 'message' } })).toBe(1);
     });
 
+    it('N parallel mutes of one wallet by the driver leave ONE row (and every caller a 200)', async () => {
+      const { driver, ride } = await liveRide();
+      const troll = await login();
+      const results = await parallel(PARALLEL, () => driver.agent.post(`/api/rides/${ride.id}/mutes`).send({ wallet: troll.address, muted: true }));
+      expect(results.every((r) => r.status === 200)).toBe(true);
+      expect(await prisma.rideMute.count({ where: { rideId: ride.id } })).toBe(1);
+    });
+
     it('N parallel "applied" acks of one effect (re-sends): ONE stamp, every caller gets that same stamp', async () => {
       const { driver, ride } = await liveRide();
       const fan = await login();

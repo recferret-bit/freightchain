@@ -29,6 +29,7 @@ const viewerId = () => { let v = store.get('freightchain.viewer'); if (!v || !/^
 
 export const watch = {
   id: null, ride: null, error: '', now: 0, skew: 0,
+  features: { chat: true, donations: true, payment: 'mock', effects: true },   // what spectators may do on THIS ride (the server's LIVE_* flags)
   rec: { lastSeq: null, t1: 0 }, batches: new Map(), rows: [], rowsSeq: -1, events: new Map(), cursor: 0, since: 0, totals: { messages: 0, donations: 0, lamports: 0 }, viewers: 0,
   wt: 0, playing: true, speed: 1, follow: true, buffering: false, seeking: false, started: false, jumped: true, lastHull: 100, timer: 0, polling: null,
   onUpdate: null, onEvent: null,   // set by ui/watch-panel.js: repaint the panel / a new feed line
@@ -56,7 +57,7 @@ async function get(from) {
 async function poll(from) {
   const j = await get(from);
   const first = !watch.ride;
-  watch.ride = j.ride; watch.now = j.now; watch.skew = j.now - Date.now(); watch.rec = j.recording; watch.totals = j.totals; watch.viewers = j.viewers;
+  watch.ride = j.ride; watch.now = j.now; watch.skew = j.now - Date.now(); watch.rec = j.recording; watch.totals = j.totals; watch.viewers = j.viewers; if (j.features) watch.features = j.features;
   if (first) { CFG.RIDE_MIN_SECONDS = j.ride.minSeconds; CFG.COMPLETE_DIST = j.ride.completeDist; watch.follow = j.ride.live; }
   if (watch.started && j.ride.route && j.ride.route !== env.theme?.id && THEMES.some(t => t.id === j.ride.route)) { selectTheme(j.ride.route, false); replaceObstacles(); }   // the route arrives with the driver's first heartbeat (it re-rolls the road: obstacles again)
   if (j.batches.length) addBatches(j.batches);

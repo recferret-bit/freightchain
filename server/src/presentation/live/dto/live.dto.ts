@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { walletAddressSchema } from '../../common/dto/common.dto.js';
 import { APPLIED_MAX_LAT, APPLIED_MAX_S, EFFECT_IDS, MESSAGE_MAX_LENGTH, NOTE_MAX_LENGTH } from '../../../domain/live/live-rules.js';
 
 /* Live streams. The text limits here are generous on raw input (the domain cleans and re-checks the visible length). */
@@ -23,6 +24,9 @@ export type DonationBody = z.infer<typeof donationBodySchema>;
 
 export const effectParamsSchema = z.object({ id: z.string().min(1).max(64), eventId: z.coerce.number().int().positive().max(2_147_483_647) });
 export type EffectParams = z.infer<typeof effectParamsSchema>;
+
+export const muteBodySchema = z.object({ wallet: walletAddressSchema, muted: z.boolean() });
+export type MuteBody = z.infer<typeof muteBodySchema>;
 
 export const appliedBodySchema = z.object({
   t: z.number().finite().min(0).max(1e7),
