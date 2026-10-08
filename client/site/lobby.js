@@ -187,7 +187,7 @@ const ride = tier => busy(tier, async () => {   // spends one ticket: the ride i
   try { play(await api('rides', { tier }), tier); } catch (e) { say(tier, rideError(e, tier), true); await refreshMe(); }
 });
 const buy = (tier, poolId, qty) => busy(tier, async () => {
-  try { await buyTickets(poolId, qty, text => say(tier, text)); S.qty[tier] = 1; await refreshMe(); say(tier, `Paid – ${qty} ticket${qty === 1 ? '' : 's'} credited.`); } catch (e) { say(tier, buyError(e), true); }
+  try { await buyTickets(poolId, qty, text => say(tier, text)); S.qty[tier] = 1; await Promise.all([refreshMe(), refreshPool()]); say(tier, `Paid – ${qty} ticket${qty === 1 ? '' : 's'} credited.`); } catch (e) { say(tier, buyError(e), true); }
 });
 const refund = (poolId, key) => busy(key, async () => {
   try {

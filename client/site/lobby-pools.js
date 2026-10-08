@@ -21,7 +21,7 @@ export function poolCard(t, info, ctx) {
     el('span', { class: 'qty', role: 'group', 'aria-label': 'tickets to buy' },
       el('button', { class: 'ghost', 'aria-label': 'one less', disabled: buyOff || q <= 1, onclick: () => ctx.act.qty(t.id, q - 1) }, '−'), el('b', {}, q),
       el('button', { class: 'ghost', 'aria-label': 'one more', disabled: buyOff || q >= room, onclick: () => ctx.act.qty(t.id, q + 1) }, '+')),
-    el('button', { class: a.kind === 'buy' ? 'buyb' : 'buyb ghost', disabled: buyOff, onclick: () => ctx.act.buy(t.id, p.id, q) }, ctx.sales ? `BUY ${plural(q, 'TICKET')} · ${sol(p.priceLamports * q)}` : 'BUY TICKETS · SOON'));
+    el('button', { class: a.kind === 'buy' ? 'buyb' : 'buyb ghost', disabled: buyOff, onclick: () => ctx.act.buy(t.id, p.id, q) }, ctx.sales ? `BUY ${plural(q, 'TICKET', 'TICKETS')} · ${sol(p.priceLamports * q)}` : 'BUY TICKETS · SOON'));
   const note = p.status === 'refunding' ? 'This pool failed: every buyer gets the full price back from the vault – anyone can trigger it.'
     : !ctx.sales ? 'On-chain checkout opens soon – redeem a promo code meanwhile.' : room <= 0 ? `You hold the maximum of ${p.maxPerWallet} tickets for this pool.` : !sellable ? 'Sales for this pool are closed.' : 'Network fee: sponsored when available, else ≈ 0.0001 SOL.';
   return el('article', { class: `tier pooled${t.id === ctx.focus ? ' sel' : ''}`, id: `tier-${t.id}`, 'data-pool': p.id },
