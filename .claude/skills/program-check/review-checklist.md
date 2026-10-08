@@ -9,7 +9,7 @@ are the Trail of Bits scanner's job; these are the ones only someone who knows t
 - [ ] `pay_prize`: `prizes_paid + lamports ≤ prize_share()` – the cap is recomputed from the current pot, so sponsorship can raise it but never above what came in.
 - [ ] `close_pool` (Active): `seed_out = (vault − rent_min) − fee_out − platform_out`, the four legs go to the DECLARED treasuries + `pool.authority`, and the vault is asserted to end at exactly 0.
 - [ ] `close_pool` (Refunding): only once `refunded == tickets_lamports()` (all tickets back); fee and platform are 0; the rest (sponsorship + stray lamports) to the seed treasury.
-- [ ] Every arithmetic step is `checked_*` or u128 with `try_from`; release profile keeps `overflow-checks = true` (`Cargo.toml`).
+- [ ] Arithmetic that can overflow is `checked_*` or u128 with `try_from`; the few plain `-` / `*` (`settle.rs` `fee - platform`, the u128 cost in `buy_ticket.rs`, the bps sum in `create_pool.rs`) are bounded by construction – re-check that bound, don't flag the operator. Release profile keeps `overflow-checks = true` (`Cargo.toml`).
 
 ## The vault and rent
 - [ ] The vault is a 0-data SYSTEM account at `["vault", pool_id LE]`; only `raw_from_vault` / `pay_from_vault` sign for it, always with the stored `pool.vault_bump`.
@@ -37,5 +37,5 @@ are the Trail of Bits scanner's job; these are the ones only someone who knows t
 - [ ] No instruction lets the caller choose where money goes except `pay_prize`'s `to` (admin-signed, capped) and `refund`'s `buyer` (bound to the ticket PDA).
 
 ## Build provenance
-- [ ] `verifiable-build.sha256` matches a fresh `solana-verify build` (check.sh stage 1); the deployed program hash (once deployed) matches it (`check.sh onchain`).
+- [ ] `verifiable-build.hash` matches a fresh `solana-verify build` (check.sh stage 1); the deployed program hash (once deployed) matches it (`check.sh onchain`).
 - [ ] `declare_id!`, `Anchor.toml` and `idl/freightchain_pools.json` `address` agree; the placeholder id is replaced before a real deploy (`anchor keys sync`) – which changes the pin.

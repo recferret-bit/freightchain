@@ -18,16 +18,18 @@ bash .claude/skills/program-check/check.sh fast     # no Docker: IDL + tests on 
 
 | stage | tool | fails when |
 |---|---|---|
-| verifiable build | [`solana-verify`](https://github.com/solana-foundation/solana-verifiable-build) 0.5.2 (Solana Foundation) – clean `cargo build-sbf` in the pinned `solanafoundation/solana-verifiable-build` image for `[workspace.metadata.cli] solana` (4.1.2), SBPF v0 | the build fails, or its hash ≠ `programs/freightchain-pools/verifiable-build.sha256` |
+| verifiable build | [`solana-verify`](https://github.com/solana-foundation/solana-verifiable-build) 0.5.2 (Solana Foundation) – clean `cargo build-sbf` in the pinned `solanafoundation/solana-verifiable-build` image for `[workspace.metadata.cli] solana` (4.1.2), SBPF v0 | the build fails, or its hash ≠ `programs/freightchain-pools/verifiable-build.hash` |
 | IDL | `anchor idl build` | the committed `idl/freightchain_pools.json` is stale |
-| tests | `cargo test` (LiteSVM, 47 tests) – they `include_bytes!` `target/deploy/freightchain_pools.so`, so after stage 1 they run **on the verifiable artifact**, the bytes a deploy ships | any test fails |
+| tests | `cargo test` (47: 45 LiteSVM + 2 unit) – they `include_bytes!` `target/deploy/freightchain_pools.so`, so after stage 1 they run **on the verifiable artifact**, the bytes a deploy ships | any test fails |
 | lint | `cargo clippy --lib -D warnings` (program code only; the test harness trips `result_large_err` on LiteSVM's error type) | any warning |
 | dependencies | [`cargo audit`](https://github.com/rustsec/rustsec) 0.22.2 (RustSec advisory DB) | a vulnerability; `unmaintained` / `unsound` warnings are printed, not fatal (below) |
 
 Install once: `cargo install solana-verify --version 0.5.2 --locked` and `cargo install cargo-audit --version 0.22.2 --locked`; Docker running.
 
-**When the hash changes on purpose** (program code, `Cargo.lock`, the pinned Solana version): `UPDATE_PIN=1 bash .claude/skills/program-check/check.sh`
-and commit `verifiable-build.sha256` with the change. A hash change you did not cause = the toolchain is not what you think – stop and find out.
+The pin is solana-verify's **executable hash** (sha256 of the `.so` with its trailing zero padding stripped – `sha256sum` of the file gives a different value; compare with `solana-verify get-executable-hash`). `fast` mode warns when `target/deploy` holds other bytes than the pin.
+
+**When the hash changes on purpose** (program code, `Cargo.lock`, the pinned Solana version, the program id): `UPDATE_PIN=1 bash .claude/skills/program-check/check.sh`
+and commit `verifiable-build.hash` with the change. A hash change you did not cause = the toolchain is not what you think – stop and find out.
 The pin is what makes "the deployed program is this source" checkable by anyone.
 
 **Deploy rule this enforces**: deploy only `target/deploy/freightchain_pools.so` from `solana-verify build`. A local `anchor build --arch v0` gives
@@ -48,7 +50,7 @@ nothing is deployed, so this stage cannot pass yet.
 
 **Public verification** (OtterSec verify API, the "Verified" badge on explorers) is the user's call, not this skill's: it needs the repo public on
 GitHub, the commit hash, and `solana-verify verify-from-repo -u <devnet url> --program-id <id> --mount-path programs/freightchain-pools --library-name freightchain_pools --commit-hash <sha> https://github.com/<repo>`
-which **writes a PDA on chain signed by the upgrade authority** (then `remote submit-job`). Offer it; do not run it.
+which **writes a PDA on chain signed by the upgrade authority** (then `solana-verify -u <devnet url> remote submit-job …`; every solana-verify call needs `-u`, it otherwise reads the global config). Offer it; do not run it.
 
 ## 3. Security review (an agent pass, after the gate is green)
 

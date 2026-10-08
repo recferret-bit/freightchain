@@ -9,13 +9,13 @@ Core instructions only; the phase-2 session / deposit instructions (plan 2.6 / 2
 ```sh
 export PATH="$HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$HOME/.avm/bin:$PATH"
 anchor build --arch v0     # root: npm run program:build
-cargo test                 # root: npm run program:test   (47 tests, LiteSVM, no network)
+cargo test                 # root: npm run program:test   (47 tests: 45 LiteSVM + 2 unit, no network)
 npm run program:idl        # copies target/idl/freightchain_pools.json -> idl/
 ```
 
 ### Verifiable build (what gets deployed)
 
-`npm run program:verify` (= `bash .claude/skills/program-check/check.sh`, the `program-check` skill) runs `solana-verify build --library-name freightchain_pools` (solana-verify 0.5.2, Docker) in the Solana Foundation image for the version in `[workspace.metadata.cli] solana` (`Cargo.toml`, 4.1.2 – without it solana-verify would pick the 3.1.1 image from `Cargo.lock`), from a clean SBF target, and compares the sha256 with `verifiable-build.sha256` (committed). Then the IDL drift check, `cargo test` on that exact `.so`, `cargo clippy --lib -D warnings` and `cargo audit`. `check.sh fast` skips Docker; `PROGRAM_ID=<id> check.sh onchain` compares the deployed program (read-only).
+`npm run program:verify` (= `bash .claude/skills/program-check/check.sh`, the `program-check` skill) runs `solana-verify build --library-name freightchain_pools` (solana-verify 0.5.2, Docker) in the Solana Foundation image for the version in `[workspace.metadata.cli] solana` (`Cargo.toml`, 4.1.2 – without it solana-verify would pick the 3.1.1 image from `Cargo.lock`), from a clean SBF target, and compares its solana-verify executable hash (sha256 of the `.so` without trailing zero padding – not `sha256sum`) with `verifiable-build.hash` (committed). Then the IDL drift check, `cargo test` on that exact `.so`, `cargo clippy --lib -D warnings` and `cargo audit`. `check.sh fast` skips Docker; `PROGRAM_ID=<id> check.sh onchain` compares the deployed program (read-only).
 
 - **Deploy only that `.so`.** `anchor build --arch v0` on the host gives different bytes (a89fa844… vs 055e337c… on 2026-10-08) and would never verify.
 - A changed program, `Cargo.lock`, pinned Solana version or program id (`anchor keys sync`) changes the hash: rerun with `UPDATE_PIN=1` and commit the new pin with the change.
@@ -126,7 +126,7 @@ Decisions:
 - `create_pool` requires `fee_treasury`, `seed_treasury` and `platform_treasury` to hold >= rent_min already (`TreasuryNotRentExempt`). `initialize` / `set_config` check the platform treasury the same way.
 - `pay_prize` requires the receiver to end >= rent_min (`to.lamports + lamports >= rent_min`).
 - **`price_lamports >= rent_min` is required at `create_pool`** (not in the plan): a refund must be able to land in an emptied wallet, and a price below the minimum would make that refund fail and block the whole batch. At today's rent that is a floor of about 0.00089 SOL.
-- `Ticket` rent (~0.0016 SOL) is paid by `fee_payer` of the buy and recorded as `rent_payer` (set on the first buy only; later buys by the same buyer keep it). It goes back to `rent_payer` on `refund` and `close_ticket`. The buyer's net cost is the price.
+- `Ticket` rent (1 496 400 lamports, ~0.0015 SOL) is paid by `fee_payer` of the buy and recorded as `rent_payer` (set on the first buy only; later buys by the same buyer keep it). It goes back to `rent_payer` on `refund` and `close_ticket`. The buyer's net cost is the price.
 - The `Pool` account rent (paid by the authority) is not reclaimed (no `close` of the Pool account; the server and explorer keep reading it after settlement).
 
 ## Refund and idempotency (decision)
@@ -150,7 +150,7 @@ Measured by `compute_units_are_in_budget` (`cargo test -- --nocapture` prints th
 
 Set `setComputeUnitLimit` from the simulation (`unitsConsumed * 1.2`) as planned; the test asserts only loose ceilings (buy < 40k, refund < 30k, pay_prize < 25k).
 
-## Tests (`programs/freightchain_pools/tests/`, 42 LiteSVM + 2 unit)
+## Tests (`programs/freightchain_pools/tests/`, 45 LiteSVM incl. the fixture exporter + 2 unit)
 
 `create_and_buy.rs` create_pool validation / authority / unfunded treasury, buy to exactly min activates (events decoded), sponsored buy credits the buyer and records the rent payer, wallet cap, sold out, deadlines.
 `refunds.rs` fail_pool conditions, refund exact price + rent to a separate rent payer, wrong receivers, refund when not Refunding, refund twice, batch of 8 + re-sent batch + partial progress, close_pool after refunds, cancel_pool, sponsor.

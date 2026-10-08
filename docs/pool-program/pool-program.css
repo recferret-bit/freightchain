@@ -141,6 +141,7 @@ tr.group td { background: var(--plate); font: 500 .72rem/1.2 var(--mono); letter
 .receipt .row span:last-child { text-align: right; }
 .receipt .rule { border-top: 1px dashed var(--line); margin: 6px 0; }
 .receipt .total { font-weight: 500; }
+.receipt .in { padding-left: 1.4em; }
 .receipt .head { color: var(--muted); font-size: .76rem; letter-spacing: .12em; text-transform: uppercase; }
 .pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
 @media (max-width: 760px) { .pair { grid-template-columns: minmax(0, 1fr); } }

@@ -36,7 +36,7 @@
     <h1>freightchain_pools</h1>
     <p class="lede col">One Anchor program that runs many prize pools. Each pool owns a vault that holds the ticket money, and its rules are fixed when the pool is created. A pool that misses its minimum refunds every buyer, and anyone can trigger that. A live pool pays capped prizes, then splits what is left to the treasuries it declared. This page is the contract's spec sheet. For the plain-language version, see <a href="../pool-escrow/index.html">Pool escrow</a>.</p>
     <div class="status" aria-label="Build status">
-      <span class="chip"><i class="ok"></i>47 LiteSVM tests pass on the verified binary</span>
+      <span class="chip"><i class="ok"></i>47 tests pass on the verified binary</span>
       <span class="chip"><i class="ok"></i>Reproducible build · solana-verify</span>
       <span class="chip"><i class="next"></i>Devnet deploy next</span>
       <span class="chip"><i class="no"></i>Not audited · not on mainnet</span>
@@ -46,7 +46,7 @@
       <div><dt>Framework</dt><dd>Anchor 1.2.1 · Rust 1.89</dd></div>
       <div><dt>Target</dt><dd>SBPF v0 · Solana 4.1.2 toolchain</dd></div>
       <div><dt>Surface</dt><dd>14 instructions · 12 events · 24 errors</dd></div>
-      <div><dt>Binary</dt><dd>322 544 bytes · sha256 055e337c…</dd></div>
+      <div><dt>Binary</dt><dd>322 544 bytes · hash 055e337c…</dd></div>
       <div><dt>Source</dt><dd>programs/freightchain-pools</dd></div>
     </dl>
   </header>
@@ -161,13 +161,13 @@
           <tr><th scope="row">close_ticket<span class="args">(pool_id)</span></th><td><span class="tag any">anyone</span></td><td>Pool Settled</td><td>Ticket rent goes back to <code>rent_payer</code>.</td></tr>
           <tr><th scope="row">close_pool<span class="args">(pool_id)</span></th><td><span class="tag adm">admin</span> <span class="tag any">anyone</span></td><td>Active: admin after <code>play_deadline</code>; anyone after +14 d if <code>prizes_paid &gt; 0</code>. Refunding: anyone, once <code>refunded == price × tickets_sold</code></td><td>Sweeps the vault to exactly 0 across the declared treasuries and the creator. The pool becomes Settled, or Cancelled if it was refunding.</td></tr>
           <tr class="group"><td colspan="4">Admin</td></tr>
-          <tr><th scope="row">create_pool<span class="args">(params)</span></th><td><span class="tag adm">admin</span></td><td>Not paused; <code>price ≥ rent_min</code>; <code>min ≥ 1</code>; <code>max == 0</code> or <code>max ≥ min</code>; <code>prep_deadline &gt; now</code>; <code>play_deadline ≥ prep_deadline</code>; the three bps values sum to 10 000; treasuries rent-exempt</td><td>New Pool with id <code>config.pool_count</code>. The admin funds the vault with exactly <code>rent_min</code>.</td></tr>
+          <tr><th scope="row">create_pool<span class="args">(params)</span></th><td><span class="tag adm">admin</span></td><td>Not paused; <code>price ≥ rent_min</code>; <code>min ≥ 1</code>; <code>max_per_wallet ≥ 1</code>; <code>max == 0</code> or <code>max ≥ min</code>; <code>prep_deadline &gt; now</code>; <code>play_deadline ≥ prep_deadline</code>; the three bps values sum to 10 000; treasuries rent-exempt</td><td>New Pool with id <code>config.pool_count</code>. The admin funds the vault with exactly <code>rent_min</code>.</td></tr>
           <tr><th scope="row">pay_prize<span class="args">(pool_id, lamports, rank)</span></th><td><span class="tag adm">admin</span></td><td>Active, <code>now ≥ play_deadline</code>, <code>prizes_paid + lamports ≤ prize_share</code>, the receiver ends rent-exempt</td><td>Vault → winner. The cap holds on chain; who the winner is comes from the server's ranking.</td></tr>
           <tr><th scope="row">cancel_pool<span class="args">(pool_id)</span></th><td><span class="tag adm">admin</span></td><td>Open only</td><td>Open → Refunding.</td></tr>
           <tr><th scope="row">set_config<span class="args">(paused?, platform_treasury?, platform_fee_bps?)</span></th><td><span class="tag adm">admin</span></td><td>Any time; a new treasury must be rent-exempt</td><td>Pause switch, platform treasury and cut.</td></tr>
           <tr><th scope="row">propose_authority<span class="args">(new)</span></th><td><span class="tag adm">admin</span></td><td>New key not the default key</td><td>Sets <code>pending_authority</code>.</td></tr>
           <tr><th scope="row">accept_authority<span class="args">()</span></th><td>the proposed key</td><td><code>pending_authority</code> set and equal to the signer</td><td>Becomes <code>config.authority</code> and takes over every existing pool at once.</td></tr>
-          <tr><th scope="row">initialize<span class="args">(platform_treasury, platform_fee_bps)</span></th><td>first caller</td><td>Once (the Config PDA is created); <code>fee_bps ≤ 10 000</code></td><td>The signer becomes <code>config.authority</code>. See the open finding under <a href="#limits">Limits</a>.</td></tr>
+          <tr><th scope="row">initialize<span class="args">(platform_treasury, platform_fee_bps)</span></th><td>first caller</td><td>Once (the Config PDA is created); <code>platform_fee_bps ≤ 10 000</code></td><td>The signer becomes <code>config.authority</code>. See the open finding under <a href="#limits">Limits</a>.</td></tr>
         </tbody>
       </table>
     </div>
@@ -214,8 +214,8 @@ close_pool (Active) pays, vault ends at 0:
         <div class="row total"><span>pot</span><span>2 500 000 000</span></div>
         <div class="rule"></div>
         <div class="row"><span>prize 70 %</span><span>1 750 000 000</span></div>
-        <div class="row"><span>  paid (2 prizes)</span><span>−1 500 000 000</span></div>
-        <div class="row"><span>  unclaimed</span><span>250 000 000</span></div>
+        <div class="row"><span class="in">paid (2 prizes)</span><span>−1 500 000 000</span></div>
+        <div class="row"><span class="in">unclaimed</span><span>250 000 000</span></div>
         <div class="row"><span>seed 20 %</span><span>500 000 000</span></div>
         <div class="row"><span>fee 10 % (platform 0 bps)</span><span>250 000 000</span></div>
         <div class="rule"></div>
@@ -236,7 +236,7 @@ close_pool (Active) pays, vault ends at 0:
 
   <section class="section" id="rent">
     <span class="eyebrow">06 · Rent rules</span>
-    <h2>The vault never drops below 890 880 lamports</h2>
+    <h2>The vault keeps 890 880 lamports until it closes</h2>
     <p class="col">The vault is a zero-data system account, so <code>rent_min = Rent::minimum_balance(0) = 890 880</code> lamports. <code>create_pool</code> puts exactly that much in. From then on, <code>vault lamports = rent_min + escrow</code>. The money in escrow is <code>vault − rent_min</code>, so never show raw vault lamports as the pot.</p>
     <div class="tablewrap mid">
       <table>
@@ -247,7 +247,7 @@ close_pool (Active) pays, vault ends at 0:
           <tr><td><code>price_lamports ≥ rent_min</code> at creation</td><td>A refund must be able to land in an emptied wallet. A smaller price would block the whole refund batch.</td><td class="mono">PriceBelowRentMin</td></tr>
           <tr><td>The prize receiver ends rent-exempt</td><td>A transfer that leaves a near-empty account below the minimum fails</td><td class="mono">BelowRentMin</td></tr>
           <tr><td>Fee, seed and platform treasuries already hold <code>≥ rent_min</code></td><td>The close sweep must not fail on a fresh, empty address</td><td class="mono">TreasuryNotRentExempt</td></tr>
-          <tr><td>Ticket rent (~0.0016 SOL) is paid by <code>fee_payer</code> and returned to it</td><td>So a gas sponsor can cover it. The buyer's net cost is the price.</td><td class="mono">—</td></tr>
+          <tr><td>Ticket rent (1 496 400 lamports, ~0.0015 SOL) is paid by <code>fee_payer</code> and returned to it</td><td>So a gas sponsor can cover it. The buyer's net cost is the price.</td><td class="mono">—</td></tr>
         </tbody>
       </table>
     </div>
@@ -305,11 +305,11 @@ close_pool (Active) pays, vault ends at 0:
   <section class="section" id="build">
     <span class="eyebrow">09 · Verifiable build</span>
     <h2>The bytes come from this source</h2>
-    <p class="col">The binary is built with <a href="https://github.com/solana-foundation/solana-verifiable-build">solana-verify</a> 0.5.2 inside the Solana Foundation's pinned Docker image for Solana 4.1.2. The image is chosen from <code>[workspace.metadata.cli]</code> in the program's <code>Cargo.toml</code>. Its sha256 is committed as <code>programs/freightchain-pools/verifiable-build.sha256</code>:</p>
+    <p class="col">The binary is built with <a href="https://github.com/solana-foundation/solana-verifiable-build">solana-verify</a> 0.5.2 inside the Solana Foundation's pinned Docker image for Solana 4.1.2. The image is chosen from <code>[workspace.metadata.cli]</code> in the program's <code>Cargo.toml</code>. Its <b>executable hash</b> (solana-verify's: sha256 of the <code>.so</code> without its trailing zero padding, so not what <code>sha256sum</code> prints) is committed as <code>programs/freightchain-pools/verifiable-build.hash</code>:</p>
     <div class="hash">055e337cf9583e0d3a18bae2a44c2d1cdd000836a3ae43f8d53a46a00e631163</div>
     <ul class="checks col">
       <li class="y"><span>A clean rebuild from source reproduces this hash (checked 2026-10-08, two builds from an empty SBF target).</span></li>
-      <li class="y"><span>The 47 LiteSVM tests load exactly this file (<code>target/deploy/freightchain_pools.so</code>), so the tested bytes and the bytes to deploy are the same.</span></li>
+      <li class="y"><span>The 47 tests (45 LiteSVM + 2 unit) load exactly this file (<code>target/deploy/freightchain_pools.so</code>), so the tested bytes and the bytes to deploy are the same.</span></li>
       <li class="y"><span><code>cargo clippy -D warnings</code> is clean on the program. <code>cargo audit</code> finds no RustSec vulnerabilities, only six unmaintained or unsound warnings in transitive Solana and Anchor dependencies.</span></li>
       <li class="n"><span>On-chain match: not possible yet, because nothing is deployed. After the deploy, <code>solana-verify get-program-hash</code> must print the same hash.</span></li>
       <li class="n"><span>Public "verified" status (OtterSec API): needs the repository public and an upload signed by the upgrade authority. That is the owner's call.</span></li>
@@ -338,7 +338,7 @@ PROGRAM_ID=&lt;id&gt; bash .claude/skills/program-check/check.sh onchain   # rea
 
   <footer class="foot">
     <span>Source of truth: <span class="mono">programs/freightchain-pools/README.md</span> and the program under <span class="mono">programs/freightchain_pools/src</span>. If this page and the code disagree, the code wins. Update the page in the same change.</span>
-    <span>Deploying and operating the program: <span class="mono">docs/program-deploy.md</span>.</span>
+    <span>Deploying and operating the program: <a href="../program-deploy.md">docs/program-deploy.md</a>.</span>
     <span>Checked with the <span class="mono">program-check</span> skill (<span class="mono">.claude/skills/program-check</span>) on 2026-10-08.</span>
   </footer>
 </main>
