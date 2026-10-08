@@ -1,5 +1,6 @@
 import { ADMIN_BASE, SITE_BASE } from '../js/hosts.js';
 import { b58, provider } from './wallet.js';
+import { shortAddr } from './pools.js';
 
 /* The admin page: OVERVIEW · REVIEW QUEUE · RIDES · SIGN-INS · LOGS · AUDIT (+ #ride/<id>). Vanilla DOM, no framework.
    Only wallets in the server's ADMIN_WALLETS get answers – to everyone else /api/admin/* is a 404 and this page says so.
@@ -28,7 +29,7 @@ async function api(path, body) {
   if (!r.ok) throw Object.assign(new Error(j.detail || j.title || `server error ${r.status}`), { status: r.status, requestId: j.requestId });
   return j;
 }
-const short = w => (w ? `${w.slice(0, 4)}…${w.slice(-4)}` : '–');
+const short = w => (w ? shortAddr(w) : '–');
 const time = ms => (ms == null ? '–' : new Date(ms).toLocaleString());
 const ago = ms => { if (ms == null) return '–'; const s = Math.round((Date.now() - ms) / 1000); return s < 60 ? `${s}s ago` : s < 3600 ? `${Math.round(s / 60)}m ago` : s < 86400 ? `${Math.round(s / 3600)}h ago` : `${Math.round(s / 86400)}d ago`; };
 const km = m => (m / 1000).toFixed(2);

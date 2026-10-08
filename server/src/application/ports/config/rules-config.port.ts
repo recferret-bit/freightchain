@@ -18,6 +18,9 @@ export interface RulesConfig {
   treasury: string;
   appDomain: string;
   appOrigin: string;
+  /** split deployment: the game host (ride.<apex>) – a sign-in requested from there names it in the message, so the wallet sees its own page's domain */
+  gameDomain: string | null;
+  gameOrigin: string | null;
   /** 'program' = escrow pools via the Anchor program; 'transfer' = plain transfers to the treasuries (fallback) */
   paymentMode: 'program' | 'transfer';
   /** the deployed pool program ('' = none) */

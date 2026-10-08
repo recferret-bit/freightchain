@@ -12,15 +12,16 @@ export interface RideEventDto {
   /** MOCK amount */
   lamports: number;
   at: number;
-  /** game effects: where / when the driver's game applied it (null = not yet – the driver is paused, offline or the ride ended first) */
-  applied: { t: number; s: number; lat: number | null } | null;
+  /** game effects: where / when the driver's game applied it (null = not yet – the driver is paused, offline or the ride ended first);
+      placed false = an obstacle the driver's game found no room for (not on the road) */
+  applied: { t: number; s: number; lat: number | null; placed: boolean } | null;
 }
 
 export const toRideEventDto = (e: RideEvent): RideEventDto => {
   const p = e.snapshot();
   return {
     id: p.id ?? 0, kind: p.kind, wallet: p.wallet, text: p.text, effect: p.effect, lamports: p.lamports, at: p.createdAt.getTime(),
-    applied: p.applied ? { t: p.applied.t, s: p.applied.s, lat: p.applied.lat } : null,
+    applied: p.applied ? { t: p.applied.t, s: p.applied.s, lat: p.applied.lat, placed: !e.missed } : null,
   };
 };
 
@@ -58,7 +59,8 @@ export interface WatchRideDto {
   hull: number | null;
 }
 
-/** The spectator's one poll: the ride, the next recording batches from `from`, the feed after `after`. */
+/** The spectator's one poll: the ride, the next recording batches from `from`, the feed after `after` – plus every event stamped (applied) since `since`,
+    because the driver's game stamps an effect seconds or minutes after a spectator's cursor has moved past it. */
 export interface WatchDto {
   now: number;
   ride: WatchRideDto;

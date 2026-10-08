@@ -7,7 +7,7 @@ export const explorerUrl = (address, cluster = CLUSTER) => `https://explorer.sol
 export const explorerTx = (signature, cluster = CLUSTER) => `https://explorer.solana.com/tx/${encodeURIComponent(signature)}${cluster ? `?cluster=${cluster}` : ''}`;
 export const ESCROW_PAGE = '/escrow/';   // client/escrow/index.html (a copy of docs/pool-escrow, served on the apex) – prefix with SITE_BASE
 
-export const shortAddr = a => (a && a.length > 12 ? `${a.slice(0, 4)}…${a.slice(-4)}` : a ?? '');
+export const shortAddr = a => (a && a.length > 12 ? `${a.slice(0, 4)}…${a.slice(-4)}` : a ?? '');   // THE wallet / account shortener: the lobby, admin, the game's live streams and the landing (format.js `short`) all use it
 export const sol = l => `${(l / 1e9).toFixed(l >= 1e9 ? 2 : 3)} SOL`;
 export const usd = (l, solUsd) => (solUsd ? `≈ $${((l / 1e9) * solUsd).toFixed(2)}` : '');
 export const pct = bps => `${+(bps / 100).toFixed(2)}%`;

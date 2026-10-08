@@ -13,14 +13,33 @@ export class RideEventPrismaRepository extends RideEventRepositoryPort {
     super();
   }
 
-  /** ONE INSERT outside any transaction: the unique (rideId, slotKey, slot) key is the rate limit, a taken window is a unique violation → null. */
-  async insert(event: RideEvent): Promise<RideEvent | null> {
+  /** A chat line / tip: ONE INSERT, the unique (rideId, slotKey, slot) key is its rate limit (a taken bucket is a unique violation → null).
+      A game effect (`minGapMs`): one short transaction holding a per-ride ADVISORY lock (pg_advisory_xact_lock – no row is locked, so it cannot take part
+      in the player → pool → ticket lock order) while it checks the ride's last effect and inserts: two racing effects serialise, the second sees the first. */
+  async insert(event: RideEvent, minGapMs?: number): Promise<RideEvent | null> {
+    const data = RideEventMapper.toCreateData(event);
     try {
-      return RideEventMapper.toDomain(await this.prisma.rideEvent.create({ data: RideEventMapper.toCreateData(event) }));
+      if (minGapMs === undefined) return RideEventMapper.toDomain(await this.prisma.rideEvent.create({ data }));
+      return await this.prisma.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`live-fx:${event.rideId}`}))`;
+        const last = await tx.rideEvent.findFirst({ where: { rideId: event.rideId, slotKey: event.slotKey }, orderBy: { createdAt: 'desc' }, select: { createdAt: true } });
+        if (last && data.createdAt.getTime() - last.createdAt.getTime() < minGapMs) return null;
+        return RideEventMapper.toDomain(await tx.rideEvent.create({ data }));
+      }, { timeout: 10_000 });
     } catch (error) {
       if (isUniqueViolation(error)) return null;
       throw error;
     }
+  }
+
+  async lastEffectAt(rideId: string): Promise<Date | null> {
+    const last = await this.prisma.rideEvent.findFirst({ where: { rideId, slotKey: 'fx' }, orderBy: { createdAt: 'desc' }, select: { createdAt: true } });
+    return last?.createdAt ?? null;
+  }
+
+  async listAppliedSince(rideId: string, since: Date, limit: number): Promise<RideEvent[]> {
+    const rows = await this.prisma.rideEvent.findMany({ where: { rideId, appliedAt: { gt: since } }, orderBy: { appliedAt: 'asc' }, take: limit });
+    return rows.map((row) => RideEventMapper.toDomain(row));
   }
 
   async findById(id: number, tx?: TransactionHandle): Promise<RideEvent | null> {

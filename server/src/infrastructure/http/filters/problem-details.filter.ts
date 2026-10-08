@@ -1,5 +1,6 @@
 import { Catch, Logger, type ArgumentsHost, type ExceptionFilter } from '@nestjs/common';
 import type { Request, Response } from 'express';
+import { TooManyRequestsError } from '../../../domain/shared/errors.js';
 import { getRequestId } from '../types/http-request.js';
 import { toProblem } from './problem-mapping.js';
 
@@ -23,6 +24,7 @@ export class ProblemDetailsFilter implements ExceptionFilter {
       return;
     }
     response.setHeader('Content-Type', 'application/problem+json; charset=utf-8');
+    if (exception instanceof TooManyRequestsError && exception.retryAfterSeconds !== undefined) response.setHeader('Retry-After', String(Math.max(1, Math.ceil(exception.retryAfterSeconds))));
     response.status(problem.status).send(JSON.stringify(problem));
   }
 }

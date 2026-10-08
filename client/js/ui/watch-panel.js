@@ -2,11 +2,11 @@ import { fmt } from '../util.js';
 import { st } from '../state.js';
 import { audio } from '../sim/audio.js';
 import { getTheme } from '../themes/index.js';
-import { SITE_BASE, API_BASE } from '../hosts.js';
-import { watch, seek, goLive, LIVE_LAG } from '../watch.js';
+import { SITE_BASE } from '../hosts.js';
+import { watch, seek, goLive, addEvent, LIVE_LAG } from '../watch.js';
 import { EFFECT_INFO, short, solText } from '../live-effects.js';
 import { el } from '../../site/dom.js';
-import { signIn } from '../../site/wallet.js';
+import { api, signIn } from '../../site/wallet.js';
 
 /* The watch page's panel (play.html?watch=<id>): who / where / how far, the timeline (live edge or replay with speeds), the ride's feed, and – signed in –
    the chat box and the MOCK donation buttons. Server text only through el() / textContent. Spectator actions go to /api/watch/:id/* (server/src/presentation/live). */
@@ -16,13 +16,6 @@ const P = { me: null, root: null, busy: false };
 const $ = id => document.getElementById(id);
 const hms = t => (t >= 3600 ? `${Math.floor(t / 3600)}:${fmt(t % 3600)}` : fmt(t));
 const km = m => (m / 1000).toFixed(1);
-
-async function api(path, body) {
-  const r = await fetch(`${API_BASE}/api/${path}`, { credentials: 'include', method: body ? 'POST' : 'GET', headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw Object.assign(new Error(j.detail || j.title || `server error ${r.status}`), { status: r.status });
-  return j;
-}
 
 export function mountWatchPanel() {
   document.getElementById('overlay')?.classList.add('hide');
@@ -46,7 +39,7 @@ export function mountWatchPanel() {
     el('div', { id: 'w-me' }),
     el('div', { class: 'w-foot' }, el('a', { href: `${SITE_BASE}/lobby.html#live` }, '← all trucks on the road'), el('span', { class: 'dim' }, 'replays the verified-play recording')));
   document.body.append(P.root);
-  for (const e of watch.events) feedLine(e);
+  for (const e of watch.events.values()) feedLine(e);
   watch.onUpdate = paint; watch.onEvent = (e, why) => (why === 'new' ? feedLine(e) : markApplied(e));
   setInterval(paintClock, 250);
   refreshMe(); paint();
@@ -94,12 +87,13 @@ function feedLine(e) {
   const body = e.kind === 'message' ? [e.text] : [`${fx?.icon ?? '💰'} ${fx?.says ?? 'donated'} · ${solText(e.lamports)} `, el('small', {}, '(mock)'), e.text ? ` – “${e.text}”` : ''];
   const row = el('div', { class: `w-line${e.kind === 'donation' ? ' gift' : ''}${mine ? ' me' : ''}`, 'data-id': e.id },
     el('b', { title: e.wallet }, `${short(e.wallet)}${e.wallet === watch.ride?.wallet ? ' (driver)' : ''}: `), ...body,
-    e.kind === 'donation' && e.effect !== 'tip' ? el('span', { class: 'w-ap dim' }, e.applied ? ' ✓ on the road' : ' · waiting for the driver') : '');
+    e.kind === 'donation' && e.effect !== 'tip' ? el('span', { class: 'w-ap dim' }, appliedText(e)) : '');
   const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
   box.append(row); while (box.children.length > 200) box.firstChild.remove();
   if (atBottom) box.scrollTop = box.scrollHeight;
 }
-function markApplied(e) { const ap = document.querySelector(`.w-line[data-id="${e.id}"] .w-ap`); if (ap) ap.textContent = ' ✓ on the road'; }
+const appliedText = e => (!e.applied ? ' · waiting for the driver' : e.applied.placed === false ? ' ✗ no room on the road – it fizzled' : ' ✓ on the road');
+function markApplied(e) { const ap = document.querySelector(`.w-line[data-id="${e.id}"] .w-ap`); if (ap) ap.textContent = appliedText(e); }
 
 /* ───── signed-in actions ───── */
 function paintMe() {
@@ -142,4 +136,4 @@ async function donate(effect) {
     addOwn(e);
   } catch (e) { say(e.message, 'bad'); if (e.status === 401) refreshMe(); }
 }
-function addOwn(e) { if (!watch.seen.has(e.id)) { watch.seen.add(e.id); watch.events.push(e); feedLine(e); } }   // shown at once; the next poll knows the id
+const addOwn = e => addEvent(e);   // shown at once (onEvent paints it); the next poll knows the id

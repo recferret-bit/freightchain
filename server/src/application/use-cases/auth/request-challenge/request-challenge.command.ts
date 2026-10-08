@@ -1,5 +1,9 @@
+/** `origin` = the requesting page's Origin header: the game host (ride.<apex>) gets a message naming it, anything else the app's own domain. */
 export class RequestChallengeCommand {
-  constructor(public readonly wallet: string) {}
+  constructor(
+    public readonly wallet: string,
+    public readonly origin: string | null = null,
+  ) {}
 }
 
 export interface ChallengeDto {

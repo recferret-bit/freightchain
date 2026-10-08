@@ -36,6 +36,29 @@ describe('RideEventPrismaRepository (PostgreSQL)', () => {
     expect(await prisma.rideEvent.count()).toBe(3);
   });
 
+  it('game effects keep a SLIDING gap (minGapMs) under the advisory lock – also across a bucket edge – and N racing effects store ONE', async () => {
+    const ride = await started();
+    const fx = (wallet: string, s: number) => RideEvent.donation({ rideId: ride.id, wallet, effect: 'night', now: at(s) });
+    expect(await repo.insert(fx('a', 19.9), 20_000)).not.toBeNull();
+    expect(await repo.insert(fx('b', 20.1), 20_000)).toBeNull();   // the next 20 s bucket, but 0.2 s later
+    expect(await repo.lastEffectAt(ride.id)).toEqual(at(19.9));
+    expect(await repo.insert(fx('b', 39.9), 20_000)).not.toBeNull();
+    const race = await Promise.all(Array.from({ length: 8 }, (_, i) => repo.insert(fx(`w${i}`, 70 + i * 0.001), 20_000)));
+    expect(race.filter(Boolean)).toHaveLength(1);
+    expect(await prisma.rideEvent.count({ where: { rideId: ride.id } })).toBe(3);
+  });
+
+  it('listAppliedSince: only events stamped after the moment, oldest stamp first', async () => {
+    const ride = await started();
+    const a = (await repo.insert(RideEvent.donation({ rideId: ride.id, wallet: 'a', effect: 'night', now: T0 }), 20_000))!;
+    const b = (await repo.insert(RideEvent.donation({ rideId: ride.id, wallet: 'b', effect: 'trench', now: at(30) }), 20_000))!;
+    b.markApplied({ t: 1, s: 900, lat: 2.4 }, at(40)); await repo.saveApplied(b);
+    a.markApplied({ t: 2, s: 950, lat: null }, at(50)); await repo.saveApplied(a);
+    expect((await repo.listAppliedSince(ride.id, at(35), 10)).map((e) => e.id)).toEqual([b.id, a.id]);
+    expect((await repo.listAppliedSince(ride.id, at(45), 10)).map((e) => e.id)).toEqual([a.id]);
+    expect(await repo.listAppliedSince(ride.id, at(50), 10)).toEqual([]);
+  });
+
   it('saveApplied: the first stamp wins, a second is false and changes nothing', async () => {
     const ride = await started();
     const stored = (await repo.insert(RideEvent.donation({ rideId: ride.id, wallet: 'fan', effect: 'potholes', now: T0 })))!;

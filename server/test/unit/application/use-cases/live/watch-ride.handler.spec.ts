@@ -11,7 +11,7 @@ describe('WatchRideHandler', () => {
   const setup = () => {
     const ctx = unitContext();
     const handler = new WatchRideHandler(ctx.rides, ctx.batches, ctx.rideEvents, ctx.viewers, ctx.rules, ctx.clock);
-    return { ctx, watch: (id: string, from = 0, after = 0, viewer = '') => handler.execute(new WatchRideQuery(id, from, after, viewer)) };
+    return { ctx, watch: (id: string, from = 0, after = 0, viewer = '', since = 0, source = '10.0.0.1') => handler.execute(new WatchRideQuery(id, from, after, viewer, since, source)) };
   };
 
   it('a running ride: its seed + route for the road, the recording page from `from` (samples only, no inputs), the feed and the viewers', async () => {
@@ -45,6 +45,28 @@ describe('WatchRideHandler', () => {
     expect(view.recording.lastSeq).toBe(39);
     expect(view).toMatchObject({ viewers: 0, ride: { live: false, status: 'abandoned', endedAt: ctx.clock.ms } });
     expect((await watch(ride.id, 30)).batches.map((b) => b.seq)).toEqual([30, 31, 32, 33, 34, 35, 36, 37, 38, 39]);
+  });
+
+  it('an effect stamped after the spectator\'s cursor moved past it comes back through `since` (once, in id order)', async () => {
+    const { ctx, watch } = setup();
+    const ride = await ctx.freeRide('driver', true);
+    const hole = (await ctx.rideEvents.insert(RideEvent.donation({ rideId: ride.id, wallet: 'fan', effect: 'sinkhole', now: ctx.now() })))!;
+    ctx.clock.advance(5);
+    const first = await watch(ride.id, 0, 0);
+    expect(first.events[0]?.applied).toBeNull();
+    ctx.clock.advance(5);
+    hole.markApplied({ t: 9, s: 1400, lat: 2.4 }, ctx.now()); await ctx.rideEvents.saveApplied(hole);
+    const later = await watch(ride.id, 0, hole.id!, '', first.now - 5000); // the cursor is past the event already
+    expect(later.events.map((e) => [e.id, e.applied?.s])).toEqual([[hole.id, 1400]]);
+    expect((await watch(ride.id, 0, 0, '', first.now - 5000)).events).toHaveLength(1); // new + stamped: no duplicate
+    expect((await watch(ride.id, 0, hole.id!, '', ctx.clock.ms)).events).toEqual([]);
+  });
+
+  it('a script inventing viewer ids from one address counts as at most 3 viewers', async () => {
+    const { ctx, watch } = setup();
+    const ride = await ctx.freeRide('driver', true);
+    for (let i = 0; i < 10; i++) await watch(ride.id, 0, 0, `fake-${i}`, 0, '10.9.9.9');
+    expect((await watch(ride.id, 0, 0, 'real', 0, '10.0.0.2')).viewers).toBe(4);
   });
 
   it('nothing to watch before the start (no seed handed out early), and an unknown id is 404', async () => {

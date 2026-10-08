@@ -1,9 +1,12 @@
-/** A spectator's poll of a ride: recording batches from seq `from`, feed events after id `after`; `viewer` = the watch page's random id for the viewer count ('' = not counted). */
+/** A spectator's poll of a ride: recording batches from seq `from`, feed events after id `after` + those stamped after `since` (epoch ms, 0 = none);
+    `viewer` = the watch page's random id for the viewer count ('' = not counted), `source` = the client IP it is counted under. */
 export class WatchRideQuery {
   constructor(
     public readonly rideId: string,
     public readonly from: number,
     public readonly after: number,
     public readonly viewer: string,
+    public readonly since = 0,
+    public readonly source = '',
   ) {}
 }

@@ -30,8 +30,9 @@ export const MESSAGE_MAX_LENGTH = 140;
 /** a donation may carry a shorter note */
 export const NOTE_MAX_LENGTH = 80;
 
-/* Rate limits, as unique time windows per ride (no lock needed – the database refuses a second row in the same window, live.RideEvent's unique key):
-   one game effect per ride per EFFECT_WINDOW_MS (whoever pays first; keeps a ride drivable), one chat line / one tip per wallet per LINE_WINDOW_MS. */
+/* Rate limits. Game effects: at least EFFECT_WINDOW_MS between two on a ride (whoever pays first; keeps a ride drivable) – a SLIDING window, checked
+   under a per-ride advisory lock in the repository. Chat lines / tips: one per wallet per LINE_WINDOW_MS bucket of server time – the unique key
+   (rideId, slotKey, slot) of live.RideEvent refuses a second row in the bucket, no lock (spam control; two lines may land a moment apart across a bucket edge). */
 export const EFFECT_WINDOW_MS = 20_000;
 export const LINE_WINDOW_MS = 3_000;
 
@@ -40,6 +41,8 @@ export const FEED_PAGE = 100;
 export const WATCH_BATCH_PAGE = 20;
 /** a spectator counts as watching for this long after its last poll */
 export const VIEWER_WINDOW_MS = 20_000;
+/** viewer ids per source (client IP) that count – a script inventing ids cannot inflate "N watching" beyond this per address */
+export const VIEWERS_PER_SOURCE = 3;
 /** what an applied stamp may claim: on the road, within the recording's limits */
 export const APPLIED_MAX_S = 1e7;
 export const APPLIED_MAX_LAT = 40;

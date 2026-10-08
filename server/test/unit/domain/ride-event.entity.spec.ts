@@ -44,6 +44,17 @@ describe('RideEvent (live feed line)', () => {
     expect(() => RideEvent.message({ rideId: 'r', wallet: 'w', text: 'hi', now: T }).markApplied({ t: 1, s: 1, lat: null }, T)).toThrow(BadRequestError);
   });
 
+  it('an obstacle the driver\'s game found no room for is stamped as missed: no place across the road, not on the road', () => {
+    const hole = RideEvent.donation({ rideId: 'r', wallet: 'w', effect: 'trench', now: T });
+    expect(hole.missed).toBe(false);
+    expect(hole.markApplied({ t: 5, s: 800, lat: 2.4, missed: true }, T)).toBe(true);
+    expect(hole.applied).toEqual({ at: T, t: 5, s: 800, lat: null });
+    expect(hole.missed).toBe(true);
+    const night = RideEvent.donation({ rideId: 'r', wallet: 'w', effect: 'night', now: T });
+    night.markApplied({ t: 5, s: 800, lat: null, missed: true }, T);
+    expect(night.missed).toBe(false); // only obstacles can be missed
+  });
+
   it('restore / snapshot are copies (no shared stamp object)', () => {
     const e = RideEvent.donation({ rideId: 'r', wallet: 'w', effect: 'day', now: T });
     const snap = e.snapshot();

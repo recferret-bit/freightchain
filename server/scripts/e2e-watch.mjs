@@ -76,13 +76,21 @@ const holeAt = s => `(() => { const h = __game.holes.holeAt(Math.floor(${s} / __
 if (hole) {
   check('driver: its own road has the sinkhole there', (await D.ev(holeAt(hole.applied.s))) === hole.applied.lat);
   check('spectator: the replay has the same sinkhole in the same place', await until(async () => (await S.ev(holeAt(hole.applied.s))) === hole.applied.lat, 15_000));
+  // the stamp came seconds after the spectator's feed cursor moved past the donation: the watch poll's `since` must still bring it to the page itself
+  check('spectator: its OWN feed shows the stamp (✓ on the road), not just the API', await until(() => S.ev(`__game.watch.events.get(${hole.id})?.applied?.placed === true && document.querySelector('.w-line[data-id="${hole.id}"] .w-ap')?.textContent.includes('on the road')`), 15_000));
 }
+check('spectator: the NIGHT line is stamped on the page too', await until(() => S.ev('[...__game.watch.events.values()].some(e => e.effect === "night" && e.applied)'), 10_000));
 await D.shot('driver-cb');
 await S.shot('watch-desktop');
 // the night as the spectator sees it: once the batch holding the moment it was applied is uploaded, seek there (a live view gets there ~25 s later by itself)
 const applied = (await (await fetch(`${BASE}/api/watch/${ride.id}`)).json()).events.find(e => e.effect === 'night')?.applied;
 const reached = applied && await until(() => S.ev(`__game.watch.rec.t1 > ${applied.t + 2}`), 60_000);
+// a seek into a part that is not loaded must HOLD its target until it is fetched (it used to snap back to the end of what was loaded)
+await S.ev(`(() => { const w = __game.watch; for (const [seq] of w.batches) if (seq >= 1) w.batches.delete(seq); w.rows = w.batches.get(0)?.samples.slice() ?? []; w.rowsSeq = 0; })()`);
 if (reached) { await S.ev(`(async () => { const m = await import('/js/watch.js'); m.seek(${applied.t + 1.5}); })()`); }
+await sleep(100);
+check('spectator: a seek into an unloaded part holds its target (no snap back) and plays from there once fetched', !!reached
+  && Math.abs((await S.ev('__game.watch.wt')) - (applied.t + 1.5)) < 1 && await until(() => S.ev(`!__game.watch.seeking && Math.abs(__game.st.t - ${applied.t + 1.5}) < 3`), 15_000), `wt ${await S.ev('__game.watch.wt.toFixed(1)')}, st.t ${await S.ev('__game.st.t.toFixed(1)')}`);
 check('spectator: the replay turns to night where the driver\'s did', !!reached && await until(() => S.ev('__game.dn.night === true'), 10_000), `t ${applied?.t?.toFixed?.(1)}`);
 await S.shot('watch-night');
 await S.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 780, deviceScaleFactor: 2, mobile: true }); await sleep(1200);

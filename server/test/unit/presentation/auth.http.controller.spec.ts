@@ -10,10 +10,10 @@ import { busMock } from '../../support/bus.js';
 describe('AuthHttpController', () => {
   const wallet = Keypair.generate().publicKey.toBase58();
 
-  it('POST auth/nonce → RequestChallengeCommand(wallet)', async () => {
+  it('POST auth/nonce → RequestChallengeCommand(wallet, the Origin header)', async () => {
     const commands = busMock({ message: 'sign me' }), queries = busMock();
-    expect(await new AuthHttpController(commands.bus, queries.bus).nonce({ wallet })).toEqual({ message: 'sign me' });
-    expect(commands.last()).toEqual(new RequestChallengeCommand(wallet));
+    expect(await new AuthHttpController(commands.bus, queries.bus).nonce({ wallet }, 'https://ride.freight.test')).toEqual({ message: 'sign me' });
+    expect(commands.last()).toEqual(new RequestChallengeCommand(wallet, 'https://ride.freight.test'));
   });
 
   it('POST auth/verify → VerifySignInCommand(wallet, signature, where it came from)', async () => {

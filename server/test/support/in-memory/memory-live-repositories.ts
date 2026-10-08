@@ -7,12 +7,28 @@ import type { MemoryDb } from './memory-db.js';
 export class MemoryRideEventRepository extends RideEventRepositoryPort {
   constructor(private readonly db: MemoryDb) { super(); }
 
-  async insert(event: RideEvent): Promise<RideEvent | null> {
+  async insert(event: RideEvent, minGapMs?: number): Promise<RideEvent | null> {
     const p = event.snapshot();
     if (this.db.rideEvents.some((e) => e.rideId === p.rideId && e.slotKey === p.slotKey && e.slot === p.slot)) return null;
+    const last = await this.lastOf(p.rideId, p.slotKey);
+    if (minGapMs !== undefined && last && p.createdAt.getTime() - last.getTime() < minGapMs) return null;
     const stored = { ...p, id: this.db.nextSeq() };
     this.db.rideEvents.push(stored);
     return RideEvent.restore(stored);
+  }
+
+  private async lastOf(rideId: string, slotKey: string): Promise<Date | null> {
+    const times = this.db.rideEvents.filter((e) => e.rideId === rideId && e.slotKey === slotKey).map((e) => e.createdAt.getTime());
+    return times.length ? new Date(Math.max(...times)) : null;
+  }
+
+  lastEffectAt(rideId: string): Promise<Date | null> {
+    return this.lastOf(rideId, 'fx');
+  }
+
+  async listAppliedSince(rideId: string, since: Date, limit: number): Promise<RideEvent[]> {
+    return this.db.rideEvents.filter((e) => e.rideId === rideId && e.applied && e.applied.at.getTime() > since.getTime())
+      .sort((a, b) => a.applied!.at.getTime() - b.applied!.at.getTime()).slice(0, limit).map((e) => RideEvent.restore(e));
   }
 
   async findById(id: number): Promise<RideEvent | null> {

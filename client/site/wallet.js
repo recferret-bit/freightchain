@@ -10,8 +10,8 @@ export function b58(bytes) {
 
 import { API_BASE } from '../js/hosts.js';
 
-export async function api(path, body) {
-  const r = await fetch(`${API_BASE}/api/${path}`, { credentials: 'include', method: body ? 'POST' : 'GET', headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
+export async function api(path, body, { timeoutMs } = {}) {   // timeoutMs: give up (the game's polls – a hung request must not stall the next one)
+  const r = await fetch(`${API_BASE}/api/${path}`, { credentials: 'include', method: body ? 'POST' : 'GET', headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined, signal: timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw Object.assign(new Error(j.detail || j.title || `server error ${r.status}`), { status: r.status, code: j.code });   // RFC 9457 problem+json: { title, detail, code, … }
   return j;

@@ -29,8 +29,8 @@ const viewerId = () => { let v = store.get('freightchain.viewer'); if (!v || !/^
 
 export const watch = {
   id: null, ride: null, error: '', now: 0, skew: 0,
-  rec: { lastSeq: null, t1: 0 }, batches: new Map(), rows: [], events: [], seen: new Set(), cursor: 0, totals: { messages: 0, donations: 0, lamports: 0 }, viewers: 0,
-  wt: 0, playing: true, speed: 1, follow: true, buffering: false, started: false, jumped: true, lastHull: 100, timer: 0, polling: null,
+  rec: { lastSeq: null, t1: 0 }, batches: new Map(), rows: [], rowsSeq: -1, events: new Map(), cursor: 0, since: 0, totals: { messages: 0, donations: 0, lamports: 0 }, viewers: 0,
+  wt: 0, playing: true, speed: 1, follow: true, buffering: false, seeking: false, started: false, jumped: true, lastHull: 100, timer: 0, polling: null,
   onUpdate: null, onEvent: null,   // set by ui/watch-panel.js: repaint the panel / a new feed line
 };
 const BATCH = () => CFG.TELEMETRY_BATCH_SECONDS;
@@ -45,7 +45,7 @@ export async function initWatch() {
 }
 
 async function get(from) {
-  const q = new URLSearchParams({ from: String(from), after: String(watch.cursor), viewer: viewerId() });
+  const q = new URLSearchParams({ from: String(from), after: String(watch.cursor), since: String(watch.since), viewer: viewerId() });   // since: stamps that came after the cursor moved on
   const r = await fetch(`${API_BASE}/api/watch/${encodeURIComponent(watch.id)}?${q}`, { credentials: 'include', signal: AbortSignal.timeout(8000) });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(r.status === 404 ? 'this ride does not exist or has not started yet' : j.detail || j.title || `server error ${r.status}`);
@@ -59,34 +59,45 @@ async function poll(from) {
   watch.ride = j.ride; watch.now = j.now; watch.skew = j.now - Date.now(); watch.rec = j.recording; watch.totals = j.totals; watch.viewers = j.viewers;
   if (first) { CFG.RIDE_MIN_SECONDS = j.ride.minSeconds; CFG.COMPLETE_DIST = j.ride.completeDist; watch.follow = j.ride.live; }
   if (watch.started && j.ride.route && j.ride.route !== env.theme?.id && THEMES.some(t => t.id === j.ride.route)) { selectTheme(j.ride.route, false); replaceObstacles(); }   // the route arrives with the driver's first heartbeat (it re-rolls the road: obstacles again)
-  if (j.batches.length) { for (const b of j.batches) watch.batches.set(b.seq, b); rebuildRows(); }
+  if (j.batches.length) addBatches(j.batches);
   for (const e of j.events) addEvent(e);
   watch.cursor = advanceCursor(watch.cursor, j.events, j.now);
+  watch.since = j.now - 5000;   // the driver stamps an effect seconds (or minutes) after it was posted: ask for stamps from a little before this poll
   watch.onUpdate?.();
   return j;
 }
 const KEEP_BATCHES = 160, KEEP_AROUND = 600;   // ≈ 40 min loaded at most; beyond that, batches more than 10 min from the playhead are dropped (a seek fetches them again)
-function rebuildRows() {
-  if (watch.batches.size > KEEP_BATCHES) for (const [seq, b] of watch.batches) if (b.t1 < watch.wt - KEEP_AROUND || b.t0 > watch.wt + PREFETCH + KEEP_AROUND) watch.batches.delete(seq);
-  watch.rows = [...watch.batches.values()].sort((a, b) => a.seq - b.seq).flatMap(b => b.samples).filter(r => Number.isFinite(r[0]));   // seq order = time order
+const usable = r => Number.isFinite(r[0]);
+/* the common case – a live ride's next batches, a replay playing on – only appends; a seek, a gap filled or pruning rebuilds the whole array (seq order = time order) */
+function addBatches(list) {
+  const fresh = list.filter(b => !watch.batches.has(b.seq)).sort((a, b) => a.seq - b.seq);
+  if (!fresh.length) return;
+  for (const b of fresh) watch.batches.set(b.seq, b);
+  let pruned = false;
+  if (watch.batches.size > KEEP_BATCHES) for (const [seq, b] of watch.batches) if (b.t1 < watch.wt - KEEP_AROUND || b.t0 > watch.wt + PREFETCH + KEEP_AROUND) { watch.batches.delete(seq); pruned = true; }
+  if (!pruned && fresh[0].seq === watch.rowsSeq + 1 && fresh.every((b, i) => b.seq === fresh[0].seq + i)) for (const b of fresh) watch.rows.push(...b.samples.filter(usable));
+  else watch.rows = [...watch.batches.values()].sort((a, b) => a.seq - b.seq).flatMap(b => b.samples).filter(usable);
+  watch.rowsSeq = Math.max(...watch.batches.keys());
 }
-function addEvent(e) {
-  const known = watch.events.find(x => x.id === e.id);
+/** a feed event, new or seen again with its stamp (also the panel's own posts – it shows them at once) */
+export function addEvent(e) {
+  const known = watch.events.get(e.id);
   if (known) { if (!known.applied && e.applied) { known.applied = e.applied; placeObstacle(known); watch.onEvent?.(known, 'applied'); } return; }
-  watch.events.push(e); watch.seen.add(e.id); placeObstacle(e); watch.onEvent?.(e, 'new');
+  watch.events.set(e.id, e); placeObstacle(e); watch.onEvent?.(e, 'new');
 }
-/* an obstacle a spectator paid for sits where the driver's game put it (its stamp) – placed as soon as it is known, so it is on the road when the replay gets there */
+/* an obstacle a spectator paid for sits where the driver's game put it (its stamp) – placed as soon as it is known, so it is on the road when the replay
+   gets there; one the driver's game found no room for (applied.placed false) is not on the road */
 function placeObstacle(e) {
   const hole = EFFECT_INFO[e.effect]?.hole;
-  if (!hole || !e.applied || e.placed) return;
-  e.placed = true; roadObjects.rebuild(placeHole(hole, e.applied.s, e.applied.lat ?? 2.4, `live${e.id}`));
+  if (!hole || !e.applied || e.applied.placed === false || e.onRoad) return;
+  e.onRoad = true; roadObjects.rebuild(placeHole(hole, e.applied.s, e.applied.lat ?? 2.4, `live${e.id}`));
 }
 /* after resetRide (which re-rolls the road and clears placed holes) */
-const replaceObstacles = () => { for (const e of watch.events) { e.placed = false; placeObstacle(e); } };
+const replaceObstacles = () => { for (const e of watch.events.values()) { e.onRoad = false; placeObstacle(e); } };
 export function startWatch() {
   replaceObstacles();
   watch.started = true; watch.jumped = true;
-  watch.wt = watch.follow ? liveTarget() : (watch.rows[0]?.[0] ?? 0);
+  watch.wt = watch.follow ? liveTarget() : (watch.rows[0]?.[0] ?? 0); watch.seeking = watch.follow;   // joining a live ride: hold until the live edge is loaded
   schedule(0);
 }
 
@@ -116,8 +127,9 @@ async function tick() {
 /* ───────── playback ───────── */
 export const recordedEnd = () => watch.rows.at(-1)?.[0] ?? 0;
 export const liveTarget = () => Math.max(watch.rows[0]?.[0] ?? 0, watch.rec.t1 - LIVE_LAG);
-export function seek(t) { watch.follow = false; watch.wt = Math.max(0, Math.min(t, watch.rec.t1)); watch.jumped = true; schedule(0); }
-export function goLive() { watch.follow = true; watch.speed = 1; watch.playing = true; watch.wt = liveTarget(); watch.jumped = true; schedule(0); }
+/* a seek to a part that is not loaded yet HOLDS the target (seeking) until it is fetched, instead of snapping back to what is loaded */
+export function seek(t) { watch.follow = false; watch.wt = Math.max(0, Math.min(t, watch.rec.t1)); watch.jumped = true; watch.seeking = true; schedule(0); }
+export function goLive() { watch.follow = true; watch.speed = 1; watch.playing = true; watch.wt = liveTarget(); watch.jumped = true; watch.seeking = true; schedule(0); }
 
 function find(t) {   // index of the last sample at or before t (binary search)
   const R = watch.rows; let lo = 0, hi = R.length - 1;
@@ -132,12 +144,19 @@ const hourLerp = (a, b, k) => { let d = b - a; if (d > 12) d -= 24; else if (d <
 export function stepWatch(dt) {
   if (!watch.started || !watch.rows.length) return;
   const live = watch.ride?.live && watch.follow;
+  const R = watch.rows;
+  if (watch.seeking) {   // hold the target until a sample at (or right before) it is loaded – the frame keeps the last picture meanwhile
+    if (live) watch.wt = liveTarget();
+    const i = find(watch.wt), a = R[i], b = R[i + 1];
+    if (!a || (!b ? watch.wt - a[0] > GAP : b[0] - a[0] > GAP && watch.wt - a[0] > GAP)) { watch.buffering = true; return; }
+    watch.seeking = false;
+  }
   if (watch.playing) {
     let rate = watch.speed;
     if (live) { const lag = liveTarget() - watch.wt; if (Math.abs(lag) > 60) { watch.wt = liveTarget(); watch.jumped = true; } else rate = 1 + Math.max(-.3, Math.min(.5, lag / 20)); }   // ease towards LIVE_LAG behind the edge
     watch.wt += dt * rate;
   }
-  const R = watch.rows; let i = find(watch.wt);
+  let i = find(watch.wt);
   if (i < 0) { watch.wt = R[0][0]; i = 0; }
   const a = R[i], b = R[i + 1];
   watch.buffering = !b || b[0] - a[0] > GAP;   // at the end of what is loaded (live edge, a seek, a missing batch): hold the last frame

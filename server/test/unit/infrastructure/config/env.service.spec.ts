@@ -71,6 +71,8 @@ describe('EnvService', () => {
     expect(withEnv(base).adminHost).toBeNull();
     expect(withEnv({ ...base, COOKIE_DOMAIN: 'FreightChain.fun' }).adminHost).toBe('admin.freightchain.fun');
     expect(withEnv({ ...base, COOKIE_DOMAIN: '.freightchain.fun' }).adminHost).toBe('admin.freightchain.fun');
+    expect(withEnv(base).gameHost).toBeNull();
+    expect(withEnv({ ...base, COOKIE_DOMAIN: '.FreightChain.fun' }).gameHost).toBe('ride.freightchain.fun');
   });
 
   it('treasury: the env value, else – in development only – data/treasury.json, else none', () => {

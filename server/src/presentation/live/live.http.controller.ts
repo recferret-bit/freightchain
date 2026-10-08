@@ -5,7 +5,9 @@ import { AckEffectCommand } from '../../application/use-cases/live/ack-effect/ac
 import { GetInboxQuery } from '../../application/use-cases/live/get-inbox/get-inbox.query.js';
 import { PostRideEventCommand } from '../../application/use-cases/live/post-ride-event/post-ride-event.command.js';
 import { WatchRideQuery } from '../../application/use-cases/live/watch-ride/watch-ride.query.js';
+import { CurrentClient } from '../../infrastructure/http/decorators/client-info.js';
 import { CurrentPlayer } from '../../infrastructure/http/decorators/current-player.js';
+import type { ClientInfo } from '../../domain/auth/sign-in.js';
 import { ZodBody, ZodParams, ZodQuery } from '../../infrastructure/http/decorators/zod.js';
 import { PlayerAuthGuard } from '../../infrastructure/http/guards/player-auth.guard.js';
 import type { PlayerIdentity } from '../../infrastructure/http/types/http-request.js';
@@ -27,8 +29,8 @@ export class LiveHttpController {
   ) {}
 
   @Get('watch/:id')
-  watch(@ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodQuery(watchQuerySchema) query: WatchQuery): Promise<WatchDto> {
-    return this.queryBus.execute<WatchRideQuery, WatchDto>(new WatchRideQuery(params.id, query.from, query.after, query.viewer));
+  watch(@ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodQuery(watchQuerySchema) query: WatchQuery, @CurrentClient() client: ClientInfo): Promise<WatchDto> {
+    return this.queryBus.execute<WatchRideQuery, WatchDto>(new WatchRideQuery(params.id, query.from, query.after, query.viewer, query.since, client.ip ?? ''));
   }
 
   @Post('watch/:id/messages') @HttpCode(200) @UseGuards(PlayerAuthGuard)

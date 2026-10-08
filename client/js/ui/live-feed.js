@@ -1,6 +1,5 @@
 import { CFG } from '../config.js';
 import { st } from '../state.js';
-import { API_BASE } from '../hosts.js';
 import { online } from '../online.js';
 import { toast } from './toast.js';
 import { setNight } from '../world/daynight.js';
@@ -8,6 +7,7 @@ import { placeHole, obstacleSpot } from '../world/holes.js';
 import { roadObjects, AHEAD, CH } from '../world/chunks.js';
 import { net, laneLat } from '../net/network.js';
 import { EFFECT_INFO, short, solText, advanceCursor } from '../live-effects.js';
+import { api as siteApi } from '../../site/wallet.js';
 
 /* Live streams, the DRIVER's side (online rides only): poll the ride's inbox (what spectators sent – server/src/application/use-cases/live), show the chat on
    the CB panel, apply the paid effects (night / day / an obstacle ahead) and stamp each one back – where an obstacle went is what every replay puts there.
@@ -15,12 +15,7 @@ import { EFFECT_INFO, short, solText, advanceCursor } from '../live-effects.js';
 const POLL_MS = 4000, CB_LINES = 4, CB_TTL = 25_000;
 const feed = { on: false, cursor: 0, seen: new Set(), pending: [], timer: 0, viewers: 0, totals: null, box: null, lines: null, head: null };
 
-const api = async (path, body) => {
-  const r = await fetch(`${API_BASE}/api/${path}`, { credentials: 'include', signal: AbortSignal.timeout(8000), method: body ? 'POST' : 'GET', headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw Object.assign(new Error(j.detail || j.title || `server error ${r.status}`), { status: r.status });
-  return j;
-};
+const api = (path, body) => siteApi(path, body, { timeoutMs: 8000 });
 
 export function startLiveFeed() {
   if (!online.ride || feed.on) return;
@@ -53,8 +48,7 @@ function applyPending() {
   const drop = p => { const i = feed.pending.indexOf(p); if (i >= 0) feed.pending.splice(i, 1); };
   for (const p of [...feed.pending]) {
     if (p.sending) continue;
-    p.stamp ??= apply(p.e);   // computed ONCE: a re-sent stamp is the same stamp (the server keeps the first anyway)
-    if (!p.stamp) { drop(p); continue; }
+    p.stamp ??= apply(p.e) ?? missed(p.e);   // computed ONCE: a re-sent stamp is the same stamp (the server keeps the first anyway)
     p.sending = true;
     api(`rides/${online.ride.id}/effects/${p.e.id}/applied`, p.stamp)
       .then(() => drop(p), err => { if (err.status && err.status < 500 && err.status !== 429) drop(p); })   // 4xx: nothing to retry; network / 5xx: next tick
@@ -62,6 +56,11 @@ function applyPending() {
   }
 }
 
+/* nothing could be done (no room for an obstacle within 40 chunks, an effect this build does not know): stamp it as missed, so spectators stop waiting */
+function missed(e) {
+  toast(`${EFFECT_INFO[e.effect]?.icon ?? '·'} ${short(e.wallet)}'s ${EFFECT_INFO[e.effect]?.label ?? e.effect} found no room on the road – it fizzled`, 3000);
+  return { t: st.t, s: st.s, lat: null, missed: true };
+}
 /* → the stamp { t, s, lat } or null (nothing could be done) */
 function apply(e) {
   const fx = EFFECT_INFO[e.effect], who = short(e.wallet);

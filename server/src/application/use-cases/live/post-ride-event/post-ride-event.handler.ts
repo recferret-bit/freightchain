@@ -12,9 +12,10 @@ import { ClockPort } from '../../../ports/shared/clock.port.js';
 import { PostRideEventCommand } from './post-ride-event.command.js';
 
 /**
- * A signed-in spectator writes to a ride that is on the road. ONE insert, no lock: the rate limits are unique time windows in the table (live-rules.ts),
- * so two racing posts can never both take a window – the loser is a 429. Nothing is charged (mock donation) and nothing of the ride changes, so the ride
- * is read without its owner's player lock; a post that races the ride's end lands on an ended ride, where the driver's game simply never applies it.
+ * A signed-in spectator writes to a ride that is on the road. Chat lines / tips: ONE insert, rate-limited by a unique time bucket in the table. Game effects:
+ * a sliding EFFECT_WINDOW_MS gap per ride, checked + inserted under a per-ride advisory lock in the repository – two racing posts never both pass, the loser
+ * is a 429 with Retry-After. Nothing is charged (mock donation) and nothing of the ride changes, so the ride is read without its owner's player lock; a post
+ * that races the ride's end lands on an ended ride, where the driver's game simply never applies it.
  */
 @CommandHandler(PostRideEventCommand)
 export class PostRideEventHandler implements ICommandHandler<PostRideEventCommand, RideEventDto> {
@@ -36,12 +37,14 @@ export class PostRideEventHandler implements ICommandHandler<PostRideEventComman
     const event = input.kind === 'message'
       ? RideEvent.message({ rideId, wallet, text: input.text, now })
       : RideEvent.donation({ rideId, wallet, effect: input.effect, note: input.note, now });
-    const stored = await this.events.insert(event);
+    const stored = await this.events.insert(event, event.needsGame ? EFFECT_WINDOW_MS : undefined);
     if (!stored) {
-      const wait = Math.ceil(RideEvent.retryAfterMs(event.slotKey, now) / 1000);
-      throw new TooManyRequestsError(event.slotKey === 'fx'
+      const last = event.needsGame ? await this.events.lastEffectAt(rideId) : null;
+      const waitMs = last ? EFFECT_WINDOW_MS - (now.getTime() - last.getTime()) : RideEvent.retryAfterMs(event.slotKey, now);
+      const wait = Math.max(1, Math.ceil(waitMs / 1000));
+      throw new TooManyRequestsError(event.needsGame
         ? `one effect per ${EFFECT_WINDOW_MS / 1000} s on this ride – someone was quicker; the next in ${wait} s`
-        : `one line per ${LINE_WINDOW_MS / 1000} s – try again in ${wait} s`, 'live_rate_limited');
+        : `one line per ${LINE_WINDOW_MS / 1000} s – try again in ${wait} s`, 'live_rate_limited', wait);
     }
     if (stored.kind === 'donation') this.logger.log({ event: 'live-donation', msg: `mock donation ${stored.effect} on ride ${rideId}`, rideId, wallet, effect: stored.effect });
     return toRideEventDto(stored);

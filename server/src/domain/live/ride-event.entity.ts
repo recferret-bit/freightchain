@@ -5,7 +5,8 @@ import {
 
 export type RideEventKind = 'message' | 'donation';
 
-/** Where and when the driver's game applied an effect: game time (driven seconds), road position s, and across the road (obstacles). */
+/** Where and when the driver's game applied an effect: game time (driven seconds), road position s, and across the road (obstacles).
+    An obstacle stamped with lat null was MISSED: the driver's game found no room for it (junctions / lane changes ahead) – it is not on the road. */
 export interface EffectApplied {
   at: Date;
   t: number;
@@ -82,15 +83,20 @@ export class RideEvent {
   /** something the driver's game has to do */
   get needsGame(): boolean { return this.p.effect !== null && EFFECTS[this.p.effect].game; }
 
-  /** The driver's game applied it. First stamp wins (a re-sent ack changes nothing → false); only game effects take one; an obstacle needs its position. */
-  markApplied(report: { t: number; s: number; lat: number | null }, now: Date): boolean {
+  /** an obstacle the driver's game could not place (stamped as missed) */
+  get missed(): boolean { return this.p.applied !== null && this.p.effect !== null && EFFECTS[this.p.effect].obstacle && this.p.applied.lat === null; }
+
+  /** The driver's game applied it (or, `missed`, could not). First stamp wins (a re-sent ack changes nothing → false); only game effects take one;
+      a placed obstacle needs its position across the road. */
+  markApplied(report: { t: number; s: number; lat: number | null; missed?: boolean }, now: Date): boolean {
     if (!this.needsGame) throw new BadRequestError('this event has nothing to apply', 'not_an_effect');
     if (this.p.applied) return false;
     const { t, s } = report, lat = report.lat ?? null;
     if (!Number.isFinite(t) || t < 0 || !Number.isFinite(s) || s < 0 || s > APPLIED_MAX_S) throw new BadRequestError('applied at an impossible time or place', 'bad_applied');
     const obstacle = EFFECTS[this.p.effect as EffectId].obstacle;
-    if (obstacle && (lat === null || !Number.isFinite(lat) || Math.abs(lat) > APPLIED_MAX_LAT)) throw new BadRequestError('an obstacle needs its place across the road', 'bad_applied');
-    this.p.applied = { at: now, t, s, lat: obstacle ? lat : null };
+    const missed = obstacle && report.missed === true;
+    if (obstacle && !missed && (lat === null || !Number.isFinite(lat) || Math.abs(lat) > APPLIED_MAX_LAT)) throw new BadRequestError('an obstacle needs its place across the road', 'bad_applied');
+    this.p.applied = { at: now, t, s, lat: obstacle && !missed ? lat : null };
     return true;
   }
 

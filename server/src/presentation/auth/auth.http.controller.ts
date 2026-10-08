@@ -5,7 +5,7 @@ import { GetMeQuery } from '../../application/use-cases/auth/get-me/get-me.query
 import { LogoutCommand, type LogoutResultDto } from '../../application/use-cases/auth/logout/logout.command.js';
 import { RequestChallengeCommand, type ChallengeDto } from '../../application/use-cases/auth/request-challenge/request-challenge.command.js';
 import { VerifySignInCommand, type SignInResultDto } from '../../application/use-cases/auth/verify-signin/verify-signin.command.js';
-import { CurrentClient } from '../../infrastructure/http/decorators/client-info.js';
+import { CurrentClient, CurrentOrigin } from '../../infrastructure/http/decorators/client-info.js';
 import { CurrentPlayer } from '../../infrastructure/http/decorators/current-player.js';
 import type { ClientInfo } from '../../domain/auth/sign-in.js';
 import { ZodBody } from '../../infrastructure/http/decorators/zod.js';
@@ -23,8 +23,8 @@ export class AuthHttpController {
   ) {}
 
   @Post('auth/nonce') @HttpCode(200)
-  nonce(@ZodBody(challengeBodySchema) body: ChallengeBody): Promise<ChallengeDto> {
-    return this.commandBus.execute<RequestChallengeCommand, ChallengeDto>(new RequestChallengeCommand(body.wallet));
+  nonce(@ZodBody(challengeBodySchema) body: ChallengeBody, @CurrentOrigin() origin: string | null): Promise<ChallengeDto> {
+    return this.commandBus.execute<RequestChallengeCommand, ChallengeDto>(new RequestChallengeCommand(body.wallet, origin));
   }
 
   /** The wire body is the rider's profile (MeDto): SetSessionCookieInterceptor moves the session token into the cookie and unwraps `profile`. */

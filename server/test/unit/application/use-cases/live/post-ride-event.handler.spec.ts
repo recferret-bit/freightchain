@@ -30,12 +30,25 @@ describe('PostRideEventHandler', () => {
     const ride = await ctx.freeRide('driver', true);
     await post('a', ride.id, give('night'));
     ctx.clock.advance(5);
-    await expect(post('b', ride.id, give('sinkhole'))).rejects.toThrow(new TooManyRequestsError('one effect per 20 s on this ride – someone was quicker; the next in 15 s', 'live_rate_limited'));
+    await expect(post('b', ride.id, give('sinkhole'))).rejects.toThrow(new TooManyRequestsError('one effect per 20 s on this ride – someone was quicker; the next in 15 s', 'live_rate_limited', 15));
     expect(await post('b', ride.id, give('tip'))).toMatchObject({ effect: 'tip' }); // a tip is not a game effect
     await post('b', ride.id, say('hi'));
     await expect(post('b', ride.id, say('again'))).rejects.toThrow(/one line per 3 s – try again in 1 s/);
     expect(await post('c', ride.id, say('me too'))).toMatchObject({ wallet: 'c' }); // the line window is per wallet
     ctx.clock.advance(15);
+    expect(await post('b', ride.id, give('sinkhole'))).toMatchObject({ effect: 'sinkhole' });
+  });
+
+  it('the effect gap is SLIDING: two effects either side of a 20 s bucket edge are still 20 s apart; the 429 carries the real wait', async () => {
+    const { ctx, post } = setup();
+    const ride = await ctx.freeRide('driver', true);
+    ctx.clock.advance(19.9); // 100 ms before a bucket edge
+    await post('a', ride.id, give('night'));
+    ctx.clock.advance(0.2);  // the next bucket, 200 ms later
+    const refused = await post('b', ride.id, give('sinkhole')).catch((e: TooManyRequestsError) => e);
+    expect(refused).toBeInstanceOf(TooManyRequestsError);
+    expect((refused as TooManyRequestsError).retryAfterSeconds).toBe(20);
+    ctx.clock.advance(19.8);
     expect(await post('b', ride.id, give('sinkhole'))).toMatchObject({ effect: 'sinkhole' });
   });
 

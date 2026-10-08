@@ -1,6 +1,6 @@
 import type { ArgumentsHost } from '@nestjs/common';
 import { ProblemDetailsFilter } from '../../../../src/infrastructure/http/filters/problem-details.filter.js';
-import { ConflictError } from '../../../../src/domain/shared/errors.js';
+import { ConflictError, TooManyRequestsError } from '../../../../src/domain/shared/errors.js';
 
 function hostFor(headersSent = false) {
   const sent: { status?: number; body?: string; headers: Record<string, string>; ended: boolean } = { headers: {}, ended: false };
@@ -22,6 +22,15 @@ describe('ProblemDetailsFilter', () => {
     expect(sent.status).toBe(409);
     expect(sent.headers['Content-Type']).toBe('application/problem+json; charset=utf-8');
     expect(JSON.parse(sent.body ?? '{}')).toMatchObject({ code: 'conflict', detail: 'a ride is already in progress', requestId: 'req-12345678', instance: '/api/rides' });
+  });
+
+  it('a 429 that knows its wait sends Retry-After (whole seconds, at least 1); one that does not sends none', () => {
+    const a = hostFor();
+    new ProblemDetailsFilter().catch(new TooManyRequestsError('wait', 'live_rate_limited', 6.2), a.host);
+    expect(a.sent.status).toBe(429); expect(a.sent.headers['Retry-After']).toBe('7');
+    const b = hostFor();
+    new ProblemDetailsFilter().catch(new TooManyRequestsError('quota'), b.host);
+    expect(b.sent.headers['Retry-After']).toBeUndefined();
   });
 
   it('logs an unexpected error (with its stack) but answers a bare 500', () => {

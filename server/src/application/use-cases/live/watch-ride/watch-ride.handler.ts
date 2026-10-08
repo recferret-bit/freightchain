@@ -27,13 +27,15 @@ export class WatchRideHandler implements IQueryHandler<WatchRideQuery, WatchDto>
     private readonly clock: ClockPort,
   ) {}
 
-  async execute({ rideId, from, after, viewer }: WatchRideQuery): Promise<WatchDto> {
+  async execute({ rideId, from, after, viewer, since, source }: WatchRideQuery): Promise<WatchDto> {
     const ride = await this.rides.findById(rideId);
     if (!ride || !ride.startedAt) throw new NotFoundError('ride not found'); // not started yet: nothing to watch (and no seed handed out early)
     const now = this.clock.now();
-    const [extent, page, events, totals] = await Promise.all([
-      this.batches.extent(ride.id), this.batches.listFrom(ride.id, from, WATCH_BATCH_PAGE), this.events.listAfter(ride.id, after, FEED_PAGE), this.events.totals(ride.id),
+    const [extent, page, fresh, stamped, totals] = await Promise.all([
+      this.batches.extent(ride.id), this.batches.listFrom(ride.id, from, WATCH_BATCH_PAGE), this.events.listAfter(ride.id, after, FEED_PAGE),
+      since > 0 ? this.events.listAppliedSince(ride.id, new Date(since), FEED_PAGE) : Promise.resolve([]), this.events.totals(ride.id),
     ]);
+    const events = [...fresh, ...stamped.filter((e) => !fresh.some((f) => f.id === e.id))].sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
     const live = ride.isInStatus(RideStatus.Running) && !ride.isStaleRunning(now, this.rules.get());
     return {
       now: now.getTime(),
@@ -46,7 +48,7 @@ export class WatchRideHandler implements IQueryHandler<WatchRideQuery, WatchDto>
       batches: page.map((b) => ({ seq: b.seq, t0: b.t0, t1: b.t1, samples: b.body.samples })),
       events: events.map(toRideEventDto),
       totals,
-      viewers: !live ? 0 : viewer ? this.viewers.seen(ride.id, viewer, now) : this.viewers.count(ride.id, now),
+      viewers: !live ? 0 : viewer ? this.viewers.seen(ride.id, source, viewer, now) : this.viewers.count(ride.id, now),
     };
   }
 }

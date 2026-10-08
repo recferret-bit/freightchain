@@ -55,7 +55,7 @@ export function liveScenarios(h: () => Harness): void {
     expect((await driver.agent.get(`/api/rides/${ride.id}/inbox`).query({ after: line.id }).expect(200)).body.events).toHaveLength(1);
 
     const stamped = (await driver.agent.post(`/api/rides/${ride.id}/effects/${hole.id}/applied`).send({ t: 4.2, s: 1210, lat: 2.4 }).expect(200)).body;
-    expect(stamped.applied).toEqual({ t: 4.2, s: 1210, lat: 2.4 });
+    expect(stamped.applied).toEqual({ t: 4.2, s: 1210, lat: 2.4, placed: true });
     const watched = (await anon().get(`/api/watch/${ride.id}`).query({ after: line.id }).expect(200)).body;
     expect(watched.events).toEqual([stamped]);
     expect(watched.totals.donations).toBe(1);

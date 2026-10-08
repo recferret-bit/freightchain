@@ -77,6 +77,8 @@ export class EnvService {
     return new Set(this.env.ADMIN_WALLETS.split(',').map((w) => w.trim()).filter((w) => w.length > 0));
   }
   /** split deployment: the only host the admin API answers on (admin.<COOKIE_DOMAIN>, behind nginx basic auth); null = single origin, any host */
+  /** split deployment: the game's host (ride.<COOKIE_DOMAIN>) – the watch page signs in from there; null = single origin */
+  get gameHost(): string | null { return this.env.COOKIE_DOMAIN ? `ride.${this.env.COOKIE_DOMAIN.replace(/^\./, '')}`.toLowerCase() : null; }
   get adminHost(): string | null { return this.env.COOKIE_DOMAIN ? `admin.${this.env.COOKIE_DOMAIN.replace(/^\./, '')}`.toLowerCase() : null; }
 
   get demoWallets(): ReadonlySet<string> {

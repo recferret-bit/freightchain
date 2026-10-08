@@ -75,7 +75,8 @@ export class TooManyRequestsError extends DomainError {
   readonly statusCode = 429;
   readonly errorCode: string;
 
-  constructor(message = 'Too many requests', errorCode = 'rate_limited') {
+  /** retryAfterSeconds: sent as the Retry-After header (ProblemDetailsFilter) when known */
+  constructor(message = 'Too many requests', errorCode = 'rate_limited', readonly retryAfterSeconds?: number) {
     super(message);
     this.errorCode = errorCode;
   }

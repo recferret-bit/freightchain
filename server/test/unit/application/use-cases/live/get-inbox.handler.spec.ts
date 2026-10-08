@@ -12,7 +12,7 @@ describe('GetInboxHandler', () => {
     const a = (await ctx.rideEvents.insert(RideEvent.message({ rideId: ride.id, wallet: 'fan', text: 'one', now: ctx.now() })))!;
     ctx.clock.advance(3);
     await ctx.rideEvents.insert(RideEvent.donation({ rideId: ride.id, wallet: 'fan', effect: 'day', now: ctx.now() }));
-    ctx.viewers.seen(ride.id, 'v1', ctx.now());
+    ctx.viewers.seen(ride.id, '10.0.0.1', 'v1', ctx.now());
     const inbox = await handler.execute(new GetInboxQuery('driver', ride.id, 0));
     expect(inbox.events.map((e) => e.kind)).toEqual(['message', 'donation']);
     expect(inbox).toMatchObject({ now: ctx.clock.ms, viewers: 1, totals: { messages: 1, donations: 1 } });

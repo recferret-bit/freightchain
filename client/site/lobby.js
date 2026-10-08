@@ -1,7 +1,7 @@
 import { api, signOut } from './wallet.js';
 import { buyRide, buyTickets, claimRefund, waitPaid, ORDER_SIG } from './pay.js';
 import { salesOpen, pendingOrder } from './tickets-api.js';
-import { ESCROW_PAGE, explorerTx, rideError, promoError, promoOk, buyError, sol, left } from './pools.js';
+import { ESCROW_PAGE, explorerTx, rideError, promoError, promoOk, buyError, sol, left, shortAddr as short } from './pools.js';
 import { poolCard, escrowSummary, refundRows, profileTickets } from './lobby-pools.js';
 import { el } from './dom.js';
 import { GAME_BASE, SITE_BASE } from '../js/hosts.js';
@@ -15,7 +15,6 @@ const TIER_NAME = { free: 'TEST RIDE', '1h': '1 HOUR', '4h': '4 HOURS', '8h': '8
 const TABS = ['new', 'live', 'board', 'profile'];
 
 /* ───────── helpers ───────── */
-const short = w => `${w.slice(0, 4)}…${w.slice(-4)}`;
 const hue = w => { let h = 0; for (const c of w) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
 const avatar = w => el('span', { class: 'av', style: `background:hsl(${hue(w)} 60% 50%)` });
 const pad = n => String(Math.floor(n)).padStart(2, '0');

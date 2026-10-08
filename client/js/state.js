@@ -14,7 +14,8 @@ export const IDLE = 700, REDLINE = 2800, STALL_RPM = 450;
 export const rideStart = ({ rpm, engineOn, temp, pull }) => ({ s: 0, d: 2.4, psi: 0, v: 0, gear: 0, rpm, freeRpm: IDLE, engineOn, batt: CFG.BATT.START, battDead: false, park: true,   // the truck starts parked: release the brake (B / PARK) before moving
   fight: false, blownWhy: null, stallT: 0, noStall: 0, ign: null, keyOn: false, test: 1, rumble: 0, air: 0.2, temp, heater: false, heatEff: 0, coldT: 0, strain: 0, brakeT: 0, _brakeWarned: false, blown: false, _coldWarned: false, tyaw: 0, vel: 0, rev: false, off: false, complete: false, reds: 0, hull: 100, crash: 0, flash: 0, pull, cracks: [], scratches: [], wash: 1, washing: false, clutch: 0, gas: 0, brake: 0, steer: 0, t: 0, offT: 0, bugs: [], bugT: 4, grind: 0, jolt: 0, overrev: false });
 export const st = {
-  mode: 'menu', watch: false, slip: true,   // watch: a spectator's replay of someone else's ride (watch.js) – mode stays 'drive' so every visual runs, but no input and no sim lug: 0, stall: 0, stalled: false, ste: 0, pitch: 0, roll: 0, pitchV: 0, rollV: 0,   // not reset per ride: they settle on their own (sim/physics.js)
+  mode: 'menu', watch: false,   // watch: a spectator's replay of someone else's ride (watch.js) – mode stays 'drive' so every visual runs, but no input and no sim
+  slip: true, lug: 0, stall: 0, stalled: false, ste: 0, pitch: 0, roll: 0, pitchV: 0, rollV: 0,   // not reset per ride: they settle on their own (sim/physics.js)
   ...rideStart({ rpm: 0, engineOn: false, temp: 20, pull: 1 }),
 };
 /* day/night: `night` = the chosen mode, `k` = fade 0 (day)..1 (night, lerped by world/daynight.js), `head` = headlights, `hk` = their fade, `cab` = cab lamp, `blind` = dazzle from oncoming headlights 0..1 (bx/by = their screen position). `onChange` lets the menu cards follow the N key. */

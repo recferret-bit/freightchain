@@ -7,6 +7,7 @@ const cursor = z.coerce.number().int().min(0).max(2_147_483_647).default(0);
 export const watchQuerySchema = z.object({
   from: cursor, // first recording batch seq wanted
   after: cursor, // last feed event id already seen
+  since: z.coerce.number().int().min(0).max(8.64e15).default(0), // epoch ms: also return events stamped after it (0 = none)
   viewer: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/, 'letters, digits, - and _ only').optional().transform((v) => v ?? ''), // '' = not counted
 });
 export type WatchQuery = z.infer<typeof watchQuerySchema>;
@@ -27,5 +28,6 @@ export const appliedBodySchema = z.object({
   t: z.number().finite().min(0).max(1e7),
   s: z.number().finite().min(0).max(APPLIED_MAX_S),
   lat: z.number().finite().min(-APPLIED_MAX_LAT).max(APPLIED_MAX_LAT).nullish().transform((v) => v ?? null),
+  missed: z.boolean().optional().default(false), // an obstacle the game found no room for
 });
 export type AppliedBody = z.infer<typeof appliedBodySchema>;
