@@ -1,0 +1,13 @@
+// Everything an admin did on the admin page (verdict overrides …): who, what, on which target, when, and the request id to find it in the log.
+model AdminAction {
+  id        BigInt   @id @default(autoincrement())
+  wallet    String // the admin's wallet
+  action    String // e.g. verdict.override
+  target    String // e.g. the ride id
+  detail    Json
+  requestId String?
+  at        DateTime
+
+  @@index([at])
+  @@schema("admin")
+}

@@ -3,6 +3,7 @@ import { GrantDailyFreeRidesCommand } from '../../src/application/use-cases/play
 import { PrismaService } from '../../src/infrastructure/prisma/prisma.service.js';
 import { bindClient, newWallet, sign, type Rider } from '../support/client.js';
 import { createHarness, type Harness } from '../support/harness.js';
+import { recording } from '../support/recording.js';
 import { TREASURY } from '../support/fake-chain.js';
 import { PoolRepositoryPort } from '../../src/application/ports/economy/pool.repository.port.js';
 import { PromoRepositoryPort } from '../../src/application/ports/economy/promo.repository.port.js';
@@ -198,6 +199,58 @@ describe('concurrency (PostgreSQL)', () => {
     expect(await freeRides(a)).toBe(5);                                    // 4 + one credit for the new day
     await parallel(PARALLEL, () => a.agent.post('/api/rides').send({ tier: '1h' })); // refunds the unstarted free ride, which would be #6
     expect(await freeRides(a)).toBe(5);                                    // clamped at the cap
+  });
+
+  it('N parallel uploads of the same recording batch store it ONCE (and every caller gets a 200)', async () => {
+    const a = await login();
+    const ride = (await a.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
+    await a.agent.post(`/api/rides/${ride.id}/start`).expect(200);
+    const [b0] = recording(ride.id, { seconds: 10 });
+    const results = await parallel(PARALLEL, () => a.agent.post(`/api/rides/${ride.id}/batches`).send(b0));
+    expect(results.every((r) => r.status === 200)).toBe(true);
+    expect(results.filter((r) => r.body.stored === true)).toHaveLength(1);
+    expect(await prisma.rideBatch.count({ where: { rideId: ride.id } })).toBe(1);
+  });
+
+  it('/end racing the late final batch and parallel re-sends: the verdict that stays has seen every batch', async () => {
+    const a = await login();
+    const ride = (await a.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
+    await a.agent.post(`/api/rides/${ride.id}/start`).expect(200);
+    const batches = recording(ride.id, { seconds: 40, distance: 560 });
+    for (const b of batches.slice(0, -1)) await a.agent.post(`/api/rides/${ride.id}/batches`).send(b).expect(200);
+    sec(40);
+    const last = batches.at(-1);
+    const results = await Promise.all([
+      a.agent.post(`/api/rides/${ride.id}/end`).send({ outcome: 'shift', s: 560, t: 40 }),
+      ...Array.from({ length: 4 }, () => a.agent.post(`/api/rides/${ride.id}/batches`).send(last)),
+    ]);
+    expect(results.map((r) => r.status).every((s) => s === 200 || s === 409)).toBe(true); // a batch that beat /end is 200; after it, within the grace minute, 200 too
+    expect(await prisma.rideBatch.count({ where: { rideId: ride.id } })).toBe(batches.length);
+    expect((await a.agent.get(`/api/rides/${ride.id}`).expect(200)).body.verdict).toMatchObject({ status: 'verified' });
+  });
+
+  it('an admin decision racing re-judges from late batches: the decision is what stays', async () => {
+    const admin = newWallet();
+    const h2 = await createHarness('postgres', { FREE_RIDE_SECONDS: '10', ADMIN_WALLETS: admin.address });
+    try {
+      const c = bindClient(() => h2);
+      const a = await c.login(), boss = await c.loginAdmin(admin);
+      const ride = (await a.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
+      await a.agent.post(`/api/rides/${ride.id}/start`).expect(200);
+      const batches = recording(ride.id, { seconds: 10, distance: 140, batchSeconds: 2 });
+      for (const b of batches.slice(0, 3)) await a.agent.post(`/api/rides/${ride.id}/batches`).send(b).expect(200);
+      c.sec(10);
+      await a.agent.post(`/api/rides/${ride.id}/end`).send({ outcome: 'shift', s: 140, t: 10 }).expect(200);
+      const text = (await boss.agent.post(`/api/admin/rides/${ride.id}/challenge`).set('x-fc-admin', '1').send({ action: 'override', decision: 'rejected', note: 'race' }).expect(200)).body.message;
+      const results = await Promise.all([
+        boss.agent.post(`/api/admin/rides/${ride.id}/verdict`).set('x-fc-admin', '1').send({ decision: 'rejected', note: 'race', signature: sign(admin.kp, text) }),
+        ...batches.slice(3).map((b) => a.agent.post(`/api/rides/${ride.id}/batches`).send(b)),
+      ]);
+      expect(results.map((r) => r.status)).toEqual(results.map(() => 200));
+      expect((await a.agent.get(`/api/rides/${ride.id}`).expect(200)).body.verdict).toMatchObject({ status: 'rejected', override: { by: admin.address, note: 'race' } });
+      const p2 = h2.app.get(PrismaService, { strict: false });
+      expect(await p2.adminAction.count({ where: { action: 'verdict.override' } })).toBe(1);
+    } finally { await h2.close(); }
   });
 
   it('a sign-in challenge is single-use: of N parallel verifies exactly ONE wins', async () => {

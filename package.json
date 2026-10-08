@@ -32,6 +32,7 @@
     "deploy:backup": "bash deploy/scripts/ctl.sh backup",
     "deploy:rollback": "bash deploy/scripts/ctl.sh rollback",
     "deploy:smoke": "bash deploy/scripts/ctl.sh smoke",
+    "ops": "bash deploy/scripts/ops.sh",
     "build": "npm run landing:build && npm run server:build"
   }
 }

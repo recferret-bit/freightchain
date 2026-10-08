@@ -71,6 +71,8 @@ export interface RecentRideDto {
   timeScale: number;
   startedAt: number;
   endedAt: number | null;
+  /** verified / flagged / rejected / null (not judged – only completed shifts are) */
+  verdict: string | null;
 }
 
 export interface ProfileDto {

@@ -28,6 +28,16 @@ describe('EnvService', () => {
     expect(withEnv({ ...base, JWT_SECRET: 'z'.repeat(40) }).jwtSecret).toBe('z'.repeat(40));
   });
 
+  it('verified play + admin: enforcement on by default, retention 90 days, admin allowlist trimmed (empty = none)', () => {
+    const env = withEnv({ ...base, ADMIN_WALLETS: undefined, VERDICT_ENFORCE: undefined, TELEMETRY_RETENTION_DAYS: undefined });
+    expect([env.verdictEnforce, env.telemetryRetentionDays, env.adminWallets.size]).toEqual([true, 90, 0]);
+    const w = 'GseaEsNWMLScZ5RH8yQ4xmoCP97H86HjLSA9xkyFCqbn';
+    const set = withEnv({ ...base, ADMIN_WALLETS: ` ${w} ,`, VERDICT_ENFORCE: 'false', TELEMETRY_RETENTION_DAYS: '0' });
+    expect([[...set.adminWallets], set.verdictEnforce, set.telemetryRetentionDays]).toEqual([[w], false, 0]);
+    expect(() => withEnv({ ...base, ADMIN_WALLETS: 'not-a-wallet' })).toThrow(/ADMIN_WALLETS must be base58/);
+    expect(() => withEnv({ ...base, VERDICT_ENFORCE: 'yes' })).toThrow(/VERDICT_ENFORCE/);
+  });
+
   it('demo wallets, lamport seed, defaults for trust proxy and the client folder', () => {
     const env = withEnv({ ...base, DEMO_WALLETS: ' a , b ,', INITIAL_SEED_SOL: '0.5' });
     expect([...env.demoWallets]).toEqual(['a', 'b']);
@@ -44,6 +54,23 @@ describe('EnvService', () => {
     expect([off.cookieDomain, off.corsOrigins]).toEqual([undefined, []]);
     const on = withEnv({ ...base, COOKIE_DOMAIN: 'freightchain.fun', CORS_ORIGINS: ' https://freightchain.fun/ , https://ride.freightchain.fun ,' });
     expect([on.cookieDomain, on.corsOrigins]).toEqual(['freightchain.fun', ['https://freightchain.fun', 'https://ride.freightchain.fun']]);
+  });
+
+  it('the admin session: its own key (ADMIN_JWT_SECRET, else derived – never the player key), 120 minutes by default', () => {
+    const derived = withEnv({ ...base, JWT_SECRET: 'p'.repeat(40), ADMIN_JWT_SECRET: undefined, ADMIN_SESSION_TTL_MINUTES: undefined });
+    expect(derived.adminJwtSecret).toHaveLength(64);
+    expect(derived.adminJwtSecret).not.toBe(derived.jwtSecret);
+    expect(derived.adminJwtSecret).toBe(withEnv({ ...base, JWT_SECRET: 'p'.repeat(40) }).adminJwtSecret);   // stable across restarts
+    expect(derived.adminSessionTtlMinutes).toBe(120);
+    const own = withEnv({ ...base, ADMIN_JWT_SECRET: 'a'.repeat(32), ADMIN_SESSION_TTL_MINUTES: '30' });
+    expect([own.adminJwtSecret, own.adminSessionTtlMinutes]).toEqual(['a'.repeat(32), 30]);
+    expect(() => withEnv({ ...base, ADMIN_JWT_SECRET: 'short' })).toThrow(/ADMIN_JWT_SECRET/);
+  });
+
+  it('the admin host:admin.<cookie domain> on a split deployment, none (any host) on a single origin', () => {
+    expect(withEnv(base).adminHost).toBeNull();
+    expect(withEnv({ ...base, COOKIE_DOMAIN: 'FreightChain.fun' }).adminHost).toBe('admin.freightchain.fun');
+    expect(withEnv({ ...base, COOKIE_DOMAIN: '.freightchain.fun' }).adminHost).toBe('admin.freightchain.fun');
   });
 
   it('treasury: the env value, else – in development only – data/treasury.json, else none', () => {

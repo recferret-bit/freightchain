@@ -4,14 +4,14 @@ import { Ride } from '../../../../../src/domain/rides/ride.entity.js';
 import { RideStatus } from '../../../../../src/domain/rides/ride-status.js';
 import { ForbiddenError } from '../../../../../src/domain/shared/errors.js';
 import { TREASURY } from '../../../../support/fake-chain.js';
-import { unitContext } from '../../../../support/unit-context.js';
+import { unitContext, unitRules } from '../../../../support/unit-context.js';
 import { aPool } from '../../../../support/pools.js';
 
 const ADMIN = TREASURY; // unitRules' treasury = the pool authority
 
 describe('GetPayoutTransactionsHandler', () => {
   const setup = async () => {
-    const ctx = unitContext();
+    const ctx = unitContext(unitRules({ verdictEnforce: false })); // shadow mode: every completed ride ranks (verified-only ranking is the ride query's own test)
     // 10 tickets × 0.05 SOL = 0.5 SOL pot → prize 70 % = 0.35 SOL
     await ctx.pools.upsert(aPool({ id: 1, status: 'active', ticketsSold: 10, minTickets: 2 }, ctx.now()));
     const completed = async (wallet: string, metres: number, poolId = 1) => {

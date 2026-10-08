@@ -17,7 +17,7 @@ Deadline: **11:59pm PT, Oct 12, 2026** (runs Sep 14 – Oct 12). Working deadlin
 | Lobby (`client/site/`) | New ride · Live · Leaderboard · Profile, achievements. Free loop click-tested headless (32 checks). Never used with a real wallet. |
 | Landing (`landing/`) | Seven chapters, live boards, dash cards, wallet sign-in. Needs the gameplay loop, the demo video, socials, and the draw → top-3 copy change. |
 | Icon | **Solana Road** shipped as favicon, apple-touch, manifest and the Phantom connect logo (Phantom shows the site's favicon). Horizon + 8 other candidates kept in `design/icons/`. |
-| Verified play | **Design only this week** – the next milestone, see [Verified play](#verified-play-design-next-milestone). |
+| Verified play | **Live in shadow mode since Oct 7, merged into `main` Oct 8** (scope changed Oct 7: build now, no server-side simulation): recording upload, verdict (recording validation + human-timing flags), shadow mode, review queue on `admin.<apex>` (basic auth; the admin wallet sign-in + signed decisions are on `main`, not deployed yet), sign-in log, JSON logs, read-only ops tooling; explainer page `docs/verified-play/index.html`. Not built: replay, challenge prompts, captcha, payouts. Status, the owner's checklist and the next steps: [`verified-play-next-steps.md`](verified-play-next-steps.md). |
 | Repo | <https://github.com/recferret-bit/freightchain>, **private**; goes public on submit day after a history secret scan. README has no disclosure section yet. |
 | Colosseum | Not registered, no project page, no weekly update, no videos, no form. |
 
@@ -65,7 +65,7 @@ The overall awards are judged as startups (seven factors: the form is a venture 
 
 - **Devnet only.** Prices are "$5 / $15 / $50 in SOL" at the live SOL/USD rate, paid in devnet SOL.
 - **Demo-time multiplier.** `DEMO_WALLETS` runs a paid shift ×60 shorter. Say "demo clock ×60" out loud in the demo video.
-- **Pitch matches the build – stricter now.** The frame is "verified play", so every sentence has to say which checks exist **today** (server clock, heartbeat gap ≤ 150 s, distance ≤ 28 m/s · 1.2 of wall time, server-issued seed) and which are **designed next** (input/telemetry batches, bot and human scoring, replay viewer, admin payouts). Never say a ride is "proven human" or "replayable" in this build.
+- **Pitch matches the build – stricter now.** *(Oct 7 update: once the verified-play branch is deployed, "every completed shift is checked – the recording must be complete, consistent with the ride and human-timed" is true; "proven human" and "replayable" still are not.)* The frame is "verified play", so every sentence has to say which checks exist **today** (server clock, heartbeat gap ≤ 150 s, distance ≤ 28 m/s · 1.2 of wall time, server-issued seed) and which are **designed next** (input/telemetry batches, bot and human scoring, replay viewer, admin payouts). Never say a ride is "proven human" or "replayable" in this build.
 - **Keep the front end vanilla.** No React / Next. One NestJS backend.
 - **Plan A is the chain story.** ~~Memo-checked SOL transfer to a treasury pubkey; no Anchor program~~ → **superseded Oct 7 by escrowed prize pools** (an Anchor program holds the entry fees; minimum tickets to play, refunds if it fails) – see `paid-tickets-plan.md` / `paid-tickets-status.md`. The memo transfer stays as the `PAYMENT_MODE=transfer` fallback.
 - **One product.** Telegram, spectator sabotage, mainnet stay on the roadmap.
@@ -213,7 +213,7 @@ Building the verified-play system (design only) · mainnet · a React rewrite ·
 
 ## Known gaps to mention if asked
 
-- Completion is server-timed telemetry, not verified play; a modified client can lie inside the speed bound. Night / hull / route achievements trust the client.
+- Completion is server-timed telemetry; the verified-play recording check (on its branch, see `verified-play-next-steps.md`) validates and scores the recording but does not re-simulate it – a modified client that fakes a consistent, human-timed recording still passes. Night / hull / route achievements trust the client.
 - **Phantom and Solflare have never been run** (sign-in or payment) – Wednesday fixes that.
 - **No payment has been made to this treasury yet.**
 - Every smoke run creates a throwaway player in production (4 now) – excluded from any user count; Thursday task to stop it.

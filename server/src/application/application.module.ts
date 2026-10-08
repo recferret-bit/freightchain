@@ -6,6 +6,8 @@ import { PaymentSettlementService } from './services/payment-settlement.service.
 import { PlayerSessionService } from './services/player-session.service.js';
 import { RideLookupService } from './services/ride-lookup.service.js';
 import { RoundService } from './services/round.service.js';
+import { VerdictService } from './services/verdict.service.js';
+import { AdminProofService } from './services/admin-proof.service.js';
 import { GrantDailyFreeRidesHandler } from './use-cases/players/grant-daily-free-rides/grant-daily-free-rides.handler.js';
 import { GetMeHandler } from './use-cases/auth/get-me/get-me.handler.js';
 import { LogoutHandler } from './use-cases/auth/logout/logout.handler.js';
@@ -28,6 +30,19 @@ import { GetRideHandler } from './use-cases/rides/get-ride/get-ride.handler.js';
 import { HeartbeatRideHandler } from './use-cases/rides/heartbeat-ride/heartbeat-ride.handler.js';
 import { ReconcilePaymentHandler } from './use-cases/rides/reconcile-payment/reconcile-payment.handler.js';
 import { StartRideHandler } from './use-cases/rides/start-ride/start-ride.handler.js';
+import { UploadBatchHandler } from './use-cases/telemetry/upload-batch/upload-batch.handler.js';
+import { SweepTelemetryHandler } from './use-cases/telemetry/sweep-telemetry/sweep-telemetry.handler.js';
+import { GetAdminLogsHandler } from './use-cases/admin/get-admin-logs/get-admin-logs.handler.js';
+import { GetAdminOverviewHandler } from './use-cases/admin/get-admin-overview/get-admin-overview.handler.js';
+import { GetAdminRideHandler } from './use-cases/admin/get-admin-ride/get-admin-ride.handler.js';
+import { ListAdminActionsHandler } from './use-cases/admin/list-admin-actions/list-admin-actions.handler.js';
+import { ListAdminRidesHandler } from './use-cases/admin/list-admin-rides/list-admin-rides.handler.js';
+import { ListSignInsHandler } from './use-cases/admin/list-sign-ins/list-sign-ins.handler.js';
+import { OverrideVerdictHandler } from './use-cases/admin/override-verdict/override-verdict.handler.js';
+import { RejudgeRideHandler } from './use-cases/admin/rejudge-ride/rejudge-ride.handler.js';
+import { RequestAdminChallengeHandler } from './use-cases/admin/request-admin-challenge/request-admin-challenge.handler.js';
+import { VerifyAdminSignInHandler } from './use-cases/admin/verify-admin-signin/verify-admin-signin.handler.js';
+import { RequestActionChallengeHandler } from './use-cases/admin/request-action-challenge/request-action-challenge.handler.js';
 
 import { PoolTicketsService } from './services/pool-tickets.service.js';
 import { TicketSettlementService } from './services/ticket-settlement.service.js';
@@ -56,12 +71,17 @@ import { SyncPoolsHandler } from './use-cases/chain/sync-pools/sync-pools.handle
 import { ReceiveChainWebhookHandler } from './use-cases/chain/receive-chain-webhook/receive-chain-webhook.handler.js';
 import { RegisterPoolFromChainHandler } from './use-cases/pools/register-pool-from-chain/register-pool-from-chain.handler.js';
 
-const services: Provider[] = [AchievementService, PaymentSettlementService, PlayerSessionService, PoolTicketsService, RideLookupService, RoundService, TicketSettlementService, PoolRegistryService, FinalityService];
+const services: Provider[] = [
+  AchievementService, PaymentSettlementService, PlayerSessionService, RideLookupService, RoundService, VerdictService, AdminProofService,
+  PoolTicketsService, TicketSettlementService, PoolRegistryService, FinalityService,
+];
 
 const handlers: Provider[] = [
   RequestChallengeHandler, VerifySignInHandler, GetMeHandler, LogoutHandler,
   CreateRideHandler, GetRideHandler, GetPendingRideHandler, StartRideHandler, HeartbeatRideHandler, EndRideHandler,
   GetPaymentInstructionsHandler, ConfirmPaymentHandler, ReconcilePaymentHandler,
+  UploadBatchHandler, SweepTelemetryHandler,
+  GetAdminOverviewHandler, ListAdminRidesHandler, GetAdminRideHandler, ListSignInsHandler, ListAdminActionsHandler, GetAdminLogsHandler, OverrideVerdictHandler, RejudgeRideHandler, RequestAdminChallengeHandler, VerifyAdminSignInHandler, RequestActionChallengeHandler,
   GetTiersHandler, GetPoolHandler, GetLeaderboardHandler,
   GetLiveHandler, GetProfileHandler,
   GetLivenessHandler, GetReadinessHandler,

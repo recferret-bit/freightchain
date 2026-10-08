@@ -11,6 +11,8 @@ const NIGHT_SHARE = 0.5;
 const SIBERIA = 'siberia';
 
 /** The read side over rides: projections that no aggregate needs. */
+const VERIFIED: Prisma.RideWhereInput = { verdict: { is: { status: 'verified' } } };
+
 @Injectable()
 export class RideQueryPrismaRepository extends RideQueryPort {
   constructor(private readonly prisma: PrismaService) {
@@ -72,19 +74,19 @@ export class RideQueryPrismaRepository extends RideQueryPort {
   }
 
   async recent(wallet: string, limit: number): Promise<RecentRideRow[]> {
-    const rows = await this.prisma.ride.findMany({ where: { wallet, startedAt: { not: null } }, orderBy: [{ startedAt: 'desc' }, { seq: 'desc' }], take: limit });
+    const rows = await this.prisma.ride.findMany({ where: { wallet, startedAt: { not: null } }, orderBy: [{ startedAt: 'desc' }, { seq: 'desc' }], take: limit, include: { verdict: { select: { status: true } } } });
     return rows.flatMap((r) => (r.startedAt
-      ? [{ tier: r.tier, status: r.status, lastS: r.lastS, hull: r.hull, route: r.route, timeScale: r.timeScale, startedAt: r.startedAt, endedAt: r.endedAt }]
+      ? [{ tier: r.tier, status: r.status, lastS: r.lastS, hull: r.hull, route: r.route, timeScale: r.timeScale, startedAt: r.startedAt, endedAt: r.endedAt, verdict: r.verdict?.status ?? null }]
       : []));
   }
 
-  async leaderboard(board: LeaderboardBoard, roundId: number | null, limit: number): Promise<LeaderboardRow[]> {
-    const tierFilter: Prisma.RideWhereInput = board === 'free' ? { tier: 'free' } : { tier: { not: 'free' }, ...(board === 'round' ? { roundId } : {}) };
+  async leaderboard(board: LeaderboardBoard, roundId: number | null, limit: number, verifiedOnly: boolean): Promise<LeaderboardRow[]> {
+    const tierFilter: Prisma.RideWhereInput = board === 'free' ? { tier: 'free' } : { tier: { not: 'free' }, ...(verifiedOnly ? VERIFIED : {}), ...(board === 'round' ? { roundId } : {}) }; // paid boards: verified recordings only (unless shadow mode)
     return this.ranked(tierFilter, limit);
   }
 
-  async poolRanking(poolId: number, limit: number): Promise<LeaderboardRow[]> {
-    return this.ranked({ poolId }, limit);
+  async poolRanking(poolId: number, limit: number, verifiedOnly: boolean): Promise<LeaderboardRow[]> {
+    return this.ranked({ poolId, ...(verifiedOnly ? VERIFIED : {}) }, limit);
   }
 
   private async ranked(filter: Prisma.RideWhereInput, limit: number): Promise<LeaderboardRow[]> {

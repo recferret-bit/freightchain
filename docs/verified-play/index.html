@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Freight Chain Verified Play</title>
+<meta name="description" content="How Freight Chain records and checks every online shift, why the recording is hard to fake, and what players can count on.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <span class="eyebrow">Freight Chain · how a shift is checked</span>
+  <h1>Verified Play</h1>
+  <p class="lede">Every online shift is recorded while you drive. When it completes, the server checks the recording before the shift can rank on a paid leaderboard. It doesn't replay your drive. It checks that the recording is complete, physically possible, matches the ride, and was driven by a person.</p>
+  <div class="status">
+    <span class="pill">rules <b>v1</b></span>
+    <span class="pill">mode <b>shadow</b> · verdicts shown, boards not affected yet</span>
+    <span class="pill">recordings kept <b>90 days</b></span>
+  </div>
+
+  <figure class="chart" style="margin:0">
+    <svg id="tacho" viewBox="0 0 920 250" role="img" aria-label="A ride's speed trace with the speed limit, 15-second batch boundaries and key presses"></svg>
+    <figcaption>What the server sees: the truck's speed sampled 10 times a second (blue), the governor limit it may never cross (red), the cut every 15 seconds that seals a batch, and your key presses underneath. After the end, the last batch still has up to a minute to arrive.</figcaption>
+  </figure>
+</header>
+
+<section aria-labelledby="s-flow">
+  <div class="head">
+    <span class="eyebrow">The path of one ride</span>
+    <h2 id="s-flow">From your keyboard to the leaderboard</h2>
+  </div>
+  <div class="pipe">
+    <div class="step"><span class="n">1</span><span class="where">In your browser</span><h3>Record</h3><p>Every key press and release, and the truck's state 10 times a second, while an online ride is on the road.</p></div>
+    <div class="step"><span class="n">2</span><span class="where">Every 15 s</span><h3>Seal</h3><p>The game packs the last 15 seconds into a batch, fingerprints it with SHA-256 and links it to the batch before.</p></div>
+    <div class="step"><span class="n">3</span><span class="where">On the server</span><h3>Store</h3><p>The server recomputes the fingerprint, checks the batch's shape and limits, and stores it. Stored batches never change.</p></div>
+    <div class="step"><span class="n">4</span><span class="where">When the shift completes</span><h3>Judge</h3><p>All batches are checked together: the chain, the physics, the distance, the coverage, the timing of your hands.</p></div>
+    <div class="step"><span class="n">5</span><span class="where">Result</span><h3>Rank</h3><p><span class="chip ok">verified</span> shifts rank. Flagged ones wait for a person. Rejected ones don't rank.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="s-what">
+  <div class="head">
+    <span class="eyebrow">What is recorded</span>
+    <h2 id="s-what">Two kinds of rows, nothing else</h2>
+    <p class="soft">Recording runs only during an online ride (one started from the lobby), only while you are driving. The offline game records nothing.</p>
+  </div>
+  <div class="spec-grid">
+    <div class="spec">
+      <div class="top" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><h3>Truck sample · 10 per second</h3><span class="chip pen">≤ 400 per batch</span></div>
+      <div class="row" aria-label="one truck sample">
+        <div class="cell"><span class="v">412.3</span><span class="k">t · s</span></div>
+        <div class="cell"><span class="v">9810</span><span class="k">road · m</span></div>
+        <div class="cell"><span class="v">2.41</span><span class="k">lane · m</span></div>
+        <div class="cell"><span class="v">0.01</span><span class="k">heading</span></div>
+        <div class="cell"><span class="v">24.6</span><span class="k">speed · m/s</span></div>
+        <div class="cell"><span class="v">1860</span><span class="k">rpm</span></div>
+        <div class="cell"><span class="v">6</span><span class="k">gear</span></div>
+        <div class="cell"><span class="v">97</span><span class="k">hull · %</span></div>
+        <div class="cell"><span class="v">1</span><span class="k">gas</span></div>
+        <div class="cell"><span class="v">0</span><span class="k">brake</span></div>
+        <div class="cell"><span class="v">-0.2</span><span class="k">steer</span></div>
+        <div class="cell"><span class="v">0</span><span class="k">clutch</span></div>
+      </div>
+    </div>
+    <div class="spec">
+      <div class="top" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><h3>Input event</h3><span class="chip pen">≤ 2000 per batch</span></div>
+      <div class="row inp" aria-label="one input event">
+        <div class="cell"><span class="v">412 318.4</span><span class="k">ms since start</span></div>
+        <div class="cell"><span class="v">KeyW</span><span class="k">key / button</span></div>
+        <div class="cell"><span class="v">1</span><span class="k">1 down · 0 up</span></div>
+      </div>
+      <p class="soft" style="font-size:14px">Times come from the browser's own event clock, so a slow frame can't make a normal tap look like a 0 ms press.</p>
+    </div>
+  </div>
+  <div class="notlist" aria-label="never recorded">
+    <span class="no"><s>mouse movement</s></span>
+    <span class="no"><s>your screen</s></span>
+    <span class="no"><s>other tabs or apps</s></span>
+    <span class="no"><s>microphone or camera</s></span>
+    <span class="no"><s>anything after the ride</s></span>
+  </div>
+</section>
+
+<section aria-labelledby="s-chain">
+  <div class="head">
+    <span class="eyebrow">Tamper evidence</span>
+    <h2 id="s-chain">The batches form a chain</h2>
+    <p>Each batch carries the fingerprint (SHA-256) of the batch before it. The first one links to the ride's own id. Change one number anywhere and its fingerprint changes, so the next link no longer matches. The server recomputes every fingerprint itself when a batch arrives, so a batch can't claim a fingerprint it doesn't have.</p>
+  </div>
+  <figure class="chart chainfig" style="margin:0">
+    <svg id="chain" viewBox="0 0 940 230" role="img" aria-label="Hash chain of four batches; editing batch 2 breaks its link to batch 3"></svg>
+    <figcaption>Top: an honest recording, every link matches. Bottom: one speed value in batch 2 was edited, so its fingerprint changed and batch 3 no longer points at it. The verdict says <code>chain-broken</code> and the ride is rejected.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="s-judge">
+  <div class="head">
+    <span class="eyebrow">The verdict</span>
+    <h2 id="s-judge">Two sets of checks, with different powers</h2>
+    <p>Checks on the recording itself can reject a ride, because a broken or impossible recording proves something is wrong. Checks on how human your timing looks can only flag a ride for a person to review, because statistics can be wrong about a real driver.</p>
+  </div>
+  <div class="cols">
+    <div class="card">
+      <div class="top"><h3>The recording</h3><span class="chip bad">can reject</span></div>
+      <ul class="checks rej">
+        <li><b>Complete and in order</b><span class="soft">Every batch present, every link matching, every fingerprint correct, samples in time order.</span><span class="c">no-recording · missing-batches · chain-broken · hash-mismatch · sample-out-of-order · bad-sample</span></li>
+        <li><b>Under the governor</b><span class="soft">The truck is limited to 28 m/s (100.8 km/h). Any sample above 29.4 m/s (105.8 km/h) is impossible.</span><span class="c">over-governor</span></li>
+        <li><b>No teleports</b><span class="soft">Between two samples the truck can't move further than top speed allows (×1.2, plus 2 m).</span><span class="c">teleport</span></li>
+        <li><b>Ends where the ride ended</b><span class="soft">The last recorded distance matches the distance the ride reported, within 30 m + 1 %, allowing for seconds whose final upload never arrived.</span><span class="c">recording-mismatch</span></li>
+        <li><b>Covers the drive</b><span class="soft">Under 50 % of the driven time recorded rejects. Under 90 % only flags.</span><span class="c">recording-incomplete · recording-gaps (flag)</span></li>
+        <li><b>Someone drove</b><span class="soft">A truck that moved more than 50 m needs key presses, and gas among them.</span><span class="c">no-inputs · no-throttle-input</span></li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="top"><h3>Your hands</h3><span class="chip flag">can only flag</span></div>
+      <ul class="checks flg">
+        <li><b>Holds vary</b><span class="soft">People hold a key for different lengths each time. If one key's holds barely vary at all (spread under 8 %, over 6+ holds), that looks scripted.</span><span class="c">uniform-holds</span></li>
+        <li><b>Rhythm isn't a loop</b><span class="soft">If the 3 most common gaps between presses (to the millisecond) make up more than 60 % of all gaps, a script is cycling fixed delays.</span><span class="c">repeated-timings</span></li>
+        <li><b>Presses take time</b><span class="soft">If more than 30 % of presses are released within 10 ms, they were sent, not pressed.</span><span class="c">instant-presses</span></li>
+      </ul>
+      <p class="soft" style="font-size:14px">Fair to real people: with fewer than 8 presses there is no opinion at all. Browsers that round their clock (Firefox privacy mode, Tor) are detected, and the two checks a coarse clock would break are skipped.</p>
+    </div>
+  </div>
+  <div class="outcomes">
+    <div class="out ok"><h3>Verified</h3><p>Nothing found. The shift ranks on the paid leaderboard.</p></div>
+    <div class="out flag"><h3>Flagged</h3><p>Something looked off but proves nothing. The shift goes to the review queue and doesn't rank until an admin accepts it.</p></div>
+    <div class="out bad"><h3>Rejected</h3><p>The recording is missing, broken or impossible. The shift doesn't rank. An admin can still look at it and reverse the verdict.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="s-end">
+  <div class="head">
+    <span class="eyebrow">The last minute</span>
+    <h2 id="s-end">A bad connection at the finish doesn't cost you the shift</h2>
+    <p>Ending a shift waits at most 3 seconds for the final upload. If it hasn't gone through, the game keeps retrying every 5 seconds for 55 seconds, and the server keeps accepting batches for 60 seconds after the end. Every late batch makes the server judge the ride again.</p>
+  </div>
+  <figure class="chart endfig" style="margin:0">
+    <svg id="endline" viewBox="0 0 920 150" role="img" aria-label="Timeline after the end of a ride: 3 second wait, retries every 5 seconds until 55 seconds, server accepts until 60 seconds"></svg>
+    <figcaption>If the final batch never arrives, the distance its missing seconds could explain is allowed, so it only lowers coverage. During the ride, a failed upload stays queued and goes with the next one, in order.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="s-threats">
+  <div class="head">
+    <span class="eyebrow">Why it is hard to cheat</span>
+    <h2 id="s-threats">What someone might try, and what stops it</h2>
+  </div>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Attempt</th><th>What happens</th></tr></thead>
+      <tbody>
+        <tr><td>Edit the recording after driving<span class="c">faster laps, fewer mistakes</span></td><td>Every batch is fingerprinted and chained, and the server recomputes the fingerprint on arrival. An edited batch breaks the chain. A batch already stored can't be replaced: sending the same batch number again is ignored.</td></tr>
+        <tr><td>Speed hack or teleport<span class="c">a modified game</span></td><td>Any sample above the governor, any jump further than top speed allows, or a final distance that doesn't match the ride rejects the shift.</td></tr>
+        <tr><td>Cut out the boring hours</td><td>A missing batch or a gap in the chain rejects. Recording under half of the driven time rejects. Under 90 % flags.</td></tr>
+        <tr><td>Upload a made-up recording faster than real time</td><td>The server compares every upload with its own clock since the ride started. A ride can't hold more game time than wall time × 1.05 + 30 s, or more batches than one per 5 s + 10. The minimum shift time is also measured by the server, not by the game.</td></tr>
+        <tr><td>Drive with a macro or a bot</td><td>Machine-perfect timing shows up in hold lengths, repeated rhythms and instant presses. The shift is flagged and can't rank until a person has looked at it.</td></tr>
+        <tr><td>Sneak a batch in while the shift ends</td><td>Uploads and judging take the same per-player lock, so every stored batch is part of a verdict. A batch that arrives after the end triggers a new judgement.</td></tr>
+        <tr><td>Flood the server</td><td>Batches are capped at 96 kB, 400 samples and 2000 key events, plus the per-ride limit above and the API rate limits.</td></tr>
+        <tr><td>A rogue or hijacked admin account</td><td>See below: four locks, and every decision is signed by the admin's wallet and logged.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section aria-labelledby="s-admin">
+  <div class="head">
+    <span class="eyebrow">Who reviews flagged rides</span>
+    <h2 id="s-admin">Admin decisions are locked down and on record</h2>
+    <p>Flagged and rejected shifts can be accepted, rejected or re-judged by hand on the admin page. That power is protected in four layers.</p>
+  </div>
+  <div class="admin">
+    <div class="lock"><span class="n">1</span><b>Separate site + password</b><span>The admin page lives on its own address behind a password. The admin API answers nowhere else.</span></div>
+    <div class="lock"><span class="n">2</span><b>Admin wallet sign-in</b><span>Only listed wallets can sign in, and only for 2 hours. A normal player login opens nothing.</span></div>
+    <div class="lock"><span class="n">3</span><b>Every decision signed</b><span>Each accept, reject or re-judge is signed by the admin's wallet for that exact ride and decision.</span></div>
+    <div class="lock"><span class="n">4</span><b>Audit log</b><span>Who decided what, when, why (the note), and the signature are stored for good.</span></div>
+  </div>
+</section>
+
+<section aria-labelledby="s-promise">
+  <div class="head">
+    <span class="eyebrow">For players</span>
+    <h2 id="s-promise">What you can count on</h2>
+  </div>
+  <ul class="promises">
+    <li><b>Only the drive is recorded</b><span>Your key presses and the truck's state during an online ride. No mouse, screen, camera or other tabs.</span></li>
+    <li><b>Statistics never reject you</b><span>Timing checks only flag. A flagged shift is looked at by a person before anything is decided.</span></li>
+    <li><b>A dropped connection at the end is not fatal</b><span>The final upload gets about a minute to arrive. If it never does, only coverage is affected.</span></li>
+    <li><b>Slow PCs and privacy browsers are not punished</b><span>Times come from the browser's own events, rounded clocks are detected, and short rides get no timing opinion at all.</span></li>
+    <li><b>Every verdict has reasons</b><span>Each verdict is stored with the checks that fired, what they measured, and the rules version used, so it can always be explained and re-checked.</span></li>
+    <li><b>Human decisions stick, and are accountable</b><span>A late upload never overturns an admin's decision. Re-judging is a deliberate, signed and logged action.</span></li>
+    <li><b>Nothing changes under you without notice</b><span>Rules are versioned. While they are tuned, shadow mode shows verdicts without affecting the leaderboards.</span></li>
+    <li><b>Recordings don't live forever</b><span>They are deleted 90 days after the ride. Flagged shifts are kept until someone has reviewed them.</span></li>
+  </ul>
+</section>
+
+<section aria-labelledby="s-limits">
+  <div class="head">
+    <span class="eyebrow">Limits</span>
+    <h2 id="s-limits">What this does not do</h2>
+  </div>
+  <ul class="limits">
+    <li><b>The server doesn't replay your drive.</b><span>The game runs on your computer and its physics can't be re-run on the server. A careful bot playing the real game with human-like timing could pass the automatic checks. That is why flagged shifts go to a person, and why the checks keep being tightened.</span></li>
+    <li><b>The thresholds are first estimates.</b><span>Rules v1 has not been tuned on real rides yet. Until it is, the leaderboards ignore verdicts (shadow mode).</span></li>
+    <li><b>Verdicts decide ranking only.</b><span>An entry fee goes into the weekly pool whatever the outcome of the ride. Prize payouts are not built yet.</span></li>
+    <li><b>A refused batch ends the recording.</b><span>If the server refuses a malformed batch, the game stops recording for that ride and the reason is logged, so an admin can see why the verdict came out as it did.</span></li>
+  </ul>
+</section>
+
+<footer>
+  <span>Freight Chain · verified play</span>
+  <span>rules v1 · shadow mode</span>
+  <span>as of Oct 8, 2026</span>
+</footer>
+
+</div>
+
+<script>
+(() => {
+  const NS = 'http://www.w3.org/2000/svg';
+  const mk = (parent, tag, attrs, text) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; parent.appendChild(e); return e; };
+
+  /* ── tachograph strip: 75 s of a ride + the minute after the end ── */
+  const t = document.getElementById('tacho');
+  const L = 56, R = 900, T = 18, B = 176, END = 75, SPAN = 100;          // seconds on the axis
+  const x = s => L + (s / SPAN) * (R - L), y = v => B - (v / 32) * (B - T);
+  for (let v = 0; v <= 30; v += 10) { mk(t, 'line', { x1: L, x2: R, y1: y(v), y2: y(v), class: v ? 'g' : 'g-strong' }); mk(t, 'text', { x: L - 8, y: y(v) + 4, 'text-anchor': 'end' }, v); }
+  mk(t, 'text', { x: L - 8, y: T - 4, 'text-anchor': 'end' }, 'm/s');
+  for (let s = 0; s <= SPAN; s += 5) mk(t, 'line', { x1: x(s), x2: x(s), y1: T, y2: B, class: 'g' });
+  mk(t, 'rect', { x: x(END), y: T, width: x(END + 60 > SPAN ? SPAN : END + 60) - x(END), height: B - T, class: 'band-flush' });
+  mk(t, 'text', { x: x(END) + 8, y: T + 16, class: 't-pen' }, 'final upload window · up to 60 s');
+  mk(t, 'line', { x1: L, x2: R, y1: y(29.4), y2: y(29.4), class: 'limit' });
+  mk(t, 'text', { x: x(END) - 6, y: y(29.4) - 6, 'text-anchor': 'end', class: 't-limit' }, 'reject above 29.4 m/s');
+  // a plausible speed trace: pull away, shift, cruise near the governor, a brake for a junction, cruise, stop
+  const pts = [];
+  for (let s = 0; s <= END; s += 0.25) {
+    let v = s < 4 ? 0 : s < 30 ? 27.4 * (1 - Math.exp(-(s - 4) / 7.5)) : s < 38 ? 27.4 - (s - 30) * 2.2 : s < 42 ? 9.8 : s < 66 ? 9.8 + 17 * (1 - Math.exp(-(s - 42) / 6)) : 26.6 - (s - 66) * 2.9;
+    v += Math.sin(s * 2.3) * 0.25 + Math.sin(s * 0.7) * 0.2; v = Math.max(0, Math.min(v, 27.9));
+    if (s > 4 && s < 30 && [9, 15, 22].some(g => Math.abs(s - g) < 0.6)) v -= 1.4;   // gear changes
+    pts.push(`${x(s).toFixed(1)},${y(Math.max(0, v)).toFixed(1)}`);
+  }
+  mk(t, 'polyline', { points: pts.join(' '), class: 'trace' });
+  [15, 30, 45, 60].forEach((s, i) => { mk(t, 'line', { x1: x(s), x2: x(s), y1: T, y2: B + 6, class: 'cut' }); });
+  [0, 15, 30, 45, 60].forEach((s, i) => mk(t, 'text', { x: x(s + 7.5), y: B + 18, 'text-anchor': 'middle', class: 't-ink' }, `batch ${i}`));
+  mk(t, 'line', { x1: x(END), x2: x(END), y1: T, y2: B + 6, class: 'end' });
+  mk(t, 'text', { x: x(END) + 4, y: B + 18 }, 'END · batch 5');
+  // key presses: a tick per press under the axis
+  const presses = [4.2, 4.9, 9, 9.3, 15.1, 15.4, 22, 22.2, 29.8, 31.2, 33.4, 36, 38.5, 41.7, 42.3, 47, 52.6, 58.1, 63.3, 66.2, 68.9, 71.4, 74.2];
+  mk(t, 'text', { x: L - 8, y: B + 46, 'text-anchor': 'end' }, 'keys');
+  presses.forEach((s, i) => mk(t, 'rect', { x: x(s), y: B + 36, width: Math.max(3, ((i % 3) + 1) * 3.2), height: 12, class: 'press' }));
+  for (let s = 0; s <= SPAN; s += 20) mk(t, 'text', { x: x(s), y: B + 68, 'text-anchor': 'middle' }, `${s}s`);
+
+  /* ── the chain ── */
+  const c = document.getElementById('chain');
+  const BW = 170, BH = 66, GAP = 66, X0 = 40;
+  const row = (y0, broken) => {
+    for (let i = 0; i < 4; i++) {
+      const bx = X0 + i * (BW + GAP), bad = broken && i === 2;
+      mk(c, 'rect', { x: bx, y: y0, width: BW, height: BH, rx: 4, class: bad ? 'box-hi' : 'box' });
+      mk(c, 'text', { x: bx + 12, y: y0 + 22, class: 'head-t' }, `BATCH ${i}`);
+      mk(c, 'text', { x: bx + 12, y: y0 + 40 }, `prev ${i === 0 ? 'ride id' : ['', '7f3a…', '91c0…', '2be4…'][i]}`);
+      mk(c, 'text', { x: bx + 12, y: y0 + 56, class: bad ? 't-limit' : 't-ink' }, `hash ${bad ? 'd05e…' : ['7f3a…', '91c0…', '2be4…', 'a8f1…'][i]}`);
+      if (i < 3) {
+        const ax = bx + BW, ay = y0 + BH / 2, brk = broken && i === 2;
+        mk(c, 'path', { d: `M${ax} ${ay} H${ax + GAP - 8}`, class: brk ? 'link-bad' : 'link' });
+        mk(c, 'path', { d: `M${ax + GAP - 14} ${ay - 6} L${ax + GAP - 6} ${ay} L${ax + GAP - 14} ${ay + 6}`, class: brk ? 'link-bad' : 'link' });
+        if (brk) mk(c, 'text', { x: ax + GAP / 2, y: ay - 10, 'text-anchor': 'middle', class: 't-limit' }, '≠');
+      }
+    }
+  };
+  mk(c, 'text', { x: X0, y: 16 }, 'honest recording');
+  row(24, false);
+  mk(c, 'text', { x: X0, y: 130 }, 'one value in batch 2 edited');
+  row(138, true);
+
+  /* ── the last minute ── */
+  const e = document.getElementById('endline');
+  const EL = 40, ER = 890, ex = s => EL + (s / 62) * (ER - EL), ey = 70;
+  mk(e, 'line', { x1: EL, x2: ER, y1: ey, y2: ey, class: 'g-strong' });
+  mk(e, 'rect', { x: ex(0), y: ey - 12, width: ex(3) - ex(0), height: 24, class: 'band-flush' });
+  mk(e, 'rect', { x: ex(0), y: ey - 12, width: ex(60) - ex(0), height: 24, fill: 'none', stroke: 'currentColor', class: 'g' });
+  for (let s = 8; s <= 55; s += 5) mk(e, 'circle', { cx: ex(s), cy: ey, r: 4, class: 'press' });
+  mk(e, 'line', { x1: ex(0), x2: ex(0), y1: ey - 28, y2: ey + 28, class: 'end' });
+  mk(e, 'line', { x1: ex(60), x2: ex(60), y1: ey - 28, y2: ey + 28, class: 'limit' });
+  mk(e, 'text', { x: ex(0), y: ey - 36, class: 't-ink' }, 'you end the shift');
+  mk(e, 'text', { x: ex(1.5), y: ey + 44, 'text-anchor': 'middle', class: 't-pen' }, '≤ 3 s wait');
+  mk(e, 'text', { x: ex(31), y: ey - 22, 'text-anchor': 'middle' }, 'the game retries every 5 s, until 55 s');
+  mk(e, 'text', { x: ex(60), y: ey - 36, 'text-anchor': 'end', class: 't-limit' }, 'server stops accepting · 60 s');
+  mk(e, 'text', { x: ex(31), y: ey + 44, 'text-anchor': 'middle' }, 'each late batch → judged again');
+  [0, 10, 20, 30, 40, 50, 60].forEach(s => mk(e, 'text', { x: ex(s), y: ey + 70, 'text-anchor': 'middle' }, `${s}s`));
+})();
+</script>
+</body>
+</html>

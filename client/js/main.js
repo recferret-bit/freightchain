@@ -18,13 +18,14 @@ import { updateDayNight, setNight, setPhase, setClock, savedClock } from './worl
 import { selectTheme, savedThemeId } from './world/theme-manager.js';
 import { THEMES } from './themes/index.js';
 import { initOnline, online } from './online.js';
+import { tickTelemetry, telemetry } from './telemetry.js';
 import './ui/input.js';
 import './ui/tuning.js';
 
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.max(0, Math.min(0.05, (now - clock.last) / 1000)); clock.last = now;   // clamped: no time-jumps after tab stalls
-  if (st.mode === 'drive') update(dt);
+  if (st.mode === 'drive') { update(dt); tickTelemetry(dt); }   // tickTelemetry: online rides only (a no-op offline)
   roads.update(dt); updateDayNight(dt); updateDisp(dt); updateFX(dt); audio.update(true); radio.update();   // road world: generation, streaming, signals
   renderWorld(); drawCockpit();
 }
@@ -33,6 +34,6 @@ setClock(savedClock(), true, false);   // the last clock time (default noon); th
 await initOnline();   // only with ?ride=<id> (see online.js); offline it returns at once
 resize(); resetRide(); showMenu('DESERT RUN', 'Freight Chain · long-haul simulator');
 requestAnimationFrame(frame);
-window.__game = { online, radio, roadObjects, roads, net, st, disp, CFG, Wallet, input, tryShift, ignition, startRide, curv, spawn, traffic: cars, selectTheme, THEMES, setNight, setPhase, setClock, dn, weather, holes: { HOLES, holeAt, holesNear, clearHoleCache } };   // handy for console debugging
+window.__game = { online, telemetry, radio, roadObjects, roads, net, st, disp, CFG, Wallet, input, tryShift, ignition, startRide, curv, spawn, traffic: cars, selectTheme, THEMES, setNight, setPhase, setClock, dn, weather, holes: { HOLES, holeAt, holesNear, clearHoleCache } };   // handy for console debugging
 
  

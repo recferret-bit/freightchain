@@ -1,0 +1,37 @@
+# nginx site for admin.__ROOT__ – the admin page (client/admin.html) and its API, behind HTTP basic auth. Installed as its OWN site file
+# (/etc/nginx/sites-available/freightchain-admin) by deploy/scripts/remote/setup.sh when absent, like the storybook site; certbot --expand adds its TLS block.
+# Two locks: the password here (DEPLOY_ADMIN_USER / DEPLOY_ADMIN_PASSWORD in deploy/.env → /etc/nginx/freightchain-admin.htpasswd, rewritten on every deploy)
+# AND a session wallet in ADMIN_WALLETS. The app answers /api/admin/* only when the request came through this name (AdminGuard checks Host = admin.<COOKIE_DOMAIN>).
+# auth_basic sits in the proxied locations, not at server level, so certbot's ACME challenge location (renewal of the whole certificate) never needs the password.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name admin.__ROOT__;
+
+    client_max_body_size 1m;
+
+    location = / {
+        auth_basic "Freight Chain admin";
+        auth_basic_user_file /etc/nginx/freightchain-admin.htpasswd;
+        proxy_pass http://127.0.0.1:__PORT__/admin.html;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Authorization "";   # the password stops here
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location / {
+        auth_basic "Freight Chain admin";
+        auth_basic_user_file /etc/nginx/freightchain-admin.htpasswd;
+        proxy_pass http://127.0.0.1:__PORT__;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Authorization "";
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+    }
+}

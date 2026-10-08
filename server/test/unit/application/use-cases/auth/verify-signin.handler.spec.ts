@@ -16,7 +16,7 @@ class StubTokens extends TokenSignerPort {
 
 describe('VerifySignInHandler', () => {
   const ctx = unitContext();
-  const handler = new VerifySignInHandler(ctx.challenges, new NaclSignatureVerifier(), new StubTokens(), ctx.sessions, ctx.rules, ctx.clock, ctx.poolTickets);
+  const handler = new VerifySignInHandler(ctx.challenges, new NaclSignatureVerifier(), new StubTokens(), ctx.sessions, ctx.rules, ctx.clock, ctx.signIns, ctx.poolTickets);
   const challenge = new RequestChallengeHandler(ctx.challenges, ctx.rules, ctx.clock, ctx.entropy);
   const kp = nacl.sign.keyPair(), wallet = bs58.encode(kp.publicKey);
   const sign = (m: string, key = kp) => bs58.encode(nacl.sign.detached(new TextEncoder().encode(m), key.secretKey));
@@ -26,6 +26,23 @@ describe('VerifySignInHandler', () => {
     const result = await handler.execute(new VerifySignInCommand(wallet, sign(message)));
     expect(result.session.token).toBe(`token-for-${wallet}`);
     expect(result.profile).toMatchObject({ wallet, freeRides: 5, demo: false, demoScale: 60 });
+  });
+
+  it('records the sign-in (wallet, time, ip, browser) for the admin page; a failed attempt records nothing', async () => {
+    const before = ctx.db.signIns.length;
+    const { message } = await challenge.execute(new RequestChallengeCommand(wallet));
+    await expect(handler.execute(new VerifySignInCommand(wallet, sign(message, nacl.sign.keyPair()), { ip: '9.9.9.9', userAgent: 'x' }))).rejects.toThrow(UnauthorizedError);
+    expect(ctx.db.signIns).toHaveLength(before);
+    const again = await challenge.execute(new RequestChallengeCommand(wallet));
+    await handler.execute(new VerifySignInCommand(wallet, sign(again.message), { ip: '1.2.3.4', userAgent: 'Firefox/130' }));
+    expect(ctx.db.signIns.at(-1)).toEqual({ wallet, at: ctx.now(), ip: '1.2.3.4', userAgent: 'Firefox/130' });
+  });
+
+  it('a failure to record the sign-in never blocks it', async () => {
+    const broken = { insert: async () => { throw new Error('db down'); } } as unknown as typeof ctx.signIns;
+    const h = new VerifySignInHandler(ctx.challenges, new NaclSignatureVerifier(), new StubTokens(), ctx.sessions, ctx.rules, ctx.clock, broken, ctx.poolTickets);
+    const { message } = await challenge.execute(new RequestChallengeCommand(wallet));
+    expect((await h.execute(new VerifySignInCommand(wallet, sign(message)))).profile.wallet).toBe(wallet);
   });
 
   it('the challenge is single use – even a failed attempt burns it', async () => {

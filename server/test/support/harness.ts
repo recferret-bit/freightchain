@@ -17,6 +17,11 @@ import { RideQueryPort } from '../../src/application/ports/rides/ride-query.port
 import { RideRepositoryPort } from '../../src/application/ports/rides/ride.repository.port.js';
 import { ClockPort } from '../../src/application/ports/shared/clock.port.js';
 import { TransactionPort } from '../../src/application/ports/shared/transaction.port.js';
+import { RideBatchRepositoryPort } from '../../src/application/ports/telemetry/ride-batch.repository.port.js';
+import { RideVerdictRepositoryPort } from '../../src/application/ports/verdict/ride-verdict.repository.port.js';
+import { SignInRepositoryPort } from '../../src/application/ports/auth/sign-in.repository.port.js';
+import { AdminActionRepositoryPort } from '../../src/application/ports/admin/admin-action.repository.port.js';
+import { AdminQueryPort } from '../../src/application/ports/admin/admin-query.port.js';
 import { PrismaService } from '../../src/infrastructure/prisma/prisma.service.js';
 import { truncateAllTables } from '../../src/infrastructure/prisma/truncate.js';
 import { FakeChain, TREASURY } from './fake-chain.js';
@@ -25,7 +30,7 @@ import { FakeClock } from './fake-clock.js';
 import { MemoryDb } from './in-memory/memory-db.js';
 import {
   MemoryAchievementRepository, MemoryChallengeRepository, MemoryHealthProbe, MemoryPaymentRepository, MemoryPlayerRepository,
-  MemoryRideQuery, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
+  MemoryRideBatchRepository, MemoryRideQuery, MemoryRideVerdictRepository, MemorySignInRepository, MemoryAdminActionRepository, MemoryAdminQuery, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
 } from './in-memory/memory-repositories.js';
 import { MemoryPoolRepository, MemoryPromoRepository, MemoryRideTicketRepository, MemoryTicketOrderRepository } from './in-memory/memory-ledger-repositories.js';
 import { TicketOrderRepositoryPort } from '../../src/application/ports/economy/ticket-order.repository.port.js';
@@ -54,7 +59,7 @@ export interface Harness {
 }
 
 /** Everything the app reads from the environment that a test may change – cleared before each harness so files can't leak into each other. */
-const TUNABLES = ['THROTTLE_LIMIT', 'THROTTLE_AUTH_LIMIT', 'FREE_RIDE_SECONDS', 'DEMO_WALLETS', 'DEMO_SCALE', 'INITIAL_SEED_SOL', 'HB_MIN_INTERVAL_MS', 'TRUST_PROXY', 'SOL_USD', 'TREASURY_PUBKEY', 'JWT_SECRET', 'CLIENT_DIR', 'COOKIE_DOMAIN', 'CORS_ORIGINS',
+const TUNABLES = ['THROTTLE_LIMIT', 'THROTTLE_AUTH_LIMIT', 'FREE_RIDE_SECONDS', 'DEMO_WALLETS', 'DEMO_SCALE', 'INITIAL_SEED_SOL', 'HB_MIN_INTERVAL_MS', 'TRUST_PROXY', 'SOL_USD', 'TREASURY_PUBKEY', 'JWT_SECRET', 'CLIENT_DIR', 'COOKIE_DOMAIN', 'CORS_ORIGINS', 'ADMIN_WALLETS', 'ADMIN_JWT_SECRET', 'ADMIN_SESSION_TTL_MINUTES', 'VERDICT_ENFORCE', 'TELEMETRY_RETENTION_DAYS',
   'PAYMENT_MODE', 'TICKET_PROGRAM_ID', 'FEE_TREASURY', 'SEED_TREASURY', 'ORDER_TTL_MINUTES', 'WATCH_INTERVAL_MS', 'WEBHOOK_SECRET', 'CRANK_SECRET', 'FEE_PAYER_SECRET', 'SOLANA_COMMITMENT'];
 
 /**
@@ -89,6 +94,11 @@ export async function createHarness(persistence: Persistence, env: Record<string
       .overrideProvider(RideTicketRepositoryPort).useValue(new MemoryRideTicketRepository(memory))
       .overrideProvider(PromoRepositoryPort).useValue(new MemoryPromoRepository(memory))
       .overrideProvider(TicketOrderRepositoryPort).useValue(new MemoryTicketOrderRepository(memory))
+      .overrideProvider(RideBatchRepositoryPort).useValue(new MemoryRideBatchRepository(memory))
+      .overrideProvider(RideVerdictRepositoryPort).useValue(new MemoryRideVerdictRepository(memory))
+      .overrideProvider(SignInRepositoryPort).useValue(new MemorySignInRepository(memory))
+      .overrideProvider(AdminActionRepositoryPort).useValue(new MemoryAdminActionRepository(memory))
+      .overrideProvider(AdminQueryPort).useValue(new MemoryAdminQuery(memory))
       .overrideProvider(TransactionPort).useValue(new MemoryTransaction())
       .overrideProvider(HealthProbePort).useValue(new MemoryHealthProbe())
       .overrideProvider(ChainEventRepositoryPort).useValue(new MemoryChainEventRepository(memory))

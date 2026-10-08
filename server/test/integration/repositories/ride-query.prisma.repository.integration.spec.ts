@@ -17,7 +17,7 @@ describe('RideQueryPrismaRepository (PostgreSQL)', () => {
   });
 
   /** drive a ride to an end state at t seconds: `metres` along, given flags */
-  async function ride(wallet: string, opts: { paid?: boolean; metres: number; seconds?: number; hull?: number; route?: string; night?: boolean; outcome?: 'shift' | 'failed' | 'running'; start?: number }) {
+  async function ride(wallet: string, opts: { paid?: boolean; metres: number; seconds?: number; hull?: number; route?: string; night?: boolean; outcome?: 'shift' | 'failed' | 'running'; start?: number; verdict?: 'verified' | 'flagged' | 'rejected' | null }) {
     const r: Ride = opts.paid ? orderAt(wallet, at(opts.start ?? 0)) : freeRideAt(wallet, at(opts.start ?? 0));
     if (opts.paid) r.markPaid(1, at(opts.start ?? 0));
     const t0 = opts.start ?? 0, secs = opts.seconds ?? (opts.paid ? 3600 : 10);
@@ -30,6 +30,8 @@ describe('RideQueryPrismaRepository (PostgreSQL)', () => {
     const ended = opts.outcome === 'shift' ? RideClass.restore({ ...moved.snapshot(), status: 'completed' as never, reason: 'shift complete', endedAt: at(t0 + secs) })
       : opts.outcome === 'failed' ? RideClass.restore({ ...moved.snapshot(), status: 'failed' as never, reason: 'x', endedAt: at(t0 + secs) }) : moved;
     await rides.insert(ended);
+    const verdict = opts.verdict === undefined ? (opts.outcome === 'shift' ? 'verified' : null) : opts.verdict;
+    if (verdict) await prisma.rideVerdict.create({ data: { rideId: ended.id, status: verdict, reasons: [], scores: {}, rulesVersion: 1, judgedAt: at(t0 + secs) } });
     return ended;
   }
 
@@ -95,11 +97,26 @@ describe('RideQueryPrismaRepository (PostgreSQL)', () => {
     await ride('bob', { paid: true, metres: 200, outcome: 'shift', start: 100 }); // bob: 500 over two rides → beats alice's one ride
     await ride('carol', { paid: true, metres: 9999, outcome: 'failed', start: 0 }); // not completed: never ranked
     await ride('carol', { metres: 140, outcome: 'shift', start: 0 }); // free
-    expect(await query.leaderboard('round', 1, 20)).toEqual([{ wallet: 'bob', distance: 500, rides: 2 }, { wallet: 'alice', distance: 500, rides: 1 }]);
-    expect(await query.leaderboard('round', 2, 20)).toEqual([]);
-    expect((await query.leaderboard('all', null, 20)).map((r) => r.wallet)).toEqual(['bob', 'alice']);
-    expect(await query.leaderboard('free', null, 20)).toEqual([{ wallet: 'carol', distance: 140, rides: 1 }]);
-    expect(await query.leaderboard('all', null, 1)).toHaveLength(1);
+    expect(await query.leaderboard('round', 1, 20, true)).toEqual([{ wallet: 'bob', distance: 500, rides: 2 }, { wallet: 'alice', distance: 500, rides: 1 }]);
+    expect(await query.leaderboard('round', 2, 20, true)).toEqual([]);
+    expect((await query.leaderboard('all', null, 20, true)).map((r) => r.wallet)).toEqual(['bob', 'alice']);
+    expect(await query.leaderboard('free', null, 20, true)).toEqual([{ wallet: 'carol', distance: 140, rides: 1 }]);
+    expect(await query.leaderboard('all', null, 1, true)).toHaveLength(1);
+  });
+
+  it('leaderboard: the paid boards join the verdict – flagged, rejected or unjudged shifts do not rank; free rides rank whatever their verdict', async () => {
+    await ride('alice', { paid: true, metres: 500, outcome: 'shift', verdict: 'verified' });
+    await ride('bob', { paid: true, metres: 900, outcome: 'shift', verdict: 'flagged' });
+    await ride('carol', { paid: true, metres: 800, outcome: 'shift', verdict: null });
+    await ride('carol', { metres: 140, outcome: 'shift', verdict: 'rejected' });
+    expect((await query.leaderboard('round', 1, 20, true)).map((r) => r.wallet)).toEqual(['alice']);
+    expect((await query.leaderboard('all', null, 20, true)).map((r) => r.wallet)).toEqual(['alice']);
+    expect((await query.leaderboard('free', null, 20, true)).map((r) => r.wallet)).toEqual(['carol']);
+    expect((await query.leaderboard('round', 1, 20, false)).map((r) => r.wallet)).toEqual(['bob', 'carol', 'alice']); // shadow mode: verdicts ignored
+    expect((await query.recent('bob', 5))[0]?.verdict).toBe('flagged');
+    const carol = await query.recent('carol', 5);
+    expect(carol).toHaveLength(2);
+    expect(carol.map((r) => r.verdict)).toEqual(expect.arrayContaining(['rejected', null])); // the free ride's verdict, the unjudged paid one
   });
 
   it('poolRanking: the same ranking over the completed rides of one pool only', async () => {
@@ -113,8 +130,8 @@ describe('RideQueryPrismaRepository (PostgreSQL)', () => {
     };
     await inPool(1, 'alice', 300); await inPool(1, 'bob', 200); await inPool(1, 'bob', 200); await inPool(1, 'carol', 900, 'failed'); await inPool(2, 'carol', 1000);
     await ride('carol', { paid: true, metres: 5000, outcome: 'shift' }); // a paid ride of no pool
-    expect(await query.poolRanking(1, 20)).toEqual([{ wallet: 'bob', distance: 400, rides: 2 }, { wallet: 'alice', distance: 300, rides: 1 }]);
-    expect(await query.poolRanking(2, 20)).toEqual([{ wallet: 'carol', distance: 1000, rides: 1 }]);
-    expect(await query.poolRanking(1, 1)).toHaveLength(1);
+    expect(await query.poolRanking(1, 20, false)).toEqual([{ wallet: 'bob', distance: 400, rides: 2 }, { wallet: 'alice', distance: 300, rides: 1 }]);
+    expect(await query.poolRanking(2, 20, false)).toEqual([{ wallet: 'carol', distance: 1000, rides: 1 }]);
+    expect(await query.poolRanking(1, 1, false)).toHaveLength(1);
   });
 });

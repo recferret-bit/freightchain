@@ -8,10 +8,12 @@ import { ReconcilePaymentCommand } from '../../../src/application/use-cases/ride
 import { StartRideCommand } from '../../../src/application/use-cases/rides/start-ride/start-ride.command.js';
 import { HeartbeatRideCommand } from '../../../src/application/use-cases/rides/heartbeat-ride/heartbeat-ride.command.js';
 import { EndRideCommand } from '../../../src/application/use-cases/rides/end-ride/end-ride.command.js';
-import { endRideBodySchema, heartbeatBodySchema, createRideBodySchema, confirmPaymentBodySchema } from '../../../src/presentation/rides/dto/rides.dto.js';
+import { UploadBatchCommand } from '../../../src/application/use-cases/telemetry/upload-batch/upload-batch.command.js';
+import { batchBodySchema, endRideBodySchema, heartbeatBodySchema, createRideBodySchema, confirmPaymentBodySchema } from '../../../src/presentation/rides/dto/rides.dto.js';
 import { rideIdParamsSchema } from '../../../src/presentation/common/dto/common.dto.js';
 import { busMock } from '../../support/bus.js';
 import { newSignature } from '../../support/fake-chain.js';
+import { recording } from '../../support/recording.js';
 
 const me = { wallet: 'W' }, params = { id: 'ride-1' };
 
@@ -31,7 +33,9 @@ describe('RidesHttpController', () => {
     await c.heartbeat(me, params, report); expect(commands.last()).toEqual(new HeartbeatRideCommand('W', 'ride-1', report));
     const end = endRideBodySchema.parse({ outcome: 'failed', s: 'NaN', reason: 'crash' });
     await c.end(me, params, end); expect(commands.last()).toEqual(new EndRideCommand('W', 'ride-1', 'failed', end.report, 'crash'));
-    expect(commands.sent).toHaveLength(6);
+    const batch = batchBodySchema.parse(recording('ride-1', { seconds: 10 })[0]);
+    await c.batch(me, params, batch); expect(commands.last()).toEqual(new UploadBatchCommand('W', 'ride-1', batch));
+    expect(commands.sent).toHaveLength(7);
     expect(queries.sent).toHaveLength(3);
   });
 
@@ -57,6 +61,15 @@ describe('RidesHttpController', () => {
       for (const bad of [{}, { s: 'abc' }, { s: -1 }, { s: 1e8 }, { s: 1, hull: 'x' }]) expect(heartbeatBodySchema.safeParse(bad).success, JSON.stringify(bad)).toBe(false);
       expect(heartbeatBodySchema.parse({ s: '12.5', t: 'later', hull: null, paused: 'yes', route: 42, night: 1 })).toEqual({ s: 12.5, t: null, hull: null, paused: false, route: null, night: false });
       expect(heartbeatBodySchema.parse({ s: 1, route: 'x'.repeat(100) }).route).toHaveLength(64);
+    });
+    it('a recording batch is STRICT: typed rows, capped arrays, a hex hash or none', () => {
+      const [b0] = recording('ride-1', { seconds: 10 });
+      expect(batchBodySchema.parse(b0)).toEqual(b0);
+      expect(batchBodySchema.parse({ ...b0, hash: undefined }).hash).toBeNull();
+      expect(batchBodySchema.parse({ ...b0, inputs: [[1, '', 1]] }).inputs).toEqual([[1, '', 1]]); // a key without a KeyboardEvent.code (OEM / IME)
+      for (const bad of [{ ...b0, seq: 1.5 }, { ...b0, seq: -1 }, { ...b0, prevHash: '' }, { ...b0, hash: 'ABC' }, { ...b0, t0: -1 }, { ...b0, inputs: [[1, 'x'.repeat(33), 1]] }, { ...b0, inputs: [[1, 'KeyW', 2]] }, { ...b0, samples: [['x']] }, { ...b0, samples: Array.from({ length: 401 }, () => [0]) }]) {
+        expect(batchBodySchema.safeParse(bad).success, JSON.stringify(bad).slice(0, 80)).toBe(false);
+      }
     });
     it('end is LENIENT: garbled values are dropped, never an error – but the outcome must be known', () => {
       expect(endRideBodySchema.parse({ outcome: 'shift', s: 'NaN', t: 'x', hull: 'y', reason: 42 })).toEqual({ outcome: 'shift', reason: null, report: { s: null, t: null, hull: null, paused: false, route: null, night: false } });

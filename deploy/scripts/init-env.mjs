@@ -32,6 +32,8 @@ const values = {
   POSTGRES_PASSWORD: randomBytes(24).toString('hex'),
   JWT_SECRET: randomBytes(32).toString('hex'),
   TREASURY_PUBKEY: publicKey,
+  DEPLOY_ADMIN_PASSWORD: randomBytes(18).toString('base64url'),
+  ADMIN_JWT_SECRET: randomBytes(32).toString('hex'),
   ...(arg('domain') ? { DEPLOY_DOMAIN: arg('domain') } : {}),
   ...(arg('email') ? { DEPLOY_LETSENCRYPT_EMAIL: arg('email') } : {}),
 };
@@ -41,6 +43,6 @@ const out = readFileSync(join(deploy, '.env.example'), 'utf8').split('\n').map((
 }).join('\n');
 writeFileSync(target, out, { mode: 0o600 });
 chmodSync(target, 0o600);
-console.log(`created ${target} (chmod 600) with a fresh POSTGRES_PASSWORD, JWT_SECRET and TREASURY_PUBKEY=${publicKey}`);
+console.log(`created ${target} (chmod 600) with a fresh POSTGRES_PASSWORD, JWT_SECRET, ADMIN_JWT_SECRET, DEPLOY_ADMIN_PASSWORD and TREASURY_PUBKEY=${publicKey}`);
 const left = out.split('\n').filter((l) => /^[A-Z_]+=CHANGE_ME/.test(l)).map((l) => l.split('=')[0]);
 console.log(left.length ? `still to set by hand in deploy/.env: ${left.join(', ')}` : 'nothing left to set by hand');

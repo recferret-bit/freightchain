@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Admin – Freight Chain</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0b0a09">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="stylesheet" href="site/lobby.css">
+<link rel="stylesheet" href="site/admin.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/">⛟ FREIGHT CHAIN · ADMIN</a>
+  <div class="chips">
+    <span class="chip" id="chip-wallet" title="signed in as"></span>
+    <span class="chip" id="chip-mode" title="VERDICT_ENFORCE: whether the paid boards rank verified shifts only"></span>
+    <button class="ghost" id="refresh" title="reload this tab (R)">REFRESH</button>
+    <button class="ghost" id="signout" title="end the admin session (the main site keeps you signed in)" hidden>SIGN OUT</button>
+  </div>
+</header>
+<nav class="tabs" role="tablist" aria-label="Admin">
+  <a role="tab" href="#overview" data-tab="overview">OVERVIEW</a>
+  <a role="tab" href="#queue" data-tab="queue">REVIEW QUEUE <b id="tab-queue-n"></b></a>
+  <a role="tab" href="#rides" data-tab="rides">RIDES</a>
+  <a role="tab" href="#signins" data-tab="signins">SIGN-INS</a>
+  <a role="tab" href="#logs" data-tab="logs">LOGS</a>
+  <a role="tab" href="#audit" data-tab="audit">AUDIT</a>
+</nav>
+<main id="view" aria-live="polite"><p class="dim">Loading…</p></main>
+<footer class="dim">Read-only except the verdict decisions – each one signed by your wallet and audited. Durable logs: <code>npm run ops -- logs</code> · database: <code>npm run ops -- query list</code></footer>
+<script type="module" src="site/admin.js"></script>
+</body>
+</html>

@@ -12,6 +12,6 @@ case "$CMD" in
     follow=""; for a in "$@"; do [ "$a" = "-f" ] && follow="FOLLOW=1"; done
     rscript "$DEPLOY_DIR/scripts/remote/ctl.sh" logs "${args[@]}" ${follow:+"$follow"} ;;
   rollback) confirm "Roll the server back to the previous release?"; rscript "$DEPLOY_DIR/scripts/remote/ctl.sh" rollback "${args[@]}" ;;
-  smoke) node "$DEPLOY_DIR/scripts/smoke.mjs" "https://${DEPLOY_DOMAIN}" --api "https://api.${DEPLOY_DOMAIN}" --game "https://ride.${DEPLOY_DOMAIN}" --storybook "https://storybook.${DEPLOY_DOMAIN}" --treasury "$TREASURY_PUBKEY" ;;
+  smoke) SMOKE_ADMIN_AUTH="${DEPLOY_ADMIN_USER:-}${DEPLOY_ADMIN_PASSWORD:+:$DEPLOY_ADMIN_PASSWORD}" node "$DEPLOY_DIR/scripts/smoke.mjs" "https://${DEPLOY_DOMAIN}" --api "https://api.${DEPLOY_DOMAIN}" --game "https://ride.${DEPLOY_DOMAIN}" --storybook "https://storybook.${DEPLOY_DOMAIN}" --admin "https://admin.${DEPLOY_DOMAIN}" --treasury "$TREASURY_PUBKEY" ;;
   *) die "unknown command $CMD" ;;
 esac

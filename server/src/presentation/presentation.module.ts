@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ApplicationModule } from '../application/application.module.js';
+import { AdminHttpController } from './admin/admin.http.controller.js';
 import { AuthHttpController } from './auth/auth.http.controller.js';
 import { ChainHttpController } from './chain/chain.http.controller.js';
 import { EconomyHttpController } from './economy/economy.http.controller.js';
@@ -12,6 +13,6 @@ import { TicketsHttpController } from './economy/tickets.http.controller.js';
 import { ChainWebhookHttpController } from './chain/chain-webhook.http.controller.js';
 @Module({
   imports: [ApplicationModule],
-  controllers: [HealthHttpController, AuthHttpController, RidesHttpController, EconomyHttpController, PoolsHttpController, TicketsHttpController, LobbyHttpController, ChainHttpController, ChainWebhookHttpController],
+  controllers: [HealthHttpController, AuthHttpController, RidesHttpController, EconomyHttpController, PoolsHttpController, TicketsHttpController, LobbyHttpController, ChainHttpController, ChainWebhookHttpController, AdminHttpController],
 })
 export class PresentationModule {}

@@ -51,8 +51,20 @@ export const envSchema = z
     PRIORITY_FEE_MAX_MICROLAMPORTS: z.coerce.number().int().min(0).default(50_000),
     ORDER_TTL_MINUTES: z.coerce.number().int().positive().default(60),
     ONCHAIN_SESSION_TTL_HOURS: z.coerce.number().int().positive().max(168).default(24),
+    /** wallets that may open the admin page (/admin.html + /api/admin/*), comma-separated; empty = no admin surface at all (every admin route is a 404) */
+    ADMIN_WALLETS: z.string().default(''),
+    /** the admin session's own signing key (rotate it = every admin signed out); unset = derived from JWT_SECRET */
+    ADMIN_JWT_SECRET: optional(z.string().min(32, 'ADMIN_JWT_SECRET must be at least 32 characters')),
+    /** how long an admin sign-in lasts (minutes); there is no silent renewal – the wallet signs again */
+    ADMIN_SESSION_TTL_MINUTES: z.coerce.number().int().positive().max(1440).default(120),
+    /** verified play: 'true' = the paid boards rank verified shifts only; 'false' = SHADOW mode – every ride is still judged and the verdict shown, but ranking ignores it */
+    VERDICT_ENFORCE: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
+    /** days a ride's recording is kept after the ride ended (flagged rides are kept until reviewed); 0 = keep forever */
+    TELEMETRY_RETENTION_DAYS: z.coerce.number().int().min(0).default(90),
   })
   .superRefine((env, ctx) => {
+    const badAdmin = env.ADMIN_WALLETS.split(',').map((w) => w.trim()).filter((w) => w.length > 0 && !isWalletAddress(w));
+    if (badAdmin.length) ctx.addIssue({ code: 'custom', path: ['ADMIN_WALLETS'], message: `ADMIN_WALLETS must be base58 Solana addresses (bad: ${badAdmin.join(', ')})` });
     if (env.TREASURY_PUBKEY !== undefined && !isWalletAddress(env.TREASURY_PUBKEY)) {
       ctx.addIssue({ code: 'custom', path: ['TREASURY_PUBKEY'], message: 'TREASURY_PUBKEY must be a base58 Solana address' });
     }

@@ -5,6 +5,8 @@ export interface IssueChallengeInput {
   nonce: string;
   now: Date;
   ttlMs: number;
+  /** the line the wallet shows as what this signature is for (default: the rider sign-in) */
+  statement?: string;
 }
 
 /** A Sign-In-With-Solana challenge: the server builds the exact text, the wallet signs it, the server verifies the signature over the STORED text. */
@@ -21,7 +23,7 @@ export class AuthChallenge {
       `${input.domain} wants you to sign in with your Solana account:`,
       input.wallet,
       '',
-      'Sign in to Freight Chain. This request will not trigger a transaction or cost any fees.',
+      input.statement ?? 'Sign in to Freight Chain. This request will not trigger a transaction or cost any fees.',
       '',
       `URI: ${input.origin}`,
       `Nonce: ${input.nonce}`,

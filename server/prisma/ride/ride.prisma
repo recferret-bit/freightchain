@@ -12,39 +12,41 @@ enum RideStatus {
 }
 
 model Ride {
-  id             String     @id @default(uuid())
-  seq            BigInt     @default(autoincrement()) // insertion order: the tie-breaker when timestamps are equal
+  id             String       @id @default(uuid())
+  seq            BigInt       @default(autoincrement()) // insertion order: the tie-breaker when timestamps are equal
   wallet         String
-  player         Player     @relation(fields: [wallet], references: [wallet], onDelete: Cascade)
+  player         Player       @relation(fields: [wallet], references: [wallet], onDelete: Cascade)
   tier           String
   seed           Int // 31-bit road seed
   minSeconds     Float
   completeDist   Float
   status         RideStatus
   createdAt      DateTime
-  timeScale      Float      @default(1) // > 1 = a DEMO ride (the shift is that many times shorter)
-  priceUsd       Float      @default(0)
-  lamports       BigInt     @default(0)
+  timeScale      Float        @default(1) // > 1 = a DEMO ride (the shift is that many times shorter)
+  priceUsd       Float        @default(0)
+  lamports       BigInt       @default(0)
   solUsd         Float?
   quoteExpiresAt DateTime?
   roundId        Int?
-  round          Round?     @relation(fields: [roundId], references: [id])
+  round          Round?       @relation(fields: [roundId], references: [id])
   poolId         Int? // the prize pool whose ticket paid for this ride (null = free, or a legacy pay-per-ride order)
-  pool           Pool?      @relation(fields: [poolId], references: [id])
+  pool           Pool?        @relation(fields: [poolId], references: [id])
   paidAt         DateTime?
   route          String? // theme id reported by the client (whitelisted)
-  nightSeconds   Float      @default(0)
-  paused         Boolean    @default(false)
+  nightSeconds   Float        @default(0)
+  paused         Boolean      @default(false)
   startedAt      DateTime?
   lastHbAt       DateTime?
-  lastS          Float      @default(0)
-  lastT          Float      @default(0)
-  driveSeconds   Float      @default(0)
+  lastS          Float        @default(0)
+  lastT          Float        @default(0)
+  driveSeconds   Float        @default(0)
   hull           Float?
   endedAt        DateTime?
   reason         String?
-  version        Int        @default(1) // optimistic lock: heartbeat vs end
+  version        Int          @default(1) // optimistic lock: heartbeat vs end
   payment        Payment?
+  batches        RideBatch[]
+  verdict        RideVerdict?
 
   @@index([wallet, status])
   @@index([status, lastHbAt])

@@ -5,7 +5,7 @@ import { AppModule } from './app/app.module.js';
 import { configureApp } from './app/configure-app.js';
 import { EnvService } from './infrastructure/config/env.service.js';
 
-const app = await NestFactory.create(AppModule);
+const app = await NestFactory.create(AppModule, { bufferLogs: true }); // boot lines are held until configureApp installs the JSON logger
 configureApp(app);
 const env = app.get(EnvService, { strict: false });
 await app.listen(env.port);

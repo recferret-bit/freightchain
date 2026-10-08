@@ -46,8 +46,10 @@ export interface LeaderboardRowDto {
 export interface LeaderboardDto {
   board: LeaderboardBoard;
   round: { id: number; endsAt: number };
-  /** the first `prizeRanks` rows of the round board share the 20 % top-20 pool */
+  /** the first `prizeRanks` rows of the round board share the 20 % top-20 pool. Paid boards rank only shifts whose recording the server verified. */
   prizeRanks: number;
+  /** true = the paid boards count verified shifts only; false = shadow mode (verdicts are shown but not enforced yet) */
+  verifiedOnly: boolean;
   rows: LeaderboardRowDto[];
 }
 

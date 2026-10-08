@@ -25,6 +25,8 @@ export const CFG = {
   CROSS_GAP: 4,              // s between cross-traffic spawn attempts per crossroads (× .6-1.4)
   // road network (js/net/): the road is endless and generated from patterns (country / highway / arterial / town, weights per route in themes/*/index.js `roads`)
   COMPLETE_DIST_K: 0.5,      // the shift counts as complete after RIDE_MIN_SECONDS AND this × MAX_SPEED × RIDE_MIN_SECONDS metres (idling can't bank it); the road itself never ends
+  TELEMETRY_HZ: 10,          // online rides only (js/telemetry.js): samples per GAME second – keep = SAMPLE_HZ in server/src/domain/telemetry/telemetry-rules.ts
+  TELEMETRY_BATCH_SECONDS: 15, // game seconds per uploaded recording batch
   START_ACCESS: 190,         // m of depot access road from the start (yard) to the turn onto the main road
   START_TURN_R: 22,          // m, radius of the right turn from the access road onto the main road (the truck in its lane turns at ≈ R − 2.4)
   SIGNAL_GREEN: [16, 26],    // s of main-road green per cycle (random per junction); cross green is SIGNAL_CROSS, amber SIGNAL_AMBER, all-red SIGNAL_CLEAR

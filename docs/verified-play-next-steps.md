@@ -1,0 +1,93 @@
+# Verified play – status, your checklist, next steps
+
+As of **Oct 8, 2026**. Built on branch `worktree-verified-play` (worktree `.claude/worktrees/verified-play`), **merged into `main` Oct 8 (not pushed)**.
+**Production** (release `20261007-210344-1c9bda1`): verified play in shadow mode + the admin page on `admin.<apex>` behind basic auth. **Not deployed yet**: the admin wallet sign-in and the signed decisions (`c2037ac`, `530bdf2`) – the next `npm run deploy` from `main` ships them.
+How it works is in `AGENTS.md` → "Verified play" / "Admin page" / "Logs" / "Observing production"; the server side in `docs/backend-architecture.md`. For players and non-developers: the explainer page `docs/verified-play/index.html` (diagrams, why it is safe, the players' guarantees, the limits; opens from disk).
+
+## What is built
+
+| piece | where | state |
+|---|---|---|
+| Recording: every key / dash-button press + a 10 Hz sample of the truck, hash-chained 15 s batches, flushed before `/end` | `client/js/telemetry.js`, `POST /api/rides/:id/batches`, `telemetry."RideBatch"` | tested (unit, PostgreSQL, real Chrome: the browser's WebCrypto hash = the server's) |
+| Verdict on every completed shift: `verified` / `flagged` / `rejected` with reasons – recording validation (rejects) + human-timing statistics (flags only); **no re-simulation** | `server/src/domain/verdict/`, thresholds in `verdict-rules.ts` | tested; **thresholds are first guesses, not tuned on real rides** |
+| Paid boards rank verified shifts only; `VERDICT_ENFORCE=false` = shadow mode | leaderboard query, `LeaderboardDto.verifiedOnly`, lobby copy | tested |
+| Recording retention: daily 00:30 UTC sweep after `TELEMETRY_RETENTION_DAYS` (default 90), flagged rides kept | `SweepTelemetryCommand`, `TelemetryRetentionScheduler` | tested |
+| Admin page on `https://admin.<apex>` – three locks: nginx basic auth (`DEPLOY_ADMIN_USER` / `DEPLOY_ADMIN_PASSWORD`), its own admin wallet sign-in (a 2 h `fc_admin` session for `ADMIN_WALLETS` only; the player session grants nothing), and a wallet signature on every change (kept in the audit); the server answers `/api/admin/*` on no other host, 404 for everyone else: overview, review queue → accept / reject / re-judge (audited), rides, sign-ins, live log ring, audit | `client/admin.html`, `client/site/admin.js`, `/api/admin/*` | tested (unit, PostgreSQL, real Chrome) |
+| Sign-in log (wallet, time, IP, browser) | `player."SignIn"` | tested |
+| JSON logs: one line per event, one per API request (status, ms, request id, wallet), rotated 5 × 50 MB | `JsonLogger`, `requestLogMiddleware`, `docker-compose.prod.yml` | tested; live in production since the Oct 7 deploy |
+| Read-only production tooling + Claude skills | `npm run ops -- …`, `deploy/scripts/ops*.{sh,sql}`, `.claude/skills/` | `ps` / `logs` / `nginx` / `sql` / `query` tried once on production (read-only); the queries on the new tables need the deploy |
+
+Migrations added (forward-only, additive): `20261008000002_verified_play` (schemas `telemetry`, `verdict`), `20261008000003_admin` (schema `admin`, `player."SignIn"`, override columns on `RideVerdict`).
+
+## Your part (only you can do these)
+
+- [ ] Skim the review findings below (two reviews, twenty findings, all fixed; four follow-ups are listed).
+- [x] **`deploy/.env`** (on your machine, not in git): `ADMIN_WALLETS` (your wallet), `DEPLOY_ADMIN_USER` / `DEPLOY_ADMIN_PASSWORD` (the basic auth of `admin.*`, generated – read it with `grep DEPLOY_ADMIN deploy/.env`; change it there + deploy to rotate). Nothing for `VERDICT_ENFORCE` yet – production defaults to **shadow mode**; add `VERDICT_ENFORCE=true` only after the tuning week. (Rides from before verified play have no verdict and rank only in shadow mode.)
+- [x] Deploy (Oct 7: `e530d13`, then `1c9bda1` with `admin.*`): migrations applied, smoke green, JSON logs live, the certificate covers `admin.freightchain.fun`.
+- [x] `main` fast-forwarded to the branch (Oct 8, not pushed).
+- [ ] **Deploy `main`**: `npm run deploy -- --dry-run`, then `npm run deploy`. It ships the admin wallet sign-in and the signed decisions; until then the explainer page describes two admin locks production does not have yet.
+- [ ] After that deploy: open `https://admin.freightchain.fun` (the browser asks for the basic-auth user / password), click **SIGN IN AS ADMIN** (Phantom signs an ADMIN sign-in message); check the overview loads. Every ACCEPT / REJECT / RE-JUDGE then asks Phantom to sign that one change. `deploy/.env` now also holds `ADMIN_JWT_SECRET` (rotate = every admin signed out) and `ADMIN_SESSION_TTL_MINUTES=120`.
+- [ ] **Play 5–10 real rides** on the live site: a full free ride, a demo paid ride, one on a slow / old machine, one with the tab hidden for a while, one on a phone-tethered laptop. Then tell me "tune the verdict thresholds".
+- [ ] When the tuning week shows no false flags: set `VERDICT_ENFORCE=true` in `deploy/.env` and redeploy.
+- [ ] Decide: should the free board also rank verified rides only? (today it ranks every completed free ride)
+- [ ] Decide: keep the sign-in log forever, or prune it (e.g. 180 days) – it holds IP addresses (privacy policy / GDPR wording if you go beyond devnet).
+- [ ] Before mainnet or real money: get a second pair of eyes on the treasury custody (Squads multisig) and on the gambling / skill-prize wording.
+
+## Next steps (Claude can do these, in this order)
+
+1. **The review follow-ups** below (none blocks a devnet deploy) – the hash-mismatch one first: it can cost an honest player a shift.
+2. **Tune the thresholds** from the first real rides: `npm run ops -- query reasons` / `query scores` (prod-db skill) → adjust `server/src/domain/verdict/verdict-rules.ts`, bump `RULES_VERSION`, redeploy. Then RE-JUDGE (admin page) applies the new rules to a ride already judged.
+3. **Bulk re-judge** after a threshold change (today: one ride at a time with RE-JUDGE on the admin page, or `npm run ops -- query unjudged` for the ones that were never judged).
+4. **Challenge prompts** (plan Phase 3, Option A): server-issued prompts in the heartbeat response ("flash the headlights now"), answered in the recording, reaction time checked – the strongest human signal without re-simulation.
+5. **Captcha** (Cloudflare Turnstile) at ride start – needs your Turnstile keys.
+6. **Replay viewer** (`replay.html?r=<shareId>` on `ride.*`): plays a recording back on the game's renderer – for the review queue and for winners' rides.
+7. **Round close + payouts** (plan Phase 5): prize rows at the week turn, admin builds the payout transactions, you sign them in Phantom, the server verifies them on chain.
+8. **CI** (skipped on purpose for now): a GitHub Actions workflow running `npm run check` + the PostgreSQL suite on push, the Chrome e2e nightly – when you want it.
+9. Housekeeping: delete the stale `docs/day-1.md`, `package.json#prisma` → `prisma.config.ts` (Prisma 7 deprecation warning).
+
+## Review findings
+
+### First review (Oct 7, `code-review` at high effort over `main...HEAD`)
+
+All ten were confirmed and **fixed** on this branch; each fix has a test.
+
+| # | finding | fix |
+|---|---|---|
+| 1 | a batch uploaded while `/end` committed could be stored after the judgement and never judged (the handler re-judged from a stale ride status) | the upload runs in one transaction under the player row lock with the ride read inside it, and re-judges after its commit when the ride had ended |
+| 2 | a key with an empty `KeyboardEvent.code` (OEM / IME / virtual keyboards) made the batch a 400, the client dropped it, the ride was rejected for a missing batch | client records `Unidentified`; the server accepts an empty code |
+| 3 | no cap on batches per ride – a wallet could store huge amounts and make judging load all of it under the lock | `Ride.recordingAllowance`: a batch's game time ≤ wall time since the start × 1.05 + 30 s, seq ≤ wall / 5 s + 10 |
+| 4 | if judging failed after `/end`, the shift stayed unjudged forever and the override refused it | override judges first when there is no verdict; new admin RE-JUDGE (`POST /api/admin/rides/:id/rejudge`); `ops -- query unjudged` |
+| 5 | the final flush gave up after one retry although the server takes batches for 60 s after the end | the client keeps retrying every 5 s for 55 s; the server re-judges on each |
+| 6 | the batch upload ran outside the player row lock (a CLAUDE.md rule) | = fix 1 |
+| 7 | `holdsByCode` copied the hold array on every release (O(n²) under the lock) | push in place |
+| 8 | the 10 Hz sample timer dropped the remainder (~7.5 Hz at 30 fps) | subtract the period |
+| 9 | float noise (`0.30000000000000004`) roughly doubled the batch size | round by decimals (`x / 100`) |
+| 10 | coarse browser timers (Firefox resistFingerprinting, Tor: 16.7–100 ms) made real people look scripted | the clock step is detected (`scores.human.timerStepMs`); ≥ 10 ms skips `instant-presses` and `repeated-timings` |
+
+### Second review (Oct 7, `/code-review` over `main...HEAD`)
+
+Ten more; nine real, one partly (the 413 case cannot happen – batches are capped below Express's 100 kB). All **fixed**:
+
+| # | finding | fix |
+|---|---|---|
+| 1 | a lost LAST batch made the "recording ends elsewhere" check **reject** the ride (the client assumed it only costs coverage) | the distance the missing seconds explain (28 m/s × 1.2 × the seconds after the last sample) is allowed – a lost tail now only flags `recording-gaps` |
+| 2 | the 90-day sweep deleted recordings that JUDGE NOW / RE-JUDGE still needed → "no recording" reject | the sweep keeps completed shifts that were never judged; RE-JUDGE refuses (409 `recording_deleted`) once a recording is gone and keeps the verdict |
+| 3 | after a refused batch (400) the client kept sending → a broken chain with no explanation | any refusing 4xx stops the recording and keeps the reason in `telemetry.refused`; the server logs `event:'batch-refused'` with the detail (admin page → logs → ride id); NaN samples are sent as 0 instead of `null` |
+| 4 | a missing `VERDICT_ENFORCE` in `deploy/.env` meant enforcement, and older paid rides (no verdict) would vanish from the boards | production defaults to shadow mode (`${VERDICT_ENFORCE:-false}` in compose); enforcement only when `deploy/.env` says `true` |
+| 5 | input times were taken when a slow frame handled the key → 0 ms holds on slow machines / trackpad taps | the events' own `timeStamp` (same clock as `performance.now()`) |
+| 6 | `/end` waited for the final uploads; a player leaving early turned a finished shift into "heartbeat lost" | `/end` waits ≤ 3 s (`FLUSH_WAIT_MS`); uploads keep retrying in the background for 55 s |
+| 7 | RE-JUDGE wrote its audit row outside the judging transaction | judged and audited in one transaction under the player lock |
+| 8 | one failed hash step stopped the recording for the rest of the ride | each step catches: a failed digest sends the batch unhashed, the chain goes on |
+| 9 | the batch's canonical text was built twice per upload (and judging parses everything under the lock) | built once; the judging cost stays a follow-up (below) |
+| 10 | two copies of the admin ride-row mapping and of the ride-status list | one mapper (`admin-ride-row.ts`); statuses from the `RideStatus` enum |
+
+**Follow-ups (not blocking a devnet deploy):**
+- Judging loads, inflates and parses the whole recording inside the player-lock transaction: ≈ 2–4 MB of JSON for a 1 h shift, ≈ 15–30 MB for an 8 h one (the 4 h / 8 h tiers make this the first follow-up). Keep per-batch summaries (counts, last sample, input timing stats) at upload time and judge from those. The per-ride cap still allows ≈ 20 kB/s of recording per running ride from a hostile client; a per-ride byte budget goes with it.
+- `player."SignIn"` has no retention (IP addresses) – prune with the telemetry sweep once you decide the period.
+- (found Oct 8, writing the explainer page) If the browser's WebCrypto digest fails for one batch, the client still sends it with an empty hash (second review, fix 8) – but the server's `hash-mismatch` check **rejects** the whole ride. Make an unhashed batch a flag (the server computes the hash itself anyway, so a missing client hash proves nothing), or retry the digest before sending.
+- `/api/admin/auth/*` counts against the general `THROTTLE_LIMIT`, not the stricter `THROTTLE_AUTH_LIMIT` – fine behind the basic auth and the allowlist; tighten it if the admin host is ever exposed without them.
+
+**Test note:** all checkouts and worktrees share the compose PostgreSQL and its `freightchain_test` database. During this review another branch's migrations (the paid-tickets tables) were in it, and the drift check failed for that reason alone. On a branch: `TEST_DATABASE_URL=postgresql://freight:freight_dev_password@localhost:15433/freightchain_<branch>_test npm run server:integration`.
+
+**Checked after both rounds of fixes:** `npm run check` (413 unit + architecture audits, landing, client lint + headless; the offline game's trace identical), the PostgreSQL suite (147, on this worktree's own test database), real Chrome: game (COMPLETED · VERIFIED, every batch uploaded, none refused), lobby (33 checks), admin (18 checks incl. accept + re-judge).
+**Checked after the admin hardening (Oct 8):** `npm run check` (442 unit + audits), the PostgreSQL suite (149), real Chrome admin (24 checks: the player session gets 404, a non-admin wallet is refused, the admin signs in through a fake Phantom, ACCEPT is signed for exactly that ride and decision, the audit holds the signatures, sign-out), the deploy dry run with the new env keys.

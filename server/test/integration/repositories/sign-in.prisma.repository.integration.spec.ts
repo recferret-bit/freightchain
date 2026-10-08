@@ -1,0 +1,26 @@
+import { SignInPrismaRepository } from '../../../src/infrastructure/prisma/repositories/sign-in.prisma.repository.js';
+import type { PrismaService } from '../../../src/infrastructure/prisma/prisma.service.js';
+import { T0, at, seedPlayer, testPrisma, wipe } from '../../support/db.js';
+
+describe('SignInPrismaRepository (PostgreSQL)', () => {
+  let prisma: PrismaService, repo: SignInPrismaRepository;
+  beforeAll(async () => { prisma = await testPrisma(); repo = new SignInPrismaRepository(prisma); });
+  afterAll(() => prisma.$disconnect());
+  beforeEach(async () => { await wipe(prisma); await seedPlayer(prisma, 'alice'); await seedPlayer(prisma, 'bob'); });
+
+  it('stores sign-ins and lists them newest first (equal times: the later insert first), per wallet, with a limit; counts since a time', async () => {
+    await repo.insert({ wallet: 'alice', at: T0, ip: '1.1.1.1', userAgent: 'Safari' });
+    await repo.insert({ wallet: 'bob', at: at(60), ip: null, userAgent: null });
+    await repo.insert({ wallet: 'alice', at: at(60), ip: '2.2.2.2', userAgent: 'Firefox' });
+    expect((await repo.recent(10)).map((s) => [s.wallet, s.ip])).toEqual([['alice', '2.2.2.2'], ['bob', null], ['alice', '1.1.1.1']]);
+    expect(await repo.recent(10, 'alice')).toEqual([{ wallet: 'alice', at: at(60), ip: '2.2.2.2', userAgent: 'Firefox' }, { wallet: 'alice', at: T0, ip: '1.1.1.1', userAgent: 'Safari' }]);
+    expect(await repo.recent(1)).toHaveLength(1);
+    expect(await repo.countSince(at(30))).toBe(2);
+  });
+
+  it('a player\'s sign-ins go with the player (cascade)', async () => {
+    await repo.insert({ wallet: 'bob', at: T0, ip: null, userAgent: null });
+    await prisma.player.delete({ where: { wallet: 'bob' } });
+    expect(await prisma.signIn.count()).toBe(0);
+  });
+});

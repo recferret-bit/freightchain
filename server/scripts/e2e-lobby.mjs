@@ -80,7 +80,8 @@ await obs.shot('live-desktop'); await size(obs, 390, 844, true); await sleep(400
 check('shift complete in the client', await until(async () => await rider.ev('__game.st.complete'), 40000), `t=${await rider.ev('__game.st.t.toFixed(1)')}`);
 await rider.ev('document.dispatchEvent(new KeyboardEvent("keydown", { key: "p", code: "KeyP", bubbles: true })); window.dispatchEvent(new KeyboardEvent("keydown", { key: "p", code: "KeyP", bubbles: true }))'); await sleep(500);
 await rider.ev('document.getElementById("endshift")?.click()');
-check('server verdict COMPLETED on the result screen', await until(async () => (await rider.ev('document.getElementById("verdict")?.textContent')) === 'COMPLETED'));
+// the distance was set directly (no recording of a real drive), so the recording check rejects it – this script is about the lobby; e2e-browser.mjs covers VERIFIED
+check('server verdict COMPLETED + the recording check on the result screen', await until(async () => /^COMPLETED · (VERIFIED|FLAGGED|REJECTED)/.test(await rider.ev('document.getElementById("verdict")?.textContent || ""'))), await rider.ev('document.getElementById("verdict")?.textContent || ""'));
 await rider.ev('document.getElementById("lobby").click()');
 check('BACK TO LOBBY returns to the lobby', await until(async () => (await rider.ev('location.pathname')) === '/lobby.html'));
 check('…and the free-ride count dropped to 4', await until(async () => /\b4\/\d+ free rides/.test(await rider.ev('document.getElementById("chip-free").textContent'))));
@@ -125,6 +126,7 @@ check('…and no unexpected page errors (ticket holder)', problems(tix).length =
 // ── PROFILE
 await rider.ev('location.hash = "#profile"');
 check('PROFILE: stats + achievements unlocked + the ride in history', await until(async () => (await rider.ev('document.querySelectorAll(".a").length')) === 7));
+check('PROFILE: the ride in history carries its recording verdict', /COMPLETED · (VERIFIED|FLAGGED|REJECTED)/.test(await rider.ev('document.querySelector(".hist .hrow")?.textContent || ""')), await rider.ev('document.querySelector(".hist .hrow")?.textContent || ""'));
 const ach = await rider.ev('[...document.querySelectorAll(".a")].map(a => (a.classList.contains("lock") ? "-" : "+") + a.querySelector(".nm").textContent).join("|")');
 check('First Mile + Shift Complete unlocked, Top 20 locked', /\+First Mile/.test(ach) && /\+Shift Complete/.test(ach) && /-Top 20/.test(ach), ach);
 check('history lists the ride as COMPLETED', /COMPLETED/.test(await rider.ev('[...document.querySelectorAll(".hist")].map(n => n.textContent).join("|")')));

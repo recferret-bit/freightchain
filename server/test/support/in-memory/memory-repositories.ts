@@ -17,6 +17,16 @@ import { PlayerRepositoryPort } from '../../../src/application/ports/players/pla
 import { RideQueryPort, type FinishedRideRow, type LeaderboardRow, type LiveRideRow, type RecentRideRow, type RideSummary, type RideTotalsRow, type UpcomingRideRow } from '../../../src/application/ports/rides/ride-query.port.js';
 import { RideRepositoryPort } from '../../../src/application/ports/rides/ride.repository.port.js';
 import { TransactionPort } from '../../../src/application/ports/shared/transaction.port.js';
+import { RideBatchRepositoryPort } from '../../../src/application/ports/telemetry/ride-batch.repository.port.js';
+import { RideBatch } from '../../../src/domain/telemetry/ride-batch.entity.js';
+import { RideVerdictRepositoryPort } from '../../../src/application/ports/verdict/ride-verdict.repository.port.js';
+import { RideVerdict } from '../../../src/domain/verdict/ride-verdict.entity.js';
+import { VerdictStatus } from '../../../src/domain/verdict/verdict.dto.js';
+import { SignInRepositoryPort } from '../../../src/application/ports/auth/sign-in.repository.port.js';
+import { AdminActionRepositoryPort } from '../../../src/application/ports/admin/admin-action.repository.port.js';
+import { AdminQueryPort, type AdminCounts, type AdminRideRow } from '../../../src/application/ports/admin/admin-query.port.js';
+import type { SignInRecord } from '../../../src/domain/auth/sign-in.js';
+import type { AdminActionRecord, AdminBatchDto, AdminRideFilter } from '../../../src/domain/admin/admin.dto.js';
 import { MemoryDb } from './memory-db.js';
 
 /* In-memory twins of the Prisma repositories: same contracts (optimistic versions, unique keys, orderings), no database.
@@ -188,17 +198,20 @@ export class MemoryRideQuery extends RideQueryPort {
       .sort((a, b) => (b.props.startedAt?.getTime() ?? 0) - (a.props.startedAt?.getTime() ?? 0) || b.seq - a.seq)
       .slice(0, limit)
       .flatMap(({ props: p }) => (p.startedAt
-        ? [{ tier: p.tier, status: p.status, lastS: p.lastS, hull: p.hull, route: p.route, timeScale: p.timeScale, startedAt: p.startedAt, endedAt: p.endedAt }]
+        ? [{ tier: p.tier, status: p.status, lastS: p.lastS, hull: p.hull, route: p.route, timeScale: p.timeScale, startedAt: p.startedAt, endedAt: p.endedAt, verdict: this.db.verdicts.get(p.id)?.status ?? null }]
         : []));
   }
 
-  async leaderboard(board: LeaderboardBoard, roundId: number | null, limit: number): Promise<LeaderboardRow[]> {
-    return this.ranked((r) => (board === 'free' ? r.tier === 'free' : r.tier !== 'free' && (board === 'round' ? r.roundId === roundId : true)), limit);
+  async leaderboard(board: LeaderboardBoard, roundId: number | null, limit: number, verifiedOnly: boolean): Promise<LeaderboardRow[]> {
+    return this.ranked((r) => (board === 'free' ? r.tier === 'free'
+      : r.tier !== 'free' && (!verifiedOnly || this.verified(r)) && (board === 'round' ? r.roundId === roundId : true)), limit);
   }
 
-  async poolRanking(poolId: number, limit: number): Promise<LeaderboardRow[]> {
-    return this.ranked((r) => r.poolId === poolId, limit);
+  async poolRanking(poolId: number, limit: number, verifiedOnly: boolean): Promise<LeaderboardRow[]> {
+    return this.ranked((r) => r.poolId === poolId && (!verifiedOnly || this.verified(r)), limit);
   }
+
+  private verified(r: RideProps): boolean { return this.db.verdicts.get(r.id)?.status === VerdictStatus.Verified; }
 
   private ranked(keep: (r: RideProps) => boolean, limit: number): LeaderboardRow[] {
     const done = [...this.db.rides.values()].map((r) => r.props).filter((r) => r.status === RideStatus.Completed && keep(r));
@@ -270,6 +283,49 @@ export class MemoryPaymentRepository extends PaymentRepositoryPort {
 }
 
 @Injectable()
+export class MemoryRideBatchRepository extends RideBatchRepositoryPort {
+  constructor(private readonly db: MemoryDb) { super(); }
+
+  async insert(batch: RideBatch): Promise<boolean> {
+    const key = `${batch.rideId}:${batch.seq}`;
+    if (this.db.batches.has(key)) return false;
+    this.db.batches.set(key, batch.snapshot());
+    return true;
+  }
+
+  async deleteForRidesEndedBefore(cutoff: Date): Promise<number> {
+    let deleted = 0;
+    for (const [key, b] of this.db.batches) {
+      const ride = this.db.rides.get(b.rideId)?.props;
+      const verdict = this.db.verdicts.get(b.rideId);
+      if (!ride?.endedAt || ride.endedAt.getTime() >= cutoff.getTime() || verdict?.status === VerdictStatus.Flagged || (!verdict && ride.status === RideStatus.Completed)) continue;
+      this.db.batches.delete(key);
+      deleted++;
+    }
+    return deleted;
+  }
+
+  async listByRide(rideId: string): Promise<RideBatch[]> {
+    return [...this.db.batches.values()].filter((b) => b.rideId === rideId).sort((a, b) => a.seq - b.seq).map((b) => RideBatch.restore(b));
+  }
+}
+
+@Injectable()
+export class MemoryRideVerdictRepository extends RideVerdictRepositoryPort {
+  constructor(private readonly db: MemoryDb) { super(); }
+
+  async save(verdict: RideVerdict): Promise<void> {
+    const prev = this.db.verdicts.get(verdict.rideId);
+    this.db.verdicts.set(verdict.rideId, { ...verdict.snapshot(), version: prev ? prev.version + 1 : 1 });
+  }
+
+  async findByRide(rideId: string): Promise<RideVerdict | null> {
+    const v = this.db.verdicts.get(rideId);
+    return v ? RideVerdict.restore(v) : null;
+  }
+}
+
+@Injectable()
 export class MemoryAchievementRepository extends AchievementRepositoryPort {
   constructor(private readonly db: MemoryDb) { super(); }
 
@@ -287,3 +343,56 @@ export class MemoryAchievementRepository extends AchievementRepositoryPort {
 }
 
 export { MemoryChainCursorRepository, MemoryChainEventRepository, MemorySponsoredTxRepository } from './memory-chain-repositories.js';
+@Injectable()
+export class MemorySignInRepository extends SignInRepositoryPort {
+  constructor(private readonly db: MemoryDb) { super(); }
+
+  async insert(record: SignInRecord): Promise<void> { this.db.signIns.push({ ...record }); }
+
+  async recent(limit: number, wallet?: string): Promise<SignInRecord[]> {
+    return [...this.db.signIns].reverse().filter((s) => !wallet || s.wallet === wallet).slice(0, limit); // insertion order = time order here
+  }
+
+  async countSince(at: Date): Promise<number> { return this.db.signIns.filter((s) => s.at.getTime() >= at.getTime()).length; }
+}
+
+@Injectable()
+export class MemoryAdminActionRepository extends AdminActionRepositoryPort {
+  constructor(private readonly db: MemoryDb) { super(); }
+
+  async insert(record: AdminActionRecord): Promise<void> { this.db.adminActions.push({ ...record }); }
+  async recent(limit: number): Promise<AdminActionRecord[]> { return [...this.db.adminActions].reverse().slice(0, limit); }
+}
+
+@Injectable()
+export class MemoryAdminQuery extends AdminQueryPort {
+  constructor(private readonly db: MemoryDb) { super(); }
+
+  async counts(): Promise<AdminCounts> {
+    const tally = (values: string[]) => values.reduce<Record<string, number>>((acc, v) => ({ ...acc, [v]: (acc[v] ?? 0) + 1 }), {});
+    const rides = tally([...this.db.rides.values()].map((r) => r.props.status));
+    return {
+      players: this.db.players.size, running: rides['running'] ?? 0, rides, verdicts: tally([...this.db.verdicts.values()].map((v) => v.status)),
+      payments: { count: this.db.payments.length, lamports: this.db.payments.reduce((sum, p) => sum + p.lamports, 0) },
+      telemetry: { batches: this.db.batches.size, bytes: [...this.db.batches.values()].reduce((sum, b) => sum + b.bytes, 0) },
+    };
+  }
+
+  async rides(filter: AdminRideFilter): Promise<AdminRideRow[]> {
+    return [...this.db.rides.values()]
+      .filter(({ props: p }) => (!filter.wallet || p.wallet === filter.wallet) && (!filter.status || p.status === filter.status)
+        && (!filter.verdict || (filter.verdict === 'none' ? !this.db.verdicts.has(p.id) : this.db.verdicts.get(p.id)?.status === filter.verdict)))
+      .sort((a, b) => b.props.createdAt.getTime() - a.props.createdAt.getTime() || b.seq - a.seq)
+      .slice(0, filter.limit)
+      .map(({ props: p }) => {
+        const v = this.db.verdicts.get(p.id);
+        return { id: p.id, wallet: p.wallet, tier: p.tier, status: p.status, reason: p.reason, route: p.route, lastS: p.lastS, driveSeconds: p.driveSeconds, timeScale: p.timeScale,
+          createdAt: p.createdAt, startedAt: p.startedAt, endedAt: p.endedAt, verdict: v?.status ?? null, overridden: (v?.overriddenBy ?? null) !== null };
+      });
+  }
+
+  async batchIndex(rideId: string): Promise<AdminBatchDto[]> {
+    return [...this.db.batches.values()].filter((b) => b.rideId === rideId).sort((a, b) => a.seq - b.seq)
+      .map((b) => ({ seq: b.seq, t0: b.t0, t1: b.t1, samples: b.samples, inputs: b.inputs, bytes: b.bytes, hashOk: b.hashOk, receivedAt: b.receivedAt.getTime() }));
+  }
+}

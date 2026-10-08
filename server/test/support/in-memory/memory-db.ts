@@ -11,6 +11,10 @@ import type { RideTicketProps, TicketGrantProps } from '../../../src/domain/play
 import type { ChainEventRow } from '../../../src/domain/economy/chain-events.js';
 import type { ChainCursorRow } from '../../../src/application/ports/economy/chain-event.repository.port.js';
 import type { SponsoredTxRow } from '../../../src/application/ports/economy/sponsored-tx.repository.port.js';
+import type { RideBatchProps } from '../../../src/domain/telemetry/ride-batch.entity.js';
+import type { RideVerdictProps } from '../../../src/domain/verdict/ride-verdict.entity.js';
+import type { SignInRecord } from '../../../src/domain/auth/sign-in.js';
+import type { AdminActionRecord } from '../../../src/domain/admin/admin.dto.js';
 
 /** The whole "database" of the in-memory suite: plain maps of snapshots (repositories hand out fresh entities, like real rows). */
 export class MemoryDb {
@@ -31,6 +35,11 @@ export class MemoryDb {
   chainEvents: ChainEventRow[] = [];
   chainCursors = new Map<string, ChainCursorRow>();
   sponsoredTxs: SponsoredTxRow[] = [];
+  /** key = `${rideId}:${seq}` */
+  batches = new Map<string, RideBatchProps>();
+  verdicts = new Map<string, RideVerdictProps>();
+  signIns: SignInRecord[] = [];
+  adminActions: AdminActionRecord[] = [];
   private seq = 0;
   private roundSeq = 0;
 
@@ -38,8 +47,8 @@ export class MemoryDb {
   nextRoundId(): number { return ++this.roundSeq; }
 
   reset(): void {
-    this.players.clear(); this.challenges.clear(); this.rides.clear();
-    this.rounds = []; this.payments = []; this.unlocks = [];
+    this.players.clear(); this.challenges.clear(); this.rides.clear(); this.batches.clear(); this.verdicts.clear();
+    this.rounds = []; this.payments = []; this.unlocks = []; this.signIns = []; this.adminActions = [];
     this.seq = 0; this.roundSeq = 0;
     this.pools.clear(); this.tickets.clear(); this.grants = []; this.promos.clear(); this.redemptions.clear(); this.orders.clear();
     this.chainEvents = []; this.chainCursors.clear(); this.sponsoredTxs = [];

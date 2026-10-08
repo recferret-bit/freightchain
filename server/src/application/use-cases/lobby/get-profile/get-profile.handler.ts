@@ -43,7 +43,7 @@ export class GetProfileHandler implements IQueryHandler<GetProfileQuery, Profile
       stats: { rides: stats.started, completed: stats.completed, metres: Math.round(stats.metres), bestMetres: Math.round(stats.best), paidRides: spent.count, spentLamports: spent.lamports + ordered.lamports, ticketsBought: ordered.tickets },
       recent: recent.map((r) => ({
         tier: r.tier, status: r.status, distance: Math.round(r.lastS), hull: r.hull === null ? null : Math.round(r.hull), route: r.route, timeScale: r.timeScale,
-        startedAt: r.startedAt.getTime(), endedAt: r.endedAt?.getTime() ?? null,
+        startedAt: r.startedAt.getTime(), endedAt: r.endedAt?.getTime() ?? null, verdict: r.verdict,
       })),
       achievements,
       tickets,

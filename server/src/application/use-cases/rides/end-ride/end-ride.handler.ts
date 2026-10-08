@@ -8,6 +8,7 @@ import { RideRepositoryPort } from '../../../ports/rides/ride.repository.port.js
 import { ClockPort } from '../../../ports/shared/clock.port.js';
 import { AchievementService } from '../../../services/achievement.service.js';
 import { RideLookupService } from '../../../services/ride-lookup.service.js';
+import { VerdictService } from '../../../services/verdict.service.js';
 import { withVersionRetry } from '../../../services/version-retry.js';
 import { EndRideCommand } from './end-ride.command.js';
 
@@ -15,7 +16,8 @@ import { EndRideCommand } from './end-ride.command.js';
  * The driver ended the shift ('shift': the server decides completed / abandoned) or the ride failed ('failed': a crash etc.).
  * The final report is applied first; a ride that report fails stays failed. Ending must not lose to a racing heartbeat, hence the retry on a lost lock –
  * otherwise a finished ride would sit "running" until its timeout. Unlocks are persisted right after – best-effort: the verdict is already saved, a failure
- * there must not turn it into a 500 (the next profile read catches the unlocks up).
+ * there must not turn it into a 500 (the next profile read catches the unlocks up). A completed shift is then judged from its recording (verified play) –
+ * best-effort too: a failure leaves it unjudged (verdict null), and a batch that lands after the end judges it again.
  */
 @CommandHandler(EndRideCommand)
 export class EndRideHandler implements ICommandHandler<EndRideCommand, RideDto> {
@@ -25,6 +27,7 @@ export class EndRideHandler implements ICommandHandler<EndRideCommand, RideDto> 
     private readonly lookup: RideLookupService,
     private readonly rides: RideRepositoryPort,
     private readonly achievements: AchievementService,
+    private readonly verdicts: VerdictService,
     private readonly rules: RulesConfigPort,
     private readonly clock: ClockPort,
   ) {}
@@ -40,6 +43,10 @@ export class EndRideHandler implements ICommandHandler<EndRideCommand, RideDto> 
     await this.achievements.evaluate(wallet, rideId).catch((error: unknown) => {
       this.logger.warn(`achievements for ride ${rideId} deferred to the next profile read: ${error instanceof Error ? error.message : String(error)}`);
     });
-    return toRideDto(saved);
+    const verdict = await this.verdicts.judge(rideId).catch((error: unknown) => {
+      this.logger.warn(`verdict for ride ${rideId} not judged: ${error instanceof Error ? error.message : String(error)}`);
+      return null;
+    });
+    return toRideDto(saved, verdict?.toDto() ?? null);
   }
 }

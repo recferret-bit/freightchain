@@ -13,7 +13,7 @@ describe('EndRideHandler', () => {
   const setup = (rides?: RideRepositoryPort) => {
     const ctx = unitContext();
     const repo = rides ?? ctx.rides;
-    const handler = new EndRideHandler(new RideLookupService(repo), repo, ctx.achievements, ctx.rules, ctx.clock);
+    const handler = new EndRideHandler(new RideLookupService(repo), repo, ctx.achievements, ctx.verdicts, ctx.rules, ctx.clock);
     return { ctx, end: (id: string, outcome: 'shift' | 'failed', r: Partial<RideReport>, reason: string | null = null) => handler.execute(new EndRideCommand('w', id, outcome, report(r), reason)) };
   };
 
@@ -46,7 +46,7 @@ describe('EndRideHandler', () => {
     const ctx = unitContext();
     const ride = await ctx.freeRide('w', true);
     const broken = { evaluate: async () => { throw new Error('pool timeout'); } } as unknown as typeof ctx.achievements;
-    const handler = new EndRideHandler(ctx.lookup, ctx.rides, broken, ctx.rules, ctx.clock);
+    const handler = new EndRideHandler(ctx.lookup, ctx.rides, broken, ctx.verdicts, ctx.rules, ctx.clock);
     ctx.clock.advance(10);
     expect(await handler.execute(new EndRideCommand('w', ride.id, 'shift', report({ s: 140, t: 10, hull: 100 }), null))).toMatchObject({ status: 'completed' });
     expect((await ctx.reload(ride.id)).status).toBe('completed');
@@ -69,7 +69,7 @@ describe('EndRideHandler', () => {
       async save(r: Ride) { if (saves++ === 0) throw new VersionConflictError(); return base.rides.save(r); }
     }
     const ride = await base.freeRide('w', true);
-    const handler = new EndRideHandler(new RideLookupService(new RacingRides()), new RacingRides(), base.achievements, base.rules, base.clock);
+    const handler = new EndRideHandler(new RideLookupService(new RacingRides()), new RacingRides(), base.achievements, base.verdicts, base.rules, base.clock);
     base.clock.advance(2);
     expect(await handler.execute(new EndRideCommand('w', ride.id, 'failed', report({ s: 1, t: 2 }), 'crash'))).toMatchObject({ status: 'failed' });
     expect(saves).toBe(2);

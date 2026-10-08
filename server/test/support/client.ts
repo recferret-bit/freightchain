@@ -32,5 +32,11 @@ export function bindClient(h: () => Harness) {
     await agent.post('/api/auth/verify').send({ wallet: w.address, signature: sign(w.kp, body.message) }).expect(200);
     return { agent, ...w };
   }
-  return { server, anon, login, sec: (n: number) => h().clock.advance(n), now: () => h().clock.ms };
+  /** an admin: the ADMIN sign-in (/api/admin/auth/*, the fc_admin cookie) – no player session; pass an agent to add it to a signed-in rider */
+  async function loginAdmin(w: Wallet, agent: Agent = request.agent(server())): Promise<Rider> {
+    const { body } = await agent.post('/api/admin/auth/nonce').set('x-fc-admin', '1').send({ wallet: w.address }).expect(200);
+    await agent.post('/api/admin/auth/verify').set('x-fc-admin', '1').send({ wallet: w.address, signature: sign(w.kp, body.message) }).expect(200);
+    return { agent, ...w };
+  }
+  return { server, anon, login, loginAdmin, sec: (n: number) => h().clock.advance(n), now: () => h().clock.ms };
 }

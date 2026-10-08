@@ -11,6 +11,7 @@ import { throttlerOptions } from '../infrastructure/http/throttling.js';
 import { InfrastructureModule } from '../infrastructure/infrastructure.module.js';
 import { DailyFreeRideScheduler } from '../infrastructure/scheduling/daily-free-ride.scheduler.js';
 import { ProgramWatcher } from '../infrastructure/scheduling/program-watcher.js';
+import { TelemetryRetentionScheduler } from '../infrastructure/scheduling/telemetry-retention.scheduler.js';
 import { ApplicationModule } from '../application/application.module.js';
 import { TokenSignerPort } from '../application/ports/auth/token-signer.port.js';
 import { PresentationModule } from '../presentation/presentation.module.js';
@@ -23,7 +24,7 @@ export function siteRoots(env: EnvService): ServeStaticModuleOptions[] {
   return [...(landing ? [{ rootPath: env.landingDir, renderPath: '/', exclude, serveStaticOptions }] : []), { rootPath: env.clientDir, exclude, serveStaticOptions }];
 }
 
-/** The composition root: environment, rate limiting, the midnight free-ride job, the program watcher (WATCH_INTERVAL_MS), the site served from the same origin as the API, and the presentation layer. */
+/** The composition root: environment, rate limiting, the midnight free-ride job, the 00:30 recording-retention sweep and the program watcher (WATCH_INTERVAL_MS), the site served from the same origin as the API, and the presentation layer. */
 @Module({
   imports: [
     EnvModule,
@@ -35,6 +36,6 @@ export function siteRoots(env: EnvService): ServeStaticModuleOptions[] {
     ApplicationModule, // the scheduler dispatches on its bus
     PresentationModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }, DailyFreeRideScheduler, ProgramWatcher],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }, DailyFreeRideScheduler, TelemetryRetentionScheduler, ProgramWatcher],
 })
 export class AppModule {}

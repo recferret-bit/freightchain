@@ -39,6 +39,15 @@ export interface RulesConfig {
   priorityFee: { percentile: number; minMicrolamports: number; maxMicrolamports: number };
   /** how long an on-chain session key is valid (hours) */
   sessionTtlHours: number;
+  /** false = SHADOW mode: verdicts are judged and shown, but the paid boards rank every completed shift */
+  verdictEnforce: boolean;
+  /** recordings of rides that ended longer ago are deleted (flagged rides excepted); 0 = keep forever */
+  telemetryRetentionDays: number;
+  /** wallets that may sign in to the admin page (empty = nobody) */
+  adminWallets: ReadonlySet<string>;
+  /** where the admin page lives – named in the admin sign-in message so the wallet can match it to the page (admin.<apex>; the app's own domain on a single origin) */
+  adminDomain: string;
+  adminOrigin: string;
 }
 
 /** Game and economy tunables (environment-backed in production). */

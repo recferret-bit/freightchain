@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Injectable, Logger } from '@nestjs/common';
@@ -27,6 +27,9 @@ export class EnvService {
     return this.devSecret;
   }
   get sessionTtlDays(): number { return this.env.SESSION_TTL_DAYS; }
+  /** the admin session's key: ADMIN_JWT_SECRET, else derived from the player secret (never the same bytes – a player token is not an admin token even before the audience check) */
+  get adminJwtSecret(): string { return this.env.ADMIN_JWT_SECRET ?? createHash('sha256').update(`${this.jwtSecret}:admin-session`).digest('hex'); }
+  get adminSessionTtlMinutes(): number { return this.env.ADMIN_SESSION_TTL_MINUTES; }
   get appDomain(): string { return this.env.APP_DOMAIN; }
   get appOrigin(): string { return this.env.APP_ORIGIN; }
   /** the site folder (default: ../client, resolved from this module so it works from src/ and from dist/) */
@@ -67,6 +70,14 @@ export class EnvService {
   get crankSecret(): string | undefined { return this.env.CRANK_SECRET; }
   get feePayerSecret(): string | undefined { return this.env.FEE_PAYER_SECRET; }
   get initialSeedLamports(): number { return Math.round(this.env.INITIAL_SEED_SOL * 1e9); }
+  get verdictEnforce(): boolean { return this.env.VERDICT_ENFORCE; }
+  get telemetryRetentionDays(): number { return this.env.TELEMETRY_RETENTION_DAYS; }
+  /** who may use the admin page (empty = nobody: the admin routes answer 404) */
+  get adminWallets(): ReadonlySet<string> {
+    return new Set(this.env.ADMIN_WALLETS.split(',').map((w) => w.trim()).filter((w) => w.length > 0));
+  }
+  /** split deployment: the only host the admin API answers on (admin.<COOKIE_DOMAIN>, behind nginx basic auth); null = single origin, any host */
+  get adminHost(): string | null { return this.env.COOKIE_DOMAIN ? `admin.${this.env.COOKIE_DOMAIN.replace(/^\./, '')}`.toLowerCase() : null; }
 
   get demoWallets(): ReadonlySet<string> {
     return new Set(this.env.DEMO_WALLETS.split(',').map((w) => w.trim()).filter((w) => w.length > 0));
