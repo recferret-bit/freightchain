@@ -22,8 +22,9 @@ test('CSS ≤ 10 kB gzipped, HTML ≤ 14 kB gzipped', { skip: !has }, () => {
   assert.ok(gz(join(dist, 'index.html')) <= 14 * KB);
 });
 
-test('media: no single image over 120 kB, all media together ≤ 600 kB', { skip: !has }, () => {
-  const media = files.filter(f => f.includes('/media/'));
+test('media: no single image over 120 kB, all images together ≤ 600 kB; the lazy hero video ≤ 3 MB', { skip: !has }, () => {
+  const media = files.filter(f => f.includes('/media/') && !f.endsWith('.mp4'));
+  for (const f of files.filter(f => f.endsWith('.mp4'))) assert.ok(statSync(f).size <= 3 * 1024 * KB, `${f} ${statSync(f).size} B`);
   for (const f of media) assert.ok(statSync(f).size <= 120 * KB, `${f} ${statSync(f).size} B`);
   assert.ok(media.reduce((a, f) => a + statSync(f).size, 0) <= 600 * KB);
 });
