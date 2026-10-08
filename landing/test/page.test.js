@@ -110,7 +110,7 @@ test('promo invite: a form in the hero (no new heading or chapter), the code rid
 test('the lobby has the PROMO tab and takes the invite code only as a pre-fill', () => {
   const lobbyHtml = readFileSync(join(root, '..', 'client', 'lobby.html'), 'utf8'), lobby = readFileSync(join(root, '..', 'client', 'site', 'lobby.js'), 'utf8');
   assert.match(lobbyHtml, /<a role="tab" href="#promo" data-tab="promo">PROMO<\/a>/);
-  assert.match(lobby, /const TABS = \['new', 'live', 'board', 'garage', 'promo', 'profile'\]/);
+  assert.match(lobby, /const TABS = \['new', 'live', 'replays', 'board', 'garage', 'promo', 'profile'\]/);
   assert.match(lobbyHtml, /<a role="tab" href="#garage" data-tab="garage">GARAGE<\/a>/);
   assert.match(lobby, /api\('garage\/loadout'/); assert.match(lobby, /track\('garage_part_clicked'/);
   assert.match(lobby, /new URLSearchParams\(location\.search\)\.get\('promo'\)/);
