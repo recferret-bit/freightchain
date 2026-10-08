@@ -45,8 +45,9 @@ import { CreatePromoHandler } from './use-cases/promos/create-promo/create-promo
 import { ListPromosHandler } from './use-cases/promos/list-promos/list-promos.handler.js';
 import { DisablePromoHandler } from './use-cases/promos/disable-promo/disable-promo.handler.js';
 import { GrantTicketsHandler } from './use-cases/players/grant-tickets/grant-tickets.handler.js';
+import { FinalityService } from './services/finality.service.js';
 
-const services: Provider[] = [AchievementService, PaymentSettlementService, PlayerSessionService, PoolTicketsService, RideLookupService, RoundService, TicketSettlementService, PoolRegistryService];
+const services: Provider[] = [AchievementService, PaymentSettlementService, PlayerSessionService, PoolTicketsService, RideLookupService, RoundService, TicketSettlementService, PoolRegistryService, FinalityService];
 
 const handlers: Provider[] = [
   RequestChallengeHandler, VerifySignInHandler, GetMeHandler, LogoutHandler,
