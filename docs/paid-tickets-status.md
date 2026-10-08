@@ -45,6 +45,14 @@ Kept on purpose: the legacy pay-per-ride routes (`/api/rides/:id/payment|confirm
 | Q7 | Mainnet: the program is not audited. Say so in the submission ("devnet only, not audited")? | yes |
 | Q8 | Small known gaps – fix now or after the submission? `profile.stats.paidRides` stays 0 for ticket rides; 409 problems carry `title: "Error"`; `pool:seed` cannot make a `refunding` pool; a dropped transaction with no order (pool-only event / explorer purchase) is never undone, only re-synced | fix `paidRides` before recording; the rest after |
 
+## 3b. Built since (Oct 8)
+
+- **The pool crank** (`CRANK_SECRET`): fails missed pools, expires unsettled ones after the 14-day grace, refunds their tickets 8 per transaction and closes them – by the chain clock, every step settled into the mirror. CLI `pool:crank` (one pass) and `PoolCrankScheduler` (`CRANK_INTERVAL_MS`, 60 s). Never touches a pool that paid prizes.
+- **Ticket-only in program mode**: no pay-per-ride fallback when a tier has no live pool (tiers / lobby NO POOL card / landing table / rides 409).
+- **Refundable at once**: a missed-goal pool's buyers see CLAIM REFUND before anyone failed it (the refund transaction bundles `fail_pool`).
+- The lobby's unfinished-order note says "nothing was charged" when nothing was sent.
+- **`npm run test:localnet`** covers all of it on a local validator, including `sponsor`, `expire_pool` and the permissionless grace close (baked "three weeks old" pools) – walkthrough: `docs/localnet-e2e/index.html`.
+
 ## 4. What to do next
 
 1. **Devnet deploy** (needs §2 items 1–4): follow `docs/program-deploy.md` – program id → `anchor keys sync` → IDL + `vendor-idl` → `UPDATE_PIN=1 npm run program:verify` → codec fixture → deploy **the verifiable `.so`** with `solana program deploy` (never `anchor deploy`: it ships host-built bytes that never verify) → `initialize` at once → `check.sh onchain` → `create_pool` for the week pools + the demo pool (signed in Phantom).

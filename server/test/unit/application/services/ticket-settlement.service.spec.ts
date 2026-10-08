@@ -65,7 +65,7 @@ describe('TicketSettlementService', () => {
       expect(await svc.settlePurchase(bought({ poolId: 9 }))).toEqual({ outcome: 'unmatched', detail: 'pool 9 is not registered' });
       expect(await svc.settlePurchase(bought())).toMatchObject({ outcome: 'applied', balance: 0 });
       expect((await ctx.tickets.find(BUYER, 1))?.snapshot()).toMatchObject({ balance: 0, bought: 2 });
-      expect((await ctx.poolTickets.balances(BUYER))[0]).toMatchObject({ refundable: true });
+      expect((await ctx.poolTickets.balances(BUYER, ctx.now()))[0]).toMatchObject({ refundable: true });
     });
   });
 
@@ -98,7 +98,7 @@ describe('TicketSettlementService', () => {
       expect(r).toMatchObject({ outcome: 'applied' });
       expect((await ctx.orders.findById(o.id))?.snapshot()).toMatchObject({ status: 'refunded', refundedAt: ctx.now() });
       expect((await ctx.tickets.find(BUYER, 1))?.snapshot()).toMatchObject({ balance: 0, bought: 0 });
-      expect(await ctx.poolTickets.balances(BUYER)).toEqual([]);
+      expect(await ctx.poolTickets.balances(BUYER, ctx.now())).toEqual([]);
       expect((await ctx.pools.findById(1))?.snapshot().vaultLamports).toBe(0);
       expect((await ctx.tickets.recentGrants(BUYER, 1))[0]).toMatchObject({ source: 'refund', delta: 0, ref: 'r' });
     });

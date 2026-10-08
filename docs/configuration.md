@@ -103,7 +103,8 @@ Enforced by the server (a refused post is `403 live_feature_off`) and sent to th
 | `ORDER_TTL_MINUTES` | `60` | How long a paid order stays payable |
 | `ONCHAIN_SESSION_TTL_HOURS` | `24` | max 168 |
 | `WEBHOOK_SECRET` | unset | **Secret**, ≥ 16 chars. Unset = `POST /api/chain/webhook` answers 404 |
-| `CRANK_SECRET` | unset | **Secret** base58 keypair paying fees for permissionless cranks (fail_pool, refund) |
+| `CRANK_SECRET` | unset | **Secret** base58 keypair (or `solana-keygen` JSON array) paying the fees of the pool crank: `fail_pool`, `expire_pool`, refunds (8 per tx), `close_pool` of a refunded pool. Fee money only; unset = no crank (players still CLAIM REFUND from their wallet) |
+| `CRANK_INTERVAL_MS` | `60000` | The crank's schedule (with `CRANK_SECRET` and a program); `0` = only `node dist/cli/index.js pool:crank` |
 | `FEE_PAYER_SECRET` | unset | **Secret** base58 keypair of the gas sponsor – fee money only. Unset = buyers pay their own fee |
 | `FEE_PAYER_MIN_SOL` | `0.05` | Sponsor stops below this balance |
 | `SPONSOR_PER_WALLET_PER_DAY` | `20` | |

@@ -43,7 +43,7 @@ export class GetProfileHandler implements IQueryHandler<GetProfileQuery, Profile
       emitAnalytics(this.analytics, () => achievementUnlocked(wallet, unlock.id, unlock.earnedAt, null, isDemoWallet(this.rules.get(), wallet)));
     }
     const [spent, recent, achievements, tickets, grants, ordered] = await Promise.all([
-      this.payments.totalsOf(wallet), this.rideQuery.recent(wallet, RECENT_RIDES_LIMIT), this.achievements.list(wallet), this.poolTickets.balances(wallet), this.tickets.recentGrants(wallet, RECENT_GRANTS_LIMIT), this.orders.totalsOf(wallet),
+      this.payments.totalsOf(wallet), this.rideQuery.recent(wallet, RECENT_RIDES_LIMIT), this.achievements.list(wallet), this.poolTickets.balances(wallet, now), this.tickets.recentGrants(wallet, RECENT_GRANTS_LIMIT), this.orders.totalsOf(wallet),
     ]);
     const rules = this.rules.get();
     return {

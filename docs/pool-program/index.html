@@ -154,7 +154,7 @@
           <tr class="group"><td colspan="4">Money in</td></tr>
           <tr><th scope="row">buy_ticket<span class="args">(pool_id, qty, order_id[16])</span></th><td><span class="tag ply">buyer</span> + fee_payer</td><td>Not paused; Open before <code>prep_deadline</code> or Active before <code>play_deadline</code>; within <code>max_tickets</code> and <code>max_per_wallet</code></td><td>Buyer pays <code>price × qty</code> into the vault. Fee payer pays the Ticket rent, recorded as <code>rent_payer</code> on the first buy only. Reaching <code>min_tickets</code> makes the pool Active.</td></tr>
           <tr><th scope="row">sponsor<span class="args">(pool_id, lamports)</span></th><td><span class="tag any">anyone</span></td><td>Same windows as buying; <code>lamports &gt; 0</code></td><td>Adds to <code>sponsored</code>, which is split like ticket money.</td></tr>
-          <tr class="group"><td colspan="4">Cranks: anyone, rules fixed</td></tr>
+          <tr class="group"><td colspan="4">Cranks: anyone, rules fixed – the server's crank (<code>CRANK_SECRET</code>, <code>pool:crank</code>) sends these by the chain clock</td></tr>
           <tr><th scope="row">fail_pool<span class="args">(pool_id)</span></th><td><span class="tag any">anyone</span></td><td>Open, <code>now ≥ prep_deadline</code>, <code>tickets_sold &lt; min_tickets</code></td><td>Open → Refunding.</td></tr>
           <tr><th scope="row">expire_pool<span class="args">(pool_id)</span></th><td><span class="tag any">anyone</span></td><td>Active, <code>now ≥ play_deadline + 14 d</code>, <code>prizes_paid == 0</code></td><td>Active → Refunding; every ticket comes back in full.</td></tr>
           <tr><th scope="row">refund<span class="args">(pool_id)</span></th><td><span class="tag any">anyone</span></td><td>Refunding; the ticket still exists</td><td>The price goes to <code>ticket.buyer</code>, the rent to <code>ticket.rent_payer</code>, and the Ticket is closed. Both receivers are checked against the ticket. Eight fit in one transaction.</td></tr>
@@ -334,7 +334,7 @@ PROGRAM_ID=&lt;id&gt; bash .claude/skills/program-check/check.sh onchain   # rea
 
   <footer class="foot">
     <span>Source of truth: <span class="mono">programs/freightchain-pools/README.md</span> and the program under <span class="mono">programs/freightchain_pools/src</span>. If this page and the code disagree, the code wins. Update the page in the same change.</span>
-    <span>Deploying and operating the program: <a href="../program-deploy.md">docs/program-deploy.md</a>.</span>
+    <span>Deploying and operating the program: <a href="../program-deploy.md">docs/program-deploy.md</a>. Every flow end to end on a local validator: <a href="../localnet-e2e/index.html">the localnet money test</a>.</span>
     <span>Checked with the <span class="mono">program-check</span> skill (<span class="mono">.claude/skills/program-check</span>) on 2026-10-08, including a hand pass over the Trail of Bits Solana vulnerability classes: no open finding.</span>
   </footer>
 </main>

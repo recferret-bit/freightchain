@@ -60,9 +60,10 @@ export interface TicketBalanceDto {
   refundable: boolean;
 }
 
-export const toTicketBalanceDto = (ticket: RideTicket, pool: Pool): TicketBalanceDto => {
+/** `refundable` = money is owed back: the pool failed, or it missed its goal and nobody has failed it yet (the refund transaction then fails it first). */
+export const toTicketBalanceDto = (ticket: RideTicket, pool: Pool, now: Date): TicketBalanceDto => {
   const s = pool.snapshot();
-  return { poolId: s.id, tier: s.tier, label: s.label, status: s.status, balance: ticket.balance, bought: ticket.bought, cap: s.maxPerWallet, refundable: s.status === 'refunding' && ticket.bought > 0 };
+  return { poolId: s.id, tier: s.tier, label: s.label, status: s.status, balance: ticket.balance, bought: ticket.bought, cap: s.maxPerWallet, refundable: (s.status === 'refunding' || pool.isPastDeadlineUnderMinimum(now)) && ticket.bought > 0 };
 };
 
 /** One line of the ticket audit trail (/api/profile). */

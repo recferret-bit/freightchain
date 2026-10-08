@@ -14,6 +14,7 @@ import { RegisterPoolCommand } from '../application/use-cases/pools/register-poo
 import type { PoolProps } from '../domain/economy/pool.types.js';
 import { EnvService } from '../infrastructure/config/env.service.js';
 import { RegisterPoolFromChainCommand } from '../application/use-cases/pools/register-pool-from-chain/register-pool-from-chain.command.js';
+import { CrankPoolsCommand } from '../application/use-cases/chain/crank-pools/crank-pools.command.js';
 import { parsePoolRegister, parsePoolSeed, parsePromoCreate, parseTicketsGrant, type PoolSeedArgs } from './admin-args.js';
 
 /** The application layer without HTTP: the admin commands go through the same handlers (validation, locks, audit lines) as the API. */
@@ -66,6 +67,8 @@ export async function runAdmin(command: string, args: readonly string[]): Promis
       const r = parsePoolRegister(args);
       return typeof r === 'string' ? usage(r) : withBuses(({ commands }) => commands.execute(new RegisterPoolFromChainCommand(r.poolId, r.label)));
     }
+    case 'pool:crank':
+      return args.length ? usage('pool:crank takes no arguments') : withBuses(({ commands }) => commands.execute(new CrankPoolsCommand()));
     default:
       return null;
   }

@@ -85,4 +85,24 @@ export function ticketOrderScenarios(h: () => Harness): void {
     expect((await w.agent.get(`/api/tickets/orders/${order.id}`)).body.status).toBe('refunded');
     expect((await w.agent.get('/api/pools/1/payout')).status).toBe(403); // not the admin
   });
+
+  it('program mode is ticket-only: a paid tier with no live pool is not on sale (no pay-per-ride fallback) and POST /api/rides refuses it', async () => {
+    await seedPool({ id: 1, tier: '1h', status: 'active' });
+    await seedPool({ id: 2, tier: '4h', status: 'refunding' });
+    const tiers = (await anon().get('/api/tiers').expect(200)).body;
+    expect(tiers.paymentMode).toBe('program');
+    expect(tiers.tiers.map((t: { id: string; available: boolean; lamports: number | null; pool: { id: number } | null }) => [t.id, t.available, t.lamports === null, t.pool?.id ?? null]))
+      .toEqual([['free', true, true, null], ['1h', true, false, 1], ['4h', false, true, null], ['8h', false, true, null]]);
+    const w = await login();
+    expect((await w.agent.post('/api/rides').send({ tier: '4h' }).expect(409)).body).toMatchObject({ code: 'no_tickets' });
+  });
+
+  it('a pool that missed its goal is refundable at once – before anyone sends fail_pool (the refund transaction bundles it)', async () => {
+    await seedPool({ id: 1, status: 'open', minTickets: 5, prepDeadline: new Date(now() + 60_000) });
+    const w = await login();
+    await settlement().settlePurchase(bought(w));
+    expect((await w.agent.get('/api/me')).body.tickets).toMatchObject([{ poolId: 1, status: 'open', refundable: false }]);
+    h().clock.advance(61);
+    expect((await w.agent.get('/api/me')).body.tickets).toMatchObject([{ poolId: 1, status: 'open', refundable: true }]);
+  });
 }

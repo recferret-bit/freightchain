@@ -35,10 +35,12 @@ export class GetTiersHandler implements IQueryHandler<GetTiersQuery, TiersDto> {
       tiers: rideTiers(rules.freeRideSeconds).map((t) => {
         const pool = isPaidTier(t.id) ? poolOf(t.id) : null;
         if (pool) return { id: t.id, usd: t.usd, seconds: t.seconds, completeDist: completeDist(t.seconds), lamports: pool.priceLamports, available: pool.whyNotSellable(now, 1, 0) === null, pool: toPrizePoolDto(pool) };
+        // program mode is ticket-only (POST /api/rides refuses a paid tier without tickets): no live pool = nothing on sale, not the legacy pay-per-ride
+        const legacy = isPaidTier(t.id) && rules.paymentMode !== 'program';
         return {
           id: t.id, usd: t.usd, seconds: t.seconds, completeDist: completeDist(t.seconds),
-          lamports: isPaidTier(t.id) && quote ? lamportsFor(t.usd, quote.usd) : null,
-          available: !isPaidTier(t.id) || (!!rules.treasury && !!quote),
+          lamports: legacy && quote ? lamportsFor(t.usd, quote.usd) : null,
+          available: !isPaidTier(t.id) || (legacy && !!rules.treasury && !!quote),
           pool: null,
         };
       }),

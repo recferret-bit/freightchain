@@ -52,7 +52,8 @@ export const envSchema = z
     WATCH_INTERVAL_MS: z.coerce.number().int().min(0).default(15_000), // 0 = the program watcher is off (tests)
     /** secrets: read through EnvService only, never through RulesConfig */
     WEBHOOK_SECRET: optional(z.string().min(16, 'WEBHOOK_SECRET must be at least 16 characters')),
-    CRANK_SECRET: optional(z.string().min(32)), // base58 keypair that pays fees for the permissionless cranks (fail_pool, refund)
+    CRANK_SECRET: optional(z.string().min(32)), // base58 keypair that pays fees for the permissionless cranks (fail_pool, expire_pool, refund, close_pool of a refunded pool)
+    CRANK_INTERVAL_MS: z.coerce.number().int().min(0).default(60_000), // the pool crank's schedule (needs CRANK_SECRET); 0 = only `pool:crank` from the CLI
     FEE_PAYER_SECRET: optional(z.string().min(32)), // base58 keypair of the gas sponsor – fee money only
     FEE_PAYER_MIN_SOL: z.coerce.number().min(0).default(0.05),
     SPONSOR_PER_WALLET_PER_DAY: z.coerce.number().int().min(0).default(20),

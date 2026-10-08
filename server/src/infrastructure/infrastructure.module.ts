@@ -7,6 +7,7 @@ import { RulesConfigPort } from '../application/ports/config/rules-config.port.j
 import { ChainPort } from '../application/ports/economy/chain.port.js';
 import { PaymentRepositoryPort } from '../application/ports/economy/payment.repository.port.js';
 import { PoolChainPort } from '../application/ports/economy/pool-chain.port.js';
+import { PoolCrankChainPort } from '../application/ports/economy/pool-crank-chain.port.js';
 import { ChainCursorRepositoryPort, ChainEventRepositoryPort } from '../application/ports/economy/chain-event.repository.port.js';
 import { SponsoredTxRepositoryPort } from '../application/ports/economy/sponsored-tx.repository.port.js';
 import { PriceQuotePort } from '../application/ports/economy/price-quote.port.js';
@@ -56,6 +57,7 @@ import { TransactionPrismaAdapter } from './prisma/transaction.prisma.adapter.js
 import { HttpPriceQuoteAdapter } from './solana/http-price-quote.adapter.js';
 import { SolanaChainAdapter } from './solana/solana-chain.adapter.js';
 import { ProgramChainAdapter } from './solana/program-chain.adapter.js';
+import { ProgramCrankAdapter } from './solana/program-crank.adapter.js';
 import { ChainCursorPrismaRepository } from './prisma/repositories/chain-cursor.prisma.repository.js';
 import { ChainEventPrismaRepository } from './prisma/repositories/chain-event.prisma.repository.js';
 import { SponsoredTxPrismaRepository } from './prisma/repositories/sponsored-tx.prisma.repository.js';
@@ -117,6 +119,7 @@ const ports: Provider[] = [
   { provide: CosmeticRepositoryPort, useClass: CosmeticPrismaRepository },
   { provide: TicketOrderRepositoryPort, useClass: TicketOrderPrismaRepository },
   { provide: PoolChainPort, useClass: ProgramChainAdapter },
+  { provide: PoolCrankChainPort, useClass: ProgramCrankAdapter },
   { provide: ChainEventRepositoryPort, useClass: ChainEventPrismaRepository },
   { provide: ChainCursorRepositoryPort, useClass: ChainCursorPrismaRepository },
   { provide: SponsoredTxRepositoryPort, useClass: SponsoredTxPrismaRepository },

@@ -40,4 +40,15 @@ describe('GetTiersHandler', () => {
     expect(h4).toMatchObject({ available: false, pool: { id: 2 } });
     expect(h8).toMatchObject({ lamports: null, available: false, pool: null });
   });
+
+  it('program mode is ticket-only: a paid tier with no live pool is not on sale (no legacy pay-per-ride price), the free one still is', async () => {
+    const db = new MemoryDb(), pools = new MemoryPoolRepository(db), clock = new FakeClock();
+    await pools.upsert(aPool({ id: 1, tier: '1h', status: 'active', priceLamports: 20_000_000 }));
+    await pools.upsert(aPool({ id: 2, tier: '4h', status: 'refunding' })); // failed: not live
+    const dto = await new GetTiersHandler(new FixedRules(unitRules({ paymentMode: 'program' })), new StubPrice(100), pools, clock).execute();
+    expect(dto.paymentMode).toBe('program');
+    expect(dto.tiers.map((t) => [t.id, t.available, t.lamports, t.pool?.id ?? null])).toEqual([
+      ['free', true, null, null], ['1h', true, 20_000_000, 1], ['4h', false, null, null], ['8h', false, null, null],
+    ]);
+  });
 });

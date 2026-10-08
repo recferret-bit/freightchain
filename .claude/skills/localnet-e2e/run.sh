@@ -41,33 +41,45 @@ fi
 
 echo "▸ keys (scratch, throwaway)"
 mkdir -p "$TMP/keys"
-for k in mint upgrader admin sponsor fee seed plat; do solana-keygen new -s --no-bip39-passphrase -o "$TMP/keys/$k.json" >/dev/null; done
+for k in mint upgrader admin sponsor crank fee seed plat; do solana-keygen new -s --no-bip39-passphrase -o "$TMP/keys/$k.json" >/dev/null; done
 pub() { solana-keygen pubkey "$TMP/keys/$1.json"; }
 
-echo "▸ solana-test-validator (program $PROGRAM_ID, upgrade authority = upgrader)"
 RPC_PORT="$(free_pair)"; FAUCET_PORT="$(free_port)"; GOSSIP_PORT="$(free_port)"; DYN=$(( RPC_PORT < 40000 ? RPC_PORT + 2000 : RPC_PORT - 2000 ))
 RPC="http://127.0.0.1:$RPC_PORT"; WS="ws://127.0.0.1:$((RPC_PORT + 1))"
-solana-test-validator --ledger "$TMP/ledger" --reset --quiet --bind-address 127.0.0.1 --rpc-port "$RPC_PORT" --faucet-port "$FAUCET_PORT" \
-  --gossip-port "$GOSSIP_PORT" --dynamic-port-range "$DYN-$((DYN + 30))" --mint "$(pub mint)" \
-  --upgradeable-program "$PROGRAM_ID" "$SO" "$(pub upgrader)" > "$TMP/validator.log" 2>&1 &
-VAL_PID=$!
-for _ in $(seq 1 90); do curl -sf -X POST -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"getHealth"}' "$RPC" 2>/dev/null | grep -q '"ok"' && break; kill -0 "$VAL_PID" 2>/dev/null || { tail -20 "$TMP/validator.log"; fail "validator exited"; }; sleep 1; done
-curl -sf -X POST -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"getHealth"}' "$RPC" | grep -q '"ok"' || fail "validator not healthy after 90 s"
-for k in upgrader admin sponsor fee seed plat; do solana airdrop --url "$RPC" -k "$TMP/keys/mint.json" 100 "$(pub "$k")" >/dev/null; done
+# start_validator <ledger> [extra args…]: the program as an UPGRADEABLE program (real ProgramData, upgrade authority = upgrader), waits for health
+start_validator() {
+  local ledger="$1"; shift
+  solana-test-validator --ledger "$ledger" --reset --quiet --bind-address 127.0.0.1 --rpc-port "$RPC_PORT" --faucet-port "$FAUCET_PORT" \
+    --gossip-port "$GOSSIP_PORT" --dynamic-port-range "$DYN-$((DYN + 30))" --mint "$(pub mint)" \
+    --upgradeable-program "$PROGRAM_ID" "$SO" "$(pub upgrader)" "$@" > "$ledger.log" 2>&1 &
+  VAL_PID=$!
+  for _ in $(seq 1 90); do curl -sf -X POST -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"getHealth"}' "$RPC" 2>/dev/null | grep -q '"ok"' && break; kill -0 "$VAL_PID" 2>/dev/null || { tail -20 "$ledger.log"; fail "validator exited"; }; sleep 1; done
+  curl -sf -X POST -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"getHealth"}' "$RPC" | grep -q '"ok"' || fail "validator not healthy after 90 s"
+  for k in upgrader admin sponsor crank fee seed plat; do solana airdrop --url "$RPC" -k "$TMP/keys/mint.json" 100 "$(pub "$k")" >/dev/null; done
+}
+stop_validator() { kill "$VAL_PID" 2>/dev/null || true; wait "$VAL_PID" 2>/dev/null || true; VAL_PID=""; }
+
+echo "▸ build the server (the scripts encode through its codec)"
+(cd "$SERVER" && npm run --silent build >/dev/null)
+
+echo "▸ phase 1 – fixtures: the real program makes two pools, then their deadlines are moved 16 days back (validator $RPC)"
+start_validator "$TMP/fixtures-ledger"
+(cd "$SERVER" && RPC="$RPC" KEYS="$TMP/keys" OUT="$TMP/accounts" node scripts/localnet-fixtures.mjs) || fail "fixtures"
+stop_validator
+ACCOUNTS=(); for f in "$TMP"/accounts/*.json; do [ "$(basename "$f")" = fixtures.json ] && continue; ACCOUNTS+=(--account "$(node -p 'require(process.argv[1]).pubkey' "$f")" "$f"); done
+
+echo "▸ phase 2 – a fresh ledger with the program + the baked Config, pools, vaults and tickets (${#ACCOUNTS[@]} args)"
+start_validator "$TMP/ledger" "${ACCOUNTS[@]}"
 echo "  rpc $RPC"
 
-echo "▸ build the server, throwaway database $DB"
+echo "▸ throwaway database $DB"
 nc -z localhost 15433 || (cd "$ROOT" && npm run --silent db:up)
 psql_admin "CREATE DATABASE \"$DB\"" >/dev/null
 (cd "$SERVER" && DATABASE_URL="$URL" ./node_modules/.bin/prisma migrate deploy >/dev/null)
-(cd "$SERVER" && npm run --silent build >/dev/null)
-
-echo "▸ initialize: signed by the upgrade authority, names the admin, platform cut 500 bps"
-(cd "$SERVER" && node scripts/pool-admin.mjs initialize --url "$RPC" -k "$TMP/keys/upgrader.json" --admin "$(pub admin)" --platform-treasury "$(pub plat)" --platform-fee-bps 500 >/dev/null)
 
 # Every key the server reads is set here, so a stray server/.env (dotenv never overrides) cannot point it at devnet or the dev database.
 export DATABASE_URL="$URL" PAYMENT_MODE=program TICKET_PROGRAM_ID="$PROGRAM_ID" SOLANA_RPC="$RPC" SOLANA_WS="$WS" SOLANA_RPC_FALLBACKS= SOLANA_COMMITMENT=confirmed \
-  FEE_PAYER_SECRET="$(cat "$TMP/keys/sponsor.json")" TREASURY_PUBKEY="$(pub admin)" FEE_TREASURY="$(pub fee)" SEED_TREASURY="$(pub seed)" \
+  FEE_PAYER_SECRET="$(cat "$TMP/keys/sponsor.json")" CRANK_SECRET="$(cat "$TMP/keys/crank.json")" CRANK_INTERVAL_MS=0 TREASURY_PUBKEY="$(pub admin)" FEE_TREASURY="$(pub fee)" SEED_TREASURY="$(pub seed)" \
   WATCH_INTERVAL_MS=2000 SOL_USD=118 DEMO_WALLETS='*' DEMO_SCALE=1200 FREE_RIDE_SECONDS=3 VERDICT_ENFORCE=true POSTHOG_ENABLED=0 PRIORITY_FEE_MAX_MICROLAMPORTS=0 \
   ADMIN_WALLETS= NODE_ENV=development
 PORT="$(free_port)"; BASE="http://localhost:$PORT"
@@ -78,4 +90,4 @@ curl -sf "$BASE/api/health/live" >/dev/null || { tail -30 "$TMP/server.log"; fai
 echo "  server $BASE (log: $TMP/server.log)"
 
 echo "▸ scenario"
-(cd "$SERVER" && BASE="$BASE" RPC="$RPC" KEYS="$TMP/keys" CHROME_PORT="$(free_port)" node scripts/e2e-localnet.mjs) || { echo "--- server log (tail) ---"; tail -40 "$TMP/server.log"; exit 1; }
+(cd "$SERVER" && BASE="$BASE" RPC="$RPC" KEYS="$TMP/keys" FIXTURES="$TMP/accounts/fixtures.json" CHROME_PORT="$(free_port)" node scripts/e2e-localnet.mjs) || { echo "--- server log (tail) ---"; tail -40 "$TMP/server.log"; exit 1; }

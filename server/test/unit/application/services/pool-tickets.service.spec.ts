@@ -17,11 +17,11 @@ describe('PoolTicketsService', () => {
     await ctx.pools.upsert(aPool({ id: 2, status: 'cancelled' }));
     await ctx.pools.upsert(aPool({ id: 3, status: 'settled', maxPerWallet: 9 }));
     await ctx.tickets.open('w', 1); await ctx.tickets.open('w', 2); await give(3, 2); await give(1, 1, 'other');
-    expect(await svc.balances('w')).toEqual([
+    expect(await svc.balances('w', ctx.now())).toEqual([
       { poolId: 1, tier: '1h', label: '1 HOUR · test', status: 'open', balance: 0, bought: 0, cap: 5, refundable: false },
       { poolId: 3, tier: '1h', label: '1 HOUR · test', status: 'settled', balance: 2, bought: 2, cap: 9, refundable: false },
     ]);
-    expect(await svc.balances('nobody')).toEqual([]);
+    expect(await svc.balances('nobody', ctx.now())).toEqual([]);
   });
 
   it('balances: a failed pool the wallet paid into stays listed as refundable until its refund lands (bought → 0)', async () => {
@@ -30,10 +30,19 @@ describe('PoolTicketsService', () => {
     await give(1, 2);
     const t = (await ctx.tickets.find('w', 1))!;
     t.voidAll(); await ctx.tickets.save(t);
-    expect(await svc.balances('w')).toMatchObject([{ poolId: 1, status: 'refunding', balance: 0, bought: 2, refundable: true }]);
+    expect(await svc.balances('w', ctx.now())).toMatchObject([{ poolId: 1, status: 'refunding', balance: 0, bought: 2, refundable: true }]);
     const r = (await ctx.tickets.find('w', 1))!;
     expect(r.markRefunded()).toBe(2); await ctx.tickets.save(r);
-    expect(await svc.balances('w')).toEqual([]);
+    expect(await svc.balances('w', ctx.now())).toEqual([]);
+  });
+
+  it('balances: an open pool that missed its goal is refundable at once (the refund transaction fails it first) – not before its deadline', async () => {
+    const { ctx, svc, give } = await setup();
+    const now = ctx.now();
+    await ctx.pools.upsert(aPool({ id: 1, status: 'open', minTickets: 10, ticketsSold: 2, prepDeadline: new Date(now.getTime() + 1_000) }, now));
+    await give(1, 2);
+    expect(await svc.balances('w', now)).toMatchObject([{ poolId: 1, status: 'open', refundable: false }]);
+    expect(await svc.balances('w', new Date(now.getTime() + 1_000))).toMatchObject([{ poolId: 1, status: 'open', refundable: true }]);
   });
 
   it('tierHasPools: only open / active pools count', async () => {

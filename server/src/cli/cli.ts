@@ -27,6 +27,7 @@ Commands:
                DEVELOPMENT ONLY (refused in production): a pool in the mirror that is not on chain – for the lobby without a deployed program
   pool:register POOL_ID [--label TEXT]
                Read the pool's account from chain (TICKET_PROGRAM_ID, SOLANA_RPC) into the mirror, or refresh it – the chain wins; --label renames it
+  pool:crank   One crank pass now (CRANK_SECRET): fail missed pools, expire unsettled ones, refund their tickets, close refunded pools – by the chain clock
   --help       Show this help
 `;
 

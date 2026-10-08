@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ComputeBudgetProgram, Connection, Keypair, PublicKey, Transaction, VersionedTransaction, type Commitment, type TransactionInstruction } from '@solana/web3.js';
+import { ComputeBudgetProgram, Connection, Keypair, PublicKey, Transaction, VersionedTransaction, type AccountInfo, type Commitment, type TransactionInstruction } from '@solana/web3.js';
 import bs58 from 'bs58';
 import type { UnsignedPaymentTx } from '../../domain/economy/chain-transaction.js';
 import type { ChainEventRecord, PoolChainState } from '../../domain/economy/chain-events.js';
@@ -15,7 +15,7 @@ import { SolanaRpc, sleep } from './solana-rpc.js';
 import { addFeePayerSignature, checkUserSignedTransaction } from './transaction-cosigner.js';
 
 /** Compute-unit limits: the LiteSVM measurements (README, server/test/fixtures/chain) × ~1.3 – real PDA bump searches cost a few k more – plus the two budget instructions. */
-export const CU_LIMITS = { buy: 30_000, refund: 18_000, fail_pool: 6_000, pay_prize: 17_000, close_pool: 24_000 } as const;
+export const CU_LIMITS = { buy: 30_000, refund: 18_000, fail_pool: 6_000, expire_pool: 6_000, pay_prize: 17_000, close_pool: 24_000 } as const;
 /** keep the sponsor able to pay a fee + one Ticket rent (~0.0015 SOL, returned at refund) */
 const SPONSOR_SPEND_FLOOR_LAMPORTS = 2_000_000;
 const RESEND_MS = 2_000;
@@ -26,7 +26,25 @@ const MAX_RESENDS = 60;
 const MAX_SIGNATURE_PAGES = 10;
 const STATUS = ['open', 'active', 'refunding', 'settled', 'cancelled'] as const;
 
-/** `FEE_PAYER_SECRET`: base58 of the 64-byte secret key, or the JSON array `solana-keygen` writes. */
+/** A Pool account (+ its vault's balance, read in the same slot) as the domain's PoolChainState; null = not this program's pool. Shared with the crank adapter. */
+export function poolStateOf(c: PoolProgramCodec, poolId: number, info: AccountInfo<Buffer> | null, vaultInfo: AccountInfo<Buffer> | null): PoolChainState | null {
+  if (!info || !info.owner.equals(c.programId)) return null;
+  const p = c.decodeAccount('Pool', info.data);
+  if (!p) return null;
+  const status = STATUS[p['status'] as number];
+  if (!status) throw new Error(`pool ${poolId} has an unknown status ${String(p['status'])}`);
+  const vaultLamports = vaultInfo?.lamports ?? 0;
+  return {
+    poolId: p['poolId'] as number, address: c.poolPda(poolId).toBase58(), status, ticketsSold: p['ticketsSold'] as number, buyers: p['buyers'] as number,
+    sponsored: p['sponsored'] as number, prizesPaid: p['prizesPaid'] as number, refunded: p['refunded'] as number,
+    vaultLamports, escrowLamports: escrowOf(vaultLamports, VAULT_RENT_MIN_LAMPORTS), vault: c.vaultPda(poolId).toBase58(), authority: p['authority'] as string, tier: p['tier'] as number,
+    priceLamports: p['priceLamports'] as number, minTickets: p['minTickets'] as number, maxTickets: p['maxTickets'] as number, maxPerWallet: p['maxPerWallet'] as number,
+    prepDeadline: p['prepDeadline'] as Date, playDeadline: p['playDeadline'] as Date, prizeBps: p['prizeBps'] as number, seedBps: p['seedBps'] as number,
+    feeBps: p['feeBps'] as number, feeTreasury: p['feeTreasury'] as string, seedTreasury: p['seedTreasury'] as string, createdAt: p['createdAt'] as Date,
+  };
+}
+
+/** `FEE_PAYER_SECRET` / `CRANK_SECRET`: base58 of the 64-byte secret key, or the JSON array `solana-keygen` writes. */
 export function parseKeypair(secret: string): Keypair {
   const trimmed = secret.trim();
   const bytes = trimmed.startsWith('[') ? Uint8Array.from(JSON.parse(trimmed) as number[]) : bs58.decode(trimmed);
@@ -156,22 +174,9 @@ export class ProgramChainAdapter extends PoolChainPort {
   }
 
   async readPool(poolId: number): Promise<PoolChainState | null> {
-    const c = this.codec, address = c.poolPda(poolId), vault = c.vaultPda(poolId);
-    const [info, vaultInfo] = await this.rpc.read((x) => x.getMultipleAccountsInfo([address, vault], this.commitment));
-    if (!info || !info.owner.equals(c.programId)) return null;
-    const p = c.decodeAccount('Pool', info.data);
-    if (!p) return null;
-    const status = STATUS[p['status'] as number];
-    if (!status) throw new Error(`pool ${poolId} has an unknown status ${String(p['status'])}`);
-    const vaultLamports = vaultInfo?.lamports ?? 0;
-    return {
-      poolId: p['poolId'] as number, address: address.toBase58(), status, ticketsSold: p['ticketsSold'] as number, buyers: p['buyers'] as number,
-      sponsored: p['sponsored'] as number, prizesPaid: p['prizesPaid'] as number, refunded: p['refunded'] as number,
-      vaultLamports, escrowLamports: escrowOf(vaultLamports, VAULT_RENT_MIN_LAMPORTS), vault: vault.toBase58(), authority: p['authority'] as string, tier: p['tier'] as number,
-      priceLamports: p['priceLamports'] as number, minTickets: p['minTickets'] as number, maxTickets: p['maxTickets'] as number, maxPerWallet: p['maxPerWallet'] as number,
-      prepDeadline: p['prepDeadline'] as Date, playDeadline: p['playDeadline'] as Date, prizeBps: p['prizeBps'] as number, seedBps: p['seedBps'] as number,
-      feeBps: p['feeBps'] as number, feeTreasury: p['feeTreasury'] as string, seedTreasury: p['seedTreasury'] as string, createdAt: p['createdAt'] as Date,
-    };
+    const c = this.codec;
+    const [info, vaultInfo] = await this.rpc.read((x) => x.getMultipleAccountsInfo([c.poolPda(poolId), c.vaultPda(poolId)], this.commitment));
+    return poolStateOf(c, poolId, info, vaultInfo);
   }
 
   /** getSignaturesForAddress pages newest → oldest; walk back (`before`) until the cursor, so nothing between the cursor and the head is skipped. */

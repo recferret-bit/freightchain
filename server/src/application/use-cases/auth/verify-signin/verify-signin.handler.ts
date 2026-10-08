@@ -50,6 +50,6 @@ export class VerifySignInHandler implements ICommandHandler<VerifySignInCommand,
     emitAnalytics(this.analytics, () => playerSignedIn({
       wallet, now, isNewPlayer: player.isNewPlayer, isDemo: isDemoWallet(rules, wallet), freeRides: player.freeRides, freeRidesMax: player.freeRidesMax, demoScale: demoScaleOf(rules), createdAt: player.createdAt,
     }));
-    return { profile: toMeDto(player, now, isDemoWallet(rules, wallet), demoScaleOf(rules), await this.tickets.balances(wallet)), session };
+    return { profile: toMeDto(player, now, isDemoWallet(rules, wallet), demoScaleOf(rules), await this.tickets.balances(wallet, now)), session };
   }
 }

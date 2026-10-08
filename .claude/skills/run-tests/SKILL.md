@@ -51,6 +51,12 @@ bash .claude/skills/run-tests/e2e.sh browser    # one of: browser | lobby | admi
 Then **look at the screenshots** it prints (`fc-online-shots`, `fc-lobby-shots`, `fc-admin-shots`, `fc-watch-shots`, `fc-replay-shots`, `fc-flags-shots`, `fc-board-shots` in the OS temp dir) with the Read tool – the scripts
 cannot judge layout. Say plainly what passed, what failed (with output), and what still needs a human eye.
 
+## 4. Optional: the money on a local chain (~4 min)
+
+Not part of the default run (it needs `solana-test-validator` and the verifiable `.so`): `npm run test:localnet` (skill `localnet-e2e`) – real program
+transactions against the real server and lobby: purchases, sponsorship, rides, refunds, the crank, expiry, payouts, every lamport. Run it after touching the
+program, the chain adapters, the ticket / refund / payout / crank code or `client/site/pay.js`.
+
 ## Reporting
 
 One line per stage: ✓/✗, test counts, duration. On red: the failing test names and the assertion output, nothing else.

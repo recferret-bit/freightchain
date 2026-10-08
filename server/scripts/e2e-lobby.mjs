@@ -53,7 +53,9 @@ const program = tiers.paymentMode === 'program';   // a server with the pool pro
 check(`pool card: no RIDE without a ticket; BUY ${program ? 'live with the price' : 'shown as SOON (no program on this server)'}`, !(await rider.ev('!!document.querySelector("#tier-1h .go")')) && (program
   ? !(await rider.ev('document.querySelector("#tier-1h .buyb").disabled')) && (await txt(rider, '#tier-1h .buyb')) === `BUY 1 TICKET · ${sol(live1h.priceLamports)}`
   : (await rider.ev('document.querySelector("#tier-1h .buyb").disabled')) && /SOON/.test(await txt(rider, '#tier-1h .buyb'))), await txt(rider, '#tier-1h .buyb'));
-check('8h card (no pool): the legacy pay-per-ride offer, non-refundable', /PAY \$50/.test(await txt(rider, '#tier-8h .go')) && /Non-refundable/.test(await txt(rider, '#tier-8h')), await txt(rider, '#tier-8h .go'));
+check(`8h card (no pool): ${program ? 'NO POOL – ticket-only, nothing to pay per ride' : 'the legacy pay-per-ride offer, non-refundable'}`, program
+  ? /NO POOL/.test(await txt(rider, '#tier-8h .st')) && (await rider.ev('document.querySelector("#tier-8h .go").disabled')) === true
+  : /PAY \$50/.test(await txt(rider, '#tier-8h .go')) && /Non-refundable/.test(await txt(rider, '#tier-8h')), await txt(rider, '#tier-8h .go'));
 await rider.shot('new-desktop');
 await rider.ev('document.querySelector("#tier-8h .go").click()');   // no wallet extension here
 check('paid click without a wallet: a clear message, no order made', await until(async () => /No Solana wallet/.test(await txt(rider, '#msg-8h'))), await txt(rider, '#msg-8h'));
@@ -88,7 +90,7 @@ check('…and the free-ride count dropped to 4', await until(async () => /\b4\/\
 check('the finished ride left the live feed', await until(async () => { await sleep(5200); return !(await obs.ev('document.getElementById("rides")?.textContent || ""')).includes(A.short); }, 15000));
 
 // ── payment-recovery branch: a wallet with an UNPAID legacy order (8h has no pool) opens the lobby (checkPending → reconcile runs once, against the real RPC)
-const C = await wallet(); await post('rides', { tier: '8h' }, C.cookie);
+const C = await wallet(); if (!program) await post('rides', { tier: '8h' }, C.cookie);   // program mode is ticket-only: no legacy order to recover (the lobby still renders)
 const third = await launch({ port: CDP + 2, shotsDir: 'fc-lobby-shots', evalProblems: true }); await size(third, 1100, 900, false);
 await open(third, C, `${BASE}/lobby.html#new`);
 check('lobby with an unpaid order: cards render, START enabled', await until(async () => (await third.ev('document.querySelectorAll(".tier").length')) === 4 && (await third.ev('document.getElementById("start").disabled')) === false));

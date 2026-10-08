@@ -43,14 +43,15 @@ export function poolCard(t, info, ctx) {
     el('p', { class: 'msg dim', id: `msg-${t.id}` }));
 }
 
-/** The box on top of NEW RIDE: what sits in escrow across the pools on sale (+ the legacy weekly round, still fed by the pay-per-ride tiers). */
-export function escrowSummary(pool, now) {
+/** The box on top of NEW RIDE: what sits in escrow across the pools on sale (+ the legacy weekly round, fed only by pay-per-ride – hidden when the server
+    is ticket-only, unless that round still holds entries from before). */
+export function escrowSummary(pool, now, ticketOnly = false) {
   const pools = pool.pools ?? [], esc = pools.reduce((a, p) => a + p.vaultLamports, 0);
   return [
     el('div', { class: 'lbl' }, `PRIZE POOLS · IN ESCROW ON CHAIN`),
     el('div', { class: 'big' }, sol(esc)), el('div', { class: 'usd' }, pool.solUsd ? `${usd(esc, pool.solUsd)} at the current price` : ''),
     el('div', { class: 'dim' }, `${plural(pools.length, 'pool')} on sale · ${plural(pools.reduce((a, p) => a + p.sold, 0), 'ticket')} committed · held by the program, not by us · `, el('a', { href: `${SITE_BASE}${ESCROW_PAGE}`, target: '_blank', rel: 'noopener' }, 'how the escrow works →')),
-    el('div', { class: 'dim' }, `Weekly round (pay-per-ride tiers): ${sol(pool.split.grand)} grand prize accrued · ${plural(pool.entries, 'paid entry', 'paid entries')} · closes in `, el('b', { id: 'cd', class: 'cd' }, left(pool.round.endsAt - now))),
+    ticketOnly && !pool.entries ? '' : el('div', { class: 'dim' }, `Weekly round (pay-per-ride tiers): ${sol(pool.split.grand)} grand prize accrued · ${plural(pool.entries, 'paid entry', 'paid entries')} · closes in `, el('b', { id: 'cd', class: 'cd' }, left(pool.round.endsAt - now))),
   ];
 }
 

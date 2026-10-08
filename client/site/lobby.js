@@ -67,7 +67,7 @@ const refreshMe = () => api('me').then(m => { S.me = m; paintHeader(); paintTier
 function paintPool() {
   const box = $('poolbox'), p = S.pool; if (!box) return;
   if (!p) { box.replaceChildren(el('span', { class: 'dim' }, 'Prize pool unavailable right now.')); return; }
-  if (p.pools?.length) { box.replaceChildren(...escrowSummary(p, now())); return; }
+  if (p.pools?.length) { box.replaceChildren(...escrowSummary(p, now(), salesOpen(S.tiers))); return; }
   const s = p.split, parts = [s.grand, s.top20, s.nextSeed, s.fees], total = parts.reduce((x, y) => x + y, 0), w = parts.map(x => (total ? (x / total) * 100 : 0)), pct = total ? w : [50, 20, 20, 10];
   const part = (cls, label, l, usd) => el('span', { class: cls }, `${label} `, el('b', {}, sol(l)), usd != null ? ` ≈ $${usd}` : '');
   box.replaceChildren(
@@ -112,7 +112,10 @@ function paintOrder() {
     try { const r = await waitPaid(o.id, sig, { selfPaid: !!sig }); S.order = r.status === 'paid' ? null : r.order; await refreshMe(); } catch (e) { say('order', buyError(e), true); }
     paintOrder();
   });
-  box.replaceChildren(el('div', { class: 'note' }, el('span', {}, el('b', {}, `A payment for ${o.qty} ticket${o.qty === 1 ? '' : 's'} is in flight`), ` · ${sol(o.lamports)} · ${o.status}`),
+  // with a signature something was sent ("in flight"); without one the wallet never sent it – say so, nothing was charged, the order just lapses
+  const head = sig ? `A payment for ${o.qty} ticket${o.qty === 1 ? '' : 's'} is in flight` : `An unfinished order for ${o.qty} ticket${o.qty === 1 ? '' : 's'} – nothing was charged`;
+  const tail = sig ? ` · ${sol(o.lamports)} · ${o.status}` : ` · ${sol(o.lamports)} · lapses at ${new Date(o.expiresAt).toUTCString().slice(17, 22)} UTC unless you pay it`;
+  box.replaceChildren(el('div', { class: 'note' }, el('span', {}, el('b', {}, head), tail),
     el('button', { disabled: !!S.busy, onclick: retry }, sig ? 'RETRY CONFIRM' : 'CHECK AGAIN'), el('p', { class: 'msg dim', id: 'msg-order' })));
 }
 
@@ -129,7 +132,7 @@ function paintTiers() {
   const box = $('tiers'); if (!box) return;
   if (!S.tiers) { box.replaceChildren(el('p', { class: 'bad' }, 'Could not load the ride list. Reload the page.')); return; }
   const ctx = { me: S.me, solUsd: S.tiers.solUsd, now: now(), busy: S.busy || S.pending, sales: salesOpen(S.tiers), focus: S.focus, act: { ride, buy, refund, qty: (id, n) => { S.qty[id] = n; paintTiers(); } } };
-  box.replaceChildren(...S.tiers.tiers.map(t => t.pool ? poolCard(t, tierInfo(t), { ...ctx, qty: S.qty[t.id] ?? 1 }) : t.id === 'free' ? freeCard(t) : legacyCard(t)));
+  box.replaceChildren(...S.tiers.tiers.map(t => t.pool ? poolCard(t, tierInfo(t), { ...ctx, qty: S.qty[t.id] ?? 1 }) : t.id === 'free' ? freeCard(t) : salesOpen(S.tiers) ? noPoolCard(t) : legacyCard(t)));
   for (const [k, m] of Object.entries(S.msgs)) say(k, ...m);   // messages survive a repaint
   paintRefunds(); tickCountdowns();
 }
@@ -142,6 +145,14 @@ function freeCard(t) {
     off ? el('span', { class: 'tag' }, off) : '',
     el('button', { class: 'go', id: 'start', disabled: !!off || !!S.busy, onclick: startFree }, S.busy === 'free' ? 'WORKING…' : 'START FREE RIDE'),
     el('p', { class: 'msg dim', id: 'msg-free' }));
+}
+function noPoolCard(t) {   // program mode is ticket-only: a paid tier whose pool failed / settled and no new one is open yet
+  const i = tierInfo(t);
+  return el('article', { class: 'tier legacy', id: `tier-${t.id}` },
+    el('div', { class: 'hd' }, el('span', { class: 'nm' }, i.name), el('span', { class: 'st done' }, 'NO POOL')), el('span', { class: 'sub' }, i.shift),
+    el('span', { class: 'sub' }, 'No pool is on sale for this shift right now – the next one opens soon. Paid shifts are ridden with tickets only.'),
+    el('button', { class: 'go', disabled: true }, 'NEXT POOL SOON'),
+    el('p', { class: 'msg dim', id: `msg-${t.id}` }));
 }
 function legacyCard(t) {   // a paid tier with no pool registered: pay per ride (the old flow; removed with W3's order routes)
   const off = tierOff(t), i = tierInfo(t);

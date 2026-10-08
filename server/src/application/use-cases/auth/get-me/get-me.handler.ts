@@ -21,6 +21,6 @@ export class GetMeHandler implements IQueryHandler<GetMeQuery, MeDto> {
     const now = this.clock.now();
     const player = await this.sessions.touch(query.wallet, now);
     const rules = this.rules.get();
-    return toMeDto(player, now, isDemoWallet(rules, query.wallet), demoScaleOf(rules), await this.tickets.balances(query.wallet));
+    return toMeDto(player, now, isDemoWallet(rules, query.wallet), demoScaleOf(rules), await this.tickets.balances(query.wallet, now));
   }
 }

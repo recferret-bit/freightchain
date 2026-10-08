@@ -76,10 +76,11 @@ function paintPool() {
 }
 
 function paintTiers(t) {   // a tier sold through a pool: the ticket price is the pool's (fixed in lamports on chain); a tier without one: the legacy USD quote
+  const program = t.paymentMode === 'program';   // ticket-only: a paid tier without a live pool has nothing on sale (no pay-per-ride)
   const price = x => x.pool ? `${sol(x.pool.priceLamports)} SOL` : x.lamports ? `${sol(x.lamports)} SOL` : '–';
-  const rows = t.tiers.map(x => el('tr', {}, el('td', {}, TIER_LONG[x.id] ?? x.id), el('td', {}, hours(x.seconds)), el('td', {}, x.pool ? 'pool ticket' : x.usd ? `$${x.usd}` : 'free'), el('td', {}, price(x))));
+  const rows = t.tiers.map(x => el('tr', {}, el('td', {}, TIER_LONG[x.id] ?? x.id), el('td', {}, hours(x.seconds)), el('td', {}, x.pool ? 'pool ticket' : x.usd ? (program ? 'pool ticket · none on sale' : `$${x.usd}`) : 'free'), el('td', {}, price(x))));
   $('tiers').replaceChildren(el('thead', {}, el('tr', {}, ...['SHIFT', 'LENGTH', 'PAID WITH', 'IN SOL'].map(h => el('th', {}, h)))), el('tbody', {}, rows));
-  const pooled = t.tiers.some(x => x.pool), legacy = t.tiers.some(x => x.usd && !x.pool);
+  const pooled = t.tiers.some(x => x.pool), legacy = !program && t.tiers.some(x => x.usd && !x.pool);
   $('price').textContent = [pooled && 'Pool tickets: the price is part of the pool’s rules, fixed when it was created.', legacy && (t.solUsd ? `Pay-per-ride: SOL ≈ $${t.solUsd}, the quote is locked for 10 minutes when you order.` : 'Pay-per-ride: SOL price unavailable right now.'), 'Devnet SOL only.'].filter(Boolean).join(' ');
 }
 
