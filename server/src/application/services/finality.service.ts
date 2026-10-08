@@ -92,12 +92,14 @@ export class FinalityService {
   async drop(signature: string, seen: ChainEventRow[]): Promise<number> {
     const poolIds = new Set<number>();
     const voided = await withVersionRetry(() => this.transactions.run(async (tx) => {
+      // the locks FIRST (they serialize concurrent drops of the same transaction), then re-read whether it is still live
+      const isPurchase = (r: ChainEventRow) => r.kind === 'TicketBought' && r.wallet !== null && r.poolId !== null;
+      for (const wallet of [...new Set(seen.filter(isPurchase).map((r) => r.wallet as string))].sort()) await this.players.findByWalletForUpdate(wallet, tx);
+      const pools = [...new Set(seen.flatMap((r) => (r.poolId === null ? [] : [r.poolId])))].sort((a, b) => a - b);
+      for (const id of pools) { poolIds.add(id); await this.pools.findByIdForUpdate(id, tx); }
       const rows = await this.stillLive(seen, tx);
       if (rows.length === 0) return 0;
-      const purchases = rows.filter((r) => r.kind === 'TicketBought' && r.wallet !== null && r.poolId !== null);
-      for (const wallet of [...new Set(purchases.map((r) => r.wallet as string))].sort()) await this.players.findByWalletForUpdate(wallet, tx);
-      const pools = [...new Set(rows.flatMap((r) => (r.poolId === null ? [] : [r.poolId])))].sort((a, b) => a - b);
-      for (const id of pools) { poolIds.add(id); await this.pools.findByIdForUpdate(id, tx); }
+      const purchases = rows.filter(isPurchase);
       let total = 0;
       for (const r of purchases) total += await this.revoke(r, tx);
       await this.events.markDropped(signature, DROPPED, tx);
