@@ -28,7 +28,7 @@
     <a class="pill" href="https://eu.posthog.com/project/297915/dashboard/1006663">EU board · dashboard 1006663</a>
     <span class="pill">private · login wall · no public share</span>
   </div>
-  <p class="soft">The board stays at zero until that branch is deployed with <code>POSTHOG_HOST=https://eu.i.posthog.com</code>. Events sent to the US ingest host never appear on it. A US app URL is the wrong project. Loop health is a second blank dashboard and does not exist yet.</p>
+  <p class="soft">The board stays at zero until that branch is deployed. Production <code>deploy/.env</code> already sets <code>POSTHOG_ENABLED=1</code> and <code>POSTHOG_HOST=https://eu.i.posthog.com</code>. Local <code>server/.env</code> pins <code>POSTHOG_ENABLED=0</code>, and the local compose file does not run the API. <code>main</code> strips these keys, so the live site sends nothing until that deploy. Events sent to the US ingest host never appear on it. A US app URL is the wrong project. Loop health is a second blank dashboard and does not exist yet.</p>
 
   <ul class="toc">
     <li><a href="#s-planes">Two planes</a></li>
@@ -323,7 +323,7 @@
     <div class="lock"><span class="n">1</span><b>Optional session</b><span><code>OptionalSessionGuard</code> is the route guard, not an app-wide guard. No cookie is a 200. No player-row lock.</span></div>
     <div class="lock"><span class="n">2</span><b>Ten events</b><span>Zod body. The response is <code>{ enabled, accepted, dropped }</code>. Floats and oversize strings drop the event. A bad name is a drop, not a 400.</span></div>
     <div class="lock"><span class="n">3</span><b>Client only</b><span><code>source</code> is forced to <code>client</code>. Every server event name is dropped, including <code>ride_completed</code> and <code>payment_confirmed</code>.</span></div>
-    <div class="lock"><span class="n">4</span><b>Quiet when off</b><span>Empty key, a non-<code>phc_</code> key, or <code>POSTHOG_DISABLED</code> of <code>1</code> or <code>true</code> returns <code>enabled: false</code>. The API still boots.</span></div>
+    <div class="lock"><span class="n">4</span><b>Quiet when off</b><span><code>POSTHOG_ENABLED</code> unset, <code>0</code>, or <code>false</code>, an empty or non-<code>phc_</code> key, or <code>POSTHOG_DISABLED</code> of <code>1</code> or <code>true</code> returns <code>enabled: false</code>. The API still boots. <code>emitAnalytics</code> does not build the event.</span></div>
   </div>
   <p class="soft">Default throttle is the global 600 per minute. The adapter flushes at 20 events or 1 second. Shutdown flushes for 500 ms, then drops the queue. Logs name the host, the status, the count, and the event names. They never print the key or the body. Tests stub <code>fetch</code> to <code>https://posthog.test</code> with <code>phc_test</code>. CI does not call PostHog.</p>
 </section>
@@ -364,11 +364,12 @@
         <tr><td><code>POSTHOG_KEY</code></td><td>Project token, <code>phc_…</code>. Empty turns capture off. A personal <code>phx_…</code> key, or any other string, logs once (<code>analytics disabled: POSTHOG_KEY is not a project token</code>) and is treated as unset. It does not refuse boot. The real token lives only in gitignored <code>server/.env</code> and <code>deploy/.env</code>. Tracked examples keep it empty.</td></tr>
         <tr><td><code>POSTHOG_HOST</code></td><td><code>https://eu.i.posthog.com</code>. Capture posts to <code>{host}/batch/</code>. The US host is the wrong continent for this project.</td></tr>
         <tr><td><code>POSTHOG_PROJECT_ID</code></td><td><code>297915</code>. Notes for humans. Capture does not send it.</td></tr>
-        <tr><td><code>POSTHOG_DISABLED</code></td><td><code>1</code> or <code>true</code> turns capture off. <code>0</code>, <code>false</code>, or empty leaves it on when the key is a project token. It is an enum, not a coerced boolean, so the string <code>false</code> does not stick the kill switch on.</td></tr>
+        <tr><td><code>POSTHOG_ENABLED</code></td><td>Global opt-in. Only <code>1</code> or <code>true</code> may send. Unset, empty, <code>0</code>, or <code>false</code> stays off even when the key is a project token. An enum, not a coerced boolean. Local <code>server/.env</code> and <code>server/.env.example</code> set <code>0</code>. Production <code>deploy/.env</code> and <code>deploy/.env.example</code> set <code>1</code>. The local compose file does not set it.</td></tr>
+        <tr><td><code>POSTHOG_DISABLED</code></td><td>Kill switch. <code>1</code> or <code>true</code> forces capture off even when <code>POSTHOG_ENABLED</code> is on. <code>0</code>, <code>false</code>, or empty does not turn capture on. An enum, not a coerced boolean, so the string <code>false</code> does not stick the switch on.</td></tr>
       </tbody>
     </table>
   </div>
-  <p class="soft">On <code>main</code> the schema does not declare these keys, so Zod strips them and the server boots as before. Both example files and <code>deploy/docker-compose.prod.yml</code> list them anyway: a key present in <code>deploy/.env</code> but missing from compose never reaches the container. Merging the branch without that list would turn the key on in the file and off in the process.</p>
+  <p class="soft">On <code>main</code> the schema does not declare these keys, so Zod strips them and the server boots as before. Both example files and <code>deploy/docker-compose.prod.yml</code> list them anyway: a key present in <code>deploy/.env</code> but missing from compose never reaches the container. Merging the branch without that list would leave the production opt-in in the file and off in the process. A shell <code>POSTHOG_ENABLED=1</code> wins over the local <code>0</code> for that process. <code>POSTHOG_DISABLED=1</code> still wins after the branch is deployed.</p>
 </section>
 
 <section aria-labelledby="s-promise">
@@ -380,7 +381,7 @@
     <li><b>A finish is a server row</b><span><code>ride_completed</code> exists only after the ride saved as <code>shift complete</code>. The browser cannot mint it.</span></li>
     <li><b>A payment is an inserted row</b><span><code>payment_confirmed</code> fires only when <code>settle()</code> inserted the payment. A second confirm and a race loser are silent.</span></li>
     <li><b>Capture cannot undo the write</b><span>The event is built after the commit, in try/catch. PostHog being down leaves the ride and the payment as they were.</span></li>
-    <li><b>A bad key does not take the API down</b><span>Empty, <code>phx_</code>, or <code>POSTHOG_DISABLED=1</code> disables capture and the process still listens.</span></li>
+    <li><b>A bad key does not take the API down</b><span>Empty, <code>phx_</code>, <code>POSTHOG_ENABLED</code> left unset, or <code>POSTHOG_DISABLED=1</code> disables capture and the process still listens.</span></li>
     <li><b>Demo and real are separate</b><span><code>is_demo</code> is on the event. The video board is the demo tile and says the clock is ×60.</span></li>
     <li><b>The database wins</b><span>Lamports on the board are checked against <code>economy.Payment</code> and <code>split.entries</code> before anyone says the number.</span></li>
     <li><b>Secrets stay out of the event</b><span>No signature on a client event, no seed, no nonce, no token, no raw error detail. The project token is never logged.</span></li>

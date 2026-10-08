@@ -8,7 +8,7 @@ Freight Chain – "Desert Run": a browser truck-driving game with a Solana-paid 
 - `deploy/` – semi-automatic deploy to our own server: `npm run deploy` (see `deploy/README.md`)
 - `video/` – promo clip maker: real gameplay → mp4 (≤ 15 s) + gif (≤ 20 MB) with landing-styled captions and transitions; the finished intro is `video/out/intro/` (see "Promo videos" below)
 - `docs/` – hackathon plan, backend architecture, [verified play: next steps + the owner's checklist](docs/verified-play-next-steps.md), [product analytics: events, funnels, the EU board](docs/analytics/index.html)
-- `AGENTS.md` / `CLAUDE.md` – the project map and rules for coding agents; `.claude/skills/` – project skills (read-only production logs / database, ride investigation, the whole test run, `gameplay-video`)
+- `AGENTS.md` / `CLAUDE.md` – the project map and rules for coding agents; `.claude/skills/` – project skills (read-only production logs / database, ride investigation, the whole test run, the PostHog smoke, `gameplay-video`)
 
 Local run: `npm run db:up && npm run server:dev` → http://localhost:3000
 
@@ -20,7 +20,7 @@ Local run: `npm run db:up && npm run server:dev` → http://localhost:3000
 
 ## Product analytics
 
-How the loop is measured — every event, the eight funnels, what the server owns, what the browser may say — is [docs/analytics/index.html](docs/analytics/index.html). Capture is built on branch `plan/posthog-integration` and is not on `main` and not live. The private EU board is [project 297915 / dashboard 1006663](https://eu.posthog.com/project/297915/dashboard/1006663). Ingest is `https://eu.i.posthog.com`. The project token stays in the gitignored env files; the tracked examples keep `POSTHOG_KEY` empty.
+How the loop is measured — every event, the eight funnels, what the server owns, what the browser may say — is [docs/analytics/index.html](docs/analytics/index.html). Capture is built on branch `plan/posthog-integration` and is not on `main` and not live. The private EU board is [project 297915 / dashboard 1006663](https://eu.posthog.com/project/297915/dashboard/1006663). Ingest is `https://eu.i.posthog.com`. The project token stays in the gitignored env files; the tracked examples keep `POSTHOG_KEY` empty. A token alone does not send: `POSTHOG_ENABLED` must be `1` or `true`, and `POSTHOG_DISABLED=1` still wins. Local `server/.env` pins `POSTHOG_ENABLED=0`, and the local compose file does not run the API, so a click on the server this checkout runs does not send an event. Production `deploy/.env` sets `POSTHOG_ENABLED=1`; the live site still sends nothing until that branch is the image production runs, because `main` strips the keys. The smoke test is the `posthog-test` skill: it boots that branch with `POSTHOG_ENABLED=1` for that process, opens the landing in headless Chrome, and requires a 200 from EU ingest.
 
 ## Tests
 
@@ -30,6 +30,7 @@ There is no CI; run everything locally (the `run-tests` skill does this):
 npm run check                              # client lint + bundle + headless game · landing · server build, typecheck, unit tests + architecture audits
 npm run server:integration                 # PostgreSQL in Docker, its own freightchain_test database
 bash .claude/skills/run-tests/e2e.sh       # real Chrome: game (VERIFIED ride), lobby, admin page – on a throwaway database, screenshots in the OS temp dir
+bash .claude/skills/posthog-test/smoke.sh  # PostHog: plan/posthog-integration, headless Chrome, throwaway database, EU batch must return 200
 ```
 
 ## Landing

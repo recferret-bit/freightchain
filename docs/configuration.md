@@ -116,7 +116,8 @@ The capture code is not on `main`. `env.schema.ts` here does not declare these k
 | `POSTHOG_KEY` | unset | Project token `phc_…`. Empty = capture off. A `phx_…` or any other non-token is logged once and ignored, and does not stop the API. **Never commit or print it.** Tracked examples stay empty. The real value is only in gitignored `server/.env` and `deploy/.env`. |
 | `POSTHOG_HOST` | `https://eu.i.posthog.com` | Ingest. Capture posts to `{host}/batch/`. Project 297915 is EU Cloud. The US ingest host accepts the token and the events never appear on the board. |
 | `POSTHOG_PROJECT_ID` | `297915` | Notes only. Not a secret. Not sent on capture. |
-| `POSTHOG_DISABLED` | unset | `1` or `true` turns capture off. `0`, `false`, or empty leaves it on when the key is a project token. An enum, not a coerced boolean (`"false"` must not stick the switch on). |
+| `POSTHOG_ENABLED` | off when unset | Global opt-in. Only `1` or `true` may send. Unset, empty, `0`, or `false` stays off even when `POSTHOG_KEY` is a project token. An enum, not a coerced boolean. Local `server/.env` and `server/.env.example` set `0`. Production `deploy/.env` and `deploy/.env.example` set `1`. The local compose file does not run the API and does not set this. |
+| `POSTHOG_DISABLED` | unset | Kill switch. `1` or `true` forces capture off even when `POSTHOG_ENABLED` is on. `0`, `false`, or empty does not turn capture on. An enum, not a coerced boolean (`"false"` must not stick the switch on). |
 
 ## Deploy-only keys (`deploy/.env`, never reach the app)
 
@@ -182,5 +183,5 @@ npm run server:dev                   # :3000 – site, game and API on one origi
 
 ## Known drift
 
-- `POSTHOG_*` in the gitignored `server/.env` and `deploy/.env` is intentional (EU host, project 297915, token not tracked). On `main` the schema strips them, so the running server ignores them until `plan/posthog-integration` is merged. Do not point the host at `us.i.posthog.com`. Do not delete the keys to “clean up” — the analytics branch reads them.
+- `POSTHOG_*` in the gitignored env files is intentional and the two files differ. Local `server/.env` pins `POSTHOG_ENABLED=0` (the local compose file is Postgres only and must not turn capture on). Production `deploy/.env` sets `POSTHOG_ENABLED=1`, EU host, project 297915, token not tracked. On `main` the schema strips the keys, so the live site ignores them until `plan/posthog-integration` is the image production runs. Do not point the host at `us.i.posthog.com`. Do not delete the keys to “clean up” — the analytics branch reads them. `POSTHOG_DISABLED=1` still wins after that deploy.
 - `deploy/.env.example` omits `FEE_PAYER_*` / `CRANK_SECRET` / `POSTHOG_KEY` real values on purpose (dummies and an empty token) and does not list `COOKIE_DOMAIN` / `CORS_ORIGINS` / `APP_*` (derived).
