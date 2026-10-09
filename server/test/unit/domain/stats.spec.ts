@@ -1,6 +1,6 @@
 import { RideStatus } from '../../../src/domain/rides/ride-status.js';
 import type { RideProps } from '../../../src/domain/rides/ride.entity.js';
-import { EMPTY_STATS, addStats, countsForStats, donationDelta, rideDelta, statsDrift, toStatsDto } from '../../../src/domain/stats/stats.js';
+import { EMPTY_STATS, utcDay, addStats, countsForStats, donationDelta, rideDelta, statsDrift, toStatsDto } from '../../../src/domain/stats/stats.js';
 
 const ride = (over: Partial<RideProps>): RideProps => ({ tier: 'free', status: RideStatus.Failed, startedAt: new Date(0), lastS: 820, driveSeconds: 63, crashesVehicle: 2, crashesBuilding: 1, ...over } as RideProps);
 
@@ -38,5 +38,10 @@ describe('statistics (domain)', () => {
     const a = { ...EMPTY_STATS, rides: 3, metres: 1000.004 };
     expect(statsDrift(a, { ...EMPTY_STATS, rides: 3, metres: 1000 })).toEqual({});
     expect(statsDrift(a, { ...EMPTY_STATS, rides: 4, metres: 1000 })).toEqual({ rides: { stored: 3, truth: 4 } });
+  });
+
+  it('the history files a moment under its UTC day', () => {
+    expect(utcDay(new Date(Date.UTC(2036, 9, 8, 23, 59, 59, 999)))).toBe('2036-10-08');
+    expect(utcDay(new Date(Date.UTC(2036, 9, 9, 0, 0, 0)))).toBe('2036-10-09');
   });
 });

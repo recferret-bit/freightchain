@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { RideProps } from '../../domain/rides/ride.entity.js';
-import { EMPTY_STATS as EMPTY, donationDelta, rideDelta, toStatsDto, type GlobalStatsDto, type StatsDto } from '../../domain/stats/stats.js';
+import { DAILY_WINDOW_DAYS, EMPTY_STATS as EMPTY, donationDelta, rideDelta, toStatsDto, type DailyStatsDto, type GlobalStatsDto, type StatsDto } from '../../domain/stats/stats.js';
 import { StatsRepositoryPort } from '../ports/stats/stats.repository.port.js';
 import { CachePort } from '../ports/shared/cache.port.js';
 import { ClockPort } from '../ports/shared/clock.port.js';
@@ -9,6 +9,7 @@ import type { TransactionHandle } from '../ports/shared/transaction.port.js';
 /** how long a cached read lives – writes drop the keys too, so this only bounds a write that raced a read */
 export const STATS_CACHE_TTL_SECONDS = 15;
 export const GLOBAL_STATS_KEY = 'stats:global';
+export const DAILY_STATS_KEY = 'stats:daily';
 export const playerStatsKey = (wallet: string): string => `stats:player:${wallet}`;
 
 /**
@@ -29,18 +30,20 @@ export class StatsService {
   async recordRide(ride: RideProps, tx?: TransactionHandle): Promise<boolean> {
     const delta = rideDelta(ride);
     if (!delta) return false;
-    await this.repo.add(ride.wallet, delta, this.clock.now(), tx);
+    const now = this.clock.now();
+    await this.repo.add(ride.wallet, delta, now, tx, ride.endedAt ?? now);   // the history files it under the UTC day the ride ENDED
     return true;
   }
 
   /** A donation that landed on `driver`'s stream; `paid` = a real transfer (its lamports count), otherwise a mock tip (counted, no lamports). */
-  async recordDonation(driver: string, lamports: number, paid: boolean): Promise<void> {
-    await this.repo.add(driver, donationDelta(lamports, paid), this.clock.now());
+  async recordDonation(driver: string, lamports: number, paid: boolean, at?: Date): Promise<void> {
+    const now = this.clock.now();
+    await this.repo.add(driver, donationDelta(lamports, paid), now, undefined, at ?? now);   // `at` = when the donation event was created (its day in the history)
     await this.invalidate(driver);
   }
 
   async invalidate(...wallets: string[]): Promise<void> {
-    await this.cache.del(GLOBAL_STATS_KEY, ...wallets.map(playerStatsKey));
+    await this.cache.del(GLOBAL_STATS_KEY, DAILY_STATS_KEY, ...wallets.map(playerStatsKey));
   }
 
   async global(): Promise<GlobalStatsDto> {
@@ -59,5 +62,14 @@ export class StatsService {
     const dto = toStatsDto((await this.repo.findPlayer(wallet))?.totals ?? EMPTY);
     await this.cache.set(key, dto, STATS_CACHE_TTL_SECONDS);
     return dto;
+  }
+
+  /** The history: one row per UTC day that has any, oldest first, the newest DAILY_WINDOW_DAYS days. */
+  async daily(): Promise<DailyStatsDto[]> {
+    const hit = await this.cache.get<DailyStatsDto[]>(DAILY_STATS_KEY);
+    if (hit) return hit;
+    const rows = await this.repo.listDaily(DAILY_WINDOW_DAYS, this.clock.now());
+    await this.cache.set(DAILY_STATS_KEY, rows, STATS_CACHE_TTL_SECONDS);
+    return rows;
   }
 }

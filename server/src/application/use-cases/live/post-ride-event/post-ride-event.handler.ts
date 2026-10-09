@@ -37,7 +37,7 @@ export class PostRideEventHandler implements ICommandHandler<PostRideEventComman
       : RideEvent.donation({ rideId, wallet, effect: input.effect, note: input.note, now });
     const stored = await this.events.insert(event, event.needsGame ? EFFECT_WINDOW_MS : undefined);
     if (!stored) throw await effectBusy(this.events, event, now);
-    if (stored.kind === 'donation') await this.stats.recordDonation(ride.wallet, 0, false).catch((e: unknown) => this.logger.warn(`donation statistics deferred to stats:reconcile: ${e instanceof Error ? e.message : String(e)}`));   // a mock tip: counted, no lamports
+    if (stored.kind === 'donation') await this.stats.recordDonation(ride.wallet, 0, false, stored.snapshot().createdAt).catch((e: unknown) => this.logger.warn(`donation statistics deferred to stats:reconcile: ${e instanceof Error ? e.message : String(e)}`));   // a mock tip: counted, no lamports
     if (stored.kind === 'donation') this.logger.log({ event: 'live-donation', msg: `mock donation ${stored.effect} on ride ${rideId}`, rideId, wallet, effect: stored.effect });
     return toRideEventDto(stored);
   }

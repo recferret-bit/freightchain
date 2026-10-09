@@ -40,3 +40,22 @@ model GlobalStats {
 
   @@schema("stats")
 }
+
+// One row per UTC day (the day a ride ENDED / a donation landed): the history behind GET /api/stats/daily. Same columns, same writer (StatsService), written
+// third in the lock order (rider, game, day) and repaired by stats:reconcile.
+model DailyStats {
+  day             DateTime @id @db.Date
+  rides           Int      @default(0)
+  ridesFree       Int      @default(0)
+  ridesPaid       Int      @default(0)
+  ridesCompleted  Int      @default(0)
+  seconds         Float    @default(0)
+  metres          Float    @default(0)
+  crashesVehicle  Int      @default(0)
+  crashesBuilding Int      @default(0)
+  donations       Int      @default(0)
+  donationLamports BigInt  @default(0)
+  updatedAt       DateTime
+
+  @@schema("stats")
+}

@@ -96,3 +96,14 @@ export function statsDrift(stored: StatsTotals, truth: StatsTotals): Partial<Rec
   for (const f of STATS_FIELDS) if (Math.abs(stored[f] - truth[f]) > STATS_FLOAT_TOLERANCE) out[f] = { stored: stored[f], truth: truth[f] };
   return out;
 }
+
+/** The UTC day (YYYY-MM-DD) a moment belongs to – the key of the history. */
+export const utcDay = (at: Date): string => at.toISOString().slice(0, 10);
+
+/** how many days GET /api/stats/daily returns (the newest) */
+export const DAILY_WINDOW_DAYS = 90;
+
+export interface DailyStatsDto extends StatsDto {
+  /** UTC day, YYYY-MM-DD */
+  day: string;
+}

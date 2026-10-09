@@ -113,7 +113,7 @@ export const FEATURES = [
     id: 'statistics', title: 'Statistics (rides, time, km, crashes, donations – per rider + global, cached)',
     server: /^(application\/(services\/stats\.service|use-cases\/stats\/)|domain\/stats\/|infrastructure\/(cache\/|prisma\/repositories\/stats))/,
     client: /^client\/site\/lobby-career\.js$/,
-    routes: /^GET \/api\/stats$/,
+    routes: /^GET \/api\/stats(\/daily)?$/,
     words: /statistic|career|crash|driven, all time/i,
     headless: /contact with a vehicle is counted|no crashes counted/i,
     e2e: ['e2e-stats.mjs'], skills: ['run-tests', 'stats-reconcile'],

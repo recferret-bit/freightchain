@@ -3,12 +3,12 @@ import { EMPTY_STATS, addStats, statsDrift, type StatsTotals } from '../../../..
 import { CachePort } from '../../../ports/shared/cache.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
 import { StatsRepositoryPort } from '../../../ports/stats/stats.repository.port.js';
-import { GLOBAL_STATS_KEY, playerStatsKey } from '../../../services/stats.service.js';
+import { DAILY_STATS_KEY, GLOBAL_STATS_KEY, playerStatsKey } from '../../../services/stats.service.js';
 import { ReconcileStatsCommand, type ReconcileStatsResultDto, type StatsDriftDto } from './reconcile-stats.command.js';
 
 /**
  * Statistics are running totals, so a crash between two writes (or a row edited by hand) can leave them off. This recomputes every rider's numbers from the
- * rides and the donation events – the same rule the migration's backfill used – diffs them with the stored rows and the global row, and with `fix` rewrites
+ * rides and the donation events – the same rule the migration's backfill used – diffs them with the stored rows, the global row and the per-day history, and with `fix` rewrites
  * the rows (a rider with nothing behind it loses the row; the global row becomes the sum of all riders). Read-only without `fix`. Run it when the app is quiet:
  * a ride that ends while it runs is counted by the live write and may then be overwritten by an older snapshot – run it again and it is clean.
  */
@@ -32,11 +32,21 @@ export class ReconcileStatsHandler implements ICommandHandler<ReconcileStatsComm
       const sum = [...truth.values()].reduce<StatsTotals>(addStats, EMPTY_STATS);
       global = statsDrift((await this.repo.findGlobal())?.totals ?? EMPTY_STATS, sum);
     }
-    const dirty = drifted.length > 0 || (global !== null && Object.keys(global).length > 0);
-    if (fix && dirty) {
-      await this.repo.replace(truth, this.clock.now(), wallet);
-      await this.cache.del(GLOBAL_STATS_KEY, ...drifted.map((d) => playerStatsKey(d.wallet)));
+    const days: ReconcileStatsResultDto['days'] = [];
+    let dailyTruth: Map<string, StatsTotals> | undefined;
+    if (!wallet) {
+      dailyTruth = await this.repo.recomputeDaily();
+      const stored = await this.repo.listAllDaily();
+      for (const day of [...new Set([...dailyTruth.keys(), ...stored.keys()])].sort()) {
+        const fields = statsDrift(stored.get(day) ?? EMPTY_STATS, dailyTruth.get(day) ?? EMPTY_STATS);
+        if (Object.keys(fields).length) days.push({ day, fields });
+      }
     }
-    return { checked: new Set([...truth.keys(), ...stored.keys()]).size, drifted, global: global && Object.keys(global).length ? global : null, fixed: fix && dirty };
+    const dirty = drifted.length > 0 || days.length > 0 || (global !== null && Object.keys(global).length > 0);
+    if (fix && dirty) {
+      await this.repo.replace(truth, this.clock.now(), wallet, dailyTruth);
+      await this.cache.del(GLOBAL_STATS_KEY, DAILY_STATS_KEY, ...drifted.map((d) => playerStatsKey(d.wallet)));
+    }
+    return { checked: new Set([...truth.keys(), ...stored.keys()]).size, drifted, global: global && Object.keys(global).length ? global : null, days, fixed: fix && dirty };
   }
 }

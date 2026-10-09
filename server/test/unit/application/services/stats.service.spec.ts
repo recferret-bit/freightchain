@@ -1,5 +1,6 @@
 import { RideStatus } from '../../../../src/domain/rides/ride-status.js';
 import { GLOBAL_STATS_KEY, STATS_CACHE_TTL_SECONDS, playerStatsKey } from '../../../../src/application/services/stats.service.js';
+import { EMPTY_STATS } from '../../../../src/domain/stats/stats.js';
 import { unitContext } from '../../../support/unit-context.js';
 
 /** a started free ride that ran `metres` / `seconds` and ended with `status` */
@@ -64,5 +65,30 @@ describe('StatsService', () => {
   it('an unknown rider reads as zeros, never null', async () => {
     const ctx = unitContext();
     expect(await ctx.stats.player('nobody')).toEqual({ rides: 0, ridesFree: 0, ridesPaid: 0, ridesCompleted: 0, seconds: 0, metres: 0, crashes: 0, crashesVehicle: 0, crashesBuilding: 0, donations: 0, donationLamports: 0 });
+  });
+
+  it('the history: a ride lands on the UTC day it ENDED, a donation on the day it landed; the cache is dropped by a write', async () => {
+    const ctx = unitContext();
+    const first = await ended(ctx, 'a', RideStatus.Failed, 100, 10);
+    await ctx.stats.recordRide(first);
+    expect((await ctx.stats.daily()).map((d) => [d.day, d.rides, d.metres])).toEqual([['2036-10-08', 1, 100]]);
+    ctx.clock.advance(86_400);   // the next UTC day
+    await ctx.stats.recordRide(await ended(ctx, 'a', RideStatus.Completed, 900, 60));
+    await ctx.stats.recordDonation('a', 5_000, true, new Date(Date.UTC(2036, 9, 7, 10)));   // a donation of the day before
+    const days = await ctx.stats.daily();
+    expect(days.map((d) => d.day)).toEqual(['2036-10-07', '2036-10-08', '2036-10-09']);
+    expect(days[0]).toMatchObject({ rides: 0, donations: 1, donationLamports: 5_000 });
+    expect(days[2]).toMatchObject({ rides: 1, ridesCompleted: 1, metres: 900 });
+    expect(days.reduce((s, d) => s + d.rides, 0)).toBe((await ctx.stats.global()).rides);   // the days add up to the game
+  });
+
+  it('the history keeps the newest 90 days only', async () => {
+    const ctx = unitContext();
+    for (let i = 0; i < 95; i++) await ctx.statsRepo.add('a', { ...EMPTY_STATS, rides: 1, ridesFree: 1 }, ctx.now(), undefined, new Date(Date.UTC(2036, 6, 1 + i)));
+    ctx.clock.ms = Date.UTC(2036, 9, 4);
+    const days = await ctx.stats.daily();
+    expect(days).toHaveLength(Math.min(90, days.length));
+    expect(days.at(-1)?.day).toBe('2036-10-03');
+    expect(days[0]?.day >= '2036-07-06').toBe(true);
   });
 });

@@ -129,6 +129,8 @@ const daves = await career(dave);
 check('sweeper: …and it counted what it drove', daves.rides === 1 && daves.metres === 15, JSON.stringify(daves));
 const g2 = await stats();
 check('GET /api/stats = the sum of the four riders', g2.rides === 4 && g2.ridesFree === 4 && g2.ridesPaid === 0 && g2.drivers === 4 && g2.metres === afterCrash.metres + 20 + 12 + 15 && g2.crashesVehicle === afterCrash.crashesVehicle + 1 && g2.crashesBuilding === 1 && g2.donations === 1, JSON.stringify(g2));
+const daily = await api('stats/daily');
+check('GET /api/stats/daily: one row for today, the days add up to the totals, no wallets', Array.isArray(daily) && daily.length >= 1 && daily.reduce((s, x) => s + x.rides, 0) === g2.rides && daily.reduce((s, x) => s + x.metres, 0) === g2.metres && /^\d{4}-\d{2}-\d{2}$/.test(daily.at(-1).day) && !JSON.stringify(daily).includes(me.wallet), JSON.stringify(daily).slice(0, 160));
 check('the landing\'s live feed carries the same totals', JSON.stringify((({ rides, metres, drivers, crashes, donations }) => ({ rides, metres, drivers, crashes, donations }))((await api('live')).totals)) === JSON.stringify({ rides: g2.rides, metres: g2.metres, drivers: g2.drivers, crashes: g2.crashes, donations: g2.donations }), JSON.stringify((await api('live')).totals));
 check('GET /api/stats is cached but never stale: a second read is identical', JSON.stringify(await stats()) === JSON.stringify(g2));
 const raw = JSON.stringify(g2);
@@ -155,20 +157,21 @@ if (process.env.DATABASE_URL) {
   const run = (...a) => { const r = cli('stats:reconcile', ...a); try { return JSON.parse(r.stdout); } catch { return { error: r.stderr || r.stdout }; } };
   const clean = run();
   const riders = REDIS ? 6 : 4;
-  check('stats:reconcile finds the live tables clean', clean.checked === riders && clean.drifted.length === 0 && clean.global === null, JSON.stringify(clean));
+  check('stats:reconcile finds the live tables clean (riders, game and history)', clean.checked === riders && clean.drifted.length === 0 && clean.global === null && clean.days.length === 0, JSON.stringify(clean));
   const dbName = new URL(process.env.DATABASE_URL).pathname.slice(1);   // the compose PostgreSQL: psql inside its container
   const q = (sql) => spawnSync('docker', ['exec', 'freightchain-postgres', 'psql', '-U', 'freight', '-d', dbName, '-v', 'ON_ERROR_STOP=1', '-tAc', sql], { encoding: 'utf8' });
   q(`UPDATE stats."PlayerStats" SET metres = metres + 500, rides = rides + 3 WHERE wallet = '${bob.wallet}'`);
   q(`UPDATE stats."GlobalStats" SET donations = 0`);
+  q(`UPDATE stats."DailyStats" SET metres = metres + 1000`);
   const dirty = run();
-  check('stats:reconcile reports a rider whose row was edited and the global row that no longer adds up', dirty.drifted?.length === 1 && dirty.drifted[0].wallet === bob.wallet && dirty.drifted[0].fields.rides?.stored === 4 && !!dirty.global?.donations, JSON.stringify(dirty).slice(0, 300));
+  check('stats:reconcile reports a rider whose row was edited and the global row that no longer adds up', dirty.drifted?.length === 1 && dirty.drifted[0].wallet === bob.wallet && dirty.drifted[0].fields.rides?.stored === 4 && !!dirty.global?.donations && dirty.days?.length >= 1, JSON.stringify(dirty).slice(0, 300));
   check('…without --fix it changes nothing', (await career(bob)).rides === 1 || (await career(bob)).rides === 4);
   const fixed = run('--fix');
   check('stats:reconcile --fix repairs both', fixed.fixed === true, JSON.stringify(fixed).slice(0, 200));
   await sleep(16_000);   // the cached answers (15 s) expire; the CLI's own cache is process-local when no Redis is shared
   const healed = await career(bob), g3 = await stats();
   check('the rider\'s record and the game\'s totals are right again', healed.rides === 1 && healed.metres === 20 && g3.donations === 1 && g3.rides === riders, JSON.stringify(g3));
-  check('stats:reconcile is clean afterwards', run().drifted?.length === 0);
+  check('stats:reconcile is clean afterwards (history included)', run().drifted?.length === 0 && run().days.length === 0);
 } else console.log('skip stats:reconcile (no DATABASE_URL)');
 
 const probs = B.filt().filter(p => !/401.*\/api\/me/.test(p));

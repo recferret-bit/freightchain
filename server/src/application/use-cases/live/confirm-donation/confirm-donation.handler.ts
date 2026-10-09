@@ -79,7 +79,7 @@ export class ConfirmDonationHandler implements ICommandHandler<ConfirmDonationCo
     event ??= await this.events.findBySignature(signature);   // a racing delivery of the same transfer won
     if (!event) throw new ConflictError('the donation could not be recorded – confirm again', 'retry');
     await this.orders.setEvent(order.id, event.id ?? 0);
-    if (inserted && ride) await this.stats.recordDonation(ride.wallet, order.lamports, true).catch((e: unknown) => this.logger.warn(`donation statistics deferred to stats:reconcile: ${e instanceof Error ? e.message : String(e)}`));   // the DRIVER's totals: money that moved
+    if (inserted && ride) await this.stats.recordDonation(ride.wallet, order.lamports, true, event.snapshot().createdAt).catch((e: unknown) => this.logger.warn(`donation statistics deferred to stats:reconcile: ${e instanceof Error ? e.message : String(e)}`));   // the DRIVER's totals: money that moved
     this.logger.log({ event: 'live-donation', msg: `paid donation ${event.effect} on ride ${order.rideId}`, rideId: order.rideId, wallet: order.wallet, effect: event.effect, signature });
     return event;
   }

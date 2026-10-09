@@ -17,5 +17,7 @@ export interface ReconcileStatsResultDto {
   drifted: StatsDriftDto[];
   /** the game-wide row vs the sum of every rider's true totals (everyone-scope only; null when a single wallet was checked) */
   global: StatsDriftDto['fields'] | null;
+  /** the UTC days of the history whose row differs from the rides / feed (everyone-scope only; empty when a single wallet was checked) */
+  days: Array<{ day: string; fields: StatsDriftDto['fields'] }>;
   fixed: boolean;
 }

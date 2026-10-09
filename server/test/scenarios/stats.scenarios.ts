@@ -104,7 +104,7 @@ export function statsScenarios(h: () => Harness): void {
     await beat(w, id, { s: 70, t: 5 });
     await w.agent.post(`/api/rides/${id}/end`).send({ outcome: 'failed', s: 70, t: 5 }).expect(200);
     const bus = h().app.get(CommandBus);
-    expect(await bus.execute(new ReconcileStatsCommand(null, false))).toMatchObject({ checked: 1, drifted: [], fixed: false });
+    expect(await bus.execute(new ReconcileStatsCommand(null, false))).toMatchObject({ checked: 1, drifted: [], days: [], fixed: false });
     // a lost write: the rider's row and the game's row both miss the ride (what a crash between two statements, or a hand-edited row, leaves behind)
     await h().app.get(StatsRepositoryPort).add(w.address, { rides: -1, ridesFree: -1, ridesPaid: 0, ridesCompleted: 0, seconds: -3, metres: -70, crashesVehicle: 0, crashesBuilding: 0, donations: 0, donationLamports: 0 }, new Date(h().clock.ms));
     expect(await bus.execute(new ReconcileStatsCommand(w.address, false))).toMatchObject({ drifted: [{ wallet: w.address, fields: { rides: { stored: 0, truth: 1 }, metres: { stored: 0, truth: 70 } } }], global: null, fixed: false });
@@ -113,5 +113,25 @@ export function statsScenarios(h: () => Harness): void {
     expect(await bus.execute(new ReconcileStatsCommand(null, false))).toMatchObject({ drifted: [], global: null, fixed: false });
     expect(await career(w)).toMatchObject({ rides: 1, metres: 70 });
     expect(await stats()).toMatchObject({ rides: 1, metres: 70 });
+  });
+
+  it('the history: GET /api/stats/daily is public, one row per UTC day with activity – the days add up to the totals', async () => {
+    expect((await anon().get('/api/stats/daily').expect(200)).body).toEqual([]);
+    const w = await login(), id = await startFree(w);
+    await beat(w, id, { s: 70, t: 5 });
+    await w.agent.post(`/api/rides/${id}/end`).send({ outcome: 'failed', s: 70, t: 5, crashesVehicle: 1 }).expect(200);
+    const days = (await anon().get('/api/stats/daily').expect(200)).body;
+    expect(days).toHaveLength(1);
+    expect(days[0]).toMatchObject({ rides: 1, ridesFree: 1, ridesPaid: 0, metres: 70, crashesVehicle: 1 });
+    expect(days[0].day).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(Object.keys(days[0])).not.toContain('wallet');
+    const total = await stats();
+    expect(days.reduce((s: number, d: { rides: number }) => s + d.rides, 0)).toBe(total.rides);
+    sec(86_400 + 10);   // the next UTC day: a second row, the first one untouched
+    const id2 = await startFree(w);
+    await beat(w, id2, { s: 30, t: 5 });
+    await w.agent.post(`/api/rides/${id2}/end`).send({ outcome: 'failed', s: 30, t: 5 }).expect(200);
+    const two = (await anon().get('/api/stats/daily').expect(200)).body;
+    expect(two.map((d: { metres: number }) => d.metres)).toEqual([70, 30]);
   });
 }

@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { StatsRepositoryPort, type StatsRow } from '../../../application/ports/stats/stats.repository.port.js';
 import type { TransactionHandle } from '../../../application/ports/shared/transaction.port.js';
-import { EMPTY_STATS, addStats, type StatsTotals } from '../../../domain/stats/stats.js';
+import { EMPTY_STATS, addStats, toStatsDto, utcDay, type DailyStatsDto, type StatsTotals } from '../../../domain/stats/stats.js';
 import { clientFor } from '../prisma-client.js';
 import { PrismaService } from '../prisma.service.js';
 
@@ -21,11 +21,11 @@ export class StatsPrismaRepository extends StatsRepositoryPort {
 
   /** Two atomic upserts – `x = x + n` inside the statement, so racing rides never lose an update – the rider's row FIRST, the global row second (the lock
       order every writer keeps, so two writers cannot deadlock on the hot global row). Outside a transaction the pair gets its own. */
-  async add(wallet: string, d: StatsTotals, now: Date, tx?: TransactionHandle): Promise<void> {
+  async add(wallet: string, d: StatsTotals, now: Date, tx?: TransactionHandle, at: Date = now): Promise<void> {
     if (!tx) {   // no caller transaction (a donation): take the player row first like every ride writer, else the stats insert's FK check can deadlock with a ride ending
       await this.prisma.$transaction(async (t) => {
         await t.$executeRaw`SELECT 1 FROM "player"."Player" WHERE "wallet" = ${wallet} FOR UPDATE`;
-        await this.add(wallet, d, now, t as unknown as TransactionHandle);
+        await this.add(wallet, d, now, t as unknown as TransactionHandle, at);
       });
       return;
     }
@@ -49,6 +49,15 @@ export class StatsPrismaRepository extends StatsRepositoryPort {
         "seconds" = "GlobalStats"."seconds" + EXCLUDED."seconds", "metres" = "GlobalStats"."metres" + EXCLUDED."metres",
         "crashesVehicle" = "GlobalStats"."crashesVehicle" + EXCLUDED."crashesVehicle", "crashesBuilding" = "GlobalStats"."crashesBuilding" + EXCLUDED."crashesBuilding",
         "donations" = "GlobalStats"."donations" + EXCLUDED."donations", "donationLamports" = "GlobalStats"."donationLamports" + EXCLUDED."donationLamports",
+        "updatedAt" = EXCLUDED."updatedAt"`;
+    await db.$executeRaw`
+      INSERT INTO "stats"."DailyStats" ("day", "rides", "ridesFree", "ridesPaid", "ridesCompleted", "seconds", "metres", "crashesVehicle", "crashesBuilding", "donations", "donationLamports", "updatedAt")
+      VALUES (${utcDay(at)}::date, ${d.rides}, ${d.ridesFree}, ${d.ridesPaid}, ${d.ridesCompleted}, ${d.seconds}, ${d.metres}, ${d.crashesVehicle}, ${d.crashesBuilding}, ${d.donations}, ${lamports}, ${stamp})
+      ON CONFLICT ("day") DO UPDATE SET
+        "rides" = "DailyStats"."rides" + EXCLUDED."rides", "ridesFree" = "DailyStats"."ridesFree" + EXCLUDED."ridesFree", "ridesPaid" = "DailyStats"."ridesPaid" + EXCLUDED."ridesPaid", "ridesCompleted" = "DailyStats"."ridesCompleted" + EXCLUDED."ridesCompleted",
+        "seconds" = "DailyStats"."seconds" + EXCLUDED."seconds", "metres" = "DailyStats"."metres" + EXCLUDED."metres",
+        "crashesVehicle" = "DailyStats"."crashesVehicle" + EXCLUDED."crashesVehicle", "crashesBuilding" = "DailyStats"."crashesBuilding" + EXCLUDED."crashesBuilding",
+        "donations" = "DailyStats"."donations" + EXCLUDED."donations", "donationLamports" = "DailyStats"."donationLamports" + EXCLUDED."donationLamports",
         "updatedAt" = EXCLUDED."updatedAt"`;
   }
 
@@ -92,7 +101,7 @@ export class StatsPrismaRepository extends StatsRepositoryPort {
     return out;
   }
 
-  async replace(truth: Map<string, StatsTotals>, now: Date, scope: string | null): Promise<void> {
+  async replace(truth: Map<string, StatsTotals>, now: Date, scope: string | null, daily?: Map<string, StatsTotals>): Promise<void> {
     await this.prisma.$transaction(async (db) => {
       const wallets = [...truth.keys()].sort();
       for (const w of wallets) await db.$executeRaw`SELECT 1 FROM "player"."Player" WHERE "wallet" = ${w} FOR UPDATE`;   // the player row first (ordered, so two repairs cannot deadlock), like every writer
@@ -105,6 +114,43 @@ export class StatsPrismaRepository extends StatsRepositoryPort {
       const s = sum._sum;
       const g = { rides: s.rides ?? 0, ridesFree: s.ridesFree ?? 0, ridesPaid: s.ridesPaid ?? 0, ridesCompleted: s.ridesCompleted ?? 0, seconds: s.seconds ?? 0, metres: s.metres ?? 0, crashesVehicle: s.crashesVehicle ?? 0, crashesBuilding: s.crashesBuilding ?? 0, donations: s.donations ?? 0, donationLamports: s.donationLamports ?? 0n, updatedAt: now };
       await db.globalStats.upsert({ where: { id: 1 }, create: { id: 1, ...g }, update: g });
+      if (daily) {
+        for (const [day, t] of daily) {
+          const data = { ...t, donationLamports: BigInt(t.donationLamports), updatedAt: now };
+          await db.dailyStats.upsert({ where: { day: new Date(`${day}T00:00:00.000Z`) }, create: { day: new Date(`${day}T00:00:00.000Z`), ...data }, update: data });
+        }
+        await db.dailyStats.deleteMany({ where: { day: { notIn: [...daily.keys()].map((k) => new Date(`${k}T00:00:00.000Z`)) } } });
+      }
     });
+  }
+
+  async listDaily(days: number, until: Date): Promise<DailyStatsDto[]> {
+    const from = new Date(Date.UTC(until.getUTCFullYear(), until.getUTCMonth(), until.getUTCDate() - (days - 1)));
+    const rows = await this.prisma.dailyStats.findMany({ where: { day: { gte: from } }, orderBy: { day: 'asc' } });
+    return rows.map((r) => ({ day: utcDay(r.day), ...toStatsDto(toTotals(r)) }));
+  }
+
+  async listAllDaily(): Promise<Map<string, StatsTotals>> {
+    return new Map((await this.prisma.dailyStats.findMany()).map((r) => [utcDay(r.day), toTotals(r)]));
+  }
+
+  async recomputeDaily(): Promise<Map<string, StatsTotals>> {
+    const rides = await this.prisma.$queryRaw<Array<Record<string, unknown>>>`
+      SELECT to_char(r."endedAt", 'YYYY-MM-DD') AS "day", COUNT(*) AS "rides", COUNT(*) FILTER (WHERE r."tier" = 'free') AS "ridesFree", COUNT(*) FILTER (WHERE r."tier" <> 'free') AS "ridesPaid",
+             COUNT(*) FILTER (WHERE r."status" = 'completed') AS "ridesCompleted", COALESCE(SUM(r."driveSeconds"), 0) AS "seconds", COALESCE(SUM(r."lastS"), 0) AS "metres",
+             COALESCE(SUM(r."crashesVehicle"), 0) AS "crashesVehicle", COALESCE(SUM(r."crashesBuilding"), 0) AS "crashesBuilding"
+      FROM "ride"."Ride" r WHERE r."startedAt" IS NOT NULL AND r."endedAt" IS NOT NULL AND r."status" IN ('completed', 'abandoned', 'failed') GROUP BY 1`;
+    const gifts = await this.prisma.$queryRaw<Array<Record<string, unknown>>>`
+      SELECT to_char(e."createdAt", 'YYYY-MM-DD') AS "day", COUNT(*) AS "donations", COALESCE(SUM(e."lamports") FILTER (WHERE e."signature" IS NOT NULL), 0) AS "donationLamports"
+      FROM "live"."RideEvent" e WHERE e."kind" = 'donation' GROUP BY 1`;
+    const out = new Map<string, StatsTotals>();
+    for (const r of rides) {
+      out.set(String(r.day), { ...EMPTY_STATS, rides: num(r.rides), ridesFree: num(r.ridesFree), ridesPaid: num(r.ridesPaid), ridesCompleted: num(r.ridesCompleted), seconds: num(r.seconds), metres: num(r.metres), crashesVehicle: num(r.crashesVehicle), crashesBuilding: num(r.crashesBuilding) });
+    }
+    for (const g of gifts) {
+      const day = String(g.day);
+      out.set(day, addStats(out.get(day) ?? EMPTY_STATS, { ...EMPTY_STATS, donations: num(g.donations), donationLamports: num(g.donationLamports) }));
+    }
+    return out;
   }
 }

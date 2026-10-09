@@ -95,4 +95,33 @@ describe('StatsPrismaRepository (PostgreSQL)', () => {
     expect((await repo.listPlayers('a')).get('a')).toMatchObject({ rides: 1 });
     expect((await repo.findGlobal())?.totals).toMatchObject({ rides: 1, metres: 800 });
   });
+
+  it('the history: add files each event under the UTC day of its own time; listDaily returns the newest days oldest first; days add up to the global row', async () => {
+    const day = (d: number, h = 12) => new Date(Date.UTC(2036, 9, d, h));
+    await repo.add('a', d({ rides: 1, ridesFree: 1, metres: 100 }), day(8), undefined, day(8, 23));
+    await repo.add('a', d({ rides: 1, ridesPaid: 1, metres: 50, donations: 1, donationLamports: 7 }), day(9), undefined, day(9, 0));
+    await repo.add('b', d({ rides: 1, ridesFree: 1, metres: 5 }), day(9), undefined, day(9, 1));
+    const rows = await repo.listDaily(90, day(9));
+    expect(rows.map((r) => [r.day, r.rides, r.ridesFree, r.ridesPaid, r.metres])).toEqual([['2036-10-08', 1, 1, 0, 100], ['2036-10-09', 2, 1, 1, 55]]);
+    expect(rows[1]).toMatchObject({ donations: 1, donationLamports: 7 });
+    expect((await repo.listDaily(1, day(9))).map((r) => r.day)).toEqual(['2036-10-09']);
+    expect(rows.reduce((sum, r) => sum + r.rides, 0)).toBe((await repo.findGlobal())?.totals.rides);
+    expect([...(await repo.listAllDaily()).keys()]).toEqual(['2036-10-08', '2036-10-09']);
+  });
+
+  it('recomputeDaily: rides by the day they ENDED, donations by the day they landed – and replace rebuilds the history from it', async () => {
+    const ride = await endedRide('a', 'failed', 800, 60);   // ends at T0 + 60 s → 2036-10-08
+    await prisma.ride.update({ where: { id: ride.id }, data: { endedAt: new Date(Date.UTC(2036, 9, 7, 23, 59, 59)) } });
+    await endedRide('a', 'completed', 100, 10);
+    await events.insert(RideEvent.donation({ rideId: ride.id, wallet: 'b', effect: 'tip', now: new Date(Date.UTC(2036, 9, 9, 0, 0, 1)), paid: { orderId: 'o9', signature: 'sig-9', lamports: 9 } }));
+    const truth = await repo.recomputeDaily();
+    expect([...truth.keys()].sort()).toEqual(['2036-10-07', '2036-10-08', '2036-10-09']);
+    expect(truth.get('2036-10-07')).toMatchObject({ rides: 1, metres: 800 });
+    expect(truth.get('2036-10-09')).toMatchObject({ rides: 0, donations: 1, donationLamports: 9 });
+    await repo.add('a', d({ rides: 5 }), at(1), undefined, new Date(Date.UTC(2036, 0, 1)));   // a stray day
+    await repo.replace(await repo.recompute(), at(9), null, truth);
+    expect([...(await repo.listAllDaily()).keys()].sort()).toEqual(['2036-10-07', '2036-10-08', '2036-10-09']);
+    expect((await repo.listAllDaily()).get('2036-10-07')).toMatchObject({ rides: 1, metres: 800 });
+  });
 });
+

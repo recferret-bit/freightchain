@@ -102,10 +102,11 @@ const services: Provider[] = [
 ];
 
 import { ReconcileStatsHandler } from './use-cases/stats/reconcile-stats/reconcile-stats.handler.js';
+import { GetDailyStatsHandler } from './use-cases/stats/get-daily-stats/get-daily-stats.handler.js';
 import { GetStatsHandler } from './use-cases/stats/get-stats/get-stats.handler.js';
 
 const handlers: Provider[] = [
-  GetStatsHandler, ReconcileStatsHandler,
+  GetStatsHandler, GetDailyStatsHandler, ReconcileStatsHandler,
   RequestChallengeHandler, VerifySignInHandler, GetMeHandler, LogoutHandler,
   CreateRideHandler, GetRideHandler, GetPendingRideHandler, StartRideHandler, HeartbeatRideHandler, EndRideHandler,
   GetPaymentInstructionsHandler, ConfirmPaymentHandler, ReconcilePaymentHandler,

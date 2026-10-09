@@ -22,7 +22,7 @@ bash .claude/skills/stats-reconcile/run.sh --prod-cli --fix                # PRO
 ```
 
 It is the server CLI `node dist/cli/index.js stats:reconcile [--wallet A] [--fix]` (`ReconcileStatsHandler`); the result is JSON: `checked`, `drifted[]` (wallet → field →
-`{ stored, truth }`), `global` (the game row vs the sum of all riders, null = clean), `fixed`.
+`{ stored, truth }`), `days[]` (the per-day history rows that differ), `global` (the game row vs the sum of all riders, null = clean), `fixed`.
 
 ## Rules
 
