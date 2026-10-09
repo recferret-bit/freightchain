@@ -72,6 +72,7 @@ export function spawn(type, preset, zone = 'ahead', dist, lat) {
 function spawnAt(type, preset, road, dir, s, lat) {
   const def = VEHICLES[type], P = PRESETS[preset]; if (!def || !P) return null;
   if (road.main && s < net.Sm - 1400) return null;   // the main road behind the depot exit is 1500 m long
+  if (road.main && net.straight && s < net.Sm + 30) return null;   // a straight start (trips.js): there is no main road behind the depot – it is the depot road
   const n = road.main ? net.lanes(s, dir) : road.j.sl, lane = lat != null ? 0 : P.speed < 1 || def.mass > 1.5 ? n - 1 - Math.floor(T.rng() * T.rng() * n) : Math.floor(T.rng() * n);   // slow / heavy keep right
   const home = lat ?? laneLat(dir, lane);
   for (const o of cars) if (o.road === road && Math.abs(o.lat - home) < 2.5 && Math.abs(o.s - s) < 40 + (o.def.len + def.len) / 2) return null;
@@ -101,7 +102,7 @@ export function resetTraffic(seed) {
   truckPose();
   // the main road is already busy when the ride starts: both directions, on both sides of the depot exit
   const Sm = net.Sm, r = T.rng;
-  for (const [dir, s] of [[1, Sm + 120 + r() * 80], [1, Sm + 420 + r() * 150], [-1, Sm + 260 + r() * 120], [-1, Sm + 650 + r() * 150], [1, Sm - 200 - r() * 120], [1, Sm - 520 - r() * 150], [-1, Sm - 140 - r() * 100]].slice(0, Math.round(7 * Math.min(1, trip.traffic)))) {   // a quieter trip starts with fewer of them
+  for (const [dir, s] of [[1, Sm + 120 + r() * 80], [1, Sm + 420 + r() * 150], [-1, Sm + 260 + r() * 120], [-1, Sm + 650 + r() * 150], [1, Sm - 200 - r() * 120], [1, Sm - 520 - r() * 150], [-1, Sm - 140 - r() * 100]].slice(0, Math.round(7 * Math.min(1, trip.traffic))).filter(([dir, s]) => !net.straight || (dir > 0 && s > Sm))) {   // a quieter trip starts with fewer of them; a straight start only with cars driving away ahead
     for (let i = 0; i < 3; i++) { const tp = pickType(); if (tp && spawnAt(tp[0], tp[1], MAIN, dir, s)) break; }
   }
 }
@@ -273,7 +274,8 @@ export function updateTraffic(dt) {
     const nMain = cars.reduce((k, a) => k + (a.road.main ? 1 : 0), 0);
     if (nMain < Math.round(CFG.TRAFFIC_MAX * trip.traffic)) {
       const r = T.rng();
-      if (st.s < net.Sm) spawnRandom(r < .15 ? 'ahead' : r < .55 ? 'behind' : 'oncoming');   // waiting at the depot exit: keep the main road busy past it
+      if (net.straight && st.s < net.Sm + 30) spawnRandom('ahead');   // a straight start: nothing may come down the depot road towards the truck
+      else if (st.s < net.Sm) spawnRandom(r < .15 ? 'ahead' : r < .55 ? 'behind' : 'oncoming');   // waiting at the depot exit: keep the main road busy past it
       else spawnRandom(r < .4 ? 'ahead' : r < .65 && st.v > 8 ? 'behind' : 'oncoming');
     }
   }
@@ -288,7 +290,7 @@ export function updateTraffic(dt) {
   let fatal = null;
   for (let i = cars.length - 1; i >= 0; i--) {
     const a = cars[i], tb = boxFor(a.road); a.t += dt; a.cool = Math.max(0, a.cool - dt); think(a, dt, tb); place(a);
-    const gone = a.road.main ? a.s < TK.m - 300 || a.s > TK.m + 900 || a.s < net.Sm - 1450 : Math.abs(a.s) > a.road.j.len - 5 || Math.abs(a.road.j.s - TK.m) > 1100;
+    const gone = a.road.main ? a.s < TK.m - 300 || a.s > TK.m + 900 || a.s < (net.straight ? net.Sm + 20 : net.Sm - 1450) : Math.abs(a.s) > a.road.j.len - 5 || Math.abs(a.road.j.s - TK.m) > 1100;
     if (gone) { removeVehicle(a.mesh); cars.splice(i, 1); continue; }
     if (!fatal && tb && Math.abs(a.s - tb.s) < 25 + a.def.len + tb.len / 2) fatal = contact(a, tb);
   }

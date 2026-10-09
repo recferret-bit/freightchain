@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GEO, mk } from './props.js';
 import { group, mesh } from './pool.js';
 import { canvasTex } from './scene.js';
+import { net } from '../net/network.js';
 
 /* The depot the ride starts from: a concrete yard, a warehouse with loading docks right behind the truck (the cargo has just been loaded), two trailers
    still parked at the docks, and the exit sign + speed limit on the access road. Route-independent; built with chunk 0 (world/chunks.js).
@@ -15,10 +16,11 @@ const M = {
 export const depotMats = Object.values(M);
 const signMat = (w, h, draw) => new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, map: canvasTex(w, h, draw, false) });
 const NAME = signMat(512, 96, (g, w, h) => { g.fillStyle = '#1d3a5c'; g.fillRect(0, 0, w, h); g.fillStyle = '#ffcf5a'; g.font = 'bold 54px monospace'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('FREIGHTCHAIN DEPOT', w / 2, h / 2 + 3); });
-const EXIT = signMat(256, 160, (g, w, h) => {
+const exitSign = (way, note) => signMat(256, 160, (g, w, h) => {
   g.fillStyle = '#1d3a5c'; g.fillRect(0, 0, w, h); g.strokeStyle = '#f4f4f0'; g.lineWidth = 6; g.strokeRect(6, 6, w - 12, h - 12);
-  g.fillStyle = '#f4f4f0'; g.textAlign = 'center'; g.font = 'bold 30px sans-serif'; g.fillText('FREIGHTCHAIN', w / 2, 48); g.font = 'bold 22px sans-serif'; g.fillText('MAIN ROAD →', w / 2, 92); g.fillText('DRIVE SLOWLY', w / 2, 128);
+  g.fillStyle = '#f4f4f0'; g.textAlign = 'center'; g.font = 'bold 30px sans-serif'; g.fillText('FREIGHTCHAIN', w / 2, 48); g.font = 'bold 22px sans-serif'; g.fillText(way, w / 2, 92); g.fillText(note, w / 2, 128);
 });
+const EXIT = exitSign('MAIN ROAD →', 'DRIVE SLOWLY'), EXIT_AHEAD = exitSign('↑ MAIN ROAD', 'STRAIGHT ON');   // EXIT_AHEAD: a straight start (trips.js), no turn
 const LIMIT = signMat(128, 160, (g, w, h) => {
   g.fillStyle = '#f4f4f0'; g.fillRect(0, 0, w, h); g.strokeStyle = '#111'; g.lineWidth = 6; g.strokeRect(6, 6, w - 12, h - 12);
   g.fillStyle = '#111'; g.textAlign = 'center'; g.font = 'bold 22px sans-serif'; g.fillText('SPEED', w / 2, 38); g.fillText('LIMIT', w / 2, 62); g.font = 'bold 64px sans-serif'; g.fillText('15', w / 2, 130);
@@ -50,7 +52,7 @@ export function buildDepot({ place, reg, destroyed }) {
     const t = group(); trailer(t, 0, 0); t.userData = { kind: 'building', size: 1, debris: M.trailer };
     place(t, -10.8, x); reg(t, id, -10.8, x, { rf: 6.7, rl: 1.3 });
   }
-  for (const [id, s, lat, mat, w, h, ph] of [['depot:exit', 26, 6.4, EXIT, 2.6, 1.6, 2.4], ['depot:limit', 40, 5.8, LIMIT, .8, 1, 2]]) {   // signs on the access road
+  for (const [id, s, lat, mat, w, h, ph] of [['depot:exit', 26, 6.4, net.straight ? EXIT_AHEAD : EXIT, 2.6, 1.6, 2.4], ['depot:limit', 40, 5.8, LIMIT, .8, 1, 2]]) {   // signs on the access road
     if (destroyed.has(id)) continue;
     const sg = group(); sg.add(mk(GEO.box, M.post, .1, ph + h / 2, .1, 0, (ph + h / 2) / 2, 0)); sg.add(plane(mat, w, h, 0, ph, .06));
     sg.userData = { kind: 'sign', size: 1, debris: M.post }; place(sg, s, lat); reg(sg, id, s, lat);

@@ -21,6 +21,7 @@ export const laneLat = (dir, i) => dir * (LANE0 + i * LW);
 const ACCESS = { nR: 1, nL: 1, centre: 'none', edge: false, pat: 'access' };   // depot road: plain two-lane width, unmarked
 
 const smooth = x => x * x * (3 - 2 * x);
+const START_FADE = 150;   // m – a straight start (trips.js): the bends fade in over this much main road
 
 class RoadNetwork {
   constructor() { this.style = { curv: () => 0, weights: DEFAULT_WEIGHTS }; this.reset(1); }
@@ -30,7 +31,8 @@ class RoadNetwork {
   reset(seed) {
     this.seed = seed >>> 0; this.rng = mulberry32(this.seed); this.clock = 0;
     const L = Math.round(Math.PI / 2 * CFG.START_TURN_R);
-    this.sA = Math.round(CFG.START_ACCESS); this.Sm = this.sA + L; this.kTurn = Math.PI / 2 / L; this.R = L / (Math.PI / 2);
+    this.straight = trip.start === 'straight';   // the trip's start (trips.js): no turn – the same sA / Sm / start junction in road coordinates (the server's), only not drawn or driven as one
+    this.sA = Math.round(CFG.START_ACCESS); this.Sm = this.sA + L; this.kTurn = this.straight ? 0 : Math.PI / 2 / L; this.R = L / (Math.PI / 2);
     this.segs = []; this.js = []; this.genEnd = this.Sm; this.patEnd = this.Sm; this.pat = null; this.nextJ = Infinity; this.jn = 0;
     this.pickPattern('country', 500 + this.rng() * 600);   // the depot exit is always onto a plain two-lane road
     this.ensure(this.Sm + 1);
@@ -101,7 +103,7 @@ class RoadNetwork {
   /* 0 near a junction .. 1 in the open: the spine is straight around junctions so side roads can cross it at a right angle */
   calm(s) {
     let k = 1;
-    for (const j of this.near(s - 330, s + 220)) if (j.kind !== 'start' || s >= this.Sm) k = Math.min(k, smooth(clamp((Math.abs(s - j.s) - ((j.mouth ?? 110) + 50)) / 110, 0, 1)));   // start: straight for 160 m (mainCoords relies on it)
+    for (const j of this.near(s - 330, s + 220)) if (j.kind !== 'start' || (s >= this.Sm && !this.straight)) k = Math.min(k, smooth(clamp((Math.abs(s - j.s) - ((j.mouth ?? 110) + 50)) / 110, 0, 1)));   // start: straight for 160 m (mainCoords relies on it)
     return k;
   }
   curv(s) {
@@ -109,7 +111,8 @@ class RoadNetwork {
     if (s < this.Sm) return this.kTurn;
     this.ensure(s + 600);
     const seg = this.segAt(s), t = clamp((s - seg.s0) / TAPER, 0, 1), bends = seg.prev.bends + (seg.bends - seg.prev.bends) * t;
-    return this.style.curv(s) * bends * this.calm(s) * trip.bends;   // trip.bends: the ride tier's bend scale (trips.js) – geometry only, the server's port has no curvature
+    const k = this.style.curv(s) * bends * this.calm(s) * trip.bends;
+    return this.straight ? k * smooth(clamp((s - this.Sm) / START_FADE, 0, 1)) : k;   // a straight start: the depot road is straight, the bends come in over START_FADE m once it is the main road   // trip.bends: the ride tier's bend scale (trips.js) – geometry only, the server's port has no curvature
   }
   /* cross-section at spine position s: { nR, nL (lanes per direction, fractional in a taper), centre (style | null = route's own | 'none'), edge (edge lines?), pat } */
   xs(s) { return s < this.Sm ? ACCESS : this.mainXs(s); }
@@ -132,7 +135,7 @@ class RoadNetwork {
   /* world point -> main-road coordinates { s, lat } (hint = a nearby main-road s) */
   mainCoords(x, z, hint = this.Sm) {
     const P = this.P; let m = this.Sm + (x - P.x) * this.f[0] + (z - P.z) * this.f[1];
-    if (m > this.Sm + 150 || hint > this.Sm + 150) {   // on the curving part: a few Newton steps along the spine
+    if (this.straight || m > this.Sm + 150 || hint > this.Sm + 150) {   // on the curving part (or anywhere after a straight start – it bends right after Sm): a few Newton steps along the spine
       if (hint > this.Sm + 150) m = hint;
       for (let i = 0; i < 3; i++) { const p = roadAt(m); m += (x - p.x) * Math.sin(p.t) - (z - p.z) * Math.cos(p.t); }
     }
@@ -170,6 +173,7 @@ class RoadNetwork {
     const [l, r] = this.edges(s); if (d >= l - .5 && d <= r + .5) return true;
     for (const j of this.near(s - 90, s + 90)) {
       if (j.kind === 'start') {
+        if (this.straight) continue;   // no turn, no apron: the depot road is just the road
         const w = this.world(s, d), c = this.mainCoords(w.x, w.z), a = c.s - this.Sm;
         if (this.inPad(j, a, c.lat) || (a <= 0 && a > -2000 && c.lat >= -j.halfL - .2 && c.lat <= j.halfR + .2)) return true;
       } else if (this.inPad(j, s - j.s, d) || (Math.abs(s - j.s) < j.sideHalf + .5 && j.arms.includes(Math.sign(d)) && Math.abs(d) < j.len)) return true;
@@ -179,7 +183,7 @@ class RoadNetwork {
   /* roadside clutter (props, posts, landmarks…) must not stand here: the yard, the start junction's main road + apron, side roads, junction corners */
   keepOut(s, lat) {
     if (s > -90 && s < 32 && Math.abs(lat) < 38) return true;
-    if (s > this.sA - 80 && s < this.Sm + 60) {
+    if (!this.straight && s > this.sA - 80 && s < this.Sm + 60) {
       const w = this.world(s, lat), c = this.mainCoords(w.x, w.z), a = c.s - this.Sm, j = this.start;
       if (a < 30 && a > -900 && c.lat > -j.halfL - 4 && c.lat < j.halfR + 4) return true;
       const p = j.pad; if (a > p.a0 - 3 && a < p.a1 + 3 && c.lat > p.l0 - 3 && c.lat < p.l1 + 3) return true;

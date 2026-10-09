@@ -59,7 +59,7 @@ export function markLines(m, st, xs, skip = () => false) {
 
 /* the spine's ribbon + markings for [s0, s1) */
 export function buildSpine(surf, marks, s0, s1) {
-  const st = spineStations(s0, s1, 16), xs = st.map(p => net.xs(p.s)), js = net.near(s0 - 60, s1 + 60);
+  const st = spineStations(s0, s1, 16), xs = st.map(p => net.xs(p.s)), js = net.near(s0 - 60, s1 + 60).filter(j => !(net.straight && j.kind === 'start'));   // a straight start: no gap in the edge line
   strip(surf, st, surfCols(i => xs[i].nL, i => xs[i].nR));
   markLines(marks, st, xs, (i, kind, side) => js.some(j => {
     const a = st[i].s - j.s; if (a < j.pad.a0 || a > j.pad.a1) return false;

@@ -8,6 +8,7 @@ import { clearDebris } from '../sim/damage.js';
 import { toast } from './toast.js';
 import { destroyed } from '../world/props.js';
 import { roads } from '../net/orchestrator.js';
+import { net } from '../net/network.js';
 import { resetScreen, wip } from '../cockpit/windscreen.js';
 import { telemetry, FLAGS } from '../telemetry.js';
 import { radio } from '../sim/radio.js';
@@ -97,7 +98,7 @@ export async function startRide() {   // (offline there is no await, so it still
   else if (!Wallet.charge(CFG.FARE)) return;
   resetRide(); st.mode = 'drive'; audio.start(); audio.play('start'); overlay.classList.add('hide');
   toast(CFG.START_ENGINE_OFF ? 'Press I to start the engine and B to release the parking brake, then SHIFT (clutch) → E (1st) → W (gas) → ease the clutch out' : 'Release the parking brake (B), then hold SHIFT (clutch) → E (1st gear) → W (gas) → ease the clutch out', 6000);
-  setTimeout(() => { if (st.mode === 'drive' && st.s < 60) toast('Loaded. Drive slowly to the main road, stop at the line, turn RIGHT into a gap', 7000); }, 6500);
+  setTimeout(() => { if (st.mode === 'drive' && st.s < 60) toast(net.straight ? 'Loaded. The road runs straight ahead – go up through the gears' : 'Loaded. Drive slowly to the main road, stop at the line, turn RIGHT into a gap', 7000); }, 6500);
 }
 /* The road never ends: a ride ends by failing, or by the driver ending the shift (pause menu). It pays out only once the shift is complete
    (st.complete: RIDE_MIN_SECONDS driven AND CFG.COMPLETE_DIST covered, set in sim/physics.js). */

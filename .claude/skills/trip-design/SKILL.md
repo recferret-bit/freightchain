@@ -27,6 +27,7 @@ Console: `__game.trip`, `__game.setTrip('8h')` then `__game.startRide()`.
 | `cross` | `sim/traffic.js` | × `CFG.CROSS_MAX` on a signalled crossroads' side roads (0 = empty side roads) |
 | `calm` | `sim/traffic.js` `pickType` | only `cruise` / `slow` behaviours spawn: no tailgaters, weavers, overtakers, sirens (nothing comes from behind) |
 | `props` | `world/chunks.js` | × the route's roadside scenery density (`props.js` `density`) |
+| `start` | `net/network.js` (`net.straight`), `world/junctions.js`, `world/roadmesh.js`, `world/depot.js`, `sim/traffic.js` | `'depot'`: the depot road meets the main road at a STOP line and the truck turns right (traffic both ways past the exit). `'straight'`: no turn – the depot road runs straight on into the main road, no junction drawn, no main road behind the exit, no traffic coming down the depot road. Road coordinates (`sA`, `Sm`, the start junction in the data, holes from `Sm + HOLE_FIRST`) stay the server's; it does not judge the start area (`road-layout.ts` `knownFrom`) |
 | `finish` | `sim/physics.js` (the `st.complete` line) | the shift ends by itself as a WIN (green `winFx` stamp, `ui/fail-fx.js`) the moment it is complete; otherwise the road goes on until P → END SHIFT |
 
 The shift **length** and **finish line** are the server's, stored on the ride when it is created: `FREE_RIDE_SECONDS` (env, default 60 – four places, see
@@ -52,7 +53,7 @@ per trip, and the trip STORED on the ride (a migration; old rides must keep the 
    node .claude/skills/trip-design/measure.mjs --trips free --k 0.25 --seeds 9  # the free run at its real finish line
    node .claude/skills/trip-design/measure.mjs --trips 1h,4h,8h --seconds 300 --drive-route brenner --no-road
    ```
-   ROAD = per trip × route over `--km` (6) of road and `--seeds` (5): the sharpest bend (min radius), % of road tighter than 150 m, mean |curvature|, and
+   ROAD = per trip × route over `--km` (6) of road and `--seeds` (5): how far the road runs straight from the depot (`straight m` – the depot turn counts), the sharpest bend (min radius), % of road tighter than 150 m, mean |curvature|, and
    junctions / signals / holes per km – those three are the seed's, the same for every trip (context only). DRIVE = a scripted driver from the depot to
    COMPLETE (`--seconds`, `--k` = the distance factor): game seconds, metres, hull lost, vehicle / building hits, off-road seconds, failures. It is an
    experienced driver with the headless test's handling (it pops the clutch): a first-timer takes longer. Compare trips with it, never quote it as a player's time.
@@ -64,7 +65,7 @@ per trip, and the trip STORED on the ride (a migration; old rides must keep the 
      (the trace drives `'1h'`); a change to `'1h'` moves it on purpose – say so.
    - Measure again; report before → after.
    - Look at it in real Chrome: `node .claude/skills/trip-design/shots.mjs` (needs the game served: `cd client && ./serve.sh`, or `BASE=`) – each trip
-     on two routes from the same seed + the win stamp (`trip-*.png`, `win-stamp.png`, `fail-stamp.png` in the dir it prints). Read the screenshots. Grass with the
+     on two routes from the same seed, the start of each trip (`start-*.png`) + the stamps (`trip-*.png`, `win-stamp.png`, `fail-stamp.png` in the dir it prints). Read the screenshots. Grass with the
      lane lines on it where the asphalt should be is headless Chrome's software GL z-fighting the road against the ground (AGENTS.md "Promo videos"), not
      the trip: hide the ground plane to confirm, and have a person look on a real GPU.
    - Server touched (length / finish line): `npm run check` (root) and `npm run server:integration`; the whitepaper's tier table (`landing/whitepaper.html`

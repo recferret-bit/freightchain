@@ -10,12 +10,15 @@
      calm     only the 'cruise' / 'slow' behaviours spawn (no tailgaters, weavers, overtakers or sirens)
      props    × the route's roadside scenery density (props.js `density`) – fewer things to clip
      finish   the shift ENDS by itself, as a win, the moment it is complete (otherwise the road goes on until P → END SHIFT)
+     start    'depot' = the depot road meets the main road at a STOP line and the truck turns right onto it (traffic both ways past the exit);
+              'straight' = the depot road runs straight on into the main road: no turn, no junction, nothing behind the exit. Geometry only – the
+              server's layout (sA, Sm, the start junction, holes from Sm + HOLE_FIRST) is the same, and it does not judge the start area (road-layout.ts knownFrom)
    Tuning: the trip-design skill (`node .claude/skills/trip-design/measure.mjs`). A new key here needs its reader and a row in that skill. */
 export const TRIPS = {
-  free: { id: 'free', name: 'FREE RUN',     bends: .4,  traffic: .4,  cross: 0, calm: true,  props: .5,  finish: true },
-  '1h': { id: '1h',   name: '1 HOUR HAUL',  bends: 1,   traffic: 1,   cross: 1, calm: false, props: 1,   finish: false },
-  '4h': { id: '4h',   name: '4 HOUR HAUL',  bends: 1.2, traffic: 1.4, cross: 1.4, calm: false, props: 1.2, finish: false },
-  '8h': { id: '8h',   name: '8 HOUR HAUL',  bends: 1.4, traffic: 1.8, cross: 1.8, calm: false, props: 1.4, finish: false },
+  free: { id: 'free', name: 'FREE RUN',     bends: .4,  traffic: .4,  cross: 0, calm: true,  props: .5,  finish: true,  start: 'straight' },
+  '1h': { id: '1h',   name: '1 HOUR HAUL',  bends: 1,   traffic: 1,   cross: 1, calm: false, props: 1,   finish: false, start: 'depot' },
+  '4h': { id: '4h',   name: '4 HOUR HAUL',  bends: 1.2, traffic: 1.4, cross: 1.4, calm: false, props: 1.2, finish: false, start: 'depot' },
+  '8h': { id: '8h',   name: '8 HOUR HAUL',  bends: 1.4, traffic: 1.8, cross: 1.8, calm: false, props: 1.4, finish: false, start: 'depot' },
 };
 export const DEFAULT_TRIP = '1h';
 /* the trip being driven / watched – set BEFORE the road is reset (the curvature is integrated into road.js tables on net.reset) */

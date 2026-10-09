@@ -54,7 +54,7 @@ function stopSign() {
 }
 
 /* ctx = { surf, pad, marks (strip meshes), place(obj, s, lat, yaw) (raw spine placement), reg(obj, id, s, lat), destroyed, heads (chunk's list) } */
-export function buildJunction(j, ctx) { if (j.kind === 'start') buildStart(j, ctx); else buildCrossing(j, ctx); }
+export function buildJunction(j, ctx) { if (j.kind === 'start') { if (!net.straight) buildStart(j, ctx); } else buildCrossing(j, ctx); }   // a straight start (trips.js) has no junction to draw
 
 function buildCrossing(j, { surf, pad, marks, place, reg, destroyed, heads: own }) {
   const line = net.lineOf(j), t = roadAt(j.s).t, half = sd => sd > 0 ? j.halfR : j.halfL;

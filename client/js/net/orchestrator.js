@@ -37,7 +37,7 @@ class RoadOrchestrator {
   }
   /* { road: 'ARTERIAL 2+2', next: { dist, kind, light: 'G'|'A'|'R'|null } | null } */
   status() {
-    if (st.s < net.sA) return { road: net.describe(st.s), next: { dist: net.sA - st.s, kind: 'start', light: null } };   // the depot exit's stop line
+    if (st.s < net.sA && !net.straight) return { road: net.describe(st.s), next: { dist: net.sA - st.s, kind: 'start', light: null } };   // the depot exit's stop line
     const j = net.nextJunction(st.s - 4, 1, 600, q => q.kind !== 'start');
     return { road: net.describe(st.s), next: j && { dist: j.s - st.s, kind: j.kind, light: j.signal ? net.signal(j, 'main') : null } };
   }

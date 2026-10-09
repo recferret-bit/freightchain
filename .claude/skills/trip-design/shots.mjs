@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Trip design – look at the trips in real headless Chrome (client/tools/cdp.mjs): every trip on two routes from ONE seed, the truck parked just before
-// the sharpest bend of the first 4 km with the trip's traffic running for a few seconds (trip-<id>-<route>.png), then the end-of-ride stamps: the green
+// the sharpest bend of the first 4 km with the trip's traffic running for a few seconds (trip-<id>-<route>.png), the start of each trip 70 m before the
+// depot road meets the main road (start-<id>.png: a STOP line and a right turn, or a straight start), then the end-of-ride stamps: the green
 // win (a free run reaching its line – `finish`) and the red fail for comparison (win-stamp.png, fail-stamp.png). Exits 1 on a page exception.
 // Usage: serve the game first (cd client && ./serve.sh), then from the repo root:
 //   node .claude/skills/trip-design/shots.mjs            env: BASE (http://localhost:8765)  PORT (DevTools, 9338)  SHOTS (dir)  TRIPS  ROUTES
@@ -21,6 +22,14 @@ for (const route of ROUTES) for (const id of TRIPS) {
   const cars = await ev('__game.traffic.filter(a => a.road.main).length');
   await shot(`trip-${id}-${route}`);
   console.log(`${id.padEnd(4)} ${route.padEnd(10)} sharpest bend R ${r.radius} m at s ${r.at} · ${cars} cars on the main road`);
+}
+
+// the start: the truck 70 m before the depot road meets the main road – a STOP line and a right turn, or (a straight start) the road going straight on
+for (const id of TRIPS) {
+  await ev(`(() => { const g = __game; g.setTrip(${JSON.stringify(id)}); g.selectTheme('route66', false); g.st.mode = 'done'; g.startRide(); g.roads.newTrip(${SEED});
+    Object.assign(g.st, { s: g.net.sA - 70, d: 2.4, psi: 0, v: 0, park: true }); document.getElementById('overlay').classList.add('hide'); })()`);
+  await sleep(3000); await shot(`start-${id}`);
+  console.log(`start-${id}: ${await ev('__game.net.straight ? "straight on" : "STOP line + right turn"')}`);
 }
 
 // the stamps: a free run reaching its line ends itself (green), a wreck ends red

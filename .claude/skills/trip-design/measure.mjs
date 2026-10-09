@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Trip design – measure what each trip (client/js/trips.js) does to a ride, with the REAL game modules in Node (stubbed three.js + a fake DOM, like
 // client/tools/headless-test.mjs). Two parts:
-//   ROAD   per trip × route, over --km of road on --seeds seeds: the sharpest bend (min radius), the share of road tighter than 150 m, mean |curvature|;
+//   ROAD   per trip × route, over --km of road on --seeds seeds: how far the road runs straight from the depot (until it first bends tighter than R 1 km –
+//          the depot's right turn counts, a straight start does not), the sharpest bend (min radius), the share of road tighter than 150 m, mean |curvature|;
 //          plus junctions / signals / sinkholes per km – those are the SEED's (the server's layout), the same for every trip, shown for context.
 //   DRIVE  a scripted driver (lane keeping, slows for bends and for the car ahead, upshifts at 2300 rpm, ignores the holes) does a whole shift of
 //          --seconds / COMPLETE_DIST_K × 28 × seconds metres from the depot: game seconds until COMPLETE, hull lost, vehicle / building contacts, off-road
@@ -50,19 +51,20 @@ const pad = (v, n) => String(v).padStart(n), f1 = v => v.toFixed(1);
 // ── ROAD ──
 if (!flag('no-road')) {
   console.log(`\nROAD  first ${KM} km of the main road · ${SEEDS} seeds · radius = 1 / |curvature|`);
-  console.log('trip  route        min R m  <150 m %  mean|k|·1e3   junct/km  signals/km  holes/km');
+  console.log('trip  route        straight m  min R m  <150 m %  mean|k|·1e3   junct/km  signals/km  holes/km');
   for (const id of trips) for (const rid of routes) {
     G.setTrip(id); G.selectTheme(rid, false);
-    let kMax = 0, tight = 0, n = 0, kSum = 0, js = 0, sig = 0, holes = 0;
+    let kMax = 0, tight = 0, n = 0, kSum = 0, js = 0, sig = 0, holes = 0, flat = 0;
     for (let sd = 1; sd <= SEEDS; sd++) {
       G.roads.newTrip(sd * 7919);
+      let f = 0; while (f < 5000 && Math.abs(net.curv(f)) < 1 / 1000) f += 5; flat += f;   // from the depot until the road first bends tighter than R 1 km (the depot turn counts)
       const a = net.Sm, b = net.Sm + KM * 1000;
       for (let s = a; s < b; s += 5) { const k = Math.abs(net.curv(s)); kMax = Math.max(kMax, k); kSum += k; n++; if (k > 1 / 150) tight++; }
       const jj = net.near(a, b).filter(j => j.kind !== 'start'); js += jj.length; sig += jj.filter(j => j.signal).length;
       holes += G.holes.holesNear(a, b).length;
     }
     const per = v => f1(v / SEEDS / KM);
-    console.log(`${id.padEnd(5)} ${rid.padEnd(12)} ${pad(kMax ? Math.round(1 / kMax) : '∞', 7)}  ${pad(f1(100 * tight / n), 8)}  ${pad((1e3 * kSum / n).toFixed(2), 11)}   ${pad(per(js), 8)}  ${pad(per(sig), 10)}  ${pad(per(holes), 8)}`);
+    console.log(`${id.padEnd(5)} ${rid.padEnd(12)} ${pad(Math.round(flat / SEEDS), 10)}  ${pad(kMax ? Math.round(1 / kMax) : '∞', 7)}  ${pad(f1(100 * tight / n), 8)}  ${pad((1e3 * kSum / n).toFixed(2), 11)}   ${pad(per(js), 8)}  ${pad(per(sig), 10)}  ${pad(per(holes), 8)}`);
   }
 }
 
@@ -95,7 +97,7 @@ function rideOnce(sd) {
   let offT = 0;
   for (let i = 0; i < (SECONDS * 3 + 120) * 10 && st.mode === 'drive' && !st.complete; i++) {   // give up at 3× the shift (+2 min): 'timeout'
     const e = (st.d - 2.4) + 10 * st.psi; input.left = e > .5 ? 1 : 0; input.right = e < -.5 ? 1 : 0;
-    let vmax = st.s < 30 ? 4 : st.s < net.sA - 40 ? 11 : st.s < net.Sm + 25 ? 5 : Math.min(26, curveSpeed());
+    let vmax = st.s < 30 ? 4 : net.straight ? Math.min(26, curveSpeed()) : st.s < net.sA - 40 ? 11 : st.s < net.Sm + 25 ? 5 : Math.min(26, curveSpeed());   // a straight start (trips.js `start`): no turn to slow for
     vmax = Math.min(vmax, followSpeed(), signalSpeed());
     input.gas = st.v < vmax ? 1 : 0; input.brake = st.v > vmax + 1.5 ? 1 : 0;
     if ((!st.engineOn && !st.ign) || (st.v < 1.5 && st.gear > 1)) { launch(); continue; }   // stalled, or stopped in a tall gear: clutch in, (restart,) 1st, pull away
