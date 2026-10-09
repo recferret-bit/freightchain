@@ -36,7 +36,9 @@ export class ProgramWatcher implements OnApplicationBootstrap, OnApplicationShut
     private readonly env: EnvService,
   ) {}
 
-  get enabled(): boolean { return this.env.watchIntervalMs > 0; }
+  /** WATCH_INTERVAL_MS > 0 AND the ticket program is what money goes through (PAYMENT_MODE=program): in transfer mode there is no program to watch –
+      polling it only logged "the pool program is not configured" every interval */
+  get enabled(): boolean { return this.env.watchIntervalMs > 0 && this.env.paymentMode === 'program'; }
 
   onApplicationBootstrap(): void {
     if (!this.enabled) return;

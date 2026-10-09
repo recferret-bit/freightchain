@@ -14,7 +14,7 @@ describe('ProgramWatcher', () => {
   afterEach(() => vi.useRealTimers());
 
   /** a bus that answers both commands; a poll can be held open with `hold` */
-  const setup = (interval = INTERVAL) => {
+  const setup = (interval = INTERVAL, mode: 'program' | 'transfer' = 'program') => {
     const polls: number[] = [], syncs: number[] = [];
     let release: (() => void) | null = null;
     let hold = false;
@@ -29,7 +29,7 @@ describe('ProgramWatcher', () => {
         return POLL;
       },
     };
-    const watcher = new ProgramWatcher(bus as never, chain, { watchIntervalMs: interval } as never);
+    const watcher = new ProgramWatcher(bus as never, chain, { watchIntervalMs: interval, paymentMode: mode } as never);
     return {
       watcher, polls, syncs,
       hold: (on: boolean) => { hold = on; },
@@ -46,6 +46,13 @@ describe('ProgramWatcher', () => {
     expect(syncs).toHaveLength(0);
     expect(chain.listeners.size).toBe(0);
     expect(watcher.enabled).toBe(false);
+  });
+
+  it('transfer mode (no ticket program) = off whatever the interval: nothing to watch, nothing logged', async () => {
+    const { watcher, polls, syncs } = setup(1000, 'transfer');
+    watcher.onApplicationBootstrap();
+    await vi.advanceTimersByTimeAsync(10 * POOL_SYNC_MS);
+    expect([polls.length, syncs.length, chain.listeners.size, watcher.enabled]).toEqual([0, 0, 0, false]);
   });
 
   it('polls and syncs on boot, then every interval / every minute', async () => {
