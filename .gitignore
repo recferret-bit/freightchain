@@ -3,6 +3,8 @@ dist/
 # the e2e harness's private builds (.claude/skills/run-tests/e2e.sh) – removed at the end of a run, these catch a killed one
 server/.e2e-build-*/
 server/.e2e-tsconfig-*.json
+# the test census's sourcemapped headless bundle (npm run test:census -- coverage) – removed at the end, this catches a killed run
+client/.census-cov-*/
 
 # Dependencies / package-manager leftovers (the client has none; tools are run via npx). server/ and landing/ package-lock.json ARE committed.
 node_modules/

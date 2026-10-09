@@ -348,6 +348,18 @@
       "command": "server/node_modules/.bin/vitest run --config vitest.integration.config.ts --reporter=json --outputFile /var/folders/zr/b6ccvm1n2yn1xhgjr2dfgb340000gn/T/fc-census-server-integration-46919.json",
       "failures": [],
       "note": ""
+    },
+    {
+      "stage": "e2e",
+      "at": "2026-10-09T12:29:01.672Z",
+      "wallMs": 1614127,
+      "status": "fail",
+      "passed": 376,
+      "failed": 6,
+      "skipped": 0,
+      "command": "bash .claude/skills/run-tests/e2e.sh",
+      "failures": [],
+      "note": "✘ e2e: 2 suite(s) failed – server log: /tmp/fc-e2e-freightchain_e2e_6412.log"
     }
   ]
 }

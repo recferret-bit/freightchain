@@ -3,10 +3,14 @@
 // and (on `run`) times stages into runs.json. `readme` rewrites the marker block in README.md.
 // The missing-spec rule is the one in server/test/architecture/test-pyramid.spec.ts. If they disagree, the spec is right.
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync, statSync, unlinkSync, utimesSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, unlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  addLcov, allRoutes, attributeCase, caseRoutes, gradeFeature, matchRoute, parseController, requestsIn, routesFromLog, subjectOf, controllerTable, featureReport, featureTable, flowTable, GRADE_RULE, linesFromIstanbul, linesFromLcov, mergeIstanbul,
+  recordE2eRoutes, renderFull, REPORT_REL, saveLines, sourceLine, writeFull,
+} from './coverage.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../../..');
@@ -42,7 +46,7 @@ const LAYERS = [
 ];
 
 const FAST = ['client-unit', 'landing', 'media', 'client-headless', 'server-unit', 'server-integration', 'program-test'];
-const E2E_SUITES = ['browser', 'lobby', 'admin', 'watch', 'replay', 'flags', 'wallet', 'wallet-split', 'board', 'close', 'close-split', 'verified'];
+const E2E_SUITES = ['browser', 'lobby', 'admin', 'promo', 'watch', 'replay', 'flags', 'wallet', 'wallet-split', 'board', 'close', 'close-split', 'verified'];
 const OPT_IN = ['e2e', 'live-board', 'replay', 'verified', 'localnet', 'posthog', 'program-check', ...E2E_SUITES.map((s) => `e2e:${s}`)];
 
 // A test skill's census stage. A skill whose name marks it as a test but is missing here is reported as a gap.
@@ -574,6 +578,7 @@ function render(inv, runs) {
   if (!gapLines.length) gapLines.push('- The pyramid list is empty, every scenario function is on both backends, and every stage above has a recorded run.');
   lines.push(...gapLines);
   lines.push('');
+  lines.push(...coverageSection(inv));
   const doubled = inv.scenarioSides.filter((s) => s.memory > 1 || s.postgres > 1);
   const silent = inv.harnesses.filter((h) => h.checks === 0).map((h) => `\`${h.rel.split('/').pop()}\``);
   if (doubled.length || inv.each || silent.length) {
@@ -634,6 +639,38 @@ function render(inv, runs) {
   lines.push('');
   lines.push('Refresh the numbers with `npm run test:census -- run`, then `npm run test:census -- readme`. Chrome, localnet, PostHog, and `program-check` are opt-in stage names and are not part of a plain `run`.');
   return lines.join('\n');
+}
+
+function reportOf(inv) {
+  return featureReport({ ROOT, files: inv.files, harnesses: inv.harnesses });
+}
+
+function coverageSection(inv) {
+  const rep = reportOf(inv);
+  return [
+    '### Coverage by feature',
+    '',
+    `Which tests reach each product feature. The map (source paths, routes, harnesses per feature, steps per flow) is \`.claude/skills/test-census/features.mjs\`. Routes, files and cases are counted, not judged. Every route, file and flow step: [\`${REPORT_REL}\`](${REPORT_REL}).`,
+    '',
+    sourceLine(rep),
+    '',
+    ...GRADE_RULE,
+    '',
+    ...featureTable(rep),
+    '',
+    '### Coverage by user flow',
+    '',
+    'A flow is the API steps one user journey takes. A step counts when a scenario case requests it, and (once browser runs are recorded) when the server logged it during a browser suite.',
+    '',
+    ...flowTable(rep),
+    '',
+    '### Coverage by controller',
+    '',
+    'The controller spec only checks dispatch to the bus. Behaviour is the handler spec and the scenarios.',
+    '',
+    ...controllerTable(rep),
+    '',
+  ];
 }
 
 function spliceReadme(text, block) {
@@ -705,15 +742,15 @@ function stagePlan(id) {
     return { cwd: join(ROOT, 'server'), cmd: vitest, args: ['run', '--config', 'vitest.integration.config.ts', '--reporter=json', '--outputFile', jsonOut('server-integration')], parse: 'vitest', timeout: 20 * 60 * 1000, json: jsonOut('server-integration'), dbUp: true };
   }
   if (id === 'program-test') return { cwd: join(ROOT, 'programs/freightchain-pools'), cmd: 'cargo', args: ['test'], parse: 'cargo', timeout: 20 * 60 * 1000, cargo: true };
-  if (id === 'e2e') return bash(join(ROOT, '.claude/skills/run-tests/e2e.sh'), [], 50);
+  if (id === 'e2e') return withRouteLog(bash(join(ROOT, '.claude/skills/run-tests/e2e.sh'), [], 50));
   if (id.startsWith('e2e:')) {
     const suite = id.slice(4);
     if (!E2E_SUITES.includes(suite)) throw new Error(`unknown e2e suite ${suite}`);
-    return bash(join(ROOT, '.claude/skills/run-tests/e2e.sh'), [suite], 40);
+    return withRouteLog(bash(join(ROOT, '.claude/skills/run-tests/e2e.sh'), [suite], 40));
   }
-  if (id === 'live-board') return bash(join(ROOT, '.claude/skills/live-board-test/run.sh'), [], 30);
-  if (id === 'replay') return bash(join(ROOT, '.claude/skills/replay-test/run.sh'), [], 30);
-  if (id === 'verified') return bash(join(ROOT, '.claude/skills/verified-play-test/run.sh'), [], 40);
+  if (id === 'live-board') return withRouteLog(bash(join(ROOT, '.claude/skills/live-board-test/run.sh'), [], 30));
+  if (id === 'replay') return withRouteLog(bash(join(ROOT, '.claude/skills/replay-test/run.sh'), [], 30));
+  if (id === 'verified') return withRouteLog(bash(join(ROOT, '.claude/skills/verified-play-test/run.sh'), [], 40));
   if (id === 'localnet') return { cwd: ROOT, cmd: 'npm', args: ['run', 'test:localnet'], parse: 'checks', timeout: 25 * 60 * 1000 };
   if (id === 'posthog') return bash(join(ROOT, '.claude/skills/posthog-test/smoke.sh'), [], 15);
   if (id === 'program-check') return bash(join(ROOT, '.claude/skills/program-check/check.sh'), [], 60);
@@ -722,6 +759,13 @@ function stagePlan(id) {
 
 function bash(script, args, minutes) {
   return { cwd: ROOT, cmd: 'bash', args: [script, ...args], parse: 'checks', timeout: minutes * 60 * 1000 };
+}
+
+// Every stage that goes through run-tests/e2e.sh: the script copies the server's request lines into E2E_LOG_DIR/<suite>.log,
+// and the census turns them into the routes each suite really hit (e2e-routes.json).
+function withRouteLog(plan) {
+  const dir = mkdtempSync(join(tmpdir(), 'fc-census-routes-'));
+  return { ...plan, env: { E2E_LOG_DIR: dir }, routeLog: dir };
 }
 
 function commandLine(plan) {
@@ -742,7 +786,7 @@ function killGroup(pid, signal) {
 
 function runProcess(plan) {
   return new Promise((resolveRun) => {
-    const env = { ...process.env, CARGO_TERM_COLOR: 'never', NO_COLOR: '1' };
+    const env = { ...process.env, CARGO_TERM_COLOR: 'never', NO_COLOR: '1', ...(plan.env || {}) };
     if (plan.cargo) {
       const path = cargoOnPath();
       if (!path) {
@@ -754,12 +798,15 @@ function runProcess(plan) {
     const t0 = Date.now();
     let passed = 0;
     let failed = 0;
+    const failLines = []; // `FAIL <check>` lines of the harnesses, named by the e2e.sh suite they ran in
+    let suite = '';
     let checks = 0;
     let rest = '';
     let tail = '';
     const tally = (line) => {
       if (/^ok {2,}/.test(line)) { passed += 1; checks += 1; }
-      else if (/^FAIL /.test(line)) { failed += 1; checks += 1; }
+      else if (/^FAIL /.test(line)) { failed += 1; checks += 1; failLines.push(`${suite ? `${suite}: ` : ''}${line.slice(5, 200)}`); }
+      else if (/^▸ e2e /.test(line)) suite = line.slice(6).trim();
     };
     const feed = (chunk) => {
       tail = (tail + chunk).slice(-200_000);
@@ -816,7 +863,7 @@ function runProcess(plan) {
     }, plan.timeout);
     child.on('close', (code) => {
       if (rest) tally(rest);
-      done({ code: timedOut ? null : code, wallMs: Date.now() - t0, passed, failed, checks, tail: scrub(tail), timedOut });
+      done({ code: timedOut ? null : code, wallMs: Date.now() - t0, passed, failed, checks, failLines: failLines.map(scrub), tail: scrub(tail), timedOut });
     });
     child.on('error', (err) => {
       done({ code: 127, wallMs: Date.now() - t0, passed: 0, failed: 0, checks: 0, tail: scrub(err.message), timedOut: false });
@@ -896,6 +943,11 @@ async function runStage(id) {
   const startedAt = Date.now();
   const result = await runProcess(plan);
   result.wallMs += wallExtra;
+  if (plan.routeLog) {
+    const suites = recordE2eRoutes(ROOT, plan.routeLog, at);
+    if (suites?.length) process.stderr.write(`  routes recorded for ${suites.join(', ')}\n`);
+    rmSync(plan.routeLog, { recursive: true, force: true });
+  }
   if (result.status === 'skipped') return finish(id, at, plan, result);
   if (result.timedOut) return finish(id, at, plan, { ...result, status: 'timeout', passed: null, failed: null, skipped: null, failures: [], note: `exceeded ${Math.round(plan.timeout / 60000)} min` });
   let passed = null;
@@ -907,7 +959,7 @@ async function runStage(id) {
     if (plan.parse === 'tap') ({ passed, failed, skipped } = parseTap(result.tail));
     else if (plan.parse === 'cargo') ({ passed, failed, skipped, failures } = parseCargo(result.tail));
     else if (plan.parse === 'vitest') ({ passed, failed, skipped, failures } = parseVitest(plan.json, startedAt));
-    else if (result.checks) { passed = result.passed; failed = result.failed; skipped = 0; }
+    else if (result.checks) { passed = result.passed; failed = result.failed; skipped = 0; failures = result.failLines || []; }
   } catch (err) {
     note = lastLine(err.message);
   }
@@ -1005,16 +1057,92 @@ async function main(argv) {
     process.exitCode = bad ? 1 : 0;
     return;
   }
-  if (cmd !== 'print' && cmd !== 'readme') throw new Error('use: census.mjs [print|readme|run|self-test]');
+  if (cmd === 'features') {
+    const inv = inventory();
+    const rep = reportOf(inv);
+    if (rest.includes('--write')) process.stderr.write(`updated ${join(ROOT, writeFull(ROOT, rep, inv.countedAt))}\n`);
+    else process.stdout.write(`${renderFull(rep, inv.countedAt)}\n`);
+    return;
+  }
+  if (cmd === 'coverage') {
+    process.exitCode = await lineCoverage(!rest.includes('--no-integration'));
+    if (rest.includes('--readme')) writeReadme();
+    return;
+  }
+  if (cmd !== 'print' && cmd !== 'readme') throw new Error('use: census.mjs [print|readme|run|features [--write]|coverage [--no-integration] [--readme]|self-test]');
   if (write || cmd === 'readme') writeReadme();
   else process.stdout.write(`${render(inventory(), loadRuns().runs)}\n`);
 }
 
 function writeReadme() {
-  const block = render(inventory(), loadRuns().runs);
+  const inv = inventory();
+  process.stderr.write(`updated ${join(ROOT, writeFull(ROOT, reportOf(inv), inv.countedAt))}\n`);
+  const block = render(inv, loadRuns().runs);
   const next = spliceReadme(readFileSync(README, 'utf8'), block);
   writeFileSync(README, next.endsWith('\n') ? next : `${next}\n`);
   process.stderr.write(`updated ${README}\n`);
+}
+
+// v8 line coverage: the server's unit + in-memory HTTP suite (+ the PostgreSQL suite), the node:test suites of client,
+// landing and media, and the headless playthrough (its esbuild bundle carries a source map, so lines land on js/…). Writes coverage.json.
+async function lineCoverage(withIntegration) {
+  const dir = mkdtempSync(join(tmpdir(), 'fc-census-cov-'));
+  const server = join(ROOT, 'server');
+  const vitest = join(server, 'node_modules/.bin/vitest');
+  const vitestCov = (sub, extra) => ({
+    cwd: server, cmd: vitest, timeout: 25 * 60 * 1000,
+    args: ['run', ...extra, '--reporter=dot', '--coverage.enabled', '--coverage.provider=v8', '--coverage.reporter=json', `--coverage.reportsDirectory=${join(dir, sub)}`, '--coverage.include=src/**/*.ts', '--coverage.exclude=src/**/*.d.ts'],
+  });
+  const nodeCov = (pkg, files) => ({
+    cwd: join(ROOT, pkg), cmd: process.execPath, timeout: 15 * 60 * 1000,
+    args: ['--test', '--experimental-test-coverage', '--test-reporter=lcov', `--test-reporter-destination=${join(dir, `${pkg}.lcov`)}`, '--test-reporter=dot', '--test-reporter-destination=stdout', ...files],
+  });
+  // The headless bundle must sit inside client/: node:test leaves files outside the working directory out of the report.
+  const bundleDir = join(ROOT, 'client', `.census-cov-${process.pid}`);
+  mkdirSync(bundleDir, { recursive: true });
+  writeFileSync(join(bundleDir, 'headless.cov.mjs'), `process.argv[2] = ${JSON.stringify(join(bundleDir, 'fc-test.js'))};\nawait import('../tools/headless-test.mjs');\n`);
+  const esbuild = { cwd: join(ROOT, 'client'), cmd: 'npx', timeout: 5 * 60 * 1000, args: ['esbuild', 'js/main.js', '--bundle', '--format=esm', '--alias:three=./tools/stub-three.mjs', '--sourcemap', `--outfile=${join(bundleDir, 'fc-test.js')}`, '--log-level=error'] };
+  const headless = nodeCov('client', [join(bundleDir, 'headless.cov.mjs')]);
+  headless.args = ['--enable-source-maps', ...headless.args.map((a) => a.replace('client.lcov', 'headless.lcov'))];
+  const jobs = [
+    ['server unit + HTTP', vitestCov('unit', [])],
+    ['client headless bundle', esbuild],
+    ['client headless playthrough', headless],
+    ['client unit', nodeCov('client', flatTests('client/test', '.test.mjs'))],
+    ['landing', nodeCov('landing', flatTests('landing/test', '.test.js'))],
+    ['media', nodeCov('media', flatTests('media/test', '.test.mjs'))],
+  ];
+  if (withIntegration) {
+    const refused = unsafeTestDatabase(process.env.TEST_DATABASE_URL);
+    if (refused) throw new Error(refused);
+    const up = await runProcess({ cwd: ROOT, cmd: 'npm', args: ['run', 'db:up'], timeout: 5 * 60 * 1000 });
+    if (up.code !== 0) throw new Error(`db:up failed: ${lastLine(up.tail)}`);
+    jobs.splice(1, 0, ['server PostgreSQL', vitestCov('integration', ['--config', 'vitest.integration.config.ts'])]);
+  }
+  let bad = 0;
+  try {
+  for (const [name, plan] of jobs) {
+    process.stderr.write(`▸ coverage: ${name}\n`);
+    const r = await runProcess(plan);
+    process.stderr.write(`  ${r.code === 0 ? 'pass' : `exit ${r.code}${r.timedOut ? ' (timeout)' : ''}`} ${fmtMs(r.wallMs)}\n`);
+    if (r.code !== 0) { bad += 1; process.stderr.write(`  ${lastLine(r.tail)}\n`); }
+  }
+  } finally {
+    rmSync(bundleDir, { recursive: true, force: true });
+  }
+  const readJson = (sub) => { try { return JSON.parse(readFileSync(join(dir, sub, 'coverage-final.json'), 'utf8')); } catch { return {}; } };
+  const files = linesFromIstanbul(mergeIstanbul(readJson('unit'), readJson('integration')), ROOT);
+  const acc = {};
+  for (const [name, pkg] of [['client', 'client'], ['headless', 'client'], ['landing', 'landing'], ['media', 'media']]) {
+    const lcov = join(dir, `${name}.lcov`);
+    if (existsSync(lcov)) addLcov(acc, readFileSync(lcov, 'utf8'), ROOT, join(ROOT, pkg));
+  }
+  Object.assign(files, linesFromLcov(acc));
+  rmSync(dir, { recursive: true, force: true });
+  const scope = `server unit + HTTP${withIntegration ? ' + PostgreSQL' : ''}, the headless playthrough, client / landing / media node:test`;
+  saveLines(files, scope);
+  process.stderr.write(`coverage: ${Object.keys(files).length} files → ${join(HERE, 'coverage.json')}${bad ? ` (${bad} job(s) failed – numbers are partial)` : ''}\n`);
+  return bad ? 1 : 0;
 }
 
 function assert(ok, message) {
@@ -1069,7 +1197,7 @@ async function selfTest() {
   assert(unsafeTestDatabase('') === '' && unsafeTestDatabase('postgresql://u:p@localhost:5432/freightchain_branch_test') === '' && unsafeTestDatabase('postgresql://u:p@localhost:5432/freightchain').includes('_test'), 'test database guard');
   assert(inv.scenarioSides.some((s) => s.name === 'analyticsScenarios' && s.memory === 2 && s.postgres === 2), 'analytics registered twice');
   assert(inv.pureReadable, 'pure list');
-  assert(inv.layers.find((l) => l.id === 'client-headless').checks === 35, 'headless checks');
+  assert(inv.layers.find((l) => l.id === 'client-headless').checks === 36, 'headless checks');
   const lanes = schedule(['client-unit', 'server-unit', 'landing', 'server-integration', 'e2e', 'e2e:browser', 'program-check']);
   assert(lanes.map((lane) => lane.join('+')).join(' | ') === 'client-unit | server-unit+server-integration | landing | e2e+e2e:browser | program-check', `schedule ${JSON.stringify(lanes)}`);
   const together = fastTimingSentence([
@@ -1118,6 +1246,46 @@ async function selfTest() {
   killGroup(gone.pid, 'SIGTERM');
   const hung = await runProcess({ cwd: ROOT, cmd: process.execPath, args: ['-e', 'process.on("SIGTERM",()=>{}); setInterval(()=>{}, 1000);'], timeout: 400 });
   assert(hung.timedOut === true && hung.code === null && hung.wallMs < 10_000, `timeout kill ${hung.wallMs}`);
+  // Feature coverage: route parsing, request matching, helpers, attribution, the e2e log, lcov / istanbul, grading.
+  const ctrl = parseController('c.ts', "@Controller('api/rides')\nclass C {\n  @Post() @HttpCode(200)\n  create(@B() b) { return this.commandBus.execute(new CreateRideCommand(b)); }\n  @Get('pending')\n  pending() {}\n  @Get(':id')\n  get() { return this.queryBus.execute(new GetRideQuery()); }\n}");
+  assert(ctrl.map((r) => `${r.key}=${r.name}`).join(' ') === 'POST /api/rides=create GET /api/rides/pending=pending GET /api/rides/:id=get', JSON.stringify(ctrl.map((r) => r.key)));
+  assert(ctrl[0].bus[0] === 'CreateRideCommand', 'bus class');
+  assert(matchRoute(ctrl, 'GET', '/api/rides/pending').name === 'pending' && matchRoute(ctrl, 'GET', '/api/rides/X?from=1').name === 'get' && !matchRoute(ctrl, 'POST', '/api/rides/X'), 'route match');
+  const reqs = requestsIn("agent.post(`/api/rides/${ride.id}/start`).send(x); anon().get('/api/live?visitor=a'); re.test('/api/x');");
+  assert(reqs.length === 2 && reqs[0].path === '/api/rides/X/start' && reqs[0].method === 'POST' && reqs[1].path === '/api/live', JSON.stringify(reqs));
+  const sample = "const post = async () => agent.get('/api/rides/pending');\nconst open = async () => (await agent.post('/api/rides').send({}));\nit('a', async () => { await open(); await x.post('/api/nothing'); });\nit('b', async () => { await agent.get('/api/rides/9'); });";
+  const cr = caseRoutes(sample, ctrl, new Map());
+  assert(cr.length === 2 && [...cr[0].keys].join() === 'POST /api/rides' && [...cr[1].keys].join() === 'GET /api/rides/:id', JSON.stringify(cr.map((c) => [...c.keys])));
+  const rows = new Map([['POST /api/auth/nonce', { feature: 'auth' }], ['POST /api/promo/redeem', { feature: 'promo' }]]);
+  assert([...attributeCase({ title: 'x', keys: new Set(['POST /api/auth/nonce', 'POST /api/promo/redeem']) }, 'server-scenarios', rows)].join() === 'promo', 'setup routes yield');
+  assert([...attributeCase({ title: 'x', keys: new Set(['POST /api/auth/nonce']) }, 'server-scenarios', rows)].join() === 'auth', 'setup only');
+  assert([...attributeCase({ title: 'two redemptions race', keys: new Set(['POST /api/auth/nonce']) }, 'server-concurrency', rows)].join() === 'promo', 'race by title');
+  const log = routesFromLog('2026 INFO  [HTTP] GET /api/rides/pending 200 {"event":"request","method":"GET","path":"/api/rides/pending","status":200}\nnoise\nx {"event":"request","method":"GET","path":"/api/rides/abc","status":404}\n', ctrl);
+  assert(log.counts['GET /api/rides/pending'] === 1 && log.counts['GET /api/rides/:id'] === 1, JSON.stringify(log));
+  assert(subjectOf('server/test/unit/x/ride.service.spec.ts', ['server/src/domain/shared/errors.ts'], new Map([['ride.service', ['server/src/application/services/ride.service.ts']]])) === 'server/src/application/services/ride.service.ts', 'subject by basename');
+  const acc = addLcov({}, 'SF:js/a.js\nDA:1,1\nDA:2,0\nBRDA:1,0,0,1\nBRDA:1,0,1,-\nend_of_record\n', ROOT, join(ROOT, 'client'));
+  addLcov(acc, 'SF:js/a.js\nDA:2,3\nBRDA:1,0,1,2\nend_of_record\nSF:test/t.test.mjs\nDA:1,1\nend_of_record\n', ROOT, join(ROOT, 'client'));
+  const lc = linesFromLcov(acc);
+  assert(JSON.stringify(lc) === '{"client/js/a.js":[2,2,2,2]}', JSON.stringify(lc));
+  const ist = linesFromIstanbul(mergeIstanbul(
+    { f: { path: join(ROOT, 'server/src/a.ts'), statementMap: { 0: { start: { line: 1 } }, 1: { start: { line: 2 } } }, s: { 0: 1, 1: 0 }, b: { 0: [1, 0] } } },
+    { f: { path: join(ROOT, 'server/src/a.ts'), statementMap: { 0: { start: { line: 1 } }, 1: { start: { line: 2 } } }, s: { 0: 0, 1: 2 }, b: { 0: [0, 0] } } },
+  ), ROOT);
+  assert(JSON.stringify(ist) === '{"server/src/a.ts":[2,2,1,2]}', JSON.stringify(ist));
+  const base = { id: 'x', files: 4, withTest: 4, unitFiles: 1, routes: 2, routesHit: 2, scenarioCases: 3, race: 0, sim: 0, harness: [{ name: 'e2e-x.mjs' }], skills: [], e2eRouteHits: 2, lines: null };
+  assert(gradeFeature({ ...base, e2eRouteHits: 0 }, true).grade === 'strong' && gradeFeature({ ...base, recordable: true, e2eRouteHits: 0 }, true).grade === 'fair', 'only e2e.sh features need recorded routes');
+  assert(gradeFeature(base, true).grade === 'strong', 'strong');
+  assert(gradeFeature({ ...base, routesHit: 1 }, true).grade === 'fair', 'fair');
+  assert(gradeFeature({ ...base, withTest: 0, routesHit: 1 }, false).grade === 'thin', 'thin');
+  assert(gradeFeature({ ...base, withTest: 0 }, false).grade === 'thin', 'bare files are thin');
+  assert(gradeFeature({ ...base, unitFiles: 0, scenarioCases: 0, harness: [] }, false).grade === 'untested', 'untested');
+  const routes = allRoutes(ROOT);
+  assert(routes.length >= 60 && routes.every((r) => r.name), `routes ${routes.length}`);
+  const rep = reportOf(inv);
+  assert(rep.flows.every((f) => !f.unknown.length), `flow steps that are no route: ${rep.flows.flatMap((f) => f.unknown).join(', ')}`);
+  assert(rep.routes.every((r) => r.feature), `routes no feature owns: ${rep.routes.filter((r) => !r.feature).map((r) => r.key).join(', ')}`);
+  assert(!rep.unmapped.length, `source files no feature owns: ${rep.unmapped.join(', ')}`);
+  assert(rep.controllers.length === new Set(routes.map((r) => r.controller)).size, 'controllers');
   process.stdout.write('self-test ok\n');
 }
 

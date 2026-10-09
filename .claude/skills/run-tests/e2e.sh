@@ -17,7 +17,10 @@ BUILD=".e2e-build-$$"; TSCONFIG=".e2e-tsconfig-$$.json"; LANDING_OUT="$(mktemp -
 PID=""
 free_port() { node -e 'const s=require("net").createServer();s.listen(0,()=>{console.log(s.address().port);s.close()})'; }
 psql_admin() { docker exec freightchain-postgres psql -U freight -d postgres -v ON_ERROR_STOP=1 -tAc "$1"; }
-stop() { if [ -n "$PID" ]; then kill "$PID" 2>/dev/null || true; wait "$PID" 2>/dev/null || true; fi; PID=""; }   # wait returns 143 for a killed server – not a failure
+SUITE=""
+# E2E_LOG_DIR (set by `npm run test:census -- run e2e…`): the server's request lines per suite, so the census can tell which routes each suite hit
+keep_log() { if [ -n "${E2E_LOG_DIR:-}" ] && [ -n "$SUITE" ] && [ -f "/tmp/fc-e2e-$DB.log" ]; then grep -F '"event":"request"' "/tmp/fc-e2e-$DB.log" >> "$E2E_LOG_DIR/$SUITE.log" || true; fi; }
+stop() { if [ -n "$PID" ]; then kill "$PID" 2>/dev/null || true; wait "$PID" 2>/dev/null || true; keep_log; fi; PID=""; }   # wait returns 143 for a killed server – not a failure
 cleanup() { stop; psql_admin "DROP DATABASE IF EXISTS \"$DB\" WITH (FORCE)" >/dev/null 2>&1 || true; rm -rf "$ADMIN_KP" "$SERVER/$BUILD" "$SERVER/$TSCONFIG" "$LANDING_OUT"; }
 trap cleanup EXIT
 
@@ -40,7 +43,7 @@ start() {
 
 fails=0
 for suite in "${SUITES[@]}"; do
-  echo "▸ e2e $suite"
+  echo "▸ e2e $suite"; SUITE="$suite"
   case "$suite" in
     browser) start 20; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" FREE_RIDE_SECONDS=20 node scripts/e2e-browser.mjs) || fails=$((fails + 1)) ;;
     lobby)   start 3;  (cd "$SERVER" && BASE="http://localhost:$PORT" SEED=1 DATABASE_URL="$URL" node scripts/e2e-lobby.mjs) || fails=$((fails + 1)) ;;   # SEED=1: the dev pool seeds it expects (throwaway database)
