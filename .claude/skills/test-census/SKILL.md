@@ -51,7 +51,7 @@ Replaces the `<!-- test-census:start -->` block in `README.md`. Leave the Tests 
 
 ## How to read it
 
-Lead with the gaps and the slowest fast stage. A stage named under "No recorded run" has never been timed. Static cases are call sites. The run's passed count is what executed. That count is higher when `it`, `test`, or `check()` sits in a loop or in `it.each`, and when a scenario function is registered more than once. Scenario cases are written once and run on both backends. `analyticsScenarios` is registered twice on each backend.
+Lead with the gaps and the slowest fast stage. The block also draws Mermaid charts from the same numbers: static calls by band, the newest fast-stage wall times, and the kept `server-integration` times. GitHub renders the charts. `npm run test:census -- readme` refreshes them without timing anything. A stage named under "No recorded run" has never been timed. Static cases are call sites. The run's passed count is what executed. That count is higher when `it`, `test`, or `check()` sits in a loop or in `it.each`, and when a scenario function is registered more than once. Scenario cases are written once and run on both backends. `analyticsScenarios` is registered twice on each backend.
 
 ## Do not
 

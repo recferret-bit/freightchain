@@ -430,6 +430,89 @@ function latestByStage(runs) {
   return map;
 }
 
+function mermaidNum(n) {
+  const s = (Math.round(n * 10) / 10).toFixed(1);
+  return s.endsWith('.0') ? s.slice(0, -2) : s;
+}
+
+function yMax(values) {
+  const top = Math.max(...values, 0);
+  if (top <= 0) return 1;
+  const padded = top * 1.15;
+  const step = padded > 60 ? 10 : padded > 10 ? 5 : padded > 2 ? 1 : 0.5;
+  return Math.ceil(padded / step) * step;
+}
+
+function bandChart(inv) {
+  const order = [];
+  const sums = new Map();
+  for (const layer of inv.layers) {
+    if (!sums.has(layer.band)) order.push(layer.band);
+    sums.set(layer.band, (sums.get(layer.band) || 0) + layer.cases + layer.checks);
+  }
+  const slices = order.filter((band) => sums.get(band) > 0);
+  if (slices.length < 2) return [];
+  return [
+    'Static calls by band. A slice is `it` / `test` / `#[test]` plus `check()`. The table below is the same count.',
+    '',
+    '```mermaid',
+    'pie title Static calls by band',
+    ...slices.map((band) => `    "${band}" : ${sums.get(band)}`),
+    '```',
+    '',
+  ];
+}
+
+function wallChart(fastLatest) {
+  const secs = fastLatest.map((run) => run.wallMs / 1000);
+  return [
+    'Newest wall time for each fast stage, in seconds. Each bar is that stage\'s own clock.',
+    '',
+    '```mermaid',
+    'xychart-beta',
+    '    title "Fast stage wall time"',
+    `    x-axis [${fastLatest.map((run) => run.stage).join(', ')}]`,
+    `    y-axis "seconds" 0 --> ${mermaidNum(yMax(secs))}`,
+    `    bar [${secs.map(mermaidNum).join(', ')}]`,
+    '```',
+    '',
+  ];
+}
+
+function historyChart(runs, stage) {
+  const rows = runs
+    .filter((run) => run.stage === stage && Number.isFinite(run.wallMs))
+    .sort((a, b) => (a.at < b.at ? -1 : 1))
+    .slice(-8);
+  if (rows.length < 2) return [];
+  const secs = rows.map((run) => run.wallMs / 1000);
+  const labels = rows.map((run) => run.at.slice(5, 16).replace('T', '-').replace(':', ''));
+  return [
+    `\`${stage}\` wall time across the kept runs, oldest first.`,
+    '',
+    '```mermaid',
+    'xychart-beta',
+    `    title "${stage}"`,
+    `    x-axis [${labels.join(', ')}]`,
+    `    y-axis "seconds" 0 --> ${mermaidNum(yMax(secs))}`,
+    `    line [${secs.map(mermaidNum).join(', ')}]`,
+    '```',
+    '',
+  ];
+}
+
+function chartSection(inv, runs) {
+  const latest = latestByStage(runs);
+  const fastLatest = FAST.map((id) => latest.get(id)).filter((run) => run && Number.isFinite(run.wallMs));
+  const blocks = [
+    ...bandChart(inv),
+    ...(fastLatest.length >= 2 ? wallChart(fastLatest) : []),
+    ...historyChart(runs, 'server-integration'),
+  ];
+  if (!blocks.length) return [];
+  return ['### Charts', '', ...blocks];
+}
+
 function render(inv, runs) {
   const lines = [];
   const caseTotal = inv.layers.reduce((n, l) => n + l.cases, 0);
@@ -437,6 +520,7 @@ function render(inv, runs) {
   const fileTotal = inv.layers.reduce((n, l) => n + l.files, 0);
   lines.push(`Counted ${fmtAt(inv.countedAt)} by \`test-census\`. Static cases are \`it\` / \`test\` / \`#[test]\` call sites. A recorded run is what that command executed.`);
   lines.push('');
+  lines.push(...chartSection(inv, runs));
   lines.push('### Pyramid');
   lines.push('');
   lines.push('| Band | Layer | Files | Cases | `check()` | Runs in |');
@@ -1000,6 +1084,26 @@ async function selfTest() {
   assert(serial.includes('25.0 s one after another'), serial);
   const md = render(inv, []);
   assert(md.includes('### Pyramid') && md.includes('### Test skills') && md.includes('`run-tests`'), 'render');
+  assert(md.includes('pie title Static calls by band') && md.includes('"unit" :'), 'pie');
+  const pie = bandChart({ layers: [
+    { band: 'unit', cases: 10, checks: 0 },
+    { band: 'unit', cases: 5, checks: 1 },
+    { band: 'e2e', cases: 0, checks: 4 },
+    { band: 'sim', cases: 0, checks: 0 },
+  ] }).join('\n');
+  assert(pie.includes('"unit" : 16') && pie.includes('"e2e" : 4') && !pie.includes('sim'), pie);
+  const bars = wallChart([
+    { stage: 'client-unit', wallMs: 121 },
+    { stage: 'server-integration', wallMs: 33500 },
+  ]).join('\n');
+  assert(bars.includes('xychart-beta') && bars.includes('client-unit, server-integration') && bars.includes('0.1, 33.5') && bars.includes('0 --> 40'), bars);
+  const line = historyChart([
+    { stage: 'server-integration', status: 'pass', at: '2026-10-09T01:30:00.000Z', wallMs: 32800 },
+    { stage: 'server-integration', status: 'fail', at: '2026-10-09T02:00:00.000Z', wallMs: 1000 },
+    { stage: 'server-integration', status: 'pass', at: '2026-10-09T06:48:00.000Z', wallMs: 33500 },
+  ], 'server-integration').join('\n');
+  assert(line.includes('10-09-0130, 10-09-0200, 10-09-0648') && line.includes('line [32.8, 1, 33.5]'), line);
+  assert(historyChart([{ stage: 'server-integration', at: '2026-10-09T01:30:00.000Z', wallMs: 1 }], 'server-integration').length === 0, 'one point');
   const report = join(tmpdir(), `fc-census-self-${process.pid}.json`);
   writeFileSync(report, JSON.stringify({ numPassedTests: 9, numFailedTests: 1, numPendingTests: 0, numTodoTests: 2, testResults: [{ name: 'a', assertionResults: [{ status: 'failed', fullName: 'boom' }] }] }));
   const fresh = parseVitest(report, Date.now() - 10_000);

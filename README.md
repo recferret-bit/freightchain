@@ -78,7 +78,41 @@ There is no CI. Run the suites locally (the `run-tests` skill). What each skill 
 
 <!-- test-census:start -->
 
-Counted 2026-10-09 06:48 UTC by `test-census`. Static cases are `it` / `test` / `#[test]` call sites. A recorded run is what that command executed.
+Counted 2026-10-09 09:37 UTC by `test-census`. Static cases are `it` / `test` / `#[test]` call sites. A recorded run is what that command executed.
+
+### Charts
+
+Static calls by band. A slice is `it` / `test` / `#[test]` plus `check()`. The table below is the same count.
+
+```mermaid
+pie title Static calls by band
+    "unit" : 973
+    "audit" : 28
+    "contract" : 154
+    "integration" : 138
+    "sim" : 35
+    "e2e" : 363
+```
+
+Newest wall time for each fast stage, in seconds. Each bar is that stage's own clock.
+
+```mermaid
+xychart-beta
+    title "Fast stage wall time"
+    x-axis [client-unit, landing, media, client-headless, server-unit, server-integration, program-test]
+    y-axis "seconds" 0 --> 40
+    bar [0.1, 0.2, 5.3, 5.6, 8.7, 33.5, 4.3]
+```
+
+`server-integration` wall time across the kept runs, oldest first.
+
+```mermaid
+xychart-beta
+    title "server-integration"
+    x-axis [10-09-0053, 10-09-0130, 10-09-0217, 10-09-0648]
+    y-axis "seconds" 0 --> 45
+    line [35.9, 32.8, 28.5, 33.5]
+```
 
 ### Pyramid
 
