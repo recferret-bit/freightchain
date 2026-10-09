@@ -252,6 +252,18 @@
       "command": "cargo test",
       "failures": [],
       "note": ""
+    },
+    {
+      "stage": "landing",
+      "at": "2026-10-09T03:39:00.988Z",
+      "wallMs": 2314,
+      "status": "pass",
+      "passed": 91,
+      "failed": 0,
+      "skipped": 0,
+      "command": "node --test --test-reporter=tap test/budget.test.js test/dash-scenes.test.js test/format.test.js test/page.test.js test/pools.test.js test/promos.test.js test/whitepaper.test.js test/wp-scenes.test.js",
+      "failures": [],
+      "note": ""
     }
   ]
 }

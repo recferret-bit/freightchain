@@ -96,6 +96,15 @@ test('numbers: live-stream prices and limits equal live-rules.ts', () => {
   assert.match(l, /EFFECT_WINDOW_MS = 20_000/); assert.match(text, /per ride per 20 s/); assert.match(l, /LINE_WINDOW_MS = 3_000/); assert.match(text, /per 3 s/);
 });
 
+test('the landing image copies every repo file this test reads', () => {
+  const docker = src('deploy/Dockerfile');
+  const self = readFileSync(new URL(import.meta.url), 'utf8');
+  for (const p of [...self.matchAll(/src\('([^']+)'\)/g)].map((m) => m[1])) {
+    if (p.startsWith('client/')) continue; // the image copies client/ whole
+    assert.ok(docker.includes(p), `${p} is quoted by the whitepaper test but not copied into the landing image`);
+  }
+});
+
 test('numbers: the production live flags and the program facts the page states', () => {
   const compose = src('deploy/docker-compose.prod.yml'); assert.match(compose, /LIVE_FREE_DONATIONS[^\n]*off/); assert.match(compose, /LIVE_EFFECTS[^\n]*free/);
   assert.match(text, /game effects on free rides only/);

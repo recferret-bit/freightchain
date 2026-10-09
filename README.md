@@ -78,7 +78,7 @@ There is no CI. Run the suites locally (the `run-tests` skill). What each skill 
 
 <!-- test-census:start -->
 
-Counted 2026-10-09 02:17 UTC by `test-census`. Static cases are `it` / `test` / `#[test]` call sites. A recorded run is what that command executed.
+Counted 2026-10-09 03:39 UTC by `test-census`. Static cases are `it` / `test` / `#[test]` call sites. A recorded run is what that command executed.
 
 ### Pyramid
 
@@ -91,7 +91,7 @@ Counted 2026-10-09 02:17 UTC by `test-census`. Static cases are `it` / `test` / 
 | unit | Server infrastructure | 45 | 193 | 0 | `npm run server:test` |
 | unit | Server app, cli, support | 4 | 14 | 0 | `npm run server:test` |
 | unit | Client unit | 3 | 14 | 0 | `cd client && npm run test:unit` |
-| unit | Landing | 8 | 90 | 0 | `npm run landing:test` |
+| unit | Landing | 8 | 91 | 0 | `npm run landing:test` |
 | unit | Media | 2 | 25 | 0 | `npm run media:check` |
 | unit | Escrow program (host tests) | 8 | 50 | 0 | `npm run program:test` |
 | audit | Architecture and migration SQL | 5 | 28 | 0 | `npm run server:test` |
@@ -103,7 +103,7 @@ Counted 2026-10-09 02:17 UTC by `test-census`. Static cases are `it` / `test` / 
 | integration | Same HTTP scenarios on PostgreSQL | 1 | 0 | 0 | `npm run server:integration` |
 | sim | Headless game playthrough | 1 | 0 | 35 | `cd client && npm run test:headless` |
 | e2e | Browser and API harnesses | 14 | 0 | 363 | `bash .claude/skills/run-tests/e2e.sh` |
-| | **Total** | **276** | **1292** | **398** | |
+| | **Total** | **276** | **1293** | **398** | |
 
 HTTP scenario cases are written once under `server/test/scenarios` and executed twice: in-memory (`npm run server:test`) and PostgreSQL (`npm run server:integration`). The PostgreSQL runner row counts the runner file. Its cases are the scenario row. `it.each` is one static call and one executed test per row.
 
@@ -155,10 +155,11 @@ Census skill: `test-census`. Production read-only skills: `posthog-prod`, `prod-
 
 ### Recorded runs
 
-Newest first. 21 runs kept in `.claude/skills/test-census/runs.json` (up to 12 per stage).
+Newest first. 22 runs kept in `.claude/skills/test-census/runs.json` (up to 12 per stage).
 
 | When | Stage | Result | Passed | Failed | Skipped | Wall |
 | --- | --- | --- | ---: | ---: | ---: | ---: |
+| 2026-10-09 03:39 UTC | `landing` | pass | 91 | 0 | 0 | 2.3 s |
 | 2026-10-09 02:17 UTC | `program-test` | pass | 50 | 0 | 0 | 1.8 s |
 | 2026-10-09 02:17 UTC | `server-integration` | pass | 295 | 0 | 0 | 28.5 s |
 | 2026-10-09 02:17 UTC | `server-unit` | pass | 1058 | 0 | 0 | 5.6 s |
@@ -181,7 +182,7 @@ Newest first. 21 runs kept in `.claude/skills/test-census/runs.json` (up to 12 p
 | 2026-10-09 00:53 UTC | `landing` | pass | 90 | 0 | 0 | 110 ms |
 | 2026-10-09 00:53 UTC | `client-unit` | pass | 14 | 0 | 0 | 87 ms |
 
-Newest fast stages on record: 7 of 7, 40.4 s one after another. Slowest of those: `server-integration` at 28.5 s.
+Newest fast stages on record: 7 of 7, 42.6 s one after another. Slowest of those: `server-integration` at 28.5 s.
 A run counts more than the static call sites when `it`, `test`, or `check()` sits in a loop or in `it.each`, and when a scenario function is registered more than once.
 `server-unit` executed 1058. Static call sites for that stage: 975.
 `server-integration` executed 295. Static call sites for that stage: 283.

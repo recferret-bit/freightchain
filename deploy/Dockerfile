@@ -12,14 +12,17 @@ COPY server/ ./
 RUN npx prisma generate && npm run build
 
 # ---------- landing: the / page (Vite). It imports the game's cockpit + wallet modules from ../client, so client/ sits next to it ----------
-# The whitepaper tests also read the server rules, the prod compose flags, and the program IDL. Those files are not in the runtime image.
+# The whitepaper tests read the server files they quote, the prod compose flags, the program IDL, and this Dockerfile.
+# Those files are not in the runtime image. A new quoted path has to be copied here or the image build fails.
 FROM node:24-bookworm-slim AS landing
 WORKDIR /app
 COPY client/ ./client/
-COPY server/src/domain/rides/ride-tier.ts server/src/domain/rides/ride-rules.ts ./server/src/domain/rides/
+COPY server/src/domain/rides/ride-tier.ts server/src/domain/rides/ride-rules.ts server/src/domain/rides/ride-challenge.ts ./server/src/domain/rides/
 COPY server/src/domain/verdict/verdict-rules.ts ./server/src/domain/verdict/
+COPY server/src/domain/telemetry/telemetry-rules.ts ./server/src/domain/telemetry/
 COPY server/src/domain/live/live-rules.ts ./server/src/domain/live/
-COPY deploy/docker-compose.prod.yml ./deploy/docker-compose.prod.yml
+COPY server/src/infrastructure/config/env.schema.ts ./server/src/infrastructure/config/
+COPY deploy/docker-compose.prod.yml deploy/Dockerfile ./deploy/
 COPY programs/freightchain-pools/idl/freightchain_pools.json ./programs/freightchain-pools/idl/
 WORKDIR /app/landing
 COPY landing/package.json landing/package-lock.json ./
