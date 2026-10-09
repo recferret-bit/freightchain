@@ -89,16 +89,6 @@ describe('RideQueryPrismaRepository (PostgreSQL)', () => {
     expect(await query.finished(1)).toHaveLength(1);
   });
 
-  it('totals: completed rides only – count, metres and distinct drivers', async () => {
-    await ride('alice', { metres: 150, outcome: 'shift', start: 0 });
-    await ride('alice', { metres: 140, outcome: 'shift', start: 100 });
-    await ride('bob', { metres: 160, outcome: 'shift', start: 200 });
-    await ride('carol', { metres: 999, outcome: 'failed', start: 300 });
-    expect(await query.totals()).toEqual({ shifts: 3, metres: 450, drivers: 2 });
-  });
-
-  it('totals: an empty database is zeros, not null', async () => { expect(await query.totals()).toEqual({ shifts: 0, metres: 0, drivers: 0 }); });
-
   it('summary: stats and the achievement facts in one read', async () => {
     await ride('alice', { metres: 150, outcome: 'shift', hull: 100, route: 'siberia', night: true });
     await ride('alice', { metres: 60, outcome: 'failed', start: 100 });

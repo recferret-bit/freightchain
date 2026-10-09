@@ -13,6 +13,10 @@ export const MAX_REPORTED_DISTANCE = 1e7; // metres – anything beyond is garba
 export const DRIVE_CREDIT_SLACK = 1.05; // the game clock may run ≤ 5 % (+ 1 s) ahead of the server's wall clock between two reports
 export const DRIVE_CREDIT_SLACK_SECONDS = 1;
 export const REASON_MAX_LENGTH = 200;
+/** a ride never reports more crashes than this (the counters feed the public statistics, so a hostile client cannot inflate them without bound) */
+export const MAX_CRASHES_PER_RIDE = 200;
+/** … and never more than a plausible rate: 3 plus one per 3 driven seconds (a truck cannot crash ten times a second) */
+export const crashCap = (driveSeconds: number): number => Math.min(MAX_CRASHES_PER_RIDE, 3 + Math.floor(Math.max(0, driveSeconds) / 3));
 
 export const completeDist = (minSeconds: number): number => COMPLETE_DIST_K * MAX_SPEED * minSeconds;
 

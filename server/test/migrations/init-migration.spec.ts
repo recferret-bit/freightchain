@@ -24,9 +24,9 @@ describe('prisma migrations', () => {
   });
 
   it('creates every PostgreSQL schema and every model of the Prisma schema', () => {
-    for (const schema of ['player', 'ride', 'economy', 'achievement', 'telemetry', 'verdict', 'admin', 'live']) expect(sql).toContain(`CREATE SCHEMA IF NOT EXISTS "${schema}"`);
+    for (const schema of ['player', 'ride', 'economy', 'achievement', 'telemetry', 'verdict', 'admin', 'live', 'stats']) expect(sql).toContain(`CREATE SCHEMA IF NOT EXISTS "${schema}"`);
     const models = schemaModels();
-    expect(models.map((m) => m.model).sort()).toEqual(['AchievementUnlock', 'AdminAction', 'AuthChallenge', 'ChainCursor', 'ChainEvent', 'CosmeticEquip', 'CosmeticUnlock', 'DonationOrder', 'Payment', 'Player', 'Pool', 'PromoCode', 'PromoRedemption', 'Ride', 'RideBatch', 'RideEvent', 'RideMute', 'RideTicket', 'RideVerdict', 'Round', 'SignIn', 'SponsoredTx', 'TicketGrant', 'TicketOrder']);
+    expect(models.map((m) => m.model).sort()).toEqual(['AchievementUnlock', 'AdminAction', 'AuthChallenge', 'ChainCursor', 'ChainEvent', 'CosmeticEquip', 'CosmeticUnlock', 'DonationOrder', 'GlobalStats', 'Payment', 'Player', 'PlayerStats', 'Pool', 'PromoCode', 'PromoRedemption', 'Ride', 'RideBatch', 'RideEvent', 'RideMute', 'RideTicket', 'RideVerdict', 'Round', 'SignIn', 'SponsoredTx', 'TicketGrant', 'TicketOrder']);
     for (const { schema, model } of models) expect(sql, `${schema}.${model}`).toContain(`CREATE TABLE "${schema}"."${model}"`);
   });
 

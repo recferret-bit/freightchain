@@ -6,11 +6,14 @@ import { ConflictError } from '../../../../domain/shared/errors.js';
 import { AnalyticsPort } from '../../../ports/analytics/analytics.port.js';
 import { RulesConfigPort } from '../../../ports/config/rules-config.port.js';
 import { RideRepositoryPort } from '../../../ports/rides/ride.repository.port.js';
+import { PlayerRepositoryPort } from '../../../ports/players/player.repository.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
 import { EntropyPort } from '../../../ports/shared/entropy.port.js';
+import { TransactionPort } from '../../../ports/shared/transaction.port.js';
 import { rideFailed, rideProgressed } from '../../../services/analytics-events.js';
 import { emitAnalytics } from '../../../services/analytics-emit.js';
 import { isDemoWallet } from '../../../services/demo.js';
+import { StatsService } from '../../../services/stats.service.js';
 import { RideLookupService } from '../../../services/ride-lookup.service.js';
 import { HeartbeatRideCommand } from './heartbeat-ride.command.js';
 
@@ -25,6 +28,9 @@ export class HeartbeatRideHandler implements ICommandHandler<HeartbeatRideComman
     private readonly clock: ClockPort,
     private readonly analytics: AnalyticsPort,
     private readonly entropy: EntropyPort,
+    private readonly transactions: TransactionPort,
+    private readonly players: PlayerRepositoryPort,
+    private readonly stats: StatsService,
   ) {}
 
   async execute({ wallet, rideId, report }: HeartbeatRideCommand): Promise<RideDto> {
@@ -35,7 +41,14 @@ export class HeartbeatRideHandler implements ICommandHandler<HeartbeatRideComman
     const before = progressRatio(ride.driveSeconds, ride.minSeconds, ride.distance, ride.completeDist);
     const accepted = ride.applyReport(report, now, this.rules.get()); // a report that fails the ride is persisted too
     if (accepted) ride.issueChallenge(now, this.rules.get().challengeIntervalSeconds, { id: this.entropy.hex(6), rnd: parseInt(this.entropy.hex(4), 16) / 0x1_0000_0000 });
-    const saved = await this.rides.save(ride);
+    // a report that fails the ride ENDS it: its totals join the statistics in the same commit (every other beat is a plain save)
+    const saved = accepted ? await this.rides.save(ride) : await this.transactions.run(async (tx) => {
+      await this.players.findByWalletForUpdate(wallet, tx);   // player row first (the lock order of every ride writer – see EndRideHandler)
+      const s = await this.rides.save(ride, tx);
+      await this.stats.recordRide(s.snapshot(), tx);
+      return s;
+    });
+    if (!accepted) await this.stats.invalidate(wallet);
     const props = saved.snapshot();
     const demo = (): boolean => isDemoWallet(this.rules.get(), wallet);
     if (!accepted || props.status === RideStatus.Failed) {

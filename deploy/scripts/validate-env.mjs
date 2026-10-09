@@ -19,10 +19,12 @@ for (const line of text.split('\n')) { const m = /^([A-Za-z_][A-Za-z0-9_]*)=(.*)
 const problems = [];
 try {
   // the server builds DATABASE_URL from POSTGRES_* inside compose – stand in with the same shape
-  validateEnv({ ...env, NODE_ENV: 'production', DATABASE_URL: `postgresql://${env.POSTGRES_USER}:${env.POSTGRES_PASSWORD}@postgres:5432/${env.POSTGRES_DB}` });
+  validateEnv({ ...env, NODE_ENV: 'production', DATABASE_URL: `postgresql://${env.POSTGRES_USER}:${env.POSTGRES_PASSWORD}@postgres:5432/${env.POSTGRES_DB}`, REDIS_URL: `redis://:${env.REDIS_PASSWORD}@redis:6379` });
 } catch (e) { problems.push(String(e.message).replace(/^Configuration validation error:\n/, '')); }
 for (const key of ['POSTGRES_USER', 'POSTGRES_PASSWORD', 'POSTGRES_DB']) if (!env[key]) problems.push(`${key} is empty`);
 if (env.POSTGRES_PASSWORD && !/^[0-9a-f]{16,}$/.test(env.POSTGRES_PASSWORD)) problems.push('POSTGRES_PASSWORD must be lowercase hex, >= 16 chars (it goes into a URL unescaped)');
+if (!env.REDIS_PASSWORD) problems.push('REDIS_PASSWORD is empty – the cache has a password and no published port. Add one: echo "REDIS_PASSWORD=$(openssl rand -hex 24)" >> deploy/.env');
+else if (!/^[0-9a-f]{32,}$/.test(env.REDIS_PASSWORD)) problems.push('REDIS_PASSWORD must be lowercase hex, >= 32 chars (it goes into a URL unescaped; openssl rand -hex 24)');
 if (env.TRUST_PROXY !== '1') problems.push('TRUST_PROXY must be 1 (host nginx is exactly one reverse-proxy hop; any other value mis-reads client IPs)');
 try { require.resolve('tweetnacl'); } catch { problems.push('server/node_modules is missing – run: npm install --prefix server'); }
 

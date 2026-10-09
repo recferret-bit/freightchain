@@ -110,6 +110,15 @@ export const FEATURES = [
     e2e: ['e2e-lobby.mjs', 'e2e-promo.mjs', 'e2e-watch.mjs'], skills: ['run-tests'],
   },
   {
+    id: 'statistics', title: 'Statistics (rides, time, km, crashes, donations – per rider + global, cached)',
+    server: /^(application\/(services\/stats\.service|use-cases\/stats\/)|domain\/stats\/|infrastructure\/(cache\/|prisma\/repositories\/stats))/,
+    client: /^client\/site\/lobby-career\.js$/,
+    routes: /^GET \/api\/stats$/,
+    words: /statistic|career|crash|driven, all time/i,
+    headless: /contact with a vehicle is counted|no crashes counted/i,
+    e2e: ['e2e-stats.mjs'], skills: ['run-tests', 'stats-reconcile'],
+  },
+  {
     id: 'live-board', title: 'Live board (online, on the road, history)',
     server: /^(application\/use-cases\/lobby\/(get-live|get-replays)\/|infrastructure\/live\/site-presence)/,
     client: /^client\/site\/(presence|lobby-replays)\.js$/,

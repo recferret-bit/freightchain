@@ -6,6 +6,7 @@ import { ChainHttpController } from './chain/chain.http.controller.js';
 import { EconomyHttpController } from './economy/economy.http.controller.js';
 import { HealthHttpController } from './health/health.http.controller.js';
 import { LobbyHttpController } from './lobby/lobby.http.controller.js';
+import { StatsHttpController } from './stats/stats.http.controller.js';
 import { RidesHttpController } from './rides/rides.http.controller.js';
 import { TelemetryHttpController } from './telemetry/telemetry.http.controller.js';
 
@@ -18,6 +19,6 @@ import { PromosHttpController } from './economy/promos.http.controller.js';
 import { LiveHttpController } from './live/live.http.controller.js';
 @Module({
   imports: [ApplicationModule],
-  controllers: [HealthHttpController, AuthHttpController, RidesHttpController, EconomyHttpController, PoolsHttpController, TicketsHttpController, LobbyHttpController, ChainHttpController, ChainWebhookHttpController, AdminHttpController, AdminPromosHttpController, PromosHttpController, GarageHttpController, LiveHttpController, TelemetryHttpController],
+  controllers: [HealthHttpController, AuthHttpController, RidesHttpController, EconomyHttpController, PoolsHttpController, TicketsHttpController, LobbyHttpController, StatsHttpController, ChainHttpController, ChainWebhookHttpController, AdminHttpController, AdminPromosHttpController, PromosHttpController, GarageHttpController, LiveHttpController, TelemetryHttpController],
 })
 export class PresentationModule {}

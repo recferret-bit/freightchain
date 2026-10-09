@@ -33,7 +33,7 @@ case "$CMD" in
     ;;
   ps)
     docker ps -a -f "label=com.docker.compose.project=$PROJECT" --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}\t{{.RunningFor}}'
-    for s in app postgres; do id="$(cid "$s")"; [ -n "$id" ] && echo "$s restarts: $(docker inspect -f '{{.RestartCount}}' "$id")"; done
+    for s in app postgres redis; do id="$(cid "$s")"; [ -n "$id" ] && echo "$s restarts: $(docker inspect -f '{{.RestartCount}}' "$id")"; done
     docker system df --format 'table {{.Type}}\t{{.Size}}\t{{.Reclaimable}}' 2>/dev/null || true
     df -h / | awk 'NR==2{print "disk /: "$4" free ("$5" used)"}'
     ;;

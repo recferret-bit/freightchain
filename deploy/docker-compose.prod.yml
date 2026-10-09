@@ -25,6 +25,32 @@ services:
       retries: 20
       start_period: 5s
 
+  # the cache for the public statistics (docs/statistics.md): nothing in it is the source of truth, so no persistence – a restart only costs one cold read.
+  # Locked down: a PASSWORD (REDIS_PASSWORD in deploy/.env, hex), NO published port, and it sits ONLY on the `cache` network, which is `internal` (no route to or from
+  # the internet) and shared with the app alone – postgres cannot even see it. Unprivileged user, read-only filesystem.
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    user: redis
+    read_only: true
+    tmpfs:
+      - /data
+    security_opt:
+      - no-new-privileges:true
+    command: ["sh", "-c", 'exec redis-server --requirepass "$$REDIS_PASSWORD" --save "" --appendonly no --maxmemory 64mb --maxmemory-policy allkeys-lru']
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is empty - add REDIS_PASSWORD=<hex> to deploy/.env}
+      REDISCLI_AUTH: ${REDIS_PASSWORD}   # lets the healthcheck's redis-cli authenticate without a password on its command line
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    networks: [cache]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
   app:
     image: freightchain-server:${RELEASE:-latest}
     build:
@@ -38,10 +64,14 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_started   # the app answers from PostgreSQL when the cache is down, so it never waits for it
+    networks: [default, cache]
     environment:
       NODE_ENV: production
       PORT: "3000"
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is empty - add REDIS_PASSWORD=<hex> to deploy/.env}@redis:6379   # the compose service above (hex password: no URL escaping); the statistics API is cached there
       JWT_SECRET: ${JWT_SECRET}
       SESSION_TTL_DAYS: ${SESSION_TTL_DAYS:-7}
       APP_DOMAIN: ${APP_DOMAIN}
@@ -103,6 +133,10 @@ services:
     # loopback ONLY: ports Docker publishes bypass ufw, so a bare "3000:3000" would be open to the internet. nginx on the host is the public door.
     ports:
       - "127.0.0.1:${APP_PORT:-3000}:3000"
+
+networks:
+  cache:
+    internal: true   # no route to the internet, in or out
 
 volumes:
   pgdata:

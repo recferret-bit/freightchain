@@ -121,6 +121,11 @@ check(nightX.night===true&&dayX.night===false&&G.THEMES.some(t=>t.id===dayX.rout
   C.setLoadout({wheel:'gold',truck_color:'<script>',gearbox:7,seat:'x'}); check(C.loadout.wheel==='gold'&&C.loadout.truck_color==='red'&&C.loadout.gearbox==='stick'&&C.loadout.dice==='white'&&C.loadout.needle==='orange'&&!('seat' in C.loadout),'a loadout keeps the known items and falls back to the default of a slot for junk');
   let worn=0; for(const slot of Object.keys(C.COSMETICS)) for(const item of C.COSMETICS[slot]){ C.setLoadout({[slot]:item}); step(2); worn++; }
   C.setLoadout(null); check(worn>=30&&errors.length===0,'every item of every slot draws without an exception ('+worn+' worn)'); }
+// crash counters (the server's statistics): a ride starts at 0, a vehicle contact raises crashV, a building crash raises crashB, both ride along in every report (online.js progress())
+{ G.startRide(); check(st.crashV===0&&st.crashB===0,'a new ride starts with no crashes counted');
+  st.park=false; st.engineOn=true; st.keyOn=true; st.s=net.Sm+400; st.d=2.4; st.psi=0; st.v=14; st.hull=100; step(5);
+  const car=G.spawn('sedan','slow','ahead',9,2.4); if(car){ car.v=0; for(let i=0;i<60*6&&!st.crashV&&st.mode==='drive';i++){ st.v=Math.max(st.v,10); step(1); } }
+  check(!!car&&st.crashV>=1,'a contact with a vehicle is counted (crashV '+st.crashV+')'); }
 out.push(...checks); out.push('errors='+errors.length+(errors[0]?' '+errors[0].message:''));
 console.log(out.join('\n'));
 const failed=checks.filter(c=>c.startsWith('FAIL'));

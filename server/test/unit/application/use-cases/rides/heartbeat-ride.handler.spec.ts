@@ -11,7 +11,7 @@ describe('HeartbeatRideHandler', () => {
   const setup = () => {
     const ctx = unitContext();
     const analytics = new RecordingAnalytics();
-    const handler = new HeartbeatRideHandler(ctx.lookup, ctx.rides, ctx.rules, ctx.clock, analytics, ctx.entropy);
+    const handler = new HeartbeatRideHandler(ctx.lookup, ctx.rides, ctx.rules, ctx.clock, analytics, ctx.entropy, ctx.transactions, ctx.players, ctx.stats);
     return { ctx, analytics, beat: (id: string, r: Partial<RideReport>) => handler.execute(new HeartbeatRideCommand('w', id, report(r))) };
   };
 
@@ -70,5 +70,16 @@ describe('HeartbeatRideHandler', () => {
     ctx.clock.advance(25);
     const later = await beat(ride.id, { s: 400, t: 29 });
     expect(later.challenge && later.challenge.id !== c!.id).toBe(true); // the next one is due by now; the first has closed
+  });
+
+  it('statistics: a report that fails the ride ends it – its distance counts once; an ordinary beat counts nothing yet', async () => {
+    const { ctx, beat } = setup();
+    const ride = await ctx.freeRide('w', true);
+    ctx.clock.advance(3);
+    await beat(ride.id, { s: 20, t: 3, crashesVehicle: 1 });
+    expect(await ctx.stats.player('w')).toMatchObject({ rides: 0, metres: 0 });
+    ctx.clock.advance(2);
+    expect(await beat(ride.id, { s: 9000 })).toMatchObject({ status: 'failed' });
+    expect(await ctx.stats.player('w')).toMatchObject({ rides: 1, ridesCompleted: 0, metres: 20, crashesVehicle: 1 });   // what the ride had before the bad report
   });
 });

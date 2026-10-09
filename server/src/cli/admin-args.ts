@@ -152,3 +152,18 @@ export function parseVerdictRejudge(args: readonly string[]): VerdictRejudgeArgs
   if (typeof limit === 'string') return limit;
   return { verdict: verdict as VerdictRejudgeArgs['verdict'], since, limit, dryRun: v['dry-run'] === true };
 }
+
+export interface StatsReconcileArgs { wallet: string | null; fix: boolean }
+
+/** `stats:reconcile [--wallet ADDRESS] [--fix]` – without --fix it only reports */
+export function parseStatsReconcile(args: readonly string[]): StatsReconcileArgs | string {
+  let parsed;
+  try {
+    parsed = parseArgs({ args: [...args], options: { wallet: { type: 'string' }, fix: { type: 'boolean' } } });
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+  const wallet = parsed.values.wallet?.trim() || null;
+  if (wallet !== null && !/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(wallet)) return '--wallet must be a base58 address';
+  return { wallet, fix: parsed.values.fix === true };
+}

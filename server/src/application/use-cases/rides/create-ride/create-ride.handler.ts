@@ -19,6 +19,7 @@ import { EntropyPort } from '../../../ports/shared/entropy.port.js';
 import { TransactionPort, type TransactionHandle } from '../../../ports/shared/transaction.port.js';
 import { rideCancelled, rideExpired, rideFailed, rideOrdered, rideResumed } from '../../../services/analytics-events.js';
 import { emitAnalytics } from '../../../services/analytics-emit.js';
+import { StatsService } from '../../../services/stats.service.js';
 import { PlayerSessionService } from '../../../services/player-session.service.js';
 import { isDemoWallet, demoScaleOf } from '../../../services/demo.js';
 import { CreateRideCommand } from './create-ride.command.js';
@@ -58,6 +59,7 @@ export class CreateRideHandler implements ICommandHandler<CreateRideCommand, Rid
     private readonly poolTickets: PoolTicketsService,
     private readonly rounds: RoundService,
     private readonly analytics: AnalyticsPort,
+    private readonly stats: StatsService,
   ) {}
 
   async execute({ wallet, tier }: CreateRideCommand): Promise<RideDto> {
@@ -81,6 +83,7 @@ export class CreateRideHandler implements ICommandHandler<CreateRideCommand, Rid
         open.failHeartbeatLost(now);
         await this.rides.save(open, tx);
         failed = open.snapshot();
+        await this.stats.recordRide(failed, tx);
         open = await this.rides.findOpenByWallet(wallet, tx);
       }
       if (open?.isInStatus(RideStatus.Running)) throw new ConflictError('a ride is already in progress');
@@ -111,6 +114,7 @@ export class CreateRideHandler implements ICommandHandler<CreateRideCommand, Rid
       await this.rides.insert(ride, tx);
       return { dto: toRideDto(ride), now, ordered: ride.snapshot(), resumed: null, failed, expired, cancelled, freeRidesLeft: player.freeRides };
     }));
+    if (facts.failed) await this.stats.invalidate(wallet); // a stale ride this call ended joined the statistics
     this.emit(wallet, facts);
     return facts.dto;
   }

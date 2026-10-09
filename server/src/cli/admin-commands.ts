@@ -15,8 +15,9 @@ import type { PoolProps } from '../domain/economy/pool.types.js';
 import { EnvService } from '../infrastructure/config/env.service.js';
 import { RegisterPoolFromChainCommand } from '../application/use-cases/pools/register-pool-from-chain/register-pool-from-chain.command.js';
 import { CrankPoolsCommand } from '../application/use-cases/chain/crank-pools/crank-pools.command.js';
-import { parsePoolRegister, parsePoolSeed, parsePromoCreate, parseTicketsGrant, parseVerdictRejudge, type PoolSeedArgs } from './admin-args.js';
+import { parsePoolRegister, parsePoolSeed, parsePromoCreate, parseTicketsGrant, parseStatsReconcile, parseVerdictRejudge, type PoolSeedArgs } from './admin-args.js';
 import { RejudgeRidesCommand } from '../application/use-cases/admin/rejudge-rides/rejudge-rides.command.js';
+import { ReconcileStatsCommand } from '../application/use-cases/stats/reconcile-stats/reconcile-stats.command.js';
 import { SweepTelemetryCommand } from '../application/use-cases/telemetry/sweep-telemetry/sweep-telemetry.command.js';
 import { SweepSignInsCommand } from '../application/use-cases/auth/sweep-sign-ins/sweep-sign-ins.command.js';
 
@@ -75,6 +76,10 @@ export async function runAdmin(command: string, args: readonly string[]): Promis
     case 'verdict:rejudge': {
       const r = parseVerdictRejudge(args);
       return typeof r === 'string' ? usage(r) : withBuses(({ commands }) => commands.execute(new RejudgeRidesCommand({ verdict: r.verdict, since: r.since, limit: r.limit }, r.dryRun, 'cli')));
+    }
+    case 'stats:reconcile': {
+      const r = parseStatsReconcile(args);
+      return typeof r === 'string' ? usage(r) : withBuses(({ commands }) => commands.execute(new ReconcileStatsCommand(r.wallet, r.fix)));
     }
     case 'retention:sweep':
       return args.length ? usage('retention:sweep takes no arguments') : withBuses(async ({ commands }) => ({ telemetry: await commands.execute(new SweepTelemetryCommand()), signIns: await commands.execute(new SweepSignInsCommand()) }));

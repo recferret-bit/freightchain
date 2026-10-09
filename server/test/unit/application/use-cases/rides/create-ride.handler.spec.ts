@@ -10,7 +10,7 @@ import { aPool } from '../../../../support/pools.js';
 const setup = (price = new StubPrice(), rules = unitRules()) => {
   const ctx = unitContext(rules);
   const analytics = new RecordingAnalytics();
-  const handler = new CreateRideHandler(ctx.players, ctx.rides, ctx.sessions, price, new FixedRules(rules), ctx.transactions, ctx.clock, ctx.entropy, ctx.poolTickets, ctx.rounds, analytics);
+  const handler = new CreateRideHandler(ctx.players, ctx.rides, ctx.sessions, price, new FixedRules(rules), ctx.transactions, ctx.clock, ctx.entropy, ctx.poolTickets, ctx.rounds, analytics, ctx.stats);
   return { ctx, analytics, handler, create: (tier: 'free' | '1h' | '4h' | '8h', wallet = 'w') => handler.execute(new CreateRideCommand(wallet, tier)) };
 };
 
@@ -156,5 +156,18 @@ describe('CreateRideHandler', () => {
       expect((await ctx.reload(free.id)).status).toBe(RideStatus.Cancelled);
       expect((await ctx.storedPlayer('w')).freeRides).toBe(5);
     });
+  });
+
+  it('statistics: the stale running ride a new order clears joins the totals', async () => {
+    const { ctx, create } = setup();
+    const old = await ctx.freeRide('w', true);
+    ctx.clock.advance(7);
+    const running = await ctx.reload(old.id);
+    running.applyReport({ s: 80, t: 7, hull: 100, paused: false, route: null, night: false }, ctx.now(), ctx.rules.get()); await ctx.rides.save(running);
+    ctx.clock.advance(151);
+    await create('free');
+    expect(await ctx.stats.player('w')).toMatchObject({ rides: 1, metres: 80, seconds: 7 });
+    await create('free');   // asking again changes nothing
+    expect(await ctx.stats.player('w')).toMatchObject({ rides: 1 });
   });
 });

@@ -14,6 +14,7 @@ model Player {
   signIns      SignIn[]
   cosmetics    CosmeticUnlock[]
   equipped     CosmeticEquip[]
+  stats        PlayerStats?
 
   @@schema("player")
 }

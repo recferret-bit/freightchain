@@ -5,6 +5,7 @@ import { AchievementService } from './services/achievement.service.js';
 import { PaymentSettlementService } from './services/payment-settlement.service.js';
 import { PlayerSessionService } from './services/player-session.service.js';
 import { RideLookupService } from './services/ride-lookup.service.js';
+import { StatsService } from './services/stats.service.js';
 import { RoundService } from './services/round.service.js';
 import { VerdictService } from './services/verdict.service.js';
 import { AdminProofService } from './services/admin-proof.service.js';
@@ -97,10 +98,14 @@ import { RegisterPoolFromChainHandler } from './use-cases/pools/register-pool-fr
 
 const services: Provider[] = [
   AchievementService, PaymentSettlementService, PlayerSessionService, RideLookupService, RoundService, VerdictService, AdminProofService,
-  PoolTicketsService, PromoCreationService, TicketSettlementService, PoolRegistryService, FinalityService, LiveAccessService,
+  PoolTicketsService, PromoCreationService, TicketSettlementService, PoolRegistryService, FinalityService, LiveAccessService, StatsService,
 ];
 
+import { ReconcileStatsHandler } from './use-cases/stats/reconcile-stats/reconcile-stats.handler.js';
+import { GetStatsHandler } from './use-cases/stats/get-stats/get-stats.handler.js';
+
 const handlers: Provider[] = [
+  GetStatsHandler, ReconcileStatsHandler,
   RequestChallengeHandler, VerifySignInHandler, GetMeHandler, LogoutHandler,
   CreateRideHandler, GetRideHandler, GetPendingRideHandler, StartRideHandler, HeartbeatRideHandler, EndRideHandler,
   GetPaymentInstructionsHandler, ConfirmPaymentHandler, ReconcilePaymentHandler,

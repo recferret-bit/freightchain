@@ -14,7 +14,7 @@ import { PaymentRepositoryPort } from '../../../src/application/ports/economy/pa
 import { RoundRepositoryPort, type RoundEntries } from '../../../src/application/ports/economy/round.repository.port.js';
 import { HealthProbePort } from '../../../src/application/ports/health/health-probe.port.js';
 import { PlayerRepositoryPort } from '../../../src/application/ports/players/player.repository.port.js';
-import { RideQueryPort, type FinishedRideRow, type LeaderboardRow, type LiveRideRow, type RecentRideRow, type RideSummary, type RideTotalsRow, type UpcomingRideRow , type HistoryFilter, type HistoryRideRow, type RejudgeFilter } from '../../../src/application/ports/rides/ride-query.port.js';
+import { RideQueryPort, type FinishedRideRow, type LeaderboardRow, type LiveRideRow, type RecentRideRow, type RideSummary, type UpcomingRideRow , type HistoryFilter, type HistoryRideRow, type RejudgeFilter } from '../../../src/application/ports/rides/ride-query.port.js';
 import { RideRepositoryPort } from '../../../src/application/ports/rides/ride.repository.port.js';
 import { TransactionPort } from '../../../src/application/ports/shared/transaction.port.js';
 import { RideBatchRepositoryPort } from '../../../src/application/ports/telemetry/ride-batch.repository.port.js';
@@ -188,11 +188,6 @@ export class MemoryRideQuery extends RideQueryPort {
       .sort((a, b) => (b.props.endedAt?.getTime() ?? Number.NEGATIVE_INFINITY) - (a.props.endedAt?.getTime() ?? Number.NEGATIVE_INFINITY) || b.seq - a.seq)
       .slice(0, limit)
       .map(({ props: p }) => ({ id: p.id, wallet: p.wallet, tier: p.tier, route: p.route, status: p.status, lastS: p.lastS, endedAt: p.endedAt }));
-  }
-
-  async totals(): Promise<RideTotalsRow> {
-    const done = [...this.db.rides.values()].map((r) => r.props).filter((r) => r.status === RideStatus.Completed);
-    return { shifts: done.length, metres: done.reduce((sum, r) => sum + r.lastS, 0), drivers: new Set(done.map((r) => r.wallet)).size };
   }
 
   async summary(wallet: string): Promise<RideSummary> {

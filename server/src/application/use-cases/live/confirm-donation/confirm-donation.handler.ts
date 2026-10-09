@@ -13,6 +13,7 @@ import { DonationOrderRepositoryPort } from '../../../ports/live/donation-order.
 import { RideEventRepositoryPort } from '../../../ports/live/ride-event.repository.port.js';
 import { RideRepositoryPort } from '../../../ports/rides/ride.repository.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
+import { StatsService } from '../../../services/stats.service.js';
 import { ConfirmDonationCommand } from './confirm-donation.command.js';
 
 /**
@@ -32,6 +33,7 @@ export class ConfirmDonationHandler implements ICommandHandler<ConfirmDonationCo
     private readonly chain: ChainPort,
     private readonly rules: RulesConfigPort,
     private readonly clock: ClockPort,
+    private readonly stats: StatsService,
   ) {}
 
   async execute({ wallet, rideId, orderId, signature }: ConfirmDonationCommand): Promise<ConfirmDonationResultDto> {
@@ -73,9 +75,11 @@ export class ConfirmDonationHandler implements ICommandHandler<ConfirmDonationCo
       if (!event) { const dup = await this.events.findBySignature(signature); if (dup) return dup; }
       if (!event) event = await this.events.insert(asTip('came inside another effect\'s 20 s'));
     } else event = await this.events.insert(EFFECTS[order.effect].game ? asTip(live ? 'is off on this ride' : 'arrived after the ride ended') : make(order.effect, order.note));
+    const inserted = event !== null;   // this call wrote the event (a racing delivery of the same transfer finds it below and counts nothing)
     event ??= await this.events.findBySignature(signature);   // a racing delivery of the same transfer won
     if (!event) throw new ConflictError('the donation could not be recorded – confirm again', 'retry');
     await this.orders.setEvent(order.id, event.id ?? 0);
+    if (inserted && ride) await this.stats.recordDonation(ride.wallet, order.lamports, true).catch((e: unknown) => this.logger.warn(`donation statistics deferred to stats:reconcile: ${e instanceof Error ? e.message : String(e)}`));   // the DRIVER's totals: money that moved
     this.logger.log({ event: 'live-donation', msg: `paid donation ${event.effect} on ride ${order.rideId}`, rideId: order.rideId, wallet: order.wallet, effect: event.effect, signature });
     return event;
   }

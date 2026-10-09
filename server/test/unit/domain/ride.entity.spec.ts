@@ -197,3 +197,25 @@ describe('Ride – dispatch prompts', () => {
     expect(capped.issueChallenge(at(1), 240, { id: 'over', rnd: 0 })).toBeNull();
   });
 });
+
+describe('Ride – crash counters (statistics only)', () => {
+  it('a report raises the running counts; a lower, missing or garbled one never lowers them; whole numbers, capped by the driven time (3 + one per 3 s, never above 200)', () => {
+    const r = running();
+    r.applyReport(report({ s: 10, crashesVehicle: 2, crashesBuilding: 0 }), at(5), rules);
+    expect(r.snapshot()).toMatchObject({ crashesVehicle: 2, crashesBuilding: 0 });
+    r.applyReport(report({ s: 20, crashesVehicle: 1 }), at(10), rules);
+    r.applyReport(report({ s: 30, crashesVehicle: null, crashesBuilding: Number.NaN }), at(15), rules);
+    expect(r.snapshot()).toMatchObject({ crashesVehicle: 2, crashesBuilding: 0 });
+    r.applyReport(report({ s: 40, crashesVehicle: 3.9, crashesBuilding: 1 }), at(20), rules);
+    expect(r.snapshot()).toMatchObject({ crashesVehicle: 3, crashesBuilding: 1 });
+    r.applyReport(report({ s: 50, crashesVehicle: 10 ** 9, crashesBuilding: -4 }), at(25), rules);
+    expect(r.snapshot()).toMatchObject({ crashesVehicle: 11, crashesBuilding: 1 });   // 25 s driven: the cap is 3 + 25 / 3
+  });
+
+  it('a report that fails the ride does not touch them', () => {
+    const r = running();
+    expect(r.applyReport(report({ s: 9000, crashesVehicle: 5 }), at(5), rules)).toBe(false);
+    expect(r.snapshot()).toMatchObject({ status: RideStatus.Failed, crashesVehicle: 0 });
+  });
+});
+

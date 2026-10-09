@@ -106,6 +106,7 @@ Enforced by the server (a refused post is `403 live_feature_off`) and sent to th
 | `ONCHAIN_SESSION_TTL_HOURS` | `24` | max 168 |
 | `WEBHOOK_SECRET` | unset | **Secret**, ≥ 16 chars. Unset = `POST /api/chain/webhook` answers 404 |
 | `CRANK_SECRET` | unset | **Secret** base58 keypair (or `solana-keygen` JSON array) paying the fees of the pool crank: `fail_pool`, `expire_pool`, refunds (8 per tx), `close_pool` of a refunded pool. Fee money only; unset = no crank (players still CLAIM REFUND from their wallet) |
+| `REDIS_URL` | unset | `redis://[:password@]host:6379` – the cache behind `GET /api/stats`, the landing's all-time totals and the profile's driving record (docs/statistics.md). Unset = an in-process cache (dev, tests). Production compose runs a `redis` service and sets it to `redis://redis:6379`. A Redis that is down is a cache miss, never an error |
 | `CRANK_INTERVAL_MS` | `60000` | The crank's schedule (with `CRANK_SECRET` and a program); `0` = only `node dist/cli/index.js pool:crank` |
 | `FEE_PAYER_SECRET` | unset | **Secret** base58 keypair of the gas sponsor – fee money only. Unset = buyers pay their own fee |
 | `FEE_PAYER_MIN_SOL` | `0.05` | Sponsor stops below this balance |

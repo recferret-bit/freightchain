@@ -15,7 +15,7 @@ describe('EndRideHandler', () => {
     const ctx = unitContext();
     const repo = rides ?? ctx.rides;
     const analytics = new RecordingAnalytics();
-    const handler = new EndRideHandler(new RideLookupService(repo), repo, ctx.achievements, ctx.verdicts, ctx.rules, ctx.clock, analytics);
+    const handler = new EndRideHandler(new RideLookupService(repo), repo, ctx.achievements, ctx.verdicts, ctx.rules, ctx.clock, analytics, ctx.transactions, ctx.players, ctx.stats);
     return { ctx, analytics, end: (id: string, outcome: 'shift' | 'failed', r: Partial<RideReport>, reason: string | null = null) => handler.execute(new EndRideCommand('w', id, outcome, report(r), reason)) };
   };
 
@@ -55,7 +55,7 @@ describe('EndRideHandler', () => {
     const ctx = unitContext();
     const ride = await ctx.freeRide('w', true);
     const broken = { evaluate: async () => { throw new Error('pool timeout'); } } as unknown as typeof ctx.achievements;
-    const handler = new EndRideHandler(ctx.lookup, ctx.rides, broken, ctx.verdicts, ctx.rules, ctx.clock, new RecordingAnalytics());
+    const handler = new EndRideHandler(ctx.lookup, ctx.rides, broken, ctx.verdicts, ctx.rules, ctx.clock, new RecordingAnalytics(), ctx.transactions, ctx.players, ctx.stats);
     ctx.clock.advance(10);
     expect(await handler.execute(new EndRideCommand('w', ride.id, 'shift', report({ s: 140, t: 10, hull: 100 }), null))).toMatchObject({ status: 'completed' });
     expect((await ctx.reload(ride.id)).status).toBe('completed');
@@ -78,9 +78,36 @@ describe('EndRideHandler', () => {
       async save(r: Ride) { if (saves++ === 0) throw new VersionConflictError(); return base.rides.save(r); }
     }
     const ride = await base.freeRide('w', true);
-    const handler = new EndRideHandler(new RideLookupService(new RacingRides()), new RacingRides(), base.achievements, base.verdicts, base.rules, base.clock, new RecordingAnalytics());
+    const handler = new EndRideHandler(new RideLookupService(new RacingRides()), new RacingRides(), base.achievements, base.verdicts, base.rules, base.clock, new RecordingAnalytics(), base.transactions, base.players, base.stats);
     base.clock.advance(2);
     expect(await handler.execute(new EndRideCommand('w', ride.id, 'failed', report({ s: 1, t: 2 }), 'crash'))).toMatchObject({ status: 'failed' });
     expect(saves).toBe(2);
+  });
+
+  it('statistics: every ending path counts what was driven – a shift, an early end, a crash, a refused final report – with the game\'s crash counters', async () => {
+    const { ctx, end } = setup();
+    const done = await ctx.freeRide('w', true);
+    ctx.clock.advance(10);
+    await end(done.id, 'shift', { s: 140, t: 10, hull: 100 });
+    const early = await ctx.freeRide('w', true);
+    ctx.clock.advance(3);
+    await end(early.id, 'shift', { s: 40, t: 3, crashesVehicle: 2 });
+    const crash = await ctx.freeRide('w', true);
+    ctx.clock.advance(3);
+    await end(crash.id, 'failed', { s: 12, t: 3, hull: 0, crashesBuilding: 1, crashesVehicle: 999_999 }, 'You crashed into a building');
+    const refused = await ctx.freeRide('w', true);
+    ctx.clock.advance(2);
+    await end(refused.id, 'shift', { s: 5000, t: 2 });   // implausible: failed, and still a ride that started
+    expect(await ctx.stats.player('w')).toMatchObject({ rides: 4, ridesCompleted: 1, metres: 140 + 40 + 12, crashesBuilding: 1, crashesVehicle: 2 + 4 });   // the crash cap of a ride that drove 3 s is 3 + 1
+    expect(await ctx.stats.global()).toMatchObject({ rides: 4, ridesCompleted: 1, drivers: 1 });
+  });
+
+  it('statistics: a crash counter only goes up, and a rejected end writes nothing (the ride stays running, the totals unchanged)', async () => {
+    const { ctx, end } = setup();
+    const ride = await ctx.freeRide('w', true);
+    ctx.clock.advance(5);
+    await end(ride.id, 'shift', { s: 30, t: 5, crashesVehicle: 3 });
+    await expect(end(ride.id, 'shift', { s: 30, t: 5 })).rejects.toThrow(/ride is/);
+    expect(await ctx.stats.player('w')).toMatchObject({ rides: 1, crashesVehicle: 3 });
   });
 });

@@ -8,7 +8,7 @@ import type { LiveFlags } from '../../../../../src/domain/live/live-features.js'
 describe('PostRideEventHandler', () => {
   const setup = (live?: Partial<LiveFlags>) => {
     const ctx = unitContext(unitRules({ live: { chat: 'all', donations: true, freeDonations: true, effects: 'all', ...live } }));
-    const handler = new PostRideEventHandler(ctx.liveAccess, ctx.rideEvents, ctx.clock);
+    const handler = new PostRideEventHandler(ctx.liveAccess, ctx.rideEvents, ctx.clock, ctx.stats);
     return { ctx, post: (wallet: string, id: string, input: RideEventInput) => handler.execute(new PostRideEventCommand(wallet, id, input)) };
   };
   const say = (text: string): RideEventInput => ({ kind: 'message', text });
@@ -99,5 +99,17 @@ describe('PostRideEventHandler', () => {
     await expect(post('fan', ride.id, say('hi'))).rejects.toThrow(new ConflictError('the ride is off the air', 'ride_not_live'));
     ride.finish('failed', 'crash', ctx.now()); await ctx.rides.save(ride);
     await expect(post('fan', ride.id, say('hi'))).rejects.toThrow(new ConflictError('the ride is failed', 'ride_not_live'));
+  });
+
+  it('statistics: a mock donation counts on the DRIVER (no lamports); chat lines count nothing; a refused post counts nothing', async () => {
+    const { ctx, post } = setup();
+    const ride = await ctx.freeRide('driver', true);
+    await post('fan', ride.id, say('hello'));
+    expect(await ctx.stats.player('driver')).toMatchObject({ donations: 0 });
+    await post('fan', ride.id, give('tip'));
+    await expect(post('fan', ride.id, give('tip'))).rejects.toThrow();   // the same 3 s bucket – a 429
+    expect(await ctx.stats.player('driver')).toMatchObject({ donations: 1, donationLamports: 0 });
+    expect(await ctx.stats.player('fan')).toMatchObject({ donations: 0 });
+    expect(await ctx.stats.global()).toMatchObject({ donations: 1 });
   });
 });

@@ -63,13 +63,6 @@ export interface HistoryFilter {
   status: 'completed' | 'abandoned' | 'failed' | null;
 }
 
-/** All-time numbers over completed rides. */
-export interface RideTotalsRow {
-  shifts: number;
-  metres: number;
-  drivers: number;
-}
-
 export interface RideStatsRow {
   started: number;
   completed: number;
@@ -121,8 +114,6 @@ export abstract class RideQueryPort {
   abstract finished(limit: number): Promise<FinishedRideRow[]>;
   /** The replays history: rides that started and ended, newest end first (ties: newer first), filtered, paged by a cursor. */
   abstract history(filter: HistoryFilter): Promise<HistoryRideRow[]>;
-  /** Completed rides: how many, how far, by how many different wallets. */
-  abstract totals(): Promise<RideTotalsRow>;
   abstract summary(wallet: string): Promise<RideSummary>;
   abstract recent(wallet: string, limit: number): Promise<RecentRideRow[]>;
   /** Completed rides ranked by total distance (ties: more rides, earlier first finish, wallet). `roundId` is required for the 'round' board.

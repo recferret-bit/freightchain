@@ -11,6 +11,7 @@ import { PlayerRepositoryPort } from '../../../ports/players/player.repository.p
 import { RideRepositoryPort } from '../../../ports/rides/ride.repository.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
 import { TransactionPort } from '../../../ports/shared/transaction.port.js';
+import { StatsService } from '../../../services/stats.service.js';
 import { rideFailed, rideStarted } from '../../../services/analytics-events.js';
 import { emitAnalytics } from '../../../services/analytics-emit.js';
 import { isDemoWallet } from '../../../services/demo.js';
@@ -39,6 +40,7 @@ export class StartRideHandler implements ICommandHandler<StartRideCommand, RideD
     private readonly transactions: TransactionPort,
     private readonly clock: ClockPort,
     private readonly analytics: AnalyticsPort,
+    private readonly stats: StatsService,
   ) {}
 
   async execute({ wallet, rideId }: StartRideCommand): Promise<RideDto> {
@@ -53,6 +55,7 @@ export class StartRideHandler implements ICommandHandler<StartRideCommand, RideD
         running.failHeartbeatLost(now);
         await this.rides.save(running, tx);
         failed = running.snapshot();
+        await this.stats.recordRide(failed, tx);
       } else if (running) {
         throw new ConflictError('another ride is in progress');
       }
@@ -62,6 +65,7 @@ export class StartRideHandler implements ICommandHandler<StartRideCommand, RideD
       return { dto: toRideDto(saved), started: saved.snapshot(), failed } satisfies StartFacts;
     });
     const demo = (): boolean => isDemoWallet(this.rules.get(), wallet);
+    if (facts.failed) await this.stats.invalidate(wallet);
     if (facts.failed) { const failed = facts.failed; emitAnalytics(this.analytics, () => rideFailed(failed, demo(), 'stale_on_start')); }
     emitAnalytics(this.analytics, () => rideStarted(facts.started, demo()));
     return facts.dto;

@@ -1,3 +1,4 @@
+import type { StatsDto } from '../stats/stats.js';
 import type { TicketBalanceDto, TicketGrantDto } from '../economy/prize-pool.dto.js';
 import type { AchievementDto } from '../achievements/achievement-unlock.entity.js';
 
@@ -88,10 +89,19 @@ export interface ReplaysDto {
 export const REPLAYS_PAGE = 20;
 export const REPLAYS_MAX_PAGE = 50;
 
+/** The landing's "driven, all time" – read from the statistics table (docs/statistics.md): every started ride that ended counts, not only complete shifts. */
 export interface LiveTotalsDto {
+  /** complete shifts */
   shifts: number;
+  /** started rides that ended, whatever the outcome */
+  rides: number;
+  ridesFree: number;
+  ridesPaid: number;
   metres: number;
+  seconds: number;
   drivers: number;
+  crashes: number;
+  donations: number;
 }
 
 export interface LiveFeedDto {
@@ -137,6 +147,8 @@ export interface ProfileDto {
   demo: boolean;
   demoScale: number;
   stats: ProfileStatsDto;
+  /** this rider's running totals (the statistics table): rides, time, distance, crashes, donations on their streams */
+  career: StatsDto;
   recent: RecentRideDto[];
   achievements: AchievementDto[];
   tickets: TicketBalanceDto[];

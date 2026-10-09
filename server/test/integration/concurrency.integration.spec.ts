@@ -1,4 +1,5 @@
 import { CommandBus } from '@nestjs/cqrs';
+import { ReconcileStatsCommand } from '../../src/application/use-cases/stats/reconcile-stats/reconcile-stats.command.js';
 import { SweepStaleRidesCommand } from '../../src/application/use-cases/rides/sweep-stale-rides/sweep-stale-rides.command.js';
 import { GrantDailyFreeRidesCommand } from '../../src/application/use-cases/players/grant-daily-free-rides/grant-daily-free-rides.command.js';
 import { PrismaService } from '../../src/infrastructure/prisma/prisma.service.js';
@@ -488,4 +489,65 @@ describe('concurrency (PostgreSQL)', () => {
       void server;
     }
   });
+
+  it('statistics: riders ending rides at the same moment all land on the one global row – exact sums, and the totals equal what the rides say (no drift)', async () => {
+    const riders = await Promise.all(Array.from({ length: PARALLEL }, () => login()));
+    const ids = await Promise.all(riders.map(async (r) => { const ride = (await r.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body; await r.agent.post(`/api/rides/${ride.id}/start`).expect(200); return ride.id as string; }));
+    sec(5);
+    const ends = await Promise.all(riders.map((r, i) => r.agent.post(`/api/rides/${ids[i]}/end`).send({ outcome: 'failed', s: 10 * (i + 1), t: 5, hull: 0, crashesVehicle: 1, reason: 'crash' })));
+    expect(ends.every((e) => e.status === 200)).toBe(true);
+    const total = Array.from({ length: PARALLEL }, (_, i) => 10 * (i + 1)).reduce((a, b) => a + b, 0);
+    expect((await anon().get('/api/stats').expect(200)).body).toMatchObject({ rides: PARALLEL, metres: total, crashesVehicle: PARALLEL, drivers: PARALLEL });
+    const bus = harness.app.get(CommandBus);
+    expect(await bus.execute(new ReconcileStatsCommand(null, false))).toMatchObject({ checked: PARALLEL, drifted: [], global: null });
+  });
+
+  it('statistics: the sweep, a late heartbeat and /end racing for one ride count it exactly once', async () => {
+    for (let round = 0; round < 4; round++) {
+      const a = await login();
+      const ride = (await a.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
+      await a.agent.post(`/api/rides/${ride.id}/start`).expect(200);
+      sec(5); await a.agent.post(`/api/rides/${ride.id}/heartbeat`).send({ s: 30, t: 5, hull: 100 }).expect(200);
+      sec(160);
+      await Promise.all([
+        harness.app.get(CommandBus).execute(new SweepStaleRidesCommand()),
+        a.agent.post(`/api/rides/${ride.id}/heartbeat`).send({ s: 31, t: 6, hull: 100 }),
+        a.agent.post(`/api/rides/${ride.id}/end`).send({ outcome: 'failed', s: 31, t: 6, hull: 0 }),
+      ]);
+      expect((await a.agent.get('/api/profile').expect(200)).body.career.rides).toBe(1);
+    }
+    expect(await harness.app.get(CommandBus).execute(new ReconcileStatsCommand(null, false))).toMatchObject({ drifted: [], global: null });
+  });
+
+  it('statistics: donations from many spectators in parallel are all counted on the driver', async () => {
+    const driver = await login();
+    const ride = (await driver.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
+    await driver.agent.post(`/api/rides/${ride.id}/start`).expect(200);
+    const fans = await Promise.all(Array.from({ length: PARALLEL }, () => login()));
+    const res = await Promise.all(fans.map((f) => f.agent.post(`/api/watch/${ride.id}/donations`).send({ effect: 'tip' })));
+    const ok = res.filter((r) => r.status === 200).length;
+    expect(ok).toBe(PARALLEL);
+    expect((await driver.agent.get('/api/profile').expect(200)).body.career.donations).toBe(PARALLEL);
+    expect((await anon().get('/api/stats').expect(200)).body.donations).toBe(PARALLEL);
+  });
+
+  it('statistics: a FIRST donation and the driver\'s ride ending at the same moment (no stats row yet) never deadlock – both are counted', async () => {
+    for (let round = 0; round < 6; round++) {
+      const driver = await login(), fan = await login();
+      const ride = (await driver.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
+      await driver.agent.post(`/api/rides/${ride.id}/start`).expect(200);
+      sec(3);
+      const [end, tip] = await Promise.all([
+        driver.agent.post(`/api/rides/${ride.id}/end`).send({ outcome: 'failed', s: 10, t: 3, hull: 0 }),
+        fan.agent.post(`/api/watch/${ride.id}/donations`).send({ effect: 'tip' }),
+      ]);
+      expect(end.status).toBe(200);
+      expect([200, 409]).toContain(tip.status);   // a tip that lands after the end is refused (409) – never a 500
+      const career = (await driver.agent.get('/api/profile').expect(200)).body.career;
+      expect(career.rides).toBe(1);
+      expect(career.donations).toBe(tip.status === 200 ? 1 : 0);
+    }
+    expect(await harness.app.get(CommandBus).execute(new ReconcileStatsCommand(null, false))).toMatchObject({ drifted: [], global: null });
+  });
 });
+

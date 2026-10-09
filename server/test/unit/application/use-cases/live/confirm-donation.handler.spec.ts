@@ -11,7 +11,7 @@ describe('ConfirmDonationHandler', () => {
   const driver = Keypair.generate().publicKey.toBase58(), fan = Keypair.generate().publicKey.toBase58();
   const setup = async (effects: 'all' | 'off' = 'all') => {
     const ctx = unitContext(unitRules({ live: { chat: 'all', donations: true, freeDonations: false, effects } }));
-    const handler = new ConfirmDonationHandler(ctx.donationOrders, ctx.rideEvents, ctx.rides, ctx.chain, ctx.rules, ctx.clock);
+    const handler = new ConfirmDonationHandler(ctx.donationOrders, ctx.rideEvents, ctx.rides, ctx.chain, ctx.rules, ctx.clock, ctx.stats);
     const ride = await ctx.freeRide(driver, true);
     const order = async (effect: EffectId = 'sinkhole') => { const o = DonationOrder.create({ id: ctx.entropy.uuid(), rideId: ride.id, wallet: fan, recipient: driver, effect, note: 'gg', now: ctx.now() }); await ctx.donationOrders.insert(o); return o; };
     const pay = (o: DonationOrder, over: { lamports?: number; destination?: string; memo?: string } = {}) => ctx.chain.addPayment({ payer: fan, destination: over.destination ?? driver, lamports: over.lamports ?? o.lamports, memo: over.memo ?? o.memo });
@@ -57,5 +57,25 @@ describe('ConfirmDonationHandler', () => {
     const o3 = await ended.order('trench');
     ended.ride.finish('shift', null, ended.ctx.now()); await ended.ctx.rides.save(ended.ride);
     expect(((await ended.confirm(o3, ended.pay(o3))) as { event: { effect: string; text: string } }).event).toMatchObject({ effect: 'tip', text: expect.stringMatching(/arrived after the ride ended/) });
+  });
+
+  it('statistics: a paid donation counts once on the DRIVER with its lamports – a re-confirm and a pending answer add nothing', async () => {
+    const { ctx, order, pay, confirm } = await setup();
+    const o = await order();
+    await confirm(o, 'not-there-yet');
+    expect(await ctx.stats.player(driver)).toMatchObject({ donations: 0 });
+    const sig = pay(o);
+    await confirm(o, sig); await confirm(o, sig);
+    expect(await ctx.stats.player(driver)).toMatchObject({ donations: 1, donationLamports: o.lamports });
+    expect(await ctx.stats.player(fan)).toMatchObject({ donations: 0 });
+    expect(await ctx.stats.global()).toMatchObject({ donations: 1, donationLamports: o.lamports });
+  });
+
+  it('statistics: money that moved is counted even when it arrives as a tip (the ride ended)', async () => {
+    const { ctx, ride, order, pay, confirm } = await setup();
+    const o = await order();
+    const stored = await ctx.reload(ride.id); stored.finish('shift', null, ctx.now()); await ctx.rides.save(stored);
+    await confirm(o, pay(o));
+    expect(await ctx.stats.player(driver)).toMatchObject({ donations: 1, donationLamports: o.lamports });
   });
 });

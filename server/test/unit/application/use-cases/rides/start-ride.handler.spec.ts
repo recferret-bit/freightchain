@@ -8,7 +8,7 @@ import { RecordingAnalytics } from '../../../../support/recording-analytics.js';
 const setup = () => {
   const ctx = unitContext();
   const analytics = new RecordingAnalytics();
-  const handler = new StartRideHandler(ctx.lookup, ctx.rides, ctx.players, ctx.cosmetics, ctx.rules, ctx.transactions, ctx.clock, analytics);
+  const handler = new StartRideHandler(ctx.lookup, ctx.rides, ctx.players, ctx.cosmetics, ctx.rules, ctx.transactions, ctx.clock, analytics, ctx.stats);
   return { ctx, analytics, start: (id: string, wallet = 'w') => handler.execute(new StartRideCommand(wallet, id)) };
 };
 
@@ -76,5 +76,20 @@ describe('StartRideHandler', () => {
     expect(await ctx.reload(first.id)).toMatchObject({ status: RideStatus.Failed, reason: 'heartbeat lost' });
     expect(analytics.named('ride_failed').map((e) => e.properties)).toMatchObject([{ ride_id: first.id, fail_code: 'heartbeat_lost', ended_by: 'stale_on_start' }]);
     expect(analytics.named('ride_started').map((e) => e.properties['ride_id'])).toEqual([first.id, second.id]);
+  });
+
+  it('statistics: the stale ride a new start clears joins the totals (what it drove, once)', async () => {
+    const { ctx, start } = setup();
+    const first = await ctx.paidOrder('w');
+    first.markPaid(1, ctx.now()); await ctx.rides.save(first);
+    const second = await ctx.paidOrder('w');
+    second.markPaid(1, ctx.now()); await ctx.rides.save(second);
+    await start(first.id);
+    ctx.clock.advance(5);
+    const running = await ctx.reload(first.id);
+    running.applyReport({ s: 60, t: 5, hull: 100, paused: false, route: null, night: false }, ctx.now(), ctx.rules.get()); await ctx.rides.save(running);
+    ctx.clock.advance(151);
+    await start(second.id);
+    expect(await ctx.stats.player('w')).toMatchObject({ rides: 1, metres: 60, seconds: 5 });   // the second one is running – not counted yet
   });
 });

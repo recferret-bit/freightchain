@@ -1,4 +1,4 @@
-import { parsePoolRegister, parsePoolSeed, parsePromoCreate, parseTicketsGrant, parseVerdictRejudge } from '../../../src/cli/admin-args.js';
+import { parsePoolRegister, parsePoolSeed, parsePromoCreate, parseStatsReconcile, parseTicketsGrant, parseVerdictRejudge } from '../../../src/cli/admin-args.js';
 
 describe('admin CLI arguments', () => {
   it('promo:create – tickets: defaults, every option, UTC-midnight dates', () => {
@@ -68,5 +68,13 @@ describe('admin CLI arguments', () => {
     expect(parseVerdictRejudge(['--since', 'yesterday'])).toMatch(/--since must be a date/);
     expect(parseVerdictRejudge(['--limit', '0'])).toBe('--limit must be a whole number ≥ 1');
     expect(parseVerdictRejudge(['--bogus'])).toMatch(/Unknown option/);
+  });
+
+  it('stats:reconcile [--wallet ADDRESS] [--fix] – report only unless --fix', () => {
+    const w = 'DemoWa11et1111111111111111111111111111111111';
+    expect(parseStatsReconcile([])).toEqual({ wallet: null, fix: false });
+    expect(parseStatsReconcile(['--wallet', w, '--fix'])).toEqual({ wallet: w, fix: true });
+    expect(parseStatsReconcile(['--wallet', 'not a wallet'])).toBe('--wallet must be a base58 address');
+    expect(parseStatsReconcile(['--bogus'])).toMatch(/Unknown option/);
   });
 });

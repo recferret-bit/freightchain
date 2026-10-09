@@ -29,6 +29,9 @@ import { TestHasher } from './recording.js';
 import { MemoryDonationOrderRepository, MemoryRideEventRepository, MemoryRideMuteRepository } from './in-memory/memory-live-repositories.js';
 import { MemoryViewerPresenceAdapter } from '../../src/infrastructure/live/viewer-presence.memory.adapter.js';
 import { MemorySitePresenceAdapter } from '../../src/infrastructure/live/site-presence.memory.adapter.js';
+import { StatsService } from '../../src/application/services/stats.service.js';
+import { MemoryStatsRepository } from './in-memory/memory-stats-repository.js';
+import { MemoryCacheAdapter } from '../../src/infrastructure/cache/memory-cache.adapter.js';
 import { LiveAccessService } from '../../src/application/services/live-access.service.js';
 
 /** Fixed rules for unit tests: 10 s free shift (140 m), treasury configured, one demo wallet. */
@@ -100,6 +103,9 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const rideMutes = new MemoryRideMuteRepository(db);
   const donationOrders = new MemoryDonationOrderRepository(db);
   const liveAccess = new LiveAccessService(rides, rideMutes, rulesPort);
+  const statsRepo = new MemoryStatsRepository(db);
+  const cache = new MemoryCacheAdapter(clock);
+  const stats = new StatsService(statsRepo, cache, clock);
   const sessions = new PlayerSessionService(players, rulesPort, clock, analytics);
   const lookup = new RideLookupService(rides);
   const rounds = new RoundService(roundRepo, rulesPort, transactions, clock, analytics);
@@ -135,7 +141,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
     db, clock, chain, entropy, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, batches, hasher, verdictRepo, verdicts, proofs, signIns, adminActions, adminQuery, health, analytics,
     pools, tickets, promos, cosmetics, promoCreation, orders, poolTickets, ticketSettlement,
     sessions, lookup, rounds, achievements, settlement, now, player, freeRide, paidOrder, reload, storedPlayer,
-    poolChain, chainEvents, chainCursors, sponsoredTxs, registry, rideEvents, viewers, sitePresence, rideMutes, donationOrders, liveAccess,
+    poolChain, chainEvents, chainCursors, sponsoredTxs, registry, rideEvents, viewers, sitePresence, rideMutes, donationOrders, liveAccess, statsRepo, cache, stats,
   };
 }
 export type UnitContext = ReturnType<typeof unitContext>;

@@ -30,6 +30,8 @@ Commands:
   pool:crank   One crank pass now (CRANK_SECRET): fail missed pools, expire unsettled ones, refund their tickets, close refunded pools – by the chain clock
   verdict:rejudge [--status unjudged|verified|flagged|rejected|all] [--since DATE] [--limit N] [--dry-run]
                Judge completed shifts again at the CURRENT verdict rules (after a threshold change) – an admin's decision is kept, a swept recording skipped; audited
+  stats:reconcile [--wallet ADDRESS] [--fix]
+               Recompute the statistics tables (per rider + global) from the rides and donations, report the drift; --fix rewrites the rows (quiet app, see docs/statistics.md)
   retention:sweep
                Run the retention sweeps now (recordings older than TELEMETRY_RETENTION_DAYS, sign-ins older than SIGNIN_RETENTION_DAYS)
   --help       Show this help

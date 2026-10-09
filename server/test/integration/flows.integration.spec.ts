@@ -2,6 +2,7 @@ import { createHarness, type Harness } from '../support/harness.js';
 import { FLOW_ENV, flowScenarios } from '../scenarios/flow.scenarios.js';
 import { httpContractScenarios } from '../scenarios/http-contract.scenarios.js';
 import { LOBBY_ENV, lobbyScenarios } from '../scenarios/lobby.scenarios.js';
+import { STATS_ENV, statsScenarios } from '../scenarios/stats.scenarios.js';
 import { PAYMENTS_ENV, paymentScenarios } from '../scenarios/payments.scenarios.js';
 import { POOLS_ENV, poolScenarios } from '../scenarios/pools.scenarios.js';
 import { TICKET_ORDERS_ENV, ticketOrderScenarios } from '../scenarios/ticket-orders.scenarios.js';
@@ -27,6 +28,7 @@ for (const [name, env, scenarios] of [
   ['admin: review queue, overrides, sign-ins, logs', ADMIN_ENV, adminScenarios],
   ['payments, the prize pool and leaderboards', PAYMENTS_ENV, paymentScenarios],
   ['lobby: live feed, profile, achievements', LOBBY_ENV, lobbyScenarios],
+  ['statistics: rides, time, distance, crashes, donations – per rider and global', STATS_ENV, statsScenarios],
   ['escrowed pools, promo codes and ticket rides', POOLS_ENV, poolScenarios],
   ['promo codes: free rides, cosmetics, scheduling, the admin tab', PROMOS_ENV, promoScenarios],
   ['promo codes: expiry and abuse', PROMOS_ENV, promoAbuseScenarios],

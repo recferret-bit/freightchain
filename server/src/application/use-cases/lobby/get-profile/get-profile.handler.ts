@@ -1,3 +1,4 @@
+import { StatsService } from '../../../services/stats.service.js';
 import { QueryHandler, type IQueryHandler } from '@nestjs/cqrs';
 import { nextFreeRideAt } from '../../../../domain/players/player.dto.js';
 import { RECENT_RIDES_LIMIT, RECENT_GRANTS_LIMIT, type ProfileDto } from '../../../../domain/lobby/lobby.dto.js';
@@ -30,6 +31,7 @@ export class GetProfileHandler implements IQueryHandler<GetProfileQuery, Profile
     private readonly tickets: RideTicketRepositoryPort,
     private readonly orders: TicketOrderRepositoryPort,
     private readonly analytics: AnalyticsPort,
+    private readonly totals: StatsService,
   ) {}
 
   async execute(query: GetProfileQuery): Promise<ProfileDto> {
@@ -42,13 +44,14 @@ export class GetProfileHandler implements IQueryHandler<GetProfileQuery, Profile
       if (unlock.id === 'top-20') continue;
       emitAnalytics(this.analytics, () => achievementUnlocked(wallet, unlock.id, unlock.earnedAt, null, isDemoWallet(this.rules.get(), wallet)));
     }
-    const [spent, recent, achievements, tickets, grants, ordered] = await Promise.all([
-      this.payments.totalsOf(wallet), this.rideQuery.recent(wallet, RECENT_RIDES_LIMIT), this.achievements.list(wallet), this.poolTickets.balances(wallet, now), this.tickets.recentGrants(wallet, RECENT_GRANTS_LIMIT), this.orders.totalsOf(wallet),
+    const [spent, recent, achievements, tickets, grants, ordered, career] = await Promise.all([
+      this.payments.totalsOf(wallet), this.rideQuery.recent(wallet, RECENT_RIDES_LIMIT), this.achievements.list(wallet), this.poolTickets.balances(wallet, now), this.tickets.recentGrants(wallet, RECENT_GRANTS_LIMIT), this.orders.totalsOf(wallet), this.totals.player(wallet),
     ]);
     const rules = this.rules.get();
     return {
       wallet, createdAt: player.createdAt.getTime(), freeRides: player.freeRides, freeRidesMax: player.freeRidesMax, nextFreeRideAt: nextFreeRideAt(player, now), demo: isDemoWallet(rules, wallet), demoScale: demoScaleOf(rules),
       stats: { rides: stats.started, completed: stats.completed, metres: Math.round(stats.metres), bestMetres: Math.round(stats.best), paidRides: spent.count, spentLamports: spent.lamports + ordered.lamports, ticketsBought: ordered.tickets },
+      career,
       recent: recent.map((r) => ({
         tier: r.tier, status: r.status, distance: Math.round(r.lastS), hull: r.hull === null ? null : Math.round(r.hull), route: r.route, timeScale: r.timeScale,
         startedAt: r.startedAt.getTime(), endedAt: r.endedAt?.getTime() ?? null, verdict: r.verdict,

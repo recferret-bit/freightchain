@@ -105,6 +105,10 @@ gunzip -c ../backups/db-<tag>.sql.gz | docker compose -p freightchain-prod --env
 ## Icons
 The tab icon, the Phantom connect-popup logo and the home-screen icon are plain files in `client/` (`favicon.ico`, `icons/`, `manifest.webmanifest`), served from the root of every host and cached for a day. Nothing to configure here; see AGENTS.md "App icon" to change the design.
 
+## Redis (the statistics cache)
+
+`docker-compose.prod.yml` runs a `redis` service (redis:7-alpine, 64 MB, LRU, no persistence): **password** `REDIS_PASSWORD` (hex, in `deploy/.env` – `deploy:init` generates it; on an existing `.env` add it with `echo "REDIS_PASSWORD=$(openssl rand -hex 24)" >> deploy/.env`; `validate-env` and compose refuse a deploy without it), **no published port**, only on the `cache` network (`internal: true`: no internet route, shared with the app alone – PostgreSQL cannot see it), unprivileged user, read-only filesystem. The app's `REDIS_URL` is built from the password by the compose file. `release.sh` starts it with PostgreSQL; the smoke test checks `GET /api/stats`. It caches the public statistics for 15 s – losing it costs nothing (a cache miss reads PostgreSQL). Repair drifted statistics: the `stats-reconcile` skill; on the box `docker compose … exec app node dist/cli/index.js stats:reconcile [--fix]`.
+
 ## Caveats
 - Nothing is deployed from the working tree – only the commit. `--allow-dirty` just silences the guard.
 - One server, brief downtime while the app container is swapped (no blue/green).

@@ -40,6 +40,10 @@ import { CosmeticRepositoryPort } from '../../src/application/ports/players/cosm
 import { PromoRepositoryPort } from '../../src/application/ports/economy/promo.repository.port.js';
 import { RideTicketRepositoryPort } from '../../src/application/ports/players/ride-ticket.repository.port.js';
 import { MemoryChainCursorRepository, MemoryChainEventRepository, MemorySponsoredTxRepository } from './in-memory/memory-repositories.js';
+import { CachePort } from '../../src/application/ports/shared/cache.port.js';
+import { MemoryCacheAdapter } from '../../src/infrastructure/cache/memory-cache.adapter.js';
+import { MemoryStatsRepository } from './in-memory/memory-stats-repository.js';
+import { StatsRepositoryPort } from '../../src/application/ports/stats/stats.repository.port.js';
 import { MemoryDonationOrderRepository, MemoryRideEventRepository, MemoryRideMuteRepository } from './in-memory/memory-live-repositories.js';
 import { DonationOrderRepositoryPort } from '../../src/application/ports/live/donation-order.repository.port.js';
 import { RideMuteRepositoryPort } from '../../src/application/ports/live/ride-mute.repository.port.js';
@@ -115,7 +119,8 @@ export async function createHarness(persistence: Persistence, env: Record<string
       .overrideProvider(SponsoredTxRepositoryPort).useValue(new MemorySponsoredTxRepository(memory))
       .overrideProvider(RideEventRepositoryPort).useValue(new MemoryRideEventRepository(memory))
       .overrideProvider(RideMuteRepositoryPort).useValue(new MemoryRideMuteRepository(memory))
-      .overrideProvider(DonationOrderRepositoryPort).useValue(new MemoryDonationOrderRepository(memory));
+      .overrideProvider(DonationOrderRepositoryPort).useValue(new MemoryDonationOrderRepository(memory))
+      .overrideProvider(StatsRepositoryPort).useValue(new MemoryStatsRepository(memory));
   }
   const moduleRef = await builder.compile();
   const app = moduleRef.createNestApplication();
@@ -131,6 +136,8 @@ export async function createHarness(persistence: Persistence, env: Record<string
       poolChain.reset();
       memory.reset();
       if (prisma) await truncateAllTables(prisma);
+      const cache = app.get(CachePort);   // the cached statistics describe the database that was just wiped
+      if (cache instanceof MemoryCacheAdapter) cache.clear();
     },
     close: () => app.close(),
   };

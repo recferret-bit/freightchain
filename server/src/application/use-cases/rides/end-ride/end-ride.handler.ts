@@ -8,13 +8,16 @@ import { progressMilestones, progressRatio } from '../../../../domain/rides/ride
 import { ConflictError } from '../../../../domain/shared/errors.js';
 import { AnalyticsPort } from '../../../ports/analytics/analytics.port.js';
 import { RulesConfigPort } from '../../../ports/config/rules-config.port.js';
+import { PlayerRepositoryPort } from '../../../ports/players/player.repository.port.js';
 import { RideRepositoryPort } from '../../../ports/rides/ride.repository.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
+import { TransactionPort } from '../../../ports/shared/transaction.port.js';
 import { AchievementService, type FreshUnlock } from '../../../services/achievement.service.js';
 import { achievementUnlocked, rideAbandoned, rideCompleted, rideFailed, rideProgressed } from '../../../services/analytics-events.js';
 import { emitAnalytics } from '../../../services/analytics-emit.js';
 import { isDemoWallet } from '../../../services/demo.js';
 import { RideLookupService } from '../../../services/ride-lookup.service.js';
+import { StatsService } from '../../../services/stats.service.js';
 import { VerdictService } from '../../../services/verdict.service.js';
 import { withVersionRetry } from '../../../services/version-retry.js';
 import { EndRideCommand } from './end-ride.command.js';
@@ -45,19 +48,25 @@ export class EndRideHandler implements ICommandHandler<EndRideCommand, RideDto> 
     private readonly rules: RulesConfigPort,
     private readonly clock: ClockPort,
     private readonly analytics: AnalyticsPort,
+    private readonly transactions: TransactionPort,
+    private readonly players: PlayerRepositoryPort,
+    private readonly stats: StatsService,
   ) {}
 
   async execute({ wallet, rideId, outcome, report, reason }: EndRideCommand): Promise<RideDto> {
-    const facts = await withVersionRetry(async () => {
-      const ride = await this.lookup.require(rideId, wallet);
+    const facts = await withVersionRetry(() => this.transactions.run(async (tx) => {
+      await this.players.findByWalletForUpdate(wallet, tx);   // the player row first, like every writer of the wallet's rides: the statistics insert checks that row, so taking it later would deadlock with the sweep
+      const ride = await this.lookup.require(rideId, wallet, tx);
       if (!ride.isInStatus(RideStatus.Running)) throw new ConflictError(`ride is ${ride.status}`);
       const now = this.clock.now();
       const before = progressRatio(ride.driveSeconds, ride.minSeconds, ride.distance, ride.completeDist);
       const accepted = ride.applyReport(report, now, this.rules.get());
       if (accepted) ride.finish(outcome, reason, now);
-      const saved = await this.rides.save(ride);
+      const saved = await this.rides.save(ride, tx);
+      await this.stats.recordRide(saved.snapshot(), tx); // the ride ended (completed, abandoned or failed): its metres, seconds and crashes join the totals in the same commit
       return { props: saved.snapshot(), before, accepted, now } satisfies EndFacts;
-    });
+    }));
+    await this.stats.invalidate(wallet);
     this.emitVerdict(wallet, facts);
     const unlocked = await this.achievements.evaluate(wallet, rideId).catch((error: unknown) => {
       this.logger.warn(`achievements for ride ${rideId} deferred to the next profile read: ${error instanceof Error ? error.message : String(error)}`);

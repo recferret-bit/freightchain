@@ -59,7 +59,8 @@ describe('RidesHttpController', () => {
     });
     it('heartbeat is STRICT: a missing / negative / huge distance or a garbage hull is a 400; extras are tolerated', () => {
       for (const bad of [{}, { s: 'abc' }, { s: -1 }, { s: 1e8 }, { s: 1, hull: 'x' }]) expect(heartbeatBodySchema.safeParse(bad).success, JSON.stringify(bad)).toBe(false);
-      expect(heartbeatBodySchema.parse({ s: '12.5', t: 'later', hull: null, paused: 'yes', route: 42, night: 1 })).toEqual({ s: 12.5, t: null, hull: null, paused: false, route: null, night: false });
+      expect(heartbeatBodySchema.parse({ s: '12.5', t: 'later', hull: null, paused: 'yes', route: 42, night: 1 })).toEqual({ s: 12.5, t: null, hull: null, paused: false, route: null, night: false, crashesVehicle: null, crashesBuilding: null });
+      expect(heartbeatBodySchema.parse({ s: 1, crashesVehicle: '3', crashesBuilding: 'x' })).toMatchObject({ crashesVehicle: 3, crashesBuilding: null }); // the crash counters are lenient – statistics, never a 400
       expect(heartbeatBodySchema.parse({ s: 1, route: 'x'.repeat(100) }).route).toHaveLength(64);
     });
     it('a recording batch is STRICT: typed rows, capped arrays, a hex hash or none', () => {
@@ -72,7 +73,7 @@ describe('RidesHttpController', () => {
       }
     });
     it('end is LENIENT: garbled values are dropped, never an error – but the outcome must be known', () => {
-      expect(endRideBodySchema.parse({ outcome: 'shift', s: 'NaN', t: 'x', hull: 'y', reason: 42 })).toEqual({ outcome: 'shift', reason: null, report: { s: null, t: null, hull: null, paused: false, route: null, night: false } });
+      expect(endRideBodySchema.parse({ outcome: 'shift', s: 'NaN', t: 'x', hull: 'y', reason: 42 })).toEqual({ outcome: 'shift', reason: null, report: { s: null, t: null, hull: null, paused: false, route: null, night: false, crashesVehicle: null, crashesBuilding: null } });
       expect(endRideBodySchema.parse({ outcome: 'failed', s: -5 }).report.s).toBeNull();
       expect(endRideBodySchema.parse({ outcome: 'failed', reason: 'r'.repeat(300) }).reason).toHaveLength(200);
       expect(endRideBodySchema.safeParse({ outcome: 'won' }).success).toBe(false);

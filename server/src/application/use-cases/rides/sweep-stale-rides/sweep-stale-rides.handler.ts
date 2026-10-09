@@ -7,6 +7,7 @@ import { RideQueryPort } from '../../../ports/rides/ride-query.port.js';
 import { RideRepositoryPort } from '../../../ports/rides/ride.repository.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
 import { TransactionPort } from '../../../ports/shared/transaction.port.js';
+import { StatsService } from '../../../services/stats.service.js';
 import { rideFailed } from '../../../services/analytics-events.js';
 import { emitAnalytics } from '../../../services/analytics-emit.js';
 import { isDemoWallet } from '../../../services/demo.js';
@@ -32,6 +33,7 @@ export class SweepStaleRidesHandler implements ICommandHandler<SweepStaleRidesCo
     private readonly rules: RulesConfigPort,
     private readonly clock: ClockPort,
     private readonly analytics: AnalyticsPort,
+    private readonly stats: StatsService,
   ) {}
 
   async execute(): Promise<SweepStaleRidesResultDto> {
@@ -45,7 +47,9 @@ export class SweepStaleRidesHandler implements ICommandHandler<SweepStaleRidesCo
         const now = this.clock.now();
         if (!ride || !ride.isStaleRunning(now, rules)) return null;
         ride.failHeartbeatLost(now);
-        return (await this.rides.save(ride, tx)).snapshot();
+        const props = (await this.rides.save(ride, tx)).snapshot();
+        await this.stats.recordRide(props, tx);
+        return props;
       }).catch((error: unknown) => {
         // heartbeat and /end write the ride with its optimistic version: one landed in between, so the ride is alive (or ended) – skip it, the next
         // sweep looks again; never let one ride stop the sweep
@@ -54,6 +58,7 @@ export class SweepStaleRidesHandler implements ICommandHandler<SweepStaleRidesCo
       });
       if (!failed) { skipped++; continue; }
       ended++;
+      await this.stats.invalidate(wallet);
       emitAnalytics(this.analytics, () => rideFailed(failed, isDemoWallet(rules, wallet), 'stale_sweep'));
     }
     return { ended, skipped };

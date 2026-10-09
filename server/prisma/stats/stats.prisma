@@ -1,0 +1,42 @@
+// Core metrics, kept as running totals so the landing, the lobby and /api/stats never scan the rides (docs/statistics.md). Written ONLY with atomic
+// increments (`SET x = x + n`, never read-modify-write) by StatsService: when a ride ENDS (any path: /end, the heartbeat that fails it, the stale-ride
+// sweep, a new ride clearing a stale one) the driver's PlayerStats row first, then the GlobalStats row, in the ride's own transaction; when a donation lands
+// on a stream, the driver's row, then the global one. `stats:reconcile` (skill stats-reconcile) recomputes both from rides + feed events and fixes drift.
+// What counts: every STARTED ride that ended (completed, abandoned, failed) – metres and seconds are what was really driven, so a failed shift still counts.
+
+// One row per rider who ever finished a ride (wallet = PK).
+model PlayerStats {
+  wallet          String   @id
+  player          Player   @relation(fields: [wallet], references: [wallet], onDelete: Cascade)
+  rides           Int      @default(0) // started rides that ended, whatever the outcome (= ridesFree + ridesPaid)
+  ridesFree       Int      @default(0) // … free rides (tier free)
+  ridesPaid       Int      @default(0) // … paid rides (tickets)
+  ridesCompleted  Int      @default(0) // … of which complete shifts
+  seconds         Float    @default(0) // driven (game) seconds
+  metres          Float    @default(0)
+  crashesVehicle  Int      @default(0) // truck ⇄ car / truck / bus … (every contact, bumps included)
+  crashesBuilding Int      @default(0) // truck ⇄ roadside building (always fatal)
+  donations       Int      @default(0) // donations that landed on this driver's streams (mock + paid)
+  donationLamports BigInt  @default(0) // … lamports of the PAID ones only (money that moved)
+  updatedAt       DateTime
+
+  @@schema("stats")
+}
+
+// The whole game in one row (id is always 1).
+model GlobalStats {
+  id              Int      @id
+  rides           Int      @default(0)
+  ridesFree       Int      @default(0)
+  ridesPaid       Int      @default(0)
+  ridesCompleted  Int      @default(0)
+  seconds         Float    @default(0)
+  metres          Float    @default(0)
+  crashesVehicle  Int      @default(0)
+  crashesBuilding Int      @default(0)
+  donations       Int      @default(0)
+  donationLamports BigInt  @default(0)
+  updatedAt       DateTime
+
+  @@schema("stats")
+}

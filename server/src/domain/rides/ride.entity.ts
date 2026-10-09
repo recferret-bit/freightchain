@@ -9,7 +9,7 @@ import {
 import { BATCH_SEQ_SLACK, GAME_TIME_FACTOR, GAME_TIME_SLACK_SECONDS, MIN_BATCH_SECONDS, RECORDING_BYTES_PER_SECOND, RECORDING_BYTES_SLACK, type RecordingAllowance } from '../telemetry/telemetry-rules.js';
 import {
   DRIVE_CREDIT_SLACK, DRIVE_CREDIT_SLACK_SECONDS, MAX_SPEED, REASON_MAX_LENGTH, SLACK_METRES, SPEED_SLACK,
-  completeDist, isRouteId, type RideTimingRules,
+  completeDist, crashCap, isRouteId, type RideTimingRules,
 } from './ride-rules.js';
 
 export interface RideProps {
@@ -34,6 +34,9 @@ export interface RideProps {
   /** the cosmetics worn when the ride started (null = all classic) */
   loadout: Loadout | null;
   nightSeconds: number;
+  /** truck ⇄ vehicle / building contacts, as the game counts them (statistics only – only ever raised by a report) */
+  crashesVehicle: number;
+  crashesBuilding: number;
   paused: boolean;
   startedAt: Date | null;
   lastHbAt: Date | null;
@@ -72,7 +75,7 @@ export class Ride {
 
   private static blank(): Omit<RideProps, 'id' | 'wallet' | 'tier' | 'seed' | 'minSeconds' | 'completeDist' | 'status' | 'createdAt'> {
     return {
-      timeScale: 1, priceUsd: 0, lamports: 0, solUsd: null, quoteExpiresAt: null, roundId: null, poolId: null, paidAt: null, route: null, loadout: null, nightSeconds: 0, paused: false,
+      timeScale: 1, priceUsd: 0, lamports: 0, solUsd: null, quoteExpiresAt: null, roundId: null, poolId: null, paidAt: null, route: null, loadout: null, nightSeconds: 0, crashesVehicle: 0, crashesBuilding: 0, paused: false,
       startedAt: null, lastHbAt: null, lastS: 0, lastT: 0, driveSeconds: 0, hull: null, endedAt: null, reason: null, challenges: [], nextChallengeAt: null, version: 1,
     };
   }
@@ -224,6 +227,8 @@ export class Ride {
     this.p.route = isRouteId(report.route) ? report.route : this.p.route;
     this.p.nightSeconds += report.night ? credit : 0;
     this.p.paused = report.paused;
+    this.p.crashesVehicle = raised(this.p.crashesVehicle, report.crashesVehicle, crashCap(this.p.driveSeconds));
+    this.p.crashesBuilding = raised(this.p.crashesBuilding, report.crashesBuilding, crashCap(this.p.driveSeconds));
     return true;
   }
 
@@ -274,4 +279,10 @@ export class Ride {
   private mustBe(...allowed: RideStatus[]): void {
     if (!allowed.includes(this.p.status)) throw new ConflictError(`ride is ${this.p.status}`);
   }
+}
+
+/** a running counter only ever goes up, whole numbers, capped by the ride's driven time (crashCap); a missing / garbled value leaves it alone */
+function raised(current: number, reported: number | null | undefined, cap: number): number {
+  if (reported === null || reported === undefined || !Number.isFinite(reported)) return current;
+  return Math.max(current, Math.min(cap, Math.floor(reported)));
 }

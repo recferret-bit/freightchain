@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { pad, sol, km, left, dur, short, hue, hours, ago, plural, TIER, TIER_LONG, ROUTE } from '../src/format.js';
+import { pad, sol, km, left, dur, short, hue, hours, driven, ago, plural, TIER, TIER_LONG, ROUTE } from '../src/format.js';
 
 test('pad: two digits, floors fractions', () => { assert.equal(pad(5), '05'); assert.equal(pad(12.9), '12'); assert.equal(pad(0), '00'); });
 
@@ -28,6 +28,7 @@ test('hue: stable and inside the colour wheel', () => {
   assert.equal(hue(w), hue(w)); assert.ok(hue(w) >= 0 && hue(w) < 360); assert.notEqual(hue('aaaa'), hue('aaab'));
 });
 
+test('driven: seconds below a minute, minutes below an hour, then hours with one decimal', () => { assert.equal(driven(0), '0 s'); assert.equal(driven(19.4), '19 s'); assert.equal(driven(630), '11 min'); assert.equal(driven(3600), '1.0 h'); assert.equal(driven(37_800), '10.5 h'); });
 test('hours: minutes below an hour, whole hours above', () => { assert.equal(hours(300), '5 min'); assert.equal(hours(1800), '30 min'); assert.equal(hours(3600), '1 h'); assert.equal(hours(28_800), '8 h'); });
 
 test('ago: coarse relative time', () => {

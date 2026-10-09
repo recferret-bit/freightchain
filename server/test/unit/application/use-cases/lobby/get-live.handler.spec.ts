@@ -12,7 +12,7 @@ describe('GetLiveHandler', () => {
     first.applyReport({ s: 70, t: 5, hull: 80, paused: true, route: 'siberia', night: false }, ctx.now(), ctx.rules.get());
     await ctx.rides.save(first);
     await ctx.freeRide('carol'); // not started
-    const feed = await new GetLiveHandler(ctx.rideQuery, ctx.rules, ctx.clock, ctx.sitePresence, ctx.viewers).execute();
+    const feed = await new GetLiveHandler(ctx.rideQuery, ctx.rules, ctx.clock, ctx.sitePresence, ctx.viewers, ctx.stats).execute();
     expect(feed.now).toBe(ctx.clock.ms);
     expect(feed.rides.map((r) => r.wallet)).toEqual(['bob', 'alice']);
     expect(feed.rides[1]).toMatchObject({ tier: 'free', route: 'siberia', paused: true, hull: 80, distance: 70, driveSeconds: 5, minSeconds: 10, completeDist: 140, sinceBeat: 0, progress: 0.5 });
@@ -24,10 +24,10 @@ describe('GetLiveHandler', () => {
     const ctx = unitContext();
     await ctx.freeRide('alice', true);
     ctx.clock.advance(151);
-    expect((await new GetLiveHandler(ctx.rideQuery, ctx.rules, ctx.clock, ctx.sitePresence, ctx.viewers).execute()).rides).toEqual([]);
+    expect((await new GetLiveHandler(ctx.rideQuery, ctx.rules, ctx.clock, ctx.sitePresence, ctx.viewers, ctx.stats).execute()).rides).toEqual([]);
   });
 
-  const feed = (ctx: ReturnType<typeof unitContext>) => new GetLiveHandler(ctx.rideQuery, ctx.rules, ctx.clock, ctx.sitePresence, ctx.viewers).execute();
+  const feed = (ctx: ReturnType<typeof unitContext>) => new GetLiveHandler(ctx.rideQuery, ctx.rules, ctx.clock, ctx.sitePresence, ctx.viewers, ctx.stats).execute();
 
   it('next up: paid shifts that have not started, as wallet + tier + length + paid time – no ride id', async () => {
     const ctx = unitContext();
@@ -53,7 +53,7 @@ describe('GetLiveHandler', () => {
 
   it('who is online: the polling page counts (≤ 3 ids per address), signed-in wallets and drivers are players, watchers from the watch pages', async () => {
     const ctx = unitContext();
-    const handler = new GetLiveHandler(ctx.rideQuery, ctx.rules, ctx.clock, ctx.sitePresence, ctx.viewers);
+    const handler = new GetLiveHandler(ctx.rideQuery, ctx.rules, ctx.clock, ctx.sitePresence, ctx.viewers, ctx.stats);
     const ride = await ctx.freeRide('driver', true);
     ctx.viewers.seen(ride.id, '10.0.0.9', 'watcher-1', ctx.now());
     await handler.execute(new GetLiveQuery('visitor-aaaa', 'landing', '10.0.0.1', null));
@@ -70,7 +70,7 @@ describe('GetLiveHandler', () => {
 
   it('a closing page (leave) stops counting at once', async () => {
     const ctx = unitContext();
-    const handler = new GetLiveHandler(ctx.rideQuery, ctx.rules, ctx.clock, ctx.sitePresence, ctx.viewers);
+    const handler = new GetLiveHandler(ctx.rideQuery, ctx.rules, ctx.clock, ctx.sitePresence, ctx.viewers, ctx.stats);
     await handler.execute(new GetLiveQuery('visitor-aaaa', 'lobby', '10.0.0.1', 'W'));
     expect((await handler.execute(new GetLiveQuery())).online.browsing).toBe(1);
     expect((await handler.execute(new GetLiveQuery('visitor-aaaa', 'lobby', '10.0.0.1', 'W', true))).online).toMatchObject({ browsing: 0, players: 0 });
@@ -79,5 +79,17 @@ describe('GetLiveHandler', () => {
   it('totals: zeros on an empty feed', async () => {
     expect(await feed(unitContext())).toMatchObject({ rides: [], upcoming: [], recent: [], totals: { shifts: 0, metres: 0, drivers: 0 } });
   });
-});
 
+  it('totals come from the statistics: every ended ride counts (not only complete shifts), plus time, crashes and donations', async () => {
+    const ctx = unitContext();
+    expect((await feed(ctx)).totals).toEqual({ shifts: 0, rides: 0, ridesFree: 0, ridesPaid: 0, metres: 0, seconds: 0, drivers: 0, crashes: 0, donations: 0 });
+    const ride = await ctx.freeRide('alice', true);
+    ctx.clock.advance(4);
+    ride.applyReport({ s: 55, t: 4, hull: 90, paused: false, route: null, night: false, crashesVehicle: 2, crashesBuilding: 1 }, ctx.now(), ctx.rules.get());
+    ride.finish('failed', 'crash', ctx.now());
+    await ctx.rides.save(ride);
+    await ctx.stats.recordRide(ride.snapshot());
+    await ctx.stats.recordDonation('alice', 0, false);
+    expect((await feed(ctx)).totals).toEqual({ shifts: 0, rides: 1, ridesFree: 1, ridesPaid: 0, metres: 55, seconds: 4, drivers: 1, crashes: 3, donations: 1 });
+  });
+});

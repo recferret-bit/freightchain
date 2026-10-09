@@ -66,6 +66,8 @@ if (admin) {   // admin.*: nginx basic auth first (credentials from SMOKE_ADMIN_
 }
 if (split) check('the API host serves no pages (GET / is 404)', (await get('/')).status === 404);
 if (split) check('the API host does not serve the admin API (only admin.* does)', (await get('/api/admin/overview')).status === 404);
+const stats = await get('/api/stats'), statsBody = await stats.json().catch(() => ({}));
+check('statistics: GET /api/stats is public and answers the totals (cached – Redis)', stats.status === 200 && typeof statsBody.rides === 'number' && typeof statsBody.ridesFree === 'number' && typeof statsBody.drivers === 'number', `${stats.status} ${JSON.stringify(statsBody).slice(0, 100)}`);
 const ready = await get('/api/health/ready'), readyBody = await ready.json().catch(() => ({}));
 // live streams (read-only): the public watch API is mounted (an unknown ride is a 404 problem, not a route miss) and the live feed carries ride ids
 const watchMiss = await get('/api/watch/00000000-0000-4000-8000-000000000000'), watchBody = await watchMiss.json().catch(() => ({}));

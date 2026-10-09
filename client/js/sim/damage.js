@@ -23,7 +23,7 @@ export function collide(dt) {   // returns the reason the ride is over when the 
       c.cool = Math.max(0, c.cool - dt); if (c.dead || c.cool > 0) continue;
       const ds = c.s - st.s, dl = c.lat - st.d, f = ds * cp + dl * sp, r = -ds * sp + dl * cp;   // prop in the truck's own frame
       if (f < TRUCK_BACK - c.rf || f > TRUCK_FRONT + c.rf || Math.abs(r) > TRUCK_HALF_W + c.rl) continue;   // rf/rl: reach along / across the road (guardrails are long and thin)
-      if (c.kind === 'building') { st.hull = 0; st.crash = 1; st.flash = 1; audio.crash(1); return 'You crashed into a building – the truck is a wreck.'; }   // any contact with a building is fatal
+      if (c.kind === 'building') { st.crashB++; st.hull = 0; st.crash = 1; st.flash = 1; audio.crash(1); return 'You crashed into a building – the truck is a wreck.'; }   // any contact with a building is fatal
       hit(c, f);
     }
   }

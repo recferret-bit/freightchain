@@ -1,4 +1,5 @@
 import { Module, type Provider } from '@nestjs/common';
+import { EnvService } from './config/env.service.js';
 import { AchievementRepositoryPort } from '../application/ports/achievements/achievement.repository.port.js';
 import { ChallengeRepositoryPort } from '../application/ports/auth/challenge.repository.port.js';
 import { SignatureVerifierPort } from '../application/ports/auth/signature-verifier.port.js';
@@ -83,6 +84,11 @@ import { RideMuteRepositoryPort } from '../application/ports/live/ride-mute.repo
 import { RideMutePrismaRepository } from './prisma/repositories/ride-mute.prisma.repository.js';
 import { DonationOrderRepositoryPort } from '../application/ports/live/donation-order.repository.port.js';
 import { DonationOrderPrismaRepository } from './prisma/repositories/donation-order.prisma.repository.js';
+import { CachePort } from '../application/ports/shared/cache.port.js';
+import { StatsRepositoryPort } from '../application/ports/stats/stats.repository.port.js';
+import { StatsPrismaRepository } from './prisma/repositories/stats.prisma.repository.js';
+import { MemoryCacheAdapter } from './cache/memory-cache.adapter.js';
+import { RedisCacheAdapter } from './cache/redis-cache.adapter.js';
 import { MemoryViewerPresenceAdapter } from './live/viewer-presence.memory.adapter.js';
 import { SitePresencePort } from '../application/ports/live/site-presence.port.js';
 import { MemorySitePresenceAdapter } from './live/site-presence.memory.adapter.js';
@@ -129,6 +135,8 @@ const ports: Provider[] = [
   { provide: RideMuteRepositoryPort, useClass: RideMutePrismaRepository },
   { provide: DonationOrderRepositoryPort, useClass: DonationOrderPrismaRepository },
   { provide: AnalyticsPort, useClass: PostHogAnalyticsAdapter },
+  { provide: StatsRepositoryPort, useClass: StatsPrismaRepository },
+  { provide: CachePort, inject: [EnvService, ClockPort], useFactory: (env: EnvService, clock: ClockPort): CachePort => (env.redisUrl ? new RedisCacheAdapter(env.redisUrl, clock) : new MemoryCacheAdapter(clock)) },
 ];
 
 const portTokens = ports.map((p) => (p as { provide: unknown }).provide as typeof ClockPort);

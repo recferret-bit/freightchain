@@ -64,6 +64,7 @@ export class EnvService {
   get solanaRpcFallbacks(): string[] { return this.env.SOLANA_RPC_FALLBACKS.split(',').map((u) => u.trim()).filter((u) => u.length > 0); }
   get solanaCommitment(): 'confirmed' | 'finalized' { return this.env.SOLANA_COMMITMENT; }
   get watchIntervalMs(): number { return this.env.WATCH_INTERVAL_MS; }
+  get redisUrl(): string | undefined { return this.env.REDIS_URL; }
   get crankIntervalMs(): number { return this.env.CRANK_INTERVAL_MS; }
   get feePayerMinSol(): number { return this.env.FEE_PAYER_MIN_SOL; }
   get sponsorPerWalletPerDay(): number { return this.env.SPONSOR_PER_WALLET_PER_DAY; }

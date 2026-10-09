@@ -3,7 +3,7 @@ import type { Prisma, RideStatus as RideStatusRow } from '@prisma/client';
 import type { LeaderboardBoard } from '../../../domain/economy/economy.dto.js';
 import {
   type RejudgeFilter,
-  RideQueryPort, type FinishedRideRow, type HistoryFilter, type HistoryRideRow, type LeaderboardRow, type LiveRideRow, type RecentRideRow, type RideSummary, type RideTotalsRow, type UpcomingRideRow,
+  RideQueryPort, type FinishedRideRow, type HistoryFilter, type HistoryRideRow, type LeaderboardRow, type LiveRideRow, type RecentRideRow, type RideSummary, type UpcomingRideRow,
 } from '../../../application/ports/rides/ride-query.port.js';
 import { PrismaService } from '../prisma.service.js';
 
@@ -69,12 +69,6 @@ export class RideQueryPrismaRepository extends RideQueryPort {
       take: limit,
     });
     return rows.map((r) => ({ id: r.id, wallet: r.wallet, tier: r.tier, route: r.route, status: r.status, lastS: r.lastS, endedAt: r.endedAt }));
-  }
-
-  async totals(): Promise<RideTotalsRow> {
-    const where: Prisma.RideWhereInput = { status: 'completed' };
-    const [sum, wallets] = await Promise.all([this.prisma.ride.aggregate({ where, _count: { _all: true }, _sum: { lastS: true } }), this.prisma.ride.groupBy({ by: ['wallet'], where })]);
-    return { shifts: sum._count._all, metres: sum._sum.lastS ?? 0, drivers: wallets.length };
   }
 
   /** Two queries: one aggregate over the started rides, and the completed rides themselves (few per wallet) for the per-ride achievement facts. */

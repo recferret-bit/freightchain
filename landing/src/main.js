@@ -3,7 +3,7 @@ import { API_BASE, GAME_BASE, SITE_BASE, STORYBOOK_BASE, WHITEPAPER_BASE } from 
 import { track, flushSoon } from '../../client/js/analytics.js';
 import { reportWebVitals } from '../../client/js/web-vitals.js';
 import { livePath, leaveOnClose } from '../../client/site/presence.js';   // this page counts as online in the live feed – and leaves it when closed
-import { sol, km, left, short, hue, hours, ago, plural, TIER, TIER_LONG, ROUTE } from './format.js';
+import { sol, km, left, short, hue, hours, driven, ago, plural, TIER, TIER_LONG, ROUTE } from './format.js';
 import { ridableTickets, escrowExplainer, explorerUrl, shortAddr, statusChip, progressText, deadline } from '../../client/site/pools.js';   // the lobby's pool wording, so both pages say the same thing
 
 /* Landing: four chapters (ride · loop · economy · about), fed by the public API only – no session needed to look.
@@ -49,7 +49,8 @@ function paintHero() {
   if (l) {
     count($('hero-live'), l.rides.length, v => String(Math.round(v)));
     count($('hero-km'), l.totals.metres, v => km(v));
-    $('hero-shifts').textContent = l.totals.shifts;
+    $('hero-shifts').textContent = plural(l.totals.rides, 'ride');
+    $('hero-time').textContent = driven(l.totals.seconds);
     $('chip-live').textContent = `${l.online ? `${l.online.total} ONLINE · ` : ''}${l.rides.length} ON THE ROAD`; $('soc-live').textContent = l.rides.length;
   }
   paintBoardsLive();

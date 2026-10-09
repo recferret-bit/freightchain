@@ -11,7 +11,7 @@ export class RideMapper {
     return Ride.restore({
       id: row.id, wallet: row.wallet, tier: row.tier as RideTierId, seed: row.seed, minSeconds: row.minSeconds, completeDist: row.completeDist,
       status: row.status as unknown as RideStatus, createdAt: row.createdAt, timeScale: row.timeScale, priceUsd: row.priceUsd, lamports: Number(row.lamports),
-      solUsd: row.solUsd, quoteExpiresAt: row.quoteExpiresAt, roundId: row.roundId, poolId: row.poolId, paidAt: row.paidAt, route: row.route, loadout: parseLoadout(row.loadout), nightSeconds: row.nightSeconds,
+      solUsd: row.solUsd, quoteExpiresAt: row.quoteExpiresAt, roundId: row.roundId, poolId: row.poolId, paidAt: row.paidAt, route: row.route, loadout: parseLoadout(row.loadout), nightSeconds: row.nightSeconds, crashesVehicle: row.crashesVehicle, crashesBuilding: row.crashesBuilding,
       paused: row.paused, startedAt: row.startedAt, lastHbAt: row.lastHbAt, lastS: row.lastS, lastT: row.lastT, driveSeconds: row.driveSeconds,
       hull: row.hull, endedAt: row.endedAt, reason: row.reason, challenges: parseChallenges(row.challenges), nextChallengeAt: row.nextChallengeAt, version: row.version,
     });
@@ -26,7 +26,7 @@ export class RideMapper {
   /** The columns that change during a ride's life (everything else is fixed at creation). */
   static mutableData(p: RideProps) {
     return {
-      status: p.status as unknown as RideStatusRow, roundId: p.roundId, paidAt: p.paidAt, route: p.route, loadout: p.loadout ?? Prisma.DbNull, nightSeconds: p.nightSeconds, paused: p.paused,
+      status: p.status as unknown as RideStatusRow, roundId: p.roundId, paidAt: p.paidAt, route: p.route, loadout: p.loadout ?? Prisma.DbNull, nightSeconds: p.nightSeconds, crashesVehicle: p.crashesVehicle, crashesBuilding: p.crashesBuilding, paused: p.paused,
       startedAt: p.startedAt, lastHbAt: p.lastHbAt, lastS: p.lastS, lastT: p.lastT, driveSeconds: p.driveSeconds, hull: p.hull, endedAt: p.endedAt, reason: p.reason,
       challenges: p.challenges.length ? (p.challenges as unknown as Prisma.InputJsonValue) : Prisma.DbNull, nextChallengeAt: p.nextChallengeAt,
     };

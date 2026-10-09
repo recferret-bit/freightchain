@@ -40,8 +40,8 @@ const strictMetres = z.unknown().transform((v, ctx) => {
 });
 
 export const heartbeatBodySchema = z
-  .object({ s: strictMetres, t: lenientNumber, hull: strictOptionalNumber, paused: flag, route: text, night: flag })
-  .transform((b): RideReport => ({ s: b.s, t: b.t, hull: b.hull, paused: b.paused, route: b.route, night: b.night }));
+  .object({ s: strictMetres, t: lenientNumber, hull: strictOptionalNumber, paused: flag, route: text, night: flag, crashesVehicle: lenientNumber, crashesBuilding: lenientNumber })
+  .transform((b): RideReport => ({ s: b.s, t: b.t, hull: b.hull, paused: b.paused, route: b.route, night: b.night, crashesVehicle: b.crashesVehicle, crashesBuilding: b.crashesBuilding }));
 export type HeartbeatBody = z.infer<typeof heartbeatBodySchema>;
 
 /* A recording batch is STRICT (the client re-sends on a 400 only if it has a bug – nothing here is user input). Array caps keep a hostile client from storing junk.
@@ -63,6 +63,6 @@ export const batchBodySchema = z
 export type BatchBodyInput = z.infer<typeof batchBodySchema>;
 
 export const endRideBodySchema = z
-  .object({ outcome: z.enum(['shift', 'failed']), s: lenientMetres, t: lenientNumber, hull: lenientNumber, paused: flag, route: text, night: flag, reason: z.unknown().transform((v) => (typeof v === 'string' ? v.slice(0, REASON_MAX_LENGTH) : null)) })
-  .transform((b) => ({ outcome: b.outcome, reason: b.reason, report: { s: b.s, t: b.t, hull: b.hull, paused: b.paused, route: b.route, night: b.night } satisfies RideReport }));
+  .object({ outcome: z.enum(['shift', 'failed']), s: lenientMetres, t: lenientNumber, hull: lenientNumber, paused: flag, route: text, night: flag, crashesVehicle: lenientNumber, crashesBuilding: lenientNumber, reason: z.unknown().transform((v) => (typeof v === 'string' ? v.slice(0, REASON_MAX_LENGTH) : null)) })
+  .transform((b) => ({ outcome: b.outcome, reason: b.reason, report: { s: b.s, t: b.t, hull: b.hull, paused: b.paused, route: b.route, night: b.night, crashesVehicle: b.crashesVehicle, crashesBuilding: b.crashesBuilding } satisfies RideReport }));
 export type EndRideBody = z.infer<typeof endRideBodySchema>;

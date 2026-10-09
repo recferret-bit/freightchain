@@ -32,7 +32,7 @@ if cc "$RELEASE" ps --status running --services 2>/dev/null | grep -qx postgres;
 else
   say "first deploy: no database yet – starting it"
 fi
-cc "$RELEASE" up -d --wait postgres
+cc "$RELEASE" up -d --wait postgres redis
 
 say "migrating (new image, one-off)"
 cc "$RELEASE" run --rm --no-deps app node dist/cli/index.js migrate || { echo "migration FAILED – the previous version is still serving, nothing swapped" >&2; exit 1; }

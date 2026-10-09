@@ -7,6 +7,7 @@ import { ForbiddenError, TooManyRequestsError } from '../../../../domain/shared/
 import { RideEventRepositoryPort } from '../../../ports/live/ride-event.repository.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
 import { LiveAccessService } from '../../../services/live-access.service.js';
+import { StatsService } from '../../../services/stats.service.js';
 import { PostRideEventCommand } from './post-ride-event.command.js';
 
 /**
@@ -24,17 +25,19 @@ export class PostRideEventHandler implements ICommandHandler<PostRideEventComman
     private readonly access: LiveAccessService,
     private readonly events: RideEventRepositoryPort,
     private readonly clock: ClockPort,
+    private readonly stats: StatsService,
   ) {}
 
   async execute({ wallet, rideId, input }: PostRideEventCommand): Promise<RideEventDto> {
     const now = this.clock.now();
-    const { features } = await this.access.requirePostable(rideId, wallet, input, now);
+    const { ride, features } = await this.access.requirePostable(rideId, wallet, input, now);
     if (input.kind === 'donation' && features.payment === 'chain') throw new ForbiddenError('donations are paid with a real transfer here – use a donation order', 'payment_required');
     const event = input.kind === 'message'
       ? RideEvent.message({ rideId, wallet, text: input.text, now })
       : RideEvent.donation({ rideId, wallet, effect: input.effect, note: input.note, now });
     const stored = await this.events.insert(event, event.needsGame ? EFFECT_WINDOW_MS : undefined);
     if (!stored) throw await effectBusy(this.events, event, now);
+    if (stored.kind === 'donation') await this.stats.recordDonation(ride.wallet, 0, false).catch((e: unknown) => this.logger.warn(`donation statistics deferred to stats:reconcile: ${e instanceof Error ? e.message : String(e)}`));   // a mock tip: counted, no lamports
     if (stored.kind === 'donation') this.logger.log({ event: 'live-donation', msg: `mock donation ${stored.effect} on ride ${rideId}`, rideId, wallet, effect: stored.effect });
     return toRideEventDto(stored);
   }
