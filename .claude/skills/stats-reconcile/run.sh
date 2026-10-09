@@ -2,10 +2,15 @@
 # Reconcile Freight Chain's statistics tables (stats."PlayerStats" per rider, stats."GlobalStats" for the game) with the rides and donation events they are
 # totals of.   bash .claude/skills/stats-reconcile/run.sh [--wallet ADDRESS] [--fix]      LOCAL database (server/.env), the built CLI; report only unless --fix
 #              bash .claude/skills/stats-reconcile/run.sh --prod                          PRODUCTION, READ-ONLY: the same comparison as one SQL query through `npm run ops -- sql`
+#              bash .claude/skills/stats-reconcile/run.sh --prod-cli [--fix] [--wallet A] PRODUCTION through the app container's CLI (`npm run deploy:stats`): the report is read-only, --fix REWRITES live rows (asks)
 # Fixing production is a change to the live database: only when the user asks for it in their CURRENT message (then ssh into the box and run
 # `docker compose … exec app node dist/cli/index.js stats:reconcile --fix` – see deploy/README.md).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
+if [ "${1:-}" = "--prod-cli" ]; then
+  shift; cd "$ROOT"
+  exec npm run --silent deploy:stats -- "$@"
+fi
 if [ "${1:-}" = "--prod" ]; then
   cd "$ROOT"
   exec npm run --silent ops -- sql "

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs ON THE SERVER: maintenance commands (piped over ssh by deploy/scripts/ctl.sh).  $1 = status | logs | backup | rollback
+# Runs ON THE SERVER: maintenance commands (piped over ssh by deploy/scripts/ctl.sh).  $1 = status | logs | backup | rollback | stats
 set -euo pipefail
 CMD="$1"; shift
 for kv in "$@"; do export "$kv"; done
@@ -44,6 +44,10 @@ case "$CMD" in
       echo "ROLLBACK FAILED – $PREVIOUS is not healthy; putting $CURRENT back" >&2
       cc "$CURRENT" up -d --no-build app; exit 1
     fi
+    ;;
+  stats)   # statistics reconcile through the running app container's CLI: a report (read-only), or FIX=1 = rewrite the rows. WALLET=<address> = one rider
+    [ -n "$CURRENT" ] || { echo "nothing deployed yet" >&2; exit 1; }
+    cc "$CURRENT" exec -T app node dist/cli/index.js stats:reconcile ${WALLET:+--wallet "$WALLET"} ${FIX:+--fix}
     ;;
   *) echo "unknown command $CMD" >&2; exit 2 ;;
 esac

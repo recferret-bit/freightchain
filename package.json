@@ -35,6 +35,7 @@
     "deploy:backup": "bash deploy/scripts/ctl.sh backup",
     "deploy:rollback": "bash deploy/scripts/ctl.sh rollback",
     "deploy:smoke": "bash deploy/scripts/ctl.sh smoke",
+    "deploy:stats": "bash deploy/scripts/ctl.sh stats",
     "ops": "bash deploy/scripts/ops.sh",
     "media": "node media/make.mjs",
     "media:store": "node media/audio/cli.mjs store",

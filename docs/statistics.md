@@ -55,3 +55,20 @@ both donation handlers, `architecture/stats-hooks.spec`. Integration (PostgreSQL
 tests (parallel endings on the hot row, sweep ⇄ heartbeat ⇄ `/end`, parallel donations). Scenarios (memory + PostgreSQL): `test/scenarios/stats.scenarios.ts`. Client: the headless check "a contact with a vehicle is counted".
 End to end in real Chrome: `bash .claude/skills/run-tests/e2e.sh stats` (`server/scripts/e2e-stats.mjs`, against a throwaway password-protected Redis – keys written / dropped, then the Redis is stopped to prove the API survives): a real game driving into a car → the totals, the landing tiles fit at five widths, the profile's record on desktop + phone, API bots for every other
 ending and a donation, `stats:reconcile` clean → broken row found → fixed.
+
+## Status and open questions (2026-10-09)
+
+**Now.** Built, reviewed and committed on `main` (`4d2256f`); unit, PostgreSQL integration and the real-Chrome `stats` + `lobby` e2e suites pass. **Not deployed yet** – the deploy command was blocked by the
+auto-mode permission classifier in the session that built this, so production still serves release `20261009-141736-09b989a` (no stats tables, `0.00 km`). `deploy -- --dry-run` is clean (env valid incl. the new `REDIS_PASSWORD`, ssh fine,
+no nginx / TLS change). What the owner runs, in order: `npm run deploy` (ships HEAD – it also carries the other session's commits on `main`), then `npm run deploy:stats` (report), `npm run deploy:stats -- --fix` if it shows drift, then
+`npm run deploy:smoke` and `npm run ops -- logs --since 10m --errors`; on the box `docker ps` shows `redis` healthy with no published port.
+
+**Open questions.**
+- **Deploy approval** – the permission rule for `npm run deploy` (and `deploy:stats -- --fix`) must be allowed, or the owner runs them (`! npm run deploy`).
+- **Crashes are client-reported** – capped by driven time, not verified. Server-side proof would need the recording's collision facts (the sample row has no crash column; adding one = a new APPENDED column + rules version).
+- **Crash definition** – every vehicle contact counts (bumps, not scratches); building crashes are always fatal. Count scratches too? Count only fatal crashes?
+- **Mock vs paid donations** – both count as donations, only paid ones add lamports. Production has no free donations, so there it is paid only; keep the mock ones counted in dev?
+- **Per-rider history** – only running totals exist (no per-day series, no per-route / per-tier split beyond free / paid); a daily rollup table would be the next step for charts.
+- **Leaderboards from the totals** – `PlayerStats.metres` could back an all-time board without scanning rides (the old `metres` index was dropped as unused).
+- **Redis** – only the statistics use it today; sessions, rate limits and the live board's presence are still per process (one app container). A second app instance would need those moved first.
+- **Rollback** – a rollback keeps the new tables (forward-only); the old image ignores them, and rides it ends are not counted until the next `stats:reconcile`.

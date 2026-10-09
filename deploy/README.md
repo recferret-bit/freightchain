@@ -56,6 +56,7 @@ npm run deploy          # checks → plan → confirm → upload → build → b
 | `npm run deploy:logs` | app logs (`-- -f` to follow) |
 | `npm run deploy:backup` | `pg_dump` now → `backups/` |
 | `npm run deploy:rollback` | back to the previous release (`-- -y` to skip the question) |
+| `npm run deploy:stats [-- --fix] [-- --wallet A]` | the statistics tables vs the rides through the app container's CLI: a report (read-only) or `--fix` (rewrites live rows – only on the owner's ask; asks to confirm) |
 | `npm run deploy:smoke` | smoke test of the five public URLs: pages, the model viewer + API-host isolation, the admin host (401 without the password, the page with it, its API closed without an admin wallet, `api.*` never serves `/api/admin/*`), the game's sound effects (manifest, immutable mp3, nginx `X-Cache: HIT`), CORS, a throwaway sign-in + cookie flags/domain (creates one throwaway player) |
 | `npm run ops -- logs [--since 30m] [--grep RE] [--errors] [--service postgres]` | **read-only** app / database log (the app writes one JSON object per line) |
 | `npm run ops -- nginx [--error] [--grep RE]` | **read-only** host nginx access / error log |
