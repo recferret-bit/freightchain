@@ -147,11 +147,11 @@ check(nightX.night===true&&dayX.night===false&&G.THEMES.some(t=>t.id===dayX.rout
 // they parted, so switching roads changes nothing after the merge; crossing the commit point on the other road's side switches the spine and keeps the truck in place
 { const F=G.forkRules; G.setGuide({}); G.setTrip('free-1'); G.roads.newTrip(777); net.ensure(6000);
   check(net.near(0,6000).filter(j=>j.kind!=='start').length===0&&net.segs.every(g=>g.pat==='dual')&&net.lanes(net.Sm+500,1)===2,'free-1 (EASY): four lanes, no junction in 6 km');
-  G.setTrip('free-2'); G.roads.newTrip(4242); net.ensure(6000); const f=net.forks[0];
-  check(!!f&&f.f1-f.f0===F.len&&net.near(f.f0,f.f1).length===0,'free-2 (CROSSROADS): a fork early on, no junction inside it');
+  G.setTrip('free-2'); G.startRide(); G.roads.newTrip(4242); net.ensure(6000); const f=net.forks[0];   // (startRide first: it re-seeds the road)
+  check(!!f&&Math.abs(f.f1-f.f0-F.len)<1e-6&&net.near(f.f0,f.f1).length===0,'free-2 (CROSSROADS): a fork early on, no junction inside it');
   if(f){ const a=net.world(f.f1+60,0), mid=net.sep((f.f0+f.f1)/2); net.setChoice(f,1); const b=net.world(f.f1+60,0); net.setChoice(f,0);
     check(Math.hypot(a.x-b.x,a.z-b.z)<1e-3&&mid>150,'a fork closes: the road after the merge is where it was ('+Math.hypot(a.x-b.x,a.z-b.z).toExponential(1)+' m), the roads '+mid.toFixed(0)+' m apart in the middle');
-    G.startRide(); st.park=false; st.engineOn=true; st.keyOn=true; const c=f.f0+F.commit, side=-net.bulge(f);
+    st.park=false; st.engineOn=true; st.keyOn=true; const c=f.f0+F.commit, side=-net.bulge(f);
     Object.assign(st,{s:c-3,d:side*(net.sep(c-3)*.75),psi:0,v:8,gear:3,hull:100}); G.roads.lastS=st.s;
     const w0=net.world(st.s,st.d); for(let i=0;i<30&&st.s<c+2;i++){ st.s+=.25; G.roads.update(1/60); }
     const w1=net.world(st.s,st.d);
