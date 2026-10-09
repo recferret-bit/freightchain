@@ -4,7 +4,7 @@ import type { AchievementUnlock } from '../../../../src/domain/achievements/achi
 import type { Facts } from '../../../../src/domain/achievements/achievements.js';
 import { unitContext } from '../../../support/unit-context.js';
 
-const facts = (over: Partial<Facts>): Facts => ({ started: 0, completed: 0, totalMetres: 0, completedAtNight: false, cleanRun: false, completedSiberia: false, completedFreeUnassisted: false, ...over });
+const facts = (over: Partial<Facts>): Facts => ({ started: 0, completed: 0, totalMetres: 0, completedAtNight: false, cleanRun: false, completedSiberia: false, completedFreeUnassisted: false, completedFreeLevels: [], ...over });
 
 describe('AchievementService', () => {
   it('persists only the NEW unlocks, in one insert, and never removes one', async () => {
@@ -44,7 +44,7 @@ describe('AchievementService', () => {
     const ctx = unitContext();
     await ctx.achievements.evaluate('w', null, facts({ started: 1 }));
     const list = await ctx.achievements.list('w');
-    expect(list).toHaveLength(8);
+    expect(list).toHaveLength(11);
     expect(list.find((a) => a.id === 'first-mile')?.earnedAt).toBe(ctx.clock.ms);
     expect(list.find((a) => a.id === 'top-20')).toMatchObject({ earnedAt: null, awardedAtRoundClose: true });
   });

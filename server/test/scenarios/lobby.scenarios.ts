@@ -126,18 +126,18 @@ export function lobbyScenarios(h: () => Harness): void {
     it('a fresh wallet has stats of zero and every achievement locked', async () => {
       const w = await login(), p = (await w.agent.get('/api/profile').expect(200)).body;
       expect(p).toMatchObject({ wallet: w.address, freeRides: 10, freeRidesMax: 5, demo: false, stats: { rides: 0, completed: 0, metres: 0 } });
-      expect(p.achievements).toHaveLength(8);
+      expect(p.achievements).toHaveLength(11);
       expect(p.achievements.every((a: { earnedAt: number | null }) => a.earnedAt === null)).toBe(true);
       expect(p.achievements.find((a: { id: string }) => a.id === 'top-20').awardedAtRoundClose).toBe(true);
     });
 
-    it('a clean night shift on Siberia unlocks six, persisted with the time; they never disappear', async () => {
+    it('a clean night shift on Siberia unlocks seven (a free ride: EASY cleared too), persisted with the time; they never disappear', async () => {
       h().seedFor('siberia');
       const w = await login(), end = await finish(w, { night: true }, 100);
       expect(end.status).toBe('completed');
       const p = (await w.agent.get('/api/profile').expect(200)).body, got = (id: string) => p.achievements.find((a: { id: string }) => a.id === id).earnedAt;
-      for (const id of ['first-mile', 'shift-complete', 'night-owl', 'clean-run', 'cold-start', 'on-my-own']) expect(got(id), id).toBe(now());
-      expect(got('century')).toBeNull(); expect(got('top-20')).toBeNull();
+      for (const id of ['first-mile', 'shift-complete', 'night-owl', 'clean-run', 'cold-start', 'on-my-own', 'free-easy']) expect(got(id), id).toBe(now());
+      expect(got('century')).toBeNull(); expect(got('top-20')).toBeNull(); expect(got('free-crossroads')).toBeNull(); expect(got('free-hard')).toBeNull();
       expect(p.stats).toMatchObject({ rides: 1, completed: 1, metres: 150, bestMetres: 150 });
       expect(p.recent[0]).toMatchObject({ tier: 'free', status: 'completed', distance: 150, route: 'siberia' });
       const before = got('night-owl'); sec(3600);

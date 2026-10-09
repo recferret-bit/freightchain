@@ -5,6 +5,7 @@ import {
   type RejudgeFilter,
   RideQueryPort, type FinishedRideRow, type HistoryFilter, type HistoryRideRow, type LeaderboardRow, type LiveRideRow, type RecentRideRow, type RideSummary, type UpcomingRideRow,
 } from '../../../application/ports/rides/ride-query.port.js';
+import { completedLevels } from '../../../domain/rides/ride-trip.js';
 import { PrismaService } from '../prisma.service.js';
 
 const CLEAN_HULL = 99.5;
@@ -75,7 +76,7 @@ export class RideQueryPrismaRepository extends RideQueryPort {
   async summary(wallet: string): Promise<RideSummary> {
     const [started, done] = await Promise.all([
       this.prisma.ride.aggregate({ where: { wallet, startedAt: { not: null } }, _count: { _all: true }, _sum: { lastS: true } }),
-      this.prisma.ride.findMany({ where: { wallet, status: 'completed' }, select: { tier: true, assist: true, lastS: true, hull: true, route: true, nightSeconds: true, driveSeconds: true } }),
+      this.prisma.ride.findMany({ where: { wallet, status: 'completed' }, select: { tier: true, trip: true, assist: true, lastS: true, hull: true, route: true, nightSeconds: true, driveSeconds: true } }),
     ]);
     const metres = started._sum.lastS ?? 0;
     return {
@@ -86,6 +87,7 @@ export class RideQueryPrismaRepository extends RideQueryPort {
         cleanRun: done.some((r) => r.hull !== null && r.hull >= CLEAN_HULL),
         completedSiberia: done.some((r) => r.route === SIBERIA),
         completedFreeUnassisted: done.some((r) => r.tier === 'free' && !r.assist),
+        completedFreeLevels: completedLevels(done),
       },
     };
   }

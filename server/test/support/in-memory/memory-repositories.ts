@@ -7,6 +7,7 @@ import { Round, type RoundProps } from '../../../src/domain/economy/round.entity
 import { Player } from '../../../src/domain/players/player.entity.js';
 import { Ride, type RideProps } from '../../../src/domain/rides/ride.entity.js';
 import { OPEN_RIDE_STATUSES, RideStatus } from '../../../src/domain/rides/ride-status.js';
+import { completedLevels } from '../../../src/domain/rides/ride-trip.js';
 import { ConflictError, VersionConflictError } from '../../../src/domain/shared/errors.js';
 import { AchievementRepositoryPort } from '../../../src/application/ports/achievements/achievement.repository.port.js';
 import { ChallengeRepositoryPort } from '../../../src/application/ports/auth/challenge.repository.port.js';
@@ -203,6 +204,7 @@ export class MemoryRideQuery extends RideQueryPort {
         cleanRun: done.some((r) => r.hull !== null && r.hull >= 99.5),
         completedSiberia: done.some((r) => r.route === 'siberia'),
         completedFreeUnassisted: done.some((r) => r.tier === 'free' && !r.assist),
+        completedFreeLevels: completedLevels(done),
       },
     };
   }

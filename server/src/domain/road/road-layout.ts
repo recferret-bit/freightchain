@@ -100,7 +100,7 @@ export class RoadLayout {
     if (this.patEnd - (s0 + len) < P.seg[0] * 0.6) len = this.patEnd - s0;
     const prev = this.segs[this.segs.length - 1];
     const seg = { s0, s1: s0 + len, nR: lanes[0], nL: lanes[1], pat: P.id, ...(P.fork ? { fork: true } : {}) } as Segment;
-    seg.prev = prev ?? seg;
+    seg.prev = prev ?? ({ ...seg, nR: 1, nL: 1 } as Segment); // the first stretch widens out of the depot's two-lane road (net/network.js)
     this.segs.push(seg);
     this.genEnd = seg.s1;
     const J = P.junction;

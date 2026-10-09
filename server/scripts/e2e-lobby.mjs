@@ -65,7 +65,22 @@ await size(rider, 1100, 900, false);
 check('free card: TUTORIAL is on for a new rider, ASSIST is off (both checkboxes are there)', (await rider.ev('document.getElementById("opt-tutorial")?.checked')) === true && (await rider.ev('document.getElementById("opt-assist")?.checked')) === false);
 await rider.ev('document.getElementById("opt-assist").click()'); await sleep(1300);   // a repaint (the 1 s tick) must keep the choice
 check('the checkbox choice survives a repaint', (await rider.ev('document.getElementById("opt-assist").checked')) === true && (await rider.ev('document.getElementById("opt-tutorial").checked')) === true);
+// the LEVEL picker (GET /api/tiers → levels; FREE_RIDE_SECONDS=3 → 3 s / 9 s / 30 s): EASY by default, HARD locks ASSIST off, the ride is free-3
+check('free card: a LEVEL picker EASY / CROSSROADS / HARD with their lengths, EASY picked', (await rider.ev('[...document.querySelectorAll(".levels .lv b")].map(b => b.textContent).join(",")')) === 'EASY,CROSSROADS,HARD' && (await rider.ev('document.getElementById("level-1").checked')) === true && /^EASY · 0:03/.test(await txt(rider, '#free-shift')), await txt(rider, '#tier-free .levels') + ' | ' + await txt(rider, '#free-shift'));
+await rider.ev('document.getElementById("level-3").click()'); await sleep(300);
+check('HARD picked: the shift line says so, ASSIST is unchecked + disabled with "no assist on HARD"', /^HARD · 0:30/.test(await txt(rider, '#free-shift')) && (await rider.ev('document.getElementById("opt-assist").checked')) === false && (await rider.ev('document.getElementById("opt-assist").disabled')) === true && /no assist on HARD/i.test(await txt(rider, '#tier-free .guide')), await txt(rider, '#free-shift') + ' | ' + await txt(rider, '#tier-free .guide'));
+await sleep(1300);
+check('…and the pick survives a repaint', (await rider.ev('document.getElementById("level-3").checked')) === true && (await rider.ev('document.getElementById("opt-assist").disabled')) === true);
+await rider.shot('free-levels-hard');
 await rider.ev('document.getElementById("start").click()');
+check('START at HARD opens a ride on trip free-3 – 30 s, no assist, the tutorial kept', await until(async () => await rider.ev('!!window.__game?.online?.ride && __game.online.ride.trip === "free-3" && __game.online.ride.level === 3 && __game.online.ride.minSeconds === 30 && __game.online.ride.assist === false && __game.online.ride.tutorial === true && __game.trip.id === "free-3"')), await rider.ev('JSON.stringify(window.__game?.online?.ride ?? null)'));
+const hardId = await rider.ev('__game.online.ride.id');
+await open(rider, A, `${BASE}/lobby.html`); await until(async () => !!(await rider.ev('document.getElementById("level-3")')));
+check('back in the lobby: HARD is remembered', (await rider.ev('document.getElementById("level-3").checked')) === true);
+await rider.ev('document.getElementById("level-1").click()'); await sleep(300);
+check('EASY again: ASSIST is back on (the remembered choice) and enabled', (await rider.ev('document.getElementById("opt-assist").checked')) === true && (await rider.ev('document.getElementById("opt-assist").disabled')) === false);
+await rider.ev('document.getElementById("start").click()');
+check('…START re-chooses the SAME ready ride at EASY (one credit, free-1)', await until(async () => await rider.ev(`!!window.__game?.online?.ride && __game.online.ride.id === ${JSON.stringify(hardId)} && __game.online.ride.trip === "free-1" && __game.online.ride.level === 1`)), await rider.ev('JSON.stringify(window.__game?.online?.ride ?? null)'));
 check('START FREE RIDE opens play.html?ride=…', await until(async () => /\/play\.html\?ride=/.test(await rider.ev('location.pathname + location.search'))));
 check('game booted with the server ride', await until(async () => await rider.ev('!!window.__game && __game.CFG.RIDE_MIN_SECONDS === 3')));
 check('the game gets the ride\'s helpers from the server (tutorial + assist)', await rider.ev('__game.guide.tutorial === true && __game.guide.assist === true && __game.online.ride.tutorial === true'));
@@ -133,10 +148,11 @@ check('…and no unexpected page errors (ticket holder)', problems(tix).length =
 
 // ── PROFILE
 await rider.ev('location.hash = "#profile"');
-check('PROFILE: stats + achievements unlocked + the ride in history', await until(async () => (await rider.ev('document.querySelectorAll(".a").length')) === 8));
+check('PROFILE: stats + achievements unlocked + the ride in history', await until(async () => (await rider.ev('document.querySelectorAll(".a").length')) === 11));
 check('PROFILE: the ride in history carries its recording verdict', /COMPLETED · (VERIFIED|FLAGGED|REJECTED)/.test(await rider.ev('document.querySelector(".hist .hrow")?.textContent || ""')), await rider.ev('document.querySelector(".hist .hrow")?.textContent || ""'));
 const ach = await rider.ev('[...document.querySelectorAll(".a")].map(a => (a.classList.contains("lock") ? "-" : "+") + a.querySelector(".nm").textContent).join("|")');
 check('First Mile + Shift Complete unlocked, Top 20 locked', /\+First Mile/.test(ach) && /\+Shift Complete/.test(ach) && /-Top 20/.test(ach), ach);
+check('the EASY free run cleared: Learner’s Permit unlocked, Crossroads + Long Haul locked', /\+Learner’s Permit/.test(ach) && /-Crossroads/.test(ach) && /-Long Haul/.test(ach), ach);
 check('history lists the ride as COMPLETED', /COMPLETED/.test(await rider.ev('[...document.querySelectorAll(".hist")].map(n => n.textContent).join("|")')));
 check('a wallet without tickets: "No tickets yet"', /No tickets yet/.test(await rider.ev('document.getElementById("view").textContent')));
 await rider.shot('profile-desktop'); await size(rider, 390, 844, true); await sleep(300); await rider.shot('profile-phone'); await size(rider, 1100, 900, false);

@@ -30,6 +30,9 @@ import { liveFeed } from './ui/live-feed.js';
 import { track } from './analytics.js';
 import { guide, setGuide } from './guide.js';
 import { offlineRide, offlineWanted } from './offline-ride.js';
+import { FORK } from './net/patterns.js';
+import { toggleMap } from './ui/map.js';
+import { phone } from './phone.js';
 import { updateGuide } from './ui/assist.js';
 import { trip, setTrip, tripOf } from './trips.js';
 import './ui/input.js';
@@ -51,8 +54,9 @@ const wantOffline = offlineWanted() && !online.ride && !online.error;   // play.
 if (online.ride) { selectTheme(online.ride.route ?? THEMES[0].id, true); if (online.ride.startHour != null) setClock(online.ride.startHour, true, true); }   // what the server assigned to this ride at creation (ride-rules.ts worldFor)
 if (wantOffline) setGuide({ tutorial: false, assist: false });   // the counted run is the plain free trip: the other free-ride kinds stay on the lobby's ride
 else setGuide(online.ride ?? (typeof location === 'undefined' ? {} : (q => ({ tutorial: q.get('tutorial') === '1', assist: q.get('assist') === '1' }))(new URL(location.href).searchParams)));   // the free ride's tutorial / assist: the SERVER's flags of the ride, or ?tutorial=1&assist=1 on the offline prototype (tests)
-if (wantOffline) setTrip('free');
-else setTrip(online.ride ? tripOf(online.ride) : typeof location === 'undefined' ? null : new URL(location.href).searchParams.get('trip'));   // the ride's road (trips.js): the trip the server stamped on it, or ?trip=free|1h|4h|8h offline (tuning); before the road is built
+if (wantOffline) setTrip('free-1');   // the counted offline run = the EASY level's road
+else setTrip(online.ride ? tripOf(online.ride) : typeof location === 'undefined' ? null : new URL(location.href).searchParams.get('trip'));   // the ride's road (trips.js): the trip the server stamped on it, or ?trip=free-1|free-2|free-3|1h|4h|8h offline (tuning); before the road is built
+if (trip.assist === false) guide.assist = false;   // the HARD free run has no assist (the server refuses it on the ride too)
 if (!online.ride && trip.seconds) { CFG.RIDE_MIN_SECONDS = trip.seconds; CFG.COMPLETE_DIST = trip.k * CFG.MAX_SPEED * trip.seconds; }   // offline ?trip=free: the free run's own shift (online the server's ride sets both)
 if (online.ride) {
   const r = online.ride;   // no seed: the relay must not see it
@@ -74,6 +78,6 @@ requestAnimationFrame(frame);
 const pageQuery = typeof location === 'undefined' ? null : new URL(location.href).searchParams;
 const realRide = !!(online.ride || online.error || watch.ride || (pageQuery && (pageQuery.get('ride') || pageQuery.get('watch') || pageQuery.get('offline') === '1')));
 if (realRide) { lockTheme(); lockClock(); }
-window.__game = { guide, setGuide, hurt, trip, setTrip, offlineRide, audio, cosmetics, online, telemetry, prompt, watch, roadPlan, liveFeed, radio, roadObjects, chunks, spacing, roads, net, st, disp, CFG, input, tryShift, ignition, startRide, curv, spawn, traffic: cars, THEMES, ...(realRide ? {} : { selectTheme, setNight, setPhase, setClock }), dn, weather, uiBtns, inputBits, holes: { HOLES, holeAt, holesNear, clearHoleCache, plan, flagged } };   // handy for console debugging
+window.__game = { forkRules: FORK, toggleMap, phone, guide, setGuide, hurt, trip, setTrip, offlineRide, audio, cosmetics, online, telemetry, prompt, watch, roadPlan, liveFeed, radio, roadObjects, chunks, spacing, roads, net, st, disp, CFG, input, tryShift, ignition, startRide, curv, spawn, traffic: cars, THEMES, ...(realRide ? {} : { selectTheme, setNight, setPhase, setClock }), dn, weather, uiBtns, inputBits, holes: { HOLES, holeAt, holesNear, clearHoleCache, plan, flagged } };   // handy for console debugging
 
  

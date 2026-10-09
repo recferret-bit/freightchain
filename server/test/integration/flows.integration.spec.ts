@@ -4,6 +4,7 @@ import { httpContractScenarios } from '../scenarios/http-contract.scenarios.js';
 import { LOBBY_ENV, lobbyScenarios } from '../scenarios/lobby.scenarios.js';
 import { STATS_ENV, statsScenarios } from '../scenarios/stats.scenarios.js';
 import { GUIDE_ENV, guideScenarios } from '../scenarios/guide.scenarios.js';
+import { FREE_LEVELS_ENV, freeLevelScenarios } from '../scenarios/free-levels.scenarios.js';
 import { FREE_RIDES_ENV, freeRideScenarios } from '../scenarios/free-rides.scenarios.js';
 import { PAYMENTS_ENV, paymentScenarios } from '../scenarios/payments.scenarios.js';
 import { POOLS_ENV, poolScenarios } from '../scenarios/pools.scenarios.js';
@@ -32,6 +33,7 @@ for (const [name, env, scenarios] of [
   ['lobby: live feed, profile, achievements', LOBBY_ENV, lobbyScenarios],
   ['statistics: rides, time, distance, crashes, donations – per rider and global', STATS_ENV, statsScenarios],
   ['the free ride: tutorial, assist and the On My Own achievement', GUIDE_ENV, guideScenarios],
+  ['the free ride: its three levels (EASY / CROSSROADS / HARD) and their achievements', FREE_LEVELS_ENV, freeLevelScenarios],
   ['free rides: signup 10/5, settings, admin adjust, offline runs', FREE_RIDES_ENV, freeRideScenarios],
   ['escrowed pools, promo codes and ticket rides', POOLS_ENV, poolScenarios],
   ['promo codes: free rides, cosmetics, scheduling, the admin tab', PROMOS_ENV, promoScenarios],

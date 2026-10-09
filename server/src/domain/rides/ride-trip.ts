@@ -43,6 +43,9 @@ export function assertAssistAllowed(level: FreeLevel, assist: boolean): void {
 }
 /** the free level a ride's trip is (null = a paid trip, the old 'free' trip, classic, or no trip) */
 export const levelOfTrip = (trip: string | null): FreeLevel | null => FREE_LEVEL_IDS.find((l) => FREE_LEVELS[l].trip === trip) ?? null;
+/** the free levels these (completed) rides cleared, ascending, each once – the achievements' fact */
+export const completedLevels = (rides: readonly { tier: string; trip: string | null }[]): FreeLevel[] =>
+  FREE_LEVEL_IDS.filter((l) => rides.some((r) => r.tier === 'free' && levelOfTrip(r.trip) === l));
 
 /** the trip a NEW ride of this tier is driven on (a free ride: its level's – level 1 unless the lobby picked another) */
 export const TRIP_OF_TIER: Readonly<Record<RideTierId, TripId>> = { free: FREE_LEVELS[DEFAULT_FREE_LEVEL].trip, '1h': '1h', '4h': '4h', '8h': '8h' };

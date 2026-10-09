@@ -19,14 +19,14 @@ export class RideMapper {
 
   static toCreateData(ride: Ride) {
     const p = ride.snapshot();
-    return { ...RideMapper.mutableData(p), id: p.id, wallet: p.wallet, tier: p.tier, seed: p.seed, minSeconds: p.minSeconds, completeDist: p.completeDist,
+    return { ...RideMapper.mutableData(p), id: p.id, wallet: p.wallet, tier: p.tier, seed: p.seed,
       createdAt: p.createdAt, timeScale: p.timeScale, priceUsd: p.priceUsd, lamports: BigInt(p.lamports), solUsd: p.solUsd, quoteExpiresAt: p.quoteExpiresAt, poolId: p.poolId, version: p.version };
   }
 
-  /** The columns that change during a ride's life (everything else is fixed at creation). */
+  /** The columns that change during a ride's life (everything else is fixed at creation). minSeconds / completeDist / trip: a READY free ride re-chosen at another level (Ride.chooseFree). */
   static mutableData(p: RideProps) {
     return {
-      status: p.status as unknown as RideStatusRow, roundId: p.roundId, paidAt: p.paidAt, route: p.route, startHour: p.startHour, loadout: p.loadout ?? Prisma.DbNull, trip: p.trip, tutorial: p.tutorial, assist: p.assist, nightSeconds: p.nightSeconds, crashesVehicle: p.crashesVehicle, crashesBuilding: p.crashesBuilding, paused: p.paused,
+      minSeconds: p.minSeconds, completeDist: p.completeDist, status: p.status as unknown as RideStatusRow, roundId: p.roundId, paidAt: p.paidAt, route: p.route, startHour: p.startHour, loadout: p.loadout ?? Prisma.DbNull, trip: p.trip, tutorial: p.tutorial, assist: p.assist, nightSeconds: p.nightSeconds, crashesVehicle: p.crashesVehicle, crashesBuilding: p.crashesBuilding, paused: p.paused,
       startedAt: p.startedAt, lastHbAt: p.lastHbAt, lastS: p.lastS, lastT: p.lastT, driveSeconds: p.driveSeconds, hull: p.hull, endedAt: p.endedAt, reason: p.reason,
       challenges: p.challenges.length ? (p.challenges as unknown as Prisma.InputJsonValue) : Prisma.DbNull, nextChallengeAt: p.nextChallengeAt,
     };

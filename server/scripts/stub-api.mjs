@@ -49,7 +49,12 @@ const poolDto = p => ({ ...p, toGo: toGo(p), progressPct: Math.min(100, Math.flo
 const onSale = tier => pools.find(p => p.tier === tier && (p.status === 'open' || p.status === 'active')) ?? pools.find(p => p.tier === tier) ?? null;
 const ticketDto = id => { const p = pools.find(x => x.id === id), t = tickets.get(id); return { poolId: id, tier: p.tier, label: p.label, status: p.status, balance: t.balance, bought: t.bought, cap: p.maxPerWallet, refundable: p.status === 'refunding' && t.bought > 0 }; };
 const me = () => ({ wallet: WALLET.toBase58(), freeRides, freeRidesMax: 5, nextFreeRideAt: freeRides < 5 ? t0 + DAY : null, createdAt: t0 - 9 * DAY, tutorialPassed: false, demo: false, demoScale: 60, tickets: [...tickets.keys()].map(ticketDto) });
-const TIERS = [{ id: 'free', usd: 0, seconds: 60, completeDist: 420, onSale: true }, { id: '1h', usd: 5, seconds: 3600, completeDist: 50400, onSale: true }, { id: '4h', usd: 15, seconds: 14400, completeDist: 201600, onSale: false }, { id: '8h', usd: 50, seconds: 28800, completeDist: 403200, onSale: false }];
+const FREE_LEVELS = [   // = server/src/domain/rides/ride-trip.ts FREE_LEVELS at FREE_RIDE_SECONDS 60 (GET /api/tiers → the free tier's `levels`)
+  { level: 1, trip: 'free-1', name: 'EASY', seconds: 60, completeDist: 420, assist: true },
+  { level: 2, trip: 'free-2', name: 'CROSSROADS', seconds: 180, completeDist: 1512, assist: true },
+  { level: 3, trip: 'free-3', name: 'HARD', seconds: 600, completeDist: 6720, assist: false },
+];
+const TIERS = [{ id: 'free', usd: 0, seconds: 60, completeDist: 420, onSale: true, levels: FREE_LEVELS }, { id: '1h', usd: 5, seconds: 3600, completeDist: 50400, onSale: true }, { id: '4h', usd: 15, seconds: 14400, completeDist: 201600, onSale: false }, { id: '8h', usd: 50, seconds: 28800, completeDist: 403200, onSale: false }];
 const problem = (status, code, detail) => ({ status, body: { type: `/problems/${code}`, title: 'Error', status, code, detail } });
 const tx = (lamports, to, feePayer) => {   // a real, unsigned legacy transaction (a plain transfer standing in for buy_ticket / refund); never sent anywhere
   const blockhash = Keypair.generate().publicKey.toBase58(), t = new Transaction({ feePayer, recentBlockhash: blockhash }).add(SystemProgram.transfer({ fromPubkey: WALLET, toPubkey: to, lamports }));
@@ -73,13 +78,15 @@ const R = [
   ['GET', /^leaderboard/, () => ({ body: { board: 'round', round: { id: 1, endsAt: t0 + 4 * DAY }, prizeRanks: 20, rows: [] } })],
   ['GET', /^rides\/pending$/, () => ({ body: { ride: [...rides.values()].find(r => r.status === 'created') ?? null } })],
   ['POST', /^rides$/, (m, b) => {
-    const tier = b.tier;
+    const tier = b.tier, lv = tier === 'free' ? FREE_LEVELS.find(l => l.level === (b.level ?? 1)) : null;
+    if (tier !== 'free' && b.level != null) return problem(409, 'level_free_only', 'a level is for free rides only');
+    if (lv?.level === 3 && b.assist) return problem(409, 'assist_not_allowed', 'the HARD free run has no assist');
     if (tier === 'free') { if (freeRides <= 0) return problem(409, 'conflict', 'no free rides left'); freeRides--; } else {
       const held = pools.filter(p => p.tier === tier && tickets.get(p.id)?.balance > 0), live = held.find(p => p.status === 'active');
       if (!live) return held.length ? problem(409, 'pool_not_live', `pool not live yet – ${toGo(held[0])} more tickets needed`) : problem(409, 'no_tickets', `no ${tier} tickets left`);
       tickets.get(live.id).balance--; grants.push({ poolId: live.id, delta: -1, source: 'spend', ref: 'stub-ride', at: NOW() });
     }
-    const r = { id: `stub-${rides.size + 1}`, tier, seed: 1, status: 'created', minSeconds: tier === 'free' ? 60 : 300, completeDist: tier === 'free' ? 420 : 4200, trip: tier, timeScale: 1, priceUsd: 0, lamports: 0, quoteExpiresAt: null, roundId: 1, poolId: null, driveSeconds: 0, distance: 0, reason: null };
+    const r = { id: `stub-${rides.size + 1}`, tier, seed: 1, status: 'created', minSeconds: lv ? lv.seconds : 300, completeDist: lv ? lv.completeDist : 4200, trip: lv ? lv.trip : tier, level: lv?.level ?? null, tutorial: !!b.tutorial, assist: !!b.assist, timeScale: 1, priceUsd: 0, lamports: 0, quoteExpiresAt: null, roundId: 1, poolId: null, driveSeconds: 0, distance: 0, reason: null };
     rides.set(r.id, r); return { status: 201, body: r };
   }],
   ['POST', /^promo\/redeem$/, (m, b) => {   // STUB = 2 tickets · RIDES = +3 free rides (above the cap) · GOLD / BLUE / RACING = a wheel / paint / shifter (a second try: 409 already_owned)

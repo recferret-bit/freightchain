@@ -11,7 +11,9 @@ const setup = (price = new StubPrice(), rules = unitRules()) => {
   const ctx = unitContext(rules);
   const analytics = new RecordingAnalytics();
   const handler = new CreateRideHandler(ctx.players, ctx.rides, ctx.sessions, price, new FixedRules(rules), ctx.transactions, ctx.clock, ctx.entropy, ctx.poolTickets, ctx.rounds, analytics, ctx.stats);
-  return { ctx, analytics, handler, create: (tier: 'free' | '1h' | '4h' | '8h', wallet = 'w', tutorial = false, assist = false) => handler.execute(new CreateRideCommand(wallet, tier, tutorial, assist)) };
+  return {
+    ctx, analytics, handler, create: (tier: 'free' | '1h' | '4h' | '8h', wallet = 'w', tutorial = false, assist = false, level: 1 | 2 | 3 | null = null) => handler.execute(new CreateRideCommand(wallet, tier, tutorial, assist, level)),
+  };
 };
 
 describe('CreateRideHandler', () => {
@@ -50,6 +52,38 @@ describe('CreateRideHandler', () => {
     await expect(create('1h', 'w', false, true)).rejects.toThrow(new ConflictError('the tutorial and assist are for free rides only'));
     await expect(create('4h', 'w', true, false)).rejects.toThrow(ConflictError);
     expect(await ctx.rides.findOpenByWallet('w')).toBeNull();
+  });
+
+  it('a free ride at a LEVEL: its trip, FREE_RIDE_SECONDS × its multiple (10 s here) and its K; no level = EASY', async () => {
+    const { create } = setup();
+    expect(await create('free')).toMatchObject({ level: 1, trip: 'free-1', minSeconds: 10, completeDist: 0.25 * 28 * 10 });
+    expect(await setup().create('free', 'w', false, false, 2)).toMatchObject({ level: 2, trip: 'free-2', minSeconds: 30, completeDist: 0.3 * 28 * 30 });
+    expect(await setup().create('free', 'w', false, false, 3)).toMatchObject({ level: 3, trip: 'free-3', minSeconds: 100, completeDist: 0.4 * 28 * 100 });
+  });
+
+  it('HARD refuses ASSIST before anything changes (409 assist_not_allowed): no ride, no credit spent; the ready ride keeps its level', async () => {
+    const { ctx, create } = setup();
+    await expect(create('free', 'w', false, true, 3)).rejects.toThrow(new ConflictError('the HARD free run has no assist', 'assist_not_allowed'));
+    expect(await ctx.rides.findOpenByWallet('w')).toBeNull();
+    const ready = await create('free', 'w', false, true, 2);
+    await expect(create('free', 'w', false, true, 3)).rejects.toMatchObject({ errorCode: 'assist_not_allowed' });
+    expect(await ctx.reload(ready.id)).toMatchObject({ trip: 'free-2', assist: true });
+    expect((await ctx.storedPlayer('w')).freeRides).toBe(9);
+  });
+
+  it('a level is for free rides only (409 level_free_only) and creates nothing', async () => {
+    const { ctx, create } = setup();
+    await expect(create('1h', 'w', false, false, 1)).rejects.toThrow(new ConflictError('a level is for free rides only', 'level_free_only'));
+    expect(await ctx.rides.findOpenByWallet('w')).toBeNull();
+  });
+
+  it('asking for the ready free ride at ANOTHER level moves the SAME ride (trip, length, line, helpers) – one credit, one ride, saved', async () => {
+    const { ctx, create } = setup();
+    const first = await create('free', 'w', false, true, 1);
+    const hard = await create('free', 'w', true, false, 3);
+    expect(hard).toMatchObject({ id: first.id, level: 3, trip: 'free-3', minSeconds: 100, completeDist: 0.4 * 28 * 100, tutorial: true, assist: false });
+    expect((await ctx.reload(first.id)).snapshot()).toMatchObject({ trip: 'free-3', minSeconds: 100, tutorial: true, assist: false });
+    expect((await ctx.storedPlayer('w')).freeRides).toBe(9);
   });
 
   it('no credits left → 409', async () => {

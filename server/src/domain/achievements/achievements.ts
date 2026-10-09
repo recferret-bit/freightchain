@@ -7,6 +7,7 @@ export interface Facts {
   cleanRun: boolean; // completed with the hull at ~100 %
   completedSiberia: boolean;
   completedFreeUnassisted: boolean; // a FREE ride judged complete that was driven without ASSIST (the tutorial does not matter – it changes nothing in the truck)
+  completedFreeLevels: number[]; // the free LEVELS (1 EASY · 2 CROSSROADS · 3 HARD – ride-trip.ts FREE_LEVELS, from Ride.trip) with a ride judged complete
 }
 
 export interface Achievement {
@@ -25,6 +26,9 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   { id: 'clean-run', name: 'Clean Run', desc: 'Finish a shift without a scratch (hull 100 %).', icon: '✦', rule: (f) => f.cleanRun },
   { id: 'cold-start', name: 'Cold Start', desc: 'Finish a shift on the Trans-Siberian route.', icon: '❄', rule: (f) => f.completedSiberia },
   { id: 'on-my-own', name: 'On My Own', desc: 'Complete a free ride without assist.', icon: '⚑', rule: (f) => f.completedFreeUnassisted },
+  { id: 'free-easy', name: 'Learner’s Permit', desc: 'Clear the EASY free run.', icon: '①', rule: (f) => f.completedFreeLevels.includes(1) },
+  { id: 'free-crossroads', name: 'Crossroads', desc: 'Clear the CROSSROADS free run.', icon: '②', rule: (f) => f.completedFreeLevels.includes(2) },
+  { id: 'free-hard', name: 'Long Haul', desc: 'Clear the HARD free run – ten minutes, no assist.', icon: '③', rule: (f) => f.completedFreeLevels.includes(3) },
   { id: 'top-20', name: 'Top 20', desc: 'Be in the top 20 when the weekly round closes.', icon: '★', rule: null }, // awarded at round close – settlement is not built yet
 ];
 

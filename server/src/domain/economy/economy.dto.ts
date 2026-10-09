@@ -1,6 +1,16 @@
 import type { PrizePoolDto } from './prize-pool.dto.js';
 import type { Split } from './prize-split.js';
 
+/** one of the free ride's LEVELS (ride-trip.ts FREE_LEVELS) – the lobby's picker: `seconds` = FREE_RIDE_SECONDS × its multiple, `assist` = may ASSIST be on */
+export interface FreeLevelDto {
+  level: number;
+  trip: string;
+  name: string;
+  seconds: number;
+  completeDist: number;
+  assist: boolean;
+}
+
 export interface TierDto {
   id: string;
   usd: number;
@@ -13,6 +23,8 @@ export interface TierDto {
   onSale: boolean;
   /** paid tiers: the escrowed pool its tickets are sold into right now (null = none). An on-sale tier with none uses the legacy pay-per-ride order; an off-sale tier is marked soon. */
   pool: PrizePoolDto | null;
+  /** the free tier only: its levels, easiest first (its own `seconds` / `completeDist` are level 1's) */
+  levels?: FreeLevelDto[];
 }
 
 export interface TiersDto {

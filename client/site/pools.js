@@ -81,6 +81,7 @@ const tierName = t => TIER_NAME[t] ?? t;
 /** A readable sentence for every refusal of POST /api/rides (409 codes of the ledger; the server's detail carries the numbers). */
 export function rideError(e, tier) {
   if (e?.code === 'no_tickets') return `No ${tierName(tier)} tickets left – buy one or redeem a promo code.`;
+  if (e?.code === 'assist_not_allowed') return `${e.message[0]?.toUpperCase() ?? ''}${e.message.slice(1)} – untick ASSIST or pick an easier level.`;
   if (e?.code === 'pool_not_live') return `The pool is still waiting for riders (${e.message}). Your tickets wait – and are refunded in full if it misses its goal.`;
   if (e?.status === 409 && /in progress/.test(e.message ?? '')) return 'You already have a ride on the road (another tab?). It frees up about 2½ minutes after its last signal.';
   return e?.message ?? String(e);

@@ -72,6 +72,21 @@ if(await ev('typeof window.__game')==='object' && await ev('typeof __game.net')=
   if(h){ await ev(`__game.st.s=${h}; __game.st.d=2.4; __game.st.psi=0`); await sleep(2500); await shot('net-multilane'); console.log('multi-lane:',await ev('__game.roads.status().road')); }
   await ev('clearInterval(window.__hold2)');
 }
+// free levels + forks + the phone map: the EASY four-lane road, a fork's split (both roads), its middle, the phone on the dash and the phone map open (level-*.png, fork-*.png, map-*.png) – look at them
+if(await ev('typeof window.__game')==='object' && await ev('typeof __game.toggleMap')==='function'){
+  const hold=s=>`clearInterval(window.__hold3); window.__hold3=setInterval(()=>{ const g=__game; g.st.v=0; g.st.hull=100; g.st.offT=0; ${s} },50)`;
+  await ev(`__game.setTrip('free-1'); __game.st.mode='done'; __game.startRide(); document.getElementById('overlay').classList.add('hide'); ${hold('')}; __game.st.s=__game.net.Sm+300; __game.st.d=2.4; __game.st.psi=0`); await sleep(2500); await shot('level-easy');
+  await ev(`__game.setTrip('free-2'); __game.st.mode='done'; __game.startRide(); document.getElementById('overlay').classList.add('hide')`);
+  const f=await ev('(()=>{ __game.net.ensure(8000); const f=__game.net.forks[0]; return f&&{f0:f.f0,f1:f.f1}; })()');
+  if(f){ await ev(`${hold('')}; __game.st.s=${f.f0}-40; __game.st.d=2.4; __game.st.psi=0`); await sleep(2500); await shot('fork-split');
+    await ev(`__game.st.s=${f.f0}+120; __game.st.d=2.4; __game.st.psi=-0.05`); await sleep(2000); await shot('fork-apron');
+    await ev(`__game.st.s=${(f.f0+f.f1)/2}; __game.st.d=2.4; __game.st.psi=0`); await sleep(2000); await shot('fork-middle');
+    await ev(`__game.st.s=${f.f0}-300; __game.st.d=2.4; __game.st.psi=0`); await sleep(1500); await shot('map-dash');
+    await ev('__game.toggleMap(true)'); await sleep(1500); await shot('map-open');
+    console.log('map:',await ev('JSON.stringify({open:__game.phone.open, forks:__game.net.forks.length, el:!!document.getElementById("phone")})'));
+    await ev('__game.setNight(true,true,false)'); await sleep(1500); await shot('map-open-night'); await ev('__game.setNight(false,true,false); __game.toggleMap(false)'); }
+  await ev(`clearInterval(window.__hold3); __game.setTrip('1h'); __game.st.mode='done'; __game.startRide(); document.getElementById('overlay').classList.add('hide')`);
+}
 // cold tour: Siberia (-22 °C, heavy snow) – frosted glass with the heater off, then a warm engine + heater on (cold-frost.png / cold-heater.png / cold-night.png) – look at them
 if(await ev('typeof window.__game')==='object'){
   await ev(`__game.selectTheme('siberia', false); __game.setNight(false,true,false); __game.CFG.TRAFFIC=false; __game.startRide(); const g=__game; g.st.engineOn=true; g.st.keyOn=true; g.st.rpm=1500; g.st.v=14; g.st.s=g.net.Sm+260; window.__hold=setInterval(()=>{ g.st.v=14; g.st.rpm=1500; g.st.engineOn=true; g.st.hull=100; g.st.d=2.4; g.st.psi=0; },50); document.getElementById('overlay').classList.add('hide')`);

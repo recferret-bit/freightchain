@@ -33,6 +33,37 @@ describe('Ride – the free ride\'s helpers', () => {
   });
 });
 
+describe('Ride – the free LEVELS (EASY / CROSSROADS / HARD)', () => {
+  const free = (level: 1 | 2 | 3, minSeconds: number, assist = false) => Ride.createFree({ id: 'r', wallet: 'w', seed: 7, minSeconds, now: T0, level, assist });
+
+  it('each level stamps its trip and its own finish line (k × 28 m/s × minSeconds); no level = EASY; a paid ride has none', () => {
+    expect(free(1, 60)).toMatchObject({ trip: 'free-1', level: 1, minSeconds: 60, completeDist: 0.25 * 28 * 60 });
+    expect(free(2, 180)).toMatchObject({ trip: 'free-2', level: 2, minSeconds: 180, completeDist: 0.3 * 28 * 180 });
+    expect(free(3, 600)).toMatchObject({ trip: 'free-3', level: 3, minSeconds: 600, completeDist: 0.4 * 28 * 600 });
+    expect(order().level).toBeNull();
+    expect(Ride.restore({ ...freeRide().snapshot(), trip: 'free' }).level).toBeNull();   // a free ride from before the levels
+  });
+
+  it('HARD refuses ASSIST (409 assist_not_allowed) – at creation and when re-chosen; EASY and CROSSROADS take it', () => {
+    expect(() => free(3, 600, true)).toThrow(new ConflictError('the HARD free run has no assist', 'assist_not_allowed'));
+    expect(free(1, 60, true).assist).toBe(true);
+    expect(free(2, 180, true).assist).toBe(true);
+    expect(() => free(3, 600).chooseGuide(false, true)).toThrow(ConflictError);
+  });
+
+  it('a ready free ride is re-chosen as a whole: level (trip, length, line) + helpers; nothing changed = false; HARD + assist changes nothing', () => {
+    const r = free(2, 180, true);
+    expect(r.chooseFree(2, 180, false, true)).toBe(false);
+    expect(() => r.chooseFree(3, 600, false, true)).toThrow(ConflictError);
+    expect(r).toMatchObject({ trip: 'free-2', minSeconds: 180, assist: true });
+    expect(r.chooseFree(3, 600, true, false)).toBe(true);
+    expect(r).toMatchObject({ trip: 'free-3', level: 3, minSeconds: 600, completeDist: 0.4 * 28 * 600, tutorial: true, assist: false });
+    expect(() => order().chooseFree(1, 60, false, false)).toThrow(ConflictError);
+    r.start(T0);
+    expect(() => r.chooseFree(1, 60, false, false)).toThrow(ConflictError);   // a running ride keeps its road
+  });
+});
+
 describe('Ride – the world the server assigns', () => {
   it('the route and the start hour come from the seed at creation, are stored on the ride and cannot be reported', () => {
     const r = freeRide();
@@ -52,7 +83,7 @@ describe('Ride – the world the server assigns', () => {
 
 describe('Ride – creation', () => {
   it('a free ride is ready at once; completion needs 0.25 × 28 m/s × minSeconds metres (the free run ends at a shorter line than a paid shift)', () => {
-    expect(freeRide()).toMatchObject({ status: RideStatus.Created, minSeconds: 10, completeDist: 70, isFree: true, version: 1, trip: 'free' });
+    expect(freeRide()).toMatchObject({ status: RideStatus.Created, minSeconds: 10, completeDist: 70, isFree: true, version: 1, trip: 'free-1', level: 1 });
   });
 
   it('a paid order awaits payment with its price and expiry locked in', () => {

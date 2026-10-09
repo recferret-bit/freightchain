@@ -24,6 +24,7 @@ describe('RidesHttpController', () => {
     const { commands, queries, c } = setup();
     await c.create(me, { tier: '4h' }); expect(commands.last()).toEqual(new CreateRideCommand('W', '4h'));
     await c.create(me, { tier: 'free', tutorial: true, assist: true }); expect(commands.last()).toEqual(new CreateRideCommand('W', 'free', true, true));
+    await c.create(me, { tier: 'free', level: 3 }); expect(commands.last()).toEqual(new CreateRideCommand('W', 'free', false, false, 3));
     await c.pending(me); expect(queries.last()).toEqual(new GetPendingRideQuery('W'));
     await c.get(me, params); expect(queries.last()).toEqual(new GetRideQuery('W', 'ride-1'));
     await c.payment(me, params); expect(queries.last()).toEqual(new GetPaymentInstructionsQuery('W', 'ride-1'));
@@ -36,7 +37,7 @@ describe('RidesHttpController', () => {
     await c.end(me, params, end); expect(commands.last()).toEqual(new EndRideCommand('W', 'ride-1', 'failed', end.report, 'crash'));
     const batch = batchBodySchema.parse(recording('ride-1', { seconds: 10 })[0]);
     await c.batch(me, params, batch); expect(commands.last()).toEqual(new UploadBatchCommand('W', 'ride-1', batch));
-    expect(commands.sent).toHaveLength(8);
+    expect(commands.sent).toHaveLength(9);
     expect(queries.sent).toHaveLength(3);
   });
 
@@ -54,6 +55,11 @@ describe('RidesHttpController', () => {
       expect(createRideBodySchema.parse({ tier: 'free', tutorial: true, assist: false })).toEqual({ tier: 'free', tutorial: true, assist: false });
       expect(createRideBodySchema.safeParse({ tier: 'free', assist: 'yes' }).success).toBe(false);
       expect(createRideBodySchema.safeParse({ tier: 'free', tutorial: 1 }).success).toBe(false);
+    });
+    it('create: the free ride\'s level is optional and 1, 2 or 3 – nothing else', () => {
+      expect(createRideBodySchema.parse({ tier: 'free', level: 2 })).toEqual({ tier: 'free', level: 2 });
+      for (const level of [0, 4, 1.5, '2', null, 'HARD']) expect(createRideBodySchema.safeParse({ tier: 'free', level }).success, String(level)).toBe(false);
+      expect(createRideBodySchema.safeParse({ tier: '1h', level: 1 }).success).toBe(true);   // valid shape: the handler refuses it (409 level_free_only)
     });
     it('confirm: a base58 transaction signature', () => {
       expect(confirmPaymentBodySchema.safeParse({ signature: newSignature() }).success).toBe(true);
