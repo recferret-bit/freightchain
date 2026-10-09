@@ -49,10 +49,6 @@ export interface RulesConfig {
   telemetryRetentionDays: number;
   /** sign-in rows (wallet, time, IP, browser) older than this are deleted; 0 = keep forever */
   signInRetentionDays: number;
-  /** verified play: seconds of driving between two dispatch prompts (a short shift gets at most 4); 0 = no prompts */
-  challengeIntervalSeconds: number;
-  /** dispatch prompts on FREE rides too (CHALLENGE_FREE_RIDES; production: off) */
-  challengeFreeRides: boolean;
   /** live streams' feature flags (LIVE_CHAT / LIVE_DONATIONS / LIVE_FREE_DONATIONS / LIVE_EFFECTS) */
   live: LiveFlags;
   /** wallets that may sign in to the admin page (empty = nobody) */

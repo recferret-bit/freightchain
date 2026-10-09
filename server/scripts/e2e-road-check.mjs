@@ -1,4 +1,4 @@
-// The SERVER's road, end to end, against a RUNNING server (`bash .claude/skills/run-tests/e2e.sh road` starts one: FREE_RIDE_SECONDS=30, prompts off):
+// The SERVER's road, end to end, against a RUNNING server (`bash .claude/skills/run-tests/e2e.sh road` starts one: FREE_RIDE_SECONDS=30):
 //   A. an HONEST driver in real headless Chrome: the game loads the ride's obstacle plan from the server (GET /api/watch/:id/road), cruises in the right-hand
 //      lane at ~80 km/h straight through the first planned sinkholes in it and takes the damage → COMPLETED · VERIFIED, the holes HIT
 //   B. a CHEATER in real headless Chrome: the same drive, but the holes are taken out of the game first (the plan follower stopped, CFG.HOLES off, the cache

@@ -10,8 +10,6 @@ import { setNight } from '../world/daynight.js';
 import { toggleHeater } from '../sim/climate.js';
 import { toggleCab } from '../sim/battery.js';
 import { recordInput, releaseInputs } from '../telemetry.js';
-import { answerPrompt } from '../prompt.js';
-
 /* Keyboard + mouse input. Side effects only: listeners are attached on import. */
 
 /* ───────────────────────── input ───────────────────────── */
@@ -26,7 +24,7 @@ addEventListener('keydown', e => {
     if (e.code === 'KeyM' && !e.target.closest?.('input, textarea')) { audio.muted = !audio.muted; toast(audio.muted ? 'Sound off' : 'Sound on', 1000); }
     return;
   }
-  if (!e.repeat) { recordInput(e.code, 1, e.timeStamp); if (st.mode === 'drive') answerPrompt(e.code); }   // online rides only (no-op otherwise): the server's human-likeness check reads the timing; a dispatch prompt is answered by its key
+  if (!e.repeat) recordInput(e.code, 1, e.timeStamp);   // online rides only (no-op otherwise): the server's human-likeness check reads the timing
   if (KEYS[e.code]) { input[KEYS[e.code]] = 1; e.preventDefault(); return; }
   if (e.repeat) return;
   if (e.code === 'KeyE') tryShift(st.gear + 1);
@@ -57,7 +55,7 @@ addEventListener('blur', () => { for (const k in input) input[k] = 0; releaseInp
 const btnAt = e => uiBtns.find(b => e.clientX >= b.x && e.clientX <= b.x + b.w && e.clientY >= b.y && e.clientY <= b.y + b.h);
 let heldBtn = null;
 let recBtn = null;   // the dash button whose press was recorded, so the release is recorded too
-addEventListener('pointerdown', e => { if (st.mode !== 'drive' || st.watch) return; const b = btnAt(e); if (!b) return; recBtn = `btn:${b.id}`; recordInput(recBtn, 1, e.timeStamp); answerPrompt(recBtn); if (b.id === 'wiper') cycleWipers(); else if (b.id === 'wash') { input.wash = 1; heldBtn = 'wash'; } else if (b.id === 'key-off') keySwitch(false); else if (b.id === 'key-on') keySwitch(true); else if (b.id === 'key-start') { if (!st.engineOn) { ignition(true); heldBtn = 'key'; } } else if (b.id === 'park') toggleParkingBrake(); else if (b.id === 'head') { dn.head = !dn.head; audio.play(dn.head ? 'switch' : 'switch-off'); } else if (b.id === 'cab') toggleCab(); else if (b.id === 'heat') toggleHeater(); else if (b.id === 'r-pwr') radioMsg(radio.toggle()); else if (b.id === 'r-prev') { radio.seek(-1); radioMsg(true); } else if (b.id === 'r-next') { radio.seek(1); radioMsg(true); } });
+addEventListener('pointerdown', e => { if (st.mode !== 'drive' || st.watch) return; const b = btnAt(e); if (!b) return; recBtn = `btn:${b.id}`; recordInput(recBtn, 1, e.timeStamp); if (b.id === 'wiper') cycleWipers(); else if (b.id === 'wash') { input.wash = 1; heldBtn = 'wash'; } else if (b.id === 'key-off') keySwitch(false); else if (b.id === 'key-on') keySwitch(true); else if (b.id === 'key-start') { if (!st.engineOn) { ignition(true); heldBtn = 'key'; } } else if (b.id === 'park') toggleParkingBrake(); else if (b.id === 'head') { dn.head = !dn.head; audio.play(dn.head ? 'switch' : 'switch-off'); } else if (b.id === 'cab') toggleCab(); else if (b.id === 'heat') toggleHeater(); else if (b.id === 'r-pwr') radioMsg(radio.toggle()); else if (b.id === 'r-prev') { radio.seek(-1); radioMsg(true); } else if (b.id === 'r-next') { radio.seek(1); radioMsg(true); } });
 const releaseHeld = e => { if (recBtn) { recordInput(recBtn, 0, e?.timeStamp); recBtn = null; } if (heldBtn === 'wash') input.wash = 0; else if (heldBtn === 'key') releaseKey(); heldBtn = null; };
 addEventListener('pointerup', releaseHeld); addEventListener('pointercancel', releaseHeld); addEventListener('blur', releaseHeld);
 addEventListener('pointermove', e => { document.body.style.cursor = st.mode === 'drive' && !st.watch && btnAt(e) ? 'pointer' : ''; });

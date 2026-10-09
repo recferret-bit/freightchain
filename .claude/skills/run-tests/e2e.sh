@@ -67,18 +67,18 @@ for suite in "${SUITES[@]}"; do
     close-split)   # the same on split hosts (the cookie on the apex, the beacons cross-subdomain to api.*) – what production does
       APP_DOMAIN=app.localhost COOKIE_DOMAIN=app.localhost CORS_ORIGINS=http://app.localhost,http://ride.app.localhost start 20
       (cd "$SERVER" && SERVER="http://localhost:$PORT" BASE=http://app.localhost RESOLVE="MAP app.localhost 127.0.0.1:$PORT, MAP *.app.localhost 127.0.0.1:$PORT" CHROME_PORT="$(free_port)" node scripts/e2e-close.mjs) || fails=$((fails + 1)) ;;
-    verified)   # verified play, positive + negative: a person and a bot in Chrome, API-level bots, the CLI's bulk re-judge – a 40 s free shift with a dispatch prompt about every other heartbeat
-      EXTRA_ENV="CHALLENGE_INTERVAL_SECONDS=8" start 40; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" CHROME_PORT2="$(free_port)" CLI="$BUILD/cli/index.js" DATABASE_URL="$URL" FREE_RIDE_SECONDS=40 node scripts/e2e-verified-play.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
-    verified-deep)   # verified play, the DEEP pass: every verdict code, the upload protocol, who sees a verdict, the admin's hand, the profile in Chrome, retention + bulk re-judge – prompts OFF, a 30 s shift
+    verified)   # verified play, positive + negative: a person (verified) and a metronome bot (flagged on input timing) in Chrome, API-level bots, the CLI's bulk re-judge
+      start 40; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" CHROME_PORT2="$(free_port)" CLI="$BUILD/cli/index.js" DATABASE_URL="$URL" FREE_RIDE_SECONDS=40 node scripts/e2e-verified-play.mjs) || fails=$((fails + 1)) ;;
+    verified-deep)   # verified play, the DEEP pass: every verdict code, the upload protocol, who sees a verdict, the admin's hand, the profile in Chrome, retention + bulk re-judge – a 30 s shift
       wallet="$(cd "$SERVER" && node -e 'const n=require("tweetnacl"),b=require("bs58").default??require("bs58"),k=n.sign.keyPair();require("fs").writeFileSync(process.argv[1],JSON.stringify([...k.secretKey]));console.log(b.encode(k.publicKey))' "$ADMIN_KP")"
-      EXTRA_ENV="CHALLENGE_INTERVAL_SECONDS=0" start 30 "$wallet"; (cd "$SERVER" && BASE="http://localhost:$PORT" ADMIN_KEYPAIR="$ADMIN_KP" CHROME_PORT="$(free_port)" CLI="$BUILD/cli/index.js" DATABASE_URL="$URL" FREE_RIDE_SECONDS=30 node scripts/e2e-verified-deep.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
+      start 30 "$wallet"; (cd "$SERVER" && BASE="http://localhost:$PORT" ADMIN_KEYPAIR="$ADMIN_KP" CHROME_PORT="$(free_port)" CLI="$BUILD/cli/index.js" DATABASE_URL="$URL" FREE_RIDE_SECONDS=30 node scripts/e2e-verified-deep.mjs) || fails=$((fails + 1)) ;;
     road)   # the SERVER's road: an honest driver and one with the holes taken out of its game (Chrome), a spectator's replay of both, the ride-audit tool on the database
-      EXTRA_ENV="CHALLENGE_INTERVAL_SECONDS=0" start 30; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" AUDIT_BUILD="$BUILD" DATABASE_URL="$URL" node scripts/e2e-road-check.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
+      start 30; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" AUDIT_BUILD="$BUILD" DATABASE_URL="$URL" node scripts/e2e-road-check.mjs) || fails=$((fails + 1)) ;;
     stats)   # statistics end to end: a real game crashing into a car, API bots for the other ways a ride ends, the landing's tiles + the lobby's DRIVING RECORD, `stats:reconcile` on the live database
       # a REAL Redis with a password (throwaway container, loopback port): the cache is exercised for real, and the suite stops it to prove the API survives a dead cache
       RPORT="$(free_port)"; RPW="$(node -e 'console.log(require("crypto").randomBytes(16).toString("hex"))')"
       REDIS_CT="$(docker run -d --rm -p "127.0.0.1:$RPORT:6379" -e REDISCLI_AUTH="$RPW" redis:7-alpine redis-server --requirepass "$RPW" --save "")"; trap 'docker rm -f "$REDIS_CT" >/dev/null 2>&1; cleanup' EXIT
-      EXTRA_ENV="TRUST_PROXY=1 HB_TIMEOUT_MS=15000 CHALLENGE_INTERVAL_SECONDS=0 REDIS_URL=redis://:$RPW@127.0.0.1:$RPORT" start 300
+      EXTRA_ENV="TRUST_PROXY=1 HB_TIMEOUT_MS=15000 REDIS_URL=redis://:$RPW@127.0.0.1:$RPORT" start 300
       (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" CLI="$BUILD/cli/index.js" DATABASE_URL="$URL" REDIS_CONTAINER="$REDIS_CT" node scripts/e2e-stats.mjs) || fails=$((fails + 1))
       EXTRA_ENV=""; docker rm -f "$REDIS_CT" >/dev/null 2>&1 || true; trap cleanup EXIT ;;
     *) echo "unknown suite $suite (browser | lobby | admin | promo | watch | replay | flags | wallet | wallet-split | board | close | close-split | verified | verified-deep | road | stats)"; fails=$((fails + 1)) ;;

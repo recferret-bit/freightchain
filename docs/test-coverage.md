@@ -15,7 +15,7 @@ when browser runs are recorded and one of its harnesses is an `e2e.sh` suite, ev
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- |
 | Sign-in + session | **fair** | 14/20 | 47 | 4/4 | 36 | 1 | — | e2e-wallet, e2e-browser, e2e-lobby, e2e-close | 3/4 | 78.8 % · 77 % (19/20 files loaded) | 1 of 4 routes never hit in a recorded browser run |
 | Player account: free rides + daily refill | **strong** | 3/3 | 16 | — | — | 5 | — | e2e-lobby | — | 100 % · 83.3 % | — |
-| Verified play (recording, verdict, prompts) | **strong** | 14/22 | 76 | 1/1 | 26 | 5 | 1 | e2e-verified-play, e2e-verified-deep, e2e-browser | 1/1 | 89.3 % · 87.6 % (19/22 files loaded) | — |
+| Verified play (recording, verdict) | **strong** | 14/22 | 76 | 1/1 | 26 | 5 | 1 | e2e-verified-play, e2e-verified-deep, e2e-browser | 1/1 | 89.3 % · 87.6 % (19/22 files loaded) | — |
 | The server's road (obstacle plan, road checks, ride audit) | **fair** | 5/6 | 20 | 1/1 | 4 | — | — | e2e-road-check | 0/1 | — | 1 of 1 routes never hit in a recorded browser run |
 | Pay-per-ride (legacy weekly round) | **fair** | 14/18 | 70 | 4/4 | 35 | 5 | — | e2e-lobby | 1/4 | 98.7 % · 87.2 % | 3 of 4 routes never hit in a recorded browser run |
 | Ride lifecycle (order, start, heartbeat, end, stale sweep) | **strong** | 15/20 | 112 | 6/6 | 68 | 5 | — | e2e-browser, e2e-close, e2e-lobby | 6/6 | 88.4 % · 87.9 % (19/20 files loaded) | — |
@@ -324,7 +324,7 @@ Columns: *files with own test* = source files (logic only: no ports, DTOs, comma
 ## Files with no test of their own, by feature
 
 - **Sign-in + session** (6): `domain/auth/sign-in.ts` (100 % lines), `domain/players/wallet-address.ts` (100 % lines), `client/js/hosts.js` (100 % lines), `client/js/wallet.js` (42.9 % lines), `client/site/dev-wallet.js`, `client/site/wallet.js` (34.2 % lines)
-- **Verified play (recording, verdict, prompts)** (8): `domain/telemetry/world-facts.ts`, `domain/verdict/challenge-checks.ts` (100 % lines), `domain/verdict/human-checks.ts` (100 % lines), `domain/verdict/recording-checks.ts` (100 % lines), `domain/verdict/ride-verdict.entity.ts` (96.4 % lines), `domain/verdict/verdict-rules.ts` (100 % lines), `client/js/prompt.js` (45.7 % lines), `client/js/telemetry.js` (57.7 % lines)
+- **Verified play (recording, verdict)** (6): `domain/telemetry/world-facts.ts`, `domain/verdict/human-checks.ts` (100 % lines), `domain/verdict/recording-checks.ts` (100 % lines), `domain/verdict/ride-verdict.entity.ts` (96.4 % lines), `domain/verdict/verdict-rules.ts` (100 % lines), `client/js/telemetry.js` (57.7 % lines)
 - **The server's road (obstacle plan, road checks, ride audit)** (1): `client/js/road-plan.js`
 - **Pay-per-ride (legacy weekly round)** (4): `domain/economy/payment-verification.ts` (100 % lines), `domain/economy/payment.entity.ts` (100 % lines), `domain/economy/round.entity.ts` (100 % lines), `domain/economy/week.ts` (100 % lines)
 - **Ride lifecycle (order, start, heartbeat, end, stale sweep)** (5): `domain/rides/ride-report.ts`, `domain/rides/ride-rules.ts` (100 % lines), `domain/rides/ride-status.ts` (100 % lines), `domain/rides/ride-tier.ts` (100 % lines), `client/js/online.js` (23.2 % lines)

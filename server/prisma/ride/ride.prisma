@@ -47,8 +47,8 @@ model Ride {
   hull           Float?
   endedAt        DateTime?
   reason         String?
-  challenges     Json? // the dispatch prompts issued ([{ id, action, issuedMs, deadlineMs }], ms since startedAt – domain/rides/ride-challenge.ts); null = none yet
-  nextChallengeAt Float? // drive-seconds at which the next prompt is due
+  challenges     Json? // historical dispatch prompts (rules v4 issues none; [{ id, action, issuedMs, deadlineMs }], ms since startedAt – domain/rides/ride-challenge.ts); null = none
+  nextChallengeAt Float? // historical: drive-seconds at which the next prompt was due (rules v4 leaves this null)
   version        Int             @default(1) // optimistic lock: heartbeat vs end
   payment        Payment?
   batches        RideBatch[]

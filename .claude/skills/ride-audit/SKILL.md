@@ -30,7 +30,7 @@ bash .claude/skills/ride-audit/run.sh --latest 10 --wallet <address> --status co
      went past, IGNORED = driven through at speed with no damage – **the game never had that hole**;
    - the longest off-road spell (the game ends a ride after 20 s; the server's answer covers everything past the start junction);
    - speed gained while the gas pedal was up and no gas key went down (flat road: only the engine can speed the truck up);
-   - the input events: presses, presses on the gas; the dispatch prompts and the human-timing statistics through the verdict.
+   - the input events: presses, presses on the gas, and the human-timing statistics through the verdict. Rules v4 writes `scores.challenges` as zeros. An older verdict can still name `challenges-ignored`, `challenge-missed`, or `challenge-reflex`; a fresh judgement will not, so that ride's `ON RECORD` line differs until someone re-judges it.
 4. **Judges again** at the current `RULES_VERSION` (`RideVerdict.judge` on the fresh measurements) and prints it next to the verdict on record.
 
 ## Reading the report
@@ -39,14 +39,14 @@ bash .claude/skills/ride-audit/run.sh --latest 10 --wallet <address> --status co
 ROAD       the server's plan from seed 462706227: 2 holes on the driven stretch, 2 reached by the truck
     0.61 km  sinkhole lane   2.4  t    27.6 s  ✗ IGNORED  hull −0.0 % (the game takes 19.0 %)
              axle front · wheel 1.01 m inside the pit · v 21.98 → 21.98 m/s · hull 100 → 100 · ignored
-VERDICT    judged now (rules v3): REJECTED
+VERDICT    judged now (rules v4): REJECTED
   ✗ obstacle-ignored – drove through 2 of the 2 planned holes it reached without a scratch – …
-ON RECORD  rejected (rules v3) obstacle-ignored · same as now
+ON RECORD  rejected (rules v4) obstacle-ignored · same as now
 RESULT     NOT OK – rejected: obstacle-ignored
 ```
 
 - `RESULT OK` = verified now: the chain is intact, the recording covers and matches the ride, the truck reacted to every planned hole it drove through,
-  the timing looks human, the prompts were answered.
+  and the timing looks human.
 - A batch is measured together with the tail of the batch before it, as on upload, so a client that cuts its batches right at the pits gains nothing; a
   pass that still has no sample before the pit is `unmeasured` (2 such holes flag `obstacle-unmeasured` – batches uploaded out of order).
 - `IGNORED` holes are the clearest sign of a modified game (holes taken out of the client). One alone only flags (`obstacle-no-impact`) – look at the

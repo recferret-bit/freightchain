@@ -45,8 +45,8 @@ and `server/scripts/e2e-live-board.mjs` (online / on the road / the replays hist
 and `server/scripts/e2e-close.mjs` twice – `close` (one origin) and `close-split` (landing + lobby on `app.localhost`, the game on `ride.app.localhost`, the API on
 `api.app.localhost`): a closed landing / lobby / watch page leaves "online" at once, a game tab closed mid-ride ends ABANDONED, Back to it comes from the
 back/forward cache and reloads, a COMPLETE shift whose tab closes is COMPLETED + VERIFIED (~2 min each),
-and `server/scripts/e2e-verified-play.mjs` (`verified`: the anti-bot checks with dispatch prompts – a person and a bot in Chrome, API-level bots, the CLI; ~3 min)
-and `server/scripts/e2e-verified-deep.mjs` (`verified-deep`: every verdict code one by one with the prompts off, the upload protocol, who sees a verdict, the admin's signed hand on a flagged ride, the lobby profile in Chrome, retention + bulk re-judge on the database; ~2.5 min)
+and `server/scripts/e2e-verified-play.mjs` (`verified`: a person and a metronome bot in Chrome, verified / flagged on input timing, API-level bots, the CLI; ~3 min)
+and `server/scripts/e2e-verified-deep.mjs` (`verified-deep`: every verdict code one by one, the upload protocol, who sees a verdict, the admin's signed hand on a flagged ride, the lobby profile in Chrome, retention + bulk re-judge on the database; ~2.5 min)
 and `server/scripts/e2e-road-check.mjs` (`road`: the server's road – an honest driver and one with the holes taken out of its game in Chrome, a spectator's replay of both with the NO IMPACT marks, the `ride-audit` tool on the database; ~6 min) – all three are the `verified-play-test` skill,
 then stops the server and drops the database – also on failure.
 

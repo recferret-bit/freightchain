@@ -17,7 +17,6 @@ import { routesHTML, bindRoutes, timeHTML, bindTime } from './routes.js';
 import { online, beginOnline, endOnline } from '../online.js';
 import { startLiveFeed, stopLiveFeed } from './live-feed.js';
 import { failFx, winFx } from './fail-fx.js';
-import { prompt } from '../prompt.js';
 import { track, flushSoon } from '../analytics.js';
 import { env } from '../world/environment.js';
 import { SITE_BASE } from '../hosts.js';
@@ -30,7 +29,6 @@ export function resetRide(seed = online.ride?.seed) {   // seed: the server's fo
 }
 
 online.extra = () => ({ route: env.theme.id, night: dn.night });   // what the server's public live feed shows next to the ride
-prompt.onShow = () => audio.play('warn'); prompt.onAnswer = () => audio.play('ui');   // a dispatch prompt (prompt.js) is heard as well as seen
 /* the recording's two replay columns (telemetry.js): the hour of the day + the cab's switches, so a spectator sees the lights / wipers the driver had */
 telemetry.trafficOf = () => trafficSnapshot();   // the cars around the truck, recorded beside each batch for spectators' replays
 telemetry.extra = () => [Math.round(dn.t * 100) / 100,

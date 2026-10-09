@@ -1,6 +1,6 @@
 // Verified play, the DEEP pass – every check of the verdict (docs/verified-play/index.html), the upload protocol, the visibility of verdicts, the admin's hand on a
-// flagged ride, the profile in a real browser, the retention sweep and the bulk re-judge. The sibling e2e-verified-play.mjs covers the dispatch prompts (a person
-// and a bot in Chrome, instant answers); THIS one runs with the prompts OFF (CHALLENGE_INTERVAL_SECONDS=0) so each recording check is judged on its own.
+// flagged ride, the profile in a real browser, the retention sweep and the bulk re-judge. The sibling e2e-verified-play.mjs covers a person and a metronome bot
+// in Chrome (verified / flagged on input timing).
 //   A. one driven shift per case, all at once, over the API (the game's own batch shape + hash chain, like scripts/sim-rides.mjs) → the exact reason codes:
 //        recording: clean · no recording at all · a hole in the seqs · the recording ends far from the ride's end · covers 45 % of the time · covers 75 % ·
 //                   steering only (no gas) · a short sample row · a sample outside its batch · batches sent only AFTER /end (re-judged on arrival) · garbage traffic track
@@ -12,7 +12,7 @@
 //   F. retention + bulk re-judge on the database: rides aged by SQL → retention:sweep keeps flagged and never-judged ones, deletes the rest; a swept ride cannot be
 //      re-judged (409 on the admin page's RE-JUDGE, "skipped" in the CLI); a verdict edited back to "old rules" is found and changed by verdict:rejudge
 // Usage (bash .claude/skills/run-tests/e2e.sh verified-deep does all of it): BASE=http://localhost:3111 ADMIN_KEYPAIR=<json> CLI=dist/cli/index.js DATABASE_URL=… CHROME_PORT=9360 \
-//   FREE_RIDE_SECONDS=30 node scripts/e2e-verified-deep.mjs   (the server started with FREE_RIDE_SECONDS=30 CHALLENGE_INTERVAL_SECONDS=0 ADMIN_WALLETS=<admin>)
+//   FREE_RIDE_SECONDS=30 node scripts/e2e-verified-deep.mjs   (the server started with FREE_RIDE_SECONDS=30 ADMIN_WALLETS=<admin>)
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -170,7 +170,7 @@ const sql = q => execFileSync('docker', ['exec', 'freightchain-postgres', 'psql'
 const cli = (...args) => JSON.parse(execFileSync('node', [process.env.CLI, ...args], { env: { ...process.env, NODE_ENV: 'test' }, encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] }));
 
 /* ───────────── run ───────────── */
-console.log(`verified play DEEP e2e against ${BASE} (free shift ${MIN} s, prompts off)`);
+console.log(`verified play DEEP e2e against ${BASE} (free shift ${MIN} s)`);
 const t0 = Date.now();
 const [runs, proto] = await Promise.all([Promise.all(SCENARIOS.map(([name, opt]) => drive({ name, ...Object.fromEntries(Object.entries(opt).filter(([k]) => k !== 'final')) }))), protocol()]);
 console.log(`(${SCENARIOS.length} shifts + the protocol probes took ${Math.round((Date.now() - t0) / 1000)} s)`);
@@ -184,7 +184,7 @@ for (const [name, opt, status, want] of SCENARIOS) {
 const late = by['batches sent only AFTER /end'];
 check('A batches after /end: the verdict at /end was no-recording, the uploads re-judged it (nothing is left unjudged)', late.end.verdict?.status === 'rejected' && codes(late.end.verdict).includes('no-recording') && late.late.every(s => s === 200) && late.after.verdict?.status === 'verified', `at end ${codes(late.end.verdict)} → ${late.after.verdict?.status}, uploads ${late.late}`);
 check('A clean: every batch was stored (200), the ride was judged only after it completed', by.clean.receipts.length >= 2 && by.clean.receipts.every(s => s === 200) && by.clean.end.verdict.judgedAt > 0);
-check('A prompts are off here: no challenge reason on any ride', runs.every(x => !codes(x.end.verdict).some(c => c.startsWith('challenge'))));
+check('A no challenge reason on any ride', runs.every(x => !codes(x.end.verdict).some(c => c.startsWith('challenge'))));
 
 // B. the protocol
 check('B a batch before the ride started: 409', proto.beforeStart === 409, String(proto.beforeStart));
