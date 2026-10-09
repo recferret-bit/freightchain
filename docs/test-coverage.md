@@ -1,6 +1,6 @@
 # Test coverage by feature
 
-Generated 2026-10-09 17:27 UTC by `npm run test:census -- features --write` (skill `test-census`). Do not edit by hand: the map is `.claude/skills/test-census/features.mjs`.
+Generated 2026-10-09 23:44 UTC by `npm run test:census -- features --write` (skill `test-census`). Do not edit by hand: the map is `.claude/skills/test-census/features.mjs`.
 
 Static: imports, requested routes, `check()` messages · browser runs: `admin` 2026-10-09, `board` 2026-10-09, `browser` 2026-10-09, `close-split` 2026-10-09, `close` 2026-10-09, `flags` 2026-10-09, `lobby` 2026-10-09, `promo` 2026-10-09, `replay` 2026-10-09, `verified` 2026-10-09, `wallet-split` 2026-10-09, `wallet` 2026-10-09, `watch` 2026-10-09 · lines: server unit + HTTP + PostgreSQL, the headless playthrough, client / landing / media node:test at 2026-10-09 12:57 UTC.
 
@@ -16,16 +16,16 @@ when browser runs are recorded and one of its harnesses is an `e2e.sh` suite, ev
 | Sign-in + session | **fair** | 14/20 | 47 | 4/4 | 36 | 1 | — | e2e-wallet, e2e-browser, e2e-lobby, e2e-close | 3/4 | 78.8 % · 77 % (19/20 files loaded) | 1 of 4 routes never hit in a recorded browser run |
 | Player account: free rides + daily refill | **strong** | 3/3 | 16 | — | — | 5 | — | e2e-lobby | — | 100 % · 83.3 % | — |
 | Verified play (recording, verdict, prompts) | **strong** | 14/22 | 76 | 1/1 | 26 | 5 | 1 | e2e-verified-play, e2e-verified-deep, e2e-browser | 1/1 | 89.3 % · 87.6 % (19/22 files loaded) | — |
-| The server's road (obstacle plan, road checks, ride audit) | **fair** | 5/6 | 19 | 1/1 | 4 | — | — | e2e-road-check | 0/1 | — | 1 of 1 routes never hit in a recorded browser run |
+| The server's road (obstacle plan, road checks, ride audit) | **fair** | 5/6 | 20 | 1/1 | 4 | — | — | e2e-road-check | 0/1 | — | 1 of 1 routes never hit in a recorded browser run |
 | Pay-per-ride (legacy weekly round) | **fair** | 14/18 | 70 | 4/4 | 35 | 5 | — | e2e-lobby | 1/4 | 98.7 % · 87.2 % | 3 of 4 routes never hit in a recorded browser run |
-| Ride lifecycle (order, start, heartbeat, end, stale sweep) | **strong** | 14/19 | 107 | 6/6 | 66 | 5 | — | e2e-browser, e2e-close, e2e-lobby | 6/6 | 88.4 % · 87.9 % | — |
-| Escrow: pools on sale + ticket purchase | **thin** | 28/33 | 163 | 7/8 | 8 | 4 | — | e2e-lobby, e2e-tickets-stub, e2e-localnet | 1/8 | 85.7 % · 89.5 % (32/33 files loaded) | 1 of 8 routes in no scenario; 7 of 8 routes never hit in a recorded browser run (e2e-tickets-stub, e2e-localnet not recorded) |
-| Escrow: settlement (events, watcher, webhook) | **strong** | 10/13 | 46 | 2/2 | 6 | 2 | — | e2e-localnet | — | 98.6 % · 92.2 % | — |
+| Ride lifecycle (order, start, heartbeat, end, stale sweep) | **strong** | 15/20 | 112 | 6/6 | 68 | 5 | — | e2e-browser, e2e-close, e2e-lobby | 6/6 | 88.4 % · 87.9 % (19/20 files loaded) | — |
+| Escrow: pools on sale + ticket purchase | **thin** | 28/33 | 164 | 7/8 | 8 | 4 | — | e2e-lobby, e2e-tickets-stub, e2e-localnet | 1/8 | 85.7 % · 89.5 % (32/33 files loaded) | 1 of 8 routes in no scenario; 7 of 8 routes never hit in a recorded browser run (e2e-tickets-stub, e2e-localnet not recorded) |
+| Escrow: settlement (events, watcher, webhook) | **strong** | 10/13 | 47 | 2/2 | 6 | 2 | — | e2e-localnet | — | 98.6 % · 92.2 % | — |
 | Escrow: refunds, payouts, crank | **strong** | 7/7 | 26 | 2/2 | 1 | — | — | e2e-localnet, e2e-tickets-stub | — | 99.4 % · 84.3 % | — |
-| Escrow program (on-chain, Rust) | **strong** | 0/14 | 50 | — | — | — | — | e2e-localnet | — | — | — |
+| Escrow program (on-chain, Rust) | **strong** | 0/14 | 51 | — | — | — | — | e2e-localnet | — | — | — |
 | Promo codes (admin creates, players redeem) | **strong** | 12/14 | 72 | 7/7 | 38 | 3 | — | e2e-promo, e2e-lobby, e2e-wallet | 7/7 | 74.1 % · 92.9 % | — |
 | Garage + cosmetics | **fair** | 6/9 | 30 | 4/4 | 11 | — | 6 | e2e-lobby, e2e-promo, e2e-watch | 3/4 | 87.2 % · 91 % (8/9 files loaded) | 1 of 4 routes never hit in a recorded browser run |
-| Statistics (rides, time, km, crashes, donations – per rider + global, cached) | **fair** | 7/8 | 30 | 1/1 | 9 | 2 | 2 | e2e-stats | 0/1 | — | 1 of 1 routes never hit in a recorded browser run |
+| Statistics (rides, time, km, crashes, donations – per rider + global, cached) | **fair** | 8/9 | 37 | 2/2 | 10 | 2 | 2 | e2e-stats | 0/2 | — | 2 of 2 routes never hit in a recorded browser run |
 | Live board (online, on the road, history) | **strong** | 3/5 | 11 | 2/2 | 10 | — | — | e2e-live-board, e2e-close | 2/2 | 71.6 % · 91.1 % (4/5 files loaded) | — |
 | Live streams: watch + replay | **thin** | 2/5 | 14 | 1/1 | 14 | 1 | — | e2e-watch, e2e-replay | 1/1 | 17.1 % · 87.5 % | 3 of 5 files have no test of their own; 17.1 % of lines ran |
 | Live streams: chat, mutes, donations, effects | **fair** | 13/16 | 40 | 7/7 | 8 | 3 | — | e2e-watch, e2e-live-flags, e2e-replay | 7/7 | 65.4 % · 91.1 % | 65.4 % of lines ran |
@@ -66,8 +66,8 @@ Columns: *files with own test* = source files (logic only: no ports, DTOs, comma
 | --- | ---: | --- | --- |
 | `GET /api/live` | 9 | board, close-split, close, lobby, promo, replay, wallet-split, wallet | e2e-stats |
 | `GET /api/pool` | 2 | board, close-split, close, lobby, promo, replay, wallet-split, wallet | e2e-lobby |
-| `POST /api/auth/nonce` | 153 | admin, board, browser, close-split, close, flags, lobby, promo, replay, verified, wallet-split, wallet, watch | — |
-| `POST /api/auth/verify` | 149 | admin, board, browser, close-split, close, flags, lobby, promo, replay, verified, wallet-split, wallet, watch | e2e-localnet, e2e-road-check, e2e-verified-deep, e2e-verified-play |
+| `POST /api/auth/nonce` | 154 | admin, board, browser, close-split, close, flags, lobby, promo, replay, verified, wallet-split, wallet, watch | — |
+| `POST /api/auth/verify` | 150 | admin, board, browser, close-split, close, flags, lobby, promo, replay, verified, wallet-split, wallet, watch | e2e-localnet-payout, e2e-localnet, e2e-road-check, e2e-verified-deep, e2e-verified-play |
 | `GET /api/me` | 29 | board, close-split, close, flags, lobby, promo, replay, wallet-split, wallet, watch | e2e-wallet |
 | `GET /api/tiers` | 7 | board, close-split, close, lobby, promo, replay, wallet-split, wallet | — |
 | `GET /api/profile` | 21 | lobby | e2e-stats |
@@ -78,11 +78,11 @@ Columns: *files with own test* = source files (logic only: no ports, DTOs, comma
 
 | Step | Scenario cases | Browser runs | Named by |
 | --- | ---: | --- | --- |
-| `POST /api/rides` | 99 | admin, board, browser, close-split, close, flags, lobby, replay, verified, watch | e2e-localnet |
-| `POST /api/rides/:id/start` | 77 | admin, board, browser, close-split, close, flags, lobby, replay, verified, watch | — |
-| `POST /api/rides/:id/heartbeat` | 37 | board, browser, close-split, close, lobby, replay, verified, watch | — |
+| `POST /api/rides` | 100 | admin, board, browser, close-split, close, flags, lobby, replay, verified, watch | e2e-localnet |
+| `POST /api/rides/:id/start` | 78 | admin, board, browser, close-split, close, flags, lobby, replay, verified, watch | — |
+| `POST /api/rides/:id/heartbeat` | 38 | board, browser, close-split, close, lobby, replay, verified, watch | — |
 | `POST /api/rides/:id/batches` | 26 | admin, board, browser, close-split, close, lobby, replay, verified, watch | — |
-| `POST /api/rides/:id/end` | 47 | admin, board, browser, close-split, close, lobby, replay, verified, watch | — |
+| `POST /api/rides/:id/end` | 48 | admin, board, browser, close-split, close, lobby, replay, verified, watch | — |
 | *verdict judged at /end* | | | |
 | `GET /api/leaderboard` | 7 | board, close-split, close, lobby, promo, replay, wallet-split, wallet | — |
 | `GET /api/profile` | 21 | lobby | e2e-stats |
@@ -93,7 +93,7 @@ Columns: *files with own test* = source files (logic only: no ports, DTOs, comma
 
 | Step | Scenario cases | Browser runs | Named by |
 | --- | ---: | --- | --- |
-| `POST /api/rides/:id/end` | 47 | admin, board, browser, close-split, close, lobby, replay, verified, watch | — |
+| `POST /api/rides/:id/end` | 48 | admin, board, browser, close-split, close, lobby, replay, verified, watch | — |
 | `GET /api/live` | 9 | board, close-split, close, lobby, promo, replay, wallet-split, wallet | e2e-stats |
 | *stale-ride sweeper ends a silent ride* | | | |
 
@@ -111,7 +111,7 @@ Columns: *files with own test* = source files (logic only: no ports, DTOs, comma
 | `GET /api/tickets/orders/:id` | 5 | — | — |
 | `GET /api/tickets/pending` | 1 | — | — |
 | *program event credits the tickets* | | | |
-| `POST /api/rides` | 99 | admin, board, browser, close-split, close, flags, lobby, replay, verified, watch | e2e-localnet |
+| `POST /api/rides` | 100 | admin, board, browser, close-split, close, flags, lobby, replay, verified, watch | e2e-localnet |
 
 </details>
 
@@ -140,7 +140,7 @@ Columns: *files with own test* = source files (logic only: no ports, DTOs, comma
 
 | Step | Scenario cases | Browser runs | Named by |
 | --- | ---: | --- | --- |
-| `POST /api/rides` | 99 | admin, board, browser, close-split, close, flags, lobby, replay, verified, watch | e2e-localnet |
+| `POST /api/rides` | 100 | admin, board, browser, close-split, close, flags, lobby, replay, verified, watch | e2e-localnet |
 | `GET /api/rides/:id/payment` | 3 | — | — |
 | `POST /api/rides/:id/confirm` | 28 | — | — |
 | `POST /api/rides/:id/reconcile` | 3 | lobby | — |
@@ -191,8 +191,8 @@ Columns: *files with own test* = source files (logic only: no ports, DTOs, comma
 
 | Step | Scenario cases | Browser runs | Named by |
 | --- | ---: | --- | --- |
-| `POST /api/admin/auth/nonce` | 22 | admin, promo | e2e-admin, e2e-verified-deep |
-| `POST /api/admin/auth/verify` | 22 | admin, promo | e2e-admin, e2e-verified-deep |
+| `POST /api/admin/auth/nonce` | 22 | admin, promo | e2e-admin, e2e-localnet-payout, e2e-verified-deep |
+| `POST /api/admin/auth/verify` | 22 | admin, promo | e2e-admin, e2e-localnet-payout, e2e-verified-deep |
 | `GET /api/admin/overview` | 4 | admin, promo | — |
 | `GET /api/admin/rides` | 2 | admin, promo | e2e-verified-deep |
 | `GET /api/admin/rides/:id` | 1 | admin | — |
@@ -243,7 +243,7 @@ Columns: *files with own test* = source files (logic only: no ports, DTOs, comma
 | `live` | 9 | 1 | 9/9 | 9/9 | 9/9 | 8/9 | 100 % |
 | `lobby` | 3 | 1 | 3/3 | 3/3 | 3/3 | 3/3 | 100 % |
 | `rides` | 10 | 8 | 10/10 | 10/10 | 10/10 | 8/10 | 100 % |
-| `stats` | 1 | 1 | 1/1 | 1/1 | 1/1 | 0/1 | — |
+| `stats` | 2 | 2 | 2/2 | 2/2 | 2/2 | 0/2 | — |
 | `telemetry` | 1 | 2 | 1/1 | 1/1 | 1/1 | 1/1 | 100 % |
 
 ## Routes
@@ -255,8 +255,8 @@ Columns: *files with own test* = source files (logic only: no ports, DTOs, comma
 | `POST /api/admin/promos/challenge` | promo | 2 | yes | 10 | admin, promo | — | 100 % · 75 % |
 | `POST /api/admin/promos` | promo | 4 | yes | 5 | admin, promo | — | 100 % |
 | `POST /api/admin/promos/:code/disable` | promo | 4 | yes | 3 | admin, promo | — | 100 % · 100 % |
-| `POST /api/admin/auth/nonce` | admin | 2 | yes | 22 | admin, promo | e2e-admin, e2e-verified-deep | 100 % · 100 % |
-| `POST /api/admin/auth/verify` | admin | 4 | yes | 22 | admin, promo | e2e-admin, e2e-verified-deep | 100 % · 100 % |
+| `POST /api/admin/auth/nonce` | admin | 2 | yes | 22 | admin, promo | e2e-admin, e2e-localnet-payout, e2e-verified-deep | 100 % · 100 % |
+| `POST /api/admin/auth/verify` | admin | 4 | yes | 22 | admin, promo | e2e-admin, e2e-localnet-payout, e2e-verified-deep | 100 % · 100 % |
 | `POST /api/admin/auth/logout` | admin | 1 | yes | 1 | admin | — | 100 % |
 | `GET /api/admin/overview` | admin | 1 | yes | 4 | admin, promo | — | 100 % |
 | `GET /api/admin/rides` | admin | 1 | yes | 2 | admin, promo | e2e-verified-deep | 100 % · 50 % |
@@ -267,8 +267,8 @@ Columns: *files with own test* = source files (logic only: no ports, DTOs, comma
 | `GET /api/admin/signins` | admin | 1 | yes | 1 | admin | — | 100 % · 50 % |
 | `GET /api/admin/actions` | admin | 1 | yes | 8 | admin, promo | — | 100 % · 50 % |
 | `GET /api/admin/logs` | admin | 1 | yes | 1 | admin | — | 100 % · 50 % |
-| `POST /api/auth/nonce` | auth | 4 | yes | 153 | admin, board, browser, close-split, close, flags, lobby, promo, replay, verified, wallet-split, wallet, watch | — | 100 % · 100 % |
-| `POST /api/auth/verify` | auth | 5 | yes | 149 | admin, board, browser, close-split, close, flags, lobby, promo, replay, verified, wallet-split, wallet, watch | e2e-localnet, e2e-road-check, e2e-verified-deep, e2e-verified-play | 100 % · 87.5 % |
+| `POST /api/auth/nonce` | auth | 4 | yes | 154 | admin, board, browser, close-split, close, flags, lobby, promo, replay, verified, wallet-split, wallet, watch | — | 100 % · 100 % |
+| `POST /api/auth/verify` | auth | 5 | yes | 150 | admin, board, browser, close-split, close, flags, lobby, promo, replay, verified, wallet-split, wallet, watch | e2e-localnet-payout, e2e-localnet, e2e-road-check, e2e-verified-deep, e2e-verified-play | 100 % · 87.5 % |
 | `POST /api/auth/logout` | auth | 1 | yes | 1 | — | — | 100 % |
 | `GET /api/me` | auth | 4 | yes | 29 | board, close-split, close, flags, lobby, promo, replay, wallet-split, wallet, watch | e2e-wallet | 100 % |
 | `POST /api/chain/webhook` | escrow-settle | 2 | yes | 5 | — | e2e-localnet | 100 % · 83.3 % |
@@ -307,17 +307,18 @@ Columns: *files with own test* = source files (logic only: no ports, DTOs, comma
 | `GET /api/live` | live-board | 8 | yes | 9 | board, close-split, close, lobby, promo, replay, wallet-split, wallet | e2e-stats | 100 % · 94.1 % |
 | `GET /api/replays` | live-board | 1 | yes | 1 | board, close-split, close, lobby, promo, replay, wallet-split, wallet | — | 100 % · 87.5 % |
 | `GET /api/profile` | lobby | 4 | yes | 21 | lobby | e2e-stats | 100 % · 83.3 % |
-| `POST /api/rides` | rides | 14 | yes | 99 | admin, board, browser, close-split, close, flags, lobby, replay, verified, watch | e2e-localnet | 100 % · 97.3 % |
+| `POST /api/rides` | rides | 14 | yes | 100 | admin, board, browser, close-split, close, flags, lobby, replay, verified, watch | e2e-localnet | 100 % · 97.3 % |
 | `GET /api/rides/pending` | rides | 3 | yes | 2 | board, close-split, close, lobby, promo, wallet-split, wallet | — | 100 % · 75 % |
-| `GET /api/rides/:id` | rides | 1 | yes | 15 | admin, browser, close-split, close, lobby, replay, verified, watch | e2e-browser | 100 % · 75 % |
+| `GET /api/rides/:id` | rides | 1 | yes | 16 | admin, browser, close-split, close, lobby, replay, verified, watch | e2e-browser | 100 % · 75 % |
 | `GET /api/rides/:id/payment` | legacy-pay | 2 | yes | 3 | — | — | 100 % · 87.5 % |
 | `POST /api/rides/:id/confirm` | legacy-pay | 9 | yes | 28 | — | — | 100 % · 95 % |
 | `POST /api/rides/:id/reconcile` | legacy-pay | 5 | yes | 3 | lobby | — | 100 % · 95 % |
-| `POST /api/rides/:id/start` | rides | 7 | yes | 77 | admin, board, browser, close-split, close, flags, lobby, replay, verified, watch | — | 100 % · 100 % |
-| `POST /api/rides/:id/heartbeat` | rides | 7 | yes | 37 | board, browser, close-split, close, lobby, replay, verified, watch | — | 100 % · 100 % |
+| `POST /api/rides/:id/start` | rides | 7 | yes | 78 | admin, board, browser, close-split, close, flags, lobby, replay, verified, watch | — | 100 % · 100 % |
+| `POST /api/rides/:id/heartbeat` | rides | 8 | yes | 38 | board, browser, close-split, close, lobby, replay, verified, watch | — | 100 % · 100 % |
 | `POST /api/rides/:id/batches` | verified-play | 8 | yes | 26 | admin, board, browser, close-split, close, lobby, replay, verified, watch | — | 100 % · 80 % |
-| `POST /api/rides/:id/end` | rides | 8 | yes | 47 | admin, board, browser, close-split, close, lobby, replay, verified, watch | — | 94.7 % · 75 % |
-| `GET /api/stats` | statistics | 1 | yes | 9 | — | e2e-stats | — |
+| `POST /api/rides/:id/end` | rides | 8 | yes | 48 | admin, board, browser, close-split, close, lobby, replay, verified, watch | — | 94.7 % · 75 % |
+| `GET /api/stats` | statistics | 1 | yes | 10 | — | e2e-stats | — |
+| `GET /api/stats/daily` | statistics | 1 | yes | 1 | — | — | — |
 | `POST /api/telemetry` | analytics | 7 | yes | 5 | board, browser, close-split, close, lobby, promo, replay, verified, wallet-split, wallet, watch | — | 100 % · 96.2 % |
 
 ## Files with no test of their own, by feature
@@ -348,7 +349,7 @@ Columns: *files with own test* = source files (logic only: no ports, DTOs, comma
 
 ## Map hygiene
 
-- Source files no feature claims: none.
+- Source files no feature claims: `client/js/trips.js`.
 - Tests attributed to no feature: none.
 - Headless checks no feature claims: none.
 
