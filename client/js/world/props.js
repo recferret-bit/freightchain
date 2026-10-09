@@ -24,6 +24,6 @@ export const KINDS = {
   drift: z => ({ hp: 10, r: .6 * z, dmg: 1, slow: .02 }),
   guard: () => ({ hp: 160, r: .3, rf: 2.1, rl: .3, dmg: 9, slow: .12 }),
   sign: () => ({ hp: 40, r: .25, dmg: 3, slow: .03 }),   // road-hole warning sign post
-  building: () => ({ hp: 3000, r: 3, dmg: 40, slow: .5 }),   // roadside landmark; footprint (rf/rl) comes from the implementation – practically indestructible
+  building: () => ({ hp: 3000, r: 3, dmg: 40, slow: .5 }),   // roadside landmark; footprint (rf/rl) comes from the implementation – any contact is fatal (sim/damage.js collide)
 };
 export const destroyed = new Set();   // ids of smashed props, so a rebuilt chunk doesn't resurrect them

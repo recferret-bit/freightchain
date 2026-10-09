@@ -14,8 +14,8 @@ import { toast } from '../ui/toast.js';
 const TRUCK_HALF_W = 1.25, TRUCK_FRONT = 3.3, TRUCK_BACK = -1.6;   // metres from the driver's eye
 const debris = [], falls = [];
 releaseHooks.add(o => { for (let i = falls.length - 1; i >= 0; i--) if (falls[i].obj === o) falls.splice(i, 1); });   // a recycled prop must not keep toppling in its next life
-export function collide(dt) {
-  if (st.rev) return;   // reversing: the trailer has no scenery collision (known gap), so nothing ahead can be hit
+export function collide(dt) {   // returns the reason the ride is over when the truck hit a building
+  if (st.rev) return null;   // reversing: the trailer has no scenery collision (known gap), so nothing ahead can be hit
   const cs = Math.floor((st.s - 3) / CH), ce = Math.floor((st.s + 5) / CH), cp = Math.cos(st.psi), sp = Math.sin(st.psi);
   for (let ci = cs; ci <= ce; ci++) {
     const grp = chunks.get(ci); if (!grp) continue;
@@ -23,9 +23,11 @@ export function collide(dt) {
       c.cool = Math.max(0, c.cool - dt); if (c.dead || c.cool > 0) continue;
       const ds = c.s - st.s, dl = c.lat - st.d, f = ds * cp + dl * sp, r = -ds * sp + dl * cp;   // prop in the truck's own frame
       if (f < TRUCK_BACK - c.rf || f > TRUCK_FRONT + c.rf || Math.abs(r) > TRUCK_HALF_W + c.rl) continue;   // rf/rl: reach along / across the road (guardrails are long and thin)
+      if (c.kind === 'building') { st.hull = 0; st.crash = 1; st.flash = 1; audio.crash(1); return 'You crashed into a building – the truck is a wreck.'; }   // any contact with a building is fatal
       hit(c, f);
     }
   }
+  return null;
 }
 function hit(c, f) {
   const frontal = f > TRUCK_FRONT - 0.6, iv = st.v * (frontal ? 1 : 0.5), dmg = iv < 1.5 ? 0 : c.dmg / 784 * iv * iv;
