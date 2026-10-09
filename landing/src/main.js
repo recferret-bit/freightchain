@@ -78,13 +78,14 @@ function paintPool() {
     el('div', { class: 'dim' }, 'Integer lamports, floored shares, remainder to fees. settled: false – the draw and payouts are not live in this build.'));
 }
 
-function paintTiers(t) {   // a tier sold through a pool: the ticket price is the pool's (fixed in lamports on chain); a tier without one: the legacy USD quote
+function paintTiers(t) {   // a tier sold through a pool: the ticket price is the pool's (fixed in lamports on chain); an on-sale tier without one: the legacy USD quote; an off-sale tier: soon
   const program = t.paymentMode === 'program';   // ticket-only: a paid tier without a live pool has nothing on sale (no pay-per-ride)
   const price = x => x.pool ? `${sol(x.pool.priceLamports)} SOL` : x.lamports ? `${sol(x.lamports)} SOL` : '–';
-  const rows = t.tiers.map(x => el('tr', {}, el('td', {}, TIER_LONG[x.id] ?? x.id), el('td', {}, hours(x.seconds)), el('td', {}, x.pool ? 'pool ticket' : x.usd ? (program ? 'pool ticket · none on sale' : `$${x.usd}`) : 'free'), el('td', {}, price(x))));
+  const paidWith = x => x.pool ? 'pool ticket' : !x.usd ? 'free' : x.onSale === false ? 'soon' : program ? 'pool ticket · none on sale' : `$${x.usd}`;
+  const rows = t.tiers.map(x => el('tr', {}, el('td', {}, TIER_LONG[x.id] ?? x.id), el('td', {}, hours(x.seconds)), el('td', {}, paidWith(x)), el('td', {}, price(x))));
   $('tiers').replaceChildren(el('thead', {}, el('tr', {}, ...['SHIFT', 'LENGTH', 'PAID WITH', 'IN SOL'].map(h => el('th', {}, h)))), el('tbody', {}, rows));
-  const pooled = t.tiers.some(x => x.pool), legacy = !program && t.tiers.some(x => x.usd && !x.pool);
-  $('price').textContent = [pooled && 'Pool tickets: the price is part of the pool’s rules, fixed when it was created.', legacy && (t.solUsd ? `Pay-per-ride: SOL ≈ $${t.solUsd}, the quote is locked for 10 minutes when you order.` : 'Pay-per-ride: SOL price unavailable right now.'), 'Devnet SOL only.'].filter(Boolean).join(' ');
+  const pooled = t.tiers.some(x => x.pool), legacy = !program && t.tiers.some(x => x.usd && !x.pool && x.onSale !== false), soon = t.tiers.some(x => x.onSale === false && !x.pool);
+  $('price').textContent = [pooled && 'Pool tickets: the price is part of the pool’s rules, fixed when it was created.', legacy && (t.solUsd ? `Pay-per-ride: SOL ≈ $${t.solUsd}, the quote is locked for 10 minutes when you order.` : 'Pay-per-ride: SOL price unavailable right now.'), soon && 'The 4 hour and 8 hour shifts are planned and not on sale yet.', 'Devnet SOL only.'].filter(Boolean).join(' ');
 }
 
 /* the escrowed pools on sale (the same list as GET /api/pools, carried by /api/pool so the page polls once) */

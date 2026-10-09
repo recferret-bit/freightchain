@@ -14,10 +14,10 @@ describe('GetTiersHandler', () => {
     expect(dto.treasury).toBe(TREASURY);
     expect(dto.paymentMode).toBe('transfer');
     expect(dto.tiers).toEqual([
-      { id: 'free', usd: 0, seconds: 10, completeDist: 70, lamports: null, available: true, pool: null },
-      { id: '1h', usd: 5, seconds: 3600, completeDist: 50_400, lamports: 50_000_000, available: true, pool: null },
-      { id: '4h', usd: 15, seconds: 14_400, completeDist: 201_600, lamports: 150_000_000, available: true, pool: null },
-      { id: '8h', usd: 50, seconds: 28_800, completeDist: 403_200, lamports: 500_000_000, available: true, pool: null },
+      { id: 'free', usd: 0, seconds: 10, completeDist: 70, lamports: null, available: true, onSale: true, pool: null },
+      { id: '1h', usd: 5, seconds: 3600, completeDist: 50_400, lamports: 50_000_000, available: true, onSale: true, pool: null },
+      { id: '4h', usd: 15, seconds: 14_400, completeDist: 201_600, lamports: null, available: false, onSale: false, pool: null },
+      { id: '8h', usd: 50, seconds: 28_800, completeDist: 403_200, lamports: null, available: false, onSale: false, pool: null },
     ]);
   });
 
@@ -36,9 +36,9 @@ describe('GetTiersHandler', () => {
     await pools.upsert(aPool({ id: 2, tier: '4h', status: 'open', prepDeadline: new Date(clock.ms - 1) })); // preparation over: not buyable
     const dto = await new GetTiersHandler(new FixedRules(unitRules({ treasury: '' })), new StubPrice(null), pools, clock).execute();
     const [, h1, h4, h8] = dto.tiers;
-    expect(h1).toMatchObject({ lamports: 20_000_000, available: true, pool: { id: 1, status: 'active' } });
-    expect(h4).toMatchObject({ available: false, pool: { id: 2 } });
-    expect(h8).toMatchObject({ lamports: null, available: false, pool: null });
+    expect(h1).toMatchObject({ lamports: 20_000_000, available: true, onSale: true, pool: { id: 1, status: 'active' } });
+    expect(h4).toMatchObject({ available: false, onSale: false, pool: { id: 2 } }); // a registered pool is still shown
+    expect(h8).toMatchObject({ lamports: null, available: false, onSale: false, pool: null });
   });
 
   it('program mode is ticket-only: a paid tier with no live pool is not on sale (no legacy pay-per-ride price), the free one still is', async () => {
@@ -47,8 +47,8 @@ describe('GetTiersHandler', () => {
     await pools.upsert(aPool({ id: 2, tier: '4h', status: 'refunding' })); // failed: not live
     const dto = await new GetTiersHandler(new FixedRules(unitRules({ paymentMode: 'program' })), new StubPrice(100), pools, clock).execute();
     expect(dto.paymentMode).toBe('program');
-    expect(dto.tiers.map((t) => [t.id, t.available, t.lamports, t.pool?.id ?? null])).toEqual([
-      ['free', true, null, null], ['1h', true, 20_000_000, 1], ['4h', false, null, null], ['8h', false, null, null],
+    expect(dto.tiers.map((t) => [t.id, t.available, t.lamports, t.pool?.id ?? null, t.onSale])).toEqual([
+      ['free', true, null, null, true], ['1h', true, 20_000_000, 1, true], ['4h', false, null, null, false], ['8h', false, null, null, false],
     ]);
   });
 });

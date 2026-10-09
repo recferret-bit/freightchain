@@ -179,10 +179,12 @@ export function lobbyScenarios(h: () => Harness): void {
       expect((await w.agent.get('/api/me')).body.freeRides).toBe(5);
     });
 
-    it('never cancels a PAID unstarted ride: asking for anything else hands it back', async () => {
-      const w = await login(), o = (await w.agent.post('/api/rides').send({ tier: '4h' }).expect(200)).body;
+    it('never cancels a PAID unstarted ride: an on-sale ask hands it back; an off-sale ask is refused', async () => {
+      const w = await login(), o = (await w.agent.post('/api/rides').send({ tier: '1h' }).expect(200)).body;
       await w.agent.post(`/api/rides/${o.id}/confirm`).send({ signature: h().chain.addPayment({ payer: w.address, lamports: o.lamports, memo: o.id }) }).expect(200);
-      for (const tier of ['free', '1h', '4h']) expect((await w.agent.post('/api/rides').send({ tier }).expect(200)).body).toMatchObject({ id: o.id, status: 'created', tier: '4h' });
+      for (const tier of ['free', '1h']) expect((await w.agent.post('/api/rides').send({ tier }).expect(200)).body).toMatchObject({ id: o.id, status: 'created', tier: '1h' });
+      expect((await w.agent.post('/api/rides').send({ tier: '4h' }).expect(409)).body.code).toBe('tier_not_on_sale');
+      expect((await w.agent.get(`/api/rides/${o.id}`)).body.status).toBe('created');
       expect((await w.agent.get('/api/me')).body.freeRides).toBe(5);
     });
   });

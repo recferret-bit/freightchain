@@ -46,18 +46,21 @@ describe('CreateRideHandler', () => {
     expect(analytics.named('ride_ordered')[1]?.properties).toMatchObject({ is_demo: true, time_scale: 60 });
   });
 
-  it('the same unpaid order while it is quoted; another tier (or a lapsed quote) lets it expire', async () => {
+  it('the same unpaid order while it is quoted; an off-sale tier leaves it; a lapsed quote expires it', async () => {
     const { ctx, analytics, create } = setup();
     const first = await create('1h');
     expect((await create('1h')).id).toBe(first.id);
     expect(analytics.named('ride_ordered')).toHaveLength(1);
     expect(analytics.named('ride_resumed')).toHaveLength(1);
-    const second = await create('4h');
-    expect(analytics.named('ride_ordered')).toHaveLength(2);
-    expect(analytics.named('ride_expired')).toHaveLength(1);
-    expect((await ctx.reload(first.id)).status).toBe(RideStatus.Expired);
+    await expect(create('4h')).rejects.toThrow(new ConflictError('the 4-hour shift is not on sale yet', 'tier_not_on_sale'));
+    await expect(create('8h')).rejects.toThrow(new ConflictError('the 8-hour shift is not on sale yet', 'tier_not_on_sale'));
+    expect(analytics.named('ride_ordered')).toHaveLength(1);
+    expect(analytics.named('ride_expired')).toHaveLength(0);
+    expect((await ctx.reload(first.id)).status).toBe(RideStatus.AwaitingPayment);
     ctx.clock.advance(601);
-    expect((await create('4h')).id).not.toBe(second.id);
+    const second = await create('1h');
+    expect(second.id).not.toBe(first.id);
+    expect((await ctx.reload(first.id)).status).toBe(RideStatus.Expired);
   });
 
   it('buying while holding an unstarted free ride cancels it and refunds the credit; a paid ready ride is never replaced', async () => {
@@ -68,7 +71,9 @@ describe('CreateRideHandler', () => {
     expect((await ctx.storedPlayer('w')).freeRides).toBe(5);
     const paid = await ctx.reload(order.id); paid.markPaid(1, ctx.now()); await ctx.rides.save(paid);
     const ordered = analytics.named('ride_ordered').length;
-    for (const tier of ['free', '4h'] as const) expect((await create(tier)).id).toBe(order.id);
+    for (const tier of ['free', '1h'] as const) expect((await create(tier)).id).toBe(order.id);
+    await expect(create('4h')).rejects.toThrow(/not on sale/);
+    await expect(create('8h')).rejects.toThrow(/not on sale/);
     expect(analytics.named('ride_ordered')).toHaveLength(ordered);
     expect(analytics.named('ride_resumed').length).toBeGreaterThanOrEqual(2);
   });
@@ -85,13 +90,16 @@ describe('CreateRideHandler', () => {
   it('paid tiers need a treasury and a price (re-asking for an existing order needs neither price)', async () => {
     await expect(setup(new StubPrice(), unitRules({ treasury: '' })).create('1h')).rejects.toBeInstanceOf(ServiceUnavailableError);
     const price = new StubPrice();
-    const { create } = setup(price);
+    const { ctx, create } = setup(price);
     const order = await create('1h');
     expect(price.calls).toBe(1);
     price.usd = null;
     expect((await create('1h')).id).toBe(order.id);
     expect(price.calls).toBe(1); // handing back the order in hand never waits on the price feeds
-    await expect(create('4h')).rejects.toThrow('no SOL/USD price available right now');
+    await expect(create('4h')).rejects.toThrow(/not on sale/); // refused before a price is needed, and the quote stays
+    expect((await ctx.reload(order.id)).status).toBe(RideStatus.AwaitingPayment);
+    ctx.clock.advance(601);
+    await expect(create('1h')).rejects.toThrow('no SOL/USD price available right now');
   });
 
   describe('a tier sold through escrowed pools – paid with a ticket', () => {
@@ -123,7 +131,7 @@ describe('CreateRideHandler', () => {
 
     it('409 no_tickets with none, 409 pool_not_live when the only tickets wait for the minimum – and nothing else changed', async () => {
       const { ctx, create, give } = await withPools({ id: 1, status: 'open', minTickets: 10, ticketsSold: 7 }, { id: 2, tier: '4h', status: 'active' });
-      await expect(create('8h')).rejects.toBeInstanceOf(ServiceUnavailableError); // no 8h pool, no treasury: the legacy order path
+      await expect(create('8h')).rejects.toMatchObject({ errorCode: 'tier_not_on_sale' }); // no 8h pool: not on sale, even with no treasury
       await expect(create('4h')).rejects.toThrow(new ConflictError('no 4h tickets left', 'no_tickets'));
       await give(1, 1);
       const free = await create('free');
@@ -137,7 +145,7 @@ describe('CreateRideHandler', () => {
       const t = setup(new StubPrice(), unitRules({ paymentMode: 'program', programId: '9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx' }));
       await t.ctx.pools.upsert(aPool({ id: 1, status: 'refunding' }, t.ctx.now()));
       await expect(t.create('1h')).rejects.toMatchObject({ errorCode: 'no_tickets' });
-      await expect(t.create('8h')).rejects.toMatchObject({ errorCode: 'no_tickets' }); // no pool at all
+      await expect(t.create('8h')).rejects.toMatchObject({ errorCode: 'tier_not_on_sale' }); // no pool at all: soon, not "no tickets"
     });
 
     it('an active pool past its play deadline is not ridden from', async () => {

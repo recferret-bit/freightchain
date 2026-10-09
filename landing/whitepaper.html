@@ -52,10 +52,10 @@
 <section id="abstract" class="ch lead">
   <p class="eyebrow">FREIGHT CHAIN · WHITEPAPER v0.1 · SOLANA DEVNET</p>
   <h1>A long drive with a public clock and a pool nobody can reach into.</h1>
-  <p class="lede">Freight Chain is a browser game in which you drive a manual-gearbox truck down a road that never ends. A shift costs a ticket and lasts a fixed, real amount of time – one, four or eight hours. Nothing is skipped and nothing can be bought to speed it up. A server keeps the clock and judges the finish; the money for paid shifts sits in an escrow program on Solana, not with the operator.</p>
+  <p class="lede">Freight Chain is a browser game in which you drive a manual-gearbox truck down a road that never ends. The shift on sale is 1 hour. The 4 hour and 8 hour shifts are soon. Nothing is skipped and nothing can be bought to speed it up. A server keeps the clock and judges the finish; the money for a paid shift sits in an escrow program on Solana, not with the operator.</p>
   <p>This paper describes the game as it is built today and says plainly which parts are live on devnet, which are written but not deployed, and which are only plans. It is written for players who want to know how to drive and what the rules are, for people who might put in money (on devnet, for now) and want to know where it goes, and for reviewers who want to check the claims against the source.</p>
   <div class="stats">
-    <div class="stat"><span class="lbl">SHIFTS</span><b class="num lcd">FREE · 1 · 4 · 8 H</b><span class="unit">real time, no fast-forward</span></div>
+    <div class="stat"><span class="lbl">SHIFTS</span><b class="num lcd">FREE · 1 · 4 · 8 H</b><span class="unit">1 h on sale · 4 h and 8 h soon</span></div>
     <div class="stat"><span class="lbl">SPEED GOVERNOR</span><b class="num lcd">28 m/s</b><span class="unit">100.8 km/h for every truck</span></div>
     <div class="stat"><span class="lbl">RECORDING</span><b class="num lcd">10 Hz</b><span class="unit">sealed in 15 s hash-chained batches</span></div>
     <div class="stat"><span class="lbl">STREAM DELAY</span><b class="num lcd">≈ 25 s</b><span class="unit">anyone can watch any ride</span></div>
@@ -199,12 +199,12 @@
     <thead><tr><th>Tier</th><th>Minimum time</th><th>List price</th><th>What it is</th></tr></thead>
     <tbody>
       <tr><td><b>FREE</b></td><td>1 minute</td><td>$0</td><td>The habit, on an easy road: a straight start, soft bends, a few calm cars; it ends by itself at the line. Five free rides at sign-up, +1 every 00:00 UTC, never above five. Its own leaderboard and badges. No pool.</td></tr>
-      <tr><td><b>1 H</b></td><td>1 hour</td><td>$5</td><td>A ticket into a 1-hour pool. The standard road.</td></tr>
-      <tr><td><b>4 H</b></td><td>4 hours</td><td>$15</td><td>A ticket into a 4-hour pool. Tighter bends, busier traffic.</td></tr>
-      <tr><td><b>8 H</b></td><td>8 hours</td><td>$50</td><td>The full-length shift: a ticket into an 8-hour pool. The hardest road: the sharpest bends, the heaviest traffic.</td></tr>
+      <tr><td><b>1 H</b></td><td>1 hour</td><td>$5</td><td>On sale. Opens at 20 tickets, or it refunds. The standard road.</td></tr>
+      <tr><td><b>4 H</b></td><td>4 hours</td><td>$15</td><td>Soon. Tighter bends, busier traffic. Sold only once a 4-hour pool opens.</td></tr>
+      <tr><td><b>8 H</b></td><td>8 hours</td><td>$50</td><td>Soon. The hardest road. Sold only once an 8-hour pool opens.</td></tr>
     </tbody>
   </table></div>
-  <p class="dim">List prices are in US dollars and are settled in devnet SOL at the quoted rate. Once pools are on sale, each pool fixes its own price in lamports at creation and that price never changes. Devnet SOL has no value.</p>
+  <p class="dim">The 1 hour shift is the one on sale. $15 and $50 are planned list prices. List prices are in US dollars. A pool fixes its price in lamports at creation and that price never changes. Devnet SOL has no value.</p>
 
   <h3 class="sub">HOW A SHIFT RUNS</h3>
   <ol class="flow">
@@ -298,6 +298,20 @@
   </table></div>
   <p>The 25 / 15 / 10 / 20 inside the prize share comes from the game's ranking, which happens off chain. The program enforces the <em>ceiling</em>: payouts can never total more than the prize share (<a href="#onchain">05</a>). Ranking is by verified paid shifts (<a href="#verify">06</a>).</p>
 
+  <h3 class="sub">WHY 20 TICKETS AT $5</h3>
+  <p>The 1 hour pool opens at 20 tickets of $5: a $100 pot. Fewer sold by the deadline, and every ticket is refunded.</p>
+  <div class="tblwrap"><table class="tbl fit">
+    <thead><tr><th>If 20 finish</th><th>Gets</th></tr></thead>
+    <tbody>
+      <tr><td>1st</td><td class="r">$26</td></tr>
+      <tr><td>2nd</td><td class="r">$16</td></tr>
+      <tr><td>3rd</td><td class="r">$11</td></tr>
+      <tr><td>4th–20th, each</td><td class="r">$1</td></tr>
+      <tr><td>Next pool · fees</td><td class="r">$20 · $10</td></tr>
+    </tbody>
+  </table></div>
+  <p class="dim">1st’s $26 is the 25% place plus $1 of the shared slice. At 10 tickets, 1st would win $13.50, so the pool does not open. Places 4–20 get $1.</p>
+
   <h3 class="sub">PROMOTION &amp; GROWTH</h3>
   <div class="grid3">
     <article class="card"><h3>FREE FIRST</h3><p>Five free rides and a daily refill are the on-ramp: no wallet balance is needed to find out whether you like the drive.</p></article>
@@ -333,7 +347,7 @@
   </figure>
 
   <h3 class="sub">THE LIFE OF A POOL</h3>
-  <p>A pool opens with a commitment goal, for example 10 riders. It goes live the moment the 10th ticket is bought. If its deadline passes first, it becomes a refund pool. Every path ends in one of two final states: the pot split by the rules, or every buyer paid back.</p>
+  <p>A pool opens with a commitment goal. The 1 hour pool's is 20 tickets: live on the 20th sale, or a refund if the deadline comes first. Every path ends as the declared split, or every buyer paid back.</p>
   <figure class="diagram wide">
     <svg viewBox="0 0 960 360" role="img" aria-label="Pool state machine: Open becomes Active automatically when the minimum is sold; Open becomes Refunding when the deadline is missed (anyone) or the admin cancels; Active becomes Settled through close_pool; Active becomes Refunding through expire_pool, which anyone may call 14 days after the play deadline if no prize was paid; Refunding becomes Cancelled once every ticket is refunded.">
           <defs>
@@ -468,7 +482,7 @@
   </ul>
 
   <h3 class="sub">HOW THE GAME SERVER FITS</h3>
-  <p>The server <em>mirrors</em> pools and tickets; the chain wins any disagreement. A ticket is credited from the program's own <code>TicketBought</code> event, reached by three routes: the confirm / gasless-submit fast path, a program-log watcher (so a closed tab does not lose a payment) and a signed webhook. Credits are idempotent on <code>(signature, event index)</code>. The optional <b>gas sponsor</b> co-signs only the exact transaction bytes the server built for that order, so buyers need no SOL for network fees. The server never holds the admin or treasury key; the admin signs pool creation and payouts from a browser wallet.</p>
+  <p>The server <em>mirrors</em> pools; the chain wins. <code>TicketBought</code> is credited once, by the confirm path, the log watcher, or the webhook. The gas sponsor co-signs only the bytes the server built. The server holds no admin or treasury key.</p>
 
   <h3 class="sub">IDEAS ON THE TABLE</h3>
   <p class="dim">Not built; ordered roughly by fit, from the Solana feature plan.</p>
@@ -604,7 +618,7 @@
     <li><i>4</i><b>REPLAY</b><span>Once the ride has ended, the same page is a replay with a timeline and 1×, 4× and 16× speeds, for as long as the recording is kept (90 days).</span></li>
   </ol>
   <p><b>Live is slightly behind.</b> The page plays about 25 s behind the newest recorded second: one 15 s batch plus its upload, with room for a late one. If the next batch has not arrived, the last frame holds and the panel says so. A paused game records no game time, so a pause never shows as a gap. Anyone can watch any ride that has started; a ride that has not started is a 404, so a seed is never handed out early.</p>
-  <p>The road is endless but deterministic – its whole layout is a pure function of the ride's seed and route – so only the truck needs to be recorded. <b>The holes are the server's</b>, from the ride's obstacle plan – never the driver's game's. A hole the truck drove through undamaged is ringed red on the road and on the timeline, and the replay stamps NO IMPACT as it passes: a game with the obstacles removed is plain to see. Gauges, trailer swing, wipers, dust and lights react as they do for the driver because they read the same state. Not replayed: windscreen cracks, debris, the radio, and the raw key presses (they are what the human-timing check measures, so they are never published).</p>
+  <p>The road is endless but deterministic: layout is a pure function of the ride's seed and route, so only the truck is recorded. <b>The holes are the server's</b>, never the driver's game's. A hole driven through undamaged is ringed red, and the replay stamps NO IMPACT as it passes. Not replayed: cracks, debris, the radio, and the raw key presses.</p>
 
   <h3 class="sub">CHAT: A CB RADIO IN THE CAB</h3>
   <div class="grid3">

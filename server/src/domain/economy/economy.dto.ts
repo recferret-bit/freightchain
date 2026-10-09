@@ -6,10 +6,12 @@ export interface TierDto {
   usd: number;
   seconds: number;
   completeDist: number;
-  /** null for the free tier or when no price is available */
+  /** null for the free tier, an off-sale tier with no pool, or when no price is available */
   lamports: number | null;
   available: boolean;
-  /** paid tiers: the escrowed pool its tickets are sold into right now (null = none registered – the legacy pay-per-ride order applies) */
+  /** false = planned, not sold. A live pool of the tier still sells. */
+  onSale: boolean;
+  /** paid tiers: the escrowed pool its tickets are sold into right now (null = none). An on-sale tier with none uses the legacy pay-per-ride order; an off-sale tier is marked soon. */
   pool: PrizePoolDto | null;
 }
 

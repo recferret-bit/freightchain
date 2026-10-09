@@ -1,8 +1,8 @@
-// Click-through of the whole loop FROM THE LOBBY in real headless Chrome (four browsers: a rider, an observer, a wallet with an unpaid legacy order, a ticket holder), screenshots of every tab at desktop and phone width.
+// Click-through of the whole loop FROM THE LOBBY in real headless Chrome (four browsers: a rider, an observer, another signed-in lobby, a ticket holder), screenshots of every tab at desktop and phone width.
 // Server (after `npm run landing:build` at the root – / is the Vite build): FREE_RIDE_SECONDS=3 SOL_USD=118 TREASURY_PUBKEY=<any address> PORT=3111 node dist/main.js  (PostgreSQL up + migrated: npm run db:up && npm run prisma:deploy)     then:   BASE=http://localhost:3111 node scripts/e2e-lobby.mjs
 // Escrowed pools (dev-only seeds, same DATABASE_URL as the server – or run this script with SEED=1 and that DATABASE_URL, it runs them and ignores "already exists"):
 //   node dist/cli/index.js pool:seed --id 1 --tier 1h --status active --min 2 · pool:seed --id 2 --tier 4h --status open --min 10 --sold 7 · promo:create WELCOME --tier 1h --credits 2 · promo:create OPEN4H --tier 4h --pool 2 --credits 1 · promo:create THREE --free-rides 3 · promo:create GOLDWHEEL --cosmetic wheel:gold --desc "A golden wheel" · promo:create BLUEPAINT --cosmetic truck_color:blue · promo:create PINKDICE --cosmetic dice:pink · promo:create RACEBOX --cosmetic gearbox:racing
-//   → 1h = a LIVE pool, 4h = an OPEN pool 7/10, 8h = no pool (the legacy pay-per-ride card). `refunding` can't be seeded (open|active only): its card states are unit-tested (landing/test/pools.test.js) and shown by scripts/stub-api.mjs.
+//   → 1h = a LIVE pool, 4h = an OPEN pool 7/10, 8h = no pool (SOON, not for sale). `refunding` can't be seeded (open|active only): its card states are unit-tested (landing/test/pools.test.js) and shown by scripts/stub-api.mjs.
 // No wallet extension: a keypair signs the challenge and the session cookie is handed to Chrome. Paid payments can't be clicked through (no wallet) – covered by vitest / devnet-pay.mjs.
 // PORT = the first of four DevTools ports (default 9341); SHOTS = where the screenshots go (default $TMPDIR/fc-lobby-shots).
 import nacl from 'tweetnacl'; import bs58 from 'bs58'; import { execFileSync } from 'node:child_process';
@@ -30,8 +30,8 @@ if (process.env.SEED === '1') {   // dev-only seeds through the admin CLI (refus
     try { execFileSync('node', ['dist/cli/index.js', ...args], { cwd: new URL('..', import.meta.url).pathname, stdio: 'pipe' }); console.log(`seeded: ${args.join(' ')}`); } catch { console.log(`seed skipped (exists?): ${args.join(' ')}`); }
   }
 }
-const tiers = await get('tiers'), live1h = tiers.tiers.find(t => t.id === '1h')?.pool, open4h = tiers.tiers.find(t => t.id === '4h')?.pool;
-if (live1h?.status !== 'active' || open4h?.status !== 'open' || tiers.tiers.find(t => t.id === '8h')?.pool) { console.error('expected seeded pools: 1h active, 4h open, 8h none – see the header (or SEED=1 with the server\'s DATABASE_URL)'); process.exit(2); }
+const tiers = await get('tiers'), live1h = tiers.tiers.find(t => t.id === '1h')?.pool, open4h = tiers.tiers.find(t => t.id === '4h')?.pool, soon8h = tiers.tiers.find(t => t.id === '8h');
+if (live1h?.status !== 'active' || open4h?.status !== 'open' || soon8h?.pool || soon8h?.onSale !== false) { console.error('expected seeded pools: 1h active, 4h open, 8h none and not on sale – see the header (or SEED=1 with the server\'s DATABASE_URL)'); process.exit(2); }
 
 const A = await wallet(), B = await wallet();
 const rider = await launch({ port: CDP, shotsDir: 'fc-lobby-shots', evalProblems: true }), obs = await launch({ port: CDP + 1, shotsDir: 'fc-lobby-shots', evalProblems: true });
@@ -53,13 +53,10 @@ const program = tiers.paymentMode === 'program';   // a server with the pool pro
 check(`pool card: no RIDE without a ticket; BUY ${program ? 'live with the price' : 'shown as SOON (no program on this server)'}`, !(await rider.ev('!!document.querySelector("#tier-1h .go")')) && (program
   ? !(await rider.ev('document.querySelector("#tier-1h .buyb").disabled')) && (await txt(rider, '#tier-1h .buyb')) === `BUY 1 TICKET · ${sol(live1h.priceLamports)}`
   : (await rider.ev('document.querySelector("#tier-1h .buyb").disabled')) && /SOON/.test(await txt(rider, '#tier-1h .buyb'))), await txt(rider, '#tier-1h .buyb'));
-check(`8h card (no pool): ${program ? 'NO POOL – ticket-only, nothing to pay per ride' : 'the legacy pay-per-ride offer, non-refundable'}`, program
-  ? /NO POOL/.test(await txt(rider, '#tier-8h .st')) && (await rider.ev('document.querySelector("#tier-8h .go").disabled')) === true
-  : /PAY \$50/.test(await txt(rider, '#tier-8h .go')) && /Non-refundable/.test(await txt(rider, '#tier-8h')), await txt(rider, '#tier-8h .go'));
+check('8h card (no pool): SOON, button disabled, planned price, no pay-per-ride offer', (await txt(rider, '#tier-8h .st')) === 'SOON' && (await txt(rider, '#tier-8h .go')) === 'SOON' && (await rider.ev('document.querySelector("#tier-8h .go").disabled')) === true && /\$50/.test(await txt(rider, '#tier-8h')) && !/PAY|Non-refundable|NO POOL/.test(await txt(rider, '#tier-8h')), await txt(rider, '#tier-8h'));
 await rider.shot('new-desktop');
-await rider.ev('document.querySelector("#tier-8h .go").click()');   // no wallet extension here
-check('paid click without a wallet: a clear message, no order made', await until(async () => /No Solana wallet/.test(await txt(rider, '#msg-8h'))), await txt(rider, '#msg-8h'));
-check('…and no stray order exists', (await get('rides/pending', A.cookie)).ride === null);
+await rider.ev('document.querySelector("#tier-8h .go").click()');   // disabled: it must not ask for a wallet or open an order
+check('the soon button does nothing: no message, no order', (await txt(rider, '#msg-8h')) === '' && (await get('rides/pending', A.cookie)).ride === null, await txt(rider, '#msg-8h'));
 await size(rider, 390, 844, true); await sleep(300); await rider.shot('new-phone');
 check('phone width: no horizontal page scroll', await rider.ev('document.documentElement.scrollWidth <= innerWidth + 1'), String(await rider.ev('document.documentElement.scrollWidth')));
 await size(rider, 1100, 900, false);
@@ -89,12 +86,12 @@ check('BACK TO LOBBY returns to the lobby', await until(async () => (await rider
 check('…and the free-ride count dropped to 4', await until(async () => /\b4\/\d+ free rides/.test(await rider.ev('document.getElementById("chip-free").textContent'))));
 check('the finished ride left the live feed', await until(async () => { await sleep(5200); return !(await obs.ev('document.getElementById("rides")?.textContent || ""')).includes(A.short); }, 15000));
 
-// ── payment-recovery branch: a wallet with an UNPAID legacy order (8h has no pool) opens the lobby (checkPending → reconcile runs once, against the real RPC)
-const C = await wallet(); if (!program) await post('rides', { tier: '8h' }, C.cookie);   // program mode is ticket-only: no legacy order to recover (the lobby still renders)
+// ── another signed-in lobby. 8h is not on sale and 1h/4h have pools, so this seed has no legacy order to recover.
+const C = await wallet();
 const third = await launch({ port: CDP + 2, shotsDir: 'fc-lobby-shots', evalProblems: true }); await size(third, 1100, 900, false);
 await open(third, C, `${BASE}/lobby.html#new`);
-check('lobby with an unpaid order: cards render, START enabled', await until(async () => (await third.ev('document.querySelectorAll(".tier").length')) === 4 && (await third.ev('document.getElementById("start").disabled')) === false));
-check('…the recovery check finishes (note cleared, or "Could not check…" if the RPC is down)', await until(async () => { const t = await third.ev('document.getElementById("pendingbox").textContent'); return t === '' || /Could not check/.test(t); }, 30000), JSON.stringify(await third.ev('document.getElementById("pendingbox").textContent')));
+check('another wallet: four cards, START enabled, no unpaid order', await until(async () => (await third.ev('document.querySelectorAll(".tier").length')) === 4 && (await third.ev('document.getElementById("start").disabled')) === false) && (await get('rides/pending', C.cookie)).ride === null);
+check('…the pending box stays empty', await until(async () => (await third.ev('document.getElementById("pendingbox").textContent')) === '', 30000), JSON.stringify(await third.ev('document.getElementById("pendingbox").textContent')));
 check('…and no page errors on that path', problems(third).length === 0, problems(third).join(' | '));
 
 // ── TICKETS: promo → RIDE with a ticket → the game; the 409s read as sentences (fourth browser, wallet D)

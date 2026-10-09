@@ -34,11 +34,12 @@ export class GetTiersHandler implements IQueryHandler<GetTiersQuery, TiersDto> {
       paymentMode: rules.paymentMode,
       tiers: rideTiers(rules.freeRideSeconds).map((t) => {
         const pool = isPaidTier(t.id) ? poolOf(t.id) : null;
-        if (pool) return { id: t.id, usd: t.usd, seconds: t.seconds, completeDist: completeDist(t.seconds, completeDistK(t.id)), lamports: pool.priceLamports, available: pool.whyNotSellable(now, 1, 0) === null, pool: toPrizePoolDto(pool) };
-        // program mode is ticket-only (POST /api/rides refuses a paid tier without tickets): no live pool = nothing on sale, not the legacy pay-per-ride
-        const legacy = isPaidTier(t.id) && rules.paymentMode !== 'program';
+        const row = { id: t.id, usd: t.usd, seconds: t.seconds, completeDist: completeDist(t.seconds, completeDistK(t.id)), onSale: t.onSale };
+        if (pool) return { ...row, lamports: pool.priceLamports, available: pool.whyNotSellable(now, 1, 0) === null, pool: toPrizePoolDto(pool) };
+        // program mode is ticket-only. An off-sale tier with no live pool has no price (the lobby says SOON). An on-sale tier with no pool keeps the legacy quote in transfer mode.
+        const legacy = t.onSale && isPaidTier(t.id) && rules.paymentMode !== 'program';
         return {
-          id: t.id, usd: t.usd, seconds: t.seconds, completeDist: completeDist(t.seconds, completeDistK(t.id)),
+          ...row,
           lamports: legacy && quote ? lamportsFor(t.usd, quote.usd) : null,
           available: !isPaidTier(t.id) || (legacy && !!rules.treasury && !!quote),
           pool: null,

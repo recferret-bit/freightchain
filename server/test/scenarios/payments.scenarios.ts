@@ -29,8 +29,8 @@ export function paymentScenarios(h: () => Harness): void {
       const { body } = await anon().get('/api/tiers').expect(200);
       expect(body.solUsd).toBe(100);
       expect(body.treasury).toBe(TREASURY);
-      expect(Object.fromEntries(body.tiers.map((x: { id: string; lamports: number | null }) => [x.id, x.lamports]))).toEqual({ free: null, '1h': 50_000_000, '4h': 150_000_000, '8h': 500_000_000 });
-      expect(body.tiers.every((x: { available: boolean }) => x.available)).toBe(true);
+      expect(Object.fromEntries(body.tiers.map((x: { id: string; lamports: number | null }) => [x.id, x.lamports]))).toEqual({ free: null, '1h': 50_000_000, '4h': null, '8h': null });
+      expect(body.tiers.map((x: { id: string; available: boolean; onSale: boolean }) => [x.id, x.available, x.onSale])).toEqual([['free', true, true], ['1h', true, true], ['4h', false, false], ['8h', false, false]]);
     });
 
     it('an order locks lamports, price and an expiry; it cannot start until paid', async () => {
@@ -42,9 +42,9 @@ export function paymentScenarios(h: () => Harness): void {
     });
 
     it('the payment transaction pays the treasury the quoted amount with the ride id as memo', async () => {
-      const a = await login(), r = await order(a, '4h');
+      const a = await login(), r = await order(a, '1h');
       const p = (await a.agent.get(`/api/rides/${r.id}/payment`).expect(200)).body;
-      expect(p).toMatchObject({ treasury: TREASURY, lamports: 150_000_000, memo: r.id });
+      expect(p).toMatchObject({ treasury: TREASURY, lamports: 50_000_000, memo: r.id });
       const tx = Transaction.from(Buffer.from(p.transaction, 'base64'));
       expect(tx.feePayer?.toBase58()).toBe(a.address);
       expect(tx.instructions).toHaveLength(2);
@@ -128,14 +128,14 @@ export function paymentScenarios(h: () => Harness): void {
       expect((await a.agent.post(`/api/rides/${r.id}/reconcile`).expect(200)).body.status).toBe('not_found'); // nothing sent yet
       pay(a, r); // the wallet sent it, the tab died before /confirm
       sec(30 * 60); // …and the quote lapsed meanwhile
-      await order(a, '4h'); // (re-ordering must not lose the earlier payment)
+      await order(a, '1h'); // the quote lapsed; a new 1h order must not lose the earlier payment
       expect((await a.agent.post(`/api/rides/${r.id}/reconcile`).expect(200)).body).toMatchObject({ status: 'paid', ride: { id: r.id, status: 'created' } });
       expect((await a.agent.post(`/api/rides/${r.id}/reconcile`).expect(200)).body.status).toBe('paid'); // idempotent
       expect((await a.agent.get('/api/rides/pending').expect(200)).body.ride).toMatchObject({ id: r.id, status: 'created' });
     });
 
     it('picks the payment out of a busy wallet by its memo and fetches only that transaction', async () => {
-      const a = await login(), r = await order(a), other = await order(a, '4h'); // `other` replaces `r`: two orders, only r is paid below
+      const a = await login(), r = await order(a); sec(11 * 60); const other = await order(a); // the quote lapsed: `other` is a new 1h, `r` expired; only r is paid below
       expect((await a.agent.get(`/api/rides/${r.id}`)).body.status).toBe('expired');
       const chain = h().chain;
       pay(a, r); // the matching payment, then lots of unrelated traffic after it (newer)
@@ -177,7 +177,8 @@ export function paymentScenarios(h: () => Harness): void {
     it('two paid rides are both kept – but only one runs at a time', async () => {
       const a = await login(), first = await order(a, '1h');
       const sigFirst = pay(a, first);
-      const second = await order(a, '4h'); // first lapses
+      sec(11 * 60);
+      const second = await order(a, '1h'); // the quote lapsed, so this is a second order
       await a.agent.post(`/api/rides/${second.id}/confirm`).send({ signature: pay(a, second) }).expect(200);
       await a.agent.post(`/api/rides/${first.id}/confirm`).send({ signature: sigFirst }).expect(200); // late payment: both are owed
       await a.agent.post(`/api/rides/${second.id}/start`).expect(200);
@@ -200,15 +201,19 @@ export function paymentScenarios(h: () => Harness): void {
   });
 
   describe('one open ride at a time', () => {
-    it('re-asking returns the same order; another tier replaces it; a paid unstarted ride is never lost', async () => {
+    it('re-asking returns the same order; an off-sale tier leaves it; a lapsed quote is replaced; a paid unstarted ride is never lost', async () => {
       const a = await login(), r1 = await order(a, '1h');
       expect((await order(a, '1h')).id).toBe(r1.id);
-      const r2 = await order(a, '4h');
+      expect((await a.agent.post('/api/rides').send({ tier: '4h' }).expect(409)).body.code).toBe('tier_not_on_sale');
+      expect((await a.agent.post('/api/rides').send({ tier: '8h' }).expect(409)).body.code).toBe('tier_not_on_sale');
+      expect((await a.agent.get(`/api/rides/${r1.id}`)).body.status).toBe('awaiting_payment');
+      sec(11 * 60);
+      const r2 = await order(a, '1h');
       expect(r2.id).not.toBe(r1.id);
       expect((await a.agent.get(`/api/rides/${r1.id}`)).body.status).toBe('expired');
       await a.agent.post(`/api/rides/${r2.id}/confirm`).send({ signature: pay(a, r2) }).expect(200);
       const again = await order(a, 'free'); // asks for a free ride, owns a paid unstarted one → gets that one back
-      expect(again).toMatchObject({ id: r2.id, tier: '4h', status: 'created' });
+      expect(again).toMatchObject({ id: r2.id, tier: '1h', status: 'created' });
     });
 
     it('the free path is unchanged: no payment, 5 credits, never scaled', async () => {
@@ -230,15 +235,15 @@ export function paymentScenarios(h: () => Harness): void {
     it('counts paid entries and splits 50 / 20 / 20 / 10 exactly; the next week is seeded with the 20 %', async () => {
       const before = (await anon().get('/api/pool').expect(200)).body;
       const a = await login();
-      for (const tier of ['1h', '8h']) {
-        const r = await order(a, tier);
+      for (let i = 0; i < 2; i++) { // two finished 1h rides: 4h and 8h are not on sale
+        const r = await order(a, '1h');
         await a.agent.post(`/api/rides/${r.id}/confirm`).send({ signature: pay(a, r) }).expect(200);
         await a.agent.post(`/api/rides/${r.id}/start`).expect(200);
         sec(2);
         await a.agent.post(`/api/rides/${r.id}/end`).send({ outcome: 'failed', s: 0, reason: 'x' }).expect(200); // a failed ride still counts as an entry
       }
       const pool = (await anon().get('/api/pool').expect(200)).body;
-      expect(pool.split.entries - before.split.entries).toBe(550_000_000);
+      expect(pool.split.entries - before.split.entries).toBe(100_000_000);
       expect(pool.entries - before.entries).toBe(2);
       const s = pool.split;
       expect(s.grand - s.carry + s.top20 + s.nextSeed + s.fees).toBe(s.entries);

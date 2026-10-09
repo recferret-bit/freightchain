@@ -42,7 +42,9 @@ describe('admin CLI arguments', () => {
   });
 
   it('pool:seed – defaults and errors', () => {
-    expect(parsePoolSeed(['--id', '1', '--tier', '1h'])).toEqual({ id: 1, tier: '1h', status: 'open', priceLamports: 50_000_000, minTickets: 2, maxTickets: 0, maxPerWallet: 5, prepDays: 7, playDays: 14, sold: 0, label: null });
+    expect(parsePoolSeed(['--id', '1', '--tier', '1h'])).toEqual({ id: 1, tier: '1h', status: 'open', priceLamports: 50_000_000, minTickets: 20, maxTickets: 0, maxPerWallet: 5, prepDays: 7, playDays: 14, sold: 0, label: null });
+    expect(parsePoolSeed(['--id', '1', '--tier', '1h', '--status', 'active'])).toMatchObject({ minTickets: 20, sold: 20 });
+    expect(parsePoolSeed(['--id', '1', '--tier', '1h', '--min', '2'])).toMatchObject({ minTickets: 2, sold: 0 }); // a short test pool may pass a smaller goal
     expect(parsePoolSeed(['--id', '2', '--tier', '8h', '--status', 'active', '--sold', '3', '--label', 'Demo'])).toMatchObject({ status: 'active', sold: 3, label: 'Demo' });
     expect(parsePoolSeed(['--id', '2', '--tier', '8h', '--status', 'active', '--min', '4'])).toMatchObject({ sold: 4 });
     expect(parsePoolSeed(['--id', '2', '--tier', '8h', '--status', 'active', '--sold', '1'])).toBe('--sold must reach --min for an active pool');

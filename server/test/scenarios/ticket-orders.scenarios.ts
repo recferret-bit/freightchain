@@ -94,7 +94,7 @@ export function ticketOrderScenarios(h: () => Harness): void {
     expect(tiers.tiers.map((t: { id: string; available: boolean; lamports: number | null; pool: { id: number } | null }) => [t.id, t.available, t.lamports === null, t.pool?.id ?? null]))
       .toEqual([['free', true, true, null], ['1h', true, false, 1], ['4h', false, true, null], ['8h', false, true, null]]);
     const w = await login();
-    expect((await w.agent.post('/api/rides').send({ tier: '4h' }).expect(409)).body).toMatchObject({ code: 'no_tickets' });
+    expect((await w.agent.post('/api/rides').send({ tier: '4h' }).expect(409)).body).toMatchObject({ code: 'tier_not_on_sale' }); // a refunding pool is not live, and 4h is not on sale
   });
 
   it('a pool that missed its goal is refundable at once – before anyone sends fail_pool (the refund transaction bundles it)', async () => {

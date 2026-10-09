@@ -1,7 +1,7 @@
 import { parseArgs } from 'node:util';
 import { isCosmeticSlot } from '../domain/economy/cosmetics.js';
 import type { PromoCreateInput, PromoEffect } from '../domain/economy/promo.types.js';
-import { isPaidTierId, type PaidTierId } from '../domain/rides/ride-tier.js';
+import { isPaidTierId, rideTier, type PaidTierId } from '../domain/rides/ride-tier.js';
 
 /* Argument parsing of the admin commands – pure, so it is unit-tested without a database. A parse error is a string (printed with the help). */
 
@@ -107,10 +107,11 @@ export function parsePoolSeed(args: readonly string[]): PoolSeedArgs | string {
   if (!isPaidTierId(v.tier)) return '--tier must be 1h, 4h or 8h';
   const status = v.status ?? 'open';
   if (status !== 'open' && status !== 'active') return '--status must be open or active';
+  const minDefault = String(rideTier(v.tier, 0).minTickets ?? 2); // 1h is 20; a shift with no product minimum keeps the small dev default
   const nums = {
-    id: int('id', v.id, 0), priceLamports: int('price', v.price ?? '50000000', 890_880), minTickets: int('min', v.min ?? '2', 1), maxTickets: int('max', v.max ?? '0', 0),
+    id: int('id', v.id, 0), priceLamports: int('price', v.price ?? '50000000', 890_880), minTickets: int('min', v.min ?? minDefault, 1), maxTickets: int('max', v.max ?? '0', 0),
     maxPerWallet: int('per-wallet', v['per-wallet'] ?? '5', 1), prepDays: int('prep-days', v['prep-days'] ?? '7', 0), playDays: int('play-days', v['play-days'] ?? '14', 0),
-    sold: int('sold', v.sold ?? (status === 'active' ? v.min ?? '2' : '0'), 0), // an active pool has sold at least its minimum
+    sold: int('sold', v.sold ?? (status === 'active' ? v.min ?? minDefault : '0'), 0), // an active pool has sold at least its minimum
   };
   for (const x of Object.values(nums)) if (typeof x === 'string') return x;
   const n = nums as { [K in keyof typeof nums]: number };

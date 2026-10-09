@@ -40,7 +40,7 @@ export function poolScenarios(h: () => Harness): void {
     it('the tiers list prices a pooled tier by its pool, and the round pot lists the live pools', async () => {
       await seedPool({ id: 1, tier: '4h', status: 'active', priceLamports: 120_000_000 });
       const tiers = (await anon().get('/api/tiers').expect(200)).body;
-      expect(tiers.tiers.find((t: { id: string }) => t.id === '4h')).toMatchObject({ lamports: 120_000_000, available: true, pool: { id: 1 } });
+      expect(tiers.tiers.find((t: { id: string }) => t.id === '4h')).toMatchObject({ lamports: 120_000_000, available: true, onSale: false, pool: { id: 1 } }); // a live pool still sells a shift that is otherwise soon
       expect(tiers.tiers.find((t: { id: string }) => t.id === '1h').pool).toBeNull();
       expect((await anon().get('/api/pool').expect(200)).body.pools.map((p: { id: number }) => p.id)).toEqual([1]);
     });

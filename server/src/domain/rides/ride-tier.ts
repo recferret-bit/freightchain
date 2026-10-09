@@ -6,8 +6,12 @@ export interface RideTierDef {
   id: RideTierId;
   /** the shift length (production values for the paid tiers) */
   seconds: number;
-  /** face price in USD (0 = free); paid in SOL at the quoted rate */
+  /** face price in USD (0 = free); paid in SOL at the quoted rate. Planned prices stay even when the tier is not on sale. */
   usd: number;
+  /** false = the shift exists but is not sold until a live pool of it is registered */
+  onSale: boolean;
+  /** Tickets that must sell or the pool refunds. Null = no product minimum (free, or a shift not on sale). */
+  minTickets: number | null;
 }
 
 const HOUR = 3600;
@@ -15,10 +19,11 @@ const HOUR = 3600;
 /** The tier table. Only the free shift length is configurable (tests / demos shorten it). */
 export function rideTiers(freeRideSeconds: number): readonly RideTierDef[] {
   return [
-    { id: 'free', seconds: freeRideSeconds, usd: 0 },
-    { id: '1h', seconds: HOUR, usd: 5 },
-    { id: '4h', seconds: 4 * HOUR, usd: 15 },
-    { id: '8h', seconds: 8 * HOUR, usd: 50 },
+    { id: 'free', seconds: freeRideSeconds, usd: 0, onSale: true, minTickets: null },
+    // 20 × $5 = a $100 pot: 1st $26, 2nd $16, 3rd $11, each place 4–20 $1. Fewer tickets and the pool refunds.
+    { id: '1h', seconds: HOUR, usd: 5, onSale: true, minTickets: 20 },
+    { id: '4h', seconds: 4 * HOUR, usd: 15, onSale: false, minTickets: null },
+    { id: '8h', seconds: 8 * HOUR, usd: 50, onSale: false, minTickets: null },
   ];
 }
 
@@ -30,7 +35,14 @@ export function rideTier(id: RideTierId, freeRideSeconds: number): RideTierDef {
 
 export const isPaidTier = (id: RideTierId): boolean => id !== 'free';
 
+/** False for a planned shift (4h, 8h). A registered live pool of that tier still sells; this only gates the offer when none is open. */
+export const isTierOnSale = (id: RideTierId): boolean => rideTiers(0).find((t) => t.id === id)?.onSale ?? false;
+
 /** The tiers that cost money – each is sold as tickets into a pool (docs/paid-tickets-plan.md). */
 export const PAID_TIER_IDS = ['1h', '4h', '8h'] as const;
 export type PaidTierId = (typeof PAID_TIER_IDS)[number];
 export const isPaidTierId = (v: unknown): v is PaidTierId => typeof v === 'string' && (PAID_TIER_IDS as readonly string[]).includes(v);
+
+const SHIFT_HOURS: Record<PaidTierId, string> = { '1h': '1-hour', '4h': '4-hour', '8h': '8-hour' };
+/** Player-facing name in the not-on-sale refusal. */
+export const tierShiftName = (id: PaidTierId): string => SHIFT_HOURS[id];

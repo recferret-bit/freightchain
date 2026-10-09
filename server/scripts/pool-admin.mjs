@@ -2,7 +2,8 @@
 // set_config, close_pool (+ show). Encodes through the server's own codec (dist/, so `npm run build` first) from the vendored IDL. Run from server/:
 //   node scripts/pool-admin.mjs show        --url <rpc> [--pool N]
 //   node scripts/pool-admin.mjs initialize  --url <rpc> -k <upgrade-authority.json> --admin <pubkey> --platform-treasury <pubkey> [--platform-fee-bps 0]
-//   node scripts/pool-admin.mjs create-pool --url <rpc> -k <admin.json> --tier 1h|4h|8h --price <lamports> --min N [--max 0] [--per-wallet 1]
+//   node scripts/pool-admin.mjs create-pool --url <rpc> -k <admin.json> --tier 1h|4h|8h --price <lamports> [--min N] [--max 0] [--per-wallet 1]
+//                                           1h omits --min → 20 (ride-tier.ts). A smaller --min is a short test pool. 4h and 8h still require --min.
 //                                           --prep <unix|+secs> --play <unix|+secs> [--split 7000/2000/1000] --fee-treasury <pubkey> --seed-treasury <pubkey>
 //   node scripts/pool-admin.mjs set-config  --url <rpc> -k <admin.json> [--paused true|false] [--platform-treasury <pubkey>] [--platform-fee-bps N]
 //   node scripts/pool-admin.mjs close-pool  --url <rpc> -k <caller.json> --pool N        (admin after play_deadline; anyone for a fully refunded pool)
@@ -21,6 +22,7 @@ import { ComputeBudgetProgram, Connection, Keypair, PublicKey, SYSVAR_CLOCK_PUBK
 import bs58 from 'bs58';
 import { PoolProgramCodec } from '../dist/infrastructure/solana/pool-program.codec.js';
 import { POOL_PROGRAM_IDL } from '../dist/infrastructure/solana/pool-program.idl.js';
+import { rideTier } from '../dist/domain/rides/ride-tier.js';
 
 const [cmd, ...rest] = process.argv.slice(2);
 const opt = {};
@@ -97,7 +99,7 @@ try {
     const sig = await send(admin, codec.instruction('create_pool', {
       authority: admin.publicKey, config: codec.configPda(), pool: codec.poolPda(id), vault: codec.vaultPda(id),
       fee_treasury: pk('fee-treasury'), seed_treasury: pk('seed-treasury'), platform_treasury: c.platformTreasury,
-    }, { params: { tier, price_lamports: int('price'), min_tickets: int('min'), max_tickets: int('max', 0), max_per_wallet: int('per-wallet', 1),
+    }, { params: { tier, price_lamports: int('price'), min_tickets: int('min', opt.tier === '1h' ? rideTier('1h', 0).minTickets : undefined), max_tickets: int('max', 0), max_per_wallet: int('per-wallet', 1),
       prep_deadline: await when('prep'), play_deadline: await when('play'), prize_bps: prize, seed_bps: seed, fee_bps: fee } }));
     out({ signature: sig, poolId: id, pool: await account('Pool', codec.poolPda(id)) });
   } else if (cmd === 'set-config') {

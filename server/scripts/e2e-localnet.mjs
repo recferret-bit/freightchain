@@ -3,7 +3,7 @@
 // env: BASE, RPC, KEYS (scratch keypair dir), FIXTURES (phase 1's fixtures.json), CHROME_PORT. Explained in docs/localnet-e2e/index.html.
 //   pool A (1h, min 3): lobby gasless buy ×2 → Node self-paid buy → live → a sponsorship → 3 verified rides → play deadline → ranked payouts → close (+ sponsorship)
 //   pool B (4h, min 5): Node gasless + self-paid buys → missed goal, nobody failed it → lobby CLAIM REFUND (fail_pool + refund) → API refund → anyone closes →
-//                       the 4h tier is ticket-only: nothing on sale, rides refused
+//                       the 4h tier is not on sale: SOON card, POST /api/rides 409 tier_not_on_sale
 //   pool C (8h, min 5) + the baked "three weeks old" pools: the crank (pool:crank) fails C and expires the unpaid baked pool, refunds both, closes both;
 //                       the baked pool that paid a prize is closed by a stranger after the grace (MustExpire refused for the unpaid one)
 // Deadlines run on the validator's clock (no warp): the run is paced by them (PREP_A / PLAY_A / PREP_B / PREP_C seconds, defaults below).
@@ -264,11 +264,12 @@ try {
   const t4 = (await api('tiers')).j.tiers.find(t => t.id === '4h');
   if (t4.pool) console.log(`NOTE ticket-only checks skipped: another 4h pool (#${t4.pool.id}) is live on this cluster`);
   else {
-  check('GET /api/tiers: 4h not available, no pay-per-ride price', t4.available === false && t4.lamports === null && t4.pool === null, JSON.stringify(t4));
-  check('POST /api/rides 4h without a pool: 409 no_tickets', (await api('rides', { body: { tier: '4h' }, cookie: P3.cookie })).status === 409);
+  check('GET /api/tiers: 4h not on sale, no pay-per-ride price', t4.available === false && t4.onSale === false && t4.lamports === null && t4.pool === null, JSON.stringify(t4));
+  const refused4 = await api('rides', { body: { tier: '4h' }, cookie: P3.cookie });
+  check('POST /api/rides 4h without a pool: 409 tier_not_on_sale', refused4.status === 409 && refused4.j.code === 'tier_not_on_sale', JSON.stringify(refused4.j).slice(0, 160));
   await h3.lobby();
-  check('lobby: the 4h card says NO POOL and sells nothing', await until(async () => /NO POOL/.test(await h3.txt('#tier-4h .st')) && (await h3.ev('document.querySelector("#tier-4h .go").disabled')) === true, 15000), await h3.txt('#tier-4h'));
-  await h3.shot('3-lobby-no-pool');
+  check('lobby: the 4h card says SOON and sells nothing', await until(async () => /SOON/.test(await h3.txt('#tier-4h .st')) && (await h3.ev('document.querySelector("#tier-4h .go").disabled')) === true, 15000), await h3.txt('#tier-4h'));
+  await h3.shot('3-lobby-soon');
   }
 
   // ── 9. the CRANK (CRANK_SECRET, one pass from the CLI): fails pool C and refunds it (and on localnet expires the baked pool and refunds it), closes them

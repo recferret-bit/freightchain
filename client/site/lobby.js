@@ -140,7 +140,11 @@ function paintTiers() {
   const ctx = { me: S.me, solUsd: S.tiers.solUsd, now: now(), busy: S.busy || S.pending, sales: salesOpen(S.tiers), focus: S.focus, act: { ride, buy, refund, qty: (id, n) => { S.qty[id] = n; paintTiers(); } } };
   const free = S.tiers.tiers.find(t => t.id === 'free');
   fbox.replaceChildren(...(free ? [freeCard(free)] : []));
-  box.replaceChildren(...S.tiers.tiers.filter(t => t.id !== 'free').map(t => t.pool ? poolCard(t, tierInfo(t), { ...ctx, qty: S.qty[t.id] ?? 1 }) : salesOpen(S.tiers) ? noPoolCard(t) : legacyCard(t)));
+  box.replaceChildren(...S.tiers.tiers.filter(t => t.id !== 'free').map(t => {
+    if (t.pool) return poolCard(t, tierInfo(t), { ...ctx, qty: S.qty[t.id] ?? 1 });
+    if (t.onSale === false) return soonCard(t);   // planned shift: no pay-per-ride card, and not the "pool ended" card
+    return salesOpen(S.tiers) ? noPoolCard(t) : legacyCard(t);
+  }));
   for (const [k, m] of Object.entries(S.msgs)) say(k, ...m);   // messages survive a repaint
   paintRefunds(); tickCountdowns();
 }
@@ -155,7 +159,17 @@ function freeCard(t) {
     el('button', { class: 'go', id: 'start', disabled: !!off || !!S.busy, onclick: startFree }, S.busy === 'free' ? 'WORKING…' : 'START FREE RIDE'),
     el('p', { class: 'msg dim', id: 'msg-free' }));
 }
-function noPoolCard(t) {   // program mode is ticket-only: a paid tier whose pool failed / settled and no new one is open yet
+function soonCard(t) {   // 4h / 8h with no live pool: the planned price is text, the button does nothing
+  const i = tierInfo(t);
+  return el('article', { class: 'tier legacy', id: `tier-${t.id}` },
+    el('div', { class: 'hd' }, el('span', { class: 'nm' }, i.name), el('span', { class: 'st done' }, 'SOON')),
+    el('span', { class: 'pr' }, `$${t.usd}`, el('small', {}, ' · planned')),
+    el('span', { class: 'sub' }, i.shift),
+    el('span', { class: 'sub more' }, 'Not on sale yet. The 1 hour shift is the one you can buy.'),
+    el('button', { class: 'go', disabled: true }, 'SOON'),
+    el('p', { class: 'msg dim', id: `msg-${t.id}` }));
+}
+function noPoolCard(t) {   // program mode is ticket-only: an on-sale tier whose pool failed / settled and no new one is open yet
   const i = tierInfo(t);
   return el('article', { class: 'tier legacy', id: `tier-${t.id}` },
     el('div', { class: 'hd' }, el('span', { class: 'nm' }, i.name), el('span', { class: 'st done' }, 'NO POOL')), el('span', { class: 'sub' }, i.shift),

@@ -27,7 +27,7 @@ Kept on purpose: the legacy pay-per-ride routes (`/api/rides/:id/payment|confirm
 | 2 | **~5 devnet SOL** on that keypair (deploy ≈ 3 SOL) | same | faucets give 1–2 SOL/day/address; QuickNode faucet too |
 | 3 | **Phantom on devnet** = the admin authority (`TREASURY_PUBKEY`): named as admin by `initialize` (which the upgrade-authority deploy wallet signs), then signs each `create_pool`, later `pay_prize` / `close_pool` | at deploy, and at payout time | the server never holds this key |
 | 4 | **Seed + fee treasury addresses** (any wallets you control; devnet is fine) | before `create_pool` | written into every pool, never changeable |
-| 5 | **Pool settings**: price, minimum, preparation / play deadlines for the week pools + a short demo pool | before `create_pool` | suggestion: 0.05 SOL, min 10, prep to Oct 31; demo pool 1h, min 2, deadlines in 1–2 days so a refund or payout can be shown live |
+| 5 | **Pool settings**: price, minimum, preparation / play deadlines for the week pools + a short demo pool | before `create_pool` | the 1 hour pool is $5 and **min 20** (`ride-tier.ts`): fewer sold by the prep deadline and every ticket is refunded. A short demo pool may pass a smaller `--min` |
 | 6 | **RPC provider**: `SOLANA_RPC` (+ `SOLANA_WS`) URL, e.g. QuickNode devnet; optionally a Streams webhook → `POST /api/chain/webhook` with `WEBHOOK_SECRET` | before the devnet run | the public devnet RPC works for a test, rate-limited |
 | 7 | **Gas sponsor keypair** (`FEE_PAYER_SECRET`, fee money only, ~0.2 devnet SOL) – or say "no sponsor" (buyers pay their own fee) | before the devnet run | |
 | 8 | Answers to the open questions below | any time; Q1, Q2, Q5 by Oct 9 | |
@@ -50,7 +50,9 @@ The current list of what is not done, the newer open questions (Q-A … Q13) and
 ## 3b. Built since (Oct 8)
 
 - **The pool crank** (`CRANK_SECRET`): fails missed pools, expires unsettled ones after the 14-day grace, refunds their tickets 8 per transaction and closes them – by the chain clock, every step settled into the mirror. CLI `pool:crank` (one pass) and `PoolCrankScheduler` (`CRANK_INTERVAL_MS`, 60 s). Never touches a pool that paid prizes.
-- **Ticket-only in program mode**: no pay-per-ride fallback when a tier has no live pool (tiers / lobby NO POOL card / landing table / rides 409).
+- **Ticket-only in program mode**: no pay-per-ride fallback when an on-sale tier has no live pool (tiers / lobby NO POOL card / landing table / rides 409).
+- **4h and 8h are not on sale** (Oct 9): `onSale: false` in `ride-tier.ts`. No live pool → lobby SOON, no lamport price, `POST /api/rides` 409 `tier_not_on_sale`. Planned prices stay $15 and $50. A registered open or active pool of that tier still sells tickets. The 1 hour shift is the paid shift on sale.
+- **1 hour pool opens at 20 tickets** (Oct 10): `minTickets: 20` on the 1h tier. `pool:seed` and `pool-admin create-pool` use that when `--min` is omitted. Below 20 at the prep deadline the pool fails and every ticket is refunded. At 20 × $5 the server builds $26 / $16 / $11 / $1 for places 1–20. A test pool may still pass a smaller `--min`.
 - **Refundable at once**: a missed-goal pool's buyers see CLAIM REFUND before anyone failed it (the refund transaction bundles `fail_pool`).
 - The lobby's unfinished-order note says "nothing was charged" when nothing was sent.
 - **`npm run test:localnet`** covers all of it on a local validator, including `sponsor`, `expire_pool` and the permissionless grace close (baked "three weeks old" pools) – walkthrough: `docs/localnet-e2e/index.html`.

@@ -3,7 +3,7 @@ import { lamportsFor } from '../../../../domain/economy/prize-split.js';
 import { toRideDto, type RideDto } from '../../../../domain/rides/ride.dto.js';
 import { Ride, type RideProps } from '../../../../domain/rides/ride.entity.js';
 import { RideStatus } from '../../../../domain/rides/ride-status.js';
-import { isPaidTier, rideTier, type PaidTierId } from '../../../../domain/rides/ride-tier.js';
+import { isPaidTier, isTierOnSale, rideTier, tierShiftName, type PaidTierId } from '../../../../domain/rides/ride-tier.js';
 import type { Round } from '../../../../domain/economy/round.entity.js';
 import { PoolTicketsService } from '../../../services/pool-tickets.service.js';
 import { RoundService } from '../../../services/round.service.js';
@@ -42,8 +42,9 @@ interface CreateFacts {
  *   running                → 409
  *   ready (created)        → the same ride back – a PAID one is never lost; an unstarted FREE one is cancelled (credit refunded) when a paid tier is bought
  *   awaiting payment       → the same order while its tier matches and the price is still held; otherwise it lapses (a late matching payment is still honoured)
- * A paid tier that sells through escrowed pools (a pool of it is registered) is paid with a TICKET: one is spent in the same locked transaction and the ride
- * is ready at once (409 `no_tickets` / `pool_not_live`). In `program` payment mode that is the only way; in `transfer` mode a tier with no pool still uses the legacy pay-per-ride order.
+ * A paid tier that is not on sale (4h, 8h) and has no live pool is refused before the lock (409 `tier_not_on_sale`), so an open order of another tier is not expired.
+ * A registered live pool of that tier still sells tickets. A paid tier that sells through escrowed pools is paid with a TICKET: one is spent in the same locked
+ * transaction and the ride is ready at once (409 `no_tickets` / `pool_not_live`). In `program` mode that is the only way; in `transfer` mode an on-sale tier with no pool still uses the legacy pay-per-ride order.
  */
 @CommandHandler(CreateRideCommand)
 export class CreateRideHandler implements ICommandHandler<CreateRideCommand, RideDto> {
@@ -65,9 +66,12 @@ export class CreateRideHandler implements ICommandHandler<CreateRideCommand, Rid
   async execute({ wallet, tier }: CreateRideCommand): Promise<RideDto> {
     const rules = this.rules.get();
     const paid = isPaidTier(tier);
+    const livePool = paid && (await this.poolTickets.tierHasPools(tier as PaidTierId));
+    // before the lock, and before touch: a soon-tier request must not expire the order in hand and must not open a player row
+    if (paid && !isTierOnSale(tier) && !livePool) throw new ConflictError(`the ${tierShiftName(tier as PaidTierId)} shift is not on sale yet`, 'tier_not_on_sale');
     await this.sessions.touch(wallet); // makes sure the player exists (and applies the daily grant)
     // program mode sells paid rides ONLY as pool tickets (a tier whose pools all failed has none to ride, never a fallback order); transfer mode keeps the legacy order where no pool is registered
-    const viaTickets = paid && (rules.paymentMode === 'program' || (await this.poolTickets.tierHasPools(tier as PaidTierId)));
+    const viaTickets = paid && (rules.paymentMode === 'program' || livePool);
     if (paid && !viaTickets && !rules.treasury) throw new ServiceUnavailableError('paid rides are not configured on this server (no treasury)');
     const round = viaTickets ? await this.rounds.ensureRound() : null; // the round a ticket ride ranks in when its pool has none yet (outside the lock: it may insert)
     // The price is fetched BEFORE the transaction (no row lock is held across an HTTP call) and only when a NEW order will be needed – re-asking for the

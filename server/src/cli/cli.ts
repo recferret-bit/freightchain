@@ -24,6 +24,7 @@ Commands:
   tickets:grant WALLET POOL_ID COUNT [--note TEXT]
                Gift tickets into a live pool (clamped at its per-wallet cap; audited)
   pool:seed --id N --tier 1h|4h|8h [--status open|active] [--price LAMPORTS] [--min N] [--max N] [--per-wallet N] [--prep-days D] [--play-days D] [--sold N] [--label TEXT]
+                     1h with no --min uses 20 (ride-tier.ts). Pass --min to seed a smaller test pool.
                DEVELOPMENT ONLY (refused in production): a pool in the mirror that is not on chain – for the lobby without a deployed program
   pool:register POOL_ID [--label TEXT]
                Read the pool's account from chain (TICKET_PROGRAM_ID, SOLANA_RPC) into the mirror, or refresh it – the chain wins; --label renames it

@@ -142,6 +142,7 @@ h3.sub{margin:40px 0 14px}
 
 /* 03 */
 .econ{display:grid;grid-template-columns:3fr 2fr;gap:12px}
+.why{margin-top:12px}.why p{margin:10px 0 0}
 .pool{display:grid;gap:8px;align-content:start;border-color:var(--line2);box-shadow:0 0 40px #ffb02e14;background:linear-gradient(160deg,#1a1710,var(--panel) 60%)}
 .pool .big{font-size:clamp(38px,6vw,68px);line-height:1;font-weight:700;color:var(--amber);font-variant-numeric:tabular-nums}
 .pool .usd{color:var(--dim)}
