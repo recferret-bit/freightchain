@@ -9,10 +9,10 @@ Local run: `npm run db:up && npm run server:dev` → http://localhost:3000
 Every directory at the repo root. `.git` is the only one left out.
 
 - `.claude/` – project skills for coding agents. One folder per skill (`SKILL.md`, plus a script when the skill runs something). The index is [Skills](#skills).
-- `client/` – the game and the site pages: lobby, admin, the model viewer (`viewer.html`), and the escrow explainer. Vanilla ES modules + three.js, no build step. The API serves it in dev; production puts the game on `ride.<apex>` and the lobby on the apex.
+- `client/` – the game and the site pages: lobby, admin, and the model viewer (`viewer.html`). Vanilla ES modules + three.js, no build step. The API serves it in dev; production puts the game on `ride.<apex>` and the lobby on the apex.
 - `deploy/` – semi-automatic deploy to our own server (Docker, host nginx, certbot). `npm run deploy` (see [`deploy/README.md`](deploy/README.md)). Ships `git archive HEAD`, so commit first.
 - `design/` – art that is not the running app. `design/icons/` holds the app-icon candidates (SVG + 1024 px PNG; `build-app-icons.mjs` writes the shipped set into `client/`). `design/youtube-banner/` builds the channel banners (`banner.html`, `node design/youtube-banner/build.mjs`).
-- `docs/` – plans and explainers: the hackathon plan, backend architecture, [verified play](docs/verified-play-next-steps.md), [product analytics](docs/analytics/index.html), [replays and donations](docs/replay-and-donations/index.html), escrow status, and the pool-program spec. `docs/pool-escrow/` is copied to `client/escrow/` when it changes.
+- `docs/` – plans and explainers: the hackathon plan, backend architecture, [verified play](docs/verified-play-next-steps.md), [product analytics](docs/analytics/index.html), [replays and donations](docs/replay-and-donations/index.html), escrow status, and the pool-program spec. The public escrow explainer is the whitepaper, chapter 05.
 - `landing/` – the `/` page and the whitepaper (`whitepaper.html`, host `whitepaper.<apex>`). Its own Vite project: wallet sign-in, live pool and boards, dash cards drawn by the game's cockpit code. No three.js.
 - `media/` – promo clips and sound. `media/video/` captures real gameplay to mp4 (≤ 15 s) and gif (≤ 20 MB). `media/audio/` is the chiptune synth (music, engine, effects) and also builds the game's own sounds in `client/audio/sfx/`. `media/out/` holds the finished intro and the sound library. See [Promo videos](#promo-videos).
 - `programs/` – `programs/freightchain-pools`, the Anchor escrow: one program, many prize pools, each pool its own vault. The spec is [`programs/freightchain-pools/README.md`](programs/freightchain-pools/README.md). `npm run program:build`, `npm run program:test`, and `npm run program:verify` (the pinned verifiable build). Written and tested; not deployed.
@@ -39,6 +39,7 @@ Skills live in `.claude/skills/<name>/`. A coding agent reads that folder's `SKI
 | `replay-test` | Live watch page, replays, and the `LIVE_*` flags, with a driver and a spectator in Chrome | `bash .claude/skills/replay-test/run.sh` |
 | `ride-investigate` | One player or one ride on production: the database rows and the matching log lines | `npm run ops -- query ride <id>` (or `query wallet <address>`), then the logs named in the skill |
 | `run-tests` | The whole local suite: lint and unit tests, PostgreSQL, then real-Chrome end-to-end. There is no CI | `npm run check`, then `npm run server:integration`, then `bash .claude/skills/run-tests/e2e.sh` |
+| `test-census` | Count the tests by pyramid layer, list the test skills, name gaps, and rewrite the Tests block below with the last recorded runs | `npm run test:census` · `npm run test:census -- run` · `npm run test:census -- readme` |
 | `verified-play-test` | The anti-bot / anti-cheat end to end, positive and negative: a person and a bot in Chrome (dispatch prompts answered / ignored), API-level bots with hand-built recordings, the byte budget, the CLI's bulk re-judge | `bash .claude/skills/verified-play-test/run.sh` |
 | `storybook-models` | Review and fix a mesh in the model viewer (`client/viewer.html`), or add or update a 3D object the game draws | `node .claude/skills/storybook-models/shot.mjs` · `node .claude/skills/storybook-models/shot.mjs <id>` |
 
@@ -73,7 +74,10 @@ How the loop is measured — every event, the nine funnels, what the server owns
 
 ## Tests
 
-There is no CI; run everything locally (the `run-tests` skill does this). What each skill is for, and the command to run it, is in [Skills](#skills).
+There is no CI. Run the suites locally (the `run-tests` skill). What each skill is for, and the command to run it, is in [Skills](#skills). The counts, gaps, and last runs below are written by the `test-census` skill.
+
+<!-- test-census:start -->
+<!-- test-census:end -->
 
 ```sh
 npm run check                              # client lint + bundle + headless game · landing · server build, typecheck, unit tests + architecture audits

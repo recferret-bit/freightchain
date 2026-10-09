@@ -1,4 +1,4 @@
-/* Layout: the localnet test explained – same highway-signage family as ../pool-program (the contract spec) and ../pool-escrow. A sticky contents rail,
+/* Layout: the localnet test explained – same highway-signage family as ../pool-program (the contract spec). A sticky contents rail,
    one reading column, full-width plates. Amber = money moving, teal = what anyone (or the crank) may do, dashed ink = the admin. */
 :root {
   --bg: #eef0ec;

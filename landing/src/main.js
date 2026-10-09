@@ -4,7 +4,7 @@ import { track, flushSoon } from '../../client/js/analytics.js';
 import { reportWebVitals } from '../../client/js/web-vitals.js';
 import { livePath, leaveOnClose } from '../../client/site/presence.js';   // this page counts as online in the live feed – and leaves it when closed
 import { sol, km, left, short, hue, hours, ago, plural, TIER, TIER_LONG, ROUTE } from './format.js';
-import { explorerUrl, shortAddr, statusChip, progressText, deadline } from '../../client/site/pools.js';   // the lobby's pool wording, so both pages say the same thing
+import { escrowExplainer, explorerUrl, shortAddr, statusChip, progressText, deadline } from '../../client/site/pools.js';   // the lobby's pool wording, so both pages say the same thing
 
 /* Landing: four chapters (ride · loop · economy · about), fed by the public API only – no session needed to look.
    Everything from the server goes in with textContent (other riders' wallets are rendered here). */
@@ -197,7 +197,7 @@ for (const a of document.querySelectorAll('a[href="/play.html"]')) {
 $('storybook-link').href = STORYBOOK_BASE || '/viewer.html';   // the model viewer: storybook.<apex> in production, /viewer.html elsewhere
 $('whitepaper-link').href = $('whitepaper-cta').href = WHITEPAPER_BASE || '/whitepaper.html';   // the whitepaper: whitepaper.<apex> in production, /whitepaper.html elsewhere
 $('storybook-link').addEventListener('click', () => track('storybook_link_clicked'));
-$('escrow-link').href = `${WHITEPAPER_BASE || '/whitepaper.html'}#onchain`;   // the whitepaper's escrow chapter (05) carries every diagram of the old /escrow/ explainer
+$('escrow-link').href = escrowExplainer();   // whitepaper chapter 05 is the one public escrow explainer
 
 /* ───── socials ───── */
 for (const [net, url] of Object.entries(SOCIALS)) if (url) {

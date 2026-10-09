@@ -208,7 +208,7 @@ check('landing: pool = /api/pool', (await obs.ev('document.querySelector("#poolb
 const pools = (await get('pools')).pools;
 check('landing: the live pools board = /api/pools (one row each, "sold / min committed", escrow, explorer link)', await until(async () => (await obs.ev('document.querySelectorAll("#pools .prow").length')) === pools.length) && (await txt(obs, '#pools')).includes(`${open4h.sold} / ${open4h.minTickets} committed`) && (await obs.ev(`[...document.querySelectorAll("#pools a")].some(a => a.href === "https://explorer.solana.com/address/${open4h.address}?cluster=devnet")`)), (await txt(obs, '#pools')).slice(0, 160));
 check('landing: the escrow block links the whitepaper\'s escrow chapter', await obs.ev('/\\/whitepaper\\.html#onchain$|^https?:\\/\\/whitepaper\\.[^/]+\\/?#onchain$/.test(document.getElementById("escrow-link")?.href || "")'), await obs.ev('document.getElementById("escrow-link")?.href'));
-const ex = await fetch(`${BASE}/escrow/`); check('the explainer page is served at /escrow/', ex.ok && /Pool escrow/.test(await ex.text()));
+const ex = await fetch(`${BASE}/escrow/`); check('the old /escrow/ page is gone; the whitepaper chapter is the explainer', ex.status === 404);
 const toPools = async () => { await obs.ev('document.querySelectorAll(".rv").forEach(n => n.classList.add("in")); document.getElementById("pools").scrollIntoView({ behavior: "instant", block: "center" })'); await sleep(1200); };   // .rv fades in on scroll
 await obs.shot('landing-desktop'); await toPools(); await obs.shot('landing-pools-desktop');
 await obs.ev('scrollTo({ top: 0, behavior: "instant" })'); await size(obs, 390, 844, true); await sleep(300); await obs.shot('landing-phone'); await toPools(); await obs.shot('landing-pools-phone');

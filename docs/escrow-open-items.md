@@ -47,7 +47,6 @@ Related: [deploy + operate](program-deploy.md) · [paid tickets status](paid-tic
 - The sponsor-down fallback against the real server (only `e2e-tickets-stub.mjs` covers it).
 
 **Small known gaps**
-- `docs/pool-escrow` (and its served copy `client/escrow/`) still says "44 tests" – now 50 (48 LiteSVM + 2 unit); the landing drift test needs both edited together.
 - The lobby's "N pools on sale" counts active pools whose play window already closed.
 - An unfinished ticket order has no CANCEL – it lapses after `ORDER_TTL_MINUTES` (60).
 - The legacy pay-per-ride routes still exist (status Q1: delete after the devnet run is green).
@@ -139,7 +138,6 @@ Until then production stays as it is (`PAYMENT_MODE=transfer`, no escrow keys in
 - [ ] Session keys / deposits (phase 2 of the plan) – only if still wanted
 
 ### Small fixes (any time)
-- [ ] `docs/pool-escrow` + `client/escrow/`: 44 → 50 tests
 - [ ] Lobby "pools on sale" count: only pools that still sell
 - [ ] CANCEL for an unfinished ticket order
 - [ ] Status Q8 items (`paidRides`, problem titles, `pool:seed refunding`)

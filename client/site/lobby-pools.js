@@ -1,6 +1,5 @@
 import { el } from './dom.js';
-import { SITE_BASE } from '../js/hosts.js';
-import { ESCROW_PAGE, explorerUrl, shortAddr, sol, usd, pct, plural, day, left, statusChip, progressText, deadline, splitParts, rulesText, tierTickets, buyRoom, cardAction, GRANT_SOURCE, STATUS_CLS } from './pools.js';
+import { escrowExplainer, explorerUrl, shortAddr, sol, usd, pct, plural, day, left, statusChip, progressText, deadline, splitParts, rulesText, tierTickets, buyRoom, cardAction, GRANT_SOURCE, STATUS_CLS } from './pools.js';
 
 /* The lobby's escrowed-pool views (DOM; the decisions are the pure functions of pools.js). Countdowns are `.pcd[data-at]` – lobby.js ticks them every second. */
 
@@ -39,7 +38,7 @@ export function poolCard(t, info, ctx) {
     el('span', { class: 'mine' }, 'your tickets: ', el('b', {}, mine), other > 0 ? ` (+${other} in another live ${info.name} pool)` : '', ` · max ${p.maxPerWallet} per wallet`),
     primary, buyRow,
     el('span', { class: 'dim fee' }, note),
-    el('details', {}, el('summary', {}, 'RULES · WHY IT IS SAFE'), el('p', {}, rulesText(p), ' ', el('a', { href: `${SITE_BASE}${ESCROW_PAGE}`, target: '_blank', rel: 'noopener' }, 'How the escrow works →'))),
+    el('details', {}, el('summary', {}, 'RULES · WHY IT IS SAFE'), el('p', {}, rulesText(p), ' ', el('a', { href: escrowExplainer(), target: '_blank', rel: 'noopener' }, 'How the escrow works →'))),
     el('p', { class: 'msg dim', id: `msg-${t.id}` }));
 }
 
@@ -50,7 +49,7 @@ export function escrowSummary(pool, now, ticketOnly = false) {
   return [
     el('div', { class: 'lbl' }, `PRIZE POOLS · IN ESCROW ON CHAIN`),
     el('div', { class: 'big' }, sol(esc)), el('div', { class: 'usd' }, pool.solUsd ? `${usd(esc, pool.solUsd)} at the current price` : ''),
-    el('div', { class: 'dim' }, `${plural(pools.length, 'pool')} on sale · ${plural(pools.reduce((a, p) => a + p.sold, 0), 'ticket')} committed · held by the program, not by us · `, el('a', { href: `${SITE_BASE}${ESCROW_PAGE}`, target: '_blank', rel: 'noopener' }, 'how the escrow works →')),
+    el('div', { class: 'dim' }, `${plural(pools.length, 'pool')} on sale · ${plural(pools.reduce((a, p) => a + p.sold, 0), 'ticket')} committed · held by the program, not by us · `, el('a', { href: escrowExplainer(), target: '_blank', rel: 'noopener' }, 'how the escrow works →')),
     ticketOnly && !pool.entries ? '' : el('div', { class: 'dim' }, `Weekly round (pay-per-ride tiers): ${sol(pool.split.grand)} grand prize accrued · ${plural(pool.entries, 'paid entry', 'paid entries')} · closes in `, el('b', { id: 'cd', class: 'cd' }, left(pool.round.endsAt - now))),
   ];
 }

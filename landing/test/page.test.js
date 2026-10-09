@@ -122,7 +122,7 @@ test('the lobby has the PROMO tab and takes the invite code only as a pre-fill',
 
 test('the icons the pages name exist (what Phantom, tabs and home screens show for the site)', () => {
   const client = join(root, '..', 'client');
-  for (const page of [join(root, 'index.html'), join(client, 'lobby.html'), join(client, 'play.html'), join(client, 'viewer.html'), join(client, 'escrow', 'index.html')]) {
+  for (const page of [join(root, 'index.html'), join(client, 'lobby.html'), join(client, 'play.html'), join(client, 'viewer.html')]) {
     const links = [...readFileSync(page, 'utf8').matchAll(/<link rel="(?:icon|apple-touch-icon|manifest)"[^>]*href="(\/[^"]+)"/g)].map(m => m[1]);
     assert.ok(links.length >= 4, `${page}: icon links`);
     assert.deepEqual(links.filter(l => !existsSync(join(client, l))), [], page);
@@ -132,11 +132,11 @@ test('the icons the pages name exist (what Phantom, tabs and home screens show f
   assert.ok(manifest.icons.some(i => i.sizes === '192x192') && manifest.icons.some(i => i.sizes === '512x512'));
 });
 
-test('pools: the live board + the escrow block exist, the explainer is linked through SITE_BASE, the pool wording is the lobby\'s', () => {
+test('pools: the live board + the escrow block exist, the explainer is the whitepaper chapter, the pool wording is the lobby\'s', () => {
   assert.ok(ids.includes('pools') && ids.includes('escrow-link'));
-  assert.match(main, /\$\('escrow-link'\)\.href = `\$\{WHITEPAPER_BASE \|\| '\/whitepaper\.html'\}#onchain`/, 'the escrow link goes to the whitepaper chapter 05');
+  assert.match(main, /\$\('escrow-link'\)\.href = escrowExplainer\(\)/, 'the escrow link goes to the whitepaper chapter 05');
   assert.match(main, /from '\.\.\/\.\.\/client\/site\/pools\.js'/);
   assert.match(html, /id="escrow-link" href="\/whitepaper\.html#onchain"/, "static fallback before the script runs");
-  assert.ok(existsSync(join(root, '..', 'client', 'escrow', 'index.html')), 'the explainer is served from client/escrow/');
+  assert.equal(existsSync(join(root, '..', 'client', 'escrow')), false, 'no standalone /escrow/ page');
   assert.doesNotMatch(main, /class: `st /, 'the pool chip is .pst – .st is the roadmap\'s rubber stamp');
 });

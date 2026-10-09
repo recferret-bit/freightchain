@@ -1,14 +1,14 @@
 import { api, signOut } from './wallet.js';
 import { buyRide, buyTickets, claimRefund, waitPaid, ORDER_SIG } from './pay.js';
 import { salesOpen, pendingOrder } from './tickets-api.js';
-import { ESCROW_PAGE, explorerTx, rideError, promoError, promoOk, buyError, sol, left, shortAddr as short } from './pools.js';
+import { escrowExplainer, explorerTx, rideError, promoError, promoOk, buyError, sol, left, shortAddr as short } from './pools.js';
 import { poolCard, escrowSummary, refundRows, profileTickets } from './lobby-pools.js';
 import { redemptionList } from './lobby-promo.js';
 import { dirty, garageActions, garagePreview, garageProgress, garageSlots } from './lobby-garage.js';
 import { el } from './dom.js';
 import { livePath, leaveOnClose } from './presence.js';
 import { renderReplays } from './lobby-replays.js';
-import { API_BASE, GAME_BASE, SITE_BASE } from '../js/hosts.js';
+import { API_BASE, GAME_BASE } from '../js/hosts.js';
 import { track, flushSoon } from '../js/analytics.js';
 import { reportWebVitals } from '../js/web-vitals.js';
 
@@ -182,7 +182,7 @@ function paintRules() {
   box.replaceChildren(el('b', {}, 'CONDITIONS'), el('ul', { class: 'rules' },
     el('li', {}, 'Drive the whole shift: its time ', el('b', {}, 'AND'), ' its distance. Speed is capped at 100 km/h, so idling can’t bank it.'),
     el('li', {}, 'End the shift early, abandon it or crash and it does ', el('b', {}, 'not'), ' count as finished. A ticket is spent when its ride is created.'),
-    el('li', {}, 'Pool tickets: your entry sits in the pool’s vault on chain, not with us. A pool that misses its goal refunds every ticket in full; in a live pool the finished shifts rank for its prize share. ', el('a', { href: `${SITE_BASE}${ESCROW_PAGE}`, target: '_blank', rel: 'noopener' }, 'How the escrow works →')),
+    el('li', {}, 'Pool tickets: your entry sits in the pool’s vault on chain, not with us. A pool that misses its goal refunds every ticket in full; in a live pool the finished shifts rank for its prize share. ', el('a', { href: escrowExplainer(), target: '_blank', rel: 'noopener' }, 'How the escrow works →')),
     el('li', {}, 'The game records your inputs while you drive. After the shift the server checks that recording – complete, consistent with your ride, human-timed – and verified shifts rank for prizes (the leaderboard says when that check is switched on). Flagged shifts wait for a review.'),
     el('li', {}, 'Free rides: no fee, no prize. 5 at signup, +1 every UTC day.')));
 }

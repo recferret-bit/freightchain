@@ -1,4 +1,4 @@
-/* Layout: the program's spec sheet. Same highway-signage family as ../pool-escrow (the plain-language explainer), denser: a sticky contents rail on wide
+/* Layout: the program's spec sheet. Same highway-signage family as the whitepaper's escrow chapter, denser: a sticky contents rail on wide
    screens, one reading column, full-width reference tables. Amber = money in escrow, teal = anyone may call it, dashed ink = admin only. */
 :root {
   --bg: #eef0ec;

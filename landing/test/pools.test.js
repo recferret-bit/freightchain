@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { explorerUrl, explorerTx, statusChip, progressText, deadline, splitParts, rulesText, tierTickets, buyRoom, cardAction, rideError, promoError, promoOk, buyError, usd, pct, sol } from '../../client/site/pools.js';
+import { escrowExplainer, explorerUrl, explorerTx, statusChip, progressText, deadline, splitParts, rulesText, tierTickets, buyRoom, cardAction, rideError, promoError, promoOk, buyError, usd, pct, sol } from '../../client/site/pools.js';
 import { salesOpen } from '../../client/site/tickets-api.js';
 
 /* The pool wording the lobby AND the landing show (client/site/pools.js is pure). Every pool status – incl. `refunding`, which the dev seeds can't produce – is pinned here. */
@@ -116,8 +116,12 @@ test('the lobby and the landing never call a bare /api path or render with inner
   }
 });
 
-test('the served explainer (client/escrow) is the docs page plus the site icons', { skip: !existsSync(join(new URL('..', import.meta.url).pathname, '..', 'docs', 'pool-escrow', 'index.html')) }, () => {
-  const root = join(new URL('..', import.meta.url).pathname, '..'), body = f => readFileSync(join(root, f), 'utf8').split('<body>')[1];
-  assert.equal(body('client/escrow/index.html'), body('docs/pool-escrow/index.html'), 'edit docs/pool-escrow, then copy it to client/escrow (keep the icon links)');
-  assert.equal(readFileSync(join(root, 'client/escrow/pool-escrow.css'), 'utf8'), readFileSync(join(root, 'docs/pool-escrow/pool-escrow.css'), 'utf8'));
+test('the escrow explainer is the whitepaper chapter, and the standalone copy is gone', () => {
+  const root = join(new URL('..', import.meta.url).pathname, '..');
+  assert.equal(escrowExplainer(), '/whitepaper.html#onchain');
+  assert.equal(existsSync(join(root, 'client/escrow')), false);
+  assert.equal(existsSync(join(root, 'docs/pool-escrow')), false);
+  for (const f of ['client/site/lobby.js', 'client/site/lobby-pools.js', 'landing/src/main.js', 'landing/vite.config.js']) {
+    assert.doesNotMatch(readFileSync(join(root, f), 'utf8'), /\/escrow\//, f);
+  }
 });

@@ -1,11 +1,14 @@
 /* Escrowed prize pools as the lobby and the landing show them (docs/paid-tickets-plan.md §0, §2.8). PURE: no DOM, no fetch – unit-tested by landing/test/pools.test.js.
    Inputs are the server's DTOs: PrizePoolDto (/api/pools, /api/tiers[].pool), TicketBalanceDto (/api/me.tickets), RFC 9457 problems (Error with .status/.code). Lamports and epoch ms. */
 
+import { WHITEPAPER_BASE } from '../js/hosts.js';
+
 /** The cluster the pools live on (explorer links). '' = mainnet-beta (no query parameter). */
 export const CLUSTER = 'devnet';
 export const explorerUrl = (address, cluster = CLUSTER) => `https://explorer.solana.com/address/${encodeURIComponent(address)}${cluster ? `?cluster=${cluster}` : ''}`;
 export const explorerTx = (signature, cluster = CLUSTER) => `https://explorer.solana.com/tx/${encodeURIComponent(signature)}${cluster ? `?cluster=${cluster}` : ''}`;
-export const ESCROW_PAGE = '/escrow/';   // client/escrow/index.html (a copy of docs/pool-escrow, served on the apex) – prefix with SITE_BASE
+/** The one public escrow explainer: whitepaper chapter 05. On a split host that is whitepaper.<apex>; elsewhere /whitepaper.html. */
+export const escrowExplainer = () => `${WHITEPAPER_BASE || '/whitepaper.html'}#onchain`;
 
 export const shortAddr = a => (a && a.length > 12 ? `${a.slice(0, 4)}…${a.slice(-4)}` : a ?? '');   // THE wallet / account shortener: the lobby, admin, the game's live streams and the landing (format.js `short`) all use it
 export const sol = l => `${(l / 1e9).toFixed(l >= 1e9 ? 2 : 3)} SOL`;
