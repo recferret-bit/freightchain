@@ -98,10 +98,12 @@ test('numbers: live-stream prices and limits equal live-rules.ts', () => {
 
 test('the landing image copies every repo file this test reads', () => {
   const docker = src('deploy/Dockerfile');
+  const ignore = src('.dockerignore');
   const self = readFileSync(new URL(import.meta.url), 'utf8');
   for (const p of [...self.matchAll(/src\('([^']+)'\)/g)].map((m) => m[1])) {
     if (p.startsWith('client/')) continue; // the image copies client/ whole
     assert.ok(docker.includes(p), `${p} is quoted by the whitepaper test but not copied into the landing image`);
+    if (p.startsWith('deploy/')) assert.ok(ignore.includes(`!${p}`), `${p} is excluded from the image build`);
   }
 });
 

@@ -4,9 +4,10 @@
 .git
 .claude
 docs
-# the landing image runs the whitepaper number checks, which read this one file; the rest of deploy/ stays out
+# the landing image runs the whitepaper number checks, which read these two files; the rest of deploy/ stays out
 deploy/*
 !deploy/docker-compose.prod.yml
+!deploy/Dockerfile
 **/.env
 **/.env.*
 server/data

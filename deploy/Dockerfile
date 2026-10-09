@@ -23,6 +23,7 @@ COPY server/src/domain/telemetry/telemetry-rules.ts ./server/src/domain/telemetr
 COPY server/src/domain/live/live-rules.ts ./server/src/domain/live/
 COPY server/src/infrastructure/config/env.schema.ts ./server/src/infrastructure/config/
 COPY deploy/docker-compose.prod.yml deploy/Dockerfile ./deploy/
+COPY .dockerignore ./
 COPY programs/freightchain-pools/idl/freightchain_pools.json ./programs/freightchain-pools/idl/
 WORKDIR /app/landing
 COPY landing/package.json landing/package-lock.json ./
