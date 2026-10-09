@@ -45,11 +45,13 @@ and `server/scripts/e2e-live-board.mjs` (online / on the road / the replays hist
 and `server/scripts/e2e-close.mjs` twice – `close` (one origin) and `close-split` (landing + lobby on `app.localhost`, the game on `ride.app.localhost`, the API on
 `api.app.localhost`): a closed landing / lobby / watch page leaves "online" at once, a game tab closed mid-ride ends ABANDONED, Back to it comes from the
 back/forward cache and reloads, a COMPLETE shift whose tab closes is COMPLETED + VERIFIED (~2 min each),
+and `server/scripts/e2e-verified-play.mjs` (`verified`: the anti-bot checks with dispatch prompts – a person and a bot in Chrome, API-level bots, the CLI; ~3 min)
+and `server/scripts/e2e-verified-deep.mjs` (`verified-deep`: every verdict code one by one with the prompts off, the upload protocol, who sees a verdict, the admin's signed hand on a flagged ride, the lobby profile in Chrome, retention + bulk re-judge on the database; ~2.5 min) – both are the `verified-play-test` skill,
 then stops the server and drops the database – also on failure.
 
 ```sh
 bash .claude/skills/run-tests/e2e.sh            # all eleven
-bash .claude/skills/run-tests/e2e.sh browser    # one of: browser | lobby | admin | promo | watch | replay | flags | wallet | wallet-split | board | close | close-split
+bash .claude/skills/run-tests/e2e.sh browser    # one of: browser | lobby | admin | promo | watch | replay | flags | wallet | wallet-split | board | close | close-split | verified | verified-deep
 ```
 
 Then **look at the screenshots** it prints (`fc-online-shots`, `fc-lobby-shots`, `fc-admin-shots`, `fc-watch-shots`, `fc-replay-shots`, `fc-flags-shots`, `fc-board-shots`, `fc-close-shots` in the OS temp dir) with the Read tool – the scripts

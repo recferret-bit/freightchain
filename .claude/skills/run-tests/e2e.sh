@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Real-Chrome end-to-end runs against a freshly built server on a THROWAWAY database (dropped at the end, also on failure).
-#   bash .claude/skills/run-tests/e2e.sh [browser|lobby|admin|promo|watch|replay|flags|wallet|wallet-split|board|close|close-split|verified ...]   (default: all thirteen)
+#   bash .claude/skills/run-tests/e2e.sh [browser|lobby|admin|promo|watch|replay|flags|wallet|wallet-split|board|close|close-split|verified|verified-deep ...]   (default: all fourteen)
 # Needs: the compose PostgreSQL (npm run db:up), server/ and landing/ dependencies installed, Chrome.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 SERVER="$ROOT/server"
-SUITES=("$@"); [ ${#SUITES[@]} -gt 0 ] || SUITES=(browser lobby admin promo watch replay flags wallet wallet-split board close close-split verified)
+SUITES=("$@"); [ ${#SUITES[@]} -gt 0 ] || SUITES=(browser lobby admin promo watch replay flags wallet wallet-split board close close-split verified verified-deep)
 DB="freightchain_e2e_$$"
 URL="postgresql://freight:freight_dev_password@localhost:15433/$DB"
 TREASURY=GseaEsNWMLScZ5RH8yQ4xmoCP97H86HjLSA9xkyFCqbn   # any valid address: paid clicks never reach the chain here
@@ -69,7 +69,10 @@ for suite in "${SUITES[@]}"; do
       (cd "$SERVER" && SERVER="http://localhost:$PORT" BASE=http://app.localhost RESOLVE="MAP app.localhost 127.0.0.1:$PORT, MAP *.app.localhost 127.0.0.1:$PORT" CHROME_PORT="$(free_port)" node scripts/e2e-close.mjs) || fails=$((fails + 1)) ;;
     verified)   # verified play, positive + negative: a person and a bot in Chrome, API-level bots, the CLI's bulk re-judge – a 40 s free shift with a dispatch prompt about every other heartbeat
       EXTRA_ENV="CHALLENGE_INTERVAL_SECONDS=8" start 40; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" CHROME_PORT2="$(free_port)" CLI="$BUILD/cli/index.js" DATABASE_URL="$URL" FREE_RIDE_SECONDS=40 node scripts/e2e-verified-play.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
-    *) echo "unknown suite $suite (browser | lobby | admin | promo | watch | replay | flags | wallet | wallet-split | board | close | close-split | verified)"; fails=$((fails + 1)) ;;
+    verified-deep)   # verified play, the DEEP pass: every verdict code, the upload protocol, who sees a verdict, the admin's hand, the profile in Chrome, retention + bulk re-judge – prompts OFF, a 30 s shift
+      wallet="$(cd "$SERVER" && node -e 'const n=require("tweetnacl"),b=require("bs58").default??require("bs58"),k=n.sign.keyPair();require("fs").writeFileSync(process.argv[1],JSON.stringify([...k.secretKey]));console.log(b.encode(k.publicKey))' "$ADMIN_KP")"
+      EXTRA_ENV="CHALLENGE_INTERVAL_SECONDS=0" start 30 "$wallet"; (cd "$SERVER" && BASE="http://localhost:$PORT" ADMIN_KEYPAIR="$ADMIN_KP" CHROME_PORT="$(free_port)" CLI="$BUILD/cli/index.js" DATABASE_URL="$URL" FREE_RIDE_SECONDS=30 node scripts/e2e-verified-deep.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
+    *) echo "unknown suite $suite (browser | lobby | admin | promo | watch | replay | flags | wallet | wallet-split | board | close | close-split | verified | verified-deep)"; fails=$((fails + 1)) ;;
   esac
   stop
 done

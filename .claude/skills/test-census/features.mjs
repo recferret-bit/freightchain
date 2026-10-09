@@ -36,7 +36,7 @@ export const FEATURES = [
     routes: /^POST \/api\/rides\/:id\/batches$/,
     words: /verdict|batch|recording|prompt|challenge|re-?judge|retention|sweep/i,
     headless: /heartbeat extras/i,
-    e2e: ['e2e-verified-play.mjs', 'e2e-browser.mjs'], skills: ['verified-play-test'],
+    e2e: ['e2e-verified-play.mjs', 'e2e-verified-deep.mjs', 'e2e-browser.mjs'], skills: ['verified-play-test'],
   },
   {
     id: 'legacy-pay', title: 'Pay-per-ride (legacy weekly round)',
@@ -139,7 +139,7 @@ export const FEATURES = [
     client: /^client\/site\/admin\.js$/,
     routes: /^(GET|POST) \/api\/admin\//,
     words: /admin|override|audit/i,
-    e2e: ['e2e-admin.mjs', 'e2e-promo.mjs', 'e2e-verified-play.mjs'], skills: ['run-tests'],
+    e2e: ['e2e-admin.mjs', 'e2e-promo.mjs', 'e2e-verified-play.mjs', 'e2e-verified-deep.mjs'], skills: ['run-tests'],
   },
   {
     id: 'analytics', title: 'Product analytics relay',

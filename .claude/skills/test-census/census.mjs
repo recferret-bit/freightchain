@@ -46,7 +46,7 @@ const LAYERS = [
 ];
 
 const FAST = ['client-unit', 'landing', 'media', 'client-headless', 'server-unit', 'server-integration', 'program-test'];
-const E2E_SUITES = ['browser', 'lobby', 'admin', 'promo', 'watch', 'replay', 'flags', 'wallet', 'wallet-split', 'board', 'close', 'close-split', 'verified'];
+const E2E_SUITES = ['browser', 'lobby', 'admin', 'promo', 'watch', 'replay', 'flags', 'wallet', 'wallet-split', 'board', 'close', 'close-split', 'verified', 'verified-deep'];
 const OPT_IN = ['e2e', 'live-board', 'replay', 'verified', 'localnet', 'posthog', 'program-check', ...E2E_SUITES.map((s) => `e2e:${s}`)];
 
 // A test skill's census stage. A skill whose name marks it as a test but is missing here is reported as a gap.

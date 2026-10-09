@@ -21,6 +21,7 @@ The one-page anti-cheat summary (layers, codes, thresholds, knobs, limits) is th
 | Bulk re-judge after a rules change (admin decisions kept, swept recordings skipped, audited) and the sweeps by hand | CLI `verdict:rejudge [--status …] [--since DATE] [--limit N] [--dry-run]`, `retention:sweep` | tested (unit, e2e on the throwaway database) |
 | The anti-cheat e2e, positive and negative | `server/scripts/e2e-verified-play.mjs`, skill `verified-play-test` | runs in `e2e.sh verified` |
 | JSON logs: one line per event, one per API request (status, ms, request id, wallet), rotated 5 × 50 MB | `JsonLogger`, `requestLogMiddleware`, `docker-compose.prod.yml` | tested; live in production since the Oct 7 deploy |
+| **Test harness (local, headless Chrome)**: `verified` = dispatch prompts (a person + a bot in Chrome, instant answers, the CLI); `verified-deep` = every verdict code one by one with the prompts off, the upload protocol, who sees a verdict, the admin's signed decisions, the lobby profile, retention + the bulk re-judge on the database | `server/scripts/e2e-verified-play.mjs`, `e2e-verified-deep.mjs`, skill `verified-play-test` (`bash .claude/skills/verified-play-test/run.sh`) | passing; mutation-checked (loosening two thresholds turns exactly their cases red) |
 | Read-only production tooling + Claude skills | `npm run ops -- …`, `deploy/scripts/ops*.{sh,sql}`, `.claude/skills/` | `ps` / `logs` / `nginx` / `sql` / `query` tried on production (read-only); the challenge and summary columns are live as of `20261009-064010-7bac92d` |
 
 Migrations added (forward-only, additive): `20261008000002_verified_play` (schemas `telemetry`, `verdict`), `20261008000003_admin` (schema `admin`, `player."SignIn"`, override columns on `RideVerdict`).
@@ -44,7 +45,7 @@ Migrations added (forward-only, additive): `20261008000002_verified_play` (schem
 
 ## Next steps (Claude can do these, in this order)
 
-1. **The review follow-ups** below (none blocks a devnet deploy) – the hash-mismatch one first: it can cost an honest player a shift.
+1. **The review follow-ups** below (none blocks a devnet deploy) – the hash and the recording-size ones are done; what is left is the admin-auth throttle and the prompt-reaction note.
 2. **Tune the thresholds** from the first real rides: `npm run ops -- query reasons` / `query scores` (prod-db skill) → adjust `server/src/domain/verdict/verdict-rules.ts`, bump `RULES_VERSION`, redeploy. Then RE-JUDGE (admin page) applies the new rules to a ride already judged.
 3. ~~Bulk re-judge~~ – done: `node dist/cli/index.js verdict:rejudge --dry-run`, then without (production: `docker compose exec app …` from `/srv/freightchain`, only on your ask).
 4. ~~Challenge prompts~~ – done (dispatch prompts, above); left: tune the reject share / min-issued / reaction threshold on real rides, and decide whether a prompt should also be audible in the replay / watch page.

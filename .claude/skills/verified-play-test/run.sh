@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# Verified play (anti-bot / anti-cheat) end to end on a THROWAWAY database: a person and a bot in real headless Chrome, API-level bots with hand-built
-# recordings (every negative case), the byte budget, and the CLI's bulk re-judge – server/scripts/e2e-verified-play.mjs – then the game + close suites
-# that also answer dispatch prompts.
-#   bash .claude/skills/verified-play-test/run.sh          (~6 min; needs Docker for the compose PostgreSQL, server/ + landing/ deps, Chrome)
+# Verified play (anti-bot / anti-cheat) end to end on a THROWAWAY database, local, headless Chrome – everything in two harnesses, then the game + close suites:
+#   verified       server/scripts/e2e-verified-play.mjs   dispatch prompts: a person and a bot in Chrome, API bots answering instantly, the byte budget, the CLI
+#   verified-deep  server/scripts/e2e-verified-deep.mjs    every verdict code one by one (prompts off), the upload protocol, who sees a verdict, the admin's signed
+#                                                          decisions, the lobby profile in Chrome, retention + the bulk re-judge on the database
+#   browser, close the game e2e (answers prompts) and a complete shift closed by its tab
+#   bash .claude/skills/verified-play-test/run.sh          (~9 min; needs Docker for the compose PostgreSQL, server/ + landing/ deps, Chrome)
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
-exec bash "$ROOT/.claude/skills/run-tests/e2e.sh" verified browser close
+exec bash "$ROOT/.claude/skills/run-tests/e2e.sh" verified verified-deep browser close
