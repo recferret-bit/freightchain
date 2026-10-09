@@ -174,7 +174,7 @@ export function stepWatch(dt) {
   watch.buffering = !b || b[0] - a[0] > GAP;   // at the end of what is loaded (live edge, a seek, a missing batch): hold the last frame
   if (watch.buffering) watch.wt = a[0];
   const k = watch.buffering ? 0 : (watch.wt - a[0]) / Math.max(1e-6, b[0] - a[0]);
-  lightInputs(inputsPassed(i), dt);   // before apply(): it clears `jumped`
+  lightInputs(watch.buffering ? 0 : inputsPassed(i), dt);   // before apply(): it clears `jumped` · holding the last frame (end of the ride, live edge, a gap): nothing is being pressed
   apply(a, b ?? a, k, dt);
   drawTraffic(watch.wt);
 }
