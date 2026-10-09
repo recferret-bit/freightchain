@@ -12,6 +12,7 @@ import { analyticsScenarios } from '../scenarios/analytics.scenarios.js';
 import { VERDICT_ENV, verdictScenarios } from '../scenarios/verdict.scenarios.js';
 import { ADMIN_ENV, adminScenarios } from '../scenarios/admin.scenarios.js';
 import { PROMOS_ENV, promoScenarios } from '../scenarios/promos.scenarios.js';
+import { promoAbuseScenarios } from '../scenarios/promos-abuse.scenarios.js';
 import { LIVE_ENV, LIVE_FLAGS_ENV, LIVE_OFF_ENV, liveFlagsScenarios, liveOffScenarios, liveScenarios } from '../scenarios/live.scenarios.js';
 
 /* The whole HTTP surface on in-memory repositories (no Docker). test/integration/flows.integration.spec.ts runs these same scenarios on PostgreSQL. */
@@ -27,6 +28,7 @@ for (const [name, env, scenarios] of [
   ['lobby: live feed, profile, achievements', LOBBY_ENV, lobbyScenarios],
   ['escrowed pools, promo codes and ticket rides', POOLS_ENV, poolScenarios],
   ['promo codes: free rides, cosmetics, scheduling, the admin tab', PROMOS_ENV, promoScenarios],
+  ['promo codes: expiry and abuse', PROMOS_ENV, promoAbuseScenarios],
   ['ticket orders settled by purchase events', TICKET_ORDERS_ENV, ticketOrderScenarios],
   ['HTTP contract: problem+json, request ids, cookies, health', {}, httpContractScenarios],
   ['chain: network fees', CHAIN_ENV, chainScenarios],

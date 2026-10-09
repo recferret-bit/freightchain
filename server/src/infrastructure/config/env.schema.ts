@@ -21,6 +21,7 @@ export const envSchema = z
     TRUST_PROXY: optional(z.coerce.number().int().min(0)),
     THROTTLE_LIMIT: z.coerce.number().int().positive().default(600),
     THROTTLE_AUTH_LIMIT: z.coerce.number().int().positive().default(30),
+    THROTTLE_PROMO_LIMIT: z.coerce.number().int().positive().default(30),
     FREE_RIDE_SECONDS: z.coerce.number().positive().default(180),
     HB_MIN_INTERVAL_MS: z.coerce.number().int().min(0).default(1000),
     HB_TIMEOUT_MS: z.coerce.number().int().min(5000).default(150_000), // no heartbeat for this long = the tab is gone: off the live feed, its next heartbeat would fail it, the stale-ride sweeper ends it (failed · heartbeat lost)

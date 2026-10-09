@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Real-Chrome end-to-end runs against a freshly built server on a THROWAWAY database (dropped at the end, also on failure).
-#   bash .claude/skills/run-tests/e2e.sh [browser|lobby|admin|watch|replay|flags|wallet|wallet-split|board|close|close-split|verified ...]   (default: all twelve)
+#   bash .claude/skills/run-tests/e2e.sh [browser|lobby|admin|promo|watch|replay|flags|wallet|wallet-split|board|close|close-split|verified ...]   (default: all thirteen)
 # Needs: the compose PostgreSQL (npm run db:up), server/ and landing/ dependencies installed, Chrome.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 SERVER="$ROOT/server"
-SUITES=("$@"); [ ${#SUITES[@]} -gt 0 ] || SUITES=(browser lobby admin watch replay flags wallet wallet-split board close close-split verified)
+SUITES=("$@"); [ ${#SUITES[@]} -gt 0 ] || SUITES=(browser lobby admin promo watch replay flags wallet wallet-split board close close-split verified)
 DB="freightchain_e2e_$$"
 URL="postgresql://freight:freight_dev_password@localhost:15433/$DB"
 TREASURY=GseaEsNWMLScZ5RH8yQ4xmoCP97H86HjLSA9xkyFCqbn   # any valid address: paid clicks never reach the chain here
@@ -47,6 +47,9 @@ for suite in "${SUITES[@]}"; do
     admin)
       wallet="$(cd "$SERVER" && node -e 'const n=require("tweetnacl"),b=require("bs58").default??require("bs58"),k=n.sign.keyPair();require("fs").writeFileSync(process.argv[1],JSON.stringify([...k.secretKey]));console.log(b.encode(k.publicKey))' "$ADMIN_KP")"
       start 3 "$wallet"; (cd "$SERVER" && BASE="http://localhost:$PORT" ADMIN_KEYPAIR="$ADMIN_KP" CHROME_PORT="$(free_port)" node scripts/e2e-admin.mjs) || fails=$((fails + 1)) ;;
+    promo)   # the whole promo loop: admin page (signs) → lobby + landing players → admin sees the uses; expiry, start, used up, disabled, abuse. Own limit: a hundred players behind one IP
+      wallet="$(cd "$SERVER" && node -e 'const n=require("tweetnacl"),b=require("bs58").default??require("bs58"),k=n.sign.keyPair();require("fs").writeFileSync(process.argv[1],JSON.stringify([...k.secretKey]));console.log(b.encode(k.publicKey))' "$ADMIN_KP")"
+      EXTRA_ENV="THROTTLE_PROMO_LIMIT=100000" start 3 "$wallet"; (cd "$SERVER" && BASE="http://localhost:$PORT" ADMIN_KEYPAIR="$ADMIN_KP" SEED=1 DATABASE_URL="$URL" CHROME_PORT="$(free_port)" node scripts/e2e-promo.mjs) || fails=$((fails + 1)) ;;
     watch)   start 300; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" node scripts/e2e-watch.mjs) || fails=$((fails + 1)) ;;
     replay)  start 300; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" node scripts/e2e-replay.mjs) || fails=$((fails + 1)) ;;
     board)   EXTRA_ENV="TRUST_PROXY=1 HB_TIMEOUT_MS=15000" start 20; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" node scripts/e2e-live-board.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;   # online / live / replays fed by scripts/sim-rides.mjs
@@ -63,7 +66,7 @@ for suite in "${SUITES[@]}"; do
       (cd "$SERVER" && SERVER="http://localhost:$PORT" BASE=http://app.localhost RESOLVE="MAP app.localhost 127.0.0.1:$PORT, MAP *.app.localhost 127.0.0.1:$PORT" CHROME_PORT="$(free_port)" node scripts/e2e-close.mjs) || fails=$((fails + 1)) ;;
     verified)   # verified play, positive + negative: a person and a bot in Chrome, API-level bots, the CLI's bulk re-judge – a 40 s free shift with a dispatch prompt about every other heartbeat
       EXTRA_ENV="CHALLENGE_INTERVAL_SECONDS=8" start 40; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" CHROME_PORT2="$(free_port)" CLI="$BUILD/cli/index.js" DATABASE_URL="$URL" FREE_RIDE_SECONDS=40 node scripts/e2e-verified-play.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
-    *) echo "unknown suite $suite (browser | lobby | admin | watch | replay | flags | wallet | wallet-split | board | close | close-split | verified)"; fails=$((fails + 1)) ;;
+    *) echo "unknown suite $suite (browser | lobby | admin | promo | watch | replay | flags | wallet | wallet-split | board | close | close-split | verified)"; fails=$((fails + 1)) ;;
   esac
   stop
 done

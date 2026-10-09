@@ -77,7 +77,15 @@ Race-safety: redeeming runs in ONE transaction under the player row lock. The re
 - Server (`npm run server:test`, Docker-free): entity, DTOs, catalog + client-mirror drift, wardrobe DTO, admin proof (every field is bound), each handler / service / controller, in-memory repos; HTTP scenarios `test/scenarios/promos.scenarios.ts` (free rides above the cap and the midnight grant, cosmetics + wardrobe, scheduling, the whole signed admin flow) run on in-memory AND PostgreSQL.
 - `npm run server:integration`: repository specs (`promo`, `cosmetic`), the migration drift check, the concurrency cases. In a worktree with its own migrations use `TEST_DATABASE_URL=…/freightchain_<branch>_test`.
 - Client: `npm run check` (headless: default look pinned, every item draws), `landing` tests (`promos.test.js`, page / pools tests).
+- **Expiry and abuse** (`test/scenarios/promos-abuse.scenarios.ts`, in-memory AND PostgreSQL): a code works until the millisecond before `expiresAt` and not at it; what an ended code gave stays (rides, worn parts, the log, the ENDED list); a scheduled code opens exactly at `startsAt`; `perWallet` and the global cap hold; spelling / whitespace / look-alike variants are one code or nothing; hostile bodies are 4xx, never 500; an admin signature is single-use, 5 minutes, and bound to its action; HTML in a description stays text. `test/http/rate-limit.spec.ts`: the redeem route's own per-IP budget.
+- **The whole loop in real Chrome**: `bash .claude/skills/run-tests/e2e.sh promo` (`server/scripts/e2e-promo.mjs`) – the admin page creates one code of every kind (the wallet signs each), players redeem from the lobby AND from the landing's invite block, see the free rides / tickets / garage change, the admin sees who used what (EXHAUSTED / ENDED filters, per-code and per-wallet lists), a code that ends, one that has not started, one used up, one disabled, ten wallets racing for the last use. Screenshots: look at `admin-promos-*.png`, `promo-garage-*.png`, `promo-landing-invite.png`.
 - Real Chrome (`bash .claude/skills/run-tests/e2e.sh lobby admin wallet wallet-split`): the PROMO tab, the admin tab (form → wallet signs → listed → a player redeems → who used it → disable), the landing invite on one origin and on split hosts. `client/tools/e2e-chrome.mjs` saves `cosmetic-<n>.png` – look at them after touching `rig.js`.
+
+## Abuse notes
+
+- **Guessing codes**: `POST /api/promo/redeem` has its own budget, `THROTTLE_PROMO_LIMIT` (30 per minute **per IP** – wallets are free to make, so a per-wallet limit alone would not stop a script). Behind a shared NAT many players share it; raise it for an event.
+- A code's existence is visible: unknown = 404, known-but-unusable = 409 with the reason. Accepted for now (codes are meant to be handed out); the budget above is what limits probing.
+- Sybil wallets are not detectable here: `perWallet` is per wallet, so a code with no `maxRedemptions` can be farmed with fresh wallets. Give giveaway codes a cap.
 
 ## Open
 

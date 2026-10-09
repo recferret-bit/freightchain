@@ -49,7 +49,7 @@ then stops the server and drops the database – also on failure.
 
 ```sh
 bash .claude/skills/run-tests/e2e.sh            # all eleven
-bash .claude/skills/run-tests/e2e.sh browser    # one of: browser | lobby | admin | watch | replay | flags | wallet | wallet-split | board | close | close-split
+bash .claude/skills/run-tests/e2e.sh browser    # one of: browser | lobby | admin | promo | watch | replay | flags | wallet | wallet-split | board | close | close-split
 ```
 
 Then **look at the screenshots** it prints (`fc-online-shots`, `fc-lobby-shots`, `fc-admin-shots`, `fc-watch-shots`, `fc-replay-shots`, `fc-flags-shots`, `fc-board-shots`, `fc-close-shots` in the OS temp dir) with the Read tool – the scripts

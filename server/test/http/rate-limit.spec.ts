@@ -36,4 +36,14 @@ describe('rate limiting', () => {
     await anon().post('/api/auth/nonce').send({ wallet }).expect(429);
     await anon().get('/api/tiers').expect(200); // other routes are unaffected
   });
+
+  it('code guessing has its own budget per IP (THROTTLE_PROMO_LIMIT): fresh wallets do not reset it, other routes are unaffected', async () => {
+    harness = await createHarness('memory', { THROTTLE_PROMO_LIMIT: '4' });
+    const riders = [await login(), await login(), await login()];
+    for (let i = 0; i < 4; i++) await riders[i % 3].agent.post('/api/promo/redeem').send({ code: `GUESS${i}` }).expect(404);
+    const res = await riders[2].agent.post('/api/promo/redeem').send({ code: 'GUESS9' }).expect(429); // a different wallet, the same machine
+    expect(res.body).toMatchObject({ code: 'rate_limited' });
+    await riders[0].agent.get('/api/me').expect(200);
+    await riders[0].agent.get('/api/promo/mine').expect(200);
+  });
 });

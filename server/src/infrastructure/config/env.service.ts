@@ -45,6 +45,7 @@ export class EnvService {
   get trustProxy(): number { return this.env.TRUST_PROXY ?? 0; }
   get throttleLimit(): number { return this.env.THROTTLE_LIMIT; }
   get throttleAuthLimit(): number { return this.env.THROTTLE_AUTH_LIMIT; }
+  get throttlePromoLimit(): number { return this.env.THROTTLE_PROMO_LIMIT; }
   get freeRideSeconds(): number { return this.env.FREE_RIDE_SECONDS; }
   get hbMinIntervalMs(): number { return this.env.HB_MIN_INTERVAL_MS; }
   get hbTimeoutMs(): number { return this.env.HB_TIMEOUT_MS; }

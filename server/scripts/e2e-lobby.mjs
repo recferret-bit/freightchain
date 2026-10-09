@@ -146,7 +146,7 @@ await obs.send('Page.navigate', { url: `${BASE}/lobby.html#new` }); await sleep(
 // ── PROMO: free rides above the cap, a cosmetic unlocked + worn, the wardrobe, an invite link that only pre-fills (fresh wallet, the observer's browser)
 const P = await wallet(); await size(obs, 1100, 900, false);
 await open(obs, P, `${BASE}/lobby.html#new`);
-check('PROMO: the NEW RIDE form links to the PROMO tab and the GARAGE', await until(async () => /Your codes → · Your garage →/.test(await txt(obs, '#view'))));
+check('PROMO: the code field lives in the header, on the NEW RIDE tab too', await until(async () => (await obs.ev('!!document.getElementById("promo-code") && !!document.getElementById("promo-go") && location.hash !== "#promo"')) === true));
 await obs.ev('location.hash = "#promo"');
 check('PROMO tab: the form, a link to the garage, no codes yet', await until(async () => /Parts you unlock are waiting in your garage/.test(await txt(obs, '#view')) && /No codes redeemed yet/.test(await txt(obs, '#my-codes'))));
 const promoGo = async code => { await obs.ev(`document.getElementById("promo-code").value = ${JSON.stringify(code)}; document.getElementById("promo-go").click()`); await until(async () => !/Redeeming/.test(await txt(obs, '#promo-msg')) && (await txt(obs, '#promo-msg')) !== ''); return txt(obs, '#promo-msg'); };
