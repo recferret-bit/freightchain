@@ -58,7 +58,8 @@ git archive --format=tar HEAD | rsh "tar -x -C '$DEPLOY_PATH/releases/$RELEASE'"
 
 # ---- 6. release on the server
 info "releasing $RELEASE on the server"
-rscript "$DEPLOY_DIR/scripts/remote/release.sh" "DEPLOY_PATH=$DEPLOY_PATH" "RELEASE=$RELEASE" "APP_PORT=$DEPLOY_APP_PORT" "KEEP_RELEASES=$DEPLOY_KEEP_RELEASES" "KEEP_BACKUPS=$DEPLOY_KEEP_BACKUPS" \
+# the release script of the COMMIT, not the working tree: with --allow-dirty an unfinished release.sh must not run against the committed compose file
+rscript <(git show "HEAD:deploy/scripts/remote/release.sh") "DEPLOY_PATH=$DEPLOY_PATH" "RELEASE=$RELEASE" "APP_PORT=$DEPLOY_APP_PORT" "KEEP_RELEASES=$DEPLOY_KEEP_RELEASES" "KEEP_BACKUPS=$DEPLOY_KEEP_BACKUPS" \
   || die "the release failed on the server (output above). If it said it rolled back, the previous version is serving."
 
 [ "$(rsh "cat '$DEPLOY_PATH/state/current' 2>/dev/null" || true)" = "$RELEASE" ] || die "the server script ended without finishing release $RELEASE (state/current is not it) – nothing is half-promoted; see the output above"
