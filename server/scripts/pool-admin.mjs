@@ -10,6 +10,10 @@
 //   node scripts/pool-admin.mjs buy         --url <rpc> -k <buyer.json> [--fee-payer <payer.json>] --pool N [--qty 1]   (no server order: tests / fixtures)
 //   node scripts/pool-admin.mjs pay-prize   --url <rpc> -k <admin.json> --pool N --to <pubkey> --lamports L [--rank 1]
 //   node scripts/pool-admin.mjs fail-pool | expire-pool --url <rpc> -k <caller.json> --pool N   (permissionless cranks)
+//   node scripts/pool-admin.mjs refund      --url <rpc> -k <caller.json> --pool N --buyer <pubkey> [--rent-payer <pubkey>]   (permissionless: price → buyer, Ticket rent → its rent_payer)
+//   node scripts/pool-admin.mjs close-ticket --url <rpc> -k <caller.json> --pool N --buyer <pubkey>  (permissionless, Settled pool: Ticket rent → its rent_payer)
+//   node scripts/pool-admin.mjs cancel-pool --url <rpc> -k <admin.json> --pool N                    (admin, Open pool → Refunding)
+//   node scripts/pool-admin.mjs propose-authority --url <rpc> -k <admin.json> --new <pubkey>  ·  accept-authority --url <rpc> -k <new-admin.json>
 // --program <id> (default: the IDL address). `+secs` is relative to the CHAIN clock (Clock sysvar), not this machine's. Prints one JSON line.
 // Never reads the global Solana config: --url and -k are required; a mainnet URL is refused. Phantom-signed admin actions are not covered here (keypair files only).
 import { readFileSync } from 'node:fs'; import crypto from 'node:crypto';
@@ -26,7 +30,7 @@ for (let i = 0; i < rest.length; i++) {
   opt[k === 'k' ? 'keypair' : k] = v; i++;
 }
 const die = msg => { console.error(`pool-admin: ${msg}`); process.exit(1); };
-if (!cmd || cmd === 'help') die('commands: show | initialize | create-pool | set-config | close-pool | sponsor | buy | pay-prize | fail-pool | expire-pool (see the header of scripts/pool-admin.mjs)');
+if (!cmd || cmd === 'help') die('commands: show | initialize | create-pool | set-config | close-pool | sponsor | buy | pay-prize | fail-pool | expire-pool | refund | close-ticket | cancel-pool | propose-authority | accept-authority (see the header of scripts/pool-admin.mjs)');
 if (!opt.url) die('--url <rpc> is required (never the global config)');
 if (/mainnet/i.test(opt.url)) die('refusing a mainnet RPC – the program is devnet only, not audited');
 
@@ -132,6 +136,27 @@ try {
     const who = keypair(), id = int('pool');
     const sig = await send(who, codec.instruction(cmd.replace('-', '_'), { caller: who.publicKey, pool: codec.poolPda(id) }, { pool_id: id }));
     out({ signature: sig, pool: await account('Pool', codec.poolPda(id)) });
+  } else if (cmd === 'refund' || cmd === 'close-ticket') {
+    const who = keypair(), id = int('pool'), buyer = pk('buyer'), ticket = codec.ticketPda(id, buyer);
+    const t = await account('Ticket', ticket);   // --rent-payer: send it for a ticket that is gone already (tests: the program answers AlreadyRefunded)
+    const rentPayer = t?.rentPayer ?? (opt['rent-payer'] ? pk('rent-payer') : die(`no Ticket of ${buyer} in pool ${id} (refunded or closed already?)`));
+    const accounts = cmd === 'refund'
+      ? { caller: who.publicKey, pool: codec.poolPda(id), vault: codec.vaultPda(id), ticket, buyer, rent_payer: rentPayer }
+      : { caller: who.publicKey, pool: codec.poolPda(id), ticket, rent_payer: rentPayer };
+    const sig = await send(who, codec.instruction(cmd.replace('-', '_'), accounts, { pool_id: id }));
+    out({ signature: sig, buyer, rentPayer, pool: await account('Pool', codec.poolPda(id)) });
+  } else if (cmd === 'cancel-pool') {
+    const admin = keypair(), id = int('pool');
+    const sig = await send(admin, codec.instruction('cancel_pool', { authority: admin.publicKey, config: codec.configPda(), pool: codec.poolPda(id) }, { pool_id: id }));
+    out({ signature: sig, pool: await account('Pool', codec.poolPda(id)) });
+  } else if (cmd === 'propose-authority') {
+    const admin = keypair();
+    const sig = await send(admin, codec.instruction('propose_authority', { authority: admin.publicKey, config: codec.configPda() }, { new_authority: pk('new') }));
+    out({ signature: sig, config: await config() });
+  } else if (cmd === 'accept-authority') {
+    const next = keypair();
+    const sig = await send(next, codec.instruction('accept_authority', { new_authority: next.publicKey, config: codec.configPda() }, {}));
+    out({ signature: sig, config: await config() });
   } else die(`unknown command ${cmd}`);
 } catch (e) {
   const logs = e?.transactionLogs ?? e?.logs;

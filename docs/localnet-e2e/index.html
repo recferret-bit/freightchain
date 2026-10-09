@@ -21,6 +21,8 @@
       <li><a href="#phases">Two validators</a></li>
       <li><a href="#cast">Keys and pools</a></li>
       <li><a href="#run">The run sheet</a></li>
+      <li><a href="#ten">Ten riders, one payout</a></li>
+      <li><a href="#coverage">The coverage gate</a></li>
       <li><a href="#maths">How lamports are checked</a></li>
       <li><a href="#found">What it found</a></li>
       <li><a href="#use">Running it</a></li>
@@ -37,7 +39,9 @@
     <div class="status" aria-label="What a green run proves">
       <span class="chip"><i class="ok"></i>Program = the pinned verifiable build</span>
       <span class="chip"><i class="ok"></i>All 4 pool endings: settled, failed, expired, grace close</span>
-      <span class="chip"><i class="next"></i>~4 minutes, paced by the deadlines</span>
+      <span class="chip"><i class="ok"></i>Ten riders paid by the program, to the lamport</span>
+      <span class="chip"><i class="ok"></i>14/14 instructions · 12/12 events · 24/24 errors</span>
+      <span class="chip"><i class="next"></i>~10 minutes, paced by the deadlines</span>
       <span class="chip"><i class="no"></i>Local only · nothing signed on devnet</span>
     </div>
   </header>
@@ -189,8 +193,34 @@
     </ol>
   </section>
 
+  <section class="section" id="ten">
+    <span class="eyebrow">06 · The second scenario</span>
+    <h2>Ten riders, one payout</h2>
+    <p class="col"><span class="mono">server/scripts/e2e-localnet-payout.mjs</span> runs one pool the way a real week would: ten wallets buy in, ride, get judged, and the program pays the ranked ones. Every finished ride goes through the <b>same player API the game uses</b> (start, heartbeats, hash-chained recordings, end). There is no admin endpoint that writes telemetry: one that let an admin write recordings would let an admin mint winners. So the payout is tested against the real judge, not a fixture.</p>
+    <ol class="steps">
+      <li><h3>Pool D: 10 wallets, 11 tickets <span class="who"><span class="tag adm">admin</span><span class="tag ply">R1–R10</span></span></h3><p>Three <code>create_pool</code> attempts are refused first: shares that don't add up, a price below the rent minimum, an unfunded treasury. Then pool D (1h, min 10, ≤ 2 per wallet). R1 buys in the lobby in headless Chrome (gasless: the wallet only signs). Four wallets buy gasless through <code>/submit</code>, four self-paid through <code>/confirm</code>, each to the exact lamport. The pool stays OPEN at 9 sold and goes ACTIVE when R8 buys 2. A fan sponsors 0.05 SOL.</p></li>
+      <li><h3>The rides <span class="who"><span class="tag ply">bots + Chrome</span></span></h3><p>R1 drives the real game. The others are API bots, each with its own 10 Hz recording that takes the damage of the server's planned holes and answers the dispatch prompts. Six honest riders and R8's two rides are VERIFIED. R7 crashes, so its ride FAILED and is never judged. R9 uploads one batch without a hash, gets FLAGGED, and the admin ACCEPTS it with a signed review. R10 teleports 500 m and is REJECTED.</p></li>
+      <li><h3>The "cron" <span class="who"><span class="tag any">CLI</span></span></h3><p><code>verdict:rejudge --status all</code> re-judges every completed ride from its telemetry: nothing changes, and the admin's decision stays. A <code>pool:crank</code> pass leaves the live pool alone. Before the play deadline the payout API answers 409, and 403 to a rider.</p></li>
+      <li><h3>The payout job <span class="who"><span class="tag adm">admin key</span></span></h3><p>After the deadline, <code>devnet-payout.mjs --yes</code> signs what <code>GET /api/pools/:id/payout</code> builds. The 8 counted wallets are ranked by summed distance, and each gets exactly its <code>poolPayouts</code> share. The crash and the cheater get nothing, and their ticket money stays in the pot. <code>close_pool</code> legs: fee, platform, seed (seed share + unclaimed rounding) and the creator's rent minimum. Conservation holds to the lamport.</p></li>
+      <li><h3>Ticket rents back <span class="who"><span class="tag any">stranger</span></span></h3><p><code>close_ticket</code> ×10 by a stranger: the gas sponsor gets back the 6 rents it advanced, each self-paid buyer its own, and every Ticket account is gone.</p></li>
+      <li><h3>The next jackpot <span class="who"><span class="tag any">seed treasury</span></span></h3><p>The seed treasury sponsors the next 1h pool with exactly pool D's seed leg, and the lobby's 1h card shows it. This is an operator step: nothing in the code moves the seed by itself.</p></li>
+      <li><h3>The rest of the program <span class="who"><span class="tag adm">admin</span><span class="tag any">anyone</span></span></h3><p>Pause (buy and <code>create_pool</code> refused), a sold-out pool, an unpaid pool closed by the admin (the whole prize share goes to the seed), <code>cancel_pool</code> with its refunds (a second refund is refused), and the authority handover there and back (the old admin is refused in between). On the way, every program error a validator can reach is provoked once.</p></li>
+    </ol>
+  </section>
+
+  <section class="section" id="coverage">
+    <span class="eyebrow">07 · 100 %, defined</span>
+    <h2>The coverage gate</h2>
+    <ul class="col">
+      <li><b>What counts</b>: every instruction must succeed and every event must be emitted on a real validator. Every error code must be asserted, either on the validator or in the LiteSVM program tests. That is behaviour coverage of the program's interface, not line coverage of the Rust.</li>
+      <li><b>Two sources</b>: the ledger (each transaction that named the program, decoded by IDL discriminator and through the server's codec) and the refusals. A refused transaction never lands, so the scenarios record each one with its program error. Phase 1's validator is torn down, so the fixtures script scans its ledger before it goes; that is where <code>initialize</code> runs.</li>
+      <li><b>Result</b> (<span class="mono">scripts/localnet-coverage.mjs report</span>): 14/14 instructions and 12/12 events on the validator, 23/24 error codes there. <code>MathOverflow</code> can only be reached from a forged account, so a LiteSVM test forges one: price × tickets, pot + sponsorship, and play deadline + grace each overflow.</li>
+      <li><code>SCENARIO=all</code> fails when anything is missing. <code>SCENARIO=payout</code> / <code>money</code> print the table without gating.</li>
+    </ul>
+  </section>
+
   <section class="section" id="maths">
-    <span class="eyebrow">06 · How lamports are checked</span>
+    <span class="eyebrow">08 · How lamports are checked</span>
     <h2>Expected values come from the server's own maths</h2>
     <ul class="col">
       <li>Prize caps, payout amounts and the close legs come from the server's compiled domain code: <code>prizeBound</code>, <code>poolPayouts</code>, <code>closeSplit</code> (<span class="mono">server/dist/domain/economy</span>). These are the same functions the program's money table is pinned against.</li>
@@ -206,7 +236,7 @@ close (cancelled)    seed = sponsorship + stray lamports, creator = 890 880</cod
   </section>
 
   <section class="section" id="found">
-    <span class="eyebrow">07 · What it found</span>
+    <span class="eyebrow">09 · What it found</span>
     <h2>Gaps the first runs exposed, and what changed</h2>
     <div class="findings col">
       <div class="finding"><b class="k">fixed · server</b><p><b>No crank existed</b>: <code>CRANK_SECRET</code> was read and never used, so a failed pool waited for each buyer to claim. Now <code>CrankPoolsCommand</code> (CLI <code>pool:crank</code>, scheduler <code>CRANK_INTERVAL_MS</code>) fails, expires, refunds 8 per transaction and closes, by the chain clock.</p></div>
@@ -214,32 +244,35 @@ close (cancelled)    seed = sponsorship + stray lamports, creator = 890 880</cod
       <div class="finding"><b class="k">fixed · product</b><p><b>A tier whose pool failed fell back to pay-per-ride</b> ($15 straight into the weekly round) although program mode is ticket-only. Now the tiers API, the lobby and the landing all say there is no pool on sale.</p></div>
       <div class="finding"><b class="k">fixed · lobby</b><p><b>An order the wallet never sent showed as "in flight"</b> for up to an hour. It now says the order is unfinished and nothing was charged.</p></div>
       <div class="finding"><b class="k">fixed · program</b><p><b><code>initialize</code> was first-come.</b> It now requires the upgrade authority, checked here on a real upgradeable loader (phase 1).</p></div>
+      <div class="finding"><b class="k">open · server</b><p><b>Nothing reclaims Ticket rents after a settlement.</b> <code>close_ticket</code> is in the program, but neither the crank nor the server sends it. Each gasless buyer of a settled pool leaves ~0.0015 SOL of the gas sponsor's money locked. The payout scenario reclaims them by hand (<code>pool-admin.mjs close-ticket</code>); the fix is listed in <span class="mono">docs/escrow-open-items.md</span>.</p></div>
     </div>
   </section>
 
   <section class="section" id="use">
-    <span class="eyebrow">08 · Running it</span>
+    <span class="eyebrow">10 · Running it</span>
     <h2>One command</h2>
 <pre><code>npm run program:verify          # once: the verifiable .so in target/deploy (the run warns if the binary is not the pinned build)
 npm run test:localnet           # = bash .claude/skills/localnet-e2e/run.sh
 KEEP=1 npm run test:localnet    # keep keys/, ledgers, validator and server logs in the scratch dir
-PLAY_A=240 npm run test:localnet  # slower machine: more time before pool A's play deadline</code></pre>
+PLAY_A=240 npm run test:localnet  # slower machine: more time before pool A's play deadline
+SCENARIO=payout npm run test:localnet   # only the ten-rider scenario (PREP_D / PLAY_D: 150 / 270 s)</code></pre>
     <ul class="col">
       <li>Needs Docker (the compose PostgreSQL), Chrome, <code>solana-test-validator</code>, <code>server/node_modules</code>, and internet once (web3.js and three.js load from CDNs).</li>
-      <li>Output: one <code>ok</code> / <code>FAIL</code> line per check, then <code>✓ all money flows verified on the local chain</code>. On failure it prints the server log tail and keeps the scratch dir.</li>
+      <li>Output: one <code>ok</code> / <code>FAIL</code> line per check, then <code>✓ all money flows verified on the local chain</code>, <code>✓ ten riders paid by the program…</code> and the coverage table. On failure it prints the server log tail and keeps the scratch dir.</li>
       <li>Screenshots go to <code>$TMPDIR/fc-localnet-shots</code>: the lobby after the buy, after the refund, and the NO POOL card.</li>
-      <li>Files: <span class="mono">.claude/skills/localnet-e2e/run.sh</span> (stack, two phases), <span class="mono">server/scripts/localnet-fixtures.mjs</span> (phase 1), <span class="mono">server/scripts/e2e-localnet.mjs</span> (the scenario), <span class="mono">server/scripts/pool-admin.mjs</span> (keypair admin CLI).</li>
+      <li>Files: <span class="mono">.claude/skills/localnet-e2e/run.sh</span> (stack, two phases), <span class="mono">server/scripts/localnet-fixtures.mjs</span> (phase 1), <span class="mono">server/scripts/e2e-localnet.mjs</span> (scenario 1), <span class="mono">server/scripts/e2e-localnet-payout.mjs</span> (ten riders), <span class="mono">server/scripts/localnet-coverage.mjs</span> (the gate), <span class="mono">server/scripts/pool-admin.mjs</span> (keypair admin CLI).</li>
     </ul>
   </section>
 
   <section class="section" id="limits">
-    <span class="eyebrow">09 · Not covered</span>
+    <span class="eyebrow">11 · Not covered</span>
     <h2>What a green run does not prove</h2>
     <ul class="col">
       <li><b>A real Phantom</b>: its popups, its own RPC, and whether it ever rewrites a transaction before signing. The fake signs exactly what it is given.</li>
       <li><b>Devnet conditions</b>: congestion, dropped transactions, RPC rate limits, and providers that refuse <code>getProgramAccounts</code>, which the crank needs.</li>
       <li><b>Several server instances</b> cranking at once. The program makes it safe, a duplicate refund batch fails whole, but this run uses one server.</li>
-      <li><b>Session keys and deposits</b> (phase 2 of the plan, not built), <code>cancel_pool</code>, the authority handover, and pause. The LiteSVM tests cover these on the program side.</li>
+      <li><b>Session keys and deposits</b> (phase 2 of the plan, not built).</li>
+      <li><b>Automation the product does not have yet</b>: nothing sends <code>close_ticket</code> after a settlement and nothing rolls the seed treasury into the next pool. The scenario performs both by hand and checks the money.</li>
       <li>The program is <b>not audited</b>. This test shows the server, lobby and program agree; it is not a security review.</li>
     </ul>
   </section>

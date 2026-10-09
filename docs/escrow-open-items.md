@@ -1,6 +1,6 @@
 # Escrow program – what is not done, open questions, todo
 
-State on 2026-10-08, after the program verification, the `initialize` fix, the localnet money test and the pool crank. Keep this file current: tick items
+State on 2026-10-09, after the program verification, the `initialize` fix, the localnet money test, the pool crank and the ten-rider payout run with its coverage gate. Keep this file current: tick items
 off here, move answers into the docs they belong to (`program-deploy.md`, `paid-tickets-status.md`, the program README), delete what no longer applies.
 Related: [deploy + operate](program-deploy.md) · [paid tickets status](paid-tickets-status.md) (its §3 Q1–Q8 still stand, Q3 is answered below) ·
 [contract spec](pool-program/index.html) · [localnet test](localnet-e2e/index.html).
@@ -11,7 +11,8 @@ Related: [deploy + operate](program-deploy.md) · [paid tickets status](paid-tic
 |---|---|---|
 | program: verifiable build, `initialize` by the upgrade authority, `play_deadline` cap | `main` | merged; placeholder-id build `8846f590…` (superseded on the branch by the devnet-id build `27c0cb40…` in `verifiable-build.hash`) |
 | `program-check` skill, `docs/pool-program/`, `docs/program-deploy.md` | `main` | merged |
-| localnet money test, pool crank, ticket-only program mode, refundable missed goals, `docs/localnet-e2e/`, this file | branch `localnet-e2e` (worktree `.claude/worktrees/localnet-e2e`) | **not merged**: `main` moved since – rebase (AGENTS.md / CLAUDE.md skill lines conflict, re-apply ours on top) then fast-forward |
+| localnet money test, pool crank, ticket-only program mode, refundable missed goals, `docs/localnet-e2e/`, this file | `main` | merged (`git log main..localnet-e2e` is empty) |
+| ten-rider payout scenario + the program coverage gate (`SCENARIO=payout`, `server/scripts/localnet-coverage.mjs`), `pool-admin.mjs` refund / close-ticket / cancel-pool / propose- / accept-authority, the LiteSVM `MathOverflow` test | `main` | Oct 9: 14/14 instructions + 12/12 events on the validator, 24/24 error codes asserted |
 | devnet / production | – | **nothing deployed**: the code carries the devnet program id `9e7ph…BSvx` (keys made, not funded yet), production runs `PAYMENT_MODE=transfer` |
 
 ## Not done
@@ -26,12 +27,14 @@ Related: [deploy + operate](program-deploy.md) · [paid tickets status](paid-tic
 - No UI for Phantom-signed admin actions: `create_pool`, `set_config` (pause, platform cut), `propose_authority` / `accept_authority`, `cancel_pool`. Only `server/scripts/pool-admin.mjs` with keypair FILES.
 - Payouts: `GET /api/pools/:id/payout` builds the `pay_prize` / `close_pool` transactions, but there is no button for them on the admin page.
 - Nobody creates the weekly pools automatically: when a pool ends, its tier shows "NO POOL · NEXT POOL SOON" until the admin creates the next one.
+- Nothing rolls the seed treasury into the next pool: "seeds the next pool" (the lobby's rules text) is an operator step – `pool-admin.mjs sponsor -k seed.json` (the localnet payout scenario does exactly that).
 
 **Crank operations**
 - No alerting: crank failures are only logged (`CrankPoolsHandler` / `PoolCrankScheduler`), not on the admin page; no low-balance warning for the crank key (the gas sponsor has one).
 - Not tested with several server instances cranking at once (the program makes duplicates harmless – a refund batch that races fails whole – but it was not exercised).
 - The crank uses the `refund` priority-fee quote for `fail_pool` / `expire_pool`; fine on devnet, unmeasured under congestion.
 - It never closes a pool that paid prizes, even after the grace (deliberately – see Q10).
+- **Nothing reclaims Ticket rents after a settlement** (found by the ten-rider localnet run, Oct 9): `close_ticket` (permissionless, rent → the ticket's `rent_payer`) is in the program but neither the crank nor any server path sends it. Every gasless buyer of a settled pool leaves ~0.0015 SOL (1 496 400 lamports) of the gas sponsor's money locked in its Ticket account – 10 buyers a week ≈ 0.015 SOL a week, forever. Refunded pools are fine (`refund` closes the ticket). Fix: a crank step `close_ticket` for Settled pools (needs a ticket listing per settled pool – mark a pool "tickets closed" in the mirror so it is listed once), or a CLI sweep. The localnet scenario does it by hand (`pool-admin.mjs close-ticket`) and asserts every rent lands back.
 
 **Security / program**
 - **Not audited.** The Trail of Bits classes were checked by hand; their scanner plugin is not installed (user-level `/plugin marketplace add trailofbits/skills`).
@@ -43,7 +46,7 @@ Related: [deploy + operate](program-deploy.md) · [paid tickets status](paid-tic
 **Tests – what a green run does not cover**
 - A real Phantom (popups, its own RPC, whether it rewrites transactions before signing). The localnet fake signs exactly what it is given.
 - Devnet conditions: congestion, dropped / expired transactions, RPC rate limits and providers that refuse `getProgramAccounts`.
-- On a real validator: `cancel_pool`, the authority handover, pause (the LiteSVM program tests cover them).
+- ~~On a real validator: `cancel_pool`, the authority handover, pause~~ – covered since Oct 9 by the ten-rider scenario (with every reachable error code; `MathOverflow` only in LiteSVM, from a forged account).
 - The sponsor-down fallback against the real server (only `e2e-tickets-stub.mjs` covers it).
 
 **Small known gaps**
@@ -56,7 +59,7 @@ Related: [deploy + operate](program-deploy.md) · [paid tickets status](paid-tic
 
 | # | question | recommendation |
 |---|---|---|
-| Q-A | Merge `localnet-e2e` into `main` now? | yes – all suites green (localnet 77/77, `npm run check`, integration 228, lobby e2e 56) |
+| Q-A | Merge `localnet-e2e` into `main` now? | **answered: merged** |
 | Q-B | Who makes the keys: you, or I generate them into `deploy/secrets/` (program id, deploy wallet, crank key)? | I generate them; you fund the deploy wallet and the crank from a faucet |
 | Q-C | Upgrade authority long term: keep on the deploy keypair, move to a hardware wallet / Squads multisig, or make the program immutable (`--final`) after an audit? | devnet: keep; before any real money: multisig; `--final` only after an audit |
 | Q-D | Audit before mainnet – and is mainnet a goal at all? | devnet only, "not audited" said plainly in the submission (status Q7) |
@@ -81,7 +84,7 @@ Related: [deploy + operate](program-deploy.md) · [paid tickets status](paid-tic
 Until then production stays as it is (`PAYMENT_MODE=transfer`, no escrow keys in `deploy/.env`).
 
 ### Phase 0 – local (no chain, no money)
-- [ ] Merge `localnet-e2e` into `main` – Q-A. Rebased on `main` and green (`npm run check` 901 tests, localnet 80 checks, devnet path 70) on Oct 8; the fast-forward waits for the main checkout's uncommitted `landing/src/main.js` edits (another session) – then `git merge --ff-only localnet-e2e` there. After the merge, rerun `devnet.sh env` in the main checkout (`server/.env.devnet` is per checkout)
+- [x] Merge `localnet-e2e` into `main` – Q-A (done; the note below is history). Rebased on `main` and green (`npm run check` 901 tests, localnet 80 checks, devnet path 70) on Oct 8; the fast-forward waits for the main checkout's uncommitted `landing/src/main.js` edits (another session) – then `git merge --ff-only localnet-e2e` there. After the merge, rerun `devnet.sh env` in the main checkout (`server/.env.devnet` is per checkout)
 - [x] `npm run program:verify` in the main checkout (Oct 8: reproduced `8846f590…`, 49 tests, clippy, audit) – `npm run test:localnet` there after the merge
 - [x] Deploy smoke test: program-mode checks (no pay-per-ride fallback, pools listed, the webhook refuses a call without its secret, the fee quote answers) – `deploy/scripts/smoke.mjs`, run at the end of every `test:localnet`
 - [x] `server/scripts/devnet-payout.mjs` (`devnet.sh payout <poolId> [--yes]`): signs in as the admin, pays the ranked prizes, closes, settles each
@@ -141,4 +144,6 @@ Until then production stays as it is (`PAYMENT_MODE=transfer`, no escrow keys in
 - [ ] Lobby "pools on sale" count: only pools that still sell
 - [ ] CANCEL for an unfinished ticket order
 - [ ] Status Q8 items (`paidRides`, problem titles, `pool:seed refunding`)
-- [ ] Localnet test: add `cancel_pool`, pause, authority handover, the sponsor-down fallback; a run with two server instances cranking
+- [x] Localnet test: `cancel_pool`, pause, authority handover (Oct 9, the ten-rider scenario)
+- [ ] Localnet test: the sponsor-down fallback; a run with two server instances cranking
+- [ ] Reclaim Ticket rents of settled pools (`close_ticket` in the crank or a CLI) – see "Crank operations"

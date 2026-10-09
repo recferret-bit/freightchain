@@ -2,12 +2,14 @@
 // "three weeks old", then dumps their accounts for the phase-2 validator (`solana-test-validator --account`). The validator's clock cannot be warped,
 // so only two fields are edited after the program wrote everything else: each baked pool's prep_deadline and play_deadline, moved 16 days into the
 // past (beyond SETTLE_GRACE_SECS). Also checks initialize for real (a stranger is refused, the upgrade authority names the admin).
-//   env: RPC, KEYS (scratch keypair dir: upgrader, admin, sponsor, fee, seed, plat), OUT (dir for the account JSON files + fixtures.json)
+//   env: RPC, KEYS (scratch keypair dir: upgrader, admin, sponsor, fee, seed, plat), OUT (dir for the account JSON files + fixtures.json), COVERAGE (file,
+//   scripts/localnet-coverage.mjs – this validator is torn down after phase 1, so its ledger is scanned here)
 // Baked: pool 0 "EXPIRE" (active, 2 buyers – one self-paid rent, one sponsor-paid rent, no prize paid) → expire_pool + refunds by the crank;
 //        pool 1 "GRACE"  (active, 1 buyer, one prize paid) → anyone may close it after the grace; Config (pool_count = 2, admin, platform 500 bps).
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'; import { execFileSync } from 'node:child_process';
 import { Connection, Keypair, PublicKey } from '@solana/web3.js';
 import { PoolProgramCodec } from '../dist/infrastructure/solana/pool-program.codec.js';
+import { coverage } from './localnet-coverage.mjs';
 import { POOL_PROGRAM_IDL } from '../dist/infrastructure/solana/pool-program.idl.js';
 
 const { RPC, KEYS, OUT } = process.env;
@@ -28,7 +30,8 @@ const newKey = async (name, sol) => {
 // initialize: a stranger first (refused), then the upgrade authority naming the admin
 const stranger = await newKey('stranger', 2);
 let refused = false;
-try { admin(['initialize', '-k', stranger, '--admin', pub('stranger'), '--platform-treasury', pub('plat'), '--platform-fee-bps', '500']); } catch (e) { refused = /Unauthorized|0x1771/.test(String(e.stderr)); }
+const cov = process.env.COVERAGE ? coverage(process.env.COVERAGE) : null;
+try { admin(['initialize', '-k', stranger, '--admin', pub('stranger'), '--platform-treasury', pub('plat'), '--platform-fee-bps', '500']); } catch (e) { refused = /Unauthorized|0x1771/.test(String(e.stderr)); cov?.refused('initialize by a stranger (not the upgrade authority)', e); }
 check('initialize by a stranger is refused (Unauthorized: not the upgrade authority)', refused);
 const init = admin(['initialize', '-k', `${KEYS}/upgrader.json`, '--admin', pub('admin'), '--platform-treasury', pub('plat'), '--platform-fee-bps', '500']);
 check('initialize by the upgrade authority names the admin (not itself)', init.config.authority === pub('admin') && init.config.authority !== pub('upgrader'));
@@ -69,4 +72,5 @@ for (const d of dumps.filter(x => /^pool-(expire|grace)$/.test(x.label))) {
 const cfg = codec.decodeAccount('Config', dumps[0].data);
 writeFileSync(`${OUT}/fixtures.json`, JSON.stringify({ expirePool: X, gracePool: Y, poolCount: cfg.poolCount, prizePaid: 10_000_000, back, accounts: dumps.map(d => d.file) }));
 check('Config baked with pool_count = 2 (new pools get ids 2, 3, …)', cfg.poolCount === 2);
+if (cov) { const sc = await cov.scan(conn, 'phase 1 (fixtures validator)'); console.log(`coverage: ${sc.transactions} program transactions on the fixtures validator`); }
 process.exit(fails.length ? 1 : 0);

@@ -655,7 +655,7 @@
   <div class="tblwrap"><table class="tbl">
     <thead><tr><th>Risk</th><th>What it means</th><th>Mitigation today</th></tr></thead>
     <tbody>
-      <tr><td><b>Smart-contract</b></td><td>Bugs in an unaudited program can lose funds.</td><td>Devnet only; reproducible build; 49 tests; refund paths that need no key. An independent audit is a precondition for mainnet.</td></tr>
+      <tr><td><b>Smart-contract</b></td><td>Bugs in an unaudited program can lose funds.</td><td>Devnet only; reproducible build; 51 tests; refund paths that need no key. An independent audit is a precondition for mainnet.</td></tr>
       <tr><td><b>Cheating</b></td><td>A modified or scripted client could still pass inside the checks.</td><td>Chain, physics and timing checks; dispatch prompts; human review of flags; replay core planned (<a href="#verify">06</a>).</td></tr>
       <tr><td><b>Operator trust</b></td><td>The admin picks pay_prize receivers within the cap and holds the treasuries.</td><td>Signed, audited decisions; payouts capped on chain; all of it readable on chain.</td></tr>
       <tr><td><b>Availability</b></td><td>A long shift can be lost if your tab or connection dies for more than 150 s.</td><td>Resume of an open ride; honest pauses cost nothing; final upload retries.</td></tr>

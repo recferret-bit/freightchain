@@ -14,6 +14,7 @@ import { PoolProgramCodec } from '../dist/infrastructure/solana/pool-program.cod
 import { POOL_PROGRAM_IDL } from '../dist/infrastructure/solana/pool-program.idl.js';
 import { closeSplit, prizeBound } from '../dist/domain/economy/vault-split.js';
 import { poolPayouts } from '../dist/domain/economy/pool-payouts.js';
+import { coverage } from './localnet-coverage.mjs';
 
 const { BASE, RPC, KEYS } = process.env;
 if (!BASE || !RPC || !KEYS) { console.error('run it through .claude/skills/localnet-e2e/run.sh (needs BASE, RPC, KEYS)'); process.exit(2); }
@@ -136,7 +137,8 @@ async function buySelf(p, poolId, qty = 1) {
   return { order: o, pay, sig, paid };
 }
 const crankPass = () => JSON.parse(execFileSync('node', ['dist/cli/index.js', 'pool:crank'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }));
-const refuses = (args, re) => { try { admintool(args); return false; } catch (e) { return re.test(String(e.stderr ?? e)); } };
+const cov = process.env.COVERAGE ? coverage(process.env.COVERAGE) : null;   // refusals never land: recorded for scripts/localnet-coverage.mjs
+const refuses = (args, re, step = args.join(' ')) => { try { admintool(args); return false; } catch (e) { cov?.refused(step, e); return re.test(String(e.stderr ?? e)); } };
 
 try {
   // ── 0. the stack, the baked "three weeks old" pools (phase 1 of run.sh made them with the real program, then moved their deadlines back)
@@ -271,7 +273,7 @@ try {
 
   // ── 9. the CRANK (CRANK_SECRET, one pass from the CLI): fails pool C and refunds it (and on localnet expires the baked pool and refunds it), closes them
   await untilChain(Number((await poolAcc(C)).prepDeadline.getTime() / 1000), 'pool C prep deadline');
-  if (FX) check('the baked unpaid pool: a stranger may not close it after the grace (MustExpire – it would sweep the prize share)', refuses(['close-pool', '--pool', String(FX.expirePool), '-k', Z.keyfile], /MustExpire|0x1787/));
+  if (FX) check('the baked unpaid pool: a stranger may not close it after the grace (MustExpire – it would sweep the prize share)', refuses(['close-pool', '--pool', String(FX.expirePool), '-k', Z.keyfile], /MustExpire|0x1787/, 'close_pool by a stranger of an unpaid pool after the grace'));
   const xb = FX ? { e1: addr('expire-buyer-1'), e2: addr('expire-buyer-2') } : {};
   before = await bals({ crank: addr('crank'), p5: P5.wallet, p6: P6.wallet, sp: addr('sponsor'), seed: addr('seed'), admin: addr('admin'), ...xb });
   const pass = crankPass();
@@ -298,6 +300,7 @@ try {
 
   // ── 10. (localnet) the baked pool that paid a prize: after the grace ANYONE may close it – money only to the treasuries it declared
   if (FX) {
+    check('the baked pool that paid a prize cannot be expired (the refund maths assumes nothing left the vault)', refuses(['expire-pool', '--pool', String(FX.gracePool), '-k', Z.keyfile], /PrizesAlreadyPaid|0x1785/, 'expire_pool on a pool that paid a prize'));
     const gy = await poolAcc(FX.gracePool), gyVault = await bal(codec.vaultPda(FX.gracePool));
     const gLegs = closeSplit({ priceLamports: gy.priceLamports, ticketsSold: gy.ticketsSold, sponsored: gy.sponsored, prizeBps: gy.prizeBps, seedBps: gy.seedBps, platformFeeBps: PLAT_BPS, prizesPaid: gy.prizesPaid, vaultLamports: gyVault, cancelled: false, rentMin: RENT0 });
     before = await bals({ fee: addr('fee'), plat: addr('plat'), seed: addr('seed'), admin: addr('admin'), stranger: Z.wallet });

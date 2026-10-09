@@ -9,7 +9,7 @@ Core instructions only; the phase-2 session / deposit instructions (plan 2.6 / 2
 ```sh
 export PATH="$HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$HOME/.avm/bin:$PATH"
 anchor build --arch v0     # root: npm run program:build
-cargo test                 # root: npm run program:test   (50 tests: 48 LiteSVM + 2 unit, no network)
+cargo test                 # root: npm run program:test   (51 tests: 49 LiteSVM + 2 unit, no network)
 npm run program:idl        # copies target/idl/freightchain_pools.json -> idl/
 ```
 
@@ -152,14 +152,14 @@ Measured by `compute_units_are_in_budget` (`cargo test -- --nocapture` prints th
 
 Set `setComputeUnitLimit` from the simulation (`unitsConsumed * 1.2`) as planned; the test asserts only loose ceilings (buy < 40k, refund < 30k, pay_prize < 25k).
 
-## Tests (`programs/freightchain_pools/tests/`, 48 LiteSVM incl. the fixture exporter + 2 unit)
+## Tests (`programs/freightchain_pools/tests/`, 49 LiteSVM incl. the fixture exporter + 2 unit)
 
 `create_and_buy.rs` create_pool validation / authority / unfunded treasury, buy to exactly min activates (events decoded), sponsored buy credits the buyer and records the rent payer, wallet cap, sold out, deadlines.
 `refunds.rs` fail_pool conditions, refund exact price + rent to a separate rent payer, wrong receivers, refund when not Refunding, refund twice, batch of 8 + re-sent batch + partial progress, close_pool after refunds, cancel_pool, sponsor.
-`settle.rs` pay_prize authority-only / before play_deadline / bounded by the prize share / receiver rent, close_pool exact split for random amounts, close guards, unclaimed prize and stray lamports to the seed, close_ticket rent to rent_payer.
+`settle.rs` pay_prize authority-only / before play_deadline / bounded by the prize share / receiver rent, close_pool exact split for random amounts, close guards, unclaimed prize and stray lamports to the seed, close_ticket rent to rent_payer, `MathOverflow` instead of wrapping (a forged pool: price × tickets, + sponsorship, play_deadline + grace).
 `grace_and_authority.rs` sponsor cut-off on Open pools, expire before / after the grace and with prizes paid, refunds after expiry, permissionless close after the grace (refused before, `MustExpire` without paid prizes, outputs sum to the vault with paid prizes, rent receiver must be the creator), unpaid pool after the grace: `MustExpire` -> expire -> refunds -> close, the authority closing an unpaid pool at and after the grace, permissionless close of a refunded pool, propose / accept authority, a rotated key taking over existing pools.
 `admin_rent_cu.rs` initialize only by the upgrade authority (a stranger first: `Unauthorized`; an immutable program: `Unauthorized`; names another wallet as admin), pause, set_config, the vault-rent rule, compute units, IDL event discriminators, raw log decoding.
-The clock is warped with `svm.set_sysvar::<Clock>()`; no test waits.
+The clock is warped with `svm.set_sysvar::<Clock>()`; no test waits. Together they assert all 24 error codes. On a real validator the localnet e2e covers the rest (`.claude/skills/localnet-e2e`, its coverage gate: 14/14 instructions, 12/12 events, 23/24 errors – `MathOverflow` needs a forged account, so only here).
 
 ## Not built / notes
 

@@ -90,4 +90,13 @@ describe('parseWireTransaction', () => {
     expect(checkUserSignedTransaction(v0.serialize(), msg.serialize(), sponsor.publicKey).signatures.length).toBe(2);
     expect(new PublicKey(parsed.accountKeys[1]!).equals(buyer.publicKey)).toBe(true);
   });
+
+  it('refuses every truncation of the wire format with a reason – the sponsor never signs what it could not parse', () => {
+    const raw = Buffer.from(signedBy(built(), buyer)), msgAt = 1 + 2 * 64;
+    expect(() => parseWireTransaction(Buffer.from([0x80, 0x80, 0x80, 0x01]))).toThrow('compact-u16 longer than 3 bytes');
+    expect(() => parseWireTransaction(raw.subarray(0, msgAt))).toThrow('truncated message header');           // the signatures, no message at all
+    expect(() => parseWireTransaction(raw.subarray(0, msgAt + 2))).toThrow('truncated message header');       // 2 of the 3 header bytes
+    expect(() => parseWireTransaction(raw.subarray(0, msgAt + 3 + 1 + 32))).toThrow('truncated account keys'); // one key of several, no blockhash
+    expect(refusal(() => checkUserSignedTransaction(raw.subarray(0, msgAt + 3 + 1 + 32), expected, sponsor.publicKey)).errorCode).toBe('transaction_malformed');
+  });
 });

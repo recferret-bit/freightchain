@@ -259,3 +259,44 @@ fn close_ticket_returns_rent_to_rent_payer() {
     assert_eq!(e.bal(&b2.pubkey()), b20 + r2);
     assert!(e.ticket(id, &b1.pubkey()).is_none() && e.ticket(id, &b2.pubkey()).is_none());
 }
+
+/// MathOverflow: the checked maths answers instead of wrapping. No instruction can write such a pool (the vault would have to hold more than a u64 of
+/// lamports; play_deadline is capped at now + MAX_POOL_SECS), so the Pool account is forged in place – the guard is what is under test.
+#[test]
+fn checked_maths_refuse_overflow_instead_of_wrapping() {
+    let mut e = Env::new();
+    let (id, _) = active_pool(&mut e, 2, 1); // 2 tickets
+    let auth = e.authority_kp();
+    let forge = |e: &mut Env, f: &dyn Fn(&mut freightchain_pools::Pool)| {
+        let mut acct = e.svm.get_account(&pool_pda(id)).unwrap();
+        let mut p = e.pool(id);
+        f(&mut p);
+        let mut data = Vec::new();
+        anchor_lang::AccountSerialize::try_serialize(&p, &mut data).unwrap();
+        acct.data[..data.len()].copy_from_slice(&data);
+        e.svm.set_account(pool_pda(id), acct).unwrap();
+    };
+    e.warp(PLAY);
+    let w = funded(&mut e.svm, SOL);
+    let (price, vault) = (e.pool(id).price_lamports, e.vault(id));
+    // price × tickets_sold past u64: the prize cap of pay_prize and the split of close_pool
+    forge(&mut e, &|p| p.price_lamports = u64::MAX / 2 + 1);
+    assert_err!(e.pay_prize(id, &auth, &w.pubkey(), 1_000_000, 1), PoolError::MathOverflow);
+    assert_err!(e.close_pool(id, &auth), PoolError::MathOverflow);
+    // tickets + sponsored past u64
+    forge(&mut e, &|p| {
+        p.price_lamports = price;
+        p.sponsored = u64::MAX;
+    });
+    assert_err!(e.close_pool(id, &auth), PoolError::MathOverflow);
+    // play_deadline + SETTLE_GRACE_SECS past i64 (the grace is computed before the caller is checked)
+    forge(&mut e, &|p| {
+        p.sponsored = 0;
+        p.play_deadline = i64::MAX - 10;
+    });
+    e.warp(i64::MAX - 5);
+    let stranger = funded(&mut e.svm, SOL);
+    assert_err!(e.close_pool(id, &stranger), PoolError::MathOverflow);
+    // nothing moved, the pool is still live
+    assert_eq!((e.vault(id), e.pool(id).status, e.pool(id).prizes_paid), (vault, 1, 0));
+}
