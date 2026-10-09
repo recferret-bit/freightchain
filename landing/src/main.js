@@ -11,7 +11,7 @@ import { escrowExplainer, explorerUrl, shortAddr, statusChip, progressText, dead
 reportWebVitals('landing');   // before the first track(), so the leave flush includes the final metrics
 
 /* ───── things to fill in ───── */
-const DEMO_VIDEO = 'cFyQ9XlN5nQ';  // YouTube id of the product demo (the channel's video); null = the dialog explains and links to offline play
+const DEMO_VIDEO = '/media/demo.mp4';  // the demo clip, served by our own host (nginx caches /media/*.mp4 and answers Range); to move it to a CDN put the full https URL here; null = the dialog explains and links to offline play
 const SOCIALS = { x: 'https://x.com/FreightChainSol', youtube: 'https://www.youtube.com/@FreightChainGame', discord: null, telegram: null };   // URLs; null hides the button (Q11 in docs/hackathon-plan-v2.md; files go in landing/public/media/; the hero loop is `data-src` on #hero-video in index.html)
 
 const $ = id => document.getElementById(id);
@@ -175,9 +175,11 @@ if (document.readyState === 'complete') whenIdle(loadHeroVideo, { timeout: 4000 
   const dlg = $('demo'), box = $('demo-frame');
   $('demo-btn').onclick = () => {
     track('demo_dialog_opened', { has_video: DEMO_VIDEO != null });
-    if (DEMO_VIDEO) {   // the iframe exists only while the dialog is open: nothing loads from YouTube until the click
-      box.replaceChildren(el('iframe', { src: `https://www.youtube-nocookie.com/embed/${DEMO_VIDEO}?autoplay=1&rel=0`, title: 'Freight Chain demo', allow: 'autoplay; encrypted-media; picture-in-picture; fullscreen', allowfullscreen: '', referrerpolicy: 'strict-origin-when-cross-origin' }));
-      $('demo-note').textContent = 'Devnet demo – watch it on YouTube.';
+    if (DEMO_VIDEO) {   // the <video> exists only while the dialog is open: nothing is fetched until the click
+      const v = el('video', { src: DEMO_VIDEO, controls: '', autoplay: '', playsinline: '', preload: 'auto', 'aria-label': 'Freight Chain demo' });
+      v.addEventListener('error', () => $('demo-note').textContent = 'The demo video could not be loaded – try again later.');
+      box.replaceChildren(v);
+      $('demo-note').textContent = 'Devnet demo.';
     } else {
       const practice = el('a', { href: `${GAME_BASE}/play.html` }, 'Try the game offline');
       practice.addEventListener('click', () => { track('offline_practice_clicked'); flushSoon(); });
