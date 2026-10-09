@@ -108,7 +108,7 @@ test('ticket sales: on when the server sells through the program (tiers.paymentM
 
 test('the lobby and the landing never call a bare /api path or render with innerHTML', () => {
   const site = join(new URL('..', import.meta.url).pathname, '..', 'client', 'site');
-  for (const f of ['lobby.js', 'lobby-pools.js', 'lobby-promo.js', 'lobby-garage.js', 'pools.js', 'tickets-api.js', 'pay.js', 'dom.js', 'admin.js', 'admin-promos.js']) {
+  for (const f of ['lobby.js', 'lobby-pools.js', 'lobby-promo.js', 'lobby-garage.js', 'garage-cab.js', 'pools.js', 'tickets-api.js', 'pay.js', 'dom.js', 'admin.js', 'admin-promos.js']) {
     const src = readFileSync(join(site, f), 'utf8');
     assert.doesNotMatch(src, /\.(innerHTML|outerHTML)\s*[+]?=|insertAdjacentHTML\(|document\.write\(/, f);
     assert.doesNotMatch(src, /['"`]\/api\//, `${f}: API calls go through wallet.js (API_BASE)`);

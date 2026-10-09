@@ -5,9 +5,9 @@ The lobby's **GARAGE** tab (`#garage`) is where a player sees every visual part 
 ## What the player sees
 
 - **COLLECTION** – `n / 25 parts · p %` with a bar, and `n/5` per slot. Defaults are not counted (everybody has them); every non-default part is "found" by redeeming a promo code. The line under it says so and points at the PROMO tab.
-- **Preview** – a drawing of the cockpit (SVG, built with `createElementNS`) with the parts picked right now: hood and trim, wheel, shifter, hanging dice, gauge needles. Same palettes the game uses (`client/js/cosmetics.js`).
+- **The cab** – the game's OWN cockpit renderer (`js/cockpit`, no three.js) drawn on a canvas over a sky + road backdrop (`site/garage-cab.js`, loaded lazily, same pattern as the landing's dash cards). Picking a part wears it at once – before it is applied. **Hover** the wheel, shifter, dice, gauges or hood (or the slot's card) and it plays a looped movement: the wheel turns, the lever walks the gears, the dice swing, the needles sweep, the hood gets a gloss glint; a tap toggles it on touch, reduced motion keeps a still frame. Clicking a part jumps to its card.
 - **Five cards, six parts each** – steering wheel, truck paint, shifter, hanging dice, gauge needles. A tile is `WORN` (saved and selected), `SELECTED` (picked, not saved), `SELECT` (owned) or 🔒 (locked). The tooltip says how it was earned: `Unlocked by GOLDWHEEL · <date>`, `Everybody has this one.`, or `Locked – a promo code unlocks it.` Clicking a locked part explains it (and sends `garage_part_clicked owned=false`) – it can never be selected.
-- **SAVE LOADOUT / RESET** – a selection is local until SAVE. SAVE sends only the slots that changed in ONE request; RESET goes back to what is saved. The line beside them says `Not saved yet.` or `Saved – your next ride starts with this loadout.`
+- **APPLY / RESET** – a selection is local until APPLY. APPLY sends only the slots that changed in ONE request (saved in the database; the next ride starts with it); RESET goes back to what is applied. The line beside them says `Not applied yet.` or `Applied – your next ride starts with this loadout.`
 
 ## The parts (visual only)
 
@@ -40,7 +40,7 @@ The lobby's **GARAGE** tab (`#garage`) is where a player sees every visual part 
 | domain | `economy/cosmetics.ts` (catalog, `unlockableCount`, `parseLoadout`), `economy/garage.dto.ts` (`toGarageDto`: parts, progress) |
 | application | `use-cases/players/get-garage`, `use-cases/players/save-garage` (validates all, one transaction, `garage_saved`) |
 | presentation | `economy/garage.http.controller.ts` + `dto/garage.dto.ts` (strict body) |
-| client | `site/lobby-garage.js` (pure builders: progress, preview, tiles, actions), the GARAGE tab in `site/lobby.js` (`S.garage` = server answer, `S.pick` = selection), `js/cosmetics.js`, `js/cockpit/rig.js` + `common.js` |
+| client | `site/lobby-garage.js` (pure builders: progress, tiles, actions), `site/garage-cab.js` (the real cockpit canvas + hover loops; `pose.dice` in `js/cosmetics.js` is its one hook into the cockpit), the GARAGE tab in `site/lobby.js` (`S.garage` = server answer, `S.pick` = selection), `js/cosmetics.js`, `js/cockpit/rig.js` + `common.js` |
 
 ## Analytics
 
@@ -53,5 +53,5 @@ Server `garage_saved` (the loadout now worn, `parts_saved`; sets the five slots 
 ## Open
 
 - Parts come only from promo codes. Other sources (an achievement, a milestone, an NFT) would add a source next to `CosmeticUnlock.code`.
-- Colours only; new shapes need drawing code. The preview is a drawing, not the real cockpit.
+- Colours only; new shapes need drawing code. The cab backdrop is a flat 2D sky and road, not the 3D scene.
 - Saving is per slot-set; there are no named presets yet.

@@ -4,7 +4,8 @@ import { salesOpen, pendingOrder } from './tickets-api.js';
 import { escrowExplainer, explorerTx, rideError, promoError, promoOk, buyError, sol, left, shortAddr as short } from './pools.js';
 import { poolCard, escrowSummary, refundRows, profileTickets } from './lobby-pools.js';
 import { redemptionList } from './lobby-promo.js';
-import { dirty, garageActions, garagePreview, garageProgress, garageSlots } from './lobby-garage.js';
+import { dirty, garageActions, garageProgress, garageSlots } from './lobby-garage.js';
+import { garageCab } from './garage-cab.js';
 import { el } from './dom.js';
 import { livePath, leaveOnClose } from './presence.js';
 import { renderReplays } from './lobby-replays.js';
@@ -249,8 +250,8 @@ async function paintPromoLists() {
 }
 
 /* ───────── GARAGE ─────────
-   Every part of the catalog, what this wallet owns (and from which code), the collection progress, a preview with the parts picked, and SAVE: the selection goes to the
-   database (POST /api/garage/loadout) and the next ride starts with it. S.garage = the server's answer, S.pick = what is selected now (not saved until SAVE). */
+   Every part of the catalog, what this wallet owns (and from which code), the collection progress, a preview with the parts picked, and APPLY: the selection goes to the
+   database (POST /api/garage/loadout) and the next ride starts with it. S.garage = the server's answer, S.pick = what is selected now (not applied until APPLY). */
 async function renderGarage() {
   view.replaceChildren(el('p', { class: 'dim' }, 'Loading…'));
   const my = seq;
@@ -259,10 +260,12 @@ async function renderGarage() {
   }
   if (my === seq) paintGarage();
 }
+const cab = () => S.cab ??= garageCab({ onPickSlot: slot => { const c = document.querySelector(`#garage-slots [data-slot=${slot}]`); c?.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); c?.classList.add('ping'); setTimeout(() => c?.classList.remove('ping'), 1200); } });
 function paintGarage(note) {
   const g = S.garage; if (!g || S.tab !== 'garage') return;
-  view.replaceChildren(el('h2', {}, 'YOUR GARAGE'), garageProgress(g), garagePreview(S.pick), garageSlots(g, S.pick, pickPart),
+  view.replaceChildren(el('h2', {}, 'YOUR GARAGE'), garageProgress(g), cab().el, garageSlots(g, S.pick, pickPart, slot => cab().hoverSlot(slot)),
     garageActions({ garage: g, pick: S.pick, busy: !!S.saving, onSave: saveGarage, onReset: () => { S.pick = { ...g.equipped }; paintGarage(); } }));
+  cab().set(S.pick);   // the engine wears what is picked, before it is applied
   if (note) { const m = $('garage-msg'); m.textContent = note.text; m.className = `msg ${note.bad ? 'bad' : 'good'}`; }
 }
 function pickPart(slot, part) {
@@ -276,7 +279,7 @@ async function saveGarage() {
   S.saving = true; paintGarage();
   const picks = Object.fromEntries(Object.entries(S.pick).filter(([slot, item]) => item !== S.garage.equipped[slot]));
   let note;
-  try { S.garage = await api('garage/loadout', { loadout: picks }); S.pick = { ...S.garage.equipped }; note = { text: 'Saved – your next ride starts with this loadout.' }; }
+  try { S.garage = await api('garage/loadout', { loadout: picks }); S.pick = { ...S.garage.equipped }; note = { text: 'Applied – your next ride starts with this loadout.' }; }
   catch (e) { note = { text: e.message, bad: true }; }
   S.saving = false; paintGarage(note);
 }

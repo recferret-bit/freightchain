@@ -66,6 +66,9 @@ export const LOOKS = {
 /* What the cockpit wears right now. Mutated in place (the cockpit reads it every frame); set from the ride's loadout by online.js / watch.js, or by hand. */
 export const loadout = defaultLoadout();
 
+/* Transient poses the cockpit adds on top of the physics: the Garage swings the dice with it (site/garage-cab.js). 0 in the game, so nothing changes there. */
+export const pose = { dice: 0 };
+
 /** Wear `next` ({ slot: item }); unknown slots / items are ignored (the default of that slot stays), so a stale or hostile value can never break the cockpit. Returns the loadout. */
 export function setLoadout(next) {
   const base = defaultLoadout();

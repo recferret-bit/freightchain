@@ -6,7 +6,7 @@ import { ambientC } from '../sim/climate.js';
 import { CFG } from '../config.js';
 import { clamp, fmt, gearName, MONO } from '../util.js';
 import { SHAKE_MOVING, engineVib } from '../sim/shake.js';
-import { look } from '../cosmetics.js';
+import { look, pose } from '../cosmetics.js';
 
 /* Style 2 (default): conventional long-hood semi cab – hood, chrome stacks, mirrors, air gauges, CB, brake valves. */
 
@@ -66,7 +66,7 @@ export function drawCockpitRig() {
   { const lx = cx, ly = top + 2.3 * u; uiBtns.push({ id: 'cab', x: cx - 9.6 * u, y: top - 1 * u, w: 19.2 * u, h: 6.5 * u });   // the whole lamp housing is the cab-light switch   // dome lamp lens (C): glows whenever the cab light is on, day or night
     if (dn.cab) { const g = ctx.createRadialGradient(lx, ly, .5 * u, lx, ly, 14 * u); g.addColorStop(0, 'rgba(255,225,170,.55)'); g.addColorStop(1, 'rgba(255,200,130,0)'); ctx.fillStyle = g; ctx.fillRect(lx - 14 * u, ly - 14 * u, 28 * u, 28 * u); }
     ctx.fillStyle = dn.cab ? '#fff1cf' : '#3a352d'; ctx.beginPath(); ctx.roundRect(lx - 8 * u, ly - 1.7 * u, 16 * u, 3.4 * u, 1.2 * u); ctx.fill(); if (dn.cab) litRect(lx - 8 * u, ly - 1.7 * u, 16 * u, 3.4 * u); }
-  { const sw = -st.steer * .35 * clamp(st.v / 12, 0, 1) + Math.sin(performance.now() / 700) * .03 + vib * .02;
+  { const sw = -st.steer * .35 * clamp(st.v / 12, 0, 1) + Math.sin(performance.now() / 700) * .03 + vib * .02 + pose.dice;
     ctx.save(); ctx.translate(cx - 34 * u, 1 * u); ctx.rotate(sw); ctx.strokeStyle = '#ddd'; ctx.lineWidth = .25 * u; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 9 * u); ctx.stroke();
     ctx.translate(0, 9 * u); ctx.fillStyle = dc.body; ctx.beginPath(); ctx.roundRect(-3.2 * u, 0, 3 * u, 3 * u, .5 * u); ctx.roundRect(.2 * u, 1 * u, 3 * u, 3 * u, .5 * u); ctx.fill();
     ctx.fillStyle = dc.pip; for (const [dx, dy] of [[-2.7, .5], [-.7, 2.5], [.7, 1.5], [2.7, 3.5]]) { ctx.beginPath(); ctx.arc(dx * u, dy * u, .35 * u, 0, 7); ctx.fill(); } ctx.restore(); }
