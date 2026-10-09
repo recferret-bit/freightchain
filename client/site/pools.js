@@ -61,6 +61,9 @@ export function tierTickets(tickets, tier) {
   return { rows, ridable: rows.filter(t => t.status === 'active').reduce((a, t) => a + t.balance, 0), waiting: rows.filter(t => t.status === 'open').reduce((a, t) => a + t.balance, 0), refundable: rows.filter(t => t.refundable) };
 }
 
+/** Every unused ticket the wallet can ride with right now (active pools, all tiers). */
+export const ridableTickets = tickets => (tickets ?? []).filter(t => t.status === 'active').reduce((a, t) => a + t.balance, 0);
+
 /** How many more tickets this wallet may buy into the pool (the cap counts what it ever bought, like the program does). */
 export const buyRoom = (p, held) => Math.max(0, p.maxPerWallet - (held?.bought ?? 0));
 

@@ -1,7 +1,7 @@
 import { api, signOut } from './wallet.js';
 import { buyRide, buyTickets, claimRefund, waitPaid, ORDER_SIG } from './pay.js';
 import { salesOpen, pendingOrder } from './tickets-api.js';
-import { escrowExplainer, explorerTx, rideError, promoError, promoOk, buyError, sol, left, shortAddr as short } from './pools.js';
+import { ridableTickets, escrowExplainer, explorerTx, rideError, promoError, promoOk, buyError, sol, left, shortAddr as short } from './pools.js';
 import { poolCard, escrowSummary, refundRows, profileTickets } from './lobby-pools.js';
 import { redemptionList } from './lobby-promo.js';
 import { dirty, garageActions, garageProgress, garageSlots } from './lobby-garage.js';
@@ -36,10 +36,13 @@ const now = () => Date.now() + S.skew;   // server clock (skew learned from /api
 const freeLeft = m => (m.freeRides > m.freeRidesMax ? `${m.freeRides} free rides (bonus)` : `${m.freeRides}/${m.freeRidesMax} free ride${m.freeRides === 1 ? '' : 's'}`);   // a promo can take the balance above the daily cap
 const freeCd = m => m.nextFreeRideAt == null ? 'full' : `+1 in ${left(m.nextFreeRideAt - now())}`;   // the daily credit lands at 00:00 UTC, up to the cap
 
+const paintPaid = m => { const n = ridableTickets(m.tickets); $('chip-paid').textContent = `${n} paid ride ticket${n === 1 ? '' : 's'}`; };
+
 function paintHeader() {
   const m = S.me;
   $('chip-wallet').replaceChildren(el('span', { class: 'dot', style: `background:hsl(${hue(m.wallet)} 60% 50%)` }), short(m.wallet));
   $('chip-free').textContent = `${freeLeft(m)} · ${freeCd(m)}`;
+  paintPaid(m);
   $('chip-live').textContent = liveChip();
   $('chip-demo').hidden = !m.demo; $('chip-demo').textContent = `DEMO ×${m.demoScale}`;
 }

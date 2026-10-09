@@ -4,7 +4,7 @@ import { track, flushSoon } from '../../client/js/analytics.js';
 import { reportWebVitals } from '../../client/js/web-vitals.js';
 import { livePath, leaveOnClose } from '../../client/site/presence.js';   // this page counts as online in the live feed – and leaves it when closed
 import { sol, km, left, short, hue, hours, ago, plural, TIER, TIER_LONG, ROUTE } from './format.js';
-import { escrowExplainer, explorerUrl, shortAddr, statusChip, progressText, deadline } from '../../client/site/pools.js';   // the lobby's pool wording, so both pages say the same thing
+import { ridableTickets, escrowExplainer, explorerUrl, shortAddr, statusChip, progressText, deadline } from '../../client/site/pools.js';   // the lobby's pool wording, so both pages say the same thing
 
 /* Landing: four chapters (ride · loop · economy · about), fed by the public API only – no session needed to look.
    Everything from the server goes in with textContent (other riders' wallets are rendered here). */
@@ -211,7 +211,7 @@ for (const [net, url] of Object.entries(SOCIALS)) if (url) {
 /* ───── sign-in / CTA ─────
    CONNECT asks the injected wallet (Phantom / Solflare) to sign the server's challenge; the server verifies the ed25519 signature and sets the httpOnly session cookie
    (Domain = the apex in production, so the lobby, the game and the API share it). The landing never sees the token: it only asks /api/me who is signed in. */
-const btn = $('connect'), msg = $('msg'), playTop = $('play-top'), chip = $('chip-wallet');
+const btn = $('connect'), msg = $('msg'), playTop = $('play-top'), chip = $('chip-wallet'), chipRides = $('chip-rides');
 /* The invite block: a code typed here (or arriving as /?promo=CODE – a shareable invite link) rides along to the lobby's PROMO tab, where it only pre-fills the field. */
 const inviteIn = $('invite-code'), inviteMsg = $('invite-msg');
 let invite = (new URLSearchParams(location.search).get('promo') ?? '').trim().slice(0, 64);
@@ -233,7 +233,8 @@ const onConnect = async () => {
 function paintSession(me) {
   S.me = me; btn.textContent = 'OPEN THE LOBBY →'; btn.onclick = onConnect; playTop.textContent = 'LOBBY';
   chip.textContent = short(me.wallet); chip.title = `signed in: ${me.wallet}`; chip.hidden = false;
-  msg.textContent = `Signed in as ${short(me.wallet)} · ${plural(me.freeRides, 'free ride')} left`; msg.className = 'msg';
+  chipRides.textContent = `${me.freeRides} free · ${plural(ridableTickets(me.tickets), 'paid ride')}`; chipRides.hidden = false;
+  msg.textContent = ''; msg.className = 'msg';
   paintBoards();
 }
 $('invite').onsubmit = e => {
