@@ -155,7 +155,6 @@ export function update(dt) {
   // end conditions
   if (fatal) endRide(false, fatal);
   else if (st.hull <= 0) endRide(false, st.blown ? (st.blownWhy === 'brakes' ? 'The drivetrain gave out – you drove against the brakes for too long.' : 'The engine blew – it was held at max revs for too long.') : st.coldT > 0 ? 'The engine gave out – you pushed it hard while it was still cold.' : 'Your truck was wrecked – the hull gave out.');
-  else if (st.battLost) endRide(false, 'The battery went flat with the engine off – the truck is dead.');
   else if (st.offT > CFG.OFFROAD_FAIL_SECONDS || Math.abs(st.d) > 80) endRide(false, 'You spent too long off the road – the truck is stuck in the sand.');
 }
 

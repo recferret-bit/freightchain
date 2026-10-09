@@ -94,10 +94,11 @@ const freed=fightRide(3); check(!freed.ended&&freed.strain<.1,'clutch in after 3
 // battery: the starter costs charge, consumers flatten it with the engine off (then lights/radio/heater cut out and the engine won't start), the alternator refills it
 const batFresh=()=>{ fire('keyup','ShiftLeft'); input.gas=0; input.brake=0; G.Wallet.set(100); G.st.mode='done'; G.startRide(); st.park=false; st.temp=G.CFG.ENGINE_WARM+5; Object.assign(st,{s:net.Sm+300,d:2.4,psi:0,hull:100,v:0}); };
 batFresh(); const b0=st.batt; fire('keydown','KeyI'); step(60*2.6); check(st.engineOn&&b0-st.batt>.04&&b0-st.batt<.15,'starting the engine costs battery charge ('+(b0-st.batt).toFixed(3)+')');
-batFresh(); G.dn.head=true; if(!G.radio.on) fire('keydown','KeyT'); st.keyOn=true; st.heater=true; step(60*200);
-check(st.battLost&&st.mode==='done','engine off, everything on: the battery goes flat and the truck is dead – the ride is lost');
+batFresh(); G.dn.head=true; if(!G.radio.on) fire('keydown','KeyT'); st.keyOn=true; st.heater=true; let sawDead=false; for(let i=0;i<60*60;i++){ step(1); if(st.battDead) sawDead=true; }
+check(sawDead&&st.mode!=='done'&&!G.dn.head&&!st.heater,'engine off, everything on: the battery goes flat, the consumers cut out, the ride goes on');
+batFresh(); st.batt=.005; st.keyOn=true; step(60*60); check(st.batt>G.CFG.BATT.START_MIN,'flat battery, key on, nothing else: it recovers enough to crank again ('+st.batt.toFixed(3)+')');
 batFresh(); st.batt=.1; fire('keydown','KeyI'); step(60); check(!st.engineOn&&!st.ign,'a battery below START_MIN will not crank the engine');
-batFresh(); st.batt=.05; step(60*30); check(!st.battLost&&st.batt>.05+.04,'everything off: the battery heals ('+st.batt.toFixed(3)+')');
+batFresh(); st.batt=.05; step(60*30); check(st.batt>.05+.04,'everything off: the battery heals ('+st.batt.toFixed(3)+')');
 batFresh(); st.batt=G.CFG.BATT.REST_MAX+.05; step(60*30); check(Math.abs(st.batt-(G.CFG.BATT.REST_MAX+.05))<1e-6,'resting stops healing at REST_MAX');
 batFresh(); const on0=st.batt; G.dn.head=true; st.keyOn=true; step(60*10); const offDrain=on0-st.batt; batFresh(); fire('keydown','KeyI'); step(60*2.6); const e0=st.batt; G.dn.head=true; Object.assign(st,{gear:0}); step(60*10); const onDrain=e0-st.batt;
 check(offDrain>.015&&offDrain>onDrain*2,'engine off drains fast ('+offDrain.toFixed(3)+' in 10 s), engine on much slower ('+onDrain.toFixed(3)+')');
