@@ -264,6 +264,90 @@
       "command": "node --test --test-reporter=tap test/budget.test.js test/dash-scenes.test.js test/format.test.js test/page.test.js test/pools.test.js test/promos.test.js test/whitepaper.test.js test/wp-scenes.test.js",
       "failures": [],
       "note": ""
+    },
+    {
+      "stage": "client-unit",
+      "at": "2026-10-09T06:47:59.978Z",
+      "wallMs": 121,
+      "status": "pass",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "command": "node --test --test-reporter=tap test/battery.test.mjs test/spacing.test.mjs test/web-vitals.test.mjs",
+      "failures": [],
+      "note": ""
+    },
+    {
+      "stage": "landing",
+      "at": "2026-10-09T06:47:59.981Z",
+      "wallMs": 168,
+      "status": "pass",
+      "passed": 91,
+      "failed": 0,
+      "skipped": 0,
+      "command": "node --test --test-reporter=tap test/budget.test.js test/dash-scenes.test.js test/format.test.js test/page.test.js test/pools.test.js test/promos.test.js test/whitepaper.test.js test/wp-scenes.test.js",
+      "failures": [],
+      "note": ""
+    },
+    {
+      "stage": "media",
+      "at": "2026-10-09T06:47:59.981Z",
+      "wallMs": 5302,
+      "status": "pass",
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0,
+      "command": "node --test --test-reporter=tap test/audio.test.mjs test/make.test.mjs",
+      "failures": [],
+      "note": ""
+    },
+    {
+      "stage": "client-headless",
+      "at": "2026-10-09T06:47:59.982Z",
+      "wallMs": 5647,
+      "status": "pass",
+      "passed": 39,
+      "failed": 0,
+      "skipped": 0,
+      "command": "sh tools/trace.sh run",
+      "failures": [],
+      "note": ""
+    },
+    {
+      "stage": "server-unit",
+      "at": "2026-10-09T06:47:59.984Z",
+      "wallMs": 8677,
+      "status": "pass",
+      "passed": 1058,
+      "failed": 0,
+      "skipped": 0,
+      "command": "server/node_modules/.bin/vitest run --reporter=json --outputFile /var/folders/zr/b6ccvm1n2yn1xhgjr2dfgb340000gn/T/fc-census-server-unit-46919.json",
+      "failures": [],
+      "note": ""
+    },
+    {
+      "stage": "program-test",
+      "at": "2026-10-09T06:47:59.985Z",
+      "wallMs": 4304,
+      "status": "pass",
+      "passed": 50,
+      "failed": 0,
+      "skipped": 0,
+      "command": "cargo test",
+      "failures": [],
+      "note": ""
+    },
+    {
+      "stage": "server-integration",
+      "at": "2026-10-09T06:48:08.664Z",
+      "wallMs": 33529,
+      "status": "pass",
+      "passed": 295,
+      "failed": 0,
+      "skipped": 0,
+      "command": "server/node_modules/.bin/vitest run --config vitest.integration.config.ts --reporter=json --outputFile /var/folders/zr/b6ccvm1n2yn1xhgjr2dfgb340000gn/T/fc-census-server-integration-46919.json",
+      "failures": [],
+      "note": ""
     }
   ]
 }

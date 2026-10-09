@@ -498,7 +498,7 @@ function render(inv, runs) {
     if (inv.each) lines.push(`- ${inv.each} \`it.each\` / \`test.each\` call sites. The case column counts the call. The run counts each row.`);
     for (const side of doubled) lines.push(`- \`${side.name}\` is registered ${times(side.memory)} on the in-memory runner and ${times(side.postgres)} on PostgreSQL, so those cases execute that many times per backend.`);
     if (silent.length) lines.push(`- ${silent.join(', ')} report failures through the shared \`problems\` list, so they have no \`check()\` calls.`);
-    lines.push('- Wall time is one stage at a time and includes process startup. `server-integration` includes `npm run db:up`.');
+    lines.push('- Wall time is each stage\'s own clock, including process startup, and is longer when other stages are using the machine. `server-unit` finishes before `server-integration` starts. `server-integration` includes `npm run db:up`.');
     lines.push('');
   }
   lines.push('### Recorded runs');
@@ -517,10 +517,8 @@ function render(inv, runs) {
     if (runs.length > SHOW) lines.push('', `Showing ${SHOW} of ${runs.length}.`);
     const fastLatest = FAST.map((id) => latest.get(id)).filter(Boolean);
     if (fastLatest.length) {
-      const slow = fastLatest.reduce((a, b) => (a.wallMs >= b.wallMs ? a : b));
-      const sum = fastLatest.reduce((n, r) => n + r.wallMs, 0);
       lines.push('');
-      lines.push(`Newest fast stages on record: ${fastLatest.length} of ${FAST.length}, ${fmtMs(sum)} one after another. Slowest of those: \`${slow.stage}\` at ${fmtMs(slow.wallMs)}.`);
+      lines.push(fastTimingSentence(fastLatest));
       const compare = (stage, ids) => {
         const run = latest.get(stage);
         if (!run || run.passed == null) return null;
@@ -863,6 +861,51 @@ function knownStage(id) {
   return FAST.includes(id) || OPT_IN.includes(id);
 }
 
+// Stages in one lane run one after another. Lanes run together.
+// The two server stages share server/'s vitest project. The machine lane shares Chrome ports and the compose database.
+function laneOf(id) {
+  if (id === 'server-unit' || id === 'server-integration') return 'server';
+  if (id === 'e2e' || id.startsWith('e2e:') || id === 'live-board' || id === 'replay' || id === 'verified' || id === 'localnet' || id === 'posthog') return 'machine';
+  return id;
+}
+
+function schedule(ids) {
+  const groups = new Map();
+  const order = [];
+  for (const id of ids) {
+    const lane = laneOf(id);
+    if (!groups.has(lane)) {
+      groups.set(lane, []);
+      order.push(lane);
+    }
+    groups.get(lane).push(id);
+  }
+  return order.map((lane) => groups.get(lane));
+}
+
+function fastTimingSentence(fastLatest) {
+  const slow = fastLatest.reduce((a, b) => (a.wallMs >= b.wallMs ? a : b));
+  const sum = fastLatest.reduce((n, r) => n + r.wallMs, 0);
+  const start = Math.min(...fastLatest.map((r) => Date.parse(r.at)));
+  const end = Math.max(...fastLatest.map((r) => Date.parse(r.at) + r.wallMs));
+  const span = end - start;
+  const head = `Newest fast stages on record: ${fastLatest.length} of ${FAST.length}`;
+  const slowBit = `Slowest of those: \`${slow.stage}\` at ${fmtMs(slow.wallMs)}.`;
+  if (Number.isFinite(span) && span + 1000 < sum) {
+    return `${head}, overlapped in ${fmtMs(span)}. ${slowBit} Added up, the stage times are ${fmtMs(sum)}.`;
+  }
+  return `${head}, ${fmtMs(sum)} one after another. ${slowBit}`;
+}
+
+async function runLanes(list) {
+  const rows = await Promise.all(schedule(list).map(async (lane) => {
+    const done = [];
+    for (const id of lane) done.push(await runStage(id));
+    return done;
+  }));
+  return rows.flat();
+}
+
 async function main(argv) {
   const [cmd = 'print', ...rest] = argv;
   const write = rest.includes('--readme') || cmd === 'readme';
@@ -871,11 +914,8 @@ async function main(argv) {
     const stages = rest.filter((a) => !a.startsWith('--'));
     const list = stages.length ? stages : FAST;
     for (const id of list) if (!knownStage(id)) throw new Error(`unknown stage ${id}`);
-    let bad = 0;
-    for (const id of list) {
-      const row = await runStage(id);
-      if (row.status !== 'pass') bad += 1;
-    }
+    const rows = await runLanes(list);
+    const bad = rows.filter((row) => row.status !== 'pass').length;
     if (write) writeReadme();
     else process.stdout.write(`${render(inventory(), loadRuns().runs)}\n`);
     process.exitCode = bad ? 1 : 0;
@@ -946,6 +986,18 @@ async function selfTest() {
   assert(inv.scenarioSides.some((s) => s.name === 'analyticsScenarios' && s.memory === 2 && s.postgres === 2), 'analytics registered twice');
   assert(inv.pureReadable, 'pure list');
   assert(inv.layers.find((l) => l.id === 'client-headless').checks === 35, 'headless checks');
+  const lanes = schedule(['client-unit', 'server-unit', 'landing', 'server-integration', 'e2e', 'e2e:browser', 'program-check']);
+  assert(lanes.map((lane) => lane.join('+')).join(' | ') === 'client-unit | server-unit+server-integration | landing | e2e+e2e:browser | program-check', `schedule ${JSON.stringify(lanes)}`);
+  const together = fastTimingSentence([
+    { stage: 'media', at: '2026-10-09T00:00:00.000Z', wallMs: 5000 },
+    { stage: 'server-integration', at: '2026-10-09T00:00:00.100Z', wallMs: 20000 },
+  ]);
+  assert(together.includes('overlapped in 20.1 s') && together.includes('Added up, the stage times are 25.0 s'), together);
+  const serial = fastTimingSentence([
+    { stage: 'media', at: '2026-10-09T00:00:00.000Z', wallMs: 5000 },
+    { stage: 'server-integration', at: '2026-10-09T00:00:05.000Z', wallMs: 20000 },
+  ]);
+  assert(serial.includes('25.0 s one after another'), serial);
   const md = render(inv, []);
   assert(md.includes('### Pyramid') && md.includes('### Test skills') && md.includes('`run-tests`'), 'render');
   const report = join(tmpdir(), `fc-census-self-${process.pid}.json`);

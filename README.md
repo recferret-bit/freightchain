@@ -78,7 +78,7 @@ There is no CI. Run the suites locally (the `run-tests` skill). What each skill 
 
 <!-- test-census:start -->
 
-Counted 2026-10-09 03:39 UTC by `test-census`. Static cases are `it` / `test` / `#[test]` call sites. A recorded run is what that command executed.
+Counted 2026-10-09 06:48 UTC by `test-census`. Static cases are `it` / `test` / `#[test]` call sites. A recorded run is what that command executed.
 
 ### Pyramid
 
@@ -151,14 +151,21 @@ Census skill: `test-census`. Production read-only skills: `posthog-prod`, `prod-
 - 2 `it.each` / `test.each` call sites. The case column counts the call. The run counts each row.
 - `analyticsScenarios` is registered twice on the in-memory runner and twice on PostgreSQL, so those cases execute that many times per backend.
 - `e2e-chrome.mjs`, `e2e-viewer.mjs` report failures through the shared `problems` list, so they have no `check()` calls.
-- Wall time is one stage at a time and includes process startup. `server-integration` includes `npm run db:up`.
+- Wall time is each stage's own clock, including process startup, and is longer when other stages are using the machine. `server-unit` finishes before `server-integration` starts. `server-integration` includes `npm run db:up`.
 
 ### Recorded runs
 
-Newest first. 22 runs kept in `.claude/skills/test-census/runs.json` (up to 12 per stage).
+Newest first. 29 runs kept in `.claude/skills/test-census/runs.json` (up to 12 per stage).
 
 | When | Stage | Result | Passed | Failed | Skipped | Wall |
 | --- | --- | --- | ---: | ---: | ---: | ---: |
+| 2026-10-09 06:48 UTC | `server-integration` | pass | 295 | 0 | 0 | 33.5 s |
+| 2026-10-09 06:47 UTC | `program-test` | pass | 50 | 0 | 0 | 4.3 s |
+| 2026-10-09 06:47 UTC | `server-unit` | pass | 1058 | 0 | 0 | 8.7 s |
+| 2026-10-09 06:47 UTC | `client-headless` | pass | 39 | 0 | 0 | 5.6 s |
+| 2026-10-09 06:47 UTC | `media` | pass | 25 | 0 | 0 | 5.3 s |
+| 2026-10-09 06:47 UTC | `landing` | pass | 91 | 0 | 0 | 168 ms |
+| 2026-10-09 06:47 UTC | `client-unit` | pass | 14 | 0 | 0 | 121 ms |
 | 2026-10-09 03:39 UTC | `landing` | pass | 91 | 0 | 0 | 2.3 s |
 | 2026-10-09 02:17 UTC | `program-test` | pass | 50 | 0 | 0 | 1.8 s |
 | 2026-10-09 02:17 UTC | `server-integration` | pass | 295 | 0 | 0 | 28.5 s |
@@ -176,13 +183,10 @@ Newest first. 22 runs kept in `.claude/skills/test-census/runs.json` (up to 12 p
 | 2026-10-09 01:30 UTC | `client-unit` | pass | 14 | 0 | 0 | 65 ms |
 | 2026-10-09 00:54 UTC | `program-test` | pass | 50 | 0 | 0 | 8.2 s |
 | 2026-10-09 00:53 UTC | `server-integration` | pass | 295 | 0 | 0 | 35.9 s |
-| 2026-10-09 00:53 UTC | `server-unit` | pass | 1058 | 0 | 0 | 8.2 s |
-| 2026-10-09 00:53 UTC | `client-headless` | pass | 39 | 0 | 0 | 2.3 s |
-| 2026-10-09 00:53 UTC | `media` | pass | 25 | 0 | 0 | 2.6 s |
-| 2026-10-09 00:53 UTC | `landing` | pass | 90 | 0 | 0 | 110 ms |
-| 2026-10-09 00:53 UTC | `client-unit` | pass | 14 | 0 | 0 | 87 ms |
 
-Newest fast stages on record: 7 of 7, 42.6 s one after another. Slowest of those: `server-integration` at 28.5 s.
+Showing 24 of 29.
+
+Newest fast stages on record: 7 of 7, overlapped in 42.2 s. Slowest of those: `server-integration` at 33.5 s. Added up, the stage times are 57.7 s.
 A run counts more than the static call sites when `it`, `test`, or `check()` sits in a loop or in `it.each`, and when a scenario function is registered more than once.
 `server-unit` executed 1058. Static call sites for that stage: 975.
 `server-integration` executed 295. Static call sites for that stage: 283.

@@ -21,7 +21,7 @@ Prints the pyramid (files, static `it` / `test` / `#[test]` calls, `check()` cal
 npm run test:census -- run
 ```
 
-Runs the fast stages one at a time and appends each result to `.claude/skills/test-census/runs.json` as it finishes. A failure is recorded. A stage that runs past its limit is recorded as `timeout` after its process group is killed. The next stage still runs. Wall time includes process startup. `server-integration` includes `npm run db:up` and uses `freightchain_test`. From a worktree whose migrations differ, set `TEST_DATABASE_URL` to a database whose name ends in `_test` before `run`. Any other database name fails that stage before Docker starts.
+Runs the fast stages together and appends each result to `.claude/skills/test-census/runs.json` as it finishes. `server-unit` and `server-integration` share the server vitest project, so integration starts when the unit stage finishes. Opt-in stages that start Chrome, a server, or a validator share one lane and run one after another. `program-check` is its own lane. A failure is recorded. A stage that runs past its limit is recorded as `timeout` after its process group is killed. The other stages still run. Wall time is that stage's own clock and includes process startup, so a busy machine makes it longer. `server-integration` includes `npm run db:up` and uses `freightchain_test`. From a worktree whose migrations differ, set `TEST_DATABASE_URL` to a database whose name ends in `_test` before `run`. Any other database name fails that stage before Docker starts.
 
 Fast stages: `client-unit`, `landing`, `media`, `client-headless`, `server-unit`, `server-integration`, `program-test`.
 
