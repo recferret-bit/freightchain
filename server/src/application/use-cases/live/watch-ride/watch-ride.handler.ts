@@ -16,7 +16,8 @@ import { WatchRideQuery } from './watch-ride.query.js';
 /**
  * PUBLIC – anyone may watch any ride that has started (live, or a replay of a finished one while its recording is kept: TELEMETRY_RETENTION_DAYS).
  * The replay is the verified-play recording itself (10 Hz samples, ~15 s batches), so a live view runs about one batch behind the driver.
- * Never exposed: the input events (the verdict's human-timing check reads them), the end reason, payments.
+ * Never exposed: the input events (the verdict's human-timing check reads their ms timing), the end reason, payments. What spectators see of the inputs is the
+ * samples' input column (SAMPLE_INPUT_COL): the controls in use per 100 ms sample – the replay's input display, no timing finer than that.
  */
 @QueryHandler(WatchRideQuery)
 export class WatchRideHandler implements IQueryHandler<WatchRideQuery, WatchDto> {

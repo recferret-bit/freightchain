@@ -9,7 +9,7 @@ import { radio } from '../sim/radio.js';
 import { setNight } from '../world/daynight.js';
 import { toggleHeater } from '../sim/climate.js';
 import { toggleCab } from '../sim/battery.js';
-import { recordInput } from '../telemetry.js';
+import { recordInput, releaseInputs } from '../telemetry.js';
 import { answerPrompt } from '../prompt.js';
 
 /* Keyboard + mouse input. Side effects only: listeners are attached on import. */
@@ -51,7 +51,7 @@ addEventListener('keydown', e => {
   else if (e.code === 'Enter' && (st.mode === 'menu' || st.mode === 'done')) document.getElementById('go')?.click();
 });
 addEventListener('keyup', e => { if (st.watch) return; recordInput(e.code, 0, e.timeStamp); if (KEYS[e.code]) { input[KEYS[e.code]] = 0; e.preventDefault(); } });
-addEventListener('blur', () => { for (const k in input) input[k] = 0; });
+addEventListener('blur', () => { for (const k in input) input[k] = 0; releaseInputs(); });
 
 /* clickable dash buttons (WIPER / WASH) */
 const btnAt = e => uiBtns.find(b => e.clientX >= b.x && e.clientX <= b.x + b.w && e.clientY >= b.y && e.clientY <= b.y + b.h);

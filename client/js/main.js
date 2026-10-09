@@ -14,6 +14,8 @@ import * as spacing from './world/spacing.js';
 import { roads } from './net/orchestrator.js';
 import { net } from './net/network.js';
 import { drawCockpit } from './cockpit/index.js';
+import { uiBtns } from './cockpit/common.js';
+import * as inputBits from './input-bits.js';
 import { showMenu, startRide, resetRide } from './ui/game.js';
 import { HOLES, holeAt, holesNear, clearHoleCache } from './world/holes.js';
 import { updateDayNight, setNight, setPhase, setClock, savedClock } from './world/daynight.js';
@@ -54,6 +56,6 @@ if (await initWatch()) {   // only with ?watch=<id> (see watch.js): the watched 
   mountWatchPanel();
 } else { resize(); resetRide(); showMenu('FREIGHT CHAIN', 'Long-haul truck simulator'); }
 requestAnimationFrame(frame);
-window.__game = { audio, cosmetics, online, telemetry, prompt, watch, liveFeed, radio, roadObjects, chunks, spacing, roads, net, st, disp, CFG, Wallet, input, tryShift, ignition, startRide, curv, spawn, traffic: cars, selectTheme, THEMES, setNight, setPhase, setClock, dn, weather, holes: { HOLES, holeAt, holesNear, clearHoleCache } };   // handy for console debugging
+window.__game = { audio, cosmetics, online, telemetry, prompt, watch, liveFeed, radio, roadObjects, chunks, spacing, roads, net, st, disp, CFG, Wallet, input, tryShift, ignition, startRide, curv, spawn, traffic: cars, selectTheme, THEMES, setNight, setPhase, setClock, dn, weather, uiBtns, inputBits, holes: { HOLES, holeAt, holesNear, clearHoleCache } };   // handy for console debugging
 
  

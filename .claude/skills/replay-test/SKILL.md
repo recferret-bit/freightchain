@@ -25,14 +25,15 @@ Both scripts drive a headless driver: it can't really steer, so it presses keys 
 ## What each suite checks
 
 **watch** – `server/scripts/e2e-watch.mjs`, two Chromes on one LIVE ride:
-- the spectator opens `play.html?watch=<id>` signed out: watch mode on the driver's seed + route, no menu, CONNECT WALLET offered, the replay has 14-column samples, the truck moves, the driver's CB shows "1 watching";
+- the spectator opens `play.html?watch=<id>` signed out: watch mode on the driver's seed + route, no menu, CONNECT WALLET offered, the replay has 15-column samples (clock, switches, inputs), the driver's keys are in the input column and light up in the live view, the truck moves, the driver's CB shows "1 watching";
 - signed in: chat box + 6 donation buttons; a typed line reaches the driver's CB panel;
 - NIGHT → the driver's day turns to night and the effect is stamped; a second effect right after is refused with the wait (or a NOTE if the clicks straddled a window boundary); 21 s later SINKHOLE → placed ≥ 500 m ahead, the same hole (type, place, lane) on the driver's road AND in the replay; the spectator's own feed shows "✓ on the road" (the `since` stamps);
 - a seek into an unloaded part holds its target and plays from there; seeking to the night shows night;
 - the driver ends: the page becomes a read-only REPLAY; the feed totals are kept; no page errors on either side.
 
 **replay** – `server/scripts/e2e-replay.mjs`, a FINISHED ride:
-- records ~45 game s with NIGHT and SINKHOLE paid through the API (both applied + stamped), a chat line, then ends the shift and checks the recording is kept;
+- records ~45 game s with NIGHT and SINKHOLE paid through the API (both applied + stamped), a chat line, a real MOUSE click on the dash's WIPER button, then ends the shift and checks the recording is kept;
+- the click is in the input column as WIPER + MOUSE near when it happened; the keys light up while the replay plays; playing over the click lights WIPER as a click (pointer + border);
 - a signed-out visitor finds the ride in the LANDING's ticker and follows its link: REPLAY mode, starts at t ≈ 0, speeds shown / LIVE hidden, timeline = the recording, read-only feed with both stamps;
 - 16× plays > 4× faster than 1×; the paid sinkhole is on the road from the start where the driver's game put it; a seek before the night shows day, after it night (the clock column); playing to the end holds the last frame and says "end of the ride"; a recorded hit's red flash fades; no traffic (it is not recorded);
 - the driver's traffic is recorded beside the batches and drawn in the replay (the traffic SIM stays off);
@@ -48,10 +49,10 @@ The watch suite also folds the driver's CB with K, unfolds it with a click, and 
 
 The scripts cannot judge looks. Read the screenshots with the Read tool:
 - `$TMPDIR/fc-watch-shots/`: `watch-signed-out`, `watch-desktop`, `watch-night`, `watch-phone`, `driver-cb`;
-- `$TMPDIR/fc-replay-shots/`: `replay-start`, `replay-night`, `replay-end`, `replay-phone`, `replay-missing`;
+- `$TMPDIR/fc-replay-shots/`: `replay-start`, `replay-inputs` (the WIPER click + the key caps), `replay-night`, `replay-end`, `replay-phone`, `replay-missing`;
 - `$TMPDIR/fc-flags-shots/`: `flags-paid` (the devnet-SOL donation panel), `flags-off` (chat and donations off).
 
-Eyeball: the panel doesn't cover the road on desktop and is a bottom sheet on a phone; the CB panel clears the left mirror and the centre toast; no permanent red tint or shake in a replay; the night really is dark (it fades in over ~3 s); the sinkhole's cones and warning sign show ahead in `replay-end` / `watch` shots when the truck is near; feed lines are readable and mark "✓ on the road".
+Eyeball: the yellow input borders sit on the buttons they belong to and the key caps clear the left mirror and the hood (`replay-inputs`); the panel doesn't cover the road on desktop and is a bottom sheet on a phone; the CB panel clears the left mirror and the centre toast; no permanent red tint or shake in a replay; the night really is dark (it fades in over ~3 s); the sinkhole's cones and warning sign show ahead in `replay-end` / `watch` shots when the truck is near; feed lines are readable and mark "✓ on the road".
 
 ## Report
 

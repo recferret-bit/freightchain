@@ -4,7 +4,8 @@ import { RideEvent } from '../../../../../src/domain/live/ride-event.entity.js';
 import { RideBatch } from '../../../../../src/domain/telemetry/ride-batch.entity.js';
 import { WATCH_BATCH_PAGE } from '../../../../../src/domain/live/live-rules.js';
 import { NotFoundError } from '../../../../../src/domain/shared/errors.js';
-import { hashBatch, recording } from '../../../../support/recording.js';
+import { hashBatch, INPUT_BIT, recording } from '../../../../support/recording.js';
+import { SAMPLE_INPUT_COL } from '../../../../../src/domain/telemetry/telemetry-rules.js';
 import { unitContext } from '../../../../support/unit-context.js';
 
 describe('WatchRideHandler', () => {
@@ -32,6 +33,18 @@ describe('WatchRideHandler', () => {
     expect(view.viewers).toBe(1);
     expect((await watch(ride.id, 0, 0, 'viewer-2')).viewers).toBe(2);
     expect((await watch(ride.id, 0, 0, '')).viewers).toBe(2); // no viewer id: not counted
+  });
+
+  it('the replay columns go out as uploaded – the input column (controls per 100 ms sample) is how spectators see the driver\'s keys and clicks; the raw events never', async () => {
+    const { ctx, watch } = setup();
+    const ride = await ctx.freeRide('driver', true);
+    const [b0] = recording(ride.id, { seconds: 15, replay: true });
+    ctx.clock.advance(15);
+    await ctx.batches.insert(RideBatch.accept(ride.id, b0!, hashBatch(b0!), ctx.now()));
+    const [served] = (await watch(ride.id)).batches;
+    expect(served!.samples).toEqual(b0!.samples);
+    expect(served!.samples.map((r) => r[SAMPLE_INPUT_COL])).toContain(INPUT_BIT.gas);
+    expect(JSON.stringify(served)).not.toContain('KeyW');
   });
 
   it('what the driver wore goes with it, so spectators and replays draw the real cockpit', async () => {

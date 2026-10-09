@@ -5,7 +5,8 @@ import { BATCH_MAX_BYTES, SAMPLE_COUNT_SLACK, SAMPLE_HZ, SAMPLE_RATE_SLACK, TRAF
 /** One input event: milliseconds since the ride started (wall time), the key / dash-button code, 1 = pressed 0 = released. */
 export type InputEvent = [t: number, code: string, down: 0 | 1];
 
-/** What the client uploads (already validated at the HTTP boundary). `samples` rows are `[t, s, d, psi, v, rpm, gear, hull, gas, brake, steer, clutch]` in GAME seconds. */
+/** What the client uploads (already validated at the HTTP boundary). `samples` rows are `[t, s, d, psi, v, rpm, gear, hull, gas, brake, steer, clutch]` in GAME seconds,
+    + the replay columns `clock, flags, inputs` (telemetry-rules.ts SAMPLE_*_COL – never judged). */
 export interface BatchBody {
   seq: number;
   /** the previous batch's hash – the ride id for seq 0 */

@@ -174,7 +174,7 @@ footer { border-top: 1px solid var(--rule); padding-top: 18px; display: flex; fl
 }
 
 /* ── replay & donations additions ── */
-.row.r14 { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.row.r14 { grid-template-columns: repeat(8, minmax(0, 1fr)); }
 .cell.new { background: var(--chip-pen); border-color: var(--pen); }
 .fx { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 @media (max-width: 760px) { .fx { grid-template-columns: 1fr; } }

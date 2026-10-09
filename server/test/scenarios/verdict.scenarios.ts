@@ -73,6 +73,12 @@ export function verdictScenarios(h: () => Harness): void {
     expect((await anon().get('/api/leaderboard').expect(200)).body.rows).toEqual([]);
   });
 
+  it('a recording with the replay columns (clock, switches, inputs) is judged exactly like one without – VERIFIED, ranked', async () => {
+    const d = await login(VERDICT_DEMO);
+    const end = await paidShift(d, { replay: true });
+    expect(end).toMatchObject({ status: 'completed', verdict: { status: 'verified', reasons: [] } });
+  });
+
   it('a recording that contradicts the ride (ends 600 m short) → REJECTED', async () => {
     const d = await login(VERDICT_DEMO);
     const { id, prompts } = await driven(d);

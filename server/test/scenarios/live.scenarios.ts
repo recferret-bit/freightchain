@@ -1,6 +1,7 @@
 import { bindClient } from '../support/client.js';
 import type { Harness } from '../support/harness.js';
-import { recording, upload } from '../support/recording.js';
+import { INPUT_BIT, recording, upload } from '../support/recording.js';
+import { SAMPLE_INPUT_COL } from '../../src/domain/telemetry/telemetry-rules.js';
 
 /* Live streams: anyone watches (the replay of the recording + the feed), a signed-in spectator writes / donates (mock), the driver's game reads its inbox and
    stamps the effects it applied. Same scenarios on in-memory and PostgreSQL. */
@@ -61,6 +62,22 @@ export function liveScenarios(h: () => Harness): void {
     const { batches } = (await anon().get(`/api/watch/${ride.id}`).expect(200)).body;
     expect(batches[0].traffic).toEqual(traffic);
     expect(Object.keys(batches[1])).not.toContain('traffic');
+  });
+
+  it('the replays\' input column: the controls per sample travel in the hashed recording (a 15-column row) and come back to every watcher as uploaded – the raw input events never do', async () => {
+    const { driver, ride } = await onTheRoad();
+    const batches = recording(ride.id, { seconds: 30, replay: true });
+    sec(30);
+    expect((await upload(driver.agent, ride.id, batches)).every((r) => r.stored && r.hashOk)).toBe(true);
+    const { body } = await anon().get(`/api/watch/${ride.id}`).expect(200);
+    const served = (body.batches as { samples: number[][] }[]).flatMap((b) => b.samples);
+    expect(served).toEqual(batches.flatMap((b) => b.samples));
+    expect(served.every((r) => r.length === SAMPLE_INPUT_COL + 1)).toBe(true);
+    const lit = served.filter((r) => r[SAMPLE_INPUT_COL]! & INPUT_BIT.gas).length;
+    expect(lit).toBeGreaterThan(served.length / 3); // the gas, held in long stretches
+    expect(JSON.stringify(body)).not.toMatch(/KeyW|ShiftLeft/);
+    const sent = (await anon().get(`/api/watch/${ride.id}`).query({ from: 1 }).expect(200)).body.batches[0].samples as number[][];
+    expect(sent).toEqual(batches[1]!.samples); // a seek pages them like any sample
   });
 
   it('a signed-in spectator writes and donates; the driver reads it in its inbox, stamps the obstacle it placed, and every watcher sees where', async () => {

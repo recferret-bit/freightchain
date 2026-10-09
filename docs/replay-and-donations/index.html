@@ -60,7 +60,7 @@
     <h2 id="s-path">From the driver's wheel to a spectator's screen</h2>
   </div>
   <div class="pipe">
-    <div class="step"><span class="n">1</span><span class="where">Driver's browser</span><h3>Record</h3><p>Every online ride records the truck 10 times a second (verified play). Two columns were added for spectators: the hour of the day and the cab's switches.</p></div>
+    <div class="step"><span class="n">1</span><span class="where">Driver's browser</span><h3>Record</h3><p>Every online ride records the truck 10 times a second (verified play). Three columns were added for spectators: the hour of the day, the cab's switches and the controls in use.</p></div>
     <div class="step"><span class="n">2</span><span class="where">Every 15 s of driving</span><h3>Upload</h3><p>The batch is sealed, hashed, chained and stored by the server – the same upload the verdict judges. There is no second stream.</p></div>
     <div class="step"><span class="n">3</span><span class="where">Watch page, every 4 s</span><h3>Poll</h3><p><code>GET /api/watch/:id</code> returns the ride, the next batches the playhead needs, and the feed since the last poll.</p></div>
     <div class="step"><span class="n">4</span><span class="where">Every frame</span><h3>Replay</h3><p>The road is rebuilt from the seed + route; the truck's state is interpolated from the samples. Nothing is simulated.</p></div>
@@ -76,7 +76,7 @@
   </div>
   <div class="spec-grid">
     <div class="spec">
-      <div class="top" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><h3>One sample · 14 numbers</h3><span class="chip pen">10 per game second</span></div>
+      <div class="top" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><h3>One sample · 15 numbers</h3><span class="chip pen">10 per game second</span></div>
       <div class="row r14" aria-label="one recorded sample">
         <div class="cell"><span class="v">412.3</span><span class="k">t · s</span></div>
         <div class="cell"><span class="v">9810</span><span class="k">road · m</span></div>
@@ -92,8 +92,9 @@
         <div class="cell"><span class="v">0</span><span class="k">clutch</span></div>
         <div class="cell new"><span class="v">21.5</span><span class="k">clock · h</span></div>
         <div class="cell new"><span class="v">11</span><span class="k">switches</span></div>
+        <div class="cell new"><span class="v">65537</span><span class="k">inputs</span></div>
       </div>
-      <p class="soft" style="font-size:14px">The first twelve are what the verdict judges. The last two (highlighted) were <b>appended</b> for replays and are never judged – old recordings without them still play, with lights guessed from the revs.</p>
+      <p class="soft" style="font-size:14px">The first twelve are what the verdict judges. The last three (highlighted) were <b>appended</b> for replays and are never judged – old recordings without them still play, with lights guessed from the revs and no input display.</p>
     </div>
     <div class="spec">
       <div class="top"><h3>The switches bitmask</h3></div>
@@ -114,8 +115,9 @@
   <div class="notlist" aria-label="what a replay does not show">
     <span class="no"><s>windscreen cracks, debris</s></span>
     <span class="no"><s>the radio</s></span>
-    <span class="no"><s>the raw key presses</s> – they are what the verdict's human-timing check measures, so they are never published</span>
+    <span class="no"><s>the raw key presses</s> – their millisecond timing is what the verdict's human-timing check measures, so they are never published</span>
   </div>
+  <p class="soft">What spectators DO see of the driver's hands is the <b>inputs</b> column: one bit per control (gas, brake, steer, clutch, gears, the key, the lights, wipers, washer, heater, radio, pause, mute – W and ↑ are the same bit) plus one for <i>clicked on the dash</i>, set when the control was held at that sample or pressed since the one before, so a tap shorter than a tenth of a second still shows. The replay lights them as <b>flashing yellow borders</b>: a dash button is outlined where it sits (a click adds a pointer and a ring), keys show as caps in the lower left of the windscreen – Q W E / A S D / ⇧ always there, the others while lit. A fast replay never skips one: every sample the playhead passed in a frame counts, and a light fades over half a second of wall time. In the example, 65537 = gas held + the headlights switched. The bits never change meaning; new controls are appended (<code>client/js/input-bits.js</code>).</p>
 </section>
 
 <section aria-labelledby="s-play">
@@ -387,7 +389,7 @@ signature   a paid donation's transfer (unique)
         <tr><td>Feature flags</td><td><code>server/src/domain/live/live-features.ts</code> (resolved per ride) · <code>server/src/application/services/live-access.service.ts</code> (the one gate)</td></tr>
         <tr><td>The effect table (both sides)</td><td><code>client/js/live-effects.js</code> ⇄ <code>server/src/domain/live/live-rules.ts</code> (prices, windows) – keep them in step</td></tr>
         <tr><td>Placed holes</td><td><code>client/js/world/holes.js</code> <code>placeHole</code> / <code>obstacleSpot</code>, <code>client/js/world/chunks.js</code> <code>rebuild</code></td></tr>
-        <tr><td>The two replay columns</td><td><code>client/js/telemetry.js</code> (<code>FLAGS</code>), filled in <code>client/js/ui/game.js</code></td></tr>
+        <tr><td>The three replay columns</td><td><code>client/js/telemetry.js</code> (<code>FLAGS</code> filled in <code>client/js/ui/game.js</code>; the inputs from <code>recordInput</code>) · <code>client/js/input-bits.js</code> (the bit table, the lights) · <code>client/js/cockpit/inputs.js</code> (the yellow borders) · <code>server/src/domain/telemetry/telemetry-rules.ts</code> <code>SAMPLE_*_COL</code></td></tr>
         <tr><td>Server</td><td><code>server/src/{domain,application,infrastructure,presentation}/**/live</code>, the table in <code>server/prisma/live/live.prisma</code></td></tr>
         <tr><td>Tests</td><td>unit specs per handler, the repository's PostgreSQL spec, HTTP scenarios (<code>server/test/scenarios/live.scenarios.ts</code>), three races in the concurrency suite, <code>server/scripts/e2e-watch.mjs</code> – a driver and a spectator in two real Chromes on a live ride – and <code>server/scripts/e2e-replay.mjs</code> – a finished ride opened from the landing's ticker: speeds, seeks across a paid night, the paid hole from history, the end. and <code>server/scripts/e2e-live-flags.mjs</code> – the production flags (a paid donation signed by a fake wallet) and everything off. All three run with the <code>replay-test</code> skill: <code>bash .claude/skills/replay-test/run.sh</code></td></tr>
       </tbody>

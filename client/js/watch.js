@@ -16,13 +16,15 @@ import { EFFECT_INFO, advanceCursor } from './live-effects.js';
 import { visitorId, leaveOnClose } from '../site/presence.js';
 import { VEHICLES, buildVehicle, removeVehicle } from './world/vehicles.js';
 import { TRAFFIC_TYPES } from './sim/traffic.js';
+import { passedMask, lightInputs, inputLights } from './input-bits.js';
 
 /* Live streams, the SPECTATOR's side: play.html?watch=<rideId>. OPT-IN like online.js – without ?watch nothing here runs.
    No video and no WebSockets: the page polls GET /api/watch/:id and REPLAYS the ride's verified-play recording (10 Hz samples, uploaded every ~15 s) on its
    own copy of the road – the layout is a pure function of the seed + route, so it is the driver's road. A live view therefore runs about LIVE_LAG behind.
    What is replayed: the truck (position, heading, speed, revs, gear, pedals, hull), the clock hour, lights / wipers / heater / parking brake, the signal
    clock, the obstacles spectators paid for (placed where the driver's game stamped them), the traffic around the truck (recorded at 2 Hz beside each batch –
-   recordings from before that show an empty road). What is NOT: windscreen cracks, debris, the radio. Nothing is simulated: st is written from the samples
+   recordings from before that show an empty road), the driver's inputs – keys and dash clicks, a flashing yellow border per control (input-bits.js; older
+   recordings show none). What is NOT: windscreen cracks, debris, the radio. Nothing is simulated: st is written from the samples
    every frame (st.watch stops the sim and input). */
 const POLL_LIVE_MS = 4000, POLL_REPLAY_MS = 10_000;
 export const LIVE_LAG = 25;                 // s behind the newest recorded second: one ~15 s batch + its upload, with room for jitter
@@ -35,6 +37,7 @@ export const watch = {
   id: null, ride: null, error: '', now: 0, skew: 0,
   features: { chat: true, donations: true, payment: 'mock', effects: true },   // what spectators may do on THIS ride (the server's LIVE_* flags)
   rec: { lastSeq: null, t1: 0 }, batches: new Map(), rows: [], tframes: [], cars: new Map(), rowsSeq: -1, events: new Map(), cursor: 0, since: 0, totals: { messages: 0, donations: 0, lamports: 0 }, viewers: 0,
+  inputs: inputLights, inT: -1,   // the controls lit now (cockpit/index.js draws them) · the playhead's time when they were last read
   wt: 0, playing: true, speed: 1, follow: true, buffering: false, seeking: false, started: false, jumped: true, lastHull: 100, timer: 0, polling: null,
   onUpdate: null, onEvent: null,   // set by ui/watch-panel.js: repaint the panel / a new feed line
 };
@@ -102,7 +105,7 @@ function placeObstacle(e) {
 const replaceObstacles = () => { for (const e of watch.events.values()) { e.onRoad = false; placeObstacle(e); } };
 export function startWatch() {
   replaceObstacles();
-  watch.started = true; watch.jumped = true;
+  watch.started = true; watch.jumped = true; inputLights.on = true;
   watch.wt = watch.follow ? liveTarget() : (watch.rows[0]?.[0] ?? 0); watch.seeking = watch.follow;   // joining a live ride: hold until the live edge is loaded
   schedule(0);
 }
@@ -156,7 +159,7 @@ export function stepWatch(dt) {
   if (watch.seeking) {   // hold the target until a sample at (or right before) it is loaded – the frame keeps the last picture meanwhile
     if (live) watch.wt = liveTarget();
     const i = find(watch.wt), a = R[i], b = R[i + 1];
-    if (!a || (!b ? watch.wt - a[0] > GAP : b[0] - a[0] > GAP && watch.wt - a[0] > GAP)) { watch.buffering = true; return; }
+    if (!a || (!b ? watch.wt - a[0] > GAP : b[0] - a[0] > GAP && watch.wt - a[0] > GAP)) { watch.buffering = true; lightInputs(0, dt); return; }
     watch.seeking = false;
   }
   if (watch.playing) {
@@ -170,9 +173,12 @@ export function stepWatch(dt) {
   watch.buffering = !b || b[0] - a[0] > GAP;   // at the end of what is loaded (live edge, a seek, a missing batch): hold the last frame
   if (watch.buffering) watch.wt = a[0];
   const k = watch.buffering ? 0 : (watch.wt - a[0]) / Math.max(1e-6, b[0] - a[0]);
+  lightInputs(inputsPassed(i), dt);   // before apply(): it clears `jumped`
   apply(a, b ?? a, k, dt);
   drawTraffic(watch.wt);
 }
+
+const inputsPassed = i => { const m = passedMask(watch.rows, i, watch.jumped ? -1 : watch.inT); watch.inT = watch.rows[i][0]; return m; };
 
 /* the recorded traffic (2 frames per game second beside each batch, [t, …(id, type, colour, x, z, yaw, flags) per vehicle]): every vehicle of the frame
    at or before t, interpolated towards the next frame, as the same mesh the driver saw (type + colour pick); gone from the frame = removed. No frames near

@@ -26,6 +26,16 @@ describe('RideBatchPrismaRepository (PostgreSQL)', () => {
     expect(await repo.listByRide('00000000-0000-4000-8000-ffffffffffff')).toEqual([]);
   });
 
+  it('the replay columns (clock, switches, inputs) are stored with the samples and read back exactly; gzip makes the input column nearly free', async () => {
+    const ride = await started(), other = await started();
+    const [replay] = recording(ride.id, { seconds: 15, replay: true }), [plain] = recording(other.id, { seconds: 15 });
+    await repo.insert(RideBatch.accept(ride.id, replay!, hashBatch(replay!), at(0)));
+    await repo.insert(RideBatch.accept(other.id, plain!, hashBatch(plain!), at(0)));
+    expect((await repo.listFrom(ride.id, 0, 10))[0]!.body.samples).toEqual(replay!.samples);
+    const size = async (id: string) => (await prisma.rideBatch.findUniqueOrThrow({ where: { rideId_seq: { rideId: id, seq: 0 } } })).payload.byteLength;
+    expect((await size(ride.id)) - (await size(other.id))).toBeLessThan(600); // 150 samples × 3 columns, stored gzipped: a few hundred bytes per 15 s batch
+  });
+
   it('a second insert of the same (rideId, seq) is false and leaves the first row untouched', async () => {
     const ride = await started();
     const [b0] = recording(ride.id, { seconds: 10 });

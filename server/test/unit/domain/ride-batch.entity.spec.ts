@@ -1,6 +1,7 @@
 import { RideBatch, type BatchBody, type InputEvent } from '../../../src/domain/telemetry/ride-batch.entity.js';
 import { BadRequestError } from '../../../src/domain/shared/errors.js';
-import { hashBatch, recording } from '../../support/recording.js';
+import { hashBatch, INPUT_BIT, recording } from '../../support/recording.js';
+import { SAMPLE_INPUT_COL } from '../../../src/domain/telemetry/telemetry-rules.js';
 
 const NOW = new Date(Date.UTC(2036, 9, 8, 12, 0, 0));
 const body = (over: Partial<BatchBody> = {}): BatchBody => {
@@ -42,6 +43,19 @@ describe('RideBatch', () => {
     expect(RideBatch.accept('ride-x', { ...b0!, traffic }, hashBatch(b0!), NOW).hashOk).toBe(true);
     const huge = Array.from({ length: 81 }, (_, i) => [i / 2]);
     expect(RideBatch.accept('ride-x', { ...b0!, traffic: huge }, hashBatch(b0!), NOW).body.traffic).toBeUndefined();
+  });
+
+  it('the replay columns (clock, switches, inputs) are INSIDE the hashed text – tamper-evident like the rest – and change nothing the verdict measures', () => {
+    const [plain] = recording('ride-r', { seconds: 15 }), [replay] = recording('ride-r', { seconds: 15, replay: true });
+    expect(replay!.samples.every((r) => r.length === SAMPLE_INPUT_COL + 1)).toBe(true);
+    expect(replay!.samples.some((r) => (r[SAMPLE_INPUT_COL]! & INPUT_BIT.gas) !== 0)).toBe(true); // the gas held in long stretches
+    expect(RideBatch.canonical(replay!)).toContain(JSON.stringify(replay!.samples));
+    expect(replay!.hash).not.toBe(plain!.hash);
+    const edited = { ...replay!, samples: replay!.samples.map((r, i) => (i === 3 ? [...r.slice(0, -1), INPUT_BIT.head | INPUT_BIT.mouse] : r)) };
+    expect(RideBatch.accept('ride-r', edited, hashBatch(edited), NOW).hashOk).toBe(false); // a click added after the hash was sealed: the server's hash no longer matches
+    const a = RideBatch.accept('ride-r', plain!, hashBatch(plain!), NOW), b = RideBatch.accept('ride-r', replay!, hashBatch(replay!), NOW);
+    expect(b.summary).toEqual(a.summary);
+    expect(b.snapshot().bytes - a.snapshot().bytes).toBeLessThan(150 * 12); // ≈ 10 bytes a sample for the three columns: ~1.5 kB per 15 s batch before gzip
   });
 
   it('a synthetic recording chains: prevHash of each batch is the hash of the one before, the first one the ride id', () => {

@@ -49,6 +49,7 @@ export interface WatchBatchDto {
   seq: number;
   t0: number;
   t1: number;
+  /** the recording's rows as uploaded: the 12 judged columns + the replay ones (clock, switches, inputs – telemetry-rules.ts SAMPLE_*_COL) */
   samples: number[][];
   /** the nearby traffic, 2 frames per game second: [t, …(id, type, colour, x, z, yaw, flags) per vehicle] (absent = not recorded) */
   traffic?: number[][];

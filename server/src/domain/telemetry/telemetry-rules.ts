@@ -6,6 +6,13 @@ export const BATCH_MAX_SAMPLES = 400; // ≈ 40 s at 10 Hz – a 15 s batch is 1
 export const BATCH_MAX_INPUTS = 2000;
 export const SAMPLE_MAX_WIDTH = 16; // numbers per sample row
 export const SAMPLE_WIDTH = 12; // the columns the verdict reads: [t, s, d, psi, v, rpm, gear, hull, gas, brake, steer, clutch] (replay columns are appended after)
+/* The replay columns – appended for spectators (client/js/watch.js), inside the hashed text like the rest, NEVER judged (the verdict reads SAMPLE_WIDTH);
+   older recordings stop earlier. Append, never insert. */
+export const SAMPLE_CLOCK_COL = 12; // the hour of the day (0..24)
+export const SAMPLE_FLAGS_COL = 13; // the cab's switches (client/js/telemetry.js FLAGS)
+/** the driver's controls: held at the sample OR pressed since the one before – one bit per control + one for "clicked on the dash" (client/js/input-bits.js).
+    Nothing finer than a sample: the raw input events (ms timing, the human-likeness check) are never served to spectators. */
+export const SAMPLE_INPUT_COL = 14;
 export const SAMPLE_TIME_SLACK = 0.05; // sample times may stick out of their batch's [t0, t1] by this much (rounding)
 export const BATCH_MAX_BYTES = 98_304; // canonical JSON; below Express's default 100 kB body limit (a real 15 s batch is ≈ 15 kB)
 export const BATCH_MAX_SEQ = 100_000;
