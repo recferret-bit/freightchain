@@ -145,8 +145,8 @@ export function update(dt) {
 
   bodySway(dt, vel0, gain);
 
-  collide(dt); hitHoles(dt);
-  const fatal = updateTraffic(dt);   // other vehicles; a direct hit returns the reason the ride is over
+  const wall = collide(dt); hitHoles(dt);
+  const fatal = wall || updateTraffic(dt);   // other vehicles; a direct hit returns the reason the ride is over
 
   // windshield bugs
   st.bugT -= dt;
