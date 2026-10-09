@@ -19,6 +19,7 @@ const scene = (crop, fn, extra = {}) => ({ crop, ...extra, tick(t, g) { base(g);
 const driving = (st, gear, rpm) => Object.assign(st, { gear, rpm, v: rpm / 2000 * KMH_AT_2000[gear - 1] / 3.6 });
 
 /* the shared crops */
+const SHIFTER = [967, 510, 184, 123];   // the floor shifter centred (base x ≈ 1059, the bottom of the canvas)
 const KEY = [804, 538, 142, 95], PEDALS = [170, 534, 136, 92], SPEEDO = [441, 408, 222, 148], TACH = [617, 408, 222, 148], LAMPS = [162, 401, 183, 122];
 const BARS = { clu: [182, 536, 32, 86], brk: [211, 536, 32, 86], gas: [240, 536, 32, 86] };
 const LAMP_AT = { stall: [182, 403, 86, 30], cold: [267, 403, 66, 30], off: [182, 434, 86, 30], strain: [267, 434, 66, 30], over: [182, 465, 86, 30], brakes: [267, 465, 66, 30], grind: [182, 495, 86, 30], bat: [267, 495, 66, 30] };
@@ -28,14 +29,14 @@ export const WP_SCENES = {
   'key-on': scene(KEY, (t, { st }) => {   // OFF → bulb check → ON (engine still off) → OFF, 5 s loop
     const c = t % 5; st.engineOn = false; st.keyOn = c >= 1.8 && c < 4.4; st.rpm = 0;
     if (c >= .8 && c < 1.8) st.ign = { t: c - .8 };
-  }, { t0: 3, mark: t => { const c = t % 5; return c >= .8 && c < 4.4 ? [858, 540, 32, 22] : null; } }),
+  }, { t0: 3, mark: t => { const c = t % 5; return c >= .8 && c < 4.4 ? [863, 566, 22, 17] : null; } }),
   'start': scene(KEY, (t, { st }) => {   // ON → hold START (cranking) → the engine catches with a flare → settles → off, 5 s loop
     const c = t % 5; st.keyOn = true; st.engineOn = c >= 1.8 && c < 4.2; st.rpm = st.engineOn ? 700 + Math.max(0, 2.6 - c) * 500 + Math.sin(t * 9) * 12 : 0;
     if (c >= .5 && c < 1.8) st.ign = { t: 1 + (c - .5) };
-  }, { t0: 1.2, mark: t => { const c = t % 5; return c >= .5 && c < 1.8 ? [894, 558, 50, 22] : null; } }),
-  'park': scene([940, 500, 150, 100], (t, { st }) => { st.park = t % 6 < 3; }, { t0: .5, mark: () => [1003, 513, 52, 66] }),   // red PARK lit → dark
+  }, { t0: 1.2, mark: t => { const c = t % 5; return c >= .5 && c < 1.8 ? [890, 579, 39, 17] : null; } }),
+  'park': scene([940, 500, 150, 100], (t, { st }) => { st.park = t % 6 < 3; }, { t0: .5, mark: () => [971, 523, 50, 63] }),   // red PARK lit → dark
   'clutch': scene(PEDALS, (t, { st }) => { st.clutch = pulse(t % 4, .4, 2, .4, 4); }, { t0: 1.2, mark: () => BARS.clu }),
-  'gear': scene([1046, 522, 120, 80], (t, { st }) => {   // the lever walks N → 1 → 2 → 3 → 4 → 5 → N, a clutch dip at every change
+  'gear': scene(SHIFTER, (t, { st }) => {   // the lever walks N → 1 → 2 → 3 → 4 → 5 → N, a clutch dip at every change
     const k = Math.floor(t / 1.2) % 6, f = (t % 1.2) / 1.2; st.gear = k; st.clutch = f < .35 ? 1 : 0; st.rpm = 900 + 600 * f;
   }, { t0: 3.7 }),
   'gas': scene(PEDALS, (t, { st }) => { const g = .9 * pulse(t % 5, 1.2, 1.4, 1.4, 5); st.gas = g; driving(st, 3, 900 + 1400 * g); }, { t0: 1.8, mark: () => BARS.gas }),
@@ -46,12 +47,12 @@ export const WP_SCENES = {
   }, { t0: 2 }),
 
   /* ── when you need them ── */
-  'lights': scene([296, 540, 170, 93], (t, { st, dn }) => { Object.assign(dn, { k: 1, night: true, head: t % 6 < 3.5 }); st.batt = .7; }, { t0: 1, mark: () => [300, 570, 150, 34] }),   // night: HEAD toggles, CAB stays off
+  'lights': scene([296, 540, 170, 93], (t, { st, dn }) => { Object.assign(dn, { k: 1, night: true, head: t % 6 < 3.5 }); st.batt = .7; }, { t0: 1, mark: () => [332, 571, 117, 32] }),   // night: HEAD toggles, CAB stays off
   'cab-light': scene([540, 0, 200, 133], (t, { dn }) => { Object.assign(dn, { k: 1, night: true, cab: t % 4 < 2 }); }, { t0: .5 }),   // night: the dome lamp (it sits on the see-through windscreen, so only the lamp and its halo show)
-  'heater': scene([290, 490, 215, 143], (t, { st }) => { const k = wave(t, .8, -1.6); Object.assign(st, { heater: true, heatEff: k, temp: -12 + 50 * k }); }, { t0: 4, mark: () => [300, 603, 120, 30] }),
+  'heater': scene([290, 490, 215, 143], (t, { st }) => { const k = wave(t, .8, -1.6); Object.assign(st, { heater: true, heatEff: k, temp: -12 + 50 * k }); }, { t0: 4, mark: () => [333, 602, 118, 29] }),
   'wipers': scene([956, 470, 142, 95], (t, { st, wip }) => { wip.mode = Math.floor(t / 2) % 3; st.washing = t % 6 > 4.5; }, { t0: 2.5, mark: () => [962, 477, 132, 40] }),
   'radio': scene([948, 398, 156, 104], (t, { radio }) => { const i = Math.floor(t / 3) % 5; Object.assign(radio, { on: true, idx: i, song: { title: SONGS[i] } }); }, { t0: 1 }),
-  'reverse': scene([1046, 522, 120, 80], (t, { st }) => { const c = t % 6; st.gear = c >= 1.5 && c < 4.5 ? -1 : 0; st.rev = st.gear < 0; st.v = st.rev ? 3 : 0; st.clutch = c > 1 && c < 1.7 || c > 4.3 && c < 5 ? 1 : 0; }, { t0: 3 }),
+  'reverse': scene(SHIFTER, (t, { st }) => { const c = t % 6; st.gear = c >= 1.5 && c < 4.5 ? -1 : 0; st.rev = st.gear < 0; st.v = st.rev ? 3 : 0; st.clutch = c > 1 && c < 1.7 || c > 4.3 && c < 5 ? 1 : 0; }, { t0: 3 }),
 
   /* ── indicators ── */
   'i-speed': scene(SPEEDO, (t, { st }) => { driving(st, 5, 1700); st.v = (14 + 13 * Math.sin(t * .8)) * 1; }, { t0: 2 }),   // 1..27 m/s: up to the governor's 100 km/h and back
