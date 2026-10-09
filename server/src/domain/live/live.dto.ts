@@ -53,7 +53,13 @@ export interface WatchBatchDto {
   samples: number[][];
   /** the nearby traffic, 2 frames per game second: [t, …(id, type, colour, x, z, yaw, flags) per vehicle] (absent = not recorded) */
   traffic?: number[][];
+  /** what the truck did at the holes of the SERVER's plan in this batch (verdict/world-checks.ts holeOutcomes) – the replay marks them; a hole driven
+      through without the damage the game takes is 'ignored'. Absent = not measured (recorded before the server rebuilt the road). */
+  road?: RoadOutcomeDto[];
 }
+
+/** one planned hole the truck came to: where, when (game s), what it did, and the hull % the game takes there vs what the recording lost */
+export interface RoadOutcomeDto { hole: string; type: string; s: number; t: number; outcome: 'hit' | 'ignored' | 'avoided' | 'unmeasured' | 'other'; expected: number; got: number }
 
 export interface WatchRideDto {
   id: string;

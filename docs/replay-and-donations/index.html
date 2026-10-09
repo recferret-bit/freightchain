@@ -63,7 +63,7 @@
     <div class="step"><span class="n">1</span><span class="where">Driver's browser</span><h3>Record</h3><p>Every online ride records the truck 10 times a second (verified play). Three columns were added for spectators: the hour of the day, the cab's switches and the controls in use.</p></div>
     <div class="step"><span class="n">2</span><span class="where">Every 15 s of driving</span><h3>Upload</h3><p>The batch is sealed, hashed, chained and stored by the server – the same upload the verdict judges. There is no second stream.</p></div>
     <div class="step"><span class="n">3</span><span class="where">Watch page, every 4 s</span><h3>Poll</h3><p><code>GET /api/watch/:id</code> returns the ride, the next batches the playhead needs, and the feed since the last poll.</p></div>
-    <div class="step"><span class="n">4</span><span class="where">Every frame</span><h3>Replay</h3><p>The road is rebuilt from the seed + route; the truck's state is interpolated from the samples. Nothing is simulated.</p></div>
+    <div class="step"><span class="n">4</span><span class="where">Every frame</span><h3>Replay</h3><p>The road is rebuilt from the seed + route, its holes come from the server's obstacle plan; the truck's state is interpolated from the samples. Nothing is simulated.</p></div>
     <div class="step"><span class="n">5</span><span class="where">Signed in</span><h3>Talk &amp; donate</h3><p>Chat lines and donations go into the ride's feed; the driver's game picks them up, shows them and applies the effects.</p></div>
   </div>
 </section>
@@ -72,7 +72,7 @@
   <div class="head">
     <span class="eyebrow">What a replay is</span>
     <h2 id="s-replay">A rebuilt road and a recorded truck</h2>
-    <p class="soft">The road is endless but deterministic: its whole layout – patterns, junctions, traffic lights, roadside props, the natural holes – is a pure function of the ride's seed and its route. The watch page gets both from the server, builds its own copy of the driver's road, and then writes the truck's state every frame from the recording instead of running the physics. Gauges, sway, the trailer, wipers, dust and lights all react exactly as they do for the driver, because they read the same state.</p>
+    <p class="soft">The road is endless but deterministic: its whole layout – patterns, junctions, traffic lights, roadside props, the natural holes – is a pure function of the ride's seed and its route. The watch page gets both from the server, builds its own copy of the driver's road – its natural holes taken from the server's own obstacle plan (<code>GET /api/watch/:id/road</code>), never from anything the driver's game reported – and then writes the truck's state every frame from the recording instead of running the physics. Gauges, sway, the trailer, wipers, dust and lights all react exactly as they do for the driver, because they read the same state.</p>
   </div>
   <div class="spec-grid">
     <div class="spec">
@@ -118,6 +118,26 @@
     <span class="no"><s>the raw key presses</s> – their millisecond timing is what the verdict's human-timing check measures, so they are never published</span>
   </div>
   <p class="soft">What spectators DO see of the driver's hands is the <b>inputs</b> column: one bit per control (gas, brake, steer, clutch, gears, the key, the lights, wipers, washer, heater, radio, pause, mute – W and ↑ are the same bit) plus one for <i>clicked on the dash</i>, set when the control was held at that sample or pressed since the one before, so a tap shorter than a tenth of a second still shows. The replay lights them as <b>flashing yellow borders</b>: a dash button is outlined where it sits (a click adds a pointer and a ring), keys show as caps in the lower left of the windscreen – Q W E / A S D / ⇧ always there, the others while lit. A fast replay never skips one: every sample the playhead passed in a frame counts, and a light fades over half a second of wall time. In the example, 65537 = gas held + the headlights switched. The bits never change meaning; new controls are appended (<code>client/js/input-bits.js</code>).</p>
+  <div class="cols">
+    <div class="card">
+      <div class="top"><h3>The holes are the server's</h3><span class="chip pen">GET /api/watch/:id/road</span></div>
+      <p class="soft">The server rebuilds every ride's road from its seed (<code>server/src/domain/road</code>, a port of the game's generator that a drift test holds to it) and serves the list of its sinkholes – the <b>obstacle plan</b> – once the ride has started, up to 10 km per request. The driver's game draws and drives over those holes (<code>client/js/road-plan.js</code>), and so does every replay: what a spectator sees in the road is the server's plan, not the driver's copy. A game that took its holes out shows an empty road to its driver – the replay still has the holes in it.</p>
+      <p class="soft">Each watched batch also carries <code>road</code>: what the recorded truck did at the planned holes in it – <i>hit</i>, <i>avoided</i>, <i>ignored</i> (driven through at speed with none of the damage the game takes) – with the hull the game takes there and the hull the recording lost. These are facts about public samples on a public plan; the verdict (<code>obstacle-ignored</code>) uses the same measurement.</p>
+    </div>
+    <div class="card">
+      <div class="top"><h3>ROAD CHECK in the panel</h3><span class="chip bad">NO IMPACT</span></div>
+      <div class="replay-mock" aria-label="a mock of the watch panel's road check line, its timeline marks and the on-screen stamp">
+        <div class="mock-line">ROAD CHECK · 3 planned holes · 2 hit · 1 avoided</div>
+        <div class="mock-track"><i style="left:22%"></i><i style="left:64%"></i></div>
+        <span class="mock-cap">an honest ride: amber marks where the truck hit a hole</span>
+        <div class="mock-line bad">ROAD CHECK · 2 planned holes · 0 hit · 0 avoided · 2 NO IMPACT</div>
+        <div class="mock-track"><i class="ig" style="left:30%"></i><i class="ig" style="left:85%"></i></div>
+        <span class="mock-cap">holes taken out of the game: a red mark per hole – a click jumps there</span>
+        <div class="mock-stamp"><b>NO IMPACT</b>the server's sinkhole at 0.61 km – this truck drove through it without a scratch (the game takes 19.0 % hull)</div>
+      </div>
+      <p class="soft" style="font-size:14px">An ignored hole is also ringed red on the road itself (self-lit, so it shows at night), and the stamp appears as the replay passes it.</p>
+    </div>
+  </div>
 </section>
 
 <section aria-labelledby="s-play">
@@ -232,7 +252,7 @@
   <div class="cols">
     <div class="card">
       <div class="top"><h3>Why the stamp matters</h3></div>
-      <p class="soft">A natural hole is a pure function of the road chunk it is in, so everyone who rebuilds the road gets it. A paid hole is not – it exists because someone paid while the driver was at a particular place. The driver's game therefore decides where it goes and reports it back once (<code>{t, s, lat}</code>, first report wins). Every watch page installs the same hole in the same chunk, replacing that chunk's own roll, and rebuilds the chunk if it is already on screen. The other cars on the driver's road steer around it like any hole.</p>
+      <p class="soft">A natural hole is a pure function of the road chunk it is in, so everyone who rebuilds the road gets it. A paid hole is not – it exists because someone paid while the driver was at a particular place. The driver's game therefore decides where it goes and reports it back once (<code>{t, s, lat}</code>, first report wins). Every watch page installs the same hole in the same chunk, next to that chunk's own roll – a paid hole is only ever put on a chunk without a natural hole, and never replaces one, so the server's plan stays whole – and rebuilds the chunk if it is already on screen. Paid holes are not part of the verdict: where they go is the driver's game's call. The other cars on the driver's road steer around it like any hole.</p>
     </div>
     <div class="card">
       <div class="top"><h3>Night and day need no stamp in the replay</h3></div>
@@ -315,6 +335,7 @@
       <thead><tr><th>Rule</th><th>How it is enforced</th></tr></thead>
       <tbody>
         <tr><td>Anyone may watch any ride that has started<span class="c">GET /api/watch/:id · public</span></td><td>A ride that has not started yet is a 404 – so no seed is ever handed out early. Ended rides stay watchable as replays.</td></tr>
+        <tr><td>Anyone may read a started ride's obstacle plan<span class="c">GET /api/watch/:id/road · public</span></td><td>The holes the server rebuilt from the seed, at most 10 km per request; a 404 before the start, like the watch page. The driver's game asks the same route.</td></tr>
         <tr><td>Only a signed-in spectator writes<span class="c">401 without a session</span></td><td>Chat and donations need the player session cookie; the wallet is the author of every line.</td></tr>
         <tr><td>Not your own ride<span class="c">403 own_ride</span></td><td>The driver cannot chat to or donate to themselves.</td></tr>
         <tr><td>Only rides on the air<span class="c">409 ride_not_live</span></td><td>Running, with a heartbeat in the last 150 s. A post that races the ride's end lands on an ended ride, where nothing ever applies it.</td></tr>
@@ -340,7 +361,8 @@
     <table>
       <thead><tr><th>Route</th><th>Who · what</th></tr></thead>
       <tbody>
-        <tr><td><code>GET /api/watch/:id</code><span class="c">?from=&lt;seq&gt; &amp;after=&lt;eventId&gt; &amp;since=&lt;ms&gt; &amp;viewer=&lt;id&gt;</span></td><td>Public. <code>{ now, ride, recording: { lastSeq, t1 }, batches: [{ seq, t0, t1, samples, traffic? }], events, totals, viewers, features }</code> – <code>ride</code> carries the driver's <code>loadout</code> (wheel, truck colour, shifter, hanging dice, gauge needles: the cockpit the spectator and the replay draw; null = all classic), up to 20 batches from <code>from</code>, the feed after <code>after</code>, plus every event <b>stamped</b> after <code>since</code>.</td></tr>
+        <tr><td><code>GET /api/watch/:id</code><span class="c">?from=&lt;seq&gt; &amp;after=&lt;eventId&gt; &amp;since=&lt;ms&gt; &amp;viewer=&lt;id&gt;</span></td><td>Public. <code>{ now, ride, recording: { lastSeq, t1 }, batches: [{ seq, t0, t1, samples, traffic?, road? }], events, totals, viewers, features }</code> – <code>ride</code> carries the driver's <code>loadout</code> (wheel, truck colour, shifter, hanging dice, gauge needles: the cockpit the spectator and the replay draw; null = all classic), up to 20 batches from <code>from</code>, the feed after <code>after</code>, plus every event <b>stamped</b> after <code>since</code>.</td></tr>
+        <tr><td><code>GET /api/watch/:id/road</code><span class="c">?from=&lt;m&gt; &amp;to=&lt;m&gt;</span></td><td>Public once started. <code>{ rideId, seed, version, from, to, chunk, holes: [{ id, ci, type, s, lat }] }</code> – the natural holes of [from, to), chunk-aligned (32 m), at most 10 km; 400 for a bad window, 404 before the start.</td></tr>
         <tr><td><code>POST /api/watch/:id/messages</code><span class="c">{ text }</span></td><td>Signed-in spectator. Returns the stored line.</td></tr>
         <tr><td><code>POST /api/watch/:id/donations</code><span class="c">{ effect, note? }</span></td><td>Signed-in spectator. effect = tip · night · day · potholes · trench · sinkhole.</td></tr>
         <tr><td><code>POST /api/watch/:id/donation-orders</code><span class="c">{ effect, note? }</span></td><td>Signed-in spectator, paid servers only: <code>{ order: { id, effect, lamports, to, memo }, transaction }</code> – the unsigned transfer to the driver.</td></tr>
@@ -381,17 +403,18 @@ signature   a paid donation's transfer (unique)
   <div class="tbl">
     <table>
       <tbody>
-        <tr><td>Spectator: replay engine</td><td><code>client/js/watch.js</code> – polling, loading, interpolation into the truck state, seeks, obstacles from stamps</td></tr>
+        <tr><td>Spectator: replay engine</td><td><code>client/js/watch.js</code> – polling, loading, interpolation into the truck state, seeks, obstacles from stamps, the road outcomes (red rings, NO IMPACT)</td></tr>
         <tr><td>Spectator: the panel</td><td><code>client/js/ui/watch-panel.js</code> – status, timeline, feed, chat box, donation buttons, wallet sign-in</td></tr>
         <tr><td>Driver: inbox, CB panel (fold, mute), effects</td><td><code>client/js/ui/live-feed.js</code></td></tr>
         <tr><td>Paid donations (client)</td><td><code>client/js/ui/watch-panel.js</code> <code>donate()</code> + <code>client/site/pay.js</code> <code>signAndSend</code></td></tr>
         <tr><td>Recorded traffic</td><td><code>client/js/sim/traffic.js</code> <code>trafficSnapshot</code> → <code>client/js/telemetry.js</code> (beside each batch) → <code>client/js/watch.js</code> <code>drawTraffic</code></td></tr>
         <tr><td>Feature flags</td><td><code>server/src/domain/live/live-features.ts</code> (resolved per ride) · <code>server/src/application/services/live-access.service.ts</code> (the one gate)</td></tr>
         <tr><td>The effect table (both sides)</td><td><code>client/js/live-effects.js</code> ⇄ <code>server/src/domain/live/live-rules.ts</code> (prices, windows) – keep them in step</td></tr>
-        <tr><td>Placed holes</td><td><code>client/js/world/holes.js</code> <code>placeHole</code> / <code>obstacleSpot</code>, <code>client/js/world/chunks.js</code> <code>rebuild</code></td></tr>
+        <tr><td>The server's holes</td><td><code>client/js/road-plan.js</code> (fetches the plan) · <code>client/js/net/obstacles.js</code> (installs it; the local roll is the fallback) · <code>server/src/domain/road</code> (the plan) · <code>world-facts.ts</code> / <code>world-checks.ts</code> (the measurement, <code>holeOutcomes</code>)</td></tr>
+        <tr><td>Placed holes</td><td><code>client/js/net/obstacles.js</code> <code>placeHole</code> / <code>obstacleSpot</code> (re-exported by <code>world/holes.js</code>), <code>client/js/world/chunks.js</code> <code>rebuild</code></td></tr>
         <tr><td>The three replay columns</td><td><code>client/js/telemetry.js</code> (<code>FLAGS</code> filled in <code>client/js/ui/game.js</code>; the inputs from <code>recordInput</code>) · <code>client/js/input-bits.js</code> (the bit table, the lights) · <code>client/js/cockpit/inputs.js</code> (the yellow borders) · <code>server/src/domain/telemetry/telemetry-rules.ts</code> <code>SAMPLE_*_COL</code></td></tr>
         <tr><td>Server</td><td><code>server/src/{domain,application,infrastructure,presentation}/**/live</code>, the table in <code>server/prisma/live/live.prisma</code></td></tr>
-        <tr><td>Tests</td><td>unit specs per handler, the repository's PostgreSQL spec, HTTP scenarios (<code>server/test/scenarios/live.scenarios.ts</code>), three races in the concurrency suite, <code>server/scripts/e2e-watch.mjs</code> – a driver and a spectator in two real Chromes on a live ride – and <code>server/scripts/e2e-replay.mjs</code> – a finished ride opened from the landing's ticker: speeds, seeks across a paid night, the paid hole from history, the end. and <code>server/scripts/e2e-live-flags.mjs</code> – the production flags (a paid donation signed by a fake wallet) and everything off. All three run with the <code>replay-test</code> skill: <code>bash .claude/skills/replay-test/run.sh</code></td></tr>
+        <tr><td>Tests</td><td>unit specs per handler, the repository's PostgreSQL spec, HTTP scenarios (<code>server/test/scenarios/live.scenarios.ts</code>), three races in the concurrency suite, <code>server/scripts/e2e-watch.mjs</code> – a driver and a spectator in two real Chromes on a live ride – and <code>server/scripts/e2e-replay.mjs</code> – a finished ride opened from the landing's ticker: speeds, seeks across a paid night, the paid hole from history, the end. and <code>server/scripts/e2e-live-flags.mjs</code> – the production flags (a paid donation signed by a fake wallet) and everything off. All three run with the <code>replay-test</code> skill: <code>bash .claude/skills/replay-test/run.sh</code>. The server's holes in a replay (red rings, timeline marks, the NO IMPACT stamp) are checked by <code>server/scripts/e2e-road-check.mjs</code> – <code>bash .claude/skills/run-tests/e2e.sh road</code>.</td></tr>
       </tbody>
     </table>
   </div>

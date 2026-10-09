@@ -260,7 +260,7 @@ describe('concurrency (PostgreSQL)', () => {
     const a = await login();
     const ride = (await a.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
     await a.agent.post(`/api/rides/${ride.id}/start`).expect(200);
-    const batches = recording(ride.id, { seconds: 40, distance: 560 });
+    const batches = recording(ride.id, { seconds: 40, distance: 560, road: ride.seed });
     for (const b of batches.slice(0, -1)) await a.agent.post(`/api/rides/${ride.id}/batches`).send(b).expect(200);
     sec(40);
     const last = batches.at(-1);

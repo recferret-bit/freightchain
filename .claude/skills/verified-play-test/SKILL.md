@@ -1,6 +1,6 @@
 ---
 name: verified-play-test
-description: Test Freight Chain's anti-bot / anti-cheat (verified play) end to end, positive AND negative – a person and a metronome bot driving in real headless Chrome (dispatch prompts answered / ignored), API-level bots with hand-built recordings for EVERY verdict code (no inputs, instant prompt answers, a teleport, a speed over the governor, a batch edited after hashing, an unhashed batch, a broken chain link, a hole in the seqs, a recording that does not match / cover the ride, steering without gas, malformed samples, scripted timing, a coarse timer, batches sent after /end), the upload protocol (401 / 404 / 409 / 400), who may see a verdict, the admin's signed decisions on a flagged ride, the lobby profile in Chrome, and the retention sweep + the CLI's bulk re-judge on the database – against a freshly built server on a throwaway database. Use after touching client/js/telemetry.js, prompt.js, online.js, the server's verdict / telemetry / rides domain, the heartbeat, the batch upload, verdict-rules.ts, the retention sweeps, or when asked to "test the anti-cheat", "test verified play", "test the prompts", or /verified-play-test.
+description: Test Freight Chain's anti-bot / anti-cheat (verified play) end to end, positive AND negative – a person and a metronome bot driving in real headless Chrome (dispatch prompts answered / ignored), API-level bots with hand-built recordings for EVERY verdict code (no inputs, instant prompt answers, a teleport, a speed over the governor, a batch edited after hashing, an unhashed batch, a broken chain link, a hole in the seqs, a recording that does not match / cover the ride, steering without gas, malformed samples, scripted timing, a coarse timer, batches sent after /end), the SERVER's road (an honest driver and one with the holes taken out of its game, in Chrome, a spectator's replay of both, the ride-audit tool), the upload protocol (401 / 404 / 409 / 400), who may see a verdict, the admin's signed decisions on a flagged ride, the lobby profile in Chrome, and the retention sweep + the CLI's bulk re-judge on the database – against a freshly built server on a throwaway database. Use after touching client/js/telemetry.js, prompt.js, online.js, the server's verdict / telemetry / rides domain, the heartbeat, the batch upload, verdict-rules.ts, the retention sweeps, or when asked to "test the anti-cheat", "test verified play", "test the prompts", or /verified-play-test.
 ---
 
 # Verified play – the anti-cheat, positive and negative
@@ -8,14 +8,17 @@ description: Test Freight Chain's anti-bot / anti-cheat (verified play) end to e
 What it covers (how the checks work: `docs/verified-play/index.html`; the thresholds: `server/src/domain/verdict/verdict-rules.ts`; the status page: `docs/verified-play-next-steps.md`):
 the recording (hash-chained batches, the server's own hashes, bounds, agreement with the ride, coverage, the per-ride time / batch / byte budgets),
 the human-timing statistics (flags only), the **dispatch prompts** – the server asks for a key through the heartbeat ("FLASH YOUR HEADLIGHTS · PRESS L"),
-the recording must show it pressed within 20 s; most prompts ignored rejects, instant answers flag – the admin's hand on the review queue, the retention sweep, and the CLI that re-judges old rides after a rules change.
+the recording must show it pressed within 20 s; most prompts ignored rejects, instant answers flag – the admin's hand on the review queue, the retention sweep, and the CLI that re-judges old rides after a rules change – and **the server's road**: the road and its holes rebuilt from the ride seed
+(`server/src/domain/road`), handed to the game as its obstacle plan, every batch measured against it (`obstacle-ignored` / `obstacle-no-impact`, `offroad-ignored`,
+`accel-without-gas`), replays drawing the server's holes with the NO IMPACT marks.
 
 ## Run it
 
 ```sh
-bash .claude/skills/verified-play-test/run.sh              # ≈ 9 min: e2e.sh verified verified-deep browser close
+bash .claude/skills/verified-play-test/run.sh              # ≈ 15 min: e2e.sh verified verified-deep road browser close
 bash .claude/skills/run-tests/e2e.sh verified             # prompts (≈ 3 min)
 bash .claude/skills/run-tests/e2e.sh verified-deep        # every verdict code, protocol, admin, profile, retention (≈ 2.5 min)
+bash .claude/skills/run-tests/e2e.sh road                 # the server's road: honest vs holes-removed driver, the replay, the audit (≈ 6 min)
 ```
 
 `e2e.sh` builds the server and the landing into private copies, creates a throwaway database (dropped at the end, also on failure), starts the server (a
@@ -52,10 +55,22 @@ Server: `FREE_RIDE_SECONDS=30 CHALLENGE_INTERVAL_SECONDS=0 ADMIN_WALLETS=<a gene
 - **E. the lobby profile in Chrome** – FLAGGED for one wallet, VERIFIED for another (`profile-flagged.png`, `profile-verified.png`), no page errors.
 - **F. retention + bulk re-judge on the database** – rides aged 120 days by SQL: `retention:sweep` deletes verified + rejected recordings, keeps flagged ones and a completed shift that has no verdict, is idempotent, keeps ride rows + verdicts; a swept ride's watch page opens without batches; the admin's RE-JUDGE on it is 409 `recording_deleted`; `verdict:rejudge` skips exactly the swept ones, changes a verdict edited back to "old rules" (verified → flagged), judges the one with no verdict (null → verified); `--status flagged` narrows.
 
+### `road` – the server's road (`server/scripts/e2e-road-check.mjs`)
+Server: `FREE_RIDE_SECONDS=30 CHALLENGE_INTERVAL_SECONDS=0`. Two Chromes drive at once, cruising the right-hand lane at 22 m/s (the test pins speed and lane; real key presses go
+down too) until they have driven through the first two planned sinkholes in that lane (from `GET /api/watch/:id/road`):
+- **A. honest** – the game loads the server's plan (0 mismatches with its own roll), takes the damage (hull ≈ 62 %) → `COMPLETED · VERIFIED`.
+- **B. cheater** – an injected script takes the holes out of its game (the plan follower stopped, `CFG.HOLES` off, the cache cleared): no hole on its screen, hull 100 % → `COMPLETED · REJECTED` `obstacle-ignored` naming both holes.
+- **C. a spectator** replays both: the replay's holes are the SERVER's (the cheater's empty road does not leak in), two red timeline marks + `ROAD CHECK … 2 NO IMPACT`, the NO IMPACT stamp + a red ring as it passes one (`replay-no-impact.png`); the honest replay shows two hits and no NO IMPACT.
+- **D. the audit** – `scripts/ride-audit.mjs`: honest OK (exit 0), cheater NOT OK (exit 1) with the holes IGNORED, `--latest 5` lists both.
+Every other new code (`obstacle-no-impact`, `obstacle-unmeasured`, `offroad-ignored`, `accel-without-gas`, a recording cut into batches right at each pit, reversing, crawling, avoiding) is unit- and scenario-tested
+(`test/unit/domain/world-checks.spec.ts`, `test/scenarios/verdict.scenarios.ts` "the server's road"). The API bots of `verified` / `verified-deep` take the
+holes' damage like the game (`server/scripts/road-damage.mjs`) – a bot that did not would now be rejected.
+
 ## What to look at
 
 - `$TMPDIR/fc-verified-shots/human-prompt.png` – the amber DISPATCH banner on the windscreen with the key and the time bar: readable at a glance? `human-done.png` / `bot-done.png`: the end panel's verdict line.
 - `$TMPDIR/fc-verified-deep-shots/profile-*.png` – the lobby profile's verdict chips.
+- `$TMPDIR/fc-road-shots/replay-no-impact.png` – the cheater's replay: the server's sinkhole ringed red on the road, the NO IMPACT stamp, the red ROAD CHECK line and timeline marks; `cheat-driving.png` – the same stretch on the cheater's own screen (no holes); `replay-honest.png`.
 - The server log (`/tmp/fc-e2e-<db>.log`): one `verdict` line per ride with its reason codes; `batch-refused` for refused uploads.
 
 ## When a check fails

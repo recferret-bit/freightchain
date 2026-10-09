@@ -39,6 +39,14 @@ export const FEATURES = [
     e2e: ['e2e-verified-play.mjs', 'e2e-verified-deep.mjs', 'e2e-browser.mjs'], skills: ['verified-play-test'],
   },
   {
+    id: 'server-road', title: 'The server\'s road (obstacle plan, road checks, ride audit)',
+    server: /^(domain\/road\/|domain\/telemetry\/world-facts|domain\/verdict\/(world-checks|ride-audit)|application\/use-cases\/live\/get-road-plan\/)/,
+    client: /^client\/js\/(road-plan|net\/obstacles)\.js$/,
+    routes: /^GET \/api\/watch\/:id\/road$/,
+    words: /road plan|obstacle|planned hole|sinkhole|no impact|ignored|world|off-?road|gas pedal|audit/i,
+    e2e: ['e2e-road-check.mjs'], skills: ['ride-audit', 'verified-play-test'],
+  },
+  {
     id: 'legacy-pay', title: 'Pay-per-ride (legacy weekly round)',
     server: /^(application\/use-cases\/rides\/(confirm-payment|reconcile-payment|get-payment-instructions)\/|domain\/economy\/(payment|round|prize-split|week|payment-reject-code|payment-verification)|application\/services\/(payment-settlement|round|finality)|infrastructure\/prisma\/repositories\/(payment|round)\.|infrastructure\/solana\/(solana-chain\.adapter|http-price-quote|fee-estimator)|application\/use-cases\/chain\/get-chain-fees\/)/,
     client: null,

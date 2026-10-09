@@ -127,3 +127,35 @@ td code { white-space: nowrap; }
 .limits span { color: var(--ink-soft); font-size: 14.5px; }
 
 footer { border-top: 1px solid var(--rule); padding-top: 18px; display: flex; flex-wrap: wrap; gap: 8px 24px; font: 400 12.5px/1.5 var(--f-mono); color: var(--ink-soft); }
+
+/* the server's road (layer 5): the flow + the road strip */
+.roadfig svg { min-width: 760px; }
+svg .box { fill: var(--paper); stroke: var(--rule); stroke-width: 1; }
+svg .box-pen { fill: var(--chip-pen); stroke: var(--pen); stroke-width: 1.5; }
+svg .box-ok { fill: var(--chip-ok); stroke: var(--ok); stroke-width: 1.5; }
+svg .box-bad { fill: var(--chip-bad); stroke: var(--limit); stroke-width: 1.5; }
+svg .box-flag { fill: var(--chip-flag); stroke: var(--flag); stroke-width: 1.5; }
+svg .head-t { font: 600 14px var(--f-display); letter-spacing: .05em; fill: var(--ink); }
+svg .arrow { stroke: var(--ink-soft); stroke-width: 1.5; fill: none; }
+svg .arrow-pen { stroke: var(--pen); stroke-width: 2; fill: none; }
+svg .ah { fill: var(--ink-soft); } svg .ah-pen { fill: var(--pen); }
+svg .asphalt { fill: var(--paper); stroke: var(--ink-soft); stroke-width: 1.5; }
+svg .lane { stroke: var(--ink-soft); stroke-width: 1; stroke-dasharray: 8 6; }
+svg .pit { fill: #17130f; stroke: var(--ink-soft); stroke-width: 1; }   /* a hole stays dark in the dark theme too */
+svg .pit-ghost { fill: none; stroke: var(--limit); stroke-width: 2; stroke-dasharray: 4 3; }
+svg .ring { fill: none; stroke: var(--limit); stroke-width: 3; }
+svg .truck { fill: var(--chip-pen); stroke: var(--pen); stroke-width: 1.5; }
+svg .wheel { fill: var(--ink); }
+svg .axle { stroke: var(--ink); stroke-width: 1.5; }
+svg .hull-ok { stroke: var(--ok); stroke-width: 2.5; fill: none; }
+svg .hull-bad { stroke: var(--limit); stroke-width: 2.5; fill: none; }
+svg .hull-want { stroke: var(--ok); stroke-width: 1.5; fill: none; stroke-dasharray: 5 4; opacity: .8; }
+.replay-mock { display: grid; gap: 10px; }
+.mock-line { font: 500 12.5px/1.4 var(--f-mono); letter-spacing: .03em; padding: 8px 10px; border-radius: 4px; background: #120f0c; color: #9fd49f; }
+.mock-line.bad { color: #ff6b5a; font-weight: 700; }
+.mock-track { position: relative; height: 22px; border-radius: 4px; background: #120f0c; padding: 0 10px; }
+.mock-track::before { content: ""; position: absolute; left: 10px; right: 10px; top: 10px; height: 3px; border-radius: 2px; background: #ffcf5a66; }
+.mock-track i { position: absolute; top: 8px; width: 4px; height: 6px; margin-left: -2px; border-radius: 1px; background: #ffcf5acc; }
+.mock-track i.ig { top: 5px; width: 6px; height: 12px; margin-left: -3px; background: #ff3b2a; box-shadow: 0 0 6px #ff3b2a; }
+.mock-stamp { justify-self: center; transform: rotate(-3deg); padding: 6px 14px; border: 3px solid #ff3b2a; background: #000c; color: #ffd9d4; text-align: center; font-size: 12.5px; max-width: 460px; box-shadow: 0 0 14px #ff3b2a77; }
+.mock-stamp b { display: block; color: #ff3b2a; font: 800 30px/1.05 var(--f-display); letter-spacing: .08em; }

@@ -75,7 +75,7 @@ test('numbers: verdict thresholds equal verdict-rules.ts', () => {
   assert.equal(num('HOLD_CV_MIN'), 0.08); assert.equal(num('HOLD_MIN_PER_KEY'), 6); assert.match(text, /under 8 %, over 6\+ holds/);
   assert.equal(num('REPEAT_TOP_N'), 3); assert.equal(num('REPEAT_SHARE_MAX'), 0.6); assert.match(text, /3 most common gaps[^.]*more than 60 %/);
   assert.equal(num('INSTANT_HOLD_MS'), 10); assert.equal(num('INSTANT_SHARE_MAX'), 0.3); assert.match(text, /More than 30 % of presses released within 10 ms/);
-  assert.equal(num('RULES_VERSION'), 2); assert.match(text, /rules v2 run in/i);
+  assert.equal(num('RULES_VERSION'), 3); assert.match(text, /rules v3 run in/i); assert.match(text, /Anti-cheat v3/);
   // dispatch prompts: the window and the default interval live with the ride, the thresholds with the verdict
   assert.equal(num('CHALLENGE_MIN_REACTION_MS'), 80); assert.match(text, /under 80 ms after the server issued the prompt/);
   assert.equal(num('CHALLENGE_IGNORED_MIN_ISSUED'), 3); assert.equal(num('CHALLENGE_IGNORED_SHARE'), 0.5); assert.match(text, /Half or more of 3\+ prompts ignored rejects/);
@@ -83,7 +83,20 @@ test('numbers: verdict thresholds equal verdict-rules.ts', () => {
   assert.match(src('server/src/infrastructure/config/env.schema.ts'), /CHALLENGE_INTERVAL_SECONDS: z\.coerce\.number\(\)\.min\(0\)\.default\(240\)/); assert.match(text, /every 240 s of driving/);
   assert.match(src('server/src/infrastructure/config/env.schema.ts'), /SIGNIN_RETENTION_DAYS: z\.coerce\.number\(\)\.int\(\)\.min\(0\)\.default\(180\)/); assert.match(text, /the sign-in log after 180 days/);
   assert.match(src('server/src/domain/telemetry/telemetry-rules.ts'), /RECORDING_BYTES_PER_SECOND = 4096/); assert.match(text, /bytes ≤ wall × 4 kB \+ 256 kB/);
-  assert.match(text, /EIGHT LAYERS, FROM CHEAPEST TO STRONGEST/); assert.match(text, /docs\/anti-cheat\//);
+  assert.match(text, /NINE LAYERS, FROM CHEAPEST TO STRONGEST/); assert.equal((html.match(/NINE LAYERS[\s\S]*?<\/ol>/)[0].match(/<li>/g) ?? []).length, 9); assert.match(text, /docs\/anti-cheat\//);
+});
+
+test('numbers: the server\'s road – verdict-rules.ts, and the game\'s own constants (server/src/domain/road/road-rules.ts mirrors them; its road-drift.spec.ts holds the two together)', () => {
+  const v = src('server/src/domain/verdict/verdict-rules.ts'), num = n => Number(v.match(new RegExp(`${n} = ([\\d.]+)`))[1]);
+  const cfg = src('client/js/config.js'), holes = src('client/js/net/obstacles.js'), damage = src('client/js/sim/damage.js');
+  assert.equal(num('OBSTACLE_IGNORED_REJECT'), 2); assert.match(text, /Two or more holes driven through untouched reject; one flags/);
+  assert.equal(num('PASS_DAMAGE_SHARE'), 0.25); assert.match(text, /at least a quarter of that loss/);
+  assert.match(cfg, /OFFROAD_FAIL_SECONDS: 20,/); assert.match(text, /the game ends a ride at 20 s/);
+  assert.equal(20 * num('OFFROAD_FACTOR') + num('OFFROAD_SLACK_SECONDS'), 27); assert.match(text, /more than 27 s rejects/); assert.match(text, /20 s, ×1\.25 \+ 2 s/);
+  assert.equal(num('GASLESS_REJECT_GAIN'), 2); assert.equal(num('GASLESS_REJECT_STEPS'), 5); assert.match(text, /2 m\/s of it, or 5 such steps, rejects/);
+  assert.match(cfg, /MAX_SPEED: 28,/); assert.match(holes, /sinkhole: \{[^\n]*\], dmg: 14, slow: \.35,/); assert.match(damage, /clamp\(st\.v \/ 28, 0, 1\.2\) \*\* 2 \* \(axle \? \.6 : 1\)/);
+  assert.match(text, /dmg × \(v\/28\)²\s+– 14 % for the front axle in a sinkhole at 28 m\/s, rear axles × 0\.6/);
+  assert.match(text, /stamps NO IMPACT/);
 });
 
 test('numbers: live-stream prices and limits equal live-rules.ts', () => {

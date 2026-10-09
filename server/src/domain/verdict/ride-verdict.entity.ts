@@ -4,6 +4,7 @@ import { checkChallenges, type ChallengeScores } from './challenge-checks.js';
 import { checkHumanTiming, type HumanScores } from './human-checks.js';
 import { checkAgreement, checkChain, checkInputsPresent, checkSamples, recordingScores, type RecordingScores } from './recording-checks.js';
 import { RULES_VERSION } from './verdict-rules.js';
+import { checkWorld, type WorldScores } from './world-checks.js';
 import { ConflictError } from '../shared/errors.js';
 import { VerdictStatus, type VerdictDecision, type VerdictDto, type VerdictReason } from './verdict.dto.js';
 
@@ -11,6 +12,8 @@ export interface VerdictScores {
   recording: RecordingScores;
   human: HumanScores;
   challenges: ChallengeScores;
+  /** the recording against the server's road (world-checks.ts); null = recorded before the server rebuilt it, or no batches */
+  world?: WorldScores | null;
 }
 
 export interface RideVerdictProps {
@@ -45,11 +48,12 @@ export class RideVerdict {
     const human = checkHumanTiming(inputs);
     const endMs = ride.endedAt && ride.startedAt ? ride.endedAt.getTime() - ride.startedAt.getTime() : Number.POSITIVE_INFINITY;
     const challenges = checkChallenges(ride.challenges, inputs, endMs);
-    const reasons = ordered.length === 0 ? chain : [...chain, ...samples.reasons, ...agreement.reasons, ...checkInputsPresent(facts, ordered), ...human.reasons, ...challenges.reasons];
+    const world = checkWorld(ordered);
+    const reasons = ordered.length === 0 ? chain : [...chain, ...samples.reasons, ...agreement.reasons, ...checkInputsPresent(facts, ordered), ...human.reasons, ...challenges.reasons, ...world.reasons];
     const status = reasons.some((r) => r.severity === 'reject') ? VerdictStatus.Rejected : reasons.length ? VerdictStatus.Flagged : VerdictStatus.Verified;
     return new RideVerdict({
       rideId: ride.id, status, reasons, rulesVersion: RULES_VERSION, judgedAt: now, version: 1, overriddenBy: null, overriddenAt: null, note: null,
-      scores: { recording: recordingScores(ordered, agreement.recordedSeconds, agreement.coverage, samples.maxSpeed), human: human.scores, challenges: challenges.scores },
+      scores: { recording: recordingScores(ordered, agreement.recordedSeconds, agreement.coverage, samples.maxSpeed), human: human.scores, challenges: challenges.scores, world: world.scores },
     });
   }
 

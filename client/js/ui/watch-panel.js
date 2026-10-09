@@ -3,7 +3,7 @@ import { st } from '../state.js';
 import { audio } from '../sim/audio.js';
 import { getTheme } from '../themes/index.js';
 import { SITE_BASE } from '../hosts.js';
-import { watch, seek, goLive, addEvent, LIVE_LAG } from '../watch.js';
+import { watch, seek, goLive, addEvent, roadCheck, LIVE_LAG } from '../watch.js';
 import { EFFECT_INFO, short, solText } from '../live-effects.js';
 import { el } from '../../site/dom.js';
 import { api, signIn } from '../../site/wallet.js';
@@ -32,7 +32,10 @@ export function mountWatchPanel() {
     el('div', { class: 'w-badges' }, el('span', { id: 'w-state', class: 'w-badge' }), el('span', { id: 'w-viewers', class: 'w-badge dim' })),
     el('div', { class: 'w-stats' }, el('span', {}, '⏱ ', el('b', { id: 'w-time' })), el('span', {}, '↦ ', el('b', { id: 'w-dist' })), el('span', {}, 'hull ', el('b', { id: 'w-hull' }))),
     el('div', { id: 'w-note', class: 'dim w-small' }),
-    el('input', { id: 'w-seek', type: 'range', min: 0, max: 1, step: 1, value: 0, 'aria-label': 'position in the ride', oninput: e => seek(+e.target.value) }),
+    el('div', { id: 'w-road', class: 'w-road', title: 'the holes on this road are the server\'s, rebuilt from the ride\'s seed – this is what the recorded truck did at them' }),
+    el('div', { class: 'w-track' },
+      el('input', { id: 'w-seek', type: 'range', min: 0, max: 1, step: 1, value: 0, 'aria-label': 'position in the ride', oninput: e => seek(+e.target.value) }),
+      el('div', { id: 'w-marks', class: 'w-marks', 'aria-hidden': 'true' })),
     el('div', { class: 'w-ctl' },
       el('button', { id: 'w-play', class: 'alt', onclick: () => { watch.playing = !watch.playing; paint(); } }, '❚❚'), ...speeds,
       el('button', { id: 'w-live', class: 'alt', onclick: () => { goLive(); paint(); } }, '● LIVE'),
@@ -40,7 +43,7 @@ export function mountWatchPanel() {
     el('div', { class: 'w-feed', id: 'w-feed', 'aria-live': 'polite' }),
     el('div', { id: 'w-me' }),
     el('div', { class: 'w-foot' }, el('a', { href: `${SITE_BASE}/lobby.html#live` }, '← all trucks on the road'), el('span', { class: 'dim' }, 'replays the verified-play recording')));
-  document.body.append(P.root);
+  document.body.append(P.root, el('div', { id: 'w-stamp', class: 'w-stamp', hidden: true, role: 'status' }));
   for (const e of watch.events.values()) feedLine(e);
   watch.onUpdate = paint; watch.onEvent = (e, why) => (why === 'new' ? feedLine(e) : markApplied(e));
   setInterval(paintClock, 250);
@@ -80,6 +83,24 @@ function paintClock() {
   const note = !watch.rows.length ? (watch.rec.lastSeq === null && !r.live ? 'no recording kept for this ride' : 'waiting for the first recording…')
     : watch.buffering ? (r.live && watch.follow ? 'the driver is paused or the next batch is on its way…' : watch.wt >= watch.rec.t1 - 1 && !r.live ? `end of the ride · ${STATUS[r.status] ?? r.status}` : 'loading…') : '';
   $('w-note').textContent = note;
+  paintRoad(end);
+}
+
+/* the ROAD CHECK: what the recorded truck did at the server's holes (watch.js roadCheck) – a line in the panel, a mark on the timeline per hole hit (amber)
+   or driven through untouched (red, click = jump there), and the NO IMPACT stamp while the replay passes one */
+let marksKey = '';
+function paintRoad(end) {
+  const c = roadCheck(), box = $('w-road');
+  box.textContent = !c.holes ? 'ROAD CHECK · no planned hole reached yet' : `ROAD CHECK · ${c.holes} planned hole${c.holes > 1 ? 's' : ''} · ${c.hit} hit · ${c.avoided} avoided${c.ignored ? ` · ${c.ignored} NO IMPACT` : ''}`;
+  box.classList.toggle('bad', c.ignored > 0); box.hidden = !watch.road.size && !watch.roadSeq.size && !watch.rows.length;
+  const key = `${end}:${c.marks.map(m => m.hole + m.outcome).join()}`;
+  if (key !== marksKey) {
+    marksKey = key;
+    $('w-marks').replaceChildren(...c.marks.map(m => el('i', { class: `w-mark ${m.outcome}`, style: `left:${Math.min(100, (m.t / end) * 100).toFixed(2)}%`, title: `${m.type} at ${km(m.s)} km – ${m.outcome === 'ignored' ? `driven through untouched (the game takes ${m.expected.toFixed(1)} % hull)` : `hit: −${m.got.toFixed(1)} % hull`}`, onclick: () => { seek(Math.max(0, m.t - 6)); watch.playing = true; paint(); } })));
+  }
+  const stamp = $('w-stamp'), on = watch.stamp && performance.now() < watch.stamp.until;
+  stamp.hidden = !on;
+  if (on) stamp.replaceChildren(el('b', {}, 'NO IMPACT'), el('span', {}, `the server's ${watch.stamp.type} at ${km(watch.stamp.s)} km – this truck drove through it without a scratch (the game takes ${watch.stamp.expected.toFixed(1)} % hull)`));
 }
 
 /* ───── feed ───── */

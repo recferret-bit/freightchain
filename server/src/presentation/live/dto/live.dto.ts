@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { walletAddressSchema } from '../../common/dto/common.dto.js';
 import { TRANSACTION_SIGNATURE_MESSAGE, isTransactionSignature } from '../../../domain/economy/transaction-signature.js';
 import { APPLIED_MAX_LAT, APPLIED_MAX_S, EFFECT_IDS, MESSAGE_MAX_LENGTH, NOTE_MAX_LENGTH } from '../../../domain/live/live-rules.js';
+import { ROAD_PLAN_MAX_S, ROAD_PLAN_MAX_SPAN } from '../../../domain/road/road-rules.js';
 
 /* Live streams. The text limits here are generous on raw input (the domain cleans and re-checks the visible length). */
 const cursor = z.coerce.number().int().min(0).max(2_147_483_647).default(0);
@@ -14,6 +15,13 @@ export const watchQuerySchema = z.object({
   viewer: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/, 'letters, digits, - and _ only').optional().transform((v) => v ?? ''), // '' = not counted
 });
 export type WatchQuery = z.infer<typeof watchQuerySchema>;
+
+/** a stretch of a ride's obstacle plan: [from, to) m along the road, at most ROAD_PLAN_MAX_SPAN long */
+export const roadPlanQuerySchema = z.object({
+  from: z.coerce.number().int().min(0).max(ROAD_PLAN_MAX_S),
+  to: z.coerce.number().int().min(1).max(ROAD_PLAN_MAX_S),
+}).refine((q) => q.to > q.from && q.to - q.from <= ROAD_PLAN_MAX_SPAN, { message: `to must lie after from, at most ${ROAD_PLAN_MAX_SPAN} m further` });
+export type RoadPlanQuery = z.infer<typeof roadPlanQuerySchema>;
 
 export const inboxQuerySchema = z.object({ after: cursor });
 export type InboxQuery = z.infer<typeof inboxQuerySchema>;

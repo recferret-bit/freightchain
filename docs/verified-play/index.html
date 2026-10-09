@@ -16,9 +16,9 @@
 <header>
   <span class="eyebrow">Freight Chain · how a shift is checked</span>
   <h1>Verified Play</h1>
-  <p class="lede">Every online shift is recorded while you drive. When it completes, the server checks the recording before the shift can rank on a paid leaderboard. It doesn't replay your drive. It checks that the recording is complete, physically possible, matches the ride, and was driven by a person.</p>
+  <p class="lede">Every online shift is recorded while you drive. When it completes, the server checks the recording before the shift can rank on a paid leaderboard. It doesn't replay your drive. It checks that the recording is complete, physically possible, matches the ride – and the road: the holes are the server's, and your truck has to have felt them – and was driven by a person.</p>
   <div class="status">
-    <span class="pill">rules <b>v1</b></span>
+    <span class="pill">rules <b>v3</b></span>
     <span class="pill">mode <b>shadow</b> · verdicts shown, boards not affected yet</span>
     <span class="pill">recordings kept <b>90 days</b></span>
   </div>
@@ -38,7 +38,7 @@
     <div class="step"><span class="n">1</span><span class="where">In your browser</span><h3>Record</h3><p>Every key press and release, and the truck's state 10 times a second, while an online ride is on the road.</p></div>
     <div class="step"><span class="n">2</span><span class="where">Every 15 s</span><h3>Seal</h3><p>The game packs the last 15 seconds into a batch, fingerprints it with SHA-256 and links it to the batch before.</p></div>
     <div class="step"><span class="n">3</span><span class="where">On the server</span><h3>Store</h3><p>The server recomputes the fingerprint, checks the batch's shape and limits, measures what the judge will need, and stores it. Stored batches never change.</p></div>
-    <div class="step"><span class="n">4</span><span class="where">When the shift completes</span><h3>Judge</h3><p>All batches are checked together: the chain, the physics, the distance, the coverage, the timing of your hands, and whether you answered the dispatch prompts.</p></div>
+    <div class="step"><span class="n">4</span><span class="where">When the shift completes</span><h3>Judge</h3><p>All batches are checked together: the chain, the physics, the distance, the coverage, the server's road, the timing of your hands, and whether you answered the dispatch prompts.</p></div>
     <div class="step"><span class="n">5</span><span class="where">Result</span><h3>Rank</h3><p><span class="chip ok">verified</span> shifts rank. Flagged ones wait for a person. Rejected ones don't rank.</p></div>
   </div>
 </section>
@@ -117,6 +117,7 @@
         <li><b>Ends where the ride ended</b><span class="soft">The last recorded distance matches the distance the ride reported, within 30 m + 1 %, allowing for seconds whose final upload never arrived.</span><span class="c">recording-mismatch</span></li>
         <li><b>Covers the drive</b><span class="soft">Under 50 % of the driven time recorded rejects. Under 90 % only flags.</span><span class="c">recording-incomplete · recording-gaps (flag)</span></li>
         <li><b>Someone drove</b><span class="soft">A truck that moved more than 50 m needs key presses, and gas among them.</span><span class="c">no-inputs · no-throttle-input</span></li>
+        <li><b>Matches the server's road</b><span class="soft">The holes are the server's: driving through two of them at speed with no damage rejects (one flags). More than 27 s off the road rejects – the game itself ends a ride after 20 s. Gaining speed with the gas pedal up is impossible on a flat road: 2 m/s of it, or 5 such moments, reject; fewer flag.</span><span class="c">obstacle-ignored · obstacle-no-impact (flag) · offroad-ignored · accel-without-gas</span></li>
         <li><b>Dispatch prompts answered</b><span class="soft">About every 4 minutes of driving a prompt appears on the windscreen – FLASH YOUR HEADLIGHTS · PRESS L – with a 20 s countdown. The recording must show that key. Ignore half or more of 3+ prompts and the shift rejects; one missed only flags.</span><span class="c">challenges-ignored · challenge-missed (flag)</span></li>
       </ul>
     </div>
@@ -136,6 +137,59 @@
     <div class="out ok"><h3>Verified</h3><p>Nothing found. The shift ranks on the paid leaderboard.</p></div>
     <div class="out flag"><h3>Flagged</h3><p>Something looked off but proves nothing. The shift goes to the review queue and doesn't rank until an admin accepts it.</p></div>
     <div class="out bad"><h3>Rejected</h3><p>The recording is missing, broken or impossible. The shift doesn't rank. An admin can still look at it and reverse the verdict.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="s-road">
+  <div class="head">
+    <span class="eyebrow">The road is the server's</span>
+    <h2 id="s-road">Your truck must feel the holes the server put there</h2>
+    <p>Every ride's road – its lanes, junctions and sinkholes – grows from one number, the ride's seed, which the server draws. The server builds the same road from it on its own and hands your game the list of holes; your game draws exactly those and your truck drives over exactly those. So a game that has been tampered with to leave the holes out still drove over the server's holes – and its recording gives it away: at speed, every sinkhole costs hull, and that one shows none.</p>
+  </div>
+  <div class="pipe">
+    <div class="step"><span class="n">1</span><span class="where">When the ride is made</span><h3>Seed</h3><p>The server draws the seed. The whole road follows from it.</p></div>
+    <div class="step"><span class="n">2</span><span class="where">On the server</span><h3>Build</h3><p>The server rebuilds the road and lists its sinkholes – the obstacle plan.</p></div>
+    <div class="step"><span class="n">3</span><span class="where">In your browser</span><h3>Drive</h3><p>Your game draws the server's holes and your truck drives over them. A spectator's replay draws the same ones.</p></div>
+    <div class="step"><span class="n">4</span><span class="where">On every upload</span><h3>Compare</h3><p>Each batch is held against the plan: every axle that went through a hole, the speed, the hull before and after.</p></div>
+    <div class="step"><span class="n">5</span><span class="where">Result</span><h3>Judge</h3><p>Holes driven through at speed with no damage: the game never had them. Two of them reject the shift.</p></div>
+  </div>
+  <figure class="chart roadfig" style="margin:0">
+    <svg viewBox="0 0 920 250" role="img" aria-label="The same road with two sinkholes of the server's plan at 612 and 1701 metres: an honest game loses hull at each, 100 to 81 to 62 percent, and is verified; a game with the holes taken out stays at 100 percent and is rejected">
+      <text x="317" y="22" text-anchor="middle" class="t-ink">sinkhole · 612 m</text><text x="774" y="22" text-anchor="middle" class="t-ink">sinkhole · 1701 m</text>
+      <rect x="60" y="30" width="840" height="50" class="asphalt"/><line x1="60" x2="900" y1="55" y2="55" class="lane"/>
+      <line x1="60" x2="900" y1="68" y2="68" class="path"/><text x="66" y="48">your truck, right-hand lane →</text>
+      <circle cx="317" cy="68" r="10" class="pit"/><circle cx="774" cy="68" r="10" class="pit"/><circle cx="317" cy="68" r="16" class="ring"/><circle cx="774" cy="68" r="16" class="ring"/>
+      <line x1="317" x2="317" y1="80" y2="210" class="cut"/><line x1="774" x2="774" y1="80" y2="210" class="cut"/>
+      <line x1="60" x2="900" y1="120" y2="120" class="g"/><line x1="60" x2="900" y1="160" y2="160" class="g"/><line x1="60" x2="900" y1="200" y2="200" class="g"/>
+      <text x="54" y="124" text-anchor="end">100 %</text><text x="54" y="164" text-anchor="end">80 %</text><text x="54" y="204" text-anchor="end">60 %</text>
+      <path d="M60 120 H900" class="hull-bad"/>
+      <path d="M60 120 H317 V158 H774 V196 H900" class="hull-ok"/>
+      <text x="317" y="108" text-anchor="middle" class="t-limit">NO IMPACT</text><text x="774" y="108" text-anchor="middle" class="t-limit">NO IMPACT</text>
+      <text x="360" y="113" class="t-limit">holes taken out · hull stays 100 % · REJECTED</text>
+      <text x="360" y="150" class="t-ok">honest game · hull 100 → 81 → 62 % · VERIFIED</text>
+      <text x="60" y="230">0 m</text><text x="317" y="230" text-anchor="middle">612 m</text><text x="774" y="230" text-anchor="middle">1701 m</text><text x="400" y="230">hull while driving, at 22 m/s (≈ 80 km/h)</text>
+    </svg>
+    <figcaption>Two trucks on the same seed, cruising the right-hand lane at 22 m/s. Green: the real game – each sinkhole drops all three axles into it and costs about 19 % hull, so the shift is verified. Red: a game with the holes taken out by a script – nothing on its screen, the hull never moves, but the server's plan says the wheels went a metre deep into two sinkholes. The shift is rejected (<code>obstacle-ignored</code>), and a replay rings both holes red.</figcaption>
+  </figure>
+  <div class="cols">
+    <div class="card">
+      <div class="top"><h3>Fair to honest drivers</h3><span class="chip ok">by design</span></div>
+      <ul class="checks">
+        <li><b>Going round a hole is fine</b><span class="soft">A wheel that passed a pit by 0.4 m or more never counts, and one on the very edge is too close to call.</span></li>
+        <li><b>Crawling through is fine</b><span class="soft">Under 3 m/s a hole doesn't hurt the truck, and anything under 1 % of damage is not judged.</span></li>
+        <li><b>One odd hole only flags</b><span class="soft">It takes two holes driven through with no damage to reject; one is shown to a person.</span></li>
+        <li><b>Your game uses the same list</b><span class="soft">The holes on your screen are the server's own; the game's backup copy is tested to be identical.</span></li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="top"><h3>What spectators see</h3><span class="chip pen">replay</span></div>
+      <div class="replay-mock" aria-label="a mock of the watch panel line, its timeline marks and the on-screen stamp">
+        <div class="mock-line bad">ROAD CHECK · 2 planned holes · 0 hit · 0 avoided · 2 NO IMPACT</div>
+        <div class="mock-track"><i class="ig" style="left:30%"></i><i class="ig" style="left:85%"></i></div>
+        <div class="mock-stamp"><b>NO IMPACT</b>the server's sinkhole at 0.61 km – this truck drove through it without a scratch</div>
+      </div>
+      <p class="soft" style="font-size:14px">A replay draws the server's holes, never a copy of what the driver's game had. A hole driven through untouched is ringed red on the road and marked red on the timeline, and the replay stamps NO IMPACT as it passes it. An honest ride shows its hits as amber marks.</p>
+    </div>
   </div>
 </section>
 
@@ -164,6 +218,9 @@
         <tr><td>Speed hack or teleport<span class="c">a modified game</span></td><td>Any sample above the governor, any jump further than top speed allows, or a final distance that doesn't match the ride rejects the shift.</td></tr>
         <tr><td>Cut out the boring hours</td><td>A missing batch or a gap in the chain rejects. Recording under half of the driven time rejects. Under 90 % flags.</td></tr>
         <tr><td>Upload a made-up recording faster than real time</td><td>The server compares every upload with its own clock since the ride started. A ride can't hold more game time than wall time × 1.05 + 30 s, or more batches than one per 5 s + 10. The minimum shift time is also measured by the server, not by the game.</td></tr>
+        <tr><td>Take the holes out of the game<span class="c">an injected script, cruise at 100 km/h</span></td><td>The holes are the server's, not the game's: the recording is measured against the server's own road. Wheels through two sinkholes with the hull untouched – the game would have lost about a fifth of it each time – reject the shift (<code>obstacle-ignored</code>), and every replay rings those holes red and stamps NO IMPACT.</td></tr>
+        <tr><td>Switch off the off-road rule<span class="c">drive across the sand</span></td><td>The server knows where the road is. More than 27 s off it rejects the shift – the real game ends it at 20 s.</td></tr>
+        <tr><td>Push the truck along without throttle</td><td>The road is flat; only the engine can speed the truck up. Speed gained while the gas pedal was up rejects (2 m/s in all, or 5 times), less flags.</td></tr>
         <tr><td>Drive with a macro or a bot</td><td>Machine-perfect timing shows up in hold lengths, repeated rhythms and instant presses. The shift is flagged and can't rank until a person has looked at it.</td></tr>
         <tr><td>Let a bot drive the real game<span class="c">nobody at the keyboard</span></td><td>The server asks for a key at times it chooses, through the heartbeat. A bot that doesn't read the windscreen never answers; ignoring most prompts rejects the shift.</td></tr>
         <tr><td>Script the answers<span class="c">read the heartbeat, press the key</span></td><td>The answer arrives a few milliseconds after the prompt was issued – a person needs a quarter of a second to read it. Such shifts are flagged for review.</td></tr>
@@ -200,6 +257,7 @@
     <li><b>Statistics never reject you</b><span>Timing checks only flag. A flagged shift is looked at by a person before anything is decided.</span></li>
     <li><b>A dropped connection at the end is not fatal</b><span>The final upload gets about a minute to arrive. If it never does, only coverage is affected.</span></li>
     <li><b>Slow PCs and privacy browsers are not punished</b><span>Times come from the browser's own events, rounded clocks are detected, and short rides get no timing opinion at all.</span></li>
+    <li><b>You're judged on the road you saw</b><span>Your game draws its holes from the server's own list, so the holes the judge counts are the ones on your screen. Going round a hole or crawling through it is never held against you.</span></li>
     <li><b>Every verdict has reasons</b><span>Each verdict is stored with the checks that fired, what they measured, and the rules version used, so it can always be explained and re-checked.</span></li>
     <li><b>Human decisions stick, and are accountable</b><span>A late upload never overturns an admin's decision. Re-judging is a deliberate, signed and logged action.</span></li>
     <li><b>Nothing changes under you without notice</b><span>Rules are versioned. While they are tuned, shadow mode shows verdicts without affecting the leaderboards.</span></li>
@@ -213,8 +271,8 @@
     <h2 id="s-limits">What this does not do</h2>
   </div>
   <ul class="limits">
-    <li><b>The server doesn't replay your drive.</b><span>The game runs on your computer and its physics can't be re-run on the server. A careful bot playing the real game with human-like timing could pass the automatic checks. That is why flagged shifts go to a person, and why the checks keep being tightened.</span></li>
-    <li><b>The thresholds are first estimates.</b><span>Rules v2 (the prompt rules included) have not been tuned on real rides yet. Until they are, the leaderboards ignore verdicts (shadow mode). After a change, old rides are judged again at the new rules from the command line.</span></li>
+    <li><b>The server doesn't replay your drive.</b><span>The game runs on your computer and its physics can't be re-run on the server. It checks that the recording agrees with the server's road – a game modified to fake the exact hull loss at every hole would pass that check. A careful bot playing the real game with human-like timing could pass the automatic checks. That is why flagged shifts go to a person, and why the checks keep being tightened.</span></li>
+    <li><b>The thresholds are first estimates.</b><span>Rules v3 (the prompt and road rules included) have not been tuned on real rides yet. Until they are, the leaderboards ignore verdicts (shadow mode). After a change, old rides are judged again at the new rules from the command line.</span></li>
     <li><b>Verdicts decide ranking only.</b><span>An entry fee goes into the weekly pool whatever the outcome of the ride. Prize payouts are not built yet.</span></li>
     <li><b>A refused batch ends the recording.</b><span>If the server refuses a malformed batch, the game stops recording for that ride and the reason is logged, so an admin can see why the verdict came out as it did.</span></li>
   </ul>
@@ -222,7 +280,7 @@
 
 <footer>
   <span>Freight Chain · verified play</span>
-  <span>rules v2 · shadow mode</span>
+  <span>rules v3 · shadow mode</span>
   <span>as of Oct 9, 2026</span>
   <span>see also: <a href="../replay-and-donations/index.html">Replays &amp; Donations</a> – how the same recording is watched</span>
 </footer>

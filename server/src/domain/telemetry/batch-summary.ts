@@ -1,6 +1,8 @@
 import { MAX_SPEED } from '../rides/ride-rules.js';
 import type { InputEvent } from './ride-batch.entity.js';
+import type { RoadPlan } from '../road/road-plan.js';
 import { SAMPLE_TIME_SLACK, SAMPLE_WIDTH } from './telemetry-rules.js';
+import { measureWorld, parseWorldFacts, type WorldFacts } from './world-facts.js';
 
 /* What the verdict needs from a batch, measured ONCE when the batch is accepted and stored beside it (telemetry.RideBatch.summary) – so judging a ride
    reads a few hundred bytes per batch instead of inflating and parsing every 10 Hz sample under the player lock (≈ 2–4 MB for a 1 h shift, 15–30 MB
@@ -20,15 +22,19 @@ export interface BatchSummary {
   /** a sample that is malformed or out of order, with the verdict's code for it (null = all well-formed) */
   fault: { code: 'bad-sample' | 'sample-out-of-order'; detail: string } | null;
   inputs: InputEvent[];
+  /** the samples against the server's road (world-facts.ts): hole passes, off-road spells, speed gained without gas. Measured when the batch was accepted;
+      null = not measured (a batch stored before the server rebuilt the road, re-summarised from its payload without the ride's seed) */
+  world: WorldFacts | null;
 }
 
 export const SUMMARY_VERSION = 1;
 
 const round = (v: number, p = 100) => Math.round(v * p) / p;
 
-/** Measure one batch. `prev` = the last sample of the batch before it (so the step across the batch boundary is measured too, like any other). */
-export function summariseBatch(seq: number, t0: number, t1: number, samples: readonly (readonly number[])[], inputs: readonly InputEvent[]): BatchSummary {
-  const out: BatchSummary = { v: SUMMARY_VERSION, samples: samples.length, first: null, last: null, maxSpeed: 0, worstStep: null, fault: null, inputs: inputs.map((e) => [e[0], e[1], e[2]]) };
+/** Measure one batch; `plan` = the ride's road rebuilt from its seed (null: the world facts are not measured), `prefix` = the previous batch's samples
+    (its tail is measured with this batch, so a pass across the cut is measured – world-facts.ts). */
+export function summariseBatch(seq: number, t0: number, t1: number, samples: readonly (readonly number[])[], inputs: readonly InputEvent[], plan: RoadPlan | null = null, prefix: readonly (readonly number[])[] = []): BatchSummary {
+  const out: BatchSummary = { v: SUMMARY_VERSION, samples: samples.length, first: null, last: null, maxSpeed: 0, worstStep: null, fault: null, inputs: inputs.map((e) => [e[0], e[1], e[2]]), world: plan ? measureWorld(samples, plan, prefix) : null };
   let prev: readonly number[] | null = null;
   for (const row of samples) {
     const [t = NaN, s = NaN, , , v = NaN] = row;
@@ -58,5 +64,5 @@ export function parseSummary(raw: unknown): BatchSummary | null {
   if (typeof raw !== 'object' || raw === null) return null;
   const s = raw as Partial<BatchSummary>;
   if (s.v !== SUMMARY_VERSION || typeof s.samples !== 'number' || !Array.isArray(s.inputs) || typeof s.maxSpeed !== 'number') return null;
-  return { v: SUMMARY_VERSION, samples: s.samples, first: s.first ?? null, last: s.last ?? null, maxSpeed: s.maxSpeed, worstStep: s.worstStep ?? null, fault: s.fault ?? null, inputs: s.inputs as InputEvent[] };
+  return { v: SUMMARY_VERSION, samples: s.samples, first: s.first ?? null, last: s.last ?? null, maxSpeed: s.maxSpeed, worstStep: s.worstStep ?? null, fault: s.fault ?? null, inputs: s.inputs as InputEvent[], world: parseWorldFacts(s.world) };
 }

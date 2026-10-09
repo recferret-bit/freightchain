@@ -18,6 +18,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import nacl from 'tweetnacl'; import bs58 from 'bs58';
 import { launch, sleep } from '../../client/tools/cdp.mjs';
+import { honestRoad } from './road-damage.mjs';
 
 const BASE = process.env.BASE || 'http://localhost:3111', MIN = +(process.env.FREE_RIDE_SECONDS || 30), PORT = +process.env.CHROME_PORT || 9360;
 const fails = []; const check = (name, ok, extra = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${extra ? ' – ' + extra : ''}`); if (!ok) fails.push(name); };
@@ -65,10 +66,11 @@ async function drive({ name, script = human, mutate = () => null, hashOf = (_b, 
   const { j: ride } = await call('POST', 'rides', { body: { tier: 'free' }, ...who });
   await call('POST', `rides/${ride.id}/start`, { body: {}, ...who });
   const speed = Math.max(5, Math.min(27, (ride.completeDist / ride.minSeconds) * 1.12 + 1));
-  const d = { ...who, id: ride.id, t0: Date.now(), t: 0, s: 0, seq: 0, prevHash: ride.id, samples: [], inputs: [], bt0: 0, receipts: [], bodies: [], held: [] };
+  const d = { ...who, id: ride.id, t0: Date.now(), t: 0, s: 0, seq: 0, prevHash: ride.id, samples: [], inputs: [], bt0: 0, receipts: [], bodies: [], held: [], road: honestRoad(BASE, ride.id) };   // road: the hull loss the game takes at the server's planned holes
   const events = script(ride.minSeconds * 1000 + extra * 1000).sort((a, b) => a[0] - b[0]);
   const row = (t, s, v) => [r(sampleT(t), 2), r(sampleS(s), 1), 2.4, 0, r(v, 2), Math.round(900 + v * 50), 6, 100, 0.6, 0, 0, 0, 12, 1 | 2 | 8];
   const cut = async () => {
+    await d.road.take(d.samples);
     const base = { seq: d.seq++, prevHash: d.prevHash, t0: r(sampleT(d.bt0), 2), t1: r(sampleT(d.t), 2), samples: d.samples, inputs: d.inputs };
     const body = mutate(base, d) ?? base;
     const text = JSON.stringify({ seq: body.seq, prevHash: body.prevHash, t0: body.t0, t1: body.t1, samples: body.samples, inputs: body.inputs });

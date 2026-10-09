@@ -37,6 +37,7 @@ Skills live in `.claude/skills/<name>/`. A coding agent reads that folder's `SKI
 | `prod-logs` | Production logs, read-only: the app, Postgres, and nginx | `npm run ops -- logs --since 30m` · `npm run ops -- logs --errors` |
 | `program-check` | The escrow program: reproducible build against the pinned hash, tests on that `.so`, clippy, audit | `npm run program:verify` |
 | `replay-test` | Live watch page, replays, and the `LIVE_*` flags, with a driver and a spectator in Chrome | `bash .claude/skills/replay-test/run.sh` |
+| `ride-audit` | Is this stream honest? A ride loaded from the database (local or production, read-only): the road and its holes rebuilt from the seed, every batch re-hashed, every sample and input measured again, judged afresh and compared with the verdict on record | `bash .claude/skills/ride-audit/run.sh <ride id>` · `… <ride id> --prod` · `… --latest 20 --prod` |
 | `ride-investigate` | One player or one ride on production: the database rows and the matching log lines | `npm run ops -- query ride <id>` (or `query wallet <address>`), then the logs named in the skill |
 | `run-tests` | The whole local suite: lint and unit tests, PostgreSQL, then real-Chrome end-to-end. There is no CI | `npm run check`, then `npm run server:integration`, then `bash .claude/skills/run-tests/e2e.sh` |
 | `test-census` | Count the tests by pyramid layer, grade test coverage per feature, user flow, controller and route (static attribution, line + branch coverage, the routes each browser suite hits), name gaps, and rewrite the Tests block below and docs/test-coverage.md | `npm run test:census` · `npm run test:census -- features` · `npm run test:census -- coverage` · `npm run test:census -- run` · `npm run test:census -- readme` |
@@ -47,7 +48,7 @@ A new, renamed, or removed skill updates this table in the same change. The rule
 
 ## Verified play, admin, observing production
 
-- **Verified play**: on online rides the game records every key press and a 10 Hz sample of the truck (`client/js/telemetry.js`) and uploads hash-chained batches; after a completed shift the server checks that recording – complete, untampered, consistent with the ride, human-timed – and marks it `verified` / `flagged` / `rejected`. Nothing is re-simulated. Only verified paid shifts rank, unless `VERDICT_ENFORCE=false` (shadow mode). Details: `AGENTS.md` → "Verified play".
+- **Verified play**: on online rides the game records every key press and a 10 Hz sample of the truck (`client/js/telemetry.js`) and uploads hash-chained batches; after a completed shift the server checks that recording – complete, untampered, consistent with the ride, human-timed – and marks it `verified` / `flagged` / `rejected`. It also holds the recording against **the server's own road**: the road and its sinkholes are a pure function of the ride seed, the server rebuilds them (`server/src/domain/road`) and hands the game that obstacle plan (`GET /api/watch/:id/road`); a truck that drives through planned holes without the damage the game takes there – a game with the holes taken out – is rejected (`obstacle-ignored`), and so is one that stays off the road longer than the game allows or gains speed without gas. Replays draw the server's holes and mark every one driven through untouched (NO IMPACT). Audit any stream from the database: the `ride-audit` skill. Nothing is re-simulated. Only verified paid shifts rank, unless `VERDICT_ENFORCE=false` (shadow mode). Details: `AGENTS.md` → "Verified play".
 - **Admin page**: `https://admin.<apex>` (locally `/admin.html`) behind HTTP basic auth (`DEPLOY_ADMIN_USER` / `DEPLOY_ADMIN_PASSWORD`), its own wallet sign-in for `ADMIN_WALLETS` (a 2 h admin session) and a wallet signature on every change – overview, the review queue of flagged rides (accept / reject, audited), rides, sign-ins, the server's recent logs, the audit log.
 - **Production, read-only**: `npm run ops -- logs --since 30m` · `ops -- logs --errors` · `ops -- query list` / `ops -- query wallet <address>` · `ops -- sql "SELECT …"` (a read-only transaction) · `ops -- ps`. See `deploy/README.md`.
 
@@ -78,7 +79,7 @@ There is no CI. Run the suites locally (the `run-tests` skill). What each skill 
 
 <!-- test-census:start -->
 
-Counted 2026-10-09 12:57 UTC by `test-census`. Static cases are `it` / `test` / `#[test]` call sites. A recorded run is what that command executed.
+Counted 2026-10-09 17:15 UTC by `test-census`. Static cases are `it` / `test` / `#[test]` call sites. A recorded run is what that command executed.
 
 ### Charts
 
@@ -86,12 +87,12 @@ Static calls by band. A slice is `it` / `test` / `#[test]` plus `check()`. The t
 
 ```mermaid
 pie title Static calls by band
-    "unit" : 994
+    "unit" : 1028
     "audit" : 28
-    "contract" : 167
+    "contract" : 170
     "integration" : 139
     "sim" : 36
-    "e2e" : 417
+    "e2e" : 479
 ```
 
 Newest wall time for each fast stage, in seconds. Each bar is that stage's own clock.
@@ -118,26 +119,26 @@ xychart-beta
 
 | Band | Layer | Files | Cases | `check()` | Runs in |
 | --- | --- | ---: | ---: | ---: | --- |
-| unit | Server domain | 32 | 222 | 0 | `npm run server:test` |
-| unit | Server CQRS handlers | 77 | 262 | 0 | `npm run server:test` |
+| unit | Server domain | 37 | 247 | 0 | `npm run server:test` |
+| unit | Server CQRS handlers | 78 | 265 | 0 | `npm run server:test` |
 | unit | Server services | 15 | 65 | 0 | `npm run server:test` |
 | unit | Server controllers | 15 | 42 | 0 | `npm run server:test` |
 | unit | Server infrastructure | 45 | 193 | 0 | `npm run server:test` |
 | unit | Server app, cli, support | 4 | 14 | 0 | `npm run server:test` |
-| unit | Client unit | 5 | 30 | 0 | `cd client && npm run test:unit` |
-| unit | Landing | 8 | 91 | 0 | `npm run landing:test` |
+| unit | Client unit | 6 | 35 | 0 | `cd client && npm run test:unit` |
+| unit | Landing | 8 | 92 | 0 | `npm run landing:test` |
 | unit | Media | 2 | 25 | 0 | `npm run media:check` |
 | unit | Escrow program (host tests) | 8 | 50 | 0 | `npm run program:test` |
 | audit | Architecture and migration SQL | 5 | 28 | 0 | `npm run server:test` |
-| contract | HTTP scenarios (source) | 15 | 157 | 0 | `server:test and server:integration` |
+| contract | HTTP scenarios (source) | 15 | 160 | 0 | `server:test and server:integration` |
 | contract | HTTP specs, in-memory | 4 | 10 | 0 | `npm run server:test` |
 | integration | Repositories on PostgreSQL | 27 | 105 | 0 | `npm run server:integration` |
 | integration | Concurrency | 1 | 32 | 0 | `npm run server:integration` |
 | integration | Migration drift | 1 | 2 | 0 | `npm run server:integration` |
 | integration | Same HTTP scenarios on PostgreSQL | 1 | 0 | 0 | `npm run server:integration` |
 | sim | Headless game playthrough | 1 | 0 | 36 | `cd client && npm run test:headless` |
-| e2e | Browser and API harnesses | 15 | 0 | 417 | `bash .claude/skills/run-tests/e2e.sh` |
-| | **Total** | **281** | **1328** | **453** | |
+| e2e | Browser and API harnesses | 17 | 0 | 479 | `bash .claude/skills/run-tests/e2e.sh` |
+| | **Total** | **290** | **1365** | **515** | |
 
 HTTP scenario cases are written once under `server/test/scenarios` and executed twice: in-memory (`npm run server:test`) and PostgreSQL (`npm run server:integration`). The PostgreSQL runner row counts the runner file. Its cases are the scenario row. `it.each` is one static call and one executed test per row.
 
@@ -157,7 +158,9 @@ HTTP scenario cases are written once under `server/test/scenarios` and executed 
 | `server/scripts/e2e-localnet.mjs` | 71 | `localnet-e2e` |
 | `server/scripts/e2e-promo.mjs` | 47 | `e2e.sh` |
 | `server/scripts/e2e-replay.mjs` | 32 | `e2e.sh` |
+| `server/scripts/e2e-road-check.mjs` | 17 | `e2e.sh` |
 | `server/scripts/e2e-tickets-stub.mjs` | 18 | `npm --prefix server run test:tickets-stub` |
+| `server/scripts/e2e-verified-deep.mjs` | 45 | `e2e.sh` |
 | `server/scripts/e2e-verified-play.mjs` | 19 | `e2e.sh` |
 | `server/scripts/e2e-watch.mjs` | 32 | `e2e.sh` |
 
@@ -175,7 +178,7 @@ Purpose of every skill, including these, is the [Skills](#skills) table. This li
 | `run-tests` | `e2e` | fail · 2026-10-09 12:29 UTC · 26m 54s |
 | `verified-play-test` | `verified` | no run recorded |
 
-Census skill: `test-census`. Production read-only skills: `posthog-prod`, `prod-db`, `prod-logs`, `ride-investigate`. Other skills: `game-audio`, `gameplay-balance`, `gameplay-video`, `storybook-models`.
+Census skill: `test-census`. Production read-only skills: `posthog-prod`, `prod-db`, `prod-logs`, `ride-audit`, `ride-investigate`. Other skills: `game-audio`, `gameplay-balance`, `gameplay-video`, `storybook-models`.
 
 ### Gaps
 
@@ -196,9 +199,10 @@ when browser runs are recorded and one of its harnesses is an `e2e.sh` suite, ev
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- |
 | Sign-in + session | **fair** | 14/20 | 47 | 4/4 | 36 | 1 | — | e2e-wallet, e2e-browser, e2e-lobby, e2e-close | 3/4 | 78.8 % · 77 % (19/20 files loaded) | 1 of 4 routes never hit in a recorded browser run |
 | Player account: free rides + daily refill | **strong** | 3/3 | 16 | — | — | 5 | — | e2e-lobby | — | 100 % · 83.3 % | — |
-| Verified play (recording, verdict, prompts) | **strong** | 12/19 | 62 | 1/1 | 23 | 4 | 1 | e2e-verified-play, e2e-browser | 1/1 | 89.3 % · 87.6 % | — |
+| Verified play (recording, verdict, prompts) | **strong** | 14/22 | 76 | 1/1 | 26 | 4 | 1 | e2e-verified-play, e2e-verified-deep, e2e-browser | 1/1 | 89.3 % · 87.6 % (19/22 files loaded) | — |
+| The server's road (obstacle plan, road checks, ride audit) | **fair** | 5/6 | 19 | 1/1 | 4 | — | — | e2e-road-check | 0/1 | — | 1 of 1 routes never hit in a recorded browser run |
 | Pay-per-ride (legacy weekly round) | **fair** | 14/18 | 70 | 4/4 | 35 | 5 | — | e2e-lobby | 1/4 | 98.7 % · 87.2 % | 3 of 4 routes never hit in a recorded browser run |
-| Ride lifecycle (order, start, heartbeat, end, stale sweep) | **strong** | 14/19 | 99 | 6/6 | 58 | 4 | — | e2e-browser, e2e-close, e2e-lobby | 6/6 | 88.4 % · 87.9 % | — |
+| Ride lifecycle (order, start, heartbeat, end, stale sweep) | **strong** | 14/19 | 99 | 6/6 | 60 | 4 | — | e2e-browser, e2e-close, e2e-lobby | 6/6 | 88.4 % · 87.9 % | — |
 | Escrow: pools on sale + ticket purchase | **thin** | 28/33 | 163 | 7/8 | 8 | 4 | — | e2e-lobby, e2e-tickets-stub, e2e-localnet | 1/8 | 85.7 % · 89.5 % (32/33 files loaded) | 1 of 8 routes in no scenario; 7 of 8 routes never hit in a recorded browser run (e2e-tickets-stub, e2e-localnet not recorded) |
 | Escrow: settlement (events, watcher, webhook) | **strong** | 10/13 | 46 | 2/2 | 6 | 2 | — | e2e-localnet | — | 98.6 % · 92.2 % | — |
 | Escrow: refunds, payouts, crank | **strong** | 7/7 | 26 | 2/2 | 1 | — | — | e2e-localnet, e2e-tickets-stub | — | 99.4 % · 84.3 % | — |
@@ -206,17 +210,17 @@ when browser runs are recorded and one of its harnesses is an `e2e.sh` suite, ev
 | Promo codes (admin creates, players redeem) | **strong** | 12/14 | 72 | 7/7 | 38 | 3 | — | e2e-promo, e2e-lobby, e2e-wallet | 7/7 | 74.1 % · 92.9 % | — |
 | Garage + cosmetics | **fair** | 6/9 | 30 | 4/4 | 11 | — | 6 | e2e-lobby, e2e-promo, e2e-watch | 3/4 | 87.2 % · 91 % (8/9 files loaded) | 1 of 4 routes never hit in a recorded browser run |
 | Live board (online, on the road, history) | **strong** | 3/5 | 10 | 2/2 | 9 | — | — | e2e-live-board, e2e-close | 2/2 | 71.6 % · 91.1 % (4/5 files loaded) | — |
-| Live streams: watch + replay | **thin** | 2/5 | 14 | 1/1 | 13 | 1 | — | e2e-watch, e2e-replay | 1/1 | 17.1 % · 87.5 % | 3 of 5 files have no test of their own; 17.1 % of lines ran |
+| Live streams: watch + replay | **thin** | 2/5 | 14 | 1/1 | 14 | 1 | — | e2e-watch, e2e-replay | 1/1 | 17.1 % · 87.5 % | 3 of 5 files have no test of their own; 17.1 % of lines ran |
 | Live streams: chat, mutes, donations, effects | **fair** | 13/16 | 37 | 7/7 | 7 | 3 | — | e2e-watch, e2e-live-flags, e2e-replay | 7/7 | 65.4 % · 91.1 % | 65.4 % of lines ran |
 | Lobby: tiers, pool, leaderboard, profile | **strong** | 7/11 | 32 | 4/4 | 26 | — | — | e2e-lobby | 4/4 | 94.5 % · 91.4 % (10/11 files loaded) | — |
-| Admin page (sign-in, review queue, audit) | **strong** | 18/20 | 49 | 12/12 | 13 | — | — | e2e-admin, e2e-promo, e2e-verified-play | 12/12 | 100 % · 85 % (19/20 files loaded) | — |
+| Admin page (sign-in, review queue, audit) | **strong** | 18/20 | 49 | 12/12 | 13 | — | — | e2e-admin, e2e-promo, e2e-verified-play, e2e-verified-deep | 12/12 | 100 % · 85 % (19/20 files loaded) | — |
 | Product analytics relay | **fair** | 5/9 | 23 | 1/1 | 5 | — | — | /posthog-test | — | 59 % · 91.6 % | 59 % of lines ran |
 | Platform: HTTP contract, health, rate limits, config, logs, CLI | **strong** | 28/56 | 106 | 2/2 | 7 | — | — | e2e-browser | — | 85.7 % · 79.3 % | — |
 | Game: driving sim (drivetrain, brakes, battery, climate) | **fair** | 2/10 | 5 | — | — | — | 20 | e2e-chrome, e2e-browser | — | 69.2 % · 77.6 % | 69.2 % of lines ran |
 | Game: endless road, junctions, traffic | **strong** | 1/12 | 7 | — | — | — | 9 | e2e-chrome | — | 72.3 % · 93.6 % (11/12 files loaded) | — |
 | Game: cockpit, scenery, routes, 3D models | **thin** | 0/71 | 0 | — | — | — | — | e2e-chrome, e2e-viewer | — | 62.5 % · 90.2 % (64/71 files loaded) | 71 of 71 files have no test of their own; 62.5 % of lines ran |
 | Landing page | **strong** | 2/4 | 48 | — | — | — | — | e2e-wallet, e2e-replay, e2e-live-board | — | 100 % · 100 % (2/4 files loaded) | — |
-| Whitepaper | **fair** | 2/2 | 20 | — | — | — | — | — | — | 100 % · 99 % (1/2 files loaded) | no end-to-end harness |
+| Whitepaper | **fair** | 2/2 | 21 | — | — | — | — | — | — | 100 % · 99 % (1/2 files loaded) | no end-to-end harness |
 | Promo clips + sound | **thin** | 2/19 | 25 | — | — | — | — | /gameplay-video, /game-audio | — | 93.4 % · 90.8 % (15/19 files loaded) | 17 of 19 files have no test of their own |
 
 ### Coverage by user flow
@@ -256,14 +260,14 @@ The controller spec only checks dispatch to the bus. Behaviour is the handler sp
 | `promos` | 3 | 2 | 3/3 | 3/3 | 3/3 | 2/3 | 100 % |
 | `tickets` | 6 | 2 | 6/6 | 6/6 | 5/6 | 0/6 | 100 % |
 | `health` | 2 | 2 | 2/2 | 2/2 | 2/2 | 0/2 | 100 % |
-| `live` | 8 | 1 | 8/8 | 8/8 | 8/8 | 8/8 | 100 % |
+| `live` | 9 | 1 | 9/9 | 9/9 | 9/9 | 8/9 | 100 % |
 | `lobby` | 3 | 1 | 3/3 | 3/3 | 3/3 | 3/3 | 100 % |
 | `rides` | 10 | 8 | 10/10 | 10/10 | 10/10 | 8/10 | 100 % |
 | `telemetry` | 1 | 2 | 1/1 | 1/1 | 1/1 | 1/1 | 100 % |
 
 ### Notes
 
-- 2 `it.each` / `test.each` call sites. The case column counts the call. The run counts each row.
+- 3 `it.each` / `test.each` call sites. The case column counts the call. The run counts each row.
 - `analyticsScenarios` is registered twice on the in-memory runner and twice on PostgreSQL, so those cases execute that many times per backend.
 - `e2e-chrome.mjs`, `e2e-viewer.mjs` report failures through the shared `problems` list, so they have no `check()` calls.
 - Wall time is each stage's own clock, including process startup, and is longer when other stages are using the machine. `server-unit` finishes before `server-integration` starts. `server-integration` includes `npm run db:up`.
@@ -303,8 +307,8 @@ Showing 24 of 30.
 
 Newest fast stages on record: 7 of 7, overlapped in 42.2 s. Slowest of those: `server-integration` at 33.5 s. Added up, the stage times are 57.7 s.
 A run counts more than the static call sites when `it`, `test`, or `check()` sits in a loop or in `it.each`, and when a scenario function is registered more than once.
-`server-unit` executed 1058. Static call sites for that stage: 993.
-`server-integration` executed 295. Static call sites for that stage: 296.
+`server-unit` executed 1058. Static call sites for that stage: 1024.
+`server-integration` executed 295. Static call sites for that stage: 299.
 `client-headless` executed 39. Static call sites for that stage: 36.
 
 Failures in the rows above:

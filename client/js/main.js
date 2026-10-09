@@ -17,7 +17,7 @@ import { drawCockpit } from './cockpit/index.js';
 import { uiBtns } from './cockpit/common.js';
 import * as inputBits from './input-bits.js';
 import { showMenu, startRide, resetRide } from './ui/game.js';
-import { HOLES, holeAt, holesNear, clearHoleCache } from './world/holes.js';
+import { HOLES, holeAt, holesNear, clearHoleCache, plan, flagged } from './world/holes.js';
 import { updateDayNight, setNight, setPhase, setClock, savedClock } from './world/daynight.js';
 import { selectTheme, savedThemeId } from './world/theme-manager.js';
 import { THEMES } from './themes/index.js';
@@ -25,6 +25,7 @@ import { initOnline, online } from './online.js';
 import { tickTelemetry, telemetry } from './telemetry.js';
 import { prompt } from './prompt.js';
 import { initWatch, startWatch, stepWatch, watch } from './watch.js';
+import { roadPlan, followRoadPlan, updateRoadPlan } from './road-plan.js';
 import { mountWatchPanel } from './ui/watch-panel.js';
 import { liveFeed } from './ui/live-feed.js';
 import { track } from './analytics.js';
@@ -36,6 +37,7 @@ function frame(now) {
   const dt = Math.max(0, Math.min(0.05, (now - clock.last) / 1000)); clock.last = now;   // clamped: no time-jumps after tab stalls
   if (st.watch) stepWatch(dt);   // a spectator's replay (play.html?watch=<id>): st comes from the recording, nothing is simulated
   else if (st.mode === 'drive') { update(dt); tickTelemetry(dt); }   // tickTelemetry: online rides only (a no-op offline)
+  updateRoadPlan(st.s);   // online rides + replays: the server's obstacle plan for the road ahead (a no-op offline)
   roads.update(dt); updateDayNight(dt); updateDisp(dt); updateFX(dt); audio.update(true); radio.update();   // road world: generation, streaming, signals
   renderWorld(); drawCockpit();
 }
@@ -44,6 +46,7 @@ setClock(savedClock(), true, false);   // the last clock time (default noon); th
 await initOnline();   // only with ?ride=<id> (see online.js); offline it returns at once
 if (online.ride) {
   const r = online.ride;   // no seed: the relay must not see it
+  followRoadPlan(r.id, () => online.running);   // the server's holes, once /start has answered (road-plan.js)
   track('ride_page_viewed', { ride_id: r.id, tier_id: r.tier, is_free: r.tier === 'free', time_scale: r.timeScale, min_ms: Math.round(r.minSeconds * 1000), complete_dist_m: Math.round(r.completeDist) });
 } else if (online.error) {
   const stage = online.error.startsWith('not signed in') ? 'not_signed_in' : online.error.startsWith('this ride is') ? 'bad_status' : typeof online.status === 'number' ? 'http' : 'unknown';
@@ -51,11 +54,12 @@ if (online.ride) {
 }
 if (await initWatch()) {   // only with ?watch=<id> (see watch.js): the watched ride's route + seed, no menu, the watch panel instead
   CFG.TRAFFIC = false;   // no traffic SIM in a replay: watch.js draws the traffic the driver's game RECORDED (an empty road for recordings from before that)
+  if (watch.ride) followRoadPlan(watch.ride.id);   // a replay draws the server's holes, never a copy of what the driver's game had
   if (watch.ride) { selectTheme(THEMES.some(t => t.id === watch.ride.route) ? watch.ride.route : THEMES[0].id, false); resize(); resetRide(watch.ride.seed); st.mode = 'drive'; startWatch(); }
   else resize();
   mountWatchPanel();
 } else { resize(); resetRide(); showMenu('FREIGHT CHAIN', 'Long-haul truck simulator'); }
 requestAnimationFrame(frame);
-window.__game = { audio, cosmetics, online, telemetry, prompt, watch, liveFeed, radio, roadObjects, chunks, spacing, roads, net, st, disp, CFG, Wallet, input, tryShift, ignition, startRide, curv, spawn, traffic: cars, selectTheme, THEMES, setNight, setPhase, setClock, dn, weather, uiBtns, inputBits, holes: { HOLES, holeAt, holesNear, clearHoleCache } };   // handy for console debugging
+window.__game = { audio, cosmetics, online, telemetry, prompt, watch, roadPlan, liveFeed, radio, roadObjects, chunks, spacing, roads, net, st, disp, CFG, Wallet, input, tryShift, ignition, startRide, curv, spawn, traffic: cars, selectTheme, THEMES, setNight, setPhase, setClock, dn, weather, uiBtns, inputBits, holes: { HOLES, holeAt, holesNear, clearHoleCache, plan, flagged } };   // handy for console debugging
 
  

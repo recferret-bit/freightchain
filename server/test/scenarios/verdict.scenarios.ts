@@ -1,6 +1,6 @@
 import { bindClient, newWallet, type Rider } from '../support/client.js';
 import type { Harness } from '../support/harness.js';
-import { answersFor, recording, upload, type RecordingOptions } from '../support/recording.js';
+import { answersFor, ownLaneHoles, recording, upload, type RecordingOptions } from '../support/recording.js';
 import type { ChallengeDto } from '../../src/domain/rides/ride-challenge.js';
 import { RECORDING_BYTES_SLACK } from '../../src/domain/telemetry/telemetry-rules.js';
 
@@ -16,8 +16,8 @@ export function verdictScenarios(h: () => Harness): void {
   /** a demo paid 1 h shift (60 s, 840 m): pay, start, beat (collecting the dispatch prompts the heartbeats carry), upload the recording – with the prompts
       answered `reactionMs` after they were issued (null = ignored) –, end */
   async function paidShift(rider: Rider, rec: Partial<RecordingOptions> | null, metres = 910, reactionMs: number | null = 600) {
-    const { id, prompts } = await driven(rider, metres);
-    if (rec) await upload(rider.agent, id, recording(id, { seconds: 70, distance: metres, answers: reactionMs === null ? [] : answersFor(prompts, reactionMs), ...rec }));
+    const { id, prompts, road } = await driven(rider, metres);
+    if (rec) await upload(rider.agent, id, recording(id, { seconds: 70, distance: metres, answers: reactionMs === null ? [] : answersFor(prompts, reactionMs), road, ...rec }));
     return (await rider.agent.post(`/api/rides/${id}/end`).send({ outcome: 'shift', s: metres, t: 70, hull: 100 }).expect(200)).body;
   }
   async function driven(rider: Rider, metres = 910) {
@@ -31,7 +31,7 @@ export function verdictScenarios(h: () => Harness): void {
       const hb = (await rider.agent.post(`/api/rides/${r.id}/heartbeat`).send({ s: (i * metres) / 7, t: i * 10, hull: 100 }).expect(200)).body;
       if (hb.challenge && !prompts.some((p) => p.id === hb.challenge.id)) prompts.push(hb.challenge);
     }
-    return { id: r.id as string, prompts };
+    return { id: r.id as string, prompts, road: r.seed as number };   // road: the seed – the recordings take the damage the game takes at the server's holes
   }
 
   it('a human-timed recording → /end answers VERIFIED and the shift ranks on the paid boards', async () => {
@@ -45,8 +45,8 @@ export function verdictScenarios(h: () => Harness): void {
 
   it('a complete shift whose tab CLOSES: the /end beacon (text/plain) completes it; the last batch that never left only costs coverage', async () => {
     const closeAfter = async (d: Rider, recorded: number) => {   // driven 70 s / 910 m; the batches up to `recorded` s arrived, the rest died with the tab
-      const { id, prompts } = await driven(d);
-      await upload(d.agent, id, recording(id, { seconds: recorded, distance: (910 * recorded) / 70, answers: answersFor(prompts) }));
+      const { id, prompts, road } = await driven(d);
+      await upload(d.agent, id, recording(id, { seconds: recorded, distance: (910 * recorded) / 70, answers: answersFor(prompts), road }));
       return (await d.agent.post(`/api/rides/${id}/end`).set('content-type', 'text/plain;charset=UTF-8')
         .send(JSON.stringify({ outcome: 'shift', s: 910, t: 70, hull: 100, reason: 'the driver closed the game' })).expect(200)).body;
     };
@@ -81,8 +81,8 @@ export function verdictScenarios(h: () => Harness): void {
 
   it('a recording that contradicts the ride (ends 600 m short) → REJECTED', async () => {
     const d = await login(VERDICT_DEMO);
-    const { id, prompts } = await driven(d);
-    await upload(d.agent, id, recording(id, { seconds: 70, distance: 310, answers: answersFor(prompts) }));
+    const { id, prompts, road } = await driven(d);
+    await upload(d.agent, id, recording(id, { seconds: 70, distance: 310, answers: answersFor(prompts), road }));
     const end = (await d.agent.post(`/api/rides/${id}/end`).send({ outcome: 'shift', s: 910, t: 70 }).expect(200)).body;
     expect(end.verdict.reasons.map((x: { code: string }) => x.code)).toContain('recording-mismatch');
     expect(end.verdict.status).toBe('rejected');
@@ -90,14 +90,50 @@ export function verdictScenarios(h: () => Harness): void {
 
   it('the final batch landing after /end re-judges the ride: the last 15 s are no longer missing', async () => {
     const d = await login(VERDICT_DEMO);
-    const { id, prompts } = await driven(d);
-    const batches = recording(id, { seconds: 70, distance: 910, answers: answersFor(prompts) });
+    const { id, prompts, road } = await driven(d);
+    const batches = recording(id, { seconds: 70, distance: 910, answers: answersFor(prompts), road });
     await upload(d.agent, id, batches.slice(0, -1));
     const end = (await d.agent.post(`/api/rides/${id}/end`).send({ outcome: 'shift', s: 910, t: 70 }).expect(200)).body;
     expect(end.verdict.status).not.toBe('verified'); // the tail is missing: it ends short of 910 m
     sec(5);
     await upload(d.agent, id, batches.slice(-1));
     expect((await d.agent.get(`/api/rides/${id}`).expect(200)).body.verdict).toMatchObject({ status: 'verified', reasons: [] });
+  });
+
+  describe('the server\'s road: the recording is judged on the holes the SERVER rebuilt from the seed', () => {
+    /** a free shift that cruises the right-hand lane at 20 m/s past the first two planned sinkholes in it; `honest` = the hull takes the game's damage there */
+    async function throughTheHoles(honest: boolean) {
+      const d = await login();
+      const r = (await d.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
+      await d.agent.post(`/api/rides/${r.id}/start`).expect(200);
+      const [, h2] = ownLaneHoles(r.seed, 2) as [number, number];
+      const distance = Math.ceil(h2 + 60), seconds = Math.ceil(distance / 20), prompts: ChallengeDto[] = [];
+      for (let t = 10; t < seconds + 10; t += 10) {
+        sec(10);
+        const hb = (await d.agent.post(`/api/rides/${r.id}/heartbeat`).send({ s: Math.min(distance, t * 20), t: Math.min(seconds, t), hull: 100 }).expect(200)).body;
+        if (hb.challenge && !prompts.some((p) => p.id === hb.challenge.id)) prompts.push(hb.challenge);
+      }
+      // the road plan the game was handed is public: the same holes the verdict uses
+      const plan = (await anon().get(`/api/watch/${r.id}/road`).query({ from: 0, to: distance }).expect(200)).body;
+      const answers = prompts.map((c, i) => ({ atMs: c.issuedMs + 450 + ((i * 173) % 600), code: c.codes[0] as string })); // a person's reactions vary (a long drive gets many prompts)
+      await upload(d.agent, r.id, recording(r.id, { seconds, distance, answers, ...(honest ? { road: r.seed } : {}) }));
+      const end = (await d.agent.post(`/api/rides/${r.id}/end`).send({ outcome: 'shift', s: distance, t: seconds, hull: 100 }).expect(200)).body;
+      return { end, plan, h2 };
+    }
+
+    it('took the damage the game takes at every planned hole it drove through → VERIFIED, the holes counted HIT in the scores', async () => {
+      const { end, plan, h2 } = await throughTheHoles(true);
+      expect(plan.holes.filter((x: { lat: number; s: number }) => Math.abs(x.lat - 2.4) < 0.01 && x.s <= h2).length).toBe(2);
+      expect(end).toMatchObject({ status: 'completed', verdict: { status: 'verified', reasons: [] } });
+    });
+
+    it('a game with the holes taken out drives through them without a scratch → COMPLETED but REJECTED obstacle-ignored (a paid shift so judged never ranks)', async () => {
+      const { end } = await throughTheHoles(false);
+      expect(end.status).toBe('completed');
+      expect(end.verdict.status).toBe('rejected');
+      expect(end.verdict.reasons.map((x: { code: string }) => x.code)).toEqual(['obstacle-ignored']);
+      expect(end.verdict.reasons[0].detail).toMatch(/drove through 2 of the \d+ planned holes it reached without a scratch/);
+    });
   });
 
   describe('dispatch prompts (challenge prompts)', () => {
@@ -138,8 +174,8 @@ export function verdictScenarios(h: () => Harness): void {
   describe('the hash chain', () => {
     it('a batch the client could not hash (hash null, the next chained to unhashed-<seq>) only FLAGS – the server hashed it itself', async () => {
       const d = await login(VERDICT_DEMO);
-      const { id, prompts } = await driven(d);
-      const batches = recording(id, { seconds: 70, distance: 910, answers: answersFor(prompts) });
+      const { id, prompts, road } = await driven(d);
+      const batches = recording(id, { seconds: 70, distance: 910, answers: answersFor(prompts), road });
       const b2 = batches[2]!;
       batches[2] = { ...b2, hash: null };
       batches[3] = { ...batches[3]!, prevHash: 'unhashed-2' };
@@ -153,8 +189,8 @@ export function verdictScenarios(h: () => Harness): void {
 
     it('a batch whose hash does not match its content (edited after hashing) → REJECTED hash-mismatch', async () => {
       const d = await login(VERDICT_DEMO);
-      const { id, prompts } = await driven(d);
-      const batches = recording(id, { seconds: 70, distance: 910, answers: answersFor(prompts) });
+      const { id, prompts, road } = await driven(d);
+      const batches = recording(id, { seconds: 70, distance: 910, answers: answersFor(prompts), road });
       batches[1] = { ...batches[1]!, samples: batches[1]!.samples.map((row, i) => (i === 10 ? [...row.slice(0, 4), 27.9, ...row.slice(5)] : row)) }; // one speed value edited, hash kept
       await upload(d.agent, id, batches);
       const end = (await d.agent.post(`/api/rides/${id}/end`).send({ outcome: 'shift', s: 910, t: 70 }).expect(200)).body;

@@ -7,7 +7,7 @@ import { net } from './net/network.js';
 import { FLAGS } from './telemetry.js';
 import { bodySway, trailerYaw } from './sim/physics.js';
 import { wip } from './cockpit/windscreen.js';
-import { placeHole } from './world/holes.js';
+import { placeHole, flagHole } from './world/holes.js';
 import { roadObjects } from './world/chunks.js';
 import { selectTheme } from './world/theme-manager.js';
 import { env } from './world/environment.js';
@@ -25,7 +25,11 @@ import { INPUT_COL, passedMask, lightInputs, inputLights } from './input-bits.js
    clock, the obstacles spectators paid for (placed where the driver's game stamped them), the traffic around the truck (recorded at 2 Hz beside each batch –
    recordings from before that show an empty road), the driver's inputs – keys and dash clicks, a flashing yellow border per control (input-bits.js; older
    recordings show none). What is NOT: windscreen cracks, debris, the radio. Nothing is simulated: st is written from the samples
-   every frame (st.watch stops the sim and input). */
+   every frame (st.watch stops the sim and input).
+   The ROAD is the server's: the holes come from the ride's obstacle plan (road-plan.js – GET /api/watch/:id/road, rebuilt from the seed on the server), never
+   from anything the driver's game reported, and every batch says what the truck did at those holes (`road`: hit / avoided / IGNORED = driven through
+   without the damage the game takes). An ignored hole is marked red on the road and on the timeline, and the replay stamps NO IMPACT when it gets there:
+   a game with the obstacles taken out is plain to see. */
 const POLL_LIVE_MS = 4000, POLL_REPLAY_MS = 10_000;
 export const LIVE_LAG = 25;                 // s behind the newest recorded second: one ~15 s batch + its upload, with room for jitter
 const PREFETCH = 90;                        // s of recording kept loaded ahead of the playhead in a replay
@@ -38,6 +42,7 @@ export const watch = {
   features: { chat: true, donations: true, payment: 'mock', effects: true },   // what spectators may do on THIS ride (the server's LIVE_* flags)
   rec: { lastSeq: null, t1: 0 }, batches: new Map(), rows: [], tframes: [], cars: new Map(), rowsSeq: -1, events: new Map(), cursor: 0, since: 0, totals: { messages: 0, donations: 0, lamports: 0 }, viewers: 0,
   inputs: inputLights, inT: -1,   // the controls lit now (cockpit/index.js draws them) · the playhead's time when they were last read
+  roadSeq: new Map(), road: new Map(), stamp: null, roadT: -1,   // batch seq → its hole outcomes (kept when the batch is pruned) · hole id → merged (the server's measurement) · the NO IMPACT stamp on screen · the playhead when last checked
   wt: 0, playing: true, speed: 1, follow: true, buffering: false, seeking: false, started: false, jumped: true, lastHull: 100, timer: 0, polling: null,
   onUpdate: null, onEvent: null,   // set by ui/watch-panel.js: repaint the panel / a new feed line
 };
@@ -81,7 +86,7 @@ const usable = r => Number.isFinite(r[0]);
 function addBatches(list) {
   const fresh = list.filter(b => !watch.batches.has(b.seq)).sort((a, b) => a.seq - b.seq);
   if (!fresh.length) return;
-  for (const b of fresh) watch.batches.set(b.seq, b);
+  for (const b of fresh) { watch.batches.set(b.seq, b); if (b.road && !watch.roadSeq.has(b.seq)) { watch.roadSeq.set(b.seq, b.road); for (const o of b.road) addOutcome(o); } }
   let pruned = false;
   if (watch.batches.size > KEEP_BATCHES) for (const [seq, b] of watch.batches) if (b.t1 < watch.wt - KEEP_AROUND || b.t0 > watch.wt + PREFETCH + KEEP_AROUND) { watch.batches.delete(seq); pruned = true; }
   if (!pruned && fresh[0].seq === watch.rowsSeq + 1 && fresh.every((b, i) => b.seq === fresh[0].seq + i)) for (const b of fresh) { watch.rows.push(...b.samples.filter(usable)); watch.tframes.push(...(b.traffic ?? []).filter(usable)); }
@@ -89,6 +94,27 @@ function addBatches(list) {
   watch.rowsSeq = Math.max(...watch.batches.keys());
   inputLights.on = (watch.rows.at(-1)?.length ?? 0) > INPUT_COL;   // a recording from before the input column: no input display at all
 }
+/* what the truck did at a planned hole, per batch from the server; a hole whose axles fall into two batches is merged (hit wins, as the verdict counts it) */
+const RANK = { hit: 4, ignored: 3, unmeasured: 2, avoided: 1, other: 0 };
+function addOutcome(o) {
+  const known = watch.road.get(o.hole);
+  const merged = !known ? o : { ...known, t: Math.min(known.t, o.t), outcome: RANK[o.outcome] > RANK[known.outcome] ? o.outcome : known.outcome, expected: known.expected + o.expected, got: known.got + o.got };
+  watch.road.set(o.hole, merged);
+  if (merged.outcome === 'ignored') { const ci = flagHole(merged.hole); if (ci !== null) roadObjects.rebuild(ci); }   // red on the road: the server's hole this truck drove through untouched
+}
+/** the outcomes so far: { holes, hit, avoided, ignored, marks: [{ t, s, outcome, type }] } */
+export function roadCheck() {
+  const all = [...watch.road.values()], n = k => all.filter(o => o.outcome === k).length;
+  return { holes: all.length, hit: n('hit'), avoided: n('avoided'), ignored: n('ignored'), marks: all.filter(o => o.outcome === 'ignored' || o.outcome === 'hit').sort((a, b) => a.t - b.t) };
+}
+/* the playhead passed an ignored hole while playing: stamp it on screen for a few seconds */
+function stampPassed(t) {
+  if (watch.jumped || watch.roadT < 0 || t <= watch.roadT) { watch.roadT = t; return; }
+  for (const o of watch.road.values()) if (o.outcome === 'ignored' && o.t > watch.roadT && o.t <= t) watch.stamp = { ...o, until: performance.now() + 4000 };
+  watch.roadT = t;
+  if (watch.stamp && performance.now() > watch.stamp.until) watch.stamp = null;
+}
+
 /** a feed event, new or seen again with its stamp (also the panel's own posts – it shows them at once) */
 export function addEvent(e) {
   const known = watch.events.get(e.id);
@@ -175,6 +201,7 @@ export function stepWatch(dt) {
   if (watch.buffering) watch.wt = a[0];
   const k = watch.buffering ? 0 : (watch.wt - a[0]) / Math.max(1e-6, b[0] - a[0]);
   lightInputs(watch.buffering ? 0 : inputsPassed(i), dt);   // before apply(): it clears `jumped` · holding the last frame (end of the ride, live edge, a gap): nothing is being pressed
+  stampPassed(watch.wt);   // before apply() too (a seek is not a pass)
   apply(a, b ?? a, k, dt);
   drawTraffic(watch.wt);
 }

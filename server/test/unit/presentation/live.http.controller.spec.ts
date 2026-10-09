@@ -3,6 +3,7 @@ import { AckEffectCommand } from '../../../src/application/use-cases/live/ack-ef
 import { GetInboxQuery } from '../../../src/application/use-cases/live/get-inbox/get-inbox.query.js';
 import { PostRideEventCommand } from '../../../src/application/use-cases/live/post-ride-event/post-ride-event.command.js';
 import { WatchRideQuery } from '../../../src/application/use-cases/live/watch-ride/watch-ride.query.js';
+import { GetRoadPlanQuery } from '../../../src/application/use-cases/live/get-road-plan/get-road-plan.query.js';
 import { MuteWalletCommand } from '../../../src/application/use-cases/live/mute-wallet/mute-wallet.command.js';
 import { CreateDonationOrderCommand } from '../../../src/application/use-cases/live/create-donation-order/create-donation-order.command.js';
 import { ConfirmDonationCommand } from '../../../src/application/use-cases/live/confirm-donation/confirm-donation.command.js';
@@ -14,6 +15,8 @@ describe('LiveHttpController', () => {
     const c = new LiveHttpController(commands.bus, queries.bus);
     expect(await c.watch({ id: 'R' }, { from: 3, after: 7, viewer: 'v', since: 99, leave: true }, { ip: '10.0.0.1', userAgent: null })).toEqual({ now: 1 });
     expect(queries.last()).toEqual(new WatchRideQuery('R', 3, 7, 'v', 99, '10.0.0.1', true));
+    expect(await c.road({ id: 'R' }, { from: 0, to: 6000 })).toEqual({ now: 1 });
+    expect(queries.last()).toEqual(new GetRoadPlanQuery('R', 0, 6000));
     await c.inbox({ wallet: 'D' }, { id: 'R' }, { after: 5 });
     expect(queries.last()).toEqual(new GetInboxQuery('D', 'R', 5));
     expect(await c.message({ wallet: 'F' }, { id: 'R' }, { text: 'hi' })).toEqual({ id: 1 });

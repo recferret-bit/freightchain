@@ -1,8 +1,9 @@
 /* Thresholds of the verdict (verified play). The server re-simulates NOTHING: it validates the recording (chain, bounds, agreement with what was
    reported), measures how human the input timing is, and checks the answers to the dispatch prompts it issued. Only a broken / missing / inconsistent
    recording – or prompts ignored for most of the ride – REJECTS; timing statistics only FLAG (a flagged ride does not rank until someone looks at it) –
-   they start loose and are meant to be tightened on real data. Bump RULES_VERSION on any change. */
-export const RULES_VERSION = 2;
+   they start loose and are meant to be tightened on real data. Since version 3 the recording is also held against the server's own rebuild of the ride's road
+   (holes, off-road, speed without gas – world-checks.ts). Bump RULES_VERSION on any change. */
+export const RULES_VERSION = 3;
 
 /** a recorded speed above MAX_SPEED × this rejects (the governor is 28 m/s; float noise and the ±1 % display jitter fit under it) */
 export const SPEED_TOLERANCE = 1.05;
@@ -48,3 +49,25 @@ export const CHALLENGE_REFLEX_MIN_ANSWERED = 2;
 /** with at least this many prompts issued, missing this share of them (or more) REJECTS – nobody was driving; fewer missed prompts only flag */
 export const CHALLENGE_IGNORED_MIN_ISSUED = 3;
 export const CHALLENGE_IGNORED_SHARE = 0.5;
+
+/* the server's road (domain/road – rebuilt from the ride's seed; the game draws and drives over the same plan): what the truck in the recording did at
+   every planned hole, off the tarmac, and with the gas pedal up (domain/telemetry/world-facts.ts measures, verdict/world-checks.ts decides) */
+/** a wheel within this many metres of a pit's edge is too close to call (the rows are 10 Hz; d is interpolated): neither a hit nor a miss is judged */
+export const PASS_CLEAR_METRES = 0.4;
+/** an axle pass whose damage in the game would be below this (hull %) is not judged – a crawl through a hole hardly scratches the truck */
+export const PASS_MIN_DAMAGE = 1;
+/** a judged pass must show at least this share of the game's damage in the hull (rounding, the v interpolation, a rear axle after the front one slowed the truck) */
+export const PASS_DAMAGE_SHARE = 0.25;
+/** this many holes driven through with no damage at all REJECT ('obstacle-ignored': the game never had them); one flags ('obstacle-no-impact') */
+export const OBSTACLE_IGNORED_REJECT = 2;
+/** this many holes driven through at a damaging speed that could not be measured – no sample before the pit in that batch nor in the stored batch before
+    it, which only happens when batches arrive out of order (the game uploads them in order) – flag 'obstacle-unmeasured' */
+export const OBSTACLE_UNMEASURED_FLAG = 2;
+/** the game ends the ride after OFFROAD_FAIL_SECONDS off the tarmac: a recording that stays off longer than this × that + OFFROAD_SLACK_SECONDS rejects */
+export const OFFROAD_FACTOR = 1.25;
+export const OFFROAD_SLACK_SECONDS = 2;
+/** a step where the speed rose by at least this with the gas pedal up (flat road: only the engine can speed the truck up) counts */
+export const GASLESS_MIN_DV = 0.15;
+/** this much speed gained without gas over the ride (m/s), or this many such steps, REJECTS ('accel-without-gas'); fewer flag */
+export const GASLESS_REJECT_GAIN = 2;
+export const GASLESS_REJECT_STEPS = 5;

@@ -203,3 +203,15 @@ svg .play { stroke: var(--ok); stroke-width: 2.5; }
 svg .batch { fill: var(--chip-pen); stroke: var(--pen); stroke-width: 1; }
 svg .batch-wait { fill: none; stroke: var(--pen); stroke-width: 1; stroke-dasharray: 3 3; }
 .step code { overflow-wrap: anywhere; word-break: break-word; }
+
+/* the server's holes in a replay: the ROAD CHECK line, the timeline marks, the NO IMPACT stamp (watch-panel.js, mocked) */
+.replay-mock { display: grid; gap: 10px; }
+.mock-line { font: 500 12.5px/1.4 var(--f-mono); letter-spacing: .03em; padding: 8px 10px; border-radius: 4px; background: #120f0c; color: #9fd49f; }
+.mock-line.bad { color: #ff6b5a; font-weight: 700; }
+.mock-track { position: relative; height: 22px; border-radius: 4px; background: #120f0c; }
+.mock-track::before { content: ""; position: absolute; left: 10px; right: 10px; top: 10px; height: 3px; border-radius: 2px; background: #ffcf5a66; }
+.mock-track i { position: absolute; top: 8px; width: 4px; height: 6px; margin-left: -2px; border-radius: 1px; background: #ffcf5acc; }
+.mock-track i.ig { top: 5px; width: 6px; height: 12px; margin-left: -3px; background: #ff3b2a; box-shadow: 0 0 6px #ff3b2a; }
+.mock-stamp { justify-self: center; transform: rotate(-3deg); padding: 6px 14px; border: 3px solid #ff3b2a; background: #000c; color: #ffd9d4; text-align: center; font-size: 12.5px; max-width: 460px; box-shadow: 0 0 14px #ff3b2a77; }
+.mock-stamp b { display: block; color: #ff3b2a; font: 800 30px/1.05 var(--f-display); letter-spacing: .08em; }
+.mock-cap { font: 400 11.5px/1.4 var(--f-mono); color: var(--ink-soft); }

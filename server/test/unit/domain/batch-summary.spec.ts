@@ -26,7 +26,7 @@ describe('summariseBatch', () => {
   });
 
   it('an empty batch has no samples and nothing to measure', () => {
-    expect(summariseBatch(0, 0, 0, [], [])).toEqual({ v: SUMMARY_VERSION, samples: 0, first: null, last: null, maxSpeed: 0, worstStep: null, fault: null, inputs: [] });
+    expect(summariseBatch(0, 0, 0, [], [])).toEqual({ v: SUMMARY_VERSION, samples: 0, first: null, last: null, maxSpeed: 0, worstStep: null, fault: null, inputs: [], world: null });
   });
 
   it('parseSummary takes back a stored summary and refuses junk or another version', () => {

@@ -261,7 +261,7 @@ export function paymentScenarios(h: () => Harness): void {
         sec(10);
         await d.agent.post(`/api/rides/${r.id}/heartbeat`).send({ s: i * 130, t: i * 10, hull: 100 }).expect(200);
       }
-      await upload(d.agent, r.id, recording(r.id, { seconds: 70, distance: 910 })); // what the game records – the paid boards rank verified shifts only
+      await upload(d.agent, r.id, recording(r.id, { seconds: 70, distance: 910, road: r.seed })); // what the game records (with the damage of the server's holes) – the paid boards rank verified shifts only
       expect((await d.agent.post(`/api/rides/${r.id}/end`).send({ outcome: 'shift', s: 910, t: 70, hull: 100 }).expect(200)).body.status).toBe('completed');
       const board = (await anon().get('/api/leaderboard').expect(200)).body;
       expect(board.board).toBe('round');

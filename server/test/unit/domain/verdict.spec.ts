@@ -71,7 +71,7 @@ describe('RideVerdict.judge', () => {
       expect(v.status).toBe(VerdictStatus.Flagged);
       expect(v.reasons).toEqual([{ code: 'unhashed-batch', detail: 'batch 1 arrived without the client\'s hash', severity: 'flag' }]);
       expect(v.snapshot().scores.recording.unhashed).toBe(1);
-      expect(expectedLink({ seq: 4, prevHash: '', hash: null, hashOk: false, t0: 0, t1: 1, summary: { v: 1, samples: 0, first: null, last: null, maxSpeed: 0, worstStep: null, fault: null, inputs: [] } })).toBe('unhashed-4');
+      expect(expectedLink({ seq: 4, prevHash: '', hash: null, hashOk: false, t0: 0, t1: 1, summary: { v: 1, samples: 0, first: null, last: null, maxSpeed: 0, worstStep: null, fault: null, inputs: [], world: null } })).toBe('unhashed-4');
     });
   });
 

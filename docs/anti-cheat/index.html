@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Freight Chain Anti-Cheat</title>
-<meta name="description" content="The anti-bot and anti-cheat of Freight Chain's verified play in one page: the eight layers, every reason code and threshold, what keeps honest players safe, how it is operated, and what it does not do.">
+<meta name="description" content="The anti-bot and anti-cheat of Freight Chain's verified play in one page: the nine layers, every reason code and threshold, what keeps honest players safe, how it is operated, and what it does not do.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500;700&display=swap">
@@ -16,15 +16,15 @@
 <header>
   <span class="eyebrow">Freight Chain · verified play · the anti-cheat in one page</span>
   <h1>Anti-Cheat</h1>
-  <p class="lede">A ride ranks only if a person drove it for the whole shift. The game runs in the player's browser, so nothing it says is trusted on its own. The server cannot re-simulate the drive, so it does the next best things: it times the shift itself, demands a recording it can validate, measures how human the hands behind it look, and asks for things during the ride that only someone watching the screen can answer.</p>
+  <p class="lede">A ride ranks only if a person drove it for the whole shift. The game runs in the player's browser, so nothing it says is trusted on its own. The server cannot re-simulate the drive, so it does the next best things: it times the shift itself, demands a recording it can validate, holds every recording against its own rebuild of the ride's road – the holes are the server's, not the game's – measures how human the hands behind it look, and asks for things during the ride that only someone watching the screen can answer.</p>
   <div class="status">
-    <span class="pill">rules <b>v2</b></span>
+    <span class="pill">rules <b>v3</b></span>
     <span class="pill">mode <b>shadow</b> · verdicts shown, boards not affected yet</span>
     <span class="pill">dispatch prompt every <b>≈ 240 s</b> · window <b>20 s</b></span>
     <span class="pill">recordings kept <b>90 days</b> · sign-ins <b>180 days</b></span>
   </div>
   <nav class="toc">
-    <a href="#s-layers">Layers</a><a href="#s-prompts">Dispatch prompts</a><a href="#s-verdict">The verdict</a><a href="#s-fair">Fair to honest players</a><a href="#s-ops">Operating it</a><a href="#s-limits">Limits</a>
+    <a href="#s-layers">Layers</a><a href="#s-road">The server's road</a><a href="#s-prompts">Dispatch prompts</a><a href="#s-verdict">The verdict</a><a href="#s-fair">Fair to honest players</a><a href="#s-ops">Operating it</a><a href="#s-limits">Limits</a>
   </nav>
   <figure class="chart" style="margin:0">
     <svg id="ride" viewBox="0 0 940 230" role="img" aria-label="One ride on a timeline: heartbeats every 10 s, batches every 15 s, two dispatch prompts with their 20 s windows, the end, the 60 s grace for late batches, the judgement"></svg>
@@ -35,24 +35,160 @@
 <section aria-labelledby="s-layers">
   <div class="head">
     <span class="eyebrow">From cheapest to strongest</span>
-    <h2 id="s-layers">Eight layers</h2>
-    <p>Each layer catches something the one before cannot. The first four reject on proof, the fifth refuses what should never be stored, the sixth and seventh only suspect, and the last one decides.</p>
+    <h2 id="s-layers">Nine layers</h2>
+    <p>Each layer catches something the one before cannot. The first five reject on proof, the sixth refuses what should never be stored, the seventh and eighth mostly suspect, and the last one decides.</p>
   </div>
   <ol class="layers">
     <li class="layer"><span class="n">1</span><div><h3>Server-timed shift</h3><p class="what">Driven seconds come from heartbeats and are capped by the wall clock. Distance may grow at most 28 m/s × 1.2 between beats. No heartbeat for 150 s ends the ride.</p></div><p class="catch"><b>Catches:</b> an instant finish, a speed hack between beats, a vanished tab.</p><span class="power chip bad">fails the ride</span><span class="where">Ride.applyReport · the stale-ride sweeper</span></li>
     <li class="layer"><span class="n">2</span><div><h3>A checkable recording</h3><p class="what">Every key / dash-button press and release (wall-clock ms) and a 10 Hz sample of the truck, uploaded every 15 s in SHA-256 hash-chained batches. The server recomputes every hash on arrival.</p></div><p class="catch"><b>Catches:</b> an edited recording, a missing or re-ordered batch, one chained to another ride.</p><span class="power chip bad">reject</span><span class="where">hash-mismatch · missing-batches · chain-broken · no-recording — client/js/telemetry.js, recording-checks.ts</span></li>
     <li class="layer"><span class="n">3</span><div><h3>Physics bounds</h3><p class="what">Under the governor (28 m/s × 1.05); no step the truck cannot make (× 1.2 + 2 m, also across batch boundaries); samples in time order and well-formed.</p></div><p class="catch"><b>Catches:</b> speed hacks, teleports, junk rows.</p><span class="power chip bad">reject</span><span class="where">over-governor · teleport · sample-out-of-order · bad-sample — checkSamples over the batch summaries</span></li>
     <li class="layer"><span class="n">4</span><div><h3>Agreement with the ride</h3><p class="what">The recording ends where the ride ended (30 m + 1 %, a lost tail allowed) and covers the driven time (under 50 % rejects, under 90 % flags). A truck that moved more than 50 m has inputs, and gas among them.</p></div><p class="catch"><b>Catches:</b> a recording of a different drive, cut-out hours, a car driven with no hands.</p><span class="power chip bad">reject</span><span class="where">recording-mismatch · recording-incomplete · no-inputs · no-throttle-input · recording-gaps (flag) — checkAgreement, checkInputsPresent</span></li>
-    <li class="layer"><span class="n">5</span><div><h3>Budgets per ride</h3><p class="what">Game seconds ≤ wall × 1.05 + 30, batches ≤ wall ÷ 5 + 10, bytes ≤ wall × 4 kB + 256 kB; per batch 96 kB, 400 samples, 2000 events; plus the API rate limits.</p></div><p class="catch"><b>Catches:</b> a made-up recording uploaded faster than real time, storage floods.</p><span class="power chip pen">refused · 400</span><span class="where">Ride.recordingAllowance · UploadBatchHandler (the chain stops at a refused batch)</span></li>
-    <li class="layer"><span class="n">6</span><div><h3>How human the hands look</h3><p class="what">Per key: holds that barely vary (spread under 8 % over 6+ holds). The 3 most common press-to-press gaps (1 ms buckets) covering more than 60 %. More than 30 % of presses released within 10 ms. No opinion under 8 presses; coarse browser clocks are detected and the two checks they break are skipped.</p></div><p class="catch"><b>Catches:</b> macros, key-spamming scripts, synthetic events.</p><span class="power chip flag">flag only</span><span class="where">uniform-holds · repeated-timings · instant-presses — human-checks.ts</span></li>
-    <li class="layer"><span class="n">7</span><div><h3>Dispatch prompts</h3><p class="what">About every 240 s of driving (at most 4 on a short shift, 0.6–1.4 intervals apart so the rhythm cannot be guessed) the heartbeat response names one cab action with a 20 s window. The judge looks for that press in the recording.</p></div><p class="catch"><b>Catches:</b> a bot driving the real game without reading the screen; a script reading the heartbeat and pressing at once.</p><span class="power chip bad">reject / flag</span><span class="where">challenges-ignored (≥ 50 % of ≥ 3 missed) · challenge-missed (flag) · challenge-reflex (median answer under 80 ms, flag) — ride-challenge.ts, challenge-checks.ts, client/js/prompt.js</span></li>
-    <li class="layer"><span class="n">8</span><div><h3>A person decides</h3><p class="what">Flagged shifts wait in the admin queue. Accept, reject and re-judge are signed by the admin's wallet for that exact ride and decision, and audited. A late upload never overturns a decision.</p></div><p class="catch"><b>Catches:</b> everything the statistics only suspect.</p><span class="power chip ok">the final word</span><span class="where">admin.&lt;apex&gt; · VerdictService.override — see the verified-play explainer, "Admin decisions"</span></li>
+    <li class="layer"><span class="n">5</span><div><h3>The server's road</h3><p class="what">The road and its sinkholes are a pure function of the ride's seed. The server rebuilds them itself, hands that obstacle plan to the driver's game and to every replay, and measures each uploaded batch against it: every axle through every pit, the time off the tarmac, speed gained with the gas up.</p></div><p class="catch"><b>Catches:</b> a game with the holes – or the off-road rule – taken out; a truck that speeds up with no throttle.</p><span class="power chip bad">reject / flag</span><span class="where">obstacle-ignored · obstacle-no-impact (flag) · offroad-ignored · accel-without-gas (reject / flag) — domain/road, telemetry/world-facts.ts, verdict/world-checks.ts</span></li>
+    <li class="layer"><span class="n">6</span><div><h3>Budgets per ride</h3><p class="what">Game seconds ≤ wall × 1.05 + 30, batches ≤ wall ÷ 5 + 10, bytes ≤ wall × 4 kB + 256 kB; per batch 96 kB, 400 samples, 2000 events; plus the API rate limits.</p></div><p class="catch"><b>Catches:</b> a made-up recording uploaded faster than real time, storage floods.</p><span class="power chip pen">refused · 400</span><span class="where">Ride.recordingAllowance · UploadBatchHandler (the chain stops at a refused batch)</span></li>
+    <li class="layer"><span class="n">7</span><div><h3>How human the hands look</h3><p class="what">Per key: holds that barely vary (spread under 8 % over 6+ holds). The 3 most common press-to-press gaps (1 ms buckets) covering more than 60 %. More than 30 % of presses released within 10 ms. No opinion under 8 presses; coarse browser clocks are detected and the two checks they break are skipped.</p></div><p class="catch"><b>Catches:</b> macros, key-spamming scripts, synthetic events.</p><span class="power chip flag">flag only</span><span class="where">uniform-holds · repeated-timings · instant-presses — human-checks.ts</span></li>
+    <li class="layer"><span class="n">8</span><div><h3>Dispatch prompts</h3><p class="what">About every 240 s of driving (at most 4 on a short shift, 0.6–1.4 intervals apart so the rhythm cannot be guessed) the heartbeat response names one cab action with a 20 s window. The judge looks for that press in the recording.</p></div><p class="catch"><b>Catches:</b> a bot driving the real game without reading the screen; a script reading the heartbeat and pressing at once.</p><span class="power chip bad">reject / flag</span><span class="where">challenges-ignored (≥ 50 % of ≥ 3 missed) · challenge-missed (flag) · challenge-reflex (median answer under 80 ms, flag) — ride-challenge.ts, challenge-checks.ts, client/js/prompt.js</span></li>
+    <li class="layer"><span class="n">9</span><div><h3>A person decides</h3><p class="what">Flagged shifts wait in the admin queue. Accept, reject and re-judge are signed by the admin's wallet for that exact ride and decision, and audited. A late upload never overturns a decision.</p></div><p class="catch"><b>Catches:</b> everything the statistics only suspect.</p><span class="power chip ok">the final word</span><span class="where">admin.&lt;apex&gt; · VerdictService.override — see the verified-play explainer, "Admin decisions"</span></li>
   </ol>
+</section>
+
+<section aria-labelledby="s-road">
+  <div class="head">
+    <span class="eyebrow">Layer 5, closer</span>
+    <h2 id="s-road">The server's road</h2>
+    <p>The game draws a road the server never sees, so the server builds its own. The road's layout and its natural sinkholes are a pure function of the ride's seed: <code>server/src/domain/road</code> is a line-for-line port of the game's generator (<code>road-layout.ts</code> ⇄ <code>client/js/net/network.js</code>, <code>road-plan.ts</code> ⇄ <code>net/obstacles.js</code>). That <b>obstacle plan</b> is served at <code>GET /api/watch/:id/road?from&amp;to</code> – public once the ride has started, at most 10 km per request – and it is the only source of holes for the driver's game and for every replay. The game's own roll is the offline path and the fallback for a stretch whose plan has not arrived yet; <code>road-drift.spec.ts</code> runs the game's own modules beside the port on 40 seeds × 60 km and fails on any difference.</p>
+  </div>
+  <figure class="chart roadfig" style="margin:0">
+    <svg viewBox="0 0 940 330" role="img" aria-label="The seed goes to the server, which rebuilds the road and its holes; the same plan goes to the driver's game, to the spectator's replay and to the measurement of every recording batch; the measurement feeds the verdict and the replay's marks">
+      <defs>
+        <marker id="ah" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8z" class="ah"/></marker>
+        <marker id="ahp" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8z" class="ah-pen"/></marker>
+      </defs>
+      <rect x="12" y="132" width="164" height="66" rx="5" class="box-flag"/>
+      <text x="94" y="158" text-anchor="middle" class="head-t">RIDE SEED</text>
+      <text x="94" y="176" text-anchor="middle">drawn by the server</text>
+      <text x="94" y="189" text-anchor="middle">when the ride is made</text>
+      <rect x="192" y="104" width="214" height="122" rx="5" class="box-pen"/>
+      <text x="299" y="130" text-anchor="middle" class="head-t">SERVER REBUILDS THE ROAD</text>
+      <text x="206" y="154">layout · road-layout.ts</text>
+      <text x="206" y="171">sinkholes · road-plan.ts</text>
+      <text x="206" y="188" class="t-pen">GET /api/watch/:id/road</text>
+      <text x="206" y="210">nothing the game reports</text>
+      <rect x="452" y="20" width="214" height="80" rx="5" class="box"/>
+      <text x="559" y="44" text-anchor="middle" class="head-t">DRIVER'S GAME</text>
+      <text x="466" y="66">draws + drives the plan</text>
+      <text x="466" y="83">client/js/road-plan.js</text>
+      <rect x="452" y="232" width="214" height="80" rx="5" class="box"/>
+      <text x="559" y="256" text-anchor="middle" class="head-t">SPECTATOR'S REPLAY</text>
+      <text x="466" y="278">draws the plan, rings every</text>
+      <text x="466" y="295">ignored hole red</text>
+      <rect x="712" y="20" width="208" height="80" rx="5" class="box"/>
+      <text x="816" y="44" text-anchor="middle" class="head-t">RECORDING</text>
+      <text x="726" y="66">10 Hz samples + inputs,</text>
+      <text x="726" y="83">hash-chained 15 s batches</text>
+      <rect x="712" y="126" width="208" height="80" rx="5" class="box-pen"/>
+      <text x="816" y="150" text-anchor="middle" class="head-t">MEASURED ON ARRIVAL</text>
+      <text x="726" y="172">every axle × every pit</text>
+      <text x="726" y="189">off-road · speed w/o gas</text>
+      <rect x="712" y="232" width="208" height="80" rx="5" class="box-bad"/>
+      <text x="816" y="256" text-anchor="middle" class="head-t">VERDICT</text>
+      <text x="726" y="278" class="t-ink">hit · avoided · IGNORED</text>
+      <text x="726" y="295" class="t-limit">obstacle-ignored → reject</text>
+      <path d="M176 165 H189" class="arrow" marker-end="url(#ah)"/>
+      <path d="M406 132 C430 132 428 60 448 60" class="arrow-pen" marker-end="url(#ahp)"/>
+      <path d="M406 200 C430 200 428 272 448 272" class="arrow-pen" marker-end="url(#ahp)"/>
+      <path d="M406 166 H708" class="arrow-pen" marker-end="url(#ahp)"/>
+      <text x="560" y="159" text-anchor="middle" class="t-pen">the same plan, from the seed</text>
+      <path d="M666 60 H708" class="arrow" marker-end="url(#ah)"/>
+      <path d="M816 100 V122" class="arrow" marker-end="url(#ah)"/>
+      <path d="M816 206 V228" class="arrow" marker-end="url(#ah)"/>
+      <path d="M712 196 C690 196 690 260 670 260" class="arrow" marker-end="url(#ah)"/>
+      <text x="664" y="214" text-anchor="end">road outcomes</text>
+      <text x="664" y="227" text-anchor="end">per batch</text>
+    </svg>
+    <figcaption>One plan, three users. The driver's game, the spectator's replay and the judge all use the holes the server rebuilt from the seed – the game's own roll only fills in until the plan arrives, and is identical. A game that leaves a hole out still drove over the server's hole, and the replay shows that.</figcaption>
+  </figure>
+  <div class="cols">
+    <div class="card">
+      <div class="top"><h3>What is measured</h3><span class="chip pen">per batch, on arrival</span></div>
+      <ul class="checks">
+        <li><b>Every axle through every pit</b><span class="soft">Front (2.2 m ahead of the driver's eye), drive (−0.4 m) and trailer (−11.5 m), wheels ±1 m either side: where each axle crossed a planned pit, how far the nearer wheel was inside it, the speed and the hull before the pit and after it.</span><span class="c">telemetry/world-facts.ts · stored in the batch summary</span></li>
+        <li><b>Off the tarmac</b><span class="soft">Every spell with the truck outside the lanes, aprons and side roads of the server's layout (everything past the start junction).</span></li>
+        <li><b>Speed without gas</b><span class="soft">Every step where the speed rose although the pedal was up at both samples and no gas key went down in between (the input column).</span></li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="top"><h3>How it is judged</h3><span class="chip bad">rules v3</span></div>
+      <ul class="checks rej">
+        <li><b>The game's damage</b><span class="soft">Per axle entering a pit: hull % = dmg × (v / 28 m/s)², rear axles × 0.6, nothing under 3 m/s, nothing below 0.3 %. A sinkhole is dmg 14 – about 31 % for all three axles at 28 m/s.</span></li>
+        <li><b>A pass counts</b><span class="soft">when the wheel was at least 0.4 m inside the pit and the game's damage is at least 1 %. It is <b>hit</b> if the hull lost at least 25 % of that, otherwise <b>ignored</b>. A hole is hit if any axle hit it.</span></li>
+        <li><b>Two holes ignored</b><span class="soft">The game never had them.</span><span class="c">obstacle-ignored · reject (one: obstacle-no-impact · flag)</span></li>
+        <li><b>Too long in the sand</b><span class="soft">The game ends a ride after 20 s off the road (draining twice as fast back on it); more than 20 × 1.25 + 2 = 27 s in a recording means that rule was taken out.</span><span class="c">offroad-ignored · reject</span></li>
+        <li><b>Faster without throttle</b><span class="soft">The road is flat: only the engine speeds the truck up. Steps of ≥ 0.15 m/s with the gas up – 2 m/s in total or 5 steps reject, fewer flag.</span><span class="c">accel-without-gas · reject / flag</span></li>
+      </ul>
+    </div>
+  </div>
+  <figure class="chart roadfig" style="margin:0">
+    <svg viewBox="0 0 940 300" role="img" aria-label="Two drives through the same planned sinkhole at 22 metres per second: the honest game loses hull at each of the three axles, 100 to 81 percent; the game with the holes taken out stays at 100 percent – the hole is ignored">
+      <g>
+        <text x="10" y="20" class="head-t">HONEST GAME · THE HOLE IS THERE</text><text x="445" y="20" text-anchor="end" class="t-ok">HIT</text>
+        <text x="352" y="36">front</text><text x="324" y="36" text-anchor="end">drive</text><text x="215" y="36" text-anchor="middle">trailer</text>
+        <rect x="10" y="42" width="435" height="90" class="asphalt"/><line x1="10" x2="445" y1="87" y2="87" class="lane"/>
+        <text x="16" y="60">driving →</text><text x="16" y="126">right-hand lane</text>
+        <circle cx="200" cy="111" r="20" class="pit"/>
+        <rect x="196" y="98" width="116" height="26" rx="2" class="truck" fill-opacity=".55"/><rect x="314" y="98" width="49" height="26" rx="3" class="truck"/>
+        <line x1="215" x2="215" y1="99" y2="123" class="axle"/><line x1="326" x2="326" y1="99" y2="123" class="axle"/><line x1="352" x2="352" y1="99" y2="123" class="axle"/>
+        <rect x="211" y="99" width="8" height="4" class="wheel"/><rect x="211" y="119" width="8" height="4" class="wheel"/><rect x="322" y="99" width="8" height="4" class="wheel"/><rect x="322" y="119" width="8" height="4" class="wheel"/><rect x="348" y="99" width="8" height="4" class="wheel"/><rect x="348" y="119" width="8" height="4" class="wheel"/>
+        <text x="200" y="148" text-anchor="middle" class="t-ink">sinkhole · server's plan · 612 m</text>
+        <line x1="44" x2="445" y1="175" y2="175" class="g"/><line x1="44" x2="445" y1="215" y2="215" class="g"/><line x1="44" x2="445" y1="255" y2="255" class="g"/>
+        <text x="38" y="179" text-anchor="end">100 %</text><text x="38" y="219" text-anchor="end">90</text><text x="38" y="259" text-anchor="end">80</text>
+        <path d="M44 175 H158 V209.4 H184 V230.2 H295 V251 H445" class="hull-ok"/>
+        <text x="162" y="201" class="t-ok">−8.6 front</text><text x="188" y="225" class="t-ok">−5.2 drive</text><text x="299" y="246" class="t-ok">−5.2 trailer</text>
+        <text x="445" y="272" text-anchor="end" class="t-ok">hull 100 → 81 %</text>
+        <text x="20" y="292">hull % as the truck passes the hole</text>
+      </g>
+      <g transform="translate(485 0)">
+        <text x="10" y="20" class="head-t">HOLES TAKEN OUT OF THE GAME</text><text x="445" y="20" text-anchor="end" class="t-limit">IGNORED</text>
+        <text x="352" y="36">front</text><text x="324" y="36" text-anchor="end">drive</text><text x="215" y="36" text-anchor="middle">trailer</text>
+        <rect x="10" y="42" width="435" height="90" class="asphalt"/><line x1="10" x2="445" y1="87" y2="87" class="lane"/>
+        <text x="16" y="60">driving →</text><text x="16" y="126">right-hand lane</text>
+        <circle cx="200" cy="111" r="20" class="pit-ghost"/><circle cx="200" cy="111" r="26" class="ring"/>
+        <rect x="196" y="98" width="116" height="26" rx="2" class="truck" fill-opacity=".55"/><rect x="314" y="98" width="49" height="26" rx="3" class="truck"/>
+        <line x1="215" x2="215" y1="99" y2="123" class="axle"/><line x1="326" x2="326" y1="99" y2="123" class="axle"/><line x1="352" x2="352" y1="99" y2="123" class="axle"/>
+        <rect x="211" y="99" width="8" height="4" class="wheel"/><rect x="211" y="119" width="8" height="4" class="wheel"/><rect x="322" y="99" width="8" height="4" class="wheel"/><rect x="322" y="119" width="8" height="4" class="wheel"/><rect x="348" y="99" width="8" height="4" class="wheel"/><rect x="348" y="119" width="8" height="4" class="wheel"/>
+        <text x="200" y="148" text-anchor="middle" class="t-limit">on the server's road – not on the cheater's screen</text>
+        <line x1="44" x2="445" y1="175" y2="175" class="g"/><line x1="44" x2="445" y1="215" y2="215" class="g"/><line x1="44" x2="445" y1="255" y2="255" class="g"/>
+        <text x="38" y="179" text-anchor="end">100 %</text><text x="38" y="219" text-anchor="end">90</text><text x="38" y="259" text-anchor="end">80</text>
+        <path d="M44 175 H158 V209.4 H184 V230.2 H295 V251 H445" class="hull-want"/>
+        <path d="M44 175 H445" class="hull-bad"/>
+        <text x="300" y="168" class="t-limit">recorded: 100 → 100 %</text>
+        <text x="300" y="246" class="t-ok">the game takes −19 %</text>
+        <text x="20" y="292">wheels 1 m inside the pit at 22 m/s, three times</text>
+      </g>
+    </svg>
+    <figcaption>The same planned sinkhole, the truck cruising the right-hand lane at 22 m/s (≈ 80 km/h). Left: the honest game drops every axle into it and the hull shows it, 100 → 81 % – a <b>hit</b>. Right: the holes were taken out of the game by an injected script, so its screen is empty and the hull never moves – but the server's plan has the hole there and the recording shows the wheels a metre inside it. That pass is <b>ignored</b>; the replay rings the hole red.</figcaption>
+  </figure>
+  <div class="cols">
+    <div class="card">
+      <div class="top"><h3>The cheater, in numbers</h3><span class="chip bad">rejected</span></div>
+      <p class="soft" style="font-size:14.5px">From the end-to-end run (<code>bash .claude/skills/run-tests/e2e.sh road</code>): a script stops the game's plan loader, switches its holes off and cruises the right-hand lane. The server's plan has two sinkholes in that lane, at 612 m and 1701 m. The recording passes both with every wheel 1.01 m inside the pit at 21.98 m/s and the hull at 100 → 100. The game would have taken 19 % each time.</p>
+      <p style="font:400 12.5px/1.5 var(--f-mono)">COMPLETED · REJECTED – obstacle-ignored: drove through 2 of the 2 planned holes it reached without a scratch – sinkhole at 612 m (t 28 s: 0 % hull lost, the game takes 19 %); sinkhole at 1701 m …</p>
+      <p class="soft" style="font-size:14.5px">The honest driver in the same run hit both holes in its lane (hull 62 % at the end) and came out <span class="chip ok">verified</span>.</p>
+    </div>
+    <div class="card">
+      <div class="top"><h3>What a spectator sees</h3><span class="chip pen">watch page</span></div>
+      <div class="replay-mock" aria-label="a mock of the watch panel's road check line, its timeline marks and the on-screen stamp">
+        <div class="mock-line bad">ROAD CHECK · 2 planned holes · 0 hit · 0 avoided · 2 NO IMPACT</div>
+        <div class="mock-track"><i class="ig" style="left:16%"></i><i style="left:41%"></i><i class="ig" style="left:93%"></i></div>
+        <div class="mock-stamp"><b>NO IMPACT</b>the server's sinkhole at 0.61 km – this truck drove through it without a scratch (the game takes 19.0 % hull)</div>
+      </div>
+      <p class="soft" style="font-size:14.5px">Each watched batch says what the truck did at the server's holes in it. A red mark per ignored hole on the timeline (amber for a hit; a click jumps there), the panel line in red, the hole ringed red on the road (lit at night too), and the stamp as the replay passes it.</p>
+    </div>
+  </div>
 </section>
 
 <section aria-labelledby="s-prompts">
   <div class="head">
-    <span class="eyebrow">Layer 7, closer</span>
+    <span class="eyebrow">Layer 8, closer</span>
     <h2 id="s-prompts">Dispatch prompts</h2>
     <p>The one check that needs eyes on the screen. The game shows an amber banner on the windscreen with the action and the key; a dash button counts too. Pressing it is recorded like any other key, and the judge compares that time with the moment the server issued the prompt.</p>
   </div>
@@ -89,7 +225,7 @@
   <div class="outcomes">
     <div class="out ok"><h3>Verified</h3><p>Nothing found. The shift ranks on the paid leaderboard.</p></div>
     <div class="out flag"><h3>Flagged</h3><p>Something looked off but proves nothing. The shift waits for a person and does not rank until accepted.</p></div>
-    <div class="out bad"><h3>Rejected</h3><p>The recording is missing, broken, impossible, or the driver ignored the prompts. It does not rank. An admin can still reverse it.</p></div>
+    <div class="out bad"><h3>Rejected</h3><p>The recording is missing, broken, impossible, at odds with the server's road, or the driver ignored the prompts. It does not rank. An admin can still reverse it.</p></div>
   </div>
   <div class="tbl">
     <table>
@@ -104,7 +240,11 @@
         <tr><td><code>recording-mismatch</code></td><td>The last recorded distance is not the distance the ride ended with (30 m + 1 %, plus what the missing seconds could explain).</td><td><span class="chip bad">reject</span></td></tr>
         <tr><td><code>recording-incomplete</code> <code>recording-gaps</code></td><td>Recorded seconds under 50 % of the driven seconds; under 90 %.</td><td><span class="chip bad">reject</span> / <span class="chip flag">flag</span></td></tr>
         <tr><td><code>no-inputs</code> <code>no-throttle-input</code></td><td>More than 50 m driven without any input event; without a gas press (W / ↑).</td><td><span class="chip bad">reject</span></td></tr>
-        <tr><td><code>uniform-holds</code> <code>repeated-timings</code> <code>instant-presses</code></td><td>The three human-timing statistics (layer 6).</td><td><span class="chip flag">flag</span></td></tr>
+        <tr><td><code>obstacle-ignored</code> <code>obstacle-no-impact</code></td><td>Two or more holes of the server's plan driven through at speed with no damage – at least 0.4 m inside the pit, the game's damage ≥ 1 %, the hull losing under 25 % of it; one such hole.</td><td><span class="chip bad">reject</span> / <span class="chip flag">flag</span></td></tr>
+        <tr><td><code>offroad-ignored</code></td><td>More than 27 s off the server's road on the game's own counter (the game ends a ride at 20 s).</td><td><span class="chip bad">reject</span></td></tr>
+        <tr><td><code>obstacle-unmeasured</code></td><td>Each batch is measured with the tail of the batch before it, so where the client cuts its batches does not matter. A hole pass that still has no sample before the pit (its batch arrived before the one before it – the game uploads in order) cannot be judged: 2 such holes.</td><td><span class="chip flag">flag</span></td></tr>
+        <tr><td><code>accel-without-gas</code></td><td>Speed gained with the gas pedal up and no gas key between two samples (steps ≥ 0.15 m/s): 2 m/s in total or 5 steps; fewer.</td><td><span class="chip bad">reject</span> / <span class="chip flag">flag</span></td></tr>
+        <tr><td><code>uniform-holds</code> <code>repeated-timings</code> <code>instant-presses</code></td><td>The three human-timing statistics (layer 7).</td><td><span class="chip flag">flag</span></td></tr>
         <tr><td><code>challenges-ignored</code></td><td>Half or more of 3+ dispatch prompts went unanswered.</td><td><span class="chip bad">reject</span></td></tr>
         <tr><td><code>challenge-missed</code> <code>challenge-reflex</code></td><td>Some prompts unanswered; prompts answered with a median under 80 ms.</td><td><span class="chip flag">flag</span></td></tr>
       </tbody>
@@ -123,6 +263,8 @@
     <li><b>A missing fingerprint is not an edit</b><span>The browser retries its digest once; a batch without one is kept and only flagged. A wrong fingerprint still rejects.</span></li>
     <li><b>Prompts are forgiving by design</b><span>Fewer than 3 issued never reject; a prompt still open at the end is not judged; 80 ms sits far under a human reaction and a slow link cannot push a person under it.</span></li>
     <li><b>Slow PCs and privacy browsers are not punished</b><span>Input times come from the browser's own events; rounded clocks are detected; OEM and IME keys with no code are accepted.</span></li>
+    <li><b>Going round a hole is never judged</b><span>A wheel that passed a pit by 0.4 m or more is "avoided"; a crawl through it (under 1 % of damage) is not judged; a wheel on the very edge is too close to call and is left alone. One hole without damage only flags.</span></li>
+    <li><b>The game drives on the server's holes</b><span>The driver's game takes its holes from the same plan the judge uses, and its own roll is drift-tested to be identical – an honest driver is never judged on a hole that was not on the screen.</span></li>
     <li><b>Nothing lives forever</b><span>Recordings are deleted after 90 days (flagged ones kept until reviewed); the sign-in log with its IP addresses after 180 days.</span></li>
     <li><b>Every verdict has reasons and a version</b><span>The codes, what they measured and the rules version are stored, so a verdict can be explained and judged again.</span></li>
     <li><b>Human decisions stick</b><span>A late upload never overturns an admin's decision; a bulk re-judge keeps it too.</span></li>
@@ -141,8 +283,9 @@
         <tr><td>Shadow mode → enforcement</td><td>Play real rides; read the reasons and scores with the <code>prod-db</code> queries; tune <code>server/src/domain/verdict/verdict-rules.ts</code> and bump <code>RULES_VERSION</code>; deploy; judge old rides again with <code>node dist/cli/index.js verdict:rejudge --dry-run</code>, then without; set <code>VERDICT_ENFORCE=true</code> in the deploy env.</td></tr>
         <tr><td>Knobs</td><td><code>CHALLENGE_INTERVAL_SECONDS</code> (240; 0 = no prompts) · <code>TELEMETRY_RETENTION_DAYS</code> (90) · <code>SIGNIN_RETENTION_DAYS</code> (180) · <code>VERDICT_ENFORCE</code>. Thresholds live in <code>verdict-rules.ts</code>, the prompt window in <code>ride-challenge.ts</code>.</td></tr>
         <tr><td>Bulk re-judge</td><td><code>verdict:rejudge [--status unjudged|verified|flagged|rejected|all] [--since DATE] [--limit N] [--dry-run]</code> – current rules, admin decisions kept, swept recordings skipped, one audit row. <code>retention:sweep</code> runs both sweeps now.</td></tr>
-        <tr><td>Tests</td><td>Unit, scenarios on memory and PostgreSQL (<code>npm run server:test</code>, <code>npm run server:integration</code>); end to end the <code>verified-play-test</code> skill: a person and a metronome bot in real Chrome, nine API-level bots (no inputs, instant answers, teleport, over-governor, tampered hash, unhashed batch, broken link, byte budget, clean), the CLI – every case positive and negative.</td></tr>
-        <tr><td>One ride, explained</td><td>The admin page shows the reasons, the scores (<code>recording</code>, <code>human</code>, <code>challenges</code>) and the batch index; the <code>ride-investigate</code> skill joins the database rows with the log lines.</td></tr>
+        <tr><td>Tests</td><td>Unit, scenarios on memory and PostgreSQL (<code>npm run server:test</code>, <code>npm run server:integration</code>), the road drift spec (the game's generator beside the server's port, 40 seeds × 60 km); <code>e2e.sh road</code>: an honest driver and one with the holes taken out in real Chrome, a spectator replaying both, the audit tool; the <code>verified-play-test</code> skill: a person and a metronome bot in real Chrome, nine API-level bots (no inputs, instant answers, teleport, over-governor, tampered hash, unhashed batch, broken link, byte budget, clean), the CLI – every case positive and negative.</td></tr>
+        <tr><td>Audit a stream</td><td><code>bash .claude/skills/ride-audit/run.sh &lt;ride id&gt; [--prod]</code> or <code>--latest N [--wallet W]</code> – loads the ride from the database (production read-only, through <code>npm run ops -- sql</code>), rebuilds its road from the seed, re-hashes every batch, re-measures every sample and judges afresh, next to the verdict on record. Exit 0 = OK, 1 = NOT OK.</td></tr>
+        <tr><td>One ride, explained</td><td>The admin page shows the reasons, the scores (<code>recording</code>, <code>human</code>, <code>challenges</code>, <code>world</code>) and the batch index; the <code>ride-investigate</code> skill joins the database rows with the log lines.</td></tr>
       </tbody>
     </table>
   </div>
@@ -155,6 +298,8 @@
   </div>
   <ul class="limits">
     <li><b>No re-simulation.</b><span>A careful bot playing the real game with human-like timing <em>and</em> reading the prompts passes the automatic checks. The prompts raise the bar from "feed a plausible recording" to "run the real game and parse the screen or the heartbeat"; the reflex check catches the lazy version of that.</span></li>
+    <li><b>A faked hull loss is a hit.</b><span>The road layer checks that the recording is consistent with the server's road, not that the client is honest: a modified game that drives over the holes AND writes the matching hull loss is a game that hit the holes. It raises the bar from "take the holes out" to "fake the damage exactly where the server's plan says".</span></li>
+    <li><b>Traffic and paid holes are the browser's.</b><span>The cars are simulated in the driver's game and only recorded for replays – never judged. Holes spectators paid for are placed by the driver's game and are not judged either. Recordings from before rules v3 (or without the input column) skip the checks they have no data for.</span></li>
     <li><b>The thresholds are first guesses.</b><span>Including the prompt ones – interval, window, reject share, 80 ms. None has met real players yet; shadow mode is on until they have.</span></li>
     <li><b>No captcha at ride start.</b><span>Skipped for now. A wallet farm can take free rides; the five-per-day cap and the rate limits are the only brake.</span></li>
     <li><b>No per-ride clock offset.</b><span>Reaction time is measured against the server's issue time. A bot on a slow link reads slower than it is; a clock-offset estimate from the heartbeats is the next step if that shows up.</span></li>
@@ -164,7 +309,7 @@
 
 <footer>
   <span>Freight Chain · anti-cheat</span>
-  <span>rules v2 · shadow mode</span>
+  <span>rules v3 · shadow mode</span>
   <span>as of Oct 9, 2026</span>
   <span>see also: <a href="../verified-play/index.html">Verified Play</a> – the player's view, with the chain and the last-minute diagrams</span>
 </footer>

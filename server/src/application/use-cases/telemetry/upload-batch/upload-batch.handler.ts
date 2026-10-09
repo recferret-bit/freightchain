@@ -1,5 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
+import { roadPlanFor } from '../../../../domain/road/road-plan.js';
 import { RideStatus } from '../../../../domain/rides/ride-status.js';
 import { RideBatch } from '../../../../domain/telemetry/ride-batch.entity.js';
 import { RECORDING_GRACE_MS } from '../../../../domain/telemetry/telemetry-rules.js';
@@ -36,12 +37,15 @@ export class UploadBatchHandler implements ICommandHandler<UploadBatchCommand, B
   async execute({ wallet, rideId, body }: UploadBatchCommand): Promise<BatchReceiptDto> {
     const text = RideBatch.canonical(body);
     const serverHash = this.hasher.sha256Hex(text); // outside the lock: hashing ~100 kB is the slow part
+    // the batch before, if stored: its tail is measured with this one against the road (the client chooses where batches are cut – a hole pass across
+    // the cut must not go unmeasured). Stored batches never change, so it is read outside the lock too.
+    const before = body.seq > 0 ? (await this.batches.listFrom(rideId, body.seq - 1, 1)).find((b) => b.rideId === rideId && b.seq === body.seq - 1) : undefined;
     const result = this.transactions.run(async (tx) => {
       await this.players.findByWalletForUpdate(wallet, tx);
       const ride = await this.lookup.require(rideId, wallet, tx);
       const now = this.clock.now();
       if (!ride.acceptsRecording(now, RECORDING_GRACE_MS)) throw new ConflictError(`ride is ${ride.status}`);
-      const accepted = RideBatch.accept(rideId, body, serverHash, now, ride.recordingAllowance(now), text, await this.batches.totalBytes(rideId, tx)); // the per-ride byte budget counts what is stored already
+      const accepted = RideBatch.accept(rideId, body, serverHash, now, ride.recordingAllowance(now), text, await this.batches.totalBytes(rideId, tx), roadPlanFor(ride.seed), before?.body.samples ?? []); // the per-ride byte budget counts what is stored already; the samples are measured against the SERVER's road (the seed's)
       return { batch: accepted, stored: await this.batches.insert(accepted, tx), ended: !ride.isInStatus(RideStatus.Running) };
     });
     const { batch, stored, ended } = await result.catch((error: unknown) => {

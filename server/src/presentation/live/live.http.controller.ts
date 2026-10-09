@@ -8,6 +8,8 @@ import { AckEffectCommand } from '../../application/use-cases/live/ack-effect/ac
 import { GetInboxQuery } from '../../application/use-cases/live/get-inbox/get-inbox.query.js';
 import { PostRideEventCommand } from '../../application/use-cases/live/post-ride-event/post-ride-event.command.js';
 import { WatchRideQuery } from '../../application/use-cases/live/watch-ride/watch-ride.query.js';
+import { GetRoadPlanQuery } from '../../application/use-cases/live/get-road-plan/get-road-plan.query.js';
+import type { RoadPlanDto } from '../../domain/road/road-plan.js';
 import { CurrentClient } from '../../infrastructure/http/decorators/client-info.js';
 import { CurrentPlayer } from '../../infrastructure/http/decorators/current-player.js';
 import type { ClientInfo } from '../../domain/auth/sign-in.js';
@@ -16,8 +18,8 @@ import { PlayerAuthGuard } from '../../infrastructure/http/guards/player-auth.gu
 import type { PlayerIdentity } from '../../infrastructure/http/types/http-request.js';
 import { rideIdParamsSchema, type RideIdParams } from '../common/dto/common.dto.js';
 import {
-  appliedBodySchema, confirmDonationBodySchema, donationBodySchema, effectParamsSchema, inboxQuerySchema, messageBodySchema, muteBodySchema, orderParamsSchema, watchQuerySchema,
-  type AppliedBody, type ConfirmDonationBody, type DonationBody, type EffectParams, type InboxQuery, type MessageBody, type MuteBody, type OrderParams, type WatchQuery,
+  appliedBodySchema, confirmDonationBodySchema, donationBodySchema, effectParamsSchema, inboxQuerySchema, messageBodySchema, muteBodySchema, orderParamsSchema, roadPlanQuerySchema, watchQuerySchema,
+  type AppliedBody, type ConfirmDonationBody, type DonationBody, type EffectParams, type InboxQuery, type MessageBody, type MuteBody, type OrderParams, type RoadPlanQuery, type WatchQuery,
 } from './dto/live.dto.js';
 
 /**
@@ -34,6 +36,13 @@ export class LiveHttpController {
   @Get('watch/:id')
   watch(@ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodQuery(watchQuerySchema) query: WatchQuery, @CurrentClient() client: ClientInfo): Promise<WatchDto> {
     return this.queryBus.execute<WatchRideQuery, WatchDto>(new WatchRideQuery(params.id, query.from, query.after, query.viewer, query.since, client.ip ?? '', query.leave));
+  }
+
+  /** The ride's obstacle plan for [from, to) m – PUBLIC like the watch page: the holes the server rebuilt from the seed. The driver's game drives over them,
+      a replay draws them, the verdict judges the recording on them. */
+  @Get('watch/:id/road')
+  road(@ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodQuery(roadPlanQuerySchema) query: RoadPlanQuery): Promise<RoadPlanDto> {
+    return this.queryBus.execute<GetRoadPlanQuery, RoadPlanDto>(new GetRoadPlanQuery(params.id, query.from, query.to));
   }
 
   @Post('watch/:id/messages') @HttpCode(200) @UseGuards(PlayerAuthGuard)

@@ -8,7 +8,7 @@ import { showPrompt, resetPrompts } from './prompt.js';
 /* Online mode – OPT-IN: only when the page was opened as play.html?ride=<id> (made by the lobby). Without it nothing here runs and the game
    behaves exactly like the offline prototype (headless test, e2e, viewer and the file:// build all rely on that).
    The server owns the ride: it hands out the seed + the shift length, times the ride from heartbeats and decides the result (server/src/rides). */
-export const online = { ride: null, error: '', status: null, code: null, started: false, done: false, closed: false, extra: () => ({}) };   // extra: set by ui/game.js → { route, night } for the lobby's live feed (kept out of here so this module needs no world/ imports). status/code ride along on a failed load so the page can classify it without the message.
+export const online = { ride: null, error: '', status: null, code: null, started: false, running: false, done: false, closed: false, extra: () => ({}) };   // extra: set by ui/game.js → { route, night } for the lobby's live feed (kept out of here so this module needs no world/ imports). status/code ride along on a failed load so the page can classify it without the message.
 
 const api = async (path, body) => {
   const r = await fetch(`${API_BASE}/api/${path}`, { credentials: 'include', signal: AbortSignal.timeout(8000), method: body ? 'POST' : 'GET', headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
@@ -16,7 +16,7 @@ const api = async (path, body) => {
   if (!r.ok) throw Object.assign(new Error(j.detail || j.title || `server error ${r.status}`), { status: r.status, code: j.code ?? null });   // RFC 9457 problem+json. Not api_request_failed: the page emits ride_load_failed / ride_start_failed.
   return j;
 };
-const progress = () => ({ s: st.s, t: st.t, hull: st.hull, paused: st.mode !== 'drive', ...online.extra() });   // t = the game's driven-seconds clock (the server credits its delta, capped by wall time)
+const progress = () => ({ s: st.s, t: st.t, hull: st.hull, paused: st.mode !== 'drive', crashesVehicle: st.crashV, crashesBuilding: st.crashB, ...online.extra() });   // t = the game's driven-seconds clock (the server credits its delta, capped by wall time)
 let timer = 0;
 
 export async function initOnline() {
@@ -39,6 +39,7 @@ export async function beginOnline() {
   if (!online.ride || online.started) return;
   online.started = true;
   const started = await api(`rides/${online.ride.id}/start`, {});
+  online.running = true;   // the server has started the ride: its road plan is served from now on (road-plan.js)
   setLoadout(started.loadout);   // what the server stamped on the ride (what spectators and replays draw) – normally what the menu already wore
   startTelemetry(online.ride.id);   // inputs + 10 Hz samples, uploaded in hash-chained batches (the server's verdict reads them)
   resetPrompts();

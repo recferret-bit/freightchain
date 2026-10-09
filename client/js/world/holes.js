@@ -4,58 +4,18 @@ import { rnd } from '../util.js';
 import { GEO, MAT } from './props.js';
 import { canvasTex } from './scene.js';
 import { mesh, group } from './pool.js';
-import { net, laneLat } from '../net/network.js';
 
-/* Road holes + their advance warning signs. A hole is NOT a prop/collider: the truck drives over it (sim/damage.js `hitHoles`), the AI steers around it (sim/traffic.js `dodge`).
-   Placement is a pure function of the chunk index (`holeAt`), so traffic can look at holes in chunks that aren't built yet. Same footprints feed meshes, truck wheels and AI.
-   Footprint: ells = ellipses { ds (along road, + = forward), dl (across, + = right), a (half length), b (half width) } relative to the hole's centre (s, lat).
-   dmg = hull % per wheel-axle entry at 28 m/s (× (v/28)², rear axles ×.6), slow = speed fraction lost, jolt = cab shake, kick = steering pull, crawl = m/s the AI drops to when it can't get around. */
-/* Only types with `cones` are placed on the road (the small ones stay in the table, e.g. for debugging). */
-const CH = CFG.CHUNK_LEN;   // = chunks.js CH (not imported: chunks.js imports this module)
-export const HOLES = {
-  pothole: { name: 'POTHOLE',  ells: [{ ds: 0, dl: 0, a: .6, b: .5 }], dmg: 2.5, slow: .04, jolt: .5, kick: .03, crawl: 7 },   // fits between the wheel tracks if you straddle it
-  deep:    { name: 'DEEP HOLE', ells: [{ ds: 0, dl: 0, a: .85, b: .8 }], dmg: 7, slow: .12, jolt: .9, kick: .07, crawl: 5 },
-  cluster: { name: 'HOLES',    ells: [{ ds: -3, dl: -.9, a: .5, b: .45 }, { ds: 0, dl: .8, a: .6, b: .5 }, { ds: 3, dl: -.3, a: .5, b: .45 }], dmg: 1.8, slow: .03, jolt: .45, kick: .03, crawl: 7 },   // each pit hits separately
-  trench:  { name: 'TRENCH',   ells: [{ ds: 0, dl: 0, a: .45, b: 2.3 }], dmg: 6, slow: .15, jolt: 1, kick: .02, crawl: 4, lane: true },   // lane-wide: change lanes or slow down
-  sinkhole: { name: 'SINKHOLE', ells: [{ ds: 0, dl: 0, a: 2, b: 2 }], dmg: 14, slow: .35, jolt: 1, kick: .1, crawl: 3, lane: true, cones: true },
-};
-const IDS = Object.keys(HOLES).filter(k => HOLES[k].cones), SIGN_LAT = 7.6;   // beyond the delineator posts (6.6) and guardrails (6.9)
-
-const cache = new Map(), placed = new Map();   // placed: holes put on the road by a spectator's donation (live streams) – they replace the chunk's own roll
-const shape = (id, ci, type, s, lat) => { const T = HOLES[type]; return { id, ci, type, s, lat, ells: T.ells, l0: lat + Math.min(...T.ells.map(e => e.dl - e.b)), l1: lat + Math.max(...T.ells.map(e => e.dl + e.b)), ext: Math.max(...T.ells.map(e => Math.abs(e.ds) + e.a)) }; };
-export function holeAt(ci) {   // → { id, ci, type, s, lat, ells, l0, l1, ext } | null; l0..l1 = lateral extent, ext = half length along the road
-  if (placed.has(ci)) return placed.get(ci);
-  if (cache.has(ci)) return cache.get(ci);
-  let h = null; const q = k => rnd(ci * 97.13 + k * 3.71), s = ci * CH + 4 + q(1) * 24;   // (rnd on ci*13+k clusters badly: sin hash)
-  if (CFG.HOLES && ci >= 0 && q(2) < CFG.HOLE_CHANCE && s >= net.Sm + CFG.HOLE_FIRST && net.plain(s, 70)) {   // never on the depot road, at a junction or in a lane taper
-    const type = IDS[Math.floor(q(3) * IDS.length)], T = HOLES[type], r = q(4), j = q(5) - .5, dir = T.lane ? (r < .7 ? 1 : -1) : r < .6 ? 1 : -1, lane = laneLat(dir, Math.floor(q(6) * net.lanes(s, dir)));
-    const lat = T.lane ? lane : r < .85 ? lane + j * 1.6 : j * 1.2;   // lane-wide: own side 70 %; small: own side 60 %, oncoming 25 %, centre line 15 %
-    h = shape('h' + ci, ci, type, s, lat);
-  }
-  cache.set(ci, h); return h;
-}
-export function holesNear(s0, s1) {
-  const out = [];
-  for (let ci = Math.floor((s0 - 8) / CH); ci <= Math.floor((s1 + 8) / CH); ci++) { const h = holeAt(ci); if (h) out.push(h); }
-  return out;
-}
-export const clearHoleCache = () => { cache.clear(); placed.clear(); };   // new road layout (net/orchestrator.js), or CFG.HOLES / HOLE_CHANCE / HOLE_FIRST changed at runtime (debug)
-/* A spectator's obstacle (ui/live-feed.js on the driver's side, watch.js in a replay): `type` from HOLES at road position s / lateral lat, exactly where the
-   driver's game put it – the stamp the server keeps – so every replay has it in the same place. Returns its chunk index (the caller rebuilds that chunk if built). */
-export function placeHole(type, s, lat, id) {
-  if (!HOLES[type]) return null;
-  const ci = Math.floor(s / CH); placed.set(ci, shape(id ?? 'live' + ci, ci, type, s, lat)); return ci;
-}
-/** the first chunk at or after s where a placed obstacle fits: past the depot turn, not at a junction or a lane taper (same rule as the natural holes) */
-export function obstacleSpot(s) {
-  for (let ci = Math.ceil(s / CH); ci < Math.ceil(s / CH) + 40; ci++) { const at = ci * CH + CH / 2; if (at >= net.Sm + CFG.HOLE_FIRST && net.plain(at, 70) && !placed.has(ci)) return at; }
-  return null;
-}
+/* Road holes + their advance warning signs: the MESHES. Where the holes are (the server's obstacle plan, the local roll, the holes spectators paid for)
+   is net/obstacles.js – pure data, so the server's port (server/src/domain/road) can be checked against it; this module re-exports it for its old callers.
+   A hole is NOT a prop/collider: the truck drives over it (sim/damage.js `hitHoles`), the AI steers around it (sim/traffic.js `dodge`). */
+import { HOLES, holesIn, flagged } from '../net/obstacles.js';
+export { HOLES, holeAt, holesIn, holesNear, clearHoleCache, placeHole, obstacleSpot, naturalHole, rollHole, installPlan, planCovers, plan, flagHole, flagged } from '../net/obstacles.js';
+const CH = CFG.CHUNK_LEN, SIGN_LAT = 7.6;   // CH = chunks.js CH (not imported: chunks.js imports this module) · SIGN_LAT: beyond the delineator posts (6.6) and guardrails (6.9)
 
 /* ───────────────────────── meshes ───────────────────────── */
 /* Route-independent materials, DoubleSide (so the mirror pass leaves them alone). Drawn just above the road ribbon (y .03) with a polygon offset against z-fighting. */
-const dec = (color, up = 0) => new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2 - up, polygonOffsetUnits: -2 - up });
-const M = { rim: dec(0x68625a), crumb: dec(0x4a4540, 1), pit: dec(0x0f0d0c, 2), deep: dec(0x000000, 3), cone: new THREE.MeshBasicMaterial({ color: 0xff6a1a }), band: new THREE.MeshBasicMaterial({ color: 0xf2f2ea }), gravel: new THREE.MeshBasicMaterial({ color: 0x6b6258 }) };
+const dec = (color, up = 0, lit = false) => new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2 - up, polygonOffsetUnits: -2 - up, toneMapped: !lit });   // lit: self-lit, the night does not darken it
+const M = { flag: dec(0xff1f1f, -1, true), rim: dec(0x68625a), crumb: dec(0x4a4540, 1), pit: dec(0x0f0d0c, 2), deep: dec(0x000000, 3), cone: new THREE.MeshBasicMaterial({ color: 0xff6a1a }), band: new THREE.MeshBasicMaterial({ color: 0xf2f2ea }), gravel: new THREE.MeshBasicMaterial({ color: 0x6b6258 }) };
 export const holeMats = [M.cone, M.band, M.gravel];   // single-sided: the mirror pass must flip them (render.js)
 const DISC = new THREE.CircleGeometry(1, 20);
 const disc = (g, mat, x, z, a, b, y) => { const m = mesh(DISC, mat); m.rotation.x = -Math.PI / 2; m.scale.set(b, a, 1); m.position.set(x, y, z); g.add(m); };   // lies flat: local x = across the road, local z = backwards
@@ -73,6 +33,7 @@ function makeHole(h) {
     disc(g, M.deep, e.dl + e.b * .12, z + e.a * .12, e.a * (big || h.type === 'deep' ? .7 : .55), e.b * (big || h.type === 'deep' ? .7 : .55), .05);   // the dark depth, a bit off-centre so it reads as a pit
     if (big) for (let i = 0; i < 9; i++) { const an = i / 9 * 6.28 + rnd(k + i), q = .15 + rnd(k + i + .4) * .2, m = mesh(GEO.box, M.gravel); m.scale.set(q, q * .6, q); m.position.set(Math.cos(an) * e.b * 1.5, .05, Math.sin(an) * e.a * 1.5); m.rotation.y = an; g.add(m); }
   }
+  if (flagged.has(h.id)) for (const e of T.ells) disc(g, M.flag, e.dl, -e.ds, e.a * 1.9 + .6, e.b * 1.9 + .6, .036);   // a replay's NO IMPACT mark: the truck drove through this one untouched
   if (T.cones) for (const [x, z] of [[-2.7, -2.7], [2.7, -2.7], [-2.7, 2.7], [2.7, 2.7]]) {   // traffic cones at the corners
     const c = mesh(GEO.cone, M.cone); c.scale.set(.2, .7, .2); c.position.set(x, .35, z); g.add(c);
     const b = mesh(GEO.cone, M.band); b.scale.set(.145, .22, .145); b.position.set(x, .42, z); g.add(b);
@@ -108,9 +69,8 @@ function makeSign(h) {
 /* called per chunk: the hole itself if it lies in this chunk, and any warning sign (CFG.HOLE_WARN m before its hole) that falls in this chunk */
 export function buildHoles(ci, s0, { place, raw, reg, destroyed }) {
   if (!CFG.HOLES) return;
-  const h = holeAt(ci); if (h) raw(makeHole(h), h.s, h.lat);   // raw: holes sit in lane coordinates (place() would push |lat| ≥ 5 outward like roadside clutter)
-  for (let k = 0, n = Math.ceil(CFG.HOLE_WARN / CH) + 1; k <= n; k++) {
-    const hh = holeAt(ci + k); if (!hh) continue;
+  for (const h of holesIn(ci)) raw(makeHole(h), h.s, h.lat);   // raw: holes sit in lane coordinates (place() would push |lat| ≥ 5 outward like roadside clutter)
+  for (let k = 0, n = Math.ceil(CFG.HOLE_WARN / CH) + 1; k <= n; k++) for (const hh of holesIn(ci + k)) {
     const ss = hh.s - CFG.HOLE_WARN, id = hh.id + ':sign';
     if (ss < Math.max(s0, 5) || ss >= s0 + CH || destroyed.has(id)) continue;
     const sg = makeSign(hh); place(sg, ss, SIGN_LAT); reg(sg, id, ss, SIGN_LAT);

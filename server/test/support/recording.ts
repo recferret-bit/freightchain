@@ -5,6 +5,8 @@ import type { ChallengeDto } from '../../src/domain/rides/ride-challenge.js';
 import type { BatchBody, InputEvent } from '../../src/domain/telemetry/ride-batch.entity.js';
 import { RideBatch } from '../../src/domain/telemetry/ride-batch.entity.js';
 import type { BatchReceiptDto } from '../../src/domain/telemetry/telemetry.dto.js';
+import { RoadPlan } from '../../src/domain/road/road-plan.js';
+import { AXLES, HOLE_TYPES, WHEEL, holeDamage } from '../../src/domain/road/road-rules.js';
 
 /* Synthetic ride recordings for the tests: the same batch shape and hash chain the game client produces (client/js/telemetry.js), so the server's
    chain and human-likeness checks can be exercised without a browser. `humanRecording` jitters every hold and pause the way a person does;
@@ -44,6 +46,9 @@ export interface RecordingOptions {
   answers?: PromptAnswer[];
   /** append the replay columns the game writes (clock, switches, inputs – telemetry-rules.ts SAMPLE_*_COL); default: the 12 judged ones only */
   replay?: boolean;
+  /** the ride's seed: the drive takes the damage the GAME takes at every hole of the server's plan its wheels run through (an honest recording).
+      Without it the hull stays at 100 – a game with the holes taken out, which the verdict rejects once the drive crosses planned holes ('obstacle-ignored'). */
+  road?: number;
 }
 
 /** client/js/input-bits.js, the bits these recordings use (the drift spec test/unit/domain/replay-inputs.spec.ts holds them to the client's table) */
@@ -104,17 +109,52 @@ export function recording(rideId: string, opts: RecordingOptions): BatchBody[] {
   const events = kind === 'none' ? [] : inputEvents(opts.seconds, kind, rnd);
   for (const a of opts.answers ?? []) events.push([round(a.atMs, 1), a.code, 1], [round(a.atMs + 90 + (a.atMs * 7) % 80, 1), a.code, 0]); // a person's hold, not a fixed one
   events.sort((a, b) => a[0] - b[0]);
-  const batches: BatchBody[] = [];
-  let prevHash = rideId;
+  const bodies: Omit<BatchBody, 'hash' | 'prevHash'>[] = [];
   for (let seq = 0, t0 = 0; t0 < opts.seconds; seq++, t0 += batchSeconds) {
     const t1 = Math.min(opts.seconds, t0 + batchSeconds);
     const inputs = events.filter((e) => e[0] >= t0 * 1000 && e[0] < t1 * 1000);
-    const body = { seq, prevHash, t0, t1, samples: sampleRows(t0, t1, opts.seconds, opts.distance ?? 14 * opts.seconds, rnd, opts.replay ? (t) => [12.5, 3, inputMaskAt(events, t)] : undefined), inputs };
+    bodies.push({ seq, t0, t1, samples: sampleRows(t0, t1, opts.seconds, opts.distance ?? 14 * opts.seconds, rnd, opts.replay ? (t) => [12.5, 3, inputMaskAt(events, t)] : undefined), inputs });
+  }
+  if (opts.road !== undefined) takeHoles(bodies.flatMap((b) => b.samples), opts.road);
+  const batches: BatchBody[] = [];
+  let prevHash = rideId;
+  for (const b of bodies) {
+    const body = { seq: b.seq, prevHash, t0: b.t0, t1: b.t1, samples: b.samples, inputs: b.inputs };
     const hash = hashBatch(body);
     batches.push({ ...body, hash });
     prevHash = hash;
   }
   return batches;
+}
+
+/** What the game does to the truck at the holes of the server's plan (client/js/sim/damage.js hitHoles): an axle whose wheel enters a pit costs the hull
+    holeDamage(type, v, axle), once per pit and axle per ride. Applied to the rows in place, from the step the axle reached the pit on. */
+export function takeHoles(rows: number[][], seed: number): number {
+  const plan = RoadPlan.forSeed(seed), hit = new Set<string>();
+  let lost = 0;
+  for (let i = 0; i < rows.length; i++) {
+    const p = rows[i - 1], q = rows[i]!;
+    if (p) AXLES.forEach((ax, axle) => {
+      const a0 = p[1]! + ax, a1 = q[1]! + ax;
+      if (a1 <= a0) return;
+      for (const h of plan.holesNear(a0 - 4, a1 + 4)) HOLE_TYPES[h.type]!.ells.forEach((e, pit) => {
+        const key = `${h.id}:${pit}:${axle}`, entry = h.s + e.ds - e.a, cl = h.lat + e.dl;
+        if (hit.has(key) || !(entry > a0 && entry <= a1)) return;
+        if (Math.min(Math.abs(q[2]! - WHEEL - cl), Math.abs(q[2]! + WHEEL - cl)) >= e.b) return;
+        hit.add(key);
+        lost += holeDamage(HOLE_TYPES[h.type]!, p[4]!, axle);
+      });
+    });
+    q[7] = round(Math.max(0, q[7]! - lost), 0.1);
+  }
+  return lost;
+}
+
+/** the first `n` planned holes a truck in the right-hand lane drives through (their centres, m) – to size a drive that must cross some */
+export function ownLaneHoles(seed: number, n: number, from = 0): number[] {
+  const plan = RoadPlan.forSeed(seed), out: number[] = [];
+  for (let s = from; out.length < n && s < 200_000; s += 2000) for (const h of plan.holesBetween(s, s + 2000)) if (out.length < n && Math.abs(h.lat - 2.4) < 0.01) out.push(h.s);
+  return out;
 }
 
 /** Uploads every batch through the real route; returns the receipts (and fails the test on a non-200). */

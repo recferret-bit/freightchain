@@ -52,6 +52,26 @@ export function liveScenarios(h: () => Harness): void {
     await anon().get(`/api/watch/${ride.id}`).query({ viewer: '<script>' }).expect(400);
   });
 
+  it('the ride\'s obstacle plan is public once it started – the holes the server rebuilt from the seed; every watched batch says what the truck did at them', async () => {
+    const { driver, ride } = await onTheRoad();
+    const plan = (await anon().get(`/api/watch/${ride.id}/road`).query({ from: 0, to: 6000 }).expect(200)).body;
+    expect(plan).toMatchObject({ rideId: ride.id, seed: ride.seed, from: 0, to: 6016, chunk: 32 });
+    expect(plan.holes.length).toBeGreaterThan(0);
+    expect(plan.holes.every((x: { type: string; ci: number; id: string }) => x.type === 'sinkhole' && x.id === `h${x.ci}`)).toBe(true);
+    expect((await driver.agent.get(`/api/watch/${ride.id}/road`).query({ from: 0, to: 6000 }).expect(200)).body).toEqual(plan); // the driver's game gets the same
+    await anon().get(`/api/watch/${ride.id}/road`).query({ from: 0, to: 20_000 }).expect(400); // a window of at most 10 km
+    await anon().get(`/api/watch/${ride.id}/road`).query({ from: 500, to: 100 }).expect(400);
+    const unstarted = await login();
+    const fresh = (await unstarted.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
+    await anon().get(`/api/watch/${fresh.id}/road`).query({ from: 0, to: 6000 }).expect(404); // no road before the start
+    const own = plan.holes.find((x: { lat: number }) => Math.abs(x.lat - 2.4) < 0.01);
+    const distance = Math.ceil(own.s + 40), seconds = Math.ceil(distance / 20);
+    sec(seconds);
+    await upload(driver.agent, ride.id, recording(ride.id, { seconds, distance })); // hull 100 throughout: the hole was not in this game
+    const road = (await anon().get(`/api/watch/${ride.id}`).expect(200)).body.batches.flatMap((b: { road?: unknown[] }) => b.road ?? []);
+    expect(road).toContainEqual(expect.objectContaining({ hole: own.id, outcome: 'ignored', got: 0 }));
+  });
+
   it('the replays\' traffic track: uploaded beside a batch (outside its hash), served back with it; a malformed one is dropped – the batch is still taken', async () => {
     const { driver, ride } = await onTheRoad();
     const [b0, b1] = recording(ride.id, { seconds: 30 });

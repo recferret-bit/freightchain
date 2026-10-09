@@ -246,7 +246,7 @@ function mentions(text, name) {
 function skillKind(name) {
   if (name === 'test-census') return 'census';
   if (name === 'run-tests' || name === 'program-check' || name.endsWith('-test') || name.endsWith('-e2e')) return 'test';
-  if (name === 'posthog-prod' || name.startsWith('prod-') || name === 'ride-investigate') return 'prod-read';
+  if (name === 'posthog-prod' || name.startsWith('prod-') || name === 'ride-investigate' || name === 'ride-audit') return 'prod-read';
   return 'other';
 }
 

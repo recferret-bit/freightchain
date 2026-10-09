@@ -1,4 +1,5 @@
 import { BadRequestError } from '../shared/errors.js';
+import type { RoadPlan } from '../road/road-plan.js';
 import { summariseBatch, type BatchSummary } from './batch-summary.js';
 import { BATCH_MAX_BYTES, SAMPLE_COUNT_SLACK, SAMPLE_HZ, SAMPLE_RATE_SLACK, TRAFFIC_MAX_BYTES, TRAFFIC_MAX_FRAMES, type RecordingAllowance } from './telemetry-rules.js';
 
@@ -61,8 +62,10 @@ export class RideBatch {
   }
 
   /** Accept an upload: sane time span and sample count for it, size cap, and – given the ride's `allowance` – no more game time, batches or bytes
-      (`storedBytes` = what the ride holds already) than the wall time since the start allows. `serverHash` = the server's own SHA-256 of the canonical text. */
-  static accept(rideId: string, body: BatchBody, serverHash: string, now: Date, allowance?: RecordingAllowance, canonicalText?: string, storedBytes = 0): RideBatch {
+      (`storedBytes` = what the ride holds already) than the wall time since the start allows. `serverHash` = the server's own SHA-256 of the canonical text.
+      `plan` = the ride's road rebuilt from its seed: the summary measures the samples against it (world-facts.ts), with `prefix` = the samples of the batch
+      before (stored already – a pass across the cut the client chose is measured all the same). */
+  static accept(rideId: string, body: BatchBody, serverHash: string, now: Date, allowance?: RecordingAllowance, canonicalText?: string, storedBytes = 0, plan: RoadPlan | null = null, prefix: readonly (readonly number[])[] = []): RideBatch {
     if (body.t1 < body.t0) throw new BadRequestError('batch ends before it starts', 'bad_batch');
     if (allowance && body.t1 > allowance.maxGameSeconds) throw new BadRequestError('batch claims more driving than time has passed since the start', 'bad_batch');
     if (allowance && body.seq > allowance.maxSeq) throw new BadRequestError('too many batches for the time since the start', 'bad_batch');
@@ -73,7 +76,7 @@ export class RideBatch {
     if (body.traffic && (body.traffic.length > TRAFFIC_MAX_FRAMES || JSON.stringify(body.traffic).length > TRAFFIC_MAX_BYTES)) body = { ...body, traffic: undefined };   // dropped, never refused
     return new RideBatch({
       rideId, seq: body.seq, prevHash: body.prevHash, hash: body.hash, hashOk: body.hash !== null && body.hash === serverHash,
-      t0: body.t0, t1: body.t1, samples: body.samples.length, inputs: body.inputs.length, bytes, body, summary: summariseBatch(body.seq, body.t0, body.t1, body.samples, body.inputs), receivedAt: now,
+      t0: body.t0, t1: body.t1, samples: body.samples.length, inputs: body.inputs.length, bytes, body, summary: summariseBatch(body.seq, body.t0, body.t1, body.samples, body.inputs, plan, prefix), receivedAt: now,
     });
   }
 
