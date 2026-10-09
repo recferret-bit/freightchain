@@ -131,7 +131,7 @@ Auth = Sign-In With Solana, httpOnly cookie shared by the subdomains (Domain = a
 - [x] **You:** Phantom → devnet, funded (5 SOL), pubkey sent. **Me:** `DEMO_WALLETS` set in `deploy/.env` and `server/.env`.
 - [x] **You:** QuickNode devnet RPC URL. **Me:** in `deploy/.env` `SOLANA_RPC` (genesis = devnet, your wallet's 5 SOL visible through it).
 - [ ] **Me:** `npm run deploy` → smoke, so `DEMO_WALLETS` + the RPC go live.
-- [ ] **You (I watch the logs):** landing → CONNECT with the real Phantom → lobby → START FREE RIDE → drive the 3 min → COMPLETED. First real-wallet sign-in.
+- [ ] **You (I watch the logs):** landing → CONNECT with the real Phantom → lobby → START FREE RIDE → drive the 1-minute free run → COMPLETED. First real-wallet sign-in.
 - [ ] **You:** lobby → `1H · $5` → approve in Phantom → pool entries 0 → 1 (`GET /api/pool`) → ×60 shift → verdict → leaderboard row. Then the paid "waiting" banner once (pay, don't start, reload).
 - [ ] **Me:** fix whatever those two runs break (Phantom/Solflare shapes have never been run).
 - [ ] **You:** one-minute weekly update: live site, real payment (or the named blocker), next = verified play design.
