@@ -9,11 +9,10 @@ describe('auditRide', () => {
   async function shift(honest: boolean) {
     const ctx = unitContext();
     const ride = await ctx.freeRide('driver', true);
-    const [, h2] = ownLaneHoles(ride.seed, 2) as [number, number];
+    const [, h2] = ownLaneHoles(ride.seed, 2, 0, ride.trip) as [number, number];
     const distance = Math.ceil(h2 + 60), seconds = Math.ceil(distance / 20);
-    ctx.clock.advance(seconds);
-    const batches = recording(ride.id, { seconds, distance, ...(honest ? { road: ride.seed } : {}) }).map((b) => RideBatch.accept(ride.id, b, hashBatch(b), ctx.now())); // stored WITHOUT world facts: the audit measures them itself
-    ride.applyReport({ s: distance, t: seconds, hull: 100, paused: false, route: 'route66', night: false }, ctx.now(), ctx.rules.get());
+    const batches = recording(ride.id, { seconds, distance, ...(honest ? { road: ride.seed, trip: ride.trip } : {}) }).map((b) => RideBatch.accept(ride.id, b, hashBatch(b), ctx.now())); // stored WITHOUT world facts: the audit measures them itself
+    for (let t = 0; t < seconds;) { const dt = Math.min(10, seconds - t); t += dt; ctx.clock.advance(dt); ride.applyReport({ s: Math.min(distance, t * 20), t, hull: 100, paused: false, route: 'route66', night: false }, ctx.now(), ctx.rules.get()); }   // a heartbeat every 10 s (the free run's holes lie km out: one report would time out)
     ride.finish('shift', null, ctx.now());
     return { ride, batches, now: ctx.now() };
   }

@@ -45,7 +45,7 @@ export class UploadBatchHandler implements ICommandHandler<UploadBatchCommand, B
       const ride = await this.lookup.require(rideId, wallet, tx);
       const now = this.clock.now();
       if (!ride.acceptsRecording(now, RECORDING_GRACE_MS)) throw new ConflictError(`ride is ${ride.status}`);
-      const accepted = RideBatch.accept(rideId, body, serverHash, now, ride.recordingAllowance(now), text, await this.batches.totalBytes(rideId, tx), roadPlanFor(ride.seed), before?.body.samples ?? []); // the per-ride byte budget counts what is stored already; the samples are measured against the SERVER's road (the seed's)
+      const accepted = RideBatch.accept(rideId, body, serverHash, now, ride.recordingAllowance(now), text, await this.batches.totalBytes(rideId, tx), roadPlanFor(ride.seed, ride.trip), before?.body.samples ?? []); // the per-ride byte budget counts what is stored already; the samples are measured against the SERVER's road (the seed's)
       return { batch: accepted, stored: await this.batches.insert(accepted, tx), ended: !ride.isInStatus(RideStatus.Running) };
     });
     const { batch, stored, ended } = await result.catch((error: unknown) => {

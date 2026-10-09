@@ -31,6 +31,7 @@ Console: `__game.trip`, `__game.setTrip('8h')` then `__game.startRide()`.
 | `props` | `world/chunks.js` | × the route's roadside scenery density (`props.js` `density`) |
 | `start` | `net/network.js` (`net.straight`), `world/junctions.js`, `world/roadmesh.js`, `world/depot.js`, `sim/traffic.js` | `'depot'`: the depot road meets the main road at a STOP line and the truck turns right (traffic both ways past the exit). `'straight'`: no turn – the depot road runs straight on into the main road, no junction drawn, no main road behind the exit, no traffic coming down the depot road. Road coordinates (`sA`, `Sm`, the start junction in the data, holes from `Sm + HOLE_FIRST`) stay the server's; it does not judge the start area (`road-layout.ts` `knownFrom`) |
 | `seconds`, `k` | `main.js` (offline only) | the free run's shift when played offline (`?trip=free`): `RIDE_MIN_SECONDS` and `COMPLETE_DIST = k × 28 × seconds`. Online the server's ride sets both; the drift spec pins them to `FREE_RIDE_SECONDS`' default and `FREE_COMPLETE_DIST_K` |
+| `holesFrom` | `net/obstacles.js` `rollHole` + the SERVER's `road-rules.ts` `TRIP_HOLE_FIRST` | metres of main road before the first natural sinkhole (default `CFG.HOLE_FIRST` 150). The ONE judged trip knob: the server's obstacle plan for a ride uses its trip's number (`roadPlanFor(seed, ride.trip)`), so change both together – `road-drift.spec.ts` compares them seed by seed. The free run: 1200, beyond what a one-minute run can reach |
 | `finish` | `sim/physics.js` (the `st.complete` line) | the shift ends by itself as a WIN (green `winFx` stamp, `ui/fail-fx.js`) the moment it is complete; otherwise the road goes on until P → END SHIFT |
 
 The shift **length** and **finish line** are the server's, stored on the ride when it is created: `FREE_RIDE_SECONDS` (env, default 60 – four places, see
@@ -46,7 +47,7 @@ The shift **length** and **finish line** are the server's, stored on the ride wh
 
 The server rebuilds the layout and the sinkholes from the seed alone and measures every recording against them (`server/src/domain/road`,
 `verdict/world-checks.ts`, AGENTS.md "Verified play"). So these are NOT trip knobs: pattern weights / junction spacing / signals (`net/patterns.js`),
-`HOLE_CHANCE` / `HOLE_FIRST` / the hole roll / `HOLES` damage, the depot (`START_ACCESS`), `OFFROAD_FAIL_SECONDS`, `MAX_SPEED`, prompt timing. A
+`HOLE_CHANCE` / the hole roll / `HOLES` damage, the depot (`START_ACCESS`), `OFFROAD_FAIL_SECONDS`, `MAX_SPEED`, prompt timing. A
 client that drew fewer holes than the server's plan would be judged as driving through holes without damage. Making one of them per tier means: the
 value in the trip AND in `road-rules.ts`, `roadPlanFor(seed, trip)` at its call sites (`get-road-plan`, `upload-batch`, `ride-audit`), the drift spec
 per trip, and the trip STORED on the ride (a migration; old rides must keep the road they were judged on). Say that to the user instead of doing it quietly.

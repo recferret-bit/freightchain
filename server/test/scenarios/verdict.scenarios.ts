@@ -106,7 +106,7 @@ export function verdictScenarios(h: () => Harness): void {
       const d = await login();
       const r = (await d.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
       await d.agent.post(`/api/rides/${r.id}/start`).expect(200);
-      const [, h2] = ownLaneHoles(r.seed, 2) as [number, number];
+      const [, h2] = ownLaneHoles(r.seed, 2, 0, r.trip) as [number, number];   // the free run's holes start past its reach (road-rules.ts TRIP_HOLE_FIRST)
       const distance = Math.ceil(h2 + 60), seconds = Math.ceil(distance / 20), prompts: ChallengeDto[] = [];
       for (let t = 10; t < seconds + 10; t += 10) {
         sec(10);
@@ -116,7 +116,7 @@ export function verdictScenarios(h: () => Harness): void {
       // the road plan the game was handed is public: the same holes the verdict uses
       const plan = (await anon().get(`/api/watch/${r.id}/road`).query({ from: 0, to: distance }).expect(200)).body;
       const answers = prompts.map((c, i) => ({ atMs: c.issuedMs + 450 + ((i * 173) % 600), code: c.codes[0] as string })); // a person's reactions vary (a long drive gets many prompts)
-      await upload(d.agent, r.id, recording(r.id, { seconds, distance, answers, ...(honest ? { road: r.seed } : {}) }));
+      await upload(d.agent, r.id, recording(r.id, { seconds, distance, answers, ...(honest ? { road: r.seed, trip: r.trip } : {}) }));
       const end = (await d.agent.post(`/api/rides/${r.id}/end`).send({ outcome: 'shift', s: distance, t: seconds, hull: 100 }).expect(200)).body;
       return { end, plan, h2 };
     }

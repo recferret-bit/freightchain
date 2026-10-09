@@ -49,6 +49,8 @@ export interface RecordingOptions {
   /** the ride's seed: the drive takes the damage the GAME takes at every hole of the server's plan its wheels run through (an honest recording).
       Without it the hull stays at 100 – a game with the holes taken out, which the verdict rejects once the drive crosses planned holes ('obstacle-ignored'). */
   road?: number;
+  /** the ride's trip (Ride.trip – where its holes may start: the free run has none within its reach); default null = HOLE_FIRST */
+  trip?: string | null;
 }
 
 /** client/js/input-bits.js, the bits these recordings use (the drift spec test/unit/domain/replay-inputs.spec.ts holds them to the client's table) */
@@ -107,7 +109,7 @@ function sampleRows(t0: number, t1: number, seconds: number, distance: number, r
 export function recording(rideId: string, opts: RecordingOptions): BatchBody[] {
   const batchSeconds = opts.batchSeconds ?? 15, rnd = prng(opts.seed ?? 1), kind = opts.inputs ?? 'human';
   const events = kind === 'none' ? [] : inputEvents(opts.seconds, kind, rnd);
-  for (const a of opts.answers ?? []) events.push([round(a.atMs, 1), a.code, 1], [round(a.atMs + 90 + (a.atMs * 7) % 80, 1), a.code, 0]); // a person's hold, not a fixed one
+  for (const a of opts.answers ?? []) events.push([round(a.atMs, 1), a.code, 1], [round(a.atMs + 70 + (Math.round(a.atMs) * 7919) % 190, 1), a.code, 0]); // a person's hold, 70–260 ms, not a fixed one (a long drive answers dozens of prompts: a narrow spread would read as uniform holds)
   events.sort((a, b) => a[0] - b[0]);
   const bodies: Omit<BatchBody, 'hash' | 'prevHash'>[] = [];
   for (let seq = 0, t0 = 0; t0 < opts.seconds; seq++, t0 += batchSeconds) {
@@ -115,7 +117,7 @@ export function recording(rideId: string, opts: RecordingOptions): BatchBody[] {
     const inputs = events.filter((e) => e[0] >= t0 * 1000 && e[0] < t1 * 1000);
     bodies.push({ seq, t0, t1, samples: sampleRows(t0, t1, opts.seconds, opts.distance ?? 14 * opts.seconds, rnd, opts.replay ? (t) => [12.5, 3, inputMaskAt(events, t)] : undefined), inputs });
   }
-  if (opts.road !== undefined) takeHoles(bodies.flatMap((b) => b.samples), opts.road);
+  if (opts.road !== undefined) takeHoles(bodies.flatMap((b) => b.samples), opts.road, opts.trip ?? null);
   const batches: BatchBody[] = [];
   let prevHash = rideId;
   for (const b of bodies) {
@@ -129,8 +131,8 @@ export function recording(rideId: string, opts: RecordingOptions): BatchBody[] {
 
 /** What the game does to the truck at the holes of the server's plan (client/js/sim/damage.js hitHoles): an axle whose wheel enters a pit costs the hull
     holeDamage(type, v, axle), once per pit and axle per ride. Applied to the rows in place, from the step the axle reached the pit on. */
-export function takeHoles(rows: number[][], seed: number): number {
-  const plan = RoadPlan.forSeed(seed), hit = new Set<string>();
+export function takeHoles(rows: number[][], seed: number, trip: string | null = null): number {
+  const plan = RoadPlan.forSeed(seed, trip), hit = new Set<string>();
   let lost = 0;
   for (let i = 0; i < rows.length; i++) {
     const p = rows[i - 1], q = rows[i]!;
@@ -151,8 +153,8 @@ export function takeHoles(rows: number[][], seed: number): number {
 }
 
 /** the first `n` planned holes a truck in the right-hand lane drives through (their centres, m) – to size a drive that must cross some */
-export function ownLaneHoles(seed: number, n: number, from = 0): number[] {
-  const plan = RoadPlan.forSeed(seed), out: number[] = [];
+export function ownLaneHoles(seed: number, n: number, from = 0, trip: string | null = null): number[] {
+  const plan = RoadPlan.forSeed(seed, trip), out: number[] = [];
   for (let s = from; out.length < n && s < 200_000; s += 2000) for (const h of plan.holesBetween(s, s + 2000)) if (out.length < n && Math.abs(h.lat - 2.4) < 0.01) out.push(h.s);
   return out;
 }

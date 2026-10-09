@@ -75,6 +75,23 @@ describe('the server\'s road = the game\'s road (drift)', () => {
     expect(theirs.length).toBeGreaterThan(20); // a 60 km road has dozens of sinkholes – the comparison is not vacuous
   });
 
+  it('each trip\'s first natural hole is the same on both sides; the free run has none within its reach (trips.js holesFrom = TRIP_HOLE_FIRST)', async () => {
+    const { net, obstacles } = game, trips = await load('trips.js');
+    for (const id of Object.keys(trips.TRIPS)) expect(trips.TRIPS[id].holesFrom ?? R.HOLE_FIRST, id).toBe(R.holeFirstOf(id));
+    expect(R.holeFirstOf(null)).toBe(R.HOLE_FIRST);   // a ride from before trips
+    try {
+      trips.setTrip('free');
+      for (const seed of SEEDS.slice(0, 12)) {
+        net.setStyle({}); net.reset(seed); obstacles.clearHoleCache();
+        const theirs = RoadPlan.forSeed(seed, 'free').holesBetween(0, 20_000), game_ = [];
+        for (let ci = 0; ci * R.CHUNK_LEN < 20_000; ci++) { const h = obstacles.rollHole(ci); if (h) game_.push({ id: h.id, ci: h.ci, type: h.type, s: h.s, lat: h.lat }); }
+        expect(theirs, `seed ${seed}`).toEqual(game_);
+        expect(theirs.every((h) => h.s >= net.Sm + 1200)).toBe(true);
+        expect(theirs.length).toBeGreaterThan(5);   // further on, the road has its sinkholes as always
+      }
+    } finally { trips.setTrip('1h'); obstacles.clearHoleCache(); }
+  });
+
   it('the off-road test agrees with the game\'s net.onRoad wherever the server answers (past the start junction)', () => {
     const { net } = game;
     for (const seed of SEEDS.slice(0, 8)) {

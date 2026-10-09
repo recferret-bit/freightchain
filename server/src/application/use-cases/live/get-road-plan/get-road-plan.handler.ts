@@ -17,6 +17,6 @@ export class GetRoadPlanHandler implements IQueryHandler<GetRoadPlanQuery, RoadP
   async execute({ rideId, from, to }: GetRoadPlanQuery): Promise<RoadPlanDto> {
     const ride = await this.rides.findById(rideId);
     if (!ride || !ride.startedAt) throw new NotFoundError('ride not found');
-    return roadPlanFor(ride.seed).window(ride.id, from, to);
+    return roadPlanFor(ride.seed, ride.trip).window(ride.id, from, to);
   }
 }

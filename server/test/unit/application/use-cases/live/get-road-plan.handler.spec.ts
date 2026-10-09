@@ -17,7 +17,7 @@ describe('GetRoadPlanHandler', () => {
     const ride = await ctx.freeRide('driver', true);
     const plan = await road(ride.id, 10, 6000);
     expect(plan).toMatchObject({ rideId: ride.id, seed: ride.seed, version: ROAD_PLAN_VERSION, from: 0, to: Math.ceil(6000 / CHUNK_LEN) * CHUNK_LEN, chunk: CHUNK_LEN });
-    expect(plan.holes).toEqual(RoadPlan.forSeed(ride.seed).holesBetween(plan.from, plan.to));
+    expect(plan.holes).toEqual(RoadPlan.forSeed(ride.seed, ride.trip).holesBetween(plan.from, plan.to));
     for (const h of plan.holes) expect(h.s >= plan.from && h.s < plan.to + CHUNK_LEN && h.id === `h${h.ci}` && h.type === 'sinkhole').toBe(true);
   });
 

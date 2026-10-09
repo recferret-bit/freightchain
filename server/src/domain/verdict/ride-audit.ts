@@ -36,7 +36,7 @@ export interface RideAuditReport {
 }
 
 export function auditRide(ride: Ride, batches: readonly RideBatch[], now: Date, stored: StoredVerdict | null = null): RideAuditReport {
-  const plan = roadPlanFor(ride.seed), ordered = [...batches].sort((a, b) => a.seq - b.seq);
+  const plan = roadPlanFor(ride.seed, ride.trip), ordered = [...batches].sort((a, b) => a.seq - b.seq);
   const facts: BatchFacts[] = ordered.map((b, i) => {
     const prev = ordered[i - 1], prefix = prev && prev.seq === b.seq - 1 ? prev.body.samples : []; // as on upload: the tail of the batch before is measured with it
     return { seq: b.seq, prevHash: b.prevHash, hash: b.hash, hashOk: b.hashOk, t0: b.t0, t1: b.t1, summary: summariseBatch(b.seq, b.t0, b.t1, b.body.samples, b.body.inputs, plan, prefix) };

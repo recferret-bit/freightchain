@@ -26,11 +26,11 @@ describe('UploadBatchHandler', () => {
   it('measures every batch against the SERVER\'s road on arrival – the ride\'s seed, never anything the client says (hole passes, off-road, gas)', async () => {
     const { ctx, up } = setup();
     const ride = await ctx.freeRide('w', true);
-    ctx.clock.advance(120);
-    for (const b of recording(ride.id, { seconds: 120, distance: 2400 })) await up('w', ride.id, b);
+    ctx.clock.advance(200);
+    for (const b of recording(ride.id, { seconds: 200, distance: 4000 })) await up('w', ride.id, b);   // past the free run's first holes (road-rules.ts TRIP_HOLE_FIRST)
     const stored = await ctx.batches.listByRide(ride.id);
     expect(stored.every((b) => b.summary.world !== null)).toBe(true);
-    const planned = RoadPlan.forSeed(ride.seed).holesBetween(0, 2400).filter((h) => h.s < 2380);
+    const planned = RoadPlan.forSeed(ride.seed, ride.trip).holesBetween(0, 4000).filter((h) => h.s < 3980);
     const met = new Set(stored.flatMap((b) => b.summary.world!.holes.map((p) => p.hole)));
     expect(planned.length).toBeGreaterThan(0);
     for (const h of planned) expect(met.has(h.id), h.id).toBe(true); // every planned hole the drive went past is in the measurement
