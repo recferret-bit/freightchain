@@ -64,7 +64,7 @@ export function update(dt) {
   const tgt = input.right - input.left, T = CFG.TRUCK;
   st.steer = approach(st.steer, tgt, tgt ? T.STEER_RATE : T.STEER_RETURN, dt);
   st.keyDeny = Math.max(0, (st.keyDeny || 0) - dt * 2.5); st.grind = Math.max(0, st.grind - dt); st.jolt = Math.max(0, st.jolt - dt * 2.5); st.rumble = Math.max(0, st.rumble - dt * .7); st.crash = Math.max(0, st.crash - dt * 2.2); st.flash = Math.max(0, st.flash - dt * 1.6);
-  const wasWashing = st.washing; st.washing = !!input.wash && st.wash > .02; if (st.washing && (!wasWashing || (washT -= dt) <= 0)) { washT = .55; audio.play('washer'); } st.wash = clamp(st.wash + (st.washing ? -.15 : .02) * dt, 0, 1);   // washer-fluid tank
+  const wasWashing = st.washing; st.washing = !!input.wash && st.wash > .02; if (st.washing && (!wasWashing || (washT -= dt) <= 0)) { washT = .55; audio.play('washer'); } st.wash = clamp(st.wash - (st.washing ? .05 : 0) * dt, 0, 1);   // washer-fluid tank: finite (20 s of spray per ride, no refill)
 
   // engine
   const g = st.gear, ratio = g < 0 ? REV_RATIO : RATIOS[g], c = 1 - st.clutch, wheelRpm = st.v * ratio * K_RPM;

@@ -15,6 +15,7 @@ import { trafficSnapshot } from '../sim/traffic.js';
 import { routesHTML, bindRoutes, timeHTML, bindTime } from './routes.js';
 import { online, beginOnline, endOnline } from '../online.js';
 import { startLiveFeed, stopLiveFeed } from './live-feed.js';
+import { failFx } from './fail-fx.js';
 import { prompt } from '../prompt.js';
 import { track, flushSoon } from '../analytics.js';
 import { env } from '../world/environment.js';
@@ -104,6 +105,7 @@ export function endRide(ok, reason, outcome = ok ? 'shift' : 'failed') {   // ou
   if (st.mode !== 'drive' && st.mode !== 'paused') return;
   if (online.ride) { track('ride_end_requested', { outcome, client_complete: !!st.complete, fail_code: failCode(outcome, reason) }); flushSoon(); }   // before endOnline; the server verdict is the completion metric
   st.mode = 'done'; stopLiveFeed(); if (!ok) audio.play('game-over');
+  if (outcome === 'failed') failFx();   // not for an abandoned shift – only a real failure (crash, red light, wreck…)
   const verdict = endOnline(outcome, reason);   // null offline
   if (ok && !online.ride) Wallet.credit(CFG.REWARD);
   showMenu(ok ? 'SHIFT COMPLETE' : 'RIDE FAILED', ok ? 'Freight on its way. Another one?' : 'Fare is non-refundable.',

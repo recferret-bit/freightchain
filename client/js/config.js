@@ -116,7 +116,7 @@ export const CFG = {
     START: 0.85,             // charge at the start of a ride
     HEAD: 0.0025, CAB: 0.0006, HEATER: 0.0015, RADIO: 0.001, KEY_ON: 0.0003,   // consumers (engine off or on); headlights alone flatten it in ≈ 6 min. TEST-scale like the 5 min ride
     STARTER: 0.06,           // while cranking (~1.3 s)
-    CHARGE_MIN: 0.004, CHARGE_RPM: 0.006,   // alternator: at idle … at redline; × a taper above ~75 % charge
+    CHARGE_MIN: 0.002, CHARGE_RPM: 0.0025,   // alternator: at idle … at redline (≈ .003 at cruise); × a taper above ~75 % charge. Headlights alone are sustainable while driving; HEAD + CAB + HEAT together never are
     LOW: 0.3, DEAD: 0.01,    // BAT lamp amber below LOW (red + blinking below LOW/2), everything out below DEAD
     START_MIN: 0.06,         // the starter needs at least this much
   },
