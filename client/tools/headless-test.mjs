@@ -10,7 +10,7 @@ let now=1000; Object.defineProperty(globalThis,'performance',{value:{now:()=>now
 const listeners={}, store={};
 const ctxStub=new Proxy(function(){}, { get:(t,p)=> p==='createLinearGradient'||p==='createRadialGradient' ? ()=>({addColorStop(){}}) : p==='measureText' ? ()=>({width:10}) : ()=>{}, set:()=>true });
 class El{constructor(id){this.id=id;this.style={};this.classList={add(){},remove(){},toggle(){}};this.textContent='';this.innerHTML='';}getContext(){return ctxStub;}click(){this.onclick&&this.onclick();} querySelectorAll(){return [];} querySelector(){return new El('q');} addEventListener(){} appendChild(){}}
-const els={}; globalThis.document={getElementById:id=>els[id]??=new El(id),createElement:()=>new El('x'),addEventListener:(k,f)=>(listeners['doc:'+k]??=[]).push(f),body:{style:{},appendChild(){}},hidden:false};
+const els={}; globalThis.document={getElementById:id=>els[id]??=new El(id),createElement:()=>new El('x'),addEventListener:(k,f)=>(listeners['doc:'+k]??=[]).push(f),body:{style:{},appendChild(){}},querySelectorAll:()=>[],hidden:false}; globalThis.matchMedia=()=>({matches:false});
 globalThis.window=globalThis; globalThis.addEventListener=(k,f)=>(listeners[k]??=[]).push(f);
 globalThis.innerWidth=1280; globalThis.innerHeight=720; globalThis.devicePixelRatio=1; globalThis.AudioContext=undefined;
 globalThis.localStorage={getItem:k=>store[k]??null,setItem:(k,v)=>{store[k]=String(v);}};

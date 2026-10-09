@@ -105,7 +105,6 @@ export function endRide(ok, reason, outcome = ok ? 'shift' : 'failed') {   // ou
   if (st.mode !== 'drive' && st.mode !== 'paused') return;
   if (online.ride) { track('ride_end_requested', { outcome, client_complete: !!st.complete, fail_code: failCode(outcome, reason) }); flushSoon(); }   // before endOnline; the server verdict is the completion metric
   st.mode = 'done'; stopLiveFeed(); if (!ok) audio.play('game-over');
-  if (outcome === 'failed') failFx();   // not for an abandoned shift – only a real failure (crash, red light, wreck…)
   const verdict = endOnline(outcome, reason);   // null offline
   if (ok && !online.ride) Wallet.credit(CFG.REWARD);
   showMenu(ok ? 'SHIFT COMPLETE' : 'RIDE FAILED', ok ? 'Freight on its way. Another one?' : 'Fare is non-refundable.',
@@ -115,6 +114,7 @@ export function endRide(ok, reason, outcome = ok ? 'shift' : 'failed') {   // ou
      ${st.reds ? `<div class="row"><span>Red lights run</span><b class="bad">${st.reds}</b></div>` : ''}
      ${online.ride ? '<div class="row"><span>Server verdict</span><b id="verdict">…</b></div>' : ''}
      ${ok ? `<div class="row"><span>Payout</span><b>${CFG.REWARD.toFixed(1)} FRT</b></div>` : `<div class="row"><span>Reason</span><span class="bad">${reason}</span></div>`}`);
+  if (outcome === 'failed') failFx();   // not for an abandoned shift – only a real failure (crash, red light, wreck…)
   verdict?.then(v => { const el = document.getElementById('verdict'); if (el && v) el.textContent = verdictText(v); });
 }
 /* the server's answer: the ride's outcome, then for a completed shift its recording check (verified play) – only VERIFIED shifts rank for prizes */
