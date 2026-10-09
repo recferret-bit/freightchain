@@ -58,7 +58,7 @@ export function lightInputs(mask, dt, L = inputLights) {
   L.mask = mask;
   const viaMouse = (mask & MOUSE) !== 0;
   for (let i = 0; i < CONTROLS.length; i++) {
-    const on = (mask & (1 << i)) !== 0, mouse = on && viaMouse && DASH[CONTROLS[i]].length > 0;   // a click only ever presses a dash button
+    const on = (mask & BIT[CONTROLS[i]]) !== 0, mouse = on && viaMouse && DASH[CONTROLS[i]].length > 0;   // a click only ever presses a dash button
     L.mouse[i] = mouse ? 1 : Math.max(0, L.mouse[i] - dt / FADE);
     L.key[i] = on && !mouse ? 1 : Math.max(0, L.key[i] - dt / FADE);
   }

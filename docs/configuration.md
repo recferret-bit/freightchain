@@ -81,7 +81,7 @@ Change one with the signed admin API (`GET /api/admin/settings`, then the challe
 
 | Key | Default | Notes |
 |---|---|---|
-| `FREE_RIDE_SECONDS` | `60` | Free-ride length (the free run: one minute, an easy road – `client/js/trips.js`). Test/demo override |
+| `FREE_RIDE_SECONDS` | `60` | Free-ride length – the EASY level's (one minute, an easy road – `client/js/trips.js`); CROSSROADS is × 3, HARD × 10 (`ride-trip.ts` `FREE_LEVELS`). Test/demo override |
 | `HB_MIN_INTERVAL_MS` | `1000` | Minimum spacing of ride heartbeats |
 | `HB_TIMEOUT_MS` | `150000` | A running ride with no heartbeat this long has lost its tab – it could not resume anyway (its next heartbeat would fail it): it leaves the live feed and the stale-ride sweeper (every min(30 s, timeout / 3)) ends it as *failed · heartbeat lost*. Tests set it low |
 | `DEMO_WALLETS` | empty | Comma-separated wallets (or `*`) whose **paid** rides run `DEMO_SCALE`× shorter – for demo videos |
@@ -195,7 +195,7 @@ npm run server:dev                   # :3000 – site, game and API on one origi
 - **`client/js/config.js` (`CFG`)** – every gameplay constant, with comments. Deliberate values not to touch without asking: `SHAKE_START 0.5`, `SHAKE_MOVING 0.1`, `SHAKE_RPM 0.35`, `START_ENGINE_OFF true`.
   `RIDE_MIN_SECONDS` is **300 (a test value); production = 1800**. Tuning requests are relative to the current value. Which constant to touch, which mirror must move with it, and the check to run: the `gameplay-balance` skill (`cd client && npm run check`).
 - **Hosts** – never hard-code `/api/…` or `/play.html`; use `API_BASE` / `GAME_BASE` / `SITE_BASE` / `STORYBOOK_BASE` / `WHITEPAPER_BASE` / `ADMIN_BASE` from `client/js/hosts.js`. On localhost, an IP or `file://` they are `''` (one origin).
-- **Browser `localStorage` keys** (per player, not config you ship): `freightchain.truck` (F2 handling tuning), `freightchain.radio`, `freightchain.assist` (the lobby's ASSIST checkbox), `freightchain.admin`. The analytics branch also writes `freightchain.anon` (`anon_<uuid v4>`).
+- **Browser `localStorage` keys** (per player, not config you ship): `freightchain.truck` (F2 handling tuning), `freightchain.radio`, `freightchain.assist` (the lobby's ASSIST checkbox), `freightchain.level` (the free level picked in the lobby: 1 EASY · 2 CROSSROADS · 3 HARD), `freightchain.admin`. The analytics branch also writes `freightchain.anon` (`anon_<uuid v4>`).
   A stale value is the first suspect for "works in a fresh browser only" – clear them.
 - **In-game F2 panel** – live sliders for truck handling. (The route and the time of day are not settings: the server assigns them to each ride.)
 - Server rules that mirror the client (`MAX_SPEED`, `COMPLETE_DIST_K`, route ids) live in `server/src/domain/rides/ride-rules.ts` – change both together.

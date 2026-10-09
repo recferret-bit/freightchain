@@ -1,9 +1,10 @@
 /* TRIPS – what a ride's road is LIKE, per ride tier (the lobby's free shift and the 1 h / 4 h / 8 h tickets). The truck, the inputs and the physics are
    the same on every trip; a trip only shapes the world around them. Every number is a MULTIPLIER on the CFG value it names, so '1h' (all 1) is the road
    as it was before trips existed – offline play.html, the headless trace, the e2e runs and the promo clips use it.
-   Only CLIENT-SIDE levers live here: the server rebuilds the layout and the holes from the seed alone and judges the recording against them
-   (server/src/domain/road, verdict/world-checks.ts), so pattern weights, junctions, hole chance / damage, off-road time and the governor are NOT trip knobs –
-   changing one per tier means a port + a plan version on the ride (see the trip-design skill). The shift LENGTH is the server's (ride-tier.ts / FREE_RIDE_SECONDS).
+   Mostly CLIENT-SIDE levers: the server rebuilds the layout and the holes from the seed + the ride's trip and judges the recording against them
+   (server/src/domain/road, verdict/world-checks.ts), so the two JUDGED knobs below (`holesFrom`, `road`) are mirrored there (road-rules.ts TRIP_HOLE_FIRST /
+   TRIP_ROADS, road-drift.spec.ts); hole damage, off-road time and the governor are not trip knobs at all. The shift LENGTH is the server's (ride-tier.ts /
+   FREE_RIDE_SECONDS, × the free level's multiple – ride-trip.ts FREE_LEVELS).
      bends    × the route's curvature (net/network.js curv) – geometry only; the judge works in road coordinates (s, d)
      traffic  × CFG.TRAFFIC_MAX vehicles on the main road, and ÷ on CFG.TRAFFIC_GAP (more cars, sooner)
      cross    × CFG.CROSS_MAX vehicles on the side roads of a signalled crossroads (0 = side roads stay empty)

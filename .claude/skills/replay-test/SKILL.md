@@ -25,7 +25,7 @@ Both scripts drive a headless driver: it can't really steer, so it presses keys 
 ## What each suite checks
 
 **watch** – `server/scripts/e2e-watch.mjs`, two Chromes on one LIVE ride:
-- the spectator opens `play.html?watch=<id>` signed out: watch mode on the driver's seed + route, no menu, CONNECT WALLET offered, the replay has 15-column samples (clock, switches, inputs), the driver's keys are in the input column and light up in the live view, the truck moves, the driver's CB shows "1 watching";
+- the spectator opens `play.html?watch=<id>` signed out: watch mode on the driver's seed + route, no menu, CONNECT WALLET offered, the replay has 16-column samples (clock, switches, inputs, fork road), the driver's keys are in the input column and light up in the live view, the truck moves, the driver's CB shows "1 watching";
 - signed in: chat box + 6 donation buttons; a typed line reaches the driver's CB panel;
 - NIGHT → the driver's day turns to night and the effect is stamped; a second effect right after is refused with the wait (or a NOTE if the clicks straddled a window boundary); 21 s later SINKHOLE → placed ≥ 500 m ahead, the same hole (type, place, lane) on the driver's road AND in the replay; the spectator's own feed shows "✓ on the road" (the `since` stamps);
 - a seek into an unloaded part holds its target and plays from there; seeking to the night shows night;

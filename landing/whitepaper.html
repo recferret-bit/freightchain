@@ -98,7 +98,7 @@
   <header class="ch-h"><i>02</i><h2>How to drive</h2><p>Inputs, indicators and advice. The truck is a long-hood semi with a seven-speed manual gearbox, a cold engine and a handbrake that is on when you start.</p></header>
 
   <h3 class="sub">THE FIRST MINUTE · STEP BY STEP</h3>
-  <p>Nine controls take you from a dead dash to moving. Each card is the real cockpit, drawn by the game's own code: hover it (tap on a phone) and the control works. On a free ride, <b>TUTORIAL</b> teaches it live and <b>ASSIST</b> doubles the truck's endurance; finishing without assist earns <i>On My Own</i>.</p>
+  <p>Nine controls take you from a dead dash to moving. Each card is the real cockpit, drawn by the game's own code: hover it (tap on a phone) and the control works. On a free ride, <b>TUTORIAL</b> teaches it live and <b>ASSIST</b> (not on HARD) doubles the truck's endurance; finishing without assist earns <i>On My Own</i>.</p>
   <ol class="path">
     <li><article class="card3d" tabindex="0" data-live="key-on"><div class="img" aria-hidden="true"></div><footer><b>KEY ON</b><p>Turn the ignition to ON: click the ON zone of the key. A one-second self-test sweeps every gauge and lamp. With the key OFF the whole dash, even the brake pedal, is dead.</p></footer></article></li>
     <li><article class="card3d" tabindex="0" data-live="start"><div class="img" aria-hidden="true"></div><footer><b>START</b><p>Press <kbd>I</kbd> for a one-tap start, or hold the START zone of the key for about a second. The engine cranks, catches with a rev flare and settles at idle. <kbd>O</kbd> switches it off; <kbd>I</kbd> again after a stall.</p></footer></article></li>
@@ -121,7 +121,7 @@
     <article class="card3d" tabindex="0" data-live="radio"><div class="img" aria-hidden="true"></div><footer><b>RADIO</b><p><kbd>T</kbd> on / off, <kbd>,</kbd> <kbd>.</kbd> station, <kbd>−</kbd> <kbd>=</kbd> volume. Needs the key ON. Five stations; everyone hears the same song at the same moment.</p></footer></article>
     <article class="card3d" tabindex="0" data-live="reverse"><div class="img" aria-hidden="true"></div><footer><b>REVERSE</b><p><kbd>Q</kbd> from neutral, or <kbd>G</kbd>. Stop first: forward ↔ reverse while still rolling grinds. The trailer swings out and the truck beeps.</p></footer></article>
   </div>
-  <p class="dim">Also: <kbd>P</kbd> pauses (then END SHIFT), <kbd>M</kbd> mutes, <kbd>K</kbd> folds the spectator chat panel (<a href="#stream">07</a>). Every dash button (HEAD, NIGHT, HEAT, WIPER, WASH, PARK, the key, the radio) can also be clicked.</p>
+  <p class="dim">Also: <kbd>P</kbd> pauses (then END SHIFT), <kbd>M</kbd> mutes, <kbd>K</kbd> folds the spectator chat panel (<a href="#stream">07</a>), <kbd>N</kbd> opens the phone map (route, forks, finish). Every dash button (HEAD, CAB, HEAT, WIPER, WASH, PARK, the key, the radio, the phone) can also be clicked.</p>
 
   <h3 class="sub">INDICATORS · READ THE DASH</h3>
   <p>Nine things to watch while you drive. They move the same way: hover or tap.</p>
@@ -198,7 +198,7 @@
   <div class="tblwrap"><table class="tbl tiers2">
     <thead><tr><th>Tier</th><th>Minimum time</th><th>List price</th><th>What it is</th></tr></thead>
     <tbody>
-      <tr><td><b>FREE</b></td><td>1 minute</td><td>$0</td><td>The habit, on an easy road: a straight start, soft bends, a few calm cars, no sinkholes; it ends by itself at the line. Ten at sign-up; daily refill stops at five. A few offline runs need no wallet. Its own leaderboard and badges. No pool.</td></tr>
+      <tr><td><b>FREE</b></td><td>1 minute</td><td>$0</td><td>The habit, in three levels: EASY (four lanes, no junctions, no sinkholes), CROSSROADS (3 min: junctions, a fork), HARD (10 min: the full road, no assist). It ends by itself at the line. Ten at sign-up; daily refill stops at five. A few offline runs need no wallet. Its own leaderboard and badges. No pool.</td></tr>
       <tr><td><b>1 H</b></td><td>1 hour</td><td>$5</td><td>On sale. Opens at 20 tickets, or it refunds. The standard road.</td></tr>
       <tr><td><b>4 H</b></td><td>4 hours</td><td>$15</td><td>Soon. Tighter bends, busier traffic. Sold only once a 4-hour pool opens.</td></tr>
       <tr><td><b>8 H</b></td><td>8 hours</td><td>$50</td><td>Soon. The hardest road. Sold only once an 8-hour pool opens.</td></tr>
@@ -247,7 +247,7 @@
     <tbody>
       <tr><td><b>Free rides</b> – 10 at sign-up, daily refill stops at 5</td><td>Every wallet</td><td><span class="pill ok">LIVE</span></td></tr>
       <tr><td><b>Free board</b> – every completed free ride ranks</td><td>Free drivers</td><td><span class="pill ok">LIVE</span></td></tr>
-      <tr><td><b>Badges</b> – First Mile, Shift Complete, Night Owl, Century, Clean Run, Cold Start, On My Own; Top 20 after a round closes</td><td>Wallets that earn them</td><td><span class="pill ok">LIVE (server-side)</span></td></tr>
+      <tr><td><b>Badges</b> – First Mile, Shift Complete, Night Owl, Century, Clean Run, Cold Start, On My Own, Learner’s Permit, Crossroads, Long Haul; Top 20 after a round closes</td><td>Wallets that earn them</td><td><span class="pill ok">LIVE (server-side)</span></td></tr>
       <tr><td><b>Tips and effects from spectators</b> – SOL from a viewer's wallet straight to yours</td><td>The driver being watched</td><td><span class="pill ok">LIVE · DEVNET</span></td></tr>
       <tr><td><b>Promo codes</b> – free tickets of a tier</td><td>Whoever holds a code</td><td><span class="pill wip">BUILT</span></td></tr>
       <tr><td><b>Pool prizes</b> – the prize share of a pool, to the top of its board</td><td>Verified finishers of that pool</td><td><span class="pill wip">PROGRAM WRITTEN · NOT DEPLOYED</span></td></tr>
@@ -529,7 +529,7 @@
   <p>The heartbeat can carry a challenge about every 240 s of driving (none on the free run; at most four on a short shift, 0.6–1.4 intervals apart so the rhythm cannot be guessed). The cab handler shows whatever the DTO names as an amber banner with a 20 s bar. Kinds live in a table on the server; that table is empty today, so none are issued. When a kind is live, the judge looks for that key within 20 s of the moment the server issued the prompt. Half or more of 3+ prompts ignored rejects; one missed only flags; a median answer under 80 ms after the server issued it is faster than a person can read it and flags. A prompt still open when the ride ends is not judged.</p>
 
   <h3 class="sub">THE SERVER'S ROAD</h3>
-  <p>The road and its sinkholes are a pure function of the ride's seed. The server rebuilds them itself and hands the game the ride's <b>obstacle plan</b> (<code>GET /api/watch/:id/road</code>); the game drives over those holes, and every batch is measured against the same plan when it arrives. Each axle entering a pit costs the hull <code>dmg × (v/28)²</code> – 14 % for the front axle in a sinkhole at 28 m/s, rear axles × 0.6. A wheel that runs through a planned hole at speed must show at least a quarter of that loss. Two or more holes driven through untouched reject; one flags.</p>
+  <p>The road and its sinkholes are a pure function of the ride's seed and trip. The server rebuilds them itself and hands the game the ride's <b>obstacle plan</b> (<code>GET /api/watch/:id/road</code>); the game drives over those holes, and every batch is measured against the same plan when it arrives. Each axle entering a pit costs the hull <code>dmg × (v/28)²</code> – 14 % for the front axle in a sinkhole at 28 m/s, rear axles × 0.6. A wheel that runs through a planned hole at speed must show at least a quarter of that loss. Two or more holes driven through untouched reject; one flags.</p>
   <figure class="diagram">
     <svg viewBox="0 0 920 250" role="img" aria-labelledby="d4t d4d">
       <title id="d4t">The server's road</title><desc id="d4d">The ride's seed gives the server's obstacle plan. The game drives over it and a replay draws it. The recording is measured against the same plan: a hit shows a hull drop at the hole, a game without the hole shows none and is rejected.</desc>
@@ -619,7 +619,7 @@
     <li><i>4</i><b>REPLAY</b><span>Once the ride has ended, the same page is a replay with a timeline and 1×, 4× and 16× speeds, for as long as the recording is kept (90 days).</span></li>
   </ol>
   <p><b>Live is slightly behind.</b> The page plays about 25 s behind the newest recorded second: one 15 s batch plus its upload, with room for a late one. If the next batch has not arrived, the last frame holds and the panel says so. A paused game records no game time, so a pause never shows as a gap. Anyone can watch any ride that has started; a ride that has not started is a 404, so a seed is never handed out early.</p>
-  <p>The road is endless but deterministic: layout is a pure function of the ride's seed and route, so only the truck is recorded. <b>The holes are the server's</b>, never the driver's game's. A hole driven through undamaged is ringed red, and the replay stamps NO IMPACT as it passes. Not replayed: cracks, debris, the radio, and the raw key presses.</p>
+  <p>The road is endless but deterministic: layout is a pure function of the ride's seed, route and trip, so only the truck is recorded. <b>The holes are the server's</b>, never the driver's game's. A hole driven through undamaged is ringed red, and the replay stamps NO IMPACT as it passes. Not replayed: cracks, debris, the radio, and the raw key presses.</p>
 
   <h3 class="sub">CHAT: A CB RADIO IN THE CAB</h3>
   <div class="grid3">

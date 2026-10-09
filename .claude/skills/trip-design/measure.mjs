@@ -64,7 +64,7 @@ if (!flag('no-road')) {
       holes += G.holes.holesNear(a, b).length;
     }
     const per = v => f1(v / SEEDS / KM);
-    console.log(`${id.padEnd(5)} ${rid.padEnd(12)} ${pad(Math.round(flat / SEEDS), 10)}  ${pad(kMax ? Math.round(1 / kMax) : '∞', 7)}  ${pad(f1(100 * tight / n), 8)}  ${pad((1e3 * kSum / n).toFixed(2), 11)}   ${pad(per(js), 8)}  ${pad(per(sig), 10)}  ${pad(per(holes), 8)}`);
+    console.log(`${id.padEnd(7)} ${rid.padEnd(12)} ${pad(Math.round(flat / SEEDS), 10)}  ${pad(kMax ? Math.round(1 / kMax) : '∞', 7)}  ${pad(f1(100 * tight / n), 8)}  ${pad((1e3 * kSum / n).toFixed(2), 11)}   ${pad(per(js), 8)}  ${pad(per(sig), 10)}  ${pad(per(holes), 8)}`);
   }
 }
 
@@ -121,7 +121,7 @@ if (!flag('no-drive')) {
     CFG.RIDE_MIN_SECONDS = secs; CFG.COMPLETE_DIST = k * CFG.MAX_SPEED * secs;
     for (let sd = 1; sd <= SEEDS; sd++) rs.push(rideOnce(sd * 7919, secs));
     const ok = rs.filter(r => r.end === 'complete'), ts = ok.map(r => r.t).sort((a, b) => a - b), ss = rs.map(r => r.s).sort((a, b) => a - b), avg = k => rs.reduce((a, r) => a + r[k], 0) / rs.length;
-    console.log(`${id.padEnd(5)} ${(secs + ' s ' + Math.round(CFG.COMPLETE_DIST) + ' m').padEnd(14)} ${pad(ok.length + '/' + rs.length, 4)}   ${pad(ts.length ? f1(ts[ts.length >> 1]) : '–', 10)}  ${pad(ts.length ? f1(ts.at(-1)) : '–', 7)}   ${pad(Math.round(ss[ss.length >> 1]), 8)}   ${pad(f1(avg('hull')), 11)}  ${pad(f1(avg('crashV')), 12)}  ${pad(f1(avg('crashB')), 13)}  ${pad(f1(avg('offT')), 10)}`);
+    console.log(`${id.padEnd(7)} ${(secs + ' s ' + Math.round(CFG.COMPLETE_DIST) + ' m').padEnd(14)} ${pad(ok.length + '/' + rs.length, 4)}   ${pad(ts.length ? f1(ts[ts.length >> 1]) : '–', 10)}  ${pad(ts.length ? f1(ts.at(-1)) : '–', 7)}   ${pad(Math.round(ss[ss.length >> 1]), 8)}   ${pad(f1(avg('hull')), 11)}  ${pad(f1(avg('crashV')), 12)}  ${pad(f1(avg('crashB')), 13)}  ${pad(f1(avg('offT')), 10)}`);
     for (const r of rs.filter(r => r.end !== 'complete')) console.log(`      ${r.end} at ${f1(r.t)} s, ${Math.round(r.s)} m${r.why ? ' – ' + r.why : ''}`);
   }
   Object.assign(CFG.TRUCK, T0);

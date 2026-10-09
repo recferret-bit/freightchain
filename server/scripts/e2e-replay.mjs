@@ -70,7 +70,7 @@ check('replay: it opens in REPLAY mode (not live), on the driver\'s road', await
 check('replay: it starts at the beginning of the ride', await until(() => S.ev('__game.watch.rows.length > 0 && __game.st.t < 8'), 15_000), `t ${(await S.ev('__game.st.t'))?.toFixed?.(1)}`);
 check('replay: speeds shown, LIVE hidden, the timeline spans the recording', await S.ev(`[...document.querySelectorAll('.spd')].every(b => !b.hidden) && document.getElementById('w-live').hidden && Math.abs(+document.getElementById('w-seek').max - ${Math.floor(rec.t1)}) <= 1`));
 check('replay: the feed is read-only and has the line + both stamped donations', await until(() => S.ev(`!document.getElementById('w-text') && document.querySelectorAll('.w-line').length === 3 && document.querySelectorAll('.w-ap').length === 2 && [...document.querySelectorAll('.w-ap')].every(a => a.textContent.includes('on the road'))`), 10_000));
-check('replay: the sample rows carry the clock + switch + input columns', await S.ev('__game.watch.rows[0].length === 15'));
+check('replay: the sample rows carry the clock + switch + input + fork columns', await S.ev('__game.watch.rows[0].length === 16'));
 const clickRow = await S.ev(`(({ BIT, MOUSE, INPUT_COL }) => __game.watch.rows.find(r => (r[INPUT_COL] & (BIT.wiper | MOUSE)) === (BIT.wiper | MOUSE))?.[0] ?? null)(__game.inputBits)`);
 check('replay: the dash click is in the input column as WIPER + MOUSE, near when it happened', clickRow !== null && Math.abs(clickRow - clickT) < 1.5, `row t ${clickRow}, clicked at ${clickT?.toFixed?.(1)}`);
 check('replay: the driver\'s keys light up while it plays (yellow input borders)', await until(() => S.ev('__game.watch.inputs.on && [...__game.watch.inputs.key].some(v => v > 0)'), 15_000));

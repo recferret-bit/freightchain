@@ -39,7 +39,7 @@ await S.send('Page.navigate', { url: `${BASE}/play.html?watch=${ride.id}` }); aw
 check('spectator: watch mode on the driver\'s road (seed + route)', await S.ev(`__game.st.watch && __game.watch.ride.id === ${JSON.stringify(ride.id)} && __game.roads.seed === ${ride.seed}`));
 check('spectator: no menu, the watch panel instead', await S.ev('document.getElementById("overlay").classList.contains("hide") && !!document.getElementById("watch")'));
 check('spectator (signed out): CONNECT WALLET offered', await until(() => S.ev('[...document.querySelectorAll("#w-me button")].some(b => b.textContent === "CONNECT WALLET")'), 5000));
-check('spectator: the replay has samples, with the clock + flags + inputs columns', await until(() => S.ev('__game.watch.rows.length > 50 && __game.watch.rows[0].length === 15'), 20_000), `${await S.ev('__game.watch.rows.length')} rows`);
+check('spectator: the replay has samples, with the clock + flags + inputs + fork columns', await until(() => S.ev('__game.watch.rows.length > 50 && __game.watch.rows[0].length === 16'), 20_000), `${await S.ev('__game.watch.rows.length')} rows`);
 check('spectator: the driver\'s keys are in the input column (W / A / D pressed)', await S.ev('(({ BIT, INPUT_COL }) => __game.watch.rows.some(r => r[INPUT_COL] & (BIT.gas | BIT.left | BIT.right)))(__game.inputBits)'));
 check('spectator: the live view lights them up (the yellow input borders)', await until(() => S.ev('__game.watch.inputs.on && [...__game.watch.inputs.key].some(v => v > 0)'), 20_000));
 const s1 = await S.ev('__game.st.s'); await sleep(4000); const s2 = await S.ev('__game.st.s');

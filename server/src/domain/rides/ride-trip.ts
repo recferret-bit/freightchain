@@ -2,7 +2,7 @@ import { ConflictError } from '../shared/errors.js';
 import type { RideTierId } from './ride-tier.js';
 
 /* The ROAD a ride is driven on – an id of client/js/trips.js TRIPS: how much it bends, how much traffic, the free run's straight start and its ending at
-   the line. The game draws and drives it; the server judges none of it (the layout and the holes are the seed's – domain/road). Stamped on the ride when
+   the line. The game draws and drives it; the server judges only its layout knobs (domain/road road-rules.ts TRIP_ROADS / TRIP_HOLE_FIRST: patterns, holes – the bends, traffic and scenery are the game's alone). Stamped on the ride when
    it is CREATED (Ride.trip), so a replay rebuilds the road the driver had however the table is tuned later: a trip id is FROZEN once rides carry it –
    retune by adding a new id (here and in trips.js) and pointing the tier at it. null on a ride = one from before trips: the 'classic' road.
    test/unit/domain/ride-trip.spec.ts holds this list and the client's table together. */
