@@ -4,6 +4,7 @@ import { toRideDto, type RideDto } from '../../../../domain/rides/ride.dto.js';
 import { Ride, type RideProps } from '../../../../domain/rides/ride.entity.js';
 import { RideStatus } from '../../../../domain/rides/ride-status.js';
 import { isPaidTier, isTierOnSale, rideTier, tierShiftName, type PaidTierId } from '../../../../domain/rides/ride-tier.js';
+import { DEFAULT_FREE_LEVEL, assertAssistAllowed, freeLevelSeconds, type FreeLevel } from '../../../../domain/rides/ride-trip.js';
 import type { Round } from '../../../../domain/economy/round.entity.js';
 import { PoolTicketsService } from '../../../services/pool-tickets.service.js';
 import { RoundService } from '../../../services/round.service.js';
@@ -45,6 +46,9 @@ interface CreateFacts {
  * A paid tier that is not on sale (4h, 8h) and has no live pool is refused before the lock (409 `tier_not_on_sale`), so an open order of another tier is not expired.
  * A registered live pool of that tier still sells tickets. A paid tier that sells through escrowed pools is paid with a TICKET: one is spent in the same locked
  * transaction and the ride is ready at once (409 `no_tickets` / `pool_not_live`). In `program` mode that is the only way; in `transfer` mode an on-sale tier with no pool still uses the legacy pay-per-ride order.
+ * A FREE ride is ordered at a LEVEL (ride-trip.ts FREE_LEVELS, default 1): its trip, FREE_RIDE_SECONDS × its multiple, its finish line. ASSIST on a level
+ * without it (HARD) is refused (409 `assist_not_allowed`), a level on a paid tier too (409 `level_free_only`). Asking for the ready free ride again re-chooses
+ * its level and helpers on that SAME ride (same seed, same credit) – the lobby never sends you onto a road you did not pick.
  */
 @CommandHandler(CreateRideCommand)
 export class CreateRideHandler implements ICommandHandler<CreateRideCommand, RideDto> {
@@ -63,10 +67,13 @@ export class CreateRideHandler implements ICommandHandler<CreateRideCommand, Rid
     private readonly stats: StatsService,
   ) {}
 
-  async execute({ wallet, tier, tutorial, assist }: CreateRideCommand): Promise<RideDto> {
+  async execute({ wallet, tier, tutorial, assist, level: asked }: CreateRideCommand): Promise<RideDto> {
     const rules = this.rules.get();
     const paid = isPaidTier(tier);
     if (paid && (tutorial || assist)) throw new ConflictError('the tutorial and assist are for free rides only'); // assist must never reach a ranked, paid ride
+    if (paid && asked !== null) throw new ConflictError('a level is for free rides only', 'level_free_only');
+    const level = asked ?? DEFAULT_FREE_LEVEL;
+    if (!paid) assertAssistAllowed(level, assist); // before the lock: a refused HARD + ASSIST leaves the ride in hand alone
     const livePool = paid && (await this.poolTickets.tierHasPools(tier as PaidTierId));
     // before the lock, and before touch: a soon-tier request must not expire the order in hand and must not open a player row
     if (paid && !isTierOnSale(tier) && !livePool) throw new ConflictError(`the ${tierShiftName(tier as PaidTierId)} shift is not on sale yet`, 'tier_not_on_sale');
@@ -93,7 +100,7 @@ export class CreateRideHandler implements ICommandHandler<CreateRideCommand, Rid
       }
       if (open?.isInStatus(RideStatus.Running)) throw new ConflictError('a ride is already in progress');
       if (open?.isInStatus(RideStatus.Created) && (!open.isFree || !paid)) {
-        if (open.isFree && !paid && open.chooseGuide(tutorial, assist)) await this.rides.save(open, tx); // the same ready free ride, re-chosen: the checkboxes the lobby sent this time
+        if (open.isFree && !paid && open.chooseFree(level, freeLevelSeconds(level, rules.freeRideSeconds), tutorial, assist)) await this.rides.save(open, tx); // the same ready free ride, re-chosen: the level + checkboxes the lobby sent this time
         return { dto: toRideDto(open), now, ordered: null, resumed: open.snapshot(), failed, expired: null, cancelled: null, freeRidesLeft: player.freeRides };
       }
       // the ticket is spent before anything else changes, so a refused spend (409) leaves the wallet exactly as it was
@@ -115,7 +122,7 @@ export class CreateRideHandler implements ICommandHandler<CreateRideCommand, Rid
         await this.rides.save(open, tx);
         expired = open.snapshot();
       }
-      const ride = ticketed ?? this.newRide(wallet, tier, quote, now, player, tutorial, assist);
+      const ride = ticketed ?? this.newRide(wallet, tier, quote, now, player, { tutorial, assist, level });
       if (creditRefunded || !paid) await this.players.save(player, tx);
       await this.rides.insert(ride, tx);
       return { dto: toRideDto(ride), now, ordered: ride.snapshot(), resumed: null, failed, expired, cancelled, freeRidesLeft: player.freeRides };
@@ -155,14 +162,14 @@ export class CreateRideHandler implements ICommandHandler<CreateRideCommand, Rid
     return !(open.tier === tier && open.quoteIsLive(now)); // the same, still-quoted order is handed back
   }
 
-  private newRide(wallet: string, tier: CreateRideCommand['tier'], quote: PriceQuote | null, now: Date, player: { spendFreeRide(): void }, tutorial: boolean, assist: boolean): Ride {
+  private newRide(wallet: string, tier: CreateRideCommand['tier'], quote: PriceQuote | null, now: Date, player: { spendFreeRide(): void }, free: { tutorial: boolean; assist: boolean; level: FreeLevel }): Ride {
     const rules = this.rules.get();
     const def = rideTier(tier, rules.freeRideSeconds);
     const id = this.entropy.uuid();
     const seed = this.entropy.seed31();
     if (!isPaidTier(tier)) {
       player.spendFreeRide();
-      return Ride.createFree({ id, wallet, seed, minSeconds: def.seconds, now, tutorial, assist });
+      return Ride.createFree({ id, wallet, seed, minSeconds: freeLevelSeconds(free.level, rules.freeRideSeconds), now, ...free });
     }
     if (!quote) throw new ServiceUnavailableError('no SOL/USD price available right now');
     const timeScale = isDemoWallet(rules, wallet) ? demoScaleOf(rules) : 1; // demo wallets only, never the free tier

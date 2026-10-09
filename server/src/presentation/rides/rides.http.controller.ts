@@ -34,7 +34,7 @@ export class RidesHttpController {
 
   @Post() @HttpCode(200)
   create(@CurrentPlayer() player: PlayerIdentity, @ZodBody(createRideBodySchema) body: CreateRideBody): Promise<RideDto> {
-    return this.commandBus.execute<CreateRideCommand, RideDto>(new CreateRideCommand(player.wallet, body.tier, body.tutorial === true, body.assist === true));
+    return this.commandBus.execute<CreateRideCommand, RideDto>(new CreateRideCommand(player.wallet, body.tier, body.tutorial === true, body.assist === true, body.level ?? null));
   }
 
   /** The paid order the wallet is still owed (declared before :id so "pending" is not read as a ride id). */

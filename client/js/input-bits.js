@@ -6,25 +6,25 @@
    Bits are FOREVER (old recordings keep their meaning): append new controls, never renumber. ≤ 30 bits (JS bitwise is 32-bit signed). */
 export const INPUT_COL = 14;   // the sample column (server/src/domain/telemetry/telemetry-rules.ts SAMPLE_INPUT_COL)
 export const CONTROLS = ['gas', 'brake', 'left', 'right', 'clutch', 'up', 'down', 'gear', 'reverse', 'start', 'stop', 'keyOn', 'park', 'heat', 'wiper', 'wash',
-  'head', 'cab', 'night', 'radio', 'prev', 'next', 'volume', 'pause', 'mute'];
-export const BIT = Object.fromEntries(CONTROLS.map((c, i) => [c, 1 << i]));
+  'head', 'cab', 'night', 'radio', 'prev', 'next', 'volume', 'pause', 'mute', 'map'];
 export const MOUSE = 1 << 25;   // a dash button was clicked (with the mouse / a tap)
+export const BIT = Object.fromEntries(CONTROLS.map((c, i) => [c, 1 << (i < 25 ? i : i + 1)]));   // controls appended after 'mute' skip bit 25 (MOUSE): 'map' = 1 << 26
 
 /* key code → control (the keys ui/input.js acts on; anything else – the menu's Enter, F2 – is no control) */
 const KEY = {
   KeyW: 'gas', ArrowUp: 'gas', KeyS: 'brake', ArrowDown: 'brake', KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRight: 'right',
   ShiftLeft: 'clutch', ShiftRight: 'clutch', Space: 'clutch', KeyE: 'up', KeyQ: 'down', KeyG: 'reverse', KeyI: 'start', KeyO: 'stop', KeyB: 'park', KeyH: 'heat',
-  KeyR: 'wiper', KeyX: 'wash', KeyL: 'head', KeyC: 'cab', KeyN: 'night', KeyT: 'radio', Comma: 'prev', Period: 'next', Minus: 'volume', Equal: 'volume',
+  KeyR: 'wiper', KeyX: 'wash', KeyL: 'head', KeyC: 'cab', KeyN: 'map', KeyT: 'radio', Comma: 'prev', Period: 'next', Minus: 'volume', Equal: 'volume',
   KeyP: 'pause', KeyM: 'mute',
 };
 for (let g = 0; g <= 7; g++) KEY[`Digit${g}`] = 'gear';
 /* dash button id (cockpit uiBtns, recorded as `btn:<id>`) → control */
-const BTN = { wiper: 'wiper', wash: 'wash', 'key-off': 'stop', 'key-on': 'keyOn', 'key-start': 'start', park: 'park', head: 'head', cab: 'cab', heat: 'heat', 'r-pwr': 'radio', 'r-prev': 'prev', 'r-next': 'next' };
+const BTN = { wiper: 'wiper', wash: 'wash', 'key-off': 'stop', 'key-on': 'keyOn', 'key-start': 'start', park: 'park', head: 'head', cab: 'cab', heat: 'heat', 'r-pwr': 'radio', 'r-prev': 'prev', 'r-next': 'next', map: 'map' };
 /** the dash buttons a control is drawn around (its key and its click light the same button) */
 export const DASH = Object.fromEntries(CONTROLS.map(c => [c, Object.keys(BTN).filter(id => BTN[id] === c)]));
 /** the key cap shown for a control pressed on the keyboard; the driving cluster (Q W E / A S D / ⇧) is always on screen in a replay */
 export const CAP = { gas: 'W', brake: 'S', left: 'A', right: 'D', clutch: '⇧', up: 'E', down: 'Q', gear: '1-7', reverse: 'G', start: 'I', stop: 'O', park: 'B', heat: 'H',
-  wiper: 'R', wash: 'X', head: 'L', cab: 'C', night: 'N', radio: 'T', prev: ',', next: '.', volume: '±', pause: 'P', mute: 'M' };
+  wiper: 'R', wash: 'X', head: 'L', cab: 'C', night: 'N', radio: 'T', prev: ',', next: '.', volume: '±', pause: 'P', mute: 'M', map: 'N' };   // N was the night key once (old recordings keep 'night'), now it is the map
 export const CLUSTER = ['down', 'gas', 'up', 'left', 'brake', 'right', 'clutch'];
 
 /** the bits one recorded input code sets: a key → its control, `btn:<id>` → its control + MOUSE, anything else → 0 */

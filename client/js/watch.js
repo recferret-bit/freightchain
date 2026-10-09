@@ -4,6 +4,7 @@ import { st, dn } from './state.js';
 import { API_BASE } from './hosts.js';
 import { roadAt } from './road.js';
 import { net } from './net/network.js';
+import { roads } from './net/orchestrator.js';
 import { FLAGS } from './telemetry.js';
 import { bodySway, trailerYaw } from './sim/physics.js';
 import { wip } from './cockpit/windscreen.js';
@@ -211,7 +212,7 @@ const inputsPassed = i => { const m = passedMask(watch.rows, i, watch.jumped ? -
 /* the recorded traffic (2 frames per game second beside each batch, [t, …(id, type, colour, x, z, yaw, flags) per vehicle]): every vehicle of the frame
    at or before t, interpolated towards the next frame, as the same mesh the driver saw (type + colour pick); gone from the frame = removed. No frames near
    t (a recording from before traffic was recorded, or a gap) = an empty road, as before. */
-const TGAP = 1.5;
+const TGAP = 1.5, FORK_COL = 15;   // FORK_COL: the sample's fork road (client/js/telemetry.js)
 function drawTraffic(t) {
   const F = watch.tframes, i = find(t, F), a = F[i], b = F[i + 1], seen = new Set();
   if (a && t - a[0] <= TGAP) {
@@ -233,10 +234,12 @@ function drawTraffic(t) {
   for (const [id, car] of watch.cars) if (!seen.has(id)) { removeVehicle(car.mesh); watch.cars.delete(id); }
 }
 
-/* write st from two samples – the row layout of client/js/telemetry.js: [t, s, d, psi, v, rpm, gear, hull, gas, brake, steer, clutch, clock?, flags?] */
+/* write st from two samples – the row layout of client/js/telemetry.js: [t, s, d, psi, v, rpm, gear, hull, gas, brake, steer, clutch, clock?, flags?, inputs?, fork?] */
 function apply(a, b, k, dt) {
   const vel0 = st.vel, s0 = st.s, n = k < .5 ? a : b, f = n[13];
-  st.t = lerp(a[0], b[0], k); st.s = lerp(a[1], b[1], k); st.d = lerp(a[2], b[2], k); st.psi = lerp(a[3], b[3], k); st.v = Math.max(0, lerp(a[4], b[4], k));
+  const kp = Number.isFinite(a[FORK_COL]) && a[FORK_COL] !== b[FORK_COL] ? (k < .5 ? 0 : 1) : k;   // the driver switched roads at a fork between the two: s / d / psi are measured on different roads – take the nearer sample whole
+  st.t = lerp(a[0], b[0], k); st.s = lerp(a[1], b[1], kp); st.d = lerp(a[2], b[2], kp); st.psi = lerp(a[3], b[3], kp); st.v = Math.max(0, lerp(a[4], b[4], k));
+  if (Number.isFinite(n[FORK_COL])) roads.setBranch(st.s, n[FORK_COL]);   // draw the road of the fork the driver was on (its (s, d) are that road's)
   st.rpm = lerp(a[5], b[5], k); st.gear = n[6]; st.hull = lerp(a[7], b[7], k);
   st.gas = lerp(a[8], b[8], k); st.brake = lerp(a[9], b[9], k); st.steer = st.ste = lerp(a[10], b[10], k); st.clutch = lerp(a[11], b[11], k);
   if (Number.isFinite(f)) {

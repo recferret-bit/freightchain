@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { SAMPLE_CLOCK_COL, SAMPLE_FLAGS_COL, SAMPLE_INPUT_COL, SAMPLE_MAX_WIDTH, SAMPLE_WIDTH } from '../../../src/domain/telemetry/telemetry-rules.js';
+import { SAMPLE_CLOCK_COL, SAMPLE_FLAGS_COL, SAMPLE_FORK_COL, SAMPLE_INPUT_COL, SAMPLE_MAX_WIDTH, SAMPLE_WIDTH } from '../../../src/domain/telemetry/telemetry-rules.js';
 import { INPUT_BIT, inputMaskAt } from '../../support/recording.js';
 import type { InputEvent } from '../../../src/domain/telemetry/ride-batch.entity.js';
 
@@ -11,19 +11,22 @@ const controls = JSON.parse((/export const CONTROLS = (\[[^\]]+\])/.exec(bits)?.
 
 describe('the replay columns (protocol with the game)', () => {
   it('are appended after the judged twelve, in this order, and fit the width the HTTP boundary takes', () => {
-    expect([SAMPLE_CLOCK_COL, SAMPLE_FLAGS_COL, SAMPLE_INPUT_COL]).toEqual([SAMPLE_WIDTH, SAMPLE_WIDTH + 1, SAMPLE_WIDTH + 2]);
-    expect(SAMPLE_INPUT_COL).toBeLessThan(SAMPLE_MAX_WIDTH);
+    expect([SAMPLE_CLOCK_COL, SAMPLE_FLAGS_COL, SAMPLE_INPUT_COL, SAMPLE_FORK_COL]).toEqual([SAMPLE_WIDTH, SAMPLE_WIDTH + 1, SAMPLE_WIDTH + 2, SAMPLE_WIDTH + 3]);
+    expect(SAMPLE_FORK_COL).toBeLessThan(SAMPLE_MAX_WIDTH);
     expect(bits).toContain(`export const INPUT_COL = ${SAMPLE_INPUT_COL};`);
-    expect(client('telemetry.js')).toMatch(/\[t, s, d, psi, v, rpm, gear, hull, gas, brake, steer, clutch, clock, flags, inputs\]/);
+    expect(client('telemetry.js')).toMatch(/\[t, s, d, psi, v, rpm, gear, hull, gas, brake, steer, clutch, clock, flags, inputs, fork\]/);
+    expect(client('watch.js')).toContain(`FORK_COL = ${SAMPLE_FORK_COL}`);
   });
 
-  it('the client\'s bit table: frozen order, every bit inside 30 (JS bitwise is 32-bit signed), MOUSE after the controls', () => {
+  it('the client\'s bit table: frozen order, every bit inside 30 (JS bitwise is 32-bit signed), MOUSE = bit 25, the controls appended after it skip that bit', () => {
     expect(controls.slice(0, 25)).toEqual(['gas', 'brake', 'left', 'right', 'clutch', 'up', 'down', 'gear', 'reverse', 'start', 'stop', 'keyOn', 'park', 'heat', 'wiper', 'wash',
       'head', 'cab', 'night', 'radio', 'prev', 'next', 'volume', 'pause', 'mute']);
+    expect(controls.slice(25)).toEqual(['map']); // appended 2026-10 (the phone map, N)
     const mouse = Number(/export const MOUSE = 1 << (\d+);/.exec(bits)?.[1]);
-    expect(mouse).toBeGreaterThanOrEqual(controls.length);
-    expect(mouse).toBeLessThan(30);
-    for (const [name, bit] of Object.entries(INPUT_BIT)) expect(bit, name).toBe(name === 'mouse' ? 1 << mouse : 1 << controls.indexOf(name));
+    expect(mouse).toBe(25);
+    expect(controls.length + 1).toBeLessThan(30);
+    const bitOf = (i: number) => 1 << (i < mouse ? i : i + 1);
+    for (const [name, bit] of Object.entries(INPUT_BIT)) expect(bit, name).toBe(name === 'mouse' ? 1 << mouse : bitOf(controls.indexOf(name)));
   });
 
   it('the test recordings build the column like the game: held at the sample OR pressed since the one before', () => {

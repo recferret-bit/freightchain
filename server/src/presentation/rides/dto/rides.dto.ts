@@ -3,12 +3,17 @@ import { TRANSACTION_SIGNATURE_MESSAGE, isTransactionSignature } from '../../../
 import type { RideReport } from '../../../domain/rides/ride-report.js';
 import { MAX_REPORTED_DISTANCE } from '../../../domain/rides/ride-rules.js';
 import { RIDE_TIER_IDS } from '../../../domain/rides/ride-tier.js';
+import { FREE_LEVEL_IDS, isFreeLevel } from '../../../domain/rides/ride-trip.js';
 import { REASON_MAX_LENGTH } from '../../../domain/rides/ride-rules.js';
 import type { BatchBody } from '../../../domain/telemetry/ride-batch.entity.js';
 import { BATCH_MAX_INPUTS, BATCH_MAX_SAMPLES, BATCH_MAX_SEQ, INPUT_CODE_MAX_LENGTH, MAX_GAME_SECONDS, SAMPLE_MAX_WIDTH, TRAFFIC_MAX_FRAMES, TRAFFIC_MAX_ROW } from '../../../domain/telemetry/telemetry-rules.js';
 
-/** `tutorial` / `assist`: the free ride's helpers (the lobby's two checkboxes). Optional – an absent flag is off; a paid tier refuses them (409), see CreateRideHandler. */
-export const createRideBodySchema = z.object({ tier: z.enum(RIDE_TIER_IDS), tutorial: z.boolean().optional(), assist: z.boolean().optional() });
+/** `tutorial` / `assist`: the free ride's helpers (the lobby's two checkboxes). Optional – an absent flag is off; a paid tier refuses them (409), see CreateRideHandler.
+    `level`: the free ride's LEVEL, 1 EASY · 2 CROSSROADS · 3 HARD (ride-trip.ts FREE_LEVELS); absent = 1; a paid tier refuses it (409), HARD refuses ASSIST (409). */
+export const createRideBodySchema = z.object({
+  tier: z.enum(RIDE_TIER_IDS), tutorial: z.boolean().optional(), assist: z.boolean().optional(),
+  level: z.number().int().refine(isFreeLevel, `level must be one of ${FREE_LEVEL_IDS.join(', ')}`).optional(),
+});
 export type CreateRideBody = z.infer<typeof createRideBodySchema>;
 
 export const confirmPaymentBodySchema = z.object({ signature: z.string().refine(isTransactionSignature, TRANSACTION_SIGNATURE_MESSAGE) });

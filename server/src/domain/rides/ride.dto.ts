@@ -25,6 +25,8 @@ export interface RideDto {
   loadout: Loadout | null;
   /** the road it is driven on (a client/js/trips.js id; null = a ride from before trips: 'classic') – the game builds it before the menu */
   trip: string | null;
+  /** the free LEVEL (1 EASY · 2 CROSSROADS · 3 HARD – ride-trip.ts FREE_LEVELS), from the trip; null = a paid ride or a free one from before the levels */
+  level: number | null;
   /** the world the SERVER assigned at creation (from the seed): the route id and the clock hour the game starts at – the game applies them, nothing in it can change them (null = a ride from before this) */
   route: string | null;
   startHour: number | null;
@@ -56,6 +58,7 @@ export const toRideDto = (r: Ride, verdict: VerdictDto | null = null, now: Date 
   reason: r.reason,
   loadout: r.loadout,
   trip: r.trip,
+  level: r.level,
   route: r.route,
   startHour: r.startHour,
   tutorial: r.tutorial,

@@ -3,6 +3,9 @@ import { guide } from '../guide.js';
 import { st, dn, powered, coldK } from '../state.js';
 import { wip } from '../cockpit/windscreen.js';
 import { resetTutorial, tutorialTips, tutorialOpen } from './tutorial.js';
+import { net } from '../net/network.js';
+import { FORK } from '../net/patterns.js';
+import { phone } from '../phone.js';
 
 /* The free ride's ASSIST + the one place that decides what is highlighted (guide.tips) each frame.
    ASSIST: the truck wears out half as fast (CFG.ASSIST, in sim/damage.js, climate.js, battery.js) and every control / indicator gets a tip at the moment it matters –
@@ -33,6 +36,7 @@ function assistTips() {
   if (st.brakeT > .3) T.push(K('BRAKES', 'The brakes are hot – ease off the pedal'));
   if (st.grind > 0) T.push(K('GRIND', 'Grinding gears – clutch fully in first', 'SHIFT'));
   if (st.overrev) T.push(K('OVER-REV', 'Over-revving – shift up now', 'E'));
+  if (!phone.open && st.v > 1 && net.forksNear(st.s, st.s + 450).some(f => f.f0 + FORK.commit > st.s)) T.push(K('map', 'The road splits ahead – the map shows both roads', 'N'));
   if (st.t > 20 && !wiperHinted && wip.mode === 0) wiperHinted = performance.now();   // once: a dusty screen
   if (wiperHinted && performance.now() - wiperHinted < 7000 && wip.mode === 0) T.push(K('wiper', 'Dust on the glass? Wipers (R) – hold X to spray', 'R'));
   return T;
