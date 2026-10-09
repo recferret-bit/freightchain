@@ -534,7 +534,7 @@
   <ul class="honest">
     <li><b>Driven seconds</b> come from heartbeats, capped by wall time. A gap over 150 s fails the ride.</li>
     <li><b>Reported distance</b> may grow at most 28 m/s × 1.2 between beats. Faster than the truck can go is a failure, not a high score.</li>
-    <li><b>A recording cannot hold more time than the wall allows:</b> game seconds ≤ wall × 1.05 + 30, batches ≤ wall ÷ 5 + 10. Uploading faster than real time is refused.</li>
+    <li><b>A recording cannot hold more time than the wall allows:</b> game seconds ≤ wall × 1.05 + 30, batches ≤ wall ÷ 5 + 10, bytes ≤ wall × 4 kB + 256 kB. Uploading faster than real time is refused.</li>
     <li><b>Limits per batch:</b> 96 kB, 400 samples, 2000 events, plus the API rate limits.</li>
     <li><b>Races:</b> uploads and judging take the same per-player lock, so every stored batch is part of a verdict, and a batch arriving after the end triggers a new judgement.</li>
     <li><b>A bad connection at the finish</b> is not fatal: ending waits up to 3 s for the last upload, the game retries for 55 s, the server accepts batches for 60 s. If the final batch never comes, only coverage drops.</li>
@@ -548,12 +548,23 @@
     <li><i>4</i><b>AUDIT LOG</b><span>Who decided what, when, why, and the signature are kept for good. A late upload never overturns a human decision.</span></li>
   </ol>
 
+  <h3 class="sub">THE ANTI-CHEAT IN ONE PAGE</h3>
+  <ol class="flow">
+    <li><i>1</i><b>SERVER-TIMED SHIFT</b><span>Driven time from heartbeats capped by the wall clock, distance by top speed; a vanished tab ends the ride.</span></li>
+    <li><i>2</i><b>A CHECKABLE RECORDING</b><span>Chained, re-fingerprinted batches; physics bounds; agreement with the ride; time, batch and byte budgets. Edits, teleports, cut-out hours and floods reject.</span></li>
+    <li><i>3</i><b>HOW HUMAN THE HANDS LOOK</b><span>Hold lengths, rhythms, press durations – statistics that only flag.</span></li>
+    <li><i>4</i><b>DISPATCH PROMPTS</b><span>A cab action asked at times the server chooses; the recording must show the key. No answer: a bot that cannot see; an instant one: a script reading the heartbeat.</span></li>
+    <li><i>5</i><b>A PERSON DECIDES</b><span>Flagged shifts wait for a signed, logged decision; rules are versioned and old rides can be judged again.</span></li>
+  </ol>
+  <p class="note">Every code, threshold and knob: <code>docs/anti-cheat.md</code> in the repository.</p>
+
   <h3 class="sub">LIMITS, SAID PLAINLY</h3>
   <ul class="honest">
-    <li><b>No re-simulation.</b> The game runs on your computer; its physics use floats, a variable time step and some randomness, so the server cannot re-run it. A careful bot playing the real game with human-like timing could pass the automatic checks. That is why flagged shifts go to a person and why the checks keep tightening.</li>
+    <li><b>No re-simulation.</b> The game runs on your computer; its physics use floats, a variable time step and some randomness, so the server cannot re-run it. A careful bot playing the real game with human-like timing <em>and</em> reading the prompts could pass the automatic checks. That is why flagged shifts go to a person and why the checks keep tightening.</li>
+    <li><b>No captcha at ride start</b> (deliberately, for now): a wallet farm can take free rides; the daily cap and the rate limits are the only brake.</li>
     <li><b>The target is a fixed-tick, fixed-point replay core</b> that re-simulates a paid finish from its input log. It is on the roadmap, not in the build.</li>
     <li><b>Verdicts decide ranking only.</b> Whether you can win money is decided by the pool's rules, not by this section.</li>
-    <li><b>Retention.</b> Recordings are deleted 90 days after the ride (flagged ones are kept until reviewed). Chat and donations are kept with the ride.</li>
+    <li><b>Retention.</b> Recordings are deleted 90 days after the ride (flagged ones are kept until reviewed); the sign-in log after 180 days. Chat and donations are kept with the ride.</li>
   </ul>
 </section>
 

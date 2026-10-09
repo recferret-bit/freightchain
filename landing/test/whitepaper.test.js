@@ -81,6 +81,9 @@ test('numbers: verdict thresholds equal verdict-rules.ts', () => {
   assert.equal(num('CHALLENGE_IGNORED_MIN_ISSUED'), 3); assert.equal(num('CHALLENGE_IGNORED_SHARE'), 0.5); assert.match(text, /Half or more of 3\+ prompts ignored rejects/);
   assert.match(src('server/src/domain/rides/ride-challenge.ts'), /CHALLENGE_WINDOW_MS = 20_000/); assert.match(text, /that key within 20 s/);
   assert.match(src('server/src/infrastructure/config/env.schema.ts'), /CHALLENGE_INTERVAL_SECONDS: z\.coerce\.number\(\)\.min\(0\)\.default\(240\)/); assert.match(text, /every 240 s of driving/);
+  assert.match(src('server/src/infrastructure/config/env.schema.ts'), /SIGNIN_RETENTION_DAYS: z\.coerce\.number\(\)\.int\(\)\.min\(0\)\.default\(180\)/); assert.match(text, /the sign-in log after 180 days/);
+  assert.match(src('server/src/domain/telemetry/telemetry-rules.ts'), /RECORDING_BYTES_PER_SECOND = 4096/); assert.match(text, /bytes ≤ wall × 4 kB \+ 256 kB/);
+  assert.match(text, /THE ANTI-CHEAT IN ONE PAGE/); assert.match(text, /docs\/anti-cheat\.md/);
 });
 
 test('numbers: live-stream prices and limits equal live-rules.ts', () => {
