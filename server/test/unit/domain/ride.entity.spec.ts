@@ -13,7 +13,7 @@ const order = () => Ride.createPaidOrder({ id: 'ride-2', wallet: 'w', tier: '1h'
 
 describe('Ride – creation', () => {
   it('a free ride is ready at once; completion needs 0.25 × 28 m/s × minSeconds metres (the free run ends at a shorter line than a paid shift)', () => {
-    expect(freeRide()).toMatchObject({ status: RideStatus.Created, minSeconds: 10, completeDist: 70, isFree: true, version: 1 });
+    expect(freeRide()).toMatchObject({ status: RideStatus.Created, minSeconds: 10, completeDist: 70, isFree: true, version: 1, trip: 'free' });
   });
 
   it('a paid order awaits payment with its price and expiry locked in', () => {

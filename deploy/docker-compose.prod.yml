@@ -111,6 +111,7 @@ services:
       TELEMETRY_RETENTION_DAYS: ${TELEMETRY_RETENTION_DAYS:-90}
       SIGNIN_RETENTION_DAYS: ${SIGNIN_RETENTION_DAYS:-180}
       CHALLENGE_INTERVAL_SECONDS: ${CHALLENGE_INTERVAL_SECONDS:-240}
+      CHALLENGE_FREE_RIDES: ${CHALLENGE_FREE_RIDES:-off}
       LIVE_CHAT: ${LIVE_CHAT:-all}                       # live streams: chat on every ride (all | free | off)
       LIVE_DONATIONS: ${LIVE_DONATIONS:-on}              # donations on (on | off)
       LIVE_FREE_DONATIONS: ${LIVE_FREE_DONATIONS:-off}   # no free mock donations in production: they must be a real SOL transfer to the driver

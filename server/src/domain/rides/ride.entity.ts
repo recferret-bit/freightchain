@@ -9,8 +9,9 @@ import {
 import { BATCH_SEQ_SLACK, GAME_TIME_FACTOR, GAME_TIME_SLACK_SECONDS, MIN_BATCH_SECONDS, RECORDING_BYTES_PER_SECOND, RECORDING_BYTES_SLACK, type RecordingAllowance } from '../telemetry/telemetry-rules.js';
 import {
   DRIVE_CREDIT_SLACK, DRIVE_CREDIT_SLACK_SECONDS, MAX_SPEED, REASON_MAX_LENGTH, SLACK_METRES, SPEED_SLACK,
-  completeDist, crashCap, FREE_COMPLETE_DIST_K, isRouteId, type RideTimingRules,
+  completeDist, completeDistK, crashCap, isRouteId, type RideTimingRules,
 } from './ride-rules.js';
+import { tripOf } from './ride-trip.js';
 
 export interface RideProps {
   id: string;
@@ -33,6 +34,8 @@ export interface RideProps {
   route: string | null;
   /** the cosmetics worn when the ride started (null = all classic) */
   loadout: Loadout | null;
+  /** the road it was driven on: a client/js/trips.js id (ride-trip.ts), stamped at creation; null = a ride from before trips (the 'classic' road) */
+  trip: string | null;
   nightSeconds: number;
   /** truck ⇄ vehicle / building contacts, as the game counts them (statistics only – only ever raised by a report) */
   crashesVehicle: number;
@@ -75,21 +78,21 @@ export class Ride {
 
   private static blank(): Omit<RideProps, 'id' | 'wallet' | 'tier' | 'seed' | 'minSeconds' | 'completeDist' | 'status' | 'createdAt'> {
     return {
-      timeScale: 1, priceUsd: 0, lamports: 0, solUsd: null, quoteExpiresAt: null, roundId: null, poolId: null, paidAt: null, route: null, loadout: null, nightSeconds: 0, crashesVehicle: 0, crashesBuilding: 0, paused: false,
+      timeScale: 1, priceUsd: 0, lamports: 0, solUsd: null, quoteExpiresAt: null, roundId: null, poolId: null, paidAt: null, route: null, loadout: null, trip: null, nightSeconds: 0, crashesVehicle: 0, crashesBuilding: 0, paused: false,
       startedAt: null, lastHbAt: null, lastS: 0, lastT: 0, driveSeconds: 0, hull: null, endedAt: null, reason: null, challenges: [], nextChallengeAt: null, version: 1,
     };
   }
 
   /** A free ride is ready at once (its credit is spent by the caller). */
   static createFree(i: FreeRideInput): Ride {
-    return new Ride({ ...Ride.blank(), id: i.id, wallet: i.wallet, tier: 'free', seed: i.seed, minSeconds: i.minSeconds, completeDist: completeDist(i.minSeconds, FREE_COMPLETE_DIST_K), status: RideStatus.Created, createdAt: i.now });
+    return new Ride({ ...Ride.blank(), id: i.id, wallet: i.wallet, tier: 'free', trip: tripOf('free'), seed: i.seed, minSeconds: i.minSeconds, completeDist: completeDist(i.minSeconds, completeDistK('free')), status: RideStatus.Created, createdAt: i.now });
   }
 
   /** A paid ride bought with a pool ticket (the money is already in the pool's escrow): ready at once, ranked in the pool's round. The caller spends the ticket. */
   static createFromTicket(i: TicketRideInput): Ride {
     if (i.tier === 'free') throw new ConflictError('a free ride is not paid with a ticket');
     return new Ride({
-      ...Ride.blank(), id: i.id, wallet: i.wallet, tier: i.tier, seed: i.seed, minSeconds: i.minSeconds, completeDist: completeDist(i.minSeconds),
+      ...Ride.blank(), id: i.id, wallet: i.wallet, tier: i.tier, trip: tripOf(i.tier), seed: i.seed, minSeconds: i.minSeconds, completeDist: completeDist(i.minSeconds, completeDistK(i.tier)),
       status: RideStatus.Created, createdAt: i.now, timeScale: i.timeScale, poolId: i.poolId, roundId: i.roundId, paidAt: i.now,
     });
   }
@@ -97,7 +100,7 @@ export class Ride {
   /** A paid order: priced in SOL at the moment of ordering, awaiting the on-chain payment. */
   static createPaidOrder(i: PaidOrderInput): Ride {
     return new Ride({
-      ...Ride.blank(), id: i.id, wallet: i.wallet, tier: i.tier, seed: i.seed, minSeconds: i.minSeconds, completeDist: completeDist(i.minSeconds),
+      ...Ride.blank(), id: i.id, wallet: i.wallet, tier: i.tier, trip: tripOf(i.tier), seed: i.seed, minSeconds: i.minSeconds, completeDist: completeDist(i.minSeconds, completeDistK(i.tier)),
       status: RideStatus.AwaitingPayment, createdAt: i.now, timeScale: i.timeScale, priceUsd: i.priceUsd, lamports: i.lamports, solUsd: i.solUsd,
       quoteExpiresAt: new Date(i.now.getTime() + i.quoteTtlMs),
     });
@@ -127,6 +130,7 @@ export class Ride {
   get route(): string | null { return this.p.route; }
   get startedAt(): Date | null { return this.p.startedAt; }
   get loadout(): Loadout | null { return this.p.loadout; }
+  get trip(): string | null { return this.p.trip; }
   get endedAt(): Date | null { return this.p.endedAt; }
   get lastHbAt(): Date | null { return this.p.lastHbAt; }
   get hull(): number | null { return this.p.hull; }

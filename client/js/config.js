@@ -28,6 +28,7 @@ export const CFG = {
   TELEMETRY_HZ: 10,          // online rides only (js/telemetry.js): samples per GAME second – keep = SAMPLE_HZ in server/src/domain/telemetry/telemetry-rules.ts
   TELEMETRY_BATCH_SECONDS: 15, // game seconds per uploaded recording batch
   START_ACCESS: 190,         // m of depot access road from the start (yard) to the turn onto the main road
+  START_FADE: 150,           // m – a straight start (js/trips.js `start`): the bends fade in over this much main road. The per-tier road multipliers themselves live in js/trips.js
   START_TURN_R: 22,          // m, radius of the right turn from the access road onto the main road (the truck in its lane turns at ≈ R − 2.4)
   SIGNAL_GREEN: [16, 26],    // s of main-road green per cycle (random per junction); cross green is SIGNAL_CROSS, amber SIGNAL_AMBER, all-red SIGNAL_CLEAR
   SIGNAL_CROSS: [9, 14],

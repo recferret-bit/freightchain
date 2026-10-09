@@ -14,8 +14,10 @@ A **trip** is the road a ride is driven on, per tier: `client/js/trips.js` (`TRI
 same on every trip – that is `gameplay-balance`. A trip only shapes the world around the truck. Every knob is a multiplier on the `CFG` value it names,
 so `'1h'` (all 1, `finish: false`) is the road as it was before trips existed – offline `play.html`, the headless trace, the e2e runs and the promo clips use it.
 
-How a ride gets its trip: `main.js` calls `setTrip(online.ride.tier)` (a lobby ride), `setTrip(watch.ride.tier)` (a replay / live view) or
-`setTrip(?trip=…)` (offline, for tuning) – always BEFORE the road is reset (the curvature is integrated into `road.js` tables on `net.reset`).
+How a ride gets its trip: the SERVER stamps a trip id on every new ride from its tier (`server/src/domain/rides/ride-trip.ts` `TRIP_OF_TIER`, column
+`Ride.trip`, `trip` in the ride and watch payloads; null = a ride from before trips = `'classic'`). `main.js` calls `setTrip(tripOf(online.ride))` (a lobby
+ride), `setTrip(tripOf(watch.ride))` (a replay / live view – it rebuilds the road the driver had) or `setTrip(?trip=…)` (offline, for tuning; a row with
+`seconds` / `k` – the free run – also sets the offline shift) – always BEFORE the road is reset (the curvature is integrated into `road.js` tables on `net.reset`).
 Console: `__game.trip`, `__game.setTrip('8h')` then `__game.startRide()`.
 
 ## The knobs (client only – the server never sees them)
@@ -25,15 +27,20 @@ Console: `__game.trip`, `__game.setTrip('8h')` then `__game.startRide()`.
 | `bends` | `net/network.js` `curv()` | × the route's curvature. Geometry only – the judge works in road coordinates (s, d) |
 | `traffic` | `sim/traffic.js` | × `CFG.TRAFFIC_MAX` on the main road, ÷ `CFG.TRAFFIC_GAP`; below 1 also fewer cars waiting at the depot exit |
 | `cross` | `sim/traffic.js` | × `CFG.CROSS_MAX` on a signalled crossroads' side roads (0 = empty side roads) |
-| `calm` | `sim/traffic.js` `pickType` | only `cruise` / `slow` behaviours spawn: no tailgaters, weavers, overtakers, sirens (nothing comes from behind) |
+| `calm` | `sim/traffic.js` `pickType`, `spawnRandom` | only `cruise` / `slow` behaviours spawn: no tailgaters, weavers, overtakers, sirens; a car that would come up from behind spawns ahead instead (the density stays what `traffic` asks) |
 | `props` | `world/chunks.js` | × the route's roadside scenery density (`props.js` `density`) |
 | `start` | `net/network.js` (`net.straight`), `world/junctions.js`, `world/roadmesh.js`, `world/depot.js`, `sim/traffic.js` | `'depot'`: the depot road meets the main road at a STOP line and the truck turns right (traffic both ways past the exit). `'straight'`: no turn – the depot road runs straight on into the main road, no junction drawn, no main road behind the exit, no traffic coming down the depot road. Road coordinates (`sA`, `Sm`, the start junction in the data, holes from `Sm + HOLE_FIRST`) stay the server's; it does not judge the start area (`road-layout.ts` `knownFrom`) |
+| `seconds`, `k` | `main.js` (offline only) | the free run's shift when played offline (`?trip=free`): `RIDE_MIN_SECONDS` and `COMPLETE_DIST = k × 28 × seconds`. Online the server's ride sets both; the drift spec pins them to `FREE_RIDE_SECONDS`' default and `FREE_COMPLETE_DIST_K` |
 | `finish` | `sim/physics.js` (the `st.complete` line) | the shift ends by itself as a WIN (green `winFx` stamp, `ui/fail-fx.js`) the moment it is complete; otherwise the road goes on until P → END SHIFT |
 
 The shift **length** and **finish line** are the server's, stored on the ride when it is created: `FREE_RIDE_SECONDS` (env, default 60 – four places, see
 `docs/configuration.md`; production's `deploy/.env` sets it too), the paid lengths in `server/src/domain/rides/ride-tier.ts`, the distance in
 `server/src/domain/rides/ride-rules.ts` (`completeDist` = K × 28 m/s × seconds; `COMPLETE_DIST_K` 0.5 for paid, `FREE_COMPLETE_DIST_K` for the free run).
 `client/js/online.js` copies both onto `CFG`; offline `?trip=` keeps `CFG.RIDE_MIN_SECONDS`.
+
+**A trip id is frozen once rides carry it** (replays rebuild the road by id): to change a shipped trip, add a new row here and in `ride-trip.ts`
+(`TRIP_IDS`, then `TRIP_OF_TIER` → the new id) and leave the old row as it is. `'classic'` is the road before trips – never change it.
+`server/test/unit/domain/ride-trip.spec.ts` holds the two lists, and the free run's `seconds` / `k`, together with the server.
 
 ## Out of bounds – the server judges these
 
@@ -49,13 +56,13 @@ per trip, and the trip STORED on the ride (a migration; old rides must keep the 
 1. Read `client/js/trips.js` and the ask. Words like "twice" and "25 % more" apply to the current multiplier.
 2. Measure before (repo root):
    ```sh
-   node .claude/skills/trip-design/measure.mjs                                   # every trip: ROAD on all routes + a 60 s DRIVE on route66
-   node .claude/skills/trip-design/measure.mjs --trips free --k 0.25 --seeds 9  # the free run at its real finish line
+   node .claude/skills/trip-design/measure.mjs                                   # every trip: ROAD on all routes + a DRIVE on route66, each trip its own shift
+   node .claude/skills/trip-design/measure.mjs --trips free --seeds 9            # the free run (60 s · 420 m)
    node .claude/skills/trip-design/measure.mjs --trips 1h,4h,8h --seconds 300 --drive-route brenner --no-road
    ```
    ROAD = per trip × route over `--km` (6) of road and `--seeds` (5): how far the road runs straight from the depot (`straight m` – the depot turn counts), the sharpest bend (min radius), % of road tighter than 150 m, mean |curvature|, and
    junctions / signals / holes per km – those three are the seed's, the same for every trip (context only). DRIVE = a scripted driver from the depot to
-   COMPLETE (`--seconds`, `--k` = the distance factor): game seconds, metres, hull lost, vehicle / building hits, off-road seconds, failures. It is an
+   COMPLETE – each trip's own shift (the free run's `seconds` / `k`, else 60 s and `COMPLETE_DIST_K`; `--seconds` / `--k` override every trip): game seconds, metres, hull lost, vehicle / building hits, off-road seconds, failures. It is an
    experienced driver with the headless test's handling (it pops the clutch): a first-timer takes longer. Compare trips with it, never quote it as a player's time.
    `--k 0.001` = how far the driver gets in `--seconds` (the distance a finish line can ask for).
 3. Change the trip row (or add one: a `TRIPS` key + where it is chosen; a new tier is also the server's `ride-tier.ts`). A new knob = its reader + a row in

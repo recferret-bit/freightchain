@@ -9,7 +9,7 @@
 //          seconds, how it ended (and why). It stops for red lights and the car ahead but ignores the sinkholes, and it drives with the headless test's pre-weight handling (it pops the clutch and steers in bangs), so its times are those
 //          of a driver who knows the cab – a first-timer takes longer. Compare trips with it; don't quote it as a player's time.
 // Usage (repo root):  node .claude/skills/trip-design/measure.mjs [--trips free,1h,4h,8h] [--routes route66,brenner|all] [--seeds 5] [--km 6]
-//                     [--seconds 60] [--k 0.5] [--drive-route route66] [--no-drive] [--no-road]
+//                     [--seconds S] [--k K]   (default: each trip's own shift – trips.js seconds / k, else 60 s and COMPLETE_DIST_K) [--drive-route route66] [--no-drive] [--no-road]
 import { execFileSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -19,7 +19,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..'), CLIENT = join(ROOT, 'client');
 const arg = (k, d) => { const i = process.argv.indexOf('--' + k); return i < 0 ? d : process.argv[i + 1]; };
 const flag = k => process.argv.includes('--' + k);
-const SEEDS = +arg('seeds', 5), KM = +arg('km', 6), SECONDS = +arg('seconds', 60), K = arg('k', null), DRIVE_ROUTE = arg('drive-route', 'route66');
+const SEEDS = +arg('seeds', 5), KM = +arg('km', 6), SECONDS = arg('seconds', null), K = arg('k', null), DRIVE_ROUTE = arg('drive-route', 'route66');
 
 // ── the game, bundled with stubbed three.js ──
 const out = join(tmpdir(), 'freightchain-trip'); mkdirSync(out, { recursive: true });
@@ -89,13 +89,13 @@ const launch = () => {   // clutch in, start the engine if it died, 1st gear, ga
   fire('keydown', 'Digit1'); step(25); input.gas = 1; step(10); fire('keyup', 'ShiftLeft'); step(40);
 };
 const shift = up => { fire('keydown', 'ShiftLeft'); step(20); fire('keydown', up ? 'KeyE' : 'KeyQ'); step(6); fire('keyup', 'ShiftLeft'); };
-function rideOnce(sd) {
+function rideOnce(sd, secs) {
   G.st.mode = 'done'; G.roads.seed = sd; G.startRide();
   G.roads.newTrip(sd); G.st.mode = 'drive';   // the same road for every trip: a fixed seed (startRide rolled a random one)
   st.park = false; st.temp = CFG.ENGINE_WARM + 5; step(30); fire('keydown', 'KeyI'); step(60 * 2.6);
   shift(true);
   let offT = 0;
-  for (let i = 0; i < (SECONDS * 3 + 120) * 10 && st.mode === 'drive' && !st.complete; i++) {   // give up at 3× the shift (+2 min): 'timeout'
+  for (let i = 0; i < (secs * 3 + 120) * 10 && st.mode === 'drive' && !st.complete; i++) {   // give up at 3× the shift (+2 min): 'timeout'
     const e = (st.d - 2.4) + 10 * st.psi; input.left = e > .5 ? 1 : 0; input.right = e < -.5 ? 1 : 0;
     let vmax = st.s < 30 ? 4 : net.straight ? Math.min(26, curveSpeed()) : st.s < net.sA - 40 ? 11 : st.s < net.Sm + 25 ? 5 : Math.min(26, curveSpeed());   // a straight start (trips.js `start`): no turn to slow for
     vmax = Math.min(vmax, followSpeed(), signalSpeed());
@@ -112,15 +112,16 @@ function rideOnce(sd) {
 }
 if (!flag('no-drive')) {
   const T0 = { ...CFG.TRUCK }; Object.assign(CFG.TRUCK, { MASS: 1, BRAKE: 9, STEER_RATE: 1.8, STEER_RETURN: 3.5, YAW_LAG: 0, CENTRIF: .03 });   // the scripted driver's handling (see the header)
-  CFG.FARE = 0; CFG.RIDE_MIN_SECONDS = SECONDS; CFG.COMPLETE_DIST = (K === null ? CFG.COMPLETE_DIST_K : +K) * CFG.MAX_SPEED * SECONDS;
+  const K0 = CFG.COMPLETE_DIST_K; CFG.FARE = 0;
   G.selectTheme(DRIVE_ROUTE, false);
-  console.log(`\nDRIVE  ${DRIVE_ROUTE} · shift ${SECONDS} s + ${Math.round(CFG.COMPLETE_DIST)} m · ${SEEDS} seeds · scripted driver (an experienced one – see the header)`);
-  console.log('trip  done   median t s  max t s   median m   hull lost %  vehicle hits  building hits  off-road s');
+  console.log(`\nDRIVE  ${DRIVE_ROUTE} · ${SEEDS} seeds · each trip's own shift (the free run's 60 s / k 0.25; ${SECONDS ?? 60} s / k ${K ?? K0} otherwise – --seconds / --k override every trip) · scripted driver (an experienced one – see the header)`);
+  console.log('trip  shift          done   median t s  max t s   median m   hull lost %  vehicle hits  building hits  off-road s');
   for (const id of trips) {
-    G.setTrip(id); const rs = [];
-    for (let sd = 1; sd <= SEEDS; sd++) rs.push(rideOnce(sd * 7919));
+    const T = G.setTrip(id), secs = +(SECONDS ?? T.seconds ?? 60), k = +(K ?? T.k ?? K0), rs = [];
+    CFG.RIDE_MIN_SECONDS = secs; CFG.COMPLETE_DIST = k * CFG.MAX_SPEED * secs;
+    for (let sd = 1; sd <= SEEDS; sd++) rs.push(rideOnce(sd * 7919, secs));
     const ok = rs.filter(r => r.end === 'complete'), ts = ok.map(r => r.t).sort((a, b) => a - b), ss = rs.map(r => r.s).sort((a, b) => a - b), avg = k => rs.reduce((a, r) => a + r[k], 0) / rs.length;
-    console.log(`${id.padEnd(5)} ${pad(ok.length + '/' + rs.length, 4)}   ${pad(ts.length ? f1(ts[ts.length >> 1]) : '–', 10)}  ${pad(ts.length ? f1(ts.at(-1)) : '–', 7)}   ${pad(Math.round(ss[ss.length >> 1]), 8)}   ${pad(f1(avg('hull')), 11)}  ${pad(f1(avg('crashV')), 12)}  ${pad(f1(avg('crashB')), 13)}  ${pad(f1(avg('offT')), 10)}`);
+    console.log(`${id.padEnd(5)} ${(secs + ' s ' + Math.round(CFG.COMPLETE_DIST) + ' m').padEnd(14)} ${pad(ok.length + '/' + rs.length, 4)}   ${pad(ts.length ? f1(ts[ts.length >> 1]) : '–', 10)}  ${pad(ts.length ? f1(ts.at(-1)) : '–', 7)}   ${pad(Math.round(ss[ss.length >> 1]), 8)}   ${pad(f1(avg('hull')), 11)}  ${pad(f1(avg('crashV')), 12)}  ${pad(f1(avg('crashB')), 13)}  ${pad(f1(avg('offT')), 10)}`);
     for (const r of rs.filter(r => r.end !== 'complete')) console.log(`      ${r.end} at ${f1(r.t)} s, ${Math.round(r.s)} m${r.why ? ' – ' + r.why : ''}`);
   }
   Object.assign(CFG.TRUCK, T0);

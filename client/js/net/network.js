@@ -21,7 +21,6 @@ export const laneLat = (dir, i) => dir * (LANE0 + i * LW);
 const ACCESS = { nR: 1, nL: 1, centre: 'none', edge: false, pat: 'access' };   // depot road: plain two-lane width, unmarked
 
 const smooth = x => x * x * (3 - 2 * x);
-const START_FADE = 150;   // m – a straight start (trips.js): the bends fade in over this much main road
 
 class RoadNetwork {
   constructor() { this.style = { curv: () => 0, weights: DEFAULT_WEIGHTS }; this.reset(1); }
@@ -112,7 +111,7 @@ class RoadNetwork {
     this.ensure(s + 600);
     const seg = this.segAt(s), t = clamp((s - seg.s0) / TAPER, 0, 1), bends = seg.prev.bends + (seg.bends - seg.prev.bends) * t;
     const k = this.style.curv(s) * bends * this.calm(s) * trip.bends;
-    return this.straight ? k * smooth(clamp((s - this.Sm) / START_FADE, 0, 1)) : k;   // a straight start: the depot road is straight, the bends come in over START_FADE m once it is the main road   // trip.bends: the ride tier's bend scale (trips.js) – geometry only, the server's port has no curvature
+    return this.straight ? k * smooth(clamp((s - this.Sm) / CFG.START_FADE, 0, 1)) : k;   // a straight start: the depot road is straight, the bends come in over START_FADE m once it is the main road   // trip.bends: the ride tier's bend scale (trips.js) – geometry only, the server's port has no curvature
   }
   /* cross-section at spine position s: { nR, nL (lanes per direction, fractional in a taper), centre (style | null = route's own | 'none'), edge (edge lines?), pat } */
   xs(s) { return s < this.Sm ? ACCESS : this.mainXs(s); }

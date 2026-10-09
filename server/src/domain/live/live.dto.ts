@@ -68,6 +68,8 @@ export interface WatchRideDto {
   route: string | null;
   /** what the driver wore (null = all classic) – a spectator's / replay's cockpit draws it */
   loadout: Loadout | null;
+  /** the road the ride was driven on (a client/js/trips.js id; null = before trips: 'classic') – a replay rebuilds THAT road, whatever the table says today */
+  trip: string | null;
   seed: number;
   status: string;
   /** running and still sending heartbeats */

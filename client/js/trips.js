@@ -13,9 +13,15 @@
      start    'depot' = the depot road meets the main road at a STOP line and the truck turns right onto it (traffic both ways past the exit);
               'straight' = the depot road runs straight on into the main road: no turn, no junction, nothing behind the exit. Geometry only – the
               server's layout (sA, Sm, the start junction, holes from Sm + HOLE_FIRST) is the same, and it does not judge the start area (road-layout.ts knownFrom)
+     seconds, k  the free run's shift for OFFLINE play (?trip=free): RIDE_MIN_SECONDS and COMPLETE_DIST = k × MAX_SPEED × seconds. Online the server's ride
+              sets both (FREE_RIDE_SECONDS, FREE_COMPLETE_DIST_K – server/test/unit/domain/ride-trip.spec.ts holds them together)
+   WHICH trip a ride is driven on is the SERVER's: it stamps an id on the ride when it is created (server/src/domain/rides/ride-trip.ts, `trip` in the ride
+   and watch payloads) and a replay rebuilds that road. So an id is FROZEN once rides carry it: retune by adding a new id (here and in ride-trip.ts) and
+   pointing the tier at it. 'classic' = the road before trips (a ride with trip null) – keep it as it is.
    Tuning: the trip-design skill (`node .claude/skills/trip-design/measure.mjs`). A new key here needs its reader and a row in that skill. */
 export const TRIPS = {
-  free: { id: 'free', name: 'FREE RUN',     bends: .4,  traffic: .4,  cross: 0, calm: true,  props: .5,  finish: true,  start: 'straight' },
+  classic: { id: 'classic', name: 'CLASSIC', bends: 1, traffic: 1,   cross: 1, calm: false, props: 1,   finish: false, start: 'depot' },   // rides from before trips
+  free: { id: 'free', name: 'FREE RUN',     bends: .4,  traffic: .4,  cross: 0, calm: true,  props: .5,  finish: true,  start: 'straight', seconds: 60, k: .25 },
   '1h': { id: '1h',   name: '1 HOUR HAUL',  bends: 1,   traffic: 1,   cross: 1, calm: false, props: 1,   finish: false, start: 'depot' },
   '4h': { id: '4h',   name: '4 HOUR HAUL',  bends: 1.2, traffic: 1.4, cross: 1.4, calm: false, props: 1.2, finish: false, start: 'depot' },
   '8h': { id: '8h',   name: '8 HOUR HAUL',  bends: 1.4, traffic: 1.8, cross: 1.8, calm: false, props: 1.4, finish: false, start: 'depot' },
@@ -23,4 +29,6 @@ export const TRIPS = {
 export const DEFAULT_TRIP = '1h';
 /* the trip being driven / watched – set BEFORE the road is reset (the curvature is integrated into road.js tables on net.reset) */
 export const trip = { ...TRIPS[DEFAULT_TRIP] };
-export function setTrip(id) { Object.assign(trip, TRIPS[id] ?? TRIPS[DEFAULT_TRIP]); return trip; }
+export function setTrip(id) { for (const k of Object.keys(trip)) delete trip[k]; Object.assign(trip, TRIPS[id] ?? TRIPS[DEFAULT_TRIP]); return trip; }   // (a row's own keys only: `seconds` must not leak into the next trip)
+/** the trip id of a ride payload: what the server stamped, 'classic' for a ride from before trips (null), its tier from a server without the field */
+export const tripOf = r => r.trip !== undefined ? (r.trip ?? 'classic') : r.tier;

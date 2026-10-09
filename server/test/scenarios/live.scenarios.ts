@@ -36,7 +36,7 @@ export function liveScenarios(h: () => Harness): void {
     const live = (await anon().get('/api/live').expect(200)).body.rides[0];
     expect(live.id).toBe(ride.id);
     const { body } = await anon().get(`/api/watch/${live.id}`).query({ viewer: 'v-1' }).expect(200);
-    expect(body.ride).toMatchObject({ id: ride.id, wallet: driver.address, seed: ride.seed, route: 'stuart', status: 'running', live: true });
+    expect(body.ride).toMatchObject({ id: ride.id, wallet: driver.address, seed: ride.seed, trip: 'free', route: 'stuart', status: 'running', live: true });   // trip: the road the replay rebuilds (client/js/trips.js)
     expect(body.recording).toEqual({ lastSeq: 1, t1: batches[1]!.t1 });
     expect(body.batches.map((b: { seq: number }) => b.seq)).toEqual([0, 1]);
     expect(body.batches[0].samples).toEqual(batches[0]!.samples);

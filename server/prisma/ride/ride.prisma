@@ -34,6 +34,7 @@ model Ride {
   paidAt         DateTime?
   route          String? // theme id reported by the client (whitelisted)
   loadout        Json? // what the driver wore when the ride STARTED ({ wheel, truck_color, gearbox } – promo cosmetics, visuals only): spectators and replays draw it; null = everything classic
+  trip           String? // the road it was driven on: a client/js/trips.js id stamped at creation from the tier (domain/rides/ride-trip.ts) – replays rebuild THAT road; null = a ride from before trips ('classic')
   nightSeconds   Float           @default(0)
   crashesVehicle  Int            @default(0) // the game's running count of truck ⇄ vehicle contacts (cumulative in every report, only ever raised – statistics, not security)
   crashesBuilding Int            @default(0) // … and of building crashes

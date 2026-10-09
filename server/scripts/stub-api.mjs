@@ -49,7 +49,7 @@ const poolDto = p => ({ ...p, toGo: toGo(p), progressPct: Math.min(100, Math.flo
 const onSale = tier => pools.find(p => p.tier === tier && (p.status === 'open' || p.status === 'active')) ?? pools.find(p => p.tier === tier) ?? null;
 const ticketDto = id => { const p = pools.find(x => x.id === id), t = tickets.get(id); return { poolId: id, tier: p.tier, label: p.label, status: p.status, balance: t.balance, bought: t.bought, cap: p.maxPerWallet, refundable: p.status === 'refunding' && t.bought > 0 }; };
 const me = () => ({ wallet: WALLET.toBase58(), freeRides, freeRidesMax: 5, nextFreeRideAt: freeRides < 5 ? t0 + DAY : null, createdAt: t0 - 9 * DAY, demo: false, demoScale: 60, tickets: [...tickets.keys()].map(ticketDto) });
-const TIERS = [{ id: 'free', usd: 0, seconds: 300, completeDist: 4200 }, { id: '1h', usd: 5, seconds: 3600, completeDist: 50400 }, { id: '4h', usd: 15, seconds: 14400, completeDist: 201600 }, { id: '8h', usd: 50, seconds: 28800, completeDist: 403200 }];
+const TIERS = [{ id: 'free', usd: 0, seconds: 60, completeDist: 420 }, { id: '1h', usd: 5, seconds: 3600, completeDist: 50400 }, { id: '4h', usd: 15, seconds: 14400, completeDist: 201600 }, { id: '8h', usd: 50, seconds: 28800, completeDist: 403200 }];
 const problem = (status, code, detail) => ({ status, body: { type: `/problems/${code}`, title: 'Error', status, code, detail } });
 const tx = (lamports, to, feePayer) => {   // a real, unsigned legacy transaction (a plain transfer standing in for buy_ticket / refund); never sent anywhere
   const blockhash = Keypair.generate().publicKey.toBase58(), t = new Transaction({ feePayer, recentBlockhash: blockhash }).add(SystemProgram.transfer({ fromPubkey: WALLET, toPubkey: to, lamports }));
@@ -79,7 +79,7 @@ const R = [
       if (!live) return held.length ? problem(409, 'pool_not_live', `pool not live yet – ${toGo(held[0])} more tickets needed`) : problem(409, 'no_tickets', `no ${tier} tickets left`);
       tickets.get(live.id).balance--; grants.push({ poolId: live.id, delta: -1, source: 'spend', ref: 'stub-ride', at: NOW() });
     }
-    const r = { id: `stub-${rides.size + 1}`, tier, seed: 1, status: 'created', minSeconds: 300, completeDist: 4200, timeScale: 1, priceUsd: 0, lamports: 0, quoteExpiresAt: null, roundId: 1, poolId: null, driveSeconds: 0, distance: 0, reason: null };
+    const r = { id: `stub-${rides.size + 1}`, tier, seed: 1, status: 'created', minSeconds: tier === 'free' ? 60 : 300, completeDist: tier === 'free' ? 420 : 4200, trip: tier, timeScale: 1, priceUsd: 0, lamports: 0, quoteExpiresAt: null, roundId: 1, poolId: null, driveSeconds: 0, distance: 0, reason: null };
     rides.set(r.id, r); return { status: 201, body: r };
   }],
   ['POST', /^promo\/redeem$/, (m, b) => {   // STUB = 2 tickets · RIDES = +3 free rides (above the cap) · GOLD / BLUE / RACING = a wheel / paint / shifter (a second try: 409 already_owned)

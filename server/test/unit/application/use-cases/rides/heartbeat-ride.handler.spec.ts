@@ -2,7 +2,7 @@ import { HeartbeatRideHandler } from '../../../../../src/application/use-cases/r
 import { HeartbeatRideCommand } from '../../../../../src/application/use-cases/rides/heartbeat-ride/heartbeat-ride.command.js';
 import type { RideReport } from '../../../../../src/domain/rides/ride-report.js';
 import { ConflictError } from '../../../../../src/domain/shared/errors.js';
-import { unitContext } from '../../../../support/unit-context.js';
+import { unitContext, unitRules } from '../../../../support/unit-context.js';
 import { RecordingAnalytics } from '../../../../support/recording-analytics.js';
 
 const report = (over: Partial<RideReport>): RideReport => ({ s: 0, t: null, hull: 100, paused: false, route: null, night: false, ...over });
@@ -70,6 +70,14 @@ describe('HeartbeatRideHandler', () => {
     ctx.clock.advance(25);
     const later = await beat(ride.id, { s: 400, t: 29 });
     expect(later.challenge && later.challenge.id !== c!.id).toBe(true); // the next one is due by now; the first has closed
+  });
+
+  it('CHALLENGE_FREE_RIDES=off (production): a free ride gets no dispatch prompt, however long it is driven', async () => {
+    const ctx = unitContext(unitRules({ challengeFreeRides: false }));
+    const handler = new HeartbeatRideHandler(ctx.lookup, ctx.rides, ctx.rules, ctx.clock, new RecordingAnalytics(), ctx.entropy, ctx.transactions, ctx.players, ctx.stats);
+    const ride = await ctx.freeRide('w', true);
+    for (let t = 2; t <= 30; t += 2) { ctx.clock.advance(2); expect((await handler.execute(new HeartbeatRideCommand('w', ride.id, report({ s: t * 10, t })))).challenge).toBeNull(); }
+    expect((await ctx.reload(ride.id)).challenges).toEqual([]);
   });
 
   it('statistics: a report that fails the ride ends it – its distance counts once; an ordinary beat counts nothing yet', async () => {

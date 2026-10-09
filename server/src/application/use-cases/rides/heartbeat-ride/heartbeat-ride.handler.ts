@@ -40,7 +40,8 @@ export class HeartbeatRideHandler implements ICommandHandler<HeartbeatRideComman
     if (!ride.canAcceptHeartbeat(now, this.rules.get())) return toRideDto(ride, null, now); // ignored, but the open prompt still rides along
     const before = progressRatio(ride.driveSeconds, ride.minSeconds, ride.distance, ride.completeDist);
     const accepted = ride.applyReport(report, now, this.rules.get()); // a report that fails the ride is persisted too
-    if (accepted) ride.issueChallenge(now, this.rules.get().challengeIntervalSeconds, { id: this.entropy.hex(6), rnd: parseInt(this.entropy.hex(4), 16) / 0x1_0000_0000 });
+    const rules = this.rules.get(), interval = ride.isFree && !rules.challengeFreeRides ? 0 : rules.challengeIntervalSeconds; // CHALLENGE_FREE_RIDES=off: none on the free run
+    if (accepted) ride.issueChallenge(now, interval, { id: this.entropy.hex(6), rnd: parseInt(this.entropy.hex(4), 16) / 0x1_0000_0000 });
     // a report that fails the ride ENDS it: its totals join the statistics in the same commit (every other beat is a plain save)
     const saved = accepted ? await this.rides.save(ride) : await this.transactions.run(async (tx) => {
       await this.players.findByWalletForUpdate(wallet, tx);   // player row first (the lock order of every ride writer – see EndRideHandler)

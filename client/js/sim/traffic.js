@@ -82,12 +82,15 @@ function spawnAt(type, preset, road, dir, s, lat) {
 }
 function pickType(ok) {
   if (trip.calm) { const f = ok; ok = k => CALM_OK.includes(k) && (!f || f(k)); }
+  const types = trip.calm ? Object.entries(VEHICLES).filter(([, d]) => Object.keys(d.presets).some(ok)) : Object.entries(VEHICLES);   // a calm trip: only types that HAVE a calm behaviour (no draw wasted on a siren-only one)
+  if (!types.length) return null;
   for (let i = 0; i < 4; i++) {   // some types have no preset that fits: retry with another type
-    const type = pick(Object.fromEntries(Object.entries(VEHICLES).map(([k, d]) => [k, d.rare]))), preset = pick(VEHICLES[type].presets, ok); if (preset) return [type, preset];
+    const type = pick(Object.fromEntries(types.map(([k, d]) => [k, d.rare]))), preset = pick(VEHICLES[type].presets, ok); if (preset) return [type, preset];
   }
   return null;
 }
 function spawnRandom(zone, dist) {
+  if (trip.calm && zone === 'behind') zone = 'ahead';   // a calm trip: no calm behaviour comes up from behind to pass – a car ahead instead (density stays what trips.js asks)
   for (let i = 0; i < 3; i++) { const tp = pickType(zone === 'behind' ? k => BEHIND_OK.includes(k) : undefined); if (!tp) continue; const a = spawn(tp[0], tp[1], zone, dist); if (a) return a; }
   return null;
 }
@@ -290,7 +293,7 @@ export function updateTraffic(dt) {
   let fatal = null;
   for (let i = cars.length - 1; i >= 0; i--) {
     const a = cars[i], tb = boxFor(a.road); a.t += dt; a.cool = Math.max(0, a.cool - dt); think(a, dt, tb); place(a);
-    const gone = a.road.main ? a.s < TK.m - 300 || a.s > TK.m + 900 || a.s < (net.straight ? net.Sm + 20 : net.Sm - 1450) : Math.abs(a.s) > a.road.j.len - 5 || Math.abs(a.road.j.s - TK.m) > 1100;
+    const gone = a.road.main ? a.s < TK.m - 300 || a.s > TK.m + 900 || a.s < (net.straight ? 40 : net.Sm - 1450) : Math.abs(a.s) > a.road.j.len - 5 || Math.abs(a.road.j.s - TK.m) > 1100;
     if (gone) { removeVehicle(a.mesh); cars.splice(i, 1); continue; }
     if (!fatal && tb && Math.abs(a.s - tb.s) < 25 + a.def.len + tb.len / 2) fatal = contact(a, tb);
   }

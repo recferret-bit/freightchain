@@ -23,6 +23,8 @@ export interface RideDto {
   reason: string | null;
   /** what the driver wore when the ride started (null = not started yet / all classic) – the game wears it */
   loadout: Loadout | null;
+  /** the road it is driven on (a client/js/trips.js id; null = a ride from before trips: 'classic') – the game builds it before the menu */
+  trip: string | null;
   /** the server's check of the recording (verified play); null = not judged – only completed shifts are */
   verdict: VerdictDto | null;
   /** the dispatch prompt whose window is open right now (the heartbeat response carries it; null elsewhere) */
@@ -47,6 +49,7 @@ export const toRideDto = (r: Ride, verdict: VerdictDto | null = null, now: Date 
   distance: Math.round(r.distance),
   reason: r.reason,
   loadout: r.loadout,
+  trip: r.trip,
   verdict,
   challenge: now ? (() => { const c = r.openChallenge(now); return c ? toChallengeDto(c) : null; })() : null,
 });
