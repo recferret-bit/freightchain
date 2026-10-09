@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Freight Chain Anti-Cheat</title>
+<meta name="description" content="The anti-bot and anti-cheat of Freight Chain's verified play in one page: the eight layers, every reason code and threshold, what keeps honest players safe, how it is operated, and what it does not do.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <span class="eyebrow">Freight Chain · verified play · the anti-cheat in one page</span>
+  <h1>Anti-Cheat</h1>
+  <p class="lede">A ride ranks only if a person drove it for the whole shift. The game runs in the player's browser, so nothing it says is trusted on its own. The server cannot re-simulate the drive, so it does the next best things: it times the shift itself, demands a recording it can validate, measures how human the hands behind it look, and asks for things during the ride that only someone watching the screen can answer.</p>
+  <div class="status">
+    <span class="pill">rules <b>v2</b></span>
+    <span class="pill">mode <b>shadow</b> · verdicts shown, boards not affected yet</span>
+    <span class="pill">dispatch prompt every <b>≈ 240 s</b> · window <b>20 s</b></span>
+    <span class="pill">recordings kept <b>90 days</b> · sign-ins <b>180 days</b></span>
+  </div>
+  <nav class="toc">
+    <a href="#s-layers">Layers</a><a href="#s-prompts">Dispatch prompts</a><a href="#s-verdict">The verdict</a><a href="#s-fair">Fair to honest players</a><a href="#s-ops">Operating it</a><a href="#s-limits">Limits</a>
+  </nav>
+  <figure class="chart" style="margin:0">
+    <svg id="ride" viewBox="0 0 940 230" role="img" aria-label="One ride on a timeline: heartbeats every 10 s, batches every 15 s, two dispatch prompts with their 20 s windows, the end, the 60 s grace for late batches, the judgement"></svg>
+    <figcaption>One ride as the server sees it. Blue ticks: heartbeats (the server's clock for the shift). Dashed cuts: the 15 s batches of the recording. Amber flags: dispatch prompts, each with its 20 s window – the first answered (green press), the second missed (red). After the end, late batches are still taken for 60 s, then the shift is judged.</figcaption>
+  </figure>
+</header>
+
+<section aria-labelledby="s-layers">
+  <div class="head">
+    <span class="eyebrow">From cheapest to strongest</span>
+    <h2 id="s-layers">Eight layers</h2>
+    <p>Each layer catches something the one before cannot. The first four reject on proof, the fifth refuses what should never be stored, the sixth and seventh only suspect, and the last one decides.</p>
+  </div>
+  <ol class="layers">
+    <li class="layer"><span class="n">1</span><div><h3>Server-timed shift</h3><p class="what">Driven seconds come from heartbeats and are capped by the wall clock. Distance may grow at most 28 m/s × 1.2 between beats. No heartbeat for 150 s ends the ride.</p></div><p class="catch"><b>Catches:</b> an instant finish, a speed hack between beats, a vanished tab.</p><span class="power chip bad">fails the ride</span><span class="where">Ride.applyReport · the stale-ride sweeper</span></li>
+    <li class="layer"><span class="n">2</span><div><h3>A checkable recording</h3><p class="what">Every key / dash-button press and release (wall-clock ms) and a 10 Hz sample of the truck, uploaded every 15 s in SHA-256 hash-chained batches. The server recomputes every hash on arrival.</p></div><p class="catch"><b>Catches:</b> an edited recording, a missing or re-ordered batch, one chained to another ride.</p><span class="power chip bad">reject</span><span class="where">hash-mismatch · missing-batches · chain-broken · no-recording — client/js/telemetry.js, recording-checks.ts</span></li>
+    <li class="layer"><span class="n">3</span><div><h3>Physics bounds</h3><p class="what">Under the governor (28 m/s × 1.05); no step the truck cannot make (× 1.2 + 2 m, also across batch boundaries); samples in time order and well-formed.</p></div><p class="catch"><b>Catches:</b> speed hacks, teleports, junk rows.</p><span class="power chip bad">reject</span><span class="where">over-governor · teleport · sample-out-of-order · bad-sample — checkSamples over the batch summaries</span></li>
+    <li class="layer"><span class="n">4</span><div><h3>Agreement with the ride</h3><p class="what">The recording ends where the ride ended (30 m + 1 %, a lost tail allowed) and covers the driven time (under 50 % rejects, under 90 % flags). A truck that moved more than 50 m has inputs, and gas among them.</p></div><p class="catch"><b>Catches:</b> a recording of a different drive, cut-out hours, a car driven with no hands.</p><span class="power chip bad">reject</span><span class="where">recording-mismatch · recording-incomplete · no-inputs · no-throttle-input · recording-gaps (flag) — checkAgreement, checkInputsPresent</span></li>
+    <li class="layer"><span class="n">5</span><div><h3>Budgets per ride</h3><p class="what">Game seconds ≤ wall × 1.05 + 30, batches ≤ wall ÷ 5 + 10, bytes ≤ wall × 4 kB + 256 kB; per batch 96 kB, 400 samples, 2000 events; plus the API rate limits.</p></div><p class="catch"><b>Catches:</b> a made-up recording uploaded faster than real time, storage floods.</p><span class="power chip pen">refused · 400</span><span class="where">Ride.recordingAllowance · UploadBatchHandler (the chain stops at a refused batch)</span></li>
+    <li class="layer"><span class="n">6</span><div><h3>How human the hands look</h3><p class="what">Per key: holds that barely vary (spread under 8 % over 6+ holds). The 3 most common press-to-press gaps (1 ms buckets) covering more than 60 %. More than 30 % of presses released within 10 ms. No opinion under 8 presses; coarse browser clocks are detected and the two checks they break are skipped.</p></div><p class="catch"><b>Catches:</b> macros, key-spamming scripts, synthetic events.</p><span class="power chip flag">flag only</span><span class="where">uniform-holds · repeated-timings · instant-presses — human-checks.ts</span></li>
+    <li class="layer"><span class="n">7</span><div><h3>Dispatch prompts</h3><p class="what">About every 240 s of driving (at most 4 on a short shift, 0.6–1.4 intervals apart so the rhythm cannot be guessed) the heartbeat response names one cab action with a 20 s window. The judge looks for that press in the recording.</p></div><p class="catch"><b>Catches:</b> a bot driving the real game without reading the screen; a script reading the heartbeat and pressing at once.</p><span class="power chip bad">reject / flag</span><span class="where">challenges-ignored (≥ 50 % of ≥ 3 missed) · challenge-missed (flag) · challenge-reflex (median answer under 80 ms, flag) — ride-challenge.ts, challenge-checks.ts, client/js/prompt.js</span></li>
+    <li class="layer"><span class="n">8</span><div><h3>A person decides</h3><p class="what">Flagged shifts wait in the admin queue. Accept, reject and re-judge are signed by the admin's wallet for that exact ride and decision, and audited. A late upload never overturns a decision.</p></div><p class="catch"><b>Catches:</b> everything the statistics only suspect.</p><span class="power chip ok">the final word</span><span class="where">admin.&lt;apex&gt; · VerdictService.override — see the verified-play explainer, "Admin decisions"</span></li>
+  </ol>
+</section>
+
+<section aria-labelledby="s-prompts">
+  <div class="head">
+    <span class="eyebrow">Layer 7, closer</span>
+    <h2 id="s-prompts">Dispatch prompts</h2>
+    <p>The one check that needs eyes on the screen. The game shows an amber banner on the windscreen with the action and the key; a dash button counts too. Pressing it is recorded like any other key, and the judge compares that time with the moment the server issued the prompt.</p>
+  </div>
+  <div class="cols">
+    <div class="card">
+      <div class="top"><h3>What the driver sees</h3><span class="chip flag">20 s</span></div>
+      <p><span class="banner">DISPATCH · FLASH YOUR HEADLIGHTS · PRESS L</span></p>
+      <p><span class="banner done">DISPATCH · FLASH YOUR HEADLIGHTS ✓</span></p>
+      <p class="soft" style="font-size:14.5px">A bar under the banner runs down the window; it blinks in the last 5 s. A short sound announces it and another confirms the answer. Four actions, each with its key and dash button: headlights (L / HEAD), wipers (R / WIPER), cab light (C / CAB), washer (X / WASH).</p>
+    </div>
+    <div class="card">
+      <div class="top"><h3>What the judge does</h3><span class="chip pen">from the recording</span></div>
+      <ul class="checks rej">
+        <li><b>Answered</b><span class="soft">The first press of one of the prompt's codes between the issue time and the deadline. Its reaction is the gap after the issue time.</span><span class="c">scores.challenges · issued · answered · missed · tooFast · medianReactionMs</span></li>
+        <li><b>Ignored for most of the ride</b><span class="soft">Half or more of 3+ judged prompts missed: nobody was at the wheel.</span><span class="c">challenges-ignored · reject</span></li>
+        <li><b>A few missed</b><span class="soft">Fewer than that, or under 3 issued: a person looks.</span><span class="c">challenge-missed · flag</span></li>
+        <li><b>Answered before it could be read</b><span class="soft">A median under 80 ms over 2+ answers. A person needs about 250 ms to read a banner; the one-way network delay only makes a real reaction read shorter, so this stays safe for slow links.</span><span class="c">challenge-reflex · flag</span></li>
+        <li><b>Still open at the end</b><span class="soft">A prompt whose window had not closed when the ride ended is not judged.</span></li>
+      </ul>
+    </div>
+  </div>
+  <figure class="chart" style="margin:0">
+    <svg id="window" viewBox="0 0 940 150" role="img" aria-label="One prompt window: issued at the heartbeat, shown in the cab a moment later, answered 700 ms after issue, deadline 20 s later; an answer under 80 ms is flagged, none at all is a miss"></svg>
+    <figcaption>One prompt. The server issues it with a heartbeat (0 ms); the banner shows when the response lands; the press (green) is measured from the issue time. The red zone is the reflex threshold, the amber zone the window, anything after the deadline a miss.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="s-verdict">
+  <div class="head">
+    <span class="eyebrow">What comes out</span>
+    <h2 id="s-verdict">The verdict and every code</h2>
+    <p>Any <b>reject</b> reason makes the shift rejected. Otherwise any <b>flag</b> makes it flagged. Otherwise it is verified. Only verified paid shifts rank, once <code>VERDICT_ENFORCE</code> is on; in shadow mode the verdict is shown and the boards ignore it.</p>
+  </div>
+  <div class="outcomes">
+    <div class="out ok"><h3>Verified</h3><p>Nothing found. The shift ranks on the paid leaderboard.</p></div>
+    <div class="out flag"><h3>Flagged</h3><p>Something looked off but proves nothing. The shift waits for a person and does not rank until accepted.</p></div>
+    <div class="out bad"><h3>Rejected</h3><p>The recording is missing, broken, impossible, or the driver ignored the prompts. It does not rank. An admin can still reverse it.</p></div>
+  </div>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Code</th><th>Means</th><th>Power</th></tr></thead>
+      <tbody>
+        <tr><td><code>no-recording</code></td><td>Not one batch was uploaded for the shift.</td><td><span class="chip bad">reject</span></td></tr>
+        <tr><td><code>missing-batches</code> <code>chain-broken</code></td><td>A hole in the sequence, or a batch not linked to the one before it (batch 0 links to the ride id; an unhashed batch is linked as <code>unhashed-&lt;seq&gt;</code>).</td><td><span class="chip bad">reject</span></td></tr>
+        <tr><td><code>hash-mismatch</code></td><td>The client's hash is not the hash of the content – edited after hashing.</td><td><span class="chip bad">reject</span></td></tr>
+        <tr><td><code>unhashed-batch</code></td><td>The browser's digest failed and the batch came without a hash; the server hashed it itself.</td><td><span class="chip flag">flag</span></td></tr>
+        <tr><td><code>bad-sample</code> <code>sample-out-of-order</code></td><td>A sample row with fewer than 12 values, or outside its batch's time span, or out of order.</td><td><span class="chip bad">reject</span></td></tr>
+        <tr><td><code>over-governor</code> <code>teleport</code></td><td>A recorded speed over 29.4 m/s; a step of more than 28 m/s × Δt × 1.2 + 2 m.</td><td><span class="chip bad">reject</span></td></tr>
+        <tr><td><code>recording-mismatch</code></td><td>The last recorded distance is not the distance the ride ended with (30 m + 1 %, plus what the missing seconds could explain).</td><td><span class="chip bad">reject</span></td></tr>
+        <tr><td><code>recording-incomplete</code> <code>recording-gaps</code></td><td>Recorded seconds under 50 % of the driven seconds; under 90 %.</td><td><span class="chip bad">reject</span> / <span class="chip flag">flag</span></td></tr>
+        <tr><td><code>no-inputs</code> <code>no-throttle-input</code></td><td>More than 50 m driven without any input event; without a gas press (W / ↑).</td><td><span class="chip bad">reject</span></td></tr>
+        <tr><td><code>uniform-holds</code> <code>repeated-timings</code> <code>instant-presses</code></td><td>The three human-timing statistics (layer 6).</td><td><span class="chip flag">flag</span></td></tr>
+        <tr><td><code>challenges-ignored</code></td><td>Half or more of 3+ dispatch prompts went unanswered.</td><td><span class="chip bad">reject</span></td></tr>
+        <tr><td><code>challenge-missed</code> <code>challenge-reflex</code></td><td>Some prompts unanswered; prompts answered with a median under 80 ms.</td><td><span class="chip flag">flag</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section aria-labelledby="s-fair">
+  <div class="head">
+    <span class="eyebrow">Fairness rules</span>
+    <h2 id="s-fair">What keeps honest players safe</h2>
+  </div>
+  <ul class="promises">
+    <li><b>Statistics never reject</b><span>Timing checks only flag; a person reviews them before anything is decided.</span></li>
+    <li><b>A lost final upload only costs coverage</b><span>The distance the missing seconds explain is allowed, and the server keeps taking batches for 60 s after the end.</span></li>
+    <li><b>A missing fingerprint is not an edit</b><span>The browser retries its digest once; a batch without one is kept and only flagged. A wrong fingerprint still rejects.</span></li>
+    <li><b>Prompts are forgiving by design</b><span>Fewer than 3 issued never reject; a prompt still open at the end is not judged; 80 ms sits far under a human reaction and a slow link cannot push a person under it.</span></li>
+    <li><b>Slow PCs and privacy browsers are not punished</b><span>Input times come from the browser's own events; rounded clocks are detected; OEM and IME keys with no code are accepted.</span></li>
+    <li><b>Nothing lives forever</b><span>Recordings are deleted after 90 days (flagged ones kept until reviewed); the sign-in log with its IP addresses after 180 days.</span></li>
+    <li><b>Every verdict has reasons and a version</b><span>The codes, what they measured and the rules version are stored, so a verdict can be explained and judged again.</span></li>
+    <li><b>Human decisions stick</b><span>A late upload never overturns an admin's decision; a bulk re-judge keeps it too.</span></li>
+  </ul>
+</section>
+
+<section aria-labelledby="s-ops">
+  <div class="head">
+    <span class="eyebrow">For the operator</span>
+    <h2 id="s-ops">Operating it</h2>
+  </div>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Task</th><th>How</th></tr></thead>
+      <tbody>
+        <tr><td>Shadow mode → enforcement</td><td>Play real rides; read the reasons and scores with the <code>prod-db</code> queries; tune <code>server/src/domain/verdict/verdict-rules.ts</code> and bump <code>RULES_VERSION</code>; deploy; judge old rides again with <code>node dist/cli/index.js verdict:rejudge --dry-run</code>, then without; set <code>VERDICT_ENFORCE=true</code> in the deploy env.</td></tr>
+        <tr><td>Knobs</td><td><code>CHALLENGE_INTERVAL_SECONDS</code> (240; 0 = no prompts) · <code>TELEMETRY_RETENTION_DAYS</code> (90) · <code>SIGNIN_RETENTION_DAYS</code> (180) · <code>VERDICT_ENFORCE</code>. Thresholds live in <code>verdict-rules.ts</code>, the prompt window in <code>ride-challenge.ts</code>.</td></tr>
+        <tr><td>Bulk re-judge</td><td><code>verdict:rejudge [--status unjudged|verified|flagged|rejected|all] [--since DATE] [--limit N] [--dry-run]</code> – current rules, admin decisions kept, swept recordings skipped, one audit row. <code>retention:sweep</code> runs both sweeps now.</td></tr>
+        <tr><td>Tests</td><td>Unit, scenarios on memory and PostgreSQL (<code>npm run server:test</code>, <code>npm run server:integration</code>); end to end the <code>verified-play-test</code> skill: a person and a metronome bot in real Chrome, nine API-level bots (no inputs, instant answers, teleport, over-governor, tampered hash, unhashed batch, broken link, byte budget, clean), the CLI – every case positive and negative.</td></tr>
+        <tr><td>One ride, explained</td><td>The admin page shows the reasons, the scores (<code>recording</code>, <code>human</code>, <code>challenges</code>) and the batch index; the <code>ride-investigate</code> skill joins the database rows with the log lines.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section aria-labelledby="s-limits">
+  <div class="head">
+    <span class="eyebrow">Limits</span>
+    <h2 id="s-limits">What this does not do</h2>
+  </div>
+  <ul class="limits">
+    <li><b>No re-simulation.</b><span>A careful bot playing the real game with human-like timing <em>and</em> reading the prompts passes the automatic checks. The prompts raise the bar from "feed a plausible recording" to "run the real game and parse the screen or the heartbeat"; the reflex check catches the lazy version of that.</span></li>
+    <li><b>The thresholds are first guesses.</b><span>Including the prompt ones – interval, window, reject share, 80 ms. None has met real players yet; shadow mode is on until they have.</span></li>
+    <li><b>No captcha at ride start.</b><span>Skipped for now. A wallet farm can take free rides; the five-per-day cap and the rate limits are the only brake.</span></li>
+    <li><b>No per-ride clock offset.</b><span>Reaction time is measured against the server's issue time. A bot on a slow link reads slower than it is; a clock-offset estimate from the heartbeats is the next step if that shows up.</span></li>
+    <li><b>The replay core is still the target.</b><span>The design document's fixed-tick, fixed-point replay with an input ratchet and proof-of-render remains the long-term answer, not the build.</span></li>
+  </ul>
+</section>
+
+<footer>
+  <span>Freight Chain · anti-cheat</span>
+  <span>rules v2 · shadow mode</span>
+  <span>as of Oct 9, 2026</span>
+  <span>see also: <a href="../verified-play/index.html">Verified Play</a> – the player's view, with the chain and the last-minute diagrams</span>
+</footer>
+
+</div>
+
+<script>
+(() => {
+  const NS = 'http://www.w3.org/2000/svg';
+  const mk = (parent, tag, attrs, text) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; parent.appendChild(e); return e; };
+
+  /* ── one ride: 0–100 s, heartbeats, batch cuts, two prompts, the end at 80 s, the grace, the judgement ── */
+  const t = document.getElementById('ride');
+  const L = 40, R = 900, Y = 120, SPAN = 150, END = 80;
+  const x = s => L + (s / SPAN) * (R - L);
+  for (let s = 0; s <= SPAN; s += 10) { mk(t, 'line', { x1: x(s), x2: x(s), y1: 40, y2: 200, class: 'g' }); mk(t, 'text', { x: x(s), y: 216, 'text-anchor': 'middle' }, s % 30 === 0 ? `${s} s` : ''); }
+  mk(t, 'rect', { x: x(END), y: 40, width: x(END + 60) - x(END), height: 160, class: 'grace' });
+  mk(t, 'text', { x: x(END + 30), y: 56, 'text-anchor': 'middle', class: 't-pen' }, 'late batches taken for 60 s');
+  mk(t, 'rect', { x: x(END + 60) + 4, y: 92, width: x(SPAN) - x(END + 60) - 4, height: 56, rx: 4, class: 'judge' });
+  mk(t, 'text', { x: (x(END + 60) + x(SPAN)) / 2 + 2, y: 116, 'text-anchor': 'middle', class: 't-ok' }, 'JUDGE');
+  mk(t, 'text', { x: (x(END + 60) + x(SPAN)) / 2 + 2, y: 132, 'text-anchor': 'middle' }, 'batches + prompts');
+  mk(t, 'line', { x1: x(0), x2: x(END), y1: Y, y2: Y, class: 'road' });
+  mk(t, 'line', { x1: x(END), x2: x(END), y1: 70, y2: 170, class: 'road' }); mk(t, 'text', { x: x(END) + 5, y: 168, class: 't-ink' }, 'END');
+  for (let s = 15; s < END; s += 15) mk(t, 'line', { x1: x(s), x2: x(s), y1: 78, y2: 162, class: 'cut' });
+  mk(t, 'text', { x: x(7.5), y: 160, 'text-anchor': 'middle' }, 'batch 0'); mk(t, 'text', { x: x(22.5), y: 160, 'text-anchor': 'middle' }, 'batch 1'); mk(t, 'text', { x: x(37.5), y: 160, 'text-anchor': 'middle' }, '…');
+  for (let s = 10; s <= END; s += 10) mk(t, 'line', { x1: x(s), x2: x(s), y1: Y - 8, y2: Y + 8, class: 'beat' });
+  mk(t, 'text', { x: x(10), y: 142, 'text-anchor': 'middle', class: 't-pen' }, 'heartbeat · 10 s');
+  const prompt = (s, answered) => {
+    mk(t, 'rect', { x: x(s), y: 84, width: x(s + 20) - x(s), height: 24, class: 'win' });
+    mk(t, 'line', { x1: x(s), x2: x(s), y1: 72, y2: 108, class: 'flagpole' }); mk(t, 'path', { d: `M${x(s)} 72 l16 6 -16 6z`, fill: 'var(--flag)' });
+    mk(t, 'text', { x: x(s) + 20, y: 80, class: 't-flag' }, 'prompt · 20 s window');
+    if (answered) { mk(t, 'circle', { cx: x(s + 0.7), cy: 96, r: 5, class: 'press' }); mk(t, 'text', { x: x(s) + 12, y: 100, class: 't-ok' }, '✓ pressed'); }
+    else mk(t, 'text', { x: x(s + 20) - 4, y: 100, 'text-anchor': 'end', class: 't-limit' }, 'missed');
+  };
+  prompt(30, true); prompt(60, false);
+
+  /* ── one prompt window in ms ── */
+  const w = document.getElementById('window');
+  const WL = 60, WR = 900, WY = 90, MS = 22_000;
+  const wx = ms => WL + (ms / MS) * (WR - WL);
+  mk(w, 'rect', { x: wx(0), y: 60, width: wx(20_000) - wx(0), height: 60, class: 'win' });
+  mk(w, 'rect', { x: wx(0), y: 60, width: Math.max(2, wx(80) - wx(0)), height: 60, class: 'miss' });
+  mk(w, 'line', { x1: wx(0), x2: wx(MS), y1: WY, y2: WY, class: 'road' });
+  for (const [ms, label, cls] of [[0, 'issued (heartbeat)', 't-pen'], [20_000, 'deadline', 't-limit']]) { mk(w, 'line', { x1: wx(ms), x2: wx(ms), y1: 50, y2: 130, class: cls === 't-pen' ? 'beat' : 'flagpole' }); mk(w, 'text', { x: wx(ms), y: 44, 'text-anchor': 'middle', class: cls }, label); }
+  mk(w, 'line', { x1: wx(300), x2: wx(300), y1: 70, y2: 110, class: 'cut' }); mk(w, 'text', { x: wx(300) + 4, y: 142 }, 'banner shows (one-way delay)');
+  mk(w, 'circle', { cx: wx(700), cy: WY, r: 6, class: 'press' }); mk(w, 'text', { x: wx(700), y: 28, 'text-anchor': 'middle', class: 't-ok' }, 'pressed · reaction 700 ms');
+  mk(w, 'text', { x: wx(80) + 4, y: 118, class: 't-limit' }, '< 80 ms: reflex');
+  mk(w, 'text', { x: wx(10_000), y: 118, 'text-anchor': 'middle', class: 't-flag' }, 'answered in the window');
+  mk(w, 'text', { x: wx(21_000), y: 118, 'text-anchor': 'middle', class: 't-limit' }, 'miss');
+})();
+</script>
+</body>
+</html>

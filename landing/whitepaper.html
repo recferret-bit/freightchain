@@ -66,6 +66,7 @@
     <tbody>
       <tr><td>The driving game, five routes, free rides</td><td><span class="pill ok">LIVE</span></td><td><a href="#drive">02</a>, <a href="#rides">03</a></td></tr>
       <tr><td>Server-timed shifts, recording, verdicts (shadow mode)</td><td><span class="pill ok">LIVE</span></td><td><a href="#verify">06</a></td></tr>
+      <tr><td>Anti-cheat v2: dispatch prompts, budgets, bulk re-judge</td><td><span class="pill wip">BUILT · NEXT DEPLOY</span></td><td><a href="#verify">06</a></td></tr>
       <tr><td>Live streams, replays, chat, paid donations to the driver</td><td><span class="pill ok">LIVE · DEVNET SOL</span></td><td><a href="#stream">07</a></td></tr>
       <tr><td>Escrowed prize pools (Anchor program)</td><td><span class="pill wip">WRITTEN, TESTED · NOT DEPLOYED</span></td><td><a href="#onchain">05</a></td></tr>
       <tr><td>Prize payouts, the garage, badges as tokens, mainnet</td><td><span class="pill plan">PLANNED</span></td><td><a href="#rewards">04</a>, <a href="#risks">08</a></td></tr>
@@ -483,41 +484,48 @@
 
 <!-- ───────── 06 · VALIDATION ───────── -->
 <section id="verify" class="ch">
-  <header class="ch-h"><i>06</i><h2>Telemetry &amp; ride validation</h2><p>The server does not replay your drive. It checks that the recording is complete, physically possible, matches the ride, and was driven by a person.</p></header>
-  <p class="note"><b>Mode.</b> Rules v2 run in <b>shadow mode</b> in production: every completed shift is judged and the verdict is shown, but the boards do not depend on it yet. The thresholds are first estimates and will be tuned on real rides. Bump the rules version and the verdict stores which one it used.</p>
+  <header class="ch-h"><i>06</i><h2>Telemetry, validation &amp; anti-cheat</h2><p>The server does not replay your drive. It times the shift itself, checks that the recording is complete, physically possible and matches the ride, measures how human the hands look, and asks for things only someone watching the screen can answer.</p></header>
+  <p class="note"><b>Mode.</b> Rules v2 run in <b>shadow mode</b> in production: every completed shift is judged and the verdict is shown, but the boards do not depend on it yet. The thresholds are first estimates and will be tuned on real rides. Bump the rules version and the verdict stores which one it used. The long form, with every code and knob: <code>docs/anti-cheat/</code> in the repository.</p>
 
-  <h3 class="sub">FROM YOUR KEYBOARD TO THE BOARD</h3>
+  <h3 class="sub">EIGHT LAYERS, FROM CHEAPEST TO STRONGEST</h3>
   <ol class="flow">
-    <li><i>1</i><b>RECORD</b><span>While an online ride is on the road: every key press and release, and the truck's state 10 times a second.</span></li>
-    <li><i>2</i><b>SEAL · 15 s</b><span>The game packs the last 15 s into a batch, fingerprints it with SHA-256 and links it to the batch before.</span></li>
-    <li><i>3</i><b>STORE</b><span>The server recomputes the fingerprint, checks the batch's shape and limits, and stores it. Stored batches never change.</span></li>
-    <li><i>4</i><b>JUDGE</b><span>When the shift completes: the chain, the physics, the distance, the coverage and the timing of your hands are checked together.</span></li>
+    <li><i>1</i><b>SERVER-TIMED SHIFT</b><span>Driven time from heartbeats capped by the wall clock; distance capped by top speed; 150 s without a beat ends the ride. An instant finish is impossible.</span></li>
+    <li><i>2</i><b>A CHECKABLE RECORDING</b><span>Every key and a 10 Hz sample of the truck, sealed every 15 s into SHA-256 hash-chained batches the server re-hashes on arrival. Edits and holes reject.</span></li>
+    <li><i>3</i><b>PHYSICS BOUNDS</b><span>Under the governor, no step the truck cannot make, samples in order. Speed hacks and teleports reject.</span></li>
+    <li><i>4</i><b>AGREEMENT WITH THE RIDE</b><span>The recording ends where the ride ended and covers the driven time; a moving truck has hands on it.</span></li>
+    <li><i>5</i><b>BUDGETS</b><span>Time, batches and bytes per ride, size per batch, rate limits. Uploading faster than real time is refused.</span></li>
+    <li><i>6</i><b>HOW HUMAN THE HANDS LOOK</b><span>Hold lengths, rhythms, press durations – statistics that only flag.</span></li>
+    <li><i>7</i><b>DISPATCH PROMPTS</b><span>A cab action asked at times the server chooses; the recording must show the key. No answer: a bot that cannot see. An instant one: a script reading the heartbeat.</span></li>
+    <li><i>8</i><b>A PERSON DECIDES</b><span>Flagged shifts wait for a signed, logged decision; rules are versioned and old rides can be judged again.</span></li>
   </ol>
 
   <h3 class="sub">WHAT IS RECORDED – AND WHAT IS NOT</h3>
   <div class="split2 wide">
-    <article class="card"><h3>TRUCK SAMPLE · 10 PER SECOND</h3><p class="mono">t · road distance · lane offset · heading · speed · rpm · gear · hull · gas · brake · steer · clutch · clock hour · switches</p><p class="dim">14 numbers. The first twelve are judged; the last two (hour of day and the cab's switches) exist so spectators can replay the ride as you saw it and are never judged. At most 400 per batch.</p></article>
+    <article class="card"><h3>TRUCK SAMPLE · 10 PER SECOND</h3><p class="mono">t · road distance · lane offset · heading · speed · rpm · gear · hull · gas · brake · steer · clutch · clock hour · switches</p><p class="dim">14 numbers. The first twelve are judged; the last two (hour of day, the cab's switches) exist so spectators can replay the ride as you saw it. At most 400 per batch. On arrival each batch is measured once – counts, first and last sample, top speed, the worst step – and the judge reads those summaries, never the samples again.</p></article>
     <article class="card"><h3>INPUT EVENT</h3><p class="mono">time since start · key or button · down / up</p><p class="dim">Times come from the browser's own event clock, so a slow frame cannot make a normal tap look like a 0 ms press. At most 2000 per batch.</p></article>
   </div>
   <p class="dim"><b>Never recorded:</b> mouse movement, your screen, other tabs or apps, microphone or camera, anything after the ride. The offline game records nothing.</p>
 
   <h3 class="sub">THE CHAIN</h3>
-  <p>Each batch carries the SHA-256 fingerprint of the batch before it; the first links to the ride's own id. Change one number anywhere and that fingerprint changes, so the next link no longer matches – the verdict says <code>chain-broken</code> and the ride is rejected. The server recomputes every fingerprint itself on arrival, so a batch cannot claim a fingerprint it does not have, and sending the same batch number again is ignored.</p>
+  <p>Each batch carries the SHA-256 fingerprint of the batch before it; the first links to the ride's own id. Change one number anywhere and that fingerprint changes, so the next link no longer matches – the verdict says <code>chain-broken</code> and the ride is rejected. The server recomputes every fingerprint itself on arrival, so a batch cannot claim a fingerprint it does not have, and sending the same batch number again is ignored. A batch the browser could not fingerprint is kept and only flagged – the server fingerprinted it.</p>
 
-  <h3 class="sub">TWO SETS OF CHECKS WITH DIFFERENT POWERS</h3>
+  <h3 class="sub">DISPATCH PROMPTS</h3>
+  <p>About every 240 s of driving (at most four on a short shift, 0.6–1.4 intervals apart so the rhythm cannot be guessed) the heartbeat response names one thing to do in the cab – <code>DISPATCH · FLASH YOUR HEADLIGHTS · PRESS L</code>, or the wipers, the cab light, the washer; a dash button counts too. An amber banner with a 20 s bar shows it on the windscreen. The judge looks for that key within 20 s of the moment the server issued the prompt. Half or more of 3+ prompts ignored rejects; one missed only flags; a median answer under 80 ms after the server issued it is faster than a person can read it and flags. A prompt still open when the ride ends is not judged.</p>
+
+  <h3 class="sub">THE CHECKS AND THEIR POWERS</h3>
   <p>Checks on the recording itself can <b>reject</b>, because a broken or impossible recording proves something is wrong. Checks on how human your timing looks can only <b>flag</b>, because statistics can be wrong about a real driver.</p>
   <div class="tblwrap"><table class="tbl">
     <thead><tr><th>Check</th><th>Rule</th><th>Outcome · code</th></tr></thead>
     <tbody>
       <tr><td>Complete and in order</td><td>Every batch present, every link matching, every fingerprint correct, samples in time order.</td><td class="bad">reject · <code>no-recording</code> <code>missing-batches</code> <code>chain-broken</code> <code>hash-mismatch</code> <code>sample-out-of-order</code> <code>bad-sample</code></td></tr>
+      <tr><td>Fingerprint present</td><td>A batch sent without the browser's fingerprint is kept (the server fingerprinted it).</td><td class="warnc">flag · <code>unhashed-batch</code></td></tr>
       <tr><td>Under the governor</td><td>The truck is limited to 28 m/s (100.8 km/h). A sample above 29.4 m/s (105.8 km/h) is impossible.</td><td class="bad">reject · <code>over-governor</code></td></tr>
       <tr><td>No teleports</td><td>Between two samples the truck cannot move further than top speed allows (×1.2, plus 2 m).</td><td class="bad">reject · <code>teleport</code></td></tr>
       <tr><td>Ends where the ride ended</td><td>The last recorded distance matches the reported distance within 30 m + 1 %, allowing for seconds whose final upload never arrived.</td><td class="bad">reject · <code>recording-mismatch</code></td></tr>
       <tr><td>Covers the drive</td><td>Under 50 % of the driven time recorded rejects; under 90 % only flags.</td><td>reject · <code>recording-incomplete</code> / flag · <code>recording-gaps</code></td></tr>
       <tr><td>Someone drove</td><td>A truck that moved more than 50 m needs key presses, and gas among them.</td><td class="bad">reject · <code>no-inputs</code> <code>no-throttle-input</code></td></tr>
-      <tr><td>Dispatch prompts answered</td><td>About every 240 s of driving the server asks for one thing in the cab through the heartbeat – FLASH YOUR HEADLIGHTS, RUN THE WIPERS… – and the recording must show that key within 20 s. Half or more of 3+ prompts ignored rejects; one missed only flags.</td><td>reject · <code>challenges-ignored</code> / flag · <code>challenge-missed</code></td></tr>
-      <tr><td>Prompts were read</td><td>Answers whose median comes under 80 ms after the server issued the prompt are faster than a person can read it – a script watching the heartbeat.</td><td class="warnc">flag · <code>challenge-reflex</code></td></tr>
-      <tr><td>Fingerprint present</td><td>A batch the game could not fingerprint (its browser's crypto failed) is kept: the server fingerprinted it on arrival, so this only flags.</td><td class="warnc">flag · <code>unhashed-batch</code></td></tr>
+      <tr><td>Prompts answered</td><td>Half or more of 3+ prompts ignored rejects; fewer missed only flag.</td><td>reject · <code>challenges-ignored</code> / flag · <code>challenge-missed</code></td></tr>
+      <tr><td>Prompts were read</td><td>Answers with a median under 80 ms after the server issued the prompt – a script watching the heartbeat.</td><td class="warnc">flag · <code>challenge-reflex</code></td></tr>
       <tr><td>Holds vary</td><td>If one key's hold lengths barely vary (spread under 8 %, over 6+ holds) it looks scripted.</td><td class="warnc">flag · <code>uniform-holds</code></td></tr>
       <tr><td>Rhythm isn't a loop</td><td>If the 3 most common gaps between presses (to the millisecond) make up more than 60 % of all gaps, a script is cycling fixed delays.</td><td class="warnc">flag · <code>repeated-timings</code></td></tr>
       <tr><td>Presses take time</td><td>More than 30 % of presses released within 10 ms were sent, not pressed.</td><td class="warnc">flag · <code>instant-presses</code></td></tr>
@@ -527,14 +535,14 @@
   <div class="grid3">
     <article class="card"><h3 class="ok">VERIFIED</h3><p>Nothing found. The shift ranks on the paid board.</p></article>
     <article class="card"><h3 class="warnc">FLAGGED</h3><p>Something looked off but proves nothing. It waits in a review queue and does not rank until an admin accepts it.</p></article>
-    <article class="card"><h3 class="bad">REJECTED</h3><p>The recording is missing, broken or impossible. It does not rank. An admin can still look and reverse it.</p></article>
+    <article class="card"><h3 class="bad">REJECTED</h3><p>The recording is missing, broken or impossible, or the prompts were ignored. It does not rank. An admin can still look and reverse it.</p></article>
   </div>
 
   <h3 class="sub">THE SERVER'S OWN CLOCK</h3>
   <ul class="honest">
     <li><b>Driven seconds</b> come from heartbeats, capped by wall time. A gap over 150 s fails the ride.</li>
     <li><b>Reported distance</b> may grow at most 28 m/s × 1.2 between beats. Faster than the truck can go is a failure, not a high score.</li>
-    <li><b>A recording cannot hold more time than the wall allows:</b> game seconds ≤ wall × 1.05 + 30, batches ≤ wall ÷ 5 + 10, bytes ≤ wall × 4 kB + 256 kB. Uploading faster than real time is refused.</li>
+    <li><b>A recording cannot hold more than the wall allows:</b> game seconds ≤ wall × 1.05 + 30, batches ≤ wall ÷ 5 + 10, bytes ≤ wall × 4 kB + 256 kB. Uploading faster than real time is refused.</li>
     <li><b>Limits per batch:</b> 96 kB, 400 samples, 2000 events, plus the API rate limits.</li>
     <li><b>Races:</b> uploads and judging take the same per-player lock, so every stored batch is part of a verdict, and a batch arriving after the end triggers a new judgement.</li>
     <li><b>A bad connection at the finish</b> is not fatal: ending waits up to 3 s for the last upload, the game retries for 55 s, the server accepts batches for 60 s. If the final batch never comes, only coverage drops.</li>
@@ -545,18 +553,8 @@
     <li><i>1</i><b>OWN SITE + PASSWORD</b><span>The admin page lives on its own address behind a password. The admin API answers nowhere else.</span></li>
     <li><i>2</i><b>ADMIN WALLET</b><span>Only listed wallets can sign in, for 2 hours. A player login opens nothing.</span></li>
     <li><i>3</i><b>EVERY DECISION SIGNED</b><span>Accept, reject and re-judge are each signed by the admin's wallet for that exact ride and decision.</span></li>
-    <li><i>4</i><b>AUDIT LOG</b><span>Who decided what, when, why, and the signature are kept for good. A late upload never overturns a human decision.</span></li>
+    <li><i>4</i><b>AUDIT LOG</b><span>Who decided what, when, why, and the signature are kept for good. A late upload never overturns a human decision; neither does a bulk re-judge after a rules change.</span></li>
   </ol>
-
-  <h3 class="sub">THE ANTI-CHEAT IN ONE PAGE</h3>
-  <ol class="flow">
-    <li><i>1</i><b>SERVER-TIMED SHIFT</b><span>Driven time from heartbeats capped by the wall clock, distance by top speed; a vanished tab ends the ride.</span></li>
-    <li><i>2</i><b>A CHECKABLE RECORDING</b><span>Chained, re-fingerprinted batches; physics bounds; agreement with the ride; time, batch and byte budgets. Edits, teleports, cut-out hours and floods reject.</span></li>
-    <li><i>3</i><b>HOW HUMAN THE HANDS LOOK</b><span>Hold lengths, rhythms, press durations – statistics that only flag.</span></li>
-    <li><i>4</i><b>DISPATCH PROMPTS</b><span>A cab action asked at times the server chooses; the recording must show the key. No answer: a bot that cannot see; an instant one: a script reading the heartbeat.</span></li>
-    <li><i>5</i><b>A PERSON DECIDES</b><span>Flagged shifts wait for a signed, logged decision; rules are versioned and old rides can be judged again.</span></li>
-  </ol>
-  <p class="note">Every code, threshold and knob: <code>docs/anti-cheat.md</code> in the repository.</p>
 
   <h3 class="sub">LIMITS, SAID PLAINLY</h3>
   <ul class="honest">
@@ -632,7 +630,7 @@
     <thead><tr><th>Risk</th><th>What it means</th><th>Mitigation today</th></tr></thead>
     <tbody>
       <tr><td><b>Smart-contract</b></td><td>Bugs in an unaudited program can lose funds.</td><td>Devnet only; reproducible build; 49 tests; refund paths that need no key. An independent audit is a precondition for mainnet.</td></tr>
-      <tr><td><b>Cheating</b></td><td>A modified or scripted client could still pass inside the checks.</td><td>Chain, physics and timing checks; human review of flags; replay core planned (<a href="#verify">06</a>).</td></tr>
+      <tr><td><b>Cheating</b></td><td>A modified or scripted client could still pass inside the checks.</td><td>Chain, physics and timing checks; dispatch prompts; human review of flags; replay core planned (<a href="#verify">06</a>).</td></tr>
       <tr><td><b>Operator trust</b></td><td>The admin picks pay_prize receivers within the cap and holds the treasuries.</td><td>Signed, audited decisions; payouts capped on chain; all of it readable on chain.</td></tr>
       <tr><td><b>Availability</b></td><td>A long shift can be lost if your tab or connection dies for more than 150 s.</td><td>Resume of an open ride; honest pauses cost nothing; final upload retries.</td></tr>
       <tr><td><b>Regulation</b></td><td>Paid prize games are regulated differently around the world.</td><td>Devnet, no value. The mainnet question is answered per region before any mainnet launch.</td></tr>
@@ -643,7 +641,7 @@
   <h3 class="sub">ROADMAP</h3>
   <ol class="legs">
     <li class="done"><b>Built</b> (mid-Sep – Oct 2026) The driving sim; sign-in with Solana; server-timed rides; verified-play recording and verdicts (shadow); signed admin review; live streams, replays, chat, paid donations; the escrow program and its server mirror, written and tested; garage, promo codes, cosmetics; analytics half wired.</li>
-    <li class="now"><b>Devnet release</b> (Oct 13 – Nov 30) The verified program build on devnet; the first real pools – tickets bought, a missed goal refunded, prizes paid; verdict thresholds tuned on real rides, then enforced; analytics finished; twenty outside drivers; a CPO / COO hire.</li>
+    <li class="now"><b>Devnet release</b> (Oct 13 – Nov 30) The verified program build on devnet; the first real pools – tickets bought, a missed goal refunded, prizes paid; verdict thresholds (prompts included) tuned on real rides, then enforced; analytics finished; twenty outside drivers; a CPO / COO hire.</li>
     <li><b>Mainnet</b> (Dec 2026) A legal review of the skill prizes with regions blocked where needed; a program review on the published build; mainnet pools with published rules; a public Dune board of the program.</li>
     <li><b>Long haul</b> (2027) Garage parts and promo cosmetics as NFTs; achievements attested on chain; sponsors, per-km pledges and convoys on top of tips; a storybook workshop where SOL buys attempts at a new prop, vehicle or landmark and drivers vote what ships; a deterministic replay core that re-simulates a paid finish.</li>
   </ol>
