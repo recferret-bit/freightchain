@@ -7,8 +7,9 @@ const mouse=(type,x,y,extra={})=>send('Input.dispatchMouseEvent',{type,x,y,butto
 const rmouse=(type,x,y,extra={})=>send('Input.dispatchMouseEvent',{type,x,y,button:'right',buttons:type==='mouseReleased'?0:2,clickCount:1,...extra});
 await send('Page.navigate',{url:URL}); await sleep(3000);
 console.log('viewer:',await ev('typeof window.__viewer'),'| items:',await ev('__viewer.items.length'));
+const bad=[];
 if(await ev('typeof window.__viewer')==='object'){
-  const ids=await ev('__viewer.items.map(i=>i.id)'); const bad=[];
+  const ids=await ev('__viewer.items.map(i=>i.id)');
   for(const i of ids){ const r=await ev(`(()=>{try{__viewer.select('${i}');const b=new (Object.getPrototypeOf(__viewer.obj).constructor)();return __viewer.obj.children.length}catch(e){return 'ERR '+e.message}})()`); if(typeof r==='string') bad.push(i+': '+r); await sleep(30); }
   console.log('selected all', ids.length, 'items; failures:', bad.length?bad:'none');
   const pick=async(i,n)=>{ await ev(`__viewer.select('${i}')`); await sleep(400); await shot(n); };
@@ -21,5 +22,7 @@ if(await ev('typeof window.__viewer')==='object'){
   await send('Input.dispatchKeyEvent',{type:'keyDown',key:'d'}); await sleep(200); await send('Input.dispatchKeyEvent',{type:'keyUp',key:'d'}); const c4=await ev('__viewer.cam.target.x');
   console.log('before',c0,'\nafter orbit',c1,'\nafter wheel dist',c2,'\nafter pan target.x',c3,'\nafter D-strafe target.x',c4); await sleep(300); await shot('07-after-input');
 }
-const p=problems.filter(x=>!/favicon/.test(x)); console.log(p.length?'PROBLEMS:\n'+p.join('\n'):'no errors'); console.log('screenshots in',SHOTS);
+const p=problems.filter(x=>!/favicon/.test(x));
+for (const item of bad) p.push('select: '+item);
+console.log(p.length?'PROBLEMS:\n'+p.join('\n'):'no errors'); console.log('screenshots in',SHOTS);
 finish(p.length?1:0);

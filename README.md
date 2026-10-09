@@ -77,6 +77,118 @@ How the loop is measured — every event, the nine funnels, what the server owns
 There is no CI. Run the suites locally (the `run-tests` skill). What each skill is for, and the command to run it, is in [Skills](#skills). The counts, gaps, and last runs below are written by the `test-census` skill.
 
 <!-- test-census:start -->
+
+Counted 2026-10-09 02:17 UTC by `test-census`. Static cases are `it` / `test` / `#[test]` call sites. A recorded run is what that command executed.
+
+### Pyramid
+
+| Band | Layer | Files | Cases | `check()` | Runs in |
+| --- | --- | ---: | ---: | ---: | --- |
+| unit | Server domain | 31 | 218 | 0 | `npm run server:test` |
+| unit | Server CQRS handlers | 77 | 261 | 0 | `npm run server:test` |
+| unit | Server services | 15 | 65 | 0 | `npm run server:test` |
+| unit | Server controllers | 15 | 42 | 0 | `npm run server:test` |
+| unit | Server infrastructure | 45 | 193 | 0 | `npm run server:test` |
+| unit | Server app, cli, support | 4 | 14 | 0 | `npm run server:test` |
+| unit | Client unit | 3 | 14 | 0 | `cd client && npm run test:unit` |
+| unit | Landing | 8 | 90 | 0 | `npm run landing:test` |
+| unit | Media | 2 | 25 | 0 | `npm run media:check` |
+| unit | Escrow program (host tests) | 8 | 50 | 0 | `npm run program:test` |
+| audit | Architecture and migration SQL | 5 | 28 | 0 | `npm run server:test` |
+| contract | HTTP scenarios (source) | 14 | 145 | 0 | `server:test and server:integration` |
+| contract | HTTP specs, in-memory | 4 | 9 | 0 | `npm run server:test` |
+| integration | Repositories on PostgreSQL | 27 | 104 | 0 | `npm run server:integration` |
+| integration | Concurrency | 1 | 32 | 0 | `npm run server:integration` |
+| integration | Migration drift | 1 | 2 | 0 | `npm run server:integration` |
+| integration | Same HTTP scenarios on PostgreSQL | 1 | 0 | 0 | `npm run server:integration` |
+| sim | Headless game playthrough | 1 | 0 | 35 | `cd client && npm run test:headless` |
+| e2e | Browser and API harnesses | 14 | 0 | 363 | `bash .claude/skills/run-tests/e2e.sh` |
+| | **Total** | **276** | **1292** | **398** | |
+
+HTTP scenario cases are written once under `server/test/scenarios` and executed twice: in-memory (`npm run server:test`) and PostgreSQL (`npm run server:integration`). The PostgreSQL runner row counts the runner file. Its cases are the scenario row. `it.each` is one static call and one executed test per row.
+
+### Browser harnesses
+
+| Script | `check()` | Runner |
+| --- | ---: | --- |
+| `client/tools/e2e-chrome.mjs` | 0 | `npm --prefix client run test:e2e` |
+| `client/tools/e2e-viewer.mjs` | 0 | `npm --prefix client run test:viewer` |
+| `landing/tools/e2e-wallet.mjs` | 25 | `e2e.sh` |
+| `server/scripts/e2e-admin.mjs` | 35 | `e2e.sh` |
+| `server/scripts/e2e-browser.mjs` | 13 | `e2e.sh` |
+| `server/scripts/e2e-close.mjs` | 13 | `e2e.sh` |
+| `server/scripts/e2e-live-board.mjs` | 21 | `e2e.sh` |
+| `server/scripts/e2e-live-flags.mjs` | 13 | `e2e.sh` |
+| `server/scripts/e2e-lobby.mjs` | 78 | `e2e.sh` |
+| `server/scripts/e2e-localnet.mjs` | 71 | `localnet-e2e` |
+| `server/scripts/e2e-replay.mjs` | 27 | `e2e.sh` |
+| `server/scripts/e2e-tickets-stub.mjs` | 18 | `npm --prefix server run test:tickets-stub` |
+| `server/scripts/e2e-verified-play.mjs` | 19 | `e2e.sh` |
+| `server/scripts/e2e-watch.mjs` | 30 | `e2e.sh` |
+
+### Test skills
+
+Purpose of every skill, including these, is the [Skills](#skills) table. This list is which of them run tests, and whether this log has timed that run.
+
+| Skill | Census stage | Newest recorded run |
+| --- | --- | --- |
+| `live-board-test` | `live-board` | no run recorded |
+| `localnet-e2e` | `localnet` | no run recorded |
+| `posthog-test` | `posthog` | no run recorded |
+| `program-check` | `program-check` | no run recorded |
+| `replay-test` | `replay` | no run recorded |
+| `run-tests` | `e2e` | no run recorded |
+| `verified-play-test` | `verified` | no run recorded |
+
+Census skill: `test-census`. Production read-only skills: `posthog-prod`, `prod-db`, `prod-logs`, `ride-investigate`. Other skills: `game-audio`, `gameplay-balance`, `gameplay-video`, `storybook-models`.
+
+### Gaps
+
+- No recorded run: `e2e`, `live-board`, `replay`, `verified`, `localnet`, `posthog`, `program-check`.
+
+### Notes
+
+- 2 `it.each` / `test.each` call sites. The case column counts the call. The run counts each row.
+- `analyticsScenarios` is registered twice on the in-memory runner and twice on PostgreSQL, so those cases execute that many times per backend.
+- `e2e-chrome.mjs`, `e2e-viewer.mjs` report failures through the shared `problems` list, so they have no `check()` calls.
+- Wall time is one stage at a time and includes process startup. `server-integration` includes `npm run db:up`.
+
+### Recorded runs
+
+Newest first. 21 runs kept in `.claude/skills/test-census/runs.json` (up to 12 per stage).
+
+| When | Stage | Result | Passed | Failed | Skipped | Wall |
+| --- | --- | --- | ---: | ---: | ---: | ---: |
+| 2026-10-09 02:17 UTC | `program-test` | pass | 50 | 0 | 0 | 1.8 s |
+| 2026-10-09 02:17 UTC | `server-integration` | pass | 295 | 0 | 0 | 28.5 s |
+| 2026-10-09 02:17 UTC | `server-unit` | pass | 1058 | 0 | 0 | 5.6 s |
+| 2026-10-09 02:17 UTC | `client-headless` | pass | 39 | 0 | 0 | 2.0 s |
+| 2026-10-09 02:17 UTC | `media` | pass | 25 | 0 | 0 | 2.4 s |
+| 2026-10-09 02:17 UTC | `landing` | pass | 90 | 0 | 0 | 93 ms |
+| 2026-10-09 02:17 UTC | `client-unit` | pass | 14 | 0 | 0 | 59 ms |
+| 2026-10-09 01:31 UTC | `program-test` | pass | 50 | 0 | 0 | 2.3 s |
+| 2026-10-09 01:30 UTC | `server-integration` | pass | 295 | 0 | 0 | 32.8 s |
+| 2026-10-09 01:30 UTC | `server-unit` | pass | 1058 | 0 | 0 | 6.8 s |
+| 2026-10-09 01:30 UTC | `client-headless` | pass | 39 | 0 | 0 | 2.3 s |
+| 2026-10-09 01:30 UTC | `media` | pass | 25 | 0 | 0 | 2.5 s |
+| 2026-10-09 01:30 UTC | `landing` | pass | 90 | 0 | 0 | 96 ms |
+| 2026-10-09 01:30 UTC | `client-unit` | pass | 14 | 0 | 0 | 65 ms |
+| 2026-10-09 00:54 UTC | `program-test` | pass | 50 | 0 | 0 | 8.2 s |
+| 2026-10-09 00:53 UTC | `server-integration` | pass | 295 | 0 | 0 | 35.9 s |
+| 2026-10-09 00:53 UTC | `server-unit` | pass | 1058 | 0 | 0 | 8.2 s |
+| 2026-10-09 00:53 UTC | `client-headless` | pass | 39 | 0 | 0 | 2.3 s |
+| 2026-10-09 00:53 UTC | `media` | pass | 25 | 0 | 0 | 2.6 s |
+| 2026-10-09 00:53 UTC | `landing` | pass | 90 | 0 | 0 | 110 ms |
+| 2026-10-09 00:53 UTC | `client-unit` | pass | 14 | 0 | 0 | 87 ms |
+
+Newest fast stages on record: 7 of 7, 40.4 s one after another. Slowest of those: `server-integration` at 28.5 s.
+A run counts more than the static call sites when `it`, `test`, or `check()` sits in a loop or in `it.each`, and when a scenario function is registered more than once.
+`server-unit` executed 1058. Static call sites for that stage: 975.
+`server-integration` executed 295. Static call sites for that stage: 283.
+`client-headless` executed 39. Static call sites for that stage: 35.
+
+Refresh the numbers with `npm run test:census -- run`, then `npm run test:census -- readme`. Chrome, localnet, PostHog, and `program-check` are opt-in stage names and are not part of a plain `run`.
+
 <!-- test-census:end -->
 
 ```sh

@@ -1,6 +1,6 @@
 // The lobby's ticket flows (W3 orders / W4 chain) without a chain, in real headless Chrome against scripts/stub-api.mjs with a FAKE wallet:
 // BUY (gasless signTransaction → /submit · sponsor down → ?selfPaid=1 fallback · self-paid signAndSend → /confirm), a buy that takes an open pool live, CLAIM REFUND (signAndSend → /api/chain/settle) on a failed pool (card + strip), the grant trail, SOON without the program.
-// Needs internet once for web3.js (jsdelivr, as pay.js loads it). Nothing is signed for real and nothing is sent to any chain.   Usage (from server/): node scripts/e2e-tickets-stub.mjs
+// Needs internet once for web3.js (jsdelivr, as pay.js loads it). Nothing is signed for real and nothing is sent to any chain.   Usage: npm --prefix server run test:tickets-stub
 // PORT = the DevTools port (default 9351), STUB_PORT = the stub's first port (default 3150; the other runs use +1…+4), SHOTS = screenshot dir (default $TMPDIR/fc-tickets-shots).
 import { spawn } from 'node:child_process';
 import { launch, sleep } from '../../client/tools/cdp.mjs';

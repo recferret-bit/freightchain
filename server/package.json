@@ -22,6 +22,7 @@
     "test:cov": "vitest run --coverage",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:integration:stack": "npm run db:up && npm run test:integration",
+    "test:tickets-stub": "node scripts/e2e-tickets-stub.mjs",
     "db:up": "docker compose -f ../docker-compose.yml up -d --wait postgres",
     "db:down": "docker compose -f ../docker-compose.yml down",
     "prisma:generate": "prisma generate",
