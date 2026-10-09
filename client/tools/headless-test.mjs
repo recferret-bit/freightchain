@@ -95,14 +95,18 @@ const freed=fightRide(3); check(!freed.ended&&freed.strain<.1,'clutch in after 3
 const batFresh=()=>{ fire('keyup','ShiftLeft'); input.gas=0; input.brake=0; G.Wallet.set(100); G.st.mode='done'; G.startRide(); st.park=false; st.temp=G.CFG.ENGINE_WARM+5; Object.assign(st,{s:net.Sm+300,d:2.4,psi:0,hull:100,v:0}); };
 batFresh(); const b0=st.batt; fire('keydown','KeyI'); step(60*2.6); check(st.engineOn&&b0-st.batt>.04&&b0-st.batt<.15,'starting the engine costs battery charge ('+(b0-st.batt).toFixed(3)+')');
 batFresh(); G.dn.head=true; if(!G.radio.on) fire('keydown','KeyT'); st.keyOn=true; st.heater=true; step(60*200);
-check(st.battDead&&!G.dn.head&&!st.heater&&!G.radio.on,'engine off, everything on: the battery goes flat and lights / radio / heater cut out');
-fire('keydown','KeyI'); step(60); check(!st.engineOn&&!st.ign,'a flat battery will not crank the engine');
+check(st.battLost&&st.mode==='done','engine off, everything on: the battery goes flat and the truck is dead – the ride is lost');
+batFresh(); st.batt=.1; fire('keydown','KeyI'); step(60); check(!st.engineOn&&!st.ign,'a battery below START_MIN will not crank the engine');
+batFresh(); st.batt=.05; step(60*30); check(!st.battLost&&st.batt>.05+.04,'everything off: the battery heals ('+st.batt.toFixed(3)+')');
+batFresh(); st.batt=G.CFG.BATT.REST_MAX+.05; step(60*30); check(Math.abs(st.batt-(G.CFG.BATT.REST_MAX+.05))<1e-6,'resting stops healing at REST_MAX');
+batFresh(); const on0=st.batt; G.dn.head=true; st.keyOn=true; step(60*10); const offDrain=on0-st.batt; batFresh(); fire('keydown','KeyI'); step(60*2.6); const e0=st.batt; G.dn.head=true; Object.assign(st,{gear:0}); step(60*10); const onDrain=e0-st.batt;
+check(offDrain>.015&&offDrain>onDrain*2,'engine off drains fast ('+offDrain.toFixed(3)+' in 10 s), engine on much slower ('+onDrain.toFixed(3)+')');
 batFresh(); st.batt=.5; fire('keydown','KeyI'); step(60*2.6); const bRun=st.batt; Object.assign(st,{gear:6,v:60/3.6,clutch:0,slip:false}); st.rpm=st.v*1.065*106.67; input.gas=1; for(let i=0;i<60*30;i++){ st.d=2.4; st.psi=0; step(1); } input.gas=0;
 check(st.batt>bRun+.03,'engine running at cruise: the alternator refills the battery ('+bRun.toFixed(2)+' → '+st.batt.toFixed(2)+')');
-// cab light: only with the engine running (or starting); it goes out when the engine stops
-batFresh(); fire('keydown','KeyC'); check(!G.dn.cab,'cab light refuses to switch on with the engine off');
-fire('keydown','KeyI'); step(60*2.6); fire('keydown','KeyC'); check(st.engineOn&&G.dn.cab,'cab light switches on once the engine runs');
-fire('keydown','KeyO'); step(30); check(!st.engineOn&&!G.dn.cab,'engine off: the cab light goes out');
+// cab light: works whenever the key is on (engine off too); it goes out with the key off
+batFresh(); fire('keydown','KeyC'); check(!G.dn.cab,'cab light refuses to switch on with the key off');
+st.keyOn=true; fire('keydown','KeyC'); check(!st.engineOn&&G.dn.cab,'cab light switches on with the key ON and the engine off');
+st.keyOn=false; step(30); check(!G.dn.cab,'key off: the cab light goes out');
 // what the lobby's live feed and Night Owl read from every heartbeat: follows the RUNNING clock (not the last press of N), and the route is a real theme id
 G.dn.run=false; G.setClock(23,true,false); step(60); const nightX=G.online.extra(); G.setClock(12,true,false); step(60); const dayX=G.online.extra();
 check(nightX.night===true&&dayX.night===false&&G.THEMES.some(t=>t.id===dayX.route),'heartbeat extras follow the clock: night at 23:00 ('+nightX.night+'), day at 12:00 ('+dayX.night+'), route '+dayX.route);

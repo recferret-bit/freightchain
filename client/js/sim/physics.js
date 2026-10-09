@@ -64,7 +64,7 @@ export function update(dt) {
   const tgt = input.right - input.left, T = CFG.TRUCK;
   st.steer = approach(st.steer, tgt, tgt ? T.STEER_RATE : T.STEER_RETURN, dt);
   st.keyDeny = Math.max(0, (st.keyDeny || 0) - dt * 2.5); st.grind = Math.max(0, st.grind - dt); st.jolt = Math.max(0, st.jolt - dt * 2.5); st.rumble = Math.max(0, st.rumble - dt * .7); st.crash = Math.max(0, st.crash - dt * 2.2); st.flash = Math.max(0, st.flash - dt * 1.6);
-  const wasWashing = st.washing; st.washing = !!input.wash && st.wash > .02; if (st.washing && (!wasWashing || (washT -= dt) <= 0)) { washT = .55; audio.play('washer'); } st.wash = clamp(st.wash - (st.washing ? .05 : 0) * dt, 0, 1);   // washer-fluid tank: finite (20 s of spray per ride, no refill)
+  const wasWashing = st.washing; st.washing = !!input.wash && st.wash > .02; if (st.washing && (!wasWashing || (washT -= dt) <= 0)) { washT = .55; audio.play('washer'); } st.wash = clamp(st.wash - (st.washing ? CFG.WASH_DRAIN : 0) * dt, 0, 1);   // washer-fluid tank: finite (CFG.WASH_DRAIN: 100 s of spray per ride, no refill)
 
   // engine
   const g = st.gear, ratio = g < 0 ? REV_RATIO : RATIOS[g], c = 1 - st.clutch, wheelRpm = st.v * ratio * K_RPM;
@@ -155,6 +155,7 @@ export function update(dt) {
   // end conditions
   if (fatal) endRide(false, fatal);
   else if (st.hull <= 0) endRide(false, st.blown ? (st.blownWhy === 'brakes' ? 'The drivetrain gave out – you drove against the brakes for too long.' : 'The engine blew – it was held at max revs for too long.') : st.coldT > 0 ? 'The engine gave out – you pushed it hard while it was still cold.' : 'Your truck was wrecked – the hull gave out.');
+  else if (st.battLost) endRide(false, 'The battery went flat with the engine off – the truck is dead.');
   else if (st.offT > CFG.OFFROAD_FAIL_SECONDS || Math.abs(st.d) > 80) endRide(false, 'You spent too long off the road – the truck is stuck in the sand.');
 }
 

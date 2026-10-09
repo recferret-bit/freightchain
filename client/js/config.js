@@ -112,13 +112,17 @@ export const CFG = {
   BRAKE_COOL: 0.04,          // 1/s cooling towards cold (time constant ≈ 25 s)
   BRAKE_COOL_AIR: 2,         // extra cooling at full speed (× this; moving air)
   BRAKE_FADE_FROM: 0.3,      // heat above which the brakes start to fade
+  WASH_DRAIN: 0.01,          // washer-fluid tank (st.wash 0..1) drained per second of spray: 100 s per ride (was 0.05 = 20 s; ×5 capacity), no refill
   BATT: {                    // battery (sim/battery.js): charge 0..1, per second
     START: 0.85,             // charge at the start of a ride
-    HEAD: 0.0025, CAB: 0.0006, HEATER: 0.0015, RADIO: 0.001, KEY_ON: 0.0003,   // consumers (engine off or on); headlights alone flatten it in ≈ 6 min. TEST-scale like the 5 min ride
+    HEAD: 0.0025, CAB: 0.0015, HEATER: 0.0015, RADIO: 0.001, KEY_ON: 0.0008,   // consumers (engine off or on); headlights alone flatten it in ≈ 6 min. TEST-scale like the 5 min ride
+    OFF_X: 2.5,              // the consumers above drain this many times faster with the engine OFF (only the battery feeds them): HEAD + CAB + key-on ≈ 70 s from full to flat
+    REST: 0.002, REST_MAX: 0.5,   // everything off (key OFF, no lights): the charge creeps back per second, up to REST_MAX – a rest buys a restart, not a full battery
+    CRITICAL: 0.2,           // engine off below this: alarm + toast; at DEAD (below) with the engine off the truck is dead and the ride is lost
     STARTER: 0.06,           // while cranking (~1.3 s)
     CHARGE_MIN: 0.002, CHARGE_RPM: 0.0025,   // alternator: at idle … at redline (≈ .003 at cruise); × a taper above ~75 % charge. Headlights alone are sustainable while driving; HEAD + CAB + HEAT together never are
     LOW: 0.3, DEAD: 0.01,    // BAT lamp amber below LOW (red + blinking below LOW/2), everything out below DEAD
-    START_MIN: 0.06,         // the starter needs at least this much
+    START_MIN: 0.12,         // the starter needs at least this much (a crank costs ≈ .085, so a start that works never ends below DEAD)
   },
   FIGHT_HEAT: 0.12,          // brake heat (0..1) per second while the engine pushes against a held brake (parking brake / pedal) with the clutch out – the brakes fade, the truck starts to creep
   FIGHT_TIME: 8,             // s of driving against the brakes until the drivetrain gives out (STRAIN lamp fills, ride ends). TEST value like STRAIN_TIME

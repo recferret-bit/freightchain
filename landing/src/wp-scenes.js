@@ -46,7 +46,7 @@ export const WP_SCENES = {
   }, { t0: 2 }),
 
   /* ── when you need them ── */
-  'lights': scene([296, 540, 150, 93], (t, { st, dn }) => { Object.assign(dn, { k: 1, night: true, head: t % 6 < 3.5 }); st.batt = .7; }, { t0: 1, mark: () => [300, 570, 120, 34] }),   // night: HEAD toggles, NIGHT stays lit
+  'lights': scene([296, 540, 170, 93], (t, { st, dn }) => { Object.assign(dn, { k: 1, night: true, head: t % 6 < 3.5 }); st.batt = .7; }, { t0: 1, mark: () => [300, 570, 150, 34] }),   // night: HEAD toggles, CAB stays off
   'cab-light': scene([540, 0, 200, 133], (t, { dn }) => { Object.assign(dn, { k: 1, night: true, cab: t % 4 < 2 }); }, { t0: .5 }),   // night: the dome lamp (it sits on the see-through windscreen, so only the lamp and its halo show)
   'heater': scene([290, 490, 215, 143], (t, { st }) => { const k = wave(t, .8, -1.6); Object.assign(st, { heater: true, heatEff: k, temp: -12 + 50 * k }); }, { t0: 4, mark: () => [300, 603, 120, 30] }),
   'wipers': scene([956, 470, 142, 95], (t, { st, wip }) => { wip.mode = Math.floor(t / 2) % 3; st.washing = t % 6 > 4.5; }, { t0: 2.5, mark: () => [962, 477, 132, 40] }),

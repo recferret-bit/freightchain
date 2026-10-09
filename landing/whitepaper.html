@@ -129,7 +129,7 @@
     <article class="card3d" tabindex="0" data-live="i-rpm"><div class="img" aria-hidden="true"></div><footer><b>TACHOMETER</b><p>RPM×100. Idle 700, red zone from 2800. Below about 450 in gear with the clutch out, it stalls.</p></footer></article>
     <article class="card3d" tabindex="0" data-live="i-gear"><div class="img" aria-hidden="true"></div><footer><b>GEAR WINDOW</b><p>Current gear, amber while the engine runs: N, 1–7, R. Seven gears, ratio 6.15 → 0.75.</p></footer></article>
     <article class="card3d" tabindex="0" data-live="i-engine"><div class="img" aria-hidden="true"></div><footer><b>ENGINE GAUGES</b><p>TEMP in °C, red from about 98 °C, plateaus at 85–95. OIL and AIR follow the engine; H2O is the washer tank, it drains while you spray and refills slowly.</p></footer></article>
-    <article class="card3d" tabindex="0" data-live="i-power"><div class="img" aria-hidden="true"></div><footer><b>VOLT &amp; FUEL</b><p>VOLT is the battery: lights, heater, radio and instruments drain it, the alternator refills it only while the engine runs. FUEL drifts down with distance as a display – the truck never runs dry.</p></footer></article>
+    <article class="card3d" tabindex="0" data-live="i-power"><div class="img" aria-hidden="true"></div><footer><b>VOLT &amp; FUEL</b><p>VOLT is the battery: lights, heater, radio and instruments drain it, the alternator refills it only while the engine runs, and with the engine off it drains much faster. FUEL drifts down with distance as a display – the truck never runs dry.</p></footer></article>
     <article class="card3d" tabindex="0" data-live="i-trip"><div class="img" aria-hidden="true"></div><footer><b>TRIP LCD</b><p>Kilometres driven, shift time over the minimum and outside °C. The server's clock is the one that counts; this one is your guide.</p></footer></article>
     <article class="card3d" tabindex="0" data-live="i-bars"><div class="img" aria-hidden="true"></div><footer><b>PEDALS &amp; HULL</b><p>CLU, BRK and GAS are the pedals, HUL is hull integrity in %. Below 100 % power is cut (down to 40 %) and the steering pulls to one side; 0 % ends the shift.</p></footer></article>
     <article class="card3d" tabindex="0" data-live="i-lamps-engine"><div class="img" aria-hidden="true"></div><footer><b>LAMPS · ENGINE</b><p>STALL, COLD, STRAIN, BRAKES. Amber means watch it, red means fix it now, blinking red means seconds left.</p></footer></article>
@@ -143,8 +143,8 @@
       <tr><td><b>GEAR</b> window</td><td>Current gear; amber when the engine runs.</td><td>7 gears, ratio 6.15 → 0.75.</td></tr>
       <tr><td><b>TRIP</b> LCD</td><td>Kilometres driven, shift time over the minimum (<code>mm:ss / mm:ss</code>) and outside °C.</td><td>The server's clock is the one that counts; this one is your guide.</td></tr>
       <tr><td><b>TEMP</b></td><td>Engine temperature in °C; red from about 98 °C.</td><td>Warm up gently when it is cold; it plateaus at 85–95 °C.</td></tr>
-      <tr><td><b>VOLT</b></td><td>Battery. Lights, heater, radio and instruments drain it; the alternator refills it only while the engine runs.</td><td>Do not sit with everything on and the engine off.</td></tr>
-      <tr><td><b>H2O</b></td><td>Washer fluid tank; drains while you spray, refills slowly.</td><td>Spray in short bursts.</td></tr>
+      <tr><td><b>VOLT</b></td><td>Battery. Lights, heater, radio and instruments drain it; the alternator refills it only while the engine runs. With everything switched off it slowly recovers.</td><td>Do not sit with the key on and the engine off: a flat battery with the engine off ends the ride.</td></tr>
+      <tr><td><b>H2O</b></td><td>Washer fluid tank: about 100 s of spray per ride, it does not refill.</td><td>Spray in short bursts.</td></tr>
       <tr><td><b>AIR</b>, <b>OIL</b>, <b>FUEL</b></td><td>Air pressure and oil pressure follow the engine. FUEL drifts down with distance as a display – the truck never runs dry.</td><td>Informational.</td></tr>
       <tr><td><b>CLU · BRK · GAS · HUL</b> bars</td><td>Four LED columns: clutch, brake and gas pedal positions, and hull integrity in %.</td><td>Hull below 100 % cuts power (down to 40 %) and pulls the steering to one side; 0 % ends the shift.</td></tr>
     </tbody>
@@ -160,7 +160,7 @@
     <article><b class="lp amber">BRAKES</b><p>Hot brakes: hard stops from speed, or driving against a held brake. Hot brakes fade, the parking brake too. Full strain ends the shift.</p></article>
     <article><b class="lp red">OVER-REV</b><p>Revs above the red zone. Change up or lift.</p></article>
     <article><b class="lp amber">GRIND</b><p>A shift attempted without the clutch, or forward ↔ reverse while still rolling.</p></article>
-    <article><b class="lp amber">BAT</b><p>Battery below 30 % (red and blinking below 15 %). Below 1 % lights, radio and heater cut out and the engine will not start.</p></article>
+    <article><b class="lp amber">BAT</b><p>Battery below 30 % (red and blinking below 15 %). The engine will not crank below 12 %. Flat with the engine off, the truck is dead and the ride is over.</p></article>
   </div>
 
   <h3 class="sub">ADVICE FROM THE LONG HAUL</h3>
@@ -172,7 +172,7 @@
     <li><b>Straddle potholes, slow for trenches.</b> A yellow sign comes about 90 m before every hole. A small pothole can be passed between the wheels; a trench or sinkhole needs a lane change or a crawl.</li>
     <li><b>Keep the truck on the road.</b> Poles, guardrails, cacti and other trucks are solid; scratches and bumps cost hull, a direct hit ends the shift.</li>
     <li><b>Lights at night.</b> With no lights the world is black outside the lamp posts; oncoming traffic dazzles you. At night the headlights are the only thing lighting the road.</li>
-    <li><b>Mind the battery.</b> Headlights, heater and radio with the engine off flatten it in minutes.</li>
+    <li><b>Mind the battery.</b> With the engine off, lights, heater and radio flatten it in about a minute. Switch everything off and it recovers a little; headlights, cab light and heater together out-drain the alternator even while driving.</li>
     <li><b>Wash the glass, then wipe.</b> Dust builds up; the washer makes each wiper pass clear far more. Frost needs the heater, not wipers.</li>
     <li><b>Do not alt-tab on a paid shift.</b> A hidden tab pauses the game and earns nothing; the server will not credit those seconds.</li>
     <li><b>Respect the crossroads.</b> Junctions have signals and cross traffic, and a direct hit with another vehicle ends the shift on the spot.</li>

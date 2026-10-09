@@ -27,9 +27,9 @@ await clip('cards/trip-radio.webp', rect('trip'));
 await key('KeyB'); await ev(`{ const g=__game; window.__hold=setInterval(()=>{ g.st.gear=3; g.st.v=8; g.st.rpm=1900; g.st.engineOn=true; g.st.keyOn=true; g.st.hull=100; g.st.d=2.4; g.st.psi=0; g.st.park=false; },50) }`); await sleep(1500);
 await clip('cards/gear.webp', rect('gear'));
 
-// 4 · night + headlights + cab light → HEAD / NIGHT buttons lit
+// 4 · night + headlights + cab light → HEAD / CAB buttons lit
 await ev(`__game.setPhase('night', true, false)`); await ev('__game.dn.head=true; __game.dn.cab=true'); await sleep(1500);
-await clip('cards/lights.webp', rect('lights'));   // LED bars + HEAD / NIGHT / HEAT
+await clip('cards/lights.webp', rect('lights'));   // LED bars + HEAD / CAB / HEAT
 
 // 5 · cold Siberia: COLD + STRAIN lamps lit
 await ev(`{ clearInterval(window.__hold); __game.selectTheme('siberia', false); __game.setPhase('day', true, false); const g=__game; window.__hold=setInterval(()=>{ g.st.gear=2; g.st.v=6; g.st.rpm=2300; g.st.engineOn=true; g.st.keyOn=true; g.st.hull=100; g.st.d=2.4; g.st.psi=0; g.st.park=false; g.st.temp=-30; g.st.strain=.4; g.st.brakeT=.4; },50) }`); await sleep(2500);
