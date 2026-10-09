@@ -5,6 +5,8 @@ export const SAMPLE_COUNT_SLACK = 5;
 export const BATCH_MAX_SAMPLES = 400; // ≈ 40 s at 10 Hz – a 15 s batch is 150
 export const BATCH_MAX_INPUTS = 2000;
 export const SAMPLE_MAX_WIDTH = 16; // numbers per sample row
+export const SAMPLE_WIDTH = 12; // the columns the verdict reads: [t, s, d, psi, v, rpm, gear, hull, gas, brake, steer, clutch] (replay columns are appended after)
+export const SAMPLE_TIME_SLACK = 0.05; // sample times may stick out of their batch's [t0, t1] by this much (rounding)
 export const BATCH_MAX_BYTES = 98_304; // canonical JSON; below Express's default 100 kB body limit (a real 15 s batch is ≈ 15 kB)
 export const BATCH_MAX_SEQ = 100_000;
 export const MAX_GAME_SECONDS = 1e7;
@@ -24,9 +26,14 @@ export const GAME_TIME_SLACK_SECONDS = 30;
 export const MIN_BATCH_SECONDS = 5;
 export const BATCH_SEQ_SLACK = 10;
 
+/** a ride may hold at most wall seconds since the start × this many canonical bytes + RECORDING_BYTES_SLACK (a real recording is ≈ 1 kB/s; the traffic track is not counted) */
+export const RECORDING_BYTES_PER_SECOND = 4096;
+export const RECORDING_BYTES_SLACK = 262_144;
+
 export interface RecordingAllowance {
   maxGameSeconds: number;
   maxSeq: number;
+  maxBytes: number;
 }
 
 /** batches are still taken this long after the ride ended: the client flushes its last one around /end */

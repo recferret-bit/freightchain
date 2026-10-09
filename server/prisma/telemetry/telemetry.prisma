@@ -13,6 +13,7 @@ model RideBatch {
   inputs     Int
   bytes      Int // uncompressed JSON size
   payload    Bytes // gzip of the JSON body
+  summary    Json? // what the verdict reads (domain/telemetry/batch-summary.ts): counts, first / last sample, max speed, worst step, fault, the input events; null on rows stored before it existed (summarised from the payload when judged)
   receivedAt DateTime
 
   @@id([rideId, seq])

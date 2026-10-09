@@ -113,7 +113,7 @@
   <h3 class="sub">WHEN YOU NEED THEM</h3>
   <p>The nine steps are an order. These six are conditions: it gets dark, cold or dusty, you want company on the road, or you have to back up.</p>
   <div class="cards3">
-    <article class="card3d" tabindex="0" data-live="lights"><div class="img" aria-hidden="true"></div><footer><b>HEADLIGHTS &amp; NIGHT</b><p><kbd>L</kbd> headlights, <kbd>N</kbd> jumps the clock between day and night (or click HEAD / NIGHT). At night the headlights are the only light on the road, and they drain the battery.</p></footer></article>
+    <article class="card3d" tabindex="0" data-live="lights"><div class="img" aria-hidden="true"></div><footer><b>HEADLIGHTS &amp; NIGHT</b><p><kbd>L</kbd> headlights, <kbd>N</kbd> jumps the clock between day and night (or click HEAD for the lights). At night the headlights are the only light on the road, and they drain the battery.</p></footer></article>
     <article class="card3d" tabindex="0" data-live="cab-light"><div class="img" aria-hidden="true"></div><footer><b>CAB LIGHT</b><p><kbd>C</kbd>, or click the dome lamp in the overhead console. It lights the cab, works only with the engine running or starting, and goes out when the engine stops.</p></footer></article>
     <article class="card3d" tabindex="0" data-live="heater"><div class="img" aria-hidden="true"></div><footer><b>HEATER</b><p><kbd>H</kbd> or click HEAT. It thaws the windscreen from the vents outward and draws heat out of the engine; the bar under the label is how warm the air really is.</p></footer></article>
     <article class="card3d" tabindex="0" data-live="wipers"><div class="img" aria-hidden="true"></div><footer><b>WIPERS &amp; WASHER</b><p><kbd>R</kbd> cycles off / slow / fast, hold <kbd>X</kbd> to spray. Dry blades barely clear dust, so wash first. Nothing but the heater clears frost.</p></footer></article>
@@ -230,7 +230,7 @@
     <li><b>Drive by hand, in the real game.</b> The browser records your key presses and the truck's state; timing that looks scripted is <em>flagged</em> for a person to review, and recordings that are impossible are <em>rejected</em>. Using bots, macros or a modified client is against the rules and is the thing the validation is built to catch (<a href="#verify">06</a>).</li>
     <li><b>Keep the tab visible.</b> Time with the tab hidden is not driven time. Slow computers are not penalised: times come from the browser's event clock, and if the game runs below real time it simply takes longer.</li>
     <li><b>Spectators may talk and tip.</b> An online ride can be streamed live and replayed by anyone for 90 days – the road, your truck's state and the traffic around you; your key presses are never shown (<a href="#stream">07</a>). You may mute any chat wallet.</li>
-    <li><b>Rankings are provisional while the rules are tuned.</b> Verdict rules v1 run in <em>shadow mode</em>: verdicts are stored and shown, but boards do not yet depend on them. A person reviews flagged rides and every decision is signed and logged.</li>
+    <li><b>Rankings are provisional while the rules are tuned.</b> Verdict rules v2 run in <em>shadow mode</em>: verdicts are stored and shown, but boards do not yet depend on them. A person reviews flagged rides and every decision is signed and logged.</li>
     <li><b>It is a devnet build.</b> Nothing here is real money. Before any mainnet version exists, whether a prize game is lawful where you live is a question you and the operator both have to answer (<a href="#risks">08</a>).</li>
   </ol>
 </section>
@@ -484,7 +484,7 @@
 <!-- ───────── 06 · VALIDATION ───────── -->
 <section id="verify" class="ch">
   <header class="ch-h"><i>06</i><h2>Telemetry &amp; ride validation</h2><p>The server does not replay your drive. It checks that the recording is complete, physically possible, matches the ride, and was driven by a person.</p></header>
-  <p class="note"><b>Mode.</b> Rules v1 run in <b>shadow mode</b> in production: every completed shift is judged and the verdict is shown, but the boards do not depend on it yet. The thresholds are first estimates and will be tuned on real rides. Bump the rules version and the verdict stores which one it used.</p>
+  <p class="note"><b>Mode.</b> Rules v2 run in <b>shadow mode</b> in production: every completed shift is judged and the verdict is shown, but the boards do not depend on it yet. The thresholds are first estimates and will be tuned on real rides. Bump the rules version and the verdict stores which one it used.</p>
 
   <h3 class="sub">FROM YOUR KEYBOARD TO THE BOARD</h3>
   <ol class="flow">
@@ -515,6 +515,9 @@
       <tr><td>Ends where the ride ended</td><td>The last recorded distance matches the reported distance within 30 m + 1 %, allowing for seconds whose final upload never arrived.</td><td class="bad">reject · <code>recording-mismatch</code></td></tr>
       <tr><td>Covers the drive</td><td>Under 50 % of the driven time recorded rejects; under 90 % only flags.</td><td>reject · <code>recording-incomplete</code> / flag · <code>recording-gaps</code></td></tr>
       <tr><td>Someone drove</td><td>A truck that moved more than 50 m needs key presses, and gas among them.</td><td class="bad">reject · <code>no-inputs</code> <code>no-throttle-input</code></td></tr>
+      <tr><td>Dispatch prompts answered</td><td>About every 240 s of driving the server asks for one thing in the cab through the heartbeat – FLASH YOUR HEADLIGHTS, RUN THE WIPERS… – and the recording must show that key within 20 s. Half or more of 3+ prompts ignored rejects; one missed only flags.</td><td>reject · <code>challenges-ignored</code> / flag · <code>challenge-missed</code></td></tr>
+      <tr><td>Prompts were read</td><td>Answers whose median comes under 80 ms after the server issued the prompt are faster than a person can read it – a script watching the heartbeat.</td><td class="warnc">flag · <code>challenge-reflex</code></td></tr>
+      <tr><td>Fingerprint present</td><td>A batch the game could not fingerprint (its browser's crypto failed) is kept: the server fingerprinted it on arrival, so this only flags.</td><td class="warnc">flag · <code>unhashed-batch</code></td></tr>
       <tr><td>Holds vary</td><td>If one key's hold lengths barely vary (spread under 8 %, over 6+ holds) it looks scripted.</td><td class="warnc">flag · <code>uniform-holds</code></td></tr>
       <tr><td>Rhythm isn't a loop</td><td>If the 3 most common gaps between presses (to the millisecond) make up more than 60 % of all gaps, a script is cycling fixed delays.</td><td class="warnc">flag · <code>repeated-timings</code></td></tr>
       <tr><td>Presses take time</td><td>More than 30 % of presses released within 10 ms were sent, not pressed.</td><td class="warnc">flag · <code>instant-presses</code></td></tr>

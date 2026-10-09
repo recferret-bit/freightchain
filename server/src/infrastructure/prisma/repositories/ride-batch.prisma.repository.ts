@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { RideBatch } from '../../../domain/telemetry/ride-batch.entity.js';
+import type { BatchFacts, RideBatch } from '../../../domain/telemetry/ride-batch.entity.js';
 import { RideBatchRepositoryPort } from '../../../application/ports/telemetry/ride-batch.repository.port.js';
 import type { TransactionHandle } from '../../../application/ports/shared/transaction.port.js';
 import { RideBatchMapper } from '../mappers/ride-batch.mapper.js';
@@ -24,6 +24,27 @@ export class RideBatchPrismaRepository extends RideBatchRepositoryPort {
       where: { ride: { endedAt: { lt: cutoff }, OR: [{ verdict: { is: { status: { not: 'flagged' } } } }, { verdict: { is: null }, status: { not: 'completed' } }] } },
     });
     return count;
+  }
+
+  /** Rows stored before summaries existed (summary null, or an older format) are inflated and summarised here – once judged they are not rewritten. */
+  async listFactsByRide(rideId: string, tx?: TransactionHandle): Promise<BatchFacts[]> {
+    const rows = await clientFor(this.prisma, tx).rideBatch.findMany({ where: { rideId }, orderBy: { seq: 'asc' }, select: { rideId: true, seq: true, prevHash: true, hash: true, hashOk: true, t0: true, t1: true, summary: true } });
+    const out: BatchFacts[] = [];
+    for (const r of rows) {
+      const summary = RideBatchMapper.summaryOf(r.summary) ?? (await this.summarise(rideId, r.seq, tx));
+      out.push({ seq: r.seq, prevHash: r.prevHash, hash: r.hash, hashOk: r.hashOk, t0: r.t0, t1: r.t1, summary });
+    }
+    return out;
+  }
+
+  private async summarise(rideId: string, seq: number, tx?: TransactionHandle) {
+    const row = await clientFor(this.prisma, tx).rideBatch.findUniqueOrThrow({ where: { rideId_seq: { rideId, seq } } });
+    return RideBatchMapper.toDomain(row).summary;
+  }
+
+  async totalBytes(rideId: string, tx?: TransactionHandle): Promise<number> {
+    const agg = await clientFor(this.prisma, tx).rideBatch.aggregate({ where: { rideId }, _sum: { bytes: true } });
+    return agg._sum.bytes ?? 0;
   }
 
   async listByRide(rideId: string, tx?: TransactionHandle): Promise<RideBatch[]> {

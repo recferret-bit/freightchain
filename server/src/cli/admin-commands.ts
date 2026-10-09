@@ -15,7 +15,10 @@ import type { PoolProps } from '../domain/economy/pool.types.js';
 import { EnvService } from '../infrastructure/config/env.service.js';
 import { RegisterPoolFromChainCommand } from '../application/use-cases/pools/register-pool-from-chain/register-pool-from-chain.command.js';
 import { CrankPoolsCommand } from '../application/use-cases/chain/crank-pools/crank-pools.command.js';
-import { parsePoolRegister, parsePoolSeed, parsePromoCreate, parseTicketsGrant, type PoolSeedArgs } from './admin-args.js';
+import { parsePoolRegister, parsePoolSeed, parsePromoCreate, parseTicketsGrant, parseVerdictRejudge, type PoolSeedArgs } from './admin-args.js';
+import { RejudgeRidesCommand } from '../application/use-cases/admin/rejudge-rides/rejudge-rides.command.js';
+import { SweepTelemetryCommand } from '../application/use-cases/telemetry/sweep-telemetry/sweep-telemetry.command.js';
+import { SweepSignInsCommand } from '../application/use-cases/auth/sweep-sign-ins/sweep-sign-ins.command.js';
 
 /** The application layer without HTTP: the admin commands go through the same handlers (validation, locks, audit lines) as the API. */
 @Module({ imports: [EnvModule, ApplicationModule] })
@@ -69,6 +72,12 @@ export async function runAdmin(command: string, args: readonly string[]): Promis
     }
     case 'pool:crank':
       return args.length ? usage('pool:crank takes no arguments') : withBuses(({ commands }) => commands.execute(new CrankPoolsCommand()));
+    case 'verdict:rejudge': {
+      const r = parseVerdictRejudge(args);
+      return typeof r === 'string' ? usage(r) : withBuses(({ commands }) => commands.execute(new RejudgeRidesCommand({ verdict: r.verdict, since: r.since, limit: r.limit }, r.dryRun, 'cli')));
+    }
+    case 'retention:sweep':
+      return args.length ? usage('retention:sweep takes no arguments') : withBuses(async ({ commands }) => ({ telemetry: await commands.execute(new SweepTelemetryCommand()), signIns: await commands.execute(new SweepSignInsCommand()) }));
     default:
       return null;
   }

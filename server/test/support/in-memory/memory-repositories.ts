@@ -14,11 +14,11 @@ import { PaymentRepositoryPort } from '../../../src/application/ports/economy/pa
 import { RoundRepositoryPort, type RoundEntries } from '../../../src/application/ports/economy/round.repository.port.js';
 import { HealthProbePort } from '../../../src/application/ports/health/health-probe.port.js';
 import { PlayerRepositoryPort } from '../../../src/application/ports/players/player.repository.port.js';
-import { RideQueryPort, type FinishedRideRow, type LeaderboardRow, type LiveRideRow, type RecentRideRow, type RideSummary, type RideTotalsRow, type UpcomingRideRow , type HistoryFilter, type HistoryRideRow } from '../../../src/application/ports/rides/ride-query.port.js';
+import { RideQueryPort, type FinishedRideRow, type LeaderboardRow, type LiveRideRow, type RecentRideRow, type RideSummary, type RideTotalsRow, type UpcomingRideRow , type HistoryFilter, type HistoryRideRow, type RejudgeFilter } from '../../../src/application/ports/rides/ride-query.port.js';
 import { RideRepositoryPort } from '../../../src/application/ports/rides/ride.repository.port.js';
 import { TransactionPort } from '../../../src/application/ports/shared/transaction.port.js';
 import { RideBatchRepositoryPort } from '../../../src/application/ports/telemetry/ride-batch.repository.port.js';
-import { RideBatch } from '../../../src/domain/telemetry/ride-batch.entity.js';
+import { RideBatch, type BatchFacts } from '../../../src/domain/telemetry/ride-batch.entity.js';
 import { RideVerdictRepositoryPort } from '../../../src/application/ports/verdict/ride-verdict.repository.port.js';
 import { RideVerdict } from '../../../src/domain/verdict/ride-verdict.entity.js';
 import { VerdictStatus } from '../../../src/domain/verdict/verdict.dto.js';
@@ -232,6 +232,14 @@ export class MemoryRideQuery extends RideQueryPort {
 
   private verified(r: RideProps): boolean { return this.db.verdicts.get(r.id)?.status === VerdictStatus.Verified; }
 
+  async forRejudge(f: RejudgeFilter): Promise<{ id: string; verdict: string | null }[]> {
+    return [...this.db.rides.values()]
+      .filter(({ props: r }) => r.status === RideStatus.Completed && (!f.since || (r.endedAt?.getTime() ?? 0) >= f.since.getTime()))
+      .map(({ props: r, seq }) => ({ id: r.id, verdict: this.db.verdicts.get(r.id)?.status ?? null, endedAt: r.endedAt?.getTime() ?? 0, seq }))
+      .filter((r) => f.verdict === 'all' || (f.verdict === 'unjudged' ? r.verdict === null : r.verdict === f.verdict))
+      .sort((a, b) => a.endedAt - b.endedAt || a.seq - b.seq).slice(0, f.limit).map(({ id, verdict }) => ({ id, verdict }));
+  }
+
   private ranked(keep: (r: RideProps) => boolean, limit: number): LeaderboardRow[] {
     const done = [...this.db.rides.values()].map((r) => r.props).filter((r) => r.status === RideStatus.Completed && keep(r));
     const groups = new Map<string, { distance: number; rides: number; first: number }>();
@@ -328,6 +336,14 @@ export class MemoryRideBatchRepository extends RideBatchRepositoryPort {
     return [...this.db.batches.values()].filter((b) => b.rideId === rideId).sort((a, b) => a.seq - b.seq).map((b) => RideBatch.restore(b));
   }
 
+  async listFactsByRide(rideId: string): Promise<BatchFacts[]> {
+    return (await this.listByRide(rideId)).map((b) => ({ seq: b.seq, prevHash: b.prevHash, hash: b.hash, hashOk: b.hashOk, t0: b.t0, t1: b.t1, summary: b.summary }));
+  }
+
+  async totalBytes(rideId: string): Promise<number> {
+    return [...this.db.batches.values()].filter((b) => b.rideId === rideId).reduce((n, b) => n + b.bytes, 0);
+  }
+
   async listFrom(rideId: string, fromSeq: number, limit: number): Promise<RideBatch[]> {
     return (await this.listByRide(rideId)).filter((b) => b.seq >= fromSeq).slice(0, limit);
   }
@@ -382,6 +398,13 @@ export class MemorySignInRepository extends SignInRepositoryPort {
   }
 
   async countSince(at: Date): Promise<number> { return this.db.signIns.filter((s) => s.at.getTime() >= at.getTime()).length; }
+
+  async deleteBefore(cutoff: Date): Promise<number> {
+    const keep = this.db.signIns.filter((s) => s.at.getTime() >= cutoff.getTime());
+    const deleted = this.db.signIns.length - keep.length;
+    this.db.signIns = keep;
+    return deleted;
+  }
 }
 
 @Injectable()

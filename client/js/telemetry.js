@@ -46,7 +46,7 @@ function cut() {
   rec.sealing = rec.sealing.then(async () => {   // the hash of batch n is the prevHash of n+1, so batches are sealed one after another
     body.prevHash = rec.prevHash;
     const text = JSON.stringify({ seq: body.seq, prevHash: body.prevHash, t0: body.t0, t1: body.t1, samples: body.samples, inputs: body.inputs });
-    body.hash = await sha256(text).catch(() => null);   // a failed digest must not stop the chain: the batch goes unhashed (the server marks it untrusted)
+    body.hash = await sha256(text).catch(() => sha256(text)).catch(() => null);   // one retry, then a failed digest must not stop the chain: the batch goes unhashed (the server hashed it itself; the verdict only flags it)
     rec.prevHash = body.hash ?? `unhashed-${body.seq}`;
     if (traffic.length && text.length + JSON.stringify(traffic).length < TRAFFIC_BODY_BUDGET) body.traffic = traffic;   // beside the hashed text, never in it; dropped rather than risk the 100 kB body limit
     if (!rec.refused) { rec.queue.push(body); send(); }

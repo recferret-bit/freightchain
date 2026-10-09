@@ -41,4 +41,18 @@ describe('VerdictService', () => {
     expect(await ctx.verdicts.judge('nope')).toBeNull();
     expect(ctx.db.verdicts.size).toBe(0);
   });
+
+  it('rejudgeQuietly (the bulk re-judge): judges again, keeps an admin decision, and skips – not rejects – a ride whose recording was swept', async () => {
+    const { ctx, ride } = await ended(true);
+    expect(await ctx.verdicts.rejudgeQuietly(ride.id)).toEqual({ before: null, after: VerdictStatus.Verified });
+    expect(await ctx.verdicts.rejudgeQuietly(ride.id)).toEqual({ before: VerdictStatus.Verified, after: VerdictStatus.Verified });
+    await ctx.verdicts.override(ride.id, VerdictStatus.Rejected, 'admin', 'no', null);
+    expect(await ctx.verdicts.rejudgeQuietly(ride.id)).toEqual({ before: VerdictStatus.Rejected, after: VerdictStatus.Rejected });
+    const { ctx: c2, ride: r2 } = await ended(true);
+    await c2.verdicts.judge(r2.id);
+    for (const key of [...c2.db.batches.keys()]) c2.db.batches.delete(key);
+    expect(await c2.verdicts.rejudgeQuietly(r2.id)).toBeNull();
+    expect((await c2.verdictRepo.findByRide(r2.id))?.status).toBe(VerdictStatus.Verified);
+    expect(await c2.verdicts.rejudgeQuietly('nope')).toBeNull();
+  });
 });

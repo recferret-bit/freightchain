@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, vi } from 'vitest';
 import { SweepTelemetryCommand } from '../../../../src/application/use-cases/telemetry/sweep-telemetry/sweep-telemetry.command.js';
+import { SweepSignInsCommand } from '../../../../src/application/use-cases/auth/sweep-sign-ins/sweep-sign-ins.command.js';
 import { TelemetryRetentionScheduler } from '../../../../src/infrastructure/scheduling/telemetry-retention.scheduler.js';
 import { busMock } from '../../../support/bus.js';
 import { FakeClock } from '../../../support/fake-clock.js';
@@ -17,14 +18,15 @@ describe('TelemetryRetentionScheduler', () => {
     const scheduler = new TelemetryRetentionScheduler(bus as never, clock);
     scheduler.onApplicationBootstrap();
     await vi.advanceTimersByTimeAsync(0);
-    expect(sent).toHaveLength(1);
+    expect(sent).toHaveLength(2); // the recording sweep, then the sign-in sweep
     expect(sent[0]).toBeInstanceOf(SweepTelemetryCommand);
+    expect(sent[1]).toBeInstanceOf(SweepSignInsCommand);
     await tick(12 * HOUR);
-    expect(sent).toHaveLength(1); // 00:00 – not yet
+    expect(sent).toHaveLength(2); // 00:00 – not yet
     await tick(HOUR / 2 + 1);
-    expect(sent).toHaveLength(2); // 00:30
+    expect(sent).toHaveLength(4); // 00:30
     await tick(24 * HOUR);
-    expect(sent).toHaveLength(3);
+    expect(sent).toHaveLength(6);
     scheduler.onApplicationShutdown();
   });
 
@@ -35,9 +37,9 @@ describe('TelemetryRetentionScheduler', () => {
     scheduler.onApplicationBootstrap();
     await vi.advanceTimersByTimeAsync(0);
     await tick(10 * 60_000 + 1);
-    expect(calls).toBe(2);
+    expect(calls).toBe(3); // the retry runs both sweeps
     scheduler.onApplicationShutdown();
     await tick(48 * HOUR);
-    expect(calls).toBe(2);
+    expect(calls).toBe(3);
   });
 });

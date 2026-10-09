@@ -32,3 +32,19 @@ export async function launch({ port, shotsDir, args = [], evalProblems = false }
   const finish = (code, ms = 0) => { ws.close(); chrome.kill(); setTimeout(() => { try { fs.rmSync(prof, { recursive: true, force: true }); } catch { /* temp dir */ } process.exit(code); }, ms); };
   return { send, ev, shot, filt, problems, SHOTS, finish };
 }
+
+/** Answer the game's dispatch prompts the way a person does (verified play – client/js/prompt.js): poll the open prompt and press its key 400–1200 ms
+    later through real CDP key events. `ev` / `send` are a launched tab's. Returns a stop function. */
+export function answerPrompts({ ev, send }, { minMs = 400, maxMs = 1200, log = () => {} } = {}) {
+  const KEY = { KeyL: 'l', KeyR: 'r', KeyC: 'c', KeyX: 'x' };
+  let on = true, busy = false;
+  const timer = setInterval(async () => {
+    if (!on || busy) return;
+    busy = true;
+    try {
+      const p = await ev('(() => { const p = window.__game?.prompt?.cur; return p && !p.answered ? { id: p.id, code: p.codes[0] } : null; })()');
+      if (p) { await sleep(minMs + Math.random() * (maxMs - minMs)); await send('Input.dispatchKeyEvent', { type: 'keyDown', code: p.code, key: KEY[p.code] ?? p.code }); await sleep(90); await send('Input.dispatchKeyEvent', { type: 'keyUp', code: p.code, key: KEY[p.code] ?? p.code }); log(p); }
+    } catch { /* the tab went away */ } finally { busy = false; }
+  }, 200);
+  return () => { on = false; clearInterval(timer); };
+}

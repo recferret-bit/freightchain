@@ -3,7 +3,10 @@ import { ConflictError } from '../shared/errors.js';
 import { RideStatus, type RideOutcome } from './ride-status.js';
 import type { RideTierId } from './ride-tier.js';
 import type { RideReport } from './ride-report.js';
-import { BATCH_SEQ_SLACK, GAME_TIME_FACTOR, GAME_TIME_SLACK_SECONDS, MIN_BATCH_SECONDS, type RecordingAllowance } from '../telemetry/telemetry-rules.js';
+import {
+  CHALLENGE_MAX_PER_RIDE, CHALLENGE_WINDOW_MS, challengeInterval, firstChallengeAt, nextChallengeAt, pickChallenge, type RideChallenge,
+} from './ride-challenge.js';
+import { BATCH_SEQ_SLACK, GAME_TIME_FACTOR, GAME_TIME_SLACK_SECONDS, MIN_BATCH_SECONDS, RECORDING_BYTES_PER_SECOND, RECORDING_BYTES_SLACK, type RecordingAllowance } from '../telemetry/telemetry-rules.js';
 import {
   DRIVE_CREDIT_SLACK, DRIVE_CREDIT_SLACK_SECONDS, MAX_SPEED, REASON_MAX_LENGTH, SLACK_METRES, SPEED_SLACK,
   completeDist, isRouteId, type RideTimingRules,
@@ -40,8 +43,15 @@ export interface RideProps {
   hull: number | null;
   endedAt: Date | null;
   reason: string | null;
+  /** the dispatch prompts issued so far (verified play – ride-challenge.ts) */
+  challenges: RideChallenge[];
+  /** drive-seconds at which the next prompt is due (null = not scheduled yet) */
+  nextChallengeAt: number | null;
   version: number;
 }
+
+/** What issuing a prompt needs from the caller: an id and a random draw (the entity stays pure). */
+export interface ChallengeDraw { id: string; rnd: number }
 
 export interface FreeRideInput { id: string; wallet: string; seed: number; minSeconds: number; now: Date }
 export interface TicketRideInput {
@@ -63,7 +73,7 @@ export class Ride {
   private static blank(): Omit<RideProps, 'id' | 'wallet' | 'tier' | 'seed' | 'minSeconds' | 'completeDist' | 'status' | 'createdAt'> {
     return {
       timeScale: 1, priceUsd: 0, lamports: 0, solUsd: null, quoteExpiresAt: null, roundId: null, poolId: null, paidAt: null, route: null, loadout: null, nightSeconds: 0, paused: false,
-      startedAt: null, lastHbAt: null, lastS: 0, lastT: 0, driveSeconds: 0, hull: null, endedAt: null, reason: null, version: 1,
+      startedAt: null, lastHbAt: null, lastS: 0, lastT: 0, driveSeconds: 0, hull: null, endedAt: null, reason: null, challenges: [], nextChallengeAt: null, version: 1,
     };
   }
 
@@ -119,6 +129,7 @@ export class Ride {
   get hull(): number | null { return this.p.hull; }
   get version(): number { return this.p.version; }
   get isFree(): boolean { return this.p.tier === 'free'; }
+  get challenges(): readonly RideChallenge[] { return this.p.challenges; }
 
   isInStatus(...statuses: RideStatus[]): boolean {
     return statuses.includes(this.p.status);
@@ -143,7 +154,7 @@ export class Ride {
   /** How much recording the ride may hold by `now`, from the server's wall time since the start (see telemetry-rules). */
   recordingAllowance(now: Date): RecordingAllowance {
     const elapsed = Math.max(0, (now.getTime() - (this.p.startedAt ?? now).getTime()) / 1000);
-    return { maxGameSeconds: elapsed * GAME_TIME_FACTOR + GAME_TIME_SLACK_SECONDS, maxSeq: Math.floor(elapsed / MIN_BATCH_SECONDS) + BATCH_SEQ_SLACK };
+    return { maxGameSeconds: elapsed * GAME_TIME_FACTOR + GAME_TIME_SLACK_SECONDS, maxSeq: Math.floor(elapsed / MIN_BATCH_SECONDS) + BATCH_SEQ_SLACK, maxBytes: Math.floor(elapsed * RECORDING_BYTES_PER_SECOND) + RECORDING_BYTES_SLACK };
   }
 
   /** Heartbeats closer together than hbMinIntervalMs are ignored – no free progress by spamming. */
@@ -214,6 +225,28 @@ export class Ride {
     this.p.nightSeconds += report.night ? credit : 0;
     this.p.paused = report.paused;
     return true;
+  }
+
+  /** A dispatch prompt, if one is due by the ride's own drive clock (after applyReport, while running and not paused): the next due time is drawn
+      0.6–1.4 intervals ahead, so a client cannot anticipate it. `intervalSeconds` 0 = prompts are off. Returns the prompt issued, or null. */
+  issueChallenge(now: Date, intervalSeconds: number, draw: ChallengeDraw): RideChallenge | null {
+    if (this.p.status !== RideStatus.Running || this.p.paused || this.p.startedAt === null) return null;
+    const interval = challengeInterval(intervalSeconds, this.p.minSeconds);
+    if (interval <= 0 || this.p.challenges.length >= CHALLENGE_MAX_PER_RIDE) return null;
+    if (this.p.nextChallengeAt === null) { this.p.nextChallengeAt = firstChallengeAt(interval, draw.rnd); return null; }
+    if (this.p.driveSeconds < this.p.nextChallengeAt) return null;
+    const issuedMs = now.getTime() - this.p.startedAt.getTime();
+    const challenge: RideChallenge = { id: draw.id, action: pickChallenge(draw.rnd).action, issuedMs, deadlineMs: issuedMs + CHALLENGE_WINDOW_MS };
+    this.p.challenges = [...this.p.challenges, challenge];
+    this.p.nextChallengeAt = nextChallengeAt(this.p.driveSeconds, interval, draw.rnd);
+    return challenge;
+  }
+
+  /** The prompt the driver should be answering right now (its window is still open), or null. */
+  openChallenge(now: Date): RideChallenge | null {
+    const last = this.p.challenges.at(-1);
+    if (!last || this.p.startedAt === null || this.p.status !== RideStatus.Running) return null;
+    return now.getTime() - this.p.startedAt.getTime() <= last.deadlineMs ? last : null;
   }
 
   /** The driver ended the shift ('shift': the server judges complete / abandoned) or the ride failed ('failed': a crash etc.). */

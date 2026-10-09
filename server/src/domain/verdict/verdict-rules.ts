@@ -1,16 +1,14 @@
 /* Thresholds of the verdict (verified play). The server re-simulates NOTHING: it validates the recording (chain, bounds, agreement with what was
-   reported) and measures how human the input timing is. Only a broken / missing / inconsistent recording REJECTS; timing statistics only FLAG
-   (a flagged ride does not rank until someone looks at it) – they start loose and are meant to be tightened on real data. Bump RULES_VERSION on any change. */
-export const RULES_VERSION = 1;
+   reported), measures how human the input timing is, and checks the answers to the dispatch prompts it issued. Only a broken / missing / inconsistent
+   recording – or prompts ignored for most of the ride – REJECTS; timing statistics only FLAG (a flagged ride does not rank until someone looks at it) –
+   they start loose and are meant to be tightened on real data. Bump RULES_VERSION on any change. */
+export const RULES_VERSION = 2;
 
 /** a recorded speed above MAX_SPEED × this rejects (the governor is 28 m/s; float noise and the ±1 % display jitter fit under it) */
 export const SPEED_TOLERANCE = 1.05;
 /** |Δs| between two consecutive samples may be up to MAX_SPEED × Δt × this + TELEPORT_SLACK_METRES */
 export const TELEPORT_FACTOR = 1.2;
 export const TELEPORT_SLACK_METRES = 2;
-/** sample times may stick out of their batch's [t0, t1] by this much (rounding) */
-export const SAMPLE_TIME_SLACK = 0.05;
-export const SAMPLE_WIDTH = 12;
 /** the last recorded distance vs the distance the ride ended with: ≤ this + AGREE_SHARE of it */
 export const AGREE_METRES = 30;
 export const AGREE_SHARE = 0.01;
@@ -40,3 +38,13 @@ export const INSTANT_SHARE_MAX = 0.3;
 export const TIMER_STEPS_MS: readonly number[] = [100, 50, 20, 1000 / 60, 10];
 export const COARSE_TIMER_MS = 10;
 export const TIMER_ALIGN_SHARE = 0.95;
+
+/* dispatch prompts (domain/rides/ride-challenge.ts): the server asked for a key during the ride; the recording must show it pressed in the window */
+/** a press this soon after the server issued the prompt is faster than a person who had to read it (the one-way network delay only makes a real
+    reaction read SHORTER, so this stays well under the ~250 ms a person needs) – scripted, flag */
+export const CHALLENGE_MIN_REACTION_MS = 80;
+/** with at least this many answered prompts, a median reaction under CHALLENGE_MIN_REACTION_MS flags 'challenge-reflex' */
+export const CHALLENGE_REFLEX_MIN_ANSWERED = 2;
+/** with at least this many prompts issued, missing this share of them (or more) REJECTS – nobody was driving; fewer missed prompts only flag */
+export const CHALLENGE_IGNORED_MIN_ISSUED = 3;
+export const CHALLENGE_IGNORED_SHARE = 0.5;

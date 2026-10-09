@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { Prisma, RideStatus as RideStatusRow } from '@prisma/client';
 import type { LeaderboardBoard } from '../../../domain/economy/economy.dto.js';
 import {
+  type RejudgeFilter,
   RideQueryPort, type FinishedRideRow, type HistoryFilter, type HistoryRideRow, type LeaderboardRow, type LiveRideRow, type RecentRideRow, type RideSummary, type RideTotalsRow, type UpcomingRideRow,
 } from '../../../application/ports/rides/ride-query.port.js';
 import { PrismaService } from '../prisma.service.js';
@@ -108,6 +109,15 @@ export class RideQueryPrismaRepository extends RideQueryPort {
 
   async poolRanking(poolId: number, limit: number, verifiedOnly: boolean): Promise<LeaderboardRow[]> {
     return this.ranked({ poolId, ...(verifiedOnly ? VERIFIED : {}) }, limit);
+  }
+
+  async forRejudge(f: RejudgeFilter): Promise<{ id: string; verdict: string | null }[]> {
+    const byVerdict: Prisma.RideWhereInput = f.verdict === 'all' ? {} : f.verdict === 'unjudged' ? { verdict: { is: null } } : { verdict: { is: { status: f.verdict } } };
+    const rows = await this.prisma.ride.findMany({
+      where: { status: 'completed', ...byVerdict, ...(f.since ? { endedAt: { gte: f.since } } : {}) },
+      orderBy: [{ endedAt: 'asc' }, { seq: 'asc' }], take: f.limit, include: { verdict: { select: { status: true } } },
+    });
+    return rows.map((r) => ({ id: r.id, verdict: r.verdict?.status ?? null }));
   }
 
   private async ranked(filter: Prisma.RideWhereInput, limit: number): Promise<LeaderboardRow[]> {

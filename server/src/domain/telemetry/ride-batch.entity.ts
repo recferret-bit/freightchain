@@ -1,4 +1,5 @@
 import { BadRequestError } from '../shared/errors.js';
+import { summariseBatch, type BatchSummary } from './batch-summary.js';
 import { BATCH_MAX_BYTES, SAMPLE_COUNT_SLACK, SAMPLE_HZ, SAMPLE_RATE_SLACK, TRAFFIC_MAX_BYTES, TRAFFIC_MAX_FRAMES, type RecordingAllowance } from './telemetry-rules.js';
 
 /** One input event: milliseconds since the ride started (wall time), the key / dash-button code, 1 = pressed 0 = released. */
@@ -33,7 +34,20 @@ export interface RideBatchProps {
   /** canonical JSON size */
   bytes: number;
   body: BatchBody;
+  /** what the verdict reads (batch-summary.ts) – measured when the batch was accepted */
+  summary: BatchSummary;
   receivedAt: Date;
+}
+
+/** What judging a ride reads per batch: the chain columns and the summary – never the samples themselves. A RideBatch is one; the repository lists them without the payload. */
+export interface BatchFacts {
+  seq: number;
+  prevHash: string;
+  hash: string | null;
+  hashOk: boolean;
+  t0: number;
+  t1: number;
+  summary: BatchSummary;
 }
 
 /** A stored recording batch. The chain (seq continuity, prevHash links) is judged over the whole ride by the verdict; here only the batch itself is checked. */
@@ -45,24 +59,27 @@ export class RideBatch {
     return JSON.stringify({ seq: body.seq, prevHash: body.prevHash, t0: body.t0, t1: body.t1, samples: body.samples, inputs: body.inputs });
   }
 
-  /** Accept an upload: sane time span and sample count for it, size cap, and – given the ride's `allowance` – no more game time or batches than the
-      wall time since the start allows. `serverHash` = the server's own SHA-256 of the canonical text. */
-  static accept(rideId: string, body: BatchBody, serverHash: string, now: Date, allowance?: RecordingAllowance, canonicalText?: string): RideBatch {
+  /** Accept an upload: sane time span and sample count for it, size cap, and – given the ride's `allowance` – no more game time, batches or bytes
+      (`storedBytes` = what the ride holds already) than the wall time since the start allows. `serverHash` = the server's own SHA-256 of the canonical text. */
+  static accept(rideId: string, body: BatchBody, serverHash: string, now: Date, allowance?: RecordingAllowance, canonicalText?: string, storedBytes = 0): RideBatch {
     if (body.t1 < body.t0) throw new BadRequestError('batch ends before it starts', 'bad_batch');
     if (allowance && body.t1 > allowance.maxGameSeconds) throw new BadRequestError('batch claims more driving than time has passed since the start', 'bad_batch');
     if (allowance && body.seq > allowance.maxSeq) throw new BadRequestError('too many batches for the time since the start', 'bad_batch');
     if (body.samples.length > (body.t1 - body.t0) * SAMPLE_HZ * SAMPLE_RATE_SLACK + SAMPLE_COUNT_SLACK) throw new BadRequestError('too many samples for the time span', 'bad_batch');
     const bytes = (canonicalText ?? RideBatch.canonical(body)).length; // the caller usually built the text already, to hash it
     if (bytes > BATCH_MAX_BYTES) throw new BadRequestError('batch too large', 'bad_batch');
+    if (allowance && storedBytes + bytes > allowance.maxBytes) throw new BadRequestError('the recording is larger than the time since the start allows', 'bad_batch');
     if (body.traffic && (body.traffic.length > TRAFFIC_MAX_FRAMES || JSON.stringify(body.traffic).length > TRAFFIC_MAX_BYTES)) body = { ...body, traffic: undefined };   // dropped, never refused
     return new RideBatch({
       rideId, seq: body.seq, prevHash: body.prevHash, hash: body.hash, hashOk: body.hash !== null && body.hash === serverHash,
-      t0: body.t0, t1: body.t1, samples: body.samples.length, inputs: body.inputs.length, bytes, body, receivedAt: now,
+      t0: body.t0, t1: body.t1, samples: body.samples.length, inputs: body.inputs.length, bytes, body, summary: summariseBatch(body.seq, body.t0, body.t1, body.samples, body.inputs), receivedAt: now,
     });
   }
 
-  static restore(props: RideBatchProps): RideBatch {
-    return new RideBatch({ ...props });
+  /** `summary` may be missing on a row stored before summaries existed (or of an older version): it is measured again from the body. */
+  static restore(props: Omit<RideBatchProps, 'summary'> & { summary?: BatchSummary | null }): RideBatch {
+    const summary = props.summary ?? summariseBatch(props.seq, props.t0, props.t1, props.body.samples, props.body.inputs);
+    return new RideBatch({ ...props, summary });
   }
 
   get rideId(): string { return this.p.rideId; }
@@ -73,6 +90,7 @@ export class RideBatch {
   get t0(): number { return this.p.t0; }
   get t1(): number { return this.p.t1; }
   get body(): BatchBody { return this.p.body; }
+  get summary(): BatchSummary { return this.p.summary; }
   get receivedAt(): Date { return this.p.receivedAt; }
 
   snapshot(): RideBatchProps {

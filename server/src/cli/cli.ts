@@ -28,6 +28,10 @@ Commands:
   pool:register POOL_ID [--label TEXT]
                Read the pool's account from chain (TICKET_PROGRAM_ID, SOLANA_RPC) into the mirror, or refresh it – the chain wins; --label renames it
   pool:crank   One crank pass now (CRANK_SECRET): fail missed pools, expire unsettled ones, refund their tickets, close refunded pools – by the chain clock
+  verdict:rejudge [--status unjudged|verified|flagged|rejected|all] [--since DATE] [--limit N] [--dry-run]
+               Judge completed shifts again at the CURRENT verdict rules (after a threshold change) – an admin's decision is kept, a swept recording skipped; audited
+  retention:sweep
+               Run the retention sweeps now (recordings older than TELEMETRY_RETENTION_DAYS, sign-ins older than SIGNIN_RETENTION_DAYS)
   --help       Show this help
 `;
 

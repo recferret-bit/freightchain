@@ -7,7 +7,7 @@ import { recording, upload } from '../support/recording.js';
 /* Tiers + SOL quote, paying a ride on chain, the weekly prize pool, demo scale, leaderboards. The chain is a FAKE (transactions we craft),
    the price is pinned (SOL_USD=100 → $5 = 0.05 SOL); a real devnet run is scripts/devnet-pay.mjs. */
 export const DEMO_WALLET = newWallet();
-export const PAYMENTS_ENV = { DEMO_WALLETS: DEMO_WALLET.address };
+export const PAYMENTS_ENV = { DEMO_WALLETS: DEMO_WALLET.address, CHALLENGE_INTERVAL_SECONDS: '0' }; // no dispatch prompts here: verdict.scenarios.ts is where they are answered / ignored
 
 interface Order {
   id: string;

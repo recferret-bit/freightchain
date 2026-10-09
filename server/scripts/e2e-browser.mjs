@@ -2,7 +2,7 @@
 // handed to Chrome): sign in → create a free ride → play.html?ride=… takes the server's seed + shift length → START → heartbeats → pause → END SHIFT → server verdict.
 // Usage: FREE_RIDE_SECONDS=3 SOL_USD=118 TREASURY_PUBKEY=<any address> PORT=3111 node dist/main.js  (other terminal; PostgreSQL up + migrated: npm run db:up && npm run prisma:deploy)   then   BASE=http://localhost:3111 node scripts/e2e-browser.mjs
 import nacl from 'tweetnacl'; import bs58 from 'bs58';
-import { launch, sleep } from '../../client/tools/cdp.mjs';
+import { launch, sleep, answerPrompts } from '../../client/tools/cdp.mjs';
 const BASE = process.env.BASE || 'http://localhost:3111', MIN = +(process.env.FREE_RIDE_SECONDS || 3);
 const fails = []; const check = (name, ok, extra = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${extra ? ' – ' + extra : ''}`); if (!ok) fails.push(name); };
 const post = async (path, body, cookie) => { const r = await fetch(`${BASE}/api/${path}`, { method: 'POST', headers: { 'content-type': 'application/json', ...(cookie && { cookie }) }, body: JSON.stringify(body) }); return { r, j: await r.json() }; };
@@ -31,11 +31,13 @@ await ev('(() => { let last = __game.st.t; setInterval(() => { const g = __game.
 const press = async (code, key, hold) => { await send('Input.dispatchKeyEvent', { type: 'keyDown', code, key }); await sleep(hold); await send('Input.dispatchKeyEvent', { type: 'keyUp', code, key }); };
 const KEYS = [['KeyW', 'w'], ['KeyA', 'a'], ['KeyD', 'd'], ['KeyW', 'w'], ['ArrowUp', 'ArrowUp']];
 // wait on the GAME's clock (software-rendered headless Chrome runs at ~half real time), then end before the first 10 s heartbeat: the final /end alone must carry the time
+const stopPrompts = answerPrompts({ ev, send });   // a dispatch prompt may arrive with a heartbeat on a slow machine – answer it like a person (unanswered ones flag the ride)
 const t0 = Date.now();
 for (let i = 0; !(await ev('__game.st.complete')) && Date.now() - t0 < 30000 + MIN * 3000; i++) {   /* headless runs the game clock at ~0.4× */ const [code, key] = KEYS[i % KEYS.length]; await press(code, key, 60 + Math.random() * 340); await sleep(80 + Math.random() * 420); }
 const waited = (Date.now() - t0) / 1000; console.log(waited < 9 ? `ok   ended before the first 10 s heartbeat (${waited.toFixed(1)} s) – only /end carried the time` : `NOTE ${waited.toFixed(1)} s after START: a heartbeat had already fired (slow machine) – this run did not isolate the /end-only path (vitest does)`);
 await ev('document.dispatchEvent(new KeyboardEvent("keydown", { key: "p", code: "KeyP", bubbles: true })); window.dispatchEvent(new KeyboardEvent("keydown", { key: "p", code: "KeyP", bubbles: true }))'); await sleep(500);
 check('shift is complete in the client', await ev('__game.st.complete'), `t=${await ev('__game.st.t.toFixed(1)')} s`);
+stopPrompts();
 await ev('document.getElementById("endshift")?.click()'); await sleep(1500);
 const verdict = await ev('document.getElementById("verdict")?.textContent');
 check('server verdict = COMPLETED · VERIFIED', verdict === 'COMPLETED · VERIFIED', String(verdict));

@@ -72,6 +72,10 @@ export const envSchema = z
     VERDICT_ENFORCE: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
     /** days a ride's recording is kept after the ride ended (flagged rides are kept until reviewed); 0 = keep forever */
     TELEMETRY_RETENTION_DAYS: z.coerce.number().int().min(0).default(90),
+    /** days the sign-in log (wallet, time, IP address, browser) is kept; 0 = forever */
+    SIGNIN_RETENTION_DAYS: z.coerce.number().int().min(0).default(180),
+    /** verified play: seconds of driving between two dispatch prompts ("flash your headlights"), issued with the heartbeat; a short shift gets at most 4; 0 = no prompts */
+    CHALLENGE_INTERVAL_SECONDS: z.coerce.number().min(0).default(240),
     // live streams (spectators) – feature flags, enforced here and sent to the watch page / the driver's game (domain/live/live-features.ts)
     LIVE_CHAT: z.enum(['all', 'free', 'off']).default('all'), // spectators' chat: on every ride · only on free test rides · nowhere
     LIVE_DONATIONS: z.enum(['on', 'off']).default('on'), // any donation at all

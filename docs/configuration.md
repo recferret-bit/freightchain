@@ -74,6 +74,8 @@ A new setting therefore touches **four** places: `env.schema.ts`, `server/.env.e
 | `INITIAL_SEED_SOL` | `0` | SOL the very first prize round starts with |
 | `VERDICT_ENFORCE` | code `true`, **prod compose `false`** | `false` = shadow mode: rides are judged and shown but boards ignore the verdict |
 | `TELEMETRY_RETENTION_DAYS` | `90` | Recordings swept after this; flagged ones kept until reviewed; `0` = forever |
+| `SIGNIN_RETENTION_DAYS` | `180` | The sign-in log (wallet, time, IP, browser) is pruned after this, with the telemetry sweep; `0` = forever |
+| `CHALLENGE_INTERVAL_SECONDS` | `240` | Verified play: seconds of driving between two dispatch prompts ("FLASH YOUR HEADLIGHTS", issued with the heartbeat, 20 s window); a short shift gets at most 4; `0` = no prompts. The verdict's prompt thresholds are in `verdict-rules.ts` |
 
 ### Live streams (spectators – feature flags)
 
@@ -188,7 +190,7 @@ npm run server:dev                   # :3000 – site, game and API on one origi
 - **nginx / certificates**: `deploy/nginx/*.conf.template`, applied by `npm run deploy:setup` (a new host = new template + `setup.sh` + smoke check + `hosts.js` prefix).
 - **Anchor program**: `programs/freightchain-pools/Anchor.toml` (program id, `wallet` → `deploy/secrets/program-deploy.json`, gitignored). Building: `npm run program:build`, `program:test`, `program:idl`.
 - **Logging**: JSON lines in production, ring buffer of 5000 in memory for the admin page; read with `npm run ops -- logs`.
-- **Scheduled jobs** (no env): free-ride refill 00:00 UTC, telemetry sweep 00:30 UTC.
+- **Scheduled jobs** (no env): free-ride refill 00:00 UTC, the retention sweeps (recordings, sign-ins) 00:30 UTC. By hand: `node dist/cli/index.js retention:sweep`; after a verdict-rules change `verdict:rejudge [--status …] [--since DATE] [--dry-run]` judges completed shifts again.
 
 ## Checklist: first production deploy
 

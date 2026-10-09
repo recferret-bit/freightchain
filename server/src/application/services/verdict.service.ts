@@ -51,15 +51,25 @@ export class VerdictService {
     return verdict;
   }
 
-  /** Judge inside the caller's transaction, under the player lock; batches are read only once the lock is held. `force` replaces an admin decision. */
-  private async judgeLocked(rideId: string, force: boolean, tx: TransactionHandle): Promise<{ verdict: RideVerdict; before: string | null } | null> {
+  /** The bulk re-judge (CLI `verdict:rejudge`, after a rules change): the current rules, an admin's decision kept, a ride whose recording the retention
+      sweep already deleted SKIPPED (null) rather than rejected for 'no-recording'. Returns the status before and after, or null when nothing was judged. */
+  async rejudgeQuietly(rideId: string): Promise<{ before: string | null; after: string } | null> {
+    return this.transactions.run(async (tx) => {
+      const result = await this.judgeLocked(rideId, false, tx, true).catch((error: unknown) => { if (error instanceof ConflictError) return null; throw error; });
+      return result ? { before: result.before, after: result.verdict.status } : null;
+    });
+  }
+
+  /** Judge inside the caller's transaction, under the player lock; batches are read only once the lock is held. `force` replaces an admin decision;
+      `guardSwept` refuses (409) when the recording was deleted by the retention sweep – a late batch (neither) may still judge an empty recording. */
+  private async judgeLocked(rideId: string, force: boolean, tx: TransactionHandle, guardSwept = force): Promise<{ verdict: RideVerdict; before: string | null } | null> {
     const ride = await this.rides.findById(rideId, tx);
     if (!ride || !ride.isInStatus(RideStatus.Completed)) return null;
     await this.players.findByWalletForUpdate(ride.wallet, tx);
     const existing = await this.verdicts.findByRide(rideId, tx);
     if (existing?.isOverridden && !force) return { verdict: existing, before: existing.status }; // an admin decided – a late batch never replaces that
-    const batches = await this.batches.listByRide(rideId, tx);
-    if (force && existing && batches.length === 0 && existing.snapshot().scores.recording.batches > 0) {
+    const batches = await this.batches.listFactsByRide(rideId, tx);
+    if (guardSwept && existing && batches.length === 0 && existing.snapshot().scores.recording.batches > 0) {
       throw new ConflictError('the recording of this ride was deleted by the retention sweep – its verdict stays as it is', 'recording_deleted');
     }
     const verdict = RideVerdict.judge(ride, batches, this.clock.now());
@@ -75,7 +85,7 @@ export class VerdictService {
       if (!ride) throw new NotFoundError('ride not found');
       await this.players.findByWalletForUpdate(ride.wallet, tx);
       // a completed shift whose judgement failed after /end (best-effort) has no verdict yet: judge it now, then decide
-      const current = (await this.verdicts.findByRide(rideId, tx)) ?? (ride.isInStatus(RideStatus.Completed) ? RideVerdict.judge(ride, await this.batches.listByRide(rideId, tx), this.clock.now()) : null);
+      const current = (await this.verdicts.findByRide(rideId, tx)) ?? (ride.isInStatus(RideStatus.Completed) ? RideVerdict.judge(ride, await this.batches.listFactsByRide(rideId, tx), this.clock.now()) : null);
       if (!current) throw new NotFoundError('this ride has no verdict (only completed shifts are judged)');
       const before = current.status;
       const now = this.clock.now();

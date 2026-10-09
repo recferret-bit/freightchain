@@ -7,13 +7,15 @@ import { AnalyticsPort } from '../../../ports/analytics/analytics.port.js';
 import { RulesConfigPort } from '../../../ports/config/rules-config.port.js';
 import { RideRepositoryPort } from '../../../ports/rides/ride.repository.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
+import { EntropyPort } from '../../../ports/shared/entropy.port.js';
 import { rideFailed, rideProgressed } from '../../../services/analytics-events.js';
 import { emitAnalytics } from '../../../services/analytics-emit.js';
 import { isDemoWallet } from '../../../services/demo.js';
 import { RideLookupService } from '../../../services/ride-lookup.service.js';
 import { HeartbeatRideCommand } from './heartbeat-ride.command.js';
 
-/** A progress report every ~10 s. The server judges it (see Ride.applyReport); one too soon after the last is ignored. A lost optimistic lock is a 409 – the client just beats again. */
+/** A progress report every ~10 s. The server judges it (see Ride.applyReport); one too soon after the last is ignored. A lost optimistic lock is a 409 – the client just beats again.
+    The response carries the dispatch prompt whose window is open (Ride.issueChallenge – verified play): a new one is issued here when it is due by the ride's drive clock. */
 @CommandHandler(HeartbeatRideCommand)
 export class HeartbeatRideHandler implements ICommandHandler<HeartbeatRideCommand, RideDto> {
   constructor(
@@ -22,15 +24,17 @@ export class HeartbeatRideHandler implements ICommandHandler<HeartbeatRideComman
     private readonly rules: RulesConfigPort,
     private readonly clock: ClockPort,
     private readonly analytics: AnalyticsPort,
+    private readonly entropy: EntropyPort,
   ) {}
 
   async execute({ wallet, rideId, report }: HeartbeatRideCommand): Promise<RideDto> {
     const ride = await this.lookup.require(rideId, wallet);
     if (!ride.isInStatus(RideStatus.Running)) throw new ConflictError(`ride is ${ride.status}`);
     const now = this.clock.now();
-    if (!ride.canAcceptHeartbeat(now, this.rules.get())) return toRideDto(ride);
+    if (!ride.canAcceptHeartbeat(now, this.rules.get())) return toRideDto(ride, null, now); // ignored, but the open prompt still rides along
     const before = progressRatio(ride.driveSeconds, ride.minSeconds, ride.distance, ride.completeDist);
     const accepted = ride.applyReport(report, now, this.rules.get()); // a report that fails the ride is persisted too
+    if (accepted) ride.issueChallenge(now, this.rules.get().challengeIntervalSeconds, { id: this.entropy.hex(6), rnd: parseInt(this.entropy.hex(4), 16) / 0x1_0000_0000 });
     const saved = await this.rides.save(ride);
     const props = saved.snapshot();
     const demo = (): boolean => isDemoWallet(this.rules.get(), wallet);
@@ -40,6 +44,6 @@ export class HeartbeatRideHandler implements ICommandHandler<HeartbeatRideComman
       const after = progressRatio(props.driveSeconds, props.minSeconds, props.lastS, props.completeDist);
       for (const milestone of progressMilestones(before, after)) emitAnalytics(this.analytics, () => rideProgressed(props, demo(), milestone, now));
     }
-    return toRideDto(saved);
+    return toRideDto(saved, null, now);
   }
 }

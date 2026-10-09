@@ -21,4 +21,9 @@ export class SignInPrismaRepository extends SignInRepositoryPort {
   countSince(at: Date): Promise<number> {
     return this.prisma.signIn.count({ where: { at: { gte: at } } });
   }
+
+  async deleteBefore(cutoff: Date): Promise<number> {
+    const { count } = await this.prisma.signIn.deleteMany({ where: { at: { lt: cutoff } } });
+    return count;
+  }
 }

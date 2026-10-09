@@ -1,6 +1,7 @@
 import { GetAdminRideHandler } from '../../../../../src/application/use-cases/admin/get-admin-ride/get-admin-ride.handler.js';
 import { GetAdminRideQuery } from '../../../../../src/application/use-cases/admin/get-admin-ride/get-admin-ride.query.js';
 import { NotFoundError } from '../../../../../src/domain/shared/errors.js';
+import { RULES_VERSION } from '../../../../../src/domain/verdict/verdict-rules.js';
 import { judgedRide } from '../../../../support/admin-fixtures.js';
 import { unitContext } from '../../../../support/unit-context.js';
 
@@ -10,7 +11,7 @@ describe('GetAdminRideHandler', () => {
     const { ride } = await judgedRide(ctx, 'bob', { inputs: 'bot', seconds: 180 }, 180, 2400);
     const d = await new GetAdminRideHandler(ctx.rides, ctx.verdictRepo, ctx.adminQuery, ctx.payments).execute(new GetAdminRideQuery(ride.id));
     expect(d.ride).toMatchObject({ id: ride.id, wallet: 'bob', status: 'completed', distance: 2400, seed: ride.seed, verdict: 'flagged', overridden: false });
-    expect(d.verdict).toMatchObject({ status: 'flagged', override: null, rulesVersion: 1 });
+    expect(d.verdict).toMatchObject({ status: 'flagged', override: null, rulesVersion: RULES_VERSION });
     expect(d.verdict?.reasons.map((r) => r.code)).toContain('uniform-holds');
     expect((d.verdict?.scores as { human?: { presses: number } } | undefined)?.human?.presses).toBeGreaterThan(8);
     expect(d.batches.map((b) => b.seq)).toEqual([...Array(12).keys()]);

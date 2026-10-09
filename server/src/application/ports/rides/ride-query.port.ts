@@ -96,6 +96,13 @@ export interface RecentRideRow {
   verdict: string | null;
 }
 
+/** Which completed shifts a bulk re-judge takes: by their verdict ('unjudged' = none yet, 'all' = every one), completed since `since`, at most `limit`. */
+export interface RejudgeFilter {
+  verdict: 'unjudged' | 'verified' | 'flagged' | 'rejected' | 'all';
+  since: Date | null;
+  limit: number;
+}
+
 export interface LeaderboardRow {
   wallet: string;
   distance: number;
@@ -123,4 +130,6 @@ export abstract class RideQueryPort {
   abstract leaderboard(board: LeaderboardBoard, roundId: number | null, limit: number, verifiedOnly: boolean): Promise<LeaderboardRow[]>;
   /** The same ranking over the completed rides paid with one pool's tickets – what that pool's prizes are paid by (`verifiedOnly` as for the paid boards). */
   abstract poolRanking(poolId: number, limit: number, verifiedOnly: boolean): Promise<LeaderboardRow[]>;
+  /** Completed shifts for the bulk re-judge, oldest end first, with the status of their verdict (null = never judged). */
+  abstract forRejudge(filter: RejudgeFilter): Promise<{ id: string; verdict: string | null }[]>;
 }

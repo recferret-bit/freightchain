@@ -37,8 +37,8 @@
   <div class="pipe">
     <div class="step"><span class="n">1</span><span class="where">In your browser</span><h3>Record</h3><p>Every key press and release, and the truck's state 10 times a second, while an online ride is on the road.</p></div>
     <div class="step"><span class="n">2</span><span class="where">Every 15 s</span><h3>Seal</h3><p>The game packs the last 15 seconds into a batch, fingerprints it with SHA-256 and links it to the batch before.</p></div>
-    <div class="step"><span class="n">3</span><span class="where">On the server</span><h3>Store</h3><p>The server recomputes the fingerprint, checks the batch's shape and limits, and stores it. Stored batches never change.</p></div>
-    <div class="step"><span class="n">4</span><span class="where">When the shift completes</span><h3>Judge</h3><p>All batches are checked together: the chain, the physics, the distance, the coverage, the timing of your hands.</p></div>
+    <div class="step"><span class="n">3</span><span class="where">On the server</span><h3>Store</h3><p>The server recomputes the fingerprint, checks the batch's shape and limits, measures what the judge will need, and stores it. Stored batches never change.</p></div>
+    <div class="step"><span class="n">4</span><span class="where">When the shift completes</span><h3>Judge</h3><p>All batches are checked together: the chain, the physics, the distance, the coverage, the timing of your hands, and whether you answered the dispatch prompts.</p></div>
     <div class="step"><span class="n">5</span><span class="where">Result</span><h3>Rank</h3><p><span class="chip ok">verified</span> shifts rank. Flagged ones wait for a person. Rejected ones don't rank.</p></div>
   </div>
 </section>
@@ -117,6 +117,7 @@
         <li><b>Ends where the ride ended</b><span class="soft">The last recorded distance matches the distance the ride reported, within 30 m + 1 %, allowing for seconds whose final upload never arrived.</span><span class="c">recording-mismatch</span></li>
         <li><b>Covers the drive</b><span class="soft">Under 50 % of the driven time recorded rejects. Under 90 % only flags.</span><span class="c">recording-incomplete · recording-gaps (flag)</span></li>
         <li><b>Someone drove</b><span class="soft">A truck that moved more than 50 m needs key presses, and gas among them.</span><span class="c">no-inputs · no-throttle-input</span></li>
+        <li><b>Dispatch prompts answered</b><span class="soft">About every 4 minutes of driving a prompt appears on the windscreen – FLASH YOUR HEADLIGHTS · PRESS L – with a 20 s countdown. The recording must show that key. Ignore half or more of 3+ prompts and the shift rejects; one missed only flags.</span><span class="c">challenges-ignored · challenge-missed (flag)</span></li>
       </ul>
     </div>
     <div class="card">
@@ -125,6 +126,8 @@
         <li><b>Holds vary</b><span class="soft">People hold a key for different lengths each time. If one key's holds barely vary at all (spread under 8 %, over 6+ holds), that looks scripted.</span><span class="c">uniform-holds</span></li>
         <li><b>Rhythm isn't a loop</b><span class="soft">If the 3 most common gaps between presses (to the millisecond) make up more than 60 % of all gaps, a script is cycling fixed delays.</span><span class="c">repeated-timings</span></li>
         <li><b>Presses take time</b><span class="soft">If more than 30 % of presses are released within 10 ms, they were sent, not pressed.</span><span class="c">instant-presses</span></li>
+        <li><b>Prompts were read</b><span class="soft">If the prompts were answered under 80 ms after the server sent them (the median), something read the heartbeat and pressed the key – a person has to see the banner first.</span><span class="c">challenge-reflex</span></li>
+        <li><b>Fingerprint missing</b><span class="soft">If your browser's crypto failed and a batch left without its fingerprint, the server fingerprinted it on arrival – it is kept, and only flagged.</span><span class="c">unhashed-batch</span></li>
       </ul>
       <p class="soft" style="font-size:14px">Fair to real people: with fewer than 8 presses there is no opinion at all. Browsers that round their clock (Firefox privacy mode, Tor) are detected, and the two checks a coarse clock would break are skipped.</p>
     </div>
@@ -162,6 +165,9 @@
         <tr><td>Cut out the boring hours</td><td>A missing batch or a gap in the chain rejects. Recording under half of the driven time rejects. Under 90 % flags.</td></tr>
         <tr><td>Upload a made-up recording faster than real time</td><td>The server compares every upload with its own clock since the ride started. A ride can't hold more game time than wall time × 1.05 + 30 s, or more batches than one per 5 s + 10. The minimum shift time is also measured by the server, not by the game.</td></tr>
         <tr><td>Drive with a macro or a bot</td><td>Machine-perfect timing shows up in hold lengths, repeated rhythms and instant presses. The shift is flagged and can't rank until a person has looked at it.</td></tr>
+        <tr><td>Let a bot drive the real game<span class="c">nobody at the keyboard</span></td><td>The server asks for a key at times it chooses, through the heartbeat. A bot that doesn't read the windscreen never answers; ignoring most prompts rejects the shift.</td></tr>
+        <tr><td>Script the answers<span class="c">read the heartbeat, press the key</span></td><td>The answer arrives a few milliseconds after the prompt was issued – a person needs a quarter of a second to read it. Such shifts are flagged for review.</td></tr>
+        <tr><td>Send a fake recording without a fingerprint</td><td>The server fingerprints every batch itself; a missing client fingerprint is only a flag. A wrong one still rejects. Each ride may also hold only as many bytes as the time since its start allows.</td></tr>
         <tr><td>Sneak a batch in while the shift ends</td><td>Uploads and judging take the same per-player lock, so every stored batch is part of a verdict. A batch that arrives after the end triggers a new judgement.</td></tr>
         <tr><td>Flood the server</td><td>Batches are capped at 96 kB, 400 samples and 2000 key events, plus the per-ride limit above and the API rate limits.</td></tr>
         <tr><td>A rogue or hijacked admin account</td><td>See below: four locks, and every decision is signed by the admin's wallet and logged.</td></tr>
@@ -208,7 +214,7 @@
   </div>
   <ul class="limits">
     <li><b>The server doesn't replay your drive.</b><span>The game runs on your computer and its physics can't be re-run on the server. A careful bot playing the real game with human-like timing could pass the automatic checks. That is why flagged shifts go to a person, and why the checks keep being tightened.</span></li>
-    <li><b>The thresholds are first estimates.</b><span>Rules v1 has not been tuned on real rides yet. Until it is, the leaderboards ignore verdicts (shadow mode).</span></li>
+    <li><b>The thresholds are first estimates.</b><span>Rules v2 (the prompt rules included) have not been tuned on real rides yet. Until they are, the leaderboards ignore verdicts (shadow mode). After a change, old rides are judged again at the new rules from the command line.</span></li>
     <li><b>Verdicts decide ranking only.</b><span>An entry fee goes into the weekly pool whatever the outcome of the ride. Prize payouts are not built yet.</span></li>
     <li><b>A refused batch ends the recording.</b><span>If the server refuses a malformed batch, the game stops recording for that ride and the reason is logged, so an admin can see why the verdict came out as it did.</span></li>
   </ul>
@@ -216,8 +222,8 @@
 
 <footer>
   <span>Freight Chain · verified play</span>
-  <span>rules v1 · shadow mode</span>
-  <span>as of Oct 8, 2026</span>
+  <span>rules v2 · shadow mode</span>
+  <span>as of Oct 9, 2026</span>
   <span>see also: <a href="../replay-and-donations/index.html">Replays &amp; Donations</a> – how the same recording is watched</span>
 </footer>
 

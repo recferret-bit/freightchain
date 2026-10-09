@@ -116,6 +116,21 @@ describe('RideQueryPrismaRepository (PostgreSQL)', () => {
     expect(await query.recent('alice', 1)).toHaveLength(1);
   });
 
+  it('forRejudge: completed shifts by their verdict (or none), since a time, oldest end first, limited', async () => {
+    const a = await ride('alice', { metres: 140, outcome: 'shift', verdict: 'verified' });
+    const b = await ride('bob', { metres: 140, outcome: 'shift', start: 100, verdict: 'flagged' });
+    const c = await ride('carol', { metres: 140, outcome: 'shift', start: 200, verdict: null });
+    await ride('alice', { metres: 140, outcome: 'failed', start: 300, verdict: null });
+    await ride('bob', { metres: 50, outcome: 'running', start: 400 });
+    const ids = async (f: Parameters<typeof query.forRejudge>[0]) => (await query.forRejudge(f)).map((r) => [r.id, r.verdict]);
+    expect(await ids({ verdict: 'all', since: null, limit: 10 })).toEqual([[a.id, 'verified'], [b.id, 'flagged'], [c.id, null]]);
+    expect(await ids({ verdict: 'unjudged', since: null, limit: 10 })).toEqual([[c.id, null]]);
+    expect(await ids({ verdict: 'flagged', since: null, limit: 10 })).toEqual([[b.id, 'flagged']]);
+    expect(await ids({ verdict: 'rejected', since: null, limit: 10 })).toEqual([]);
+    expect(await ids({ verdict: 'all', since: at(150), limit: 10 })).toEqual([[c.id, null]]);
+    expect(await ids({ verdict: 'all', since: null, limit: 2 })).toEqual([[a.id, 'verified'], [b.id, 'flagged']]);
+  });
+
   it('leaderboard: completed only, total distance, ties → more rides → earlier first finish → wallet; boards separate paid / free / round', async () => {
     await ride('alice', { paid: true, metres: 500, outcome: 'shift', start: 10 });
     await ride('bob', { paid: true, metres: 300, outcome: 'shift', start: 0 });

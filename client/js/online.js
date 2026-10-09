@@ -3,6 +3,7 @@ import { st } from './state.js';
 import { API_BASE } from './hosts.js';
 import { startTelemetry, flushTelemetry, FLUSH_WAIT_MS } from './telemetry.js';
 import { setLoadout } from './cosmetics.js';
+import { showPrompt, resetPrompts } from './prompt.js';
 
 /* Online mode – OPT-IN: only when the page was opened as play.html?ride=<id> (made by the lobby). Without it nothing here runs and the game
    behaves exactly like the offline prototype (headless test, e2e, viewer and the file:// build all rely on that).
@@ -40,7 +41,8 @@ export async function beginOnline() {
   const started = await api(`rides/${online.ride.id}/start`, {});
   setLoadout(started.loadout);   // what the server stamped on the ride (what spectators and replays draw) – normally what the menu already wore
   startTelemetry(online.ride.id);   // inputs + 10 Hz samples, uploaded in hash-chained batches (the server's verdict reads them)
-  timer = setInterval(() => api(`rides/${online.ride.id}/heartbeat`, progress()).catch(() => { /* a lost beat is the server's call (timeout) */ }), 10_000);
+  resetPrompts();
+  timer = setInterval(() => api(`rides/${online.ride.id}/heartbeat`, progress()).then(r => showPrompt(r.challenge), () => { /* a lost beat is the server's call (timeout) */ }), 10_000);   // the response may carry a dispatch prompt (prompt.js): answer it with the key it names
 }
 
 /* The game tab closes (or reloads, or navigates away) mid-ride: the ride can never resume – a running ride is not re-opened – so END it now, as if the

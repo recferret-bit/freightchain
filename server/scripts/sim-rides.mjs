@@ -48,7 +48,11 @@ export async function simulate({ base = 'http://localhost:3000', drive = 2, aban
     d.prevHash = hash; d.samples = []; d.inputs = []; d.bt0 = d.t;
     await call('POST', `rides/${d.id}/batches`, { body: { ...body, hash }, ...d });
   };
-  const heartbeat = d => call('POST', `rides/${d.id}/heartbeat`, { body: { s: d.s, t: d.t, hull: 100, paused: d.role === 'pause', route: 'route66', night: false }, ...d });
+  const heartbeat = async d => {   // the response may carry a dispatch prompt (verified play): a fake driver answers it like a person, ~0.7 s later
+    const { j } = await call('POST', `rides/${d.id}/heartbeat`, { body: { s: d.s, t: d.t, hull: 100, paused: d.role === 'pause', route: 'route66', night: false }, ...d });
+    const c = j?.challenge;
+    if (c && !d.answered?.has(c.id)) { (d.answered ??= new Set()).add(c.id); const at = r(c.issuedMs + 500 + Math.random() * 600, 1); d.inputs.push([at, c.codes[0], 1], [r(at + 80 + Math.random() * 120, 1), c.codes[0], 0]); }
+  };
 
   let running = true, lastBeat = 0;
   const loop = (async () => {
@@ -62,7 +66,9 @@ export async function simulate({ base = 'http://localhost:3000', drive = 2, aban
         const v = d.role === 'pause' ? 0 : 20;
         if (d.role !== 'pause') { d.t += dt; d.s += v * dt; }
         d.samples.push(row(d.t, d.s, v));
-        if (tick % 7 === 0 && d.role !== 'pause') d.inputs.push([r(now - d.t0, 1), 'KeyW', tick % 14 === 0 ? 1 : 0]);
+        if (d.role !== 'pause' && now >= (d.nextKey ??= now + 500)) {   // gas in jittered holds and gaps, like a person (a metronome would be flagged 'uniform-holds')
+          d.inputs.push([r(now - d.t0, 1), 'KeyW', d.gasDown ? 0 : 1]); d.gasDown = !d.gasDown; d.nextKey = now + (d.gasDown ? 400 + Math.random() * 900 : 250 + Math.random() * 600);
+        }
         if (d.t - d.bt0 >= 15) await cut(d);
         if (d.role === 'complete' && d.t >= d.minSeconds + 1 && d.s >= d.completeDist) {
           await cut(d); await heartbeat(d);

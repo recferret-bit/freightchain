@@ -6,6 +6,7 @@ import { isPaidTierId, type PaidTierId } from '../domain/rides/ride-tier.js';
 /* Argument parsing of the admin commands – pure, so it is unit-tested without a database. A parse error is a string (printed with the help). */
 
 export interface TicketsGrantArgs { wallet: string; poolId: number; count: number; note: string | null }
+export interface VerdictRejudgeArgs { verdict: 'unjudged' | 'verified' | 'flagged' | 'rejected' | 'all'; since: Date | null; limit: number; dryRun: boolean }
 export interface PoolRegisterArgs { poolId: number; label: string | null }
 export interface PoolSeedArgs {
   id: number; tier: PaidTierId; status: 'open' | 'active'; priceLamports: number; minTickets: number; maxTickets: number; maxPerWallet: number;
@@ -132,4 +133,22 @@ export function parsePoolRegister(args: readonly string[]): PoolRegisterArgs | s
   if (typeof poolId === 'string' || poolId > 0xffff_ffff) return 'POOL_ID must be a whole number from 0 to 4294967295';
   const label = parsed.values.label?.trim() || null;
   return { poolId, label };
+}
+
+/** `verdict:rejudge [--status unjudged|verified|flagged|rejected|all] [--since DATE] [--limit N] [--dry-run]` (default: flagged + unjudged is NOT a thing – one status, default `all`) */
+export function parseVerdictRejudge(args: readonly string[]): VerdictRejudgeArgs | string {
+  let parsed;
+  try {
+    parsed = parseArgs({ args: [...args], options: { status: { type: 'string' }, since: { type: 'string' }, limit: { type: 'string' }, 'dry-run': { type: 'boolean' } } });
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+  const v = parsed.values;
+  const verdict = v.status ?? 'all';
+  if (!['unjudged', 'verified', 'flagged', 'rejected', 'all'].includes(verdict)) return '--status must be unjudged, verified, flagged, rejected or all';
+  const since = v.since === undefined ? null : dateArg('since', v.since);
+  if (typeof since === 'string') return since;
+  const limit = int('limit', v.limit ?? '1000', 1);
+  if (typeof limit === 'string') return limit;
+  return { verdict: verdict as VerdictRejudgeArgs['verdict'], since, limit, dryRun: v['dry-run'] === true };
 }

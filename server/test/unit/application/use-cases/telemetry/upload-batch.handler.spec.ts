@@ -77,4 +77,17 @@ describe('UploadBatchHandler', () => {
     await expect(up('intruder', ride.id, b0!)).rejects.toBeInstanceOf(NotFoundError);
     await expect(up('w', ride.id, { ...b0!, t1: -1 })).rejects.toBeInstanceOf(BadRequestError);
   });
+
+  it('a ride cannot hold more recording BYTES than the time since its start allows (a hostile client streaming junk)', async () => {
+    const { ctx, up } = setup();
+    const ride = await ctx.freeRide('w', true);
+    ctx.clock.advance(1);
+    const fat = (seq: number): Parameters<typeof up>[2] => ({ seq, prevHash: seq === 0 ? ride.id : `unhashed-${seq - 1}`, t0: 0, t1: 1, samples: [], inputs: Array.from({ length: 2000 }, (_, i) => [i, 'KeyW', (i % 2) as 0 | 1]), hash: null });
+    let refused: unknown = null, stored = 0;
+    for (let seq = 0; seq < 20 && !refused; seq++) await up('w', ride.id, fat(seq)).then(() => stored++, (e: unknown) => { refused = e; });
+    expect(refused).toBeInstanceOf(BadRequestError);
+    expect((refused as Error).message).toMatch(/larger than the time since the start allows/);
+    expect(stored).toBeGreaterThan(3);
+    expect(await ctx.batches.totalBytes(ride.id)).toBeLessThanOrEqual(ride.recordingAllowance(ctx.now()).maxBytes);
+  });
 });

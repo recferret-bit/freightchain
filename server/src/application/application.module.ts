@@ -33,6 +33,8 @@ import { ReconcilePaymentHandler } from './use-cases/rides/reconcile-payment/rec
 import { StartRideHandler } from './use-cases/rides/start-ride/start-ride.handler.js';
 import { UploadBatchHandler } from './use-cases/telemetry/upload-batch/upload-batch.handler.js';
 import { SweepTelemetryHandler } from './use-cases/telemetry/sweep-telemetry/sweep-telemetry.handler.js';
+import { SweepSignInsHandler } from './use-cases/auth/sweep-sign-ins/sweep-sign-ins.handler.js';
+import { RejudgeRidesHandler } from './use-cases/admin/rejudge-rides/rejudge-rides.handler.js';
 import { PostRideEventHandler } from './use-cases/live/post-ride-event/post-ride-event.handler.js';
 import { AckEffectHandler } from './use-cases/live/ack-effect/ack-effect.handler.js';
 import { GetInboxHandler } from './use-cases/live/get-inbox/get-inbox.handler.js';
@@ -101,7 +103,7 @@ const handlers: Provider[] = [
   RequestChallengeHandler, VerifySignInHandler, GetMeHandler, LogoutHandler,
   CreateRideHandler, GetRideHandler, GetPendingRideHandler, StartRideHandler, HeartbeatRideHandler, EndRideHandler,
   GetPaymentInstructionsHandler, ConfirmPaymentHandler, ReconcilePaymentHandler,
-  UploadBatchHandler, SweepTelemetryHandler,
+  UploadBatchHandler, SweepTelemetryHandler, SweepSignInsHandler, RejudgeRidesHandler,
   PostRideEventHandler, AckEffectHandler, GetInboxHandler, WatchRideHandler, MuteWalletHandler, CreateDonationOrderHandler, ConfirmDonationHandler, SweepStaleRidesHandler, GetReplaysHandler,
   GetAdminOverviewHandler, ListAdminRidesHandler, GetAdminRideHandler, ListSignInsHandler, ListAdminActionsHandler, GetAdminLogsHandler, OverrideVerdictHandler, RejudgeRideHandler, RequestAdminChallengeHandler, VerifyAdminSignInHandler, RequestActionChallengeHandler,
   GetTiersHandler, GetPoolHandler, GetLeaderboardHandler,

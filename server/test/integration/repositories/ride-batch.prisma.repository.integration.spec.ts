@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { RideBatchPrismaRepository } from '../../../src/infrastructure/prisma/repositories/ride-batch.prisma.repository.js';
 import { RidePrismaRepository } from '../../../src/infrastructure/prisma/repositories/ride.prisma.repository.js';
 import { RideBatch } from '../../../src/domain/telemetry/ride-batch.entity.js';
@@ -48,6 +49,21 @@ describe('RideBatchPrismaRepository (PostgreSQL)', () => {
     expect(await repo.deleteForRidesEndedBefore(at(100))).toBe(4);
     const left = async (id: string) => (await repo.listByRide(id)).length;
     expect([await left(old), await left(oldUnjudged), await left(oldFlagged), await left(recent), await left(running), await left(oldCompletedUnjudged)]).toEqual([0, 0, 2, 2, 2, 2]);
+  });
+
+  it('listFactsByRide reads the chain columns + the summary without the payload; a row stored WITHOUT a summary (before it existed) is summarised from its payload; totalBytes sums the ride', async () => {
+    const ride = await started();
+    const bodies = recording(ride.id, { seconds: 30, distance: 420 });
+    const accepted = bodies.map((b) => RideBatch.accept(ride.id, b, hashBatch(b), at(b.seq)));
+    for (const b of accepted) await repo.insert(b);
+    await prisma.rideBatch.update({ where: { rideId_seq: { rideId: ride.id, seq: 1 } }, data: { summary: Prisma.DbNull } }); // an old row
+    const facts = await repo.listFactsByRide(ride.id);
+    expect(facts.map((f) => f.seq)).toEqual([0, 1]);
+    expect(facts[0]).toEqual({ seq: 0, prevHash: ride.id, hash: bodies[0]!.hash, hashOk: true, t0: 0, t1: 15, summary: accepted[0]!.summary });
+    expect(facts[1]!.summary).toEqual(accepted[1]!.summary); // measured again from the payload, the same numbers
+    expect(facts[1]!.summary.inputs.length).toBeGreaterThan(0);
+    expect(await repo.totalBytes(ride.id)).toBe(accepted.reduce((n, b) => n + b.snapshot().bytes, 0));
+    expect(await repo.totalBytes('00000000-0000-4000-8000-ffffffffffff')).toBe(0);
   });
 
   it('listFrom pages the replay by seq; extent is the last seq and the latest game time without inflating', async () => {

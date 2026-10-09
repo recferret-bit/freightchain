@@ -5,6 +5,9 @@ import { RideVerdict } from '../../../src/domain/verdict/ride-verdict.entity.js'
 import { HOLD_CV_MIN, REPEAT_SHARE_MAX, RULES_VERSION } from '../../../src/domain/verdict/verdict-rules.js';
 import { VerdictStatus } from '../../../src/domain/verdict/verdict.dto.js';
 import { hashBatch, recording, type RecordingOptions } from '../../support/recording.js';
+import { checkChallenges } from '../../../src/domain/verdict/challenge-checks.js';
+import { expectedLink } from '../../../src/domain/verdict/recording-checks.js';
+import type { RideChallenge } from '../../../src/domain/rides/ride-challenge.js';
 
 /* The verdict validates the recording and measures the input timing; it never simulates the truck. */
 const T0 = new Date(Date.UTC(2036, 9, 8, 12, 0, 0));
@@ -57,6 +60,19 @@ describe('RideVerdict.judge', () => {
       const other = recording('ride-2', { seconds: 30, distance: 400 });
       expect(codes(RideVerdict.judge(completedRide(30, 400), stored(other), T0))).toContain('chain-broken');
     });
+    it('a batch the client could not hash (hash null, the next one chained to unhashed-<seq>) only FLAGS – the server hashed it on arrival', () => {
+      const unhashed = (b: BatchBody[]) => {
+        const out = b.map((x) => ({ ...x }));
+        out[1] = { ...out[1]!, hash: null };
+        for (let i = 2; i < out.length; i++) { out[i] = { ...out[i]!, prevHash: i === 2 ? 'unhashed-1' : (out[i - 1]!.hash as string) }; out[i]!.hash = hashBatch(out[i]!); }
+        return out;
+      };
+      const v = RideVerdict.judge(completedRide(60, 800), unhashed(recording('ride-1', { seconds: 60, distance: 800 })).map((b) => RideBatch.accept('ride-1', b, hashBatch(b), T0)), T0);
+      expect(v.status).toBe(VerdictStatus.Flagged);
+      expect(v.reasons).toEqual([{ code: 'unhashed-batch', detail: 'batch 1 arrived without the client\'s hash', severity: 'flag' }]);
+      expect(v.snapshot().scores.recording.unhashed).toBe(1);
+      expect(expectedLink({ seq: 4, prevHash: '', hash: null, hashOk: false, t0: 0, t1: 1, summary: { v: 1, samples: 0, first: null, last: null, maxSpeed: 0, worstStep: null, fault: null, inputs: [] } })).toBe('unhashed-4');
+    });
   });
 
   describe('validation of the recorded values (rejects)', () => {
@@ -68,6 +84,7 @@ describe('RideVerdict.judge', () => {
     });
     it('a speed above the governor', () => expect(codes(judge(60, 800, {}, patch(1, 10, 4, 31)))).toContain('over-governor'));
     it('a jump in distance the truck cannot make between two samples', () => expect(codes(judge(60, 800, {}, patch(1, 10, 1, 9000)))).toContain('teleport'));
+    it('a jump ACROSS a batch boundary (last sample of one, first of the next) is a teleport too', () => expect(codes(judge(60, 800, {}, patch(2, 0, 1, 9000)))).toContain('teleport'));
     it('samples out of time order', () => expect(codes(judge(60, 800, {}, patch(1, 10, 0, 3)))).toContain('sample-out-of-order'));
     it('a short sample row', () => {
       const v = judge(60, 800, {}, (b) => b.map((x) => (x.seq === 0 ? { ...x, samples: [[0, 0]], hash: hashBatch({ ...x, samples: [[0, 0]] }) } : x)));
@@ -162,5 +179,56 @@ describe('RideVerdict.judge', () => {
     const v = judge(60, 800);
     expect(RideVerdict.restore(v.snapshot()).snapshot()).toEqual(v.snapshot());
     expect(RULES).toBeDefined();
+  });
+});
+
+describe('dispatch prompts (checkChallenges)', () => {
+  const prompt = (id: string, issuedMs: number, action: RideChallenge['action'] = 'headlights'): RideChallenge => ({ id, action, issuedMs, deadlineMs: issuedMs + 20_000 });
+  const press = (t: number, code: string): InputEvent[] => [[t, code, 1], [t + 120, code, 0]];
+  const END = 300_000;
+
+  it('answered within the window by any of the prompt\'s codes: no reason, the reactions scored', () => {
+    const r = checkChallenges([prompt('a', 10_000), prompt('b', 60_000, 'wipers'), prompt('c', 100_000, 'cab')], [...press(10_600, 'KeyL'), ...press(61_000, 'btn:wiper'), ...press(119_000, 'KeyC')], END);
+    expect(r.reasons).toEqual([]);
+    expect(r.scores).toEqual({ issued: 3, answered: 3, missed: 0, tooFast: 0, medianReactionMs: 1000 });
+  });
+
+  it('a press before the prompt, after its deadline, or of another key does not count – one miss flags', () => {
+    const r = checkChallenges([prompt('a', 10_000), prompt('b', 60_000)], [...press(9_500, 'KeyL'), ...press(30_100, 'KeyL'), ...press(61_000, 'KeyR'), ...press(62_000, 'KeyL')], END);
+    expect(r.reasons).toEqual([{ code: 'challenge-missed', detail: '1 of 2 dispatch prompts went unanswered', severity: 'flag' }]);
+    expect(r.scores).toMatchObject({ issued: 2, answered: 1, missed: 1 });
+  });
+
+  it('half or more of 3+ prompts ignored REJECTS (challenges-ignored); fewer only flag', () => {
+    const three = [prompt('a', 10_000), prompt('b', 60_000), prompt('c', 100_000)];
+    expect(checkChallenges(three, [], END).reasons).toEqual([{ code: 'challenges-ignored', detail: '3 of 3 dispatch prompts went unanswered', severity: 'reject' }]);
+    expect(checkChallenges(three, press(10_500, 'KeyL'), END).reasons[0]).toMatchObject({ code: 'challenges-ignored', severity: 'reject' });
+    expect(checkChallenges(three, [...press(10_500, 'KeyL'), ...press(60_500, 'KeyL')], END).reasons[0]).toMatchObject({ code: 'challenge-missed', severity: 'flag' });
+    expect(checkChallenges([prompt('a', 10_000), prompt('b', 60_000)], [], END).reasons[0]).toMatchObject({ code: 'challenge-missed', severity: 'flag' }); // under 3 issued: never a reject
+  });
+
+  it('answered faster than a person can read (median under 80 ms, 2+ answers) flags challenge-reflex; one fast answer alone does not', () => {
+    const two = [prompt('a', 10_000), prompt('b', 60_000)];
+    const r = checkChallenges(two, [...press(10_010, 'KeyL'), ...press(60_020, 'KeyL')], END);
+    expect(r.reasons).toEqual([{ code: 'challenge-reflex', detail: 'prompts answered 15 ms after they were issued – faster than a person can read them', severity: 'flag' }]);
+    expect(r.scores).toMatchObject({ tooFast: 2, medianReactionMs: 15 });
+    expect(checkChallenges(two, [...press(10_010, 'KeyL'), ...press(60_700, 'KeyL')], END).reasons).toEqual([]); // median 355 ms
+    expect(checkChallenges([prompt('a', 10_000)], press(10_010, 'KeyL'), END).reasons).toEqual([]);
+  });
+
+  it('a prompt whose window was still open when the ride ended is not judged; no prompts = nothing to say', () => {
+    expect(checkChallenges([prompt('a', 10_000), prompt('late', 290_000)], press(10_500, 'KeyL'), END).scores).toMatchObject({ issued: 1, answered: 1, missed: 0 });
+    expect(checkChallenges([], [], END)).toEqual({ reasons: [], scores: { issued: 0, answered: 0, missed: 0, tooFast: 0, medianReactionMs: null } });
+  });
+
+  it('RideVerdict.judge reads the prompts off the ride: ignored prompts reject an otherwise clean recording', () => {
+    const ride = completedRide(120, 1600);
+    const withPrompts = Ride.restore({ ...ride.snapshot(), challenges: [prompt('a', 20_000), prompt('b', 50_000), prompt('c', 80_000)] });
+    const v = RideVerdict.judge(withPrompts, stored(recording('ride-1', { seconds: 120, distance: 1600 })), at(121));
+    expect(v.status).toBe(VerdictStatus.Rejected);
+    expect(codes(v)).toEqual(['challenges-ignored']);
+    expect(v.snapshot().scores.challenges).toEqual({ issued: 3, answered: 0, missed: 3, tooFast: 0, medianReactionMs: null });
+    const answered = RideVerdict.judge(withPrompts, stored(recording('ride-1', { seconds: 120, distance: 1600, answers: [{ atMs: 20_700, code: 'KeyL' }, { atMs: 50_900, code: 'btn:head' }, { atMs: 81_200, code: 'KeyL' }] })), at(121));
+    expect(answered.status).toBe(VerdictStatus.Verified);
   });
 });

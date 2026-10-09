@@ -18,6 +18,14 @@ describe('SignInPrismaRepository (PostgreSQL)', () => {
     expect(await repo.countSince(at(30))).toBe(2);
   });
 
+  it('deleteBefore removes the rows older than the cutoff (retention of IP addresses) and returns how many', async () => {
+    await repo.insert({ wallet: 'alice', at: T0, ip: '1.1.1.1', userAgent: 'old' });
+    await repo.insert({ wallet: 'bob', at: at(100), ip: '2.2.2.2', userAgent: 'kept' });
+    expect(await repo.deleteBefore(at(50))).toBe(1);
+    expect((await repo.recent(10)).map((s) => s.userAgent)).toEqual(['kept']);
+    expect(await repo.deleteBefore(at(50))).toBe(0);
+  });
+
   it('a player\'s sign-ins go with the player (cascade)', async () => {
     await repo.insert({ wallet: 'bob', at: T0, ip: null, userAgent: null });
     await prisma.player.delete({ where: { wallet: 'bob' } });

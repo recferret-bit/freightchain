@@ -1,4 +1,4 @@
-import { parsePoolRegister, parsePoolSeed, parsePromoCreate, parseTicketsGrant } from '../../../src/cli/admin-args.js';
+import { parsePoolRegister, parsePoolSeed, parsePromoCreate, parseTicketsGrant, parseVerdictRejudge } from '../../../src/cli/admin-args.js';
 
 describe('admin CLI arguments', () => {
   it('promo:create – tickets: defaults, every option, UTC-midnight dates', () => {
@@ -59,5 +59,14 @@ describe('admin CLI arguments', () => {
     expect(parsePoolRegister(['1', '2'])).toBe('give exactly one POOL_ID');
     for (const bad of ['x', '1.5', String(2 ** 32)]) expect(parsePoolRegister([bad]), bad).toBe('POOL_ID must be a whole number from 0 to 4294967295');
     expect(parsePoolRegister(['1', '--nope'])).toMatch(/Unknown option/);
+  });
+
+  it('verdict:rejudge [--status …] [--since DATE] [--limit N] [--dry-run]', () => {
+    expect(parseVerdictRejudge([])).toEqual({ verdict: 'all', since: null, limit: 1000, dryRun: false });
+    expect(parseVerdictRejudge(['--status', 'flagged', '--since', '2026-10-01', '--limit', '50', '--dry-run'])).toEqual({ verdict: 'flagged', since: new Date(Date.UTC(2026, 9, 1)), limit: 50, dryRun: true });
+    expect(parseVerdictRejudge(['--status', 'maybe'])).toBe('--status must be unjudged, verified, flagged, rejected or all');
+    expect(parseVerdictRejudge(['--since', 'yesterday'])).toMatch(/--since must be a date/);
+    expect(parseVerdictRejudge(['--limit', '0'])).toBe('--limit must be a whole number ≥ 1');
+    expect(parseVerdictRejudge(['--bogus'])).toMatch(/Unknown option/);
   });
 });

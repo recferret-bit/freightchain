@@ -11,7 +11,7 @@ describe('HeartbeatRideHandler', () => {
   const setup = () => {
     const ctx = unitContext();
     const analytics = new RecordingAnalytics();
-    const handler = new HeartbeatRideHandler(ctx.lookup, ctx.rides, ctx.rules, ctx.clock, analytics);
+    const handler = new HeartbeatRideHandler(ctx.lookup, ctx.rides, ctx.rules, ctx.clock, analytics, ctx.entropy);
     return { ctx, analytics, beat: (id: string, r: Partial<RideReport>) => handler.execute(new HeartbeatRideCommand('w', id, report(r))) };
   };
 
@@ -54,5 +54,21 @@ describe('HeartbeatRideHandler', () => {
   it('only a running ride takes heartbeats', async () => {
     const { ctx, beat } = setup();
     await expect(beat((await ctx.freeRide('w')).id, { s: 1 })).rejects.toThrow(new ConflictError('ride is created'));
+  });
+
+  it('issues a dispatch prompt when one is due and answers with it (and with the open one again until its window closes)', async () => {
+    const { ctx, beat } = setup();   // the 10 s free shift: interval 2.5 s, the first due at 1.25 s (SequenceEntropy draws ≈ 0)
+    const ride = await ctx.freeRide('w', true);
+    ctx.clock.advance(2);
+    expect((await beat(ride.id, { s: 20, t: 2 })).challenge).toBeNull(); // scheduled on the first beat
+    ctx.clock.advance(2);
+    const c = (await beat(ride.id, { s: 40, t: 4 })).challenge;
+    expect(c).toMatchObject({ action: 'headlights', label: 'FLASH YOUR HEADLIGHTS', key: 'L', codes: ['KeyL', 'btn:head'], issuedMs: 4000, deadlineMs: 24_000 });
+    expect((await ctx.reload(ride.id)).challenges).toEqual([{ id: c!.id, action: 'headlights', issuedMs: 4000, deadlineMs: 24_000 }]);
+    ctx.clock.advance(0.5);
+    expect((await beat(ride.id, { s: 45, t: 4.5 })).challenge?.id).toBe(c!.id); // too soon to count, still carries the open prompt
+    ctx.clock.advance(25);
+    const later = await beat(ride.id, { s: 400, t: 29 });
+    expect(later.challenge && later.challenge.id !== c!.id).toBe(true); // the next one is due by now; the first has closed
   });
 });
