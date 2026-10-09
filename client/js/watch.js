@@ -16,7 +16,7 @@ import { EFFECT_INFO, advanceCursor } from './live-effects.js';
 import { visitorId, leaveOnClose } from '../site/presence.js';
 import { VEHICLES, buildVehicle, removeVehicle } from './world/vehicles.js';
 import { TRAFFIC_TYPES } from './sim/traffic.js';
-import { passedMask, lightInputs, inputLights } from './input-bits.js';
+import { INPUT_COL, passedMask, lightInputs, inputLights } from './input-bits.js';
 
 /* Live streams, the SPECTATOR's side: play.html?watch=<rideId>. OPT-IN like online.js – without ?watch nothing here runs.
    No video and no WebSockets: the page polls GET /api/watch/:id and REPLAYS the ride's verified-play recording (10 Hz samples, uploaded every ~15 s) on its
@@ -87,6 +87,7 @@ function addBatches(list) {
   if (!pruned && fresh[0].seq === watch.rowsSeq + 1 && fresh.every((b, i) => b.seq === fresh[0].seq + i)) for (const b of fresh) { watch.rows.push(...b.samples.filter(usable)); watch.tframes.push(...(b.traffic ?? []).filter(usable)); }
   else { const all = [...watch.batches.values()].sort((a, b) => a.seq - b.seq); watch.rows = all.flatMap(b => b.samples).filter(usable); watch.tframes = all.flatMap(b => b.traffic ?? []).filter(usable); }
   watch.rowsSeq = Math.max(...watch.batches.keys());
+  inputLights.on = (watch.rows.at(-1)?.length ?? 0) > INPUT_COL;   // a recording from before the input column: no input display at all
 }
 /** a feed event, new or seen again with its stamp (also the panel's own posts – it shows them at once) */
 export function addEvent(e) {
@@ -105,7 +106,7 @@ function placeObstacle(e) {
 const replaceObstacles = () => { for (const e of watch.events.values()) { e.onRoad = false; placeObstacle(e); } };
 export function startWatch() {
   replaceObstacles();
-  watch.started = true; watch.jumped = true; inputLights.on = true;
+  watch.started = true; watch.jumped = true;
   watch.wt = watch.follow ? liveTarget() : (watch.rows[0]?.[0] ?? 0); watch.seeking = watch.follow;   // joining a live ride: hold until the live edge is loaded
   schedule(0);
 }
