@@ -170,7 +170,7 @@ function legacyCard(t) {   // a paid tier with no pool registered: pay per ride 
     el('span', { class: 'pr' }, `$${t.usd}`, el('small', {}, t.lamports ? ` · ${sol(t.lamports)}` : ' · price unavailable')), el('span', { class: 'sub' }, i.shift),
     el('span', { class: 'sub more' }, 'Price locked 10 min after you order. ', el('b', {}, 'Non-refundable'), ': goes to the weekly round (50% grand · 20% top 20 · 20% next week · 10% fees).', i.scale > 1 ? ` DEMO ×${i.scale}: shifts shortened for demos.` : ''),
     off ? el('span', { class: 'tag' }, off) : '',
-    el('button', { class: 'go', disabled: !!off || !!S.busy, onclick: () => startLegacy(t.id) }, S.busy === t.id ? 'WORKING…' : `PAY $${t.usd}${t.lamports ? ` · ${sol(t.lamports)}` : ''} & START`),
+    el('button', { class: 'go', disabled: !!off || !!S.busy, onclick: () => startLegacy(t.id) }, S.busy === t.id ? 'WORKING…' : [`PAY $${t.usd}${t.lamports ? ` · ${sol(t.lamports)}` : ''}`, el('small', { class: 'go-sub' }, 'LET’S RIDE →')]),
     el('p', { class: 'msg dim', id: `msg-${t.id}` }));
 }
 async function paintRefunds() {   // failed pools no card shows any more (a card shows its own pool's refund)

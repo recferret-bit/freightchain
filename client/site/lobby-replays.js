@@ -11,7 +11,7 @@ const R = { who: 'all', status: '', rows: [], next: null, loading: false, error:
 const ago = ms => { const s = Math.max(0, Math.round(ms / 1000)); return s < 90 ? `${s} s ago` : s < 5400 ? `${Math.round(s / 60)} min ago` : s < 129_600 ? `${Math.round(s / 3600)} h ago` : `${Math.round(s / 86_400)} d ago`; };
 
 export function renderReplays(view, ctx) {
-  const filter = (label, key, value) => el('button', { type: 'button', class: `alt f${R[key] === value ? ' on' : ''}`, 'aria-pressed': R[key] === value, onclick: () => { R[key] = value; load(ctx, true); renderReplays(view, ctx); } }, label);
+  const filter = (label, key, value) => el('button', { type: 'button', class: `alt f${R[key] === value ? ' on' : ''}`, 'aria-pressed': R[key] === value, onclick: () => { if (R[key] === value) return; R[key] = value; syncFilters(view); load(ctx, true); } }, label);
   view.replaceChildren(
     el('h2', {}, 'REPLAYS'),
     el('div', { class: 'filters', role: 'group', 'aria-label': 'filter the replays' },
@@ -24,16 +24,21 @@ export function renderReplays(view, ctx) {
   if (!R.rows.length && !R.loading) load(ctx, true);
 }
 
+// a filter click flips the buttons in place – the tab is not rebuilt and the rows stay until the new ones arrive (no flash)
+const FILTERS = [['who', 'all'], ['who', 'mine'], null, ['status', ''], ['status', 'completed'], ['status', 'abandoned'], ['status', 'failed']].filter(Boolean);
+function syncFilters(view) {
+  view.querySelectorAll('.filters button').forEach((b, i) => { const [k, v] = FILTERS[i]; const on = R[k] === v; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
+}
+
 async function load(ctx, fresh) {
   if (R.loading && !fresh) return;   // "load more" twice: once is enough; a filter change always wins over what is in flight
   const req = ++R.req;
-  R.loading = true; R.error = '';
-  if (fresh) { R.rows = []; R.next = null; }
+  R.loading = true; R.error = ''; paint(ctx);
   const q = new URLSearchParams({ limit: '20' });
   if (!fresh && R.next) q.set('before', R.next);
   if (R.who === 'mine' && ctx.me?.wallet) q.set('wallet', ctx.me.wallet);
   if (R.status) q.set('status', R.status);
-  try { const j = await api(`replays?${q}`, undefined, { report: false }); if (req !== R.req) return; R.rows.push(...j.rows); R.next = j.next; }
+  try { const j = await api(`replays?${q}`, undefined, { report: false }); if (req !== R.req) return; if (fresh) R.rows = []; R.rows.push(...j.rows); R.next = j.next; }
   catch (e) { if (req !== R.req) return; R.error = e.message; }
   R.loading = false;
   paint(ctx);
@@ -42,6 +47,7 @@ async function load(ctx, fresh) {
 function paint(ctx) {
   const box = document.getElementById('replays'); if (!box) return;
   const more = document.getElementById('replays-more');
+  box.style.opacity = R.loading && R.rows.length ? '.55' : '';   // the old rows stay (dimmed) while a filter's answer is on its way
   if (more) { more.hidden = !R.next; more.disabled = R.loading; }
   if (R.error) { box.replaceChildren(el('div', { class: 'card empty' }, `Could not load the replays: ${R.error}`)); return; }
   if (!R.rows.length) { box.replaceChildren(el('div', { class: 'card empty' }, R.loading ? 'Loading…' : R.who === 'mine' ? 'You have no finished rides yet.' : 'No finished rides yet.')); return; }

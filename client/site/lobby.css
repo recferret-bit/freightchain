@@ -60,6 +60,7 @@ h2{margin:22px 0 10px;font-size:13px;letter-spacing:2px;color:var(--amber);font-
 .tier .sub{font-size:12px;color:var(--dim);overflow-wrap:anywhere}.tier .sub b{color:var(--text);font-weight:normal}
 .tier .tag{font-size:11px;color:var(--bad)}
 .tier .go{margin-top:8px;width:100%}
+.tier .go .go-sub{display:block;margin-top:2px;font-size:.72em;letter-spacing:.12em;opacity:.7}
 .tier .go.refund{background:var(--blue);border-color:var(--blue)}
 .tier .mine{font-size:13px;margin-top:4px}.tier .mine b{color:var(--amber)}
 .tier .fee{font-size:11px}
