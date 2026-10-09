@@ -86,7 +86,7 @@ test('hero video is off the critical path: no src, no autoplay, preload none, lo
   assert.match(tag, /data-src="\/media\/hero-preview\.mp4"/); assert.match(tag, /preload="none"/); assert.doesNotMatch(tag, /\ssrc=|autoplay|poster=/);
   assert.match(main, /requestIdleCallback/); assert.match(main, /addEventListener\('load'/); assert.match(main, /saveData/);
   assert.equal((main.match(/heroVideo\.src = /g) ?? []).length, 1, 'the src is assigned in exactly one place (loadHeroVideo)');
-  assert.match(html.match(/<video id="demo-video"[^>]*>/)[0], /preload="none"/);
+  assert.match(html, /<div id="demo-frame">/); assert.doesNotMatch(html, /<iframe/, 'the YouTube iframe is created on click, never in the markup');
 });
 
 test('sign-in: redirect + session UI go through SITE_BASE, the wallet chip exists, errors are shown not thrown', () => {

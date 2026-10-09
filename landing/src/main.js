@@ -11,7 +11,7 @@ import { escrowExplainer, explorerUrl, shortAddr, statusChip, progressText, dead
 reportWebVitals('landing');   // before the first track(), so the leave flush includes the final metrics
 
 /* ───── things to fill in ───── */
-const DEMO_VIDEO = null;          // e.g. '/media/demo.mp4' – the ≤ 3 min product demo; null = the dialog explains and links to offline play
+const DEMO_VIDEO = 'cFyQ9XlN5nQ';  // YouTube id of the product demo (the channel's video); null = the dialog explains and links to offline play
 const SOCIALS = { x: 'https://x.com/FreightChainSol', youtube: 'https://www.youtube.com/@FreightChainGame', discord: null, telegram: null };   // URLs; null hides the button (Q11 in docs/hackathon-plan-v2.md; files go in landing/public/media/; the hero loop is `data-src` on #hero-video in index.html)
 
 const $ = id => document.getElementById(id);
@@ -173,20 +173,21 @@ if (document.readyState === 'complete') whenIdle(loadHeroVideo, { timeout: 4000 
 
 /* ───── demo dialog ───── */
 (() => {
-  const dlg = $('demo'), dv = $('demo-video');
+  const dlg = $('demo'), box = $('demo-frame');
   $('demo-btn').onclick = () => {
     track('demo_dialog_opened', { has_video: DEMO_VIDEO != null });
-    if (DEMO_VIDEO) { dv.src = DEMO_VIDEO; $('demo-note').textContent = 'Demo clock ×60 – a paid shift is shortened for the demo wallet; the speed bound is not.'; }
-    else {
-      dv.removeAttribute('src');
+    if (DEMO_VIDEO) {   // the iframe exists only while the dialog is open: nothing loads from YouTube until the click
+      box.replaceChildren(el('iframe', { src: `https://www.youtube-nocookie.com/embed/${DEMO_VIDEO}?autoplay=1&rel=0`, title: 'Freight Chain demo', allow: 'autoplay; encrypted-media; picture-in-picture; fullscreen', allowfullscreen: '', referrerpolicy: 'strict-origin-when-cross-origin' }));
+      $('demo-note').textContent = 'Devnet demo – watch it on YouTube.';
+    } else {
       const practice = el('a', { href: `${GAME_BASE}/play.html` }, 'Try the game offline');
       practice.addEventListener('click', () => { track('offline_practice_clicked'); flushSoon(); });
       $('demo-note').replaceChildren('The demo video is not here yet. ', practice, ' – no wallet, no server, same truck.');
     }
-    dlg.showModal(); if (DEMO_VIDEO) dv.play().catch(() => {});
+    dlg.showModal();
   };
-  const close = () => { dv.pause(); dlg.close(); };
-  $('demo-x').onclick = close; dlg.onclick = e => { if (e.target === dlg) close(); };
+  const close = () => { box.replaceChildren(); dlg.close(); };
+  $('demo-x').onclick = close; dlg.onclick = e => { if (e.target === dlg) close(); }; dlg.addEventListener('cancel', () => box.replaceChildren());
 })();
 
 /* ───── links to the game (static markup says /play.html; on split hosts that lives on ride.<apex>) ───── */
