@@ -29,8 +29,10 @@ describe('the server\'s road = the game\'s road (drift)', () => {
     expect(Object.keys(game.patterns.PATTERNS)).toEqual(Object.keys(R.PATTERNS)); // the generator walks them in this order
     for (const [id, p] of Object.entries(R.PATTERNS)) {
       const g = game.patterns.PATTERNS[id];
-      expect({ lanes: g.lanes, seg: g.seg, len: g.len, bends: g.bends, junction: g.junction }, id).toEqual(p);
+      expect({ lanes: g.lanes, seg: g.seg, len: g.len, bends: g.bends, junction: g.junction, fork: g.fork }, id).toEqual(p);
     }
+    const F = game.patterns.FORK;
+    expect({ len: F.len, commit: F.commit, corridor: F.corridor }).toEqual(R.FORK);
     expect(game.patterns.DEFAULT_WEIGHTS).toEqual(R.DEFAULT_WEIGHTS);
     for (const [id, t] of Object.entries(R.HOLE_TYPES)) {
       const g = game.obstacles.HOLES[id];
@@ -60,6 +62,7 @@ describe('the server\'s road = the game\'s road (drift)', () => {
     net.reset(seed);
     obstacles.clearHoleCache();
     const mine = new RoadLayout(seed).describe(REACH);
+    expect(mine.segs.some((g) => g.pat === 'fork' || g.pat === 'dual')).toBe(false); // the old trips never get the new patterns (weight 0) – their layout is unchanged
     net.ensure(REACH);
     const segs = net.segs.filter((g: any) => g.s0 <= REACH).map((g: any) => ({ s0: g.s0, s1: g.s1, nR: g.nR, nL: g.nL, pat: g.pat }));
     const junctions = net.js.filter((j: any) => j.s <= REACH).map((j: any) => ({ id: j.id, kind: j.kind, s: j.s, signal: j.signal, arms: j.kind === 'start' ? [] : j.arms }));
@@ -92,6 +95,46 @@ describe('the server\'s road = the game\'s road (drift)', () => {
     } finally { trips.setTrip('1h'); obstacles.clearHoleCache(); }
   });
 
+  it('each trip\'s LAYOUT knobs are the same on both sides (trips.js road = TRIP_ROADS), and so are its layout and holes', async () => {
+    const { net, obstacles } = game, trips = await load('trips.js');
+    for (const id of Object.keys(trips.TRIPS)) {
+      const r = trips.TRIPS[id].road, mine = R.tripRoadOf(id);
+      expect({ first: r?.first ?? ['country'], weights: r?.weights ?? R.DEFAULT_WEIGHTS, holeChance: r?.holeChance ?? 1 }, id).toEqual(mine);
+    }
+    try {
+      for (const id of Object.keys(R.TRIP_ROADS)) {
+        trips.setTrip(id);
+        for (const seed of SEEDS.slice(0, 10)) {
+          net.setStyle({}); net.reset(seed); obstacles.clearHoleCache();
+          const layout = new RoadLayout(seed, id).describe(30_000);
+          net.ensure(30_000);
+          expect(layout.segs, `${id} seed ${seed}`).toEqual(net.segs.filter((g: any) => g.s0 <= 30_000).map((g: any) => ({ s0: g.s0, s1: g.s1, nR: g.nR, nL: g.nL, pat: g.pat })));
+          expect(layout.junctions.length, `${id} seed ${seed}`).toBe(net.js.filter((j: any) => j.s <= 30_000).length);
+          const theirs = RoadPlan.forSeed(seed, id).holesBetween(0, 30_000), game_ = [];
+          for (let ci = 0; ci * R.CHUNK_LEN < 30_000; ci++) { const h = obstacles.rollHole(ci); if (h) game_.push({ id: h.id, ci: h.ci, type: h.type, s: h.s, lat: h.lat }); }
+          expect(theirs, `${id} seed ${seed}`).toEqual(game_);
+          if (id === 'free-1') expect(layout.junctions.length).toBe(1); // the easy free run: four lanes, no junction but the start
+          if (id !== 'free-1') expect(layout.segs.some((g) => g.pat === 'fork')).toBe(true); // the others split into two roads at least once
+        }
+      }
+    } finally { trips.setTrip('1h'); obstacles.clearHoleCache(); }
+  });
+
+  it('a fork\'s two roads close: they meet again at the merge with the same heading, so the road after it is where it was', async () => {
+    const { net } = game, trips = await load('trips.js'), road = await load('road.js');
+    try {
+      trips.setTrip('free-2');
+      net.setStyle({}); net.reset(42); net.ensure(5000);
+      const f = net.forks[0], end = road.roadAt(f.f1 + 50), mid = net.sep((f.f0 + f.f1) / 2);
+      net.setChoice(f, 1);
+      const end2 = road.roadAt(f.f1 + 50);
+      expect(Math.hypot(end.x - end2.x, end.z - end2.z)).toBeLessThan(1e-3);
+      expect(Math.abs(end.t - end2.t)).toBeLessThan(1e-6);
+      expect(mid).toBeGreaterThan(150); // the two roads are well apart in the middle
+      expect(net.sep(f.f0 + R.FORK.commit)).toBeLessThanOrEqual(R.FORK.corridor + 0.5); // the server's corridor covers the gap at the commit point
+    } finally { trips.setTrip('1h'); }
+  });
+
   it('the off-road test agrees with the game\'s net.onRoad wherever the server answers (past the start junction)', () => {
     const { net } = game;
     for (const seed of SEEDS.slice(0, 8)) {
@@ -104,5 +147,23 @@ describe('the server\'s road = the game\'s road (drift)', () => {
       }
       expect(mine.onRoad(mine.Sm, 30)).toBeNull(); // the start junction's area: the server does not answer, the judge does not count it
     }
+  });
+
+  it('on a trip with forks: off the forks\' aprons the off-road test agrees; on them the server counts as road everything the game does (and a little more)', async () => {
+    const { net } = game, trips = await load('trips.js');
+    try {
+      for (const id of ['free-2', 'free-3']) {
+        trips.setTrip(id);
+        for (const seed of SEEDS.slice(0, 5)) {
+          net.setStyle({}); net.reset(seed);
+          const mine = new RoadLayout(seed, id);
+          for (let s = mine.knownFrom; s < 12_000; s += 7.3) for (const d of [-40, -20, -14, -9.5, -6, -2, 0, 3, 6, 9.5, 14, 20, 40]) {
+            const a = mine.onRoad(s, d), g = net.onRoad(s, d);
+            if (mine.forkApron(s)) { if (g) expect(a, `${id} seed ${seed} s ${s} d ${d}`).toBe(true); }
+            else expect(a, `${id} seed ${seed} s ${s} d ${d}`).toBe(g);
+          }
+        }
+      }
+    } finally { trips.setTrip('1h'); }
   });
 });

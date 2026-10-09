@@ -32,6 +32,7 @@ export function strip(m, st, cols) {
 }
 const station = (p, v, s) => ({ x: p.x, z: p.z, rx: Math.cos(p.t), rz: Math.sin(p.t), v, s });
 export const spineStations = (s0, s1, n) => Array.from({ length: n + 1 }, (_, i) => { const s = s0 + (s1 - s0) * i / n; return station(roadAt(s), s / 9, s); });
+export const altStations = (s0, s1, n) => Array.from({ length: n + 1 }, (_, i) => { const s = s0 + (s1 - s0) * i / n; return station(net.altAt(s), s / 9, s); });   // the other road of a fork
 export const mainStations = (...ms) => ms.map(m => station(net.mainAt(m), m / 9, m));   // the main road (straight behind the start turn)
 export const lineStations = (line, c0, c1) => [c0, c1].map(c => station(line.at(c), c / 9, c));
 const ucol = c => (c + .5) / MARK_COLS;
@@ -61,8 +62,17 @@ export function markLines(m, st, xs, skip = () => false) {
 export function buildSpine(surf, marks, s0, s1) {
   const st = spineStations(s0, s1, 16), xs = st.map(p => net.xs(p.s)), js = net.near(s0 - 60, s1 + 60).filter(j => !(net.straight && j.kind === 'start'));   // a straight start: no gap in the edge line
   strip(surf, st, surfCols(i => xs[i].nL, i => xs[i].nR));
-  markLines(marks, st, xs, (i, kind, side) => js.some(j => {
+  markLines(marks, st, xs, (i, kind, side) => forkOpen(st[i].s, kind, side) || js.some(j => {
     const a = st[i].s - j.s; if (a < j.pad.a0 || a > j.pad.a1) return false;
     return j.kind === 'cross' || (j.kind === 'tee' ? kind === 'edge' && side === j.side : kind === 'edge' && side > 0);   // crossroads: no lines in the box; T / start: the edge line opens for the side road
   }));
+}
+/* a fork's split / merge apron: the spine's edge line on the other road's side is left out (the tarmac runs on into the other road) */
+const forkOpen = (s, kind, side) => kind === 'edge' && net.apron(s) && side === -net.bulge(net.forkAt(s));
+/* the OTHER road of a fork for [s0, s1) (inside the fork): its ribbon, and its lines only where it has left the spine's apron */
+export function buildAlt(surf, marks, s0, s1) {
+  if (s1 - s0 < .5) return;
+  const st = altStations(s0, s1, 16), xs = st.map(p => net.xs(p.s));
+  strip(surf, st, surfCols(i => xs[i].nL, i => xs[i].nR));
+  markLines(marks, st, xs, (i, kind, side) => net.apron(st[i].s) && (kind !== 'edge' || side !== -net.bulge(net.forkAt(st[i].s))));   // on the apron only its outer edge line (away from the spine)
 }

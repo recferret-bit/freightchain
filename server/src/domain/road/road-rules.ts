@@ -19,7 +19,7 @@ export const HOLE_CHANCE = 0.045;
 export const HOLE_FIRST = 150;
 /** …per trip (client/js/trips.js `holesFrom`; a ride's trip is Ride.trip, domain/rides/ride-trip.ts): the free run's natural sinkholes start where its
     one minute can never reach (a brisk driver covers ~820 m of a 60 s run from the depot) – every other trip, and a ride from before trips, HOLE_FIRST */
-export const TRIP_HOLE_FIRST: Readonly<Record<string, number>> = { free: 1200 };
+export const TRIP_HOLE_FIRST: Readonly<Record<string, number>> = { free: 1200, 'free-1': 1200, 'free-2': 400 };
 export const holeFirstOf = (trip: string | null): number => (trip !== null ? TRIP_HOLE_FIRST[trip] : undefined) ?? HOLE_FIRST;
 /** CFG.OFFROAD_FAIL_SECONDS – the game ends the ride after this long off the tarmac (draining 2× as fast once back on it) */
 export const OFFROAD_FAIL_SECONDS = 20;
@@ -41,15 +41,33 @@ export interface RoadPattern {
   len: readonly [number, number];
   bends: number;
   junction: JunctionPattern | null;
+  /** the road splits in two and meets again (FORK) */
+  fork?: boolean;
 }
 export const PATTERNS: Readonly<Record<string, RoadPattern>> = {
   country: { lanes: [[1, 1, 1]], seg: [700, 1600], len: [900, 2400], bends: 1, junction: { gap: [420, 950], cross: 0.5, signal: 0.35, side: [1, 1, 2] } },
   highway: { lanes: [[2, 2, 3], [3, 3, 1], [3, 2, 1], [2, 3, 1]], seg: [500, 1100], len: [1600, 3600], bends: 0.55, junction: null },
   arterial: { lanes: [[2, 2, 3], [2, 1, 1], [1, 2, 1], [3, 3, 1]], seg: [400, 900], len: [800, 1700], bends: 0.35, junction: { gap: [260, 520], cross: 0.85, signal: 0.9, side: [1, 2] } },
   town: { lanes: [[1, 1, 2], [2, 2, 1]], seg: [300, 700], len: [500, 1100], bends: 0.15, junction: { gap: [170, 320], cross: 0.7, signal: 0.75, side: [1] } },
+  dual: { lanes: [[2, 2, 1]], seg: [700, 1500], len: [1500, 3200], bends: 0.6, junction: null },
+  fork: { lanes: [[1, 1, 1]], seg: [1200, 1200], len: [1200, 1200], bends: 0, junction: null, fork: true },
+};
+/** net/patterns.js FORK – a fork pattern splits the road into two mirror-image roads of the same length that meet again `len` m on: in (s, d) they are one
+    road, so the judge needs nothing of the geometry – only that before `commit` m after the split, and in the last `commit` m before the merge, both
+    roads' tarmac is one apron, `corridor` m wider either way than the road's edges (the gap between the two roads at the commit point). */
+export const FORK = { len: 1200, commit: 205, corridor: 14 } as const;
+/** client/js/trips.js `road` – a trip's LAYOUT: the patterns it opens with (first = the depot exit, drawn with the length 500–1100 m), the pattern weights after
+    them, and × HOLE_CHANCE. Judged, so every trip id is here or gets the default (the old trips and a ride from before trips). road-drift.spec.ts. */
+export interface TripRoad { first: readonly string[]; weights: Readonly<Record<string, number>>; holeChance: number }
+export const TRIP_ROADS: Readonly<Record<string, TripRoad>> = {
+  'free-1': { first: ['dual'], weights: { dual: 1 }, holeChance: 1 },
+  'free-2': { first: ['country', 'fork'], weights: { country: 3, arterial: 1, town: 1, fork: 2 }, holeChance: 1.5 },
+  'free-3': { first: ['country', 'fork'], weights: { country: 3, highway: 1, arterial: 1.5, town: 1.5, fork: 1.5 }, holeChance: 2 },
 };
 /** net/patterns.js DEFAULT_WEIGHTS – no route sets its own `roads.weights`, so every route gets this layout (the drift spec pins that too) */
 export const DEFAULT_WEIGHTS: Readonly<Record<string, number>> = { country: 3, highway: 1, arterial: 1, town: 1 };
+
+export const tripRoadOf = (trip: string | null): TripRoad => (trip !== null ? TRIP_ROADS[trip] : undefined) ?? { first: ['country'], weights: DEFAULT_WEIGHTS, holeChance: 1 };
 
 /* net/obstacles.js HOLES – the hole types. Only types with `cones` are rolled onto the road (today: the sinkhole); the others are what spectators can pay for.
    ells = ellipses relative to the hole's centre: ds along the road (+ forward), dl across (+ right), a / b half length / half width.

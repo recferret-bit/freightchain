@@ -2,6 +2,7 @@ import { CFG } from './config.js';
 import { st } from './state.js';
 import { API_BASE } from './hosts.js';
 import { inputBits, maskOf } from './input-bits.js';
+import { net } from './net/network.js';
 
 /* Ride recording for the server's verdict (verified play): every input event + a 10 Hz sample of the truck, uploaded in hash-chained batches.
    ONLINE ONLY – recording starts in beginOnline() (online.js) and is a no-op otherwise, so the offline game, the headless trace and the viewer are untouched.
@@ -32,10 +33,11 @@ export function tickTelemetry(dt) {
   if (rec.tacc >= 1 / TRAFFIC_HZ) { rec.tacc = 0; rec.traffic.push([r(st.t, 2), ...rec.trafficOf()]); }   // the cars around the truck, for replays (not judged)
   if (st.t - rec.t0 >= CFG.TELEMETRY_BATCH_SECONDS) cut();
 }
-/** [t, s, d, psi, v, rpm, gear, hull, gas, brake, steer, clutch, clock, flags, inputs] – the order the server reads (the verdict uses the first 12; the last three
-    are only for spectators' replays (watch.js): the hour of the day, the cab's switches – so a replay shows the lights and wipers the driver had – and the
-    controls held now OR pressed since the last sample (input-bits.js – the replay's yellow input borders). Append, never insert. */
-const sample = () => { const m = maskOf(rec.held) | rec.tapped; rec.tapped = 0; return [r(st.t, 2), r(st.s, 1), r(st.d, 2), r(st.psi, 3), r(st.v, 2), Math.round(st.rpm), st.gear, r(st.hull, 1), r(st.gas, 2), r(st.brake, 2), r(st.steer, 2), r(st.clutch, 2), ...rec.extra(), m]; };
+/** [t, s, d, psi, v, rpm, gear, hull, gas, brake, steer, clutch, clock, flags, inputs, fork] – the order the server reads (the verdict uses the first 12; the
+    last four are only for spectators' replays (watch.js): the hour of the day, the cab's switches – so a replay shows the lights and wipers the driver had –,
+    the controls held now OR pressed since the last sample (input-bits.js – the replay's yellow input borders) and which road of a fork the truck is on
+    (0 / 1 – net/network.js; 0 outside a fork; s and d are measured on that road). Append, never insert. */
+const sample = () => { const m = maskOf(rec.held) | rec.tapped; rec.tapped = 0; return [r(st.t, 2), r(st.s, 1), r(st.d, 2), r(st.psi, 3), r(st.v, 2), Math.round(st.rpm), st.gear, r(st.hull, 1), r(st.gas, 2), r(st.brake, 2), r(st.steer, 2), r(st.clutch, 2), ...rec.extra(), m, net.forkAt(st.s)?.choice ?? 0]; };
 /** the window lost focus: no key-up will come for what was held (ui/input.js) */
 export function releaseInputs() { rec.held.clear(); }
 /* set by ui/game.js (it can see the day/night, wiper and radio state; this module stays below world/ and cockpit/): [clock hour, FLAGS bitmask] */

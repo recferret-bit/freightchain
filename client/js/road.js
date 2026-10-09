@@ -19,6 +19,8 @@ function extend(to) {   // integrate up to index `to` (midpoint heading per 1 m 
   n = to + 1;
 }
 setRoadProfile(profile);   // straight until a route is selected
+/** the profile changed from s on (a fork's road was switched – net/network.js setChoice): integrate again from there, keep what lies before it */
+export function invalidateRoad(s) { n = Math.max(1, Math.min(n, Math.floor(s) + 1)); }
 export function roadAt(s) {
   if (!(s >= 0)) { s = s || 0; return { x: RX[0] + Math.sin(RT[0]) * s, z: RZ[0] - Math.cos(RT[0]) * s, t: RT[0] }; }
   const i = Math.floor(s), f = s - i; extend(i + 1);

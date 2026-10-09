@@ -1,7 +1,7 @@
 import { CFG } from '../config.js';
-import { clamp, mulberry32 } from '../util.js';
-import { roadAt, setRoadProfile } from '../road.js';
-import { PATTERNS, DEFAULT_WEIGHTS } from './patterns.js';
+import { clamp, mulberry32, rnd } from '../util.js';
+import { roadAt, setRoadProfile, invalidateRoad } from '../road.js';
+import { PATTERNS, DEFAULT_WEIGHTS, FORK } from './patterns.js';
 import { trip } from '../trips.js';
 
 /* The ROAD NETWORK: an endless road generated lazily, ahead of the truck, from a seeded PRNG – so the whole layout is a pure function of the ride seed
@@ -13,6 +13,9 @@ import { trip } from '../trips.js';
    - SEGMENTS: lane layout (1-3 lanes per direction), bend scale and centre-line style of each stretch; a lane change is a TAPER m transition.
    - JUNCTIONS: crossroads / T-junctions at fixed s, with or without traffic lights. Side roads are straight lines across the spine (the player can't turn
      into them); the spine is kept straight around every junction (`calm`).
+   - FORKS (trips that ask for them – patterns.js FORK): the road splits into two roads that meet again; the spine is the one the truck is on (`choice`),
+     the other is its mirror image about the chord (`altAt`), drawn beside it. Same length, same lanes, same holes: in (s, d) they are one road, so a
+     switch (`setChoice`, at the commit point – net/orchestrator.js) only re-integrates the spine's geometry inside the fork.
    Lanes: lane i of a direction is centred at dir·(LANE0 + i·LW) – the inner lane stays at ±2.4 as on the old two-lane road, extra lanes are added outward. */
 const LANE0 = 2.4;
 export const LW = 4.2, TAPER = 120, SHOULDER = 1.2, SIDE_LEN = 450;
@@ -21,6 +24,7 @@ export const laneLat = (dir, i) => dir * (LANE0 + i * LW);
 const ACCESS = { nR: 1, nL: 1, centre: 'none', edge: false, pat: 'access' };   // depot road: plain two-lane width, unmarked
 
 const smooth = x => x * x * (3 - 2 * x);
+const forkG = u => { u = clamp(u, 0, 1); const a = Math.sin(Math.PI * u); return Math.sin(2 * Math.PI * u) * a * a; };   // a fork's heading profile (patterns.js FORK)
 
 class RoadNetwork {
   constructor() { this.style = { curv: () => 0, weights: DEFAULT_WEIGHTS }; this.reset(1); }
@@ -32,8 +36,10 @@ class RoadNetwork {
     const L = Math.round(Math.PI / 2 * CFG.START_TURN_R);
     this.straight = trip.start === 'straight';   // the trip's start (trips.js): no turn – the same sA / Sm / start junction in road coordinates (the server's), only not drawn or driven as one
     this.sA = Math.round(CFG.START_ACCESS); this.Sm = this.sA + L; this.kTurn = this.straight ? 0 : Math.PI / 2 / L; this.R = L / (Math.PI / 2);
-    this.segs = []; this.js = []; this.genEnd = this.Sm; this.patEnd = this.Sm; this.pat = null; this.nextJ = Infinity; this.jn = 0;
-    this.pickPattern('country', 500 + this.rng() * 600);   // the depot exit is always onto a plain two-lane road
+    this.segs = []; this.js = []; this.forks = []; this.genEnd = this.Sm; this.patEnd = this.Sm; this.pat = null; this.nextJ = Infinity; this.jn = 0;
+    const first = trip.road?.first ?? ['country'];
+    this.weights = trip.road?.weights ?? this.style.weights; this.queue = first.slice(1);   // the trip's layout (trips.js road), else the route's pattern weights
+    this.pickPattern(first[0], 500 + this.rng() * 600);   // the depot exit: a plain two-lane road (the easy free run: straight onto four lanes)
     this.ensure(this.Sm + 1);
     const s0 = this.segs[0], halfR = edgeOf(s0.nR) + .3, halfL = edgeOf(s0.nL) + .3;
     this.start = { id: 'j0', kind: 'start', s: this.Sm, signal: false, halfR, halfL, pad: { a0: -(this.R + 7.5), a1: 4, l0: -(halfL + SHOULDER), l1: this.R + 2 } };
@@ -46,8 +52,9 @@ class RoadNetwork {
   /* ───────────── generation (sequential, so the layout only depends on the seed) ───────────── */
   ensure(s) { while (this.genEnd < s) this.generate(); }
   pickPattern(id, len) {
+    if (!id && this.queue?.length) id = this.queue.shift();   // the trip's opening patterns (no draw for the pick – road-layout.ts the same)
     if (!id) {
-      const w = this.style.weights, ks = Object.keys(PATTERNS).filter(k => (w[k] ?? 0) > 0 && (k !== this.pat?.id || Object.keys(PATTERNS).filter(q => (w[q] ?? 0) > 0).length < 2));
+      const w = this.weights, ks = Object.keys(PATTERNS).filter(k => (w[k] ?? 0) > 0 && (k !== this.pat?.id || Object.keys(PATTERNS).filter(q => (w[q] ?? 0) > 0).length < 2));
       let x = this.rng() * ks.reduce((a, k) => a + w[k], 0); id = ks[ks.length - 1];
       for (const k of ks) if ((x -= w[k]) < 0) { id = k; break; }
     }
@@ -62,6 +69,7 @@ class RoadNetwork {
     let len = P.seg[0] + r() * (P.seg[1] - P.seg[0]); if (this.patEnd - (s0 + len) < P.seg[0] * .6) len = this.patEnd - s0;
     const prev = this.segs[this.segs.length - 1], seg = { s0, s1: s0 + len, nR: lanes[0], nL: lanes[1], bends: P.bends, centre: P.centre, pat: P.id };
     seg.prev = prev ?? seg; this.segs.push(seg); this.genEnd = seg.s1;
+    if (P.fork) this.forks.push(seg.fork = { i: this.forks.length, f0: s0, f1: seg.s1, side: rnd(this.seed % 9973 + s0 * .37) < .5 ? -1 : 1, choice: 0 });   // side: where the DEFAULT road bulges (+1 right) – a hash, no draw from the stream (geometry only, the server never needs it)
     const J = P.junction;
     if (!J) { this.nextJ = Infinity; return; }
     const lo = s0 + TAPER + 100, hi = seg.s1 - 120;
@@ -103,6 +111,7 @@ class RoadNetwork {
   calm(s) {
     let k = 1;
     for (const j of this.near(s - 330, s + 220)) if (j.kind !== 'start' || (s >= this.Sm && !this.straight)) k = Math.min(k, smooth(clamp((Math.abs(s - j.s) - ((j.mouth ?? 110) + 50)) / 110, 0, 1)));   // start: straight for 160 m (mainCoords relies on it)
+    for (const f of this.forksNear(s - 110, s + 110)) k = Math.min(k, smooth(clamp(Math.max(f.f0 - s, s - f.f1, 0) / 110, 0, 1)));   // a fork's chord is straight, and so is the road 110 m either side of it
     return k;
   }
   curv(s) {
@@ -110,7 +119,7 @@ class RoadNetwork {
     if (s < this.Sm) return this.kTurn;
     this.ensure(s + 600);
     const seg = this.segAt(s), t = clamp((s - seg.s0) / TAPER, 0, 1), bends = seg.prev.bends + (seg.bends - seg.prev.bends) * t;
-    const k = this.style.curv(s) * bends * this.calm(s) * trip.bends;
+    const k = this.style.curv(s) * bends * this.calm(s) * trip.bends + this.forkCurv(s);
     return this.straight ? k * smooth(clamp((s - this.Sm) / CFG.START_FADE, 0, 1)) : k;   // a straight start: the depot road is straight, the bends come in over START_FADE m once it is the main road   // trip.bends: the ride tier's bend scale (trips.js) – geometry only, the server's port has no curvature
   }
   /* cross-section at spine position s: { nR, nL (lanes per direction, fractional in a taper), centre (style | null = route's own | 'none'), edge (edge lines?), pat } */
@@ -170,6 +179,7 @@ class RoadNetwork {
   onRoad(s, d) {
     if (s > -80 && s < 30 && Math.abs(d) < 34) return true;   // depot yard
     const [l, r] = this.edges(s); if (d >= l - .5 && d <= r + .5) return true;
+    if (this.apron(s)) { const f = this.forkAt(s), a = -this.bulge(f) * this.sep(s); if (d >= Math.min(l, l + a) - .5 && d <= Math.max(r, r + a) + .5) return true; }   // a fork's split / merge: both roads' tarmac (the server allows FORK.corridor m either way there)
     for (const j of this.near(s - 90, s + 90)) {
       if (j.kind === 'start') {
         if (this.straight) continue;   // no turn, no apron: the depot road is just the road
@@ -180,8 +190,9 @@ class RoadNetwork {
     return false;
   }
   /* roadside clutter (props, posts, landmarks…) must not stand here: the yard, the start junction's main road + apron, side roads, junction corners */
-  keepOut(s, lat) {
+  keepOut(s, lat, alt = false) {
     if (s > -90 && s < 32 && Math.abs(lat) < 38) return true;
+    if (this.forks.length && this.onOtherRoad(s, lat, alt)) return true;   // in a fork: nothing on the other road (alt = (s, lat) is on the other road's own side)
     if (!this.straight && s > this.sA - 80 && s < this.Sm + 60) {
       const w = this.world(s, lat), c = this.mainCoords(w.x, w.z), a = c.s - this.Sm, j = this.start;
       if (a < 30 && a > -900 && c.lat > -j.halfL - 4 && c.lat < j.halfR + 4) return true;
@@ -201,6 +212,59 @@ class RoadNetwork {
     if (s < this.Sm + margin || this.near(s - margin, s + margin).length) return false;
     const seg = this.segAt(s); return s - seg.s0 > TAPER + 10 && seg.s1 - s > 10;
   }
+  /* ───────────── forks ───────────── */
+  /** forks overlapping [lo, hi] (generated up to hi) */
+  forksNear(lo, hi) { this.ensure(hi + 1); return this.forks.filter(f => f.f1 >= lo && f.f0 <= hi); }
+  /** the fork whose split .. merge holds s, or null */
+  forkAt(s) { if (!this.forks.length || s < this.Sm) return null; const g = this.segAt(s); return g.fork ?? null; }
+  /** +1 / −1: the side the road the truck is on bulges to (the other road bulges the other way) */
+  bulge(f) { return f.choice ? -f.side : f.side; }
+  /* the curvature the fork adds at s: the difference of its heading profile over the 1 m step road.js integrates (so the heading closes exactly) */
+  forkCurv(s) {
+    const f = this.forkAt(s + 1) ?? this.forkAt(s); if (!f) return 0;
+    const L = f.f1 - f.f0; return this.bulge(f) * FORK.bulge * (forkG((s + 1 - f.f0) / L) - forkG((s - f.f0) / L));
+  }
+  /* the mirror about the fork's chord (the straight line from the split along its heading): it maps one of the two roads onto the other */
+  mirror(f, x, z) {
+    const O = roadAt(f.f0), fx = Math.sin(O.t), fz = -Math.cos(O.t), rx = Math.cos(O.t), rz = Math.sin(O.t), vx = x - O.x, vz = z - O.z;
+    const a = vx * fx + vz * fz, b = vx * rx + vz * rz; return { x: O.x + a * fx - b * rx, z: O.z + a * fz - b * rz, t0: O.t };
+  }
+  /** the OTHER road of the fork at s: its centre point and heading (+ its own right side, like roadAt) – the spine where there is no fork */
+  altAt(s) {
+    const f = this.forkAt(s), p = roadAt(s); if (!f) return p;
+    const m = this.mirror(f, p.x, p.z); return { x: m.x, z: m.z, t: 2 * m.t0 - p.t };
+  }
+  altWorld(s, d) { const p = this.altAt(s); return { x: p.x + Math.cos(p.t) * d, z: p.z + Math.sin(p.t) * d }; }
+  /** metres between the two roads' centre lines at s (0 outside a fork) */
+  sep(s) { const f = this.forkAt(s); if (!f) return 0; const O = roadAt(f.f0), p = roadAt(s); return 2 * Math.abs((p.x - O.x) * Math.cos(O.t) + (p.z - O.z) * Math.sin(O.t)); }
+  /** in the split / merge stretch of a fork, where the two roads' tarmac is still one apron */
+  apron(s) { const f = this.forkAt(s); return !!f && Math.min(s - f.f0, f.f1 - s) < FORK.commit; }
+  /** world point → (s, lat) on the spine near s (a few Newton steps) */
+  spineCoords(x, z, hint) {
+    let m = hint; for (let i = 0; i < 4; i++) { const p = roadAt(m); m += (x - p.x) * Math.sin(p.t) - (z - p.z) * Math.cos(p.t); }
+    const p = roadAt(m); return { s: m, lat: (x - p.x) * Math.cos(p.t) + (z - p.z) * Math.sin(p.t) };
+  }
+  /* does the road point (s, lat) – on the spine, or on the other road (alt) – stand on the OTHER road of its fork (its tarmac + `margin`)? */
+  onOtherRoad(s, lat, alt = false, margin = SHOULDER + 3) {
+    const f = this.forkAt(s); if (!f) return false;
+    const w = alt ? this.altWorld(s, lat) : this.world(s, lat), q = alt ? w : this.mirror(f, w.x, w.z), c = this.spineCoords(q.x, q.z, s);   // the other road = the spine's mirror image
+    if (c.s < f.f0 || c.s > f.f1) return false;
+    const [l, r] = this.edges(c.s); return c.lat > l - .3 - margin && c.lat < r + .3 + margin;
+  }
+  /** switch the road the truck is on at fork f (0 = the default one): the spine inside it is integrated again – everything after the merge stays where it was */
+  setChoice(f, choice) {
+    if (f.choice === choice) return false;
+    f.choice = choice; invalidateRoad(f.f0); return true;
+  }
+  /** the road the truck crossed into: when it passes a fork's commit point going forward, the one it is nearer to – { f, choice } or null */
+  commitAt(s0, s1, d) {
+    if (s1 <= s0) return null;
+    const f = this.forkAt(s1); if (!f) return null;
+    const c = f.f0 + FORK.commit; if (!(s0 < c && s1 >= c)) return null;
+    const toAlt = d * -this.bulge(f) > this.sep(s1) / 2;   // the other road lies on the side opposite the bulge
+    return { f, choice: toAlt ? 1 - f.choice : f.choice };
+  }
+
   /* "COUNTRY ROAD 1+1" for the HUD */
   describe(s) { if (s < this.Sm) return 'DEPOT ROAD'; const x = this.mainXs(s); return (PATTERNS[x.pat]?.name ?? x.pat) + ' ' + Math.round(x.nR) + '+' + Math.round(x.nL); }
 }

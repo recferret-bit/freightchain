@@ -1,5 +1,5 @@
 import { RoadLayout, laneLat, rnd } from './road-layout.js';
-import { CHUNK_LEN, HOLE_CHANCE, HOLE_TYPES, HOLES_ON, ROAD_PLAN_MAX_S, holeFirstOf, type HoleType } from './road-rules.js';
+import { CHUNK_LEN, HOLE_CHANCE, HOLE_TYPES, HOLES_ON, ROAD_PLAN_MAX_S, holeFirstOf, tripRoadOf, type HoleType } from './road-rules.js';
 
 /* The ride's OBSTACLE PLAN – the server's answer to "where were the holes on this ride's road?". A pure function of the seed (and of the ride's trip,
    which only moves where the holes may start – road-rules.ts TRIP_HOLE_FIRST): the layout (road-layout.ts)
@@ -38,11 +38,11 @@ const TYPE_IDS = Object.keys(HOLE_TYPES).filter((k) => HOLE_TYPES[k]!.cones); //
 export class RoadPlan {
   private readonly cache = new Map<number, PlannedHole | null>();
 
-  private constructor(readonly layout: RoadLayout, private readonly holeFirst: number) {}
+  private constructor(readonly layout: RoadLayout, private readonly holeFirst: number, private readonly holeChance: number) {}
 
-  /** trip: the ride's (Ride.trip; null = a ride from before trips) */
+  /** trip: the ride's (Ride.trip; null = a ride from before trips) – its layout, its first sinkhole and its hole chance */
   static forSeed(seed: number, trip: string | null = null): RoadPlan {
-    return new RoadPlan(new RoadLayout(seed), holeFirstOf(trip));
+    return new RoadPlan(new RoadLayout(seed, trip), holeFirstOf(trip), HOLE_CHANCE * tripRoadOf(trip).holeChance);
   }
 
   get seed(): number { return this.layout.seed; }
@@ -53,7 +53,7 @@ export class RoadPlan {
     if (known !== undefined) return known;
     const net = this.layout, q = (k: number) => rnd(ci * 97.13 + k * 3.71), s = ci * CHUNK_LEN + 4 + q(1) * 24;
     let h: PlannedHole | null = null;
-    if (HOLES_ON && ci >= 0 && s < ROAD_PLAN_MAX_S && q(2) < HOLE_CHANCE && s >= net.Sm + this.holeFirst && net.plain(s, 70)) {
+    if (HOLES_ON && ci >= 0 && s < ROAD_PLAN_MAX_S && q(2) < this.holeChance && s >= net.Sm + this.holeFirst && net.plain(s, 70)) {
       const type = TYPE_IDS[Math.floor(q(3) * TYPE_IDS.length)]!, T = HOLE_TYPES[type]!, r = q(4), j = q(5) - 0.5;
       const dir = T.lane ? (r < 0.7 ? 1 : -1) : r < 0.6 ? 1 : -1, lane = laneLat(dir, Math.floor(q(6) * net.lanes(s, dir)));
       const lat = T.lane ? lane : r < 0.85 ? lane + j * 1.6 : j * 1.2;
@@ -94,7 +94,7 @@ export class RoadPlan {
 const PLANS = new Map<string, RoadPlan>();
 const PLANS_MAX = 64;
 export function roadPlanFor(seed: number, trip: string | null = null): RoadPlan {
-  const key = `${seed >>> 0}:${holeFirstOf(trip)}`;
+  const key = `${seed >>> 0}:${trip ?? ''}`;
   let plan = PLANS.get(key);
   if (plan) { PLANS.delete(key); PLANS.set(key, plan); return plan; }
   plan = RoadPlan.forSeed(seed >>> 0, trip);

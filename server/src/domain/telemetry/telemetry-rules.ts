@@ -13,6 +13,9 @@ export const SAMPLE_FLAGS_COL = 13; // the cab's switches (client/js/telemetry.j
 /** the driver's controls: held at the sample OR pressed since the one before – one bit per control + one for "clicked on the dash" (client/js/input-bits.js).
     Nothing finer than a sample: the raw input events (ms timing, the human-likeness check) are never served to spectators. */
 export const SAMPLE_INPUT_COL = 14;
+/** which road of a fork the truck is on (0 / 1, 0 outside a fork – client/js/net/network.js): the replay draws that one. Both roads are one road in (s, d), so
+    the judge never needs it (domain/road: the fork's corridor). */
+export const SAMPLE_FORK_COL = 15;
 export const SAMPLE_TIME_SLACK = 0.05; // sample times may stick out of their batch's [t0, t1] by this much (rounding)
 export const BATCH_MAX_BYTES = 98_304; // canonical JSON; below Express's default 100 kB body limit (a real 15 s batch is ≈ 15 kB)
 export const BATCH_MAX_SEQ = 100_000;

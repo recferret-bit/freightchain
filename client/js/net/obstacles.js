@@ -32,7 +32,7 @@ const shape = (id, ci, type, s, lat) => { const T = HOLES[type]; return { id, ci
 export function rollHole(ci) {
   if (cache.has(ci)) return cache.get(ci);
   let h = null; const q = k => rnd(ci * 97.13 + k * 3.71), s = ci * CH + 4 + q(1) * 24;   // (rnd on ci*13+k clusters badly: sin hash)
-  if (CFG.HOLES && ci >= 0 && q(2) < CFG.HOLE_CHANCE && s >= net.Sm + (trip.holesFrom ?? CFG.HOLE_FIRST) && net.plain(s, 70)) {   // never on the depot road (nor, on the free run, within its reach – trips.js holesFrom), at a junction or in a lane taper
+  if (CFG.HOLES && ci >= 0 && q(2) < CFG.HOLE_CHANCE * (trip.road?.holeChance ?? 1) && s >= net.Sm + (trip.holesFrom ?? CFG.HOLE_FIRST) && net.plain(s, 70)) {   // never on the depot road (nor, on the free run, within its reach – trips.js holesFrom), at a junction or in a lane taper
     const type = IDS[Math.floor(q(3) * IDS.length)], T = HOLES[type], r = q(4), j = q(5) - .5, dir = T.lane ? (r < .7 ? 1 : -1) : r < .6 ? 1 : -1, lane = laneLat(dir, Math.floor(q(6) * net.lanes(s, dir)));
     const lat = T.lane ? lane : r < .85 ? lane + j * 1.6 : j * 1.2;   // lane-wide: own side 70 %; small: own side 60 %, oncoming 25 %, centre line 15 %
     h = shape('h' + ci, ci, type, s, lat);

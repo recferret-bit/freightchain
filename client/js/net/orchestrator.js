@@ -3,14 +3,17 @@ import { net } from './network.js';
 import { roadObjects } from '../world/chunks.js';
 import { updateSignals } from '../world/junctions.js';
 import { clearHoleCache } from '../world/holes.js';
-import { resetTraffic } from '../sim/traffic.js';
+import { resetTraffic, clearStretch } from '../sim/traffic.js';
+import { roadAt } from '../road.js';
+import { CFG } from '../config.js';
 import { toast } from '../ui/toast.js';
 
 /* RoadOrchestrator (`roads`): the one object that runs the road world, so nothing else has to know the order things happen in.
    - newTrip()      a new ride: new seed → new layout (net/network.js), road holes re-rolled, the depot window built from the pools, traffic already on the main road
    - setTheme(t)    a route was picked: its bend style + pattern weights, same seed, everything rebuilt (menu live preview)
-   - update(dt)     every frame: signal clock (only while driving), generation ahead of the truck, chunk streaming (world/chunks.js), signal lenses,
-                    red-light check; the traffic itself is stepped by sim/physics.js because a collision ends the ride there
+   - update(dt)     every frame: signal clock (only while driving), generation ahead of the truck, the road taken at a fork, chunk streaming (world/chunks.js),
+                    signal lenses, red-light check; the traffic itself is stepped by sim/physics.js because a collision ends the ride there
+   - setBranch(s, c) a replay: the recording says which road of the fork at s the driver was on (sample column 15, js/telemetry.js)
    - status()       road type + next junction for the HUD
    Layering: imports world/ and sim/, is imported only by ui/ and main.js (net/network.js is the low-level part everybody else reads). */
 class RoadOrchestrator {
@@ -22,11 +25,26 @@ class RoadOrchestrator {
     net.reset(this.seed); clearHoleCache(); roadObjects.startTrip(); resetTraffic(); this.lastS = st.s;
   }
   update(dt) {
-    if (st.mode === 'drive') { if (!st.watch) net.clock += dt; this.redLight(); }   // a replay sets the signal clock from the recording (watch.js)
+    if (st.mode === 'drive') { if (!st.watch) net.clock += dt; this.redLight(); if (!st.watch) this.forkCommit(); }   // a replay sets the signal clock and the fork roads from the recording (watch.js)
     net.ensure(st.s + 2000);
     roadObjects.update(st.s); updateSignals();
     this.lastS = st.s;
   }
+  /* a fork: crossing its commit point the truck is on the road it is nearer to – if that is the other one, it becomes the spine and the truck keeps its
+     place in the world (its s / d / heading error re-measured on the new spine; Δs < 1 m, d changes by the gap between the roads – the server's teleport
+     check is along s only) */
+  forkCommit() {
+    const c = net.commitAt(this.lastS, st.s, st.d);
+    if (c && c.choice !== c.f.choice) this.switchFork(c.f, c.choice, true);
+  }
+  switchFork(f, choice, keepPose) {
+    const p = roadAt(st.s), x = p.x + Math.cos(p.t) * st.d, z = p.z + Math.sin(p.t) * st.d, H = p.t + st.psi;
+    if (!net.setChoice(f, choice)) return;
+    if (keepPose) { const q = net.spineCoords(x, z, st.s); st.s = q.s; st.d = q.lat; st.psi = H - roadAt(q.s).t; this.lastS = st.s; }
+    roadObjects.rebuildRange(f.f0 - CFG.CHUNK_LEN, f.f1 + CFG.CHUNK_LEN); clearStretch(f.f0, f.f1);
+  }
+  /** a replay: the driver was on road `choice` of the fork at s (the sample's column 15) – switch the drawn road to it (the samples already are in its (s, d)) */
+  setBranch(s, choice) { const f = net.forkAt(s); if (f && (choice === 0 || choice === 1)) this.switchFork(f, choice, false); }
   /* crossing a main-road stop line on red: a warning only – the cross traffic is the real consequence */
   redLight() {
     const s0 = this.lastS, s1 = st.s; if (s1 <= s0) return;

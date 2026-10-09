@@ -1,4 +1,4 @@
-import { CHUNK_LEN, DEFAULT_WEIGHTS, LANE0, LW, PATTERNS, SHOULDER, SIDE_LEN, SIGNAL_CROSS, SIGNAL_GREEN, START_ACCESS, START_TURN_R, TAPER, type JunctionPattern, type RoadPattern } from './road-rules.js';
+import { CHUNK_LEN, FORK, LANE0, LW, PATTERNS, SHOULDER, SIDE_LEN, SIGNAL_CROSS, SIGNAL_GREEN, START_ACCESS, START_TURN_R, TAPER, tripRoadOf, type JunctionPattern, type RoadPattern } from './road-rules.js';
 
 /* The ride's road LAYOUT, rebuilt on the server from the seed: a line-for-line port of the generation half of client/js/net/network.js (segments, lane
    layouts, junctions) – no curvature, no world coordinates, no floats beyond + − × ÷: everything the judge needs lives in road coordinates (s along the
@@ -26,7 +26,7 @@ const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v
 export const edgeOf = (n: number): number => 4.5 + (n - 1) * LW; // edge-line distance from the centre for n lanes (fractional in a taper)
 export const laneLat = (dir: number, i: number): number => dir * (LANE0 + i * LW);
 
-export interface Segment { s0: number; s1: number; nR: number; nL: number; pat: string; prev: Segment }
+export interface Segment { s0: number; s1: number; nR: number; nL: number; pat: string; prev: Segment; fork?: boolean }
 export interface Junction {
   id: string;
   kind: 'start' | 'cross' | 'tee';
@@ -53,16 +53,20 @@ export class RoadLayout {
   private pat: (RoadPattern & { id: string }) | null = null;
   private nextJ = Number.POSITIVE_INFINITY;
   private jn = 0;
+  private readonly queue: string[];
 
-  constructor(seed: number, weights: Readonly<Record<string, number>> = DEFAULT_WEIGHTS) {
+  /** trip: the ride's (Ride.trip) – its layout knobs (road-rules.ts TRIP_ROADS); null / any other = the default layout */
+  constructor(seed: number, trip: string | null = null) {
     this.seed = seed >>> 0;
     this.rng = mulberry32(this.seed);
-    this.weights = { ...DEFAULT_WEIGHTS, ...weights };
+    const road = tripRoadOf(trip);
+    this.weights = road.weights;
+    this.queue = road.first.slice(1);
     const L = Math.round((Math.PI / 2) * START_TURN_R);
     this.sA = Math.round(START_ACCESS);
     this.Sm = this.sA + L;
     this.genEnd = this.patEnd = this.Sm;
-    this.pickPattern('country', 500 + this.rng() * 600); // the depot exit is always onto a plain two-lane road
+    this.pickPattern(road.first[0]!, 500 + this.rng() * 600); // the depot exit (a plain two-lane road, unless the trip says otherwise)
     this.ensure(this.Sm + 1);
     const halfL = edgeOf(this.segs[0]!.nL) + 0.3, R = L / (Math.PI / 2);
     this.js.unshift({ id: 'j0', kind: 'start', s: this.Sm, signal: false, arms: [], sideHalf: 0, mouth: 0, len: 0, pad: { a0: -(R + 7.5), a1: 4, l0: -(halfL + SHOULDER), l1: R + 2 } });
@@ -74,6 +78,7 @@ export class RoadLayout {
   }
 
   private pickPattern(id?: string, len?: number): void {
+    if (!id && this.queue.length) id = this.queue.shift(); // the trip's opening patterns (no draw for the pick)
     if (!id) {
       const w = this.weights, all = Object.keys(PATTERNS), live = all.filter((q) => (w[q] ?? 0) > 0);
       const ks = all.filter((k) => (w[k] ?? 0) > 0 && (k !== this.pat?.id || live.length < 2));
@@ -94,7 +99,7 @@ export class RoadLayout {
     let len = P.seg[0] + r() * (P.seg[1] - P.seg[0]);
     if (this.patEnd - (s0 + len) < P.seg[0] * 0.6) len = this.patEnd - s0;
     const prev = this.segs[this.segs.length - 1];
-    const seg = { s0, s1: s0 + len, nR: lanes[0], nL: lanes[1], pat: P.id } as Segment;
+    const seg = { s0, s1: s0 + len, nR: lanes[0], nL: lanes[1], pat: P.id, ...(P.fork ? { fork: true } : {}) } as Segment;
     seg.prev = prev ?? seg;
     this.segs.push(seg);
     this.genEnd = seg.s1;
@@ -166,6 +171,7 @@ export class RoadLayout {
     if (s > -80 && s < 30 && Math.abs(d) < 34) return true; // depot yard
     const [l, r] = this.edges(s);
     if (d >= l - 0.5 && d <= r + 0.5) return true;
+    if (this.forkApron(s) && d >= l - FORK.corridor - 0.5 && d <= r + FORK.corridor + 0.5) return true; // a fork's split / merge: both roads' tarmac (either side – the judge does not know which road the default one is)
     if (s < this.knownFrom) return null;
     for (const j of this.near(s - 90, s + 90)) {
       if (j.kind === 'start') continue;
@@ -174,6 +180,13 @@ export class RoadLayout {
       if (Math.abs(a) < j.sideHalf + 0.5 && j.arms.includes(Math.sign(d)) && Math.abs(d) < j.len) return true;
     }
     return false;
+  }
+
+  /** in the first / last FORK.commit m of a fork, where its two roads are one apron (net.apron) */
+  forkApron(s: number): boolean {
+    if (s < this.Sm) return false;
+    const g = this.segAt(s);
+    return g.fork === true && Math.min(s - g.s0, g.s1 - s) < FORK.commit;
   }
 
   /** below this s the off-road answer needs world coordinates (the start junction's reach in net.onRoad is ±90 m) */
@@ -186,7 +199,7 @@ export class RoadLayout {
   describe(s: number): { segs: { s0: number; s1: number; nR: number; nL: number; pat: string }[]; junctions: { id: string; kind: string; s: number; signal: boolean; arms: readonly number[] }[] } {
     this.ensure(s);
     return {
-      segs: this.segs.filter((g) => g.s0 <= s).map((g) => ({ s0: g.s0, s1: g.s1, nR: g.nR, nL: g.nL, pat: g.pat })),
+      segs: this.segs.filter((g) => g.s0 <= s).map((g) => ({ s0: g.s0, s1: g.s1, nR: g.nR, nL: g.nL, pat: g.pat })), // (a fork is pat 'fork')
       junctions: this.js.filter((j) => j.s <= s).map((j) => ({ id: j.id, kind: j.kind, s: j.s, signal: j.signal, arms: j.arms })),
     };
   }

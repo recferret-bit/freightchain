@@ -303,6 +303,10 @@ export function updateTraffic(dt) {
 /* the traffic around the truck for a spectator's replay (live streams – telemetry.js records it at TRAFFIC_HZ, watch.js redraws it): the nearest
    vehicles within `range` m as flat rows of 7 – [id, type, colour pick, x, z, yaw, flags (1 brake · 2 siren)] in WORLD coordinates. Display only:
    the verdict never reads it. */
+/** a fork's road was switched (net/orchestrator.js): the main-road cars inside it stood on the road that is now the OTHER one – take them off (the spawn zones refill) */
+export function clearStretch(s0, s1) {
+  for (let i = cars.length - 1; i >= 0; i--) { const a = cars[i]; if (a.road.main && a.s >= s0 && a.s <= s1) { removeVehicle(a.mesh); cars.splice(i, 1); } }
+}
 export const TRAFFIC_TYPES = Object.keys(VEHICLES);
 export function trafficSnapshot(range = 400, max = 16) {
   const p = roadAt(st.s), tx = p.x + Math.cos(p.t) * st.d, tz = p.z + Math.sin(p.t) * st.d, near = [];
