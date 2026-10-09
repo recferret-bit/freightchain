@@ -45,6 +45,7 @@ async function drive({ port, mode }) {
   if (mode === 'cheat') await tab.ev(`(() => { const g = __game; g.roadPlan.rideId = null; g.CFG.HOLES = false; g.holes.plan.seed = -1; g.holes.clearHoleCache(); for (const ci of [...g.chunks.keys()]) g.roadObjects.rebuild(ci); })()`);   // what an injected script does: no holes in this game
   const holesInGame = await tab.ev(`__game.holes.holesNear(${own[0]?.s ?? 0} - 5, ${own[0]?.s ?? 0} + 5).length`);
   // cruise in the lane at SPEED with the gas held (a person's keys go down too – the verdict wants real presses); the truck's own physics moves it
+  await tab.ev('__game.trip.finish = false');   // the free run would end itself at its (short) line before the holes – drive on past it
   await tab.ev(`(() => { const g = __game; g.st.park = false; setInterval(() => { if (g.st.mode !== 'drive') return; g.input.gas = true; g.st.v = Math.max(g.st.v, ${SPEED}); g.st.d = ${LANE}; g.st.psi = 0; }, 16); })()`);
   const press = async (code, key, hold) => { await tab.send('Input.dispatchKeyEvent', { type: 'keyDown', code, key }); await sleep(hold); await tab.send('Input.dispatchKeyEvent', { type: 'keyUp', code, key }); };
   const KEYS = [['KeyW', 'w'], ['KeyA', 'a'], ['KeyD', 'd'], ['KeyW', 'w'], ['ArrowUp', 'ArrowUp']];

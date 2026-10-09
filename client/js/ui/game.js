@@ -15,7 +15,7 @@ import { trafficSnapshot } from '../sim/traffic.js';
 import { routesHTML, bindRoutes, timeHTML, bindTime } from './routes.js';
 import { online, beginOnline, endOnline } from '../online.js';
 import { startLiveFeed, stopLiveFeed } from './live-feed.js';
-import { failFx } from './fail-fx.js';
+import { failFx, winFx } from './fail-fx.js';
 import { prompt } from '../prompt.js';
 import { track, flushSoon } from '../analytics.js';
 import { env } from '../world/environment.js';
@@ -115,6 +115,7 @@ export function endRide(ok, reason, outcome = ok ? 'shift' : 'failed') {   // ou
      ${online.ride ? '<div class="row"><span>Server verdict</span><b id="verdict">…</b></div>' : ''}
      ${ok ? `<div class="row"><span>Payout</span><b>${CFG.REWARD.toFixed(1)} FRT</b></div>` : `<div class="row"><span>Reason</span><span class="bad">${reason}</span></div>`}`);
   if (outcome === 'failed') failFx();   // not for an abandoned shift – only a real failure (crash, red light, wreck…)
+  else if (ok) winFx();   // a complete shift: the same beat in green
   verdict?.then(v => { const el = document.getElementById('verdict'); if (el && v) el.textContent = verdictText(v); });
 }
 /* the server's answer: the ride's outcome, then for a completed shift its recording check (verified play) – only VERIFIED shifts rank for prizes */

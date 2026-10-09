@@ -1,12 +1,13 @@
-/* Failed-ride feedback (the promo trailer's crash beat, for real): the whole screen shakes and flashes red, a translucent tilted "SHIFT OVER" stamp slams in,
-   and the result panel (CSS `#overlay.late`) fades in after it. DOM only – nothing here touches the sim or the canvases' drawing. */
+/* End-of-ride feedback (the promo trailer's crash beat, for real): the whole screen shakes and flashes, a translucent tilted stamp slams in, and the
+   result panel (CSS `#overlay.late`) fades in after it. A failed ride is red "SHIFT OVER" (failFx), a completed shift the same beat in green (winFx).
+   DOM only – nothing here touches the sim or the canvases' drawing. */
 const MS = 1500;   // the effect; the panel appears at the end
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-export function failFx(text = '✖ SHIFT OVER') {
+function stampFx(text, kind) {
   const overlay = document.getElementById('overlay');
   const flash = document.createElement('div'), stamp = document.createElement('div');
-  flash.className = 'fail-flash'; stamp.className = 'fail-stamp'; stamp.textContent = text;
+  flash.className = `fail-flash ${kind}`; stamp.className = `fail-stamp ${kind}`; stamp.textContent = text;
   document.body.appendChild(flash); document.body.appendChild(stamp);
   overlay.classList.add('late');
   if (!reduced()) {
@@ -15,3 +16,5 @@ export function failFx(text = '✖ SHIFT OVER') {
   }
   setTimeout(() => { flash.remove(); stamp.remove(); overlay.classList.remove('late'); }, MS + 400);
 }
+export const failFx = (text = '✖ SHIFT OVER') => stampFx(text, 'lose');
+export const winFx = (text = '✔ SHIFT COMPLETE') => stampFx(text, 'win');

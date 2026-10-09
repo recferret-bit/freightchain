@@ -7,6 +7,7 @@ import { VEHICLES, buildVehicle, removeVehicle } from '../world/vehicles.js';
 import { hurt } from './damage.js';
 import { audio } from './audio.js';
 import { HOLES, holesNear } from '../world/holes.js';
+import { trip } from '../trips.js';
 
 /* Moving traffic: vehicle types live in world/vehicles.js, behaviour in the PRESETS below. Each vehicle is a plain record in the coordinates of ITS road
    (s along it, lat + = right) driven by an IDM-style car-follower plus lane rules. Roads (net/network.js):
@@ -28,6 +29,7 @@ const PRESETS = {
   emergency: { speed: 1.05, T: .8,  over: true, siren: true },
 };
 const BEHIND_OK = ['tailgate', 'overtake', 'emergency'], CROSS_OK = ['cruise', 'slow', 'tailgate'];   // presets for vehicles spawning behind the truck / on side roads
+const CALM_OK = ['cruise', 'slow'];   // a calm trip (trips.js `calm`) spawns only these
 export const cars = [];   // live vehicles (debug handle: window.__game.traffic)
 export const MAIN = { main: true, at: m => net.mainAt(m), coords: (x, z, hint) => net.mainCoords(x, z, hint) };
 const T = { rng: Math.random, seed: 0, spawnT: 0, cross: new Map(), ids: 0 };   // ids: a stable number per vehicle for the recording (no rng draw)
@@ -78,6 +80,7 @@ function spawnAt(type, preset, road, dir, s, lat) {
   cars.push(a); place(a); return a;
 }
 function pickType(ok) {
+  if (trip.calm) { const f = ok; ok = k => CALM_OK.includes(k) && (!f || f(k)); }
   for (let i = 0; i < 4; i++) {   // some types have no preset that fits: retry with another type
     const type = pick(Object.fromEntries(Object.entries(VEHICLES).map(([k, d]) => [k, d.rare]))), preset = pick(VEHICLES[type].presets, ok); if (preset) return [type, preset];
   }
@@ -94,11 +97,11 @@ function spawnCross(j, c) {
 export function resetTraffic(seed) {
   for (const a of cars) removeVehicle(a.mesh); cars.length = 0; T.cross.clear(); T.ids = 0;
   if (!CFG.TRAFFIC) return;   // (no Math.random() draw when off, so the headless trace stays comparable)
-  T.seed = seed ?? Math.random() * 4294967296 >>> 0; T.rng = mulberry32(T.seed); T.spawnT = CFG.TRAFFIC_GAP;
+  T.seed = seed ?? Math.random() * 4294967296 >>> 0; T.rng = mulberry32(T.seed); T.spawnT = CFG.TRAFFIC_GAP / trip.traffic;
   truckPose();
   // the main road is already busy when the ride starts: both directions, on both sides of the depot exit
   const Sm = net.Sm, r = T.rng;
-  for (const [dir, s] of [[1, Sm + 120 + r() * 80], [1, Sm + 420 + r() * 150], [-1, Sm + 260 + r() * 120], [-1, Sm + 650 + r() * 150], [1, Sm - 200 - r() * 120], [1, Sm - 520 - r() * 150], [-1, Sm - 140 - r() * 100]]) {
+  for (const [dir, s] of [[1, Sm + 120 + r() * 80], [1, Sm + 420 + r() * 150], [-1, Sm + 260 + r() * 120], [-1, Sm + 650 + r() * 150], [1, Sm - 200 - r() * 120], [1, Sm - 520 - r() * 150], [-1, Sm - 140 - r() * 100]].slice(0, Math.round(7 * Math.min(1, trip.traffic)))) {   // a quieter trip starts with fewer of them
     for (let i = 0; i < 3; i++) { const tp = pickType(); if (tp && spawnAt(tp[0], tp[1], MAIN, dir, s)) break; }
   }
 }
@@ -266,19 +269,20 @@ export function updateTraffic(dt) {
     return boxes.get(road);
   };
   if ((T.spawnT -= dt) <= 0) {
-    T.spawnT = CFG.TRAFFIC_GAP * (.6 + T.rng() * .8);
+    T.spawnT = CFG.TRAFFIC_GAP / trip.traffic * (.6 + T.rng() * .8);
     const nMain = cars.reduce((k, a) => k + (a.road.main ? 1 : 0), 0);
-    if (nMain < CFG.TRAFFIC_MAX) {
+    if (nMain < Math.round(CFG.TRAFFIC_MAX * trip.traffic)) {
       const r = T.rng();
       if (st.s < net.Sm) spawnRandom(r < .15 ? 'ahead' : r < .55 ? 'behind' : 'oncoming');   // waiting at the depot exit: keep the main road busy past it
       else spawnRandom(r < .4 ? 'ahead' : r < .65 && st.v > 8 ? 'behind' : 'oncoming');
     }
   }
+  const crossMax = Math.round(CFG.CROSS_MAX * trip.cross);
   for (const j of net.near(TK.m - 300, TK.m + 900)) {   // cross traffic at signalled crossroads in range
-    if (j.kind !== 'cross' || !j.signal) continue;
+    if (j.kind !== 'cross' || !j.signal || !crossMax) continue;
     let t = T.cross.get(j.id);
     if (t === undefined) { t = T.rng() * CFG.CROSS_GAP; for (let i = 0; i < 2; i++) spawnCross(j, (T.rng() - .5) * 2 * (j.len - 60)); }   // first sight: already some on it
-    if ((t -= dt) <= 0) { t = CFG.CROSS_GAP * (.6 + T.rng() * .8); if (cars.filter(a => a.road.j === j).length < CFG.CROSS_MAX) spawnCross(j); }
+    if ((t -= dt) <= 0) { t = CFG.CROSS_GAP * (.6 + T.rng() * .8); if (cars.filter(a => a.road.j === j).length < crossMax) spawnCross(j); }
     T.cross.set(j.id, t);
   }
   let fatal = null;

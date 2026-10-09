@@ -11,6 +11,7 @@ import { buildJunction, heads } from './junctions.js';
 import { buildDepot } from './depot.js';
 import { stripPool, strips, finish, buildSpine } from './roadmesh.js';
 import { group, releaseTree, poolStats, meshPool, groupPool } from './pool.js';
+import { trip } from '../trips.js';
 
 /* Road is streamed in 32 m chunks around the truck: road surface + markings (world/roadmesh.js, widths from the road network), junctions that fall in the
    chunk (world/junctions.js), the depot (chunk 0), the route's props and roadside furniture (all registered as colliders).
@@ -41,7 +42,7 @@ function buildChunk(ci) {
   buildHoles(ci, s0, { place, raw, reg, destroyed });   // road holes + the warning signs before them
   // roadside scenery (kinds, density and distances come from the route's props.js); placed LAST, so it is the one that gives way to buildings, guardrails and warning signs
   for (let k = 0; k < pr.slots; k++) {
-    const key = ci * 10 + k; if (rnd(key) > pr.density) continue;
+    const key = ci * 10 + k; if (rnd(key) > pr.density * trip.props) continue;   // trip.props: the ride tier's scenery density (trips.js)
     let s = s0 + (k + rnd(key + .5)) * CH / pr.slots; const side = rnd(key + .7) < 0.5 ? -1 : 1, off = pr.near + Math.pow(rnd(key + .9), 1.6) * pr.span;
     const id = ci + ':' + k; if (destroyed.has(id)) continue;
     const prop = pr.pick(rnd(key + .3), rnd(key + .1)), u = prop.userData, d = KINDS[u.kind](u.size);

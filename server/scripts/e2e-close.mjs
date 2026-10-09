@@ -84,6 +84,7 @@ const done = await ride(me);
 await B.send('Page.navigate', { url: `${GAME}/play.html?ride=${done.id}` }); await boot();
 await B.ev(`document.getElementById('go').click()`); await sleep(800);
 // headless can't drive: grow s with the GAME clock at 20 m/s (under the governor) and press keys like a person (as in e2e-browser.mjs – the verdict reads them)
+await B.ev('__game.trip.finish = false');   // the free run ends itself at the line (client/js/trips.js); this check is about the tab closing on a complete shift that drives on
 await B.ev('(() => { let last = __game.st.t; setInterval(() => { const g = __game.st; if (g.mode === "drive") g.s += 20 * Math.max(0, g.t - last); last = g.t; }, 50); })()');
 const press = async (code, key, hold) => { await B.send('Input.dispatchKeyEvent', { type: 'keyDown', code, key }); await sleep(hold); await B.send('Input.dispatchKeyEvent', { type: 'keyUp', code, key }); };
 const KEYS = [['KeyW', 'w'], ['KeyA', 'a'], ['KeyD', 'd'], ['KeyW', 'w'], ['ArrowUp', 'ArrowUp']];

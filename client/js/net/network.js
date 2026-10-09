@@ -2,6 +2,7 @@ import { CFG } from '../config.js';
 import { clamp, mulberry32 } from '../util.js';
 import { roadAt, setRoadProfile } from '../road.js';
 import { PATTERNS, DEFAULT_WEIGHTS } from './patterns.js';
+import { trip } from '../trips.js';
 
 /* The ROAD NETWORK: an endless road generated lazily, ahead of the truck, from a seeded PRNG – so the whole layout is a pure function of the ride seed
    (and the route's bend style). Pure data + queries, no three.js: world/ builds meshes from it, sim/ drives on it, net/orchestrator.js runs it.
@@ -108,7 +109,7 @@ class RoadNetwork {
     if (s < this.Sm) return this.kTurn;
     this.ensure(s + 600);
     const seg = this.segAt(s), t = clamp((s - seg.s0) / TAPER, 0, 1), bends = seg.prev.bends + (seg.bends - seg.prev.bends) * t;
-    return this.style.curv(s) * bends * this.calm(s);
+    return this.style.curv(s) * bends * this.calm(s) * trip.bends;   // trip.bends: the ride tier's bend scale (trips.js) – geometry only, the server's port has no curvature
   }
   /* cross-section at spine position s: { nR, nL (lanes per direction, fractional in a taper), centre (style | null = route's own | 'none'), edge (edge lines?), pat } */
   xs(s) { return s < this.Sm ? ACCESS : this.mainXs(s); }

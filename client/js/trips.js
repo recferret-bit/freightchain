@@ -1,0 +1,23 @@
+/* TRIPS – what a ride's road is LIKE, per ride tier (the lobby's free shift and the 1 h / 4 h / 8 h tickets). The truck, the inputs and the physics are
+   the same on every trip; a trip only shapes the world around them. Every number is a MULTIPLIER on the CFG value it names, so '1h' (all 1) is the road
+   as it was before trips existed – offline play.html, the headless trace, the e2e runs and the promo clips use it.
+   Only CLIENT-SIDE levers live here: the server rebuilds the layout and the holes from the seed alone and judges the recording against them
+   (server/src/domain/road, verdict/world-checks.ts), so pattern weights, junctions, hole chance / damage, off-road time and the governor are NOT trip knobs –
+   changing one per tier means a port + a plan version on the ride (see the trip-design skill). The shift LENGTH is the server's (ride-tier.ts / FREE_RIDE_SECONDS).
+     bends    × the route's curvature (net/network.js curv) – geometry only; the judge works in road coordinates (s, d)
+     traffic  × CFG.TRAFFIC_MAX vehicles on the main road, and ÷ on CFG.TRAFFIC_GAP (more cars, sooner)
+     cross    × CFG.CROSS_MAX vehicles on the side roads of a signalled crossroads (0 = side roads stay empty)
+     calm     only the 'cruise' / 'slow' behaviours spawn (no tailgaters, weavers, overtakers or sirens)
+     props    × the route's roadside scenery density (props.js `density`) – fewer things to clip
+     finish   the shift ENDS by itself, as a win, the moment it is complete (otherwise the road goes on until P → END SHIFT)
+   Tuning: the trip-design skill (`node .claude/skills/trip-design/measure.mjs`). A new key here needs its reader and a row in that skill. */
+export const TRIPS = {
+  free: { id: 'free', name: 'FREE RUN',     bends: .4,  traffic: .4,  cross: 0, calm: true,  props: .5,  finish: true },
+  '1h': { id: '1h',   name: '1 HOUR HAUL',  bends: 1,   traffic: 1,   cross: 1, calm: false, props: 1,   finish: false },
+  '4h': { id: '4h',   name: '4 HOUR HAUL',  bends: 1.2, traffic: 1.4, cross: 1.4, calm: false, props: 1.2, finish: false },
+  '8h': { id: '8h',   name: '8 HOUR HAUL',  bends: 1.4, traffic: 1.8, cross: 1.8, calm: false, props: 1.4, finish: false },
+};
+export const DEFAULT_TRIP = '1h';
+/* the trip being driven / watched – set BEFORE the road is reset (the curvature is integrated into road.js tables on net.reset) */
+export const trip = { ...TRIPS[DEFAULT_TRIP] };
+export function setTrip(id) { Object.assign(trip, TRIPS[id] ?? TRIPS[DEFAULT_TRIP]); return trip; }

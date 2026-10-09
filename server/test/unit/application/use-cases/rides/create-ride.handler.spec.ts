@@ -18,7 +18,7 @@ describe('CreateRideHandler', () => {
   it('a free ride: ready at once, one credit spent, a re-ask hands back the same ride', async () => {
     const { ctx, analytics, create } = setup();
     const ride = await create('free');
-    expect(ride).toMatchObject({ tier: 'free', status: 'created', minSeconds: 10, completeDist: 140, lamports: 0 });
+    expect(ride).toMatchObject({ tier: 'free', status: 'created', minSeconds: 10, completeDist: 70, lamports: 0 });
     expect((await create('free')).id).toBe(ride.id);
     expect((await ctx.storedPlayer('w')).freeRides).toBe(4);
     expect(analytics.named('ride_ordered')).toHaveLength(1);

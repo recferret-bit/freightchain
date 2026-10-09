@@ -65,7 +65,7 @@ async function drive({ name, script = human, mutate = () => null, hashOf = (_b, 
   const who = await signIn();
   const { j: ride } = await call('POST', 'rides', { body: { tier: 'free' }, ...who });
   await call('POST', `rides/${ride.id}/start`, { body: {}, ...who });
-  const speed = Math.max(5, Math.min(27, (ride.completeDist / ride.minSeconds) * 1.12 + 1));
+  const speed = Math.max(5, Math.min(27, Math.max(ride.completeDist / ride.minSeconds, 0.5 * 28) * 1.12 + 1));   // at least the paid pace: the free run's line is shorter (0.25), and the free board ranks by metres
   const d = { ...who, id: ride.id, t0: Date.now(), t: 0, s: 0, seq: 0, prevHash: ride.id, samples: [], inputs: [], bt0: 0, receipts: [], bodies: [], held: [], road: honestRoad(BASE, ride.id) };   // road: the hull loss the game takes at the server's planned holes
   const events = script(ride.minSeconds * 1000 + extra * 1000).sort((a, b) => a[0] - b[0]);
   const row = (t, s, v) => [r(sampleT(t), 2), r(sampleS(s), 1), 2.4, 0, r(v, 2), Math.round(900 + v * 50), 6, 100, 0.6, 0, 0, 0, 12, 1 | 2 | 8];

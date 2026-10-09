@@ -50,7 +50,7 @@ export function flowScenarios(h: () => Harness): void {
     it('spends a credit per ride, reuses an unstarted ride, grants +1 per UTC day', async () => {
       const { agent } = await login();
       const r1 = (await agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
-      expect(r1).toMatchObject({ status: 'created', minSeconds: 10, completeDist: 140 });
+      expect(r1).toMatchObject({ status: 'created', minSeconds: 10, completeDist: 70 });   // the free run's line: 0.25 × 28 × 10
       expect((await agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body.id).toBe(r1.id);   // same unstarted ride, no 2nd credit
       expect((await agent.get('/api/me')).body.freeRides).toBe(4);
       await agent.post('/api/rides').send({ tier: 'paid1h' }).expect(400);

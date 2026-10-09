@@ -66,7 +66,7 @@ A new setting therefore touches **four** places: `env.schema.ts`, `server/.env.e
 
 | Key | Default | Notes |
 |---|---|---|
-| `FREE_RIDE_SECONDS` | `180` | Free-ride length. Test/demo override |
+| `FREE_RIDE_SECONDS` | `60` | Free-ride length (the free run: one minute, an easy road – `client/js/trips.js`). Test/demo override |
 | `HB_MIN_INTERVAL_MS` | `1000` | Minimum spacing of ride heartbeats |
 | `HB_TIMEOUT_MS` | `150000` | A running ride with no heartbeat this long has lost its tab – it could not resume anyway (its next heartbeat would fail it): it leaves the live feed and the stale-ride sweeper (every min(30 s, timeout / 3)) ends it as *failed · heartbeat lost*. Tests set it low |
 | `DEMO_WALLETS` | empty | Comma-separated wallets (or `*`) whose **paid** rides run `DEMO_SCALE`× shorter – for demo videos |

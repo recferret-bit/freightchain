@@ -6,7 +6,7 @@ const prod = { ...base, NODE_ENV: 'production', JWT_SECRET: 'x'.repeat(32), TREA
 
 describe('validateEnv', () => {
   it('needs only DATABASE_URL in development and applies the defaults', () => {
-    expect(validateEnv(base)).toMatchObject({ PORT: 3000, NODE_ENV: 'development', FREE_RIDE_SECONDS: 180, THROTTLE_LIMIT: 600, THROTTLE_AUTH_LIMIT: 30, DEMO_SCALE: 60, DEMO_WALLETS: '' });
+    expect(validateEnv(base)).toMatchObject({ PORT: 3000, NODE_ENV: 'development', FREE_RIDE_SECONDS: 60, THROTTLE_LIMIT: 600, THROTTLE_AUTH_LIMIT: 30, DEMO_SCALE: 60, DEMO_WALLETS: '' });
     expect(validateEnv(base).TRUST_PROXY).toBeUndefined(); // dev: 0 hops by default (EnvService)
     expect(() => validateEnv({})).toThrow(/DATABASE_URL/);
   });

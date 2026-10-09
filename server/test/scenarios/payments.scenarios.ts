@@ -213,7 +213,7 @@ export function paymentScenarios(h: () => Harness): void {
 
     it('the free path is unchanged: no payment, 5 credits, never scaled', async () => {
       const a = await login(), r = await order(a, 'free');
-      expect(r).toMatchObject({ tier: 'free', status: 'created', timeScale: 1, lamports: 0, minSeconds: 180 });
+      expect(r).toMatchObject({ tier: 'free', status: 'created', timeScale: 1, lamports: 0, minSeconds: 60 });
       expect((await a.agent.get('/api/me')).body.freeRides).toBe(4);
     });
   });

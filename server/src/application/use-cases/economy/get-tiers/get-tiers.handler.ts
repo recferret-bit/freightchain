@@ -1,7 +1,7 @@
 import { QueryHandler, type IQueryHandler } from '@nestjs/cqrs';
 import type { TiersDto } from '../../../../domain/economy/economy.dto.js';
 import { lamportsFor } from '../../../../domain/economy/prize-split.js';
-import { completeDist } from '../../../../domain/rides/ride-rules.js';
+import { completeDist, completeDistK } from '../../../../domain/rides/ride-rules.js';
 import { isPaidTier, rideTiers } from '../../../../domain/rides/ride-tier.js';
 import { RulesConfigPort } from '../../../ports/config/rules-config.port.js';
 import { PriceQuotePort } from '../../../ports/economy/price-quote.port.js';
@@ -34,11 +34,11 @@ export class GetTiersHandler implements IQueryHandler<GetTiersQuery, TiersDto> {
       paymentMode: rules.paymentMode,
       tiers: rideTiers(rules.freeRideSeconds).map((t) => {
         const pool = isPaidTier(t.id) ? poolOf(t.id) : null;
-        if (pool) return { id: t.id, usd: t.usd, seconds: t.seconds, completeDist: completeDist(t.seconds), lamports: pool.priceLamports, available: pool.whyNotSellable(now, 1, 0) === null, pool: toPrizePoolDto(pool) };
+        if (pool) return { id: t.id, usd: t.usd, seconds: t.seconds, completeDist: completeDist(t.seconds, completeDistK(t.id)), lamports: pool.priceLamports, available: pool.whyNotSellable(now, 1, 0) === null, pool: toPrizePoolDto(pool) };
         // program mode is ticket-only (POST /api/rides refuses a paid tier without tickets): no live pool = nothing on sale, not the legacy pay-per-ride
         const legacy = isPaidTier(t.id) && rules.paymentMode !== 'program';
         return {
-          id: t.id, usd: t.usd, seconds: t.seconds, completeDist: completeDist(t.seconds),
+          id: t.id, usd: t.usd, seconds: t.seconds, completeDist: completeDist(t.seconds, completeDistK(t.id)),
           lamports: legacy && quote ? lamportsFor(t.usd, quote.usd) : null,
           available: !isPaidTier(t.id) || (legacy && !!rules.treasury && !!quote),
           pool: null,

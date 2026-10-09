@@ -62,6 +62,9 @@ test('numbers: tiers, governor and completion distance equal the server rules', 
   for (const [id, usd] of [['1h', 5], ['4h', 15], ['8h', 50]]) { assert.match(tiers, new RegExp(`id: '${id}'[^}]*usd: ${usd}\\b`)); assert.match(text, new RegExp(`\\$${usd}\\b`)); }
   const rules = src('server/src/domain/rides/ride-rules.ts'); assert.match(rules, /MAX_SPEED = 28/); assert.match(rules, /COMPLETE_DIST_K = 0\.5/);
   assert.match(text, /28 m\/s/); assert.match(text, /100\.8 km\/h/); assert.match(text, /50\.4 km/, '½ × 28 m/s × 3600 s');
+  // the free run: one minute by default, on the free trip's easy road (client/js/trips.js), ending by itself
+  assert.match(src('server/src/infrastructure/config/env.schema.ts'), /FREE_RIDE_SECONDS: z\.coerce\.number\(\)\.positive\(\)\.default\(60\)/); assert.match(text, /FREE\s+1 minute/);
+  assert.match(src('client/js/trips.js'), /free: \{[^}]*finish: true/); assert.match(text, /ends by itself at the line/);
 });
 
 test('numbers: verdict thresholds equal verdict-rules.ts', () => {

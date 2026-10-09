@@ -14,7 +14,7 @@ describe('GetTiersHandler', () => {
     expect(dto.treasury).toBe(TREASURY);
     expect(dto.paymentMode).toBe('transfer');
     expect(dto.tiers).toEqual([
-      { id: 'free', usd: 0, seconds: 10, completeDist: 140, lamports: null, available: true, pool: null },
+      { id: 'free', usd: 0, seconds: 10, completeDist: 70, lamports: null, available: true, pool: null },
       { id: '1h', usd: 5, seconds: 3600, completeDist: 50_400, lamports: 50_000_000, available: true, pool: null },
       { id: '4h', usd: 15, seconds: 14_400, completeDist: 201_600, lamports: 150_000_000, available: true, pool: null },
       { id: '8h', usd: 50, seconds: 28_800, completeDist: 403_200, lamports: 500_000_000, available: true, pool: null },

@@ -24,7 +24,7 @@ export function lobbyScenarios(h: () => Harness): void {
       sec(5); await w.agent.post(`/api/rides/${id}/heartbeat`).send({ s: 70, t: 5, hull: 80, route: 'brenner', night: false }).expect(200);
       const { body } = await anon().get('/api/live').expect(200);   // no cookie
       const mine = body.rides.find((r: { wallet: string }) => r.wallet === w.address);
-      expect(mine).toMatchObject({ tier: 'free', route: 'brenner', distance: 70, hull: 80, paused: false, driveSeconds: 5, minSeconds: 10, completeDist: 140, timeScale: 1 });
+      expect(mine).toMatchObject({ tier: 'free', route: 'brenner', distance: 70, hull: 80, paused: false, driveSeconds: 5, minSeconds: 10, completeDist: 70, timeScale: 1 });
       expect(mine.progress).toBeCloseTo(0.5, 2);
       expect(mine.id).toBe(id); expect(Object.keys(mine)).not.toContain('reason'); expect(Object.keys(mine)).not.toContain('seed');
       sec(5); await w.agent.post(`/api/rides/${id}/heartbeat`).send({ s: 70, t: 5, hull: 80, paused: true }).expect(200);

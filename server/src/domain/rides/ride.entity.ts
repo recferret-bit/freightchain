@@ -9,7 +9,7 @@ import {
 import { BATCH_SEQ_SLACK, GAME_TIME_FACTOR, GAME_TIME_SLACK_SECONDS, MIN_BATCH_SECONDS, RECORDING_BYTES_PER_SECOND, RECORDING_BYTES_SLACK, type RecordingAllowance } from '../telemetry/telemetry-rules.js';
 import {
   DRIVE_CREDIT_SLACK, DRIVE_CREDIT_SLACK_SECONDS, MAX_SPEED, REASON_MAX_LENGTH, SLACK_METRES, SPEED_SLACK,
-  completeDist, crashCap, isRouteId, type RideTimingRules,
+  completeDist, crashCap, FREE_COMPLETE_DIST_K, isRouteId, type RideTimingRules,
 } from './ride-rules.js';
 
 export interface RideProps {
@@ -82,7 +82,7 @@ export class Ride {
 
   /** A free ride is ready at once (its credit is spent by the caller). */
   static createFree(i: FreeRideInput): Ride {
-    return new Ride({ ...Ride.blank(), id: i.id, wallet: i.wallet, tier: 'free', seed: i.seed, minSeconds: i.minSeconds, completeDist: completeDist(i.minSeconds), status: RideStatus.Created, createdAt: i.now });
+    return new Ride({ ...Ride.blank(), id: i.id, wallet: i.wallet, tier: 'free', seed: i.seed, minSeconds: i.minSeconds, completeDist: completeDist(i.minSeconds, FREE_COMPLETE_DIST_K), status: RideStatus.Created, createdAt: i.now });
   }
 
   /** A paid ride bought with a pool ticket (the money is already in the pool's escrow): ready at once, ranked in the pool's round. The caller spends the ticket. */

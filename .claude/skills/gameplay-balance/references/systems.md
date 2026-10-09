@@ -11,7 +11,7 @@ Debug handle `window.__game`: `st`, `CFG`, `input`, `startRide`, `tryShift`, `ig
 | feel | owner |
 |---|---|
 | offline ride length, complete distance | `js/config.js` `RIDE_MIN_SECONDS`, `COMPLETE_DIST_K`. `COMPLETE_DIST` is derived on the next line: `K × MAX_SPEED × RIDE_MIN_SECONDS`. Complete = both time and distance (`sim/physics.js`, the `st.complete` line). The road does not end |
-| online ride length | server sends `minSeconds` and `completeDist`; `js/online.js` writes them onto `CFG`. Free length: `FREE_RIDE_SECONDS`. Paid: `server/src/domain/rides/ride-tier.ts`. Demo wallets shorten wall time via `timeScale`, not these constants |
+| online ride length | server sends `minSeconds` and `completeDist`; `js/online.js` writes them onto `CFG`. Free length: `FREE_RIDE_SECONDS` (60), its distance `FREE_COMPLETE_DIST_K` in `ride-rules.ts`. Paid: `server/src/domain/rides/ride-tier.ts`. The road per tier is `client/js/trips.js` (skill `trip-design`). Demo wallets shorten wall time via `timeScale`, not these constants |
 | top speed | `CFG.MAX_SPEED` (forward), `CFG.REVERSE_MAX`. Applied at the end of the longitudinal step in `sim/physics.js` |
 | how far off the asphalt before the ride fails | `CFG.OFFROAD_FAIL_SECONDS` (time off drains 2× once back on the road), `CFG.OFFROAD_DRAG`. Also a hard fail at `\|d\| > 80` in `physics.js` `update` — that `80` is a literal |
 

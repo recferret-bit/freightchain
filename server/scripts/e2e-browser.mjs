@@ -19,7 +19,7 @@ await send('Network.setCookie', { name, value, url: BASE, httpOnly: true });
 await send('Page.navigate', { url: `${BASE}/play.html?ride=${ride.id}` });
 for (let i = 0; i < 100 && !(await ev('!!window.__game')); i++) await sleep(200);
 check('game booted', await ev('!!window.__game'));
-check('shift length comes from the server', (await ev('__game.CFG.RIDE_MIN_SECONDS')) === MIN && Math.abs((await ev('__game.CFG.COMPLETE_DIST')) - 0.5 * 28 * MIN) < 1e-6, `${await ev('__game.CFG.RIDE_MIN_SECONDS')} s · ${await ev('__game.CFG.COMPLETE_DIST')} m`);
+check('shift length comes from the server (the free run: 0.25 × 28 m/s × seconds)', (await ev('__game.CFG.RIDE_MIN_SECONDS')) === MIN && Math.abs((await ev('__game.CFG.COMPLETE_DIST')) - 0.25 * 28 * MIN) < 1e-6, `${await ev('__game.CFG.RIDE_MIN_SECONDS')} s · ${await ev('__game.CFG.COMPLETE_DIST')} m`);
 await ev('document.getElementById("go").click()'); await sleep(800);
 check('ride started on the server', (await (await fetch(`${BASE}/api/rides/${ride.id}`, { headers: { cookie } })).json()).status === 'running');
 check('road seed = the server seed', (await ev('__game.roads.seed')) === ride.seed, `${await ev('__game.roads.seed')} vs ${ride.seed}`);

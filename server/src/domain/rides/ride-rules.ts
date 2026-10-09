@@ -18,7 +18,11 @@ export const MAX_CRASHES_PER_RIDE = 200;
 /** … and never more than a plausible rate: 3 plus one per 3 driven seconds (a truck cannot crash ten times a second) */
 export const crashCap = (driveSeconds: number): number => Math.min(MAX_CRASHES_PER_RIDE, 3 + Math.floor(Math.max(0, driveSeconds) / 3));
 
-export const completeDist = (minSeconds: number): number => COMPLETE_DIST_K * MAX_SPEED * minSeconds;
+/** The FREE run ends at a shorter line: its minute is mostly the depot road and the turn, and a brisk driver covers ~490 m of it (the trip-design
+    skill's measure), so the paid K of 0.5 (840 m) would stretch "one minute" to ~95 s. Stored on the ride at creation, so changing it moves only new rides. */
+export const FREE_COMPLETE_DIST_K = 0.25;
+export const completeDistK = (tier: string): number => (tier === 'free' ? FREE_COMPLETE_DIST_K : COMPLETE_DIST_K);
+export const completeDist = (minSeconds: number, k: number = COMPLETE_DIST_K): number => k * MAX_SPEED * minSeconds;
 
 /** Timing knobs the environment may tune (see RulesConfigPort). */
 export interface RideTimingRules {

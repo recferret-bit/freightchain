@@ -132,7 +132,10 @@ async function chromeDrive({ port, shotsDir, mode }) {
   const stop = mode === 'human' ? answerPrompts(tab, { log: p => answered.push(p.id) }) : () => {};
   let promptShot = false, promptsSeen = 0;
   const t0 = Date.now();
-  for (let i = 0; !(await tab.ev('__game.st.complete')) && Date.now() - t0 < 60_000 + MIN * 4000; i++) {
+  await tab.ev('__game.trip.finish = false');   // the free run ends itself at its line (client/js/trips.js) – drive on until 3 prompts were issued AND the 3rd one's 20 s window closed (an open window is not judged), so 'ignored' can reject
+  let third = 0;
+  for (let i = 0; !((await tab.ev('__game.st.complete')) && third && Date.now() - third > 22_000) && Date.now() - t0 < 90_000 + MIN * 4000; i++) {
+    if (!third && promptsSeen >= 3) third = Date.now();
     if (!promptShot && (await tab.ev('!!(window.__game.prompt.cur && !window.__game.prompt.cur.answered)'))) { await tab.shot(`${mode}-prompt`); promptShot = true; }
     promptsSeen = await tab.ev('window.__game.prompt.seen.size');
     const [code, key] = KEYS[i % KEYS.length];

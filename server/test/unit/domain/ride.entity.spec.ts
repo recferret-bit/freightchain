@@ -12,8 +12,8 @@ const running = () => { const r = freeRide(); r.start(T0); return r; };
 const order = () => Ride.createPaidOrder({ id: 'ride-2', wallet: 'w', tier: '1h', seed: 1, minSeconds: 3600, timeScale: 1, priceUsd: 5, lamports: 50_000_000, solUsd: 100, now: T0, quoteTtlMs: 600_000 });
 
 describe('Ride – creation', () => {
-  it('a free ride is ready at once; completion needs 0.5 × 28 m/s × minSeconds metres', () => {
-    expect(freeRide()).toMatchObject({ status: RideStatus.Created, minSeconds: 10, completeDist: 140, isFree: true, version: 1 });
+  it('a free ride is ready at once; completion needs 0.25 × 28 m/s × minSeconds metres (the free run ends at a shorter line than a paid shift)', () => {
+    expect(freeRide()).toMatchObject({ status: RideStatus.Created, minSeconds: 10, completeDist: 70, isFree: true, version: 1 });
   });
 
   it('a paid order awaits payment with its price and expiry locked in', () => {

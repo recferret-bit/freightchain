@@ -29,6 +29,7 @@ import { roadPlan, followRoadPlan, updateRoadPlan } from './road-plan.js';
 import { mountWatchPanel } from './ui/watch-panel.js';
 import { liveFeed } from './ui/live-feed.js';
 import { track } from './analytics.js';
+import { trip, setTrip } from './trips.js';
 import './ui/input.js';
 import './ui/tuning.js';
 
@@ -44,6 +45,7 @@ function frame(now) {
 selectTheme(savedThemeId() ?? THEMES[0].id, false);   // the route chosen last time (menu: click a route card to change it)
 setClock(savedClock(), true, false);   // the last clock time (default noon); the menu has Day/Dusk/Night/Dawn cards, F2 the time scale
 await initOnline();   // only with ?ride=<id> (see online.js); offline it returns at once
+setTrip(online.ride?.tier ?? (typeof location === 'undefined' ? null : new URL(location.href).searchParams.get('trip')));   // the ride tier's road (trips.js): the lobby's ride, or ?trip=free|1h|4h|8h offline (tuning); before the road is built
 if (online.ride) {
   const r = online.ride;   // no seed: the relay must not see it
   followRoadPlan(r.id, () => online.running);   // the server's holes, once /start has answered (road-plan.js)
@@ -55,11 +57,11 @@ if (online.ride) {
 if (await initWatch()) {   // only with ?watch=<id> (see watch.js): the watched ride's route + seed, no menu, the watch panel instead
   CFG.TRAFFIC = false;   // no traffic SIM in a replay: watch.js draws the traffic the driver's game RECORDED (an empty road for recordings from before that)
   if (watch.ride) followRoadPlan(watch.ride.id);   // a replay draws the server's holes, never a copy of what the driver's game had
-  if (watch.ride) { selectTheme(THEMES.some(t => t.id === watch.ride.route) ? watch.ride.route : THEMES[0].id, false); resize(); resetRide(watch.ride.seed); st.mode = 'drive'; startWatch(); }
+  if (watch.ride) { setTrip(watch.ride.tier); selectTheme(THEMES.some(t => t.id === watch.ride.route) ? watch.ride.route : THEMES[0].id, false); resize(); resetRide(watch.ride.seed); st.mode = 'drive'; startWatch(); }
   else resize();
   mountWatchPanel();
 } else { resize(); resetRide(); showMenu('FREIGHT CHAIN', 'Long-haul truck simulator'); }
 requestAnimationFrame(frame);
-window.__game = { audio, cosmetics, online, telemetry, prompt, watch, roadPlan, liveFeed, radio, roadObjects, chunks, spacing, roads, net, st, disp, CFG, Wallet, input, tryShift, ignition, startRide, curv, spawn, traffic: cars, selectTheme, THEMES, setNight, setPhase, setClock, dn, weather, uiBtns, inputBits, holes: { HOLES, holeAt, holesNear, clearHoleCache, plan, flagged } };   // handy for console debugging
+window.__game = { trip, setTrip, audio, cosmetics, online, telemetry, prompt, watch, roadPlan, liveFeed, radio, roadObjects, chunks, spacing, roads, net, st, disp, CFG, Wallet, input, tryShift, ignition, startRide, curv, spawn, traffic: cars, selectTheme, THEMES, setNight, setPhase, setClock, dn, weather, uiBtns, inputBits, holes: { HOLES, holeAt, holesNear, clearHoleCache, plan, flagged } };   // handy for console debugging
 
  
