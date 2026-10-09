@@ -114,9 +114,8 @@ function paintBoards() {
       el('span', { class: 'v' }, `paid ${ago(now() - r.paidAt)}`))) : empty('No paid shift waiting to start. A paid order sits here until its driver turns the key.')));
   }
   if (S.replays) {   // RECENT RIDES: the last that ended, each opening its replay on the watch page while its recording is kept
-    $('board-recent').replaceChildren(...(S.replays.length ? S.replays.map(r => el(r.replay ? 'a' : 'div', { class: 'r', ...(r.replay ? { href: watchUrl(r.id), title: `replay ${short(r.wallet)}'s ride` } : {}) },
-      el('span', { class: 'w' }, avatar(r.wallet), short(r.wallet), el('small', {}, TIER[r.tier] ?? r.tier, r.route ? ` · ${ROUTE[r.route] ?? r.route}` : '')),
-      el('span', { class: 'watch' }, r.replay ? '▶ REPLAY' : ''),
+    $('board-recent').replaceChildren(...(S.replays.length ? S.replays.map(r => el(r.replay ? 'a' : 'div', { class: 'r r2', ...(r.replay ? { href: watchUrl(r.id), title: `replay ${short(r.wallet)}'s ride` } : {}) },
+      el('span', { class: 'w' }, avatar(r.wallet), el('span', { class: 'wt' }, short(r.wallet), el('small', {}, TIER[r.tier] ?? r.tier, r.route ? ` · ${ROUTE[r.route] ?? r.route}` : ''))),
       el('span', { class: 'v' }, r.status === 'completed' ? `${km(r.distance)} km ✓` : r.status === 'failed' ? (r.failCode === 'heartbeat_lost' ? 'signal lost' : 'failed') : 'abandoned'))) : empty('No finished rides yet – the first one shows up here, ready to replay.')));
   }
   if (S.board) {

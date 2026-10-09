@@ -167,6 +167,7 @@ h3.sub{margin:40px 0 14px}
 .r .bar{grid-column:1/-1;height:3px;background:var(--dash);border-radius:2px;overflow:hidden;margin-top:-2px}.r .bar i{display:block;height:100%;background:var(--lcd)}
 .r .n{color:var(--dim);width:2.2em}
 .r.me{background:#ffcf5a0d}
+.r2{grid-template-columns:1fr auto}.r .wt{display:grid;min-width:0;white-space:nowrap}.r .wt small{overflow:hidden;text-overflow:ellipsis}
 a.r{color:inherit;text-decoration:none}a.r:hover,a.r:focus-visible{background:#ffcf5a12}.r .watch{color:var(--dim);font-size:11px;letter-spacing:1px;text-align:right}a.r:hover .watch{color:var(--cream)}
 .board .link{display:inline-block;margin-top:10px;font-size:12px}
 .escrow{display:grid;grid-template-columns:3fr 2fr;gap:12px}
