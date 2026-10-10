@@ -169,25 +169,39 @@ const pickedLevel = t => { const ls = freeLevels(t); return ls.find(l => l.level
 const assistAllowed = t => pickedLevel(t)?.assist !== false;
 function levelPicker(t) {
   const ls = freeLevels(t), on = pickedLevel(t); if (!ls.length) return '';
-  const pick = n => { S.opt.level = n; store.set('freightchain.level', String(n)); paintTiers(); };
+  const pick = n => { S.opt.level = n; store.set('freightchain.level', String(n)); syncFreeLevel(); };   // in place: rebuilding the card flashed the level line
   return el('div', { class: 'levels', role: 'radiogroup', 'aria-label': 'Level' },
     ls.map(l => el('label', { class: `lv${l.level === on.level ? ' on' : ''}`, for: `level-${l.level}` },
       el('input', { type: 'radio', name: 'level', id: `level-${l.level}`, value: String(l.level), checked: l.level === on.level, disabled: !!S.busy, onchange: () => pick(l.level) }),
       el('b', {}, l.name), el('small', {}, `${dur(l.seconds)} · ≥ ${km(l.completeDist)} km`), l.assist ? '' : el('small', { class: 'why' }, 'no assist'))));
 }
+/* the picked level already prints its time and distance on its chip, so nothing under the picker repeats it. ASSIST's lock follows the pick without a repaint. */
+function syncFreeLevel() {
+  const t = S.tiers?.tiers.find(x => x.id === 'free'), lv = pickedLevel(t), card = $('tier-free'); if (!card || !lv) return;
+  card.querySelectorAll('.lv').forEach(node => { const input = node.querySelector('input'), on = Number(input.value) === lv.level; node.classList.toggle('on', on); input.checked = on; });
+  const input = $('opt-assist'), label = input?.closest('.opt'); if (!input || !label) return;
+  const allowed = assistAllowed(t), span = label.querySelector('span'), hint = span.querySelector('small:not(.why)');
+  input.disabled = !allowed; input.checked = !!S.opt.assist && allowed; label.classList.toggle('locked', !allowed);
+  const why = span.querySelector('.why');
+  if (allowed) why?.remove();
+  else if (why) why.textContent = `no assist on ${lv.name}`;
+  else span.insertBefore(el('small', { class: 'why' }, `no assist on ${lv.name}`), hint);
+}
 function freeCard(t) {
-  const off = tierOff(t), lv = pickedLevel(t), i = tierInfo(lv ? { ...t, seconds: lv.seconds, completeDist: lv.completeDist } : t);   // the shift line follows the picked level
+  const off = tierOff(t), lv = pickedLevel(t);
   return el('article', { class: 'tier free', id: 'tier-free' },
     el('div', { class: 'freeinfo' },
-      el('div', { class: 'hd' }, el('span', { class: 'nm' }, TIER_NAME.free), el('span', { class: 'st done' }, 'NO PRIZE')),
+      el('div', { class: 'hd' },
+        el('span', { class: 'nm' }, TIER_NAME.free),
+        el('span', { class: 'st done' }, 'NO PRIZE'),
+        el('span', { class: 'st done' }, 'FOR THE FREE LEADERBOARD AND ACHIEVEMENTS'),
+        el('button', { class: 'go', id: 'start', disabled: !!off || !!S.busy, onclick: startFree }, S.busy === 'free' ? 'WORKING…' : S.me.readyFreeRide ? 'START FREE RIDE · ready' : 'START FREE RIDE')),
       levelPicker(t),
-      el('span', { class: 'sub', id: 'free-shift' }, lv ? `${lv.name} · ${i.shift}` : i.shift),
-      el('span', { class: 'sub more' }, 'Counts for the free leaderboard and achievements.'),
+      freeLevels(t).length ? '' : el('span', { class: 'sub', id: 'free-shift' }, tierInfo(t).shift),   // a server without levels: the one shift, once
       el('div', { class: 'guide' },
         guideBox('opt-tutorial', 'TUTORIAL', S.me?.tutorialPassed ? 'Step-by-step tips over the game – you have done it, switch it on to see it again.' : 'Step-by-step tips over the game: ignition, gears, steering, lights, hull. On for your first ride.', tutorialOn(), v => { S.opt.tutorial = v; }),
         guideBox('opt-assist', 'ASSIST', 'The truck and the battery last twice as long and every control gets a tip when it matters. Finish a free ride WITHOUT it for the “On My Own” achievement.', S.opt.assist, v => { S.opt.assist = v; store.set('freightchain.assist', v ? '1' : '0'); }, assistAllowed(t) ? '' : `no assist on ${lv?.name ?? 'this level'}`)),
       off ? el('span', { class: 'tag' }, off) : ''),
-    el('button', { class: 'go', id: 'start', disabled: !!off || !!S.busy, onclick: startFree }, S.busy === 'free' ? 'WORKING…' : S.me.readyFreeRide ? 'START FREE RIDE · ready' : 'START FREE RIDE'),
     el('p', { class: 'msg dim', id: 'msg-free' }));
 }
 function soonCard(t) {   // 4h / 8h with no live pool: the planned price is text, the button does nothing

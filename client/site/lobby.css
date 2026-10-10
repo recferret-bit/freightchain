@@ -41,7 +41,7 @@ h2{margin:22px 0 10px;font-size:13px;letter-spacing:2px;color:var(--amber);font-
 
 /* tiers: one card per shift (article – the actions are buttons INSIDE it) */
 .tiers{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px;align-items:start}
-.tier.free{grid-template-columns:1fr auto;align-items:center;gap:4px 16px;margin-bottom:12px}.tier.free .freeinfo{display:grid;gap:4px}.tier.free .go{margin:0;width:auto;min-width:200px}.tier.free .msg{grid-column:1/-1;margin:0}.tier.free .msg:empty{display:none}.tier.free{margin-top:12px}.tier.free .hd{justify-content:flex-start;gap:12px}
+.tier.free{margin:12px 0}.tier.free .freeinfo{display:grid;gap:4px}.tier.free .hd{justify-content:flex-start;gap:8px 12px;flex-wrap:wrap}.tier.free .hd .go{margin:0 0 0 auto;width:auto;min-width:200px;flex:none}.tier.free .msg{margin:0}.tier.free .msg:empty{display:none}
 .tier .more{max-height:0;overflow:hidden;opacity:0;transition:max-height .2s,opacity .2s}
 .tier:hover .more,.tier:focus-within .more{max-height:12em;opacity:1}
 @media (hover:none){.tier .more{max-height:none;opacity:1}}
@@ -145,7 +145,7 @@ tr.cut td{border-top:2px dashed var(--amber)}
 .gprog,.gprev,#garage-slots .slot{margin-bottom:10px}.gprev{padding:8px}.gprev canvas{display:block;width:100%;max-width:760px;aspect-ratio:1280/633;margin:0 auto;border-radius:6px;background:#26221d;touch-action:manipulation}.cabnote{text-align:center;margin:6px 0 0;font-size:12px}
 #garage-slots .slot.ping{border-color:var(--amber);box-shadow:0 0 0 1px var(--amber)}
 
-@media (max-width:560px){.top{padding:10px 12px}.tabs{padding:0 6px;gap:0}.tabs a{padding:11px 8px;letter-spacing:0;font-size:12px}.tier .pr{font-size:19px}td,th{padding:8px 4px;font-size:13px}.tiers{grid-template-columns:1fr}.tier.free{grid-template-columns:1fr}.tier.free .go{width:100%}.promo-top{order:3;width:100%}.promo-top input{flex:1}.tix th:nth-child(4),.tix td:nth-child(4){display:none}}
+@media (max-width:560px){.top{padding:10px 12px}.tabs{padding:0 6px;gap:0}.tabs a{padding:11px 8px;letter-spacing:0;font-size:12px}.tier .pr{font-size:19px}td,th{padding:8px 4px;font-size:13px}.tiers{grid-template-columns:1fr}.tier.free .hd .go{margin-left:0;flex-basis:100%;width:100%}.promo-top{order:3;width:100%}.promo-top input{flex:1}.tix th:nth-child(4),.tix td:nth-child(4){display:none}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 .filters{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin:0 0 12px}.filters label{font-size:12px;color:var(--dim)}
 .filters select{font:inherit;font-size:12px;background:#000a;color:var(--text);border:1px solid var(--line);border-radius:4px;padding:4px 6px}
