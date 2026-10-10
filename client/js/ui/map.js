@@ -189,12 +189,13 @@ function label(g, text, x, y, P, col) {
 }
 
 /* ───────────── the phone's power: off with the ride → boot (engine on) → home screen → the Maps app opens → the map ───────────── */
-const BOOT = 3000, HOME = 1500, LAUNCH_AT = 1000, UI_MS = 450;   // ms: the boot animation · the home screen (icons pop in, Maps is pressed at LAUNCH_AT, then opens to full screen by HOME) · the map's controls slide in
+const BOOT = 3000, HOME = 2500, LAUNCH_AT = 2000, UI_MS = 450;   // ms: the boot animation · the home screen (icons pop in, Maps is pressed at LAUNCH_AT, then opens to full screen by HOME) · the map's controls slide in
 const ease = x => 1 - (1 - clamp(x, 0, 1)) ** 3, lerp = (a, b, k) => a + (b - a) * k;
-/** where the phone is: { off } · { boot } ms · { home } ms since the home screen came up · { on, u } the map app, `u` 0..1 = its controls sliding in. A new ride starts with the phone off; the engine switches it on – and it stays on for good (the engine going off again does not). */
+/** where the phone is: { off } · { boot } ms · { home } ms since the home screen came up · { on, u } the map app, `u` 0..1 = its controls sliding in. A new ride starts with the phone off; the engine switches it on, and its stopping switches it off again. */
 function screen() {
   const now = performance.now();
   if (st.watch && !phone.power) phone.power = 3;   // a replay's phone is simply on
+  if (phone.power > 0 && !st.engineOn && !st.watch) { phone.power = 0; recordPhone('power-off'); }   // the engine stops (switched off, stalled): the phone goes dark – the next start boots it again
   if (phone.power === 0 && st.engineOn) { phone.power = 1; phone.bootAt = now; recordPhone('power-on'); audio.play('switch', .35); }
   if (phone.power === 1 && now - phone.bootAt >= BOOT) { phone.power = 2; phone.homeAt = now; recordPhone('home'); }
   if (phone.power === 2 && now - phone.homeAt >= HOME) { phone.power = 3; phone.readyAt = now; recordPhone('ready'); }
@@ -283,8 +284,8 @@ function paintHome(g, X, Y, W, H, t, thumb, o) {
     g.restore();
   }
   g.restore();
-  if (launch > 0 && maps) {   // the Maps app opens: the whole map grows out of the icon, to the full screen
-    const e = launch, rx = lerp(maps.x, X, e), ry = lerp(maps.y, Y, e), rw = lerp(maps.s, W, e), rh = lerp(maps.s, H, e);
+  if (launch > 0 && maps) {   // the Maps app opens: the whole map grows from the centre of the screen to the full screen
+    const e = launch, rx = lerp(X + (W - maps.s) / 2, X, e), ry = lerp(Y + (H - maps.s) / 2, Y, e), rw = lerp(maps.s, W, e), rh = lerp(maps.s, H, e);   // from the centre of the screen
     g.save(); g.beginPath(); g.roundRect(rx, ry, rw, rh, lerp(maps.s * .24, 0, e)); g.clip();
     g.translate(rx, ry); g.scale(rw / W, rh / H); g.translate(-X, -Y); paintMap(g, X, Y, W, H, o); g.restore();
   }
