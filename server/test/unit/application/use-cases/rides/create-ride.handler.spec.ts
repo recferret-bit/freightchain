@@ -24,7 +24,7 @@ describe('CreateRideHandler', () => {
     expect((await create('free')).id).toBe(ride.id);
     expect((await ctx.storedPlayer('w')).freeRides).toBe(9);
     expect(analytics.named('ride_ordered')).toHaveLength(1);
-    expect(analytics.named('ride_ordered')[0]?.properties).toMatchObject({ is_free: true, is_demo: false, time_scale: 1, lamports: 0, free_rides_left: 9, ride_id: ride.id });
+    expect(analytics.named('ride_ordered')[0]?.properties).toMatchObject({ is_free: true, is_demo: false, time_scale: 1, lamports: 0, free_rides_left: 9, ride_id: ride.id, tutorial: false, assist: false });
     expect(analytics.named('ride_resumed')).toHaveLength(1);
     expect(analytics.named('ride_resumed')[0]?.properties).toMatchObject({ ride_id: ride.id, status: 'created' });
   });
@@ -38,10 +38,12 @@ describe('CreateRideHandler', () => {
   });
 
   it('asking again for the ready free ride re-chooses its helpers on the SAME ride – one credit, one ride', async () => {
-    const { ctx, create } = setup();
+    const { ctx, analytics, create } = setup();
     const first = await create('free', 'w', true, false);
     const again = await create('free', 'w', false, true);
     expect(again).toMatchObject({ id: first.id, tutorial: false, assist: true });
+    expect(analytics.named('ride_ordered')).toHaveLength(1);
+    expect(analytics.named('ride_resumed').at(-1)?.properties).toMatchObject({ ride_id: first.id, tutorial: false, assist: true });
     expect(await ctx.reload(first.id)).toMatchObject({ tutorial: false, assist: true });
     expect((await ctx.storedPlayer('w')).freeRides).toBe(9);
     expect(await create('free', 'w', false, true)).toMatchObject({ id: first.id, assist: true });   // unchanged: nothing to save
@@ -133,9 +135,10 @@ describe('CreateRideHandler', () => {
 
   it('buying while holding an unstarted free ride cancels it and refunds the credit; a paid ready ride is never replaced', async () => {
     const { ctx, analytics, create } = setup();
-    const free = await create('free');
+    const free = await create('free', 'w', true, false);
     const order = await create('1h');
     expect((await ctx.reload(free.id)).status).toBe(RideStatus.Cancelled);
+    expect(analytics.named('ride_cancelled')[0]?.properties).toMatchObject({ ride_id: free.id, tutorial: true, assist: false, reason_code: 'replaced_by_paid' });
     expect((await ctx.storedPlayer('w')).freeRides).toBe(10);
     const paid = await ctx.reload(order.id); paid.markPaid(1, ctx.now()); await ctx.rides.save(paid);
     const ordered = analytics.named('ride_ordered').length;

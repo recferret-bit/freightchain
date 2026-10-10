@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Analytics review · pass 1 of 3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../../verified-play/style.css">
+<link rel="stylesheet" href="../analytics.css">
+</head>
+<body>
+<div class="wrap">
+<header>
+  <span class="eyebrow">Freight Chain · analytics review</span>
+  <h1>Pass 1 of 3</h1>
+  <p class="lede">File 1 · 10 Oct 2026. Coverage. The dead tier click is gone, the whitepaper now has a page view, and a free ride’s tutorial and assist flags ride on the server events that already commit them.</p>
+  <p class="soft"><a href="../index.html">Product analytics</a></p>
+</header>
+
+<section>
+  <h2>What changed</h2>
+  <p>Removed <code>tier_selected</code> (nothing sends it). Added <code>whitepaper_viewed</code>. The whitepaper PLAY button and model-viewer link now use the events the landing already had. <code>tutorial</code> and <code>assist</code> are properties on the ride events, not new names. The client list stays 38 names.</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Surface</th><th>Found</th><th>Edited</th></tr></thead>
+      <tbody>
+        <tr><td>Landing</td><td>Connect, play, demo, invite, chapters, offline practice, and the storybook link already have events. Chapter links and the scroll hint stay silent. The whitepaper CTA, footer, and escrow link are arrivals: the whitepaper page view counts them.</td><td>No change on this page.</td></tr>
+        <tr><td>Whitepaper</td><td>Only web vitals fired. Contents links are in-page anchors. PLAY starts an offline run. The model-viewer link is the same control as the landing’s.</td><td><code>landing/src/whitepaper.js</code> sends <code>whitepaper_viewed</code>, and the PLAY and storybook clicks use the existing names.</td></tr>
+        <tr><td>Lobby</td><td>Tabs are new, live, replays, board, garage, promo, profile. The explainer omitted replays and garage, but <code>lobby_tab_viewed</code> already sends the hash. There is no tier-select click; START, RIDE, and PAY fire <code>ride_buy_clicked</code> with <code>tier_id</code>. Tutorial and assist are checkboxes stored on the ride. Ticket buy, refund, live filters, and WATCH stay out (escrow tickets and the live stream).</td><td>Explainer tab list. No new lobby event.</td></tr>
+        <tr><td>Gameplay</td><td>An online ride already sends page, load failure, start, start failure, pause, unpause, and end. Dash buttons are the drive, which telemetry records. Tutorial SKIP and END TUTORIAL are not stored. Offline <code>play.html</code> and the watch page stay silent.</td><td>No new client event. <code>ride_started</code> now carries the tutorial and assist the shift began with.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>Events</h2>
+  <p><b>Added.</b> <code>whitepaper_viewed</code>, property <code>surface=whitepaper</code>, once per load.</p>
+  <p><b>Removed.</b> <code>tier_selected</code>. The allowlist, the P0 row, and the activation note that said a rider who accepts the default tier never fires it.</p>
+  <p><b>Properties, not new names.</b> <code>tutorial</code> and <code>assist</code> on <code>ride_ordered</code>, <code>ride_resumed</code> (a re-chosen free ride), <code>ride_started</code>, <code>ride_progressed</code>, and <code>ride_failed</code>. Completed and abandoned copy the start shape, so they carry the same two booleans.</p>
+  <p><b>Explainer.</b> <a href="../index.html">docs/analytics/index.html</a>: two planes, funnel 2a, server rows for order, start, progress, fail, and resume, the browser table, and the footer date (10 Oct 2026). Eyebrow counts stay 38 client and 24 server.</p>
+</section>
+
+<section>
+  <div class="callout">
+    <b>Production dashboards were not opened, edited, or sent a batch.</b>
+    <span><code>posthog-test</code> and <code>posthog-prod</code> were not run. No PostHog API call. Dashboard 1006663 was not touched.</span>
+  </div>
+</section>
+
+<section>
+  <h2>Next pass</h2>
+  <p>Check the allowlist against the new literals, that <code>tutorial</code> and <code>assist</code> sit on the snapshot after the commit, that no funnel still names <code>tier_selected</code>, and that a cancelled or expired free ride does not drop the two flags the order event had.</p>
+</section>
+</div>
+</body>
+</html>

@@ -31,6 +31,7 @@ function withRoute(properties: Props, route: string | null, setOnce?: Props): { 
 
 const identity = (v: RideProps, isDemo: boolean): Props => ({
   ride_id: v.id, tier_id: v.tier, is_free: v.tier === 'free', is_demo: isDemo, time_scale: v.timeScale,
+  tutorial: v.tutorial, assist: v.assist,   // free-ride checkboxes; a paid ride stores false
 });
 
 const distances = (v: RideProps): Props => ({
@@ -56,16 +57,20 @@ export function rideOrdered(v: RideProps, isDemo: boolean, freeRidesLeft: number
 }
 
 export function rideResumed(v: RideProps, isDemo: boolean, now: Date): AnalyticsEvent {
-  return serverEvent('ride_resumed', v.wallet, null, now, { ride_id: v.id, tier_id: v.tier, status: v.status, is_free: v.tier === 'free', is_demo: isDemo });
+  return serverEvent('ride_resumed', v.wallet, null, now, {
+    ride_id: v.id, tier_id: v.tier, status: v.status, is_free: v.tier === 'free', is_demo: isDemo, tutorial: v.tutorial, assist: v.assist,
+  });
 }
 
 export function rideExpired(v: RideProps, isDemo: boolean): AnalyticsEvent {
-  return serverEvent('ride_expired', v.wallet, `ride:${v.id}:expired`, endedAt(v), { ride_id: v.id, tier_id: v.tier, status: v.status, is_free: v.tier === 'free', is_demo: isDemo, reason: v.reason });
+  return serverEvent('ride_expired', v.wallet, `ride:${v.id}:expired`, endedAt(v), {
+    ride_id: v.id, tier_id: v.tier, status: v.status, is_free: v.tier === 'free', is_demo: isDemo, reason: v.reason, tutorial: v.tutorial, assist: v.assist,
+  });
 }
 
 export function rideCancelled(v: RideProps, isDemo: boolean): AnalyticsEvent {
   return serverEvent('ride_cancelled', v.wallet, `ride:${v.id}:cancelled`, endedAt(v), {
-    ride_id: v.id, tier_id: v.tier, status: v.status, is_free: v.tier === 'free', is_demo: isDemo, reason_code: 'replaced_by_paid',
+    ride_id: v.id, tier_id: v.tier, status: v.status, is_free: v.tier === 'free', is_demo: isDemo, reason_code: 'replaced_by_paid', tutorial: v.tutorial, assist: v.assist,
   });
 }
 
@@ -102,6 +107,7 @@ export function rideFailed(v: RideProps, isDemo: boolean, endedBy: EndedBy): Ana
   const routed = withRoute({
     ride_id: v.id, tier_id: v.tier, is_free: v.tier === 'free', is_demo: isDemo, time_scale: v.timeScale, round_id: v.roundId, lamports: v.lamports,
     fail_code: failCode(v.reason) ?? 'other', ended_by: endedBy, reason: v.reason, drive_ms: ms(v.driveSeconds), distance_m: Math.round(v.lastS), hull: hullOf(v.hull),
+    tutorial: v.tutorial, assist: v.assist,
   }, v.route);
   return serverEvent('ride_failed', v.wallet, `ride:${v.id}:failed`, endedAt(v), routed.properties, undefined, routed.setOnce);
 }
