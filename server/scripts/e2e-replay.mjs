@@ -30,6 +30,11 @@ const [cn, cv] = driver.cookie.split('=');
 await D.send('Network.setCookie', { name: cn, value: cv, url: BASE, httpOnly: true });
 await D.send('Page.navigate', { url: `${BASE}/play.html?ride=${ride.id}` }); await boot(D);
 await D.ev('document.getElementById("go").click()'); await sleep(800);
+// the recorded-traffic checks need cars within the snapshot's 400 m from the start: the EASY free run's traffic is sparse (× 0.4) and seeded per ride, so put
+// two ONCOMING in the driver's game (they pass in the other lane – a car ahead in the truck's own lane would be rammed by this test's fake drive, which moves
+// s without speed) rather than hope the spawn lands near (sim/traffic.js spawn: zone, distance)
+const spawned = await D.ev('(() => { const g = __game; return [g.spawn("sedan", "cruise", "oncoming", 250), g.spawn("truck", "cruise", "oncoming", 380)].filter(Boolean).length; })()');
+console.log('driver: oncoming cars placed', spawned, '· traffic', await D.ev('__game.traffic.length'), '· CFG.TRAFFIC', await D.ev('__game.CFG.TRAFFIC'));
 // headless can't drive: grow s with the GAME clock at 20 m/s (under the governor) and press keys like a person (see e2e-browser.mjs)
 await D.ev('(() => { let last = __game.st.t; setInterval(() => { const g = __game.st; if (g.mode === "drive") g.s += 20 * Math.max(0, g.t - last); last = g.t; }, 50); })()');
 let driving = true;
@@ -75,7 +80,7 @@ const clickRow = await S.ev(`(({ BIT, MOUSE, INPUT_COL }) => __game.watch.rows.f
 check('replay: the dash click is in the input column as WIPER + MOUSE, near when it happened', clickRow !== null && Math.abs(clickRow - clickT) < 1.5, `row t ${clickRow}, clicked at ${clickT?.toFixed?.(1)}`);
 check('replay: the driver\'s keys light up while it plays (yellow input borders)', await until(() => S.ev('__game.watch.inputs.on && [...__game.watch.inputs.key].some(v => v > 0)'), 15_000));
 check('replay: the driver\'s traffic was recorded beside the batches (2 per second)', await S.ev('__game.watch.tframes.length > 20'), `${await S.ev('__game.watch.tframes.length')} frames`);
-check('replay: the recorded vehicles are on the replayed road', await until(() => S.ev('__game.watch.cars.size > 0'), 8000), `${await S.ev('__game.watch.cars.size')} vehicles`);
+check('replay: the recorded vehicles are on the replayed road', await until(() => S.ev('__game.watch.cars.size > 0'), 8000), `${await S.ev('__game.watch.cars.size')} vehicles · frames with a vehicle ${await S.ev('__game.watch.tframes.filter(f => f.length > 1).length')}/${await S.ev('__game.watch.tframes.length')} · playhead ${await S.ev('__game.watch.wt?.toFixed?.(1)')} · first frames ${await S.ev('JSON.stringify(__game.watch.tframes.slice(0, 2))')}`);
 await S.shot('replay-start');
 
 const rate = async () => { const a = await S.ev('__game.st.t'), t0 = Date.now(); await sleep(3000); return ((await S.ev('__game.st.t')) - a) / ((Date.now() - t0) / 1000); };

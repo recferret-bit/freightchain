@@ -118,17 +118,6 @@ check('another wallet: four cards, START enabled, no unpaid order', await until(
 check('…the pending box stays empty', await until(async () => (await third.ev('document.getElementById("pendingbox").textContent')) === '', 30000), JSON.stringify(await third.ev('document.getElementById("pendingbox").textContent')));
 check('…and no page errors on that path', problems(third).length === 0, problems(third).join(' | '));
 
-// ── the READY free ride at 0 credits: spend nine credits out of band, order the tenth (CROSSROADS) and leave it unstarted – the lobby keeps START on and hands back THAT ride
-for (let i = 0; i < 9; i++) { const { j } = await post('rides', { tier: 'free' }, C.cookie); await post(`rides/${j.id}/start`, {}, C.cookie); await post(`rides/${j.id}/end`, { outcome: 'failed', s: 0, t: 0, reason: 'e2e' }, C.cookie); }
-const readyC = (await post('rides', { tier: 'free', level: 2 }, C.cookie)).j;
-const meC = await get('me', C.cookie);
-check('API: 0 free rides left, /api/me carries the ready free ride (id, level 2, trip free-2)', meC.freeRides === 0 && meC.readyFreeRide?.id === readyC.id && meC.readyFreeRide.level === 2 && meC.readyFreeRide.trip === 'free-2', JSON.stringify({ freeRides: meC.freeRides, ready: meC.readyFreeRide }));
-await open(third, C, `${BASE}/lobby.html?ready=1#new`);   // a new query: the same URL with only a hash would not reload the page (no fresh /api/me)
-check('0/5 free rides, yet START is ENABLED and says the ride is ready; CROSSROADS is preselected from the ride', await until(async () => /^0\/5 free rides/.test(await txt(third, '#chip-free')) && (await third.ev('document.getElementById("start")?.disabled')) === false && (await txt(third, '#start')) === 'START FREE RIDE · ready' && (await third.ev('document.getElementById("level-2")?.checked')) === true), `${await txt(third, '#chip-free')} | ${await txt(third, '#start')}`);
-await third.shot('free-ready-desktop');
-await third.ev('document.getElementById("start").click()');
-check('…START reopens the SAME ride (no credit spent, still 0)', await until(async () => await third.ev(`!!window.__game?.online?.ride && __game.online.ride.id === ${JSON.stringify(readyC.id)}`)) && (await get('me', C.cookie)).freeRides === 0, await third.ev('JSON.stringify(window.__game?.online?.ride?.id ?? null)'));
-
 // ── TICKETS: promo → RIDE with a ticket → the game; the 409s read as sentences (fourth browser, wallet D)
 const D = await wallet(), tix = await launch({ port: CDP + 3, shotsDir: 'fc-lobby-shots', evalProblems: true }); await size(tix, 1100, 900, false);
 await open(tix, D, `${BASE}/lobby.html#new`); await until(async () => (await tix.ev('document.querySelectorAll(".tier").length')) === 4);
@@ -242,7 +231,7 @@ await size(obs, 1100, 900, false); await open(obs, B, `${BASE}/`);
 check('landing: stays on / and shows the pool', await until(async () => (await obs.ev('location.pathname')) === '/' && /SOL$/.test(await obs.ev('document.querySelector("#poolbox .big")?.textContent || ""'))));
 check('landing: the hero stat is the escrow across the pools', await until(async () => /^IN ESCROW · \d+ POOLS?$/.test(await txt(obs, '#hero-pot-lbl'))), await txt(obs, '#hero-pot-lbl'));
 check('landing: 4 shifts + three boards rendered (next up, top, recent rides – the LIVE NOW card is gone, the ticker carries it)', await until(async () => (await obs.ev('document.querySelectorAll("#tiers tbody tr").length')) === 4 && (await obs.ev('["board-next","board-top","board-recent"].every(i => (document.getElementById(i)?.textContent ?? "").trim().length > 0)')) === true));
-check('landing: ticker carries the finished ride + the pot', await until(async () => { const t = await obs.ev('document.getElementById("ticker").textContent'); return /finished a test ride/.test(t) && /in the pot/.test(t); }));
+check('landing: ticker carries the finished ride + the pot', await until(async () => { const t = await obs.ev('document.getElementById("ticker").textContent'); return /finished a test ride/.test(t) && /in the pot/.test(t); }), (await obs.ev('document.getElementById("ticker").textContent'))?.slice(0, 400));
 check('landing: all-time km counter > 0 after the completed ride', await until(async () => parseFloat(await obs.ev('document.getElementById("hero-km").textContent')) > 0));
 check('landing: signed-in CTA opens the lobby', await until(async () => /LOBBY/.test(await obs.ev('document.getElementById("connect").textContent'))));
 check('landing: pool = /api/pool', (await obs.ev('document.querySelector("#poolbox .big").textContent')) === (l => `${(l / 1e9).toFixed(l >= 1e9 ? 2 : 3)} SOL`)((await get('pool')).split.grand));
@@ -253,6 +242,17 @@ const ex = await fetch(`${BASE}/escrow/`); check('the old /escrow/ page is gone;
 const toPools = async () => { await obs.ev('document.querySelectorAll(".rv").forEach(n => n.classList.add("in")); document.getElementById("pools").scrollIntoView({ behavior: "instant", block: "center" })'); await sleep(1200); };   // .rv fades in on scroll
 await obs.shot('landing-desktop'); await toPools(); await obs.shot('landing-pools-desktop');
 await obs.ev('scrollTo({ top: 0, behavior: "instant" })'); await size(obs, 390, 844, true); await sleep(300); await obs.shot('landing-phone'); await toPools(); await obs.shot('landing-pools-phone');
+
+// ── the READY free ride at 0 credits: spend nine credits out of band, order the tenth (CROSSROADS) and leave it unstarted – the lobby keeps START on and hands back THAT ride   (last: its nine burnt rides would crowd the finished one off the landing ticker – it shows the 8 newest)
+for (let i = 0; i < 9; i++) { const { j } = await post('rides', { tier: 'free' }, C.cookie); await post(`rides/${j.id}/start`, {}, C.cookie); await post(`rides/${j.id}/end`, { outcome: 'failed', s: 0, t: 0, reason: 'e2e' }, C.cookie); }
+const readyC = (await post('rides', { tier: 'free', level: 2 }, C.cookie)).j;
+const meC = await get('me', C.cookie);
+check('API: 0 free rides left, /api/me carries the ready free ride (id, level 2, trip free-2)', meC.freeRides === 0 && meC.readyFreeRide?.id === readyC.id && meC.readyFreeRide.level === 2 && meC.readyFreeRide.trip === 'free-2', JSON.stringify({ freeRides: meC.freeRides, ready: meC.readyFreeRide }));
+await open(third, C, `${BASE}/lobby.html?ready=1#new`);   // a new query: the same URL with only a hash would not reload the page (no fresh /api/me)
+check('0/5 free rides, yet START is ENABLED and says the ride is ready; CROSSROADS is preselected from the ride', await until(async () => /^0\/5 free rides/.test(await txt(third, '#chip-free')) && (await third.ev('document.getElementById("start")?.disabled')) === false && (await txt(third, '#start')) === 'START FREE RIDE · ready' && (await third.ev('document.getElementById("level-2")?.checked')) === true), `${await txt(third, '#chip-free')} | ${await txt(third, '#start')}`);
+await third.shot('free-ready-desktop');
+await third.ev('document.getElementById("start").click()');
+check('…START reopens the SAME ride (no credit spent, still 0)', await until(async () => await third.ev(`!!window.__game?.online?.ride && __game.online.ride.id === ${JSON.stringify(readyC.id)}`)) && (await get('me', C.cookie)).freeRides === 0, await third.ev('JSON.stringify(window.__game?.online?.ride?.id ?? null)'));
 
 const p1 = problems(rider), p2 = problems(obs); check('no page errors (rider, observer)', !p1.length && !p2.length, [...p1, ...p2].join(' | '));
 console.log(`screenshots: ${rider.SHOTS}`);
