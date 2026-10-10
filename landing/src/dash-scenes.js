@@ -4,7 +4,7 @@
 export const W = 1280, H = 633, DPR = 2;
 const SONGS = ['Dust Road Blues', 'Night Shift', 'Long Haul Waltz', 'Neon Mile', 'Cold Start'];
 const GEARS = [0, 1, 2, 3, 4, 5, 6, 7, 0, -1];   // the shifter card's loop (0 = neutral, -1 = reverse)
-const KMH_AT_2000 = [10, 14, 20, 28, 40, 57, 80];   // km/h per gear at 2000 rpm (AGENTS.md "Gearbox")
+const KMH_AT_2000 = [10, 14, 20, 28, 40, 57, 80];   // km/h per gear at 2000 rpm (docs/agents/gameplay.md "Gearbox")
 
 /* what each card shows: crop = [x, y, w, h] in design px; tick(t, g) scripts the state (t = seconds, g = the swapped-in globals) */
 export const SCENES = {

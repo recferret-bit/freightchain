@@ -211,7 +211,7 @@ npm run server:dev                   # :3000 – site, game and API on one origi
 1. `npm run deploy:init` → edit `deploy/.env` (domain, e-mail, host; `ADMIN_WALLETS`; dedicated devnet `SOLANA_RPC`).
 2. Six DNS A records → `DEPLOY_HOST`.
 3. `npm run deploy -- --dry-run` and read the plan.
-4. Only then `npm run deploy` (needs the explicit go-ahead; see AGENTS.md "Deploying to production").
+4. Only then `npm run deploy` (needs the explicit go-ahead; see docs/agents/deploy.md "Deploying to production").
 
 ## Known drift
 

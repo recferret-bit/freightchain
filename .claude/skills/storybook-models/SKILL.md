@@ -16,7 +16,7 @@ description: >
 
 The viewer (`client/viewer.html`) builds its catalogue by calling the game's builders (`client/js/viewer.js`). Edit that builder. Do not add a mesh that only the viewer draws, and do not register a catalogue row by hand.
 
-Frames, materials, mirrors and pools stay in AGENTS.md ("Landmarks", "Themes (routes)", "Rendering gotchas", "Object pools"). Before a mount, a yaw, a wheel axis, or a collider that must match a mesh, read the `threejs-frame-conventions` skill. Pin the sign with a number `shot.mjs` prints.
+Frames, materials, mirrors and pools stay in `docs/agents/world.md` ("Landmarks", "Themes (routes)") and `docs/agents/client.md` ("Rendering gotchas", "Object pools"). Before a mount, a yaw, a wheel axis, or a collider that must match a mesh, read the `threejs-frame-conventions` skill. Pin the sign with a number `shot.mjs` prints.
 
 ## Which job
 
@@ -33,9 +33,9 @@ Match a note to an id from the list. The wording may not be the viewer's label. 
 | object | file |
 |---|---|
 | traffic vehicle | `client/js/world/vehicles.js` — `STYLES` is the mesh, `VEHICLES` is size / mass / speed / presets. Id shape `veh-<type>-<pick>` |
-| prop | `client/js/themes/_shared/props-basic.js`, or that route's `props.js`. A new collision kind is a `KINDS` row in `client/js/world/props.js` (AGENTS.md "Themes") |
+| prop | `client/js/themes/_shared/props-basic.js`, or that route's `props.js`. A new collision kind is a `KINDS` row in `client/js/world/props.js` (docs/agents/world.md "Themes") |
 | furniture | `client/js/themes/_shared/furniture.js`, switched on by the theme's `furniture` options |
-| landmark | `client/js/themes/_shared/landmarks/` (AGENTS.md "Landmarks", including `c.sign`) |
+| landmark | `client/js/themes/_shared/landmarks/` (docs/agents/world.md "Landmarks", including `c.sign`) |
 | finish gantry | `client/js/world/gantry.js`, banner from the theme's `finishText` |
 | road hole | `client/js/world/holes.js`. Not in the catalogue |
 | depot, junctions, road surface, player trailer | `client/js/world/depot.js`, `junctions.js`, `roadmesh.js`, `trailer.js`. Not in the catalogue. The cab is 2D (`client/js/cockpit/`) |
@@ -46,7 +46,7 @@ If the list has no id, the viewer never builds that object. Screenshot it from `
 
 ## Not a still picture
 
-A blinker, a collision, a spawn, or damage only exists while the sim runs. Say so. Indicators and contact are `client/js/sim/traffic.js`. Check them with the headless playthrough in AGENTS.md "Verifying changes". A collision fix may push the other vehicle. It must not write `st.s` on a fatal hit: the server flags a teleport (AGENTS.md "Verified play").
+A blinker, a collision, a spawn, or damage only exists while the sim runs. Say so. Indicators and contact are `client/js/sim/traffic.js`. Check them with the headless playthrough in `docs/agents/verifying.md`. A collision fix may push the other vehicle. It must not write `st.s` on a fatal hit: the server flags a teleport (`docs/agents/verified-play.md`).
 
 ## Serve
 

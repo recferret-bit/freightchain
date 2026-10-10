@@ -2,7 +2,7 @@
 
 A promo code is **one effect, one window, one counter**. A player types it (lobby → PROMO, or the invite block on the landing), the server applies the effect in a single transaction under the player's row lock, and every use is logged. Admins make and stop codes on the admin page; every change is signed by their wallet and audited.
 
-Status: built on branch `promocodes`, server + lobby + admin + landing + cockpit. Not deployed – nothing reaches production until the owner asks for it (AGENTS.md "Deploying to production"). Migration `20261011000000_promo_effects` is forward-only and rewrites no data.
+Status: built on branch `promocodes`, server + lobby + admin + landing + cockpit. Not deployed – nothing reaches production until the owner asks for it (docs/agents/deploy.md "Deploying to production"). Migration `20261011000000_promo_effects` is forward-only and rewrites no data.
 
 ## What a code can do
 

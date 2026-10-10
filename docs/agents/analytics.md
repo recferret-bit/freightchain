@@ -1,6 +1,20 @@
 # Product analytics – detail
 
-Moved verbatim out of `AGENTS.md`, which keeps the short rules that bite and points here (AGENTS.md + CLAUDE.md are loaded into every agent session and must stay under the size limit). Keep this file current like AGENTS.md ("Maps stay current").
+Agent reference, moved verbatim out of `AGENTS.md` (which keeps only the map and the hard rules and is loaded into every agent session). Read the file for a topic before changing it; keep it current like AGENTS.md ("Maps stay current").
+
+## In short
+
+Detail (relay, identity, dedupe, env, page speed, the skills): `docs/agents/analytics.md`. The full event list, funnels and board recipe: `docs/analytics/index.html` (docs-only) – keep it in step with `server/src/domain/analytics/{client,server}-events.ts` and `application/services/analytics-events.ts`.
+
+- **Cloud EU, project 297915**, ingest `https://eu.i.posthog.com` (the US host takes the token and the events never show). Board https://eu.posthog.com/project/297915/dashboard/1006663 (private; empty until tiles exist, events show in Activity).
+- **Two planes.** The browser posts an allowlist to `POST /api/telemetry` (anonymous ok); the relay drops every name in `SERVER_EVENTS`, so a client cannot mint `ride_completed` / `payment_confirmed`. Server events are built only after the DB commit, inside `emitAnalytics`, and only when `AnalyticsPort.enabled()`. The token stays on the server; no `posthog-js`.
+- **Identity.** Anon id `anon_<uuid v4>` in `localStorage` `freightchain.anon`. **Open bug — do not flip `$create_alias`** (`distinct_id` = the anon id, `properties.alias` = the wallet) until one real `session_restored` is checked in the UI.
+- **Env.** Opt-in: only `POSTHOG_ENABLED=1|true` sends (a `phc_` token alone stays off); `POSTHOG_DISABLED=1|true` wins. Local `server/.env` pins 0, production `deploy/.env` sets 1. Never print or commit `POSTHOG_KEY`.
+- **Page speed** = ONE Trends insight on `web_vital` (Total count, breakdown `metric` then `rating`, bar chart of the period, name Page speed) – not five charts, not PostHog's `$web_vitals` page, not a tile on dashboard 1006663.
+- **Not this work.** Session replay / ride replay are verified play; verdicts, escrow ticket buys and live-stream events are not analytics events. If PostHog and SQL disagree, quote SQL.
+- Skills: `posthog-test` (local smoke), `posthog-prod` (read-only production ingest), `analytics-review` (three local passes), `posthog-map` (event map), `posthog-audit` (board vs spec; apply only when the user says **apply the PostHog fixes**).
+
+## Detail
 
 Capture ships on this checkout. The browser posts an allowlist to `POST /api/telemetry`; the server emits after the database commit. Production sends when the running image includes this code and `deploy/.env` has `POSTHOG_ENABLED=1` with a `phc_` token and `POSTHOG_DISABLED` unset. Local `server/.env` pins `POSTHOG_ENABLED=0`, so `npm run server:dev` does not send. The explainer is the full list: events, the nine funnels with windows (9 = promo codes), the five judge numbers, identity, the relay, the board recipe. Keep it in step with `server/src/domain/analytics/{client,server}-events.ts` and `application/services/analytics-events.ts` when they change. It is docs-only (not copied into `client/`).
 

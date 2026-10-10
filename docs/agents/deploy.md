@@ -1,0 +1,22 @@
+# Deploying to production – detail
+
+Agent reference, moved verbatim out of `AGENTS.md` (which keeps only the map and the hard rules and is loaded into every agent session). Read the file for a topic before changing it; keep it current like AGENTS.md ("Maps stay current").
+
+## Deploying to production
+
+Production = one server (`DEPLOY_HOST` in `deploy/.env`), six names (`freightchain.fun`, `ride.`, `api.`, `storybook.`, `whitepaper.`, `admin.`), Docker app + PostgreSQL behind the host's nginx. Reference: `deploy/README.md`.
+
+**The rule: nothing is deployed until the user asks for it directly, in their current message** ("deploy", "ship it to production"). Committing, merging, "fix it", a green test run or a finished feature are NOT a request to deploy, and a deploy the user approved earlier does not cover changes made after it. When a change is ready, say it is ready and offer the deploy; then wait.
+- **Always allowed** (read-only): `npm run deploy -- --dry-run`, `npm run deploy:status`, `npm run ops -- logs|nginx|query|sql|ps` (the `prod-logs` / `prod-db` skills).
+- **Only on that explicit ask** (they change the server): `npm run deploy`, `deploy:setup` (nginx sites, certificates), `deploy:stats -- --fix` (rewrites the live statistics rows; the plain `deploy:stats` report is read-only), `deploy:rollback`, `deploy:backup`, `deploy:smoke` (it signs in a throwaway player = one row in the production database), `deploy:init`, any ssh command that writes. A failed deploy rolls itself back; a *manual* rollback also waits for the user.
+
+**Steps** (from the repo root of the MAIN checkout, never a worktree):
+1. Green locally: `npm run check` and `npm run server:integration` (in a worktree with other migrations: `TEST_DATABASE_URL=…_<branch>_test`); after API / flow / admin changes also the real-Chrome e2e (`bash .claude/skills/run-tests/e2e.sh`).
+2. Committed and on `main`: the deploy ships `git archive HEAD` of the checkout it runs in – uncommitted changes are not deployed, and a deploy from a commit that lacks what is live **rolls those features back**. Work done in a worktree: fast-forward `main` first (`git merge --ff-only <branch>` in the main checkout). Nothing needs to be pushed.
+3. `npm run deploy -- --dry-run` – the checks, the production env validated by the server's own schema, ssh, and the plan: the commit, the release serving now, whether first-time setup will run (= nginx sites / the certificate change). Show the user the plan.
+4. On the user's go: `npm run deploy` (it asks to confirm; `-y` only when the user said to go ahead without asking). Upload of env + code → image build (the landing's tests gate it) → **database backup** → migrations → container swap → health check (automatic rollback on failure) → the smoke test against the public URLs (also the `admin.*` password and isolation).
+5. Verify and report: the release id it printed, the smoke result, `npm run ops -- logs --since 10m --errors`, after a migration `npm run ops -- query migrations`. Update the status line in `docs/verified-play-next-steps.md` (what is live vs only on `main`).
+
+**Environment** (`deploy/.env`, gitignored, in the main checkout; `DEPLOY_ENV_FILE=<path>` points the scripts at it from elsewhere): `DEPLOY_*` keys stay local (host, domain, the admin site's basic-auth `DEPLOY_ADMIN_USER` / `DEPLOY_ADMIN_PASSWORD` – only an apr1 hash is uploaded), everything else becomes the app's env; `APP_*`, `COOKIE_DOMAIN`, `CORS_ORIGINS` are derived. A new setting = the server's env schema (`server/src/infrastructure/config/env.schema.ts`) + a dummy line in `deploy/.env.example` (+ `deploy/scripts/init-env.mjs` if it is a generated secret); the real value goes into `deploy/.env` only when the user asked for it, and secrets are never printed in the chat or in commits. `VERDICT_ENFORCE` defaults to shadow mode (`false`) in production.
+
+**Migrations** are forward-only and run in every deploy after the backup; one that drops or rewrites data needs the user's explicit OK before the deploy, separately from the code. **New subdomain / nginx change**: an own template + `deploy/scripts/remote/setup.sh` + a smoke check (see `deploy/README.md`); the next deploy runs setup and expands the certificate – call that out in the plan.

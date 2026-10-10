@@ -50,7 +50,7 @@ The shift **length** and **finish line** are the server's, stored on the ride wh
 ## Out of bounds – and the two knobs the server judges
 
 The server rebuilds the layout and the sinkholes from the seed AND the ride's trip and measures every recording against them (`server/src/domain/road`,
-`verdict/world-checks.ts`, AGENTS.md "Verified play"). Two trip knobs are therefore JUDGED and live on both sides: `holesFrom` (`road-rules.ts`
+`verdict/world-checks.ts`, docs/agents/verified-play.md "Verified play"). Two trip knobs are therefore JUDGED and live on both sides: `holesFrom` (`road-rules.ts`
 `TRIP_HOLE_FIRST`) and `road` (`TRIP_ROADS` / `tripRoadOf`, read by `new RoadLayout(seed, trip)` and `roadPlanFor(seed, trip)` at its call sites –
 `get-road-plan`, `upload-batch`, `ride-audit`); `road-drift.spec.ts` runs every trip's layout seed by seed and fails on a difference. Change both sides in
 one commit, and only on a NEW trip id – an old ride must keep the road it was judged on. A new pattern is APPENDED to `PATTERNS` on both sides (the
@@ -62,7 +62,7 @@ in `road-rules.ts`, the drift spec per trip, and a new trip id. Say that to the 
 
 **Forks** (`fork` in `road.weights` / `road.first`; net/patterns.js `FORK`): the road splits into two MIRROR-IMAGE roads that meet again 1200 m on – one
 road in (s, d), so the server never needs to know which one the driver took; the truck commits to the nearer road at 205 m, the recording's column 15
-says which, a replay follows it. AGENTS.md "Road network" → Forks. The old trips (classic / free / 1h / 4h / 8h) have none; forks on a paid tier = new trip ids.
+says which, a replay follows it. docs/agents/world.md "Road network" → Forks. The old trips (classic / free / 1h / 4h / 8h) have none; forks on a paid tier = new trip ids.
 
 ## Workflow
 
@@ -86,7 +86,7 @@ says which, a replay follows it. AGENTS.md "Road network" → Forks. The old tri
    - Measure again; report before → after.
    - Look at it in real Chrome: `node .claude/skills/trip-design/shots.mjs` (needs the game served: `cd client && ./serve.sh`, or `BASE=`) – each trip
      on two routes from the same seed, the start of each trip (`start-*.png`) + the stamps (`trip-*.png`, `win-stamp.png`, `fail-stamp.png` in the dir it prints). Read the screenshots. Grass with the
-     lane lines on it where the asphalt should be is headless Chrome's software GL z-fighting the road against the ground (AGENTS.md "Promo videos"), not
+     lane lines on it where the asphalt should be is headless Chrome's software GL z-fighting the road against the ground (docs/agents/media.md "Promo videos"), not
      the trip: hide the ground plane to confirm, and have a person look on a real GPU.
    - Server touched (length / finish line): `npm run check` (root) and `npm run server:integration`; the whitepaper's tier table (`landing/whitepaper.html`
      "THE FOUR KINDS OF SHIFT", pinned by `landing/test/whitepaper.test.js`).

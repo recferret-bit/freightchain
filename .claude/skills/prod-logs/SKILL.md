@@ -40,7 +40,7 @@ Pipe through `jq` locally when it helps, e.g.:
 ## Interpreting
 
 - `connect() failed (111: Connection refused)` / `recv() failed (104…)` in the nginx error log at the same minute as a release = the app container being swapped (normal, a few seconds). At any other time = the app crashed or is restarting: check `ops -- ps` (restarts) and the app's `--errors`.
-- `heartbeat lost` reasons, `implausible progress`, verdict `reasons` codes: see `AGENTS.md` (Verified play) and `server/src/domain/verdict/`.
+- `heartbeat lost` reasons, `implausible progress`, verdict `reasons` codes: see `docs/agents/verified-play.md` (Verified play) and `server/src/domain/verdict/`.
 - For database facts (rides, verdicts, payments) use the **prod-db** skill; for one wallet or ride end to end use **ride-investigate**.
 
 Report what you found with the exact lines (trimmed) and the time range you looked at; say plainly if nothing matched.

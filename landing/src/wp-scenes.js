@@ -4,7 +4,7 @@
    Every tick starts from the same `base()`, so a scene is a pure function of t and a card never inherits what the last frame left behind. Pure data: no DOM, no game imports. */
 
 const SONGS = ['Dust Road Blues', 'Night Shift', 'Long Haul Waltz', 'Neon Mile', 'Cold Start'];
-const KMH_AT_2000 = [10, 14, 20, 28, 40, 57, 80];   // km/h per gear at 2000 rpm (AGENTS.md "Gearbox")
+const KMH_AT_2000 = [10, 14, 20, 28, 40, 57, 80];   // km/h per gear at 2000 rpm (docs/agents/gameplay.md "Gearbox")
 const pulse = (c, rise, hold, fall, period) => c < 0 || c >= period ? 0 : c < rise ? c / rise : c < rise + hold ? 1 : c < rise + hold + fall ? 1 - (c - rise - hold) / fall : 0;   // 0 → 1 → hold → 0 inside one period
 const wave = (t, f, ph = 0) => .5 + .5 * Math.sin(t * f + ph);   // 0..1
 

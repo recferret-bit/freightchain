@@ -1,8 +1,8 @@
 # Systems
 
-Paths are from `client/` unless they start with `server/`, `landing/`, or `media/`. Narrative for each system is `AGENTS.md` ("Gameplay systems", "Climate", "Day / night", "Controls", "Caveats"). This page is which file to edit, and what else must move.
+Paths are from `client/` unless they start with `server/`, `landing/`, or `media/`. Narrative for each system is `docs/agents/gameplay.md` ("Gameplay systems", "Controls"), `docs/agents/world.md` ("Climate", "Day / night") and `docs/agents/client.md` ("Caveats"). This page is which file to edit, and what else must move.
 
-Frame, from `AGENTS.md` "Conventions": heading forward is `(sinθ, 0, −cosθ)`; truck state is `s` along the spine, `d` lateral (+ right), `psi` heading error; `ds/dt = v·cosψ/(1 − k·d)`. `st.v` is speed ≥ 0; `st.vel` is signed (`st.rev` = reverse). `dt` is clamped to 0.05 s. The sim is floats and is not what the server re-simulates.
+Frame, from `docs/agents/client.md` "Conventions": heading forward is `(sinθ, 0, −cosθ)`; truck state is `s` along the spine, `d` lateral (+ right), `psi` heading error; `ds/dt = v·cosψ/(1 − k·d)`. `st.v` is speed ≥ 0; `st.vel` is signed (`st.rev` = reverse). `dt` is clamped to 0.05 s. The sim is floats and is not what the server re-simulates.
 
 Debug handle `window.__game`: `st`, `CFG`, `input`, `startRide`, `tryShift`, `ignition`, `net`, `roads`, `holes`, `spawn`, `traffic`, `weather`.
 
@@ -27,7 +27,7 @@ Owner of the step: `sim/physics.js` `update`. Gearbox constants: `js/state.js` `
 | launch, stall | clutch slip holds rpm at `STALL_RPM × 0.8 + LAUNCH_RPM × gas × (1 − brake) × power ×` a factor that falls off above 2nd. Slip re-arms when the clutch is in or the box is in neutral. Stall: gear in, clutch engagement > 0.55, rpm < `STALL_RPM` for 0.12 s (`stallT`). `LUG_RPM` (900) is the labour threshold, a literal |
 | shift | `tryShift`: clutch < 0.8 grinds; forward↔reverse needs `v < 0.8`; `SHIFT_TIME` holds the clutch in after the select |
 | damaged or cold power | `(0.4 + 0.6 × hull/100) × (1 − COLD_POWER × coldK())` |
-| useful km/h per gear | comment on `RATIOS` in `state.js`, repeated in `AGENTS.md` "Gearbox". Recompute from `K_RPM` and `RATIOS` if either changes; do not hand-edit a remembered table |
+| useful km/h per gear | comment on `RATIOS` in `state.js`, repeated in `docs/agents/gameplay.md` "Gearbox". Recompute from `K_RPM` and `RATIOS` if either changes; do not hand-edit a remembered table |
 
 Clutch and pedal approach rates (7 / 1.7, gas 3.5 / 5, brake 6) are literals in `update`. Name one in `CFG` only when you are changing it.
 
@@ -75,11 +75,11 @@ Update these in the same change when you touch the constant. Re-read the test; i
 | you changed | also update |
 |---|---|
 | `MAX_SPEED` or `COMPLETE_DIST_K` | `server/src/domain/rides/ride-rules.ts` (same numbers). Verdict reject `over-governor` is `MAX_SPEED × SPEED_TOLERANCE` in `server/src/domain/verdict/verdict-rules.ts`. Heartbeat distance slack is `SPEED_SLACK` in `ride-rules.ts` — it is a judge tolerance, not the governor. Whitepaper sentences that quote the governor and the completion distance, then `npm --prefix landing test` |
-| `RATIOS`, `K_RPM`, `IDLE`, `REDLINE`, `REV_RATIO` | `media/video/page.js` (it says it mirrors `state.js`). `KMH_AT_2000` in `landing/src/dash-scenes.js` and `landing/src/wp-scenes.js`. The gearbox sentences in `AGENTS.md` "Gearbox" and the whitepaper gear / tach cards. `npm --prefix landing test` |
+| `RATIOS`, `K_RPM`, `IDLE`, `REDLINE`, `REV_RATIO` | `media/video/page.js` (it says it mirrors `state.js`). `KMH_AT_2000` in `landing/src/dash-scenes.js` and `landing/src/wp-scenes.js`. The gearbox sentences in `docs/agents/gameplay.md` "Gearbox" and the whitepaper gear / tach cards. `npm --prefix landing test` |
 | a `HOLES` `dmg` / `slow` the whitepaper states for trench, pothole, or sinkhole | that sentence in `landing/whitepaper.html`. Prices stay in `server/src/domain/live/live-rules.ts`; do not change them for a damage tweak |
 | a route id | `ROUTE_IDS` in `ride-rules.ts` |
 | a comment in `CFG` that states a derived time ("flattens in ≈ N min") | rewrite the comment from the new rate |
 
 `landing/test/whitepaper.test.js` fails when a quoted figure drifts from the source it names. Do not only edit the page.
 
-A fatal traffic or prop change that can move `st.s` also concerns verified play (`AGENTS.md` "Verified play"). Keep the truck where the contact happened.
+A fatal traffic or prop change that can move `st.s` also concerns verified play (`docs/agents/verified-play.md` "Verified play"). Keep the truck where the contact happened.

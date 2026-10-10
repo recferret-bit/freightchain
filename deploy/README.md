@@ -104,7 +104,7 @@ gunzip -c ../backups/db-<tag>.sql.gz | docker compose -p freightchain-prod --env
 (Restore into an empty database; stop the app first.)
 
 ## Icons
-The tab icon, the Phantom connect-popup logo and the home-screen icon are plain files in `client/` (`favicon.ico`, `icons/`, `manifest.webmanifest`), served from the root of every host and cached for a day. Nothing to configure here; see AGENTS.md "App icon" to change the design.
+The tab icon, the Phantom connect-popup logo and the home-screen icon are plain files in `client/` (`favicon.ico`, `icons/`, `manifest.webmanifest`), served from the root of every host and cached for a day. Nothing to configure here; see docs/agents/landing.md "App icon" to change the design.
 
 ## Redis (the statistics cache)
 

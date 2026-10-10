@@ -28,13 +28,13 @@
   (function tick() {
     const t = performance.now() - t0;
     if (window.__game && t >= MIN) return done();
-    if (t > 2000 && !window.__game) return;   // the COULD NOT START panel below takes over
+    if (ov.dataset.failed) return;   // the COULD NOT START panel below took over
     fill.style.width = Math.min(90, 90 * (1 - Math.exp(-t / 700))) + '%';
     requestAnimationFrame(tick);
   })();
   setTimeout(() => {
     if (window.__game) return;
-    ov.classList.remove('booting');
+    ov.dataset.failed = '1'; ov.classList.remove('booting');
     document.getElementById('panel').innerHTML = '<h1>COULD NOT START</h1><h2>The game scripts did not load.</h2>' +
       '<div style="margin:6px 0;font-size:15px">Browsers block ES modules on <b>file://</b>. Either:</div>' +
       '<table><tr><td>A</td><td>run <b>python3 -m http.server 8765</b> in this folder and open <b>http://localhost:8765/</b></td></tr>' +
