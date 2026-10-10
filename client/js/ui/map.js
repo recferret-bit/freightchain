@@ -23,7 +23,7 @@ const ZOOMS = [.6, 1.2, 2.4, 4.8, 9.6, 19.2];   // metres per CSS pixel of the b
 const MAX_R = 4000, GROW = 1500;   // the big map draws at most 4 km around the truck, and reaches ≤ 1.5 km further per frame (no 11 km of road integrated in one frame)
 const CH = CFG.CHUNK_LEN;   // the roadside's chunk (world/chunks.js): one landmark at most per chunk
 const FREE_MAX = 3000, FREE_IDLE = 15000;   // how far (m) the map can be dragged from the truck, and how long (ms) it stays where it was left before it follows the truck again
-const view = { off: false, z: 2, northUp: false, rot: null, vAvg: 10, last: 0, reach: 0, wheel: 0, k: 1, hits: [], pois: [], free: null, touched: 0, drag: null, sel: null, el: null, cv: null, raf: 0 };
+const view = { off: false, bounce: null, z: 2, northUp: false, rot: null, vAvg: 10, last: 0, reach: 0, wheel: 0, k: 1, hits: [], pois: [], free: null, touched: 0, drag: null, sel: null, el: null, cv: null, raf: 0 };
 /* the places by the road (the theme's landmarks): a colour and a glyph per type; motels and hotels are both lodging */
 const POI = { motel: { col: '#8e44ad', kind: 'bed', name: 'MOTEL' }, hotel: { col: '#8e44ad', kind: 'bed', name: 'HOTEL' }, gas: { col: '#e8710a', kind: 'pump', name: 'GAS STATION' }, police: { col: '#3949ab', kind: 'badge', name: 'POLICE' }, restaurant: { col: '#d84315', kind: 'fork', name: 'FOOD' } };
 const THUMB = { thumb: true, mpp: 5 };
@@ -188,53 +188,111 @@ function label(g, text, x, y, P, col) {
   g.fillStyle = col ?? P.label; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, x, y + .5);
 }
 
-/* ───────────── the phone's power: off with the ride, booting when the engine starts, then the map ───────────── */
-const BOOT = 3400, FADE = 800;   // ms: the boot animation, then the map fades in under it
-/** where the phone is: { off } black · { t } booting (ms) · { k } the map's fade-in 0..1 (1 = just the map). A new ride starts with the phone off; the engine switches it on – and it stays on for good (the engine going off again does not). */
+/* ───────────── the phone's power: off with the ride → boot (engine on) → home screen → the Maps app opens → the map ───────────── */
+const BOOT = 3000, HOME = 1500, LAUNCH_AT = 1000, UI_MS = 450;   // ms: the boot animation · the home screen (icons pop in, Maps is pressed at LAUNCH_AT, then opens to full screen by HOME) · the map's controls slide in
+const ease = x => 1 - (1 - clamp(x, 0, 1)) ** 3, lerp = (a, b, k) => a + (b - a) * k;
+/** where the phone is: { off } · { boot } ms · { home } ms since the home screen came up · { on, u } the map app, `u` 0..1 = its controls sliding in. A new ride starts with the phone off; the engine switches it on – and it stays on for good (the engine going off again does not). */
 function screen() {
   const now = performance.now();
-  if (st.watch && !phone.power) phone.power = 2;   // a replay's phone is simply on
+  if (st.watch && !phone.power) phone.power = 3;   // a replay's phone is simply on
   if (phone.power === 0 && st.engineOn) { phone.power = 1; phone.bootAt = now; recordPhone('power-on'); audio.play('switch', .35); }
-  if (phone.power === 1 && now - phone.bootAt >= BOOT) { phone.power = 2; phone.readyAt = now; recordPhone('ready'); }
-  if (phone.power === 2 && view.off !== st.off) { view.off = st.off; if (st.mode === 'drive') recordPhone('offroute', st.off ? 1 : 0); }   // the route line turns dotted / solid again
-  return phone.power === 0 ? { off: true, k: 0 } : phone.power === 1 ? { t: now - phone.bootAt, k: 0 } : { k: phone.readyAt ? clamp((now - phone.readyAt) / FADE, 0, 1) : 1 };
+  if (phone.power === 1 && now - phone.bootAt >= BOOT) { phone.power = 2; phone.homeAt = now; recordPhone('home'); }
+  if (phone.power === 2 && now - phone.homeAt >= HOME) { phone.power = 3; phone.readyAt = now; recordPhone('ready'); }
+  if (phone.power === 3 && view.off !== st.off) { view.off = st.off; if (st.mode === 'drive') recordPhone('offroute', st.off ? 1 : 0); }   // the route line turns dotted / solid again
+  return phone.power === 0 ? { off: true } : phone.power === 1 ? { boot: now - phone.bootAt } : phone.power === 2 ? { home: now - phone.homeAt } : { on: true, u: phone.readyAt ? ease((now - phone.readyAt) / UI_MS) : 1 };
 }
-/** the boot screen (also the black of a phone that is off, and – faded out – the way into the map). The mark is OUR OWN: three bars narrowing like a road to the horizon, in the
-    purple → green gradient of the Solana brand colours; it is not the Solana logo (a registered mark – the real one needs the Foundation's brand rules). "Solana" appears only as a plain fact:
-    the game's escrow runs on Solana devnet. */
+/** the boot screen (and the black of a phone that is off). The mark is OUR OWN: three bars narrowing like a road to the horizon, in the purple → green gradient of the Solana brand
+    colours; it is not the Solana logo (a registered mark – the real one needs the Foundation's brand rules). "Solana" appears only as a plain fact: the game's escrow runs on Solana devnet.
+    It ends by itself – the mark swells and goes dark – and the home screen wakes from black: nothing here is ever cross-faded with the map. */
 function paintBoot(g, X, Y, W, H, sc, thumb) {
-  const t = sc.t ?? BOOT, a = sc.k > 0 ? 1 - sc.k : 1;
-  g.save(); g.beginPath(); g.rect(X, Y, W, H); g.clip(); g.globalAlpha = a;
+  const t = sc.boot ?? 0, out = ease((t - (BOOT - 450)) / 450), a = 1 - out;
+  g.save(); g.beginPath(); g.rect(X, Y, W, H); g.clip();
   g.fillStyle = '#05060b'; g.fillRect(X, Y, W, H);
   if (sc.off) { g.restore(); return; }
-  const u = Math.min(W, H * .62) / 100, cx = X + W / 2, cy = Y + H * .42, pulse = .5 + .5 * Math.sin(t / 360), ease = x => 1 - (1 - clamp(x, 0, 1)) ** 3;
+  const u = Math.min(W, H * .62) / 100, cx = X + W / 2, cy = Y + H * .42, pulse = .5 + .5 * Math.sin(t / 360);
+  g.globalAlpha = a;
   for (const [col, dx] of [['153,69,255', -12], ['20,241,149', 12]]) { const r = 60 * u, gr = g.createRadialGradient(cx + dx * u, cy, 0, cx + dx * u, cy, r); gr.addColorStop(0, `rgba(${col},${.2 + .1 * pulse})`); gr.addColorStop(1, `rgba(${col},0)`); g.fillStyle = gr; g.fillRect(X, Y, W, H); }
   const bars = [[52, 0], [38, 1], [24, 2]], bh = 8.5 * u, gap = 4 * u, full = 52 * u, x0 = cx - full / 2, y0 = cy - (3 * bh + 2 * gap) / 2;
   const grad = g.createLinearGradient(x0, 0, x0 + full, 0); grad.addColorStop(0, '#9945ff'); grad.addColorStop(1, '#14f195');
-  const pop = 1 + .12 * ease((t - (BOOT - 500)) / 500);   // the mark swells a little as the map takes over
+  const pop = 1 + .35 * out;
   g.save(); g.translate(cx, cy); g.scale(pop, pop); g.translate(-cx, -cy);
   bars.forEach(([wd, i]) => {
     const e = ease((t - 150 - i * 230) / 650), w = wd * u, x = cx - w / 2 + (i % 2 ? 1 : -1) * (1 - e) * 40 * u, y = y0 + i * (bh + gap);
     g.globalAlpha = a * e; g.fillStyle = grad; g.beginPath(); g.roundRect(x, y, w, bh, bh / 2); g.fill();
     const sh = (t - 1100) / 1000;   // a glint sweeps over the bars
-    if (sh > 0 && sh < 1.3) { const gx = x + (sh * 1.4 - .2) * w; const sg = g.createLinearGradient(gx - 8 * u, 0, gx + 8 * u, 0); sg.addColorStop(0, 'rgba(255,255,255,0)'); sg.addColorStop(.5, 'rgba(255,255,255,.55)'); sg.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = sg; g.beginPath(); g.roundRect(x, y, w, bh, bh / 2); g.fill(); }
+    if (sh > 0 && sh < 1.3) { const gx = x + (sh * 1.4 - .2) * w, sg = g.createLinearGradient(gx - 8 * u, 0, gx + 8 * u, 0); sg.addColorStop(0, 'rgba(255,255,255,0)'); sg.addColorStop(.5, 'rgba(255,255,255,.55)'); sg.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = sg; g.beginPath(); g.roundRect(x, y, w, bh, bh / 2); g.fill(); }
   });
   g.restore(); g.globalAlpha = a;
   if (!thumb) {
-    const e = ease((t - 1300) / 600); g.globalAlpha = a * e; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.globalAlpha = a * ease((t - 1300) / 600); g.textAlign = 'center'; g.textBaseline = 'middle';
     g.fillStyle = '#e8edf3'; g.font = `700 ${Math.max(9, 6.2 * u)}px ${MONO}`; g.fillText('FREIGHT CHAIN', cx, y0 + 3 * bh + 2 * gap + 12 * u);
     g.fillStyle = '#7d8594'; g.font = `600 ${Math.max(7, 3.4 * u)}px ${MONO}`; g.fillText('ON SOLANA DEVNET', cx, y0 + 3 * bh + 2 * gap + 19 * u);
   }
   g.globalAlpha = a;   // the progress bar
-  const bw = 46 * u, by = Y + H * (thumb ? .8 : .8), pg = clamp(t / BOOT, 0, 1); g.fillStyle = 'rgba(255,255,255,.12)'; g.beginPath(); g.roundRect(cx - bw / 2, by, bw, Math.max(2, 1.3 * u), 2); g.fill();
-  const pb = g.createLinearGradient(cx - bw / 2, 0, cx + bw / 2, 0); pb.addColorStop(0, '#9945ff'); pb.addColorStop(1, '#14f195'); g.fillStyle = pb; g.beginPath(); g.roundRect(cx - bw / 2, by, Math.max(2, bw * (1 - (1 - pg) ** 2)), Math.max(2, 1.3 * u), 2); g.fill();
+  const bw = 46 * u, by = Y + H * .8, pg = clamp(t / BOOT, 0, 1), bt = Math.max(2, 1.3 * u); g.fillStyle = 'rgba(255,255,255,.12)'; g.beginPath(); g.roundRect(cx - bw / 2, by, bw, bt, 2); g.fill();
+  const pb = g.createLinearGradient(cx - bw / 2, 0, cx + bw / 2, 0); pb.addColorStop(0, '#9945ff'); pb.addColorStop(1, '#14f195'); g.fillStyle = pb; g.beginPath(); g.roundRect(cx - bw / 2, by, Math.max(2, bw * (1 - (1 - pg) ** 2)), bt, 2); g.fill();
   g.restore();
 }
-/** the phone's picture: black / booting / the map fading in / the map */
+
+/* the home screen: a wallpaper, the clock, a grid of app icons (only Maps does anything – a tap on another just bounces it, and is recorded) and a dock */
+const APPS = [['maps', 'MAPS', '#34a853'], ['wallet', 'WALLET', '#7c4dff'], ['radio', 'RADIO', '#e8710a'], ['weather', 'WEATHER', '#1a8fe3'], ['truck', 'TRUCK', '#5f6368'], ['chat', 'CHAT', '#14b8a6'], ['cam', 'CAMERA', '#3c4043'], ['cog', 'SETTINGS', '#80868b']];
+const DOCK = [['calls', '#34a853'], ['web', '#1a73e8'], ['music', '#ea4335']];
+function homeLayout(X, Y, W, H, thumb) {
+  const u = W / 100, s = 18 * u, gap = (100 - 4 * 18) / 5 * u, rowH = s + (thumb ? 5 : 11) * u, y0 = Y + H * (thumb ? .22 : .27), icons = [];
+  APPS.forEach(([id, label, col], i) => icons.push({ id, label, col, x: X + gap + (i % 4) * (s + gap), y: y0 + Math.floor(i / 4) * rowH, s, i }));
+  DOCK.forEach(([id, col], i) => icons.push({ id, label: '', col, x: X + W / 2 + (i - 1) * (s + gap) - s / 2, y: Y + H - s - 5 * u, s, i: 8 + i, dock: true }));
+  return { u, icons, dockY: Y + H - s - 8 * u, dockH: s + 6 * u };
+}
+function appGlyph(g, id, x, y, s) {   // a simple pictogram in white on the icon's colour
+  g.save(); g.translate(x + s / 2, y + s / 2); const k = s / 40; g.scale(k, k); g.strokeStyle = g.fillStyle = '#fff'; g.lineWidth = 3; g.lineCap = g.lineJoin = 'round'; g.beginPath();
+  if (id === 'maps') { g.moveTo(-14, -8); g.lineTo(-5, -12); g.lineTo(5, -8); g.lineTo(14, -12); g.lineTo(14, 10); g.lineTo(5, 14); g.lineTo(-5, 10); g.lineTo(-14, 14); g.closePath(); g.stroke(); g.beginPath(); g.moveTo(-5, -12); g.lineTo(-5, 10); g.moveTo(5, -8); g.lineTo(5, 14); g.stroke(); g.fillStyle = '#ea4335'; g.beginPath(); g.arc(2, -2, 4.5, 0, 7); g.fill(); }
+  else if (id === 'wallet') { g.roundRect(-14, -9, 28, 20, 4); g.stroke(); g.beginPath(); g.moveTo(-14, -3); g.lineTo(14, -3); g.stroke(); g.beginPath(); g.arc(8, 4, 2, 0, 7); g.fill(); }
+  else if (id === 'radio') { g.roundRect(-14, -6, 28, 18, 4); g.stroke(); g.beginPath(); g.arc(-5, 3, 4, 0, 7); g.stroke(); g.moveTo(3, 0); g.lineTo(10, 0); g.moveTo(3, 5); g.lineTo(10, 5); g.stroke(); g.beginPath(); g.moveTo(-8, -6); g.lineTo(8, -14); g.stroke(); }
+  else if (id === 'weather') { g.arc(-3, -3, 7, 0, 7); g.fill(); g.beginPath(); g.roundRect(-13, 3, 26, 9, 4.5); g.fill(); }
+  else if (id === 'truck') { g.roundRect(-15, -9, 18, 14, 2); g.stroke(); g.beginPath(); g.moveTo(3, -4); g.lineTo(10, -4); g.lineTo(15, 2); g.lineTo(15, 5); g.lineTo(3, 5); g.stroke(); g.beginPath(); g.arc(-8, 8, 3, 0, 7); g.arc(9, 8, 3, 0, 7); g.fill(); }
+  else if (id === 'chat') { g.roundRect(-14, -11, 28, 19, 6); g.stroke(); g.beginPath(); g.moveTo(-6, 8); g.lineTo(-9, 14); g.lineTo(0, 8); g.stroke(); }
+  else if (id === 'cam') { g.roundRect(-14, -8, 28, 19, 4); g.stroke(); g.beginPath(); g.arc(0, 2, 6, 0, 7); g.stroke(); }
+  else if (id === 'cog') { g.arc(0, 0, 8, 0, 7); g.stroke(); for (let a = 0; a < 8; a++) { g.beginPath(); g.moveTo(Math.cos(a * .785) * 11, Math.sin(a * .785) * 11); g.lineTo(Math.cos(a * .785) * 14, Math.sin(a * .785) * 14); g.stroke(); } }
+  else if (id === 'calls') { g.arc(0, 0, 11, .6, 2.5); g.stroke(); g.beginPath(); g.arc(0, 0, 11, 3.8, 5.6); g.stroke(); }
+  else if (id === 'web') { g.arc(0, 0, 12, 0, 7); g.stroke(); g.beginPath(); g.ellipse(0, 0, 5, 12, 0, 0, 7); g.stroke(); g.beginPath(); g.moveTo(-12, 0); g.lineTo(12, 0); g.stroke(); }
+  else { g.arc(-5, 8, 4, 0, 7); g.fill(); g.beginPath(); g.moveTo(-1, 8); g.lineTo(-1, -10); g.lineTo(10, -7); g.stroke(); }
+  g.restore();
+}
+function paintHome(g, X, Y, W, H, t, thumb, o) {
+  const L = homeLayout(X, Y, W, H, thumb), u = L.u, wake = ease(t / 350), launch = ease((t - LAUNCH_AT) / (HOME - LAUNCH_AT)), press = clamp((t - (LAUNCH_AT - 110)) / 110, 0, 1);
+  g.save(); g.beginPath(); g.rect(X, Y, W, H); g.clip();
+  g.fillStyle = '#05060b'; g.fillRect(X, Y, W, H); g.globalAlpha = wake;
+  const bg = g.createLinearGradient(0, Y, 0, Y + H); bg.addColorStop(0, '#0d1024'); bg.addColorStop(.6, '#1c1346'); bg.addColorStop(1, '#0e3b3a'); g.fillStyle = bg; g.fillRect(X, Y, W, H);
+  for (const [col, fx, fy] of [['153,69,255', .2, .9], ['20,241,149', .85, 1]]) { const gr = g.createRadialGradient(X + W * fx, Y + H * fy, 0, X + W * fx, Y + H * fy, 70 * u); gr.addColorStop(0, `rgba(${col},.28)`); gr.addColorStop(1, `rgba(${col},0)`); g.fillStyle = gr; g.fillRect(X, Y, W, H); }
+  const rest = 1 - launch * .85, hh = Math.floor(dn.t) % 24, mm = Math.floor((dn.t % 1) * 60), clock = String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0');
+  g.globalAlpha = wake * rest; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#e8edf3';
+  if (!thumb) { g.font = `600 ${Math.max(9, 3.6 * u)}px ${MONO}`; g.textAlign = 'left'; g.fillText(clock, X + 5 * u, Y + 4.5 * u); g.textAlign = 'right'; g.fillText((st.engineOn ? '⚡ ' : '') + 'LTE ▂▄▆█', X + W - 5 * u, Y + 4.5 * u); g.textAlign = 'center'; }
+  g.font = `300 ${Math.max(8, (thumb ? 9 : 13) * u)}px ${MONO}`; g.fillText(clock, X + W / 2, Y + H * (thumb ? .12 : .13));
+  g.globalAlpha = wake * rest; g.fillStyle = 'rgba(255,255,255,.1)'; g.beginPath(); g.roundRect(X + 3 * u, L.dockY, W - 6 * u, L.dockH, 6 * u); g.fill();
+  let maps = null;
+  for (const ic of L.icons) {
+    const pop = ease((t - 120 - ic.i * 70) / 380), bounce = view.bounce?.id === ic.id ? Math.sin(clamp((performance.now() - view.bounce.at) / 320, 0, 1) * Math.PI) : 0;
+    let sc = (.5 + .5 * pop) * (1 - .1 * bounce) * (1 - launch * .06), alpha = wake * pop * rest;
+    if (ic.id === 'maps') { maps = ic; sc *= 1 - .12 * Math.sin(press * Math.PI * .5) * (launch > 0 ? 1 : 1); alpha = wake * pop; }
+    if (alpha <= 0) continue;
+    g.save(); g.globalAlpha = alpha; g.translate(ic.x + ic.s / 2, ic.y + ic.s / 2); g.scale(sc, sc); g.translate(-ic.s / 2, -ic.s / 2);
+    g.shadowColor = 'rgba(0,0,0,.35)'; g.shadowBlur = 6 * u; g.fillStyle = ic.col; g.beginPath(); g.roundRect(0, 0, ic.s, ic.s, ic.s * .24); g.fill(); g.shadowBlur = 0;
+    if (ic.id === 'maps') { const lg = g.createLinearGradient(0, 0, 0, ic.s); lg.addColorStop(0, 'rgba(255,255,255,.25)'); lg.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = lg; g.beginPath(); g.roundRect(0, 0, ic.s, ic.s, ic.s * .24); g.fill(); if (press > 0 && launch === 0) { g.fillStyle = `rgba(255,255,255,${.25 * press})`; g.beginPath(); g.roundRect(0, 0, ic.s, ic.s, ic.s * .24); g.fill(); } }
+    appGlyph(g, ic.id, 0, 0, ic.s);
+    if (ic.label && !thumb) { g.fillStyle = '#e8edf3'; g.font = `600 ${Math.max(7, 2.7 * u)}px ${MONO}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(ic.label, ic.s / 2, ic.s + 4.5 * u); }
+    g.restore();
+  }
+  g.restore();
+  if (launch > 0 && maps) {   // the Maps app opens: the whole map grows out of the icon, to the full screen
+    const e = launch, rx = lerp(maps.x, X, e), ry = lerp(maps.y, Y, e), rw = lerp(maps.s, W, e), rh = lerp(maps.s, H, e);
+    g.save(); g.beginPath(); g.roundRect(rx, ry, rw, rh, lerp(maps.s * .24, 0, e)); g.clip();
+    g.translate(rx, ry); g.scale(rw / W, rh / H); g.translate(-X, -Y); paintMap(g, X, Y, W, H, o); g.restore();
+  }
+}
+/** the phone's picture: black / boot / home screen (the Maps app opening) / the map */
 function drawMap(g, X, Y, W, H, o = {}) {
   const sc = screen();
-  if (sc.k > 0) paintMap(g, X, Y, W, H, o);
-  if (sc.k < 1) paintBoot(g, X, Y, W, H, sc, !!o.thumb);
+  if (sc.on) paintMap(g, X, Y, W, H, o); else if (sc.home !== undefined) paintHome(g, X, Y, W, H, sc.home, !!o.thumb, o); else paintBoot(g, X, Y, W, H, sc, !!o.thumb);
   return sc;
 }
 
@@ -253,7 +311,7 @@ function nextStep(T0) {
   if (j) out.push({ icon: 'straight', dist: Math.max(0, j.s - s), text: j.kind === 'cross' ? 'Crossroads – straight on' : `Junction on the ${j.side > 0 ? 'right' : 'left'} – straight on`, sub: j.signal ? 'traffic lights · ' + ({ G: 'green', A: 'amber', R: 'red' })[net.signal(j, 'main')] + ' now' : 'no lights – give way to nobody, watch the side road' });
   if (T0 !== null && T0 > s) out.push({ icon: 'flag', dist: T0 - s, text: trip.finish ? 'Finish line' : 'Shift distance done', sub: trip.finish ? 'the run ends there by itself' : 'then keep driving until the time is up' });
   out.sort((a, b) => a.dist - b.dist);
-  return out[0] ?? { icon: 'straight', dist: null, text: 'Continue on the ' + roadName(s).toLowerCase(), sub: st.complete ? 'shift complete · P → END SHIFT when you like' : 'follow the road' };
+  return out[0] ?? { icon: 'straight', dist: null, text: 'Continue on the ' + roadName(s).toLowerCase(), sub: st.complete ? "shift complete · I'M OUT when you like" : 'follow the road' };
 }
 const distText = d => (d === null ? '' : d <= 0 ? 'now' : d >= 1000 ? (d / 1000).toFixed(1) + ' km' : Math.max(10, Math.round(d / 10) * 10) + ' m');
 function icon(g, kind, x, y, k = 1) {
@@ -277,14 +335,16 @@ function drawPhone() {
   const k = view.k = Math.min(1, CH / 600, CW / 300), W = CW / k, H = CH / k;
   g.setTransform(dpr * k, 0, 0, dpr * k, 0, 0);
   const P = palette(), T0 = target(), hits = view.hits; hits.length = 0;
-  if (sc.k <= 0) {   // off or booting: the screen is all there is – and a way to put the phone down
+  if (!sc.on) {   // off, booting, the home screen: the screen is all there is – icons to tap on the home screen, and a way to put the phone down
     g.textAlign = 'center'; g.textBaseline = 'middle';
     if (sc.off) { g.fillStyle = '#7d8594'; g.font = `600 13px ${MONO}`; g.fillText('PHONE OFF', W / 2, H * .46); g.font = `11px ${MONO}`; g.fillText('start the engine to switch it on', W / 2, H * .46 + 22); }
-    g.fillStyle = 'rgba(255,255,255,.14)'; g.beginPath(); g.roundRect(W / 2 - 44, H - 52, 88, 32, 16); g.fill();
-    g.fillStyle = '#c3ccd8'; g.font = `700 13px ${MONO}`; g.fillText('CLOSE', W / 2, H - 35); hits.push({ id: 'exit', x: W / 2 - 44, y: H - 52, w: 88, h: 32 });
+    if (sc.home !== undefined) for (const ic of homeLayout(0, 0, CW, CH, false).icons) hits.push({ id: 'app:' + ic.id, x: ic.x / k, y: ic.y / k, w: ic.s / k, h: ic.s / k });
+    if (sc.home === undefined || sc.home < LAUNCH_AT) { const cy = sc.home === undefined ? H - 52 : homeLayout(0, 0, CW, CH, false).dockY / k - 42;   // on the home screen it sits above the dock
+      g.fillStyle = 'rgba(255,255,255,.14)'; g.beginPath(); g.roundRect(W / 2 - 44, cy, 88, 32, 16); g.fill(); g.fillStyle = '#c3ccd8'; g.font = `700 13px ${MONO}`; g.fillText('CLOSE', W / 2, cy + 17); hits.unshift({ id: 'exit', x: W / 2 - 44, y: cy, w: 88, h: 32 }); }
     return;
   }
-  g.globalAlpha = sc.k;   // the map's controls fade in with it
+  const ui = sc.u;   // the map's controls slide in: the card from the top, the sheet from the bottom
+  g.save(); g.globalAlpha = ui; g.translate(0, -(1 - ui) * 80);
   g.font = `600 12px ${MONO}`; g.textBaseline = 'middle';
   // status bar: the game clock, signal, the phone's battery (charging from the cab while the engine runs)
   g.fillStyle = dn.k > .5 ? 'rgba(10,14,20,.85)' : 'rgba(255,255,255,.88)'; g.fillRect(0, 0, W, 24);
@@ -298,6 +358,7 @@ function drawPhone() {
   g.fillStyle = '#fff'; g.textAlign = 'left'; g.font = `700 20px ${MONO}`; g.fillText(fit(g, distText(n.dist) || n.text, W - 86), 70, 52);
   g.font = `600 13px ${MONO}`; g.fillText(fit(g, n.dist === null ? n.sub : n.text, W - 86), 70, 74);
   g.font = `11px ${MONO}`; g.fillStyle = 'rgba(255,255,255,.82)'; g.fillText(fit(g, n.dist === null ? '' : n.sub, W - 86), 70, 92);
+  g.restore(); g.globalAlpha = ui;
   // the bottom sheet's top; the floating buttons (compass: heading up ⇄ north up, zoom in / out, and – once the map is dragged away – back to the truck) stay above it
   const sh = 120, sy = H - sh, bx = W - 46; let by = Math.max(112, Math.min(116, sy - 8 - 4 * 44));
   for (const [id, glyph] of [['north', view.northUp ? 'N' : '➤'], ['in', '+'], ['out', '−'], ...(view.free ? [['home', '◎']] : [])]) {
@@ -306,6 +367,7 @@ function drawPhone() {
     if (id === 'north' && !view.northUp) { g.save(); g.translate(bx + 18, by + 18); g.rotate(-Math.PI / 2 - (view.rot ?? 0)); g.fillText('➤', 0, 1); g.restore(); } else g.fillText(glyph, bx + 18, by + 19);
     hits.push({ id, x: bx, y: by, w: 36, h: 36 }); by += 44;
   }
+  g.globalAlpha = 1; g.save(); g.translate(0, (1 - ui) * 150);
   // the bottom sheet: time and distance – to go, and driven – the trip, EXIT. The shift is complete when BOTH are done: the clock is the game's driven seconds (st.t), the distance the road's metres (st.s)
   g.fillStyle = P.card; g.shadowColor = 'rgba(0,0,0,.25)'; g.shadowBlur = 12; g.beginPath(); g.roundRect(0, sy, W, sh + 20, [16, 16, 0, 0]); g.fill(); g.shadowBlur = 0;
   g.fillStyle = 'rgba(0,0,0,.18)'; g.beginPath(); g.roundRect(W / 2 - 18, sy + 6, 36, 4, 2); g.fill();
@@ -324,7 +386,7 @@ function drawPhone() {
   g.fillStyle = '#ea4335'; g.beginPath(); g.roundRect(W - 92, sy + 20, 78, 40, 20); g.fill();
   g.fillStyle = '#fff'; g.font = `700 14px ${MONO}`; g.textAlign = 'center'; g.fillText('EXIT', W - 53, sy + 41);
   hits.unshift({ id: 'exit', x: W - 92, y: sy + 20, w: 78, h: 40 });   // tested first: nothing drawn over it may take its click
-  g.globalAlpha = 1; if (sc.k < 1) hits.splice(1);   // still fading in: only EXIT answers
+  g.restore(); if (ui < 1) hits.splice(1);   // still sliding in: only EXIT answers
 }
 function fit(g, text, w) { if (g.measureText(text).width <= w) return text; while (text.length > 3 && g.measureText(text + '…').width > w) text = text.slice(0, -1); return text + '…'; }
 
@@ -346,6 +408,11 @@ function build() {
   const press = e => {   // the bezel and the canvas buttons; a drag on the map pans it, a tap on a place names it
     const x = e.offsetX / view.k, y = e.offsetY / view.k, h = view.hits.find(b => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h);   // offsetX/Y: the canvas's own (unrotated) pixels
     if (h) {
+      if (h.id.startsWith('app:')) {   // the home screen's icons: Maps opens at once, the others only bounce
+        recordPhone(h.id, 1, e.timeStamp); view.bounce = { id: h.id.slice(4), at: performance.now() };
+        if (h.id === 'app:maps' && phone.power === 2 && performance.now() - phone.homeAt < LAUNCH_AT) phone.homeAt = performance.now() - LAUNCH_AT + 120;
+        audio.play('switch', .4); return;
+      }
       recordPhone(h.id === 'north' ? (view.northUp ? 'heading-up' : 'north-up') : h.id === 'in' ? 'zoom-in' : h.id === 'out' ? 'zoom-out' : h.id === 'home' ? 'recenter' : 'exit', 1, e.timeStamp);   // every tap on the phone is recorded (ride telemetry)
       if (h.id === 'exit') toggleMap(false);
       else if (h.id === 'north') view.northUp = !view.northUp;
@@ -401,7 +468,7 @@ export function toggleMap(open = !phone.open) {
 }
 function closeMap() { if (view.el && phone.open) show(false); phone.open = false; }
 /** a new ride (ui/game.js resetRide): the phone back on its mount, quietly, and the map's view state from scratch */
-export function resetMap() { closeMap(); Object.assign(phone, { power: st.watch ? 2 : 0, bootAt: 0, readyAt: 0 });   // the phone is off again until this ride's engine runs
+export function resetMap() { closeMap(); Object.assign(phone, { power: st.watch ? 3 : 0, bootAt: 0, homeAt: 0, readyAt: 0 });   // the phone is off again until this ride's engine runs
   Object.assign(view, { off: false, rot: null, vAvg: 10, last: 0, reach: 0, wheel: 0, free: null, drag: null, sel: null }); }
 if (typeof addEventListener === 'function') addEventListener('keydown', e => { if (e.code === 'Escape' && phone.open) toggleMap(false); });
 phone.thumb = (g, x, y, w, h) => drawMap(g, x, y, w, h, THUMB);
