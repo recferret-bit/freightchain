@@ -435,7 +435,7 @@ Every directory at the repo root. `.git` is the only one left out.
 - [`client/`](client) — the game, the lobby, the admin page, and the model viewer.
 - [`deploy/`](deploy/README.md) — Docker, host nginx, certbot. `npm run deploy` ships `git archive HEAD`.
 - [`design/`](design) — icon candidates and the YouTube banners. The shipped icon is generated into `client/`.
-- [`docs/`](docs) — plans and explainers. [`docs/agents/`](docs/agents) holds the agent detail `AGENTS.md` points to. The public escrow chapter is the whitepaper, not a file in this folder.
+- [`docs/`](docs) — plans and explainers. [`docs/agents/`](docs/agents) holds the agent detail [`AGENTS.md`](AGENTS.md) points to.
 - [`landing/`](landing) — the `/` page and the whitepaper. Its own Vite project.
 - [`media/`](media) — promo clips and the chiptune synth, including the game's own sound effects.
 - [`programs/`](programs/freightchain-pools) — the Anchor escrow.

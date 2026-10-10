@@ -13,7 +13,7 @@ This file is the map and the hard rules only. The detail lives in **`docs/agents
 | topic | file |
 |---|---|
 | repo map, split hosts, online mode, logs | `repo.md` |
-| the game: run it, file layout, conventions, rendering gotchas, object pools, prototype vs design doc, known gaps | `client.md` |
+| the game: run it, file layout, conventions, rendering gotchas, object pools, sim is not replayable, known gaps | `client.md` |
 | routes / themes, road network + forks, landmarks, model viewer, climate, day / night | `world.md` |
 | controls, gameplay systems (holes, traffic, gearbox, battery, engine, damage…) | `gameplay.md` |
 | server rules, server checks, configuration | `server.md` |
