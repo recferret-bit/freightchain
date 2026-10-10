@@ -48,7 +48,7 @@ test('head basics, icons that exist, no inline scripts or handlers, noopener on 
   for (const m of ['name="description"', 'name="viewport"', 'name="theme-color"', 'property="og:title"', 'property="og:image"', 'name="twitter:card"']) assert.ok(html.includes(m), m);
   const links = [...html.matchAll(/<link rel="(?:icon|apple-touch-icon|manifest)"[^>]*href="(\/[^"]+)"/g)].map(m => m[1]);
   assert.ok(links.length >= 4); assert.deepEqual(links.filter(l => !existsSync(join(repo, 'client', l))), []);
-  assert.doesNotMatch(html, /\son[a-z]+="/i); assert.deepEqual(html.match(/<script(?![^>]*\bsrc=)[^>]*>/g) ?? [], []);
+  assert.doesNotMatch(html, /\son[a-z]+="/i); assert.deepEqual(html.match(/<script(?![^>]*\b(?:src=|type="application\/ld\+json"))[^>]*>/g) ?? [], []);   // JSON-LD is data, never run
   for (const tag of html.match(/<a [^>]*target="_blank"[^>]*>/g) ?? []) assert.match(tag, /noopener/);
 });
 
@@ -72,7 +72,7 @@ test('links that leave the page go through the host bases; analytics posts go th
 });
 
 test('host wiring: hosts.js knows the whitepaper prefix and exports its base; vite builds both pages', () => {
-  const hosts = src('client/js/hosts.js'); assert.match(hosts, /\(ride\|api\|storybook\|whitepaper\|admin\)/); assert.match(hosts, /export const WHITEPAPER_BASE/);
+  const hosts = src('client/js/hosts.js'); assert.match(hosts, /\(ride\|api\|storybook\|whitepaper\|admin\|www\)/); assert.match(hosts, /export const WHITEPAPER_BASE/);
   assert.match(readFileSync(join(root, 'vite.config.js'), 'utf8'), /whitepaper: 'whitepaper\.html'/);
 });
 

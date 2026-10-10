@@ -37,7 +37,7 @@ Start on the public site. The form, the two videos, and the founder bio live in 
 | --- | --- | --- |
 | Landing + lobby | [freightchain.fun](https://freightchain.fun) | The pitch, the live boards, sign-in, the lobby |
 | Whitepaper | [whitepaper.freightchain.fun](https://whitepaper.freightchain.fun) | Rules, escrow chapter, validation, streams, risks |
-| Game | [ride.freightchain.fun](https://ride.freightchain.fun) | The truck. A ride id comes from the lobby |
+| Game | [ride.freightchain.fun/play.html](https://ride.freightchain.fun/play.html) | The truck. A ride id comes from the lobby. Bare `play.html` is the guest free run |
 | Model viewer | [storybook.freightchain.fun](https://storybook.freightchain.fun) | Vehicles, props, furniture, landmarks |
 | API | [api.freightchain.fun/api/health](https://api.freightchain.fun/api/health) | JSON only. Other paths on that host 404 |
 | Admin | [admin.freightchain.fun](https://admin.freightchain.fun) | HTTP basic auth, then a second wallet sign-in |
@@ -126,6 +126,24 @@ flowchart LR
 - **Model viewer** — [`client/viewer.html`](client/viewer.html). Same builders as the game. No API on that host.
 - **Admin** — [`client/admin.html`](client/admin.html). Nginx basic auth, then an admin wallet session (`ADMIN_WALLETS`, 2 hours). Every change is a wallet signature over that exact action, and the row is kept. The player cookie grants nothing there. On a split deploy the API answers `/api/admin` only when `Host` is `admin.<apex>`.
 - **API** — NestJS. Controllers dispatch to a command or query bus. Errors are problem+json. [`docs/backend-architecture.md`](docs/backend-architecture.md)
+
+### Search and AI crawlers
+
+The landing, the whitepaper and the game page are static HTML, so search engines and AI crawlers that run no JavaScript read the real text. The live numbers show `–` until the API answers. Detail: [`docs/agents/landing.md`](docs/agents/landing.md) → "Search + AI crawlers".
+
+| Page | Canonical URL | Indexed |
+| --- | --- | --- |
+| Landing | `https://freightchain.fun/` | yes · JSON-LD `Organization` + `WebSite` + `VideoGame` |
+| Whitepaper | `https://whitepaper.freightchain.fun/` | yes · JSON-LD `TechArticle` |
+| Game | `https://ride.freightchain.fun/play.html` | yes · `?watch=` links fold into it |
+| Lobby, model viewer, admin | – | no (`noindex`) |
+
+- **Root files** — [`landing/public/`](landing/public): `robots.txt` (open except `/api/`, AI crawlers named and allowed), `sitemap.xml`, `llms.txt`, `indexnow-key.txt`. Every host serves them.
+- **Duplicates** — nginx answers 301: `ride.freightchain.fun/` → the apex, `freightchain.fun/whitepaper.html` → the whitepaper host, `www.` → the apex (once its DNS record exists).
+- **Previews** — `og:image` is an absolute URL, so X, Discord and Telegram show the card.
+- **Deploy** — after the smoke test, [`deploy/scripts/indexnow.mjs`](deploy/scripts/indexnow.mjs) pings IndexNow (Bing, Yandex) with the sitemap. Google reads the sitemap from `robots.txt`.
+- **Checked by** — [`landing/test/seo.test.js`](landing/test/seo.test.js) (canonicals, previews, JSON-LD, robots, sitemap, llms.txt) and the deploy smoke test (robots, sitemap, the two redirects).
+- **By hand, once** — a Google Search Console Domain property (DNS TXT, covers every subdomain) with the sitemap; Bing Webmaster Tools imported from it; a `www` A record, then `npm run deploy:setup`.
 
 ## Architecture
 
@@ -526,7 +544,7 @@ xychart-beta
 | unit | Server infrastructure | 47 | 201 | 0 | `npm run server:test` |
 | unit | Server app, cli, support | 4 | 15 | 0 | `npm run server:test` |
 | unit | Client unit | 6 | 35 | 0 | `cd client && npm run test:unit` |
-| unit | Landing | 8 | 93 | 0 | `npm run landing:test` |
+| unit | Landing | 9 | 101 | 0 | `npm run landing:test` |
 | unit | Media | 2 | 25 | 0 | `npm run media:check` |
 | unit | Escrow program (host tests) | 8 | 51 | 0 | `npm run program:test` |
 | audit | Architecture and migration SQL | 6 | 30 | 0 | `npm run server:test` |
@@ -538,7 +556,7 @@ xychart-beta
 | integration | Same HTTP scenarios on PostgreSQL | 1 | 0 | 0 | `npm run server:integration` |
 | sim | Headless game playthrough | 1 | 0 | 38 | `cd client && npm run test:headless` |
 | e2e | Browser and API harnesses | 19 | 0 | 572 | `bash .claude/skills/run-tests/e2e.sh` |
-| | **Total** | **304** | **1442** | **610** | |
+| | **Total** | **305** | **1450** | **610** | |
 
 HTTP scenario cases are written once under `server/test/scenarios` and executed twice: in-memory (`npm run server:test`) and PostgreSQL (`npm run server:integration`). The PostgreSQL runner row counts the runner file. Its cases are the scenario row. `it.each` is one static call and one executed test per row.
 

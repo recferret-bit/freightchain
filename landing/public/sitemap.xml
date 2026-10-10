@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The public pages, one canonical URL each (the <link rel="canonical"> of the page). No <lastmod>: a static date goes stale, and a wrong one teaches crawlers to ignore it. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://freightchain.fun/</loc></url>
+  <url><loc>https://whitepaper.freightchain.fun/</loc></url>
+  <url><loc>https://ride.freightchain.fun/play.html</loc></url>
+</urlset>

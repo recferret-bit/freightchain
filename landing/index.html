@@ -2,16 +2,28 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Freight Chain</title>
+<title>Freight Chain – Browser Truck Driving Game with Solana Prize Pools</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Buy a driving shift, drive every minute of it, let the server call the finish. Finishers share one weekly SOL pool. Devnet build.">
+<meta name="description" content="Free browser truck-driving game in the spirit of Desert Bus: manual gearbox, endless road, real-time shifts, escrowed Solana prize pools (devnet). No download.">
+<!-- search + link previews: ONE public URL per page, absolute (crawlers and X / Discord / Telegram do not resolve relative og:image). The production apex on purpose – a staging copy must not compete with it. -->
+<link rel="canonical" href="https://freightchain.fun/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Freight Chain">
-<meta property="og:title" content="Freight Chain">
+<meta property="og:url" content="https://freightchain.fun/">
+<meta property="og:title" content="Freight Chain – the road never ends, your shift does">
 <meta property="og:description" content="The road never ends. Your shift does. A paid long-haul shift with one weekly prize pool, on Solana devnet.">
-<meta property="og:image" content="/media/og.jpg">
+<meta property="og:image" content="https://freightchain.fun/media/og.jpg">
 <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Freight Chain: the truck's cockpit on a desert highway at dusk – gauges, gear lever, a dusty windscreen">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@FreightChainSol">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@graph":[
+ {"@type":"Organization","@id":"https://freightchain.fun/#org","name":"Freight Chain","url":"https://freightchain.fun/","logo":"https://freightchain.fun/icons/icon-512.png","sameAs":["https://x.com/FreightChainSol","https://www.youtube.com/@FreightChainGame","https://github.com/recferret-bit/freightchain"]},
+ {"@type":"WebSite","@id":"https://freightchain.fun/#site","name":"Freight Chain","url":"https://freightchain.fun/","inLanguage":"en","publisher":{"@id":"https://freightchain.fun/#org"}},
+ {"@type":["VideoGame","WebApplication"],"@id":"https://freightchain.fun/#game","name":"Freight Chain","url":"https://freightchain.fun/","description":"Freight Chain is a browser truck-driving game in the spirit of Desert Bus, with server-timed shifts and escrowed prize pools on Solana.","image":"https://freightchain.fun/media/og.jpg","genre":["Driving simulation","Truck simulator"],"gamePlatform":"Web browser","applicationCategory":"GameApplication","operatingSystem":"Any desktop browser","playMode":"SinglePlayer","inLanguage":"en","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD","description":"10 free rides at sign-up; paid shifts are tickets into escrowed prize pools (Solana devnet)"},"publisher":{"@id":"https://freightchain.fun/#org"},"sameAs":["https://whitepaper.freightchain.fun/"]}
+]}
+</script>
 <meta name="theme-color" content="#0b0a09">
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
@@ -58,10 +70,10 @@
     </div>
     <p class="msg" id="msg"></p>
     <div class="stats rv" id="hero-stats">
-      <div class="stat pot"><span class="lbl" id="hero-pot-lbl">IN THE POT THIS WEEK</span><b class="num lcd" id="hero-pot">0.000</b><span class="unit">SOL <em id="hero-usd"></em></span></div>
+      <div class="stat pot"><span class="lbl" id="hero-pot-lbl">IN THE POT THIS WEEK</span><b class="num lcd" id="hero-pot">–</b><span class="unit">SOL <em id="hero-usd"></em></span></div>
       <div class="stat"><span class="lbl">ROUND CLOSES IN</span><b class="num lcd cd" id="hero-cd">–</b><span class="unit">Mon 00:00 UTC</span></div>
-      <div class="stat"><span class="lbl">ON THE ROAD</span><b class="num lcd" id="hero-live">0</b><span class="unit">trucks right now</span></div>
-      <div class="stat"><span class="lbl">DRIVEN, ALL TIME</span><b class="num lcd" id="hero-km">0</b><span class="unit"><span>km</span> · <span id="hero-shifts">0 rides</span> · <span id="hero-time">0 s</span></span></div>
+      <div class="stat"><span class="lbl">ON THE ROAD</span><b class="num lcd" id="hero-live">–</b><span class="unit">trucks right now</span></div>
+      <div class="stat"><span class="lbl">DRIVEN, ALL TIME</span><b class="num lcd" id="hero-km">–</b><span class="unit"><span>km</span> · <span id="hero-shifts">– rides</span> · <span id="hero-time">–</span></span></div>
     </div>
   </div>
   <a class="scroll-hint" href="#loop" aria-label="scroll">▼</a>
@@ -72,7 +84,7 @@
   <div class="promo-in">
     <div class="promo-copy rv">
       <p class="eyebrow">INVITE · PROMO CODE</p>
-      <h3 id="promo-h">Got a code? Cash it in.</h3>
+      <h2 id="promo-h">Got a code? Cash it in.</h2>
       <ul class="perks">
         <li><b>FREE RIDES</b><span>1 or 3 extra shifts, on top of your daily five</span></li>
         <li><b>FREE TICKETS</b><span>a seat in the 1 hour prize pool. Longer shifts are soon.</span></li>

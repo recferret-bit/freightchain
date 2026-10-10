@@ -1,0 +1,10 @@
+# nginx site for www.__ROOT__ – a permanent redirect to the apex, so search sees one URL per page. Installed as its own site file
+# (/etc/nginx/sites-available/freightchain-www) by deploy/scripts/remote/setup.sh ONLY when www.<apex> resolves to the server (the certificate must be able
+# to cover it); certbot --expand then adds its TLS copy. Add the A record, then `npm run deploy:setup`.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name www.__ROOT__;
+
+    location / { return 301 https://__ROOT__$request_uri; }
+}

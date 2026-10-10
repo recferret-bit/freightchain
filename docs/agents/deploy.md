@@ -4,7 +4,7 @@ Agent reference, moved verbatim out of `AGENTS.md` (which keeps only the map and
 
 ## Deploying to production
 
-Production = one server (`DEPLOY_HOST` in `deploy/.env`), six names (`freightchain.fun`, `ride.`, `api.`, `storybook.`, `whitepaper.`, `admin.`), Docker app + PostgreSQL behind the host's nginx. Reference: `deploy/README.md`.
+Production = one server (`DEPLOY_HOST` in `deploy/.env`), six names (`freightchain.fun`, `ride.`, `api.`, `storybook.`, `whitepaper.`, `admin.`; `www.` only as a 301 to the apex, once its DNS points at the server), Docker app + PostgreSQL behind the host's nginx. Reference: `deploy/README.md`. After the smoke test the deploy pings IndexNow with the sitemap's URLs (`deploy/scripts/indexnow.mjs`; a failure only warns).
 
 **The rule: nothing is deployed until the user asks for it directly, in their current message** ("deploy", "ship it to production"). Committing, merging, "fix it", a green test run or a finished feature are NOT a request to deploy, and a deploy the user approved earlier does not cover changes made after it. When a change is ready, say it is ready and offer the deploy; then wait.
 - **Always allowed** (read-only): `npm run deploy -- --dry-run`, `npm run deploy:status`, `npm run ops -- logs|nginx|query|sql|ps` (the `prod-logs` / `prod-db` skills).

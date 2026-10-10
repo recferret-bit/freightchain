@@ -2,7 +2,7 @@
    api.freightchain.fun (the API), storybook.freightchain.fun (the model viewer, viewer.html), whitepaper.freightchain.fun (the whitepaper, whitepaper.html), admin.freightchain.fun (the admin page behind basic auth – it calls
    the API on its OWN host, the only one where the server answers /api/admin/*). Anywhere else (localhost, an IP, file://, the standalone build) everything is ONE origin and all are '' (relative URLs). */
 const host = typeof location === 'undefined' ? '' : location.hostname;
-const root = host.replace(/^(ride|api|storybook|whitepaper|admin)\./, '');
+const root = host.replace(/^(ride|api|storybook|whitepaper|admin|www)\./, '');   // www. only 301s to the apex (deploy/nginx/www.conf.template); stripped in case a page is ever reached there
 const split = /^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(root) && !/^\d+(\.\d+){3}$/.test(root);   // a registrable name with a dot, not an IPv4 address
 const proto = typeof location === 'undefined' ? 'https:' : location.protocol;
 export const API_BASE = split ? `${proto}//api.${root}` : '';

@@ -1,0 +1,19 @@
+# Freight Chain
+
+> Freight Chain is a browser truck-driving game in the spirit of Desert Bus, with server-timed shifts and escrowed prize pools on Solana. It is a devnet build: nothing on it is real money, and there is no token.
+
+You drive a long-hood semi with a manual gearbox, a cold engine, traffic and nights down a road that never ends. A shift takes real time and cannot be skipped or sped up. The server keeps the clock, records the drive and judges the finish. Free rides need only a wallet sign-in (a signed message, not a transaction); paid shifts are tickets into an escrowed prize pool. Anyone can watch a ride live, about 25 seconds behind, or replay a finished one.
+
+What is live, built or only planned changes week to week – the whitepaper's "Status at a glance" table is the current answer.
+
+## Pages
+
+- [Landing](https://freightchain.fun/): the pitch, live boards (pot, trucks on the road, top 10, recent rides), the economy, the roadmap
+- [Whitepaper](https://whitepaper.freightchain.fun/): how to drive, rides and rules, rewards, the escrow program on Solana, validation and anti-cheat, live streams and replays, limits and risks
+- [Play](https://ride.freightchain.fun/play.html): the free run in the browser – no wallet, no download
+
+## Source and channels
+
+- [Source code on GitHub](https://github.com/recferret-bit/freightchain): the game (vanilla JS + three.js), the NestJS server, the Anchor escrow program
+- [X @FreightChainSol](https://x.com/FreightChainSol): clips, pool numbers, finishes
+- [YouTube @FreightChainGame](https://www.youtube.com/@FreightChainGame): the trailer and shift recordings
