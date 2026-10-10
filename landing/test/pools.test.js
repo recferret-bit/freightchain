@@ -97,7 +97,7 @@ test('ticket sales: on when the server sells through the program (tiers.paymentM
   assert.equal(salesOpen({ paymentMode: 'transfer' }), false); assert.equal(salesOpen({ paymentMode: 'program' }), true); assert.equal(salesOpen(null), false);
   assert.equal(salesOpen({ paymentMode: 'program', ticketSales: false }), false); assert.equal(salesOpen({ paymentMode: 'transfer', ticketSales: true }), true);
   assert.match(buyError({ notConfigured: true }), /not switched on/);
-  assert.match(buyError(problem(429, 'sponsor_cap', 'cap')), /pay the network fee yourself/);
+  assert.match(buyError(problem(429, 'rate_limited', 'slow down')), /Too many requests/);
   assert.match(buyError(Object.assign(new Error('User rejected the request.'), { code: 4001 })), /declined/);
   assert.match(buyError(problem(409, 'not_sellable', 'the pool is past its deadline')), /^This pool doesn’t sell tickets right now .*: the pool is past its deadline\.$/);
   assert.match(buyError(problem(409, 'order_closed', 'x')), /start a new purchase/);

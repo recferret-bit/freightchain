@@ -27,9 +27,9 @@ export class GetRefundTransactionHandler implements IQueryHandler<GetRefundTrans
     if (!pool.isRefunding && !needsFail) throw new ConflictError(`this pool is ${pool.status} – refunds open only if it fails`, 'not_refundable');
     const bought = (await this.tickets.find(wallet, poolId))?.bought ?? 0;
     if (bought === 0) throw new ConflictError('this wallet paid nothing into this pool (or was refunded already)', 'nothing_to_refund');
-    const tx = await this.chain.buildRefundTransaction({ caller: wallet, poolId, buyer: wallet, needsFail, selfPaid: true });
+    const tx = await this.chain.buildRefundTransaction({ caller: wallet, poolId, buyer: wallet, needsFail });
     return {
-      poolId, needsFail, lamports: pool.costOf(bought), transaction: tx.transaction, message: tx.message, feePayer: tx.feePayer, sponsored: tx.feePayer !== wallet,
+      poolId, needsFail, lamports: pool.costOf(bought), transaction: tx.transaction, message: tx.message, feePayer: tx.feePayer,
       lastValidBlockHeight: tx.lastValidBlockHeight,
     };
   }

@@ -58,7 +58,7 @@ bash $D rehearse
 
 - **The admin key in Phantom**: import `deploy/secrets/devnet/admin.json` (Phantom → Add account → Import private key; the file's JSON array is the key) – then
   you sign in to the lobby / admin page as the admin (`TREASURY_PUBKEY`) and can sign payouts there. Without UI buttons: `bash $D payout <poolId>` (plan) and `--yes`.
-- **Callbacks**: the lobby's fast path (`/submit`, `/confirm`), the watcher (polls every `WATCH_INTERVAL_MS`, websocket with `SOLANA_WS`) and the QuickNode
+- **Callbacks**: the lobby's fast path (`/confirm`), the watcher (polls every `WATCH_INTERVAL_MS`, websocket with `SOLANA_WS`) and the QuickNode
   Stream → `POST /api/chain/webhook` with header `x-webhook-secret: <WEBHOOK_SECRET from .env.devnet>` (dataset *Logs*, filtered on the program id; a tunnel –
   cloudflared / ngrok – to reach localhost). To test one path alone: `bash $D admin buy -k <wallet.json> --pool N` (no order – only the watcher / webhook can
   credit it), or restart with `WATCH_INTERVAL_MS=0` to leave it to the webhook.
@@ -67,7 +67,7 @@ bash $D rehearse
 
 ## Production (only after the Colosseum results and the devnet exit list – `escrow-open-items.md` Phase 3)
 
-`deploy/.env` gets `PAYMENT_MODE=program`, `TICKET_PROGRAM_ID`, `TREASURY_PUBKEY` (= the admin), `FEE_TREASURY`, `SEED_TREASURY`, `FEE_PAYER_SECRET`, `CRANK_SECRET`
+`deploy/.env` gets `PAYMENT_MODE=program`, `TICKET_PROGRAM_ID`, `TREASURY_PUBKEY` (= the admin), `FEE_TREASURY`, `SEED_TREASURY`, `CRANK_SECRET`
 (fee money only) + `CRANK_INTERVAL_MS`, `SOLANA_RPC` + `SOLANA_WS` (QuickNode devnet – production still runs on devnet), `WEBHOOK_SECRET`; then `npm run deploy -- --dry-run`
 and, on an explicit "deploy", `npm run deploy`. The smoke test checks the escrow when the server reports program mode. The QuickNode Stream then points at
 `https://api.freightchain.fun/api/chain/webhook`.

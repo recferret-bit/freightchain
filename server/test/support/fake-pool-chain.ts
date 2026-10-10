@@ -5,7 +5,6 @@ import type { UnsignedPaymentTx } from '../../src/domain/economy/chain-transacti
 import type { ChainEventKind, ChainEventRecord, PoolChainState } from '../../src/domain/economy/chain-events.js';
 import { ServiceUnavailableError } from '../../src/domain/shared/errors.js';
 import { PoolChainPort, type BuiltTransaction, type ChainTxKind, type FeeQuote, type ProgramSignature, type SignatureStatus } from '../../src/application/ports/economy/pool-chain.port.js';
-import { addFeePayerSignature, checkUserSignedTransaction } from '../../src/infrastructure/solana/transaction-cosigner.js';
 
 export const newPoolSignature = (): string => bs58.encode(randomBytes(64));
 /** stands in for the pool program in built transactions (the fake never runs anything) */
@@ -17,8 +16,7 @@ export type ReadEventsAnswer = ChainEventRecord[] | 'pending' | { invalid: strin
 
 /**
  * The pool program as a test double (docs/paid-tickets-plan.md §2.5): scripted events per signature, pool accounts, the program's signature history, statuses,
- * and a REAL gas-sponsor check – `cosignAndSend` runs the production message-equality / signature checks against the sponsor key, so a handler spec that forges a
- * message gets the same 400 as production. Built transactions are real (unsigned) Solana transactions, recorded in `built`.
+ * and the signature statuses. Built transactions are real (unsigned) Solana transactions, paid by the signer, recorded in `built`.
  */
 export class FakePoolChain extends PoolChainPort {
   readonly built: BuiltRecord[] = [];
@@ -27,14 +25,9 @@ export class FakePoolChain extends PoolChainPort {
   /** the program's history, OLDEST first */
   signatures: ProgramSignature[] = [];
   readonly statuses = new Map<string, SignatureStatus>();
-  readonly cosigned: { signedTransaction: string; expectedMessage: string; signature: string }[] = [];
   readonly listeners = new Set<(signature: string) => void>();
   quote: FeeQuote = { priorityMicrolamports: 1_000, computeUnits: 30_000, estimatedFeeLamports: 5_030 };
   simulation: { ok: true; unitsConsumed: number } | { ok: false; reason: string } = { ok: true, unitsConsumed: 20_000 };
-  /** null = no gas sponsor configured (cosignAndSend → 503); set it to test the gasless path */
-  sponsor: Keypair | null = null;
-  /** replaces the default co-sign outcome (an Error is thrown) */
-  cosignResult: { signature: string } | Error | null = null;
   blockHeight = 100;
   lastValidBlockHeight = 250;
   readCount = 0;
@@ -45,10 +38,10 @@ export class FakePoolChain extends PoolChainPort {
   private slot = 0;
 
   reset(): void {
-    this.built.length = 0; this.events.clear(); this.pools.clear(); this.signatures = []; this.statuses.clear(); this.cosigned.length = 0; this.listeners.clear();
+    this.built.length = 0; this.events.clear(); this.pools.clear(); this.signatures = []; this.statuses.clear(); this.listeners.clear();
     this.quote = { priorityMicrolamports: 1_000, computeUnits: 30_000, estimatedFeeLamports: 5_030 };
     this.simulation = { ok: true, unitsConsumed: 20_000 };
-    this.sponsor = null; this.cosignResult = null; this.blockHeight = 100; this.lastValidBlockHeight = 250; this.readCount = 0; this.slot = 0;
+    this.blockHeight = 100; this.lastValidBlockHeight = 250; this.readCount = 0; this.slot = 0;
     this.feeQuotes.length = 0; this.rpcDown = false;
   }
 
@@ -70,11 +63,11 @@ export class FakePoolChain extends PoolChainPort {
 
   // ---- the port
 
-  async buildBuyTransaction(input: { payer: string; poolId: number; qty: number; orderId: string; selfPaid?: boolean }): Promise<BuiltTransaction> {
-    return this.build('buy', input, this.payerFor(input.payer, input.selfPaid), [input.payer]);
+  async buildBuyTransaction(input: { payer: string; poolId: number; qty: number; orderId: string }): Promise<BuiltTransaction> {
+    return this.build('buy', input, input.payer, [input.payer]);
   }
-  async buildRefundTransaction(input: { caller: string; poolId: number; buyer: string; needsFail: boolean; selfPaid?: boolean }): Promise<BuiltTransaction> {
-    return this.build('refund', input, this.payerFor(input.caller, input.selfPaid), [input.caller]);
+  async buildRefundTransaction(input: { caller: string; poolId: number; buyer: string; needsFail: boolean }): Promise<BuiltTransaction> {
+    return this.build('refund', input, input.caller, [input.caller]);
   }
   async buildPayPrizeTransaction(input: { authority: string; poolId: number; to: string; lamports: number; rank: number }): Promise<BuiltTransaction> {
     return this.build('pay_prize', input, input.authority, [input.authority]);
@@ -105,26 +98,12 @@ export class FakePoolChain extends PoolChainPort {
   async feeQuote(input: { poolId: number | null; kind: ChainTxKind }): Promise<FeeQuote> { this.up(); this.feeQuotes.push(input); return { ...this.quote }; }
   async simulate(_tx: UnsignedPaymentTx): Promise<{ ok: true; unitsConsumed: number } | { ok: false; reason: string }> { this.up(); return this.simulation; }
 
-  async cosignAndSend(input: { signedTransaction: string; expectedMessage: string; lastValidBlockHeight: number }): Promise<{ signature: string; lastValidBlockHeight: number }> {
-    this.up();
-    if (this.cosignResult instanceof Error) throw this.cosignResult;
-    if (!this.sponsor) throw new ServiceUnavailableError('no gas sponsor is configured – pay the network fee yourself');
-    const wire = checkUserSignedTransaction(Buffer.from(input.signedTransaction, 'base64'), Buffer.from(input.expectedMessage, 'base64'), this.sponsor.publicKey);
-    const signature = this.cosignResult?.signature ?? bs58.encode(addFeePayerSignature(wire, this.sponsor.secretKey).subarray(1, 65));
-    this.cosigned.push({ ...input, signature });
-    return { signature, lastValidBlockHeight: input.lastValidBlockHeight };
-  }
-
   async signatureStatus(signature: string, lastValidBlockHeight: number): Promise<SignatureStatus> {
     this.up();
     return this.statuses.get(signature) ?? (this.blockHeight > lastValidBlockHeight ? 'expired' : 'unknown');
   }
 
   /** a real unsigned transaction: one instruction to FAKE_PROGRAM_ID carrying the input as JSON, signed by `signers` (+ the fee payer) */
-  private payerFor(signer: string, selfPaid = false): string {
-    return !selfPaid && this.sponsor ? this.sponsor.publicKey.toBase58() : signer;
-  }
-
   private up(): void {
     if (this.rpcDown) throw new ServiceUnavailableError('Solana RPC unavailable');
   }

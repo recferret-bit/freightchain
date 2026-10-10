@@ -1,5 +1,5 @@
 import type { PoolChainState } from '../../src/domain/economy/chain-events.js';
-import { ConflictError } from '../../src/domain/shared/errors.js';
+import { ConflictError, ServiceUnavailableError } from '../../src/domain/shared/errors.js';
 import { PoolCrankChainPort, type ChainTicket, type CrankInstruction } from '../../src/application/ports/economy/pool-crank-chain.port.js';
 import type { FakePoolChain } from './fake-pool-chain.js';
 
@@ -15,13 +15,18 @@ export class FakePoolCrankChain extends PoolCrankChainPort {
   readonly sent: CrankInstruction[] = [];
   /** steps that fail on "chain" (ConflictError, like a refused simulation) – e.g. `'refund@4'` */
   readonly failing = new Set<string>();
+  /** pools whose Ticket accounts cannot be read (a provider refusing getProgramAccounts) */
+  readonly unreadable = new Set<number>();
 
   constructor(private readonly chain: FakePoolChain) { super(); }
 
   get address(): string | null { return this.crankAddress; }
   async chainNow(): Promise<Date> { return this.now; }
   async listPools(): Promise<PoolChainState[]> { return [...this.chain.pools.values()].sort((a, b) => a.poolId - b.poolId); }
-  async listTickets(poolId: number): Promise<ChainTicket[]> { return [...(this.tickets.get(poolId) ?? [])]; }
+  async listTickets(poolId: number): Promise<ChainTicket[]> {
+    if (this.unreadable.has(poolId)) throw new ServiceUnavailableError('Solana RPC unavailable');
+    return [...(this.tickets.get(poolId) ?? [])];
+  }
 
   async send(i: CrankInstruction): Promise<{ signature: string }> {
     this.sent.push(i);

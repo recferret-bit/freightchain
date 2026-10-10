@@ -57,9 +57,6 @@ export const envSchema = z
     WEBHOOK_SECRET: optional(z.string().min(16, 'WEBHOOK_SECRET must be at least 16 characters')),
     CRANK_SECRET: optional(z.string().min(32)), // base58 keypair that pays fees for the permissionless cranks (fail_pool, expire_pool, refund, close_pool of a refunded pool)
     CRANK_INTERVAL_MS: z.coerce.number().int().min(0).default(60_000), // the pool crank's schedule (needs CRANK_SECRET); 0 = only `pool:crank` from the CLI
-    FEE_PAYER_SECRET: optional(z.string().min(32)), // base58 keypair of the gas sponsor – fee money only
-    FEE_PAYER_MIN_SOL: z.coerce.number().min(0).default(0.05),
-    SPONSOR_PER_WALLET_PER_DAY: z.coerce.number().int().min(0).default(20),
     PRIORITY_FEE_PERCENTILE: z.coerce.number().int().min(1).max(99).default(75),
     PRIORITY_FEE_MIN_MICROLAMPORTS: z.coerce.number().int().min(0).default(0), // 0 on devnet; 1000 on mainnet
     PRIORITY_FEE_MAX_MICROLAMPORTS: z.coerce.number().int().min(0).default(50_000),

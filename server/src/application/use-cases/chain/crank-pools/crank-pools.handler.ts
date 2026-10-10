@@ -40,17 +40,23 @@ export class CrankPoolsHandler implements ICommandHandler<CrankPoolsCommand, Cra
   private async crankPool(start: PoolChainState, now: Date, actions: CrankActionDto[]): Promise<number> {
     const before = actions.length;
     let pool: PoolChainState | null = start;
-    for (let n = 0; pool && n < MAX_STEPS_PER_POOL; n++) {
-      const step = nextCrankStep(pool, now);
-      if (!step) break;
-      if (step === 'refund') {
-        const tickets = await this.crank.listTickets(pool.poolId);
-        if (!tickets.length) { actions.push(failed(pool.poolId, step, 'the pool owes refunds but no Ticket account is left – check the pool by hand')); break; }
-        let ok = true;
-        for (let i = 0; ok && i < tickets.length; i += REFUND_BATCH) ok = await this.act(pool.poolId, step, actions, tickets.slice(i, i + REFUND_BATCH));
-        if (!ok) break;
-      } else if (!(await this.act(pool.poolId, step, actions))) break;
-      pool = await this.chain.readPool(pool.poolId);
+    let step: CrankStep | null = null;
+    try {
+      for (let n = 0; pool && n < MAX_STEPS_PER_POOL; n++) {
+        step = nextCrankStep(pool, now);
+        if (!step) break;
+        if (step === 'refund') {
+          const tickets = await this.crank.listTickets(pool.poolId);
+          if (!tickets.length) { actions.push(failed(pool.poolId, step, 'the pool owes refunds but no Ticket account is left – check the pool by hand')); break; }
+          let ok = true;
+          for (let i = 0; ok && i < tickets.length; i += REFUND_BATCH) ok = await this.act(pool.poolId, step, actions, tickets.slice(i, i + REFUND_BATCH));
+          if (!ok) break;
+        } else if (!(await this.act(pool.poolId, step, actions))) break;
+        pool = await this.chain.readPool(pool.poolId);
+      }
+    } catch (error) {
+      // a refused read (getProgramAccounts on a provider that refuses it, a pool read that failed) stops THIS pool; the pools after it are still served
+      actions.push(failed(start.poolId, step ?? 'refund', error instanceof Error ? error.message : String(error)));
     }
     return actions.length - before;
   }

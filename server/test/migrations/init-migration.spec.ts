@@ -26,7 +26,7 @@ describe('prisma migrations', () => {
   it('creates every PostgreSQL schema and every model of the Prisma schema', () => {
     for (const schema of ['player', 'ride', 'economy', 'achievement', 'telemetry', 'verdict', 'admin', 'live', 'stats']) expect(sql).toContain(`CREATE SCHEMA IF NOT EXISTS "${schema}"`);
     const models = schemaModels();
-    expect(models.map((m) => m.model).sort()).toEqual(['AchievementUnlock', 'AdminAction', 'AuthChallenge', 'ChainCursor', 'ChainEvent', 'CosmeticEquip', 'CosmeticUnlock', 'DailyStats', 'DonationOrder', 'GameSetting', 'GlobalStats', 'OfflineRideUse', 'Payment', 'Player', 'PlayerStats', 'Pool', 'PromoCode', 'PromoRedemption', 'Ride', 'RideBatch', 'RideEvent', 'RideMute', 'RideTicket', 'RideVerdict', 'Round', 'SignIn', 'SponsoredTx', 'TicketGrant', 'TicketOrder']);
+    expect(models.map((m) => m.model).sort()).toEqual(['AchievementUnlock', 'AdminAction', 'AuthChallenge', 'ChainCursor', 'ChainEvent', 'CosmeticEquip', 'CosmeticUnlock', 'DailyStats', 'DonationOrder', 'GameSetting', 'GlobalStats', 'OfflineRideUse', 'Payment', 'Player', 'PlayerStats', 'Pool', 'PromoCode', 'PromoRedemption', 'Ride', 'RideBatch', 'RideEvent', 'RideMute', 'RideTicket', 'RideVerdict', 'Round', 'SignIn', 'TicketGrant', 'TicketOrder']);
     for (const { schema, model } of models) expect(sql, `${schema}.${model}`).toContain(`CREATE TABLE "${schema}"."${model}"`);
   });
 
@@ -40,8 +40,9 @@ describe('prisma migrations', () => {
     expect(sql).toMatch(/CONSTRAINT "RideVerdict_pkey" PRIMARY KEY \("rideId"\)/); // one verdict per ride
   });
 
-  it('is forward-only: nothing is dropped, renamed or truncated', () => {
-    expect(sql).not.toMatch(/\bDROP\s+(TABLE|COLUMN|SCHEMA|TYPE|INDEX)\b/i);
+  it('is forward-only: nothing is dropped, renamed or truncated – except the one reviewed removal of the retired gas sponsor\'s ledger', () => {
+    const RETIRED = /^DROP TABLE "economy"\."SponsoredTx";$/gm; // 20261018000000_drop_sponsored_tx: gasless purchases were removed; the owner's OK is needed before production
+    expect(sql.replace(RETIRED, '')).not.toMatch(/\bDROP\s+(TABLE|COLUMN|SCHEMA|TYPE|INDEX)\b/i);
     expect(sql).not.toMatch(/\bRENAME\b|\bTRUNCATE\b/i);
   });
 });

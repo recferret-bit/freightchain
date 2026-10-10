@@ -386,7 +386,7 @@ export class MemoryAchievementRepository extends AchievementRepositoryPort {
   async listByWallet(wallet: string): Promise<AchievementUnlock[]> { return this.db.unlocks.filter((u) => u.wallet === wallet).map((u) => new AchievementUnlock(u.wallet, u.achievementId, u.earnedAt, u.rideId)); }
 }
 
-export { MemoryChainCursorRepository, MemoryChainEventRepository, MemorySponsoredTxRepository } from './memory-chain-repositories.js';
+export { MemoryChainCursorRepository, MemoryChainEventRepository } from './memory-chain-repositories.js';
 @Injectable()
 export class MemorySignInRepository extends SignInRepositoryPort {
   constructor(private readonly db: MemoryDb) { super(); }

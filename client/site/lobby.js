@@ -116,7 +116,7 @@ function paintOrder() {
   if (!o || o.status === 'paid') { box.replaceChildren(); return; }
   let sig = o.signature; try { sig ??= localStorage.getItem(ORDER_SIG(o.id)); } catch { /* private mode */ }
   const retry = () => busy('order', async () => {
-    try { const r = await waitPaid(o.id, sig, { selfPaid: !!sig }); S.order = r.status === 'paid' ? null : r.order; await refreshMe(); } catch (e) { say('order', buyError(e), true); }
+    try { const r = await waitPaid(o.id, sig); S.order = r.status === 'paid' ? null : r.order; await refreshMe(); } catch (e) { say('order', buyError(e), true); }
     paintOrder();
   });
   // with a signature something was sent ("in flight"); without one the wallet never sent it – say so, nothing was charged, the order just lapses

@@ -23,7 +23,7 @@ const TICKET_POOL_ID_OFFSET = 72;
 /**
  * The pool crank on chain (PoolCrankChainPort): reads every pool from Config.pool_count, the tickets still open with getProgramAccounts, the chain clock,
  * and sends the permissionless instructions signed AND paid by CRANK_SECRET. Same RPC and commitment as ProgramChainAdapter; the priority fee comes from
- * its estimator (feeQuote). Sends go to the primary RPC, re-sent every 2 s until confirmed or the blockhash is gone – the same pattern as the gas sponsor.
+ * its estimator (feeQuote). Sends go to the primary RPC, re-sent every 2 s until confirmed or the blockhash is gone – the usual pattern under congestion.
  */
 @Injectable()
 export class ProgramCrankAdapter extends PoolCrankChainPort {

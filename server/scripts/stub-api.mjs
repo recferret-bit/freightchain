@@ -1,18 +1,18 @@
 // A STUB of the API for front-end work on the ticket flows without a chain (docs/paid-tickets-plan.md §2.4, W5): pools in EVERY status (open, active,
-// refunding – which the dev seeds can't make), and the order / payment / confirm / submit / refund / settle routes of W3/W4 with real (unsigned, never sent) web3.js
+// refunding – which the dev seeds can't make), and the order / payment / confirm / refund / settle routes of W3/W4 with real (unsigned, never sent) web3.js
 // transactions, so client/site/pay.js runs end to end against a fake wallet. Serves landing/dist at / (if built) and client/ like Nest. One signed-in wallet, no auth, all in memory.
 // Nothing touches a network or a chain: the "chain" here is a counter. Usage (from server/): PORT=3150 node scripts/stub-api.mjs   then open http://localhost:3150/lobby.html
-// Knobs: SPONSORED=0 (self-paid path), SUBMIT_FAIL=1 (the sponsor refuses: the client must fall back to self-paid), SALES=0 (paymentMode 'transfer' + 503 on POST /api/tickets, as on a
+// Knobs: SALES=0 (paymentMode 'transfer' + 503 on POST /api/tickets, as on a
 // server without the program), CONFIRM_PENDING=n (confirm / the order answer `pending` n times first, default 1). Shapes = the routes as built on paid-tickets @ b860f9d.
 import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path';
 import web3 from '@solana/web3.js';
 const { Keypair, PublicKey, SystemProgram, Transaction } = web3;
-const PORT = +(process.env.PORT || 3150), SPONSORED = process.env.SPONSORED !== '0', SALES = process.env.SALES !== '0', SUBMIT_FAIL = process.env.SUBMIT_FAIL === '1', PENDING = +(process.env.CONFIRM_PENDING ?? 1);
+const PORT = +(process.env.PORT || 3150), SALES = process.env.SALES !== '0', PENDING = +(process.env.CONFIRM_PENDING ?? 1);
 const ROOT = new URL('../..', import.meta.url).pathname, SITES = [path.join(ROOT, 'landing/dist'), path.join(ROOT, 'client')].filter(d => fs.existsSync(d));
 const DAY = 86_400_000, NOW = () => Date.now(), SOL_USD = 118, B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 const sig = () => Array.from({ length: 88 }, () => B58[Math.floor(Math.random() * 58)]).join('');   // looks like a signature; it is not one
 const addr = () => Keypair.generate().publicKey.toBase58();
-const WALLET = Keypair.generate().publicKey, SPONSOR = Keypair.generate().publicKey, PROGRAM = addr(), TREASURY = { fee: addr(), seed: addr() };
+const WALLET = Keypair.generate().publicKey, PROGRAM = addr(), TREASURY = { fee: addr(), seed: addr() };
 
 /* ───── state ───── */
 const t0 = NOW();
@@ -26,7 +26,7 @@ const pools = [
 ];
 const tickets = new Map([[1, { balance: 1, bought: 1 }], [2, { balance: 0, bought: 0 }], [3, { balance: 0, bought: 2 }], [5, { balance: 0, bought: 1 }]]);
 const grants = [{ poolId: 3, delta: 2, source: 'payment', ref: sig(), at: t0 - 3 * DAY }, { poolId: 5, delta: 1, source: 'payment', ref: sig(), at: t0 - 4 * DAY }, { poolId: 1, delta: 1, source: 'promo', ref: 'WELCOME', at: t0 - DAY }];
-const orders = new Map(), polls = new Map(), built = new Map(), refunds = new Map(), rides = new Map();
+const orders = new Map(), polls = new Map(), refunds = new Map(), rides = new Map();
 let freeRides = 10;
 const CATALOG = {   // = server/src/domain/economy/cosmetics.ts (the first item of a slot is its default)
   wheel: ['classic', 'crimson', 'ocean', 'moss', 'gold', 'ivory'], truck_color: ['red', 'blue', 'green', 'black', 'yellow', 'white'], gearbox: ['stick', 'chrome', 'wood', 'racing', 'gold', 'carbon'],
@@ -70,7 +70,7 @@ function pay(o) {   // the chain confirmed the order's payment: credit the ticke
 /* ───── routes: [method, regex, handler(match, body) → { status?, body }] ───── */
 const R = [
   ['GET', /^me$/, () => ({ body: me() })],
-  ['GET', /^profile$/, () => ({ body: { ...me(), stats: { rides: 3, completed: 1, metres: 4200, bestMetres: 4200, paidRides: 2, spentLamports: 940_000_000, ticketsBought: [...tickets.values()].reduce((a, t) => a + t.bought, 0) }, recent: [], achievements: [], grants: [...grants].sort((a, b) => b.at - a.at).slice(0, 20) } })],
+  ['GET', /^profile$/, () => ({ body: { ...me(), career: { rides: 3, ridesFree: 1, ridesPaid: 2, ridesCompleted: 1, seconds: 190, metres: 4200, crashesVehicle: 0, crashesBuilding: 0, donations: 0, donationLamports: 0 }, stats: { rides: 3, completed: 1, metres: 4200, bestMetres: 4200, paidRides: 2, spentLamports: 940_000_000, ticketsBought: [...tickets.values()].reduce((a, t) => a + t.bought, 0) }, recent: [], achievements: [], grants: [...grants].sort((a, b) => b.at - a.at).slice(0, 20) } })],
   ['GET', /^tiers$/, () => ({ body: { solUsd: SOL_USD, treasury: TREASURY.fee, paymentMode: SALES ? 'program' : 'transfer', tiers: TIERS.map(t => { const p = t.id === 'free' ? null : onSale(t.id); return { ...t, lamports: p?.priceLamports ?? null, available: true, pool: p && poolDto(p) }; }) } })],
   ['GET', /^pool$/, () => ({ body: { round: { id: 1, startsAt: t0 - 3 * DAY, endsAt: t0 + 4 * DAY }, entries: 0, split: { entries: 0, carry: 0, grand: 0, top20: 0, nextSeed: 0, fees: 0 }, settled: false, solUsd: SOL_USD, usd: { grand: 0, top20: 0, nextSeed: 0, fees: 0, entries: 0 }, pools: pools.filter(p => p.status === 'open' || p.status === 'active').map(poolDto) } })],
   ['GET', /^pools$/, () => ({ body: { pools: pools.filter(p => p.status === 'open' || p.status === 'active').map(poolDto) } })],
@@ -133,7 +133,7 @@ const R = [
   }],
   ['POST', /^auth\/logout$/, () => ({ body: { ok: true } })],
   // ── W3 / W4 routes, shapes as built on paid-tickets @ b860f9d ──
-  ['GET', /^chain\/fees$/, () => ({ body: { priorityMicrolamports: 0, computeUnits: 40_000, estimatedFeeLamports: 5_000, sponsored: SPONSORED, blockhashTtlSeconds: 60 } })],
+  ['GET', /^chain\/fees$/, () => ({ body: { priorityMicrolamports: 0, computeUnits: 40_000, estimatedFeeLamports: 5_000, blockhashTtlSeconds: 60 } })],
   ['POST', /^tickets$/, (m, b) => {
     if (!SALES) return problem(503, 'service_unavailable', 'the pool program is not configured on this server');
     const p = pools.find(x => x.id === b.poolId), t = tickets.get(b.poolId);
@@ -145,17 +145,9 @@ const R = [
   }],
   ['GET', /^tickets\/pending$/, () => ({ body: { order: [...orders.values()].find(o => o.status === 'awaiting_payment') ?? null } })],
   ['GET', /^tickets\/orders\/([\w-]+)$/, m => { const o = orders.get(m[1]); if (!o) return problem(404, 'not_found', 'no such order'); if (o.status === 'awaiting_payment' && o.signature && polls.get(o.id) >= PENDING) pay(o); else polls.set(o.id, polls.get(o.id) + 1); return { body: o }; }],
-  ['GET', /^tickets\/orders\/([\w-]+)\/payment$/, (m, b, q) => { const o = orders.get(m[1]); if (!o) return problem(404, 'not_found', 'no such order'); if (o.status !== 'awaiting_payment') return problem(409, 'order_closed', `the order is ${o.status}`);
-    const p = pools.find(x => x.id === o.poolId), sponsored = SPONSORED && q.get('selfPaid') !== '1', feePayer = sponsored ? SPONSOR : WALLET, t = tx(o.lamports, new PublicKey(p.address), feePayer);
-    built.set(o.id, t.message);   // /submit accepts exactly these message bytes (the real server's fee-payer-drain guard)
-    return { body: { orderId: o.id, mode: 'program', programId: PROGRAM, poolId: p.id, lamports: o.lamports, transaction: t.transaction, message: t.message, feePayer: feePayer.toBase58(), sponsored, computeUnits: 40_000, priorityMicrolamports: 0, blockhash: t.blockhash, lastValidBlockHeight: 1 } }; }],
-  ['POST', /^tickets\/orders\/([\w-]+)\/submit$/, (m, b) => {
-    const o = orders.get(m[1]); if (!o) return problem(404, 'not_found', 'no such order');
-    if (SUBMIT_FAIL) return problem(503, 'service_unavailable', 'the fee sponsor is empty');
-    let msg = null; try { msg = Transaction.from(Buffer.from(String(b.signedTransaction), 'base64')).serializeMessage().toString('base64'); } catch { /* not a transaction */ }
-    if (!msg || msg !== built.get(o.id)) return problem(400, 'transaction_mismatch', 'not the transaction built for this order');
-    o.signature = sig(); pay(o); return { body: { signature: o.signature, status: 'paid', order: o } };
-  }],
+  ['GET', /^tickets\/orders\/([\w-]+)\/payment$/, (m) => { const o = orders.get(m[1]); if (!o) return problem(404, 'not_found', 'no such order'); if (o.status !== 'awaiting_payment') return problem(409, 'order_closed', `the order is ${o.status}`);
+    const p = pools.find(x => x.id === o.poolId), t = tx(o.lamports, new PublicKey(p.address), WALLET);   // the wallet pays its own fee
+    return { body: { orderId: o.id, mode: 'program', programId: PROGRAM, poolId: p.id, lamports: o.lamports, transaction: t.transaction, message: t.message, feePayer: WALLET.toBase58(), computeUnits: 40_000, priorityMicrolamports: 0, blockhash: t.blockhash, lastValidBlockHeight: 1 } }; }],
   ['POST', /^tickets\/orders\/([\w-]+)\/confirm$/, (m, b) => {
     const o = orders.get(m[1]); if (!o) return problem(404, 'not_found', 'no such order');
     if (typeof b.signature !== 'string' || !b.signature) return problem(400, 'transaction_invalid', 'no signature');
@@ -167,7 +159,7 @@ const R = [
     if (!p || p.status !== 'refunding') return problem(409, 'not_refundable', 'this pool is not refunding');
     if (!t?.bought) return problem(409, 'nothing_to_refund', 'nothing to refund for this wallet');
     const r = tx(t.bought * p.priceLamports, WALLET, WALLET); refunds.set(r.signatureHint, p.id);
-    return { body: { poolId: p.id, needsFail: false, lamports: t.bought * p.priceLamports, transaction: r.transaction, message: r.message, feePayer: WALLET.toBase58(), sponsored: false, lastValidBlockHeight: 1 } }; }],
+    return { body: { poolId: p.id, needsFail: false, lamports: t.bought * p.priceLamports, transaction: r.transaction, message: r.message, feePayer: WALLET.toBase58(), lastValidBlockHeight: 1 } }; }],
   ['POST', /^chain\/settle$/, (m, b) => {   // the stub can't read a signature: any refund the wallet just sent is taken as landed (the last one built)
     const poolId = [...refunds.values()].pop(); if (poolId == null) return { body: { signature: b.signature, status: 'invalid', detail: 'not a pool program transaction', events: [] } };
     refunds.clear(); const p = pools.find(x => x.id === poolId), t = tickets.get(poolId);
@@ -193,4 +185,4 @@ http.createServer(async (req, res) => {
   let out = problem(404, 'not_found', `Cannot ${req.method} /api/${p}`);
   for (const [m, re, h] of R) { const hit = m === req.method && p.match(re); if (hit) { out = h(hit, body, query); break; } }
   res.writeHead(out.status ?? 200, { 'content-type': out.status >= 400 ? 'application/problem+json' : 'application/json' }); res.end(JSON.stringify(out.body));
-}).listen(PORT, () => console.log(`stub API + site on http://localhost:${PORT}/lobby.html (wallet ${WALLET.toBase58()}, sponsored ${SPONSORED}, sales ${SALES}) – promo codes STUB (2 tickets) · RIDES (+3 free rides) · GOLD / BLUE / RACING (a wheel / truck paint / shifter)`));
+}).listen(PORT, () => console.log(`stub API + site on http://localhost:${PORT}/lobby.html (wallet ${WALLET.toBase58()}, sales ${SALES}) – promo codes STUB (2 tickets) · RIDES (+3 free rides) · GOLD / BLUE / RACING (a wheel / truck paint / shifter)`));

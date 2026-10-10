@@ -6,14 +6,13 @@ import { GetPendingTicketOrderQuery, type PendingTicketOrderDto } from '../../ap
 import { GetTicketOrderQuery } from '../../application/use-cases/tickets/get-ticket-order/get-ticket-order.query.js';
 import { ConfirmTicketOrderCommand, type ConfirmTicketOrderResultDto } from '../../application/use-cases/tickets/confirm-ticket-order/confirm-ticket-order.command.js';
 import { GetTicketPaymentQuery, type TicketPaymentDto } from '../../application/use-cases/tickets/get-ticket-payment/get-ticket-payment.query.js';
-import { SubmitTicketOrderCommand, type SubmitTicketOrderResultDto } from '../../application/use-cases/tickets/submit-ticket-order/submit-ticket-order.command.js';
 import { CurrentPlayer } from '../../infrastructure/http/decorators/current-player.js';
-import { ZodBody, ZodParams, ZodQuery } from '../../infrastructure/http/decorators/zod.js';
+import { ZodBody, ZodParams } from '../../infrastructure/http/decorators/zod.js';
 import { PlayerAuthGuard } from '../../infrastructure/http/guards/player-auth.guard.js';
 import type { PlayerIdentity } from '../../infrastructure/http/types/http-request.js';
 import {
-  confirmTicketOrderBodySchema, createTicketOrderBodySchema, orderIdParamsSchema, submitTicketOrderBodySchema, ticketPaymentQuerySchema,
-  type ConfirmTicketOrderBody, type CreateTicketOrderBody, type OrderIdParams, type SubmitTicketOrderBody, type TicketPaymentQuery,
+  confirmTicketOrderBodySchema, createTicketOrderBodySchema, orderIdParamsSchema,
+  type ConfirmTicketOrderBody, type CreateTicketOrderBody, type OrderIdParams,
 } from './dto/pools.dto.js';
 
 /** Buying tickets into a pool: an order, then (with the chain adapter) its transaction. Private to the signed-in wallet. */
@@ -41,21 +40,15 @@ export class TicketsHttpController {
     return this.queryBus.execute<GetTicketOrderQuery, TicketOrderDto>(new GetTicketOrderQuery(player.wallet, params.id));
   }
 
-  /** The unsigned buy_ticket transaction (fresh blockhash each call). `sponsored` = sign it and POST /submit; otherwise sign-and-send, then /confirm. 409 order closed. */
+  /** The unsigned buy_ticket transaction (fresh blockhash each call): the wallet signs AND sends it (it pays its own network fee and the Ticket rent), then /confirm. 409 order closed. */
   @Get('orders/:id/payment')
-  payment(@CurrentPlayer() player: PlayerIdentity, @ZodParams(orderIdParamsSchema) params: OrderIdParams, @ZodQuery(ticketPaymentQuerySchema) query: TicketPaymentQuery): Promise<TicketPaymentDto> {
-    return this.queryBus.execute<GetTicketPaymentQuery, TicketPaymentDto>(new GetTicketPaymentQuery(player.wallet, params.id, query.selfPaid));
+  payment(@CurrentPlayer() player: PlayerIdentity, @ZodParams(orderIdParamsSchema) params: OrderIdParams): Promise<TicketPaymentDto> {
+    return this.queryBus.execute<GetTicketPaymentQuery, TicketPaymentDto>(new GetTicketPaymentQuery(player.wallet, params.id));
   }
 
   /** 200 `{status:'paid'}` or `{status:'pending'}` (ask again) · 400 the transaction failed or does not pay this order. */
   @Post('orders/:id/confirm') @HttpCode(200)
   confirm(@CurrentPlayer() player: PlayerIdentity, @ZodParams(orderIdParamsSchema) params: OrderIdParams, @ZodBody(confirmTicketOrderBodySchema) body: ConfirmTicketOrderBody): Promise<ConfirmTicketOrderResultDto> {
     return this.commandBus.execute<ConfirmTicketOrderCommand, ConfirmTicketOrderResultDto>(new ConfirmTicketOrderCommand(player.wallet, params.id, body.signature));
-  }
-
-  /** The gasless path: the server co-signs as fee payer ONLY the bytes it built for this order, sends, settles. 400 bytes differ · 429 daily cap · 503 no sponsor. */
-  @Post('orders/:id/submit') @HttpCode(200)
-  submit(@CurrentPlayer() player: PlayerIdentity, @ZodParams(orderIdParamsSchema) params: OrderIdParams, @ZodBody(submitTicketOrderBodySchema) body: SubmitTicketOrderBody): Promise<SubmitTicketOrderResultDto> {
-    return this.commandBus.execute<SubmitTicketOrderCommand, SubmitTicketOrderResultDto>(new SubmitTicketOrderCommand(player.wallet, params.id, body.signedTransaction));
   }
 }

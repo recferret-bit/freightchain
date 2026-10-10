@@ -1,8 +1,7 @@
 import { bindClient } from '../support/client.js';
 import type { Harness } from '../support/harness.js';
 
-/* The chain context's public routes through the REAL app (the pool program is the FakePoolChain). No gas sponsor is configured here (FEE_PAYER_SECRET → sponsorEnabled
-   is covered by the rules-config and handler specs). */
+/* The chain context's public routes through the REAL app (the pool program is the FakePoolChain). */
 export const CHAIN_ENV = {};
 
 export function chainScenarios(h: () => Harness): void {
@@ -12,7 +11,7 @@ export function chainScenarios(h: () => Harness): void {
   it('GET /api/chain/fees: public, the live purchase quote, who pays it, the blockhash lifetime', async () => {
     h().poolChain.quote = { priorityMicrolamports: 7_500, computeUnits: 30_000, estimatedFeeLamports: 10_225 };
     const res = await anon().get('/api/chain/fees').expect(200);
-    expect(res.body).toEqual({ priorityMicrolamports: 7_500, computeUnits: 30_000, estimatedFeeLamports: 10_225, sponsored: false, blockhashTtlSeconds: 60 });
+    expect(res.body).toEqual({ priorityMicrolamports: 7_500, computeUnits: 30_000, estimatedFeeLamports: 10_225, blockhashTtlSeconds: 60 });
     expect((await anon().get('/api/chain/fees?poolId=3').expect(200)).body.priorityMicrolamports).toBe(7_500);
     expect(h().poolChain.feeQuotes).toEqual([{ poolId: null, kind: 'buy' }, { poolId: 3, kind: 'buy' }]);
   });

@@ -53,7 +53,7 @@ export class TicketOrder {
     return new Date(this.p.createdAt.getTime() + ttlMs);
   }
 
-  /** The transaction the server built for it (kept so the gasless /submit signs only these exact bytes). */
+  /** The transaction the server built for it (the wallet signs and sends it itself). */
   attachTransaction(message: string, lastValidBlockHeight: number): void {
     this.mustBe('awaiting_payment');
     this.p.txMessage = message;

@@ -20,7 +20,7 @@ MAIN="$(cd "$(dirname "$(git -C "$SERVER" rev-parse --path-format=absolute --git
 KEYS="${KEYS:-$MAIN/deploy/secrets/devnet}"
 ENVF="$SERVER/.env.devnet"
 export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
-ROLES=(program-id deploy admin sponsor crank fee seed plat funder)
+ROLES=(program-id deploy admin crank fee seed plat funder)
 fail() { echo "✗ $*" >&2; exit 1; }
 envkey() { [ -f "$ENVF" ] && grep -E "^$1=" "$ENVF" | head -1 | cut -d= -f2- | sed 's/[[:space:]]*#.*$//' || true; }   # by key name; never echoed by this script
 rpc() { local u="${RPC:-$(envkey SOLANA_RPC)}"; [ -n "$u" ] || fail "no RPC: set RPC=… or write server/.env.devnet (devnet.sh env)"; echo "$u"; }
@@ -33,7 +33,7 @@ case "${1:-help}" in
     for r in "${ROLES[@]}"; do [ -f "$KEYS/$r.json" ] || solana-keygen new -s --no-bip39-passphrase -o "$KEYS/$r.json" >/dev/null; chmod 600 "$KEYS/$r.json"; done
     echo "keys in $KEYS (gitignored – back them up; the program-id and deploy keys can't be recreated):"
     printf '  %-11s %s  %s\n' program-id "$(pub program-id)" 'the program address (no SOL)' deploy "$(pub deploy)" 'upgrade authority + pays the deploy: ~5 SOL' \
-      admin "$(pub admin)" 'Config.authority = TREASURY_PUBKEY, import into Phantom: ~0.5 SOL' sponsor "$(pub sponsor)" 'gas sponsor: ~1 SOL' \
+      admin "$(pub admin)" 'Config.authority = TREASURY_PUBKEY, import into Phantom: ~0.5 SOL' \
       crank "$(pub crank)" 'crank fees: ~0.3 SOL' fee "$(pub fee)" 'fee treasury: 0.01 SOL (rent-exempt)' seed "$(pub seed)" 'seed treasury: 0.01 SOL' \
       plat "$(pub plat)" 'platform treasury: 0.01 SOL' funder "$(pub funder)" 'funds the rehearsal players: ~1 SOL'
     ;;
@@ -42,15 +42,15 @@ case "${1:-help}" in
     ;;
   env)
     [ -n "${RPC:-}" ] || fail "RPC=<your QuickNode devnet https URL> (and WS=<wss URL>) – read from the environment, written only into server/.env.devnet"
-    for r in admin sponsor crank fee seed; do [ -f "$KEYS/$r.json" ] || fail "no $r key – run: devnet.sh keys"; done
+    for r in admin crank fee seed; do [ -f "$KEYS/$r.json" ] || fail "no $r key – run: devnet.sh keys"; done
     PROGRAM="${TICKET_PROGRAM_ID:-$(envkey TICKET_PROGRAM_ID)}"
     WEBHOOK="$(envkey WEBHOOK_SECRET)"; [ -n "$WEBHOOK" ] || WEBHOOK="$(node -e 'console.log(require("crypto").randomBytes(24).toString("base64url"))')"
     umask 077
     # values travel through the environment into node (no shell quoting / sed escaping of URLs and keys); nothing is printed
     V_RPC="$RPC" V_WS="${WS:-}" V_PROGRAM="$PROGRAM" V_ADMIN="$(pub admin)" V_FEE="$(pub fee)" V_SEED="$(pub seed)" V_WEBHOOK="$WEBHOOK" \
-    V_SPONSOR="$(tr -d ' \n' < "$KEYS/sponsor.json")" V_CRANK="$(tr -d ' \n' < "$KEYS/crank.json")" node -e '
+    V_CRANK="$(tr -d ' \n' < "$KEYS/crank.json")" node -e '
       const fs = require("fs"), e = process.env, set = { SOLANA_RPC: e.V_RPC, SOLANA_WS: e.V_WS, TICKET_PROGRAM_ID: e.V_PROGRAM, TREASURY_PUBKEY: e.V_ADMIN,
-        FEE_TREASURY: e.V_FEE, SEED_TREASURY: e.V_SEED, FEE_PAYER_SECRET: e.V_SPONSOR, CRANK_SECRET: e.V_CRANK, WEBHOOK_SECRET: e.V_WEBHOOK };
+        FEE_TREASURY: e.V_FEE, SEED_TREASURY: e.V_SEED, CRANK_SECRET: e.V_CRANK, WEBHOOK_SECRET: e.V_WEBHOOK };
       const out = fs.readFileSync(process.argv[1], "utf8").split("\n").map(l => { const k = l.split("=")[0]; return k in set ? `${k}=${set[k]}` : l; }).join("\n");
       fs.writeFileSync(process.argv[2], out, { mode: 0o600 });' "$SERVER/.env.devnet.example" "$ENVF"
     echo "✓ wrote server/.env.devnet (gitignored, mode 600)$([ -z "$PROGRAM" ] && echo ' – TICKET_PROGRAM_ID empty until the program is deployed (then rerun with TICKET_PROGRAM_ID=…)')"
@@ -96,7 +96,7 @@ case "${1:-help}" in
     ;;
   distribute)
     # target balances in lamports; only the missing part is sent, from the deploy wallet (which keeps the rest for the program deploy)
-    for pair in admin:500000000 sponsor:1000000000 crank:300000000 funder:1000000000 fee:10000000 seed:10000000 plat:10000000; do
+    for pair in admin:500000000 crank:300000000 funder:1000000000 fee:10000000 seed:10000000 plat:10000000; do
       r="${pair%%:*}"; want="${pair##*:}"
       have=$(call getBalance "[\"$(pub "$r")\"]" | node -pe 'JSON.parse(require("fs").readFileSync(0)).result.value')
       [ "$have" -ge "$want" ] && { echo "  $r has enough"; continue; }

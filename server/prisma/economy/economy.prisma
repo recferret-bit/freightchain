@@ -138,7 +138,7 @@ model TicketOrder {
   qty                  Int
   lamports             BigInt // price x qty at order time (the price is fixed on the pool)
   status               OrderStatus
-  txMessage            String? // base64 of the message the server built - /submit accepts only a transaction carrying exactly this (the fee-payer guard)
+  txMessage            String? // base64 of the message the server built for this order (the wallet signs and sends it itself)
   lastValidBlockHeight BigInt?
   createdAt            DateTime
   paidAt               DateTime?
@@ -184,14 +184,3 @@ model ChainEvent {
   @@schema("economy")
 }
 
-// The gas sponsor's ledger: what the fee payer paid for whom (per-wallet daily cap, balance alarms, audit).
-model SponsoredTx {
-  signature   String   @id
-  wallet      String
-  kind        String // buy | refund | session | deposit
-  feeLamports BigInt
-  at          DateTime
-
-  @@index([wallet, at])
-  @@schema("economy")
-}

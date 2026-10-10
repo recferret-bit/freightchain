@@ -19,7 +19,7 @@ Related: [deploy + operate](program-deploy.md) · [paid tickets status](paid-tic
 
 **Deploy and keys**
 - The program is not on devnet yet. The keys exist (`deploy/secrets/devnet/`) and the code carries the devnet id `9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx`; the wallets are unfunded, so nothing is deployed (`program-deploy.md` devnet runbook).
-- Production env not set for the escrow: `PAYMENT_MODE=program`, `TICKET_PROGRAM_ID`, `FEE_TREASURY`, `SEED_TREASURY`, `FEE_PAYER_SECRET`, `CRANK_SECRET` (+ `CRANK_INTERVAL_MS`), `WEBHOOK_SECRET`, an RPC that allows `getProgramAccounts` (the crank lists tickets with it).
+- Production env not set for the escrow: `PAYMENT_MODE=program`, `TICKET_PROGRAM_ID`, `FEE_TREASURY`, `SEED_TREASURY`, `CRANK_SECRET` (+ `CRANK_INTERVAL_MS`), `WEBHOOK_SECRET`, an RPC that allows `getProgramAccounts` (the crank lists tickets with it).
 - No public "verified" badge: `solana-verify verify-from-repo` + `remote submit-job` need the repo public and a PDA signed by the upgrade authority.
 - The main checkout has no verifiable `.so` in `target/deploy` yet – run `npm run program:verify` there before `npm run test:localnet` or a deploy.
 
@@ -30,11 +30,13 @@ Related: [deploy + operate](program-deploy.md) · [paid tickets status](paid-tic
 - Nothing rolls the seed treasury into the next pool: "seeds the next pool" (the lobby's rules text) is an operator step – `pool-admin.mjs sponsor -k seed.json` (the localnet payout scenario does exactly that).
 
 **Crank operations**
-- No alerting: crank failures are only logged (`CrankPoolsHandler` / `PoolCrankScheduler`), not on the admin page; no low-balance warning for the crank key (the gas sponsor has one).
-- Not tested with several server instances cranking at once (the program makes duplicates harmless – a refund batch that races fails whole – but it was not exercised).
+- No alerting: crank failures are only logged (`CrankPoolsHandler` / `PoolCrankScheduler`), not on the admin page; no low-balance warning for the crank key.
+- ~~Not tested with several server instances cranking at once~~ – covered since Oct 10 by `SCENARIO=chaos` (T6: three crank CLIs + a stranger's refund on a 10-ticket pool: identical transactions dedupe, a step that lost a race is retried by the next pass, every buyer refunded exactly once). Two servers crank-SCHEDULING at once is the same handler, not run separately.
+- **A refused ticket read stopped the whole crank pass** (found by `SCENARIO=chaos`, Oct 10; fixed): `listTickets` (`getProgramAccounts`) throwing escaped `CrankPoolsHandler.crankPool`, so every pool after it starved. Now caught per pool and reported as a failed action; unit-tested.
+- **The gas sponsor and `POST /api/tickets/orders/:id/submit` were removed** (Oct 10, `SCENARIO=chaos` had just found that `/submit` answered 503 for a purchase that had landed, so the lobby could pay twice): every wallet now signs AND sends its own buy and refund (network fee ≈ 0.0001 SOL + the Ticket rent ≈ 0.0015 SOL, returned at refund / close). Gone with it: `FEE_PAYER_SECRET`, `FEE_PAYER_MIN_SOL`, `SPONSOR_PER_WALLET_PER_DAY`, the co-signer, the `SponsoredTx` table (migration `20261018000000_drop_sponsored_tx` – it DROPS a table, the owner's OK is needed before it reaches production), `?selfPaid=1`, `sponsored` in the payment / refund / fees DTOs. The program is untouched (`buy_ticket` still takes a separate `fee_payer`, which nothing in the server uses now). A leftover `FEE_PAYER_SECRET` in a real env file is ignored.
 - The crank uses the `refund` priority-fee quote for `fail_pool` / `expire_pool`; fine on devnet, unmeasured under congestion.
 - It never closes a pool that paid prizes, even after the grace (deliberately – see Q10).
-- **Nothing reclaims Ticket rents after a settlement** (found by the ten-rider localnet run, Oct 9): `close_ticket` (permissionless, rent → the ticket's `rent_payer`) is in the program but neither the crank nor any server path sends it. Every gasless buyer of a settled pool leaves ~0.0015 SOL (1 496 400 lamports) of the gas sponsor's money locked in its Ticket account – 10 buyers a week ≈ 0.015 SOL a week, forever. Refunded pools are fine (`refund` closes the ticket). Fix: a crank step `close_ticket` for Settled pools (needs a ticket listing per settled pool – mark a pool "tickets closed" in the mirror so it is listed once), or a CLI sweep. The localnet scenario does it by hand (`pool-admin.mjs close-ticket`) and asserts every rent lands back.
+- **Nothing reclaims Ticket rents after a settlement** (found by the ten-rider localnet run, Oct 9): `close_ticket` (permissionless, rent → the ticket's `rent_payer`) is in the program but neither the crank nor any server path sends it. Every buyer of a settled pool leaves ~0.0015 SOL (1 496 400 lamports) of ITS OWN money locked in its Ticket account until someone sends `close_ticket` (rent → `rent_payer` = the buyer; the gas sponsor that used to be the payer was removed Oct 10) – a real cost to every winner and loser of a live pool, on top of the ticket price. Refunded pools are fine (`refund` closes the ticket). Fix: a crank step `close_ticket` for Settled pools (needs a ticket listing per settled pool – mark a pool "tickets closed" in the mirror so it is listed once), or a CLI sweep. The localnet scenario does it by hand (`pool-admin.mjs close-ticket`) and asserts every rent lands back.
 
 **Security / program**
 - **Not audited.** The Trail of Bits classes were checked by hand; their scanner plugin is not installed (user-level `/plugin marketplace add trailofbits/skills`).
@@ -45,7 +47,7 @@ Related: [deploy + operate](program-deploy.md) · [paid tickets status](paid-tic
 
 **Tests – what a green run does not cover**
 - A real Phantom (popups, its own RPC, whether it rewrites transactions before signing). The localnet fake signs exactly what it is given.
-- Devnet conditions: congestion, dropped / expired transactions, RPC rate limits and providers that refuse `getProgramAccounts`.
+- Devnet conditions: real congestion timing. The refusals, 429s, swallowed / lost sends and `getProgramAccounts` refusals are imitated locally since Oct 10 (`SCENARIO=chaos`, the fault proxy `server/scripts/localnet-fault-proxy.mjs`); what stays unmeasured is how a real provider behaves under load (`TARGET=devnet`).
 - ~~On a real validator: `cancel_pool`, the authority handover, pause~~ – covered since Oct 9 by the ten-rider scenario (with every reachable error code; `MathOverflow` only in LiteSVM, from a forged account).
 - The sponsor-down fallback against the real server (only `e2e-tickets-stub.mjs` covers it).
 
@@ -108,7 +110,7 @@ Until then production stays as it is (`PAYMENT_MODE=transfer`, no escrow keys in
 
 ### Phase 2 – real tests on devnet (server on your machine – Q-J)
 - [ ] Server against devnet with the devnet profile; pools appear by themselves (the watcher registers them) or `pool:register --label`
-- [ ] Phantom on devnet, lobby on localhost: buy gasless (only "sign"), buy self-paid (sponsor drained or cap reached), ride a ticket to VERIFIED
+- [ ] Phantom on devnet, lobby on localhost: buy (Phantom signs AND sends: check its fee + rent line), ride a ticket to VERIFIED
 - [ ] Callbacks, each path alone:
   - [ ] fast path: lobby buy → "Paid – N tickets credited" at once
   - [ ] watcher: `pool-admin.mjs buy` straight on chain (no order) → credited within ~15 s; with `SOLANA_WS` set, sooner
@@ -125,7 +127,7 @@ Until then production stays as it is (`PAYMENT_MODE=transfer`, no escrow keys in
 ### Phase 3 – production (only after the Colosseum results AND the Phase 2 exit list, only on "deploy")
 - [ ] Gate: the Colosseum results are out (Q-K)
 - [ ] A production QuickNode devnet endpoint (or the same one) + fund the production sponsor + crank (devnet SOL – production still runs on devnet)
-- [ ] `deploy/.env`: `PAYMENT_MODE=program`, `TICKET_PROGRAM_ID`, `TREASURY_PUBKEY` = admin, `FEE_TREASURY`, `SEED_TREASURY`, `FEE_PAYER_SECRET`, `CRANK_SECRET`, `CRANK_INTERVAL_MS`, `SOLANA_RPC`, `SOLANA_WS`, `WEBHOOK_SECRET`
+- [ ] `deploy/.env`: `PAYMENT_MODE=program`, `TICKET_PROGRAM_ID`, `TREASURY_PUBKEY` = admin, `FEE_TREASURY`, `SEED_TREASURY`, `CRANK_SECRET`, `CRANK_INTERVAL_MS`, `SOLANA_RPC`, `SOLANA_WS`, `WEBHOOK_SECRET`
 - [ ] Settle the legacy weekly round first (Q13)
 - [ ] `npm run deploy -- --dry-run` → the owner says "deploy" → `npm run deploy` → smoke (with the new program checks)
 - [ ] QuickNode Stream → `https://api.freightchain.fun/api/chain/webhook`

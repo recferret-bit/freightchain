@@ -5,14 +5,13 @@ import type { UnsignedPaymentTx } from '../../domain/economy/chain-transaction.j
 import type { ChainEventRecord, PoolChainState } from '../../domain/economy/chain-events.js';
 import { orderIdToBytes } from '../../domain/economy/ticket-purchase-verification.js';
 import { escrowOf } from '../../domain/economy/vault-split.js';
-import { BadRequestError, ConflictError, NotFoundError, ServiceUnavailableError } from '../../domain/shared/errors.js';
+import { ConflictError, NotFoundError, ServiceUnavailableError } from '../../domain/shared/errors.js';
 import { ClockPort } from '../../application/ports/shared/clock.port.js';
 import { PoolChainPort, type BuiltTransaction, type ChainTxKind, type FeeQuote, type ProgramSignature, type SignatureStatus } from '../../application/ports/economy/pool-chain.port.js';
 import { EnvService } from '../config/env.service.js';
 import { FeeEstimator, estimateFeeLamports, type QnPriorityFees } from './fee-estimator.js';
 import { PoolProgramCodec, UnrepresentableValueError } from './pool-program.codec.js';
 import { SolanaRpc, sleep } from './solana-rpc.js';
-import { addFeePayerSignature, checkUserSignedTransaction } from './transaction-cosigner.js';
 
 /** Compute-unit limits: the LiteSVM measurements (README, server/test/fixtures/chain) + headroom for the Ticket PDA's bump SEARCH. `buy_ticket` (init_if_needed) and
     `refund` derive the Ticket address with find_program_address in the program: every bump tried costs 1 500 CU, and how many it takes is fixed per wallet and pool
@@ -20,13 +19,6 @@ import { addFeePayerSignature, checkUserSignedTransaction } from './transaction-
     by a server-built transaction – found by the devnet rehearsal ("exceeded CUs meter"). 60k / 45k leave ≥ 20 extra tries (2^-20). The limit is a cap, not a charge
     (the fee is priority price × limit, ~0 on devnet). */
 export const CU_LIMITS = { buy: 60_000, refund: 45_000, fail_pool: 6_000, expire_pool: 6_000, pay_prize: 17_000, close_pool: 24_000 } as const;
-/** keep the sponsor able to pay a fee + one Ticket rent (~0.0015 SOL, returned at refund) */
-const SPONSOR_SPEND_FLOOR_LAMPORTS = 2_000_000;
-const RESEND_MS = 2_000;
-/** a real lastValidBlockHeight is ~150 blocks ahead of the chain; anything far beyond is not the one stored with the order */
-const MAX_BLOCKS_AHEAD = 300;
-/** 60 × 2 s ≈ the life of a blockhash: the loop ends even if the network never answers */
-const MAX_RESENDS = 60;
 const MAX_SIGNATURE_PAGES = 10;
 const STATUS = ['open', 'active', 'refunding', 'settled', 'cancelled'] as const;
 
@@ -49,7 +41,7 @@ export function poolStateOf(c: PoolProgramCodec, poolId: number, info: AccountIn
   };
 }
 
-/** `FEE_PAYER_SECRET` / `CRANK_SECRET`: base58 of the 64-byte secret key, or the JSON array `solana-keygen` writes. */
+/** `CRANK_SECRET`: base58 of the 64-byte secret key, or the JSON array `solana-keygen` writes. */
 export function parseKeypair(secret: string): Keypair {
   const trimmed = secret.trim();
   const bytes = trimmed.startsWith('[') ? Uint8Array.from(JSON.parse(trimmed) as number[]) : bs58.decode(trimmed);
@@ -58,7 +50,7 @@ export function parseKeypair(secret: string): Keypair {
 
 /**
  * PAYMENT_MODE=program: the Anchor pool program (programs/freightchain-pools). Builds unsigned transactions for wallets, reads and decodes what the program did,
- * co-signs as gas sponsor (only transactions it built itself). Never connects at construction (the app boots without a program configured); every call then says
+ * (every wallet signs AND pays its own transaction – the server holds no fee-payer key). Never connects at construction (the app boots without a program configured); every call then says
  * "unavailable" instead. Reads fall back over SOLANA_RPC_FALLBACKS; sends go to SOLANA_RPC only.
  */
 @Injectable()
@@ -66,7 +58,6 @@ export class ProgramChainAdapter extends PoolChainPort {
   private readonly logger = new Logger(ProgramChainAdapter.name);
   private readonly rpc: SolanaRpc;
   private readonly commitment: Commitment;
-  private readonly sponsor: Keypair | null;
   private readonly fees: FeeEstimator;
   private codecCache: PoolProgramCodec | null = null;
   private rentMinCache: Promise<number> | null = null;
@@ -77,7 +68,6 @@ export class ProgramChainAdapter extends PoolChainPort {
     super();
     this.commitment = env.solanaCommitment;
     this.rpc = new SolanaRpc(new Connection(env.solanaRpc, { commitment: this.commitment }), env.solanaRpcFallbacks.map((u) => new Connection(u, { commitment: this.commitment })), (ms) => this.wait(ms));
-    this.sponsor = env.feePayerSecret ? parseKeypair(env.feePayerSecret) : null; // a malformed key stops the boot, like any invalid env
     this.fees = new FeeEstimator({
       qnEstimate: (account) => this.rpc.read(async (c) => {
         const res = (await (c as unknown as { _rpcRequest(m: string, p: unknown): Promise<{ result?: QnPriorityFees; error?: { code: number; message: string } }> })
@@ -99,15 +89,15 @@ export class ProgramChainAdapter extends PoolChainPort {
 
   // ---- builders
 
-  async buildBuyTransaction(i: { payer: string; poolId: number; qty: number; orderId: string; selfPaid?: boolean }): Promise<BuiltTransaction> {
-    const c = this.codec, feePayer = this.feePayerFor(i.payer, i.selfPaid);
+  async buildBuyTransaction(i: { payer: string; poolId: number; qty: number; orderId: string }): Promise<BuiltTransaction> {
+    const c = this.codec;
     const ix = c.instruction('buy_ticket', {
-      buyer: i.payer, fee_payer: feePayer, config: c.configPda(), pool: c.poolPda(i.poolId), vault: c.vaultPda(i.poolId), ticket: c.ticketPda(i.poolId, i.payer),
+      buyer: i.payer, fee_payer: i.payer, config: c.configPda(), pool: c.poolPda(i.poolId), vault: c.vaultPda(i.poolId), ticket: c.ticketPda(i.poolId, i.payer),
     }, { pool_id: i.poolId, qty: i.qty, order_id: orderIdToBytes(i.orderId) });
-    return this.build([ix], feePayer, i.poolId, CU_LIMITS.buy);
+    return this.build([ix], i.payer, i.poolId, CU_LIMITS.buy);
   }
 
-  async buildRefundTransaction(i: { caller: string; poolId: number; buyer: string; needsFail: boolean; selfPaid?: boolean }): Promise<BuiltTransaction> {
+  async buildRefundTransaction(i: { caller: string; poolId: number; buyer: string; needsFail: boolean }): Promise<BuiltTransaction> {
     const c = this.codec, ticket = c.ticketPda(i.poolId, i.buyer);
     const info = await this.rpc.read((x) => x.getAccountInfo(ticket, this.commitment));
     const t = info && info.owner.equals(c.programId) ? c.decodeAccount('Ticket', info.data) : null;
@@ -117,7 +107,7 @@ export class ProgramChainAdapter extends PoolChainPort {
     ixs.push(c.instruction('refund', {
       caller: i.caller, pool: c.poolPda(i.poolId), vault: c.vaultPda(i.poolId), ticket, buyer: i.buyer, rent_payer: String(t['rentPayer']),
     }, { pool_id: i.poolId }));
-    return this.build(ixs, this.feePayerFor(i.caller, i.selfPaid), i.poolId, CU_LIMITS.refund + (i.needsFail ? CU_LIMITS.fail_pool : 0));
+    return this.build(ixs, i.caller, i.poolId, CU_LIMITS.refund + (i.needsFail ? CU_LIMITS.fail_pool : 0));
   }
 
   async buildPayPrizeTransaction(i: { authority: string; poolId: number; to: string; lamports: number; rank: number }): Promise<BuiltTransaction> {
@@ -138,11 +128,6 @@ export class ProgramChainAdapter extends PoolChainPort {
       seed_treasury: String(pool['seedTreasury']), fee_treasury: String(pool['feeTreasury']), platform_treasury: String(config['platformTreasury']),
     }, { pool_id: i.poolId });
     return this.build([ix], i.authority, i.poolId, CU_LIMITS.close_pool);
-  }
-
-  /** the gas sponsor pays for buys and refunds when there is one, unless the caller asks for a self-paid transaction */
-  private feePayerFor(signer: string, selfPaid = false): string {
-    return !selfPaid && this.sponsor ? this.sponsor.publicKey.toBase58() : signer;
   }
 
   /** compute budget first, then the program's instructions; a fresh blockhash per build (it lives ~60–90 s) */
@@ -220,8 +205,7 @@ export class ProgramChainAdapter extends PoolChainPort {
     const hot = i.poolId !== null ? [this.codec.poolPda(i.poolId).toBase58(), this.codec.vaultPda(i.poolId).toBase58()] : this.env.ticketProgramId ? [this.codec.programId.toBase58()] : [];
     const priorityMicrolamports = await this.fees.priorityMicrolamports(hot);
     const computeUnits = i.kind === 'refund' ? CU_LIMITS.refund + CU_LIMITS.fail_pool : CU_LIMITS[i.kind];
-    const signatures = this.sponsor && (i.kind === 'buy' || i.kind === 'refund') ? 2 : 1;
-    return { priorityMicrolamports, computeUnits, estimatedFeeLamports: estimateFeeLamports(signatures, priorityMicrolamports, computeUnits) };
+    return { priorityMicrolamports, computeUnits, estimatedFeeLamports: estimateFeeLamports(1, priorityMicrolamports, computeUnits) };
   }
 
   async simulate(tx: UnsignedPaymentTx): Promise<{ ok: true; unitsConsumed: number } | { ok: false; reason: string }> {
@@ -237,36 +221,6 @@ export class ProgramChainAdapter extends PoolChainPort {
     const code = typeof custom === 'object' ? custom.Custom : undefined;
     const named = code === undefined || !this.env.ticketProgramId ? null : this.codec.errorName(code);
     return named ?? `${JSON.stringify(err)}${logs.length ? ` – ${logs.at(-1)}` : ''}`;
-  }
-
-  // ---- the gas sponsor
-
-  async cosignAndSend(i: { signedTransaction: string; expectedMessage: string; lastValidBlockHeight: number }): Promise<{ signature: string; lastValidBlockHeight: number }> {
-    const sponsor = this.sponsor;
-    if (!sponsor) throw new ServiceUnavailableError('no gas sponsor is configured – pay the network fee yourself');
-    const wire = checkUserSignedTransaction(Buffer.from(i.signedTransaction, 'base64'), Buffer.from(i.expectedMessage, 'base64'), sponsor.publicKey);
-    const [height, balance] = await Promise.all([
-      this.rpc.read((x) => x.getBlockHeight(this.commitment)),
-      this.rpc.read((x) => x.getBalance(sponsor.publicKey, this.commitment)),
-    ]);
-    if (height > i.lastValidBlockHeight) throw new BadRequestError('the transaction\'s blockhash expired – rebuild it', 'transaction_expired');
-    if (i.lastValidBlockHeight - height > MAX_BLOCKS_AHEAD) throw new BadRequestError('lastValidBlockHeight is not the one the transaction was built with', 'block_height_invalid');
-    if (balance < this.env.feePayerMinSol * 1e9) this.logger.warn(`gas sponsor ${sponsor.publicKey.toBase58()} is low: ${balance} lamports – top it up`);
-    if (balance < SPONSOR_SPEND_FLOOR_LAMPORTS) throw new ServiceUnavailableError('the gas sponsor is out of funds – pay the network fee yourself');
-    const raw = Buffer.from(addFeePayerSignature(wire, sponsor.secretKey));
-    const signature = bs58.encode(raw.subarray(1, 65));
-    const sim = await this.rpc.read((x) => x.simulateTransaction(VersionedTransaction.deserialize(raw), { sigVerify: true, commitment: this.commitment }));
-    if (sim.value.err) throw new ConflictError(`the transaction would fail: ${this.reason(sim.value.err, sim.value.logs ?? [])}`, 'transaction_would_fail');
-    // send with maxRetries 0 and re-send ourselves until it lands or its blockhash is gone (the recommended pattern under congestion)
-    for (let n = 0; n < MAX_RESENDS; n++) {
-      await this.rpc.primaryOnly((x) => x.sendRawTransaction(raw, { skipPreflight: true, maxRetries: 0 })).catch((e: unknown) => this.logger.debug(`re-send: ${(e as Error).message}`));
-      await this.wait(RESEND_MS);
-      const { status, err } = await this.status(signature, i.lastValidBlockHeight);
-      if (err) throw new ConflictError(`the transaction failed on chain: ${this.reason(err, [])}`, 'transaction_failed');
-      if (status === 'finalized' || (status === 'confirmed' && this.commitment === 'confirmed')) return { signature, lastValidBlockHeight: i.lastValidBlockHeight };
-      if (status === 'expired') throw new ConflictError('the network dropped the transaction – nothing was charged; rebuild it', 'transaction_dropped');
-    }
-    throw new ConflictError(`transaction ${signature} was sent but is not confirmed yet – it is credited when it lands`, 'transaction_unconfirmed');
   }
 
   /** A landed transaction reports its commitment even when it failed (readEvents calls that one invalid). */

@@ -75,7 +75,6 @@ import { TicketSettlementService } from './services/ticket-settlement.service.js
 import { PoolRegistryService } from './services/pool-registry.service.js';
 import { GetTicketPaymentHandler } from './use-cases/tickets/get-ticket-payment/get-ticket-payment.handler.js';
 import { ConfirmTicketOrderHandler } from './use-cases/tickets/confirm-ticket-order/confirm-ticket-order.handler.js';
-import { SubmitTicketOrderHandler } from './use-cases/tickets/submit-ticket-order/submit-ticket-order.handler.js';
 import { GetRefundTransactionHandler } from './use-cases/pools/get-refund-transaction/get-refund-transaction.handler.js';
 import { GetPayoutTransactionsHandler } from './use-cases/pools/get-payout-transactions/get-payout-transactions.handler.js';
 import { SettleChainSignatureHandler } from './use-cases/chain/settle-chain-signature/settle-chain-signature.handler.js';
@@ -129,7 +128,7 @@ const handlers: Provider[] = [
   CreateAdminPromoHandler, DisableAdminPromoHandler, ListPromoRedemptionsHandler,
   CreatePromoHandler, ListPromosHandler, DisablePromoHandler, GrantTicketsHandler, RegisterPoolHandler,
   CreateTicketOrderHandler, GetTicketOrderHandler, GetPendingTicketOrderHandler,
-  SettleChainSignatureHandler, GetTicketPaymentHandler, ConfirmTicketOrderHandler, SubmitTicketOrderHandler,
+  SettleChainSignatureHandler, GetTicketPaymentHandler, ConfirmTicketOrderHandler,
   GetRefundTransactionHandler, GetPayoutTransactionsHandler,
   GetChainFeesHandler,
   PollProgramHandler, SyncPoolsHandler, CrankPoolsHandler, ReceiveChainWebhookHandler, RegisterPoolFromChainHandler,

@@ -19,8 +19,8 @@ describe('GetRefundTransactionHandler', () => {
 
   it('a refunding pool: a self-paid refund of everything the wallet paid', async () => {
     const { ctx, refund } = await setup({ status: 'refunding' });
-    expect(await refund()).toMatchObject({ poolId: 1, needsFail: false, lamports: 100_000_000, feePayer: W, sponsored: false });
-    expect(ctx.poolChain.built[0]).toMatchObject({ kind: 'refund', input: { caller: W, buyer: W, poolId: 1, needsFail: false, selfPaid: true } });
+    expect(await refund()).toMatchObject({ poolId: 1, needsFail: false, lamports: 100_000_000, feePayer: W });
+    expect(ctx.poolChain.built[0]).toMatchObject({ kind: 'refund', input: { caller: W, buyer: W, poolId: 1, needsFail: false } });
   });
 
   it('an open pool past its preparation deadline under the minimum: fail_pool first', async () => {

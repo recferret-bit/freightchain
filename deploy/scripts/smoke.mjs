@@ -81,7 +81,7 @@ check('tiers + price list', tiers.status === 200 && Array.isArray(tiersBody.tier
 check('paid tiers are on (a treasury is configured)', !!tiersBody.treasury);
 if (treasury) check('the treasury is the configured wallet', tiersBody.treasury === treasury, tiersBody.treasury ?? 'none');
 
-// escrowed pools (only when the server sells tickets – PAYMENT_MODE=program): ticket-only tiers, the pools listed, the webhook guarded, the gas sponsor answers
+// escrowed pools (only when the server sells tickets – PAYMENT_MODE=program): ticket-only tiers, the pools listed, the webhook guarded, the network-fee quote answers
 if (tiersBody.paymentMode === 'program') {
   check('program mode: no paid tier falls back to pay-per-ride (a tier without a live pool has no price)', tiersBody.tiers.filter((t) => t.id !== 'free' && !t.pool).every((t) => !t.available && t.lamports === null));
   const poolsBody = await (await get('/api/pools')).json().catch(() => ({}));

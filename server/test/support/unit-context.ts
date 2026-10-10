@@ -25,7 +25,7 @@ import {
   MemoryRideBatchRepository, MemoryRideQuery, MemoryRideVerdictRepository, MemorySignInRepository, MemoryAdminActionRepository, MemoryAdminQuery, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
 } from './in-memory/memory-repositories.js';
 import { MemoryCosmeticRepository, MemoryPoolRepository, MemoryPromoRepository, MemoryRideTicketRepository, MemoryTicketOrderRepository } from './in-memory/memory-ledger-repositories.js';
-import { MemoryChainCursorRepository, MemoryChainEventRepository, MemorySponsoredTxRepository } from './in-memory/memory-repositories.js';
+import { MemoryChainCursorRepository, MemoryChainEventRepository } from './in-memory/memory-repositories.js';
 import { TestHasher } from './recording.js';
 import { MemoryDonationOrderRepository, MemoryRideEventRepository, MemoryRideMuteRepository } from './in-memory/memory-live-repositories.js';
 import { MemoryViewerPresenceAdapter } from '../../src/infrastructure/live/viewer-presence.memory.adapter.js';
@@ -44,8 +44,8 @@ export const ADMIN_UNIT_WALLET = 'GseaEsNWMLScZ5RH8yQ4xmoCP97H86HjLSA9xkyFCqbn';
 export const unitRules = (over: Partial<RulesConfig> = {}): RulesConfig => ({
   freeOnSignup: 5, freeRidesMax: 5, freeRideSeconds: 10, hbMinIntervalMs: 1000, hbTimeoutMs: 150_000, quoteTtlMs: 600_000, nonceTtlMs: 300_000,
   demoWallets: new Set([DEMO_UNIT_WALLET]), demoScale: 60, initialSeedLamports: 0, treasury: TREASURY, appDomain: 'freight.test', appOrigin: 'https://freight.test', gameDomain: null, gameOrigin: null,
-  paymentMode: 'transfer', programId: '', feeTreasury: '', seedTreasury: '', watchIntervalMs: 0, orderTtlMs: 3_600_000, commitment: 'confirmed', sponsorEnabled: false, crankEnabled: false,
-  sponsorPerWalletPerDay: 20, priorityFee: { percentile: 75, minMicrolamports: 0, maxMicrolamports: 50_000 }, sessionTtlHours: 24,
+  paymentMode: 'transfer', programId: '', feeTreasury: '', seedTreasury: '', watchIntervalMs: 0, orderTtlMs: 3_600_000, commitment: 'confirmed', crankEnabled: false,
+  priorityFee: { percentile: 75, minMicrolamports: 0, maxMicrolamports: 50_000 }, sessionTtlHours: 24,
   verdictEnforce: true, telemetryRetentionDays: 90, signInRetentionDays: 180, challengeIntervalSeconds: 240, challengeFreeRides: true, live: { chat: 'all', donations: true, freeDonations: true, effects: 'all' }, adminWallets: new Set([ADMIN_UNIT_WALLET]), adminDomain: 'freight.test', adminOrigin: 'https://freight.test',
   ...over,
 });
@@ -99,7 +99,6 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const poolChain = new FakePoolChain();
   const chainEvents = new MemoryChainEventRepository(db);
   const chainCursors = new MemoryChainCursorRepository(db);
-  const sponsoredTxs = new MemorySponsoredTxRepository(db);
   const rideEvents = new MemoryRideEventRepository(db);
   const viewers = new MemoryViewerPresenceAdapter();
   const sitePresence = new MemorySitePresenceAdapter();
@@ -148,7 +147,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
     db, clock, chain, entropy, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, batches, hasher, verdictRepo, verdicts, proofs, signIns, adminActions, adminQuery, health, analytics,
     pools, tickets, promos, cosmetics, promoCreation, orders, poolTickets, ticketSettlement,
     sessions, meProfile, settings, settingsRepo, offlineRides, lookup, rounds, achievements, settlement, now, player, freeRide, paidOrder, reload, storedPlayer,
-    poolChain, chainEvents, chainCursors, sponsoredTxs, registry, rideEvents, viewers, sitePresence, rideMutes, donationOrders, liveAccess, statsRepo, cache, stats,
+    poolChain, chainEvents, chainCursors, registry, rideEvents, viewers, sitePresence, rideMutes, donationOrders, liveAccess, statsRepo, cache, stats,
   };
 }
 export type UnitContext = ReturnType<typeof unitContext>;
