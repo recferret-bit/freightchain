@@ -22,6 +22,8 @@ export interface TierDto {
   available: boolean;
   /** false = planned, not sold. A live pool of the tier still sells. */
   onSale: boolean;
+  /** the tier's pool series: a new pool every `saleHours`, rides count `playHours` past the sale, `reviewHours` of review before prizes (null = none) */
+  schedule: { saleHours: number; playHours: number; reviewHours: number } | null;
   /** paid tiers: the escrowed pool its tickets are sold into right now (null = none). An on-sale tier with none uses the legacy pay-per-ride order; an off-sale tier is marked soon. */
   pool: PrizePoolDto | null;
   /** the free tier only: its levels, easiest first (its own `seconds` / `completeDist` are level 1's) */

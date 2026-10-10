@@ -12,6 +12,9 @@ export interface RideTierDef {
   onSale: boolean;
   /** Tickets that must sell or the pool refunds. Null = no product minimum (free, or a shift not on sale). */
   minTickets: number | null;
+  /** The pool SERIES of the tier (the program's Series account, written by the admin with `pool-admin.mjs set-series`): a new pool every `saleHours` – the
+      sale window –, rides count `playHours` past it, then `reviewHours` of review before any prize is paid. Null = the tier has no series. */
+  schedule: { saleHours: number; playHours: number; reviewHours: number } | null;
 }
 
 const HOUR = 3600;
@@ -19,11 +22,12 @@ const HOUR = 3600;
 /** The tier table. Only the free shift length is configurable (tests / demos shorten it). */
 export function rideTiers(freeRideSeconds: number): readonly RideTierDef[] {
   return [
-    { id: 'free', seconds: freeRideSeconds, usd: 0, onSale: true, minTickets: null },
+    { id: 'free', seconds: freeRideSeconds, usd: 0, onSale: true, minTickets: null, schedule: null },
     // 20 × $5 = a $100 pot: 1st $26, 2nd $16, 3rd $11, each place 4–20 $1. Fewer tickets and the pool refunds.
-    { id: '1h', seconds: HOUR, usd: 5, onSale: true, minTickets: 20 },
-    { id: '4h', seconds: 4 * HOUR, usd: 15, onSale: false, minTickets: null },
-    { id: '8h', seconds: 8 * HOUR, usd: 50, onSale: false, minTickets: null },
+    // one pool a day: 24 h on sale (rides count from the moment 20 are sold), 2 h more for the last buyers to finish a shift, 48 h of review
+    { id: '1h', seconds: HOUR, usd: 5, onSale: true, minTickets: 20, schedule: { saleHours: 24, playHours: 2, reviewHours: 48 } },
+    { id: '4h', seconds: 4 * HOUR, usd: 15, onSale: false, minTickets: null, schedule: null },
+    { id: '8h', seconds: 8 * HOUR, usd: 50, onSale: false, minTickets: null, schedule: null },
   ];
 }
 

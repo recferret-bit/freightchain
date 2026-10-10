@@ -41,7 +41,7 @@ export class GetTiersHandler implements IQueryHandler<GetTiersQuery, TiersDto> {
       paymentMode: rules.paymentMode,
       tiers: rideTiers(rules.freeRideSeconds).map((t) => {
         const pool = isPaidTier(t.id) ? poolOf(t.id) : null;
-        const row = { id: t.id, usd: t.usd, seconds: t.seconds, completeDist: completeDist(t.seconds, completeDistK(t.id)), onSale: t.onSale };   // the free row: level 1's (= the EASY level, FREE_RIDE_SECONDS × 1, its K)
+        const row = { id: t.id, usd: t.usd, seconds: t.seconds, completeDist: completeDist(t.seconds, completeDistK(t.id)), onSale: t.onSale, schedule: t.schedule };   // the free row: level 1's (= the EASY level, FREE_RIDE_SECONDS × 1, its K)
         if (pool) return { ...row, lamports: pool.priceLamports, available: pool.whyNotSellable(now, 1, 0) === null, pool: toPrizePoolDto(pool) };
         // program mode is ticket-only. An off-sale tier with no live pool has no price (the lobby says SOON). An on-sale tier with no pool keeps the legacy quote in transfer mode.
         const legacy = t.onSale && isPaidTier(t.id) && rules.paymentMode !== 'program';
