@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { scene } from './scene.js';
-import { GEO, mk } from './props.js';
+import { GEO, markBox, mk } from './props.js';
 import { glow, beam } from './glow.js';
 
 /* The trailer behind the cab – only visible in the mirrors. */
@@ -24,7 +24,7 @@ export function setLivery({ body, stripe, accent, text, sub }) {
     dark = new THREE.MeshBasicMaterial({ color: 0x1a1a1a }), tail = new THREE.MeshBasicMaterial({ color: 0xd22a22, toneMapped: false });
   trailerMats.push(sideM, plain, rear, dark, tail, revM);
   // local frame: origin at the kingpin, -z = towards the cab, +z = towards the rear
-  { const body = new THREE.Mesh(new THREE.BoxGeometry(2.4, 3.5, 13), [sideM, sideM, plain, dark, rear, rear]); body.position.set(0, 2.65, 7); trailer.add(body); }
+  { const body = new THREE.Mesh(markBox(new THREE.BoxGeometry(2.4, 3.5, 13)), [sideM, sideM, plain, dark, rear, rear]); body.position.set(0, 2.65, 7); trailer.add(body); }
   trailer.add(mk(GEO.box, dark, 2.2, .5, 10, 0, .75, 8.2));
   for (const z of [9.6, 10.9]) for (const x of [-1.05, 1.05]) { const w = mk(GEO.cyl, dark, .5, .3, .5, x, .5, z); w.rotation.z = Math.PI / 2; trailer.add(w); }
   for (const x of [-1, 1]) { trailer.add(mk(GEO.box, tail, .3, .2, .1, x, 1.2, 13.52)); trailer.add(glow(0xff2010, 1.4, .9, x, 1.2, 13.65)); }

@@ -89,6 +89,7 @@ export const CFG = {
   HEADLIGHT_WIDTH: 16,       // m, width of the pool at its far end
   HEADLIGHT_NEAR_W: 3.2,     // m, extra beam half-width right at the truck, fading out over ~10 m (real lamps splay wide up close; without it the road shoulders beside/ahead of the bonnet were a dark patch)
   HEADLIGHT_GAIN: 0.12,      // brightness of the additive halo decal on the road (the real lighting is the cone in world/nightlight.js, ×1.6 at its centre)
+  FORM_SHADE: 1,             // 1 = daytime sun shade + a 2 cm box edge (world/nightlight.js). F8 toggles. Fades out at night. 0 = the old flat colour
   CAB_DAY: 0.25,             // the cab lamp's warm wash by day, as a fraction of its night strength (the dome lens itself always glows when on)
   CAB_DARK: 0.78,            // cockpit interior darkness at night (0..1); the cab lamp (C) lifts it
   HOOD_DARK: 0.9,            // extra darkness of the bonnet at night with no cab light / street lamp / oncoming glare on it (0..1; 1 = invisible)

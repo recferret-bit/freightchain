@@ -10,9 +10,10 @@ import { env } from './environment.js';
    Widths follow the network's cross-section (net.xs), so lanes can be added/dropped and roads can cross. Vertex data is rewritten in place on reuse. */
 const CAP = 2400;   // vertices per mesh (a chunk with a crossroads and two 2+2 side roads ≈ 400)
 export const stripPool = new ObjectPool('strip', () => {
-  const pos = new Float32Array(CAP * 3), uv = new Float32Array(CAP * 2), idx = new Uint16Array(CAP * 3), geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(CAP * 3), uv = new Float32Array(CAP * 2), idx = new Uint16Array(CAP * 3), nrm = new Float32Array(CAP * 3), geo = new THREE.BufferGeometry();
+  for (let i = 1; i < nrm.length; i += 3) nrm[i] = 1;   // the ribbon is flat; an up normal keeps the daytime form shade off the road (world/nightlight.js)
   const pa = new THREE.BufferAttribute(pos, 3), ua = new THREE.BufferAttribute(uv, 2), ia = new THREE.BufferAttribute(idx, 1);
-  geo.setAttribute('position', pa); geo.setAttribute('uv', ua); geo.setIndex(ia);
+  geo.setAttribute('position', pa); geo.setAttribute('uv', ua); geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3)); geo.setIndex(ia);
   const m = new THREE.Mesh(geo, null); m.frustumCulled = false; m.userData = { strip: { pos, uv, idx, pa, ua, ia, nv: 0, ni: 0, y: 0 } }; return m;
 }, m => { m.material = null; m.userData.strip.nv = m.userData.strip.ni = 0; });
 
