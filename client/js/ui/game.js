@@ -69,12 +69,7 @@ function showOfflineMenu(title, sub, extra) {
 }
 export function showMenu(title, sub, extra = '') {
   if (online.ride || online.error) return showOnlineMenu(title, sub, extra);
-  if (offlineRide.on) return showOfflineMenu(title, sub, extra);
-  panel.innerHTML = `<h1>${title}</h1><h2>${sub}</h2>${extra}
-    <div class="row"><span>Shift (the road never ends)</span><b>${fmt(CFG.RIDE_MIN_SECONDS)} · ${(CFG.COMPLETE_DIST / 1000).toFixed(1)} km</b></div>${CONTROLS}
-    <div class="btns"><button id="go">START RIDE</button></div>`;
-  overlay.classList.remove('hide');
-  document.getElementById('go').onclick = startRide;
+  if (offlineRide.on) showOfflineMenu(title, sub, extra);   // no page at all (the headless test): no menu
 }
 /* online ride (play.html?ride=…): the server issued it, so no mock wallet here – START begins the server-timed ride, afterwards the only way on is the lobby */
 function showOnlineMenu(title, sub, extra) {
@@ -114,7 +109,7 @@ export async function startRide() {   // only an online ride awaits the server
     startLiveFeed();   // spectators' chat + effects (live streams)
   } else if (offlineRide.on) {
     if (st.mode === 'drive' || st.mode === 'paused') return;
-    setGuide({ tutorial: guestOpt.tutorial, assist: guestOpt.assist });   // the guest's two checkboxes
+    if (!offlineRide.dev) setGuide({ tutorial: guestOpt.tutorial, assist: guestOpt.assist });   // the guest's two checkboxes (a tool's devRun picks its own)
   }
   resetRide(); st.mode = 'drive'; audio.start(); audio.play('start'); overlay.classList.add('hide'); startGuide();
   if (!guide.tutorial) toast(CFG.START_ENGINE_OFF ? 'Press I to start the engine and B to release the parking brake, then SHIFT (clutch) → E (1st) → W (gas) → ease the clutch out' : 'Release the parking brake (B), then hold SHIFT (clutch) → E (1st gear) → W (gas) → ease the clutch out', 6000);

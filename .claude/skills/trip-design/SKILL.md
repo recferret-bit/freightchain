@@ -12,12 +12,12 @@ description: >
 
 A **trip** is the road a ride is driven on, per tier: `client/js/trips.js` (`TRIPS`, `trip`, `setTrip`). The truck, the controls and the physics are the
 same on every trip – that is `gameplay-balance`. A trip only shapes the world around the truck. Every knob is a multiplier on the `CFG` value it names,
-so `'1h'` (all 1, `finish: false`) is the road as it was before trips existed – offline `play.html`, the headless trace, the e2e runs and the promo clips use it.
+so `'1h'` (all 1, `finish: false`) is the road as it was before trips existed – `__game.devRun()`, the headless trace, the e2e runs and the promo clips use it.
 
 How a ride gets its trip: the SERVER stamps a trip id on every new ride from its tier (`server/src/domain/rides/ride-trip.ts` `TRIP_OF_TIER`, column
 `Ride.trip`, `trip` in the ride and watch payloads; null = a ride from before trips = `'classic'`). A FREE ride's trip is its LEVEL's (`ride-trip.ts`
 `FREE_LEVELS`, `level` on `POST /api/rides`, default 1): 1 EASY `free-1` · 2 CROSSROADS `free-2` · 3 HARD `free-3`; the one-minute `free` trip is frozen for old rides. `main.js` calls `setTrip(tripOf(online.ride))` (a lobby
-ride), `setTrip(tripOf(watch.ride))` (a replay / live view – it rebuilds the road the driver had) or `setTrip(?trip=…)` (offline, for tuning; a row with
+ride), `setTrip(tripOf(watch.ride))` (a replay / live view – it rebuilds the road the driver had) or `__game.devRun(id)` / `setTrip(id)` (the console, for tuning; a row with
 `seconds` / `k` – the free trips – also sets the offline shift) – always BEFORE the road is reset (the curvature is integrated into `road.js` tables on `net.reset`).
 Console: `__game.trip`, `__game.setTrip('8h')` then `__game.startRide()`.
 
@@ -31,7 +31,7 @@ Console: `__game.trip`, `__game.setTrip('8h')` then `__game.startRide()`.
 | `calm` | `sim/traffic.js` `pickType`, `spawnRandom` | only `cruise` / `slow` behaviours spawn: no tailgaters, weavers, overtakers, sirens; a car that would come up from behind spawns ahead instead (the density stays what `traffic` asks) |
 | `props` | `world/chunks.js` | × the route's roadside scenery density (`props.js` `density`) |
 | `start` | `net/network.js` (`net.straight`), `world/junctions.js`, `world/roadmesh.js`, `world/depot.js`, `sim/traffic.js` | `'depot'`: the depot road meets the main road at a STOP line and the truck turns right (traffic both ways past the exit). `'straight'`: no turn – the depot road runs straight on into the main road, no junction drawn, no main road behind the exit, no traffic coming down the depot road. Road coordinates (`sA`, `Sm`, the start junction in the data, holes from `Sm + HOLE_FIRST`) stay the server's; it does not judge the start area (`road-layout.ts` `knownFrom`) |
-| `seconds`, `k` | `main.js` (offline only) | a free trip's shift when played offline (`?trip=free-2`): `RIDE_MIN_SECONDS` and `COMPLETE_DIST = k × 28 × seconds`. Online the server's ride sets both; `ride-trip.spec.ts` pins them to `FREE_RIDE_SECONDS`' default × the level's `multiple` and its `k` (`free`: `FREE_COMPLETE_DIST_K`) |
+| `seconds`, `k` | `main.js` (guest run only) | a free trip's shift when played as the guest (`free-1`; `devRun(id)` sets it for any trip): `RIDE_MIN_SECONDS` and `COMPLETE_DIST = k × 28 × seconds`. Online the server's ride sets both; `ride-trip.spec.ts` pins them to `FREE_RIDE_SECONDS`' default × the level's `multiple` and its `k` (`free`: `FREE_COMPLETE_DIST_K`) |
 | `holesFrom` | `net/obstacles.js` `rollHole` + the SERVER's `road-rules.ts` `TRIP_HOLE_FIRST` | metres of main road before the first natural sinkhole (default `CFG.HOLE_FIRST` 150). JUDGED: the server's obstacle plan for a ride uses its trip's number (`roadPlanFor(seed, ride.trip)`), so change both together – `road-drift.spec.ts` compares them seed by seed. `free` / `free-1`: 1200, beyond what a one-minute run can reach; `free-2`: 400; `free-3`: the default |
 | `road` | `net/network.js` (layout) + `net/obstacles.js` (hole chance) + the SERVER's `road-rules.ts` `TRIP_ROADS` | the LAYOUT, JUDGED: `first` = the patterns the road opens with (default `['country']`; the first stretch tapers out of the depot's 1+1 road), `weights` = the pattern weights after them (replaces the route's; `dual` = four lanes, no junctions, `fork` = a fork), `holeChance` = × `CFG.HOLE_CHANCE`. Absent = the default layout (every old trip) |
 | `level`, `assist` | `trips.js` `FREE_LEVELS` (drift-tested against the server's `ride-trip.ts` `FREE_LEVELS`; the lobby's picker comes from `GET /api/tiers`), `main.js` (`assist: false` forces ASSIST off) | which free level a trip is, and whether ASSIST may be on – the server's `FREE_LEVELS` decides (HARD: 409 `assist_not_allowed`); `ride-trip.spec.ts` holds both tables together |
@@ -41,7 +41,7 @@ The shift **length** and **finish line** are the server's, stored on the ride wh
 `docs/configuration.md`; production's `deploy/.env` sets it too), the paid lengths in `server/src/domain/rides/ride-tier.ts`, the distance in
 `server/src/domain/rides/ride-rules.ts` (`completeDist` = K × 28 m/s × seconds; `COMPLETE_DIST_K` 0.5 for paid, `FREE_COMPLETE_DIST_K` 0.25 for the old free run). A free LEVEL's shift is
 `FREE_RIDE_SECONDS` × its `multiple` and its K its own (`ride-trip.ts` `FREE_LEVELS`: EASY × 1 / 0.25 = 60 s · 420 m, CROSSROADS × 3 / 0.3 = 180 s · 1512 m, HARD × 10 / 0.4 = 600 s · 6720 m).
-`client/js/online.js` copies both onto `CFG`; offline `?trip=` keeps `CFG.RIDE_MIN_SECONDS`.
+`client/js/online.js` copies both onto `CFG`; `devRun(id)` keeps `CFG.RIDE_MIN_SECONDS` for a trip without `seconds`.
 
 **A trip id is frozen once rides carry it** (replays rebuild the road by id): to change a shipped trip, add a new row here and in `ride-trip.ts`
 (`TRIP_IDS`, then `TRIP_OF_TIER` → the new id) and leave the old row as it is. `'classic'` is the road before trips – never change it.

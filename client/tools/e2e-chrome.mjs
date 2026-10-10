@@ -11,7 +11,7 @@ await send('Page.navigate',{url:URL}); await sleep(3500);
 console.log('title:',await ev('document.title'),'| __game:',await ev('typeof window.__game'));
 await shot('01-menu');
 if(await ev('typeof window.__game')==='object'){
-  await ev('window.__game.startRide()');
+  await ev('window.__game.devRun(); window.__game.startRide()');   // devRun: the classic road + depot, no helpers (a bare page is the guest's FREE RUN)
   // the scripted driver pops the clutch: use the pre-weight handling and a warm engine, or the truck stalls on launch (cold engine / MASS 2.5 are exercised by the climate checks below)
   await ev('Object.assign(__game.CFG.TRUCK,{MASS:1,BRAKE:9,STEER_RATE:1.8,STEER_RETURN:3.5,YAW_LAG:0,CENTRIF:.03}); __game.st.temp=__game.CFG.ENGINE_WARM+5');
   await sleep(500); await key('KeyI'); await sleep(3500); if(await ev('__game.st.park')) await key('KeyB'); await shot('02-engine-running');

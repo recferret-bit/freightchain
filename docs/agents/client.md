@@ -13,7 +13,7 @@ node tools/build-standalone.mjs  # optional: one self-contained dist/freightchai
 - The multi-file version **must be served over http**. Opening `play.html` via `file://` is blocked by CORS (blank page; after 2 s a "COULD NOT START" panel explains why).
   `dist/freightchain.html` (built by `tools/build-standalone.mjs`, needs `npx esbuild`) inlines everything and does work from `file://` – rebuild it after code changes; it is not committed/updated automatically.
 - It needs internet: three.js is loaded from jsdelivr (version pinned in the `importmap` in `play.html`).
-- Debug handle in the console: `window.__game` (`holes`, `st`, `disp`, `CFG`, `Wallet`, `input`, `startRide`, `tryShift`, `ignition`, `curv`, `selectTheme(id)`, `THEMES`, plus traffic's `spawn`/`traffic`, the phone map's `toggleMap` / `phone`, `forkRules` = `FORK`).
+- Debug handle in the console: `window.__game` (`devRun(tripId)` = the plain sim for tools – classic road, no helpers – `holes`, `st`, `disp`, `CFG`, `Wallet`, `input`, `startRide`, `tryShift`, `ignition`, `curv`, `selectTheme(id)`, `THEMES`, plus traffic's `spawn`/`traffic`, the phone map's `toggleMap` / `phone`, `forkRules` = `FORK`).
 
 ## Layout
 
@@ -32,7 +32,7 @@ js/road-plan.js       online rides + replays: fetches the ride's obstacle plan f
 js/net/orchestrator.js `roads` = RoadOrchestrator: newTrip / setTheme / per-frame update (signal clock, generation, the road taken at a fork – `forkCommit` –, chunk streaming, signal lenses, red-light check) / `setBranch` (a replay's fork road) / HUD status
 js/hosts.js           `API_BASE` / `GAME_BASE` / `SITE_BASE` / `STORYBOOK_BASE`: where the API, the game and the lobby live (`api.`/`ride.`/`storybook.`/apex on a real domain, '' = same origin elsewhere) – see "Split hosts"
 js/fingerprint.js     browser fingerprint (SHA-256 of UA, screen…) – a LEAF; no longer used (the guest run sends nothing)
-js/offline-ride.js    the guest run's flag (`offlineRide.on`, `offlineWanted()`) + the connect-wallet link – imports hosts.js only
+js/offline-ride.js    the guest run's flags (`offlineRide.on` / `.dev`, `offlineWanted()` = not a ride, not a replay) + the connect-wallet link – imports hosts.js only
 js/cosmetics.js       promo cosmetics: the catalog (mirrors the server's), `LOOKS`, the worn `loadout` / `setLoadout` / `look(slot)` – a LEAF module, read by cockpit/rig.js, set by online.js from GET /api/wardrobe
 js/trips.js           TRIPS: the road per ride tier (the free levels free-1 / free-2 / free-3, 1h / 4h / 8h, the frozen classic / free – bends, traffic, cross traffic, calm presets, roadside density, `finish` = the free run ends itself as a win, `start` = 'depot' (STOP line + right turn) or 'straight', `level` / `assist` = the free levels, `holesFrom` + `road` (first patterns, weights, × hole chance) = JUDGED, mirrored by the server's `road-rules.ts`); `FREE_LEVELS`; multipliers on CFG, '1h' = all 1 = the old road; set from the trip id the server stamped on the ride (`tripOf`) before the road is built, `?trip=` offline (a free trip's own shift, e.g. `?trip=free-2` = 180 s / 1512 m) – a LEAF; skill `trip-design`
 js/world/scene.js     renderer, scene, camera, canvasTex() (nothing route-specific any more)
@@ -93,7 +93,7 @@ Dependency rule: modules are **acyclic** (checked with esbuild's metafile). `ui/
 ## Caveats – read before changing things
 
 ### Money / anti-cheat (the part that matters for the product)
-- **There is no in-game currency any more** (the old mock FRT wallet, its fare, "+100 test FRT" and payout row are gone): a lobby ride is paid with a free ride or a ticket, the offline prototype page starts for free. Never trust client-side state for money.
+- **There is no in-game currency any more** (the old mock FRT wallet, its fare, "+100 test FRT" and payout row are gone): a lobby ride is paid with a free ride or a ticket, the guest free run starts for free. Never trust client-side state for money.
 - **`CFG.RIDE_MIN_SECONDS` is a TEST value (300). Production = 1800.** The road never ends; a shift is **complete** (`st.complete`, toast) after `RIDE_MIN_SECONDS` of driving
   AND `COMPLETE_DIST = COMPLETE_DIST_K × MAX_SPEED × RIDE_MIN_SECONDS` metres. Speed is governed at `MAX_SPEED` (28 m/s), so idling/backgrounding can't bank it.
   The ride then goes on until the driver ends it (P → END SHIFT: paid if complete, otherwise "abandoned") or it fails. **That is not security**: a modified client can complete instantly.

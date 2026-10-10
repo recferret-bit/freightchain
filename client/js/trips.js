@@ -14,7 +14,7 @@
      start    'depot' = the depot road meets the main road at a STOP line and the truck turns right onto it (traffic both ways past the exit);
               'straight' = the depot road runs straight on into the main road: no turn, no junction, nothing behind the exit. Geometry only – the
               server's layout (sA, Sm, the start junction, holes from Sm + HOLE_FIRST) is the same, and it does not judge the start area (road-layout.ts knownFrom)
-     seconds, k  the free run's shift for OFFLINE play (?trip=free): RIDE_MIN_SECONDS and COMPLETE_DIST = k × MAX_SPEED × seconds. Online the server's ride
+     seconds, k  the free run's shift for the GUEST run: RIDE_MIN_SECONDS and COMPLETE_DIST = k × MAX_SPEED × seconds. Online the server's ride
               sets both (FREE_RIDE_SECONDS, FREE_COMPLETE_DIST_K – server/test/unit/domain/ride-trip.spec.ts holds them together)
      holesFrom   m of main road before the first natural sinkhole (default CFG.HOLE_FIRST). JUDGED: the server's obstacle plan uses the same
               number per trip (server/src/domain/road/road-rules.ts TRIP_HOLE_FIRST, road-drift.spec.ts) – the free run never reaches a sinkhole
@@ -31,7 +31,7 @@ export const TRIPS = {
   classic: { id: 'classic', name: 'CLASSIC', bends: 1, traffic: 1,   cross: 1, calm: false, props: 1,   finish: false, start: 'depot' },   // rides from before trips
   free: { id: 'free', name: 'FREE RUN',     bends: .4,  traffic: .4,  cross: 0, calm: true,  props: .5,  finish: true,  start: 'straight', seconds: 60, k: .25, holesFrom: 1200 },   // free rides from before the levels
   // the three FREE levels (2026-10): easy = four lanes, no junctions, no turn, 60 s · crossroads = junctions, the depot turn, forks, more holes, 3 min · hard = the full
-  // network, sharper bends, busy traffic, the most holes, 10 min and no ASSIST. Their seconds / k are the OFFLINE shift (?trip=free-2); online the server's ride sets both.
+  // network, sharper bends, busy traffic, the most holes, 10 min and no ASSIST. Their seconds / k are the GUEST shift; online the server's ride sets both.
   'free-1': { id: 'free-1', name: 'FREE · EASY', level: 1, assist: true, bends: .5, traffic: .4, cross: 0, calm: true, props: .5, finish: true, start: 'straight', seconds: 60, k: .25, holesFrom: 1200,
     road: { first: ['dual'], weights: { dual: 1 } } },
   'free-2': { id: 'free-2', name: 'FREE · CROSSROADS', level: 2, assist: true, bends: .8, traffic: .7, cross: .7, calm: true, props: .8, finish: true, start: 'depot', seconds: 180, k: .3, holesFrom: 400,

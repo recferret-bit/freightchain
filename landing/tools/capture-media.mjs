@@ -14,7 +14,7 @@ const clip = async (file, r, fmt = 'webp') => { const s = await send('Page.captu
 const key = async (code, type) => { const map = { KeyI: 73, KeyB: 66, KeyL: 76, KeyC: 67, KeyR: 82, KeyT: 84, KeyH: 72, KeyO: 79, ShiftLeft: 16 }; await send('Input.dispatchKeyEvent', { type: type === 'up' ? 'keyUp' : 'keyDown', code, key: code.replace('Key', '').toLowerCase(), windowsVirtualKeyCode: map[code] }); };
 const until = async (expr, ms = 15000) => { const t = Date.now(); while (Date.now() - t < ms) { if (await ev(expr)) return true; await sleep(200); } return false; };
 await send('Page.navigate', { url: `${BASE}/play.html` }); await until('!!window.__game'); await sleep(1500);
-await ev(`__game.CFG.TRAFFIC=false; __game.selectTheme('route66', false); __game.setPhase('day', true, false); __game.dn.run=false; __game.startRide(); document.getElementById('overlay').classList.add('hide')`);
+await ev(`__game.devRun(); __game.CFG.TRAFFIC=false; __game.selectTheme('route66', false); __game.setPhase('day', true, false); __game.dn.run=false; __game.startRide(); document.getElementById('overlay').classList.add('hide')`);
 await sleep(800);
 // 1 · key OFF (engine off, parking brake on – the start state) → key panel dark, PARK lit
 await clip('cards/park.webp', rect('park'));
