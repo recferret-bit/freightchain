@@ -273,7 +273,7 @@ Read: [`client/js/net/obstacles.js`](client/js/net/obstacles.js) · [`server/src
 
 `update(dt)` in [`client/js/sim/physics.js`](client/js/sim/physics.js) steps the clutch, gears, stall, steering, and the end conditions. Thrust follows a torque curve and the gear ratio. The engine stalls in gear with the clutch out and rpm under 450. Speed clamps at 28 m/s forward and 6 m/s in reverse.
 
-The frame `dt` is clamped to 0.05 s. The step uses floats. A watch replay does not run this function. The verdict does not run it either. A deterministic fixed-point replay is described in [`technical_design_document.html`](technical_design_document.html) and is not this build.
+The frame `dt` is clamped to 0.05 s. The step uses floats. A watch replay does not run this function. The verdict does not run it either.
 
 ### Shift completion
 
@@ -423,7 +423,7 @@ Every directory at the repo root. `.git` is the only one left out.
 - [`programs/`](programs/freightchain-pools) — the Anchor escrow.
 - [`server/`](server) — the NestJS API.
 
-Also at the root: `package.json`, `docker-compose.yml` (local PostgreSQL on `127.0.0.1:15433`), [`AGENTS.md`](AGENTS.md), [`CLAUDE.md`](CLAUDE.md), and [`technical_design_document.html`](technical_design_document.html) (the production-target spec; this build does not meet it).
+Also at the root: `package.json`, `docker-compose.yml` (local PostgreSQL on `127.0.0.1:15433`), [`AGENTS.md`](AGENTS.md) and [`CLAUDE.md`](CLAUDE.md).
 
 ## Skills
 
@@ -747,5 +747,4 @@ The full coverage map is [`docs/test-coverage.md`](docs/test-coverage.md).
 - There is no admin button for `pay_prize`. Weekly pools are created by hand. The seed is not rolled into the next pool by a job.
 - `close_ticket` after a settlement is in the program. The crank does not send it yet, so a settled ticket's rent stays in that account until someone closes it.
 - The program is not audited. Mainnet is not this build.
-- The design document's fixed-tick replay, input ratchet, and proof-of-render are not this build.
 - Float32 road vertices start to jitter past about 100 km.

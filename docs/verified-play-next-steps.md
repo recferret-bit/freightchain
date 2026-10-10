@@ -55,7 +55,7 @@ Migrations added (forward-only, additive): `20261008000002_verified_play` (schem
 6. **Replay viewer** (`replay.html?r=<shareId>` on `ride.*`): plays a recording back on the game's renderer – for the review queue and for winners' rides.
 7. **Round close + payouts** (plan Phase 5): prize rows at the week turn, admin builds the payout transactions, you sign them in Phantom, the server verifies them on chain.
 8. **CI** (skipped on purpose for now): a GitHub Actions workflow running `npm run check` + the PostgreSQL suite on push, the Chrome e2e nightly – when you want it.
-9. Housekeeping: delete the stale `docs/day-1.md`, `package.json#prisma` → `prisma.config.ts` (Prisma 7 deprecation warning).
+9. Housekeeping: `package.json#prisma` → `prisma.config.ts` (Prisma 7 deprecation warning).
 
 ## Review findings
 

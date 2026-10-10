@@ -83,7 +83,6 @@ serve.sh              local server launcher
 package.json          npm scripts only, no dependencies: `npm run check` (lint + bundle + headless), `trace:save` / `trace:diff`, `test:e2e`, `test:viewer`, `build`
 eslint.config.mjs     flat lint config (no-undef, no-unused-vars) for js/ and tools/
 dist/                 generated standalone build (git-ignore / regenerate; not source)
-technical_design_document.html   product/architecture spec for the Web3 version (Russian) – see "Prototype vs. the design doc"
 ```
 
 Dependency rule: modules are **acyclic** (checked with esbuild's metafile). `ui/game.js` sits above `sim/*` and `world/*`;
@@ -101,15 +100,10 @@ Dependency rule: modules are **acyclic** (checked with esbuild's metafile). `ui/
 - Frame `dt` is clamped to 0.05 s and the game pauses when the tab is hidden, so on a slow machine (<20 fps) game time runs slower than wall time.
 - At 1800 s the road is ~50 km (3 Float32 tables of ~50k entries – fine; chunks stream). Dust, fuel, etc. were only ever tuned for the 30 s test ride.
 
-### Prototype vs. the design doc (`technical_design_document.html`, in Russian)
-The spec describes the production target: a Telegram Mini App ("Desert Bus 3.0", TON/USDT stakes, escrow split 50 % jackpot / 20 % next-pool seed /
-20 % platform / 10 % consolation), an **8-hour** ride, a hostile-browser anti-cheat stack (Rust/WASM + obfuscation, an HMAC-SHA256 "input ratchet" over every frame,
-touch/motion entropy, proof-of-render) and a **deterministic server-side replay**: the server re-runs the 7-byte-per-tick input log (`steering i16, throttle u8, brake u8, flags u8, mac u24`, 60 Hz)
-with **fixed-point Q32.32 math and no floats**, hashing state every 300 ticks. This prototype does **not** meet that yet – don't assume it can be replayed or validated:
+### The sim is not replayable
+Don't assume a ride can be replayed or validated by re-running the sim:
 - The sim uses floats (`Math.sin/cos`), a **variable `dt`** (clamped to 0.05 s) and **`Math.random()`** inside gameplay (steering-pull side, bug splats, dust, debris).
-  A server-replayable core needs a fixed 60 Hz tick, seeded PRNG, fixed-point math, and the inputs as a recorded tick stream. `sim/physics.js` + `road.js` are the part to port (WASM core + JS/three.js renderer is the doc's recommended split).
-- Gameplay differs from the spec on purpose: this build has a pause key, a manual gearbox/clutch/stall model, 5 s of off-road tolerance (spec: any off-road = instant crash), a hull/damage system, and a 30 s test ride (spec: 8 h with 3 mandatory 5-min pit stops).
-- Spec items not built: Wake Lock, FPS lock at 60 (the prototype is uncapped, DPR clamped to 2 not 1.5), stream-spectator sabotage (fog/wind/potholes), checkpoint payouts (25/50/75 %), TonConnect/escrow, input ratchet, proof-of-render.
+  A server-replayable core needs a fixed 60 Hz tick, seeded PRNG, fixed-point math, and the inputs as a recorded tick stream. `sim/physics.js` + `road.js` are the part to port.
 - `CFG.COMPLETE_DIST`, the speed governor and the road generator (net/network.js + the theme's `curv`) would all need to be identical in the server sim. The layout IS a pure function of
   the ride seed (`roads.seed`, own mulberry32), but the centre-line is integrated in floats.
 
@@ -146,6 +140,6 @@ Props are **not** pooled as wholes (sizes are continuous and baked into child sc
 
 
 ## Not implemented / known gaps
-Everything in the design doc's anti-cheat/backend/economy sections · Trailer–scenery collisions · repair/refuel · traffic sound (horn/siren), vehicle–vehicle crashes, traffic on the shoulder / stalled vehicles · touch controls · server-side ride validation · the escrow program is not deployed yet (devnet next, not audited) · on-chain session keys ·
+Fixed-tick server replay · Trailer–scenery collisions · repair/refuel · traffic sound (horn/siren), vehicle–vehicle crashes, traffic on the shoulder / stalled vehicles · touch controls · server-side ride validation · the escrow program is not deployed yet (devnet next, not audited) · on-chain session keys ·
 the player can't turn into side roads (junctions are features of the one spine; a FORK is the one real choice of road, and both of its roads are the same road in (s, d)) · no turning traffic at junctions, no cross traffic at T-junctions / unsignalled crossroads (they have STOP signs) ·
 no props/furniture along side roads and the main road behind the depot · no floating origin: Float32 road vertices start to jitter past ~100 km.
