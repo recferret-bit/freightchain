@@ -139,7 +139,8 @@ function makeDriver(takeOther) {
       const myTrack = [dT - 1.4, dT + 1.4]; if (h.l1 < myTrack[0] - .3 || h.l0 > myTrack[1] + .3) continue;
       const lanes = net.lanes(h.s, 1), other = lanes > 1 ? (h.lat > 4.5 ? 2.4 : 2.4 + 4.2) : null;
       const oncomingFree = !G.traffic.some(a => a.road.main && a.dir < 0 && a.s > st.s - 20 && a.s < h.s + 250);
-      if (other !== null) dT = other;
+      const otherFree = other !== null && !G.traffic.some(a => a.road.main && a.dir > 0 && Math.abs(a.lat - other) < 2.6 && a.s > st.s - 25 && a.s < h.s + 30);   // a lane change only into a free lane (mirror check)
+      if (otherFree) dT = other;
       else if (h.l0 > 0 && oncomingFree && h.s - st.s < 60) { dT = -2.4; vmax = Math.min(vmax, 12); }
       else vmax = Math.min(vmax, h.s - st.s > 25 ? Math.max(CRAWL, Math.sqrt(2 * BRAKE * .6 * (h.s - st.s - 20))) : CRAWL - .5);
     }
@@ -160,17 +161,18 @@ const launch = () => {
 };
 const shift = up => { fire('keydown', 'ShiftLeft'); step(20); fire('keydown', up ? 'KeyE' : 'KeyQ'); step(6); fire('keyup', 'ShiftLeft'); };
 function driveOnce(id, rid, sd, takeOther) {
-  seed = sd; now = 1000;   // every drive replays alike whatever ran before it (--only reproduces it)
-  G.setTrip(id); G.selectTheme(rid, false); G.setGuide({});   // ASSIST OFF: the hardest case for EASY / CROSSROADS, the only case for HARD
+  G.setTrip(id); G.selectTheme(rid, false); G.setGuide({});   // ASSIST OFF
+  seed = sd; now = 1000;   // AFTER the theme (its textures draw Math.random once per route): every drive replays alike whatever ran before it (--only reproduces it): the hardest case for EASY / CROSSROADS, the only case for HARD
   const { secs, dist } = shiftOf(id); CFG.RIDE_MIN_SECONDS = secs; CFG.COMPLETE_DIST = dist;
   st.mode = 'done'; G.startRide(); G.roads.newTrip(sd); st.mode = 'drive';
   st.park = false; st.temp = CFG.ENGINE_WARM + 5; step(30); fire('keydown', 'KeyI'); step(60 * 2.6);
   const plan = makeDriver(takeOther); let offT = 0, other = 0, forks = new Set();
   for (let i = 0; i < (secs * 3 + 120) * 10 && st.mode === 'drive' && !st.complete; i++) {
+    // (relaunch below also when bogged down in 1st under the torque – a person dips the clutch and goes again)
     const p = plan(), want = wheelFor(p.dT);   // a human turns the wheel to a position and holds it – not a bang-bang on the keys
     input.left = st.steer > want + .04 ? 1 : 0; input.right = st.steer < want - .04 ? 1 : 0;
     input.gas = st.v < p.vmax ? 1 : 0; input.brake = st.v > p.vmax + 1 ? 1 : 0;
-    if ((!st.engineOn && !st.ign) || st.gear === 0 || (st.v < 1.5 && st.gear > 1)) { if (p.vmax > 1) launch(); else { input.gas = 0; input.brake = 1; step(6); } continue; }   // stalled, in neutral, or stopped in a tall gear: clutch in, (restart,) 1st, pull away – unless it is waiting
+    if ((!st.engineOn && !st.ign) || st.gear === 0 || (st.v < 1.5 && st.gear > 1) || (st.v < 1.5 && st.gear === 1 && st.rpm < 900 && p.vmax > 2)) { if (p.vmax > 1) launch(); else { input.gas = 0; input.brake = 1; step(6); } continue; }   // stalled, in neutral, or stopped in a tall gear: clutch in, (restart,) 1st, pull away – unless it is waiting
     if (st.s > 30 && st.gear === 1 && st.rpm > 1800) shift(true);
     else if (st.gear > 1 && st.gear < 7 && st.rpm > 2200 && input.gas) shift(true);
     else if (st.gear > 2 && st.rpm < 1050) shift(false);

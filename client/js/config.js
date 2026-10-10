@@ -21,6 +21,10 @@ export const CFG = {
   TRAFFIC_GAP: 5,            // seconds between spawn attempts (a cap, not a density: TRAFFIC_MAX limits the count, so long rides don't get denser)
   CROSS_MAX: 3,              // vehicles at most on the side roads of one signalled crossroads (on top of TRAFFIC_MAX)
   CROSS_GAP: 4,              // s between cross-traffic spawn attempts per crossroads (× .6-1.4)
+  TRAFFIC_CLEAR: .5,         // m of side gap a vehicle keeps from the truck's cab / trailer when passing it (less = it slows and waits, or moves over)
+  TRAFFIC_LOOK: 12,          // s – a vehicle pulls into a lane (to overtake, round a hole) only if the truck won't be in it within this; an overtake that meets the truck closer than half of it pulls back in
+  TRAFFIC_DRIFT: 2.5,        // s – the AI reads the truck's sideways motion this far ahead (turning out of the depot, wandering over the centre line); slower than .6 m/s sideways is ignored
+  TRAFFIC_RUB_GAP: 1.5,      // s – contacts with the SAME vehicle less than this apart are one crash: counted once (st.crashV) and a re-hit costs only what it exceeds that crash's worst
   // road network (js/net/): the road is endless and generated from patterns (country / highway / arterial / town, weights per route in themes/*/index.js `roads`)
   COMPLETE_DIST_K: 0.5,      // the shift counts as complete after RIDE_MIN_SECONDS AND this × MAX_SPEED × RIDE_MIN_SECONDS metres (idling can't bank it); the road itself never ends
   TELEMETRY_HZ: 10,          // online rides only (js/telemetry.js): samples per GAME second – keep = SAMPLE_HZ in server/src/domain/telemetry/telemetry-rules.ts

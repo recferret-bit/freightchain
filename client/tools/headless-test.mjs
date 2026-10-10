@@ -159,6 +159,23 @@ check(nightX.night===true&&dayX.night===false&&G.THEMES.some(t=>t.id===dayX.rout
     check(net.onRoad(c-40,-net.bulge(f)*net.sep(c-40))&&net.onRoad(c-40,0)&&!net.onRoad(c+400,-net.bulge(f)*net.sep(c+400)/2),'the split apron is road on both roads (past it, the ground between them is not)');
     st.mode='done'; }
   G.setTrip('1h'); G.roads.newTrip(); }
+// traffic around the truck (sim/traffic.js): an oncoming overtaker on a 1+1 road never pulls into the lane the truck is crawling down; a car pinned against the
+// truck's nose is ONE crash (st.crashV) and one bump's worth of hull, not one every 0.8 s
+{ G.setGuide({}); G.st.mode='done'; G.startRide(); st.park=false; st.engineOn=true; st.keyOn=true;
+  const one=s=>net.lanes(s,1)===1&&net.lanes(s,-1)===1; let s0=null;
+  for(let s=net.Sm+600;s<net.Sm+40000&&s0===null;s+=50){ let ok=!net.near(s-100,s+700).some(j=>j.kind!=='start')&&!(net.forksNear?.(s-100,s+700)||[]).length; for(let x=s-50;ok&&x<s+700;x+=25) ok=one(x); if(ok) s0=s; }
+  check(s0!==null,'a 1+1 stretch without junctions for the traffic checks'+(s0!==null?' at '+s0.toFixed(0)+' m':''));
+  if(s0!==null){ const hold=v=>{ st.d=2.4; st.psi=0; st.v=v; };
+    Object.assign(st,{s:s0,d:2.4,psi:0,v:3,hull:100,crashV:0}); G.roads.lastS=st.s; step(2); G.traffic.length=0;
+    const slow=G.spawn('sedan','slow','oncoming',260,-2.4), fast=G.spawn('sedan','overtake','oncoming',310,-2.4); let worst=Infinity, pulled=false;
+    if(slow&&fast){ for(let i=0;i<60*25&&st.mode==='drive';i++){ hold(3); step(1);
+      for(const a of G.traffic) if(a.road.main&&a.dir<0&&a.lat>-.6){ pulled=true; const ahead=a.s-st.s; if(ahead>-5) worst=Math.min(worst,ahead); } } }
+    check(!!slow&&!!fast&&st.crashV===0&&worst>80,'an oncoming overtaker keeps out of the truck\'s lane near it (closest '+(worst===Infinity?'never in it':worst.toFixed(0)+' m')+', pulled out: '+pulled+', crashes '+st.crashV+')');
+    Object.assign(st,{s:s0+150,d:2.4,psi:0,v:1,hull:100,crashV:0}); G.roads.lastS=st.s; step(2); G.traffic.length=0;
+    const fire=G.spawn('fire','emergency','oncoming',20,2.4);
+    if(fire){ for(let i=0;i<60*6&&st.mode==='drive';i++){ hold(1); Object.assign(fire,{s:st.s+3.3+fire.def.len/2-.3,lat:2.4,v:0,lv:0}); step(1); } }
+    check(!!fire&&st.crashV===1&&100-st.hull<1.5&&st.mode==='drive','a vehicle pinned against the truck for 6 s is one crash (crashV '+st.crashV+', hull −'+(100-st.hull).toFixed(2)+' %)'); }
+  st.mode='done'; }
 out.push(...checks); out.push('errors='+errors.length+(errors[0]?' '+errors[0].message:''));
 console.log(out.join('\n'));
 const failed=checks.filter(c=>c.startsWith('FAIL'));

@@ -51,13 +51,23 @@ function truckPose() {
   for (const f of [0, -L]) for (const r of [-1.3, 1.3]) TK.pts.push([hx + Math.sin(ty) * f + Math.cos(ty) * r, hz - Math.cos(ty) * f + Math.sin(ty) * r]);
   Object.assign(TK, { x: ex, z: ez, vx: fx * st.vel, vz: fz * st.vel, th, m: st.s >= net.Sm ? st.s : net.mainCoords(ex, ez).s });
 }
-/* the truck's box in a road's coordinates: { s0..s1, l0..l1, s, lat, len, w, dir: 1, v (its speed along the road), es/el (eye), ali (cos of heading vs road) } */
-function truckBox(road) {
+/* the truck's box in a road's coordinates: { s0..s1, l0..l1, s, lat, len, w, dir: 1, v (its speed along the road), vd (its sideways speed, + = right, minus a .6 m/s
+   dead band), es/el (eye), ali (cos of heading vs road), parts: [cab, trailer] boxes { s0, s1, l0, l1, s, len } }. The parts are what the AI and contact test against:
+   the box round BOTH of them, at an angle (a jack-knifed or turning truck), reached far into lanes neither of them is in – an oncoming car once stopped for it and was
+   "hit" for minutes while the cab was in its own lane. */
+function partBox(road, i0) {
   let s0 = Infinity, s1 = -Infinity, l0 = Infinity, l1 = -Infinity;
-  for (const [x, z] of TK.pts) { const c = road.coords(x, z, TK.m); s0 = Math.min(s0, c.s); s1 = Math.max(s1, c.s); l0 = Math.min(l0, c.lat); l1 = Math.max(l1, c.lat); }
-  const e = road.coords(TK.x, TK.z, TK.m), p = road.at(e.s);
-  return { s0, s1, l0, l1, s: (s0 + s1) / 2, lat: (l0 + l1) / 2, len: s1 - s0, w: l1 - l0, dir: 1, v: TK.vx * Math.sin(p.t) - TK.vz * Math.cos(p.t), es: e.s, el: e.lat, ali: Math.cos(TK.th - p.t) };
+  for (let i = i0; i < i0 + 4; i++) { const c = road.coords(TK.pts[i][0], TK.pts[i][1], TK.m); s0 = Math.min(s0, c.s); s1 = Math.max(s1, c.s); l0 = Math.min(l0, c.lat); l1 = Math.max(l1, c.lat); }
+  return { s0, s1, l0, l1, s: (s0 + s1) / 2, len: s1 - s0 };
 }
+function truckBox(road) {
+  const cab = partBox(road, 0), trl = partBox(road, 4), s0 = Math.min(cab.s0, trl.s0), s1 = Math.max(cab.s1, trl.s1), l0 = Math.min(cab.l0, trl.l0), l1 = Math.max(cab.l1, trl.l1);
+  const e = road.coords(TK.x, TK.z, TK.m), p = road.at(e.s), side = TK.vx * Math.cos(p.t) + TK.vz * Math.sin(p.t);
+  return { s0, s1, l0, l1, s: (s0 + s1) / 2, lat: (l0 + l1) / 2, len: s1 - s0, w: l1 - l0, dir: 1, v: TK.vx * Math.sin(p.t) - TK.vz * Math.cos(p.t), vd: Math.sign(side) * Math.max(0, Math.abs(side) - .6),
+    es: e.s, el: e.lat, ali: Math.cos(TK.th - p.t), parts: [cab, trl] };
+}
+/* a part's side extent where the truck will be after `t` s of its sideways drift (capped at TRAFFIC_DRIFT) */
+const reach = (tb, q, t) => { const d = tb.vd * clamp(t, 0, CFG.TRAFFIC_DRIFT); return [q.l0 + Math.min(0, d), q.l1 + Math.max(0, d)]; };
 
 /* ───────────────────────── spawning ───────────────────────── */
 /* zone: 'ahead' (truck's direction, in front), 'behind' (truck's direction, approaching from the rear), 'oncoming' (opposite direction) – on the main road, relative to the truck.
@@ -77,7 +87,7 @@ function spawnAt(type, preset, road, dir, s, lat) {
   const home = lat ?? laneLat(dir, lane);
   for (const o of cars) if (o.road === road && Math.abs(o.lat - home) < 2.5 && Math.abs(o.s - s) < 40 + (o.def.len + def.len) / 2) return null;
   let vDes = Math.min(34, (def.v[0] + T.rng() * (def.v[1] - def.v[0])) * P.speed); if (!road.main) vDes = Math.min(vDes, 15 + T.rng() * 3);
-  const pick = T.rng() * 100 | 0, mesh = buildVehicle(def, pick), a = { id: ++T.ids, pick, def, P, preset, road, dir, s, lat: home, lane, target: home, lv: 0, v: vDes, vDes, brake: false, mesh, lcT: 0, ph: T.rng() * 6.28, t: 0, cool: 0, over: false, dV: Infinity };
+  const pick = T.rng() * 100 | 0, mesh = buildVehicle(def, pick), a = { id: ++T.ids, pick, def, P, preset, road, dir, s, lat: home, lane, target: home, lv: 0, v: vDes, vDes, brake: false, mesh, lcT: 0, ph: T.rng() * 6.28, t: 0, cool: 0, touch: 99, worst: 0, counted: false, over: false, dV: Infinity };
   cars.push(a); place(a); return a;
 }
 function pickType(ok) {
@@ -111,28 +121,30 @@ export function resetTraffic(seed) {
 }
 
 /* ───────────────────────── AI ───────────────────────── */
-/* nearest obstacle ahead in a's travel direction that overlaps its lane: { gap (bumper to bumper), vl (its speed along a's direction) } */
+/* nearest obstacle ahead in a's travel direction that overlaps its lane: { gap (bumper to bumper), vl (its speed along a's direction) }. The truck counts with its cab and trailer apart, each where its sideways drift will have taken it by the time `a` gets there, and with TRAFFIC_CLEAR of side gap:
+   a car that would pass closer follows it instead (and moves over in `evade` if it can) */
 function leadOf(a, tb) {
   let best = null;
-  const see = (bs, blat, bw, bl, vl) => {
-    const rel = (bs - a.s) * a.dir; if (rel <= 0 || Math.abs(blat - a.lat) > (a.def.w + bw) / 2 + .15) return;
+  const see = (bs, lo, hi, bl, vl, m) => {
+    const rel = (bs - a.s) * a.dir; if (rel <= 0 || lo > a.lat + a.def.w / 2 + m || hi < a.lat - a.def.w / 2 - m) return;
     const gap = rel - (a.def.len + bl) / 2; if (!best || gap < best.gap) best = { gap: Math.max(gap, .3), vl };
   };
-  for (const b of cars) if (b !== a && b.road === a.road) see(b.s, b.lat, b.def.w, b.def.len, b.dir * a.dir * b.v);
-  if (tb) see(tb.s, tb.lat, tb.w, tb.len, a.dir * tb.v);
+  for (const b of cars) if (b !== a && b.road === a.road) see(b.s, b.lat - b.def.w / 2, b.lat + b.def.w / 2, b.def.len, b.dir * a.dir * b.v, .15);
+  if (tb) for (const q of tb.parts) { const [lo, hi] = reach(tb, q, ((q.s - a.s) * a.dir) / Math.max(1, a.v - a.dir * tb.v)); see(q.s, lo, hi, q.len, a.dir * tb.v, CFG.TRAFFIC_CLEAR); }
   return best;
 }
-/* would lane offset `lat` stay free of every other vehicle (and the truck) for the next HORIZON seconds, extrapolating constant speeds? */
+/* would lane offset `lat` stay free of every other vehicle for the next HORIZON seconds (of the truck: TRAFFIC_LOOK s), extrapolating constant speeds?
+   Solved for the whole span (a 1 s sampling let a 40 m/s closing pair jump over the ±20 m it needs). */
 function laneFree(a, lat, tb) {
-  const clear = (bs, blat, bw, bl, bv) => {
-    if (Math.abs(blat - lat) > (a.def.w + bw) / 2 + .6) return true;
-    const rel0 = (bs - a.s) * a.dir, dv = bv - a.v, need = (a.def.len + bl) / 2 + 9;
-    for (let t = 0; t <= HORIZON; t++) if (Math.abs(rel0 + dv * t) < need) return false;
-    return true;
-  };
-  for (const b of cars) if (b !== a && b.road === a.road && !clear(b.s, b.lat, b.def.w, b.def.len, b.dir * a.dir * b.v)) return false;
-  return !tb || clear(tb.s, tb.lat, tb.w, tb.len, a.dir * tb.v);
+  for (const b of cars) if (b !== a && b.road === a.road && !clearOf(a, lat, b.s, b.lat - b.def.w / 2, b.lat + b.def.w / 2, b.def.len, b.dir * a.dir * b.v, HORIZON, .6)) return false;
+  return !tb || truckFree(a, lat, tb, CFG.TRAFFIC_LOOK);
 }
+function clearOf(a, lat, bs, lo, hi, bl, bv, H, m) {
+  if (lo > lat + a.def.w / 2 + m || hi < lat - a.def.w / 2 - m) return true;
+  const r0 = (bs - a.s) * a.dir, r1 = r0 + (bv - a.v) * H, need = (a.def.len + bl) / 2 + 9;
+  return r0 * r1 > 0 && Math.min(Math.abs(r0), Math.abs(r1)) >= need;   // never closer than `need` while the gap closes linearly from r0 to r1
+}
+const truckFree = (a, lat, tb, H) => tb.parts.every(q => { const [lo, hi] = reach(tb, q, H); return clearOf(a, lat, q.s, lo, hi, q.len, a.dir * tb.v, H, CFG.TRAFFIC_CLEAR + .1); });
 /* traffic lights: a red (or an amber it can still stop for) = standing obstacle at the stop line; a green waits while the box is occupied by the other road */
 const inBox = (b, j) => b.road.main ? Math.abs(b.s - j.s) < j.mouth + b.def.len / 2 : b.road.j === j && b.s > -j.halfL - b.def.len / 2 && b.s < j.halfR + b.def.len / 2;
 function signalLead(a) {
@@ -153,6 +165,7 @@ function signalLead(a) {
    free lane (the oncoming one only on a 1+1 road), (3) crawls through at the hole's `crawl` speed. Stateless every step: the lateral override (a.dLat) and speed cap (a.dV)
    are recomputed from the hole list, so the car returns to its lane by itself once it is past; a.target / a.over are never touched. */
 const HOLE_MARGIN = .35;
+const asphalt = (a, side) => { const e = edgeOf(net.lanes(a.s, side)) + .2; return side > 0 ? [.25 + a.def.w / 2, e - a.def.w / 2] : [-e + a.def.w / 2, -.25 - a.def.w / 2]; };   // a direction's tarmac, for the car's centre
 function dodge(a, tb) {
   a.dLat = null; a.dV = Infinity; a.hz = false;
   if (!CFG.HOLES || !a.road.main) return;
@@ -165,21 +178,39 @@ function dodge(a, tb) {
   a.hz = true;
   const blocked = lat => hs.some(({ h }) => lat + w > h.l0 && lat - w < h.l1);
   if (!blocked(a.target)) return;
-  const lanes = side => { const e = edgeOf(net.lanes(a.s, side)) + .2; return side > 0 ? [.25 + a.def.w / 2, e - a.def.w / 2] : [-e + a.def.w / 2, -.25 - a.def.w / 2]; };   // asphalt of a direction, for the car's centre
   const free = (base, ok) => {
-    const [lo, hi] = lanes(Math.sign(base)); if (hi < lo) return null;
+    const [lo, hi] = asphalt(a, Math.sign(base)); if (hi < lo) return null;
     for (let k = 0; k <= 40; k++) for (const sg of k ? [1, -1] : [1]) { const c = base + sg * k * .15; if (c >= lo && c <= hi && !blocked(c) && ok(c)) return c; }
     return null;
   };
-  const here = free(a.target, c => Math.abs(c - a.target) < 2 || laneFree(a, c, tb)); if (here !== null) { a.dLat = here; return; }
+  const here = free(a.target, c => (Math.abs(c - a.target) < 2 && (!tb || truckFree(a, c, tb, 4))) || laneFree(a, c, tb)); if (here !== null) { a.dLat = here; return; }   // a shift inside its lane must not squeeze the truck either
   if (net.lanes(a.s, a.dir) === 1) { const other = free(-a.target, c => laneFree(a, c, tb)); if (other !== null) { a.dLat = other; return; } }
   for (const { h, rel } of hs) if (a.target + w > h.l0 && a.target - w < h.l1) {   // can't avoid it: brake down to crawling speed at the pit
     const gap = rel - a.def.len / 2 - h.ext; a.dV = Math.min(a.dV, HOLES[h.type].crawl + Math.sqrt(2 * 2.5 * Math.max(0, gap)));
   }
 }
+/* The truck where it should not be – over the centre line, turning out of the depot, swerving round a hole – or a pass that would come closer than TRAFFIC_CLEAR:
+   a car it is coming at (oncoming, within TRAFFIC_LOOK / 2 s) or that is alongside it moves over, away from it, as far as its own tarmac allows (what is still in
+   the way, the IDM brakes for). Same-direction cars BEHIND the truck don't: they follow or overtake it by the lane rules. Stateless like dodge (a.dLat, this step). */
+function evade(a, tb) {
+  if (!tb || !a.road.main) return;
+  const half = a.def.w / 2, m = CFG.TRAFFIC_CLEAR, cur = a.dLat ?? a.target, closing = a.v - a.dir * tb.v;
+  let lo = Infinity, hi = -Infinity;
+  for (const q of tb.parts) {
+    const rel = (q.s - a.s) * a.dir, gap = Math.abs(rel) - (a.def.len + q.len) / 2, along = gap < 2;
+    if (!along && !(a.dir < 0 && rel > 0 && closing > .5 && gap < closing * CFG.TRAFFIC_LOOK / 2)) continue;
+    const [l0, l1] = reach(tb, q, along ? 0 : gap / closing);
+    if (l0 < cur + half + m && l1 > cur - half - m) { lo = Math.min(lo, l0); hi = Math.max(hi, l1); }
+  }
+  if (lo > hi) return;
+  const [A0, A1] = asphalt(a, Math.sign(cur) || -1), away = cur > (lo + hi) / 2, c = clamp(away ? hi + m + half : lo - m - half, A0, A1);
+  if ((away ? c - cur : cur - c) < .1 || (Math.abs(c - a.target) >= 2 && !laneFree(a, c, null))) return;   // no room on its side of the road, or another lane that is taken
+  a.dLat = c; a.hz = true;   // (hz: no weaving while it squeezes by)
+}
 function think(a, dt, tb) {
   a.target = a.over ? laneLat(-a.dir, 0) : laneLat(a.dir, a.lane);
-  dodge(a, tb);
+  if (a.over && tb && !truckFree(a, a.target, tb, CFG.TRAFFIC_LOOK / 2)) a.target = laneLat(a.dir, a.lane), a.over = false;   // the truck is (coming) in the lane it overtakes in: pull back in now
+  dodge(a, tb); evade(a, tb);
   const P = a.P, n = laneCount(a, a.s), nAhead = laneCount(a, a.s + a.dir * 150);
   let lead = leadOf(a, tb); const sl = signalLead(a); if (sl && (!lead || sl.gap < lead.gap)) lead = sl;
   if (a.lane >= nAhead) {   // this lane ends ahead: merge left, or wait at the end of it
@@ -195,7 +226,8 @@ function think(a, dt, tb) {
       else if (!slow && a.lane < Math.min(n, nAhead) - 1 && T.rng() < .2 && laneFree(a, laneLat(a.dir, a.lane + 1), tb)) a.lane++;
     } else if (a.road.main) {   // 1+1: overtake in the oncoming lane – never towards a junction
       const back = laneLat(a.dir, a.lane), jNear = net.nextJunction(a.s, a.dir, 250, q => q.kind !== 'start');
-      if (!a.over && slow && !jNear && net.lanes(a.s, -a.dir) === 1 && laneFree(a, laneLat(-a.dir, 0), tb)) a.over = true;
+      const passT = slow ? (lead.gap + 2 * a.def.len + 15) / Math.max(2, (a.v + a.vDes) / 2 - lead.vl) + 3 : 0;   // s to get past the slow one and back in
+      if (!a.over && slow && !jNear && net.lanes(a.s, -a.dir) === 1 && laneFree(a, laneLat(-a.dir, 0), tb) && (!tb || truckFree(a, laneLat(-a.dir, 0), tb, passT + CFG.TRAFFIC_LOOK / 2))) a.over = true;   // …and the truck not in that lane until then (+ the margin it pulls back in at)
       else if (a.over && (laneFree(a, back, tb) || (lead && lead.vl < -1 && lead.gap < 8 * a.v / 3.6 + 40) || jNear)) a.over = false;   // pass done – or an oncoming vehicle / a junction: bail out
     }
   }
@@ -228,18 +260,28 @@ function place(a) {
 /* damage and the scrape sound once per contact; the overlap itself is cleared every frame. Skipping the
    whole test for a.cool (0.8 s) let a car keep its speed and drive through the truck after the first bump. */
 function freshHit(a) { if (a.cool > 0) return false; a.cool = .8; return true; }
+/* one contact EPISODE per vehicle: touches less than TRAFFIC_RUB_GAP s apart are one crash – st.crashV counts it once, a re-hit costs only what it adds over the
+   episode's worst (a fire truck pinned against the truck once drained the whole hull, a bump every 0.8 s for minutes). A direct hit still ends the ride. */
+function touch(a) { if (a.touch > CFG.TRAFFIC_RUB_GAP) { a.worst = 0; a.counted = false; } a.touch = 0; }
+function count(a) { if (!a.counted) { st.crashV++; a.counted = true; } }
+function harm(a, dmg, iv, label, counts = true) { if (counts) count(a); const pay = dmg - a.worst; if (pay > .05) { a.worst = dmg; hurt(pay, iv, label); } }
 function contact(a, tb) {
-  const { def } = a, penS = Math.min(tb.s1, a.s + def.len / 2) - Math.max(tb.s0, a.s - def.len / 2), penL = Math.min(tb.l1, a.lat + def.w / 2) - Math.max(tb.l0, a.lat - def.w / 2);
-  if (penS <= 0 || penL <= 0) return null;
+  const { def } = a; let penS = 0, penL = 0, q = null;
+  for (const p of tb.parts) {   // the cab or the trailer it overlaps most
+    const ps = Math.min(p.s1, a.s + def.len / 2) - Math.max(p.s0, a.s - def.len / 2), pl = Math.min(p.l1, a.lat + def.w / 2) - Math.max(p.l0, a.lat - def.w / 2);
+    if (ps > 0 && pl > 0 && ps * pl > penS * penL) { penS = ps; penL = pl; q = p; }
+  }
+  if (!q) return null;
+  touch(a);
   if (a.road.main && tb.ali > .94) return alignedContact(a, tb, penS, penL);
   const p = a.road.at(a.s), rvx = Math.sin(p.t) * a.dir * a.v - TK.vx, rvz = -Math.cos(p.t) * a.dir * a.v - TK.vz;   // relative velocity (world)
-  const w = a.road.at(tb.s), dx = w.x + Math.cos(w.t) * tb.lat - (p.x + Math.cos(p.t) * a.lat), dz = w.z + Math.sin(w.t) * tb.lat - (p.z + Math.sin(p.t) * a.lat), dl = Math.hypot(dx, dz) || 1;
+  const w = a.road.at(q.s), ql = (q.l0 + q.l1) / 2, dx = w.x + Math.cos(w.t) * ql - (p.x + Math.cos(p.t) * a.lat), dz = w.z + Math.sin(w.t) * ql - (p.z + Math.sin(p.t) * a.lat), dl = Math.hypot(dx, dz) || 1;
   const closing = Math.max(0, (rvx * dx + rvz * dz) / dl), hit = freshHit(a);
   if (hit && closing >= CFG.CRASH_CLOSING) {
     const why = a.v > st.v ? `A ${def.name} crashed into your truck${a.road.main ? '' : ' at the crossroads'}.` : `You drove into a ${def.name}${a.road.main ? ' on the main road' : ' at the crossroads'}.`;
-    st.crashV++; hurt(st.hull, closing, 'COLLISION', true); st.v = 0; a.v = 0; return why;
+    count(a); hurt(st.hull, closing, 'COLLISION', true); st.v = 0; a.v = 0; return why;
   }
-  if (hit) { st.crashV++; hurt(bumpDmg(def, closing), closing, 'BUMP'); st.v *= .7; }
+  if (hit) { harm(a, bumpDmg(def, closing), closing, 'BUMP'); st.v *= .7; }
   a.v = Math.min(a.v, 1); a.s -= a.dir * penS;
   return null;
 }
@@ -247,19 +289,19 @@ function alignedContact(a, tb, penS, penL) {
   const { def } = a, rel = a.s - tb.es, vs = a.dir * a.v, closing = rel > 0 ? tb.v - vs : vs - tb.v, frac = penL / Math.min(2.5, def.w), sgn = Math.sign(a.lat - tb.el) || 1;
   if (frac >= CFG.CRASH_OVERLAP && rel > TRUCK_FRONT / 2) {   // nose to nose / nose to tail
     const hit = freshHit(a), push = Math.sign(rel) || 1;
-    if (hit && closing >= CFG.CRASH_CLOSING) { st.crashV++; hurt(st.hull, closing, 'COLLISION', true); st.v = 0; return a.dir < 0 ? `Head-on collision with a ${def.name}.` : `You ran into the back of a ${def.name}.`; }
-    if (hit) { st.crashV++; hurt(bumpDmg(def, Math.max(closing, 0)), Math.max(closing, 0), 'BUMP'); }
+    if (hit && closing >= CFG.CRASH_CLOSING) { count(a); hurt(st.hull, closing, 'COLLISION', true); st.v = 0; return a.dir < 0 ? `Head-on collision with a ${def.name}.` : `You ran into the back of a ${def.name}.`; }
+    if (hit) harm(a, bumpDmg(def, Math.max(closing, 0)), Math.max(closing, 0), 'BUMP');
     st.s -= push * penS * .5; a.s += push * penS * .5;   // full overlap, both ways — a 1.5 m cap left the car inside the cab
     if (a.dir > 0) st.v = Math.min(st.v, a.v); else { st.v = Math.min(st.v, 0); a.v = 0; }
     return null;
   }
   const hit = freshHit(a);
   if (frac >= CFG.CRASH_OVERLAP && rel < -TRAILER_BACK + 1) {   // something ran into the trailer's tail
-    if (hit) { st.crashV++; hurt(bumpDmg(def, Math.max(closing, 0)), Math.max(closing, 0), 'BUMP'); }
+    if (hit) harm(a, bumpDmg(def, Math.max(closing, 0)), Math.max(closing, 0), 'BUMP');
     a.s -= a.dir * penS; a.v = Math.min(a.v, Math.max(0, st.v)); return null;
   }
-  const rv = Math.abs(vs - tb.v);   // sideswipe: scrape, push apart, a little speed lost
-  if (hit) { audio.play('scrape', .7); hurt(CFG.SCRATCH_DMG * clamp(rv / 10, .4, 2) * Math.sqrt(def.mass), rv * .3, 'SCRATCH'); st.psi -= sgn * .03; st.v *= .98; }
+  const rv = Math.abs(vs - tb.v);   // sideswipe: scrape, push apart, a little speed lost (not counted as a crash)
+  if (hit) { audio.play('scrape', .7); harm(a, CFG.SCRATCH_DMG * clamp(rv / 10, .4, 2) * Math.sqrt(def.mass), rv * .3, 'SCRATCH', false); st.psi -= sgn * .03; st.v *= .98; }
   st.d -= sgn * penL * .5; a.lat += sgn * penL * .5; if ((a.lat - tb.el) * a.lv < 0) a.lv = 0;
   return null;
 }
@@ -292,7 +334,7 @@ export function updateTraffic(dt) {
   }
   let fatal = null;
   for (let i = cars.length - 1; i >= 0; i--) {
-    const a = cars[i], tb = boxFor(a.road); a.t += dt; a.cool = Math.max(0, a.cool - dt); think(a, dt, tb); place(a);
+    const a = cars[i], tb = boxFor(a.road); a.t += dt; a.touch += dt; a.cool = Math.max(0, a.cool - dt); think(a, dt, tb); place(a);
     const gone = a.road.main ? a.s < TK.m - 300 || a.s > TK.m + 900 || a.s < (net.straight ? 40 : net.Sm - 1450) : Math.abs(a.s) > a.road.j.len - 5 || Math.abs(a.road.j.s - TK.m) > 1100;
     if (gone) { removeVehicle(a.mesh); cars.splice(i, 1); continue; }
     if (!fatal && tb && Math.abs(a.s - tb.s) < 25 + a.def.len + tb.len / 2) fatal = contact(a, tb);
