@@ -441,12 +441,10 @@ async function renderProfile() {
   try { p = await api('profile', undefined, { report: false }); } catch (e) { if (my === seq) view.replaceChildren(el('p', { class: 'bad' }, e.message)); return; }
   if (my !== seq) return;
   Object.assign(S.me, { freeRides: p.freeRides, freeRidesMax: p.freeRidesMax, nextFreeRideAt: p.nextFreeRideAt, tickets: p.tickets }); paintHeader();
-  const tile = (v, l) => el('div', { class: 'tile' }, el('b', {}, v), el('span', {}, l)), got = p.achievements.filter(a => a.earnedAt).length;
+  const got = p.achievements.filter(a => a.earnedAt).length;
   view.replaceChildren(
     el('div', { class: 'who', style: 'display:flex;gap:10px;align-items:center' }, avatar(p.wallet), el('div', {}, el('b', {}, short(p.wallet)), el('div', { class: 'dim' }, `rider since ${new Date(p.createdAt).toLocaleDateString()}`))),
-    ...careerTiles(p.career, { km, sol }),
-    el('h2', {}, 'STATS'),
-    el('div', { class: 'tiles' }, tile(km(p.stats.bestMetres), 'best shift, km'), tile(p.stats.paidRides, 'paid rides'), tile(sol(p.stats.spentLamports), 'spent'), p.stats.ticketsBought != null ? tile(p.stats.ticketsBought, 'tickets bought') : ''),
+    ...careerTiles(p.career, p.stats, { km, sol }),
     ...profileTickets(p, S.busy, refund),
     el('h2', {}, `ACHIEVEMENTS · ${got}/${p.achievements.length}`),
     el('div', { class: 'ach' }, p.achievements.map(a => el('div', { class: `a${a.earnedAt ? '' : ' lock'}${a.awardedAtRoundClose ? ' soon' : ''}` }, el('span', { class: 'ic' }, a.icon), el('span', { class: 'nm' }, a.name), el('span', { class: 'ds' }, a.desc),
