@@ -67,7 +67,7 @@ function drawMap(g, X, Y, W, H, o = {}) {
   if (view.rot === null || !Number.isFinite(view.rot)) view.rot = T.h;
   if (!thumb && view.free && performance.now() - view.touched > FREE_IDLE && !view.drag) view.free = null;   // left alone for a while: back to following the truck
   let dr = T.h - view.rot; dr = Math.atan2(Math.sin(dr), Math.cos(dr)); if (thumb || !view.free) view.rot += dr * (1 - Math.exp(-dt * (thumb ? 13 : 7.5)));   // ease the heading-up rotation (no jitter from steering)
-  const rot = !thumb && view.northUp ? 0 : view.rot, cx = X + W / 2, cy = Y + H * (thumb ? .66 : view.free ? .5 : .64);
+  const rot = !thumb && view.northUp ? 0 : view.rot, cx = X + W / 2, cy = Y + H * (thumb ? .66 : .64);
   const fx = Math.sin(rot), fz = -Math.cos(rot), rx = Math.cos(rot), rz = Math.sin(rot);
   const pr = (x, z) => { const vx = x - C.x, vz = z - C.z; return [cx + (vx * rx + vz * rz) / mpp, cy - (vx * fx + vz * fz) / mpp]; };
   const R = Math.min(MAX_R, Math.hypot(W, H) * mpp * .75 + Math.hypot(C.x - T.x, C.z - T.z)), lo = st.s - R, step = clamp(mpp * 4, 2, 40);
