@@ -16,6 +16,9 @@ describe('the promo events of the browser plane', () => {
   it('keeps one web vital and drops a float value', () => {
     expect(CLIENT_EVENTS).toHaveLength(38);
     expect(isClientEvent('web_vital')).toBe(true);
+    expect(isClientEvent('whitepaper_viewed')).toBe(true);
+    expect(isClientEvent('tier_selected')).toBe(false);
+    expect(allowClientProperties('whitepaper_viewed', { surface: 'whitepaper', chapter: 'onchain' })).toEqual({ surface: 'whitepaper' });
     expect(allowClientProperties('web_vital', { surface: 'whitepaper', metric: 'LCP', value: 1234, rating: 'good', navigation: 'navigate', extra: true })).toEqual({
       surface: 'whitepaper', metric: 'LCP', value: 1234, rating: 'good', navigation: 'navigate',
     });

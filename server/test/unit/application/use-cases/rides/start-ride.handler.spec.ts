@@ -56,7 +56,7 @@ describe('StartRideHandler', () => {
     const { ctx, analytics, start } = setup();
     const plain = await ctx.freeRide('w');
     await start(plain.id);
-    expect(analytics.named('ride_started')[0]).toMatchObject({ properties: { ride_id: plain.id, wheel: 'classic', truck_color: 'red', gearbox: 'stick', dice: 'white', needle: 'orange' }, set: { wheel: 'classic', truck_color: 'red', gearbox: 'stick', dice: 'white', needle: 'orange' } });
+    expect(analytics.named('ride_started')[0]).toMatchObject({ properties: { ride_id: plain.id, wheel: 'classic', truck_color: 'red', gearbox: 'stick', dice: 'white', needle: 'orange', tutorial: false, assist: false }, set: { wheel: 'classic', truck_color: 'red', gearbox: 'stick', dice: 'white', needle: 'orange' } });
     await ctx.cosmetics.unlock({ wallet: 'v', slot: 'gearbox', item: 'chrome', code: 'X', at: ctx.now() });
     await ctx.cosmetics.equip('v', 'gearbox', 'chrome');
     const styled = await ctx.freeRide('v');

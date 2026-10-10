@@ -3,6 +3,7 @@
 export const CLIENT_EVENTS = [
   'landing_viewed',
   'landing_chapter_viewed',
+  'whitepaper_viewed',
   'wallet_connect_clicked',
   'lobby_open_clicked',
   'wallet_signature_requested',
@@ -10,7 +11,6 @@ export const CLIENT_EVENTS = [
   'session_restored',
   'lobby_viewed',
   'lobby_tab_viewed',
-  'tier_selected',
   'ride_buy_clicked',
   'payment_submitted',
   'payment_failed',
@@ -56,6 +56,7 @@ export const DENIED_PROPERTIES: ReadonlySet<string> = new Set([
 const ALLOW: Record<ClientEventName, readonly string[]> = {
   landing_viewed: ['surface'],
   landing_chapter_viewed: ['chapter'],
+  whitepaper_viewed: ['surface'],
   wallet_connect_clicked: ['surface', 'wallet_name'],
   lobby_open_clicked: ['surface'],
   wallet_signature_requested: ['wallet_name'],
@@ -63,7 +64,6 @@ const ALLOW: Record<ClientEventName, readonly string[]> = {
   session_restored: ['surface', 'request_alias', 'is_demo'],
   lobby_viewed: ['is_demo', 'round_id'],
   lobby_tab_viewed: ['tab'],
-  tier_selected: ['tier_id', 'is_free', 'price_usd', 'lamports'],
   ride_buy_clicked: ['tier_id', 'is_free', 'price_usd', 'is_demo'],
   payment_submitted: ['ride_id', 'tier_id'],
   payment_failed: ['stage', 'ride_id', 'tier_id', 'http_status', 'code'],
