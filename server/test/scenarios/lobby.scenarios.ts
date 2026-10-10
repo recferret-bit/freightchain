@@ -200,8 +200,14 @@ export function lobbyScenarios(h: () => Harness): void {
       expect(body).toMatchObject({ board: 'all', prizeRanks: 20 }); expect(body.round.endsAt).toBeGreaterThan(now());
       expect((await anon().get('/api/leaderboard').expect(200)).body.board).toBe('round');
       const w = await login(); await finish(w);                                    // a finished free ride puts its rider on the free board
-      const free = (await anon().get('/api/leaderboard?board=free').expect(200)).body.rows;
-      expect(free[0]).toMatchObject({ rank: 1, wallet: w.address, distance: 150, rides: 1 });
+      const free = (await anon().get('/api/leaderboard?board=free&level=1').expect(200)).body;   // the free ride ordered with no level is EASY
+      expect(free).toMatchObject({ board: 'free', level: 1 });
+      expect(free.rows[0]).toMatchObject({ rank: 1, wallet: w.address, distance: 150, rides: 1 });
+      const hard = (await anon().get('/api/leaderboard?board=free').expect(200)).body;               // no level = HARD: an EASY run is not on it
+      expect(hard).toMatchObject({ board: 'free', level: 3, rows: [] });
+      expect((await anon().get('/api/leaderboard?board=all').expect(200)).body.level).toBeNull();
+      expect((await anon().get('/api/leaderboard?board=all&level=1').expect(400)).headers['content-type']).toMatch(/problem\+json/);
+      await anon().get('/api/leaderboard?board=free&level=4').expect(400);
     });
   });
 }

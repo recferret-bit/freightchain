@@ -205,6 +205,6 @@ export function verdictScenarios(h: () => Harness): void {
     await w.agent.post(`/api/rides/${free.id}/start`).expect(200);
     sec(10);
     expect((await w.agent.post(`/api/rides/${free.id}/end`).send({ outcome: 'shift', s: 150, t: 10 }).expect(200)).body.verdict.status).toBe('rejected');
-    expect((await anon().get('/api/leaderboard?board=free').expect(200)).body.rows[0]).toMatchObject({ wallet: w.address, distance: 150 });
+    expect((await anon().get('/api/leaderboard?board=free&level=1').expect(200)).body.rows[0]).toMatchObject({ wallet: w.address, distance: 150 });
   });
 }

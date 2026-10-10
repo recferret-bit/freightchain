@@ -18,7 +18,7 @@ class StubTokens extends TokenSignerPort {
 describe('VerifySignInHandler', () => {
   const ctx = unitContext();
   const analytics = new RecordingAnalytics();
-  const handler = new VerifySignInHandler(ctx.challenges, new NaclSignatureVerifier(), new StubTokens(), ctx.sessions, ctx.rules, ctx.clock, ctx.signIns, ctx.poolTickets, analytics);
+  const handler = new VerifySignInHandler(ctx.challenges, new NaclSignatureVerifier(), new StubTokens(), ctx.sessions, ctx.rules, ctx.clock, ctx.signIns, ctx.poolTickets, analytics, ctx.rides);
   const challenge = new RequestChallengeHandler(ctx.challenges, ctx.rules, ctx.clock, ctx.entropy);
   const kp = nacl.sign.keyPair(), wallet = bs58.encode(kp.publicKey);
   const sign = (m: string, key = kp) => bs58.encode(nacl.sign.detached(new TextEncoder().encode(m), key.secretKey));
@@ -43,9 +43,18 @@ describe('VerifySignInHandler', () => {
     expect(ctx.db.signIns.at(-1)).toEqual({ wallet, at: ctx.now(), ip: '1.2.3.4', userAgent: 'Firefox/130' });
   });
 
+  it('the profile carries the ready free ride (ordered, not started) like /api/me – null when there is none', async () => {
+    const { message } = await challenge.execute(new RequestChallengeCommand(wallet));
+    expect((await handler.execute(new VerifySignInCommand(wallet, sign(message)))).profile.readyFreeRide).toBeNull();
+    const ride = await ctx.freeRide(wallet);
+    const again = await challenge.execute(new RequestChallengeCommand(wallet));
+    expect((await handler.execute(new VerifySignInCommand(wallet, sign(again.message)))).profile.readyFreeRide).toEqual({ id: ride.id, level: 1, trip: 'free-1', tutorial: false, assist: false });
+    ride.start(ctx.now()); await ctx.rides.save(ride);
+  });
+
   it('a failure to record the sign-in never blocks it', async () => {
     const broken = { insert: async () => { throw new Error('db down'); } } as unknown as typeof ctx.signIns;
-    const h = new VerifySignInHandler(ctx.challenges, new NaclSignatureVerifier(), new StubTokens(), ctx.sessions, ctx.rules, ctx.clock, broken, ctx.poolTickets, analytics);
+    const h = new VerifySignInHandler(ctx.challenges, new NaclSignatureVerifier(), new StubTokens(), ctx.sessions, ctx.rules, ctx.clock, broken, ctx.poolTickets, analytics, ctx.rides);
     const { message } = await challenge.execute(new RequestChallengeCommand(wallet));
     expect((await h.execute(new VerifySignInCommand(wallet, sign(message)))).profile.wallet).toBe(wallet);
   });

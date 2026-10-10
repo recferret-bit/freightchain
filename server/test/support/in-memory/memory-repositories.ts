@@ -220,8 +220,8 @@ export class MemoryRideQuery extends RideQueryPort {
         : []));
   }
 
-  async leaderboard(board: LeaderboardBoard, roundId: number | null, limit: number, verifiedOnly: boolean): Promise<LeaderboardRow[]> {
-    return this.ranked((r) => (board === 'free' ? r.tier === 'free'
+  async leaderboard(board: LeaderboardBoard, roundId: number | null, limit: number, verifiedOnly: boolean, trip: string | null): Promise<LeaderboardRow[]> {
+    return this.ranked((r) => (board === 'free' ? r.tier === 'free' && r.trip === (trip ?? '')
       : r.tier !== 'free' && (!verifiedOnly || this.verified(r)) && (board === 'round' ? r.roundId === roundId : true)), limit);
   }
 

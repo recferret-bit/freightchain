@@ -32,7 +32,9 @@ const dur = s => { s = Math.max(0, Math.round(s)); return s >= 3600 ? `${Math.fl
 const km = m => (m / 1000).toFixed(m < 10_000 ? 2 : 1);
 
 /* ───────── state ───────── */
-const S = { me: null, tiers: null, pool: null, live: { rides: [] }, liveAt: 0, skew: 0, board: 'round', pending: null, pendingNote: '', tab: 'new', busy: null, qty: {}, msgs: {}, poolInfo: {}, order: null, focus: null, opt: { tutorial: null, assist: store.get('freightchain.assist') === '1', level: Number(store.get('freightchain.level')) || 1 } };   // opt = the free ride's level + two checkboxes: tutorial null = follow the server (on until a ride was started with it), assist and the level are remembered here
+const S = { me: null, tiers: null, pool: null, live: { rides: [] }, liveAt: 0, skew: 0, board: 'round', boardLevel: Number(store.get('freightchain.board-level')) || 3, pending: null, pendingNote: '', tab: 'new', busy: null, qty: {}, msgs: {}, poolInfo: {}, order: null, focus: null, opt: { tutorial: null, assist: store.get('freightchain.assist') === '1', level: Number(store.get('freightchain.level')) || 1 } };   // opt = the free ride's level + two checkboxes: tutorial null = follow the server (on until a ride was started with it), assist and the level are remembered here
+/* /api/me. Its `readyFreeRide` = the free ride ordered but not started (its credit already spent): START hands it back, so it stays on at 0 credits (adoptReady). */
+const setMe = m => { S.me = m; };
 let seq = 0;   // one number per tab render: an answer that comes back after the player moved on (or re-asked) is dropped, not painted over the new tab
 const now = () => Date.now() + S.skew;   // server clock (skew learned from /api/live)
 const freeLeft = m => `${m.freeRides}/${m.freeRidesMax} free ride${m.freeRides === 1 ? '' : 's'}`;   // always balance/daily cap. A surplus (signup, a promo, an admin grant) stays; the refill stops at the cap
@@ -69,7 +71,7 @@ function renderNew() {
   refreshMe();   // free-ride count + tickets after a ride / refund
   if (salesOpen(S.tiers)) checkOrder();
 }
-const refreshMe = () => api('me').then(m => { S.me = m; paintHeader(); paintTiers(); }, () => {});
+const refreshMe = () => api('me').then(m => { setMe(m); paintHeader(); paintTiers(); }, () => {});
 
 function paintPool() {
   const box = $('poolbox'), p = S.pool; if (!box) return;
@@ -132,14 +134,22 @@ const tierInfo = t => {   // what the card shows: a demo wallet's paid shifts ar
 };
 function tierOff(t) {
   if (S.pending) return 'finish the paid ride waiting for you first';
-  if (t.id === 'free') return S.me.freeRides <= 0 ? 'no free rides left – the next one at 00:00 UTC' : '';
+  if (t.id === 'free') return S.me.freeRides <= 0 && !S.me.readyFreeRide ? 'no free rides left – the next one at 00:00 UTC' : '';   // a READY free ride needs no credit
   return t.available ? '' : 'not available right now';
+}
+/* a ready free ride seen for the first time picks the card's level + checkboxes from it (once – the player may still change them; START re-chooses that same ride).
+   ASSIST only where its level allows it: HARD's assist:false was forced, not chosen, and must not overwrite the remembered box. */
+function adoptReady(free) {
+  const r = S.me?.readyFreeRide; if (!r || r.id === S.readyId) return;
+  S.readyId = r.id; if (r.level != null) S.opt.level = r.level; S.opt.tutorial = r.tutorial;
+  if (freeLevels(free).find(l => l.level === r.level)?.assist !== false) S.opt.assist = r.assist;
 }
 function paintTiers() {
   const box = $('tiers'), fbox = $('freebox'); if (!box) return;
   if (!S.tiers) { box.replaceChildren(el('p', { class: 'bad' }, 'Could not load the ride list. Reload the page.')); return; }
   const ctx = { me: S.me, solUsd: S.tiers.solUsd, now: now(), busy: S.busy || S.pending, sales: salesOpen(S.tiers), focus: S.focus, act: { ride, buy, refund, qty: (id, n) => { S.qty[id] = n; paintTiers(); } } };
   const free = S.tiers.tiers.find(t => t.id === 'free');
+  adoptReady(free);
   fbox.replaceChildren(...(free ? [freeCard(free)] : []));
   box.replaceChildren(...S.tiers.tiers.filter(t => t.id !== 'free').map(t => {
     if (t.pool) return poolCard(t, tierInfo(t), { ...ctx, qty: S.qty[t.id] ?? 1 });
@@ -178,7 +188,7 @@ function freeCard(t) {
         guideBox('opt-tutorial', 'TUTORIAL', S.me?.tutorialPassed ? 'Step-by-step tips over the game – you have done it, switch it on to see it again.' : 'Step-by-step tips over the game: ignition, gears, steering, lights, hull. On for your first ride.', tutorialOn(), v => { S.opt.tutorial = v; }),
         guideBox('opt-assist', 'ASSIST', 'The truck and the battery last twice as long and every control gets a tip when it matters. Finish a free ride WITHOUT it for the “On My Own” achievement.', S.opt.assist, v => { S.opt.assist = v; store.set('freightchain.assist', v ? '1' : '0'); }, assistAllowed(t) ? '' : `no assist on ${lv?.name ?? 'this level'}`)),
       off ? el('span', { class: 'tag' }, off) : ''),
-    el('button', { class: 'go', id: 'start', disabled: !!off || !!S.busy, onclick: startFree }, S.busy === 'free' ? 'WORKING…' : 'START FREE RIDE'),
+    el('button', { class: 'go', id: 'start', disabled: !!off || !!S.busy, onclick: startFree }, S.busy === 'free' ? 'WORKING…' : S.me.readyFreeRide ? 'START FREE RIDE · ready' : 'START FREE RIDE'),
     el('p', { class: 'msg dim', id: 'msg-free' }));
 }
 function soonCard(t) {   // 4h / 8h with no live pool: the planned price is text, the button does nothing
@@ -244,7 +254,7 @@ function play(r, tier, level = null) {
 }
 const clicked = (id, usd = 0) => track('ride_buy_clicked', { tier_id: id, is_free: id === 'free', price_usd: usd, is_demo: !!S.me?.demo });
 const freeBody = () => { const t = S.tiers?.tiers.find(x => x.id === 'free'), lv = pickedLevel(t); return { tier: 'free', tutorial: tutorialOn(), assist: S.opt.assist && assistAllowed(t), ...(lv ? { level: lv.level } : {}) }; };   // HARD: assist is never sent (the server would refuse it)
-const startFree = () => busy('free', async () => { clicked('free'); const body = freeBody(); try { play(await api('rides', body), 'free', body.level ?? null); } catch (e) { say('free', rideError(e, 'free'), true); } });
+const startFree = () => busy('free', async () => { clicked('free'); const body = freeBody(); try { play(await api('rides', body), 'free', body.level ?? null); } catch (e) { say('free', rideError(e, 'free'), true); await refreshMe(); } });
 const startLegacy = id => busy(id, async () => { clicked(id, S.tiers?.tiers.find(t => t.id === id)?.usd ?? 0); try { play(await buyRide(id, text => say(id, text)), id); } catch (e) { say(id, rideError(e, id), true); } });
 const ride = tier => busy(tier, async () => {   // spends one ticket: the ride is ready at once
   clicked(tier, S.tiers?.tiers.find(t => t.id === tier)?.usd ?? 0);
@@ -394,17 +404,21 @@ async function pollLive() {
 }
 
 /* ───────── LEADERBOARD ───────── */
+const BOARD_LEVELS = [[1, 'EASY'], [2, 'CROSSROADS'], [3, 'HARD']];   // = server ride-trip.ts FREE_LEVELS (GET /api/leaderboard?board=free&level=…)
 async function renderBoard() {
   view.replaceChildren(el('p', { class: 'dim' }, 'Loading…'));
   let j; const my = ++seq;
-  try { j = await api(`leaderboard?board=${S.board}`, undefined, { report: false }); } catch (e) { if (my === seq) view.replaceChildren(el('p', { class: 'bad' }, e.message)); return; }
+  const free = S.board === 'free';
+  try { j = await api(`leaderboard?board=${S.board}${free ? `&level=${S.boardLevel}` : ''}`, undefined, { report: false }); } catch (e) { if (my === seq) view.replaceChildren(el('p', { class: 'bad' }, e.message)); return; }
   if (my !== seq) return;   // switched away (or re-asked) while loading
   track('leaderboard_filtered', { board: S.board });
   const seg = el('div', { class: 'seg' }, ...[['round', 'THIS ROUND'], ['all', 'ALL TIME'], ['free', 'FREE RIDES']].map(([id, label]) => el('button', { class: id === S.board ? 'on' : '', onclick: () => { S.board = id; renderBoard(); } }, label)));
+  const lvName = (BOARD_LEVELS.find(([n]) => n === j.level) ?? [])[1] ?? '';   // the free board ranks ONE level (HARD unless picked; the pick is remembered)
+  const lvSeg = free ? el('div', { class: 'seg', id: 'board-levels', role: 'group', 'aria-label': 'Level' }, ...BOARD_LEVELS.map(([n, label]) => el('button', { class: n === S.boardLevel ? 'on' : '', 'aria-pressed': String(n === S.boardLevel), onclick: () => { S.boardLevel = n; store.set('freightchain.board-level', String(n)); renderBoard(); } }, label))) : '';
   const prize = S.board === 'round', mine = j.rows.find(r => r.wallet === S.me.wallet);
   view.replaceChildren(
-    el('h2', {}, 'LEADERBOARD'), seg,
-    prize ? el('p', { class: 'dim' }, `Ranked by distance of finished${j.verifiedOnly ? ', verified' : ''} paid shifts${j.verifiedOnly ? '' : ' (recording checks are shown in your profile, not enforced yet)'}. The top ${j.prizeRanks} share `, el('b', {}, '20%'), S.pool ? ` of the round’s entries (${sol(S.pool.split.top20)} so far)` : '', ' · closes in ', el('b', { class: 'cd', id: 'cd' }, left(j.round.endsAt - now()))) : el('p', { class: 'dim' }, S.board === 'all' ? `All finished${j.verifiedOnly ? ', verified' : ''} paid shifts, all time.` : 'Finished free rides, all time. No prizes – bragging rights.'),
+    el('h2', {}, 'LEADERBOARD'), seg, lvSeg,
+    prize ? el('p', { class: 'dim' }, `Ranked by distance of finished${j.verifiedOnly ? ', verified' : ''} paid shifts${j.verifiedOnly ? '' : ' (recording checks are shown in your profile, not enforced yet)'}. The top ${j.prizeRanks} share `, el('b', {}, '20%'), S.pool ? ` of the round’s entries (${sol(S.pool.split.top20)} so far)` : '', ' · closes in ', el('b', { class: 'cd', id: 'cd' }, left(j.round.endsAt - now()))) : el('p', { class: 'dim' }, S.board === 'all' ? `All finished${j.verifiedOnly ? ', verified' : ''} paid shifts, all time.` : `Finished free rides${lvName ? ` on ${lvName}` : ''}, all time – each level its own board. No prizes – bragging rights.`),
     j.rows.length ? el('div', { class: 'card' }, el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, '#'), el('th', {}, 'RIDER'), el('th', { class: 'r' }, 'KM'), el('th', { class: 'r' }, 'SHIFTS'))),
       el('tbody', {}, j.rows.map(r => el('tr', { class: `${prize ? 'prize' : ''}${r.wallet === S.me.wallet ? ' me' : ''}` },
         el('td', {}, el('span', { class: `rk${r.rank === 1 ? ' g' : r.rank === 2 ? ' s' : r.rank === 3 ? ' b' : ''}` }, r.rank)),
@@ -451,7 +465,7 @@ function tickFree() {   // the "next free ride" counter; at 00:00 UTC ask the se
   document.querySelectorAll('.fr-cd').forEach(n => { n.textContent = freeCd(m); });
   if (m.nextFreeRideAt != null && now() >= m.nextFreeRideAt && (S.meMiss ?? 0) < 3 && Date.now() - (S.meAt ?? 0) > 5000) {   // gives up after 3 refreshes that bring no new time (clock skew); a reload retries
     S.meAt = Date.now();
-    api('me', undefined, { report: false }).then(x => { S.meMiss = x.nextFreeRideAt === m.nextFreeRideAt ? (S.meMiss ?? 0) + 1 : 0; S.me = x; paintHeader(); paintTiers(); }, () => { S.meMiss = (S.meMiss ?? 0) + 1; });
+    api('me', undefined, { report: false }).then(x => { S.meMiss = x.nextFreeRideAt === m.nextFreeRideAt ? (S.meMiss ?? 0) + 1 : 0; setMe(x); paintHeader(); paintTiers(); }, () => { S.meMiss = (S.meMiss ?? 0) + 1; });
   }
 }
 function tick() {
@@ -463,7 +477,7 @@ function tick() {
 
 /* ───────── boot (last on purpose: everything above is `const`, initialised only once the module has run that far) ───────── */
 for (const a of document.querySelectorAll('a[href="/play.html"]')) a.addEventListener('click', () => { track('offline_practice_clicked'); flushSoon(); });
-try { S.me = await api('me'); } catch { flushSoon(); location.href = '/'; }   // reporting GET: a failure here is api_request_failed, then back to the landing
+try { setMe(await api('me')); } catch { flushSoon(); location.href = '/'; }   // reporting GET: a failure here is api_request_failed, then back to the landing
 if (S.me) {
   track('session_restored', { surface: 'lobby', wallet: S.me.wallet, ...(S.me.demo ? { is_demo: true } : {}) });
   const viewed = { is_demo: !!S.me.demo };

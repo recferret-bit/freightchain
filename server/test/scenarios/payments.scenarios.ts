@@ -271,7 +271,7 @@ export function paymentScenarios(h: () => Harness): void {
       const board = (await anon().get('/api/leaderboard').expect(200)).body;
       expect(board.board).toBe('round');
       expect(board.rows[0]).toMatchObject({ rank: 1, wallet: d.address, distance: 910, rides: 1 });
-      expect((await anon().get('/api/leaderboard?board=free').expect(200)).body.rows.every((x: { wallet: string }) => x.wallet !== d.address)).toBe(true);
+      for (const level of [1, 2, 3]) expect((await anon().get(`/api/leaderboard?board=free&level=${level}`).expect(200)).body.rows.every((x: { wallet: string }) => x.wallet !== d.address)).toBe(true);
     });
   });
 }

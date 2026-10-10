@@ -1,5 +1,6 @@
 import type { PrizePoolDto } from './prize-pool.dto.js';
 import type { Split } from './prize-split.js';
+import type { FreeLevel } from '../rides/ride-trip.js';
 
 /** one of the free ride's LEVELS (ride-trip.ts FREE_LEVELS) – the lobby's picker: `seconds` = FREE_RIDE_SECONDS × its multiple, `assist` = may ASSIST be on */
 export interface FreeLevelDto {
@@ -59,6 +60,8 @@ export interface LeaderboardRowDto {
 
 export interface LeaderboardDto {
   board: LeaderboardBoard;
+  /** the free board's LEVEL (1 EASY · 2 CROSSROADS · 3 HARD – ride-trip.ts FREE_LEVELS): only completed free rides on that level's trip rank; null on the paid boards */
+  level: FreeLevel | null;
   round: { id: number; endsAt: number };
   /** the first `prizeRanks` rows of the round board share the 20 % top-20 pool. Paid boards rank only shifts whose recording the server verified. */
   prizeRanks: number;
@@ -69,3 +72,5 @@ export interface LeaderboardDto {
 
 export const PRIZE_RANKS = 20;
 export const LEADERBOARD_SIZE = 20;
+/** the free board's level when the request names none: HARD – the ranking that means something (one HARD run outdistances any number of EASY ones) */
+export const DEFAULT_BOARD_LEVEL: FreeLevel = 3;

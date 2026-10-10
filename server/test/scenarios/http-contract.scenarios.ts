@@ -57,7 +57,7 @@ export function httpContractScenarios(h: () => Harness): void {
     const cookie = String(res.headers['set-cookie']?.[0]);
     expect(cookie).toMatch(/^fc_session=[^;]+; Path=\/; Expires=[^;]+; HttpOnly; SameSite=Lax/);
     expect(JSON.stringify(res.body)).not.toContain(cookie.split(';')[0]?.split('=')[1] ?? 'x');
-    expect(Object.keys(res.body).sort()).toEqual(['createdAt', 'demo', 'demoScale', 'freeRides', 'freeRidesMax', 'nextFreeRideAt', 'tickets', 'tutorialPassed', 'wallet']);
+    expect(Object.keys(res.body).sort()).toEqual(['createdAt', 'demo', 'demoScale', 'freeRides', 'freeRidesMax', 'nextFreeRideAt', 'readyFreeRide', 'tickets', 'tutorialPassed', 'wallet']);
     const rider = await login(w);
     const out = await rider.agent.post('/api/auth/logout').expect(200);
     expect(out.body).toEqual({ ok: true });

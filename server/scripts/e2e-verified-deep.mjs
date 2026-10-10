@@ -203,7 +203,7 @@ check('C the owner sees the verdict with its reasons', same((await call('GET', `
 check('C another wallet cannot read the ride (404)', (await call('GET', `rides/${flaggedRun.id}`, stranger)).status === 404);
 const pub = await fetch(`${BASE}/api/watch/${flaggedRun.id}`).then(async res => ({ status: res.status, text: await res.text() }));
 check('C the PUBLIC watch payload is open but carries no verdict, no reasons and no input events', pub.status === 200 && !/verdict|uniform-holds|reasons|"KeyW"|"KeyA"/.test(pub.text), `${pub.status}, ${pub.text.length} bytes`);
-const board = (await call('GET', 'leaderboard?board=free')).j;
+const board = (await call('GET', 'leaderboard?board=free&level=1')).j;   // the runs above are ordered with no level = EASY (no level on the board = HARD)
 const rows = JSON.stringify(board);
 check('C the free board ranks completed free rides whatever their verdict (a rejected one too)', rows.includes(flaggedRun.wallet.slice(0, 4)) && rows.includes(rejectedRun.wallet.slice(0, 4)) && rows.includes(verifiedRun.wallet.slice(0, 4)), `verifiedOnly ${board.verifiedOnly}, ${(board.rows ?? board.entries ?? []).length} rows`);
 

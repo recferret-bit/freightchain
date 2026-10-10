@@ -118,6 +118,17 @@ check('another wallet: four cards, START enabled, no unpaid order', await until(
 check('…the pending box stays empty', await until(async () => (await third.ev('document.getElementById("pendingbox").textContent')) === '', 30000), JSON.stringify(await third.ev('document.getElementById("pendingbox").textContent')));
 check('…and no page errors on that path', problems(third).length === 0, problems(third).join(' | '));
 
+// ── the READY free ride at 0 credits: spend nine credits out of band, order the tenth (CROSSROADS) and leave it unstarted – the lobby keeps START on and hands back THAT ride
+for (let i = 0; i < 9; i++) { const { j } = await post('rides', { tier: 'free' }, C.cookie); await post(`rides/${j.id}/start`, {}, C.cookie); await post(`rides/${j.id}/end`, { outcome: 'failed', s: 0, t: 0, reason: 'e2e' }, C.cookie); }
+const readyC = (await post('rides', { tier: 'free', level: 2 }, C.cookie)).j;
+const meC = await get('me', C.cookie);
+check('API: 0 free rides left, /api/me carries the ready free ride (id, level 2, trip free-2)', meC.freeRides === 0 && meC.readyFreeRide?.id === readyC.id && meC.readyFreeRide.level === 2 && meC.readyFreeRide.trip === 'free-2', JSON.stringify({ freeRides: meC.freeRides, ready: meC.readyFreeRide }));
+await open(third, C, `${BASE}/lobby.html#new`);
+check('0/5 free rides, yet START is ENABLED and says the ride is ready; CROSSROADS is preselected from the ride', await until(async () => /^0\/5 free rides/.test(await txt(third, '#chip-free')) && (await third.ev('document.getElementById("start")?.disabled')) === false && (await txt(third, '#start')) === 'START FREE RIDE · ready' && (await third.ev('document.getElementById("level-2")?.checked')) === true), `${await txt(third, '#chip-free')} | ${await txt(third, '#start')}`);
+await third.shot('free-ready-desktop');
+await third.ev('document.getElementById("start").click()');
+check('…START reopens the SAME ride (no credit spent, still 0)', await until(async () => await third.ev(`!!window.__game?.online?.ride && __game.online.ride.id === ${JSON.stringify(readyC.id)}`)) && (await get('me', C.cookie)).freeRides === 0, await third.ev('JSON.stringify(window.__game?.online?.ride?.id ?? null)'));
+
 // ── TICKETS: promo → RIDE with a ticket → the game; the 409s read as sentences (fourth browser, wallet D)
 const D = await wallet(), tix = await launch({ port: CDP + 3, shotsDir: 'fc-lobby-shots', evalProblems: true }); await size(tix, 1100, 900, false);
 await open(tix, D, `${BASE}/lobby.html#new`); await until(async () => (await tix.ev('document.querySelectorAll(".tier").length')) === 4);
@@ -160,6 +171,9 @@ await rider.shot('profile-desktop'); await size(rider, 390, 844, true); await sl
 // ── LEADERBOARD (free board) + reload keeps the tab
 await rider.ev('location.hash = "#board"'); await until(async () => (await rider.ev('document.querySelectorAll(".seg button").length')) === 3);
 await rider.ev('[...document.querySelectorAll(".seg button")][2].click()');
+check('LEADERBOARD › FREE: EASY / CROSSROADS / HARD under it, HARD by default', await until(async () => (await txt(rider, '#board-levels')) === 'EASYCROSSROADSHARD' && (await txt(rider, '#board-levels .on')) === 'HARD'), await txt(rider, '#board-levels'));
+await rider.ev('document.querySelector("#board-levels button").click()');   // the rider drove EASY – its own board
+check('…EASY picked: the board says so', await until(async () => (await txt(rider, '#board-levels .on')) === 'EASY' && /on EASY/.test(await txt(rider, '#view'))), await txt(rider, '#view'));
 check('LEADERBOARD › FREE: the rider is on the board and highlighted (the database persists between runs, so not necessarily #1)', await until(async () => /^\d+$/.test(await rider.ev('document.querySelector("tr.me .rk")?.textContent || ""'))));
 await rider.shot('board-desktop'); await size(rider, 390, 844, true); await sleep(300); await rider.shot('board-phone'); await size(rider, 1100, 900, false);
 await rider.send('Page.reload'); check('reload keeps the tab (#board)', await until(async () => (await rider.ev('document.querySelector(".tabs a.on")?.dataset.tab')) === 'board'));

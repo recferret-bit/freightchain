@@ -2,6 +2,8 @@ import type { Loadout } from '../economy/cosmetics.js';
 import type { VerdictDto } from '../verdict/verdict.dto.js';
 import { toChallengeDto, type ChallengeDto } from './ride-challenge.js';
 import type { Ride } from './ride.entity.js';
+import { RideStatus } from './ride-status.js';
+import type { FreeLevel } from './ride-trip.js';
 
 /** The wire view of a ride. Timestamps are epoch milliseconds. `timeScale` > 1 marks a DEMO ride (the shift is that many times shorter). */
 export interface RideDto {
@@ -66,6 +68,23 @@ export const toRideDto = (r: Ride, verdict: VerdictDto | null = null, now: Date 
   verdict,
   challenge: now ? (() => { const c = r.openChallenge(now); return c ? toChallengeDto(c) : null; })() : null,
 });
+
+/** The wallet's READY free ride (ordered, not started – its credit is already spent): ordering a free ride again hands it back, re-chosen at the level and
+    helpers asked for, without a credit (create-ride.handler.ts). /api/me carries it so the lobby keeps START on at 0 credits. */
+export interface ReadyFreeRideDto {
+  id: string;
+  /** 1 EASY · 2 CROSSROADS · 3 HARD; null = a free ride from before the levels */
+  level: FreeLevel | null;
+  trip: string | null;
+  tutorial: boolean;
+  assist: boolean;
+}
+
+/** the ready free ride among the wallet's rides in hand, or null */
+export const readyFreeRideOf = (open: readonly Ride[]): ReadyFreeRideDto | null => {
+  const r = open.find((x) => x.isFree && x.isInStatus(RideStatus.Created));
+  return r ? { id: r.id, level: r.level, trip: r.trip, tutorial: r.tutorial, assist: r.assist } : null;
+};
 
 /** The ride that is still owed to the wallet, or null (GET /api/rides/pending). */
 export interface PendingRideDto {

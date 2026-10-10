@@ -150,11 +150,25 @@ describe('RideQueryPrismaRepository (PostgreSQL)', () => {
     await ride('bob', { paid: true, metres: 200, outcome: 'shift', start: 100 }); // bob: 500 over two rides → beats alice's one ride
     await ride('carol', { paid: true, metres: 9999, outcome: 'failed', start: 0 }); // not completed: never ranked
     await ride('carol', { metres: 140, outcome: 'shift', start: 0 }); // free
-    expect(await query.leaderboard('round', 1, 20, true)).toEqual([{ wallet: 'bob', distance: 500, rides: 2 }, { wallet: 'alice', distance: 500, rides: 1 }]);
-    expect(await query.leaderboard('round', 2, 20, true)).toEqual([]);
-    expect((await query.leaderboard('all', null, 20, true)).map((r) => r.wallet)).toEqual(['bob', 'alice']);
-    expect(await query.leaderboard('free', null, 20, true)).toEqual([{ wallet: 'carol', distance: 140, rides: 1 }]);
-    expect(await query.leaderboard('all', null, 1, true)).toHaveLength(1);
+    expect(await query.leaderboard('round', 1, 20, true, null)).toEqual([{ wallet: 'bob', distance: 500, rides: 2 }, { wallet: 'alice', distance: 500, rides: 1 }]);
+    expect(await query.leaderboard('round', 2, 20, true, null)).toEqual([]);
+    expect((await query.leaderboard('all', null, 20, true, null)).map((r) => r.wallet)).toEqual(['bob', 'alice']);
+    expect(await query.leaderboard('free', null, 20, true, 'free-1')).toEqual([{ wallet: 'carol', distance: 140, rides: 1 }]);
+    expect(await query.leaderboard('all', null, 1, true, null)).toHaveLength(1);
+  });
+
+  it('leaderboard: the free board ranks ONE level – only completed free rides on that trip; the old free trip and classic rank on none', async () => {
+    await ride('alice', { level: 3, metres: 6700, outcome: 'shift' });
+    await ride('bob', { level: 1, metres: 420, outcome: 'shift' });
+    await ride('bob', { level: 1, metres: 430, outcome: 'shift', start: 100 });
+    await ride('carol', { level: 2, metres: 1500, outcome: 'shift' });
+    await ride('carol', { metres: 9000, outcome: 'shift', start: 200, trip: 'free' }); // the one free trip before the levels
+    await ride('carol', { metres: 9000, outcome: 'shift', start: 300, trip: null }); // classic
+    await ride('alice', { level: 1, metres: 9000, outcome: 'failed', start: 400 }); // not completed
+    expect(await query.leaderboard('free', null, 20, true, 'free-1')).toEqual([{ wallet: 'bob', distance: 850, rides: 2 }]);
+    expect(await query.leaderboard('free', null, 20, true, 'free-2')).toEqual([{ wallet: 'carol', distance: 1500, rides: 1 }]);
+    expect(await query.leaderboard('free', null, 20, true, 'free-3')).toEqual([{ wallet: 'alice', distance: 6700, rides: 1 }]);
+    expect(await query.leaderboard('free', null, 20, true, null)).toEqual([]);
   });
 
   it('leaderboard: the paid boards join the verdict – flagged, rejected or unjudged shifts do not rank; free rides rank whatever their verdict', async () => {
@@ -162,10 +176,10 @@ describe('RideQueryPrismaRepository (PostgreSQL)', () => {
     await ride('bob', { paid: true, metres: 900, outcome: 'shift', verdict: 'flagged' });
     await ride('carol', { paid: true, metres: 800, outcome: 'shift', verdict: null });
     await ride('carol', { metres: 140, outcome: 'shift', verdict: 'rejected' });
-    expect((await query.leaderboard('round', 1, 20, true)).map((r) => r.wallet)).toEqual(['alice']);
-    expect((await query.leaderboard('all', null, 20, true)).map((r) => r.wallet)).toEqual(['alice']);
-    expect((await query.leaderboard('free', null, 20, true)).map((r) => r.wallet)).toEqual(['carol']);
-    expect((await query.leaderboard('round', 1, 20, false)).map((r) => r.wallet)).toEqual(['bob', 'carol', 'alice']); // shadow mode: verdicts ignored
+    expect((await query.leaderboard('round', 1, 20, true, null)).map((r) => r.wallet)).toEqual(['alice']);
+    expect((await query.leaderboard('all', null, 20, true, null)).map((r) => r.wallet)).toEqual(['alice']);
+    expect((await query.leaderboard('free', null, 20, true, 'free-1')).map((r) => r.wallet)).toEqual(['carol']);
+    expect((await query.leaderboard('round', 1, 20, false, null)).map((r) => r.wallet)).toEqual(['bob', 'carol', 'alice']); // shadow mode: verdicts ignored
     expect((await query.recent('bob', 5))[0]?.verdict).toBe('flagged');
     const carol = await query.recent('carol', 5);
     expect(carol).toHaveLength(2);

@@ -25,6 +25,6 @@ export class EconomyHttpController {
 
   @Get('leaderboard')
   leaderboard(@ZodQuery(leaderboardQuerySchema) query: LeaderboardQuery): Promise<LeaderboardDto> {
-    return this.queryBus.execute<GetLeaderboardQuery, LeaderboardDto>(new GetLeaderboardQuery(query.board));
+    return this.queryBus.execute<GetLeaderboardQuery, LeaderboardDto>(new GetLeaderboardQuery(query.board, query.level));
   }
 }

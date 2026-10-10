@@ -48,7 +48,8 @@ const vault = p => (p.sold - (p.refundedTickets ?? 0)) * p.priceLamports + p.spo
 const poolDto = p => ({ ...p, toGo: toGo(p), progressPct: Math.min(100, Math.floor((p.sold / p.minTickets) * 100)), vaultLamports: vault(p), potLamports: p.sold * p.priceLamports + p.sponsoredLamports });
 const onSale = tier => pools.find(p => p.tier === tier && (p.status === 'open' || p.status === 'active')) ?? pools.find(p => p.tier === tier) ?? null;
 const ticketDto = id => { const p = pools.find(x => x.id === id), t = tickets.get(id); return { poolId: id, tier: p.tier, label: p.label, status: p.status, balance: t.balance, bought: t.bought, cap: p.maxPerWallet, refundable: p.status === 'refunding' && t.bought > 0 }; };
-const me = () => ({ wallet: WALLET.toBase58(), freeRides, freeRidesMax: 5, nextFreeRideAt: freeRides < 5 ? t0 + DAY : null, createdAt: t0 - 9 * DAY, tutorialPassed: false, demo: false, demoScale: 60, tickets: [...tickets.keys()].map(ticketDto) });
+const readyFree = () => { const r = [...rides.values()].find(x => x.status === 'created' && x.tier === 'free'); return r ? { id: r.id, level: r.level, trip: r.trip, tutorial: r.tutorial, assist: r.assist } : null; };   // MeDto.readyFreeRide: the free ride ordered, not started
+const me = () => ({ wallet: WALLET.toBase58(), freeRides, freeRidesMax: 5, nextFreeRideAt: freeRides < 5 ? t0 + DAY : null, createdAt: t0 - 9 * DAY, tutorialPassed: false, demo: false, demoScale: 60, tickets: [...tickets.keys()].map(ticketDto), readyFreeRide: readyFree() });
 const FREE_LEVELS = [   // = server/src/domain/rides/ride-trip.ts FREE_LEVELS at FREE_RIDE_SECONDS 60 (GET /api/tiers → the free tier's `levels`)
   { level: 1, trip: 'free-1', name: 'EASY', seconds: 60, completeDist: 420, assist: true },
   { level: 2, trip: 'free-2', name: 'CROSSROADS', seconds: 180, completeDist: 1512, assist: true },
@@ -75,7 +76,11 @@ const R = [
   ['GET', /^pools$/, () => ({ body: { pools: pools.filter(p => p.status === 'open' || p.status === 'active').map(poolDto) } })],
   ['GET', /^pools\/(\d+)$/, m => { const p = pools.find(x => x.id === +m[1]); return p ? { body: poolDto(p) } : problem(404, 'not_found', 'no such pool'); }],
   ['GET', /^live$/, () => ({ body: { now: NOW(), rides: [], upcoming: [], recent: [], totals: { shifts: 1, metres: 4200, drivers: 1 } } })],
-  ['GET', /^leaderboard/, () => ({ body: { board: 'round', round: { id: 1, endsAt: t0 + 4 * DAY }, prizeRanks: 20, rows: [] } })],
+  ['GET', /^leaderboard$/, (m, b, q) => {   // board=free&level=1|2|3 (absent = 3 HARD); a level on a paid board = 400, as the server's query schema
+    const board = q.get('board') === 'free' || q.get('board') === 'all' ? q.get('board') : 'round', lv = q.get('level');
+    if (lv != null && (board !== 'free' || !['1', '2', '3'].includes(lv))) return problem(400, 'validation_error', board !== 'free' ? 'level is for the free board only' : 'level must be one of 1, 2, 3');
+    return { body: { board, level: board === 'free' ? Number(lv ?? 3) : null, round: { id: 1, endsAt: t0 + 4 * DAY }, prizeRanks: 20, verifiedOnly: false, rows: [] } };
+  }],
   ['GET', /^rides\/pending$/, () => ({ body: { ride: [...rides.values()].find(r => r.status === 'created') ?? null } })],
   ['POST', /^rides$/, (m, b) => {
     if (b.level !== undefined && !FREE_LEVELS.some(l => l.level === b.level)) return problem(400, 'validation_error', 'level must be one of 1, 2, 3');   // the real server's body schema refuses it before anything else

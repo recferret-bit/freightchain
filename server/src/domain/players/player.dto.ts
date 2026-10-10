@@ -1,5 +1,6 @@
 import { nextUtcMidnight } from '../shared/time.js';
 import type { TicketBalanceDto } from '../economy/prize-pool.dto.js';
+import type { ReadyFreeRideDto } from '../rides/ride.dto.js';
 import type { Player } from './player.entity.js';
 
 /** The countdown target of the lobby's "next free ride" counter. */
@@ -20,9 +21,11 @@ export interface MeDto {
   demoScale: number;
   /** paid-ride tickets per pool (the pools the wallet holds tickets in, plus the live ones it has a row in) */
   tickets: TicketBalanceDto[];
+  /** the free ride ordered but not started yet (its credit is spent): START hands it back – re-chosen, no new credit – even at 0 free rides; null = none */
+  readyFreeRide: ReadyFreeRideDto | null;
 }
 
-export const toMeDto = (player: Player, now: Date, demo: boolean, demoScale: number, tickets: TicketBalanceDto[]): MeDto => ({
+export const toMeDto = (player: Player, now: Date, demo: boolean, demoScale: number, tickets: TicketBalanceDto[], readyFreeRide: ReadyFreeRideDto | null): MeDto => ({
   wallet: player.wallet,
   freeRides: player.freeRides,
   freeRidesMax: player.freeRidesMax,
@@ -32,4 +35,5 @@ export const toMeDto = (player: Player, now: Date, demo: boolean, demoScale: num
   demo,
   demoScale,
   tickets,
+  readyFreeRide,
 });
