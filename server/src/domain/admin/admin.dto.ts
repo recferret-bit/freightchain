@@ -1,4 +1,5 @@
 import type { LogEntry } from '../ops/log-entry.js';
+import type { RideReview } from '../verdict/ride-review.js';
 import type { VerdictDto } from '../verdict/verdict.dto.js';
 
 /* The admin page's wire views (GET /api/admin/*). Admin-only, so they may carry ids, seeds and full wallets – the public feeds never do. */
@@ -20,6 +21,8 @@ export interface AdminOverviewDto {
   running: number;
   rides: Record<string, number>;
   verdicts: Record<string, number>;
+  /** the review queue's length: completed PAID rides under review (flagged, machine-rejected, not judged) + flagged free rides */
+  underReview: number;
   payments: { count: number; lamports: number };
   telemetry: { batches: number; bytes: number };
   config: { verdictEnforce: boolean; telemetryRetentionDays: number };
@@ -32,6 +35,11 @@ export interface AdminRideFilter {
   wallet?: string;
   status?: string;
   verdict?: AdminVerdictFilter;
+  /** 'under_review' = THE REVIEW QUEUE: every completed paid ride whose review is under_review (ride-review.ts – flagged, rejected by the machine,
+      pending or not judged, no admin decision) FIRST, then the flagged free rides; each part newest first */
+  review?: 'under_review';
+  /** only the rides paid with this pool's tickets */
+  poolId?: number;
   limit: number;
 }
 
@@ -50,6 +58,10 @@ export interface AdminRideRowDto {
   endedAt: number | null;
   verdict: string | null;
   overridden: boolean;
+  /** the prize pool whose ticket paid for it (null = free or a legacy order) */
+  poolId: number | null;
+  /** a paid ride's review (ride-review.ts); null for free rides and rides that did not complete */
+  review: RideReview | null;
 }
 
 export interface AdminBatchDto {

@@ -18,6 +18,18 @@ describe('SignInPrismaRepository (PostgreSQL)', () => {
     expect(await repo.countSince(at(30))).toBe(2);
   });
 
+  it('summaryOf: per wallet asked for, the first kept sign-in and every distinct IP (no nulls); wallets without sign-ins are left out', async () => {
+    await seedPlayer(prisma, 'carol');
+    await repo.insert({ wallet: 'alice', at: at(60), ip: '2.2.2.2', userAgent: null });
+    await repo.insert({ wallet: 'alice', at: T0, ip: '1.1.1.1', userAgent: null });
+    await repo.insert({ wallet: 'alice', at: at(90), ip: '2.2.2.2', userAgent: null });
+    await repo.insert({ wallet: 'alice', at: at(95), ip: null, userAgent: null });
+    await repo.insert({ wallet: 'bob', at: at(30), ip: null, userAgent: null });
+    await repo.insert({ wallet: 'carol', at: at(10), ip: '9.9.9.9', userAgent: null });
+    expect(await repo.summaryOf(['bob', 'alice', 'nobody'])).toEqual([{ wallet: 'alice', firstAt: T0, ips: ['1.1.1.1', '2.2.2.2'] }, { wallet: 'bob', firstAt: at(30), ips: [] }]);
+    expect(await repo.summaryOf([])).toEqual([]);
+  });
+
   it('deleteBefore removes the rows older than the cutoff (retention of IP addresses) and returns how many', async () => {
     await repo.insert({ wallet: 'alice', at: T0, ip: '1.1.1.1', userAgent: 'old' });
     await repo.insert({ wallet: 'bob', at: at(100), ip: '2.2.2.2', userAgent: 'kept' });

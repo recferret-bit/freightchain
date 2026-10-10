@@ -14,6 +14,7 @@ import { PoolPayoutRepositoryPort } from '../../../ports/economy/pool-payout.rep
 import { PoolRepositoryPort } from '../../../ports/economy/pool.repository.port.js';
 import { RideQueryPort } from '../../../ports/rides/ride-query.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
+import { PoolAttentionService } from '../../../services/pool-attention.service.js';
 import { PoolRegistryService } from '../../../services/pool-registry.service.js';
 import { SettleChainSignatureCommand } from '../settle-chain-signature/settle-chain-signature.command.js';
 import { PayPoolsCommand, type PaidPrizeDto, type PayoutPassDto, type PoolPayoutResultDto } from './pay-pools.command.js';
@@ -28,8 +29,9 @@ const UNREVIEWED_LIMIT = 100;
 /**
  * The payout job (docs/escrow-open-items.md, programs/freightchain-pools "Payout key"): for every ACTIVE pool whose review window is over (`payoutAt`, by the
  * CHAIN clock – the program checks it again), unless an admin holds it:
- *   1. every completed ride of the pool must have been decided – a verified verdict, or an admin's decision. One ride still flagged, machine-rejected or unjudged
- *      blocks the whole pool (`waiting_review`): a ride an admin has not looked at might deserve a rank.
+ *   1. the pool-level checks run first (PoolAttentionService.markPool: a distance outlier, two ranked wallets on one IP, a brand-new wallet in the top 3 – each
+ *      puts its ride back under review); then every completed ride of the pool must have been decided – a verified verdict, or an admin's decision. One ride
+ *      still flagged, machine-rejected or unjudged blocks the whole pool (`waiting_review`): a ride an admin has not looked at might deserve a rank.
  *   2. the plan: the pool's ranking over VERIFIED rides only (whatever VERDICT_ENFORCE says – shadow mode is for the public boards, never for money), divided
  *      with pool-payouts.ts, written once (PoolPayout rows). No verified ride = `no_winners`: the admin decides.
  *   3. every planned prize is CLAIMED (planned → sent, with its signature) before its transaction goes out, then paid and settled; a prize left `sent` by a crash is
@@ -49,6 +51,7 @@ export class PayPoolsHandler implements ICommandHandler<PayPoolsCommand, PayoutP
     private readonly rides: RideQueryPort,
     private readonly events: ChainEventRepositoryPort,
     private readonly registry: PoolRegistryService,
+    private readonly attention: PoolAttentionService,
     private readonly commands: CommandBus,
     private readonly clock: ClockPort,
   ) {}
@@ -89,13 +92,14 @@ export class PayPoolsHandler implements ICommandHandler<PayPoolsCommand, PayoutP
       if (now.getTime() < pool.payoutAt.getTime()) return await done(pool, 'pending', null);
       if (pool.hold) return await done(pool, 'held', pool.hold.note ?? `held by ${pool.hold.by}`);
 
-      const unreviewed = await this.rides.poolUnreviewed(pool.id, UNREVIEWED_LIMIT);
+      let rows = await this.payouts.listByPool(pool.id);
+      if (!rows.length) await this.attention.markPool(pool.id); // before the plan only: once written, the plan is what gets paid
+      const unreviewed = rows.length ? [] : await this.rides.poolUnreviewed(pool.id, UNREVIEWED_LIMIT);
       if (unreviewed.length) {
         const n = unreviewed.length >= UNREVIEWED_LIMIT ? `${UNREVIEWED_LIMIT}+` : String(unreviewed.length);
         return await done(pool, 'waiting_review', `${n} ride(s) of this pool wait for an admin's decision`);
       }
 
-      let rows = await this.payouts.listByPool(pool.id);
       if (!rows.length) {
         rows = await this.plan(pool);
         if (!rows.length) return await done(pool, 'no_winners', 'no verified ride ranks in this pool – the admin decides: close it by hand (the prize share goes to the seed treasury) or let it expire into refunds');

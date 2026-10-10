@@ -6,6 +6,7 @@ import { PrismaService } from '../../src/infrastructure/prisma/prisma.service.js
 import { bindClient, newWallet, sign, type Rider } from '../support/client.js';
 import { createHarness, type Harness } from '../support/harness.js';
 import { recording } from '../support/recording.js';
+import { VerdictService } from '../../src/application/services/verdict.service.js';
 import { TREASURY } from '../support/fake-chain.js';
 import { PoolRepositoryPort } from '../../src/application/ports/economy/pool.repository.port.js';
 import { PoolPayoutRepositoryPort } from '../../src/application/ports/economy/pool-payout.repository.port.js';
@@ -298,6 +299,25 @@ describe('concurrency (PostgreSQL)', () => {
     expect(results.map((r) => r.status).every((s) => s === 200 || s === 409)).toBe(true); // a batch that beat /end is 200; after it, within the grace minute, 200 too
     expect(await prisma.rideBatch.count({ where: { rideId: ride.id } })).toBe(batches.length);
     expect((await a.agent.get(`/api/rides/${ride.id}`).expect(200)).body.verdict).toMatchObject({ status: 'verified' });
+  });
+
+  it('a pool attention mark racing the re-judges of late batches: the verdict that stays has seen every batch AND keeps the mark', async () => {
+    const a = await login();
+    const ride = (await a.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
+    await a.agent.post(`/api/rides/${ride.id}/start`).expect(200);
+    const batches = recording(ride.id, { seconds: 40, distance: 560, road: ride.seed, batchSeconds: 5 });
+    for (const b of batches.slice(0, -3)) await a.agent.post(`/api/rides/${ride.id}/batches`).send(b).expect(200);
+    sec(40);
+    await a.agent.post(`/api/rides/${ride.id}/end`).send({ outcome: 'shift', s: 560, t: 40 }).expect(200);
+    const verdicts = harness.app.get(VerdictService, { strict: false });
+    const mark = { code: 'pool-shared-ip', detail: 'race', severity: 'flag' as const };
+    const results = await Promise.all([
+      verdicts.addAttention(a.address, [{ rideId: ride.id, reasons: [mark] }]).then(() => 200),
+      ...batches.slice(-3).map((b) => a.agent.post(`/api/rides/${ride.id}/batches`).send(b).then((r) => r.status)),
+      verdicts.addAttention(a.address, [{ rideId: ride.id, reasons: [mark] }]).then(() => 200),
+    ]);
+    expect(results.every((s) => s === 200)).toBe(true);
+    expect((await a.agent.get(`/api/rides/${ride.id}`).expect(200)).body.verdict).toMatchObject({ status: 'flagged', reasons: [mark] });   // the whole recording is clean; only the mark remains
   });
 
   it('an admin decision racing re-judges from late batches: the decision is what stays', async () => {

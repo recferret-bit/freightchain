@@ -1,4 +1,4 @@
-import { parsePoolRegister, parsePoolSeed, parsePromoCreate, parseStatsReconcile, parseTicketsGrant, parseVerdictRejudge } from '../../../src/cli/admin-args.js';
+import { parsePoolAttention, parsePoolRegister, parsePoolSeed, parsePromoCreate, parseStatsReconcile, parseTicketsGrant, parseVerdictRejudge } from '../../../src/cli/admin-args.js';
 
 describe('admin CLI arguments', () => {
   it('promo:create – tickets: defaults, every option, UTC-midnight dates', () => {
@@ -78,5 +78,14 @@ describe('admin CLI arguments', () => {
     expect(parseStatsReconcile(['--wallet', w, '--fix'])).toEqual({ wallet: w, fix: true });
     expect(parseStatsReconcile(['--wallet', 'not a wallet'])).toBe('--wallet must be a base58 address');
     expect(parseStatsReconcile(['--bogus'])).toMatch(/Unknown option/);
+  });
+
+  it('pool:attention --pool N', () => {
+    expect(parsePoolAttention(['--pool', '7'])).toEqual({ poolId: 7 });
+    expect(parsePoolAttention(['--pool', '0'])).toEqual({ poolId: 0 });
+    expect(parsePoolAttention([])).toMatch(/--pool/);
+    expect(parsePoolAttention(['--pool', '-1'])).toMatch(/--pool/);
+    expect(parsePoolAttention(['--pool', '4294967296'])).toMatch(/4294967295/);
+    expect(parsePoolAttention(['--pool', '1', '--bogus'])).toMatch(/Unknown option/);
   });
 });

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { SignInRecord } from '../../../domain/auth/sign-in.js';
-import { SignInRepositoryPort } from '../../../application/ports/auth/sign-in.repository.port.js';
+import { SignInRepositoryPort, type SignInSummary } from '../../../application/ports/auth/sign-in.repository.port.js';
 import { PrismaService } from '../prisma.service.js';
 
 @Injectable()
@@ -20,6 +20,16 @@ export class SignInPrismaRepository extends SignInRepositoryPort {
 
   countSince(at: Date): Promise<number> {
     return this.prisma.signIn.count({ where: { at: { gte: at } } });
+  }
+
+  async summaryOf(wallets: readonly string[]): Promise<SignInSummary[]> {
+    if (!wallets.length) return [];
+    const [first, ips] = await Promise.all([
+      this.prisma.signIn.groupBy({ by: ['wallet'], where: { wallet: { in: [...wallets] } }, _min: { at: true } }),
+      this.prisma.signIn.findMany({ where: { wallet: { in: [...wallets] }, ip: { not: null } }, distinct: ['wallet', 'ip'], select: { wallet: true, ip: true }, orderBy: [{ wallet: 'asc' }, { ip: 'asc' }] }),
+    ]);
+    return first.flatMap((g) => (g._min.at ? [{ wallet: g.wallet, firstAt: g._min.at, ips: ips.filter((r) => r.wallet === g.wallet).map((r) => r.ip as string) }] : []))
+      .sort((a, b) => (a.wallet < b.wallet ? -1 : a.wallet > b.wallet ? 1 : 0));
   }
 
   async deleteBefore(cutoff: Date): Promise<number> {

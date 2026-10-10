@@ -13,7 +13,7 @@ import { telemetry, FLAGS } from '../telemetry.js';
 import { radio } from '../sim/radio.js';
 import { trafficSnapshot } from '../sim/traffic.js';
 import { clockText } from '../world/daynight.js';
-import { online, beginOnline, endOnline } from '../online.js';
+import { online, beginOnline, endOnline, rideNow } from '../online.js';
 import { offlineRide, offlineStatus, claimOfflineRide, connectHref, lobbyHref } from '../offline-ride.js';
 import { startLiveFeed, stopLiveFeed } from './live-feed.js';
 import { failFx, winFx } from './fail-fx.js';
@@ -185,15 +185,38 @@ export function endRide(ok, reason, outcome = ok ? 'shift' : 'failed') {   // ou
      ${ok ? '' : `<div class="row"><span>Reason</span><span class="bad">${reason}</span></div>`}`);
   if (outcome === 'failed') failFx();   // not for an abandoned shift – only a real failure (crash, red light, wreck…)
   else if (ok) winFx();   // a complete shift: the same beat in green
-  verdict?.then(v => { const el = document.getElementById('verdict'); if (el && v) el.textContent = verdictText(v); });
+  verdict?.then(v => { if (showVerdict(v)) watchReview(); });
 }
-/* the server's answer: the ride's outcome, then for a completed shift its recording check (verified play) – only VERIFIED shifts rank for prizes */
+/* the server's answer: the ride's outcome, then for a completed shift its recording check (verified play) – only VERIFIED shifts rank for prizes.
+   A PAID ride shows its REVIEW instead (server/src/domain/verdict/ride-review.ts): UNDER REVIEW until the checks verify it or an admin decides. */
+const REVIEW_TEXT = { under_review: 'UNDER REVIEW', accepted: 'ACCEPTED', rejected: 'REJECTED' };
+const REVIEW_CLASS = { under_review: 'warn', accepted: 'good', rejected: 'bad' };
 const verdictText = v => {
   const outcome = `${v.status.toUpperCase()}${v.status === 'completed' ? '' : ` – ${v.reason ?? ''}`}`;
+  if (v.review) return `${outcome} · ${REVIEW_TEXT[v.review] ?? v.review.toUpperCase()}${v.review === 'under_review' ? ' – an admin checks this ride before prizes are paid' : ''}`;
   if (!v.verdict) return outcome;
   const why = v.verdict.reasons.map(r => r.detail).join('; ');
   return `${outcome} · ${v.verdict.status.toUpperCase()}${why ? ` – ${why}` : ''}`;
 };
+/** paint the answer into the end panel; true while a paid ride is still under review (worth asking again) */
+const showVerdict = v => {
+  const el = document.getElementById('verdict');
+  if (!el || !v) return false;
+  el.textContent = verdictText(v);
+  if (v.review) el.className = REVIEW_CLASS[v.review] ?? '';
+  return v.review === 'under_review';
+};
+/* the verdict is judged at /end and again when the final batch lands after it – so while a paid ride is UNDER REVIEW the panel asks again every
+   REVIEW_POLL_MS for REVIEW_POLL_MAX tries (≈ 30 s): a clean ride turns ACCEPTED on screen. Stops once the panel is gone or the review moved on. */
+const REVIEW_POLL_MS = 3000, REVIEW_POLL_MAX = 10;
+function watchReview(left = REVIEW_POLL_MAX) {
+  if (left <= 0) return;
+  setTimeout(async () => {
+    if (!document.getElementById('verdict')) return;
+    const v = await rideNow();   // null = a network hiccup: keep the last answer and ask again
+    if (!v || showVerdict(v)) watchReview(left - 1);
+  }, REVIEW_POLL_MS);
+}
 const endShift = () => st.complete ? endRide(true) : endRide(false, `Shift abandoned before it was complete (${fmt(CFG.RIDE_MIN_SECONDS)} and ${(CFG.COMPLETE_DIST / 1000).toFixed(1)} km).`, 'shift');
 export function setPaused(p, source = 'key') {
   if (st.watch) return;   // a spectator has nothing to pause: the watch panel has its own play / pause

@@ -24,7 +24,8 @@ import { RideVerdictRepositoryPort } from '../../../src/application/ports/verdic
 import { RideVerdict } from '../../../src/domain/verdict/ride-verdict.entity.js';
 import { VerdictStatus } from '../../../src/domain/verdict/verdict.dto.js';
 import { badgeRejected } from '../../../src/domain/achievements/achievements.js';
-import { SignInRepositoryPort } from '../../../src/application/ports/auth/sign-in.repository.port.js';
+import { SignInRepositoryPort, type SignInSummary } from '../../../src/application/ports/auth/sign-in.repository.port.js';
+import type { PoolRideFacts } from '../../../src/domain/verdict/pool-attention.js';
 import { AdminActionRepositoryPort } from '../../../src/application/ports/admin/admin-action.repository.port.js';
 import { AdminQueryPort, type AdminCounts, type AdminRideRow } from '../../../src/application/ports/admin/admin-query.port.js';
 import type { SignInRecord } from '../../../src/domain/auth/sign-in.js';
@@ -217,7 +218,7 @@ export class MemoryRideQuery extends RideQueryPort {
       .sort((a, b) => (b.props.startedAt?.getTime() ?? 0) - (a.props.startedAt?.getTime() ?? 0) || b.seq - a.seq)
       .slice(0, limit)
       .flatMap(({ props: p }) => (p.startedAt
-        ? [{ tier: p.tier, status: p.status, lastS: p.lastS, hull: p.hull, route: p.route, timeScale: p.timeScale, startedAt: p.startedAt, endedAt: p.endedAt, verdict: this.db.verdicts.get(p.id)?.status ?? null }]
+        ? [{ tier: p.tier, status: p.status, lastS: p.lastS, hull: p.hull, route: p.route, timeScale: p.timeScale, startedAt: p.startedAt, endedAt: p.endedAt, verdict: this.db.verdicts.get(p.id)?.status ?? null, overridden: (this.db.verdicts.get(p.id)?.overriddenBy ?? null) !== null }]
         : []));
   }
 
@@ -409,6 +410,13 @@ export class MemorySignInRepository extends SignInRepositoryPort {
 
   async countSince(at: Date): Promise<number> { return this.db.signIns.filter((s) => s.at.getTime() >= at.getTime()).length; }
 
+  async summaryOf(wallets: readonly string[]): Promise<SignInSummary[]> {
+    return [...new Set(wallets)].sort().flatMap((wallet) => {
+      const mine = this.db.signIns.filter((s) => s.wallet === wallet);
+      return mine.length ? [{ wallet, firstAt: new Date(Math.min(...mine.map((s) => s.at.getTime()))), ips: [...new Set(mine.flatMap((s) => (s.ip ? [s.ip] : [])))].sort() }] : [];
+    });
+  }
+
   async deleteBefore(cutoff: Date): Promise<number> {
     const keep = this.db.signIns.filter((s) => s.at.getTime() >= cutoff.getTime());
     const deleted = this.db.signIns.length - keep.length;
@@ -433,22 +441,33 @@ export class MemoryAdminQuery extends AdminQueryPort {
     const tally = (values: string[]) => values.reduce<Record<string, number>>((acc, v) => ({ ...acc, [v]: (acc[v] ?? 0) + 1 }), {});
     const rides = tally([...this.db.rides.values()].map((r) => r.props.status));
     return {
-      players: this.db.players.size, running: rides['running'] ?? 0, rides, verdicts: tally([...this.db.verdicts.values()].map((v) => v.status)),
+      players: this.db.players.size, running: rides['running'] ?? 0, rides, verdicts: tally([...this.db.verdicts.values()].map((v) => v.status)), underReview: (await this.rides({ review: 'under_review', limit: Number.MAX_SAFE_INTEGER })).length,
       payments: { count: this.db.payments.length, lamports: this.db.payments.reduce((sum, p) => sum + p.lamports, 0) },
       telemetry: { batches: this.db.batches.size, bytes: [...this.db.batches.values()].reduce((sum, b) => sum + b.bytes, 0) },
     };
   }
 
   async rides(filter: AdminRideFilter): Promise<AdminRideRow[]> {
-    return [...this.db.rides.values()]
-      .filter(({ props: p }) => (!filter.wallet || p.wallet === filter.wallet) && (!filter.status || p.status === filter.status)
+    const rows = [...this.db.rides.values()]
+      .filter(({ props: p }) => (!filter.wallet || p.wallet === filter.wallet) && (!filter.status || p.status === filter.status) && (filter.poolId === undefined || p.poolId === filter.poolId)
         && (!filter.verdict || (filter.verdict === 'none' ? !this.db.verdicts.has(p.id) : this.db.verdicts.get(p.id)?.status === filter.verdict)))
       .sort((a, b) => b.props.createdAt.getTime() - a.props.createdAt.getTime() || b.seq - a.seq)
-      .slice(0, filter.limit)
       .map(({ props: p }) => {
         const v = this.db.verdicts.get(p.id);
         return { id: p.id, wallet: p.wallet, tier: p.tier, status: p.status, reason: p.reason, route: p.route, lastS: p.lastS, driveSeconds: p.driveSeconds, timeScale: p.timeScale,
-          createdAt: p.createdAt, startedAt: p.startedAt, endedAt: p.endedAt, verdict: v?.status ?? null, overridden: (v?.overriddenBy ?? null) !== null };
+          createdAt: p.createdAt, startedAt: p.startedAt, endedAt: p.endedAt, verdict: v?.status ?? null, overridden: (v?.overriddenBy ?? null) !== null, poolId: p.poolId };
+      });
+    if (filter.review !== 'under_review') return rows.slice(0, filter.limit);
+    const paid = rows.filter((r) => r.tier !== 'free' && r.status === 'completed' && (r.verdict === null || (!r.overridden && r.verdict !== 'verified')));
+    return [...paid, ...rows.filter((r) => r.tier === 'free' && r.verdict === 'flagged')].slice(0, filter.limit);
+  }
+
+  async poolRides(poolId: number): Promise<PoolRideFacts[]> {
+    return [...this.db.rides.values()].filter(({ props: p }) => p.poolId === poolId && p.status === RideStatus.Completed)
+      .sort((a, b) => (a.props.endedAt?.getTime() ?? 0) - (b.props.endedAt?.getTime() ?? 0) || a.seq - b.seq)
+      .map(({ props: p }) => {
+        const v = this.db.verdicts.get(p.id);
+        return { rideId: p.id, wallet: p.wallet, distance: p.lastS, driveSeconds: p.driveSeconds, startedAt: p.startedAt, endedAt: p.endedAt, verdict: v?.status ?? null, overridden: (v?.overriddenBy ?? null) !== null };
       });
   }
 

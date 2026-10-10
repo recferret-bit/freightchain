@@ -1,3 +1,4 @@
+import type { RideReview } from '../verdict/ride-review.js';
 import type { StatsDto } from '../stats/stats.js';
 import type { TicketBalanceDto, TicketGrantDto } from '../economy/prize-pool.dto.js';
 import type { AchievementDto } from '../achievements/achievement-unlock.entity.js';
@@ -136,6 +137,8 @@ export interface RecentRideDto {
   endedAt: number | null;
   /** verified / flagged / rejected / null (not judged – only completed shifts are) */
   verdict: string | null;
+  /** a PAID ride's review – accepted / under_review / rejected (domain/verdict/ride-review.ts); null for free rides and rides that did not complete */
+  review: RideReview | null;
 }
 
 export interface ProfileDto {

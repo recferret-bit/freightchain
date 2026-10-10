@@ -3,6 +3,7 @@ import { PayPoolsCommand } from '../../../../../src/application/use-cases/chain/
 import { PayPoolsHandler } from '../../../../../src/application/use-cases/chain/pay-pools/pay-pools.handler.js';
 import { SettleChainSignatureCommand } from '../../../../../src/application/use-cases/chain/settle-chain-signature/settle-chain-signature.command.js';
 import { SettleChainSignatureHandler } from '../../../../../src/application/use-cases/chain/settle-chain-signature/settle-chain-signature.handler.js';
+import { PoolAttentionService } from '../../../../../src/application/services/pool-attention.service.js';
 import { FakePoolPayoutChain } from '../../../../support/fake-pool-payout-chain.js';
 import { poolRide } from '../../../../support/pool-rides.js';
 import { chainPool } from '../../../../support/pools.js';
@@ -16,6 +17,9 @@ describe('PayPoolsHandler – the payout job', () => {
   /** pool 1 on chain: active, 10 tickets × 0.05 SOL (prize 70 % = 0.35 SOL), review window over at `payoutAt` = now; mirrored */
   const setup = async () => {
     const ctx = unitContext();
+    // riders who signed up days before the pool (a brand-new wallet in the top 3 is a pool-level mark of its own – tested below)
+    for (const w of ['alice', 'bob', 'carol', 'dave', 'mallory']) await ctx.player(w);
+    ctx.clock.advance(3 * 86_400);
     const payout = new FakePoolPayoutChain(ctx.poolChain);
     payout.payoutAddress = KEY;
     payout.now = ctx.now();
@@ -27,7 +31,8 @@ describe('PayPoolsHandler – the payout job', () => {
     await ctx.registry.syncFromChain(1);
     const settle = new SettleChainSignatureHandler(ctx.poolChain, ctx.chainEvents, ctx.ticketSettlement, ctx.registry, ctx.clock);
     const bus = { execute: async (c: object) => { if (!(c instanceof SettleChainSignatureCommand)) throw new Error('unexpected command'); return settle.execute(c); } };
-    const handler = new PayPoolsHandler(payout, ctx.poolChain, ctx.pools, ctx.poolPayouts, ctx.rideQuery, ctx.chainEvents, ctx.registry, bus as unknown as CommandBus, ctx.clock);
+    const attention = new PoolAttentionService(ctx.adminQuery, ctx.signIns, ctx.players, ctx.verdicts);
+    const handler = new PayPoolsHandler(payout, ctx.poolChain, ctx.pools, ctx.poolPayouts, ctx.rideQuery, ctx.chainEvents, ctx.registry, attention, bus as unknown as CommandBus, ctx.clock);
     const mirror = async () => (await ctx.pools.findById(1))!;
     return { ctx, payout, run: (poolId: number | null = null) => handler.execute(new PayPoolsCommand(poolId)), mirror };
   };
@@ -68,9 +73,9 @@ describe('PayPoolsHandler – the payout job', () => {
   it('waits while ANY completed ride of the pool is undecided (flagged, machine-rejected, unjudged) – then pays once an admin decided', async () => {
     const { ctx, payout, run, mirror } = await setup();
     await poolRide(ctx, 'alice', 900);
-    const flagged = await poolRide(ctx, 'bob', 2_000, 'flagged');
-    const rejected = await poolRide(ctx, 'carol', 100, 'rejected');
-    const unjudged = await poolRide(ctx, 'dave', 100, 'none');
+    const flagged = await poolRide(ctx, 'bob', 1_000, 'flagged');
+    const rejected = await poolRide(ctx, 'carol', 800, 'rejected');
+    const unjudged = await poolRide(ctx, 'dave', 850, 'none'); // similar distances: no pool-level mark, only the verdicts are under test
     expect((await run()).pools[0]).toMatchObject({ state: 'waiting_review', note: '3 ride(s) of this pool wait for an admin\'s decision', paid: [] });
     expect((await mirror()).payoutState).toBe('waiting_review');
     expect(payout.prizes).toEqual([]);
@@ -176,5 +181,22 @@ describe('PayPoolsHandler – the payout job', () => {
     expect((await ctx.poolPayouts.listByPool(1))[0]).toMatchObject({ status: 'planned', error: expect.stringMatching(/scripted/) });
     payout.failing.clear();
     expect((await run()).pools[0]?.state).toBe('paid');
+  });
+
+  it('the pool-level checks run before the plan: a distance outlier goes back under review and the pool waits for the admin', async () => {
+    const { ctx, payout, run } = await setup();
+    for (const w of ['alice', 'bob', 'carol']) await poolRide(ctx, w, 500);
+    await poolRide(ctx, 'dave', 5_000); // 10 × the median of the four
+    const pass = await run();
+    expect(pass.pools[0]).toMatchObject({ state: 'waiting_review', note: '1 ride(s) of this pool wait for an admin\'s decision' });
+    expect(payout.prizes).toEqual([]);
+  });
+
+  it('a wallet that signed up the day of the pool and ranks top 3 goes under review first', async () => {
+    const { ctx, payout, run } = await setup();
+    await ctx.player('newcomer');
+    await poolRide(ctx, 'alice', 500); await poolRide(ctx, 'newcomer', 600);
+    expect((await run()).pools[0]).toMatchObject({ state: 'waiting_review' });
+    expect(payout.prizes).toEqual([]);
   });
 });

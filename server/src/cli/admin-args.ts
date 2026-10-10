@@ -168,6 +168,19 @@ export function parseVerdictRejudge(args: readonly string[]): VerdictRejudgeArgs
   return { verdict: verdict as VerdictRejudgeArgs['verdict'], since, limit, dryRun: v['dry-run'] === true };
 }
 
+/** `pool:attention --pool N` – the pool-level attention checks over one pool (PoolAttentionService.markPool) */
+export function parsePoolAttention(args: readonly string[]): { poolId: number } | string {
+  let parsed;
+  try {
+    parsed = parseArgs({ args: [...args], options: { pool: { type: 'string' } } });
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+  const poolId = int('pool', parsed.values.pool, 0);
+  if (typeof poolId === 'string' || poolId > 0xffff_ffff) return '--pool must be a whole number from 0 to 4294967295';
+  return { poolId };
+}
+
 export interface StatsReconcileArgs { wallet: string | null; fix: boolean }
 
 /** `stats:reconcile [--wallet ADDRESS] [--fix]` – without --fix it only reports */

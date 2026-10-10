@@ -55,4 +55,28 @@ describe('VerdictService', () => {
     expect((await c2.verdictRepo.findByRide(r2.id))?.status).toBe(VerdictStatus.Verified);
     expect(await c2.verdicts.rejudgeQuietly('nope')).toBeNull();
   });
+
+  const mark = { code: 'pool-shared-ip', detail: 'shares a network address', severity: 'flag' as const };
+
+  it('addAttention: appends pool marks under the rider\'s lock (verified → flagged), saves nothing the second time, never over an admin\'s decision', async () => {
+    const { ctx, ride } = await ended(true);
+    await ctx.verdicts.judge(ride.id);
+    expect(await ctx.verdicts.addAttention('w', [{ rideId: ride.id, reasons: [mark] }])).toEqual([{ rideId: ride.id, before: 'verified', after: 'flagged', added: ['pool-shared-ip'], skipped: null }]);
+    const version = ctx.db.verdicts.get(ride.id)?.version;
+    expect(await ctx.verdicts.addAttention('w', [{ rideId: ride.id, reasons: [mark] }])).toEqual([{ rideId: ride.id, before: 'flagged', after: 'flagged', added: [], skipped: null }]);
+    expect(ctx.db.verdicts.get(ride.id)?.version).toBe(version);
+    await ctx.verdicts.override(ride.id, VerdictStatus.Verified, 'admin', null, null);
+    expect((await ctx.verdicts.addAttention('w', [{ rideId: ride.id, reasons: [{ ...mark, code: 'pool-distance-outlier' }] }]))[0]?.skipped).toBe('overridden');
+    expect(await ctx.verdicts.addAttention('someone-else', [{ rideId: ride.id, reasons: [mark] }])).toEqual([{ rideId: ride.id, before: null, after: null, added: [], skipped: 'not-completed' }]);   // not that wallet's ride
+  });
+
+  it('judging again (a late batch, the bulk re-judge, an admin\'s RE-JUDGE) keeps the pool marks – they do not come from the recording', async () => {
+    const { ctx, ride } = await ended(true);
+    await ctx.verdicts.judge(ride.id);
+    await ctx.verdicts.addAttention('w', [{ rideId: ride.id, reasons: [mark] }]);
+    expect(await ctx.verdicts.judge(ride.id)).toMatchObject({ status: VerdictStatus.Flagged, reasons: [mark] });
+    expect(await ctx.verdicts.rejudgeQuietly(ride.id)).toEqual({ before: VerdictStatus.Flagged, after: VerdictStatus.Flagged });
+    await ctx.verdicts.override(ride.id, VerdictStatus.Verified, 'admin', null, null);
+    expect((await ctx.verdicts.rejudge(ride.id, 'admin', null)).reasons).toEqual([mark]);   // clearing a mark is a decision (the override), not a re-run
+  });
 });

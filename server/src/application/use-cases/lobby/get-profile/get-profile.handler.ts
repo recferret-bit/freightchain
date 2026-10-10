@@ -17,6 +17,7 @@ import { emitAnalytics } from '../../../services/analytics-emit.js';
 import { PlayerSessionService } from '../../../services/player-session.service.js';
 import { demoScaleOf, isDemoWallet } from '../../../services/demo.js';
 import { GetProfileQuery } from './get-profile.query.js';
+import { reviewOf } from '../../../../domain/verdict/ride-review.js';
 
 @QueryHandler(GetProfileQuery)
 export class GetProfileHandler implements IQueryHandler<GetProfileQuery, ProfileDto> {
@@ -55,6 +56,7 @@ export class GetProfileHandler implements IQueryHandler<GetProfileQuery, Profile
       recent: recent.map((r) => ({
         tier: r.tier, status: r.status, distance: Math.round(r.lastS), hull: r.hull === null ? null : Math.round(r.hull), route: r.route, timeScale: r.timeScale,
         startedAt: r.startedAt.getTime(), endedAt: r.endedAt?.getTime() ?? null, verdict: r.verdict,
+        review: reviewOf(r.tier, r.verdict === null ? null : { status: r.verdict, overridden: r.overridden }, r.status),
       })),
       achievements,
       tickets,

@@ -7,7 +7,9 @@ import { recording, upload } from '../support/recording.js';
 /* The admin surface (/api/admin/*): invisible to everyone but ADMIN_WALLETS, the review queue, an audited override, sign-ins, the log ring.
    Same scenarios on in-memory and PostgreSQL. A free shift = 10 s / 140 m. */
 export const ADMIN = newWallet();
-export const ADMIN_ENV = { FREE_RIDE_SECONDS: '10', ADMIN_WALLETS: ADMIN.address };
+/** a demo rider: its paid 1 h shift is 60 s (DEMO_SCALE), short enough to complete here */
+export const ADMIN_DEMO_RIDER = newWallet();
+export const ADMIN_ENV = { FREE_RIDE_SECONDS: '10', ADMIN_WALLETS: ADMIN.address, DEMO_WALLETS: ADMIN_DEMO_RIDER.address };
 
 export function adminScenarios(h: () => Harness): void {
   const { anon, login, loginAdmin, sec } = bindClient(h);
@@ -123,6 +125,38 @@ export function adminScenarios(h: () => Harness): void {
     sec(1); // the rider's late final batch re-judges the ride – the admin's decision stays
     await rider.agent.post(`/api/rides/${id}/batches`).send(recording(id, { seconds: 10, distance: 140, batchSeconds: 5 })[1]).expect(200);
     expect((await admin.agent.get(`/api/admin/rides/${id}`).expect(200)).body.verdict).toMatchObject({ status: 'verified', override: { by: ADMIN.address } });
+  });
+
+  /** a completed demo paid 1 h shift (60 s, 910 m) with NO recording – the machine rejects it ('no-recording') */
+  async function paidShiftWithoutRecording(rider: Rider) {
+    const r = (await rider.agent.post('/api/rides').send({ tier: '1h' }).expect(200)).body;
+    const signature = h().chain.addPayment({ payer: rider.address, lamports: r.lamports, memo: r.id });
+    await rider.agent.post(`/api/rides/${r.id}/confirm`).send({ signature }).expect(200);
+    await rider.agent.post(`/api/rides/${r.id}/start`).expect(200);
+    for (let i = 1; i <= 7; i++) { sec(10); await rider.agent.post(`/api/rides/${r.id}/heartbeat`).send({ s: (i * 910) / 7, t: i * 10, hull: 100 }).expect(200); }
+    return (await rider.agent.post(`/api/rides/${r.id}/end`).send({ outcome: 'shift', s: 910, t: 70, hull: 100 }).expect(200)).body;
+  }
+
+  it('every PAID ride waits for review: a machine-rejected one is UNDER REVIEW for the rider and in the queue (paid first) until the admin decides', async () => {
+    const admin = await asAdmin();
+    const rider = await login(ADMIN_DEMO_RIDER);
+    const freeFlagged = await flaggedRide(rider);
+    sec(1);
+    const end = await paidShiftWithoutRecording(rider);
+    expect(end).toMatchObject({ status: 'completed', tier: '1h', verdict: { status: 'rejected', reasons: [{ code: 'no-recording' }] }, review: 'under_review' });
+    const queue = (await admin.agent.get('/api/admin/rides?review=under_review').expect(200)).body.rows;
+    expect(queue.map((r: { id: string; review: string | null; poolId: number | null }) => [r.id, r.review, r.poolId])).toEqual([[end.id, 'under_review', null], [freeFlagged, null, null]]);
+    expect((await admin.agent.get('/api/admin/overview').expect(200)).body.underReview).toBe(2);
+    expect((await admin.agent.get('/api/admin/rides?review=under_review&pool=3').expect(200)).body.rows).toEqual([]);
+    await admin.agent.get('/api/admin/rides?review=maybe').expect(400);
+    await admin.agent.get('/api/admin/rides?pool=-1').expect(400);
+
+    const proof = await signed(admin, end.id, { action: 'override', decision: 'rejected', note: 'no recording at all' });
+    await admin.agent.post(`/api/admin/rides/${end.id}/verdict`).set('x-fc-admin', '1').send({ decision: 'rejected', note: 'no recording at all', signature: proof.signature }).expect(200);
+    expect((await rider.agent.get(`/api/rides/${end.id}`).expect(200)).body).toMatchObject({ verdict: { status: 'rejected', override: { by: ADMIN.address } }, review: 'rejected' });
+    expect((await rider.agent.get('/api/profile').expect(200)).body.recent[0]).toMatchObject({ tier: '1h', verdict: 'rejected', review: 'rejected' });
+    expect((await admin.agent.get('/api/admin/rides?review=under_review').expect(200)).body.rows.map((r: { id: string }) => r.id)).toEqual([freeFlagged]);
+    expect((await admin.agent.get(`/api/admin/rides/${end.id}`).expect(200)).body.ride).toMatchObject({ review: 'rejected', poolId: null });
   });
 
   it('sign-ins: who, when, from which IP and browser; filter by wallet', async () => {

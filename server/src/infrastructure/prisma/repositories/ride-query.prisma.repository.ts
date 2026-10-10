@@ -96,9 +96,9 @@ export class RideQueryPrismaRepository extends RideQueryPort {
   }
 
   async recent(wallet: string, limit: number): Promise<RecentRideRow[]> {
-    const rows = await this.prisma.ride.findMany({ where: { wallet, startedAt: { not: null } }, orderBy: [{ startedAt: 'desc' }, { seq: 'desc' }], take: limit, include: { verdict: { select: { status: true } } } });
+    const rows = await this.prisma.ride.findMany({ where: { wallet, startedAt: { not: null } }, orderBy: [{ startedAt: 'desc' }, { seq: 'desc' }], take: limit, include: { verdict: { select: { status: true, overriddenBy: true } } } });
     return rows.flatMap((r) => (r.startedAt
-      ? [{ tier: r.tier, status: r.status, lastS: r.lastS, hull: r.hull, route: r.route, timeScale: r.timeScale, startedAt: r.startedAt, endedAt: r.endedAt, verdict: r.verdict?.status ?? null }]
+      ? [{ tier: r.tier, status: r.status, lastS: r.lastS, hull: r.hull, route: r.route, timeScale: r.timeScale, startedAt: r.startedAt, endedAt: r.endedAt, verdict: r.verdict?.status ?? null, overridden: (r.verdict?.overriddenBy ?? null) !== null }]
       : []));
   }
 

@@ -24,7 +24,7 @@
     <span class="pill">recordings kept <b>90 days</b> · sign-ins <b>180 days</b></span>
   </div>
   <nav class="toc">
-    <a href="#s-layers">Layers</a><a href="#s-road">The server's road</a><a href="#s-prompts">Dispatch prompts</a><a href="#s-verdict">The verdict</a><a href="#s-fair">Fair to honest players</a><a href="#s-ops">Operating it</a><a href="#s-limits">Limits</a>
+    <a href="#s-layers">Layers</a><a href="#s-road">The server's road</a><a href="#s-prompts">Dispatch prompts</a><a href="#s-verdict">The verdict</a><a href="#s-review">Review</a><a href="#s-fair">Fair to honest players</a><a href="#s-ops">Operating it</a><a href="#s-limits">Limits</a>
   </nav>
   <figure class="chart" style="margin:0">
     <svg id="ride" viewBox="0 0 940 230" role="img" aria-label="One ride on a timeline: heartbeats every 10 s, batches every 15 s, two dispatch prompts with their 20 s windows, the end, the 60 s grace for late batches, the judgement"></svg>
@@ -250,6 +250,15 @@
   </div>
 </section>
 
+<section aria-labelledby="s-review">
+  <div class="head">
+    <span class="eyebrow">Before a pool pays</span>
+    <h2 id="s-review">Review of paid rides and pool-level marks</h2>
+    <p>Every completed <b>paid</b> ride carries a review derived from its verdict (<code>server/src/domain/verdict/ride-review.ts</code>; nothing extra is stored): <b>accepted</b> when verified by the checks or by an admin, <b>rejected</b> only by an admin's signed decision, <b>under review</b> otherwise. Flagged, pending, unjudged and machine-rejected rides stay under review: a machine reject is not final for the player. The admin queue (<code>?review=under_review&amp;pool=N</code>) lists them first, pool by pool, then the flagged free rides.</p>
+    <p>Pool-level attention marks (<code>pool-attention.ts</code>) are <b>not verdict rules</b> and carry no rules version. <code>PoolAttentionService.markPool</code> (CLI <code>pool:attention --pool N</code>, and the payout job before it pays) looks at a pool's top 20 and appends <span class="chip flag">flag</span> reasons to every completed ride of a marked wallet in that pool: <code>pool-distance-outlier</code> (total distance over 1.5 × the top-20 median, with at least 4 wallets), <code>pool-shared-ip</code> (two ranked wallets share a sign-in IP), <code>pool-new-wallet-top3</code> (a top-3 wallet first seen less than 24 h before its first ride there). The marks run under each rider's player lock, never touch an admin's decision, change nothing on a second run, and survive every re-judge because a recording cannot recompute them. The details shown to the rider never name an IP, another wallet or a time.</p>
+  </div>
+</section>
+
 <section aria-labelledby="s-fair">
   <div class="head">
     <span class="eyebrow">Fairness rules</span>
@@ -283,6 +292,7 @@
         <tr><td>Bulk re-judge</td><td><code>verdict:rejudge [--status unjudged|verified|flagged|rejected|all] [--since DATE] [--limit N] [--dry-run]</code> – current rules, admin decisions kept, swept recordings skipped, one audit row. <code>retention:sweep</code> runs both sweeps now.</td></tr>
         <tr><td>Tests</td><td>Unit, scenarios on memory and PostgreSQL (<code>npm run server:test</code>, <code>npm run server:integration</code>), the road drift spec (the game's generator beside the server's port, 40 seeds × 60 km); <code>e2e.sh road</code>: an honest driver and one with the holes taken out in real Chrome, a spectator replaying both, the audit tool; the <code>verified-play-test</code> skill: a person and a metronome bot in real Chrome, nine API-level bots (no inputs, instant answers, teleport, over-governor, tampered hash, unhashed batch, broken link, byte budget, clean), the CLI – every case positive and negative.</td></tr>
         <tr><td>Audit a stream</td><td><code>bash .claude/skills/ride-audit/run.sh &lt;ride id&gt; [--prod]</code> or <code>--latest N [--wallet W]</code> – loads the ride from the database (production read-only, through <code>npm run ops -- sql</code>), rebuilds its road from the seed, re-hashes every batch, re-measures every sample and judges afresh, next to the verdict on record. Exit 0 = OK, 1 = NOT OK.</td></tr>
+        <tr><td>What needs review</td><td><code>bash .claude/skills/ride-review/run.sh [--pool N] [--prod]</code> – every paid ride under review per pool, with its rank, reasons incl. the <code>pool-*</code> marks and the ones <code>pool:attention</code> would add, each audited (OK / NOT OK). Read-only; decisions are made on the admin page.</td></tr>
         <tr><td>One ride, explained</td><td>The admin page shows the reasons, the scores (<code>recording</code>, <code>human</code>, <code>challenges</code>, <code>world</code>) and the batch index; the <code>ride-investigate</code> skill joins the database rows with the log lines.</td></tr>
       </tbody>
     </table>

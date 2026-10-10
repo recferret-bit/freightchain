@@ -71,6 +71,18 @@ export class RideVerdict {
   /** an admin decided this one – judging again must not replace it */
   get isOverridden(): boolean { return this.p.overriddenBy !== null; }
 
+  /** Append reasons found OUTSIDE the recording (the pool-level attention marks, pool-attention.ts): deduped by code, the status recomputed the way
+      judge() does it (any reject → rejected, else flagged) – so a machine reject is never softened to flagged. An admin's decision is never touched.
+      Returns whether anything changed (the caller saves only then: running the checks twice changes nothing the second time). */
+  addReasons(reasons: readonly VerdictReason[]): boolean {
+    if (this.isOverridden) return false;
+    const fresh = reasons.filter((r, i) => !this.p.reasons.some((x) => x.code === r.code) && reasons.findIndex((x) => x.code === r.code) === i);
+    if (!fresh.length) return false;
+    this.p.reasons = [...this.p.reasons, ...fresh];
+    this.p.status = this.p.reasons.some((r) => r.severity === 'reject') ? VerdictStatus.Rejected : VerdictStatus.Flagged;
+    return true;
+  }
+
   /** An admin's decision from the review queue: the status is set by hand, the judged reasons stay for the record. Deciding again replaces the decision. */
   override(decision: VerdictDecision, by: string, note: string | null, now: Date): void {
     if (decision !== VerdictStatus.Verified && decision !== VerdictStatus.Rejected) throw new ConflictError('a verdict can only be set to verified or rejected');

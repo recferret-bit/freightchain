@@ -6,6 +6,9 @@ server/.e2e-tsconfig-*.json
 # the ride-audit skill's private build (.claude/skills/ride-audit/run.sh) – removed at the end of a run
 server/.audit-build-*/
 server/.audit-tsconfig-*.json
+# the ride-review skill's private build (.claude/skills/ride-review/run.sh) – removed at the end of a run
+server/.review-build-*/
+server/.review-tsconfig-*.json
 # a one-off tsc emit of server/src (same shape as dist/). Not a script output.
 server/.guide-build/
 # the test census's sourcemapped headless bundle (npm run test:census -- coverage) – removed at the end, this catches a killed run

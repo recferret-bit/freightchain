@@ -17,6 +17,8 @@ import { RegisterPoolFromChainCommand } from '../application/use-cases/pools/reg
 import { CrankPoolsCommand } from '../application/use-cases/chain/crank-pools/crank-pools.command.js';
 import { PayPoolsCommand } from '../application/use-cases/chain/pay-pools/pay-pools.command.js';
 import { parsePoolPayout, parsePoolRegister, parsePoolSeed, parsePromoCreate, parseTicketsGrant, parseStatsReconcile, parseVerdictRejudge, type PoolSeedArgs } from './admin-args.js';
+import { parsePoolAttention } from './admin-args.js';
+import { PoolAttentionService } from '../application/services/pool-attention.service.js';
 import { RejudgeRidesCommand } from '../application/use-cases/admin/rejudge-rides/rejudge-rides.command.js';
 import { ReconcileStatsCommand } from '../application/use-cases/stats/reconcile-stats/reconcile-stats.command.js';
 import { SweepTelemetryCommand } from '../application/use-cases/telemetry/sweep-telemetry/sweep-telemetry.command.js';
@@ -81,6 +83,10 @@ export async function runAdmin(command: string, args: readonly string[]): Promis
     case 'verdict:rejudge': {
       const r = parseVerdictRejudge(args);
       return typeof r === 'string' ? usage(r) : withBuses(({ commands }) => commands.execute(new RejudgeRidesCommand({ verdict: r.verdict, since: r.since, limit: r.limit }, r.dryRun, 'cli')));
+    }
+    case 'pool:attention': {
+      const r = parsePoolAttention(args);
+      return typeof r === 'string' ? usage(r) : withBuses(({ app }) => app.get(PoolAttentionService).markPool(r.poolId));
     }
     case 'stats:reconcile': {
       const r = parseStatsReconcile(args);

@@ -2,7 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import type { AdminProof } from '../../domain/admin/admin-proof.js';
 import { RideStatus } from '../../domain/rides/ride-status.js';
 import { RideVerdict } from '../../domain/verdict/ride-verdict.entity.js';
-import type { VerdictDecision } from '../../domain/verdict/verdict.dto.js';
+import { isPoolMark } from '../../domain/verdict/pool-attention.js';
+import type { VerdictDecision, VerdictReason } from '../../domain/verdict/verdict.dto.js';
 import { ConflictError, NotFoundError } from '../../domain/shared/errors.js';
 import { AdminActionRepositoryPort } from '../ports/admin/admin-action.repository.port.js';
 import { PlayerRepositoryPort } from '../ports/players/player.repository.port.js';
@@ -17,6 +18,15 @@ import { RideVerdictRepositoryPort } from '../ports/verdict/ride-verdict.reposit
  * after the end (the final flush). Runs under the wallet's player row lock, and reads the batches only once it holds it: of two racing judgements
  * the one that saves last has seen every batch the other saw, so a stale verdict can never overwrite a fresher one. A verdict an admin decided is kept as is.
  */
+/** What adding the pool-level attention marks did to one ride (`skipped`: an admin decided it, or it is not a completed shift of that wallet). */
+export interface AttentionOutcome {
+  rideId: string;
+  before: string | null;
+  after: string | null;
+  added: string[];
+  skipped: 'overridden' | 'not-completed' | null;
+}
+
 @Injectable()
 export class VerdictService {
   private readonly logger = new Logger(VerdictService.name);
@@ -73,9 +83,34 @@ export class VerdictService {
       throw new ConflictError('the recording of this ride was deleted by the retention sweep – its verdict stays as it is', 'recording_deleted');
     }
     const verdict = RideVerdict.judge(ride, batches, this.clock.now());
+    // the pool-level attention marks (pool-attention.ts) come from the other rides of the pool, not from this recording – judging the recording again
+    // cannot recompute them, so they are carried over (also when an admin re-judges: clearing a mark is an admin DECISION – the override –, not a re-run)
+    verdict.addReasons(existing?.reasons.filter((r) => isPoolMark(r.code)) ?? []);
     await this.verdicts.save(verdict, tx);
     this.logger.log({ event: 'verdict', msg: `ride ${rideId}: ${verdict.status}`, rideId, wallet: ride.wallet, status: verdict.status, reasons: verdict.reasons.map((r) => r.code) });
     return { verdict, before: existing?.status ?? null };
+  }
+
+  /** The pool-level attention marks for ONE rider's rides (PoolAttentionService), in one transaction under that rider's player lock – the same lock as
+      judging and the admin's decision, so a racing late batch / override cannot interleave. A completed shift not judged yet is judged first. An admin's
+      decision is never touched; a ride whose verdict already carries every mark is not saved again (idempotent). */
+  async addAttention(wallet: string, marks: readonly { rideId: string; reasons: readonly VerdictReason[] }[]): Promise<AttentionOutcome[]> {
+    return this.transactions.run(async (tx) => {
+      await this.players.findByWalletForUpdate(wallet, tx);
+      const out: AttentionOutcome[] = [];
+      for (const { rideId, reasons } of marks) {
+        const ride = await this.rides.findById(rideId, tx);
+        if (!ride || ride.wallet !== wallet || !ride.isInStatus(RideStatus.Completed)) { out.push({ rideId, before: null, after: null, added: [], skipped: 'not-completed' }); continue; }
+        const existing = await this.verdicts.findByRide(rideId, tx);
+        const verdict = existing ?? RideVerdict.judge(ride, await this.batches.listFactsByRide(rideId, tx), this.clock.now());
+        const before = existing?.status ?? null;
+        if (verdict.isOverridden) { out.push({ rideId, before, after: verdict.status, added: [], skipped: 'overridden' }); continue; }
+        const had = new Set(verdict.reasons.map((r) => r.code));
+        if (verdict.addReasons(reasons) || !existing) await this.verdicts.save(verdict, tx);
+        out.push({ rideId, before, after: verdict.status, added: verdict.reasons.filter((r) => !had.has(r.code)).map((r) => r.code), skipped: null });
+      }
+      return out;
+    });
   }
 
   /** An admin's decision from the review queue, under the same player lock as judging (so a racing re-judge cannot overwrite it), audited in the same transaction. */

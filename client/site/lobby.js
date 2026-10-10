@@ -425,6 +425,12 @@ async function renderBoard() {
 }
 
 /* ───────── PROFILE ───────── */
+/* a ride's check in the history: a PAID ride shows its REVIEW (server/src/domain/verdict/ride-review.ts – under review until the recording check
+   verifies it or an admin decides), a free ride its recording check as before */
+const REVIEW = { under_review: ['UNDER REVIEW', 'warn'], accepted: ['ACCEPTED', 'good'], rejected: ['REJECTED', 'bad'] };
+const rideCheck = r => r.review ? el('b', { class: REVIEW[r.review]?.[1] ?? 'warn', title: 'paid rides are reviewed before prizes are paid' }, ` · ${REVIEW[r.review]?.[0] ?? String(r.review).toUpperCase()}`)
+  : r.verdict ? el('b', { class: r.verdict === 'verified' ? 'good' : 'bad', title: 'recording check – only verified shifts rank' }, ` · ${r.verdict.toUpperCase()}`) : '';
+
 async function renderProfile() {
   view.replaceChildren(el('p', { class: 'dim' }, 'Loading…'));
   let p; const my = seq;
@@ -445,8 +451,8 @@ async function renderProfile() {
         el('h2', {}, 'RECENT RIDES'),
     p.recent.length ? el('div', { class: 'hist' }, p.recent.map(r => el('div', { class: 'hrow' },
       el('span', {}, new Date(r.startedAt).toLocaleString(), ' · ', TIER_NAME[r.tier] ?? r.tier, r.route ? ` · ${ROUTES[r.route] ?? ''}` : '', r.timeScale > 1 ? ` · DEMO ×${r.timeScale}` : ''),
-      el('span', {}, `${km(r.distance)} km · `, el('b', { class: r.status === 'completed' ? 'good' : 'bad' }, r.status.toUpperCase()),
-        r.verdict ? el('b', { class: r.verdict === 'verified' ? 'good' : 'bad', title: 'recording check – only verified shifts rank' }, ` · ${r.verdict.toUpperCase()}`) : '')))) : el('div', { class: 'card empty' }, 'No rides yet – start one!'));
+      el('span', {}, `${km(r.distance)} km · `, el('b', { class: r.status === 'completed' ? 'good' : 'bad' }, r.status.toUpperCase()), rideCheck(r)),
+      r.review === 'under_review' ? el('span', { class: 'dim rnote' }, 'An admin checks this ride before prizes are paid.') : ''))) : el('div', { class: 'card empty' }, 'No rides yet – start one!'));
 }
 
 /* ───────── refresh + 1 s tick ───────── */

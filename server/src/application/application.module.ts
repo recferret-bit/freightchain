@@ -9,6 +9,7 @@ import { RideLookupService } from './services/ride-lookup.service.js';
 import { StatsService } from './services/stats.service.js';
 import { RoundService } from './services/round.service.js';
 import { VerdictService } from './services/verdict.service.js';
+import { PoolAttentionService } from './services/pool-attention.service.js';
 import { AdminProofService } from './services/admin-proof.service.js';
 import { GameSettingsService } from './services/game-settings.service.js';
 import { GrantDailyFreeRidesHandler } from './use-cases/players/grant-daily-free-rides/grant-daily-free-rides.handler.js';
@@ -108,7 +109,7 @@ import { GetOfflineRidesHandler } from './use-cases/offline/get-offline-rides/ge
 
 const services: Provider[] = [
   AchievementService, PaymentSettlementService, PlayerSessionService, GameSettingsService, RideLookupService, RoundService, VerdictService, AdminProofService,
-  PoolTicketsService, PromoCreationService, TicketSettlementService, PoolRegistryService, FinalityService, LiveAccessService, StatsService, MeProfileService,
+  PoolTicketsService, PromoCreationService, TicketSettlementService, PoolRegistryService, FinalityService, LiveAccessService, StatsService, MeProfileService, PoolAttentionService,
 ];
 
 import { ReconcileStatsHandler } from './use-cases/stats/reconcile-stats/reconcile-stats.handler.js';
@@ -142,6 +143,6 @@ const handlers: Provider[] = [
 @Module({
   imports: [CqrsModule.forRoot(), InfrastructureModule],
   providers: [...services, ...handlers],
-  exports: [CqrsModule, InfrastructureModule],
+  exports: [CqrsModule, InfrastructureModule, PoolAttentionService], // PoolAttentionService: the payout job marks a pool before it pays
 })
 export class ApplicationModule {}
