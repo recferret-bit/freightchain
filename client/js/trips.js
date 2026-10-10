@@ -10,7 +10,7 @@
      cross    × CFG.CROSS_MAX vehicles on the side roads of a signalled crossroads (0 = side roads stay empty)
      calm     only the 'cruise' / 'slow' behaviours spawn (no tailgaters, weavers, overtakers or sirens)
      props    × the route's roadside scenery density (props.js `density`) – fewer things to clip
-     finish   the shift ENDS by itself, as a win, the moment it is complete (otherwise the road goes on until P → END SHIFT)
+     finish   the shift ENDS by itself, as a win, the moment it is complete (otherwise the road goes on until the driver leaves: top right, the lobby or the front page)
      start    'depot' = the depot road meets the main road at a STOP line and the truck turns right onto it (traffic both ways past the exit);
               'straight' = the depot road runs straight on into the main road: no turn, no junction, nothing behind the exit. Geometry only – the
               server's layout (sA, Sm, the start junction, holes from Sm + HOLE_FIRST) is the same, and it does not judge the start area (road-layout.ts knownFrom)

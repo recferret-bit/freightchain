@@ -146,7 +146,7 @@ export function update(dt) {
   if (!st.complete && !guide.hold && st.t >= CFG.RIDE_MIN_SECONDS && st.s >= CFG.COMPLETE_DIST) {
     st.complete = true; audio.play('complete');
     if (trip.finish) endRide(true);   // a trip that ends at the line (trips.js – the free run): the win stamp, no "keep driving"
-    else toast('SHIFT COMPLETE – the road goes on. Keep driving, or P → END SHIFT to collect.', 6000);
+    else toast('SHIFT COMPLETE – the road goes on. Keep driving, or leave from the top right (lobby or the front page).', 6000);
   }
 
   bodySway(dt, vel0, gain);
