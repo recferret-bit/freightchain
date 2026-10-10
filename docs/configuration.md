@@ -189,7 +189,7 @@ npm run server:dev                   # :3000 – site, game and API on one origi
 
 ## Client settings
 
-- **`client/js/config.js` (`CFG`)** – every gameplay constant, with comments. Deliberate values not to touch without asking: `SHAKE_START 0.5`, `SHAKE_MOVING 0.1`, `SHAKE_RPM 0.35`, `START_ENGINE_OFF true`.
+- **`client/js/config.js` (`CFG`)** – every gameplay constant, with comments. Deliberate values not to touch without asking: `SHAKE_START 0.45`, `SHAKE_MOVING 0.09`, `SHAKE_RPM 0.315`, `START_ENGINE_OFF true`.
   `RIDE_MIN_SECONDS` is **300 (a test value); production = 1800**. Tuning requests are relative to the current value. Which constant to touch, which mirror must move with it, and the check to run: the `gameplay-balance` skill (`cd client && npm run check`).
 - **Hosts** – never hard-code `/api/…` or `/play.html`; use `API_BASE` / `GAME_BASE` / `SITE_BASE` / `STORYBOOK_BASE` / `WHITEPAPER_BASE` / `ADMIN_BASE` from `client/js/hosts.js`. On localhost, an IP or `file://` they are `''` (one origin).
 - **Browser `localStorage` keys** (per player, not config you ship): `freightchain.truck` (F2 handling tuning), `freightchain.radio`, `freightchain.assist` (the lobby's ASSIST checkbox), `freightchain.level` (the free level picked in the lobby: 1 EASY · 2 CROSSROADS · 3 HARD), `freightchain.admin`. The analytics branch also writes `freightchain.anon` (`anon_<uuid v4>`).

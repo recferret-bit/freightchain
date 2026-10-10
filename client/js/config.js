@@ -5,9 +5,9 @@ export const CFG = {
   REVERSE_MAX: 6,            // m/s reverse speed governor (~22 km/h)
   MAX_SPEED: 28,             // m/s hard governor (~100 km/h)
   START_BALANCE: 100,
-  SHAKE_START: 0.5,          // engine start-up / idle / shut-off (stall) shake scale (1 = original)
-  SHAKE_RPM: 0.35,            // extra shake that grows with engine revs (1 = default, 0 = off)
-  SHAKE_MOVING: 0.1,         // speed-related shake scale (1 = original)
+  SHAKE_START: 0.45,         // engine start-up / idle / shut-off (stall) shake scale (1 = original)
+  SHAKE_RPM: 0.315,           // extra shake that grows with engine revs (1 = default, 0 = off)
+  SHAKE_MOVING: 0.09,        // speed-related shake scale (1 = original)
   START_ENGINE_OFF: true,    // ride begins with the engine off: press I to run the start-up sequence
   OFFROAD_FAIL_SECONDS: 20,   // continuous-ish time off the tarmac before the ride is lost (drains 2× faster once back on the road)
   OFFROAD_DRAG: 1.2,          // m/s² of extra braking while off the road (sand/gravel); the old 4.5 stopped the truck dead

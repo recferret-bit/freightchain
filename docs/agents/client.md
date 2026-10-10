@@ -114,7 +114,7 @@ with **fixed-point Q32.32 math and no floats**, hashing state every 300 ticks. T
   the ride seed (`roads.seed`, own mulberry32), but the centre-line is integrated in floats.
 
 ### User-tuned values – don't change without asking
-`CFG.SHAKE_START = 0.5` (engine start-up/idle/shut-off), `SHAKE_MOVING = 0.1` (speed shake), `SHAKE_RPM = 0.35` (rpm shake).
+`CFG.SHAKE_START = 0.45` (engine start-up/idle/shut-off), `SHAKE_MOVING = 0.09` (speed shake), `SHAKE_RPM = 0.315` (rpm shake).
 `START_ENGINE_OFF = true` (ride begins with the engine off; press I). Numeric tuning requests are relative to the *current* value
 (e.g. "lower it twice" = halve it).
 

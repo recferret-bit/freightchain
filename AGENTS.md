@@ -55,7 +55,7 @@ Client:
 - Reach the API and other hosts only through `client/js/hosts.js` with `credentials: 'include'` – never a bare `/api/…` or `/play.html` (landing included). A new subdomain = its own nginx template + `deploy/scripts/remote/setup.sh` + smoke check, and `hosts.js` must strip the prefix.
 - Modules are acyclic (`sim/*` never imports `cockpit/*`; `cockpit/*` never imports the scene). Canvas size from the shared `view` object. Tunables in `js/config.js`. Use `store()` not raw `localStorage`.
 - Theme materials only inside `create*()` via `basic()` / `trackMat()`; every single-sided material tracked or in `flipMats()` (mirrors). `mesh.position.set()`, never assign `position`.
-- User-tuned, leave alone unless asked: `SHAKE_START 0.5`, `SHAKE_MOVING 0.1`, `SHAKE_RPM 0.35`, `START_ENGINE_OFF = true`. Numeric tuning requests are relative to the current value ("lower it twice" = halve it).
+- User-tuned, leave alone unless asked: `SHAKE_START 0.45`, `SHAKE_MOVING 0.09`, `SHAKE_RPM 0.315`, `START_ENGINE_OFF = true`. Numeric tuning requests are relative to the current value ("lower it twice" = halve it).
 - Serve over http (`client/serve.sh` or `npm run server:dev` on :3000); `file://` can't load the modules.
 
 Escrow: the money is in the program; the server only mirrors pools and credits tickets from program events; every wallet signs and sends its own transaction; the crank key is the only key the server holds. Never touch the global Solana config or `~/.config/solana/id.json`; always an explicit `--url devnet`; no program deploy or pool creation without the user. Keep `docs/escrow-open-items.md` current.
