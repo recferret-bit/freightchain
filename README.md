@@ -159,8 +159,8 @@ A ride, as the server sees it:
 flowchart LR
   sign[SIWS cookie] --> create["Create ride<br/>seed, route, hour, trip"]
   create --> drive["Heartbeats 10 s<br/>batches 15 s"]
-  drive --> end["Complete, abandon,<br/>fail, or stale sweep"]
-  end --> judge["Verdict on a<br/>completed shift"]
+  drive --> finish["Complete, abandon,<br/>fail, or stale sweep"]
+  finish --> judge["Verdict on a<br/>completed shift"]
   judge --> board[Leaderboards]
 ```
 
