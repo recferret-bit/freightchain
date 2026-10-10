@@ -45,22 +45,24 @@
       <div><dt>Program id</dt><dd>9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx <span class="muted">(devnet)</span></dd></div>
       <div><dt>Framework</dt><dd>Anchor 1.2.1 · Rust 1.89</dd></div>
       <div><dt>Target</dt><dd>SBPF v0 · Solana 4.1.2 toolchain</dd></div>
-      <div><dt>Surface</dt><dd>14 instructions · 12 events · 24 errors</dd></div>
-      <div><dt>Binary</dt><dd>385 008 bytes · hash 27c0cb40…</dd></div>
+      <div><dt>Surface</dt><dd>17 instructions · 14 events · 25 errors (v2)</dd></div>
+      <div><dt>Binary</dt><dd>v2 hash 3b7722da… (not deployed; v1 27c0cb40… is on devnet)</dd></div>
       <div><dt>Source</dt><dd>programs/freightchain-pools</dd></div>
     </dl>
   </header>
 
   <section class="section" id="accounts">
     <span class="eyebrow">01 · Accounts</span>
-    <h2>Three account types and a vault</h2>
+    <h2>Four account types and a vault</h2>
+    <p class="col"><b>v2 – the pool day.</b> Each pool has a sale window (to <code>prep_deadline</code>, closed for Open and Active pools alike), a play window (to <code>play_deadline</code>) and a review window (to <code>payout_at</code>): no prize is paid and no Active pool closed before <code>payout_at</code>, by anyone. The admin writes one <code>Series</code> per tier and anyone opens the next pool from it on a fixed grid – the 1 h tier opens one a day (24 h sale, 2 h more rides, 48 h review). A payout key named by the admin may only <code>pay_prize</code> and <code>close_pool</code>. v2 accounts are larger, so v2 deploys under a fresh program id.</p>
     <p class="col">Every account is a PDA of this program, so its address follows from its seeds and nobody holds a private key for it. Pool fields other than <code>status</code> and the counters never change after <code>create_pool</code>. The vault's address is never stored; clients derive it.</p>
     <div class="tablewrap wide">
       <table>
         <thead><tr><th>Account</th><th>Seeds</th><th class="num">Size</th><th>Holds</th></tr></thead>
         <tbody>
-          <tr><th scope="row">Config</th><td><code>["config"]</code></td><td class="num">8 + 105</td><td><code>authority</code>, <code>platform_treasury</code>, <code>platform_fee_bps</code> u16, <code>pool_count</code> u32, <code>paused</code>, <code>bump</code>, <code>pending_authority</code> Option&lt;Pubkey&gt;</td></tr>
-          <tr><th scope="row">Pool</th><td><code>["pool", pool_id u32 LE]</code></td><td class="num">8 + 184</td><td>Rules: <code>tier</code>, <code>price_lamports</code>, <code>min_tickets</code>, <code>max_tickets</code> (0 = no cap), <code>max_per_wallet</code>, <code>prep_deadline</code>, <code>play_deadline</code>, <code>prize_bps</code> / <code>seed_bps</code> / <code>fee_bps</code>, <code>fee_treasury</code>, <code>seed_treasury</code>, <code>authority</code> (creator record). Counters: <code>status</code>, <code>tickets_sold</code>, <code>buyers</code>, <code>sponsored</code>, <code>prizes_paid</code>, <code>refunded</code>. Plus <code>created_at</code>, <code>bump</code>, <code>vault_bump</code>.</td></tr>
+          <tr><th scope="row">Config</th><td><code>["config"]</code></td><td class="num">8 + 138</td><td><code>authority</code>, <code>platform_treasury</code>, <code>platform_fee_bps</code> u16, <code>pool_count</code> u32, <code>paused</code>, <code>bump</code>, <code>pending_authority</code> Option&lt;Pubkey&gt;, <code>payout_authority</code> Option&lt;Pubkey&gt; (the payout key)</td></tr>
+          <tr><th scope="row">Series</th><td><code>["series", tier u8]</code></td><td class="num">8 + 132</td><td>One per tier: the rules every pool <code>open_next_pool</code> creates takes (<code>price_lamports</code>, min / max, <code>max_per_wallet</code>, the split, the treasuries), <code>sale_secs</code> (= cadence), <code>play_secs</code>, <code>verify_secs</code>, <code>enabled</code>, <code>next_open_at</code>, <code>pools_opened</code>, <code>last_pool_id</code>.</td></tr>
+          <tr><th scope="row">Pool</th><td><code>["pool", pool_id u32 LE]</code></td><td class="num">8 + 192</td><td>Rules: <code>tier</code>, <code>price_lamports</code>, <code>min_tickets</code>, <code>max_tickets</code> (0 = no cap), <code>max_per_wallet</code>, <code>prep_deadline</code>, <code>play_deadline</code>, <code>payout_at</code>, <code>prize_bps</code> / <code>seed_bps</code> / <code>fee_bps</code>, <code>fee_treasury</code>, <code>seed_treasury</code>, <code>authority</code> (creator record). Counters: <code>status</code>, <code>tickets_sold</code>, <code>buyers</code>, <code>sponsored</code>, <code>prizes_paid</code>, <code>refunded</code>. Plus <code>created_at</code>, <code>bump</code>, <code>vault_bump</code>.</td></tr>
           <tr><th scope="row">Ticket</th><td><code>["ticket", pool, buyer]</code></td><td class="num">8 + 79</td><td><code>buyer</code>, <code>rent_payer</code>, <code>pool_id</code>, <code>qty</code> u16, <code>lamports</code> u64, <code>bump</code>. One per wallet per pool. A refunded ticket is a closed account, so there is no refunded flag.</td></tr>
           <tr><th scope="row">vault</th><td><code>["vault", pool_id u32 LE]</code></td><td class="num">0</td><td>A system-owned account with no data that holds the escrow in lamports. Only the program can sign for it, with the pool's stored <code>vault_bump</code>.</td></tr>
         </tbody>
@@ -114,7 +116,7 @@
           <!-- Active -> Settled -->
           <line x1="575" y1="90" x2="734" y2="90" class="e-admin" marker-end="url(#a-ink)"/>
           <text x="655" y="78" text-anchor="middle" class="d-call t-ink">close_pool</text>
-          <text x="655" y="112" text-anchor="middle" class="d-note">after play_deadline</text>
+          <text x="655" y="112" text-anchor="middle" class="d-note">after payout_at</text>
 
           <!-- Open -> Refunding -->
           <polyline points="125,130 125,250 379,250" class="e-teal" marker-end="url(#a-teal)"/>
@@ -126,7 +128,7 @@
           <!-- Active -> Refunding -->
           <line x1="480" y1="130" x2="480" y2="214" class="e-teal" marker-end="url(#a-teal)"/>
           <text x="492" y="164" class="d-call t-teal">expire_pool</text>
-          <text x="492" y="182" class="d-note">play_deadline + 14 d, no prize paid</text>
+          <text x="492" y="182" class="d-note">payout_at + 14 d, no prize paid</text>
 
           <!-- Refunding -> Cancelled -->
           <line x1="575" y1="260" x2="734" y2="260" class="e-teal" marker-end="url(#a-teal)"/>
@@ -139,30 +141,33 @@
         <span><i class="l-teal"></i>anyone may call</span>
         <span><i class="l-admin"></i>admin (<code>config.authority</code>)</span>
       </div>
-      <figcaption><b>Active → Settled has a second door.</b> After <code>play_deadline + 14 days</code>, anyone may <code>close_pool</code> an Active pool if at least one prize was paid. With no prize paid, a permissionless close is refused with <code>MustExpire</code>, because it would sweep the whole prize share to the operator's seed treasury. That pool has to go through <code>expire_pool</code> and refund everyone.</figcaption>
+      <figcaption><b>Active → Settled has a second door.</b> After <code>payout_at + 14 days</code>, anyone may <code>close_pool</code> an Active pool if at least one prize was paid. With no prize paid, a permissionless close is refused with <code>MustExpire</code>, because it would sweep the whole prize share to the operator's seed treasury. That pool has to go through <code>expire_pool</code> and refund everyone.</figcaption>
     </figure>
   </section>
 
   <section class="section" id="instructions">
     <span class="eyebrow">03 · Instructions</span>
-    <h2>Fourteen instructions, by who signs</h2>
-    <p class="col">Admin rights come only from <code>config.authority</code>. <code>pool.authority</code> just records who created the pool, and it gets the vault's rent minimum back at close. Pausing blocks money coming in (<code>create_pool</code>, <code>buy_ticket</code>, <code>sponsor</code>). It never blocks refunds, prizes or closing.</p>
+    <h2>Seventeen instructions, by who signs</h2>
+    <p class="col">Admin rights come only from <code>config.authority</code>; the payout key (<code>config.payout_authority</code>) may sign <code>pay_prize</code> and <code>close_pool</code> and nothing else. <code>pool.authority</code> just records who created the pool, and it gets the vault's rent minimum back at close. Pausing blocks money coming in (<code>create_pool</code>, <code>open_next_pool</code>, <code>buy_ticket</code>, <code>sponsor</code>). It never blocks refunds, prizes or closing.</p>
     <div class="tablewrap wide">
       <table>
         <thead><tr><th>Instruction</th><th>Signer</th><th>Allowed when</th><th>Effect</th></tr></thead>
         <tbody>
           <tr class="group"><td colspan="4">Money in</td></tr>
-          <tr><th scope="row">buy_ticket<span class="args">(pool_id, qty, order_id[16])</span></th><td><span class="tag ply">buyer</span> + fee_payer</td><td>Not paused; Open before <code>prep_deadline</code> or Active before <code>play_deadline</code>; within <code>max_tickets</code> and <code>max_per_wallet</code></td><td>Buyer pays <code>price × qty</code> into the vault. Fee payer pays the Ticket rent, recorded as <code>rent_payer</code> on the first buy only. Reaching <code>min_tickets</code> makes the pool Active.</td></tr>
+          <tr><th scope="row">buy_ticket<span class="args">(pool_id, qty, order_id[16])</span></th><td><span class="tag ply">buyer</span> + fee_payer</td><td>Not paused; Open or Active, before <code>prep_deadline</code> (the sale window); within <code>max_tickets</code> and <code>max_per_wallet</code></td><td>Buyer pays <code>price × qty</code> into the vault. Fee payer pays the Ticket rent, recorded as <code>rent_payer</code> on the first buy only. Reaching <code>min_tickets</code> makes the pool Active.</td></tr>
           <tr><th scope="row">sponsor<span class="args">(pool_id, lamports)</span></th><td><span class="tag any">anyone</span></td><td>Same windows as buying; <code>lamports &gt; 0</code></td><td>Adds to <code>sponsored</code>, which is split like ticket money.</td></tr>
           <tr class="group"><td colspan="4">Cranks: anyone, rules fixed – the server's crank (<code>CRANK_SECRET</code>, <code>pool:crank</code>) sends these by the chain clock</td></tr>
           <tr><th scope="row">fail_pool<span class="args">(pool_id)</span></th><td><span class="tag any">anyone</span></td><td>Open, <code>now ≥ prep_deadline</code>, <code>tickets_sold &lt; min_tickets</code></td><td>Open → Refunding.</td></tr>
-          <tr><th scope="row">expire_pool<span class="args">(pool_id)</span></th><td><span class="tag any">anyone</span></td><td>Active, <code>now ≥ play_deadline + 14 d</code>, <code>prizes_paid == 0</code></td><td>Active → Refunding; every ticket comes back in full.</td></tr>
+          <tr><th scope="row">expire_pool<span class="args">(pool_id)</span></th><td><span class="tag any">anyone</span></td><td>Active, <code>now ≥ payout_at + 14 d</code>, <code>prizes_paid == 0</code></td><td>Active → Refunding; every ticket comes back in full.</td></tr>
           <tr><th scope="row">refund<span class="args">(pool_id)</span></th><td><span class="tag any">anyone</span></td><td>Refunding; the ticket still exists</td><td>The price goes to <code>ticket.buyer</code>, the rent to <code>ticket.rent_payer</code>, and the Ticket is closed. Both receivers are checked against the ticket. Eight fit in one transaction.</td></tr>
+          <tr><th scope="row">open_next_pool<span class="args">(tier)</span></th><td><span class="tag any">anyone</span></td><td>Not paused; the series enabled; <code>now ≥ next_open_at</code></td><td>Opens the pool of the current slot on the grid <code>next_open_at + k × sale_secs</code> from the series' rules (a missed slot is skipped, never shifted). The caller pays the rents and becomes the creator record. <code>next_open_at</code> moves to this pool's sale end.</td></tr>
           <tr><th scope="row">close_ticket<span class="args">(pool_id)</span></th><td><span class="tag any">anyone</span></td><td>Pool Settled</td><td>Ticket rent goes back to <code>rent_payer</code>.</td></tr>
-          <tr><th scope="row">close_pool<span class="args">(pool_id)</span></th><td><span class="tag adm">admin</span> <span class="tag any">anyone</span></td><td>Active: admin after <code>play_deadline</code>; anyone after +14 d if <code>prizes_paid &gt; 0</code>. Refunding: anyone, once <code>refunded == price × tickets_sold</code></td><td>Sweeps the vault to exactly 0 across the declared treasuries and the creator. The pool becomes Settled, or Cancelled if it was refunding.</td></tr>
+          <tr><th scope="row">close_pool<span class="args">(pool_id)</span></th><td><span class="tag adm">admin</span> payout key <span class="tag any">anyone</span></td><td>Active: admin or payout key after <code>payout_at</code>; anyone after +14 d if <code>prizes_paid &gt; 0</code>. Refunding: anyone, once <code>refunded == price × tickets_sold</code></td><td>Sweeps the vault to exactly 0 across the declared treasuries and the creator. The pool becomes Settled, or Cancelled if it was refunding.</td></tr>
           <tr class="group"><td colspan="4">Admin</td></tr>
-          <tr><th scope="row">create_pool<span class="args">(params)</span></th><td><span class="tag adm">admin</span></td><td>Not paused; <code>price ≥ rent_min</code>; <code>min ≥ 1</code>; <code>max_per_wallet ≥ 1</code>; <code>max == 0</code> or <code>max ≥ min</code>; <code>prep_deadline &gt; now</code>; <code>play_deadline ≥ prep_deadline</code> and at most 365 days out (<code>MAX_POOL_SECS</code>); the three bps values sum to 10 000; treasuries rent-exempt</td><td>New Pool with id <code>config.pool_count</code>. The admin funds the vault with exactly <code>rent_min</code>.</td></tr>
-          <tr><th scope="row">pay_prize<span class="args">(pool_id, lamports, rank)</span></th><td><span class="tag adm">admin</span></td><td>Active, <code>now ≥ play_deadline</code>, <code>prizes_paid + lamports ≤ prize_share</code>, the receiver ends rent-exempt</td><td>Vault → winner. The cap holds on chain; who the winner is comes from the server's ranking.</td></tr>
+          <tr><th scope="row">create_pool<span class="args">(params)</span></th><td><span class="tag adm">admin</span></td><td>Not paused; <code>price ≥ rent_min</code>; <code>min ≥ 1</code>; <code>max_per_wallet ≥ 1</code>; <code>max == 0</code> or <code>max ≥ min</code>; <code>prep_deadline &gt; now</code>; <code>play_deadline ≥ prep_deadline</code>; <code>payout_at ≥ play_deadline</code> and at most 365 days out (<code>MAX_POOL_SECS</code>); the three bps values sum to 10 000; treasuries rent-exempt</td><td>New Pool with id <code>config.pool_count</code>. The admin funds the vault with exactly <code>rent_min</code>.</td></tr>
+          <tr><th scope="row">set_series<span class="args">(params)</span></th><td><span class="tag adm">admin</span></td><td>The <code>create_pool</code> money rules; 1 h ≤ <code>sale_secs</code> ≤ 30 d; play / verify ≥ 0; the whole span ≤ 365 d; <code>start_at</code> for a new series</td><td>Writes (or rewrites) a tier's schedule. Pools already open keep their rules.</td></tr>
+          <tr><th scope="row">set_payout_authority<span class="args">(key?)</span></th><td><span class="tag adm">admin</span></td><td>Not the default key</td><td>Names or clears the payout key.</td></tr>
+          <tr><th scope="row">pay_prize<span class="args">(pool_id, lamports, rank)</span></th><td><span class="tag adm">admin</span> payout key</td><td>Active, <code>now ≥ payout_at</code>, <code>prizes_paid + lamports ≤ prize_share</code>, the receiver ends rent-exempt</td><td>Vault → winner. The cap holds on chain; who the winner is comes from the server's ranking.</td></tr>
           <tr><th scope="row">cancel_pool<span class="args">(pool_id)</span></th><td><span class="tag adm">admin</span></td><td>Open only</td><td>Open → Refunding.</td></tr>
           <tr><th scope="row">set_config<span class="args">(paused?, platform_treasury?, platform_fee_bps?)</span></th><td><span class="tag adm">admin</span></td><td>Any time; a new treasury must be rent-exempt</td><td>Pause switch, platform treasury and cut.</td></tr>
           <tr><th scope="row">propose_authority<span class="args">(new)</span></th><td><span class="tag adm">admin</span></td><td>New key not the default key</td><td>Sets <code>pending_authority</code>.</td></tr>
@@ -176,13 +181,13 @@
   <section class="section" id="windows">
     <span class="eyebrow">04 · Deadlines</span>
     <h2>What each stretch of a pool's life allows</h2>
-    <p class="col">A pool has two deadlines fixed at creation, plus the 14-day <code>SETTLE_GRACE_SECS</code> written into the program. An Open pool past its prep deadline is below its minimum by definition, so the only thing left for it is to fail.</p>
+    <p class="col">A pool has three deadlines fixed at creation (sale end, play deadline, payout time), plus the 14-day <code>SETTLE_GRACE_SECS</code> written into the program. An Open pool past its prep deadline is below its minimum by definition, so the only thing left for it is to fail.</p>
     <div class="tablewrap wide windows">
       <table>
-        <thead><tr><th>Pool is</th><th>until prep_deadline</th><th>prep → play_deadline</th><th>play_deadline → +14 d</th><th>after +14 d</th></tr></thead>
+        <thead><tr><th>Pool is</th><th>until prep_deadline</th><th>prep → payout_at</th><th>payout_at → +14 d</th><th>after +14 d</th></tr></thead>
         <tbody>
           <tr><th scope="row">Open</th><td>buy · sponsor · cancel</td><td>fail_pool · cancel</td><td>fail_pool · cancel</td><td>fail_pool · cancel</td></tr>
-          <tr><th scope="row">Active</th><td>buy · sponsor</td><td>buy · sponsor</td><td>pay_prize · close_pool <span class="no">(admin)</span></td><td>admin as before · anyone: <code>close_pool</code> if a prize was paid, else <code>expire_pool</code></td></tr>
+          <tr><th scope="row">Active</th><td>buy · sponsor</td><td>rides count to play_deadline, then review – nothing moves</td><td>pay_prize · close_pool <span class="no">(admin, payout key)</span></td><td>admin as before · anyone: <code>close_pool</code> if a prize was paid, else <code>expire_pool</code></td></tr>
           <tr><th scope="row">Refunding</th><td colspan="4">refund (anyone, any time) → close_pool (anyone, once all refunded)</td></tr>
         </tbody>
       </table>
@@ -261,7 +266,7 @@ close_pool (Active) pays, vault ends at 0:
       <table>
         <thead><tr><th>Event</th><th>Fields</th></tr></thead>
         <tbody>
-          <tr><th scope="row">PoolCreated</th><td class="mono">pool_id, pool, vault, authority, tier, price_lamports, min_tickets, max_tickets, max_per_wallet, prep_deadline, play_deadline, prize_bps, seed_bps, fee_bps, fee_treasury, seed_treasury</td></tr>
+          <tr><th scope="row">PoolCreated</th><td class="mono">pool_id, pool, vault, authority, tier, price_lamports, min_tickets, max_tickets, max_per_wallet, prep_deadline, play_deadline, payout_at, prize_bps, seed_bps, fee_bps, fee_treasury, seed_treasury, from_series</td></tr>
           <tr><th scope="row">TicketBought</th><td class="mono">pool_id, buyer, qty, lamports, order_id[16], tickets_sold, activated</td></tr>
           <tr><th scope="row">PoolActivated</th><td class="mono">pool_id, tickets_sold, at</td></tr>
           <tr><th scope="row">Sponsored</th><td class="mono">pool_id, sponsor, lamports, sponsored_total</td></tr>
@@ -271,6 +276,8 @@ close_pool (Active) pays, vault ends at 0:
           <tr><th scope="row">PoolClosed</th><td class="mono">pool_id, prize_paid, seed, fee, platform_fee, unclaimed, rent_returned, cancelled</td></tr>
           <tr><th scope="row">AuthorityProposed</th><td class="mono">authority, pending_authority</td></tr>
           <tr><th scope="row">AuthorityChanged</th><td class="mono">old_authority, new_authority</td></tr>
+          <tr><th scope="row">SeriesSet</th><td class="mono">tier, enabled, price_lamports, min_tickets, max_tickets, max_per_wallet, sale_secs, play_secs, verify_secs, prize_bps, seed_bps, fee_bps, fee_treasury, seed_treasury, next_open_at</td></tr>
+          <tr><th scope="row">PayoutAuthoritySet</th><td class="mono">authority, payout_authority (Option)</td></tr>
         </tbody>
       </table>
     </div>
@@ -286,7 +293,7 @@ close_pool (Active) pays, vault ends at 0:
       <div><b>6008</b><span>WalletCap</span></div><div><b>6009</b><span>TooLate</span></div><div><b>6010</b><span>TooEarly</span></div><div><b>6011</b><span>NotFailable</span></div>
       <div><b>6012</b><span>NotRefunding</span></div><div><b>6013</b><span>AlreadyRefunded</span></div><div><b>6014</b><span>PoolNotActive</span></div><div><b>6015</b><span>NotSettled</span></div>
       <div><b>6016</b><span>PrizeExceedsShare</span></div><div><b>6017</b><span>BelowRentMin</span></div><div><b>6018</b><span>RefundsPending</span></div><div><b>6019</b><span>AccountMismatch</span></div>
-      <div><b>6020</b><span>MathOverflow</span></div><div><b>6021</b><span>PrizesAlreadyPaid</span></div><div><b>6022</b><span>NoPendingAuthority</span></div><div><b>6023</b><span>MustExpire</span></div>
+      <div><b>6020</b><span>MathOverflow</span></div><div><b>6021</b><span>PrizesAlreadyPaid</span></div><div><b>6022</b><span>NoPendingAuthority</span></div><div><b>6023</b><span>MustExpire</span></div><div><b>6024</b><span>SeriesDisabled</span></div>
     </div>
     <div class="tablewrap mid">
       <table>

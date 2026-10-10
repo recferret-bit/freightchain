@@ -67,8 +67,8 @@ A wallet listed in `DEMO_WALLETS` drives a paid shift `DEMO_SCALE` times shorter
 | Server-rebuilt road and hole checks | Yes | The whitepaper still says "next deploy" |
 | Live watch, replays, CB chat, devnet tips to the driver | Yes | Live. Effects run on free rides only |
 | Garage, promo codes | Yes | Lobby tabs. Cosmetics are colours |
-| Escrow program | Yes. 14 instructions, 12 events, 24 errors | On devnet, initialized. The website is still `PAYMENT_MODE=transfer` |
-| Prize payouts from a pool vault | `pay_prize` is in the program. The admin page has no payout button | After the results, on an explicit switch |
+| Escrow program | v1 on devnet, initialized. v2 (one pool a day, a payout key, a review window) on branch `pool-series`: 17 instructions, 14 events, 25 errors | v2 is not deployed; it needs a fresh program id. The website is still `PAYMENT_MODE=transfer` |
+| Prize payouts from a pool vault | v2: the server's payout job pays the verified top 20 after the 48 h review, once every ride of the pool is decided; an admin can HOLD it | After the results, on an explicit switch |
 | Token, mainnet, captcha, NFT badges | No | No |
 
 Production stays on the transfer path until the Colosseum results, the devnet exit list, and an explicit deploy. That rule is [`docs/escrow-open-items.md`](docs/escrow-open-items.md) (Q-K, Q-L). The top of that file still says "nothing deployed"; Phase 1 below it records the 8 Oct deploy. The explorer is the check.
@@ -81,7 +81,8 @@ Production stays on the transfer path until the Colosseum results, the devnet ex
 - **Prizes are capped on chain.** `pay_prize` refuses once `prizes_paid` would pass the prize share. The 25 / 15 / 10 ranking is server policy inside that cap. The program does not hard-code the ranks.
 - **Integer lamports.** One shared table pins the server and the program. [`server/src/domain/economy/vault-split.ts`](server/src/domain/economy/vault-split.ts) · [`server/test/fixtures/chain/vault-split-cases.json`](server/test/fixtures/chain/vault-split-cases.json)
 - **The buyer pays the fee.** `buy_ticket` has a separate fee-payer account. The server sets it to the buyer. There is no gas-sponsor key on the server. A leftover `FEE_PAYER_SECRET` is ignored.
-- **The crank key is not the admin.** `CRANK_SECRET` sends only `fail_pool`, `expire_pool`, `refund`, and `close_pool`. It never sends `pay_prize`.
+- **The crank key is not the admin.** `CRANK_SECRET` sends only `open_next_pool` (v2), `fail_pool`, `expire_pool`, `refund`, and `close_pool`. It never sends `pay_prize`.
+- **The payout key can only pay (v2).** `set_payout_authority` names a key that may sign `pay_prize` (capped) and `close_pool`, and only after the pool's review window `payout_at`. Not even the admin pays earlier. The server holds it as `PAYOUT_SECRET` and pays only verified rides, once every ride of the pool is decided.
 - **Verifiable build.** `npm run program:verify` rebuilds in the Solana Foundation image and compares the hash to [`programs/freightchain-pools/verifiable-build.hash`](programs/freightchain-pools/verifiable-build.hash). The explorer "verified" badge needs a public repo and a signed PDA. That step is still open.
 - **Not audited.** Devnet only. `deploy` refuses an RPC whose genesis is not devnet.
 
@@ -292,7 +293,8 @@ Anchor program `freightchain_pools`. One program, many pools. Each pool is its o
 | Account | Seeds | Role |
 | --- | --- | --- |
 | Config | `["config"]` | Admin, platform treasury, fee bps, pool count, pause |
-| Pool | `["pool", id]` | Immutable rules and counters. 184 bytes |
+| Pool | `["pool", id]` | Immutable rules and counters. 192 bytes in v2 (`payout_at` added) |
+| Series (v2) | `["series", tier]` | One schedule per tier. Anyone opens the next pool from it |
 | Ticket | `["ticket", pool, buyer]` | One buyer per pool. A refund closes it |
 | Vault | `["vault", id]` | Zero-data PDA. The escrow |
 
@@ -300,22 +302,22 @@ Status bytes: Open, Active, Refunding, Settled, Cancelled.
 
 ```mermaid
 stateDiagram-v2
-  [*] --> Open: create_pool
+  [*] --> Open: create_pool or open_next_pool
   Open --> Active: buy_ticket once sold reaches the minimum
   Open --> Refunding: fail_pool after the prep deadline if under the minimum
   Open --> Refunding: cancel_pool by the admin
-  Active --> Refunding: expire_pool 14 days after the play deadline if no prize was paid
-  Active --> Settled: close_pool after the play deadline
+  Active --> Refunding: expire_pool 14 days after payout_at if no prize was paid
+  Active --> Settled: close_pool after payout_at
   Refunding --> Cancelled: close_pool once every ticket is refunded
 ```
 
-- `buy_ticket` and `sponsor` are refused on an Open pool from the prep deadline on. That is a sales cutoff. The status byte stays Open until someone fails or cancels it.
-- `config.authority` may `close_pool` any time after the play deadline. Anyone else, after the 14-day grace, may close an active pool only if a prize was already paid. Otherwise the instruction returns `MustExpire`.
+- `buy_ticket` and `sponsor` are refused from the prep deadline on – in v2 for an Active pool too. That is the sale window. The status byte of an Open pool stays Open until someone fails or cancels it.
+- `config.authority` (and in v2 the payout key) may `close_pool` any time after `payout_at` (v1: the play deadline). Anyone else, after the 14-day grace, may close an active pool only if a prize was already paid. Otherwise the instruction returns `MustExpire`.
 - Pausing blocks create, buy, and sponsor. It does not block refunds, prizes, or the crank.
 - Authority rotation is two steps: `propose_authority`, then `accept_authority` by the new key.
 - The server mirrors accounts. The chain wins on a disagreement. Tickets are credited from program events: the confirm path, the log watcher, and `POST /api/chain/webhook`.
 
-Instructions, accounts, the money maths, and the 24 errors: [`programs/freightchain-pools/README.md`](programs/freightchain-pools/README.md). The same spec as a page: [`docs/pool-program/index.html`](docs/pool-program/index.html).
+Instructions, accounts, the money maths, and the errors: [`programs/freightchain-pools/README.md`](programs/freightchain-pools/README.md). The same spec as a page: [`docs/pool-program/index.html`](docs/pool-program/index.html).
 
 [`docs/escrow-open-items.md`](docs/escrow-open-items.md) records the 8 Oct deploy: `initialize` with a platform fee of 0, deployed bytes matching the pin, and the rehearsal pools closed. The public RPC on 10 Oct 2026 still returns the program account and the 113-byte Config. Phase 2, a Phantom buy against a server pointed at devnet, is still open.
 
