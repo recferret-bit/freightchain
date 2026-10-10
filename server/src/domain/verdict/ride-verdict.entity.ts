@@ -1,22 +1,12 @@
 import type { Ride } from '../rides/ride.entity.js';
 import type { BatchFacts } from '../telemetry/ride-batch.entity.js';
+import { checkChallenges, type ChallengeScores } from './challenge-checks.js';
 import { checkHumanTiming, type HumanScores } from './human-checks.js';
 import { checkAgreement, checkChain, checkInputsPresent, checkSamples, recordingScores, type RecordingScores } from './recording-checks.js';
 import { RULES_VERSION } from './verdict-rules.js';
 import { checkWorld, type WorldScores } from './world-checks.js';
 import { ConflictError } from '../shared/errors.js';
 import { VerdictStatus, type VerdictDecision, type VerdictDto, type VerdictReason } from './verdict.dto.js';
-
-/** Old verdicts stored how the dispatch prompts were answered. Rules v4 always writes zeros; a restored row keeps what was stored. */
-export interface ChallengeScores {
-  issued: number;
-  answered: number;
-  missed: number;
-  tooFast: number;
-  medianReactionMs: number | null;
-}
-
-export const EMPTY_CHALLENGES: ChallengeScores = { issued: 0, answered: 0, missed: 0, tooFast: 0, medianReactionMs: null };
 
 export interface VerdictScores {
   recording: RecordingScores;
@@ -47,7 +37,7 @@ export class RideVerdict {
   private constructor(private readonly p: RideVerdictProps) {}
 
   /** Judge the ride from what is stored – always the whole recording (its batches' facts: chain columns + summaries), so judging again (a late batch)
-      gives the up-to-date answer. Prompts stored on older rides are not scored (rules v4). */
+      gives the up-to-date answer. The dispatch prompts the ride issued are judged against the recording's input events. */
   static judge(ride: Ride, batches: readonly BatchFacts[], now: Date): RideVerdict {
     const facts = { rideId: ride.id, driveSeconds: ride.driveSeconds, distance: ride.distance };
     const ordered = [...batches].sort((a, b) => a.seq - b.seq);
@@ -56,12 +46,14 @@ export class RideVerdict {
     const agreement = checkAgreement(facts, ordered);
     const inputs = ordered.flatMap((b) => b.summary.inputs);
     const human = checkHumanTiming(inputs);
+    const endMs = ride.endedAt && ride.startedAt ? ride.endedAt.getTime() - ride.startedAt.getTime() : Number.POSITIVE_INFINITY;
+    const challenges = checkChallenges(ride.challenges, inputs, endMs);
     const world = checkWorld(ordered);
-    const reasons = ordered.length === 0 ? chain : [...chain, ...samples.reasons, ...agreement.reasons, ...checkInputsPresent(facts, ordered), ...human.reasons, ...world.reasons];
+    const reasons = ordered.length === 0 ? chain : [...chain, ...samples.reasons, ...agreement.reasons, ...checkInputsPresent(facts, ordered), ...human.reasons, ...challenges.reasons, ...world.reasons];
     const status = reasons.some((r) => r.severity === 'reject') ? VerdictStatus.Rejected : reasons.length ? VerdictStatus.Flagged : VerdictStatus.Verified;
     return new RideVerdict({
       rideId: ride.id, status, reasons, rulesVersion: RULES_VERSION, judgedAt: now, version: 1, overriddenBy: null, overriddenAt: null, note: null,
-      scores: { recording: recordingScores(ordered, agreement.recordedSeconds, agreement.coverage, samples.maxSpeed), human: human.scores, challenges: EMPTY_CHALLENGES, world: world.scores },
+      scores: { recording: recordingScores(ordered, agreement.recordedSeconds, agreement.coverage, samples.maxSpeed), human: human.scores, challenges: challenges.scores, world: world.scores },
     });
   }
 

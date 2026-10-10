@@ -160,12 +160,41 @@ describe('Ride – finishing', () => {
   });
 });
 
-describe('Ride – stored dispatch prompts', () => {
-  it('a new ride stores none; an old row still round-trips the prompts it already held', () => {
-    expect(freeRide().snapshot()).toMatchObject({ challenges: [], nextChallengeAt: null });
-    const old = [{ id: 'c0', action: 'cab' as const, issuedMs: 1, deadlineMs: 2 }];
-    const kept = Ride.restore({ ...running().snapshot(), challenges: old, nextChallengeAt: 12 });
-    expect(kept.snapshot()).toMatchObject({ challenges: old, nextChallengeAt: 12 });
+describe('Ride – dispatch prompts', () => {
+  const drive = (r: Ride, t: number) => r.applyReport(report({ s: t * 14, t }), at(t), rules);
+
+  it('schedules the first prompt on the first call, issues it once the drive clock reaches it, then draws the next 0.6–1.4 intervals ahead', () => {
+    const r = Ride.createFree({ id: 'ride-1', wallet: 'w', seed: 7, minSeconds: 1800, now: T0 }); // interval = min(240, 1800 / 4) = 240 s
+    r.start(T0);
+    drive(r, 10);
+    expect(r.issueChallenge(at(10), 240, { id: 'c1', rnd: 0 })).toBeNull(); // scheduled at 120 s (0.5 × 240)
+    expect(r.snapshot().nextChallengeAt).toBe(120);
+    drive(r, 110);
+    expect(r.issueChallenge(at(110), 240, { id: 'c1', rnd: 0 })).toBeNull();
+    drive(r, 130);
+    const c = r.issueChallenge(at(130), 240, { id: 'c1', rnd: 0.3 });
+    expect(c).toEqual({ id: 'c1', action: 'wipers', issuedMs: 130_000, deadlineMs: 150_000 });
+    expect(r.challenges).toEqual([c]);
+    expect(r.snapshot().nextChallengeAt).toBeCloseTo(130 + 240 * (0.6 + 0.8 * 0.3));
+    expect(r.openChallenge(at(140))).toEqual(c);
+    expect(r.openChallenge(at(151))).toBeNull();
+  });
+
+  it('no prompts while paused, with the interval at 0, before the start, once ended, or past the cap', () => {
+    const r = running();
+    r.applyReport(report({ s: 20, t: 2 }), at(2), rules);
+    expect(r.issueChallenge(at(2), 0, { id: 'x', rnd: 0 })).toBeNull();
+    r.issueChallenge(at(2), 240, { id: 'x', rnd: 0 }); // scheduled at 1.25 s (interval 2.5 for a 10 s shift)
+    r.applyReport(report({ s: 40, t: 4, paused: true }), at(4), rules);
+    expect(r.issueChallenge(at(4), 240, { id: 'x', rnd: 0 })).toBeNull();
+    r.applyReport(report({ s: 60, t: 6 }), at(6), rules);
+    expect(r.issueChallenge(at(6), 240, { id: 'x', rnd: 0 })).not.toBeNull();
+    r.finish('failed', 'crash', at(7));
+    expect(r.issueChallenge(at(8), 240, { id: 'y', rnd: 0 })).toBeNull();
+    expect(r.openChallenge(at(8))).toBeNull();
+    expect(freeRide().issueChallenge(at(1), 240, { id: 'z', rnd: 0 })).toBeNull();
+    const capped = Ride.restore({ ...running().snapshot(), driveSeconds: 1e6, nextChallengeAt: 0, challenges: Array.from({ length: 200 }, (_, i) => ({ id: `c${i}`, action: 'cab' as const, issuedMs: i, deadlineMs: i + 1 })) });
+    expect(capped.issueChallenge(at(1), 240, { id: 'over', rnd: 0 })).toBeNull();
   });
 });
 

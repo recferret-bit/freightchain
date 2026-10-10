@@ -23,6 +23,7 @@ import { selectTheme, savedThemeId } from './world/theme-manager.js';
 import { THEMES } from './themes/index.js';
 import { initOnline, online } from './online.js';
 import { tickTelemetry, telemetry } from './telemetry.js';
+import { prompt } from './prompt.js';
 import { initWatch, startWatch, stepWatch, watch } from './watch.js';
 import { roadPlan, followRoadPlan, updateRoadPlan } from './road-plan.js';
 import { mountWatchPanel } from './ui/watch-panel.js';
@@ -62,6 +63,6 @@ if (await initWatch()) {   // only with ?watch=<id> (see watch.js): the watched 
   mountWatchPanel();
 } else { resize(); resetRide(); showMenu('FREIGHT CHAIN', 'Long-haul truck simulator'); }
 requestAnimationFrame(frame);
-window.__game = { trip, setTrip, audio, cosmetics, online, telemetry, watch, roadPlan, liveFeed, radio, roadObjects, chunks, spacing, roads, net, st, disp, CFG, Wallet, input, tryShift, ignition, startRide, curv, spawn, traffic: cars, selectTheme, THEMES, setNight, setPhase, setClock, dn, weather, uiBtns, inputBits, holes: { HOLES, holeAt, holesNear, clearHoleCache, plan, flagged } };   // handy for console debugging
+window.__game = { trip, setTrip, audio, cosmetics, online, telemetry, prompt, watch, roadPlan, liveFeed, radio, roadObjects, chunks, spacing, roads, net, st, disp, CFG, Wallet, input, tryShift, ignition, startRide, curv, spawn, traffic: cars, selectTheme, THEMES, setNight, setPhase, setClock, dn, weather, uiBtns, inputBits, holes: { HOLES, holeAt, holesNear, clearHoleCache, plan, flagged } };   // handy for console debugging
 
  

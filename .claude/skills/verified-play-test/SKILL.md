@@ -1,13 +1,14 @@
 ---
 name: verified-play-test
-description: The anti-bot / anti-cheat end to end, positive and negative: a person and a bot in Chrome (verified / flagged on input timing), API-level bots with hand-built recordings (every verdict code), the server's road, the upload protocol, the admin's signed decisions, the profile in Chrome, retention + the CLI's bulk re-judge. Use after touching client/js/telemetry.js, online.js, the server's verdict / telemetry / rides domain, the heartbeat, the batch upload, verdict-rules.ts, the retention sweeps, or when asked to test the anti-cheat, test verified play, or /verified-play-test.
+description: Test Freight Chain's anti-bot / anti-cheat (verified play) end to end, positive AND negative – a person and a metronome bot driving in real headless Chrome (dispatch prompts answered / ignored), API-level bots with hand-built recordings for EVERY verdict code (no inputs, instant prompt answers, a teleport, a speed over the governor, a batch edited after hashing, an unhashed batch, a broken chain link, a hole in the seqs, a recording that does not match / cover the ride, steering without gas, malformed samples, scripted timing, a coarse timer, batches sent after /end), the SERVER's road (an honest driver and one with the holes taken out of its game, in Chrome, a spectator's replay of both, the ride-audit tool), the upload protocol (401 / 404 / 409 / 400), who may see a verdict, the admin's signed decisions on a flagged ride, the lobby profile in Chrome, and the retention sweep + the CLI's bulk re-judge on the database – against a freshly built server on a throwaway database. Use after touching client/js/telemetry.js, prompt.js, online.js, the server's verdict / telemetry / rides domain, the heartbeat, the batch upload, verdict-rules.ts, the retention sweeps, or when asked to "test the anti-cheat", "test verified play", "test the prompts", or /verified-play-test.
 ---
 
 # Verified play – the anti-cheat, positive and negative
 
 What it covers (how the checks work: `docs/verified-play/index.html`; the thresholds: `server/src/domain/verdict/verdict-rules.ts`; the status page: `docs/verified-play-next-steps.md`):
 the recording (hash-chained batches, the server's own hashes, bounds, agreement with the ride, coverage, the per-ride time / batch / byte budgets),
-the human-timing statistics (flags only), the admin's hand on the review queue, the retention sweep, and the CLI that re-judges old rides after a rules change – and **the server's road**: the road and its holes rebuilt from the ride seed
+the human-timing statistics (flags only), the **dispatch prompts** – the server asks for a key through the heartbeat ("FLASH YOUR HEADLIGHTS · PRESS L"),
+the recording must show it pressed within 20 s; most prompts ignored rejects, instant answers flag – the admin's hand on the review queue, the retention sweep, and the CLI that re-judges old rides after a rules change – and **the server's road**: the road and its holes rebuilt from the ride seed
 (`server/src/domain/road`), handed to the game as its obstacle plan, every batch measured against it (`obstacle-ignored` / `obstacle-no-impact`, `offroad-ignored`,
 `accel-without-gas`), replays drawing the server's holes with the NO IMPACT marks.
 
@@ -15,7 +16,7 @@ the human-timing statistics (flags only), the admin's hand on the review queue, 
 
 ```sh
 bash .claude/skills/verified-play-test/run.sh              # ≈ 15 min: e2e.sh verified verified-deep road browser close
-bash .claude/skills/run-tests/e2e.sh verified             # a person and a bot (≈ 3 min)
+bash .claude/skills/run-tests/e2e.sh verified             # prompts (≈ 3 min)
 bash .claude/skills/run-tests/e2e.sh verified-deep        # every verdict code, protocol, admin, profile, retention (≈ 2.5 min)
 bash .claude/skills/run-tests/e2e.sh road                 # the server's road: honest vs holes-removed driver, the replay, the audit (≈ 6 min)
 ```
@@ -23,15 +24,15 @@ bash .claude/skills/run-tests/e2e.sh road                 # the server's road: h
 `e2e.sh` builds the server and the landing into private copies, creates a throwaway database (dropped at the end, also on failure), starts the server (a
 fresh one per suite) and runs the script. Headless Chrome runs the game at ~0.4× wall time, so the API drivers keep their own clock (a 30 / 40 s shift in wall time).
 
-### `verified` – a person and a bot (`server/scripts/e2e-verified-play.mjs`)
-Server: `FREE_RIDE_SECONDS=40`. Four groups AT ONCE. The free run ends itself at the finish line. Heartbeats carry `challenge: null`.
-- **A. a person in Chrome** – real CDP key events with jittered holds and gaps → `COMPLETED · VERIFIED`. Screenshot `human-done.png`.
-- **B. a bot in Chrome** – the same hold and gap every time → `FLAGGED` on `uniform-holds` or `repeated-timings`; the end panel says `COMPLETED · FLAGGED`. Screenshot `bot-done.png`.
-- **C. API bots** – `clean` verified · `no-inputs` · `teleport` · `over-governor` · `tampered` · `unhashed` (flag only) · `wrong-link` · the byte budget (400 `bad_batch`, does not complete).
-- **D. the CLI** – `verdict:rejudge --dry-run` expects `scanned >= 9` (7 API completes + 2 Chrome) / a real run / `--status flagged`, `retention:sweep`.
+### `verified` – the dispatch prompts (`server/scripts/e2e-verified-play.mjs`)
+Server: `FREE_RIDE_SECONDS=40 CHALLENGE_INTERVAL_SECONDS=8` – a prompt about every other heartbeat (the interval is capped at a quarter of the shift). Four groups AT ONCE:
+- **A. a person in Chrome** – real CDP key events with jittered holds and gaps; `answerPrompts` (`client/tools/cdp.mjs`) presses the prompt's key 0.4–1.2 s after the banner shows → `COMPLETED · VERIFIED`. Screenshot `human-prompt.png`.
+- **B. a bot in Chrome** – the same hold and gap every time, never reads the banner → `REJECTED` + `challenges-ignored` + the timing flags; the end panel says so.
+- **C. API bots** – `clean` verified · `no-inputs` · `instant-answers` (8 ms) → flagged `challenge-reflex` only · `teleport` · `over-governor` · `tampered` · `unhashed` (flag only) · `wrong-link` · the byte budget (400 `bad_batch`).
+- **D. the CLI** – `verdict:rejudge --dry-run` / real / `--status flagged`, `retention:sweep`.
 
 ### `verified-deep` – everything else (`server/scripts/e2e-verified-deep.mjs`)
-Server: `FREE_RIDE_SECONDS=30 ADMIN_WALLETS=<a generated admin>`. The reason codes are compared as a SET, so "nothing else wrong" is part of every case. One check asserts no verdict reason code starts with `challenge`.
+Server: `FREE_RIDE_SECONDS=30 CHALLENGE_INTERVAL_SECONDS=0 ADMIN_WALLETS=<a generated admin>` – prompts OFF so each check is judged alone; the reason codes are compared as a SET, so "nothing else wrong" is part of every case.
 - **A. 16 shifts at once** (`drive()` builds the recording by hand, in the game's own batch shape + hash chain):
 
 | case | verdict | reason codes |
@@ -55,7 +56,7 @@ Server: `FREE_RIDE_SECONDS=30 ADMIN_WALLETS=<a generated admin>`. The reason cod
 - **F. retention + bulk re-judge on the database** – rides aged 120 days by SQL: `retention:sweep` deletes verified + rejected recordings, keeps flagged ones and a completed shift that has no verdict, is idempotent, keeps ride rows + verdicts; a swept ride's watch page opens without batches; the admin's RE-JUDGE on it is 409 `recording_deleted`; `verdict:rejudge` skips exactly the swept ones, changes a verdict edited back to "old rules" (verified → flagged), judges the one with no verdict (null → verified); `--status flagged` narrows.
 
 ### `road` – the server's road (`server/scripts/e2e-road-check.mjs`)
-Server: `FREE_RIDE_SECONDS=30`. Two Chromes drive at once, cruising the right-hand lane at 22 m/s (the test pins speed and lane; real key presses go
+Server: `FREE_RIDE_SECONDS=30 CHALLENGE_INTERVAL_SECONDS=0`. Two Chromes drive at once, cruising the right-hand lane at 22 m/s (the test pins speed and lane; real key presses go
 down too) until they have driven through the first two planned sinkholes in that lane (from `GET /api/watch/:id/road`):
 - **A. honest** – the game loads the server's plan (0 mismatches with its own roll), takes the damage (hull ≈ 62 %) → `COMPLETED · VERIFIED`.
 - **B. cheater** – an injected script takes the holes out of its game (the plan follower stopped, `CFG.HOLES` off, the cache cleared): no hole on its screen, hull 100 % → `COMPLETED · REJECTED` `obstacle-ignored` naming both holes.
@@ -67,7 +68,7 @@ holes' damage like the game (`server/scripts/road-damage.mjs`) – a bot that di
 
 ## What to look at
 
-- `$TMPDIR/fc-verified-shots/human-done.png` / `bot-done.png`: the end panel's verdict line (`COMPLETED · VERIFIED` / `COMPLETED · FLAGGED`).
+- `$TMPDIR/fc-verified-shots/human-prompt.png` – the amber DISPATCH banner on the windscreen with the key and the time bar: readable at a glance? `human-done.png` / `bot-done.png`: the end panel's verdict line.
 - `$TMPDIR/fc-verified-deep-shots/profile-*.png` – the lobby profile's verdict chips.
 - `$TMPDIR/fc-road-shots/replay-no-impact.png` – the cheater's replay: the server's sinkhole ringed red on the road, the NO IMPACT stamp, the red ROAD CHECK line and timeline marks; `cheat-driving.png` – the same stretch on the cheater's own screen (no holes); `replay-honest.png`.
 - The server log (`/tmp/fc-e2e-<db>.log`): one `verdict` line per ride with its reason codes; `batch-refused` for refused uploads.
@@ -83,7 +84,8 @@ Sensitivity was proved by mutation: loosening `HOLD_CV_MIN` to 0 and `COVERAGE_R
 
 `verdict-rules.ts` → bump `RULES_VERSION`, run `npm run server:test`, then re-judge what is already judged: `node dist/cli/index.js verdict:rejudge --dry-run`
 (production: `docker compose exec app node dist/cli/index.js verdict:rejudge --status flagged` from `/srv/freightchain` – only after the user asks).
-`prod-db` has the queries (`reasons`, `scores`) to see which checks fire on real rides. Thresholds live in `verdict-rules.ts`.
+`prod-db` has the queries (`reasons`, `scores`) to see which checks fire on real rides. Dispatch prompts: `CHALLENGE_INTERVAL_SECONDS` (240 s;
+0 = off), window 20 s, reject when ≥ 50 % of ≥ 3 prompts are ignored, flag when the median reaction is under 80 ms.
 
 ## Related skills
 
@@ -92,4 +94,5 @@ Sensitivity was proved by mutation: loosening `HOLD_CV_MIN` to 0 and `COVERAGE_R
 ## Report
 
 Say which checks passed (`ok`) and failed (`FAIL`, with the server log path), that the harness drives its own clock (headless Chrome runs the game at ~0.4×),
-and what still needs a person: real Phantom on `ride.*`, real rides for the threshold tuning, the paid boards (they need paid tickets – only the free board is checked here).
+and what still needs a person: real Phantom on `ride.*`, real rides for the threshold tuning, the paid boards (they need paid tickets – only the free board is checked here),
+and whether the banner is noticeable while actually driving.

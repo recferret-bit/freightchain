@@ -22,7 +22,7 @@ export class EnvRulesConfigAdapter extends RulesConfigPort {
       orderTtlMs: env.orderTtlMs, commitment: env.solanaCommitment, sponsorEnabled: env.feePayerSecret !== undefined, crankEnabled: env.crankSecret !== undefined,
       sponsorPerWalletPerDay: env.sponsorPerWalletPerDay, priorityFee: env.priorityFee,
       sessionTtlHours: env.onchainSessionTtlHours,
-      verdictEnforce: env.verdictEnforce, telemetryRetentionDays: env.telemetryRetentionDays, signInRetentionDays: env.signInRetentionDays, live: env.liveFlags,
+      verdictEnforce: env.verdictEnforce, telemetryRetentionDays: env.telemetryRetentionDays, signInRetentionDays: env.signInRetentionDays, challengeIntervalSeconds: env.challengeIntervalSeconds, challengeFreeRides: env.challengeFreeRides, live: env.liveFlags,
       gameDomain: env.gameHost, gameOrigin: env.gameHost ? `${new URL(env.appOrigin).protocol}//${env.gameHost}` : null,
       adminWallets: env.adminWallets, adminDomain: env.adminHost ?? env.appDomain,
       adminOrigin: env.adminHost ? `${new URL(env.appOrigin).protocol}//${env.adminHost}` : env.appOrigin,

@@ -81,6 +81,8 @@ export class EnvService {
   get verdictEnforce(): boolean { return this.env.VERDICT_ENFORCE; }
   get telemetryRetentionDays(): number { return this.env.TELEMETRY_RETENTION_DAYS; }
   get signInRetentionDays(): number { return this.env.SIGNIN_RETENTION_DAYS; }
+  get challengeIntervalSeconds(): number { return this.env.CHALLENGE_INTERVAL_SECONDS; }
+  get challengeFreeRides(): boolean { return this.env.CHALLENGE_FREE_RIDES === 'on'; }
   get liveFlags(): LiveFlags {
     return { chat: this.env.LIVE_CHAT, donations: this.env.LIVE_DONATIONS === 'on', freeDonations: this.env.LIVE_FREE_DONATIONS === 'on', effects: this.env.LIVE_EFFECTS };
   }

@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { Agent } from './client.js';
 import { HasherPort } from '../../src/application/ports/shared/hasher.port.js';
+import type { ChallengeDto } from '../../src/domain/rides/ride-challenge.js';
 import type { BatchBody, InputEvent } from '../../src/domain/telemetry/ride-batch.entity.js';
 import { RideBatch } from '../../src/domain/telemetry/ride-batch.entity.js';
 import type { BatchReceiptDto } from '../../src/domain/telemetry/telemetry.dto.js';
@@ -41,6 +42,8 @@ export interface RecordingOptions {
   inputs?: 'human' | 'bot' | 'none';
   /** metres the recording ends at – the distance the ride reports at /end (default 14 m/s × seconds) */
   distance?: number;
+  /** answers to the dispatch prompts: a press + release of `code` at `atMs` (ms since the start, the recording's input clock) */
+  answers?: PromptAnswer[];
   /** append the replay columns the game writes (clock, switches, inputs – telemetry-rules.ts SAMPLE_*_COL); default: the 12 judged ones only */
   replay?: boolean;
   /** the ride's seed: the drive takes the damage the GAME takes at every hole of the server's plan its wheels run through (an honest recording).
@@ -65,6 +68,12 @@ export function inputMaskAt(events: readonly InputEvent[], t: number, period = 0
   for (const c of held) m |= BIT_OF[c] ?? 0;
   return m;
 }
+
+export interface PromptAnswer { atMs: number; code: string }
+
+/** The answers a person gives: the prompt's first key, `reactionMs` after the server issued it (the heartbeat responses carry the prompts). */
+export const answersFor = (challenges: readonly ChallengeDto[], reactionMs = 600): PromptAnswer[] =>
+  challenges.map((c) => ({ atMs: c.issuedMs + reactionMs, code: c.codes[0] as string }));
 
 const round = (v: number, p: number) => Math.round(v / p) * p + 0; // + 0: no -0 (JSON writes it as 0, so a round trip would not compare equal)
 
@@ -100,6 +109,7 @@ function sampleRows(t0: number, t1: number, seconds: number, distance: number, r
 export function recording(rideId: string, opts: RecordingOptions): BatchBody[] {
   const batchSeconds = opts.batchSeconds ?? 15, rnd = prng(opts.seed ?? 1), kind = opts.inputs ?? 'human';
   const events = kind === 'none' ? [] : inputEvents(opts.seconds, kind, rnd);
+  for (const a of opts.answers ?? []) events.push([round(a.atMs, 1), a.code, 1], [round(a.atMs + 70 + (Math.round(a.atMs) * 7919) % 190, 1), a.code, 0]); // a person's hold, 70–260 ms, not a fixed one (a long drive answers dozens of prompts: a narrow spread would read as uniform holds)
   events.sort((a, b) => a[0] - b[0]);
   const bodies: Omit<BatchBody, 'hash' | 'prevHash'>[] = [];
   for (let seq = 0, t0 = 0; t0 < opts.seconds; seq++, t0 += batchSeconds) {

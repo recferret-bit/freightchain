@@ -66,7 +66,7 @@
     <tbody>
       <tr><td>The driving game, five routes, free rides</td><td><span class="pill ok">LIVE</span></td><td><a href="#drive">02</a>, <a href="#rides">03</a></td></tr>
       <tr><td>Server-timed shifts, recording, verdicts (shadow mode)</td><td><span class="pill ok">LIVE</span></td><td><a href="#verify">06</a></td></tr>
-      <tr><td>Anti-cheat v4: the server's road, budgets, bulk re-judge</td><td><span class="pill wip">BUILT · NEXT DEPLOY</span></td><td><a href="#verify">06</a></td></tr>
+      <tr><td>Anti-cheat v3: dispatch prompts, the server's road, budgets, bulk re-judge</td><td><span class="pill wip">BUILT · NEXT DEPLOY</span></td><td><a href="#verify">06</a></td></tr>
       <tr><td>Live streams, replays, chat, paid donations to the driver</td><td><span class="pill ok">LIVE · DEVNET SOL</span></td><td><a href="#stream">07</a></td></tr>
       <tr><td>Escrowed prize pools (Anchor program)</td><td><span class="pill wip">WRITTEN, TESTED · NOT DEPLOYED</span></td><td><a href="#onchain">05</a></td></tr>
       <tr><td>Prize payouts, the garage, badges as tokens, mainnet</td><td><span class="pill plan">PLANNED</span></td><td><a href="#rewards">04</a>, <a href="#risks">08</a></td></tr>
@@ -231,7 +231,7 @@
     <li><b>Drive by hand, in the real game.</b> The browser records your key presses and the truck's state; timing that looks scripted is <em>flagged</em> for a person to review, and recordings that are impossible are <em>rejected</em>. Using bots, macros or a modified client is against the rules and is the thing the validation is built to catch (<a href="#verify">06</a>).</li>
     <li><b>Keep the tab visible.</b> Time with the tab hidden is not driven time. Slow computers are not penalised: times come from the browser's event clock, and if the game runs below real time it simply takes longer.</li>
     <li><b>Spectators may talk and tip.</b> An online ride can be streamed live and replayed by anyone for 90 days – the road, your truck's state and the traffic around you; your key presses are never shown (<a href="#stream">07</a>). You may mute any chat wallet.</li>
-    <li><b>Rankings are provisional while the rules are tuned.</b> Verdict rules v4 run in <em>shadow mode</em>: verdicts are stored and shown, but boards do not yet depend on them. A person reviews flagged rides and every decision is signed and logged.</li>
+    <li><b>Rankings are provisional while the rules are tuned.</b> Verdict rules v3 run in <em>shadow mode</em>: verdicts are stored and shown, but boards do not yet depend on them. A person reviews flagged rides and every decision is signed and logged.</li>
     <li><b>It is a devnet build.</b> Nothing here is real money. Before any mainnet version exists, whether a prize game is lawful where you live is a question you and the operator both have to answer (<a href="#risks">08</a>).</li>
   </ol>
 </section>
@@ -498,10 +498,10 @@
 
 <!-- ───────── 06 · VALIDATION ───────── -->
 <section id="verify" class="ch">
-  <header class="ch-h"><i>06</i><h2>Telemetry, validation &amp; anti-cheat</h2><p>The server does not replay your drive. It times the shift itself, checks that the recording is complete, physically possible and matches the ride, holds it against the server's road, and measures how human the hands look.</p></header>
-  <p class="note"><b>Mode.</b> Rules v4 run in <b>shadow mode</b>: every completed shift is judged and the verdict is shown, but the boards do not depend on it yet. The thresholds are first estimates and will be tuned on real rides. Bump the rules version and the verdict stores which one it used. The long form, with every code and knob: <code>docs/anti-cheat/</code> in the repository.</p>
+  <header class="ch-h"><i>06</i><h2>Telemetry, validation &amp; anti-cheat</h2><p>The server does not replay your drive. It times the shift itself, checks that the recording is complete, physically possible and matches the ride, measures how human the hands look, and asks for things only someone watching the screen can answer.</p></header>
+  <p class="note"><b>Mode.</b> Rules v3 run in <b>shadow mode</b> in production: every completed shift is judged and the verdict is shown, but the boards do not depend on it yet. The thresholds are first estimates and will be tuned on real rides. Bump the rules version and the verdict stores which one it used. The long form, with every code and knob: <code>docs/anti-cheat/</code> in the repository.</p>
 
-  <h3 class="sub">EIGHT LAYERS, FROM CHEAPEST TO STRONGEST</h3>
+  <h3 class="sub">NINE LAYERS, FROM CHEAPEST TO STRONGEST</h3>
   <ol class="flow">
     <li><i>1</i><b>SERVER-TIMED SHIFT</b><span>Driven time from heartbeats capped by the wall clock; distance capped by top speed; 150 s without a beat ends the ride. An instant finish is impossible.</span></li>
     <li><i>2</i><b>A CHECKABLE RECORDING</b><span>Every key and a 10 Hz sample of the truck, sealed every 15 s into SHA-256 hash-chained batches the server re-hashes on arrival. Edits and holes reject.</span></li>
@@ -510,7 +510,8 @@
     <li><i>5</i><b>THE SERVER'S ROAD</b><span>The holes come from the ride's seed, rebuilt by the server and handed to the game. A truck that drives through one at speed must lose hull; a game with the holes removed rejects.</span></li>
     <li><i>6</i><b>BUDGETS</b><span>Time, batches and bytes per ride, size per batch, rate limits. Uploading faster than real time is refused.</span></li>
     <li><i>7</i><b>HOW HUMAN THE HANDS LOOK</b><span>Hold lengths, rhythms, press durations – statistics that only flag.</span></li>
-    <li><i>8</i><b>A PERSON DECIDES</b><span>Flagged shifts wait for a signed, logged decision; rules are versioned and old rides can be judged again.</span></li>
+    <li><i>8</i><b>DISPATCH PROMPTS</b><span>A challenge asked at times the server chooses; the recording must show the key. Kinds are a table; today's four are cab actions. No answer: a bot that cannot see. An instant one: a script reading the heartbeat.</span></li>
+    <li><i>9</i><b>A PERSON DECIDES</b><span>Flagged shifts wait for a signed, logged decision; rules are versioned and old rides can be judged again.</span></li>
   </ol>
 
   <h3 class="sub">WHAT IS RECORDED – AND WHAT IS NOT</h3>
@@ -522,6 +523,9 @@
 
   <h3 class="sub">THE CHAIN</h3>
   <p>Each batch carries the SHA-256 fingerprint of the batch before it; the first links to the ride's own id. Change one number anywhere and that fingerprint changes, so the next link no longer matches – the verdict says <code>chain-broken</code> and the ride is rejected. The server recomputes every fingerprint itself on arrival, so a batch cannot claim a fingerprint it does not have, and sending the same batch number again is ignored. A batch the browser could not fingerprint is kept and only flagged – the server fingerprinted it.</p>
+
+  <h3 class="sub">DISPATCH PROMPTS</h3>
+  <p>About every 240 s of driving on a paid shift (none on the free run; at most four on a short shift, 0.6–1.4 intervals apart so the rhythm cannot be guessed) the heartbeat response names one challenge – today <code>DISPATCH · FLASH YOUR HEADLIGHTS · PRESS L</code>, or the wipers, the cab light, the washer; a dash button counts too. The kinds are a table on the server; the cab shows whatever the heartbeat sends. An amber banner with a 20 s bar shows it on the windscreen. The judge looks for that key within 20 s of the moment the server issued the prompt. Half or more of 3+ prompts ignored rejects; one missed only flags; a median answer under 80 ms after the server issued it is faster than a person can read it and flags. A prompt still open when the ride ends is not judged.</p>
 
   <h3 class="sub">THE SERVER'S ROAD</h3>
   <p>The road and its sinkholes are a pure function of the ride's seed. The server rebuilds them itself and hands the game the ride's <b>obstacle plan</b> (<code>GET /api/watch/:id/road</code>); the game drives over those holes, and every batch is measured against the same plan when it arrives. Each axle entering a pit costs the hull <code>dmg × (v/28)²</code> – 14 % for the front axle in a sinkhole at 28 m/s, rear axles × 0.6. A wheel that runs through a planned hole at speed must show at least a quarter of that loss. Two or more holes driven through untouched reject; one flags.</p>
@@ -559,6 +563,8 @@
       <tr><td>Stays on the road</td><td>Off the tarmac longer than the game allows (20 s, ×1.25 + 2 s).</td><td class="bad">reject · <code>offroad-ignored</code></td></tr>
       <tr><td>Only the engine speeds up</td><td>Speed gained with the gas pedal up: 2 m/s or 5 steps reject, fewer flag.</td><td>reject / flag · <code>accel-without-gas</code></td></tr>
       <tr><td>Someone drove</td><td>A truck that moved more than 50 m needs key presses, and gas among them.</td><td class="bad">reject · <code>no-inputs</code> <code>no-throttle-input</code></td></tr>
+      <tr><td>Prompts answered</td><td>Half or more of 3+ prompts ignored rejects; fewer missed only flag.</td><td>reject · <code>challenges-ignored</code> / flag · <code>challenge-missed</code></td></tr>
+      <tr><td>Prompts were read</td><td>Answers with a median under 80 ms after the server issued the prompt – a script watching the heartbeat.</td><td class="warnc">flag · <code>challenge-reflex</code></td></tr>
       <tr><td>Holds vary</td><td>If one key's hold lengths barely vary (spread under 8 %, over 6+ holds) it looks scripted.</td><td class="warnc">flag · <code>uniform-holds</code></td></tr>
       <tr><td>Rhythm isn't a loop</td><td>If the 3 most common gaps between presses (to the millisecond) make up more than 60 % of all gaps, a script is cycling fixed delays.</td><td class="warnc">flag · <code>repeated-timings</code></td></tr>
       <tr><td>Presses take time</td><td>More than 30 % of presses released within 10 ms were sent, not pressed.</td><td class="warnc">flag · <code>instant-presses</code></td></tr>
@@ -568,7 +574,7 @@
   <div class="grid3">
     <article class="card"><h3 class="ok">VERIFIED</h3><p>Nothing found. The shift ranks on the paid board.</p></article>
     <article class="card"><h3 class="warnc">FLAGGED</h3><p>Something looked off but proves nothing. It waits in a review queue and does not rank until an admin accepts it.</p></article>
-    <article class="card"><h3 class="bad">REJECTED</h3><p>The recording is missing, broken or impossible, or the truck ignored the server's holes. It does not rank. An admin can still look and reverse it.</p></article>
+    <article class="card"><h3 class="bad">REJECTED</h3><p>The recording is missing, broken or impossible, or the prompts were ignored. It does not rank. An admin can still look and reverse it.</p></article>
   </div>
 
   <h3 class="sub">THE SERVER'S OWN CLOCK</h3>
@@ -592,7 +598,7 @@
   <h3 class="sub">LIMITS, SAID PLAINLY</h3>
   <ul class="honest">
     <li><b>The road check is consistency, not proof.</b> A game that drives over the holes and fakes the matching hull loss has, in effect, taken the hit. Traffic is simulated in the browser and only recorded for replays; holes spectators paid for are placed by the driver's game. Neither is judged.</li>
-    <li><b>No re-simulation.</b> The game runs on your computer; its physics use floats, a variable time step and some randomness, so the server cannot re-run it. A careful bot playing the real game with human-like timing could pass the automatic checks. That is why flagged shifts go to a person and why the checks keep tightening.</li>
+    <li><b>No re-simulation.</b> The game runs on your computer; its physics use floats, a variable time step and some randomness, so the server cannot re-run it. A careful bot playing the real game with human-like timing <em>and</em> reading the prompts could pass the automatic checks. That is why flagged shifts go to a person and why the checks keep tightening.</li>
     <li><b>A captcha before a paid shift starts and before a prize is claimed</b> is on the roadmap (<a href="#risks">08</a>). A wallet farm can still take free rides; the daily cap and the rate limits are the brake until then.</li>
     <li><b>The target is a fixed-tick, fixed-point replay core</b> that re-simulates a paid finish from its input log. It is on the roadmap, not in the build.</li>
     <li><b>Verdicts decide ranking only.</b> Whether you can win money is decided by the pool's rules, not by this section.</li>
@@ -664,7 +670,7 @@
     <thead><tr><th>Risk</th><th>What it means</th><th>Mitigation today</th></tr></thead>
     <tbody>
       <tr><td><b>Smart-contract</b></td><td>Bugs in an unaudited program can lose funds.</td><td>Devnet only; reproducible build; 51 tests; refund paths that need no key. An independent audit is a precondition for mainnet.</td></tr>
-      <tr><td><b>Cheating</b></td><td>A modified or scripted client could still pass inside the checks.</td><td>Chain, physics and the server's road; human review of flags; a captcha on the roadmap (<a href="#risks">08</a>); replay core planned (<a href="#verify">06</a>).</td></tr>
+      <tr><td><b>Cheating</b></td><td>A modified or scripted client could still pass inside the checks.</td><td>Chain, physics and the server's road; dispatch prompts; human review of flags; a captcha on the roadmap (<a href="#risks">08</a>); replay core planned (<a href="#verify">06</a>).</td></tr>
       <tr><td><b>Operator trust</b></td><td>The admin picks pay_prize receivers within the cap and holds the treasuries.</td><td>Signed, audited decisions; payouts capped on chain; all of it readable on chain.</td></tr>
       <tr><td><b>Availability</b></td><td>A long shift can be lost if your tab or connection dies for more than 150 s.</td><td>Resume of an open ride; honest pauses cost nothing; final upload retries.</td></tr>
       <tr><td><b>Regulation</b></td><td>Paid prize games are regulated differently around the world.</td><td>Devnet, no value. The mainnet question is answered per region before any mainnet launch.</td></tr>
@@ -675,7 +681,7 @@
   <h3 class="sub">ROADMAP</h3>
   <ol class="legs">
     <li class="done"><b>Built</b> (mid-Sep – Oct 2026) The driving sim; sign-in with Solana; server-timed rides; verified-play recording and verdicts (shadow); signed admin review; live streams, replays, chat, paid donations; the escrow program and its server mirror, written and tested; garage, promo codes, cosmetics; analytics half wired.</li>
-    <li class="now"><b>Devnet release</b> (Oct 13 – Nov 30) The verified program build on devnet; the first real pools – tickets bought, a missed goal refunded, prizes paid; verdict thresholds tuned on real rides, then enforced; a captcha before a paid shift starts and before a prize is claimed; analytics finished; twenty outside drivers; a heavy load test; a small crew of four – a CPO / COO hybrid, QA, community and support, a content creator.</li>
+    <li class="now"><b>Devnet release</b> (Oct 13 – Nov 30) The verified program build on devnet; the first real pools – tickets bought, a missed goal refunded, prizes paid; verdict thresholds (prompts included) tuned on real rides, then enforced; analytics finished; twenty outside drivers; a heavy load test; a small crew of four – a CPO / COO hybrid, QA, community and support, a content creator.</li>
     <li><b>Mainnet</b> (Dec 2026) Legals (the skill prizes, terms, privacy, regions blocked where needed); an outside penetration test of the API, sessions, admin zone and gas sponsor; a program review on the published build; the load test repeated on the release candidate; mainnet pools with published rules; a public Dune board of the program.</li>
     <li><b>Long haul</b> (2027) Garage parts and promo cosmetics as NFTs; achievements attested on chain; sponsors, per-km pledges and convoys on top of tips; a storybook workshop where SOL buys attempts at a new prop, vehicle or landmark and drivers vote what ships; a deterministic replay core that re-simulates a paid finish.</li>
   </ol>

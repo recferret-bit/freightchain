@@ -1,6 +1,6 @@
 import type { Loadout } from '../economy/cosmetics.js';
 import type { VerdictDto } from '../verdict/verdict.dto.js';
-import type { ChallengeDto } from './ride-challenge.js';
+import { toChallengeDto, type ChallengeDto } from './ride-challenge.js';
 import type { Ride } from './ride.entity.js';
 
 /** The wire view of a ride. Timestamps are epoch milliseconds. `timeScale` > 1 marks a DEMO ride (the shift is that many times shorter). */
@@ -27,11 +27,12 @@ export interface RideDto {
   trip: string | null;
   /** the server's check of the recording (verified play); null = not judged – only completed shifts are */
   verdict: VerdictDto | null;
-  /** always null (rules v4). The field stays so an old client still parses the heartbeat. */
+  /** the challenge whose window is open right now (the heartbeat response carries it; null elsewhere). Kinds live in CHALLENGE_KINDS. */
   challenge: ChallengeDto | null;
 }
 
-export const toRideDto = (r: Ride, verdict: VerdictDto | null = null): RideDto => ({
+/** `now`: when given, the open prompt is included (the heartbeat); without it the DTO never carries one. */
+export const toRideDto = (r: Ride, verdict: VerdictDto | null = null, now: Date | null = null): RideDto => ({
   id: r.id,
   tier: r.tier,
   seed: r.seed,
@@ -50,7 +51,7 @@ export const toRideDto = (r: Ride, verdict: VerdictDto | null = null): RideDto =
   loadout: r.loadout,
   trip: r.trip,
   verdict,
-  challenge: null,
+  challenge: now ? (() => { const c = r.openChallenge(now); return c ? toChallengeDto(c) : null; })() : null,
 });
 
 /** The ride that is still owed to the wallet, or null (GET /api/rides/pending). */

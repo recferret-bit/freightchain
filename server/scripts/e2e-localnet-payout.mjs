@@ -3,7 +3,7 @@
 //   1. pool D (1h, min 10, ≤ 2 per wallet) – 10 wallets buy 11 tickets: the lobby in headless Chrome (gasless), Node gasless (/submit), Node self-paid
 //      (/confirm), one wallet 2 at once; open at 9, live at 10+; a sponsorship
 //   2. the rides – the FINISHED RIDES are made through the same API the game uses (no admin back door: a server that let an admin write recordings would let
-//      it mint winners): every bot signs in, spends its ticket, starts, heartbeats, uploads hash-chained 10 Hz recordings that
+//      it mint winners): every bot signs in, spends its ticket, starts, heartbeats (answers the dispatch prompts), uploads hash-chained 10 Hz recordings that
 //      take the damage of the server's planned holes, and ends. One ride is the real game in Chrome. Mixed on purpose: 6 honest, one wallet with 2 rides,
 //      one FLAGGED (an unhashed batch) that the admin ACCEPTS with a signed review, one cheater (a teleport → REJECTED), one crash (never completes)
 //   3. "cron": `verdict:rejudge --status all` re-judges every completed ride from its telemetry (nothing may change, the admin's decision stays), and a
@@ -104,7 +104,7 @@ async function apiRide(p, { seconds = 20, speed = 15, mutate = () => null, hashO
   if (!made.ok) return { error: `${made.status} ${JSON.stringify(made.j).slice(0, 160)}` };
   const ride = made.j;
   await api(`rides/${ride.id}/start`, { body: {}, cookie: p.cookie });
-  const d = { id: ride.id, t0: Date.now(), t: 0, s: 0, seq: 0, prevHash: ride.id, samples: [], inputs: [], bt0: 0, road: honestRoad(BASE, ride.id) };
+  const d = { id: ride.id, t0: Date.now(), t: 0, s: 0, seq: 0, prevHash: ride.id, samples: [], inputs: [], bt0: 0, prompts: [], road: honestRoad(BASE, ride.id) };
   const row = (t, s, v) => [r(t, 2), r(s, 1), 2.4, 0, r(v, 2), Math.round(900 + v * 50), 6, 100, 0.6, 0, 0, 0, 12, 1 | 2 | 8];
   const cut = async () => {
     await d.road.take(d.samples);
@@ -115,8 +115,10 @@ async function apiRide(p, { seconds = 20, speed = 15, mutate = () => null, hashO
     d.prevHash = hash ?? `unhashed-${body.seq}`; d.samples = []; d.inputs = []; d.bt0 = d.t;
     await api(`rides/${d.id}/batches`, { body: { ...body, hash }, cookie: p.cookie });
   };
-  const heartbeat = async () => {
-    await api(`rides/${d.id}/heartbeat`, { body: { s: d.s, t: d.t, hull: 100, paused: false, route: 'route66', night: false }, cookie: p.cookie });
+  const heartbeat = async () => {   // a dispatch prompt in the response is answered like a person, ~0.5–1.2 s later
+    const { j } = await api(`rides/${d.id}/heartbeat`, { body: { s: d.s, t: d.t, hull: 100, paused: false, route: 'route66', night: false }, cookie: p.cookie });
+    const c = j?.challenge;
+    if (c && !d.prompts.some(x => x.id === c.id)) { d.prompts.push(c); const at = r(c.issuedMs + 450 + Math.random() * 700, 1); d.inputs.push([at, c.codes[0], 1], [r(at + 70 + Math.random() * 120, 1), c.codes[0], 0]); }
   };
   let wall = Date.now(), lastBeat = 0, gasDown = false, nextKey = 600;
   for (;;) {

@@ -50,8 +50,10 @@ export async function simulate({ base = 'http://localhost:3000', drive = 2, aban
     d.prevHash = hash; d.samples = []; d.inputs = []; d.bt0 = d.t;
     await call('POST', `rides/${d.id}/batches`, { body: { ...body, hash }, ...d });
   };
-  const heartbeat = async d => {
-    await call('POST', `rides/${d.id}/heartbeat`, { body: { s: d.s, t: d.t, hull: 100, paused: d.role === 'pause', route: 'route66', night: false }, ...d });
+  const heartbeat = async d => {   // the response may carry a dispatch prompt (verified play): a fake driver answers it like a person, ~0.7 s later
+    const { j } = await call('POST', `rides/${d.id}/heartbeat`, { body: { s: d.s, t: d.t, hull: 100, paused: d.role === 'pause', route: 'route66', night: false }, ...d });
+    const c = j?.challenge;
+    if (c && !d.answered?.has(c.id)) { (d.answered ??= new Set()).add(c.id); const at = r(c.issuedMs + 500 + Math.random() * 600, 1); d.inputs.push([at, c.codes[0], 1], [r(at + 80 + Math.random() * 120, 1), c.codes[0], 0]); }
   };
 
   let running = true, lastBeat = 0;

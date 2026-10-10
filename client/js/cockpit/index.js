@@ -3,6 +3,7 @@ import { uiBtns, litShapes } from './common.js';
 import { drawCockpitRig } from './rig.js';
 import { st, dn } from '../state.js';
 import { CFG } from '../config.js';
+import { promptView } from '../prompt.js';
 import { drawInputs } from './inputs.js';
 
 /* Night grade of the cab interior. 'source-atop' only paints where the cockpit is already opaque, so the windscreen and the mirror holes stay clear.
@@ -58,6 +59,15 @@ export function drawCockpit() {
       const w = ctx.measureText(txt).width + 6 * u, y = H * .3; ctx.globalAlpha = stalled && st.stall > .05 ? (blink ? 1 : .35) : lug ? (blink ? 1 : .5) : 1;
       ctx.fillStyle = stalled ? '#b3201a' : '#d98a14'; ctx.fillRect(W / 2 - w / 2, y - 3 * u, w, 6 * u); ctx.fillStyle = '#fff'; ctx.fillText(txt, W / 2, y); ctx.globalAlpha = 1;
     }
+  }
+  const pr = st.mode === 'drive' ? promptView() : null;   // dispatch prompt (online rides only – prompt.js): a banner the driver cannot miss, with the key and the seconds left
+  if (pr) {
+    const u = Math.min(H / 100, W / 150), y = H * .18, txt = pr.done ? `DISPATCH · ${pr.label} ✓` : `DISPATCH · ${pr.label} · PRESS ${pr.key}`;
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.font = `bold ${3.2 * u}px ui-monospace,Menlo,monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const w = ctx.measureText(txt).width + 8 * u, blink = !pr.done && pr.left < 5 && Math.floor(performance.now() / 160) % 2 === 0;
+    ctx.globalAlpha = blink ? .55 : 1; ctx.fillStyle = pr.done ? '#2f8f4e' : '#d98a14'; ctx.fillRect(W / 2 - w / 2, y - 3.2 * u, w, 6.4 * u);
+    if (!pr.done) { ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(W / 2 - w / 2, y + 2.4 * u, w * Math.min(1, pr.left / 18), .8 * u); }   // the time left
+    ctx.fillStyle = '#fff'; ctx.fillText(txt, W / 2, y - .3 * u); ctx.globalAlpha = 1;
   }
   if (st.flash > .01) {   // red impact flash
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
