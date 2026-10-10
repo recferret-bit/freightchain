@@ -2,15 +2,16 @@ import { ADMIN_BASE, SITE_BASE } from '../js/hosts.js';
 import { b58, provider } from './wallet.js';
 import { shortAddr } from './pools.js';
 import { promosTab } from './admin-promos.js';
+import { settingsTab } from './admin-settings.js';
 import { devWanted, installDevWallet, isLocal, DEV_ADMIN_WALLET } from './dev-wallet.js';
 if (devWanted()) installDevWallet();   // localhost only: a dev wallet chosen earlier in this tab stays in place after a reload
 
-/* The admin page: OVERVIEW · REVIEW QUEUE · RIDES · PROMO CODES · SIGN-INS · LOGS · AUDIT (+ #ride/<id>). Vanilla DOM, no framework.
+/* The admin page: OVERVIEW · REVIEW QUEUE · RIDES · PROMO CODES · SETTINGS · SIGN-INS · LOGS · AUDIT (+ #ride/<id>). Vanilla DOM, no framework.
    Only wallets in the server's ADMIN_WALLETS get answers – to everyone else /api/admin/* is a 404 and this page says so.
    Everything from the server goes in with textContent (wallets, reasons, log lines are other people's data) – never innerHTML. */
 const $ = id => document.getElementById(id);
 const view = $('view');
-const TABS = ['overview', 'queue', 'rides', 'promos', 'signins', 'logs', 'audit'];
+const TABS = ['overview', 'queue', 'rides', 'promos', 'settings', 'signins', 'logs', 'audit'];
 
 /* ───────── helpers ───────── */
 function el(tag, attrs = {}, ...kids) {
@@ -44,17 +45,28 @@ const fail = e => (sessionGone(e) ? (store(null), showSignIn('Your admin session
 
 /* ───────── shell ───────── */
 const S = { tab: 'overview', me: null };
-async function go() {
-  const [t, arg] = location.hash.slice(1).split('/');
-  S.tab = t === 'ride' ? 'ride' : TABS.includes(t) ? t : 'overview';
-  document.querySelectorAll('.tabs a').forEach(a => { const on = a.dataset.tab === S.tab; a.classList.toggle('on', on); a.setAttribute('aria-selected', on); });
-  view.replaceChildren(el('p', { class: 'dim' }, 'Loading…'));
+let seq = 0, loading = null;   // loading = { key, at }: a refresh (R held down, a double click) of what is already loading must not start a second load
+const STALE_MS = 15000;   // …unless that load hangs
+async function go({ dedupe = false } = {}) {
+  const key = location.hash;
+  if (dedupe && loading?.key === key && Date.now() - loading.at < STALE_MS) return;
+  const mine = ++seq, current = () => mine === seq;   // a newer go() (another tab, a filter) supersedes this one
+  const [t, arg] = key.slice(1).split('/');
+  const tab = t === 'ride' ? 'ride' : TABS.includes(t) ? t : 'overview';
+  const same = tab === S.tab && view.dataset.tab === tab && !arg;   // a refresh of the open tab keeps its content until the new one is ready
+  S.tab = tab;
+  loading = { key, at: Date.now() };
+  document.querySelectorAll('.tabs a').forEach(a => { const on = a.dataset.tab === tab; a.classList.toggle('on', on); a.setAttribute('aria-selected', on); });
+  // "Loading…" only if the answer is slow: a fast one would flash it for a frame
+  const wait = same ? 0 : setTimeout(() => { if (current()) view.replaceChildren(el('p', { class: 'dim' }, 'Loading…')); }, 150);
+  if (!same) { view.replaceChildren(); view.dataset.tab = ''; }
   refreshQueueCount();
-  try { await ({ overview, queue, rides, promos: () => promosTab({ api, el, view, signAt, time, ago, wallet }), signins, logs, audit, ride: () => ride(arg) })[S.tab](); } catch (e) { fail(e); }
+  try { await ({ overview, queue, rides, promos: () => promosTab({ api, el, view, signAt, time, ago, wallet }), settings: () => settingsTab({ api, el, view, signAt }, arg), signins, logs, audit, ride: () => ride(arg) })[tab](); if (current()) view.dataset.tab = arg ? '' : tab; } catch (e) { if (current()) fail(e); } finally { clearTimeout(wait); if (current()) loading = null; }
 }
-addEventListener('hashchange', go);
-$('refresh').onclick = go;
-addEventListener('keydown', e => { if (e.key === 'r' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName ?? '')) go(); });
+addEventListener('hashchange', () => go());
+$('refresh').onclick = () => go({ dedupe: true });
+document.querySelector('.tabs').addEventListener('click', e => { if (e.target.closest('a')?.dataset.tab === S.tab && !location.hash.includes('/')) e.preventDefault(); });   // the open tab's button does nothing
+addEventListener('keydown', e => { if (e.key === 'r' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName ?? '')) go({ dedupe: true }); });
 
 const refreshQueueCount = () => api('rides?verdict=flagged&limit=200').then(({ rows }) => { $('tab-queue-n').textContent = rows.length || ''; }, () => {});
 
@@ -130,7 +142,7 @@ async function ride(id) {
     } catch (e) { msg.textContent = e.message; msg.className = 'bad'; }
   };
   view.replaceChildren(
-    el('p', {}, el('a', { href: '#queue' }, '← review queue'), ' · ', el('a', { href: `?wallet=${r.wallet}#rides` }, 'this rider\'s rides'), ' · ', el('a', { href: `#signins/${r.wallet}` }, 'sign-ins'), ' · ', el('a', { href: `#logs/${r.id}` }, 'log lines')),
+    el('p', {}, el('a', { href: '#queue' }, '← review queue'), ' · ', el('a', { href: `?wallet=${r.wallet}#rides` }, 'this rider\'s rides'), ' · ', el('a', { href: `#signins/${r.wallet}` }, 'sign-ins'), ' · ', el('a', { href: `#settings/${r.wallet}` }, 'free rides'), ' · ', el('a', { href: `#logs/${r.id}` }, 'log lines')),
     el('h2', {}, 'RIDE'),
     el('div', { class: 'card' }, kv(['id', el('span', { class: 'mono' }, r.id)], ['rider', el('span', { class: 'mono' }, r.wallet)], ['tier / status', `${r.tier} · ${r.status}${r.reason ? ` – ${r.reason}` : ''}`],
       ['driven', `${km(r.distance)} km in ${Math.round(r.driveSeconds)} s (shift ${r.minSeconds} s / ${km(r.completeDist)} km${r.timeScale > 1 ? `, demo ×${r.timeScale}` : ''})`],
@@ -197,7 +209,7 @@ async function audit() {
     rows.length ? el('div', { class: 'card', style: 'padding:6px 8px;overflow-x:auto' }, el('table', { class: 'dense' },
       el('thead', {}, el('tr', {}, ...['when', 'admin', 'action', 'target', 'detail', 'request'].map(h => el('th', {}, h)))),
       el('tbody', {}, rows.map(a => el('tr', {}, el('td', { title: time(a.at) }, ago(a.at)), el('td', {}, wallet(a.wallet)), el('td', {}, a.action),
-        el('td', {}, a.action.startsWith('verdict.') ? el('a', { href: `#ride/${a.target}`, class: 'mono' }, a.target.slice(0, 8)) : a.action.startsWith('promo.') ? el('a', { href: '#promos', class: 'mono' }, a.target) : wallet(a.target)), el('td', { class: 'dim' }, JSON.stringify(a.detail)), el('td', { class: 'mono dim' }, a.requestId ?? '–'))))))
+        el('td', {}, a.action.startsWith('verdict.') ? el('a', { href: `#ride/${a.target}`, class: 'mono' }, a.target.slice(0, 8)) : a.action.startsWith('promo.') ? el('a', { href: '#promos', class: 'mono' }, a.target) : a.action.startsWith('setting.') ? el('a', { href: '#settings', class: 'mono' }, a.target) : a.action.startsWith('free_rides.') ? el('a', { href: `#settings/${a.target}`, title: a.target }, wallet(a.target)) : wallet(a.target)), el('td', { class: 'dim' }, JSON.stringify(a.detail)), el('td', { class: 'mono dim' }, a.requestId ?? '–'))))))
       : el('div', { class: 'card empty' }, 'No admin actions yet.'));
 }
 
