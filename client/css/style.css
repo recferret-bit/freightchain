@@ -75,6 +75,10 @@ body:has(#watch:not(.folded)) #toast{left:calc(50% - 170px)}
 /* completed shift (winFx): the same beat in green */
 .fail-flash.win{background:radial-gradient(ellipse at center,#2bd14a44 0,#1fae3caa 100%)}
 .fail-stamp.win{border-color:#3ee05a;color:#3ee05a;text-shadow:0 0 .35em #1a9e34}
+/* the loading screen (play.html): #boot shows until the game has started, then the menu panel replaces it */
+#overlay.booting #panel,#overlay:not(.booting) #boot{display:none}
+.loadbar{height:8px;border-radius:4px;background:#ffcf5a22;overflow:hidden}
+.loadbar i{display:block;height:100%;width:0;border-radius:4px;background:#ffcf5a;transition:width .15s linear}
 #overlay.late{animation:fadein .4s 1.5s backwards;pointer-events:none}
 @keyframes fadein{from{opacity:0}to{opacity:1}}
 
