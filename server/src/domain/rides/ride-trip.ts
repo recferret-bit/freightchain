@@ -8,6 +8,10 @@ import type { RideTierId } from './ride-tier.js';
    test/unit/domain/ride-trip.spec.ts holds this list and the client's table together. */
 export const TRIP_IDS = ['classic', 'free', 'free-1', 'free-2', 'free-3', '1h', '4h', '8h'] as const;
 export type TripId = (typeof TRIP_IDS)[number];
+/** the longest trip id a request may name (POST /api/rides/:id/start `trip`) – the ids above are far shorter */
+export const TRIP_ID_MAX_LENGTH = 32;
+/** the trip a ride is driven on – null (a ride from before trips) is the 'classic' road */
+export const tripOrClassic = (trip: string | null): string => trip ?? 'classic';
 
 /* The FREE ride's three LEVELS (the lobby's picker): each its own trip, its own shift length and finish line, and whether ASSIST may be on.
    The shift is FREE_RIDE_SECONDS (env, default 60) × `multiple`, so a test server's short free ride scales every level alike; the finish line is

@@ -6,7 +6,7 @@ import { aPool } from '../../../../support/pools.js';
 describe('GetMeHandler', () => {
   it('returns the profile, applying the lazy daily grant once per UTC day', async () => {
     const ctx = unitContext();
-    const handler = new GetMeHandler(ctx.sessions, ctx.rules, ctx.clock, ctx.poolTickets, ctx.rides);
+    const handler = new GetMeHandler(ctx.sessions, ctx.clock, ctx.meProfile);
     expect(await handler.execute(new GetMeQuery('w'))).toMatchObject({ wallet: 'w', freeRides: 10, demo: false, createdAt: ctx.clock.ms });
     ctx.clock.advance(86_400);
     expect((await handler.execute(new GetMeQuery('w'))).freeRides).toBe(10); // signup sits above the daily cap: nothing to add
@@ -15,7 +15,7 @@ describe('GetMeHandler', () => {
 
   it('says how many credits fit and when the next one arrives (null at the cap)', async () => {
     const ctx = unitContext();
-    const handler = new GetMeHandler(ctx.sessions, ctx.rules, ctx.clock, ctx.poolTickets, ctx.rides);
+    const handler = new GetMeHandler(ctx.sessions, ctx.clock, ctx.meProfile);
     expect(await handler.execute(new GetMeQuery('w'))).toMatchObject({ freeRides: 10, freeRidesMax: 5, nextFreeRideAt: null });
     const p = await ctx.storedPlayer('w');
     for (let i = 0; i < 6; i++) p.spendFreeRide(); // 10 → 4, under the daily cap
@@ -25,7 +25,7 @@ describe('GetMeHandler', () => {
 
   it('says whether the tutorial was done (a ride started with it on)', async () => {
     const ctx = unitContext();
-    const handler = new GetMeHandler(ctx.sessions, ctx.rules, ctx.clock, ctx.poolTickets, ctx.rides);
+    const handler = new GetMeHandler(ctx.sessions, ctx.clock, ctx.meProfile);
     expect(await handler.execute(new GetMeQuery('w'))).toMatchObject({ tutorialPassed: false });
     const p = await ctx.storedPlayer('w');
     p.markTutorialPassed(ctx.now());
@@ -39,7 +39,7 @@ describe('GetMeHandler', () => {
     await ctx.pools.upsert(aPool({ id: 2, status: 'refunding' }));
     await ctx.pools.upsert(aPool({ id: 3, status: 'settled' }));
     for (const [id, n] of [[1, 2], [2, 0], [3, 1]] as const) { const t = await ctx.tickets.open('w', id); if (n) { t.recordPurchase(n); await ctx.tickets.save(t); } }
-    expect((await new GetMeHandler(ctx.sessions, ctx.rules, ctx.clock, ctx.poolTickets, ctx.rides).execute(new GetMeQuery('w'))).tickets).toEqual([
+    expect((await new GetMeHandler(ctx.sessions, ctx.clock, ctx.meProfile).execute(new GetMeQuery('w'))).tickets).toEqual([
       { poolId: 1, tier: '1h', label: 'L1', status: 'active', balance: 2, bought: 2, cap: 5, refundable: false },
       { poolId: 3, tier: '1h', label: '1 HOUR · test', status: 'settled', balance: 1, bought: 1, cap: 5, refundable: false },
     ]);
@@ -47,11 +47,11 @@ describe('GetMeHandler', () => {
 
   it('flags a demo wallet', async () => {
     const ctx = unitContext();
-    expect(await new GetMeHandler(ctx.sessions, ctx.rules, ctx.clock, ctx.poolTickets, ctx.rides).execute(new GetMeQuery(DEMO_UNIT_WALLET))).toMatchObject({ demo: true, demoScale: 60 });
+    expect(await new GetMeHandler(ctx.sessions, ctx.clock, ctx.meProfile).execute(new GetMeQuery(DEMO_UNIT_WALLET))).toMatchObject({ demo: true, demoScale: 60 });
   });
   it('readyFreeRide: the free ride ordered but not started – its id, level, trip and helpers; gone once it starts; a paid order is not one', async () => {
     const ctx = unitContext();
-    const handler = new GetMeHandler(ctx.sessions, ctx.rules, ctx.clock, ctx.poolTickets, ctx.rides);
+    const handler = new GetMeHandler(ctx.sessions, ctx.clock, ctx.meProfile);
     expect((await handler.execute(new GetMeQuery('w'))).readyFreeRide).toBeNull();
     const { Ride } = await import('../../../../../src/domain/rides/ride.entity.js');
     const ride = Ride.createFree({ id: 'r1', wallet: 'w', seed: 7, minSeconds: 100, now: ctx.now(), level: 2, tutorial: true, assist: true });

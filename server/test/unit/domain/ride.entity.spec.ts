@@ -19,17 +19,17 @@ describe('Ride – the free ride\'s helpers', () => {
     expect(order()).toMatchObject({ tutorial: false, assist: false });
   });
 
-  it('a ready free ride can be re-chosen (true = it changed and must be saved); a running one cannot, nor can a paid one', () => {
-    const r = freeRide();
-    expect(r.chooseGuide(false, false)).toBe(false);
-    expect(r.chooseGuide(true, false)).toBe(true);
+  it('a ready free ride\'s helpers can be re-chosen (true = it changed and must be saved); a running one cannot, nor can a paid one', () => {
+    const r = freeRide();                                                      // EASY, 10 s
+    expect(r.chooseFree(1, 10, false, false)).toBe(false);
+    expect(r.chooseFree(1, 10, true, false)).toBe(true);
     expect(r).toMatchObject({ tutorial: true, assist: false });
-    expect(r.chooseGuide(true, false)).toBe(false);
-    expect(r.chooseGuide(false, true)).toBe(true);
+    expect(r.chooseFree(1, 10, true, false)).toBe(false);
+    expect(r.chooseFree(1, 10, false, true)).toBe(true);
     expect(r.snapshot()).toMatchObject({ tutorial: false, assist: true });
     r.start(T0);
-    expect(() => r.chooseGuide(true, true)).toThrow(ConflictError);
-    expect(() => Ride.createFromTicket({ id: 't', wallet: 'w', tier: '4h', seed: 3, minSeconds: 240, timeScale: 1, poolId: 9, roundId: 4, now: T0 }).chooseGuide(false, true)).toThrow(new ConflictError('only a free ride has a tutorial or assist'));
+    expect(() => r.chooseFree(1, 10, true, true)).toThrow(ConflictError);
+    expect(() => Ride.createFromTicket({ id: 't', wallet: 'w', tier: '4h', seed: 3, minSeconds: 240, timeScale: 1, poolId: 9, roundId: 4, now: T0 }).chooseFree(1, 10, false, true)).toThrow(new ConflictError('a level is for free rides only', 'level_free_only'));
   });
 });
 
@@ -48,7 +48,7 @@ describe('Ride – the free LEVELS (EASY / CROSSROADS / HARD)', () => {
     expect(() => free(3, 600, true)).toThrow(new ConflictError('the HARD free run has no assist', 'assist_not_allowed'));
     expect(free(1, 60, true).assist).toBe(true);
     expect(free(2, 180, true).assist).toBe(true);
-    expect(() => free(3, 600).chooseGuide(false, true)).toThrow(ConflictError);
+    expect(() => free(3, 600).chooseFree(3, 600, false, true)).toThrow(ConflictError);
   });
 
   it('a ready free ride is re-chosen as a whole: level (trip, length, line) + helpers; nothing changed = false; HARD + assist changes nothing', () => {

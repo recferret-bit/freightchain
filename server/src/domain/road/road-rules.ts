@@ -60,6 +60,10 @@ export const FORK = { len: 1200, commit: 205, corridor: 15 } as const;
     the last sample on the old road may already lie one frame past the commit point (dt ≤ 0.05 s at the governor: 1.4 m). So a forward step that ends at
     or beyond the commit point and starts before it – or at most this far past it – may be the switch (RoadLayout.forkSwitch). */
 export const FORK_SWITCH_REACH = 1.5;
+/** …and that step moves d by the gap between the two roads (14.3 m at the commit point: the truck keeps its place in the world, the spine moves under it),
+    while a truck moves at most 2.8 m sideways in a 0.1 s sample step even at the governor. So a step over the commit point that moves d less than this is
+    no switch – the truck stayed on its road, and its wheels are measured against the holes there like anywhere else (world-facts.ts holePasses). */
+export const FORK_SWITCH_JUMP = 4;
 /** client/js/trips.js `road` – a trip's LAYOUT: the patterns it opens with (first = the depot exit, drawn with the length 500–1100 m), the pattern weights after
     them, and × HOLE_CHANCE. Judged, so every trip id is here or gets the default (the old trips and a ride from before trips). road-drift.spec.ts. */
 export interface TripRoad { first: readonly string[]; weights: Readonly<Record<string, number>>; holeChance: number }

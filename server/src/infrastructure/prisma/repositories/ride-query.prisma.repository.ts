@@ -79,11 +79,13 @@ export class RideQueryPrismaRepository extends RideQueryPort {
       this.prisma.ride.aggregate({ where: { wallet, startedAt: { not: null } }, _count: { _all: true }, _sum: { lastS: true } }),
       this.prisma.ride.findMany({ where: { wallet, status: 'completed' }, select: { tier: true, trip: true, assist: true, lastS: true, hull: true, route: true, nightSeconds: true, driveSeconds: true, verdict: { select: { status: true, reasons: true } } } }),
     ]);
-    const metres = started._sum.lastS ?? 0, fair = opts.skipRejected ? done.filter((r) => !badgeRejected(r.verdict)) : done;   // the badges' rides (achievements.ts badgeRejected)
+    // the badges' rides: a ride the verdict rejected (achievements.ts badgeRejected) earns no completion badge and its metres don't count – its START still
+    // does (starting is not a judged fact). Verdicts are only ever on completed rides, so the rejected ones are a part of `done` and come off the metres.
+    const metres = started._sum.lastS ?? 0, rejected = opts.skipRejected ? done.filter((r) => badgeRejected(r.verdict)) : [], fair = rejected.length ? done.filter((r) => !rejected.includes(r)) : done;
     return {
       stats: { started: started._count._all, completed: done.length, metres, best: done.reduce((max, r) => Math.max(max, r.lastS), 0) },
       facts: {
-        started: started._count._all, completed: fair.length, totalMetres: metres,
+        started: started._count._all, completed: fair.length, totalMetres: metres - rejected.reduce((sum, r) => sum + r.lastS, 0),
         completedAtNight: fair.some((r) => r.driveSeconds > 0 && r.nightSeconds >= NIGHT_SHARE * r.driveSeconds), // most of the shift in the dark: pressing N just before the end doesn't count
         cleanRun: fair.some((r) => r.hull !== null && r.hull >= CLEAN_HULL),
         completedSiberia: fair.some((r) => r.route === SIBERIA),

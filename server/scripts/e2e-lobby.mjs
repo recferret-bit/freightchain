@@ -123,7 +123,7 @@ for (let i = 0; i < 9; i++) { const { j } = await post('rides', { tier: 'free' }
 const readyC = (await post('rides', { tier: 'free', level: 2 }, C.cookie)).j;
 const meC = await get('me', C.cookie);
 check('API: 0 free rides left, /api/me carries the ready free ride (id, level 2, trip free-2)', meC.freeRides === 0 && meC.readyFreeRide?.id === readyC.id && meC.readyFreeRide.level === 2 && meC.readyFreeRide.trip === 'free-2', JSON.stringify({ freeRides: meC.freeRides, ready: meC.readyFreeRide }));
-await open(third, C, `${BASE}/lobby.html#new`);
+await open(third, C, `${BASE}/lobby.html?ready=1#new`);   // a new query: the same URL with only a hash would not reload the page (no fresh /api/me)
 check('0/5 free rides, yet START is ENABLED and says the ride is ready; CROSSROADS is preselected from the ride', await until(async () => /^0\/5 free rides/.test(await txt(third, '#chip-free')) && (await third.ev('document.getElementById("start")?.disabled')) === false && (await txt(third, '#start')) === 'START FREE RIDE · ready' && (await third.ev('document.getElementById("level-2")?.checked')) === true), `${await txt(third, '#chip-free')} | ${await txt(third, '#start')}`);
 await third.shot('free-ready-desktop');
 await third.ev('document.getElementById("start").click()');
@@ -162,8 +162,13 @@ await rider.ev('location.hash = "#profile"');
 check('PROFILE: stats + achievements unlocked + the ride in history', await until(async () => (await rider.ev('document.querySelectorAll(".a").length')) === 11));
 check('PROFILE: the ride in history carries its recording verdict', /COMPLETED · (VERIFIED|FLAGGED|REJECTED)/.test(await rider.ev('document.querySelector(".hist .hrow")?.textContent || ""')), await rider.ev('document.querySelector(".hist .hrow")?.textContent || ""'));
 const ach = await rider.ev('[...document.querySelectorAll(".a")].map(a => (a.classList.contains("lock") ? "-" : "+") + a.querySelector(".nm").textContent).join("|")');
-check('First Mile + Shift Complete unlocked, Top 20 locked', /\+First Mile/.test(ach) && /\+Shift Complete/.test(ach) && /-Top 20/.test(ach), ach);
-check('the EASY free run cleared: Learner’s Permit unlocked, Crossroads + Long Haul locked', /\+Learner’s Permit/.test(ach) && /-Crossroads/.test(ach) && /-Long Haul/.test(ach), ach);
+// the drive above sets the distance directly, so its recording is REJECTED (line ~106); with the verdict enforced (this server's default) a rejected recording
+// earns its ride no badge (achievements.ts badgeRejected) – only First Mile (a started ride) – while a verified / flagged one earns them
+const rejected = /COMPLETED · REJECTED/.test(await rider.ev('document.querySelector(".hist .hrow")?.textContent || ""'));
+check(rejected ? 'First Mile unlocked; the REJECTED drive earns no Shift Complete (enforced verdict); Top 20 locked' : 'First Mile + Shift Complete unlocked, Top 20 locked',
+  /\+First Mile/.test(ach) && (rejected ? /-Shift Complete/ : /\+Shift Complete/).test(ach) && /-Top 20/.test(ach), ach);
+check(rejected ? 'the rejected EASY run clears no level: Learner’s Permit, Crossroads, Long Haul locked' : 'the EASY free run cleared: Learner’s Permit unlocked, Crossroads + Long Haul locked',
+  (rejected ? /-Learner’s Permit/ : /\+Learner’s Permit/).test(ach) && /-Crossroads/.test(ach) && /-Long Haul/.test(ach), ach);
 check('history lists the ride as COMPLETED', /COMPLETED/.test(await rider.ev('[...document.querySelectorAll(".hist")].map(n => n.textContent).join("|")')));
 check('a wallet without tickets: "No tickets yet"', /No tickets yet/.test(await rider.ev('document.getElementById("view").textContent')));
 await rider.shot('profile-desktop'); await size(rider, 390, 844, true); await sleep(300); await rider.shot('profile-phone'); await size(rider, 1100, 900, false);

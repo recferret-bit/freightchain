@@ -167,7 +167,7 @@ function signalLead(a) {
 const HOLE_MARGIN = .35;
 const asphalt = (a, side) => { const e = edgeOf(net.lanes(a.s, side)) + .2; return side > 0 ? [.25 + a.def.w / 2, e - a.def.w / 2] : [-e + a.def.w / 2, -.25 - a.def.w / 2]; };   // a direction's tarmac, for the car's centre
 function dodge(a, tb) {
-  a.dLat = null; a.dV = Infinity; a.hz = false;
+  a.dLat = null; a.dV = Infinity; a.hz = false; a.pit = null;
   if (!CFG.HOLES || !a.road.main) return;
   const look = CFG.HOLE_WARN + 10 + a.v * 2, w = a.def.w / 2 + HOLE_MARGIN, hs = [];
   for (const h of holesNear(a.dir > 0 ? a.s - 15 : a.s - look, a.dir > 0 ? a.s + look : a.s + 15)) {
@@ -176,7 +176,7 @@ function dodge(a, tb) {
   }
   if (!hs.length) return;
   a.hz = true;
-  const blocked = lat => hs.some(({ h }) => lat + w > h.l0 && lat - w < h.l1);
+  const blocked = a.pit = lat => hs.some(({ h }) => lat + w > h.l0 && lat - w < h.l1);   // (kept for evade: it must not swerve into a pit either)
   if (!blocked(a.target)) return;
   const free = (base, ok) => {
     const [lo, hi] = asphalt(a, Math.sign(base)); if (hi < lo) return null;
@@ -203,14 +203,18 @@ function evade(a, tb) {
     if (l0 < cur + half + m && l1 > cur - half - m) { lo = Math.min(lo, l0); hi = Math.max(hi, l1); }
   }
   if (lo > hi) return;
-  const [A0, A1] = asphalt(a, Math.sign(cur) || -1), away = cur > (lo + hi) / 2, c = clamp(away ? hi + m + half : lo - m - half, A0, A1);
+  const [A0, A1] = asphalt(a, Math.sign(cur) || -1), away = cur > (lo + hi) / 2;
+  let c = clamp(away ? hi + m + half : lo - m - half, A0, A1);
+  while (a.pit?.(c) && (away ? c - cur : cur - c) >= .1) c += away ? -.15 : .15;   // not into a hole: only as far as the tarmac beside it allows
   if ((away ? c - cur : cur - c) < .1 || (Math.abs(c - a.target) >= 2 && !laneFree(a, c, null))) return;   // no room on its side of the road, or another lane that is taken
   a.dLat = c; a.hz = true;   // (hz: no weaving while it squeezes by)
 }
 function think(a, dt, tb) {
   a.target = a.over ? laneLat(-a.dir, 0) : laneLat(a.dir, a.lane);
-  if (a.over && tb && !truckFree(a, a.target, tb, CFG.TRAFFIC_LOOK / 2)) a.target = laneLat(a.dir, a.lane), a.over = false;   // the truck is (coming) in the lane it overtakes in: pull back in now
+  let giveWay = false;   // the truck is (coming) in the lane it overtakes in: pull back in now – or, still alongside the one it passes, drop back behind it first
+  if (a.over && tb && !truckFree(a, a.target, tb, CFG.TRAFFIC_LOOK / 2)) { if (laneFree(a, laneLat(a.dir, a.lane), null)) a.target = laneLat(a.dir, a.lane), a.over = false; else giveWay = true; }
   dodge(a, tb); evade(a, tb);
+  if (giveWay) a.dV = Math.min(a.dV, a.v * .8);   // ≈ −3.6 m/s² from the IDM's free term (the IDM brakes for the truck itself as well)
   const P = a.P, n = laneCount(a, a.s), nAhead = laneCount(a, a.s + a.dir * 150);
   let lead = leadOf(a, tb); const sl = signalLead(a); if (sl && (!lead || sl.gap < lead.gap)) lead = sl;
   if (a.lane >= nAhead) {   // this lane ends ahead: merge left, or wait at the end of it

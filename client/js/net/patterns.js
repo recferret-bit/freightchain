@@ -14,7 +14,9 @@
    roads are ≈ 207 m apart at the middle, ≈ 14 m apart COMMIT m after the split (CORRIDOR keeps a metre in hand). Crossing f0 + COMMIT the truck is on the road it is nearer to
    (net/orchestrator.js), its (s, d) re-measured on that road. CORRIDOR: before COMMIT (and the last COMMIT m before the merge) the tarmac of both roads
    is one apron – the server counts ±CORRIDOR m beyond the edges as road there (its bound for the gap between the roads at COMMIT). */
-export const FORK_LEN = 1200, FORK = { len: FORK_LEN, bulge: .55, commit: 205, corridor: 15 };
+export const FORK_LEN = 1200, FORK = { len: FORK_LEN, bulge: .55, commit: 205, corridor: 15, reach: 1.5 };
+/* reach: the frame the truck crosses the commit point is sampled (telemetry) BEFORE orchestrator.forkCommit moves it onto the road it took – so the apron
+   counts as road `reach` m past the commit point in onRoad (≥ one frame at the governor: 28 m/s × 0.05 s; server road-rules.ts FORK_SWITCH_REACH) */
 export const PATTERNS = {
   country:  { name: 'COUNTRY ROAD', lanes: [[1, 1, 1]], seg: [700, 1600], len: [900, 2400], bends: 1, centre: null, junction: { gap: [420, 950], cross: .5, signal: .35, side: [1, 1, 2] } },
   highway:  { name: 'HIGHWAY', lanes: [[2, 2, 3], [3, 3, 1], [3, 2, 1], [2, 3, 1]], seg: [500, 1100], len: [1600, 3600], bends: .55, centre: 'double', junction: null },

@@ -76,6 +76,27 @@ export function freeLevelScenarios(h: () => Harness): void {
     expect((await me(w)).freeRides).toBe(9);
   });
 
+  it('ordering the ready free ride again WITHOUT a level keeps its level (HARD stays HARD) – only the helpers change', async () => {
+    const w = await login(), hard = await order(w, { level: 3, tutorial: true });
+    expect(await order(w)).toMatchObject({ id: hard.id, level: 3, trip: 'free-3', minSeconds: 600, completeDist: dist(0.4, 600), tutorial: false });
+    expect((await w.agent.post('/api/rides').send({ tier: 'free', assist: true }).expect(409)).body.code).toBe('assist_not_allowed');   // still HARD: no assist
+    expect(await order(w, { level: 2 })).toMatchObject({ id: hard.id, level: 2, trip: 'free-2' });
+    expect(await order(w, { tutorial: true })).toMatchObject({ id: hard.id, level: 2, trip: 'free-2', tutorial: true });
+    expect((await me(w)).freeRides).toBe(9);
+  });
+
+  it('a start that names the trip the game built: re-chosen in the lobby meanwhile = 409 ride_rechosen and the ride stays ready; the right trip (or none) starts it', async () => {
+    const w = await login(), ride = await order(w, { level: 1 });             // the game tab reads it: free-1
+    await order(w, { level: 3 });                                              // another tab re-chooses HARD before the game presses START
+    const refused = (await w.agent.post(`/api/rides/${ride.id}/start`).send({ trip: 'free-1' }).expect(409)).body;
+    expect(refused).toMatchObject({ code: 'ride_rechosen' });
+    expect((await w.agent.get(`/api/rides/${ride.id}`).expect(200)).body).toMatchObject({ status: 'created', trip: 'free-3' });
+    await w.agent.post(`/api/rides/${ride.id}/start`).send({ trip: '' }).expect(400);
+    expect((await w.agent.post(`/api/rides/${ride.id}/start`).send({ trip: 'free-3' }).expect(200)).body).toMatchObject({ status: 'running', trip: 'free-3', level: 3 });
+    const other = await login(), plain = await order(other, { level: 2 });
+    expect((await other.agent.post(`/api/rides/${plain.id}/start`).expect(200)).body.status).toBe('running');   // no trip in the body: not compared
+  });
+
   it('clearing each level unlocks its own achievement – EASY, CROSSROADS, HARD – and nothing else of the three', async () => {
     const w = await login();
     for (const id of ['free-easy', 'free-crossroads', 'free-hard']) expect(await earned(w, id)).toBeNull();

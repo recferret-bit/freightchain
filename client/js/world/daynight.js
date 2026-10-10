@@ -89,9 +89,14 @@ function updateLamps() {
   if (dn.k > .02 && fur?.lampAt) {
     lampPos.length = 0; const c0 = Math.floor(st.s / CFG.CHUNK_LEN);
     for (let ci = Math.max(0, c0 - 6); ci <= c0 + 16; ci++) {
-      const l = fur.lampAt(ci); if (!l || destroyed.has(l.id) || destroyed.has('b:' + l.id)) continue;   // ('b:' = smashed by road 1 of a fork – world/chunks.js)
-      const lat = net.roadside(l.s, l.lat); if (net.keepOut(l.s, lat)) continue;   // same placement rules as world/chunks.js
-      const p = roadAt(l.s); lampPos.push({ x: p.x + Math.cos(p.t) * (lat + l.arm), z: p.z + Math.sin(p.t) * (lat + l.arm), d: Math.abs(l.s - st.s) });
+      const l = fur.lampAt(ci); if (!l) continue;
+      const s0 = ci * CFG.CHUNK_LEN, fk = net.forksNear(s0, s0 + CFG.CHUNK_LEN)[0] ?? null, inside = fk && fk.f0 <= s0 && fk.f1 >= s0 + CFG.CHUNK_LEN, lat = net.roadside(l.s, l.lat);
+      for (const alt of fk && l.s >= fk.f0 && l.s <= fk.f1 ? [false, true] : [false]) {   // a fork: the other road has its own lamp (world/chunks.js roadside) – same placement rules
+        const pre = inside && (alt ? 1 - fk.choice : fk.choice) === 1 ? 'b:' : '';   // ids by road 1 of a fork carry 'b:': smashed on one road, still lit on the other
+        if (destroyed.has(pre + l.id) || net.keepOut(l.s, lat, alt)) continue;
+        const p = alt ? net.altAt(l.s) : roadAt(l.s);
+        lampPos.push({ x: p.x + Math.cos(p.t) * (lat + l.arm), z: p.z + Math.sin(p.t) * (lat + l.arm), d: Math.abs(l.s - st.s) + (alt ? net.sep(l.s) : 0) });   // (the other road is sep m away: its lamps light the bonnet less)
+      }
     }
     lampPos.sort((a, b) => a.d - b.d);
     if (lampPos.length) lit = clamp(1 - lampPos[0].d / (CFG.LAMP_RADIUS * 1.5), 0, 1);   // street light falling on the bonnet

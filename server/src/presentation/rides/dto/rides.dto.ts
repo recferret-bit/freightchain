@@ -3,7 +3,7 @@ import { TRANSACTION_SIGNATURE_MESSAGE, isTransactionSignature } from '../../../
 import type { RideReport } from '../../../domain/rides/ride-report.js';
 import { MAX_REPORTED_DISTANCE } from '../../../domain/rides/ride-rules.js';
 import { RIDE_TIER_IDS } from '../../../domain/rides/ride-tier.js';
-import { FREE_LEVEL_IDS, isFreeLevel } from '../../../domain/rides/ride-trip.js';
+import { FREE_LEVEL_IDS, TRIP_ID_MAX_LENGTH, isFreeLevel } from '../../../domain/rides/ride-trip.js';
 import { REASON_MAX_LENGTH } from '../../../domain/rides/ride-rules.js';
 import type { BatchBody } from '../../../domain/telemetry/ride-batch.entity.js';
 import { BATCH_MAX_INPUTS, BATCH_MAX_SAMPLES, BATCH_MAX_SEQ, INPUT_CODE_MAX_LENGTH, MAX_GAME_SECONDS, SAMPLE_MAX_WIDTH, TRAFFIC_MAX_FRAMES, TRAFFIC_MAX_ROW } from '../../../domain/telemetry/telemetry-rules.js';
@@ -15,6 +15,11 @@ export const createRideBodySchema = z.object({
   level: z.number().int().refine(isFreeLevel, `level must be one of ${FREE_LEVEL_IDS.join(', ')}`).optional(),
 });
 export type CreateRideBody = z.infer<typeof createRideBodySchema>;
+
+/** `trip`: the trip id the game built its road from (GET /api/rides/:id → `trip`, null read as 'classic'). Optional – absent = not compared (older games).
+    A ride re-chosen in the lobby between that read and this start has another trip: 409 `ride_rechosen`, the game reloads the ride (StartRideHandler). */
+export const startRideBodySchema = z.object({ trip: z.string().min(1).max(TRIP_ID_MAX_LENGTH).optional() });
+export type StartRideBody = z.infer<typeof startRideBodySchema>;
 
 export const confirmPaymentBodySchema = z.object({ signature: z.string().refine(isTransactionSignature, TRANSACTION_SIGNATURE_MESSAGE) });
 export type ConfirmPaymentBody = z.infer<typeof confirmPaymentBodySchema>;

@@ -71,7 +71,7 @@ function drawMap(g, X, Y, W, H, o = {}) {
     }
   }
   // side roads of the junctions – they run on beyond the map (faded ends): local roads, not the way to the finish
-  const js = net.near(s0 - 450, s1 + 450).filter(j => j.kind !== 'start'), fade = thumb || mpp < 9.6;   // zoomed far out: plain strokes (a gradient per arm per frame adds up)
+  const js = net.near(s0 - 450, s1 + 450).filter(j => j.kind !== 'start'), fade = !thumb && mpp < 9.6;   // the dash thumbnail (redrawn every cockpit frame) and the map zoomed far out: plain strokes – a gradient per arm per frame adds up
   for (const pass of [0, 1]) for (const j of js) {
     const L = j.line ?? net.lineOf(j);
     for (const a of j.arms) {

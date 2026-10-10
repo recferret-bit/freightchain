@@ -43,7 +43,8 @@ export class RideVerdict {
     const facts = { rideId: ride.id, driveSeconds: ride.driveSeconds, distance: ride.distance };
     const ordered = [...batches].sort((a, b) => a.seq - b.seq);
     const chain = checkChain(facts, ordered);
-    const samples = checkSamples(ordered, roadPlanFor(ride.seed, ride.trip).layout); // the ride's road: a step across a batch boundary may be a fork's road switch (built lazily – only a step over the governor asks)
+    const road = { forkSwitch: (s0: number, s1: number) => roadPlanFor(ride.seed, ride.trip).layout.forkSwitch(s0, s1) }; // built lazily: only a boundary step over the governor asks
+    const samples = checkSamples(ordered, road); // the ride's road: a step across a batch boundary may be a fork's road switch
     const agreement = checkAgreement(facts, ordered);
     const inputs = ordered.flatMap((b) => b.summary.inputs);
     const human = checkHumanTiming(inputs);

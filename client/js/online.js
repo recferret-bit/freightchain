@@ -4,6 +4,7 @@ import { API_BASE } from './hosts.js';
 import { startTelemetry, flushTelemetry, FLUSH_WAIT_MS } from './telemetry.js';
 import { setLoadout } from './cosmetics.js';
 import { showPrompt, resetPrompts } from './prompt.js';
+import { setGuide } from './guide.js';
 
 /* Online mode – OPT-IN: only when the page was opened as play.html?ride=<id> (made by the lobby). Without it nothing here runs and the game
    behaves exactly like the offline prototype (headless test, e2e, viewer and the file:// build all rely on that).
@@ -35,19 +36,19 @@ export async function initOnline() {
   }
 }
 
-/* what the game built from the ride at load (the road, the shift, the helpers): a lobby tab may re-choose a ready free ride (same id, another level)
-   while this tab waits in its menu – then this page drives the wrong road. Checked BEFORE /start: once started the ride is no longer 'created', and a
-   reload would both refuse it (initOnline) and abandon it (the pagehide beacon). */
-const SHAPE = ['seed', 'trip', 'level', 'minSeconds', 'completeDist', 'assist', 'tutorial'];
-const changed = (a, b) => SHAPE.some(k => (a[k] ?? null) !== (b[k] ?? null));
+/* A lobby tab may re-choose a READY free ride (same id, another level → another trip) while this tab waits in its menu – then this page would drive the
+   wrong road. /start carries the trip this tab built its road from and the server refuses a mismatch (409 RECHOSEN) in the same transaction that starts
+   the ride, so no re-choose can slip in between: reload, and the page loads the ride as it is now. `started` is dropped first – the ride never started,
+   so the pagehide beacon below must not end it. The checkboxes (tutorial / assist) are re-chosen on the same trip too: the started ride says which. */
+const RECHOSEN = 'ride_rechosen';
 
 export async function beginOnline() {
   if (!online.ride || online.started) return;
-  const now = await api(`rides/${encodeURIComponent(online.ride.id)}`).catch(() => null);   // a failed look is no reason not to start: /start has the last word
-  if (now && now.status === 'created' && changed(online.ride, now)) { location.reload(); return new Promise(() => {}); }   // re-chosen elsewhere: load it as it is now (START is never sent)
-  if (online.started) return;   // (a second START click while that look was out)
   online.started = true;
-  const started = await api(`rides/${online.ride.id}/start`, {});
+  let started;
+  try { started = await api(`rides/${online.ride.id}/start`, { trip: online.ride.trip ?? 'classic' }); }   // (null = a ride from before trips = 'classic' – trips.js tripOf)
+  catch (e) { if (e.status === 409 && e.code === RECHOSEN) { online.started = false; location.reload(); return new Promise(() => {}); } throw e; }   // re-chosen elsewhere: load it as it is now
+  if (started.tutorial !== online.ride.tutorial || started.assist !== online.ride.assist) setGuide(started);   // (HARD's assist is refused by the server: false here too)
   online.running = true;   // the server has started the ride: its road plan is served from now on (road-plan.js)
   setLoadout(started.loadout);   // what the server stamped on the ride (what spectators and replays draw) – normally what the menu already wore
   startTelemetry(online.ride.id);   // inputs + 10 Hz samples, uploaded in hash-chained batches (the server's verdict reads them)

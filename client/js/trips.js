@@ -46,7 +46,7 @@ export const DEFAULT_TRIP = '1h';
 /* the trip being driven / watched – set BEFORE the road is reset (the curvature is integrated into road.js tables on net.reset) */
 export const trip = { ...TRIPS[DEFAULT_TRIP] };
 export function setTrip(id) { for (const k of Object.keys(trip)) delete trip[k]; Object.assign(trip, TRIPS[id] ?? TRIPS[DEFAULT_TRIP]); return trip; }   // (a row's own keys only: `seconds` must not leak into the next trip)
-/** the free levels, easiest first (the lobby's picker, the achievements) */
+/** the free levels, easiest first – read by the server's drift spec (server/test/unit/domain/ride-trip.spec.ts) against ride-trip.ts FREE_LEVELS; the lobby takes its picker from GET /api/tiers */
 export const FREE_LEVELS = Object.values(TRIPS).filter(t => t.level).sort((a, b) => a.level - b.level);
 /** the trip id of a ride payload: what the server stamped, 'classic' for a ride from before trips (null), its tier from a server without the field */
 export const tripOf = r => r.trip !== undefined ? (r.trip ?? 'classic') : r.tier;

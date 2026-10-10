@@ -48,7 +48,8 @@ interface CreateFacts {
  * transaction and the ride is ready at once (409 `no_tickets` / `pool_not_live`). In `program` mode that is the only way; in `transfer` mode an on-sale tier with no pool still uses the legacy pay-per-ride order.
  * A FREE ride is ordered at a LEVEL (ride-trip.ts FREE_LEVELS, default 1): its trip, FREE_RIDE_SECONDS × its multiple, its finish line. ASSIST on a level
  * without it (HARD) is refused (409 `assist_not_allowed`), a level on a paid tier too (409 `level_free_only`). Asking for the ready free ride again re-chooses
- * its level and helpers on that SAME ride (same seed, same credit) – the lobby never sends you onto a road you did not pick.
+ * its level and helpers on that SAME ride (same seed, same credit) – the lobby never sends you onto a road you did not pick; a request with no `level` keeps
+ * the ride's own level.
  */
 @CommandHandler(CreateRideCommand)
 export class CreateRideHandler implements ICommandHandler<CreateRideCommand, RideDto> {
@@ -100,7 +101,8 @@ export class CreateRideHandler implements ICommandHandler<CreateRideCommand, Rid
       }
       if (open?.isInStatus(RideStatus.Running)) throw new ConflictError('a ride is already in progress');
       if (open?.isInStatus(RideStatus.Created) && (!open.isFree || !paid)) {
-        if (open.isFree && !paid && open.chooseFree(level, freeLevelSeconds(level, rules.freeRideSeconds), tutorial, assist)) await this.rides.save(open, tx); // the same ready free ride, re-chosen: the level + checkboxes the lobby sent this time
+        const again = asked ?? open.level ?? DEFAULT_FREE_LEVEL; // no level in the request = the ride keeps its own (never a silent fall back to EASY)
+        if (open.isFree && !paid && open.chooseFree(again, freeLevelSeconds(again, rules.freeRideSeconds), tutorial, assist)) await this.rides.save(open, tx); // the same ready free ride, re-chosen: the level + checkboxes the lobby sent this time
         return { dto: toRideDto(open), now, ordered: null, resumed: open.snapshot(), failed, expired: null, cancelled: null, freeRidesLeft: player.freeRides };
       }
       // the ticket is spent before anything else changes, so a refused spend (409) leaves the wallet exactly as it was

@@ -9,7 +9,7 @@ import { StartRideCommand } from '../../../src/application/use-cases/rides/start
 import { HeartbeatRideCommand } from '../../../src/application/use-cases/rides/heartbeat-ride/heartbeat-ride.command.js';
 import { EndRideCommand } from '../../../src/application/use-cases/rides/end-ride/end-ride.command.js';
 import { UploadBatchCommand } from '../../../src/application/use-cases/telemetry/upload-batch/upload-batch.command.js';
-import { batchBodySchema, endRideBodySchema, heartbeatBodySchema, createRideBodySchema, confirmPaymentBodySchema } from '../../../src/presentation/rides/dto/rides.dto.js';
+import { batchBodySchema, endRideBodySchema, heartbeatBodySchema, createRideBodySchema, confirmPaymentBodySchema, startRideBodySchema } from '../../../src/presentation/rides/dto/rides.dto.js';
 import { rideIdParamsSchema } from '../../../src/presentation/common/dto/common.dto.js';
 import { busMock } from '../../support/bus.js';
 import { newSignature } from '../../support/fake-chain.js';
@@ -30,14 +30,15 @@ describe('RidesHttpController', () => {
     await c.payment(me, params); expect(queries.last()).toEqual(new GetPaymentInstructionsQuery('W', 'ride-1'));
     await c.confirm(me, params, { signature: 'S' }); expect(commands.last()).toEqual(new ConfirmPaymentCommand('W', 'ride-1', 'S'));
     await c.reconcile(me, params); expect(commands.last()).toEqual(new ReconcilePaymentCommand('W', 'ride-1'));
-    await c.start(me, params); expect(commands.last()).toEqual(new StartRideCommand('W', 'ride-1'));
+    await c.start(me, params, {}); expect(commands.last()).toEqual(new StartRideCommand('W', 'ride-1', null));
+    await c.start(me, params, { trip: 'free-2' }); expect(commands.last()).toEqual(new StartRideCommand('W', 'ride-1', 'free-2'));
     const report = heartbeatBodySchema.parse({ s: 10, t: 2, hull: 90, route: 'brenner' });
     await c.heartbeat(me, params, report); expect(commands.last()).toEqual(new HeartbeatRideCommand('W', 'ride-1', report));
     const end = endRideBodySchema.parse({ outcome: 'failed', s: 'NaN', reason: 'crash' });
     await c.end(me, params, end); expect(commands.last()).toEqual(new EndRideCommand('W', 'ride-1', 'failed', end.report, 'crash'));
     const batch = batchBodySchema.parse(recording('ride-1', { seconds: 10 })[0]);
     await c.batch(me, params, batch); expect(commands.last()).toEqual(new UploadBatchCommand('W', 'ride-1', batch));
-    expect(commands.sent).toHaveLength(9);
+    expect(commands.sent).toHaveLength(10);
     expect(queries.sent).toHaveLength(3);
   });
 
@@ -60,6 +61,11 @@ describe('RidesHttpController', () => {
       expect(createRideBodySchema.parse({ tier: 'free', level: 2 })).toEqual({ tier: 'free', level: 2 });
       for (const level of [0, 4, 1.5, '2', null, 'HARD']) expect(createRideBodySchema.safeParse({ tier: 'free', level }).success, String(level)).toBe(false);
       expect(createRideBodySchema.safeParse({ tier: '1h', level: 1 }).success).toBe(true);   // valid shape: the handler refuses it (409 level_free_only)
+    });
+    it('start: the game\'s trip is an optional, short, non-empty string', () => {
+      expect(startRideBodySchema.parse({})).toEqual({});
+      expect(startRideBodySchema.parse({ trip: 'free-3' })).toEqual({ trip: 'free-3' });
+      for (const trip of ['', 'x'.repeat(33), 3, null]) expect(startRideBodySchema.safeParse({ trip }).success, String(trip)).toBe(false);
     });
     it('confirm: a base58 transaction signature', () => {
       expect(confirmPaymentBodySchema.safeParse({ signature: newSignature() }).success).toBe(true);

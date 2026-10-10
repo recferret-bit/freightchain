@@ -1,7 +1,5 @@
 import { Logger } from '@nestjs/common';
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
-import { toMeDto } from '../../../../domain/players/player.dto.js';
-import { readyFreeRideOf } from '../../../../domain/rides/ride.dto.js';
 import { parseWalletAddress } from '../../../../domain/players/wallet-address.js';
 import { UnauthorizedError } from '../../../../domain/shared/errors.js';
 import { ChallengeRepositoryPort } from '../../../ports/auth/challenge.repository.port.js';
@@ -10,12 +8,11 @@ import { SignatureVerifierPort } from '../../../ports/auth/signature-verifier.po
 import { TokenSignerPort } from '../../../ports/auth/token-signer.port.js';
 import { AnalyticsPort } from '../../../ports/analytics/analytics.port.js';
 import { RulesConfigPort } from '../../../ports/config/rules-config.port.js';
-import { RideRepositoryPort } from '../../../ports/rides/ride.repository.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
 import { playerSignedIn } from '../../../services/analytics-events.js';
 import { emitAnalytics } from '../../../services/analytics-emit.js';
 import { PlayerSessionService } from '../../../services/player-session.service.js';
-import { PoolTicketsService } from '../../../services/pool-tickets.service.js';
+import { MeProfileService } from '../../../services/me-profile.service.js';
 import { demoScaleOf, isDemoWallet } from '../../../services/demo.js';
 import { VerifySignInCommand, type SignInResultDto } from './verify-signin.command.js';
 
@@ -32,9 +29,8 @@ export class VerifySignInHandler implements ICommandHandler<VerifySignInCommand,
     private readonly rules: RulesConfigPort,
     private readonly clock: ClockPort,
     private readonly signIns: SignInRepositoryPort,
-    private readonly tickets: PoolTicketsService,
     private readonly analytics: AnalyticsPort,
-    private readonly rides: RideRepositoryPort,
+    private readonly profile: MeProfileService,
   ) {}
 
   async execute(command: VerifySignInCommand): Promise<SignInResultDto> {
@@ -53,7 +49,6 @@ export class VerifySignInHandler implements ICommandHandler<VerifySignInCommand,
     emitAnalytics(this.analytics, () => playerSignedIn({
       wallet, now, isNewPlayer: player.isNewPlayer, isDemo: isDemoWallet(rules, wallet), freeRides: player.freeRides, freeRidesMax: player.freeRidesMax, demoScale: demoScaleOf(rules), createdAt: player.createdAt,
     }));
-    const [tickets, open] = await Promise.all([this.tickets.balances(wallet, now), this.rides.listOpenByWallet(wallet)]);   // a returning rider's ready free ride, as /api/me says it
-    return { profile: toMeDto(player, now, isDemoWallet(rules, wallet), demoScaleOf(rules), tickets, readyFreeRideOf(open)), session };
+    return { profile: await this.profile.of(player, now), session };   // what /api/me says (a returning rider's ready free ride too)
   }
 }

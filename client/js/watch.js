@@ -239,7 +239,8 @@ function apply(a, b, k, dt) {
   const vel0 = st.vel, s0 = st.s, n = k < .5 ? a : b, f = n[13];
   const fa = Number.isFinite(a[FORK_COL]) ? net.forkAt(a[1]) : null, kp = fa && fa === net.forkAt(b[1]) && a[FORK_COL] !== b[FORK_COL] ? (k < .5 ? 0 : 1) : k;   // the driver switched roads at a fork between the two: s / d / psi are measured on different roads – take the nearer sample whole
   st.t = lerp(a[0], b[0], k); st.s = lerp(a[1], b[1], kp); st.d = lerp(a[2], b[2], kp); st.psi = lerp(a[3], b[3], kp); st.v = Math.max(0, lerp(a[4], b[4], k));
-  if (Number.isFinite(n[FORK_COL])) roads.setBranch(st.s, n[FORK_COL]);   // draw the road of the fork the driver was on (its (s, d) are that road's)
+  const fk = net.forkAt(st.s), fs = fk && [n, n === a ? b : a].find(x => Number.isFinite(x[FORK_COL]) && net.forkAt(x[1]) === fk);   // the column of a sample IN the fork the playhead is in (the nearer first):
+  if (fs) roads.setBranch(st.s, fs[FORK_COL]);   // draw the road the driver was on (its (s, d) are that road's) – a sample past the merge says 0 and would flip it back for a frame
   st.rpm = lerp(a[5], b[5], k); st.gear = n[6]; st.hull = lerp(a[7], b[7], k);
   st.gas = lerp(a[8], b[8], k); st.brake = lerp(a[9], b[9], k); st.steer = st.ste = lerp(a[10], b[10], k); st.clutch = lerp(a[11], b[11], k);
   if (Number.isFinite(f)) {

@@ -10,7 +10,7 @@ const setup = () => {
   const ctx = unitContext();
   const analytics = new RecordingAnalytics();
   const handler = new StartRideHandler(ctx.lookup, ctx.rides, ctx.players, ctx.cosmetics, ctx.rules, ctx.transactions, ctx.clock, analytics, ctx.stats);
-  return { ctx, analytics, start: (id: string, wallet = 'w') => handler.execute(new StartRideCommand(wallet, id)) };
+  return { ctx, analytics, start: (id: string, wallet = 'w', trip: string | null = null) => handler.execute(new StartRideCommand(wallet, id, trip)) };
 };
 
 describe('StartRideHandler', () => {
@@ -111,5 +111,20 @@ describe('StartRideHandler', () => {
     ctx.clock.advance(151);
     await start(second.id);
     expect(await ctx.stats.player('w')).toMatchObject({ rides: 1, metres: 60, seconds: 5 });   // the second one is running – not counted yet
+  });
+  it('the trip the game built its road from must still be the ride\'s: a ride re-chosen in the lobby meanwhile is a 409 ride_rechosen and stays ready; absent = not compared', async () => {
+    const { ctx, start, analytics } = setup();
+    const ride = await ctx.freeRide('w');                                        // EASY = free-1
+    const r = await ctx.reload(ride.id); r.chooseFree(3, 100, false, false); await ctx.rides.save(r);   // the lobby re-chose HARD after the game read the ride
+    await expect(start(ride.id, 'w', 'free-1')).rejects.toThrow(new ConflictError('the ride was re-chosen: it is driven on free-3 now, not free-1 – load it again', 'ride_rechosen'));
+    expect((await ctx.reload(ride.id)).status).toBe(RideStatus.Created);
+    expect(analytics.named('ride_started')).toHaveLength(0);
+    expect(await start(ride.id, 'w', 'free-3')).toMatchObject({ status: 'running', trip: 'free-3' });
+    const old = Ride.restore({ ...(await ctx.freeRide('v')).snapshot(), trip: null });   // a ride from before trips: the 'classic' road
+    await ctx.rides.save(old);
+    await expect(start(old.id, 'v', 'free-1')).rejects.toMatchObject({ errorCode: 'ride_rechosen', statusCode: 409 });
+    expect(await start(old.id, 'v', 'classic')).toMatchObject({ status: 'running' });
+    const plain = await ctx.freeRide('x');
+    expect(await start(plain.id, 'x')).toMatchObject({ status: 'running' });   // an older game says nothing: started as before
   });
 });

@@ -54,6 +54,8 @@ export class RoadLayout {
   private nextJ = Number.POSITIVE_INFINITY;
   private jn = 0;
   private readonly queue: string[];
+  /** can this trip's road fork at all (road-rules.ts TRIP_ROADS: a 'fork' among its opening patterns or its weights)? false = the fork questions are answered at once */
+  readonly canFork: boolean;
 
   /** trip: the ride's (Ride.trip) – its layout knobs (road-rules.ts TRIP_ROADS); null / any other = the default layout */
   constructor(seed: number, trip: string | null = null) {
@@ -62,6 +64,7 @@ export class RoadLayout {
     const road = tripRoadOf(trip);
     this.weights = road.weights;
     this.queue = road.first.slice(1);
+    this.canFork = road.first.includes('fork') || (road.weights.fork ?? 0) > 0;
     const L = Math.round((Math.PI / 2) * START_TURN_R);
     this.sA = Math.round(START_ACCESS);
     this.Sm = this.sA + L;
@@ -186,11 +189,12 @@ export class RoadLayout {
     return false;
   }
 
-  /** in the first / last FORK.commit m of a fork, where its two roads are one apron (net.apron) */
+  /** in the first / last FORK.commit m of a fork, where its two roads are one apron (net.apron) – on the split side FORK_SWITCH_REACH m further: the game's
+      last sample on the old road may lie one frame past the commit point, before it moves the truck onto the road it took (net.onRoad does the same) */
   forkApron(s: number): boolean {
-    if (s < this.Sm) return false;
+    if (!this.canFork || s < this.Sm) return false;
     const g = this.segAt(s);
-    return g.fork === true && Math.min(s - g.s0, g.s1 - s) < FORK.commit;
+    return g.fork === true && (s - g.s0 < FORK.commit + FORK_SWITCH_REACH || g.s1 - s < FORK.commit);
   }
 
   /** Is the forward step from s0 to s1 the one where the game may have moved the truck onto the OTHER road of a fork? Crossing a fork's commit point
@@ -198,7 +202,7 @@ export class RoadLayout {
       switchFork): d jumps by the gap between the two roads (≈ 14–19 m) and s by up to ≈ 3 m (always forward). Decided from the layout alone – never from
       the client's word (sample column 15) – so a step can only be excused where the seed put a fork. */
   forkSwitch(s0: number, s1: number): boolean {
-    if (!(s1 > s0) || s1 < this.Sm + FORK.commit || s1 - s0 > FORK.commit) return false; // (a step that long is no switch – and the layout is never generated out to a forged s)
+    if (!this.canFork || !(s1 > s0) || s1 < this.Sm + FORK.commit || s1 - s0 > FORK.commit) return false; // (a step that long is no switch – and the layout is never generated out to a forged s)
     for (let i = this.segIndex(s1); i >= 0; i--) {
       const g = this.segs[i]!, c = g.s0 + FORK.commit;
       if (g.s1 <= s0 - FORK_SWITCH_REACH) break; // every commit point further back lies before this segment's end

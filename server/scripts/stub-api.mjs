@@ -84,10 +84,10 @@ const R = [
   ['GET', /^rides\/pending$/, () => ({ body: { ride: [...rides.values()].find(r => r.status === 'created') ?? null } })],
   ['POST', /^rides$/, (m, b) => {
     if (b.level !== undefined && !FREE_LEVELS.some(l => l.level === b.level)) return problem(400, 'validation_error', 'level must be one of 1, 2, 3');   // the real server's body schema refuses it before anything else
-    const tier = b.tier, lv = tier === 'free' ? FREE_LEVELS.find(l => l.level === (b.level ?? 1)) : null;
+    const tier = b.tier, ready = tier === 'free' ? [...rides.values()].find(r => r.status === 'created' && r.tier === 'free') : null;
+    const lv = tier === 'free' ? FREE_LEVELS.find(l => l.level === (b.level ?? ready?.level ?? 1)) : null;   // no level = the ready ride keeps its own
     if (tier !== 'free' && b.level != null) return problem(409, 'level_free_only', 'a level is for free rides only');
     if (lv?.level === 3 && b.assist) return problem(409, 'assist_not_allowed', 'the HARD free run has no assist');
-    const ready = tier === 'free' ? [...rides.values()].find(r => r.status === 'created' && r.tier === 'free') : null;
     if (ready) {   // asking for the ready free ride again re-chooses its level + helpers on that SAME ride – no second credit (create-ride.handler.ts)
       Object.assign(ready, { minSeconds: lv.seconds, completeDist: lv.completeDist, trip: lv.trip, level: lv.level, tutorial: !!b.tutorial, assist: !!b.assist });
       return { body: ready };

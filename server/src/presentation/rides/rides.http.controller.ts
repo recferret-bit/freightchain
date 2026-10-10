@@ -19,8 +19,8 @@ import { PlayerAuthGuard } from '../../infrastructure/http/guards/player-auth.gu
 import type { PlayerIdentity } from '../../infrastructure/http/types/http-request.js';
 import { rideIdParamsSchema, type RideIdParams } from '../common/dto/common.dto.js';
 import {
-  batchBodySchema, confirmPaymentBodySchema, createRideBodySchema, endRideBodySchema, heartbeatBodySchema,
-  type ConfirmPaymentBody, type CreateRideBody, type EndRideBody, type HeartbeatBody,
+  batchBodySchema, confirmPaymentBodySchema, createRideBodySchema, endRideBodySchema, heartbeatBodySchema, startRideBodySchema,
+  type ConfirmPaymentBody, type CreateRideBody, type EndRideBody, type HeartbeatBody, type StartRideBody,
 } from './dto/rides.dto.js';
 
 /** A rider's rides: order / get one, pay for it, start it, report progress, end it. Everything is private to the signed-in wallet. */
@@ -65,9 +65,10 @@ export class RidesHttpController {
     return this.commandBus.execute<ReconcilePaymentCommand, ReconcilePaymentResultDto>(new ReconcilePaymentCommand(player.wallet, params.id));
   }
 
+  /** body `{ trip? }`: the trip the game built its road from – another one (the ride was re-chosen in the lobby meanwhile) = 409 `ride_rechosen` */
   @Post(':id/start') @HttpCode(200)
-  start(@CurrentPlayer() player: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams): Promise<RideDto> {
-    return this.commandBus.execute<StartRideCommand, RideDto>(new StartRideCommand(player.wallet, params.id));
+  start(@CurrentPlayer() player: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodBody(startRideBodySchema) body: StartRideBody): Promise<RideDto> {
+    return this.commandBus.execute<StartRideCommand, RideDto>(new StartRideCommand(player.wallet, params.id, body.trip ?? null));
   }
 
   @Post(':id/heartbeat') @HttpCode(200)

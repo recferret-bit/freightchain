@@ -1,6 +1,7 @@
 import { Ride } from '../../../src/domain/rides/ride.entity.js';
 import { RoadPlan } from '../../../src/domain/road/road-plan.js';
-import { FORK, FORK_SWITCH_REACH } from '../../../src/domain/road/road-rules.js';
+import { FORK, FORK_SWITCH_JUMP, FORK_SWITCH_REACH } from '../../../src/domain/road/road-rules.js';
+import * as roadPlans from '../../../src/domain/road/road-plan.js';
 import { summariseBatch } from '../../../src/domain/telemetry/batch-summary.js';
 import { RideBatch, type BatchBody, type BatchFacts } from '../../../src/domain/telemetry/ride-batch.entity.js';
 import { measureWorld } from '../../../src/domain/telemetry/world-facts.js';
@@ -8,6 +9,12 @@ import { checkSamples } from '../../../src/domain/verdict/recording-checks.js';
 import { RideVerdict } from '../../../src/domain/verdict/ride-verdict.entity.js';
 import { checkWorld } from '../../../src/domain/verdict/world-checks.js';
 import { hashBatch, takeHoles } from '../../support/recording.js';
+
+// the judge's road plan, spied on (passed through): it must be built only when a step asks for it
+vi.mock('../../../src/domain/road/road-plan.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/domain/road/road-plan.js')>();
+  return { ...actual, roadPlanFor: vi.fn(actual.roadPlanFor) };
+});
 
 /* A FORK: crossing the commit point (FORK.commit m after the split) the game re-measures the truck on the road it is nearer to (client/js/net/orchestrator.js
    switchFork) – between two samples d jumps by the gap between the roads and s by up to ≈ 3 m forward. The server knows where that can happen from its own
@@ -54,6 +61,8 @@ describe('a fork\'s road switch (the server\'s layout decides where)', () => {
     expect(L.forkSwitch(C + 3, C - 3)).toBe(false); // reversing: the game never switches
     expect(L.forkSwitch(FORK_SEG.s1 - FORK.commit - 3, FORK_SEG.s1 - FORK.commit + 3)).toBe(false); // the merge side: no switch there
     expect(RoadPlan.forSeed(SEED).layout.forkSwitch(C - 3, C + 3)).toBe(false); // the same seed on a trip without forks
+    expect([plan.layout.canFork, RoadPlan.forSeed(SEED, 'free-3').layout.canFork]).toEqual([true, true]); // a trip that cannot fork answers at once (no layout walk per sample step)
+    for (const trip of [null, 'classic', 'free', 'free-1', '1h', '4h', '8h']) expect(RoadPlan.forSeed(SEED, trip).layout.canFork, String(trip)).toBe(false);
     expect(L.forkSwitch(C - 3, C + 5000)).toBe(false); // far too long for a switch (a forged s is never generated out to)
     expect(L.forkSwitch(C - 3, 1e12)).toBe(false);
   });
@@ -125,5 +134,49 @@ describe('a fork\'s road switch (the server\'s layout decides where)', () => {
     };
     expect(judged(2)).not.toContain('teleport'); // level 2 = the free-2 trip: the seed's fork is there
     expect(judged(1)).toContain('teleport'); // level 1 = free-1: no fork on that road – the same jump is a teleport
+  });
+  it('a truck that STAYS on its road over the commit point is measured like anywhere else: through the sinkhole there without a scratch = ignored (the exemption is only for the step that jumped)', () => {
+    const rows: Row[] = [];
+    for (let k = 0; k < 50; k++) rows.push(row(k * 0.1, r2(C - 60 + k * STEP), 2.4)); // straight on in the pit's lane, the hull never moves
+    const over = rows.findIndex((r, i) => i > 0 && rows[i - 1]![1]! < C && r[1]! >= C);
+    expect(plan.layout.forkSwitch(rows[over - 1]![1]!, rows[over]![1]!)).toBe(true); // a step the layout would excuse…
+    expect(Math.abs(rows[over]![2]! - rows[over - 1]![2]!)).toBeLessThan(FORK_SWITCH_JUMP); // …but d did not jump: no switch happened
+    const keys = measureWorld(rows, plan).holes.filter((p) => p.hole === HOLE.id && p.miss < 0).map((p) => p.key);
+    expect(keys).toEqual(expect.arrayContaining([`${HOLE.id}:0:0`, `${HOLE.id}:0:1`, `${HOLE.id}:0:2`]));
+    const w = checkWorld([{ summary: summariseBatch(0, rows[0]![0]!, rows.at(-1)![0]!, rows, [], plan) }]);
+    expect(w.scores).toMatchObject({ ignored: 1 });
+    expect(codes(w)).toEqual(['obstacle-no-impact:flag']);
+  });
+
+  it('the sample one frame past the commit point, still on the road the truck is leaving, is ON the road (the apron reaches FORK_SWITCH_REACH further) – no off-road spell', () => {
+    const across = -(1.4 + 14.3); // the other road's lane, measured on this one
+    for (const pS of [C, C + 0.7, C + 1.4]) {
+      const { rows } = switchDrive(pS, { before: across, after: 1.4 });
+      expect(measureWorld(rows, plan).offroad, String(pS)).toEqual([]);
+    }
+    expect(plan.layout.onRoad(C + FORK_SWITCH_REACH + 1, across)).toBe(false); // further on it is not this road
+  });
+
+  it('the judge builds the ride\'s road plan only when a step across a batch boundary is over the governor', () => {
+    const spy = vi.mocked(roadPlans.roadPlanFor);
+    const T0 = new Date(Date.UTC(2036, 9, 8, 12));
+    const judge = (parts: Row[][]) => {
+      const ride = Ride.createFree({ id: 'ride-l', wallet: 'w', seed: SEED, minSeconds: 3, now: T0, level: 2 });
+      ride.start(T0);
+      const done = Ride.restore({ ...ride.snapshot(), lastS: parts.at(-1)!.at(-1)![1]!, lastT: 5, driveSeconds: 5, lastHbAt: new Date(T0.getTime() + 5000) });
+      let prevHash = 'ride-l';
+      const stored = parts.map((part, seq) => {
+        const body = { seq, prevHash, t0: part[0]![0]!, t1: part.at(-1)![0]!, samples: part, inputs: [] };
+        prevHash = hashBatch(body);
+        return RideBatch.accept('ride-l', { ...body, hash: prevHash }, prevHash, T0, undefined, undefined, 0, RoadPlan.forSeed(SEED, TRIP), seq ? parts[seq - 1]! : []);
+      });
+      spy.mockClear();
+      RideVerdict.judge(done, stored, new Date(T0.getTime() + 6000));
+      return spy.mock.calls.length;
+    };
+    const plain: Row[] = Array.from({ length: 40 }, (_, k) => row(k * 0.1, 1000 + k * STEP, 1.4));
+    expect(judge([plain.slice(0, 20), plain.slice(20)])).toBe(0); // nothing over the governor: no road plan
+    const { rows, at } = switchDrive(P_S);
+    expect(judge([rows.slice(0, at), rows.slice(at)])).toBeGreaterThan(0); // the switch step across the boundary asks
   });
 });

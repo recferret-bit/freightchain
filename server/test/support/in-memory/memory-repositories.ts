@@ -196,11 +196,12 @@ export class MemoryRideQuery extends RideQueryPort {
     const rides = this.of(wallet).map((r) => r.props);
     const started = rides.filter((r) => r.startedAt);
     const done = rides.filter((r) => r.status === RideStatus.Completed);
-    const metres = started.reduce((sum, r) => sum + r.lastS, 0), fair = opts.skipRejected ? done.filter((r) => !badgeRejected(this.db.verdicts.get(r.id) ? { status: this.db.verdicts.get(r.id)!.status, reasons: this.db.verdicts.get(r.id)!.reasons } : null)) : done;
+    const metres = started.reduce((sum, r) => sum + r.lastS, 0), verdictOf = (id: string) => { const v = this.db.verdicts.get(id); return v ? { status: v.status, reasons: v.reasons } : null; };
+    const rejected = opts.skipRejected ? done.filter((r) => badgeRejected(verdictOf(r.id))) : [], fair = done.filter((r) => !rejected.includes(r));   // a rejected ride earns no completion and its metres don't count (its start does)
     return {
       stats: { started: started.length, completed: done.length, metres, best: done.reduce((m, r) => Math.max(m, r.lastS), 0) },
       facts: {
-        started: started.length, completed: fair.length, totalMetres: metres,
+        started: started.length, completed: fair.length, totalMetres: metres - rejected.reduce((sum, r) => sum + r.lastS, 0),
         completedAtNight: fair.some((r) => r.driveSeconds > 0 && r.nightSeconds >= 0.5 * r.driveSeconds),
         cleanRun: fair.some((r) => r.hull !== null && r.hull >= 99.5),
         completedSiberia: fair.some((r) => r.route === 'siberia'),

@@ -185,19 +185,6 @@ export class Ride {
     return now.getTime() - (this.p.lastHbAt?.getTime() ?? 0) >= rules.hbMinIntervalMs;
   }
 
-  /** `loadout`: what the wallet wears right now – the ride keeps it, so a replay shows the cockpit it was really driven in. */
-  /** A ready FREE ride can be re-chosen (the lobby's checkboxes) until it starts – the helpers are fixed once it runs. Returns whether anything changed (= the ride must be saved). */
-  chooseGuide(tutorial: boolean, assist: boolean): boolean {
-    this.mustBe(RideStatus.Created);
-    if (!this.isFree) throw new ConflictError('only a free ride has a tutorial or assist');
-    const level = this.level;
-    if (level !== null) assertAssistAllowed(level, assist);
-    if (this.p.tutorial === tutorial && this.p.assist === assist) return false;
-    this.p.tutorial = tutorial;
-    this.p.assist = assist;
-    return true;
-  }
-
   /** A ready FREE ride re-chosen as a whole (the lobby's level picker + its two checkboxes) until it starts: the LEVEL's trip, shift length (`minSeconds`, the
       caller's FREE_RIDE_SECONDS × the level's multiple) and finish line, and the helpers – the same ride, seed and credit. ASSIST on a level without it = 409,
       nothing changed. Returns whether anything changed (= the ride must be saved). */
@@ -212,6 +199,7 @@ export class Ride {
     return true;
   }
 
+  /** `loadout`: what the wallet wears right now – the ride keeps it, so a replay shows the cockpit it was really driven in. */
   start(now: Date, loadout: Loadout | null = null): void {
     this.mustBe(RideStatus.Created);
     this.p.status = RideStatus.Running;

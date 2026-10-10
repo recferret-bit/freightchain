@@ -33,6 +33,7 @@ describe('the server\'s road = the game\'s road (drift)', () => {
     }
     const F = game.patterns.FORK;
     expect({ len: F.len, commit: F.commit, corridor: F.corridor }).toEqual(R.FORK);
+    expect(F.reach).toBe(R.FORK_SWITCH_REACH);
     expect(game.patterns.DEFAULT_WEIGHTS).toEqual(R.DEFAULT_WEIGHTS);
     for (const [id, t] of Object.entries(R.HOLE_TYPES)) {
       const g = game.obstacles.HOLES[id];
@@ -131,7 +132,32 @@ describe('the server\'s road = the game\'s road (drift)', () => {
       expect(Math.hypot(end.x - end2.x, end.z - end2.z)).toBeLessThan(1e-3);
       expect(Math.abs(end.t - end2.t)).toBeLessThan(1e-6);
       expect(mid).toBeGreaterThan(150); // the two roads are well apart in the middle
-      expect(net.sep(f.f0 + R.FORK.commit)).toBeLessThanOrEqual(R.FORK.corridor + 0.5); // the server's corridor covers the gap at the commit point
+      expect(net.sep(f.f0 + R.FORK.commit + R.FORK_SWITCH_REACH)).toBeLessThanOrEqual(R.FORK.corridor + 0.5); // the server's corridor covers the gap at the commit point (and one frame past it)
+      expect(net.sep(f.f0 + R.FORK.commit) - 2.8).toBeGreaterThan(R.FORK_SWITCH_JUMP); // the switch moves d by the gap: more than the jump a road switch is told by, even less a step's own drift
+    } finally { trips.setTrip('1h'); }
+  });
+
+  it('the frame the truck crosses a fork\'s commit point is ON the road in both: sampled one frame past it, still on the road it is leaving – the apron reaches FORK_SWITCH_REACH further on the split side (never at the merge)', async () => {
+    const { net } = game, trips = await load('trips.js');
+    try {
+      trips.setTrip('free-2');
+      for (const seed of [42, 67, 1234]) {
+        net.setStyle({}); net.reset(seed); net.ensure(8000);
+        const mine = new RoadLayout(seed, 'free-2');
+        for (const f of net.forks.slice(0, 2)) {
+          f.choice = 0;
+          const c = f.f0 + R.FORK.commit, other = (s: number) => -net.bulge(f) * net.sep(s);   // the other road's centre line, measured on this one
+          for (const ds of [0, 0.7, 1.4]) for (const lane of [-2.4, 2.4]) {
+            const s = c + ds, d = other(s) + lane;
+            expect(net.onRoad(s, d), `seed ${seed} s ${s} d ${d}`).toBe(true);
+            expect(mine.onRoad(s, d), `seed ${seed} s ${s} d ${d}`).toBe(true);
+          }
+          expect(net.onRoad(c + 3, other(c + 3) + 2.4)).toBe(false); // further on, the other road is not this one's
+          expect(mine.forkApron(c + 3)).toBe(false);
+          expect(mine.forkApron(f.f1 - R.FORK.commit - 1)).toBe(false); // the merge side: no reach there
+          expect(mine.forkApron(f.f1 - R.FORK.commit + 1)).toBe(true);
+        }
+      }
     } finally { trips.setTrip('1h'); }
   });
 

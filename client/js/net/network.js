@@ -179,7 +179,7 @@ class RoadNetwork {
   onRoad(s, d) {
     if (s > -80 && s < 30 && Math.abs(d) < 34) return true;   // depot yard
     const [l, r] = this.edges(s); if (d >= l - .5 && d <= r + .5) return true;
-    if (this.apron(s)) { const f = this.forkAt(s), a = -this.bulge(f) * this.sep(s); if (d >= Math.min(l, l + a) - .5 && d <= Math.max(r, r + a) + .5) return true; }   // a fork's split / merge: both roads' tarmac (the server allows FORK.corridor m either way there)
+    if (this.apron(s, FORK.reach)) { const f = this.forkAt(s), a = -this.bulge(f) * this.sep(s); if (d >= Math.min(l, l + a) - .5 && d <= Math.max(r, r + a) + .5) return true; }   // a fork's split / merge: both roads' tarmac (the server allows FORK.corridor m either way there)
     for (const j of this.near(s - 90, s + 90)) {
       if (j.kind === 'start') {
         if (this.straight) continue;   // no turn, no apron: the depot road is just the road
@@ -237,8 +237,8 @@ class RoadNetwork {
   altWorld(s, d) { const p = this.altAt(s); return { x: p.x + Math.cos(p.t) * d, z: p.z + Math.sin(p.t) * d }; }
   /** metres between the two roads' centre lines at s (0 outside a fork) */
   sep(s) { const f = this.forkAt(s); if (!f) return 0; const O = roadAt(f.f0), p = roadAt(s); return 2 * Math.abs((p.x - O.x) * Math.cos(O.t) + (p.z - O.z) * Math.sin(O.t)); }
-  /** in the split / merge stretch of a fork, where the two roads' tarmac is still one apron */
-  apron(s) { const f = this.forkAt(s); return !!f && Math.min(s - f.f0, f.f1 - s) < FORK.commit; }
+  /** in the split / merge stretch of a fork, where the two roads' tarmac is still one apron (`reach`: that many m further on the split side – onRoad) */
+  apron(s, reach = 0) { const f = this.forkAt(s); return !!f && Math.min(s - f.f0 - reach, f.f1 - s) < FORK.commit; }
   /** world point → (s, lat) on the spine near s (a few Newton steps) */
   spineCoords(x, z, hint) {
     let m = hint; for (let i = 0; i < 4; i++) { const p = roadAt(m); m += (x - p.x) * Math.sin(p.t) - (z - p.z) * Math.cos(p.t); }

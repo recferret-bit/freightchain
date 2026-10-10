@@ -1,4 +1,4 @@
-import { AXLES, HOLE_TYPES, WHEEL } from '../road/road-rules.js';
+import { AXLES, FORK_SWITCH_JUMP, HOLE_TYPES, WHEEL } from '../road/road-rules.js';
 import type { RoadPlan } from '../road/road-plan.js';
 import { SAMPLE_INPUT_COL } from './telemetry-rules.js';
 
@@ -42,8 +42,8 @@ export interface WorldFacts {
   gasless: [number, number][];
 }
 
-/** NOT bumped for the fork switch (no pass is measured across it): a stored measurement of another version reads back as null and the batch would lose its
-    road check – and no ride with a fork was measured before (forks came with the free levels) */
+/** NOT bumped for the fork switch (no pass is measured across the step that switched roads): a stored measurement of another version reads back as null and
+    the batch would lose its road check – and no ride with a fork was measured before (forks came with the free levels) */
 export const WORLD_FACTS_VERSION = 1;
 /** a pass is recorded when the nearer wheel came within this many metres of the pit (further away it is just road) */
 const PASS_REACH = 6;
@@ -74,7 +74,10 @@ function holePasses(rows: readonly (readonly number[])[], plan: RoadPlan, from: 
   for (let i = Math.max(1, from); i < rows.length; i++) {
     const p = rows[i - 1]!, q = rows[i]!;
     if (col(q, 0) <= col(p, 0)) continue;
-    if (plan.layout.forkSwitch(col(p, 1), col(q, 1))) continue; // the step the game may have moved the truck onto the other road of a fork: d jumps by the gap between the roads, so where the wheels ran in between is unknown – no pass is claimed (not `edge`: OBSTACLE_UNMEASURED_FLAG of those would flag an honest driver)
+    // the step the game moved the truck onto the other road of a fork: d jumps by the gap between the roads, so where the wheels ran in between is unknown –
+    // no pass is claimed (not `edge`: OBSTACLE_UNMEASURED_FLAG of those would flag an honest driver). Only a step that really jumped (FORK_SWITCH_JUMP): a truck
+    // that stayed on its road over the commit point is measured like anywhere else. The jump is asked first – the layout only where d leapt.
+    if (Math.abs(col(q, 2) - col(p, 2)) >= FORK_SWITCH_JUMP && plan.layout.forkSwitch(col(p, 1), col(q, 1))) continue;
     AXLES.forEach((ax, axle) => {
       const ap = col(p, 1) + ax, aq = col(q, 1) + ax;
       if (ap === aq) return;

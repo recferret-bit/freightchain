@@ -2,6 +2,7 @@ import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { toRideDto, type RideDto } from '../../../../domain/rides/ride.dto.js';
 import type { RideProps } from '../../../../domain/rides/ride.entity.js';
 import { RideStatus } from '../../../../domain/rides/ride-status.js';
+import { tripOrClassic } from '../../../../domain/rides/ride-trip.js';
 import { ConflictError, NotFoundError } from '../../../../domain/shared/errors.js';
 import { AnalyticsPort } from '../../../ports/analytics/analytics.port.js';
 import { RulesConfigPort } from '../../../ports/config/rules-config.port.js';
@@ -29,6 +30,8 @@ interface StartFacts {
  * (a wallet can own two PAID ready rides when a late payment lands – both are owed, but they run one after the other). A ride that is not "created" is a 409.
  * The ride also keeps what the wallet wears at this moment (visuals – the game wears the loadout in the answer).
  * A free ride started with the TUTORIAL on marks the player's `tutorialPassedAt` (first time only), in the same transaction under the same lock.
+ * `trip` (optional): the trip the game built its road from. The lobby can re-choose a ready free ride (another level = another trip) between the game's read
+ * of the ride and this start – then the game would drive one road while the server judges another: 409 `ride_rechosen`, nothing changed; the game reloads.
  */
 @CommandHandler(StartRideCommand)
 export class StartRideHandler implements ICommandHandler<StartRideCommand, RideDto> {
@@ -44,13 +47,14 @@ export class StartRideHandler implements ICommandHandler<StartRideCommand, RideD
     private readonly stats: StatsService,
   ) {}
 
-  async execute({ wallet, rideId }: StartRideCommand): Promise<RideDto> {
+  async execute({ wallet, rideId, trip }: StartRideCommand): Promise<RideDto> {
     const facts = await this.transactions.run(async (tx) => {
       const now = this.clock.now();
       const player = await this.players.findByWalletForUpdate(wallet, tx);
       if (!player) throw new NotFoundError('ride not found');
       const ride = await this.lookup.require(rideId, wallet, tx);
       if (!ride.isInStatus(RideStatus.Created)) throw new ConflictError(`ride is ${ride.status}`); // its own precondition first: unpaid, running, ended…
+      if (trip !== null && trip !== tripOrClassic(ride.trip)) throw new ConflictError(`the ride was re-chosen: it is driven on ${tripOrClassic(ride.trip)} now, not ${trip} – load it again`, 'ride_rechosen'); // before anything is saved
       const running = (await this.rides.listOpenByWallet(wallet, tx)).find((r) => r.id !== ride.id && r.isInStatus(RideStatus.Running));
       let failed: RideProps | null = null;
       if (running?.isStaleRunning(now, this.rules.get())) { // a tab that vanished mid-ride must not block the next one

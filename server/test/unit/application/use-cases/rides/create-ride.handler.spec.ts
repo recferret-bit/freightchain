@@ -86,6 +86,15 @@ describe('CreateRideHandler', () => {
     expect((await ctx.storedPlayer('w')).freeRides).toBe(9);
   });
 
+  it('asking for the ready free ride again WITHOUT a level keeps its own level (never a silent fall back to EASY); HARD + assist is still refused', async () => {
+    const { ctx, create } = setup();
+    const hard = await create('free', 'w', true, false, 3);
+    expect(await create('free', 'w', false, false)).toMatchObject({ id: hard.id, level: 3, trip: 'free-3', minSeconds: 100, completeDist: 0.4 * 28 * 100, tutorial: false });
+    await expect(create('free', 'w', false, true)).rejects.toMatchObject({ errorCode: 'assist_not_allowed' });
+    expect(await ctx.reload(hard.id)).toMatchObject({ trip: 'free-3', assist: false });
+    expect((await ctx.storedPlayer('w')).freeRides).toBe(9);
+  });
+
   it('no credits left → 409', async () => {
     const { ctx, create } = setup();
     for (let i = 0; i < 10; i++) {   // a new wallet starts with free_on_signup (10)

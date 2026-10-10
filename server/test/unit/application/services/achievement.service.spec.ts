@@ -66,7 +66,7 @@ describe('AchievementService', () => {
   }
 
   it('while the verdict is ENFORCED a rejected recording earns no badge for its ride; a flagged / verified one does', async () => {
-    expect(await judgedEasyRun(true, VerdictStatus.Rejected, ['obstacle-ignored'])).toEqual(['first-mile']);   // started counts – it is not a judged fact
+    expect(await judgedEasyRun(true, VerdictStatus.Rejected, ['obstacle-ignored'])).toEqual(['first-mile']);   // started counts – it is not a judged fact; its metres don't (Century)
     expect(await judgedEasyRun(true, VerdictStatus.Flagged, ['uniform-holds'])).toEqual(expect.arrayContaining(['shift-complete', 'free-easy', 'on-my-own']));
     expect(await judgedEasyRun(true, VerdictStatus.Verified, [])).toEqual(expect.arrayContaining(['shift-complete', 'free-easy']));
   });

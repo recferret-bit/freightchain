@@ -33,8 +33,6 @@ const km = m => (m / 1000).toFixed(m < 10_000 ? 2 : 1);
 
 /* ───────── state ───────── */
 const S = { me: null, tiers: null, pool: null, live: { rides: [] }, liveAt: 0, skew: 0, board: 'round', boardLevel: Number(store.get('freightchain.board-level')) || 3, pending: null, pendingNote: '', tab: 'new', busy: null, qty: {}, msgs: {}, poolInfo: {}, order: null, focus: null, opt: { tutorial: null, assist: store.get('freightchain.assist') === '1', level: Number(store.get('freightchain.level')) || 1 } };   // opt = the free ride's level + two checkboxes: tutorial null = follow the server (on until a ride was started with it), assist and the level are remembered here
-/* /api/me. Its `readyFreeRide` = the free ride ordered but not started (its credit already spent): START hands it back, so it stays on at 0 credits (adoptReady). */
-const setMe = m => { S.me = m; };
 let seq = 0;   // one number per tab render: an answer that comes back after the player moved on (or re-asked) is dropped, not painted over the new tab
 const now = () => Date.now() + S.skew;   // server clock (skew learned from /api/live)
 const freeLeft = m => `${m.freeRides}/${m.freeRidesMax} free ride${m.freeRides === 1 ? '' : 's'}`;   // always balance/daily cap. A surplus (signup, a promo, an admin grant) stays; the refill stops at the cap
@@ -71,7 +69,7 @@ function renderNew() {
   refreshMe();   // free-ride count + tickets after a ride / refund
   if (salesOpen(S.tiers)) checkOrder();
 }
-const refreshMe = () => api('me').then(m => { setMe(m); paintHeader(); paintTiers(); }, () => {});
+const refreshMe = () => api('me').then(m => { S.me = m; paintHeader(); paintTiers(); }, () => {});
 
 function paintPool() {
   const box = $('poolbox'), p = S.pool; if (!box) return;
@@ -137,7 +135,8 @@ function tierOff(t) {
   if (t.id === 'free') return S.me.freeRides <= 0 && !S.me.readyFreeRide ? 'no free rides left – the next one at 00:00 UTC' : '';   // a READY free ride needs no credit
   return t.available ? '' : 'not available right now';
 }
-/* a ready free ride seen for the first time picks the card's level + checkboxes from it (once – the player may still change them; START re-chooses that same ride).
+/* /api/me's `readyFreeRide` = the free ride ordered but not started (its credit already spent): START hands it back, so it stays on at 0 credits (tierOff).
+   A ready free ride seen for the first time picks the card's level + checkboxes from it (once – the player may still change them; START re-chooses that same ride).
    ASSIST only where its level allows it: HARD's assist:false was forced, not chosen, and must not overwrite the remembered box. */
 function adoptReady(free) {
   const r = S.me?.readyFreeRide; if (!r || r.id === S.readyId) return;
@@ -404,17 +403,16 @@ async function pollLive() {
 }
 
 /* ───────── LEADERBOARD ───────── */
-const BOARD_LEVELS = [[1, 'EASY'], [2, 'CROSSROADS'], [3, 'HARD']];   // = server ride-trip.ts FREE_LEVELS (GET /api/leaderboard?board=free&level=…)
 async function renderBoard() {
   view.replaceChildren(el('p', { class: 'dim' }, 'Loading…'));
   let j; const my = ++seq;
   const free = S.board === 'free';
-  try { j = await api(`leaderboard?board=${S.board}${free ? `&level=${S.boardLevel}` : ''}`, undefined, { report: false }); } catch (e) { if (my === seq) view.replaceChildren(el('p', { class: 'bad' }, e.message)); return; }
+  try { [j] = await Promise.all([api(`leaderboard?board=${S.board}${free ? `&level=${S.boardLevel}` : ''}`, undefined, { report: false }), free && !S.tiers ? api('tiers', undefined, { report: false }).then(t => { S.tiers ??= t; }, () => {}) : null]); } catch (e) { if (my === seq) view.replaceChildren(el('p', { class: 'bad' }, e.message)); return; }   // the level tabs come from the tiers (asked again when the boot's request failed)
   if (my !== seq) return;   // switched away (or re-asked) while loading
   track('leaderboard_filtered', { board: S.board });
   const seg = el('div', { class: 'seg' }, ...[['round', 'THIS ROUND'], ['all', 'ALL TIME'], ['free', 'FREE RIDES']].map(([id, label]) => el('button', { class: id === S.board ? 'on' : '', onclick: () => { S.board = id; renderBoard(); } }, label)));
-  const lvName = (BOARD_LEVELS.find(([n]) => n === j.level) ?? [])[1] ?? '';   // the free board ranks ONE level (HARD unless picked; the pick is remembered)
-  const lvSeg = free ? el('div', { class: 'seg', id: 'board-levels', role: 'group', 'aria-label': 'Level' }, ...BOARD_LEVELS.map(([n, label]) => el('button', { class: n === S.boardLevel ? 'on' : '', 'aria-pressed': String(n === S.boardLevel), onclick: () => { S.boardLevel = n; store.set('freightchain.board-level', String(n)); renderBoard(); } }, label))) : '';
+  const levels = freeLevels(S.tiers?.tiers.find(t => t.id === 'free')), lvName = levels.find(l => l.level === j.level)?.name ?? '';   // the free board ranks ONE level (HARD unless picked; the pick is remembered) – the levels are GET /api/tiers' (none = no tabs, the server's default board)
+  const lvSeg = free && levels.length ? el('div', { class: 'seg', id: 'board-levels', role: 'group', 'aria-label': 'Level' }, ...levels.map(({ level: n, name }) => el('button', { class: n === j.level ? 'on' : '', 'aria-pressed': String(n === j.level), onclick: () => { S.boardLevel = n; store.set('freightchain.board-level', String(n)); renderBoard(); } }, name))) : '';
   const prize = S.board === 'round', mine = j.rows.find(r => r.wallet === S.me.wallet);
   view.replaceChildren(
     el('h2', {}, 'LEADERBOARD'), seg, lvSeg,
@@ -465,7 +463,7 @@ function tickFree() {   // the "next free ride" counter; at 00:00 UTC ask the se
   document.querySelectorAll('.fr-cd').forEach(n => { n.textContent = freeCd(m); });
   if (m.nextFreeRideAt != null && now() >= m.nextFreeRideAt && (S.meMiss ?? 0) < 3 && Date.now() - (S.meAt ?? 0) > 5000) {   // gives up after 3 refreshes that bring no new time (clock skew); a reload retries
     S.meAt = Date.now();
-    api('me', undefined, { report: false }).then(x => { S.meMiss = x.nextFreeRideAt === m.nextFreeRideAt ? (S.meMiss ?? 0) + 1 : 0; setMe(x); paintHeader(); paintTiers(); }, () => { S.meMiss = (S.meMiss ?? 0) + 1; });
+    api('me', undefined, { report: false }).then(x => { S.meMiss = x.nextFreeRideAt === m.nextFreeRideAt ? (S.meMiss ?? 0) + 1 : 0; S.me = x; paintHeader(); paintTiers(); }, () => { S.meMiss = (S.meMiss ?? 0) + 1; });
   }
 }
 function tick() {
@@ -477,7 +475,7 @@ function tick() {
 
 /* ───────── boot (last on purpose: everything above is `const`, initialised only once the module has run that far) ───────── */
 for (const a of document.querySelectorAll('a[href="/play.html"]')) a.addEventListener('click', () => { track('offline_practice_clicked'); flushSoon(); });
-try { setMe(await api('me')); } catch { flushSoon(); location.href = '/'; }   // reporting GET: a failure here is api_request_failed, then back to the landing
+try { S.me = await api('me'); } catch { flushSoon(); location.href = '/'; }   // reporting GET: a failure here is api_request_failed, then back to the landing
 if (S.me) {
   track('session_restored', { surface: 'lobby', wallet: S.me.wallet, ...(S.me.demo ? { is_demo: true } : {}) });
   const viewed = { is_demo: !!S.me.demo };

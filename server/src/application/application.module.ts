@@ -4,6 +4,7 @@ import { InfrastructureModule } from '../infrastructure/infrastructure.module.js
 import { AchievementService } from './services/achievement.service.js';
 import { PaymentSettlementService } from './services/payment-settlement.service.js';
 import { PlayerSessionService } from './services/player-session.service.js';
+import { MeProfileService } from './services/me-profile.service.js';
 import { RideLookupService } from './services/ride-lookup.service.js';
 import { StatsService } from './services/stats.service.js';
 import { RoundService } from './services/round.service.js';
@@ -104,7 +105,7 @@ import { GetOfflineRidesHandler } from './use-cases/offline/get-offline-rides/ge
 
 const services: Provider[] = [
   AchievementService, PaymentSettlementService, PlayerSessionService, GameSettingsService, RideLookupService, RoundService, VerdictService, AdminProofService,
-  PoolTicketsService, PromoCreationService, TicketSettlementService, PoolRegistryService, FinalityService, LiveAccessService, StatsService,
+  PoolTicketsService, PromoCreationService, TicketSettlementService, PoolRegistryService, FinalityService, LiveAccessService, StatsService, MeProfileService,
 ];
 
 import { ReconcileStatsHandler } from './use-cases/stats/reconcile-stats/reconcile-stats.handler.js';

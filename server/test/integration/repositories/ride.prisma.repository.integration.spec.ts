@@ -27,7 +27,7 @@ describe('RidePrismaRepository (PostgreSQL)', () => {
     await repo.insert(ride);
     expect(await repo.findById(ride.id)).toMatchObject({ tutorial: true, assist: false });
     const again = (await repo.findById(ride.id))!;
-    expect(again.chooseGuide(false, true)).toBe(true);
+    expect(again.chooseFree(1, 10, false, true)).toBe(true);
     await repo.save(again);
     expect(await repo.findById(ride.id)).toMatchObject({ tutorial: false, assist: true });
     const plain = freeRideAt('w'); await repo.insert(plain);

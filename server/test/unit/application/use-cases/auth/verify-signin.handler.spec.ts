@@ -18,7 +18,7 @@ class StubTokens extends TokenSignerPort {
 describe('VerifySignInHandler', () => {
   const ctx = unitContext();
   const analytics = new RecordingAnalytics();
-  const handler = new VerifySignInHandler(ctx.challenges, new NaclSignatureVerifier(), new StubTokens(), ctx.sessions, ctx.rules, ctx.clock, ctx.signIns, ctx.poolTickets, analytics, ctx.rides);
+  const handler = new VerifySignInHandler(ctx.challenges, new NaclSignatureVerifier(), new StubTokens(), ctx.sessions, ctx.rules, ctx.clock, ctx.signIns, analytics, ctx.meProfile);
   const challenge = new RequestChallengeHandler(ctx.challenges, ctx.rules, ctx.clock, ctx.entropy);
   const kp = nacl.sign.keyPair(), wallet = bs58.encode(kp.publicKey);
   const sign = (m: string, key = kp) => bs58.encode(nacl.sign.detached(new TextEncoder().encode(m), key.secretKey));
@@ -54,7 +54,7 @@ describe('VerifySignInHandler', () => {
 
   it('a failure to record the sign-in never blocks it', async () => {
     const broken = { insert: async () => { throw new Error('db down'); } } as unknown as typeof ctx.signIns;
-    const h = new VerifySignInHandler(ctx.challenges, new NaclSignatureVerifier(), new StubTokens(), ctx.sessions, ctx.rules, ctx.clock, broken, ctx.poolTickets, analytics, ctx.rides);
+    const h = new VerifySignInHandler(ctx.challenges, new NaclSignatureVerifier(), new StubTokens(), ctx.sessions, ctx.rules, ctx.clock, broken, analytics, ctx.meProfile);
     const { message } = await challenge.execute(new RequestChallengeCommand(wallet));
     expect((await h.execute(new VerifySignInCommand(wallet, sign(message)))).profile.wallet).toBe(wallet);
   });

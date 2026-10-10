@@ -121,6 +121,18 @@ describe('RideQueryPrismaRepository (PostgreSQL)', () => {
     expect((await query.summary('bob')).stats).toEqual({ started: 0, completed: 0, metres: 0, best: 0 });
   });
 
+  it('summary skipRejected (VERDICT_ENFORCE): a ride the verdict rejected earns no completion and its metres do not count (its start does); the stats still count it', async () => {
+    await ride('alice', { metres: 150, outcome: 'shift', hull: 100, route: 'siberia', night: true, verdict: 'rejected' });
+    await ride('alice', { metres: 40, outcome: 'shift', start: 100, verdict: 'verified' });
+    await ride('alice', { metres: 60, outcome: 'failed', start: 200 });
+    const s = await query.summary('alice', { skipRejected: true });
+    expect(s.stats).toEqual({ started: 3, completed: 2, metres: 250, best: 150 });
+    expect(s.facts).toEqual({ started: 3, completed: 1, totalMetres: 100, completedAtNight: false, cleanRun: true, completedSiberia: false, completedFreeUnassisted: true, completedFreeLevels: [1] });
+    expect((await query.summary('alice')).facts).toMatchObject({ started: 3, completed: 2, totalMetres: 250, completedSiberia: true });   // shadow mode: every ride counts
+    await prisma.rideVerdict.updateMany({ where: { status: 'rejected' }, data: { reasons: [{ code: 'no-recording' }] } });   // rejected only for having no recording: not a cheat, it counts
+    expect((await query.summary('alice', { skipRejected: true })).facts).toMatchObject({ started: 3, completed: 2, totalMetres: 250 });
+  });
+
   it('recent: started rides only, newest first, limited', async () => {
     await ride('alice', { metres: 1, outcome: 'failed', start: 0 });
     await ride('alice', { metres: 2, outcome: 'failed', start: 50 });

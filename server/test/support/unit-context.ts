@@ -4,6 +4,7 @@ import { EntropyPort } from '../../src/application/ports/shared/entropy.port.js'
 import { AchievementService } from '../../src/application/services/achievement.service.js';
 import { PaymentSettlementService } from '../../src/application/services/payment-settlement.service.js';
 import { PlayerSessionService } from '../../src/application/services/player-session.service.js';
+import { MeProfileService } from '../../src/application/services/me-profile.service.js';
 import { PromoCreationService } from '../../src/application/services/promo-creation.service.js';
 import { PoolTicketsService } from '../../src/application/services/pool-tickets.service.js';
 import { TicketSettlementService } from '../../src/application/services/ticket-settlement.service.js';
@@ -113,6 +114,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const offlineRides = new MemoryOfflineRideRepository(db);
   const sessions = new PlayerSessionService(players, settings, rulesPort, clock, analytics);
   const lookup = new RideLookupService(rides);
+  const meProfile = new MeProfileService(rulesPort, poolTickets, rides);
   const rounds = new RoundService(roundRepo, rulesPort, transactions, clock, analytics);
   const achievements = new AchievementService(unlocks, rideQuery, clock, rulesPort);
   const ticketSettlement = new TicketSettlementService(players, pools, tickets, orders, sessions, rounds, transactions, clock, entropy);
@@ -145,7 +147,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   return {
     db, clock, chain, entropy, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, batches, hasher, verdictRepo, verdicts, proofs, signIns, adminActions, adminQuery, health, analytics,
     pools, tickets, promos, cosmetics, promoCreation, orders, poolTickets, ticketSettlement,
-    sessions, settings, settingsRepo, offlineRides, lookup, rounds, achievements, settlement, now, player, freeRide, paidOrder, reload, storedPlayer,
+    sessions, meProfile, settings, settingsRepo, offlineRides, lookup, rounds, achievements, settlement, now, player, freeRide, paidOrder, reload, storedPlayer,
     poolChain, chainEvents, chainCursors, sponsoredTxs, registry, rideEvents, viewers, sitePresence, rideMutes, donationOrders, liveAccess, statsRepo, cache, stats,
   };
 }
