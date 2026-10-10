@@ -70,7 +70,7 @@ export class ForbiddenError extends DomainError {
   }
 }
 
-/** A per-wallet quota (e.g. the gas sponsor's daily cap) is used up – try again later or another way. */
+/** A per-wallet quota (e.g. a ride effect's sliding gap) is used up – try again later or another way. */
 export class TooManyRequestsError extends DomainError {
   readonly statusCode = 429;
   readonly errorCode: string;

@@ -18,7 +18,7 @@ export interface CrankInstruction {
 /**
  * The pool crank's door to the chain (CRANK_SECRET): the crank key signs AND pays for permissionless instructions only – fail_pool, expire_pool, refund,
  * close_pool of a refunded pool – so it holds fee money and nothing else; every condition is checked again by the program. Separate from PoolChainPort,
- * whose gas sponsor co-signs only transactions a wallet signed first (that boundary stays as it is). Without CRANK_SECRET `address` is null and the
+ * whose transactions every wallet signs and pays itself. Without CRANK_SECRET `address` is null and the
  * crank does nothing (the lobby's CLAIM REFUND still works from the player's wallet).
  */
 export abstract class PoolCrankChainPort {

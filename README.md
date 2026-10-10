@@ -1,24 +1,427 @@
-# freightchain
+# Freight Chain
 
-Freight Chain: a browser truck-driving game with a Solana-paid lobby. Vanilla ES modules and three.js in the client, a NestJS API, and an Anchor escrow program. The map for coding agents is [`AGENTS.md`](AGENTS.md) (and [`CLAUDE.md`](CLAUDE.md), which imports it).
+A browser truck game on an endless road. A shift costs real time. The server keeps the clock, records the drive, and judges the finish. Paid entries are devnet SOL. There is no token.
 
-Local run: `npm run db:up && npm run server:dev` → http://localhost:3000
+The live site is [freightchain.fun](https://freightchain.fun). The escrow program is on Solana devnet. The website still takes the legacy weekly transfer until after the Colosseum results. This file is the map. Coding agents also read [`AGENTS.md`](AGENTS.md).
+
+- **Hackathon.** [Colosseum Crypto World's Fair](https://colosseum.com/worldsfair), Solana track. Close 11:59pm PT, 12 Oct 2026. Worksheet: [`docs/hackathon-plan-v2.md`](docs/hackathon-plan-v2.md) (dated 7 Oct; the status in this README is newer).
+- **Chain.** Solana devnet. Program [`9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx`](https://explorer.solana.com/address/9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx?cluster=devnet). Config account [`E1cppxjPPy3QzxQW5Whnf6UQ4u4PJ1VYNQf1UEYovs5g`](https://explorer.solana.com/address/E1cppxjPPy3QzxQW5Whnf6UQ4u4PJ1VYNQf1UEYovs5g?cluster=devnet) (113 bytes, the initialized account). Confirmed on the public devnet RPC on 10 Oct 2026.
+- **Stack.** Vanilla ES modules and three.js r160 in the browser. NestJS 12, Prisma, PostgreSQL. Anchor 1.2 program. No bundler on the game. No React.
+- **Local.** `npm run db:up && npm run db:migrate && npm run server:dev` → [http://localhost:3000](http://localhost:3000)
+
+## Contents
+
+- [For Colosseum and Solana track judges](#for-colosseum-and-solana-track-judges)
+- [Sites and apps](#sites-and-apps)
+- [Architecture](#architecture)
+- [Features](#features)
+- [Core algorithms](#core-algorithms)
+- [On-chain escrow](#on-chain-escrow)
+- [Economy](#economy)
+- [Security](#security)
+- [Anti-cheat](#anti-cheat)
+- [Live streams](#live-streams)
+- [Repository](#repository)
+- [Skills](#skills)
+- [Run it](#run-it)
+- [Tests](#tests)
+- [Limits](#limits)
+
+## For Colosseum and Solana track judges
+
+Start on the public site. The form, the two videos, and the founder bio live in [`docs/hackathon-plan-v2.md`](docs/hackathon-plan-v2.md). This section is the product, the chain, and the claims that match the code.
+
+### Open these
+
+| Surface | URL | What you get |
+| --- | --- | --- |
+| Landing + lobby | [freightchain.fun](https://freightchain.fun) | The pitch, the live boards, sign-in, the lobby |
+| Whitepaper | [whitepaper.freightchain.fun](https://whitepaper.freightchain.fun) | Rules, escrow chapter, validation, streams, risks |
+| Game | [ride.freightchain.fun](https://ride.freightchain.fun) | The truck. A ride id comes from the lobby |
+| Model viewer | [storybook.freightchain.fun](https://storybook.freightchain.fun) | Vehicles, props, furniture, landmarks |
+| API | [api.freightchain.fun/api/health](https://api.freightchain.fun/api/health) | JSON only. Other paths on that host 404 |
+| Admin | [admin.freightchain.fun](https://admin.freightchain.fun) | HTTP basic auth, then a second wallet sign-in |
+| Program | [Explorer · devnet](https://explorer.solana.com/address/9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx?cluster=devnet) | Upgradeable program. Initialized. |
+| Social | [X](https://x.com/FreightChainSol) · [YouTube](https://www.youtube.com/@FreightChainGame) · [GitHub](https://github.com/recferret-bit/freightchain) | |
+
+The landing has six chapters: [RIDE](https://freightchain.fun/#ride), [LOOP](https://freightchain.fun/#loop), [ECONOMY](https://freightchain.fun/#economy), [ROADMAP](https://freightchain.fun/#roadmap), [GO TO MARKET](https://freightchain.fun/#market), [ABOUT](https://freightchain.fun/#about). The whitepaper chapters that match a review are [05 on-chain](https://whitepaper.freightchain.fun/#onchain), [06 validation](https://whitepaper.freightchain.fun/#verify), [07 streaming](https://whitepaper.freightchain.fun/#stream), and [08 limits](https://whitepaper.freightchain.fun/#risks).
+
+### Ten minutes
+
+1. Open the [landing](https://freightchain.fun). Read the hero, then ECONOMY. The footer says devnet, and that nothing there is real money.
+2. Open the [whitepaper](https://whitepaper.freightchain.fun). The status pills are dated 8 Oct. The escrow pill still says the program is not deployed, and the garage is grouped with planned work. The program account is on devnet, and the garage is a lobby tab. The rest of that page is the public rules.
+3. Connect a devnet wallet (Phantom or Solflare). Sign-in is a message, not a transaction. The page sends you to the lobby.
+4. Start the free ride. It is one minute, on a straight road, and it ends itself at 420 m. The cab can show a tutorial and an assist mode. Both are free-tier only.
+5. Watch someone from LIVE, or open REPLAYS. The watch page draws the truck from the recording, about 25 seconds behind, on a road rebuilt from the ride seed.
+6. Open the [program on the explorer](https://explorer.solana.com/address/9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx?cluster=devnet) and the [contract spec](docs/pool-program/index.html). A buy on freightchain.fun today is the legacy memo transfer into the weekly round. Tickets into this program are the other path, in [Economy](#economy).
+7. If you build the repo: `npm run test:localnet` runs the real program on a local validator and checks every lamport. Walkthrough: [`docs/localnet-e2e/index.html`](docs/localnet-e2e/index.html).
+
+A wallet listed in `DEMO_WALLETS` drives a paid shift `DEMO_SCALE` times shorter (default 60). The cab, the lobby, and the watch page badge that ride `DEMO ×60`. The speed governor stays 28 m/s. Say the demo clock out loud if a one-hour shift finishes in a minute.
+
+### Status
+
+| Piece | In this repository | On the public site |
+| --- | --- | --- |
+| Driving game, five routes, free rides, trips | Yes | Live |
+| Server-timed shifts, hash-chained recordings, verdicts | Yes, rules version 3 | Live, shadow mode. Boards still rank without the verdict |
+| Server-rebuilt road and hole checks | Yes | The whitepaper still says "next deploy" |
+| Live watch, replays, CB chat, devnet tips to the driver | Yes | Live. Effects run on free rides only |
+| Garage, promo codes | Yes | Lobby tabs. Cosmetics are colours |
+| Escrow program | Yes. 14 instructions, 12 events, 24 errors | On devnet, initialized. The website is still `PAYMENT_MODE=transfer` |
+| Prize payouts from a pool vault | `pay_prize` is in the program. The admin page has no payout button | After the results, on an explicit switch |
+| Token, mainnet, captcha, NFT badges | No | No |
+
+Production stays on the transfer path until the Colosseum results, the devnet exit list, and an explicit deploy. That rule is [`docs/escrow-open-items.md`](docs/escrow-open-items.md) (Q-K, Q-L). The top of that file still says "nothing deployed"; Phase 1 below it records the 8 Oct deploy. The explorer is the check.
+
+### What a Solana judge can check
+
+- **Sign-in.** Sign-In With Solana. The server stores one challenge, consumes it on the first attempt, and sets an httpOnly cookie. The statement says the signature does not send a transaction. [`server/src/domain/auth/sign-in.ts`](server/src/domain/auth/sign-in.ts)
+- **A program-owned vault.** Each pool has a zero-data PDA. Only the program can sign for it. Price, minimum, deadlines, and the prize / seed / fee split are fixed at `create_pool`. [`programs/freightchain-pools/README.md`](programs/freightchain-pools/README.md)
+- **A missed pool refunds without the operator.** `fail_pool`, `refund`, `expire_pool`, and the grace `close_pool` are permissionless. After 14 days an unpaid active pool can only be expired and refunded, so an absent admin cannot sweep the players' money to the seed treasury.
+- **Prizes are capped on chain.** `pay_prize` refuses once `prizes_paid` would pass the prize share. The 25 / 15 / 10 ranking is server policy inside that cap. The program does not hard-code the ranks.
+- **Integer lamports.** One shared table pins the server and the program. [`server/src/domain/economy/vault-split.ts`](server/src/domain/economy/vault-split.ts) · [`server/test/fixtures/chain/vault-split-cases.json`](server/test/fixtures/chain/vault-split-cases.json)
+- **The buyer pays the fee.** `buy_ticket` has a separate fee-payer account. The server sets it to the buyer. There is no gas-sponsor key on the server. A leftover `FEE_PAYER_SECRET` is ignored.
+- **The crank key is not the admin.** `CRANK_SECRET` sends only `fail_pool`, `expire_pool`, `refund`, and `close_pool`. It never sends `pay_prize`.
+- **Verifiable build.** `npm run program:verify` rebuilds in the Solana Foundation image and compares the hash to [`programs/freightchain-pools/verifiable-build.hash`](programs/freightchain-pools/verifiable-build.hash). The explorer "verified" badge needs a public repo and a signed PDA. That step is still open.
+- **Not audited.** Devnet only. `deploy` refuses an RPC whose genesis is not devnet.
+
+### Disclosure
+
+The truck, the five routes, the cockpit, traffic, and climate in `client/js` were built before this hackathon. The window added the server, the lobby, the landing, the whitepaper, the deploy, verified play, live streams, the admin page, the garage, promo codes, and the escrow program.
+
+The Oct 7 worksheet still says verified play, replays, and the admin page were not built. They are built. Read the status table above, not that checklist.
+
+### Where to read next
+
+| Question | Open |
+| --- | --- |
+| How a player drives, and what a finish means | [Whitepaper 02–03](https://whitepaper.freightchain.fun/#drive) |
+| Where the money sits | [Whitepaper 05](https://whitepaper.freightchain.fun/#onchain) · [contract spec](docs/pool-program/index.html) |
+| What the server checks | [Anti-cheat, one page](docs/anti-cheat/index.html) · [player version](docs/verified-play/index.html) |
+| What a spectator sees | [Replays and donations](docs/replay-and-donations/index.html) |
+| Whether the money tests pass | [Localnet walkthrough](docs/localnet-e2e/index.html) |
+| What is still open on the escrow | [escrow-open-items.md](docs/escrow-open-items.md) |
+| How the server is put together | [backend-architecture.md](docs/backend-architecture.md) |
+
+## Sites and apps
+
+Six names, one app. [`client/js/hosts.js`](client/js/hosts.js) picks the host. On localhost every base is empty and the pages share an origin.
+
+```mermaid
+flowchart LR
+  landing["freightchain.fun<br/>landing + lobby"] --> api["api.freightchain.fun<br/>NestJS"]
+  ride["ride.freightchain.fun<br/>the game"] --> api
+  paper["whitepaper.freightchain.fun"] --> api
+  admin["admin.freightchain.fun<br/>page + /api/admin"] --> api
+  story["storybook.freightchain.fun<br/>meshes only"]
+  api --> pg[(PostgreSQL)]
+  api --> redis[(Redis)]
+  api --> chain["Solana devnet"]
+```
+
+- **Landing** — [`landing/`](landing/index.html). Vite. Wallet sign-in, live pool and boards, dash cards drawn by the game's cockpit code. The hero video loads after the page, and never on a phone. [Read the page](https://freightchain.fun).
+- **Lobby** — [`client/lobby.html`](client/lobby.html). Tabs: New ride, Live, Replays, Leaderboard, Garage, Promo, Profile. Server text goes in with `textContent`.
+- **Game** — [`client/play.html`](client/play.html). `?ride=` is an online shift. `?watch=` is a spectator. `?offline=1` is a counted anonymous free run. Bare `play.html` is the offline prototype. `file://` cannot load the modules.
+- **Whitepaper** — [`landing/whitepaper.html`](landing/whitepaper.html). A long read. Its only request is web vitals to the API. Its numbers are asserted against the code by [`landing/test/whitepaper.test.js`](landing/test/whitepaper.test.js).
+- **Model viewer** — [`client/viewer.html`](client/viewer.html). Same builders as the game. No API on that host.
+- **Admin** — [`client/admin.html`](client/admin.html). Nginx basic auth, then an admin wallet session (`ADMIN_WALLETS`, 2 hours). Every change is a wallet signature over that exact action, and the row is kept. The player cookie grants nothing there. On a split deploy the API answers `/api/admin` only when `Host` is `admin.<apex>`.
+- **API** — NestJS. Controllers dispatch to a command or query bus. Errors are problem+json. [`docs/backend-architecture.md`](docs/backend-architecture.md)
+
+## Architecture
+
+```mermaid
+flowchart TB
+  subgraph browser [Browser]
+    game["client/js game"]
+    site["lobby, landing, admin"]
+  end
+  subgraph server [server/]
+    http[presentation]
+    app[application]
+    domain[domain]
+    infra[infrastructure]
+  end
+  http --> app --> domain
+  infra --> domain
+  game -->|"heartbeats, batches, /end"| http
+  site -->|"SIWS, rides, tickets"| http
+  infra --> pg[(PostgreSQL<br/>one schema per context)]
+  infra --> chain["Solana devnet<br/>program + memo transfers"]
+```
+
+Layers point inward. Domain code does not read the clock or the environment. Time comes from `ClockPort`. Env comes from `EnvService`. A Prisma change ships with a SQL migration.
+
+Anything a wallet does to its rides, tickets, or payments takes the player row lock first, then the pool row, then ticket rows. [`docs/backend-architecture.md`](docs/backend-architecture.md)
+
+A ride, as the server sees it:
+
+```mermaid
+flowchart LR
+  sign[SIWS cookie] --> create["Create ride<br/>seed, route, hour, trip"]
+  create --> drive["Heartbeats 10 s<br/>batches 15 s"]
+  drive --> end["Complete, abandon,<br/>fail, or stale sweep"]
+  end --> judge["Verdict on a<br/>completed shift"]
+  judge --> board[Leaderboards]
+```
+
+The route and the start hour come from the seed. The player does not pick them. [`server/src/domain/rides/ride-rules.ts`](server/src/domain/rides/ride-rules.ts)
+
+## Features
+
+Each block is the short version. The link is the long one.
+
+### The drive
+
+Five routes, one truck, a manual gearbox, clutch, stall, parking brake, cold engine, battery, heater, wipers, and a cab radio. Speed is governed at 28 m/s. The road does not end.
+
+| id | Route | Bend |
+| --- | --- | --- |
+| `route66` | Route 66, USA | gentle |
+| `stuart` | Stuart Highway, Australia | almost straight |
+| `siberia` | Trans-Siberian, Russia | medium, snow |
+| `brenner` | Brenner Pass | tight |
+| `panamerican` | Pan-American, Atacama | long sweepers |
+
+Read: [`client/js/themes/index.js`](client/js/themes/index.js) · [model viewer](https://storybook.freightchain.fun)
+
+### Shifts and trips
+
+| Tier | Length | Price | On sale | Road |
+| --- | --- | --- | --- | --- |
+| Free | 60 s, finish at 420 m | 0 | Yes | Straight start, calm traffic, ends itself |
+| 1 hour | 3600 s | $5 in SOL | Yes, pool minimum 20 | Depot, STOP line, right turn |
+| 4 hour | 4 h | $15 planned | When a pool is registered | Bends ×1.2, traffic ×1.4 |
+| 8 hour | 8 h | $50 planned | When a pool is registered | Bends ×1.4, traffic ×1.8 |
+
+A new wallet starts with 10 free rides. The daily refill adds one at 00:00 UTC and stops at 5. A promo can sit above that cap. `play.html?offline=1` allows 3 runs per browser fingerprint and 10 per IP, with no account.
+
+Tutorial and assist exist only on a free ride. Assist halves hull damage and battery drain. The achievement On My Own is a completed free ride without assist.
+
+Read: [`client/js/trips.js`](client/js/trips.js) · [`server/src/domain/rides/ride-tier.ts`](server/src/domain/rides/ride-tier.ts) · [`server/src/domain/settings/game-settings.ts`](server/src/domain/settings/game-settings.ts)
+
+### Verified play
+
+Online rides upload every key and dash-button event, plus a 10 Hz sample of the truck, in SHA-256 hash-chained batches. A completed shift is marked `verified`, `flagged`, or `rejected`. The server does not re-simulate the physics. Paid boards rank verified shifts when `VERDICT_ENFORCE` is on. Production runs shadow mode: the verdict is stored and shown, and the boards ignore it.
+
+Read: [Anti-cheat](#anti-cheat) · [`docs/anti-cheat/index.html`](docs/anti-cheat/index.html)
+
+### Live board
+
+The landing and the lobby show who is online and which rides have a heartbeat inside 150 seconds. A silent ride is ended by the sweeper. Closing the game tab beacons `/end` at once. Closing the landing, the lobby, or a watch page sends `leave=1`.
+
+Read: [`docs/replay-and-donations/index.html`](docs/replay-and-donations/index.html) · `GET /api/live` · `GET /api/replays`
+
+### Statistics
+
+Running totals per rider and for the whole game: rides, time, kilometres, crashes, donations. Every started ride that ended counts. Free and paid are counted apart. Reads are cached for 15 seconds. Production Redis has a password and no published port.
+
+Read: [`docs/statistics.md`](docs/statistics.md)
+
+### Garage and promo codes
+
+The garage is five colour slots: wheel, truck paint, shifter, dice, needles. Nothing there changes the handling. A promo code does one thing: extra free rides, tickets of a tier, or one cosmetic. Redeeming takes the player lock and refuses before it spends a redemption. Admins create and disable codes with a signed, audited request.
+
+Read: [`docs/garage.md`](docs/garage.md) · [`docs/promocodes.md`](docs/promocodes.md)
+
+### Product analytics
+
+The browser posts an allowlist to `POST /api/telemetry`. The server emits its own events after the database commit. The project token stays on the server. Ingest is `https://eu.i.posthog.com`, project 297915. Local `server/.env` pins `POSTHOG_ENABLED=0`. Production sends when `POSTHOG_ENABLED` is `1` or `true`. Nine funnels are listed in the explainer.
+
+Read: [`docs/analytics/index.html`](docs/analytics/index.html)
+
+### Sound and the promo clip
+
+The intro is real gameplay, 14.8 seconds, with an 8-bit soundtrack: [`media/out/video/intro/intro.mp4`](media/out/video/intro/intro.mp4). The same synth builds the in-game effects in [`client/audio/sfx/`](client/audio/sfx/).
+
+Read: [`media/specs/intro.json`](media/specs/intro.json) · [Skills](#skills) `gameplay-video` and `game-audio`
+
+## Core algorithms
+
+### Endless road
+
+The drivable world is one centre-line. Distance along it is `s`. Offset across it is `d`. Lanes, junctions, and side roads are features of that line.
+
+- A ride seed feeds `mulberry32`. Segments and junctions are appended in one RNG order, so the layout is a pure function of the seed.
+- Curvature integrates into Float64 tables, one metre a step. The tables grow as the truck approaches. There is no finish line in the geometry.
+- The start is a depot access road, then a 90° right turn onto the main road. The free trip skips that turn and runs straight on.
+- Patterns are `country`, `highway`, `arterial`, and `town`. Each sets lanes (1–3 each way), length, and bend scale. A lane change is a 120 m taper. The spine is straight through a junction.
+- The player cannot turn into a side road.
+
+```mermaid
+flowchart LR
+  seed[Ride seed] --> layout[Segments, junctions, lanes]
+  seed --> holes[At most one natural hole per chunk]
+  layout --> plan[Obstacle plan]
+  holes --> plan
+  plan --> draw[Driver and spectators draw it]
+  plan --> measure[Each uploaded batch is measured against it]
+```
+
+Read: [`client/js/net/network.js`](client/js/net/network.js) · [`client/js/net/patterns.js`](client/js/net/patterns.js) · [`client/js/road.js`](client/js/road.js)
+
+### Obstacle plan
+
+`rollHole(chunk)` places at most one natural hole. The only natural type is the sinkhole. Pothole, deep, cluster, and trench are the holes a spectator can pay for, and they sit beside the chunk's own hole. They are not judged.
+
+The free trip's first natural hole is 1200 m into the main road, so the one-minute run never reaches one. That distance is the one trip knob the server shares. An online ride installs the server plan from `GET /api/watch/:id/road`. The local roll is the offline fallback.
+
+Read: [`client/js/net/obstacles.js`](client/js/net/obstacles.js) · [`server/src/domain/road/road-plan.ts`](server/src/domain/road/road-plan.ts)
+
+### Truck model
+
+`update(dt)` in [`client/js/sim/physics.js`](client/js/sim/physics.js) steps the clutch, gears, stall, steering, and the end conditions. Thrust follows a torque curve and the gear ratio. The engine stalls in gear with the clutch out and rpm under 450. Speed clamps at 28 m/s forward and 6 m/s in reverse.
+
+The frame `dt` is clamped to 0.05 s. The step uses floats. A watch replay does not run this function. The verdict does not run it either. A deterministic fixed-point replay is described in [`technical_design_document.html`](technical_design_document.html) and is not this build.
+
+### Shift completion
+
+A shift is complete when driven time has reached the minimum and distance has reached `k × 28 m/s × minimum`. Paid tiers use `k = 0.5`. The free run uses `k = 0.25`. Idling does not bank distance, because the governor caps speed. After a paid shift is complete the road continues until the driver ends it. The free run ends itself at the line.
+
+The client default of 300 seconds is a test value. An online ride overwrites both numbers with the server ride.
+
+### One road on both sides
+
+[`server/test/unit/domain/road/road-drift.spec.ts`](server/test/unit/domain/road/road-drift.spec.ts) runs the game's own modules beside the server port: 40 seeds, segments, junctions, and every natural hole out to 60 km. If the two roads disagreed, an honest driver would be judged against holes that were not on their screen. Curvature is not in that compare. The judge works in `s` and `d`.
+
+## On-chain escrow
+
+Anchor program `freightchain_pools`. One program, many pools. Each pool is its own vault.
+
+| Account | Seeds | Role |
+| --- | --- | --- |
+| Config | `["config"]` | Admin, platform treasury, fee bps, pool count, pause |
+| Pool | `["pool", id]` | Immutable rules and counters. 184 bytes |
+| Ticket | `["ticket", pool, buyer]` | One buyer per pool. A refund closes it |
+| Vault | `["vault", id]` | Zero-data PDA. The escrow |
+
+Status bytes: Open, Active, Refunding, Settled, Cancelled.
+
+```mermaid
+stateDiagram-v2
+  [*] --> Open: create_pool
+  Open --> Active: buy_ticket once sold reaches the minimum
+  Open --> Refunding: fail_pool after the prep deadline if under the minimum
+  Open --> Refunding: cancel_pool by the admin
+  Active --> Refunding: expire_pool 14 days after the play deadline if no prize was paid
+  Active --> Settled: close_pool after the play deadline
+  Refunding --> Cancelled: close_pool once every ticket is refunded
+```
+
+- `buy_ticket` and `sponsor` are refused on an Open pool from the prep deadline on. That is a sales cutoff. The status byte stays Open until someone fails or cancels it.
+- `config.authority` may `close_pool` any time after the play deadline. Anyone else, after the 14-day grace, may close an active pool only if a prize was already paid. Otherwise the instruction returns `MustExpire`.
+- Pausing blocks create, buy, and sponsor. It does not block refunds, prizes, or the crank.
+- Authority rotation is two steps: `propose_authority`, then `accept_authority` by the new key.
+- The server mirrors accounts. The chain wins on a disagreement. Tickets are credited from program events: the confirm path, the log watcher, and `POST /api/chain/webhook`.
+
+Instructions, accounts, the money maths, and the 24 errors: [`programs/freightchain-pools/README.md`](programs/freightchain-pools/README.md). The same spec as a page: [`docs/pool-program/index.html`](docs/pool-program/index.html).
+
+[`docs/escrow-open-items.md`](docs/escrow-open-items.md) records the 8 Oct deploy: `initialize` with a platform fee of 0, deployed bytes matching the pin, and the rehearsal pools closed. The public RPC on 10 Oct 2026 still returns the program account and the 113-byte Config. Phase 2, a Phantom buy against a server pointed at devnet, is still open.
+
+## Economy
+
+Two accountants. They are not the same split.
+
+```mermaid
+flowchart TB
+  subgraph site [freightchain.fun today]
+    memo["Phantom signs a memo transfer"] --> week["Weekly round in PostgreSQL"]
+    week --> legacy["50% grand · 20% top 20 · 20% next seed · 10% fees"]
+  end
+  subgraph program [Devnet program, not the live checkout]
+    ticket[buy_ticket] --> vault[Pool vault]
+    vault --> prize["pay_prize, capped at the prize share"]
+    vault --> rest["close_pool sends seed, fee, and unclaimed prize to the treasuries named at creation"]
+    short[Under the minimum at the prep deadline] --> back[Permissionless refund of every ticket]
+  end
+```
+
+**Live site.** `PAYMENT_MODE=transfer`. A paid ride is a row in a UTC-week round. [`prize-split.ts`](server/src/domain/economy/prize-split.ts) floors 50% grand, 20% top 20, and 20% next seed. The remainder is fees, so the parts sum. Settlement of that round is accounted. It is not an on-chain payout.
+
+**Program.** The pot is `price × tickets sold + sponsorship`. Prize and seed are floored from the pool's own basis points. The fee is the remainder. The default the operator scripts pass is 7000 / 2000 / 1000. Inside the prize share, [`pool-payouts.ts`](server/src/domain/economy/pool-payouts.ts) pays the top 3 as 25 / 15 / 10 parts and splits 20 parts across ranks 1–20. Floors only. Unpaid lamports stay in the vault and go to the seed treasury at close. A full 20-ticket hour at $5 is the example in [`ride-tier.ts`](server/src/domain/rides/ride-tier.ts): 1st $26, 2nd $16, 3rd $11, places 4–20 $1.
+
+The landing's ECONOMY chapter describes the program split, 70 / 20 / 10. The live transfer round is still the 50 / 20 / 20 / 10 function above.
+
+Prices are quoted in USD and charged in devnet SOL at the server's rate. The 4 hour and 8 hour shifts are not offered until a pool of that tier is registered.
+
+## Security
+
+- **Devnet only.** The deploy check asks the RPC for its genesis hash and refuses anything else.
+- **No token.** None is issued by this program.
+- **The server does not hold the pool admin key.** `initialize` is signed by the upgrade authority and names the admin. `create_pool`, `pay_prize`, and an early `close_pool` need that admin signature.
+- **The buyer pays the network fee** on a server-built buy. The message is stored on the order and checked when the signature comes back.
+- **The crank key pays permissionless steps only.**
+- **Admin changes are signed twice.** Nginx basic auth, then an admin session cookie, then a wallet signature over the exact text of that accept, reject, re-judge, promo edit, or free-ride grant. The player session is a different cookie and a different audience.
+- **Lock order** is player, then pool, then tickets.
+- **Recordings are budgeted.** Game seconds, batch count, and bytes are capped by wall time. A batch the server refuses stops the chain.
+- **Not audited.** After the play deadline the admin may close a pool without paying prizes. The prize share then goes to the seed treasury. The 14-day grace protects players from a lost admin key. It does not protect them from a dishonest admin. `pay_prize` pays the address the admin signs, up to the prize cap.
+- **Session keys are not built.**
+
+Read: [`docs/backend-architecture.md`](docs/backend-architecture.md) · [`docs/program-deploy.md`](docs/program-deploy.md) · [`server/src/infrastructure/http/guards/admin.guard.ts`](server/src/infrastructure/http/guards/admin.guard.ts)
+
+## Anti-cheat
+
+Nine layers. The page with every code and threshold is [`docs/anti-cheat/index.html`](docs/anti-cheat/index.html). Rules version in code is 3 ([`verdict-rules.ts`](server/src/domain/verdict/verdict-rules.ts)). The player explainer still prints v4.
+
+```mermaid
+flowchart LR
+  batches[Hash-chained batches] --> bounds[Chain, governor, no teleport]
+  bounds --> agree[Ends where the ride ended]
+  agree --> road[Server road: holes, off-road, gas]
+  road --> human[Input timing, flag only]
+  human --> person[Signed admin decision]
+```
+
+- **Server-timed shift.** Heartbeats carry the clock. Distance may grow at most 28 m/s × 1.2 between beats. No heartbeat for 150 seconds ends the ride.
+- **A checkable recording.** The server recomputes every SHA-256 on arrival. A wrong hash rejects. An unhashed batch, where the browser digest failed, only flags.
+- **Physics bounds.** Over the governor, a step the truck cannot make, or a sample out of order: reject.
+- **Agreement with the ride.** The recording ends near the reported distance, covers the driven time, and shows gas if the truck moved.
+- **The server's road.** A wheel deep in a planned pit at speed must lose hull. Two ignored holes reject. Long off-road rejects. Speed gained with the gas up rejects.
+- **Budgets.** Bytes, batches, and game seconds are capped by wall time.
+- **How human the hands look.** Hold lengths, repeated gaps, and instant releases. Flag only, and only with at least 8 presses. A coarse browser clock skips the two checks it would break.
+- **Challenge channel.** The heartbeat can name a prompt with a 20 second window. `CHALLENGE_KINDS` is empty, so nothing is issued. The scoring for a future kind is already tested.
+- **A person decides.** Flagged rides wait on the admin queue. A late upload does not overturn a signed decision. Bulk re-judge keeps admin decisions.
+
+What this does not do: it does not re-simulate the drive. A careful bot that plays the real game, with human-like timing, passes the automatic checks. A modified game that drives through the holes and writes the matching hull loss looks like a hit. Traffic is recorded for replays and is not judged. Paid spectator holes are not judged. Thresholds are first guesses. A captcha before a paid start and before a prize claim is booked and not built.
+
+Recordings are kept 90 days. Flagged ones are kept. Audit any stored ride from the database with the `ride-audit` skill.
+
+Read: [`docs/verified-play/index.html`](docs/verified-play/index.html) · [`server/src/domain/verdict/`](server/src/domain/verdict)
+
+## Live streams
+
+`play.html?watch=<rideId>` replays the recording into the same renderer. There are no WebSockets. A live view sits about 25 seconds behind, because the stream is the same 15 second batches the verdict uses. A finished ride plays at 1×, 4×, and 16× while the recording is kept.
+
+- The road and its holes come from the server plan. An ignored hole is drawn with a red ring and marked on the timeline.
+- Inputs are shown as flashing yellow borders. Spectators get a per-sample bitmask, not the raw key times.
+- Traffic is a 2 Hz track beside the batch, outside the hash. A bad track is dropped. It is never a reason to refuse the batch.
+- Chat is a CB panel in the cab. The driver can mute a wallet and fold the panel.
+- Donations on production are a devnet SOL transfer from the spectator to the driver. The platform does not hold that money. If the effect can no longer happen, the transfer still lands as a tip that says why.
+- Effects are night, day, or a hole about 1 km ahead. Production allows them on free rides only. One game effect per ride per 20 seconds. The driver's game stamps where the hole went, and every replay uses that stamp.
+
+| Flag | Production |
+| --- | --- |
+| `LIVE_CHAT` | all |
+| `LIVE_DONATIONS` | on |
+| `LIVE_FREE_DONATIONS` | off, so a donation is a real transfer |
+| `LIVE_EFFECTS` | free rides only |
+
+Read: [`docs/replay-and-donations/index.html`](docs/replay-and-donations/index.html) · [`client/js/watch.js`](client/js/watch.js)
 
 ## Repository
 
 Every directory at the repo root. `.git` is the only one left out.
 
-- `.claude/` – project skills for coding agents. One folder per skill (`SKILL.md`, plus a script when the skill runs something). The index is [Skills](#skills).
-- `client/` – the game and the site pages: lobby, admin, and the model viewer (`viewer.html`). Vanilla ES modules + three.js, no build step. The API serves it in dev; production puts the game on `ride.<apex>` and the lobby on the apex.
-- `deploy/` – semi-automatic deploy to our own server (Docker, host nginx, certbot). `npm run deploy` (see [`deploy/README.md`](deploy/README.md)). Ships `git archive HEAD`, so commit first.
-- `design/` – art that is not the running app. `design/icons/` holds the app-icon candidates (SVG + 1024 px PNG; `build-app-icons.mjs` writes the shipped set into `client/`). `design/youtube-banner/` builds the channel banners (`banner.html`, `node design/youtube-banner/build.mjs`).
-- `docs/` – plans and explainers: the hackathon plan, backend architecture, [statistics](docs/statistics.md), [verified play](docs/verified-play-next-steps.md), [product analytics](docs/analytics/index.html), [replays and donations](docs/replay-and-donations/index.html), escrow status, and the pool-program spec. The public escrow explainer is the whitepaper, chapter 05.
-- `landing/` – the `/` page and the whitepaper (`whitepaper.html`, host `whitepaper.<apex>`). Its own Vite project: wallet sign-in, live pool and boards, dash cards drawn by the game's cockpit code. No three.js.
-- `media/` – promo clips and sound. `media/video/` captures real gameplay to mp4 (≤ 15 s) and gif (≤ 20 MB). `media/audio/` is the chiptune synth (music, engine, effects) and also builds the game's own sounds in `client/audio/sfx/`. `media/out/` holds the finished intro and the sound library. See [Promo videos](#promo-videos).
-- `programs/` – `programs/freightchain-pools`, the Anchor escrow: one program, many prize pools, each pool its own vault. The spec is [`programs/freightchain-pools/README.md`](programs/freightchain-pools/README.md). `npm run program:build`, `npm run program:test`, and `npm run program:verify` (the pinned verifiable build). Written and tested; not deployed.
-- `server/` – NestJS + Prisma + PostgreSQL API ([`docs/backend-architecture.md`](docs/backend-architecture.md)): layers, HTTP rules, race-safety, and the test pyramid.
+- [`.claude/`](.claude) — project skills. One folder per skill. The index is [Skills](#skills).
+- [`client/`](client) — the game, the lobby, the admin page, and the model viewer.
+- [`deploy/`](deploy/README.md) — Docker, host nginx, certbot. `npm run deploy` ships `git archive HEAD`.
+- [`design/`](design) — icon candidates and the YouTube banners. The shipped icon is generated into `client/`.
+- [`docs/`](docs) — plans and explainers. The public escrow chapter is the whitepaper, not a file in this folder.
+- [`landing/`](landing) — the `/` page and the whitepaper. Its own Vite project.
+- [`media/`](media) — promo clips and the chiptune synth, including the game's own sound effects.
+- [`programs/`](programs/freightchain-pools) — the Anchor escrow.
+- [`server/`](server) — the NestJS API.
 
-Also at the root, as files: `package.json` (the `npm run` scripts), `docker-compose.yml` (local PostgreSQL on 127.0.0.1:15433; PostHog is not set here), `AGENTS.md` and `CLAUDE.md`, `technical_design_document.html` (the production-target spec; this prototype does not meet it yet), `.gitignore`, and `.dockerignore`.
+Also at the root: `package.json`, `docker-compose.yml` (local PostgreSQL on `127.0.0.1:15433`), [`AGENTS.md`](AGENTS.md), [`CLAUDE.md`](CLAUDE.md), and [`technical_design_document.html`](technical_design_document.html) (the production-target spec; this build does not meet it).
 
 ## Skills
 
@@ -34,6 +437,8 @@ Skills live in `.claude/skills/<name>/`. A coding agent reads that folder's `SKI
 | `analytics-review` | Three passes over the landing, whitepaper, lobby, and the online ride: new controls get events, removed ones lose them, and the explainer stays in step. Each pass writes `docs/analytics/updates/<n>.html`. Does not call PostHog | `node .claude/skills/analytics-review/inventory.mjs` |
 | `posthog-prod` | Product analytics on production: the boot line, one public probe, the flush log. Read-only | `bash .claude/skills/posthog-prod/check.sh` |
 | `posthog-test` | Local analytics smoke: the relay, and one batch accepted by the EU ingest | `bash .claude/skills/posthog-test/smoke.sh` |
+| `posthog-map` | Landing, whitepaper, lobby, and game checks, then a visual map of every event | `bash .claude/skills/posthog-map/run.sh` |
+| `posthog-audit` | Compare the EU insights to the spec and list the fixes. Does not write unless you say to apply | `node .claude/skills/posthog-audit/audit.mjs` |
 | `prod-db` | Production PostgreSQL, read-only: players, rides, verdicts, payments, the review queue | `npm run ops -- query list` · `npm run ops -- query wallet <address>` · `npm run ops -- sql "SELECT …"` |
 | `prod-logs` | Production logs, read-only: the app, Postgres, and nginx | `npm run ops -- logs --since 30m` · `npm run ops -- logs --errors` |
 | `program-check` | The escrow program: reproducible build against the pinned hash, tests on that `.so`, clippy, audit | `npm run program:verify` |
@@ -49,37 +454,24 @@ Skills live in `.claude/skills/<name>/`. A coding agent reads that folder's `SKI
 
 A new, renamed, or removed skill updates this table in the same change. The rule is [`AGENTS.md`](AGENTS.md) → "Maps stay current".
 
-## Verified play, admin, observing production
+## Run it
 
-- **Verified play**: on online rides the game records every key press and a 10 Hz sample of the truck (`client/js/telemetry.js`) and uploads hash-chained batches; after a completed shift the server checks that recording – complete, untampered, consistent with the ride, human-timed – and marks it `verified` / `flagged` / `rejected`. It also holds the recording against **the server's own road**: the road and its sinkholes are a pure function of the ride seed, the server rebuilds them (`server/src/domain/road`) and hands the game that obstacle plan (`GET /api/watch/:id/road`); a truck that drives through planned holes without the damage the game takes there – a game with the holes taken out – is rejected (`obstacle-ignored`), and so is one that stays off the road longer than the game allows or gains speed without gas. Replays draw the server's holes and mark every one driven through untouched (NO IMPACT). Audit any stream from the database: the `ride-audit` skill. Nothing is re-simulated. Only verified paid shifts rank, unless `VERDICT_ENFORCE=false` (shadow mode). Details: `AGENTS.md` → "Verified play".
-- **Admin page**: `https://admin.<apex>` (locally `/admin.html`) behind HTTP basic auth (`DEPLOY_ADMIN_USER` / `DEPLOY_ADMIN_PASSWORD`), its own wallet sign-in for `ADMIN_WALLETS` (a 2 h admin session) and a wallet signature on every change – overview, the review queue of flagged rides (accept / reject, audited), rides, sign-ins, the server's recent logs, the audit log.
-- **Production, read-only**: `npm run ops -- logs --since 30m` · `ops -- logs --errors` · `ops -- query list` / `ops -- query wallet <address>` · `ops -- sql "SELECT …"` (a read-only transaction) · `ops -- ps`. See `deploy/README.md`.
+```sh
+npm run db:up && npm run db:migrate && npm run server:dev   # API + pages on :3000
+npm run landing:dev                                         # Vite on :5173, proxies /api to :3000
+npm run client:serve                                        # the game alone
+npm run check                                               # client, landing, server unit tests, media
+npm run server:integration                                  # PostgreSQL, its own freightchain_test database
+npm run program:test                                        # LiteSVM, no network
+npm run program:verify                                      # reproducible build vs the pinned hash
+npm run test:localnet                                       # real money on a local validator
+```
 
-## Live streams: replays and donations
-
-- **Statistics**: total rides, time driven, kilometres, crashes (car ⇄ car, car ⇄ building) and donations during streams are kept as running totals per rider and for the whole game – the landing's DRIVEN, ALL TIME, the lobby profile's DRIVING RECORD, `GET /api/stats` (+ `GET /api/stats/daily`: one row per UTC day) – free and paid rides are counted apart, per rider and in total. Cached in Redis (`REDIS_URL`; production: a password-protected `redis` service on an internal-only compose network, no published port). Every started ride that ends counts, completed or not. How it works: [docs/statistics.md](docs/statistics.md). Check / repair: `bash .claude/skills/stats-reconcile/run.sh`; test: `bash .claude/skills/run-tests/e2e.sh stats`.
-- **Who is online, what is on the road, what can be replayed**: the landing's chip and the lobby's header say `N online · M on the road`; LIVE NOW / the lobby's LIVE tab list every ride on the air with how many watch it (sort, route filter, ▶ WATCH or WATCH A RANDOM ONE to join); the lobby's REPLAYS tab and the landing's RECENT RIDES list every ride that ended – a ride whose tab vanished is ended automatically after `HB_TIMEOUT_MS` (150 s) and shows as *signal lost* – with ▶ REPLAY while its recording is kept. API: `GET /api/live`, `GET /api/replays`. Test: `bash .claude/skills/live-board-test/run.sh`; fill a dev server with fake rides: `node server/scripts/sim-rides.mjs --base http://localhost:3000 --drive 3 --abandon 1 --visitors 5`.
-
-- **Watch any ride**: `play.html?watch=<rideId>` – linked from the landing's ticker and LIVE NOW board and the lobby's Live tab. No video: the page rebuilds the driver's road from the ride's seed + route and replays the verified-play recording (10 Hz samples, uploaded every 15 s), so a live view runs ~25 s behind; a finished ride plays as a replay with a timeline and 1× / 4× / 16× (as long as its recording is kept, 90 days).
-- **Chat and donations** (signed in with a Solana wallet, not on your own ride, only while it is on the road): chat lines show on a CB panel in the driver's cab (the driver folds it with K and can mute any spectator). Donations: a tip, NIGHT / DAY (the driver's clock jumps), or POTHOLES / TRENCH / SINKHOLE (a hole in the driver's lane ~1 km ahead, warning sign first) – the driver's game reports where it put each hole, so every replay has it in the same place. One game effect per ride per 20 s. Replays also show the traffic (recorded at 2 Hz).
-- **Feature flags** (server env, `docs/configuration.md`): `LIVE_CHAT` (all | free | off), `LIVE_DONATIONS` (on | off), `LIVE_FREE_DONATIONS` (on = mock, nothing charged · off = each donation is a real devnet SOL transfer from the spectator to the driver, verified on chain), `LIVE_EFFECTS` (all | free | off); `free` = only on free test rides. Production defaults: chat everywhere, donations paid on chain, effects only on free rides.
-- How it all works, the rules, the API and the limits: [docs/replay-and-donations/index.html](docs/replay-and-donations/index.html). Test it end to end: `bash .claude/skills/replay-test/run.sh` (the `replay-test` skill).
-
-## Product analytics
-
-How the loop is measured — every event, the nine funnels, what the server owns, what the browser may say — is [docs/analytics/index.html](docs/analytics/index.html). Capture is on this checkout. The private EU board is [project 297915 / dashboard 1006663](https://eu.posthog.com/project/297915/dashboard/1006663) and stays empty until tiles exist; events show in Activity. Ingest is `https://eu.i.posthog.com`. The project token stays in the gitignored env files; the tracked examples keep `POSTHOG_KEY` empty. A token alone does not send: `POSTHOG_ENABLED` must be `1` or `true`, and `POSTHOG_DISABLED=1` still wins. Local `server/.env` pins `POSTHOG_ENABLED=0`, and the local compose file does not run the API, so `npm run server:dev` does not send. Production `deploy/.env` sets `POSTHOG_ENABLED=1`, and the live site sends once this image is what production runs. Local smoke is `posthog-test`. The production check is `posthog-prod`. Lining the landing, whitepaper, lobby, and online ride up with those events is `analytics-review`: three local passes, each saved under `docs/analytics/updates/`. That review does not send a batch and does not edit a PostHog dashboard.
-
-**Page speed** is one Trends insight, not five. Event `web_vital`, aggregation **Total count**, break down by the event property `metric` and then `rating`, chart type the bar chart of the whole date range. Name it Page speed. Leave it off dashboard 1006663, and leave PostHog's own Web Vitals page alone (that reads `$web_vitals` from `posthog-js`, which this site does not load). Each bar is a pair such as `LCP / good`. `good` is fine, `needs-improvement` is slow, `poor` is something a visitor will notice. If `good` is the taller bar, most visits are fine. A third breakdown, `surface`, says whether it was the landing, the whitepaper, or the lobby. Open it after a change to one of those pages. It says nothing about a ride.
-
-- **TTFB, Time to First Byte.** How long until the page's HTML starts to arrive. A poor value means the wait happens before anything can draw.
-- **FCP, First Contentful Paint.** When the first text or image appears.
-- **LCP, Largest Contentful Paint.** When the main thing appears: the hero on the landing, the article on the whitepaper, the lobby itself. This is the one people feel as "the page is slow."
-- **INP, Interaction to Next Paint.** How long a click or a key takes to show a response. It is only recorded after someone actually does that, and it is sent when they leave. An empty INP bar is normal.
-- **CLS, Cumulative Layout Shift.** How much the page jumps after it has appeared. This one is not a time. `0` means nothing moved. In the raw `value`, `100` means a score of `0.1`.
+`npm run check` needs `npm run install:landing` and `npm run install:media` once. The program tools need the Solana toolchain on `PATH` (the line is in [`programs/freightchain-pools/README.md`](programs/freightchain-pools/README.md)). Deploy steps: [`deploy/README.md`](deploy/README.md). Env keys: [`docs/configuration.md`](docs/configuration.md).
 
 ## Tests
 
-There is no CI. Run the suites locally (the `run-tests` skill). What each skill is for, and the command to run it, is in [Skills](#skills). The counts, gaps, and last runs below are written by the `test-census` skill.
+There is no CI. The pyramid below is written by `npm run test:census -- readme`. Leave the markers alone. The charts inside the block are part of that generated section.
 
 <!-- test-census:start -->
 
@@ -330,39 +722,26 @@ Refresh the numbers with `npm run test:census -- run`, then `npm run test:census
 ```sh
 npm run check                              # client lint + bundle + headless game · landing · server build, typecheck, unit tests + architecture audits
 npm run server:integration                 # PostgreSQL in Docker, its own freightchain_test database
-bash .claude/skills/run-tests/e2e.sh       # real Chrome: game (VERIFIED ride), lobby, admin page, live stream, replay, live flags, live board – on a throwaway database, screenshots in the OS temp dir
-bash .claude/skills/replay-test/run.sh     # only the live stream, replay and LIVE_* flag suites (driver + spectator Chromes, ~9 min)
-bash .claude/skills/live-board-test/run.sh # online / on the road / the replays history, fed by the ride simulator (~2 min)
-bash .claude/skills/posthog-test/smoke.sh  # PostHog locally: headless Chrome, throwaway database, EU batch must return 200
-bash .claude/skills/posthog-prod/check.sh   # PostHog on production, read-only: boot line, one probe, flush log
+bash .claude/skills/run-tests/e2e.sh       # real Chrome: game, lobby, admin, live stream, replay, flags, live board – throwaway database
+bash .claude/skills/replay-test/run.sh     # live stream, replay, and LIVE_* flags
+bash .claude/skills/live-board-test/run.sh # online, on the road, replay history
+bash .claude/skills/verified-play-test/run.sh
+bash .claude/skills/posthog-test/smoke.sh  # local analytics smoke
+bash .claude/skills/posthog-prod/check.sh  # production ingest, read-only
 ```
 
-## Landing
+The full coverage map is [`docs/test-coverage.md`](docs/test-coverage.md).
 
-```sh
-npm run install:landing                # once
-npm run landing:dev                    # Vite on :5173, proxies /api and the other pages to the server on :3000
-npm run landing:build                  # → landing/dist, served by the server at /  (without it, / is the placeholder client/index.html)
-npm run landing:test                   # formatters, card scripts, page integrity, size budget of dist/, the whitepaper's numbers vs the code
-```
+## Limits
 
-The whitepaper is `landing/whitepaper.html` (open `http://localhost:5173/whitepaper.html` under `landing:dev`): a static read on driving, rides and rules, rewards, the escrow program, verified play and live streams. It posts web vitals to the API. The production host still 404s `/api/`. Its figures are asserted against the server rules by `landing/test/whitepaper.test.js`, so change both together.
-
-- **Sign-in**: the CONNECT button asks Phantom / Solflare to sign the server's challenge; the backend verifies the signature, sets the httpOnly session cookie and the page redirects to the lobby. On the landing the same session shows the wallet and turns the button into "OPEN THE LOBBY". Check it in real Chrome with `node landing/tools/e2e-wallet.mjs` (fake wallet; single origin or split hosts – recipe in the script's header).
-- **Media**: WebP only; `node landing/tools/to-webp.mjs <files>` converts, `npm --prefix landing run media` re-captures the dash and sky shots from the running game.
-- **Hero video**: set `data-src` on `#hero-video` in `landing/index.html` (a muted loop in `landing/public/media/`); it loads after the page, when idle, never on phones, data-saver or reduced motion.
-- **Deploy**: the Docker image builds the landing (its tests gate the build) and the server serves it with long-lived caching for the hashed assets.
-
-## Promo videos
-
-[`media/out/video/intro/intro.mp4`](media/out/video/intro/intro.mp4) (14.8 s, with sound: key + engine start, 8-bit music, gear / crash / transition effects) and [`intro.gif`](media/out/video/intro/intro.gif) (silent; compressed look-alikes: [`intro.min.mp4`](media/out/video/intro/intro.min.mp4), [`intro.min.gif`](media/out/video/intro/intro.min.gif), [`intro.tiny.gif`](media/out/video/intro/intro.tiny.gif) 481 kB) are made from real gameplay by the `media/` app: a JSON spec of scenes (gears, a crash, night lights, Siberian frost, Australian dust, an end card), captions in the landing's style, transitions, a Solana badge, and an `audio` block. The audio is saved as separate files too ([`media/out/audio/intro/`](media/out/audio/intro): `mix`, `music`, `sfx`, `engine` WAVs + the cue sheet) and the reusable sounds live in [`media/out/audio/_store/`](media/out/audio/_store).
-
-```sh
-npm --prefix media install                  # once (Node >= 22, Chrome; ffmpeg comes from npm)
-npm run media -- media/specs/intro.json     # ~30 s on a Mac GPU → media/out/video/intro/{intro.mp4 (+ sound),intro.gif,contact.jpg,timeline.json} + the sound in media/out/audio/intro/{mix,music,sfx,engine}.wav, cues.json + intro.min.{mp4,gif} + intro.tiny.gif (≤ 500 kB)
-npm run media -- media/specs/intro.json --audio-only   # only the sound: rebuild from the saved timeline and remux onto the mp4 (seconds)
-npm run media:store                         # re-render the sound library media/out/audio/_store
-npm --prefix media run preview              # half-size look, not committed
-```
-
-New clip: ask Claude for one (the `gameplay-video` skill turns a text description into a spec, previews it and reports duration / size), or copy `media/specs/intro.json`. Limits are enforced: total ≤ 15 s, gif file ≤ 20 MB (it shrinks, then trims). Render on a real GPU – software GL makes the road flash. Details: `AGENTS.md` → "Promo videos".
+- The physics are floats and a variable frame step. The server checks the recording. It does not re-play the drive.
+- Verdict thresholds are first guesses. Production is in shadow mode until they are tuned on real rides.
+- The challenge table is empty. No dispatch prompt is issued.
+- A captcha before a paid shift and before a prize claim is not built.
+- The live site sells paid rides as memo transfers. The escrow program is on devnet and is not what freightchain.fun charges today.
+- The buyer pays the network fee. Gasless buys were removed.
+- There is no admin button for `pay_prize`. Weekly pools are created by hand. The seed is not rolled into the next pool by a job.
+- `close_ticket` after a settlement is in the program. The crank does not send it yet, so a settled ticket's rent stays in that account until someone closes it.
+- The program is not audited. Mainnet is not this build.
+- The design document's fixed-tick replay, input ratchet, and proof-of-render are not this build.
+- Float32 road vertices start to jitter past about 100 km.

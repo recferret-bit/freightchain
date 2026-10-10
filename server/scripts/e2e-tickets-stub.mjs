@@ -1,5 +1,5 @@
 // The lobby's ticket flows (W3 orders / W4 chain) without a chain, in real headless Chrome against scripts/stub-api.mjs with a FAKE wallet:
-// BUY (gasless signTransaction → /submit · sponsor down → ?selfPaid=1 fallback · self-paid signAndSend → /confirm), a buy that takes an open pool live, CLAIM REFUND (signAndSend → /api/chain/settle) on a failed pool (card + strip), the grant trail, SOON without the program.
+// BUY (the wallet signs AND sends → /confirm), a buy that takes an open pool live, CLAIM REFUND (signAndSend → /api/chain/settle) on a failed pool (card + strip), the grant trail, SOON without the program.
 // Needs internet once for web3.js (jsdelivr, as pay.js loads it). Nothing is signed for real and nothing is sent to any chain.   Usage: npm --prefix server run test:tickets-stub
 // PORT = the DevTools port (default 9351), STUB_PORT = the stub's first port (default 3150; the other runs use +1…+4), SHOTS = screenshot dir (default $TMPDIR/fc-tickets-shots).
 import { spawn } from 'node:child_process';
@@ -26,8 +26,8 @@ const txt = sel => h.ev(`document.querySelector(${JSON.stringify(sel)})?.textCon
 const click = sel => h.ev(`document.querySelector(${JSON.stringify(sel)}).click()`);
 await size(1100, 900, false);
 
-// ── sponsored (gasless) stub
-let BASE = await stub(STUB, { SPONSORED: '1' });
+// ── the stub: the wallet pays its own fee
+let BASE = await stub(STUB, {});
 await h.send('Page.navigate', { url: `${BASE}/lobby.html#new` });
 check('lobby on the stub: four cards', await until(async () => (await h.ev('document.querySelectorAll(".tier").length')) === 4));
 check('8h = a FAILED pool: red chip, CLAIM REFUND, no BUY', (await txt('#tier-8h .st')) === 'FAILED – REFUND' && (await txt('#tier-8h .go')) === 'CLAIM REFUND' && !(await h.ev('!!document.querySelector("#tier-8h .buyb")')) && /refunded in full/.test(await txt('#tier-8h .ptext')), await txt('#tier-8h .ptext'));
@@ -35,8 +35,8 @@ check('an older failed pool no card shows: its own CLAIM REFUND row', /4H · wee
 check('sales on (tiers.paymentMode = program): BUY is live with the price, the stepper adds', (await txt('#tier-1h .buyb')) === 'BUY 1 TICKET · 0.050 SOL' && await (async () => { await click('#tier-1h .qty button:last-child'); return (await txt('#tier-1h .buyb')) === 'BUY 2 TICKETS · 0.100 SOL'; })(), await txt('#tier-1h .buyb'));
 await h.shot('stub-new-desktop');
 await click('#tier-1h .buyb');
-check('BUY (sponsored): paid + credited (submit answers paid at once)', await until(async () => /Paid – 2 tickets credited/.test(await txt('#msg-1h')), 30000), await txt('#msg-1h'));
-check('…the wallet was only asked to SIGN (the server sends)', JSON.stringify(await h.ev('__asked')) === '["signTransaction"]', JSON.stringify(await h.ev('__asked')));
+check('BUY: signed + sent by the wallet, confirmed, credited', await until(async () => /Paid – 2 tickets credited/.test(await txt('#msg-1h')), 30000), await txt('#msg-1h'));
+check('…the wallet was asked to sign AND send (it pays its own fee)', JSON.stringify(await h.ev('__asked')) === '["signAndSendTransaction"]', JSON.stringify(await h.ev('__asked')));
 check('…RIDE now has 3 tickets', (await txt('#tier-1h .go')) === 'RIDE (3 left)', await txt('#tier-1h .go'));
 await h.ev('[...document.querySelectorAll("#tier-4h .qty button")][1].click(); [...document.querySelectorAll("#tier-4h .qty button")][1].click()');
 await click('#tier-4h .buyb');
@@ -54,18 +54,13 @@ await h.shot('stub-profile-desktop');
 const fresh = async (port, env) => { BASE = await stub(port, env); await h.ev('__asked.length = 0'); await h.send('Page.navigate', { url: `${BASE}/lobby.html#new` }); await until(async () => (await h.ev('document.querySelectorAll(".tier").length')) === 4); };
 const asked = () => h.ev('JSON.stringify(__asked)');
 
-// ── the sponsor refuses (503): the client re-fetches the payment with ?selfPaid=1, the wallet signs AND sends, confirm
-await fresh(STUB + 1, { SPONSORED: '1', SUBMIT_FAIL: '1' });
+// ── a second purchase on a fresh stub: the wallet signs AND sends, confirm
+await fresh(STUB + 2, {});
 await click('#tier-1h .buyb');
-check('BUY with the sponsor down: falls back to self-paid and is credited', await until(async () => /Paid – 1 ticket credited/.test(await txt('#msg-1h')), 30000) && (await asked()) === '["signTransaction","signAndSendTransaction"]', `${await txt('#msg-1h')} ${await asked()}`);
-
-// ── self-paid stub (no sponsor): the wallet signs AND sends, confirm
-await fresh(STUB + 2, { SPONSORED: '0' });
-await click('#tier-1h .buyb');
-check('BUY (self-paid): signAndSendTransaction, confirm, credited', await until(async () => /Paid – 1 ticket credited/.test(await txt('#msg-1h')), 30000) && (await asked()) === '["signAndSendTransaction"]', `${await txt('#msg-1h')} ${await asked()}`);
+check('BUY (fresh stub): signAndSendTransaction, confirm, credited', await until(async () => /Paid – 1 ticket credited/.test(await txt('#msg-1h')), 30000) && (await asked()) === '["signAndSendTransaction"]', `${await txt('#msg-1h')} ${await asked()}`);
 
 // ── a payment in flight survives a reload: GET /api/tickets/pending → the banner → RETRY CONFIRM (the signature this browser kept) → paid
-await fresh(STUB + 3, { SPONSORED: '0', CONFIRM_PENDING: '8' });
+await fresh(STUB + 3, { CONFIRM_PENDING: '8' });
 await click('#tier-1h .buyb');
 await until(async () => /Waiting for the network/.test(await txt('#msg-1h')));
 await h.send('Page.reload'); await until(async () => (await h.ev('document.querySelectorAll(".tier").length')) === 4);
@@ -77,7 +72,7 @@ check('…RETRY CONFIRM lands it: the banner goes, the ticket is there', await u
 await fresh(STUB + 4, { SALES: '0' });
 check('no program: BUY TICKETS · SOON, disabled', /SOON/.test(await txt('#tier-1h .buyb')) && await h.ev('document.querySelector("#tier-1h .buyb").disabled'), await txt('#tier-1h .buyb'));
 
-const pr = h.filt().filter(p => !/status of 409/.test(p) && !(/status of 503/.test(p) && /\/submit/.test(p)));   // the 503 is the point of the fallback run
+const pr = h.filt().filter(p => !/status of 409/.test(p));
 check('no page errors', !pr.length, pr.join(' | '));
 console.log(`screenshots: ${h.SHOTS}`);
 for (const p of stubs) p.kill();

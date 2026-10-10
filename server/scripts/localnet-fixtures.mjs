@@ -2,9 +2,9 @@
 // "three weeks old", then dumps their accounts for the phase-2 validator (`solana-test-validator --account`). The validator's clock cannot be warped,
 // so only two fields are edited after the program wrote everything else: each baked pool's prep_deadline and play_deadline, moved 16 days into the
 // past (beyond SETTLE_GRACE_SECS). Also checks initialize for real (a stranger is refused, the upgrade authority names the admin).
-//   env: RPC, KEYS (scratch keypair dir: upgrader, admin, sponsor, fee, seed, plat), OUT (dir for the account JSON files + fixtures.json), COVERAGE (file,
+//   env: RPC, KEYS (scratch keypair dir: upgrader, admin, fee, seed, plat), OUT (dir for the account JSON files + fixtures.json), COVERAGE (file,
 //   scripts/localnet-coverage.mjs – this validator is torn down after phase 1, so its ledger is scanned here)
-// Baked: pool 0 "EXPIRE" (active, 2 buyers – one self-paid rent, one sponsor-paid rent, no prize paid) → expire_pool + refunds by the crank;
+// Baked: pool 0 "EXPIRE" (active, 2 buyers – each pays its own rent, no prize paid) → expire_pool + refunds by the crank;
 //        pool 1 "GRACE"  (active, 1 buyer, one prize paid) → anyone may close it after the grace; Config (pool_count = 2, admin, platform 500 bps).
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'; import { execFileSync } from 'node:child_process';
 import { Connection, Keypair, PublicKey } from '@solana/web3.js';
@@ -43,7 +43,7 @@ const e1 = await newKey('expire-buyer-1', 2), e2 = await newKey('expire-buyer-2'
 const mk = (tier, min) => admin(['create-pool', '--tier', tier, '--price', '50000000', '--min', String(min), '--max', '0', '--per-wallet', '3', '--prep', '+15', '--play', '+17', '--split', '7000/2000/1000', ...treas]).poolId;
 const X = mk('8h', 2), Y = mk('8h', 1);
 admin(['buy', '-k', e1, '--pool', String(X)]);                                            // pays its own Ticket rent
-admin(['buy', '-k', e2, '--fee-payer', `${KEYS}/sponsor.json`, '--pool', String(X)]);   // the sponsor pays the rent (gasless)
+admin(['buy', '-k', e2, '--pool', String(X)]);                                            // pays its own Ticket rent too
 admin(['buy', '-k', g1, '--pool', String(Y)]);
 const now = async () => Number((await conn.getAccountInfo(new PublicKey('SysvarC1ock11111111111111111111111111111111'))).data.readBigInt64LE(32));
 const play = Number(codec.decodeAccount('Pool', (await conn.getAccountInfo(codec.poolPda(Y))).data).playDeadline.getTime() / 1000);

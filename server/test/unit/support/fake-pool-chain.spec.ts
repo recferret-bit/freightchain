@@ -1,6 +1,6 @@
 import { Keypair, Transaction } from '@solana/web3.js';
 import { FakePoolChain } from '../../support/fake-pool-chain.js';
-import { BadRequestError, ServiceUnavailableError } from '../../../src/domain/shared/errors.js';
+import { ServiceUnavailableError } from '../../../src/domain/shared/errors.js';
 
 /* The shared test double behaves like the port promises (other workstreams' handler specs and scenarios run on it). */
 describe('FakePoolChain', () => {
@@ -20,34 +20,14 @@ describe('FakePoolChain', () => {
     expect(chain.readCount).toBe(3);
   });
 
-  it('records what it built: real unsigned transactions, fee payer = the sponsor when there is one', async () => {
-    const chain = new FakePoolChain();
-    const self = await chain.buildBuyTransaction(order);
-    expect(self.feePayer).toBe(order.payer);
-    chain.sponsor = Keypair.generate();
-    const gasless = await chain.buildBuyTransaction(order);
-    expect(gasless.feePayer).toBe(chain.sponsor.publicKey.toBase58());
-    expect((await chain.buildBuyTransaction({ ...order, selfPaid: true })).feePayer).toBe(order.payer);
-    expect(Transaction.from(Buffer.from(gasless.transaction, 'base64')).serializeMessage().toString('base64')).toBe(gasless.message);
-    expect(chain.built.map((b) => b.kind)).toEqual(['buy', 'buy', 'buy']);
-    expect(chain.built[0]!.input).toEqual(order);
-  });
-
-  it('cosignAndSend runs the production checks: no sponsor 503, another message 400, the right one co-signed', async () => {
+  it('records what it built: real unsigned transactions, the signer is the fee payer', async () => {
     const chain = new FakePoolChain();
     const built = await chain.buildBuyTransaction(order);
-    await expect(chain.cosignAndSend({ signedTransaction: built.transaction, expectedMessage: built.message, lastValidBlockHeight: 250 })).rejects.toBeInstanceOf(ServiceUnavailableError);
-    chain.sponsor = Keypair.generate();
-    const mine = await chain.buildBuyTransaction(order);
-    const tx = Transaction.from(Buffer.from(mine.transaction, 'base64'));
-    tx.partialSign(buyer);
-    const signed = tx.serialize({ requireAllSignatures: false, verifySignatures: false }).toString('base64');
-    await expect(chain.cosignAndSend({ signedTransaction: signed, expectedMessage: built.message, lastValidBlockHeight: 250 })).rejects.toBeInstanceOf(BadRequestError);
-    const out = await chain.cosignAndSend({ signedTransaction: signed, expectedMessage: mine.message, lastValidBlockHeight: 250 });
-    expect(out.lastValidBlockHeight).toBe(250);
-    expect(chain.cosigned.map((c) => c.signature)).toEqual([out.signature]);
-    chain.cosignResult = new Error('boom');
-    await expect(chain.cosignAndSend({ signedTransaction: signed, expectedMessage: mine.message, lastValidBlockHeight: 250 })).rejects.toThrow('boom');
+    expect(built.feePayer).toBe(order.payer);
+    expect(Transaction.from(Buffer.from(built.transaction, 'base64')).serializeMessage().toString('base64')).toBe(built.message);
+    expect((await chain.buildRefundTransaction({ caller: order.payer, poolId: 1, buyer: order.payer, needsFail: false })).feePayer).toBe(order.payer);
+    expect(chain.built.map((b) => b.kind)).toEqual(['buy', 'refund']);
+    expect(chain.built[0]!.input).toEqual(order);
   });
 
   it('statuses, the log subscription, an RPC outage, reset', async () => {

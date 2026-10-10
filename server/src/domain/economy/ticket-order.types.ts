@@ -12,7 +12,7 @@ export interface TicketOrderProps {
   /** price × qty at order time – the price is fixed on the pool */
   lamports: number;
   status: OrderStatus;
-  /** base64 of the message the server built: /submit accepts only a transaction carrying exactly this (the fee-payer guard) */
+  /** base64 of the message the server built for this order */
   txMessage: string | null;
   lastValidBlockHeight: number | null;
   createdAt: Date;

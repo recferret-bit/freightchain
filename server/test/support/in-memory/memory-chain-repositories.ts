@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { ChainEventRow } from '../../../src/domain/economy/chain-events.js';
 import { ChainCursorRepositoryPort, ChainEventRepositoryPort, type ChainCursorRow } from '../../../src/application/ports/economy/chain-event.repository.port.js';
-import { SponsoredTxRepositoryPort, type SponsoredTxRow } from '../../../src/application/ports/economy/sponsored-tx.repository.port.js';
 import { MemoryDb } from './memory-db.js';
 
 /* In-memory twins of the chain context's Prisma repositories (re-exported by memory-repositories.ts): same keys, orderings and duplicate rules. */
@@ -49,19 +48,4 @@ export class MemoryChainCursorRepository extends ChainCursorRepositoryPort {
   }
 
   async set(row: ChainCursorRow): Promise<void> { this.db.chainCursors.set(row.key, { ...row }); }
-}
-
-@Injectable()
-export class MemorySponsoredTxRepository extends SponsoredTxRepositoryPort {
-  constructor(private readonly db: MemoryDb) { super(); }
-
-  async record(row: SponsoredTxRow): Promise<boolean> {
-    if (this.db.sponsoredTxs.some((s) => s.signature === row.signature)) return false;
-    this.db.sponsoredTxs.push({ ...row });
-    return true;
-  }
-
-  async countSince(wallet: string, since: Date): Promise<number> {
-    return this.db.sponsoredTxs.filter((s) => s.wallet === wallet && s.at.getTime() >= since.getTime()).length;
-  }
 }

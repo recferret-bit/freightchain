@@ -72,7 +72,7 @@ export function ticketOrderScenarios(h: () => Harness): void {
     const w = await login();
     const order = (await w.agent.post('/api/tickets').send({ poolId: 1, qty: 2 }).expect(200)).body;
     const pay = (await w.agent.get(`/api/tickets/orders/${order.id}/payment`).expect(200)).body;
-    expect(pay).toMatchObject({ orderId: order.id, poolId: 1, lamports: 100_000_000, sponsored: false, feePayer: w.address });
+    expect(pay).toMatchObject({ orderId: order.id, poolId: 1, lamports: 100_000_000, feePayer: w.address });
     expect(h().poolChain.built[0]).toMatchObject({ kind: 'buy', input: { payer: w.address, orderId: order.id, qty: 2 } });
     const sig = h().poolChain.addEvent('TicketBought', { poolId: 1, buyer: w.address, qty: 2, lamports: 100_000_000, orderId: order.id, ticketsSold: 2, activated: false });
     expect((await w.agent.post(`/api/tickets/orders/${order.id}/confirm`).send({ signature: sig }).expect(200)).body).toMatchObject({ status: 'paid', order: { status: 'paid' } });

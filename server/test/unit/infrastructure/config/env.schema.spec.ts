@@ -46,7 +46,7 @@ describe('validateEnv', () => {
 describe('validateEnv – paid tickets (all optional until the workstreams need them)', () => {
   const addr = Keypair.generate().publicKey.toBase58();
   it('applies the defaults and needs none of the new keys, in production too', () => {
-    expect(validateEnv(base)).toMatchObject({ SOLANA_COMMITMENT: 'confirmed', WATCH_INTERVAL_MS: 15_000, SPONSOR_PER_WALLET_PER_DAY: 20, PRIORITY_FEE_PERCENTILE: 75, PRIORITY_FEE_MIN_MICROLAMPORTS: 0, PRIORITY_FEE_MAX_MICROLAMPORTS: 50_000, ORDER_TTL_MINUTES: 60, ONCHAIN_SESSION_TTL_HOURS: 24, SOLANA_RPC_FALLBACKS: '' });
+    expect(validateEnv(base)).toMatchObject({ SOLANA_COMMITMENT: 'confirmed', WATCH_INTERVAL_MS: 15_000, PRIORITY_FEE_PERCENTILE: 75, PRIORITY_FEE_MIN_MICROLAMPORTS: 0, PRIORITY_FEE_MAX_MICROLAMPORTS: 50_000, ORDER_TTL_MINUTES: 60, ONCHAIN_SESSION_TTL_HOURS: 24, SOLANA_RPC_FALLBACKS: '' });
     expect(() => validateEnv(prod)).not.toThrow(); // today's live deploy keeps booting
   });
   it('program id and treasuries must be base58 addresses; empty values count as unset', () => {
@@ -65,7 +65,9 @@ describe('validateEnv – paid tickets (all optional until the workstreams need 
   it('the priority-fee floor may not exceed the ceiling; secrets must look like secrets', () => {
     expect(() => validateEnv({ ...base, PRIORITY_FEE_MIN_MICROLAMPORTS: '9000', PRIORITY_FEE_MAX_MICROLAMPORTS: '100' })).toThrow(/must not exceed/);
     expect(() => validateEnv({ ...base, WEBHOOK_SECRET: 'short' })).toThrow(/WEBHOOK_SECRET/);
-    expect(() => validateEnv({ ...base, FEE_PAYER_SECRET: 'short' })).toThrow(/FEE_PAYER_SECRET/);
-    expect(validateEnv({ ...base, WEBHOOK_SECRET: '', CRANK_SECRET: '', FEE_PAYER_SECRET: '' })).toMatchObject({ WEBHOOK_SECRET: undefined, CRANK_SECRET: undefined, FEE_PAYER_SECRET: undefined });
+    expect(() => validateEnv({ ...base, CRANK_SECRET: 'short' })).toThrow(/CRANK_SECRET/);
+    expect(validateEnv({ ...base, WEBHOOK_SECRET: '', CRANK_SECRET: '' })).toMatchObject({ WEBHOOK_SECRET: undefined, CRANK_SECRET: undefined });
+    // the gas sponsor is gone: a FEE_PAYER_SECRET left in an old env file is ignored, it neither refuses the boot nor is it read
+    expect(() => validateEnv({ ...base, FEE_PAYER_SECRET: 'short' })).not.toThrow();
   });
 });

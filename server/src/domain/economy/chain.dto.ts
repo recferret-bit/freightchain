@@ -9,10 +9,8 @@ export interface ChainFeesDto {
   priorityMicrolamports: number;
   /** the compute-unit limit of a purchase */
   computeUnits: number;
-  /** what the network charges for it (base fee per signature + priority fee) – paid by the gas sponsor when `sponsored` */
+  /** what the network charges for it (base fee per signature + priority fee) – the buyer pays it, on top of the ticket price and the Ticket rent */
   estimatedFeeLamports: number;
-  /** a gas sponsor is configured: the buyer pays only the ticket price */
-  sponsored: boolean;
   blockhashTtlSeconds: number;
 }
 

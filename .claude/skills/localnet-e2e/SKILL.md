@@ -1,6 +1,6 @@
 ---
 name: localnet-e2e
-description: End-to-end test of the REAL money flows on a LOCAL Solana chain – solana-test-validator with the escrow program (the pinned verifiable .so, upgradeable), the real server in PAYMENT_MODE=program on a throwaway database, wallets as Node keypairs and a fake Phantom in headless Chrome that signs real transactions. Covers initialize by the upgrade authority, create_pool, ticket purchases (lobby gasless, Node gasless /submit, self-paid /confirm), the sponsor's byte-exact co-sign boundary, sponsor(), ticket rides in the real game with verified recordings, missed goals refunded from the lobby (fail_pool bundled) and the API, ticket-only tiers, the pool crank (fail / expire / refund / close by the chain clock), expire_pool and the permissionless grace close on "three weeks old" pools baked by the real program, ranked payouts and close_pool – every lamport delta asserted; plus TEN riders on one pool (lobby / gasless / self-paid buys, finished rides made over the player API with real hash-chained recordings – honest, flagged + accepted by the admin's signed review, a cheater, a crash –, the re-judge "cron", the payout job, exact prizes to every ranked wallet and nothing to the rest, fee / platform / seed / creator legs, every Ticket rent back via close_ticket, the seed rolled into the next pool's jackpot), pause, sold out, cancel_pool, the authority handover, and a 100 % coverage gate (14/14 instructions and 12/12 events on the validator, 24/24 error codes asserted). Use when asked to test payments / tickets / sponsorship / payouts / refunds / the crank / treasury / the contract end to end, "localnet", or after changing the program, the chain adapters, the ticket / refund / payout / crank code or the lobby's pay.js.
+description: End-to-end test of the REAL money flows on a LOCAL Solana chain – solana-test-validator with the escrow program (the pinned verifiable .so, upgradeable), the real server in PAYMENT_MODE=program on a throwaway database, wallets as Node keypairs and a fake Phantom in headless Chrome that signs real transactions. Covers initialize by the upgrade authority, create_pool, ticket purchases (the lobby and Node wallets sign AND send, each paying its own fee and Ticket rent, /confirm), sponsor() (a pool sponsorship), ticket rides in the real game with verified recordings, missed goals refunded from the lobby (fail_pool bundled) and the API, ticket-only tiers, the pool crank (fail / expire / refund / close by the chain clock), expire_pool and the permissionless grace close on "three weeks old" pools baked by the real program, ranked payouts and close_pool – every lamport delta asserted; plus TEN riders on one pool (lobby / Node buys, finished rides made over the player API with real hash-chained recordings – honest, flagged + accepted by the admin's signed review, a cheater, a crash –, the re-judge "cron", the payout job, exact prizes to every ranked wallet and nothing to the rest, fee / platform / seed / creator legs, every Ticket rent back via close_ticket, the seed rolled into the next pool's jackpot), pause, sold out, cancel_pool, the authority handover, and a 100 % coverage gate (14/14 instructions and 12/12 events on the validator, 24/24 error codes asserted). Use when asked to test payments / tickets / sponsorship / payouts / refunds / the crank / treasury / the contract end to end, "localnet", or after changing the program, the chain adapters, the ticket / refund / payout / crank code or the lobby's pay.js.
 ---
 
 # Money e2e on a local chain
@@ -31,14 +31,14 @@ PostgreSQL), `solana-test-validator` (Agave 4.1.2), Chrome, `server/node_modules
 
 ## What `run.sh` sets up
 
-1. Keys: `mint` (faucet only – the validator pays it a few lamports, never use it for an exact balance check), `upgrader` (program upgrade authority), `admin` (= `TREASURY_PUBKEY`, `Config.authority`), `sponsor` (`FEE_PAYER_SECRET`),
+1. Keys: `mint` (faucet only – the validator pays it a few lamports, never use it for an exact balance check), `upgrader` (program upgrade authority), `admin` (= `TREASURY_PUBKEY`, `Config.authority`),
    `crank` (`CRANK_SECRET`), `fee` / `seed` / `plat` treasuries.
 2. **Phase 1 – fixtures** (`server/scripts/localnet-fixtures.mjs`, its own validator): `initialize` by a stranger is refused, by the upgrader naming the admin
-   accepted (platform cut 500 bps); two 8h pools with real buys (one rent paid by the sponsor) and one real `pay_prize`; Config, Pools, vaults, Tickets dumped;
+   accepted (platform cut 500 bps); two 8h pools with real buys (every buyer pays its own rent) and one real `pay_prize`; Config, Pools, vaults, Tickets dumped;
    ONLY `prep_deadline` / `play_deadline` (Pool bytes 63 / 71) moved 16 days back, verified by decoding. Why: a validator's clock can't be warped
    (`--warp-slot` on restart moves the slot, not `unix_timestamp`, and stalls) – and `expire_pool` / the grace close need 14 days.
 3. **Phase 2**: a fresh ledger with `--upgradeable-program <id> <so> <upgrader>` + `--account` for every dumped account (Config `pool_count = 2`).
-4. The server (`dist/main.js`) with every chain key set explicitly (a stray `server/.env` cannot leak in): program mode, local RPC + WS, sponsor, crank with
+4. The server (`dist/main.js`) with every chain key set explicitly (a stray `server/.env` cannot leak in): program mode, local RPC + WS, crank with
    `CRANK_INTERVAL_MS=0` (the scenario runs `pool:crank` itself), treasuries, `WATCH_INTERVAL_MS=2000`, `SOL_USD=118`, `DEMO_WALLETS=* DEMO_SCALE=1200`
    (a 1h ticket ride = 3 s / 42 m), `VERDICT_ENFORCE=true`, PostHog off, priority fee 0, `ADMIN_WALLETS` = the admin (the signed ride review).
 5. The scenarios (`SCENARIO`), then the **coverage gate** (`server/scripts/localnet-coverage.mjs`): the phase-1 ledger is scanned by the fixtures script
@@ -53,10 +53,10 @@ PostgreSQL), `solana-test-validator` (Agave 4.1.2), Chrome, `server/node_modules
 |---|---|
 | baked pools | active, deadlines 16 days back, one prize paid; registered on the server |
 | pools A / B / C created by the admin | ids after the baked ones, open on chain + server, vaults = rent minimum |
-| P1 lobby BUY ×2 (gasless) | wallet only signs; buyer −2×price exactly; sponsor −(fee + rent); `rent_payer` = sponsor |
-| P2 self-paid (`/confirm`) | buyer −(price + fee + rent) exactly; pool A Active on chain + server |
+| P1 lobby BUY ×2 | the wallet is asked to sign AND send; buyer −(2×price + fee + rent) exactly; `rent_payer` = the buyer |
+| P2 Node buy (`/confirm`) | buyer −(price + fee + rent) exactly; pool A Active on chain + server |
 | `sponsor` 0.03 SOL into A, 0.02 into C | sponsor −(amount + fee), vault + amount, `Pool.sponsored`, server mirror via the watcher |
-| B / C buys (Node gasless + self-paid), a tampered `/submit` | buyer −price exactly; tampered = 400, nothing sent |
+| B / C buys (Node wallets), no gasless route | buyer −(price + fee + rent) exactly; `POST …/submit` is a 404 |
 | 3 ticket rides in the real game | COMPLETED + VERIFIED, tickets spent |
 | B missed its goal, nobody failed it | lobby card CLAIM REFUND at once (fail_pool + refund signed and sent by the wallet); P4's API refund without fail_pool; a stranger closes → cancelled |
 | ticket-only | `/api/tiers` 4h not available, no price; lobby NO POOL card; `POST /api/rides` 409 |
@@ -69,13 +69,13 @@ PostgreSQL), `solana-test-validator` (Agave 4.1.2), Chrome, `server/node_modules
 | step | asserted |
 |---|---|
 | `create_pool` refused | `BpsSum`, `PriceBelowRentMin`, `TreasuryNotRentExempt` (each refusal recorded with its program error) |
-| pool D (1h, min 10, ≤ 2 per wallet): 10 wallets, 11 tickets | lobby BUY in Chrome (gasless: only signs), 4 Node gasless, 4 self-paid – each buyer's delta exact; OPEN at 9 sold, ACTIVE at 11; `WalletCap` at 3; a 0.05 SOL sponsorship (`InvalidParams` for 0) |
+| pool D (1h, min 10, ≤ 2 per wallet): 10 wallets, 11 tickets | lobby BUY in Chrome (the wallet signs AND sends), 8 Node buys, R8 two at once – each buyer's delta exact (price + fee + Ticket rent); OPEN at 9 sold, ACTIVE at 11; `WalletCap` at 3; a 0.05 SOL sponsorship (`InvalidParams` for 0) |
 | a live pool is nobody's to touch early | `NotFailable`, `PoolNotOpen` (cancel), `NotRefunding`, `NotSettled` (close_ticket), `TooEarly` (pay_prize) |
 | the finished rides – over the player API, no admin back door | each bot spends its ticket, starts, heartbeats (answers the dispatch prompts), uploads hash-chained 10 Hz batches that take the planned holes' damage, ends; R1 drives the real game in Chrome. Honest ×6 + one wallet with 2 rides → VERIFIED; R7 crashes → FAILED (no verdict); R9 an unhashed batch → FLAGGED, then the admin ACCEPTS it with a signed review (`/api/admin`); R10 a teleport → REJECTED |
 | "cron" | `verdict:rejudge --status all` keeps every verdict (the admin's decision too); `pool:crank` leaves the live pool alone; `GET payout` 409 before the deadline, 403 for a rider |
 | after the play deadline | `TooLate` (buy), `Unauthorized` / `PrizeExceedsShare` / `AccountMismatch` (to = vault) / `BelowRentMin` (pay_prize); the pot still counts the crash's and the cheater's tickets |
 | the payout job (`devnet-payout.mjs --yes`) | ranks = the 8 counted wallets by summed distance; each gets exactly `poolPayouts(prizeBound)`; R7 / R10 get 0; prizes ≤ the share; fee / platform / seed (= seed share + unclaimed) legs = `closeSplit`; the admin + rent minimum − its 9 fees; vault 0; conservation; `PoolNotActive` after |
-| Ticket rents | `close_ticket` ×10 by a stranger: the gas sponsor gets its 6 rents back, each self-paid buyer its own, accounts gone |
+| Ticket rents | `close_ticket` ×10 by a stranger: every buyer gets its own rent back, accounts gone |
 | the next jackpot | the seed treasury sponsors pool E with exactly D's seed leg (an operator step – nothing moves it by itself); server mirror + the lobby's 1h card show it |
 | the rest of the program | pause (`Paused` for buy + create_pool), `SoldOut` (pool F, max 1), F closed by the admin with no prize (prize share → seed), pool G: `Unauthorized` / `cancel_pool` / `PoolNotOpen` / `PoolNotActive` / `RefundsPending` / refund / `AlreadyRefunded` / close; the handover: `NoPendingAuthority`, propose, `Unauthorized` accept, accept, the old admin refused, and back |
 
@@ -92,12 +92,11 @@ The server's view of the chain is made flaky; the scenario's own view (balances,
 | step | asserted |
 |---|---|
 | T1 one landed purchase told to two servers | `/confirm` ×2, `/chain/settle` on both, the webhook on both and both watchers at once: 1 ticket, 1 sold, buyer paid price + fee + rent exactly |
-| T4 gasless `/submit` through a bad send path | first 2 sends swallowed → the re-send loop lands it, paid once; the cluster took a send but the answer was lost → paid once; the status read refused → `/submit` answers 200 with the signature (pending or paid, never an error) and the purchase is credited exactly once; every send swallowed until the blockhash dies → 409 `transaction_dropped`, nothing charged to anyone, the same order asked again is paid exactly once |
-| T2 / T3 who credits what | S1's polls refused + S2 without a websocket → S2's polling credits a purchase nobody confirmed; nobody watching → uncredited (control), then S2 restarts → its boot poll catches up with no API call; every RPC call 429 for a while → both servers alive, a purchase afterwards is credited, 7 sold on chain and in the mirror |
-| T5 `getProgramAccounts` refused (the crank's ticket read) | the pass does not throw, reports the refund as failed, still serves the pool after it (fail + close); with `SOLANA_RPC_FALLBACKS` = a working RPC the next pass refunds and closes, each buyer +price +rent exactly |
+| T2 / T3 who credits what | S1's polls refused + S2 without a websocket → S2's polling credits a purchase nobody confirmed; nobody watching → uncredited (control), then S2 restarts → its boot poll catches up with no API call; every RPC call 429 for a while → both servers alive, a purchase afterwards is credited, 4 sold on chain and in the mirror |
+| T5 the crank's send path swallows 2 sends AND `getProgramAccounts` is refused | the re-send loop still lands each step once; the pass does not throw, reports the refund as failed, still serves the pool after it (fail + close); with `SOLANA_RPC_FALLBACKS` = a working RPC the next pass refunds and closes, each buyer +price +rent exactly |
 | T6 the race | a stranger fails a 10-ticket pool, then 3 crank CLIs + the stranger's own refund run at once: identical transactions dedupe on the validator (same crank key, same blockhash); a step that lost is retried by the next pass; at the end every buyer +price +rent exactly once, the crank key paid exactly the fees of the transactions that landed, the creator the vault rent minimum once, the seed nothing, the mirror cancelled on both servers |
 
-What it found (Oct 10, both fixed): one refused ticket read threw out of the whole crank pass, so every pool after it starved – now caught per pool (`CrankPoolsHandler`); and a gasless `/submit` whose status read failed answered 503 although the purchase had landed, which made the lobby fall back to a second self-paid payment – now `200 pending` with the signature (`cosignAndSend` returns `confirmed: false`). Both unit-tested.
+What it found (Oct 10, fixed): one refused ticket read threw out of the whole crank pass, so every pool after it starved – now caught per pool (`CrankPoolsHandler`). It also found that a gasless `/submit` whose status read failed answered 503 although the purchase had landed; the gas sponsor and `/submit` were removed the same day (every wallet pays its own fee), so those tests (the old T4) went with them.
 
 ## Admin CLI (`server/scripts/pool-admin.mjs`)
 

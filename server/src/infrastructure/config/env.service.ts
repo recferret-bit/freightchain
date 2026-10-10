@@ -66,8 +66,6 @@ export class EnvService {
   get watchIntervalMs(): number { return this.env.WATCH_INTERVAL_MS; }
   get redisUrl(): string | undefined { return this.env.REDIS_URL; }
   get crankIntervalMs(): number { return this.env.CRANK_INTERVAL_MS; }
-  get feePayerMinSol(): number { return this.env.FEE_PAYER_MIN_SOL; }
-  get sponsorPerWalletPerDay(): number { return this.env.SPONSOR_PER_WALLET_PER_DAY; }
   get priorityFee(): { percentile: number; minMicrolamports: number; maxMicrolamports: number } {
     return { percentile: this.env.PRIORITY_FEE_PERCENTILE, minMicrolamports: this.env.PRIORITY_FEE_MIN_MICROLAMPORTS, maxMicrolamports: this.env.PRIORITY_FEE_MAX_MICROLAMPORTS };
   }
@@ -76,7 +74,6 @@ export class EnvService {
   /** SECRETS – used only by the infrastructure that signs / authenticates; never copied into RulesConfig or logged. undefined = the feature is off. */
   get webhookSecret(): string | undefined { return this.env.WEBHOOK_SECRET; }
   get crankSecret(): string | undefined { return this.env.CRANK_SECRET; }
-  get feePayerSecret(): string | undefined { return this.env.FEE_PAYER_SECRET; }
   get initialSeedLamports(): number { return Math.round(this.env.INITIAL_SEED_SOL * 1e9); }
   get verdictEnforce(): boolean { return this.env.VERDICT_ENFORCE; }
   get telemetryRetentionDays(): number { return this.env.TELEMETRY_RETENTION_DAYS; }

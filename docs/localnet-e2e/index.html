@@ -57,7 +57,7 @@
         <ul>
           <li>An Agave 4.1.2 <code>solana-test-validator</code>, with the program loaded as an <b>upgradeable</b> program that has its own ProgramData and upgrade authority.</li>
           <li>The program binary, by its <code>solana-verify</code> executable hash.</li>
-          <li>The NestJS server in <code>PAYMENT_MODE=program</code>: order building, the gas sponsor's co-sign boundary, the watcher, settlement, the crank, payouts.</li>
+          <li>The NestJS server in <code>PAYMENT_MODE=program</code>: order building, the watcher, settlement, the crank, payouts.</li>
           <li>PostgreSQL, a throwaway database migrated like production.</li>
           <li>The lobby and the game in headless Chrome. The game records the ride and the server judges it as VERIFIED.</li>
           <li>Transactions signed with ed25519 and sent to the validator. Fees are read from each transaction.</li>
@@ -80,7 +80,7 @@
     <h2>Who talks to whom</h2>
     <figure>
       <div class="plate">
-        <svg viewBox="0 0 960 360" role="img" aria-label="run.sh starts the validator, the database and the server. Node wallets and a headless Chrome with a fake Phantom call the server's HTTP API and send signed transactions to the validator. The server reads the validator, co-signs gasless purchases, runs the crank and settles events into PostgreSQL. The scenario script checks balances on the validator.">
+        <svg viewBox="0 0 960 360" role="img" aria-label="run.sh starts the validator, the database and the server. Node wallets and a headless Chrome with a fake Phantom call the server's HTTP API and send signed transactions to the validator. The server reads the validator, runs the crank and settles events into PostgreSQL. The scenario script checks balances on the validator.">
           <defs>
             <marker id="s-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="m-ink"/></marker>
             <marker id="s-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="m-amber"/></marker>
@@ -96,7 +96,7 @@
           <!-- server -->
           <rect x="375" y="40" width="210" height="80" rx="6" class="d-node"/>
           <text x="480" y="74" text-anchor="middle" class="d-title">Server</text>
-          <text x="480" y="96" text-anchor="middle" class="d-code">sponsor · crank · watcher</text>
+          <text x="480" y="96" text-anchor="middle" class="d-code">crank · watcher</text>
           <rect x="375" y="230" width="210" height="80" rx="6" class="d-node"/>
           <text x="480" y="264" text-anchor="middle" class="d-title">PostgreSQL</text>
           <text x="480" y="286" text-anchor="middle" class="d-code">freightchain_localnet_&lt;pid&gt;</text>
@@ -110,11 +110,11 @@
           <text x="300" y="70" text-anchor="middle" class="d-call t-ink">HTTP</text>
           <line x1="230" y1="270" x2="375" y2="105" class="e-admin" marker-end="url(#s-ink)"/>
           <polyline points="230,62 290,20 870,20 870,114" class="e-amber" marker-end="url(#s-amber)"/>
-          <text x="560" y="14" text-anchor="middle" class="d-call t-amber">self-paid sends · refunds</text>
+          <text x="560" y="14" text-anchor="middle" class="d-call t-amber">signed + sent by the wallet · refunds</text>
           <polyline points="230,290 870,330 870,236" class="e-amber" marker-end="url(#s-amber)"/>
           <text x="640" y="350" text-anchor="middle" class="d-call t-amber">sends · balance checks</text>
           <line x1="585" y1="80" x2="724" y2="150" class="e-teal" marker-end="url(#s-teal)"/>
-          <text x="690" y="96" text-anchor="middle" class="d-call t-teal">co-sign · crank</text>
+          <text x="690" y="96" text-anchor="middle" class="d-call t-teal">crank</text>
           <line x1="724" y1="190" x2="591" y2="110" class="e-teal" marker-end="url(#s-teal)"/>
           <text x="640" y="176" text-anchor="middle" class="d-note">events, accounts</text>
           <line x1="480" y1="120" x2="480" y2="224" class="e-admin" marker-end="url(#s-ink)"/>
@@ -126,7 +126,7 @@
         <span><i class="l-teal"></i>the server on chain</span>
         <span><i class="l-admin"></i>HTTP / database</span>
       </div>
-      <figcaption><b>Every server chain key is set by the script</b>: program id, local RPC and websocket, sponsor, crank, treasuries, watcher interval. A <code>server/.env</code> left on the machine can't point the test at devnet or at the dev database.</figcaption>
+      <figcaption><b>Every server chain key is set by the script</b>: program id, local RPC and websocket, crank, treasuries, watcher interval. A <code>server/.env</code> left on the machine can't point the test at devnet or at the dev database.</figcaption>
     </figure>
   </section>
 
@@ -138,7 +138,7 @@
       <table>
         <thead><tr><th>Phase</th><th>What runs</th><th>What comes out</th></tr></thead>
         <tbody>
-          <tr><th scope="row">1 · fixtures</th><td>A short-lived validator. <code>initialize</code> is tried by a stranger (refused, <code>Unauthorized</code>), then signed by the upgrade authority naming the admin. Two 8h pools are created; three throwaway buyers buy real tickets, one rent paid by the sponsor; after the play deadline the admin pays one real prize. <span class="mono">localnet-fixtures.mjs</span></td><td>The Config, both Pools, their vaults and three Tickets, dumped byte for byte. In each Pool only <code>prep_deadline</code> and <code>play_deadline</code> (bytes 63 and 71) are moved 16 days back, then checked by decoding the account again.</td></tr>
+          <tr><th scope="row">1 · fixtures</th><td>A short-lived validator. <code>initialize</code> is tried by a stranger (refused, <code>Unauthorized</code>), then signed by the upgrade authority naming the admin. Two 8h pools are created; three throwaway buyers buy real tickets, each paying its own rent; after the play deadline the admin pays one real prize. <span class="mono">localnet-fixtures.mjs</span></td><td>The Config, both Pools, their vaults and three Tickets, dumped byte for byte. In each Pool only <code>prep_deadline</code> and <code>play_deadline</code> (bytes 63 and 71) are moved 16 days back, then checked by decoding the account again.</td></tr>
           <tr><th scope="row">2 · the test</th><td>A fresh ledger: the program plus those accounts, loaded with <code>--account</code>. The Config already says <code>pool_count = 2</code>, so new pools get ids 2, 3, 4.</td><td>An "unpaid" active pool past the grace (the expire case) and a "prize paid" one (the grace-close case). Every byte except the deadlines was written by the program.</td></tr>
         </tbody>
       </table>
@@ -154,10 +154,9 @@
         <tbody>
           <tr><th scope="row">upgrader</th><td>The program's upgrade authority (<code>--upgradeable-program … upgrader</code>). Signs <code>initialize</code>, which names the admin.</td></tr>
           <tr><th scope="row">admin</th><td><code>Config.authority</code> = the server's <code>TREASURY_PUBKEY</code>. Creates pools, signs payouts and the close, gets each vault's rent minimum back.</td></tr>
-          <tr><th scope="row">sponsor</th><td><code>FEE_PAYER_SECRET</code>: co-signs gasless purchases and pays their fee and Ticket rent, which comes back at refund.</td></tr>
           <tr><th scope="row">crank</th><td><code>CRANK_SECRET</code>: pays the fees of fail / expire / refund / close. <code>CRANK_INTERVAL_MS=0</code>, so it runs only when the scenario calls <code>pool:crank</code>.</td></tr>
           <tr><th scope="row">fee · seed · plat</th><td>The treasuries the pools declare, plus the Config's platform treasury (500 bps of the fee share, a leg production leaves at 0).</td></tr>
-          <tr><th scope="row">P1 … P6, S, X</th><td>Players: lobby buyer and rider, Node buyers, a sponsor-only wallet, one wallet for the tampered transaction.</td></tr>
+          <tr><th scope="row">P1 … P6, S, X</th><td>Players: lobby buyer and rider, Node buyers, a pool-sponsorship wallet, one wallet for the missing /submit route.</td></tr>
           <tr><th scope="row">Z · stranger</th><td>"Anyone": fresh wallets that close pools they never paid into (Z in phase 2, the stranger who tries <code>initialize</code> in phase 1). Not the faucet <code>mint</code>, which the validator itself pays tiny amounts and so can't be measured to the lamport.</td></tr>
         </tbody>
       </table>
@@ -182,10 +181,10 @@
     <ol class="steps">
       <li><h3>Baked pools registered</h3><p>Both are active on chain with their deadlines 16 days back; one has paid a prize. The Config came from phase 1's real <code>initialize</code>.</p></li>
       <li><h3>Three pools created <span class="who"><span class="tag adm">admin</span></span></h3><p><code>pool-admin create-pool</code>, then <code>pool:register</code>. Ids follow the baked Config, and each vault holds exactly the 890 880-lamport rent minimum.</p></li>
-      <li><h3>Lobby BUY ×2, gasless <span class="who"><span class="tag ply">P1</span></span></h3><p>The fake Phantom is only asked to <i>sign</i>; the server adds the sponsor and sends. The buyer pays exactly 2 × price, the sponsor pays the fee plus Ticket rent, and <code>rent_payer</code> is the sponsor.</p></li>
-      <li><h3>Self-paid buy → pool live <span class="who"><span class="tag ply">P2</span></span></h3><p><code>?selfPaid=1</code>, then sign, send and <code>/confirm</code>. The buyer pays price + fee + rent, to the lamport. Pool A turns Active on chain and on the server.</p></li>
+      <li><h3>Lobby BUY ×2 <span class="who"><span class="tag ply">P1</span></span></h3><p>The fake Phantom is asked to <i>sign and send</i>: the wallet pays its own fee. The buyer pays exactly 2 × price + fee + Ticket rent, and <code>rent_payer</code> is the buyer.</p></li>
+      <li><h3>Node buy → pool live <span class="who"><span class="tag ply">P2</span></span></h3><p>Order, payment, then sign, send and <code>/confirm</code>. The buyer pays price + fee + rent, to the lamport. Pool A turns Active on chain and on the server.</p></li>
       <li><h3>Sponsor <span class="who"><span class="tag any">S</span></span></h3><p><code>sponsor</code> of 0.03 SOL into A: the vault and <code>Pool.sponsored</code> grow, and the server mirror picks it up through the watcher. C gets 0.02 SOL the same way.</p></li>
-      <li><h3>Buys into B and C; a tampered transaction</h3><p>Node gasless (<code>/submit</code>) and self-paid buys. One wallet flips a byte of the message it signs: the sponsor boundary answers 400 and nothing reaches the chain.</p></li>
+      <li><h3>Buys into B and C; no gasless route</h3><p>Node wallets buy, each to the exact lamport (price + fee + rent). <code>POST /api/tickets/orders/:id/submit</code>, the old gasless route, answers 404.</p></li>
       <li><h3>Three rides in the real game <span class="who"><span class="tag ply">P1 ×2</span><span class="tag ply">P2</span></span></h3><p>Each <code>POST /api/rides {tier:'1h'}</code> spends a ticket. The game drives it with human-timed key presses, and the server judges each ride COMPLETED and VERIFIED.</p></li>
       <li><h3>Missed goal, refunded from the lobby <span class="who"><span class="tag ply">P3</span><span class="tag ply">P4</span></span></h3><p>Nobody has failed pool B, yet the card already offers CLAIM REFUND. The wallet signs and sends <code>fail_pool</code> + <code>refund</code>. P4 then refunds through the API (no <code>fail_pool</code> needed any more), and a stranger closes the pool.</p></li>
       <li><h3>Ticket-only <span class="who"><span class="tag any">anyone</span></span></h3><p>With B gone the 4h tier has no live pool. 4h is not on sale, so <code>/api/tiers</code> says not available and <code>onSale: false</code> with no price, the lobby card says SOON, and <code>POST /api/rides</code> answers 409 <code>tier_not_on_sale</code>.</p></li>
@@ -199,11 +198,11 @@
     <h2>Ten riders, one payout</h2>
     <p class="col"><span class="mono">server/scripts/e2e-localnet-payout.mjs</span> runs one pool the way a real week would: ten wallets buy in, ride, get judged, and the program pays the ranked ones. Every finished ride goes through the <b>same player API the game uses</b> (start, heartbeats, hash-chained recordings, end). There is no admin endpoint that writes telemetry: one that let an admin write recordings would let an admin mint winners. So the payout is tested against the real judge, not a fixture.</p>
     <ol class="steps">
-      <li><h3>Pool D: 10 wallets, 11 tickets <span class="who"><span class="tag adm">admin</span><span class="tag ply">R1–R10</span></span></h3><p>Three <code>create_pool</code> attempts are refused first: shares that don't add up, a price below the rent minimum, an unfunded treasury. Then pool D (1h, min 10, ≤ 2 per wallet). R1 buys in the lobby in headless Chrome (gasless: the wallet only signs). Four wallets buy gasless through <code>/submit</code>, four self-paid through <code>/confirm</code>, each to the exact lamport. The pool stays OPEN at 9 sold and goes ACTIVE when R8 buys 2. A fan sponsors 0.05 SOL.</p></li>
+      <li><h3>Pool D: 10 wallets, 11 tickets <span class="who"><span class="tag adm">admin</span><span class="tag ply">R1–R10</span></span></h3><p>Three <code>create_pool</code> attempts are refused first: shares that don't add up, a price below the rent minimum, an unfunded treasury. Then pool D (1h, min 10, ≤ 2 per wallet). R1 buys in the lobby in headless Chrome (the wallet signs and sends). Eight wallets buy from Node through <code>/confirm</code>, each to the exact lamport. The pool stays OPEN at 9 sold and goes ACTIVE when R8 buys 2. A fan sponsors 0.05 SOL.</p></li>
       <li><h3>The rides <span class="who"><span class="tag ply">bots + Chrome</span></span></h3><p>R1 drives the real game. The others are API bots, each with its own 10 Hz recording that takes the damage of the server's planned holes and answers the dispatch prompts. Six honest riders and R8's two rides are VERIFIED. R7 crashes, so its ride FAILED and is never judged. R9 uploads one batch without a hash, gets FLAGGED, and the admin ACCEPTS it with a signed review. R10 teleports 500 m and is REJECTED.</p></li>
       <li><h3>The "cron" <span class="who"><span class="tag any">CLI</span></span></h3><p><code>verdict:rejudge --status all</code> re-judges every completed ride from its telemetry: nothing changes, and the admin's decision stays. A <code>pool:crank</code> pass leaves the live pool alone. Before the play deadline the payout API answers 409, and 403 to a rider.</p></li>
       <li><h3>The payout job <span class="who"><span class="tag adm">admin key</span></span></h3><p>After the deadline, <code>devnet-payout.mjs --yes</code> signs what <code>GET /api/pools/:id/payout</code> builds. The 8 counted wallets are ranked by summed distance, and each gets exactly its <code>poolPayouts</code> share. The crash and the cheater get nothing, and their ticket money stays in the pot. <code>close_pool</code> legs: fee, platform, seed (seed share + unclaimed rounding) and the creator's rent minimum. Conservation holds to the lamport.</p></li>
-      <li><h3>Ticket rents back <span class="who"><span class="tag any">stranger</span></span></h3><p><code>close_ticket</code> ×10 by a stranger: the gas sponsor gets back the 6 rents it advanced, each self-paid buyer its own, and every Ticket account is gone.</p></li>
+      <li><h3>Ticket rents back <span class="who"><span class="tag any">stranger</span></span></h3><p><code>close_ticket</code> ×10 by a stranger: every buyer gets its own rent back, and every Ticket account is gone.</p></li>
       <li><h3>The next jackpot <span class="who"><span class="tag any">seed treasury</span></span></h3><p>The seed treasury sponsors the next 1h pool with exactly pool D's seed leg, and the lobby's 1h card shows it. This is an operator step: nothing in the code moves the seed by itself.</p></li>
       <li><h3>The rest of the program <span class="who"><span class="tag adm">admin</span><span class="tag any">anyone</span></span></h3><p>Pause (buy and <code>create_pool</code> refused), a sold-out pool, an unpaid pool closed by the admin (the whole prize share goes to the seed), <code>cancel_pool</code> with its refunds (a second refund is refused), and the authority handover there and back (the old admin is refused in between). On the way, every program error a validator can reach is provoked once.</p></li>
     </ol>
@@ -226,12 +225,11 @@
     <ul class="col">
       <li>Prize caps, payout amounts and the close legs come from the server's compiled domain code: <code>prizeBound</code>, <code>poolPayouts</code>, <code>closeSplit</code> (<span class="mono">server/dist/domain/economy</span>). These are the same functions the program's money table is pinned against.</li>
       <li>Every network fee is read from its own transaction (<code>getTransaction(sig).meta.fee</code>), never assumed to be 5 000.</li>
-      <li>Balances are read at <code>confirmed</code> before and after each step, and the difference must match exactly: no tolerance, except the sponsor's fee on the lobby buy, whose signature the page doesn't expose.</li>
+      <li>Balances are read at <code>confirmed</code> before and after each step, and the difference must match exactly: no tolerance: every fee is read from its own transaction.</li>
       <li>Server state is compared with chain state after every transition: pool status, tickets sold, sponsorship, the ticket balances in <code>/api/me</code>.</li>
     </ul>
-<pre><code>gasless buyer        Δ = −price × qty
-self-paid buyer      Δ = −(price × qty + fee + Ticket rent 1 496 400)
-refund (own rent)    Δ = +price + rent − fee        refund (sponsor's rent)  Δ = +price − fee, sponsor +rent
+<pre><code>buyer                Δ = −(price × qty + fee + Ticket rent 1 496 400)
+refund (own rent)    Δ = +price + rent − fee
 close (settled)      fee_out + platform + seed (+ unclaimed) + creator rent = vault, vault → 0
 close (cancelled)    seed = sponsorship + stray lamports, creator = 890 880</code></pre>
   </section>
@@ -245,7 +243,7 @@ close (cancelled)    seed = sponsorship + stray lamports, creator = 890 880</cod
       <div class="finding"><b class="k">fixed · product</b><p><b>A tier whose pool failed fell back to pay-per-ride</b> ($15 straight into the weekly round) although program mode is ticket-only. Now the tiers API, the lobby and the landing all say there is no pool on sale.</p></div>
       <div class="finding"><b class="k">fixed · lobby</b><p><b>An order the wallet never sent showed as "in flight"</b> for up to an hour. It now says the order is unfinished and nothing was charged.</p></div>
       <div class="finding"><b class="k">fixed · program</b><p><b><code>initialize</code> was first-come.</b> It now requires the upgrade authority, checked here on a real upgradeable loader (phase 1).</p></div>
-      <div class="finding"><b class="k">open · server</b><p><b>Nothing reclaims Ticket rents after a settlement.</b> <code>close_ticket</code> is in the program, but neither the crank nor the server sends it. Each gasless buyer of a settled pool leaves ~0.0015 SOL of the gas sponsor's money locked. The payout scenario reclaims them by hand (<code>pool-admin.mjs close-ticket</code>); the fix is listed in <span class="mono">docs/escrow-open-items.md</span>.</p></div>
+      <div class="finding"><b class="k">open · server</b><p><b>Nothing reclaims Ticket rents after a settlement.</b> <code>close_ticket</code> is in the program, but neither the crank nor the server sends it. Every buyer of a settled pool leaves ~0.0015 SOL of its own money locked in its Ticket account until someone sends <code>close_ticket</code>. The payout scenario reclaims them by hand (<code>pool-admin.mjs close-ticket</code>); the fix is listed in <span class="mono">docs/escrow-open-items.md</span>.</p></div>
     </div>
   </section>
 
@@ -271,12 +269,12 @@ SCENARIO=payout npm run test:localnet   # only the ten-rider scenario (PREP_D / 
     <p><span class="mono">SCENARIO=chaos</span> puts a fault-injecting RPC proxy between the server and the validator (<span class="mono">server/scripts/localnet-fault-proxy.mjs</span>: refuse, 429, swallow a send, forward it but lose the answer, delay, or take a whole provider down). The scenario's own balances and clock stay direct, so only the servers it starts see the faults. Two servers share one database; the crank runs from the command line behind a third proxy.</p>
     <ul class="col">
       <li><b>One purchase, every path at once</b>: confirm twice, settle on both servers, the webhook on both, both watchers. One ticket, never two.</li>
-      <li><b>Gasless buys through a bad send path</b>: swallowed sends are re-sent, a lost answer still pays once, a refused status read still gives <span class="mono">/submit</span> a 200 with the signature (never an error, so the lobby cannot pay twice) and the ticket is credited once, and a send dropped until the blockhash dies is a 409 that charges nobody and can be asked again.</li>
+      <li><b>The crank's send path</b>: its first two sends are swallowed (it is told "accepted"), and its ticket read is refused as well. The re-send loop still lands each step once.</li>
       <li><b>Who credits what</b>: one server blind and the other without a websocket still credits by polling; with nobody watching nothing is credited, and a restart catches up on its own; a total provider outage does not kill either server.</li>
       <li><b>The crank's ticket read refused</b>: the pass reports the pool's refund as failed and still serves the pools after it; with a working fallback RPC the next pass finishes it.</li>
       <li><b>The race</b>: three crankers and a stranger on a ten-ticket pool. Identical transactions dedupe, a step that lost is retried by the next pass, every buyer is refunded exactly once and the crank key paid only fees.</li>
     </ul>
-    <p>It found two real bugs. One refused ticket read stopped the whole crank pass, so pools after it starved. And <span class="mono">/submit</span> answered an error for a purchase that had landed, which sent the lobby to a second, self-paid payment for the same order. Both are fixed and unit-tested.</p>
+    <p>It found a real bug on its first run: one refused ticket read stopped the whole crank pass, so pools after it starved. It also showed that the gasless <span class="mono">/submit</span> answered an error for a purchase that had landed, which sent the lobby to a second payment for the same order; the gas sponsor and that route were removed the same day, so every wallet now pays its own fee. The crank fix is unit-tested.</p>
   </section>
 
   <section class="section" id="limits">

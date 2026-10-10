@@ -64,10 +64,10 @@ export const FEATURES = [
   },
   {
     id: 'escrow-buy', title: 'Escrow: pools on sale + ticket purchase',
-    server: /^(application\/use-cases\/tickets\/|application\/use-cases\/pools\/(list-pools|get-prize-pool|register-pool|register-pool-from-chain)\/|domain\/economy\/(pool\.|pool\.types|ticket|vault-split|chain\.dto)|domain\/players\/ride-ticket|application\/services\/(pool-registry|pool-tickets)|infrastructure\/prisma\/repositories\/(pool|ticket-order|ride-ticket|sponsored-tx)\.|infrastructure\/solana\/(transaction-cosigner|program-chain\.adapter|pool-program|borsh|chain-transaction\.mapper|solana-rpc)|application\/use-cases\/players\/grant-tickets\/)/,
+    server: /^(application\/use-cases\/tickets\/|application\/use-cases\/pools\/(list-pools|get-prize-pool|register-pool|register-pool-from-chain)\/|domain\/economy\/(pool\.|pool\.types|ticket|vault-split|chain\.dto)|domain\/players\/ride-ticket|application\/services\/(pool-registry|pool-tickets)|infrastructure\/prisma\/repositories\/(pool|ticket-order|ride-ticket)\.|infrastructure\/solana\/(program-chain\.adapter|pool-program|borsh|chain-transaction\.mapper|solana-rpc)|application\/use-cases\/players\/grant-tickets\/)/,
     client: /^client\/site\/(pay|tickets-api|pools|lobby-pools)\.js$/,
     routes: /^(POST \/api\/tickets$|(GET|POST) \/api\/tickets\/|GET \/api\/pools(\/:id)?$)/,
-    words: /ticket|pool|sponsor|gasless|co-?sign|order/i,
+    words: /ticket|pool|sponsor|order/i,
     e2e: ['e2e-lobby.mjs', 'e2e-tickets-stub.mjs', 'e2e-localnet.mjs'], skills: ['localnet-e2e', 'run-tests'],
   },
   {
@@ -236,7 +236,7 @@ export const FLOWS = [
     'POST /api/rides/:id/end', 'GET /api/live', { note: 'stale-ride sweeper ends a silent ride' },
   ] },
   { id: 'buy-tickets', title: 'Buy tickets → ride a paid tier', steps: [
-    'GET /api/pools', 'POST /api/tickets', 'GET /api/tickets/orders/:id/payment', 'POST /api/tickets/orders/:id/submit', 'POST /api/tickets/orders/:id/confirm',
+    'GET /api/pools', 'POST /api/tickets', 'GET /api/tickets/orders/:id/payment', 'POST /api/tickets/orders/:id/confirm',
     'GET /api/tickets/orders/:id', 'GET /api/tickets/pending', { note: 'program event credits the tickets' }, 'POST /api/rides',
   ] },
   { id: 'refund', title: 'A pool misses its goal → refund', steps: [

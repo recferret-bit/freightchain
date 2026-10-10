@@ -15,6 +15,5 @@ export interface RefundTransactionDto {
   transaction: string;
   message: string;
   feePayer: string;
-  sponsored: boolean;
   lastValidBlockHeight: number;
 }

@@ -9,7 +9,6 @@ import { ChallengeRepositoryPort } from '../../src/application/ports/auth/challe
 import { ChainPort } from '../../src/application/ports/economy/chain.port.js';
 import { PoolChainPort } from '../../src/application/ports/economy/pool-chain.port.js';
 import { ChainCursorRepositoryPort, ChainEventRepositoryPort } from '../../src/application/ports/economy/chain-event.repository.port.js';
-import { SponsoredTxRepositoryPort } from '../../src/application/ports/economy/sponsored-tx.repository.port.js';
 import { PaymentRepositoryPort } from '../../src/application/ports/economy/payment.repository.port.js';
 import { RoundRepositoryPort } from '../../src/application/ports/economy/round.repository.port.js';
 import { HealthProbePort } from '../../src/application/ports/health/health-probe.port.js';
@@ -45,7 +44,7 @@ import { PoolRepositoryPort } from '../../src/application/ports/economy/pool.rep
 import { CosmeticRepositoryPort } from '../../src/application/ports/players/cosmetic.repository.port.js';
 import { PromoRepositoryPort } from '../../src/application/ports/economy/promo.repository.port.js';
 import { RideTicketRepositoryPort } from '../../src/application/ports/players/ride-ticket.repository.port.js';
-import { MemoryChainCursorRepository, MemoryChainEventRepository, MemorySponsoredTxRepository } from './in-memory/memory-repositories.js';
+import { MemoryChainCursorRepository, MemoryChainEventRepository } from './in-memory/memory-repositories.js';
 import { CachePort } from '../../src/application/ports/shared/cache.port.js';
 import { MemoryCacheAdapter } from '../../src/infrastructure/cache/memory-cache.adapter.js';
 import { MemoryStatsRepository } from './in-memory/memory-stats-repository.js';
@@ -131,7 +130,6 @@ export async function createHarness(persistence: Persistence, env: Record<string
       .overrideProvider(HealthProbePort).useValue(new MemoryHealthProbe())
       .overrideProvider(ChainEventRepositoryPort).useValue(new MemoryChainEventRepository(memory))
       .overrideProvider(ChainCursorRepositoryPort).useValue(new MemoryChainCursorRepository(memory))
-      .overrideProvider(SponsoredTxRepositoryPort).useValue(new MemorySponsoredTxRepository(memory))
       .overrideProvider(RideEventRepositoryPort).useValue(new MemoryRideEventRepository(memory))
       .overrideProvider(RideMuteRepositoryPort).useValue(new MemoryRideMuteRepository(memory))
       .overrideProvider(DonationOrderRepositoryPort).useValue(new MemoryDonationOrderRepository(memory))

@@ -52,7 +52,7 @@ if [ "$TARGET" = devnet ]; then
   [ "$DEV_PROGRAM" = "$PROGRAM_ID" ] || fail "the code is built for $PROGRAM_ID but .env.devnet says $DEV_PROGRAM – run anchor keys sync + rebuild (program-deploy.md step 1–3)"
   genesis="$(curl -sS -X POST -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"getGenesisHash"}' "$RPC" | node -pe 'JSON.parse(require("fs").readFileSync(0)).result')"
   [ "$genesis" = EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG ] || fail "SOLANA_RPC is not devnet (genesis $genesis) – refusing"
-  mkdir -p "$TMP/keys"; for r in admin sponsor crank fee seed plat; do cp "$DKEYS/$r.json" "$TMP/keys/$r.json"; done; cp "$DKEYS/funder.json" "$TMP/keys/mint.json"
+  mkdir -p "$TMP/keys"; for r in admin crank fee seed plat; do cp "$DKEYS/$r.json" "$TMP/keys/$r.json"; done; cp "$DKEYS/funder.json" "$TMP/keys/mint.json"
   pub() { solana-keygen pubkey "$TMP/keys/$1.json"; }
   echo "▸ devnet: program $PROGRAM_ID (RPC from server/.env.devnet), keys from $DKEYS"
   (cd "$SERVER" && npm run --silent build >/dev/null)
@@ -69,7 +69,7 @@ fi
 
 echo "▸ keys (scratch, throwaway)"
 mkdir -p "$TMP/keys"
-for k in mint upgrader admin sponsor crank fee seed plat; do solana-keygen new -s --no-bip39-passphrase -o "$TMP/keys/$k.json" >/dev/null; done
+for k in mint upgrader admin crank fee seed plat; do solana-keygen new -s --no-bip39-passphrase -o "$TMP/keys/$k.json" >/dev/null; done
 pub() { solana-keygen pubkey "$TMP/keys/$1.json"; }
 
 RPC_PORT="$(free_pair)"; FAUCET_PORT="$(free_port)"; GOSSIP_PORT="$(free_port)"; DYN=$(( RPC_PORT < 40000 ? RPC_PORT + 2000 : RPC_PORT - 2000 ))
@@ -83,7 +83,7 @@ start_validator() {
   VAL_PID=$!
   for _ in $(seq 1 90); do curl -sf -X POST -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"getHealth"}' "$RPC" 2>/dev/null | grep -q '"ok"' && break; kill -0 "$VAL_PID" 2>/dev/null || { tail -20 "$ledger.log"; fail "validator exited"; }; sleep 1; done
   curl -sf -X POST -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"getHealth"}' "$RPC" | grep -q '"ok"' || fail "validator not healthy after 90 s"
-  for k in upgrader admin sponsor crank fee seed plat; do solana airdrop --url "$RPC" -k "$TMP/keys/mint.json" 100 "$(pub "$k")" >/dev/null; done
+  for k in upgrader admin crank fee seed plat; do solana airdrop --url "$RPC" -k "$TMP/keys/mint.json" 100 "$(pub "$k")" >/dev/null; done
 }
 stop_validator() { kill "$VAL_PID" 2>/dev/null || true; wait "$VAL_PID" 2>/dev/null || true; VAL_PID=""; }
 
@@ -109,7 +109,7 @@ psql_admin "CREATE DATABASE \"$DB\"" >/dev/null
 
 # Every key the server reads is set here, so a stray server/.env (dotenv never overrides) cannot point it at devnet or the dev database.
 export DATABASE_URL="$URL" PAYMENT_MODE=program TICKET_PROGRAM_ID="$PROGRAM_ID" SOLANA_RPC="$RPC" SOLANA_WS="$WS" SOLANA_RPC_FALLBACKS="$([ "$TARGET" = devnet ] && echo https://api.devnet.solana.com)" SOLANA_COMMITMENT=confirmed \
-  FEE_PAYER_SECRET="$(cat "$TMP/keys/sponsor.json")" CRANK_SECRET="$(cat "$TMP/keys/crank.json")" CRANK_INTERVAL_MS=0 TREASURY_PUBKEY="$(pub admin)" FEE_TREASURY="$(pub fee)" SEED_TREASURY="$(pub seed)" \
+  CRANK_SECRET="$(cat "$TMP/keys/crank.json")" CRANK_INTERVAL_MS=0 TREASURY_PUBKEY="$(pub admin)" FEE_TREASURY="$(pub fee)" SEED_TREASURY="$(pub seed)" \
   WEBHOOK_SECRET="$(node -e 'console.log(require("crypto").randomBytes(24).toString("base64url"))')" WATCH_INTERVAL_MS="$([ "$SCENARIO" = chaos ] && echo 0 || { [ "$TARGET" = devnet ] && echo 5000 || echo 2000; })" SOL_USD=118 DEMO_WALLETS='*' DEMO_SCALE=1200 FREE_RIDE_SECONDS=3 VERDICT_ENFORCE=true POSTHOG_ENABLED=0 PRIORITY_FEE_MAX_MICROLAMPORTS="$([ "$TARGET" = devnet ] && echo 50000 || echo 0)" \
   ADMIN_WALLETS="$(pub admin)" NODE_ENV=development   # the admin's signed ride review (payout scenario) – the program authority doubles as the site admin here
 PORT="$(free_port)"; BASE="http://localhost:$PORT"

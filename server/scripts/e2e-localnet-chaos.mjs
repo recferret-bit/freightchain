@@ -4,8 +4,8 @@
 //   T1  one landed purchase confirmed / settled / webhooked on two servers, repeatedly        → credited once
 //   T2  S1 blind (getSignaturesForAddress refused), S2's websocket dead                       → S2's polling alone credits a purchase nobody told it about
 //   T3  nobody is watching, then S2 restarts                                                  → the boot poll catches up; the whole provider down (429) for a while → recovers
-//   T4  gasless /submit: sends blackholed, a response lost, the status read refused           → paid exactly once (the refused status read is a 200 pending/paid with the signature, not an error); a send dropped until the blockhash dies → 409, nothing charged, rebuilt
-//   T5  getProgramAccounts refused for the crank                                              → one pool's failure must not stop the others; the fallback RPC finishes the refunds
+//   T4  (was: gasless /submit through a flaky send path – the gas sponsor and its route are gone: every wallet signs AND sends its own transaction)
+//   T5  the crank's send path swallows 2 sends AND getProgramAccounts is refused              → the re-send loop still lands each step once; one pool's failure must not stop the others; the fallback RPC finishes the refunds
 //   T6  three crankers + a stranger refunding at once on a 10-ticket pool                      → every buyer refunded exactly once (a step that lost the race is retried by the next pass), the crank key paid only fees, pool closed once
 // env: RPC, KEYS (scratch keypairs), WEBHOOK_SECRET + the server env run.sh exported (DATABASE_URL, PAYMENT_MODE, …).
 import nacl from 'tweetnacl'; import bs58 from 'bs58'; import { readFileSync, writeFileSync, openSync } from 'node:fs'; import { execFile, execFileSync, spawn } from 'node:child_process'; import { dirname } from 'node:path';
@@ -80,12 +80,6 @@ async function landSelfPaid(s, p, poolId, qty = 1) {
   const pay = await api(s, `tickets/orders/${o.j.id}/payment?selfPaid=1`, { cookie: p.cookies[s.name] });
   return { orderId: o.j.id, sig: await sendDirect(signedB64(pay.j.transaction, p.kp)) };
 }
-const gaslessSubmit = async (s, p, poolId, orderId) => {   // gasless: the wallet signs, the server co-signs as sponsor and sends
-  const o = orderId ? { j: { id: orderId } } : await api(s, 'tickets', { body: { poolId, qty: 1 }, cookie: p.cookies[s.name] });
-  const pay = await api(s, `tickets/orders/${o.j.id}/payment`, { cookie: p.cookies[s.name] });
-  const sub = await api(s, `tickets/orders/${o.j.id}/submit`, { body: { signedTransaction: signedB64(pay.j.transaction, p.kp).serialize({ requireAllSignatures: false }).toString('base64') }, cookie: p.cookies[s.name] });
-  return { orderId: o.j.id, sub };
-};
 const serverPool = async (s, id) => (await api(s, `pools/${id}`)).j;
 const held = async (s, p, poolId) => ((await api(s, 'me', { cookie: p.cookies[s.name] })).j.tickets ?? []).find(t => t.poolId === poolId)?.balance ?? 0;
 const orderStatus = async (s, p, id) => (await api(s, `tickets/orders/${id}`, { cookie: p.cookies[s.name] })).j.status;
@@ -108,7 +102,7 @@ try {
   const mk = (min, prep, perWallet = 4) => { const id = admintool(['create-pool', '--tier', '8h', '--price', String(PRICE), '--min', String(min), '--max', '0', '--per-wallet', String(perWallet), '--prep', `+${prep}`, '--play', `+${prep + 60}`, '--split', '7000/2000/1000', ...treas]).poolId; execFileSync('node', ['dist/cli/index.js', 'pool:register', String(id), '--label', `CHAOS ${id}`], { stdio: 'ignore' }); return id; };
   const X = mk(1000, 900), Y = mk(5, 110), W = mk(5, 110), Z = mk(50, 220, 2);   // X stays open for the purchase tests; Y + W fail first (W has no tickets, id after Y); Z = the race
   check('pools X (purchases), Y + W (a crank pass with a refused read), Z (the race) created', [X, Y, W, Z].every((id, i, a) => i === 0 || id === a[i - 1] + 1), `${X} ${Y} ${W} ${Z}`);
-  const [P1w, P2w, P3w, P4w, P5w, P6w] = [await player([S1, S2]), await player([S1, S2]), await player([S1, S2]), await player([S1, S2]), await player([S1, S2]), await player([S1, S2])];
+  const [P1w, P5w, P6w] = [await player([S1, S2]), await player([S1, S2]), await player([S1, S2])];
   const buy = (p, pool) => admintoolAsync(['buy', '--pool', String(pool), '--qty', '1', '-k', p.keyfile]);   // pool-admin: the buyer pays its own fee + rent
   const [y1, y2] = [await player([S1]), await player([S1])];
   await Promise.all([buy(y1, Y), buy(y2, Y)]);
@@ -126,35 +120,20 @@ try {
   check('T1 confirm ×2 + settle on both servers + the webhook on both + both watchers, at once: 1 ticket, 1 sold (never doubled)', await held(S1, P1w, X) === 1 && (await serverPool(S2, X)).sold === 1 && (await poolAcc(X)).ticketsSold === 1, `${paths.map(p => (typeof p === 'string' ? p : p.status)).join(',')}`);
   check('…the order is paid once and the buyer paid price + fee + rent exactly', await orderStatus(S2, P1w, l1.orderId) === 'paid' && before - (await bal(P1w.wallet)) === PRICE + (await fee(l1.sig)) + ticketRent);
 
-  // ── T4a-c. gasless /submit through a flaky send path (S1 ← P1)
-  const sponsor0 = await bal(addr('sponsor')); let b0 = await bal(P2w.wallet);
-  const f1 = P1.fault({ method: 'sendTransaction', mode: 'blackhole', times: 2 });
-  const g1 = await gaslessSubmit(S1, P2w, X);
-  check('T4a gasless: the first 2 sends are swallowed (the sender is told "accepted") – the re-send loop lands it, paid once', g1.sub.ok && await until(async () => await orderStatus(S1, P2w, g1.orderId) === 'paid', 30000) && f1.hits === 2 && await held(S1, P2w, X) === 1, `${g1.sub.status} ${g1.sub.j.status ?? g1.sub.j.code} blackholed ${f1.hits}`);
-  check('…the buyer paid exactly the price; the sponsor paid fee + rent once', b0 - (await bal(P2w.wallet)) === PRICE && sponsor0 - (await bal(addr('sponsor'))) > ticketRent && sponsor0 - (await bal(addr('sponsor'))) < ticketRent + 100_000, `${b0 - (await bal(P2w.wallet))} / ${sponsor0 - (await bal(addr('sponsor')))}`);
-  const f2 = P1.fault({ method: 'sendTransaction', mode: 'lose-response', times: 1 });
-  const g2 = await gaslessSubmit(S1, P3w, X);
-  check('T4b gasless: the cluster took the first send but the answer was lost – still paid once', g2.sub.ok && await until(async () => await orderStatus(S1, P3w, g2.orderId) === 'paid') && f2.hits === 1 && await held(S1, P3w, X) === 1);
-  const f3 = P1.fault({ method: 'getSignatureStatuses', mode: 'error' });
-  const g3 = await gaslessSubmit(S1, P4w, X);
-  f3.off();
-  note(`T4c /submit while the status read is refused answered ${g3.sub.status} ${g3.sub.j.status ?? g3.sub.j.code ?? ''}${g3.sub.j.signature ? ' with the signature' : ''} (the transaction itself landed)`);
-  check('T4c gasless with the status read refused: NOT an error (200 + the signature, paid or pending – the lobby must not pay a second time) and the purchase is credited exactly once', g3.sub.ok && !!g3.sub.j.signature && ['paid', 'pending'].includes(g3.sub.j.status) && await until(async () => await orderStatus(S1, P4w, g3.orderId) === 'paid', 40000) && await held(S1, P4w, X) === 1 && (await poolAcc(X)).ticketsSold === 4, `${g3.sub.status} ${g3.sub.j.status}, order ${await orderStatus(S1, P4w, g3.orderId)}, sold ${(await poolAcc(X)).ticketsSold}`);
-
   // ── T2. S1 blind, S2's websocket dead: the polling of S2 alone must find a purchase nobody announced
   const blind = P1.fault({ method: 'getSignaturesForAddress', mode: 'error' });
   await landSelfPaid(S2, P5w, X);
   const seen = await until(async () => await held(S2, P5w, X) === 1, 25000, 1000);
   await sleep(3000);   // a full poll interval of S1 – it must have run into the refusal, so only S2 can have credited the purchase
-  check('T2 S1 blind (its polls refused) + S2 without a websocket: S2\'s polling credits a purchase nobody confirmed, no API call', seen && blind.hits > 0 && (await serverPool(S2, X)).sold === 5, `held ${await held(S2, P5w, X)}, S1 refused ${blind.hits} polls`);
+  check('T2 S1 blind (its polls refused) + S2 without a websocket: S2\'s polling credits a purchase nobody confirmed, no API call', seen && blind.hits > 0 && (await serverPool(S2, X)).sold === 2, `held ${await held(S2, P5w, X)}, S1 refused ${blind.hits} polls`);
 
   // ── T3. nobody watching → a restart catches up; then the whole provider down
   await S2.kill(); servers.splice(servers.indexOf(S2), 1);
   await landSelfPaid(S1, P6w, X);
   await sleep(7000);
-  check('T3 control: with S2 down and S1 blind the purchase stays uncredited', await held(S1, P6w, X) === 0 && (await poolAcc(X)).ticketsSold === 6);
+  check('T3 control: with S2 down and S1 blind the purchase stays uncredited', await held(S1, P6w, X) === 0 && (await poolAcc(X)).ticketsSold === 3);
   const S2b = await spawnServer('s2', { rpc: P2.url, ws: 'ws://127.0.0.1:1' });
-  check('T3 S2 restarted: its boot poll credits the purchase made while nobody watched, no API call', await until(async () => (await serverPool(S2b, X)).sold === 6, 25000, 1000) && await held(S2b, P6w, X) === 1);
+  check('T3 S2 restarted: its boot poll credits the purchase made while nobody watched, no API call', await until(async () => (await serverPool(S2b, X)).sold === 3, 25000, 1000) && await held(S2b, P6w, X) === 1);
   blind.off();
   const outA = P1.fault({ method: '*', mode: 'http', status: 429 }), outB = P2.fault({ method: '*', mode: 'http', status: 429 });
   const wl = await player([S1, S2b]); const l7a = await landSelfPaid(S2b, wl, X).catch(e => ({ err: e }));   // building the order needs the RPC: it may be refused
@@ -163,28 +142,19 @@ try {
   note(`T3 provider outage: order building during it ${l7a.err ? 'refused (as it should)' : 'went through'}, /api/tiers answered ${healthDuring}`);
   const l7 = l7a.err ? await landSelfPaid(S2b, wl, X) : l7a;
   check('T3 after a total provider outage (every RPC call 429) both servers are alive and a purchase is credited', (await api(S1, 'tiers')).ok && await until(async () => await held(S2b, wl, X) === 1, 25000, 1000), `held ${await held(S2b, wl, X)} sig ${l7.sig?.slice(0, 8)}`);
-  check('…the pool counts every ticket exactly once: 7 sold on chain and in the mirror', (await poolAcc(X)).ticketsSold === 7 && (await serverPool(S1, X)).sold === 7);
-
-  // ── T4d. a send dropped until the blockhash is gone (the slow one) – nothing charged, then the same order rebuilt and paid
-  const wd = await player([S1]); b0 = await bal(wd.wallet); const sp0 = await bal(addr('sponsor'));
-  const hole = P1.fault({ method: 'sendTransaction', mode: 'blackhole' });
-  const gd = await gaslessSubmit(S1, wd, X);
-  hole.off();
-  check('T4d every send swallowed until the blockhash dies: 409 transaction_dropped, nothing charged to anyone', gd.sub.status === 409 && gd.sub.j.code === 'transaction_dropped' && (await bal(wd.wallet)) === b0 && (await bal(addr('sponsor'))) === sp0, `${gd.sub.status} ${gd.sub.j.code} swallowed ${hole.hits}`);
-  const gd2 = await gaslessSubmit(S1, wd, X, gd.orderId);
-  note(`T4d the same order asked again: ${gd2.sub.status} ${gd2.sub.j.code ?? gd2.sub.j.status}`);
-  let paidAgain = gd2.sub.ok && await until(async () => await orderStatus(S1, wd, gd2.orderId) === 'paid', 20000);
-  if (!paidAgain) { const fresh = await gaslessSubmit(S1, wd, X); paidAgain = fresh.sub.ok && await until(async () => await orderStatus(S1, wd, fresh.orderId) === 'paid', 20000); note('T4d the dropped order could not be re-submitted – a new order was needed'); }
-  check('T4d after the drop the wallet buys once, exactly the price', paidAgain && b0 - (await bal(wd.wallet)) === PRICE && await held(S1, wd, X) === 1, `${b0 - (await bal(wd.wallet))}`);
+  check('…the pool counts every ticket exactly once: 4 sold on chain and in the mirror', (await poolAcc(X)).ticketsSold === 4 && (await serverPool(S1, X)).sold === 4);
 
   // ── T5. getProgramAccounts refused: pool Y needs refunds (a read of its tickets), pool W (after it) only fail_pool + close_pool
   await untilChain(Number((await poolAcc(Y)).prepDeadline.getTime() / 1000), 'pool Y / W prep deadline');
   const gpa = PC.fault({ method: 'getProgramAccounts', mode: 'error' });
+  const swallow = PC.fault({ method: 'sendTransaction', mode: 'blackhole', times: 2 });   // the crank's first two sends are "accepted" and never forwarded
   const yb = { y1: await bal(y1.wallet), y2: await bal(y2.wallet) };
   const pass5 = await cranker();
   note(`T5 crank pass with getProgramAccounts refused: ${pass5.ok ? pass5.actions.filter(a => [Y, W].includes(a.poolId)).map(a => `${a.step}#${a.poolId}${a.error ? ' ✗ ' + a.error.slice(0, 60) : ''}`).join(', ') : 'the pass THREW – ' + pass5.stderr}`);
   check('T5 the pass survives the refused read (it does not throw) and reports pool Y\'s refund as failed', pass5.ok && stepsOf(pass5, Y).includes('refund✗'), stepsOf(pass5, Y) || pass5.stderr);
   check('T5 …and the pools after Y are still served: W failed + closed in the same pass', stepsOf(pass5, W) === 'fail_pool close_pool' && (await poolAcc(W)).status === 4, stepsOf(pass5, W));
+  check('T5 the first two sends were swallowed (the crank was told "accepted"): its re-send loop still landed each step, exactly once', swallow.hits === 2 && (await poolAcc(Y)).status !== 0 && (await poolAcc(W)).status === 4, `swallowed ${swallow.hits}`);
+  swallow.off();
   check('T5 pool Y is left refunding (failed, nothing refunded, nothing closed)', (await poolAcc(Y)).status === 2 && (await poolAcc(Y)).refunded === 0);
   const pass5b = await cranker({ SOLANA_RPC_FALLBACKS: RPC });
   check('T5 primary refuses getProgramAccounts but a fallback RPC answers: the next pass refunds both tickets and closes Y', pass5b.ok && stepsOf(pass5b, Y) === 'refund close_pool' && (await poolAcc(Y)).status === 4, stepsOf(pass5b, Y) || pass5b.stderr);

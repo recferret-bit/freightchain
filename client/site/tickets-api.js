@@ -15,7 +15,7 @@ async function call(path, body, { unavailable503 = false } = {}) {
 }
 const id = x => encodeURIComponent(x);
 
-/** GET /api/chain/fees[?poolId] (public) → `{ priorityMicrolamports, computeUnits, estimatedFeeLamports, sponsored, blockhashTtlSeconds }`. */
+/** GET /api/chain/fees[?poolId] (public) → `{ priorityMicrolamports, computeUnits, estimatedFeeLamports, blockhashTtlSeconds }` (the wallet pays it). */
 export const chainFees = poolId => call(`chain/fees${poolId != null ? `?poolId=${id(poolId)}` : ''}`);
 
 /** POST /api/tickets {poolId, qty} → TicketOrderDto `{ id, poolId, qty, lamports, status: awaiting_payment|paid|expired|refunded, createdAt, expiresAt, paidAt, refundedAt, signature }`
@@ -28,17 +28,14 @@ export const getOrder = orderId => call(`tickets/orders/${id(orderId)}`);
 /** GET /api/tickets/pending → `{ order: TicketOrderDto | null }`. */
 export const pendingOrder = () => call('tickets/pending');
 
-/** GET /api/tickets/orders/:id/payment[?selfPaid=1] → `{ orderId, mode, programId, poolId, lamports, transaction (base64, unsigned), message, feePayer, sponsored, computeUnits,
+/** GET /api/tickets/orders/:id/payment → `{ orderId, mode, programId, poolId, lamports, transaction (base64, unsigned; the wallet is the fee payer), message, feePayer, computeUnits,
  *  priorityMicrolamports, blockhash, lastValidBlockHeight }` · 409 `order_closed`. Every call builds a fresh transaction (new blockhash). */
-export const orderPayment = (orderId, { selfPaid = false } = {}) => call(`tickets/orders/${id(orderId)}/payment${selfPaid ? '?selfPaid=1' : ''}`);
+export const orderPayment = orderId => call(`tickets/orders/${id(orderId)}/payment`);
 
-/** Gasless: POST /api/tickets/orders/:id/submit {signedTransaction} → `{ signature, status: paid|pending, order }` · 400 transaction_mismatch… · 429 `sponsor_cap` · 503 no sponsor. */
-export const submitOrder = (orderId, signedTransaction) => call(`tickets/orders/${id(orderId)}/submit`, { signedTransaction });
-
-/** Self-paid: POST /api/tickets/orders/:id/confirm {signature} → `{ status: paid|pending, order }` · 400 `transaction_invalid` / `transaction_mismatch`. */
+/** POST /api/tickets/orders/:id/confirm {signature} → `{ status: paid|pending, order }` · 400 `transaction_invalid` / `transaction_mismatch`. */
 export const confirmOrder = (orderId, signature) => call(`tickets/orders/${id(orderId)}/confirm`, { signature });
 
-/** GET /api/pools/:id/refund → `{ poolId, needsFail, lamports, transaction, message, feePayer, sponsored, lastValidBlockHeight }` (self-paid: the wallet signs AND sends)
+/** GET /api/pools/:id/refund → `{ poolId, needsFail, lamports, transaction, message, feePayer, lastValidBlockHeight }` (the wallet signs AND sends)
  *  · 409 `not_refundable` / `nothing_to_refund`. */
 export const refundTransaction = poolId => call(`pools/${id(poolId)}/refund`);
 

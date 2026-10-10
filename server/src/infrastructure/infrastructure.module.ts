@@ -10,7 +10,6 @@ import { PaymentRepositoryPort } from '../application/ports/economy/payment.repo
 import { PoolChainPort } from '../application/ports/economy/pool-chain.port.js';
 import { PoolCrankChainPort } from '../application/ports/economy/pool-crank-chain.port.js';
 import { ChainCursorRepositoryPort, ChainEventRepositoryPort } from '../application/ports/economy/chain-event.repository.port.js';
-import { SponsoredTxRepositoryPort } from '../application/ports/economy/sponsored-tx.repository.port.js';
 import { PriceQuotePort } from '../application/ports/economy/price-quote.port.js';
 import { RoundRepositoryPort } from '../application/ports/economy/round.repository.port.js';
 import { HealthProbePort } from '../application/ports/health/health-probe.port.js';
@@ -65,7 +64,6 @@ import { ProgramChainAdapter } from './solana/program-chain.adapter.js';
 import { ProgramCrankAdapter } from './solana/program-crank.adapter.js';
 import { ChainCursorPrismaRepository } from './prisma/repositories/chain-cursor.prisma.repository.js';
 import { ChainEventPrismaRepository } from './prisma/repositories/chain-event.prisma.repository.js';
-import { SponsoredTxPrismaRepository } from './prisma/repositories/sponsored-tx.prisma.repository.js';
 import { SystemClock } from './time/system.clock.js';
 import { OptionalSessionGuard } from './http/guards/optional-session.guard.js';
 import { PlayerAuthGuard } from './http/guards/player-auth.guard.js';
@@ -134,7 +132,6 @@ const ports: Provider[] = [
   { provide: PoolCrankChainPort, useClass: ProgramCrankAdapter },
   { provide: ChainEventRepositoryPort, useClass: ChainEventPrismaRepository },
   { provide: ChainCursorRepositoryPort, useClass: ChainCursorPrismaRepository },
-  { provide: SponsoredTxRepositoryPort, useClass: SponsoredTxPrismaRepository },
   { provide: RideEventRepositoryPort, useClass: RideEventPrismaRepository },
   { provide: ViewerPresencePort, useClass: MemoryViewerPresenceAdapter },
   { provide: SitePresencePort, useClass: MemorySitePresenceAdapter },

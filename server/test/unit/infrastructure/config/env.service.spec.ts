@@ -151,13 +151,13 @@ describe('EnvService – paid tickets', () => {
   it('unset values read as empty / off and the numbers have their defaults', () => {
     const env = withEnv(base);
     expect([env.feeTreasury, env.seedTreasury, env.solanaWs, env.solanaRpcFallbacks]).toEqual(['', '', '', []]);
-    expect([env.webhookSecret, env.crankSecret, env.feePayerSecret]).toEqual([undefined, undefined, undefined]);
-    expect([env.watchIntervalMs, env.orderTtlMs, env.solanaCommitment, env.sponsorPerWalletPerDay, env.onchainSessionTtlHours]).toEqual([15_000, 3_600_000, 'confirmed', 20, 24]);
+    expect([env.webhookSecret, env.crankSecret]).toEqual([undefined, undefined]);
+    expect([env.watchIntervalMs, env.orderTtlMs, env.solanaCommitment, env.onchainSessionTtlHours]).toEqual([15_000, 3_600_000, 'confirmed', 24]);
     expect(env.priorityFee).toEqual({ percentile: 75, minMicrolamports: 0, maxMicrolamports: 50_000 });
   });
   it('RPC fallbacks are a trimmed comma list; the secrets are read through the service', () => {
-    const env = withEnv({ ...base, SOLANA_RPC_FALLBACKS: ' https://a.example , ,https://b.example', WEBHOOK_SECRET: 'w'.repeat(20), CRANK_SECRET: 'c'.repeat(40), FEE_PAYER_SECRET: 'f'.repeat(40) });
+    const env = withEnv({ ...base, SOLANA_RPC_FALLBACKS: ' https://a.example , ,https://b.example', WEBHOOK_SECRET: 'w'.repeat(20), CRANK_SECRET: 'c'.repeat(40) });
     expect(env.solanaRpcFallbacks).toEqual(['https://a.example', 'https://b.example']);
-    expect([env.webhookSecret, env.crankSecret, env.feePayerSecret]).toEqual(['w'.repeat(20), 'c'.repeat(40), 'f'.repeat(40)]);
+    expect([env.webhookSecret, env.crankSecret]).toEqual(['w'.repeat(20), 'c'.repeat(40)]);
   });
 });

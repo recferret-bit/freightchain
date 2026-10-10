@@ -205,7 +205,7 @@ Record on real Chrome, clean profile, the live URL.
 - **P3 Demand validation = Friday's count.** "N people outside the team finished a free ride on the public URL on Oct 10; M paid a devnet shift. No revenue, devnet only." If nobody plays: "No users yet; the live demo is the validation we can offer." No invented waitlist.
 - **P4 Viability.** The 10% fee has to cover hosting and, later, the verification and payout operations. Path: manual admin payouts on devnet → verified-play scoring → mainnet with published rules. Skill prizes only (no draw) is part of viability.
 - **P5 Keep the cuts visible.** ~~Anchor~~ (now built – escrowed pools), truck upgrades, NFT badges, Telegram, deterministic re-sim, mainnet – cut or later, on purpose.
-- **P6 Solana track.** Cheap entries, wallets people have, entry fees escrowed by our own program with trustless refunds, gas-sponsored buys.
+- **P6 Solana track.** Cheap entries, wallets people have, entry fees escrowed by our own program with trustless refunds (every wallet pays its own network fee).
 
 ## What not to do this week
 

@@ -14,11 +14,11 @@ export interface FeeQuote {
   estimatedFeeLamports: number;
 }
 
-/** A transaction the server built for someone else to sign: the message is kept with the order so /submit can prove the signed bytes are the ones it built. */
+/** A transaction the server built for someone else to sign (and send: every signer pays its own network fee). */
 export interface BuiltTransaction extends UnsignedPaymentTx {
   /** base64 of the compiled message – exactly the bytes every signer signs */
   message: string;
-  /** who pays the network fee: the gas sponsor for buys and refunds when one is configured, else the signer */
+  /** who pays the network fee: the signer */
   feePayer: string;
   computeUnits: number;
   priorityMicrolamports: number;
@@ -35,16 +35,15 @@ export type SignatureStatus = 'processed' | 'confirmed' | 'finalized' | 'expired
 
 /**
  * The only door to the pool program on Solana (the older `ChainPort` – plain SOL transfer + memo – goes away when the ride-level payment routes do).
- * The server never holds a key that can move user or pool funds: the gas sponsor's key pays network fees (and Ticket rent, returned at refund) and nothing else.
+ * The server never holds a key that can move user or pool funds: the crank key (CRANK_SECRET) pays only its own fees. Every wallet pays its own network fee and Ticket rent.
  * An RPC failure is a ServiceUnavailableError, never "not found"; a program that is not configured (no TICKET_PROGRAM_ID) is a ServiceUnavailableError too.
  */
 export abstract class PoolChainPort {
-  /** Unsigned `buy_ticket` (+ compute budget). `feePayer` = the sponsor key when one is configured (it also pays the Ticket rent, recorded as `rent_payer`),
-      unless `selfPaid` (the wallet's daily sponsorship cap is used up, or the client fell back to paying its own fee). */
-  abstract buildBuyTransaction(input: { payer: string; poolId: number; qty: number; orderId: string; selfPaid?: boolean }): Promise<BuiltTransaction>;
+  /** Unsigned `buy_ticket` (+ compute budget), paid by `payer` (it also pays the Ticket rent, recorded as `rent_payer` and returned at refund / close). */
+  abstract buildBuyTransaction(input: { payer: string; poolId: number; qty: number; orderId: string }): Promise<BuiltTransaction>;
   /** Unsigned `fail_pool` (when `needsFail`) + `refund` for `buyer`, signed by `caller` (anyone); the price goes to the buyer, the rent to the ticket's rent payer.
       ConflictError when the buyer holds no Ticket account (never bought, or refunded already). */
-  abstract buildRefundTransaction(input: { caller: string; poolId: number; buyer: string; needsFail: boolean; selfPaid?: boolean }): Promise<BuiltTransaction>;
+  abstract buildRefundTransaction(input: { caller: string; poolId: number; buyer: string; needsFail: boolean }): Promise<BuiltTransaction>;
   /** Unsigned `pay_prize` for the admin to sign AND send in Phantom (the admin pays its own fee). */
   abstract buildPayPrizeTransaction(input: { authority: string; poolId: number; to: string; lamports: number; rank: number }): Promise<BuiltTransaction>;
   /** Unsigned `close_pool` (treasuries read from the Pool and Config accounts), signed and paid by `authority`. NotFoundError when the pool does not exist. */
@@ -63,18 +62,6 @@ export abstract class PoolChainPort {
   abstract feeQuote(input: { poolId: number | null; kind: ChainTxKind }): Promise<FeeQuote>;
   /** A dry run (signatures not checked): `reason` names the program error when it would fail ("SoldOut: …"). */
   abstract simulate(tx: UnsignedPaymentTx): Promise<{ ok: true; unitsConsumed: number } | { ok: false; reason: string }>;
-  /**
-   * The gasless path: add the fee payer's signature to a transaction the user already signed and send it, re-sending until it is confirmed or `lastValidBlockHeight`
-   * passes. THE security boundary: refuses (BadRequestError) any transaction whose message bytes differ from `expectedMessage`, whose fee payer is not the sponsor,
-   * or that lacks a valid user signature, and a stale blockhash; 503 when no sponsor is configured or it is out of funds; 409 when it would fail or was dropped.
-   * `lastValidBlockHeight` must be the one stored with the built transaction (it bounds the re-send loop). Error codes: 400 transaction_mismatch |
-   * transaction_malformed | fee_payer_mismatch | signature_missing | signature_invalid | transaction_expired (stale before sending) | block_height_invalid;
-   * 503 service_unavailable (no sponsor / out of funds / the RPC down BEFORE the send); 409 transaction_would_fail (simulation) | transaction_failed (landed, failed) |
-   * transaction_dropped (never landed, blockhash gone – nothing was charged). Once the transaction has been SENT, an outcome that cannot be told – the status read is
-   * refused, or the loop ended without a confirmation – is NOT an error: `confirmed: false` with the signature (the caller answers "pending"; the watcher / webhook
-   * credits it when it lands – an error here made the lobby pay a second time for an order that was in fact paid).
-   */
-  abstract cosignAndSend(input: { signedTransaction: string; expectedMessage: string; lastValidBlockHeight: number }): Promise<{ signature: string; lastValidBlockHeight: number; confirmed: boolean }>;
   /** 'expired' = unknown to the network and past `lastValidBlockHeight` – it will never land (both answers from the primary RPC, else 503). */
   abstract signatureStatus(signature: string, lastValidBlockHeight: number): Promise<SignatureStatus>;
 }

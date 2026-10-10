@@ -35,11 +35,8 @@ export interface RulesConfig {
   orderTtlMs: number;
   /** credit tickets at 'confirmed'; 'finalized' also gates rides on finality (mainnet) */
   commitment: 'confirmed' | 'finalized';
-  /** is a gas sponsor / crank key configured? (the keys themselves stay in EnvService) */
-  sponsorEnabled: boolean;
+  /** is a crank key configured? (the key itself stays in EnvService) */
   crankEnabled: boolean;
-  /** sponsored transactions per wallet per UTC day */
-  sponsorPerWalletPerDay: number;
   priorityFee: { percentile: number; minMicrolamports: number; maxMicrolamports: number };
   /** how long an on-chain session key is valid (hours) */
   sessionTtlHours: number;

@@ -107,7 +107,7 @@ export function promoOk(r) {
 export function buyError(e) {
   if (e?.notConfigured) return 'On-chain ticket sales are not switched on in this build yet – use a promo code meanwhile.';
   if (e?.status === 503) return 'The chain is not reachable from the server right now – nothing was charged. Try again in a minute.';
-  if (e?.status === 429) return 'Too many sponsored transactions today – pay the network fee yourself (≈ 0.0001 SOL).';
+  if (e?.status === 429) return 'Too many requests – wait a moment and try again.';
   if (e?.code === 'user_rejected' || e?.code === 4001) return 'You declined in the wallet – nothing was charged.';
   if (e?.code === 'not_sellable') return `This pool doesn’t sell tickets right now (closed, full or past its deadline)${e.message ? `: ${e.message}` : ''}.`;
   if (e?.code === 'order_closed') return 'That order is closed – start a new purchase (nothing was charged twice).';
