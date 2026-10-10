@@ -141,6 +141,7 @@ export const CFG = {
   FROST_RATE: 0.07,          // frost growth per second at about −25 °C (scales with how far below freezing; edges first)
   FROST_MELT: 0.3,           // frost melted per second by the heater at full strength (from the vents, bottom centre, outwards)
   SNOW_FLAKES: 240,          // falling snowflakes at snow = 1
+  PHONE: { BOOT: 3000, HOME: 2500, LAUNCH_AT: 2000, UI_MS: 450, FREE_MAX: 3000, FREE_IDLE: 15000 },   // the cab phone (ui/map.js), ms: the boot animation · the home screen (Maps is pressed at LAUNCH_AT, open by HOME) · the map's controls sliding in; the map's drag limit (m from the truck) and the idle time (ms) before it follows the truck again
 };
 // The road never ends. A shift is complete after RIDE_MIN_SECONDS of driving AND COMPLETE_DIST metres (speed is governed, so the distance
 // can't be covered faster than COMPLETE_DIST_K × RIDE_MIN_SECONDS, and idling/backgrounding the tab can't "bank" progress).

@@ -4,6 +4,7 @@ import { summariseBatch } from '../telemetry/batch-summary.js';
 import type { BatchFacts, RideBatch } from '../telemetry/ride-batch.entity.js';
 import type { HolePass } from '../telemetry/world-facts.js';
 import { RideVerdict } from './ride-verdict.entity.js';
+import { isPhoneInput } from '../telemetry/telemetry-rules.js';
 import { RULES_VERSION } from './verdict-rules.js';
 import type { VerdictReason, VerdictStatus } from './verdict.dto.js';
 import { classifyPass, firstPasses, holeOutcomes, offroadPeak, type HoleOutcome, type PassKind } from './world-checks.js';
@@ -23,7 +24,7 @@ export interface AuditHole extends HoleOutcome {
 
 export interface RideAuditReport {
   ride: { id: string; wallet: string; tier: string; status: string; seed: number; route: string | null; distance: number; driveSeconds: number; hull: number | null; startedAt: string | null; endedAt: string | null };
-  recording: { batches: number; samples: number; inputs: number; presses: number; gasPresses: number; recordedSeconds: number; fromS: number; toS: number; hashesReproduced: number; replayColumns: boolean };
+  recording: { batches: number; samples: number; inputs: number; phoneEvents: number; presses: number; gasPresses: number; recordedSeconds: number; fromS: number; toS: number; hashesReproduced: number; replayColumns: boolean };
   road: { planned: number; reached: number; holes: AuditHole[]; notReached: PlannedHole[] };
   offroadPeakSeconds: number;
   gasless: [number, number][];
@@ -42,7 +43,7 @@ export function auditRide(ride: Ride, batches: readonly RideBatch[], now: Date, 
     return { seq: b.seq, prevHash: b.prevHash, hash: b.hash, hashOk: b.hashOk, t0: b.t0, t1: b.t1, summary: summariseBatch(b.seq, b.t0, b.t1, b.body.samples, b.body.inputs, plan, prefix) };
   });
   const verdict = RideVerdict.judge(ride, facts, now).toDto();
-  const rows = ordered.flatMap((b) => b.body.samples), inputs = ordered.flatMap((b) => b.body.inputs);
+  const rows = ordered.flatMap((b) => b.body.samples), inputs = ordered.flatMap((b) => b.body.inputs), driving = inputs.filter((e) => !isPhoneInput(e)); // the phone's events are listed apart: not driving
   const sValues = rows.map((r) => r[1] ?? 0).filter(Number.isFinite), fromS = sValues.length ? Math.min(...sValues) : 0, toS = sValues.length ? Math.max(...sValues) : 0;
   const passes = firstPasses(facts), outcomes = holeOutcomes(passes.filter((p) => p.dir > 0));
   const planned = plan.holesBetween(Math.max(0, fromS), toS + 1), reached = new Set(outcomes.map((o) => o.hole));
@@ -57,7 +58,7 @@ export function auditRide(ride: Ride, batches: readonly RideBatch[], now: Date, 
       startedAt: ride.startedAt?.toISOString() ?? null, endedAt: ride.endedAt?.toISOString() ?? null,
     },
     recording: {
-      batches: ordered.length, samples: rows.length, inputs: inputs.length, presses: inputs.filter((e) => e[2] === 1).length, gasPresses: inputs.filter((e) => e[2] === 1 && (e[1] === 'KeyW' || e[1] === 'ArrowUp')).length,
+      batches: ordered.length, samples: rows.length, inputs: driving.length, phoneEvents: inputs.length - driving.length, presses: driving.filter((e) => e[2] === 1).length, gasPresses: driving.filter((e) => e[2] === 1 && (e[1] === 'KeyW' || e[1] === 'ArrowUp')).length,
       recordedSeconds: Math.round(ordered.reduce((a, b) => a + Math.max(0, b.t1 - b.t0), 0) * 10) / 10, fromS: Math.round(fromS), toS: Math.round(toS), hashesReproduced: ordered.filter((b) => b.hashOk).length,
       replayColumns: rows.some((r) => r.length > 14),
     },

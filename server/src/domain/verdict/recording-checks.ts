@@ -101,7 +101,7 @@ export function checkInputsPresent(ride: RideFacts, batches: readonly BatchFacts
 
 export function recordingScores(batches: readonly BatchFacts[], recordedSeconds: number, coverage: number, maxSpeed: number): RecordingScores {
   return {
-    batches: batches.length, samples: batches.reduce((n, b) => n + b.summary.samples, 0), inputs: batches.reduce((n, b) => n + b.summary.inputs.length, 0),
+    batches: batches.length, samples: batches.reduce((n, b) => n + b.summary.samples, 0), inputs: batches.reduce((n, b) => n + b.summary.inputs.filter((e) => !isPhoneInput(e)).length, 0),
     recordedSeconds: round(recordedSeconds), coverage: round(coverage, 1000), maxSpeed: round(maxSpeed), unhashed: batches.filter((b) => b.hash === null).length,
   };
 }

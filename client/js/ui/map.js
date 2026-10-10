@@ -22,8 +22,8 @@ const SHIELD = { route66: '66', stuart: 'A87', siberia: 'R255', brenner: 'A13', 
 const ZOOMS = [.6, 1.2, 2.4, 4.8, 9.6, 19.2];   // metres per CSS pixel of the big map
 const MAX_R = 4000, GROW = 1500;   // the big map draws at most 4 km around the truck, and reaches ≤ 1.5 km further per frame (no 11 km of road integrated in one frame)
 const CH = CFG.CHUNK_LEN;   // the roadside's chunk (world/chunks.js): one landmark at most per chunk
-const FREE_MAX = 3000, FREE_IDLE = 15000;   // how far (m) the map can be dragged from the truck, and how long (ms) it stays where it was left before it follows the truck again
-const view = { off: false, bounce: null, z: 2, northUp: false, rot: null, vAvg: 10, last: 0, reach: 0, wheel: 0, k: 1, hits: [], pois: [], free: null, touched: 0, drag: null, sel: null, el: null, cv: null, raf: 0 };
+const { FREE_MAX, FREE_IDLE } = CFG.PHONE;   // how far (m) the map can be dragged from the truck, and how long (ms) it stays where it was left before it follows the truck again
+const view = { sites: new Map(), off: false, bounce: null, z: 2, northUp: false, rot: null, vAvg: 10, last: 0, reach: 0, wheel: 0, k: 1, hits: [], pois: [], free: null, touched: 0, drag: null, sel: null, el: null, cv: null, raf: 0 };
 /* the places by the road (the theme's landmarks): a colour and a glyph per type; motels and hotels are both lodging */
 const POI = { motel: { col: '#8e44ad', kind: 'bed', name: 'MOTEL' }, hotel: { col: '#8e44ad', kind: 'bed', name: 'HOTEL' }, gas: { col: '#e8710a', kind: 'pump', name: 'GAS STATION' }, police: { col: '#3949ab', kind: 'badge', name: 'POLICE' }, restaurant: { col: '#d84315', kind: 'fork', name: 'FOOD' } };
 const THUMB = { thumb: true, mpp: 5 };
@@ -40,14 +40,18 @@ function truck() { const p = roadAt(st.s); return { x: p.x + Math.cos(p.t) * st.
 const target = () => (st.complete ? null : Math.max(CFG.COMPLETE_DIST, 0));
 const roadName = s => { if (s < net.Sm) return 'DEPOT ROAD'; const x = net.mainXs(s); return PATTERNS[x.pat]?.name ?? 'ROAD'; };
 
-/** the landmarks between s0 and s1 along the road, as the world builds them: the same `site(ci)` rule chunks.js asks, the same roadside offset; without the smashed ones and those the world drops (a junction, a side road) */
+/** the landmarks between s0 and s1 along the road, as the world builds them: the same `site(ci)` rule chunks.js asks, the same roadside offset; without the smashed ones and those the world drops (a junction, a side road).
+    A chunk's site never changes within a ride, so it is worked out once (`view.sites`, emptied by resetMap); only the smashed set is asked every frame. */
 function places(s0, s1) {
   const out = []; if (!env.landmarks) return out;
   for (let ci = Math.max(1, Math.floor(s0 / CH)); ci <= Math.floor(s1 / CH); ci++) {
-    if (net.busy(ci * CH - 20, ci * CH + CH + 20) || destroyed.has(ci + ':lm')) continue;
-    const L = env.landmarks.site(ci, ci * CH); if (!L) continue;
-    const lat = net.roadside(L.s, L.lat); if (net.keepOut(L.s, lat)) continue;
-    const w = net.world(L.s, lat); out.push({ id: ci, type: L.type, name: L.name, s: L.s, side: L.side, x: w.x, z: w.z });
+    let q = view.sites.get(ci);
+    if (q === undefined) {
+      q = null; const L = net.busy(ci * CH - 20, ci * CH + CH + 20) ? null : env.landmarks.site(ci, ci * CH);
+      if (L) { const lat = net.roadside(L.s, L.lat); if (!net.keepOut(L.s, lat)) { const w = net.world(L.s, lat); q = { id: ci, type: L.type, name: L.name, s: L.s, side: L.side, x: w.x, z: w.z }; } }
+      view.sites.set(ci, q);
+    }
+    if (q && !destroyed.has(ci + ':lm') && !destroyed.has('b:' + ci + ':lm')) out.push(q);   // 'b:' = smashed beside a fork's second road (world/chunks.js)
   }
   return out;
 }
@@ -189,7 +193,7 @@ function label(g, text, x, y, P, col) {
 }
 
 /* ───────────── the phone's power: off with the ride → boot (engine on) → home screen → the Maps app opens → the map ───────────── */
-const BOOT = 3000, HOME = 2500, LAUNCH_AT = 2000, UI_MS = 450;   // ms: the boot animation · the home screen (icons pop in, Maps is pressed at LAUNCH_AT, then opens to full screen by HOME) · the map's controls slide in
+const { BOOT, HOME, LAUNCH_AT, UI_MS } = CFG.PHONE;   // ms (js/config.js): the boot animation · the home screen (icons pop in, Maps is pressed at LAUNCH_AT, then opens to full screen by HOME) · the map's controls slide in
 const ease = x => 1 - (1 - clamp(x, 0, 1)) ** 3, lerp = (a, b, k) => a + (b - a) * k;
 /** where the phone is: { off } · { boot } ms · { home } ms since the home screen came up · { on, u } the map app, `u` 0..1 = its controls sliding in. A new ride starts with the phone off; the engine switches it on, and its stopping switches it off again. */
 function screen() {
@@ -274,7 +278,7 @@ function paintHome(g, X, Y, W, H, t, thumb, o) {
   for (const ic of L.icons) {
     const pop = ease((t - 120 - ic.i * 70) / 380), bounce = view.bounce?.id === ic.id ? Math.sin(clamp((performance.now() - view.bounce.at) / 320, 0, 1) * Math.PI) : 0;
     let sc = (.5 + .5 * pop) * (1 - .1 * bounce) * (1 - launch * .06), alpha = wake * pop * rest;
-    if (ic.id === 'maps') { maps = ic; sc *= 1 - .12 * Math.sin(press * Math.PI * .5) * (launch > 0 ? 1 : 1); alpha = wake * pop; }
+    if (ic.id === 'maps') { maps = ic; sc *= 1 - .12 * Math.sin(press * Math.PI * .5); alpha = wake * pop; }
     if (alpha <= 0) continue;
     g.save(); g.globalAlpha = alpha; g.translate(ic.x + ic.s / 2, ic.y + ic.s / 2); g.scale(sc, sc); g.translate(-ic.s / 2, -ic.s / 2);
     g.shadowColor = 'rgba(0,0,0,.35)'; g.shadowBlur = 6 * u; g.fillStyle = ic.col; g.beginPath(); g.roundRect(0, 0, ic.s, ic.s, ic.s * .24); g.fill(); g.shadowBlur = 0;
@@ -422,6 +426,7 @@ function build() {
       else if (h.id === 'home') view.free = null;
       audio.play('switch', .5); return;
     }
+    if (phone.power !== 3) return;   // off, booting, the home screen: the map is not there to drag or tap
     view.drag = { x: e.offsetX, y: e.offsetY, x0: e.offsetX, y0: e.offsetY, moved: false, id: e.pointerId }; view.cv.setPointerCapture?.(e.pointerId);
   };
   el.addEventListener('pointerdown', e => {   // the phone takes its own clicks – they never reach the dash buttons underneath (ui/input.js listens on window)
@@ -470,6 +475,6 @@ export function toggleMap(open = !phone.open) {
 function closeMap() { if (view.el && phone.open) show(false); phone.open = false; }
 /** a new ride (ui/game.js resetRide): the phone back on its mount, quietly, and the map's view state from scratch */
 export function resetMap() { closeMap(); Object.assign(phone, { power: st.watch ? 3 : 0, bootAt: 0, homeAt: 0, readyAt: 0 });   // the phone is off again until this ride's engine runs
-  Object.assign(view, { off: false, rot: null, vAvg: 10, last: 0, reach: 0, wheel: 0, free: null, drag: null, sel: null }); }
+  Object.assign(view, { sites: new Map(), off: false, rot: null, vAvg: 10, last: 0, reach: 0, wheel: 0, free: null, drag: null, sel: null }); }
 if (typeof addEventListener === 'function') addEventListener('keydown', e => { if (e.code === 'Escape' && phone.open) toggleMap(false); });
 phone.thumb = (g, x, y, w, h) => drawMap(g, x, y, w, h, THUMB);

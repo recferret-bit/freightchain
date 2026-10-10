@@ -77,8 +77,13 @@ if (await initWatch()) {   // only with ?watch=<id> (see watch.js): the watched 
 requestAnimationFrame(frame);
 /* a real ride (online, a failed load of one, a watched ride): the route and the clock are fixed – no function to change them stays reachable from the page */
 const pageQuery = typeof location === 'undefined' ? null : new URL(location.href).searchParams;
-const realRide = !!(online.ride || online.error || watch.ride || (pageQuery && (pageQuery.get('ride') || pageQuery.get('watch') || pageQuery.get('offline') === '1')));
+const realRide = !!(online.ride || online.error || watch.ride || (pageQuery && (pageQuery.get('ride') || pageQuery.get('watch'))));
 if (realRide) { lockTheme(); lockClock(); }
-window.__game = { forkRules: FORK, toggleMap, phone, guide, setGuide, hurt, trip, setTrip, offlineRide, audio, cosmetics, online, telemetry, prompt, watch, roadPlan, liveFeed, radio, roadObjects, chunks, spacing, roads, net, st, disp, CFG, input, tryShift, ignition, startRide, curv, spawn, traffic: cars, THEMES, ...(realRide ? {} : { selectTheme, setNight, setPhase, setClock }), dn, weather, uiBtns, inputBits, holes: { HOLES, holeAt, holesNear, clearHoleCache, plan, flagged } };   // handy for console debugging
+/** tools and the console (e2e, promo capture, tuning): the plain sim instead of the guest run – the trip `id` (default the classic road) with its shift, no helpers; `startRide()` then needs no menu */
+function devRun(id = '1h') {
+  offlineRide.dev = true; setGuide({}); setTrip(id);
+  CFG.RIDE_MIN_SECONDS = trip.seconds ?? shift0.s; CFG.COMPLETE_DIST = trip.seconds ? trip.k * CFG.MAX_SPEED * trip.seconds : shift0.d; resetRide();
+}
+window.__game = { devRun, forkRules: FORK, toggleMap, phone, guide, setGuide, hurt, trip, setTrip, offlineRide, audio, cosmetics, online, telemetry, prompt, watch, roadPlan, liveFeed, radio, roadObjects, chunks, spacing, roads, net, st, disp, CFG, input, tryShift, ignition, startRide, curv, spawn, traffic: cars, THEMES, ...(realRide ? {} : { selectTheme, setNight, setPhase, setClock }), dn, weather, uiBtns, inputBits, holes: { HOLES, holeAt, holesNear, clearHoleCache, plan, flagged } };   // handy for console debugging
 
  
