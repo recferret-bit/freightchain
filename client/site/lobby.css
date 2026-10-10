@@ -2,7 +2,7 @@
 *{box-sizing:border-box}
 body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 50% -10%,#2a1f10,var(--bg) 60%) fixed;color:var(--text);font:15px/1.45 ui-monospace,Menlo,Consolas,monospace}
 a{color:var(--amber)}
-.dim{color:var(--dim);font-size:13px}.bad{color:var(--bad)}.good{color:var(--good)}
+.dim{color:var(--dim);font-size:13px}.bad{color:var(--bad)}.good{color:var(--good)}.warn{color:var(--amber)}
 button{font:inherit;cursor:pointer;border-radius:6px;border:2px solid var(--amber);background:var(--amber);color:#1b1408;font-weight:bold;padding:12px 18px}
 button:disabled{opacity:.4;cursor:not-allowed}
 button.ghost{background:transparent;color:var(--amber);padding:6px 10px;font-size:12px}
@@ -125,7 +125,7 @@ tr.cut td{border-top:2px dashed var(--amber)}
 .a .nm{font-weight:bold}.a .ds{font-size:12px;color:var(--dim)}.a .when{font-size:11px;color:var(--good);grid-column:2}
 .a.lock{opacity:.5;filter:grayscale(1)}.a.lock .when{color:var(--dim)}
 .a.soon{border-style:dashed}
-.hist{display:grid;gap:6px}.hrow{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;background:var(--panel);border:1px solid #ffffff12;border-radius:6px;padding:8px 12px;font-size:13px}
+.hist{display:grid;gap:6px}.hrow .rnote{flex-basis:100%;font-size:12px}.hrow{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;background:var(--panel);border:1px solid #ffffff12;border-radius:6px;padding:8px 12px;font-size:13px}
 
 /* promo tab: the wardrobe */
 .slot{margin-bottom:10px}.slot .lbl{font-size:12px;color:var(--dim);letter-spacing:1px;margin-bottom:8px}

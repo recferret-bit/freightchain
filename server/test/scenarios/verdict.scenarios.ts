@@ -37,10 +37,10 @@ export function verdictScenarios(h: () => Harness): void {
   it('a human-timed recording → /end answers VERIFIED and the shift ranks on the paid boards', async () => {
     const d = await login(VERDICT_DEMO);
     const end = await paidShift(d, {});
-    expect(end).toMatchObject({ status: 'completed', verdict: { status: 'verified', reasons: [] } });
-    expect((await d.agent.get(`/api/rides/${end.id}`).expect(200)).body.verdict.status).toBe('verified');
+    expect(end).toMatchObject({ status: 'completed', verdict: { status: 'verified', reasons: [] }, review: 'accepted' });   // a clean paid ride is ACCEPTED on its own
+    expect((await d.agent.get(`/api/rides/${end.id}`).expect(200)).body).toMatchObject({ verdict: { status: 'verified' }, review: 'accepted' });
     for (const board of ['round', 'all']) expect((await anon().get(`/api/leaderboard?board=${board}`).expect(200)).body.rows[0]).toMatchObject({ wallet: d.address, distance: 910 });
-    expect((await d.agent.get('/api/profile').expect(200)).body.recent[0]).toMatchObject({ status: 'completed', verdict: 'verified' });
+    expect((await d.agent.get('/api/profile').expect(200)).body.recent[0]).toMatchObject({ status: 'completed', verdict: 'verified', review: 'accepted' });
   });
 
   it('a complete shift whose tab CLOSES: the /end beacon (text/plain) completes it; the last batch that never left only costs coverage', async () => {
@@ -60,7 +60,8 @@ export function verdictScenarios(h: () => Harness): void {
   it('no recording → REJECTED, still COMPLETED, but not on the paid boards', async () => {
     const d = await login(VERDICT_DEMO);
     const end = await paidShift(d, null);
-    expect(end).toMatchObject({ status: 'completed', verdict: { status: 'rejected', reasons: [{ code: 'no-recording', severity: 'reject' }] } });
+    expect(end).toMatchObject({ status: 'completed', verdict: { status: 'rejected', reasons: [{ code: 'no-recording', severity: 'reject' }] }, review: 'under_review' });   // a machine reject is not final: an admin looks
+    expect((await d.agent.get('/api/profile').expect(200)).body.recent[0]).toMatchObject({ verdict: 'rejected', review: 'under_review' });
     expect((await anon().get('/api/leaderboard').expect(200)).body.rows).toEqual([]);
     expect((await anon().get('/api/leaderboard?board=all').expect(200)).body.rows).toEqual([]);
   });
@@ -69,6 +70,7 @@ export function verdictScenarios(h: () => Harness): void {
     const d = await login(VERDICT_DEMO);
     const end = await paidShift(d, { inputs: 'bot' });
     expect(end.verdict.status).toBe('flagged');
+    expect(end.review).toBe('under_review');
     expect(end.verdict.reasons.map((r: { code: string }) => r.code)).toContain('uniform-holds');
     expect((await anon().get('/api/leaderboard').expect(200)).body.rows).toEqual([]);
   });
@@ -95,9 +97,10 @@ export function verdictScenarios(h: () => Harness): void {
     await upload(d.agent, id, batches.slice(0, -1));
     const end = (await d.agent.post(`/api/rides/${id}/end`).send({ outcome: 'shift', s: 910, t: 70 }).expect(200)).body;
     expect(end.verdict.status).not.toBe('verified'); // the tail is missing: it ends short of 910 m
+    expect(end.review).toBe('under_review');
     sec(5);
     await upload(d.agent, id, batches.slice(-1));
-    expect((await d.agent.get(`/api/rides/${id}`).expect(200)).body.verdict).toMatchObject({ status: 'verified', reasons: [] });
+    expect((await d.agent.get(`/api/rides/${id}`).expect(200)).body).toMatchObject({ verdict: { status: 'verified', reasons: [] }, review: 'accepted' });   // what the end panel's re-read shows
   });
 
   describe('the server\'s road: the recording is judged on the holes the SERVER rebuilt from the seed', () => {
@@ -200,11 +203,11 @@ export function verdictScenarios(h: () => Harness): void {
     const crash = (await w.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
     await w.agent.post(`/api/rides/${crash.id}/start`).expect(200);
     sec(3);
-    expect((await w.agent.post(`/api/rides/${crash.id}/end`).send({ outcome: 'failed', s: 20, t: 3, reason: 'crash' }).expect(200)).body.verdict).toBeNull();
+    expect((await w.agent.post(`/api/rides/${crash.id}/end`).send({ outcome: 'failed', s: 20, t: 3, reason: 'crash' }).expect(200)).body).toMatchObject({ verdict: null, review: null });
     const free = (await w.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
     await w.agent.post(`/api/rides/${free.id}/start`).expect(200);
     sec(10);
-    expect((await w.agent.post(`/api/rides/${free.id}/end`).send({ outcome: 'shift', s: 150, t: 10 }).expect(200)).body.verdict.status).toBe('rejected');
+    expect((await w.agent.post(`/api/rides/${free.id}/end`).send({ outcome: 'shift', s: 150, t: 10 }).expect(200)).body).toMatchObject({ verdict: { status: 'rejected' }, review: null });   // free rides have no review
     expect((await anon().get('/api/leaderboard?board=free').expect(200)).body.rows[0]).toMatchObject({ wallet: w.address, distance: 150 });
   });
 }

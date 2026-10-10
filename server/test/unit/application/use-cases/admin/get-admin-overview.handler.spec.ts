@@ -12,7 +12,7 @@ describe('GetAdminOverviewHandler', () => {
     await ctx.signIns.insert({ wallet: 'bob', at: ctx.now(), ip: '1.1.1.1', userAgent: 'x' });
     const o = await new GetAdminOverviewHandler(ctx.adminQuery, ctx.signIns, ctx.rules, ctx.clock).execute();
     expect(o).toMatchObject({
-      now: ctx.clock.ms, players: 3, running: 1, signIns24h: 1, rides: { completed: 2, running: 1 }, verdicts: { verified: 1, rejected: 1 },
+      now: ctx.clock.ms, players: 3, running: 1, signIns24h: 1, rides: { completed: 2, running: 1 }, verdicts: { verified: 1, rejected: 1 }, underReview: 0,   // free rides: only a flagged one would wait for review
       payments: { count: 0, lamports: 0 }, config: { verdictEnforce: false, telemetryRetentionDays: 30 },
     });
     expect(o.telemetry.batches).toBe(8);

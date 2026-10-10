@@ -60,6 +60,13 @@ if (typeof addEventListener === 'function') addEventListener('pagehide', () => {
    the page says what became of the ride (initOnline: "this ride is abandoned – start a new one in the lobby"). */
 if (typeof addEventListener === 'function') addEventListener('pageshow', e => { if (e.persisted && online.closed) location.reload(); });
 
+/** The ride as the server sees it now (its verdict + a paid ride's review) – the end panel re-reads it while a paid ride is UNDER REVIEW: the verdict
+    can still change when the final batch lands after /end. null on any error. */
+export async function rideNow() {
+  if (!online.ride) return null;
+  try { return await api(`rides/${online.ride.id}`); } catch { return null; }
+}
+
 /** outcome 'shift' = the driver ended the shift (the server decides complete / abandoned); 'failed' = crash etc. Idempotent. Resolves to the server's verdict. */
 export async function endOnline(outcome, reason = '') {
   if (!online.ride || !online.started || online.done) return null;

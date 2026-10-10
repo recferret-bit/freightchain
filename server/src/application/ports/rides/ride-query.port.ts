@@ -87,6 +87,8 @@ export interface RecentRideRow {
   endedAt: Date | null;
   /** the verdict's status (null = not judged) */
   verdict: string | null;
+  /** an admin decided that verdict by hand (the review: an admin's REJECT is final, the machine's is not) */
+  overridden: boolean;
 }
 
 /** Which completed shifts a bulk re-judge takes: by their verdict ('unjudged' = none yet, 'all' = every one), completed since `since`, at most `limit`. */

@@ -157,6 +157,9 @@ describe('RideQueryPrismaRepository (PostgreSQL)', () => {
     const carol = await query.recent('carol', 5);
     expect(carol).toHaveLength(2);
     expect(carol.map((r) => r.verdict)).toEqual(expect.arrayContaining(['rejected', null])); // the free ride's verdict, the unjudged paid one
+    expect((await query.recent('bob', 5))[0]?.overridden).toBe(false);
+    await prisma.rideVerdict.updateMany({ where: { ride: { wallet: 'bob' } }, data: { status: 'rejected', overriddenBy: 'ADMIN', overriddenAt: at(5000) } });
+    expect((await query.recent('bob', 5))[0]).toMatchObject({ verdict: 'rejected', overridden: true });   // an admin's reject: the review says REJECTED, not UNDER REVIEW
   });
 
   it('poolRanking: the same ranking over the completed rides of one pool only', async () => {

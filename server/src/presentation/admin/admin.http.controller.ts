@@ -63,7 +63,7 @@ export class AdminHttpController {
     return this.queryBus.execute<GetAdminOverviewQuery, AdminOverviewDto>(new GetAdminOverviewQuery());
   }
 
-  /** ?verdict=flagged is the review queue */
+  /** ?review=under_review is the review queue (every paid ride under review first, then the flagged free ones); &pool=N narrows to one pool */
   @Get('rides')
   rides(@ZodQuery(adminRidesQuerySchema) query: AdminRidesQuery): Promise<AdminListDto<AdminRideRowDto>> {
     return this.queryBus.execute<ListAdminRidesQuery, AdminListDto<AdminRideRowDto>>(new ListAdminRidesQuery(query));

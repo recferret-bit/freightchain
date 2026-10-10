@@ -15,9 +15,14 @@ export const adminRidesQuerySchema = z
     wallet: z.preprocess((v) => (v === '' ? undefined : v), walletAddressSchema.optional()),
     status: z.preprocess((v) => (v === '' ? undefined : v), z.nativeEnum(RideStatus).optional()),
     verdict: z.preprocess((v) => (v === '' ? undefined : v), z.enum(['pending', 'verified', 'flagged', 'rejected', 'none']).optional()),
+    review: z.preprocess((v) => (v === '' ? undefined : v), z.enum(['under_review']).optional()),
+    pool: z.preprocess((v) => (v === '' ? undefined : v), z.coerce.number().int().min(0).max(0xffff_ffff).optional()),
     limit: limit(50),
   })
-  .transform((q): AdminRideFilter => ({ limit: q.limit, ...(q.wallet ? { wallet: q.wallet } : {}), ...(q.status ? { status: q.status } : {}), ...(q.verdict ? { verdict: q.verdict } : {}) }));
+  .transform((q): AdminRideFilter => ({
+    limit: q.limit, ...(q.wallet ? { wallet: q.wallet } : {}), ...(q.status ? { status: q.status } : {}), ...(q.verdict ? { verdict: q.verdict } : {}),
+    ...(q.review ? { review: q.review } : {}), ...(q.pool !== undefined ? { poolId: q.pool } : {}),
+  }));
 export type AdminRidesQuery = z.infer<typeof adminRidesQuerySchema>;
 
 export const signInsQuerySchema = z.object({ wallet: z.preprocess((v) => (v === '' ? undefined : v), walletAddressSchema.optional()), limit: limit(100) });

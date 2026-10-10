@@ -38,6 +38,8 @@ const ago = ms => { if (ms == null) return '–'; const s = Math.round((Date.now
 const km = m => (m / 1000).toFixed(2);
 const sol = l => `${(l / 1e9).toFixed(3)} SOL`;
 const bytes = b => (b > 1e6 ? `${(b / 1e6).toFixed(1)} MB` : `${Math.round(b / 1e3)} kB`);
+const REVIEW = { under_review: 'UNDER REVIEW', accepted: 'ACCEPTED', rejected: 'REJECTED' }, REVIEW_CLASS = { under_review: 'flagged', accepted: 'verified', rejected: 'rejected' };
+const reviewBadge = r => (r ? el('span', { class: `v ${REVIEW_CLASS[r] ?? 'none'}`, title: 'a paid ride\'s review: under review until the checks verify it or you decide' }, REVIEW[r] ?? r) : '');
 const badge = (v, overridden) => el('span', { class: `v ${v ?? 'none'}${overridden ? ' ovr' : ''}`, title: overridden ? 'decided by an admin' : '' }, (v ?? 'unjudged').toUpperCase());
 const wallet = w => el('span', { class: 'mono', title: w }, short(w));
 const fail = e => (sessionGone(e) ? (store(null), showSignIn('Your admin session ended – sign in again.')) : view.replaceChildren(el('div', { class: 'card' }, el('p', { class: 'bad' }, e.message), e.requestId ? el('p', { class: 'dim' }, `request id ${e.requestId}`) : '')));
@@ -56,7 +58,8 @@ addEventListener('hashchange', go);
 $('refresh').onclick = go;
 addEventListener('keydown', e => { if (e.key === 'r' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName ?? '')) go(); });
 
-const refreshQueueCount = () => api('rides?verdict=flagged&limit=200').then(({ rows }) => { $('tab-queue-n').textContent = rows.length || ''; }, () => {});
+const QUEUE = 'rides?review=under_review&limit=200';   // the review queue: every paid ride UNDER REVIEW (flagged, machine-rejected, unjudged), then the flagged free rides
+const refreshQueueCount = () => api(QUEUE).then(({ rows }) => { $('tab-queue-n').textContent = rows.length || ''; }, () => {});
 
 /* ───────── OVERVIEW ───────── */
 async function overview() {
@@ -66,7 +69,7 @@ async function overview() {
   const counts = obj => Object.entries(obj).sort().map(([k, n]) => `${k} ${n}`).join(' · ') || '–';
   view.replaceChildren(
     el('h2', {}, 'RIGHT NOW'),
-    el('div', { class: 'tiles' }, tile(o.players, 'players'), tile(o.signIns24h, 'sign-ins, 24 h'), tile(o.running, 'on the road'), tile(o.verdicts.flagged ?? 0, 'waiting for review'),
+    el('div', { class: 'tiles' }, tile(o.players, 'players'), tile(o.signIns24h, 'sign-ins, 24 h'), tile(o.running, 'on the road'), tile(o.underReview ?? o.verdicts.flagged ?? 0, 'waiting for review'),
       tile(o.payments.count, `payments (${sol(o.payments.lamports)})`), tile(o.telemetry.batches, `recording batches (${bytes(o.telemetry.bytes)})`)),
     el('h2', {}, 'RIDES BY STATUS'), el('div', { class: 'card dim' }, counts(o.rides)),
     el('h2', {}, 'VERDICTS'), el('div', { class: 'card dim' }, counts(o.verdicts)),
@@ -82,16 +85,23 @@ function paintMode(cfg) { $('chip-mode').textContent = cfg.verdictEnforce ? 'VER
 function rideTable(rows) {
   if (!rows.length) return el('div', { class: 'card empty' }, 'Nothing here.');
   return el('div', { class: 'card', style: 'padding:6px 8px;overflow-x:auto' }, el('table', { class: 'dense' },
-    el('thead', {}, el('tr', {}, ...['created', 'rider', 'tier', 'status', 'km', 'driven', 'verdict', 'reason'].map(h => el('th', { class: h === 'km' || h === 'driven' ? 'r' : null }, h)))),
+    el('thead', {}, el('tr', {}, ...['created', 'rider', 'tier', 'pool', 'status', 'km', 'driven', 'verdict', 'review', 'reason'].map(h => el('th', { class: h === 'km' || h === 'driven' ? 'r' : null }, h)))),
     el('tbody', {}, rows.map(r => el('tr', { class: 'click', onclick: () => { location.hash = `#ride/${r.id}`; } },
-      el('td', {}, ago(r.createdAt)), el('td', {}, wallet(r.wallet)), el('td', {}, r.tier + (r.timeScale > 1 ? ` ×${r.timeScale}` : '')), el('td', {}, r.status),
-      el('td', { class: 'r' }, km(r.distance)), el('td', { class: 'r' }, `${Math.round(r.driveSeconds)} s`), el('td', {}, r.status === 'completed' ? badge(r.verdict, r.overridden) : ''), el('td', { class: 'dim' }, r.reason ?? ''))))));
+      el('td', {}, ago(r.createdAt)), el('td', {}, wallet(r.wallet)), el('td', {}, r.tier + (r.timeScale > 1 ? ` ×${r.timeScale}` : '')), el('td', { class: 'mono' }, r.poolId ?? '–'), el('td', {}, r.status),
+      el('td', { class: 'r' }, km(r.distance)), el('td', { class: 'r' }, `${Math.round(r.driveSeconds)} s`), el('td', {}, r.status === 'completed' ? badge(r.verdict, r.overridden) : ''), el('td', {}, reviewBadge(r.review)), el('td', { class: 'dim' }, r.reason ?? ''))))));
 }
 async function queue() {
-  const { rows } = await api('rides?verdict=flagged&limit=200');
-  $('tab-queue-n').textContent = rows.length || '';
-  view.replaceChildren(el('h2', {}, `REVIEW QUEUE · ${rows.length}`),
-    el('p', { class: 'dim' }, 'Completed shifts the server flagged (timing looked scripted, or the recording has gaps). They do not rank until you accept them. Open one to decide.'), rideTable(rows));
+  const pool = new URLSearchParams(location.search).get('pool') ?? '';
+  const { rows } = await api(`${QUEUE}${/^\d+$/.test(pool) ? `&pool=${pool}` : ''}`);
+  if (!pool) $('tab-queue-n').textContent = rows.length || '';
+  const input = el('input', { placeholder: 'pool id (all pools when empty)', value: pool, inputmode: 'numeric', 'aria-label': 'pool' });
+  const apply = () => { const v = input.value.trim(); history.replaceState(null, '', `${location.pathname}${/^\d+$/.test(v) ? `?pool=${v}` : ''}#queue`); go(); };
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') apply(); });
+  const pools = [...new Set(rows.map(r => r.poolId).filter(p => p != null))].sort((a, b) => a - b);
+  view.replaceChildren(el('h2', {}, `REVIEW QUEUE · ${rows.length}${/^\d+$/.test(pool) ? ` · POOL ${pool}` : ''}`),
+    el('p', { class: 'dim' }, 'Every PAID completed ride waits here until you decide – flagged ones, ones the checks REJECTED (a machine reject is not final for the player) and ones not judged yet; clean (verified) rides are accepted on their own. Paid rides come first, then the flagged free rides. Pool-level marks (pool-…) come from the pool:attention check. Open one to decide: ACCEPT = accepted, REJECT = rejected.'),
+    el('div', { class: 'filters' }, input, el('button', { onclick: apply }, 'FILTER'), ...pools.map(p => el('a', { href: `?pool=${p}#queue`, class: 'chip' }, `pool ${p}`))),
+    rideTable(rows));
 }
 async function rides() {
   const q = new URLSearchParams(location.search);
@@ -135,7 +145,7 @@ async function ride(id) {
     el('div', { class: 'card' }, kv(['id', el('span', { class: 'mono' }, r.id)], ['rider', el('span', { class: 'mono' }, r.wallet)], ['tier / status', `${r.tier} · ${r.status}${r.reason ? ` – ${r.reason}` : ''}`],
       ['driven', `${km(r.distance)} km in ${Math.round(r.driveSeconds)} s (shift ${r.minSeconds} s / ${km(r.completeDist)} km${r.timeScale > 1 ? `, demo ×${r.timeScale}` : ''})`],
       ['created · started · ended', `${time(r.createdAt)} · ${time(r.startedAt)} · ${time(r.endedAt)}`], ['hull · last heartbeat', `${r.hull ?? '–'} % · ${time(r.lastHbAt)}`],
-      ['seed · round', `${r.seed} · ${r.roundId ?? '–'}`], ['payment', d.payment ? `${sol(d.payment.lamports)} · ${d.payment.signature}` : r.tier === 'free' ? 'free ride' : 'none'])),
+      ['seed · round · pool', `${r.seed} · ${r.roundId ?? '–'} · ${r.poolId ?? '–'}`], ['review', r.review ? reviewBadge(r.review) : 'free ride / not completed – no review'], ['payment', d.payment ? `${sol(d.payment.lamports)} · ${d.payment.signature}` : r.tier === 'free' ? 'free ride' : 'none'])),
     el('h2', {}, 'VERDICT'),
     v ? el('div', { class: 'card' },
       el('p', {}, badge(v.status, !!v.override), ` judged ${time(v.judgedAt)} · rules v${v.rulesVersion}`),
