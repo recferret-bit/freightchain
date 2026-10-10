@@ -112,7 +112,7 @@
       <div class="top"><h3>What is measured</h3><span class="chip pen">per batch, on arrival</span></div>
       <ul class="checks">
         <li><b>Every axle through every pit</b><span class="soft">Front (2.2 m ahead of the driver's eye), drive (−0.4 m) and trailer (−11.5 m), wheels ±1 m either side: where each axle crossed a planned pit, how far the nearer wheel was inside it, the speed and the hull before the pit and after it.</span><span class="c">telemetry/world-facts.ts · stored in the batch summary</span></li>
-        <li><b>Off the tarmac</b><span class="soft">Every spell with the truck outside the lanes, aprons and side roads of the server's layout (everything past the start junction). In the first and last 205 m of a fork, where its two roads are one apron, 15 m beyond either edge still counts as road.</span></li>
+        <li><b>Off the tarmac</b><span class="soft">Every spell with the truck outside the lanes, aprons and side roads of the server's layout (everything past the start junction). In the first and last 205 m of a fork, where its two roads are one apron, 15 m beyond either edge still counts as road. The one sample step where the truck crosses a fork's switch point (205 m after the split – read from the server's own layout, never from the client's fork column) is not measured against the holes, and may move 3.5 m further along the road than the governor allows (its s and d are re-measured on the road taken).</span></li>
         <li><b>Speed without gas</b><span class="soft">Every step where the speed rose although the pedal was up at both samples and no gas key went down in between (the input column).</span></li>
       </ul>
     </div>

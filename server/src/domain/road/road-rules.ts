@@ -56,6 +56,10 @@ export const PATTERNS: Readonly<Record<string, RoadPattern>> = {
     road, so the judge needs nothing of the geometry – only that before `commit` m after the split, and in the last `commit` m before the merge, both
     roads' tarmac is one apron, `corridor` m wider either way than the road's edges (the gap between the two roads at the commit point). */
 export const FORK = { len: 1200, commit: 205, corridor: 15 } as const;
+/** The game samples the truck BEFORE it moves it onto the other road of a fork (client/js/main.js: physics → tickTelemetry → roads.update → forkCommit), so
+    the last sample on the old road may already lie one frame past the commit point (dt ≤ 0.05 s at the governor: 1.4 m). So a forward step that ends at
+    or beyond the commit point and starts before it – or at most this far past it – may be the switch (RoadLayout.forkSwitch). */
+export const FORK_SWITCH_REACH = 1.5;
 /** client/js/trips.js `road` – a trip's LAYOUT: the patterns it opens with (first = the depot exit, drawn with the length 500–1100 m), the pattern weights after
     them, and × HOLE_CHANCE. Judged, so every trip id is here or gets the default (the old trips and a ride from before trips). road-drift.spec.ts. */
 export interface TripRoad { first: readonly string[]; weights: Readonly<Record<string, number>>; holeChance: number }

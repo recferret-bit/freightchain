@@ -1,4 +1,4 @@
-import { CHUNK_LEN, FORK, LANE0, LW, PATTERNS, SHOULDER, SIDE_LEN, SIGNAL_CROSS, SIGNAL_GREEN, START_ACCESS, START_TURN_R, TAPER, tripRoadOf, type JunctionPattern, type RoadPattern } from './road-rules.js';
+import { CHUNK_LEN, FORK, FORK_SWITCH_REACH, LANE0, LW, PATTERNS, SHOULDER, SIDE_LEN, SIGNAL_CROSS, SIGNAL_GREEN, START_ACCESS, START_TURN_R, TAPER, tripRoadOf, type JunctionPattern, type RoadPattern } from './road-rules.js';
 
 /* The ride's road LAYOUT, rebuilt on the server from the seed: a line-for-line port of the generation half of client/js/net/network.js (segments, lane
    layouts, junctions) – no curvature, no world coordinates, no floats beyond + − × ÷: everything the judge needs lives in road coordinates (s along the
@@ -123,11 +123,15 @@ export class RoadLayout {
 
   /* ───────────── queries (the same names and answers as net/network.js) ───────────── */
   segAt(m: number): Segment {
+    return this.segs[this.segIndex(m)]!;
+  }
+
+  private segIndex(m: number): number {
     this.ensure(m + 1);
     const a = this.segs;
     let lo = 0, hi = a.length - 1;
     while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (a[mid]!.s0 <= m) lo = mid; else hi = mid - 1; }
-    return a[lo]!;
+    return lo;
   }
 
   /** junctions with lo <= s <= hi, sorted by s */
@@ -187,6 +191,20 @@ export class RoadLayout {
     if (s < this.Sm) return false;
     const g = this.segAt(s);
     return g.fork === true && Math.min(s - g.s0, g.s1 - s) < FORK.commit;
+  }
+
+  /** Is the forward step from s0 to s1 the one where the game may have moved the truck onto the OTHER road of a fork? Crossing a fork's commit point
+      (FORK.commit m after the split; never at the merge) the game re-measures the truck on the road it is nearer to (client/js/net/orchestrator.js
+      switchFork): d jumps by the gap between the two roads (≈ 14–19 m) and s by up to ≈ 3 m (always forward). Decided from the layout alone – never from
+      the client's word (sample column 15) – so a step can only be excused where the seed put a fork. */
+  forkSwitch(s0: number, s1: number): boolean {
+    if (!(s1 > s0) || s1 < this.Sm + FORK.commit || s1 - s0 > FORK.commit) return false; // (a step that long is no switch – and the layout is never generated out to a forged s)
+    for (let i = this.segIndex(s1); i >= 0; i--) {
+      const g = this.segs[i]!, c = g.s0 + FORK.commit;
+      if (g.s1 <= s0 - FORK_SWITCH_REACH) break; // every commit point further back lies before this segment's end
+      if (g.fork === true && c > s0 - FORK_SWITCH_REACH && c <= s1) return true;
+    }
+    return false;
   }
 
   /** below this s the off-road answer needs world coordinates (the start junction's reach in net.onRoad is ±90 m) */

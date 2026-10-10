@@ -31,8 +31,8 @@ class RoadOrchestrator {
     this.lastS = st.s;
   }
   /* a fork: crossing its commit point the truck is on the road it is nearer to – if that is the other one, it becomes the spine and the truck keeps its
-     place in the world (its s / d / heading error re-measured on the new spine; Δs < 1 m, d changes by the gap between the roads – the server's teleport
-     check is along s only) */
+     place in the world (its s / d / heading error re-measured on the new spine; s moves forward by up to ≈ 3 m, never back, d by the gap between the roads –
+     the server excuses that one step from its teleport and hole checks by its own layout: RoadLayout.forkSwitch) */
   forkCommit() {
     const c = net.commitAt(this.lastS, st.s, st.d);
     if (c && c.choice !== c.f.choice) this.switchFork(c.f, c.choice, true);

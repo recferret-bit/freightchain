@@ -78,9 +78,15 @@ const R = [
   ['GET', /^leaderboard/, () => ({ body: { board: 'round', round: { id: 1, endsAt: t0 + 4 * DAY }, prizeRanks: 20, rows: [] } })],
   ['GET', /^rides\/pending$/, () => ({ body: { ride: [...rides.values()].find(r => r.status === 'created') ?? null } })],
   ['POST', /^rides$/, (m, b) => {
+    if (b.level !== undefined && !FREE_LEVELS.some(l => l.level === b.level)) return problem(400, 'validation_error', 'level must be one of 1, 2, 3');   // the real server's body schema refuses it before anything else
     const tier = b.tier, lv = tier === 'free' ? FREE_LEVELS.find(l => l.level === (b.level ?? 1)) : null;
     if (tier !== 'free' && b.level != null) return problem(409, 'level_free_only', 'a level is for free rides only');
     if (lv?.level === 3 && b.assist) return problem(409, 'assist_not_allowed', 'the HARD free run has no assist');
+    const ready = tier === 'free' ? [...rides.values()].find(r => r.status === 'created' && r.tier === 'free') : null;
+    if (ready) {   // asking for the ready free ride again re-chooses its level + helpers on that SAME ride – no second credit (create-ride.handler.ts)
+      Object.assign(ready, { minSeconds: lv.seconds, completeDist: lv.completeDist, trip: lv.trip, level: lv.level, tutorial: !!b.tutorial, assist: !!b.assist });
+      return { body: ready };
+    }
     if (tier === 'free') { if (freeRides <= 0) return problem(409, 'conflict', 'no free rides left'); freeRides--; } else {
       const held = pools.filter(p => p.tier === tier && tickets.get(p.id)?.balance > 0), live = held.find(p => p.status === 'active');
       if (!live) return held.length ? problem(409, 'pool_not_live', `pool not live yet – ${toGo(held[0])} more tickets needed`) : problem(409, 'no_tickets', `no ${tier} tickets left`);

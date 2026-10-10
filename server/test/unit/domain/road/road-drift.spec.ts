@@ -109,7 +109,7 @@ describe('the server\'s road = the game\'s road (drift)', () => {
           const layout = new RoadLayout(seed, id).describe(30_000);
           net.ensure(30_000);
           expect(layout.segs, `${id} seed ${seed}`).toEqual(net.segs.filter((g: any) => g.s0 <= 30_000).map((g: any) => ({ s0: g.s0, s1: g.s1, nR: g.nR, nL: g.nL, pat: g.pat })));
-          expect(layout.junctions.length, `${id} seed ${seed}`).toBe(net.js.filter((j: any) => j.s <= 30_000).length);
+          expect(layout.junctions, `${id} seed ${seed}`).toEqual(net.js.filter((j: any) => j.s <= 30_000).map((j: any) => ({ id: j.id, kind: j.kind, s: j.s, signal: j.signal, arms: j.kind === 'start' ? [] : j.arms })));
           const theirs = RoadPlan.forSeed(seed, id).holesBetween(0, 30_000), game_ = [];
           for (let ci = 0; ci * R.CHUNK_LEN < 30_000; ci++) { const h = obstacles.rollHole(ci); if (h) game_.push({ id: h.id, ci: h.ci, type: h.type, s: h.s, lat: h.lat }); }
           expect(theirs, `${id} seed ${seed}`).toEqual(game_);
@@ -149,10 +149,10 @@ describe('the server\'s road = the game\'s road (drift)', () => {
     }
   });
 
-  it('on a trip with forks: off the forks\' aprons the off-road test agrees; on them the server counts as road everything the game does (and a little more)', async () => {
+  it('on the free trips (free-1: the 1+1 → 2+2 taper out of the depot road; free-2 / free-3: forks): off the forks\' aprons the off-road test agrees; on them the server counts as road everything the game does (and a little more)', async () => {
     const { net } = game, trips = await load('trips.js');
     try {
-      for (const id of ['free-2', 'free-3']) {
+      for (const id of ['free-1', 'free-2', 'free-3']) {
         trips.setTrip(id);
         for (const seed of SEEDS.slice(0, 5)) {
           net.setStyle({}); net.reset(seed);
@@ -161,6 +161,10 @@ describe('the server\'s road = the game\'s road (drift)', () => {
             const a = mine.onRoad(s, d), g = net.onRoad(s, d);
             if (mine.forkApron(s)) { if (g) expect(a, `${id} seed ${seed} s ${s} d ${d}`).toBe(true); }
             else expect(a, `${id} seed ${seed} s ${s} d ${d}`).toBe(g);
+          }
+          for (let s = mine.Sm; s < mine.knownFrom; s += 1.7) for (const d of [-9.5, -8.9, -6, -4.9, -2, 0, 3, 4.9, 6, 8.9, 9.5]) { // the taper out of the depot road (below knownFrom the server answers only `true`, never `false`)
+            const a = mine.onRoad(s, d);
+            if (a !== null) expect(a, `${id} seed ${seed} s ${s} d ${d} (taper)`).toBe(net.onRoad(s, d));
           }
         }
       }

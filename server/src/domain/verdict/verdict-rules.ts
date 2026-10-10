@@ -10,6 +10,10 @@ export const SPEED_TOLERANCE = 1.05;
 /** |Δs| between two consecutive samples may be up to MAX_SPEED × Δt × this + TELEPORT_SLACK_METRES */
 export const TELEPORT_FACTOR = 1.2;
 export const TELEPORT_SLACK_METRES = 2;
+/** …plus this on a step where the game may have moved the truck onto the other road of a fork (from the server's layout: RoadLayout.forkSwitch, never the
+    client's column): re-measured on the new road, s jumps up to ≈ 3 m forward (client/js/net/orchestrator.js switchFork). Applies only to forks, which only
+    the free levels' trips have – no ride judged before had one, so RULES_VERSION stays */
+export const FORK_SWITCH_SLACK_METRES = 3.5;
 /** the last recorded distance vs the distance the ride ended with: ≤ this + AGREE_SHARE of it */
 export const AGREE_METRES = 30;
 export const AGREE_SHARE = 0.01;

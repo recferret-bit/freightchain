@@ -473,6 +473,25 @@ describe('concurrency (PostgreSQL)', () => {
     expect(results.filter((r) => r.status === 409)).toHaveLength(PARALLEL - 1);
   });
 
+  it('re-choosing the ready free ride\'s LEVEL racing its START: started as the old level or re-chosen and then started – never a mix, never a second credit', async () => {
+    const LEVEL_1 = { trip: 'free-1', minSeconds: 10, completeDist: 0.25 * 28 * 10 };    // FREE_RIDE_SECONDS 10 (the harness) × the level's multiple, k × MAX_SPEED × that
+    const LEVEL_3 = { trip: 'free-3', minSeconds: 100, completeDist: 0.4 * 28 * 100, assist: false };
+    for (let round = 0; round < 6; round++) {   // either order may win each round; every round must be one whole level
+      const a = await login();
+      const ride = (await a.agent.post('/api/rides').send({ tier: 'free', level: 1 }).expect(200)).body;
+      const [again, start] = await Promise.all([a.agent.post('/api/rides').send({ tier: 'free', level: 3 }), a.agent.post(`/api/rides/${ride.id}/start`)]);
+      expect(start.status).toBe(200);                                                      // the start always lands: the ride was ready, and re-choosing keeps it ready
+      expect([200, 409]).toContain(again.status);                                          // re-chosen (it came first), or "a ride is already in progress" (the start came first)
+      const row = await prisma.ride.findUniqueOrThrow({ where: { id: ride.id } });
+      expect(row.status).toBe('running');
+      expect(await rideCount(a.address)).toBe(1);
+      expect(await freeRides(a)).toBe(4);                                                  // one credit, whatever the order
+      if (again.status === 200) { expect(again.body.id).toBe(ride.id); expect(row).toMatchObject(LEVEL_3); }
+      else expect(row).toMatchObject(LEVEL_1);
+      expect(start.body).toMatchObject({ trip: row.trip, minSeconds: row.minSeconds, completeDist: row.completeDist }); // the start answered with the ride as it was started – the same level as the row
+    }
+  });
+
   it('END never loses to a racing heartbeat: the ride always ends (and so never blocks the wallet)', async () => {
     for (let round = 0; round < 5; round++) {
       const a = await login();

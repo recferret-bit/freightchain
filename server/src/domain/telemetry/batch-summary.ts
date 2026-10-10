@@ -1,5 +1,6 @@
 import { MAX_SPEED } from '../rides/ride-rules.js';
 import type { InputEvent } from './ride-batch.entity.js';
+import type { RoadLayout } from '../road/road-layout.js';
 import type { RoadPlan } from '../road/road-plan.js';
 import { SAMPLE_TIME_SLACK, SAMPLE_WIDTH } from './telemetry-rules.js';
 import { measureWorld, parseWorldFacts, type WorldFacts } from './world-facts.js';
@@ -18,7 +19,11 @@ export interface BatchSummary {
   last: [number, number] | null;
   maxSpeed: number;
   /** the step between two consecutive samples with the largest distance over what the governor allows: ds − MAX_SPEED × dt (null = fewer than two samples) */
-  worstStep: { ds: number; dt: number; t: number; over: number } | null;
+  worstStep: Step | null;
+  /** the same for the steps where the game may have moved the truck onto the other road of a fork (RoadLayout.forkSwitch – from the server's layout, the
+      plan): s may jump ≈ 3 m forward there, so the judge allows it more (verdict-rules.ts FORK_SWITCH_SLACK_METRES). Only steps over the governor; absent
+      when there is none (and in every summary from before the forks – those are read as they are, no version bump needed) */
+  forkStep?: Step;
   /** a sample that is malformed or out of order, with the verdict's code for it (null = all well-formed) */
   fault: { code: 'bad-sample' | 'sample-out-of-order'; detail: string } | null;
   inputs: InputEvent[];
@@ -26,6 +31,8 @@ export interface BatchSummary {
       null = not measured (a batch stored before the server rebuilt the road, re-summarised from its payload without the ride's seed) */
   world: WorldFacts | null;
 }
+
+export interface Step { ds: number; dt: number; t: number; over: number }
 
 export const SUMMARY_VERSION = 1;
 
@@ -46,17 +53,20 @@ export function summariseBatch(seq: number, t0: number, t1: number, samples: rea
     out.first ??= [round(t, 1000), round(s, 1000)]; // 3 decimals: the client rounds its rows already; a stored JSON number must read back equal
     out.last = [round(t, 1000), round(s, 1000)];
     out.maxSpeed = Math.max(out.maxSpeed, v);
-    if (prev) step(out, prev, row);
+    if (prev) step(out, prev, row, plan?.layout ?? null);
     prev = row;
   }
   out.maxSpeed = round(out.maxSpeed);
   return out;
 }
 
-/** The largest step over the governor so far – the one the teleport check looks at. Exported so the chain of batches can measure the step across a boundary. */
-export function step(out: BatchSummary, prev: readonly number[], row: readonly number[]): void {
+/** The largest step over the governor so far – the one the teleport check looks at. Exported so the chain of batches can measure the step across a boundary.
+    `layout` = the ride's road: a step over the governor that may be a fork's road switch is kept apart (forkStep); without it every step is a plain one. */
+export function step(out: BatchSummary, prev: readonly number[], row: readonly number[], layout: Pick<RoadLayout, 'forkSwitch'> | null = null): void {
   const dt = Math.max(0, (row[0] ?? 0) - (prev[0] ?? 0)), ds = Math.abs((row[1] ?? 0) - (prev[1] ?? 0)), over = ds - MAX_SPEED * dt;
-  if (!out.worstStep || over > out.worstStep.over) out.worstStep = { ds: round(ds, 10), dt: round(dt), t: row[0] ?? 0, over: round(over, 10) };
+  const m: Step = { ds: round(ds, 10), dt: round(dt), t: row[0] ?? 0, over: round(over, 10) };
+  if (over > 0 && layout?.forkSwitch(prev[1] ?? 0, row[1] ?? 0)) { if (!out.forkStep || over > out.forkStep.over) out.forkStep = m; return; } // (asked only over the governor: a step under it is no teleport in either bucket)
+  if (!out.worstStep || over > out.worstStep.over) out.worstStep = m;
 }
 
 /** The stored JSON, validated; null when it is missing or of another version (the caller re-summarises from the payload). */
@@ -64,5 +74,5 @@ export function parseSummary(raw: unknown): BatchSummary | null {
   if (typeof raw !== 'object' || raw === null) return null;
   const s = raw as Partial<BatchSummary>;
   if (s.v !== SUMMARY_VERSION || typeof s.samples !== 'number' || !Array.isArray(s.inputs) || typeof s.maxSpeed !== 'number') return null;
-  return { v: SUMMARY_VERSION, samples: s.samples, first: s.first ?? null, last: s.last ?? null, maxSpeed: s.maxSpeed, worstStep: s.worstStep ?? null, fault: s.fault ?? null, inputs: s.inputs as InputEvent[], world: parseWorldFacts(s.world) };
+  return { v: SUMMARY_VERSION, samples: s.samples, first: s.first ?? null, last: s.last ?? null, maxSpeed: s.maxSpeed, worstStep: s.worstStep ?? null, ...(s.forkStep ? { forkStep: s.forkStep } : {}), fault: s.fault ?? null, inputs: s.inputs as InputEvent[], world: parseWorldFacts(s.world) };
 }

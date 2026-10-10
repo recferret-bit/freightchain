@@ -1,8 +1,9 @@
 import { MAX_SPEED } from '../rides/ride-rules.js';
-import { step, type BatchSummary } from '../telemetry/batch-summary.js';
+import type { RoadLayout } from '../road/road-layout.js';
+import { step, type BatchSummary, type Step } from '../telemetry/batch-summary.js';
 import type { BatchFacts } from '../telemetry/ride-batch.entity.js';
 import {
-  AGREE_METRES, AGREE_SHARE, COVERAGE_FLAG, COVERAGE_REJECT, GAS_CODES, MOVED_METRES, SPEED_TOLERANCE, TELEPORT_FACTOR, TELEPORT_SLACK_METRES,
+  AGREE_METRES, AGREE_SHARE, COVERAGE_FLAG, COVERAGE_REJECT, FORK_SWITCH_SLACK_METRES, GAS_CODES, MOVED_METRES, SPEED_TOLERANCE, TELEPORT_FACTOR, TELEPORT_SLACK_METRES,
 } from './verdict-rules.js';
 import type { VerdictReason } from './verdict.dto.js';
 
@@ -52,18 +53,21 @@ export function checkChain(ride: RideFacts, batches: readonly BatchFacts[]): Ver
   return out;
 }
 
-/** Every sample well-formed, in time order inside its batch, under the governor, and no jump the truck could not make between two samples – also across a batch boundary. */
-export function checkSamples(batches: readonly BatchFacts[]): { reasons: VerdictReason[]; maxSpeed: number } {
+/** Every sample well-formed, in time order inside its batch, under the governor, and no jump the truck could not make between two samples – also across a batch boundary.
+    A step where the game may have moved the truck onto the other road of a fork (the summary's forkStep; across a boundary: `layout`, the ride's road) is
+    allowed FORK_SWITCH_SLACK_METRES more. Without `layout` a boundary step is a plain one. */
+export function checkSamples(batches: readonly BatchFacts[], layout: Pick<RoadLayout, 'forkSwitch'> | null = null): { reasons: VerdictReason[]; maxSpeed: number } {
   let maxSpeed = 0, prevLast: [number, number] | null = null;
   for (const b of batches) {
     const s = b.summary;
     if (s.fault) return { reasons: [reject(s.fault.code, s.fault.detail)], maxSpeed };
     if (s.maxSpeed < 0 || s.maxSpeed > MAX_SPEED * SPEED_TOLERANCE) return { reasons: [reject('over-governor', `recorded ${round(s.maxSpeed)} m/s (governor ${MAX_SPEED})`)], maxSpeed: Math.max(maxSpeed, s.maxSpeed) };
     maxSpeed = Math.max(maxSpeed, s.maxSpeed);
-    const worst: BatchSummary = { ...s, worstStep: s.worstStep ? { ...s.worstStep } : null };
-    if (prevLast && s.first) step(worst, prevLast, s.first);   // the step from the last sample of the batch before to the first of this one
-    const w = worst.worstStep;
-    if (w && w.ds > MAX_SPEED * w.dt * TELEPORT_FACTOR + TELEPORT_SLACK_METRES) return { reasons: [reject('teleport', `${round(w.ds, 10)} m in ${round(w.dt)} s at t=${w.t} s`)], maxSpeed };
+    const worst: BatchSummary = { ...s, worstStep: s.worstStep ? { ...s.worstStep } : null, ...(s.forkStep ? { forkStep: { ...s.forkStep } } : {}) };
+    if (prevLast && s.first) step(worst, prevLast, s.first, layout);   // the step from the last sample of the batch before to the first of this one
+    const jump = ([w, slack, why]: [Step | null | undefined, number, string]) => w && w.ds > MAX_SPEED * w.dt * TELEPORT_FACTOR + TELEPORT_SLACK_METRES + slack ? reject('teleport', `${round(w.ds, 10)} m in ${round(w.dt)} s at t=${w.t} s${why}`) : null;
+    const tp = jump([worst.worstStep, 0, '']) ?? jump([worst.forkStep, FORK_SWITCH_SLACK_METRES, ' (at a fork, where the road switches)']);
+    if (tp) return { reasons: [tp], maxSpeed };
     if (s.last) prevLast = s.last;
   }
   return { reasons: [], maxSpeed };

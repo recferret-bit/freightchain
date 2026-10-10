@@ -1,3 +1,4 @@
+import { roadPlanFor } from '../road/road-plan.js';
 import type { Ride } from '../rides/ride.entity.js';
 import type { BatchFacts } from '../telemetry/ride-batch.entity.js';
 import { checkChallenges, type ChallengeScores } from './challenge-checks.js';
@@ -42,7 +43,7 @@ export class RideVerdict {
     const facts = { rideId: ride.id, driveSeconds: ride.driveSeconds, distance: ride.distance };
     const ordered = [...batches].sort((a, b) => a.seq - b.seq);
     const chain = checkChain(facts, ordered);
-    const samples = checkSamples(ordered);
+    const samples = checkSamples(ordered, roadPlanFor(ride.seed, ride.trip).layout); // the ride's road: a step across a batch boundary may be a fork's road switch (built lazily – only a step over the governor asks)
     const agreement = checkAgreement(facts, ordered);
     const inputs = ordered.flatMap((b) => b.summary.inputs);
     const human = checkHumanTiming(inputs);
