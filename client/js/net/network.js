@@ -68,7 +68,7 @@ class RoadNetwork {
     for (const l of P.lanes) if ((x -= l[2]) < 0) { lanes = l; break; }
     let len = P.seg[0] + r() * (P.seg[1] - P.seg[0]); if (this.patEnd - (s0 + len) < P.seg[0] * .6) len = this.patEnd - s0;
     const prev = this.segs[this.segs.length - 1], seg = { s0, s1: s0 + len, nR: lanes[0], nL: lanes[1], bends: P.bends, centre: P.centre, pat: P.id };
-    seg.prev = prev ?? { ...seg, nR: 1, nL: 1 }; this.segs.push(seg);   // the first stretch widens out of the depot's two-lane road (a 1+1 country road: nothing changes) this.genEnd = seg.s1;
+    seg.prev = prev ?? { ...seg, nR: 1, nL: 1 }; this.segs.push(seg); this.genEnd = seg.s1;   // prev of the first stretch: the depot's two-lane road, so it widens out of it (a 1+1 country road: nothing changes)
     if (P.fork) this.forks.push(seg.fork = { i: this.forks.length, f0: s0, f1: seg.s1, side: rnd(this.seed % 9973 + s0 * .37) < .5 ? -1 : 1, choice: 0 });   // side: where the DEFAULT road bulges (+1 right) – a hash, no draw from the stream (geometry only, the server never needs it)
     const J = P.junction;
     if (!J) { this.nextJ = Infinity; return; }

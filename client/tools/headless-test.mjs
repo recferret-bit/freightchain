@@ -156,7 +156,7 @@ check(nightX.night===true&&dayX.night===false&&G.THEMES.some(t=>t.id===dayX.rout
     const w0=net.world(st.s,st.d); for(let i=0;i<30&&st.s<c+2;i++){ st.s+=.25; G.roads.update(1/60); }
     const w1=net.world(st.s,st.d);
     check(f.choice===1&&Math.abs(st.d)<6&&Math.hypot(w1.x-w0.x,w1.z-w0.z)<12,'crossing the commit point on the other road\'s side switches roads and keeps the truck where it is (d '+st.d.toFixed(2)+')');
-    check(net.onRoad(c-40,side*net.sep(c-40)),'the split apron is road on both roads');
+    check(net.onRoad(c-40,-net.bulge(f)*net.sep(c-40))&&net.onRoad(c-40,0)&&!net.onRoad(c+400,-net.bulge(f)*net.sep(c+400)/2),'the split apron is road on both roads (past it, the ground between them is not)');
     st.mode='done'; }
   G.setTrip('1h'); G.roads.newTrip(); }
 out.push(...checks); out.push('errors='+errors.length+(errors[0]?' '+errors[0].message:''));

@@ -20,6 +20,8 @@ test('the bits are frozen – old recordings keep their meaning (append controls
   assert.deepEqual(CONTROLS.slice(0, 25), ['gas', 'brake', 'left', 'right', 'clutch', 'up', 'down', 'gear', 'reverse', 'start', 'stop', 'keyOn', 'park', 'heat', 'wiper', 'wash',
     'head', 'cab', 'night', 'radio', 'prev', 'next', 'volume', 'pause', 'mute']);
   assert.equal(MOUSE, 1 << 25);
+  assert.deepEqual(CONTROLS.slice(25), ['map']);   // appended after 'mute': it skips MOUSE's bit
+  assert.equal(BIT.map, 1 << 26); assert.equal(inputBits('KeyN'), BIT.map); assert.equal(inputBits('btn:map'), BIT.map | MOUSE);
 });
 test('every key ui/input.js acts on maps to a control', () => {
   const input = src('ui/input.js');
@@ -32,7 +34,7 @@ test('every key ui/input.js acts on maps to a control', () => {
 });
 test('every dash button the cockpit draws is a control the replay can outline, a click adds MOUSE', () => {
   const ids = new Set([...['cockpit/rig.js', 'cockpit/common.js'].flatMap(f => [...src(f).matchAll(/(?:uiButton\(|id: )'([a-z-]+)'/g)].map(m => m[1])), 'key-off', 'key-on', 'key-start']);
-  assert.equal(ids.size, 12, [...ids].join(' '));
+  assert.equal(ids.size, 13, [...ids].join(' '));   // + the phone map (2026-10)
   for (const id of ids) {
     const b = inputBits(`btn:${id}`);
     assert.ok(b & MOUSE, `btn:${id}`);
@@ -76,6 +78,8 @@ test('lights: held = 1 (the cockpit flashes it), released = fades out over FADE 
   lightInputs(BIT.wiper | BIT.gas | MOUSE, .016, L);   // holding W and clicking WIPER: the click is the dash button, W stays a key
   assert.equal(L.mouse[at('wiper')], 1); assert.equal(L.key[at('wiper')], 0); assert.equal(L.key[at('gas')], 1); assert.equal(L.mouse[at('gas')], 0);
   clearInputs(L); assert.equal(L.key.reduce((a, b) => a + b), 0); assert.equal(L.mask, 0);
+  lightInputs(BIT.map, .016, L); assert.equal(L.key[at('map')], 1); assert.equal(L.mouse[at('map')], 0);   // the control past MOUSE lights by its own bit (N on the keyboard)…
+  clearInputs(L); lightInputs(BIT.wiper | MOUSE, .016, L); assert.equal(L.key[at('map')] + L.mouse[at('map')], 0);   // …and a dash click does not light it
 });
 
 test('the recording: column 14 = held now OR pressed since the last sample; releases while paused and a lost focus clear it', () => {
@@ -92,7 +96,7 @@ test('the recording: column 14 = held now OR pressed since the last sample; rele
   assert.equal(tick()[INPUT_COL], 0);
   recordInput('Space', 1); releaseInputs(); assert.equal(tick()[INPUT_COL], BIT.clutch);   // focus lost: the tap still shows once…
   assert.equal(tick()[INPUT_COL], 0);   // …and nothing sticks
-  assert.equal(telemetry.samples.every(r => r.length === 15), true);
+  assert.equal(telemetry.samples.every(r => r.length === 16 && r[15] === 0), true);   // column 15: the fork road (0 off a fork)
   assert.deepEqual(telemetry.inputs.map(e => [e[1], e[2]]), [['KeyW', 1], ['btn:head', 1], ['btn:head', 0], ['ArrowUp', 1], ['KeyW', 0], ['Space', 1]]);   // the raw events are unchanged (the verdict reads them)
   telemetry.on = false;
 });
