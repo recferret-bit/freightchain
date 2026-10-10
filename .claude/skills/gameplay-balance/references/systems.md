@@ -47,8 +47,8 @@ Depot geometry: `CFG.START_ACCESS`, `CFG.START_TURN_R`. The turn is a balance pr
 | holding the brake in gear | `st.fight` in `physics.js`. `CFG.FIGHT_HEAT`, `FIGHT_TIME`. Full strain with `blownWhy = 'brakes'` ends the ride |
 | redline abuse | `CFG.STRAIN_RPM` × `REDLINE`, `STRAIN_TIME`, `STRAIN_RECOVER`. Full strain blows the engine (`climate.js`) |
 | cold power and cold wear | `coldK()` in `state.js` from `ENGINE_COLD` / `ENGINE_WARM`. Wear in `climate.js`: `COLD_WEAR × coldK² ×` how far rpm is above `COLD_WEAR_RPM`. Idle does not warm a very cold engine |
-| warm-up, heater, frost | `ENGINE_HEAT_*`, `ENGINE_COOL*`, `THERMOSTAT`, `THERMO_GAIN`, `HEATER_*`. Ambient is the route's `weather` minus `NIGHT_CHILL × dn.k` (`ambientC()`). Frost draw is `cockpit/windscreen.js` from `FROST_RATE` / `FROST_MELT`; wipers do not clear frost |
-| battery | `CFG.BATT` and `sim/battery.js`. Engine off multiplies drains by `OFF_X`. Key off and no loads recovers at `REST` up to `REST_MAX`. Below `DEAD` with the engine off sets `st.battLost` and `physics.js` ends the ride. `START_MIN` refuses a crank. Rates are test-scale; the comments on `BATT` state the resulting times — recompute the comment when you change a rate |
+| warm-up, heater, frost, warm-route fog | `ENGINE_HEAT_*`, `ENGINE_COOL*`, `THERMOSTAT`, `THERMO_GAIN`, `HEATER_*`. Ambient is the route's `weather` minus `NIGHT_CHILL × dn.k` (`ambientC()`). Frost draw is `cockpit/windscreen.js` from `FROST_RATE` / `FROST_MELT`. Warm-route fog is `FOG_RATE` / `FOG_CLEAR`, drawn at `FOG_HAZE`. Wipers do not clear either |
+| battery | `CFG.BATT` and `sim/battery.js`, including `COOLER` (the same current as `HEATER`). Engine off multiplies drains by `OFF_X`. No lights, heater, cooler or radio recovers at `REST` up to `REST_MAX`. Below `DEAD`, `st.battDead` cuts those loads; it does not end the ride. `START_MIN` refuses a crank. Rates are test-scale; the comments on `BATT` state the resulting times — recompute the comment when you change a rate |
 | washer | `CFG.WASH_DRAIN` per second of spray, tank `st.wash` 0..1, no refill |
 
 ## Damage, holes, traffic

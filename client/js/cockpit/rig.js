@@ -1,5 +1,5 @@
 import { ctx, view, mirrorRects } from './canvas.js';
-import { chromeGrad, litRect, uiBtns, gauge, miniGauge, ledBar, lamp, strainLamp, brakeLamp, stallLamp, uiButton, heatButton, ignitionPanel, radioPanel, leverPos } from './common.js';
+import { chromeGrad, litRect, uiBtns, gauge, miniGauge, ledBar, lamp, strainLamp, brakeLamp, stallLamp, uiButton, heatButton, coldButton, ignitionPanel, radioPanel, leverPos } from './common.js';
 import { drawScreenLayers, drawBug, drawExhaust, wip } from './windscreen.js';
 import { st, disp, dn, powered, coldK } from '../state.js';
 import { ambientC } from '../sim/climate.js';
@@ -133,7 +133,7 @@ export function drawCockpitRig() {
   ignitionPanel(cx + 37 * u, 96.2 * u, u * .78);   // scaled down so the ON zone stays inside the dash panel border
   { const bw = 8.4 * u, bh = 4 * u, gx = cx - 48 * u, gy = 90.8 * u, gap = .8 * u;   // 2x2 switch grid left of the wheel
     uiButton('head', 'HEAD', gx, gy, bw, bh, u, dn.head); uiButton('cab', 'CAB', gx + bw + gap, gy, bw, bh, u, dn.cab);
-    heatButton(gx, gy + bh + gap, 2 * bw + gap, bh, u); }   // (the cab light has no button: click the dome lamp in the overhead console, or press C)
+    heatButton(gx, gy + bh + gap, bw, bh, u); coldButton(gx + bw + gap, gy + bh + gap, bw, bh, u); }   // HEAT | COLD share the old wide heater slot (the cab light has no button: click the dome lamp, or press C)
   // steering column + big wheel
   ctx.fillStyle = '#12100e'; ctx.beginPath(); ctx.moveTo(cx - 6 * u, 88 * u); ctx.lineTo(cx + 6 * u, 88 * u); ctx.lineTo(cx + 9 * u, 112 * u); ctx.lineTo(cx - 9 * u, 112 * u); ctx.fill();
   ctx.save(); ctx.translate(cx, 106 * u); ctx.scale(1, .62); ctx.rotate(st.steer * CFG.TRUCK.WHEEL_TURNS * 2 * Math.PI);

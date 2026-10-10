@@ -20,9 +20,9 @@ export const SCENES = {
   lamps: { crop: [176, 396, 164, 134], tick(t, { st }) {   // cold engine, strain charging, hot brakes, flat battery; OFF ROAD / OVER-REV / GRIND / STALL now and then
     Object.assign(st, { engineOn: true, keyOn: true, temp: -30, strain: .2 + .7 * (.5 + .5 * Math.sin(t * .8)), brakeT: .45, batt: .25, off: t % 6 > 3, overrev: t % 7 > 5.5, grind: t % 9 > 8 ? .5 : 0, lug: t % 5 > 3 ? .4 : 0 });
   } },
-  lights: { crop: [176, 400, 284, 233], tick(t, { st, dn }) {   // night: HEAD / cab light toggling, HEAT warming, pedal bars moving
+  lights: { crop: [176, 400, 284, 233], tick(t, { st, dn }) {   // night: HEAD / cab light toggling, HEAT and COLD on with their bars, pedal bars moving
     Object.assign(dn, { k: 1, night: true, head: t % 6 < 4, cab: t % 8 < 4 });
-    Object.assign(st, { engineOn: true, keyOn: true, heater: true, heatEff: .5 + .5 * Math.sin(t * .7), clutch: .5 + .5 * Math.sin(t * 1.3), brake: Math.max(0, Math.sin(t * .7)), gas: .5 + .5 * Math.sin(t * .9 + 1), hull: 82 });
+    Object.assign(st, { engineOn: true, keyOn: true, heater: true, heatEff: .5 + .5 * Math.sin(t * .7), cooler: true, coolEff: .5 + .5 * Math.sin(t * .7 + 1.4), clutch: .5 + .5 * Math.sin(t * 1.3), brake: Math.max(0, Math.sin(t * .7)), gas: .5 + .5 * Math.sin(t * .9 + 1), hull: 82 });
   } },
   park: { crop: [958, 452, 184, 150], tick(t, { st, wip }) {   // PARK on/off, wipers off → 1 → 2, washer, and the shifter walking N → 1…7 → N → R through the H gate
     Object.assign(st, { engineOn: true, keyOn: true, park: t % 6 < 3, washing: t % 6 > 4.5, gear: GEARS[Math.floor(t / 1.1) % GEARS.length] }); wip.mode = Math.floor(t / 2) % 3;

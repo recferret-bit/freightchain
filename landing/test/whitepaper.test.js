@@ -27,6 +27,22 @@ test('the contents list and the sections match, one h1 and one h2 per chapter 01
 
 test('the smoke test marker is on the page', () => { assert.match(html, /FREIGHT CHAIN · WHITEPAPER/); });
 
+test('heat, cooling, fog and the replay switches match the game', () => {
+  const cfg = src('client/js/config.js'), rules = src('server/src/domain/telemetry/telemetry-rules.ts'), flags = src('client/js/telemetry.js');
+  const fog = Number(cfg.match(/FOG_FROM:\s*([\d.]+)/)[1]);
+  assert.equal(fog, 18); assert.match(text, new RegExp(`above ${fog} °C`)); assert.match(text, new RegExp(`above ${fog} °C, needs cooling`));
+  assert.match(cfg, /COOLER: 0\.005/); assert.match(cfg, /HEATER: 0\.005/);
+  assert.match(text, /draws the same battery current/); assert.match(text, /does not end the ride/);
+  assert.match(text, /Brenner frosts at night and does not fog/); assert.match(text, /Pan-American does neither/);
+  assert.doesNotMatch(text, /Pan-American and Brenner do neither/);
+  assert.doesNotMatch(text, /flat battery with the engine off ends the ride/); assert.doesNotMatch(text, /the ride is over/);
+  assert.equal(Number(rules.match(/SAMPLE_MAX_WIDTH = (\d+)/)[1]), 16); assert.match(text, /16 numbers/); assert.match(text, /fork road/);
+  assert.match(flags, /cooler:\s*2048/); assert.match(text, /heater and cooling/);
+  const landing = readFileSync(join(root, 'index.html'), 'utf8');
+  assert.match(landing, /LIGHTS, HEAT &amp; COLD/); assert.match(landing, /<kbd>J<\/kbd> clears fog/); assert.doesNotMatch(landing, /<kbd>N<\/kbd> night/);
+  assert.match(landing, /HEAD, CAB, HEAT and COLD/);
+});
+
 test('head basics, icons that exist, no inline scripts or handlers, noopener on _blank', () => {
   assert.match(html, /<html lang="en">/); assert.match(html, /<title>[^<]{5,}<\/title>/);
   for (const m of ['name="description"', 'name="viewport"', 'name="theme-color"', 'property="og:title"', 'property="og:image"', 'name="twitter:card"']) assert.ok(html.includes(m), m);

@@ -10,7 +10,7 @@ const pulse = (c, rise, hold, fall, period) => c < 0 || c >= period ? 0 : c < ri
 const wave = (t, f, ph = 0) => .5 + .5 * Math.sin(t * f + ph);   // 0..1
 
 const base = ({ st, dn, weather, wip, radio }) => {
-  Object.assign(st, { engineOn: true, keyOn: true, ign: null, park: false, gear: 0, rpm: 700, v: 0, gas: 0, brake: 0, clutch: 0, steer: 0, hull: 100, heater: false, heatEff: 0, temp: 88, strain: 0, brakeT: 0, batt: .8, air: .85, wash: 1, washing: false,
+  Object.assign(st, { engineOn: true, keyOn: true, ign: null, park: false, gear: 0, rpm: 700, v: 0, gas: 0, brake: 0, clutch: 0, steer: 0, hull: 100, heater: false, heatEff: 0, cooler: false, coolEff: 0, temp: 88, strain: 0, brakeT: 0, batt: .8, air: .85, wash: 1, washing: false,
     off: false, overrev: false, grind: 0, lug: 0, stall: 0, stalled: false, rev: false, s: 0, t: 0, test: 1 });
   Object.assign(dn, { k: 0, night: false, head: false, cab: false, blind: 0 });
   Object.assign(weather, { ambient: 26, snow: 0 });
@@ -50,7 +50,10 @@ export const WP_SCENES = {
   /* ── when you need them ── */
   'lights': scene([296, 540, 170, 93], (t, { st, dn }) => { Object.assign(dn, { k: 1, night: true, head: t % 6 < 3.5 }); st.batt = .7; }, { t0: 1, mark: () => [332, 571, 117, 32] }),   // night: HEAD toggles, CAB stays off
   'cab-light': scene([540, 0, 200, 133], (t, { dn }) => { Object.assign(dn, { k: 1, night: true, cab: t % 4 < 2 }); }, { t0: .5 }),   // night: the dome lamp (it sits on the see-through windscreen, so only the lamp and its halo show)
-  'heater': scene([290, 490, 215, 143], (t, { st }) => { const k = wave(t, .8, -1.6); Object.assign(st, { heater: true, heatEff: k, temp: -12 + 50 * k }); }, { t0: 4, mark: () => [333, 602, 118, 29] }),
+  'heater': scene([290, 490, 215, 143], (t, { st }) => {   // both switches on: the warmth bar and the blue compressor bar move on their own buttons
+    const h = wave(t, .8, -1.6), c = wave(t, .9, 1.1);
+    Object.assign(st, { heater: true, heatEff: h, cooler: true, coolEff: c, temp: 20 + 55 * h });
+  }, { t0: 4, mark: () => [336, 605, 111, 25] }),   // HEAT | COLD, the old wide heater slot split in two
   'wipers': scene([956, 470, 142, 95], (t, { st, wip }) => { wip.mode = Math.floor(t / 2) % 3; st.washing = t % 6 > 4.5; }, { t0: 2.5, mark: () => [962, 477, 132, 40] }),
   'radio': scene([948, 398, 156, 104], (t, { radio }) => { const i = Math.floor(t / 3) % RADIO_N; Object.assign(radio, { on: true, idx: i, song: { title: SONGS[i] } }); }, { t0: 1 }),
   'reverse': scene(SHIFTER, (t, { st }) => { const c = t % 6; st.gear = c >= 1.5 && c < 4.5 ? -1 : 0; st.rev = st.gear < 0; st.v = st.rev ? 3 : 0; st.clutch = c > 1 && c < 1.7 || c > 4.3 && c < 5 ? 1 : 0; }, { t0: 3 }),

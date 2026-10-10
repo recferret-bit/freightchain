@@ -21,7 +21,7 @@ describe('the replay columns (protocol with the game)', () => {
   it('the client\'s bit table: frozen order, every bit inside 30 (JS bitwise is 32-bit signed), MOUSE = bit 25, the controls appended after it skip that bit', () => {
     expect(controls.slice(0, 25)).toEqual(['gas', 'brake', 'left', 'right', 'clutch', 'up', 'down', 'gear', 'reverse', 'start', 'stop', 'keyOn', 'park', 'heat', 'wiper', 'wash',
       'head', 'cab', 'night', 'radio', 'prev', 'next', 'volume', 'pause', 'mute']);
-    expect(controls.slice(25)).toEqual(['map']); // appended 2026-10 (the phone map, N)
+    expect(controls.slice(25)).toEqual(['map', 'cold']); // appended 2026-10: the phone map (N), then cab cooling (J). Both skip bit 25 (MOUSE).
     const mouse = Number(/export const MOUSE = 1 << (\d+);/.exec(bits)?.[1]);
     expect(mouse).toBe(25);
     expect(controls.length + 1).toBeLessThan(30);

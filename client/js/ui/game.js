@@ -36,10 +36,10 @@ export function resetRide(seed = online.ride?.seed) {   // seed: the server's fo
 
 online.extra = () => ({ route: env.theme.id, night: dn.night });   // what the server's public live feed shows next to the ride
 prompt.onShow = () => audio.play('warn'); prompt.onAnswer = () => audio.play('ui');   // a dispatch prompt (prompt.js) is heard as well as seen
-/* the recording's two replay columns (telemetry.js): the hour of the day + the cab's switches, so a spectator sees the lights / wipers the driver had */
+/* the recording's two replay columns (telemetry.js): the hour of the day + the cab's switches, so a spectator sees the lights, wipers, heater and cooling the driver had */
 telemetry.trafficOf = () => trafficSnapshot();   // the cars around the truck, recorded beside each batch for spectators' replays
 telemetry.extra = () => [Math.round(dn.t * 100) / 100,
-  (st.engineOn ? FLAGS.engine : 0) | (st.keyOn ? FLAGS.key : 0) | (st.park ? FLAGS.park : 0) | (dn.head ? FLAGS.head : 0) | (dn.cab ? FLAGS.cab : 0) | (st.heater ? FLAGS.heater : 0)
+  (st.engineOn ? FLAGS.engine : 0) | (st.keyOn ? FLAGS.key : 0) | (st.park ? FLAGS.park : 0) | (dn.head ? FLAGS.head : 0) | (dn.cab ? FLAGS.cab : 0) | (st.heater ? FLAGS.heater : 0) | (st.cooler ? FLAGS.cooler : 0)
   | (st.washing ? FLAGS.washing : 0) | (wip.mode === 1 ? FLAGS.wipeSlow : wip.mode === 2 ? FLAGS.wipeFast : 0) | (radio.on ? FLAGS.radio : 0) | (st.rev ? FLAGS.rev : 0)];
 
 /* ───────────────────────── overlay / game flow ───────────────────────── */
@@ -49,7 +49,7 @@ const CONTROLS = `<table>
 <tr><td>A D / ← →</td><td>Steer (the road bends – and the wind pushes you!)</td></tr>
 <tr><td>SHIFT / SPACE</td><td>Hold = clutch pedal in</td></tr>
 <tr><td>E / Q</td><td>Gear up / down (clutch must be in) · 1-7 / 0 select gear / neutral · Q from neutral or G = REVERSE (stop first; beeper + slow, trailer swings)</td></tr>
-<tr><td>I</td><td>Start engine (and restart after a stall) · P pause · M mute</td></tr><tr><td>L / C</td><td>Headlights · cab light (or the HEAD / CAB dash buttons and the dome lamp above the windscreen)</td></tr><tr><td>H</td><td>Cab heater (HEAT button) – clears frost on the glass, but only as warm as the engine is · cold engine: keep the revs low until TEMP rises</td></tr><tr><td>R / X</td><td>Wipers off / slow / fast · hold X = washer spray + wipe (or click WIPER / WASH on the dash)</td></tr></table>
+<tr><td>I</td><td>Start engine (and restart after a stall) · P pause · M mute</td></tr><tr><td>L / C</td><td>Headlights · cab light (or the HEAD / CAB dash buttons and the dome lamp above the windscreen)</td></tr><tr><td>H</td><td>Cab heater (HEAT button) – clears frost on the glass, but only as warm as the engine is · cold engine: keep the revs low until TEMP rises</td></tr><tr><td>J</td><td>Cab cooling (COLD button) – on a warm route the windscreen fogs if this stays off. It clears that fog once the engine is running, and it draws the same battery current as the heater</td></tr><tr><td>R / X</td><td>Wipers off / slow / fast · hold X = washer spray + wipe (or click WIPER / WASH on the dash)</td></tr></table>
 <div style="font-size:12px;color:#b9ad8d">Launch: hold clutch → E (1st) → press gas, ease the clutch out. Clutch out too fast at low revs = stall.<br>Everything beside the road can be smashed – but it damages the hull. 0% hull = wrecked.<br>Other traffic: scratches cost hull, a direct head-on / rear-end hit ends the ride – overtake only when the opposite lane is clear.<br>You start at the depot: give way at the main road, turn right slowly. Crossroads have traffic lights – side traffic goes on its green.</div>`;
 const FREE_HINT = `<div style="font-size:12px;color:#b9ad8d">This run is the easy straight road. It ends itself when the shift is done.</div>`;
 /* Guest run (play.html?offline=1): nobody is counted, recorded or judged – no request is made at all. The menu only picks the two helpers. */

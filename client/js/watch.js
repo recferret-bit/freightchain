@@ -22,7 +22,7 @@ import { INPUT_COL, passedMask, lightInputs, inputLights } from './input-bits.js
 /* Live streams, the SPECTATOR's side: play.html?watch=<rideId>. OPT-IN like online.js – without ?watch nothing here runs.
    No video and no WebSockets: the page polls GET /api/watch/:id and REPLAYS the ride's verified-play recording (10 Hz samples, uploaded every ~15 s) on its
    own copy of the road – the layout is a pure function of the seed + route, so it is the driver's road. A live view therefore runs about LIVE_LAG behind.
-   What is replayed: the truck (position, heading, speed, revs, gear, pedals, hull), the clock hour, lights / wipers / heater / parking brake, the signal
+   What is replayed: the truck (position, heading, speed, revs, gear, pedals, hull), the clock hour, lights / wipers / heater / cooling / parking brake, the signal
    clock, the obstacles spectators paid for (placed where the driver's game stamped them), the traffic around the truck (recorded at 2 Hz beside each batch –
    recordings from before that show an empty road), the driver's inputs – keys and dash clicks, a flashing yellow border per control (input-bits.js; older
    recordings show none). What is NOT: windscreen cracks, debris, the radio. Nothing is simulated: st is written from the samples
@@ -245,7 +245,8 @@ function apply(a, b, k, dt) {
   st.gas = lerp(a[8], b[8], k); st.brake = lerp(a[9], b[9], k); st.steer = st.ste = lerp(a[10], b[10], k); st.clutch = lerp(a[11], b[11], k);
   if (Number.isFinite(f)) {
     st.engineOn = !!(f & FLAGS.engine); st.keyOn = !!(f & FLAGS.key); st.park = !!(f & FLAGS.park); dn.head = !!(f & FLAGS.head); dn.cab = !!(f & FLAGS.cab);
-    st.heater = !!(f & FLAGS.heater); st.washing = !!(f & FLAGS.washing); wip.mode = f & FLAGS.wipeFast ? 2 : f & FLAGS.wipeSlow ? 1 : 0; st.rev = !!(f & FLAGS.rev);
+    st.heater = !!(f & FLAGS.heater); st.cooler = !!(f & FLAGS.cooler); st.washing = !!(f & FLAGS.washing); wip.mode = f & FLAGS.wipeFast ? 2 : f & FLAGS.wipeSlow ? 1 : 0; st.rev = !!(f & FLAGS.rev);
+    st.heatEff = st.heater && (st.engineOn || st.keyOn) ? 1 : 0; st.coolEff = st.cooler && st.engineOn ? 1 : 0;   // the recording has the switches, not the engine temperature: the glass follows the switch
   } else { st.engineOn = st.rpm > 300; st.keyOn = st.engineOn; st.park = false; st.rev = st.gear < 0; }   // a recording from before the flag column
   if (Number.isFinite(a[12]) && Number.isFinite(b[12])) dn.t = hourLerp(a[12], b[12], k);
   st.vel = st.rev ? -st.v : st.v; st.ign = null; st.test = 1; st.stalled = false;

@@ -172,7 +172,7 @@ Each block is the short version. The link is the long one.
 
 ### The drive
 
-Five routes, one truck, a manual gearbox, clutch, stall, parking brake, cold engine, battery, heater, wipers, and a cab radio. Speed is governed at 28 m/s. The road does not end. A phone on the dash (N, or a click) opens a phone-style map: the truck, the route to the finish, the other road of a fork, junctions with their lights, the next step and the time to go.
+Five routes, one truck, a manual gearbox, clutch, stall, parking brake, cold engine, battery, heater, cab cooling, wipers, and a cab radio. Speed is governed at 28 m/s. The road does not end. A phone on the dash (N, or a click) opens a phone-style map: the truck, the route to the finish, the other road of a fork, junctions with their lights, the next step and the time to go.
 
 | id | Route | Bend |
 | --- | --- | --- |

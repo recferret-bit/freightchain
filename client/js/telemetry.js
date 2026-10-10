@@ -42,14 +42,14 @@ export function tickTelemetry(dt) {
   if (st.t - rec.t0 >= CFG.TELEMETRY_BATCH_SECONDS) cut();
 }
 /** [t, s, d, psi, v, rpm, gear, hull, gas, brake, steer, clutch, clock, flags, inputs, fork] – the order the server reads (the verdict uses the first 12; the
-    last four are only for spectators' replays (watch.js): the hour of the day, the cab's switches – so a replay shows the lights and wipers the driver had –,
+    last four are only for spectators' replays (watch.js): the hour of the day, the cab's switches – so a replay shows the lights, wipers, heater and cooling the driver had –,
     the controls held now OR pressed since the last sample (input-bits.js – the replay's yellow input borders) and which road of a fork the truck is on
     (0 / 1 – net/network.js; 0 outside a fork; s and d are measured on that road). Append, never insert. */
 const sample = () => { const m = maskOf(rec.held) | rec.tapped; rec.tapped = 0; return [r(st.t, 2), r(st.s, 1), r(st.d, 2), r(st.psi, 3), r(st.v, 2), Math.round(st.rpm), st.gear, r(st.hull, 1), r(st.gas, 2), r(st.brake, 2), r(st.steer, 2), r(st.clutch, 2), ...rec.extra(), m, net.forkAt(st.s)?.choice ?? 0]; };
 /** the window lost focus: no key-up will come for what was held (ui/input.js) */
 export function releaseInputs() { rec.held.clear(); }
 /* set by ui/game.js (it can see the day/night, wiper and radio state; this module stays below world/ and cockpit/): [clock hour, FLAGS bitmask] */
-export const FLAGS = { engine: 1, key: 2, park: 4, head: 8, cab: 16, heater: 32, washing: 64, wipeSlow: 128, wipeFast: 256, radio: 512, rev: 1024 };
+export const FLAGS = { engine: 1, key: 2, park: 4, head: 8, cab: 16, heater: 32, washing: 64, wipeSlow: 128, wipeFast: 256, radio: 512, rev: 1024, cooler: 2048 };   // append bits; old recordings keep their meaning
 
 export function startTelemetry(rideId) {
   Object.assign(rec, { on: true, rideId, seq: 0, prevHash: rideId, t0: st.t, acc: 0, tacc: 0, wall0: performance.now(), held: new Set(), tapped: 0, samples: [], inputs: [], traffic: [], queue: [], sealing: Promise.resolve(), sending: null, refused: null });

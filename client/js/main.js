@@ -13,6 +13,7 @@ import * as spacing from './world/spacing.js';
 import { roads } from './net/orchestrator.js';
 import { net } from './net/network.js';
 import { drawCockpit } from './cockpit/index.js';
+import { screenClimate } from './cockpit/windscreen.js';
 import { uiBtns } from './cockpit/common.js';
 import * as inputBits from './input-bits.js';
 import { showMenu, startRide, resetRide } from './ui/game.js';
@@ -84,6 +85,6 @@ function devRun(id = '1h') {
   offlineRide.dev = true; setGuide({}); setTrip(id);
   CFG.RIDE_MIN_SECONDS = trip.seconds ?? shift0.s; CFG.COMPLETE_DIST = trip.seconds ? trip.k * CFG.MAX_SPEED * trip.seconds : shift0.d; resetRide();
 }
-window.__game = { devRun, forkRules: FORK, toggleMap, phone, guide, setGuide, hurt, trip, setTrip, offlineRide, audio, cosmetics, online, telemetry, prompt, watch, roadPlan, liveFeed, radio, roadObjects, chunks, spacing, roads, net, st, disp, CFG, input, tryShift, ignition, startRide, curv, spawn, traffic: cars, THEMES, ...(realRide ? {} : { selectTheme, setNight, setPhase, setClock }), dn, weather, uiBtns, inputBits, holes: { HOLES, holeAt, holesNear, clearHoleCache, plan, flagged } };   // handy for console debugging
+window.__game = { devRun, forkRules: FORK, toggleMap, phone, guide, setGuide, hurt, trip, setTrip, offlineRide, audio, cosmetics, online, telemetry, prompt, watch, roadPlan, liveFeed, radio, roadObjects, chunks, spacing, roads, net, st, disp, CFG, input, tryShift, ignition, startRide, curv, spawn, traffic: cars, THEMES, screenClimate, ...(realRide ? {} : { selectTheme, setNight, setPhase, setClock }), dn, weather, uiBtns, inputBits, holes: { HOLES, holeAt, holesNear, clearHoleCache, plan, flagged } };   // handy for console debugging
 
  
