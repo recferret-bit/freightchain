@@ -134,12 +134,13 @@ export class CreateRideHandler implements ICommandHandler<CreateRideCommand, Rid
     return facts.dto;
   }
 
-  /** Spends one ticket of the tier (the caller holds the player lock) and makes the ready ride in that ticket's pool. */
+  /** Spends one ticket of the tier (the caller holds the player lock) and makes the ready ride in that ticket's pool, on the POOL's seed: every rider of a pool
+      drives the same road (route, start hour, layout, holes), so they compete on one ride. */
   private async ticketRide(wallet: string, tier: PaidTierId, round: Round, now: Date, tx: TransactionHandle): Promise<Ride> {
     const rules = this.rules.get();
     const id = this.entropy.uuid();
-    const seed = this.entropy.seed31();
     const pool = await this.poolTickets.spendForRide(wallet, tier, id, now, tx);
+    const seed = pool.rideSeed;
     const timeScale = isDemoWallet(rules, wallet) ? demoScaleOf(rules) : 1;
     const minSeconds = rideTier(tier, rules.freeRideSeconds).seconds / timeScale;
     return Ride.createFromTicket({ id, wallet, tier, seed, minSeconds, timeScale, poolId: pool.id, roundId: pool.roundId ?? round.id, now });

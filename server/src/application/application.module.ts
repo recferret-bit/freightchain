@@ -80,6 +80,9 @@ import { GetPayoutTransactionsHandler } from './use-cases/pools/get-payout-trans
 import { SettleChainSignatureHandler } from './use-cases/chain/settle-chain-signature/settle-chain-signature.handler.js';
 import { ListPoolsHandler } from './use-cases/pools/list-pools/list-pools.handler.js';
 import { GetPrizePoolHandler } from './use-cases/pools/get-prize-pool/get-prize-pool.handler.js';
+import { GetPoolStandingsHandler } from './use-cases/pools/get-pool-standings/get-pool-standings.handler.js';
+import { HoldPoolPayoutHandler } from './use-cases/admin/hold-pool-payout/hold-pool-payout.handler.js';
+import { ListAdminPoolsHandler } from './use-cases/admin/list-admin-pools/list-admin-pools.handler.js';
 import { RedeemPromoHandler } from './use-cases/players/redeem-promo/redeem-promo.handler.js';
 
 import { CreateTicketOrderHandler } from './use-cases/tickets/create-ticket-order/create-ticket-order.handler.js';
@@ -94,6 +97,7 @@ import { FinalityService } from './services/finality.service.js';
 import { PollProgramHandler } from './use-cases/chain/poll-program/poll-program.handler.js';
 import { SyncPoolsHandler } from './use-cases/chain/sync-pools/sync-pools.handler.js';
 import { CrankPoolsHandler } from './use-cases/chain/crank-pools/crank-pools.handler.js';
+import { PayPoolsHandler } from './use-cases/chain/pay-pools/pay-pools.handler.js';
 import { ReceiveChainWebhookHandler } from './use-cases/chain/receive-chain-webhook/receive-chain-webhook.handler.js';
 import { RegisterPoolFromChainHandler } from './use-cases/pools/register-pool-from-chain/register-pool-from-chain.handler.js';
 import { AdjustFreeRidesHandler } from './use-cases/admin/adjust-free-rides/adjust-free-rides.handler.js';
@@ -124,14 +128,14 @@ const handlers: Provider[] = [
   GetLivenessHandler, GetReadinessHandler,
   GrantDailyFreeRidesHandler,
   RecordTelemetryHandler,
-  ListPoolsHandler, GetPrizePoolHandler, RedeemPromoHandler, GetMyPromosHandler, GetWardrobeHandler, EquipCosmeticHandler, GetGarageHandler, SaveGarageHandler,
+  ListPoolsHandler, GetPrizePoolHandler, GetPoolStandingsHandler, HoldPoolPayoutHandler, ListAdminPoolsHandler, RedeemPromoHandler, GetMyPromosHandler, GetWardrobeHandler, EquipCosmeticHandler, GetGarageHandler, SaveGarageHandler,
   CreateAdminPromoHandler, DisableAdminPromoHandler, ListPromoRedemptionsHandler,
   CreatePromoHandler, ListPromosHandler, DisablePromoHandler, GrantTicketsHandler, RegisterPoolHandler,
   CreateTicketOrderHandler, GetTicketOrderHandler, GetPendingTicketOrderHandler,
   SettleChainSignatureHandler, GetTicketPaymentHandler, ConfirmTicketOrderHandler,
   GetRefundTransactionHandler, GetPayoutTransactionsHandler,
   GetChainFeesHandler,
-  PollProgramHandler, SyncPoolsHandler, CrankPoolsHandler, ReceiveChainWebhookHandler, RegisterPoolFromChainHandler,
+  PollProgramHandler, SyncPoolsHandler, CrankPoolsHandler, PayPoolsHandler, ReceiveChainWebhookHandler, RegisterPoolFromChainHandler,
   AdjustFreeRidesHandler, GetSettingsHandler, UpdateSettingHandler, ClaimOfflineRideHandler, GetOfflineRidesHandler,
 ];
 

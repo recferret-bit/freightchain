@@ -14,6 +14,38 @@ pub struct Config {
     pub bump: u8,
     /// Two-step authority handover: set by `propose_authority`, consumed by `accept_authority`.
     pub pending_authority: Option<Pubkey>,
+    /// May pay prizes and close a pool once its `payout_at` has come (the server's payout key) – nothing else. None = only `authority`.
+    pub payout_authority: Option<Pubkey>,
+}
+
+/// One schedule per tier, written by the admin (`set_series`): every pool `open_next_pool` creates takes these rules. Pools tile time:
+/// the next one opens when this one stops selling (`next_open_at`), so a 24 h sale window = one pool a day.
+#[account]
+#[derive(InitSpace)]
+pub struct Series {
+    pub tier: u8,
+    pub enabled: bool,
+    pub price_lamports: u64,
+    pub min_tickets: u32,
+    /// 0 = unlimited
+    pub max_tickets: u32,
+    pub max_per_wallet: u16,
+    /// sale window = cadence (seconds)
+    pub sale_secs: i64,
+    /// after the sale ends, rides of the pool still count this long
+    pub play_secs: i64,
+    /// after the play deadline: the review window before any prize is paid
+    pub verify_secs: i64,
+    pub prize_bps: u16,
+    pub seed_bps: u16,
+    pub fee_bps: u16,
+    pub fee_treasury: Pubkey,
+    pub seed_treasury: Pubkey,
+    /// the start of the next sale slot; `open_next_pool` is refused before it
+    pub next_open_at: i64,
+    pub pools_opened: u32,
+    pub last_pool_id: Option<u32>,
+    pub bump: u8,
 }
 
 #[account]
@@ -30,6 +62,8 @@ pub struct Pool {
     pub max_per_wallet: u16,
     pub prep_deadline: i64,
     pub play_deadline: i64,
+    /// end of the review window: no prize is paid and the pool is not closed before it
+    pub payout_at: i64,
     pub prize_bps: u16,
     pub seed_bps: u16,
     pub fee_bps: u16,
@@ -75,6 +109,13 @@ pub fn split(total: u64, prize_bps: u16, seed_bps: u16) -> Result<(u64, u64, u64
         .and_then(|v| v.checked_sub(seed))
         .ok_or(PoolError::MathOverflow)?;
     Ok((prize, seed, fee))
+}
+
+impl Config {
+    /// The keys that may pay prizes and close an Active pool after its `payout_at`: the admin and, when set, the payout key.
+    pub fn may_settle(&self, key: &Pubkey) -> bool {
+        *key == self.authority || self.payout_authority.as_ref() == Some(key)
+    }
 }
 
 impl Pool {

@@ -74,6 +74,8 @@ export class EnvService {
   /** SECRETS – used only by the infrastructure that signs / authenticates; never copied into RulesConfig or logged. undefined = the feature is off. */
   get webhookSecret(): string | undefined { return this.env.WEBHOOK_SECRET; }
   get crankSecret(): string | undefined { return this.env.CRANK_SECRET; }
+  get payoutSecret(): string | undefined { return this.env.PAYOUT_SECRET; }
+  get payoutIntervalMs(): number { return this.env.PAYOUT_INTERVAL_MS; }
   get initialSeedLamports(): number { return Math.round(this.env.INITIAL_SEED_SOL * 1e9); }
   get verdictEnforce(): boolean { return this.env.VERDICT_ENFORCE; }
   get telemetryRetentionDays(): number { return this.env.TELEMETRY_RETENTION_DAYS; }

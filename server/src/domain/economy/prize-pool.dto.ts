@@ -1,7 +1,7 @@
 import type { RideTicket } from '../players/ride-ticket.entity.js';
 import type { TicketGrantProps, TicketSource } from '../players/ride-ticket.types.js';
 import type { Pool } from './pool.entity.js';
-import type { PoolStatus } from './pool.types.js';
+import type { PayoutState, PoolStatus } from './pool.types.js';
 
 /** An escrowed prize pool as the lobby and the landing show it ("7 / 10 committed"). Lamports are integers, timestamps epoch ms. */
 export interface PrizePoolDto {
@@ -22,8 +22,14 @@ export interface PrizePoolDto {
   toGo: number;
   /** sold / min, capped at 100 */
   progressPct: number;
+  /** the sale window ends here (open or active: no ticket is sold after it) */
   prepDeadline: number;
+  /** rides count until here */
   playDeadline: number;
+  /** the review window ends here: winners are paid from this moment (the program refuses any prize before it) */
+  payoutAt: number;
+  /** the payout job: state, why, and whether an admin holds it */
+  payout: { state: PayoutState; note: string | null; held: boolean };
   /** the escrow now: what the vault holds above its rent minimum */
   vaultLamports: number;
   sponsoredLamports: number;
@@ -39,7 +45,8 @@ export const toPrizePoolDto = (pool: Pool): PrizePoolDto => {
   return {
     id: s.id, address: s.address, tier: s.tier, label: s.label, status: s.status, priceLamports: s.priceLamports, minTickets: s.minTickets, maxTickets: s.maxTickets,
     maxPerWallet: s.maxPerWallet, sold: s.ticketsSold, buyers: s.buyers, toGo: pool.ticketsToGo, progressPct: pool.progress.pct,
-    prepDeadline: s.prepDeadline.getTime(), playDeadline: s.playDeadline.getTime(), vaultLamports: s.vaultLamports, sponsoredLamports: s.sponsored, potLamports: pool.pot,
+    prepDeadline: s.prepDeadline.getTime(), playDeadline: s.playDeadline.getTime(), payoutAt: s.payoutAt.getTime(),
+    payout: { state: s.payoutState, note: s.payoutNote, held: s.hold !== null }, vaultLamports: s.vaultLamports, sponsoredLamports: s.sponsored, potLamports: pool.pot,
     split: { prizeBps: s.prizeBps, seedBps: s.seedBps, feeBps: s.feeBps }, treasuries: { fee: s.feeTreasury, seed: s.seedTreasury }, roundId: s.roundId,
   };
 };

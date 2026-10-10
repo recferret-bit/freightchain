@@ -289,10 +289,11 @@ fn checked_maths_refuse_overflow_instead_of_wrapping() {
         p.sponsored = u64::MAX;
     });
     assert_err!(e.close_pool(id, &auth), PoolError::MathOverflow);
-    // play_deadline + SETTLE_GRACE_SECS past i64 (the grace is computed before the caller is checked)
+    // payout_at + SETTLE_GRACE_SECS past i64 (the grace is computed before the caller is checked)
     forge(&mut e, &|p| {
         p.sponsored = 0;
         p.play_deadline = i64::MAX - 10;
+        p.payout_at = i64::MAX - 10;
     });
     e.warp(i64::MAX - 5);
     let stranger = funded(&mut e.svm, SOL);

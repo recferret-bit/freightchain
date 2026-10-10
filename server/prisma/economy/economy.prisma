@@ -65,8 +65,9 @@ model Pool {
   minTickets    Int
   maxTickets    Int // 0 = unlimited
   maxPerWallet  Int
-  prepDeadline  DateTime // the minimum must be sold by then, else the pool fails
-  playDeadline  DateTime // entries and rides count until then
+  prepDeadline  DateTime // the sale window ends here (open or active); under the minimum the pool fails
+  playDeadline  DateTime // rides count until then
+  payoutAt      DateTime // the review window ends here: prizes and the close only from then on (the program enforces it)
   prizeBps      Int
   seedBps       Int
   feeBps        Int
@@ -78,15 +79,44 @@ model Pool {
   vaultLamports BigInt        @default(0) // the escrow: vault lamports above its rent-exempt minimum, sponsorships included
   sponsored     BigInt        @default(0)
   roundId       Int? // the weekly round it ranks in (set when it goes active)
+  rideSeed      Int // the road seed EVERY ride of this pool is driven on (31-bit, the server's own: drawn when the pool enters the mirror, never updated)
   round         Round?        @relation(fields: [roundId], references: [id])
   createdAt     DateTime
   syncedAt      DateTime?
+  payoutState   String        @default("pending") // the payout job: pending | waiting_review | held | paying | paid | no_winners | error
+  payoutNote    String?
+  holdBy        String? // an admin's signed hold on the payout (wallet), null = none
+  holdAt        DateTime?
+  holdNote      String?
+  payouts       PoolPayout[]
   tickets       RideTicket[]
   orders        TicketOrder[]
   rides         Ride[]
 
   @@index([status, prepDeadline])
   @@index([roundId])
+  @@schema("economy")
+}
+
+// One prize the server's payout job pays from a pool (the payout key signs pay_prize). The row is written BEFORE the transaction goes out: `planned` →
+// `sent` (signature + lastValidBlockHeight stored, then broadcast) → `paid` once confirmed. A crash after `sent` is resolved from the signature's status (landed =
+// paid, expired = planned again), never by sending blind – one prize per rank and per wallet.
+model PoolPayout {
+  poolId               Int
+  rank                 Int
+  wallet               String
+  lamports             BigInt
+  status               String // planned | sent | paid
+  signature            String?   @unique
+  lastValidBlockHeight Int?
+  attempts             Int       @default(0)
+  error                String?
+  createdAt            DateTime
+  updatedAt            DateTime
+  pool                 Pool      @relation(fields: [poolId], references: [id])
+
+  @@id([poolId, rank])
+  @@unique([poolId, wallet])
   @@schema("economy")
 }
 

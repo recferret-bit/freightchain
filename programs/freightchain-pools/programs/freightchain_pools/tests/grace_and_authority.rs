@@ -32,7 +32,7 @@ fn active(e: &mut Env) -> (u32, Vec<Keypair>) {
 // ---- 1. sponsorship follows the buy rules ------------------------------------------------------
 
 #[test]
-fn sponsor_open_pool_rejected_from_prep_deadline_active_until_play_deadline() {
+fn sponsor_rejected_from_prep_deadline_open_or_active() {
     let mut e = Env::new();
     let open = e.create_pool(default_params()); // min 3, stays Open
     let (act, _) = active(&mut e);
@@ -44,16 +44,13 @@ fn sponsor_open_pool_rejected_from_prep_deadline_active_until_play_deadline() {
     let i = e.sponsor_ix(open, &sp.pubkey(), 10);
     assert_err!(e.send(&[i], &sp, &[]), PoolError::TooLate);
     assert_eq!(e.pool(open).sponsored, 10);
-    // Active: accepted after prep_deadline, until play_deadline
-    let i = e.sponsor_ix(act, &sp.pubkey(), 10);
-    e.send(&[i], &sp, &[]).unwrap();
-    e.warp(PLAY - 1);
-    let i = e.sponsor_ix(act, &sp.pubkey(), 10);
-    e.send(&[i], &sp, &[]).unwrap();
-    e.warp(PLAY);
+    // Active: the sale window closed at prep_deadline for it too
     let i = e.sponsor_ix(act, &sp.pubkey(), 10);
     assert_err!(e.send(&[i], &sp, &[]), PoolError::TooLate);
-    assert_eq!(e.pool(act).sponsored, 20);
+    e.warp(PLAY - 1);
+    let i = e.sponsor_ix(act, &sp.pubkey(), 10);
+    assert_err!(e.send(&[i], &sp, &[]), PoolError::TooLate);
+    assert_eq!(e.pool(act).sponsored, 0);
 }
 
 // ---- 2. no admin needed after the grace -------------------------------------------------------------

@@ -47,6 +47,7 @@ pub fn handle_initialize(ctx: Context<Initialize>, authority: Pubkey, platform_t
     c.paused = false;
     c.bump = ctx.bumps.config;
     c.pending_authority = None;
+    c.payout_authority = None;
     Ok(())
 }
 
@@ -118,5 +119,21 @@ pub fn handle_accept_authority(ctx: Context<AcceptAuthority>) -> Result<()> {
     c.authority = pending;
     c.pending_authority = None;
     emit!(crate::events::AuthorityChanged { old_authority: old, new_authority: pending });
+    Ok(())
+}
+
+#[derive(Accounts)]
+pub struct SetPayoutAuthority<'info> {
+    pub authority: Signer<'info>,
+    #[account(mut, seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ PoolError::Unauthorized)]
+    pub config: Account<'info, Config>,
+}
+
+/// Admin: name (or clear, `None`) the payout key – the one key besides the admin that may `pay_prize` and `close_pool`, and only once a
+/// pool's review window is over. It can open, cancel or configure nothing.
+pub fn handle_set_payout_authority(ctx: Context<SetPayoutAuthority>, payout_authority: Option<Pubkey>) -> Result<()> {
+    require!(payout_authority != Some(Pubkey::default()), PoolError::InvalidParams);
+    ctx.accounts.config.payout_authority = payout_authority;
+    emit!(crate::events::PayoutAuthoritySet { authority: ctx.accounts.authority.key(), payout_authority });
     Ok(())
 }

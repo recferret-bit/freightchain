@@ -9,7 +9,8 @@ export const poolProps = (over: Partial<PoolProps> = {}, now = new Date(Date.UTC
   id: 1, address: `PoolPda${String(over.id ?? 1).padStart(37, '1')}`, tier: '1h', label: '1 HOUR · test', priceLamports: 50_000_000,
   minTickets: 2, maxTickets: 0, maxPerWallet: 5, prepDeadline: new Date(now.getTime() + 7 * DAY), playDeadline: new Date(now.getTime() + 14 * DAY),
   prizeBps: 7000, seedBps: 2000, feeBps: 1000, feeTreasury: 'FeeTreasury11111111111111111111111111111111', seedTreasury: 'SeedTreasury1111111111111111111111111111111',
-  status: 'open', ticketsSold: 0, buyers: 0, vaultLamports: 0, sponsored: 0, roundId: null, createdAt: now, syncedAt: null,
+  status: 'open', ticketsSold: 0, buyers: 0, vaultLamports: 0, sponsored: 0, roundId: null, rideSeed: 4242, createdAt: now, syncedAt: null,
+  payoutAt: over.playDeadline ?? new Date(now.getTime() + 14 * DAY), payoutState: 'pending', payoutNote: null, hold: null, // no review window unless a test sets one
   ...over,
 });
 
@@ -19,6 +20,6 @@ export const aPool = (over: Partial<PoolProps> = {}, now?: Date): Pool => Pool.r
 export const chainPool = (now: Date, over: Partial<PoolChainState> = {}): PoolChainState => ({
   poolId: 1, address: 'PoolPda1111111111111111111111111111111111111', status: 'open', ticketsSold: 3, buyers: 2, sponsored: 0, prizesPaid: 0, refunded: 0,
   vaultLamports: 890_880 + 150_000_000, escrowLamports: 150_000_000, vault: 'VaultPda', authority: 'Admin', tier: 1, priceLamports: 50_000_000, minTickets: 10, maxTickets: 0,
-  maxPerWallet: 5, prepDeadline: new Date(now.getTime() + 7 * DAY), playDeadline: new Date(now.getTime() + 14 * DAY), prizeBps: 7000, seedBps: 2000, feeBps: 1000,
-  feeTreasury: 'Fee', seedTreasury: 'Seed', createdAt: now, ...over,
+  maxPerWallet: 5, prepDeadline: new Date(now.getTime() + 7 * DAY), playDeadline: new Date(now.getTime() + 14 * DAY), payoutAt: over.playDeadline ?? new Date(now.getTime() + 14 * DAY),
+  prizeBps: 7000, seedBps: 2000, feeBps: 1000, feeTreasury: 'Fee', seedTreasury: 'Seed', createdAt: now, ...over,
 });

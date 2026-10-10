@@ -8,7 +8,7 @@ use {
         AccountDeserialize, AnchorDeserialize, Discriminator, Event, InstructionData, ToAccountMetas,
     },
     base64::Engine,
-    freightchain_pools::{accounts, instruction, Config, CreatePoolParams, Pool, Ticket},
+    freightchain_pools::{accounts, instruction, Config, CreatePoolParams, Pool, Series, SeriesParams, Ticket},
     litesvm::{
         types::{FailedTransactionMetadata, TransactionMetadata},
         LiteSVM,
@@ -26,6 +26,8 @@ pub const SOL: u64 = 1_000_000_000;
 pub const PRICE: u64 = 100_000_000; // 0.1 SOL
 pub const PREP: i64 = T0 + 1_000;
 pub const PLAY: i64 = T0 + 5_000;
+/// default pools have no review window (payout_at = play_deadline); the series tests use a real one
+pub const PAYOUT: i64 = PLAY;
 
 /// Anchor error number of a PoolError variant (6000 + index).
 pub fn code(e: freightchain_pools::error::PoolError) -> u32 {
@@ -93,6 +95,31 @@ pub fn pool_pda(id: u32) -> Pubkey {
 pub fn vault_pda(id: u32) -> Pubkey {
     Pubkey::find_program_address(&[b"vault", &id.to_le_bytes()], &pid()).0
 }
+pub fn series_pda(tier: u8) -> Pubkey {
+    Pubkey::find_program_address(&[b"series", &[tier]], &pid()).0
+}
+pub const HOUR: i64 = 3_600;
+pub const DAY: i64 = 86_400;
+
+/// The production 1 h schedule: a 24 h sale window (= one pool a day), rides count 2 h past it, a 48 h review window.
+pub fn daily_series(start_at: i64) -> SeriesParams {
+    SeriesParams {
+        tier: 1,
+        enabled: true,
+        price_lamports: PRICE,
+        min_tickets: 3,
+        max_tickets: 0,
+        max_per_wallet: 4,
+        sale_secs: DAY,
+        play_secs: 2 * HOUR,
+        verify_secs: 2 * DAY,
+        prize_bps: 7000,
+        seed_bps: 2000,
+        fee_bps: 1000,
+        start_at,
+    }
+}
+
 pub fn ticket_pda(id: u32, buyer: &Pubkey) -> Pubkey {
     Pubkey::find_program_address(&[b"ticket", pool_pda(id).as_ref(), buyer.as_ref()], &pid()).0
 }
@@ -110,6 +137,7 @@ pub fn default_params() -> CreatePoolParams {
         max_per_wallet: 4,
         prep_deadline: PREP,
         play_deadline: PLAY,
+        payout_at: PAYOUT,
         prize_bps: 6000,
         seed_bps: 2500,
         fee_bps: 1500,
@@ -425,6 +453,70 @@ impl Env {
         self.send(&[i], &c, &[who])
     }
 
+    pub fn series(&self, tier: u8) -> Option<Series> {
+        let a = self.svm.get_account(&series_pda(tier))?;
+        Some(Series::try_deserialize(&mut &a.data[..]).unwrap())
+    }
+
+    pub fn set_series_as(&mut self, who: &Keypair, p: SeriesParams, fee_t: Pubkey, seed_t: Pubkey) -> Res {
+        let c = clone_kp(&self.cranker);
+        let i = ix(
+            instruction::SetSeries { params: p.clone() },
+            accounts::SetSeries {
+                authority: who.pubkey(),
+                config: config_pda(),
+                series: series_pda(p.tier),
+                fee_treasury: fee_t,
+                seed_treasury: seed_t,
+                platform_treasury: self.plat_t.pubkey(),
+                system_program: system_program::ID,
+            },
+        );
+        self.send(&[i], &c, &[who])
+    }
+
+    pub fn set_series(&mut self, p: SeriesParams) -> Res {
+        let (a, f, s) = (self.authority_kp(), self.fee_t.pubkey(), self.seed_t.pubkey());
+        self.set_series_as(&a, p, f, s)
+    }
+
+    pub fn open_next_pool_ix(&self, tier: u8, caller: &Pubkey, fee_t: Pubkey, seed_t: Pubkey) -> Instruction {
+        let id = self.config().pool_count;
+        ix(
+            instruction::OpenNextPool { tier },
+            accounts::OpenNextPool {
+                caller: *caller,
+                config: config_pda(),
+                series: series_pda(tier),
+                pool: pool_pda(id),
+                vault: vault_pda(id),
+                fee_treasury: fee_t,
+                seed_treasury: seed_t,
+                platform_treasury: self.plat_t.pubkey(),
+                system_program: system_program::ID,
+            },
+        )
+    }
+
+    /// `caller` opens the tier's next pool (it pays the rents). Returns the pool id on success.
+    pub fn open_next_pool(&mut self, tier: u8, caller: &Keypair) -> Result<u32, FailedTransactionMetadata> {
+        let s = self.series(tier).expect("series");
+        let id = self.config().pool_count;
+        let i = self.open_next_pool_ix(tier, &caller.pubkey(), s.fee_treasury, s.seed_treasury);
+        self.send(&[i], caller, &[])?;
+        self.next_pool = id + 1;
+        Ok(id)
+    }
+
+    pub fn set_payout_authority(&mut self, who: &Keypair, payout: Option<Pubkey>) -> Res {
+        let c = clone_kp(&self.cranker);
+        let i = ix(
+            instruction::SetPayoutAuthority { payout_authority: payout },
+            accounts::SetPayoutAuthority { authority: who.pubkey(), config: config_pda() },
+        );
+        self.send(&[i], &c, &[who])
+    }
+
     pub fn authority_kp(&self) -> Keypair {
         clone_kp(&self.authority)
     }
@@ -471,5 +563,6 @@ pub fn later(e: &Env, mut p: CreatePoolParams) -> CreatePoolParams {
     let now = e.now();
     p.prep_deadline = now + 1_000;
     p.play_deadline = now + 5_000;
+    p.payout_at = now + 5_000;
     p
 }

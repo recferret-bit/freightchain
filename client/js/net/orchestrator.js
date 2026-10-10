@@ -22,7 +22,7 @@ class RoadOrchestrator {
   setTheme(theme) { net.setStyle(theme); net.reset(this.seed); clearHoleCache(); roadObjects.clear(); resetTraffic(); }   // (cars would otherwise sit on the old geometry in the menu preview)
   newTrip(seed) {
     this.seed = seed ?? (Math.random() * 4294967296 >>> 0);
-    net.reset(this.seed); clearHoleCache(); roadObjects.startTrip(); resetTraffic(); this.lastS = st.s;
+    net.reset(this.seed); clearHoleCache(); roadObjects.startTrip(); resetTraffic((this.seed ^ 0x9e3779b9) >>> 0); this.lastS = st.s;   // the traffic's own stream, from the road seed: riders of one pool start among the same cars
   }
   update(dt) {
     if (st.mode === 'drive') { if (!st.watch) net.clock += dt; this.redLight(); if (!st.watch) this.forkCommit(); }   // a replay sets the signal clock and the fork roads from the recording (watch.js)

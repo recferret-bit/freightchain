@@ -3,6 +3,7 @@ pub mod buy_ticket;
 pub mod create_pool;
 pub mod lifecycle;
 pub mod refund;
+pub mod series;
 pub mod settle;
 pub mod sponsor;
 
@@ -11,5 +12,6 @@ pub use buy_ticket::*;
 pub use create_pool::*;
 pub use lifecycle::*;
 pub use refund::*;
+pub use series::*;
 pub use settle::*;
 pub use sponsor::*;

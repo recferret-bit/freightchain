@@ -16,4 +16,14 @@ describe('PoolRegistryService', () => {
     ctx.poolChain.pools.set(1, chainPool(ctx.now(), { status: 'active', ticketsSold: 11 }));
     expect((await ctx.registry.syncFromChain(1))?.snapshot()).toMatchObject({ label: 'mine', roundId: 4, status: 'active', ticketsSold: 11 });
   });
+
+  it('a pool seen for the first time draws its ride seed once; every re-sync keeps it', async () => {
+    const ctx = unitContext();
+    ctx.poolChain.pools.set(1, chainPool(ctx.now()));
+    const seed = (await ctx.registry.syncFromChain(1))?.rideSeed;
+    expect(seed).toEqual(expect.any(Number));
+    ctx.poolChain.pools.set(1, chainPool(ctx.now(), { status: 'active', ticketsSold: 11 }));
+    expect((await ctx.registry.syncFromChain(1))?.rideSeed).toBe(seed);
+    expect((await ctx.pools.findById(1))?.rideSeed).toBe(seed);
+  });
 });

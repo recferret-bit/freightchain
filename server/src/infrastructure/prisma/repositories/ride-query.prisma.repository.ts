@@ -111,6 +111,14 @@ export class RideQueryPrismaRepository extends RideQueryPort {
     return this.ranked({ poolId, ...(verifiedOnly ? VERIFIED : {}) }, limit);
   }
 
+  async poolUnreviewed(poolId: number, limit: number): Promise<{ id: string; wallet: string; verdict: string | null }[]> {
+    const rows = await this.prisma.ride.findMany({
+      where: { poolId, status: 'completed', OR: [{ verdict: { is: null } }, { verdict: { is: { status: { not: 'verified' }, overriddenBy: null } } }] },
+      orderBy: [{ endedAt: 'asc' }, { seq: 'asc' }], take: limit, include: { verdict: { select: { status: true } } },
+    });
+    return rows.map((r) => ({ id: r.id, wallet: r.wallet, verdict: r.verdict?.status ?? null }));
+  }
+
   async forRejudge(f: RejudgeFilter): Promise<{ id: string; verdict: string | null }[]> {
     const byVerdict: Prisma.RideWhereInput = f.verdict === 'all' ? {} : f.verdict === 'unjudged' ? { verdict: { is: null } } : { verdict: { is: { status: f.verdict } } };
     const rows = await this.prisma.ride.findMany({

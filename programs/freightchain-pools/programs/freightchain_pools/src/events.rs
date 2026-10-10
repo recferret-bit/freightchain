@@ -13,11 +13,39 @@ pub struct PoolCreated {
     pub max_per_wallet: u16,
     pub prep_deadline: i64,
     pub play_deadline: i64,
+    pub payout_at: i64,
     pub prize_bps: u16,
     pub seed_bps: u16,
     pub fee_bps: u16,
     pub fee_treasury: Pubkey,
     pub seed_treasury: Pubkey,
+    /// true = opened by `open_next_pool` from the tier's series, false = `create_pool` by the admin
+    pub from_series: bool,
+}
+
+#[event]
+pub struct SeriesSet {
+    pub tier: u8,
+    pub enabled: bool,
+    pub price_lamports: u64,
+    pub min_tickets: u32,
+    pub max_tickets: u32,
+    pub max_per_wallet: u16,
+    pub sale_secs: i64,
+    pub play_secs: i64,
+    pub verify_secs: i64,
+    pub prize_bps: u16,
+    pub seed_bps: u16,
+    pub fee_bps: u16,
+    pub fee_treasury: Pubkey,
+    pub seed_treasury: Pubkey,
+    pub next_open_at: i64,
+}
+
+#[event]
+pub struct PayoutAuthoritySet {
+    pub authority: Pubkey,
+    pub payout_authority: Option<Pubkey>,
 }
 
 #[event]

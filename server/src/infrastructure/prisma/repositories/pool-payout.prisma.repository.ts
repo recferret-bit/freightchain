@@ -1,0 +1,60 @@
+import { Injectable } from '@nestjs/common';
+import type { PoolPayout as PoolPayoutRow } from '@prisma/client';
+import type { PlannedPayout, PoolPayoutRecord, PoolPayoutStatus } from '../../../domain/economy/pool-payout.js';
+import { PoolPayoutRepositoryPort } from '../../../application/ports/economy/pool-payout.repository.port.js';
+import type { TransactionHandle } from '../../../application/ports/shared/transaction.port.js';
+import { clientFor } from '../prisma-client.js';
+import { PrismaService } from '../prisma.service.js';
+
+const toRecord = (r: PoolPayoutRow): PoolPayoutRecord => ({
+  poolId: r.poolId, rank: r.rank, wallet: r.wallet, lamports: Number(r.lamports), status: r.status as PoolPayoutStatus, signature: r.signature,
+  lastValidBlockHeight: r.lastValidBlockHeight, attempts: r.attempts, error: r.error, createdAt: r.createdAt, updatedAt: r.updatedAt,
+});
+
+@Injectable()
+export class PoolPayoutPrismaRepository extends PoolPayoutRepositoryPort {
+  constructor(private readonly prisma: PrismaService) {
+    super();
+  }
+
+  async listByPool(poolId: number, tx?: TransactionHandle): Promise<PoolPayoutRecord[]> {
+    return (await clientFor(this.prisma, tx).poolPayout.findMany({ where: { poolId }, orderBy: { rank: 'asc' } })).map(toRecord);
+  }
+
+  async plan(rows: PlannedPayout[], now: Date, tx?: TransactionHandle): Promise<void> {
+    if (!rows.length) return;
+    await clientFor(this.prisma, tx).poolPayout.createMany({
+      data: rows.map((r) => ({ poolId: r.poolId, rank: r.rank, wallet: r.wallet, lamports: BigInt(r.lamports), status: r.status, createdAt: now, updatedAt: now })),
+      skipDuplicates: true, // ON CONFLICT DO NOTHING – either unique key ((pool, rank) or (pool, wallet))
+    });
+  }
+
+  async claimSent(poolId: number, rank: number, signature: string, lastValidBlockHeight: number, now: Date, tx?: TransactionHandle): Promise<boolean> {
+    const r = await clientFor(this.prisma, tx).poolPayout.updateMany({
+      where: { poolId, rank, status: 'planned' },
+      data: { status: 'sent', signature, lastValidBlockHeight, attempts: { increment: 1 }, error: null, updatedAt: now },
+    });
+    return r.count === 1;
+  }
+
+  async markPaid(poolId: number, rank: number, signature: string, now: Date, tx?: TransactionHandle): Promise<boolean> {
+    const r = await clientFor(this.prisma, tx).poolPayout.updateMany({ where: { poolId, rank, status: 'sent', signature }, data: { status: 'paid', error: null, updatedAt: now } });
+    return r.count === 1;
+  }
+
+  async release(poolId: number, rank: number, signature: string, error: string, now: Date, tx?: TransactionHandle): Promise<boolean> {
+    const r = await clientFor(this.prisma, tx).poolPayout.updateMany({
+      where: { poolId, rank, status: 'sent', signature }, data: { status: 'planned', signature: null, lastValidBlockHeight: null, error, updatedAt: now },
+    });
+    return r.count === 1;
+  }
+
+  async markPaidElsewhere(poolId: number, rank: number, now: Date, tx?: TransactionHandle): Promise<boolean> {
+    const r = await clientFor(this.prisma, tx).poolPayout.updateMany({ where: { poolId, rank, status: 'planned' }, data: { status: 'paid', error: 'paid outside the payout job', updatedAt: now } });
+    return r.count === 1;
+  }
+
+  async noteError(poolId: number, rank: number, error: string, now: Date, tx?: TransactionHandle): Promise<void> {
+    await clientFor(this.prisma, tx).poolPayout.updateMany({ where: { poolId, rank }, data: { error: error.slice(0, 500), updatedAt: now } });
+  }
+}

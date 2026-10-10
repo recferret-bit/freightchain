@@ -11,8 +11,9 @@ use crate::{
 #[derive(Accounts)]
 #[instruction(pool_id: u32)]
 pub struct PayPrize<'info> {
+    /// `config.authority` or `config.payout_authority`
     pub authority: Signer<'info>,
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ PoolError::Unauthorized)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
     pub config: Account<'info, Config>,
     #[account(mut, seeds = [POOL_SEED, &pool_id.to_le_bytes()], bump = pool.bump)]
     pub pool: Account<'info, Pool>,
@@ -28,8 +29,10 @@ pub struct PayPrize<'info> {
 pub fn handle_pay_prize(mut ctx: Context<PayPrize>, pool_id: u32, lamports: u64, rank: u8) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
     let a = &mut ctx.accounts;
+    require!(a.config.may_settle(&a.authority.key()), PoolError::Unauthorized);
     require!(a.pool.status == STATUS_ACTIVE, PoolError::PoolNotActive);
-    require!(now >= a.pool.play_deadline, PoolError::TooEarly);
+    // nobody pays before the review window is over – not even the admin: the window is what lets anyone check the winners first
+    require!(now >= a.pool.payout_at, PoolError::TooEarly);
     require!(lamports > 0, PoolError::InvalidParams);
     let paid = a.pool.prizes_paid.checked_add(lamports).ok_or(PoolError::MathOverflow)?;
     require!(paid <= a.pool.prize_share()?, PoolError::PrizeExceedsShare);
@@ -54,7 +57,7 @@ pub fn handle_pay_prize(mut ctx: Context<PayPrize>, pool_id: u32, lamports: u64,
 #[derive(Accounts)]
 #[instruction(pool_id: u32)]
 pub struct ClosePool<'info> {
-    /// `config.authority` while the settle grace runs; anyone after it, and anyone for a fully refunded pool.
+    /// `config.authority` / `config.payout_authority` from `payout_at`; anyone after the settle grace; anyone for a fully refunded pool.
     pub caller: Signer<'info>,
     /// CHECK: the pool's creator (`pool.authority`); receives the vault's rent-exempt minimum back (it funded it)
     #[account(mut, address = pool.authority @ PoolError::AccountMismatch)]
@@ -85,12 +88,12 @@ pub fn handle_close_pool(mut ctx: Context<ClosePool>, pool_id: u32) -> Result<()
     let min = rent_min()?;
     let cancelled = match a.pool.status {
         STATUS_ACTIVE => {
-            require!(now >= a.pool.play_deadline, PoolError::TooEarly);
-            let grace_end = a.pool.play_deadline.checked_add(SETTLE_GRACE_SECS).ok_or(PoolError::MathOverflow)?;
-            // The authority settles any time after play_deadline. Anyone else only after the grace, and only
-            // if prizes were paid: with prizes_paid == 0 the whole prize share would be swept to the
+            require!(now >= a.pool.payout_at, PoolError::TooEarly);
+            let grace_end = a.pool.payout_at.checked_add(SETTLE_GRACE_SECS).ok_or(PoolError::MathOverflow)?;
+            // The admin or the payout key settles any time after the review window. Anyone else only after the grace, and
+            // only if prizes were paid: with prizes_paid == 0 the whole prize share would be swept to the
             // (operator-controlled) seed treasury as "unclaimed", so that pool must go expire_pool -> refunds.
-            if a.caller.key() != a.config.authority {
+            if !a.config.may_settle(&a.caller.key()) {
                 require!(now >= grace_end, PoolError::Unauthorized);
                 require!(a.pool.prizes_paid > 0, PoolError::MustExpire);
             }

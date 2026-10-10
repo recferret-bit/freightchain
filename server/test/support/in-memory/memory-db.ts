@@ -28,6 +28,8 @@ export class MemoryDb {
   payments: Payment[] = [];
   unlocks: AchievementUnlock[] = [];
   pools = new Map<number, PoolProps>();
+  /** the payout ledger, key `${poolId}|${rank}` */
+  poolPayouts = new Map<string, import('../../../src/domain/economy/pool-payout.js').PoolPayoutRecord>();
   /** key `${wallet}|${poolId}` */
   tickets = new Map<string, RideTicketProps>();
   grants: TicketGrantProps[] = [];

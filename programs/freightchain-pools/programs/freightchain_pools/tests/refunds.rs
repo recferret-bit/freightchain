@@ -43,6 +43,7 @@ fn fail_pool_conditions() {
     let id2 = e.create_pool(default_params().with(|x| {
         x.prep_deadline = PREP + 10;
         x.play_deadline = PLAY + 10;
+        x.payout_at = PLAY + 10;
     }));
     let a = funded(&mut e.svm, 10 * SOL);
     e.buy(id2, &a, 3).unwrap();

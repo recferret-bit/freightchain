@@ -11,8 +11,8 @@ import { ClockPort } from '../../../ports/shared/clock.port.js';
 import { GetPayoutTransactionsQuery, type PayoutTransactionsDto, type PayoutTxDto } from './get-payout-transactions.query.js';
 
 /**
- * Admin only (the wallet in TREASURY_PUBKEY – the program's authority): the payouts of an active pool after its play deadline, ranked by the completed (and,
- * with VERDICT_ENFORCE, verified) rides paid with its tickets (top 3 25 / 15 / 10 parts of 70, top 20 share 20 parts – domain/economy/pool-payouts.ts), as unsigned pay_prize transactions the admin
+ * Admin only (the wallet in TREASURY_PUBKEY – the program's authority): the payouts of an active pool after its review window (payout_at – the program refuses
+ * any prize before it), ranked by the VERIFIED completed rides paid with its tickets (always – shadow mode is for the public boards, never for money) (top 3 25 / 15 / 10 parts of 70, top 20 share 20 parts – domain/economy/pool-payouts.ts), as unsigned pay_prize transactions the admin
  * signs in Phantom (the admin pays their fee). Ranks already paid on chain are left out; close_pool follows once none is left. The server holds no key.
  */
 @QueryHandler(GetPayoutTransactionsQuery)
@@ -31,10 +31,10 @@ export class GetPayoutTransactionsHandler implements IQueryHandler<GetPayoutTran
     const pool = await this.pools.findById(poolId);
     if (!pool) throw new NotFoundError('no such pool');
     if (!pool.isActive) throw new ConflictError(`this pool is ${pool.status} – only a live pool pays prizes`, 'not_payable');
-    if (this.clock.now().getTime() < pool.playDeadline.getTime()) throw new ConflictError('prizes are paid after the play deadline', 'too_early');
+    if (this.clock.now().getTime() < pool.payoutAt.getTime()) throw new ConflictError('prizes are paid after the review window', 'too_early');
     const s = pool.snapshot();
     const prizeLamports = prizeBound({ priceLamports: s.priceLamports, ticketsSold: s.ticketsSold, sponsored: s.sponsored, prizeBps: s.prizeBps, seedBps: s.seedBps });
-    const ranking = await this.rides.poolRanking(poolId, TOP20_SIZE, this.rules.get().verdictEnforce); // verified recordings only, unless shadow mode
+    const ranking = await this.rides.poolRanking(poolId, TOP20_SIZE, true); // verified recordings only – money never follows shadow mode
     const paidTo = new Set((await this.events.recentOfPool(poolId, 500)).filter((e) => e.kind === 'PrizePaid' && e.wallet).map((e) => e.wallet as string));
     const amounts = new Map(poolPayouts(prizeLamports, ranking.map((r) => r.wallet)).map((p) => [p.wallet, p.lamports]));
     const ranks = ranking.map((r, i) => ({ rank: i + 1, wallet: r.wallet, distance: Math.round(r.distance), rides: r.rides, lamports: amounts.get(r.wallet) ?? 0, paid: paidTo.has(r.wallet) }));

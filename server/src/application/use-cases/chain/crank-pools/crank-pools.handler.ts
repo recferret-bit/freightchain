@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { CommandBus, CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import type { PoolChainState } from '../../../../domain/economy/chain-events.js';
-import { REFUND_BATCH, nextCrankStep, type CrankStep } from '../../../../domain/economy/pool-crank.js';
+import { REFUND_BATCH, nextCrankStep, seriesDue, type CrankStep } from '../../../../domain/economy/pool-crank.js';
 import { PoolChainPort } from '../../../ports/economy/pool-chain.port.js';
 import { PoolCrankChainPort, type ChainTicket } from '../../../ports/economy/pool-crank-chain.port.js';
 import { SettleChainSignatureCommand, type SettledSignatureDto } from '../settle-chain-signature/settle-chain-signature.command.js';
@@ -11,7 +11,8 @@ import { CrankPoolsCommand, type CrankActionDto, type CrankPassDto } from './cra
 const MAX_STEPS_PER_POOL = 200;
 
 /**
- * One crank pass: for every pool on chain (not only the mirror – the chain wins), by the CHAIN clock, send the next permissionless step (nextCrankStep) and
+ * One crank pass. First the SCHEDULE: each tier whose series slot has come (seriesDue, by the chain clock) gets its next pool (`open_next_pool` – the crank
+ * key pays the new pool's rents; the vault minimum comes back at close); the settled PoolCreated registers it in the mirror. Then for every pool on chain (not only the mirror – the chain wins), by the CHAIN clock, send the next permissionless step (nextCrankStep) and
  * read the pool again, until nothing is left or a step fails (the next pass retries it). Each signature is settled at once (SettleChainSignatureCommand), so the
  * mirror – pool status, refunded tickets – follows without waiting for the watcher. No player row lock here: settling takes the locks it needs; the program
  * makes every step idempotent (a refund that raced the player's own CLAIM REFUND fails as a whole and the next pass rebuilds the batch from the tickets left).
@@ -31,9 +32,32 @@ export class CrankPoolsHandler implements ICommandHandler<CrankPoolsCommand, Cra
     if (!address) return { enabled: false, crank: null, chainNow: null, actions: [] };
     const now = await this.crank.chainNow();
     const actions: CrankActionDto[] = [];
+    await this.openDuePools(now, actions);
     for (const pool of await this.crank.listPools()) await this.crankPool(pool, now, actions);
     if (actions.length) this.log.log(`crank: ${actions.map((a) => `${a.step} #${a.poolId}${a.error ? ` ✗ ${a.error}` : ''}`).join(', ')}`);
     return { enabled: true, crank: address, chainNow: now.getTime(), actions };
+  }
+
+  /** one open_next_pool per due series (a failure is reported and retried next pass; it never stops the pool steps); returns how many pools it opened */
+  private async openDuePools(now: Date, actions: CrankActionDto[]): Promise<number> {
+    let series;
+    try { series = await this.crank.listSeries(); } catch (error) {
+      actions.push({ ...failed(-1, 'open_next_pool', `reading the series failed: ${error instanceof Error ? error.message : String(error)}`) });
+      return 0;
+    }
+    let opened = 0;
+    for (const s of series.filter((x) => seriesDue(x, now))) {
+      try {
+        const { signature } = await this.crank.send({ step: 'open_next_pool', poolId: -1, tier: s.tier });
+        const settled = await this.commands.execute<SettleChainSignatureCommand, SettledSignatureDto>(new SettleChainSignatureCommand(signature));
+        const poolId = settled.events.find((e) => e.kind === 'PoolCreated')?.poolId ?? -1;
+        actions.push({ poolId, tier: s.tier, step: 'open_next_pool', signature, tickets: 0, settled: settled.status, error: null });
+        opened++;
+      } catch (error) {
+        actions.push({ ...failed(-1, 'open_next_pool', error instanceof Error ? error.message : String(error)), tier: s.tier });
+      }
+    }
+    return opened;
   }
 
   /** the steps for one pool until nothing is left or one fails; returns how many were sent */

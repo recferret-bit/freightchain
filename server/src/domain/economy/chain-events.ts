@@ -5,7 +5,7 @@ import type { PaidTierId } from '../rides/ride-tier.js';
    (infrastructure/solana/program-chain.adapter.ts) decodes into these, its spec decodes real LiteSVM logs (server/test/fixtures/chain/).
    Types: u8/u16/u32 → number; u64 lamports → number, decoded exactly through BigInt – a value above Number.MAX_SAFE_INTEGER (≈ 9 million SOL, unreachable for a pool)
    makes the transaction `{ invalid }` instead of being rounded; i64 unix seconds → Date; Pubkey → base58; order_id [u8; 16] → the uuid string (lowercase, 8-4-4-4-12).
-   AuthorityProposed / AuthorityChanged are program events too, but not POOL events: the decoder skips them (they still occupy their `index`). */
+   AuthorityProposed / AuthorityChanged / SeriesSet / PayoutAuthoritySet are program events too, but not POOL events: the decoder skips them (they still occupy their `index`). */
 
 export const CHAIN_EVENT_KINDS = ['PoolCreated', 'TicketBought', 'PoolActivated', 'Sponsored', 'PoolFailed', 'PoolCancelled', 'PoolExpired', 'Refunded', 'PrizePaid', 'PoolClosed'] as const;
 export type ChainEventKind = (typeof CHAIN_EVENT_KINDS)[number];
@@ -38,11 +38,14 @@ export interface PoolCreatedFields {
   maxPerWallet?: number;
   prepDeadline?: Date;
   playDeadline?: Date;
+  payoutAt?: Date;
   prizeBps?: number;
   seedBps?: number;
   feeBps?: number;
   feeTreasury?: string;
   seedTreasury?: string;
+  /** opened by `open_next_pool` from the tier's series (else `create_pool` by the admin) */
+  fromSeries?: boolean;
 }
 
 /* The *Total fields are running totals kept by the program: replaying an event that carries one is harmless, which is what lets the mirror recompute its balances instead of adding. */
@@ -113,10 +116,37 @@ export interface PoolChainState {
   maxPerWallet: number;
   prepDeadline: Date;
   playDeadline: Date;
+  /** the end of the review window – prizes and the close only from here on */
+  payoutAt: Date;
   prizeBps: number;
   seedBps: number;
   feeBps: number;
   feeTreasury: string;
   seedTreasury: string;
   createdAt: Date;
+}
+
+/** A tier's schedule as read from chain (the program's Series account, written by the admin's `set_series`). Pools tile time: the next one may be opened by
+    anyone (the crank) from `nextOpenAt` on, on the grid `nextOpenAt + k × saleSecs`. */
+export interface SeriesChainState {
+  address: string;
+  /** the tier byte – see CHAIN_TIER_CODES */
+  tier: number;
+  enabled: boolean;
+  priceLamports: number;
+  minTickets: number;
+  maxTickets: number;
+  maxPerWallet: number;
+  /** sale window = cadence */
+  saleSecs: number;
+  playSecs: number;
+  verifySecs: number;
+  prizeBps: number;
+  seedBps: number;
+  feeBps: number;
+  feeTreasury: string;
+  seedTreasury: string;
+  nextOpenAt: Date;
+  poolsOpened: number;
+  lastPoolId: number | null;
 }

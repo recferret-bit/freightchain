@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Pool as PoolRow, Prisma } from '@prisma/client';
 import type { Pool } from '../../../domain/economy/pool.entity.js';
+import type { PayoutState, PoolHold } from '../../../domain/economy/pool.types.js';
 import type { PaidTierId } from '../../../domain/rides/ride-tier.js';
 import { PoolRepositoryPort } from '../../../application/ports/economy/pool.repository.port.js';
 import type { TransactionHandle } from '../../../application/ports/shared/transaction.port.js';
@@ -54,9 +55,29 @@ export class PoolPrismaRepository extends PoolRepositoryPort {
     return rows.map(PoolMapper.toDomain);
   }
 
+  async listSettled(limit: number, tx?: TransactionHandle): Promise<Pool[]> {
+    const rows = await clientFor(this.prisma, tx).pool.findMany({ where: { status: 'settled' }, orderBy: [{ payoutAt: 'desc' }, { id: 'desc' }], take: limit });
+    return rows.map(PoolMapper.toDomain);
+  }
+
+  async listPayable(now: Date, tx?: TransactionHandle): Promise<Pool[]> {
+    const rows = await clientFor(this.prisma, tx).pool.findMany({ where: { status: 'active', payoutAt: { lte: now } }, orderBy: [{ payoutAt: 'asc' }, { id: 'asc' }] });
+    return rows.map(PoolMapper.toDomain);
+  }
+
   async upsert(pool: Pool, tx?: TransactionHandle): Promise<void> {
     const data = PoolMapper.toData(pool);
-    const { id, ...update } = data;
+    // the ride seed is written with the row and never again: two first syncs racing must not leave the pool's riders on two roads; the payout state and the
+    // admin's hold are the server's own and change only through savePayout / saveHold (a sync holding a stale copy must not erase a hold)
+    const { id, rideSeed: _set_once, payoutState: _p, payoutNote: _n, holdBy: _hb, holdAt: _ha, holdNote: _hn, ...update } = data;
     await clientFor(this.prisma, tx).pool.upsert({ where: { id }, create: data, update });
+  }
+
+  async savePayout(poolId: number, state: PayoutState, note: string | null, tx?: TransactionHandle): Promise<void> {
+    await clientFor(this.prisma, tx).pool.update({ where: { id: poolId }, data: { payoutState: state, payoutNote: note } });
+  }
+
+  async saveHold(poolId: number, hold: PoolHold | null, tx?: TransactionHandle): Promise<void> {
+    await clientFor(this.prisma, tx).pool.update({ where: { id: poolId }, data: { holdBy: hold?.by ?? null, holdAt: hold?.at ?? null, holdNote: hold?.note ?? null } });
   }
 }

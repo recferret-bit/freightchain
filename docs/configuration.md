@@ -124,6 +124,8 @@ Enforced by the server (a refused post is `403 live_feature_off`) and sent to th
 | `CRANK_SECRET` | unset | **Secret** base58 keypair (or `solana-keygen` JSON array) paying the fees of the pool crank: `fail_pool`, `expire_pool`, refunds (8 per tx), `close_pool` of a refunded pool. Fee money only; unset = no crank (players still CLAIM REFUND from their wallet) |
 | `REDIS_URL` | unset | `redis://[:password@]host:6379` – the cache behind `GET /api/stats`, the landing's all-time totals and the profile's driving record (docs/statistics.md). Unset = an in-process cache (dev, tests). Production compose runs a `redis` service and sets it to `redis://redis:6379`. A Redis that is down is a cache miss, never an error |
 | `CRANK_INTERVAL_MS` | `60000` | The crank's schedule (with `CRANK_SECRET` and a program); `0` = only `node dist/cli/index.js pool:crank` |
+| `PAYOUT_SECRET` | unset | **Secret** base58 keypair (or `solana-keygen` JSON array) the admin names on chain as `Config.payout_authority` (`pool-admin.mjs set-payout-authority`). After a pool's review window it pays the ranked prizes and closes the pool; it can do nothing else and pays only its own fees. Unset = no automatic payouts (the admin pays from the admin page) |
+| `PAYOUT_INTERVAL_MS` | `300000` | The payout job's schedule (with `PAYOUT_SECRET` and a program); `0` = only `node dist/cli/index.js pool:payout` |
 | `PRIORITY_FEE_PERCENTILE` / `_MIN_MICROLAMPORTS` / `_MAX_MICROLAMPORTS` | `75` / `0` / `50000` | Min ≤ max. Use min `1000` on mainnet |
 
 ### Admin
@@ -216,4 +218,4 @@ npm run server:dev                   # :3000 – site, game and API on one origi
 ## Known drift
 
 - `POSTHOG_*` in the gitignored env files is intentional and the two files differ. Local `server/.env` pins `POSTHOG_ENABLED=0` (the local compose file is Postgres only and must not turn capture on). Production `deploy/.env` sets `POSTHOG_ENABLED=1`, EU host, project 297915, token not tracked. The live site sends when the running image includes this code. Do not point the host at `us.i.posthog.com`. Do not delete the keys to “clean up”. `POSTHOG_DISABLED=1` still wins.
-- `deploy/.env.example` omits `CRANK_SECRET` / `POSTHOG_KEY` real values on purpose (dummies and an empty token) and does not list `COOKIE_DOMAIN` / `CORS_ORIGINS` / `APP_*` (derived).
+- `deploy/.env.example` omits `CRANK_SECRET` / `PAYOUT_SECRET` / `POSTHOG_KEY` real values on purpose (dummies and an empty token) and does not list `COOKIE_DOMAIN` / `CORS_ORIGINS` / `APP_*` (derived).

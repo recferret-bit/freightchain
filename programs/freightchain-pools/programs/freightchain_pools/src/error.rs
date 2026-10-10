@@ -50,4 +50,6 @@ pub enum PoolError {
     NoPendingAuthority,
     #[msg("No prize was paid: an unsettled pool must be expired and refunded, not closed")]
     MustExpire,
+    #[msg("This pool series is switched off")]
+    SeriesDisabled,
 }

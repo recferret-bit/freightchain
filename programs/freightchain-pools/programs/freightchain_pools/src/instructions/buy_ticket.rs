@@ -46,9 +46,8 @@ pub fn handle_buy_ticket(ctx: Context<BuyTicket>, pool_id: u32, qty: u16, order_
         pool.status == STATUS_OPEN || pool.status == STATUS_ACTIVE,
         PoolError::PoolNotOpen
     );
-    require!(now < pool.play_deadline, PoolError::TooLate);
-    // An Open pool past its prep deadline is below the minimum by construction: it can only fail now.
-    require!(pool.status != STATUS_OPEN || now < pool.prep_deadline, PoolError::TooLate);
+    // The sale window closes for everyone at prep_deadline: an Active pool's rides are under way, an Open one under its minimum can only fail.
+    require!(now < pool.prep_deadline, PoolError::TooLate);
 
     let sold = pool.tickets_sold.checked_add(qty as u32).ok_or(PoolError::MathOverflow)?;
     require!(pool.max_tickets == 0 || sold <= pool.max_tickets, PoolError::SoldOut);

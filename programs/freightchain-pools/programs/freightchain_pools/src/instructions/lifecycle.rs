@@ -55,12 +55,12 @@ pub struct ExpirePool<'info> {
     pub pool: Account<'info, Pool>,
 }
 
-/// Active, `now >= play_deadline + SETTLE_GRACE_SECS`, no prize paid -> Refunding (every ticket back in full).
+/// Active, `now >= payout_at + SETTLE_GRACE_SECS`, no prize paid -> Refunding (every ticket back in full).
 pub fn handle_expire_pool(ctx: Context<ExpirePool>, pool_id: u32) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
     let pool = &mut ctx.accounts.pool;
     require!(pool.status == STATUS_ACTIVE, PoolError::PoolNotActive);
-    let grace_end = pool.play_deadline.checked_add(SETTLE_GRACE_SECS).ok_or(PoolError::MathOverflow)?;
+    let grace_end = pool.payout_at.checked_add(SETTLE_GRACE_SECS).ok_or(PoolError::MathOverflow)?;
     require!(now >= grace_end, PoolError::TooEarly);
     require!(pool.prizes_paid == 0, PoolError::PrizesAlreadyPaid);
     pool.status = STATUS_REFUNDING;

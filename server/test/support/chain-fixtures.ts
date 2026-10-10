@@ -13,7 +13,7 @@ export interface PoolProgramFixture {
   programId: string;
   rentMin: string;
   configAddress: string;
-  keys: Record<'authority' | 'cranker' | 'a' | 'b' | 'c' | 'd' | 'gas' | 'brand' | 'winner' | 'nextAdmin' | 'feeTreasury' | 'seedTreasury' | 'platformTreasury', string>;
+  keys: Record<'authority' | 'cranker' | 'a' | 'b' | 'c' | 'd' | 'gas' | 'brand' | 'winner' | 'nextAdmin' | 'payout' | 'feeTreasury' | 'seedTreasury' | 'platformTreasury', string>;
   transactions: FixtureTx[];
   accounts: FixtureAccount[];
 }
@@ -40,7 +40,7 @@ export function expectedEvent(e: FixtureEvent): Record<string, unknown> {
     if (k === 'orderId') {
       const hex = Buffer.from(String(v), 'base64').toString('hex');
       out[k] = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-    } else if (['prepDeadline', 'playDeadline', 'at', 'createdAt'].includes(k)) out[k] = new Date(Number(v) * 1000);
+    } else if (['prepDeadline', 'playDeadline', 'payoutAt', 'nextOpenAt', 'saleSecs', 'playSecs', 'verifySecs', 'at', 'createdAt'].includes(k)) out[k] = new Date(Number(v) * 1000); // i64 decodes as a Date (durations too)
     else if (typeof v === 'string' && /^\d+$/.test(v)) out[k] = Number(v);
     else out[k] = v;
   }

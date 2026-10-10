@@ -42,22 +42,25 @@ fn create_pool_validation() {
     assert_err!(e.try_create_pool(p(|x| x.fee_bps = 1499)), PoolError::BpsSum);
     assert_err!(e.try_create_pool(p(|x| x.prep_deadline = T0)), PoolError::InvalidParams);
     assert_err!(e.try_create_pool(p(|x| x.play_deadline = PREP - 1)), PoolError::InvalidParams);
+    // the review window cannot end before the rides do
+    assert_err!(e.try_create_pool(p(|x| x.payout_at = PLAY - 1)), PoolError::InvalidParams);
     assert_err!(e.try_create_pool(p(|x| x.min_tickets = 0)), PoolError::InvalidParams);
     assert_err!(e.try_create_pool(p(|x| x.price_lamports = 0)), PoolError::InvalidParams);
     assert_err!(e.try_create_pool(p(|x| x.price_lamports = 1_000)), PoolError::PriceBelowRentMin);
     assert_err!(e.try_create_pool(p(|x| x.max_tickets = 2)), PoolError::InvalidParams);
     assert_err!(e.try_create_pool(p(|x| x.max_per_wallet = 0)), PoolError::InvalidParams);
-    // a play deadline beyond MAX_POOL_SECS would lock an Active pool's tickets that long
-    assert_err!(e.try_create_pool(p(|x| x.play_deadline = T0 + MAX_POOL_SECS + 1)), PoolError::InvalidParams);
+    // a payout time beyond MAX_POOL_SECS would lock an Active pool's tickets that long
+    assert_err!(e.try_create_pool(p(|x| x.payout_at = T0 + MAX_POOL_SECS + 1)), PoolError::InvalidParams);
     // nothing was created
     assert_eq!(e.config().pool_count, 0);
-    // play_deadline == prep_deadline is allowed, unlimited tickets (0) is allowed
+    // play_deadline == prep_deadline == payout_at is allowed, unlimited tickets (0) is allowed
     e.create_pool(p(|x| {
         x.play_deadline = PREP;
+        x.payout_at = PREP;
         x.max_tickets = 0;
     }));
     // exactly MAX_POOL_SECS out is allowed
-    e.create_pool(p(|x| x.play_deadline = T0 + MAX_POOL_SECS));
+    e.create_pool(p(|x| x.payout_at = T0 + MAX_POOL_SECS));
 }
 
 #[test]
@@ -190,17 +193,19 @@ fn buy_deadlines() {
     e.warp(PREP);
     assert_err!(e.buy(id, &b, 1), PoolError::TooLate);
 
-    // an Active pool keeps selling until play_deadline
+    // the sale window closes for an Active pool too: it sells until prep_deadline, never during the rest of the play window
     let id2 = e.create_pool(p(|x| {
         x.prep_deadline = PREP + 100_000;
         x.play_deadline = PLAY + 100_000;
+        x.payout_at = PLAY + 100_000;
     }));
     e.buy(id2, &a, 3).unwrap();
     assert_eq!(e.pool(id2).status, 1);
-    e.warp(PLAY + 99_999);
+    e.warp(PREP + 99_999);
     e.buy(id2, &b, 1).unwrap();
-    e.warp(PLAY + 100_000);
+    e.warp(PREP + 100_000);
     assert_err!(e.buy(id2, &b, 1), PoolError::TooLate);
+    assert_eq!(e.pool(id2).tickets_sold, 4);
 }
 
 #[test]

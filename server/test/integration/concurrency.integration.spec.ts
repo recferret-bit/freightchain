@@ -8,6 +8,7 @@ import { createHarness, type Harness } from '../support/harness.js';
 import { recording } from '../support/recording.js';
 import { TREASURY } from '../support/fake-chain.js';
 import { PoolRepositoryPort } from '../../src/application/ports/economy/pool.repository.port.js';
+import { PoolPayoutRepositoryPort } from '../../src/application/ports/economy/pool-payout.repository.port.js';
 import { PromoRepositoryPort } from '../../src/application/ports/economy/promo.repository.port.js';
 import { TransactionPort } from '../../src/application/ports/shared/transaction.port.js';
 import { RideTicketRepositoryPort } from '../../src/application/ports/players/ride-ticket.repository.port.js';
@@ -107,6 +108,30 @@ describe('concurrency (PostgreSQL)', () => {
       expect(results.filter((r) => r.status === 200)).toHaveLength(1);
       expect(await prisma.cosmeticUnlock.count({ where: { wallet: a.address } })).toBe(1);
       expect(await prisma.promoCode.findUnique({ where: { code: 'WHEEL' } })).toMatchObject({ redeemed: 1 });
+    });
+  });
+
+  describe('the payout job', () => {
+    it('N passes racing to claim the same prize: exactly ONE may broadcast, and the row ends with that one signature', async () => {
+      const now = harness.clock.now();
+      await harness.app.get(PoolRepositoryPort, { strict: false }).upsert(aPool({ id: 1, status: 'active' }, now));
+      const ledger = harness.app.get(PoolPayoutRepositoryPort, { strict: false });
+      await ledger.plan([{ poolId: 1, rank: 1, wallet: 'alice', lamports: 1_000, status: 'planned' }], now);
+      const won = await parallel(PARALLEL, (i) => ledger.claimSent(1, 1, `Sig${i}`, 100, now));
+      expect(won.filter(Boolean)).toHaveLength(1);
+      const row = (await ledger.listByPool(1))[0]!;
+      expect(row).toMatchObject({ status: 'sent', attempts: 1, signature: `Sig${won.indexOf(true)}` });
+    });
+
+    it('an admin hold racing chain syncs of the same pool: the hold always survives', async () => {
+      const now = harness.clock.now();
+      const pools = harness.app.get(PoolRepositoryPort, { strict: false });
+      await pools.upsert(aPool({ id: 2, status: 'active' }, now));
+      await Promise.all([
+        pools.saveHold(2, { by: 'Admin', at: now, note: 'wait' }),
+        ...Array.from({ length: PARALLEL }, (_, i) => pools.upsert(aPool({ id: 2, status: 'active', ticketsSold: i, hold: null }, now))),
+      ]);
+      expect((await pools.findById(2))?.hold).toMatchObject({ by: 'Admin', note: 'wait' });
     });
   });
 

@@ -38,6 +38,18 @@ pub mod freightchain_pools {
         instructions::admin::handle_accept_authority(ctx)
     }
 
+    pub fn set_payout_authority(ctx: Context<SetPayoutAuthority>, payout_authority: Option<Pubkey>) -> Result<()> {
+        instructions::admin::handle_set_payout_authority(ctx, payout_authority)
+    }
+
+    pub fn set_series(ctx: Context<SetSeries>, params: SeriesParams) -> Result<()> {
+        instructions::series::handle_set_series(ctx, params)
+    }
+
+    pub fn open_next_pool(ctx: Context<OpenNextPool>, tier: u8) -> Result<()> {
+        instructions::series::handle_open_next_pool(ctx, tier)
+    }
+
     pub fn create_pool(ctx: Context<CreatePool>, params: CreatePoolParams) -> Result<()> {
         instructions::create_pool::handle_create_pool(ctx, params)
     }

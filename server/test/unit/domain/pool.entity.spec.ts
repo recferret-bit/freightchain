@@ -10,7 +10,8 @@ const PRICE = 40_000_000;
 
 const props = (over: Partial<PoolProps> = {}): PoolProps => ({
   id: 7, address: 'PoolPda', tier: '1h', label: '1 HOUR · week 42', priceLamports: PRICE, minTickets: 10, maxTickets: 0, maxPerWallet: 10, prepDeadline: PREP, playDeadline: PLAY,
-  prizeBps: 7000, seedBps: 2000, feeBps: 1000, feeTreasury: 'Fee', seedTreasury: 'Seed', status: 'open', ticketsSold: 0, buyers: 0, vaultLamports: 0, sponsored: 0, roundId: null, createdAt: T0, syncedAt: null,
+  prizeBps: 7000, seedBps: 2000, feeBps: 1000, feeTreasury: 'Fee', seedTreasury: 'Seed', status: 'open', ticketsSold: 0, buyers: 0, vaultLamports: 0, sponsored: 0, roundId: null, rideSeed: 777, createdAt: T0, syncedAt: null,
+  payoutAt: over.playDeadline ?? PLAY, payoutState: 'pending', payoutNote: null, hold: null,
   ...over,
 });
 const pool = (over: Partial<PoolProps> = {}) => Pool.restore(props(over));
@@ -38,9 +39,12 @@ describe('Pool – what can be bought', () => {
   it('refuses pools that are not selling', () => {
     for (const status of ['refunding', 'settled', 'cancelled'] as const) expect(pool({ status }).whyNotSellable(day, 1, 0)).toBe(`this pool is ${status}`);
   });
-  it('an open pool stops selling when its preparation period ends; an active one keeps selling until the play deadline', () => {
-    expect(pool().whyNotSellable(PREP, 1, 0)).toMatch(/preparation period is over/);
-    expect(pool({ status: 'active', ticketsSold: 10 }).whyNotSellable(PREP, 1, 0)).toBeNull();
+  it('the sale window closes at its end for an open AND an active pool (the program refuses any later buy)', () => {
+    const justBefore = new Date(PREP.getTime() - 1);
+    expect(pool().whyNotSellable(justBefore, 1, 0)).toBeNull();
+    expect(pool({ status: 'active', ticketsSold: 10 }).whyNotSellable(justBefore, 1, 0)).toBeNull();
+    expect(pool().whyNotSellable(PREP, 1, 0)).toMatch(/closed/);
+    expect(pool({ status: 'active', ticketsSold: 10 }).whyNotSellable(PREP, 1, 0)).toMatch(/closed/);
     expect(pool({ status: 'active', ticketsSold: 10 }).whyNotSellable(PLAY, 1, 0)).toMatch(/closed/);
   });
   it('enforces the pool size and the wallet cap', () => {
@@ -206,7 +210,7 @@ describe('Pool – the state machine replays the program events', () => {
 describe('Pool.register – the create_pool rules, checked again when a pool enters the mirror', () => {
   it('accepts a valid pool and refuses broken rules', () => {
     expect(Pool.register(props()).id).toBe(7);
-    for (const over of [{ id: -1 }, { id: 2 ** 32 }, { prizeBps: 6000 }, { minTickets: 0 }, { maxPerWallet: 0 }, { maxTickets: 1, minTickets: 2 }, { priceLamports: 0 }, { prepDeadline: new Date(PLAY.getTime() + 1) }]) {
+    for (const over of [{ id: -1 }, { id: 2 ** 32 }, { prizeBps: 6000 }, { minTickets: 0 }, { maxPerWallet: 0 }, { maxTickets: 1, minTickets: 2 }, { priceLamports: 0 }, { prepDeadline: new Date(PLAY.getTime() + 1) }, { rideSeed: -1 }, { rideSeed: 2 ** 31 }, { rideSeed: 1.5 }]) {
       expect(() => Pool.register(props(over)), JSON.stringify(over)).toThrow(BadRequestError);
     }
   });
@@ -215,19 +219,73 @@ describe('Pool.register – the create_pool rules, checked again when a pool ent
 describe('Pool.fromChain – the mirror row of an account', () => {
   const state = (over: Partial<PoolChainState> = {}): PoolChainState => ({
     poolId: 7, address: 'PoolPda', status: 'active', ticketsSold: 12, buyers: 9, sponsored: 5, prizesPaid: 0, refunded: 0, vaultLamports: 890_880 + 12 * PRICE + 5, escrowLamports: 12 * PRICE + 5,
-    vault: 'VaultPda', authority: 'Admin', tier: 2, priceLamports: PRICE, minTickets: 10, maxTickets: 0, maxPerWallet: 5, prepDeadline: PREP, playDeadline: PLAY,
+    vault: 'VaultPda', authority: 'Admin', tier: 2, priceLamports: PRICE, minTickets: 10, maxTickets: 0, maxPerWallet: 5, prepDeadline: PREP, playDeadline: PLAY, payoutAt: PLAY,
     prizeBps: 7000, seedBps: 2000, feeBps: 1000, feeTreasury: 'Fee', seedTreasury: 'Seed', createdAt: T0, ...over,
   });
 
   it('takes rules and balances from the account (escrow, not raw vault lamports) and keeps the server\'s label and round', () => {
-    const fresh = Pool.fromChain(state(), PLAY);
+    const fresh = Pool.fromChain(state(), PLAY, null, 31);
     expect(fresh.snapshot()).toMatchObject({ id: 7, tier: '4h', label: '4H · pool 7', status: 'active', ticketsSold: 12, buyers: 9, vaultLamports: 12 * PRICE + 5, sponsored: 5, roundId: null, syncedAt: PLAY });
     const existing = pool({ label: 'week 42', roundId: 3 });
-    expect(Pool.fromChain(state(), PLAY, existing).snapshot()).toMatchObject({ label: 'week 42', roundId: 3 });
+    expect(Pool.fromChain(state(), PLAY, existing, 31).snapshot()).toMatchObject({ label: 'week 42', roundId: 3 });
+  });
+
+  it('a pool new to the mirror takes the given ride seed; a known one keeps its own (one road for all its riders)', () => {
+    expect(Pool.fromChain(state(), PLAY, null, 31).rideSeed).toBe(31);
+    expect(Pool.fromChain(state(), PLAY, pool({ rideSeed: 99 }), 31).rideSeed).toBe(99);
   });
 
   it('refuses an unknown tier byte or broken rules', () => {
-    expect(() => Pool.fromChain(state({ tier: 9 }), PLAY)).toThrow(BadRequestError);
-    expect(() => Pool.fromChain(state({ feeBps: 0 }), PLAY)).toThrow(BadRequestError);
+    expect(() => Pool.fromChain(state({ tier: 9 }), PLAY, null, 1)).toThrow(BadRequestError);
+    expect(() => Pool.fromChain(state({ feeBps: 0 }), PLAY, null, 1)).toThrow(BadRequestError);
+  });
+});
+
+describe('Pool – the day of a pool: phase, hold, payout state', () => {
+  const PAYOUT = new Date(PLAY.getTime() + 2 * 86_400_000);
+  const live = (over: Partial<PoolProps> = {}) => pool({ status: 'active', ticketsSold: 10, payoutAt: PAYOUT, ...over });
+  it('selling → riding → review → payout by the clock; an open pool past its sale end has failed; terminal pools are closed', () => {
+    expect(live().phase(T0)).toBe('selling');
+    expect(pool().phase(T0)).toBe('selling');
+    expect(live().phase(PREP)).toBe('riding');
+    expect(pool().phase(PREP)).toBe('failed');
+    expect(live().phase(PLAY)).toBe('review');
+    expect(live().phase(new Date(PAYOUT.getTime() - 1))).toBe('review');
+    expect(live().phase(PAYOUT)).toBe('payout');
+    expect(live({ status: 'refunding' }).phase(T0)).toBe('failed');
+    expect(live({ status: 'settled' }).phase(PAYOUT)).toBe('closed');
+    expect(live({ status: 'cancelled' }).phase(PAYOUT)).toBe('closed');
+  });
+  it('a review window that ends before the play deadline is refused', () => {
+    expect(() => Pool.register(props({ payoutAt: new Date(PLAY.getTime() - 1) }))).toThrow(BadRequestError);
+    expect(Pool.register(props({ payoutAt: PLAY })).payoutAt).toEqual(PLAY);
+  });
+  it('a hold carries who, when and a trimmed note; releasing clears it', () => {
+    const p = live();
+    p.putOnHold('Admin1', '  check rank 2 ', T0);
+    expect(p.hold).toEqual({ by: 'Admin1', at: T0, note: 'check rank 2' });
+    p.putOnHold('Admin1', '   ', T0);
+    expect(p.hold?.note).toBeNull();
+    p.releaseHold();
+    expect(p.hold).toBeNull();
+  });
+  it('the payout state moves freely until paid, which is final', () => {
+    const p = live();
+    p.recordPayout('waiting_review', '2 rides');
+    expect([p.payoutState, p.snapshot().payoutNote]).toEqual(['waiting_review', '2 rides']);
+    p.recordPayout('paid', null);
+    p.recordPayout('error', 'late');
+    expect(p.payoutState).toBe('paid');
+  });
+  it('fromChain keeps the server-owned payout state and hold of the existing row', () => {
+    const existing = live({ payoutState: 'held', payoutNote: 'n', hold: { by: 'A', at: T0, note: null } });
+    const state: PoolChainState = {
+      poolId: 7, address: 'PoolPda', status: 'active', ticketsSold: 12, buyers: 9, sponsored: 0, prizesPaid: 0, refunded: 0, vaultLamports: 0, escrowLamports: 0,
+      vault: 'V', authority: 'A', tier: 1, priceLamports: PRICE, minTickets: 10, maxTickets: 0, maxPerWallet: 5, prepDeadline: PREP, playDeadline: PLAY, payoutAt: PAYOUT,
+      prizeBps: 7000, seedBps: 2000, feeBps: 1000, feeTreasury: 'Fee', seedTreasury: 'Seed', createdAt: T0,
+    };
+    const p = Pool.fromChain(state, T0, existing, 1);
+    expect([p.payoutAt, p.payoutState, p.hold]).toEqual([PAYOUT, 'held', { by: 'A', at: T0, note: null }]);
+    expect(Pool.fromChain(state, T0, null, 1).payoutState).toBe('pending');
   });
 });

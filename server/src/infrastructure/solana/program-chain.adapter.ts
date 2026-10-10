@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ComputeBudgetProgram, Connection, Keypair, PublicKey, Transaction, VersionedTransaction, type AccountInfo, type Commitment, type TransactionInstruction } from '@solana/web3.js';
 import bs58 from 'bs58';
 import type { UnsignedPaymentTx } from '../../domain/economy/chain-transaction.js';
-import type { ChainEventRecord, PoolChainState } from '../../domain/economy/chain-events.js';
+import type { ChainEventRecord, PoolChainState, SeriesChainState } from '../../domain/economy/chain-events.js';
 import { orderIdToBytes } from '../../domain/economy/ticket-purchase-verification.js';
 import { escrowOf } from '../../domain/economy/vault-split.js';
 import { ConflictError, NotFoundError, ServiceUnavailableError } from '../../domain/shared/errors.js';
@@ -18,7 +18,7 @@ import { SolanaRpc, sleep } from './solana-rpc.js';
     (a wallet needing k extra tries has probability 2^-k). With 30k / 18k an unlucky wallet (~1 in 128 for buys, ~1 in 8 for refunds) could NEVER buy / be refunded
     by a server-built transaction – found by the devnet rehearsal ("exceeded CUs meter"). 60k / 45k leave ≥ 20 extra tries (2^-20). The limit is a cap, not a charge
     (the fee is priority price × limit, ~0 on devnet). */
-export const CU_LIMITS = { buy: 60_000, refund: 45_000, fail_pool: 6_000, expire_pool: 6_000, pay_prize: 17_000, close_pool: 24_000 } as const;
+export const CU_LIMITS = { buy: 60_000, refund: 45_000, fail_pool: 6_000, expire_pool: 6_000, pay_prize: 17_000, close_pool: 24_000, open_next_pool: 40_000 } as const;
 const MAX_SIGNATURE_PAGES = 10;
 const STATUS = ['open', 'active', 'refunding', 'settled', 'cancelled'] as const;
 
@@ -36,8 +36,22 @@ export function poolStateOf(c: PoolProgramCodec, poolId: number, info: AccountIn
     sponsored: p['sponsored'] as number, prizesPaid: p['prizesPaid'] as number, refunded: p['refunded'] as number,
     vaultLamports, escrowLamports: escrowOf(vaultLamports, rentMin), vault: c.vaultPda(poolId).toBase58(), authority: p['authority'] as string, tier: p['tier'] as number,
     priceLamports: p['priceLamports'] as number, minTickets: p['minTickets'] as number, maxTickets: p['maxTickets'] as number, maxPerWallet: p['maxPerWallet'] as number,
-    prepDeadline: p['prepDeadline'] as Date, playDeadline: p['playDeadline'] as Date, prizeBps: p['prizeBps'] as number, seedBps: p['seedBps'] as number,
+    prepDeadline: p['prepDeadline'] as Date, playDeadline: p['playDeadline'] as Date, payoutAt: p['payoutAt'] as Date, prizeBps: p['prizeBps'] as number, seedBps: p['seedBps'] as number,
     feeBps: p['feeBps'] as number, feeTreasury: p['feeTreasury'] as string, seedTreasury: p['seedTreasury'] as string, createdAt: p['createdAt'] as Date,
+  };
+}
+
+/** A Series account (one per tier, `set_series`) as the domain's SeriesChainState; null = not this program's series. */
+export function seriesStateOf(c: PoolProgramCodec, info: AccountInfo<Buffer> | null, address: string): SeriesChainState | null {
+  if (!info || !info.owner.equals(c.programId)) return null;
+  const s = c.decodeAccount('Series', info.data);
+  if (!s) return null;
+  const secs = (k: string) => Math.round((s[k] as Date).getTime() / 1000); // i64 fields decode as Date; these are durations
+  return {
+    address, tier: s['tier'] as number, enabled: s['enabled'] as boolean, priceLamports: s['priceLamports'] as number, minTickets: s['minTickets'] as number,
+    maxTickets: s['maxTickets'] as number, maxPerWallet: s['maxPerWallet'] as number, saleSecs: secs('saleSecs'), playSecs: secs('playSecs'), verifySecs: secs('verifySecs'),
+    prizeBps: s['prizeBps'] as number, seedBps: s['seedBps'] as number, feeBps: s['feeBps'] as number, feeTreasury: s['feeTreasury'] as string,
+    seedTreasury: s['seedTreasury'] as string, nextOpenAt: s['nextOpenAt'] as Date, poolsOpened: s['poolsOpened'] as number, lastPoolId: (s['lastPoolId'] as number | null) ?? null,
   };
 }
 

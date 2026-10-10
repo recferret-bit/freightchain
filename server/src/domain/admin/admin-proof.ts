@@ -38,7 +38,8 @@ export type AdminIntent =
   | { action: 'promo_create'; promo: PromoCreateInput }
   | { action: 'promo_disable'; code: string }
   | { action: 'free_rides_adjust'; wallet: string; delta: number }
-  | { action: 'setting_update'; key: SettingKey | string; value: number };
+  | { action: 'setting_update'; key: SettingKey | string; value: number }
+  | { action: 'pool_hold'; poolId: number; hold: boolean; note: string | null };
 
 /** EVERY field of a new promo code as one JSON line, keys in a fixed order, dates as ISO strings – the signature binds the whole code, not a summary of it. */
 export const promoJson = (p: PromoCreateInput): string => JSON.stringify({
@@ -55,6 +56,7 @@ export function intentLines(intent: AdminIntent): string[] {
     case 'promo_disable': return [`Action: DISABLE promo code ${PromoCode.normalize(intent.code)}`];
     case 'free_rides_adjust': return [`Action: ADJUST free rides by ${intent.delta}`, `Player: ${intent.wallet}`];
     case 'setting_update': return [`Action: SET setting ${intent.key}`, `Value: ${intent.value}`];
+    case 'pool_hold': return [`Action: ${intent.hold ? 'HOLD the payout of' : 'RELEASE the payout hold of'} pool ${intent.poolId}`, `Note: ${intent.note === null ? '(none)' : JSON.stringify(intent.note)}`];
   }
 }
 

@@ -16,7 +16,7 @@ use anchor_lang::{
 };
 use base64::Engine;
 use common::*;
-use freightchain_pools::{accounts, events::*, instruction, Config, CreatePoolParams, Pool, Ticket};
+use freightchain_pools::{accounts, events::*, instruction, Config, CreatePoolParams, Pool, Series, Ticket};
 use serde_json::{json, Value};
 use solana_keypair::Keypair;
 use solana_signer::Signer;
@@ -46,8 +46,14 @@ fn decoded_events(logs: &[String]) -> Vec<Value> {
         .map(|d| -> Value {
             try_ev!(d, PoolCreated, |e: PoolCreated| json!({"kind": "PoolCreated", "poolId": e.pool_id, "pool": e.pool.to_string(), "vault": e.vault.to_string(),
                 "authority": e.authority.to_string(), "tier": e.tier, "priceLamports": s(e.price_lamports), "minTickets": e.min_tickets, "maxTickets": e.max_tickets,
-                "maxPerWallet": e.max_per_wallet, "prepDeadline": e.prep_deadline, "playDeadline": e.play_deadline, "prizeBps": e.prize_bps, "seedBps": e.seed_bps,
-                "feeBps": e.fee_bps, "feeTreasury": e.fee_treasury.to_string(), "seedTreasury": e.seed_treasury.to_string()}));
+                "maxPerWallet": e.max_per_wallet, "prepDeadline": e.prep_deadline, "playDeadline": e.play_deadline, "payoutAt": e.payout_at, "prizeBps": e.prize_bps, "seedBps": e.seed_bps,
+                "feeBps": e.fee_bps, "feeTreasury": e.fee_treasury.to_string(), "seedTreasury": e.seed_treasury.to_string(), "fromSeries": e.from_series}));
+            try_ev!(d, SeriesSet, |e: SeriesSet| json!({"kind": "SeriesSet", "tier": e.tier, "enabled": e.enabled, "priceLamports": s(e.price_lamports),
+                "minTickets": e.min_tickets, "maxTickets": e.max_tickets, "maxPerWallet": e.max_per_wallet, "saleSecs": e.sale_secs, "playSecs": e.play_secs,
+                "verifySecs": e.verify_secs, "prizeBps": e.prize_bps, "seedBps": e.seed_bps, "feeBps": e.fee_bps, "feeTreasury": e.fee_treasury.to_string(),
+                "seedTreasury": e.seed_treasury.to_string(), "nextOpenAt": e.next_open_at}));
+            try_ev!(d, PayoutAuthoritySet, |e: PayoutAuthoritySet| json!({"kind": "PayoutAuthoritySet", "authority": e.authority.to_string(),
+                "payoutAuthority": e.payout_authority.map(|k| k.to_string())}));
             try_ev!(d, TicketBought, |e: TicketBought| json!({"kind": "TicketBought", "poolId": e.pool_id, "buyer": e.buyer.to_string(), "qty": e.qty,
                 "lamports": s(e.lamports), "orderId": b64(&e.order_id), "ticketsSold": e.tickets_sold, "activated": e.activated}));
             try_ev!(d, PoolActivated, |e: PoolActivated| json!({"kind": "PoolActivated", "poolId": e.pool_id, "ticketsSold": e.tickets_sold, "at": e.at}));
@@ -114,16 +120,23 @@ impl Rec {
             let p = Pool::try_deserialize(&mut &a.data[..]).unwrap();
             json!({"type": "Pool", "poolId": p.pool_id, "authority": p.authority.to_string(), "tier": p.tier, "priceLamports": s(p.price_lamports),
                 "minTickets": p.min_tickets, "maxTickets": p.max_tickets, "maxPerWallet": p.max_per_wallet, "prepDeadline": p.prep_deadline, "playDeadline": p.play_deadline,
-                "prizeBps": p.prize_bps, "seedBps": p.seed_bps, "feeBps": p.fee_bps, "feeTreasury": p.fee_treasury.to_string(), "seedTreasury": p.seed_treasury.to_string(),
+                "payoutAt": p.payout_at, "prizeBps": p.prize_bps, "seedBps": p.seed_bps, "feeBps": p.fee_bps, "feeTreasury": p.fee_treasury.to_string(), "seedTreasury": p.seed_treasury.to_string(),
                 "status": p.status, "ticketsSold": p.tickets_sold, "buyers": p.buyers, "sponsored": s(p.sponsored), "prizesPaid": s(p.prizes_paid),
                 "refunded": s(p.refunded), "createdAt": p.created_at, "bump": p.bump, "vaultBump": p.vault_bump})
         } else if a.data.len() >= 8 && a.data[..8] == *Ticket::DISCRIMINATOR {
             let t = Ticket::try_deserialize(&mut &a.data[..]).unwrap();
             json!({"type": "Ticket", "buyer": t.buyer.to_string(), "rentPayer": t.rent_payer.to_string(), "poolId": t.pool_id, "qty": t.qty, "lamports": s(t.lamports), "bump": t.bump})
+        } else if a.data.len() >= 8 && a.data[..8] == *Series::DISCRIMINATOR {
+            let x = Series::try_deserialize(&mut &a.data[..]).unwrap();
+            json!({"type": "Series", "tier": x.tier, "enabled": x.enabled, "priceLamports": s(x.price_lamports), "minTickets": x.min_tickets, "maxTickets": x.max_tickets,
+                "maxPerWallet": x.max_per_wallet, "saleSecs": x.sale_secs, "playSecs": x.play_secs, "verifySecs": x.verify_secs, "prizeBps": x.prize_bps,
+                "seedBps": x.seed_bps, "feeBps": x.fee_bps, "feeTreasury": x.fee_treasury.to_string(), "seedTreasury": x.seed_treasury.to_string(),
+                "nextOpenAt": x.next_open_at, "poolsOpened": x.pools_opened, "lastPoolId": x.last_pool_id, "bump": x.bump})
         } else {
             let c = Config::try_deserialize(&mut &a.data[..]).unwrap();
             json!({"type": "Config", "authority": c.authority.to_string(), "platformTreasury": c.platform_treasury.to_string(), "platformFeeBps": c.platform_fee_bps,
-                "poolCount": c.pool_count, "paused": c.paused, "bump": c.bump, "pendingAuthority": c.pending_authority.map(|k| k.to_string())})
+                "poolCount": c.pool_count, "paused": c.paused, "bump": c.bump, "pendingAuthority": c.pending_authority.map(|k| k.to_string()),
+                "payoutAuthority": c.payout_authority.map(|k| k.to_string())})
         };
         self.accounts.push(json!({"name": name, "address": key.to_string(), "owner": a.owner.to_string(), "lamports": s(a.lamports), "data": b64(&a.data), "decoded": decoded}));
     }
@@ -160,7 +173,7 @@ fn pay_prize_ix(id: u32, authority: &Pubkey, to: &Pubkey, lamports: u64, rank: u
 fn create(e: &mut Env, rec: &mut Rec, p: CreatePoolParams) -> u32 {
     let id = e.next_pool;
     let args = json!({"tier": p.tier, "priceLamports": s(p.price_lamports), "minTickets": p.min_tickets, "maxTickets": p.max_tickets, "maxPerWallet": p.max_per_wallet,
-        "prepDeadline": p.prep_deadline, "playDeadline": p.play_deadline, "prizeBps": p.prize_bps, "seedBps": p.seed_bps, "feeBps": p.fee_bps});
+        "prepDeadline": p.prep_deadline, "playDeadline": p.play_deadline, "payoutAt": p.payout_at, "prizeBps": p.prize_bps, "seedBps": p.seed_bps, "feeBps": p.fee_bps});
     let i = e.create_pool_ix(p, e.fee_t.pubkey(), e.seed_t.pubkey());
     let (a, c) = (e.authority_kp(), clone_kp(&e.cranker));
     rec.send(e, &format!("create_pool {id}"), vec![(i, "create_pool", args)], &c, &[&a], true).unwrap();
@@ -230,9 +243,53 @@ fn export_pool_program_fixtures() {
     let p3 = create(&mut e, &mut rec, p);
     let i = buy(&e, p3, &d.pubkey(), &d.pubkey(), 1, [4u8; 16]);
     rec.send(&mut e, "buy_ticket into pool 3 activates", vec![i], &d, &[], true).unwrap();
-    e.warp(e.pool(p3).play_deadline + freightchain_pools::SETTLE_GRACE_SECS);
+    e.warp(e.pool(p3).payout_at + freightchain_pools::SETTLE_GRACE_SECS);
     let i = ix(instruction::ExpirePool { pool_id: p3 }, accounts::ExpirePool { caller: d.pubkey(), pool: pool_pda(p3) });
     rec.send(&mut e, "expire_pool", vec![(i, "expire_pool", json!({"poolId": p3}))], &d, &[], true).unwrap();
+
+    // ---- pool 4: the daily series – the admin names the payout key and writes the 1 h schedule, anyone opens the slot's pool,
+    //      it activates, and after the review window the PAYOUT key (not the admin) pays a prize and closes it
+    let payout = key(9);
+    e.svm.airdrop(&payout.pubkey(), 10 * SOL).unwrap();
+    let i = ix(
+        instruction::SetPayoutAuthority { payout_authority: Some(payout.pubkey()) },
+        accounts::SetPayoutAuthority { authority: auth.pubkey(), config: config_pda() },
+    );
+    rec.send(&mut e, "set_payout_authority", vec![(i, "set_payout_authority", json!({"payoutAuthority": payout.pubkey().to_string()}))], &cranker, &[&auth], true).unwrap();
+    let start = e.now() + 60;
+    let sp = daily_series(start);
+    let sargs = json!({"tier": sp.tier, "enabled": sp.enabled, "priceLamports": s(sp.price_lamports), "minTickets": sp.min_tickets, "maxTickets": sp.max_tickets,
+        "maxPerWallet": sp.max_per_wallet, "saleSecs": sp.sale_secs, "playSecs": sp.play_secs, "verifySecs": sp.verify_secs, "prizeBps": sp.prize_bps,
+        "seedBps": sp.seed_bps, "feeBps": sp.fee_bps, "startAt": sp.start_at});
+    let i = ix(
+        instruction::SetSeries { params: sp.clone() },
+        accounts::SetSeries {
+            authority: auth.pubkey(),
+            config: config_pda(),
+            series: series_pda(1),
+            fee_treasury: e.fee_t.pubkey(),
+            seed_treasury: e.seed_t.pubkey(),
+            platform_treasury: e.plat_t.pubkey(),
+            system_program: anchor_lang::solana_program::system_program::ID,
+        },
+    );
+    rec.send(&mut e, "set_series", vec![(i, "set_series", sargs)], &cranker, &[&auth], true).unwrap();
+    rec.account(&e, "series 1", &series_pda(1));
+    let early = e.open_next_pool_ix(1, &cranker.pubkey(), e.fee_t.pubkey(), e.seed_t.pubkey());
+    rec.send(&mut e, "open_next_pool too early (fails)", vec![(early, "open_next_pool", json!({"tier": 1}))], &cranker, &[], false).unwrap_err();
+    e.warp(start);
+    let p4 = e.config().pool_count;
+    let i = e.open_next_pool_ix(1, &cranker.pubkey(), e.fee_t.pubkey(), e.seed_t.pubkey());
+    rec.send(&mut e, "open_next_pool", vec![(i, "open_next_pool", json!({"tier": 1, "caller": cranker.pubkey().to_string()}))], &cranker, &[], true).unwrap();
+    e.next_pool = p4 + 1;
+    rec.account(&e, "pool 4 open (series)", &pool_pda(p4));
+    let i = buy(&e, p4, &a.pubkey(), &a.pubkey(), 3, [5u8; 16]);
+    rec.send(&mut e, "buy_ticket into pool 4 activates", vec![i], &a, &[], true).unwrap();
+    e.warp(e.pool(p4).payout_at);
+    rec.send(&mut e, "pay_prize by the payout key", vec![pay_prize_ix(p4, &payout.pubkey(), &winner.pubkey(), PRICE, 1)], &cranker, &[&payout], true).unwrap();
+    let i = close_pool_ix(&e, p4, &payout.pubkey());
+    rec.send(&mut e, "close_pool by the payout key", vec![i], &cranker, &[&payout], true).unwrap();
+    rec.account(&e, "config with payout key", &config_pda());
 
     // ---- the authority handover (program events that are NOT pool events)
     let i = ix(instruction::ProposeAuthority { new_authority: next_admin.pubkey() }, accounts::ProposeAuthority { authority: auth.pubkey(), config: config_pda() });
@@ -241,7 +298,7 @@ fn export_pool_program_fixtures() {
     rec.send(&mut e, "accept_authority", vec![(i, "accept_authority", json!({}))], &cranker, &[&next_admin], true).unwrap();
 
     let kinds: Vec<String> = rec.txs.iter().flat_map(|t| t["events"].as_array().unwrap().iter().map(|e| e["kind"].as_str().unwrap().to_string())).collect();
-    for k in ["PoolCreated", "TicketBought", "PoolActivated", "Sponsored", "PoolFailed", "PoolCancelled", "PoolExpired", "Refunded", "PrizePaid", "PoolClosed", "AuthorityProposed", "AuthorityChanged"] {
+    for k in ["PoolCreated", "TicketBought", "PoolActivated", "Sponsored", "PoolFailed", "PoolCancelled", "PoolExpired", "Refunded", "PrizePaid", "PoolClosed", "AuthorityProposed", "AuthorityChanged", "SeriesSet", "PayoutAuthoritySet"] {
         assert!(kinds.iter().any(|x| x == k), "no {k} recorded");
     }
     let out = json!({
@@ -250,7 +307,7 @@ fn export_pool_program_fixtures() {
         "configAddress": config_pda().to_string(),
         "keys": {"authority": auth.pubkey().to_string(), "cranker": cranker.pubkey().to_string(), "a": a.pubkey().to_string(), "b": b.pubkey().to_string(),
             "c": c.pubkey().to_string(), "d": d.pubkey().to_string(), "gas": gas.pubkey().to_string(), "brand": brand.pubkey().to_string(), "winner": winner.pubkey().to_string(),
-            "nextAdmin": next_admin.pubkey().to_string(), "feeTreasury": e.fee_t.pubkey().to_string(), "seedTreasury": e.seed_t.pubkey().to_string(), "platformTreasury": e.plat_t.pubkey().to_string()},
+            "nextAdmin": next_admin.pubkey().to_string(), "payout": payout.pubkey().to_string(), "feeTreasury": e.fee_t.pubkey().to_string(), "seedTreasury": e.seed_t.pubkey().to_string(), "platformTreasury": e.plat_t.pubkey().to_string()},
         "transactions": rec.txs,
         "accounts": rec.accounts,
     });

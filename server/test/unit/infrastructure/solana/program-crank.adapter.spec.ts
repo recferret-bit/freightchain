@@ -2,6 +2,7 @@ import { Keypair, PublicKey, VersionedTransaction, type Connection } from '@sola
 import bs58 from 'bs58';
 import { ProgramCrankAdapter } from '../../../../src/infrastructure/solana/program-crank.adapter.js';
 import { CU_LIMITS } from '../../../../src/infrastructure/solana/program-chain.adapter.js';
+import { PoolProgramCodec } from '../../../../src/infrastructure/solana/pool-program.codec.js';
 import type { EnvService } from '../../../../src/infrastructure/config/env.service.js';
 import type { PoolChainPort } from '../../../../src/application/ports/economy/pool-chain.port.js';
 import { fixtureAccount, fixtureTx, poolProgramFixture, type FixtureInstruction } from '../../../support/chain-fixtures.js';
@@ -102,5 +103,24 @@ describe('ProgramCrankAdapter – sends what the program accepted, signed and pa
     const dropped = crankWith({ getSignatureStatuses: async () => ({ value: [null] }), getBlockHeight: async () => 5_000 }).adapter;
     await expect(dropped.send({ step: 'fail_pool', poolId: 1 })).rejects.toMatchObject({ statusCode: 409, errorCode: 'transaction_dropped' });
     expect(crankWith().adapter.address).toBe(crankKey.publicKey.toBase58());
+  });
+
+  it('open_next_pool: the fixture\'s instruction, the pool / vault PDAs seeded with Config.pool_count, the series\' treasuries; listSeries decodes the schedule', async () => {
+    const { adapter, sent } = crankWith({
+      getMultipleAccountsInfo: async (keys: PublicKey[]) => (keys.length === 2 ? [accountInfo('series 1'), accountInfo('config with payout key')] : keys.map((_, i) => (i === 0 ? accountInfo('series 1') : null))),
+    });
+    const expected = fixtureTx('open_next_pool').instructions[0]!;
+    const poolCount = Number(fixtureAccount('config with payout key').decoded['poolCount']);
+    await adapter.send({ step: 'open_next_pool', poolId: -1, tier: 1 });
+    const [got] = sentIxs(sent[0]!);
+    expect(got!.data).toBe(expected.data); // discriminator + tier 1
+    expect(got!.accounts.map((a) => a.pubkey)).toEqual([
+      crankKey.publicKey.toBase58(), expected.accounts[1]!.pubkey, expected.accounts[2]!.pubkey,
+      new PoolProgramCodec(fx.programId).poolPda(poolCount).toBase58(), new PoolProgramCodec(fx.programId).vaultPda(poolCount).toBase58(),
+      ...expected.accounts.slice(5).map((a) => a.pubkey),
+    ]);
+    const series = await adapter.listSeries();
+    expect(series).toEqual([expect.objectContaining({ tier: 1, enabled: true, saleSecs: 86_400, playSecs: 7_200, verifySecs: 172_800, minTickets: 3, lastPoolId: null, feeTreasury: fx.keys.feeTreasury })]);
+    await expect(adapter.send({ step: 'open_next_pool', poolId: -1 })).rejects.toMatchObject({ errorCode: 'bad_crank_step' });
   });
 });

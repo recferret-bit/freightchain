@@ -136,6 +136,20 @@ export function parsePoolRegister(args: readonly string[]): PoolRegisterArgs | s
   return { poolId, label };
 }
 
+/** `pool:payout [--pool N]` – null = every payable pool */
+export function parsePoolPayout(args: readonly string[]): { poolId: number | null } | string {
+  let parsed;
+  try {
+    parsed = parseArgs({ args: [...args], options: { pool: { type: 'string' } } });
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+  if (parsed.values.pool === undefined) return { poolId: null };
+  const poolId = int('pool', parsed.values.pool, 0);
+  if (typeof poolId === 'string' || poolId > 0xffff_ffff) return '--pool must be a whole number from 0 to 4294967295';
+  return { poolId };
+}
+
 /** `verdict:rejudge [--status unjudged|verified|flagged|rejected|all] [--since DATE] [--limit N] [--dry-run]` (default: flagged + unjudged is NOT a thing – one status, default `all`) */
 export function parseVerdictRejudge(args: readonly string[]): VerdictRejudgeArgs | string {
   let parsed;

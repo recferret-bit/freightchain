@@ -213,4 +213,30 @@ describe('RideQueryPrismaRepository (PostgreSQL)', () => {
     expect(await query.poolRanking(2, 20, false)).toEqual([{ wallet: 'carol', distance: 1000, rides: 1 }]);
     expect(await query.poolRanking(1, 1, false)).toHaveLength(1);
   });
+
+  it('poolUnreviewed: the completed rides of one pool with no verdict or a machine verdict that is not verified and no admin decision', async () => {
+    const { PoolPrismaRepository } = await import('../../../src/infrastructure/prisma/repositories/pool.prisma.repository.js');
+    const { aPool } = await import('../../support/pools.js');
+    const pools = new PoolPrismaRepository(prisma);
+    for (const id of [1, 2]) await pools.upsert(aPool({ id }, at(0)));
+    for (const w of ['a', 'b', 'c', 'd', 'e', 'f', 'g']) await seedPlayer(prisma, w);
+    const inPool = async (poolId: number, wallet: string, verdict: 'verified' | 'flagged' | 'rejected' | null, outcome: 'shift' | 'failed' = 'shift') => {
+      const r = await ride(wallet, { paid: true, metres: 100, outcome, verdict });
+      await prisma.ride.update({ where: { id: r.id }, data: { poolId } });
+      return r.id;
+    };
+    const ok = await inPool(1, 'a', 'verified');
+    const flagged = await inPool(1, 'b', 'flagged');
+    const rejected = await inPool(1, 'c', 'rejected');
+    const unjudged = await inPool(1, 'd', null);
+    const decided = await inPool(1, 'e', 'rejected');
+    await prisma.rideVerdict.update({ where: { rideId: decided }, data: { overriddenBy: 'Admin', overriddenAt: at(5) } });
+    await inPool(1, 'f', null, 'failed'); // not completed: nothing to review
+    await inPool(2, 'g', 'flagged'); // another pool
+    const rows = await query.poolUnreviewed(1, 50);
+    expect(rows.map((r) => r.id).sort()).toEqual([flagged, rejected, unjudged].sort());
+    expect(rows.find((r) => r.id === unjudged)).toEqual({ id: unjudged, wallet: 'd', verdict: null });
+    expect(rows.some((r) => r.id === ok || r.id === decided)).toBe(false);
+    expect(await query.poolUnreviewed(1, 1)).toHaveLength(1);
+  });
 });

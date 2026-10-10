@@ -5,6 +5,7 @@ import { SettleChainSignatureHandler } from '../../../../../src/application/use-
 import { SETTLE_GRACE_MS } from '../../../../../src/domain/economy/pool-crank.js';
 import { FakePoolCrankChain } from '../../../../support/fake-pool-crank-chain.js';
 import { chainPool } from '../../../../support/pools.js';
+import type { SeriesChainState } from '../../../../../src/domain/economy/chain-events.js';
 import { unitContext } from '../../../../support/unit-context.js';
 
 describe('CrankPoolsHandler', () => {
@@ -93,5 +94,39 @@ describe('CrankPoolsHandler', () => {
     expect(pass.actions).toHaveLength(1);
     expect(pass.actions[0]).toMatchObject({ poolId: 6, step: 'refund', signature: null });
     expect(crank.sent).toEqual([]);
+  });
+
+  describe('the schedule: open_next_pool per due series', () => {
+    const series = (now: Date, over: Partial<SeriesChainState> = {}): SeriesChainState => ({
+      address: 'SeriesPda1', tier: 1, enabled: true, priceLamports: 50_000_000, minTickets: 3, maxTickets: 0, maxPerWallet: 4, saleSecs: 86_400, playSecs: 7_200, verifySecs: 172_800,
+      prizeBps: 7000, seedBps: 2000, feeBps: 1000, feeTreasury: 'Fee', seedTreasury: 'Seed', nextOpenAt: now, poolsOpened: 0, lastPoolId: null, ...over,
+    });
+
+    it('a due series gets its pool (24 h sale, rides 2 h more, 48 h review) – settled, so the mirror registers it; one per slot', async () => {
+      const { ctx, crank, run } = setup();
+      crank.series.set(1, series(ctx.now()));
+      const pass = await run();
+      expect(pass.actions).toEqual([{ poolId: 0, tier: 1, step: 'open_next_pool', signature: expect.any(String), tickets: 0, settled: 'done', error: null }]);
+      const pool = await ctx.pools.findById(0);
+      const t = ctx.now().getTime();
+      expect([pool?.status, pool?.prepDeadline.getTime(), pool?.playDeadline.getTime(), pool?.payoutAt.getTime()]).toEqual(['open', t + 86_400_000, t + 93_600_000, t + 266_400_000]);
+      expect((await run()).actions).toEqual([]); // the next slot starts at the sale end
+      crank.now = new Date(t + 86_400_000);
+      // the next day: pool 1 opens; pool 0 sold nothing, so it fails and (nothing to refund) closes in the same pass
+      expect((await run()).actions.map((a) => [a.step, a.poolId])).toEqual([['open_next_pool', 1], ['fail_pool', 0], ['close_pool', 0]]);
+    });
+
+    it('not yet due, or switched off: nothing; a refused open is reported and the pool steps still run', async () => {
+      const { ctx, crank, run, tickets } = setup();
+      crank.series.set(1, series(ctx.now(), { nextOpenAt: new Date(ctx.now().getTime() + 1) }));
+      crank.series.set(2, series(ctx.now(), { tier: 2, enabled: false }));
+      expect((await run()).actions).toEqual([]);
+      crank.series.set(1, series(ctx.now()));
+      crank.failing.add('open_next_pool@t1');
+      ctx.poolChain.pools.set(5, chainPool(ctx.now(), { poolId: 5, status: 'refunding', ticketsSold: 1, priceLamports: 50_000_000, refunded: 0 }));
+      crank.tickets.set(5, tickets(1, 50_000_000));
+      const pass = await run();
+      expect(pass.actions.map((a) => [a.step, a.poolId, a.error === null])).toEqual([['open_next_pool', -1, false], ['refund', 5, true], ['close_pool', 5, true]]);
+    });
   });
 });

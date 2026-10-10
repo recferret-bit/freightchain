@@ -1,5 +1,7 @@
 import { bindClient, newWallet, sign, type Rider } from '../support/client.js';
 import type { Harness } from '../support/harness.js';
+import { PoolRepositoryPort } from '../../src/application/ports/economy/pool.repository.port.js';
+import { aPool } from '../support/pools.js';
 import { recording, upload } from '../support/recording.js';
 
 /* The admin surface (/api/admin/*): invisible to everyone but ADMIN_WALLETS, the review queue, an audited override, sign-ins, the log ring.
@@ -31,7 +33,7 @@ export function adminScenarios(h: () => Harness): void {
 
   it('does not exist for anyone but an admin: signed out, a rider, even with the header → 404 on every route', async () => {
     const rider = await login();
-    for (const path of ['overview', 'rides', 'rides/x', 'signins', 'actions', 'logs', 'settings']) {
+    for (const path of ['overview', 'rides', 'rides/x', 'signins', 'actions', 'logs', 'settings', 'pools']) {
       await anon().get(`/api/admin/${path}`).expect(404);
       await rider.agent.get(`/api/admin/${path}`).set('x-fc-admin', '1').expect(404);
     }
@@ -157,5 +159,29 @@ export function adminScenarios(h: () => Harness): void {
     const sig4 = (await signed(admin, r.id, { action: 'override', decision: 'rejected' })).signature;
     await admin.agent.post(`/api/admin/rides/${r.id}/verdict`).set('x-fc-admin', '1').send({ decision: 'rejected', signature: sig4 }).expect(404);
     expect((await admin.agent.get('/api/admin/actions').expect(200)).body.rows.map((a: { action: string }) => a.action)).toEqual(['auth.signin']);
+  });
+
+  it('pools: every pool with its winners list; a signed HOLD stops the automatic payout, a signed release lets it go – both audited; a signature for another pool is refused', async () => {
+    const now = new Date(h().clock.ms);
+    await h().app.get(PoolRepositoryPort, { strict: false }).upsert(aPool({ id: 4, status: 'active', minTickets: 2, ticketsSold: 3 }, now));
+    const admin = await asAdmin();
+    const listed = (await admin.agent.get('/api/admin/pools').set('x-fc-admin', '1').expect(200)).body;
+    expect(listed.pools.map((p: { pool: { id: number }; hold: unknown; standings: { poolId: number } }) => [p.pool.id, p.standings.poolId, p.hold])).toEqual([[4, 4, null]]);
+    const ask = async (poolId: number, hold: boolean, note: string | null) => {
+      const { body } = await admin.agent.post(`/api/admin/pools/${poolId}/hold/challenge`).set('x-fc-admin', '1').send({ action: 'pool_hold', hold, note }).expect(200);
+      expect(body.message).toContain(`pool ${poolId}`);
+      return sign(admin.kp, body.message);
+    };
+    const forOther = await ask(5, true, null);
+    await admin.agent.post('/api/admin/pools/4/hold').set('x-fc-admin', '1').send({ hold: true, note: null, signature: forOther }).expect(401);
+    const sig = await ask(4, true, 'rank 1 looks odd');
+    expect((await admin.agent.post('/api/admin/pools/4/hold').set('x-fc-admin', '1').send({ hold: true, note: 'rank 1 looks odd', signature: sig }).expect(200)).body)
+      .toMatchObject({ poolId: 4, held: true, by: ADMIN.address, note: 'rank 1 looks odd' });
+    expect((await anon().get('/api/pools/4').expect(200)).body.payout).toMatchObject({ held: true });
+    const off = await ask(4, false, null);
+    expect((await admin.agent.post('/api/admin/pools/4/hold').set('x-fc-admin', '1').send({ hold: false, note: null, signature: off }).expect(200)).body).toMatchObject({ held: false });
+    const actions = (await admin.agent.get('/api/admin/actions').set('x-fc-admin', '1').expect(200)).body;
+    expect(JSON.stringify(actions)).toContain('pool.hold');
+    expect(JSON.stringify(actions)).toContain('pool.release');
   });
 }

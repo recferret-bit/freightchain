@@ -1,5 +1,5 @@
 import { CFG } from '../config.js';
-import { fmt } from '../util.js';
+import { fmt, mulberry32 } from '../util.js';
 import { st, clock, IDLE, resetDisp, rideStart, dn } from '../state.js';
 import { audio } from '../sim/audio.js';
 import { ambientC } from '../sim/climate.js';
@@ -28,8 +28,9 @@ import { resetMap } from './map.js';
 /* Ride flow: menu / start / end / pause overlay and per-ride reset. */
 
 export function resetRide(seed = online.ride?.seed) {   // seed: the server's for an online ride, the watched ride's for a replay (watch.js), random offline
-  Object.assign(st, rideStart({ rpm: CFG.START_ENGINE_OFF ? 0 : IDLE, engineOn: !CFG.START_ENGINE_OFF, temp: ambientC(), pull: Math.random() < .5 ? -1 : 1 }));
+  Object.assign(st, rideStart({ rpm: CFG.START_ENGINE_OFF ? 0 : IDLE, engineOn: !CFG.START_ENGINE_OFF, temp: ambientC(), pull: 1 }));
   resetDisp(); destroyed.clear(); clearDebris(); roads.newTrip(seed); resetScreen();   // new road layout, depot, traffic
+  st.pull = mulberry32(roads.seed ^ 0x2545f491)() < .5 ? -1 : 1;   // a damaged truck's pull side comes from the road seed: every rider of a pool (one seed) gets the same one
   resetMap();   // the phone back on its mount, the map's view from scratch (an end / pause closes it too: ui/map.js)
 }
 

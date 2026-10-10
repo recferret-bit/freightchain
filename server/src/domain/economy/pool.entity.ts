@@ -1,13 +1,13 @@
 import { BadRequestError, ConflictError } from '../shared/errors.js';
 import { tierFromChainCode, type ChainEventRecord, type PoolChainState } from './chain-events.js';
-import type { PoolProps, PoolStatus } from './pool.types.js';
+import type { PayoutState, PoolHold, PoolProps, PoolStatus } from './pool.types.js';
 
 /**
  * The server's view of an escrowed prize pool (docs/paid-tickets-plan.md §0, §2.6; programs/freightchain-pools/README.md). The chain is the truth: `applyEvent` replays what
  * the program emitted, in order. The state machine mirrors the program's:
  *   open → active      the minimum is sold
  *   open → refunding   the preparation period ended short (PoolFailed) or an admin cancelled (PoolCancelled)
- *   active → refunding nobody settled it within the grace period after play_deadline (PoolExpired)
+ *   active → refunding nobody settled it within the grace period after payout_at (PoolExpired)
  *   active → settled   closed and split (PoolClosed, cancelled = false)
  *   refunding → cancelled  every buyer refunded, the rest swept (PoolClosed, cancelled = true)
  * Replaying an event is harmless: balances are RECOMPUTED from the program's running totals (tickets sold, sponsored, refunded, prizes paid), never added, and a status the
@@ -22,18 +22,19 @@ export class Pool {
   }
 
   /**
-   * The mirror row of an account read from chain. Rules and balances come from the account (the chain wins); the label and the ranking round are the
-   * server's own and are kept from the existing row. An unknown tier byte is refused.
+   * The mirror row of an account read from chain. Rules and balances come from the account (the chain wins); the label, the ranking round and the ride seed are
+   * the server's own and are kept from the existing row – `rideSeed` is used only for a pool the mirror has not seen. An unknown tier byte is refused.
    */
-  static fromChain(state: PoolChainState, now: Date, existing: Pool | null = null): Pool {
+  static fromChain(state: PoolChainState, now: Date, existing: Pool | null, rideSeed: number): Pool {
     const tier = tierFromChainCode(state.tier);
     if (!tier) throw new BadRequestError(`pool ${state.poolId}: unknown tier code ${state.tier}`, 'bad_pool');
     return Pool.register({
       id: state.poolId, address: state.address, tier, label: existing?.p.label ?? `${tier.toUpperCase()} · pool ${state.poolId}`, priceLamports: state.priceLamports,
-      minTickets: state.minTickets, maxTickets: state.maxTickets, maxPerWallet: state.maxPerWallet, prepDeadline: state.prepDeadline, playDeadline: state.playDeadline,
+      minTickets: state.minTickets, maxTickets: state.maxTickets, maxPerWallet: state.maxPerWallet, prepDeadline: state.prepDeadline, playDeadline: state.playDeadline, payoutAt: state.payoutAt,
       prizeBps: state.prizeBps, seedBps: state.seedBps, feeBps: state.feeBps, feeTreasury: state.feeTreasury, seedTreasury: state.seedTreasury, status: state.status,
       ticketsSold: state.ticketsSold, buyers: state.buyers, vaultLamports: state.escrowLamports, sponsored: state.sponsored, roundId: existing?.p.roundId ?? null,
-      createdAt: state.createdAt, syncedAt: now,
+      rideSeed: existing?.p.rideSeed ?? rideSeed, createdAt: state.createdAt, syncedAt: now,
+      payoutState: existing?.p.payoutState ?? 'pending', payoutNote: existing?.p.payoutNote ?? null, hold: existing?.p.hold ?? null,
     });
   }
 
@@ -46,7 +47,9 @@ export class Pool {
     if (!Number.isInteger(props.maxPerWallet) || props.maxPerWallet < 1) bad('at least 1 ticket per wallet');
     if (props.maxTickets !== 0 && props.maxTickets < props.minTickets) bad('the maximum is below the minimum');
     if (props.priceLamports < 1) bad('a ticket costs something');
-    if (props.prepDeadline.getTime() > props.playDeadline.getTime()) bad('the preparation deadline is after the play deadline');
+    if (props.prepDeadline.getTime() > props.playDeadline.getTime()) bad('the sale window ends after the play deadline');
+    if (props.playDeadline.getTime() > props.payoutAt.getTime()) bad('the review window ends before the play deadline');
+    if (!Number.isInteger(props.rideSeed) || props.rideSeed < 0 || props.rideSeed > 0x7fff_ffff) bad('the ride seed is a 31-bit integer');
     return new Pool({ ...props });
   }
 
@@ -60,7 +63,12 @@ export class Pool {
   get ticketsSold(): number { return this.p.ticketsSold; }
   get prepDeadline(): Date { return this.p.prepDeadline; }
   get playDeadline(): Date { return this.p.playDeadline; }
+  get payoutAt(): Date { return this.p.payoutAt; }
+  get payoutState(): PayoutState { return this.p.payoutState; }
+  get hold(): PoolHold | null { return this.p.hold; }
   get roundId(): number | null { return this.p.roundId; }
+  /** the road every ride of this pool is driven on – one seed for the whole pool, so all its riders compete on the same ride */
+  get rideSeed(): number { return this.p.rideSeed; }
   get isActive(): boolean { return this.p.status === 'active'; }
   get isRefunding(): boolean { return this.p.status === 'refunding'; }
 
@@ -86,8 +94,7 @@ export class Pool {
   whyNotSellable(now: Date, qty: number, walletBought: number): string | null {
     if (!Number.isInteger(qty) || qty < 1) return 'quantity must be a whole number of at least 1';
     if (this.p.status !== 'open' && this.p.status !== 'active') return `this pool is ${this.p.status}`;
-    if (now.getTime() >= this.p.playDeadline.getTime()) return 'ticket sales for this pool are closed';
-    if (this.p.status === 'open' && now.getTime() >= this.p.prepDeadline.getTime()) return 'the preparation period is over';
+    if (now.getTime() >= this.p.prepDeadline.getTime()) return 'ticket sales for this pool are closed';
     if (this.p.maxTickets > 0 && this.p.ticketsSold + qty > this.p.maxTickets) return 'this pool is sold out';
     if (walletBought + qty > this.p.maxPerWallet) return `at most ${this.p.maxPerWallet} tickets per wallet in this pool`;
     return null;
@@ -96,6 +103,37 @@ export class Pool {
   /** An open pool whose preparation period is over without the minimum: the program lets anyone fail it (and then refund everybody). */
   isPastDeadlineUnderMinimum(now: Date): boolean {
     return this.p.status === 'open' && now.getTime() >= this.p.prepDeadline.getTime() && this.p.ticketsSold < this.p.minTickets;
+  }
+
+  /**
+   * Where the pool is in its day, by the clock (the program's own rules; the client draws the same from the DTO's timestamps):
+   * selling – tickets on sale (an active pool's rides already count) · riding – sales closed, rides still count · review – rides closed, the review window runs ·
+   * payout – the window is over, prizes may be paid · failed – the sale ended under the minimum (refunds) · closed – settled or cancelled.
+   */
+  phase(now: Date): 'selling' | 'riding' | 'review' | 'payout' | 'failed' | 'closed' {
+    const t = now.getTime();
+    if (this.p.status === 'settled' || this.p.status === 'cancelled') return 'closed';
+    if (this.p.status === 'refunding') return 'failed';
+    if (t < this.p.prepDeadline.getTime()) return 'selling';
+    if (this.p.status === 'open') return 'failed';
+    if (t < this.p.playDeadline.getTime()) return 'riding';
+    return t < this.p.payoutAt.getTime() ? 'review' : 'payout';
+  }
+
+  /** An admin stops the payout job for this pool (signed + audited by the caller); holding again replaces the note. */
+  putOnHold(by: string, note: string | null, now: Date): void {
+    this.p.hold = { by, at: now, note: note === null ? null : note.trim().slice(0, 300) || null };
+  }
+
+  releaseHold(): void {
+    this.p.hold = null;
+  }
+
+  /** The payout job's verdict on this pool after a pass. `paid` is final: nothing moves it back. */
+  recordPayout(state: PayoutState, note: string | null): void {
+    if (this.p.payoutState === 'paid') return;
+    this.p.payoutState = state;
+    this.p.payoutNote = note === null ? null : note.slice(0, 500);
   }
 
   /** The name the lobby shows ("1 HOUR · week 42") – the server's own, not on chain. */

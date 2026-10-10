@@ -34,9 +34,8 @@ pub fn handle_sponsor(ctx: Context<Sponsor>, pool_id: u32, lamports: u64) -> Res
         pool.status == STATUS_OPEN || pool.status == STATUS_ACTIVE,
         PoolError::PoolNotOpen
     );
-    require!(now < pool.play_deadline, PoolError::TooLate);
-    // like buy_ticket: an Open pool past its prep deadline can only fail, so it takes no money
-    require!(pool.status != STATUS_OPEN || now < pool.prep_deadline, PoolError::TooLate);
+    // like buy_ticket: money comes in only while the pool sells (an Active pool's prize is known before the rides end)
+    require!(now < pool.prep_deadline, PoolError::TooLate);
     pool.sponsored = pool.sponsored.checked_add(lamports).ok_or(PoolError::MathOverflow)?;
     transfer(
         CpiContext::new(

@@ -2,34 +2,36 @@
   "accounts": [
     {
       "address": "E1cppxjPPy3QzxQW5Whnf6UQ4u4PJ1VYNQf1UEYovs5g",
-      "data": "mwyq4B76zII4yk0X7UaAFc2yZoPTF8JvThpjjV169sS0YCcFlRcliBAnWhf49breDXIxt17iiDCKpVJPPNcxyDEZo30Ng+Vb+gABAAAAAP8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+      "data": "mwyq4B76zIL+Uqz1YFgE3yx+ssyaW5mK6oNszkXE89IPE8tK9Sh81xL6jgS/J5kdMX7Rr5CKI8fpPNt+8XQYjb7Fjhl4MqdO+gABAAAAAP8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
       "decoded": {
-        "authority": "4pgkLhKZJNL4LkYoR6v4HKovqXfdpLQ1GHT8ANpuM9yy",
+        "authority": "J7mg6EFfwkHomCHmuvfEFAPYzNpkse1bCXBGniEw9xCW",
         "bump": 255,
         "paused": false,
+        "payoutAuthority": null,
         "pendingAuthority": null,
         "platformFeeBps": 250,
-        "platformTreasury": "264KvNJRCXHZGFTEeiBMQHdyLL8LBpaYW7Mq8Y6jkvKU",
+        "platformTreasury": "2H5vy4pfxpg73jaTs7SjHPeTndH7nohrgx5M9vEXDwaV",
         "poolCount": 1,
         "type": "Config"
       },
-      "lamports": "1677360",
+      "lamports": "1907040",
       "name": "config",
       "owner": "9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx"
     },
     {
       "address": "2b7sRhxFCj2unWUQMqrxr92wgnytxxm511grCwhPJ6a3",
-      "data": "8ZptBBGxbbwAAAAAOMpNF+1GgBXNsmaD0xfCb04aY41devbEtGAnBZUXJYgBAOH1BQAAAAADAAAACgAAAAQAKEYPAAAAAADIVQ8AAAAAAHAXxAncBTLF8Tl5hcTq73ZHEiKC/fNeF864D1qp+hp5erJPTaSM9RQD3+YF1xdWZHa/FnSAtjpDeWfTO893R5lKRDsInPIBAwAAAAIAAACA8PoCAAAAAAAAAAAAAAAAAAAAAAAAAABAQg8AAAAAAP//",
+      "data": "8ZptBBGxbbwAAAAA/lKs9WBYBN8sfrLMmluZiuqDbM5FxPPSDxPLSvUofNcBAOH1BQAAAAADAAAACgAAAAQAKEYPAAAAAADIVQ8AAAAAAMhVDwAAAAAAcBfECdwFvv1QhS0+ES5zfNapfbiwqyaZ+a1inW08qTT/s3C1qtF6eVp2tVHxpfpx7GgcLHbLC0M2DJanVAjtIVwjHwzIpgEDAAAAAgAAAIDw+gIAAAAAAAAAAAAAAAAAAAAAAAAAAEBCDwAAAAAA//8=",
       "decoded": {
-        "authority": "4pgkLhKZJNL4LkYoR6v4HKovqXfdpLQ1GHT8ANpuM9yy",
+        "authority": "J7mg6EFfwkHomCHmuvfEFAPYzNpkse1bCXBGniEw9xCW",
         "bump": 255,
         "buyers": 2,
         "createdAt": 1000000,
         "feeBps": 1500,
-        "feeTreasury": "4RCSsW5vTnrLUgsPwZ1pNFNR7734kSJ3rRThjAP7iWaw",
+        "feeTreasury": "DrYVixWVZiR2f8e9aqnVN2UWcnjMfEi1NmCHbLdcVzuv",
         "maxPerWallet": 4,
         "maxTickets": 10,
         "minTickets": 3,
+        "payoutAt": 1005000,
         "playDeadline": 1005000,
         "poolId": 0,
         "prepDeadline": 1001000,
@@ -38,7 +40,7 @@
         "prizesPaid": "0",
         "refunded": "0",
         "seedBps": 2500,
-        "seedTreasury": "HVgb59JbzfuDVE7dXtT3YARZra5gjgeChkGWEodmMAru",
+        "seedTreasury": "9F64kY6FUexyHao1nKaKvHVcSwEWKCFkBqBooY54Atow",
         "sponsored": "50000000",
         "status": 1,
         "ticketsSold": 3,
@@ -46,7 +48,7 @@
         "type": "Pool",
         "vaultBump": 255
       },
-      "lamports": "2227200",
+      "lamports": "2282880",
       "name": "pool 0 active",
       "owner": "9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx"
     },
@@ -68,17 +70,18 @@
     },
     {
       "address": "2b7sRhxFCj2unWUQMqrxr92wgnytxxm511grCwhPJ6a3",
-      "data": "8ZptBBGxbbwAAAAAOMpNF+1GgBXNsmaD0xfCb04aY41devbEtGAnBZUXJYgBAOH1BQAAAAADAAAACgAAAAQAKEYPAAAAAADIVQ8AAAAAAHAXxAncBTLF8Tl5hcTq73ZHEiKC/fNeF864D1qp+hp5erJPTaSM9RQD3+YF1xdWZHa/FnSAtjpDeWfTO893R5lKRDsInPIDAwAAAAIAAACA8PoCAAAAAADh9QUAAAAAAAAAAAAAAABAQg8AAAAAAP//",
+      "data": "8ZptBBGxbbwAAAAA/lKs9WBYBN8sfrLMmluZiuqDbM5FxPPSDxPLSvUofNcBAOH1BQAAAAADAAAACgAAAAQAKEYPAAAAAADIVQ8AAAAAAMhVDwAAAAAAcBfECdwFvv1QhS0+ES5zfNapfbiwqyaZ+a1inW08qTT/s3C1qtF6eVp2tVHxpfpx7GgcLHbLC0M2DJanVAjtIVwjHwzIpgMDAAAAAgAAAIDw+gIAAAAAAOH1BQAAAAAAAAAAAAAAAEBCDwAAAAAA//8=",
       "decoded": {
-        "authority": "4pgkLhKZJNL4LkYoR6v4HKovqXfdpLQ1GHT8ANpuM9yy",
+        "authority": "J7mg6EFfwkHomCHmuvfEFAPYzNpkse1bCXBGniEw9xCW",
         "bump": 255,
         "buyers": 2,
         "createdAt": 1000000,
         "feeBps": 1500,
-        "feeTreasury": "4RCSsW5vTnrLUgsPwZ1pNFNR7734kSJ3rRThjAP7iWaw",
+        "feeTreasury": "DrYVixWVZiR2f8e9aqnVN2UWcnjMfEi1NmCHbLdcVzuv",
         "maxPerWallet": 4,
         "maxTickets": 10,
         "minTickets": 3,
+        "payoutAt": 1005000,
         "playDeadline": 1005000,
         "poolId": 0,
         "prepDeadline": 1001000,
@@ -87,7 +90,7 @@
         "prizesPaid": "100000000",
         "refunded": "0",
         "seedBps": 2500,
-        "seedTreasury": "HVgb59JbzfuDVE7dXtT3YARZra5gjgeChkGWEodmMAru",
+        "seedTreasury": "9F64kY6FUexyHao1nKaKvHVcSwEWKCFkBqBooY54Atow",
         "sponsored": "50000000",
         "status": 3,
         "ticketsSold": 3,
@@ -95,7 +98,7 @@
         "type": "Pool",
         "vaultBump": 255
       },
-      "lamports": "2227200",
+      "lamports": "2282880",
       "name": "pool 0 settled",
       "owner": "9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx"
     },
@@ -117,17 +120,18 @@
     },
     {
       "address": "7ibS8Sa6FnnA6FnrCTS6wXxwnRYSF1oTJiJE7VJCTspN",
-      "data": "8ZptBBGxbbwBAAAAOMpNF+1GgBXNsmaD0xfCb04aY41devbEtGAnBZUXJYgBAOH1BQAAAAADAAAACgAAAAQAsFkPAAAAAABQaQ8AAAAAAHAXxAncBTLF8Tl5hcTq73ZHEiKC/fNeF864D1qp+hp5erJPTaSM9RQD3+YF1xdWZHa/FnSAtjpDeWfTO893R5lKRDsInPICAQAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAOH1BQAAAADIVQ8AAAAAAP79",
+      "data": "8ZptBBGxbbwBAAAA/lKs9WBYBN8sfrLMmluZiuqDbM5FxPPSDxPLSvUofNcBAOH1BQAAAAADAAAACgAAAAQAsFkPAAAAAABQaQ8AAAAAAFBpDwAAAAAAcBfECdwFvv1QhS0+ES5zfNapfbiwqyaZ+a1inW08qTT/s3C1qtF6eVp2tVHxpfpx7GgcLHbLC0M2DJanVAjtIVwjHwzIpgIBAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAA4fUFAAAAAMhVDwAAAAAA/v0=",
       "decoded": {
-        "authority": "4pgkLhKZJNL4LkYoR6v4HKovqXfdpLQ1GHT8ANpuM9yy",
+        "authority": "J7mg6EFfwkHomCHmuvfEFAPYzNpkse1bCXBGniEw9xCW",
         "bump": 254,
         "buyers": 1,
         "createdAt": 1005000,
         "feeBps": 1500,
-        "feeTreasury": "4RCSsW5vTnrLUgsPwZ1pNFNR7734kSJ3rRThjAP7iWaw",
+        "feeTreasury": "DrYVixWVZiR2f8e9aqnVN2UWcnjMfEi1NmCHbLdcVzuv",
         "maxPerWallet": 4,
         "maxTickets": 10,
         "minTickets": 3,
+        "payoutAt": 1010000,
         "playDeadline": 1010000,
         "poolId": 1,
         "prepDeadline": 1006000,
@@ -136,7 +140,7 @@
         "prizesPaid": "0",
         "refunded": "100000000",
         "seedBps": 2500,
-        "seedTreasury": "HVgb59JbzfuDVE7dXtT3YARZra5gjgeChkGWEodmMAru",
+        "seedTreasury": "9F64kY6FUexyHao1nKaKvHVcSwEWKCFkBqBooY54Atow",
         "sponsored": "0",
         "status": 2,
         "ticketsSold": 1,
@@ -144,42 +148,125 @@
         "type": "Pool",
         "vaultBump": 253
       },
-      "lamports": "2227200",
+      "lamports": "2282880",
       "name": "pool 1 refunding",
+      "owner": "9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx"
+    },
+    {
+      "address": "4kQ287ejL54QMRyNWAdP58TmEMkqp45V6d8KBoyqMwi8",
+      "data": "8GEIt4tN+qIBAQDh9QUAAAAAAwAAAAAAAAAEAIBRAQAAAAAAIBwAAAAAAAAAowIAAAAAAFgb0AfoA779UIUtPhEuc3zWqX24sKsmmfmtYp1tPKk0/7NwtarRenladrVR8aX6cexoHCx2ywtDNgyWp1QI7SFcIx8MyKZ04iEAAAAAAAAAAAAA/AAAAAA=",
+      "decoded": {
+        "bump": 252,
+        "enabled": true,
+        "feeBps": 1000,
+        "feeTreasury": "DrYVixWVZiR2f8e9aqnVN2UWcnjMfEi1NmCHbLdcVzuv",
+        "lastPoolId": null,
+        "maxPerWallet": 4,
+        "maxTickets": 0,
+        "minTickets": 3,
+        "nextOpenAt": 2220660,
+        "playSecs": 7200,
+        "poolsOpened": 0,
+        "priceLamports": "100000000",
+        "prizeBps": 7000,
+        "saleSecs": 86400,
+        "seedBps": 2000,
+        "seedTreasury": "9F64kY6FUexyHao1nKaKvHVcSwEWKCFkBqBooY54Atow",
+        "tier": 1,
+        "type": "Series",
+        "verifySecs": 172800
+      },
+      "lamports": "1865280",
+      "name": "series 1",
+      "owner": "9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx"
+    },
+    {
+      "address": "5qrkCeSR7jfWSJpXKayXpVFwGVLgXtWf9aDRgEQkgUDz",
+      "data": "8ZptBBGxbbwEAAAAdaVRfPEW8WGnELOospoxshLqhrUtQ/fxyd4NhLQ4gsABAOH1BQAAAAADAAAAAAAAAAQA9DMjAAAAAAAUUCMAAAAAABTzJQAAAAAAWBvQB+gDvv1QhS0+ES5zfNapfbiwqyaZ+a1inW08qTT/s3C1qtF6eVp2tVHxpfpx7GgcLHbLC0M2DJanVAjtIVwjHwzIpgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHTiIQAAAAAA/v4=",
+      "decoded": {
+        "authority": "8vEuirE4kg8dsid9ApWpBciRaMj2iNYBWDAj1vc4krX9",
+        "bump": 254,
+        "buyers": 0,
+        "createdAt": 2220660,
+        "feeBps": 1000,
+        "feeTreasury": "DrYVixWVZiR2f8e9aqnVN2UWcnjMfEi1NmCHbLdcVzuv",
+        "maxPerWallet": 4,
+        "maxTickets": 0,
+        "minTickets": 3,
+        "payoutAt": 2487060,
+        "playDeadline": 2314260,
+        "poolId": 4,
+        "prepDeadline": 2307060,
+        "priceLamports": "100000000",
+        "prizeBps": 7000,
+        "prizesPaid": "0",
+        "refunded": "0",
+        "seedBps": 2000,
+        "seedTreasury": "9F64kY6FUexyHao1nKaKvHVcSwEWKCFkBqBooY54Atow",
+        "sponsored": "0",
+        "status": 0,
+        "ticketsSold": 0,
+        "tier": 1,
+        "type": "Pool",
+        "vaultBump": 254
+      },
+      "lamports": "2282880",
+      "name": "pool 4 open (series)",
+      "owner": "9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx"
+    },
+    {
+      "address": "E1cppxjPPy3QzxQW5Whnf6UQ4u4PJ1VYNQf1UEYovs5g",
+      "data": "mwyq4B76zIL+Uqz1YFgE3yx+ssyaW5mK6oNszkXE89IPE8tK9Sh81xL6jgS/J5kdMX7Rr5CKI8fpPNt+8XQYjb7Fjhl4MqdO+gAFAAAAAP8AAf0XJDhaoMdbZPt4zWAvodmR/ev3axPFjtcC6sg16fYYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+      "decoded": {
+        "authority": "J7mg6EFfwkHomCHmuvfEFAPYzNpkse1bCXBGniEw9xCW",
+        "bump": 255,
+        "paused": false,
+        "payoutAuthority": "J2xccRtuG43drESLYznHhLhQkLTdfepcKYbiQ9BsJVaf",
+        "pendingAuthority": null,
+        "platformFeeBps": 250,
+        "platformTreasury": "2H5vy4pfxpg73jaTs7SjHPeTndH7nohrgx5M9vEXDwaV",
+        "poolCount": 5,
+        "type": "Config"
+      },
+      "lamports": "1907040",
+      "name": "config with payout key",
       "owner": "9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx"
     }
   ],
   "configAddress": "E1cppxjPPy3QzxQW5Whnf6UQ4u4PJ1VYNQf1UEYovs5g",
   "keys": {
     "a": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
-    "authority": "4pgkLhKZJNL4LkYoR6v4HKovqXfdpLQ1GHT8ANpuM9yy",
+    "authority": "J7mg6EFfwkHomCHmuvfEFAPYzNpkse1bCXBGniEw9xCW",
     "b": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
     "brand": "AKkzLhjhyFtM9j7WAhbaqYpFe49cXeJBg2kzLRC2PnNa",
     "c": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
-    "cranker": "8Bvjnw5e1mJDNXcZDUuWevxb54UFkgCeXGMVR8Y6w6xc",
+    "cranker": "8vEuirE4kg8dsid9ApWpBciRaMj2iNYBWDAj1vc4krX9",
     "d": "EdmxWPmx2WH6WgFfTdu9xfkYf3k1g5wD1zccTVySEEh1",
-    "feeTreasury": "4RCSsW5vTnrLUgsPwZ1pNFNR7734kSJ3rRThjAP7iWaw",
+    "feeTreasury": "DrYVixWVZiR2f8e9aqnVN2UWcnjMfEi1NmCHbLdcVzuv",
     "gas": "8SFqwqnq4whPhs8icwHA2hQg3hUoN1qrCLK1SBx3WKwe",
     "nextAdmin": "2KW2XRd9kwqet15Aha2oK3tYvd3nWbTFH1MBiRAv1BE1",
-    "platformTreasury": "264KvNJRCXHZGFTEeiBMQHdyLL8LBpaYW7Mq8Y6jkvKU",
-    "seedTreasury": "HVgb59JbzfuDVE7dXtT3YARZra5gjgeChkGWEodmMAru",
+    "payout": "J2xccRtuG43drESLYznHhLhQkLTdfepcKYbiQ9BsJVaf",
+    "platformTreasury": "2H5vy4pfxpg73jaTs7SjHPeTndH7nohrgx5M9vEXDwaV",
+    "seedTreasury": "9F64kY6FUexyHao1nKaKvHVcSwEWKCFkBqBooY54Atow",
     "winner": "GmaDrppBC7P5ARKV8g3djiwP89vz1jLK23V2GBjuAEGB"
   },
   "programId": "9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx",
   "rentMin": "890880",
   "transactions": [
     {
-      "computeUnits": 16769,
+      "computeUnits": 17391,
       "err": null,
       "events": [
         {
-          "authority": "4pgkLhKZJNL4LkYoR6v4HKovqXfdpLQ1GHT8ANpuM9yy",
+          "authority": "J7mg6EFfwkHomCHmuvfEFAPYzNpkse1bCXBGniEw9xCW",
           "feeBps": 1500,
-          "feeTreasury": "4RCSsW5vTnrLUgsPwZ1pNFNR7734kSJ3rRThjAP7iWaw",
+          "feeTreasury": "DrYVixWVZiR2f8e9aqnVN2UWcnjMfEi1NmCHbLdcVzuv",
+          "fromSeries": false,
           "kind": "PoolCreated",
           "maxPerWallet": 4,
           "maxTickets": 10,
           "minTickets": 3,
+          "payoutAt": 1005000,
           "playDeadline": 1005000,
           "pool": "2b7sRhxFCj2unWUQMqrxr92wgnytxxm511grCwhPJ6a3",
           "poolId": 0,
@@ -187,19 +274,19 @@
           "priceLamports": "100000000",
           "prizeBps": 6000,
           "seedBps": 2500,
-          "seedTreasury": "HVgb59JbzfuDVE7dXtT3YARZra5gjgeChkGWEodmMAru",
+          "seedTreasury": "9F64kY6FUexyHao1nKaKvHVcSwEWKCFkBqBooY54Atow",
           "tier": 1,
           "vault": "27b9UCA7f97vDGbuTxVPL5rKCdwwBbQzAirURoRkaMr9"
         }
       ],
-      "feePayer": "8Bvjnw5e1mJDNXcZDUuWevxb54UFkgCeXGMVR8Y6w6xc",
+      "feePayer": "8vEuirE4kg8dsid9ApWpBciRaMj2iNYBWDAj1vc4krX9",
       "instructions": [
         {
           "accounts": [
             {
               "isSigner": true,
               "isWritable": true,
-              "pubkey": "4pgkLhKZJNL4LkYoR6v4HKovqXfdpLQ1GHT8ANpuM9yy"
+              "pubkey": "J7mg6EFfwkHomCHmuvfEFAPYzNpkse1bCXBGniEw9xCW"
             },
             {
               "isSigner": false,
@@ -219,17 +306,17 @@
             {
               "isSigner": false,
               "isWritable": false,
-              "pubkey": "4RCSsW5vTnrLUgsPwZ1pNFNR7734kSJ3rRThjAP7iWaw"
+              "pubkey": "DrYVixWVZiR2f8e9aqnVN2UWcnjMfEi1NmCHbLdcVzuv"
             },
             {
               "isSigner": false,
               "isWritable": false,
-              "pubkey": "HVgb59JbzfuDVE7dXtT3YARZra5gjgeChkGWEodmMAru"
+              "pubkey": "9F64kY6FUexyHao1nKaKvHVcSwEWKCFkBqBooY54Atow"
             },
             {
               "isSigner": false,
               "isWritable": false,
-              "pubkey": "264KvNJRCXHZGFTEeiBMQHdyLL8LBpaYW7Mq8Y6jkvKU"
+              "pubkey": "2H5vy4pfxpg73jaTs7SjHPeTndH7nohrgx5M9vEXDwaV"
             },
             {
               "isSigner": false,
@@ -242,6 +329,7 @@
             "maxPerWallet": 4,
             "maxTickets": 10,
             "minTickets": 3,
+            "payoutAt": 1005000,
             "playDeadline": 1005000,
             "prepDeadline": 1001000,
             "priceLamports": "100000000",
@@ -249,7 +337,7 @@
             "seedBps": 2500,
             "tier": 1
           },
-          "data": "6ZLRjs9oQLwBAOH1BQAAAAADAAAACgAAAAQAKEYPAAAAAADIVQ8AAAAAAHAXxAncBQ==",
+          "data": "6ZLRjs9oQLwBAOH1BQAAAAADAAAACgAAAAQAKEYPAAAAAADIVQ8AAAAAAMhVDwAAAAAAcBfECdwF",
           "name": "create_pool",
           "programId": "9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx"
         }
@@ -261,16 +349,16 @@
         "Program 11111111111111111111111111111111 success",
         "Program 11111111111111111111111111111111 invoke [2]",
         "Program 11111111111111111111111111111111 success",
-        "Program data: yiwpWGjcnVIAAAAAF5kzovOj7AshID66agCXEZvKm5pbd6QEphV6v52M8jgQi8fiqZ6Gu7UXarDiHeqPFXGSiTU5HxzbWmvUfqe2SjjKTRftRoAVzbJmg9MXwm9OGmONXXr2xLRgJwWVFyWIAQDh9QUAAAAAAwAAAAoAAAAEAChGDwAAAAAAyFUPAAAAAABwF8QJ3AUyxfE5eYXE6u92RxIigv3zXhfOuA9aqfoaeXqyT02kjPUUA9/mBdcXVmR2vxZ0gLY6Q3ln0zvPd0eZSkQ7CJzy",
-        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 16769 of 200000 compute units",
+        "Program data: yiwpWGjcnVIAAAAAF5kzovOj7AshID66agCXEZvKm5pbd6QEphV6v52M8jgQi8fiqZ6Gu7UXarDiHeqPFXGSiTU5HxzbWmvUfqe2Sv5SrPVgWATfLH6yzJpbmYrqg2zORcTz0g8Ty0r1KHzXAQDh9QUAAAAAAwAAAAoAAAAEAChGDwAAAAAAyFUPAAAAAADIVQ8AAAAAAHAXxAncBb79UIUtPhEuc3zWqX24sKsmmfmtYp1tPKk0/7NwtarRenladrVR8aX6cexoHCx2ywtDNgyWp1QI7SFcIx8MyKYA",
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 17391 of 200000 compute units",
         "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx success"
       ],
       "name": "create_pool 0",
-      "signature": "2Nc2EZ8mptydzU4E5UzvgS4Jic58qGsx2UiBhQsabUxTyo3pWZv2B9joREzHdUeV5CQa526sgdCN9w2XbbREXsED",
+      "signature": "51mDRnDjJv1PwJJQ5RfMZNqn3v8M5PvQoC9csvechBCSNWcZ2FA7KcPdtUqBaDL6ChM9p5Tx7C3TytUcHazZAaPf",
       "slot": 0
     },
     {
-      "computeUnits": 18386,
+      "computeUnits": 17899,
       "err": null,
       "events": [
         {
@@ -344,7 +432,7 @@
         "Program 11111111111111111111111111111111 invoke [2]",
         "Program 11111111111111111111111111111111 success",
         "Program data: UPQjtdOPA6YAAAAAiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1wCAADC6wsAAAAAC17J4x8qTD2OT1prfI2eDwIAAAAA",
-        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 18386 of 200000 compute units",
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 17899 of 200000 compute units",
         "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx success"
       ],
       "name": "buy_ticket sponsored (A x2, gas pays fee + rent)",
@@ -352,7 +440,7 @@
       "slot": 0
     },
     {
-      "computeUnits": 18447,
+      "computeUnits": 17986,
       "err": null,
       "events": [
         {
@@ -433,7 +521,7 @@
         "Program 11111111111111111111111111111111 success",
         "Program data: UPQjtdOPA6YAAAAAgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5QBAADh9QUAAAAAfRwAQqGyTNOe9AUWJzhJWgMAAAAB",
         "Program data: yU/LTQNp6QEAAAAAAwAAAEBCDwAAAAAA",
-        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 18447 of 200000 compute units",
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 17986 of 200000 compute units",
         "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx success"
       ],
       "name": "buy_ticket self-paid (B x1) activates",
@@ -441,7 +529,7 @@
       "slot": 0
     },
     {
-      "computeUnits": 11278,
+      "computeUnits": 11127,
       "err": null,
       "events": [
         {
@@ -498,7 +586,7 @@
         "Program 11111111111111111111111111111111 invoke [2]",
         "Program 11111111111111111111111111111111 success",
         "Program data: DTUoDaVQVYMAAAAAiodf/x6zhFFXes1a/uQFRWVo3XyJ4JCGOgVXvHr0nxeA8PoCAAAAAIDw+gIAAAAA",
-        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 11278 of 200000 compute units",
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 11127 of 200000 compute units",
         "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx success"
       ],
       "name": "sponsor",
@@ -506,7 +594,7 @@
       "slot": 0
     },
     {
-      "computeUnits": 17720,
+      "computeUnits": 17551,
       "err": "InstructionError(0, Custom(6007))",
       "events": [],
       "feePayer": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
@@ -566,8 +654,8 @@
         "Program log: Instruction: BuyTicket",
         "Program 11111111111111111111111111111111 invoke [2]",
         "Program 11111111111111111111111111111111 success",
-        "Program log: AnchorError thrown in programs/freightchain_pools/src/instructions/buy_ticket.rs:54. Error Code: SoldOut. Error Number: 6007. Error Message: Not enough tickets left in the pool.",
-        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 17720 of 200000 compute units",
+        "Program log: AnchorError thrown in programs/freightchain_pools/src/instructions/buy_ticket.rs:53. Error Code: SoldOut. Error Number: 6007. Error Message: Not enough tickets left in the pool.",
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 17551 of 200000 compute units",
         "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx failed: custom program error: 0x1777"
       ],
       "name": "buy_ticket sold out (fails)",
@@ -575,7 +663,7 @@
       "slot": 0
     },
     {
-      "computeUnits": 13267,
+      "computeUnits": 12962,
       "err": null,
       "events": [
         {
@@ -587,14 +675,14 @@
           "to": "GmaDrppBC7P5ARKV8g3djiwP89vz1jLK23V2GBjuAEGB"
         }
       ],
-      "feePayer": "8Bvjnw5e1mJDNXcZDUuWevxb54UFkgCeXGMVR8Y6w6xc",
+      "feePayer": "8vEuirE4kg8dsid9ApWpBciRaMj2iNYBWDAj1vc4krX9",
       "instructions": [
         {
           "accounts": [
             {
               "isSigner": true,
               "isWritable": false,
-              "pubkey": "4pgkLhKZJNL4LkYoR6v4HKovqXfdpLQ1GHT8ANpuM9yy"
+              "pubkey": "J7mg6EFfwkHomCHmuvfEFAPYzNpkse1bCXBGniEw9xCW"
             },
             {
               "isSigner": false,
@@ -623,7 +711,7 @@
             }
           ],
           "args": {
-            "authority": "4pgkLhKZJNL4LkYoR6v4HKovqXfdpLQ1GHT8ANpuM9yy",
+            "authority": "J7mg6EFfwkHomCHmuvfEFAPYzNpkse1bCXBGniEw9xCW",
             "lamports": "100000000",
             "poolId": 0,
             "rank": 1,
@@ -640,15 +728,15 @@
         "Program 11111111111111111111111111111111 invoke [2]",
         "Program 11111111111111111111111111111111 success",
         "Program data: BhTt+FpNZtMAAAAA6kpsY+KcUgq+9VB7Ey7F+ZVHdq6+vnuSQh7qaRRG0iwA4fUFAAAAAAEA4fUFAAAAAA==",
-        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 13267 of 200000 compute units",
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 12962 of 200000 compute units",
         "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx success"
       ],
       "name": "pay_prize",
-      "signature": "44iztGPaQ5Hzki9f4abgxpuJQh8vT4MbnFKbpFp5wBSsE9jqJi7UmmVBE6JzzwWQ1zbmkHeG7CDbjyCC5g2eqniu",
+      "signature": "V8nnbqhghmwzSe4xA9fzyQZXiLaPktJ65fxqAaPm4HyfisHEyJFk8LoxupHBhum3KMz9oWhchiozxCEwYzHWh7f",
       "slot": 0
     },
     {
-      "computeUnits": 18836,
+      "computeUnits": 18491,
       "err": null,
       "events": [
         {
@@ -663,19 +751,19 @@
           "unclaimed": "110000000"
         }
       ],
-      "feePayer": "8Bvjnw5e1mJDNXcZDUuWevxb54UFkgCeXGMVR8Y6w6xc",
+      "feePayer": "8vEuirE4kg8dsid9ApWpBciRaMj2iNYBWDAj1vc4krX9",
       "instructions": [
         {
           "accounts": [
             {
               "isSigner": true,
               "isWritable": false,
-              "pubkey": "4pgkLhKZJNL4LkYoR6v4HKovqXfdpLQ1GHT8ANpuM9yy"
+              "pubkey": "J7mg6EFfwkHomCHmuvfEFAPYzNpkse1bCXBGniEw9xCW"
             },
             {
               "isSigner": false,
               "isWritable": true,
-              "pubkey": "4pgkLhKZJNL4LkYoR6v4HKovqXfdpLQ1GHT8ANpuM9yy"
+              "pubkey": "J7mg6EFfwkHomCHmuvfEFAPYzNpkse1bCXBGniEw9xCW"
             },
             {
               "isSigner": false,
@@ -695,17 +783,17 @@
             {
               "isSigner": false,
               "isWritable": true,
-              "pubkey": "HVgb59JbzfuDVE7dXtT3YARZra5gjgeChkGWEodmMAru"
+              "pubkey": "9F64kY6FUexyHao1nKaKvHVcSwEWKCFkBqBooY54Atow"
             },
             {
               "isSigner": false,
               "isWritable": true,
-              "pubkey": "4RCSsW5vTnrLUgsPwZ1pNFNR7734kSJ3rRThjAP7iWaw"
+              "pubkey": "DrYVixWVZiR2f8e9aqnVN2UWcnjMfEi1NmCHbLdcVzuv"
             },
             {
               "isSigner": false,
               "isWritable": true,
-              "pubkey": "264KvNJRCXHZGFTEeiBMQHdyLL8LBpaYW7Mq8Y6jkvKU"
+              "pubkey": "2H5vy4pfxpg73jaTs7SjHPeTndH7nohrgx5M9vEXDwaV"
             },
             {
               "isSigner": false,
@@ -714,7 +802,7 @@
             }
           ],
           "args": {
-            "caller": "4pgkLhKZJNL4LkYoR6v4HKovqXfdpLQ1GHT8ANpuM9yy",
+            "caller": "J7mg6EFfwkHomCHmuvfEFAPYzNpkse1bCXBGniEw9xCW",
             "poolId": 0
           },
           "data": "jL3RF+8+7wsAAAAA",
@@ -734,25 +822,25 @@
         "Program 11111111111111111111111111111111 invoke [2]",
         "Program 11111111111111111111111111111111 success",
         "Program data: ai4d5yosSXcAAAAAAOH1BQAAAABgnMULAAAAACwPDQMAAAAA9AYUAAAAAACAd44GAAAAAACYDQAAAAAAAA==",
-        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 18836 of 200000 compute units",
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 18491 of 200000 compute units",
         "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx success"
       ],
       "name": "close_pool settled",
-      "signature": "FtwVQhGipWnXSKE3aF725xMpZVy2pkhJrPm2E2Th3bQdCqj9XEVjtYzu6x3cX8Sa3HEyHCAQA4JPVt4MKLNU8cs",
+      "signature": "4tTedUMYAjAmpsX2PWuUpN9D3stsgczbX1vUuQQcbv6Zii31PWgMfTwz9azE6pLkWyUnUrBtRDu9wcxkUWCW5N5b",
       "slot": 0
     },
     {
-      "computeUnits": 6279,
+      "computeUnits": 6051,
       "err": null,
       "events": [],
-      "feePayer": "8Bvjnw5e1mJDNXcZDUuWevxb54UFkgCeXGMVR8Y6w6xc",
+      "feePayer": "8vEuirE4kg8dsid9ApWpBciRaMj2iNYBWDAj1vc4krX9",
       "instructions": [
         {
           "accounts": [
             {
               "isSigner": true,
               "isWritable": false,
-              "pubkey": "8Bvjnw5e1mJDNXcZDUuWevxb54UFkgCeXGMVR8Y6w6xc"
+              "pubkey": "8vEuirE4kg8dsid9ApWpBciRaMj2iNYBWDAj1vc4krX9"
             },
             {
               "isSigner": false,
@@ -781,25 +869,27 @@
       "logs": [
         "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx invoke [1]",
         "Program log: Instruction: CloseTicket",
-        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 6279 of 200000 compute units",
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 6051 of 200000 compute units",
         "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx success"
       ],
       "name": "close_ticket",
-      "signature": "rQ3hhGfeEdT8rgRQbpdUWShN1sqVgN5SCPjhk2WaTxf6EW7Wt7zv8LULqKmnSS3gPwh6nV1yuobnTCfSXtgLLK8",
+      "signature": "4WYzMk5Y9Nrrrh5VabebvSxPQQSSzGxL2X5WWisgfhg3aAFwP9WirXnPXP6E1hk2NByp9drLoAnUUSFqvrayoQto",
       "slot": 0
     },
     {
-      "computeUnits": 21269,
+      "computeUnits": 21891,
       "err": null,
       "events": [
         {
-          "authority": "4pgkLhKZJNL4LkYoR6v4HKovqXfdpLQ1GHT8ANpuM9yy",
+          "authority": "J7mg6EFfwkHomCHmuvfEFAPYzNpkse1bCXBGniEw9xCW",
           "feeBps": 1500,
-          "feeTreasury": "4RCSsW5vTnrLUgsPwZ1pNFNR7734kSJ3rRThjAP7iWaw",
+          "feeTreasury": "DrYVixWVZiR2f8e9aqnVN2UWcnjMfEi1NmCHbLdcVzuv",
+          "fromSeries": false,
           "kind": "PoolCreated",
           "maxPerWallet": 4,
           "maxTickets": 10,
           "minTickets": 3,
+          "payoutAt": 1010000,
           "playDeadline": 1010000,
           "pool": "7ibS8Sa6FnnA6FnrCTS6wXxwnRYSF1oTJiJE7VJCTspN",
           "poolId": 1,
@@ -807,19 +897,19 @@
           "priceLamports": "100000000",
           "prizeBps": 6000,
           "seedBps": 2500,
-          "seedTreasury": "HVgb59JbzfuDVE7dXtT3YARZra5gjgeChkGWEodmMAru",
+          "seedTreasury": "9F64kY6FUexyHao1nKaKvHVcSwEWKCFkBqBooY54Atow",
           "tier": 1,
           "vault": "HwWPb9EhfmQJhqc4Ck3EQGLPi7H7jPExmGCysuEaCmex"
         }
       ],
-      "feePayer": "8Bvjnw5e1mJDNXcZDUuWevxb54UFkgCeXGMVR8Y6w6xc",
+      "feePayer": "8vEuirE4kg8dsid9ApWpBciRaMj2iNYBWDAj1vc4krX9",
       "instructions": [
         {
           "accounts": [
             {
               "isSigner": true,
               "isWritable": true,
-              "pubkey": "4pgkLhKZJNL4LkYoR6v4HKovqXfdpLQ1GHT8ANpuM9yy"
+              "pubkey": "J7mg6EFfwkHomCHmuvfEFAPYzNpkse1bCXBGniEw9xCW"
             },
             {
               "isSigner": false,
@@ -839,17 +929,17 @@
             {
               "isSigner": false,
               "isWritable": false,
-              "pubkey": "4RCSsW5vTnrLUgsPwZ1pNFNR7734kSJ3rRThjAP7iWaw"
+              "pubkey": "DrYVixWVZiR2f8e9aqnVN2UWcnjMfEi1NmCHbLdcVzuv"
             },
             {
               "isSigner": false,
               "isWritable": false,
-              "pubkey": "HVgb59JbzfuDVE7dXtT3YARZra5gjgeChkGWEodmMAru"
+              "pubkey": "9F64kY6FUexyHao1nKaKvHVcSwEWKCFkBqBooY54Atow"
             },
             {
               "isSigner": false,
               "isWritable": false,
-              "pubkey": "264KvNJRCXHZGFTEeiBMQHdyLL8LBpaYW7Mq8Y6jkvKU"
+              "pubkey": "2H5vy4pfxpg73jaTs7SjHPeTndH7nohrgx5M9vEXDwaV"
             },
             {
               "isSigner": false,
@@ -862,6 +952,7 @@
             "maxPerWallet": 4,
             "maxTickets": 10,
             "minTickets": 3,
+            "payoutAt": 1010000,
             "playDeadline": 1010000,
             "prepDeadline": 1006000,
             "priceLamports": "100000000",
@@ -869,7 +960,7 @@
             "seedBps": 2500,
             "tier": 1
           },
-          "data": "6ZLRjs9oQLwBAOH1BQAAAAADAAAACgAAAAQAsFkPAAAAAABQaQ8AAAAAAHAXxAncBQ==",
+          "data": "6ZLRjs9oQLwBAOH1BQAAAAADAAAACgAAAAQAsFkPAAAAAABQaQ8AAAAAAFBpDwAAAAAAcBfECdwF",
           "name": "create_pool",
           "programId": "9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx"
         }
@@ -881,16 +972,16 @@
         "Program 11111111111111111111111111111111 success",
         "Program 11111111111111111111111111111111 invoke [2]",
         "Program 11111111111111111111111111111111 success",
-        "Program data: yiwpWGjcnVIBAAAAY83eV7iCFqi3Le1m5fr2gn4zUwia2ebQE+1a26xLxCP7sZXU4chGAGYZJK1WvF6LhRExl5FpKdufHTvrvRAmsTjKTRftRoAVzbJmg9MXwm9OGmONXXr2xLRgJwWVFyWIAQDh9QUAAAAAAwAAAAoAAAAEALBZDwAAAAAAUGkPAAAAAABwF8QJ3AUyxfE5eYXE6u92RxIigv3zXhfOuA9aqfoaeXqyT02kjPUUA9/mBdcXVmR2vxZ0gLY6Q3ln0zvPd0eZSkQ7CJzy",
-        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 21269 of 200000 compute units",
+        "Program data: yiwpWGjcnVIBAAAAY83eV7iCFqi3Le1m5fr2gn4zUwia2ebQE+1a26xLxCP7sZXU4chGAGYZJK1WvF6LhRExl5FpKdufHTvrvRAmsf5SrPVgWATfLH6yzJpbmYrqg2zORcTz0g8Ty0r1KHzXAQDh9QUAAAAAAwAAAAoAAAAEALBZDwAAAAAAUGkPAAAAAABQaQ8AAAAAAHAXxAncBb79UIUtPhEuc3zWqX24sKsmmfmtYp1tPKk0/7NwtarRenladrVR8aX6cexoHCx2ywtDNgyWp1QI7SFcIx8MyKYA",
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 21891 of 200000 compute units",
         "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx success"
       ],
       "name": "create_pool 1",
-      "signature": "2ygxMFa2RPyW4XCgvUHHq1GFg5MBjo8urjrjUJVLTDLjM2uPUimDn7ihHcvvLxUTkW61jbmmjNV8ugPt7aCLvERd",
+      "signature": "3VPKzH8GQRDkHCpkTVAWZe5sQ1813WtU2hZxvnMDJZFQN2MPR2yuaELnUd2aWHdBqDzFSqVYZD5ZteCfF7jxzThv",
       "slot": 0
     },
     {
-      "computeUnits": 19667,
+      "computeUnits": 19206,
       "err": null,
       "events": [
         {
@@ -964,7 +1055,7 @@
         "Program 11111111111111111111111111111111 invoke [2]",
         "Program 11111111111111111111111111111111 success",
         "Program data: UPQjtdOPA6YBAAAA7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9EBAADh9QUAAAAAAwMDAwMDAwMDAwMDAwMDAwEAAAAA",
-        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 19667 of 200000 compute units",
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 19206 of 200000 compute units",
         "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx success"
       ],
       "name": "buy_ticket into pool 1",
@@ -972,7 +1063,7 @@
       "slot": 0
     },
     {
-      "computeUnits": 18950,
+      "computeUnits": 18491,
       "err": null,
       "events": [
         {
@@ -1066,14 +1157,14 @@
         "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx invoke [1]",
         "Program log: Instruction: FailPool",
         "Program data: +j7AzTKU4/oBAAAAAQAAAA==",
-        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 5125 of 400000 compute units",
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 5000 of 400000 compute units",
         "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx success",
         "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx invoke [1]",
         "Program log: Instruction: Refund",
         "Program 11111111111111111111111111111111 invoke [2]",
         "Program 11111111111111111111111111111111 success",
         "Program data: I2eV9sR73WMBAAAA7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9HtSSjGKNHCxurpAziQWZVhKVknOlxj+TY2wUYUrIc30QEAAOH1BQAAAAAA4fUFAAAAAA==",
-        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 13825 of 394875 compute units",
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 13491 of 395000 compute units",
         "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx success"
       ],
       "name": "fail_pool + refund",
@@ -1081,7 +1172,7 @@
       "slot": 0
     },
     {
-      "computeUnits": 13657,
+      "computeUnits": 13283,
       "err": null,
       "events": [
         {
@@ -1108,7 +1199,7 @@
             {
               "isSigner": false,
               "isWritable": true,
-              "pubkey": "4pgkLhKZJNL4LkYoR6v4HKovqXfdpLQ1GHT8ANpuM9yy"
+              "pubkey": "J7mg6EFfwkHomCHmuvfEFAPYzNpkse1bCXBGniEw9xCW"
             },
             {
               "isSigner": false,
@@ -1128,17 +1219,17 @@
             {
               "isSigner": false,
               "isWritable": true,
-              "pubkey": "HVgb59JbzfuDVE7dXtT3YARZra5gjgeChkGWEodmMAru"
+              "pubkey": "9F64kY6FUexyHao1nKaKvHVcSwEWKCFkBqBooY54Atow"
             },
             {
               "isSigner": false,
               "isWritable": true,
-              "pubkey": "4RCSsW5vTnrLUgsPwZ1pNFNR7734kSJ3rRThjAP7iWaw"
+              "pubkey": "DrYVixWVZiR2f8e9aqnVN2UWcnjMfEi1NmCHbLdcVzuv"
             },
             {
               "isSigner": false,
               "isWritable": true,
-              "pubkey": "264KvNJRCXHZGFTEeiBMQHdyLL8LBpaYW7Mq8Y6jkvKU"
+              "pubkey": "2H5vy4pfxpg73jaTs7SjHPeTndH7nohrgx5M9vEXDwaV"
             },
             {
               "isSigner": false,
@@ -1161,25 +1252,27 @@
         "Program 11111111111111111111111111111111 invoke [2]",
         "Program 11111111111111111111111111111111 success",
         "Program data: ai4d5yosSXcBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACYDQAAAAAAAQ==",
-        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 13657 of 200000 compute units",
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 13283 of 200000 compute units",
         "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx success"
       ],
       "name": "close_pool cancelled (refunded pool, anyone)",
-      "signature": "2xXuZaWEoRwDkSaVLpeD1Gn4bcEs8mxraGNHC5nh9wuWEtUiE1aWSdnL5Ux6SNFrjuEhZ9uhLuCfDeaf6XvsEaEr",
+      "signature": "5D2iD6ZrewBoeLhuBDjaJ7vG5qzzr2KqYmBTqTf4tNKjGqg6uwbSrdKhRaxAxQ4FzFG61Xc261wkCmFfLGSHCTSc",
       "slot": 0
     },
     {
-      "computeUnits": 18269,
+      "computeUnits": 18891,
       "err": null,
       "events": [
         {
-          "authority": "4pgkLhKZJNL4LkYoR6v4HKovqXfdpLQ1GHT8ANpuM9yy",
+          "authority": "J7mg6EFfwkHomCHmuvfEFAPYzNpkse1bCXBGniEw9xCW",
           "feeBps": 1500,
-          "feeTreasury": "4RCSsW5vTnrLUgsPwZ1pNFNR7734kSJ3rRThjAP7iWaw",
+          "feeTreasury": "DrYVixWVZiR2f8e9aqnVN2UWcnjMfEi1NmCHbLdcVzuv",
+          "fromSeries": false,
           "kind": "PoolCreated",
           "maxPerWallet": 4,
           "maxTickets": 10,
           "minTickets": 3,
+          "payoutAt": 1011000,
           "playDeadline": 1011000,
           "pool": "Ek6STuEg7fEes7F2g4P2tRVHfb1c84LiRGcSGq9Bfrt",
           "poolId": 2,
@@ -1187,19 +1280,19 @@
           "priceLamports": "100000000",
           "prizeBps": 6000,
           "seedBps": 2500,
-          "seedTreasury": "HVgb59JbzfuDVE7dXtT3YARZra5gjgeChkGWEodmMAru",
+          "seedTreasury": "9F64kY6FUexyHao1nKaKvHVcSwEWKCFkBqBooY54Atow",
           "tier": 1,
           "vault": "3jWTwQDXRaataJJnLK1zbtV3EnYGiyv16TaSdQoW8wHS"
         }
       ],
-      "feePayer": "8Bvjnw5e1mJDNXcZDUuWevxb54UFkgCeXGMVR8Y6w6xc",
+      "feePayer": "8vEuirE4kg8dsid9ApWpBciRaMj2iNYBWDAj1vc4krX9",
       "instructions": [
         {
           "accounts": [
             {
               "isSigner": true,
               "isWritable": true,
-              "pubkey": "4pgkLhKZJNL4LkYoR6v4HKovqXfdpLQ1GHT8ANpuM9yy"
+              "pubkey": "J7mg6EFfwkHomCHmuvfEFAPYzNpkse1bCXBGniEw9xCW"
             },
             {
               "isSigner": false,
@@ -1219,17 +1312,17 @@
             {
               "isSigner": false,
               "isWritable": false,
-              "pubkey": "4RCSsW5vTnrLUgsPwZ1pNFNR7734kSJ3rRThjAP7iWaw"
+              "pubkey": "DrYVixWVZiR2f8e9aqnVN2UWcnjMfEi1NmCHbLdcVzuv"
             },
             {
               "isSigner": false,
               "isWritable": false,
-              "pubkey": "HVgb59JbzfuDVE7dXtT3YARZra5gjgeChkGWEodmMAru"
+              "pubkey": "9F64kY6FUexyHao1nKaKvHVcSwEWKCFkBqBooY54Atow"
             },
             {
               "isSigner": false,
               "isWritable": false,
-              "pubkey": "264KvNJRCXHZGFTEeiBMQHdyLL8LBpaYW7Mq8Y6jkvKU"
+              "pubkey": "2H5vy4pfxpg73jaTs7SjHPeTndH7nohrgx5M9vEXDwaV"
             },
             {
               "isSigner": false,
@@ -1242,6 +1335,7 @@
             "maxPerWallet": 4,
             "maxTickets": 10,
             "minTickets": 3,
+            "payoutAt": 1011000,
             "playDeadline": 1011000,
             "prepDeadline": 1007000,
             "priceLamports": "100000000",
@@ -1249,7 +1343,7 @@
             "seedBps": 2500,
             "tier": 1
           },
-          "data": "6ZLRjs9oQLwBAOH1BQAAAAADAAAACgAAAAQAmF0PAAAAAAA4bQ8AAAAAAHAXxAncBQ==",
+          "data": "6ZLRjs9oQLwBAOH1BQAAAAADAAAACgAAAAQAmF0PAAAAAAA4bQ8AAAAAADhtDwAAAAAAcBfECdwF",
           "name": "create_pool",
           "programId": "9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx"
         }
@@ -1261,16 +1355,16 @@
         "Program 11111111111111111111111111111111 success",
         "Program 11111111111111111111111111111111 invoke [2]",
         "Program 11111111111111111111111111111111 success",
-        "Program data: yiwpWGjcnVICAAAAA4VG3MbvIdM+caQp5dLQ4X0LpnR3+z2pr+O19MBuX/UomxVZFB9klxyhuDIinFAYJmyIo7D8dSusR1MR7GPKuTjKTRftRoAVzbJmg9MXwm9OGmONXXr2xLRgJwWVFyWIAQDh9QUAAAAAAwAAAAoAAAAEAJhdDwAAAAAAOG0PAAAAAABwF8QJ3AUyxfE5eYXE6u92RxIigv3zXhfOuA9aqfoaeXqyT02kjPUUA9/mBdcXVmR2vxZ0gLY6Q3ln0zvPd0eZSkQ7CJzy",
-        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 18269 of 200000 compute units",
+        "Program data: yiwpWGjcnVICAAAAA4VG3MbvIdM+caQp5dLQ4X0LpnR3+z2pr+O19MBuX/UomxVZFB9klxyhuDIinFAYJmyIo7D8dSusR1MR7GPKuf5SrPVgWATfLH6yzJpbmYrqg2zORcTz0g8Ty0r1KHzXAQDh9QUAAAAAAwAAAAoAAAAEAJhdDwAAAAAAOG0PAAAAAAA4bQ8AAAAAAHAXxAncBb79UIUtPhEuc3zWqX24sKsmmfmtYp1tPKk0/7NwtarRenladrVR8aX6cexoHCx2ywtDNgyWp1QI7SFcIx8MyKYA",
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 18891 of 200000 compute units",
         "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx success"
       ],
       "name": "create_pool 2",
-      "signature": "5TyBuXxHGjXBXjAD9wnB4xCiS4hP2hu7JFnutaUndkwfibxrSJZXmP4N2s9Dm1ipANPMRznP2tJRQVvQYpYwWGiR",
+      "signature": "55vRiivX2aMp3ALbJ372Tp7KgNNSW3X3VoQsebxjHrRd8ixq8xVevfkqnRSvDJE1VYPvwvaU732SgCtbo2iT8t2E",
       "slot": 0
     },
     {
-      "computeUnits": 7155,
+      "computeUnits": 7096,
       "err": null,
       "events": [
         {
@@ -1279,14 +1373,14 @@
           "ticketsSold": 0
         }
       ],
-      "feePayer": "8Bvjnw5e1mJDNXcZDUuWevxb54UFkgCeXGMVR8Y6w6xc",
+      "feePayer": "8vEuirE4kg8dsid9ApWpBciRaMj2iNYBWDAj1vc4krX9",
       "instructions": [
         {
           "accounts": [
             {
               "isSigner": true,
               "isWritable": false,
-              "pubkey": "4pgkLhKZJNL4LkYoR6v4HKovqXfdpLQ1GHT8ANpuM9yy"
+              "pubkey": "J7mg6EFfwkHomCHmuvfEFAPYzNpkse1bCXBGniEw9xCW"
             },
             {
               "isSigner": false,
@@ -1311,25 +1405,27 @@
         "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx invoke [1]",
         "Program log: Instruction: CancelPool",
         "Program data: zA9WBHxhqq0CAAAAAAAAAA==",
-        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 7155 of 200000 compute units",
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 7096 of 200000 compute units",
         "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx success"
       ],
       "name": "cancel_pool",
-      "signature": "42oDRHr9daS1sxaqCaH7bndRLnJPof8M9qaLVGheDDTTSVsRba3GrPkTTbturrfzn8Md2MqKAgdVkEUtzY49SvPJ",
+      "signature": "Qt59sUbEhy5ubGHAcnLKvM9snjDt2N3C6DJDvTqiC83A8SWFw7pwVvYUvexHvMuQM7UXfouLR3qQAWznMhCsVEY",
       "slot": 0
     },
     {
-      "computeUnits": 16769,
+      "computeUnits": 17391,
       "err": null,
       "events": [
         {
-          "authority": "4pgkLhKZJNL4LkYoR6v4HKovqXfdpLQ1GHT8ANpuM9yy",
+          "authority": "J7mg6EFfwkHomCHmuvfEFAPYzNpkse1bCXBGniEw9xCW",
           "feeBps": 1500,
-          "feeTreasury": "4RCSsW5vTnrLUgsPwZ1pNFNR7734kSJ3rRThjAP7iWaw",
+          "feeTreasury": "DrYVixWVZiR2f8e9aqnVN2UWcnjMfEi1NmCHbLdcVzuv",
+          "fromSeries": false,
           "kind": "PoolCreated",
           "maxPerWallet": 4,
           "maxTickets": 10,
           "minTickets": 1,
+          "payoutAt": 1011000,
           "playDeadline": 1011000,
           "pool": "EtAtsXSaZ2rvAkVaS55Awbq7qNocu8uuywrFtjiLge3H",
           "poolId": 3,
@@ -1337,19 +1433,19 @@
           "priceLamports": "100000000",
           "prizeBps": 6000,
           "seedBps": 2500,
-          "seedTreasury": "HVgb59JbzfuDVE7dXtT3YARZra5gjgeChkGWEodmMAru",
+          "seedTreasury": "9F64kY6FUexyHao1nKaKvHVcSwEWKCFkBqBooY54Atow",
           "tier": 1,
           "vault": "Cfa8wHWJ3YJbfpmAjetcRzvR6p4MCX6rdzahciJMLevN"
         }
       ],
-      "feePayer": "8Bvjnw5e1mJDNXcZDUuWevxb54UFkgCeXGMVR8Y6w6xc",
+      "feePayer": "8vEuirE4kg8dsid9ApWpBciRaMj2iNYBWDAj1vc4krX9",
       "instructions": [
         {
           "accounts": [
             {
               "isSigner": true,
               "isWritable": true,
-              "pubkey": "4pgkLhKZJNL4LkYoR6v4HKovqXfdpLQ1GHT8ANpuM9yy"
+              "pubkey": "J7mg6EFfwkHomCHmuvfEFAPYzNpkse1bCXBGniEw9xCW"
             },
             {
               "isSigner": false,
@@ -1369,17 +1465,17 @@
             {
               "isSigner": false,
               "isWritable": false,
-              "pubkey": "4RCSsW5vTnrLUgsPwZ1pNFNR7734kSJ3rRThjAP7iWaw"
+              "pubkey": "DrYVixWVZiR2f8e9aqnVN2UWcnjMfEi1NmCHbLdcVzuv"
             },
             {
               "isSigner": false,
               "isWritable": false,
-              "pubkey": "HVgb59JbzfuDVE7dXtT3YARZra5gjgeChkGWEodmMAru"
+              "pubkey": "9F64kY6FUexyHao1nKaKvHVcSwEWKCFkBqBooY54Atow"
             },
             {
               "isSigner": false,
               "isWritable": false,
-              "pubkey": "264KvNJRCXHZGFTEeiBMQHdyLL8LBpaYW7Mq8Y6jkvKU"
+              "pubkey": "2H5vy4pfxpg73jaTs7SjHPeTndH7nohrgx5M9vEXDwaV"
             },
             {
               "isSigner": false,
@@ -1392,6 +1488,7 @@
             "maxPerWallet": 4,
             "maxTickets": 10,
             "minTickets": 1,
+            "payoutAt": 1011000,
             "playDeadline": 1011000,
             "prepDeadline": 1007000,
             "priceLamports": "100000000",
@@ -1399,7 +1496,7 @@
             "seedBps": 2500,
             "tier": 1
           },
-          "data": "6ZLRjs9oQLwBAOH1BQAAAAABAAAACgAAAAQAmF0PAAAAAAA4bQ8AAAAAAHAXxAncBQ==",
+          "data": "6ZLRjs9oQLwBAOH1BQAAAAABAAAACgAAAAQAmF0PAAAAAAA4bQ8AAAAAADhtDwAAAAAAcBfECdwF",
           "name": "create_pool",
           "programId": "9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx"
         }
@@ -1411,16 +1508,16 @@
         "Program 11111111111111111111111111111111 success",
         "Program 11111111111111111111111111111111 invoke [2]",
         "Program 11111111111111111111111111111111 success",
-        "Program data: yiwpWGjcnVIDAAAAzkO9Jea3OPW8oSKEKr+zB7NZ024YHM8997knnOm8r6CtUhhJAWu0s7LzMc+/T0phwtVndBkBHKo+FAVDM7894zjKTRftRoAVzbJmg9MXwm9OGmONXXr2xLRgJwWVFyWIAQDh9QUAAAAAAQAAAAoAAAAEAJhdDwAAAAAAOG0PAAAAAABwF8QJ3AUyxfE5eYXE6u92RxIigv3zXhfOuA9aqfoaeXqyT02kjPUUA9/mBdcXVmR2vxZ0gLY6Q3ln0zvPd0eZSkQ7CJzy",
-        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 16769 of 200000 compute units",
+        "Program data: yiwpWGjcnVIDAAAAzkO9Jea3OPW8oSKEKr+zB7NZ024YHM8997knnOm8r6CtUhhJAWu0s7LzMc+/T0phwtVndBkBHKo+FAVDM7894/5SrPVgWATfLH6yzJpbmYrqg2zORcTz0g8Ty0r1KHzXAQDh9QUAAAAAAQAAAAoAAAAEAJhdDwAAAAAAOG0PAAAAAAA4bQ8AAAAAAHAXxAncBb79UIUtPhEuc3zWqX24sKsmmfmtYp1tPKk0/7NwtarRenladrVR8aX6cexoHCx2ywtDNgyWp1QI7SFcIx8MyKYA",
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 17391 of 200000 compute units",
         "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx success"
       ],
       "name": "create_pool 3",
-      "signature": "4i67uYyeGzVe6WV4zksha9QH6pTTyPGKU8vNCSqydw4eaFBkWnGdV2z7b3zq5AnNvsmBqW35d4ura9X1hcJgCB1N",
+      "signature": "5CvBE9VZobV8M7AHxPVX9HDAqkEbozfiUtHSBpSVTKGUyedn5aPzPiyrRDqcm5qeeGwvy3FVZe1AmDzJUQS3C1i4",
       "slot": 0
     },
     {
-      "computeUnits": 18447,
+      "computeUnits": 17986,
       "err": null,
       "events": [
         {
@@ -1501,7 +1598,7 @@
         "Program 11111111111111111111111111111111 success",
         "Program data: UPQjtdOPA6YDAAAAypOsFwUYcHHWe4PH/w7+gQjo7EUwV113JoeTM9vavnwBAADh9QUAAAAABAQEBAQEBAQEBAQEBAQEBAEAAAAB",
         "Program data: yU/LTQNp6QEDAAAAAQAAALBZDwAAAAAA",
-        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 18447 of 200000 compute units",
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 17986 of 200000 compute units",
         "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx success"
       ],
       "name": "buy_ticket into pool 3 activates",
@@ -1509,7 +1606,7 @@
       "slot": 0
     },
     {
-      "computeUnits": 5133,
+      "computeUnits": 5008,
       "err": null,
       "events": [
         {
@@ -1545,7 +1642,7 @@
         "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx invoke [1]",
         "Program log: Instruction: ExpirePool",
         "Program data: cxUvZYMVQ9IDAAAAAQAAAA==",
-        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 5133 of 200000 compute units",
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 5008 of 200000 compute units",
         "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx success"
       ],
       "name": "expire_pool",
@@ -1553,23 +1650,594 @@
       "slot": 0
     },
     {
-      "computeUnits": 4318,
+      "computeUnits": 4295,
       "err": null,
       "events": [
         {
-          "authority": "4pgkLhKZJNL4LkYoR6v4HKovqXfdpLQ1GHT8ANpuM9yy",
-          "kind": "AuthorityProposed",
-          "pendingAuthority": "2KW2XRd9kwqet15Aha2oK3tYvd3nWbTFH1MBiRAv1BE1"
+          "authority": "J7mg6EFfwkHomCHmuvfEFAPYzNpkse1bCXBGniEw9xCW",
+          "kind": "PayoutAuthoritySet",
+          "payoutAuthority": "J2xccRtuG43drESLYznHhLhQkLTdfepcKYbiQ9BsJVaf"
         }
       ],
-      "feePayer": "8Bvjnw5e1mJDNXcZDUuWevxb54UFkgCeXGMVR8Y6w6xc",
+      "feePayer": "8vEuirE4kg8dsid9ApWpBciRaMj2iNYBWDAj1vc4krX9",
       "instructions": [
         {
           "accounts": [
             {
               "isSigner": true,
               "isWritable": false,
-              "pubkey": "4pgkLhKZJNL4LkYoR6v4HKovqXfdpLQ1GHT8ANpuM9yy"
+              "pubkey": "J7mg6EFfwkHomCHmuvfEFAPYzNpkse1bCXBGniEw9xCW"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "pubkey": "E1cppxjPPy3QzxQW5Whnf6UQ4u4PJ1VYNQf1UEYovs5g"
+            }
+          ],
+          "args": {
+            "payoutAuthority": "J2xccRtuG43drESLYznHhLhQkLTdfepcKYbiQ9BsJVaf"
+          },
+          "data": "cGRf5gpVnEUB/RckOFqgx1tk+3jNYC+h2ZH96/drE8WO1wLqyDXp9hg=",
+          "name": "set_payout_authority",
+          "programId": "9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx"
+        }
+      ],
+      "logs": [
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx invoke [1]",
+        "Program log: Instruction: SetPayoutAuthority",
+        "Program data: K2yEYzQNhF7+Uqz1YFgE3yx+ssyaW5mK6oNszkXE89IPE8tK9Sh81wH9FyQ4WqDHW2T7eM1gL6HZkf3r92sTxY7XAurINen2GA==",
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 4295 of 200000 compute units",
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx success"
+      ],
+      "name": "set_payout_authority",
+      "signature": "EfhteuwyFFNxKFFaTi27gz4DtW8a9Yr9pUbAxV1NbeTAKXptgTdS9Pqg1FMmMit3YFqPGJBekwnsroxUQho2Pxn",
+      "slot": 0
+    },
+    {
+      "computeUnits": 17813,
+      "err": null,
+      "events": [
+        {
+          "enabled": true,
+          "feeBps": 1000,
+          "feeTreasury": "DrYVixWVZiR2f8e9aqnVN2UWcnjMfEi1NmCHbLdcVzuv",
+          "kind": "SeriesSet",
+          "maxPerWallet": 4,
+          "maxTickets": 0,
+          "minTickets": 3,
+          "nextOpenAt": 2220660,
+          "playSecs": 7200,
+          "priceLamports": "100000000",
+          "prizeBps": 7000,
+          "saleSecs": 86400,
+          "seedBps": 2000,
+          "seedTreasury": "9F64kY6FUexyHao1nKaKvHVcSwEWKCFkBqBooY54Atow",
+          "tier": 1,
+          "verifySecs": 172800
+        }
+      ],
+      "feePayer": "8vEuirE4kg8dsid9ApWpBciRaMj2iNYBWDAj1vc4krX9",
+      "instructions": [
+        {
+          "accounts": [
+            {
+              "isSigner": true,
+              "isWritable": true,
+              "pubkey": "J7mg6EFfwkHomCHmuvfEFAPYzNpkse1bCXBGniEw9xCW"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "pubkey": "E1cppxjPPy3QzxQW5Whnf6UQ4u4PJ1VYNQf1UEYovs5g"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "pubkey": "4kQ287ejL54QMRyNWAdP58TmEMkqp45V6d8KBoyqMwi8"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "pubkey": "DrYVixWVZiR2f8e9aqnVN2UWcnjMfEi1NmCHbLdcVzuv"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "pubkey": "9F64kY6FUexyHao1nKaKvHVcSwEWKCFkBqBooY54Atow"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "pubkey": "2H5vy4pfxpg73jaTs7SjHPeTndH7nohrgx5M9vEXDwaV"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "pubkey": "11111111111111111111111111111111"
+            }
+          ],
+          "args": {
+            "enabled": true,
+            "feeBps": 1000,
+            "maxPerWallet": 4,
+            "maxTickets": 0,
+            "minTickets": 3,
+            "playSecs": 7200,
+            "priceLamports": "100000000",
+            "prizeBps": 7000,
+            "saleSecs": 86400,
+            "seedBps": 2000,
+            "startAt": 2220660,
+            "tier": 1,
+            "verifySecs": 172800
+          },
+          "data": "wao6PXZ5/fkBAQDh9QUAAAAAAwAAAAAAAAAEAIBRAQAAAAAAIBwAAAAAAAAAowIAAAAAAFgb0AfoA3TiIQAAAAAA",
+          "name": "set_series",
+          "programId": "9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx"
+        }
+      ],
+      "logs": [
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx invoke [1]",
+        "Program log: Instruction: SetSeries",
+        "Program 11111111111111111111111111111111 invoke [2]",
+        "Program 11111111111111111111111111111111 success",
+        "Program data: bE/ZoD1DKmMBAQDh9QUAAAAAAwAAAAAAAAAEAIBRAQAAAAAAIBwAAAAAAAAAowIAAAAAAFgb0AfoA779UIUtPhEuc3zWqX24sKsmmfmtYp1tPKk0/7NwtarRenladrVR8aX6cexoHCx2ywtDNgyWp1QI7SFcIx8MyKZ04iEAAAAAAA==",
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 17813 of 200000 compute units",
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx success"
+      ],
+      "name": "set_series",
+      "signature": "3UpQ3KXrpWszS8Jp4vZNgw5J5SCybeThoDYUFneEZiVzSxBfNzjEPDbeLtDGkTavLWhoy5dvMSFWdwqifqa6Gykg",
+      "slot": 0
+    },
+    {
+      "computeUnits": 19571,
+      "err": "InstructionError(0, Custom(6010))",
+      "events": [],
+      "feePayer": "8vEuirE4kg8dsid9ApWpBciRaMj2iNYBWDAj1vc4krX9",
+      "instructions": [
+        {
+          "accounts": [
+            {
+              "isSigner": true,
+              "isWritable": true,
+              "pubkey": "8vEuirE4kg8dsid9ApWpBciRaMj2iNYBWDAj1vc4krX9"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "pubkey": "E1cppxjPPy3QzxQW5Whnf6UQ4u4PJ1VYNQf1UEYovs5g"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "pubkey": "4kQ287ejL54QMRyNWAdP58TmEMkqp45V6d8KBoyqMwi8"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "pubkey": "5qrkCeSR7jfWSJpXKayXpVFwGVLgXtWf9aDRgEQkgUDz"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "pubkey": "7NMffEX4KdEXMWrFn3RoEKNeRcDtrh8WukxJVjihtbJf"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "pubkey": "DrYVixWVZiR2f8e9aqnVN2UWcnjMfEi1NmCHbLdcVzuv"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "pubkey": "9F64kY6FUexyHao1nKaKvHVcSwEWKCFkBqBooY54Atow"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "pubkey": "2H5vy4pfxpg73jaTs7SjHPeTndH7nohrgx5M9vEXDwaV"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "pubkey": "11111111111111111111111111111111"
+            }
+          ],
+          "args": {
+            "tier": 1
+          },
+          "data": "QxfBzj7cRWQB",
+          "name": "open_next_pool",
+          "programId": "9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx"
+        }
+      ],
+      "logs": [
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx invoke [1]",
+        "Program log: Instruction: OpenNextPool",
+        "Program 11111111111111111111111111111111 invoke [2]",
+        "Program 11111111111111111111111111111111 success",
+        "Program log: AnchorError thrown in programs/freightchain_pools/src/instructions/series.rs:162. Error Code: TooEarly. Error Number: 6010. Error Message: Too early for this action.",
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 19571 of 200000 compute units",
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx failed: custom program error: 0x177a"
+      ],
+      "name": "open_next_pool too early (fails)",
+      "signature": "415PQEUojbz2g1iMvchK3dsjBCFM5EfCBsUQmv3T1hQXbYBdMttjFi7tVkU1X7k6cGsNPLzCAe3pEA87BCyQccig",
+      "slot": 0
+    },
+    {
+      "computeUnits": 24150,
+      "err": null,
+      "events": [
+        {
+          "authority": "8vEuirE4kg8dsid9ApWpBciRaMj2iNYBWDAj1vc4krX9",
+          "feeBps": 1000,
+          "feeTreasury": "DrYVixWVZiR2f8e9aqnVN2UWcnjMfEi1NmCHbLdcVzuv",
+          "fromSeries": true,
+          "kind": "PoolCreated",
+          "maxPerWallet": 4,
+          "maxTickets": 0,
+          "minTickets": 3,
+          "payoutAt": 2487060,
+          "playDeadline": 2314260,
+          "pool": "5qrkCeSR7jfWSJpXKayXpVFwGVLgXtWf9aDRgEQkgUDz",
+          "poolId": 4,
+          "prepDeadline": 2307060,
+          "priceLamports": "100000000",
+          "prizeBps": 7000,
+          "seedBps": 2000,
+          "seedTreasury": "9F64kY6FUexyHao1nKaKvHVcSwEWKCFkBqBooY54Atow",
+          "tier": 1,
+          "vault": "7NMffEX4KdEXMWrFn3RoEKNeRcDtrh8WukxJVjihtbJf"
+        }
+      ],
+      "feePayer": "8vEuirE4kg8dsid9ApWpBciRaMj2iNYBWDAj1vc4krX9",
+      "instructions": [
+        {
+          "accounts": [
+            {
+              "isSigner": true,
+              "isWritable": true,
+              "pubkey": "8vEuirE4kg8dsid9ApWpBciRaMj2iNYBWDAj1vc4krX9"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "pubkey": "E1cppxjPPy3QzxQW5Whnf6UQ4u4PJ1VYNQf1UEYovs5g"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "pubkey": "4kQ287ejL54QMRyNWAdP58TmEMkqp45V6d8KBoyqMwi8"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "pubkey": "5qrkCeSR7jfWSJpXKayXpVFwGVLgXtWf9aDRgEQkgUDz"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "pubkey": "7NMffEX4KdEXMWrFn3RoEKNeRcDtrh8WukxJVjihtbJf"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "pubkey": "DrYVixWVZiR2f8e9aqnVN2UWcnjMfEi1NmCHbLdcVzuv"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "pubkey": "9F64kY6FUexyHao1nKaKvHVcSwEWKCFkBqBooY54Atow"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "pubkey": "2H5vy4pfxpg73jaTs7SjHPeTndH7nohrgx5M9vEXDwaV"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "pubkey": "11111111111111111111111111111111"
+            }
+          ],
+          "args": {
+            "caller": "8vEuirE4kg8dsid9ApWpBciRaMj2iNYBWDAj1vc4krX9",
+            "tier": 1
+          },
+          "data": "QxfBzj7cRWQB",
+          "name": "open_next_pool",
+          "programId": "9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx"
+        }
+      ],
+      "logs": [
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx invoke [1]",
+        "Program log: Instruction: OpenNextPool",
+        "Program 11111111111111111111111111111111 invoke [2]",
+        "Program 11111111111111111111111111111111 success",
+        "Program 11111111111111111111111111111111 invoke [2]",
+        "Program 11111111111111111111111111111111 success",
+        "Program data: yiwpWGjcnVIEAAAAR/LfitUtbHhQfPluGoWyXFi5tk9pi3Mz16aZYeD+w6Venq+v4P/oxqXTiw5jb5Pf2LcVHPuapr2usb2GVDBpYHWlUXzxFvFhpxCzqLKaMbIS6oa1LUP38cneDYS0OILAAQDh9QUAAAAAAwAAAAAAAAAEAPQzIwAAAAAAFFAjAAAAAAAU8yUAAAAAAFgb0AfoA779UIUtPhEuc3zWqX24sKsmmfmtYp1tPKk0/7NwtarRenladrVR8aX6cexoHCx2ywtDNgyWp1QI7SFcIx8MyKYB",
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 24150 of 200000 compute units",
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx success"
+      ],
+      "name": "open_next_pool",
+      "signature": "38i9AHqDzeaXYX3mEiztE4G7kXjemJrxLPB4v3YM7WW8QJ5bA2j1Fw3WUGDK513fCRtDo8D4tsZVty2NjKVYswCt",
+      "slot": 0
+    },
+    {
+      "computeUnits": 18006,
+      "err": null,
+      "events": [
+        {
+          "activated": true,
+          "buyer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+          "kind": "TicketBought",
+          "lamports": "300000000",
+          "orderId": "BQUFBQUFBQUFBQUFBQUFBQ==",
+          "poolId": 4,
+          "qty": 3,
+          "ticketsSold": 3
+        },
+        {
+          "at": 2220660,
+          "kind": "PoolActivated",
+          "poolId": 4,
+          "ticketsSold": 3
+        }
+      ],
+      "feePayer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "instructions": [
+        {
+          "accounts": [
+            {
+              "isSigner": true,
+              "isWritable": true,
+              "pubkey": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9"
+            },
+            {
+              "isSigner": true,
+              "isWritable": true,
+              "pubkey": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "pubkey": "E1cppxjPPy3QzxQW5Whnf6UQ4u4PJ1VYNQf1UEYovs5g"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "pubkey": "5qrkCeSR7jfWSJpXKayXpVFwGVLgXtWf9aDRgEQkgUDz"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "pubkey": "7NMffEX4KdEXMWrFn3RoEKNeRcDtrh8WukxJVjihtbJf"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "pubkey": "EMtWef1WY1hwSWAdZt8ZBmqDyPGaM3Fj5c4LySQD1USS"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "pubkey": "11111111111111111111111111111111"
+            }
+          ],
+          "args": {
+            "buyer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+            "feePayer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+            "orderId": "BQUFBQUFBQUFBQUFBQUFBQ==",
+            "poolId": 4,
+            "qty": 3
+          },
+          "data": "CxgRwah0pKkEAAAAAwAFBQUFBQUFBQUFBQUFBQUF",
+          "name": "buy_ticket",
+          "programId": "9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx"
+        }
+      ],
+      "logs": [
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx invoke [1]",
+        "Program log: Instruction: BuyTicket",
+        "Program 11111111111111111111111111111111 invoke [2]",
+        "Program 11111111111111111111111111111111 success",
+        "Program 11111111111111111111111111111111 invoke [2]",
+        "Program 11111111111111111111111111111111 success",
+        "Program data: UPQjtdOPA6YEAAAAiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1wDAACj4REAAAAABQUFBQUFBQUFBQUFBQUFBQMAAAAB",
+        "Program data: yU/LTQNp6QEEAAAAAwAAAHTiIQAAAAAA",
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 18006 of 200000 compute units",
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx success"
+      ],
+      "name": "buy_ticket into pool 4 activates",
+      "signature": "5fyd2XpZeN4pqXFMkPK6fiTrZBJJUu96K25kG5LsN6iCmn9cGNm1UbhD3kbhTPk5e3wKAY29KsEqfguUnXCsvwUJ",
+      "slot": 0
+    },
+    {
+      "computeUnits": 12987,
+      "err": null,
+      "events": [
+        {
+          "kind": "PrizePaid",
+          "lamports": "100000000",
+          "poolId": 4,
+          "prizesPaidTotal": "100000000",
+          "rank": 1,
+          "to": "GmaDrppBC7P5ARKV8g3djiwP89vz1jLK23V2GBjuAEGB"
+        }
+      ],
+      "feePayer": "8vEuirE4kg8dsid9ApWpBciRaMj2iNYBWDAj1vc4krX9",
+      "instructions": [
+        {
+          "accounts": [
+            {
+              "isSigner": true,
+              "isWritable": false,
+              "pubkey": "J2xccRtuG43drESLYznHhLhQkLTdfepcKYbiQ9BsJVaf"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "pubkey": "E1cppxjPPy3QzxQW5Whnf6UQ4u4PJ1VYNQf1UEYovs5g"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "pubkey": "5qrkCeSR7jfWSJpXKayXpVFwGVLgXtWf9aDRgEQkgUDz"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "pubkey": "7NMffEX4KdEXMWrFn3RoEKNeRcDtrh8WukxJVjihtbJf"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "pubkey": "GmaDrppBC7P5ARKV8g3djiwP89vz1jLK23V2GBjuAEGB"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "pubkey": "11111111111111111111111111111111"
+            }
+          ],
+          "args": {
+            "authority": "J2xccRtuG43drESLYznHhLhQkLTdfepcKYbiQ9BsJVaf",
+            "lamports": "100000000",
+            "poolId": 4,
+            "rank": 1,
+            "to": "GmaDrppBC7P5ARKV8g3djiwP89vz1jLK23V2GBjuAEGB"
+          },
+          "data": "UIJqHLGK4hoEAAAAAOH1BQAAAAAB",
+          "name": "pay_prize",
+          "programId": "9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx"
+        }
+      ],
+      "logs": [
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx invoke [1]",
+        "Program log: Instruction: PayPrize",
+        "Program 11111111111111111111111111111111 invoke [2]",
+        "Program 11111111111111111111111111111111 success",
+        "Program data: BhTt+FpNZtMEAAAA6kpsY+KcUgq+9VB7Ey7F+ZVHdq6+vnuSQh7qaRRG0iwA4fUFAAAAAAEA4fUFAAAAAA==",
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 12987 of 200000 compute units",
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx success"
+      ],
+      "name": "pay_prize by the payout key",
+      "signature": "4wqNXWHSEr5MRnoPRR7KGFSi2eJpei48n1Xr88t9uC7xTndgBQAdAe1rqiS7eASdyMT44S8JLx3hHpur1WKZibwb",
+      "slot": 0
+    },
+    {
+      "computeUnits": 18710,
+      "err": null,
+      "events": [
+        {
+          "cancelled": false,
+          "fee": "29250000",
+          "kind": "PoolClosed",
+          "platformFee": "750000",
+          "poolId": 4,
+          "prizePaid": "100000000",
+          "rentReturned": "890880",
+          "seed": "170000000",
+          "unclaimed": "110000000"
+        }
+      ],
+      "feePayer": "8vEuirE4kg8dsid9ApWpBciRaMj2iNYBWDAj1vc4krX9",
+      "instructions": [
+        {
+          "accounts": [
+            {
+              "isSigner": true,
+              "isWritable": false,
+              "pubkey": "J2xccRtuG43drESLYznHhLhQkLTdfepcKYbiQ9BsJVaf"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "pubkey": "8vEuirE4kg8dsid9ApWpBciRaMj2iNYBWDAj1vc4krX9"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "pubkey": "E1cppxjPPy3QzxQW5Whnf6UQ4u4PJ1VYNQf1UEYovs5g"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "pubkey": "5qrkCeSR7jfWSJpXKayXpVFwGVLgXtWf9aDRgEQkgUDz"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "pubkey": "7NMffEX4KdEXMWrFn3RoEKNeRcDtrh8WukxJVjihtbJf"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "pubkey": "9F64kY6FUexyHao1nKaKvHVcSwEWKCFkBqBooY54Atow"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "pubkey": "DrYVixWVZiR2f8e9aqnVN2UWcnjMfEi1NmCHbLdcVzuv"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "pubkey": "2H5vy4pfxpg73jaTs7SjHPeTndH7nohrgx5M9vEXDwaV"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "pubkey": "11111111111111111111111111111111"
+            }
+          ],
+          "args": {
+            "caller": "J2xccRtuG43drESLYznHhLhQkLTdfepcKYbiQ9BsJVaf",
+            "poolId": 4
+          },
+          "data": "jL3RF+8+7wsEAAAA",
+          "name": "close_pool",
+          "programId": "9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx"
+        }
+      ],
+      "logs": [
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx invoke [1]",
+        "Program log: Instruction: ClosePool",
+        "Program 11111111111111111111111111111111 invoke [2]",
+        "Program 11111111111111111111111111111111 success",
+        "Program 11111111111111111111111111111111 invoke [2]",
+        "Program 11111111111111111111111111111111 success",
+        "Program 11111111111111111111111111111111 invoke [2]",
+        "Program 11111111111111111111111111111111 success",
+        "Program 11111111111111111111111111111111 invoke [2]",
+        "Program 11111111111111111111111111111111 success",
+        "Program data: ai4d5yosSXcEAAAAAOH1BQAAAACA/iEKAAAAANBRvgEAAAAAsHELAAAAAACAd44GAAAAAACYDQAAAAAAAA==",
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 18710 of 200000 compute units",
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx success"
+      ],
+      "name": "close_pool by the payout key",
+      "signature": "3BXzjtA51fDsXYpUPBXUrcBSkfruJYyfjcRcrrYUUWJy65y5uVqWAa1zAyp4ANkgQgtZB7nyV3tCiUbrQBLauBj5",
+      "slot": 0
+    },
+    {
+      "computeUnits": 4324,
+      "err": null,
+      "events": [
+        {
+          "authority": "J7mg6EFfwkHomCHmuvfEFAPYzNpkse1bCXBGniEw9xCW",
+          "kind": "AuthorityProposed",
+          "pendingAuthority": "2KW2XRd9kwqet15Aha2oK3tYvd3nWbTFH1MBiRAv1BE1"
+        }
+      ],
+      "feePayer": "8vEuirE4kg8dsid9ApWpBciRaMj2iNYBWDAj1vc4krX9",
+      "instructions": [
+        {
+          "accounts": [
+            {
+              "isSigner": true,
+              "isWritable": false,
+              "pubkey": "J7mg6EFfwkHomCHmuvfEFAPYzNpkse1bCXBGniEw9xCW"
             },
             {
               "isSigner": false,
@@ -1586,25 +2254,25 @@
       "logs": [
         "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx invoke [1]",
         "Program log: Instruction: ProposeAuthority",
-        "Program data: 9HVecDWXI1k4yk0X7UaAFc2yZoPTF8JvThpjjV169sS0YCcFlRcliBOY9ixtGkV8UbpqS189vS9p/KkyFiGNyJl+QWvRfZPK",
-        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 4318 of 200000 compute units",
+        "Program data: 9HVecDWXI1n+Uqz1YFgE3yx+ssyaW5mK6oNszkXE89IPE8tK9Sh81xOY9ixtGkV8UbpqS189vS9p/KkyFiGNyJl+QWvRfZPK",
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 4324 of 200000 compute units",
         "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx success"
       ],
       "name": "propose_authority",
-      "signature": "5oY7DMsx4ZqfkfF7xoZSjywHyYXXkmukDWdq64NAmL2xFEiGJ3nKBW4D5pkgWK1L7HC35v6VRBADtyR5R6PS9mv2",
+      "signature": "5ALp1Mq8p3feFW5UfvDYf4f82J2Vhmjf9z8zoTau7jbsZWWGUAqynQ6wgxxMXexuEx9JMzDD8Zo9VYxrQGfk2wCa",
       "slot": 0
     },
     {
-      "computeUnits": 4290,
+      "computeUnits": 4302,
       "err": null,
       "events": [
         {
           "kind": "AuthorityChanged",
           "newAuthority": "2KW2XRd9kwqet15Aha2oK3tYvd3nWbTFH1MBiRAv1BE1",
-          "oldAuthority": "4pgkLhKZJNL4LkYoR6v4HKovqXfdpLQ1GHT8ANpuM9yy"
+          "oldAuthority": "J7mg6EFfwkHomCHmuvfEFAPYzNpkse1bCXBGniEw9xCW"
         }
       ],
-      "feePayer": "8Bvjnw5e1mJDNXcZDUuWevxb54UFkgCeXGMVR8Y6w6xc",
+      "feePayer": "8vEuirE4kg8dsid9ApWpBciRaMj2iNYBWDAj1vc4krX9",
       "instructions": [
         {
           "accounts": [
@@ -1628,12 +2296,12 @@
       "logs": [
         "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx invoke [1]",
         "Program log: Instruction: AcceptAuthority",
-        "Program data: HxOumARS1+I4yk0X7UaAFc2yZoPTF8JvThpjjV169sS0YCcFlRcliBOY9ixtGkV8UbpqS189vS9p/KkyFiGNyJl+QWvRfZPK",
-        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 4290 of 200000 compute units",
+        "Program data: HxOumARS1+L+Uqz1YFgE3yx+ssyaW5mK6oNszkXE89IPE8tK9Sh81xOY9ixtGkV8UbpqS189vS9p/KkyFiGNyJl+QWvRfZPK",
+        "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx consumed 4302 of 200000 compute units",
         "Program 9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx success"
       ],
       "name": "accept_authority",
-      "signature": "5AKwhPFQnDLRx3We5y6QtFYnLdMdbbwAMFYGeDsAx3g3JLENMYUmdAmrAEouoU9S7hrx6YDX8dqQjxYGaM8fr9TM",
+      "signature": "DJiw1uTug676GNZievE5V8gjcYpFX3Jzn9HkWKLiNLLcFnj3cMHKJmmK5QHcapcCnaD1o95LyWmVCtF1AdsjiNH",
       "slot": 0
     }
   ]

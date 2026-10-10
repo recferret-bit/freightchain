@@ -2,16 +2,21 @@ pub const CONFIG_SEED: &[u8] = b"config";
 pub const POOL_SEED: &[u8] = b"pool";
 pub const VAULT_SEED: &[u8] = b"vault";
 pub const TICKET_SEED: &[u8] = b"ticket";
+pub const SERIES_SEED: &[u8] = b"series";
 
 pub const BPS_DENOM: u64 = 10_000;
 
-/// After `play_deadline + SETTLE_GRACE_SECS` an Active pool no longer needs the admin:
-/// anyone may `close_pool` it, or `expire_pool` it (if no prize was paid) so every ticket is refunded.
+/// After `payout_at + SETTLE_GRACE_SECS` an Active pool no longer needs the admin or the payout key:
+/// anyone may `close_pool` it (if a prize was paid), or `expire_pool` it (if none was) so every ticket is refunded.
 pub const SETTLE_GRACE_SECS: i64 = 14 * 86_400;
 
-/// `create_pool` refuses a `play_deadline` further out than this: a far-future deadline would lock an Active pool's
+/// `create_pool` / `set_series` refuse a `payout_at` further out than this: a far-future payout time would lock an Active pool's
 /// tickets (no payout, close or expiry before it) for that long.
 pub const MAX_POOL_SECS: i64 = 365 * 86_400;
+
+/// A series' sale window is also its cadence (the next pool opens when this one stops selling): at least an hour, at most 30 days.
+pub const MIN_SALE_SECS: i64 = 3_600;
+pub const MAX_SALE_SECS: i64 = 30 * 86_400;
 
 // Pool.status
 pub const STATUS_OPEN: u8 = 0;

@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ComputeBudgetProgram, Connection, Keypair, SYSVAR_CLOCK_PUBKEY, Transaction, VersionedTransaction, type Commitment, type TransactionInstruction } from '@solana/web3.js';
+import { Connection, Keypair, SYSVAR_CLOCK_PUBKEY, type Commitment, type TransactionInstruction } from '@solana/web3.js';
 import bs58 from 'bs58';
-import type { PoolChainState } from '../../domain/economy/chain-events.js';
+import { CHAIN_TIER_CODES, type PoolChainState, type SeriesChainState } from '../../domain/economy/chain-events.js';
 import { REFUND_BATCH } from '../../domain/economy/pool-crank.js';
 import { ConflictError, NotFoundError, ServiceUnavailableError } from '../../domain/shared/errors.js';
 import { PoolChainPort } from '../../application/ports/economy/pool-chain.port.js';
@@ -9,11 +9,9 @@ import { PoolCrankChainPort, type ChainTicket, type CrankInstruction } from '../
 import { EnvService } from '../config/env.service.js';
 import { POOL_PROGRAM_IDL } from './pool-program.idl.js';
 import { PoolProgramCodec } from './pool-program.codec.js';
-import { CU_LIMITS, parseKeypair, poolStateOf } from './program-chain.adapter.js';
+import { CU_LIMITS, parseKeypair, poolStateOf, seriesStateOf } from './program-chain.adapter.js';
+import { broadcastUntilConfirmed, signWith, simulateSigned } from './signed-sender.js';
 import { SolanaRpc, sleep } from './solana-rpc.js';
-
-const RESEND_MS = 2_000;
-const MAX_RESENDS = 60;
 /** getMultipleAccountsInfo takes at most 100 keys: 50 pools + their vaults per call */
 const POOLS_PER_READ = 50;
 /** Ticket: discriminator 8 | buyer 32 | rent_payer 32 | pool_id u32 (offset 72) | qty u16 | lamports u64 | bump u8 */
@@ -70,6 +68,13 @@ export class ProgramCrankAdapter extends PoolCrankChainPort {
     return out;
   }
 
+  async listSeries(): Promise<SeriesChainState[]> {
+    const c = this.codec;
+    const keys = Object.values(CHAIN_TIER_CODES).map((tier) => c.seriesPda(tier));
+    const infos = await this.rpc.read((x) => x.getMultipleAccountsInfo(keys, this.commitment));
+    return infos.flatMap((info, i) => { const s = seriesStateOf(c, info ?? null, keys[i]!.toBase58()); return s ? [s] : []; });
+  }
+
   async listTickets(poolId: number): Promise<ChainTicket[]> {
     const c = this.codec;
     const disc = POOL_PROGRAM_IDL.accounts.find((a) => a.name === 'Ticket')!.discriminator;
@@ -88,32 +93,19 @@ export class ProgramCrankAdapter extends PoolCrankChainPort {
     const crank = this.crank;
     if (!crank) throw new ServiceUnavailableError('no crank key is configured (CRANK_SECRET)');
     const [ixs, units] = await this.instructions(i, crank.publicKey.toBase58());
-    const [{ blockhash, lastValidBlockHeight }, quote] = await Promise.all([
-      this.rpc.read((x) => x.getLatestBlockhash(this.commitment)),
-      this.chain.feeQuote({ poolId: i.poolId, kind: i.step === 'close_pool' ? 'close_pool' : 'refund' }),
-    ]);
-    const tx = new Transaction({ feePayer: crank.publicKey, blockhash, lastValidBlockHeight })
-      .add(ComputeBudgetProgram.setComputeUnitLimit({ units }), ComputeBudgetProgram.setComputeUnitPrice({ microLamports: quote.priorityMicrolamports }), ...ixs);
-    tx.sign(crank);
-    const raw = tx.serialize(), signature = bs58.encode(tx.signature!);
-    const sim = await this.rpc.read((x) => x.simulateTransaction(VersionedTransaction.deserialize(raw), { sigVerify: true, commitment: this.commitment }));
-    if (sim.value.err) throw new ConflictError(`${i.step} on pool ${i.poolId} would fail: ${JSON.stringify(sim.value.err)} – ${sim.value.logs?.at(-1) ?? ''}`, 'transaction_would_fail');
-    for (let n = 0; n < MAX_RESENDS; n++) {
-      await this.rpc.primaryOnly((x) => x.sendRawTransaction(raw, { skipPreflight: true, maxRetries: 0 })).catch((e: unknown) => this.logger.debug(`re-send: ${(e as Error).message}`));
-      await this.wait(RESEND_MS);
-      const s = await this.rpc.primaryOnly(async (x) => (await x.getSignatureStatuses([signature], { searchTransactionHistory: true })).value[0]);
-      if (s?.err) throw new ConflictError(`${i.step} on pool ${i.poolId} failed on chain: ${JSON.stringify(s.err)}`, 'transaction_failed');
-      if (s?.confirmationStatus === 'finalized' || (s?.confirmationStatus === 'confirmed' && this.commitment === 'confirmed')) return { signature };
-      if (!s && (await this.rpc.primaryOnly((x) => x.getBlockHeight(this.commitment))) > lastValidBlockHeight) {
-        throw new ConflictError(`${i.step} on pool ${i.poolId} was dropped – the next crank pass sends it again`, 'transaction_dropped');
-      }
-    }
-    throw new ConflictError(`${i.step} on pool ${i.poolId} (${signature}) is not confirmed yet – the watcher settles it when it lands`, 'transaction_unconfirmed');
+    const quote = await this.chain.feeQuote({ poolId: i.step === 'open_next_pool' ? null : i.poolId, kind: i.step === 'close_pool' ? 'close_pool' : 'refund' });
+    const tx = await signWith(this.rpc, this.commitment, crank, ixs, units, quote.priorityMicrolamports);
+    const label = i.step === 'open_next_pool' ? `open_next_pool of tier ${i.tier ?? '?'}` : `${i.step} on pool ${i.poolId}`;
+    await simulateSigned(this.rpc, this.commitment, tx, label);
+    await broadcastUntilConfirmed(this.rpc, this.commitment, tx, label, (ms) => this.wait(ms), (m) => this.logger.debug(m));
+    return { signature: tx.signature };
   }
 
   /** the program instructions + their compute-unit limit; the crank is the `caller` of every one */
   private async instructions(i: CrankInstruction, caller: string): Promise<[TransactionInstruction[], number]> {
-    const c = this.codec, pool = c.poolPda(i.poolId), vault = c.vaultPda(i.poolId);
+    const c = this.codec;
+    if (i.step === 'open_next_pool') return this.openNextPoolIx(i.tier, caller);
+    const pool = c.poolPda(i.poolId), vault = c.vaultPda(i.poolId);
     switch (i.step) {
       case 'fail_pool':
       case 'expire_pool':
@@ -135,5 +127,21 @@ export class ProgramCrankAdapter extends PoolCrankChainPort {
         }, { pool_id: i.poolId })], CU_LIMITS.close_pool];
       }
     }
+  }
+
+  /** open_next_pool: the series' treasuries, and the pool / vault PDAs seeded with the id the program will give the pool (Config.pool_count) */
+  private async openNextPoolIx(tier: number | undefined, caller: string): Promise<[TransactionInstruction[], number]> {
+    const c = this.codec;
+    if (tier === undefined) throw new ConflictError('open_next_pool needs a tier', 'bad_crank_step');
+    const series = c.seriesPda(tier);
+    const [seriesInfo, configInfo] = await this.rpc.read((x) => x.getMultipleAccountsInfo([series, c.configPda()], this.commitment));
+    const s = seriesStateOf(c, seriesInfo ?? null, series.toBase58());
+    const config = configInfo?.owner.equals(c.programId) ? c.decodeAccount('Config', configInfo.data) : null;
+    if (!s || !config) throw new NotFoundError(`tier ${tier} has no series on chain`);
+    const next = config['poolCount'] as number; // the pool PDA is seeded with the id the program will give it
+    return [[c.instruction('open_next_pool', {
+      caller, config: c.configPda(), series, pool: c.poolPda(next), vault: c.vaultPda(next), fee_treasury: s.feeTreasury, seed_treasury: s.seedTreasury,
+      platform_treasury: String(config['platformTreasury']),
+    }, { tier })], CU_LIMITS.open_next_pool];
   }
 }

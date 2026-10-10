@@ -15,7 +15,8 @@ import type { PoolProps } from '../domain/economy/pool.types.js';
 import { EnvService } from '../infrastructure/config/env.service.js';
 import { RegisterPoolFromChainCommand } from '../application/use-cases/pools/register-pool-from-chain/register-pool-from-chain.command.js';
 import { CrankPoolsCommand } from '../application/use-cases/chain/crank-pools/crank-pools.command.js';
-import { parsePoolRegister, parsePoolSeed, parsePromoCreate, parseTicketsGrant, parseStatsReconcile, parseVerdictRejudge, type PoolSeedArgs } from './admin-args.js';
+import { PayPoolsCommand } from '../application/use-cases/chain/pay-pools/pay-pools.command.js';
+import { parsePoolPayout, parsePoolRegister, parsePoolSeed, parsePromoCreate, parseTicketsGrant, parseStatsReconcile, parseVerdictRejudge, type PoolSeedArgs } from './admin-args.js';
 import { RejudgeRidesCommand } from '../application/use-cases/admin/rejudge-rides/rejudge-rides.command.js';
 import { ReconcileStatsCommand } from '../application/use-cases/stats/reconcile-stats/reconcile-stats.command.js';
 import { SweepTelemetryCommand } from '../application/use-cases/telemetry/sweep-telemetry/sweep-telemetry.command.js';
@@ -73,6 +74,10 @@ export async function runAdmin(command: string, args: readonly string[]): Promis
     }
     case 'pool:crank':
       return args.length ? usage('pool:crank takes no arguments') : withBuses(({ commands }) => commands.execute(new CrankPoolsCommand()));
+    case 'pool:payout': {
+      const r = parsePoolPayout(args);
+      return typeof r === 'string' ? usage(r) : withBuses(({ commands }) => commands.execute(new PayPoolsCommand(r.poolId)));
+    }
     case 'verdict:rejudge': {
       const r = parseVerdictRejudge(args);
       return typeof r === 'string' ? usage(r) : withBuses(({ commands }) => commands.execute(new RejudgeRidesCommand({ verdict: r.verdict, since: r.since, limit: r.limit }, r.dryRun, 'cli')));
@@ -92,11 +97,12 @@ const DAY = 86_400_000;
 const PLACEHOLDER = '11111111111111111111111111111111'; // the system program – never a real treasury, just a valid address
 
 /** A development pool with a fake (but valid) address – NOT on chain: tickets come from promo codes / tickets:grant, the explorer link leads nowhere. */
-function seededPool(a: PoolSeedArgs, now: Date, env: EnvService): PoolProps {
+function seededPool(a: PoolSeedArgs, now: Date, env: EnvService): Omit<PoolProps, 'rideSeed'> {
   const address = bs58.encode(Buffer.from(`dev-pool-${a.id}`.padEnd(32, '.')));
   return {
     id: a.id, address, tier: a.tier, label: a.label ?? `${a.tier.toUpperCase()} · dev pool ${a.id}`, priceLamports: a.priceLamports, minTickets: a.minTickets, maxTickets: a.maxTickets,
     maxPerWallet: a.maxPerWallet, prepDeadline: new Date(now.getTime() + a.prepDays * DAY), playDeadline: new Date(now.getTime() + a.playDays * DAY),
+    payoutAt: new Date(now.getTime() + a.playDays * DAY), payoutState: 'pending', payoutNote: null, hold: null,
     prizeBps: 7000, seedBps: 2000, feeBps: 1000, feeTreasury: env.feeTreasury || PLACEHOLDER, seedTreasury: env.seedTreasury || PLACEHOLDER,
     status: a.status, ticketsSold: a.sold, buyers: Math.min(a.sold, 1), vaultLamports: a.sold * a.priceLamports, sponsored: 0, roundId: null, createdAt: now, syncedAt: null,
   };

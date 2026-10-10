@@ -1,3 +1,4 @@
+import { worldFor } from '../../../../../src/domain/rides/ride-rules.js';
 import { CreateRideHandler } from '../../../../../src/application/use-cases/rides/create-ride/create-ride.handler.js';
 import { CreateRideCommand } from '../../../../../src/application/use-cases/rides/create-ride/create-ride.command.js';
 import { RideStatus } from '../../../../../src/domain/rides/ride-status.js';
@@ -189,6 +190,15 @@ describe('CreateRideHandler', () => {
       expect((await create('1h')).id).toBe(ride.id);
       expect((await ctx.tickets.find('w', 1))?.balance).toBe(1);
       expect(await ctx.tickets.recentGrants('w', 5)).toEqual([{ wallet: 'w', poolId: 1, delta: -1, source: 'spend', ref: ride.id, at: ctx.now() }]);
+    });
+
+    it('every ride of a pool is driven on the POOL\'s seed – one road (route, start hour, layout, holes) for all its riders; another pool, another road', async () => {
+      const { create, give } = await withPools({ id: 1, status: 'active', rideSeed: 5555 }, { id: 2, tier: '4h', status: 'active', rideSeed: 6666 });
+      await give(1, 1, 'a'); await give(1, 1, 'b'); await give(2, 1, 'c');
+      const [a, b, c] = [await create('1h', 'a'), await create('1h', 'b'), await create('4h', 'c')];
+      expect(a).toMatchObject({ seed: 5555, ...worldFor(5555) });
+      expect(b).toMatchObject({ seed: 5555, route: a.route, startHour: a.startHour });
+      expect(c).toMatchObject({ seed: 6666, ...worldFor(6666) });
     });
 
     it('the soonest-ending active pool the wallet holds tickets in goes first; a pool with no round ranks in the current one; demo wallets get the short shift', async () => {

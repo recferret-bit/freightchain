@@ -5,6 +5,7 @@ import { POOL_PROGRAM_IDL } from '../../../../src/infrastructure/solana/pool-pro
 import { PoolProgramCodec, UnrepresentableValueError } from '../../../../src/infrastructure/solana/pool-program.codec.js';
 import { BorshReader, BorshWriter } from '../../../../src/infrastructure/solana/borsh.js';
 import { SERVER_DIR } from '../../../architecture/source-files.js';
+import { CHAIN_EVENT_KINDS } from '../../../../src/domain/economy/chain-events.js';
 import { expectedEvent, fixtureAccount, fixtureTx, poolProgramFixture } from '../../../support/chain-fixtures.js';
 
 /* The codec against REAL program output (LiteSVM, tests/export_fixtures.rs): every event the program logged decodes to what the program's own Rust types say,
@@ -20,7 +21,12 @@ function idlArgs(name: string, a: Record<string, unknown>): Record<string, unkno
     case 'sponsor': return { pool_id: a['poolId'], lamports: BigInt(String(a['lamports'])) };
     case 'pay_prize': return { pool_id: a['poolId'], lamports: BigInt(String(a['lamports'])), rank: a['rank'] };
     case 'create_pool': return { params: { tier: a['tier'], price_lamports: BigInt(String(a['priceLamports'])), min_tickets: a['minTickets'], max_tickets: a['maxTickets'], max_per_wallet: a['maxPerWallet'],
-      prep_deadline: BigInt(Number(a['prepDeadline'])), play_deadline: BigInt(Number(a['playDeadline'])), prize_bps: a['prizeBps'], seed_bps: a['seedBps'], fee_bps: a['feeBps'] } };
+      prep_deadline: BigInt(Number(a['prepDeadline'])), play_deadline: BigInt(Number(a['playDeadline'])), payout_at: BigInt(Number(a['payoutAt'])), prize_bps: a['prizeBps'], seed_bps: a['seedBps'], fee_bps: a['feeBps'] } };
+    case 'set_series': return { params: { tier: a['tier'], enabled: a['enabled'], price_lamports: BigInt(String(a['priceLamports'])), min_tickets: a['minTickets'], max_tickets: a['maxTickets'],
+      max_per_wallet: a['maxPerWallet'], sale_secs: BigInt(Number(a['saleSecs'])), play_secs: BigInt(Number(a['playSecs'])), verify_secs: BigInt(Number(a['verifySecs'])),
+      prize_bps: a['prizeBps'], seed_bps: a['seedBps'], fee_bps: a['feeBps'], start_at: BigInt(Number(a['startAt'])) } };
+    case 'open_next_pool': return { tier: a['tier'] };
+    case 'set_payout_authority': return { payout_authority: a['payoutAuthority'] };
     case 'propose_authority': return { new_authority: fx.keys.nextAdmin };
     case 'accept_authority': return {};
     default: return { pool_id: a['poolId'] }; // fail_pool, refund, close_pool, close_ticket, cancel_pool, expire_pool
@@ -41,14 +47,15 @@ describe('PoolProgramCodec – events from real logs', () => {
     it(`${tx.name}: decodes what the program says it emitted`, () => {
       const records = codec.poolEvents(tx.logs, tx.signature, tx.slot);
       if (records === 'truncated') throw new Error('unexpected truncation');
-      const pool = tx.events.filter((e) => !e.kind.startsWith('Authority'));
+      const isPool = (k: string) => (CHAIN_EVENT_KINDS as readonly string[]).includes(k); // Authority* / SeriesSet / PayoutAuthoritySet are program events, not pool events
+      const pool = tx.events.filter((e) => isPool(e.kind));
       expect(records.map((r) => r.kind)).toEqual(pool.map((e) => e.kind));
       records.forEach((r, i) => {
         expect(r).toMatchObject({ signature: tx.signature, slot: tx.slot });
         expect(r).toEqual({ ...expectedEvent(pool[i]!), signature: tx.signature, slot: tx.slot, index: r.index });
       });
       // index = position among the program's Program data lines (skipped kinds count)
-      expect(records.map((r) => r.index)).toEqual(tx.events.map((e, i) => (e.kind.startsWith('Authority') ? -1 : i)).filter((i) => i >= 0));
+      expect(records.map((r) => r.index)).toEqual(tx.events.map((e, i) => (isPool(e.kind) ? i : -1)).filter((i) => i >= 0));
     });
   }
 
@@ -120,7 +127,7 @@ describe('PoolProgramCodec – instructions', () => {
 describe('PoolProgramCodec – accounts', () => {
   for (const a of fx.accounts) {
     it(`${a.name}: decodes field for field`, () => {
-      const got = codec.decodeAccount(a.decoded.type as 'Pool' | 'Ticket' | 'Config', b64(a.data));
+      const got = codec.decodeAccount(a.decoded.type as 'Pool' | 'Ticket' | 'Config' | 'Series', b64(a.data));
       const { type: _type, ...fields } = a.decoded;
       expect(got).toEqual(expectedEvent(fields as never));
     });

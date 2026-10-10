@@ -37,7 +37,7 @@ function convert(type: IdlType, v: BorshValue, where: string): unknown {
   return v;
 }
 
-export type PoolAccountName = 'Pool' | 'Ticket' | 'Config';
+export type PoolAccountName = 'Pool' | 'Ticket' | 'Config' | 'Series';
 export type AccountKeys = Record<string, PublicKey | string>;
 
 export interface ProgramDataLine {
@@ -57,6 +57,7 @@ export class PoolProgramCodec {
   configPda(): PublicKey { return PublicKey.findProgramAddressSync([Buffer.from('config')], this.programId)[0]; }
   poolPda(poolId: number): PublicKey { return PublicKey.findProgramAddressSync([Buffer.from('pool'), u32le(poolId)], this.programId)[0]; }
   vaultPda(poolId: number): PublicKey { return PublicKey.findProgramAddressSync([Buffer.from('vault'), u32le(poolId)], this.programId)[0]; }
+  seriesPda(tier: number): PublicKey { return PublicKey.findProgramAddressSync([Buffer.from('series'), Buffer.from([tier])], this.programId)[0]; }
   ticketPda(poolId: number, buyer: string | PublicKey): PublicKey {
     return PublicKey.findProgramAddressSync([Buffer.from('ticket'), this.poolPda(poolId).toBuffer(), new PublicKey(buyer).toBuffer()], this.programId)[0];
   }

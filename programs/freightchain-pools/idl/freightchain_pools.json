@@ -271,7 +271,7 @@
         {
           "name": "caller",
           "docs": [
-            "`config.authority` while the settle grace runs; anyone after it, and anyone for a fully refunded pool."
+            "`config.authority` / `config.payout_authority` from `payout_at`; anyone after the settle grace; anyone for a fully refunded pool."
           ],
           "signer": true
         },
@@ -723,6 +723,116 @@
       ]
     },
     {
+      "name": "open_next_pool",
+      "discriminator": [
+        67,
+        23,
+        193,
+        206,
+        62,
+        220,
+        69,
+        100
+      ],
+      "accounts": [
+        {
+          "name": "caller",
+          "docs": [
+            "Anyone (the server's crank in practice): pays the Pool account rent and the vault rent minimum, which comes back at close."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "series",
+          "writable": true
+        },
+        {
+          "name": "pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.pool_count",
+                "account": "Config"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.pool_count",
+                "account": "Config"
+              }
+            ]
+          }
+        },
+        {
+          "name": "fee_treasury"
+        },
+        {
+          "name": "seed_treasury"
+        },
+        {
+          "name": "platform_treasury"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "tier",
+          "type": "u8"
+        }
+      ]
+    },
+    {
       "name": "pay_prize",
       "discriminator": [
         80,
@@ -737,10 +847,10 @@
       "accounts": [
         {
           "name": "authority",
-          "signer": true,
-          "relations": [
-            "config"
-          ]
+          "docs": [
+            "`config.authority` or `config.payout_authority`"
+          ],
+          "signer": true
         },
         {
           "name": "config",
@@ -1052,6 +1162,123 @@
       ]
     },
     {
+      "name": "set_payout_authority",
+      "discriminator": [
+        112,
+        100,
+        95,
+        230,
+        10,
+        85,
+        156,
+        69
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "payout_authority",
+          "type": {
+            "option": "pubkey"
+          }
+        }
+      ]
+    },
+    {
+      "name": "set_series",
+      "discriminator": [
+        193,
+        170,
+        58,
+        61,
+        118,
+        121,
+        253,
+        249
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "series",
+          "writable": true
+        },
+        {
+          "name": "fee_treasury"
+        },
+        {
+          "name": "seed_treasury"
+        },
+        {
+          "name": "platform_treasury"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "SeriesParams"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "sponsor",
       "discriminator": [
         178,
@@ -1175,6 +1402,19 @@
       ]
     },
     {
+      "name": "Series",
+      "discriminator": [
+        240,
+        97,
+        8,
+        183,
+        139,
+        77,
+        250,
+        162
+      ]
+    },
+    {
       "name": "Ticket",
       "discriminator": [
         41,
@@ -1213,6 +1453,19 @@
         151,
         35,
         89
+      ]
+    },
+    {
+      "name": "PayoutAuthoritySet",
+      "discriminator": [
+        43,
+        108,
+        132,
+        99,
+        52,
+        13,
+        132,
+        94
       ]
     },
     {
@@ -1316,6 +1569,19 @@
         196,
         123,
         221,
+        99
+      ]
+    },
+    {
+      "name": "SeriesSet",
+      "discriminator": [
+        108,
+        79,
+        217,
+        160,
+        61,
+        67,
+        42,
         99
       ]
     },
@@ -1466,6 +1732,11 @@
       "code": 6023,
       "name": "MustExpire",
       "msg": "No prize was paid: an unsettled pool must be expired and refunded, not closed"
+    },
+    {
+      "code": 6024,
+      "name": "SeriesDisabled",
+      "msg": "This pool series is switched off"
     }
   ],
   "types": [
@@ -1541,6 +1812,15 @@
             "type": {
               "option": "pubkey"
             }
+          },
+          {
+            "name": "payout_authority",
+            "docs": [
+              "May pay prizes and close a pool once its `payout_at` has come (the server's payout key) – nothing else. None = only `authority`."
+            ],
+            "type": {
+              "option": "pubkey"
+            }
           }
         ]
       }
@@ -1575,10 +1855,23 @@
           },
           {
             "name": "prep_deadline",
+            "docs": [
+              "end of the sale window: no ticket is sold from here on; under the minimum the pool can only fail (refunds)"
+            ],
             "type": "i64"
           },
           {
             "name": "play_deadline",
+            "docs": [
+              "rides count until here"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "payout_at",
+            "docs": [
+              "end of the review window: prizes and the close only from here on"
+            ],
             "type": "i64"
           },
           {
@@ -1592,6 +1885,24 @@
           {
             "name": "fee_bps",
             "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PayoutAuthoritySet",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "payout_authority",
+            "type": {
+              "option": "pubkey"
+            }
           }
         ]
       }
@@ -1641,6 +1952,13 @@
           },
           {
             "name": "play_deadline",
+            "type": "i64"
+          },
+          {
+            "name": "payout_at",
+            "docs": [
+              "end of the review window: no prize is paid and the pool is not closed before it"
+            ],
             "type": "i64"
           },
           {
@@ -1840,6 +2158,10 @@
             "type": "i64"
           },
           {
+            "name": "payout_at",
+            "type": "i64"
+          },
+          {
             "name": "prize_bps",
             "type": "u16"
           },
@@ -1858,6 +2180,13 @@
           {
             "name": "seed_treasury",
             "type": "pubkey"
+          },
+          {
+            "name": "from_series",
+            "docs": [
+              "true = opened by `open_next_pool` from the tier's series, false = `create_pool` by the admin"
+            ],
+            "type": "bool"
           }
         ]
       }
@@ -1950,6 +2279,250 @@
           {
             "name": "refunded_total",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Series",
+      "docs": [
+        "One schedule per tier, written by the admin (`set_series`): every pool `open_next_pool` creates takes these rules. Pools tile time:",
+        "the next one opens when this one stops selling (`next_open_at`), so a 24 h sale window = one pool a day."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "tier",
+            "type": "u8"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "price_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "min_tickets",
+            "type": "u32"
+          },
+          {
+            "name": "max_tickets",
+            "docs": [
+              "0 = unlimited"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "max_per_wallet",
+            "type": "u16"
+          },
+          {
+            "name": "sale_secs",
+            "docs": [
+              "sale window = cadence (seconds)"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "play_secs",
+            "docs": [
+              "after the sale ends, rides of the pool still count this long"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "verify_secs",
+            "docs": [
+              "after the play deadline: the review window before any prize is paid"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "prize_bps",
+            "type": "u16"
+          },
+          {
+            "name": "seed_bps",
+            "type": "u16"
+          },
+          {
+            "name": "fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "fee_treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "seed_treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "next_open_at",
+            "docs": [
+              "the start of the next sale slot; `open_next_pool` is refused before it"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "pools_opened",
+            "type": "u32"
+          },
+          {
+            "name": "last_pool_id",
+            "type": {
+              "option": "u32"
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SeriesParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "tier",
+            "type": "u8"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "price_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "min_tickets",
+            "type": "u32"
+          },
+          {
+            "name": "max_tickets",
+            "docs": [
+              "0 = unlimited"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "max_per_wallet",
+            "type": "u16"
+          },
+          {
+            "name": "sale_secs",
+            "docs": [
+              "sale window AND cadence: the next pool opens when this one stops selling"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "play_secs",
+            "docs": [
+              "rides still count this long after the sale ends"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "verify_secs",
+            "docs": [
+              "review window after the play deadline, before any prize"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "prize_bps",
+            "type": "u16"
+          },
+          {
+            "name": "seed_bps",
+            "type": "u16"
+          },
+          {
+            "name": "fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "start_at",
+            "docs": [
+              "the first sale slot starts here; 0 = keep the series' current `next_open_at` (refused for a new series)"
+            ],
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SeriesSet",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "tier",
+            "type": "u8"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "price_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "min_tickets",
+            "type": "u32"
+          },
+          {
+            "name": "max_tickets",
+            "type": "u32"
+          },
+          {
+            "name": "max_per_wallet",
+            "type": "u16"
+          },
+          {
+            "name": "sale_secs",
+            "type": "i64"
+          },
+          {
+            "name": "play_secs",
+            "type": "i64"
+          },
+          {
+            "name": "verify_secs",
+            "type": "i64"
+          },
+          {
+            "name": "prize_bps",
+            "type": "u16"
+          },
+          {
+            "name": "seed_bps",
+            "type": "u16"
+          },
+          {
+            "name": "fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "fee_treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "seed_treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "next_open_at",
+            "type": "i64"
           }
         ]
       }

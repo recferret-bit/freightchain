@@ -230,6 +230,16 @@ export class MemoryRideQuery extends RideQueryPort {
     return this.ranked((r) => r.poolId === poolId && (!verifiedOnly || this.verified(r)), limit);
   }
 
+  async poolUnreviewed(poolId: number, limit: number): Promise<{ id: string; wallet: string; verdict: string | null }[]> {
+    return [...this.db.rides.values()]
+      .filter(({ props: r }) => {
+        const v = this.db.verdicts.get(r.id);
+        return r.poolId === poolId && r.status === RideStatus.Completed && (!v || (v.status !== VerdictStatus.Verified && v.overriddenBy === null));
+      })
+      .sort((a, b) => (a.props.endedAt?.getTime() ?? 0) - (b.props.endedAt?.getTime() ?? 0) || a.seq - b.seq)
+      .slice(0, limit).map(({ props: r }) => ({ id: r.id, wallet: r.wallet, verdict: this.db.verdicts.get(r.id)?.status ?? null }));
+  }
+
   private verified(r: RideProps): boolean { return this.db.verdicts.get(r.id)?.status === VerdictStatus.Verified; }
 
   async forRejudge(f: RejudgeFilter): Promise<{ id: string; verdict: string | null }[]> {

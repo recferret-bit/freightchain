@@ -1,23 +1,19 @@
 import { GetPayoutTransactionsHandler } from '../../../../../src/application/use-cases/pools/get-payout-transactions/get-payout-transactions.handler.js';
 import { GetPayoutTransactionsQuery } from '../../../../../src/application/use-cases/pools/get-payout-transactions/get-payout-transactions.query.js';
-import { Ride } from '../../../../../src/domain/rides/ride.entity.js';
-import { RideStatus } from '../../../../../src/domain/rides/ride-status.js';
 import { ForbiddenError } from '../../../../../src/domain/shared/errors.js';
 import { TREASURY } from '../../../../support/fake-chain.js';
 import { unitContext, unitRules } from '../../../../support/unit-context.js';
 import { aPool } from '../../../../support/pools.js';
+import { poolRide } from '../../../../support/pool-rides.js';
 
 const ADMIN = TREASURY; // unitRules' treasury = the pool authority
 
 describe('GetPayoutTransactionsHandler', () => {
   const setup = async () => {
-    const ctx = unitContext(unitRules({ verdictEnforce: false })); // shadow mode: every completed ride ranks (verified-only ranking is the ride query's own test)
+    const ctx = unitContext(unitRules({ verdictEnforce: false })); // shadow mode for the boards – the payout still ranks only verified rides
     // 10 tickets × 0.05 SOL = 0.5 SOL pot → prize 70 % = 0.35 SOL
     await ctx.pools.upsert(aPool({ id: 1, status: 'active', ticketsSold: 10, minTickets: 2 }, ctx.now()));
-    const completed = async (wallet: string, metres: number, poolId = 1) => {
-      const r = Ride.createFromTicket({ id: ctx.entropy.uuid(), wallet, tier: '1h', seed: 1, minSeconds: 3600, timeScale: 1, poolId, roundId: 1, now: ctx.now() });
-      await ctx.rides.insert(Ride.restore({ ...r.snapshot(), status: RideStatus.Completed, lastS: metres, endedAt: ctx.now() }));
-    };
+    const completed = async (wallet: string, metres: number, poolId = 1) => { await poolRide(ctx, wallet, metres, 'verified', poolId); };
     const h = new GetPayoutTransactionsHandler(ctx.pools, ctx.rideQuery, ctx.chainEvents, ctx.poolChain, ctx.rules, ctx.clock);
     return { ctx, completed, payout: (wallet = ADMIN) => h.execute(new GetPayoutTransactionsQuery(wallet, 1)) };
   };
@@ -25,6 +21,7 @@ describe('GetPayoutTransactionsHandler', () => {
   it('after the play deadline: ranked payouts as pay_prize transactions for the admin to sign; no close until every rank is paid', async () => {
     const { ctx, completed, payout } = await setup();
     await completed('alice', 900); await completed('bob', 500); await completed('bob', 500); await completed('carol', 100, 2);
+    await poolRide(ctx, 'dave', 5_000, 'flagged'); // not verified: never paid, whatever VERDICT_ENFORCE says
     ctx.clock.advance(15 * 86_400);
     const dto = await payout();
     expect(dto.prizeLamports).toBe(350_000_000);

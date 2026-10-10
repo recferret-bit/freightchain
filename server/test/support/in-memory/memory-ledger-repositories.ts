@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Pool } from '../../../src/domain/economy/pool.entity.js';
-import type { PoolProps } from '../../../src/domain/economy/pool.types.js';
+import type { PayoutState, PoolHold, PoolProps } from '../../../src/domain/economy/pool.types.js';
 import { PromoCode } from '../../../src/domain/economy/promo-code.entity.js';
 import { TicketOrder } from '../../../src/domain/economy/ticket-order.entity.js';
 import { TicketOrderRepositoryPort } from '../../../src/application/ports/economy/ticket-order.repository.port.js';
@@ -9,6 +9,8 @@ import type { TicketGrantProps } from '../../../src/domain/players/ride-ticket.t
 import type { PaidTierId } from '../../../src/domain/rides/ride-tier.js';
 import { VersionConflictError } from '../../../src/domain/shared/errors.js';
 import { PoolRepositoryPort } from '../../../src/application/ports/economy/pool.repository.port.js';
+import { PoolPayoutRepositoryPort } from '../../../src/application/ports/economy/pool-payout.repository.port.js';
+import type { PlannedPayout, PoolPayoutRecord } from '../../../src/domain/economy/pool-payout.js';
 import { PromoRepositoryPort, type PromoRedemptionRecord } from '../../../src/application/ports/economy/promo.repository.port.js';
 import { CosmeticRepositoryPort, type CosmeticUnlockRecord } from '../../../src/application/ports/players/cosmetic.repository.port.js';
 import type { CosmeticSlot } from '../../../src/domain/economy/cosmetics.js';
@@ -53,7 +55,30 @@ export class MemoryPoolRepository extends PoolRepositoryPort {
       .sort((a, b) => a.prepDeadline.getTime() - b.prepDeadline.getTime() || a.id - b.id).map((p) => Pool.restore(p));
   }
 
-  async upsert(pool: Pool): Promise<void> { this.db.pools.set(pool.id, pool.snapshot()); }
+  async listSettled(limit: number): Promise<Pool[]> {
+    return [...this.db.pools.values()].filter((p) => p.status === 'settled').sort((a, b) => b.payoutAt.getTime() - a.payoutAt.getTime() || b.id - a.id).slice(0, limit).map((p) => Pool.restore(p));
+  }
+
+  async listPayable(now: Date): Promise<Pool[]> {
+    return [...this.db.pools.values()].filter((p) => p.status === 'active' && p.payoutAt.getTime() <= now.getTime())
+      .sort((a, b) => a.payoutAt.getTime() - b.payoutAt.getTime() || a.id - b.id).map((p) => Pool.restore(p));
+  }
+
+  /** like the Prisma upsert: the ride seed is set once, the payout state and the hold only on insert (they change through savePayout / saveHold) */
+  async upsert(pool: Pool): Promise<void> {
+    const had = this.db.pools.get(pool.id);
+    this.db.pools.set(pool.id, { ...pool.snapshot(), ...(had ? { rideSeed: had.rideSeed, payoutState: had.payoutState, payoutNote: had.payoutNote, hold: had.hold } : {}) });
+  }
+
+  async savePayout(poolId: number, state: PayoutState, note: string | null): Promise<void> {
+    const p = this.db.pools.get(poolId);
+    if (p) this.db.pools.set(poolId, { ...p, payoutState: state, payoutNote: note });
+  }
+
+  async saveHold(poolId: number, hold: PoolHold | null): Promise<void> {
+    const p = this.db.pools.get(poolId);
+    if (p) this.db.pools.set(poolId, { ...p, hold });
+  }
 }
 
 @Injectable()
@@ -227,5 +252,50 @@ export class MemoryTicketOrderRepository extends TicketOrderRepositoryPort {
 
   private bySettlement(signature: string, eventIndex: number | null) {
     return [...this.db.orders.values()].find((x) => x.signature === signature && x.eventIndex === eventIndex);
+  }
+}
+
+/** The payout ledger: the same conditional transitions as the Prisma repository (one map, key `${poolId}|${rank}`). */
+@Injectable()
+export class MemoryPoolPayoutRepository extends PoolPayoutRepositoryPort {
+  constructor(private readonly db: MemoryDb) { super(); }
+
+  async listByPool(poolId: number): Promise<PoolPayoutRecord[]> {
+    return [...this.db.poolPayouts.values()].filter((p) => p.poolId === poolId).sort((a, b) => a.rank - b.rank).map((p) => ({ ...p }));
+  }
+
+  async plan(rows: PlannedPayout[], now: Date): Promise<void> {
+    for (const r of rows) {
+      const taken = [...this.db.poolPayouts.values()].some((p) => p.poolId === r.poolId && (p.rank === r.rank || p.wallet === r.wallet));
+      if (!taken) this.db.poolPayouts.set(`${r.poolId}|${r.rank}`, { ...r, signature: null, lastValidBlockHeight: null, attempts: 0, error: null, createdAt: now, updatedAt: now });
+    }
+  }
+
+  private move(poolId: number, rank: number, when: (p: PoolPayoutRecord) => boolean, to: Partial<PoolPayoutRecord>): boolean {
+    const key = `${poolId}|${rank}`, p = this.db.poolPayouts.get(key);
+    if (!p || !when(p)) return false;
+    this.db.poolPayouts.set(key, { ...p, ...to });
+    return true;
+  }
+
+  async claimSent(poolId: number, rank: number, signature: string, lastValidBlockHeight: number, now: Date): Promise<boolean> {
+    return this.move(poolId, rank, (p) => p.status === 'planned', { status: 'sent', signature, lastValidBlockHeight, error: null, updatedAt: now,
+      attempts: (this.db.poolPayouts.get(`${poolId}|${rank}`)?.attempts ?? 0) + 1 });
+  }
+
+  async markPaid(poolId: number, rank: number, signature: string, now: Date): Promise<boolean> {
+    return this.move(poolId, rank, (p) => p.status === 'sent' && p.signature === signature, { status: 'paid', error: null, updatedAt: now });
+  }
+
+  async release(poolId: number, rank: number, signature: string, error: string, now: Date): Promise<boolean> {
+    return this.move(poolId, rank, (p) => p.status === 'sent' && p.signature === signature, { status: 'planned', signature: null, lastValidBlockHeight: null, error, updatedAt: now });
+  }
+
+  async markPaidElsewhere(poolId: number, rank: number, now: Date): Promise<boolean> {
+    return this.move(poolId, rank, (p) => p.status === 'planned', { status: 'paid', error: 'paid outside the payout job', updatedAt: now });
+  }
+
+  async noteError(poolId: number, rank: number, error: string, now: Date): Promise<void> {
+    this.move(poolId, rank, () => true, { error: error.slice(0, 500), updatedAt: now });
   }
 }
