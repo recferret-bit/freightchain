@@ -38,6 +38,7 @@ Start on the public site. The form, the two videos, and the founder bio live in 
 | Landing + lobby | [freightchain.fun](https://freightchain.fun) | The pitch, the live boards, sign-in, the lobby |
 | Whitepaper | [whitepaper.freightchain.fun](https://whitepaper.freightchain.fun) | Rules, escrow chapter, validation, streams, risks |
 | Game | [ride.freightchain.fun/play.html](https://ride.freightchain.fun/play.html) | The truck. A ride id comes from the lobby. Bare `play.html` is the guest free run |
+| Public ride receipts | [freightchain.fun/r/:id](https://freightchain.fun/r/example) | Real-time / completed ride proof, Solana devnet explorer link, dynamic 𝕏 card |
 | Model viewer | [storybook.freightchain.fun](https://storybook.freightchain.fun) | Vehicles, props, furniture, landmarks |
 | API | [api.freightchain.fun/api/health](https://api.freightchain.fun/api/health) | JSON only. Other paths on that host 404 |
 | Admin | [admin.freightchain.fun](https://admin.freightchain.fun) | HTTP basic auth, then a second wallet sign-in |
@@ -67,6 +68,7 @@ A wallet listed in `DEMO_WALLETS` drives a paid shift `DEMO_SCALE` times shorter
 | Server-rebuilt road and hole checks | Yes | The whitepaper still says "next deploy" |
 | Live watch, replays, CB chat, devnet tips to the driver | Yes | Live. Effects run on free rides only |
 | Garage, promo codes | Yes | Lobby tabs. Cosmetics are colours |
+| Public ride receipts, 𝕏 card SSR, in-game 𝕏 sharing | Yes (`/r/:id`, Web Intent) | Live |
 | Escrow program | Yes. 14 instructions, 12 events, 24 errors | On devnet, initialized. The website is still `PAYMENT_MODE=transfer` |
 | Prize payouts from a pool vault | `pay_prize` is in the program. The admin page has no payout button | After the results, on an explicit switch |
 | Token, mainnet, captcha, NFT badges | No | No |
@@ -76,6 +78,7 @@ Production stays on the transfer path until the Colosseum results, the devnet ex
 ### What a Solana judge can check
 
 - **Sign-in.** Sign-In With Solana. The server stores one challenge, consumes it on the first attempt, and sets an httpOnly cookie. The statement says the signature does not send a transaction. [`server/src/domain/auth/sign-in.ts`](server/src/domain/auth/sign-in.ts)
+- **Public ride receipts and 𝕏 / Solana verification.** Every online shift (free or paid) gets an open public URL (`/r/:id`) showing live or completed telemetry, route seed proof, and a direct link to Solana Explorer (devnet) verifying the ticket escrow transaction. Drivers can share ride progress mid-shift from the dashboard (styled with Solana branding near the parking brake) or post the final receipt from the end screen via 𝕏 Web Intent; server-side middleware renders dynamic Twitter Card and Open Graph metadata with live stats so preview cards render directly on 𝕏 feeds.
 - **A program-owned vault.** Each pool has a zero-data PDA. Only the program can sign for it. Price, minimum, deadlines, and the prize / seed / fee split are fixed at `create_pool`. [`programs/freightchain-pools/README.md`](programs/freightchain-pools/README.md)
 - **A missed pool refunds without the operator.** `fail_pool`, `refund`, `expire_pool`, and the grace `close_pool` are permissionless. After 14 days an unpaid active pool can only be expired and refunded, so an absent admin cannot sweep the players' money to the seed treasury.
 - **Prizes are capped on chain.** `pay_prize` refuses once `prizes_paid` would pass the prize share. The 25 / 15 / 10 ranking is server policy inside that cap. The program does not hard-code the ranks.
@@ -122,6 +125,7 @@ flowchart LR
 - **Landing** — [`landing/`](landing/index.html). Vite. Wallet sign-in, live pool and boards, dash cards drawn by the game's cockpit code. The hero video loads after the page, and never on a phone. [Read the page](https://freightchain.fun).
 - **Lobby** — [`client/lobby.html`](client/lobby.html). Tabs: New ride, Live, Replays, Leaderboard, Garage, Promo, Profile. Server text goes in with `textContent`.
 - **Game** — [`client/play.html`](client/play.html). `?ride=` is an online shift. `?watch=` is a spectator. Any other `play.html` (bare or `?offline=1`) is an uncounted guest free run (tutorial / assist picked in its menu, nothing recorded). `file://` cannot load the modules.
+- **Ride Receipts & 𝕏 Cards** — [`client/r.html`](client/r.html) + [`client/site/ride.js`](client/site/ride.js). Public permanent URL `/r/:id` with real-time or completed telemetry, route seed, driver wallet, and devnet Solana transaction explorer link. Server middleware ([`server/src/infrastructure/http/middleware/ride-page.middleware.ts`](server/src/infrastructure/http/middleware/ride-page.middleware.ts)) injects SSR Twitter Card and Open Graph tags for 𝕏 crawlers.
 - **Whitepaper** — [`landing/whitepaper.html`](landing/whitepaper.html). A long read. Its only request is web vitals to the API. Its numbers are asserted against the code by [`landing/test/whitepaper.test.js`](landing/test/whitepaper.test.js).
 - **Model viewer** — [`client/viewer.html`](client/viewer.html). Same builders as the game. No API on that host.
 - **Admin** — [`client/admin.html`](client/admin.html). Nginx basic auth, then an admin wallet session (`ADMIN_WALLETS`, 2 hours). Every change is a wallet signature over that exact action, and the row is kept. The player cookie grants nothing there. On a split deploy the API answers `/api/admin` only when `Host` is `admin.<apex>`.
@@ -224,6 +228,12 @@ Read: [`client/js/trips.js`](client/js/trips.js) · [`server/src/domain/rides/ri
 Online rides upload every key and dash-button event, plus a 10 Hz sample of the truck, in SHA-256 hash-chained batches. A completed shift is marked `verified`, `flagged`, or `rejected`. The server does not re-simulate the physics. Paid boards rank verified shifts when `VERDICT_ENFORCE` is on. Production runs shadow mode: the verdict is stored and shown, and the boards ignore it.
 
 Read: [Anti-cheat](#anti-cheat) · [`docs/anti-cheat/index.html`](docs/anti-cheat/index.html)
+
+### Public receipts and 𝕏 sharing
+
+Every online shift (free or paid) has an unauthenticated public receipt page at `/r/:id`. While running, it displays live telemetry and lets visitors watch the stream or tip the driver in SOL; when completed, it shows the verdict, distance, seed commitment, and a Solana devnet explorer link for the ticket escrow. Drivers can share live progress directly from the truck dashboard via the Solana-styled `POST ON 𝕏` button (near the parking brake), or share their ride receipt on completion. The server injects dynamic Open Graph and Twitter Card tags so shared links show live stats and route previews directly on 𝕏.
+
+Read: [`server/src/presentation/rides/public-rides.http.controller.ts`](server/src/presentation/rides/public-rides.http.controller.ts) · [`server/src/infrastructure/http/middleware/ride-page.middleware.ts`](server/src/infrastructure/http/middleware/ride-page.middleware.ts) · [`client/r.html`](client/r.html)
 
 ### Live board
 

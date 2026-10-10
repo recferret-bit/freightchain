@@ -159,8 +159,8 @@ function paintTiers() {
   paintRefunds(); tickCountdowns();
 }
 const tutorialOn = () => S.opt.tutorial ?? !S.me?.tutorialPassed;
-function guideBox(id, name, hint, on, set, off = '') {   // one of the free ride's two checkboxes (kept in S.opt, so a repaint does not reset it); off = why it is locked (unchecked + disabled)
-  return el('label', { class: `opt${off ? ' locked' : ''}`, for: id }, el('input', { type: 'checkbox', id, checked: on && !off, disabled: !!off, onchange: e => set(e.target.checked) }), el('span', {}, el('b', {}, name), off ? el('small', { class: 'why' }, off) : '', el('small', {}, hint)));
+function guideBox(id, name, hint, on, set, locked = false) {   // one of the free ride's two checkboxes (kept in S.opt, so a repaint does not reset it); locked = unchecked + disabled, the hint stays
+  return el('label', { class: `opt${locked ? ' locked' : ''}`, for: id }, el('input', { type: 'checkbox', id, checked: on && !locked, disabled: !!locked, onchange: e => set(e.target.checked) }), el('span', {}, el('b', {}, name), el('small', {}, hint)));
 }
 /* the free ride's LEVELS come from the server (GET /api/tiers → the free tier's `levels`: EASY / CROSSROADS / HARD, their length and whether ASSIST is allowed);
    a server without them = no picker and no `level` sent. The pick is remembered (localStorage freightchain.level); one the server does not offer falls back to the easiest. */
@@ -180,15 +180,11 @@ function syncFreeLevel() {
   const t = S.tiers?.tiers.find(x => x.id === 'free'), lv = pickedLevel(t), card = $('tier-free'); if (!card || !lv) return;
   card.querySelectorAll('.lv').forEach(node => { const input = node.querySelector('input'), on = Number(input.value) === lv.level; node.classList.toggle('on', on); input.checked = on; });
   const input = $('opt-assist'), label = input?.closest('.opt'); if (!input || !label) return;
-  const allowed = assistAllowed(t), span = label.querySelector('span'), hint = span.querySelector('small:not(.why)');
-  input.disabled = !allowed; input.checked = !!S.opt.assist && allowed; label.classList.toggle('locked', !allowed);
-  const why = span.querySelector('.why');
-  if (allowed) why?.remove();
-  else if (why) why.textContent = `no assist on ${lv.name}`;
-  else span.insertBefore(el('small', { class: 'why' }, `no assist on ${lv.name}`), hint);
+  const allowed = assistAllowed(t);
+  input.disabled = !allowed; input.checked = !!S.opt.assist && allowed; label.classList.toggle('locked', !allowed);   // HARD: the block stays, the checkbox does not
 }
 function freeCard(t) {
-  const off = tierOff(t), lv = pickedLevel(t);
+  const off = tierOff(t);
   return el('article', { class: 'tier free', id: 'tier-free' },
     el('div', { class: 'freeinfo' },
       el('div', { class: 'hd' },
@@ -200,7 +196,7 @@ function freeCard(t) {
       freeLevels(t).length ? '' : el('span', { class: 'sub', id: 'free-shift' }, tierInfo(t).shift),   // a server without levels: the one shift, once
       el('div', { class: 'guide' },
         guideBox('opt-tutorial', 'TUTORIAL', S.me?.tutorialPassed ? 'Step-by-step tips over the game – you have done it, switch it on to see it again.' : 'Step-by-step tips over the game: ignition, gears, steering, lights, hull. On for your first ride.', tutorialOn(), v => { S.opt.tutorial = v; }),
-        guideBox('opt-assist', 'ASSIST', 'The truck and the battery last twice as long and every control gets a tip when it matters. Finish a free ride WITHOUT it for the “On My Own” achievement.', S.opt.assist, v => { S.opt.assist = v; store.set('freightchain.assist', v ? '1' : '0'); }, assistAllowed(t) ? '' : `no assist on ${lv?.name ?? 'this level'}`)),
+        guideBox('opt-assist', 'ASSIST', 'The truck and the battery last twice as long and every control gets a tip when it matters. Finish a free ride WITHOUT it for the “On My Own” achievement.', S.opt.assist, v => { S.opt.assist = v; store.set('freightchain.assist', v ? '1' : '0'); }, !assistAllowed(t))),
       off ? el('span', { class: 'tag' }, off) : ''),
     el('p', { class: 'msg dim', id: 'msg-free' }));
 }
