@@ -68,10 +68,11 @@ function showOfflineMenu(title, sub, extra) {
     <label class="row" style="cursor:pointer"><span>TUTORIAL – step-by-step lessons over the road</span><input type="checkbox" id="g-tutorial" ${guestOpt.tutorial ? 'checked' : ''}></label>
     <label class="row" style="cursor:pointer"><span>ASSIST – the truck lasts twice as long, a tip on every control</span><input type="checkbox" id="g-assist" ${guestOpt.assist ? 'checked' : ''}></label>
     <div class="btns"><button id="go">${again ? 'DRIVE AGAIN' : 'START FREE RUN'}</button><button class="alt" id="connect">CONNECT A WALLET</button></div>
-    <div class="btns">${bailBtn('yard')}${bailBtn('done')}</div>`;
+    ${again || (!guestOpt.tutorial && !guestOpt.assist) ? `<div class="btns">${bailBtn('yard')}${bailBtn('done')}</div>` : ''}`;
   overlay.classList.remove('hide');
-  document.getElementById('g-tutorial').onchange = e => { guestOpt.tutorial = e.target.checked; store.set('freightchain.guest-tutorial', guestOpt.tutorial ? '1' : '0'); };
-  document.getElementById('g-assist').onchange = e => { guestOpt.assist = e.target.checked; store.set('freightchain.assist', guestOpt.assist ? '1' : '0'); };
+  const redraw = () => showOfflineMenu(title, sub, extra);   // tutorial or assist: the leave links stay off this dialog (they are on the road)
+  document.getElementById('g-tutorial').onchange = e => { guestOpt.tutorial = e.target.checked; store.set('freightchain.guest-tutorial', guestOpt.tutorial ? '1' : '0'); redraw(); };
+  document.getElementById('g-assist').onchange = e => { guestOpt.assist = e.target.checked; store.set('freightchain.assist', guestOpt.assist ? '1' : '0'); redraw(); };
   document.getElementById('go').onclick = startRide;
   document.getElementById('connect').onclick = () => { location.href = connectHref(); };
   bindBail(); syncBail();
@@ -89,10 +90,11 @@ function showOnlineMenu(title, sub, extra) {
   panel.innerHTML = `<h1>${title}</h1><h2>${sub}</h2>${extra}
     ${bad ? `<div class="row"><span>Ride</span><span class="bad">${online.error}</span></div>` : `<div class="row"><span>Shift (server-timed)</span><b>${fmt(CFG.RIDE_MIN_SECONDS)} · ${(CFG.COMPLETE_DIST / 1000).toFixed(1)} km${online.ride.timeScale > 1 ? ` · DEMO ×${online.ride.timeScale}` : ''}</b></div>
     <div class="row"><span>Route (set by the server)</span><b>${env.theme.name} · starts ${clockText()}</b></div>`}${over || bad ? '' : CONTROLS}
-    <div class="btns"><button id="go" ${bad || over ? 'disabled' : ''}>START RIDE</button><button class="alt bail-link" id="lobby" title="lobby"><b>I MISS THE YARD</b><small>lobby</small></button>${bailBtn('done')}</div>`;
+    <div class="btns"><button id="go" ${bad || over ? 'disabled' : ''}>START RIDE</button>${over || bad || !(online.ride?.tutorial || online.ride?.assist) ? `<button class="alt bail-link" id="lobby" title="lobby"><b>I MISS THE YARD</b><small>lobby</small></button>${bailBtn('done')}` : ''}</div>`;
   overlay.classList.remove('hide');
   document.getElementById('go').onclick = startRide;
-  document.getElementById('lobby').onclick = () => { location.href = `${SITE_BASE}/lobby.html`; };   // one click: the ride is not running on this screen (the suites press #lobby)
+  const lobby = document.getElementById('lobby');
+  if (lobby) lobby.onclick = () => { location.href = `${SITE_BASE}/lobby.html`; };   // one click: the ride is not running on this screen (the suites press #lobby)
   bindBail(); syncBail();
 }
 /* Same strings the server stores, so a client "I finished" can be compared with the verdict. Not a completion metric. */
