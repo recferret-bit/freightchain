@@ -179,6 +179,16 @@ check(nightX.night===true&&dayX.night===false&&G.THEMES.some(t=>t.id===dayX.rout
 // one pool, one ride (the server gives every rider of a pool its seed): the same seed starts the trip among the same cars, whatever the last trip left behind
 { const cars=()=>{ st.s=0; G.roads.newTrip(12345); return G.traffic.map(a=>a.preset+a.pick+'@'+a.s.toFixed(2)+'/'+a.lat.toFixed(2)+'>'+a.vDes.toFixed(2)).join(' '); };
   const t1=cars(), t2=cars(); check(t1!==''&&t1===t2,'same seed -> same starting traffic ('+G.traffic.length+' cars)'); }
+// …and the same road CONTENT: what stands by the road (buildings, furniture, hole signs, scenery – the chunks' colliders) and the junctions, sampled at the depot,
+// 3 km and 9 km out, are equal for one seed whatever trip came between, and differ for the next pool's / day's seed – on two routes
+{ const sig=(seed)=>{ st.s=0; G.roads.newTrip(seed); const out=[];
+    for(const at of [0,3000,9000]){ st.s=at; G.roads.lastS=at; net.ensure(at+2000); G.roadObjects.update(at);
+      for(const [ci,g] of [...G.chunks].sort((a,b)=>a[0]-b[0])) out.push(ci+':'+g.userData.colliders.map(c=>c.kind+'/'+c.id+'@'+c.s.toFixed(1)+','+c.lat.toFixed(1)+'x'+String(c.size)).join(' ')); }
+    return { road:out.join('|'), junctions:net.near(0,12000).map(j=>j.kind[0]+j.s+(j.signal?'*':'')).join(' '), n:out.reduce((k,c)=>k+c.split(' ').length,0) }; };
+  for(const route of ['route66','siberia']){ G.selectTheme(route);
+    const a1=sig(424242), b=sig(777001), a2=sig(424242);
+    check(a1.n>50&&a1.road===a2.road&&a1.junctions===a2.junctions,'one seed, one road on '+route+': the same roadside ('+a1.n+' objects) and junctions for every rider of it');
+    check(b.road!==a1.road&&b.junctions!==a1.junctions,'the next seed is another road on '+route+' (other roadside, other junctions)'); } }
 out.push(...checks); out.push('errors='+errors.length+(errors[0]?' '+errors[0].message:''));
 console.log(out.join('\n'));
 const failed=checks.filter(c=>c.startsWith('FAIL'));
