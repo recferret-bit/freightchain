@@ -65,7 +65,7 @@ js/cockpit/rig.js     DEFAULT cockpit: conventional long-hood semi (hood, stacks
 js/cockpit/windscreen.js  dust, washer water, wipers, frost, warm-route fog, cracks, hood smoke, exhaust-stack smoke
 js/cockpit/index.js   drawCockpit(): picks the style + red impact flash
 js/cockpit/inputs.js  a replay's input display: flashing yellow borders on the dash controls the driver used (pointer + ring for a click), key caps for the keys
-js/ui/game.js         ride flow: menu / start / end / pause / resetRide
+js/ui/game.js         ride flow: menu / start / end / pause / resetRide, and the walk-off (top right while driving, and on the pause screen): I MISS THE YARD is the lobby, I'M DONE is the landing — each names where it goes, and asks YES / I'M STAYING first
 js/themes/_shared/theme.js  defineTheme(): assembles a route from its folder's modules + plain data (see "Themes")
 js/themes/_shared/landmarks/  roadside buildings (motel, hotel, restaurant, gas, police): TYPES → interchangeable implementations; see "Landmarks"
 js/themes/            ONE FOLDER PER ROUTE – see "Themes (routes)" below
@@ -95,7 +95,7 @@ Dependency rule: modules are **acyclic** (checked with esbuild's metafile). `ui/
 - **There is no in-game currency any more** (the old mock FRT wallet, its fare, "+100 test FRT" and payout row are gone): a lobby ride is paid with a free ride or a ticket, the guest free run starts for free. Never trust client-side state for money.
 - **`CFG.RIDE_MIN_SECONDS` is a TEST value (300). Production = 1800.** The road never ends; a shift is **complete** (`st.complete`, toast) after `RIDE_MIN_SECONDS` of driving
   AND `COMPLETE_DIST = COMPLETE_DIST_K × MAX_SPEED × RIDE_MIN_SECONDS` metres. Speed is governed at `MAX_SPEED` (28 m/s), so idling/backgrounding can't bank it.
-  The ride then goes on until the driver ends it (P → END SHIFT: paid if complete, otherwise "abandoned") or it fails. **That is not security**: a modified client can complete instantly.
+  The ride then goes on until the driver leaves (top right, or P: I MISS THE YARD is the lobby, I'M DONE is the landing — each asks YES / I'M STAYING; paid if complete, otherwise "abandoned") or it fails. **That is not security**: a modified client can complete instantly.
   Real enforcement (signed ride start, server-side timing/telemetry, payout only after validation) must live on a server.
 - Frame `dt` is clamped to 0.05 s and the game pauses when the tab is hidden, so on a slow machine (<20 fps) game time runs slower than wall time.
 - At 1800 s the road is ~50 km (3 Float32 tables of ~50k entries – fine; chunks stream). Dust, fuel, etc. were only ever tuned for the 30 s test ride.
