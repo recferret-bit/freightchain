@@ -17,7 +17,8 @@ const WALLET = Keypair.generate().publicKey, PROGRAM = addr(), TREASURY = { fee:
 /* ───── state ───── */
 const t0 = NOW();
 const mkPool = (id, tier, label, status, o) => ({ id, address: addr(), tier, label, status, priceLamports: 50_000_000, minTickets: 10, maxTickets: 0, maxPerWallet: 5, sold: 0, buyers: 0,
-  prepDeadline: t0 + 6 * DAY, playDeadline: t0 + 13 * DAY, sponsoredLamports: 0, split: { prizeBps: 7000, seedBps: 2000, feeBps: 1000 }, treasuries: TREASURY, roundId: null, ...o });
+  prepDeadline: t0 + 6 * DAY, playDeadline: t0 + 13 * DAY, sponsoredLamports: 0, split: { prizeBps: 7000, seedBps: 2000, feeBps: 1000 }, treasuries: TREASURY, roundId: null,
+  payout: { state: 'pending', note: null, held: false }, ...o, payoutAt: o.payoutAt ?? (o.playDeadline ?? t0 + 13 * DAY) + 2 * DAY });   // v2: a 48 h review window after the play deadline
 const pools = [
   mkPool(1, '1h', '1H · demo pool', 'active', { minTickets: 2, sold: 5, buyers: 4 }),
   mkPool(2, '4h', '4H · week 42', 'open', { sold: 7, buyers: 6 }),
@@ -73,7 +74,8 @@ const R = [
   ['GET', /^profile$/, () => ({ body: { ...me(), career: { rides: 3, ridesFree: 1, ridesPaid: 2, ridesCompleted: 1, seconds: 190, metres: 4200, crashesVehicle: 0, crashesBuilding: 0, donations: 0, donationLamports: 0 }, stats: { rides: 3, completed: 1, metres: 4200, bestMetres: 4200, paidRides: 2, spentLamports: 940_000_000, ticketsBought: [...tickets.values()].reduce((a, t) => a + t.bought, 0) }, recent: [], achievements: [], grants: [...grants].sort((a, b) => b.at - a.at).slice(0, 20) } })],
   ['GET', /^tiers$/, () => ({ body: { solUsd: SOL_USD, treasury: TREASURY.fee, paymentMode: SALES ? 'program' : 'transfer', tiers: TIERS.map(t => { const p = t.id === 'free' ? null : onSale(t.id); return { ...t, lamports: p?.priceLamports ?? null, available: true, pool: p && poolDto(p) }; }) } })],
   ['GET', /^pool$/, () => ({ body: { round: { id: 1, startsAt: t0 - 3 * DAY, endsAt: t0 + 4 * DAY }, entries: 0, split: { entries: 0, carry: 0, grand: 0, top20: 0, nextSeed: 0, fees: 0 }, settled: false, solUsd: SOL_USD, usd: { grand: 0, top20: 0, nextSeed: 0, fees: 0, entries: 0 }, pools: pools.filter(p => p.status === 'open' || p.status === 'active').map(poolDto) } })],
-  ['GET', /^pools$/, () => ({ body: { pools: pools.filter(p => p.status === 'open' || p.status === 'active').map(poolDto) } })],
+  ['GET', /^pools$/, () => ({ body: { pools: pools.filter(p => p.status === 'open' || p.status === 'active').map(poolDto), finished: pools.filter(p => p.status === 'settled').map(poolDto) } })],
+  ['GET', /^pools\/(\d+)\/standings$/, m => { const p = pools.find(x => x.id === +m[1]); return p ? { body: { poolId: p.id, tier: p.tier, label: p.label, playDeadline: p.playDeadline, payoutAt: p.payoutAt, prizeLamports: 0, final: false, payout: p.payout, underReview: 0, ranks: [] } } : problem(404, 'not_found', 'no such pool'); }],
   ['GET', /^pools\/(\d+)$/, m => { const p = pools.find(x => x.id === +m[1]); return p ? { body: poolDto(p) } : problem(404, 'not_found', 'no such pool'); }],
   ['GET', /^live$/, () => ({ body: { now: NOW(), rides: [], upcoming: [], recent: [], totals: { shifts: 1, metres: 4200, drivers: 1 } } })],
   ['GET', /^leaderboard$/, (m, b, q) => {   // board=free&level=1|2|3 (absent = 3 HARD); a level on a paid board = 400, as the server's query schema
