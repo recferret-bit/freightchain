@@ -28,8 +28,6 @@ function drawPhoneMount(x, y, w, h, u) {
     ctx.restore();
   } else { ctx.fillStyle = '#e8e4da'; ctx.fillRect(sx, sy, sw, sh); ctx.strokeStyle = '#4285f4'; ctx.lineWidth = .8 * u; ctx.beginPath(); ctx.moveTo(sx + sw * .5, sy + sh); ctx.quadraticCurveTo(sx + sw * .2, sy + sh * .5, sx + sw * .6, sy); ctx.stroke(); }
   ctx.fillStyle = '#0d0d0f'; ctx.beginPath(); ctx.roundRect(x + w / 2 - 1.6 * u, y + .45 * u, 3.2 * u, .6 * u, .3 * u); ctx.fill();   // the speaker slot
-  ctx.fillStyle = 'rgba(13,13,15,.75)'; ctx.beginPath(); ctx.roundRect(x + w / 2 - 4 * u, y - 2.4 * u, 8 * u, 2 * u, u); ctx.fill();   // the caption ABOVE the phone: below it the binnacle (painted later) hid it
-  ctx.fillStyle = phone.open ? '#6b6f76' : '#9d957f'; ctx.font = `${1.4 * u}px ${MONO}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('MAP · N', x + w / 2, y - 1.35 * u);
   if (dn.k > .3 && !phone.open) { ctx.fillStyle = `rgba(120,170,255,${.06 * dn.k})`; ctx.beginPath(); ctx.arc(x + w / 2, y + h / 2, w * 1.1, 0, 7); ctx.fill(); }   // the screen's glow in the dark cab
 }
 
