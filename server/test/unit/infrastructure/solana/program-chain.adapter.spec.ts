@@ -91,6 +91,7 @@ describe('ProgramChainAdapter – builds what the program accepted', () => {
     expect(CU_LIMITS.pay_prize).toBeGreaterThanOrEqual(measured('pay_prize') * 1.25);
     expect(CU_LIMITS.close_pool).toBeGreaterThanOrEqual(measured('close_pool') * 1.25);
     expect(CU_LIMITS.refund + CU_LIMITS.fail_pool).toBeGreaterThanOrEqual(fixtureTx('fail_pool + refund').computeUnits * 1.25);
+    expect(CU_LIMITS.open_next_pool).toBeGreaterThanOrEqual(measured('open_next_pool') * 1.25); // two PDA inits (pool + vault funding)
   });
 });
 

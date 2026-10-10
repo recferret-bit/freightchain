@@ -227,7 +227,7 @@
   <ol class="rules">
     <li><b>You need a wallet, not a balance, to look around.</b> Watching a ride, the boards and this paper need no sign-in. Driving, chatting and tipping need one signature.</li>
     <li><b>One account is one wallet.</b> Free rides, tickets, badges and rank belong to the wallet that signed in. A session cookie is not revocable one by one; sign out of shared computers.</li>
-    <li><b>A ticket is spent when the shift starts.</b> A paid ticket is not returned if you crash or abandon. It is returned only if the <em>pool</em> fails: if too few riders buy in before the pool's preparation deadline, every buyer is refunded in full (<a href="#onchain">05</a>). Starting a ride while one is open resumes it.</li>
+    <li><b>A ticket is spent when the shift starts.</b> A paid ticket is not returned if you crash or abandon. It is returned only if the <em>pool</em> fails: if too few riders buy in during the pool's 24-hour sale window, every buyer is refunded in full (<a href="#onchain">05</a>). Starting a ride while one is open resumes it.</li>
     <li><b>Per-wallet cap.</b> A pool states how many tickets one wallet may hold; the program and the server both enforce it. Promo codes add tickets of a tier and count against the same cap.</li>
     <li><b>Drive by hand, in the real game.</b> The browser records your key presses and the truck's state; timing that looks scripted is <em>flagged</em> for a person to review, and recordings that are impossible are <em>rejected</em>. Using bots, macros or a modified client is against the rules and is the thing the validation is built to catch (<a href="#verify">06</a>).</li>
     <li><b>Keep the tab visible.</b> Time with the tab hidden is not driven time. Slow computers are not penalised: times come from the browser's event clock, and if the game runs below real time it simply takes longer.</li>
@@ -325,7 +325,7 @@
 <!-- ───────── 05 · ON-CHAIN ───────── -->
 <section id="onchain" class="ch">
   <header class="ch-h"><i>05</i><h2>On-chain: the escrow program</h2><p>One Solana program, many prize pools. The vault holds the money; the rules move it.</p></header>
-  <p class="note"><b>Status.</b> The program <code>freightchain_pools</code> (Anchor 1.2, Rust) is written and has 49 passing tests on a local Solana simulator against the reproducible build. It is <b>not deployed</b> (the program id in the repository is a placeholder), <b>not audited</b>, and planned for devnet only. Nothing on this page is live on a public network yet.</p>
+  <p class="note"><b>Status.</b> The program <code>freightchain_pools</code> (Anchor 1.2, Rust) is written and has 61 passing tests on a local Solana simulator against the reproducible build. An earlier version runs on devnet for testing; this one – the daily schedule and the payout key – is <b>not deployed</b> yet and <b>not audited</b>, devnet only. Nothing on this page is live on a public network yet.</p>
 
   <h3 class="sub">WHERE THE MONEY GOES</h3>
   <figure class="diagram">
@@ -378,7 +378,7 @@
           <!-- Active -> Settled -->
           <line x1="560" y1="100" x2="754" y2="100" class="ln" marker-end="url(#st-ink)"/>
           <text x="658" y="88" text-anchor="middle" class="tx m">close_pool</text>
-          <text x="658" y="121" text-anchor="middle" class="tx s">admin after play deadline</text>
+          <text x="658" y="121" text-anchor="middle" class="tx s">after the review window</text>
           <text x="658" y="138" text-anchor="middle" class="tx s">anyone +14 d, if paid</text>
 
           <!-- Open -> Refunding -->
@@ -391,7 +391,7 @@
           <line x1="480" y1="130" x2="480" y2="244" class="ln g" marker-end="url(#st-teal)"/>
           <text x="492" y="176" class="tx g">expire_pool</text>
           <text x="492" y="196" class="tx s">anyone, 14 days after the</text>
-          <text x="492" y="213" class="tx s">play deadline, no prize paid</text>
+          <text x="492" y="213" class="tx s">review, no prize paid</text>
 
           <!-- Refunding -> Cancelled -->
           <line x1="560" y1="280" x2="754" y2="280" class="ln g" marker-end="url(#st-teal)"/>
@@ -403,50 +403,51 @@
     <figcaption><b>Both ways out of a stuck pool are green.</b> A pool that misses its goal and a pool the operator abandons after it went live both end in refunds that anyone can trigger. Only the normal settlement of a live pool needs the admin.</figcaption>
   </figure>
 
-  <p>An ACTIVE pool the operator never settles is not a trap: 14 days after the play deadline anyone can call <code>expire_pool</code> (no prize paid yet) and every ticket is refunded, or finish the split to the declared treasuries (some prize paid). Sweeping an unpaid prize share to a treasury is refused.</p>
+  <p>An ACTIVE pool the operator never settles is not a trap: 14 days after the review window anyone can call <code>expire_pool</code> (no prize paid yet) and every ticket is refunded, or finish the split to the declared treasuries (some prize paid). Sweeping an unpaid prize share to a treasury is refused.</p>
 
   <h3 class="sub">THE CLOCK</h3>
   <figure class="diagram wide">
-    <svg viewBox="0 0 960 230" role="img" aria-label="Timeline: from create_pool to prep_deadline the pool is open and must reach its minimum; from prep_deadline to play_deadline it is active and rides count; from play_deadline the admin settles; 14 days after play_deadline anyone can expire or close it.">
+    <svg viewBox="0 0 960 230" role="img" aria-label="Timeline of a 1-hour pool: anyone opens it on its daily slot; for 24 hours tickets sell; 2 more hours rides count; 48 hours of review; then the winners are paid; 14 days after the review anyone can expire or close it.">
           <line x1="40" y1="90" x2="930" y2="90" class="ln i"/>
           <line x1="50" y1="80" x2="50" y2="100" class="ln i"/>
-          <line x1="330" y1="80" x2="330" y2="100" class="ln i"/>
-          <line x1="580" y1="80" x2="580" y2="100" class="ln i"/>
-          <line x1="800" y1="80" x2="800" y2="100" class="ln i"/>
-          <text x="50" y="64" class="tx m">create_pool</text>
-          <text x="330" y="64" text-anchor="middle" class="tx m">prep_deadline</text>
-          <text x="580" y="64" text-anchor="middle" class="tx m">play_deadline</text>
-          <text x="800" y="64" text-anchor="middle" class="tx g">+14 days</text>
-          <text x="190" y="116" text-anchor="middle" class="tx s">about 30 days</text>
-          <text x="455" y="116" text-anchor="middle" class="tx s">for example 7 days</text>
-          <text x="690" y="116" text-anchor="middle" class="tx s">14-day grace</text>
-
-          <rect x="50" y="132" width="276" height="78" rx="3" class="bx"/>
-          <text x="66" y="156" class="tx t">Open</text>
-          <text x="66" y="177" class="tx s">tickets sell; the pool must reach</text>
-          <text x="66" y="195" class="tx s">its minimum or everyone is refunded</text>
-
-          <rect x="334" y="132" width="242" height="78" rx="3" class="bx hi"/>
-          <text x="350" y="156" class="tx b big" style="font-size:17px">Active</text>
-          <text x="350" y="177" class="tx">rides count for prizes,</text>
-          <text x="350" y="195" class="tx">tickets still sell</text>
-
-          <rect x="584" y="132" width="212" height="78" rx="3" class="bx"/>
-          <text x="600" y="156" class="tx t">Settlement</text>
-          <text x="600" y="177" class="tx s">admin pays the winners</text>
-          <text x="600" y="195" class="tx s">and closes the pool</text>
-
-          <rect x="804" y="132" width="126" height="78" rx="3" class="bx net"/>
-          <text x="818" y="156" class="tx t">Safety net</text>
-          <text x="818" y="177" class="tx s">anyone can expire</text>
-          <text x="818" y="195" class="tx s">or close it</text>
+          <line x1="300" y1="80" x2="300" y2="100" class="ln i"/>
+          <line x1="420" y1="80" x2="420" y2="100" class="ln i"/>
+          <line x1="660" y1="80" x2="660" y2="100" class="ln i"/>
+          <line x1="840" y1="80" x2="840" y2="100" class="ln i"/>
+          <text x="50" y="64" class="tx m">open_next_pool</text>
+          <text x="300" y="64" text-anchor="middle" class="tx m">sale end</text>
+          <text x="420" y="64" text-anchor="middle" class="tx m">play</text>
+          <text x="660" y="64" text-anchor="middle" class="tx m">payout_at</text>
+          <text x="840" y="64" text-anchor="middle" class="tx g">+14 days</text>
+          <text x="175" y="116" text-anchor="middle" class="tx s">24 h</text>
+          <text x="360" y="116" text-anchor="middle" class="tx s">+2 h</text>
+          <text x="540" y="116" text-anchor="middle" class="tx s">48 h</text>
+          <text x="750" y="116" text-anchor="middle" class="tx s">grace</text>
+          <rect x="50" y="132" width="246" height="78" rx="3" class="bx hi"/>
+          <text x="66" y="156" class="tx b big" style="font-size:17px">On sale</text>
+          <text x="66" y="177" class="tx">reach the minimum or all refunded;</text>
+          <text x="66" y="195" class="tx">rides count once it is reached</text>
+          <rect x="304" y="132" width="112" height="78" rx="3" class="bx"/>
+          <text x="316" y="156" class="tx t">Last rides</text>
+          <text x="316" y="177" class="tx s">no sales</text>
+          <rect x="424" y="132" width="232" height="78" rx="3" class="bx"/>
+          <text x="440" y="156" class="tx t">Review</text>
+          <text x="440" y="177" class="tx s">winners published; admins check</text>
+          <text x="440" y="195" class="tx s">every ride that looks strange</text>
+          <rect x="664" y="132" width="172" height="78" rx="3" class="bx"/>
+          <text x="680" y="156" class="tx t">Payout</text>
+          <text x="680" y="177" class="tx s">verified winners paid,</text>
+          <text x="680" y="195" class="tx s">pool closed</text>
+          <rect x="844" y="132" width="86" height="78" rx="3" class="bx net"/>
+          <text x="854" y="156" class="tx t">Net</text>
+          <text x="854" y="177" class="tx s">anyone</text>
         </svg>
-    <figcaption><b>The last window needs nobody's key.</b> If the operator never settles, 14 days after the play deadline any wallet can start the refunds (no prize paid yet) or finish the split to the declared treasuries (some prizes paid). Durations are the proposed defaults; each pool fixes its own.</figcaption>
+    <figcaption><b>A new 1-hour pool every 24 hours.</b> No prize is paid before the review window ends – the program refuses it, even from the admin. If nobody settles, 14 days later any wallet can start the refunds (no prize paid yet) or finish the split to the declared treasuries.</figcaption>
   </figure>
   <div class="grid3">
-    <article class="card"><h3>PREPARATION DEADLINE</h3><p>Tickets sell; the pool must reach its minimum or everyone is refunded. Written into the pool, e.g. 7 days out.</p></article>
-    <article class="card"><h3>PLAY DEADLINE</h3><p>Rides count for prizes, tickets still sell. After it the admin pays winners and closes. At most 365 days after creation.</p></article>
-    <article class="card"><h3>14-DAY SAFETY NET</h3><p>After the play deadline plus 14 days the last window needs nobody's key: anyone can expire or close the pool.</p></article>
+    <article class="card"><h3>SALE WINDOW</h3><p>24 hours. Tickets sell; no ticket after it. Below the minimum, every buyer is refunded.</p></article>
+    <article class="card"><h3>REVIEW WINDOW</h3><p>48 hours after the last rides. The winners list is public; every flagged ride gets a human look.</p></article>
+    <article class="card"><h3>14-DAY SAFETY NET</h3><p>After the review plus 14 days the last window needs nobody's key: anyone can expire or close the pool.</p></article>
   </div>
   <p class="dim">The program reads the chain's own clock, so these windows are enforced on chain and cannot be moved later.</p>
 
@@ -458,20 +459,20 @@
     <article class="claim"><em>RECEIVER</em><b>Nobody redirects a refund</b><span>The ticket is tied to your wallet. It lands with you, once.</span></article>
     <article class="claim"><em>FIXED</em><b>Rules never change</b><span>Price, deadlines, split and treasuries are written at creation.</span></article>
     <article class="claim"><em>CAP</em><b>Prizes have a ceiling</b><span>No payout can take the total above the prize share.</span></article>
-    <article class="claim"><em>NO TRAP</em><b>A vanished operator can't trap it</b><span>14 days after the play deadline anyone can expire the pool.</span></article>
+    <article class="claim"><em>NO TRAP</em><b>A vanished operator can't trap it</b><span>14 days after the review anyone can expire the pool.</span></article>
     <article class="claim"><em>ADDRESSES</em><b>Money goes where declared</b><span>Only to the treasuries stored in the pool; the vault ends at zero.</span></article>
     <article class="claim"><em>PAUSE</em><b>A pause can't block a refund</b><span>It stops new sales only. Refunds and closing always work.</span></article>
     <article class="claim"><em>FEES</em><b>Price + network fee</b><span>Ticket rent comes back.</span></article>
   </div>
-  <p class="dim">Technical posture: 14 instructions, 12 events, 24 error codes · integer lamports with overflow checks · Anchor 1.2.1, SBPF v0 · deployed only from a <code>solana-verify</code> reproducible build whose hash is pinned in the repository, so anyone can rebuild it and compare.</p>
+  <p class="dim">Technical posture: 17 instructions, 14 events, 25 error codes · integer lamports with overflow checks · Anchor 1.2.1, SBPF v0 · deployed only from a <code>solana-verify</code> reproducible build whose hash is pinned in the repository, so anyone can rebuild it and compare.</p>
 
   <h3 class="sub">WHO CAN DO WHAT</h3>
-  <p class="core"><b>Anyone can rescue the money. Only the admin can pay it out. The game server can do neither.</b></p>
+  <p class="core"><b>Anyone can rescue the money. Only the admin and the payout key can pay it out – after the review.</b></p>
   <div class="roles">
     <div class="role pl"><b>PLAYER</b><span>puts money in</span><ul><li>Buy a ticket</li></ul></div>
-    <div class="role any"><b>ANYONE</b><span>can rescue it</span><ul><li>Sponsor a pool</li><li>Fail a pool that missed its goal</li><li>Refund a ticket – it lands with the buyer</li><li>Expire a stuck pool <small>+14 days</small></li></ul></div>
-    <div class="role adm"><b>ADMIN</b><span>can pay it out</span><ul><li>Create · cancel · pause</li><li>Pay a prize <small>within the cap</small></li><li>Close and split <small>anyone after +14 days</small></li></ul></div>
-    <div class="role srv"><b>GAME SERVER</b><span>holds no key</span><ul><li>Reads events</li><li>Builds transactions for you to sign</li><li class="no">Moves money: never</li></ul></div>
+    <div class="role any"><b>ANYONE</b><span>can rescue it</span><ul><li>Sponsor a pool</li><li>Fail a pool that missed its goal</li><li>Refund a ticket – it lands with the buyer</li><li>Open the next daily pool</li><li>Expire a stuck pool <small>+14 days</small></li></ul></div>
+    <div class="role adm"><b>ADMIN</b><span>sets the rules</span><ul><li>Schedule · create · cancel · pause</li><li>Pay a prize <small>within the cap</small></li><li>Close and split <small>anyone after +14 days</small></li></ul></div>
+    <div class="role srv"><b>GAME SERVER</b><span>payout key</span><ul><li>Pays verified winners <small>after review</small></li><li>Closes the pool</li><li class="no">Rules, refunds, treasuries: never</li></ul></div>
   </div>
 
   <h3 class="sub">WHAT THE PROGRAM DOES NOT PROMISE</h3>
@@ -672,7 +673,7 @@
     <tbody>
       <tr><td><b>Smart-contract</b></td><td>Bugs in an unaudited program can lose funds.</td><td>Devnet only; reproducible build; 51 tests; refund paths that need no key. An independent audit is a precondition for mainnet.</td></tr>
       <tr><td><b>Cheating</b></td><td>A modified or scripted client could still pass inside the checks.</td><td>Chain, physics and the server's road; challenge channel (kinds table empty); human review of flags; a captcha on the roadmap (<a href="#risks">08</a>); replay core planned (<a href="#verify">06</a>).</td></tr>
-      <tr><td><b>Operator trust</b></td><td>The admin picks pay_prize receivers within the cap and holds the treasuries.</td><td>Signed, audited decisions; payouts capped on chain; all of it readable on chain.</td></tr>
+      <tr><td><b>Operator trust</b></td><td>The server's payout key pays verified winners within the cap; the admin holds the treasuries.</td><td>Signed, audited decisions; payouts capped on chain; all of it readable on chain.</td></tr>
       <tr><td><b>Availability</b></td><td>A long shift can be lost if your tab or connection dies for more than 150 s.</td><td>Resume of an open ride; honest pauses cost nothing; final upload retries.</td></tr>
       <tr><td><b>Regulation</b></td><td>Paid prize games are regulated differently around the world.</td><td>Devnet, no value. The mainnet question is answered per region before any mainnet launch.</td></tr>
       <tr><td><b>Tuning</b></td><td>Verdict thresholds and some game values (e.g. strain time) are first guesses.</td><td>Shadow mode; versioned rules; values flagged as test values.</td></tr>

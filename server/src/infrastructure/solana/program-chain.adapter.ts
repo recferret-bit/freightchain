@@ -18,7 +18,7 @@ import { SolanaRpc, sleep } from './solana-rpc.js';
     (a wallet needing k extra tries has probability 2^-k). With 30k / 18k an unlucky wallet (~1 in 128 for buys, ~1 in 8 for refunds) could NEVER buy / be refunded
     by a server-built transaction – found by the devnet rehearsal ("exceeded CUs meter"). 60k / 45k leave ≥ 20 extra tries (2^-20). The limit is a cap, not a charge
     (the fee is priority price × limit, ~0 on devnet). */
-export const CU_LIMITS = { buy: 60_000, refund: 45_000, fail_pool: 6_000, expire_pool: 6_000, pay_prize: 17_000, close_pool: 24_000, open_next_pool: 40_000 } as const;
+export const CU_LIMITS = { buy: 60_000, refund: 45_000, fail_pool: 6_000, expire_pool: 6_000, pay_prize: 17_000, close_pool: 30_000, open_next_pool: 40_000 } as const;
 const MAX_SIGNATURE_PAGES = 10;
 const STATUS = ['open', 'active', 'refunding', 'settled', 'cancelled'] as const;
 

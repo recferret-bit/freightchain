@@ -4,12 +4,17 @@
 //   node scripts/pool-admin.mjs initialize  --url <rpc> -k <upgrade-authority.json> --admin <pubkey> --platform-treasury <pubkey> [--platform-fee-bps 0]
 //   node scripts/pool-admin.mjs create-pool --url <rpc> -k <admin.json> --tier 1h|4h|8h --price <lamports> [--min N] [--max 0] [--per-wallet 1]
 //                                           1h omits --min → 20 (ride-tier.ts). A smaller --min is a short test pool. 4h and 8h still require --min.
-//                                           --prep <unix|+secs> --play <unix|+secs> [--split 7000/2000/1000] --fee-treasury <pubkey> --seed-treasury <pubkey>
+//                                           --prep <unix|+secs> --play <unix|+secs> [--payout <unix|+secs> (default = --play)] [--split 7000/2000/1000] --fee-treasury <pubkey> --seed-treasury <pubkey>
+//   node scripts/pool-admin.mjs set-series  --url <rpc> -k <admin.json> --tier 1h|4h|8h --price <lamports> [--min N] [--max 0] [--per-wallet 1] [--split 7000/2000/1000]
+//                                           [--sale-hours H --play-hours H --review-hours H] (1h default: the tier table's schedule, 24 / 2 / 48) --fee-treasury <pubkey> --seed-treasury <pubkey>
+//                                           [--start <unix|+secs>] (required for a new series; omitted = keep its schedule) [--enabled true|false]
+//   node scripts/pool-admin.mjs open-next-pool --url <rpc> -k <caller.json> --tier 1h   (permissionless once the series' slot has come – the crank does it; the caller pays the rents)
+//   node scripts/pool-admin.mjs set-payout-authority --url <rpc> -k <admin.json> --payout <pubkey> | --clear   (the key that may only pay_prize / close_pool after payout_at)
 //   node scripts/pool-admin.mjs set-config  --url <rpc> -k <admin.json> [--paused true|false] [--platform-treasury <pubkey>] [--platform-fee-bps N]
-//   node scripts/pool-admin.mjs close-pool  --url <rpc> -k <caller.json> --pool N        (admin after play_deadline; anyone for a fully refunded pool)
+//   node scripts/pool-admin.mjs close-pool  --url <rpc> -k <caller.json> --pool N        (admin / payout key after payout_at; anyone for a fully refunded pool)
 //   node scripts/pool-admin.mjs sponsor     --url <rpc> -k <sponsor.json> --pool N --lamports L   (anyone; split like ticket money)
 //   node scripts/pool-admin.mjs buy         --url <rpc> -k <buyer.json> [--fee-payer <payer.json>] --pool N [--qty 1]   (no server order: tests / fixtures)
-//   node scripts/pool-admin.mjs pay-prize   --url <rpc> -k <admin.json> --pool N --to <pubkey> --lamports L [--rank 1]
+//   node scripts/pool-admin.mjs pay-prize   --url <rpc> -k <admin-or-payout.json> --pool N --to <pubkey> --lamports L [--rank 1]   (after payout_at)
 //   node scripts/pool-admin.mjs fail-pool | expire-pool --url <rpc> -k <caller.json> --pool N   (permissionless cranks)
 //   node scripts/pool-admin.mjs refund      --url <rpc> -k <caller.json> --pool N --buyer <pubkey> [--rent-payer <pubkey>]   (permissionless: price → buyer, Ticket rent → its rent_payer)
 //   node scripts/pool-admin.mjs close-ticket --url <rpc> -k <caller.json> --pool N --buyer <pubkey>  (permissionless, Settled pool: Ticket rent → its rent_payer)
@@ -32,7 +37,7 @@ for (let i = 0; i < rest.length; i++) {
   opt[k === 'k' ? 'keypair' : k] = v; i++;
 }
 const die = msg => { console.error(`pool-admin: ${msg}`); process.exit(1); };
-if (!cmd || cmd === 'help') die('commands: show | initialize | create-pool | set-config | close-pool | sponsor | buy | pay-prize | fail-pool | expire-pool | refund | close-ticket | cancel-pool | propose-authority | accept-authority (see the header of scripts/pool-admin.mjs)');
+if (!cmd || cmd === 'help') die('commands: show | initialize | create-pool | set-series | open-next-pool | set-payout-authority | set-config | close-pool | sponsor | buy | pay-prize | fail-pool | expire-pool | refund | close-ticket | cancel-pool | propose-authority | accept-authority (see the header of scripts/pool-admin.mjs)');
 if (!opt.url) die('--url <rpc> is required (never the global config)');
 if (/mainnet/i.test(opt.url)) die('refusing a mainnet RPC – the program is devnet only, not audited');
 
@@ -82,7 +87,9 @@ try {
     const ids = opt.pool !== undefined ? [int('pool')] : [...Array(c.poolCount).keys()];
     const pools = [];
     for (const id of ids) pools.push({ id, vaultLamports: (await conn.getBalance(codec.vaultPda(id))), ...(await account('Pool', codec.poolPda(id))) });
-    out({ program: codec.programId, now: await chainNow(), config: c, pools });
+    const series = [];
+    for (const [name, tier] of Object.entries(TIERS)) { const sr = await account('Series', codec.seriesPda(tier)); if (sr) series.push({ tier: name, ...sr }); }
+    out({ program: codec.programId, now: await chainNow(), config: c, series, pools });
   } else if (cmd === 'initialize') {
     const upgrader = keypair();
     const programData = PublicKey.findProgramAddressSync([codec.programId.toBuffer()], UPGRADEABLE_LOADER)[0];
@@ -100,8 +107,40 @@ try {
       authority: admin.publicKey, config: codec.configPda(), pool: codec.poolPda(id), vault: codec.vaultPda(id),
       fee_treasury: pk('fee-treasury'), seed_treasury: pk('seed-treasury'), platform_treasury: c.platformTreasury,
     }, { params: { tier, price_lamports: int('price'), min_tickets: int('min', opt.tier === '1h' ? rideTier('1h', 0).minTickets : undefined), max_tickets: int('max', 0), max_per_wallet: int('per-wallet', 1),
-      prep_deadline: await when('prep'), play_deadline: await when('play'), prize_bps: prize, seed_bps: seed, fee_bps: fee } }));
+      prep_deadline: await when('prep'), play_deadline: await when('play'), payout_at: opt.payout ? await when('payout') : await when('play'), prize_bps: prize, seed_bps: seed, fee_bps: fee } }));
     out({ signature: sig, poolId: id, pool: await account('Pool', codec.poolPda(id)) });
+  } else if (cmd === 'set-series') {
+    const admin = keypair();
+    const c = await config(); if (!c) die('no Config – run initialize first');
+    const tier = TIERS[opt.tier]; if (!tier) die('--tier must be 1h, 4h or 8h');
+    const def = rideTier(opt.tier, 0);
+    const sched = def.schedule ?? {};
+    const hours = (name, d) => int(name, d) * 3600;
+    const [prize, seed, fee] = (opt.split ?? '7000/2000/1000').split('/').map(Number);
+    const existing = await account('Series', codec.seriesPda(tier));
+    if (!existing && !opt.start) die('a new series needs --start <unix|+secs> (the first sale slot)');
+    const sig = await send(admin, codec.instruction('set_series', {
+      authority: admin.publicKey, config: codec.configPda(), series: codec.seriesPda(tier), fee_treasury: pk('fee-treasury'), seed_treasury: pk('seed-treasury'), platform_treasury: c.platformTreasury,
+    }, { params: { tier, enabled: opt.enabled === undefined ? true : opt.enabled === 'true', price_lamports: int('price'), min_tickets: int('min', def.minTickets ?? undefined),
+      max_tickets: int('max', 0), max_per_wallet: int('per-wallet', 1), sale_secs: hours('sale-hours', sched.saleHours), play_secs: hours('play-hours', sched.playHours),
+      verify_secs: hours('review-hours', sched.reviewHours), prize_bps: prize, seed_bps: seed, fee_bps: fee, start_at: opt.start ? await when('start') : 0 } }));
+    out({ signature: sig, series: await account('Series', codec.seriesPda(tier)) });
+  } else if (cmd === 'open-next-pool') {
+    const caller = keypair();
+    const tier = TIERS[opt.tier]; if (!tier) die('--tier must be 1h, 4h or 8h');
+    const c = await config(); if (!c) die('no Config – run initialize first');
+    const sr = await account('Series', codec.seriesPda(tier)); if (!sr) die(`tier ${opt.tier} has no series – set-series first`);
+    const id = c.poolCount;
+    const sig = await send(caller, codec.instruction('open_next_pool', {
+      caller: caller.publicKey, config: codec.configPda(), series: codec.seriesPda(tier), pool: codec.poolPda(id), vault: codec.vaultPda(id),
+      fee_treasury: sr.feeTreasury, seed_treasury: sr.seedTreasury, platform_treasury: c.platformTreasury,
+    }, { tier }));
+    out({ signature: sig, poolId: id, pool: await account('Pool', codec.poolPda(id)) });
+  } else if (cmd === 'set-payout-authority') {
+    const admin = keypair();
+    if (!opt.payout && opt.clear !== 'true') die('--payout <pubkey> or --clear');
+    const sig = await send(admin, codec.instruction('set_payout_authority', { authority: admin.publicKey, config: codec.configPda() }, { payout_authority: opt.clear === 'true' ? null : pk('payout') }));
+    out({ signature: sig, config: await config() });
   } else if (cmd === 'set-config') {
     const admin = keypair();
     const bool = v => (v === undefined ? null : v === 'true');

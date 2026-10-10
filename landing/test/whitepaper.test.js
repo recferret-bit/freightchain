@@ -134,6 +134,9 @@ test('numbers: the production live flags and the program facts the page states',
   const compose = src('deploy/docker-compose.prod.yml'); assert.match(compose, /LIVE_FREE_DONATIONS[^\n]*off/); assert.match(compose, /LIVE_EFFECTS[^\n]*free/);
   assert.match(text, /game effects on free rides only/);
   const idl = JSON.parse(src('programs/freightchain-pools/idl/freightchain_pools.json'));
-  assert.equal(idl.instructions.length, 14, 'the page says 14 instructions'); assert.equal(idl.events.length, 12, '12 events'); assert.equal(idl.errors.length, 24, '24 error codes');
-  assert.match(text, /14 instructions, 12 events, 24 error codes/);
+  assert.equal(idl.instructions.length, 17, 'the page says 17 instructions'); assert.equal(idl.events.length, 14, '14 events'); assert.equal(idl.errors.length, 25, '25 error codes');
+  assert.match(text, /17 instructions, 14 events, 25 error codes/);
+  const tiers = src('server/src/domain/rides/ride-tier.ts');
+  assert.match(tiers, /id: '1h'[^}]*schedule: \{ saleHours: 24, playHours: 2, reviewHours: 48 \}/, 'the page says a new pool every 24 h, rides 2 h more, 48 h review');
+  assert.match(text, /A new 1-hour pool every 24 hours/); assert.match(text, /48 hours after the last rides/);
 });

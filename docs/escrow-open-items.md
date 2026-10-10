@@ -1,6 +1,6 @@
 # Escrow program – what is not done, open questions, todo
 
-State on 2026-10-09, after the program verification, the `initialize` fix, the localnet money test, the pool crank and the ten-rider payout run with its coverage gate. Keep this file current: tick items
+State on 2026-10-10, after program v2 (the pool day: daily series, payout key, review window – branch `pool-series`), the program verification, the `initialize` fix, the localnet money test, the pool crank and the ten-rider payout run with its coverage gate. Keep this file current: tick items
 off here, move answers into the docs they belong to (`program-deploy.md`, `paid-tickets-status.md`, the program README), delete what no longer applies.
 Related: [deploy + operate](program-deploy.md) · [paid tickets status](paid-tickets-status.md) (its §3 Q1–Q8 still stand, Q3 is answered below) ·
 [contract spec](pool-program/index.html) · [localnet test](localnet-e2e/index.html).
@@ -13,7 +13,8 @@ Related: [deploy + operate](program-deploy.md) · [paid tickets status](paid-tic
 | `program-check` skill, `docs/pool-program/`, `docs/program-deploy.md` | `main` | merged |
 | localnet money test, pool crank, ticket-only program mode, refundable missed goals, `docs/localnet-e2e/`, this file | `main` | merged (`git log main..localnet-e2e` is empty) |
 | ten-rider payout scenario + the program coverage gate (`SCENARIO=payout`, `server/scripts/localnet-coverage.mjs`), `pool-admin.mjs` refund / close-ticket / cancel-pool / propose- / accept-authority, the LiteSVM `MathOverflow` test | `main` | Oct 9: 14/14 instructions + 12/12 events on the validator, 24/24 error codes asserted |
-| devnet / production | – | **nothing deployed**: the code carries the devnet program id `9e7ph…BSvx` (keys made, not funded yet), production runs `PAYMENT_MODE=transfer` |
+| program v2: `set_series` / `open_next_pool` (one 1 h pool a day: 24 h sale, 2 h more rides, 48 h review), `set_payout_authority`, `payout_at` on every pool (no prize / close before it, grace counted from it), sales close for active pools too; server: the crank opens pools, the payout job (`pool:payout`, `PAYOUT_SECRET`) pays verified winners once every ride is decided, the signed HOLD, public standings, paid-ride review + `ride-review` skill | branch `pool-series` | not merged, **not deployed** – v2 needs a fresh program id (Config / Pool grew); `program-deploy.md` "v2" |
+| devnet / production | – | v1 on devnet since Oct 8 (`9e7ph…BSvx`, every pool terminal); production runs `PAYMENT_MODE=transfer` |
 
 ## Not done
 
@@ -25,9 +26,8 @@ Related: [deploy + operate](program-deploy.md) · [paid tickets status](paid-tic
 
 **Admin tooling**
 - No UI for Phantom-signed admin actions: `create_pool`, `set_config` (pause, platform cut), `propose_authority` / `accept_authority`, `cancel_pool`. Only `server/scripts/pool-admin.mjs` with keypair FILES.
-- Payouts: `GET /api/pools/:id/payout` builds the `pay_prize` / `close_pool` transactions, but there is no button for them on the admin page.
-- Review before paying (Oct 10): every completed paid ride is UNDER REVIEW until verified or decided by an admin (`domain/verdict/ride-review.ts`). The payout path (`GET /api/pools/:id/payout`, `devnet-payout.mjs`, a future payout job) must first call `PoolAttentionService.markPool(poolId)` (exported by `ApplicationModule`; CLI `pool:attention --pool N`) and refuse – or at least warn – while any of the pool's ranked rides is under review (`bash .claude/skills/ride-review/run.sh --pool N` exits 1 then). Not wired yet.
-- Nobody creates the weekly pools automatically: when the 1 hour pool ends, that card shows "NO POOL · NEXT POOL SOON" until the admin creates the next one. Create that pool at **min 20** (`ride-tier.ts`; `pool-admin create-pool` defaults to it). Fewer tickets by the prep deadline and the pool refunds. The 4 hour and 8 hour shifts are not on sale (`onSale: false`): with no live pool the card says SOON and a pay-per-ride order is 409 `tier_not_on_sale`. A registered live pool of either still sells.
+- Payouts are automatic since v2 (Oct 10): the payout job (`PayPoolsCommand`, `PAYOUT_SECRET` = the key the admin names with `set-payout-authority`, every `PAYOUT_INTERVAL_MS`) runs `PoolAttentionService.markPool`, waits while ANY completed ride of the pool is undecided (`waiting_review`), pays the verified top 20 (claimed in `economy.PoolPayout` before each broadcast) and closes the pool. The admin page's pools view shows each pool's winners and the signed HOLD. Not built: the payout job's state / `payout-grace` warnings are only logged and shown on the admin page – no push alert. `GET /api/pools/:id/payout` (Phantom, by hand) and `devnet-payout.mjs` now rank verified rides only and wait for `payout_at`, but do not wait for the review queue – the job does.
+- Pools are created by schedule since v2: the admin writes each tier's series once (`pool-admin.mjs set-series`, 1 h: min 20, 24 h / 2 h / 48 h from `ride-tier.ts`) and the crank opens the next pool on its slot. The 1 h card can still say NO POOL between a missed slot and the next crank pass (≤ `CRANK_INTERVAL_MS`). Fewer than 20 tickets in the 24 h sale and that pool refunds. The 4 hour and 8 hour shifts are not on sale (`onSale: false`): with no live pool the card says SOON and a pay-per-ride order is 409 `tier_not_on_sale`. A registered live pool of either still sells.
 - Nothing rolls the seed treasury into the next pool: "seeds the next pool" (the lobby's rules text) is an operator step – `pool-admin.mjs sponsor -k seed.json` (the localnet payout scenario does exactly that).
 
 **Crank operations**
@@ -36,13 +36,13 @@ Related: [deploy + operate](program-deploy.md) · [paid tickets status](paid-tic
 - **A refused ticket read stopped the whole crank pass** (found by `SCENARIO=chaos`, Oct 10; fixed): `listTickets` (`getProgramAccounts`) throwing escaped `CrankPoolsHandler.crankPool`, so every pool after it starved. Now caught per pool and reported as a failed action; unit-tested.
 - **The gas sponsor and `POST /api/tickets/orders/:id/submit` were removed** (Oct 10, `SCENARIO=chaos` had just found that `/submit` answered 503 for a purchase that had landed, so the lobby could pay twice): every wallet now signs AND sends its own buy and refund (network fee ≈ 0.0001 SOL + the Ticket rent ≈ 0.0015 SOL, returned at refund / close). Gone with it: `FEE_PAYER_SECRET`, `FEE_PAYER_MIN_SOL`, `SPONSOR_PER_WALLET_PER_DAY`, the co-signer, the `SponsoredTx` table (migration `20261018000000_drop_sponsored_tx` – it DROPS a table, the owner's OK is needed before it reaches production), `?selfPaid=1`, `sponsored` in the payment / refund / fees DTOs. The program is untouched (`buy_ticket` still takes a separate `fee_payer`, which nothing in the server uses now). A leftover `FEE_PAYER_SECRET` in a real env file is ignored.
 - The crank uses the `refund` priority-fee quote for `fail_pool` / `expire_pool`; fine on devnet, unmeasured under congestion.
-- It never closes a pool that paid prizes, even after the grace (deliberately – see Q10).
+- It never closes a pool that paid prizes, even after the grace (Q10) – the payout job's key closes it right after paying.
 - **Nothing reclaims Ticket rents after a settlement** (found by the ten-rider localnet run, Oct 9): `close_ticket` (permissionless, rent → the ticket's `rent_payer`) is in the program but neither the crank nor any server path sends it. Every buyer of a settled pool leaves ~0.0015 SOL (1 496 400 lamports) of ITS OWN money locked in its Ticket account until someone sends `close_ticket` (rent → `rent_payer` = the buyer; the gas sponsor that used to be the payer was removed Oct 10) – a real cost to every winner and loser of a live pool, on top of the ticket price. Refunded pools are fine (`refund` closes the ticket). Fix: a crank step `close_ticket` for Settled pools (needs a ticket listing per settled pool – mark a pool "tickets closed" in the mirror so it is listed once), or a CLI sweep. The localnet scenario does it by hand (`pool-admin.mjs close-ticket`) and asserts every rent lands back.
 
 **Security / program**
 - **Not audited.** The Trail of Bits classes were checked by hand; their scanner plugin is not installed (user-level `/plugin marketplace add trailofbits/skills`).
 - `pay_prize` pays any address the admin signs for (capped); a program-owned `to` would strand a prize – documented, not coded (Q9).
-- After the play deadline the admin may close a pool without paying prizes (prize share → seed treasury). The escape hatches protect against an absent admin, not a dishonest one – documented trust.
+- After `payout_at` the admin – or the payout key – may close a pool without paying prizes (prize share → seed treasury). The payout job never does that (no winners = `no_winners`, the admin decides). A stolen payout key could misdirect a pool's prize share after its review window; that key sits on the server (`PAYOUT_SECRET`), so rotate it with `set-payout-authority` if the server is ever compromised. The escape hatches protect against an absent operator, not a dishonest one – documented trust.
 - The binary is SBPF v0 (LiteSVM 0.10 cannot load v3); a v3 deploy needs its own verifiable build and pin (Q11).
 - Session keys / deposits (plan phase 2) not built.
 
@@ -69,13 +69,15 @@ Related: [deploy + operate](program-deploy.md) · [paid tickets status](paid-tic
 | Q-E | Make the repo (or a public mirror) public for the explorer's "verified" badge? | yes after the devnet deploy, if the code may be public |
 | Q-F | Which devnet RPC? | **answered: QuickNode devnet** (HTTP + WSS; the same provider later for production). Streams on devnet support the *Block* and *Logs (with Programs)* datasets – use Logs filtered on the program id for the webhook. To check on the endpoint in Phase 1: `getProgramAccounts` (the crank needs it) and the Priority Fee API add-on (optional – without it the server falls back to `getRecentPrioritizationFees`) |
 | Q-G | Admin actions during the devnet phase: CLI (`pool-admin.mjs`) + the admin keypair imported into Phantom, or build the admin UI first? | CLI + imported keypair for devnet; the UI before production |
-| Q-H | Who creates each week's pools – by hand, or a scheduled job (needs the admin key on the server, which the design avoids)? | by hand / CLI, with a reminder; no admin key on the server |
+| Q-H | Who creates each week's pools – by hand, or a scheduled job (needs the admin key on the server, which the design avoids)? | **answered (Oct 10, v2): by schedule without the admin key** – the admin writes a `Series` once, anyone (the crank) opens each day's pool from it |
 | Q-I | `MAX_POOL_SECS` = 365 days – right cap? | fine for weekly pools; lower to ~60 days if you prefer |
 | Q-J | Where does the devnet-phase server run: your machine (`npm run server:dev` against devnet, local DB, Phantom on localhost) or a separate staging host? | your machine; a tunnel (cloudflared / ngrok) only to test the QuickNode webhook |
 | Q-K | What counts as "real tests passed" before production? | **answered: production is switched only after the Solana Colosseum results are announced** – and only once the Phase 2 exit list has passed (twice, two different days) and on an explicit "deploy" |
 | Q-L | Production stays pay-per-ride through the judging: how do the Colosseum judges see the escrow? | a devnet demo – the Phase 2 run recorded (video) + the explorer links to the program and its pools + `docs/pool-program` / `docs/localnet-e2e`; say in the submission that the live site switches after the results |
 | Q9 | `pay_prize` to a program-owned account: allow (Squads winners) or refuse (system accounts only)? | allow; the admin checks the address |
-| Q10 | Should the crank also close prize-paid pools after the 14-day grace (money only to the declared treasuries)? | no – the admin closes after paying; keeps "the crank never sweeps prize money" simple |
+| Q10 | Should the crank also close prize-paid pools after the 14-day grace (money only to the declared treasuries)? | **answered (Oct 10, v2): no need** – the payout job closes with the payout key right after paying; the crank still never sweeps prize money |
+| Q15 | v2 windows for the 1 h tier: 24 h sale, rides count 2 h past the sale (so a last-minute buyer can finish a shift), 48 h review – right? A slot nobody opened (crank down) is skipped, not shifted | your call; the numbers are one row in `ride-tier.ts` + `set-series` |
+| Q16 | A pool with NO verified winner after review: close it by hand (prize share → seed treasury, i.e. the next pools) or let it expire into full refunds after 14 days? | refunds are the fairer default; the job leaves it to you either way |
 | Q11 | Deploy SBPF v0 (what is tested) or v3? | v0 for devnet |
 | Q12 | `platform_fee_bps` at `initialize`: 0 for the hackathon? | 0 (the localnet test uses 500 only to exercise the leg) |
 | Q13 | The legacy weekly round when production switches to program mode: let it run out, or settle / refund its entries first? | check `GET /api/pool` entries before switching; it holds nothing new once ticket-only |
@@ -136,8 +138,15 @@ Until then production stays as it is (`PAYMENT_MODE=transfer`, no escrow keys in
 - [ ] The Phase 2 Phantom run once more on freightchain.fun; rollback = `PAYMENT_MODE=transfer` + redeploy (money stays refundable on chain)
 - [ ] Say "devnet only, not audited" in the submission
 
+### v2 (the pool day) – to do
+- [ ] Merge `pool-series` into `main` (needs the owner's go; it also carries the paid-ride review and `pool-ride-seed`'s identical hunks)
+- [ ] Deploy v2 to devnet under a fresh program id (`program-deploy.md` "v2"); then `set-payout-authority`, `set-series --tier 1h`, `PAYOUT_SECRET` + `CRANK_SECRET` in `server/.env.devnet`
+- [ ] Watch one whole day on devnet with a short series (`--sale-hours 1 --review-hours 1 --min 2`): open → sell → refunds for a missed goal / rides → review → automatic payout → close
+- [ ] The localnet scenario + its coverage gate for the three new instructions, two new events and `SeriesDisabled` (17 / 14 / 25)
+- [ ] Alerting for `payout-grace` / `error` pools beyond the log and the admin page
+
 ### Later (before any real money)
-- [ ] Admin UI: create pool, pause, payout + close buttons (Phantom-signed) – Q-G
+- [ ] Admin UI: create pool / set series, pause (Phantom-signed) – Q-G (payouts are automatic now; the pools view has the HOLD)
 - [ ] Crank: failures and the crank key's balance on the admin page
 - [ ] Delete the legacy pay-per-ride routes (status Q1)
 - [ ] Upgrade authority to a multisig – Q-C
