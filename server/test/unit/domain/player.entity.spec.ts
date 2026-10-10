@@ -1,5 +1,5 @@
 import { Player } from '../../../src/domain/players/player.entity.js';
-import { ConflictError } from '../../../src/domain/shared/errors.js';
+import { BadRequestError, ConflictError } from '../../../src/domain/shared/errors.js';
 import { nextUtcMidnight } from '../../../src/domain/shared/time.js';
 
 const WED = new Date('2026-10-07T12:00:00.000Z');
@@ -59,6 +59,26 @@ describe('Player', () => {
   });
 });
 
+describe('Player – admin adjust and the live daily cap', () => {
+  it('setDailyCap replaces the stored max and does not touch the balance', () => {
+    const p = Player.register('w', WED, 10, 5);
+    expect(p.setDailyCap(5)).toBe(false);
+    expect(p.setDailyCap(2)).toBe(true);
+    expect([p.freeRides, p.freeRidesMax]).toEqual([10, 2]);
+  });
+  it('adjustFreeRides adds and removes, and refuses a floor, a ceiling and a zero', () => {
+    const p = Player.register('w', WED, 10, 5);
+    p.adjustFreeRides(100);
+    expect(p.freeRides).toBe(110);
+    p.adjustFreeRides(-110);
+    expect(p.freeRides).toBe(0);
+    expect(() => p.adjustFreeRides(-1)).toThrow(new ConflictError('that would take the free rides below zero', 'free_rides_floor'));
+    p.adjustFreeRides(100_000);
+    expect(() => p.adjustFreeRides(1)).toThrow(new ConflictError('that would take the free rides above the limit', 'free_rides_ceiling'));
+    expect(() => p.adjustFreeRides(0)).toThrow();
+  });
+});
+
 describe('Player – promo free rides', () => {
   it('adds on top of the daily ones and may go above the cap', () => {
     const p = Player.register('w', WED, 5, 5);
@@ -82,6 +102,35 @@ describe('Player – promo free rides', () => {
   it('refuses a zero, negative or fractional count', () => {
     const p = Player.register('w', WED, 5, 5);
     for (const n of [0, -1, 1.5]) expect(() => p.grantFreeRides(n)).toThrow();
+  });
+});
+
+describe('Player – daily cap and an admin adjust', () => {
+  it('registers a new wallet at 10 with a daily cap of 5', () => {
+    expect(Player.register('w', WED, 10, 5).snapshot()).toMatchObject({ freeRides: 10, freeRidesMax: 5, freeDay: '2026-10-07' });
+  });
+
+  it('setDailyCap moves the cap and leaves the balance; an unchanged cap is a no-op', () => {
+    const p = Player.register('w', WED, 10, 5);
+    expect(p.setDailyCap(5)).toBe(false);
+    expect(p.setDailyCap(2)).toBe(true);
+    expect([p.freeRides, p.freeRidesMax]).toEqual([10, 2]);
+    for (const n of [-1, 1.5]) expect(() => p.setDailyCap(n)).toThrow(BadRequestError);
+    expect(p.freeRidesMax).toBe(2);
+  });
+
+  it('adjustFreeRides adds and removes, and refuses zero, a negative result and the hard ceiling', () => {
+    const p = Player.register('w', WED, 10, 5);
+    expect(() => p.adjustFreeRides(0)).toThrow(BadRequestError);
+    p.adjustFreeRides(100);
+    expect(p.freeRides).toBe(110);
+    expect(() => p.adjustFreeRides(-111)).toThrow(ConflictError);
+    try { p.adjustFreeRides(-111); } catch (e) { expect(e).toMatchObject({ errorCode: 'free_rides_floor' }); }
+    expect(() => p.adjustFreeRides(100_000)).toThrow(ConflictError);
+    try { p.adjustFreeRides(100_000); } catch (e) { expect(e).toMatchObject({ errorCode: 'free_rides_ceiling' }); }
+    expect(p.freeRides).toBe(110);
+    p.adjustFreeRides(-110);
+    expect(p.freeRides).toBe(0);
   });
 });
 

@@ -179,6 +179,7 @@ export class Ride {
     return now.getTime() - (this.p.lastHbAt?.getTime() ?? 0) >= rules.hbMinIntervalMs;
   }
 
+  /** `loadout`: what the wallet wears right now – the ride keeps it, so a replay shows the cockpit it was really driven in. */
   /** A ready FREE ride can be re-chosen (the lobby's checkboxes) until it starts – the helpers are fixed once it runs. Returns whether anything changed (= the ride must be saved). */
   chooseGuide(tutorial: boolean, assist: boolean): boolean {
     this.mustBe(RideStatus.Created);
@@ -189,7 +190,6 @@ export class Ride {
     return true;
   }
 
-  /** `loadout`: what the wallet wears right now – the ride keeps it, so a replay shows the cockpit it was really driven in. */
   start(now: Date, loadout: Loadout | null = null): void {
     this.mustBe(RideStatus.Created);
     this.p.status = RideStatus.Running;

@@ -55,7 +55,7 @@ export function guideScenarios(h: () => Harness): void {
     const again = await order(w, { assist: true });
     expect(again).toMatchObject({ id: first.id, tutorial: false, assist: true });
     expect((await w.agent.get(`/api/rides/${first.id}`).expect(200)).body).toMatchObject({ tutorial: false, assist: true });
-    expect((await me(w)).freeRides).toBe(4);
+    expect((await me(w)).freeRides).toBe(9);
   });
 
   it('a running ride keeps what it started with', async () => {
@@ -72,7 +72,7 @@ export function guideScenarios(h: () => Harness): void {
     await w.agent.post('/api/rides').send({ tier: 'free', assist: 'yes' }).expect(400);
     await w.agent.post('/api/rides').send({ tier: 'free', tutorial: 1 }).expect(400);
     expect((await w.agent.get('/api/rides/pending').expect(200)).body).toEqual({ ride: null });
-    expect((await me(w)).freeRides).toBe(5);
+    expect((await me(w)).freeRides).toBe(10);
   });
 
   it('"On My Own" = a free ride COMPLETED without assist: an assisted completion does not earn it, an unassisted one does (the tutorial does not matter)', async () => {

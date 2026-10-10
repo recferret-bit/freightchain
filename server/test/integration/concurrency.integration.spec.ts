@@ -45,7 +45,7 @@ describe('concurrency (PostgreSQL)', () => {
     expect(results.every((r) => r.status === 200)).toBe(true);
     expect(new Set(results.map((r) => r.body.id)).size).toBe(1);
     expect(await rideCount(a.address)).toBe(1);
-    expect(await freeRides(a)).toBe(4);
+    expect(await freeRides(a)).toBe(9); // 10 at signup, one credit
   });
 
   it('N parallel paid orders for the same tier are ONE order', async () => {
@@ -59,10 +59,10 @@ describe('concurrency (PostgreSQL)', () => {
   it('parallel "buy while holding an unstarted free ride" refunds the credit ONCE', async () => {
     const a = await login();
     await a.agent.post('/api/rides').send({ tier: 'free' }).expect(200);
-    expect(await freeRides(a)).toBe(4);
+    expect(await freeRides(a)).toBe(9); // 10 at signup, one credit
     const results = await parallel(PARALLEL, () => a.agent.post('/api/rides').send({ tier: '1h' }));
     expect(results.every((r) => r.status === 200)).toBe(true);
-    expect(await freeRides(a)).toBe(5); // refunded exactly once
+    expect(await freeRides(a)).toBe(10); // refunded exactly once (still above the daily cap)
     expect(await prisma.ride.count({ where: { wallet: a.address, status: 'cancelled' } })).toBe(1);
     expect(await prisma.ride.count({ where: { wallet: a.address, status: 'awaiting_payment' } })).toBe(1);
   });
@@ -82,7 +82,7 @@ describe('concurrency (PostgreSQL)', () => {
       ]);
       expect(redeems.filter((r) => r.status === 200)).toHaveLength(1);
       expect(redeems.filter((r) => r.status === 409)).toHaveLength(PARALLEL - 1);
-      expect(await freeRides(a)).toBe(8); // 5 (already at the cap, the grant adds nothing) + 3
+      expect(await freeRides(a)).toBe(13); // 10, above the daily cap so the grant adds nothing, + 3
       expect(await prisma.promoRedemption.count({ where: { wallet: a.address } })).toBe(1);
     });
 
@@ -237,13 +237,14 @@ describe('concurrency (PostgreSQL)', () => {
 
   it('the midnight job racing requests that read, spend and refund credits: ONE credit for the day, none lost, none above the cap', async () => {
     const a = await login();
+    await prisma.player.update({ where: { wallet: a.address }, data: { freeRides: 5 } }); // sit on the daily cap, then spend one
     await a.agent.post('/api/rides').send({ tier: 'free' }).expect(200);   // 4 left
     sec(86_400);
     const bus = harness.app.get(CommandBus);
     await Promise.all([parallel(PARALLEL, () => a.agent.get('/api/me')), parallel(3, () => bus.execute(new GrantDailyFreeRidesCommand()))]);
     expect(await freeRides(a)).toBe(5);                                    // 4 + one credit for the new day
     await parallel(PARALLEL, () => a.agent.post('/api/rides').send({ tier: '1h' })); // refunds the unstarted free ride, which would be #6
-    expect(await freeRides(a)).toBe(5);                                    // clamped at the cap
+    expect(await freeRides(a)).toBe(5);                                    // exactly at the cap: the refund does not add a sixth
   });
 
   it('N parallel uploads of the same recording batch store it ONCE (and every caller gets a 200)', async () => {

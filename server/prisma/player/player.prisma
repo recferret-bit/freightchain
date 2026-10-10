@@ -2,9 +2,9 @@
 model Player {
   wallet       String              @id
   version      Int                 @default(1) // optimistic lock for save()
-  freeRides    Int // credits: 5 at signup, +1 per UTC day (no backlog), never above freeRidesMax
+  freeRides    Int // credits: free_on_signup (default 10) for a NEW wallet; a promo or an admin grant may sit above the daily cap
   freeDay      String // UTC day (YYYY-MM-DD) of the last daily grant
-  freeRidesMax Int                 @default(5) // the daily grant stops at this many credits
+  freeRidesMax Int                 @default(5) // where the daily refill stops (the live setting free_rides_daily_max; a surplus balance is kept)
   createdAt    DateTime
   tutorialPassedAt DateTime? // the first time a ride was STARTED with the tutorial on – the lobby then defaults the tutorial off (null = never)
   rides        Ride[]
@@ -106,5 +106,25 @@ model SignIn {
 
   @@index([at])
   @@index([wallet, at])
+  @@schema("player")
+}
+
+// Owner-tweakable integers. A missing row falls back to the code default in domain/settings/game-settings.ts.
+model GameSetting {
+  key   String @id
+  value Int
+
+  @@schema("player")
+}
+
+// One row per anonymous free run that started on play.html?offline=1. No player: the browser sketch and the request IP are the keys.
+model OfflineRideUse {
+  id          String   @id
+  fingerprint String
+  ip          String
+  at          DateTime
+
+  @@index([fingerprint])
+  @@index([ip])
   @@schema("player")
 }

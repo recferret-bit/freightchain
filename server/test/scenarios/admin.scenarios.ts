@@ -31,11 +31,20 @@ export function adminScenarios(h: () => Harness): void {
 
   it('does not exist for anyone but an admin: signed out, a rider, even with the header → 404 on every route', async () => {
     const rider = await login();
-    for (const path of ['overview', 'rides', 'rides/x', 'signins', 'actions', 'logs']) {
+    for (const path of ['overview', 'rides', 'rides/x', 'signins', 'actions', 'logs', 'settings']) {
       await anon().get(`/api/admin/${path}`).expect(404);
-      await rider.agent.get(`/api/admin/${path}`).expect(404);
+      await rider.agent.get(`/api/admin/${path}`).set('x-fc-admin', '1').expect(404);
     }
     await rider.agent.post('/api/admin/rides/x/verdict').set('x-fc-admin', '1').send({ decision: 'verified', signature: 's' }).expect(404);
+    for (const [path, body] of [
+      ['/api/admin/settings/challenge', { action: 'setting_update', key: 'free_on_signup', value: 1 }],
+      ['/api/admin/settings', { key: 'free_on_signup', value: 1, signature: 's' }],
+      ['/api/admin/players/free-rides/challenge', { action: 'free_rides_adjust', wallet: rider.address, delta: 1 }],
+      ['/api/admin/players/free-rides', { wallet: rider.address, delta: 1, signature: 's' }],
+    ] as const) {
+      await anon().post(path).set('x-fc-admin', '1').send(body).expect(404);
+      await rider.agent.post(path).set('x-fc-admin', '1').send(body).expect(404);
+    }
   });
 
   it('the admin session: the player session of an admin wallet grants nothing; the admin sign-in does, for ADMIN_SESSION_TTL_MINUTES (120); sign-out ends it', async () => {

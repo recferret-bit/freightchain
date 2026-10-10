@@ -31,8 +31,8 @@ export function promoAbuseScenarios(h: () => Harness): void {
       await redeem(early, 'SHORT').expect(200);
       sec(1); // now == expiresAt: `expiresAt > now` is false
       expect((await redeem(late, 'SHORT').expect(409)).body).toMatchObject({ code: 'promo_unavailable', detail: 'this promo code has expired' });
-      expect(await freeRides(early)).toBe(8);
-      expect(await freeRides(late)).toBe(5);
+      expect(await freeRides(early)).toBe(13);
+      expect(await freeRides(late)).toBe(10);
       expect(await used('SHORT')).toBe(1); // the refusal did not touch the counter
       expect((await early.agent.get('/api/promo/mine').expect(200)).body.redemptions.map((r: { code: string }) => r.code)).toEqual(['SHORT']);
       expect((await late.agent.get('/api/promo/mine').expect(200)).body.redemptions).toEqual([]);
@@ -53,7 +53,7 @@ export function promoAbuseScenarios(h: () => Harness): void {
       const w = await login(), admin = await asAdmin();
       await redeem(w, 'RIDES').expect(200); await redeem(w, 'WHEEL').expect(200);
       sec(3_600);
-      expect(await freeRides(w)).toBe(7);
+      expect(await freeRides(w)).toBe(12); // 10 at signup + 2
       const garage = (await w.agent.get('/api/garage').expect(200)).body;
       expect(garage.equipped.wheel).toBe('gold');
       expect(garage.slots.find((s: { slot: string }) => s.slot === 'wheel').parts.find((p: { id: string }) => p.id === 'gold')).toMatchObject({ owned: true, code: 'WHEEL' });
@@ -91,7 +91,7 @@ export function promoAbuseScenarios(h: () => Harness): void {
       expect((await redeem(w, 'ONCE').expect(409)).body).toMatchObject({ code: 'promo_unavailable', detail: 'you have already redeemed this promo code' });
       for (let i = 0; i < 3; i++) await redeem(w, 'THRICE').expect(200);
       await redeem(w, 'THRICE').expect(409);
-      expect(await freeRides(w)).toBe(5 + 3 + 3);
+      expect(await freeRides(w)).toBe(10 + 3 + 3); // signup + ONCE (3) + THRICE three times (1 each)
       expect([await used('ONCE'), await used('THRICE')]).toEqual([1, 3]);
     });
 
@@ -100,7 +100,7 @@ export function promoAbuseScenarios(h: () => Harness): void {
       const [a, b, c] = [await login(), await login(), await login()], admin = await asAdmin();
       await redeem(a, 'TWO').expect(200); await redeem(b, 'TWO').expect(200);
       expect((await redeem(c, 'TWO').expect(409)).body.detail).toBe('this promo code has been fully redeemed');
-      expect(await freeRides(c)).toBe(5);
+      expect(await freeRides(c)).toBe(10);
       expect((await admin.agent.get('/api/admin/promos?state=exhausted').expect(200)).body.promos).toMatchObject([{ code: 'TWO', redeemed: 2, maxRedemptions: 2 }]);
       expect((await admin.agent.get('/api/admin/promos/redemptions?code=TWO').expect(200)).body.rows.map((r: { wallet: string }) => r.wallet).sort()).toEqual([a.address, b.address].sort());
     });
@@ -129,7 +129,7 @@ export function promoAbuseScenarios(h: () => Harness): void {
         expect(await anon().post('/api/promo/redeem').send(body as object).then((r) => r.status), JSON.stringify(body)).toBe(401);
       }
       expect(await used('REAL')).toBe(0);
-      expect(await freeRides(w)).toBe(5);
+      expect(await freeRides(w)).toBe(10);
       await w.agent.post('/api/promo/redeem').set('content-type', 'text/plain').send('REAL').expect(400);
     });
 

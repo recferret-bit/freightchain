@@ -27,6 +27,6 @@ export async function truncateAllTables(prisma: Db, options: TruncateOptions = {
   const name = await connectedDatabase(prisma);
   if (!options.force && !name.endsWith('_test')) throw new Error(`refusing to truncate "${name}": only databases named *_test are wiped automatically (db:reset passes force)`);
   await prisma.$executeRawUnsafe(
-    'TRUNCATE "admin"."AdminAction", "player"."SignIn", "telemetry"."RideBatch", "verdict"."RideVerdict", "achievement"."AchievementUnlock", "economy"."Payment", "ride"."Ride", "economy"."Round", "player"."AuthChallenge", "player"."Player", "player"."TicketGrant", "economy"."PromoCode", "player"."CosmeticUnlock", "player"."CosmeticEquip", "economy"."ChainCursor", "economy"."ChainEvent", "economy"."SponsoredTx", "live"."RideEvent", "live"."RideMute", "live"."DonationOrder", "stats"."GlobalStats", "stats"."PlayerStats", "stats"."DailyStats" RESTART IDENTITY CASCADE',
+    'TRUNCATE "admin"."AdminAction", "player"."SignIn", "telemetry"."RideBatch", "verdict"."RideVerdict", "achievement"."AchievementUnlock", "economy"."Payment", "ride"."Ride", "economy"."Round", "player"."AuthChallenge", "player"."Player", "player"."TicketGrant", "economy"."PromoCode", "player"."CosmeticUnlock", "player"."CosmeticEquip", "economy"."ChainCursor", "economy"."ChainEvent", "economy"."SponsoredTx", "live"."RideEvent", "live"."RideMute", "live"."DonationOrder", "stats"."GlobalStats", "stats"."PlayerStats", "stats"."DailyStats", "player"."GameSetting", "player"."OfflineRideUse" RESTART IDENTITY CASCADE',
   );
 }

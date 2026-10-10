@@ -17,8 +17,10 @@ import { AdminPromosHttpController } from './admin/admin-promos.http.controller.
 import { GarageHttpController } from './economy/garage.http.controller.js';
 import { PromosHttpController } from './economy/promos.http.controller.js';
 import { LiveHttpController } from './live/live.http.controller.js';
+import { AdminSettingsHttpController } from './admin/admin-settings.http.controller.js';
+import { OfflineRidesHttpController } from './offline/offline-rides.http.controller.js';
 @Module({
   imports: [ApplicationModule],
-  controllers: [HealthHttpController, AuthHttpController, RidesHttpController, EconomyHttpController, PoolsHttpController, TicketsHttpController, LobbyHttpController, StatsHttpController, ChainHttpController, ChainWebhookHttpController, AdminHttpController, AdminPromosHttpController, PromosHttpController, GarageHttpController, LiveHttpController, TelemetryHttpController],
+  controllers: [HealthHttpController, AuthHttpController, RidesHttpController, EconomyHttpController, PoolsHttpController, TicketsHttpController, LobbyHttpController, StatsHttpController, ChainHttpController, ChainWebhookHttpController, AdminHttpController, AdminPromosHttpController, AdminSettingsHttpController, PromosHttpController, GarageHttpController, LiveHttpController, TelemetryHttpController, OfflineRidesHttpController],
 })
 export class PresentationModule {}

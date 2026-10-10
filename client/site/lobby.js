@@ -35,7 +35,7 @@ const km = m => (m / 1000).toFixed(m < 10_000 ? 2 : 1);
 const S = { me: null, tiers: null, pool: null, live: { rides: [] }, liveAt: 0, skew: 0, board: 'round', pending: null, pendingNote: '', tab: 'new', busy: null, qty: {}, msgs: {}, poolInfo: {}, order: null, focus: null, opt: { tutorial: null, assist: store.get('freightchain.assist') === '1' } };   // opt = the free ride's two checkboxes: tutorial null = follow the server (on until a ride was started with it), assist is remembered here
 let seq = 0;   // one number per tab render: an answer that comes back after the player moved on (or re-asked) is dropped, not painted over the new tab
 const now = () => Date.now() + S.skew;   // server clock (skew learned from /api/live)
-const freeLeft = m => (m.freeRides > m.freeRidesMax ? `${m.freeRides} free rides (bonus)` : `${m.freeRides}/${m.freeRidesMax} free ride${m.freeRides === 1 ? '' : 's'}`);   // a promo can take the balance above the daily cap
+const freeLeft = m => `${m.freeRides}/${m.freeRidesMax} free ride${m.freeRides === 1 ? '' : 's'}`;   // always balance/daily cap. A surplus (signup, a promo, an admin grant) stays; the refill stops at the cap
 const freeCd = m => m.nextFreeRideAt == null ? 'full' : `+1 in ${left(m.nextFreeRideAt - now())}`;   // the daily credit lands at 00:00 UTC, up to the cap
 
 const paintPaid = m => { const n = ridableTickets(m.tickets); $('chip-paid').textContent = `${n} paid ride ticket${n === 1 ? '' : 's'}`; };
@@ -211,7 +211,7 @@ function paintRules() {
     el('li', {}, 'End the shift early, abandon it or crash and it does ', el('b', {}, 'not'), ' count as finished. A ticket is spent when its ride is created.'),
     el('li', {}, 'Pool tickets: your entry sits in the pool’s vault on chain, not with us. A pool that misses its goal refunds every ticket in full; in a live pool the finished shifts rank for its prize share. ', el('a', { href: escrowExplainer(), target: '_blank', rel: 'noopener' }, 'How the escrow works →')),
     el('li', {}, 'The game records your inputs while you drive. After the shift the server checks that recording – complete, consistent with your ride, human-timed – and verified shifts rank for prizes (the leaderboard says when that check is switched on). Flagged shifts wait for a review.'),
-    el('li', {}, 'Free rides: no fee, no prize. 5 at signup, +1 every UTC day.')));
+    el('li', {}, 'Free rides: no fee, no prize. 10 at signup, daily refill stops at 5. A promo or an admin grant can sit above that.')));
 }
 /* per-card message lines (msg-<key>); kept in S.msgs so a repaint (poll, +/−) does not wipe them */
 function say(key, text, bad = false, link = null) {   // link = { href, text } appended after the text (an explorer link)
@@ -454,7 +454,7 @@ if (S.me) {
   if (S.pool?.round?.id != null) viewed.round_id = S.pool.round.id;   // pool is not loaded yet; do not delay the pageview for it
   track('lobby_viewed', viewed);
   paintHeader();
-  for (const a of document.querySelectorAll('a[href="/play.html"]')) a.href = `${GAME_BASE}/play.html`;   // the static footer link: the game is on ride.<apex> in production
+  for (const a of document.querySelectorAll('a[href="/play.html"]')) a.href = `${GAME_BASE}/play.html?offline=1`;   // counted free runs. The click listener above stays on the element. Paid and watch links already carry their own query
   $('promo').onsubmit = redeem;
   $('out').onclick = async () => { track('player_signed_out'); flushSoon(); await signOut(); location.href = '/'; };
   [S.tiers, S.pool] = await Promise.all([api('tiers', undefined, { report: false }).catch(() => null), api('pool', undefined, { report: false }).catch(() => null)]);

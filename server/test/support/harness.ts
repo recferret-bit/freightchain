@@ -32,6 +32,9 @@ import { FakeChain, TREASURY } from './fake-chain.js';
 import { FakePoolChain } from './fake-pool-chain.js';
 import { FakeClock } from './fake-clock.js';
 import { MemoryDb } from './in-memory/memory-db.js';
+import { MemoryOfflineRideRepository, MemorySettingsRepository } from './in-memory/memory-settings.js';
+import { OfflineRideRepositoryPort } from '../../src/application/ports/offline/offline-ride.repository.port.js';
+import { SettingsRepositoryPort } from '../../src/application/ports/settings/settings.repository.port.js';
 import {
   MemoryAchievementRepository, MemoryChallengeRepository, MemoryHealthProbe, MemoryPaymentRepository, MemoryPlayerRepository,
   MemoryRideBatchRepository, MemoryRideQuery, MemoryRideVerdictRepository, MemorySignInRepository, MemoryAdminActionRepository, MemoryAdminQuery, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
@@ -132,7 +135,9 @@ export async function createHarness(persistence: Persistence, env: Record<string
       .overrideProvider(RideEventRepositoryPort).useValue(new MemoryRideEventRepository(memory))
       .overrideProvider(RideMuteRepositoryPort).useValue(new MemoryRideMuteRepository(memory))
       .overrideProvider(DonationOrderRepositoryPort).useValue(new MemoryDonationOrderRepository(memory))
-      .overrideProvider(StatsRepositoryPort).useValue(new MemoryStatsRepository(memory));
+      .overrideProvider(StatsRepositoryPort).useValue(new MemoryStatsRepository(memory))
+      .overrideProvider(SettingsRepositoryPort).useValue(new MemorySettingsRepository(memory))
+      .overrideProvider(OfflineRideRepositoryPort).useValue(new MemoryOfflineRideRepository(memory));
   }
   const moduleRef = await builder.compile();
   const app = moduleRef.createNestApplication();

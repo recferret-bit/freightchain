@@ -7,18 +7,18 @@ describe('GetMeHandler', () => {
   it('returns the profile, applying the lazy daily grant once per UTC day', async () => {
     const ctx = unitContext();
     const handler = new GetMeHandler(ctx.sessions, ctx.rules, ctx.clock, ctx.poolTickets);
-    expect(await handler.execute(new GetMeQuery('w'))).toMatchObject({ wallet: 'w', freeRides: 5, demo: false, createdAt: ctx.clock.ms });
+    expect(await handler.execute(new GetMeQuery('w'))).toMatchObject({ wallet: 'w', freeRides: 10, demo: false, createdAt: ctx.clock.ms });
     ctx.clock.advance(86_400);
-    expect((await handler.execute(new GetMeQuery('w'))).freeRides).toBe(5); // already at the cap: nothing to add
-    expect((await handler.execute(new GetMeQuery('w'))).freeRides).toBe(5);
+    expect((await handler.execute(new GetMeQuery('w'))).freeRides).toBe(10); // signup sits above the daily cap: nothing to add
+    expect((await handler.execute(new GetMeQuery('w'))).freeRides).toBe(10);
   });
 
   it('says how many credits fit and when the next one arrives (null at the cap)', async () => {
     const ctx = unitContext();
     const handler = new GetMeHandler(ctx.sessions, ctx.rules, ctx.clock, ctx.poolTickets);
-    expect(await handler.execute(new GetMeQuery('w'))).toMatchObject({ freeRides: 5, freeRidesMax: 5, nextFreeRideAt: null });
+    expect(await handler.execute(new GetMeQuery('w'))).toMatchObject({ freeRides: 10, freeRidesMax: 5, nextFreeRideAt: null });
     const p = await ctx.storedPlayer('w');
-    p.spendFreeRide();
+    for (let i = 0; i < 6; i++) p.spendFreeRide(); // 10 → 4, under the daily cap
     await ctx.players.save(p);
     expect(await handler.execute(new GetMeQuery('w'))).toMatchObject({ freeRides: 4, freeRidesMax: 5, nextFreeRideAt: Date.UTC(2036, 9, 9) });
   });

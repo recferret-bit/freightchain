@@ -79,7 +79,7 @@ function paintPool() {
 }
 
 function paintTiers(t) {   // a tier sold through a pool: the ticket price is the pool's (fixed in lamports on chain); an on-sale tier without one: the legacy USD quote; an off-sale tier: soon
-  const program = t.paymentMode === 'program';   // ticket-only: a paid tier without a live pool has nothing on sale (no pay-per-ride)
+  const program = t.paymentMode === 'program';   // ticket-only: an on-sale tier without a live pool has nothing on sale (no pay-per-ride)
   const price = x => x.pool ? `${sol(x.pool.priceLamports)} SOL` : x.lamports ? `${sol(x.lamports)} SOL` : '–';
   const paidWith = x => x.pool ? 'pool ticket' : !x.usd ? 'free' : x.onSale === false ? 'soon' : program ? 'pool ticket · none on sale' : `$${x.usd}`;
   const rows = t.tiers.map(x => el('tr', {}, el('td', {}, TIER_LONG[x.id] ?? x.id), el('td', {}, hours(x.seconds)), el('td', {}, paidWith(x)), el('td', {}, price(x))));
@@ -183,9 +183,9 @@ if (document.readyState === 'complete') whenIdle(loadHeroVideo, { timeout: 4000 
       box.replaceChildren(v);
       $('demo-note').textContent = 'Devnet demo.';
     } else {
-      const practice = el('a', { href: `${GAME_BASE}/play.html` }, 'Try the game offline');
+      const practice = el('a', { href: `${GAME_BASE}/play.html?offline=1` }, 'Try the game offline');
       practice.addEventListener('click', () => { track('offline_practice_clicked'); flushSoon(); });
-      $('demo-note').replaceChildren('The demo video is not here yet. ', practice, ' – no wallet, no server, same truck.');
+      $('demo-note').replaceChildren('The demo video is not here yet. ', practice, ' – a few free runs, then connect a Solana wallet.');
     }
     dlg.showModal();
   };
@@ -195,7 +195,7 @@ if (document.readyState === 'complete') whenIdle(loadHeroVideo, { timeout: 4000 
 
 /* ───── links to the game (static markup says /play.html; on split hosts that lives on ride.<apex>) ───── */
 for (const a of document.querySelectorAll('a[href="/play.html"]')) {
-  a.href = `${GAME_BASE}/play.html`;
+  a.href = `${GAME_BASE}/play.html?offline=1`;
   a.addEventListener('click', () => { track('offline_practice_clicked'); flushSoon(); });
 }
 $('storybook-link').href = STORYBOOK_BASE || '/viewer.html';   // the model viewer: storybook.<apex> in production, /viewer.html elsewhere

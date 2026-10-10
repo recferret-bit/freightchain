@@ -40,7 +40,7 @@ await size(rider, 1100, 900, false); await size(obs, 1100, 900, false);
 // ── NEW RIDE
 await open(rider, A, `${BASE}/lobby.html#new`);
 check('lobby renders: one card per shift', await until(async () => (await rider.ev('document.querySelectorAll(".tier").length')) === 4));
-check('header shows the wallet, 5 free rides', (await rider.ev('document.getElementById("chip-wallet").textContent')) === A.short && /5 free rides/.test(await rider.ev('document.getElementById("chip-free").textContent')), await rider.ev('document.getElementById("chip-free").textContent'));
+check('header shows the wallet, 10/5 free rides', (await rider.ev('document.getElementById("chip-wallet").textContent')) === A.short && /10\/5 free rides/.test(await rider.ev('document.getElementById("chip-free").textContent')), await rider.ev('document.getElementById("chip-free").textContent'));
 const esc = (await get('pools')).pools.reduce((a, p) => a + p.vaultLamports, 0);
 check('top box: the escrow across the pools on sale', /IN ESCROW/.test(await txt(rider, '.pool .lbl')) && (await txt(rider, '.pool .big')) === sol(esc), await txt(rider, '.pool .big'));
 check('free card: START FREE RIDE', (await rider.ev('document.getElementById("start").textContent')) === 'START FREE RIDE');
@@ -92,7 +92,7 @@ await rider.ev('document.getElementById("endshift")?.click()');
 check('server verdict COMPLETED + the recording check on the result screen', await until(async () => /^COMPLETED · (VERIFIED|FLAGGED|REJECTED)/.test(await rider.ev('document.getElementById("verdict")?.textContent || ""'))), await rider.ev('document.getElementById("verdict")?.textContent || ""'));
 await rider.ev('document.getElementById("lobby").click()');
 check('BACK TO LOBBY returns to the lobby', await until(async () => (await rider.ev('location.pathname')) === '/lobby.html'));
-check('…and the free-ride count dropped to 4', await until(async () => /\b4\/\d+ free rides/.test(await rider.ev('document.getElementById("chip-free").textContent'))));
+check('…and the free-ride count dropped to 9/5', await until(async () => /9\/5 free rides/.test(await rider.ev('document.getElementById("chip-free").textContent'))));
 check('the finished ride left the live feed', await until(async () => { await sleep(5200); return !(await obs.ev('document.getElementById("rides")?.textContent || ""')).includes(A.short); }, 15000));
 
 // ── another signed-in lobby. 8h is not on sale and 1h/4h have pools, so this seed has no legacy order to recover.
@@ -156,7 +156,7 @@ check('PROMO: the code field lives in the header, on the NEW RIDE tab too', awai
 await obs.ev('location.hash = "#promo"');
 check('PROMO tab: the form, a link to the garage, no codes yet', await until(async () => /Parts you unlock are waiting in your garage/.test(await txt(obs, '#view')) && /No codes redeemed yet/.test(await txt(obs, '#my-codes'))));
 const promoGo = async code => { await obs.ev(`document.getElementById("promo-code").value = ${JSON.stringify(code)}; document.getElementById("promo-go").click()`); await until(async () => !/Redeeming/.test(await txt(obs, '#promo-msg')) && (await txt(obs, '#promo-msg')) !== ''); return txt(obs, '#promo-msg'); };
-check('PROMO: THREE → +3 free rides, the chip shows 8 as a bonus (above the daily cap)', /^\+3 free rides \(THREE\) · you now have 8/.test(await promoGo('three')) && await until(async () => /8 free rides \(bonus\)/.test(await txt(obs, '#chip-free'))), await txt(obs, '#chip-free'));
+check('PROMO: THREE → +3 free rides, the chip shows 13/5 (above the daily cap)', /^\+3 free rides \(THREE\) · you now have 13/.test(await promoGo('three')) && await until(async () => /13\/5 free rides/.test(await txt(obs, '#chip-free'))), await txt(obs, '#chip-free'));
 check('PROMO: …and the next daily credit is not counted down (at / above the cap)', /full/.test(await txt(obs, '#chip-free')), await txt(obs, '#chip-free'));
 check('PROMO: THREE again is refused with the reason', /already redeemed/.test(await promoGo('THREE')), await txt(obs, '#promo-msg'));
 check('PROMO: GOLDWHEEL → unlocked and worn, with a pointer to the garage', /^Unlocked wheel: gold \(GOLDWHEEL\)/.test(await promoGo('goldwheel')) && /GARAGE/.test(await txt(obs, '#promo-msg')), await txt(obs, '#promo-msg'));

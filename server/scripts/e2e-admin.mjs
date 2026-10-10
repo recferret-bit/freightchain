@@ -128,7 +128,7 @@ check('promos: SIGN & CREATE → the code is listed ACTIVE with what it gives an
 check('promos: the wallet signed the text of exactly this code (every field in one JSON line)', (await A.ev('window.__signed')) === signedBefore + 1 && (await A.ev(`(window.__lastMessage || '').includes('Action: CREATE promo code E2ETHREE') && (window.__lastMessage || '').includes('Gives: 3 free rides') && (window.__lastMessage || '').includes('"maxRedemptions":5')`)) === true);
 const promoRider = await signIn(nacl.sign.keyPair());
 const first = await post('promo/redeem', { code: 'e2e three' }, promoRider.cookie);
-check('promos: a player redeems it (+3 free rides)', first.r.status === 200 && first.j.kind === 'free_rides' && first.j.freeRides === 8, JSON.stringify(first.j));
+check('promos: a player redeems it (+3 free rides)', first.r.status === 200 && first.j.kind === 'free_rides' && first.j.freeRides === 13, JSON.stringify(first.j));
 await A.ev('document.getElementById("refresh").click()');   // reload the tab (a player redeemed meanwhile)
 check('promos: the list counts the use (1 / 5) and USED BY PLAYERS shows the wallet and what it got', await until(async () => /1 \/ 5/.test(await A.ev('document.getElementById("promo-table")?.textContent || ""')) && (await A.ev('document.getElementById("promo-used")?.textContent || ""')).includes(promoRider.short) && /3 free rides/.test(await A.ev('document.getElementById("promo-used").textContent'))));
 await setField('pf-code', 'E2E-WHEEL'); await setField('pf-kind', 'cosmetic'); await setField('pf-slot', 'wheel'); await setField('pf-item', 'gold');

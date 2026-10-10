@@ -1,25 +1,31 @@
 import { PlayerRepositoryPort } from '../../../../src/application/ports/players/player.repository.port.js';
+import { GameSettingsService } from '../../../../src/application/services/game-settings.service.js';
 import { PlayerSessionService } from '../../../../src/application/services/player-session.service.js';
 import { Player } from '../../../../src/domain/players/player.entity.js';
 import { VersionConflictError } from '../../../../src/domain/shared/errors.js';
 import { FakeClock } from '../../../support/fake-clock.js';
+import { MemoryDb } from '../../../support/in-memory/memory-db.js';
+import { MemorySettingsRepository } from '../../../support/in-memory/memory-settings.js';
 import { RecordingAnalytics } from '../../../support/recording-analytics.js';
 import { FixedRules, unitContext } from '../../../support/unit-context.js';
 
+const open = (players: PlayerRepositoryPort, clock: FakeClock) =>
+  new PlayerSessionService(players, new GameSettingsService(new MemorySettingsRepository(new MemoryDb())), new FixedRules(), clock, new RecordingAnalytics());
+
 describe('PlayerSessionService', () => {
-  it('first sight registers the wallet with the signup credits; same-day sights change nothing', async () => {
+  it('first sight registers the wallet with 10 rides and a daily cap of 5; same-day sights change nothing', async () => {
     const ctx = unitContext();
-    expect(await ctx.sessions.touch('w')).toMatchObject({ wallet: 'w', freeRides: 5, version: 1 });
-    expect(await ctx.sessions.touch('w')).toMatchObject({ freeRides: 5, version: 1 });
+    expect(await ctx.sessions.touch('w')).toMatchObject({ wallet: 'w', freeRides: 10, freeRidesMax: 5, version: 1 });
+    expect(await ctx.sessions.touch('w')).toMatchObject({ freeRides: 10, version: 1 });
   });
 
-  it('the next UTC day grants one credit, once – and not above the cap', async () => {
+  it('a surplus above the daily cap is left alone; below the cap the next UTC day grants one, once', async () => {
     const ctx = unitContext();
     await ctx.sessions.touch('w');
     ctx.clock.advance(86_400);
-    expect((await ctx.sessions.touch('w')).freeRides).toBe(5); // already full
+    expect((await ctx.sessions.touch('w')).freeRides).toBe(10); // 10 of a cap of 5: nothing added, nothing taken
     const spent = await ctx.storedPlayer('w');
-    spent.spendFreeRide();
+    for (let i = 0; i < 6; i++) spent.spendFreeRide(); // 4, under the cap
     await ctx.players.save(spent);
     ctx.clock.advance(86_400);
     expect((await ctx.sessions.touch('w')).freeRides).toBe(5);
@@ -42,7 +48,7 @@ describe('PlayerSessionService', () => {
       }
     }
     const players = new Racing();
-    const player = await new PlayerSessionService(players, new FixedRules(), clock, new RecordingAnalytics()).touch('w');
+    const player = await open(players, clock).touch('w');
     expect(players.saves).toBe(1);
     expect(player.freeRides).toBe(5);
   });
@@ -57,6 +63,6 @@ describe('PlayerSessionService', () => {
       async grantDailyFreeRides() { return 0; }
       async save(): Promise<Player> { throw new VersionConflictError(); }
     }
-    await expect(new PlayerSessionService(new AlwaysLosing(), new FixedRules(), clock, new RecordingAnalytics()).touch('w')).rejects.toBeInstanceOf(VersionConflictError);
+    await expect(open(new AlwaysLosing(), clock).touch('w')).rejects.toBeInstanceOf(VersionConflictError);
   });
 });

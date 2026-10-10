@@ -118,7 +118,7 @@ if (!args.includes('--no-signin')) {
   if (split) check('the session cookie is shared with the sibling subdomains (Domain=<apex>)', new RegExp(`;\\s*Domain=\\.?${new URL(base).hostname.replace(/\./g, '\\.')}`, 'i').test(setCookie), setCookie.split(';').find((p) => /domain/i.test(p))?.trim() ?? 'host-only');
   const session = setCookie.split(';')[0];
   const me = await get('/api/me', { headers: { cookie: session, ...origin } }), meBody = await me.json().catch(() => ({}));
-  check('the cookie authenticates /api/me', me.status === 200 && meBody.wallet === wallet && meBody.freeRides === 5, `${me.status}`);
+  check('the cookie authenticates /api/me', me.status === 200 && meBody.wallet === wallet && meBody.freeRides === 10, `${me.status}`);
   check('without the cookie /api/me is 401', (await get('/api/me')).status === 401);
 }
 console.log(failed ? `\n${failed} check(s) FAILED` : '\nall checks passed');

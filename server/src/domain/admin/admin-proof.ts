@@ -2,6 +2,7 @@ import { AuthChallenge } from '../auth/auth-challenge.entity.js';
 import { PromoCode } from '../economy/promo-code.entity.js';
 import { describeEffect } from '../economy/promo.dto.js';
 import type { PromoCreateInput } from '../economy/promo.types.js';
+import type { SettingKey } from '../settings/game-settings.js';
 
 /* What an admin's wallet signs. Pending challenges share the rider sign-in's store (one per key), under their own keys so an admin sign-in never
    replaces a rider sign-in of the same wallet, and a message of one kind can never be consumed as the other. */
@@ -35,7 +36,9 @@ export type AdminIntent =
   | { action: 'override'; rideId: string; decision: 'verified' | 'rejected'; note: string | null }
   | { action: 'rejudge'; rideId: string }
   | { action: 'promo_create'; promo: PromoCreateInput }
-  | { action: 'promo_disable'; code: string };
+  | { action: 'promo_disable'; code: string }
+  | { action: 'free_rides_adjust'; wallet: string; delta: number }
+  | { action: 'setting_update'; key: SettingKey | string; value: number };
 
 /** EVERY field of a new promo code as one JSON line, keys in a fixed order, dates as ISO strings – the signature binds the whole code, not a summary of it. */
 export const promoJson = (p: PromoCreateInput): string => JSON.stringify({
@@ -50,6 +53,8 @@ export function intentLines(intent: AdminIntent): string[] {
     case 'rejudge': return ['Action: RE-JUDGE at the current rules (replaces any decision)', `Ride: ${intent.rideId}`];
     case 'promo_create': return [`Action: CREATE promo code ${PromoCode.normalize(intent.promo.code)}`, `Gives: ${describeEffect(intent.promo.effect)}`, `Promo: ${promoJson(intent.promo)}`];
     case 'promo_disable': return [`Action: DISABLE promo code ${PromoCode.normalize(intent.code)}`];
+    case 'free_rides_adjust': return [`Action: ADJUST free rides by ${intent.delta}`, `Player: ${intent.wallet}`];
+    case 'setting_update': return [`Action: SET setting ${intent.key}`, `Value: ${intent.value}`];
   }
 }
 

@@ -1,8 +1,8 @@
 import type { LiveFlags } from '../../../domain/live/live-features.js';
 export interface RulesConfig {
-  /** free rides granted at registration */
+  /** Not the live signup grant. New wallets take `free_on_signup` from `player.GameSetting`. Kept so older fixtures still type-check; session does not read it. */
   freeOnSignup: number;
-  /** the cap on a wallet's free-ride credits (stored per player; this is the value new wallets start with) */
+  /** Not the live daily cap. That is `free_rides_daily_max`. Kept so older fixtures still type-check; session does not read it. */
   freeRidesMax: number;
   freeRideSeconds: number;
   hbMinIntervalMs: number;

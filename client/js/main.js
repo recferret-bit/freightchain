@@ -29,6 +29,7 @@ import { mountWatchPanel } from './ui/watch-panel.js';
 import { liveFeed } from './ui/live-feed.js';
 import { track } from './analytics.js';
 import { guide, setGuide } from './guide.js';
+import { offlineRide, offlineWanted } from './offline-ride.js';
 import { updateGuide } from './ui/assist.js';
 import { trip, setTrip, tripOf } from './trips.js';
 import './ui/input.js';
@@ -46,9 +47,12 @@ function frame(now) {
 }
 selectTheme(THEMES[0].id, true); setClock(12, true, true);   // the prototype's world: Route 66 at noon (no picker, nothing remembered). A real ride gets the SERVER's route + start hour just below
 await initOnline();   // only with ?ride=<id> (see online.js); offline it returns at once
+const wantOffline = offlineWanted() && !online.ride && !online.error;   // play.html?offline=1 only. ?ride= and a failed load of one win. Bare play.html stays the prototype.
 if (online.ride) { selectTheme(online.ride.route ?? THEMES[0].id, true); if (online.ride.startHour != null) setClock(online.ride.startHour, true, true); }   // what the server assigned to this ride at creation (ride-rules.ts worldFor)
-setGuide(online.ride ?? (typeof location === 'undefined' ? {} : (q => ({ tutorial: q.get('tutorial') === '1', assist: q.get('assist') === '1' }))(new URL(location.href).searchParams)));   // the free ride's tutorial / assist: the SERVER's flags of the ride, or ?tutorial=1&assist=1 on the offline prototype (tests)
-setTrip(online.ride ? tripOf(online.ride) : typeof location === 'undefined' ? null : new URL(location.href).searchParams.get('trip'));   // the ride's road (trips.js): the trip the server stamped on it, or ?trip=free|1h|4h|8h offline (tuning); before the road is built
+if (wantOffline) setGuide({ tutorial: false, assist: false });   // the counted run is the plain free trip: the other free-ride kinds stay on the lobby's ride
+else setGuide(online.ride ?? (typeof location === 'undefined' ? {} : (q => ({ tutorial: q.get('tutorial') === '1', assist: q.get('assist') === '1' }))(new URL(location.href).searchParams)));   // the free ride's tutorial / assist: the SERVER's flags of the ride, or ?tutorial=1&assist=1 on the offline prototype (tests)
+if (wantOffline) setTrip('free');
+else setTrip(online.ride ? tripOf(online.ride) : typeof location === 'undefined' ? null : new URL(location.href).searchParams.get('trip'));   // the ride's road (trips.js): the trip the server stamped on it, or ?trip=free|1h|4h|8h offline (tuning); before the road is built
 if (!online.ride && trip.seconds) { CFG.RIDE_MIN_SECONDS = trip.seconds; CFG.COMPLETE_DIST = trip.k * CFG.MAX_SPEED * trip.seconds; }   // offline ?trip=free: the free run's own shift (online the server's ride sets both)
 if (online.ride) {
   const r = online.ride;   // no seed: the relay must not see it
@@ -64,11 +68,12 @@ if (await initWatch()) {   // only with ?watch=<id> (see watch.js): the watched 
   if (watch.ride) { setTrip(tripOf(watch.ride)); selectTheme(THEMES.some(t => t.id === watch.ride.route) ? watch.ride.route : THEMES[0].id, true); resize(); resetRide(watch.ride.seed); st.mode = 'drive'; startWatch(); }
   else resize();
   mountWatchPanel();
-} else { resize(); resetRide(); showMenu('FREIGHT CHAIN', 'Long-haul truck simulator'); }
+} else { if (wantOffline) offlineRide.on = true; resize(); resetRide(); showMenu('FREIGHT CHAIN', 'Long-haul truck simulator'); }
 requestAnimationFrame(frame);
 /* a real ride (online, a failed load of one, a watched ride): the route and the clock are fixed – no function to change them stays reachable from the page */
-const realRide = !!(online.ride || online.error || watch.ride || (typeof location !== 'undefined' && (new URL(location.href).searchParams.get('ride') || new URL(location.href).searchParams.get('watch'))));
+const pageQuery = typeof location === 'undefined' ? null : new URL(location.href).searchParams;
+const realRide = !!(online.ride || online.error || watch.ride || (pageQuery && (pageQuery.get('ride') || pageQuery.get('watch') || pageQuery.get('offline') === '1')));
 if (realRide) { lockTheme(); lockClock(); }
-window.__game = { guide, setGuide, hurt, trip, setTrip, audio, cosmetics, online, telemetry, prompt, watch, roadPlan, liveFeed, radio, roadObjects, chunks, spacing, roads, net, st, disp, CFG, input, tryShift, ignition, startRide, curv, spawn, traffic: cars, THEMES, ...(realRide ? {} : { selectTheme, setNight, setPhase, setClock }), dn, weather, uiBtns, inputBits, holes: { HOLES, holeAt, holesNear, clearHoleCache, plan, flagged } };   // handy for console debugging
+window.__game = { guide, setGuide, hurt, trip, setTrip, offlineRide, audio, cosmetics, online, telemetry, prompt, watch, roadPlan, liveFeed, radio, roadObjects, chunks, spacing, roads, net, st, disp, CFG, input, tryShift, ignition, startRide, curv, spawn, traffic: cars, THEMES, ...(realRide ? {} : { selectTheme, setNight, setPhase, setClock }), dn, weather, uiBtns, inputBits, holes: { HOLES, holeAt, holesNear, clearHoleCache, plan, flagged } };   // handy for console debugging
 
  

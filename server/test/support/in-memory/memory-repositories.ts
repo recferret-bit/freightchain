@@ -61,11 +61,11 @@ export class MemoryPlayerRepository extends PlayerRepositoryPort {
     return true;
   }
 
-  async grantDailyFreeRides(today: string): Promise<number> {
+  async grantDailyFreeRides(today: string, cap: number): Promise<number> {
     let touched = 0;
-    for (const [wallet, p] of this.db.players) {
+    for (const [wallet, p] of [...this.db.players].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
       if (p.freeDay >= today) continue;
-      this.db.players.set(wallet, { ...p, freeRides: p.freeRides < p.freeRidesMax ? p.freeRides + 1 : p.freeRides, freeDay: today, version: p.version + 1 });
+      this.db.players.set(wallet, { ...p, freeRides: p.freeRides < cap ? p.freeRides + 1 : p.freeRides, freeRidesMax: cap, freeDay: today, version: p.version + 1 });
       touched++;
     }
     return touched;

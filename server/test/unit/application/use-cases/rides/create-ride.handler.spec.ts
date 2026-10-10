@@ -20,16 +20,41 @@ describe('CreateRideHandler', () => {
     const ride = await create('free');
     expect(ride).toMatchObject({ tier: 'free', status: 'created', minSeconds: 10, completeDist: 70, lamports: 0 });
     expect((await create('free')).id).toBe(ride.id);
-    expect((await ctx.storedPlayer('w')).freeRides).toBe(4);
+    expect((await ctx.storedPlayer('w')).freeRides).toBe(9);
     expect(analytics.named('ride_ordered')).toHaveLength(1);
-    expect(analytics.named('ride_ordered')[0]?.properties).toMatchObject({ is_free: true, is_demo: false, time_scale: 1, lamports: 0, free_rides_left: 4, ride_id: ride.id });
+    expect(analytics.named('ride_ordered')[0]?.properties).toMatchObject({ is_free: true, is_demo: false, time_scale: 1, lamports: 0, free_rides_left: 9, ride_id: ride.id });
     expect(analytics.named('ride_resumed')).toHaveLength(1);
     expect(analytics.named('ride_resumed')[0]?.properties).toMatchObject({ ride_id: ride.id, status: 'created' });
   });
 
+  it('the tutorial / assist checkboxes are stored on a free ride and sent to the game; off by default', async () => {
+    expect(await setup().create('free')).toMatchObject({ tutorial: false, assist: false });
+    const { ctx, create } = setup();
+    const ride = await create('free', 'w', true, true);
+    expect(ride).toMatchObject({ tutorial: true, assist: true });
+    expect(await ctx.reload(ride.id)).toMatchObject({ tutorial: true, assist: true });
+  });
+
+  it('asking again for the ready free ride re-chooses its helpers on the SAME ride – one credit, one ride', async () => {
+    const { ctx, create } = setup();
+    const first = await create('free', 'w', true, false);
+    const again = await create('free', 'w', false, true);
+    expect(again).toMatchObject({ id: first.id, tutorial: false, assist: true });
+    expect(await ctx.reload(first.id)).toMatchObject({ tutorial: false, assist: true });
+    expect((await ctx.storedPlayer('w')).freeRides).toBe(9);
+    expect(await create('free', 'w', false, true)).toMatchObject({ id: first.id, assist: true });   // unchanged: nothing to save
+  });
+
+  it('a paid tier refuses the tutorial and assist (409) – assist never reaches a ranked ride – and creates nothing', async () => {
+    const { ctx, create } = setup();
+    await expect(create('1h', 'w', false, true)).rejects.toThrow(new ConflictError('the tutorial and assist are for free rides only'));
+    await expect(create('4h', 'w', true, false)).rejects.toThrow(ConflictError);
+    expect(await ctx.rides.findOpenByWallet('w')).toBeNull();
+  });
+
   it('no credits left → 409', async () => {
     const { ctx, create } = setup();
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 10; i++) {   // a new wallet starts with free_on_signup (10)
       const r = await ctx.reload((await create('free')).id);
       r.start(ctx.now()); r.finish('failed', null, ctx.now()); await ctx.rides.save(r);
     }
@@ -68,7 +93,7 @@ describe('CreateRideHandler', () => {
     const free = await create('free');
     const order = await create('1h');
     expect((await ctx.reload(free.id)).status).toBe(RideStatus.Cancelled);
-    expect((await ctx.storedPlayer('w')).freeRides).toBe(5);
+    expect((await ctx.storedPlayer('w')).freeRides).toBe(10);
     const paid = await ctx.reload(order.id); paid.markPaid(1, ctx.now()); await ctx.rides.save(paid);
     const ordered = analytics.named('ride_ordered').length;
     for (const tier of ['free', '1h'] as const) expect((await create(tier)).id).toBe(order.id);
@@ -137,7 +162,7 @@ describe('CreateRideHandler', () => {
       const free = await create('free');
       await expect(create('1h')).rejects.toThrow(new ConflictError('pool not live yet – 3 more tickets needed', 'pool_not_live'));
       expect((await ctx.reload(free.id)).status).toBe(RideStatus.Created); // the unstarted free ride was not cancelled
-      expect((await ctx.storedPlayer('w')).freeRides).toBe(4);
+      expect((await ctx.storedPlayer('w')).freeRides).toBe(9);
       expect((await ctx.tickets.find('w', 1))?.balance).toBe(1);
     });
 
@@ -162,7 +187,7 @@ describe('CreateRideHandler', () => {
       const paid = await create('1h');
       expect(paid.poolId).toBe(1);
       expect((await ctx.reload(free.id)).status).toBe(RideStatus.Cancelled);
-      expect((await ctx.storedPlayer('w')).freeRides).toBe(5);
+      expect((await ctx.storedPlayer('w')).freeRides).toBe(10);
     });
   });
 

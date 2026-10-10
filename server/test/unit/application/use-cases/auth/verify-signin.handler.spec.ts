@@ -23,11 +23,11 @@ describe('VerifySignInHandler', () => {
   const kp = nacl.sign.keyPair(), wallet = bs58.encode(kp.publicKey);
   const sign = (m: string, key = kp) => bs58.encode(nacl.sign.detached(new TextEncoder().encode(m), key.secretKey));
 
-  it('a valid signature over the stored challenge signs in: session + profile (player created with 5 credits)', async () => {
+  it('a valid signature over the stored challenge signs in: session + profile (player created with 10 credits)', async () => {
     const { message } = await challenge.execute(new RequestChallengeCommand(wallet));
     const result = await handler.execute(new VerifySignInCommand(wallet, sign(message)));
     expect(result.session.token).toBe(`token-for-${wallet}`);
-    expect(result.profile).toMatchObject({ wallet, freeRides: 5, demo: false, demoScale: 60 });
+    expect(result.profile).toMatchObject({ wallet, freeRides: 10, freeRidesMax: 5, demo: false, demoScale: 60 });
     expect(analytics.named('player_signed_in')).toHaveLength(1);
     expect(analytics.named('player_signed_in')[0]?.properties).toMatchObject({ is_new_player: true, is_demo: false });
     expect(analytics.named('$create_alias')).toEqual([]);

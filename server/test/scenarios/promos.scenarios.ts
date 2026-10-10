@@ -24,11 +24,11 @@ export function promoScenarios(h: () => Harness): void {
     it('+3 free rides on top of the daily ones – above the cap – and the next midnight neither adds nor takes any', async () => {
       await seedPromo('THREE', { effect: { kind: 'free_rides', count: 3 } });
       const w = await login();
-      expect(await me(w)).toMatchObject({ freeRides: 5, freeRidesMax: 5, nextFreeRideAt: null });
-      expect((await redeem(w, ' three ').expect(200)).body).toEqual({ kind: 'free_rides', code: 'THREE', label: '3 free rides', added: 3, freeRides: 8 });
-      expect(await me(w)).toMatchObject({ freeRides: 8, freeRidesMax: 5, nextFreeRideAt: null });
+      expect(await me(w)).toMatchObject({ freeRides: 10, freeRidesMax: 5, nextFreeRideAt: null });
+      expect((await redeem(w, ' three ').expect(200)).body).toEqual({ kind: 'free_rides', code: 'THREE', label: '3 free rides', added: 3, freeRides: 13 });
+      expect(await me(w)).toMatchObject({ freeRides: 13, freeRidesMax: 5, nextFreeRideAt: null });
       sec(86_400 + 60);
-      expect(await me(w)).toMatchObject({ freeRides: 8, nextFreeRideAt: null });
+      expect(await me(w)).toMatchObject({ freeRides: 13, nextFreeRideAt: null });
       expect((await redeem(w, 'THREE').expect(409)).body).toMatchObject({ code: 'promo_unavailable', detail: 'you have already redeemed this promo code' });
     });
 
@@ -36,7 +36,7 @@ export function promoScenarios(h: () => Harness): void {
       await seedPromo('ONE', { effect: { kind: 'free_rides', count: 1 } });
       const w = await login();
       await redeem(w, 'ONE').expect(200);
-      for (let i = 0; i < 2; i++) {
+      for (let i = 0; i < 7; i++) { // 11 − 7, under the cap of 5
         const r = (await w.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
         await w.agent.post(`/api/rides/${r.id}/start`).expect(200);
         sec(2); await w.agent.post(`/api/rides/${r.id}/end`).send({ outcome: 'failed', s: 0, t: 1 }).expect(200);
@@ -324,7 +324,7 @@ export function promoScenarios(h: () => Harness): void {
       const ok = await admin.agent.post('/api/admin/promos/stopme/disable').set('x-fc-admin', '1').send({ signature: proof.signature }).expect(200);
       expect(ok.body).toMatchObject({ code: 'STOPME', state: 'disabled', redeemed: 1, disabledAt: now() });
       expect((await redeem(b, 'STOPME').expect(409)).body).toMatchObject({ detail: 'this promo code is no longer valid' });
-      expect((await me(a)).freeRides).toBe(7);
+      expect((await me(a)).freeRides).toBe(12); // 10 at signup + 2, kept after the code is disabled
       const unknown = await signed(admin, 'disable', { action: 'promo_disable', code: 'NOPE' });
       await admin.agent.post('/api/admin/promos/nope/disable').set('x-fc-admin', '1').send({ signature: unknown.signature }).expect(404);
       const audit = (await admin.agent.get('/api/admin/actions').expect(200)).body.rows;

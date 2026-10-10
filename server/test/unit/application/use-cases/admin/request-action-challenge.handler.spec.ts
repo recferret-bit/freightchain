@@ -27,4 +27,16 @@ describe('RequestActionChallengeHandler', () => {
     expect(ctx.db.challenges.get(`action:${ADMIN_UNIT_WALLET}`)).toBeUndefined();
     expect((await ask()).message).toContain('Action: CREATE promo code HELLO');
   });
+
+  it('a setting is checked before a signature is asked for; a free-ride adjust names the wallet and the delta', async () => {
+    const ctx = unitContext();
+    const h = new RequestActionChallengeHandler(ctx.proofs, ctx.clock);
+    await expect(h.execute(new RequestActionChallengeCommand(ADMIN_UNIT_WALLET, { action: 'setting_update', key: 'nope', value: 1 }))).rejects.toMatchObject({ errorCode: 'bad_setting' });
+    await expect(h.execute(new RequestActionChallengeCommand(ADMIN_UNIT_WALLET, { action: 'setting_update', key: 'free_on_signup', value: 100_001 }))).rejects.toMatchObject({ errorCode: 'bad_setting' });
+    expect(ctx.db.challenges.get(`action:${ADMIN_UNIT_WALLET}`)).toBeUndefined();
+    const ok = await h.execute(new RequestActionChallengeCommand(ADMIN_UNIT_WALLET, { action: 'setting_update', key: 'free_on_signup', value: 7 }));
+    expect(ok.message).toContain('Action: SET setting free_on_signup\nValue: 7\n');
+    const rides = await h.execute(new RequestActionChallengeCommand(ADMIN_UNIT_WALLET, { action: 'free_rides_adjust', wallet: 'W', delta: -2 }));
+    expect(rides.message).toContain('Action: ADJUST free rides by -2\nPlayer: W\n');
+  });
 });

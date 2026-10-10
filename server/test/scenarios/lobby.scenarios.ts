@@ -125,7 +125,7 @@ export function lobbyScenarios(h: () => Harness): void {
 
     it('a fresh wallet has stats of zero and every achievement locked', async () => {
       const w = await login(), p = (await w.agent.get('/api/profile').expect(200)).body;
-      expect(p).toMatchObject({ wallet: w.address, freeRides: 5, demo: false, stats: { rides: 0, completed: 0, metres: 0 } });
+      expect(p).toMatchObject({ wallet: w.address, freeRides: 10, freeRidesMax: 5, demo: false, stats: { rides: 0, completed: 0, metres: 0 } });
       expect(p.achievements).toHaveLength(8);
       expect(p.achievements.every((a: { earnedAt: number | null }) => a.earnedAt === null)).toBe(true);
       expect(p.achievements.find((a: { id: string }) => a.id === 'top-20').awardedAtRoundClose).toBe(true);
@@ -174,14 +174,14 @@ export function lobbyScenarios(h: () => Harness): void {
   describe('buying while holding an unstarted free ride', () => {
     it('cancels the free ride, gives the credit back, and orders the paid one', async () => {
       const w = await login(), free = (await w.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
-      expect((await w.agent.get('/api/me')).body.freeRides).toBe(4);
+      expect((await w.agent.get('/api/me')).body.freeRides).toBe(9);
       const order = (await w.agent.post('/api/rides').send({ tier: '1h' }).expect(200)).body;
       expect(order).toMatchObject({ tier: '1h', status: 'awaiting_payment' });
-      expect((await w.agent.get('/api/me')).body.freeRides).toBe(5);                               // credit refunded exactly once
+      expect((await w.agent.get('/api/me')).body.freeRides).toBe(10);                              // credit refunded exactly once (9 is not the cap)
       expect((await w.agent.get(`/api/rides/${free.id}`)).body).toMatchObject({ status: 'cancelled' });
       await w.agent.post(`/api/rides/${free.id}/start`).expect(409);                               // play.html would be refused too
       expect((await w.agent.post('/api/rides').send({ tier: '1h' }).expect(200)).body.id).toBe(order.id);   // asking again: the same order, no second refund
-      expect((await w.agent.get('/api/me')).body.freeRides).toBe(5);
+      expect((await w.agent.get('/api/me')).body.freeRides).toBe(10);
     });
 
     it('never cancels a PAID unstarted ride: an on-sale ask hands it back; an off-sale ask is refused', async () => {
@@ -190,7 +190,7 @@ export function lobbyScenarios(h: () => Harness): void {
       for (const tier of ['free', '1h']) expect((await w.agent.post('/api/rides').send({ tier }).expect(200)).body).toMatchObject({ id: o.id, status: 'created', tier: '1h' });
       expect((await w.agent.post('/api/rides').send({ tier: '4h' }).expect(409)).body.code).toBe('tier_not_on_sale');
       expect((await w.agent.get(`/api/rides/${o.id}`)).body.status).toBe('created');
-      expect((await w.agent.get('/api/me')).body.freeRides).toBe(5);
+      expect((await w.agent.get('/api/me')).body.freeRides).toBe(10);
     });
   });
 

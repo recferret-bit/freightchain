@@ -6,10 +6,10 @@ import { aPool } from '../../../../support/pools.js';
 import { worldFor } from '../../../../../src/domain/rides/ride-rules.js';
 
 describe('GetProfileHandler', () => {
-  it('a fresh wallet: zero stats, 5 credits, every achievement locked', async () => {
+  it('a fresh wallet: zero stats, 10 credits under a cap of 5, every achievement locked', async () => {
     const ctx = unitContext();
     const p = await new GetProfileHandler(ctx.sessions, ctx.achievements, ctx.rideQuery, ctx.payments, ctx.rules, ctx.clock, ctx.poolTickets, ctx.tickets, ctx.orders, new RecordingAnalytics(), ctx.stats).execute(new GetProfileQuery('w'));
-    expect(p).toMatchObject({ wallet: 'w', freeRides: 5, freeRidesMax: 5, nextFreeRideAt: null, demo: false, stats: { rides: 0, completed: 0, metres: 0, bestMetres: 0, paidRides: 0, spentLamports: 0, ticketsBought: 0 }, recent: [], tickets: [], grants: [] });
+    expect(p).toMatchObject({ wallet: 'w', freeRides: 10, freeRidesMax: 5, nextFreeRideAt: null, demo: false, stats: { rides: 0, completed: 0, metres: 0, bestMetres: 0, paidRides: 0, spentLamports: 0, ticketsBought: 0 }, recent: [], tickets: [], grants: [] });
     expect(p.achievements.every((a) => a.earnedAt === null)).toBe(true);
   });
 

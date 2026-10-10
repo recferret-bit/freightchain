@@ -58,6 +58,10 @@ export class MemoryDb {
   globalStats: StatsRow | null = null;
   /** UTC day → totals */
   dailyStats = new Map<string, import('../../../src/domain/stats/stats.js').StatsTotals>();
+  /** `player.GameSetting` */
+  settings = new Map<string, number>();
+  /** anonymous offline runs */
+  offlineUses: { id: string; fingerprint: string; ip: string; at: Date }[] = [];
   private seq = 0;
   private roundSeq = 0;
 
@@ -71,5 +75,6 @@ export class MemoryDb {
     this.pools.clear(); this.tickets.clear(); this.grants = []; this.promos.clear(); this.redemptions.clear(); this.orders.clear(); this.cosmeticUnlocks.clear(); this.cosmeticEquipped.clear();
     this.chainEvents = []; this.chainCursors.clear(); this.sponsoredTxs = [];
     this.rideEvents = []; this.rideMutes.clear(); this.donationOrders.clear(); this.playerStats.clear(); this.globalStats = null; this.dailyStats.clear();
+    this.settings.clear(); this.offlineUses = [];
   }
 }

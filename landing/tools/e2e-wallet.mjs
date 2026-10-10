@@ -87,8 +87,8 @@ check('top-bar LOBBY button goes to the lobby too', await until(`location.pathna
 
 // 6 · the offline game link on the landing points at the game host (same origin here)
 await send('Page.navigate', { url: BASE + '/' }); await sleep(1500);
-const wantGame = API !== BASE ? `http://ride.${new URL(BASE).hostname}/play.html` : '/play.html';   // split hosts: the game lives on ride.<apex>
-check(`"try it offline" link targets the game host (${wantGame})`, (await ev(`document.querySelector('a.link[href$="/play.html"]')?.getAttribute('href')`)) === wantGame);
+const wantGame = API !== BASE ? `http://ride.${new URL(BASE).hostname}/play.html?offline=1` : '/play.html?offline=1';   // split hosts: the counted free run lives on ride.<apex>
+check(`"try it offline" link targets the game host (${wantGame})`, (await ev(`document.querySelector('a.link[href$="?offline=1"]')?.getAttribute('href')`)) === wantGame);
 
 // 7 · the promo invite block: /?promo=CODE pre-fills it, the code survives the sign-in and lands pre-filled (never redeemed) on the lobby's PROMO tab
 await send('Network.clearBrowserCookies'); await open('ok', '/?promo=GoldWheel');

@@ -164,11 +164,11 @@ export function paymentScenarios(h: () => Harness): void {
       const sig = pay(a, o);
       const free = (await a.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body; // lets the unpaid order lapse
       expect((await a.agent.get(`/api/rides/${o.id}`)).body.status).toBe('expired');
-      expect((await a.agent.get('/api/me')).body.freeRides).toBe(4);
+      expect((await a.agent.get('/api/me')).body.freeRides).toBe(9);
       const paid = (await a.agent.post(`/api/rides/${o.id}/confirm`).send({ signature: sig }).expect(200)).body;
       expect(paid).toMatchObject({ status: 'paid', ride: { id: o.id, status: 'created' } });
       expect((await a.agent.get(`/api/rides/${free.id}`)).body.status).toBe('cancelled');
-      expect((await a.agent.get('/api/me')).body.freeRides).toBe(5);
+      expect((await a.agent.get('/api/me')).body.freeRides).toBe(10);
       expect((await a.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body.id).toBe(o.id); // the paid ride is the one in hand
       await a.agent.post(`/api/rides/${free.id}/start`).expect(409);
       await a.agent.post(`/api/rides/${o.id}/start`).expect(200);
@@ -216,10 +216,10 @@ export function paymentScenarios(h: () => Harness): void {
       expect(again).toMatchObject({ id: r2.id, tier: '1h', status: 'created' });
     });
 
-    it('the free path is unchanged: no payment, 5 credits, never scaled', async () => {
+    it('the free path is unchanged: no payment, 10 credits, never scaled', async () => {
       const a = await login(), r = await order(a, 'free');
       expect(r).toMatchObject({ tier: 'free', status: 'created', timeScale: 1, lamports: 0, minSeconds: 60 });
-      expect((await a.agent.get('/api/me')).body.freeRides).toBe(4);
+      expect((await a.agent.get('/api/me')).body.freeRides).toBe(9);
     });
   });
 

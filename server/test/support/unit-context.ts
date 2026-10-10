@@ -32,7 +32,9 @@ import { MemorySitePresenceAdapter } from '../../src/infrastructure/live/site-pr
 import { StatsService } from '../../src/application/services/stats.service.js';
 import { MemoryStatsRepository } from './in-memory/memory-stats-repository.js';
 import { MemoryCacheAdapter } from '../../src/infrastructure/cache/memory-cache.adapter.js';
+import { GameSettingsService } from '../../src/application/services/game-settings.service.js';
 import { LiveAccessService } from '../../src/application/services/live-access.service.js';
+import { MemoryOfflineRideRepository, MemorySettingsRepository } from './in-memory/memory-settings.js';
 
 /** Fixed rules for unit tests: 10 s free shift (140 m), treasury configured, one demo wallet. */
 export const DEMO_UNIT_WALLET = 'DemoWa11et1111111111111111111111111111111111';
@@ -106,7 +108,10 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const statsRepo = new MemoryStatsRepository(db);
   const cache = new MemoryCacheAdapter(clock);
   const stats = new StatsService(statsRepo, cache, clock);
-  const sessions = new PlayerSessionService(players, rulesPort, clock, analytics);
+  const settingsRepo = new MemorySettingsRepository(db);
+  const settings = new GameSettingsService(settingsRepo);
+  const offlineRides = new MemoryOfflineRideRepository(db);
+  const sessions = new PlayerSessionService(players, settings, rulesPort, clock, analytics);
   const lookup = new RideLookupService(rides);
   const rounds = new RoundService(roundRepo, rulesPort, transactions, clock, analytics);
   const achievements = new AchievementService(unlocks, rideQuery, clock);
@@ -117,7 +122,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const settlement = new PaymentSettlementService(rounds, roundRepo, payments, rides, players, lookup, transactions, clock);
 
   const now = () => clock.now();
-  /** a registered player (5 credits) */
+  /** a registered player (10 signup rides, daily cap 5) */
   const player = async (wallet: string) => sessions.touch(wallet);
   /** a stored free ride, optionally started */
   const freeRide = async (wallet: string, started = false) => {
@@ -140,7 +145,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   return {
     db, clock, chain, entropy, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, batches, hasher, verdictRepo, verdicts, proofs, signIns, adminActions, adminQuery, health, analytics,
     pools, tickets, promos, cosmetics, promoCreation, orders, poolTickets, ticketSettlement,
-    sessions, lookup, rounds, achievements, settlement, now, player, freeRide, paidOrder, reload, storedPlayer,
+    sessions, settings, settingsRepo, offlineRides, lookup, rounds, achievements, settlement, now, player, freeRide, paidOrder, reload, storedPlayer,
     poolChain, chainEvents, chainCursors, sponsoredTxs, registry, rideEvents, viewers, sitePresence, rideMutes, donationOrders, liveAccess, statsRepo, cache, stats,
   };
 }

@@ -27,7 +27,7 @@ const pools = [
 const tickets = new Map([[1, { balance: 1, bought: 1 }], [2, { balance: 0, bought: 0 }], [3, { balance: 0, bought: 2 }], [5, { balance: 0, bought: 1 }]]);
 const grants = [{ poolId: 3, delta: 2, source: 'payment', ref: sig(), at: t0 - 3 * DAY }, { poolId: 5, delta: 1, source: 'payment', ref: sig(), at: t0 - 4 * DAY }, { poolId: 1, delta: 1, source: 'promo', ref: 'WELCOME', at: t0 - DAY }];
 const orders = new Map(), polls = new Map(), built = new Map(), refunds = new Map(), rides = new Map();
-let freeRides = 5;
+let freeRides = 10;
 const CATALOG = {   // = server/src/domain/economy/cosmetics.ts (the first item of a slot is its default)
   wheel: ['classic', 'crimson', 'ocean', 'moss', 'gold', 'ivory'], truck_color: ['red', 'blue', 'green', 'black', 'yellow', 'white'], gearbox: ['stick', 'chrome', 'wood', 'racing', 'gold', 'carbon'],
   dice: ['white', 'red', 'blue', 'gold', 'pink', 'black'], needle: ['orange', 'red', 'lime', 'cyan', 'white', 'gold'],

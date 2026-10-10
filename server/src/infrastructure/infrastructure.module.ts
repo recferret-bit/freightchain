@@ -14,7 +14,9 @@ import { SponsoredTxRepositoryPort } from '../application/ports/economy/sponsore
 import { PriceQuotePort } from '../application/ports/economy/price-quote.port.js';
 import { RoundRepositoryPort } from '../application/ports/economy/round.repository.port.js';
 import { HealthProbePort } from '../application/ports/health/health-probe.port.js';
+import { OfflineRideRepositoryPort } from '../application/ports/offline/offline-ride.repository.port.js';
 import { PlayerRepositoryPort } from '../application/ports/players/player.repository.port.js';
+import { SettingsRepositoryPort } from '../application/ports/settings/settings.repository.port.js';
 import { RideQueryPort } from '../application/ports/rides/ride-query.port.js';
 import { RideRepositoryPort } from '../application/ports/rides/ride.repository.port.js';
 import { AnalyticsPort } from '../application/ports/analytics/analytics.port.js';
@@ -49,7 +51,9 @@ import { PrismaHealthProbe } from './health/prisma.health-probe.js';
 import { AchievementPrismaRepository } from './prisma/repositories/achievement.prisma.repository.js';
 import { ChallengePrismaRepository } from './prisma/repositories/challenge.prisma.repository.js';
 import { PaymentPrismaRepository } from './prisma/repositories/payment.prisma.repository.js';
+import { OfflineRidePrismaRepository } from './prisma/repositories/offline-ride.prisma.repository.js';
 import { PlayerPrismaRepository } from './prisma/repositories/player.prisma.repository.js';
+import { SettingsPrismaRepository } from './prisma/repositories/settings.prisma.repository.js';
 import { RideQueryPrismaRepository } from './prisma/repositories/ride-query.prisma.repository.js';
 import { RidePrismaRepository } from './prisma/repositories/ride.prisma.repository.js';
 import { RoundPrismaRepository } from './prisma/repositories/round.prisma.repository.js';
@@ -107,6 +111,8 @@ const ports: Provider[] = [
   { provide: TransactionPort, useClass: TransactionPrismaAdapter },
   { provide: RulesConfigPort, useClass: EnvRulesConfigAdapter },
   { provide: PlayerRepositoryPort, useClass: PlayerPrismaRepository },
+  { provide: SettingsRepositoryPort, useClass: SettingsPrismaRepository },
+  { provide: OfflineRideRepositoryPort, useClass: OfflineRidePrismaRepository },
   { provide: ChallengeRepositoryPort, useClass: ChallengePrismaRepository },
   { provide: SignatureVerifierPort, useClass: NaclSignatureVerifier },
   { provide: TokenSignerPort, useClass: JoseTokenSigner },

@@ -40,6 +40,15 @@ describe('signed promo actions', () => {
     expect(promoJson(promoInput({ code: ' he llo ' }))).toBe(promoJson(promoInput({ code: 'HELLO' })));
   });
 
+  it('a free-ride adjust and a setting change name every field the signature binds', () => {
+    expect(intentLines({ action: 'free_rides_adjust', wallet: 'W', delta: -2 })).toEqual(['Action: ADJUST free rides by -2', 'Player: W']);
+    expect(intentLines({ action: 'setting_update', key: 'free_on_signup', value: 7 })).toEqual(['Action: SET setting free_on_signup', 'Value: 7']);
+    const message = text({ action: 'setting_update', key: 'free_on_signup', value: 7 });
+    expect(describesIntent(message, 'admin.freight.test', 'Admin', { action: 'setting_update', key: 'free_on_signup', value: 7 })).toBe(true);
+    expect(describesIntent(message, 'admin.freight.test', 'Admin', { action: 'setting_update', key: 'free_on_signup', value: 8 })).toBe(false);
+    expect(describesIntent(message, 'admin.freight.test', 'Admin', { action: 'free_rides_adjust', wallet: 'W', delta: -2 })).toBe(false);
+  });
+
   it('disabling names the code', () => {
     expect(intentLines({ action: 'promo_disable', code: 'hello' })).toEqual(['Action: DISABLE promo code HELLO']);
     const message = text({ action: 'promo_disable', code: 'HELLO' });

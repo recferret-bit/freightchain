@@ -51,9 +51,9 @@ describe('RedeemPromoHandler', () => {
   describe('free rides', () => {
     it('adds them on top of the daily ones – even above the daily cap – and nothing else', async () => {
       const { ctx, redeem } = await setup({ effect: { kind: 'free_rides', count: 3 } });
-      await ctx.player('w'); // 5 of 5
-      expect(await redeem()).toEqual({ kind: 'free_rides', code: 'HELLO', label: '3 free rides', added: 3, freeRides: 8 });
-      expect((await ctx.storedPlayer('w')).freeRides).toBe(8);
+      await ctx.player('w'); // 10 of a daily cap of 5
+      expect(await redeem()).toEqual({ kind: 'free_rides', code: 'HELLO', label: '3 free rides', added: 3, freeRides: 13 });
+      expect((await ctx.storedPlayer('w')).freeRides).toBe(13);
       expect((await ctx.storedPlayer('w')).freeRidesMax).toBe(5);
       expect(await ctx.promos.countRedemptions('HELLO', 'w')).toBe(1);
       expect(await ctx.tickets.listByWallet('w')).toEqual([]); // no ticket row either
@@ -65,7 +65,7 @@ describe('RedeemPromoHandler', () => {
       await redeem();
       ctx.clock.advance(86_400);
       await ctx.sessions.touch('w'); // the lazy daily grant: at / above the cap it adds nothing and takes nothing
-      expect((await ctx.storedPlayer('w')).freeRides).toBe(6);
+      expect((await ctx.storedPlayer('w')).freeRides).toBe(11);
     });
 
     it('one ride in "1 free ride" reads singular', async () => {
@@ -112,7 +112,7 @@ describe('RedeemPromoHandler', () => {
       await ctx.pools.upsert(aPool({ id: 1, status: 'active' }));
       await redeem(); await redeem('CAB'); await redeem('TIX');
       const [rides, cabin, tickets] = ctx.analytics.named('promo_redeemed');
-      expect(rides).toMatchObject({ distinctId: 'w', dedupeKey: 'promo:HELLO:w:1', timestamp: ctx.now(), set: { free_rides: 8 }, properties: { code: 'HELLO', kind: 'free_rides', redemption_n: 1, rides_added: 3, free_rides: 8, is_demo: false, source: 'server' } });
+      expect(rides).toMatchObject({ distinctId: 'w', dedupeKey: 'promo:HELLO:w:1', timestamp: ctx.now(), set: { free_rides: 13 }, properties: { code: 'HELLO', kind: 'free_rides', redemption_n: 1, rides_added: 3, free_rides: 13, is_demo: false, source: 'server' } });
       expect(cabin).toMatchObject({ dedupeKey: 'promo:CAB:w:1', set: { truck_color: 'black' }, properties: { kind: 'cosmetic', slot: 'truck_color', item: 'black' } });
       expect(tickets).toMatchObject({ properties: { kind: 'tickets', tier_id: '1h', pool_id: 1, tickets_added: 2, ticket_balance: 2 } });
       expect(tickets?.set).toBeUndefined();

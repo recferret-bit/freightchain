@@ -28,7 +28,7 @@
     <span class="chip">v0.1 · OCT 8 2026</span>
     <span class="chip warn">DEVNET · NO TOKEN</span>
     <a class="cta sm ghost" id="landing-top" data-to="site" data-path="/" href="/" aria-label="Return to the landing" title="Return to the landing">← <span class="hide-sm">LANDING</span></a>
-    <a class="cta sm" id="play-top" data-to="game" data-path="/play.html" href="/play.html">PLAY</a>
+    <a class="cta sm" id="play-top" data-to="game" data-path="/play.html?offline=1" href="/play.html?offline=1">PLAY</a>
   </div>
 </header>
 
@@ -198,13 +198,14 @@
   <div class="tblwrap"><table class="tbl tiers2">
     <thead><tr><th>Tier</th><th>Minimum time</th><th>List price</th><th>What it is</th></tr></thead>
     <tbody>
-      <tr><td><b>FREE</b></td><td>1 minute</td><td>$0</td><td>The habit, on an easy road: a straight start, soft bends, a few calm cars, no sinkholes; it ends by itself at the line. Five free rides at sign-up, +1 every 00:00 UTC, never above five. Its own leaderboard and badges. No pool.</td></tr>
+      <tr><td><b>FREE</b></td><td>1 minute</td><td>$0</td><td>The habit, on an easy road: a straight start, soft bends, a few calm cars, no sinkholes; it ends by itself at the line. Ten at sign-up; daily refill stops at five. A few offline runs need no wallet. Its own leaderboard and badges. No pool.</td></tr>
       <tr><td><b>1 H</b></td><td>1 hour</td><td>$5</td><td>On sale. Opens at 20 tickets, or it refunds. The standard road.</td></tr>
       <tr><td><b>4 H</b></td><td>4 hours</td><td>$15</td><td>Soon. Tighter bends, busier traffic. Sold only once a 4-hour pool opens.</td></tr>
       <tr><td><b>8 H</b></td><td>8 hours</td><td>$50</td><td>Soon. The hardest road. Sold only once an 8-hour pool opens.</td></tr>
     </tbody>
   </table></div>
   <p class="dim">The 1 hour shift is the one on sale. $15 and $50 are planned list prices. List prices are in US dollars. A pool fixes its price in lamports at creation and that price never changes. Devnet SOL has no value.</p>
+  <p class="dim">Ten free rides at sign-up. Daily refill stops at five; a promo can sit above that, and wallets that already exist are left as they are. A few offline runs on this browser use the same easy road and need no wallet: the server stores a fingerprint and the address. A fingerprint can be changed; the address cap is the backstop. When those runs are used up, connect a Solana wallet.</p>
 
   <h3 class="sub">HOW A SHIFT RUNS</h3>
   <ol class="flow">
@@ -244,7 +245,7 @@
   <div class="tblwrap"><table class="tbl">
     <thead><tr><th>Reward</th><th>Who gets it</th><th>State</th></tr></thead>
     <tbody>
-      <tr><td><b>Free rides</b> – 5 at sign-up, +1 each UTC day</td><td>Every wallet</td><td><span class="pill ok">LIVE</span></td></tr>
+      <tr><td><b>Free rides</b> – 10 at sign-up, daily refill stops at 5</td><td>Every wallet</td><td><span class="pill ok">LIVE</span></td></tr>
       <tr><td><b>Free board</b> – every completed free ride ranks</td><td>Free drivers</td><td><span class="pill ok">LIVE</span></td></tr>
       <tr><td><b>Badges</b> – First Mile, Shift Complete, Night Owl, Century, Clean Run, Cold Start, On My Own; Top 20 after a round closes</td><td>Wallets that earn them</td><td><span class="pill ok">LIVE (server-side)</span></td></tr>
       <tr><td><b>Tips and effects from spectators</b> – SOL from a viewer's wallet straight to yours</td><td>The driver being watched</td><td><span class="pill ok">LIVE · DEVNET</span></td></tr>
@@ -314,7 +315,7 @@
 
   <h3 class="sub">PROMOTION &amp; GROWTH</h3>
   <div class="grid3">
-    <article class="card"><h3>FREE FIRST</h3><p>Five free rides and a daily refill are the on-ramp: no wallet balance is needed to find out whether you like the drive.</p></article>
+    <article class="card"><h3>FREE FIRST</h3><p>Ten at sign-up, daily refill stops at five. A few offline runs need no wallet; then connect Solana.</p></article>
     <article class="card"><h3>WATCH BEFORE YOU BUY</h3><p>Every ride has a public live page and a replay. A visitor sees real drivers, real distances and the real board before connecting a wallet.</p></article>
     <article class="card"><h3>PROMO &amp; SPONSORS</h3><p>Promo codes hand out tickets of a tier. Sponsors can add SOL to a pool; it is split like ticket money and visibly raises the pot.</p></article>
   </div>
@@ -482,7 +483,7 @@
   </ul>
 
   <h3 class="sub">HOW THE GAME SERVER FITS</h3>
-  <p>The server <em>mirrors</em> pools; the chain wins. <code>TicketBought</code> is credited once, by the confirm path, the log watcher, or the webhook. The gas sponsor co-signs only the bytes the server built. The server holds no admin or treasury key.</p>
+  <p>The server <em>mirrors</em> pools and tickets; the chain wins any disagreement. A ticket is credited from the program's <code>TicketBought</code> event, once per signature, by confirm, the log watcher, or a webhook. The gas sponsor co-signs only the bytes the server built. The server never holds the admin or treasury key; the admin signs pool creation and payouts from a browser wallet.</p>
 
   <h3 class="sub">IDEAS ON THE TABLE</h3>
   <p class="dim">Not built; ordered roughly by fit, from the Solana feature plan.</p>

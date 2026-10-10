@@ -27,6 +27,28 @@ describe('PlayerPrismaRepository (PostgreSQL)', () => {
     expect((await repo.findByWallet('w'))?.freeRides).toBe(4);
   });
 
+  it('save writes a changed daily cap and still refuses a stale version', async () => {
+    await repo.insertIfAbsent(Player.register('w', T0, 5, 5));
+    const p = (await repo.findByWallet('w')) as Player;
+    expect(p.setDailyCap(3)).toBe(true);
+    p.spendFreeRide();
+    await repo.save(p);
+    expect((await repo.findByWallet('w'))?.snapshot()).toMatchObject({ freeRides: 4, freeRidesMax: 3, version: 2 });
+    const stale = Player.restore(p.snapshot());
+    stale.setDailyCap(9);
+    await expect(repo.save(stale)).rejects.toBeInstanceOf(VersionConflictError);
+    expect((await repo.findByWallet('w'))?.freeRidesMax).toBe(3);
+  });
+
+  it('the tutorial stamp is saved with the player (null for a new one) and read back', async () => {
+    await repo.insertIfAbsent(Player.register('w', T0, 5, 5));
+    expect((await repo.findByWallet('w'))?.tutorialPassedAt).toBeNull();
+    const p = (await repo.findByWallet('w')) as Player;
+    expect(p.markTutorialPassed(T0)).toBe(true);
+    await repo.save(p);
+    expect((await repo.findByWallet('w'))).toMatchObject({ tutorialPassed: true, tutorialPassedAt: T0 });
+  });
+
   describe('grantDailyFreeRides – the midnight bulk update', () => {
     const seed = async (wallet: string, freeRides: number, freeDay = '2036-10-08', freeRidesMax = 5) => {
       await repo.insertIfAbsent(Player.restore({ wallet, version: 1, freeRides, freeDay, freeRidesMax, createdAt: T0, tutorialPassedAt: null }));
@@ -34,33 +56,33 @@ describe('PlayerPrismaRepository (PostgreSQL)', () => {
 
     it('adds one below the cap, stops at the cap, leaves an over-cap balance, stamps the day and bumps the version', async () => {
       await seed('low', 2); await seed('edge', 4); await seed('full', 5); await seed('over', 8); await seed('bigcap', 5, '2036-10-08', 7);
-      expect(await repo.grantDailyFreeRides('2036-10-09')).toBe(5);
+      expect(await repo.grantDailyFreeRides('2036-10-09', 5)).toBe(5);
       const got = async (w: string) => (await repo.findByWallet(w))?.snapshot();
       expect(await got('low')).toMatchObject({ freeRides: 3, freeDay: '2036-10-09', version: 2 });
       expect(await got('edge')).toMatchObject({ freeRides: 5 });
       expect(await got('full')).toMatchObject({ freeRides: 5, freeDay: '2036-10-09', version: 2 });
       expect(await got('over')).toMatchObject({ freeRides: 8 });
-      expect(await got('bigcap')).toMatchObject({ freeRides: 6 });
+      expect(await got('bigcap')).toMatchObject({ freeRides: 5, freeRidesMax: 5 });
     });
 
     it('is idempotent for a day, and a skipped night still gives ONE credit', async () => {
       await seed('a', 1); await seed('b', 1, '2036-10-01');
-      expect(await repo.grantDailyFreeRides('2036-10-09')).toBe(2);
-      expect(await repo.grantDailyFreeRides('2036-10-09')).toBe(0);
+      expect(await repo.grantDailyFreeRides('2036-10-09', 5)).toBe(2);
+      expect(await repo.grantDailyFreeRides('2036-10-09', 5)).toBe(0);
       expect((await repo.findByWallet('a'))?.freeRides).toBe(2);
       expect((await repo.findByWallet('b'))?.freeRides).toBe(2);
     });
 
     it('never moves back: a player already stamped for a later day is untouched', async () => {
       await seed('a', 1, '2036-10-12');
-      expect(await repo.grantDailyFreeRides('2036-10-09')).toBe(0);
+      expect(await repo.grantDailyFreeRides('2036-10-09', 5)).toBe(0);
       expect((await repo.findByWallet('a'))?.freeRides).toBe(1);
     });
 
     it('makes a stale optimistic save lose (the version moved), so a lazy touch re-reads instead of overwriting the grant', async () => {
       await seed('a', 1);
       const stale = (await repo.findByWallet('a')) as Player;
-      await repo.grantDailyFreeRides('2036-10-09');
+      await repo.grantDailyFreeRides('2036-10-09', 5);
       stale.spendFreeRide();
       await expect(repo.save(stale)).rejects.toBeInstanceOf(VersionConflictError);
       expect((await repo.findByWallet('a'))?.freeRides).toBe(2);

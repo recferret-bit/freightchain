@@ -14,6 +14,7 @@ import { radio } from '../sim/radio.js';
 import { trafficSnapshot } from '../sim/traffic.js';
 import { clockText } from '../world/daynight.js';
 import { online, beginOnline, endOnline } from '../online.js';
+import { offlineRide, offlineStatus, claimOfflineRide, connectHref, lobbyHref } from '../offline-ride.js';
 import { startLiveFeed, stopLiveFeed } from './live-feed.js';
 import { failFx, winFx } from './fail-fx.js';
 import { prompt } from '../prompt.js';
@@ -47,8 +48,56 @@ const CONTROLS = `<table>
 <tr><td>E / Q</td><td>Gear up / down (clutch must be in) · 1-7 / 0 select gear / neutral · Q from neutral or G = REVERSE (stop first; beeper + slow, trailer swings)</td></tr>
 <tr><td>I</td><td>Start engine (and restart after a stall) · P pause · M mute</td></tr><tr><td>L / C</td><td>Headlights · cab light (or the HEAD / CAB dash buttons and the dome lamp above the windscreen)</td></tr><tr><td>H</td><td>Cab heater (HEAT button) – clears frost on the glass, but only as warm as the engine is · cold engine: keep the revs low until TEMP rises</td></tr><tr><td>R / X</td><td>Wipers off / slow / fast · hold X = washer spray + wipe (or click WIPER / WASH on the dash)</td></tr></table>
 <div style="font-size:12px;color:#b9ad8d">Launch: hold clutch → E (1st) → press gas, ease the clutch out. Clutch out too fast at low revs = stall.<br>Everything beside the road can be smashed – but it damages the hull. 0% hull = wrecked.<br>Other traffic: scratches cost hull, a direct head-on / rear-end hit ends the ride – overtake only when the opposite lane is clear.<br>You start at the depot: give way at the main road, turn right slowly. Crossroads have traffic lights – side traffic goes on its green.</div>`;
+const FREE_HINT = `<div style="font-size:12px;color:#b9ad8d">This run is the easy straight road. It ends itself when the shift is done.</div>`;
+const note = text => `<div style="font-size:12px;color:#b9ad8d">${text}</div>`;
+let offlineClaiming = false, offlineLast = null;
+function applyOfflineTimes(data) {
+  if (data && Number.isFinite(data.minSeconds) && data.minSeconds > 0) CFG.RIDE_MIN_SECONDS = data.minSeconds;
+  if (data && Number.isFinite(data.completeDist) && data.completeDist > 0) CFG.COMPLETE_DIST = data.completeDist;
+}
+function paintSignedIn() {
+  panel.innerHTML = `<h1>FREE RUN</h1><h2>You are signed in.</h2>${note('Continue from the lobby. This page does not spend an offline run.')}<div class="btns"><button id="connect">OPEN THE LOBBY</button></div>`;
+  overlay.classList.remove('hide');
+  document.getElementById('connect').onclick = () => { location.href = lobbyHref(); };
+}
+function paintOfflineBlocked() {
+  panel.innerHTML = `<h1>FREE RUNS USED</h1><h2>Connect a Solana wallet to keep driving.</h2>${note('Your free rides continue after you sign in.')}<div class="btns"><button id="connect">CONNECT A WALLET</button><button class="alt" id="lobby">LOBBY</button></div>`;
+  overlay.classList.remove('hide');
+  document.getElementById('connect').onclick = () => { location.href = connectHref(); };
+  document.getElementById('lobby').onclick = () => { location.href = lobbyHref(); };
+}
+function paintOfflineStart(data) {
+  offlineLast = data;
+  applyOfflineTimes(data);
+  if (data.signedIn) { paintSignedIn(); return; }
+  if (!data.allowed) { paintOfflineBlocked(); return; }
+  const n = data.remaining;
+  panel.innerHTML = `<h1>FREE RUN</h1><h2>${n} free run${n === 1 ? '' : 's'} left on this browser</h2><div class="row"><span>Shift</span><b>${fmt(CFG.RIDE_MIN_SECONDS)} · ${(CFG.COMPLETE_DIST / 1000).toFixed(1)} km</b></div>${FREE_HINT}<div class="btns"><button id="go">START FREE RUN</button><button class="alt" id="connect">CONNECT A WALLET</button></div>`;
+  overlay.classList.remove('hide');
+  document.getElementById('go').onclick = startRide;
+  document.getElementById('connect').onclick = () => { location.href = connectHref(); };
+}
+function paintOfflineResult(title, sub, extra) {
+  const left = offlineLast?.remaining ?? 0;
+  const again = left > 0
+    ? `<div class="btns"><button id="go">START FREE RUN</button><button class="alt" id="connect">CONNECT A WALLET</button></div>`
+    : `${note('Connect a Solana wallet to keep driving.')}<div class="btns"><button id="connect">CONNECT A WALLET</button><button class="alt" id="lobby">LOBBY</button></div>`;
+  panel.innerHTML = `<h1>${title}</h1><h2>${sub}</h2>${extra}${again}`;
+  overlay.classList.remove('hide');
+  document.getElementById('go')?.addEventListener('click', startRide);
+  document.getElementById('connect').onclick = () => { location.href = connectHref(); };
+  const lobby = document.getElementById('lobby');
+  if (lobby) lobby.onclick = () => { location.href = lobbyHref(); };
+}
+function showOfflineMenu(title, sub, extra) {
+  if (extra) { paintOfflineResult(title, sub, extra); return; }
+  panel.innerHTML = `<h1>FREE RUN</h1><h2>Checking this browser…</h2>`;
+  overlay.classList.remove('hide');
+  offlineStatus().then(data => { if (offlineRide.on) paintOfflineStart(data); }).catch(() => { if (offlineRide.on) paintOfflineBlocked(); });
+}
 export function showMenu(title, sub, extra = '') {
   if (online.ride || online.error) return showOnlineMenu(title, sub, extra);
+  if (offlineRide.on) return showOfflineMenu(title, sub, extra);
   panel.innerHTML = `<h1>${title}</h1><h2>${sub}</h2>${extra}
     <div class="row"><span>Shift (the road never ends)</span><b>${fmt(CFG.RIDE_MIN_SECONDS)} · ${(CFG.COMPLETE_DIST / 1000).toFixed(1)} km</b></div>${CONTROLS}
     <div class="btns"><button id="go">START RIDE</button></div>`;
@@ -80,7 +129,7 @@ function failCode(outcome, reason) {
   if (reason.includes('collision') || reason.includes('crashed into') || reason.includes('drove into') || reason.includes('ran into')) return 'crash';
   return 'other';
 }
-export async function startRide() {   // (offline there is no await, so it still runs synchronously)
+export async function startRide() {   // the prototype path returns before any await; the counted offline run awaits the claim
   if (online.error || online.done) return;
   if (online.ride) {
     track('ride_start_clicked', { ride_id: online.ride.id, route_id: env.theme.id, phase: dn.phase });
@@ -91,6 +140,17 @@ export async function startRide() {   // (offline there is no await, so it still
       return;
     }
     startLiveFeed();   // spectators' chat + effects (live streams)
+  } else if (offlineRide.on) {
+    if (offlineClaiming || st.mode === 'drive' || st.mode === 'paused') return;
+    offlineClaiming = true;
+    try {
+      const data = await claimOfflineRide();
+      offlineLast = data;
+      applyOfflineTimes(data);
+      if (data.signedIn) { paintSignedIn(); return; }
+      if (!data.claimed) { paintOfflineBlocked(); return; }   // the last successful claim still has claimed: true, so the run starts
+    } catch { paintOfflineBlocked(); return; }
+    finally { offlineClaiming = false; }
   }
   resetRide(); st.mode = 'drive'; audio.start(); audio.play('start'); overlay.classList.add('hide'); startGuide();
   if (!guide.tutorial) toast(CFG.START_ENGINE_OFF ? 'Press I to start the engine and B to release the parking brake, then SHIFT (clutch) → E (1st) → W (gas) → ease the clutch out' : 'Release the parking brake (B), then hold SHIFT (clutch) → E (1st gear) → W (gas) → ease the clutch out', 6000);
@@ -100,6 +160,16 @@ export async function startRide() {   // (offline there is no await, so it still
    (st.complete: RIDE_MIN_SECONDS driven AND CFG.COMPLETE_DIST covered, set in sim/physics.js). */
 export function endRide(ok, reason, outcome = ok ? 'shift' : 'failed') {   // outcome: what the server is told – abandoning a shift is 'shift' (the server judges it), a crash is 'failed'
   if (st.mode !== 'drive' && st.mode !== 'paused') return;
+  if (offlineRide.on) {   // no account, no recording, no payout: the count was spent when the run started
+    st.mode = 'done'; if (!ok) audio.play('game-over');
+    showMenu(ok ? 'SHIFT COMPLETE' : 'RIDE FAILED', ok ? 'The road ends here. Another run?' : '',
+      `<div class="row"><span>Result</span><b class="${ok ? 'good' : 'bad'}">${ok ? 'COMPLETE' : 'FAILED'}</b></div>
+       <div class="row"><span>Time driven</span><b>${fmt(st.t)}</b></div>
+       <div class="row"><span>Distance</span><b>${(st.s / 1000).toFixed(2)} km</b></div>
+       ${ok ? '' : `<div class="row"><span>Reason</span><span class="bad">${reason}</span></div>`}`);
+    if (outcome === 'failed') failFx(); else if (ok) winFx();
+    return;
+  }
   if (online.ride) { track('ride_end_requested', { outcome, client_complete: !!st.complete, fail_code: failCode(outcome, reason) }); flushSoon(); }   // before endOnline; the server verdict is the completion metric
   st.mode = 'done'; stopLiveFeed(); if (!ok) audio.play('game-over');
   const verdict = endOnline(outcome, reason);   // null offline

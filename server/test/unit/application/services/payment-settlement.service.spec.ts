@@ -33,7 +33,7 @@ describe('PaymentSettlementService', () => {
     expect((await ctx.reload(order.id)).snapshot()).toMatchObject({ status: RideStatus.Created, endedAt: null, reason: null });
     expect((await ctx.reload(free.id)).status).toBe(RideStatus.Cancelled);
     expect((await ctx.reload(otherOrder.id)).status).toBe(RideStatus.Expired);
-    expect((await ctx.storedPlayer('w')).freeRides).toBe(5);
+    expect((await ctx.storedPlayer('w')).freeRides).toBe(10);
     expect((await ctx.rides.listOpenByWallet('w')).map((r) => r.id)).toEqual([order.id]); // ONE ride in hand
   });
 

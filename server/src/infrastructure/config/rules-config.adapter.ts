@@ -5,6 +5,7 @@ import { EnvService } from './env.service.js';
 
 const QUOTE_TTL_MS = 10 * MINUTE_MS;
 const NONCE_TTL_MS = 5 * MINUTE_MS;
+// Live signup and the daily cap are `player.GameSetting`. These stay at the old fixture numbers.
 const FREE_ON_SIGNUP = 5;
 const FREE_RIDES_MAX = 5;
 

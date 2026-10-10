@@ -13,13 +13,13 @@ export function flowScenarios(h: () => Harness): void {
   beforeEach(() => h().reset());
 
   describe('sign-in with Solana', () => {
-    it('signs in, sets an httpOnly cookie, and starts with 5 free rides', async () => {
+    it('signs in, sets an httpOnly cookie, and starts with 10 free rides', async () => {
       const w = wallet(), agent = request.agent(server());
       const { body: ch } = await agent.post('/api/auth/nonce').send({ wallet: w.address }).expect(200);
       expect(ch.message).toContain(w.address);
       const res = await agent.post('/api/auth/verify').send({ wallet: w.address, signature: sign(w.kp, ch.message) }).expect(200);
       expect(res.headers['set-cookie'][0]).toMatch(/fc_session=.*HttpOnly/);
-      expect(res.body).toMatchObject({ wallet: w.address, freeRides: 5 });
+      expect(res.body).toMatchObject({ wallet: w.address, freeRides: 10, freeRidesMax: 5 });
       await agent.get('/api/me').expect(200);
     });
 
@@ -52,11 +52,11 @@ export function flowScenarios(h: () => Harness): void {
       const r1 = (await agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
       expect(r1).toMatchObject({ status: 'created', minSeconds: 10, completeDist: 70, trip: 'free' });   // the free run's line: 0.25 × 28 × 10
       expect((await agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body.id).toBe(r1.id);   // same unstarted ride, no 2nd credit
-      expect((await agent.get('/api/me')).body.freeRides).toBe(4);
+      expect((await agent.get('/api/me')).body.freeRides).toBe(9);
       await agent.post('/api/rides').send({ tier: 'paid1h' }).expect(400);
       sec(86_400);
-      expect((await agent.get('/api/me')).body.freeRides).toBe(5);   // +1 for the new day
-      expect((await agent.get('/api/me')).body.freeRides).toBe(5);   // …only once
+      expect((await agent.get('/api/me')).body.freeRides).toBe(9);   // still above the daily cap of 5: no refill, nothing taken
+      expect((await agent.get('/api/me')).body.freeRides).toBe(9);
     });
 
     it('the midnight job tops up everyone below the cap by one, never above it, once a day; /api/me counts down to the next one', async () => {
@@ -68,8 +68,8 @@ export function flowScenarios(h: () => Harness): void {
       };
       const a = await login(), b = await login();
       const me = async (agent: ReturnType<typeof request.agent>) => (await agent.get('/api/me').expect(200)).body;
-      expect(await me(b.agent)).toMatchObject({ freeRides: 5, freeRidesMax: 5, nextFreeRideAt: null });   // full: no timer
-      await spendOne(a.agent); await spendOne(a.agent);
+      expect(await me(b.agent)).toMatchObject({ freeRides: 10, freeRidesMax: 5, nextFreeRideAt: null });   // above the daily cap: no timer
+      for (let i = 0; i < 7; i++) await spendOne(a.agent);                           // 10 → 3, under the cap
       const midnight = Math.floor(h().clock.ms / 86_400_000) * 86_400_000 + 86_400_000;
       expect(await me(a.agent)).toMatchObject({ freeRides: 3, freeRidesMax: 5, nextFreeRideAt: midnight });
       expect((await grant()).players).toBe(0);                                      // same UTC day: nothing to give yet
@@ -77,7 +77,7 @@ export function flowScenarios(h: () => Harness): void {
       expect((await grant()).players).toBe(2);
       expect((await grant()).players).toBe(0);                                      // once a day
       expect(await me(a.agent)).toMatchObject({ freeRides: 4, nextFreeRideAt: midnight + 86_400_000 });
-      expect(await me(b.agent)).toMatchObject({ freeRides: 5, nextFreeRideAt: null });   // the cap holds
+      expect(await me(b.agent)).toMatchObject({ freeRides: 10, nextFreeRideAt: null });   // surplus stays; the cap does not take it
       sec(86_400); await grant(); await grant();
       expect((await me(a.agent)).freeRides).toBe(5);
       expect((await me(a.agent)).nextFreeRideAt).toBeNull();
@@ -88,7 +88,7 @@ export function flowScenarios(h: () => Harness): void {
 
     it('runs out after the free credits are spent', async () => {
       const { agent } = await login();
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 10; i++) {
         const r = (await agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
         await agent.post(`/api/rides/${r.id}/start`).expect(200);
         await agent.post(`/api/rides/${r.id}/end`).send({ outcome: 'failed', s: 0, reason: 'test' }).expect(200);

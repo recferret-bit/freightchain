@@ -1,4 +1,5 @@
-import { ConflictError } from '../shared/errors.js';
+import { FREE_RIDES_HARD_MAX } from '../settings/game-settings.js';
+import { BadRequestError, ConflictError } from '../shared/errors.js';
 import { utcDay } from '../shared/time.js';
 
 export interface PlayerProps {
@@ -6,7 +7,7 @@ export interface PlayerProps {
   version: number;
   freeRides: number;
   freeDay: string;
-  /** the most free-ride credits the wallet can hold – the daily grant stops here (column default 5) */
+  /** where the daily refill stops. The live setting wins; a balance already above it (signup, a promo, an admin grant) stays. */
   freeRidesMax: number;
   createdAt: Date;
   /** when a ride was first STARTED with the tutorial on (null = never): the lobby then leaves the tutorial off by default */
@@ -55,6 +56,29 @@ export class Player {
     if (this.awaitsDailyGrant) this.props.freeRides += 1;
     this.props.freeDay = today;
     return true;
+  }
+
+  /**
+   * The live daily cap (`free_rides_daily_max`). Replaces a stored per-player max. Does not add or remove rides:
+   * a balance already above the new cap (signup, a promo, an admin grant) stays.
+   */
+  setDailyCap(cap: number): boolean {
+    if (!Number.isInteger(cap) || cap < 0) throw new BadRequestError('daily cap must be a whole number ≥ 0');
+    if (this.props.freeRidesMax === cap) return false;
+    this.props.freeRidesMax = cap;
+    return true;
+  }
+
+  /**
+   * A signed admin change. A delta that would go below zero or above `FREE_RIDES_HARD_MAX` is refused, not clamped,
+   * so the signed number is exactly what lands.
+   */
+  adjustFreeRides(delta: number): void {
+    if (!Number.isInteger(delta) || delta === 0) throw new BadRequestError('delta must be a non-zero integer');
+    const next = this.props.freeRides + delta;
+    if (next < 0) throw new ConflictError('that would take the free rides below zero', 'free_rides_floor');
+    if (next > FREE_RIDES_HARD_MAX) throw new ConflictError('that would take the free rides above the limit', 'free_rides_ceiling');
+    this.props.freeRides = next;
   }
 
   /** Extra free rides from a promo code, on top of the daily ones. They may take the balance above `freeRidesMax`: the cap only limits the daily refill, which adds below it and never takes anything away. */

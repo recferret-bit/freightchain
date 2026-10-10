@@ -9,6 +9,7 @@ import { StatsService } from './services/stats.service.js';
 import { RoundService } from './services/round.service.js';
 import { VerdictService } from './services/verdict.service.js';
 import { AdminProofService } from './services/admin-proof.service.js';
+import { GameSettingsService } from './services/game-settings.service.js';
 import { GrantDailyFreeRidesHandler } from './use-cases/players/grant-daily-free-rides/grant-daily-free-rides.handler.js';
 import { RecordTelemetryHandler } from './use-cases/telemetry/record-telemetry/record-telemetry.handler.js';
 import { GetMeHandler } from './use-cases/auth/get-me/get-me.handler.js';
@@ -95,9 +96,14 @@ import { SyncPoolsHandler } from './use-cases/chain/sync-pools/sync-pools.handle
 import { CrankPoolsHandler } from './use-cases/chain/crank-pools/crank-pools.handler.js';
 import { ReceiveChainWebhookHandler } from './use-cases/chain/receive-chain-webhook/receive-chain-webhook.handler.js';
 import { RegisterPoolFromChainHandler } from './use-cases/pools/register-pool-from-chain/register-pool-from-chain.handler.js';
+import { AdjustFreeRidesHandler } from './use-cases/admin/adjust-free-rides/adjust-free-rides.handler.js';
+import { GetSettingsHandler } from './use-cases/admin/get-settings/get-settings.handler.js';
+import { UpdateSettingHandler } from './use-cases/admin/update-setting/update-setting.handler.js';
+import { ClaimOfflineRideHandler } from './use-cases/offline/claim-offline-ride/claim-offline-ride.handler.js';
+import { GetOfflineRidesHandler } from './use-cases/offline/get-offline-rides/get-offline-rides.handler.js';
 
 const services: Provider[] = [
-  AchievementService, PaymentSettlementService, PlayerSessionService, RideLookupService, RoundService, VerdictService, AdminProofService,
+  AchievementService, PaymentSettlementService, PlayerSessionService, GameSettingsService, RideLookupService, RoundService, VerdictService, AdminProofService,
   PoolTicketsService, PromoCreationService, TicketSettlementService, PoolRegistryService, FinalityService, LiveAccessService, StatsService,
 ];
 
@@ -126,6 +132,7 @@ const handlers: Provider[] = [
   GetRefundTransactionHandler, GetPayoutTransactionsHandler,
   GetChainFeesHandler,
   PollProgramHandler, SyncPoolsHandler, CrankPoolsHandler, ReceiveChainWebhookHandler, RegisterPoolFromChainHandler,
+  AdjustFreeRidesHandler, GetSettingsHandler, UpdateSettingHandler, ClaimOfflineRideHandler, GetOfflineRidesHandler,
 ];
 
 @Module({
