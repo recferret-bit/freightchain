@@ -10,7 +10,7 @@ export const REV_RATIO = 3.8;                // gear -1 (R)
 export const K_RPM = 2400 / (30 * 0.75);     // wheel rpm per (m/s · ratio)
 export const IDLE = 700, REDLINE = 2800, STALL_RPM = 450;
 /* Every per-ride field and its start value: the initial `st` below and resetRide() (ui/game.js) both use it, so a new field is added in ONE place.
-   The varying ones are passed in: engine/rpm (CFG.START_ENGINE_OFF), engine temperature (ambient), steering pull side (random per ride). */
+   The varying ones are passed in: engine/rpm (CFG.START_ENGINE_OFF), engine temperature (ambient), steering pull side (ui/game.js sets it from the road seed). */
 export const rideStart = ({ rpm, engineOn, temp, pull }) => ({ s: 0, d: 2.4, psi: 0, v: 0, gear: 0, rpm, freeRpm: IDLE, engineOn, batt: CFG.BATT.START, battDead: false, park: true,   // the truck starts parked: release the brake (B / PARK) before moving
   fight: false, blownWhy: null, stallT: 0, noStall: 0, ign: null, keyOn: false, test: 1, rumble: 0, air: 0.2, temp, heater: false, heatEff: 0, coldT: 0, strain: 0, brakeT: 0, _brakeWarned: false, blown: false, _coldWarned: false, tyaw: 0, vel: 0, rev: false, off: false, complete: false, reds: 0, hull: 100, crashV: 0, crashB: 0, crash: 0, flash: 0, pull, cracks: [], scratches: [], wash: 1, washing: false, clutch: 0, gas: 0, brake: 0, steer: 0, t: 0, offT: 0, bugs: [], bugT: 4, grind: 0, jolt: 0, overrev: false });
 export const st = {

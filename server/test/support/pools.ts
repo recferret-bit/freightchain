@@ -9,7 +9,7 @@ export const poolProps = (over: Partial<PoolProps> = {}, now = new Date(Date.UTC
   id: 1, address: `PoolPda${String(over.id ?? 1).padStart(37, '1')}`, tier: '1h', label: '1 HOUR · test', priceLamports: 50_000_000,
   minTickets: 2, maxTickets: 0, maxPerWallet: 5, prepDeadline: new Date(now.getTime() + 7 * DAY), playDeadline: new Date(now.getTime() + 14 * DAY),
   prizeBps: 7000, seedBps: 2000, feeBps: 1000, feeTreasury: 'FeeTreasury11111111111111111111111111111111', seedTreasury: 'SeedTreasury1111111111111111111111111111111',
-  status: 'open', ticketsSold: 0, buyers: 0, vaultLamports: 0, sponsored: 0, roundId: null, createdAt: now, syncedAt: null,
+  status: 'open', ticketsSold: 0, buyers: 0, vaultLamports: 0, sponsored: 0, roundId: null, rideSeed: 4242, createdAt: now, syncedAt: null,
   ...over,
 });
 

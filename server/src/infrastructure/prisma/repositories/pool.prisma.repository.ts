@@ -56,7 +56,7 @@ export class PoolPrismaRepository extends PoolRepositoryPort {
 
   async upsert(pool: Pool, tx?: TransactionHandle): Promise<void> {
     const data = PoolMapper.toData(pool);
-    const { id, ...update } = data;
+    const { id, rideSeed: _set_once, ...update } = data; // the ride seed is written with the row and never again: two first syncs racing must not leave the pool's riders on two roads
     await clientFor(this.prisma, tx).pool.upsert({ where: { id }, create: data, update });
   }
 }

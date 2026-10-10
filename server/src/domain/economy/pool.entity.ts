@@ -22,10 +22,10 @@ export class Pool {
   }
 
   /**
-   * The mirror row of an account read from chain. Rules and balances come from the account (the chain wins); the label and the ranking round are the
-   * server's own and are kept from the existing row. An unknown tier byte is refused.
+   * The mirror row of an account read from chain. Rules and balances come from the account (the chain wins); the label, the ranking round and the ride seed are
+   * the server's own and are kept from the existing row – `rideSeed` is used only for a pool the mirror has not seen. An unknown tier byte is refused.
    */
-  static fromChain(state: PoolChainState, now: Date, existing: Pool | null = null): Pool {
+  static fromChain(state: PoolChainState, now: Date, existing: Pool | null, rideSeed: number): Pool {
     const tier = tierFromChainCode(state.tier);
     if (!tier) throw new BadRequestError(`pool ${state.poolId}: unknown tier code ${state.tier}`, 'bad_pool');
     return Pool.register({
@@ -33,7 +33,7 @@ export class Pool {
       minTickets: state.minTickets, maxTickets: state.maxTickets, maxPerWallet: state.maxPerWallet, prepDeadline: state.prepDeadline, playDeadline: state.playDeadline,
       prizeBps: state.prizeBps, seedBps: state.seedBps, feeBps: state.feeBps, feeTreasury: state.feeTreasury, seedTreasury: state.seedTreasury, status: state.status,
       ticketsSold: state.ticketsSold, buyers: state.buyers, vaultLamports: state.escrowLamports, sponsored: state.sponsored, roundId: existing?.p.roundId ?? null,
-      createdAt: state.createdAt, syncedAt: now,
+      rideSeed: existing?.p.rideSeed ?? rideSeed, createdAt: state.createdAt, syncedAt: now,
     });
   }
 
@@ -47,6 +47,7 @@ export class Pool {
     if (props.maxTickets !== 0 && props.maxTickets < props.minTickets) bad('the maximum is below the minimum');
     if (props.priceLamports < 1) bad('a ticket costs something');
     if (props.prepDeadline.getTime() > props.playDeadline.getTime()) bad('the preparation deadline is after the play deadline');
+    if (!Number.isInteger(props.rideSeed) || props.rideSeed < 0 || props.rideSeed > 0x7fff_ffff) bad('the ride seed is a 31-bit integer');
     return new Pool({ ...props });
   }
 
@@ -61,6 +62,8 @@ export class Pool {
   get prepDeadline(): Date { return this.p.prepDeadline; }
   get playDeadline(): Date { return this.p.playDeadline; }
   get roundId(): number | null { return this.p.roundId; }
+  /** the road every ride of this pool is driven on – one seed for the whole pool, so all its riders compete on the same ride */
+  get rideSeed(): number { return this.p.rideSeed; }
   get isActive(): boolean { return this.p.status === 'active'; }
   get isRefunding(): boolean { return this.p.status === 'refunding'; }
 

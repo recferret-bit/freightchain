@@ -53,7 +53,7 @@ export class MemoryPoolRepository extends PoolRepositoryPort {
       .sort((a, b) => a.prepDeadline.getTime() - b.prepDeadline.getTime() || a.id - b.id).map((p) => Pool.restore(p));
   }
 
-  async upsert(pool: Pool): Promise<void> { this.db.pools.set(pool.id, pool.snapshot()); }
+  async upsert(pool: Pool): Promise<void> { const had = this.db.pools.get(pool.id); this.db.pools.set(pool.id, { ...pool.snapshot(), rideSeed: had?.rideSeed ?? pool.rideSeed }); } // the ride seed is set once, like the Prisma upsert
 }
 
 @Injectable()

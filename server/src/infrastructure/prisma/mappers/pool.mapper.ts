@@ -10,7 +10,7 @@ export class PoolMapper {
       minTickets: row.minTickets, maxTickets: row.maxTickets, maxPerWallet: row.maxPerWallet, prepDeadline: row.prepDeadline, playDeadline: row.playDeadline,
       prizeBps: row.prizeBps, seedBps: row.seedBps, feeBps: row.feeBps, feeTreasury: row.feeTreasury, seedTreasury: row.seedTreasury,
       status: row.status as PoolStatus, ticketsSold: row.ticketsSold, buyers: row.buyers, vaultLamports: Number(row.vaultLamports), sponsored: Number(row.sponsored),
-      roundId: row.roundId, createdAt: row.createdAt, syncedAt: row.syncedAt,
+      roundId: row.roundId, rideSeed: row.rideSeed, createdAt: row.createdAt, syncedAt: row.syncedAt,
     });
   }
 

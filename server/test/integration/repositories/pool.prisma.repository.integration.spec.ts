@@ -22,6 +22,12 @@ describe('PoolPrismaRepository (PostgreSQL)', () => {
     expect(await repo.findByAddress('nope')).toBeNull();
   });
 
+  it('the ride seed is written with the row and never again: a later upsert (a re-sync, two first syncs racing) cannot move the pool\'s riders to another road', async () => {
+    await repo.upsert(aPool({ id: 3, rideSeed: 2_147_483_647 }, T0));
+    await repo.upsert(aPool({ id: 3, rideSeed: 11, status: 'active' }, T0));
+    expect((await repo.findById(3))?.snapshot()).toMatchObject({ rideSeed: 2_147_483_647, status: 'active' });
+  });
+
   it('listLive / listLiveOfTier: only open + active, soonest play deadline first; findMany by id', async () => {
     await repo.upsert(aPool({ id: 1, status: 'active', playDeadline: at(10 * DAY) }, T0));
     await repo.upsert(aPool({ id: 2, status: 'open', playDeadline: at(5 * DAY) }, T0));

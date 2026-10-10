@@ -78,6 +78,7 @@ model Pool {
   vaultLamports BigInt        @default(0) // the escrow: vault lamports above its rent-exempt minimum, sponsorships included
   sponsored     BigInt        @default(0)
   roundId       Int? // the weekly round it ranks in (set when it goes active)
+  rideSeed      Int // the road seed EVERY ride of this pool is driven on (31-bit, the server's own: drawn when the pool enters the mirror, never updated)
   round         Round?        @relation(fields: [roundId], references: [id])
   createdAt     DateTime
   syncedAt      DateTime?

@@ -10,7 +10,7 @@ const PRICE = 40_000_000;
 
 const props = (over: Partial<PoolProps> = {}): PoolProps => ({
   id: 7, address: 'PoolPda', tier: '1h', label: '1 HOUR · week 42', priceLamports: PRICE, minTickets: 10, maxTickets: 0, maxPerWallet: 10, prepDeadline: PREP, playDeadline: PLAY,
-  prizeBps: 7000, seedBps: 2000, feeBps: 1000, feeTreasury: 'Fee', seedTreasury: 'Seed', status: 'open', ticketsSold: 0, buyers: 0, vaultLamports: 0, sponsored: 0, roundId: null, createdAt: T0, syncedAt: null,
+  prizeBps: 7000, seedBps: 2000, feeBps: 1000, feeTreasury: 'Fee', seedTreasury: 'Seed', status: 'open', ticketsSold: 0, buyers: 0, vaultLamports: 0, sponsored: 0, roundId: null, rideSeed: 777, createdAt: T0, syncedAt: null,
   ...over,
 });
 const pool = (over: Partial<PoolProps> = {}) => Pool.restore(props(over));
@@ -206,7 +206,7 @@ describe('Pool – the state machine replays the program events', () => {
 describe('Pool.register – the create_pool rules, checked again when a pool enters the mirror', () => {
   it('accepts a valid pool and refuses broken rules', () => {
     expect(Pool.register(props()).id).toBe(7);
-    for (const over of [{ id: -1 }, { id: 2 ** 32 }, { prizeBps: 6000 }, { minTickets: 0 }, { maxPerWallet: 0 }, { maxTickets: 1, minTickets: 2 }, { priceLamports: 0 }, { prepDeadline: new Date(PLAY.getTime() + 1) }]) {
+    for (const over of [{ id: -1 }, { id: 2 ** 32 }, { prizeBps: 6000 }, { minTickets: 0 }, { maxPerWallet: 0 }, { maxTickets: 1, minTickets: 2 }, { priceLamports: 0 }, { prepDeadline: new Date(PLAY.getTime() + 1) }, { rideSeed: -1 }, { rideSeed: 2 ** 31 }, { rideSeed: 1.5 }]) {
       expect(() => Pool.register(props(over)), JSON.stringify(over)).toThrow(BadRequestError);
     }
   });
@@ -220,14 +220,19 @@ describe('Pool.fromChain – the mirror row of an account', () => {
   });
 
   it('takes rules and balances from the account (escrow, not raw vault lamports) and keeps the server\'s label and round', () => {
-    const fresh = Pool.fromChain(state(), PLAY);
+    const fresh = Pool.fromChain(state(), PLAY, null, 31);
     expect(fresh.snapshot()).toMatchObject({ id: 7, tier: '4h', label: '4H · pool 7', status: 'active', ticketsSold: 12, buyers: 9, vaultLamports: 12 * PRICE + 5, sponsored: 5, roundId: null, syncedAt: PLAY });
     const existing = pool({ label: 'week 42', roundId: 3 });
-    expect(Pool.fromChain(state(), PLAY, existing).snapshot()).toMatchObject({ label: 'week 42', roundId: 3 });
+    expect(Pool.fromChain(state(), PLAY, existing, 31).snapshot()).toMatchObject({ label: 'week 42', roundId: 3 });
+  });
+
+  it('a pool new to the mirror takes the given ride seed; a known one keeps its own (one road for all its riders)', () => {
+    expect(Pool.fromChain(state(), PLAY, null, 31).rideSeed).toBe(31);
+    expect(Pool.fromChain(state(), PLAY, pool({ rideSeed: 99 }), 31).rideSeed).toBe(99);
   });
 
   it('refuses an unknown tier byte or broken rules', () => {
-    expect(() => Pool.fromChain(state({ tier: 9 }), PLAY)).toThrow(BadRequestError);
-    expect(() => Pool.fromChain(state({ feeBps: 0 }), PLAY)).toThrow(BadRequestError);
+    expect(() => Pool.fromChain(state({ tier: 9 }), PLAY, null, 1)).toThrow(BadRequestError);
+    expect(() => Pool.fromChain(state({ feeBps: 0 }), PLAY, null, 1)).toThrow(BadRequestError);
   });
 });

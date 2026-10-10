@@ -176,6 +176,9 @@ check(nightX.night===true&&dayX.night===false&&G.THEMES.some(t=>t.id===dayX.rout
     if(fire){ for(let i=0;i<60*6&&st.mode==='drive';i++){ hold(1); Object.assign(fire,{s:st.s+3.3+fire.def.len/2-.3,lat:2.4,v:0,lv:0}); step(1); } }
     check(!!fire&&st.crashV===1&&100-st.hull<1.5&&st.mode==='drive','a vehicle pinned against the truck for 6 s is one crash (crashV '+st.crashV+', hull −'+(100-st.hull).toFixed(2)+' %)'); }
   st.mode='done'; }
+// one pool, one ride (the server gives every rider of a pool its seed): the same seed starts the trip among the same cars, whatever the last trip left behind
+{ const cars=()=>{ st.s=0; G.roads.newTrip(12345); return G.traffic.map(a=>a.preset+a.pick+'@'+a.s.toFixed(2)+'/'+a.lat.toFixed(2)+'>'+a.vDes.toFixed(2)).join(' '); };
+  const t1=cars(), t2=cars(); check(t1!==''&&t1===t2,'same seed -> same starting traffic ('+G.traffic.length+' cars)'); }
 out.push(...checks); out.push('errors='+errors.length+(errors[0]?' '+errors[0].message:''));
 console.log(out.join('\n'));
 const failed=checks.filter(c=>c.startsWith('FAIL'));

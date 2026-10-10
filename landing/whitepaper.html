@@ -210,7 +210,7 @@
   <h3 class="sub">HOW A SHIFT RUNS</h3>
   <ol class="flow">
     <li><i>1</i><b>SIGN IN</b><span>Sign a message with Phantom or Solflare. No transaction, no fee. A cookie keeps the session; the site never sees your key.</span></li>
-    <li><i>2</i><b>START</b><span>Free: spend a free ride. Paid: spend one ticket of that tier's live pool. The server issues a signed ride with a seed and a start time.</span></li>
+    <li><i>2</i><b>START</b><span>Free: spend a free ride. Paid: spend one ticket of that tier's live pool. The server issues a signed ride with a seed (a pool's own: all its riders drive one road) and a start time.</span></li>
     <li><i>3</i><b>DRIVE</b><span>The game heartbeats the server. Driven seconds come from those beats, capped by wall time. The recording uploads every 15 s.</span></li>
     <li><i>4</i><b>FINISH</b><span>After the minimum time <em>and</em> the minimum distance the shift is <em>complete</em>. You may keep driving, then end it (P → END SHIFT).</span></li>
   </ol>
@@ -618,7 +618,7 @@
     <li><i>3</i><b>WATCH PAGE · every 4 s</b><span>It polls for the next batches and the chat feed, builds the road from the ride's seed and route, and writes the truck's state from the samples. Nothing is simulated.</span></li>
     <li><i>4</i><b>REPLAY</b><span>Once the ride has ended, the same page is a replay with a timeline and 1×, 4× and 16× speeds, for as long as the recording is kept (90 days).</span></li>
   </ol>
-  <p><b>Live is slightly behind.</b> The page plays about 25 s behind the newest recorded second: one 15 s batch plus its upload, with room for a late one. If the next batch has not arrived, the last frame holds and the panel says so. A paused game records no game time, so a pause never shows as a gap. Anyone can watch any ride that has started; a ride that has not started is a 404, so a seed is never handed out early.</p>
+  <p><b>Live is slightly behind.</b> The page plays about 25 s behind the newest recorded second: one 15 s batch plus its upload, with room for a late one. If the next batch has not arrived, the last frame holds and the panel says so. A paused game records no game time, so a pause never shows as a gap. Anyone can watch any ride that has started; a ride that has not started is a 404. A pool's seed goes public with its first ride.</p>
   <p>The road is endless but deterministic: layout is a pure function of the ride's seed, route and trip, so only the truck is recorded. <b>The holes are the server's</b>, never the driver's game's. A hole driven through undamaged is ringed red, and the replay stamps NO IMPACT as it passes. Not replayed: cracks, debris, the radio, and the raw key presses.</p>
 
   <h3 class="sub">CHAT: A CB RADIO IN THE CAB</h3>

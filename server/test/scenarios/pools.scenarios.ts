@@ -94,6 +94,26 @@ export function poolScenarios(h: () => Harness): void {
       expect((await ride(w, '1h').expect(409)).body).toMatchObject({ code: 'no_tickets', detail: 'no 1h tickets left' });
     });
 
+    it('one pool, one road: every rider of the pool (and every ticket of one rider) gets the pool\'s seed, route, start hour and the same holes', async () => {
+      await seedPool({ id: 1, status: 'active', rideSeed: 123_457 });
+      await seedPool({ id: 2, tier: '4h', status: 'active', rideSeed: 765_431 });
+      await seedPromo('TWO', { effect: ticketEffect({ credits: 2 }) });
+      await seedPromo('FOUR', { effect: ticketEffect({ tier: '4h', credits: 1 }) });
+      const [a, b] = [await login(), await login()];
+      await redeem(a, 'TWO').expect(200); await redeem(b, 'TWO').expect(200); await redeem(b, 'FOUR').expect(200);
+      const ra = (await ride(a, '1h').expect(200)).body;
+      const rb = (await ride(b, '1h').expect(200)).body;
+      expect(rb).toMatchObject({ seed: 123_457, route: ra.route, startHour: ra.startHour, trip: ra.trip });
+      expect(ra.seed).toBe(123_457);
+      for (const [w, r] of [[a, ra], [b, rb]] as const) await w.agent.post(`/api/rides/${r.id}/start`).expect(200);
+      const plan = async (id: string) => (await anon().get(`/api/watch/${id}/road?from=0&to=8000`).expect(200)).body.holes;
+      expect(await plan(rb.id)).toEqual(await plan(ra.id));
+      sec(2); await a.agent.post(`/api/rides/${ra.id}/end`).send({ outcome: 'failed', s: 0, t: 1 }).expect(200);
+      expect((await ride(a, '1h').expect(200)).body.seed).toBe(123_457); // a second ticket: the same road again
+      await b.agent.post(`/api/rides/${rb.id}/end`).send({ outcome: 'failed', s: 0, t: 1 }).expect(200);
+      expect((await ride(b, '4h').expect(200)).body.seed).toBe(765_431); // another pool, another road
+    });
+
     it('tickets in a pool still short of its minimum cannot be ridden yet (409 pool_not_live); once it is active they can', async () => {
       await seedPool({ id: 1, status: 'open', minTickets: 3, ticketsSold: 1 });
       await seedPromo('WAIT', { effect: ticketEffect({ credits: 1 }) });

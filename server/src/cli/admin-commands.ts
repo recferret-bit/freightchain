@@ -92,7 +92,7 @@ const DAY = 86_400_000;
 const PLACEHOLDER = '11111111111111111111111111111111'; // the system program – never a real treasury, just a valid address
 
 /** A development pool with a fake (but valid) address – NOT on chain: tickets come from promo codes / tickets:grant, the explorer link leads nowhere. */
-function seededPool(a: PoolSeedArgs, now: Date, env: EnvService): PoolProps {
+function seededPool(a: PoolSeedArgs, now: Date, env: EnvService): Omit<PoolProps, 'rideSeed'> {
   const address = bs58.encode(Buffer.from(`dev-pool-${a.id}`.padEnd(32, '.')));
   return {
     id: a.id, address, tier: a.tier, label: a.label ?? `${a.tier.toUpperCase()} · dev pool ${a.id}`, priceLamports: a.priceLamports, minTickets: a.minTickets, maxTickets: a.maxTickets,

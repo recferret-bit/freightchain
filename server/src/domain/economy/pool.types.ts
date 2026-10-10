@@ -39,6 +39,9 @@ export interface PoolProps {
   sponsored: number;
   /** the weekly round it ranks in – set when the pool goes active */
   roundId: number | null;
+  /** the ROAD seed every ride of this pool is driven on (31-bit, like Ride.seed): the server's own, drawn once when the pool enters the mirror and never changed,
+      so every ticket holder drives the same route, start hour, layout and holes (ride-rules.ts worldFor, domain/road). Not the `seedBps` money split. */
+  rideSeed: number;
   createdAt: Date;
   /** the last time the server compared this row with the account on chain */
   syncedAt: Date | null;
