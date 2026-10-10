@@ -52,9 +52,9 @@ selectTheme(THEMES[0].id, true); setClock(12, true, true);   // the prototype's 
 await initOnline();   // only with ?ride=<id> (see online.js); offline it returns at once
 const wantOffline = offlineWanted() && !online.ride && !online.error;   // play.html?offline=1 only. ?ride= and a failed load of one win. Bare play.html stays the prototype.
 if (online.ride) { selectTheme(online.ride.route ?? THEMES[0].id, true); if (online.ride.startHour != null) setClock(online.ride.startHour, true, true); }   // what the server assigned to this ride at creation (ride-rules.ts worldFor)
-if (wantOffline) setGuide({ tutorial: false, assist: false });   // the counted run is the plain free trip: the other free-ride kinds stay on the lobby's ride
+if (wantOffline) setGuide({ tutorial: false, assist: false });   // the guest run: the menu's two checkboxes set the helpers at START (ui/game.js)
 else setGuide(online.ride ?? (typeof location === 'undefined' ? {} : (q => ({ tutorial: q.get('tutorial') === '1', assist: q.get('assist') === '1' }))(new URL(location.href).searchParams)));   // the free ride's tutorial / assist: the SERVER's flags of the ride, or ?tutorial=1&assist=1 on the offline prototype (tests)
-if (wantOffline) setTrip('free-1');   // the counted offline run = the EASY level's road
+if (wantOffline) setTrip('free-1');   // the guest run = the EASY level's road
 else setTrip(online.ride ? tripOf(online.ride) : typeof location === 'undefined' ? null : new URL(location.href).searchParams.get('trip'));   // the ride's road (trips.js): the trip the server stamped on it, or ?trip=free-1|free-2|free-3|1h|4h|8h offline (tuning); before the road is built
 if (trip.assist === false) guide.assist = false;   // the HARD free run has no assist (the server refuses it on the ride too)
 if (!online.ride && trip.seconds) { CFG.RIDE_MIN_SECONDS = trip.seconds; CFG.COMPLETE_DIST = trip.k * CFG.MAX_SPEED * trip.seconds; }   // offline ?trip=free: the free run's own shift (online the server's ride sets both)

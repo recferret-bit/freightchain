@@ -121,7 +121,7 @@ flowchart LR
 
 - **Landing** — [`landing/`](landing/index.html). Vite. Wallet sign-in, live pool and boards, dash cards drawn by the game's cockpit code. The hero video loads after the page, and never on a phone. [Read the page](https://freightchain.fun).
 - **Lobby** — [`client/lobby.html`](client/lobby.html). Tabs: New ride, Live, Replays, Leaderboard, Garage, Promo, Profile. Server text goes in with `textContent`.
-- **Game** — [`client/play.html`](client/play.html). `?ride=` is an online shift. `?watch=` is a spectator. `?offline=1` is a counted anonymous free run. Bare `play.html` is the offline prototype. `file://` cannot load the modules.
+- **Game** — [`client/play.html`](client/play.html). `?ride=` is an online shift. `?watch=` is a spectator. `?offline=1` is an uncounted guest free run (tutorial / assist picked in its menu, nothing recorded). Bare `play.html` is the offline prototype. `file://` cannot load the modules.
 - **Whitepaper** — [`landing/whitepaper.html`](landing/whitepaper.html). A long read. Its only request is web vitals to the API. Its numbers are asserted against the code by [`landing/test/whitepaper.test.js`](landing/test/whitepaper.test.js).
 - **Model viewer** — [`client/viewer.html`](client/viewer.html). Same builders as the game. No API on that host.
 - **Admin** — [`client/admin.html`](client/admin.html). Nginx basic auth, then an admin wallet session (`ADMIN_WALLETS`, 2 hours). Every change is a wallet signature over that exact action, and the row is kept. The player cookie grants nothing there. On a split deploy the API answers `/api/admin` only when `Host` is `admin.<apex>`.
@@ -195,7 +195,7 @@ Read: [`client/js/themes/index.js`](client/js/themes/index.js) · [model viewer]
 | 4 hour | 4 h | $15 planned | When a pool is registered | Bends ×1.2, traffic ×1.4 |
 | 8 hour | 8 h | $50 planned | When a pool is registered | Bends ×1.4, traffic ×1.8 |
 
-A new wallet starts with 10 free rides. The daily refill adds one at 00:00 UTC and stops at 5. A promo can sit above that cap. `play.html?offline=1` allows 3 runs per browser fingerprint and 10 per IP, with no account.
+A new wallet starts with 10 free rides. The daily refill adds one at 00:00 UTC and stops at 5. A promo can sit above that cap. `play.html?offline=1` is an uncounted guest run with no account.
 
 The free ride is picked at a level in the lobby (`POST /api/rides` `level` 1–3). Each level has its own leaderboard (HARD by default) and its own achievement: Learner's Permit, Crossroads, Long Haul. Tutorial and assist exist only on a free ride; HARD refuses assist. Assist halves hull damage and battery drain. The achievement On My Own is a completed free ride without assist. While the verdict is enforced, a rejected recording earns no badge. `node .claude/skills/level-check/check.mjs` checks every level is what it promises and passable by a human-paced driver.
 
@@ -417,7 +417,7 @@ Every directory at the repo root. `.git` is the only one left out.
 - [`client/`](client) — the game, the lobby, the admin page, and the model viewer.
 - [`deploy/`](deploy/README.md) — Docker, host nginx, certbot. `npm run deploy` ships `git archive HEAD`.
 - [`design/`](design) — icon candidates and the YouTube banners. The shipped icon is generated into `client/`.
-- [`docs/`](docs) — plans and explainers. The public escrow chapter is the whitepaper, not a file in this folder.
+- [`docs/`](docs) — plans and explainers. [`docs/agents/`](docs/agents) holds the agent detail `AGENTS.md` points to. The public escrow chapter is the whitepaper, not a file in this folder.
 - [`landing/`](landing) — the `/` page and the whitepaper. Its own Vite project.
 - [`media/`](media) — promo clips and the chiptune synth, including the game's own sound effects.
 - [`programs/`](programs/freightchain-pools) — the Anchor escrow.
