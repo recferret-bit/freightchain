@@ -11,6 +11,7 @@ import { toggleCab } from '../sim/battery.js';
 import { recordInput, releaseInputs } from '../telemetry.js';
 import { answerPrompt } from '../prompt.js';
 import { toggleMap } from './map.js';
+import { toggleFormShade } from '../world/nightlight.js';
 
 /* Keyboard + mouse input. Side effects only: listeners are attached on import. */
 
@@ -22,6 +23,7 @@ const KEYS = {
 const volumeMsg = d => { radio.volume(d); toast('Radio volume ' + Math.round(radio.vol * 100) + '%', 900); };
 const radioMsg = on => toast(!on ? 'Radio off' : st.mode === 'drive' && !powered() ? 'Radio: turn the key to ON' : 'FM ' + radio.station.freq.toFixed(1) + ' · ' + radio.station.name, 1600);
 addEventListener('keydown', e => {
+  if (e.code === 'F8' && !e.repeat && !e.target.closest?.('input, textarea')) { e.preventDefault(); toast(toggleFormShade() ? 'Form shade on' : 'Form shade off', 1200); return; }   // not recorded: a look switch, not a driving input
   if (st.watch) {   // a spectator drives nothing: keys belong to the watch panel (chat box), only M mutes and N opens the map
     if (e.code === 'KeyM' && !e.target.closest?.('input, textarea')) { audio.muted = !audio.muted; toast(audio.muted ? 'Sound off' : 'Sound on', 1000); }
     if (e.code === 'KeyN' && !e.repeat && !e.target.closest?.('input, textarea')) toggleMap();

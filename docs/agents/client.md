@@ -121,7 +121,7 @@ Don't assume a ride can be replayed or validated by re-running the sim:
 - Tunables go in `config.js`; derived constants next to the code that owns them.
 
 ### Rendering gotchas
-- Everything is `MeshBasicMaterial` (no lights) + fog. Canvas textures are sRGB. The sky `ShaderMaterial` writes raw colours (no colour-space conversion) – don't "fix" that.
+- Everything is `MeshBasicMaterial` (no scene lights) + fog. `CFG.FORM_SHADE` (F8) adds a daytime sun shade from the world normal and a 2 cm edge on boxes (`world/nightlight.js`); upward faces stay at the flat colour, and the term fades out at night. Canvas textures are sRGB. The sky `ShaderMaterial` writes raw colours (no colour-space conversion) – don't "fix" that.
 - `Object3D.position` is read-only: use `.position.set(...)`, never `Object.assign(mesh, { position })` (throws in strict mode).
 - **Mirrors are a second render pass** with the projection x-flipped, so culling is inverted. The flip list (`flipMats()` in `world/render.js`) = the route's tracked materials (`themes/_shared/mats.js`) + `MAT` + trailer + `vehicleMats`; **every shared single-sided
   material** in the scene must be in one of those or it renders inside-out in the mirrors. `DoubleSide` materials are skipped.

@@ -49,7 +49,8 @@ const CONTROLS = `<table>
 <tr><td>A D / ← →</td><td>Steer (the road bends – and the wind pushes you!)</td></tr>
 <tr><td>SHIFT / SPACE</td><td>Hold = clutch pedal in</td></tr>
 <tr><td>E / Q</td><td>Gear up / down (clutch must be in) · 1-7 / 0 select gear / neutral · Q from neutral or G = REVERSE (stop first; beeper + slow, trailer swings)</td></tr>
-<tr><td>I</td><td>Start engine (and restart after a stall) · P pause · M mute</td></tr><tr><td>L / C</td><td>Headlights · cab light (or the HEAD / CAB dash buttons and the dome lamp above the windscreen)</td></tr><tr><td>H</td><td>Cab heater (HEAT button) – clears frost on the glass, but only as warm as the engine is · cold engine: keep the revs low until TEMP rises</td></tr><tr><td>R / X</td><td>Wipers off / slow / fast · hold X = washer spray + wipe (or click WIPER / WASH on the dash)</td></tr></table>
+<tr><td>I</td><td>Start engine (and restart after a stall) · P pause · M mute</td></tr><tr><td>L / C</td><td>Headlights · cab light (or the HEAD / CAB dash buttons and the dome lamp above the windscreen)</td></tr><tr><td>H</td><td>Cab heater (HEAT button) – clears frost on the glass, but only as warm as the engine is · cold engine: keep the revs low until TEMP rises</td></tr><tr><td>R / X</td><td>Wipers off / slow / fast · hold X = washer spray + wipe (or click WIPER / WASH on the dash)</td></tr>
+<tr><td>F8</td><td>Form shade on / off – sun on the sides of things, a thin edge on boxes. The road stays flat</td></tr></table>
 <div style="font-size:12px;color:#b9ad8d">Launch: hold clutch → E (1st) → press gas, ease the clutch out. Clutch out too fast at low revs = stall.<br>Everything beside the road can be smashed – but it damages the hull. 0% hull = wrecked.<br>Other traffic: scratches cost hull, a direct head-on / rear-end hit ends the ride – overtake only when the opposite lane is clear.<br>You start at the depot: give way at the main road, turn right slowly. Crossroads have traffic lights – side traffic goes on its green.</div>`;
 const FREE_HINT = `<div style="font-size:12px;color:#b9ad8d">This run is the easy straight road. It ends itself when the shift is done.</div>`;
 /* Guest run (play.html?offline=1): nobody is counted, recorded or judged – no request is made at all. The menu only picks the two helpers. */
@@ -58,6 +59,7 @@ function showOfflineMenu(title, sub, extra) {
   const again = !!extra;
   panel.innerHTML = `<h1>${extra ? title : 'FREE RUN'}</h1><h2>${extra ? sub : 'Just drive – nothing is recorded or ranked.'}</h2>${extra}
     <div class="row"><span>Shift</span><b>${fmt(CFG.RIDE_MIN_SECONDS)} · ${(CFG.COMPLETE_DIST / 1000).toFixed(1)} km</b></div>${FREE_HINT}
+    <div style="font-size:12px;color:#b9ad8d">F8 toggles form shade: sun on the sides of things, a thin edge on boxes. The road stays flat.</div>
     <label class="row" style="cursor:pointer"><span>TUTORIAL – step-by-step lessons over the road</span><input type="checkbox" id="g-tutorial" ${guestOpt.tutorial ? 'checked' : ''}></label>
     <label class="row" style="cursor:pointer"><span>ASSIST – the truck lasts twice as long, a tip on every control</span><input type="checkbox" id="g-assist" ${guestOpt.assist ? 'checked' : ''}></label>
     <div class="btns"><button id="go">${again ? 'DRIVE AGAIN' : 'START FREE RUN'}</button><button class="alt" id="connect">CONNECT A WALLET</button></div>`;
