@@ -25,6 +25,7 @@
       <li><a href="#coverage">The coverage gate</a></li>
       <li><a href="#maths">How lamports are checked</a></li>
       <li><a href="#found">What it found</a></li>
+      <li><a href="#chaos">Chaos</a></li>
       <li><a href="#use">Running it</a></li>
       <li><a href="#limits">Not covered</a></li>
     </ol>
@@ -264,13 +265,27 @@ SCENARIO=payout npm run test:localnet   # only the ten-rider scenario (PREP_D / 
     </ul>
   </section>
 
+  <section class="section" id="chaos">
+    <span class="eyebrow">10b · Chaos</span>
+    <h2>The chain misbehaves, several servers work at once</h2>
+    <p><span class="mono">SCENARIO=chaos</span> puts a fault-injecting RPC proxy between the server and the validator (<span class="mono">server/scripts/localnet-fault-proxy.mjs</span>: refuse, 429, swallow a send, forward it but lose the answer, delay, or take a whole provider down). The scenario's own balances and clock stay direct, so only the servers it starts see the faults. Two servers share one database; the crank runs from the command line behind a third proxy.</p>
+    <ul class="col">
+      <li><b>One purchase, every path at once</b>: confirm twice, settle on both servers, the webhook on both, both watchers. One ticket, never two.</li>
+      <li><b>Gasless buys through a bad send path</b>: swallowed sends are re-sent, a lost answer still pays once, a refused status read still gives <span class="mono">/submit</span> a 200 with the signature (never an error, so the lobby cannot pay twice) and the ticket is credited once, and a send dropped until the blockhash dies is a 409 that charges nobody and can be asked again.</li>
+      <li><b>Who credits what</b>: one server blind and the other without a websocket still credits by polling; with nobody watching nothing is credited, and a restart catches up on its own; a total provider outage does not kill either server.</li>
+      <li><b>The crank's ticket read refused</b>: the pass reports the pool's refund as failed and still serves the pools after it; with a working fallback RPC the next pass finishes it.</li>
+      <li><b>The race</b>: three crankers and a stranger on a ten-ticket pool. Identical transactions dedupe, a step that lost is retried by the next pass, every buyer is refunded exactly once and the crank key paid only fees.</li>
+    </ul>
+    <p>It found two real bugs. One refused ticket read stopped the whole crank pass, so pools after it starved. And <span class="mono">/submit</span> answered an error for a purchase that had landed, which sent the lobby to a second, self-paid payment for the same order. Both are fixed and unit-tested.</p>
+  </section>
+
   <section class="section" id="limits">
     <span class="eyebrow">11 · Not covered</span>
     <h2>What a green run does not prove</h2>
     <ul class="col">
       <li><b>A real Phantom</b>: its popups, its own RPC, and whether it ever rewrites a transaction before signing. The fake signs exactly what it is given.</li>
-      <li><b>Devnet conditions</b>: congestion, dropped transactions, RPC rate limits, and providers that refuse <code>getProgramAccounts</code>, which the crank needs.</li>
-      <li><b>Several server instances</b> cranking at once. The program makes it safe, a duplicate refund batch fails whole, but this run uses one server.</li>
+      <li><b>A real congested cluster</b>. The chaos scenario (<code>SCENARIO=chaos</code>) imitates how it fails: refused calls, 429s, swallowed and lost sends, <code>getProgramAccounts</code> refused. It does not imitate its timing. Only <code>TARGET=devnet</code> does.</li>
+      <li><b>Rust line coverage</b>. LiteSVM runs the compiled program, so a host-side coverage tool sees none of the handlers.</li>
       <li><b>Session keys and deposits</b> (phase 2 of the plan, not built).</li>
       <li><b>Automation the product does not have yet</b>: nothing sends <code>close_ticket</code> after a settlement and nothing rolls the seed treasury into the next pool. The scenario performs both by hand and checks the money.</li>
       <li>The program is <b>not audited</b>. This test shows the server, lobby and program agree; it is not a security review.</li>

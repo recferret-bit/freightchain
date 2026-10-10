@@ -72,6 +72,20 @@ describe('CrankPoolsHandler', () => {
     expect(ctx.poolChain.pools.get(4)?.status).toBe('refunding');
   });
 
+  it('a refused read of one pool\'s tickets (getProgramAccounts) stops that pool only: the pass does not throw and the pools after it are still cranked', async () => {
+    const { ctx, crank, run, tickets } = setup();
+    ctx.poolChain.pools.set(7, chainPool(ctx.now(), { poolId: 7, status: 'refunding', ticketsSold: 2, priceLamports: 50_000_000, refunded: 0 }));
+    ctx.poolChain.pools.set(8, chainPool(ctx.now(), { poolId: 8, status: 'refunding', ticketsSold: 0, priceLamports: 50_000_000, refunded: 0 }));
+    crank.tickets.set(7, tickets(2, 50_000_000));
+    crank.unreadable.add(7);
+    const pass = await run();
+    expect(pass.actions.map((a) => [a.step, a.poolId, a.error === null])).toEqual([['refund', 7, false], ['close_pool', 8, true]]);
+    expect(pass.actions[0]?.error).toMatch(/unavailable/);
+    expect(ctx.poolChain.pools.get(7)?.status).toBe('refunding'); // retried next pass
+    crank.unreadable.clear();
+    expect((await run()).actions.map((a) => a.step)).toEqual(['refund', 'close_pool']); // the next pass finishes it
+  });
+
   it('a refunding pool that owes refunds but has no Ticket account left is reported, not looped on', async () => {
     const { ctx, crank, run } = setup();
     ctx.poolChain.pools.set(6, chainPool(ctx.now(), { poolId: 6, status: 'refunding', ticketsSold: 2, priceLamports: 50, refunded: 50 }));

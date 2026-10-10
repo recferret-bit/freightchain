@@ -241,7 +241,7 @@ export class ProgramChainAdapter extends PoolChainPort {
 
   // ---- the gas sponsor
 
-  async cosignAndSend(i: { signedTransaction: string; expectedMessage: string; lastValidBlockHeight: number }): Promise<{ signature: string; lastValidBlockHeight: number }> {
+  async cosignAndSend(i: { signedTransaction: string; expectedMessage: string; lastValidBlockHeight: number }): Promise<{ signature: string; lastValidBlockHeight: number; confirmed: boolean }> {
     const sponsor = this.sponsor;
     if (!sponsor) throw new ServiceUnavailableError('no gas sponsor is configured – pay the network fee yourself');
     const wire = checkUserSignedTransaction(Buffer.from(i.signedTransaction, 'base64'), Buffer.from(i.expectedMessage, 'base64'), sponsor.publicKey);
@@ -261,12 +261,22 @@ export class ProgramChainAdapter extends PoolChainPort {
     for (let n = 0; n < MAX_RESENDS; n++) {
       await this.rpc.primaryOnly((x) => x.sendRawTransaction(raw, { skipPreflight: true, maxRetries: 0 })).catch((e: unknown) => this.logger.debug(`re-send: ${(e as Error).message}`));
       await this.wait(RESEND_MS);
-      const { status, err } = await this.status(signature, i.lastValidBlockHeight);
+      let read: { status: SignatureStatus; err: unknown };
+      try {
+        read = await this.status(signature, i.lastValidBlockHeight);
+      } catch (error) {
+        if (!(error instanceof ServiceUnavailableError)) throw error;
+        // sent, but the RPC will not say what became of it: it may well have landed – the caller answers "pending" and the watcher credits it, never an error
+        this.logger.warn(`gas sponsor: ${signature} was sent but its status cannot be read (${error.message}) – answering pending`);
+        return { signature, lastValidBlockHeight: i.lastValidBlockHeight, confirmed: false };
+      }
+      const { status, err } = read;
       if (err) throw new ConflictError(`the transaction failed on chain: ${this.reason(err, [])}`, 'transaction_failed');
-      if (status === 'finalized' || (status === 'confirmed' && this.commitment === 'confirmed')) return { signature, lastValidBlockHeight: i.lastValidBlockHeight };
+      if (status === 'finalized' || (status === 'confirmed' && this.commitment === 'confirmed')) return { signature, lastValidBlockHeight: i.lastValidBlockHeight, confirmed: true };
       if (status === 'expired') throw new ConflictError('the network dropped the transaction – nothing was charged; rebuild it', 'transaction_dropped');
     }
-    throw new ConflictError(`transaction ${signature} was sent but is not confirmed yet – it is credited when it lands`, 'transaction_unconfirmed');
+    this.logger.warn(`gas sponsor: ${signature} was sent but is not confirmed after ${MAX_RESENDS} sends – answering pending`);
+    return { signature, lastValidBlockHeight: i.lastValidBlockHeight, confirmed: false };
   }
 
   /** A landed transaction reports its commitment even when it failed (readEvents calls that one invalid). */

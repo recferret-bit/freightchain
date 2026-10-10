@@ -98,7 +98,7 @@
   <header class="ch-h"><i>02</i><h2>How to drive</h2><p>Inputs, indicators and advice. The truck is a long-hood semi with a seven-speed manual gearbox, a cold engine and a handbrake that is on when you start.</p></header>
 
   <h3 class="sub">THE FIRST MINUTE · STEP BY STEP</h3>
-  <p>Nine controls take you from a dead dash to moving. Each card is the real cockpit, drawn by the game's own code: hover it (tap on a phone) and the control works. On a free ride, <b>TUTORIAL</b> teaches it live and <b>ASSIST</b> doubles the truck's endurance; finishing without assist earns <i>On My Own</i>.</p>
+  <p>Nine controls take you from a dead dash to moving. Each card is the real cockpit, drawn by the game's own code: hover it (tap on a phone) to work the control. On a free ride, <b>TUTORIAL</b> teaches it, <b>ASSIST</b> doubles the truck's endurance, and finishing without it earns <i>On My Own</i>.</p>
   <ol class="path">
     <li><article class="card3d" tabindex="0" data-live="key-on"><div class="img" aria-hidden="true"></div><footer><b>KEY ON</b><p>Turn the ignition to ON: click the ON zone of the key. A one-second self-test sweeps every gauge and lamp. With the key OFF the whole dash, even the brake pedal, is dead.</p></footer></article></li>
     <li><article class="card3d" tabindex="0" data-live="start"><div class="img" aria-hidden="true"></div><footer><b>START</b><p>Press <kbd>I</kbd> for a one-tap start, or hold the START zone of the key for about a second. The engine cranks, catches with a rev flare and settles at idle. <kbd>O</kbd> switches it off; <kbd>I</kbd> again after a stall.</p></footer></article></li>
@@ -198,14 +198,14 @@
   <div class="tblwrap"><table class="tbl tiers2">
     <thead><tr><th>Tier</th><th>Minimum time</th><th>List price</th><th>What it is</th></tr></thead>
     <tbody>
-      <tr><td><b>FREE</b></td><td>1 minute</td><td>$0</td><td>The habit, on an easy road: a straight start, soft bends, a few calm cars, no sinkholes; it ends by itself at the line. Ten at sign-up; daily refill stops at five. A few offline runs need no wallet. Its own leaderboard and badges. No pool.</td></tr>
+      <tr><td><b>FREE</b></td><td>1 minute</td><td>$0</td><td>The habit, on an easy road: a straight start, soft bends, a few calm cars, no sinkholes; it ends by itself at the line. Ten at sign-up; daily refill stops at five. Its own leaderboard and badges. No pool.</td></tr>
       <tr><td><b>1 H</b></td><td>1 hour</td><td>$5</td><td>On sale. Opens at 20 tickets, or it refunds. The standard road.</td></tr>
       <tr><td><b>4 H</b></td><td>4 hours</td><td>$15</td><td>Soon. Tighter bends, busier traffic. Sold only once a 4-hour pool opens.</td></tr>
       <tr><td><b>8 H</b></td><td>8 hours</td><td>$50</td><td>Soon. The hardest road. Sold only once an 8-hour pool opens.</td></tr>
     </tbody>
   </table></div>
   <p class="dim">The 1 hour shift is the one on sale. $15 and $50 are planned list prices. List prices are in US dollars. A pool fixes its price in lamports at creation and that price never changes. Devnet SOL has no value.</p>
-  <p class="dim">Ten free rides at sign-up. Daily refill stops at five; a promo can sit above that, and wallets that already exist are left as they are. A few offline runs on this browser use the same easy road and need no wallet: the server stores a fingerprint and the address. A fingerprint can be changed; the address cap is the backstop. When those runs are used up, connect a Solana wallet.</p>
+  <p class="dim">Ten free rides at sign-up. Daily refill stops at five. A few offline runs here need no wallet, counted by fingerprint and address (the address cap is the backstop). Then connect a Solana wallet.</p>
 
   <h3 class="sub">HOW A SHIFT RUNS</h3>
   <ol class="flow">
@@ -315,7 +315,7 @@
 
   <h3 class="sub">PROMOTION &amp; GROWTH</h3>
   <div class="grid3">
-    <article class="card"><h3>FREE FIRST</h3><p>Ten at sign-up, daily refill stops at five. A few offline runs need no wallet; then connect Solana.</p></article>
+    <article class="card"><h3>FREE FIRST</h3><p>Ten at sign-up, daily refill stops at five; then connect Solana.</p></article>
     <article class="card"><h3>WATCH BEFORE YOU BUY</h3><p>Every ride has a public live page and a replay. A visitor sees real drivers, real distances and the real board before connecting a wallet.</p></article>
     <article class="card"><h3>PROMO &amp; SPONSORS</h3><p>Promo codes hand out tickets of a tier. Sponsors can add SOL to a pool; it is split like ticket money and visibly raises the pot.</p></article>
   </div>
@@ -483,7 +483,7 @@
   </ul>
 
   <h3 class="sub">HOW THE GAME SERVER FITS</h3>
-  <p>The server <em>mirrors</em> pools and tickets; the chain wins any disagreement. A ticket is credited from the program's <code>TicketBought</code> event, once per signature, by confirm, the log watcher, or a webhook. The gas sponsor co-signs only the bytes the server built. The server never holds the admin or treasury key; the admin signs pool creation and payouts from a browser wallet.</p>
+  <p>The server <em>mirrors</em> pools and tickets; the chain wins. A ticket is credited from <code>TicketBought</code>, once per signature, by confirm, the log watcher, or a webhook. The gas sponsor co-signs only the bytes the server built. The server never holds the admin or treasury key.</p>
 
   <h3 class="sub">IDEAS ON THE TABLE</h3>
   <p class="dim">Not built; ordered roughly by fit, from the Solana feature plan.</p>

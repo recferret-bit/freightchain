@@ -33,8 +33,8 @@ export class FakePoolChain extends PoolChainPort {
   simulation: { ok: true; unitsConsumed: number } | { ok: false; reason: string } = { ok: true, unitsConsumed: 20_000 };
   /** null = no gas sponsor configured (cosignAndSend → 503); set it to test the gasless path */
   sponsor: Keypair | null = null;
-  /** replaces the default co-sign outcome (an Error is thrown) */
-  cosignResult: { signature: string } | Error | null = null;
+  /** replaces the default co-sign outcome (an Error is thrown; `confirmed: false` = sent but the outcome could not be told) */
+  cosignResult: { signature: string; confirmed?: boolean } | Error | null = null;
   blockHeight = 100;
   lastValidBlockHeight = 250;
   readCount = 0;
@@ -105,14 +105,14 @@ export class FakePoolChain extends PoolChainPort {
   async feeQuote(input: { poolId: number | null; kind: ChainTxKind }): Promise<FeeQuote> { this.up(); this.feeQuotes.push(input); return { ...this.quote }; }
   async simulate(_tx: UnsignedPaymentTx): Promise<{ ok: true; unitsConsumed: number } | { ok: false; reason: string }> { this.up(); return this.simulation; }
 
-  async cosignAndSend(input: { signedTransaction: string; expectedMessage: string; lastValidBlockHeight: number }): Promise<{ signature: string; lastValidBlockHeight: number }> {
+  async cosignAndSend(input: { signedTransaction: string; expectedMessage: string; lastValidBlockHeight: number }): Promise<{ signature: string; lastValidBlockHeight: number; confirmed: boolean }> {
     this.up();
     if (this.cosignResult instanceof Error) throw this.cosignResult;
     if (!this.sponsor) throw new ServiceUnavailableError('no gas sponsor is configured – pay the network fee yourself');
     const wire = checkUserSignedTransaction(Buffer.from(input.signedTransaction, 'base64'), Buffer.from(input.expectedMessage, 'base64'), this.sponsor.publicKey);
     const signature = this.cosignResult?.signature ?? bs58.encode(addFeePayerSignature(wire, this.sponsor.secretKey).subarray(1, 65));
     this.cosigned.push({ ...input, signature });
-    return { signature, lastValidBlockHeight: input.lastValidBlockHeight };
+    return { signature, lastValidBlockHeight: input.lastValidBlockHeight, confirmed: this.cosignResult?.confirmed ?? true };
   }
 
   async signatureStatus(signature: string, lastValidBlockHeight: number): Promise<SignatureStatus> {

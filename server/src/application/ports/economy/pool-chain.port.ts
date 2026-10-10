@@ -69,10 +69,12 @@ export abstract class PoolChainPort {
    * or that lacks a valid user signature, and a stale blockhash; 503 when no sponsor is configured or it is out of funds; 409 when it would fail or was dropped.
    * `lastValidBlockHeight` must be the one stored with the built transaction (it bounds the re-send loop). Error codes: 400 transaction_mismatch |
    * transaction_malformed | fee_payer_mismatch | signature_missing | signature_invalid | transaction_expired (stale before sending) | block_height_invalid;
-   * 503 service_unavailable (no sponsor / out of funds / RPC); 409 transaction_would_fail (simulation) | transaction_failed (landed, failed) |
-   * transaction_dropped (never landed, blockhash gone – nothing was charged) | transaction_unconfirmed (sent, not confirmed within the loop – the watcher credits it).
+   * 503 service_unavailable (no sponsor / out of funds / the RPC down BEFORE the send); 409 transaction_would_fail (simulation) | transaction_failed (landed, failed) |
+   * transaction_dropped (never landed, blockhash gone – nothing was charged). Once the transaction has been SENT, an outcome that cannot be told – the status read is
+   * refused, or the loop ended without a confirmation – is NOT an error: `confirmed: false` with the signature (the caller answers "pending"; the watcher / webhook
+   * credits it when it lands – an error here made the lobby pay a second time for an order that was in fact paid).
    */
-  abstract cosignAndSend(input: { signedTransaction: string; expectedMessage: string; lastValidBlockHeight: number }): Promise<{ signature: string; lastValidBlockHeight: number }>;
+  abstract cosignAndSend(input: { signedTransaction: string; expectedMessage: string; lastValidBlockHeight: number }): Promise<{ signature: string; lastValidBlockHeight: number; confirmed: boolean }>;
   /** 'expired' = unknown to the network and past `lastValidBlockHeight` – it will never land (both answers from the primary RPC, else 503). */
   abstract signatureStatus(signature: string, lastValidBlockHeight: number): Promise<SignatureStatus>;
 }

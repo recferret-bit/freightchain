@@ -12,6 +12,7 @@ npm run program:verify                           # once: the verifiable .so in t
 bash .claude/skills/localnet-e2e/run.sh          # root: npm run test:localnet   (~10 min: both scenarios + the coverage gate, paced by the pools' deadlines)
 SCENARIO=payout bash .claude/skills/localnet-e2e/run.sh   # only the ten-rider payout scenario (~6 min; coverage printed, not gated)
 SCENARIO=money  bash .claude/skills/localnet-e2e/run.sh   # only the first scenario (~4 min)
+SCENARIO=chaos  bash .claude/skills/localnet-e2e/run.sh   # the flaky-RPC + several-servers / crankers scenario (~5 min; local only, no coverage gate)
 KEEP=1 bash .claude/skills/localnet-e2e/run.sh   # keep the scratch dir: keys/, both ledgers + their logs, server.log, accounts/
 LIKE_DEVNET=1 bash .claude/skills/localnet-e2e/run.sh   # the devnet settings on the local validator (funder + sweep, small prices, no baked pools)
 bash server/scripts/devnet.sh rehearse           # = TARGET=devnet: the same scenario against the program on DEVNET (Phase 2 of docs/escrow-open-items.md)
@@ -84,6 +85,20 @@ account – LiteSVM `checked_maths_refuse_overflow_instead_of_wrapping`.
 Expected values come from the server's own `dist/domain/economy` (`prizeBound`, `poolPayouts`, `closeSplit`); fees are read from each transaction (`meta.fee`).
 Screenshots: `$TMPDIR/fc-localnet-shots` (after the lobby buy, after the lobby refund, the NO POOL card, the ten-rider lobby buy, the next pool's sponsored card) – look at them.
 
+### Chaos (`server/scripts/e2e-localnet-chaos.mjs`, `SCENARIO=chaos`)
+
+The server's view of the chain is made flaky; the scenario's own view (balances, the clock, `pool-admin`) stays direct, so only the servers it spawns see the faults. `server/scripts/localnet-fault-proxy.mjs` is a JSON-RPC proxy with rules per method (`error`, `http` 429, `blackhole` = a send nobody forwards, `lose-response` = it lands but the caller gets an error, `delay`; `'*'` = a whole provider outage; `times` limits a rule). The scenario starts two servers (S1 ← proxy 1, S2 ← proxy 2 and a dead websocket) on the one database and runs the crank CLI behind a third proxy. `run.sh` starts the usual server too but with the watcher off (inert), so nothing else credits purchases. Standalone smoke of the proxy: `node server/scripts/localnet-fault-proxy.mjs <rpc url>`.
+
+| step | asserted |
+|---|---|
+| T1 one landed purchase told to two servers | `/confirm` ×2, `/chain/settle` on both, the webhook on both and both watchers at once: 1 ticket, 1 sold, buyer paid price + fee + rent exactly |
+| T4 gasless `/submit` through a bad send path | first 2 sends swallowed → the re-send loop lands it, paid once; the cluster took a send but the answer was lost → paid once; the status read refused → `/submit` answers 200 with the signature (pending or paid, never an error) and the purchase is credited exactly once; every send swallowed until the blockhash dies → 409 `transaction_dropped`, nothing charged to anyone, the same order asked again is paid exactly once |
+| T2 / T3 who credits what | S1's polls refused + S2 without a websocket → S2's polling credits a purchase nobody confirmed; nobody watching → uncredited (control), then S2 restarts → its boot poll catches up with no API call; every RPC call 429 for a while → both servers alive, a purchase afterwards is credited, 7 sold on chain and in the mirror |
+| T5 `getProgramAccounts` refused (the crank's ticket read) | the pass does not throw, reports the refund as failed, still serves the pool after it (fail + close); with `SOLANA_RPC_FALLBACKS` = a working RPC the next pass refunds and closes, each buyer +price +rent exactly |
+| T6 the race | a stranger fails a 10-ticket pool, then 3 crank CLIs + the stranger's own refund run at once: identical transactions dedupe on the validator (same crank key, same blockhash); a step that lost is retried by the next pass; at the end every buyer +price +rent exactly once, the crank key paid exactly the fees of the transactions that landed, the creator the vault rent minimum once, the seed nothing, the mirror cancelled on both servers |
+
+What it found (Oct 10, both fixed): one refused ticket read threw out of the whole crank pass, so every pool after it starved – now caught per pool (`CrankPoolsHandler`); and a gasless `/submit` whose status read failed answered 503 although the purchase had landed, which made the lobby fall back to a second self-paid payment – now `200 pending` with the signature (`cosignAndSend` returns `confirmed: false`). Both unit-tested.
+
 ## Admin CLI (`server/scripts/pool-admin.mjs`)
 
 `initialize`, `create-pool`, `set-config`, `sponsor`, `buy`, `pay-prize`, `fail-pool`, `expire-pool`, `refund`, `close-ticket`, `cancel-pool`, `propose-authority`, `accept-authority`, `close-pool`, `show` – keypair FILES, explicit `--url`
@@ -91,10 +106,9 @@ Screenshots: `$TMPDIR/fc-localnet-shots` (after the lobby buy, after the lobby r
 
 ## Not covered
 
-A real Phantom (popups, its RPC, transaction rewriting), devnet congestion / dropped transactions / RPCs refusing `getProgramAccounts` (the crank needs it),
-several server instances cranking at once, session keys. Nothing in the server reclaims Ticket rents after a settlement (the scenario does it with
+A real Phantom (popups, its RPC, transaction rewriting), a REAL congested cluster (the chaos proxy imitates its failure modes: refusals, 429s, swallowed and slow sends, lost answers – not its timing; `TARGET=devnet` is the only real one), a websocket fault (a dead websocket is covered, a flapping one is not), two servers that CRANK on a schedule at once (the crank CLIs race, the scheduler is the same handler), session keys. Nothing in the server reclaims Ticket rents after a settlement (the scenario does it with
 `pool-admin.mjs close-ticket` – docs/escrow-open-items.md), and nothing rolls the seed treasury into the next pool (the scenario's `sponsor` stands in for
-the operator). The program is not audited; coverage here means "every instruction / event / error exercised", not line coverage of the Rust. Slow machine:
+the operator). The program is not audited; coverage here means "every instruction / event / error exercised", not line coverage of the Rust – and host-side `cargo llvm-cov` cannot give that: LiteSVM runs the compiled SBF `.so`, so the handlers are not instrumented. Slow machine:
 raise `PLAY_A` (seconds until pool A's play deadline; rides must finish before it) – also `PREP_A` / `PREP_B` / `PREP_C`, and `PREP_D` / `PLAY_D` (150 / 270).
 
 ## Reporting

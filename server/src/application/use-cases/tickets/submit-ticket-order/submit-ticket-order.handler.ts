@@ -40,11 +40,14 @@ export class SubmitTicketOrderHandler implements ICommandHandler<SubmitTicketOrd
     if ((await this.sponsored.countSince(wallet, startOfUtcDay(now))) >= rules.sponsorPerWalletPerDay) {
       throw new TooManyRequestsError(`the network fee is sponsored for ${rules.sponsorPerWalletPerDay} transactions a day – pay this one yourself`, 'sponsor_cap');
     }
-    const { signature } = await this.chain.cosignAndSend({ signedTransaction, expectedMessage: txMessage, lastValidBlockHeight });
+    const { signature, confirmed } = await this.chain.cosignAndSend({ signedTransaction, expectedMessage: txMessage, lastValidBlockHeight });
     await this.sponsored.record({ signature, wallet, kind: 'buy', feeLamports: BASE_FEE_LAMPORTS * 2, at: this.clock.now() });
-    const settled = await this.commands.execute<SettleChainSignatureCommand, SettledSignatureDto>(new SettleChainSignatureCommand(signature));
+    // Sent but unconfirmed (the RPC would not say, or the loop ran out): the money may already have moved, so never an error – the wallet is told "pending" with the
+    // signature and the watcher / webhook credits the order when it lands. An error here sent the lobby to a second, self-paid payment for the same order.
+    const settled = await this.commands.execute<SettleChainSignatureCommand, SettledSignatureDto>(new SettleChainSignatureCommand(signature))
+      .catch((error: unknown) => { if (confirmed) throw error; return null; });
     const fresh = (await this.orders.findById(orderId))!;
-    const paid = settled.status === 'done' && fresh.status === 'paid' && fresh.signature === signature;
+    const paid = settled?.status === 'done' && fresh.status === 'paid' && fresh.signature === signature;
     return { signature, status: paid ? 'paid' : 'pending', order: toTicketOrderDto(fresh, rules.orderTtlMs) };
   }
 }

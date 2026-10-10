@@ -201,7 +201,7 @@ describe('ProgramChainAdapter – the gas sponsor', () => {
     expect(sent.length).toBe(3);
     const landed = Transaction.from(sent[0]!);
     expect(landed.verifySignatures()).toBe(true);
-    expect(out).toEqual({ signature: bs58.encode(landed.signature!), lastValidBlockHeight: 4242 });
+    expect(out).toEqual({ signature: bs58.encode(landed.signature!), lastValidBlockHeight: 4242, confirmed: true });
     expect(waits.every((w) => w === 2_000)).toBe(true);
   });
 
@@ -231,16 +231,25 @@ describe('ProgramChainAdapter – the gas sponsor', () => {
     await expect(failed.adapter.cosignAndSend({ signedTransaction: failed.signed, expectedMessage: failed.built.message, lastValidBlockHeight: 4242 })).rejects.toMatchObject({ errorCode: 'transaction_failed' });
   });
 
-  it('an inflated lastValidBlockHeight (not the stored one) is 400 before anything is sent; a network that never answers ends the loop (409 unconfirmed)', async () => {
+  it('an inflated lastValidBlockHeight (not the stored one) is 400 before anything is sent; a network that never answers ends the loop UNCONFIRMED (not an error: the watcher credits it)', async () => {
     const sent: Buffer[] = [];
     const inflated = await signedBuy(healthy([], sent));
     await expect(inflated.adapter.cosignAndSend({ signedTransaction: inflated.signed, expectedMessage: inflated.built.message, lastValidBlockHeight: 1_000_000 }))
       .rejects.toMatchObject({ statusCode: 400, errorCode: 'block_height_invalid' });
     expect(sent.length).toBe(0);
     const silent = await signedBuy(healthy([], sent, 4000));
-    await expect(silent.adapter.cosignAndSend({ signedTransaction: silent.signed, expectedMessage: silent.built.message, lastValidBlockHeight: 4242 }))
-      .rejects.toMatchObject({ statusCode: 409, errorCode: 'transaction_unconfirmed' });
+    expect(await silent.adapter.cosignAndSend({ signedTransaction: silent.signed, expectedMessage: silent.built.message, lastValidBlockHeight: 4242 }))
+      .toMatchObject({ confirmed: false, lastValidBlockHeight: 4242 });
     expect(sent.length).toBe(60);
+  });
+
+  it('sent, but the status read is refused: answers unconfirmed WITH the signature (the transaction may have landed) instead of a 503', async () => {
+    const sent: Buffer[] = [];
+    const blind = await signedBuy({ ...healthy([], sent), getSignatureStatuses: async () => { throw new Error('429 rate limited'); } });
+    const out = await blind.adapter.cosignAndSend({ signedTransaction: blind.signed, expectedMessage: blind.built.message, lastValidBlockHeight: 4242 });
+    expect(out.confirmed).toBe(false);
+    expect(out.signature).toBe(bs58.encode(Transaction.from(sent[0]!).signature!));
+    expect(sent.length).toBe(1); // it does not keep re-sending into a blind RPC
   });
 
   it('signatureStatus never says expired on a fallback\'s word: the primary down is 503', async () => {

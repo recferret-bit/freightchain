@@ -3,6 +3,7 @@ import { GetTicketPaymentHandler } from '../../../../../src/application/use-case
 import { GetTicketPaymentQuery } from '../../../../../src/application/use-cases/tickets/get-ticket-payment/get-ticket-payment.query.js';
 import { SubmitTicketOrderHandler } from '../../../../../src/application/use-cases/tickets/submit-ticket-order/submit-ticket-order.handler.js';
 import { SubmitTicketOrderCommand } from '../../../../../src/application/use-cases/tickets/submit-ticket-order/submit-ticket-order.command.js';
+import { SettleChainSignatureCommand } from '../../../../../src/application/use-cases/chain/settle-chain-signature/settle-chain-signature.command.js';
 import { BadRequestError, ConflictError, TooManyRequestsError } from '../../../../../src/domain/shared/errors.js';
 import { paymentSetup } from './ticket-payment.support.js';
 
@@ -25,6 +26,21 @@ describe('SubmitTicketOrderHandler – the gasless path', () => {
     s.ctx.poolChain.addTransaction([s.purchaseOf(s.order.id)], sig);
     expect(await s.submit(signed)).toMatchObject({ signature: sig, status: 'paid', order: { status: 'paid' } });
     expect(await s.ctx.sponsoredTxs.countSince(s.wallet, new Date(0))).toBe(1);
+  });
+
+  it('sent but unconfirmed (the RPC would not say): answers PENDING with the signature, records the sponsorship, never an error – the watcher credits it later', async () => {
+    const s = await setup();
+    const tx = await s.built();
+    const signed = s.signAsBuyer(tx.transaction);
+    const sig = (await s.ctx.poolChain.cosignAndSend({ signedTransaction: signed, expectedMessage: tx.message, lastValidBlockHeight: tx.lastValidBlockHeight })).signature;
+    s.ctx.poolChain.cosignResult = { signature: sig, confirmed: false };
+    const out = await s.submit(signed);
+    expect(out).toMatchObject({ signature: sig, status: 'pending', order: { status: 'awaiting_payment' } });
+    expect(await s.ctx.sponsoredTxs.countSince(s.wallet, new Date(0))).toBe(1);
+    // …the transaction did land: the settlement path (watcher / webhook / the wallet's own settle call) credits the order once
+    s.ctx.poolChain.addTransaction([s.purchaseOf(s.order.id)], sig);
+    await s.bus.execute(new SettleChainSignatureCommand(sig));
+    expect((await s.ctx.orders.findById(s.order.id))?.status).toBe('paid');
   });
 
   it('a forged transaction (different bytes than the order\'s message) is refused – nothing is signed or recorded', async () => {
