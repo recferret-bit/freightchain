@@ -26,6 +26,9 @@ import { VerdictStatus } from '../../../src/domain/verdict/verdict.dto.js';
 import { badgeRejected } from '../../../src/domain/achievements/achievements.js';
 import { SignInRepositoryPort } from '../../../src/application/ports/auth/sign-in.repository.port.js';
 import { AdminActionRepositoryPort } from '../../../src/application/ports/admin/admin-action.repository.port.js';
+import { AdminDirectoryPort } from '../../../src/application/ports/admin/admin-directory.port.js';
+import type { PoolProps } from '../../../src/domain/economy/pool.types.js';
+import type { StatsTotals } from '../../../src/domain/stats/stats.js';
 import { AdminQueryPort, type AdminCounts, type AdminRideRow } from '../../../src/application/ports/admin/admin-query.port.js';
 import type { SignInRecord } from '../../../src/domain/auth/sign-in.js';
 import type { AdminActionRecord, AdminBatchDto, AdminRideFilter } from '../../../src/domain/admin/admin.dto.js';
@@ -428,6 +431,8 @@ export class MemoryAdminQuery extends AdminQueryPort {
       telemetry: { batches: this.db.batches.size, bytes: [...this.db.batches.values()].reduce((sum, b) => sum + b.bytes, 0) },
     };
   }
+
+  async flaggedCount(): Promise<number> { return [...this.db.verdicts.values()].filter((v) => v.status === 'flagged').length; }
 
   async rides(filter: AdminRideFilter): Promise<AdminRideRow[]> {
     return [...this.db.rides.values()]

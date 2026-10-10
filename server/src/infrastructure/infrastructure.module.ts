@@ -29,6 +29,7 @@ import { RideBatchRepositoryPort } from '../application/ports/telemetry/ride-bat
 import { RideVerdictRepositoryPort } from '../application/ports/verdict/ride-verdict.repository.port.js';
 import { SignInRepositoryPort } from '../application/ports/auth/sign-in.repository.port.js';
 import { AdminActionRepositoryPort } from '../application/ports/admin/admin-action.repository.port.js';
+import { AdminDirectoryPort } from '../application/ports/admin/admin-directory.port.js';
 import { AdminQueryPort } from '../application/ports/admin/admin-query.port.js';
 import { PostHogAnalyticsAdapter } from './analytics/posthog-analytics.adapter.js';
 import { JoseTokenSigner } from './auth/jose.token-signer.js';
@@ -45,6 +46,7 @@ import { RideBatchPrismaRepository } from './prisma/repositories/ride-batch.pris
 import { RideVerdictPrismaRepository } from './prisma/repositories/ride-verdict.prisma.repository.js';
 import { SignInPrismaRepository } from './prisma/repositories/sign-in.prisma.repository.js';
 import { AdminActionPrismaRepository } from './prisma/repositories/admin-action.prisma.repository.js';
+import { AdminDirectoryPrismaRepository } from './prisma/repositories/admin-directory.prisma.repository.js';
 import { AdminQueryPrismaRepository } from './prisma/repositories/admin-query.prisma.repository.js';
 import { AdminGuard } from './http/guards/admin.guard.js';
 import { PrismaHealthProbe } from './health/prisma.health-probe.js';
@@ -108,6 +110,7 @@ const ports: Provider[] = [
   { provide: SignInRepositoryPort, useClass: SignInPrismaRepository },
   { provide: AdminActionRepositoryPort, useClass: AdminActionPrismaRepository },
   { provide: AdminQueryPort, useClass: AdminQueryPrismaRepository },
+  { provide: AdminDirectoryPort, useClass: AdminDirectoryPrismaRepository },
   { provide: TransactionPort, useClass: TransactionPrismaAdapter },
   { provide: RulesConfigPort, useClass: EnvRulesConfigAdapter },
   { provide: PlayerRepositoryPort, useClass: PlayerPrismaRepository },

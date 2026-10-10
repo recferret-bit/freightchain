@@ -17,6 +17,7 @@ model Player {
   equipped     CosmeticEquip[]
   stats        PlayerStats?
 
+  @@index([createdAt]) // the admin PLAYERS list: newest first
   @@schema("player")
 }
 

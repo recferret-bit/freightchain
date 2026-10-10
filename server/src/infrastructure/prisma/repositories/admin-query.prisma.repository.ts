@@ -26,6 +26,10 @@ export class AdminQueryPrismaRepository extends AdminQueryPort {
     };
   }
 
+  flaggedCount(): Promise<number> {
+    return this.prisma.rideVerdict.count({ where: { status: 'flagged' } });   // index (status, judgedAt)
+  }
+
   async rides(filter: AdminRideFilter): Promise<AdminRideRow[]> {
     const where: Prisma.RideWhereInput = {
       ...(filter.wallet ? { wallet: filter.wallet } : {}),

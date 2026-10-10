@@ -24,6 +24,7 @@ import {
   MemoryAchievementRepository, MemoryChallengeRepository, MemoryHealthProbe, MemoryPaymentRepository, MemoryPlayerRepository,
   MemoryRideBatchRepository, MemoryRideQuery, MemoryRideVerdictRepository, MemorySignInRepository, MemoryAdminActionRepository, MemoryAdminQuery, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
 } from './in-memory/memory-repositories.js';
+import { MemoryAdminDirectory } from './in-memory/memory-admin-directory.js';
 import { MemoryCosmeticRepository, MemoryPoolRepository, MemoryPromoRepository, MemoryRideTicketRepository, MemoryTicketOrderRepository } from './in-memory/memory-ledger-repositories.js';
 import { MemoryChainCursorRepository, MemoryChainEventRepository } from './in-memory/memory-repositories.js';
 import { TestHasher } from './recording.js';
@@ -88,6 +89,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const signIns = new MemorySignInRepository(db);
   const adminActions = new MemoryAdminActionRepository(db);
   const adminQuery = new MemoryAdminQuery(db);
+  const adminDirectory = new MemoryAdminDirectory(db);
   const health = new MemoryHealthProbe();
   const analytics = new RecordingAnalytics();
   const pools = new MemoryPoolRepository(db);
@@ -146,7 +148,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const storedPlayer = async (wallet: string) => (await players.findByWallet(wallet)) as Player;
 
   return {
-    db, clock, chain, entropy, dailySeeds, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, batches, hasher, verdictRepo, verdicts, proofs, signIns, adminActions, adminQuery, health, analytics,
+    db, clock, chain, entropy, dailySeeds, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, batches, hasher, verdictRepo, verdicts, proofs, signIns, adminActions, adminQuery, adminDirectory, health, analytics,
     pools, tickets, promos, cosmetics, promoCreation, orders, poolTickets, ticketSettlement,
     sessions, meProfile, settings, settingsRepo, offlineRides, lookup, rounds, achievements, settlement, now, player, freeRide, paidOrder, reload, storedPlayer,
     poolChain, chainEvents, chainCursors, registry, rideEvents, viewers, sitePresence, rideMutes, donationOrders, liveAccess, statsRepo, cache, stats,

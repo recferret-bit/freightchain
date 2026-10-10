@@ -66,6 +66,8 @@ model Ride {
   @@index([wallet, startedAt])
   @@index([poolId, status])
   @@index([status, endedAt]) // the replays history: ended rides, newest end first
+  @@index([createdAt(sort: Desc), seq(sort: Desc)]) // the admin RIDES list, newest first
+  @@index([wallet, createdAt(sort: Desc)]) // …of one wallet (a player's latest rides)
   @@index([status, trip]) // the free leaderboard per level: completed free rides on one level's trip
   @@schema("ride")
 }

@@ -24,6 +24,8 @@ import { RideBatchRepositoryPort } from '../../src/application/ports/telemetry/r
 import { RideVerdictRepositoryPort } from '../../src/application/ports/verdict/ride-verdict.repository.port.js';
 import { SignInRepositoryPort } from '../../src/application/ports/auth/sign-in.repository.port.js';
 import { AdminActionRepositoryPort } from '../../src/application/ports/admin/admin-action.repository.port.js';
+import { MemoryAdminDirectory } from './in-memory/memory-admin-directory.js';
+import { AdminDirectoryPort } from '../../src/application/ports/admin/admin-directory.port.js';
 import { AdminQueryPort } from '../../src/application/ports/admin/admin-query.port.js';
 import { PrismaService } from '../../src/infrastructure/prisma/prisma.service.js';
 import { truncateAllTables } from '../../src/infrastructure/prisma/truncate.js';
@@ -129,6 +131,7 @@ export async function createHarness(persistence: Persistence, env: Record<string
       .overrideProvider(SignInRepositoryPort).useValue(new MemorySignInRepository(memory))
       .overrideProvider(AdminActionRepositoryPort).useValue(new MemoryAdminActionRepository(memory))
       .overrideProvider(AdminQueryPort).useValue(new MemoryAdminQuery(memory))
+      .overrideProvider(AdminDirectoryPort).useValue(new MemoryAdminDirectory(memory))
       .overrideProvider(TransactionPort).useValue(new MemoryTransaction())
       .overrideProvider(HealthProbePort).useValue(new MemoryHealthProbe())
       .overrideProvider(ChainEventRepositoryPort).useValue(new MemoryChainEventRepository(memory))

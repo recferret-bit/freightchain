@@ -146,6 +146,44 @@ const second = await post('promo/redeem', { code: 'e2e three' }, (await signIn(n
 check('promos: a disabled code is refused to players (409, "no longer valid")', second.r.status === 409 && /no longer valid/.test(second.j.detail), JSON.stringify(second.j));
 await size(A, 390, 844, true); await sleep(300); await A.shot('promos-phone'); await size(A, 1200, 900, false);
 
+// ── SETTINGS: a knob (signed), one wallet's free rides (signed, +/-), a form mistake signs nothing
+const setsBefore = await A.ev('window.__signed');
+await A.ev('location.hash = "#settings"');
+check('settings: the tab lists the knobs with their values', await until(async () => (await A.ev('document.querySelectorAll("#set-table input").length')) === 4 && (await A.ev('document.querySelector("#set-table input[data-key=free_rides_daily_max]")?.value')) === '5'));
+await A.shot('settings-desktop');
+await A.ev('(() => { const i = document.querySelector("#set-table input[data-key=free_rides_daily_max]"); i.value = "7"; })()');
+await A.ev('document.querySelector("#set-table button[data-key=free_rides_daily_max]").click()');
+check('settings: SIGN & SAVE shows the new value and signed exactly this change', await until(async () => (await A.ev('document.querySelector("#set-table input[data-key=free_rides_daily_max]")?.value')) === '7' && /is now 7/.test(await A.ev('document.getElementById("set-note")?.textContent || ""'))) && (await A.ev('window.__signed')) === setsBefore + 1 && (await A.ev(`(window.__lastMessage || '').includes('free_rides_daily_max')`)) === true);
+await A.ev('(() => { const i = document.querySelector("#set-table input[data-key=free_rides_daily_max]"); i.value = "5"; })()');
+await A.ev('document.querySelector("#set-table button[data-key=free_rides_daily_max]").click()');
+check('settings: set back to 5', await until(async () => /is now 5/.test(await A.ev('document.getElementById("set-note")?.textContent || ""'))));
+const balance0 = (await get('me', rider.cookie)).j.freeRides;
+await setField('fr-wallet', 'not a wallet'); await setField('fr-delta', '3'); await A.ev('document.getElementById("fr-form").requestSubmit()');
+const signedMistake = await A.ev('window.__signed');
+check('settings: a bad wallet is explained and nothing is signed', await until(async () => /full wallet address/.test(await A.ev('document.getElementById("set-note")?.textContent || ""'))) && signedMistake === setsBefore + 2);
+await setField('fr-wallet', rider.address); await setField('fr-delta', '3'); await A.ev('document.getElementById("fr-form").requestSubmit()');
+check('settings: +3 free rides for a wallet (signed, balance reported)', await until(async () => /balance now/.test(await A.ev('document.getElementById("set-note")?.textContent || ""'))) && (await get('me', rider.cookie)).j.freeRides === balance0 + 3 && (await A.ev('window.__signed')) === signedMistake + 1 && (await A.ev(`(window.__lastMessage || '').includes('${rider.address}')`)) === true, String(balance0));
+await setField('fr-wallet', rider.address); await setField('fr-delta', '-3'); await A.ev('document.getElementById("fr-form").requestSubmit()');
+check('settings: -3 takes them back', await until(async () => (await get('me', rider.cookie)).j.freeRides === balance0));
+await A.ev(`location.hash = "#settings/${rider.address}"`);
+check('settings: #settings/<wallet> prefills the wallet', await until(async () => (await A.ev('document.getElementById("fr-wallet")?.value')) === rider.address));
+
+// ── DIRECTORY: players (list → one rider), pools, statistics, sessions – all read-only
+await A.ev('location.hash = "#players"');
+check('players: the list shows the rider with the free-ride balance', await until(async () => (await A.ev(`document.querySelector('#pl-table tr[data-wallet="${rider.address}"]')?.textContent || ""`)).includes('/ 5')));
+await A.shot('players-desktop');
+await A.ev(`document.querySelector('#pl-table tr[data-wallet="${rider.address}"] a').click()`);
+check('players: a click opens the rider – balances, their ride and sign-in, and the link to adjust free rides', await until(async () => !!(await A.ev('document.getElementById("pl-rides")')) && !!(await A.ev('document.getElementById("pl-signins")')) && (await A.ev('document.getElementById("pl-adjust")?.getAttribute("href")')) === `#settings/${rider.address}`));
+await A.shot('player-desktop');
+await A.ev('location.hash = "#pools"');
+check('pools: the tab renders (a table, or its empty card – other suites may have mirrored pools)', await until(async () => !!(await A.ev('document.getElementById("pool-table")')) || /No pools mirrored/.test(await A.ev('document.getElementById("view").textContent'))));
+await A.ev('location.hash = "#stats"');
+check('stats: the game totals, the days and the top riders render', await until(async () => !!(await A.ev('document.getElementById("st-tiles")')) && !!(await A.ev('document.getElementById("st-top")')) && !!(await A.ev('document.getElementById("st-daily")'))));
+await A.shot('stats-desktop');
+await A.ev('location.hash = "#sessions"');
+check('sessions: the rider and the admin signed in inside the window', await until(async () => { const t = await A.ev('document.getElementById("se-table")?.textContent || ""'); return t.includes(rider.short) && t.includes(admin.short); }));
+await A.shot('sessions-desktop');
+
 // ── audit, sign-ins, logs, rides
 await A.ev('location.hash = "#audit"');
 check('audit: the admin sign-ins, the override and the re-judge are logged, the changes with their signatures', await until(async () => { const t = await A.ev('document.querySelector("tbody")?.textContent || ""'); return /verdict\.override/.test(t) && /verdict\.rejudge/.test(t) && /auth\.signin/.test(t) && /promo\.create/.test(t) && /promo\.disable/.test(t) && /"signature"/.test(t); }));

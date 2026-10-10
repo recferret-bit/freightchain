@@ -49,13 +49,16 @@ export async function promosTab(ctx, filter = {}) {
   const note = el('p', { class: 'msg dim', id: 'promo-note', role: 'status' });
   const say = (text, bad = false) => { note.textContent = text; note.className = `msg ${bad ? 'bad' : 'dim'}`; };
 
+  const disabling = new Set();   // one click = one wallet prompt
   const disable = async code => {
+    if (disabling.has(code)) return;
+    disabling.add(code);
     try {
       say(`Sign in your wallet to disable ${code}…`);
       const signature = await signAt('promos/challenge', { action: 'promo_disable', code });
       await api(`promos/${encodeURIComponent(code)}/disable`, { signature });
       await reload();
-    } catch (e) { say(e.message, true); }
+    } catch (e) { say(e.message, true); } finally { disabling.delete(code); }
   };
   const when = p => `${time(p.startsAt)} → ${p.expiresAt ? time(p.expiresAt) : 'no end'}`;
   const seg = el('div', { class: 'seg', id: 'promo-states' }, STATES.map(([id, label]) => el('button', { class: id === state ? 'on' : '', 'data-state': id, onclick: () => reload({ state: id }) }, label)));

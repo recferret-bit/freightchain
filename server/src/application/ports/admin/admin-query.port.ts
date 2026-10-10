@@ -29,6 +29,8 @@ export interface AdminRideRow {
 /** The admin page's read side: projections no aggregate needs (counts, filtered ride lists, a recording's batch index without the payloads). */
 export abstract class AdminQueryPort {
   abstract counts(): Promise<AdminCounts>;
+  /** completed shifts waiting for a human decision (verdict `flagged`) – the badge on the REVIEW QUEUE tab */
+  abstract flaggedCount(): Promise<number>;
   /** newest first */
   abstract rides(filter: AdminRideFilter): Promise<AdminRideRow[]>;
   /** the ride's batches by seq – counts and hashes only, never the payload */

@@ -20,6 +20,7 @@ model PlayerStats {
   donationLamports BigInt  @default(0) // … lamports of the PAID ones only (money that moved)
   updatedAt       DateTime
 
+  @@index([metres]) // the admin STATS tab: top riders by distance
   @@schema("stats")
 }
 
