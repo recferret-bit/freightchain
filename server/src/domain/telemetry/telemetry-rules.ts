@@ -21,6 +21,10 @@ export const BATCH_MAX_BYTES = 98_304; // canonical JSON; below Express's defaul
 export const BATCH_MAX_SEQ = 100_000;
 export const MAX_GAME_SECONDS = 1e7;
 export const INPUT_CODE_MAX_LENGTH = 32;
+/** Input codes that start with this are the in-game PHONE's events (client/js/telemetry.js recordPhone: its taps, pans, power / boot, route lost). They are kept in the recording
+    for audits and replays but are NOT driving: the verdict never counts them as an input, as a press, or in the human-timing statistics. */
+export const PHONE_PREFIX = 'phone:';
+export const isPhoneInput = (e: readonly [number, string, number]): boolean => e[1].startsWith(PHONE_PREFIX);
 /* The traffic track beside a batch (live streams' replays: client/js/telemetry.js TRAFFIC_HZ = 2 frames per game second, each [t, …7 numbers per nearby
    vehicle, ≤ 16 vehicles]). Display only – OUTSIDE the canonical (hashed) text, never judged; one that breaks these limits is DROPPED, never refused
    (a refused batch would break the recording's chain for something the verdict does not even read). */

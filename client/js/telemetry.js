@@ -23,6 +23,14 @@ export function recordInput(code, down, at) {
   rec.inputs.push([r(Math.max(0, t - rec.wall0), 1), String(code || 'Unidentified').slice(0, 32), down ? 1 : 0]);   // some OEM / IME keys have no code
 }
 
+/** A PHONE event (ui/map.js: its buttons, a pan, a place picked, power / boot, the route lost): recorded with the inputs as `phone:<what>` (≤ 32 chars) so an audit or a
+    replay can see what the driver did with the map. It is never held (no mask bit) and the server's verdict ignores these codes (telemetry-rules.ts PHONE_PREFIX). */
+export function recordPhone(what, down = 1, at) {
+  if (!rec.on || st.mode !== 'drive') return;
+  const t = Number.isFinite(at) && at > 0 ? at : performance.now();
+  rec.inputs.push([r(Math.max(0, t - rec.wall0), 1), ('phone:' + what).slice(0, 32), down ? 1 : 0]);
+}
+
 /** Called every frame after the sim step: a sample every 1/TELEMETRY_HZ of GAME time, a batch every TELEMETRY_BATCH_SECONDS. */
 export function tickTelemetry(dt) {
   if (!rec.on || st.mode !== 'drive') return;

@@ -1,6 +1,7 @@
 import { roadPlanFor } from '../road/road-plan.js';
 import type { Ride } from '../rides/ride.entity.js';
 import type { BatchFacts } from '../telemetry/ride-batch.entity.js';
+import { isPhoneInput } from '../telemetry/telemetry-rules.js';
 import { checkChallenges, type ChallengeScores } from './challenge-checks.js';
 import { checkHumanTiming, type HumanScores } from './human-checks.js';
 import { checkAgreement, checkChain, checkInputsPresent, checkSamples, recordingScores, type RecordingScores } from './recording-checks.js';
@@ -46,7 +47,7 @@ export class RideVerdict {
     const road = { forkSwitch: (s0: number, s1: number) => roadPlanFor(ride.seed, ride.trip).layout.forkSwitch(s0, s1) }; // built lazily: only a boundary step over the governor asks
     const samples = checkSamples(ordered, road); // the ride's road: a step across a batch boundary may be a fork's road switch
     const agreement = checkAgreement(facts, ordered);
-    const inputs = ordered.flatMap((b) => b.summary.inputs);
+    const inputs = ordered.flatMap((b) => b.summary.inputs).filter((e) => !isPhoneInput(e)); // the phone's events are not driving
     const human = checkHumanTiming(inputs);
     const endMs = ride.endedAt && ride.startedAt ? ride.endedAt.getTime() - ride.startedAt.getTime() : Number.POSITIVE_INFINITY;
     const challenges = checkChallenges(ride.challenges, inputs, endMs);
