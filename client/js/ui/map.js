@@ -30,8 +30,8 @@ const THUMB = { thumb: true, mpp: 5 };
 
 function palette() {
   return dn.k > .5
-    ? { land: '#1e2632', block: '#28313e', road: '#4b5566', casing: '#11161d', label: '#c3ccd8', route: '#6ea8ff', routeCase: '#2b5fb6', alt: '#6a7586', altCase: '#3a4250', text: '#e8edf3', card: '#1f2630', sub: '#9aa6b5', nav: '#0b5f37', pin: '#ff6b5a' }
-    : { land: LAND[env.theme?.id] ?? '#f1efe8', block: '#e2ddd2', road: '#ffffff', casing: '#c8c1b2', label: '#5f6368', route: '#4285f4', routeCase: '#1a5fd0', alt: '#aab3bf', altCase: '#86909d', text: '#202124', card: '#ffffff', sub: '#5f6368', nav: '#0b8043', pin: '#ea4335' };
+    ? { land: '#161d29', block: '#1f2937', road: '#7686a0', casing: '#080b11', label: '#e6ebf2', route: '#7db8ff', routeCase: '#1d56b5', alt: '#8c98ab', altCase: '#3d4756', text: '#f3f6fa', card: '#222b39', sub: '#aab5c5', nav: '#13804d', pin: '#ff6b5a', go: '#5ee08f', bar: 'rgba(255,255,255,.14)', bar0: 'rgba(14,19,28,.94)' }
+    : { land: LAND[env.theme?.id] ?? '#f1efe8', block: '#e2ddd2', road: '#ffffff', casing: '#c8c1b2', label: '#5f6368', route: '#4285f4', routeCase: '#1a5fd0', alt: '#aab3bf', altCase: '#86909d', text: '#202124', card: '#ffffff', sub: '#5f6368', nav: '#0b8043', pin: '#ea4335', go: '#188038', bar: 'rgba(0,0,0,.1)', bar0: 'rgba(255,255,255,.94)' };
 }
 
 /* where the truck is, in the world (roadAt + st.d across) and where it points */
@@ -271,7 +271,7 @@ function paintHome(g, X, Y, W, H, t, thumb, o) {
   for (const [col, fx, fy] of [['153,69,255', .2, .9], ['20,241,149', .85, 1]]) { const gr = g.createRadialGradient(X + W * fx, Y + H * fy, 0, X + W * fx, Y + H * fy, 70 * u); gr.addColorStop(0, `rgba(${col},.28)`); gr.addColorStop(1, `rgba(${col},0)`); g.fillStyle = gr; g.fillRect(X, Y, W, H); }
   const rest = 1 - launch * .85, hh = Math.floor(dn.t) % 24, mm = Math.floor((dn.t % 1) * 60), clock = String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0');
   g.globalAlpha = wake * rest; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#e8edf3';
-  if (!thumb) { g.font = `600 ${Math.max(9, 3.6 * u)}px ${MONO}`; g.textAlign = 'left'; g.fillText(clock, X + 5 * u, Y + 4.5 * u); g.textAlign = 'right'; g.fillText((st.engineOn ? '⚡ ' : '') + 'LTE ▂▄▆█', X + W - 5 * u, Y + 4.5 * u); g.textAlign = 'center'; }
+  if (!thumb) { g.font = `600 ${Math.max(9, 3.6 * u)}px ${MONO}`; g.textAlign = 'left'; g.fillText(clock, X + 20, Y + 18); statusIcons(g, X + W - 18, Y + 18, { text: '#e8edf3', go: '#5ee08f' }); g.textAlign = 'center'; }
   g.font = `300 ${Math.max(8, (thumb ? 9 : 13) * u)}px ${MONO}`; g.fillText(clock, X + W / 2, Y + H * (thumb ? .12 : .13));
   g.globalAlpha = wake * rest; g.fillStyle = 'rgba(255,255,255,.1)'; g.beginPath(); g.roundRect(X + 3 * u, L.dockY, W - 6 * u, L.dockH, 6 * u); g.fill();
   let maps = null;
@@ -352,22 +352,22 @@ function drawPhone() {
   g.save(); g.globalAlpha = ui; g.translate(0, -(1 - ui) * 80);
   g.font = `600 12px ${MONO}`; g.textBaseline = 'middle';
   // status bar: the game clock, signal, the phone's battery (charging from the cab while the engine runs)
-  g.fillStyle = dn.k > .5 ? 'rgba(10,14,20,.85)' : 'rgba(255,255,255,.88)'; g.fillRect(0, 0, W, 24);
+  g.fillStyle = P.bar0; g.fillRect(0, 0, W, SB);   // as tall as the camera island (CSS .phone-notch: 6–28 px) with room round it
   const hh = Math.floor(dn.t) % 24, mm = Math.floor((dn.t % 1) * 60);
-  g.fillStyle = P.text; g.textAlign = 'left'; g.fillText(String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0'), 16, 12);
-  g.textAlign = 'right'; g.fillText((st.engineOn ? '⚡ ' : '') + 'LTE ▂▄▆█', W - 16, 12);
+  g.fillStyle = P.text; g.textAlign = 'left'; g.fillText(String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0'), 20, 18);
+  statusIcons(g, W - 18, 18, P);
   // the green card: the next thing on the road
   const n = nextStep(T0);
-  g.fillStyle = P.nav; g.beginPath(); g.roundRect(8, 30, W - 16, 74, 12); g.fill();
-  icon(g, n.icon, 40, 67, 1.1);
-  g.fillStyle = '#fff'; g.textAlign = 'left'; g.font = `700 20px ${MONO}`; g.fillText(fit(g, distText(n.dist) || n.text, W - 86), 70, 52);
-  g.font = `600 13px ${MONO}`; g.fillText(fit(g, n.dist === null ? n.sub : n.text, W - 86), 70, 74);
-  g.font = `11px ${MONO}`; g.fillStyle = 'rgba(255,255,255,.82)'; g.fillText(fit(g, n.dist === null ? '' : n.sub, W - 86), 70, 92);
+  g.fillStyle = P.nav; g.beginPath(); g.roundRect(8, SB + 6, W - 16, 74, 12); g.fill();
+  icon(g, n.icon, 40, SB + 43, 1.1);
+  g.fillStyle = '#fff'; g.textAlign = 'left'; g.font = `700 20px ${MONO}`; g.fillText(fit(g, distText(n.dist) || n.text, W - 86), 70, SB + 28);
+  g.font = `600 13px ${MONO}`; g.fillText(fit(g, n.dist === null ? n.sub : n.text, W - 86), 70, SB + 50);
+  g.font = `11px ${MONO}`; g.fillStyle = 'rgba(255,255,255,.82)'; g.fillText(fit(g, n.dist === null ? '' : n.sub, W - 86), 70, SB + 68);
   g.restore(); g.globalAlpha = ui;
   // the bottom sheet's top; the floating buttons (compass: heading up ⇄ north up, zoom in / out, and – once the map is dragged away – back to the truck) stay above it
-  const sh = 120, sy = H - sh, bx = W - 46; let by = Math.max(112, Math.min(116, sy - 8 - 4 * 44));
+  const sh = 120, sy = H - sh, bx = W - 46; let by = Math.max(SB + 88, Math.min(SB + 92, sy - 8 - 4 * 44));
   for (const [id, glyph] of [['north', view.northUp ? 'N' : '➤'], ['in', '+'], ['out', '−'], ...(view.free ? [['home', '◎']] : [])]) {
-    g.fillStyle = P.card; g.strokeStyle = 'rgba(0,0,0,.2)'; g.lineWidth = 1; g.beginPath(); g.arc(bx + 18, by + 18, 18, 0, 7); g.fill(); g.stroke();
+    g.fillStyle = P.card; g.strokeStyle = dn.k > .5 ? 'rgba(255,255,255,.22)' : 'rgba(0,0,0,.2)'; g.lineWidth = 1; g.beginPath(); g.arc(bx + 18, by + 18, 18, 0, 7); g.fill(); g.stroke();
     g.fillStyle = id === 'north' ? '#ea4335' : id === 'home' ? P.route : P.text; g.font = `700 ${id === 'north' ? 14 : 20}px ${MONO}`; g.textAlign = 'center';
     if (id === 'north' && !view.northUp) { g.save(); g.translate(bx + 18, by + 18); g.rotate(-Math.PI / 2 - (view.rot ?? 0)); g.fillText('➤', 0, 1); g.restore(); } else g.fillText(glyph, bx + 18, by + 19);
     hits.push({ id, x: bx, y: by, w: 36, h: 36 }); by += 44;
@@ -379,19 +379,27 @@ function drawPhone() {
   const total = Math.max(1, CFG.RIDE_MIN_SECONDS), goal = Math.max(1, CFG.COMPLETE_DIST), left = T0 !== null ? Math.max(0, T0 - st.s) : 0, tLeft = Math.max(0, total - st.t);
   const eta = Math.max(left / Math.max(view.vAvg, 6), tLeft), pt = clamp(st.t / total, 0, 1), pd = clamp(st.s / goal, 0, 1);
   const big = st.complete ? 'DONE' : fmt(eta);
-  g.textAlign = 'left'; g.fillStyle = '#188038'; g.font = `700 22px ${MONO}`; g.fillText(big, 16, sy + 30);
+  g.textAlign = 'left'; g.fillStyle = P.go; g.font = `700 22px ${MONO}`; g.fillText(big, 16, sy + 30);
   const dw = g.measureText(big).width;
   g.fillStyle = P.sub; g.font = `600 14px ${MONO}`; g.fillText(fit(g, st.complete ? '· shift complete' : left <= 0 ? '· distance done – wait for the time' : '· ' + distText(left) + (tLeft <= 0 ? ' – time done' : ''), W - 100 - (24 + dw)), 24 + dw, sy + 31);   // never under EXIT
   g.font = `600 12px ${MONO}`; g.fillText(fit(g, `TIME ${fmt(Math.min(st.t, total))} / ${fmt(total)}`, W - 120), 16, sy + 50);
   g.fillText(fit(g, `DIST ${(Math.min(st.s, goal) / 1000).toFixed(2)} / ${(goal / 1000).toFixed(2)} km`, W - 120), 16, sy + 76);
-  g.fillStyle = 'rgba(0,0,0,.1)'; g.beginPath(); g.roundRect(16, sy + 58, W - 120, 6, 3); g.roundRect(16, sy + 84, W - 120, 6, 3); g.fill();
+  g.fillStyle = P.bar; g.beginPath(); g.roundRect(16, sy + 58, W - 120, 6, 3); g.roundRect(16, sy + 84, W - 120, 6, 3); g.fill();
   g.fillStyle = P.route; g.beginPath(); g.roundRect(16, sy + 58, Math.max(6, (W - 120) * pt), 6, 3); g.fill();
-  g.fillStyle = '#188038'; g.beginPath(); g.roundRect(16, sy + 84, Math.max(6, (W - 120) * pd), 6, 3); g.fill();
+  g.fillStyle = P.go; g.beginPath(); g.roundRect(16, sy + 84, Math.max(6, (W - 120) * pd), 6, 3); g.fill();
   g.fillStyle = P.sub; g.font = `11px ${MONO}`; g.fillText(fit(g, (trip.name ?? 'SHIFT') + ' · ' + (env.theme?.name ?? '') + (trip.finish ? ' · ends at the line' : ''), W - 32), 16, sy + 104);
   g.fillStyle = '#ea4335'; g.beginPath(); g.roundRect(W - 92, sy + 20, 78, 40, 20); g.fill();
   g.fillStyle = '#fff'; g.font = `700 14px ${MONO}`; g.textAlign = 'center'; g.fillText('EXIT', W - 53, sy + 41);
   hits.unshift({ id: 'exit', x: W - 92, y: sy + 20, w: 78, h: 40 });   // tested first: nothing drawn over it may take its click
   g.restore(); if (ui < 1) hits.splice(1);   // still sliding in: only EXIT answers
+}
+const SB = 38;   // the phone's status bar, px of the 300 × 600 layout
+function statusIcons(g, x, y, P) {   // signal bars, the network, the battery (⚡ while the engine charges it) – drawn, not font glyphs
+  g.save(); g.fillStyle = P.text; g.strokeStyle = P.text; g.lineWidth = 1.2;
+  g.beginPath(); g.roundRect(x - 24, y - 5, 22, 10, 3); g.stroke(); g.beginPath(); g.roundRect(x - 22, y - 3, 14, 6, 1.5); g.fill(); g.fillRect(x - 1, y - 2, 2, 4);   // battery
+  if (st.engineOn) { g.fillStyle = P.go; g.beginPath(); g.moveTo(x - 11, y - 4); g.lineTo(x - 16, y + .5); g.lineTo(x - 12.5, y + .5); g.lineTo(x - 14, y + 4); g.lineTo(x - 8, y - 1); g.lineTo(x - 11.5, y - 1); g.closePath(); g.fill(); }
+  g.fillStyle = P.text; for (let i = 0; i < 4; i++) g.fillRect(x - 58 + i * 5, y + 5 - 3 - i * 2.4, 3.2, 3 + i * 2.4);   // signal
+  g.restore();
 }
 function fit(g, text, w) { if (g.measureText(text).width <= w) return text; while (text.length > 3 && g.measureText(text + '…').width > w) text = text.slice(0, -1); return text + '…'; }
 
