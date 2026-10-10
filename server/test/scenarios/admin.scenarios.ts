@@ -35,7 +35,7 @@ export function adminScenarios(h: () => Harness): void {
 
   it('does not exist for anyone but an admin: signed out, a rider, even with the header → 404 on every route', async () => {
     const rider = await login();
-    for (const path of ['overview', 'rides', 'rides/x', 'signins', 'actions', 'logs', 'settings', 'pools']) {
+    for (const path of ['overview', 'rides', 'rides/x', 'signins', 'actions', 'logs', 'settings', 'queue/count', 'players', `players/${rider.address}`, 'pools', 'pools/1', 'pool-payouts', 'stats', 'sessions']) {
       await anon().get(`/api/admin/${path}`).expect(404);
       await rider.agent.get(`/api/admin/${path}`).set('x-fc-admin', '1').expect(404);
     }
@@ -183,6 +183,40 @@ export function adminScenarios(h: () => Harness): void {
     expect((await admin.agent.get('/api/admin/actions').expect(200)).body.rows.map((a: { action: string }) => a.action)).toEqual(['verdict.rejudge', 'verdict.override', 'auth.signin']);
   });
 
+  it('the directory: players (list + one rider in full), pools, statistics and sessions – read-only, admin only, bad parameters are 400s and unknown ones 404s', async () => {
+    const admin = await asAdmin();
+    const rider = await login();
+    const rideId = (await rider.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body.id as string;
+    await rider.agent.post(`/api/rides/${rideId}/start`).expect(200);
+    expect((await admin.agent.get('/api/admin/queue/count').expect(200)).body).toEqual({ flagged: 0, underReview: 0 });
+    const list = (await admin.agent.get('/api/admin/players').expect(200)).body.rows as { wallet: string; freeRides: number; lastSignInAt: number | null }[];
+    expect(list.map((p) => p.wallet)).toEqual(expect.arrayContaining([rider.address, ADMIN.address]));
+    expect(list.find((p) => p.wallet === rider.address)).toMatchObject({ freeRides: 9, rides: 0, tickets: 0 });
+    expect(list.find((p) => p.wallet === rider.address)?.lastSignInAt).toEqual(expect.any(Number));
+    const prefix = rider.address.slice(0, 8);
+    expect((await admin.agent.get(`/api/admin/players?q=${prefix}`).expect(200)).body.rows.map((p: { wallet: string }) => p.wallet)).toEqual([rider.address]);
+    expect((await admin.agent.get(`/api/admin/players?q=${prefix.toLowerCase() === prefix ? prefix.toUpperCase() : prefix.toLowerCase()}`).expect(200)).body.rows).toEqual([]);
+    expect((await admin.agent.get('/api/admin/players?q=0OIl').expect(400)).body.code).toBeDefined();
+    const one = (await admin.agent.get(`/api/admin/players/${rider.address}`).expect(200)).body;
+    expect(one.player).toMatchObject({ wallet: rider.address, freeRides: 9 });
+    expect(one.rides.map((r: { id: string }) => r.id)).toEqual([rideId]);
+    expect(one.signIns).toHaveLength(1);
+    expect(one).toMatchObject({ stats: null, tickets: [], payments: { count: 0, lamports: 0 } });
+    await admin.agent.get('/api/admin/players/not-a-wallet').expect(400);
+    await admin.agent.get(`/api/admin/players/${newWallet().address}`).expect(404);
+    expect((await admin.agent.get('/api/admin/pools').expect(200)).body).toEqual({ rows: [] });
+    await admin.agent.get('/api/admin/pools/1').expect(404);
+    await admin.agent.get('/api/admin/pools/x').expect(400);
+    await admin.agent.get('/api/admin/pools/3000000000').expect(400);
+    expect((await admin.agent.get('/api/admin/stats').expect(200)).body).toMatchObject({ global: null, daily: [], top: [] });
+    await admin.agent.get('/api/admin/stats?days=0').expect(400);
+    const sessionsBody = (await admin.agent.get('/api/admin/sessions?days=7').expect(200)).body as { rows: { wallet: string; signIns: number }[]; truncated: boolean };
+    const sessions = sessionsBody.rows;
+    expect(sessionsBody.truncated).toBe(false);
+    expect(sessions.find((s) => s.wallet === rider.address)).toMatchObject({ signIns: 1 });
+    await admin.agent.get('/api/admin/sessions?days=99').expect(400);
+  });
+
   it('an override of an unknown ride or of a ride without a verdict is a 404 and is not audited', async () => {
     const admin = await asAdmin();
     const rider = await login();
@@ -199,7 +233,7 @@ export function adminScenarios(h: () => Harness): void {
     const now = new Date(h().clock.ms);
     await h().app.get(PoolRepositoryPort, { strict: false }).upsert(aPool({ id: 4, status: 'active', minTickets: 2, ticketsSold: 3 }, now));
     const admin = await asAdmin();
-    const listed = (await admin.agent.get('/api/admin/pools').set('x-fc-admin', '1').expect(200)).body;
+    const listed = (await admin.agent.get('/api/admin/pool-payouts').set('x-fc-admin', '1').expect(200)).body;
     expect(listed.pools.map((p: { pool: { id: number }; hold: unknown; standings: { poolId: number } }) => [p.pool.id, p.standings.poolId, p.hold])).toEqual([[4, 4, null]]);
     const ask = async (poolId: number, hold: boolean, note: string | null) => {
       const { body } = await admin.agent.post(`/api/admin/pools/${poolId}/hold/challenge`).set('x-fc-admin', '1').send({ action: 'pool_hold', hold, note }).expect(200);

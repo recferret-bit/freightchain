@@ -1,3 +1,4 @@
+import type { DailyStatsDto, StatsDto } from '../stats/stats.js';
 import type { LogEntry } from '../ops/log-entry.js';
 import type { RideReview } from '../verdict/ride-review.js';
 import type { VerdictDto } from '../verdict/verdict.dto.js';
@@ -108,3 +109,77 @@ export interface AdminLogsDto {
 }
 
 export const ADMIN_LIST_MAX = 200;
+
+/* ── the directory views: players, pools, statistics, sessions (read-only; the money stays on chain, repairs are `stats:reconcile`) ── */
+
+export interface AdminPlayerRowDto {
+  wallet: string;
+  freeRides: number;
+  freeRidesMax: number;
+  createdAt: number;
+  /** epoch ms of the newest sign-in on record (null = none kept – the log is pruned after SIGN_IN_RETENTION_DAYS) */
+  lastSignInAt: number | null;
+  /** started rides that ended */
+  rides: number;
+  /** unused tickets over every pool */
+  tickets: number;
+}
+
+export interface AdminPlayerDetailDto {
+  player: { wallet: string; freeRides: number; freeRidesMax: number; freeDay: string; createdAt: number; tutorialPassedAt: number | null };
+  stats: StatsDto | null;
+  tickets: { poolId: number; balance: number; bought: number }[];
+  grants: { poolId: number; delta: number; source: string; ref: string | null; at: number }[];
+  payments: { count: number; lamports: number };
+  signIns: SignInRowDto[];
+  rides: AdminRideRowDto[];
+}
+
+export interface AdminPoolRowDto {
+  id: number;
+  address: string;
+  tier: string;
+  label: string;
+  status: string;
+  priceLamports: number;
+  minTickets: number;
+  maxTickets: number;
+  maxPerWallet: number;
+  ticketsSold: number;
+  buyers: number;
+  vaultLamports: number;
+  sponsored: number;
+  roundId: number | null;
+  rideSeed: number;
+  prepDeadline: number;
+  playDeadline: number;
+  createdAt: number;
+  syncedAt: number | null;
+}
+
+export interface AdminPoolDetailDto {
+  pool: AdminPoolRowDto & { prizeBps: number; seedBps: number; feeBps: number; feeTreasury: string; seedTreasury: string };
+  holders: { wallet: string; balance: number; bought: number }[];
+}
+
+export interface AdminStatsDto {
+  now: number;
+  global: (StatsDto & { drivers: number; updatedAt: number }) | null;
+  daily: DailyStatsDto[];
+  top: { wallet: string; stats: StatsDto }[];
+}
+
+/** one wallet with a sign-in inside the window: a session cookie may still be alive (they last SESSION_TTL_DAYS and cannot be revoked one by one) */
+export interface AdminSessionRowDto {
+  wallet: string;
+  lastAt: number;
+  signIns: number;
+  ip: string | null;
+  userAgent: string | null;
+}
+
+export interface AdminSessionsDto {
+  rows: AdminSessionRowDto[];
+  /** more wallets signed in inside the window than one answer lists – the oldest are left out */
+  truncated: boolean;
+}

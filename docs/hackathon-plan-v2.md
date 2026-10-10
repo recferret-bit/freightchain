@@ -73,7 +73,7 @@ The overall awards are judged as startups (seven factors: the form is a venture 
 
 ## Verified play (design, next milestone)
 
-Your spec, written down so the deck, the form and the code later agree. **Nothing here is built this week.** It supersedes the deterministic fixed-point replay in `technical_design_document.html`: the replay is a *telemetry playback*, the verdict is a *statistical check*, and the sim keeps its float physics.
+Your spec, written down so the deck, the form and the code later agree. **Nothing here is built this week.** The replay is a *telemetry playback*, the verdict is a *statistical check*, and the sim keeps its float physics.
 
 **Ride start.** The server generates the ride's seed (today) and, on top of it, **server-issued event batches**: the obstacles, holes, traffic waves and challenge events for the next stretch, sent as the truck approaches it (so a client cannot precompute the whole ride). Each batch is signed / numbered; the client acks it.
 
@@ -141,7 +141,6 @@ Auth = Sign-In With Solana, httpOnly cookie shared by the subdomains (Domain = a
 
 - [ ] **Me:** prize split 50% grand → **top 3 25/15/10%** in `server/src/domain/economy/prize-split.ts` + DTOs, pool / leaderboard API, tests (property test still sums exactly). Copy: `landing/src/main.js` (pool legend + note), `landing/index.html` (loop step 4, roadmap row, "next" line), `client/site/lobby.js` (rules list), server comments. No more "draw" anywhere. Redeploy before any recording.
 - [ ] **Me:** README disclosure section (text in [Submission](#submission-portal)), how to run, what is mocked, what was cut.
-- [ ] **Me:** delete the stale `docs/day-1.md`.
 - [ ] **Me:** stop the smoke test from polluting production players (mark or clean throwaway players) so Friday's count is real.
 - [ ] **You:** record the gameplay loop (real Chrome, clean profile) → `landing/public/media/hero.mp4`; I wire `data-src`, rebuild, redeploy.
 - [ ] **You:** name the five playtesters; send the X account URL (→ `SOCIALS`).

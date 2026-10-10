@@ -41,6 +41,16 @@ export function paymentScenarios(h: () => Harness): void {
       await a.agent.post(`/api/rides/${r.id}/heartbeat`).send({ s: 0 }).expect(409);
     });
 
+    it('one road a day: every order of a tier on a UTC day gets that day\'s seed (route, start hour, holes); the next day a new one; free rides their own', async () => {
+      const [a, b, c] = [await login(), await login(), await login()];
+      const ra = await order(a), rb = await order(b);
+      expect(rb).toMatchObject({ seed: ra.seed, route: ra.route, startHour: ra.startHour, trip: ra.trip });
+      const free = (await c.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
+      expect(free.seed).not.toBe(ra.seed);
+      sec(24 * 3600); // the next UTC day (the order of b lapsed long ago)
+      expect((await order(b)).seed).not.toBe(ra.seed);
+    });
+
     it('the payment transaction pays the treasury the quoted amount with the ride id as memo', async () => {
       const a = await login(), r = await order(a, '1h');
       const p = (await a.agent.get(`/api/rides/${r.id}/payment`).expect(200)).body;

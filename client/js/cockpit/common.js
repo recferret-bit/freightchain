@@ -78,10 +78,19 @@ export function ledBar(x, y, w, h, val, col, label, u) {
   for (let i = 0; i < n; i++) { ctx.fillStyle = val > (i + .5) / n ? col : '#1c1915'; ctx.fillRect(x, y + h - (i + 1) * sh + .3 * u, w, sh - .6 * u); }
   ctx.fillStyle = '#9d957f'; ctx.font = `${1.7 * u}px ${MONO}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(label, x + w / 2, y + h + 1.8 * u);
 }
-/* heater switch: lit while on, and a small bar under the label shows how warm the air actually is (it follows the engine temperature) */
+/* climate switch: lit while on, and a small bar under the label shows how strong the air actually is (heat follows the engine temperature, cold follows the compressor) */
+function climateBar(x, y, w, h, u, eff, hot) {
+  ctx.fillStyle = '#1a1713'; ctx.fillRect(x + .8 * u, y + h - 1.1 * u, w - 1.6 * u, .6 * u);
+  ctx.fillStyle = hot ? (eff > .5 ? '#ff9a3a' : eff > .12 ? '#d8b04a' : '#4a8fd8') : (eff > .5 ? '#3aa0ff' : eff > .12 ? '#7ec8e8' : '#4a8fd8');
+  ctx.fillRect(x + .8 * u, y + h - 1.1 * u, Math.max(.4 * u, (w - 1.6 * u) * eff), .6 * u);
+}
 export function heatButton(x, y, w, h, u) {
   uiButton('heat', 'HEAT', x, y, w, h, u, st.heater && powered());
-  if (st.heater && powered()) { ctx.fillStyle = '#1a1713'; ctx.fillRect(x + .8 * u, y + h - 1.1 * u, w - 1.6 * u, .6 * u); ctx.fillStyle = st.heatEff > .5 ? '#ff9a3a' : st.heatEff > .12 ? '#d8b04a' : '#4a8fd8'; ctx.fillRect(x + .8 * u, y + h - 1.1 * u, Math.max(.4 * u, (w - 1.6 * u) * st.heatEff), .6 * u); }
+  if (st.heater && powered()) climateBar(x, y, w, h, u, st.heatEff, true);
+}
+export function coldButton(x, y, w, h, u) {
+  uiButton('cold', 'COLD', x, y, w, h, u, st.cooler && powered());
+  if (st.cooler && powered()) climateBar(x, y, w, h, u, st.coolEff, false);
 }
 /* clickable dash buttons: rebuilt every frame by uiButton(), hit-tested in ui/input.js */
 export const uiBtns = [];

@@ -12,6 +12,7 @@ const TRIPS = (process.env.TRIPS || 'free,1h,4h,8h').split(','), ROUTES = (proce
 const { ev, shot, filt, SHOTS, finish, send } = await launch({ port: PORT, shotsDir: 'fc-trip-shots', evalProblems: true });
 await send('Page.navigate', { url: `${BASE}/play.html` }); await sleep(3500);
 if (await ev('typeof window.__game') !== 'object') { console.log('the game did not boot at', BASE); finish(1); }
+await ev('__game.devRun()');   // no helpers; each trip below sets its own road
 
 for (const route of ROUTES) for (const id of TRIPS) {
   const r = await ev(`(() => { const g = __game; g.setTrip(${JSON.stringify(id)}); g.selectTheme(${JSON.stringify(route)}, false); g.st.mode = 'done'; g.startRide(); g.roads.newTrip(${SEED});

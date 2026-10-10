@@ -2,7 +2,7 @@ import { Controller, Get, HttpCode, Post, UseGuards } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import type { ChallengeDto } from '../../application/use-cases/auth/request-challenge/request-challenge.command.js';
 import { HoldPoolPayoutCommand, type PoolHoldDto } from '../../application/use-cases/admin/hold-pool-payout/hold-pool-payout.command.js';
-import { ListAdminPoolsQuery, type AdminPoolsDto } from '../../application/use-cases/admin/list-admin-pools/list-admin-pools.query.js';
+import { ListPoolPayoutsQuery, type PoolPayoutsDto } from '../../application/use-cases/admin/list-pool-payouts/list-pool-payouts.query.js';
 import { RequestActionChallengeCommand } from '../../application/use-cases/admin/request-action-challenge/request-action-challenge.command.js';
 import { CurrentRequestId } from '../../infrastructure/http/decorators/client-info.js';
 import { CurrentPlayer } from '../../infrastructure/http/decorators/current-player.js';
@@ -13,7 +13,7 @@ import {
   poolHoldBodySchema, poolHoldChallengeBodySchema, poolHoldParamsSchema, type PoolHoldBody, type PoolHoldChallengeBody, type PoolHoldParams,
 } from './dto/admin-pools.dto.js';
 
-/** The pools tab of the admin page: the winners list of every pool, and the signed HOLD that stops its automatic payout. Same guard as the rest of /api/admin. */
+/** The PAYOUTS tab of the admin page: the winners list of every pool, and the signed HOLD that stops its automatic payout. Same guard as the rest of /api/admin. */
 @Controller('api/admin')
 @UseGuards(AdminGuard)
 export class AdminPoolsHttpController {
@@ -22,9 +22,9 @@ export class AdminPoolsHttpController {
     private readonly queryBus: QueryBus,
   ) {}
 
-  @Get('pools')
-  pools(): Promise<AdminPoolsDto> {
-    return this.queryBus.execute<ListAdminPoolsQuery, AdminPoolsDto>(new ListAdminPoolsQuery());
+  @Get('pool-payouts')
+  payouts(): Promise<PoolPayoutsDto> {
+    return this.queryBus.execute<ListPoolPayoutsQuery, PoolPayoutsDto>(new ListPoolPayoutsQuery());
   }
 
   @Post('pools/:id/hold/challenge') @HttpCode(200)

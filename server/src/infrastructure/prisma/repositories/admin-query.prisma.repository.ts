@@ -36,6 +36,15 @@ export class AdminQueryPrismaRepository extends AdminQueryPort {
     };
   }
 
+  async queueCount(): Promise<number> {
+    const [paid, free] = await Promise.all([this.prisma.ride.count({ where: PAID_UNDER_REVIEW }), this.prisma.ride.count({ where: FREE_FLAGGED })]);
+    return paid + free;
+  }
+
+  flaggedCount(): Promise<number> {
+    return this.prisma.rideVerdict.count({ where: { status: 'flagged' } });   // index (status, judgedAt)
+  }
+
   async rides(filter: AdminRideFilter): Promise<AdminRideRow[]> {
     const where: Prisma.RideWhereInput = {
       ...(filter.wallet ? { wallet: filter.wallet } : {}),

@@ -1,6 +1,6 @@
 import { explorerTx, explorerUrl, phaseLine, payoutText, poolSchedule, scheduleText, span } from './pools.js';
 
-/* The admin page's POOLS tab (GET /api/admin/pools): every live pool and the newest settled ones – phase, sold / min, when the payout job pays, what it said last,
+/* The admin page's PAYOUTS tab (GET /api/admin/pool-payouts): every live pool and the newest settled ones – phase, sold / min, when the payout job pays, what it said last,
    the winners list the public sees, the rides still under review (a link into the REVIEW QUEUE for that pool) and the signed HOLD / RELEASE that stops the automatic payout.
    HOLD / RELEASE = ctx.signAt('pools/<id>/hold/challenge') → the wallet signs the server's text → POST pools/<id>/hold with the signature; audited (pool.hold / pool.release).
    Server text (labels, notes, wallets) goes in with textContent only – ctx.el never touches innerHTML. */
@@ -9,9 +9,9 @@ const PAYOUT_STATE = { pending: 'PENDING', waiting_review: 'WAITING FOR REVIEW',
 const STATE_CLASS = { paid: 'verified', paying: 'verified', no_winners: 'none', pending: 'none', waiting_review: 'flagged', held: 'flagged', error: 'rejected' };
 const sol = l => `${(l / 1e9).toFixed(4)} SOL`;
 
-export async function poolsTab(ctx) {
+export async function payoutsTab(ctx) {
   const { api, el, view, signAt, time, wallet } = ctx;
-  const { pools } = await api('pools');
+  const { pools } = await api('pool-payouts');
   const now = Date.now();
 
   const card = ({ pool: p, standings: st, hold }) => {
@@ -25,7 +25,7 @@ export async function poolsTab(ctx) {
         const signature = await signAt(`pools/${p.id}/hold/challenge`, { action: 'pool_hold', hold: on, note: n });
         msg.textContent = 'Saving…';
         await api(`pools/${p.id}/hold`, { hold: on, note: n, signature });
-        await poolsTab(ctx);   // reload the list: the payout state, the hold and the audit moved
+        await payoutsTab(ctx);   // reload the list: the payout state, the hold and the audit moved
       } catch (e) { btn.disabled = false; msg.className = 'msg bad'; msg.textContent = e.message; }
     };
     const holdBtn = el('button', { class: 'reject', 'data-act': 'hold', disabled: !holdable, title: holdable ? 'stop the automatic payout of this pool until you release it' : 'nothing to hold: the pool is paid or not live', onclick: e => setHold(true, e.currentTarget) }, hold ? 'HOLD AGAIN (NEW NOTE)' : 'HOLD PAYOUT');
@@ -53,7 +53,7 @@ export async function poolsTab(ctx) {
       msg);
   };
 
-  view.replaceChildren(el('h2', {}, `POOLS · ${pools.length}`),
+  view.replaceChildren(el('h2', {}, `PAYOUTS · ${pools.length}`),
     el('p', { class: 'dim' }, 'Live pools (soonest play deadline first), then the newest settled ones. After the review window the payout job pays the VERIFIED top 20 by itself – unless a ride of the pool is still under review or you HOLD it. A hold is signed and audited; a pool still held 14 days after its payout time is expired into refunds by the crank.'),
     ...(pools.length ? pools.map(card) : [el('div', { class: 'card empty' }, 'No pools yet.')]));
 }

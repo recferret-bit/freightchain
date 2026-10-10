@@ -1,32 +1,14 @@
-import { API_BASE, SITE_BASE } from './hosts.js';
-import { fingerprint } from './fingerprint.js';
+import { SITE_BASE } from './hosts.js';
 
-/* Counted free runs on play.html?offline=1 only. Bare play.html stays the prototype (no fetch here).
-   Imports hosts + fingerprint only, so the menu can import this without a cycle. */
-export const offlineRide = { on: false };
+/* The GUEST run – what play.html is without ?ride= (a ticket / free ride) or ?watch= (a spectator): nothing is counted, recorded or judged, and this page makes no request.
+   `dev` = a console / tool run (__game.devRun): the guest's menu and no-network rules, but the caller picks the trip and the helpers.
+   Imports hosts only, so the menu can import this without a cycle. */
+export const offlineRide = { on: false, dev: false };
 
 export function offlineWanted() {
-  if (typeof location === 'undefined') return false;
-  return new URL(location.href).searchParams.get('offline') === '1';
+  if (typeof location === 'undefined') return false;   // no page (the headless test): the plain sim
+  const q = new URL(location.href).searchParams;
+  return !q.has('ride') && !q.has('watch');
 }
 
 export const connectHref = () => `${SITE_BASE}/`;
-export const lobbyHref = () => `${SITE_BASE}/lobby.html`;
-
-async function read(res) {
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw Object.assign(new Error(body.detail || 'offline check failed'), { status: res.status, code: body.code ?? null });
-  return body;
-}
-
-export async function offlineStatus() {
-  const id = await fingerprint();
-  return read(await fetch(`${API_BASE}/api/offline-rides?fingerprint=${id}`, { credentials: 'include' }));
-}
-
-export async function claimOfflineRide() {
-  const id = await fingerprint();
-  return read(await fetch(`${API_BASE}/api/offline-rides`, {
-    method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ fingerprint: id }),
-  }));
-}

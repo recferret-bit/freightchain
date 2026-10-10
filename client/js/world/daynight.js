@@ -69,8 +69,9 @@ export function updateDayNight(dt) {
     u.night.value = k; u.tw.value = tw; u.stars.value = d.stars; u.twCol.value.set(...d.warm);
     const p = (dn.t - d.rise) / (d.set - d.rise), q = ((dn.t - d.set + 24) % 24) / (24 - (d.set - d.rise));   // sun along its arc by day, below the horizon by night
     if (p >= 0 && p <= 1) sunV.set(Math.cos(Math.PI * p), Math.sin(Math.PI * p) * d.peak, -.55); else sunV.set(-Math.cos(Math.PI * q), -.3 * Math.sin(Math.PI * q), -.55);
-    u.sun.value.copy(sunV).normalize();
+    u.sun.value.copy(sunV).normalize(); NL.formSun.value.copy(u.sun.value);
   }
+  NL.formK.value = (CFG.FORM_SHADE ? 1 : 0) * (1 - k);   // form shade is a daytime read; at night the headlight cone is the light
   if (th && scene.fog) {
     const f = th.fog, c = f.color, w = tw * .55;   // keep in step with the sky shader's horizon (sky-dome.js)
     hr[0] = lerp(lerp((c >> 16 & 255) / 255, CFG.NIGHT_HORIZON[0], k), d.warm[0], w); hr[1] = lerp(lerp((c >> 8 & 255) / 255, CFG.NIGHT_HORIZON[1], k), d.warm[1], w); hr[2] = lerp(lerp((c & 255) / 255, CFG.NIGHT_HORIZON[2], k), d.warm[2], w);

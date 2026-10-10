@@ -51,6 +51,17 @@ if (whitepaper) {
   const css = wBody.match(/href="(\/assets\/[^"]+\.css)"/)?.[1];
   check('its stylesheet loads from the same host', !!css && (await at(whitepaper)(css)).status === 200, css ?? 'no stylesheet link');
 }
+if (https) {   // search: robots + sitemap from the landing build; behind nginx (the fc-seo snippet) the game host's / and the apex's /whitepaper.html 301 to the page's one public URL
+  const r = await at(base)('/robots.txt'), rBody = await r.text();
+  check('robots.txt answers as text and names the sitemap', r.status === 200 && /text\/plain/.test(r.headers.get('content-type') ?? '') && /^Sitemap: https:\/\//m.test(rBody), `${r.status} ${r.headers.get('content-type')}`);
+  const sm = await at(base)('/sitemap.xml');
+  check('sitemap.xml answers as XML', sm.status === 200 && /xml/.test(sm.headers.get('content-type') ?? '') && /<urlset/.test(await sm.text()), `${sm.status} ${sm.headers.get('content-type')}`);
+  if (game) { const g = await at(game)('/?x=1'); check('the game host\'s / is the landing: 301 to the apex, query kept', g.status === 301 && g.headers.get('location') === `${base}/?x=1`, `${g.status} → ${g.headers.get('location')}`); }
+  if (whitepaper) { const w = await at(base)('/whitepaper.html'); check('the apex\'s /whitepaper.html: 301 to the whitepaper host', w.status === 301 && w.headers.get('location') === `${whitepaper}/`, `${w.status} → ${w.headers.get('location')}`); }
+  const www = base.replace('://', '://www.'), wr = await at(www)('/?x=1').catch(() => null);   // optional host: no DNS record (or no certificate yet) = skipped, not failed
+  if (wr) check('www. 301s to the apex, query kept', wr.status === 301 && wr.headers.get('location') === `${base}/?x=1`, `${wr.status} → ${wr.headers.get('location')}`);
+  else console.log(`- www. not reachable (no DNS record / certificate yet) – skipped`);
+}
 if (admin) {   // admin.*: nginx basic auth first (credentials from SMOKE_ADMIN_AUTH=user:pass – never argv), then the app's own wallet gate
   const bare = await at(admin)('/');
   check('the admin host asks for a password (401 + Basic)', bare.status === 401 && /^Basic/i.test(bare.headers.get('www-authenticate') ?? ''), `${bare.status}`);

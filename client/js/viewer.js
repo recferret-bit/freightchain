@@ -5,6 +5,7 @@ import { KINDS } from './world/props.js';
 import { buildGantry } from './world/gantry.js';
 import { THEMES } from './themes/index.js';
 import { TYPES } from './themes/_shared/landmarks/index.js';
+import { setFormShade } from './world/nightlight.js';   // installs the form-shade patch; this page has no day/night loop, so the sun stays the default and F8 is instant
 
 /* Model viewer (viewer.html): a separate scene with every 3D object of the game except the player's own freighter/trailer –
    traffic vehicles, and per route the scenery props, roadside furniture and finish gantry – built by the SAME code the game uses.
@@ -49,7 +50,7 @@ for (const t of THEMES) {
 
 /* ---------- selection ---------- */
 let cur = null, obj = null, bounds = new THREE.Box3();
-const opts = { edges: true, grid: true, box: false, wire: false, spin: false, brake: false, siren: true };
+const opts = { edges: true, grid: true, box: false, wire: false, spin: false, brake: false, siren: true, form: true };
 let boxHelper = null, edgeLines = [], wireMats = [];
 const edgeCache = new Map(), edgeMat = new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: .55 });
 
@@ -87,11 +88,11 @@ function applyOpts() {
   for (const l of edgeLines) l.visible = opts.edges; if (boxHelper) boxHelper.visible = opts.box; grid.visible = opts.grid;
   for (const m of wireMats) m.wireframe = opts.wire;
   const u = obj?.userData ?? {}; if (u.brake) u.brake.visible = opts.brake; if (u.flash && !opts.siren) u.flash.forEach(g => g.visible = false);
-  const rows = [['edges', 'E  edges'], ['grid', 'G  grid (1 m)'], ['box', 'X  bounding box'], ['wire', 'V  wireframe'], ['spin', 'Space  auto-rotate'], ['brake', 'brake lights', !u.brake], ['siren', 'siren flash', !u.flash]];
+  const rows = [['edges', 'E  edges'], ['grid', 'G  grid (1 m)'], ['box', 'X  bounding box'], ['wire', 'V  wireframe'], ['spin', 'Space  auto-rotate'], ['form', 'F8  form shade'], ['brake', 'brake lights', !u.brake], ['siren', 'siren flash', !u.flash]];
   if (!$('opts').children.length) $('opts').innerHTML = rows.map(([k, t]) => `<label data-k="${k}"><input type="checkbox" data-k="${k}"> ${t}</label>`).join('');
   for (const [k, , off] of rows) { const l = $('opts').querySelector(`label[data-k=${k}]`); l.classList.toggle('off', !!off); l.firstChild.checked = opts[k]; }
 }
-$('opts').addEventListener('change', e => { opts[e.target.dataset.k] = e.target.checked; applyOpts(); });
+$('opts').addEventListener('change', e => { opts[e.target.dataset.k] = e.target.checked; if (e.target.dataset.k === 'form') setFormShade(opts.form); applyOpts(); });
 
 /* sidebar */
 {
@@ -141,7 +142,8 @@ addEventListener('keydown', e => {
   if ('wasd'.includes(k)) { keys.add(k); return; }
   const flip = { e: 'edges', g: 'grid', x: 'box', v: 'wire' }[k];
   if (k === 'arrowright' || k === 'arrowdown') step(1); else if (k === 'arrowleft' || k === 'arrowup') step(-1); else if (k === 'f' || k === 'r') frame();
-  else if (k === ' ') { opts.spin = !opts.spin; applyOpts(); e.preventDefault(); } else if (flip) { opts[flip] = !opts[flip]; applyOpts(); }
+  else if (k === ' ') { opts.spin = !opts.spin; applyOpts(); e.preventDefault(); } else if (k === 'f8') { opts.form = !opts.form; setFormShade(opts.form); applyOpts(); }
+  else if (flip) { opts[flip] = !opts[flip]; applyOpts(); }
 });
 addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
 addEventListener('blur', () => keys.clear());

@@ -53,6 +53,7 @@ test('the first still frame shows the point of the card (t0)', () => {
   assert.equal(at('park').st.park, true);   // lit first, then released
   assert.ok(at('clutch').st.clutch > .9); assert.ok(at('gas').st.gas > .5); assert.ok(at('brake').st.brake > .9);
   assert.ok(at('shift-up').st.rpm > 2000); assert.equal(at('lights').dn.head, true); assert.equal(at('cab-light').dn.cab, true);
+  assert.equal(at('heater').st.heater, true); assert.equal(at('heater').st.cooler, true); assert.ok(at('heater').st.heatEff > 0 && at('heater').st.coolEff > 0);
 });
 
 test('loops show both states of a switch', () => {

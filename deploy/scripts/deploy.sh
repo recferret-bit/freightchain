@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # npm run deploy [-- -y] [--skip-checks] [--allow-dirty] [--no-smoke] [--dry-run]
 # Semi-automatic: checks → shows exactly what will happen → asks → uploads the COMMITTED code (git archive HEAD) → the server builds, backs up, migrates,
-# swaps, health-checks and rolls back on failure → a sign-in smoke test against the public URL.
+# swaps, health-checks and rolls back on failure → a sign-in smoke test against the public URL → an IndexNow ping (the sitemap's URLs).
 . "$(dirname "$0")/lib.sh"
 
 SKIP_CHECKS=0; ALLOW_DIRTY=0; SMOKE=1; ASSUME_YES=0; DRY_RUN=0
@@ -29,7 +29,7 @@ app_env | node "$DEPLOY_DIR/scripts/validate-env.mjs" || die "deploy/.env is not
 
 # ---- 3. the server
 info "checking ssh to ${DEPLOY_USER}@${DEPLOY_HOST}"; check_ssh
-SETUP_DONE=1; rsh "test -f '$DEPLOY_PATH/state/setup-done' && test -f /etc/nginx/sites-available/freightchain-storybook && test -f /etc/nginx/sites-available/freightchain-whitepaper && test -f /etc/nginx/sites-available/freightchain-admin && test -f /etc/nginx/snippets/freightchain-media.conf && grep -q freightchain-media /etc/nginx/sites-available/freightchain && grep -q fc-audio /etc/nginx/snippets/freightchain-media.conf" 2>/dev/null || SETUP_DONE=0
+SETUP_DONE=1; rsh "test -f '$DEPLOY_PATH/state/setup-done' && test -f /etc/nginx/sites-available/freightchain-storybook && test -f /etc/nginx/sites-available/freightchain-whitepaper && test -f /etc/nginx/sites-available/freightchain-admin && test -f /etc/nginx/snippets/freightchain-media.conf && grep -q freightchain-media /etc/nginx/sites-available/freightchain && grep -q fc-audio /etc/nginx/snippets/freightchain-media.conf && grep -q fc-seo /etc/nginx/snippets/freightchain-media.conf" 2>/dev/null || SETUP_DONE=0
 CURRENT="$(rsh "cat '$DEPLOY_PATH/state/current' 2>/dev/null || true")"
 
 cat <<PLAN
@@ -40,7 +40,7 @@ ${C_BOLD}Deploy plan${C_OFF}
   site        https://${DEPLOY_DOMAIN}  (landing + lobby)  ·  https://ride.${DEPLOY_DOMAIN}  (game)  ·  https://api.${DEPLOY_DOMAIN}  (API)  ·  https://storybook.${DEPLOY_DOMAIN}  (model viewer)  ·  https://whitepaper.${DEPLOY_DOMAIN}  (whitepaper)  ·  https://admin.${DEPLOY_DOMAIN}  (admin, basic auth as ${DEPLOY_ADMIN_USER})
   serving now ${CURRENT:-nothing (first deploy)}
   first-time setup (nginx sites + TLS certificate): $([ "$SETUP_DONE" = "1" ] && echo "already done" || echo "WILL RUN (a missing site is added, the certificate expanded)")
-  steps       admin password file → upload code + env → build image → backup database → migrate → swap → health check (auto-rollback on failure) → smoke test
+  steps       admin password file → upload code + env → build image → backup database → migrate → swap → health check (auto-rollback on failure) → smoke test → IndexNow ping
 PLAN
 [ "$DRY_RUN" = "1" ] && { ok "dry run: the checks and the server connection are fine; nothing was changed"; exit 0; }
 confirm "Deploy?"
@@ -66,4 +66,5 @@ rscript <(git show "HEAD:deploy/scripts/remote/release.sh") "DEPLOY_PATH=$DEPLOY
 
 # ---- 7. is it really up, through nginx and TLS, with a working sign-in?
 if [ "$SMOKE" = "1" ]; then info "smoke test against https://${DEPLOY_DOMAIN}"; SMOKE_ADMIN_AUTH="${DEPLOY_ADMIN_USER}:${DEPLOY_ADMIN_PASSWORD}" node "$DEPLOY_DIR/scripts/smoke.mjs" "https://${DEPLOY_DOMAIN}" --api "https://api.${DEPLOY_DOMAIN}" --game "https://ride.${DEPLOY_DOMAIN}" --storybook "https://storybook.${DEPLOY_DOMAIN}" --whitepaper "https://whitepaper.${DEPLOY_DOMAIN}" --admin "https://admin.${DEPLOY_DOMAIN}" --treasury "$TREASURY_PUBKEY" || die "the smoke test failed – the release is up on the server, but the public site is not right (see above). Roll back with: npm run deploy:rollback"; fi
+info "IndexNow: telling Bing & co. the public pages changed"; node "$DEPLOY_DIR/scripts/indexnow.mjs" "https://${DEPLOY_DOMAIN}" || warn "IndexNow ping failed – harmless, crawlers still read the sitemap; retry: node deploy/scripts/indexnow.mjs https://${DEPLOY_DOMAIN}"
 ok "deployed ${RELEASE} → https://${DEPLOY_DOMAIN}"

@@ -28,6 +28,7 @@ export async function capture(spec, framesDir, { log = console.log, only = null 
     await send('Page.navigate', { url: `http://127.0.0.1:${port}/play.html` });
     for (let i = 0; i < 100 && await ev('typeof window.__game') !== 'object'; i++) await sleep(150);
     if (await ev('typeof window.__game') !== 'object') throw new Error('the game did not boot: ' + filt().join(' | '));
+    await ev('__game.devRun()');   // the classic road, no helpers (a bare page is the guest's FREE RUN)
     for (let i = 0; i < 5; i++) await ev('__vstep(50)');
     await ev(fs.readFileSync(path.join(here, 'page.js'), 'utf8'));
     await ev(`__dir.init(${JSON.stringify(spec)})`);

@@ -37,7 +37,7 @@ Start on the public site. The form, the two videos, and the founder bio live in 
 | --- | --- | --- |
 | Landing + lobby | [freightchain.fun](https://freightchain.fun) | The pitch, the live boards, sign-in, the lobby |
 | Whitepaper | [whitepaper.freightchain.fun](https://whitepaper.freightchain.fun) | Rules, escrow chapter, validation, streams, risks |
-| Game | [ride.freightchain.fun](https://ride.freightchain.fun) | The truck. A ride id comes from the lobby |
+| Game | [ride.freightchain.fun/play.html](https://ride.freightchain.fun/play.html) | The truck. A ride id comes from the lobby. Bare `play.html` is the guest free run |
 | Model viewer | [storybook.freightchain.fun](https://storybook.freightchain.fun) | Vehicles, props, furniture, landmarks |
 | API | [api.freightchain.fun/api/health](https://api.freightchain.fun/api/health) | JSON only. Other paths on that host 404 |
 | Admin | [admin.freightchain.fun](https://admin.freightchain.fun) | HTTP basic auth, then a second wallet sign-in |
@@ -122,11 +122,29 @@ flowchart LR
 
 - **Landing** — [`landing/`](landing/index.html). Vite. Wallet sign-in, live pool and boards, dash cards drawn by the game's cockpit code. The hero video loads after the page, and never on a phone. [Read the page](https://freightchain.fun).
 - **Lobby** — [`client/lobby.html`](client/lobby.html). Tabs: New ride, Live, Replays, Leaderboard, Garage, Promo, Profile. Server text goes in with `textContent`.
-- **Game** — [`client/play.html`](client/play.html). `?ride=` is an online shift. `?watch=` is a spectator. `?offline=1` is a counted anonymous free run. Bare `play.html` is the offline prototype. `file://` cannot load the modules.
+- **Game** — [`client/play.html`](client/play.html). `?ride=` is an online shift. `?watch=` is a spectator. Any other `play.html` (bare or `?offline=1`) is an uncounted guest free run (tutorial / assist picked in its menu, nothing recorded). `file://` cannot load the modules.
 - **Whitepaper** — [`landing/whitepaper.html`](landing/whitepaper.html). A long read. Its only request is web vitals to the API. Its numbers are asserted against the code by [`landing/test/whitepaper.test.js`](landing/test/whitepaper.test.js).
 - **Model viewer** — [`client/viewer.html`](client/viewer.html). Same builders as the game. No API on that host.
 - **Admin** — [`client/admin.html`](client/admin.html). Nginx basic auth, then an admin wallet session (`ADMIN_WALLETS`, 2 hours). Every change is a wallet signature over that exact action, and the row is kept. The player cookie grants nothing there. On a split deploy the API answers `/api/admin` only when `Host` is `admin.<apex>`.
 - **API** — NestJS. Controllers dispatch to a command or query bus. Errors are problem+json. [`docs/backend-architecture.md`](docs/backend-architecture.md)
+
+### Search and AI crawlers
+
+The landing, the whitepaper and the game page are static HTML, so search engines and AI crawlers that run no JavaScript read the real text. The live numbers show `–` until the API answers. Detail: [`docs/agents/landing.md`](docs/agents/landing.md) → "Search + AI crawlers".
+
+| Page | Canonical URL | Indexed |
+| --- | --- | --- |
+| Landing | `https://freightchain.fun/` | yes · JSON-LD `Organization` + `WebSite` + `VideoGame` |
+| Whitepaper | `https://whitepaper.freightchain.fun/` | yes · JSON-LD `TechArticle` |
+| Game | `https://ride.freightchain.fun/play.html` | yes · `?watch=` links fold into it |
+| Lobby, model viewer, admin | – | no (`noindex`) |
+
+- **Root files** — [`landing/public/`](landing/public): `robots.txt` (open except `/api/`, AI crawlers named and allowed), `sitemap.xml`, `llms.txt`, `indexnow-key.txt`. Every host serves them.
+- **Duplicates** — nginx answers 301: `ride.freightchain.fun/` → the apex, `freightchain.fun/whitepaper.html` → the whitepaper host, `www.` → the apex (once its DNS record exists).
+- **Previews** — `og:image` is an absolute URL, so X, Discord and Telegram show the card.
+- **Deploy** — after the smoke test, [`deploy/scripts/indexnow.mjs`](deploy/scripts/indexnow.mjs) pings IndexNow (Bing, Yandex) with the sitemap. Google reads the sitemap from `robots.txt`.
+- **Checked by** — [`landing/test/seo.test.js`](landing/test/seo.test.js) (canonicals, previews, JSON-LD, robots, sitemap, llms.txt) and the deploy smoke test (robots, sitemap, the two redirects).
+- **By hand, once** — a Google Search Console Domain property (DNS TXT, covers every subdomain) with the sitemap; Bing Webmaster Tools imported from it; a `www` A record, then `npm run deploy:setup`.
 
 ## Architecture
 
@@ -173,7 +191,7 @@ Each block is the short version. The link is the long one.
 
 ### The drive
 
-Five routes, one truck, a manual gearbox, clutch, stall, parking brake, cold engine, battery, heater, wipers, and a cab radio. Speed is governed at 28 m/s. The road does not end. A phone on the dash (N, or a click) opens a phone-style map: the truck, the route to the finish, the other road of a fork, junctions with their lights, the next step and the time to go.
+Five routes, one truck, a manual gearbox, clutch, stall, parking brake, cold engine, battery, heater, cab cooling, wipers, and a cab radio. Speed is governed at 28 m/s. The road does not end. A phone on the dash (N, or a click) opens a phone-style map: the truck, the route to the finish, the other road of a fork, junctions with their lights, the next step and the time to go.
 
 | id | Route | Bend |
 | --- | --- | --- |
@@ -196,7 +214,7 @@ Read: [`client/js/themes/index.js`](client/js/themes/index.js) · [model viewer]
 | 4 hour | 4 h | $15 planned | When a pool is registered | Bends ×1.2, traffic ×1.4 |
 | 8 hour | 8 h | $50 planned | When a pool is registered | Bends ×1.4, traffic ×1.8 |
 
-A new wallet starts with 10 free rides. The daily refill adds one at 00:00 UTC and stops at 5. A promo can sit above that cap. `play.html?offline=1` allows 3 runs per browser fingerprint and 10 per IP, with no account.
+A new wallet starts with 10 free rides. The daily refill adds one at 00:00 UTC and stops at 5. A promo can sit above that cap. `play.html?offline=1` is an uncounted guest run with no account.
 
 The free ride is picked at a level in the lobby (`POST /api/rides` `level` 1–3). Each level has its own leaderboard (HARD by default) and its own achievement: Learner's Permit, Crossroads, Long Haul. Tutorial and assist exist only on a free ride; HARD refuses assist. Assist halves hull damage and battery drain. The achievement On My Own is a completed free ride without assist. While the verdict is enforced, a rejected recording earns no badge. `node .claude/skills/level-check/check.mjs` checks every level is what it promises and passable by a human-paced driver.
 
@@ -274,7 +292,7 @@ Read: [`client/js/net/obstacles.js`](client/js/net/obstacles.js) · [`server/src
 
 `update(dt)` in [`client/js/sim/physics.js`](client/js/sim/physics.js) steps the clutch, gears, stall, steering, and the end conditions. Thrust follows a torque curve and the gear ratio. The engine stalls in gear with the clutch out and rpm under 450. Speed clamps at 28 m/s forward and 6 m/s in reverse.
 
-The frame `dt` is clamped to 0.05 s. The step uses floats. A watch replay does not run this function. The verdict does not run it either. A deterministic fixed-point replay is described in [`technical_design_document.html`](technical_design_document.html) and is not this build.
+The frame `dt` is clamped to 0.05 s. The step uses floats. A watch replay does not run this function. The verdict does not run it either.
 
 ### Shift completion
 
@@ -419,13 +437,13 @@ Every directory at the repo root. `.git` is the only one left out.
 - [`client/`](client) — the game, the lobby, the admin page, and the model viewer.
 - [`deploy/`](deploy/README.md) — Docker, host nginx, certbot. `npm run deploy` ships `git archive HEAD`.
 - [`design/`](design) — icon candidates and the YouTube banners. The shipped icon is generated into `client/`.
-- [`docs/`](docs) — plans and explainers. The public escrow chapter is the whitepaper, not a file in this folder.
+- [`docs/`](docs) — plans and explainers. [`docs/agents/`](docs/agents) holds the agent detail `AGENTS.md` points to. The public escrow chapter is the whitepaper, not a file in this folder.
 - [`landing/`](landing) — the `/` page and the whitepaper. Its own Vite project.
 - [`media/`](media) — promo clips and the chiptune synth, including the game's own sound effects.
 - [`programs/`](programs/freightchain-pools) — the Anchor escrow.
 - [`server/`](server) — the NestJS API.
 
-Also at the root: `package.json`, `docker-compose.yml` (local PostgreSQL on `127.0.0.1:15433`), [`AGENTS.md`](AGENTS.md), [`CLAUDE.md`](CLAUDE.md), and [`technical_design_document.html`](technical_design_document.html) (the production-target spec; this build does not meet it).
+Also at the root: `package.json`, `docker-compose.yml` (local PostgreSQL on `127.0.0.1:15433`), [`AGENTS.md`](AGENTS.md) and [`CLAUDE.md`](CLAUDE.md).
 
 ## Skills
 
@@ -451,6 +469,7 @@ Skills live in `.claude/skills/<name>/`. A coding agent reads that folder's `SKI
 | `ride-investigate` | One player or one ride on production: the database rows and the matching log lines | `npm run ops -- query ride <id>` (or `query wallet <address>`), then the logs named in the skill |
 | `ride-review` | Which paid rides need an admin's eyes before prizes are paid: every ride UNDER REVIEW per pool, with its rank, distance and verdict reasons (incl. the pool-* marks and the ones `pool:attention` would add), each audited by `ride-audit`; local or production read-only, never changes a verdict | `bash .claude/skills/ride-review/run.sh` · `… --pool N` · `… --pool N --prod` |
 | `run-tests` | The whole local suite: lint and unit tests, PostgreSQL, then real-Chrome end-to-end. There is no CI | `npm run check`, then `npm run server:integration`, then `bash .claude/skills/run-tests/e2e.sh` |
+| `admin-coverage` | Check that the admin page uses every admin API (guarded, called, no dead calls, tabs match the views) and add what is missing | `node .claude/skills/admin-coverage/check.mjs` |
 | `stats-reconcile` | Check and repair the statistics (rides, time, km, crashes, stream donations – per rider and global) by recomputing them from the rides; production read-only | `bash .claude/skills/stats-reconcile/run.sh [--fix]` · `--prod` |
 | `test-census` | Count the tests by pyramid layer, grade test coverage per feature, user flow, controller and route (static attribution, line + branch coverage, the routes each browser suite hits), name gaps, and rewrite the Tests block below and docs/test-coverage.md | `npm run test:census` · `npm run test:census -- features` · `npm run test:census -- coverage` · `npm run test:census -- run` · `npm run test:census -- readme` |
 | `level-check` | Each free level (EASY / CROSSROADS / HARD) is what it promises and passable by a human: the road each level's shift covers (junctions, forks, lanes, bends, sinkhole traps), then a human-paced driver on the real truck with ASSIST off on many seeds × all routes – finish rate, hull, vehicles hit, against the level's limits | `node .claude/skills/level-check/check.mjs` |
@@ -528,7 +547,7 @@ xychart-beta
 | unit | Server infrastructure | 47 | 201 | 0 | `npm run server:test` |
 | unit | Server app, cli, support | 4 | 15 | 0 | `npm run server:test` |
 | unit | Client unit | 6 | 35 | 0 | `cd client && npm run test:unit` |
-| unit | Landing | 8 | 93 | 0 | `npm run landing:test` |
+| unit | Landing | 9 | 101 | 0 | `npm run landing:test` |
 | unit | Media | 2 | 25 | 0 | `npm run media:check` |
 | unit | Escrow program (host tests) | 8 | 51 | 0 | `npm run program:test` |
 | audit | Architecture and migration SQL | 6 | 30 | 0 | `npm run server:test` |
@@ -540,7 +559,7 @@ xychart-beta
 | integration | Same HTTP scenarios on PostgreSQL | 1 | 0 | 0 | `npm run server:integration` |
 | sim | Headless game playthrough | 1 | 0 | 38 | `cd client && npm run test:headless` |
 | e2e | Browser and API harnesses | 19 | 0 | 572 | `bash .claude/skills/run-tests/e2e.sh` |
-| | **Total** | **304** | **1442** | **610** | |
+| | **Total** | **305** | **1450** | **610** | |
 
 HTTP scenario cases are written once under `server/test/scenarios` and executed twice: in-memory (`npm run server:test`) and PostgreSQL (`npm run server:integration`). The PostgreSQL runner row counts the runner file. Its cases are the scenario row. `it.each` is one static call and one executed test per row.
 
@@ -582,7 +601,7 @@ Purpose of every skill, including these, is the [Skills](#skills) table. This li
 | `run-tests` | `e2e` | fail · 2026-10-09 12:29 UTC · 26m 54s |
 | `verified-play-test` | `verified` | no run recorded |
 
-Census skill: `test-census`. Production read-only skills: `posthog-prod`, `prod-db`, `prod-logs`, `ride-audit`, `ride-investigate`. Other skills: `analytics-review`, `game-audio`, `gameplay-balance`, `gameplay-video`, `stats-reconcile`, `storybook-models`, `trip-design`.
+Census skill: `test-census`. Production read-only skills: `posthog-prod`, `prod-db`, `prod-logs`, `ride-audit`, `ride-investigate`. Other skills: `admin-coverage`, `analytics-review`, `game-audio`, `gameplay-balance`, `gameplay-video`, `stats-reconcile`, `storybook-models`, `trip-design`.
 
 ### Gaps
 
@@ -749,5 +768,4 @@ The full coverage map is [`docs/test-coverage.md`](docs/test-coverage.md).
 - There is no admin button for `pay_prize`. Weekly pools are created by hand. The seed is not rolled into the next pool by a job.
 - `close_ticket` after a settlement is in the program. The crank does not send it yet, so a settled ticket's rent stays in that account until someone closes it.
 - The program is not audited. Mainnet is not this build.
-- The design document's fixed-tick replay, input ratchet, and proof-of-render are not this build.
 - Float32 road vertices start to jitter past about 100 km.

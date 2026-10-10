@@ -17,6 +17,7 @@ chmod 700 "$DEPLOY_PATH/backups" "$DEPLOY_PATH/state"
 say "folders ready under $DEPLOY_PATH"
 
 # The landing's hero loop (/media/hero-preview.mp4, ~2.2 MB, fetched lazily after `load`) and the game's sound effects (/audio/sfx/*.mp3, ~75 kB, fetched in the background): nginx caches them and answers Range requests itself, so the app is hit once per release.
+# The same snippet carries the two search redirects (marker fc-seo): ride.<apex>/ → the apex, <apex>/whitepaper.html → whitepaper.<apex>/.
 # Two managed files (rewritten on every setup) + ONE include line in the apex/ride. server blocks – added to an already installed site too (certbot's 443 copy included), idempotent, undone if nginx -t fails.
 mkdir -p /var/cache/nginx/freightchain_media /etc/nginx/snippets /etc/nginx/conf.d
 cat > /etc/nginx/conf.d/freightchain-media.conf <<'CONF'
@@ -46,6 +47,18 @@ location ~* ^/media/[\\w.-]+\\.mp4\$ {
     add_header X-Cache \$upstream_cache_status;
     add_header Cache-Control "public, max-age=86400";
 }
+# fc-seo: one public URL per page for search engines – the game host's / is the landing (301 to the apex, query kept), the apex's /whitepaper.html is the whitepaper host's /
+location = / {
+    if (\$host = ride.$DOMAIN) { return 301 https://$DOMAIN\$request_uri; }
+    proxy_pass http://127.0.0.1:$APP_PORT;
+    proxy_http_version 1.1;
+    proxy_set_header Host \$host;
+    proxy_set_header X-Real-IP \$remote_addr;
+    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto \$scheme;
+    proxy_read_timeout 60s;
+}
+location = /whitepaper.html { return 301 https://whitepaper.$DOMAIN/\$is_args\$args; }
 CONF
 if nginx -t 2>/dev/null; then systemctl reload nginx; rm -f /etc/nginx/snippets/freightchain-media.conf.bak; say "media cache + snippet written (mp4 loop + game sound effects), nginx reloaded"
 else
@@ -116,7 +129,23 @@ else
   say "nginx site for admin.$DOMAIN installed and reloaded (basic auth)"
 fi
 
-NAMES="$DOMAIN ride.$DOMAIN api.$DOMAIN storybook.$DOMAIN whitepaper.$DOMAIN admin.$DOMAIN"
+# www.<apex> → the apex (301), optional: only once its DNS points here, because the certificate below must be able to cover it. Never fails the setup.
+WWW=/etc/nginx/sites-available/freightchain-www WWW_NAME=""
+WWW_RESOLVED="$(getent ahostsv4 "www.$DOMAIN" | awk 'NR==1{print $1}' || true)"
+if [ "$WWW_RESOLVED" != "$HOST_IP" ]; then
+  say "www.$DOMAIN resolves to '${WWW_RESOLVED:-nothing}', not $HOST_IP – no www redirect (point its A record here, then: npm run deploy:setup)"
+elif [ -f "$WWW" ]; then
+  say "nginx site $WWW exists – left as it is"; WWW_NAME="www.$DOMAIN"
+elif [ -f "$DEPLOY_PATH/state/www.conf.template" ]; then
+  sed -e "s/__ROOT__/$DOMAIN/g" "$DEPLOY_PATH/state/www.conf.template" > "$WWW"
+  ln -sfn "$WWW" /etc/nginx/sites-enabled/freightchain-www
+  if nginx -t 2>/dev/null; then systemctl reload nginx; WWW_NAME="www.$DOMAIN"; say "nginx site for www.$DOMAIN (301 → $DOMAIN) installed and reloaded"
+  else rm -f /etc/nginx/sites-enabled/freightchain-www "$WWW"; nginx -t || true; say "WARNING: nginx rejected the www site – removed it again; no www redirect"; fi
+else
+  say "WARNING: the www nginx template was not uploaded – no www redirect"
+fi
+
+NAMES="$DOMAIN ride.$DOMAIN api.$DOMAIN storybook.$DOMAIN whitepaper.$DOMAIN admin.$DOMAIN${WWW_NAME:+ $WWW_NAME}"
 COVERED=1
 if [ -f "/etc/letsencrypt/live/$DOMAIN/cert.pem" ]; then
   for n in $NAMES; do openssl x509 -in "/etc/letsencrypt/live/$DOMAIN/cert.pem" -noout -ext subjectAltName 2>/dev/null | grep -q "DNS:$n\b" || COVERED=0; done

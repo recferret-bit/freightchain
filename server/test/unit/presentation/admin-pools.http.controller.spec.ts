@@ -1,5 +1,5 @@
 import { HoldPoolPayoutCommand } from '../../../src/application/use-cases/admin/hold-pool-payout/hold-pool-payout.command.js';
-import { ListAdminPoolsQuery } from '../../../src/application/use-cases/admin/list-admin-pools/list-admin-pools.query.js';
+import { ListPoolPayoutsQuery } from '../../../src/application/use-cases/admin/list-pool-payouts/list-pool-payouts.query.js';
 import { RequestActionChallengeCommand } from '../../../src/application/use-cases/admin/request-action-challenge/request-action-challenge.command.js';
 import { AdminPoolsHttpController } from '../../../src/presentation/admin/admin-pools.http.controller.js';
 import { poolHoldBodySchema, poolHoldChallengeBodySchema, poolHoldParamsSchema } from '../../../src/presentation/admin/dto/admin-pools.dto.js';
@@ -11,8 +11,8 @@ describe('AdminPoolsHttpController', () => {
   it('dispatches every route to the bus with the admin wallet and the request id', async () => {
     const commands = busMock({ ok: true }), queries = busMock({ pools: [] });
     const c = new AdminPoolsHttpController(commands.bus, queries.bus);
-    expect(await c.pools()).toEqual({ pools: [] });
-    expect(queries.last()).toEqual(new ListAdminPoolsQuery());
+    expect(await c.payouts()).toEqual({ pools: [] });
+    expect(queries.last()).toEqual(new ListPoolPayoutsQuery());
     await c.holdChallenge({ wallet: W }, poolHoldParamsSchema.parse({ id: '7' }), poolHoldChallengeBodySchema.parse({ action: 'pool_hold', hold: true, note: ' look at rank 2 ' }));
     expect(commands.last()).toEqual(new RequestActionChallengeCommand(W, { action: 'pool_hold', poolId: 7, hold: true, note: 'look at rank 2' }));
     await c.hold({ wallet: W }, poolHoldParamsSchema.parse({ id: '7' }), poolHoldBodySchema.parse({ hold: false, note: '', signature: 'SIG' }), 'req-1');

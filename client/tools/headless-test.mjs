@@ -94,8 +94,8 @@ const freed=fightRide(3); check(!freed.ended&&freed.strain<.1,'clutch in after 3
 // battery: the starter costs charge, consumers flatten it with the engine off (then lights/radio/heater cut out and the engine won't start), the alternator refills it
 const batFresh=()=>{ fire('keyup','ShiftLeft'); input.gas=0; input.brake=0; G.st.mode='done'; G.startRide(); st.park=false; st.temp=G.CFG.ENGINE_WARM+5; Object.assign(st,{s:net.Sm+300,d:2.4,psi:0,hull:100,v:0}); };
 batFresh(); const b0=st.batt; fire('keydown','KeyI'); step(60*2.6); check(st.engineOn&&b0-st.batt>.04&&b0-st.batt<.15,'starting the engine costs battery charge ('+(b0-st.batt).toFixed(3)+')');
-batFresh(); G.dn.head=true; if(!G.radio.on) fire('keydown','KeyT'); st.keyOn=true; st.heater=true; let sawDead=false; for(let i=0;i<60*60;i++){ step(1); if(st.battDead) sawDead=true; }
-check(sawDead&&st.mode!=='done'&&!G.dn.head&&!st.heater,'engine off, everything on: the battery goes flat, the consumers cut out, the ride goes on');
+batFresh(); G.dn.head=true; if(!G.radio.on) fire('keydown','KeyT'); st.keyOn=true; st.heater=true; st.cooler=true; let sawDead=false; for(let i=0;i<60*60;i++){ step(1); if(st.battDead) sawDead=true; }
+check(sawDead&&st.mode!=='done'&&!G.dn.head&&!st.heater&&!st.cooler,'engine off, everything on: the battery goes flat, the consumers cut out, the ride goes on');
 batFresh(); st.batt=.005; st.keyOn=true; step(60*60); check(st.batt>G.CFG.BATT.START_MIN,'flat battery, key on, nothing else: it recovers enough to crank again ('+st.batt.toFixed(3)+')');
 batFresh(); st.batt=.1; fire('keydown','KeyI'); step(60); check(!st.engineOn&&!st.ign,'a battery below START_MIN will not crank the engine');
 batFresh(); st.batt=.05; step(60*30); check(st.batt>.05+.04,'everything off: the battery heals ('+st.batt.toFixed(3)+')');
@@ -179,6 +179,42 @@ check(nightX.night===true&&dayX.night===false&&G.THEMES.some(t=>t.id===dayX.rout
 // one pool, one ride (the server gives every rider of a pool its seed): the same seed starts the trip among the same cars, whatever the last trip left behind
 { const cars=()=>{ st.s=0; G.roads.newTrip(12345); return G.traffic.map(a=>a.preset+a.pick+'@'+a.s.toFixed(2)+'/'+a.lat.toFixed(2)+'>'+a.vDes.toFixed(2)).join(' '); };
   const t1=cars(), t2=cars(); check(t1!==''&&t1===t2,'same seed -> same starting traffic ('+G.traffic.length+' cars)'); }
+// …and the same road CONTENT: what stands by the road (buildings, furniture, hole signs, scenery – the chunks' colliders) and the junctions, sampled at the depot,
+// 3 km and 9 km out, are equal for one seed whatever trip came between, and differ for the next pool's / day's seed – on two routes
+{ const sig=(seed)=>{ st.s=0; G.roads.newTrip(seed); const out=[];
+    for(const at of [0,3000,9000]){ st.s=at; G.roads.lastS=at; net.ensure(at+2000); G.roadObjects.update(at);
+      for(const [ci,g] of [...G.chunks].sort((a,b)=>a[0]-b[0])) out.push(ci+':'+g.userData.colliders.map(c=>c.kind+'/'+c.id+'@'+c.s.toFixed(1)+','+c.lat.toFixed(1)+'x'+String(c.size)).join(' ')); }
+    return { road:out.join('|'), junctions:net.near(0,12000).map(j=>j.kind[0]+j.s+(j.signal?'*':'')).join(' '), n:out.reduce((k,c)=>k+c.split(' ').length,0) }; };
+  for(const route of ['route66','siberia']){ G.selectTheme(route);
+    const a1=sig(424242), b=sig(777001), a2=sig(424242);
+    check(a1.n>50&&a1.road===a2.road&&a1.junctions===a2.junctions,'one seed, one road on '+route+': the same roadside ('+a1.n+' objects) and junctions for every rider of it');
+    check(b.road!==a1.road&&b.junctions!==a1.junctions,'the next seed is another road on '+route+' (other roadside, other junctions)'); } }
+// cab cooling: same battery drain as the heater; on a warm route the glass fogs while it is off and clears once the compressor is spinning. Siberia frosts and does not fog.
+{ const drainOf=which=>{ batFresh(); st.batt=.6; st.keyOn=true; st.heater=which==='h'; st.cooler=which==='c'; const b=st.batt; step(60*4); return b-st.batt; };
+  const dh=drainOf('h'), dc=drainOf('c'); check(Math.abs(dh-dc)<1e-6&&dh>.04,'cooling drains the battery exactly like the heater ('+dh.toFixed(4)+' / '+dc.toFixed(4)+' in 4 s, engine off)');
+  batFresh(); fire('keydown','KeyI'); step(60*2.6); fire('keydown','KeyJ'); step(60*3);
+  check(st.engineOn&&st.cooler&&st.coolEff>.9,'J turns cooling on and the compressor spins up with the engine ('+st.coolEff.toFixed(2)+')');
+  G.setNight(false,true,false); G.dn.k=0; G.selectTheme('route66',false); G.st.mode='done'; G.startRide();
+  Object.assign(st,{temp:90,cooler:false,coolEff:0,heater:false,heatEff:0,v:0});
+  const f0=G.screenClimate().fog; for(let i=0;i<60*45;i++){ st.v=0; st.park=true; step(1); } const grown=G.screenClimate().fog;
+  check(f0<.01&&grown>.04,'Route 66, cooling off: the windscreen fogs ('+f0.toFixed(3)+' → '+grown.toFixed(3)+')');
+  fire('keydown','KeyI'); step(60*2.6); fire('keydown','KeyJ'); const f1=G.screenClimate().fog; for(let i=0;i<60*40;i++){ st.v=0; st.park=true; step(1); } const f2=G.screenClimate().fog;
+  check(st.engineOn&&st.cooler&&st.coolEff>.9&&f2<f1*.5,'cooling on: the fog clears ('+f1.toFixed(3)+' → '+f2.toFixed(3)+', eff '+st.coolEff.toFixed(2)+')');
+  G.selectTheme('panamerican',false); G.st.mode='done'; G.startRide(); Object.assign(st,{cooler:false,coolEff:0,v:0}); G.dn.k=0;
+  for(let i=0;i<60*20;i++) step(1); const pan=G.screenClimate();
+  check(pan.fog<.002,'Pan-American (12 °C) does not fog ('+pan.fog.toFixed(4)+')');
+  G.selectTheme('siberia',false); G.st.mode='done'; G.startRide(); Object.assign(st,{cooler:false,coolEff:0,heater:false,heatEff:0,v:10}); G.dn.k=0;
+  for(let i=0;i<60*15;i++) step(1); const sib=G.screenClimate();
+  check(sib.fog<.002&&sib.frost>.05,'Siberia frosts and does not fog (frost '+sib.frost.toFixed(3)+', fog '+sib.fog.toFixed(4)+')');
+  G.selectTheme('brenner',false); G.setNight(true,true,false); G.st.mode='done'; G.startRide();
+  Object.assign(st,{cooler:false,coolEff:0,heater:false,heatEff:0,v:0,park:true});
+  for(let i=0;i<60*15;i++){ st.v=0; st.park=true; step(1); } const brN=G.screenClimate();
+  check(brN.fog<.002&&brN.frost>.02,'Brenner at night frosts and does not fog (frost '+brN.frost.toFixed(3)+', fog '+brN.fog.toFixed(4)+')');
+  G.setNight(false,true,false); G.st.mode='done'; G.startRide();
+  Object.assign(st,{cooler:false,coolEff:0,heater:false,heatEff:0,v:0,park:true});
+  for(let i=0;i<60*15;i++){ st.v=0; st.park=true; step(1); } const brD=G.screenClimate();
+  check(brD.fog<.002&&brD.frost<.002,'Brenner by day does neither (frost '+brD.frost.toFixed(4)+', fog '+brD.fog.toFixed(4)+')');
+  G.selectTheme('route66',false); G.setNight(false,true,false); }
 out.push(...checks); out.push('errors='+errors.length+(errors[0]?' '+errors[0].message:''));
 console.log(out.join('\n'));
 const failed=checks.filter(c=>c.startsWith('FAIL'));

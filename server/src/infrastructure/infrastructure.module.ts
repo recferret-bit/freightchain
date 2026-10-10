@@ -14,6 +14,7 @@ import { PriceQuotePort } from '../application/ports/economy/price-quote.port.js
 import { RoundRepositoryPort } from '../application/ports/economy/round.repository.port.js';
 import { HealthProbePort } from '../application/ports/health/health-probe.port.js';
 import { OfflineRideRepositoryPort } from '../application/ports/offline/offline-ride.repository.port.js';
+import { DailySeedRepositoryPort } from '../application/ports/rides/daily-seed.repository.port.js';
 import { PlayerRepositoryPort } from '../application/ports/players/player.repository.port.js';
 import { SettingsRepositoryPort } from '../application/ports/settings/settings.repository.port.js';
 import { RideQueryPort } from '../application/ports/rides/ride-query.port.js';
@@ -28,6 +29,7 @@ import { RideBatchRepositoryPort } from '../application/ports/telemetry/ride-bat
 import { RideVerdictRepositoryPort } from '../application/ports/verdict/ride-verdict.repository.port.js';
 import { SignInRepositoryPort } from '../application/ports/auth/sign-in.repository.port.js';
 import { AdminActionRepositoryPort } from '../application/ports/admin/admin-action.repository.port.js';
+import { AdminDirectoryPort } from '../application/ports/admin/admin-directory.port.js';
 import { AdminQueryPort } from '../application/ports/admin/admin-query.port.js';
 import { PostHogAnalyticsAdapter } from './analytics/posthog-analytics.adapter.js';
 import { JoseTokenSigner } from './auth/jose.token-signer.js';
@@ -44,6 +46,7 @@ import { RideBatchPrismaRepository } from './prisma/repositories/ride-batch.pris
 import { RideVerdictPrismaRepository } from './prisma/repositories/ride-verdict.prisma.repository.js';
 import { SignInPrismaRepository } from './prisma/repositories/sign-in.prisma.repository.js';
 import { AdminActionPrismaRepository } from './prisma/repositories/admin-action.prisma.repository.js';
+import { AdminDirectoryPrismaRepository } from './prisma/repositories/admin-directory.prisma.repository.js';
 import { AdminQueryPrismaRepository } from './prisma/repositories/admin-query.prisma.repository.js';
 import { AdminGuard } from './http/guards/admin.guard.js';
 import { PrismaHealthProbe } from './health/prisma.health-probe.js';
@@ -51,6 +54,7 @@ import { AchievementPrismaRepository } from './prisma/repositories/achievement.p
 import { ChallengePrismaRepository } from './prisma/repositories/challenge.prisma.repository.js';
 import { PaymentPrismaRepository } from './prisma/repositories/payment.prisma.repository.js';
 import { OfflineRidePrismaRepository } from './prisma/repositories/offline-ride.prisma.repository.js';
+import { DailySeedPrismaRepository } from './prisma/repositories/daily-seed.prisma.repository.js';
 import { PlayerPrismaRepository } from './prisma/repositories/player.prisma.repository.js';
 import { SettingsPrismaRepository } from './prisma/repositories/settings.prisma.repository.js';
 import { RideQueryPrismaRepository } from './prisma/repositories/ride-query.prisma.repository.js';
@@ -110,6 +114,7 @@ const ports: Provider[] = [
   { provide: SignInRepositoryPort, useClass: SignInPrismaRepository },
   { provide: AdminActionRepositoryPort, useClass: AdminActionPrismaRepository },
   { provide: AdminQueryPort, useClass: AdminQueryPrismaRepository },
+  { provide: AdminDirectoryPort, useClass: AdminDirectoryPrismaRepository },
   { provide: TransactionPort, useClass: TransactionPrismaAdapter },
   { provide: RulesConfigPort, useClass: EnvRulesConfigAdapter },
   { provide: PlayerRepositoryPort, useClass: PlayerPrismaRepository },
@@ -120,6 +125,7 @@ const ports: Provider[] = [
   { provide: TokenSignerPort, useClass: JoseTokenSigner },
   { provide: AdminTokenPort, useClass: JoseAdminTokenSigner },
   { provide: RideRepositoryPort, useClass: RidePrismaRepository },
+  { provide: DailySeedRepositoryPort, useClass: DailySeedPrismaRepository },
   { provide: RideQueryPort, useClass: RideQueryPrismaRepository },
   { provide: RoundRepositoryPort, useClass: RoundPrismaRepository },
   { provide: PaymentRepositoryPort, useClass: PaymentPrismaRepository },

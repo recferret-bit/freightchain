@@ -95,6 +95,7 @@ model Pool {
 
   @@index([status, prepDeadline])
   @@index([roundId])
+  @@index([createdAt]) // the admin POOLS list: newest first
   @@schema("economy")
 }
 

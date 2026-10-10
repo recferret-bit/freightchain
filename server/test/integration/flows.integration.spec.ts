@@ -8,6 +8,7 @@ import { FREE_LEVELS_ENV, freeLevelScenarios } from '../scenarios/free-levels.sc
 import { FREE_RIDES_ENV, freeRideScenarios } from '../scenarios/free-rides.scenarios.js';
 import { PAYMENTS_ENV, paymentScenarios } from '../scenarios/payments.scenarios.js';
 import { POOLS_ENV, poolScenarios } from '../scenarios/pools.scenarios.js';
+import { SHARED_ROAD_ENV, sharedRoadScenarios } from '../scenarios/shared-road.scenarios.js';
 import { TICKET_ORDERS_ENV, ticketOrderScenarios } from '../scenarios/ticket-orders.scenarios.js';
 import { CHAIN_ENV, chainScenarios } from '../scenarios/chain.scenarios.js';
 import { WEBHOOK_ENV, webhookScenarios } from '../scenarios/webhook.scenarios.js';
@@ -36,6 +37,7 @@ for (const [name, env, scenarios] of [
   ['the free ride: its three levels (EASY / CROSSROADS / HARD) and their achievements', FREE_LEVELS_ENV, freeLevelScenarios],
   ['free rides: signup 10/5, settings, admin adjust, offline runs', FREE_RIDES_ENV, freeRideScenarios],
   ['escrowed pools, promo codes and ticket rides', POOLS_ENV, poolScenarios],
+  ['one road per competition: the same seed and road for a pool / a paid day, another for the next', SHARED_ROAD_ENV, sharedRoadScenarios],
   ['promo codes: free rides, cosmetics, scheduling, the admin tab', PROMOS_ENV, promoScenarios],
   ['promo codes: expiry and abuse', PROMOS_ENV, promoAbuseScenarios],
   ['ticket orders settled by purchase events', TICKET_ORDERS_ENV, ticketOrderScenarios],

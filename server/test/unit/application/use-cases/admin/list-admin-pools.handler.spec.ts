@@ -1,21 +1,18 @@
-import type { QueryBus } from '@nestjs/cqrs';
 import { ListAdminPoolsHandler } from '../../../../../src/application/use-cases/admin/list-admin-pools/list-admin-pools.handler.js';
-import { GetPoolStandingsHandler } from '../../../../../src/application/use-cases/pools/get-pool-standings/get-pool-standings.handler.js';
-import type { GetPoolStandingsQuery } from '../../../../../src/application/use-cases/pools/get-pool-standings/get-pool-standings.query.js';
-import { aPool } from '../../../../support/pools.js';
+import { ListAdminPoolsQuery } from '../../../../../src/application/use-cases/admin/list-admin-pools/list-admin-pools.query.js';
+import { poolProps } from '../../../../support/pools.js';
 import { unitContext } from '../../../../support/unit-context.js';
 
 describe('ListAdminPoolsHandler', () => {
-  it('live pools then the newest settled ones, each with its winners list and its hold', async () => {
+  it('the mirrored pools, newest first, times as epoch ms, limit applies', async () => {
     const ctx = unitContext();
-    await ctx.pools.upsert(aPool({ id: 1, status: 'active', ticketsSold: 4 }, ctx.now()));
-    await ctx.pools.upsert(aPool({ id: 2, status: 'settled' }, ctx.now()));
-    await ctx.pools.upsert(aPool({ id: 3, status: 'refunding' }, ctx.now()));
-    await ctx.pools.saveHold(1, { by: 'Admin', at: ctx.now(), note: 'wait' });
-    const standings = new GetPoolStandingsHandler(ctx.pools, ctx.poolPayouts, ctx.rideQuery);
-    const queries = { execute: (q: GetPoolStandingsQuery) => standings.execute(q) } as unknown as QueryBus;
-    const { pools } = await new ListAdminPoolsHandler(ctx.pools, queries).execute();
-    expect(pools.map((p) => [p.pool.id, p.standings.poolId, p.hold?.note ?? null])).toEqual([[1, 1, 'wait'], [2, 2, null]]);
-    expect(pools[0]?.pool.payout.held).toBe(true);
+    const old = poolProps({ id: 1, createdAt: new Date(ctx.clock.ms - 1000) }, ctx.now());
+    ctx.db.pools.set(1, old);
+    ctx.db.pools.set(2, poolProps({ id: 2, status: 'active', ticketsSold: 3, buyers: 2, vaultLamports: 150_000_000 }, ctx.now()));
+    const h = new ListAdminPoolsHandler(ctx.adminDirectory);
+    const { rows } = await h.execute(new ListAdminPoolsQuery(10));
+    expect(rows.map((r) => r.id)).toEqual([2, 1]);
+    expect(rows[0]).toMatchObject({ id: 2, status: 'active', ticketsSold: 3, buyers: 2, vaultLamports: 150_000_000, prepDeadline: poolProps({ id: 2 }, ctx.now()).prepDeadline.getTime(), syncedAt: null });
+    expect((await h.execute(new ListAdminPoolsQuery(1))).rows).toHaveLength(1);
   });
 });

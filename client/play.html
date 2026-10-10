@@ -2,8 +2,19 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Freight Chain</title>
+<title>Play Freight Chain – Free Truck Driving Game in Your Browser</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Drive a manual-gearbox truck down a road that never ends, right in your browser. The free run needs no wallet and no download.">
+<!-- one public URL for search (the apex serves this file too; ?watch= links fold into it). No og:url: a shared watch link must keep its own URL in the preview. -->
+<link rel="canonical" href="https://ride.freightchain.fun/play.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Freight Chain">
+<meta property="og:title" content="Freight Chain – drive or watch a long-haul shift">
+<meta property="og:description" content="A truck-driving game where the road never ends. Watch a ride 25 s behind, or take the wheel yourself – in the browser.">
+<meta property="og:image" content="https://freightchain.fun/media/og.jpg">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@FreightChainSol">
 <meta name="theme-color" content="#0b0a09">
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
@@ -16,14 +27,25 @@
 <canvas id="world"></canvas>
 <canvas id="cockpit"></canvas>
 <div id="toast"></div>
-<div id="overlay"><div class="panel" id="panel"></div></div>
+<div id="overlay" class="booting"><div class="panel" id="boot"><h1>LOADING</h1><h2 id="boot-sub">Getting the road ready…</h2><div class="loadbar"><i id="boot-fill"></i></div></div><div class="panel" id="panel"></div></div>
 
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
 <script type="module" src="js/main.js"></script>
 <script>
   // If the modules didn't start (typically: index.html opened straight from disk, or no internet for three.js), say so instead of showing a blank page.
+  // Loading screen: a dummy bar that eases towards 90 %, shown for at least MIN ms even when everything is cached; it jumps to 100 % and hands over to the menu once the game has started.
+  const t0 = performance.now(), MIN = 1200, fill = document.getElementById('boot-fill'), ov = document.getElementById('overlay');
+  const done = () => { fill.style.width = '100%'; setTimeout(() => ov.classList.remove('booting'), 250); };
+  (function tick() {
+    const t = performance.now() - t0;
+    if (window.__game && t >= MIN) return done();
+    if (ov.dataset.failed) return;   // the COULD NOT START panel below took over
+    fill.style.width = Math.min(90, 90 * (1 - Math.exp(-t / 700))) + '%';
+    requestAnimationFrame(tick);
+  })();
   setTimeout(() => {
     if (window.__game) return;
+    ov.dataset.failed = '1'; ov.classList.remove('booting');
     document.getElementById('panel').innerHTML = '<h1>COULD NOT START</h1><h2>The game scripts did not load.</h2>' +
       '<div style="margin:6px 0;font-size:15px">Browsers block ES modules on <b>file://</b>. Either:</div>' +
       '<table><tr><td>A</td><td>run <b>python3 -m http.server 8765</b> in this folder and open <b>http://localhost:8765/</b></td></tr>' +

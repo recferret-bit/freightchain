@@ -55,6 +55,12 @@ import { GetAdminOverviewHandler } from './use-cases/admin/get-admin-overview/ge
 import { GetAdminRideHandler } from './use-cases/admin/get-admin-ride/get-admin-ride.handler.js';
 import { ListAdminActionsHandler } from './use-cases/admin/list-admin-actions/list-admin-actions.handler.js';
 import { ListAdminRidesHandler } from './use-cases/admin/list-admin-rides/list-admin-rides.handler.js';
+import { ListAdminPlayersHandler } from './use-cases/admin/list-admin-players/list-admin-players.handler.js';
+import { GetAdminPlayerHandler } from './use-cases/admin/get-admin-player/get-admin-player.handler.js';
+import { GetAdminPoolHandler } from './use-cases/admin/get-admin-pool/get-admin-pool.handler.js';
+import { GetAdminStatsHandler } from './use-cases/admin/get-admin-stats/get-admin-stats.handler.js';
+import { ListAdminSessionsHandler } from './use-cases/admin/list-admin-sessions/list-admin-sessions.handler.js';
+import { GetAdminQueueCountHandler } from './use-cases/admin/get-admin-queue-count/get-admin-queue-count.handler.js';
 import { ListSignInsHandler } from './use-cases/admin/list-sign-ins/list-sign-ins.handler.js';
 import { OverrideVerdictHandler } from './use-cases/admin/override-verdict/override-verdict.handler.js';
 import { RejudgeRideHandler } from './use-cases/admin/rejudge-ride/rejudge-ride.handler.js';
@@ -84,6 +90,7 @@ import { GetPrizePoolHandler } from './use-cases/pools/get-prize-pool/get-prize-
 import { GetPoolStandingsHandler } from './use-cases/pools/get-pool-standings/get-pool-standings.handler.js';
 import { HoldPoolPayoutHandler } from './use-cases/admin/hold-pool-payout/hold-pool-payout.handler.js';
 import { ListAdminPoolsHandler } from './use-cases/admin/list-admin-pools/list-admin-pools.handler.js';
+import { ListPoolPayoutsHandler } from './use-cases/admin/list-pool-payouts/list-pool-payouts.handler.js';
 import { RedeemPromoHandler } from './use-cases/players/redeem-promo/redeem-promo.handler.js';
 
 import { CreateTicketOrderHandler } from './use-cases/tickets/create-ticket-order/create-ticket-order.handler.js';
@@ -123,13 +130,13 @@ const handlers: Provider[] = [
   GetPaymentInstructionsHandler, ConfirmPaymentHandler, ReconcilePaymentHandler,
   UploadBatchHandler, SweepTelemetryHandler, SweepSignInsHandler, RejudgeRidesHandler,
   PostRideEventHandler, AckEffectHandler, GetInboxHandler, WatchRideHandler, GetRoadPlanHandler, MuteWalletHandler, CreateDonationOrderHandler, ConfirmDonationHandler, SweepStaleRidesHandler, GetReplaysHandler,
-  GetAdminOverviewHandler, ListAdminRidesHandler, GetAdminRideHandler, ListSignInsHandler, ListAdminActionsHandler, GetAdminLogsHandler, OverrideVerdictHandler, RejudgeRideHandler, RequestAdminChallengeHandler, VerifyAdminSignInHandler, RequestActionChallengeHandler,
+  GetAdminQueueCountHandler, ListAdminPlayersHandler, GetAdminPlayerHandler, ListAdminPoolsHandler, GetAdminPoolHandler, GetAdminStatsHandler, ListAdminSessionsHandler, GetAdminOverviewHandler, ListAdminRidesHandler, GetAdminRideHandler, ListSignInsHandler, ListAdminActionsHandler, GetAdminLogsHandler, OverrideVerdictHandler, RejudgeRideHandler, RequestAdminChallengeHandler, VerifyAdminSignInHandler, RequestActionChallengeHandler,
   GetTiersHandler, GetPoolHandler, GetLeaderboardHandler,
   GetLiveHandler, GetProfileHandler,
   GetLivenessHandler, GetReadinessHandler,
   GrantDailyFreeRidesHandler,
   RecordTelemetryHandler,
-  ListPoolsHandler, GetPrizePoolHandler, GetPoolStandingsHandler, HoldPoolPayoutHandler, ListAdminPoolsHandler, RedeemPromoHandler, GetMyPromosHandler, GetWardrobeHandler, EquipCosmeticHandler, GetGarageHandler, SaveGarageHandler,
+  ListPoolsHandler, GetPrizePoolHandler, GetPoolStandingsHandler, HoldPoolPayoutHandler, ListPoolPayoutsHandler, RedeemPromoHandler, GetMyPromosHandler, GetWardrobeHandler, EquipCosmeticHandler, GetGarageHandler, SaveGarageHandler,
   CreateAdminPromoHandler, DisableAdminPromoHandler, ListPromoRedemptionsHandler,
   CreatePromoHandler, ListPromosHandler, DisablePromoHandler, GrantTicketsHandler, RegisterPoolHandler,
   CreateTicketOrderHandler, GetTicketOrderHandler, GetPendingTicketOrderHandler,

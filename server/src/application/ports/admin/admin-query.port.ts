@@ -33,6 +33,10 @@ export interface AdminRideRow {
 /** The admin page's read side: projections no aggregate needs (counts, filtered ride lists, a recording's batch index without the payloads). */
 export abstract class AdminQueryPort {
   abstract counts(): Promise<AdminCounts>;
+  /** completed shifts waiting for a human decision (verdict `flagged`) – the badge on the REVIEW QUEUE tab */
+  abstract flaggedCount(): Promise<number>;
+  /** the review queue's size, live: every PAID completed ride under review (flagged, machine-rejected, unjudged – no admin decision) + every flagged FREE ride */
+  abstract queueCount(): Promise<number>;
   /** newest first; the review queue (`review: 'under_review'`): the paid rides under review first, then the flagged free ones */
   abstract rides(filter: AdminRideFilter): Promise<AdminRideRow[]>;
   /** every COMPLETED ride paid with the pool's tickets, with its verdict status and whether an admin decided it – the pool-level attention checks */

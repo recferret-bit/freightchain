@@ -24,6 +24,8 @@ import { RideBatchRepositoryPort } from '../../src/application/ports/telemetry/r
 import { RideVerdictRepositoryPort } from '../../src/application/ports/verdict/ride-verdict.repository.port.js';
 import { SignInRepositoryPort } from '../../src/application/ports/auth/sign-in.repository.port.js';
 import { AdminActionRepositoryPort } from '../../src/application/ports/admin/admin-action.repository.port.js';
+import { MemoryAdminDirectory } from './in-memory/memory-admin-directory.js';
+import { AdminDirectoryPort } from '../../src/application/ports/admin/admin-directory.port.js';
 import { AdminQueryPort } from '../../src/application/ports/admin/admin-query.port.js';
 import { PrismaService } from '../../src/infrastructure/prisma/prisma.service.js';
 import { truncateAllTables } from '../../src/infrastructure/prisma/truncate.js';
@@ -33,6 +35,8 @@ import { FakeClock } from './fake-clock.js';
 import { MemoryDb } from './in-memory/memory-db.js';
 import { MemoryOfflineRideRepository, MemorySettingsRepository } from './in-memory/memory-settings.js';
 import { OfflineRideRepositoryPort } from '../../src/application/ports/offline/offline-ride.repository.port.js';
+import { DailySeedRepositoryPort } from '../../src/application/ports/rides/daily-seed.repository.port.js';
+import { MemoryDailySeedRepository } from './in-memory/memory-daily-seeds.js';
 import { SettingsRepositoryPort } from '../../src/application/ports/settings/settings.repository.port.js';
 import {
   MemoryAchievementRepository, MemoryChallengeRepository, MemoryHealthProbe, MemoryPaymentRepository, MemoryPlayerRepository,
@@ -113,6 +117,7 @@ export async function createHarness(persistence: Persistence, env: Record<string
       .overrideProvider(PlayerRepositoryPort).useValue(new MemoryPlayerRepository(memory))
       .overrideProvider(ChallengeRepositoryPort).useValue(new MemoryChallengeRepository(memory))
       .overrideProvider(RideRepositoryPort).useValue(new MemoryRideRepository(memory))
+      .overrideProvider(DailySeedRepositoryPort).useValue(new MemoryDailySeedRepository(memory))
       .overrideProvider(RideQueryPort).useValue(new MemoryRideQuery(memory))
       .overrideProvider(RoundRepositoryPort).useValue(new MemoryRoundRepository(memory))
       .overrideProvider(PaymentRepositoryPort).useValue(new MemoryPaymentRepository(memory))
@@ -128,6 +133,7 @@ export async function createHarness(persistence: Persistence, env: Record<string
       .overrideProvider(SignInRepositoryPort).useValue(new MemorySignInRepository(memory))
       .overrideProvider(AdminActionRepositoryPort).useValue(new MemoryAdminActionRepository(memory))
       .overrideProvider(AdminQueryPort).useValue(new MemoryAdminQuery(memory))
+      .overrideProvider(AdminDirectoryPort).useValue(new MemoryAdminDirectory(memory))
       .overrideProvider(TransactionPort).useValue(new MemoryTransaction())
       .overrideProvider(HealthProbePort).useValue(new MemoryHealthProbe())
       .overrideProvider(ChainEventRepositoryPort).useValue(new MemoryChainEventRepository(memory))

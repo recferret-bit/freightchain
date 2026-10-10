@@ -2,6 +2,7 @@ import { MAX_SPEED } from '../rides/ride-rules.js';
 import type { RoadLayout } from '../road/road-layout.js';
 import { step, type BatchSummary, type Step } from '../telemetry/batch-summary.js';
 import type { BatchFacts } from '../telemetry/ride-batch.entity.js';
+import { isPhoneInput } from '../telemetry/telemetry-rules.js';
 import {
   AGREE_METRES, AGREE_SHARE, COVERAGE_FLAG, COVERAGE_REJECT, FORK_SWITCH_SLACK_METRES, GAS_CODES, MOVED_METRES, SPEED_TOLERANCE, TELEPORT_FACTOR, TELEPORT_SLACK_METRES,
 } from './verdict-rules.js';
@@ -92,7 +93,7 @@ export function checkAgreement(ride: RideFacts, batches: readonly BatchFacts[]):
 /** A truck that moved was driven: there are input events, and the gas was pressed. */
 export function checkInputsPresent(ride: RideFacts, batches: readonly BatchFacts[]): VerdictReason[] {
   if (ride.distance <= MOVED_METRES) return [];
-  const downs = batches.flatMap((b) => b.summary.inputs).filter((e) => e[2] === 1);
+  const downs = batches.flatMap((b) => b.summary.inputs).filter((e) => e[2] === 1 && !isPhoneInput(e));
   if (downs.length === 0) return [reject('no-inputs', `${Math.round(ride.distance)} m driven without a single input event`)];
   if (!downs.some((e) => GAS_CODES.includes(e[1]))) return [reject('no-throttle-input', `${Math.round(ride.distance)} m driven without pressing the gas`)];
   return [];
@@ -100,7 +101,7 @@ export function checkInputsPresent(ride: RideFacts, batches: readonly BatchFacts
 
 export function recordingScores(batches: readonly BatchFacts[], recordedSeconds: number, coverage: number, maxSpeed: number): RecordingScores {
   return {
-    batches: batches.length, samples: batches.reduce((n, b) => n + b.summary.samples, 0), inputs: batches.reduce((n, b) => n + b.summary.inputs.length, 0),
+    batches: batches.length, samples: batches.reduce((n, b) => n + b.summary.samples, 0), inputs: batches.reduce((n, b) => n + b.summary.inputs.filter((e) => !isPhoneInput(e)).length, 0),
     recordedSeconds: round(recordedSeconds), coverage: round(coverage, 1000), maxSpeed: round(maxSpeed), unhashed: batches.filter((b) => b.hash === null).length,
   };
 }

@@ -2,7 +2,7 @@
    TUTORIAL (ui/tutorial.js): a step-by-step dialog over the gameplay that waits for the driver to do each thing.
    ASSIST (ui/assist.js): the truck wears out half as fast (CFG.ASSIST: hull damage + battery drain ×0.5) and every control / indicator gets a tip at the moment it matters.
    Both say WHAT to highlight through `guide.tips`; cockpit/guide.js draws it on top of the dash. Both are off by default – everything here is inert then (the trace stays identical).
-   The server owns the flags of an online ride (Ride.tutorial / Ride.assist, free tier only). play.html?offline=1 forces both off. Bare play.html can pass ?tutorial=1&assist=1. */
+   The server owns the flags of an online ride (Ride.tutorial / Ride.assist, free tier only); the guest run (any other page) picks them in its menu; tools set them with __game.setGuide / devRun. */
 export const guide = {
   tutorial: false,
   assist: false,

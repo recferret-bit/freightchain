@@ -2,9 +2,10 @@
    Crops are in design px of a W×H cockpit (the size tools/capture-media.mjs measured them at); `tick(t, g)` sets the state on the swapped-in globals `g` for t seconds into the loop. */
 
 export const W = 1280, H = 633, DPR = 2;
-const SONGS = ['Dust Road Blues', 'Night Shift', 'Long Haul Waltz', 'Neon Mile', 'Cold Start'];
+const RADIO_N = 11;   // STATIONS.length in client/js/sim/radio.js — the card only borrows the count
+const SONGS = ['Dusty Mile', 'Wheat Night', 'Iron Haul', 'Steel Gate', 'Neon Mile', 'Broken Amp', 'Night Shift', 'Bright Day', 'Blue Room', 'Cold Start', 'Pixel Run'];
 const GEARS = [0, 1, 2, 3, 4, 5, 6, 7, 0, -1];   // the shifter card's loop (0 = neutral, -1 = reverse)
-const KMH_AT_2000 = [10, 14, 20, 28, 40, 57, 80];   // km/h per gear at 2000 rpm (AGENTS.md "Gearbox")
+const KMH_AT_2000 = [10, 14, 20, 28, 40, 57, 80];   // km/h per gear at 2000 rpm (docs/agents/gameplay.md "Gearbox")
 
 /* what each card shows: crop = [x, y, w, h] in design px; tick(t, g) scripts the state (t = seconds, g = the swapped-in globals) */
 export const SCENES = {
@@ -19,14 +20,14 @@ export const SCENES = {
   lamps: { crop: [176, 396, 164, 134], tick(t, { st }) {   // cold engine, strain charging, hot brakes, flat battery; OFF ROAD / OVER-REV / GRIND / STALL now and then
     Object.assign(st, { engineOn: true, keyOn: true, temp: -30, strain: .2 + .7 * (.5 + .5 * Math.sin(t * .8)), brakeT: .45, batt: .25, off: t % 6 > 3, overrev: t % 7 > 5.5, grind: t % 9 > 8 ? .5 : 0, lug: t % 5 > 3 ? .4 : 0 });
   } },
-  lights: { crop: [176, 400, 284, 233], tick(t, { st, dn }) {   // night: HEAD / cab light toggling, HEAT warming, pedal bars moving
+  lights: { crop: [176, 400, 284, 233], tick(t, { st, dn }) {   // night: HEAD / cab light toggling, HEAT and COLD on with their bars, pedal bars moving
     Object.assign(dn, { k: 1, night: true, head: t % 6 < 4, cab: t % 8 < 4 });
-    Object.assign(st, { engineOn: true, keyOn: true, heater: true, heatEff: .5 + .5 * Math.sin(t * .7), clutch: .5 + .5 * Math.sin(t * 1.3), brake: Math.max(0, Math.sin(t * .7)), gas: .5 + .5 * Math.sin(t * .9 + 1), hull: 82 });
+    Object.assign(st, { engineOn: true, keyOn: true, heater: true, heatEff: .5 + .5 * Math.sin(t * .7), cooler: true, coolEff: .5 + .5 * Math.sin(t * .7 + 1.4), clutch: .5 + .5 * Math.sin(t * 1.3), brake: Math.max(0, Math.sin(t * .7)), gas: .5 + .5 * Math.sin(t * .9 + 1), hull: 82 });
   } },
   park: { crop: [958, 452, 184, 150], tick(t, { st, wip }) {   // PARK on/off, wipers off → 1 → 2, washer, and the shifter walking N → 1…7 → N → R through the H gate
     Object.assign(st, { engineOn: true, keyOn: true, park: t % 6 < 3, washing: t % 6 > 4.5, gear: GEARS[Math.floor(t / 1.1) % GEARS.length] }); wip.mode = Math.floor(t / 2) % 3;
   } },
   trip: { crop: [798, 398, 304, 160], tick(t, { st, radio }) {   // trip km / shift clock running, radio changing station
-    Object.assign(st, { engineOn: true, keyOn: true, s: 12000 + t * 28, t: 612 + t }); Object.assign(radio, { on: true, idx: Math.floor(t / 4) % 5, song: { title: SONGS[Math.floor(t / 4) % SONGS.length] } });
+    Object.assign(st, { engineOn: true, keyOn: true, s: 12000 + t * 28, t: 612 + t }); Object.assign(radio, { on: true, idx: Math.floor(t / 4) % RADIO_N, song: { title: SONGS[Math.floor(t / 4) % SONGS.length] } });
   } },
 };

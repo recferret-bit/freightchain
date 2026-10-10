@@ -51,13 +51,14 @@ test('head basics: lang, title, description, viewport, theme colour, social prev
   for (const m of ['name="description"', 'name="viewport"', 'name="theme-color"', 'property="og:title"', 'property="og:image"', 'name="twitter:card"']) assert.ok(html.includes(m), m);
 });
 
-test('exactly one h1 (the hero) and one h2 per remaining chapter', () => {
+test('exactly one h1 (the hero), one h2 per remaining chapter + the promo band\'s (no level skipped before chapter 02)', () => {
   assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
-  assert.equal((html.match(/<h2[\s>]/g) ?? []).length, 5, 'chapters 02–06');
+  assert.equal((html.match(/<h2[\s>]/g) ?? []).length, 6, 'the promo band + chapters 02–06');
+  assert.doesNotMatch(html.slice(0, html.indexOf('<h2')), /<h3[\s>]/, 'no h3 before the first h2');
 });
 
-test('no inline event handlers or inline scripts (strict-CSP friendly)', () => {
-  assert.doesNotMatch(html, /\son[a-z]+="/i); assert.deepEqual((html.match(/<script(?![^>]*\bsrc=)[^>]*>/g) ?? []), []);
+test('no inline event handlers or inline scripts (strict-CSP friendly; JSON-LD is data, never run)', () => {
+  assert.doesNotMatch(html, /\son[a-z]+="/i); assert.deepEqual((html.match(/<script(?![^>]*\b(?:src=|type="application\/ld\+json"))[^>]*>/g) ?? []), []);
 });
 
 test('server text goes in through textContent / el(): no innerHTML anywhere', () => {
@@ -95,7 +96,7 @@ test('sign-in: redirect + session UI go through SITE_BASE, the wallet chip exist
   assert.match(main, /catch \(e\) \{ msg\.textContent = e\.message; msg\.className = 'msg bad'; btn\.disabled = false; \}/);
 });
 
-test('promo invite: a form in its own band right after the hero (an <aside>, not a chapter – no nav link, no h2), the code rides to the lobby PROMO tab through SITE_BASE, shown with textContent only', () => {
+test('promo invite: a form in its own band right after the hero (an <aside>, not a chapter – no nav link, its own h2), the code rides to the lobby PROMO tab through SITE_BASE, shown with textContent only', () => {
   for (const id of ['invite', 'invite-code', 'invite-go', 'invite-msg']) assert.ok(ids.includes(id), id);
   assert.match(html, /<form class="invite[^"]*" id="invite"/);
   assert.match(html, /<\/section>\s*<!--[^>]*PROMO CODE[^>]*-->\s*<aside class="promo-band" id="promo-band"[\s\S]*?<form class="invite[\s\S]*?<\/aside>\s*<div class="road"/, 'the band sits between the hero and the road to chapter 02');

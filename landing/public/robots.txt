@@ -1,0 +1,25 @@
+# Freight Chain – every host (the apex, ride., whitepaper., storybook.) serves this same file: one app behind nginx.
+# Nothing is hidden from search here – pages that should not be indexed say so themselves (<meta name="robots" content="noindex">:
+# the lobby, the model viewer, the admin page), and a crawler can only read that tag on a page it is allowed to fetch.
+
+User-agent: *
+Allow: /
+Disallow: /api/
+
+# AI assistants and AI search: welcome. A named group replaces the * group for that crawler, so the rules are repeated.
+User-agent: GPTBot
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: ClaudeBot
+User-agent: Claude-SearchBot
+User-agent: Claude-User
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: Google-Extended
+User-agent: Applebot-Extended
+User-agent: CCBot
+Allow: /
+Disallow: /api/
+
+# Lists URLs on the apex, whitepaper. and ride.: every one of those hosts names it here, which is what lets one sitemap cover them all.
+Sitemap: https://freightchain.fun/sitemap.xml

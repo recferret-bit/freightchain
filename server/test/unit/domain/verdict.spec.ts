@@ -113,6 +113,17 @@ describe('RideVerdict.judge', () => {
       const noGas = judge(60, 800, {}, (b) => b.map((x) => { const body = { ...x, inputs: x.inputs.filter((e) => e[1] !== 'KeyW') }; return { ...body, hash: hashBatch(body) }; }));
       expect(codes(noGas)).toContain('no-throttle-input');
     });
+    it("the phone's events (phone:…) are not inputs: they neither fake an input nor disturb the human timing", () => {
+      const phone = (b: BatchBody[]) => {   // phone events in every batch, the chain re-hashed
+        const out: BatchBody[] = [];
+        for (const x of b) { const body = { ...x, prevHash: out.length ? (out[out.length - 1]!.hash as string) : x.prevHash, inputs: [...x.inputs, [x.t0 + 0.5, 'phone:zoom-in', 1] as [number, string, 0 | 1], [x.t0 + 0.5, 'phone:pan', 1] as [number, string, 0 | 1], [x.t0 + 0.5, 'phone:pan', 0] as [number, string, 0 | 1]] }; out.push({ ...body, hash: hashBatch(body) }); }
+        return out;
+      };
+      expect(codes(judge(60, 800, { inputs: 'none' }, phone))).toContain('no-inputs');
+      const plain = judge(120, 1600), withPhone = judge(120, 1600, {}, phone);
+      expect(codes(withPhone)).toEqual([]);
+      expect(withPhone.snapshot().scores.human).toEqual(plain.snapshot().scores.human);
+    });
     it('a ride that barely moved needs no inputs (a stall at the depot is not cheating)', () => {
       expect(codes(judge(20, 30, { inputs: 'none' }))).toEqual([]);
     });

@@ -107,6 +107,7 @@
             <tr><td>32 · 64</td><td>heater · washer spraying</td></tr>
             <tr><td>128 · 256</td><td>wipers slow · fast</td></tr>
             <tr><td>512 · 1024</td><td>radio on · reversing</td></tr>
+            <tr><td>2048</td><td>cooling on – the COLD button stays lit, and the windscreen fog follows it, the same way frost follows the heater</td></tr>
           </tbody>
         </table>
       </div>
@@ -118,7 +119,7 @@
     <span class="no"><s>the radio</s></span>
     <span class="no"><s>the raw key presses</s> – their millisecond timing is what the verdict's human-timing check measures, so they are never published</span>
   </div>
-  <p class="soft">What spectators DO see of the driver's hands is the <b>inputs</b> column: one bit per control (gas, brake, steer, clutch, gears, the key, the lights, wipers, washer, heater, radio, pause, mute, the phone map – W and ↑ are the same bit) plus one for <i>clicked on the dash</i>, set when the control was held at that sample or pressed since the one before, so a tap shorter than a tenth of a second still shows. The replay lights them as <b>flashing yellow borders</b>: a dash button is outlined where it sits (a click adds a pointer and a ring), keys show as caps in the lower left of the windscreen – Q W E / A S D / ⇧ always there, the others while lit. A fast replay never skips one: every sample the playhead passed in a frame counts, and a light fades over half a second of wall time. In the example, 65537 = gas held + the headlights switched. The bits never change meaning; new controls are appended (<code>client/js/input-bits.js</code>).</p>
+  <p class="soft">What spectators DO see of the driver's hands is the <b>inputs</b> column: one bit per control (gas, brake, steer, clutch, gears, the key, the lights, wipers, washer, heater, cooling, radio, pause, mute, the phone map – W and ↑ are the same bit) plus one for <i>clicked on the dash</i>, set when the control was held at that sample or pressed since the one before, so a tap shorter than a tenth of a second still shows. The replay lights them as <b>flashing yellow borders</b>: a dash button is outlined where it sits (a click adds a pointer and a ring), keys show as caps in the lower left of the windscreen – Q W E / A S D / ⇧ always there, the others while lit. A fast replay never skips one: every sample the playhead passed in a frame counts, and a light fades over half a second of wall time. In the example, 65537 = gas held + the headlights switched. The bits never change meaning; new controls are appended (<code>client/js/input-bits.js</code>).</p>
   <div class="cols">
     <div class="card">
       <div class="top"><h3>The holes are the server's</h3><span class="chip pen">GET /api/watch/:id/road</span></div>

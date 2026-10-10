@@ -45,6 +45,19 @@ test('a dash control is outlined where the button is; a click adds the pointer a
   assert.ok(run(cab).some(([k, a]) => k === 'roundRect' && a[0] > 190 && a[0] < 200), 'only the CAB button, not HEAD');
   uiBtns.length = 0;
 });
+test('COLD is outlined like the other dash buttons, and J gets a cap only while cooling is pressed', () => {
+  uiBtns.length = 0;
+  uiBtns.push({ id: 'heat', x: 100, y: 860, w: 53, h: 25 }, { id: 'cold', x: 160, y: 860, w: 53, h: 25 });
+  const key = L0(); lightInputs(BIT.cold, .016, key);
+  const click = L0(); lightInputs(BIT.cold | MOUSE, .016, click);
+  const byKey = run(key), byClick = run(click);
+  assert.ok(texts(byKey).includes('J'));
+  assert.ok(!texts(byKey).includes('H'), 'HEAT stays dark');
+  assert.ok(byKey.some(([k, a]) => k === 'roundRect' && a[0] > 150 && a[0] < 160), 'the border sits on COLD');
+  assert.ok(!byKey.some(([k, a]) => k === 'roundRect' && a[0] > 90 && a[0] < 110), 'HEAT is not outlined');
+  assert.equal(arcs(byClick), 1);
+  uiBtns.length = 0;
+});
 test('a control whose button is not on the dash this frame draws no border for it (no crash)', () => {
   uiBtns.length = 0;
   const L = L0(); lightInputs(BIT.heat, .016, L);

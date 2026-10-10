@@ -5,9 +5,9 @@ export const CFG = {
   REVERSE_MAX: 6,            // m/s reverse speed governor (~22 km/h)
   MAX_SPEED: 28,             // m/s hard governor (~100 km/h)
   START_BALANCE: 100,
-  SHAKE_START: 0.5,          // engine start-up / idle / shut-off (stall) shake scale (1 = original)
-  SHAKE_RPM: 0.35,            // extra shake that grows with engine revs (1 = default, 0 = off)
-  SHAKE_MOVING: 0.1,         // speed-related shake scale (1 = original)
+  SHAKE_START: 0.45,         // engine start-up / idle / shut-off (stall) shake scale (1 = original)
+  SHAKE_RPM: 0.315,           // extra shake that grows with engine revs (1 = default, 0 = off)
+  SHAKE_MOVING: 0.09,        // speed-related shake scale (1 = original)
   START_ENGINE_OFF: true,    // ride begins with the engine off: press I to run the start-up sequence
   OFFROAD_FAIL_SECONDS: 20,   // continuous-ish time off the tarmac before the ride is lost (drains 2× faster once back on the road)
   OFFROAD_DRAG: 1.2,          // m/s² of extra braking while off the road (sand/gravel); the old 4.5 stopped the truck dead
@@ -89,6 +89,7 @@ export const CFG = {
   HEADLIGHT_WIDTH: 16,       // m, width of the pool at its far end
   HEADLIGHT_NEAR_W: 3.2,     // m, extra beam half-width right at the truck, fading out over ~10 m (real lamps splay wide up close; without it the road shoulders beside/ahead of the bonnet were a dark patch)
   HEADLIGHT_GAIN: 0.12,      // brightness of the additive halo decal on the road (the real lighting is the cone in world/nightlight.js, ×1.6 at its centre)
+  FORM_SHADE: 1,             // 1 = daytime sun shade + a 2 cm box edge (world/nightlight.js). F8 toggles. Fades out at night. 0 = the old flat colour
   CAB_DAY: 0.25,             // the cab lamp's warm wash by day, as a fraction of its night strength (the dome lens itself always glows when on)
   CAB_DARK: 0.78,            // cockpit interior darkness at night (0..1); the cab lamp (C) lifts it
   HOOD_DARK: 0.9,            // extra darkness of the bonnet at night with no cab light / street lamp / oncoming glare on it (0..1; 1 = invisible)
@@ -118,16 +119,16 @@ export const CFG = {
   WASH_DRAIN: 0.01,          // washer-fluid tank (st.wash 0..1) drained per second of spray: 100 s per ride (was 0.05 = 20 s; ×5 capacity), no refill
   ASSIST: {                  // the free ride's ASSIST mode (guide.js): ×this on what wears the truck out – 0.5 = twice the durability. Fatal hits (a building, a head-on, a blown engine) stay fatal. Server: PASS_DAMAGE_SHARE (verdict-rules.ts) must stay below HULL_DMG
     HULL_DMG: 0.5,           // hull lost per impact / pothole / bump / cold-engine wear
-    BATT_DRAIN: 0.5,         // battery drain (lights, heater, radio, key-on, the starter); the alternator is unchanged
+    BATT_DRAIN: 0.5,         // battery drain (lights, heater, cooler, radio, key-on, the starter); the alternator is unchanged
   },
   BATT: {                    // battery (sim/battery.js): charge 0..1, per second
     START: 0.85,             // charge at the start of a ride
-    HEAD: 0.0025, CAB: 0.0015, HEATER: 0.005, RADIO: 0.001, KEY_ON: 0.0008,   // consumers (engine off or on); headlights alone flatten it in ≈ 6 min, the heater (engine off, ×OFF_X) in ≈ 70 s. TEST-scale like the 5 min ride
+    HEAD: 0.0025, CAB: 0.0015, HEATER: 0.005, COOLER: 0.005, RADIO: 0.001, KEY_ON: 0.0008,   // consumers (engine off or on); headlights alone flatten it in ≈ 6 min, the heater or the cooler (engine off, ×OFF_X) in ≈ 70 s. The cooler draws the same current as the heater. TEST-scale like the 5 min ride
     OFF_X: 2.5,              // the consumers above drain this many times faster with the engine OFF (only the battery feeds them): HEAD + CAB + key-on ≈ 70 s from full to flat
-    REST: 0.004, REST_MAX: 0.5,   // engine off, no lights / heater / radio (key ON or OFF): the charge creeps back per second, up to REST_MAX (net of the key-on drain ≈ 1 min from flat to a startable .12) – a rest buys a restart, not a full battery. Never a dead end
+    REST: 0.004, REST_MAX: 0.5,   // engine off, no lights / heater / cooler / radio (key ON or OFF): the charge creeps back per second, up to REST_MAX (net of the key-on drain ≈ 1 min from flat to a startable .12) – a rest buys a restart, not a full battery. Never a dead end
     CRITICAL: 0.2,           // engine off below this: alarm + toast; at DEAD (below) every consumer cuts out and the rest recovery takes over
     STARTER: 0.06,           // while cranking (~1.3 s)
-    CHARGE_MIN: 0.004, CHARGE_RPM: 0.003,   // alternator: at idle … at redline (≈ .0055 at cruise); × a taper above ~75 % charge. Headlights alone are sustainable while driving; the heater alone only at cruise revs; HEAD + HEAT (.0075 > .007) never are
+    CHARGE_MIN: 0.004, CHARGE_RPM: 0.003,   // alternator: at idle … at redline (≈ .0055 at cruise); × a taper above ~75 % charge. Headlights alone are sustainable while driving; the heater or the cooler alone only at cruise revs; HEAD + HEAT and HEAD + COLD (.0075 > .007) never are
     LOW: 0.3, DEAD: 0.01,    // BAT lamp amber below LOW (red + blinking below LOW/2), everything out below DEAD
     START_MIN: 0.12,         // the starter needs at least this much (a crank costs ≈ .085, so a start that works never ends below DEAD)
   },
@@ -138,9 +139,15 @@ export const CFG = {
   HEATER_MIN: 10,            // °C engine temperature at which the cab heater starts to blow warm air
   HEATER_FULL: 70,           // °C at which it blows at full strength
   HEATER_DRAIN: 1.5,         // °C/s the heater at full strength takes out of the coolant
-  FROST_RATE: 0.07,          // frost growth per second at about −25 °C (scales with how far below freezing; edges first)
-  FROST_MELT: 0.3,           // frost melted per second by the heater at full strength (from the vents, bottom centre, outwards)
+  FROST_RATE: 0.07 / 3,      // frost thickness per second at full drive (was 0.07). Edges first. Warm-route fog uses FOG_RATE
+  FROST_MELT: 0.3 / 3,       // frost cleared per second by the heater at full strength (was 0.3), from the vents, bottom centre, outwards. The cooler uses FOG_CLEAR
+  FROST_THAW: 0.05 / 3,      // natural frost thaw per second just above freezing (was 0.05), full by about +10 °C
+  FOG_FROM: 18,              // °C ambient above which the windscreen fogs while cooling is off (Route 66 26, Stuart 34; Pan-American 12 and Brenner 3 do not fog. Brenner still frosts at full night)
+  FOG_RATE: 0.07 / 9,        // fog thickness per second at full fogDrive (one third of FROST_RATE). Edges first
+  FOG_CLEAR: 0.3 / 9,        // fog cleared per second by the cooler at full strength (one third of FROST_MELT), from the vents
+  FOG_HAZE: 0.5,             // drawn strength of the milky haze (was 1): the same thickness looks half as opaque
   SNOW_FLAKES: 240,          // falling snowflakes at snow = 1
+  PHONE: { BOOT: 3000, HOME: 2500, LAUNCH_AT: 2000, UI_MS: 450, FREE_MAX: 3000, FREE_IDLE: 15000 },   // the cab phone (ui/map.js), ms: the boot animation · the home screen (Maps is pressed at LAUNCH_AT, open by HOME) · the map's controls sliding in; the map's drag limit (m from the truck) and the idle time (ms) before it follows the truck again
 };
 // The road never ends. A shift is complete after RIDE_MIN_SECONDS of driving AND COMPLETE_DIST metres (speed is governed, so the distance
 // can't be covered faster than COMPLETE_DIST_K × RIDE_MIN_SECONDS, and idling/backgrounding the tab can't "bank" progress).

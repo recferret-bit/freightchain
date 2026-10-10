@@ -52,11 +52,14 @@ test('park: the shifter walks every gear incl. neutral and reverse', () => {
   for (const g of [-1, 0, 1, 2, 3, 4, 5, 6, 7]) assert.ok(seen.has(g), `gear ${g}`);
 });
 
-test('trip: radio stays on a real station index (five stations)', () => {
-  for (let t = 0; t < 60; t += .5) { const { radio } = run(SCENES.trip, t); assert.equal(radio.on, true); assert.ok(Number.isInteger(radio.idx) && radio.idx >= 0 && radio.idx < 5); assert.ok(radio.song.title); }
+test('trip: radio stays on a real station index (eleven stations)', () => {
+  const seen = new Set();
+  for (let t = 0; t < 60; t += .5) { const { radio } = run(SCENES.trip, t); assert.equal(radio.on, true); assert.ok(Number.isInteger(radio.idx) && radio.idx >= 0 && radio.idx < 11); assert.ok(radio.song.title); seen.add(radio.idx); }
+  assert.equal(seen.size, 11);
 });
 
-test('lights: night is on and the cab light / headlights both toggle', () => {
-  const heads = new Set(), cabs = new Set(); for (let t = 0; t < 24; t += .25) { const { dn } = run(SCENES.lights, t); assert.equal(dn.night, true); heads.add(dn.head); cabs.add(dn.cab); }
+test('lights: night is on, the cab light and headlights both toggle, and HEAT and COLD stay on', () => {
+  const heads = new Set(), cabs = new Set();
+  for (let t = 0; t < 24; t += .25) { const { dn, st } = run(SCENES.lights, t); assert.equal(dn.night, true); assert.equal(st.heater, true); assert.equal(st.cooler, true); assert.ok(st.heatEff > 0 && st.coolEff > 0); heads.add(dn.head); cabs.add(dn.cab); }
   assert.deepEqual([...heads].sort(), [false, true]); assert.deepEqual([...cabs].sort(), [false, true]);
 });

@@ -2,16 +2,18 @@ import { ADMIN_BASE, SITE_BASE } from '../js/hosts.js';
 import { b58, provider } from './wallet.js';
 import { shortAddr } from './pools.js';
 import { promosTab } from './admin-promos.js';
-import { poolsTab } from './admin-pools.js';
+import { settingsTab } from './admin-settings.js';
+import { playersTab, poolsTab, statsTab, sessionsTab } from './admin-directory.js';
+import { payoutsTab } from './admin-pools.js';
 import { devWanted, installDevWallet, isLocal, DEV_ADMIN_WALLET } from './dev-wallet.js';
 if (devWanted()) installDevWallet();   // localhost only: a dev wallet chosen earlier in this tab stays in place after a reload
 
-/* The admin page: OVERVIEW · REVIEW QUEUE · RIDES · POOLS · PROMO CODES · SIGN-INS · LOGS · AUDIT (+ #ride/<id>). Vanilla DOM, no framework.
+/* The admin page: OVERVIEW · REVIEW QUEUE · RIDES · PLAYERS · POOLS · PAYOUTS · STATS · SESSIONS · PROMO CODES · SETTINGS · SIGN-INS · LOGS · AUDIT (+ #ride/<id>). Vanilla DOM, no framework.
    Only wallets in the server's ADMIN_WALLETS get answers – to everyone else /api/admin/* is a 404 and this page says so.
    Everything from the server goes in with textContent (wallets, reasons, log lines are other people's data) – never innerHTML. */
 const $ = id => document.getElementById(id);
 const view = $('view');
-const TABS = ['overview', 'queue', 'rides', 'pools', 'promos', 'signins', 'logs', 'audit'];
+const TABS = ['overview', 'queue', 'rides', 'players', 'pools', 'payouts', 'stats', 'sessions', 'promos', 'settings', 'signins', 'logs', 'audit'];
 
 /* ───────── helpers ───────── */
 function el(tag, attrs = {}, ...kids) {
@@ -47,23 +49,36 @@ const fail = e => (sessionGone(e) ? (store(null), showSignIn('Your admin session
 
 /* ───────── shell ───────── */
 const S = { tab: 'overview', me: null };
-async function go() {
-  const [t, arg] = location.hash.slice(1).split('/');
-  S.tab = t === 'ride' ? 'ride' : TABS.includes(t) ? t : 'overview';
-  document.querySelectorAll('.tabs a').forEach(a => { const on = a.dataset.tab === S.tab; a.classList.toggle('on', on); a.setAttribute('aria-selected', on); });
-  view.replaceChildren(el('p', { class: 'dim' }, 'Loading…'));
+let seq = 0, loading = null;   // loading = { key, at }: a refresh (R held down, a double click) of what is already loading must not start a second load
+const STALE_MS = 15000;   // …unless that load hangs
+async function go({ dedupe = false } = {}) {
+  const key = location.hash;
+  if (dedupe && loading?.key === key && Date.now() - loading.at < STALE_MS) return;
+  const mine = ++seq, current = () => mine === seq;   // a newer go() (another tab, a filter) supersedes this one
+  const [t, arg] = key.slice(1).split('/');
+  const tab = t === 'ride' ? 'ride' : TABS.includes(t) ? t : 'overview';
+  const same = tab === S.tab && view.dataset.tab === tab && !arg;   // a refresh of the open tab keeps its content until the new one is ready
+  S.tab = tab;
+  loading = { key, at: Date.now() };
+  document.querySelectorAll('.tabs a').forEach(a => { const on = a.dataset.tab === tab; a.classList.toggle('on', on); a.setAttribute('aria-selected', on); });
+  // "Loading…" only if the answer is slow: a fast one would flash it for a frame
+  const wait = same ? 0 : setTimeout(() => { if (current()) view.replaceChildren(el('p', { class: 'dim' }, 'Loading…')); }, 150);
+  if (!same) { view.replaceChildren(); view.dataset.tab = ''; }
   refreshQueueCount();
-  try { await ({ overview, queue, rides, pools: () => poolsTab({ api, el, view, signAt, time, wallet }), promos: () => promosTab({ api, el, view, signAt, time, ago, wallet }), signins, logs, audit, ride: () => ride(arg) })[S.tab](); } catch (e) { fail(e); }
+  // the tabs paint through `gv`: a load that a newer go() superseded (another tab clicked meanwhile) must not draw over it
+  const gv = { replaceChildren: (...kids) => { if (current()) view.replaceChildren(...kids); }, dataset: view.dataset };
+  const ctx = { api, el, view: gv, signAt, time, ago, wallet, go };
+  try { await ({ overview: () => overview(gv), queue: () => queue(gv), rides: () => rides(gv), promos: () => promosTab(ctx), settings: () => settingsTab(ctx, arg), players: () => playersTab(ctx, arg), pools: () => poolsTab(ctx, arg), payouts: () => payoutsTab(ctx), stats: () => statsTab(ctx), sessions: () => sessionsTab(ctx), signins: () => signins(gv), logs: () => logs(gv), audit: () => audit(gv), ride: () => ride(arg, gv) })[tab](); if (current()) view.dataset.tab = arg ? '' : tab; } catch (e) { if (current()) fail(e); } finally { clearTimeout(wait); if (current()) loading = null; }
 }
-addEventListener('hashchange', go);
-$('refresh').onclick = go;
-addEventListener('keydown', e => { if (e.key === 'r' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName ?? '')) go(); });
+addEventListener('hashchange', () => go());
+$('refresh').onclick = () => go({ dedupe: true });
+document.querySelector('.tabs').addEventListener('click', e => { if (e.target.closest('a')?.dataset.tab === S.tab && !location.hash.includes('/')) e.preventDefault(); });   // the open tab's button does nothing
+addEventListener('keydown', e => { if (e.key === 'r' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName ?? '')) go({ dedupe: true }); });
 
-const QUEUE = 'rides?review=under_review&limit=200';   // the review queue: every paid ride UNDER REVIEW (flagged, machine-rejected, unjudged), then the flagged free rides
-const refreshQueueCount = () => api(QUEUE).then(({ rows }) => { $('tab-queue-n').textContent = rows.length || ''; }, () => {});
+const refreshQueueCount = () => api('queue/count').then(({ underReview, flagged }) => { $('tab-queue-n').textContent = (underReview ?? flagged) || ''; }, () => {});   // a count: this runs on every tab change
 
 /* ───────── OVERVIEW ───────── */
-async function overview() {
+async function overview(view) {
   const o = await api('overview');
   paintMode(o.config);
   const tile = (v, l) => el('div', { class: 'tile' }, el('b', {}, v), el('span', {}, l));
@@ -91,7 +106,8 @@ function rideTable(rows) {
       el('td', {}, ago(r.createdAt)), el('td', {}, wallet(r.wallet)), el('td', {}, r.tier + (r.timeScale > 1 ? ` ×${r.timeScale}` : '')), el('td', { class: 'mono' }, r.poolId ?? '–'), el('td', {}, r.status),
       el('td', { class: 'r' }, km(r.distance)), el('td', { class: 'r' }, `${Math.round(r.driveSeconds)} s`), el('td', {}, r.status === 'completed' ? badge(r.verdict, r.overridden) : ''), el('td', {}, reviewBadge(r.review)), el('td', { class: 'dim' }, r.reason ?? ''))))));
 }
-async function queue() {
+const QUEUE = 'rides?review=under_review&limit=200';   // the review queue: every paid ride UNDER REVIEW (flagged, machine-rejected, unjudged), then the flagged free rides
+async function queue(view) {
   const pool = new URLSearchParams(location.search).get('pool') ?? '';
   const { rows } = await api(`${QUEUE}${/^\d+$/.test(pool) ? `&pool=${pool}` : ''}`);
   if (!pool) $('tab-queue-n').textContent = rows.length || '';
@@ -104,7 +120,7 @@ async function queue() {
     el('div', { class: 'filters' }, input, el('button', { onclick: apply }, 'FILTER'), ...pools.map(p => el('a', { href: `?pool=${p}#queue`, class: 'chip' }, `pool ${p}`))),
     rideTable(rows));
 }
-async function rides() {
+async function rides(view) {
   const q = new URLSearchParams(location.search);
   const f = { wallet: q.get('wallet') ?? '', status: q.get('status') ?? '', verdict: q.get('verdict') ?? '' };
   const input = el('input', { placeholder: 'wallet (full address)', value: f.wallet, 'aria-label': 'wallet' });
@@ -118,30 +134,33 @@ async function rides() {
 }
 
 /* ───────── ONE RIDE ───────── */
-async function ride(id) {
+async function ride(id, view) {
   const d = await api(`rides/${encodeURIComponent(id)}`);
   const r = d.ride, v = d.verdict;
   const kv = (...pairs) => el('dl', { class: 'kv' }, pairs.flatMap(([k, val]) => [el('dt', {}, k), el('dd', {}, val)]));
+  const lock = on => document.querySelectorAll('.actions button').forEach(b => { b.disabled = on; });   // one click = one wallet prompt = one signed change
   const decide = async decision => {
     const note = $('note').value.trim();
+    lock(true);
     $('decide-msg').textContent = 'Sign the decision in your wallet…';
     try {
       const signature = await signChange(id, { action: 'override', decision, note: note || undefined });
       $('decide-msg').textContent = 'Saving…';
       await api(`rides/${encodeURIComponent(id)}/verdict`, { decision, note: note || undefined, signature }); go();
-    } catch (e) { $('decide-msg').textContent = e.message; $('decide-msg').className = 'bad'; }
+    } catch (e) { $('decide-msg').textContent = e.message; $('decide-msg').className = 'bad'; lock(false); }
   };
   const rejudge = async () => {
     const msg = $('decide-msg') ?? $('judge-msg');
+    lock(true);
     msg.textContent = 'Sign the re-judge in your wallet…';
     try {
       const signature = await signChange(id, { action: 'rejudge' });
       msg.textContent = 'Judging…';
       await api(`rides/${encodeURIComponent(id)}/rejudge`, { signature }); go();
-    } catch (e) { msg.textContent = e.message; msg.className = 'bad'; }
+    } catch (e) { msg.textContent = e.message; msg.className = 'bad'; lock(false); }
   };
   view.replaceChildren(
-    el('p', {}, el('a', { href: '#queue' }, '← review queue'), ' · ', el('a', { href: `?wallet=${r.wallet}#rides` }, 'this rider\'s rides'), ' · ', el('a', { href: `#signins/${r.wallet}` }, 'sign-ins'), ' · ', el('a', { href: `#logs/${r.id}` }, 'log lines')),
+    el('p', {}, el('a', { href: '#queue' }, '← review queue'), ' · ', el('a', { href: `?wallet=${r.wallet}#rides` }, 'this rider\'s rides'), ' · ', el('a', { href: `#players/${r.wallet}` }, 'player'), ' · ', el('a', { href: `#signins/${r.wallet}` }, 'sign-ins'), ' · ', el('a', { href: `#settings/${r.wallet}` }, 'free rides'), ' · ', el('a', { href: `#logs/${r.id}` }, 'log lines')),
     el('h2', {}, 'RIDE'),
     el('div', { class: 'card' }, kv(['id', el('span', { class: 'mono' }, r.id)], ['rider', el('span', { class: 'mono' }, r.wallet)], ['tier / status', `${r.tier} · ${r.status}${r.reason ? ` – ${r.reason}` : ''}`],
       ['driven', `${km(r.distance)} km in ${Math.round(r.driveSeconds)} s (shift ${r.minSeconds} s / ${km(r.completeDist)} km${r.timeScale > 1 ? `, demo ×${r.timeScale}` : ''})`],
@@ -169,7 +188,7 @@ async function ride(id) {
 }
 
 /* ───────── SIGN-INS ───────── */
-async function signins() {
+async function signins(view) {
   const w = location.hash.split('/')[1] ?? '';
   const { rows } = await api(`signins?limit=200${w ? `&wallet=${encodeURIComponent(w)}` : ''}`);
   view.replaceChildren(el('h2', {}, `SIGN-INS${w ? ` · ${short(w)}` : ''}`),
@@ -181,7 +200,7 @@ async function signins() {
 }
 
 /* ───────── LOGS ───────── */
-async function logs() {
+async function logs(view) {
   const pre = decodeURIComponent(location.hash.split('/')[1] ?? '');
   const q = el('input', { placeholder: 'filter: request id, wallet, ride id, words', value: pre, 'aria-label': 'filter' });
   const level = el('select', { 'aria-label': 'level' }, ...[['', 'all levels'], ['warn', 'warn + error'], ['error', 'errors only']].map(([v, l]) => el('option', { value: v }, l)));
@@ -202,13 +221,13 @@ async function logs() {
 }
 
 /* ───────── AUDIT ───────── */
-async function audit() {
+async function audit(view) {
   const { rows } = await api('actions?limit=200');
   view.replaceChildren(el('h2', {}, 'AUDIT · ADMIN ACTIONS'),
     rows.length ? el('div', { class: 'card', style: 'padding:6px 8px;overflow-x:auto' }, el('table', { class: 'dense' },
       el('thead', {}, el('tr', {}, ...['when', 'admin', 'action', 'target', 'detail', 'request'].map(h => el('th', {}, h)))),
       el('tbody', {}, rows.map(a => el('tr', {}, el('td', { title: time(a.at) }, ago(a.at)), el('td', {}, wallet(a.wallet)), el('td', {}, a.action),
-        el('td', {}, a.action.startsWith('verdict.') ? el('a', { href: `#ride/${a.target}`, class: 'mono' }, a.target.slice(0, 8)) : a.action.startsWith('promo.') ? el('a', { href: '#promos', class: 'mono' }, a.target) : a.action.startsWith('pool.') ? el('a', { href: '#pools', class: 'mono' }, `pool ${a.target}`) : wallet(a.target)), el('td', { class: 'dim' }, JSON.stringify(a.detail)), el('td', { class: 'mono dim' }, a.requestId ?? '–'))))))
+        el('td', {}, a.action.startsWith('verdict.') ? el('a', { href: `#ride/${a.target}`, class: 'mono' }, a.target.slice(0, 8)) : a.action.startsWith('promo.') ? el('a', { href: '#promos', class: 'mono' }, a.target) : a.action.startsWith('setting.') ? el('a', { href: '#settings', class: 'mono' }, a.target) : a.action.startsWith('free_rides.') ? el('a', { href: `#settings/${a.target}`, title: a.target }, wallet(a.target)) : a.action.startsWith('pool.') ? el('a', { href: '#payouts', class: 'mono' }, `pool ${a.target}`) : wallet(a.target)), el('td', { class: 'dim' }, JSON.stringify(a.detail)), el('td', { class: 'mono dim' }, a.requestId ?? '–'))))))
       : el('div', { class: 'card empty' }, 'No admin actions yet.'));
 }
 
@@ -262,7 +281,7 @@ function showSignIn(why) {
     el('p', { class: 'dim' }, el('a', { href: `${SITE_BASE}/` }, 'back to the site'))));
 }
 /* a 404 from the admin API means "no (valid) admin session" – unless it is a ride that does not exist while the session is still fresh */
-const sessionGone = e => e.status === 404 && !(stored()?.expiresAt > Date.now() && S.tab === 'ride');
+const sessionGone = e => e.status === 404 && !(stored()?.expiresAt > Date.now() && ['ride', 'players', 'pools'].includes(S.tab));   // a fresh session + an unknown ride / wallet / pool is "not found", not "signed out"
 
 /* ───────── boot ───────── */
 try {

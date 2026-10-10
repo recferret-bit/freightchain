@@ -89,8 +89,9 @@ Docker project `freightchain-prod`: `postgres` (no published port, named volume 
 ## What the first deploy changes on the server
 - creates `/srv/freightchain/…`
 - adds `/etc/nginx/sites-*/freightchain` (apex, `ride.`, `api.`), `freightchain-storybook` (`storybook.`), `freightchain-whitepaper` (`whitepaper.`) and `freightchain-admin` (`admin.`, after writing `/etc/nginx/freightchain-admin.htpasswd`) (each only if absent; removed again if `nginx -t` fails) and reloads nginx – a server set up before a site existed gets it on the next deploy
-- writes the managed media cache (`/etc/nginx/conf.d/freightchain-media.conf` = `proxy_cache_path`, `/etc/nginx/snippets/freightchain-media.conf` = the `/media/*.mp4` cache location + the game's `/audio/sfx/*.mp3` sound effects, marker `fc-audio`; nginx is reloaded after a rewrite and the old snippet restored if `nginx -t` fails) and adds ONE `include` of that snippet after the `server_name <apex> ride.<apex>;` line of the apex site – also into a site installed earlier, certbot's 443 block included (idempotent; restored if `nginx -t` fails). `deploy` runs setup by itself while that include (or the `fc-audio` marker in the snippet) is missing
-- runs `certbot --nginx -d <apex> -d ride.<apex> -d api.<apex> -d storybook.<apex> -d whitepaper.<apex> -d admin.<apex> --redirect` (re-runs with `--expand` if the certificate lacks a name)
+- writes the managed media cache (`/etc/nginx/conf.d/freightchain-media.conf` = `proxy_cache_path`, `/etc/nginx/snippets/freightchain-media.conf` = the `/media/*.mp4` cache location + the game's `/audio/sfx/*.mp3` sound effects, marker `fc-audio`, + the two search redirects, marker `fc-seo`: `ride.<apex>/` → the apex (query kept) and `<apex>/whitepaper.html` → `whitepaper.<apex>/`; nginx is reloaded after a rewrite and the old snippet restored if `nginx -t` fails) and adds ONE `include` of that snippet after the `server_name <apex> ride.<apex>;` line of the apex site – also into a site installed earlier, certbot's 443 block included (idempotent; restored if `nginx -t` fails). `deploy` runs setup by itself while that include (or the `fc-audio` / `fc-seo` marker in the snippet) is missing
+- adds `freightchain-www` (`www.<apex>` → 301 to the apex, from `nginx/www.conf.template`) ONLY when `www.<apex>` resolves to the server; otherwise it says so and goes on. Add the A record later, then `npm run deploy:setup`
+- runs `certbot --nginx -d <apex> -d ride.<apex> -d api.<apex> -d storybook.<apex> -d whitepaper.<apex> -d admin.<apex> [-d www.<apex>] --redirect` (re-runs with `--expand` if the certificate lacks a name)
 - starts two containers and one volume
 
 It touches nothing else (other nginx sites, other containers).
@@ -104,7 +105,7 @@ gunzip -c ../backups/db-<tag>.sql.gz | docker compose -p freightchain-prod --env
 (Restore into an empty database; stop the app first.)
 
 ## Icons
-The tab icon, the Phantom connect-popup logo and the home-screen icon are plain files in `client/` (`favicon.ico`, `icons/`, `manifest.webmanifest`), served from the root of every host and cached for a day. Nothing to configure here; see AGENTS.md "App icon" to change the design.
+The tab icon, the Phantom connect-popup logo and the home-screen icon are plain files in `client/` (`favicon.ico`, `icons/`, `manifest.webmanifest`), served from the root of every host and cached for a day. Nothing to configure here; see docs/agents/landing.md "App icon" to change the design.
 
 ## Redis (the statistics cache)
 

@@ -1,7 +1,7 @@
 import { createFurniture } from './furniture.js';
 import { createLandmarks } from './landmarks/index.js';
 
-/* Assembles a route from its folder's modules (road / sky / terrain / mountains / props) plus plain data. See AGENTS.md ("Themes") for the interface.
+/* Assembles a route from its folder's modules (road / sky / terrain / mountains / props) plus plain data. See docs/agents/world.md ("Themes") for the interface.
    meta: id, name, country, route, blurb, difficulty (1-5 curves), swatches [sky, ground, road] (menu card), fog { color, near, far } (= the sky's HORIZON), grime 'r,g,b' (windscreen dust),
          finishText (model viewer's gantry only), livery (trailer),
          weather { ambient °C by day (night is CFG.NIGHT_CHILL colder), snow 0..1 } – engine warm-up, windscreen frost, snowfall,

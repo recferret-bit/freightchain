@@ -34,6 +34,15 @@ describe('AdminQueryPrismaRepository (PostgreSQL)', () => {
     expect(c.telemetry.bytes).toBeGreaterThan(1000);
   });
 
+  it('flaggedCount: only verdicts waiting for a decision', async () => {
+    await ride('alice', 0, { end: 'completed', verdict: 'verified' });
+    expect(await query.flaggedCount()).toBe(0);
+    await ride('bob', 1, { end: 'completed', verdict: 'flagged' });
+    await ride('carol', 2, { end: 'completed', verdict: 'rejected' });
+    await ride('alice', 3, { end: 'completed', verdict: 'flagged' });
+    expect(await query.flaggedCount()).toBe(2);
+  });
+
   it('rides: newest first; filters by wallet, status, verdict (flagged = the queue, none = unjudged) and limit; an override shows', async () => {
     const a = await ride('alice', 0, { end: 'completed', verdict: 'verified' });
     const b = await ride('bob', 1, { end: 'completed', verdict: 'flagged' });

@@ -24,6 +24,7 @@ import {
   MemoryAchievementRepository, MemoryChallengeRepository, MemoryHealthProbe, MemoryPaymentRepository, MemoryPlayerRepository,
   MemoryRideBatchRepository, MemoryRideQuery, MemoryRideVerdictRepository, MemorySignInRepository, MemoryAdminActionRepository, MemoryAdminQuery, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
 } from './in-memory/memory-repositories.js';
+import { MemoryAdminDirectory } from './in-memory/memory-admin-directory.js';
 import { MemoryCosmeticRepository, MemoryPoolPayoutRepository, MemoryPoolRepository, MemoryPromoRepository, MemoryRideTicketRepository, MemoryTicketOrderRepository } from './in-memory/memory-ledger-repositories.js';
 import { MemoryChainCursorRepository, MemoryChainEventRepository } from './in-memory/memory-repositories.js';
 import { TestHasher } from './recording.js';
@@ -36,6 +37,7 @@ import { MemoryCacheAdapter } from '../../src/infrastructure/cache/memory-cache.
 import { GameSettingsService } from '../../src/application/services/game-settings.service.js';
 import { LiveAccessService } from '../../src/application/services/live-access.service.js';
 import { MemoryOfflineRideRepository, MemorySettingsRepository } from './in-memory/memory-settings.js';
+import { MemoryDailySeedRepository } from './in-memory/memory-daily-seeds.js';
 
 /** Fixed rules for unit tests: 10 s free shift (140 m), treasury configured, one demo wallet. */
 export const DEMO_UNIT_WALLET = 'DemoWa11et1111111111111111111111111111111111';
@@ -87,6 +89,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const signIns = new MemorySignInRepository(db);
   const adminActions = new MemoryAdminActionRepository(db);
   const adminQuery = new MemoryAdminQuery(db);
+  const adminDirectory = new MemoryAdminDirectory(db);
   const health = new MemoryHealthProbe();
   const analytics = new RecordingAnalytics();
   const pools = new MemoryPoolRepository(db);
@@ -112,6 +115,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const settingsRepo = new MemorySettingsRepository(db);
   const settings = new GameSettingsService(settingsRepo);
   const offlineRides = new MemoryOfflineRideRepository(db);
+  const dailySeeds = new MemoryDailySeedRepository(db);
   const sessions = new PlayerSessionService(players, settings, rulesPort, clock, analytics);
   const lookup = new RideLookupService(rides);
   const meProfile = new MeProfileService(rulesPort, poolTickets, rides);
@@ -145,7 +149,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const storedPlayer = async (wallet: string) => (await players.findByWallet(wallet)) as Player;
 
   return {
-    db, clock, chain, entropy, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, batches, hasher, verdictRepo, verdicts, proofs, signIns, adminActions, adminQuery, health, analytics,
+    db, clock, chain, entropy, dailySeeds, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, batches, hasher, verdictRepo, verdicts, proofs, signIns, adminActions, adminQuery, adminDirectory, health, analytics,
     pools, poolPayouts, tickets, promos, cosmetics, promoCreation, orders, poolTickets, ticketSettlement,
     sessions, meProfile, settings, settingsRepo, offlineRides, lookup, rounds, achievements, settlement, now, player, freeRide, paidOrder, reload, storedPlayer,
     poolChain, chainEvents, chainCursors, registry, rideEvents, viewers, sitePresence, rideMutes, donationOrders, liveAccess, statsRepo, cache, stats,

@@ -59,7 +59,7 @@ RESULT     NOT OK – rejected: obstacle-ignored
 
 ## What it cannot tell
 
-It checks the recording against the server's road, it does not re-simulate the truck (floats, variable dt – AGENTS.md "Prototype vs. the design doc").
+It checks the recording against the server's road, it does not re-simulate the truck (floats, variable dt – docs/agents/client.md "Prototype vs. the design doc").
 A modified game that drives over the holes AND fakes the matching hull loss is a game that hit the holes. Traffic is simulated in the browser and only
 recorded for replays (never judged); the holes spectators paid for are placed by the driver's game and are not judged either. Rows from before the input
 column (old recordings) skip the gas check.

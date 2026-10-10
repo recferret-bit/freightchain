@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { CONTROLS, BIT, MOUSE, DASH, CAP, CLUSTER, INPUT_COL, FADE, SCAN, inputBits, maskOf, readMask, passedMask, lightInputs, clearInputs } from '../js/input-bits.js';
 import { st } from '../js/state.js';
 import { CFG } from '../js/config.js';
-import { telemetry, startTelemetry, recordInput, releaseInputs, tickTelemetry } from '../js/telemetry.js';
+import { telemetry, FLAGS, startTelemetry, recordInput, releaseInputs, tickTelemetry } from '../js/telemetry.js';
 
 const src = f => readFileSync(new URL(`../js/${f}`, import.meta.url), 'utf8');
 const L0 = () => ({ on: true, mask: 0, key: new Float32Array(CONTROLS.length), mouse: new Float32Array(CONTROLS.length) });
@@ -20,8 +20,9 @@ test('the bits are frozen – old recordings keep their meaning (append controls
   assert.deepEqual(CONTROLS.slice(0, 25), ['gas', 'brake', 'left', 'right', 'clutch', 'up', 'down', 'gear', 'reverse', 'start', 'stop', 'keyOn', 'park', 'heat', 'wiper', 'wash',
     'head', 'cab', 'night', 'radio', 'prev', 'next', 'volume', 'pause', 'mute']);
   assert.equal(MOUSE, 1 << 25);
-  assert.deepEqual(CONTROLS.slice(25), ['map']);   // appended after 'mute': it skips MOUSE's bit
+  assert.deepEqual(CONTROLS.slice(25), ['map', 'cold']);   // appended after 'mute': they skip MOUSE's bit
   assert.equal(BIT.map, 1 << 26); assert.equal(inputBits('KeyN'), BIT.map); assert.equal(inputBits('btn:map'), BIT.map | MOUSE);
+  assert.equal(BIT.cold, 1 << 27); assert.equal(inputBits('KeyJ'), BIT.cold); assert.equal(inputBits('btn:cold'), BIT.cold | MOUSE);
 });
 test('every key ui/input.js acts on maps to a control', () => {
   const input = src('ui/input.js');
@@ -34,7 +35,7 @@ test('every key ui/input.js acts on maps to a control', () => {
 });
 test('every dash button the cockpit draws is a control the replay can outline, a click adds MOUSE', () => {
   const ids = new Set([...['cockpit/rig.js', 'cockpit/common.js'].flatMap(f => [...src(f).matchAll(/(?:uiButton\(|id: )'([a-z-]+)'/g)].map(m => m[1])), 'key-off', 'key-on', 'key-start']);
-  assert.equal(ids.size, 13, [...ids].join(' '));   // + the phone map (2026-10)
+  assert.equal(ids.size, 14, [...ids].join(' '));   // + the phone map (2026-10), + COLD beside HEAT
   for (const id of ids) {
     const b = inputBits(`btn:${id}`);
     assert.ok(b & MOUSE, `btn:${id}`);
@@ -97,6 +98,26 @@ test('the recording: column 14 = held now OR pressed since the last sample; rele
   recordInput('Space', 1); releaseInputs(); assert.equal(tick()[INPUT_COL], BIT.clutch);   // focus lost: the tap still shows once…
   assert.equal(tick()[INPUT_COL], 0);   // …and nothing sticks
   assert.equal(telemetry.samples.every(r => r.length === 16 && r[15] === 0), true);   // column 15: the fork road (0 off a fork)
-  assert.deepEqual(telemetry.inputs.map(e => [e[1], e[2]]), [['KeyW', 1], ['btn:head', 1], ['btn:head', 0], ['ArrowUp', 1], ['KeyW', 0], ['Space', 1]]);   // the raw events are unchanged (the verdict reads them)
+  recordInput('KeyJ', 1); recordInput('KeyJ', 0); assert.equal(tick()[INPUT_COL], BIT.cold);   // a tap of J, same as any other dash key
+  recordInput('btn:cold', 1); recordInput('btn:cold', 0); assert.equal(tick()[INPUT_COL], BIT.cold | MOUSE);   // a click of COLD
+  const extra = telemetry.extra;
+  st.cooler = true; st.heater = false; st.keyOn = true; st.engineOn = true;
+  telemetry.extra = () => [12, (st.engineOn ? FLAGS.engine : 0) | (st.keyOn ? FLAGS.key : 0) | (st.heater ? FLAGS.heater : 0) | (st.cooler ? FLAGS.cooler : 0)];
+  const cold = tick();
+  assert.equal(cold[13] & FLAGS.cooler, FLAGS.cooler); assert.equal(cold[13] & FLAGS.heater, 0);   // column 13: the switches mask, cooling appended at 2048
+  st.heater = true; st.cooler = false;
+  const heat = tick();
+  assert.equal(heat[13] & FLAGS.heater, FLAGS.heater); assert.equal(heat[13] & FLAGS.cooler, 0);
+  telemetry.extra = extra; st.cooler = false; st.heater = false;
+  assert.deepEqual(telemetry.inputs.map(e => [e[1], e[2]]), [['KeyW', 1], ['btn:head', 1], ['btn:head', 0], ['ArrowUp', 1], ['KeyW', 0], ['Space', 1], ['KeyJ', 1], ['KeyJ', 0], ['btn:cold', 1], ['btn:cold', 0]]);   // the raw events are unchanged (the verdict reads them)
   telemetry.on = false;
+});
+test('cooling is recorded and replayed on the same path as the heater', () => {
+  assert.equal(FLAGS.cooler, 2048); assert.equal(FLAGS.heater, 32);
+  assert.match(src('ui/game.js'), /st\.heater \? FLAGS\.heater : 0/);
+  assert.match(src('ui/game.js'), /st\.cooler \? FLAGS\.cooler : 0/);
+  assert.match(src('watch.js'), /st\.heater = !!\(f & FLAGS\.heater\); st\.cooler = !!\(f & FLAGS\.cooler\)/);
+  assert.match(src('watch.js'), /st\.coolEff = st\.cooler && st\.engineOn \? 1 : 0/);
+  assert.match(src('ui/input.js'), /e\.code === 'KeyJ'\) \{ if \(st\.mode === 'drive'\) toggleCooler\(\)/);
+  assert.match(src('ui/input.js'), /b\.id === 'cold'\) toggleCooler\(\)/);
 });

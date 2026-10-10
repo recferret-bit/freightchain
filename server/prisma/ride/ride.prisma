@@ -66,6 +66,20 @@ model Ride {
   @@index([wallet, startedAt])
   @@index([poolId, status])
   @@index([status, endedAt]) // the replays history: ended rides, newest end first
+  @@index([createdAt(sort: Desc), seq(sort: Desc)]) // the admin RIDES list, newest first
+  @@index([wallet, createdAt(sort: Desc)]) // …of one wallet (a player's latest rides)
   @@index([status, trip]) // the free leaderboard per level: completed free rides on one level's trip
+  @@schema("ride")
+}
+
+// One road per paid tier per UTC day for the pay-per-ride orders (PAYMENT_MODE=transfer, no pool): the first order of the day draws the seed, every later order of that
+// tier that day takes it, so the day's riders all drive the same ride (route, start hour, layout, holes). Ticket rides take their POOL's seed instead (economy.Pool.rideSeed).
+model DailySeed {
+  tier      String // '1h' | '4h' | '8h'
+  day       String // the UTC day the ride was ORDERED, YYYY-MM-DD
+  seed      Int // 31-bit road seed, like Ride.seed
+  createdAt DateTime
+
+  @@id([tier, day])
   @@schema("ride")
 }
