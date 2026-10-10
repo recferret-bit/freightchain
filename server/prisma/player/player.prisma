@@ -6,6 +6,7 @@ model Player {
   freeDay      String // UTC day (YYYY-MM-DD) of the last daily grant
   freeRidesMax Int                 @default(5) // the daily grant stops at this many credits
   createdAt    DateTime
+  tutorialPassedAt DateTime? // the first time a ride was STARTED with the tutorial on – the lobby then defaults the tutorial off (null = never)
   rides        Ride[]
   payments     Payment[]
   achievements AchievementUnlock[]

@@ -7,6 +7,7 @@ import { CFG } from '../config.js';
 import { clamp, fmt, gearName, MONO } from '../util.js';
 import { SHAKE_MOVING, engineVib } from '../sim/shake.js';
 import { look, pose } from '../cosmetics.js';
+import { hint } from '../guide.js';
 
 /* Style 2 (default): conventional long-hood semi cab – hood, chrome stacks, mirrors, air gauges, CB, brake valves. */
 
@@ -89,9 +90,9 @@ export function drawCockpitRig() {
   miniGauge(cx + 31 * u, 72 * u, 4.4 * u, disp.fuel, null, 'FUEL', '', '', u, 0);
   miniGauge(cx + 41 * u, 72 * u, 4.4 * u, disp.volt, null, 'VOLT', '', '', u, 0);
   ctx.fillStyle = !pw ? '#1d1409' : st.engineOn ? '#ffb03a' : '#5a3a14'; ctx.font = `bold ${6 * u}px ${MONO}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(gearName(st.gear), cx, 77 * u);
-  ctx.fillStyle = '#9d957f'; ctx.font = `${1.5 * u}px ${MONO}`; ctx.fillText('GEAR', cx, 73.2 * u);
+  ctx.fillStyle = '#9d957f'; ctx.font = `${1.5 * u}px ${MONO}`; ctx.fillText('GEAR', cx, 73.2 * u); hint('GEAR', cx - 6 * u, 71 * u, 12 * u, 9.5 * u);
   // trip LCD
-  ctx.fillStyle = pw ? '#0d2410' : '#0a170c'; ctx.fillRect(cx + 27 * u, 78 * u, 18 * u, 8 * u); litRect(cx + 27 * u, 78 * u, 18 * u, 8 * u);
+  ctx.fillStyle = pw ? '#0d2410' : '#0a170c'; ctx.fillRect(cx + 27 * u, 78 * u, 18 * u, 8 * u); litRect(cx + 27 * u, 78 * u, 18 * u, 8 * u); hint('TRIP', cx + 27 * u, 78 * u, 18 * u, 8 * u);
   ctx.fillStyle = pw ? '#7cff7c' : 'rgba(0,0,0,0)'; ctx.font = `${2.1 * u}px ${MONO}`; ctx.fillText('TRIP ' + (st.s / 1000).toFixed(1) + ' km', cx + 36 * u, 79.3 * u); ctx.fillText(fmt(st.t) + '/' + fmt(CFG.RIDE_MIN_SECONDS), cx + 36 * u, 81.8 * u); ctx.fillText('OUT ' + Math.round(ambientC()) + '°C', cx + 36 * u, 84.3 * u);
   // left: warning lamps + pedal LEDs
   const lx = cx - 72 * u;
@@ -115,7 +116,7 @@ export function drawCockpitRig() {
   // steering column + big wheel
   ctx.fillStyle = '#12100e'; ctx.beginPath(); ctx.moveTo(cx - 6 * u, 88 * u); ctx.lineTo(cx + 6 * u, 88 * u); ctx.lineTo(cx + 9 * u, 112 * u); ctx.lineTo(cx - 9 * u, 112 * u); ctx.fill();
   ctx.save(); ctx.translate(cx, 106 * u); ctx.scale(1, .62); ctx.rotate(st.steer * CFG.TRUCK.WHEEL_TURNS * 2 * Math.PI);
-  const R = 27 * u; ctx.lineCap = 'round';
+  const R = 27 * u; ctx.lineCap = 'round'; hint('WHEEL', cx - 28 * u, 89 * u, 56 * u, 11 * u);
   ctx.strokeStyle = wl.rim; ctx.lineWidth = 5.4 * u; ctx.beginPath(); ctx.arc(0, 0, R, 0, 7); ctx.stroke();
   ctx.strokeStyle = wl.sheen; ctx.lineWidth = 2.6 * u; ctx.stroke();
   ctx.strokeStyle = wl.spoke; ctx.lineWidth = 3 * u; for (let i = 0; i < 4; i++) { const an = Math.PI / 4 + i * Math.PI / 2; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(an) * R, Math.sin(an) * R); ctx.stroke(); }
@@ -126,6 +127,7 @@ export function drawCockpitRig() {
   // floor shifter (H pattern, 4 columns: 1/2, 3/4, 5/6, 7/R)
   { const bx = rx + 16.25 * u, g = st.gear;   // centred under WASH
     const col = g === 0 ? 0 : g < 0 ? 1.5 : [-1.5, -1.5, -.5, -.5, .5, .5, 1.5][g - 1], row = g === 0 ? 0 : g < 0 ? 1 : [-1, 1, -1, 1, -1, 1, -1][g - 1];   // R: right, back
+    hint('SHIFTER', bx - 7 * u, 81 * u, 14 * u, 19 * u);
     const lv = leverPos(col, row), kx = bx + lv.col * 2.6 * u, ky = 86 * u + lv.row * 2.6 * u;   // tweened through the neutral channel
     ctx.fillStyle = gb.boot; ctx.beginPath(); ctx.ellipse(bx, 100 * u, 6 * u, 2.6 * u, 0, 0, 7); ctx.fill();
     ctx.strokeStyle = gb.lever ?? chromeGrad(bx - 1 * u, bx + 1 * u); ctx.lineWidth = 1.4 * u; ctx.beginPath(); ctx.moveTo(bx, 100 * u); ctx.lineTo(kx, ky); ctx.stroke();

@@ -9,8 +9,8 @@ let seed=12345; Math.random=()=>{ seed=(seed*1664525+1013904223)>>>0; return see
 let now=1000; Object.defineProperty(globalThis,'performance',{value:{now:()=>now},configurable:true});
 const listeners={}, store={};
 const ctxStub=new Proxy(function(){}, { get:(t,p)=> p==='createLinearGradient'||p==='createRadialGradient' ? ()=>({addColorStop(){}}) : p==='measureText' ? ()=>({width:10}) : ()=>{}, set:()=>true });
-class El{constructor(id){this.id=id;this.style={};this.classList={add(){},remove(){},toggle(){}};this.textContent='';this.innerHTML='';}getContext(){return ctxStub;}click(){this.onclick&&this.onclick();} querySelectorAll(){return [];} querySelector(){return new El('q');} addEventListener(){} appendChild(){}}
-const els={}; globalThis.document={getElementById:id=>els[id]??=new El(id),createElement:()=>new El('x'),addEventListener:(k,f)=>(listeners['doc:'+k]??=[]).push(f),body:{style:{},appendChild(){}},querySelectorAll:()=>[],hidden:false}; globalThis.matchMedia=()=>({matches:false});
+class El{append(){} addEventListener(){} constructor(id){this.id=id;this.style={};this.classList={add(){},remove(){},toggle(){}};this.textContent='';this.innerHTML='';}getContext(){return ctxStub;}click(){this.onclick&&this.onclick();} querySelectorAll(){return [];} querySelector(){return new El('q');} addEventListener(){} appendChild(){}}
+const els={}; globalThis.document={getElementById:id=>els[id]??=new El(id),createElement:()=>new El('x'),addEventListener:(k,f)=>(listeners['doc:'+k]??=[]).push(f),body:{style:{},appendChild(){},append(){},classList:{add(){},remove(){},toggle(){}}},querySelectorAll:()=>[],hidden:false}; globalThis.matchMedia=()=>({matches:false});
 globalThis.window=globalThis; globalThis.addEventListener=(k,f)=>(listeners[k]??=[]).push(f);
 globalThis.innerWidth=1280; globalThis.innerHeight=720; globalThis.devicePixelRatio=1; globalThis.AudioContext=undefined;
 globalThis.localStorage={getItem:k=>store[k]??null,setItem:(k,v)=>{store[k]=String(v);}};
@@ -73,26 +73,26 @@ for(const [gear,gas,temp,want] of [[1,1,null,1],[1,1,-22,1],[2,1,null,1],[1,0,nu
   const ok=want?st.engineOn&&st.v>2:!st.engineOn; out.push(`launch g${gear} gas=${gas} T=${T0.toFixed(0)} °C at release  v=${st.v.toFixed(2)} rpm=${st.rpm.toFixed(0)} eng=${st.engineOn}`);
   check(ok,`launch in gear ${gear} ${gas?'with':'without'} gas${temp!==null?' at '+temp+' °C':''} ${want?'pulls away':'stalls'}`); }
 // brakes need the engine (dead pedal with the engine off); the parking brake (B) works without it and holds against thrust
-G.Wallet.set(100); G.st.mode='done'; G.startRide(); st.park=false;
+G.st.mode='done'; G.startRide(); st.park=false;
 Object.assign(st,{s:net.Sm+300,d:2.4,psi:0,v:15,gear:0,engineOn:false,keyOn:false,hull:100}); input.brake=1; step(60*3); const vDead=st.v; input.brake=0;
 check(vDead>13,'engine off: the brake pedal does nothing (v '+vDead.toFixed(1)+' after 3 s of full brake)');
 fire('keydown','KeyB'); step(60*3); check(st.park&&st.v===0,'parking brake stops the truck with the engine off');
 fire('keydown','KeyB'); check(!st.park,'B again releases the parking brake');
 Object.assign(st,{v:0,gear:1,engineOn:true,rpm:2000,clutch:0,slip:false,park:true}); input.gas=1; step(60*3); input.gas=0; check(st.v<.05,'parking brake holds the truck against 1st gear at full gas (v '+st.v.toFixed(2)+')');
 // clutch in while rolling in 6th with the gas still held: the revs fall away from where they were, they must not flare to the redline
-fire('keyup','ShiftLeft'); G.Wallet.set(100); G.st.mode='done'; G.startRide(); st.park=false; st.temp=G.CFG.ENGINE_WARM+5; fire('keydown','KeyI'); step(60*2.6);
+fire('keyup','ShiftLeft'); G.st.mode='done'; G.startRide(); st.park=false; st.temp=G.CFG.ENGINE_WARM+5; fire('keydown','KeyI'); step(60*2.6);
 Object.assign(st,{s:net.Sm+300,d:2.4,psi:0,hull:100,gear:6,v:60/3.6,clutch:0,slip:false,park:false}); st.rpm=st.v*1.065*106.67; st.freeRpm=st.rpm; input.gas=1; for(let i=0;i<180;i++){ st.d=2.4; st.psi=0; step(1); }
 const rpmBefore=st.rpm; fire('keydown','ShiftLeft'); let rpmPeak=0; for(let i=0;i<90;i++){ st.d=2.4; st.psi=0; step(1); rpmPeak=Math.max(rpmPeak,st.rpm); } fire('keyup','ShiftLeft'); input.gas=0;
 check(rpmPeak<rpmBefore+150,'clutch in at speed with the gas held: revs do not flare ('+rpmBefore.toFixed(0)+' → peak '+rpmPeak.toFixed(0)+')');
 // driving against the parking brake (gear in, clutch out, gas held): the brakes heat up, the drivetrain strains and finally gives out; letting go in time recovers
-const fightRide=(releaseAt)=>{ fire('keyup','ShiftLeft'); input.gas=0; input.brake=0; G.Wallet.set(100); G.st.mode='done'; G.startRide(); st.park=false; st.temp=G.CFG.ENGINE_WARM+5; fire('keydown','KeyI'); step(60*2.6);
+const fightRide=(releaseAt)=>{ fire('keyup','ShiftLeft'); input.gas=0; input.brake=0; G.st.mode='done'; G.startRide(); st.park=false; st.temp=G.CFG.ENGINE_WARM+5; fire('keydown','KeyI'); step(60*2.6);
   Object.assign(st,{s:net.Sm+300,d:2.4,psi:0,hull:100,v:0}); fire('keydown','ShiftLeft'); step(20); fire('keydown','Digit1'); step(30); fire('keydown','KeyB'); input.gas=1; fire('keyup','ShiftLeft');
   let peakHeat=0; for(let i=1;i<=60*14&&st.mode==='drive';i++){ st.d=2.4; st.psi=0; step(1); peakHeat=Math.max(peakHeat,st.brakeT); if(releaseAt&&i===releaseAt*60){ fire('keydown','ShiftLeft'); input.gas=0; } }
   input.gas=0; fire('keyup','ShiftLeft'); return { ended: st.mode!=='drive', why: st.blownWhy, peakHeat, strain: st.strain }; };
 const stuck=fightRide(0); check(stuck.ended&&stuck.why==='brakes'&&stuck.peakHeat>.5,'driving against the parking brake: brakes overheat ('+stuck.peakHeat.toFixed(2)+') and the drivetrain gives out');
 const freed=fightRide(3); check(!freed.ended&&freed.strain<.1,'clutch in after 3 s against the parking brake: no failure, strain recovers ('+freed.strain.toFixed(2)+')');
 // battery: the starter costs charge, consumers flatten it with the engine off (then lights/radio/heater cut out and the engine won't start), the alternator refills it
-const batFresh=()=>{ fire('keyup','ShiftLeft'); input.gas=0; input.brake=0; G.Wallet.set(100); G.st.mode='done'; G.startRide(); st.park=false; st.temp=G.CFG.ENGINE_WARM+5; Object.assign(st,{s:net.Sm+300,d:2.4,psi:0,hull:100,v:0}); };
+const batFresh=()=>{ fire('keyup','ShiftLeft'); input.gas=0; input.brake=0; G.st.mode='done'; G.startRide(); st.park=false; st.temp=G.CFG.ENGINE_WARM+5; Object.assign(st,{s:net.Sm+300,d:2.4,psi:0,hull:100,v:0}); };
 batFresh(); const b0=st.batt; fire('keydown','KeyI'); step(60*2.6); check(st.engineOn&&b0-st.batt>.04&&b0-st.batt<.15,'starting the engine costs battery charge ('+(b0-st.batt).toFixed(3)+')');
 batFresh(); G.dn.head=true; if(!G.radio.on) fire('keydown','KeyT'); st.keyOn=true; st.heater=true; let sawDead=false; for(let i=0;i<60*60;i++){ step(1); if(st.battDead) sawDead=true; }
 check(sawDead&&st.mode!=='done'&&!G.dn.head&&!st.heater,'engine off, everything on: the battery goes flat, the consumers cut out, the ride goes on');
@@ -124,8 +124,25 @@ check(nightX.night===true&&dayX.night===false&&G.THEMES.some(t=>t.id===dayX.rout
 // crash counters (the server's statistics): a ride starts at 0, a vehicle contact raises crashV, a building crash raises crashB, both ride along in every report (online.js progress())
 { G.startRide(); check(st.crashV===0&&st.crashB===0,'a new ride starts with no crashes counted');
   st.park=false; st.engineOn=true; st.keyOn=true; st.s=net.Sm+400; st.d=2.4; st.psi=0; st.v=14; st.hull=100; step(5);
-  const car=G.spawn('sedan','slow','ahead',9,2.4); if(car){ car.v=0; for(let i=0;i<60*6&&!st.crashV&&st.mode==='drive';i++){ st.v=Math.max(st.v,10); step(1); } }
+  let car=null; for(const off of [400,700,1100,1500,2000,2600]){ st.s=net.Sm+off; st.d=2.4; st.psi=0; st.v=14; step(3); car=G.spawn('sedan','slow','ahead',9,2.4); if(car) break; }   // a spot on the (fresh) road where a car can be placed
+  if(car){ car.v=0; for(let i=0;i<60*6&&!st.crashV&&st.mode==='drive';i++){ st.v=Math.max(st.v,10); step(1); } }
   check(!!car&&st.crashV>=1,'a contact with a vehicle is counted (crashV '+st.crashV+')'); }
+// the free ride's ASSIST (guide.js): the battery drains half as fast and a hit costs half the hull (a fatal one stays fatal); the TUTORIAL walks its steps and holds the free run's finish line
+{ const drain=()=>{ batFresh(); G.dn.head=true; st.keyOn=true; const a=st.batt; step(60*10); return a-st.batt; };
+  G.setGuide({}); const plain=drain(); G.setGuide({assist:true}); const eased=drain();
+  check(plain>.015&&Math.abs(eased-plain*G.CFG.ASSIST.BATT_DRAIN)<plain*.08,'assist: the battery drains half as fast ('+plain.toFixed(3)+' → '+eased.toFixed(3)+' in 10 s)');
+  G.setGuide({}); st.hull=100; G.hurt(10,10); const hit=100-st.hull; G.setGuide({assist:true}); st.hull=100; G.hurt(10,10); const easedHit=100-st.hull; st.hull=100; G.hurt(100,10,'X',true);
+  check(Math.abs(hit-10)<1e-9&&Math.abs(easedHit-10*G.CFG.ASSIST.HULL_DMG)<1e-9&&st.hull===0,'assist: a hit costs half the hull ('+hit.toFixed(1)+' → '+easedHit.toFixed(1)+'), a fatal one is still fatal');
+  G.setGuide({}); batFresh(); step(5); check(G.guide.tips.length===0&&!G.guide.hold,'no tutorial, no assist: nothing highlighted, nothing held');
+  G.setGuide({tutorial:true}); G.st.mode='done'; G.startRide(); step(5); const ids=()=>G.guide.tips.map(t=>t.id).join();
+  check(G.guide.hold&&st.mode==='drive'&&ids().startsWith('key-on'),'tutorial step 1 (ignition): the key is highlighted ['+ids()+']');
+  fire('keydown','KeyI'); step(60*4); check(G.guide.banner&&/ENGINE RUNNING/.test(G.guide.banner.text),'a finished step cheers with a green banner ['+(G.guide.banner?.text)+']'); step(60*4); check(st.engineOn&&ids()==='park','tutorial step 2 (parking brake) once the engine runs ['+ids()+']');
+  fire('keydown','KeyB'); step(60*7); check(!st.park&&ids().startsWith('CLU'),'tutorial step 3 (first gear + clutch) once the brake is off ['+ids()+']');
+  fire('keydown','ShiftLeft'); step(20); fire('keydown','Digit1'); step(60*7); check(st.gear===1&&ids().startsWith('GAS'),'tutorial step 4 (moving off) once 1st is in ['+ids()+']');
+  st.engineOn=false; st.stalled=true; st.rpm=0; step(70); check(G.guide.note==='ENGINE STALLED'&&ids().startsWith('STALL,CLU,key-start'),'tutorial step 4, the engine stalls: a warning with the next actions ['+G.guide.note+' | '+ids()+']');
+  st.engineOn=true; st.stalled=false; st.rpm=900; step(60*7); check(G.guide.note===''&&ids().startsWith('GAS'),'… and the lesson is back once the engine runs again ['+ids()+']');
+  st.t=1e3; st.s=1e6; step(3); check(!st.complete&&G.guide.hold,'the tutorial holds the finish line while it is open');
+  G.setGuide({}); step(3); check(!G.guide.hold&&st.complete,'… and lets the ride complete once it is closed'); fire('keyup','ShiftLeft'); }
 out.push(...checks); out.push('errors='+errors.length+(errors[0]?' '+errors[0].message:''));
 console.log(out.join('\n'));
 const failed=checks.filter(c=>c.startsWith('FAIL'));

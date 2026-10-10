@@ -17,6 +17,9 @@ import { PlayerRepositoryPort } from '../../src/application/ports/players/player
 import { RideQueryPort } from '../../src/application/ports/rides/ride-query.port.js';
 import { RideRepositoryPort } from '../../src/application/ports/rides/ride.repository.port.js';
 import { ClockPort } from '../../src/application/ports/shared/clock.port.js';
+import { EntropyPort } from '../../src/application/ports/shared/entropy.port.js';
+import { NodeEntropy } from '../../src/infrastructure/crypto/node.entropy.js';
+import { START_HOURS, worldFor } from '../../src/domain/rides/ride-rules.js';
 import { TransactionPort } from '../../src/application/ports/shared/transaction.port.js';
 import { RideBatchRepositoryPort } from '../../src/application/ports/telemetry/ride-batch.repository.port.js';
 import { RideVerdictRepositoryPort } from '../../src/application/ports/verdict/ride-verdict.repository.port.js';
@@ -49,6 +52,12 @@ import { DonationOrderRepositoryPort } from '../../src/application/ports/live/do
 import { RideMuteRepositoryPort } from '../../src/application/ports/live/ride-mute.repository.port.js';
 import { RideEventRepositoryPort } from '../../src/application/ports/live/ride-event.repository.port.js';
 
+/** the real entropy, except that a test can fix the NEXT ride seed (a seed decides the route and the start hour) */
+class TestEntropy extends NodeEntropy {
+  next: number | null = null;
+  override seed31(): number { if (this.next === null) return super.seed31(); const s = this.next; this.next = null; return s; }
+}
+
 export type Persistence = 'memory' | 'postgres';
 
 /** The integration suite's OWN database (same container as dev, different database): it is wiped before every test, so it must never be the developer's. */
@@ -58,6 +67,8 @@ export const testDatabaseUrl = (): string => process.env['TEST_DATABASE_URL'] ??
 export interface Harness {
   app: INestApplication;
   clock: FakeClock;
+  /** the NEXT ride's seed (and so its route + start hour, ride-rules.ts worldFor) can be chosen: `h.seedFor('siberia')` before ordering a ride */
+  seedFor(route: string, hourIndex?: number): void;
   chain: FakeChain;
   /** the pool program (PoolChainPort) */
   poolChain: FakePoolChain;
@@ -85,13 +96,14 @@ export async function createHarness(persistence: Persistence, env: Record<string
     DATABASE_URL: persistence === 'postgres' ? testDatabaseUrl() : 'postgresql://unused:unused@127.0.0.1:1/unused_test',   // NEVER the shell's DATABASE_URL
     ...env,
   });
+  const entropy = new TestEntropy();
   const clock = new FakeClock();
   const chain = new FakeChain();
   const poolChain = new FakePoolChain();
   const memory = new MemoryDb();
 
   // the stale-ride sweep runs on a REAL timer – it would race the fake clock; scenarios run SweepStaleRidesCommand themselves
-  let builder = Test.createTestingModule({ imports: [AppModule] }).overrideProvider(StaleRideScheduler).useValue({}).overrideProvider(ClockPort).useValue(clock).overrideProvider(ChainPort).useValue(chain).overrideProvider(PoolChainPort).useValue(poolChain);
+  let builder = Test.createTestingModule({ imports: [AppModule] }).overrideProvider(EntropyPort).useValue(entropy).overrideProvider(StaleRideScheduler).useValue({}).overrideProvider(ClockPort).useValue(clock).overrideProvider(ChainPort).useValue(chain).overrideProvider(PoolChainPort).useValue(poolChain);
   if (persistence === 'memory') {
     builder = builder
       .overrideProvider(PrismaService).useValue({ $connect: async () => undefined, $disconnect: async () => undefined })
@@ -130,6 +142,7 @@ export async function createHarness(persistence: Persistence, env: Record<string
 
   return {
     app, clock, chain, poolChain, persistence,
+    seedFor: (route, hourIndex = 0) => { let s = 1000; while (worldFor(s).route !== route || worldFor(s).startHour !== START_HOURS[hourIndex]) s++; entropy.next = s; },
     server: () => app.getHttpServer() as Server,
     reset: async () => {
       chain.reset();

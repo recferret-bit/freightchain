@@ -13,7 +13,7 @@ describe('PlayerPrismaRepository (PostgreSQL)', () => {
   it('insertIfAbsent creates once and is a no-op afterwards; findByWallet maps the row back', async () => {
     await repo.insertIfAbsent(Player.register('w', T0, 5, 5));
     await repo.insertIfAbsent(Player.register('w', T0, 99, 5));
-    expect((await repo.findByWallet('w'))?.snapshot()).toEqual({ wallet: 'w', version: 1, freeRides: 5, freeDay: '2036-10-08', freeRidesMax: 5, createdAt: T0 });
+    expect((await repo.findByWallet('w'))?.snapshot()).toEqual({ wallet: 'w', version: 1, freeRides: 5, freeDay: '2036-10-08', freeRidesMax: 5, createdAt: T0, tutorialPassedAt: null });
     expect(await repo.findByWallet('nobody')).toBeNull();
   });
 
@@ -29,7 +29,7 @@ describe('PlayerPrismaRepository (PostgreSQL)', () => {
 
   describe('grantDailyFreeRides – the midnight bulk update', () => {
     const seed = async (wallet: string, freeRides: number, freeDay = '2036-10-08', freeRidesMax = 5) => {
-      await repo.insertIfAbsent(Player.restore({ wallet, version: 1, freeRides, freeDay, freeRidesMax, createdAt: T0 }));
+      await repo.insertIfAbsent(Player.restore({ wallet, version: 1, freeRides, freeDay, freeRidesMax, createdAt: T0, tutorialPassedAt: null }));
     };
 
     it('adds one below the cap, stops at the cap, leaves an over-cap balance, stamps the day and bumps the version', async () => {

@@ -62,10 +62,19 @@ check('phone width: no horizontal page scroll', await rider.ev('document.documen
 await size(rider, 1100, 900, false);
 
 // ── START FREE RIDE → game
+check('free card: TUTORIAL is on for a new rider, ASSIST is off (both checkboxes are there)', (await rider.ev('document.getElementById("opt-tutorial")?.checked')) === true && (await rider.ev('document.getElementById("opt-assist")?.checked')) === false);
+await rider.ev('document.getElementById("opt-assist").click()'); await sleep(1300);   // a repaint (the 1 s tick) must keep the choice
+check('the checkbox choice survives a repaint', (await rider.ev('document.getElementById("opt-assist").checked')) === true && (await rider.ev('document.getElementById("opt-tutorial").checked')) === true);
 await rider.ev('document.getElementById("start").click()');
 check('START FREE RIDE opens play.html?ride=…', await until(async () => /\/play\.html\?ride=/.test(await rider.ev('location.pathname + location.search'))));
 check('game booted with the server ride', await until(async () => await rider.ev('!!window.__game && __game.CFG.RIDE_MIN_SECONDS === 3')));
+check('the game gets the ride\'s helpers from the server (tutorial + assist)', await rider.ev('__game.guide.tutorial === true && __game.guide.assist === true && __game.online.ride.tutorial === true'));
+check('the game applies the SERVER\'s world: the ride\'s route + start hour, and no function to change them is left on the page (no picker cards, no wallet rows)', await rider.ev('(() => { const g = __game, r = g.online.ride; return !!r.route && typeof r.startHour === "number" && typeof g.selectTheme === "undefined" && typeof g.setNight === "undefined" && typeof g.setPhase === "undefined" && typeof g.setClock === "undefined" && Math.abs(g.dn.t - r.startHour) < 0.05 && !document.querySelector(".routes, .tod, #topup") && !/FRT/.test(document.getElementById("panel").textContent) && /Route \\(set by the server\\)/.test(document.getElementById("panel").textContent); })()'), await rider.ev('JSON.stringify({ r: __game.online.ride.route, h: __game.online.ride.startHour, t: __game.dn.t })'));
+check('ordered, not started: the tutorial is not passed yet', (await get('me', A.cookie)).tutorialPassed === false);
 await rider.ev('document.getElementById("go").click()'); await sleep(800);
+check('the tutorial dialog is up over the gameplay (step 1 of 8, the key highlighted)', await until(async () => await rider.ev('(() => { const d = document.getElementById("tutorial"); return !!d && !d.hidden && d.textContent.includes("1/8") && __game.guide.tips.some(t => t.id === "key-on"); })()')), await rider.ev('JSON.stringify({ mode: __game.st.mode, tips: __game.guide.tips, hidden: document.getElementById("tutorial")?.hidden })'));
+check('starting the ride with the tutorial on marked it PASSED (the lobby then leaves it off)', await until(async () => (await get('me', A.cookie)).tutorialPassed === true));
+await rider.ev('__game.guide.hold = false');   // the tutorial would hold the free run\'s finish line – this script drives the ride to its end
 await rider.ev('__game.st.s = 60');
 
 // ── LIVE (second browser)
@@ -124,7 +133,7 @@ check('…and no unexpected page errors (ticket holder)', problems(tix).length =
 
 // ── PROFILE
 await rider.ev('location.hash = "#profile"');
-check('PROFILE: stats + achievements unlocked + the ride in history', await until(async () => (await rider.ev('document.querySelectorAll(".a").length')) === 7));
+check('PROFILE: stats + achievements unlocked + the ride in history', await until(async () => (await rider.ev('document.querySelectorAll(".a").length')) === 8));
 check('PROFILE: the ride in history carries its recording verdict', /COMPLETED · (VERIFIED|FLAGGED|REJECTED)/.test(await rider.ev('document.querySelector(".hist .hrow")?.textContent || ""')), await rider.ev('document.querySelector(".hist .hrow")?.textContent || ""'));
 const ach = await rider.ev('[...document.querySelectorAll(".a")].map(a => (a.classList.contains("lock") ? "-" : "+") + a.querySelector(".nm").textContent).join("|")');
 check('First Mile + Shift Complete unlocked, Top 20 locked', /\+First Mile/.test(ach) && /\+Shift Complete/.test(ach) && /-Top 20/.test(ach), ach);

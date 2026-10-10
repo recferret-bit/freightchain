@@ -6,7 +6,6 @@ import { toast } from './toast.js';
 import { cycleWipers } from '../cockpit/windscreen.js';
 import { uiBtns } from '../cockpit/common.js';
 import { radio } from '../sim/radio.js';
-import { setNight } from '../world/daynight.js';
 import { toggleHeater } from '../sim/climate.js';
 import { toggleCab } from '../sim/battery.js';
 import { recordInput, releaseInputs } from '../telemetry.js';
@@ -39,7 +38,6 @@ addEventListener('keydown', e => {
   else if (e.code === 'KeyH') { if (st.mode === 'drive') toggleHeater(); }
   else if (e.code === 'KeyR') { if (st.mode === 'drive') cycleWipers(); }
   else if (e.code === 'KeyP') setPaused(st.mode === 'drive');
-  else if (e.code === 'KeyN') { setNight(!dn.night); audio.play('switch'); toast(dn.night ? 'Night' : 'Day', 1000); }
   else if (e.code === 'KeyL') { dn.head = !dn.head; audio.play(dn.head ? 'switch' : 'switch-off'); toast(dn.head ? 'Headlights on' : 'Headlights off', 1000); }
   else if (e.code === 'KeyC') toggleCab();
   else if (e.code === 'KeyM') { audio.muted = !audio.muted; toast(audio.muted ? 'Sound off' : 'Sound on', 1000); }

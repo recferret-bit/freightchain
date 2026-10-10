@@ -14,6 +14,8 @@ export interface MeDto {
   /** when the next daily credit arrives (epoch ms, next 00:00 UTC) – null while the wallet is at its cap */
   nextFreeRideAt: number | null;
   createdAt: number;
+  /** the tutorial was started once: the lobby's TUTORIAL checkbox is then off by default */
+  tutorialPassed: boolean;
   demo: boolean;
   demoScale: number;
   /** paid-ride tickets per pool (the pools the wallet holds tickets in, plus the live ones it has a row in) */
@@ -26,6 +28,7 @@ export const toMeDto = (player: Player, now: Date, demo: boolean, demoScale: num
   freeRidesMax: player.freeRidesMax,
   nextFreeRideAt: nextFreeRideAt(player, now),
   createdAt: player.createdAt.getTime(),
+  tutorialPassed: player.tutorialPassed,
   demo,
   demoScale,
   tickets,

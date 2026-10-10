@@ -10,7 +10,7 @@ describe('VerdictService', () => {
     const ride = await ctx.freeRide('w', true);
     if (withRecording) for (const b of recording(ride.id, { seconds: 60, distance: 840 })) await ctx.batches.insert(RideBatch.accept(ride.id, b, hashBatch(b), ctx.now()));
     ctx.clock.advance(60);
-    ride.applyReport({ s: 840, t: 60, hull: 100, paused: false, route: null, night: false }, ctx.now(), { hbTimeoutMs: 150_000, hbMinIntervalMs: 1000 });
+    ride.applyReport({ s: 840, t: 60, hull: 100, paused: false, night: false }, ctx.now(), { hbTimeoutMs: 150_000, hbMinIntervalMs: 1000 });
     ride.finish('shift', null, ctx.now());
     await ctx.rides.save(ride);
     return { ctx, ride };

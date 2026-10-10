@@ -14,6 +14,7 @@ import { ADMIN_ENV, adminScenarios } from '../scenarios/admin.scenarios.js';
 import { PROMOS_ENV, promoScenarios } from '../scenarios/promos.scenarios.js';
 import { promoAbuseScenarios } from '../scenarios/promos-abuse.scenarios.js';
 import { STATS_ENV, statsScenarios } from '../scenarios/stats.scenarios.js';
+import { GUIDE_ENV, guideScenarios } from '../scenarios/guide.scenarios.js';
 import { LIVE_ENV, LIVE_FLAGS_ENV, LIVE_OFF_ENV, liveFlagsScenarios, liveOffScenarios, liveScenarios } from '../scenarios/live.scenarios.js';
 
 /* The whole HTTP surface on in-memory repositories (no Docker). test/integration/flows.integration.spec.ts runs these same scenarios on PostgreSQL. */
@@ -28,6 +29,7 @@ for (const [name, env, scenarios] of [
   ['payments, the prize pool and leaderboards', PAYMENTS_ENV, paymentScenarios],
   ['lobby: live feed, profile, achievements', LOBBY_ENV, lobbyScenarios],
   ['statistics: rides, time, distance, crashes, donations – per rider and global', STATS_ENV, statsScenarios],
+  ['the free ride: tutorial, assist and the On My Own achievement', GUIDE_ENV, guideScenarios],
   ['escrowed pools, promo codes and ticket rides', POOLS_ENV, poolScenarios],
   ['promo codes: free rides, cosmetics, scheduling, the admin tab', PROMOS_ENV, promoScenarios],
   ['promo codes: expiry and abuse', PROMOS_ENV, promoAbuseScenarios],

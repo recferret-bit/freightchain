@@ -112,7 +112,7 @@ function rideOnce(sd, secs) {
 }
 if (!flag('no-drive')) {
   const T0 = { ...CFG.TRUCK }; Object.assign(CFG.TRUCK, { MASS: 1, BRAKE: 9, STEER_RATE: 1.8, STEER_RETURN: 3.5, YAW_LAG: 0, CENTRIF: .03 });   // the scripted driver's handling (see the header)
-  const K0 = CFG.COMPLETE_DIST_K; CFG.FARE = 0;
+  const K0 = CFG.COMPLETE_DIST_K; 
   G.selectTheme(DRIVE_ROUTE, false);
   console.log(`\nDRIVE  ${DRIVE_ROUTE} · ${SEEDS} seeds · each trip's own shift (the free run's 60 s / k 0.25; ${SECONDS ?? 60} s / k ${K ?? K0} otherwise – --seconds / --k override every trip) · scripted driver (an experienced one – see the header)`);
   console.log('trip  shift          done   median t s  max t s   median m   hull lost %  vehicle hits  building hits  off-road s');

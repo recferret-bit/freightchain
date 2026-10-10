@@ -4,8 +4,6 @@ export const CFG = {
   RIDE_MIN_SECONDS: 300,     // 5 min rides for now (was 30 s test value). Production = 1800 (30 min).
   REVERSE_MAX: 6,            // m/s reverse speed governor (~22 km/h)
   MAX_SPEED: 28,             // m/s hard governor (~100 km/h)
-  FARE: 10,                  // mock FRT charged per ride
-  REWARD: 0,                 // mock payout on arrival (placeholder)
   START_BALANCE: 100,
   SHAKE_START: 0.5,          // engine start-up / idle / shut-off (stall) shake scale (1 = original)
   SHAKE_RPM: 0.35,            // extra shake that grows with engine revs (1 = default, 0 = off)
@@ -114,6 +112,10 @@ export const CFG = {
   BRAKE_COOL_AIR: 2,         // extra cooling at full speed (× this; moving air)
   BRAKE_FADE_FROM: 0.3,      // heat above which the brakes start to fade
   WASH_DRAIN: 0.01,          // washer-fluid tank (st.wash 0..1) drained per second of spray: 100 s per ride (was 0.05 = 20 s; ×5 capacity), no refill
+  ASSIST: {                  // the free ride's ASSIST mode (guide.js): ×this on what wears the truck out – 0.5 = twice the durability. Fatal hits (a building, a head-on, a blown engine) stay fatal. Server: PASS_DAMAGE_SHARE (verdict-rules.ts) must stay below HULL_DMG
+    HULL_DMG: 0.5,           // hull lost per impact / pothole / bump / cold-engine wear
+    BATT_DRAIN: 0.5,         // battery drain (lights, heater, radio, key-on, the starter); the alternator is unchanged
+  },
   BATT: {                    // battery (sim/battery.js): charge 0..1, per second
     START: 0.85,             // charge at the start of a ride
     HEAD: 0.0025, CAB: 0.0015, HEATER: 0.005, RADIO: 0.001, KEY_ON: 0.0008,   // consumers (engine off or on); headlights alone flatten it in ≈ 6 min, the heater (engine off, ×OFF_X) in ≈ 70 s. TEST-scale like the 5 min ride

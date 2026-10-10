@@ -9,7 +9,7 @@ describe('GetLiveHandler', () => {
     ctx.clock.advance(1);
     await ctx.freeRide('bob', true);
     ctx.clock.advance(4);
-    first.applyReport({ s: 70, t: 5, hull: 80, paused: true, route: 'siberia', night: false }, ctx.now(), ctx.rules.get());
+    first.applyReport({ s: 70, t: 5, hull: 80, paused: true, night: false }, ctx.now(), ctx.rules.get());
     await ctx.rides.save(first);
     await ctx.freeRide('carol'); // not started
     const feed = await new GetLiveHandler(ctx.rideQuery, ctx.rules, ctx.clock, ctx.sitePresence, ctx.viewers, ctx.stats).execute();
@@ -43,7 +43,7 @@ describe('GetLiveHandler', () => {
     const ctx = unitContext();
     const end = async (wallet: string, metres: number) => {
       const r = await ctx.freeRide(wallet, true); ctx.clock.advance(2);
-      r.applyReport({ s: metres, t: 1, hull: 100, paused: false, route: null, night: false }, ctx.now(), ctx.rules.get()); r.finish('failed', 'x', ctx.now()); await ctx.rides.save(r);
+      r.applyReport({ s: metres, t: 1, hull: 100, paused: false, night: false }, ctx.now(), ctx.rules.get()); r.finish('failed', 'x', ctx.now()); await ctx.rides.save(r);
     };
     await end('alice', 12.4); ctx.clock.advance(5); await end('bob', 7);
     const { recent } = await feed(ctx);
@@ -85,7 +85,7 @@ describe('GetLiveHandler', () => {
     expect((await feed(ctx)).totals).toEqual({ shifts: 0, rides: 0, ridesFree: 0, ridesPaid: 0, metres: 0, seconds: 0, drivers: 0, crashes: 0, donations: 0 });
     const ride = await ctx.freeRide('alice', true);
     ctx.clock.advance(4);
-    ride.applyReport({ s: 55, t: 4, hull: 90, paused: false, route: null, night: false, crashesVehicle: 2, crashesBuilding: 1 }, ctx.now(), ctx.rules.get());
+    ride.applyReport({ s: 55, t: 4, hull: 90, paused: false, night: false, crashesVehicle: 2, crashesBuilding: 1 }, ctx.now(), ctx.rules.get());
     ride.finish('failed', 'crash', ctx.now());
     await ctx.rides.save(ride);
     await ctx.stats.recordRide(ride.snapshot());

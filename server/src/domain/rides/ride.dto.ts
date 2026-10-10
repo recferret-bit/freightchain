@@ -25,6 +25,12 @@ export interface RideDto {
   loadout: Loadout | null;
   /** the road it is driven on (a client/js/trips.js id; null = a ride from before trips: 'classic') – the game builds it before the menu */
   trip: string | null;
+  /** the world the SERVER assigned at creation (from the seed): the route id and the clock hour the game starts at – the game applies them, nothing in it can change them (null = a ride from before this) */
+  route: string | null;
+  startHour: number | null;
+  /** a free ride's helpers (false on every paid one): the tutorial dialog, and ASSIST = half the wear + a tip on every control – the game reads both from here */
+  tutorial: boolean;
+  assist: boolean;
   /** the server's check of the recording (verified play); null = not judged – only completed shifts are */
   verdict: VerdictDto | null;
   /** the challenge whose window is open right now (the heartbeat response carries it; null elsewhere). Kinds live in CHALLENGE_KINDS, empty today. */
@@ -50,6 +56,10 @@ export const toRideDto = (r: Ride, verdict: VerdictDto | null = null, now: Date 
   reason: r.reason,
   loadout: r.loadout,
   trip: r.trip,
+  route: r.route,
+  startHour: r.startHour,
+  tutorial: r.tutorial,
+  assist: r.assist,
   verdict,
   challenge: now ? (() => { const c = r.openChallenge(now); return c ? toChallengeDto(c) : null; })() : null,
 });

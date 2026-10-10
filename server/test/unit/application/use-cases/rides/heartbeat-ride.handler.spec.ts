@@ -4,8 +4,9 @@ import type { RideReport } from '../../../../../src/domain/rides/ride-report.js'
 import { ConflictError } from '../../../../../src/domain/shared/errors.js';
 import { unitContext, unitRules } from '../../../../support/unit-context.js';
 import { RecordingAnalytics } from '../../../../support/recording-analytics.js';
+import { worldFor } from '../../../../../src/domain/rides/ride-rules.js';
 
-const report = (over: Partial<RideReport>): RideReport => ({ s: 0, t: null, hull: 100, paused: false, route: null, night: false, ...over });
+const report = (over: Partial<RideReport>): RideReport => ({ s: 0, t: null, hull: 100, paused: false, night: false, ...over });
 
 describe('HeartbeatRideHandler', () => {
   const setup = () => {
@@ -19,8 +20,8 @@ describe('HeartbeatRideHandler', () => {
     const { ctx, beat } = setup();
     const ride = await ctx.freeRide('w', true);
     ctx.clock.advance(5);
-    expect(await beat(ride.id, { s: 70, t: 5, route: 'brenner' })).toMatchObject({ distance: 70, driveSeconds: 5, status: 'running' });
-    expect((await ctx.reload(ride.id)).snapshot()).toMatchObject({ lastS: 70, route: 'brenner' });
+    expect(await beat(ride.id, { s: 70, t: 5,  })).toMatchObject({ distance: 70, driveSeconds: 5, status: 'running' });
+    expect((await ctx.reload(ride.id)).snapshot()).toMatchObject({ lastS: 70, route: worldFor(ride.seed).route });
   });
 
   it('a beat too soon after the last is ignored (no progress by spamming)', async () => {

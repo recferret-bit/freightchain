@@ -1,10 +1,9 @@
 import * as cosmetics from './cosmetics.js';
 import { CFG } from './config.js';
-import { Wallet } from './wallet.js';
 import { curv } from './road.js';
 import { st, input, disp, clock, updateDisp, dn, weather } from './state.js';
 import { update, tryShift, ignition } from './sim/physics.js';
-import { updateFX } from './sim/damage.js';
+import { updateFX, hurt } from './sim/damage.js';
 import { spawn, cars } from './sim/traffic.js';
 import { audio } from './sim/audio.js';
 import { radio } from './sim/radio.js';
@@ -18,8 +17,8 @@ import { uiBtns } from './cockpit/common.js';
 import * as inputBits from './input-bits.js';
 import { showMenu, startRide, resetRide } from './ui/game.js';
 import { HOLES, holeAt, holesNear, clearHoleCache, plan, flagged } from './world/holes.js';
-import { updateDayNight, setNight, setPhase, setClock, savedClock } from './world/daynight.js';
-import { selectTheme, savedThemeId } from './world/theme-manager.js';
+import { updateDayNight, setNight, setPhase, setClock, lockClock } from './world/daynight.js';
+import { selectTheme, lockTheme } from './world/theme-manager.js';
 import { THEMES } from './themes/index.js';
 import { initOnline, online } from './online.js';
 import { tickTelemetry, telemetry } from './telemetry.js';
@@ -29,6 +28,8 @@ import { roadPlan, followRoadPlan, updateRoadPlan } from './road-plan.js';
 import { mountWatchPanel } from './ui/watch-panel.js';
 import { liveFeed } from './ui/live-feed.js';
 import { track } from './analytics.js';
+import { guide, setGuide } from './guide.js';
+import { updateGuide } from './ui/assist.js';
 import { trip, setTrip, tripOf } from './trips.js';
 import './ui/input.js';
 import './ui/tuning.js';
@@ -40,11 +41,13 @@ function frame(now) {
   else if (st.mode === 'drive') { update(dt); tickTelemetry(dt); }   // tickTelemetry: online rides only (a no-op offline)
   updateRoadPlan(st.s);   // online rides + replays: the server's obstacle plan for the road ahead (a no-op offline)
   roads.update(dt); updateDayNight(dt); updateDisp(dt); updateFX(dt); audio.update(true); radio.update();   // road world: generation, streaming, signals
+  if (guide.tutorial || guide.assist) updateGuide();   // the free ride's tutorial dialog + assist tips (guide.js)
   renderWorld(); drawCockpit();
 }
-selectTheme(savedThemeId() ?? THEMES[0].id, false);   // the route chosen last time (menu: click a route card to change it)
-setClock(savedClock(), true, false);   // the last clock time (default noon); the menu has Day/Dusk/Night/Dawn cards, F2 the time scale
+selectTheme(THEMES[0].id, true); setClock(12, true, true);   // the prototype's world: Route 66 at noon (no picker, nothing remembered). A real ride gets the SERVER's route + start hour just below
 await initOnline();   // only with ?ride=<id> (see online.js); offline it returns at once
+if (online.ride) { selectTheme(online.ride.route ?? THEMES[0].id, true); if (online.ride.startHour != null) setClock(online.ride.startHour, true, true); }   // what the server assigned to this ride at creation (ride-rules.ts worldFor)
+setGuide(online.ride ?? (typeof location === 'undefined' ? {} : (q => ({ tutorial: q.get('tutorial') === '1', assist: q.get('assist') === '1' }))(new URL(location.href).searchParams)));   // the free ride's tutorial / assist: the SERVER's flags of the ride, or ?tutorial=1&assist=1 on the offline prototype (tests)
 setTrip(online.ride ? tripOf(online.ride) : typeof location === 'undefined' ? null : new URL(location.href).searchParams.get('trip'));   // the ride's road (trips.js): the trip the server stamped on it, or ?trip=free|1h|4h|8h offline (tuning); before the road is built
 if (!online.ride && trip.seconds) { CFG.RIDE_MIN_SECONDS = trip.seconds; CFG.COMPLETE_DIST = trip.k * CFG.MAX_SPEED * trip.seconds; }   // offline ?trip=free: the free run's own shift (online the server's ride sets both)
 if (online.ride) {
@@ -58,11 +61,14 @@ if (online.ride) {
 if (await initWatch()) {   // only with ?watch=<id> (see watch.js): the watched ride's route + seed, no menu, the watch panel instead
   CFG.TRAFFIC = false;   // no traffic SIM in a replay: watch.js draws the traffic the driver's game RECORDED (an empty road for recordings from before that)
   if (watch.ride) followRoadPlan(watch.ride.id);   // a replay draws the server's holes, never a copy of what the driver's game had
-  if (watch.ride) { setTrip(tripOf(watch.ride)); selectTheme(THEMES.some(t => t.id === watch.ride.route) ? watch.ride.route : THEMES[0].id, false); resize(); resetRide(watch.ride.seed); st.mode = 'drive'; startWatch(); }
+  if (watch.ride) { setTrip(tripOf(watch.ride)); selectTheme(THEMES.some(t => t.id === watch.ride.route) ? watch.ride.route : THEMES[0].id, true); resize(); resetRide(watch.ride.seed); st.mode = 'drive'; startWatch(); }
   else resize();
   mountWatchPanel();
 } else { resize(); resetRide(); showMenu('FREIGHT CHAIN', 'Long-haul truck simulator'); }
 requestAnimationFrame(frame);
-window.__game = { trip, setTrip, audio, cosmetics, online, telemetry, prompt, watch, roadPlan, liveFeed, radio, roadObjects, chunks, spacing, roads, net, st, disp, CFG, Wallet, input, tryShift, ignition, startRide, curv, spawn, traffic: cars, selectTheme, THEMES, setNight, setPhase, setClock, dn, weather, uiBtns, inputBits, holes: { HOLES, holeAt, holesNear, clearHoleCache, plan, flagged } };   // handy for console debugging
+/* a real ride (online, a failed load of one, a watched ride): the route and the clock are fixed – no function to change them stays reachable from the page */
+const realRide = !!(online.ride || online.error || watch.ride || (typeof location !== 'undefined' && (new URL(location.href).searchParams.get('ride') || new URL(location.href).searchParams.get('watch'))));
+if (realRide) { lockTheme(); lockClock(); }
+window.__game = { guide, setGuide, hurt, trip, setTrip, audio, cosmetics, online, telemetry, prompt, watch, roadPlan, liveFeed, radio, roadObjects, chunks, spacing, roads, net, st, disp, CFG, input, tryShift, ignition, startRide, curv, spawn, traffic: cars, THEMES, ...(realRide ? {} : { selectTheme, setNight, setPhase, setClock }), dn, weather, uiBtns, inputBits, holes: { HOLES, holeAt, holesNear, clearHoleCache, plan, flagged } };   // handy for console debugging
 
  

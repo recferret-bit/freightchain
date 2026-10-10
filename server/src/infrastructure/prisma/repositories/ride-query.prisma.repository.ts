@@ -75,7 +75,7 @@ export class RideQueryPrismaRepository extends RideQueryPort {
   async summary(wallet: string): Promise<RideSummary> {
     const [started, done] = await Promise.all([
       this.prisma.ride.aggregate({ where: { wallet, startedAt: { not: null } }, _count: { _all: true }, _sum: { lastS: true } }),
-      this.prisma.ride.findMany({ where: { wallet, status: 'completed' }, select: { lastS: true, hull: true, route: true, nightSeconds: true, driveSeconds: true } }),
+      this.prisma.ride.findMany({ where: { wallet, status: 'completed' }, select: { tier: true, assist: true, lastS: true, hull: true, route: true, nightSeconds: true, driveSeconds: true } }),
     ]);
     const metres = started._sum.lastS ?? 0;
     return {
@@ -85,6 +85,7 @@ export class RideQueryPrismaRepository extends RideQueryPort {
         completedAtNight: done.some((r) => r.driveSeconds > 0 && r.nightSeconds >= NIGHT_SHARE * r.driveSeconds), // most of the shift in the dark: pressing N just before the end doesn't count
         cleanRun: done.some((r) => r.hull !== null && r.hull >= CLEAN_HULL),
         completedSiberia: done.some((r) => r.route === SIBERIA),
+        completedFreeUnassisted: done.some((r) => r.tier === 'free' && !r.assist),
       },
     };
   }

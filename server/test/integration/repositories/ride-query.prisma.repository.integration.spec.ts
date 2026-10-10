@@ -17,15 +17,15 @@ describe('RideQueryPrismaRepository (PostgreSQL)', () => {
   });
 
   /** drive a ride to an end state at t seconds: `metres` along, given flags */
-  async function ride(wallet: string, opts: { paid?: boolean; metres: number; seconds?: number; hull?: number; route?: string; night?: boolean; outcome?: 'shift' | 'failed' | 'running'; start?: number; verdict?: 'verified' | 'flagged' | 'rejected' | null }) {
-    const r: Ride = opts.paid ? orderAt(wallet, at(opts.start ?? 0)) : freeRideAt(wallet, at(opts.start ?? 0));
+  async function ride(wallet: string, opts: { paid?: boolean; metres: number; seconds?: number; hull?: number; route?: string; night?: boolean; assist?: boolean; outcome?: 'shift' | 'failed' | 'running'; start?: number; verdict?: 'verified' | 'flagged' | 'rejected' | null }) {
+    const r: Ride = opts.paid ? orderAt(wallet, at(opts.start ?? 0)) : freeRideAt(wallet, at(opts.start ?? 0), 10, { assist: opts.assist });
     if (opts.paid) r.markPaid(1, at(opts.start ?? 0));
     const t0 = opts.start ?? 0, secs = opts.seconds ?? (opts.paid ? 3600 : 10);
     r.start(at(t0));
-    r.applyReport({ s: Math.min(opts.metres, 20), t: 1, hull: opts.hull ?? 100, paused: false, route: opts.route ?? null, night: opts.night ?? false }, at(t0 + 1), rules);
+    r.applyReport({ s: Math.min(opts.metres, 20), t: 1, hull: opts.hull ?? 100, paused: false, night: opts.night ?? false }, at(t0 + 1), rules);
     const p = r.snapshot();
     const { Ride: RideClass } = await import('../../../src/domain/rides/ride.entity.js');
-    const moved = RideClass.restore({ ...p, lastS: opts.metres, driveSeconds: secs, nightSeconds: opts.night ? secs : 0, lastHbAt: at(t0 + secs), lastT: secs });
+    const moved = RideClass.restore({ ...p, route: opts.route ?? null, lastS: opts.metres, driveSeconds: secs, nightSeconds: opts.night ? secs : 0, lastHbAt: at(t0 + secs), lastT: secs });
     // the QUERY is under test, not the completion rules: set the end state directly
     const ended = opts.outcome === 'shift' ? RideClass.restore({ ...moved.snapshot(), status: 'completed' as never, reason: 'shift complete', endedAt: at(t0 + secs) })
       : opts.outcome === 'failed' ? RideClass.restore({ ...moved.snapshot(), status: 'failed' as never, reason: 'x', endedAt: at(t0 + secs) }) : moved;
@@ -89,12 +89,22 @@ describe('RideQueryPrismaRepository (PostgreSQL)', () => {
     expect(await query.finished(1)).toHaveLength(1);
   });
 
+  it('summary: "unassisted" needs a COMPLETED FREE ride driven without assist – an assisted one, a failed one and a paid one do not count', async () => {
+    await ride('alice', { metres: 150, outcome: 'shift', assist: true });
+    await ride('alice', { metres: 60, outcome: 'failed', start: 100 });
+    await ride('bob', { metres: 150, outcome: 'shift', paid: true });
+    expect((await query.summary('alice')).facts.completedFreeUnassisted).toBe(false);
+    expect((await query.summary('bob')).facts.completedFreeUnassisted).toBe(false);
+    await ride('alice', { metres: 150, outcome: 'shift', start: 200 });
+    expect((await query.summary('alice')).facts.completedFreeUnassisted).toBe(true);
+  });
+
   it('summary: stats and the achievement facts in one read', async () => {
     await ride('alice', { metres: 150, outcome: 'shift', hull: 100, route: 'siberia', night: true });
     await ride('alice', { metres: 60, outcome: 'failed', start: 100 });
     const s = await query.summary('alice');
     expect(s.stats).toEqual({ started: 2, completed: 1, metres: 210, best: 150 });
-    expect(s.facts).toEqual({ started: 2, completed: 1, totalMetres: 210, completedAtNight: true, cleanRun: true, completedSiberia: true });
+    expect(s.facts).toEqual({ started: 2, completed: 1, totalMetres: 210, completedAtNight: true, cleanRun: true, completedSiberia: true, completedFreeUnassisted: true });
     expect((await query.summary('bob')).stats).toEqual({ started: 0, completed: 0, metres: 0, best: 0 });
   });
 

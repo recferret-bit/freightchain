@@ -23,7 +23,7 @@ New tunables go in `client/js/config.js` (`CFG`). A number that already has a `C
 ## Leave alone unless the user named it
 
 - `CFG.SHAKE_START`, `CFG.SHAKE_MOVING`, `CFG.SHAKE_RPM`, `CFG.START_ENGINE_OFF`.
-- `CFG.FARE`, `CFG.REWARD`, the mock wallet, tickets, tier prices. Shift *length* on a lobby ride is the server (`FREE_RIDE_SECONDS`, `ride-tier.ts`); `client/js/online.js` overwrites `CFG.RIDE_MIN_SECONDS` and `CFG.COMPLETE_DIST` from the ride payload. Editing only the client constant changes offline `play.html`.
+- tickets, tier prices (there is no in-game currency). Shift *length* on a lobby ride is the server (`FREE_RIDE_SECONDS`, `ride-tier.ts`); `client/js/online.js` overwrites `CFG.RIDE_MIN_SECONDS` and `CFG.COMPLETE_DIST` from the ride payload. Editing only the client constant changes offline `play.html`.
 - Verdict timing, dispatch prompts, coverage, human-timing thresholds. Touch the server mirror of a physics constant you actually changed (`references/systems.md` → Mirrors). Do not retune anti-cheat.
 - A mesh, a texture, or a sound. Those are `storybook-models` and `game-audio`.
 - How the ROAD differs per ride tier (bends, traffic density and behaviour, roadside density, the free run ending itself) – that is `trip-design` (`client/js/trips.js`). Physics stays shared by every tier.

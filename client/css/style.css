@@ -18,19 +18,7 @@ button{flex:1;font:inherit;font-size:16px;padding:12px;border-radius:6px;border:
 button.alt{background:transparent;color:#ffcf5a;flex:0 0 auto;font-size:13px;padding:12px 14px}
 button:disabled{opacity:.4;cursor:not-allowed}
 .bad{color:#ff6b5a}.good{color:#7be07b}
-.routes{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:8px;margin:12px 0 6px}
-.route{cursor:pointer;border:2px solid #fff3;border-radius:8px;padding:6px;text-align:center;font-size:11px;background:#0003;transition:border-color .15s,background .15s}
-.route:hover{border-color:#ffcf5a99}
-.route.sel{border-color:#ffcf5a;background:#ffcf5a22}
-.route .sw{height:36px;border-radius:5px;margin-bottom:5px}
-.route b{display:block;color:#ffcf5a;font-size:12px}
-.route span{color:#b9ad8d}
-#routeinfo{font-size:12px;color:#d9ccaa;min-height:54px;margin-bottom:6px;line-height:1.45}
-#routeinfo b{color:#ffcf5a}.dim{color:#b9ad8d}
-.tod{display:flex;gap:8px;margin:2px 0 8px}
-.tcard{flex:1;cursor:pointer;border:2px solid #fff3;border-radius:8px;padding:7px;text-align:center;font-size:13px;font-weight:bold;color:#b9ad8d;background:#0003;transition:border-color .15s,background .15s}
-.tcard:hover{border-color:#ffcf5a99}
-.tcard.sel{border-color:#ffcf5a;background:#ffcf5a22;color:#ffcf5a}
+.dim{color:#b9ad8d}
 #roadwrap{white-space:nowrap}
 /* live streams: the driver's CB panel (ui/live-feed.js) and the spectator's watch panel (ui/watch-panel.js) */
 #cb{position:absolute;left:max(12px,8vw);top:10px;max-width:min(400px,28vw);z-index:4;pointer-events:none;font-size:13px;text-shadow:0 1px 2px #000}
@@ -89,3 +77,24 @@ body:has(#watch:not(.folded)) #toast{left:calc(50% - 170px)}
 .fail-stamp.win{border-color:#3ee05a;color:#3ee05a;text-shadow:0 0 .35em #1a9e34}
 #overlay.late{animation:fadein .4s 1.5s backwards;pointer-events:none}
 @keyframes fadein{from{opacity:0}to{opacity:1}}
+
+/* the free ride's tutorial dialog (ui/tutorial.js): over the gameplay, never a pause; only its two buttons take the mouse */
+#tutorial{position:absolute;left:50%;top:6px;transform:translateX(-50%);z-index:4;width:min(440px,54vw);box-sizing:border-box;padding:9px 12px 8px;border:1px solid #7cd66a;border-radius:8px;background:#0a120ae8;color:#effae9;font:12.5px/1.4 ui-monospace,Menlo,monospace;text-shadow:0 1px 2px #000;box-shadow:0 0 16px #7cd66a33}
+#tutorial[hidden]{display:none}
+#tutorial.ok{border-color:#b6ff9e;box-shadow:0 0 16px #b6ff9e55}
+#tutorial.fin{border-color:#b6ff9e}
+#tutorial .tu-head{display:flex;align-items:center;gap:8px}
+#tutorial .tu-count{padding:1px 6px;border-radius:4px;background:#7cd66a;color:#07140a}
+#tutorial.ok .tu-count,#tutorial.fin .tu-count{background:#b6ff9e}
+#tutorial .tu-title{flex:1;letter-spacing:.06em;font-size:13px}
+#tutorial .tu-dots{color:#7cd66a;font-size:9px;letter-spacing:.08em;white-space:nowrap}
+#tutorial .tu-text{margin:6px 0 7px}
+#tutorial .tu-row{display:flex;justify-content:flex-end;gap:8px}
+#tutorial button{font:inherit;font-size:11px;padding:2px 9px;border-radius:4px;border:1px solid #7cd66a;background:#12240f;color:#effae9;cursor:pointer}
+#tutorial button:hover{background:#1d3a18}
+#tutorial .tu-end{border-color:#556;color:#9ab;background:transparent}
+#tutorial.warn{border-color:#ffb03a;background:#1a1105ee;box-shadow:0 0 16px #ffb03a55}
+#tutorial.warn .tu-count{background:#ffb03a}
+#tutorial.warn .tu-title{color:#ffcf7a}
+body.tutorial #toast{top:26%}
+@media (max-width:700px){#tutorial{width:92vw;font-size:11.5px}}

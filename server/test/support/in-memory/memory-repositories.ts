@@ -202,6 +202,7 @@ export class MemoryRideQuery extends RideQueryPort {
         completedAtNight: done.some((r) => r.driveSeconds > 0 && r.nightSeconds >= 0.5 * r.driveSeconds),
         cleanRun: done.some((r) => r.hull !== null && r.hull >= 99.5),
         completedSiberia: done.some((r) => r.route === 'siberia'),
+        completedFreeUnassisted: done.some((r) => r.tier === 'free' && !r.assist),
       },
     };
   }

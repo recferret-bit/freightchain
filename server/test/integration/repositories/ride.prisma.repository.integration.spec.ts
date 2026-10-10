@@ -16,10 +16,22 @@ describe('RidePrismaRepository (PostgreSQL)', () => {
     expect((await repo.findById(order.id))?.snapshot()).toEqual(order.snapshot());
     const ride = freeRideAt('w');
     ride.start(T0);
-    ride.applyReport({ s: 50, t: 3, hull: 80, paused: true, route: 'siberia', night: true }, at(3), { hbTimeoutMs: 150_000, hbMinIntervalMs: 1000 });
+    ride.applyReport({ s: 50, t: 3, hull: 80, paused: true, night: true }, at(3), { hbTimeoutMs: 150_000, hbMinIntervalMs: 1000 });
     await repo.insert(ride);
     expect((await repo.findById(ride.id))?.snapshot()).toEqual(ride.snapshot());
     expect(await repo.findById('00000000-0000-4000-8000-ffffffffffff')).toBeNull();
+  });
+
+  it('the free ride\'s tutorial / assist round-trip, and a ready ride can be re-chosen and saved', async () => {
+    const ride = freeRideAt('w', T0, 10, { tutorial: true, assist: false });
+    await repo.insert(ride);
+    expect(await repo.findById(ride.id)).toMatchObject({ tutorial: true, assist: false });
+    const again = (await repo.findById(ride.id))!;
+    expect(again.chooseGuide(false, true)).toBe(true);
+    await repo.save(again);
+    expect(await repo.findById(ride.id)).toMatchObject({ tutorial: false, assist: true });
+    const plain = freeRideAt('w'); await repo.insert(plain);
+    expect(await repo.findById(plain.id)).toMatchObject({ tutorial: false, assist: false });
   });
 
   it('what a ride started with (wheel, truck colour, gearbox) is saved with the start and read back (null before it, and for rides that never had one)', async () => {

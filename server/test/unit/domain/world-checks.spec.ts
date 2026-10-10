@@ -2,6 +2,8 @@ import { RoadPlan } from '../../../src/domain/road/road-plan.js';
 import { summariseBatch } from '../../../src/domain/telemetry/batch-summary.js';
 import { measureWorld, parseWorldFacts } from '../../../src/domain/telemetry/world-facts.js';
 import { checkWorld, classifyPass, offroadPeak } from '../../../src/domain/verdict/world-checks.js';
+import { ASSIST_HULL_DAMAGE } from '../../../src/domain/rides/ride-rules.js';
+import { PASS_DAMAGE_SHARE } from '../../../src/domain/verdict/verdict-rules.js';
 import { ownLaneHoles, takeHoles } from '../../support/recording.js';
 
 /* The recording against the SERVER's road: a drive through the server's holes must show the damage the game takes there. Rows are built by hand on a
@@ -41,6 +43,21 @@ describe('the recording against the server\'s road', () => {
     expect(w.reasons).toEqual([]);
     expect(w.scores).toMatchObject({ hit: 2, ignored: 0, gaslessSteps: 0 });
     expect(w.scores!.passes.hit).toBe(6);
+  });
+
+  it('ASSIST (a free ride\'s half-wear mode) still passes: an honest assisted drive loses ASSIST_HULL_DAMAGE of the hull the holes cost – every hole is a HIT, nothing is said', () => {
+    const rows = drive(0, H2 + 40);
+    takeHoles(rows, SEED);
+    for (const r of rows) r[7] = r2(100 - (100 - r[7]!) * ASSIST_HULL_DAMAGE);   // what client/js/sim/damage.js hurt() does under assist
+    const w = judge(rows);
+    expect(w.reasons).toEqual([]);
+    expect(w.scores).toMatchObject({ hit: 2, ignored: 0 });
+  });
+
+  it('the assist factor is the game\'s (drift) and stays clear of the share a pass must lose, with room to spare', async () => {
+    const { CFG } = (await import(/* @vite-ignore */ new URL('../../../../client/js/config.js', import.meta.url).href)) as { CFG: { ASSIST: { HULL_DMG: number } } };
+    expect(CFG.ASSIST.HULL_DMG).toBe(ASSIST_HULL_DAMAGE);
+    expect(ASSIST_HULL_DAMAGE).toBeGreaterThanOrEqual(PASS_DAMAGE_SHARE * 1.5);
   });
 
   it('a game with the holes taken out drives through them undamaged → REJECTED obstacle-ignored, naming where', () => {

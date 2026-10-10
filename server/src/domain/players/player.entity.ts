@@ -9,6 +9,8 @@ export interface PlayerProps {
   /** the most free-ride credits the wallet can hold – the daily grant stops here (column default 5) */
   freeRidesMax: number;
   createdAt: Date;
+  /** when a ride was first STARTED with the tutorial on (null = never): the lobby then leaves the tutorial off by default */
+  tutorialPassedAt: Date | null;
 }
 
 /** A rider, identified by the Solana wallet that signed in. Owns the free-ride credits. */
@@ -20,7 +22,7 @@ export class Player {
 
   /** First sight of a wallet: the signup free rides. */
   static register(wallet: string, now: Date, freeOnSignup: number, freeRidesMax: number): Player {
-    return new Player({ wallet, version: 1, freeRides: freeOnSignup, freeDay: utcDay(now), freeRidesMax, createdAt: now });
+    return new Player({ wallet, version: 1, freeRides: freeOnSignup, freeDay: utcDay(now), freeRidesMax, createdAt: now, tutorialPassedAt: null });
   }
 
   static restore(props: PlayerProps): Player {
@@ -33,6 +35,8 @@ export class Player {
   get freeDay(): string { return this.props.freeDay; }
   get freeRidesMax(): number { return this.props.freeRidesMax; }
   get createdAt(): Date { return this.props.createdAt; }
+  get tutorialPassedAt(): Date | null { return this.props.tutorialPassedAt; }
+  get tutorialPassed(): boolean { return this.props.tutorialPassedAt !== null; }
   /** True only when this process inserted the row on the touch that returned this instance. */
   get isNewPlayer(): boolean { return this.fresh; }
 
@@ -57,6 +61,13 @@ export class Player {
   grantFreeRides(count: number): void {
     if (!Number.isInteger(count) || count < 1) throw new Error('grantFreeRides needs a whole number ≥ 1');
     this.props.freeRides += count;
+  }
+
+  /** Starting a ride with the tutorial on counts as having done it – the first time only (the stamp never moves). Returns whether the player changed. */
+  markTutorialPassed(now: Date): boolean {
+    if (this.props.tutorialPassedAt) return false;
+    this.props.tutorialPassedAt = now;
+    return true;
   }
 
   spendFreeRide(): void {

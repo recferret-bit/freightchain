@@ -4,6 +4,7 @@ import { st, powered, bulbCheck } from '../state.js';
 import { clamp, approach, MONO } from '../util.js';
 import { radio } from '../sim/radio.js';
 import { CFG } from '../config.js';
+import { hint } from '../guide.js';
 
 /* Shared 2D dash widgets. */
 
@@ -13,7 +14,7 @@ export const litRect = (x, y, w, h) => litShapes.push({ x, y, w, h });
 const litCircle = (x, y, r) => litShapes.push({ x, y, r });
 
 export function gauge(cx, cy, r, val, max, step, redFrom, label, u) {
-  litCircle(cx, cy, r + .5 * u);
+  litCircle(cx, cy, r + .5 * u); hint(label, cx - r, cy - r, 2 * r, 2 * r);
   const a0 = Math.PI * 0.75, sw = Math.PI * 1.5;
   const bg = ctx.createRadialGradient(cx, cy - r * .3, r * .1, cx, cy, r); bg.addColorStop(0, '#26231f'); bg.addColorStop(1, '#0b0a09');
   ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill();
@@ -50,7 +51,7 @@ export function gauge(cx, cy, r, val, max, step, redFrom, label, u) {
 export function stallLamp() { const b = Math.floor(performance.now() / 130) % 2 === 0; return st.stall > .05 ? b : st.engineOn ? st.lug > .15 && b : true; }
 export function lamp(x, y, text, on, col, u, w = 13) {
   on = (on && powered()) || bulbCheck();   // dead with the key OFF; bulb check at key-on
-  litRect(x - .2 * u, y - .2 * u, (w + .4) * u, 4.6 * u);
+  litRect(x - .2 * u, y - .2 * u, (w + .4) * u, 4.6 * u); hint(text, x, y, w * u, 4.2 * u);
   ctx.fillStyle = on ? col : '#2a2622'; ctx.fillRect(x, y, w * u, 4.2 * u);
   ctx.fillStyle = on ? '#fff' : '#5c564b'; ctx.font = `${2.4 * u}px ui-monospace,Menlo,monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, x + w / 2 * u, y + 2.2 * u);
 }
@@ -60,7 +61,7 @@ export function strainLamp(x, y, u, w) { const k = st.strain; lamp(x, y, 'STRAIN
 export function brakeLamp(x, y, u, w) { const k = st.brakeT; lamp(x, y, 'BRAKES', k > .25 && (k < .6 || Math.floor(st.t * 6) % 2 === 0), k < .6 ? '#e80' : '#d22', u, w); }
 export function chromeGrad(x0, x1) { const g = ctx.createLinearGradient(x0, 0, x1, 0); g.addColorStop(0, '#6d737a'); g.addColorStop(.3, '#f2f5f7'); g.addColorStop(.55, '#9aa1a8'); g.addColorStop(1, '#4a4f55'); return g; }
 export function miniGauge(x, y, r, f, f2, label, lo, hi, u, red) {
-  litCircle(x, y, r + .4 * u);
+  litCircle(x, y, r + .4 * u); hint(label, x - r, y - r, 2 * r, 2 * r);
   const bg = ctx.createRadialGradient(x, y - r * .3, r * .1, x, y, r); bg.addColorStop(0, '#25221e'); bg.addColorStop(1, '#080706');
   ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
   ctx.strokeStyle = chromeGrad(x - r, x + r); ctx.lineWidth = u * .45; ctx.stroke();
@@ -73,7 +74,7 @@ export function miniGauge(x, y, r, f, f2, label, lo, hi, u, red) {
   ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(x, y, r * .12, 0, 7); ctx.fill();
 }
 export function ledBar(x, y, w, h, val, col, label, u) {
-  const n = 10, sh = h / n; litRect(x - .3 * u, y, w + .6 * u, h + 3 * u);   // + the label
+  const n = 10, sh = h / n; litRect(x - .3 * u, y, w + .6 * u, h + 3 * u); hint(label, x - .3 * u, y, w + .6 * u, h + 3 * u);   // + the label
   for (let i = 0; i < n; i++) { ctx.fillStyle = val > (i + .5) / n ? col : '#1c1915'; ctx.fillRect(x, y + h - (i + 1) * sh + .3 * u, w, sh - .6 * u); }
   ctx.fillStyle = '#9d957f'; ctx.font = `${1.7 * u}px ${MONO}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(label, x + w / 2, y + h + 1.8 * u);
 }

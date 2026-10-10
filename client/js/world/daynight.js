@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { CFG } from '../config.js';
 import { dn, st } from '../state.js';
-import { clamp, store } from '../util.js';
+import { clamp } from '../util.js';
 import { renderer, scene, camera } from './scene.js';
 import { env } from './environment.js';
 import { glowMats, beamTex } from './glow.js';
@@ -14,7 +14,6 @@ import { destroyed } from './props.js';
 /* Day / night. Everything is MeshBasicMaterial (no lights), so night = a lower renderer exposure (lamps opt out with toneMapped:false), a night sky/fog,
    the truck's headlight pool (a flat additive decal on the road), glow sprites on traffic lamps (world/glow.js) and a darker cab (cockpit/index.js).
    `dn.k` fades 0→1; everything below is re-applied EVERY frame from the current theme, so picking another route (which rebuilds sky + fog) keeps the time of day. */
-const KEY = 'freightchain.time', KEY2 = 'freightchain.daycycle';
 renderer.toneMapping = THREE.LinearToneMapping;   // exposure 1 = identical to no tone mapping for colours ≤ 1 (night darkness comes from nightlight.js, not from exposure)
 const lerp = (a, b, t) => a + (b - a) * t, sstep = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 
@@ -31,18 +30,19 @@ function phaseHour(p, th = env.theme) {
   const d = dayOf(th), n = 24 - (d.set - d.rise);
   return p === 'day' ? (d.rise + d.set) / 2 : p === 'dusk' ? d.set + d.tw * .1 : p === 'dawn' ? d.rise - d.tw * .1 : (d.set + n / 2) % 24;
 }
-{ const c = store.getJSON(KEY2); if (c) { dn.scale = clamp(+c.scale || 60, 1, 600); dn.run = c.run !== false; } }
-const saveCycle = () => store.set(KEY2, { scale: dn.scale, run: dn.run });
-export function setTimeScale(v) { dn.scale = clamp(v, 1, 600); saveCycle(); }
-export function setClockRun(on) { dn.run = !!on; saveCycle(); }
-export function savedClock() { const v = store.get(KEY); return v === 'night' ? 0 : v === 'day' || v == null ? 12 : Number.isFinite(+v) ? +v % 24 : 12; }
-export function setClock(h, instant = false, save = true) {
+/* The clock is NOT the player's to set: a real ride (online / watch / counted free run) starts at the hour the SERVER assigned (RideDto.startHour) and then runs at the fixed day-cycle speed
+   (dn.scale 60 = one game minute per second). lockClock() is called by main.js for those pages: after it every call without `assigned` is ignored – the menu cards, the N key and the F2 clock
+   are gone, and window.__game no longer carries setClock / setPhase / setNight there. `assigned` is for the server's own values: the start hour, a paid NIGHT / DAY effect (live-feed.js). Client-side
+   this is a guard rail, not security – the server stores the route + hour on the ride (domain/rides/ride-rules.ts worldFor). The offline prototype page (tests, tools) stays unlocked. */
+let locked = false;
+export const lockClock = () => { locked = true; };
+export function setClock(h, instant = false, assigned = false) {
+  if (locked && !assigned) return;
   dn.t = ((h % 24) + 24) % 24;
-  if (save) store.set(KEY, dn.t.toFixed(2));
   if (instant) { const d = dayOf(env.theme); dn.k = nightTarget(dn.t, d); settle(d); }
 }
-export const setPhase = (p, instant = false, save = true) => setClock(phaseHour(p), instant, save);
-export function setNight(on, instant = false, save = true) { setPhase(on ? 'night' : 'day', instant, save); dn.night = !!on; }   // N key / NIGHT button / old callers
+export const setPhase = (p, instant = false, assigned = false) => setClock(phaseHour(p), instant, assigned);
+export function setNight(on, instant = false, assigned = false) { if (locked && !assigned) return; setPhase(on ? 'night' : 'day', instant, true); dn.night = !!on; }   // a paid night / day effect (live-feed.js) – and the offline tools
 export const clockText = () => { const m = Math.round(dn.t * 60) % 1440; return String(m / 60 | 0).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
 function settle(d) {
   dn.night = nightTarget(dn.t, d) > .5; dn.morning = dn.t < (d.rise + d.set) / 2;

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { st } from '../state.js';
 import { CFG } from '../config.js';
+import { guide } from '../guide.js';
 import { roadAt } from '../road.js';
 import { scene } from '../world/scene.js';
 import { GEO, MAT, destroyed } from '../world/props.js';
@@ -39,7 +40,8 @@ function hit(c, f) {
   else { st.crash = Math.min(1, st.crash + .1); audio.crash(.15); }
 }
 /* hull loss + shake/flash/sound/glass; iv = impact speed (m/s), label = toast prefix (shared with vehicle collisions) */
-export function hurt(dmg, iv, label = 'IMPACT') {
+export function hurt(dmg, iv, label = 'IMPACT', fatal = false) {   // fatal: the hit that wrecks the truck whatever the assist (head-on, rear-end)
+  if (guide.assist && !fatal) dmg *= CFG.ASSIST.HULL_DMG;   // assist mode: twice the durability
   st.hull = Math.max(0, st.hull - dmg); st.crash = Math.min(1, st.crash + iv / 14 + .15); st.flash = Math.min(1, dmg / 12 + .15);
   audio.crash(Math.min(1, iv / 20)); toast(label + '  −' + dmg.toFixed(1) + '% hull', 1300);
   glassHit(dmg);

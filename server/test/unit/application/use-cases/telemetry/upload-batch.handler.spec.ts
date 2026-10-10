@@ -77,7 +77,7 @@ describe('UploadBatchHandler', () => {
     const batches = recording(ride.id, { seconds: 20, distance: 140 });
     await up('w', ride.id, batches[0]!);
     ctx.clock.advance(20);
-    ride.applyReport({ s: 140, t: 20, hull: 100, paused: false, route: null, night: false }, ctx.now(), ctx.rules.get());
+    ride.applyReport({ s: 140, t: 20, hull: 100, paused: false, night: false }, ctx.now(), ctx.rules.get());
     ride.finish('shift', null, ctx.now());
     await ctx.rides.save(ride);
     expect((await ctx.verdicts.judge(ride.id))?.status).not.toBe('verified');

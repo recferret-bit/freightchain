@@ -29,10 +29,11 @@ export function liveScenarios(h: () => Harness): void {
   });
 
   it('anyone can watch a started ride from the public live feed: seed + route for the road, the recording as samples only, paged by seq', async () => {
+    h().seedFor('stuart');
     const { driver, ride } = await onTheRoad();
     const batches = recording(ride.id, { seconds: 30 });
     sec(30); await upload(driver.agent, ride.id, batches);
-    await driver.agent.post(`/api/rides/${ride.id}/heartbeat`).send({ s: 140, t: 30, hull: 100, route: 'stuart', night: false }).expect(200);
+    await driver.agent.post(`/api/rides/${ride.id}/heartbeat`).send({ s: 140, t: 30, hull: 100, night: false }).expect(200);
     const live = (await anon().get('/api/live').expect(200)).body.rides[0];
     expect(live.id).toBe(ride.id);
     const { body } = await anon().get(`/api/watch/${live.id}`).query({ viewer: 'v-1' }).expect(200);

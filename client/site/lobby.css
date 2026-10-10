@@ -157,3 +157,4 @@ tr.cut td{border-top:2px dashed var(--amber)}
 #garage-actions button{flex:0 0 170px;min-width:170px;padding:11px 0;text-align:center}
 #garage-actions .msg{flex-basis:100%;margin:0}
 @media (max-width:560px){#garage-actions button{flex:1 1 0;min-width:0}#garage-actions .dim:not(.msg){flex-basis:100%}}
+.guide{display:flex;gap:6px 22px;flex-wrap:wrap;margin-top:4px}.opt{display:flex;align-items:flex-start;gap:8px;cursor:pointer;max-width:340px}.opt input{margin-top:3px;accent-color:var(--good);width:16px;height:16px;flex:none}.opt b{letter-spacing:.06em;font-size:12px}.opt small{display:block;font-size:11px;line-height:1.35;color:var(--dim)}

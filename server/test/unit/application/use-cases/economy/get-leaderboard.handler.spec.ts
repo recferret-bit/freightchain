@@ -10,7 +10,7 @@ async function completed(ctx: UnitContext, wallet: string, metres: number, free 
   if (!free) ride.markPaid((await ctx.rounds.ensureRound()).id, ctx.now());
   ride.start(ctx.now());
   ctx.clock.advance(1);
-  ride.applyReport({ s: Math.min(metres, 40), t: 1, hull: 100, paused: false, route: null, night: false }, ctx.now(), ctx.rules.get());
+  ride.applyReport({ s: Math.min(metres, 40), t: 1, hull: 100, paused: false, night: false }, ctx.now(), ctx.rules.get());
   const p = ride.snapshot();
   const { Ride } = await import('../../../../../src/domain/rides/ride.entity.js');
   const done = Ride.restore({ ...p, lastS: metres, status: 'completed' as never, endedAt: ctx.now() });

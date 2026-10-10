@@ -12,7 +12,7 @@ describe('SweepStaleRidesHandler', () => {
   };
   const beat = async (ctx: ReturnType<typeof unitContext>, id: string, s: number, t: number) => {
     const ride = await ctx.reload(id);
-    ride.applyReport({ s, t, hull: 100, paused: false, route: null, night: false }, ctx.now(), ctx.rules.get()); await ctx.rides.save(ride);
+    ride.applyReport({ s, t, hull: 100, paused: false, night: false }, ctx.now(), ctx.rules.get()); await ctx.rides.save(ride);
   };
 
   it('ends only the rides whose tab vanished (failed · heartbeat lost), once; fresh and ended rides are left alone; the analytics say who ended it', async () => {

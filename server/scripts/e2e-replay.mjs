@@ -106,8 +106,11 @@ if (holeAt) {
   check('replay: the paid sinkhole is on the road from the start, where the driver\'s game put it', await S.ev(placed));
 }
 if (nightAt) {
-  await seekTo(Math.max(1, Math.floor(nightAt.t - 4)));
-  check('replay: a seek to before the NIGHT shows day', (await settled(nightAt.t - 4)) && await until(() => S.ev('__game.dn.night === false'), 8000), `t ${(await S.ev('__game.st.t'))?.toFixed?.(1)}, clock ${(await S.ev('__game.dn.t'))?.toFixed?.(2)}`);
+  /* the ride starts at the hour the SERVER assigned (any of dawn / noon / dusk / night), so "before the night" is not "day": it is the clock the ride had run up to then (the recorded clock column) – not the donated night */
+  await seekTo(1); await settled(1); const c0 = await S.ev('__game.dn.t'), tBefore = Math.max(1, Math.floor(nightAt.t - 4));
+  await seekTo(tBefore);
+  const expectClock = (c0 + (tBefore - 1) / 60) % 24, got = async () => await S.ev('__game.dn.t'), near = c => Math.abs(((c - expectClock + 36) % 24) - 12) > 11.5 || Math.abs(c - expectClock) < .15;
+  check('replay: a seek to before the NIGHT shows the clock the ride had run to (the start hour + 1 game minute a second), not the donated night', (await settled(nightAt.t - 4)) && await until(async () => near(await got()), 8000), `t ${(await S.ev('__game.st.t'))?.toFixed?.(1)}, clock ${(await got())?.toFixed?.(2)} (expected ≈ ${expectClock.toFixed(2)})`);
   await seekTo(Math.ceil(nightAt.t + 3));
   check('replay: a seek past it shows night (the clock column)', (await settled(nightAt.t + 3)) && await until(() => S.ev('__game.dn.night === true'), 8000), `clock ${(await S.ev('__game.dn.t'))?.toFixed?.(2)}`);
   await sleep(3000);   // the night fades in

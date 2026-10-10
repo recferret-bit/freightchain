@@ -2,14 +2,53 @@ import { Ride } from '../../../src/domain/rides/ride.entity.js';
 import { RideStatus } from '../../../src/domain/rides/ride-status.js';
 import type { RideReport } from '../../../src/domain/rides/ride-report.js';
 import { ConflictError } from '../../../src/domain/shared/errors.js';
+import { ROUTE_IDS, START_HOURS, worldFor } from '../../../src/domain/rides/ride-rules.js';
 
 const T0 = new Date('2026-10-07T12:00:00.000Z');
 const at = (seconds: number) => new Date(T0.getTime() + seconds * 1000);
 const rules = { hbTimeoutMs: 150_000, hbMinIntervalMs: 1000 };
-const report = (over: Partial<RideReport> = {}): RideReport => ({ s: 0, t: null, hull: null, paused: false, route: null, night: false, ...over });
+const report = (over: Partial<RideReport> = {}): RideReport => ({ s: 0, t: null, hull: null, paused: false, night: false, ...over });
 const freeRide = () => Ride.createFree({ id: 'ride-1', wallet: 'w', seed: 7, minSeconds: 10, now: T0 }); // 10 s AND 140 m
 const running = () => { const r = freeRide(); r.start(T0); return r; };
 const order = () => Ride.createPaidOrder({ id: 'ride-2', wallet: 'w', tier: '1h', seed: 1, minSeconds: 3600, timeScale: 1, priceUsd: 5, lamports: 50_000_000, solUsd: 100, now: T0, quoteTtlMs: 600_000 });
+
+describe('Ride – the free ride\'s helpers', () => {
+  it('are off unless chosen; only the free tier has them', () => {
+    expect(freeRide()).toMatchObject({ tutorial: false, assist: false });
+    expect(Ride.createFree({ id: 'r', wallet: 'w', seed: 7, minSeconds: 10, now: T0, tutorial: true, assist: true })).toMatchObject({ tutorial: true, assist: true });
+    expect(order()).toMatchObject({ tutorial: false, assist: false });
+  });
+
+  it('a ready free ride can be re-chosen (true = it changed and must be saved); a running one cannot, nor can a paid one', () => {
+    const r = freeRide();
+    expect(r.chooseGuide(false, false)).toBe(false);
+    expect(r.chooseGuide(true, false)).toBe(true);
+    expect(r).toMatchObject({ tutorial: true, assist: false });
+    expect(r.chooseGuide(true, false)).toBe(false);
+    expect(r.chooseGuide(false, true)).toBe(true);
+    expect(r.snapshot()).toMatchObject({ tutorial: false, assist: true });
+    r.start(T0);
+    expect(() => r.chooseGuide(true, true)).toThrow(ConflictError);
+    expect(() => Ride.createFromTicket({ id: 't', wallet: 'w', tier: '4h', seed: 3, minSeconds: 240, timeScale: 1, poolId: 9, roundId: 4, now: T0 }).chooseGuide(false, true)).toThrow(new ConflictError('only a free ride has a tutorial or assist'));
+  });
+});
+
+describe('Ride – the world the server assigns', () => {
+  it('the route and the start hour come from the seed at creation, are stored on the ride and cannot be reported', () => {
+    const r = freeRide();
+    expect(r).toMatchObject({ route: worldFor(7).route, startHour: worldFor(7).startHour });
+    expect(order()).toMatchObject({ route: worldFor(1).route, startHour: worldFor(1).startHour });
+    r.start(T0);
+    r.applyReport({ ...report({ s: 1, t: 1 }), route: 'siberia' } as RideReport, at(1), rules);
+    expect(r.route).toBe(worldFor(7).route);
+  });
+  it('worldFor is a pure function of the seed that reaches every route and every hour', () => {
+    const seen = new Set<string>(), hours = new Set<number>();
+    for (let s = 0; s < 40; s++) { const w = worldFor(s); seen.add(w.route); hours.add(w.startHour); expect(worldFor(s)).toEqual(w); }
+    expect(seen.size).toBe(ROUTE_IDS.length);
+    expect([...hours].sort((a, b) => a - b)).toEqual([...START_HOURS]);
+  });
+});
 
 describe('Ride – creation', () => {
   it('a free ride is ready at once; completion needs 0.25 × 28 m/s × minSeconds metres (the free run ends at a shorter line than a paid shift)', () => {
@@ -113,12 +152,12 @@ describe('Ride – progress reports', () => {
     expect(r).toMatchObject({ status: RideStatus.Failed, reason: 'heartbeat lost' });
   });
 
-  it('clamps the hull to 0..100, keeps it when unreported, whitelists the route, accumulates night time', () => {
+  it('clamps the hull to 0..100, keeps it when unreported, accumulates night time', () => {
     const r = running();
-    r.applyReport(report({ s: 1, t: 2, hull: -5, route: 'siberia', night: true }), at(2), rules);
-    r.applyReport(report({ s: 2, t: 4, hull: null, route: '<script>', night: false }), at(4), rules);
+    r.applyReport(report({ s: 1, t: 2, hull: -5, night: true }), at(2), rules);
+    r.applyReport(report({ s: 2, t: 4, hull: null, night: false }), at(4), rules);
     const s = r.snapshot();
-    expect(s).toMatchObject({ hull: 0, route: 'siberia', nightSeconds: 2, driveSeconds: 4 });
+    expect(s).toMatchObject({ hull: 0, nightSeconds: 2, driveSeconds: 4 });
     r.applyReport(report({ s: 3, t: 6, hull: 250 }), at(6), rules);
     expect(r.snapshot().hull).toBe(100);
   });

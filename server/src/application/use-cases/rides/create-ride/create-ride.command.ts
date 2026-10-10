@@ -4,5 +4,8 @@ export class CreateRideCommand {
   constructor(
     public readonly wallet: string,
     public readonly tier: RideTierId,
+    /** a free ride's helpers (false = off; a paid tier with either on is refused) */
+    public readonly tutorial: boolean = false,
+    public readonly assist: boolean = false,
   ) {}
 }

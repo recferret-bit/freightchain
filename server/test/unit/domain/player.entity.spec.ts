@@ -6,8 +6,17 @@ const WED = new Date('2026-10-07T12:00:00.000Z');
 const NEXT_DAY = new Date('2026-10-08T00:00:01.000Z');
 
 describe('Player', () => {
+  it('marks the tutorial as passed once: the first stamp stays, a second ride with it on changes nothing', () => {
+    const p = Player.register('w', WED, 5, 5);
+    expect(p).toMatchObject({ tutorialPassed: false, tutorialPassedAt: null });
+    expect(p.markTutorialPassed(WED)).toBe(true);
+    expect(p.markTutorialPassed(NEXT_DAY)).toBe(false);
+    expect(p).toMatchObject({ tutorialPassed: true, tutorialPassedAt: WED });
+    expect(Player.restore(p.snapshot()).tutorialPassed).toBe(true);
+  });
+
   it('registers with the signup credits and the cap on today', () => {
-    expect(Player.register('w', WED, 5, 5).snapshot()).toEqual({ wallet: 'w', version: 1, freeRides: 5, freeDay: '2026-10-07', freeRidesMax: 5, createdAt: WED });
+    expect(Player.register('w', WED, 5, 5).snapshot()).toEqual({ wallet: 'w', version: 1, freeRides: 5, freeDay: '2026-10-07', freeRidesMax: 5, createdAt: WED, tutorialPassedAt: null });
   });
 
   it('grants +1 free ride once per UTC day, no backlog', () => {

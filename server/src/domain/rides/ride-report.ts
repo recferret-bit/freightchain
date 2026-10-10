@@ -7,8 +7,6 @@ export interface RideReport {
   /** hit points 0..100; null = unchanged */
   hull: number | null;
   paused: boolean;
-  /** theme id – ignored unless whitelisted */
-  route: string | null;
   night: boolean;
   /** the game's running count of truck ⇄ vehicle / building contacts this ride (cumulative; null / missing = unchanged). Statistics only – never judged. */
   crashesVehicle?: number | null;

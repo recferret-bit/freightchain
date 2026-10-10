@@ -6,6 +6,7 @@ export interface Facts {
   completedAtNight: boolean; // a completed shift with most of its drive time reported as night
   cleanRun: boolean; // completed with the hull at ~100 %
   completedSiberia: boolean;
+  completedFreeUnassisted: boolean; // a FREE ride judged complete that was driven without ASSIST (the tutorial does not matter – it changes nothing in the truck)
 }
 
 export interface Achievement {
@@ -23,6 +24,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   { id: 'century', name: 'Century', desc: 'Drive 100 km in total.', icon: '💯', rule: (f) => f.totalMetres >= 100_000 },
   { id: 'clean-run', name: 'Clean Run', desc: 'Finish a shift without a scratch (hull 100 %).', icon: '✦', rule: (f) => f.cleanRun },
   { id: 'cold-start', name: 'Cold Start', desc: 'Finish a shift on the Trans-Siberian route.', icon: '❄', rule: (f) => f.completedSiberia },
+  { id: 'on-my-own', name: 'On My Own', desc: 'Complete a free ride without assist.', icon: '⚑', rule: (f) => f.completedFreeUnassisted },
   { id: 'top-20', name: 'Top 20', desc: 'Be in the top 20 when the weekly round closes.', icon: '★', rule: null }, // awarded at round close – settlement is not built yet
 ];
 

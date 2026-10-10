@@ -1,5 +1,6 @@
 import { StartRideHandler } from '../../../../../src/application/use-cases/rides/start-ride/start-ride.handler.js';
 import { StartRideCommand } from '../../../../../src/application/use-cases/rides/start-ride/start-ride.command.js';
+import { Ride } from '../../../../../src/domain/rides/ride.entity.js';
 import { RideStatus } from '../../../../../src/domain/rides/ride-status.js';
 import { ConflictError, NotFoundError } from '../../../../../src/domain/shared/errors.js';
 import { unitContext } from '../../../../support/unit-context.js';
@@ -18,6 +19,25 @@ describe('StartRideHandler', () => {
     const ride = await ctx.freeRide('w');
     expect(await start(ride.id)).toMatchObject({ status: 'running' });
     expect((await ctx.reload(ride.id)).snapshot().startedAt).toEqual(ctx.now());
+  });
+
+  it('starting a ride with the TUTORIAL on marks the player as having done it – once; without the tutorial it does not', async () => {
+    const { ctx, start } = setup();
+    const plain = await ctx.freeRide('w');
+    await start(plain.id);
+    expect((await ctx.storedPlayer('w')).tutorialPassedAt).toBeNull();
+    const done = await ctx.reload(plain.id); done.finish('failed', null, ctx.now()); await ctx.rides.save(done);
+    const ride = Ride.createFree({ id: 'tut-1', wallet: 'w', seed: 5, minSeconds: 10, now: ctx.now(), tutorial: true, assist: true });
+    await ctx.rides.insert(ride);
+    const first = ctx.now();
+    expect(await start('tut-1')).toMatchObject({ status: 'running', tutorial: true, assist: true });
+    expect((await ctx.storedPlayer('w')).tutorialPassedAt).toEqual(first);
+    const stamp = (await ctx.storedPlayer('w')).tutorialPassedAt;
+    const r = await ctx.reload('tut-1'); r.finish('failed', null, ctx.now()); await ctx.rides.save(r);
+    ctx.clock.advance(60);
+    await ctx.rides.insert(Ride.createFree({ id: 'tut-2', wallet: 'w', seed: 6, minSeconds: 10, now: ctx.now(), tutorial: true }));
+    await start('tut-2');
+    expect((await ctx.storedPlayer('w')).tutorialPassedAt).toEqual(stamp);   // the first stamp stays
   });
 
   it('the ride keeps what the wallet wears at the start (all classic when it wears nothing) – and the answer says it, for the game', async () => {
@@ -87,7 +107,7 @@ describe('StartRideHandler', () => {
     await start(first.id);
     ctx.clock.advance(5);
     const running = await ctx.reload(first.id);
-    running.applyReport({ s: 60, t: 5, hull: 100, paused: false, route: null, night: false }, ctx.now(), ctx.rules.get()); await ctx.rides.save(running);
+    running.applyReport({ s: 60, t: 5, hull: 100, paused: false, night: false }, ctx.now(), ctx.rules.get()); await ctx.rides.save(running);
     ctx.clock.advance(151);
     await start(second.id);
     expect(await ctx.stats.player('w')).toMatchObject({ rides: 1, metres: 60, seconds: 5 });   // the second one is running – not counted yet

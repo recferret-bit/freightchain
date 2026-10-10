@@ -26,7 +26,7 @@ export async function seedPlayer(prisma: PrismaService, wallet: string): Promise
 
 let n = 0;
 export const rideId = () => `00000000-0000-4000-8000-${String(++n).padStart(12, '0')}`;
-export const freeRideAt = (wallet: string, now = T0, minSeconds = 10) => Ride.createFree({ id: rideId(), wallet, seed: 7, minSeconds, now });
+export const freeRideAt = (wallet: string, now = T0, minSeconds = 10, helpers: { tutorial?: boolean; assist?: boolean } = {}) => Ride.createFree({ id: rideId(), wallet, seed: 7, minSeconds, now, ...helpers });
 export const orderAt = (wallet: string, now = T0, lamports = 50_000_000) =>
   Ride.createPaidOrder({ id: rideId(), wallet, tier: '1h', seed: 7, minSeconds: 3600, timeScale: 1, priceUsd: 5, lamports, solUsd: 100, now, quoteTtlMs: 600_000 });
 

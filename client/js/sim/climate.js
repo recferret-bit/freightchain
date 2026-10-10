@@ -1,4 +1,5 @@
 import { CFG } from '../config.js';
+import { guide } from '../guide.js';
 import { clamp, approach } from '../util.js';
 import { st, dn, weather, powered, coldK, REDLINE } from '../state.js';
 import { toast } from '../ui/toast.js';
@@ -36,7 +37,7 @@ export function updateClimate(dt) {
   if (on && ck > .1) {
     const hard = clamp((st.rpm - CFG.COLD_WEAR_RPM) / (REDLINE - CFG.COLD_WEAR_RPM), 0, 1);
     if (hard > .05 && ck > .35) {
-      st.hull = Math.max(0, st.hull - CFG.COLD_WEAR * ck * ck * hard * dt); st.coldT = 1.2;
+      st.hull = Math.max(0, st.hull - CFG.COLD_WEAR * ck * ck * hard * dt * (guide.assist ? CFG.ASSIST.HULL_DMG : 1)); st.coldT = 1.2;
       if (!st._coldWarned) { st._coldWarned = true; toast('Engine is cold – keep the revs low until the TEMP needle rises', 3000); }
     }
   }

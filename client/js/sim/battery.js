@@ -1,4 +1,5 @@
 import { CFG } from '../config.js';
+import { guide } from '../guide.js';
 import { clamp } from '../util.js';
 import { st, dn, powered, REDLINE } from '../state.js';
 import { radio } from './radio.js';
@@ -29,6 +30,7 @@ export function updateBattery(dt) {
   loads = drain - (powered() && !st.engineOn ? B.KEY_ON : 0);   // anything beyond the bare instruments blocks the recovery
   drain *= flatten;
   if (cranking) drain += B.STARTER;
+  if (guide.assist) drain *= CFG.ASSIST.BATT_DRAIN;   // assist mode: the battery lasts twice as long
   let charge = 0;
   if (st.engineOn) charge = (B.CHARGE_MIN + B.CHARGE_RPM * clamp(st.rpm / REDLINE, 0, 1)) * clamp((1 - st.batt) * 4, .15, 1);
   if (!st.engineOn && !cranking && loads === 0 && st.batt < B.REST_MAX) charge = B.REST;   // nothing but the instruments on: the battery recovers a little (up to REST_MAX)

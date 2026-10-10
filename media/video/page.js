@@ -74,7 +74,7 @@ window.__dir = (() => {
   async function setup(s) {
     const G = g(), { st, CFG, dn } = G;
     window.__reseed?.(7919 * (k + 1) + (s.seed ?? 0));   // every scene draws from its OWN random stream (traffic, dust…): a change to the world generator or to an earlier scene no longer reshuffles this one; `seed` on a scene re-rolls just it
-    G.Wallet.credit(100); G.CFG.TRAFFIC = s.traffic; st.mode = 'done';
+    G.CFG.TRAFFIC = s.traffic; st.mode = 'done';
     G.selectTheme(s.route, false);
     if (s.time === 'night' || s.time === 'day') G.setNight(s.time === 'night', true, false); else G.setPhase(s.time);
     dn.run = false; dn.head = s.lights ?? s.time === 'night'; dn.cab = !!s.cab;

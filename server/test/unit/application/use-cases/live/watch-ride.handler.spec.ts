@@ -21,7 +21,7 @@ describe('WatchRideHandler', () => {
     const bodies = recording(ride.id, { seconds: 60 });
     ctx.clock.advance(60);
     for (const b of bodies) await ctx.batches.insert(RideBatch.accept(ride.id, b, hashBatch(b), ctx.now()));
-    ride.applyReport({ s: 140, t: 60, hull: 90, paused: false, route: 'siberia', night: false }, ctx.now(), ctx.rules.get()); await ctx.rides.save(ride);
+    ride.applyReport({ s: 140, t: 60, hull: 90, paused: false, night: false }, ctx.now(), ctx.rules.get()); await ctx.rides.save(ride);
     await ctx.rideEvents.insert(RideEvent.message({ rideId: ride.id, wallet: 'fan', text: 'hi', now: ctx.now() }));
     const view = await watch(ride.id, 1, 0, 'viewer-1');
     expect(view.ride).toMatchObject({ id: ride.id, wallet: 'driver', seed: ride.seed, route: 'siberia', loadout: null, status: 'running', live: true, distance: 140, hull: 90, endedAt: null });

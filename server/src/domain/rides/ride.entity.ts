@@ -10,7 +10,7 @@ import {
 import { BATCH_SEQ_SLACK, GAME_TIME_FACTOR, GAME_TIME_SLACK_SECONDS, MIN_BATCH_SECONDS, RECORDING_BYTES_PER_SECOND, RECORDING_BYTES_SLACK, type RecordingAllowance } from '../telemetry/telemetry-rules.js';
 import {
   DRIVE_CREDIT_SLACK, DRIVE_CREDIT_SLACK_SECONDS, MAX_SPEED, REASON_MAX_LENGTH, SLACK_METRES, SPEED_SLACK,
-  completeDist, completeDistK, crashCap, isRouteId, type RideTimingRules,
+  completeDist, completeDistK, crashCap, worldFor, type RideTimingRules,
 } from './ride-rules.js';
 import { tripOf } from './ride-trip.js';
 
@@ -32,11 +32,17 @@ export interface RideProps {
   /** the prize pool whose ticket paid for this ride (null = free, or a legacy pay-per-ride order) */
   poolId: number | null;
   paidAt: Date | null;
+  /** the route and the clock hour the ride starts at – assigned by the SERVER at creation from the seed (ride-rules.ts worldFor), never reported by the game; null = a ride from before this */
   route: string | null;
+  startHour: number | null;
   /** the cosmetics worn when the ride started (null = all classic) */
   loadout: Loadout | null;
   /** the road it was driven on: a client/js/trips.js id (ride-trip.ts), stamped at creation; null = a ride from before trips (the 'classic' road) */
   trip: string | null;
+  /** a FREE ride ordered with the step-by-step tutorial on (free tier only) */
+  tutorial: boolean;
+  /** a FREE ride ordered with ASSIST on: half the wear, a tip on every control (free tier only – never ranks as "unassisted") */
+  assist: boolean;
   nightSeconds: number;
   /** truck ⇄ vehicle / building contacts, as the game counts them (statistics only – only ever raised by a report) */
   crashesVehicle: number;
@@ -60,7 +66,7 @@ export interface RideProps {
 /** What issuing a prompt needs from the caller: an id and a random draw (the entity stays pure). */
 export interface ChallengeDraw { id: string; rnd: number }
 
-export interface FreeRideInput { id: string; wallet: string; seed: number; minSeconds: number; now: Date }
+export interface FreeRideInput { id: string; wallet: string; seed: number; minSeconds: number; now: Date; tutorial?: boolean; assist?: boolean }
 export interface TicketRideInput {
   id: string; wallet: string; tier: RideTierId; seed: number; minSeconds: number; timeScale: number; poolId: number; roundId: number; now: Date;
 }
@@ -79,21 +85,21 @@ export class Ride {
 
   private static blank(): Omit<RideProps, 'id' | 'wallet' | 'tier' | 'seed' | 'minSeconds' | 'completeDist' | 'status' | 'createdAt'> {
     return {
-      timeScale: 1, priceUsd: 0, lamports: 0, solUsd: null, quoteExpiresAt: null, roundId: null, poolId: null, paidAt: null, route: null, loadout: null, trip: null, nightSeconds: 0, crashesVehicle: 0, crashesBuilding: 0, paused: false,
+      timeScale: 1, priceUsd: 0, lamports: 0, solUsd: null, quoteExpiresAt: null, roundId: null, poolId: null, paidAt: null, route: null, startHour: null, loadout: null, trip: null, tutorial: false, assist: false, nightSeconds: 0, crashesVehicle: 0, crashesBuilding: 0, paused: false,
       startedAt: null, lastHbAt: null, lastS: 0, lastT: 0, driveSeconds: 0, hull: null, endedAt: null, reason: null, challenges: [], nextChallengeAt: null, version: 1,
     };
   }
 
   /** A free ride is ready at once (its credit is spent by the caller). */
   static createFree(i: FreeRideInput): Ride {
-    return new Ride({ ...Ride.blank(), id: i.id, wallet: i.wallet, tier: 'free', trip: tripOf('free'), seed: i.seed, minSeconds: i.minSeconds, completeDist: completeDist(i.minSeconds, completeDistK('free')), status: RideStatus.Created, createdAt: i.now });
+    return new Ride({ ...Ride.blank(), id: i.id, wallet: i.wallet, tier: 'free', trip: tripOf('free'), ...worldFor(i.seed), seed: i.seed, minSeconds: i.minSeconds, completeDist: completeDist(i.minSeconds, completeDistK('free')), status: RideStatus.Created, createdAt: i.now, tutorial: i.tutorial === true, assist: i.assist === true });
   }
 
   /** A paid ride bought with a pool ticket (the money is already in the pool's escrow): ready at once, ranked in the pool's round. The caller spends the ticket. */
   static createFromTicket(i: TicketRideInput): Ride {
     if (i.tier === 'free') throw new ConflictError('a free ride is not paid with a ticket');
     return new Ride({
-      ...Ride.blank(), id: i.id, wallet: i.wallet, tier: i.tier, trip: tripOf(i.tier), seed: i.seed, minSeconds: i.minSeconds, completeDist: completeDist(i.minSeconds, completeDistK(i.tier)),
+      ...Ride.blank(), id: i.id, wallet: i.wallet, tier: i.tier, trip: tripOf(i.tier), ...worldFor(i.seed), seed: i.seed, minSeconds: i.minSeconds, completeDist: completeDist(i.minSeconds, completeDistK(i.tier)),
       status: RideStatus.Created, createdAt: i.now, timeScale: i.timeScale, poolId: i.poolId, roundId: i.roundId, paidAt: i.now,
     });
   }
@@ -101,7 +107,7 @@ export class Ride {
   /** A paid order: priced in SOL at the moment of ordering, awaiting the on-chain payment. */
   static createPaidOrder(i: PaidOrderInput): Ride {
     return new Ride({
-      ...Ride.blank(), id: i.id, wallet: i.wallet, tier: i.tier, trip: tripOf(i.tier), seed: i.seed, minSeconds: i.minSeconds, completeDist: completeDist(i.minSeconds, completeDistK(i.tier)),
+      ...Ride.blank(), id: i.id, wallet: i.wallet, tier: i.tier, trip: tripOf(i.tier), ...worldFor(i.seed), seed: i.seed, minSeconds: i.minSeconds, completeDist: completeDist(i.minSeconds, completeDistK(i.tier)),
       status: RideStatus.AwaitingPayment, createdAt: i.now, timeScale: i.timeScale, priceUsd: i.priceUsd, lamports: i.lamports, solUsd: i.solUsd,
       quoteExpiresAt: new Date(i.now.getTime() + i.quoteTtlMs),
     });
@@ -129,9 +135,12 @@ export class Ride {
   get distance(): number { return this.p.lastS; }
   get reason(): string | null { return this.p.reason; }
   get route(): string | null { return this.p.route; }
+  get startHour(): number | null { return this.p.startHour; }
   get startedAt(): Date | null { return this.p.startedAt; }
   get loadout(): Loadout | null { return this.p.loadout; }
   get trip(): string | null { return this.p.trip; }
+  get tutorial(): boolean { return this.p.tutorial; }
+  get assist(): boolean { return this.p.assist; }
   get endedAt(): Date | null { return this.p.endedAt; }
   get lastHbAt(): Date | null { return this.p.lastHbAt; }
   get hull(): number | null { return this.p.hull; }
@@ -168,6 +177,16 @@ export class Ride {
   /** Heartbeats closer together than hbMinIntervalMs are ignored – no free progress by spamming. */
   canAcceptHeartbeat(now: Date, rules: RideTimingRules): boolean {
     return now.getTime() - (this.p.lastHbAt?.getTime() ?? 0) >= rules.hbMinIntervalMs;
+  }
+
+  /** A ready FREE ride can be re-chosen (the lobby's checkboxes) until it starts – the helpers are fixed once it runs. Returns whether anything changed (= the ride must be saved). */
+  chooseGuide(tutorial: boolean, assist: boolean): boolean {
+    this.mustBe(RideStatus.Created);
+    if (!this.isFree) throw new ConflictError('only a free ride has a tutorial or assist');
+    if (this.p.tutorial === tutorial && this.p.assist === assist) return false;
+    this.p.tutorial = tutorial;
+    this.p.assist = assist;
+    return true;
   }
 
   /** `loadout`: what the wallet wears right now – the ride keeps it, so a replay shows the cockpit it was really driven in. */
@@ -229,7 +248,6 @@ export class Ride {
     this.p.hull = hull;
     this.p.lastHbAt = now;
     this.p.driveSeconds += credit;
-    this.p.route = isRouteId(report.route) ? report.route : this.p.route;
     this.p.nightSeconds += report.night ? credit : 0;
     this.p.paused = report.paused;
     this.p.crashesVehicle = raised(this.p.crashesVehicle, report.crashesVehicle, crashCap(this.p.driveSeconds));

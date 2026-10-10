@@ -5,6 +5,8 @@ import { st, dn } from '../state.js';
 import { CFG } from '../config.js';
 import { promptView } from '../prompt.js';
 import { drawInputs } from './inputs.js';
+import { drawGuide } from './guide.js';
+import { guide } from '../guide.js';
 
 /* Night grade of the cab interior. 'source-atop' only paints where the cockpit is already opaque, so the windscreen and the mirror holes stay clear.
    The veil is built on an offscreen canvas so the cab light (dn.cab) can punch the backlit instruments (litShapes) out of it – overlapping shapes just merge –
@@ -47,9 +49,10 @@ function blindEffect() {
 
 export function drawCockpit() {
   const { W, H, DPR } = view;
-  uiBtns.length = 0; litShapes.length = 0;
+  uiBtns.length = 0; litShapes.length = 0; guide.rects.length = 0;
   drawCockpitRig();
   nightGrade(); cabGlow(); blindEffect();
+  if (!st.watch && st.mode === 'drive') drawGuide();   // the free ride's tutorial / assist highlights (no-op without tips)
   drawInputs();   // a replay: the driver's keys and clicks as flashing yellow borders (no-op elsewhere)
   if (st.mode === 'drive') {   // stall / lugging banner
     const blink = Math.floor(performance.now() / 130) % 2 === 0, stalled = st.stalled && !st.engineOn && !st.ign, lug = st.engineOn && st.lug > .25;

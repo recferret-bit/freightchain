@@ -12,6 +12,7 @@ import { updateClimate } from './climate.js';
 import { updateBattery } from './battery.js';
 import { endRide } from '../ui/game.js';
 import { trip } from '../trips.js';
+import { guide } from '../guide.js';
 
 let beepT = 0, washT = 0;
 const LUG_RPM = 900;   // below this (gear in, clutch out) the engine labours
@@ -142,7 +143,7 @@ export function update(dt) {
   if (st.s < 0) { st.s = 0; st.v = st.vel = 0; toast('Loading dock – no further back'); }
   st.offT = off ? st.offT + dt : Math.max(0, st.offT - dt * 2);
   if (off && !st._offWarned) { audio.play('warn'); toast('OFF ROAD!'); st._offWarned = true; } if (!off) st._offWarned = false;
-  if (!st.complete && st.t >= CFG.RIDE_MIN_SECONDS && st.s >= CFG.COMPLETE_DIST) {
+  if (!st.complete && !guide.hold && st.t >= CFG.RIDE_MIN_SECONDS && st.s >= CFG.COMPLETE_DIST) {
     st.complete = true; audio.play('complete');
     if (trip.finish) endRide(true);   // a trip that ends at the line (trips.js – the free run): the win stamp, no "keep driving"
     else toast('SHIFT COMPLETE – the road goes on. Keep driving, or P → END SHIFT to collect.', 6000);

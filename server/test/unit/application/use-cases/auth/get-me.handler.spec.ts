@@ -23,6 +23,16 @@ describe('GetMeHandler', () => {
     expect(await handler.execute(new GetMeQuery('w'))).toMatchObject({ freeRides: 4, freeRidesMax: 5, nextFreeRideAt: Date.UTC(2036, 9, 9) });
   });
 
+  it('says whether the tutorial was done (a ride started with it on)', async () => {
+    const ctx = unitContext();
+    const handler = new GetMeHandler(ctx.sessions, ctx.rules, ctx.clock, ctx.poolTickets);
+    expect(await handler.execute(new GetMeQuery('w'))).toMatchObject({ tutorialPassed: false });
+    const p = await ctx.storedPlayer('w');
+    p.markTutorialPassed(ctx.now());
+    await ctx.players.save(p);
+    expect(await handler.execute(new GetMeQuery('w'))).toMatchObject({ tutorialPassed: true });
+  });
+
   it('lists the wallet\'s tickets per pool: held ones, and empty rows only while the pool is live', async () => {
     const ctx = unitContext();
     await ctx.pools.upsert(aPool({ id: 1, status: 'active', label: 'L1' }));

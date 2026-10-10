@@ -60,7 +60,7 @@ if(await ev('typeof window.__game')==='object' && await ev('typeof __game.cosmet
 // road network: the depot (start), waiting at the depot exit with main-road traffic, a signalled crossroads, a multi-lane stretch (net-*.png) – look at them
 if(await ev('typeof window.__game')==='object' && await ev('typeof __game.net')==='object'){
   const hold=s=>`clearInterval(window.__hold2); window.__hold2=setInterval(()=>{ const g=__game; g.st.v=0; g.st.hull=100; g.st.offT=0; ${s} },50)`;
-  await ev(`__game.CFG.TRAFFIC=true; __game.selectTheme('route66', false); __game.setNight(false,true,false); __game.st.mode='done'; __game.Wallet.credit(100); __game.startRide(); document.getElementById('overlay').classList.add('hide')`);
+  await ev(`__game.CFG.TRAFFIC=true; __game.selectTheme('route66', false); __game.setNight(false,true,false); __game.st.mode='done'; __game.startRide(); document.getElementById('overlay').classList.add('hide')`);
   await sleep(1500); await shot('net-depot');
   await ev(`${hold("")}; __game.st.s=__game.net.sA-2; __game.st.d=2.4; __game.st.psi=-0.35`); await sleep(2500); await shot('net-depot-exit');
   console.log('depot exit:',await ev('JSON.stringify({road:__game.roads.status().road, cars:__game.traffic.filter(a=>a.road.main).length, off:__game.st.off})'));
@@ -101,7 +101,6 @@ if(await ev('typeof window.__game')==='object' && await ev('typeof __game.setNig
   await ev(`__game.dn.run=true; __game.dn.scale=600; __game.setClock(5.5,true,false)`); const t0=await ev('__game.dn.t'); await sleep(2500); console.log('clock x600 5.5 ->',t0,await ev('__game.dn.t'),await ev('__game.dn.phase')); await ev('__game.dn.scale=60; __game.setNight(false,true,false)');
   // menu cards: click NIGHT, check the state flipped and the .sel class followed; then the N key must move it back
   await ev("__game.st.mode='menu'; document.getElementById('overlay').classList.remove('hide'); __game.startRide&&0"); 
-  console.log('menu card ->',await ev(`(()=>{ const c=[...document.querySelectorAll('.tcard')]; c.find(e=>e.dataset.p==='night').click(); const a={night:__game.dn.night,phase:__game.dn.phase,t:__game.dn.t,sel:c.map(e=>e.classList.contains('sel'))}; __game.setNight(false,true,false); return JSON.stringify(a); })()`));
 }
 console.log('PROBLEMS ('+problems.length+'):'); for(const p of [...new Set(problems)].slice(0,25)) console.log(' -',p.slice(0,300));
 console.log('screenshots in',SHOTS); finish(filt().length?1:0,500);

@@ -67,7 +67,7 @@ function missed(e) {
 function apply(e) {
   const fx = EFFECT_INFO[e.effect], who = short(e.wallet);
   if (e.effect === 'night' || e.effect === 'day') {
-    setNight(e.effect === 'night', false, false);   // fades like the N key; not saved as the player's own clock
+    setNight(e.effect === 'night', false, true);   // a paid effect (the server's event): fades, bypasses the clock lock
     toast(`${fx.icon} ${who} ${fx.says}`, 3500);
     return { t: st.t, s: st.s, lat: null };
   }

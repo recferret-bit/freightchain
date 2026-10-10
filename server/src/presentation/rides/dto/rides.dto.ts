@@ -7,7 +7,8 @@ import { REASON_MAX_LENGTH } from '../../../domain/rides/ride-rules.js';
 import type { BatchBody } from '../../../domain/telemetry/ride-batch.entity.js';
 import { BATCH_MAX_INPUTS, BATCH_MAX_SAMPLES, BATCH_MAX_SEQ, INPUT_CODE_MAX_LENGTH, MAX_GAME_SECONDS, SAMPLE_MAX_WIDTH, TRAFFIC_MAX_FRAMES, TRAFFIC_MAX_ROW } from '../../../domain/telemetry/telemetry-rules.js';
 
-export const createRideBodySchema = z.object({ tier: z.enum(RIDE_TIER_IDS) });
+/** `tutorial` / `assist`: the free ride's helpers (the lobby's two checkboxes). Optional – an absent flag is off; a paid tier refuses them (409), see CreateRideHandler. */
+export const createRideBodySchema = z.object({ tier: z.enum(RIDE_TIER_IDS), tutorial: z.boolean().optional(), assist: z.boolean().optional() });
 export type CreateRideBody = z.infer<typeof createRideBodySchema>;
 
 export const confirmPaymentBodySchema = z.object({ signature: z.string().refine(isTransactionSignature, TRANSACTION_SIGNATURE_MESSAGE) });
@@ -40,8 +41,8 @@ const strictMetres = z.unknown().transform((v, ctx) => {
 });
 
 export const heartbeatBodySchema = z
-  .object({ s: strictMetres, t: lenientNumber, hull: strictOptionalNumber, paused: flag, route: text, night: flag, crashesVehicle: lenientNumber, crashesBuilding: lenientNumber })
-  .transform((b): RideReport => ({ s: b.s, t: b.t, hull: b.hull, paused: b.paused, route: b.route, night: b.night, crashesVehicle: b.crashesVehicle, crashesBuilding: b.crashesBuilding }));
+  .object({ s: strictMetres, t: lenientNumber, hull: strictOptionalNumber, paused: flag, night: flag, crashesVehicle: lenientNumber, crashesBuilding: lenientNumber })
+  .transform((b): RideReport => ({ s: b.s, t: b.t, hull: b.hull, paused: b.paused, night: b.night, crashesVehicle: b.crashesVehicle, crashesBuilding: b.crashesBuilding }));
 export type HeartbeatBody = z.infer<typeof heartbeatBodySchema>;
 
 /* A recording batch is STRICT (the client re-sends on a 400 only if it has a bug – nothing here is user input). Array caps keep a hostile client from storing junk.
@@ -63,6 +64,6 @@ export const batchBodySchema = z
 export type BatchBodyInput = z.infer<typeof batchBodySchema>;
 
 export const endRideBodySchema = z
-  .object({ outcome: z.enum(['shift', 'failed']), s: lenientMetres, t: lenientNumber, hull: lenientNumber, paused: flag, route: text, night: flag, crashesVehicle: lenientNumber, crashesBuilding: lenientNumber, reason: z.unknown().transform((v) => (typeof v === 'string' ? v.slice(0, REASON_MAX_LENGTH) : null)) })
-  .transform((b) => ({ outcome: b.outcome, reason: b.reason, report: { s: b.s, t: b.t, hull: b.hull, paused: b.paused, route: b.route, night: b.night, crashesVehicle: b.crashesVehicle, crashesBuilding: b.crashesBuilding } satisfies RideReport }));
+  .object({ outcome: z.enum(['shift', 'failed']), s: lenientMetres, t: lenientNumber, hull: lenientNumber, paused: flag, night: flag, crashesVehicle: lenientNumber, crashesBuilding: lenientNumber, reason: z.unknown().transform((v) => (typeof v === 'string' ? v.slice(0, REASON_MAX_LENGTH) : null)) })
+  .transform((b) => ({ outcome: b.outcome, reason: b.reason, report: { s: b.s, t: b.t, hull: b.hull, paused: b.paused, night: b.night, crashesVehicle: b.crashesVehicle, crashesBuilding: b.crashesBuilding } satisfies RideReport }));
 export type EndRideBody = z.infer<typeof endRideBodySchema>;

@@ -13,6 +13,7 @@ import { renderReplays } from './lobby-replays.js';
 import { API_BASE, GAME_BASE } from '../js/hosts.js';
 import { track, flushSoon } from '../js/analytics.js';
 import { reportWebVitals } from '../js/web-vitals.js';
+import { store } from '../js/util.js';
 
 /* The lobby: NEW RIDE · LIVE · LEADERBOARD · GARAGE · PROMO · PROFILE. Vanilla DOM, no framework.
    Everything that comes from the server (wallet addresses, route ids, statuses…) goes in with textContent – never innerHTML – because other riders' data is rendered here. */
@@ -31,7 +32,7 @@ const dur = s => { s = Math.max(0, Math.round(s)); return s >= 3600 ? `${Math.fl
 const km = m => (m / 1000).toFixed(m < 10_000 ? 2 : 1);
 
 /* ───────── state ───────── */
-const S = { me: null, tiers: null, pool: null, live: { rides: [] }, liveAt: 0, skew: 0, board: 'round', pending: null, pendingNote: '', tab: 'new', busy: null, qty: {}, msgs: {}, poolInfo: {}, order: null, focus: null };
+const S = { me: null, tiers: null, pool: null, live: { rides: [] }, liveAt: 0, skew: 0, board: 'round', pending: null, pendingNote: '', tab: 'new', busy: null, qty: {}, msgs: {}, poolInfo: {}, order: null, focus: null, opt: { tutorial: null, assist: store.get('freightchain.assist') === '1' } };   // opt = the free ride's two checkboxes: tutorial null = follow the server (on until a ride was started with it), assist is remembered here
 let seq = 0;   // one number per tab render: an answer that comes back after the player moved on (or re-asked) is dropped, not painted over the new tab
 const now = () => Date.now() + S.skew;   // server clock (skew learned from /api/live)
 const freeLeft = m => (m.freeRides > m.freeRidesMax ? `${m.freeRides} free rides (bonus)` : `${m.freeRides}/${m.freeRidesMax} free ride${m.freeRides === 1 ? '' : 's'}`);   // a promo can take the balance above the daily cap
@@ -148,6 +149,10 @@ function paintTiers() {
   for (const [k, m] of Object.entries(S.msgs)) say(k, ...m);   // messages survive a repaint
   paintRefunds(); tickCountdowns();
 }
+const tutorialOn = () => S.opt.tutorial ?? !S.me?.tutorialPassed;
+function guideBox(id, name, hint, on, set) {   // one of the free ride's two checkboxes (kept in S.opt, so a repaint does not reset it)
+  return el('label', { class: 'opt', for: id }, el('input', { type: 'checkbox', id, checked: on, onchange: e => set(e.target.checked) }), el('span', {}, el('b', {}, name), el('small', {}, hint)));
+}
 function freeCard(t) {
   const off = tierOff(t), i = tierInfo(t);
   return el('article', { class: 'tier free', id: 'tier-free' },
@@ -155,6 +160,9 @@ function freeCard(t) {
       el('div', { class: 'hd' }, el('span', { class: 'nm' }, TIER_NAME.free), el('span', { class: 'st done' }, 'NO PRIZE')),
       el('span', { class: 'sub' }, i.shift),
       el('span', { class: 'sub more' }, 'Counts for the free leaderboard and achievements.'),
+      el('div', { class: 'guide' },
+        guideBox('opt-tutorial', 'TUTORIAL', S.me?.tutorialPassed ? 'Step-by-step tips over the game – you have done it, switch it on to see it again.' : 'Step-by-step tips over the game: ignition, gears, steering, lights, hull. On for your first ride.', tutorialOn(), v => { S.opt.tutorial = v; }),
+        guideBox('opt-assist', 'ASSIST', 'The truck and the battery last twice as long and every control gets a tip when it matters. Finish a free ride WITHOUT it for the “On My Own” achievement.', S.opt.assist, v => { S.opt.assist = v; store.set('freightchain.assist', v ? '1' : '0'); })),
       off ? el('span', { class: 'tag' }, off) : ''),
     el('button', { class: 'go', id: 'start', disabled: !!off || !!S.busy, onclick: startFree }, S.busy === 'free' ? 'WORKING…' : 'START FREE RIDE'),
     el('p', { class: 'msg dim', id: 'msg-free' }));
@@ -220,7 +228,7 @@ function play(r, tier) {
   flushSoon(); location.href = `${GAME_BASE}/play.html?ride=${r.id}`;
 }
 const clicked = (id, usd = 0) => track('ride_buy_clicked', { tier_id: id, is_free: id === 'free', price_usd: usd, is_demo: !!S.me?.demo });
-const startFree = () => busy('free', async () => { clicked('free'); try { play(await api('rides', { tier: 'free' }), 'free'); } catch (e) { say('free', rideError(e, 'free'), true); } });
+const startFree = () => busy('free', async () => { clicked('free'); try { play(await api('rides', { tier: 'free', tutorial: tutorialOn(), assist: S.opt.assist }), 'free'); } catch (e) { say('free', rideError(e, 'free'), true); } });
 const startLegacy = id => busy(id, async () => { clicked(id, S.tiers?.tiers.find(t => t.id === id)?.usd ?? 0); try { play(await buyRide(id, text => say(id, text)), id); } catch (e) { say(id, rideError(e, id), true); } });
 const ride = tier => busy(tier, async () => {   // spends one ticket: the ride is ready at once
   clicked(tier, S.tiers?.tiers.find(t => t.id === tier)?.usd ?? 0);

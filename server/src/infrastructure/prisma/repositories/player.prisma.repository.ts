@@ -40,7 +40,7 @@ export class PlayerPrismaRepository extends PlayerRepositoryPort {
     const s = player.snapshot();
     const { count } = await clientFor(this.prisma, tx).player.updateMany({
       where: { wallet: s.wallet, version: s.version },
-      data: { freeRides: s.freeRides, freeDay: s.freeDay, version: { increment: 1 } },
+      data: { freeRides: s.freeRides, freeDay: s.freeDay, tutorialPassedAt: s.tutorialPassedAt, version: { increment: 1 } },
     });
     if (count !== 1) throw new VersionConflictError();
     return PlayerEntity.restore({ ...s, version: s.version + 1 });

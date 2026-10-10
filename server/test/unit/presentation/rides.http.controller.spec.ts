@@ -23,6 +23,7 @@ describe('RidesHttpController', () => {
   it('dispatches every route to its command / query with the signed-in wallet', async () => {
     const { commands, queries, c } = setup();
     await c.create(me, { tier: '4h' }); expect(commands.last()).toEqual(new CreateRideCommand('W', '4h'));
+    await c.create(me, { tier: 'free', tutorial: true, assist: true }); expect(commands.last()).toEqual(new CreateRideCommand('W', 'free', true, true));
     await c.pending(me); expect(queries.last()).toEqual(new GetPendingRideQuery('W'));
     await c.get(me, params); expect(queries.last()).toEqual(new GetRideQuery('W', 'ride-1'));
     await c.payment(me, params); expect(queries.last()).toEqual(new GetPaymentInstructionsQuery('W', 'ride-1'));
@@ -35,7 +36,7 @@ describe('RidesHttpController', () => {
     await c.end(me, params, end); expect(commands.last()).toEqual(new EndRideCommand('W', 'ride-1', 'failed', end.report, 'crash'));
     const batch = batchBodySchema.parse(recording('ride-1', { seconds: 10 })[0]);
     await c.batch(me, params, batch); expect(commands.last()).toEqual(new UploadBatchCommand('W', 'ride-1', batch));
-    expect(commands.sent).toHaveLength(7);
+    expect(commands.sent).toHaveLength(8);
     expect(queries.sent).toHaveLength(3);
   });
 
@@ -49,6 +50,11 @@ describe('RidesHttpController', () => {
       expect(createRideBodySchema.safeParse({ tier: 'free' }).success).toBe(true);
       expect(createRideBodySchema.safeParse({ tier: 'platinum' }).success).toBe(false);
     });
+    it('create: the free ride\'s tutorial / assist are optional booleans', () => {
+      expect(createRideBodySchema.parse({ tier: 'free', tutorial: true, assist: false })).toEqual({ tier: 'free', tutorial: true, assist: false });
+      expect(createRideBodySchema.safeParse({ tier: 'free', assist: 'yes' }).success).toBe(false);
+      expect(createRideBodySchema.safeParse({ tier: 'free', tutorial: 1 }).success).toBe(false);
+    });
     it('confirm: a base58 transaction signature', () => {
       expect(confirmPaymentBodySchema.safeParse({ signature: newSignature() }).success).toBe(true);
       expect(confirmPaymentBodySchema.safeParse({ signature: 'nope' }).success).toBe(false);
@@ -59,9 +65,9 @@ describe('RidesHttpController', () => {
     });
     it('heartbeat is STRICT: a missing / negative / huge distance or a garbage hull is a 400; extras are tolerated', () => {
       for (const bad of [{}, { s: 'abc' }, { s: -1 }, { s: 1e8 }, { s: 1, hull: 'x' }]) expect(heartbeatBodySchema.safeParse(bad).success, JSON.stringify(bad)).toBe(false);
-      expect(heartbeatBodySchema.parse({ s: '12.5', t: 'later', hull: null, paused: 'yes', route: 42, night: 1 })).toEqual({ s: 12.5, t: null, hull: null, paused: false, route: null, night: false, crashesVehicle: null, crashesBuilding: null });
+      expect(heartbeatBodySchema.parse({ s: '12.5', t: 'later', hull: null, paused: 'yes', route: 42, night: 1 })).toEqual({ s: 12.5, t: null, hull: null, paused: false, night: false, crashesVehicle: null, crashesBuilding: null });   // a `route` in the body is not read: the server assigns it
       expect(heartbeatBodySchema.parse({ s: 1, crashesVehicle: '3', crashesBuilding: 'x' })).toMatchObject({ crashesVehicle: 3, crashesBuilding: null }); // the crash counters are lenient – statistics, never a 400
-      expect(heartbeatBodySchema.parse({ s: 1, route: 'x'.repeat(100) }).route).toHaveLength(64);
+      expect(heartbeatBodySchema.parse({ s: 1, route: 'siberia' })).not.toHaveProperty('route');
     });
     it('a recording batch is STRICT: typed rows, capped arrays, a hex hash or none', () => {
       const [b0] = recording('ride-1', { seconds: 10 });
@@ -73,7 +79,7 @@ describe('RidesHttpController', () => {
       }
     });
     it('end is LENIENT: garbled values are dropped, never an error – but the outcome must be known', () => {
-      expect(endRideBodySchema.parse({ outcome: 'shift', s: 'NaN', t: 'x', hull: 'y', reason: 42 })).toEqual({ outcome: 'shift', reason: null, report: { s: null, t: null, hull: null, paused: false, route: null, night: false, crashesVehicle: null, crashesBuilding: null } });
+      expect(endRideBodySchema.parse({ outcome: 'shift', s: 'NaN', t: 'x', hull: 'y', reason: 42 })).toEqual({ outcome: 'shift', reason: null, report: { s: null, t: null, hull: null, paused: false, night: false, crashesVehicle: null, crashesBuilding: null } });
       expect(endRideBodySchema.parse({ outcome: 'failed', s: -5 }).report.s).toBeNull();
       expect(endRideBodySchema.parse({ outcome: 'failed', reason: 'r'.repeat(300) }).reason).toHaveLength(200);
       expect(endRideBodySchema.safeParse({ outcome: 'won' }).success).toBe(false);

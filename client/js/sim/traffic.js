@@ -237,7 +237,7 @@ function contact(a, tb) {
   const closing = Math.max(0, (rvx * dx + rvz * dz) / dl), hit = freshHit(a);
   if (hit && closing >= CFG.CRASH_CLOSING) {
     const why = a.v > st.v ? `A ${def.name} crashed into your truck${a.road.main ? '' : ' at the crossroads'}.` : `You drove into a ${def.name}${a.road.main ? ' on the main road' : ' at the crossroads'}.`;
-    st.crashV++; hurt(st.hull, closing, 'COLLISION'); st.v = 0; a.v = 0; return why;
+    st.crashV++; hurt(st.hull, closing, 'COLLISION', true); st.v = 0; a.v = 0; return why;
   }
   if (hit) { st.crashV++; hurt(bumpDmg(def, closing), closing, 'BUMP'); st.v *= .7; }
   a.v = Math.min(a.v, 1); a.s -= a.dir * penS;
@@ -247,7 +247,7 @@ function alignedContact(a, tb, penS, penL) {
   const { def } = a, rel = a.s - tb.es, vs = a.dir * a.v, closing = rel > 0 ? tb.v - vs : vs - tb.v, frac = penL / Math.min(2.5, def.w), sgn = Math.sign(a.lat - tb.el) || 1;
   if (frac >= CFG.CRASH_OVERLAP && rel > TRUCK_FRONT / 2) {   // nose to nose / nose to tail
     const hit = freshHit(a), push = Math.sign(rel) || 1;
-    if (hit && closing >= CFG.CRASH_CLOSING) { st.crashV++; hurt(st.hull, closing, 'COLLISION'); st.v = 0; return a.dir < 0 ? `Head-on collision with a ${def.name}.` : `You ran into the back of a ${def.name}.`; }
+    if (hit && closing >= CFG.CRASH_CLOSING) { st.crashV++; hurt(st.hull, closing, 'COLLISION', true); st.v = 0; return a.dir < 0 ? `Head-on collision with a ${def.name}.` : `You ran into the back of a ${def.name}.`; }
     if (hit) { st.crashV++; hurt(bumpDmg(def, Math.max(closing, 0)), Math.max(closing, 0), 'BUMP'); }
     st.s -= push * penS * .5; a.s += push * penS * .5;   // full overlap, both ways — a 1.5 m cap left the car inside the cab
     if (a.dir > 0) st.v = Math.min(st.v, a.v); else { st.v = Math.min(st.v, 0); a.v = 0; }
