@@ -75,7 +75,7 @@ A new setting therefore touches **four** places: `env.schema.ts`, `server/.env.e
 | `VERDICT_ENFORCE` | code `true`, **prod compose `false`** | `false` = shadow mode: rides are judged and shown but boards ignore the verdict |
 | `TELEMETRY_RETENTION_DAYS` | `90` | Recordings swept after this; flagged ones kept until reviewed; `0` = forever |
 | `SIGNIN_RETENTION_DAYS` | `180` | The sign-in log (wallet, time, IP, browser) is pruned after this, with the telemetry sweep; `0` = forever |
-| `CHALLENGE_INTERVAL_SECONDS` | `240` | Verified play: seconds of driving between two challenges (issued on the heartbeat, 20 s window); a short shift gets at most 4; `0` = off. Kinds live in `CHALLENGE_KINDS` (`ride-challenge.ts`); today's four are cab actions. The verdict's prompt thresholds are in `verdict-rules.ts` |
+| `CHALLENGE_INTERVAL_SECONDS` | `240` | Verified play: seconds of driving between two challenges (issued on the heartbeat, 20 s window); a short shift gets at most 4; `0` = off. Kinds live in `CHALLENGE_KINDS` (`ride-challenge.ts`); **the table is empty today**, so nothing is issued. The verdict's prompt thresholds are in `verdict-rules.ts` |
 | `CHALLENGE_FREE_RIDES` | `on` (prod compose: `off`) | Challenges on FREE rides too. Production leaves them off: the free run is the one-minute onboarding ride, it ends itself at the line (a prompt still open then is never judged) and the free board ranks every completed run whatever its verdict |
 
 ### Live streams (spectators – feature flags)

@@ -160,20 +160,31 @@ describe('Ride – finishing', () => {
   });
 });
 
-describe('Ride – dispatch prompts', () => {
+describe('Ride – challenge channel', () => {
   const drive = (r: Ride, t: number) => r.applyReport(report({ s: t * 14, t }), at(t), rules);
+  const KIND = { action: 'test', label: 'DO THE TEST', key: 'T', codes: ['KeyT'] };
 
-  it('schedules the first prompt on the first call, issues it once the drive clock reaches it, then draws the next 0.6–1.4 intervals ahead', () => {
+  it('the shipped kinds table is empty: nothing is scheduled or issued', () => {
+    const r = Ride.createFree({ id: 'ride-1', wallet: 'w', seed: 7, minSeconds: 1800, now: T0 });
+    r.start(T0);
+    drive(r, 130);
+    expect(r.issueChallenge(at(130), 240, { id: 'c1', rnd: 0 })).toBeNull();
+    expect(r.challenges).toEqual([]);
+    expect(r.snapshot().nextChallengeAt).toBeNull();
+    expect(r.openChallenge(at(140))).toBeNull();
+  });
+
+  it('when a kind is supplied, schedules the first prompt, issues it once the drive clock reaches it, then draws the next 0.6–1.4 intervals ahead', () => {
     const r = Ride.createFree({ id: 'ride-1', wallet: 'w', seed: 7, minSeconds: 1800, now: T0 }); // interval = min(240, 1800 / 4) = 240 s
     r.start(T0);
     drive(r, 10);
-    expect(r.issueChallenge(at(10), 240, { id: 'c1', rnd: 0 })).toBeNull(); // scheduled at 120 s (0.5 × 240)
+    expect(r.issueChallenge(at(10), 240, { id: 'c1', rnd: 0 }, [KIND])).toBeNull(); // scheduled at 120 s (0.5 × 240)
     expect(r.snapshot().nextChallengeAt).toBe(120);
     drive(r, 110);
-    expect(r.issueChallenge(at(110), 240, { id: 'c1', rnd: 0 })).toBeNull();
+    expect(r.issueChallenge(at(110), 240, { id: 'c1', rnd: 0 }, [KIND])).toBeNull();
     drive(r, 130);
-    const c = r.issueChallenge(at(130), 240, { id: 'c1', rnd: 0.3 });
-    expect(c).toEqual({ id: 'c1', action: 'wipers', issuedMs: 130_000, deadlineMs: 150_000 });
+    const c = r.issueChallenge(at(130), 240, { id: 'c1', rnd: 0.3 }, [KIND]);
+    expect(c).toEqual({ id: 'c1', action: 'test', issuedMs: 130_000, deadlineMs: 150_000, codes: ['KeyT'] });
     expect(r.challenges).toEqual([c]);
     expect(r.snapshot().nextChallengeAt).toBeCloseTo(130 + 240 * (0.6 + 0.8 * 0.3));
     expect(r.openChallenge(at(140))).toEqual(c);
@@ -183,18 +194,18 @@ describe('Ride – dispatch prompts', () => {
   it('no prompts while paused, with the interval at 0, before the start, once ended, or past the cap', () => {
     const r = running();
     r.applyReport(report({ s: 20, t: 2 }), at(2), rules);
-    expect(r.issueChallenge(at(2), 0, { id: 'x', rnd: 0 })).toBeNull();
-    r.issueChallenge(at(2), 240, { id: 'x', rnd: 0 }); // scheduled at 1.25 s (interval 2.5 for a 10 s shift)
+    expect(r.issueChallenge(at(2), 0, { id: 'x', rnd: 0 }, [KIND])).toBeNull();
+    r.issueChallenge(at(2), 240, { id: 'x', rnd: 0 }, [KIND]); // scheduled at 1.25 s (interval 2.5 for a 10 s shift)
     r.applyReport(report({ s: 40, t: 4, paused: true }), at(4), rules);
-    expect(r.issueChallenge(at(4), 240, { id: 'x', rnd: 0 })).toBeNull();
+    expect(r.issueChallenge(at(4), 240, { id: 'x', rnd: 0 }, [KIND])).toBeNull();
     r.applyReport(report({ s: 60, t: 6 }), at(6), rules);
-    expect(r.issueChallenge(at(6), 240, { id: 'x', rnd: 0 })).not.toBeNull();
+    expect(r.issueChallenge(at(6), 240, { id: 'x', rnd: 0 }, [KIND])).not.toBeNull();
     r.finish('failed', 'crash', at(7));
-    expect(r.issueChallenge(at(8), 240, { id: 'y', rnd: 0 })).toBeNull();
+    expect(r.issueChallenge(at(8), 240, { id: 'y', rnd: 0 }, [KIND])).toBeNull();
     expect(r.openChallenge(at(8))).toBeNull();
-    expect(freeRide().issueChallenge(at(1), 240, { id: 'z', rnd: 0 })).toBeNull();
-    const capped = Ride.restore({ ...running().snapshot(), driveSeconds: 1e6, nextChallengeAt: 0, challenges: Array.from({ length: 200 }, (_, i) => ({ id: `c${i}`, action: 'cab' as const, issuedMs: i, deadlineMs: i + 1 })) });
-    expect(capped.issueChallenge(at(1), 240, { id: 'over', rnd: 0 })).toBeNull();
+    expect(freeRide().issueChallenge(at(1), 240, { id: 'z', rnd: 0 }, [KIND])).toBeNull();
+    const capped = Ride.restore({ ...running().snapshot(), driveSeconds: 1e6, nextChallengeAt: 0, challenges: Array.from({ length: 200 }, (_, i) => ({ id: `c${i}`, action: 'test', issuedMs: i, deadlineMs: i + 1 })) });
+    expect(capped.issueChallenge(at(1), 240, { id: 'over', rnd: 0 }, [KIND])).toBeNull();
   });
 });
 

@@ -4,7 +4,8 @@ import { RideStatus, type RideOutcome } from './ride-status.js';
 import type { RideTierId } from './ride-tier.js';
 import type { RideReport } from './ride-report.js';
 import {
-  CHALLENGE_MAX_PER_RIDE, CHALLENGE_WINDOW_MS, challengeInterval, firstChallengeAt, nextChallengeAt, pickChallenge, type RideChallenge,
+  CHALLENGE_KINDS, CHALLENGE_MAX_PER_RIDE, CHALLENGE_WINDOW_MS, challengeInterval, firstChallengeAt, nextChallengeAt, pickChallenge,
+  type ChallengeKind, type RideChallenge,
 } from './ride-challenge.js';
 import { BATCH_SEQ_SLACK, GAME_TIME_FACTOR, GAME_TIME_SLACK_SECONDS, MIN_BATCH_SECONDS, RECORDING_BYTES_PER_SECOND, RECORDING_BYTES_SLACK, type RecordingAllowance } from '../telemetry/telemetry-rules.js';
 import {
@@ -237,15 +238,18 @@ export class Ride {
   }
 
   /** Issue the next challenge if one is due by the ride's own drive clock (after applyReport, while running and not paused): the next due time is drawn
-      0.6–1.4 intervals ahead, so a client cannot anticipate it. Kind comes from CHALLENGE_KINDS. `intervalSeconds` 0 = off. Returns the prompt issued, or null. */
-  issueChallenge(now: Date, intervalSeconds: number, draw: ChallengeDraw): RideChallenge | null {
+      0.6–1.4 intervals ahead, so a client cannot anticipate it. Kind comes from `kinds` (default CHALLENGE_KINDS, empty today). `intervalSeconds` 0 = off. Returns the prompt issued, or null. */
+  issueChallenge(now: Date, intervalSeconds: number, draw: ChallengeDraw, kinds: readonly ChallengeKind[] = CHALLENGE_KINDS): RideChallenge | null {
+    if (kinds.length === 0) return null;
     if (this.p.status !== RideStatus.Running || this.p.paused || this.p.startedAt === null) return null;
     const interval = challengeInterval(intervalSeconds, this.p.minSeconds);
     if (interval <= 0 || this.p.challenges.length >= CHALLENGE_MAX_PER_RIDE) return null;
     if (this.p.nextChallengeAt === null) { this.p.nextChallengeAt = firstChallengeAt(interval, draw.rnd); return null; }
     if (this.p.driveSeconds < this.p.nextChallengeAt) return null;
+    const kind = pickChallenge(draw.rnd, kinds);
+    if (!kind) return null;
     const issuedMs = now.getTime() - this.p.startedAt.getTime();
-    const challenge: RideChallenge = { id: draw.id, action: pickChallenge(draw.rnd).action, issuedMs, deadlineMs: issuedMs + CHALLENGE_WINDOW_MS };
+    const challenge: RideChallenge = { id: draw.id, action: kind.action, issuedMs, deadlineMs: issuedMs + CHALLENGE_WINDOW_MS, codes: [...kind.codes] };
     this.p.challenges = [...this.p.challenges, challenge];
     this.p.nextChallengeAt = nextChallengeAt(this.p.driveSeconds, interval, draw.rnd);
     return challenge;

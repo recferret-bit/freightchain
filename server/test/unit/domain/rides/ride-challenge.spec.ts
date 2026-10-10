@@ -1,18 +1,18 @@
 import {
   CHALLENGE_KINDS, CHALLENGE_WINDOW_MS, challengeInterval, challengeKind, firstChallengeAt, nextChallengeAt, parseChallenges, pickChallenge, toChallengeDto,
+  type ChallengeKind,
 } from '../../../../src/domain/rides/ride-challenge.js';
 
-/* Ride challenges: the kinds table, when one is due, and how a stored prompt is read back. A new kind is a row in CHALLENGE_KINDS. */
+const SAMPLE: ChallengeKind = { action: 'test', label: 'DO THE TEST', key: 'T', codes: ['KeyT', 'btn:test'] };
+
+/* Ride-challenge channel: the kinds table is empty today (nothing is issued). The interval / pick / DTO machinery stays for when a row is added. */
 describe('ride-challenge', () => {
-  it('the shipped kinds are the four cab actions; each names a label, a key and at least one answering code', () => {
-    expect(CHALLENGE_KINDS.map((k) => k.action)).toEqual(['headlights', 'wipers', 'cab', 'washer']);
-    expect(CHALLENGE_KINDS.length).toBeGreaterThan(0);
-    for (const k of CHALLENGE_KINDS) {
-      expect(k.codes.length).toBeGreaterThanOrEqual(1);
-      expect(k.label).toMatch(/^[A-Z ]+$/);
-      expect(k.key).toBeTruthy();
-    }
-    expect(challengeKind('wipers').codes).toEqual(['KeyR', 'btn:wiper']);
+  it('the shipped kinds table is empty – the channel issues nothing until a row is added', () => {
+    expect(CHALLENGE_KINDS).toEqual([]);
+    expect(pickChallenge(0)).toBeNull();
+    expect(pickChallenge(1)).toBeNull();
+    expect(challengeKind('headlights')).toBeUndefined();
+    expect(toChallengeDto({ id: 'abc', action: 'headlights', issuedMs: 1000, deadlineMs: 21_000 })).toBeNull();
   });
 
   it('the interval is the configured one, but a short shift gets at most 4 prompts; 0 switches prompts off', () => {
@@ -31,17 +31,19 @@ describe('ride-challenge', () => {
     expect(nextChallengeAt(300, 100, Number.NaN)).toBe(360);
   });
 
-  it('the kind is picked by the draw across CHALLENGE_KINDS', () => {
-    const n = CHALLENGE_KINDS.length;
-    expect(pickChallenge(0).action).toBe(CHALLENGE_KINDS[0].action);
-    expect(pickChallenge(0.99).action).toBe(CHALLENGE_KINDS[n - 1].action);
-    expect(pickChallenge(1).action).toBe(CHALLENGE_KINDS[n - 1].action);
+  it('when kinds are supplied, pickChallenge draws across that table and toChallengeDto names label / key / codes', () => {
+    const kinds = [SAMPLE, { action: 'other', label: 'OTHER', key: 'O', codes: ['KeyO'] }];
+    expect(pickChallenge(0, kinds)?.action).toBe('test');
+    expect(pickChallenge(0.99, kinds)?.action).toBe('other');
+    expect(pickChallenge(1, kinds)?.action).toBe('other');
+    const c = { id: 'abc', action: 'test', issuedMs: 1000, deadlineMs: 1000 + CHALLENGE_WINDOW_MS };
+    expect(toChallengeDto(c, kinds)).toEqual({ id: 'abc', action: 'test', label: 'DO THE TEST', key: 'T', codes: ['KeyT', 'btn:test'], issuedMs: 1000, deadlineMs: 21_000 });
   });
 
-  it('the wire view names the label, key and codes; a stored list is validated row by row', () => {
-    const c = { id: 'abc', action: 'cab' as const, issuedMs: 1000, deadlineMs: 1000 + CHALLENGE_WINDOW_MS };
-    expect(toChallengeDto(c)).toEqual({ id: 'abc', action: 'cab', label: 'SWITCH THE CAB LIGHT', key: 'C', codes: ['KeyC', 'btn:cab'], issuedMs: 1000, deadlineMs: 21_000 });
-    expect(parseChallenges([c, { id: 'x', action: 'horn', issuedMs: 1, deadlineMs: 2 }, 'junk', null, { id: 1, action: 'cab', issuedMs: 1, deadlineMs: 2 }])).toEqual([c]);
+  it('parseChallenges drops unknown actions (retired kinds, junk) and keeps a row whose action is in the table', () => {
+    const c = { id: 'abc', action: 'test', issuedMs: 1000, deadlineMs: 1000 + CHALLENGE_WINDOW_MS };
+    expect(parseChallenges([c, { id: 'x', action: 'horn', issuedMs: 1, deadlineMs: 2 }, 'junk', null], [SAMPLE])).toEqual([c]);
+    expect(parseChallenges([c])).toEqual([]); // shipped table is empty
     expect(parseChallenges(null)).toEqual([]);
     expect(parseChallenges({})).toEqual([]);
   });

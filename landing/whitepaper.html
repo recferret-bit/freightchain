@@ -66,7 +66,7 @@
     <tbody>
       <tr><td>The driving game, five routes, free rides</td><td><span class="pill ok">LIVE</span></td><td><a href="#drive">02</a>, <a href="#rides">03</a></td></tr>
       <tr><td>Server-timed shifts, recording, verdicts (shadow mode)</td><td><span class="pill ok">LIVE</span></td><td><a href="#verify">06</a></td></tr>
-      <tr><td>Anti-cheat v3: dispatch prompts, the server's road, budgets, bulk re-judge</td><td><span class="pill wip">BUILT · NEXT DEPLOY</span></td><td><a href="#verify">06</a></td></tr>
+      <tr><td>Anti-cheat v3: challenge channel (kinds table empty), the server's road, budgets, bulk re-judge</td><td><span class="pill wip">BUILT · NEXT DEPLOY</span></td><td><a href="#verify">06</a></td></tr>
       <tr><td>Live streams, replays, chat, paid donations to the driver</td><td><span class="pill ok">LIVE · DEVNET SOL</span></td><td><a href="#stream">07</a></td></tr>
       <tr><td>Escrowed prize pools (Anchor program)</td><td><span class="pill wip">WRITTEN, TESTED · NOT DEPLOYED</span></td><td><a href="#onchain">05</a></td></tr>
       <tr><td>Prize payouts, the garage, badges as tokens, mainnet</td><td><span class="pill plan">PLANNED</span></td><td><a href="#rewards">04</a>, <a href="#risks">08</a></td></tr>
@@ -510,7 +510,7 @@
     <li><i>5</i><b>THE SERVER'S ROAD</b><span>The holes come from the ride's seed, rebuilt by the server and handed to the game. A truck that drives through one at speed must lose hull; a game with the holes removed rejects.</span></li>
     <li><i>6</i><b>BUDGETS</b><span>Time, batches and bytes per ride, size per batch, rate limits. Uploading faster than real time is refused.</span></li>
     <li><i>7</i><b>HOW HUMAN THE HANDS LOOK</b><span>Hold lengths, rhythms, press durations – statistics that only flag.</span></li>
-    <li><i>8</i><b>DISPATCH PROMPTS</b><span>A challenge asked at times the server chooses; the recording must show the key. Kinds are a table; today's four are cab actions. No answer: a bot that cannot see. An instant one: a script reading the heartbeat.</span></li>
+    <li><i>8</i><b>CHALLENGE CHANNEL</b><span>The heartbeat can ask for a challenge; the cab handler shows whatever the DTO names. Kinds are a table, empty today so none are issued. When a kind is live: no answer is a bot that cannot see; an instant one is a script reading the heartbeat.</span></li>
     <li><i>9</i><b>A PERSON DECIDES</b><span>Flagged shifts wait for a signed, logged decision; rules are versioned and old rides can be judged again.</span></li>
   </ol>
 
@@ -524,8 +524,8 @@
   <h3 class="sub">THE CHAIN</h3>
   <p>Each batch carries the SHA-256 fingerprint of the batch before it; the first links to the ride's own id. Change one number anywhere and that fingerprint changes, so the next link no longer matches – the verdict says <code>chain-broken</code> and the ride is rejected. The server recomputes every fingerprint itself on arrival, so a batch cannot claim a fingerprint it does not have, and sending the same batch number again is ignored. A batch the browser could not fingerprint is kept and only flagged – the server fingerprinted it.</p>
 
-  <h3 class="sub">DISPATCH PROMPTS</h3>
-  <p>About every 240 s of driving on a paid shift (none on the free run; at most four on a short shift, 0.6–1.4 intervals apart so the rhythm cannot be guessed) the heartbeat response names one challenge – today <code>DISPATCH · FLASH YOUR HEADLIGHTS · PRESS L</code>, or the wipers, the cab light, the washer; a dash button counts too. The kinds are a table on the server; the cab shows whatever the heartbeat sends. An amber banner with a 20 s bar shows it on the windscreen. The judge looks for that key within 20 s of the moment the server issued the prompt. Half or more of 3+ prompts ignored rejects; one missed only flags; a median answer under 80 ms after the server issued it is faster than a person can read it and flags. A prompt still open when the ride ends is not judged.</p>
+  <h3 class="sub">CHALLENGE CHANNEL</h3>
+  <p>The heartbeat can carry a challenge about every 240 s of driving (none on the free run; at most four on a short shift, 0.6–1.4 intervals apart so the rhythm cannot be guessed). The cab handler shows whatever the DTO names as an amber banner with a 20 s bar. Kinds live in a table on the server; that table is empty today, so none are issued. When a kind is live, the judge looks for that key within 20 s of the moment the server issued the prompt. Half or more of 3+ prompts ignored rejects; one missed only flags; a median answer under 80 ms after the server issued it is faster than a person can read it and flags. A prompt still open when the ride ends is not judged.</p>
 
   <h3 class="sub">THE SERVER'S ROAD</h3>
   <p>The road and its sinkholes are a pure function of the ride's seed. The server rebuilds them itself and hands the game the ride's <b>obstacle plan</b> (<code>GET /api/watch/:id/road</code>); the game drives over those holes, and every batch is measured against the same plan when it arrives. Each axle entering a pit costs the hull <code>dmg × (v/28)²</code> – 14 % for the front axle in a sinkhole at 28 m/s, rear axles × 0.6. A wheel that runs through a planned hole at speed must show at least a quarter of that loss. Two or more holes driven through untouched reject; one flags.</p>
@@ -670,7 +670,7 @@
     <thead><tr><th>Risk</th><th>What it means</th><th>Mitigation today</th></tr></thead>
     <tbody>
       <tr><td><b>Smart-contract</b></td><td>Bugs in an unaudited program can lose funds.</td><td>Devnet only; reproducible build; 51 tests; refund paths that need no key. An independent audit is a precondition for mainnet.</td></tr>
-      <tr><td><b>Cheating</b></td><td>A modified or scripted client could still pass inside the checks.</td><td>Chain, physics and the server's road; dispatch prompts; human review of flags; a captcha on the roadmap (<a href="#risks">08</a>); replay core planned (<a href="#verify">06</a>).</td></tr>
+      <tr><td><b>Cheating</b></td><td>A modified or scripted client could still pass inside the checks.</td><td>Chain, physics and the server's road; challenge channel (kinds table empty); human review of flags; a captcha on the roadmap (<a href="#risks">08</a>); replay core planned (<a href="#verify">06</a>).</td></tr>
       <tr><td><b>Operator trust</b></td><td>The admin picks pay_prize receivers within the cap and holds the treasuries.</td><td>Signed, audited decisions; payouts capped on chain; all of it readable on chain.</td></tr>
       <tr><td><b>Availability</b></td><td>A long shift can be lost if your tab or connection dies for more than 150 s.</td><td>Resume of an open ride; honest pauses cost nothing; final upload retries.</td></tr>
       <tr><td><b>Regulation</b></td><td>Paid prize games are regulated differently around the world.</td><td>Devnet, no value. The mainnet question is answered per region before any mainnet launch.</td></tr>

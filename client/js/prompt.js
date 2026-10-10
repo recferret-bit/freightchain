@@ -1,7 +1,7 @@
 /* Ride-challenge handler (verified play). online.js feeds it whatever the heartbeat's `challenge` field is (label, key, codes, window).
-   It does not know the kinds – those live in server/src/domain/rides/ride-challenge.ts (CHALLENGE_KINDS). The cockpit draws promptView()
-   (cockpit/index.js); input.js calls answerPrompt(code) on a press. A LEAF: nothing offline ever sets it, so the offline game, the
-   headless trace and the viewer never see a prompt. Replays and live watch do not call showPrompt. */
+   It does not know the kinds – those live in server/src/domain/rides/ride-challenge.ts (CHALLENGE_KINDS, empty today so this never fires).
+   The cockpit draws promptView() (cockpit/index.js); input.js calls answerPrompt(code) on a press. A LEAF: nothing offline ever sets it.
+   Replays and live watch do not call showPrompt. */
 
 export const prompt = { cur: null, seen: new Set(), onShow: () => {}, onAnswer: () => {} };   // cur: { id, label, key, codes, until (performance.now() ms), answered (ms or 0) }
 

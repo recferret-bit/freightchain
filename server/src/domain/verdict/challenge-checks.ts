@@ -26,7 +26,7 @@ export function checkChallenges(challenges: readonly RideChallenge[], inputs: re
   const reactions: number[] = [];
   let missed = 0;
   for (const c of judged) {
-    const codes: readonly string[] = challengeKind(c.action).codes;
+    const codes: readonly string[] = c.codes ?? challengeKind(c.action)?.codes ?? [];
     const hit = downs.find((e) => e[0] >= c.issuedMs && e[0] <= c.deadlineMs && codes.includes(e[1]));
     if (hit) reactions.push(hit[0] - c.issuedMs);
     else missed++;

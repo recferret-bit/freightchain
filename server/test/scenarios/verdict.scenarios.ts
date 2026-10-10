@@ -136,38 +136,16 @@ export function verdictScenarios(h: () => Harness): void {
     });
   });
 
-  describe('dispatch prompts (challenge prompts)', () => {
-    it('the heartbeat response carries the open prompt – what to do, which keys answer it, its window; GET /api/rides/:id never does', async () => {
+  describe('challenge channel (kinds table empty)', () => {
+    it('heartbeats carry no challenge; GET /api/rides/:id neither; ignoring them cannot reject the shift', async () => {
       const d = await login(VERDICT_DEMO);
-      const { id, prompts } = await driven(d);
-      expect(prompts.length).toBeGreaterThanOrEqual(3);
-      expect(prompts[0]).toMatchObject({ id: expect.any(String), action: expect.stringMatching(/^(headlights|wipers|cab|washer)$/), label: expect.any(String), key: expect.stringMatching(/^[LRCX]$/), codes: expect.any(Array) });
-      expect(prompts[0]!.deadlineMs - prompts[0]!.issuedMs).toBe(20_000);
-      expect(new Set(prompts.map((p) => p.id)).size).toBe(prompts.length); // each one once
+      const { id, prompts, road } = await driven(d);
+      expect(prompts).toEqual([]);
       expect((await d.agent.get(`/api/rides/${id}`).expect(200)).body.challenge).toBeNull();
-    });
-
-    it('answered like a person → VERIFIED, with the answers in the scores', async () => {
-      const d = await login(VERDICT_DEMO);
-      const end = await paidShift(d, {}, 910, 600);
-      expect(end.verdict).toMatchObject({ status: 'verified', reasons: [] });
-      const admin = (await d.agent.get(`/api/rides/${end.id}`).expect(200)).body;
-      expect(admin.verdict.status).toBe('verified');
-    });
-
-    it('IGNORED → REJECTED (challenges-ignored): nobody was at the wheel – not on the boards', async () => {
-      const d = await login(VERDICT_DEMO);
-      const end = await paidShift(d, {}, 910, null);
-      expect(end.verdict.status).toBe('rejected');
-      expect(end.verdict.reasons.map((r: { code: string }) => r.code)).toContain('challenges-ignored');
-      expect((await anon().get('/api/leaderboard').expect(200)).body.rows).toEqual([]);
-    });
-
-    it('answered the instant they were issued (a script reading the heartbeat) → FLAGGED challenge-reflex, for a person to review', async () => {
-      const d = await login(VERDICT_DEMO);
-      const end = await paidShift(d, {}, 910, 15);
-      expect(end.verdict.status).toBe('flagged');
-      expect(end.verdict.reasons.map((r: { code: string }) => r.code)).toEqual(['challenge-reflex']);
+      await upload(d.agent, id, recording(id, { seconds: 70, distance: 910, answers: [], road }));
+      const end = (await d.agent.post(`/api/rides/${id}/end`).send({ outcome: 'shift', s: 910, t: 70, hull: 100 }).expect(200)).body;
+      expect(end.verdict.status).toBe('verified');
+      expect(end.verdict.reasons.map((r: { code: string }) => r.code)).not.toContain('challenges-ignored');
     });
   });
 

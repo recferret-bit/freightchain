@@ -1,10 +1,9 @@
-// Verified play – the anti-bot / anti-cheat checks end to end, POSITIVE and NEGATIVE, against a RUNNING server (start it with FREE_RIDE_SECONDS=40
-// CHALLENGE_INTERVAL_SECONDS=8 so a 40 s free shift gets a dispatch prompt about every other heartbeat; `bash .claude/skills/verified-play-test/run.sh` does all of it):
-//   A. a PERSON in real headless Chrome: drives the shift, answers every dispatch prompt 0.4–1.2 s after it shows → COMPLETED · VERIFIED, the prompts in the scores
-//   B. a BOT in real headless Chrome: metronome key events (same hold, same gap), never reads the prompts → REJECTED challenges-ignored, the timing flags beside it
-//   (the API drivers drive 22 s past the shift so the last prompt's window closes before /end – a prompt still open at the end is not judged)
+// Verified play – the anti-bot / anti-cheat checks end to end, POSITIVE and NEGATIVE, against a RUNNING server (start it with FREE_RIDE_SECONDS=40;
+// `bash .claude/skills/verified-play-test/run.sh` does all of it). CHALLENGE_KINDS is empty: heartbeats carry no challenge, the cab handler stays wired.
+//   A. a PERSON in real headless Chrome: drives the shift → COMPLETED · VERIFIED, no banner in the cab
+//   B. a BOT in real headless Chrome: metronome key events (same hold, same gap) → FLAGGED on timing (uniform-holds / repeated-timings)
 //   C. API-level bots (no browser – the recording built by hand in the game's own batch shape, like scripts/sim-rides.mjs), all at once:
-//        no inputs at all · prompts answered the instant they arrive · a teleport · a speed over the governor · a batch edited after hashing ·
+//        no inputs at all · a teleport · a speed over the governor · a batch edited after hashing ·
 //        a batch the client could not hash (flag only) · a chain link to the wrong batch · a recording bigger than the time allows (refused, 400) · a clean one (verified)
 //   D. the CLI on the same database (CLI=<path to dist/cli/index.js> + DATABASE_URL): verdict:rejudge --dry-run, a real run (nothing changes at the same rules), retention:sweep
 // Usage: BASE=http://localhost:3111 CHROME_PORT=9340 CLI=dist/cli/index.js DATABASE_URL=… FREE_RIDE_SECONDS=40 node scripts/e2e-verified-play.mjs
@@ -90,7 +89,6 @@ const wrongLink = (b) => (b.seq === 2 ? { ...b, prevHash: 'f'.repeat(64) } : nul
 const apiScenarios = () => Promise.all([
   apiDrive({ name: 'clean' }),
   apiDrive({ name: 'no-inputs', inputs: 'none', answer: 'none' }),
-  apiDrive({ name: 'instant-answers', answer: 'instant' }),
   apiDrive({ name: 'teleport', mutate: teleport }),
   apiDrive({ name: 'over-governor', mutate: tooFast }),
   apiDrive({ name: 'tampered', hashOf: tampered }),
@@ -132,12 +130,9 @@ async function chromeDrive({ port, shotsDir, mode }) {
   const stop = mode === 'human' ? answerPrompts(tab, { log: p => answered.push(p.id) }) : () => {};
   let promptShot = false, promptsSeen = 0;
   const t0 = Date.now();
-  await tab.ev('__game.trip.finish = false');   // the free run ends itself at its line (client/js/trips.js) – drive on until 3 prompts were issued AND the 3rd one's 20 s window closed (an open window is not judged), so 'ignored' can reject
-  let third = 0;
-  for (let i = 0; !((await tab.ev('__game.st.complete')) && third && Date.now() - third > 22_000) && Date.now() - t0 < 90_000 + MIN * 4000; i++) {
-    if (!third && promptsSeen >= 3) third = Date.now();
-    if (!promptShot && (await tab.ev('!!(window.__game.prompt.cur && !window.__game.prompt.cur.answered)'))) { await tab.shot(`${mode}-prompt`); promptShot = true; }
-    promptsSeen = await tab.ev('window.__game.prompt.seen.size');
+  for (let i = 0; !(await tab.ev('__game.st.complete')) && Date.now() - t0 < 90_000 + MIN * 4000; i++) {
+    if (!promptShot && (await tab.ev('!!(window.__game.prompt && window.__game.prompt.cur && !window.__game.prompt.cur.answered)'))) { await tab.shot(`${mode}-prompt`); promptShot = true; }
+    promptsSeen = await tab.ev('window.__game.prompt ? window.__game.prompt.seen.size : 0');
     const [code, key] = KEYS[i % KEYS.length];
     if (mode === 'human') { await press(code, key, 60 + Math.random() * 340); await sleep(80 + Math.random() * 420); }
     else { await press('KeyW', 'w', 300); await sleep(300); }   // the bot: the same hold, the same gap, every time
@@ -165,17 +160,15 @@ const [human, bot, api, budget] = await Promise.all([
 
 // A. the person
 check('A person: game booted and the shift completed in the client', human.booted && human.complete, `t≈${MIN}s`);
-check('A person: dispatch prompts showed in the cab (screenshot human-prompt.png)', human.promptsSeen >= 3 && human.promptShot, `${human.promptsSeen} prompts seen`);
-check('A person: the prompts were answered by their keys', human.answered.length >= 3, `${human.answered.length} answered of ${human.promptsSeen} seen`);
+check('A person: no challenge banner in the cab (kinds table empty)', human.promptsSeen === 0 && !human.promptShot, `${human.promptsSeen} seen`);
 check('A person: COMPLETED · VERIFIED on the end panel', human.text === 'COMPLETED · VERIFIED', String(human.text));
-check('A person: the server verdict is verified with the prompts answered in its scores', human.end.verdict?.status === 'verified', JSON.stringify(human.end.verdict?.reasons));
+check('A person: the server verdict is verified', human.end.verdict?.status === 'verified', JSON.stringify(human.end.verdict?.reasons));
 check('A person: no batch refused, no page errors', human.refused === null && human.problems.length === 0, human.problems.join(' | '));
 
 // B. the bot in Chrome
-check('B bot: the shift completed, but the verdict is REJECTED', bot.complete && bot.end.verdict?.status === 'rejected', JSON.stringify(bot.end.verdict));
-check('B bot: ignored prompts → challenges-ignored (≥ 3 issued)', codes(bot.end.verdict).includes('challenges-ignored'), codes(bot.end.verdict).join(','));
+check('B bot: the shift completed, and the verdict is FLAGGED', bot.complete && bot.end.verdict?.status === 'flagged', JSON.stringify(bot.end.verdict));
 check('B bot: metronome timing shows in the flags (uniform-holds / repeated-timings)', codes(bot.end.verdict).some(c => ['uniform-holds', 'repeated-timings'].includes(c)), codes(bot.end.verdict).join(','));
-check('B bot: the end panel says so', /^COMPLETED · REJECTED/.test(String(bot.text)), String(bot.text));
+check('B bot: the end panel says so', /^COMPLETED · FLAGGED/.test(String(bot.text)), String(bot.text));
 
 // C. API-level bots
 const by = Object.fromEntries(api.map(x => [x.name, x]));
@@ -184,10 +177,8 @@ const expectVerdict = (name, status, code) => {
   check(`C ${name}: ${status}${code ? ` · ${code}` : ''}`, x.end.status === 'completed' && v?.status === status && (!code || codes(v).includes(code)), `${x.end.status} / ${v?.status} / ${codes(v).join(',')} / receipts ${x.receipts.join(',')}`);
 };
 expectVerdict('clean', 'verified');
-check('C clean: the prompts it got were answered and scored', by.clean.prompts.length >= 3 && codes(by.clean.end.verdict).length === 0, `${by.clean.prompts.length} prompts`);
+check('C clean: heartbeats carried no challenge', by.clean.prompts.length === 0, `${by.clean.prompts.length} prompts`);
 expectVerdict('no-inputs', 'rejected', 'no-inputs');
-expectVerdict('instant-answers', 'flagged', 'challenge-reflex');
-check('C instant-answers: nothing else wrong with it (flag only, for a person to review)', codes(by['instant-answers'].end.verdict).join(',') === 'challenge-reflex', codes(by['instant-answers'].end.verdict).join(','));
 expectVerdict('teleport', 'rejected', 'teleport');
 expectVerdict('over-governor', 'rejected', 'over-governor');
 expectVerdict('tampered', 'rejected', 'hash-mismatch');

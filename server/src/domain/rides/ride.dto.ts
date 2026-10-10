@@ -27,7 +27,7 @@ export interface RideDto {
   trip: string | null;
   /** the server's check of the recording (verified play); null = not judged – only completed shifts are */
   verdict: VerdictDto | null;
-  /** the challenge whose window is open right now (the heartbeat response carries it; null elsewhere). Kinds live in CHALLENGE_KINDS. */
+  /** the challenge whose window is open right now (the heartbeat response carries it; null elsewhere). Kinds live in CHALLENGE_KINDS, empty today. */
   challenge: ChallengeDto | null;
 }
 

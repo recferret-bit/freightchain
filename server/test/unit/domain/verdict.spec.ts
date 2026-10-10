@@ -182,13 +182,13 @@ describe('RideVerdict.judge', () => {
   });
 });
 
-describe('dispatch prompts (checkChallenges)', () => {
-  const prompt = (id: string, issuedMs: number, action: RideChallenge['action'] = 'headlights'): RideChallenge => ({ id, action, issuedMs, deadlineMs: issuedMs + 20_000 });
+describe('challenge channel (checkChallenges)', () => {
+  const prompt = (id: string, issuedMs: number, codes: readonly string[] = ['KeyL']): RideChallenge => ({ id, action: 'test', issuedMs, deadlineMs: issuedMs + 20_000, codes });
   const press = (t: number, code: string): InputEvent[] => [[t, code, 1], [t + 120, code, 0]];
   const END = 300_000;
 
   it('answered within the window by any of the prompt\'s codes: no reason, the reactions scored', () => {
-    const r = checkChallenges([prompt('a', 10_000), prompt('b', 60_000, 'wipers'), prompt('c', 100_000, 'cab')], [...press(10_600, 'KeyL'), ...press(61_000, 'btn:wiper'), ...press(119_000, 'KeyC')], END);
+    const r = checkChallenges([prompt('a', 10_000), prompt('b', 60_000, ['KeyR', 'btn:wiper']), prompt('c', 100_000, ['KeyC'])], [...press(10_600, 'KeyL'), ...press(61_000, 'btn:wiper'), ...press(119_000, 'KeyC')], END);
     expect(r.reasons).toEqual([]);
     expect(r.scores).toEqual({ issued: 3, answered: 3, missed: 0, tooFast: 0, medianReactionMs: 1000 });
   });
@@ -228,7 +228,7 @@ describe('dispatch prompts (checkChallenges)', () => {
     expect(v.status).toBe(VerdictStatus.Rejected);
     expect(codes(v)).toEqual(['challenges-ignored']);
     expect(v.snapshot().scores.challenges).toEqual({ issued: 3, answered: 0, missed: 3, tooFast: 0, medianReactionMs: null });
-    const answered = RideVerdict.judge(withPrompts, stored(recording('ride-1', { seconds: 120, distance: 1600, answers: [{ atMs: 20_700, code: 'KeyL' }, { atMs: 50_900, code: 'btn:head' }, { atMs: 81_200, code: 'KeyL' }] })), at(121));
+    const answered = RideVerdict.judge(withPrompts, stored(recording('ride-1', { seconds: 120, distance: 1600, answers: [{ atMs: 20_700, code: 'KeyL' }, { atMs: 50_900, code: 'KeyL' }, { atMs: 81_200, code: 'KeyL' }] })), at(121));
     expect(answered.status).toBe(VerdictStatus.Verified);
   });
 });
