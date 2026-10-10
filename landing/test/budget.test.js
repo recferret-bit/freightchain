@@ -17,10 +17,10 @@ test('JS: the eager bundle is small, nothing in dist/assets is large', { skip: !
   assert.ok(js.reduce((a, f) => a + gz(f), 0) <= 40 * KB, 'all JS together ≤ 40 kB gzipped (incl. the lazy live-dash chunks)');
 });
 
-test('CSS ≤ 14 kB gzipped (landing + whitepaper), HTML ≤ 14 kB gzipped (landing) / ≤ 26 kB (the whitepaper, a long read)', { skip: !has }, () => {
+test('CSS ≤ 14 kB gzipped (landing + whitepaper), HTML ≤ 14 kB gzipped (landing) / ≤ 27 kB (the whitepaper, a long read)', { skip: !has }, () => {
   assert.ok(files.filter(f => f.endsWith('.css')).reduce((a, f) => a + gz(f), 0) <= 14 * KB);
   assert.ok(gz(join(dist, 'index.html')) <= 14 * KB);
-  assert.ok(gz(join(dist, 'whitepaper.html')) <= 26 * KB);
+  assert.ok(gz(join(dist, 'whitepaper.html')) <= 27 * KB);   // 26 → 27 on Oct 10 (the free levels, forks and the phone map)
 });
 
 test('media: no single image over 120 kB, all images together ≤ 600 kB; the lazy hero video ≤ 3 MB', { skip: !has }, () => {
