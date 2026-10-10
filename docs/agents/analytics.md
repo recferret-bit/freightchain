@@ -1,10 +1,10 @@
 # Product analytics – detail
 
-Agent reference, moved verbatim out of `AGENTS.md` (which keeps only the map and the hard rules and is loaded into every agent session). Read the file for a topic before changing it; keep it current like AGENTS.md ("Maps stay current").
+Agent reference, moved verbatim out of `AGENTS.md` (which keeps only the map and the hard rules and is loaded into every agent session); an "In short" block, where there is one, is a summary. Read the file for a topic before changing it; keep it current like AGENTS.md ("Maps stay current").
 
 ## In short
 
-Detail (relay, identity, dedupe, env, page speed, the skills): `docs/agents/analytics.md`. The full event list, funnels and board recipe: `docs/analytics/index.html` (docs-only) – keep it in step with `server/src/domain/analytics/{client,server}-events.ts` and `application/services/analytics-events.ts`.
+The full event list, funnels and board recipe: `docs/analytics/index.html` (docs-only) – keep it in step with `server/src/domain/analytics/{client,server}-events.ts` and `application/services/analytics-events.ts`.
 
 - **Cloud EU, project 297915**, ingest `https://eu.i.posthog.com` (the US host takes the token and the events never show). Board https://eu.posthog.com/project/297915/dashboard/1006663 (private; empty until tiles exist, events show in Activity).
 - **Two planes.** The browser posts an allowlist to `POST /api/telemetry` (anonymous ok); the relay drops every name in `SERVER_EVENTS`, so a client cannot mint `ride_completed` / `payment_confirmed`. Server events are built only after the DB commit, inside `emitAnalytics`, and only when `AnalyticsPort.enabled()`. The token stays on the server; no `posthog-js`.

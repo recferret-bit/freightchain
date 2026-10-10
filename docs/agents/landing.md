@@ -1,10 +1,10 @@
 # Landing + whitepaper – detail
 
-Agent reference, moved verbatim out of `AGENTS.md` (which keeps only the map and the hard rules and is loaded into every agent session). Read the file for a topic before changing it; keep it current like AGENTS.md ("Maps stay current").
+Agent reference, moved verbatim out of `AGENTS.md` (which keeps only the map and the hard rules and is loaded into every agent session); an "In short" block, where there is one, is a summary. Read the file for a topic before changing it; keep it current like AGENTS.md ("Maps stay current").
 
 ## In short
 
-Detail (serving, sign-in, whitepaper, dash cards, media, tests, budgets): `docs/agents/landing.md`. A Vite 7 project, vanilla JS: `npm run landing:dev|build|lint|test` (all in `npm run check`); Nest serves `landing/dist` at `/`.
+A Vite 7 project, vanilla JS: `npm run landing:dev|build|lint|test` (all in `npm run check`); Nest serves `landing/dist` at `/`.
 - Never hard-code `/api/…`, `/play.html` or `/lobby.html` in its JS (`API_BASE` via `wallet.js`, `GAME_BASE`, `SITE_BASE`, `STORYBOOK_BASE` from `client/js/hosts.js`); keep three.js out (its dash cards run `client/js/cockpit`, which must not import the scene); server text only via `textContent` / `el()` (a test forbids `innerHTML`); images WebP via `landing/tools/to-webp.mjs`; the hero video stays off the critical path (`data-src`, loaded idle after `load`). After touching the sign-in, session or redirect run `node landing/tools/e2e-wallet.mjs` (single origin AND the split-host recipe in its header).
 - **Whitepaper** (`landing/whitepaper.html`, the second Vite page, host `whitepaper.<apex>`): cab style, no innerHTML, its one request is web vitals to `api.<apex>` (the host 404s `/api/`); text from the `docs/` explainers (chapter 05 is the public escrow explainer); its numbers are asserted against the code by `landing/test/whitepaper.test.js` – change both together, and keep its "program not deployed" status honest. Cross-host links use `data-to` + `hosts.js`. HTML budget ≤ 27 kB gz.
 

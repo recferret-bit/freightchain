@@ -1,6 +1,6 @@
 # Controls + gameplay systems
 
-Agent reference, moved verbatim out of `AGENTS.md` (which keeps only the map and the hard rules and is loaded into every agent session). Read the file for a topic before changing it; keep it current like AGENTS.md ("Maps stay current").
+Agent reference, moved verbatim out of `AGENTS.md` (which keeps only the map and the hard rules and is loaded into every agent session); an "In short" block, where there is one, is a summary. Read the file for a topic before changing it; keep it current like AGENTS.md ("Maps stay current"). Paths are relative to `client/` unless they start with `server/`, `landing/` or `media/`.
 
 ## Controls
 

@@ -1,6 +1,6 @@
 # Server rules, checks, configuration – detail
 
-Agent reference, moved verbatim out of `AGENTS.md` (which keeps only the map and the hard rules and is loaded into every agent session). Read the file for a topic before changing it; keep it current like AGENTS.md ("Maps stay current").
+Agent reference, moved verbatim out of `AGENTS.md` (which keeps only the map and the hard rules and is loaded into every agent session); an "In short" block, where there is one, is a summary. Read the file for a topic before changing it; keep it current like AGENTS.md ("Maps stay current").
 
 - **Server rules (docs/backend-architecture.md, enforced by `server/test/architecture`)**:
   - Layers point inward: `domain` is pure (entity classes `Ride`/`Player`/`Round`/`Payment`… – rules live in their methods), `application` = abstract-class ports + CQRS handlers + services, `infrastructure` implements the ports, `presentation` = thin controllers. Prisma rows ⇄ entities only in `infrastructure/prisma/mappers`.

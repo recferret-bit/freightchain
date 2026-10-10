@@ -1,10 +1,10 @@
 # Statistics – detail
 
-Agent reference, moved verbatim out of `AGENTS.md` (which keeps only the map and the hard rules and is loaded into every agent session). Read the file for a topic before changing it; keep it current like AGENTS.md ("Maps stay current").
+Agent reference, moved verbatim out of `AGENTS.md` (which keeps only the map and the hard rules and is loaded into every agent session); an "In short" block, where there is one, is a summary. Read the file for a topic before changing it; keep it current like AGENTS.md ("Maps stay current").
 
 ## In short
 
-- **Statistics** (`docs/statistics.md`, detail `docs/agents/statistics.md`): running totals (`stats.PlayerStats` / `GlobalStats` / `DailyStats`) written ONLY by `StatsService` with atomic increments inside the transaction that saves an ended ride, from EVERY path that ends one and after a donation (`test/architecture/stats-hooks.spec.ts`); player row lock FIRST. Every started ride that ended counts, free / paid apart. Reads cached through `CachePort` (Redis via `REDIS_URL` – production: `REDIS_PASSWORD`, no published port, internal network – or in-process). Crash counters are client-reported, never judged. A change to what counts = the migration's backfill + `StatsPrismaRepository.recompute` + `rideDelta`. Skill `stats-reconcile` (production read-only); e2e `run-tests/e2e.sh stats`.
+- **Statistics** (`docs/statistics.md`): running totals (`stats.PlayerStats` / `GlobalStats` / `DailyStats`) written ONLY by `StatsService` with atomic increments inside the transaction that saves an ended ride, from EVERY path that ends one and after a donation (`test/architecture/stats-hooks.spec.ts`); player row lock FIRST. Every started ride that ended counts, free / paid apart. Reads cached through `CachePort` (Redis via `REDIS_URL` – production: `REDIS_PASSWORD`, no published port, internal network – or in-process). Crash counters are client-reported, never judged. A change to what counts = the migration's backfill + `StatsPrismaRepository.recompute` + `rideDelta`. Skill `stats-reconcile` (production read-only); e2e `run-tests/e2e.sh stats`.
 
 ## Detail
 
