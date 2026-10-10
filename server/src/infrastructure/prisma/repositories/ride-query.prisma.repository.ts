@@ -1,3 +1,4 @@
+import { badgeRejected } from '../../../domain/achievements/achievements.js';
 import { Injectable } from '@nestjs/common';
 import type { Prisma, RideStatus as RideStatusRow } from '@prisma/client';
 import type { LeaderboardBoard } from '../../../domain/economy/economy.dto.js';
@@ -73,21 +74,21 @@ export class RideQueryPrismaRepository extends RideQueryPort {
   }
 
   /** Two queries: one aggregate over the started rides, and the completed rides themselves (few per wallet) for the per-ride achievement facts. */
-  async summary(wallet: string): Promise<RideSummary> {
+  async summary(wallet: string, opts: { skipRejected?: boolean } = {}): Promise<RideSummary> {
     const [started, done] = await Promise.all([
       this.prisma.ride.aggregate({ where: { wallet, startedAt: { not: null } }, _count: { _all: true }, _sum: { lastS: true } }),
-      this.prisma.ride.findMany({ where: { wallet, status: 'completed' }, select: { tier: true, trip: true, assist: true, lastS: true, hull: true, route: true, nightSeconds: true, driveSeconds: true } }),
+      this.prisma.ride.findMany({ where: { wallet, status: 'completed' }, select: { tier: true, trip: true, assist: true, lastS: true, hull: true, route: true, nightSeconds: true, driveSeconds: true, verdict: { select: { status: true, reasons: true } } } }),
     ]);
-    const metres = started._sum.lastS ?? 0;
+    const metres = started._sum.lastS ?? 0, fair = opts.skipRejected ? done.filter((r) => !badgeRejected(r.verdict)) : done;   // the badges' rides (achievements.ts badgeRejected)
     return {
       stats: { started: started._count._all, completed: done.length, metres, best: done.reduce((max, r) => Math.max(max, r.lastS), 0) },
       facts: {
-        started: started._count._all, completed: done.length, totalMetres: metres,
-        completedAtNight: done.some((r) => r.driveSeconds > 0 && r.nightSeconds >= NIGHT_SHARE * r.driveSeconds), // most of the shift in the dark: pressing N just before the end doesn't count
-        cleanRun: done.some((r) => r.hull !== null && r.hull >= CLEAN_HULL),
-        completedSiberia: done.some((r) => r.route === SIBERIA),
-        completedFreeUnassisted: done.some((r) => r.tier === 'free' && !r.assist),
-        completedFreeLevels: completedLevels(done),
+        started: started._count._all, completed: fair.length, totalMetres: metres,
+        completedAtNight: fair.some((r) => r.driveSeconds > 0 && r.nightSeconds >= NIGHT_SHARE * r.driveSeconds), // most of the shift in the dark: pressing N just before the end doesn't count
+        cleanRun: fair.some((r) => r.hull !== null && r.hull >= CLEAN_HULL),
+        completedSiberia: fair.some((r) => r.route === SIBERIA),
+        completedFreeUnassisted: fair.some((r) => r.tier === 'free' && !r.assist),
+        completedFreeLevels: completedLevels(fair),
       },
     };
   }

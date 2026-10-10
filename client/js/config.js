@@ -43,7 +43,7 @@ export const CFG = {
   HOLES: true,               // road holes with warning signs (world/holes.js)
   HOLE_CHANCE: 0.045,        // chance per 32 m chunk to contain a hole (only sinkholes now; was 0.22 over 5 hole types = same sinkhole density)
   HOLE_FIRST: 150,           // m, no holes before this distance
-  HOLE_WARN: 90,             // m, the warning sign stands this far before its hole (the AI starts reacting about here too)
+  HOLE_WARN: 110,            // m, the warning sign stands this far before its hole (the AI starts reacting about here too). 90 → 110 (2026-10-10): a 1 s reaction at the governor needs ~87 m to stop – the level-check skill
   TRUCK: {                  // handling / weight feel (live-editable with F2 in game; "old" = the pre-weight values)
     MASS: 2.5,              // engine thrust, engine braking and air drag are divided by this (old 1)
     POWER: 2.4,             // engine thrust at full torque (÷ MASS, × ratio^GEAR_EXP); was hard-coded 2.4

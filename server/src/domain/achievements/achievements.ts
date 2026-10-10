@@ -32,4 +32,9 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   { id: 'top-20', name: 'Top 20', desc: 'Be in the top 20 when the weekly round closes.', icon: '★', rule: null }, // awarded at round close – settlement is not built yet
 ];
 
+/** A ride whose recording the verdict REJECTED earns no badge while the verdict is enforced (VERDICT_ENFORCE=true; in shadow mode it changes nothing).
+    A ride with no recording at all ('no-recording' its only reason) is not a cheat – it keeps counting. */
+export const badgeRejected = (v: { status: string; reasons: unknown } | null | undefined): boolean =>
+  v?.status === 'rejected' && !(Array.isArray(v.reasons) && v.reasons.length > 0 && v.reasons.every((r) => (r as { code?: unknown })?.code === 'no-recording'));
+
 export const earnedIds = (f: Facts): string[] => ACHIEVEMENTS.filter((a) => a.rule?.(f)).map((a) => a.id);

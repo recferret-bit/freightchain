@@ -114,7 +114,8 @@ export abstract class RideQueryPort {
   abstract finished(limit: number): Promise<FinishedRideRow[]>;
   /** The replays history: rides that started and ended, newest end first (ties: newer first), filtered, paged by a cursor. */
   abstract history(filter: HistoryFilter): Promise<HistoryRideRow[]>;
-  abstract summary(wallet: string): Promise<RideSummary>;
+  /** skipRejected: the badge facts leave out rides the verdict rejected (achievements.ts badgeRejected) – the caller passes VERDICT_ENFORCE; `stats` never do */
+  abstract summary(wallet: string, opts?: { skipRejected?: boolean }): Promise<RideSummary>;
   abstract recent(wallet: string, limit: number): Promise<RecentRideRow[]>;
   /** Completed rides ranked by total distance (ties: more rides, earlier first finish, wallet). `roundId` is required for the 'round' board.
       `verifiedOnly`: the PAID boards ('round', 'all') count only rides whose recording was verified (false = shadow mode); the free board always counts every completed free ride. */

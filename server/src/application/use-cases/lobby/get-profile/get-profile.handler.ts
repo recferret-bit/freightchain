@@ -38,7 +38,7 @@ export class GetProfileHandler implements IQueryHandler<GetProfileQuery, Profile
     const { wallet } = query;
     const now = this.clock.now();
     const player = await this.sessions.touch(wallet, now);
-    const { facts, stats } = await this.rideQuery.summary(wallet);
+    const { facts, stats } = await this.rideQuery.summary(wallet, { skipRejected: this.rules.get().verdictEnforce });   // the badges skip rejected rides while the verdict is enforced; `stats` count every ride
     const unlocked = await this.achievements.evaluate(wallet, null, facts); // catch-up: rides that ended by timeout never went through /end
     for (const unlock of unlocked) {
       if (unlock.id === 'top-20') continue;

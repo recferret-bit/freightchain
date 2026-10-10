@@ -23,6 +23,7 @@ import { RideBatch, type BatchFacts } from '../../../src/domain/telemetry/ride-b
 import { RideVerdictRepositoryPort } from '../../../src/application/ports/verdict/ride-verdict.repository.port.js';
 import { RideVerdict } from '../../../src/domain/verdict/ride-verdict.entity.js';
 import { VerdictStatus } from '../../../src/domain/verdict/verdict.dto.js';
+import { badgeRejected } from '../../../src/domain/achievements/achievements.js';
 import { SignInRepositoryPort } from '../../../src/application/ports/auth/sign-in.repository.port.js';
 import { AdminActionRepositoryPort } from '../../../src/application/ports/admin/admin-action.repository.port.js';
 import { AdminQueryPort, type AdminCounts, type AdminRideRow } from '../../../src/application/ports/admin/admin-query.port.js';
@@ -191,20 +192,20 @@ export class MemoryRideQuery extends RideQueryPort {
       .map(({ props: p }) => ({ id: p.id, wallet: p.wallet, tier: p.tier, route: p.route, status: p.status, lastS: p.lastS, endedAt: p.endedAt }));
   }
 
-  async summary(wallet: string): Promise<RideSummary> {
+  async summary(wallet: string, opts: { skipRejected?: boolean } = {}): Promise<RideSummary> {
     const rides = this.of(wallet).map((r) => r.props);
     const started = rides.filter((r) => r.startedAt);
     const done = rides.filter((r) => r.status === RideStatus.Completed);
-    const metres = started.reduce((sum, r) => sum + r.lastS, 0);
+    const metres = started.reduce((sum, r) => sum + r.lastS, 0), fair = opts.skipRejected ? done.filter((r) => !badgeRejected(this.db.verdicts.get(r.id) ? { status: this.db.verdicts.get(r.id)!.status, reasons: this.db.verdicts.get(r.id)!.reasons } : null)) : done;
     return {
       stats: { started: started.length, completed: done.length, metres, best: done.reduce((m, r) => Math.max(m, r.lastS), 0) },
       facts: {
-        started: started.length, completed: done.length, totalMetres: metres,
-        completedAtNight: done.some((r) => r.driveSeconds > 0 && r.nightSeconds >= 0.5 * r.driveSeconds),
-        cleanRun: done.some((r) => r.hull !== null && r.hull >= 99.5),
-        completedSiberia: done.some((r) => r.route === 'siberia'),
-        completedFreeUnassisted: done.some((r) => r.tier === 'free' && !r.assist),
-        completedFreeLevels: completedLevels(done),
+        started: started.length, completed: fair.length, totalMetres: metres,
+        completedAtNight: fair.some((r) => r.driveSeconds > 0 && r.nightSeconds >= 0.5 * r.driveSeconds),
+        cleanRun: fair.some((r) => r.hull !== null && r.hull >= 99.5),
+        completedSiberia: fair.some((r) => r.route === 'siberia'),
+        completedFreeUnassisted: fair.some((r) => r.tier === 'free' && !r.assist),
+        completedFreeLevels: completedLevels(fair),
       },
     };
   }

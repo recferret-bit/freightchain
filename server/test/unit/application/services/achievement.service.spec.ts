@@ -2,7 +2,11 @@ import { AchievementRepositoryPort } from '../../../../src/application/ports/ach
 import { AchievementService } from '../../../../src/application/services/achievement.service.js';
 import type { AchievementUnlock } from '../../../../src/domain/achievements/achievement-unlock.entity.js';
 import type { Facts } from '../../../../src/domain/achievements/achievements.js';
-import { unitContext } from '../../../support/unit-context.js';
+import { unitContext, unitRules } from '../../../support/unit-context.js';
+import { RideVerdict } from '../../../../src/domain/verdict/ride-verdict.entity.js';
+import { VerdictStatus } from '../../../../src/domain/verdict/verdict.dto.js';
+import { RULES_VERSION } from '../../../../src/domain/verdict/verdict-rules.js';
+import { badgeRejected } from '../../../../src/domain/achievements/achievements.js';
 
 const facts = (over: Partial<Facts>): Facts => ({ started: 0, completed: 0, totalMetres: 0, completedAtNight: false, cleanRun: false, completedSiberia: false, completedFreeUnassisted: false, completedFreeLevels: [], ...over });
 
@@ -14,7 +18,7 @@ describe('AchievementService', () => {
       insertAll = async (u: readonly AchievementUnlock[]) => { inserts++; return ctx.unlocks.insertAll(u); };
       listByWallet = (w: string) => ctx.unlocks.listByWallet(w);
     }
-    const service = new AchievementService(new Counting(), ctx.rideQuery, ctx.clock);
+    const service = new AchievementService(new Counting(), ctx.rideQuery, ctx.clock, ctx.rules);
     const ids = (rows: { id: string }[]) => rows.map((u) => u.id);
     expect(ids(await service.evaluate('w', 'r1', facts({ started: 1, completed: 1, cleanRun: true })))).toEqual(['first-mile', 'shift-complete', 'clean-run']);
     expect(inserts).toBe(1);
@@ -30,7 +34,7 @@ describe('AchievementService', () => {
       insertAll = async (u: readonly AchievementUnlock[]) => u.filter((row) => row.achievementId !== 'shift-complete').map((row) => row.achievementId);
       listByWallet = () => ctx.unlocks.listByWallet('w');
     }
-    const service = new AchievementService(new Partial(), ctx.rideQuery, ctx.clock);
+    const service = new AchievementService(new Partial(), ctx.rideQuery, ctx.clock, ctx.rules);
     expect((await service.evaluate('w', 'r1', facts({ started: 1, completed: 1 }))).map((u) => u.id)).toEqual(['first-mile']);
   });
 
@@ -47,5 +51,32 @@ describe('AchievementService', () => {
     expect(list).toHaveLength(11);
     expect(list.find((a) => a.id === 'first-mile')?.earnedAt).toBe(ctx.clock.ms);
     expect(list.find((a) => a.id === 'top-20')).toMatchObject({ earnedAt: null, awardedAtRoundClose: true });
+  });
+
+  /* a ride completed on the EASY level (free-1), then judged with `status` / `codes` */
+  async function judgedEasyRun(enforce: boolean, status: VerdictStatus | null, codes: string[]) {
+    const ctx = unitContext(unitRules({ verdictEnforce: enforce }));
+    const ride = await ctx.freeRide('w', true);
+    ctx.clock.advance(70);
+    ride.applyReport({ s: 500, t: 70, hull: 100 } as never, ctx.clock.now(), ctx.rules.get());
+    ride.finish('shift', null, ctx.clock.now());
+    await ctx.rides.save(ride);
+    if (status) await ctx.verdictRepo.save(RideVerdict.restore({ rideId: ride.id, status, reasons: codes.map((code) => ({ code, severity: status === VerdictStatus.Rejected ? 'reject' : 'flag', detail: '' })) as never, rulesVersion: RULES_VERSION, judgedAt: ctx.clock.now(), version: 1, scores: null as never }));
+    return (await ctx.achievements.evaluate('w', ride.id)).map((u) => u.id);
+  }
+
+  it('while the verdict is ENFORCED a rejected recording earns no badge for its ride; a flagged / verified one does', async () => {
+    expect(await judgedEasyRun(true, VerdictStatus.Rejected, ['obstacle-ignored'])).toEqual(['first-mile']);   // started counts – it is not a judged fact
+    expect(await judgedEasyRun(true, VerdictStatus.Flagged, ['uniform-holds'])).toEqual(expect.arrayContaining(['shift-complete', 'free-easy', 'on-my-own']));
+    expect(await judgedEasyRun(true, VerdictStatus.Verified, [])).toEqual(expect.arrayContaining(['shift-complete', 'free-easy']));
+  });
+
+  it('in shadow mode (VERDICT_ENFORCE=false, production today) the verdict changes no badge; a ride with NO recording is never "rejected" for badges', async () => {
+    expect(await judgedEasyRun(false, VerdictStatus.Rejected, ['obstacle-ignored'])).toEqual(expect.arrayContaining(['shift-complete', 'free-easy']));
+    expect(await judgedEasyRun(true, VerdictStatus.Rejected, ['no-recording'])).toEqual(expect.arrayContaining(['shift-complete', 'free-easy']));
+    expect(await judgedEasyRun(true, null, [])).toEqual(expect.arrayContaining(['shift-complete', 'free-easy']));   // not judged (yet)
+    expect(badgeRejected({ status: 'rejected', reasons: [{ code: 'no-recording' }, { code: 'teleport' }] })).toBe(true);
+    expect(badgeRejected({ status: 'rejected', reasons: 'junk' })).toBe(true);
+    expect(badgeRejected(null)).toBe(false);
   });
 });

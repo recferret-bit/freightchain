@@ -68,15 +68,15 @@ export class EndRideHandler implements ICommandHandler<EndRideCommand, RideDto> 
     }));
     await this.stats.invalidate(wallet);
     this.emitVerdict(wallet, facts);
-    const unlocked = await this.achievements.evaluate(wallet, rideId).catch((error: unknown) => {
-      this.logger.warn(`achievements for ride ${rideId} deferred to the next profile read: ${error instanceof Error ? error.message : String(error)}`);
-      return [] as FreshUnlock[];
-    });
-    this.emitUnlocks(wallet, rideId, unlocked);
     const verdict = await this.verdicts.judge(rideId).catch((error: unknown) => {
       this.logger.warn(`verdict for ride ${rideId} not judged: ${error instanceof Error ? error.message : String(error)}`);
       return null;
     });
+    const unlocked = await this.achievements.evaluate(wallet, rideId).catch((error: unknown) => {   // AFTER the verdict: while it is enforced a rejected recording earns no badge (achievements.ts badgeRejected)
+      this.logger.warn(`achievements for ride ${rideId} deferred to the next profile read: ${error instanceof Error ? error.message : String(error)}`);
+      return [] as FreshUnlock[];
+    });
+    this.emitUnlocks(wallet, rideId, unlocked);
     return toRideDto(Ride.restore(facts.props), verdict?.toDto() ?? null);
   }
 
