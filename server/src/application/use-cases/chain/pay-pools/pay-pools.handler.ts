@@ -139,14 +139,21 @@ export class PayPoolsHandler implements ICommandHandler<PayPoolsCommand, PayoutP
   private async payRow(pool: Pool, row: PoolPayoutRecord, paidOnChain: Set<string>, paid: PaidPrizeDto[]): Promise<{ outcome: 'paid' | 'wait' | 'error'; note: string | null }> {
     const ok = { outcome: 'paid' as const, note: null };
     if (row.status === 'sent' && row.signature) {
+      // a confirmed STATUS is not enough: a transaction that landed but FAILED is confirmed too. Paid = the transaction's own events show this prize.
       const status = await this.chain.signatureStatus(row.signature, row.lastValidBlockHeight ?? 0);
-      if (status === 'confirmed' || status === 'finalized') {
-        await this.payouts.markPaid(pool.id, row.rank, row.signature, this.clock.now());
-        await this.settle(row.signature);
-        return ok;
+      if (status === 'expired') {
+        await this.payouts.release(pool.id, row.rank, row.signature, 'the transaction expired without landing – sent again', this.clock.now());
+      } else {
+        const events = status === 'confirmed' || status === 'finalized' ? await this.chain.readEvents(row.signature) : 'pending';
+        if (Array.isArray(events) && events.some((e) => e.kind === 'PrizePaid' && e.to === row.wallet && e.lamports === row.lamports)) {
+          await this.payouts.markPaid(pool.id, row.rank, row.signature, this.clock.now());
+          await this.settle(row.signature);
+          return ok;
+        }
+        if (events === 'pending') return { outcome: 'wait', note: `waiting for the prize of rank ${row.rank} (${row.signature}) to land` };
+        // landed without paying this prize (failed on chain – atomic, nothing moved): back to planned, a new transaction pays it
+        await this.payouts.release(pool.id, row.rank, row.signature, `the transaction landed without paying: ${Array.isArray(events) ? 'no PrizePaid' : events.invalid}`, this.clock.now());
       }
-      if (status !== 'expired') return { outcome: 'wait', note: `waiting for the prize of rank ${row.rank} (${row.signature}) to land` };
-      await this.payouts.release(pool.id, row.rank, row.signature, 'the transaction expired without landing – sent again', this.clock.now());
     }
     if (paidOnChain.has(row.wallet)) {
       await this.payouts.markPaidElsewhere(pool.id, row.rank, this.clock.now());
@@ -166,7 +173,7 @@ export class PayPoolsHandler implements ICommandHandler<PayPoolsCommand, PayoutP
       if (error instanceof ClaimLost) return { outcome: 'wait', note: `another payout pass is paying rank ${row.rank}` };
       const message = error instanceof Error ? error.message : String(error);
       const code = error instanceof DomainError ? error.errorCode : null;
-      if (claimed && code === 'transaction_dropped') { // it never landed and never will: back to planned, the next pass signs a new one
+      if (claimed && (code === 'transaction_dropped' || code === 'transaction_failed')) { // never landed / failed on chain (atomic: nothing moved) – back to planned, the next pass signs a new one
         await this.payouts.release(pool.id, row.rank, claimed, message, this.clock.now());
         return { outcome: 'wait', note: message };
       }

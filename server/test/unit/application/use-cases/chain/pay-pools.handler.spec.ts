@@ -147,6 +147,7 @@ describe('PayPoolsHandler – the payout job', () => {
     await ctx.poolPayouts.plan([{ poolId: 2, rank: 1, wallet: 'bob', lamports: 300_000_000, status: 'planned' }], ctx.now());
     await ctx.poolPayouts.claimSent(2, 1, 'LandedSig', 250, ctx.now());
     ctx.poolChain.statuses.set('LandedSig', 'confirmed');
+    ctx.poolChain.addTransaction([{ kind: 'PrizePaid', poolId: 2, to: 'bob', lamports: 300_000_000, rank: 1, prizesPaidTotal: 300_000_000 }], 'LandedSig');
     const before = payout.prizes.length;
     const pass = await run(2);
     expect(pass.pools[0]?.state).toBe('paid');
@@ -198,5 +199,19 @@ describe('PayPoolsHandler – the payout job', () => {
     await poolRide(ctx, 'alice', 500); await poolRide(ctx, 'newcomer', 600);
     expect((await run()).pools[0]).toMatchObject({ state: 'waiting_review' });
     expect(payout.prizes).toEqual([]);
+  });
+
+  it('a crash after the claim, and the transaction landed but FAILED on chain: not counted as paid – back to planned, paid by a new transaction', async () => {
+    const { ctx, payout, run } = await setup();
+    await poolRide(ctx, 'alice', 900);
+    await ctx.poolPayouts.plan([{ poolId: 1, rank: 1, wallet: 'alice', lamports: 300_000_000, status: 'planned' }], ctx.now());
+    await ctx.poolPayouts.claimSent(1, 1, 'FailedSig', 250, ctx.now());
+    ctx.poolChain.statuses.set('FailedSig', 'confirmed'); // a failed transaction is "confirmed" too
+    ctx.poolChain.events.set('FailedSig', { invalid: 'the transaction failed: custom program error 0x1771' });
+    const pass = await run();
+    expect(pass.pools[0]?.state).toBe('paid');
+    expect(payout.prizes.map((p) => [p.rank, p.to])).toEqual([[1, 'alice']]); // paid once, by a NEW transaction
+    expect((await ctx.poolPayouts.listByPool(1))[0]).toMatchObject({ status: 'paid', attempts: 2 });
+    expect((await ctx.poolPayouts.listByPool(1))[0]?.signature).not.toBe('FailedSig');
   });
 });
