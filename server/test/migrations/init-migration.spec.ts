@@ -26,7 +26,7 @@ describe('prisma migrations', () => {
   it('creates every PostgreSQL schema and every model of the Prisma schema', () => {
     for (const schema of ['player', 'ride', 'economy', 'achievement', 'telemetry', 'verdict', 'admin', 'live', 'stats']) expect(sql).toContain(`CREATE SCHEMA IF NOT EXISTS "${schema}"`);
     const models = schemaModels();
-    expect(models.map((m) => m.model).sort()).toEqual(['AchievementUnlock', 'AdminAction', 'AuthChallenge', 'ChainCursor', 'ChainEvent', 'CosmeticEquip', 'CosmeticUnlock', 'DailyStats', 'DonationOrder', 'GameSetting', 'GlobalStats', 'OfflineRideUse', 'Payment', 'Player', 'PlayerStats', 'Pool', 'PromoCode', 'PromoRedemption', 'Ride', 'RideBatch', 'RideEvent', 'RideMute', 'RideTicket', 'RideVerdict', 'Round', 'SignIn', 'TicketGrant', 'TicketOrder']);
+    expect(models.map((m) => m.model).sort()).toEqual(['AchievementUnlock', 'AdminAction', 'AuthChallenge', 'ChainCursor', 'ChainEvent', 'CosmeticEquip', 'CosmeticUnlock', 'DailySeed', 'DailyStats', 'DonationOrder', 'GameSetting', 'GlobalStats', 'OfflineRideUse', 'Payment', 'Player', 'PlayerStats', 'Pool', 'PromoCode', 'PromoRedemption', 'Ride', 'RideBatch', 'RideEvent', 'RideMute', 'RideTicket', 'RideVerdict', 'Round', 'SignIn', 'TicketGrant', 'TicketOrder']);
     for (const { schema, model } of models) expect(sql, `${schema}.${model}`).toContain(`CREATE TABLE "${schema}"."${model}"`);
   });
 
@@ -38,6 +38,7 @@ describe('prisma migrations', () => {
     expect(sql).toMatch(/"seq" BIGSERIAL NOT NULL/); // insertion order breaks timestamp ties
     expect(sql).toMatch(/CONSTRAINT "RideBatch_pkey" PRIMARY KEY \("rideId",\s*"seq"\)/); // a re-sent recording batch is a no-op
     expect(sql).toMatch(/CONSTRAINT "RideVerdict_pkey" PRIMARY KEY \("rideId"\)/); // one verdict per ride
+    expect(sql).toMatch(/CONSTRAINT "DailySeed_pkey" PRIMARY KEY \("tier","day"\)/); // one road per tier per day, however many first orders race
   });
 
   it('is forward-only: nothing is dropped, renamed or truncated – except the one reviewed removal of the retired gas sponsor\'s ledger', () => {

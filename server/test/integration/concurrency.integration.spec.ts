@@ -56,6 +56,14 @@ describe('concurrency (PostgreSQL)', () => {
     expect(await rideCount(a.address)).toBe(1);
   });
 
+  it('N wallets placing the FIRST paid order of the day at once all get ONE road – the day\'s seed is stored once', async () => {
+    const riders = await parallel(PARALLEL, () => login());
+    const results = await parallel(PARALLEL, (i) => (riders[i] as Rider).agent.post('/api/rides').send({ tier: '1h' }));
+    expect(results.every((r) => r.status === 200)).toBe(true);
+    expect(new Set(results.map((r) => r.body.seed)).size).toBe(1);
+    expect(await prisma.dailySeed.count()).toBe(1);
+  });
+
   it('parallel "buy while holding an unstarted free ride" refunds the credit ONCE', async () => {
     const a = await login();
     await a.agent.post('/api/rides').send({ tier: 'free' }).expect(200);

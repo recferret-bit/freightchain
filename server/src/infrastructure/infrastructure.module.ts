@@ -14,6 +14,7 @@ import { PriceQuotePort } from '../application/ports/economy/price-quote.port.js
 import { RoundRepositoryPort } from '../application/ports/economy/round.repository.port.js';
 import { HealthProbePort } from '../application/ports/health/health-probe.port.js';
 import { OfflineRideRepositoryPort } from '../application/ports/offline/offline-ride.repository.port.js';
+import { DailySeedRepositoryPort } from '../application/ports/rides/daily-seed.repository.port.js';
 import { PlayerRepositoryPort } from '../application/ports/players/player.repository.port.js';
 import { SettingsRepositoryPort } from '../application/ports/settings/settings.repository.port.js';
 import { RideQueryPort } from '../application/ports/rides/ride-query.port.js';
@@ -51,6 +52,7 @@ import { AchievementPrismaRepository } from './prisma/repositories/achievement.p
 import { ChallengePrismaRepository } from './prisma/repositories/challenge.prisma.repository.js';
 import { PaymentPrismaRepository } from './prisma/repositories/payment.prisma.repository.js';
 import { OfflineRidePrismaRepository } from './prisma/repositories/offline-ride.prisma.repository.js';
+import { DailySeedPrismaRepository } from './prisma/repositories/daily-seed.prisma.repository.js';
 import { PlayerPrismaRepository } from './prisma/repositories/player.prisma.repository.js';
 import { SettingsPrismaRepository } from './prisma/repositories/settings.prisma.repository.js';
 import { RideQueryPrismaRepository } from './prisma/repositories/ride-query.prisma.repository.js';
@@ -116,6 +118,7 @@ const ports: Provider[] = [
   { provide: TokenSignerPort, useClass: JoseTokenSigner },
   { provide: AdminTokenPort, useClass: JoseAdminTokenSigner },
   { provide: RideRepositoryPort, useClass: RidePrismaRepository },
+  { provide: DailySeedRepositoryPort, useClass: DailySeedPrismaRepository },
   { provide: RideQueryPort, useClass: RideQueryPrismaRepository },
   { provide: RoundRepositoryPort, useClass: RoundPrismaRepository },
   { provide: PaymentRepositoryPort, useClass: PaymentPrismaRepository },

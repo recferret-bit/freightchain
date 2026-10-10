@@ -75,6 +75,7 @@ Race-safety, because Prisma is async (every `await` lets other requests run):
 | daily grant (midnight job) | ONE `UPDATE … WHERE freeDay < today` (idempotent; adds only while `freeRides <` the live `free_rides_daily_max`, writes `freeRidesMax` to that cap, bumps `version` so a concurrent optimistic save loses and re-reads); a refund adds one unless the balance is exactly the cap |
 | sign-in challenge is single-use | `DELETE … RETURNING` (one atomic statement) |
 | first request of a week | opening runs in one transaction; unique `Round.startsAt`; the loser rolls back and re-reads the winner's round |
+| first paid order of a day | `DailySeed` primary key `(tier, day)`: INSERT … ON CONFLICT DO NOTHING in the create transaction, then read – the second order waits for the first to commit and takes its seed |
 | a payment settling across the week turn | settlement and round-opening both `SELECT … FOR UPDATE` the old round: the payment commits first (and is in the new round's 20 % carry) or finds the round closed and settles into the new one |
 | a transaction pays one ride | `Payment.signature` primary key + unique `Payment.rideId`; settle runs in one transaction; the loser of a confirm/reconcile race answers `paid` (idempotent), never "already used" |
 | heartbeat vs end | optimistic `Ride.version`; `end` retries so it always lands; the unlock evaluation after it is best-effort (never turns the saved verdict into a 500) |

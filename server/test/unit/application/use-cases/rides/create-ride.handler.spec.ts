@@ -11,7 +11,7 @@ import { aPool } from '../../../../support/pools.js';
 const setup = (price = new StubPrice(), rules = unitRules()) => {
   const ctx = unitContext(rules);
   const analytics = new RecordingAnalytics();
-  const handler = new CreateRideHandler(ctx.players, ctx.rides, ctx.sessions, price, new FixedRules(rules), ctx.transactions, ctx.clock, ctx.entropy, ctx.poolTickets, ctx.rounds, analytics, ctx.stats);
+  const handler = new CreateRideHandler(ctx.players, ctx.rides, ctx.sessions, price, new FixedRules(rules), ctx.transactions, ctx.clock, ctx.entropy, ctx.poolTickets, ctx.rounds, analytics, ctx.stats, ctx.dailySeeds);
   return {
     ctx, analytics, handler, create: (tier: 'free' | '1h' | '4h' | '8h', wallet = 'w', tutorial = false, assist = false, level: 1 | 2 | 3 | null = null) => handler.execute(new CreateRideCommand(wallet, tier, tutorial, assist, level)),
   };
@@ -115,6 +115,17 @@ describe('CreateRideHandler', () => {
     expect(await create('1h', DEMO_UNIT_WALLET)).toMatchObject({ timeScale: 60, minSeconds: 60, completeDist: 840 });
     expect(analytics.named('ride_ordered')).toHaveLength(2);
     expect(analytics.named('ride_ordered')[1]?.properties).toMatchObject({ is_demo: true, time_scale: 60 });
+  });
+
+  it('pay-per-ride: every order of a tier on one UTC day is driven on that day\'s seed (one road for the day\'s riders); the next day a new one; free rides draw their own', async () => {
+    const { ctx, create } = setup();
+    const a = await create('1h', 'a'), b = await create('1h', 'b');
+    expect(b).toMatchObject({ seed: a.seed, route: a.route, startHour: a.startHour });
+    expect(ctx.db.dailySeeds.get(`1h|${ctx.now().toISOString().slice(0, 10)}`)).toBe(a.seed);
+    const f1 = await create('free', 'f1'), f2 = await create('free', 'f2');
+    expect(new Set([a.seed, f1.seed, f2.seed]).size).toBe(3);
+    ctx.clock.advance(86_400);
+    expect((await create('1h', 'c')).seed).not.toBe(a.seed);
   });
 
   it('the same unpaid order while it is quoted; an off-sale tier leaves it; a lapsed quote expires it', async () => {

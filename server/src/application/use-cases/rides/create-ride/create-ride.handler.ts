@@ -15,6 +15,8 @@ import { RulesConfigPort } from '../../../ports/config/rules-config.port.js';
 import { PriceQuotePort, type PriceQuote } from '../../../ports/economy/price-quote.port.js';
 import { PlayerRepositoryPort } from '../../../ports/players/player.repository.port.js';
 import { RideRepositoryPort } from '../../../ports/rides/ride.repository.port.js';
+import { DailySeedRepositoryPort } from '../../../ports/rides/daily-seed.repository.port.js';
+import { seedDayOf } from '../../../../domain/rides/ride-day.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
 import { EntropyPort } from '../../../ports/shared/entropy.port.js';
 import { TransactionPort, type TransactionHandle } from '../../../ports/shared/transaction.port.js';
@@ -50,6 +52,9 @@ interface CreateFacts {
  * without it (HARD) is refused (409 `assist_not_allowed`), a level on a paid tier too (409 `level_free_only`). Asking for the ready free ride again re-chooses
  * its level and helpers on that SAME ride (same seed, same credit) – the lobby never sends you onto a road you did not pick; a request with no `level` keeps
  * the ride's own level.
+ * ONE ROAD PER COMPETITION: a ticket ride is driven on its pool's seed (`Pool.rideSeed`), a pay-per-ride order on its tier's seed of the UTC day it was ordered
+ * (`DailySeedRepositoryPort`, the day's first order draws it) – every rider of a pool, or of a tier that day, drives the same route, start hour, layout and holes.
+ * Free rides draw a seed each.
  */
 @CommandHandler(CreateRideCommand)
 export class CreateRideHandler implements ICommandHandler<CreateRideCommand, RideDto> {
@@ -66,6 +71,7 @@ export class CreateRideHandler implements ICommandHandler<CreateRideCommand, Rid
     private readonly rounds: RoundService,
     private readonly analytics: AnalyticsPort,
     private readonly stats: StatsService,
+    private readonly dailySeeds: DailySeedRepositoryPort,
   ) {}
 
   async execute({ wallet, tier, tutorial, assist, level: asked }: CreateRideCommand): Promise<RideDto> {
@@ -124,7 +130,7 @@ export class CreateRideHandler implements ICommandHandler<CreateRideCommand, Rid
         await this.rides.save(open, tx);
         expired = open.snapshot();
       }
-      const ride = ticketed ?? this.newRide(wallet, tier, quote, now, player, { tutorial, assist, level });
+      const ride = ticketed ?? (await this.newRide(wallet, tier, quote, now, player, { tutorial, assist, level }, tx));
       if (creditRefunded || !paid) await this.players.save(player, tx);
       await this.rides.insert(ride, tx);
       return { dto: toRideDto(ride), now, ordered: ride.snapshot(), resumed: null, failed, expired, cancelled, freeRidesLeft: player.freeRides };
@@ -165,16 +171,16 @@ export class CreateRideHandler implements ICommandHandler<CreateRideCommand, Rid
     return !(open.tier === tier && open.quoteIsLive(now)); // the same, still-quoted order is handed back
   }
 
-  private newRide(wallet: string, tier: CreateRideCommand['tier'], quote: PriceQuote | null, now: Date, player: { spendFreeRide(): void }, free: { tutorial: boolean; assist: boolean; level: FreeLevel }): Ride {
+  private async newRide(wallet: string, tier: CreateRideCommand['tier'], quote: PriceQuote | null, now: Date, player: { spendFreeRide(): void }, free: { tutorial: boolean; assist: boolean; level: FreeLevel }, tx: TransactionHandle): Promise<Ride> {
     const rules = this.rules.get();
     const def = rideTier(tier, rules.freeRideSeconds);
     const id = this.entropy.uuid();
-    const seed = this.entropy.seed31();
     if (!isPaidTier(tier)) {
       player.spendFreeRide();
-      return Ride.createFree({ id, wallet, seed, minSeconds: freeLevelSeconds(free.level, rules.freeRideSeconds), now, ...free });
+      return Ride.createFree({ id, wallet, seed: this.entropy.seed31(), minSeconds: freeLevelSeconds(free.level, rules.freeRideSeconds), now, ...free });
     }
     if (!quote) throw new ServiceUnavailableError('no SOL/USD price available right now');
+    const seed = await this.dailySeeds.claim(tier as PaidTierId, seedDayOf(now), this.entropy.seed31(), now, tx); // the tier's road of the day: every order of it today drives the same ride
     const timeScale = isDemoWallet(rules, wallet) ? demoScaleOf(rules) : 1; // demo wallets only, never the free tier
     return Ride.createPaidOrder({
       id, wallet, tier, seed, minSeconds: def.seconds / timeScale, timeScale, priceUsd: def.usd, lamports: lamportsFor(def.usd, quote.usd), solUsd: quote.usd, now, quoteTtlMs: rules.quoteTtlMs,
