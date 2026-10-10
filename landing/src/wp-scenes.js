@@ -3,7 +3,8 @@
    `t0` = the loop second the first still frame shows (the interesting one), `mark(t)` = a rect (design px) the card outlines in amber, so cards that share a crop point at different parts of it.
    Every tick starts from the same `base()`, so a scene is a pure function of t and a card never inherits what the last frame left behind. Pure data: no DOM, no game imports. */
 
-const SONGS = ['Dust Road Blues', 'Night Shift', 'Long Haul Waltz', 'Neon Mile', 'Cold Start'];
+const RADIO_N = 11;   // STATIONS.length in client/js/sim/radio.js — the card only borrows the count
+const SONGS = ['Dusty Mile', 'Wheat Night', 'Iron Haul', 'Steel Gate', 'Neon Mile', 'Broken Amp', 'Night Shift', 'Bright Day', 'Blue Room', 'Cold Start', 'Pixel Run'];
 const KMH_AT_2000 = [10, 14, 20, 28, 40, 57, 80];   // km/h per gear at 2000 rpm (docs/agents/gameplay.md "Gearbox")
 const pulse = (c, rise, hold, fall, period) => c < 0 || c >= period ? 0 : c < rise ? c / rise : c < rise + hold ? 1 : c < rise + hold + fall ? 1 - (c - rise - hold) / fall : 0;   // 0 → 1 → hold → 0 inside one period
 const wave = (t, f, ph = 0) => .5 + .5 * Math.sin(t * f + ph);   // 0..1
@@ -51,7 +52,7 @@ export const WP_SCENES = {
   'cab-light': scene([540, 0, 200, 133], (t, { dn }) => { Object.assign(dn, { k: 1, night: true, cab: t % 4 < 2 }); }, { t0: .5 }),   // night: the dome lamp (it sits on the see-through windscreen, so only the lamp and its halo show)
   'heater': scene([290, 490, 215, 143], (t, { st }) => { const k = wave(t, .8, -1.6); Object.assign(st, { heater: true, heatEff: k, temp: -12 + 50 * k }); }, { t0: 4, mark: () => [333, 602, 118, 29] }),
   'wipers': scene([956, 470, 142, 95], (t, { st, wip }) => { wip.mode = Math.floor(t / 2) % 3; st.washing = t % 6 > 4.5; }, { t0: 2.5, mark: () => [962, 477, 132, 40] }),
-  'radio': scene([948, 398, 156, 104], (t, { radio }) => { const i = Math.floor(t / 3) % 5; Object.assign(radio, { on: true, idx: i, song: { title: SONGS[i] } }); }, { t0: 1 }),
+  'radio': scene([948, 398, 156, 104], (t, { radio }) => { const i = Math.floor(t / 3) % RADIO_N; Object.assign(radio, { on: true, idx: i, song: { title: SONGS[i] } }); }, { t0: 1 }),
   'reverse': scene(SHIFTER, (t, { st }) => { const c = t % 6; st.gear = c >= 1.5 && c < 4.5 ? -1 : 0; st.rev = st.gear < 0; st.v = st.rev ? 3 : 0; st.clutch = c > 1 && c < 1.7 || c > 4.3 && c < 5 ? 1 : 0; }, { t0: 3 }),
 
   /* ── indicators ── */

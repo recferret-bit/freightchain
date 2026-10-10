@@ -2,7 +2,8 @@
    Crops are in design px of a W×H cockpit (the size tools/capture-media.mjs measured them at); `tick(t, g)` sets the state on the swapped-in globals `g` for t seconds into the loop. */
 
 export const W = 1280, H = 633, DPR = 2;
-const SONGS = ['Dust Road Blues', 'Night Shift', 'Long Haul Waltz', 'Neon Mile', 'Cold Start'];
+const RADIO_N = 11;   // STATIONS.length in client/js/sim/radio.js — the card only borrows the count
+const SONGS = ['Dusty Mile', 'Wheat Night', 'Iron Haul', 'Steel Gate', 'Neon Mile', 'Broken Amp', 'Night Shift', 'Bright Day', 'Blue Room', 'Cold Start', 'Pixel Run'];
 const GEARS = [0, 1, 2, 3, 4, 5, 6, 7, 0, -1];   // the shifter card's loop (0 = neutral, -1 = reverse)
 const KMH_AT_2000 = [10, 14, 20, 28, 40, 57, 80];   // km/h per gear at 2000 rpm (docs/agents/gameplay.md "Gearbox")
 
@@ -27,6 +28,6 @@ export const SCENES = {
     Object.assign(st, { engineOn: true, keyOn: true, park: t % 6 < 3, washing: t % 6 > 4.5, gear: GEARS[Math.floor(t / 1.1) % GEARS.length] }); wip.mode = Math.floor(t / 2) % 3;
   } },
   trip: { crop: [798, 398, 304, 160], tick(t, { st, radio }) {   // trip km / shift clock running, radio changing station
-    Object.assign(st, { engineOn: true, keyOn: true, s: 12000 + t * 28, t: 612 + t }); Object.assign(radio, { on: true, idx: Math.floor(t / 4) % 5, song: { title: SONGS[Math.floor(t / 4) % SONGS.length] } });
+    Object.assign(st, { engineOn: true, keyOn: true, s: 12000 + t * 28, t: 612 + t }); Object.assign(radio, { on: true, idx: Math.floor(t / 4) % RADIO_N, song: { title: SONGS[Math.floor(t / 4) % SONGS.length] } });
   } },
 };
