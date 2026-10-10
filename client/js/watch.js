@@ -237,7 +237,7 @@ function drawTraffic(t) {
 /* write st from two samples – the row layout of client/js/telemetry.js: [t, s, d, psi, v, rpm, gear, hull, gas, brake, steer, clutch, clock?, flags?, inputs?, fork?] */
 function apply(a, b, k, dt) {
   const vel0 = st.vel, s0 = st.s, n = k < .5 ? a : b, f = n[13];
-  const kp = Number.isFinite(a[FORK_COL]) && a[FORK_COL] !== b[FORK_COL] ? (k < .5 ? 0 : 1) : k;   // the driver switched roads at a fork between the two: s / d / psi are measured on different roads – take the nearer sample whole
+  const fa = Number.isFinite(a[FORK_COL]) ? net.forkAt(a[1]) : null, kp = fa && fa === net.forkAt(b[1]) && a[FORK_COL] !== b[FORK_COL] ? (k < .5 ? 0 : 1) : k;   // the driver switched roads at a fork between the two: s / d / psi are measured on different roads – take the nearer sample whole
   st.t = lerp(a[0], b[0], k); st.s = lerp(a[1], b[1], kp); st.d = lerp(a[2], b[2], kp); st.psi = lerp(a[3], b[3], kp); st.v = Math.max(0, lerp(a[4], b[4], k));
   if (Number.isFinite(n[FORK_COL])) roads.setBranch(st.s, n[FORK_COL]);   // draw the road of the fork the driver was on (its (s, d) are that road's)
   st.rpm = lerp(a[5], b[5], k); st.gear = n[6]; st.hull = lerp(a[7], b[7], k);

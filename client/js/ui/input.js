@@ -43,7 +43,7 @@ addEventListener('keydown', e => {
   else if (e.code === 'KeyL') { dn.head = !dn.head; audio.play(dn.head ? 'switch' : 'switch-off'); toast(dn.head ? 'Headlights on' : 'Headlights off', 1000); }
   else if (e.code === 'KeyC') toggleCab();
   else if (e.code === 'KeyM') { audio.muted = !audio.muted; toast(audio.muted ? 'Sound off' : 'Sound on', 1000); }
-  else if (e.code === 'KeyN') toggleMap();   // the phone map (ui/map.js)
+  else if (e.code === 'KeyN') { if (st.mode === 'drive') toggleMap(); }   // the phone map (ui/map.js) – not from the menu / pause / end panel
   else if (e.code === 'KeyT') { radioMsg(radio.toggle()); }
   else if (e.code === 'Period') { radio.seek(1); radioMsg(true); }
   else if (e.code === 'Comma') { radio.seek(-1); radioMsg(true); }
@@ -54,11 +54,13 @@ addEventListener('keydown', e => {
 addEventListener('keyup', e => { if (st.watch) return; recordInput(e.code, 0, e.timeStamp); if (KEYS[e.code]) { input[KEYS[e.code]] = 0; e.preventDefault(); } });
 addEventListener('blur', () => { for (const k in input) input[k] = 0; releaseInputs(); });
 
-/* clickable dash buttons (WIPER / WASH) */
-const btnAt = e => uiBtns.find(b => e.clientX >= b.x && e.clientX <= b.x + b.w && e.clientY >= b.y && e.clientY <= b.y + b.h);
+/* clickable dash buttons (WIPER / WASH) – only for a pointer on the game itself (the 3D canvas / the page), never one on a panel over it
+   (#watch, #phone, #overlay, #cb, #tutorial…) whose rectangle happens to overlap a dash button's */
+const onCab = e => { const t = e.target; return !t || t === document.body || t === document.documentElement || (t.tagName === 'CANVAS' && !t.closest('#phone')); };
+const btnAt = e => (onCab(e) ? uiBtns.find(b => e.clientX >= b.x && e.clientX <= b.x + b.w && e.clientY >= b.y && e.clientY <= b.y + b.h) : undefined);
 let heldBtn = null;
 let recBtn = null;   // the dash button whose press was recorded, so the release is recorded too
 addEventListener('pointerdown', e => { if (st.watch && btnAt(e)?.id === 'map') { toggleMap(); return; } if (st.mode !== 'drive' || st.watch) return; const b = btnAt(e); if (!b) return; recBtn = `btn:${b.id}`; recordInput(recBtn, 1, e.timeStamp); answerPrompt(recBtn); if (b.id === 'wiper') cycleWipers(); else if (b.id === 'wash') { input.wash = 1; heldBtn = 'wash'; } else if (b.id === 'key-off') keySwitch(false); else if (b.id === 'key-on') keySwitch(true); else if (b.id === 'key-start') { if (!st.engineOn) { ignition(true); heldBtn = 'key'; } } else if (b.id === 'park') toggleParkingBrake(); else if (b.id === 'head') { dn.head = !dn.head; audio.play(dn.head ? 'switch' : 'switch-off'); } else if (b.id === 'cab') toggleCab(); else if (b.id === 'heat') toggleHeater(); else if (b.id === 'r-pwr') radioMsg(radio.toggle()); else if (b.id === 'r-prev') { radio.seek(-1); radioMsg(true); } else if (b.id === 'r-next') { radio.seek(1); radioMsg(true); } else if (b.id === 'map') toggleMap(); });
 const releaseHeld = e => { if (recBtn) { recordInput(recBtn, 0, e?.timeStamp); recBtn = null; } if (heldBtn === 'wash') input.wash = 0; else if (heldBtn === 'key') releaseKey(); heldBtn = null; };
 addEventListener('pointerup', releaseHeld); addEventListener('pointercancel', releaseHeld); addEventListener('blur', releaseHeld);
-addEventListener('pointermove', e => { document.body.style.cursor = st.mode === 'drive' && (!st.watch || btnAt(e)?.id === 'map') && btnAt(e) ? 'pointer' : ''; });
+addEventListener('pointermove', e => { const b = btnAt(e); document.body.style.cursor = st.mode === 'drive' && b && (!st.watch || b.id === 'map') ? 'pointer' : ''; });

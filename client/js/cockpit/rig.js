@@ -13,18 +13,23 @@ import { phone } from '../phone.js';
 /* Style 2 (default): conventional long-hood semi cab – hood, chrome stacks, mirrors, air gauges, CB, brake valves. */
 
 /* the PHONE on its dash mount, right of the bonnet (the map – ui/map.js): its screen shows the live map; a click (or N) takes it in hand */
+let thumbBroke = false;
 function drawPhoneMount(x, y, w, h, u) {
-  uiBtns.push({ id: 'map', x: x - u, y: y - u, w: w + 2 * u, h: h + 3 * u }); hint('MAP', x, y, w, h);
+  uiBtns.push({ id: 'map', x: x - u, y: y - 3 * u, w: w + 2 * u, h: h + 4 * u });   // the phone + its caption above it
   ctx.fillStyle = '#121110'; ctx.fillRect(x + w / 2 - 1.2 * u, y + h - .5 * u, 2.4 * u, 3.5 * u);   // the mount's stem into the dash
   ctx.fillStyle = '#1b1a18'; ctx.beginPath(); ctx.roundRect(x - .9 * u, y + h * .3, 1.4 * u, h * .4, .5 * u); ctx.roundRect(x + w - .5 * u, y + h * .3, 1.4 * u, h * .4, .5 * u); ctx.fill();   // the clamp's arms
   ctx.fillStyle = '#0d0d0f'; ctx.beginPath(); ctx.roundRect(x, y, w, h, 1.4 * u); ctx.fill();
   ctx.strokeStyle = phone.open ? '#4285f4' : '#3b3d42'; ctx.lineWidth = .35 * u; ctx.stroke();
   const sx = x + .6 * u, sy = y + 1.4 * u, sw = w - 1.2 * u, sh = h - 2.6 * u;
   if (phone.open) { ctx.fillStyle = '#05070a'; ctx.fillRect(sx, sy, sw, sh); }   // it is in your hand: the mount is empty-ish (the screen dark)
-  else if (phone.thumb) phone.thumb(ctx, sx, sy, sw, sh);
-  else { ctx.fillStyle = '#e8e4da'; ctx.fillRect(sx, sy, sw, sh); ctx.strokeStyle = '#4285f4'; ctx.lineWidth = .8 * u; ctx.beginPath(); ctx.moveTo(sx + sw * .5, sy + sh); ctx.quadraticCurveTo(sx + sw * .2, sy + sh * .5, sx + sw * .6, sy); ctx.stroke(); }
+  else if (phone.thumb && !thumbBroke) {
+    ctx.save();
+    try { phone.thumb(ctx, sx, sy, sw, sh); } catch (e) { thumbBroke = true; console.warn('phone map:', e); }   // a map bug must not take the rest of the cockpit with it (it then shows the still picture)
+    ctx.restore();
+  } else { ctx.fillStyle = '#e8e4da'; ctx.fillRect(sx, sy, sw, sh); ctx.strokeStyle = '#4285f4'; ctx.lineWidth = .8 * u; ctx.beginPath(); ctx.moveTo(sx + sw * .5, sy + sh); ctx.quadraticCurveTo(sx + sw * .2, sy + sh * .5, sx + sw * .6, sy); ctx.stroke(); }
   ctx.fillStyle = '#0d0d0f'; ctx.beginPath(); ctx.roundRect(x + w / 2 - 1.6 * u, y + .45 * u, 3.2 * u, .6 * u, .3 * u); ctx.fill();   // the speaker slot
-  ctx.fillStyle = phone.open ? '#6b6f76' : '#9d957f'; ctx.font = `${1.4 * u}px ${MONO}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('MAP · N', x + w / 2, y + h + 1.6 * u);
+  ctx.fillStyle = 'rgba(13,13,15,.75)'; ctx.beginPath(); ctx.roundRect(x + w / 2 - 4 * u, y - 2.4 * u, 8 * u, 2 * u, u); ctx.fill();   // the caption ABOVE the phone: below it the binnacle (painted later) hid it
+  ctx.fillStyle = phone.open ? '#6b6f76' : '#9d957f'; ctx.font = `${1.4 * u}px ${MONO}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('MAP · N', x + w / 2, y - 1.35 * u);
   if (dn.k > .3 && !phone.open) { ctx.fillStyle = `rgba(120,170,255,${.06 * dn.k})`; ctx.beginPath(); ctx.arc(x + w / 2, y + h / 2, w * 1.1, 0, 7); ctx.fill(); }   // the screen's glow in the dark cab
 }
 

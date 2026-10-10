@@ -26,7 +26,8 @@ if(await ev('typeof window.__game')==='object'){
   await key('ShiftLeft'); await sleep(300); await key('KeyE'); await key('KeyW'); await sleep(300); await key('ShiftLeft','up'); await sleep(4000);
   console.log('moving:',await ev('JSON.stringify({v:+__game.st.v.toFixed(1),gear:__game.st.gear,d:+__game.st.d.toFixed(1),s:Math.round(__game.st.s)})')); await shot('03-driving');
   await key('KeyR'); await key('KeyX'); await sleep(1500); await shot('04-washer'); await key('KeyX','up'); await sleep(1500);
-  await key('KeyN'); await key('KeyL'); await key('KeyC'); console.log('N/L/C keys ->',await ev('JSON.stringify({night:__game.dn.night,head:__game.dn.head,cab:__game.dn.cab})')); await key('KeyN'); await key('KeyL'); await key('KeyC');
+  await key('KeyN'); await key('KeyL'); await key('KeyC'); { const k=JSON.parse(await ev('JSON.stringify({map:__game.phone.open,head:__game.dn.head,cab:__game.dn.cab})')); console.log('N/L/C keys ->',JSON.stringify(k)); if(!k.map) problems.push('N did not open the phone map'); }   // N = the phone map (not night any more)
+  await key('KeyN'); await key('KeyL'); await key('KeyC'); if(await ev('__game.phone.open')) problems.push('N did not close the phone map');
   await ev('__game.st.d=8.5'); await sleep(2500); await shot('05-offroad');
   console.log('final:',await ev('JSON.stringify({v:+__game.st.v.toFixed(1),hull:+__game.st.hull.toFixed(1),mode:__game.st.mode,d:+__game.st.d.toFixed(1)})'));
 }

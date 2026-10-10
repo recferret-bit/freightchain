@@ -23,12 +23,14 @@ import { env } from '../world/environment.js';
 import { guide } from '../guide.js';
 import { startGuide } from './assist.js';
 import { SITE_BASE } from '../hosts.js';
+import { resetMap } from './map.js';
 
 /* Ride flow: menu / start / end / pause overlay and per-ride reset. */
 
 export function resetRide(seed = online.ride?.seed) {   // seed: the server's for an online ride, the watched ride's for a replay (watch.js), random offline
   Object.assign(st, rideStart({ rpm: CFG.START_ENGINE_OFF ? 0 : IDLE, engineOn: !CFG.START_ENGINE_OFF, temp: ambientC(), pull: Math.random() < .5 ? -1 : 1 }));
   resetDisp(); destroyed.clear(); clearDebris(); roads.newTrip(seed); resetScreen();   // new road layout, depot, traffic
+  resetMap();   // the phone back on its mount, the map's view from scratch (an end / pause closes it too: ui/map.js)
 }
 
 online.extra = () => ({ route: env.theme.id, night: dn.night });   // what the server's public live feed shows next to the ride

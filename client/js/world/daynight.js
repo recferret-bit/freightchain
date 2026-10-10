@@ -89,7 +89,7 @@ function updateLamps() {
   if (dn.k > .02 && fur?.lampAt) {
     lampPos.length = 0; const c0 = Math.floor(st.s / CFG.CHUNK_LEN);
     for (let ci = Math.max(0, c0 - 6); ci <= c0 + 16; ci++) {
-      const l = fur.lampAt(ci); if (!l || destroyed.has(l.id)) continue;
+      const l = fur.lampAt(ci); if (!l || destroyed.has(l.id) || destroyed.has('b:' + l.id)) continue;   // ('b:' = smashed by road 1 of a fork – world/chunks.js)
       const lat = net.roadside(l.s, l.lat); if (net.keepOut(l.s, lat)) continue;   // same placement rules as world/chunks.js
       const p = roadAt(l.s); lampPos.push({ x: p.x + Math.cos(p.t) * (lat + l.arm), z: p.z + Math.sin(p.t) * (lat + l.arm), d: Math.abs(l.s - st.s) });
     }

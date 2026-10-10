@@ -35,8 +35,17 @@ export async function initOnline() {
   }
 }
 
+/* what the game built from the ride at load (the road, the shift, the helpers): a lobby tab may re-choose a ready free ride (same id, another level)
+   while this tab waits in its menu – then this page drives the wrong road. Checked BEFORE /start: once started the ride is no longer 'created', and a
+   reload would both refuse it (initOnline) and abandon it (the pagehide beacon). */
+const SHAPE = ['seed', 'trip', 'level', 'minSeconds', 'completeDist', 'assist', 'tutorial'];
+const changed = (a, b) => SHAPE.some(k => (a[k] ?? null) !== (b[k] ?? null));
+
 export async function beginOnline() {
   if (!online.ride || online.started) return;
+  const now = await api(`rides/${encodeURIComponent(online.ride.id)}`).catch(() => null);   // a failed look is no reason not to start: /start has the last word
+  if (now && now.status === 'created' && changed(online.ride, now)) { location.reload(); return new Promise(() => {}); }   // re-chosen elsewhere: load it as it is now (START is never sent)
+  if (online.started) return;   // (a second START click while that look was out)
   online.started = true;
   const started = await api(`rides/${online.ride.id}/start`, {});
   online.running = true;   // the server has started the ride: its road plan is served from now on (road-plan.js)

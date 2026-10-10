@@ -18,7 +18,8 @@ import { clamp, fmt, MONO } from '../util.js';
 const LAND = { route66: '#f1e7d3', stuart: '#f2e1cf', siberia: '#eef2f5', brenner: '#e4efdc', panamerican: '#f3ede3' };   // the route's ground, washed out like a map
 const SHIELD = { route66: '66', stuart: 'A87', siberia: 'R255', brenner: 'A13', panamerican: 'RUTA 5' };
 const ZOOMS = [.6, 1.2, 2.4, 4.8, 9.6, 19.2];   // metres per CSS pixel of the big map
-const view = { z: 2, northUp: false, rot: null, vAvg: 10, hits: [], el: null, cv: null, raf: 0 };
+const MAX_R = 4000, GROW = 1500;   // the big map draws at most 4 km around the truck, and reaches ≤ 1.5 km further per frame (no 11 km of road integrated in one frame)
+const view = { z: 2, northUp: false, rot: null, vAvg: 10, last: 0, reach: 0, wheel: 0, k: 1, hits: [], el: null, cv: null, raf: 0 };
 const THUMB = { thumb: true, mpp: 5 };
 
 function palette() {
@@ -36,15 +37,19 @@ const roadName = s => { if (s < net.Sm) return 'DEPOT ROAD'; const x = net.mainX
 /* ───────────── the map itself: both the phone on the dash (thumb) and the one in your hand ───────────── */
 function drawMap(g, X, Y, W, H, o = {}) {
   const P = palette(), T = truck(), mpp = o.mpp ?? ZOOMS[view.z], thumb = !!o.thumb;
+  const now = typeof performance === 'undefined' ? 0 : performance.now(), dt = view.last ? clamp((now - view.last) / 1000, 0, .25) : 0; view.last = now;
+  if (st.mode === 'drive') view.vAvg += (st.v - view.vAvg) * (1 - Math.exp(-dt / 4));   // the ETA's speed: a ~4 s average, every frame (the dash phone too), not while paused
   if (view.rot === null || !Number.isFinite(view.rot)) view.rot = T.h;
-  let dr = T.h - view.rot; dr = Math.atan2(Math.sin(dr), Math.cos(dr)); view.rot += dr * (thumb ? .2 : .12);   // ease the heading-up rotation (no jitter from steering)
+  let dr = T.h - view.rot; dr = Math.atan2(Math.sin(dr), Math.cos(dr)); view.rot += dr * (1 - Math.exp(-dt * (thumb ? 13 : 7.5)));   // ease the heading-up rotation (no jitter from steering)
   const rot = !thumb && view.northUp ? 0 : view.rot, cx = X + W / 2, cy = Y + H * (thumb ? .66 : .64);
   const fx = Math.sin(rot), fz = -Math.cos(rot), rx = Math.cos(rot), rz = Math.sin(rot);
   const pr = (x, z) => { const vx = x - T.x, vz = z - T.z; return [cx + (vx * rx + vz * rz) / mpp, cy - (vx * fx + vz * fz) / mpp]; };
-  const R = Math.hypot(W, H) * mpp * .75, lo = st.s - R, hi = st.s + R, step = clamp(mpp * 4, 2, 40);
+  const R = Math.min(MAX_R, Math.hypot(W, H) * mpp * .75), lo = st.s - R, step = clamp(mpp * 4, 2, 40);
+  view.reach = clamp(view.reach, st.s + 2000, st.s + R + GROW);   // the orchestrator already keeps 2 km ahead generated; zooming out grows the rest over a few frames
+  const hi = Math.min(st.s + R, view.reach); if (hi < st.s + R) view.reach += GROW;
   const line = (pts, w, col) => { if (pts.length < 2) return; g.strokeStyle = col; g.lineWidth = w; g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke(); };
   const along = (at, s0, s1) => { const out = []; for (let s = s0; s < s1; s += step) { const p = at(s); out.push(pr(p.x, p.z)); } const p = at(s1); out.push(pr(p.x, p.z)); return out; };
-  const roadW = s => clamp((2 * edgeOf(Math.max(net.xs(s).nR, net.xs(s).nL)) + 2) / mpp, thumb ? 2.2 : 4, thumb ? 6 : 16);
+  const roadW = s => { const x = net.xs(s); return clamp((2 * edgeOf(Math.max(x.nR, x.nL)) + 2) / mpp, thumb ? 2.2 : 4, thumb ? 6 : 16); };
 
   g.save(); g.beginPath(); g.rect(X, Y, W, H); g.clip();
   g.fillStyle = P.land; g.fillRect(X, Y, W, H);
@@ -53,7 +58,7 @@ function drawMap(g, X, Y, W, H, o = {}) {
   const s0 = Math.max(lo, -80), s1 = hi, T0 = target();
 
   // town blocks beside TOWN / ARTERIAL stretches – a map has buildings where the road has junctions every 200 m
-  if (!thumb && mpp < 10) {
+  if (!thumb && mpp < 6) {
     g.fillStyle = P.block;
     for (let s = Math.ceil(Math.max(s0, net.Sm) / 46) * 46; s < s1; s += 46) {
       const pat = net.mainXs(s).pat; if (pat !== 'town' && pat !== 'arterial') continue;
@@ -66,25 +71,30 @@ function drawMap(g, X, Y, W, H, o = {}) {
     }
   }
   // side roads of the junctions – they run on beyond the map (faded ends): local roads, not the way to the finish
-  const js = net.near(s0 - 450, s1 + 450).filter(j => j.kind !== 'start');
+  const js = net.near(s0 - 450, s1 + 450).filter(j => j.kind !== 'start'), fade = thumb || mpp < 9.6;   // zoomed far out: plain strokes (a gradient per arm per frame adds up)
   for (const pass of [0, 1]) for (const j of js) {
     const L = j.line ?? net.lineOf(j);
     for (const a of j.arms) {
       const p0 = pr(L.at(0).x, L.at(0).z), p1 = pr(L.at(a * j.len).x, L.at(a * j.len).z), w = (thumb ? 1.8 : clamp((2 * edgeOf(j.sl) + 2) / mpp, 3, 11));
-      const grad = g.createLinearGradient(p0[0], p0[1], p1[0], p1[1]);
-      grad.addColorStop(0, pass ? P.road : P.casing); grad.addColorStop(.75, pass ? P.road : P.casing); grad.addColorStop(1, 'rgba(0,0,0,0)');
-      line([p0, p1], pass ? w : w + 2, grad);
+      let col = pass ? P.road : P.casing;
+      if (fade) { col = g.createLinearGradient(p0[0], p0[1], p1[0], p1[1]); col.addColorStop(0, pass ? P.road : P.casing); col.addColorStop(.75, pass ? P.road : P.casing); col.addColorStop(1, 'rgba(0,0,0,0)'); }
+      line([p0, p1], pass ? w : w + 2, col);
     }
   }
   // the main road behind the depot's turn (it runs on both ways past the exit)
   if (!net.straight && s0 < net.Sm + 50) { const pts = []; for (let m = net.Sm - 700; m <= net.Sm; m += 20) { const p = net.mainAt(m); pts.push(pr(p.x, p.z)); } line(pts, roadW(net.Sm) + 2, P.casing); line(pts, roadW(net.Sm), P.road); }
   // the other road of every fork in view
   const forks = net.forksNear(s0, s1), altPts = forks.map(f => along(s => net.altAt(s), Math.max(f.f0, s0), Math.min(f.f1, s1)));
-  for (const pts of altPts) line(pts, roadW(net.Sm + 1) + 2, P.casing);
-  for (const pts of altPts) line(pts, roadW(net.Sm + 1), P.road);
-  // the spine (the road the truck is on)
-  const spine = along(roadAt, s0, s1);
-  line(spine, roadW(st.s) + 2, P.casing); line(spine, roadW(st.s), P.road);
+  const altW = forks.map(f => roadW((f.f0 + f.f1) / 2));   // the other road has the fork's own lanes
+  altPts.forEach((pts, i) => line(pts, altW[i] + 2, P.casing));
+  altPts.forEach((pts, i) => line(pts, altW[i], P.road));
+  // the spine (the road the truck is on), as wide as its lanes: one polyline per run of the same width
+  const runs = [];
+  { let run = null; const add = (s, w) => { const p = roadAt(s), q = pr(p.x, p.z); if (!run || run.w !== w) { if (run) run.pts.push(q); runs.push(run = { w, pts: [] }); } run.pts.push(q); };
+    for (let s = s0; s < s1; s += step) add(s, Math.round(roadW(s) * 2) / 2);
+    add(s1, Math.round(roadW(s1) * 2) / 2); }
+  for (const r of runs) line(r.pts, r.w + 2, P.casing);
+  for (const r of runs) line(r.pts, r.w, P.road);
   // the alternatives (grey) and the route (blue): from the truck to the finish
   forks.forEach((f, i) => { if (f.f1 > st.s && (T0 === null || f.f0 < T0)) { line(altPts[i], (thumb ? 3 : 6) + 2, P.altCase); line(altPts[i], thumb ? 3 : 6, P.alt); } });
   if (T0 !== null && T0 > st.s) {
@@ -138,16 +148,16 @@ function nextStep(T0) {
   const f = net.forksNear(s, s + 3000).find(q => q.f0 + FORK.commit > s);
   if (f) {
     const side = net.bulge(f) > 0 ? 'right' : 'left';
-    out.push(s < f.f0 ? { icon: 'fork', dist: f.f0 - s, text: 'The road splits', sub: `blue: keep ${side} · grey: the other road · they meet again in ${(f.f1 - f.f0) / 1000} km` }
-      : { icon: 'fork', dist: f.f0 + FORK.commit - s, text: `Keep ${side} – or take the other road`, sub: 'pick before the roads part · same distance either way' });
+    out.push(s < f.f0 ? { icon: 'fork', dist: f.f0 - s, text: 'The road splits', sub: `blue: keep ${side} · grey: other road · rejoin in ${((f.f1 - f.f0) / 1000).toFixed(1)} km` }
+      : { icon: 'fork', dist: f.f0 + FORK.commit - s, text: `Keep ${side} – or the other road`, sub: net.bulge(f) > 0 ? 'other road: across the oncoming lane – give way' : 'pick before they part · same distance' });   // the other road branching LEFT crosses the oncoming lane, like a left turn
   }
   const j = net.nextJunction(s - 4, 1, 3000, q => q.kind !== 'start');
-  if (j) out.push({ icon: 'straight', dist: j.s - s, text: j.kind === 'cross' ? 'Crossroads – straight on' : `Junction on the ${j.side > 0 ? 'right' : 'left'} – straight on`, sub: j.signal ? 'traffic lights · ' + ({ G: 'green', A: 'amber', R: 'red' })[net.signal(j, 'main')] + ' now' : 'no lights – give way to nobody, watch the side road' });
+  if (j) out.push({ icon: 'straight', dist: Math.max(0, j.s - s), text: j.kind === 'cross' ? 'Crossroads – straight on' : `Junction on the ${j.side > 0 ? 'right' : 'left'} – straight on`, sub: j.signal ? 'traffic lights · ' + ({ G: 'green', A: 'amber', R: 'red' })[net.signal(j, 'main')] + ' now' : 'no lights – give way to nobody, watch the side road' });
   if (T0 !== null && T0 > s) out.push({ icon: 'flag', dist: T0 - s, text: trip.finish ? 'Finish line' : 'Shift distance done', sub: trip.finish ? 'the run ends there by itself' : 'then keep driving until the time is up' });
   out.sort((a, b) => a.dist - b.dist);
   return out[0] ?? { icon: 'straight', dist: null, text: 'Continue on the ' + roadName(s).toLowerCase(), sub: st.complete ? 'shift complete · P → END SHIFT when you like' : 'follow the road' };
 }
-const distText = d => (d === null ? '' : d >= 1000 ? (d / 1000).toFixed(1) + ' km' : Math.max(10, Math.round(d / 10) * 10) + ' m');
+const distText = d => (d === null ? '' : d <= 0 ? 'now' : d >= 1000 ? (d / 1000).toFixed(1) + ' km' : Math.max(10, Math.round(d / 10) * 10) + ' m');
 function icon(g, kind, x, y, k = 1) {
   g.save(); g.translate(x, y); g.scale(k, k); g.strokeStyle = '#fff'; g.fillStyle = '#fff'; g.lineWidth = 4; g.lineCap = 'round'; g.lineJoin = 'round';
   g.beginPath();
@@ -160,13 +170,15 @@ function icon(g, kind, x, y, k = 1) {
 
 /* ───────────── the phone in your hand ───────────── */
 function drawPhone() {
-  const cv = view.cv, g = cv.getContext('2d'), dpr = Math.min(2, devicePixelRatio || 1), W = cv.clientWidth, H = cv.clientHeight;
-  if (!W || !H) return;
-  if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+  const cv = view.cv, g = cv.getContext('2d'), dpr = Math.min(2, devicePixelRatio || 1), CW = cv.clientWidth, CH = cv.clientHeight;
+  if (!CW || !CH) return;
+  if (cv.width !== Math.round(CW * dpr) || cv.height !== Math.round(CH * dpr)) { cv.width = Math.round(CW * dpr); cv.height = Math.round(CH * dpr); }
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  drawMap(g, 0, 0, CW, CH);
+  // the phone's UI is laid out for a ≥ 300 × 600 px screen and scaled down on a smaller one (a short window, a narrow phone): the buttons stay above the sheet
+  const k = view.k = Math.min(1, CH / 600, CW / 300), W = CW / k, H = CH / k;
+  g.setTransform(dpr * k, 0, 0, dpr * k, 0, 0);
   const P = palette(), T0 = target(), hits = view.hits; hits.length = 0;
-  view.vAvg += (st.v - view.vAvg) * .01;
-  drawMap(g, 0, 0, W, H);
   g.font = `600 12px ${MONO}`; g.textBaseline = 'middle';
   // status bar: the game clock, signal, the phone's battery (charging from the cab while the engine runs)
   g.fillStyle = dn.k > .5 ? 'rgba(10,14,20,.85)' : 'rgba(255,255,255,.88)'; g.fillRect(0, 0, W, 24);
@@ -177,11 +189,11 @@ function drawPhone() {
   const n = nextStep(T0);
   g.fillStyle = P.nav; g.beginPath(); g.roundRect(8, 30, W - 16, 74, 12); g.fill();
   icon(g, n.icon, 40, 67, 1.1);
-  g.fillStyle = '#fff'; g.textAlign = 'left'; g.font = `700 20px ${MONO}`; g.fillText(distText(n.dist) || n.text, 70, 52);
+  g.fillStyle = '#fff'; g.textAlign = 'left'; g.font = `700 20px ${MONO}`; g.fillText(fit(g, distText(n.dist) || n.text, W - 86), 70, 52);
   g.font = `600 13px ${MONO}`; g.fillText(fit(g, n.dist === null ? n.sub : n.text, W - 86), 70, 74);
   g.font = `11px ${MONO}`; g.fillStyle = 'rgba(255,255,255,.82)'; g.fillText(fit(g, n.dist === null ? '' : n.sub, W - 86), 70, 92);
-  // the floating buttons: compass (heading up ⇄ north up), zoom in / out
-  const bx = W - 46; let by = 116;
+  // the bottom sheet's top; the floating buttons (compass: heading up ⇄ north up, zoom in / out) stay above it
+  const sh = 104, sy = H - sh, bx = W - 46; let by = Math.max(112, Math.min(116, sy - 8 - 3 * 44));
   for (const [id, glyph] of [['north', view.northUp ? 'N' : '➤'], ['in', '+'], ['out', '−']]) {
     g.fillStyle = P.card; g.strokeStyle = 'rgba(0,0,0,.2)'; g.lineWidth = 1; g.beginPath(); g.arc(bx + 18, by + 18, 18, 0, 7); g.fill(); g.stroke();
     g.fillStyle = id === 'north' ? '#ea4335' : P.text; g.font = `700 ${id === 'north' ? 14 : 20}px ${MONO}`; g.textAlign = 'center';
@@ -189,34 +201,42 @@ function drawPhone() {
     hits.push({ id, x: bx, y: by, w: 36, h: 36 }); by += 44;
   }
   // the bottom sheet: time and distance to go, the trip, EXIT
-  const sh = 104, sy = H - sh;
   g.fillStyle = P.card; g.shadowColor = 'rgba(0,0,0,.25)'; g.shadowBlur = 12; g.beginPath(); g.roundRect(0, sy, W, sh + 20, [16, 16, 0, 0]); g.fill(); g.shadowBlur = 0;
   g.fillStyle = 'rgba(0,0,0,.18)'; g.beginPath(); g.roundRect(W / 2 - 18, sy + 6, 36, 4, 2); g.fill();
   const left = T0 !== null ? Math.max(0, T0 - st.s) : 0, tLeft = Math.max(0, CFG.RIDE_MIN_SECONDS - st.t), eta = Math.max(left / Math.max(view.vAvg, 6), tLeft);
-  g.textAlign = 'left'; g.fillStyle = st.complete ? '#188038' : '#188038'; g.font = `700 22px ${MONO}`;
-  g.fillText(st.complete ? 'DONE' : fmt(eta), 16, sy + 30);
-  const dw = g.measureText(st.complete ? 'DONE' : fmt(eta)).width;
-  g.fillStyle = P.sub; g.font = `600 14px ${MONO}`; g.fillText(st.complete ? '· shift complete' : '· ' + distText(left) + (left <= 0 ? ' – wait for the time' : ''), 24 + dw, sy + 31);
+  const big = st.complete ? 'DONE' : fmt(eta);
+  g.textAlign = 'left'; g.fillStyle = '#188038'; g.font = `700 22px ${MONO}`; g.fillText(big, 16, sy + 30);
+  const dw = g.measureText(big).width;
+  g.fillStyle = P.sub; g.font = `600 14px ${MONO}`; g.fillText(fit(g, st.complete ? '· shift complete' : left <= 0 ? '· distance done – wait for the time' : '· ' + distText(left), W - 100 - (24 + dw)), 24 + dw, sy + 31);   // never under EXIT
   g.font = `11px ${MONO}`; g.fillText(fit(g, (trip.name ?? 'SHIFT') + ' · ' + (env.theme?.name ?? '') + (trip.finish ? ' · ends at the line' : ''), W - 120), 16, sy + 54);
   const prog = clamp(st.t / Math.max(1, CFG.RIDE_MIN_SECONDS), 0, 1);
   g.fillStyle = 'rgba(0,0,0,.1)'; g.beginPath(); g.roundRect(16, sy + 70, W - 120, 6, 3); g.fill();
   g.fillStyle = P.route; g.beginPath(); g.roundRect(16, sy + 70, (W - 120) * prog, 6, 3); g.fill();
   g.fillStyle = '#ea4335'; g.beginPath(); g.roundRect(W - 92, sy + 20, 78, 40, 20); g.fill();
   g.fillStyle = '#fff'; g.font = `700 14px ${MONO}`; g.textAlign = 'center'; g.fillText('EXIT', W - 53, sy + 41);
-  hits.push({ id: 'exit', x: W - 92, y: sy + 20, w: 78, h: 40 });
+  hits.unshift({ id: 'exit', x: W - 92, y: sy + 20, w: 78, h: 40 });   // tested first: nothing drawn over it may take its click
 }
 function fit(g, text, w) { if (g.measureText(text).width <= w) return text; while (text.length > 3 && g.measureText(text + '…').width > w) text = text.slice(0, -1); return text + '…'; }
 
-function loop() { view.raf = 0; if (!phone.open) return; try { drawPhone(); } catch (e) { console.warn('map:', e); } view.raf = requestAnimationFrame(loop); }
+let warned = false;
+function loop() {
+  view.raf = 0; if (!phone.open) return;
+  if (st.mode !== 'drive' && !st.watch) { closeMap(); return; }   // paused, ended, back in the menu: the phone goes back on its mount
+  try { drawPhone(); } catch (e) { if (!warned) { warned = true; console.warn('map:', e); } }
+  view.raf = requestAnimationFrame(loop);
+}
 function build() {
   const mk = (tag, cls, parent) => { const e = document.createElement(tag); e.className = cls; parent?.appendChild(e); return e; };
   const el = mk('div', 'phone'), body = mk('div', 'phone-body', el); el.id = 'phone'; mk('div', 'phone-notch', body);
+  el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Navigation map'); el.inert = true;   // (where it sits beside the watch panel: style.css)
   view.el = el; view.cv = mk('canvas', 'phone-screen', body);
-  if (st.watch) el.style.right = '360px';   // a replay: beside the watch panel
+  view.cv.setAttribute('role', 'img'); view.cv.setAttribute('aria-label', 'Map of the road ahead: the truck, the route to the finish, forks and junctions');
+  const close = mk('button', 'phone-close', body); close.type = 'button'; close.textContent = 'Close map (Esc)'; close.addEventListener('click', () => toggleMap(false));
   document.body.appendChild(el);
   el.addEventListener('pointerdown', e => {   // the phone takes its own clicks – they never reach the dash buttons underneath (ui/input.js listens on window)
     e.stopPropagation();
-    const r = view.cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top, h = view.hits.find(b => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h);
+    if (e.target !== view.cv) return;   // the bezel
+    const x = e.offsetX / view.k, y = e.offsetY / view.k, h = view.hits.find(b => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h);   // offsetX/Y: the canvas's own (unrotated) pixels
     if (!h) return;
     if (h.id === 'exit') toggleMap(false);
     else if (h.id === 'north') view.northUp = !view.northUp;
@@ -224,14 +244,27 @@ function build() {
     else if (h.id === 'out') view.z = Math.min(ZOOMS.length - 1, view.z + 1);
     audio.play('switch', .5);
   });
-  el.addEventListener('wheel', e => { e.preventDefault(); view.z = clamp(view.z + Math.sign(e.deltaY), 0, ZOOMS.length - 1); }, { passive: false });
+  el.addEventListener('wheel', e => {   // a trackpad sends many small deltas: one zoom level per ~a mouse-wheel notch
+    e.preventDefault();
+    const d = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1);
+    if (Math.sign(d) !== Math.sign(view.wheel)) view.wheel = 0;
+    view.wheel += d; if (Math.abs(view.wheel) < 60) return;
+    view.z = clamp(view.z + Math.sign(view.wheel), 0, ZOOMS.length - 1); view.wheel = 0;
+  }, { passive: false });
+}
+function show(open) {
+  phone.open = open; view.el.classList.toggle('on', open); view.el.inert = !open;
+  if (!open && view.el.contains(document.activeElement)) document.activeElement.blur();   // no focused button left behind (Space = the clutch)
 }
 /** open / close the phone map (the dash phone, N, its EXIT, Escape) */
 export function toggleMap(open = !phone.open) {
   if (typeof document === 'undefined') return;
   if (!view.el) build();
-  phone.open = open; view.el.classList.toggle('on', open); audio.play(open ? 'switch' : 'switch-off', .6);
+  show(open); audio.play(open ? 'switch' : 'switch-off', .6);
   if (open && !view.raf) view.raf = requestAnimationFrame(loop);
 }
+function closeMap() { if (view.el && phone.open) show(false); phone.open = false; }
+/** a new ride (ui/game.js resetRide): the phone back on its mount, quietly, and the map's view state from scratch */
+export function resetMap() { closeMap(); Object.assign(view, { rot: null, vAvg: 10, last: 0, reach: 0, wheel: 0 }); }
 if (typeof addEventListener === 'function') addEventListener('keydown', e => { if (e.code === 'Escape' && phone.open) toggleMap(false); });
 phone.thumb = (g, x, y, w, h) => drawMap(g, x, y, w, h, THUMB);

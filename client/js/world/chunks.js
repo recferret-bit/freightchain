@@ -46,10 +46,11 @@ function regAt(grp, colliders, obj, id, s, lat, extra) { if (obj.parent !== grp)
 
 /* a chunk's roadside (buildings, furniture, holes + their signs, scenery) along the spine – or, alt, along the other road of fork `fk` (drawn only: the
    truck can only hit what stands by the road it is on, and after a switch the chunk is rebuilt with that road as the spine). Ids of what stands by
-   road 1 of a fork carry 'b:', so a prop smashed by one road stays whole by the other. */
+   road 1 of a fork carry 'b:' (chunks wholly inside the fork only – a chunk across the split / merge keeps plain ids, so what was smashed just before the
+   split stays smashed when the chunk is rebuilt for the other road), so a prop smashed by one road stays whole by the other. */
 function roadside(ci, grp, alt, fk, colliders) {
   const s0 = ci * CH, pr = env.props, at = alt ? s => net.altAt(s) : roadAt;
-  const pre = fk && (alt ? 1 - fk.choice : fk.choice) === 1 ? 'b:' : '', dz = pre ? { has: id => destroyed.has(pre + id) } : destroyed;
+  const pre = fk && fk.f0 <= s0 && fk.f1 >= s0 + CH && (alt ? 1 - fk.choice : fk.choice) === 1 ? 'b:' : '', dz = pre ? { has: id => destroyed.has(pre + id) } : destroyed;
   const raw = alt ? (obj, s, lat, yaw) => { if (s < fk.f0 || s > fk.f1) releaseTree(obj); else putAt(grp, at, obj, s, lat, yaw); } : (obj, s, lat, yaw) => putAt(grp, at, obj, s, lat, yaw);   // the other road exists only inside its fork
   const occ = occupancy(); if (!alt) grp.userData.layout = occ.items;   // what was laid out and where (world/spacing.js): the rule that nothing stands in, or too close to, anything else
   const claim = (obj, s, l) => { const u = obj.userData, k = KINDS[u.kind]; if (!k) return true; const f = footprintOf(u.kind, k(u.size), s, l); f.obj = obj; return occ.claim(f); };

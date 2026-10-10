@@ -225,7 +225,7 @@ function paintRules() {
     el('li', {}, 'End the shift early, abandon it or crash and it does ', el('b', {}, 'not'), ' count as finished. A ticket is spent when its ride is created.'),
     el('li', {}, 'Pool tickets: your entry sits in the pool’s vault on chain, not with us. A pool that misses its goal refunds every ticket in full; in a live pool the finished shifts rank for its prize share. ', el('a', { href: escrowExplainer(), target: '_blank', rel: 'noopener' }, 'How the escrow works →')),
     el('li', {}, 'The game records your inputs while you drive. After the shift the server checks that recording – complete, consistent with your ride, human-timed – and verified shifts rank for prizes (the leaderboard says when that check is switched on). Flagged shifts wait for a review.'),
-    el('li', {}, 'Free rides: no fee, no prize. 10 at signup, daily refill stops at 5. A promo or an admin grant can sit above that.')));
+    el('li', {}, `Free rides: no fee, no prize. A new wallet starts with a few; the daily refill (+1 at 00:00 UTC) tops you up to ${S.me?.freeRidesMax ?? 5}. A promo or an admin grant can sit above that.`)));
 }
 /* per-card message lines (msg-<key>); kept in S.msgs so a repaint (poll, +/−) does not wipe them */
 function say(key, text, bad = false, link = null) {   // link = { href, text } appended after the text (an explorer link)
