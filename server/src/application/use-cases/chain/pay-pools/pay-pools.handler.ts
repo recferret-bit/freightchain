@@ -130,9 +130,9 @@ export class PayPoolsHandler implements ICommandHandler<PayPoolsCommand, PayoutP
     return this.payouts.listByPool(pool.id);
   }
 
-  /** wallets the chain already shows a PrizePaid for in this pool (the mirror's event log) */
+  /** wallets the chain already shows a PrizePaid for in this pool (the mirror's event log – every one, not a window of recent events) */
   private async paidWallets(poolId: number): Promise<Set<string>> {
-    return new Set((await this.events.recentOfPool(poolId, 1_000)).filter((e) => e.kind === 'PrizePaid' && e.wallet).map((e) => e.wallet as string));
+    return new Set(await this.events.prizeWalletsOfPool(poolId));
   }
 
   /** one prize: 'paid' = go on to the next; 'wait' = a transaction is in flight (or another pass has it); 'error' = stop and say why */

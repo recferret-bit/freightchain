@@ -46,6 +46,16 @@ describe('ChainEventPrismaRepository (PostgreSQL)', () => {
     expect((await repo.recentOfPool(7, 1)).map((e) => e.signature)).toEqual(['s2']);
   });
 
+  it('prizeWalletsOfPool: every PrizePaid wallet of that pool, once, however old', async () => {
+    await repo.record(row({ signature: 'p1', at: at(1), kind: 'PrizePaid', wallet: 'alice' }));
+    for (let i = 0; i < 5; i++) await repo.record(row({ signature: `t${i}`, at: at(10 + i), kind: 'TicketBought', wallet: `buyer${i}` }));
+    await repo.record(row({ signature: 'p2', at: at(20), kind: 'PrizePaid', wallet: 'bob' }));
+    await repo.record(row({ signature: 'p3', at: at(21), kind: 'PrizePaid', wallet: 'alice', index: 1 }));
+    await repo.record(row({ signature: 'p4', at: at(22), kind: 'PrizePaid', wallet: 'carol', poolId: 8 }));
+    expect((await repo.prizeWalletsOfPool(7)).sort()).toEqual(['alice', 'bob']);
+    expect(await repo.prizeWalletsOfPool(9)).toEqual([]);
+  });
+
   it('the finality pass: settled/applied without finalizedAt, oldest first; markFinalized stamps a whole transaction once', async () => {
     await repo.record(row({ signature: 's2', at: at(2) }));
     await repo.record(row({ signature: 's1', at: at(1), outcome: 'applied' }));

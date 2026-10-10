@@ -8,6 +8,8 @@ export abstract class ChainEventRepositoryPort {
   abstract record(row: ChainEventRow, tx?: TransactionHandle): Promise<boolean>;
   /** The pool's newest events first (GET /api/pools/:id `recent`). */
   abstract recentOfPool(poolId: number, limit: number, tx?: TransactionHandle): Promise<ChainEventRow[]>;
+  /** Every wallet a recorded PrizePaid of this pool went to (all of them – the payout job must never pay a wallet twice, however many events the pool has). */
+  abstract prizeWalletsOfPool(poolId: number, tx?: TransactionHandle): Promise<string[]>;
   /** settled / applied events not yet stamped final – the finality pass's work list, oldest first. */
   abstract listUnfinalized(limit: number, tx?: TransactionHandle): Promise<ChainEventRow[]>;
   /** Stamps every not-yet-final event of the transaction. */

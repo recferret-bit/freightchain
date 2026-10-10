@@ -21,6 +21,10 @@ export class MemoryChainEventRepository extends ChainEventRepositoryPort {
     return true;
   }
 
+  async prizeWalletsOfPool(poolId: number): Promise<string[]> {
+    return [...new Set(this.db.chainEvents.filter((e) => e.poolId === poolId && e.kind === 'PrizePaid' && e.wallet).map((e) => e.wallet as string))];
+  }
+
   async recentOfPool(poolId: number, limit: number): Promise<ChainEventRow[]> {
     return this.db.chainEvents.filter((e) => e.poolId === poolId).sort((a, b) => byTime(b, a)).slice(0, limit).map((e) => ({ ...e }));
   }

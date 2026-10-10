@@ -28,6 +28,11 @@ export class ChainEventPrismaRepository extends ChainEventRepositoryPort {
     return rows.map((r) => ChainEventMapper.toDomain(r));
   }
 
+  async prizeWalletsOfPool(poolId: number, tx?: TransactionHandle): Promise<string[]> {
+    const rows = await clientFor(this.prisma, tx).chainEvent.findMany({ where: { poolId, kind: 'PrizePaid', wallet: { not: null } }, select: { wallet: true }, distinct: ['wallet'] });
+    return rows.map((r) => r.wallet as string);
+  }
+
   async listUnfinalized(limit: number, tx?: TransactionHandle): Promise<ChainEventRow[]> {
     const rows = await clientFor(this.prisma, tx).chainEvent.findMany({
       where: { outcome: { in: ['settled', 'applied'] }, finalizedAt: null }, orderBy: [{ at: 'asc' }, { signature: 'asc' }, { index: 'asc' }], take: limit,
