@@ -2,13 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { escrowExplainer, explorerUrl, explorerTx, statusChip, progressText, deadline, splitParts, rulesText, tierTickets, buyRoom, cardAction, rideError, promoError, promoOk, buyError, usd, pct, sol } from '../../client/site/pools.js';
+import { escrowExplainer, explorerUrl, explorerTx, poolPhase, phaseLine, payoutText, poolSchedule, scheduleText, hasStandings, span, statusChip, progressText, deadline, splitParts, rulesText, tierTickets, buyRoom, cardAction, rideError, promoError, promoOk, buyError, usd, pct, sol } from '../../client/site/pools.js';
 import { salesOpen } from '../../client/site/tickets-api.js';
 
 /* The pool wording the lobby AND the landing show (client/site/pools.js is pure). Every pool status – incl. `refunding`, which the dev seeds can't produce – is pinned here. */
 const DAY = 86_400_000, NOW = Date.UTC(2026, 9, 8, 12);
 const pool = (o = {}) => ({ id: 2, address: '7kuWAwuYVynYZQytWJRsYk4K4dGmRzE1LjL5tQFEs8MB', tier: '4h', label: '4H · week 42', status: 'open', priceLamports: 50_000_000, minTickets: 10, maxTickets: 0, maxPerWallet: 5,
-  sold: 7, buyers: 6, toGo: 3, progressPct: 70, prepDeadline: NOW + 6 * DAY, playDeadline: NOW + 13 * DAY, vaultLamports: 350_000_000, sponsoredLamports: 0, potLamports: 350_000_000,
+  sold: 7, buyers: 6, toGo: 3, progressPct: 70, prepDeadline: NOW + 6 * DAY, playDeadline: NOW + 13 * DAY, payoutAt: NOW + 15 * DAY, payout: { state: 'pending', note: null, held: false }, vaultLamports: 350_000_000, sponsoredLamports: 0, potLamports: 350_000_000,
   split: { prizeBps: 7000, seedBps: 2000, feeBps: 1000 }, treasuries: { fee: 'Fee1111111111111111111111111111111111111111', seed: 'Seed111111111111111111111111111111111111111' }, roundId: null, ...o });
 const ticket = (o = {}) => ({ poolId: 2, tier: '4h', label: '4H · week 42', status: 'open', balance: 1, bought: 0, cap: 5, refundable: false, ...o });
 const problem = (status, code, message) => Object.assign(new Error(message), { status, code });
@@ -39,6 +39,70 @@ test('deadline: prep while open, play while active, none once it passed', () => 
   assert.deepEqual(deadline(pool({ status: 'active' }), NOW), { label: 'rides count until 2026-10-21 · closes in ', at: NOW + 13 * DAY });
   assert.equal(deadline(pool(), NOW + 7 * DAY).at, null);
   assert.equal(deadline(pool({ status: 'refunding' }), NOW).at, null);
+});
+
+/* the daily series: a 1h pool sells 24 h, rides count 2 h more, 48 h review, then the payout job pays */
+const H = 3_600_000, series = (o = {}) => pool({ tier: '1h', status: 'active', toGo: 0, prepDeadline: NOW + 14 * H, playDeadline: NOW + 16 * H, payoutAt: NOW + 64 * H, ...o });
+
+test('phase mirrors Pool.phase: selling (open OR active inside the sale) → riding → review → payout; failed; closed', () => {
+  assert.equal(poolPhase(series(), NOW), 'selling', 'an ACTIVE pool still inside its sale window is selling');
+  assert.equal(poolPhase(pool(), NOW), 'selling');
+  assert.equal(poolPhase(pool(), NOW + 7 * DAY), 'failed', 'an OPEN pool past its sale end missed its goal');
+  assert.equal(poolPhase(series(), NOW + 15 * H), 'riding');
+  assert.equal(poolPhase(series(), NOW + 16 * H), 'review');
+  assert.equal(poolPhase(series(), NOW + 64 * H), 'payout');
+  assert.equal(poolPhase(series({ status: 'refunding' }), NOW), 'failed', 'refunding wins over the clock');
+  assert.equal(poolPhase(series({ status: 'settled' }), NOW), 'closed');
+  assert.equal(poolPhase(series({ status: 'cancelled' }), NOW + 15 * H), 'closed');
+});
+
+test('phase line: ON SALE / RIDES COUNT / IN REVIEW with a coarse countdown, then what the payout job did', () => {
+  assert.deepEqual([span(14 * H), span(80 * 60_000), span(31 * H), span(3 * DAY + H), span(7 * 60_000), span(2 * H), span(0)], ['14 h', '1 h 20 m', '31 h', '3 d', '7 m', '2 h', '1 m']);
+  assert.equal(phaseLine(series(), NOW).text, 'ON SALE · 14 h left');
+  assert.deepEqual((({ head, at, pre, post, cls }) => ({ head, at, pre, post, cls }))(phaseLine(series(), NOW)), { head: 'ON SALE', at: NOW + 14 * H, pre: '', post: ' left', cls: 'open' });
+  assert.equal(phaseLine(series(), NOW + 14 * H + 40 * 60_000).text, 'RIDES COUNT · 1 h 20 m left');
+  assert.equal(phaseLine(series(), NOW + 33 * H).text, 'IN REVIEW · winners paid in 31 h');
+  const paying = st => phaseLine(series({ payout: { state: st, note: null, held: false } }), NOW + 70 * H).text;
+  assert.deepEqual(['pending', 'paying', 'paid', 'waiting_review', 'no_winners', 'error'].map(paying), ['PAYING WINNERS', 'PAYING WINNERS', 'PAID', 'PAYOUT WAITS FOR REVIEW', 'NO WINNERS', 'PAYOUT DELAYED']);
+  assert.equal(phaseLine(series({ payout: { state: 'pending', note: 'x', held: true } }), NOW + 70 * H).text, 'PAYOUT ON HOLD', 'a hold wins over the job state');
+  assert.equal(phaseLine(series({ status: 'refunding' }), NOW).text, 'REFUNDING');
+  assert.equal(phaseLine(pool(), NOW + 7 * DAY).text, 'MISSED ITS GOAL');
+  assert.equal(phaseLine(series({ status: 'settled', payout: { state: 'paid', note: null, held: false } }), NOW).text, 'PAID');
+  assert.equal(phaseLine(series({ status: 'settled', payout: { state: 'no_winners', note: null, held: false } }), NOW).text, 'NO WINNERS');
+  assert.equal(phaseLine(series({ status: 'cancelled' }), NOW).cls, 'done');
+});
+
+test('chip + progress line know when the rides are over', () => {
+  assert.deepEqual(statusChip(series(), NOW + 15 * H), { text: 'LIVE', cls: 'live' });
+  assert.deepEqual(statusChip(series(), NOW + 20 * H), { text: 'IN REVIEW', cls: 'open' });
+  assert.deepEqual(statusChip(series(), NOW + 70 * H), { text: 'PAYOUT', cls: 'live' });
+  assert.match(progressText(series(), NOW + 20 * H), /rides are over$/);
+});
+
+test('payout line: hold, rides under review, no winners, delayed; nothing while pending', () => {
+  assert.equal(payoutText({ state: 'waiting_review', note: null, held: true }, 3), 'ON HOLD – an admin is checking');
+  assert.equal(payoutText({ state: 'pending', note: 'odd lap times', held: true }, 0), 'ON HOLD – an admin is checking (odd lap times)');
+  assert.equal(payoutText({ state: 'waiting_review', note: null, held: false }, 3), '3 rides still under review – the payout waits for every one');
+  assert.equal(payoutText({ state: 'waiting_review', note: null, held: false }, 1), '1 ride still under review – the payout waits for every one');
+  assert.match(payoutText({ state: 'no_winners', note: null, held: false }, 0), /^no verified finisher/);
+  assert.match(payoutText({ state: 'error', note: 'rpc down', held: false }, 0), /^payout delayed/);
+  assert.equal(payoutText({ state: 'pending', note: null, held: false }, 0), '');
+  assert.equal(payoutText(undefined, 0), '');
+});
+
+test('series rule: from the tier schedule, else from the pool timestamps (no sale length there)', () => {
+  assert.equal(scheduleText({ saleHours: 24, playHours: 2, reviewHours: 48 }), 'a new pool every 24 h · sales close after 24 h · rides count 2 h more · 48 h review before prizes');
+  assert.deepEqual(poolSchedule(series()), { saleHours: null, playHours: 2, reviewHours: 48 });
+  assert.equal(scheduleText(poolSchedule(series())), 'rides count 2 h more · 48 h review before prizes');
+  assert.equal(scheduleText(poolSchedule(pool({ payoutAt: NOW + 13 * DAY }))), 'rides count 168 h more', 'no review window = no review words');
+});
+
+test('a winners list exists once rides count, never while selling or for a failed / cancelled pool', () => {
+  assert.deepEqual([NOW, NOW + 15 * H, NOW + 20 * H, NOW + 70 * H].map(t => hasStandings(series(), t)), [false, true, true, true]);
+  assert.equal(hasStandings(series({ status: 'settled' }), NOW), true);
+  assert.equal(hasStandings(series({ status: 'cancelled' }), NOW), false);
+  assert.equal(hasStandings(series({ status: 'refunding' }), NOW + 20 * H), false);
+  assert.equal(hasStandings(pool(), NOW + 7 * DAY), false);
 });
 
 test('split + rules copy come from the pool (never hard-coded)', () => {
@@ -108,7 +172,7 @@ test('ticket sales: on when the server sells through the program (tiers.paymentM
 
 test('the lobby and the landing never call a bare /api path or render with innerHTML', () => {
   const site = join(new URL('..', import.meta.url).pathname, '..', 'client', 'site');
-  for (const f of ['lobby.js', 'lobby-pools.js', 'lobby-promo.js', 'lobby-garage.js', 'garage-cab.js', 'pools.js', 'tickets-api.js', 'pay.js', 'dom.js', 'admin.js', 'admin-promos.js']) {
+  for (const f of ['lobby.js', 'lobby-pools.js', 'admin-pools.js', 'lobby-promo.js', 'lobby-garage.js', 'garage-cab.js', 'pools.js', 'tickets-api.js', 'pay.js', 'dom.js', 'admin.js', 'admin-promos.js']) {
     const src = readFileSync(join(site, f), 'utf8');
     assert.doesNotMatch(src, /\.(innerHTML|outerHTML)\s*[+]?=|insertAdjacentHTML\(|document\.write\(/, f);
     assert.doesNotMatch(src, /['"`]\/api\//, `${f}: API calls go through wallet.js (API_BASE)`);

@@ -2,15 +2,16 @@ import { ADMIN_BASE, SITE_BASE } from '../js/hosts.js';
 import { b58, provider } from './wallet.js';
 import { shortAddr } from './pools.js';
 import { promosTab } from './admin-promos.js';
+import { poolsTab } from './admin-pools.js';
 import { devWanted, installDevWallet, isLocal, DEV_ADMIN_WALLET } from './dev-wallet.js';
 if (devWanted()) installDevWallet();   // localhost only: a dev wallet chosen earlier in this tab stays in place after a reload
 
-/* The admin page: OVERVIEW · REVIEW QUEUE · RIDES · PROMO CODES · SIGN-INS · LOGS · AUDIT (+ #ride/<id>). Vanilla DOM, no framework.
+/* The admin page: OVERVIEW · REVIEW QUEUE · RIDES · POOLS · PROMO CODES · SIGN-INS · LOGS · AUDIT (+ #ride/<id>). Vanilla DOM, no framework.
    Only wallets in the server's ADMIN_WALLETS get answers – to everyone else /api/admin/* is a 404 and this page says so.
    Everything from the server goes in with textContent (wallets, reasons, log lines are other people's data) – never innerHTML. */
 const $ = id => document.getElementById(id);
 const view = $('view');
-const TABS = ['overview', 'queue', 'rides', 'promos', 'signins', 'logs', 'audit'];
+const TABS = ['overview', 'queue', 'rides', 'pools', 'promos', 'signins', 'logs', 'audit'];
 
 /* ───────── helpers ───────── */
 function el(tag, attrs = {}, ...kids) {
@@ -52,7 +53,7 @@ async function go() {
   document.querySelectorAll('.tabs a').forEach(a => { const on = a.dataset.tab === S.tab; a.classList.toggle('on', on); a.setAttribute('aria-selected', on); });
   view.replaceChildren(el('p', { class: 'dim' }, 'Loading…'));
   refreshQueueCount();
-  try { await ({ overview, queue, rides, promos: () => promosTab({ api, el, view, signAt, time, ago, wallet }), signins, logs, audit, ride: () => ride(arg) })[S.tab](); } catch (e) { fail(e); }
+  try { await ({ overview, queue, rides, pools: () => poolsTab({ api, el, view, signAt, time, wallet }), promos: () => promosTab({ api, el, view, signAt, time, ago, wallet }), signins, logs, audit, ride: () => ride(arg) })[S.tab](); } catch (e) { fail(e); }
 }
 addEventListener('hashchange', go);
 $('refresh').onclick = go;
@@ -207,7 +208,7 @@ async function audit() {
     rows.length ? el('div', { class: 'card', style: 'padding:6px 8px;overflow-x:auto' }, el('table', { class: 'dense' },
       el('thead', {}, el('tr', {}, ...['when', 'admin', 'action', 'target', 'detail', 'request'].map(h => el('th', {}, h)))),
       el('tbody', {}, rows.map(a => el('tr', {}, el('td', { title: time(a.at) }, ago(a.at)), el('td', {}, wallet(a.wallet)), el('td', {}, a.action),
-        el('td', {}, a.action.startsWith('verdict.') ? el('a', { href: `#ride/${a.target}`, class: 'mono' }, a.target.slice(0, 8)) : a.action.startsWith('promo.') ? el('a', { href: '#promos', class: 'mono' }, a.target) : wallet(a.target)), el('td', { class: 'dim' }, JSON.stringify(a.detail)), el('td', { class: 'mono dim' }, a.requestId ?? '–'))))))
+        el('td', {}, a.action.startsWith('verdict.') ? el('a', { href: `#ride/${a.target}`, class: 'mono' }, a.target.slice(0, 8)) : a.action.startsWith('promo.') ? el('a', { href: '#promos', class: 'mono' }, a.target) : a.action.startsWith('pool.') ? el('a', { href: '#pools', class: 'mono' }, `pool ${a.target}`) : wallet(a.target)), el('td', { class: 'dim' }, JSON.stringify(a.detail)), el('td', { class: 'mono dim' }, a.requestId ?? '–'))))))
       : el('div', { class: 'card empty' }, 'No admin actions yet.'));
 }
 

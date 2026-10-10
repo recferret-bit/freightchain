@@ -68,6 +68,19 @@ h2{margin:22px 0 10px;font-size:13px;letter-spacing:2px;color:var(--amber);font-
 .tier details{font-size:12px;color:var(--dim)}.tier summary{cursor:pointer;color:var(--amber);font-size:11px;letter-spacing:1px;margin-top:4px}.tier details p{margin:6px 0 0}
 .tier .msg{margin:4px 0 0;font-size:12px;min-height:0}
 .tier ul.rules{margin:6px 0 0}
+/* the daily series: phase line, the series rule, the winners list (lobby-pools.js) */
+.tier .phase{font-size:13px;font-weight:bold;letter-spacing:.5px;margin-top:2px}.tier .phase b{font-weight:bold}.phase.live{color:var(--good)}.phase.open{color:var(--amber)}.phase.fail{color:var(--bad)}.phase.done{color:var(--dim)}
+.tier .sched{font-size:11px}
+.tier.result{border-style:dashed}
+.winners{margin-top:8px;border-top:1px solid var(--line);padding-top:8px;display:grid;gap:4px}
+.winners .whd{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.winners .whd b{color:var(--amber);letter-spacing:1px;font-size:13px}.winners .whd small{margin-left:auto;color:var(--dim);font-size:12px}
+.winners .wwarn{color:var(--amber)}.winners .wnote.bad{color:var(--bad)}
+.wlist{list-style:none;margin:0;padding:0;display:grid;gap:2px;font-size:13px}
+.wlist li{display:grid;grid-template-columns:2.6em minmax(0,1fr) auto auto;gap:2px 10px;align-items:baseline;padding:2px 4px;border-radius:4px}
+.wlist li.me{background:#ffcf5a22;color:var(--amber)}
+.wlist .rk{color:var(--dim)}.wlist .wl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.wlist .km,.wlist .amt{text-align:right;white-space:nowrap}
+.wlist .pd{grid-column:2/-1;font-size:11px}.wlist .pd:empty{display:none}.wlist .pd a{color:var(--good);text-decoration:none}
+.winners details summary{margin-top:2px}
 .st{border:1px solid currentColor;border-radius:4px;padding:0 6px;font-size:11px;letter-spacing:1px;white-space:nowrap}
 .st.live{color:var(--good)}.st.open{color:var(--amber)}.st.fail{color:var(--bad)}.st.done{color:var(--dim)}
 .prog{height:10px;border-radius:5px;background:#000a;overflow:hidden;margin-top:6px}

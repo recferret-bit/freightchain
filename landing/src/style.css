@@ -179,6 +179,8 @@ a.r{color:inherit;text-decoration:none}a.r:hover,a.r:focus-visible{background:#f
 .pst{border:1px solid currentColor;border-radius:4px;padding:0 6px;font-size:10px;letter-spacing:1px;white-space:nowrap}   /* not .st: that is the roadmap's rubber stamp */
 .pst.live{color:var(--lcd)}.pst.open{color:var(--amber)}.pst.fail{color:var(--needle)}.pst.done{color:var(--dim)}
 .prow .bar i{background:linear-gradient(90deg,var(--needle),var(--amber))}
+#winners{margin-top:16px}
+.prow .pst{white-space:normal}
 .esc{list-style:none;margin:14px 0 8px;padding:0;display:grid;gap:0;justify-items:center}
 .esc li{width:100%}
 .esc-n,.esc-v{display:grid;gap:4px;text-align:center;padding:14px 16px;border-radius:10px}

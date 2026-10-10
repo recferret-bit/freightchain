@@ -4,7 +4,7 @@ import { track, flushSoon } from '../../client/js/analytics.js';
 import { reportWebVitals } from '../../client/js/web-vitals.js';
 import { livePath, leaveOnClose } from '../../client/site/presence.js';   // this page counts as online in the live feed – and leaves it when closed
 import { sol, km, left, short, hue, hours, driven, ago, plural, TIER, TIER_LONG, ROUTE } from './format.js';
-import { ridableTickets, escrowExplainer, explorerUrl, shortAddr, statusChip, progressText, deadline } from '../../client/site/pools.js';   // the lobby's pool wording, so both pages say the same thing
+import { ridableTickets, escrowExplainer, explorerUrl, shortAddr, progressText, phaseLine, poolPhase } from '../../client/site/pools.js';   // the lobby's pool wording, so both pages say the same thing
 
 /* Landing: four chapters (ride · loop · economy · about), fed by the public API only – no session needed to look.
    Everything from the server goes in with textContent (other riders' wallets are rendered here). */
@@ -88,21 +88,33 @@ function paintTiers(t) {   // a tier sold through a pool: the ticket price is th
   $('price').textContent = [pooled && 'Pool tickets: the price is part of the pool’s rules, fixed when it was created.', legacy && (t.solUsd ? `Pay-per-ride: SOL ≈ $${t.solUsd}, the quote is locked for 10 minutes when you order.` : 'Pay-per-ride: SOL price unavailable right now.'), soon && 'The 4 hour and 8 hour shifts are planned and not on sale yet.', 'Devnet SOL only.'].filter(Boolean).join(' ');
 }
 
-/* the escrowed pools on sale (the same list as GET /api/pools, carried by /api/pool so the page polls once) */
+/* the escrowed pools on sale or running (the same list as GET /api/pools, carried by /api/pool so the page polls once) – each with its phase: ON SALE · RIDES COUNT · IN REVIEW · PAYING… */
 function paintPools() {
   const box = $('pools'), list = S.pool?.pools;
   if (!list) { box.replaceChildren(...empty('Pools unavailable right now.')); return; }
   if (!list.length) { box.replaceChildren(...empty('No pool on sale right now – the next one opens with the week.')); return; }
   const n = now();
   box.replaceChildren(...list.map(p => {
-    const c = statusChip(p, n), d = deadline(p, n);
+    const f = phaseLine(p, n);
     return el('div', { class: 'r prow' },
-      el('span', { class: 'w' }, el('b', {}, TIER[p.tier] ?? p.tier), el('span', { class: `pst ${c.cls}` }, c.text), el('small', {}, p.label)),
+      el('span', { class: 'w' }, el('b', {}, TIER[p.tier] ?? p.tier), el('span', { class: `pst ${f.cls}` }, f.text), el('small', {}, p.label)),
       el('span', { class: 'v' }, `${sol(p.vaultLamports)} SOL in escrow`),
       el('span', { class: 'bar' }, el('i', { style: `width:${p.progressPct}%` })),
-      el('span', { class: 'pmeta' }, progressText(p, n), ' · ', `${sol(p.priceLamports)} SOL a ticket`, d.at ? [' · ', d.label, el('b', { class: 'pcd', 'data-at': d.at }, left(d.at - n))] : d.label ? ` · ${d.label}` : '', ' · ',
-        el('a', { href: explorerUrl(p.address), target: '_blank', rel: 'noopener', title: `pool account ${p.address} on the Solana explorer` }, `pool ${shortAddr(p.address)} ↗`)));
+      el('span', { class: 'pmeta' }, progressText(p, n), ` · ${sol(p.priceLamports)} SOL a ticket · `,
+        el('a', { href: explorerUrl(p.address), target: '_blank', rel: 'noopener', title: p.address }, `pool ${shortAddr(p.address)} ↗`)));
   }));
+}
+
+/* WINNERS: the newest pool in review / paying (live pools come soonest-first), else the newest settled one – its top 5 (public standings, provisional until fixed) */
+async function refreshWinners() {
+  const l = await api('pools', undefined, { report: false }).catch(() => null), box = $('winners');
+  const p = l && (l.pools.filter(x => /^(review|payout)$/.test(poolPhase(x, now()))).pop() ?? l.finished[0]);
+  const st = p && await api(`pools/${p.id}/standings`, undefined, { report: false }).catch(() => null);
+  box.hidden = !st;
+  if (st) box.replaceChildren(el('h3', {}, `WINNERS · ${st.label}`, el('span', { class: `pst ${st.final ? 'live' : 'open'}` }, st.final ? 'FINAL' : 'PROVISIONAL')),
+    ...(st.ranks.length ? st.ranks.slice(0, 5).map(r => el('div', { class: 'r' }, el('span', { class: 'n' }, `#${r.rank}`),
+      el('span', { class: 'w' }, avatar(r.wallet), short(r.wallet), el('small', {}, `${km(r.distance)} km`)), el('span', { class: 'v' }, `${sol(r.lamports)} SOL${r.paid ? ' ✓' : ''}`))) : empty('No verified finisher.')),
+    el('a', { class: 'link', href: `${SITE_BASE}/lobby.html#new` }, 'all ranks →'));
 }
 
 /* ───── boards ───── */
@@ -156,7 +168,7 @@ async function refresh() {
   if (l) { S.live = l; S.skew = l.now - Date.now(); }
   paintHero(); paintPool(); paintPools(); paintBoards(); paintTicker();
 }
-async function refreshBoard() { S.board = await api('leaderboard?board=round', undefined, { report: false }).catch(() => null); paintBoards(); }
+async function refreshBoard() { refreshWinners(); S.board = await api('leaderboard?board=round', undefined, { report: false }).catch(() => null); paintBoards(); }
 
 /* ───── hero video: never on the critical path ─────
    The slideshow (WebP posters) is the hero. A gameplay loop – `data-src` on #hero-video, empty = none – is fetched only AFTER the page has loaded and the browser is idle, never on
@@ -298,5 +310,5 @@ refreshBoard();
 setInterval(() => { if (!document.hidden) refresh(); }, 10000);
 leaveOnClose(() => `${API_BASE}/api/${livePath('landing')}&leave=1`);
 setInterval(() => { if (!document.hidden) refreshBoard(); }, 30000);
-setInterval(() => { if (document.hidden) return; $('lb-clock').textContent = new Date(now()).toISOString().slice(11, 19); if (!S.pool) return; const t = left(S.pool.round.endsAt - now()); $('hero-cd').textContent = t; document.querySelectorAll('.pool .cd').forEach(c => { c.textContent = t; }); document.querySelectorAll('#pools .pcd').forEach(c => { c.textContent = left(+c.dataset.at - now()); }); }, 1000);
+setInterval(() => { if (document.hidden) return; $('lb-clock').textContent = new Date(now()).toISOString().slice(11, 19); if (!S.pool) return; const t = left(S.pool.round.endsAt - now()); $('hero-cd').textContent = t; document.querySelectorAll('.pool .cd').forEach(c => { c.textContent = t; }); }, 1000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });

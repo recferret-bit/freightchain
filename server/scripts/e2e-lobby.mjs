@@ -39,7 +39,7 @@ await size(rider, 1100, 900, false); await size(obs, 1100, 900, false);
 
 // ── NEW RIDE
 await open(rider, A, `${BASE}/lobby.html#new`);
-check('lobby renders: one card per shift', await until(async () => (await rider.ev('document.querySelectorAll(".tier").length')) === 4));
+check('lobby renders: one card per shift', await until(async () => (await rider.ev('document.querySelectorAll(".tier:not(.result)").length')) === 4));
 check('header shows the wallet, 10/5 free rides', (await rider.ev('document.getElementById("chip-wallet").textContent')) === A.short && /10\/5 free rides/.test(await rider.ev('document.getElementById("chip-free").textContent')), await rider.ev('document.getElementById("chip-free").textContent'));
 const esc = (await get('pools')).pools.reduce((a, p) => a + p.vaultLamports, 0);
 check('top box: the escrow across the pools on sale', /IN ESCROW/.test(await txt(rider, '.pool .lbl')) && (await txt(rider, '.pool .big')) === sol(esc), await txt(rider, '.pool .big'));
@@ -47,6 +47,7 @@ check('free card: START FREE RIDE', (await rider.ev('document.getElementById("st
 // pool cards (1h LIVE, 4h OPEN 7/10)
 check('1h card: LIVE chip, price from the pool, "2 / 2 committed"', (await txt(rider, '#tier-1h .st')) === 'LIVE' && (await txt(rider, '#tier-1h .pr')).startsWith(sol(live1h.priceLamports)) && (await txt(rider, '#tier-1h .ptext')).startsWith(`${live1h.sold} / ${live1h.minTickets} committed`), await txt(rider, '#tier-1h .ptext'));
 check('4h card: NEEDS n MORE chip, progress bar at sold/min, toGo in words', (await txt(rider, '#tier-4h .st')) === `NEEDS ${open4h.toGo} MORE` && (await rider.ev('document.querySelector("#tier-4h .prog i").style.width')) === `${open4h.progressPct}%` && new RegExp(`needs ${open4h.toGo} more riders? to go live`).test(await txt(rider, '#tier-4h .ptext')), await txt(rider, '#tier-4h .ptext'));
+check('1h card: the phase line (ON SALE · n d left) and the series rule from the tier schedule (24 h sale · 2 h more riding · 48 h review)', /^ON SALE · \d+ d left$/.test(await txt(rider, '#tier-1h .phase')) && (await txt(rider, '#tier-1h .sched')) === 'a new pool every 24 h · sales close after 24 h · rides count 2 h more · 48 h review before prizes', `${await txt(rider, '#tier-1h .phase')} | ${await txt(rider, '#tier-1h .sched')}`);
 check('4h card: the prep deadline counts down', /goes live if \d+ commit by \d{4}-\d\d-\d\d/.test(await txt(rider, '#tier-4h')) && await until(async () => /\d\d:\d\d:\d\d/.test(await txt(rider, '#tier-4h .pcd'))), await txt(rider, '#tier-4h .pcd'));
 check('pool card: escrow, 70/20/10 split, explorer link to the pool account (devnet)', (await txt(rider, '#tier-1h .esc')) === sol(live1h.vaultLamports) && /70% prizes/.test(await txt(rider, '#tier-1h .legend')) && (await rider.ev('document.querySelector("#tier-1h .addrs a").href')) === `https://explorer.solana.com/address/${live1h.address}?cluster=devnet`);
 const program = tiers.paymentMode === 'program';   // a server with the pool program sells tickets; without it BUY is SOON (buying itself: scripts/e2e-tickets-stub.mjs)
@@ -114,13 +115,13 @@ check('the finished ride left the live feed', await until(async () => { await sl
 const C = await wallet();
 const third = await launch({ port: CDP + 2, shotsDir: 'fc-lobby-shots', evalProblems: true }); await size(third, 1100, 900, false);
 await open(third, C, `${BASE}/lobby.html#new`);
-check('another wallet: four cards, START enabled, no unpaid order', await until(async () => (await third.ev('document.querySelectorAll(".tier").length')) === 4 && (await third.ev('document.getElementById("start").disabled')) === false) && (await get('rides/pending', C.cookie)).ride === null);
+check('another wallet: four cards, START enabled, no unpaid order', await until(async () => (await third.ev('document.querySelectorAll(".tier:not(.result)").length')) === 4 && (await third.ev('document.getElementById("start").disabled')) === false) && (await get('rides/pending', C.cookie)).ride === null);
 check('…the pending box stays empty', await until(async () => (await third.ev('document.getElementById("pendingbox").textContent')) === '', 30000), JSON.stringify(await third.ev('document.getElementById("pendingbox").textContent')));
 check('…and no page errors on that path', problems(third).length === 0, problems(third).join(' | '));
 
 // ── TICKETS: promo → RIDE with a ticket → the game; the 409s read as sentences (fourth browser, wallet D)
 const D = await wallet(), tix = await launch({ port: CDP + 3, shotsDir: 'fc-lobby-shots', evalProblems: true }); await size(tix, 1100, 900, false);
-await open(tix, D, `${BASE}/lobby.html#new`); await until(async () => (await tix.ev('document.querySelectorAll(".tier").length')) === 4);
+await open(tix, D, `${BASE}/lobby.html#new`); await until(async () => (await tix.ev('document.querySelectorAll(".tier:not(.result)").length')) === 4);
 const redeem = async code => { await tix.ev(`document.getElementById("promo-code").value = ${JSON.stringify(code)}; document.getElementById("promo-go").click()`); await until(async () => !/Redeeming/.test(await txt(tix, '#promo-msg')) && (await txt(tix, '#promo-msg')) !== ''); return txt(tix, '#promo-msg'); };
 check('promo: an unknown code reads "Unknown promo code"', /Unknown promo code/.test(await redeem('NOPE-NOPE')), await txt(tix, '#promo-msg'));
 check('promo: WELCOME (any case) → +2 tickets, balance and cap shown', /^\+2 tickets \(WELCOME\) in pool #\d+ · you hold 2 · cap \d+/.test(await redeem('welcome')), await txt(tix, '#promo-msg'));

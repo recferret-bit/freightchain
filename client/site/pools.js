@@ -20,9 +20,50 @@ export const left = ms => { const s = Math.max(0, Math.floor(ms / 1000)), d = Ma
 export const day = ms => new Date(ms).toISOString().slice(0, 10);   // UTC date, the same for every viewer
 
 export const STATUS_CLS = { active: 'live', open: 'open', refunding: 'fail', settled: 'done', cancelled: 'done' };
+
+/* ── the daily series: SALE (until prepDeadline) → rides count (until playDeadline) → REVIEW (until payoutAt) → the payout job pays the verified top 20 ── */
+/** The pool's phase – mirrors Pool.phase (server/src/domain/economy/pool.entity.ts), in the same order. */
+export function poolPhase(p, now) {
+  if (p.status === 'settled' || p.status === 'cancelled') return 'closed';
+  if (p.status === 'refunding') return 'failed';
+  if (now < p.prepDeadline) return 'selling';
+  if (p.status === 'open') return 'failed';
+  if (now < p.playDeadline) return 'riding';
+  return now < (p.payoutAt ?? p.playDeadline) ? 'review' : 'payout';
+}
+/** A coarse "time left": 3 d · 31 h · 1 h 20 m · 7 m (the phase lines; the exact HH:MM:SS countdown is `left`). */
+export const span = ms => { const m = Math.max(1, Math.ceil(ms / 60000)), h = Math.floor(m / 60); return h >= 48 ? `${Math.floor(h / 24)} d` : h >= 10 ? `${h} h` : h ? `${h} h${m % 60 ? ` ${m % 60} m` : ''}` : `${m} m`; };
+const PAYOUT_HEAD = { paid: 'PAID', paying: 'PAYING WINNERS', held: 'PAYOUT ON HOLD', waiting_review: 'PAYOUT WAITS FOR REVIEW', no_winners: 'NO WINNERS', error: 'PAYOUT DELAYED' };
+/** The phase as one line: { phase, cls, head, at, pre, post } – the page writes `head · pre<countdown to at>post`; `text` is the same line now (tests, the landing). cls = live / open / fail / done. */
+export function phaseLine(p, now) {
+  const ph = poolPhase(p, now), st = p.payout?.held ? 'held' : p.payout?.state;
+  const r = ph === 'selling' ? { cls: 'open', head: 'ON SALE', at: p.prepDeadline, pre: '', post: ' left' }
+    : ph === 'riding' ? { cls: 'live', head: 'RIDES COUNT', at: p.playDeadline, pre: '', post: ' left' }
+      : ph === 'review' ? { cls: 'open', head: 'IN REVIEW', at: p.payoutAt, pre: 'winners paid in ', post: '' }
+        : ph === 'payout' ? { cls: st === 'paid' ? 'done' : st === 'error' || st === 'held' ? 'fail' : 'live', head: PAYOUT_HEAD[st] ?? 'PAYING WINNERS' }
+          : ph === 'failed' ? { cls: 'fail', head: p.status === 'refunding' ? 'REFUNDING' : 'MISSED ITS GOAL' }
+            : { cls: 'done', head: p.status === 'cancelled' ? 'CANCELLED' : st === 'paid' ? 'PAID' : st === 'no_winners' ? 'NO WINNERS' : 'CLOSED' };
+  return { phase: ph, at: null, pre: '', post: '', ...r, text: r.at ? `${r.head} · ${r.pre}${span(r.at - now)}${r.post}` : r.head };
+}
+/** What the payout job says, as a sentence ('' = nothing to say). `underReview` comes from the standings (PoolStandingsDto), not from the pool. */
+export function payoutText(payout, underReview) {
+  if (!payout) return '';
+  if (payout.held) return `ON HOLD – an admin is checking${payout.note ? ` (${payout.note})` : ''}`;
+  if (payout.state === 'waiting_review') return underReview ? `${plural(underReview, 'ride')} still under review – the payout waits for every one` : 'waiting for rides under review';
+  if (payout.state === 'no_winners') return 'no verified finisher – nothing to pay; the prize share goes back with the close';
+  if (payout.state === 'error') return 'payout delayed – it is retried automatically';
+  if (payout.state === 'paying') return 'paying the winners now';
+  if (payout.state === 'paid') return 'every winner paid';
+  return '';
+}
+/** The series rule: from the tier's schedule (GET /api/tiers) – or, without it, what the pool's own timestamps say (no sale length there). */
+export const poolSchedule = p => ({ saleHours: null, playHours: Math.round((p.playDeadline - p.prepDeadline) / 36e5), reviewHours: Math.round(((p.payoutAt ?? p.playDeadline) - p.playDeadline) / 36e5) });
+export const scheduleText = s => [s.saleHours && `a new pool every ${s.saleHours} h · sales close after ${s.saleHours} h`, s.playHours && `rides count ${s.playHours} h more`, s.reviewHours && `${s.reviewHours} h review before prizes`].filter(Boolean).join(' · ');
+/** Whether a pool has a winners list worth showing: rides counting or over, or a settled pool (not while selling, not a failed / cancelled one). */
+export const hasStandings = (p, now) => { const ph = poolPhase(p, now); return ph === 'riding' || ph === 'review' || ph === 'payout' || (ph === 'closed' && p.status === 'settled'); };
 /** Status chip: { text, cls } – cls is one of live / open / fail / done. `now` = server-corrected epoch ms. */
 export function statusChip(p, now) {
-  if (p.status === 'active') return { text: 'LIVE', cls: 'live' };
+  if (p.status === 'active') return now < p.playDeadline ? { text: 'LIVE', cls: 'live' } : now < (p.payoutAt ?? 0) ? { text: 'IN REVIEW', cls: 'open' } : { text: 'PAYOUT', cls: 'live' };
   if (p.status === 'open') return now >= p.prepDeadline ? { text: 'MISSED ITS GOAL', cls: 'fail' } : { text: `NEEDS ${p.toGo} MORE`, cls: 'open' };
   if (p.status === 'refunding') return { text: 'FAILED – REFUND', cls: 'fail' };
   if (p.status === 'settled') return { text: 'SETTLED', cls: 'done' };
@@ -32,7 +73,7 @@ export function statusChip(p, now) {
 /** The progress line under the bar: "7 / 10 committed" + what it means. */
 export function progressText(p, now) {
   const head = `${p.sold} / ${p.minTickets} committed`;
-  if (p.status === 'active') return `${head} · live – rides count`;
+  if (p.status === 'active') return now < p.playDeadline ? `${head} · live – rides count` : `${head} · rides are over`;
   if (p.status === 'open') return now >= p.prepDeadline ? `${head} · missed its goal – refunds follow` : `${head} · needs ${plural(p.toGo, 'more rider')} to go live`;
   if (p.status === 'refunding') return `${head} · failed – every ticket is refunded in full`;
   return head;

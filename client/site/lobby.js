@@ -1,8 +1,8 @@
 import { api, signOut } from './wallet.js';
 import { buyRide, buyTickets, claimRefund, waitPaid, ORDER_SIG } from './pay.js';
 import { salesOpen, pendingOrder } from './tickets-api.js';
-import { ridableTickets, escrowExplainer, explorerTx, rideError, promoError, promoOk, buyError, sol, left, shortAddr as short } from './pools.js';
-import { poolCard, escrowSummary, refundRows, profileTickets } from './lobby-pools.js';
+import { ridableTickets, escrowExplainer, explorerTx, rideError, promoError, promoOk, buyError, sol, left, span, hasStandings, shortAddr as short } from './pools.js';
+import { poolCard, resultCard, escrowSummary, refundRows, profileTickets } from './lobby-pools.js';
 import { careerTiles } from './lobby-career.js';
 import { redemptionList } from './lobby-promo.js';
 import { dirty, garageActions, garageProgress, garageSlots } from './lobby-garage.js';
@@ -32,7 +32,7 @@ const dur = s => { s = Math.max(0, Math.round(s)); return s >= 3600 ? `${Math.fl
 const km = m => (m / 1000).toFixed(m < 10_000 ? 2 : 1);
 
 /* ───────── state ───────── */
-const S = { me: null, tiers: null, pool: null, live: { rides: [] }, liveAt: 0, skew: 0, board: 'round', boardLevel: Number(store.get('freightchain.board-level')) || 3, pending: null, pendingNote: '', tab: 'new', busy: null, qty: {}, msgs: {}, poolInfo: {}, order: null, focus: null, opt: { tutorial: null, assist: store.get('freightchain.assist') === '1', level: Number(store.get('freightchain.level')) || 1 } };   // opt = the free ride's level + two checkboxes: tutorial null = follow the server (on until a ride was started with it), assist and the level are remembered here
+const S = { me: null, tiers: null, pool: null, live: { rides: [] }, liveAt: 0, skew: 0, board: 'round', boardLevel: Number(store.get('freightchain.board-level')) || 3, pending: null, pendingNote: '', pools: null, standings: {}, stAt: {}, tab: 'new', busy: null, qty: {}, msgs: {}, poolInfo: {}, order: null, focus: null, opt: { tutorial: null, assist: store.get('freightchain.assist') === '1', level: Number(store.get('freightchain.level')) || 1 } };   // opt = the free ride's level + two checkboxes: tutorial null = follow the server (on until a ride was started with it), assist and the level are remembered here
 let seq = 0;   // one number per tab render: an answer that comes back after the player moved on (or re-asked) is dropped, not painted over the new tab
 const now = () => Date.now() + S.skew;   // server clock (skew learned from /api/live)
 const freeLeft = m => `${m.freeRides}/${m.freeRidesMax} free ride${m.freeRides === 1 ? '' : 's'}`;   // always balance/daily cap. A surplus (signup, a promo, an admin grant) stays; the refill stops at the cap
@@ -63,7 +63,7 @@ function go() {
 function renderNew() {
   view.replaceChildren(
     el('div', { class: 'card pool', id: 'poolbox' }), el('div', { id: 'pendingbox' }), el('div', { id: 'orderbox' }), el('div', { id: 'refunds' }),
-    el('div', { id: 'freebox' }), el('h2', {}, 'PAID SHIFTS'), el('div', { class: 'tiers', id: 'tiers' }),
+    el('div', { id: 'freebox' }), el('h2', {}, 'PAID SHIFTS'), el('div', { class: 'tiers', id: 'tiers' }), el('div', { id: 'results' }),
     el('div', { class: 'card', id: 'rules', style: 'margin-top:12px' }));
   paintPool(); paintPending(); paintTiers(); paintRules();
   refreshMe();   // free-ride count + tickets after a ride / refund
@@ -151,12 +151,31 @@ function paintTiers() {
   adoptReady(free);
   fbox.replaceChildren(...(free ? [freeCard(free)] : []));
   box.replaceChildren(...S.tiers.tiers.filter(t => t.id !== 'free').map(t => {
-    if (t.pool) return poolCard(t, tierInfo(t), { ...ctx, qty: S.qty[t.id] ?? 1 });
+    if (t.pool) return poolCard(t, tierInfo(t), { ...ctx, qty: S.qty[t.id] ?? 1, winners: hasStandings(t.pool, ctx.now) ? S.standings[t.pool.id] : null });   // no pool of this shift on sale: the card shows the running one, with its winners
     if (t.onSale === false) return soonCard(t);   // planned shift: no pay-per-ride card, and not the "pool ended" card
     return salesOpen(S.tiers) ? noPoolCard(t) : legacyCard(t);
   }));
   for (const [k, m] of Object.entries(S.msgs)) say(k, ...m);   // messages survive a repaint
-  paintRefunds(); tickCountdowns();
+  paintResults(ctx); paintRefunds(); tickCountdowns();
+}
+
+/* POOL RESULTS: the pools whose sale is over and no tier card shows – rides still counting, in the review window, paying, and the last settled ones (GET /api/pools
+   `pools` + `finished`) – each with its winners list (GET /api/pools/:id/standings, public). Provisional lists are asked again every 15 s; a final, fully paid one once. */
+const resultPools = n => { const shown = new Set(S.tiers?.tiers.map(t => t.pool?.id)); return [...(S.pools?.pools ?? []).slice().reverse(), ...(S.pools?.finished ?? [])].filter(p => !shown.has(p.id) && hasStandings(p, n)); };   // newest first: the live list comes soonest play deadline first
+function paintResults(ctx) {
+  const box = $('results'); if (!box) return;
+  const list = resultPools(ctx.now), sched = id => S.tiers?.tiers.find(t => t.id === id)?.schedule ?? null;
+  box.replaceChildren(...(list.length ? [el('h2', {}, 'POOL RESULTS'), el('div', { class: 'tiers' }, list.map(p => resultCard(p, S.standings[p.id], { ...ctx, name: id => TIER_NAME[id] ?? id, schedule: sched })))] : []));
+  loadStandings([...list, ...(S.tiers?.tiers ?? []).map(t => t.pool).filter(p => p && hasStandings(p, ctx.now))]);
+}
+let stBusy = false;
+async function loadStandings(pools) {
+  const t = Date.now(), due = pools.filter(p => { const s = S.standings[p.id]; return !(s?.final && s.ranks.every(r => r.paid)) && t - (S.stAt[p.id] ?? 0) > 14000; });
+  if (stBusy || !due.length) return;
+  stBusy = true; due.forEach(p => { S.stAt[p.id] = t; });
+  await Promise.all(due.map(p => api(`pools/${p.id}/standings`, undefined, { report: false }).then(st => { S.standings[p.id] = st; }, () => { S.standings[p.id] ??= null; })));
+  stBusy = false;
+  if (S.tab === 'new' && !S.busy) paintTiers();
 }
 const tutorialOn = () => S.opt.tutorial ?? !S.me?.tutorialPassed;
 function guideBox(id, name, hint, on, set, off = '') {   // one of the free ride's two checkboxes (kept in S.opt, so a repaint does not reset it); off = why it is locked (unchecked + disabled)
@@ -457,12 +476,13 @@ async function renderProfile() {
 
 /* ───────── refresh + 1 s tick ───────── */
 async function refreshPool() {   // the pot + every pool's progress (sold / escrow) – both are public and move while you look. Polls do not report api_request_failed.
-  const [p, t] = await Promise.all([api('pool', undefined, { report: false }).catch(() => null), S.tab === 'new' ? api('tiers', undefined, { report: false }).catch(() => null) : null]);
+  const [p, t, l] = await Promise.all([api('pool', undefined, { report: false }).catch(() => null), ...(S.tab === 'new' ? ['tiers', 'pools'].map(x => api(x, undefined, { report: false }).catch(() => null)) : [])]);
   if (p) S.pool = p;
   if (t) S.tiers = t;
+  if (l) S.pools = l;
   if (S.tab === 'new') { paintPool(); if (t && !S.busy) paintTiers(); }
 }
-function tickCountdowns() { const n = now(); document.querySelectorAll('.pcd[data-at]').forEach(c => { c.textContent = left(+c.dataset.at - n); }); }
+function tickCountdowns() { const n = now(); document.querySelectorAll('.pcd[data-at]').forEach(c => { c.textContent = left(+c.dataset.at - n); }); document.querySelectorAll('.phcd[data-at]').forEach(c => { c.textContent = span(+c.dataset.at - n); }); }   // .phcd: a phase line's coarse "14 h"
 function tickFree() {   // the "next free ride" counter; at 00:00 UTC ask the server (it grants, then says when the next one comes)
   const m = S.me; if (!m) return;
   $('chip-free').textContent = `${freeLeft(m)} · ${freeCd(m)}`;
@@ -491,7 +511,7 @@ if (S.me) {
   for (const a of document.querySelectorAll('a[href="/play.html"]')) a.href = `${GAME_BASE}/play.html?offline=1`;   // counted free runs. The click listener above stays on the element. Paid and watch links already carry their own query
   $('promo').onsubmit = redeem;
   $('out').onclick = async () => { track('player_signed_out'); flushSoon(); await signOut(); location.href = '/'; };
-  [S.tiers, S.pool] = await Promise.all([api('tiers', undefined, { report: false }).catch(() => null), api('pool', undefined, { report: false }).catch(() => null)]);
+  [S.tiers, S.pool, S.pools] = await Promise.all(['tiers', 'pool', 'pools'].map(x => api(x, undefined, { report: false }).catch(() => null)));
   await pollLive();
   const invite = new URLSearchParams(location.search).get('promo');   // the landing's invite block: lobby.html?promo=CODE – pre-fills the PROMO tab, never redeems by itself
   if (invite?.trim()) { S.invite = invite.trim().slice(0, 64); history.replaceState(null, '', `${location.pathname}#promo`); }

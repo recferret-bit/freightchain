@@ -1,10 +1,12 @@
 // The admin page in REAL headless Chrome against a RUNNING server: a non-admin sees "not available" (the API answers 404), the admin sees the overview,
-// the review queue holds a flagged ride, the ride detail shows its reasons and batches, ACCEPT turns it verified (audited, the rider sees it), sign-ins,
-// logs and the audit tab render; screenshots at desktop + phone width. No wallet extension: keypairs sign the challenges.
+// the review queue holds a flagged ride, the ride detail shows its reasons and batches, ACCEPT turns it verified (audited, the rider sees it), the POOLS tab
+// (every pool, its phase and winners; HOLD → RELEASE of the payout, both signed – on a live pool if there is one), sign-ins, logs and the audit tab render; screenshots at desktop + phone width. No wallet extension: keypairs sign the challenges.
 // Server: FREE_RIDE_SECONDS=3 ADMIN_WALLETS=<admin address> … node dist/main.js – easiest via `bash .claude/skills/run-tests/e2e.sh admin` (creates the admin keypair).
 //   ADMIN_KEYPAIR=<path to a JSON array secret key> BASE=http://localhost:<port> node scripts/e2e-admin.mjs
+//   SEED=1 + the server's DATABASE_URL (optional; CLI=<path to cli/index.js>, default dist/cli/index.js): seeds a live 1h pool (id 901) for the HOLD → RELEASE round trip – dev-only, throwaway database
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import nacl from 'tweetnacl'; import bs58 from 'bs58';
 import { launch, sleep } from '../../client/tools/cdp.mjs';
 const BASE = process.env.BASE || 'http://localhost:3111';
@@ -145,6 +147,32 @@ check('promos: the DISABLED filter lists it', await until(async () => /E2ETHREE/
 const second = await post('promo/redeem', { code: 'e2e three' }, (await signIn(nacl.sign.keyPair())).cookie);
 check('promos: a disabled code is refused to players (409, "no longer valid")', second.r.status === 409 && /no longer valid/.test(second.j.detail), JSON.stringify(second.j));
 await size(A, 390, 844, true); await sleep(300); await A.shot('promos-phone'); await size(A, 1200, 900, false);
+
+// ── POOLS: one card per pool (phase, sold / min, payout time, winners), then HOLD → RELEASE of a live pool's payout – each signed for exactly that pool
+if (process.env.SEED === '1' && process.env.DATABASE_URL) {   // dev-only seed through the admin CLI (refused in production); "already exists" is fine
+  try { execFileSync('node', [process.env.CLI || 'dist/cli/index.js', 'pool:seed', '--id', '901', '--tier', '1h', '--status', 'active', '--min', '1', '--label', 'E2E hold'], { cwd: new URL('..', import.meta.url).pathname, stdio: 'pipe' }); console.log('seeded: pool 901 (1h, active)'); } catch { console.log('pool seed skipped (exists?)'); }
+}
+const adminPools = (await get('admin/pools', adminCookie)).j.pools ?? [];
+await A.ev('location.hash = "#pools"');
+check('pools: the tab renders one card per pool of GET /api/admin/pools', await until(async () => /^POOLS · \d+$/.test(await A.ev('document.querySelector("#view h2")?.textContent || ""')) && (await A.ev('document.querySelectorAll(".apool").length')) === adminPools.length), `${await A.ev('document.querySelector("#view h2")?.textContent')} / ${adminPools.length}`);
+const holdable = adminPools.find(x => ['open', 'active'].includes(x.pool.status) && x.pool.payout.state !== 'paid' && !x.hold);
+if (holdable) {
+  const id = holdable.pool.id, card = `#apool-${id}`, cardText = () => A.ev(`document.querySelector(${JSON.stringify(card)})?.textContent || ""`);
+  check('pools: the card shows the phase, sold / min, the payout time, the payout job and the winners heading', /ON SALE|RIDES COUNT|IN REVIEW|PAY|NO WINNERS/.test(await cardText()) && (await cardText()).includes(`${holdable.pool.sold} / ${holdable.pool.minTickets} min`) && /payout at/.test(await cardText()) && /WINNERS · (FINAL|PROVISIONAL)/.test(await cardText()), (await cardText()).slice(0, 300));
+  await A.shot('pools-desktop');
+  const signedBefore = await A.ev('window.__signed');
+  await A.ev(`document.querySelector(${JSON.stringify(`${card} textarea`)}).value = "e2e: checking a lap"`);
+  await A.ev(`document.querySelector(${JSON.stringify(`${card} button[data-act=hold]`)}).click()`);
+  check('HOLD (signed): the card says ON HOLD with the note, a RELEASE button appears', await until(async () => /ON HOLD/.test(await cardText()) && /e2e: checking a lap/.test(await cardText()) && !!(await A.ev(`!!document.querySelector(${JSON.stringify(`${card} button[data-act=release]`)})`))), (await cardText()).slice(0, 300));
+  check('…the wallet signed the hold of exactly this pool with its note', (await A.ev('window.__signed')) === signedBefore + 1 && (await A.ev(`(window.__lastMessage || '').includes('Action: HOLD the payout of pool ${id}') && (window.__lastMessage || '').includes('Note: "e2e: checking a lap"')`)) === true, await A.ev('window.__lastMessage'));
+  check('…and the public pool says held', (await get('pools')).j.pools?.find(p => p.id === id)?.payout.held === true);
+  await A.ev(`document.querySelector(${JSON.stringify(`${card} button[data-act=release]`)}).click()`);
+  check('RELEASE (signed): the hold is gone', await until(async () => !/ON HOLD/.test(await cardText()) && !(await A.ev(`!!document.querySelector(${JSON.stringify(`${card} button[data-act=release]`)})`))) && (await A.ev(`(window.__lastMessage || '').includes('Action: RELEASE the payout hold of pool ${id}')`)) === true, (await cardText()).slice(0, 300));
+  check('…the public pool is not held any more', (await get('pools')).j.pools?.find(p => p.id === id)?.payout.held === false);
+  const acts = (await get('admin/actions?limit=50', adminCookie)).j.rows ?? [];
+  check('…both changes audited with their signatures (pool.hold, pool.release)', ['pool.hold', 'pool.release'].every(a => acts.some(r => r.action === a && r.target === String(id) && r.detail?.signed)), JSON.stringify(acts.filter(r => r.action.startsWith('pool.'))));
+  await size(A, 390, 844, true); await sleep(300); await A.shot('pools-phone'); await size(A, 1200, 900, false);
+} else console.log('skip: HOLD → RELEASE – no live pool on this server (SEED=1 with the server\'s DATABASE_URL seeds one)');
 
 // ── audit, sign-ins, logs, rides
 await A.ev('location.hash = "#audit"');

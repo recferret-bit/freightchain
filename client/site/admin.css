@@ -34,3 +34,10 @@ pre.json{background:#0008;border:1px solid var(--line);border-radius:6px;padding
 
 /* the [hidden] attribute loses to display rules above: the sign-in card hides the tabs; empty chips (no session yet) take no room */
 .tabs[hidden], .chip:empty, button[hidden] { display: none; }
+
+/* pools (admin-pools.js) */
+.apool{display:grid;gap:8px;margin-bottom:14px}
+.aphd{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.aphd b{color:var(--amber);letter-spacing:1px}
+.apool h3{margin:6px 0 0;font-size:12px;letter-spacing:1.2px;color:var(--amber)}
+.apool .phase{font-size:12px;font-weight:bold}.phase.live{color:var(--good)}.phase.open{color:var(--amber)}.phase.fail{color:var(--bad)}.phase.done{color:var(--dim)}
+.apool .actions{margin-top:4px}
