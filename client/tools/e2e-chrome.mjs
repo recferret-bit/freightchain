@@ -85,6 +85,8 @@ if(await ev('typeof window.__game')==='object' && await ev('typeof __game.toggle
     await ev(`__game.st.s=${f.f0}-300; __game.st.d=2.4; __game.st.psi=0`); await sleep(1500); await shot('map-dash');
     await ev('__game.toggleMap(true)'); await sleep(1500); await shot('map-open');
     console.log('map:',await ev('JSON.stringify({open:__game.phone.open, forks:__game.net.forks.length, el:!!document.getElementById("phone")})'));
+    { const r=JSON.parse(await ev('(()=>{const b=document.querySelector("#phone .phone-screen").getBoundingClientRect(); return JSON.stringify({x:b.x,y:b.y,w:b.width,h:b.height})})()')); const cx=r.x+r.w/2, cy=r.y+r.h*.4, mouse=(type,x,y)=>send('Input.dispatchMouseEvent',{type,x,y,button:'left',buttons:type==='mouseReleased'?0:1,clickCount:1});   // drag the map: it stays where it was left, with the recenter button
+      await mouse('mousePressed',cx,cy); for(let i=1;i<=10;i++) await mouse('mouseMoved',cx,cy+i*18); await mouse('mouseReleased',cx,cy+180); await sleep(600); await shot('map-dragged'); }
     await ev('__game.setNight(true,true,false)'); await sleep(1500); await shot('map-open-night'); await ev('__game.setNight(false,true,false); __game.toggleMap(false)'); }
   await ev(`clearInterval(window.__hold3); __game.setTrip('1h'); __game.st.mode='done'; __game.startRide(); document.getElementById('overlay').classList.add('hide')`);
 }

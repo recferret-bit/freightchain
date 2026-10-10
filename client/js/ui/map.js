@@ -4,6 +4,7 @@ import { roadAt } from '../road.js';
 import { net, edgeOf } from '../net/network.js';
 import { PATTERNS, FORK } from '../net/patterns.js';
 import { env } from '../world/environment.js';
+import { destroyed } from '../world/props.js';
 import { trip } from '../trips.js';
 import { phone } from '../phone.js';
 import { audio } from '../sim/audio.js';
@@ -19,7 +20,11 @@ const LAND = { route66: '#f1e7d3', stuart: '#f2e1cf', siberia: '#eef2f5', brenne
 const SHIELD = { route66: '66', stuart: 'A87', siberia: 'R255', brenner: 'A13', panamerican: 'RUTA 5' };
 const ZOOMS = [.6, 1.2, 2.4, 4.8, 9.6, 19.2];   // metres per CSS pixel of the big map
 const MAX_R = 4000, GROW = 1500;   // the big map draws at most 4 km around the truck, and reaches ≤ 1.5 km further per frame (no 11 km of road integrated in one frame)
-const view = { z: 2, northUp: false, rot: null, vAvg: 10, last: 0, reach: 0, wheel: 0, k: 1, hits: [], el: null, cv: null, raf: 0 };
+const CH = CFG.CHUNK_LEN;   // the roadside's chunk (world/chunks.js): one landmark at most per chunk
+const FREE_MAX = 3000, FREE_IDLE = 15000;   // how far (m) the map can be dragged from the truck, and how long (ms) it stays where it was left before it follows the truck again
+const view = { z: 2, northUp: false, rot: null, vAvg: 10, last: 0, reach: 0, wheel: 0, k: 1, hits: [], pois: [], free: null, touched: 0, drag: null, sel: null, el: null, cv: null, raf: 0 };
+/* the places by the road (the theme's landmarks): a colour and a glyph per type; motels and hotels are both lodging */
+const POI = { motel: { col: '#8e44ad', kind: 'bed', name: 'MOTEL' }, hotel: { col: '#8e44ad', kind: 'bed', name: 'HOTEL' }, gas: { col: '#e8710a', kind: 'pump', name: 'GAS STATION' }, police: { col: '#3949ab', kind: 'badge', name: 'POLICE' }, restaurant: { col: '#d84315', kind: 'fork', name: 'FOOD' } };
 const THUMB = { thumb: true, mpp: 5 };
 
 function palette() {
@@ -34,17 +39,38 @@ function truck() { const p = roadAt(st.s); return { x: p.x + Math.cos(p.t) * st.
 const target = () => (st.complete ? null : Math.max(CFG.COMPLETE_DIST, 0));
 const roadName = s => { if (s < net.Sm) return 'DEPOT ROAD'; const x = net.mainXs(s); return PATTERNS[x.pat]?.name ?? 'ROAD'; };
 
+/** the landmarks between s0 and s1 along the road, as the world builds them: the same `site(ci)` rule chunks.js asks, the same roadside offset; without the smashed ones and those the world drops (a junction, a side road) */
+function places(s0, s1) {
+  const out = []; if (!env.landmarks) return out;
+  for (let ci = Math.max(1, Math.floor(s0 / CH)); ci <= Math.floor(s1 / CH); ci++) {
+    if (net.busy(ci * CH - 20, ci * CH + CH + 20) || destroyed.has(ci + ':lm')) continue;
+    const L = env.landmarks.site(ci, ci * CH); if (!L) continue;
+    const lat = net.roadside(L.s, L.lat); if (net.keepOut(L.s, lat)) continue;
+    const w = net.world(L.s, lat); out.push({ id: ci, type: L.type, name: L.name, s: L.s, side: L.side, x: w.x, z: w.z });
+  }
+  return out;
+}
+function glyph(g, kind, k) {   // white pictograms in a 20 px badge
+  g.save(); g.scale(k, k); g.fillStyle = g.strokeStyle = '#fff'; g.lineWidth = 1.8; g.lineCap = g.lineJoin = 'round'; g.beginPath();
+  if (kind === 'bed') { g.rect(-7, 0, 14, 3); g.rect(-7, -6, 2, 9); g.fill(); g.beginPath(); g.arc(-3, -2, 1.8, 0, 7); g.fill(); g.fillRect(0, -3, 7, 3); }
+  else if (kind === 'pump') { g.roundRect(-5, -7, 8, 14, 1.5); g.fill(); g.fillStyle = '#e8710a'; g.fillRect(-3.5, -5.5, 5, 4); g.beginPath(); g.moveTo(3, -3); g.lineTo(6, -3); g.lineTo(6, 3); g.stroke(); }
+  else if (kind === 'badge') { g.moveTo(0, -8); g.lineTo(7, -5); g.lineTo(6, 2); g.quadraticCurveTo(4, 6, 0, 8); g.quadraticCurveTo(-4, 6, -6, 2); g.lineTo(-7, -5); g.closePath(); g.fill(); }
+  else { g.moveTo(-3, -7); g.lineTo(-3, 7); g.moveTo(-6, -7); g.lineTo(-6, -2); g.quadraticCurveTo(-4.5, 0, -3, 0); g.moveTo(-0.5, -7); g.lineTo(-0.5, -2); g.quadraticCurveTo(-2, 0, -3, 0); g.moveTo(5, 7); g.lineTo(5, -7); g.quadraticCurveTo(1.5, -4, 2.5, 1); g.lineTo(5, 1); g.stroke(); }
+  g.restore();
+}
+
 /* ───────────── the map itself: both the phone on the dash (thumb) and the one in your hand ───────────── */
 function drawMap(g, X, Y, W, H, o = {}) {
-  const P = palette(), T = truck(), mpp = o.mpp ?? ZOOMS[view.z], thumb = !!o.thumb;
+  const P = palette(), T = truck(), C = !o.thumb && view.free ? view.free : T, mpp = o.mpp ?? ZOOMS[view.z], thumb = !!o.thumb;
   const now = typeof performance === 'undefined' ? 0 : performance.now(), dt = view.last ? clamp((now - view.last) / 1000, 0, .25) : 0; view.last = now;
   if (st.mode === 'drive') view.vAvg += (st.v - view.vAvg) * (1 - Math.exp(-dt / 4));   // the ETA's speed: a ~4 s average, every frame (the dash phone too), not while paused
   if (view.rot === null || !Number.isFinite(view.rot)) view.rot = T.h;
-  let dr = T.h - view.rot; dr = Math.atan2(Math.sin(dr), Math.cos(dr)); view.rot += dr * (1 - Math.exp(-dt * (thumb ? 13 : 7.5)));   // ease the heading-up rotation (no jitter from steering)
-  const rot = !thumb && view.northUp ? 0 : view.rot, cx = X + W / 2, cy = Y + H * (thumb ? .66 : .64);
+  if (!thumb && view.free && performance.now() - view.touched > FREE_IDLE && !view.drag) view.free = null;   // left alone for a while: back to following the truck
+  let dr = T.h - view.rot; dr = Math.atan2(Math.sin(dr), Math.cos(dr)); if (thumb || !view.free) view.rot += dr * (1 - Math.exp(-dt * (thumb ? 13 : 7.5)));   // ease the heading-up rotation (no jitter from steering)
+  const rot = !thumb && view.northUp ? 0 : view.rot, cx = X + W / 2, cy = Y + H * (thumb ? .66 : view.free ? .5 : .64);
   const fx = Math.sin(rot), fz = -Math.cos(rot), rx = Math.cos(rot), rz = Math.sin(rot);
-  const pr = (x, z) => { const vx = x - T.x, vz = z - T.z; return [cx + (vx * rx + vz * rz) / mpp, cy - (vx * fx + vz * fz) / mpp]; };
-  const R = Math.min(MAX_R, Math.hypot(W, H) * mpp * .75), lo = st.s - R, step = clamp(mpp * 4, 2, 40);
+  const pr = (x, z) => { const vx = x - C.x, vz = z - C.z; return [cx + (vx * rx + vz * rz) / mpp, cy - (vx * fx + vz * fz) / mpp]; };
+  const R = Math.min(MAX_R, Math.hypot(W, H) * mpp * .75 + Math.hypot(C.x - T.x, C.z - T.z)), lo = st.s - R, step = clamp(mpp * 4, 2, 40);
   view.reach = clamp(view.reach, st.s + 2000, st.s + R + GROW);   // the orchestrator already keeps 2 km ahead generated; zooming out grows the rest over a few frames
   const hi = Math.min(st.s + R, view.reach); if (hi < st.s + R) view.reach += GROW;
   const line = (pts, w, col) => { if (pts.length < 2) return; g.strokeStyle = col; g.lineWidth = w; g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke(); };
@@ -106,6 +132,21 @@ function drawMap(g, X, Y, W, H, o = {}) {
     const p = roadAt(j.s), [x, y] = pr(p.x, p.z);
     if (j.signal) { const c = net.signal(j, 'main'); g.fillStyle = '#202124'; g.beginPath(); g.roundRect(x - 4, y - 9, 8, 18, 3); g.fill(); g.fillStyle = c === 'G' ? '#34a853' : c === 'A' ? '#fbbc04' : '#ea4335'; g.beginPath(); g.arc(x, c === 'G' ? y + 5 : c === 'A' ? y : y - 5, 2.6, 0, 7); g.fill(); }
     else { g.fillStyle = '#fff'; g.strokeStyle = P.casing; g.lineWidth = 1.5; g.beginPath(); g.arc(x, y, 3.5, 0, 7); g.fill(); g.stroke(); }
+  }
+  // places by the road: hotels, gas stations, police, food – badges on the map, named when zoomed in, the tapped one with its distance
+  view.pois.length = 0;
+  if (!thumb && mpp < 12) {
+    const k = mpp < 2.4 ? 1 : mpp < 6 ? .8 : .62;
+    for (const q of places(s0, s1)) {
+      const d = POI[q.type] ?? POI.restaurant, [x, y] = pr(q.x, q.z); if (x < X - 20 || x > X + W + 20 || y < Y - 20 || y > Y + H + 20) continue;
+      const sel = view.sel === q.id, r = (sel ? 13 : 10) * k;
+      g.fillStyle = 'rgba(0,0,0,.28)'; g.beginPath(); g.arc(x, y + 1.5, r, 0, 7); g.fill();
+      g.fillStyle = d.col; g.strokeStyle = '#fff'; g.lineWidth = 2; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); g.stroke();
+      g.save(); g.translate(x, y); glyph(g, d.kind, r / 10); g.restore();
+      view.pois.push({ id: q.id, x, y, r: Math.max(r, 16), q, d });
+      if (sel || mpp < 2.4) label(g, sel ? `${q.name} · ${d.name}` : q.name, x, y + r + 12, P);
+      if (sel) label(g, (q.s >= st.s ? distText(q.s - st.s) + ' ahead' : distText(st.s - q.s) + ' behind') + ' · ' + (q.side > 0 ? 'right' : 'left'), x, y + r + 32, P, '#188038');
+    }
   }
   // the depot
   if (s0 < 60) { const p = roadAt(-10), [x, y] = pr(p.x, p.z); g.fillStyle = '#5f6368'; g.beginPath(); g.roundRect(x - (thumb ? 4 : 9), y - (thumb ? 4 : 9), thumb ? 8 : 18, thumb ? 8 : 18, 3); g.fill(); if (!thumb) label(g, 'DEPOT', x, y + 18, P); }
@@ -192,26 +233,29 @@ function drawPhone() {
   g.fillStyle = '#fff'; g.textAlign = 'left'; g.font = `700 20px ${MONO}`; g.fillText(fit(g, distText(n.dist) || n.text, W - 86), 70, 52);
   g.font = `600 13px ${MONO}`; g.fillText(fit(g, n.dist === null ? n.sub : n.text, W - 86), 70, 74);
   g.font = `11px ${MONO}`; g.fillStyle = 'rgba(255,255,255,.82)'; g.fillText(fit(g, n.dist === null ? '' : n.sub, W - 86), 70, 92);
-  // the bottom sheet's top; the floating buttons (compass: heading up ⇄ north up, zoom in / out) stay above it
-  const sh = 104, sy = H - sh, bx = W - 46; let by = Math.max(112, Math.min(116, sy - 8 - 3 * 44));
-  for (const [id, glyph] of [['north', view.northUp ? 'N' : '➤'], ['in', '+'], ['out', '−']]) {
+  // the bottom sheet's top; the floating buttons (compass: heading up ⇄ north up, zoom in / out, and – once the map is dragged away – back to the truck) stay above it
+  const sh = 120, sy = H - sh, bx = W - 46; let by = Math.max(112, Math.min(116, sy - 8 - 4 * 44));
+  for (const [id, glyph] of [['north', view.northUp ? 'N' : '➤'], ['in', '+'], ['out', '−'], ...(view.free ? [['home', '◎']] : [])]) {
     g.fillStyle = P.card; g.strokeStyle = 'rgba(0,0,0,.2)'; g.lineWidth = 1; g.beginPath(); g.arc(bx + 18, by + 18, 18, 0, 7); g.fill(); g.stroke();
-    g.fillStyle = id === 'north' ? '#ea4335' : P.text; g.font = `700 ${id === 'north' ? 14 : 20}px ${MONO}`; g.textAlign = 'center';
+    g.fillStyle = id === 'north' ? '#ea4335' : id === 'home' ? P.route : P.text; g.font = `700 ${id === 'north' ? 14 : 20}px ${MONO}`; g.textAlign = 'center';
     if (id === 'north' && !view.northUp) { g.save(); g.translate(bx + 18, by + 18); g.rotate(-Math.PI / 2 - (view.rot ?? 0)); g.fillText('➤', 0, 1); g.restore(); } else g.fillText(glyph, bx + 18, by + 19);
     hits.push({ id, x: bx, y: by, w: 36, h: 36 }); by += 44;
   }
-  // the bottom sheet: time and distance to go, the trip, EXIT
+  // the bottom sheet: time and distance – to go, and driven – the trip, EXIT. The shift is complete when BOTH are done: the clock is the game's driven seconds (st.t), the distance the road's metres (st.s)
   g.fillStyle = P.card; g.shadowColor = 'rgba(0,0,0,.25)'; g.shadowBlur = 12; g.beginPath(); g.roundRect(0, sy, W, sh + 20, [16, 16, 0, 0]); g.fill(); g.shadowBlur = 0;
   g.fillStyle = 'rgba(0,0,0,.18)'; g.beginPath(); g.roundRect(W / 2 - 18, sy + 6, 36, 4, 2); g.fill();
-  const left = T0 !== null ? Math.max(0, T0 - st.s) : 0, tLeft = Math.max(0, CFG.RIDE_MIN_SECONDS - st.t), eta = Math.max(left / Math.max(view.vAvg, 6), tLeft);
+  const total = Math.max(1, CFG.RIDE_MIN_SECONDS), goal = Math.max(1, CFG.COMPLETE_DIST), left = T0 !== null ? Math.max(0, T0 - st.s) : 0, tLeft = Math.max(0, total - st.t);
+  const eta = Math.max(left / Math.max(view.vAvg, 6), tLeft), pt = clamp(st.t / total, 0, 1), pd = clamp(st.s / goal, 0, 1);
   const big = st.complete ? 'DONE' : fmt(eta);
   g.textAlign = 'left'; g.fillStyle = '#188038'; g.font = `700 22px ${MONO}`; g.fillText(big, 16, sy + 30);
   const dw = g.measureText(big).width;
-  g.fillStyle = P.sub; g.font = `600 14px ${MONO}`; g.fillText(fit(g, st.complete ? '· shift complete' : left <= 0 ? '· distance done – wait for the time' : '· ' + distText(left), W - 100 - (24 + dw)), 24 + dw, sy + 31);   // never under EXIT
-  g.font = `11px ${MONO}`; g.fillText(fit(g, (trip.name ?? 'SHIFT') + ' · ' + (env.theme?.name ?? '') + (trip.finish ? ' · ends at the line' : ''), W - 120), 16, sy + 54);
-  const prog = clamp(st.t / Math.max(1, CFG.RIDE_MIN_SECONDS), 0, 1);
-  g.fillStyle = 'rgba(0,0,0,.1)'; g.beginPath(); g.roundRect(16, sy + 70, W - 120, 6, 3); g.fill();
-  g.fillStyle = P.route; g.beginPath(); g.roundRect(16, sy + 70, (W - 120) * prog, 6, 3); g.fill();
+  g.fillStyle = P.sub; g.font = `600 14px ${MONO}`; g.fillText(fit(g, st.complete ? '· shift complete' : left <= 0 ? '· distance done – wait for the time' : '· ' + distText(left) + (tLeft <= 0 ? ' – time done' : ''), W - 100 - (24 + dw)), 24 + dw, sy + 31);   // never under EXIT
+  g.font = `600 12px ${MONO}`; g.fillText(fit(g, `TIME ${fmt(Math.min(st.t, total))} / ${fmt(total)}`, W - 120), 16, sy + 50);
+  g.fillText(fit(g, `DIST ${(Math.min(st.s, goal) / 1000).toFixed(2)} / ${(goal / 1000).toFixed(2)} km`, W - 120), 16, sy + 76);
+  g.fillStyle = 'rgba(0,0,0,.1)'; g.beginPath(); g.roundRect(16, sy + 58, W - 120, 6, 3); g.roundRect(16, sy + 84, W - 120, 6, 3); g.fill();
+  g.fillStyle = P.route; g.beginPath(); g.roundRect(16, sy + 58, Math.max(6, (W - 120) * pt), 6, 3); g.fill();
+  g.fillStyle = '#188038'; g.beginPath(); g.roundRect(16, sy + 84, Math.max(6, (W - 120) * pd), 6, 3); g.fill();
+  g.fillStyle = P.sub; g.font = `11px ${MONO}`; g.fillText(fit(g, (trip.name ?? 'SHIFT') + ' · ' + (env.theme?.name ?? '') + (trip.finish ? ' · ends at the line' : ''), W - 32), 16, sy + 104);
   g.fillStyle = '#ea4335'; g.beginPath(); g.roundRect(W - 92, sy + 20, 78, 40, 20); g.fill();
   g.fillStyle = '#fff'; g.font = `700 14px ${MONO}`; g.textAlign = 'center'; g.fillText('EXIT', W - 53, sy + 41);
   hits.unshift({ id: 'exit', x: W - 92, y: sy + 20, w: 78, h: 40 });   // tested first: nothing drawn over it may take its click
@@ -233,23 +277,45 @@ function build() {
   view.cv.setAttribute('role', 'img'); view.cv.setAttribute('aria-label', 'Map of the road ahead: the truck, the route to the finish, forks and junctions');
   const close = mk('button', 'phone-close', body); close.type = 'button'; close.textContent = 'Close map (Esc)'; close.addEventListener('click', () => toggleMap(false));
   document.body.appendChild(el);
+  const press = e => {   // the bezel and the canvas buttons; a drag on the map pans it, a tap on a place names it
+    const x = e.offsetX / view.k, y = e.offsetY / view.k, h = view.hits.find(b => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h);   // offsetX/Y: the canvas's own (unrotated) pixels
+    if (h) {
+      if (h.id === 'exit') toggleMap(false);
+      else if (h.id === 'north') view.northUp = !view.northUp;
+      else if (h.id === 'in') view.z = Math.max(0, view.z - 1);
+      else if (h.id === 'out') view.z = Math.min(ZOOMS.length - 1, view.z + 1);
+      else if (h.id === 'home') view.free = null;
+      audio.play('switch', .5); return;
+    }
+    view.drag = { x: e.offsetX, y: e.offsetY, x0: e.offsetX, y0: e.offsetY, moved: false, id: e.pointerId }; view.cv.setPointerCapture?.(e.pointerId);
+  };
   el.addEventListener('pointerdown', e => {   // the phone takes its own clicks – they never reach the dash buttons underneath (ui/input.js listens on window)
     e.stopPropagation();
-    if (e.target !== view.cv) return;   // the bezel
-    const x = e.offsetX / view.k, y = e.offsetY / view.k, h = view.hits.find(b => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h);   // offsetX/Y: the canvas's own (unrotated) pixels
-    if (!h) return;
-    if (h.id === 'exit') toggleMap(false);
-    else if (h.id === 'north') view.northUp = !view.northUp;
-    else if (h.id === 'in') view.z = Math.max(0, view.z - 1);
-    else if (h.id === 'out') view.z = Math.min(ZOOMS.length - 1, view.z + 1);
-    audio.play('switch', .5);
+    if (e.target === view.cv) press(e);   // not the bezel
   });
+  el.addEventListener('pointermove', e => {
+    const d = view.drag; if (!d || e.pointerId !== d.id) return;
+    if (!d.moved && Math.hypot(e.offsetX - d.x0, e.offsetY - d.y0) < 6) return;   // a tap is not a drag
+    if (!d.moved) { d.moved = true; if (!view.free) { const T = truck(); view.free = { x: T.x, z: T.z }; } }
+    const mpp = ZOOMS[view.z], rot = view.northUp ? 0 : view.rot ?? 0, dx = (e.offsetX - d.x) * mpp, dy = (e.offsetY - d.y) * mpp; d.x = e.offsetX; d.y = e.offsetY;
+    const T = truck(), f = view.free;   // the finger takes the map with it: the centre goes the other way (screen right = (cos, sin), screen up = (sin, -cos) in the world)
+    f.x -= dx * Math.cos(rot) - dy * Math.sin(rot); f.z -= dx * Math.sin(rot) + dy * Math.cos(rot);
+    const o = Math.hypot(f.x - T.x, f.z - T.z); if (o > FREE_MAX) { f.x = T.x + (f.x - T.x) * FREE_MAX / o; f.z = T.z + (f.z - T.z) * FREE_MAX / o; }
+    view.touched = performance.now();
+  });
+  const release = e => {
+    const d = view.drag; if (!d || e.pointerId !== d.id) return; view.drag = null; view.touched = performance.now();
+    if (d.moved || e.type === 'pointercancel') return;
+    const hit = view.pois.find(q => Math.hypot(q.x - e.offsetX, q.y - e.offsetY) <= q.r + 6);   // a tap: the nearest place, or nothing (closes the card)
+    view.sel = hit && view.sel !== hit.id ? hit.id : null; if (hit) audio.play('switch', .4);
+  };
+  el.addEventListener('pointerup', release); el.addEventListener('pointercancel', release);
   el.addEventListener('wheel', e => {   // a trackpad sends many small deltas: one zoom level per ~a mouse-wheel notch
     e.preventDefault();
     const d = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1);
     if (Math.sign(d) !== Math.sign(view.wheel)) view.wheel = 0;
     view.wheel += d; if (Math.abs(view.wheel) < 60) return;
-    view.z = clamp(view.z + Math.sign(view.wheel), 0, ZOOMS.length - 1); view.wheel = 0;
+    view.z = clamp(view.z + Math.sign(view.wheel), 0, ZOOMS.length - 1); view.wheel = 0; view.touched = performance.now();
   }, { passive: false });
 }
 function show(open) {
@@ -265,6 +331,6 @@ export function toggleMap(open = !phone.open) {
 }
 function closeMap() { if (view.el && phone.open) show(false); phone.open = false; }
 /** a new ride (ui/game.js resetRide): the phone back on its mount, quietly, and the map's view state from scratch */
-export function resetMap() { closeMap(); Object.assign(view, { rot: null, vAvg: 10, last: 0, reach: 0, wheel: 0 }); }
+export function resetMap() { closeMap(); Object.assign(view, { rot: null, vAvg: 10, last: 0, reach: 0, wheel: 0, free: null, drag: null, sel: null }); }
 if (typeof addEventListener === 'function') addEventListener('keydown', e => { if (e.code === 'Escape' && phone.open) toggleMap(false); });
 phone.thumb = (g, x, y, w, h) => drawMap(g, x, y, w, h, THUMB);
