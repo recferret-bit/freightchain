@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Full money e2e on a LOCAL chain: solana-test-validator with the escrow program (the verifiable .so, upgradeable) + the real server in PAYMENT_MODE=program
 # on a THROWAWAY database + scripted wallets (Node keypairs and a fake Phantom in headless Chrome that signs real transactions).
-#   bash .claude/skills/localnet-e2e/run.sh            (~3 min, paced by the pools' deadlines; see server/scripts/e2e-localnet.mjs)
+#   bash .claude/skills/localnet-e2e/run.sh            (~16 min, paced by the pools' deadlines; see server/scripts/e2e-localnet*.mjs)
 # Env: SO=<path to the .so> (default target/deploy, should be the pinned verifiable build), KEEP=1 keeps the scratch dir (keys, ledger, logs),
 #      PREP_A / PLAY_A / PREP_B = pool deadlines in seconds from creation (defaults in e2e-localnet.mjs).
 # Never touches devnet, the global Solana config or ~/.config/solana/id.json: every key is generated into the scratch dir, every call has an explicit URL.
@@ -11,7 +11,9 @@
 # SCENARIO=chaos: the server's view of the chain made flaky (scripts/localnet-fault-proxy.mjs) + several servers / crankers on one pool at once
 #   (scripts/e2e-localnet-chaos.mjs) – local only, no coverage gate (it adds no new instructions).
 # SCENARIO=all (default) | money (e2e-localnet.mjs only) | payout (e2e-localnet-payout.mjs only: ten riders, one pool, the payout job, the jackpot, the
-#   remaining program paths). `all` ends with the coverage gate (scripts/localnet-coverage.mjs): every instruction and event on the validator, every error
+#   remaining program paths) | day (e2e-localnet-day.mjs only: THE AUTONOMOUS DAY of program v2 – phase 3, a fresh validator with the 1h series phase 1
+#   wrote, its own server + database: the crank opens the pools on their slots, the payout key pays the verified ranks after the review window, no admin
+#   signature on chain). `all` ends with the coverage gate (scripts/localnet-coverage.mjs): every instruction and event on the validator, every error
 #   code asserted on the validator or in the LiteSVM tests – else the run fails. Coverage: $TMP/coverage.json (KEEP=1).
 # Needs: the compose PostgreSQL (npm run db:up), server/ dependencies, Chrome, solana-test-validator (Agave 4.1.2), internet once (web3.js + three.js CDNs).
 set -euo pipefail
@@ -22,11 +24,13 @@ SO="${SO:-$ROOT/programs/freightchain-pools/target/deploy/freightchain_pools.so}
 PIN="$ROOT/programs/freightchain-pools/verifiable-build.hash"
 PROGRAM_ID="$(node -p 'require(process.argv[1]).address' "$ROOT/programs/freightchain-pools/idl/freightchain_pools.json")"
 TMP="$(mktemp -d -t fc-localnet-XXXXXX)"
-DB="freightchain_localnet_$$"
-URL="postgresql://freight:freight_dev_password@localhost:15433/$DB"
-VAL_PID=""; SRV_PID=""
+DB="freightchain_localnet_$$"; DB_DAY="freightchain_localnet_$$_day"
+URL="postgresql://freight:freight_dev_password@localhost:15433/$DB"; URL_DAY="postgresql://freight:freight_dev_password@localhost:15433/$DB_DAY"
+VAL_PID=""; SRV_PID=""; BASE=""
 SCENARIO="${SCENARIO:-$([ "${TARGET:-localnet}" = devnet ] || [ "${LIKE_DEVNET:-0}" = 1 ] && echo money || echo all)}"   # the devnet paths run the money scenario
-case "$SCENARIO" in all|money|payout|chaos) ;; *) echo "✗ SCENARIO must be all, money, payout or chaos"; exit 2 ;; esac
+case "$SCENARIO" in all|money|payout|chaos|day) ;; *) echo "✗ SCENARIO must be all, money, payout, day or chaos"; exit 2 ;; esac
+PHASE2=1; [ "$SCENARIO" = day ] && PHASE2=0
+PHASE3=0; { [ "$SCENARIO" = all ] || [ "$SCENARIO" = day ]; } && [ "${TARGET:-localnet}" != devnet ] && [ "${LIKE_DEVNET:-0}" != 1 ] && PHASE3=1
 COV="$TMP/coverage.json"
 fail() { echo "✗ $*"; exit 1; }
 free_port() { node -e 'const s=require("net").createServer();s.listen(0,"127.0.0.1",()=>{console.log(s.address().port);s.close()})'; }
@@ -37,6 +41,7 @@ cleanup() {
   [ -n "$SRV_PID" ] && { kill "$SRV_PID" 2>/dev/null || true; wait "$SRV_PID" 2>/dev/null || true; }
   [ -n "$VAL_PID" ] && { kill "$VAL_PID" 2>/dev/null || true; wait "$VAL_PID" 2>/dev/null || true; }
   psql_admin "DROP DATABASE IF EXISTS \"$DB\" WITH (FORCE)" >/dev/null 2>&1 || true
+  psql_admin "DROP DATABASE IF EXISTS \"$DB_DAY\" WITH (FORCE)" >/dev/null 2>&1 || true
   if [ "${KEEP:-0}" = 1 ] || [ "$code" != 0 ]; then echo "scratch kept: $TMP (validator.log, server.log, keys/)"; else rm -rf "$TMP"; fi
   exit "$code"
 }
@@ -69,7 +74,7 @@ fi
 
 echo "▸ keys (scratch, throwaway)"
 mkdir -p "$TMP/keys"
-for k in mint upgrader admin crank fee seed plat; do solana-keygen new -s --no-bip39-passphrase -o "$TMP/keys/$k.json" >/dev/null; done
+for k in mint upgrader admin crank fee seed plat payout; do solana-keygen new -s --no-bip39-passphrase -o "$TMP/keys/$k.json" >/dev/null; done
 pub() { solana-keygen pubkey "$TMP/keys/$1.json"; }
 
 RPC_PORT="$(free_pair)"; FAUCET_PORT="$(free_port)"; GOSSIP_PORT="$(free_port)"; DYN=$(( RPC_PORT < 40000 ? RPC_PORT + 2000 : RPC_PORT - 2000 ))
@@ -83,7 +88,7 @@ start_validator() {
   VAL_PID=$!
   for _ in $(seq 1 90); do curl -sf -X POST -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"getHealth"}' "$RPC" 2>/dev/null | grep -q '"ok"' && break; kill -0 "$VAL_PID" 2>/dev/null || { tail -20 "$ledger.log"; fail "validator exited"; }; sleep 1; done
   curl -sf -X POST -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"getHealth"}' "$RPC" | grep -q '"ok"' || fail "validator not healthy after 90 s"
-  for k in upgrader admin crank fee seed plat; do solana airdrop --url "$RPC" -k "$TMP/keys/mint.json" 100 "$(pub "$k")" >/dev/null; done
+  for k in upgrader admin crank fee seed plat payout; do solana airdrop --url "$RPC" -k "$TMP/keys/mint.json" 100 "$(pub "$k")" >/dev/null; done
 }
 stop_validator() { kill "$VAL_PID" 2>/dev/null || true; wait "$VAL_PID" 2>/dev/null || true; VAL_PID=""; }
 
@@ -96,28 +101,38 @@ start_validator "$TMP/fixtures-ledger"
 stop_validator
 ACCOUNTS=(); for f in "$TMP"/accounts/*.json; do [ "$(basename "$f")" = fixtures.json ] && continue; ACCOUNTS+=(--account "$(node -p 'require(process.argv[1]).pubkey' "$f")" "$f"); done
 
+if [ "$PHASE2" = 1 ]; then
 echo "▸ phase 2 – a fresh ledger with the program + the baked Config, pools, vaults and tickets (${#ACCOUNTS[@]} args)"
 start_validator "$TMP/ledger" "${ACCOUNTS[@]}"
 echo "  rpc $RPC"
+fi
 FIXTURES="$TMP/accounts/fixtures.json"
 fi
 
-echo "▸ throwaway database $DB"
 nc -z localhost 15433 || (cd "$ROOT" && npm run --silent db:up)
-psql_admin "CREATE DATABASE \"$DB\"" >/dev/null
-(cd "$SERVER" && DATABASE_URL="$URL" ./node_modules/.bin/prisma migrate deploy >/dev/null)
+# start_server <database> <log> [VAR=value …]: a throwaway database (created + migrated) and dist/main.js on a free port; sets SRV_PID and BASE
+start_server() {
+  local db="$1" log="$2"; shift 2
+  echo "▸ throwaway database $db"
+  psql_admin "CREATE DATABASE \"$db\"" >/dev/null
+  (cd "$SERVER" && DATABASE_URL="postgresql://freight:freight_dev_password@localhost:15433/$db" ./node_modules/.bin/prisma migrate deploy >/dev/null)
+  local port; port="$(free_port)"; BASE="http://localhost:$port"
+  (cd "$SERVER" && exec env DATABASE_URL="postgresql://freight:freight_dev_password@localhost:15433/$db" PORT="$port" "$@" node dist/main.js > "$log" 2>&1) &
+  SRV_PID=$!
+  for _ in $(seq 1 60); do curl -sf "$BASE/api/health/live" >/dev/null && break; kill -0 "$SRV_PID" 2>/dev/null || { tail -30 "$log"; fail "server exited"; }; sleep 0.5; done
+  curl -sf "$BASE/api/health/live" >/dev/null || { tail -30 "$log"; fail "server did not start"; }
+  echo "  server $BASE (log: $log)"
+}
+stop_server() { [ -n "$SRV_PID" ] && { kill "$SRV_PID" 2>/dev/null || true; wait "$SRV_PID" 2>/dev/null || true; }; SRV_PID=""; }
 
 # Every key the server reads is set here, so a stray server/.env (dotenv never overrides) cannot point it at devnet or the dev database.
 export DATABASE_URL="$URL" PAYMENT_MODE=program TICKET_PROGRAM_ID="$PROGRAM_ID" SOLANA_RPC="$RPC" SOLANA_WS="$WS" SOLANA_RPC_FALLBACKS="$([ "$TARGET" = devnet ] && echo https://api.devnet.solana.com)" SOLANA_COMMITMENT=confirmed \
   CRANK_SECRET="$(cat "$TMP/keys/crank.json")" CRANK_INTERVAL_MS=0 TREASURY_PUBKEY="$(pub admin)" FEE_TREASURY="$(pub fee)" SEED_TREASURY="$(pub seed)" \
   WEBHOOK_SECRET="$(node -e 'console.log(require("crypto").randomBytes(24).toString("base64url"))')" WATCH_INTERVAL_MS="$([ "$SCENARIO" = chaos ] && echo 0 || { [ "$TARGET" = devnet ] && echo 5000 || echo 2000; })" SOL_USD=118 DEMO_WALLETS='*' DEMO_SCALE=1200 FREE_RIDE_SECONDS=3 VERDICT_ENFORCE=true POSTHOG_ENABLED=0 PRIORITY_FEE_MAX_MICROLAMPORTS="$([ "$TARGET" = devnet ] && echo 50000 || echo 0)" \
-  ADMIN_WALLETS="$(pub admin)" NODE_ENV=development   # the admin's signed ride review (payout scenario) – the program authority doubles as the site admin here
-PORT="$(free_port)"; BASE="http://localhost:$PORT"
-(cd "$SERVER" && PORT="$PORT" exec node dist/main.js > "$TMP/server.log" 2>&1) &
-SRV_PID=$!
-for _ in $(seq 1 60); do curl -sf "$BASE/api/health/live" >/dev/null && break; kill -0 "$SRV_PID" 2>/dev/null || { tail -30 "$TMP/server.log"; fail "server exited"; }; sleep 0.5; done
-curl -sf "$BASE/api/health/live" >/dev/null || { tail -30 "$TMP/server.log"; fail "server did not start"; }
-echo "  server $BASE (log: $TMP/server.log)"
+  ADMIN_WALLETS="$(pub admin)" NODE_ENV=development PAYOUT_INTERVAL_MS=0   # the admin's signed ride review (payout scenario) – the program authority doubles as the site admin here
+export PAYOUT_SECRET=   # phase 2 has no payout key (empty = unset for the schema, and a stray server/.env cannot fill it): the admin pays (devnet-payout.mjs); phase 3 sets one
+if [ "$PHASE2" = 1 ]; then
+start_server "$DB" "$TMP/server.log"
 
 echo "▸ scenario"
 # LIKE_DEVNET=1: the devnet settings on the local validator (funder + sweep, small prices, no baked pools) – tests the devnet code path offline
@@ -137,12 +152,36 @@ if [ "$SCENARIO" = chaos ]; then
   [ "$TARGET" = devnet ] && fail "the chaos scenario is local only (it spawns its own servers and pauses nothing, but its proxy sits in front of the validator)"
   (cd "$SERVER" && RPC="$RPC" KEYS="$TMP/keys" node scripts/e2e-localnet-chaos.mjs) || { echo "--- server logs (tail) ---"; tail -20 "$TMP"/chaos-s*.log 2>/dev/null; exit 1; }
 elif [ "$TARGET" != devnet ]; then
-  echo "▸ coverage – every program transaction on the validator + the refusals + the LiteSVM tests"
-  (cd "$SERVER" && node scripts/localnet-coverage.mjs scan "$COV" "$RPC" "phase 2 (scenario validator)" && node scripts/localnet-coverage.mjs report "$COV") > "$TMP/coverage.txt" 2>&1 && cov_ok=1 || cov_ok=0
-  cat "$TMP/coverage.txt"
-  [ "$SCENARIO" = all ] && [ "${LIKE_DEVNET:-0}" != 1 ] && [ "$cov_ok" = 0 ] && fail "coverage incomplete"
-  [ "$SCENARIO" != all ] && [ "$cov_ok" = 0 ] && echo "(SCENARIO=$SCENARIO: only part of the program ran – the gate applies to SCENARIO=all)"
+  (cd "$SERVER" && node scripts/localnet-coverage.mjs scan "$COV" "$RPC" "phase 2 (scenario validator)") || fail "coverage scan of phase 2"
 fi
 
 echo "▸ deploy smoke (deploy/scripts/smoke.mjs) against this program-mode server – its escrow checks"
 node "$ROOT/deploy/scripts/smoke.mjs" "$BASE" --no-signin || fail "smoke"
+fi   # PHASE2
+
+if [ "$PHASE3" = 1 ]; then
+  # THE AUTONOMOUS DAY: a fresh validator with only the program + the 1h series phase 1 wrote (sale window shortened in its dump), initialized here by
+  # the upgrade authority; its own database and server with the payout key (PAYOUT_SECRET) and the crank on a schedule – nobody runs the crank by hand
+  stop_server; [ -n "$VAL_PID" ] && stop_validator
+  echo "▸ phase 3 – the autonomous day: a fresh ledger with the program + the 1h series (next slot in ${DAY_LEAD:-75} s)"
+  (cd "$SERVER" && RETIME=1 OUT="$TMP/accounts" LEAD="${DAY_LEAD:-75}" node scripts/localnet-fixtures.mjs) || fail "series retime"
+  SER="$TMP/accounts/day/series-1h.json"
+  start_validator "$TMP/day-ledger" --account "$(node -p 'require(process.argv[1]).pubkey' "$SER")" "$SER"
+  echo "  rpc $RPC"
+  (cd "$SERVER" && node scripts/pool-admin.mjs initialize --url "$RPC" -k "$TMP/keys/upgrader.json" --admin "$(pub admin)" --platform-treasury "$(pub plat)" --platform-fee-bps 500 >/dev/null) || fail "initialize (phase 3)"
+  DAY_ENV=(PAYOUT_SECRET="$(cat "$TMP/keys/payout.json")" PAYOUT_INTERVAL_MS=0 TRUST_PROXY=1)   # the server AND the scenario's CLI passes (pool:payout) – same database, same keys
+  start_server "$DB_DAY" "$TMP/server-day.log" "${DAY_ENV[@]}" CRANK_INTERVAL_MS="${DAY_CRANK_MS:-2000}"
+  echo "▸ scenario – the autonomous day: the crank opens the 1h pools on their slots, riders buy and ride, the review window, the payout key pays"
+  (cd "$SERVER" && env "${DAY_ENV[@]}" DATABASE_URL="$URL_DAY" BASE="$BASE" RPC="$RPC" KEYS="$TMP/keys" COVERAGE="$COV" DAY="$TMP/accounts/day/day.json" CHROME_PORT="$(free_port)" node scripts/e2e-localnet-day.mjs) || { echo "--- server log (tail) ---"; tail -40 "$TMP/server-day.log"; exit 1; }
+  (cd "$SERVER" && node scripts/localnet-coverage.mjs scan "$COV" "$RPC" "phase 3 (the autonomous day)") || fail "coverage scan of phase 3"
+  if [ "$PHASE2" = 0 ]; then echo "▸ deploy smoke against the day's server"; node "$ROOT/deploy/scripts/smoke.mjs" "$BASE" --no-signin || fail "smoke"; fi
+fi
+
+if [ "$SCENARIO" != chaos ] && [ "$TARGET" != devnet ]; then
+  echo "▸ coverage – every program transaction on the validators + the refusals + the LiteSVM tests"
+  (cd "$SERVER" && node scripts/localnet-coverage.mjs report "$COV") > "$TMP/coverage.txt" 2>&1 && cov_ok=1 || cov_ok=0
+  cat "$TMP/coverage.txt"
+  [ "$SCENARIO" = all ] && [ "${LIKE_DEVNET:-0}" != 1 ] && [ "$cov_ok" = 0 ] && fail "coverage incomplete"
+  [ "$SCENARIO" != all ] && [ "$cov_ok" = 0 ] && echo "(SCENARIO=$SCENARIO: only part of the program ran – the gate applies to SCENARIO=all)"
+fi
+true

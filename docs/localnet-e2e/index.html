@@ -18,10 +18,11 @@
     <ol>
       <li><a href="#real">Real vs stand-in</a></li>
       <li><a href="#stack">The stack</a></li>
-      <li><a href="#phases">Two validators</a></li>
+      <li><a href="#phases">Three validators</a></li>
       <li><a href="#cast">Keys and pools</a></li>
       <li><a href="#run">The run sheet</a></li>
       <li><a href="#ten">Ten riders, one payout</a></li>
+      <li><a href="#day">The autonomous day</a></li>
       <li><a href="#coverage">The coverage gate</a></li>
       <li><a href="#maths">How lamports are checked</a></li>
       <li><a href="#found">What it found</a></li>
@@ -36,13 +37,14 @@
   <header class="hero">
     <span class="eyebrow">Freight Chain · test harness · npm run test:localnet</span>
     <h1>Localnet money test</h1>
-    <p class="lede col">One command starts a private Solana validator with the escrow program loaded as the exact binary a deploy would ship. It boots the real server against it and drives real wallets through every way money moves: buying tickets, sponsoring a pool, riding, refunds, the crank, prizes and closing. After every step it checks each balance to the lamport against the program's own maths. Nothing touches devnet, and every key is thrown away at the end.</p>
+    <p class="lede col">One command starts a private Solana validator with the escrow program loaded as the exact binary a deploy would ship. It boots the real server against it and drives real wallets through every way money moves: buying tickets, sponsoring a pool, riding, refunds, the crank, prizes and closing – and, for program v2, a whole pool day run by the server alone: the crank opens the pools on their slots and the payout key pays the winners after the review window. After every step it checks each balance to the lamport against the program's own maths. Nothing touches devnet, and every key is thrown away at the end.</p>
     <div class="status" aria-label="What a green run proves">
       <span class="chip"><i class="ok"></i>Program = the pinned verifiable build</span>
       <span class="chip"><i class="ok"></i>All 4 pool endings: settled, failed, expired, grace close</span>
       <span class="chip"><i class="ok"></i>Ten riders paid by the program, to the lamport</span>
-      <span class="chip"><i class="ok"></i>14/14 instructions · 12/12 events · 24/24 errors</span>
-      <span class="chip"><i class="next"></i>~10 minutes, paced by the deadlines</span>
+      <span class="chip"><i class="ok"></i>A whole pool day with no admin signature on chain</span>
+      <span class="chip"><i class="ok"></i>17/17 instructions · 14/14 events · 25/25 errors</span>
+      <span class="chip"><i class="next"></i>~16 minutes, paced by the deadlines</span>
       <span class="chip"><i class="no"></i>Local only · nothing signed on devnet</span>
     </div>
   </header>
@@ -57,7 +59,7 @@
         <ul>
           <li>An Agave 4.1.2 <code>solana-test-validator</code>, with the program loaded as an <b>upgradeable</b> program that has its own ProgramData and upgrade authority.</li>
           <li>The program binary, by its <code>solana-verify</code> executable hash.</li>
-          <li>The NestJS server in <code>PAYMENT_MODE=program</code>: order building, the watcher, settlement, the crank, payouts.</li>
+          <li>The NestJS server in <code>PAYMENT_MODE=program</code>: order building, the watcher, settlement, the crank (on its own schedule in the day), the payout job with the payout key.</li>
           <li>PostgreSQL, a throwaway database migrated like production.</li>
           <li>The lobby and the game in headless Chrome. The game records the ride and the server judges it as VERIFIED.</li>
           <li>Transactions signed with ed25519 and sent to the validator. Fees are read from each transaction.</li>
@@ -67,7 +69,7 @@
         <h3>Stand-in</h3>
         <ul>
           <li><b>Phantom</b>: a 40-line fake wallet injected into the page. It signs with a throwaway key through the same web3.js the lobby loads, and sends to the local RPC.</li>
-          <li><b>The calendar</b>: a validator clock can't be moved forward, so two "three weeks old" pools are made by the program itself, then only their two deadline fields are moved back (see <a href="#phases">Two validators</a>).</li>
+          <li><b>The calendar</b>: a validator clock can't be moved forward, so two "three weeks old" pools are made by the program itself, then only their three deadline fields are moved back; and the day's series gets a 120-second slot instead of the program's one-hour minimum, edited into its account (see <a href="#phases">Three validators</a>).</li>
           <li><b>Shift length</b>: <code>DEMO_SCALE=1200</code> turns a 1-hour ticket ride into 3 seconds of driving.</li>
           <li><b>SOL price</b>: fixed at <code>SOL_USD=118</code>, so no price API is called.</li>
         </ul>
@@ -131,15 +133,16 @@
   </section>
 
   <section class="section" id="phases">
-    <span class="eyebrow">03 · Two validators</span>
-    <h2>Making a pool three weeks old</h2>
-    <p class="col"><code>expire_pool</code> and the permissionless close only work 14 days after a pool's play deadline, and a validator's clock can't be moved forward. Restarting with <code>--warp-slot</code> was tried: the slot moves but <code>unix_timestamp</code> does not, and the validator stalls. So the harness makes the old pools in two phases instead.</p>
+    <span class="eyebrow">03 · Three validators</span>
+    <h2>Making a pool three weeks old, and a day two minutes long</h2>
+    <p class="col"><code>expire_pool</code> and the permissionless close only work 14 days after a pool's payout time (the end of its review window), and a validator's clock can't be moved forward. Restarting with <code>--warp-slot</code> was tried: the slot moves but <code>unix_timestamp</code> does not, and the validator stalls. So the harness makes the old pools in two phases instead.</p>
     <div class="tablewrap wide">
       <table>
         <thead><tr><th>Phase</th><th>What runs</th><th>What comes out</th></tr></thead>
         <tbody>
-          <tr><th scope="row">1 · fixtures</th><td>A short-lived validator. <code>initialize</code> is tried by a stranger (refused, <code>Unauthorized</code>), then signed by the upgrade authority naming the admin. Two 8h pools are created; three throwaway buyers buy real tickets, each paying its own rent; after the play deadline the admin pays one real prize. <span class="mono">localnet-fixtures.mjs</span></td><td>The Config, both Pools, their vaults and three Tickets, dumped byte for byte. In each Pool only <code>prep_deadline</code> and <code>play_deadline</code> (bytes 63 and 71) are moved 16 days back, then checked by decoding the account again.</td></tr>
-          <tr><th scope="row">2 · the test</th><td>A fresh ledger: the program plus those accounts, loaded with <code>--account</code>. The Config already says <code>pool_count = 2</code>, so new pools get ids 2, 3, 4.</td><td>An "unpaid" active pool past the grace (the expire case) and a "prize paid" one (the grace-close case). Every byte except the deadlines was written by the program.</td></tr>
+          <tr><th scope="row">1 · fixtures</th><td>A short-lived validator. <code>initialize</code> is tried by a stranger (refused, <code>Unauthorized</code>), then signed by the upgrade authority naming the admin. Two 8h pools are created; three throwaway buyers buy real tickets, each paying its own rent; after the play deadline the admin pays one real prize. <span class="mono">localnet-fixtures.mjs</span></td><td>The Config, both Pools, their vaults and three Tickets, dumped byte for byte. In each Pool only <code>prep_deadline</code>, <code>play_deadline</code> and <code>payout_at</code> (bytes 63, 71 and 79) are moved 16 days back, then checked by decoding the account again. Also the admin's real <code>set_series</code> for the 1h tier (min 4, play 45 s, review 45 s, the sale window at the program's minimum of an hour): its account is dumped apart, with only <code>sale_secs</code> (byte 28) cut to 120 s.</td></tr>
+          <tr><th scope="row">2 · the test</th><td>A fresh ledger: the program plus those accounts, loaded with <code>--account</code>. The Config already says <code>pool_count = 2</code>, so new pools get ids 2, 3, 4.</td><td>An "unpaid" active pool past the grace (the expire case) and a "prize paid" one (the grace-close case). Every byte except the deadlines was written by the program. The series is <b>not</b> loaded here: it would open pools under the money scenarios.</td></tr>
+          <tr><th scope="row">3 · the day</th><td>A fresh ledger with the program and the series only; its <code>next_open_at</code> (byte 122) is set 75 s ahead just before the validator starts. The upgrade authority runs <code>initialize</code> again; a second throwaway database and server get the payout key and the crank on a 2-second schedule. <span class="mono">e2e-localnet-day.mjs</span></td><td>A series on a 120 s grid that the real <code>open_next_pool</code> follows: <code>open_next_pool</code> re-checks the money rules, not the cadence, so the only edit is the length of the slot.</td></tr>
         </tbody>
       </table>
     </div>
@@ -154,7 +157,8 @@
         <tbody>
           <tr><th scope="row">upgrader</th><td>The program's upgrade authority (<code>--upgradeable-program … upgrader</code>). Signs <code>initialize</code>, which names the admin.</td></tr>
           <tr><th scope="row">admin</th><td><code>Config.authority</code> = the server's <code>TREASURY_PUBKEY</code>. Creates pools, signs payouts and the close, gets each vault's rent minimum back.</td></tr>
-          <tr><th scope="row">crank</th><td><code>CRANK_SECRET</code>: pays the fees of fail / expire / refund / close. <code>CRANK_INTERVAL_MS=0</code>, so it runs only when the scenario calls <code>pool:crank</code>.</td></tr>
+          <tr><th scope="row">crank</th><td><code>CRANK_SECRET</code>: pays the fees of fail / expire / refund / close. <code>CRANK_INTERVAL_MS=0</code> in phase 2, so it runs only when the scenario calls <code>pool:crank</code>; in the day it runs on its schedule, opens the series' pools (paying their rents, which makes it each pool's creator record) and fails, refunds and closes the missed one.</td></tr>
+          <tr><th scope="row">payout</th><td>The day's <code>PAYOUT_SECRET</code>, named on chain by the admin's <code>set_payout_authority</code>. May only <code>pay_prize</code> and <code>close_pool</code>, only after <code>payout_at</code>; the payout job signs with it. Everything else it tries is <code>Unauthorized</code>.</td></tr>
           <tr><th scope="row">fee · seed · plat</th><td>The treasuries the pools declare, plus the Config's platform treasury (500 bps of the fee share, a leg production leaves at 0).</td></tr>
           <tr><th scope="row">P1 … P6, S, X</th><td>Players: lobby buyer and rider, Node buyers, a pool-sponsorship wallet, one wallet for the missing /submit route.</td></tr>
           <tr><th scope="row">Z · stranger</th><td>"Anyone": fresh wallets that close pools they never paid into (Z in phase 2, the stranger who tries <code>initialize</code> in phase 1). Not the faucet <code>mint</code>, which the validator itself pays tiny amounts and so can't be measured to the lamport.</td></tr>
@@ -170,6 +174,8 @@
           <tr><th scope="row">C · 8h</th><td>0.05 SOL, min 5, prep +50 s, sponsored</td><td>misses its goal → <b>the crank</b> fails, refunds and closes it → <b>cancelled</b>; the sponsorship goes to the seed treasury</td></tr>
           <tr><th scope="row">baked · expire</th><td>active, play deadline 16 days ago, no prize</td><td>a stranger's close is refused (<code>MustExpire</code>) → <b>the crank</b> expires, refunds and closes it</td></tr>
           <tr><th scope="row">baked · grace</th><td>active, play deadline 16 days ago, one prize paid</td><td>a stranger closes it → <b>settled</b>, money only to the declared treasuries</td></tr>
+          <tr><th scope="row">day · slot 1</th><td>opened by the crank from the 1h series: 0.1 SOL, min 4, ≤ 2 per wallet, sale 120 s, play +45 s, review +45 s</td><td>8 tickets → rides → review → marks + the admin's decisions and hold → <b>the payout key</b> pays 6 ranks and closes → <b>settled</b></td></tr>
+          <tr><th scope="row">day · slot 2</th><td>opened by the crank where slot 1 stopped selling</td><td>1 ticket of 4 → <b>the crank</b> fails, refunds and closes it → <b>cancelled</b></td></tr>
         </tbody>
       </table>
     </div>
@@ -200,11 +206,29 @@
     <ol class="steps">
       <li><h3>Pool D: 10 wallets, 11 tickets <span class="who"><span class="tag adm">admin</span><span class="tag ply">R1–R10</span></span></h3><p>Three <code>create_pool</code> attempts are refused first: shares that don't add up, a price below the rent minimum, an unfunded treasury. Then pool D (1h, min 10, ≤ 2 per wallet). R1 buys in the lobby in headless Chrome (the wallet signs and sends). Eight wallets buy from Node through <code>/confirm</code>, each to the exact lamport. The pool stays OPEN at 9 sold and goes ACTIVE when R8 buys 2. A fan sponsors 0.05 SOL.</p></li>
       <li><h3>The rides <span class="who"><span class="tag ply">bots + Chrome</span></span></h3><p>R1 drives the real game. The others are API bots, each with its own 10 Hz recording that takes the damage of the server's planned holes and answers the dispatch prompts. Six honest riders and R8's two rides are VERIFIED. R7 crashes, so its ride FAILED and is never judged. R9 uploads one batch without a hash, gets FLAGGED, and the admin ACCEPTS it with a signed review. R10 teleports 500 m and is REJECTED.</p></li>
-      <li><h3>The "cron" <span class="who"><span class="tag any">CLI</span></span></h3><p><code>verdict:rejudge --status all</code> re-judges every completed ride from its telemetry: nothing changes, and the admin's decision stays. A <code>pool:crank</code> pass leaves the live pool alone. Before the play deadline the payout API answers 409, and 403 to a rider.</p></li>
-      <li><h3>The payout job <span class="who"><span class="tag adm">admin key</span></span></h3><p>After the deadline, <code>devnet-payout.mjs --yes</code> signs what <code>GET /api/pools/:id/payout</code> builds. The 8 counted wallets are ranked by summed distance, and each gets exactly its <code>poolPayouts</code> share. The crash and the cheater get nothing, and their ticket money stays in the pot. <code>close_pool</code> legs: fee, platform, seed (seed share + unclaimed rounding) and the creator's rent minimum. Conservation holds to the lamport.</p></li>
+      <li><h3>The "cron" <span class="who"><span class="tag any">CLI</span></span></h3><p><code>verdict:rejudge --status all</code> re-judges every completed ride from its telemetry: nothing changes, and the admin's decision stays. A <code>pool:crank</code> pass leaves the live pool alone. Before the payout time the payout API answers 409, and 403 to a rider.</p></li>
+      <li><h3>Sale end, review window <span class="who"><span class="tag adm">admin</span><span class="tag any">anyone</span></span></h3><p>Program v2 closes the sale at <code>prep_deadline</code> for an active pool too: a buy into D is <code>TooLate</code> and <code>POST /api/tickets</code> answers 409. D has a 20-second review window after its play deadline: inside it the admin's own <code>pay_prize</code> is <code>TooEarly</code> and the payout API still answers 409.</p></li>
+      <li><h3>The admin's payout <span class="who"><span class="tag adm">admin key</span></span></h3><p>After the review window, <code>devnet-payout.mjs --yes</code> (it waits for <code>payout_at</code> on the chain clock) signs what <code>GET /api/pools/:id/payout</code> builds. The 8 counted wallets are ranked by summed distance, and each gets exactly its <code>poolPayouts</code> share. The crash and the cheater get nothing, and their ticket money stays in the pot. <code>close_pool</code> legs: fee, platform, seed (seed share + unclaimed rounding) and the creator's rent minimum. Conservation holds to the lamport.</p></li>
       <li><h3>Ticket rents back <span class="who"><span class="tag any">stranger</span></span></h3><p><code>close_ticket</code> ×10 by a stranger: every buyer gets its own rent back, and every Ticket account is gone.</p></li>
       <li><h3>The next jackpot <span class="who"><span class="tag any">seed treasury</span></span></h3><p>The seed treasury sponsors the next 1h pool with exactly pool D's seed leg, and the lobby's 1h card shows it. This is an operator step: nothing in the code moves the seed by itself.</p></li>
       <li><h3>The rest of the program <span class="who"><span class="tag adm">admin</span><span class="tag any">anyone</span></span></h3><p>Pause (buy and <code>create_pool</code> refused), a sold-out pool, an unpaid pool closed by the admin (the whole prize share goes to the seed), <code>cancel_pool</code> with its refunds (a second refund is refused), and the authority handover there and back (the old admin is refused in between). On the way, every program error a validator can reach is provoked once.</p></li>
+    </ol>
+  </section>
+
+  <section class="section" id="day">
+    <span class="eyebrow">06b · The third scenario</span>
+    <h2>The autonomous day</h2>
+    <p class="col">Program v2 exists so that a pool day needs nobody: after the admin has written a series and named a payout key, the server opens each pool on its slot and pays the winners once the review window is over, with a key that can do nothing else. <span class="mono">server/scripts/e2e-localnet-day.mjs</span> runs that day on its own validator (phase 3) and its own server, whose crank runs on its schedule – the scenario never sends a crank step. The day's grid is 120 s on sale, 45 s more riding, 45 s of review.</p>
+    <ol class="steps">
+      <li><h3>Before the slot <span class="who"><span class="tag any">stranger</span></span></h3><p>A fresh Config with no payout key. A hand-sent <code>open_next_pool</code> is <code>TooEarly</code>, the crank has opened nothing, and <code>pool:payout</code> is off and says the program names no payout key.</p></li>
+      <li><h3>The admin's last signatures <span class="who"><span class="tag adm">admin</span></span></h3><p><code>set_payout_authority</code> names the payout key; a disabled 4h series makes <code>open_next_pool</code> answer <code>SeriesDisabled</code>. The payout key tries <code>create_pool</code>, <code>set_series</code>, <code>propose_authority</code> and <code>cancel_pool</code>: each is <code>Unauthorized</code>.</p></li>
+      <li><h3>The crank opens the pool <span class="who"><span class="tag any">crank</span></span></h3><p>On its slot, by itself. The pool's creation transaction is the crank's <code>open_next_pool</code> with <code>PoolCreated.from_series = true</code>; the crank paid exactly the Pool rent, the vault's rent minimum and its fee, and is the pool's creator record. Deadlines follow the series' grid, and <code>GET /api/pools</code> lists the pool.</p></li>
+      <li><h3>Buys and rides <span class="who"><span class="tag ply">R1–R8</span></span></h3><p>R1 buys in the lobby (the 1h card sells the series pool), R2–R8 from Node, each to the exact lamport; the pool goes live at 4. Seven rides over the player API: five honest and VERIFIED, one with an unhashed batch (FLAGGED), one teleport (REJECTED). R8 never rides.</p></li>
+      <li><h3>The sale ends <span class="who"><span class="tag any">anyone</span><span class="tag any">crank</span></span></h3><p>A buy and a sponsorship into the live pool are <code>TooLate</code>, the API answers 409. The crank opens the next slot's pool where this one stopped selling; R9 buys one ticket of four.</p></li>
+      <li><h3>The review window <span class="who"><span class="tag any">payout key</span></span></h3><p><code>pool:payout</code> says <code>pending</code>; the payout key's own <code>pay_prize</code> and <code>close_pool</code> are <code>TooEarly</code>. The public standings are provisional, two rides under review.</p></li>
+      <li><h3>Marks, review, hold <span class="who"><span class="tag adm">admin</span></span></h3><p>At <code>payout_at</code> a stranger's <code>pay_prize</code> is <code>Unauthorized</code>. The payout job runs the pool-level marks – the top 3 by distance are brand-new wallets (<code>pool-new-wallet-top3</code>); each rider signed in from its own address, so nobody gets <code>pool-shared-ip</code> – and waits: <code>waiting_review</code>, four rides under review. The admin puts a signed HOLD on the pool, then decides every ride with a signed review (three accepted, the teleport rejected). The job now says <code>held</code> and not a lamport moves. A signed release.</p></li>
+      <li><h3>The payout key pays <span class="who"><span class="tag any">payout key</span></span></h3><p>One <code>pool:payout</code> pass: six <code>pay_prize</code> transactions signed and paid for by the payout key, each verified rank exactly its <code>poolPayouts</code> share, nothing to the rejected rider or the one who never rode, the prizes within the share. Then <code>close_pool</code>, also by the payout key: fee, platform and seed legs equal <code>closeSplit</code>, the vault's rent minimum goes back to the crank as the creator. The standings are final, every rank paid with its signature; a second pass pays nothing.</p></li>
+      <li><h3>The missed slot <span class="who"><span class="tag any">crank</span></span></h3><p>The next slot's pool ends its sale under its minimum. The crank alone sends <code>fail_pool</code>, <code>refund</code> and <code>close_pool</code>; R9 gets the price and its own Ticket rent back, and the pool is cancelled on chain and in the mirror.</p></li>
     </ol>
   </section>
 
@@ -213,9 +237,9 @@
     <h2>The coverage gate</h2>
     <ul class="col">
       <li><b>What counts</b>: every instruction must succeed and every event must be emitted on a real validator. Every error code must be asserted, either on the validator or in the LiteSVM program tests. That is behaviour coverage of the program's interface, not line coverage of the Rust.</li>
-      <li><b>Two sources</b>: the ledger (each transaction that named the program, decoded by IDL discriminator and through the server's codec) and the refusals. A refused transaction never lands, so the scenarios record each one with its program error. Phase 1's validator is torn down, so the fixtures script scans its ledger before it goes; that is where <code>initialize</code> runs.</li>
-      <li><b>Result</b> (<span class="mono">scripts/localnet-coverage.mjs report</span>): 14/14 instructions and 12/12 events on the validator, 23/24 error codes there. <code>MathOverflow</code> can only be reached from a forged account, so a LiteSVM test forges one: price × tickets, pot + sponsorship, and play deadline + grace each overflow.</li>
-      <li><code>SCENARIO=all</code> fails when anything is missing. <code>SCENARIO=payout</code> / <code>money</code> print the table without gating.</li>
+      <li><b>Two sources</b>: the ledger (each transaction that named the program, decoded by IDL discriminator and through the server's codec) and the refusals. A refused transaction never lands, so the scenarios record each one with its program error. Each validator is torn down before the next starts, so each ledger is scanned before it goes (phase 1 by the fixtures script – <code>initialize</code> and the series' <code>set_series</code> run there –, phases 2 and 3 by <span class="mono">run.sh</span>).</li>
+      <li><b>Result</b> (<span class="mono">scripts/localnet-coverage.mjs report</span>, program v2): 17/17 instructions and 14/14 events on the validators, 24/25 error codes there. <code>MathOverflow</code> can only be reached from a forged account, so a LiteSVM test forges one: price × tickets, pot + sponsorship, and play deadline + grace each overflow.</li>
+      <li><code>SCENARIO=all</code> fails when anything is missing. <code>SCENARIO=payout</code> / <code>money</code> / <code>day</code> print the table without gating.</li>
     </ul>
   </section>
 
@@ -243,6 +267,7 @@ close (cancelled)    seed = sponsorship + stray lamports, creator = 890 880</cod
       <div class="finding"><b class="k">fixed · product</b><p><b>A tier whose pool failed fell back to pay-per-ride</b> ($15 straight into the weekly round) although program mode is ticket-only. Now the tiers API, the lobby and the landing all say there is no pool on sale.</p></div>
       <div class="finding"><b class="k">fixed · lobby</b><p><b>An order the wallet never sent showed as "in flight"</b> for up to an hour. It now says the order is unfinished and nothing was charged.</p></div>
       <div class="finding"><b class="k">fixed · program</b><p><b><code>initialize</code> was first-come.</b> It now requires the upgrade authority, checked here on a real upgradeable loader (phase 1).</p></div>
+      <div class="finding"><b class="k">checked · v2</b><p><b>The pool day ran on the real program and server without a fix</b> (Oct 11): the crank opened both slots on the grid, the payout job waited for every decision and for the hold, the payout key paid and closed to the lamport. Things the run makes visible: the pool-level marks put every top-3 ride of brand-new wallets under review, so the admin always has a review round before a new pool pays; the admin signs one change at a time (a second challenge replaces the first – the day decides its rides one after another); <span class="mono">pool-admin.mjs create-pool</span> read the chain clock twice, so a default <code>payout_at</code> could land a second after the play deadline (fixed: read once).</p></div>
       <div class="finding"><b class="k">open · server</b><p><b>Nothing reclaims Ticket rents after a settlement.</b> <code>close_ticket</code> is in the program, but neither the crank nor the server sends it. Every buyer of a settled pool leaves ~0.0015 SOL of its own money locked in its Ticket account until someone sends <code>close_ticket</code>. The payout scenario reclaims them by hand (<code>pool-admin.mjs close-ticket</code>); the fix is listed in <span class="mono">docs/escrow-open-items.md</span>.</p></div>
     </div>
   </section>
@@ -254,12 +279,13 @@ close (cancelled)    seed = sponsorship + stray lamports, creator = 890 880</cod
 npm run test:localnet           # = bash .claude/skills/localnet-e2e/run.sh
 KEEP=1 npm run test:localnet    # keep keys/, ledgers, validator and server logs in the scratch dir
 PLAY_A=240 npm run test:localnet  # slower machine: more time before pool A's play deadline
-SCENARIO=payout npm run test:localnet   # only the ten-rider scenario (PREP_D / PLAY_D: 150 / 270 s)</code></pre>
+SCENARIO=payout npm run test:localnet   # only the ten-rider scenario (PREP_D / PLAY_D / REVIEW_D: 150 / 270 / 20 s)
+SCENARIO=day npm run test:localnet      # only the autonomous day (phase 1 + phase 3; DAY_SALE / DAY_PLAY / DAY_REVIEW: 120 / 45 / 45 s, DAY_LEAD 75 s)</code></pre>
     <ul class="col">
       <li>Needs Docker (the compose PostgreSQL), Chrome, <code>solana-test-validator</code>, <code>server/node_modules</code>, and internet once (web3.js and three.js load from CDNs).</li>
-      <li>Output: one <code>ok</code> / <code>FAIL</code> line per check, then <code>✓ all money flows verified on the local chain</code>, <code>✓ ten riders paid by the program…</code> and the coverage table. On failure it prints the server log tail and keeps the scratch dir.</li>
-      <li>Screenshots go to <code>$TMPDIR/fc-localnet-shots</code>: the lobby after the buy, after the refund, and the SOON card.</li>
-      <li>Files: <span class="mono">.claude/skills/localnet-e2e/run.sh</span> (stack, two phases), <span class="mono">server/scripts/localnet-fixtures.mjs</span> (phase 1), <span class="mono">server/scripts/e2e-localnet.mjs</span> (scenario 1), <span class="mono">server/scripts/e2e-localnet-payout.mjs</span> (ten riders), <span class="mono">server/scripts/localnet-coverage.mjs</span> (the gate), <span class="mono">server/scripts/pool-admin.mjs</span> (keypair admin CLI).</li>
+      <li>Output: one <code>ok</code> / <code>FAIL</code> line per check, then <code>✓ all money flows verified on the local chain</code>, <code>✓ ten riders paid by the program…</code>, <code>✓ the autonomous day…</code> and the coverage table. On failure it prints the server log tail and keeps the scratch dir.</li>
+      <li>Screenshots go to <code>$TMPDIR/fc-localnet-shots</code>: the lobby after the buy, after the refund, the SOON card, the ten-rider buy, the next jackpot, and the day's lobby buy.</li>
+      <li>Files: <span class="mono">.claude/skills/localnet-e2e/run.sh</span> (stack, three phases), <span class="mono">server/scripts/localnet-fixtures.mjs</span> (phase 1, and the series' retime for phase 3), <span class="mono">server/scripts/e2e-localnet.mjs</span> (scenario 1), <span class="mono">server/scripts/e2e-localnet-payout.mjs</span> (ten riders), <span class="mono">server/scripts/e2e-localnet-day.mjs</span> (the day), <span class="mono">server/scripts/localnet-coverage.mjs</span> (the gate), <span class="mono">server/scripts/pool-admin.mjs</span> (keypair admin CLI).</li>
     </ul>
   </section>
 
@@ -285,6 +311,8 @@ SCENARIO=payout npm run test:localnet   # only the ten-rider scenario (PREP_D / 
       <li><b>A real congested cluster</b>. The chaos scenario (<code>SCENARIO=chaos</code>) imitates how it fails: refused calls, 429s, swallowed and lost sends, <code>getProgramAccounts</code> refused. It does not imitate its timing. Only <code>TARGET=devnet</code> does.</li>
       <li><b>Rust line coverage</b>. LiteSVM runs the compiled program, so a host-side coverage tool sees none of the handlers.</li>
       <li><b>Session keys and deposits</b> (phase 2 of the plan, not built).</li>
+      <li><b>A real-length day</b> (24 h on sale, 2 h more riding, 48 h review): the day's grid is compressed to 120 / 45 / 45 s by editing the series' slot length in its account, because <code>set_series</code> refuses a sale window under an hour. The grid maths and the review-window rules are the program's own; the hours are not waited out.</li>
+      <li><b>The payout job on its schedule</b> (<code>PAYOUT_INTERVAL_MS</code>): the day runs the same handler as <code>pool:payout</code> passes, so each state can be asserted. The crank does run on its schedule there.</li>
       <li><b>Automation the product does not have yet</b>: nothing sends <code>close_ticket</code> after a settlement and nothing rolls the seed treasury into the next pool. The scenario performs both by hand and checks the money.</li>
       <li>The program is <b>not audited</b>. This test shows the server, lobby and program agree; it is not a security review.</li>
     </ul>

@@ -29,7 +29,7 @@ import { coverage } from './localnet-coverage.mjs';
 const { BASE, RPC, KEYS } = process.env;
 if (!BASE || !RPC || !KEYS) { console.error('run it through .claude/skills/localnet-e2e/run.sh (needs BASE, RPC, KEYS)'); process.exit(2); }
 const CDP = +(process.env.CHROME_PORT || 9391);
-const PREP_D = +(process.env.PREP_D || 150), PLAY_D = +(process.env.PLAY_D || 270);
+const PREP_D = +(process.env.PREP_D || 150), PLAY_D = +(process.env.PLAY_D || 270), REVIEW_D = +(process.env.REVIEW_D || 20);   // v2: payout_at = play + REVIEW_D
 const PRICE = 100_000_000, SPONSOR = 50_000_000, SPLIT = [7000, 2000, 1000];   // 0.1 SOL a ticket, 0.05 SOL sponsored
 const cov = coverage(process.env.COVERAGE || `${KEYS}/../coverage.json`);
 const T0 = Date.now(), fails = [];
@@ -201,7 +201,7 @@ try {
   refuse('create_pool: a price below the rent minimum (a refund could not land)', mkArgs('1h', 1000, 10, 0, 2, 60, 120), 'PriceBelowRentMin');
   const empty = Keypair.generate().publicKey.toBase58();
   refuse('create_pool: a fee treasury that is not rent-exempt', mkArgs('1h', PRICE, 10, 0, 2, 60, 120, SPLIT.join('/'), ['--fee-treasury', empty, '--seed-treasury', addr('seed')]), 'TreasuryNotRentExempt');
-  const D = admintool(mkArgs('1h', PRICE, 10, 0, 2, PREP_D, PLAY_D)).poolId;
+  const D = admintool([...mkArgs('1h', PRICE, 10, 0, 2, PREP_D, PLAY_D), '--payout', `+${PLAY_D + REVIEW_D}`]).poolId;
   execFileSync('node', ['dist/cli/index.js', 'pool:register', String(D), '--label', 'TEN RIDERS'], { stdio: 'ignore' });
   const vD = codec.vaultPda(D).toBase58();
   check(`pool D (#${D}, 1h, min 10, ≤ 2 per wallet): open on chain and on the server, vault = rent minimum`, (await poolAcc(D)).status === 0 && (await serverPool(D)).status === 'open' && (await bal(vD)) === RENT0);
@@ -282,11 +282,20 @@ try {
   check('cron verdict:rejudge --status all: re-judged the completed rides; R9 keeps the admin\'s decision, R10 stays rejected', after9?.status === 'verified' && after9?.override && after10?.status === 'rejected', JSON.stringify(rj).slice(0, 300));
   const crank = cli('pool:crank');
   check('cron pool:crank: nothing to do for the live pool D', !crank.actions.some(a => a.poolId === D), JSON.stringify(crank.actions));
-  check('GET payout before the play deadline: 409 too_early (admin), 403 (a rider)', (await api(`pools/${D}/payout`, { cookie: await signIn(admin) })).status === 409 && (await api(`pools/${D}/payout`, { cookie: R1.cookie })).status === 403);
+  check('GET payout before the payout time: 409 too_early (admin), 403 (a rider)', (await api(`pools/${D}/payout`, { cookie: await signIn(admin) })).status === 409 && (await api(`pools/${D}/payout`, { cookie: R1.cookie })).status === 403);
 
-  // ── 5. the play deadline passes: nothing more goes in, the admin's limits hold, the payout job pays
+  // ── 5. the sale ends (v2: an ACTIVE pool stops selling too), the play deadline passes, the review window binds the admin too; then the payout job pays
+  await untilChain(Number((await poolAcc(D)).prepDeadline.getTime() / 1000), 'pool D sale end');
+  refuse('buy into the ACTIVE pool D after its sale end', ['buy', '-k', Z.keyfile, '--pool', String(D)], 'TooLate');
+  const lateBuy = await api('tickets', { body: { poolId: D, qty: 1 }, cookie: Z.cookie });
+  check('POST /api/tickets after the sale end: 409', lateBuy.status === 409, `${lateBuy.status} ${JSON.stringify(lateBuy.j).slice(0, 120)}`);
   await untilChain(Number((await poolAcc(D)).playDeadline.getTime() / 1000), 'pool D play deadline');
-  refuse('buy into pool D after its play deadline', ['buy', '-k', Z.keyfile, '--pool', String(D)], 'TooLate');
+  refuse('pay_prize by the admin inside the review window (after the play deadline, before payout_at)', ['pay-prize', '--pool', String(D), '--to', R2.wallet, '--lamports', '1000000', '-k', `${KEYS}/admin.json`], 'TooEarly');
+  check('GET payout inside the review window: 409 too_early', (await api(`pools/${D}/payout`, { cookie: await signIn(admin) })).status === 409);
+  // the admin's manual payout script waits for payout_at by itself (a dry run here – it sends nothing without --yes)
+  const dry = execFileSync('node', ['scripts/devnet-payout.mjs', String(D)], { encoding: 'utf8', env: { ...process.env, BASE, RPC, ADMIN: `${KEYS}/admin.json` } });
+  check('devnet-payout.mjs inside the review window: says when it ends, waits for it on the chain clock, then prints the plan', /the review window ends/.test(dry) && /ranked wallet/.test(dry) && /rerun with --yes/.test(dry) && (await chainNow()) >= Number((await poolAcc(D)).payoutAt.getTime() / 1000), dry.trim().split('\n').slice(0, 2).join(' | '));
+  await untilChain(Number((await poolAcc(D)).payoutAt.getTime() / 1000), 'pool D payout time (end of the review window)');
   pd = await poolAcc(D);
   const bound = prizeBound({ priceLamports: PRICE, ticketsSold: 11, sponsored: SPONSOR, prizeBps: SPLIT[0], seedBps: SPLIT[1] });
   check('the pot counts EVERY ticket – the crash\'s and the cheater\'s money stays in it', pd.ticketsSold === 11 && pd.sponsored === SPONSOR && bound === Math.floor((11 * PRICE + SPONSOR) * SPLIT[0] / 10_000));

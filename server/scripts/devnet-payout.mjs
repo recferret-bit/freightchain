@@ -1,11 +1,14 @@
 // Pays a pool's ranked prizes and closes it with the ADMIN KEYPAIR FILE – the CLI stand-in for the admin page's payout buttons (not built yet).
 // The server ranks (GET /api/pools/:id/payout – served only to TREASURY_PUBKEY, so this signs in as the admin), this script signs and sends each pay_prize,
 // tells the server (POST /api/chain/settle), then the close_pool it offers once every rank is paid. Without --yes it only prints the plan.
+// Program v2: nothing is paid before the pool's payout_at (the end of its review window – the program refuses even the admin). Before it, this script
+// waits for it on the CHAIN clock when it is at most PAYOUT_WAIT_MAX seconds away (default 900), else says when and stops. The server's own payout job
+// (PAYOUT_SECRET, `pool:payout`) is the normal path once the program names a payout key; this stays the admin's manual stand-in.
 //   bash server/scripts/devnet.sh payout <poolId> [--yes]        (BASE / RPC / the admin key from the devnet profile)
 //   BASE=http://localhost:3000 RPC=<devnet url> ADMIN=<admin.json> node scripts/devnet-payout.mjs <poolId> [--yes]
 // Refuses a mainnet RPC (the genesis hash must be devnet's or a local validator's).
 import nacl from 'tweetnacl'; import bs58 from 'bs58'; import { readFileSync } from 'node:fs';
-import { Connection, Keypair, Transaction } from '@solana/web3.js';
+import { Connection, Keypair, SYSVAR_CLOCK_PUBKEY, Transaction } from '@solana/web3.js';
 
 const { BASE, RPC, ADMIN } = process.env;
 const poolId = Number(process.argv[2]), send = process.argv.includes('--yes');
@@ -25,6 +28,19 @@ const { j: nonce } = await api('auth/nonce', { body: { wallet } });
 const v = await api('auth/verify', { body: { wallet, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(nonce.message), admin.secretKey)) } });
 if (!v.ok) { console.error(`sign-in as ${wallet} failed: ${v.status} ${JSON.stringify(v.j)}`); process.exit(1); }
 const cookie = v.r.headers.get('set-cookie').split(';')[0];
+
+// the review window: wait for payout_at on the chain clock (the program's), or say when it ends
+const chainNow = async () => Number((await conn.getAccountInfo(SYSVAR_CLOCK_PUBKEY, 'confirmed')).data.readBigInt64LE(32));
+const info = await api(`pools/${poolId}`);
+if (!info.ok) { console.error(`no pool ${poolId} on the server: ${info.status} ${info.j.detail ?? ''}`); process.exit(1); }
+const payoutAt = Math.ceil(info.j.payoutAt / 1000), waitMax = +(process.env.PAYOUT_WAIT_MAX || 900);
+let left = payoutAt - (await chainNow());
+if (left > 0) {
+  console.log(`pool ${poolId}: the review window ends ${new Date(payoutAt * 1000).toISOString()} (in ${left} s on the chain clock) – no prize before it`);
+  if (left > waitMax) { console.log(`more than ${waitMax} s away: run it again then (PAYOUT_WAIT_MAX raises the wait)`); process.exit(send ? 1 : 0); }
+  while ((left = payoutAt - (await chainNow())) >= 0) await new Promise(r => setTimeout(r, Math.min(5000, (left + 1) * 1000)));
+  for (let i = 0; i < 10 && (await api(`pools/${poolId}/payout`, { cookie })).status === 409; i++) await new Promise(r => setTimeout(r, 1000));   // the server judges by its own clock
+}
 
 const plan = async () => {
   const p = await api(`pools/${poolId}/payout`, { cookie });

@@ -6,7 +6,8 @@
 //                                           1h omits --min → 20 (ride-tier.ts). A smaller --min is a short test pool. 4h and 8h still require --min.
 //                                           --prep <unix|+secs> --play <unix|+secs> [--payout <unix|+secs> (default = --play)] [--split 7000/2000/1000] --fee-treasury <pubkey> --seed-treasury <pubkey>
 //   node scripts/pool-admin.mjs set-series  --url <rpc> -k <admin.json> --tier 1h|4h|8h --price <lamports> [--min N] [--max 0] [--per-wallet 1] [--split 7000/2000/1000]
-//                                           [--sale-hours H --play-hours H --review-hours H] (1h default: the tier table's schedule, 24 / 2 / 48) --fee-treasury <pubkey> --seed-treasury <pubkey>
+//                                           [--sale-hours H --play-hours H --review-hours H] (1h default: the tier table's schedule, 24 / 2 / 48; --sale-secs / --play-secs / --review-secs
+//                                           give seconds instead – the program still wants a sale window of at least an hour) --fee-treasury <pubkey> --seed-treasury <pubkey>
 //                                           [--start <unix|+secs>] (required for a new series; omitted = keep its schedule) [--enabled true|false]
 //   node scripts/pool-admin.mjs open-next-pool --url <rpc> -k <caller.json> --tier 1h   (permissionless once the series' slot has come – the crank does it; the caller pays the rents)
 //   node scripts/pool-admin.mjs set-payout-authority --url <rpc> -k <admin.json> --payout <pubkey> | --clear   (the key that may only pay_prize / close_pool after payout_at)
@@ -103,11 +104,12 @@ try {
     const tier = TIERS[opt.tier]; if (!tier) die('--tier must be 1h, 4h or 8h');
     const [prize, seed, fee] = (opt.split ?? '7000/2000/1000').split('/').map(Number);
     const id = c.poolCount;
+    const prep = await when('prep'), play = await when('play');   // read once: a default payout_at = this exact play deadline (a second `+secs` read could land a second later)
     const sig = await send(admin, codec.instruction('create_pool', {
       authority: admin.publicKey, config: codec.configPda(), pool: codec.poolPda(id), vault: codec.vaultPda(id),
       fee_treasury: pk('fee-treasury'), seed_treasury: pk('seed-treasury'), platform_treasury: c.platformTreasury,
     }, { params: { tier, price_lamports: int('price'), min_tickets: int('min', opt.tier === '1h' ? rideTier('1h', 0).minTickets : undefined), max_tickets: int('max', 0), max_per_wallet: int('per-wallet', 1),
-      prep_deadline: await when('prep'), play_deadline: await when('play'), payout_at: opt.payout ? await when('payout') : await when('play'), prize_bps: prize, seed_bps: seed, fee_bps: fee } }));
+      prep_deadline: prep, play_deadline: play, payout_at: opt.payout ? await when('payout') : play, prize_bps: prize, seed_bps: seed, fee_bps: fee } }));
     out({ signature: sig, poolId: id, pool: await account('Pool', codec.poolPda(id)) });
   } else if (cmd === 'set-series') {
     const admin = keypair();
@@ -115,15 +117,15 @@ try {
     const tier = TIERS[opt.tier]; if (!tier) die('--tier must be 1h, 4h or 8h');
     const def = rideTier(opt.tier, 0);
     const sched = def.schedule ?? {};
-    const hours = (name, d) => int(name, d) * 3600;
+    const secs = (name, d) => (opt[name.replace('hours', 'secs')] !== undefined ? int(name.replace('hours', 'secs')) : int(name, d) * 3600);   // --sale-secs etc. win over --sale-hours
     const [prize, seed, fee] = (opt.split ?? '7000/2000/1000').split('/').map(Number);
     const existing = await account('Series', codec.seriesPda(tier));
     if (!existing && !opt.start) die('a new series needs --start <unix|+secs> (the first sale slot)');
     const sig = await send(admin, codec.instruction('set_series', {
       authority: admin.publicKey, config: codec.configPda(), series: codec.seriesPda(tier), fee_treasury: pk('fee-treasury'), seed_treasury: pk('seed-treasury'), platform_treasury: c.platformTreasury,
     }, { params: { tier, enabled: opt.enabled === undefined ? true : opt.enabled === 'true', price_lamports: int('price'), min_tickets: int('min', def.minTickets ?? undefined),
-      max_tickets: int('max', 0), max_per_wallet: int('per-wallet', 1), sale_secs: hours('sale-hours', sched.saleHours), play_secs: hours('play-hours', sched.playHours),
-      verify_secs: hours('review-hours', sched.reviewHours), prize_bps: prize, seed_bps: seed, fee_bps: fee, start_at: opt.start ? await when('start') : 0 } }));
+      max_tickets: int('max', 0), max_per_wallet: int('per-wallet', 1), sale_secs: secs('sale-hours', sched.saleHours), play_secs: secs('play-hours', sched.playHours),
+      verify_secs: secs('review-hours', sched.reviewHours), prize_bps: prize, seed_bps: seed, fee_bps: fee, start_at: opt.start ? await when('start') : 0 } }));
     out({ signature: sig, series: await account('Series', codec.seriesPda(tier)) });
   } else if (cmd === 'open-next-pool') {
     const caller = keypair();
