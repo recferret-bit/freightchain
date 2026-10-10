@@ -29,7 +29,7 @@ export const crashCap = (driveSeconds: number): number => Math.min(MAX_CRASHES_P
 
 /** The FREE run ends at a shorter line: its minute is mostly the depot road and the turn, and a brisk driver covers ~490 m of it (the trip-design
     skill's measure), so the paid K of 0.5 (840 m) would stretch "one minute" to ~95 s. Stored on the ride at creation, so changing it moves only new rides.
-    This is the old 'free' trip's and the EASY level's (and the counted offline run's) K; each free LEVEL has its own (ride-trip.ts FREE_LEVELS – level 1 = this). */
+    This is the old 'free' trip's and the EASY level's (and the offline run's) K; each free LEVEL has its own (ride-trip.ts FREE_LEVELS – level 1 = this). */
 export const FREE_COMPLETE_DIST_K = 0.25;
 /** ASSIST (a free ride's helper): the truck loses this share of the hull it would lose otherwise – CFG.ASSIST.HULL_DMG in client/js/config.js (drift-tested in world-checks.spec.ts). The verdict still passes an honest assisted drive only while this stays above PASS_DAMAGE_SHARE. */
 export const ASSIST_HULL_DAMAGE = 0.5;

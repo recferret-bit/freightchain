@@ -11,10 +11,10 @@ describe('SettingsPrismaRepository (PostgreSQL)', () => {
   it('a wiped table reads empty; upsert inserts, then updates the same key', async () => {
     expect(await repo.all()).toEqual([]);
     await repo.upsert('free_on_signup', 7);
-    await repo.upsert('offline_free_rides', 3);
+    await repo.upsert('free_rides_daily_max', 3);
     await repo.upsert('free_on_signup', 11);
     const rows = await repo.all();
     expect(rows).toHaveLength(2);
-    expect(rows).toEqual(expect.arrayContaining([{ key: 'free_on_signup', value: 11 }, { key: 'offline_free_rides', value: 3 }]));
+    expect(rows).toEqual(expect.arrayContaining([{ key: 'free_on_signup', value: 11 }, { key: 'free_rides_daily_max', value: 3 }]));
   });
 });

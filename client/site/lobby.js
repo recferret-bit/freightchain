@@ -482,7 +482,7 @@ if (S.me) {
   if (S.pool?.round?.id != null) viewed.round_id = S.pool.round.id;   // pool is not loaded yet; do not delay the pageview for it
   track('lobby_viewed', viewed);
   paintHeader();
-  for (const a of document.querySelectorAll('a[href="/play.html"]')) a.href = `${GAME_BASE}/play.html?offline=1`;   // counted free runs. The click listener above stays on the element. Paid and watch links already carry their own query
+  for (const a of document.querySelectorAll('a[href="/play.html"]')) a.href = `${GAME_BASE}/play.html?offline=1`;   // guest free runs. The click listener above stays on the element. Paid and watch links already carry their own query
   $('promo').onsubmit = redeem;
   $('out').onclick = async () => { track('player_signed_out'); flushSoon(); await signOut(); location.href = '/'; };
   [S.tiers, S.pool] = await Promise.all([api('tiers', undefined, { report: false }).catch(() => null), api('pool', undefined, { report: false }).catch(() => null)]);

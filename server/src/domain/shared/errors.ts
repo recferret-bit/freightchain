@@ -10,6 +10,13 @@ export abstract class DomainError extends Error {
     this.extensions = extensions;
     Object.setPrototypeOf(this, new.target.prototype);
   }
+
+  static notFound(errorCodeOrMessage = 'not_found', message?: string): NotFoundError {
+    if (message !== undefined) {
+      return new NotFoundError(message, errorCodeOrMessage);
+    }
+    return new NotFoundError(errorCodeOrMessage);
+  }
 }
 
 export class BadRequestError extends DomainError {
@@ -33,10 +40,11 @@ export class UnauthorizedError extends DomainError {
 
 export class NotFoundError extends DomainError {
   readonly statusCode = 404;
-  readonly errorCode = 'not_found';
+  readonly errorCode: string;
 
-  constructor(message = 'Not found') {
+  constructor(message = 'Not found', errorCode = 'not_found') {
     super(message);
+    this.errorCode = errorCode;
   }
 }
 

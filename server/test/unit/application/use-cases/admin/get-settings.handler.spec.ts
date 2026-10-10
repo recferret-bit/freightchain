@@ -7,7 +7,7 @@ describe('GetSettingsHandler', () => {
     const ctx = unitContext();
     await ctx.settingsRepo.upsert('free_on_signup', 7);
     expect(await new GetSettingsHandler(ctx.settings).execute(new GetSettingsQuery())).toEqual({
-      freeOnSignup: 7, freeRidesDailyMax: 5, offlineFreeRides: 3, offlineFreeRidesPerIp: 10,
+      freeOnSignup: 7, freeRidesDailyMax: 5,
     });
   });
 });

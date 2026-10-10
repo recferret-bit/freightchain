@@ -36,7 +36,7 @@ import { MemoryStatsRepository } from './in-memory/memory-stats-repository.js';
 import { MemoryCacheAdapter } from '../../src/infrastructure/cache/memory-cache.adapter.js';
 import { GameSettingsService } from '../../src/application/services/game-settings.service.js';
 import { LiveAccessService } from '../../src/application/services/live-access.service.js';
-import { MemoryOfflineRideRepository, MemorySettingsRepository } from './in-memory/memory-settings.js';
+import { MemorySettingsRepository } from './in-memory/memory-settings.js';
 import { MemoryDailySeedRepository } from './in-memory/memory-daily-seeds.js';
 
 /** Fixed rules for unit tests: 10 s free shift (140 m), treasury configured, one demo wallet. */
@@ -113,7 +113,6 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const stats = new StatsService(statsRepo, cache, clock);
   const settingsRepo = new MemorySettingsRepository(db);
   const settings = new GameSettingsService(settingsRepo);
-  const offlineRides = new MemoryOfflineRideRepository(db);
   const dailySeeds = new MemoryDailySeedRepository(db);
   const sessions = new PlayerSessionService(players, settings, rulesPort, clock, analytics);
   const lookup = new RideLookupService(rides);
@@ -150,7 +149,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   return {
     db, clock, chain, entropy, dailySeeds, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, batches, hasher, verdictRepo, verdicts, proofs, signIns, adminActions, adminQuery, adminDirectory, health, analytics,
     pools, tickets, promos, cosmetics, promoCreation, orders, poolTickets, ticketSettlement,
-    sessions, meProfile, settings, settingsRepo, offlineRides, lookup, rounds, achievements, settlement, now, player, freeRide, paidOrder, reload, storedPlayer,
+    sessions, meProfile, settings, settingsRepo, lookup, rounds, achievements, settlement, now, player, freeRide, paidOrder, reload, storedPlayer,
     poolChain, chainEvents, chainCursors, registry, rideEvents, viewers, sitePresence, rideMutes, donationOrders, liveAccess, statsRepo, cache, stats,
   };
 }

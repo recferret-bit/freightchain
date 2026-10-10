@@ -34,7 +34,7 @@ for (const [name, env, scenarios] of [
   ['statistics: rides, time, distance, crashes, donations – per rider and global', STATS_ENV, statsScenarios],
   ['the free ride: tutorial, assist and the On My Own achievement', GUIDE_ENV, guideScenarios],
   ['the free ride: its three levels (EASY / CROSSROADS / HARD) and their achievements', FREE_LEVELS_ENV, freeLevelScenarios],
-  ['free rides: signup 10/5, settings, admin adjust, offline runs', FREE_RIDES_ENV, freeRideScenarios],
+  ['free rides: signup 10/5, settings, admin adjust', FREE_RIDES_ENV, freeRideScenarios],
   ['escrowed pools, promo codes and ticket rides', POOLS_ENV, poolScenarios],
   ['one road per competition: the same seed and road for a pool / a paid day, another for the next', SHARED_ROAD_ENV, sharedRoadScenarios],
   ['promo codes: free rides, cosmetics, scheduling, the admin tab', PROMOS_ENV, promoScenarios],

@@ -117,15 +117,3 @@ model GameSetting {
 
   @@schema("player")
 }
-
-// One row per anonymous free run that started on play.html?offline=1. No player: the browser sketch and the request IP are the keys.
-model OfflineRideUse {
-  id          String   @id
-  fingerprint String
-  ip          String
-  at          DateTime
-
-  @@index([fingerprint])
-  @@index([ip])
-  @@schema("player")
-}

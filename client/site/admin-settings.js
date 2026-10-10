@@ -5,8 +5,6 @@
 const KNOBS = [
   ['free_on_signup', 'freeOnSignup', 'Free rides on sign-up', 'what a NEW wallet starts with; existing wallets are not topped up'],
   ['free_rides_daily_max', 'freeRidesDailyMax', 'Daily refill cap', 'the +1 at 00:00 UTC stops here and never takes a surplus away'],
-  ['offline_free_rides', 'offlineFreeRides', 'Guest free rides', 'unused: the client no longer calls the offline-rides endpoints'],
-  ['offline_free_rides_per_ip', 'offlineFreeRidesPerIp', 'Guest free rides per IP', 'unused, as above'],
 ];
 const MAX = 100_000;
 

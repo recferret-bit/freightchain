@@ -58,8 +58,6 @@ export class MemoryDb {
   dailyStats = new Map<string, import('../../../src/domain/stats/stats.js').StatsTotals>();
   /** `player.GameSetting` */
   settings = new Map<string, number>();
-  /** anonymous offline runs */
-  offlineUses: { id: string; fingerprint: string; ip: string; at: Date }[] = [];
   /** `${tier}|${day}` → the day's road seed of a paid tier (ride.DailySeed) */
   dailySeeds = new Map<string, number>();
   private seq = 0;
@@ -75,6 +73,6 @@ export class MemoryDb {
     this.pools.clear(); this.tickets.clear(); this.grants = []; this.promos.clear(); this.redemptions.clear(); this.orders.clear(); this.cosmeticUnlocks.clear(); this.cosmeticEquipped.clear();
     this.chainEvents = []; this.chainCursors.clear();
     this.rideEvents = []; this.rideMutes.clear(); this.donationOrders.clear(); this.playerStats.clear(); this.globalStats = null; this.dailyStats.clear();
-    this.settings.clear(); this.offlineUses = []; this.dailySeeds.clear();
+    this.settings.clear(); this.dailySeeds.clear();
   }
 }

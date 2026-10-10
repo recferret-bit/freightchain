@@ -42,20 +42,18 @@ Every schema key except `NODE_ENV`, `PORT`, `DATABASE_URL`, `CLIENT_DIR`, `LANDI
 
 A new setting therefore touches **four** places: `env.schema.ts`, `server/.env.example`, `deploy/.env.example`, `docker-compose.prod.yml` (+ `deploy/scripts/init-env.mjs` if it is a generated secret).
 
-A runtime knob (how many free rides a new wallet gets, the daily cap, the offline allowances) is **not** an env key. It is a row. See Runtime settings.
+A runtime knob (how many free rides a new wallet gets, the daily cap) is **not** an env key. It is a row. See Runtime settings.
 
 ## Runtime settings
 
-Table `player.GameSetting` (`key` text, `value` integer). The migration seeds the four rows. A missing row, or a stored value outside 0..100_000, falls back to the code default in `server/src/domain/settings/game-settings.ts`. Truncating the table does not change the defaults.
+Table `player.GameSetting` (`key` text, `value` integer). The migration seeds the rows. A missing row, or a stored value outside 0..100_000, falls back to the code default in `server/src/domain/settings/game-settings.ts`. Truncating the table does not change the defaults.
 
 | Key | Default | What it does |
 |---|---|---|
 | `free_on_signup` | 10 | Free rides a **new** wallet starts with. Wallets that already exist are not topped up. |
 | `free_rides_daily_max` | 5 | The +1 at 00:00 UTC stops here. A balance already above it (signup, a promo, an admin grant) stays. |
-| `offline_free_rides` | 3 | Anonymous runs on `play.html?offline=1`, counted per browser fingerprint. |
-| `offline_free_rides_per_ip` | 10 | The same runs, counted per request IP. Both buckets must have room. A shared address shares this one. |
 
-Change one with the signed admin API (`GET /api/admin/settings`, then the challenge and `POST /api/admin/settings`). Bounds are 0..100_000. The same session can add or remove one signed-in wallet's free rides (`POST /api/admin/players/free-rides`). A result below 0 or above 100_000 is refused. The fingerprint is easy to spoof; the IP cap is the backstop. `0` on a limit means that bucket allows nobody.
+Change one with the signed admin API (`GET /api/admin/settings`, then the challenge and `POST /api/admin/settings`). Bounds are 0..100_000. The same session can add or remove one signed-in wallet's free rides (`POST /api/admin/players/free-rides`). A result below 0 or above 100_000 is refused.
 
 ## Server settings (`env.schema.ts`)
 

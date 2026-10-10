@@ -30,6 +30,10 @@ button.alt{background:transparent;color:#ffcf5a;flex:0 0 auto;font-size:13px;pad
 button.bail-link{display:flex;flex-direction:column;align-items:flex-start;gap:2px;line-height:1.2;text-align:left}
 button.bail-link small{font-weight:normal;font-size:10px;letter-spacing:.02em;color:#cbbf9a}
 button.bail-link b,button.bail-link small{white-space:nowrap}
+button.share-x-btn{display:flex;flex-direction:column;align-items:flex-start;gap:2px;line-height:1.2;text-align:left;background:#0c0b09;color:#fff;border:1px solid #9945FF;box-shadow:0 0 10px rgba(153,69,255,.25),0 0 5px rgba(20,241,149,.15);transition:border-color .15s,box-shadow .15s}
+button.share-x-btn small{font-weight:normal;font-size:10px;letter-spacing:.02em;color:#14F195}
+button.share-x-btn b,button.share-x-btn small{white-space:nowrap}
+button.share-x-btn:hover{border-color:#14F195;box-shadow:0 0 10px rgba(153,69,255,.4),0 0 10px rgba(20,241,149,.2);filter:brightness(1.08)}
 /* the answer that keeps you in the cab: Solana purple → green, for fun */
 button.stay{flex:1.35;border:0;background:linear-gradient(105deg,#9945FF 0%,#8752ff 58%,#14F195 100%);color:#fff;text-shadow:0 1px 2px #14081ccc;letter-spacing:.08em;box-shadow:0 0 18px #9945FF66}
 button.stay:hover{filter:brightness(1.08)}

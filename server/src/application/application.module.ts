@@ -31,6 +31,7 @@ import { EndRideHandler } from './use-cases/rides/end-ride/end-ride.handler.js';
 import { GetPaymentInstructionsHandler } from './use-cases/rides/get-payment-instructions/get-payment-instructions.handler.js';
 import { GetPendingRideHandler } from './use-cases/rides/get-pending-ride/get-pending-ride.handler.js';
 import { GetRideHandler } from './use-cases/rides/get-ride/get-ride.handler.js';
+import { GetPublicRideHandler } from './use-cases/rides/get-public-ride/get-public-ride.handler.js';
 import { HeartbeatRideHandler } from './use-cases/rides/heartbeat-ride/heartbeat-ride.handler.js';
 import { ReconcilePaymentHandler } from './use-cases/rides/reconcile-payment/reconcile-payment.handler.js';
 import { StartRideHandler } from './use-cases/rides/start-ride/start-ride.handler.js';
@@ -106,8 +107,6 @@ import { RegisterPoolFromChainHandler } from './use-cases/pools/register-pool-fr
 import { AdjustFreeRidesHandler } from './use-cases/admin/adjust-free-rides/adjust-free-rides.handler.js';
 import { GetSettingsHandler } from './use-cases/admin/get-settings/get-settings.handler.js';
 import { UpdateSettingHandler } from './use-cases/admin/update-setting/update-setting.handler.js';
-import { ClaimOfflineRideHandler } from './use-cases/offline/claim-offline-ride/claim-offline-ride.handler.js';
-import { GetOfflineRidesHandler } from './use-cases/offline/get-offline-rides/get-offline-rides.handler.js';
 
 const services: Provider[] = [
   AchievementService, PaymentSettlementService, PlayerSessionService, GameSettingsService, RideLookupService, RoundService, VerdictService, AdminProofService,
@@ -121,7 +120,7 @@ import { GetStatsHandler } from './use-cases/stats/get-stats/get-stats.handler.j
 const handlers: Provider[] = [
   GetStatsHandler, GetDailyStatsHandler, ReconcileStatsHandler,
   RequestChallengeHandler, VerifySignInHandler, GetMeHandler, LogoutHandler,
-  CreateRideHandler, GetRideHandler, GetPendingRideHandler, StartRideHandler, HeartbeatRideHandler, EndRideHandler,
+  CreateRideHandler, GetRideHandler, GetPendingRideHandler, GetPublicRideHandler, StartRideHandler, HeartbeatRideHandler, EndRideHandler,
   GetPaymentInstructionsHandler, ConfirmPaymentHandler, ReconcilePaymentHandler,
   UploadBatchHandler, SweepTelemetryHandler, SweepSignInsHandler, RejudgeRidesHandler,
   PostRideEventHandler, AckEffectHandler, GetInboxHandler, WatchRideHandler, GetRoadPlanHandler, MuteWalletHandler, CreateDonationOrderHandler, ConfirmDonationHandler, SweepStaleRidesHandler, GetReplaysHandler,
@@ -139,7 +138,7 @@ const handlers: Provider[] = [
   GetRefundTransactionHandler, GetPayoutTransactionsHandler,
   GetChainFeesHandler,
   PollProgramHandler, SyncPoolsHandler, CrankPoolsHandler, ReceiveChainWebhookHandler, RegisterPoolFromChainHandler,
-  AdjustFreeRidesHandler, GetSettingsHandler, UpdateSettingHandler, ClaimOfflineRideHandler, GetOfflineRidesHandler,
+  AdjustFreeRidesHandler, GetSettingsHandler, UpdateSettingHandler,
 ];
 
 @Module({

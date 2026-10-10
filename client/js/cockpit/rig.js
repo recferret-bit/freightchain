@@ -9,6 +9,7 @@ import { SHAKE_MOVING, engineVib } from '../sim/shake.js';
 import { look, pose } from '../cosmetics.js';
 import { hint } from '../guide.js';
 import { phone } from '../phone.js';
+import { online } from '../online.js';
 
 /* Style 2 (default): conventional long-hood semi cab – hood, chrome stacks, mirrors, air gauges, CB, brake valves. */
 
@@ -136,7 +137,22 @@ export function drawCockpitRig() {
   { const vy = 86.5 * u, px = rx + 6.25 * u;   // centred under the WIPER button
     uiBtns.push({ id: 'park', x: px - 3.6 * u, y: vy - 3.6 * u, w: 7.2 * u, h: 10.4 * u }); ctx.fillStyle = st.park ? '#ff3a2a' : '#6b1f1a'; ctx.beginPath(); for (let i = 0; i < 8; i++) { const an = Math.PI / 8 + i * Math.PI / 4; ctx.lineTo(px + Math.cos(an) * 3.4 * u, vy + Math.sin(an) * 3.4 * u); } ctx.closePath(); ctx.fill(); ctx.strokeStyle = '#222'; ctx.lineWidth = .3 * u; ctx.stroke();
     ctx.fillStyle = st.park ? '#ffe9e4' : '#c9a29c'; ctx.font = `bold ${4.4 * u}px ${MONO}`; const tb = ctx.textBaseline; ctx.textBaseline = 'middle'; ctx.fillText('P', px, vy + .2 * u); ctx.textBaseline = tb;
-    ctx.fillStyle = st.park ? '#ff8a7a' : '#9d957f'; ctx.font = `${1.5 * u}px ${MONO}`; ctx.fillText('PARK', px, vy + 5.2 * u); }
+    ctx.fillStyle = st.park ? '#ff8a7a' : '#9d957f'; ctx.font = `${1.5 * u}px ${MONO}`; ctx.fillText('PARK', px, vy + 5.2 * u);
+    if (online.ride) {
+      const sx = px - 3.6 * u, sy = 94.5 * u, sw = 7.2 * u, sh = 4.6 * u;
+      uiBtns.push({ id: "share-x", x: sx, y: sy, w: sw, h: sh });
+      litRect(sx - .2 * u, sy - .2 * u, sw + .4 * u, sh + .4 * u);
+      ctx.fillStyle = '#0c0b09'; ctx.beginPath(); ctx.roundRect(sx, sy, sw, sh, .8 * u); ctx.fill();
+      const sg = ctx.createLinearGradient(sx, sy, sx + sw, sy + sh);
+      sg.addColorStop(0, '#9945FF'); sg.addColorStop(1, '#14F195');
+      ctx.strokeStyle = sg; ctx.lineWidth = .35 * u; ctx.stroke();
+      const tb2 = ctx.textBaseline; ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#fff'; ctx.font = `bold ${1.9 * u}px sans-serif,${MONO}`; ctx.textAlign = 'center';
+      ctx.fillText('𝕏', sx + sw / 2, sy + 1.6 * u);
+      ctx.fillStyle = '#14F195'; ctx.font = `bold ${1.0 * u}px ${MONO}`;
+      ctx.fillText('POST', sx + sw / 2, sy + 3.4 * u);
+      ctx.textBaseline = tb2;
+    } }
   ignitionPanel(cx + 37 * u, 96.2 * u, u * .78);   // scaled down so the ON zone stays inside the dash panel border
   { const bw = 8.4 * u, bh = 4 * u, gx = cx - 48 * u, gy = 90.8 * u, gap = .8 * u;   // 2x2 switch grid left of the wheel
     uiButton('head', 'HEAD', gx, gy, bw, bh, u, dn.head); uiButton('cab', 'CAB', gx + bw + gap, gy, bw, bh, u, dn.cab);

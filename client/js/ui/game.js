@@ -26,8 +26,10 @@ import { SITE_BASE } from '../hosts.js';
 import { resetMap } from './map.js';
 
 /* Ride flow: menu / start / end / pause overlay and per-ride reset. */
+let lastOutcome = null;
 
 export function resetRide(seed = online.ride?.seed) {   // seed: the server's for an online ride, the watched ride's for a replay (watch.js), random offline
+  lastOutcome = null;
   Object.assign(st, rideStart({ rpm: CFG.START_ENGINE_OFF ? 0 : IDLE, engineOn: !CFG.START_ENGINE_OFF, temp: ambientC(), pull: 1 }));
   resetDisp(); destroyed.clear(); clearDebris(); roads.newTrip(seed); resetScreen();   // new road layout, depot, traffic
   st.pull = mulberry32(roads.seed ^ 0x2545f491)() < .5 ? -1 : 1;   // a damaged truck's pull side comes from the road seed: every rider of a pool (one seed) gets the same one
@@ -67,15 +69,13 @@ function showOfflineMenu(title, sub, extra) {
     <div style="font-size:12px;color:#b9ad8d">F8 toggles form shade: sun on the sides of things, a thin edge on boxes. The road stays flat.</div>
     <label class="row" style="cursor:pointer"><span>TUTORIAL – step-by-step lessons over the road</span><input type="checkbox" id="g-tutorial" ${guestOpt.tutorial ? 'checked' : ''}></label>
     <label class="row" style="cursor:pointer"><span>ASSIST – the truck lasts twice as long, a tip on every control</span><input type="checkbox" id="g-assist" ${guestOpt.assist ? 'checked' : ''}></label>
-    <div class="btns"><button id="go">${again ? 'DRIVE AGAIN' : 'START FREE RUN'}</button><button class="alt" id="connect">CONNECT A WALLET</button></div>
-    ${again || (!guestOpt.tutorial && !guestOpt.assist) ? `<div class="btns">${bailBtn('yard')}${bailBtn('done')}</div>` : ''}`;
+    <div class="btns"><button id="go">${again ? 'DRIVE AGAIN' : 'START FREE RUN'}</button><button class="alt" id="connect">CONNECT A WALLET</button></div>`;
   overlay.classList.remove('hide');
-  const redraw = () => showOfflineMenu(title, sub, extra);   // tutorial or assist: the leave links stay off this dialog (they are on the road)
-  document.getElementById('g-tutorial').onchange = e => { guestOpt.tutorial = e.target.checked; store.set('freightchain.guest-tutorial', guestOpt.tutorial ? '1' : '0'); redraw(); };
-  document.getElementById('g-assist').onchange = e => { guestOpt.assist = e.target.checked; store.set('freightchain.assist', guestOpt.assist ? '1' : '0'); redraw(); };
+  document.getElementById('g-tutorial').onchange = e => { guestOpt.tutorial = e.target.checked; store.set('freightchain.guest-tutorial', guestOpt.tutorial ? '1' : '0'); };
+  document.getElementById('g-assist').onchange = e => { guestOpt.assist = e.target.checked; store.set('freightchain.assist', guestOpt.assist ? '1' : '0'); };
   document.getElementById('go').onclick = startRide;
   document.getElementById('connect').onclick = () => { location.href = connectHref(); };
-  bindBail(); syncBail();
+  syncBail();
 }
 let menuArgs = ['FREIGHT CHAIN', 'Long-haul truck simulator', ''];
 export function showMenu(title, sub, extra = '') {
@@ -90,11 +90,29 @@ function showOnlineMenu(title, sub, extra) {
   panel.innerHTML = `<h1>${title}</h1><h2>${sub}</h2>${extra}
     ${bad ? `<div class="row"><span>Ride</span><span class="bad">${online.error}</span></div>` : `<div class="row"><span>Shift (server-timed)</span><b>${fmt(CFG.RIDE_MIN_SECONDS)} · ${(CFG.COMPLETE_DIST / 1000).toFixed(1)} km${online.ride.timeScale > 1 ? ` · DEMO ×${online.ride.timeScale}` : ''}</b></div>
     <div class="row"><span>Route (set by the server)</span><b>${env.theme.name} · starts ${clockText()}</b></div>`}${over || bad ? '' : CONTROLS}
-    <div class="btns"><button id="go" ${bad || over ? 'disabled' : ''}>START RIDE</button>${over || bad || !(online.ride?.tutorial || online.ride?.assist) ? `<button class="alt bail-link" id="lobby" title="lobby"><b>I MISS THE YARD</b><small>lobby</small></button>${bailBtn('done')}` : ''}</div>`;
+    <div class="btns"><button id="go" ${bad || over ? 'disabled' : ''}>START RIDE</button>${over || bad || !(online.ride?.tutorial || online.ride?.assist) ? `<button class="alt bail-link" id="lobby" title="lobby"><b>I MISS THE YARD</b><small>lobby</small></button>${over && online.ride ? '<button type="button" class="alt share-x-btn" id="share-x-end" title="Share your ride on 𝕏"><b>POST ON 𝕏</b><small>share progress & receipt</small></button>' : ''}${bailBtn('done')}` : ''}</div>`;
   overlay.classList.remove('hide');
   document.getElementById('go').onclick = startRide;
   const lobby = document.getElementById('lobby');
   if (lobby) lobby.onclick = () => { location.href = `${SITE_BASE}/lobby.html`; };   // one click: the ride is not running on this screen (the suites press #lobby)
+  const shareEnd = document.getElementById('share-x-end');
+  if (shareEnd) {
+    shareEnd.onclick = () => {
+      if (!online.ride) return;
+      const routeName = env.theme?.name ?? 'Route';
+      const baseOutcome = lastOutcome ? (lastOutcome.ok ? 'COMPLETE' : lastOutcome.abandoned ? 'ABANDONED' : 'FAILED') : (st.complete ? 'COMPLETE' : 'FAILED');
+      const vEl = document.getElementById('verdict');
+      const vText = (vEl && vEl.textContent && vEl.textContent !== '…') ? ` (${vEl.textContent.slice(0, 50)})` : '';
+      const outcome = `${baseOutcome}${vText}`;
+      const text = `Just finished a ${online.ride.tier} shift on ${routeName} in @FreightChainSol! 🚛 ${(st.s / 1000).toFixed(2)} km driven · ${outcome} · devnet pool. Check the receipt on @solana: `;
+      const base = SITE_BASE || (typeof location !== 'undefined' ? location.origin : '');
+      const link = `${base}/r/${online.ride.id}`;
+      if (typeof window !== 'undefined' && window.open) {
+        window.open('https://x.com/intent/post?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent(link), '_blank', 'noopener,noreferrer');
+      }
+      toast('Opening 𝕏 to share ride receipt...', 2000);
+    };
+  }
   bindBail(); syncBail();
 }
 /* Same strings the server stores, so a client "I finished" can be compared with the verdict. Not a completion metric. */
@@ -150,6 +168,7 @@ export function endRide(ok, reason, outcome = ok ? 'shift' : 'failed', silent = 
   st.mode = 'done'; stopLiveFeed(); if (!ok && outcome !== 'shift') audio.play('game-over');
   const verdict = endOnline(outcome, reason);   // null offline
   const abandoned = !ok && outcome === 'shift';
+  lastOutcome = { ok, abandoned };
   if (!silent) showMenu(ok ? 'SHIFT COMPLETE' : abandoned ? 'SHIFT ABANDONED' : 'RIDE FAILED', ok ? 'Freight on its way. Another one?' : '',
     `<div class="row"><span>Result</span><b class="${ok ? 'good' : 'bad'}">${ok ? 'COMPLETE' : abandoned ? 'ABANDONED' : 'FAILED'}</b></div>
      <div class="row"><span>Time driven</span><b>${fmt(st.t)}</b></div>
