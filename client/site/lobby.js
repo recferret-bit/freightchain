@@ -327,15 +327,15 @@ const SHIFT = { '1h': '1H', '4h': '4H', '8h': '8H' };
 const paidLine = qty => `Paid – ${qty} ticket${qty === 1 ? '' : 's'} credited.`;
 /** RIDE PAID: the on-chain receipt (transaction, the pool's escrow account, the program) and POST ON 𝕏. Called after refreshPool, so the pool already counts this buy. */
 const creditDialog = (poolId, qty, { lamports = 0, signature = null, programId = null } = {}) => {
-  const t = S.tiers?.tiers.find(x => x.pool?.id === poolId), p = t?.pool, solUsd = S.tiers?.solUsd;
+  const t = S.tiers?.tiers.find(x => x.pool?.id === poolId), p = t?.pool, solUsd = S.tiers?.solUsd, tier = t?.id ?? S.me?.tickets?.find(r => r.poolId === poolId)?.tier;   // the card may already sell the next pool
   const rows = [lamports ? { k: 'paid', v: `${sol(lamports)}${solUsd ? ` ${usd(lamports, solUsd)}` : ''}` } : null,
     { k: 'pool', v: p ? `#${poolId} · ${p.label}` : `#${poolId}` },
     signature ? { k: 'transaction', v: short(signature), href: explorerTx(signature), title: signature } : null,
     p?.address ? { k: 'escrow', v: short(p.address), href: explorerUrl(p.address), title: `pool account ${p.address}` } : null,
     programId ? { k: 'program', v: short(programId), href: explorerUrl(programId), title: `program ${programId}` } : null].filter(Boolean);
   const proof = signature ? explorerTx(signature) : p?.address ? explorerUrl(p.address) : null;   // the post links the receipt
-  ticketDialog({ ok: true, shift: SHIFT[t?.id] ?? '', qty, text: `${paidLine(qty)} Your entry sits in the pool’s vault on chain, not with us.`, detail: p ? progressText(p, now()) : '', rows,
-    more: { href: escrowExplainer(), text: 'How the escrow works →' }, share: proof && xIntent(ticketShareText({ shift: TIER_NAME[t?.id] ?? 'paid', qty, lamports, poolId }), proof) });
+  ticketDialog({ ok: true, shift: SHIFT[tier] ?? '', qty, text: `${paidLine(qty)} Your entry sits in the pool’s vault on chain, not with us.`, detail: p ? progressText(p, now()) : '', rows,
+    more: { href: escrowExplainer(), text: 'How the escrow works →' }, share: proof && xIntent(ticketShareText({ shift: TIER_NAME[tier] ?? 'paid', qty, lamports, poolId }), proof) });
 };
 const failDialog = (tier, text) => ticketDialog({ ok: false, shift: SHIFT[tier] ?? '', text });
 function play(r, tier, level = null) {
