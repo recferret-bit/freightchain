@@ -18,15 +18,15 @@ npm-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# Media (media/): the finished clips in media/out/video/<name>/ (mp4 + gif + timeline.json), their sound in media/out/audio/<name>/ (stems + cues.json) and the sound store media/out/audio/_store ARE committed; scratch output is not
-media/out/*/*-preview/
-media/out/*/*-partial/
-media/out/video/*/frames/
-media/out/video/*/spec.resolved.json
-media/out/*/*/*.raw
-media/out/video/*/*.mux.mp4
+# Media (media/): generated clips and their sound are NOT committed (regenerate: node media/make.mjs media/specs/<name>.json). Committed: the sound store media/out/audio/_store (a test checks it byte for byte)
+# and media/out/video/intro/intro.mp4 (the README links it)
+media/out/video/*
+!media/out/video/intro/
+media/out/video/intro/*
+!media/out/video/intro/intro.mp4
+media/out/audio/*
+!media/out/audio/_store/
 media/out/audio/_store/**/*.png
-media/out/audio/*/*.png
 
 # Test artifacts (tools/e2e-chrome.mjs writes to the OS temp dir by default; these catch local overrides)
 shots/
