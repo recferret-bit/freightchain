@@ -1,0 +1,42 @@
+{
+  "name": "First Mile",
+  "symbol": "FCHAIN",
+  "description": "Every haul starts with a single turn of the key. The road has noticed you. Condition: Start your first ride. A soulbound Freight Chain achievement – compressed NFT, non-transferable.",
+  "image": "__IMAGE__",
+  "external_url": "https://freightchain.fun/",
+  "attributes": [
+    {
+      "trait_type": "Family",
+      "value": "Road"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Bronze"
+    },
+    {
+      "trait_type": "Tier Number",
+      "value": 1
+    },
+    {
+      "trait_type": "Condition",
+      "value": "Start your first ride."
+    },
+    {
+      "trait_type": "Soulbound",
+      "value": "Yes"
+    },
+    {
+      "trait_type": "Game",
+      "value": "Freight Chain"
+    }
+  ],
+  "properties": {
+    "category": "image",
+    "files": [
+      {
+        "uri": "__IMAGE__",
+        "type": "image/png"
+      }
+    ]
+  }
+}

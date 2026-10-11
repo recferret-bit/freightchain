@@ -1,0 +1,42 @@
+{
+  "name": "Road Dog",
+  "symbol": "FCHAIN",
+  "description": "Every haul starts with a single turn of the key. The road has noticed you. Condition: Start 50 rides. A soulbound Freight Chain achievement – compressed NFT, non-transferable.",
+  "image": "__IMAGE__",
+  "external_url": "https://freightchain.fun/",
+  "attributes": [
+    {
+      "trait_type": "Family",
+      "value": "Road"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Gold"
+    },
+    {
+      "trait_type": "Tier Number",
+      "value": 3
+    },
+    {
+      "trait_type": "Condition",
+      "value": "Start 50 rides."
+    },
+    {
+      "trait_type": "Soulbound",
+      "value": "Yes"
+    },
+    {
+      "trait_type": "Game",
+      "value": "Freight Chain"
+    }
+  ],
+  "properties": {
+    "category": "image",
+    "files": [
+      {
+        "uri": "__IMAGE__",
+        "type": "image/png"
+      }
+    ]
+  }
+}

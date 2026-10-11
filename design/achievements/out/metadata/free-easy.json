@@ -1,0 +1,42 @@
+{
+  "name": "Learner’s Permit",
+  "symbol": "FCHAIN",
+  "description": "Every free run is a licence of its own. This one is stamped and framed. Condition: Clear the EASY free run. A soulbound Freight Chain achievement – compressed NFT, non-transferable.",
+  "image": "__IMAGE__",
+  "external_url": "https://freightchain.fun/",
+  "attributes": [
+    {
+      "trait_type": "Family",
+      "value": "Licence"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Bronze"
+    },
+    {
+      "trait_type": "Tier Number",
+      "value": 1
+    },
+    {
+      "trait_type": "Condition",
+      "value": "Clear the EASY free run."
+    },
+    {
+      "trait_type": "Soulbound",
+      "value": "Yes"
+    },
+    {
+      "trait_type": "Game",
+      "value": "Freight Chain"
+    }
+  ],
+  "properties": {
+    "category": "image",
+    "files": [
+      {
+        "uri": "__IMAGE__",
+        "type": "image/png"
+      }
+    ]
+  }
+}

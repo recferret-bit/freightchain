@@ -158,9 +158,9 @@ check('…and no unexpected page errors (ticket holder)', problems(tix).length =
 
 // ── PROFILE
 await rider.ev('location.hash = "#profile"');
-check('PROFILE: stats + achievements unlocked + the ride in history', await until(async () => (await rider.ev('document.querySelectorAll(".a").length')) === 11));
+check('PROFILE: stats + achievements unlocked + the ride in history', await until(async () => (await rider.ev('document.querySelectorAll(".a, .ac").length')) === 32));
 check('PROFILE: the ride in history carries its recording verdict', /COMPLETED · (VERIFIED|FLAGGED|REJECTED)/.test(await rider.ev('document.querySelector(".hist .hrow")?.textContent || ""')), await rider.ev('document.querySelector(".hist .hrow")?.textContent || ""'));
-const ach = await rider.ev('[...document.querySelectorAll(".a")].map(a => (a.classList.contains("lock") ? "-" : "+") + a.querySelector(".nm").textContent).join("|")');
+const ach = await rider.ev('[...document.querySelectorAll(".a, .ac")].map(a => (a.classList.contains("lock") ? "-" : "+") + a.querySelector(".nm").textContent).join("|")');
 // the drive above sets the distance directly, so its recording is REJECTED (line ~106); with the verdict enforced (this server's default) a rejected recording
 // earns its ride no badge (achievements.ts badgeRejected) – only First Mile (a started ride) – while a verified / flagged one earns them
 const rejected = /COMPLETED · REJECTED/.test(await rider.ev('document.querySelector(".hist .hrow")?.textContent || ""'));

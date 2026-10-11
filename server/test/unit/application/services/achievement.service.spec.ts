@@ -6,9 +6,9 @@ import { unitContext, unitRules } from '../../../support/unit-context.js';
 import { RideVerdict } from '../../../../src/domain/verdict/ride-verdict.entity.js';
 import { VerdictStatus } from '../../../../src/domain/verdict/verdict.dto.js';
 import { RULES_VERSION } from '../../../../src/domain/verdict/verdict-rules.js';
-import { badgeRejected } from '../../../../src/domain/achievements/achievements.js';
+import { ACHIEVEMENTS, badgeRejected } from '../../../../src/domain/achievements/achievements.js';
 
-const facts = (over: Partial<Facts>): Facts => ({ started: 0, completed: 0, totalMetres: 0, completedAtNight: false, cleanRun: false, completedSiberia: false, completedFreeUnassisted: false, completedFreeLevels: [], ...over });
+const facts = (over: Partial<Facts>): Facts => ({ started: 0, completed: 0, totalMetres: 0, nightShifts: 0, cleanRuns: 0, siberiaShifts: 0, freeUnassisted: 0, completedFreeLevels: [], ...over });
 
 describe('AchievementService', () => {
   it('persists only the NEW unlocks, in one insert, and never removes one', async () => {
@@ -18,11 +18,11 @@ describe('AchievementService', () => {
       insertAll = async (u: readonly AchievementUnlock[]) => { inserts++; return ctx.unlocks.insertAll(u); };
       listByWallet = (w: string) => ctx.unlocks.listByWallet(w);
     }
-    const service = new AchievementService(new Counting(), ctx.rideQuery, ctx.clock, ctx.rules);
+    const service = new AchievementService(new Counting(), ctx.mints, ctx.rideQuery, ctx.clock, ctx.rules);
     const ids = (rows: { id: string }[]) => rows.map((u) => u.id);
-    expect(ids(await service.evaluate('w', 'r1', facts({ started: 1, completed: 1, cleanRun: true })))).toEqual(['first-mile', 'shift-complete', 'clean-run']);
+    expect(ids(await service.evaluate('w', 'r1', facts({ started: 1, completed: 1, cleanRuns: 1 })))).toEqual(['first-mile', 'shift-complete', 'clean-run']);
     expect(inserts).toBe(1);
-    expect(ids(await service.evaluate('w', 'r2', facts({ started: 2, completed: 2, cleanRun: true })))).toEqual([]);
+    expect(ids(await service.evaluate('w', 'r2', facts({ started: 2, completed: 2, cleanRuns: 1 })))).toEqual([]);
     expect(inserts).toBe(1); // nothing new → no insert at all
     expect(ids(await service.evaluate('w', null, facts({})))).toEqual([]); // weaker facts later never remove
     expect((await ctx.unlocks.listByWallet('w')).map((u) => u.rideId)).toEqual(['r1', 'r1', 'r1']);
@@ -34,7 +34,7 @@ describe('AchievementService', () => {
       insertAll = async (u: readonly AchievementUnlock[]) => u.filter((row) => row.achievementId !== 'shift-complete').map((row) => row.achievementId);
       listByWallet = () => ctx.unlocks.listByWallet('w');
     }
-    const service = new AchievementService(new Partial(), ctx.rideQuery, ctx.clock, ctx.rules);
+    const service = new AchievementService(new Partial(), ctx.mints, ctx.rideQuery, ctx.clock, ctx.rules);
     expect((await service.evaluate('w', 'r1', facts({ started: 1, completed: 1 }))).map((u) => u.id)).toEqual(['first-mile']);
   });
 
@@ -47,8 +47,9 @@ describe('AchievementService', () => {
   it('lists the whole catalogue with the unlock times; top 20 is marked "awarded at round close"', async () => {
     const ctx = unitContext();
     await ctx.achievements.evaluate('w', null, facts({ started: 1 }));
-    const list = await ctx.achievements.list('w');
-    expect(list).toHaveLength(11);
+    const list = await ctx.achievements.list('w', facts({ started: 1 }));
+    expect(list).toHaveLength(ACHIEVEMENTS.length);
+    expect(list.find((a) => a.id === 'first-mile-2')).toMatchObject({ earnedAt: null, family: 'road', tier: 2, tierName: 'Silver', progress: { value: 1, target: 10 }, nft: null });
     expect(list.find((a) => a.id === 'first-mile')?.earnedAt).toBe(ctx.clock.ms);
     expect(list.find((a) => a.id === 'top-20')).toMatchObject({ earnedAt: null, awardedAtRoundClose: true });
   });

@@ -1,3 +1,4 @@
+import type { AchievementMintRecord } from '../../../src/domain/achievements/achievement-mint.js';
 import type { AuthChallenge } from '../../../src/domain/auth/auth-challenge.entity.js';
 import type { AchievementUnlock } from '../../../src/domain/achievements/achievement-unlock.entity.js';
 import type { Payment } from '../../../src/domain/economy/payment.entity.js';
@@ -27,6 +28,7 @@ export class MemoryDb {
   rounds: RoundProps[] = [];
   payments: Payment[] = [];
   unlocks: AchievementUnlock[] = [];
+  mints: AchievementMintRecord[] = [];
   pools = new Map<number, PoolProps>();
   /** the payout ledger, key `${poolId}|${rank}` */
   poolPayouts = new Map<string, import('../../../src/domain/economy/pool-payout.js').PoolPayoutRecord>();
@@ -70,7 +72,7 @@ export class MemoryDb {
 
   reset(): void {
     this.players.clear(); this.challenges.clear(); this.rides.clear(); this.batches.clear(); this.verdicts.clear();
-    this.rounds = []; this.payments = []; this.unlocks = []; this.signIns = []; this.adminActions = [];
+    this.rounds = []; this.payments = []; this.unlocks = []; this.mints = []; this.signIns = []; this.adminActions = [];
     this.seq = 0; this.roundSeq = 0;
     this.pools.clear(); this.tickets.clear(); this.grants = []; this.promos.clear(); this.redemptions.clear(); this.orders.clear(); this.cosmeticUnlocks.clear(); this.cosmeticEquipped.clear();
     this.chainEvents = []; this.chainCursors.clear();

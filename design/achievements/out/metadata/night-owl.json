@@ -1,0 +1,42 @@
+{
+  "name": "Night Owl",
+  "symbol": "FCHAIN",
+  "description": "Headlights, empty asphalt and a radio hiss. The dark is a coworker now. Condition: Finish a shift driven mostly in the dark. A soulbound Freight Chain achievement – compressed NFT, non-transferable.",
+  "image": "__IMAGE__",
+  "external_url": "https://freightchain.fun/",
+  "attributes": [
+    {
+      "trait_type": "Family",
+      "value": "Night"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Bronze"
+    },
+    {
+      "trait_type": "Tier Number",
+      "value": 1
+    },
+    {
+      "trait_type": "Condition",
+      "value": "Finish a shift driven mostly in the dark."
+    },
+    {
+      "trait_type": "Soulbound",
+      "value": "Yes"
+    },
+    {
+      "trait_type": "Game",
+      "value": "Freight Chain"
+    }
+  ],
+  "properties": {
+    "category": "image",
+    "files": [
+      {
+        "uri": "__IMAGE__",
+        "type": "image/png"
+      }
+    ]
+  }
+}

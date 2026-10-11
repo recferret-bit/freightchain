@@ -1,0 +1,42 @@
+{
+  "name": "Odometer Legend",
+  "symbol": "FCHAIN",
+  "description": "The odometer keeps count even when you stop. Kilometre after kilometre, it adds up. Condition: Drive 10,000 km in total. A soulbound Freight Chain achievement – compressed NFT, non-transferable.",
+  "image": "__IMAGE__",
+  "external_url": "https://freightchain.fun/",
+  "attributes": [
+    {
+      "trait_type": "Family",
+      "value": "Distance"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Platinum"
+    },
+    {
+      "trait_type": "Tier Number",
+      "value": 4
+    },
+    {
+      "trait_type": "Condition",
+      "value": "Drive 10,000 km in total."
+    },
+    {
+      "trait_type": "Soulbound",
+      "value": "Yes"
+    },
+    {
+      "trait_type": "Game",
+      "value": "Freight Chain"
+    }
+  ],
+  "properties": {
+    "category": "image",
+    "files": [
+      {
+        "uri": "__IMAGE__",
+        "type": "image/png"
+      }
+    ]
+  }
+}

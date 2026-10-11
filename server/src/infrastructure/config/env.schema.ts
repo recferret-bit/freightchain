@@ -59,6 +59,12 @@ export const envSchema = z
     CRANK_INTERVAL_MS: z.coerce.number().int().min(0).default(60_000), // the pool crank's schedule (needs CRANK_SECRET); 0 = only `pool:crank` from the CLI
     PAYOUT_SECRET: optional(z.string().min(32)), // base58 keypair named on chain as Config.payout_authority: pays prizes + closes a pool after its review window, nothing else
     PAYOUT_INTERVAL_MS: z.coerce.number().int().min(0).default(300_000), // the payout job's schedule (needs PAYOUT_SECRET); 0 = only `pool:payout` from the CLI
+    ACHIEVEMENT_MINT_SECRET: optional(z.string().min(32)), // base58 keypair = tree creator + collection authority of the badge cNFTs (docs/agents/achievements.md); a mint-only key, never the crank or payout key
+    ACHIEVEMENT_TREE: optional(z.string().min(32).max(44)), // the Bubblegum v2 Merkle tree (scripts/achievements/setup-tree.mjs prints it)
+    ACHIEVEMENT_COLLECTION: optional(z.string().min(32).max(44)), // the MPL-Core collection (PermanentFreezeDelegate = soulbound, BubblegumV2)
+    ACHIEVEMENT_MINT_INTERVAL_MS: z.coerce.number().int().min(0).default(120_000), // the mint job's schedule (needs the three keys above); 0 = only `achievement:mint` from the CLI
+    ACHIEVEMENT_MINT_DELAY_MS: z.coerce.number().int().min(0).default(3_600_000), // an unlock waits this long before it is minted (a ride's verdict can still be re-judged meanwhile)
+    ACHIEVEMENT_MINT_BATCH: z.coerce.number().int().min(1).max(100).default(10), // transactions per pass
     PRIORITY_FEE_PERCENTILE: z.coerce.number().int().min(1).max(99).default(75),
     PRIORITY_FEE_MIN_MICROLAMPORTS: z.coerce.number().int().min(0).default(0), // 0 on devnet; 1000 on mainnet
     PRIORITY_FEE_MAX_MICROLAMPORTS: z.coerce.number().int().min(0).default(50_000),

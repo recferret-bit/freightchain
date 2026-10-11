@@ -42,11 +42,10 @@ export class GetProfileHandler implements IQueryHandler<GetProfileQuery, Profile
     const { facts, stats } = await this.rideQuery.summary(wallet, { skipRejected: this.rules.get().verdictEnforce });   // the badges skip rejected rides while the verdict is enforced; `stats` count every ride
     const unlocked = await this.achievements.evaluate(wallet, null, facts); // catch-up: rides that ended by timeout never went through /end
     for (const unlock of unlocked) {
-      if (unlock.id === 'top-20') continue;
       emitAnalytics(this.analytics, () => achievementUnlocked(wallet, unlock.id, unlock.earnedAt, null, isDemoWallet(this.rules.get(), wallet)));
     }
     const [spent, recent, achievements, tickets, grants, ordered, career] = await Promise.all([
-      this.payments.totalsOf(wallet), this.rideQuery.recent(wallet, RECENT_RIDES_LIMIT), this.achievements.list(wallet), this.poolTickets.balances(wallet, now), this.tickets.recentGrants(wallet, RECENT_GRANTS_LIMIT), this.orders.totalsOf(wallet), this.totals.player(wallet),
+      this.payments.totalsOf(wallet), this.rideQuery.recent(wallet, RECENT_RIDES_LIMIT), this.achievements.list(wallet, facts), this.poolTickets.balances(wallet, now), this.tickets.recentGrants(wallet, RECENT_GRANTS_LIMIT), this.orders.totalsOf(wallet), this.totals.player(wallet),
     ]);
     const rules = this.rules.get();
     return {

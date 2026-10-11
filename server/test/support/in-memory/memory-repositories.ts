@@ -11,6 +11,8 @@ import { Ride, type RideProps } from '../../../src/domain/rides/ride.entity.js';
 import { OPEN_RIDE_STATUSES, RideStatus } from '../../../src/domain/rides/ride-status.js';
 import { completedLevels } from '../../../src/domain/rides/ride-trip.js';
 import { ConflictError, VersionConflictError } from '../../../src/domain/shared/errors.js';
+import { AchievementMintRepositoryPort } from '../../../src/application/ports/achievements/achievement-mint.repository.port.js';
+import { MAX_MINT_ATTEMPTS, type AchievementMintRecord } from '../../../src/domain/achievements/achievement-mint.js';
 import { AchievementRepositoryPort } from '../../../src/application/ports/achievements/achievement.repository.port.js';
 import { ChallengeRepositoryPort } from '../../../src/application/ports/auth/challenge.repository.port.js';
 import { PaymentRepositoryPort } from '../../../src/application/ports/economy/payment.repository.port.js';
@@ -208,10 +210,10 @@ export class MemoryRideQuery extends RideQueryPort {
       stats: { started: started.length, completed: done.length, metres, best: done.reduce((m, r) => Math.max(m, r.lastS), 0) },
       facts: {
         started: started.length, completed: fair.length, totalMetres: metres - rejected.reduce((sum, r) => sum + r.lastS, 0),
-        completedAtNight: fair.some((r) => r.driveSeconds > 0 && r.nightSeconds >= 0.5 * r.driveSeconds),
-        cleanRun: fair.some((r) => r.hull !== null && r.hull >= 99.5),
-        completedSiberia: fair.some((r) => r.route === 'siberia'),
-        completedFreeUnassisted: fair.some((r) => r.tier === 'free' && !r.assist),
+        nightShifts: fair.filter((r) => r.driveSeconds > 0 && r.nightSeconds >= 0.5 * r.driveSeconds).length,
+        cleanRuns: fair.filter((r) => r.hull !== null && r.hull >= 99.5).length,
+        siberiaShifts: fair.filter((r) => r.route === 'siberia').length,
+        freeUnassisted: fair.filter((r) => r.tier === 'free' && !r.assist).length,
         completedFreeLevels: completedLevels(fair),
       },
     };
@@ -413,6 +415,67 @@ export class MemoryAchievementRepository extends AchievementRepositoryPort {
   }
 
   async listByWallet(wallet: string): Promise<AchievementUnlock[]> { return this.db.unlocks.filter((u) => u.wallet === wallet).map((u) => new AchievementUnlock(u.wallet, u.achievementId, u.earnedAt, u.rideId)); }
+}
+
+@Injectable()
+export class MemoryAchievementMintRepository extends AchievementMintRepositoryPort {
+  constructor(private readonly db: MemoryDb) { super(); }
+
+  private row(wallet: string, achievementId: string) { return this.db.mints.find((m) => m.wallet === wallet && m.achievementId === achievementId); }
+
+  async listUnqueued(before: Date, ids: readonly string[], limit: number): Promise<AchievementUnlock[]> {
+    return this.db.unlocks.filter((u) => u.earnedAt <= before && ids.includes(u.achievementId) && !this.row(u.wallet, u.achievementId))
+      .sort((a, b) => a.earnedAt.getTime() - b.earnedAt.getTime() || a.wallet.localeCompare(b.wallet) || a.achievementId.localeCompare(b.achievementId)).slice(0, limit);
+  }
+
+  async enqueue(rows: readonly { wallet: string; achievementId: string; skip: string | null }[]): Promise<number> {
+    let n = 0;
+    for (const r of rows) {
+      if (this.row(r.wallet, r.achievementId)) continue;
+      this.db.mints.push({ wallet: r.wallet, achievementId: r.achievementId, status: r.skip ? 'skipped' : 'planned', signature: null, lastValidBlockHeight: null, assetId: null, attempts: 0, error: r.skip });
+      n += 1;
+    }
+    return n;
+  }
+
+  async listWork(limit: number): Promise<AchievementMintRecord[]> { return this.db.mints.filter((m) => m.status === 'planned' || m.status === 'sent').slice(0, limit).map((m) => ({ ...m })); }
+  async listByWallet(wallet: string): Promise<AchievementMintRecord[]> { return this.db.mints.filter((m) => m.wallet === wallet).map((m) => ({ ...m })); }
+
+  async claimSent(wallet: string, achievementId: string, signature: string, lastValidBlockHeight: number): Promise<boolean> {
+    const m = this.row(wallet, achievementId);
+    if (!m || m.status !== 'planned') return false;
+    Object.assign(m, { status: 'sent', signature, lastValidBlockHeight, attempts: m.attempts + 1 });
+    return true;
+  }
+
+  async markMinted(wallet: string, achievementId: string, signature: string, assetId: string): Promise<boolean> {
+    const m = this.row(wallet, achievementId);
+    if (!m || m.status !== 'sent' || m.signature !== signature) return false;
+    Object.assign(m, { status: 'minted', assetId, error: null });
+    return true;
+  }
+
+  async release(wallet: string, achievementId: string, signature: string, error: string): Promise<boolean> {
+    const m = this.row(wallet, achievementId);
+    if (!m || m.status !== 'sent' || m.signature !== signature) return false;
+    Object.assign(m, { status: m.attempts >= MAX_MINT_ATTEMPTS ? 'failed' : 'planned', signature: null, lastValidBlockHeight: null, error });
+    return true;
+  }
+
+  async markSkipped(wallet: string, achievementId: string, reason: string): Promise<boolean> {
+    const m = this.row(wallet, achievementId);
+    if (!m || m.status !== 'planned') return false;
+    Object.assign(m, { status: 'skipped', error: reason });
+    return true;
+  }
+
+  async noteError(wallet: string, achievementId: string, error: string): Promise<void> { const m = this.row(wallet, achievementId); if (m?.status === 'planned') m.error = error; }
+
+  async retryFailed(): Promise<number> {
+    const failed = this.db.mints.filter((m) => m.status === 'failed');
+    for (const m of failed) Object.assign(m, { status: 'planned', attempts: 0 });
+    return failed.length;
+  }
 }
 
 export { MemoryChainCursorRepository, MemoryChainEventRepository } from './memory-chain-repositories.js';

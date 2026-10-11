@@ -99,10 +99,10 @@ describe('RideQueryPrismaRepository (PostgreSQL)', () => {
     await ride('alice', { metres: 150, outcome: 'shift', assist: true });
     await ride('alice', { metres: 60, outcome: 'failed', start: 100 });
     await ride('bob', { metres: 150, outcome: 'shift', paid: true });
-    expect((await query.summary('alice')).facts.completedFreeUnassisted).toBe(false);
-    expect((await query.summary('bob')).facts.completedFreeUnassisted).toBe(false);
+    expect((await query.summary('alice')).facts.freeUnassisted).toBe(0);
+    expect((await query.summary('bob')).facts.freeUnassisted).toBe(0);
     await ride('alice', { metres: 150, outcome: 'shift', start: 200 });
-    expect((await query.summary('alice')).facts.completedFreeUnassisted).toBe(true);
+    expect((await query.summary('alice')).facts.freeUnassisted).toBe(1);
   });
 
   it('summary: the free LEVELS cleared come from the trips of COMPLETED free rides – each once, ascending; a failed one, a paid one and an old "free" trip clear none', async () => {
@@ -122,7 +122,7 @@ describe('RideQueryPrismaRepository (PostgreSQL)', () => {
     await ride('alice', { metres: 60, outcome: 'failed', start: 100 });
     const s = await query.summary('alice');
     expect(s.stats).toEqual({ started: 2, completed: 1, metres: 210, best: 150 });
-    expect(s.facts).toEqual({ started: 2, completed: 1, totalMetres: 210, completedAtNight: true, cleanRun: true, completedSiberia: true, completedFreeUnassisted: true, completedFreeLevels: [1] });
+    expect(s.facts).toEqual({ started: 2, completed: 1, totalMetres: 210, nightShifts: 1, cleanRuns: 1, siberiaShifts: 1, freeUnassisted: 1, completedFreeLevels: [1] });
     expect((await query.summary('bob')).stats).toEqual({ started: 0, completed: 0, metres: 0, best: 0 });
   });
 
@@ -132,8 +132,8 @@ describe('RideQueryPrismaRepository (PostgreSQL)', () => {
     await ride('alice', { metres: 60, outcome: 'failed', start: 200 });
     const s = await query.summary('alice', { skipRejected: true });
     expect(s.stats).toEqual({ started: 3, completed: 2, metres: 250, best: 150 });
-    expect(s.facts).toEqual({ started: 3, completed: 1, totalMetres: 100, completedAtNight: false, cleanRun: true, completedSiberia: false, completedFreeUnassisted: true, completedFreeLevels: [1] });
-    expect((await query.summary('alice')).facts).toMatchObject({ started: 3, completed: 2, totalMetres: 250, completedSiberia: true });   // shadow mode: every ride counts
+    expect(s.facts).toEqual({ started: 3, completed: 1, totalMetres: 100, nightShifts: 0, cleanRuns: 1, siberiaShifts: 0, freeUnassisted: 1, completedFreeLevels: [1] });
+    expect((await query.summary('alice')).facts).toMatchObject({ started: 3, completed: 2, totalMetres: 250, siberiaShifts: 1 });   // shadow mode: every ride counts
     await prisma.rideVerdict.updateMany({ where: { status: 'rejected' }, data: { reasons: [{ code: 'no-recording' }] } });   // rejected only for having no recording: not a cheat, it counts
     expect((await query.summary('alice', { skipRejected: true })).facts).toMatchObject({ started: 3, completed: 2, totalMetres: 250 });
   });
