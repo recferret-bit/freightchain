@@ -69,7 +69,7 @@ export function shiftCard(origin: string, offers: readonly SellableTier[]): Acti
   return {
     type: 'action', icon: actionIcon(site), title: 'Freight Chain', label: 'Buy a ticket',
     description: SHIFT_DESCRIPTION + (offers.length ? '' : NO_SALE),
-    links: { actions: [...offers.map(buyLink), { type: 'external-link', label: 'Drive free', href: `${site}/` }, { type: 'external-link', label: 'Watch live', href: `${site}/lobby.html#live` }] },
+    links: { actions: [...offers.map(buyLink), { type: 'external-link', label: 'Drive free', href: `${site}/` }, { type: 'external-link', label: 'Watch live', href: `${site}/#economy` }] },
   };
 }
 

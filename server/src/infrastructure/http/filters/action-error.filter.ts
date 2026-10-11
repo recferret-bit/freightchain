@@ -14,7 +14,7 @@ export function actionError(exception: unknown): { status: number; message: stri
   if (exception instanceof ZodError) return { status: 400, message: ACCOUNT };
   if (exception instanceof DomainError) {
     if (exception.errorCode === 'agreements_required') return { status: exception.statusCode, message: AGREE };
-    if (exception instanceof ServiceUnavailableError) return { status: exception.statusCode, message: UNSOLD };
+    if (exception instanceof ServiceUnavailableError) return { status: exception.statusCode, message: /not configured|no pool program/i.test(exception.message) ? UNSOLD : 'The chain is not reachable. Nothing was charged. Devnet only.' };
     return { status: exception.statusCode, message: exception.message };
   }
   if (exception instanceof ThrottlerException) return { status: 429, message: 'Too many requests. Nothing was charged.' };

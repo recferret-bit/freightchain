@@ -27,6 +27,7 @@ describe('action card', () => {
     expect(bare.description).toMatch(/No paid pool is on sale right now/);
     expect(bare.description).toMatch(/Not a wager/);
     expect(bare.links.actions.map((a) => a.label)).toEqual(['Drive free', 'Watch live']);
+    expect(bare.links.actions[1]?.href).toBe('https://freightchain.fun/#economy');
     const selling = shiftCard('https://freightchain.fun', [{ tier: '1h', poolId: 7, lamports: 50_000_000 }]);
     expect(selling.icon).toBe('https://freightchain.fun/icons/icon-512.png');
     expect(selling.links.actions[0]).toEqual({ type: 'transaction', label: '1 HOUR · 0.050 SOL', href: '/api/actions/shift/1h' });

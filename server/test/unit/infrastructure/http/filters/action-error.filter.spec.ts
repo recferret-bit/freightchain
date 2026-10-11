@@ -7,7 +7,8 @@ import { ActionErrorFilter, actionError } from '../../../../../src/infrastructur
 describe('ActionErrorFilter', () => {
   it('maps the blink refusals onto { message } and keeps the status', () => {
     expect(actionError(new ConflictError('accept the offer', 'agreements_required'))).toEqual({ status: 409, message: 'Accept the 18+ and loss terms on the Freight Chain site, then press this again. Nothing was charged. Devnet SOL only.' });
-    expect(actionError(new ServiceUnavailableError('no program')).message).toMatch(/not on this server yet/);
+    expect(actionError(new ServiceUnavailableError('ticket sales are not configured on this server (no pool program)')).message).toMatch(/not on this server yet/);
+    expect(actionError(new ServiceUnavailableError('rpc down')).message).toMatch(/not reachable/);
     expect(actionError(new ConflictError('this pool is not selling tickets right now', 'not_sellable')).message).toMatch(/not selling/);
     expect(actionError(new ZodError([{ code: ZodIssueCode.custom, path: ['account'], message: 'bad' }]))).toMatchObject({ status: 400 });
     expect(actionError(new Error('boom'))).toEqual({ status: 500, message: 'Something went wrong. Nothing was charged.' });
