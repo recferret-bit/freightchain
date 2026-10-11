@@ -132,7 +132,7 @@ check('a paid RIDE with the boxes off stays in the lobby and opens the profile o
 await tix.ev('document.getElementById("agree-age").click()');
 check('the age box stays on after the server saves it', await until(async () => await tix.ev('document.getElementById("agree-age").checked && !document.getElementById("agree-age").disabled')));
 await tix.ev('document.getElementById("agree-loss").click()');
-check('the loss box stays on after the server saves it', await until(async () => await tix.ev('document.getElementById("agree-loss").checked && !document.getElementById("agree-loss").disabled && document.getElementById("agree-age").checked')));
+check('the loss box stays on and locks after the server saves it', await until(async () => await tix.ev('document.getElementById("agree-loss").checked && document.getElementById("agree-loss").disabled && document.getElementById("agree-age").checked')));
 await tix.ev('location.hash = "#new"');
 check('back on NEW RIDE the cards are there', await until(async () => (await tix.ev('document.querySelectorAll(".tier").length')) === 4));
 const nl = await post('rides', { tier: '4h' }, D.cookie);
@@ -150,6 +150,7 @@ const r2 = await post('rides', { tier: '1h' }, D.cookie); await finishOob(r2.j.i
 await tix.ev('document.querySelector("#tier-1h .go").click()');   // the page still says 1 left
 check('409 no_tickets on a stale page reads as a sentence (and the card refreshes)', await until(async () => /No 1 HOUR tickets left – buy one or redeem a promo code/.test(await txt(tix, '#msg-1h'))) && await until(async () => !(await tix.ev('!!document.querySelector("#tier-1h .go")'))), await txt(tix, '#msg-1h'));
 await tix.ev('location.hash = "#profile"');
+check('BEFORE A PAID SHIFT is gone once accepted and left', await until(async () => !(await tix.ev('!!document.getElementById("offer")'))));
 check('PROFILE: tickets per pool (1h spent, 4h waiting) + the grant audit trail', await until(async () => /OPEN/.test(await txt(tix, '.tix')) && /ACTIVE/.test(await txt(tix, '.tix'))) && await until(async () => { const h = [...await tix.ev('[...document.querySelectorAll(".hist")].map(n => n.textContent)')].join('|'); return /promo code WELCOME\+2/.test(h) && /ride.*-1/.test(h); }), await txt(tix, '.tix'));
 await tix.shot('profile-tickets-desktop'); await size(tix, 390, 844, true); await sleep(300); await tix.shot('profile-tickets-phone'); await size(tix, 1100, 900, false);
 check('…and no unexpected page errors (ticket holder)', problems(tix).length === 0, problems(tix).join(' | '));

@@ -466,8 +466,9 @@ async function renderProfile() {
   if (my !== seq) return;
   Object.assign(S.me, { freeRides: p.freeRides, freeRidesMax: p.freeRidesMax, nextFreeRideAt: p.nextFreeRideAt, tickets: p.tickets, agreements: p.agreements }); paintHeader();
   const got = p.achievements.filter(a => a.earnedAt).length;
+  const card = agreementsCard(S.me);
   view.replaceChildren(
-    agreementsCard(S.me),
+    ...(card ? [card] : []),
     el('div', { class: 'who', style: 'display:flex;gap:10px;align-items:center' }, avatar(p.wallet), el('div', {}, el('b', {}, short(p.wallet)), el('div', { class: 'dim' }, `rider since ${new Date(p.createdAt).toLocaleDateString()}`))),
     ...careerTiles(p.career, p.stats, { km, sol }),
     ...profileTickets(p, S.busy, refund),

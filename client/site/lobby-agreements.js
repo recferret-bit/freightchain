@@ -18,19 +18,47 @@ const NOTE_OFF = 'Tick both before a paid shift. A paid button sends you here un
 
 /** The PROFILE card. `me` is S.me: a successful PUT writes `me.agreements` so NEW RIDE sees it. */
 export function agreementsCard(me) {
+  if (offerAccepted(me)) return null;
   const flags = { age18: !!me?.agreements?.age18, loss: !!me?.agreements?.loss };
   const age = el('input', { type: 'checkbox', id: 'agree-age', checked: flags.age18 });
   const loss = el('input', { type: 'checkbox', id: 'agree-loss', checked: flags.loss });
-  const note = el('p', { id: 'offer-note', class: offerAccepted(me) ? 'dim' : 'bad' }, offerAccepted(me) ? NOTE_ON : NOTE_OFF);
+  const note = el('p', { id: 'offer-note', class: 'bad' }, NOTE_OFF);
   const paint = () => {
-    note.textContent = offerAccepted(me) ? NOTE_ON : NOTE_OFF;
-    note.className = offerAccepted(me) ? 'dim' : 'bad';
+    const accepted = offerAccepted(me);
+    note.textContent = accepted ? NOTE_ON : NOTE_OFF;
+    note.className = accepted ? 'dim' : 'bad';
+    if (accepted) age.disabled = loss.disabled = true;
+  };
+  let inFlight = null;
+  let queued = false;
+  const sync = () => {
+    if (inFlight) { queued = true; return; }
+    const next = { age18: age.checked, loss: loss.checked };
+    inFlight = api('profile/agreements', next, { method: 'PUT' })
+      .then((saved) => {
+        me.agreements = saved;
+        paint();
+      })
+      .catch(() => {
+        age.checked = !!me?.agreements?.age18;
+        loss.checked = !!me?.agreements?.loss;
+        queued = false;
+        paint();
+      })
+      .finally(() => {
+        inFlight = null;
+        if (queued && !offerAccepted(me)) {
+          queued = false;
+          sync();
+        } else {
+          queued = false;
+        }
+      });
   };
   const flip = (kind, box) => {
-    age.disabled = loss.disabled = true; // one PUT at a time, so two fast ticks cannot store a torn pair
-    const next = { age18: age.checked, loss: loss.checked };
+    if (offerAccepted(me)) { box.checked = true; return; }
     track('agreement_toggled', { kind, on: box.checked });
-    api('profile/agreements', next, { method: 'PUT' }).then((saved) => { me.agreements = saved; paint(); }, () => { box.checked = !box.checked; }).finally(() => { age.disabled = loss.disabled = false; });
+    sync();
   };
   age.addEventListener('change', () => flip('age18', age));
   loss.addEventListener('change', () => flip('loss', loss));
