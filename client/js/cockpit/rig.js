@@ -138,7 +138,7 @@ export function drawCockpitRig() {
     uiBtns.push({ id: 'park', x: px - 3.6 * u, y: vy - 3.6 * u, w: 7.2 * u, h: 10.4 * u }); ctx.fillStyle = st.park ? '#ff3a2a' : '#6b1f1a'; ctx.beginPath(); for (let i = 0; i < 8; i++) { const an = Math.PI / 8 + i * Math.PI / 4; ctx.lineTo(px + Math.cos(an) * 3.4 * u, vy + Math.sin(an) * 3.4 * u); } ctx.closePath(); ctx.fill(); ctx.strokeStyle = '#222'; ctx.lineWidth = .3 * u; ctx.stroke();
     ctx.fillStyle = st.park ? '#ffe9e4' : '#c9a29c'; ctx.font = `bold ${4.4 * u}px ${MONO}`; const tb = ctx.textBaseline; ctx.textBaseline = 'middle'; ctx.fillText('P', px, vy + .2 * u); ctx.textBaseline = tb;
     ctx.fillStyle = st.park ? '#ff8a7a' : '#9d957f'; ctx.font = `${1.5 * u}px ${MONO}`; ctx.fillText('PARK', px, vy + 5.2 * u);
-    if (online.ride) {
+    if (online.ride || st.watch) {   // a replay shows it too: the driver's click on it lights up
       const sx = px - 3.6 * u, sy = 94.5 * u, sw = 7.2 * u, sh = 4.6 * u;
       uiBtns.push({ id: "share-x", x: sx, y: sy, w: sw, h: sh });
       litRect(sx - .2 * u, sy - .2 * u, sw + .4 * u, sh + .4 * u);

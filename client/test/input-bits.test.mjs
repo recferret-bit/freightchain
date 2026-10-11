@@ -20,7 +20,7 @@ test('the bits are frozen – old recordings keep their meaning (append controls
   assert.deepEqual(CONTROLS.slice(0, 25), ['gas', 'brake', 'left', 'right', 'clutch', 'up', 'down', 'gear', 'reverse', 'start', 'stop', 'keyOn', 'park', 'heat', 'wiper', 'wash',
     'head', 'cab', 'night', 'radio', 'prev', 'next', 'volume', 'pause', 'mute']);
   assert.equal(MOUSE, 1 << 25);
-  assert.deepEqual(CONTROLS.slice(25), ['map', 'cold']);   // appended after 'mute': they skip MOUSE's bit
+  assert.deepEqual(CONTROLS.slice(25), ['map', 'cold', 'share']);   // appended after 'mute': they skip MOUSE's bit
   assert.equal(BIT.map, 1 << 26); assert.equal(inputBits('KeyN'), BIT.map); assert.equal(inputBits('btn:map'), BIT.map | MOUSE);
   assert.equal(BIT.cold, 1 << 27); assert.equal(inputBits('KeyJ'), BIT.cold); assert.equal(inputBits('btn:cold'), BIT.cold | MOUSE);
 });
@@ -45,7 +45,7 @@ test('every dash button the cockpit draws is a control the replay can outline, a
   assert.equal(inputBits('KeyL') | MOUSE, inputBits('btn:head'));   // the key and the click light the same button
 });
 test('a key cap for every keyboard control, and the cluster is the driving keys', () => {
-  for (const c of CONTROLS) if (c !== 'keyOn') assert.ok(CAP[c], c);
+  for (const c of CONTROLS) if (c !== 'keyOn' && c !== 'share') assert.ok(CAP[c], c);
   assert.deepEqual(CLUSTER.map(c => CAP[c]).join(''), 'QWEASD⇧');
 });
 test('masks: held codes OR together; a column value is read only when it is a sane mask', () => {

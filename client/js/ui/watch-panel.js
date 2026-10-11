@@ -3,7 +3,7 @@ import { st } from '../state.js';
 import { audio } from '../sim/audio.js';
 import { getTheme } from '../themes/index.js';
 import { SITE_BASE } from '../hosts.js';
-import { watch, seek, goLive, addEvent, roadCheck, LIVE_LAG } from '../watch.js';
+import { watch, seek, goLive, addEvent, roadCheck, replayEnd, LIVE_LAG } from '../watch.js';
 import { EFFECT_INFO, short, solText } from '../live-effects.js';
 import { el } from '../../site/dom.js';
 import { api, signIn } from '../../site/wallet.js';
@@ -80,13 +80,13 @@ function paint() {
 }
 function paintClock() {
   const r = watch.ride; if (!r || !P.root) return;
-  const sk = $('w-seek'), end = Math.max(1, Math.floor(watch.rec.t1));
+  const sk = $('w-seek'), end = Math.max(1, Math.floor(replayEnd()));
   sk.max = end; if (document.activeElement !== sk) sk.value = Math.floor(watch.wt);
-  $('w-time').textContent = `${hms(st.t)} / ${hms(r.minSeconds)}`;
+  $('w-time').textContent = `${hms(st.t)} / ${hms(r.live ? r.minSeconds : replayEnd())}`;   // a finished ride: its own length, not the nominal shift
   $('w-dist').textContent = `${km(st.s)} / ${km(r.completeDist)} km`;
   $('w-hull').textContent = `${Math.round(st.hull)}%`;
   const note = !watch.rows.length ? (watch.rec.lastSeq === null && !r.live ? 'no recording kept for this ride' : 'waiting for the first recording…')
-    : watch.buffering ? (r.live && watch.follow ? 'the driver is paused or the next batch is on its way…' : watch.wt >= watch.rec.t1 - 1 && !r.live ? `end of the ride · ${STATUS[r.status] ?? r.status}` : 'loading…') : '';
+    : watch.buffering ? (r.live && watch.follow ? 'the driver is paused or the next batch is on its way…' : watch.wt >= replayEnd() - 1 && !r.live ? `end of the ride · ${STATUS[r.status] ?? r.status}` : 'loading…') : '';
   $('w-note').textContent = note;
   paintRoad(end);
 }
