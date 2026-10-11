@@ -117,15 +117,15 @@ describe('StartRideHandler', () => {
   });
   it('the trip the game built its road from must still be the ride\'s: a ride re-chosen in the lobby meanwhile is a 409 ride_rechosen and stays ready; absent = not compared', async () => {
     const { ctx, start, analytics } = setup();
-    const ride = await ctx.freeRide('w');                                        // EASY = free-1b
+    const ride = await ctx.freeRide('w');                                        // EASY = free-1c
     const r = await ctx.reload(ride.id); r.chooseFree(3, 100, false, false); await ctx.rides.save(r);   // the lobby re-chose HARD after the game read the ride
-    await expect(start(ride.id, 'w', 'free-1b')).rejects.toThrow(new ConflictError('the ride was re-chosen: it is driven on free-3b now, not free-1b – load it again', 'ride_rechosen'));
+    await expect(start(ride.id, 'w', 'free-1c')).rejects.toThrow(new ConflictError('the ride was re-chosen: it is driven on free-3b now, not free-1c – load it again', 'ride_rechosen'));
     expect((await ctx.reload(ride.id)).status).toBe(RideStatus.Created);
     expect(analytics.named('ride_started')).toHaveLength(0);
     expect(await start(ride.id, 'w', 'free-3b')).toMatchObject({ status: 'running', trip: 'free-3b' });
     const old = Ride.restore({ ...(await ctx.freeRide('v')).snapshot(), trip: null });   // a ride from before trips: the 'classic' road
     await ctx.rides.save(old);
-    await expect(start(old.id, 'v', 'free-1b')).rejects.toMatchObject({ errorCode: 'ride_rechosen', statusCode: 409 });
+    await expect(start(old.id, 'v', 'free-1c')).rejects.toMatchObject({ errorCode: 'ride_rechosen', statusCode: 409 });
     expect(await start(old.id, 'v', 'classic')).toMatchObject({ status: 'running' });
     const plain = await ctx.freeRide('x');
     expect(await start(plain.id, 'x')).toMatchObject({ status: 'running' });   // an older game says nothing: started as before

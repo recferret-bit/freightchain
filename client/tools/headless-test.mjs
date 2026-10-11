@@ -144,7 +144,7 @@ check(nightX.night===true&&dayX.night===false&&G.THEMES.some(t=>t.id===dayX.rout
   st.engineOn=true; st.stalled=false; st.rpm=900; step(60*7); check(G.guide.note===''&&ids().startsWith('GAS'),'… and the lesson is back once the engine runs again ['+ids()+']');
   st.t=1e3; st.s=1e6; step(3); check(!st.complete&&G.guide.hold,'the tutorial holds the finish line while it is open');
   G.setGuide({}); step(3); check(!G.guide.hold&&st.complete,'… and lets the ride complete once it is closed'); fire('keyup','ShiftLeft'); }
-{ G.setGuide({ tutorial: true }); G.setTrip('free-1b'); const D=G.CFG.COMPLETE_DIST; G.startRide(); st.t=5; st.s=D+500; st.v=20; step(3);
+{ G.setGuide({ tutorial: true }); G.setTrip('free-1c'); const D=G.CFG.COMPLETE_DIST; G.startRide(); st.t=5; st.s=D+500; st.v=20; step(3);
   check(!st.complete&&!G.guide.hold&&st.s===D&&st.v===0,'a finish-line trip: the truck can not pass the line before the clock is done (and an open tutorial is cut off)');
   st.engineOn=true; st.gear=7; st.clutch=0; st.rpm=2200; G.input.gas=1; step(60); G.input.gas=0; check(st.engineOn&&st.gear===0&&st.park&&st.gas===0&&st.strain===0,'… parked there in neutral: the engine idles instead of stalling, and the throttle does nothing');
   st.t=1e3; step(3); check(st.complete,'… and the ride completes at the line once the clock is done'); G.setGuide({}); G.setTrip('1h'); }
@@ -244,11 +244,11 @@ check(nightX.night===true&&dayX.night===false&&G.THEMES.some(t=>t.id===dayX.rout
   check(brD.fog<.002&&brD.frost<.002,'Brenner by day does neither (frost '+brD.frost.toFixed(4)+', fog '+brD.fog.toFixed(4)+')');
   G.selectTheme('route66',false); G.setNight(false,true,false); }
 // the second round of free levels – LAST in the file, so it cannot move the random stream the checks above ran on (the trace diff stays identical)
-  // the second round (free-1b / -2b / -3b): an EXACT number of four-way crossroads, all before the finish line (net/patterns.js xroad – road-drift.spec.ts proves the server's port the same)
+  // the free levels (free-1c / -2c / -3b): an EXACT number of four-way crossroads, all before the finish line (net/patterns.js xroad – road-drift.spec.ts proves the server's port the same)
   { const cross=(id,seed,upto)=>{ G.setTrip(id); G.startRide(); G.roads.newTrip(seed); net.ensure(upto); const js=net.js.filter(j=>j.kind!=='start'); return { n:js.length, all4:js.every(j=>j.kind==='cross'), forks:net.forks.length, last:js.at(-1)?.s??0 }; };
-    for(const [id,n,forks,seed] of [['free-g',1,0,777],['free-1b',1,0,777],['free-2b',4,1,4242],['free-3b',6,2,31337]]){ const r=cross(id,seed,12000), T=G.trip, dist=T.k*28*T.seconds;
+    for(const [id,n,forks,seed] of [['free-g',1,0,777],['free-1c',2,0,777],['free-2c',3,1,4242],['free-3b',6,2,31337]]){ const r=cross(id,seed,12000), T=G.trip, dist=T.k*28*T.seconds;
       check(r.n===n&&r.all4&&r.forks===forks&&r.last<dist-100,id+': exactly '+n+' crossroads (all four-way) and '+forks+' fork(s) in 12 km, the last one at '+Math.round(r.last)+' m of a '+Math.round(dist)+' m shift'); }
-    G.setTrip('free-1b'); G.roads.newTrip(777); net.ensure(3000); check(net.lanes(net.Sm+700,1)===2&&net.lanes(net.Sm+700,-1)===2,'free-1b (EASY): four lanes after the crossroads too'); }
+    G.setTrip('free-1c'); G.roads.newTrip(777); net.ensure(3000); check([700,1300].every(o=>net.lanes(net.Sm+o,1)===2&&net.lanes(net.Sm+o,-1)===2),'free-1c (EASY): four lanes between and after its two crossroads too'); }
 out.push(...checks); out.push('errors='+errors.length+(errors[0]?' '+errors[0].message:''));
 console.log(out.join('\n'));
 const failed=checks.filter(c=>c.startsWith('FAIL'));

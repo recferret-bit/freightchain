@@ -16,7 +16,7 @@ so `'1h'` (all 1, `finish: false`) is the road as it was before trips existed �
 
 How a ride gets its trip: the SERVER stamps a trip id on every new ride from its tier (`server/src/domain/rides/ride-trip.ts` `TRIP_OF_TIER`, column
 `Ride.trip`, `trip` in the ride and watch payloads; null = a ride from before trips = `'classic'`). A FREE ride's trip is its LEVEL's (`ride-trip.ts`
-`FREE_LEVELS`, `level` on `POST /api/rides`, default 1): 1 EASY `free-1b` · 2 CROSSROADS `free-2b` · 3 HARD `free-3b` (the second round, 2026-10-11; the first round `free-1` / `-2` / `-3` and the one-minute `free` are frozen for old rides); the offline guest run is `free-g`. `main.js` calls `setTrip(tripOf(online.ride))` (a lobby
+`FREE_LEVELS`, `level` on `POST /api/rides`, default 1): 1 EASY `free-1c` · 2 MEDIUM `free-2c` · 3 HARD `free-3b` (2026-10-11; the retired `free-1` / `-2` / `-3` / `-1b` / `-2b` and the one-minute `free` are frozen for old rides); the offline guest run is `free-g`. `main.js` calls `setTrip(tripOf(online.ride))` (a lobby
 ride), `setTrip(tripOf(watch.ride))` (a replay / live view – it rebuilds the road the driver had) or `__game.devRun(id)` / `setTrip(id)` (the console, for tuning; a row with
 `seconds` / `k` – the free trips – also sets the offline shift) – always BEFORE the road is reset (the curvature is integrated into `road.js` tables on `net.reset`).
 Console: `__game.trip`, `__game.setTrip('8h')` then `__game.startRide()`.
@@ -40,7 +40,7 @@ Console: `__game.trip`, `__game.setTrip('8h')` then `__game.startRide()`.
 The shift **length** and **finish line** are the server's, stored on the ride when it is created: `FREE_RIDE_SECONDS` (env, default 180 = the EASY level's length – four places, see
 `docs/configuration.md`; production's `deploy/.env` sets it too – it MUST read 180 there), the paid lengths in `server/src/domain/rides/ride-tier.ts`, the distance in
 `server/src/domain/rides/ride-rules.ts` (`completeDist` = K × 28 m/s × seconds; `COMPLETE_DIST_K` 0.5 for paid, `FREE_COMPLETE_DIST_K` 0.25 for the old free run). A free LEVEL's shift is
-`FREE_RIDE_SECONDS` × its `multiple` and its K its own (`ride-trip.ts` `FREE_LEVELS`: EASY × 1 / 0.25 = 180 s · 1260 m, CROSSROADS × 2 / 0.4 = 360 s · 4032 m, HARD × 5 / 0.4 = 900 s · 10 080 m).
+`FREE_RIDE_SECONDS` × its `multiple` and its K its own (`ride-trip.ts` `FREE_LEVELS`: EASY × 1 / 0.3 = 180 s · 1512 m, MEDIUM × 5⁄3 / 0.4 = 300 s · 3360 m, HARD × 5 / 0.4 = 900 s · 10 080 m; `freeLevelSeconds` rounds to whole seconds).
 `client/js/online.js` copies both onto `CFG`; `devRun(id)` keeps `CFG.RIDE_MIN_SECONDS` for a trip without `seconds`.
 
 **A trip id is frozen once rides carry it** (replays rebuild the road by id): to change a shipped trip, add a new row here and in `ride-trip.ts`
@@ -70,7 +70,7 @@ says which, a replay follows it. docs/agents/world.md "Road network" → Forks. 
 2. Measure before (repo root):
    ```sh
    node .claude/skills/trip-design/measure.mjs                                   # every trip: ROAD on all routes + a DRIVE on route66, each trip its own shift
-   node .claude/skills/trip-design/measure.mjs --trips free-1b,free-2b,free-3b --seeds 9   # the free levels (180 s · 1260 m, 360 s · 4032 m, 900 s · 10 080 m)
+   node .claude/skills/trip-design/measure.mjs --trips free-g,free-1c,free-2c,free-3b --seeds 9   # the guest run + the free levels (120 s · 840 m, 180 s · 1512 m, 300 s · 3360 m, 900 s · 10 080 m)
    node .claude/skills/trip-design/measure.mjs --trips 1h,4h,8h --seconds 300 --drive-route brenner --no-road
    ```
    ROAD = per trip × route over `--km` (6) of road and `--seeds` (5): how far the road runs straight from the depot (`straight m` – the depot turn counts), the sharpest bend (min radius), % of road tighter than 150 m, mean |curvature|, and

@@ -55,11 +55,11 @@ const ticketDto = id => { const p = pools.find(x => x.id === id), t = tickets.ge
 const readyFree = () => { const r = [...rides.values()].find(x => x.status === 'created' && x.tier === 'free'); return r ? { id: r.id, level: r.level, trip: r.trip, tutorial: r.tutorial, assist: r.assist } : null; };   // MeDto.readyFreeRide: the free ride ordered, not started
 const me = () => ({ wallet: WALLET.toBase58(), freeRides, freeRidesMax: 5, nextFreeRideAt: freeRides < 5 ? t0 + DAY : null, createdAt: t0 - 9 * DAY, tutorialPassed: false, demo: false, demoScale: 60, tickets: [...tickets.keys()].map(ticketDto), readyFreeRide: readyFree() });
 const FREE_LEVELS = [   // = server/src/domain/rides/ride-trip.ts FREE_LEVELS at FREE_RIDE_SECONDS 180 (GET /api/tiers → the free tier's `levels`). route = that level's country.
-  { level: 1, trip: 'free-1b', name: 'EASY', seconds: 180, completeDist: 1260, tutorial: true, assist: true, route: 'stuart' },
-  { level: 2, trip: 'free-2b', name: 'CROSSROADS', seconds: 360, completeDist: 4032, tutorial: true, assist: true, route: 'route66' },
+  { level: 1, trip: 'free-1c', name: 'EASY', seconds: 180, completeDist: 1512, tutorial: true, assist: true, route: 'stuart' },
+  { level: 2, trip: 'free-2c', name: 'MEDIUM', seconds: 300, completeDist: 3360, tutorial: true, assist: true, route: 'route66' },
   { level: 3, trip: 'free-3b', name: 'HARD', seconds: 900, completeDist: 10080, tutorial: false, assist: false, route: 'brenner' },
 ];
-const TIERS = [{ id: 'free', usd: 0, seconds: 180, completeDist: 1260, onSale: true, levels: FREE_LEVELS }, { id: '1h', usd: 5, seconds: 3600, completeDist: 50400, onSale: true }, { id: '4h', usd: 15, seconds: 14400, completeDist: 201600, onSale: false }, { id: '8h', usd: 50, seconds: 28800, completeDist: 403200, onSale: false }];
+const TIERS = [{ id: 'free', usd: 0, seconds: 180, completeDist: 1512, onSale: true, levels: FREE_LEVELS }, { id: '1h', usd: 5, seconds: 3600, completeDist: 50400, onSale: true }, { id: '4h', usd: 15, seconds: 14400, completeDist: 201600, onSale: false }, { id: '8h', usd: 50, seconds: 28800, completeDist: 403200, onSale: false }];
 const problem = (status, code, detail) => ({ status, body: { type: `/problems/${code}`, title: 'Error', status, code, detail } });
 const tx = (lamports, to, feePayer) => {   // a real, unsigned legacy transaction (a plain transfer standing in for buy_ticket / refund); never sent anywhere
   const blockhash = Keypair.generate().publicKey.toBase58(), t = new Transaction({ feePayer, recentBlockhash: blockhash }).add(SystemProgram.transfer({ fromPubkey: WALLET, toPubkey: to, lamports }));

@@ -83,7 +83,7 @@ export interface LeaderboardStandingDto {
 
 export interface LeaderboardDto {
   board: LeaderboardBoard;
-  /** the free board's LEVEL (1 EASY · 2 CROSSROADS · 3 HARD – ride-trip.ts FREE_LEVELS): only completed free rides on that level's trip rank; null on the paid boards */
+  /** the free board's LEVEL (1 EASY · 2 MEDIUM · 3 HARD – ride-trip.ts FREE_LEVELS): only completed free rides on that level's trip rank; null on the paid boards */
   level: FreeLevel | null;
   /** the paid board's shift (1h / 4h / 8h). Null on the free board, and on a paid board that asked for every paid shift. */
   tier: PaidTierId | null;

@@ -144,7 +144,7 @@ export class Ride {
   get startedAt(): Date | null { return this.p.startedAt; }
   get loadout(): Loadout | null { return this.p.loadout; }
   get trip(): string | null { return this.p.trip; }
-  /** the free LEVEL it is driven on (1 EASY · 2 CROSSROADS · 3 HARD), from its trip; null = a paid ride or a free one from before the levels */
+  /** the free LEVEL it is driven on (1 EASY · 2 MEDIUM · 3 HARD), from its trip; null = a paid ride or a free one from before the levels */
   get level(): FreeLevel | null { return levelOfTrip(this.p.trip); }
   get tutorial(): boolean { return this.p.tutorial; }
   get assist(): boolean { return this.p.assist; }

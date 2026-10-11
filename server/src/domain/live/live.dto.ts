@@ -70,7 +70,7 @@ export interface WatchRideDto {
   loadout: Loadout | null;
   /** the road the ride was driven on (a client/js/trips.js id; null = before trips: 'classic') – a replay rebuilds THAT road, whatever the table says today */
   trip: string | null;
-  /** the free LEVEL of that trip (1 EASY · 2 CROSSROADS · 3 HARD); null = a paid ride or a free one from before the levels */
+  /** the free LEVEL of that trip (1 EASY · 2 MEDIUM · 3 HARD); null = a paid ride or a free one from before the levels */
   level: number | null;
   seed: number;
   status: string;

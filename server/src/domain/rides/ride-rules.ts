@@ -1,4 +1,4 @@
-import { FREE_LEVELS, levelOfTrip } from './ride-trip.js';
+import { FREE_LEVEL_IDS, FREE_LEVELS } from './ride-trip.js';
 
 /* The ride rules that must stay identical to the game client (client/js/config.js) and to what the server judges a shift by. */
 export const MAX_SPEED = 28; // m/s – CFG.MAX_SPEED, the game's governor
@@ -30,14 +30,15 @@ export const crashCap = (driveSeconds: number): number => Math.min(MAX_CRASHES_P
 
 /** The FREE run ends at a shorter line: its minute is mostly the depot road and the turn, and a brisk driver covers ~490 m of it (the trip-design
     skill's measure), so the paid K of 0.5 (840 m) would stretch "one minute" to ~95 s. Stored on the ride at creation, so changing it moves only new rides.
-    This is the old 'free' trip's and the EASY level's (and the offline run's) K; each free LEVEL has its own (ride-trip.ts FREE_LEVELS – level 1 = this). */
+    This is the old 'free' trip's and the offline guest run's K; each free LEVEL has its own (ride-trip.ts FREE_LEVELS – EASY .3 since 2026-10-11). */
 export const FREE_COMPLETE_DIST_K = 0.25;
 /** ASSIST (a free ride's helper): the truck loses this share of the hull it would lose otherwise – CFG.ASSIST.HULL_DMG in client/js/config.js (drift-tested in world-checks.spec.ts). The verdict still passes an honest assisted drive only while this stays above PASS_DAMAGE_SHARE. */
 export const ASSIST_HULL_DAMAGE = 0.5;
-/** the finish-line K of a NEW ride: a free LEVEL's own K (by its trip), else the free run's or the paid one by tier */
+/** the finish-line K of a NEW ride: a current free LEVEL's own K (by its trip), else the free run's or the paid one by tier. A retired level trip (free-1b…)
+    does not get its level's K today – an existing ride's line is its stored completeDist, never this */
 export const completeDistK = (tier: string, trip: string | null = null): number => {
-  const level = levelOfTrip(trip);
-  if (level !== null) return FREE_LEVELS[level].k;
+  const level = FREE_LEVEL_IDS.find((l) => FREE_LEVELS[l].trip === trip);
+  if (level !== undefined) return FREE_LEVELS[level].k;
   return tier === 'free' ? FREE_COMPLETE_DIST_K : COMPLETE_DIST_K;
 };
 export const completeDist = (minSeconds: number, k: number = COMPLETE_DIST_K): number => k * MAX_SPEED * minSeconds;

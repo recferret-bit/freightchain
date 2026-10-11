@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Level check – is every FREE LEVEL (client/js/trips.js free-1b / free-2b / free-3b: EASY / CROSSROADS / HARD) passable by a human, and does each one mean
+// Level check – is every FREE LEVEL (client/js/trips.js free-1c / free-2c / free-3b: EASY / MEDIUM / HARD) passable by a human, and does each one mean
 // what its name says? Runs the REAL game modules in Node (stubbed three.js + a fake DOM, like client/tools/headless-test.mjs) on many seeds × routes:
 //   ROAD   the road a level's shift covers (its finish line + 40 %): junctions, forks, lanes, the sharpest bend, sinkholes – and for every sinkhole whether a
 //          driver who reacts to its warning sign HOLE_WARN m ahead can still stop or steer round it at the speed the road allows there.
@@ -9,7 +9,7 @@
 //          off-road, how long.
 //   VERDICT per level, against LIMITS below (the level's promise). Exit 1 if a level fails one – a road change that makes EASY need skill, or HARD impossible,
 //          fails here.
-// Usage (repo root): node .claude/skills/level-check/check.mjs [--levels free-1b,free-2b,free-3b] [--routes level|all|route66,siberia] [--seeds 6] [--react 1.0]
+// Usage (repo root): node .claude/skills/level-check/check.mjs [--levels free-1c,free-2c,free-3b] [--routes level|all|route66,siberia] [--seeds 6] [--react 1.0]
 //                    [--no-drive] [--no-road] [--care .8] [--verbose] [--only route66:39608 – one drive, with TRACE=1 a line per second]
 import { execFileSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
@@ -23,13 +23,13 @@ const flag = k => process.argv.includes('--' + k);
 const ONLY = arg('only', null), SEEDS = +arg('seeds', 6), REACT = +arg('react', 1.0), VERBOSE = flag('verbose');
 
 /* What each level promises. `road` is checked on every seed, `drive` over all of them – on the level's OWN country (client/js/free-countries.js: EASY Stuart Highway,
-   CROSSROADS Route 66, HARD Brenner Pass – the server stamps that route); `--routes all` sweeps the five themes.
-   EASY: a first-timer's 3 minutes – exactly ONE crossroads, no fork, no sinkhole, four lanes, winding but wide bends; every drive finishes almost unscratched.
-   CROSSROADS: exactly FOUR crossroads and a fork come up in its 6 minutes; still forgiving – nearly every drive finishes.
+   MEDIUM Route 66, HARD Brenner Pass – the server stamps that route); `--routes all` sweeps the five themes.
+   EASY: a first-timer's 3 minutes – exactly TWO crossroads, no fork, no sinkhole, four lanes, winding but wide bends; every drive finishes almost unscratched.
+   MEDIUM: exactly THREE crossroads and a fork come up in its 5 minutes; still forgiving – nearly every drive finishes.
    HARD: everything, fifteen minutes, no assist – exactly SIX crossroads, two forks, a highway run; most careful drives still finish; a sinkhole is never a trap (always a way round or time to stop). */
 const LIMITS = {
-  'free-1b': { name: 'EASY', road: { junctionsMin: 1, junctionsMax: 1, forksMax: 0, holesMax: 0, lanesMin: 2, radiusMin: 220 }, drive: { finishMin: 1, hullLostMax: 10, crashesMax: 0 } },
-  'free-2b': { name: 'CROSSROADS', road: { junctionsMin: 4, junctionsMax: 4, forksMin: 1, radiusMin: 90, trapsMax: 0 }, drive: { finishMin: .9, hullLostMax: 35, crashesMax: 0 } },
+  'free-1c': { name: 'EASY', road: { junctionsMin: 2, junctionsMax: 2, forksMax: 0, holesMax: 0, lanesMin: 2, radiusMin: 220 }, drive: { finishMin: 1, hullLostMax: 10, crashesMax: 0 } },
+  'free-2c': { name: 'MEDIUM', road: { junctionsMin: 3, junctionsMax: 3, forksMin: 1, radiusMin: 90, trapsMax: 0 }, drive: { finishMin: .9, hullLostMax: 35, crashesMax: 0 } },
   'free-3b': { name: 'HARD', road: { junctionsMin: 6, junctionsMax: 6, forksMin: 2, radiusMin: 55, trapsMax: 0 }, drive: { finishMin: .75, hullLostMax: 60, crashesMax: 1 } },
 };
 const levels = arg('levels', Object.keys(LIMITS).join(',')).split(',');
@@ -164,7 +164,7 @@ const launch = () => {
 const shift = up => { fire('keydown', 'ShiftLeft'); step(20); fire('keydown', up ? 'KeyE' : 'KeyQ'); step(6); fire('keyup', 'ShiftLeft'); };
 function driveOnce(id, rid, sd, takeOther) {
   G.setTrip(id); G.selectTheme(rid, false); G.setGuide({});   // ASSIST OFF
-  seed = sd; now = 1000;   // AFTER the theme (its textures draw Math.random once per route): every drive replays alike whatever ran before it (--only reproduces it): the hardest case for EASY / CROSSROADS, the only case for HARD
+  seed = sd; now = 1000;   // AFTER the theme (its textures draw Math.random once per route): every drive replays alike whatever ran before it (--only reproduces it): the hardest case for EASY / MEDIUMROADS, the only case for HARD
   const { secs, dist } = shiftOf(id); CFG.RIDE_MIN_SECONDS = secs; CFG.COMPLETE_DIST = dist;
   st.mode = 'done'; G.startRide(); G.roads.newTrip(sd); st.mode = 'drive';
   st.park = false; st.temp = CFG.ENGINE_WARM + 5; step(30); fire('keydown', 'KeyI'); step(60 * 2.6);

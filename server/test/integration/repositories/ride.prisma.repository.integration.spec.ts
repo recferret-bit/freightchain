@@ -37,7 +37,7 @@ describe('RidePrismaRepository (PostgreSQL)', () => {
   it('a ready free ride re-chosen at another LEVEL saves its new trip, shift length and finish line (minSeconds / completeDist are not fixed at creation)', async () => {
     const ride = freeRideAt('w', T0, 60, { level: 1 });
     await repo.insert(ride);
-    expect(await repo.findById(ride.id)).toMatchObject({ trip: 'free-1b', level: 1, minSeconds: 60, completeDist: 0.25 * 28 * 60 });
+    expect(await repo.findById(ride.id)).toMatchObject({ trip: 'free-1c', level: 1, minSeconds: 60, completeDist: 0.3 * 28 * 60 });
     const again = (await repo.findById(ride.id))!;
     expect(again.chooseFree(3, 600, false, false)).toBe(true);
     await repo.save(again);

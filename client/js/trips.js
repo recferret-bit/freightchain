@@ -22,7 +22,7 @@
               starts with (default ['country'] – the depot exit), `weights` = the pattern weights after them (replaces the route's; 'dual' = four lanes and
               no junctions, 'fork' = the road splits in two and meets again – net/patterns.js FORK, 'xroad' / 'xroad4' / 'open' = 500 m stretches with exactly one
               crossroads / none), `holeChance` = × CFG.HOLE_CHANCE per chunk, `firstLen` = [min, max] m of the first pattern (default [500, 1100])
-     level, assist   the FREE levels (the lobby's EASY / CROSSROADS / HARD): which level a free trip is, and whether ASSIST may be on (the server refuses it
+     level, assist   the FREE levels (the lobby's EASY / MEDIUM / HARD): which level a free trip is, and whether ASSIST may be on (the server refuses it
               otherwise – ride-trip.ts FREE_LEVELS); the shift length of a level is the server's (FREE_RIDE_SECONDS × its multiple)
    WHICH trip a ride is driven on is the SERVER's: it stamps an id on the ride when it is created (server/src/domain/rides/ride-trip.ts, `trip` in the ride
    and watch payloads) and a replay rebuilds that road. So an id is FROZEN once rides carry it: retune by adding a new id (here and in ride-trip.ts) and
@@ -34,20 +34,25 @@ export const TRIPS = {
   // the FIRST free levels (2026-10) – frozen for the rides that carry them (replays, history); no longer a `level`: the lobby orders the *b trips below
   'free-1': { id: 'free-1', name: 'FREE · EASY (old)', tutorial: true, assist: true, bends: .5, traffic: .4, cross: 0, calm: true, props: .5, finish: true, start: 'straight', seconds: 60, k: .25, holesFrom: 1200,
     road: { first: ['dual'], weights: { dual: 1 } } },
-  'free-2': { id: 'free-2', name: 'FREE · CROSSROADS (old)', tutorial: true, assist: true, bends: .8, traffic: .7, cross: .7, calm: true, props: .8, finish: true, start: 'depot', seconds: 180, k: .3, holesFrom: 400,
+  'free-2': { id: 'free-2', name: 'FREE · MEDIUM (old)', tutorial: true, assist: true, bends: .8, traffic: .7, cross: .7, calm: true, props: .8, finish: true, start: 'depot', seconds: 180, k: .3, holesFrom: 400,
     road: { first: ['country', 'fork'], weights: { country: 3, arterial: 1, town: 1, fork: 2 }, holeChance: 1.5 } },
   'free-3': { id: 'free-3', name: 'FREE · HARD (old)', tutorial: false, assist: false, bends: 1.3, traffic: 1.4, cross: 1.4, calm: false, props: 1.2, finish: true, start: 'depot', seconds: 600, k: .4,
     road: { first: ['country', 'fork'], weights: { country: 3, highway: 1, arterial: 1.5, town: 1.5, fork: 1.5 }, holeChance: 2 } },
-  // the three FREE levels, second round (2026-10-11): EXACT crossroads counts (net/patterns.js xroad – `road.first` lists the stretches in order, one crossroads each), longer shifts and
-  // twistier roads. Their seconds / k are the GUEST shift; online the server's ride sets both (FREE_RIDE_SECONDS × the level's multiple – ride-trip.ts FREE_LEVELS).
-  //   guest (offline play.html) = 2 min, 1 crossroads, gentle · EASY = 3 min, 1 crossroads on four lanes, bends × 2 · CROSSROADS = 6 min, a crossroads, a fork, then 3 more crossroads, the depot turn ·
-  //   HARD = 15 min, 6 crossroads + 2 forks + a highway, the sharpest bends, no TUTORIAL and no ASSIST
-  'free-g': { id: 'free-g', name: 'GUEST RUN', tutorial: true, assist: true, bends: .5, traffic: .4, cross: 0, calm: true, props: .5, finish: true, start: 'straight', seconds: 120, k: .25, holesFrom: 2500,
+  // the FREE levels, second round (2026-10-11): EXACT crossroads counts (net/patterns.js xroad – `road.first` lists the stretches in order, one crossroads each). Their seconds / k
+  // are the GUEST shift; online the server's ride sets both (FREE_RIDE_SECONDS × the level's multiple – ride-trip.ts FREE_LEVELS). free-1b / -2b are frozen (retired by the *c rows below)
+  'free-g': { id: 'free-g', name: 'GUEST RUN', tutorial: true, assist: true, bends: 1.6, traffic: .4, cross: 0, calm: true, props: .5, finish: true, start: 'straight', seconds: 120, k: .25, holesFrom: 2500,
     road: { first: ['xroad4'], weights: { dual: 1 }, firstLen: [500, 500] } },
-  'free-1b': { id: 'free-1b', name: 'FREE · EASY', level: 1, tutorial: true, assist: true, bends: 2, traffic: .4, cross: 0, calm: true, props: .5, finish: true, start: 'straight', seconds: 180, k: .25, holesFrom: 4000,
+  'free-1b': { id: 'free-1b', name: 'FREE · EASY (old)', tutorial: true, assist: true, bends: 2, traffic: .4, cross: 0, calm: true, props: .5, finish: true, start: 'straight', seconds: 180, k: .25, holesFrom: 4000,
     road: { first: ['xroad4'], weights: { dual: 1 }, firstLen: [500, 500] } },
-  'free-2b': { id: 'free-2b', name: 'FREE · CROSSROADS', level: 2, tutorial: true, assist: true, bends: 1.1, traffic: .7, cross: .7, calm: true, props: .8, finish: true, start: 'depot', seconds: 360, k: .4, holesFrom: 400,
+  'free-2b': { id: 'free-2b', name: 'FREE · MEDIUM (old)', tutorial: true, assist: true, bends: 1.1, traffic: .7, cross: .7, calm: true, props: .8, finish: true, start: 'depot', seconds: 360, k: .4, holesFrom: 400,
     road: { first: ['open', 'xroad', 'fork', 'xroad', 'xroad', 'xroad'], weights: { open: 2, highway: 1 }, holeChance: 1.5, firstLen: [450, 450] } },
+  // the ladder, third round (2026-10-11) – each step longer, with more crossroads and twistier (each on its own country: the guest run and EASY on the Stuart Highway, MEDIUM on Route 66, HARD on the Brenner):
+  //   guest (offline play.html, free-g above – never on a ride, so tuned in place) = 2 min / 840 m, 1 crossroads, bends × 1.6 · EASY = 3 min / 1512 m, 2 crossroads on four lanes, bends × 3 ·
+  //   MEDIUM = 5 min / 3360 m, a crossroads, a fork, 2 more crossroads, the depot turn, more traffic · HARD (free-3b, unchanged) = 15 min / 10 080 m, 6 crossroads + 2 forks + a highway, no TUTORIAL and no ASSIST
+  'free-1c': { id: 'free-1c', name: 'FREE · EASY', level: 1, tutorial: true, assist: true, bends: 3, traffic: .4, cross: 0, calm: true, props: .5, finish: true, start: 'straight', seconds: 180, k: .3, holesFrom: 4000,
+    road: { first: ['xroad4', 'xroad4'], weights: { dual: 1 }, firstLen: [500, 500] } },
+  'free-2c': { id: 'free-2c', name: 'FREE · MEDIUM', level: 2, tutorial: true, assist: true, bends: 1.35, traffic: .8, cross: .8, calm: true, props: .8, finish: true, start: 'depot', seconds: 300, k: .4, holesFrom: 400,
+    road: { first: ['open', 'xroad', 'fork', 'xroad', 'xroad'], weights: { open: 2, highway: 1 }, holeChance: 1.5, firstLen: [450, 450] } },
   'free-3b': { id: 'free-3b', name: 'FREE · HARD', level: 3, tutorial: false, assist: false, bends: 1.6, traffic: 1.4, cross: 1.4, calm: false, props: 1.2, finish: true, start: 'depot', seconds: 900, k: .4,
     road: { first: ['open', 'xroad', 'highway', 'xroad', 'fork', 'xroad', 'xroad', 'fork', 'xroad', 'xroad'], weights: { open: 2, highway: 1 }, holeChance: 2, firstLen: [450, 450] } },
   '1h': { id: '1h',   name: '1 HOUR HAUL',  bends: 1,   traffic: 1,   cross: 1, calm: false, props: 1,   finish: false, start: 'depot' },

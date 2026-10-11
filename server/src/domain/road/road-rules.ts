@@ -18,8 +18,8 @@ export const HOLES_ON = true;
 export const HOLE_CHANCE = 0.045;
 export const HOLE_FIRST = 150;
 /** …per trip (client/js/trips.js `holesFrom`; a ride's trip is Ride.trip, domain/rides/ride-trip.ts): the easy free runs' natural sinkholes start where their
-    shift can never reach (free / free-1: a brisk driver covers ~820 m of a 60 s run; free-g 2500 m for 2 min, free-1b 4000 m for 3 min) – every other trip, and a ride from before trips, HOLE_FIRST */
-export const TRIP_HOLE_FIRST: Readonly<Record<string, number>> = { free: 1200, 'free-1': 1200, 'free-2': 400, 'free-g': 2500, 'free-1b': 4000, 'free-2b': 400 };
+    shift can never reach (free / free-1: a brisk driver covers ~820 m of a 60 s run; free-g 2500 m for 2 min, free-1b / -1c 4000 m for 3 min) – every other trip, and a ride from before trips, HOLE_FIRST */
+export const TRIP_HOLE_FIRST: Readonly<Record<string, number>> = { free: 1200, 'free-1': 1200, 'free-2': 400, 'free-g': 2500, 'free-1b': 4000, 'free-2b': 400, 'free-1c': 4000, 'free-2c': 400 };
 export const holeFirstOf = (trip: string | null): number => (trip !== null ? TRIP_HOLE_FIRST[trip] : undefined) ?? HOLE_FIRST;
 /** CFG.OFFROAD_FAIL_SECONDS – the game ends the ride after this long off the tarmac (draining 2× as fast once back on it) */
 export const OFFROAD_FAIL_SECONDS = 20;
@@ -81,6 +81,8 @@ export const TRIP_ROADS: Readonly<Record<string, TripRoad>> = {
   'free-1b': { first: ['xroad4'], weights: { dual: 1 }, holeChance: 1, firstLen: [500, 500] },   // EASY: 1 crossroads
   'free-2b': { first: ['open', 'xroad', 'fork', 'xroad', 'xroad', 'xroad'], weights: { open: 2, highway: 1 }, holeChance: 1.5, firstLen: [450, 450] },   // CROSSROADS: a crossroads, a fork, 3 more crossroads
   'free-3b': { first: ['open', 'xroad', 'highway', 'xroad', 'fork', 'xroad', 'xroad', 'fork', 'xroad', 'xroad'], weights: { open: 2, highway: 1 }, holeChance: 2, firstLen: [450, 450] },   // HARD: 6 crossroads, 2 forks, a highway
+  'free-1c': { first: ['xroad4', 'xroad4'], weights: { dual: 1 }, holeChance: 1, firstLen: [500, 500] },   // EASY, third round: 2 crossroads
+  'free-2c': { first: ['open', 'xroad', 'fork', 'xroad', 'xroad'], weights: { open: 2, highway: 1 }, holeChance: 1.5, firstLen: [450, 450] },   // MEDIUM: a crossroads, a fork, 2 more crossroads
 };
 /** net/patterns.js DEFAULT_WEIGHTS – no route sets its own `roads.weights`, so every route gets this layout (the drift spec pins that too) */
 export const DEFAULT_WEIGHTS: Readonly<Record<string, number>> = { country: 3, highway: 1, arterial: 1, town: 1 };
