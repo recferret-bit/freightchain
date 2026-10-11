@@ -93,7 +93,6 @@ export class EndRideHandler implements ICommandHandler<EndRideCommand, RideDto> 
 
   private emitUnlocks(wallet: string, rideId: string, unlocked: FreshUnlock[]): void {
     for (const unlock of unlocked) {
-      if (unlock.id === 'top-20') continue;
       emitAnalytics(this.analytics, () => achievementUnlocked(wallet, unlock.id, unlock.earnedAt, rideId, isDemoWallet(this.rules.get(), wallet)));
     }
   }

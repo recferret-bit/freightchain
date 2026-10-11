@@ -64,13 +64,13 @@
     <h1 class="rv">The road never ends.<br>Your shift does.</h1>
     <p class="lede rv">Drive every minute of it – manual gearbox, cold engine, traffic, night. The server keeps the clock and calls the finish. Escrowed on Solana. We never hold the funds.</p>
     <div class="cta-row rv">
-      <button class="cta" id="connect">CONNECT WALLET → 10 FREE RIDES</button>
+      <a class="cta" id="play-free" href="/play.html">PLAY FREE RIDE NOW</a>
+      <button class="cta ghost" id="connect">CONNECT WALLET → 10 FREE RIDES</button>
       <button class="cta ghost" id="demo-btn">▶ WATCH THE DEMO</button>
-      <a class="link" href="/play.html">try it offline, no wallet →</a>
     </div>
     <p class="msg" id="msg"></p>
     <div class="stats rv" id="hero-stats">
-      <div class="stat pot"><span class="lbl" id="hero-pot-lbl">IN THE POT THIS WEEK</span><b class="num lcd" id="hero-pot">–</b><span class="unit">SOL <em id="hero-usd"></em></span><span class="pot-note" id="hero-pot-note">No devnet at the moment · offline &amp; free rides only · devnet will be soon</span></div>
+      <div class="stat pot"><span class="lbl" id="hero-pot-lbl">IN THE POT THIS WEEK</span><b class="num lcd" id="hero-pot">–</b><span class="unit">SOL <em id="hero-usd"></em></span><span class="pot-note" id="hero-pot-note">Free rides &amp; practice mode active · Devnet prize pool opening soon</span></div>
       <div class="stat"><span class="lbl">ROUND CLOSES IN</span><b class="num lcd cd" id="hero-cd">–</b><span class="unit">Mon 00:00 UTC</span></div>
       <div class="stat"><span class="lbl">ON THE ROAD</span><b class="num lcd" id="hero-live">–</b><span class="unit">trucks right now</span></div>
       <div class="stat"><span class="lbl">DRIVEN, ALL TIME</span><b class="num lcd"><span id="hero-km">–</span> <span class="unit-km">km</span></b><span class="unit"><span id="hero-shifts">– rides</span> · <span id="hero-time">–</span></span></div>
@@ -157,8 +157,8 @@
     </div>
   </div>
 
-  <div class="badges rv"><span class="lbl">BADGES THAT EXIST TODAY</span>
-    <span>First Mile</span><span>Shift Complete</span><span>Night Owl</span><span>Century</span><span>Clean Run</span><span>Cold Start</span><span>On My Own</span><span>Learner’s Permit</span><span>Crossroads</span><span>Long Haul</span><span class="locked">Top 20 · after the first round closes</span></div>
+  <div class="badges rv"><span class="lbl">31 BADGES · BRONZE TO PLATINUM · SOULBOUND cNFTs ON DEVNET</span>
+    <span>Road</span><span>Shifts · paid</span><span>Night</span><span>Distance</span><span>Clean</span><span>Siberia</span><span>Solo</span><span>Licence</span><span class="locked">Top 20 · after the first round closes</span></div>
 </section>
 
 <div class="road" aria-hidden="true"><i></i></div>
@@ -189,7 +189,7 @@
             <small><u>70%</u> prizes, capped on chain · <u>20%</u> next pool · <u>10%</u> fees</small></div>
         </li>
       </ol>
-      <p class="dim" id="escrow-status">Program written and tested; devnet deploy next. Not audited, not on mainnet. Pay in Phantom or Solflare here, or scan the Solana Pay code with the same wallet on a phone. Each payment carries a reference key so the server can find it on chain.</p>
+      <p class="dim" id="escrow-status">The escrow program is on devnet. Not audited, not on mainnet, and prize payouts are off. Pay in Phantom or Solflare here, or scan the Solana Pay code with the same wallet on a phone. Each payment carries a reference key so the server can find it on chain.</p>
       <a class="link" id="escrow-link" href="/whitepaper.html#onchain">The whole escrow, with diagrams, in the whitepaper →</a>
     </div>
   </div>
@@ -268,7 +268,7 @@
 
           <tr class="leg"><th colspan="3">LEG 5 · LONG HAUL <small>2027</small></th><td class="stamp"><span class="st later">BOOKED</span></td></tr>
           <tr class="later"><td class="box">☐</td><td>Garage parts and promo cosmetics as NFTs the wallet owns and trades</td><td class="note">cosmetics only</td><td></td></tr>
-          <tr class="later"><td class="box">☐</td><td>Achievements on chain: verified-play badges attested per wallet</td><td class="note">proof</td><td></td></tr>
+          <tr class="done"><td class="box">☑</td><td>Achievements on chain: 31 tiered badges, each a soulbound compressed NFT on devnet</td><td class="note">October</td><td></td></tr>
           <tr class="later"><td class="box">☐</td><td>Spectator economy on top of today's tips: sponsors, per-km pledges, convoys</td><td class="note">streams</td><td></td></tr>
           <tr class="later"><td class="box">☐</td><td>Storybook workshop: pay SOL for attempts at a new prop, vehicle or landmark; drivers vote, winners ship, the maker is credited</td><td class="note">community assets</td><td></td></tr>
           <tr class="later"><td class="box">☐</td><td>Deterministic replay core: fixed tick, fixed-point maths, a paid finish re-simulated</td><td class="note">design doc</td><td></td></tr>

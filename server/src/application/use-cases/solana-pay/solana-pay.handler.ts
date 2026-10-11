@@ -9,7 +9,7 @@ import { GetSolanaPayLinkQuery, GetSolanaPayTransactionQuery, type SolanaPayLink
 export class GetSolanaPayLinkHandler implements IQueryHandler<GetSolanaPayLinkQuery, SolanaPayLinkDto> {
   constructor(private readonly rules: RulesConfigPort) {}
 
-  async execute(): Promise<SolanaPayLinkDto> {
+  async execute(_query: GetSolanaPayLinkQuery): Promise<SolanaPayLinkDto> {
     const origin = this.rules.get().appOrigin.replace(/\/$/, '');
     return { label: 'Freight Chain', icon: `${origin}/icons/icon-512.png` };
   }

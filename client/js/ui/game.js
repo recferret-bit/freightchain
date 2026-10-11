@@ -23,6 +23,7 @@ import { env } from '../world/environment.js';
 import { guide, setGuide } from '../guide.js';
 import { startGuide } from './assist.js';
 import { SITE_BASE } from '../hosts.js';
+import { ridePageUrl, rideShareText, xIntent } from './share.js';
 import { resetMap } from './map.js';
 import { phone } from '../phone.js';
 
@@ -56,10 +57,10 @@ const BAIL_BTN = {
 };
 const bailBtn = kind => { const b = BAIL_BTN[kind]; return `<button type="button" class="alt bail-link" id="${b.id}" title="${b.tip}"><b>${b.name}</b><small>${b.tip}</small></button>`; };
 /* Guest run (play.html?offline=1): nobody is counted, recorded or judged – no request is made at all. The menu only picks the two helpers. */
-const guestOpt = { tutorial: store.get('freightchain.guest-tutorial') !== '0', assist: store.get('freightchain.assist') === '1' };
+const guestOpt = { tutorial: store.get('freightchain.guest-tutorial') !== '0', assist: store.get('freightchain.assist') !== '0' };
 function showOfflineMenu(title, sub, extra) {
   const again = !!extra;
-  panel.innerHTML = `<h1>${extra ? title : 'FREE RUN'}</h1><h2>${extra ? sub : 'Just drive – nothing is recorded or ranked.'}</h2>${extra}
+  panel.innerHTML = `<h1>${extra ? title : 'FREE RUN'}</h1><h2>${extra ? (lastOutcome?.ok ? 'Shift complete! Connect a wallet to save your rank and claim 10 free rides.' : sub) : 'Just drive – nothing is recorded or ranked.'}</h2>${extra}
     <div class="row"><span>Finish line</span><b>${(CFG.COMPLETE_DIST / 1000).toFixed(1)} km</b></div>${FREE_HINT}
     <label class="row" style="cursor:pointer"><span>TUTORIAL – step-by-step lessons over the road</span><input type="checkbox" id="g-tutorial" ${guestOpt.tutorial ? 'checked' : ''}></label>
     <label class="row" style="cursor:pointer"><span>ASSIST – the truck lasts twice as long, a tip on every control</span><input type="checkbox" id="g-assist" ${guestOpt.assist ? 'checked' : ''}></label>
@@ -95,17 +96,10 @@ function showOnlineMenu(title, sub, extra) {
   if (shareEnd) {
     shareEnd.onclick = () => {
       if (!online.ride) return;
-      const routeName = env.theme?.name ?? 'Route';
-      const baseOutcome = lastOutcome ? (lastOutcome.ok ? 'COMPLETE' : lastOutcome.abandoned ? 'ABANDONED' : 'FAILED') : (st.complete ? 'COMPLETE' : 'FAILED');
-      const vEl = document.getElementById('verdict');
-      const vText = (vEl && vEl.textContent && vEl.textContent !== '…') ? ` (${vEl.textContent.slice(0, 50)})` : '';
-      const outcome = `${baseOutcome}${vText}`;
-      const text = `Just finished a ${online.ride.tier} shift on ${routeName} in @FreightChainSol! 🚛 ${(st.s / 1000).toFixed(2)} km driven · ${outcome} · devnet pool. Check the receipt on @solana: `;
-      const base = SITE_BASE || (typeof location !== 'undefined' ? location.origin : '');
-      const link = `${base}/r/${online.ride.id}`;
-      if (typeof window !== 'undefined' && window.open) {
-        window.open('https://x.com/intent/post?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent(link), '_blank', 'noopener,noreferrer');
-      }
+      const outcome = lastOutcome ? (lastOutcome.ok ? 'COMPLETE' : lastOutcome.abandoned ? 'ABANDONED' : 'FAILED') : (st.complete ? 'COMPLETE' : 'FAILED');
+      const text = rideShareText({ phase: 'finished', route: env.theme?.name, tier: online.ride.tier, km: (st.s / 1000).toFixed(2), outcome });
+      const url = ridePageUrl(SITE_BASE, typeof location !== 'undefined' ? location.origin : '', online.ride.id);
+      if (typeof window !== 'undefined' && window.open) window.open(xIntent(text, url), '_blank', 'noopener,noreferrer');
       toast('Opening 𝕏 to share ride receipt...', 2000);
     };
   }
@@ -141,7 +135,7 @@ export async function startRide() {   // only an online ride awaits the server
     if (!offlineRide.dev) setGuide({ tutorial: guestOpt.tutorial, assist: guestOpt.assist });   // the guest's two checkboxes (a tool's devRun picks its own)
   }
   resetRide(); st.mode = 'drive'; audio.start(); audio.play('start'); overlay.classList.add('hide'); startGuide(); syncBail();
-  if (!guide.tutorial) toast(CFG.START_ENGINE_OFF ? 'Press I to start the engine and B to release the parking brake, then SHIFT (clutch) → E (1st) → W (gas) → ease the clutch out' : 'Release the parking brake (B), then hold SHIFT (clutch) → E (1st gear) → W (gas) → ease the clutch out', 6000);
+  if (!guide.tutorial) toast(CFG.START_ENGINE_OFF ? 'Press I (engine) · B (release brake) · SHIFT+E (1st gear) · W (gas)' : 'Release parking brake (B) · SHIFT+E (1st gear) · W (gas)', 5000);
   setTimeout(() => { if (st.mode === 'drive' && st.s < 60) toast(net.straight ? 'Loaded. The road runs straight ahead – go up through the gears' : 'Loaded. Drive slowly to the main road, stop at the line, turn RIGHT into a gap', 7000); }, 6500);
 }
 /* The road never ends: a ride ends by failing, or by the driver ending the shift (pause menu). It pays out only once the shift is complete

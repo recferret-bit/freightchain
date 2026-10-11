@@ -20,6 +20,7 @@ import { PROMOS_ENV, promoScenarios } from '../scenarios/promos.scenarios.js';
 import { promoAbuseScenarios } from '../scenarios/promos-abuse.scenarios.js';
 import { LIVE_ENV, LIVE_FLAGS_ENV, LIVE_OFF_ENV, liveFlagsScenarios, liveOffScenarios, liveScenarios } from '../scenarios/live.scenarios.js';
 import { AGREEMENTS_ENV, agreementsScenarios } from '../scenarios/agreements.scenarios.js';
+import { ACTIONS_PROGRAM_ENV, actionsBuyScenarios, actionsScenarios } from '../scenarios/actions.scenarios.js';
 
 /* The SAME scenarios as test/http, on the real Prisma repositories + a real PostgreSQL (npm run test:integration:stack).
    Anything the in-memory twins get wrong shows up here. */
@@ -47,6 +48,8 @@ for (const [name, env, scenarios] of [
   ['chain: the webhook settles what the chain did', WEBHOOK_ENV, webhookScenarios],
   ['client telemetry relay', {}, analyticsScenarios],
   ['profile: the 18+ and loss offer before a paid shift', AGREEMENTS_ENV, agreementsScenarios],
+  ['solana actions: discovery, shift card, ride blink', {}, actionsScenarios],
+  ['solana actions: one program-mode ticket', ACTIONS_PROGRAM_ENV, actionsBuyScenarios],
 ] as const) {
   describe(`HTTP (PostgreSQL) · ${name}`, () => {
     let harness: Harness;

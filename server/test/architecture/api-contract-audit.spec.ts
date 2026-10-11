@@ -2,7 +2,8 @@ import { sourceFiles } from './source-files.js';
 
 /* The HTTP contract rule, enforced statically: every controller method (a) declares every request part through a Zod-validated decorator,
    (b) returns a typed, non-empty DTO produced by a CQRS handler – never void / unknown, never 204, (c) never writes to @Res()/@Req(),
-   (d) never throws Nest HttpExceptions. Every error is rendered by the one ProblemDetailsFilter as application/problem+json. */
+   (d) never throws Nest HttpExceptions. Every error is rendered by the one ProblemDetailsFilter as application/problem+json,
+   except Solana Action routes, whose ActionErrorFilter answers `{ message }` as application/json. */
 const files = sourceFiles();
 const controllers = files.filter((f) => f.path.endsWith('.http.controller.ts'));
 const NEST_EXCEPTIONS = /\b(HttpException|BadRequestException|UnauthorizedException|ForbiddenException|NotFoundException|ConflictException|InternalServerErrorException|ServiceUnavailableException)\b/;

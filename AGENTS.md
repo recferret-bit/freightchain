@@ -24,6 +24,7 @@ This file is the map and the hard rules only. The detail lives in **`docs/agents
 | free levels, tutorial + assist, free rides, trips | `free-rides.md` |
 | garage, promo codes | `garage-promo.md` |
 | money, escrowed pools, the program toolchain | `escrow.md` |
+| achievement tiers, the soulbound badge cNFTs, mint job + art | `achievements.md` |
 | product analytics (PostHog) | `analytics.md` |
 | promo videos + sound | `media.md` |
 | landing, whitepaper, app icon | `landing.md` |
@@ -44,6 +45,7 @@ Server (`docs/backend-architecture.md`, enforced by `server/test/architecture`):
 - Every path that ends a ride, and every donation, calls `StatsService` (player row lock first).
 - A ride silent for `HB_TIMEOUT_MS` is ended by the stale-ride sweeper – never leave a ride `running`.
 - Admin API: only the admin session (`fc_admin`), only on `admin.<COOKIE_DOMAIN>` (read `headers.host`), every change wallet-signed + audited; new routes guarded by default.
+- Solana Actions (`/actions.json`, `/api/actions/*`) are public devnet blinks: CORS `*` on those paths only, `{message}` errors, one program-mode ticket, both profile stamps still required. Detail in `docs/agents/server.md`.
 
 Game ⇄ server:
 - The server rebuilds the road and judges on it (`server/src/domain/road` ports `js/net/network.js` + `js/net/obstacles.js`). Changing the generator, `PATTERNS`, a trip's `road` / `holesFrom`, `FORK`, `HOLES`, the hole roll, the damage rule in `sim/damage.js` or the off-road rule = change the port in the same commit (`road-drift.spec.ts`).
@@ -59,6 +61,8 @@ Client:
 - Serve over http (`client/serve.sh` or `npm run server:dev` on :3000); `file://` can't load the modules. Driving is desktop-only; spectating streams/replays works on mobile.
 
 Escrow: the money is in the program; the server only mirrors pools and credits tickets from program events; every wallet signs and sends its own transaction; the server holds two keys – the crank (permissionless steps + opening each day's pool from the admin's `Series`) and the payout key (`PAYOUT_SECRET`: `pay_prize` / `close_pool` only, after a pool's review window, verified winners only once every ride is decided – `pool:payout`). Program v2 (the pool day) is in `docs/agents/escrow.md`. Never touch the global Solana config or `~/.config/solana/id.json`; always an explicit `--url devnet`; no program deploy or pool creation without the user. Keep `docs/escrow-open-items.md` current.
+
+Achievements: ids are FROZEN (add a tier, never retune one); unlock rows are append-only, the NFT mint is its own outbox; badge cNFTs are minted by their own key (`ACHIEVEMENT_MINT_SECRET`) only after the delay and a re-check that skips rejected rides – detail in `docs/agents/achievements.md`.
 
 Analytics: capture is opt-in (`POSTHOG_ENABLED=1`); never print `POSTHOG_KEY`; don't flip `$create_alias`.
 

@@ -1,0 +1,17 @@
+{
+  "name": "Freight Chain Achievements",
+  "symbol": "FCHAIN",
+  "description": "Soulbound compressed NFTs earned by driving in Freight Chain – first mile to platinum legend. One badge per milestone, minted to the wallet that earned it.",
+  "image": "__IMAGE__",
+  "seller_fee_basis_points": 0,
+  "external_url": "https://freightchain.fun/",
+  "properties": {
+    "category": "image",
+    "files": [
+      {
+        "uri": "__IMAGE__",
+        "type": "image/png"
+      }
+    ]
+  }
+}

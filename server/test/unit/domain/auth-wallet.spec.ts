@@ -32,33 +32,33 @@ describe('AuthChallenge', () => {
 });
 
 describe('achievement rules', () => {
-  const none: Facts = { started: 0, completed: 0, totalMetres: 0, completedAtNight: false, cleanRun: false, completedSiberia: false, completedFreeUnassisted: false, completedFreeLevels: [] };
+  const none: Facts = { started: 0, paidShifts: 0, totalMetres: 0, nightShifts: 0, cleanRuns: 0, siberiaShifts: 0, freeUnassisted: 0, completedFreeLevels: [] };
   const earn = (f: Partial<Facts>) => earnedIds({ ...none, ...f });
   it('nothing earned before riding', () => expect(earn({})).toEqual([]));
   it('first mile = a started ride; shift complete needs a completed one', () => {
     expect(earn({ started: 1 })).toEqual(['first-mile']);
-    expect(earn({ started: 1, completed: 1 })).toEqual(['first-mile', 'shift-complete']);
+    expect(earn({ started: 1, paidShifts: 1 })).toEqual(['first-mile', 'shift-complete']);
   });
   it('night owl / clean run / cold start need their flag', () => {
-    expect(earn({ completedAtNight: true })).toEqual(['night-owl']);
-    expect(earn({ cleanRun: true })).toEqual(['clean-run']);
-    expect(earn({ completedSiberia: true })).toEqual(['cold-start']);
+    expect(earn({ nightShifts: 1 })).toEqual(['night-owl']);
+    expect(earn({ cleanRuns: 1 })).toEqual(['clean-run']);
+    expect(earn({ siberiaShifts: 1 })).toEqual(['cold-start']);
   });
   it('on my own = a completed free ride without assist', () => {
-    expect(earn({ completedFreeUnassisted: true })).toEqual(['on-my-own']);
-    expect(earn({ started: 1, completed: 1 })).not.toContain('on-my-own');   // a completion alone (assisted, or paid) is not it
+    expect(earn({ freeUnassisted: 1 })).toEqual(['on-my-own']);
+    expect(earn({ started: 1, paidShifts: 1 })).not.toContain('on-my-own');   // a completion alone (assisted, or paid) is not it
   });
   it('one per free LEVEL cleared: EASY, CROSSROADS, HARD – each needs its own level', () => {
     expect(earn({ completedFreeLevels: [1] })).toEqual(['free-easy']);
     expect(earn({ completedFreeLevels: [2] })).toEqual(['free-crossroads']);
     expect(earn({ completedFreeLevels: [3] })).toEqual(['free-hard']);
     expect(earn({ completedFreeLevels: [1, 2, 3] })).toEqual(['free-easy', 'free-crossroads', 'free-hard']);
-    expect(earn({ started: 1, completed: 1, completedFreeUnassisted: true })).not.toContain('free-easy');   // a completed free ride from before the levels (no level) clears none
+    expect(earn({ started: 1, paidShifts: 1, freeUnassisted: 1 })).not.toContain('free-easy');   // a completed free ride from before the levels (no level) clears none
   });
   it('century at exactly 100 km, not 99.999', () => { expect(earn({ totalMetres: 99_999 })).toEqual([]); expect(earn({ totalMetres: 100_000 })).toEqual(['century']); });
   it('top 20 is awarded at round close, never by a rule', () => {
-    expect(ACHIEVEMENTS.find((a) => a.id === 'top-20')?.rule).toBeNull();
-    expect(earn({ started: 9, completed: 9, totalMetres: 1e9, completedAtNight: true, cleanRun: true, completedSiberia: true, completedFreeUnassisted: true, completedFreeLevels: [1, 2, 3] })).not.toContain('top-20');
+    expect(ACHIEVEMENTS.find((a) => a.id === 'top-20')?.measure).toBeNull();
+    expect(earn({ started: 9, paidShifts: 9, totalMetres: 1e9, nightShifts: 99, cleanRuns: 99, siberiaShifts: 99, freeUnassisted: 1, completedFreeLevels: [1, 2, 3] })).not.toContain('top-20');
   });
   it('ids are unique', () => expect(new Set(ACHIEVEMENTS.map((a) => a.id)).size).toBe(ACHIEVEMENTS.length));
 });

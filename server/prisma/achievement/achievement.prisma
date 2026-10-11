@@ -5,7 +5,29 @@ model AchievementUnlock {
   achievementId String
   earnedAt      DateTime
   rideId        String? // the ride whose end unlocked it (null when found by a later catch-up)
+  mint          AchievementMint?
 
   @@id([wallet, achievementId])
+  @@schema("achievement")
+}
+
+// The mint outbox: one row per unlock that became (or is becoming) a soulbound compressed NFT. Written before the transaction goes out, like PoolPayout
+// (planned → sent with its signature → minted with the asset id; failed / skipped keep the reason). Never deleted.
+model AchievementMint {
+  wallet               String
+  achievementId        String
+  unlock               AchievementUnlock @relation(fields: [wallet, achievementId], references: [wallet, achievementId], onDelete: Cascade)
+  status               String // planned | sent | minted | failed | skipped
+  signature            String? // the signed transaction, stored before it is broadcast
+  lastValidBlockHeight Int?
+  assetId              String? // the cNFT's asset id, read from the finalized mint transaction
+  attempts             Int               @default(0)
+  error                String?
+  createdAt            DateTime
+  updatedAt            DateTime
+
+  @@id([wallet, achievementId])
+  @@unique([signature])
+  @@index([status])
   @@schema("achievement")
 }

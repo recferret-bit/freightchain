@@ -22,8 +22,9 @@ import { AdminDirectoryHttpController } from './admin/admin-directory.http.contr
 import { AdminSettingsHttpController } from './admin/admin-settings.http.controller.js';
 import { AdminPoolsHttpController } from './admin/admin-pools.http.controller.js';
 import { SolanaPayHttpController } from './solana-pay/solana-pay.http.controller.js';
+import { ActionsHttpController } from './actions/actions.http.controller.js';
 @Module({
   imports: [ApplicationModule],
-  controllers: [HealthHttpController, AuthHttpController, RidesHttpController, PublicRidesHttpController, EconomyHttpController, PoolsHttpController, TicketsHttpController, LobbyHttpController, StatsHttpController, ChainHttpController, ChainWebhookHttpController, AdminHttpController, AdminPromosHttpController, AdminSettingsHttpController, AdminDirectoryHttpController, PromosHttpController, GarageHttpController, LiveHttpController, TelemetryHttpController, AdminPoolsHttpController, SolanaPayHttpController],
+  controllers: [HealthHttpController, AuthHttpController, RidesHttpController, PublicRidesHttpController, EconomyHttpController, PoolsHttpController, TicketsHttpController, LobbyHttpController, StatsHttpController, ChainHttpController, ChainWebhookHttpController, AdminHttpController, AdminPromosHttpController, AdminSettingsHttpController, AdminDirectoryHttpController, PromosHttpController, GarageHttpController, LiveHttpController, TelemetryHttpController, AdminPoolsHttpController, SolanaPayHttpController, ActionsHttpController],
 })
 export class PresentationModule {}

@@ -1,4 +1,5 @@
 import { API_BASE, GAME_BASE, SITE_BASE } from '../js/hosts.js';
+import { ridePageUrl, rideShareText, xIntent } from '../js/ui/share.js';
 import { isMobileDevice } from '../js/mobile.js';
 
 function fmt(sec) {
@@ -122,20 +123,11 @@ function render(ride) {
   const btnShareX = el('btn-share-x');
   btnShareX.style.display = 'inline-flex';
   btnShareX.onclick = () => {
-    const url = `${SITE_BASE}/r/${encodeURIComponent(ride.id)}`;
-    let text = '';
-    if (isRunning) {
-      text = isFree
-        ? `Driving on ${routeName} in @FreightChainSol! 🚛 Currently ${(ride.km || 0).toFixed(1)} km in (${fmt(ride.driveSeconds)}). Follow along on @solana devnet: `
-        : `Driving on ${routeName} in @FreightChainSol! 🚛 Currently ${(ride.km || 0).toFixed(1)} km in (${fmt(ride.driveSeconds)}). Watch me live or send a roadside tip on @solana devnet: `;
-    } else if (isCompleted) {
-      const vText = ride.verdict?.status === 'verified' ? 'COMPLETED (VERIFIED)' : 'COMPLETED';
-      text = `Just finished a ${ride.tier} shift on ${routeName} in @FreightChainSol! 🚛 ${(ride.km || 0).toFixed(2)} km driven · ${vText} · devnet pool. Check receipt on @solana: `;
-    } else {
-      text = `Drove ${(ride.km || 0).toFixed(1)} km on ${routeName} in @FreightChainSol! 🚛 Watch the replay: `;
-    }
-    const intent = `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
-    window.open(intent, '_blank', 'noopener,noreferrer');
+    const km = ride.km || 0, time = fmt(ride.driveSeconds);
+    const text = isRunning
+      ? rideShareText({ phase: 'driving', route: routeName, km: `${km.toFixed(1)} km`, time, free: isFree })
+      : rideShareText({ phase: 'finished', route: routeName, tier: ride.tier, km: km.toFixed(2), outcome: isCompleted ? 'COMPLETE' : isAbandoned ? 'ABANDONED' : 'FAILED' });
+    window.open(xIntent(text, ridePageUrl(SITE_BASE, location.origin, ride.id)), '_blank', 'noopener,noreferrer');
   };
 
   if (isMobileDevice()) {

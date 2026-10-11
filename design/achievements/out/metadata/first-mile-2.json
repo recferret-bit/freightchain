@@ -1,0 +1,52 @@
+{
+  "name": "Regular Hauler",
+  "symbol": "FCHAIN",
+  "description": "Every haul starts with a single turn of the key. The road has noticed you. Condition: Start 10 rides. A soulbound Freight Chain achievement – compressed NFT, non-transferable.",
+  "image": "__IMAGE__",
+  "seller_fee_basis_points": 0,
+  "external_url": "https://freightchain.fun/",
+  "collection": {
+    "name": "Freight Chain Achievements",
+    "family": "Freight Chain"
+  },
+  "attributes": [
+    {
+      "trait_type": "Family",
+      "value": "Road"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Silver"
+    },
+    {
+      "trait_type": "Tier Number",
+      "value": 2
+    },
+    {
+      "trait_type": "Condition",
+      "value": "Start 10 rides."
+    },
+    {
+      "trait_type": "Requirement",
+      "value": 10,
+      "display_type": "number"
+    },
+    {
+      "trait_type": "Soulbound",
+      "value": "Yes"
+    },
+    {
+      "trait_type": "Game",
+      "value": "Freight Chain"
+    }
+  ],
+  "properties": {
+    "category": "image",
+    "files": [
+      {
+        "uri": "__IMAGE__",
+        "type": "image/png"
+      }
+    ]
+  }
+}

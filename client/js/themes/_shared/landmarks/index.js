@@ -26,7 +26,7 @@ const PAL = {   // CSS colours; walls = per-site variants. A theme overrides onl
 
 export function createLandmarks({ pal = {}, chance = .22, near = [12, 16], weights = {}, names = {}, flag = null } = {}) {
   const P = { ...PAL, ...pal }, W = { motel: 1, hotel: 1, restaurant: 1, gas: 1, police: 1, ...weights }, N = { ...NAMES, ...names };
-  const m = { roof: basic(P.roof), trim: basic(P.trim), glass: basic(P.glass), door: basic(P.door), lot: basic(P.lot), metal: basic(P.metal), dark: basic(P.dark), accent: basic(P.accent), accent2: basic(P.accent2), neon: basic(P.neon),
+  const m = { roof: basic(P.roof), trim: basic(P.trim), glass: basic(P.glass), door: basic(P.door), lot: basic(P.lot), apron: basic(P.lot, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }), metal: basic(P.metal), dark: basic(P.dark), accent: basic(P.accent), accent2: basic(P.accent2), neon: basic(P.neon),
     leaf: basic(P.leaf), trunk: basic(P.trunk), cone: basic(P.cone), white: basic(0xf2f2ea), red: basic(0xd22a22), blue: basic(0x1f4a9a), walls: P.walls.map(w => basic(w)) };
   const SIGN = { neon: [P.dark, P.neon], red: [P.accent, '#ffffff'], blue: [P.accent2, '#ffffff'], cream: [P.trim, P.dark] };
   const cache = new Map(), tex = (key, make) => cache.get(key) ?? (cache.set(key, make()), cache.get(key));
@@ -81,8 +81,8 @@ export function createLandmarks({ pal = {}, chance = .22, near = [12, 16], weigh
         d.rotation.z = Math.PI / 2; return d;
       } };
     L.v.make(g, c);
-    const wa = L.near - 6.1 + L.hd;   // apron: tarmac from the shoulder to the middle of the footprint
-    g.add(mk(GEO.box, m.lot, wa, .04, L.hl * 2 + 2, -wa / 2, .02, 0));
+    const wa = L.near - 6.1 + L.hd + .6;   // apron: tarmac from UNDER the shoulder (the ribbon draws over it, so no seam of bare ground) to the middle of the footprint
+    g.add(mk(GEO.box, m.apron, wa, .04, L.hl * 2 + 2, -wa / 2, .02, 0));
     g.rotation.y = L.side > 0 ? 0 : Math.PI; root.add(g);   // models face -x (toward the road for right-hand sites)
     root.name = L.v.id; root.userData = { kind: 'building', size: 1, debris: wall };
     return root;

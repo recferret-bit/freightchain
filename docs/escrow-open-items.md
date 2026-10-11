@@ -160,3 +160,9 @@ Related: [deploy + operate](program-deploy.md) · [paid tickets status](paid-tic
 - [x] Localnet test: `cancel_pool`, pause, authority handover (Oct 9, the ten-rider scenario)
 - [ ] Localnet test: the sponsor-down fallback; a run with two server instances cranking
 - [ ] Reclaim Ticket rents of settled pools (`close_ticket` in the crank or a CLI) – see "Crank operations"
+
+### Achievement cNFTs (docs/agents/achievements.md)
+- [x] Tiered catalogue, mint outbox, Bubblegum v2 adapter, mint job, lobby ladders, analytics, tests (Oct 11)
+- [ ] Devnet: fund a key, `setup-tree.mjs --yes`, upload art to Irys (`upload-irys.mjs --yes`), commit `nft-metadata-uris.ts`, `smoke-mint.mjs --yes` (incl. the refused transfer), set the three `ACHIEVEMENT_*` keys on the dev server
+- [ ] Mainnet tree + collection + production keys – only after the Colosseum results and passed devnet tests (like the program)
+- [ ] A DAS reconciler (minted rows vs the tree) and a `podium` family (pool winners) – later

@@ -111,12 +111,16 @@ import { FinalityService } from './services/finality.service.js';
 import { PollProgramHandler } from './use-cases/chain/poll-program/poll-program.handler.js';
 import { SyncPoolsHandler } from './use-cases/chain/sync-pools/sync-pools.handler.js';
 import { CrankPoolsHandler } from './use-cases/chain/crank-pools/crank-pools.handler.js';
+import { MintAchievementsHandler } from './use-cases/achievements/mint-achievements/mint-achievements.handler.js';
 import { PayPoolsHandler } from './use-cases/chain/pay-pools/pay-pools.handler.js';
 import { ReceiveChainWebhookHandler } from './use-cases/chain/receive-chain-webhook/receive-chain-webhook.handler.js';
 import { RegisterPoolFromChainHandler } from './use-cases/pools/register-pool-from-chain/register-pool-from-chain.handler.js';
 import { AdjustFreeRidesHandler } from './use-cases/admin/adjust-free-rides/adjust-free-rides.handler.js';
 import { GetSettingsHandler } from './use-cases/admin/get-settings/get-settings.handler.js';
 import { UpdateSettingHandler } from './use-cases/admin/update-setting/update-setting.handler.js';
+import { GetActionsJsonHandler } from './use-cases/actions/get-actions-json.handler.js';
+import { GetShiftActionHandler, PrepareShiftActionHandler } from './use-cases/actions/shift-action.handler.js';
+import { GetRideActionHandler, OpenRideActionHandler } from './use-cases/actions/ride-action.handler.js';
 
 const services: Provider[] = [
   AchievementService, PaymentSettlementService, PlayerSessionService, GameSettingsService, RideLookupService, RoundService, VerdictService, AdminProofService,
@@ -148,8 +152,9 @@ const handlers: Provider[] = [
   GetSolanaPayLinkHandler, GetSolanaPayTransactionHandler,
   GetRefundTransactionHandler, GetPayoutTransactionsHandler,
   GetChainFeesHandler,
-  PollProgramHandler, SyncPoolsHandler, CrankPoolsHandler, PayPoolsHandler, ReceiveChainWebhookHandler, RegisterPoolFromChainHandler,
+  PollProgramHandler, SyncPoolsHandler, CrankPoolsHandler, PayPoolsHandler, MintAchievementsHandler, ReceiveChainWebhookHandler, RegisterPoolFromChainHandler,
   AdjustFreeRidesHandler, GetSettingsHandler, UpdateSettingHandler,
+  GetActionsJsonHandler, GetShiftActionHandler, PrepareShiftActionHandler, GetRideActionHandler, OpenRideActionHandler,
 ];
 
 @Module({

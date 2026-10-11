@@ -20,7 +20,7 @@ export class EnvRulesConfigAdapter extends RulesConfigPort {
       quoteTtlMs: QUOTE_TTL_MS, nonceTtlMs: NONCE_TTL_MS, demoWallets: env.demoWallets, demoScale: env.demoScale,
       initialSeedLamports: env.initialSeedLamports, treasury: env.treasuryPubkey, appDomain: env.appDomain, appOrigin: env.appOrigin,
       paymentMode: env.paymentMode, programId: env.ticketProgramId, feeTreasury: env.feeTreasury, seedTreasury: env.seedTreasury, watchIntervalMs: env.watchIntervalMs,
-      orderTtlMs: env.orderTtlMs, commitment: env.solanaCommitment, crankEnabled: env.crankSecret !== undefined,
+      orderTtlMs: env.orderTtlMs, commitment: env.solanaCommitment, crankEnabled: env.crankSecret !== undefined, achievementCollection: env.achievementCollection, achievementTree: env.achievementTree,
       priorityFee: env.priorityFee,
       sessionTtlHours: env.onchainSessionTtlHours,
       verdictEnforce: env.verdictEnforce, telemetryRetentionDays: env.telemetryRetentionDays, signInRetentionDays: env.signInRetentionDays, challengeIntervalSeconds: env.challengeIntervalSeconds, challengeFreeRides: env.challengeFreeRides, live: env.liveFlags,

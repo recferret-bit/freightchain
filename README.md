@@ -50,11 +50,11 @@ The landing has six chapters: [RIDE](https://freightchain.fun/#ride), [LOOP](htt
 ### Ten minutes
 
 1. Open the [landing](https://freightchain.fun). Read the hero, then ECONOMY. The footer says devnet, and that nothing there is real money.
-2. Open the [whitepaper](https://whitepaper.freightchain.fun). The status pills are dated 8 Oct. The escrow pill still says the program is not deployed, and the garage is grouped with planned work. The program account is on devnet, and the garage is a lobby tab. The rest of that page is the public rules.
+2. Open the [whitepaper](https://whitepaper.freightchain.fun). Escrow is on devnet and not audited, prize payouts are off, and garage colours are a lobby tab. The rest of that page is the public rules.
 3. Connect a devnet wallet (Phantom or Solflare). Sign-in is a message, not a transaction. The page sends you to the lobby.
 4. Start the free ride. EASY is three minutes on four lanes with two crossroads, and it ends itself at 1512 m. The cab can show a tutorial and an assist mode. Both are free-tier only.
 5. Watch someone from LIVE, or open REPLAYS. The watch page draws the truck from the recording, about 25 seconds behind, on a road rebuilt from the ride seed.
-6. Open the [program on the explorer](https://explorer.solana.com/address/9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx?cluster=devnet) and the [contract spec](docs/pool-program/index.html). A buy on freightchain.fun today is the legacy memo transfer into the weekly round. Tickets into this program are the other path, in [Economy](#economy). Either path is also a Solana Pay code: scan it with the same devnet wallet on a phone.
+6. Open the [program on the explorer](https://explorer.solana.com/address/9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx?cluster=devnet) and the [contract spec](docs/pool-program/index.html). freightchain.fun sells tickets into that program (`PAYMENT_MODE=program`, devnet). The legacy memo transfer is the other path, in [Economy](#economy). Either path is also a Solana Pay code: scan it with the same devnet wallet on a phone.
 7. If you build the repo: `npm run test:localnet` runs the real program on a local validator and checks every lamport. Walkthrough: [`docs/localnet-e2e/index.html`](docs/localnet-e2e/index.html).
 
 A wallet listed in `DEMO_WALLETS` drives a paid shift `DEMO_SCALE` times shorter (default 60). The speed governor stays 28 m/s.
@@ -72,14 +72,15 @@ A wallet listed in `DEMO_WALLETS` drives a paid shift `DEMO_SCALE` times shorter
 | Escrow program | v1 on devnet, initialized. v2 (one pool a day, a payout key, a review window): 17 instructions, 14 events, 25 errors, on devnet since Oct 11 (`8No42h…GCA1p`, v1 `9e7phd…` retired) | Initialized, payout key named, the 1 h series runs a test schedule. freightchain.fun runs it (`PAYMENT_MODE=program`, Oct 11) |
 | Prize payouts from a pool vault | v2: the server's payout job pays the verified top 20 after the 48 h review, once every ride of the pool is decided; an admin can HOLD it | After the results, on an explicit switch |
 | Solana Pay | Transaction request plus a reference key on a ticket buy, a legacy shift payment, and a paid tip | In this build. Devnet. The lobby and the watch page show a QR for the same wallet on a phone. |
-| Token, mainnet, captcha, NFT badges | No | No |
+| Achievement badges as soulbound cNFTs | Yes: 31 tiered badges, a Bubblegum v2 mint job, devnet collection + tree (`56ijQ5…XoMC`, `45NKrZ…M336`); transfer refused on chain | Live on devnet. Mainnet waits for the same gates as the program |
+| Token, mainnet, captcha | No | No |
 
-Production stays on the transfer path until the Colosseum results, the devnet exit list, and an explicit deploy. That rule is [`docs/escrow-open-items.md`](docs/escrow-open-items.md) (Q-K, Q-L). The top of that file still says "nothing deployed"; Phase 1 below it records the 8 Oct deploy. The explorer is the check.
+freightchain.fun runs `PAYMENT_MODE=program` on devnet since Oct 11. Rollback is `PAYMENT_MODE=transfer`. Mainnet still waits on the Colosseum results, the devnet exit list, and an explicit deploy ([`docs/escrow-open-items.md`](docs/escrow-open-items.md)). The top of that file still says nothing is deployed; the Oct 11 note records the switch. The explorer is the check.
 
 ### What a Solana judge can check
 
 - **Sign-in.** Sign-In With Solana. The server stores one challenge, consumes it on the first attempt, and sets an httpOnly cookie. The statement says the signature does not send a transaction. [`server/src/domain/auth/sign-in.ts`](server/src/domain/auth/sign-in.ts)
-- **Public ride receipts and 𝕏 / Solana verification.** Every online shift (free or paid) gets an open public URL (`/r/:id`) showing live or completed telemetry, route seed proof, and a direct link to Solana Explorer (devnet) verifying the ticket escrow transaction. Drivers can share ride progress mid-shift from the dashboard (styled with Solana branding near the parking brake) or post the final receipt from the end screen via 𝕏 Web Intent; server-side middleware renders dynamic Twitter Card and Open Graph metadata with live stats so preview cards render directly on 𝕏 feeds.
+- **Public ride receipts, 𝕏 posts, and Solana Actions.** Every online shift (free or paid) gets an open public URL (`/r/:id`) showing live or completed telemetry, route seed proof, and a direct link to Solana Explorer (devnet) for the ticket escrow transaction. Drivers still post from their own account with an 𝕏 web intent. The link in that post is the site (`/` after a ticket buy, `/r/:id` for a ride), and `/actions.json` maps those URLs to Solana Actions so a blink client can buy one devnet ticket or open the ride. The explorer receipt stays in the lobby dialog. Server-side middleware also renders Twitter Card and Open Graph tags for clients that only show a preview.
 - **A program-owned vault.** Each pool has a zero-data PDA. Only the program can sign for it. Price, minimum, deadlines, and the prize / seed / fee split are fixed at `create_pool`. [`programs/freightchain-pools/README.md`](programs/freightchain-pools/README.md)
 - **A missed pool refunds without the operator.** `fail_pool`, `refund`, `expire_pool`, and the grace `close_pool` are permissionless. After 14 days an unpaid active pool can only be expired and refunded, so an absent admin cannot sweep the players' money to the seed treasury.
 - **Prizes are capped on chain.** `pay_prize` refuses once `prizes_paid` would pass the prize share. The 25 / 15 / 10 ranking is server policy inside that cap. The program does not hard-code the ranks.
@@ -225,7 +226,7 @@ Read: [`client/js/themes/index.js`](client/js/themes/index.js) · [model viewer]
 
 A new wallet starts with 10 free rides. The daily refill adds one at 00:00 UTC and stops at 5. A promo can sit above that cap. `play.html?offline=1` is an uncounted guest run with no account (two minutes, one crossroads, a winding road). A paid shift or a tip is signed in Phantom or Solflare on the desktop, or by scanning the Solana Pay code with that same wallet on a phone. Devnet.
 
-The free ride is picked at a level in the lobby (`POST /api/rides` `level` 1–3). Each level has its own leaderboard (HARD by default) and its own achievement: Learner's Permit, Crossroads, Long Haul. Tutorial and assist exist only on a free ride; HARD refuses assist. Assist halves hull damage and battery drain. The achievement On My Own is a completed free ride without assist. While the verdict is enforced, a rejected recording earns no badge. `node .claude/skills/level-check/check.mjs` checks every level is what it promises and passable by a human-paced driver.
+The free ride is picked at a level in the lobby (`POST /api/rides` `level` 1–3). Each level has its own leaderboard (HARD by default) and its own achievement: Learner's Permit, Crossroads, Long Haul. Tutorial and assist exist only on a free ride; HARD refuses assist. Assist halves hull damage and battery drain. The achievement On My Own is a completed free ride without assist (achievements are ladders of 3-4 tiers, each minted as a soulbound compressed NFT – `docs/agents/achievements.md`). While the verdict is enforced, a rejected recording earns no badge. `node .claude/skills/level-check/check.mjs` checks every level is what it promises and passable by a human-paced driver.
 
 Read: [`client/js/trips.js`](client/js/trips.js) · [`server/src/domain/rides/ride-tier.ts`](server/src/domain/rides/ride-tier.ts) · [`server/src/domain/settings/game-settings.ts`](server/src/domain/settings/game-settings.ts)
 
@@ -237,7 +238,7 @@ Read: [Anti-cheat](#anti-cheat) · [`docs/anti-cheat/index.html`](docs/anti-chea
 
 ### Public receipts and 𝕏 sharing
 
-Every online shift (free or paid) has an unauthenticated public receipt page at `/r/:id`. While running, it displays live telemetry and lets visitors watch the stream or tip the driver in SOL; when completed, it shows the verdict, distance, seed commitment, and a Solana devnet explorer link for the ticket escrow. Drivers can share live progress directly from the truck dashboard via the Solana-styled `POST ON 𝕏` button (near the parking brake), or share their ride receipt on completion. The server injects dynamic Open Graph and Twitter Card tags so shared links show live stats and route previews directly on 𝕏.
+Every online shift (free or paid) has an unauthenticated public receipt page at `/r/:id`. While running, it displays live telemetry and lets visitors watch the stream or tip the driver in SOL; when completed, it shows the verdict, distance, seed commitment, and a Solana devnet explorer link for the ticket escrow. Drivers can share from the dashboard (`POST ON 𝕏`, near the parking brake) or the end screen. The composed post’s URL is that ride page, or the site home after a ticket buy, which `/actions.json` maps to a Solana Action (one program-mode ticket, or open the ride). The action is devnet-only, still requires the 18+ and loss stamps, and is not registered with Dialect yet — dial.to renders it meanwhile. The server also injects Open Graph and Twitter Card tags for a plain preview.
 
 Read: [`server/src/presentation/rides/public-rides.http.controller.ts`](server/src/presentation/rides/public-rides.http.controller.ts) · [`server/src/infrastructure/http/middleware/ride-page.middleware.ts`](server/src/infrastructure/http/middleware/ride-page.middleware.ts) · [`client/r.html`](client/r.html)
 
@@ -252,6 +253,12 @@ Read: [`docs/replay-and-donations/index.html`](docs/replay-and-donations/index.h
 Running totals per rider and for the whole game: rides, time, kilometres, crashes, donations. Every started ride that ended counts. Free and paid are counted apart. Reads are cached for 15 seconds. Production Redis has a password and no published port.
 
 Read: [`docs/statistics.md`](docs/statistics.md)
+
+### Achievements and badge NFTs
+
+Eight ladders of three or four tiers (Road, Shifts, Night, Distance, Clean, Siberia, Solo, Licence), 31 badges from Bronze to Platinum; the Shifts ladder counts paid shifts only. The server derives every count from the rides it judged, and a rejected recording earns nothing. Each earned badge is minted, an hour later and after a second check, as a **soulbound compressed NFT** (Metaplex Bubblegum v2 in an MPL-Core collection whose freeze plugin nobody can lift) to the wallet that earned it, by a dedicated key that can mint and nothing else. Art and metadata live on Arweave through Irys. The profile shows locked and earned cards with progress, the explorer, Solscan and Orb links, the mint transaction and a POST ON X button. `scripts/achievements/` creates the tree and collection, uploads the art and smoke-tests the mint and the refused transfer.
+
+Read: [`docs/agents/achievements.md`](docs/agents/achievements.md)
 
 ### Garage and promo codes
 
@@ -451,7 +458,7 @@ Every directory at the repo root. `.git` is the only one left out.
 - [`.claude/`](.claude) — project skills. One folder per skill. The index is [Skills](#skills).
 - [`client/`](client) — the game, the lobby, the admin page, and the model viewer.
 - [`deploy/`](deploy/README.md) — Docker, host nginx, certbot. `npm run deploy` ships `git archive HEAD`.
-- [`design/`](design) — icon candidates and the YouTube banners. The shipped icon is generated into `client/`.
+- [`design/`](design) — icon candidates, the YouTube banners and the achievement badge art generator (`design/achievements/`). The shipped icon is generated into `client/`.
 - [`docs/`](docs) — plans and explainers. [`docs/agents/`](docs/agents) holds the agent detail [`AGENTS.md`](AGENTS.md) points to.
 - [`landing/`](landing) — the `/` page and the whitepaper. Its own Vite project.
 - [`media/`](media) — promo clips and the chiptune synth, including the game's own sound effects.

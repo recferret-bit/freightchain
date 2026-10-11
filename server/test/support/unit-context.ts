@@ -19,10 +19,11 @@ import { Player } from '../../src/domain/players/player.entity.js';
 import { Ride } from '../../src/domain/rides/ride.entity.js';
 import { FakeChain, TREASURY } from './fake-chain.js';
 import { FakePoolChain } from './fake-pool-chain.js';
+import { FakeMintChain } from './fake-mint-chain.js';
 import { FakeClock } from './fake-clock.js';
 import { MemoryDb } from './in-memory/memory-db.js';
 import {
-  MemoryAchievementRepository, MemoryChallengeRepository, MemoryHealthProbe, MemoryPaymentRepository, MemoryPlayerRepository,
+  MemoryAchievementRepository, MemoryAchievementMintRepository, MemoryChallengeRepository, MemoryHealthProbe, MemoryPaymentRepository, MemoryPlayerRepository,
   MemoryRideBatchRepository, MemoryRideQuery, MemoryRideVerdictRepository, MemorySignInRepository, MemoryAdminActionRepository, MemoryAdminQuery, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
 } from './in-memory/memory-repositories.js';
 import { MemoryAdminDirectory } from './in-memory/memory-admin-directory.js';
@@ -121,7 +122,9 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const lookup = new RideLookupService(rides);
   const meProfile = new MeProfileService(rulesPort, poolTickets, rides);
   const rounds = new RoundService(roundRepo, rulesPort, transactions, clock, analytics);
-  const achievements = new AchievementService(unlocks, rideQuery, clock, rulesPort);
+  const mints = new MemoryAchievementMintRepository(db);
+  const mintChain = new FakeMintChain();
+  const achievements = new AchievementService(unlocks, mints, rideQuery, clock, rulesPort);
   const ticketSettlement = new TicketSettlementService(players, pools, tickets, orders, sessions, rounds, transactions, clock, entropy);
   const registry = new PoolRegistryService(poolChain, pools, clock, entropy);
   const verdicts = new VerdictService(rides, players, batches, verdictRepo, adminActions, transactions, clock);
@@ -165,7 +168,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const storedPlayer = async (wallet: string) => (await players.findByWallet(wallet)) as Player;
 
   return {
-    db, clock, chain, entropy, dailySeeds, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, batches, hasher, verdictRepo, verdicts, proofs, signIns, adminActions, adminQuery, adminDirectory, health, analytics,
+    db, clock, chain, entropy, dailySeeds, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, mints, mintChain, batches, hasher, verdictRepo, verdicts, proofs, signIns, adminActions, adminQuery, adminDirectory, health, analytics,
     pools, poolPayouts, tickets, promos, cosmetics, promoCreation, orders, poolTickets, ticketSettlement,
     sessions, meProfile, settings, settingsRepo, lookup, rounds, achievements, settlement, now, player, accept, freeRide, paidOrder, paidRide, reload, storedPlayer,
     poolChain, chainEvents, chainCursors, registry, rideEvents, viewers, sitePresence, rideMutes, donationOrders, liveAccess, statsRepo, cache, stats,

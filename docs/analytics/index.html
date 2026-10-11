@@ -61,7 +61,7 @@
   <div class="cols">
     <article class="card">
       <div class="top"><h3>Server plane</h3><span class="chip ok">quotes money</span></div>
-      <p>Distinct id is the session wallet. <code>source</code> is <code>server</code>. Nine P0 events cover sign-in, order, payment, start, progress, complete, abandon, fail. Eleven more cover resume, expiry, conflicts, free-ride grants, achievements, and round open/close.</p>
+      <p>Distinct id is the session wallet. <code>source</code> is <code>server</code>. Nine P0 events cover sign-in, order, payment, start, progress, complete, abandon, fail. Thirteen more cover resume, expiry, conflicts, free-ride grants, achievements and their NFT mints, and round open/close.</p>
     </article>
     <article class="card">
       <div class="top"><h3>Browser plane</h3><span class="chip pen">explains the drop</span></div>
@@ -229,7 +229,7 @@
 
 <section aria-labelledby="s-server">
   <div class="head">
-    <span class="eyebrow">Server events · 25</span>
+    <span class="eyebrow">Server events · 27</span>
     <h2 id="s-server">What the database already decided</h2>
     <p class="soft">Emitted only after the save resolves, inside <code>emitAnalytics</code>. <code>dedupe_key</code> is a property. The capture <code>uuid</code> is a UUID v5 of <code>https://freightchain.fun/analytics/</code> plus that key, computed in the adapter. Handlers pass <code>uuid: null</code>. Timestamp is the column named here, from <code>ClockPort</code>, except the reconcile-miss row. No <code>$insert_id</code>, no <code>sent_at</code>, no <code>$groups</code>. <code>round_id</code> is a property and is null until a payment sets it.</p>
   </div>
@@ -263,7 +263,10 @@
         <tr><td><code>payment_conflict</code></td><td>Confirm is about to throw <code>ConflictError</code>.</td><td><code>payment:&lt;signature&gt;:conflict:&lt;reason_code&gt;</code></td><td><code>already_paid</code>, <code>signature_reused</code>, <code>bad_status</code>. Not part of the reject rate. The early return “this signature already paid” emits nothing.</td></tr>
         <tr><td><code>free_rides_granted</code></td><td>The midnight job updated at least one player.</td><td><code>free-grant:&lt;day&gt;</code></td><td>Distinct id <code>freightchain</code>. Property <code>players</code> is a count. Wallet addresses are not in the event.</td></tr>
         <tr><td><code>free_ride_granted</code></td><td>The lazy grant inside <code>touch</code> actually moved the balance.</td><td><code>free-grant:&lt;wallet&gt;:&lt;day&gt;</code></td><td>Once per wallet per UTC day. Silent when the midnight job already ran.</td></tr>
-        <tr><td><code>achievement_unlocked</code></td><td>This statement inserted the achievement id.</td><td><code>ach:&lt;wallet&gt;:&lt;id&gt;</code></td><td>Ids: <code>first-mile</code>, <code>shift-complete</code>, <code>night-owl</code>, <code>century</code>, <code>clean-run</code>, <code>cold-start</code>, <code>on-my-own</code>, <code>free-easy</code>, <code>free-crossroads</code>, <code>free-hard</code>. Never <code>top-20</code>.</td></tr>
+        <tr><td><code>achievement_unlocked</code></td><td>This statement inserted the achievement id (one event per tier earned).</td><td><code>ach:&lt;wallet&gt;:&lt;id&gt;</code></td><td><code>achievement_id</code>, <code>family</code> (road, shift, night, distance, clean, siberia, solo, licence), <code>tier</code> 1-4, <code>tier_name</code> (Bronze, Silver, Gold, Platinum), <code>ride_id</code>, <code>is_demo</code>. Never <code>top-20</code>.</td></tr>
+        <tr><td><code>achievement_minted</code></td><td>The badge's soulbound compressed NFT landed on chain and its asset id was read (the mint job, after the delay).</td><td><code>ach-mint:&lt;wallet&gt;:&lt;id&gt;</code></td><td><code>achievement_id</code>, <code>family</code>, <code>tier</code>, <code>asset_id</code>, <code>signature</code>, <code>attempts</code>.</td></tr>
+        <tr><td><code>achievement_mint_failed</code></td><td>A mint ran out of attempts; the row stays failed until an admin retries it. The error text is not sent.</td><td><code>ach-mint-failed:&lt;wallet&gt;:&lt;id&gt;:&lt;attempts&gt;</code></td><td><code>achievement_id</code>, <code>family</code>, <code>tier</code>, <code>attempts</code>.</td></tr>
+
         <tr><td><code>promo_redeemed</code></td><td>A promo code was redeemed: the transaction committed (the grant, the redemption and the per-wallet key). A refusal emits nothing.</td><td><code>promo:&lt;CODE&gt;:&lt;wallet&gt;:&lt;n&gt;</code> · the redemption's <code>now</code><span class="c">n = this wallet's n-th use</span></td><td><code>code</code>, <code>kind</code> (tickets, free_rides, cosmetic), <code>redemption_n</code>, <code>is_demo</code>; tickets: <code>tier_id</code>, <code>pool_id</code>, <code>tickets_added</code>, <code>ticket_balance</code>; free rides: <code>rides_added</code>, <code>free_rides</code> (the balance, may exceed the daily cap); cosmetic: <code>slot</code> (wheel, truck_color, gearbox, dice, needle), <code>item</code>. Person properties: <code>free_rides</code>, or the slot's own (<code>wheel</code> / <code>truck_color</code> / <code>gearbox</code> / <code>dice</code> / <code>needle</code>). Never the description or the note.</td></tr>
         <tr><td><code>cosmetic_equipped</code></td><td>The wallet pressed WEAR in the lobby wardrobe (an owned item, or the slot's default again). A redemption also wears the item but is <code>promo_redeemed</code>.</td><td>none · the request's <code>now</code></td><td><code>slot</code>, <code>item</code>, <code>is_default</code>. Person property = the slot (<code>wheel</code> / <code>truck_color</code> / <code>gearbox</code> / <code>dice</code> / <code>needle</code>).</td></tr>
         <tr><td><code>agreements_accepted</code></td><td>Both profile boxes just became on, after the commit. One box, a repeat, or switching one off emits nothing.</td><td><code>player:&lt;wallet&gt;:agreements:&lt;age18At&gt;:&lt;lossAt&gt;</code> · the request's <code>now</code></td><td><code>age18_at</code>, <code>loss_at</code> (epoch ms). A later uncheck and re-check is a new pair of stamps, so a new event. Not a step of funnel 10.</td></tr>
@@ -278,7 +281,7 @@
 
 <section aria-labelledby="s-client">
   <div class="head">
-    <span class="eyebrow">Browser events · 39 names, allowlisted properties</span>
+    <span class="eyebrow">Browser events · 40 names, allowlisted properties</span>
     <h2 id="s-client">What the player did before the server knew</h2>
     <p class="soft">The relay stamps <code>source=client</code> and, when the cookie verifies, the session wallet. Properties are strings of at most 200 characters, or an integer, a boolean, or null. A float drops that event, not the whole batch. At most 20 keys. Anything not in the allowlist is removed. These names are hard-deleted even if someone allowlists them later: <code>signature</code>, <code>transaction</code>, <code>seed</code>, <code>nonce</code>, <code>message</code>, <code>token</code>, <code>cookie</code>, <code>authorization</code>, <code>detail</code>, <code>secret</code>, <code>anon_id</code>.</p>
   </div>
@@ -297,6 +300,7 @@
         <tr><td><code>session_restored</code></td><td>The first <code>/api/me</code> on the landing or the lobby succeeded, and this document did not just finish <code>signIn()</code>.</td><td><code>surface</code> landing|lobby, <code>request_alias</code> (boolean; the string <code>"true"</code> does not alias), <code>is_demo</code>. The only client event that may ask for an alias.</td></tr>
         <tr><td><code>lobby_viewed</code></td><td>Once, after the lobby has a session, before the first tab paint.</td><td><code>is_demo</code>, <code>round_id</code> if the pool is already loaded</td></tr>
         <tr><td><code>lobby_tab_viewed</code></td><td><code>go()</code> actually switches. First paint and hash changes. Not the live poll.</td><td><code>tab</code>: new, live, replays, board, garage, promo, profile</td></tr>
+        <tr><td><code>achievement_nft_clicked</code></td><td>The profile's ACHIEVEMENTS: the rider clicked a link of an earned badge or of the badge collection.</td><td><code>achievement_id</code>, <code>tier</code>, <code>link</code>: explorer, solscan, orb, tx, share, collection, tree</td></tr>
         <tr><td><code>ride_buy_clicked</code></td><td><code>start()</code> begins, before the order or the wallet. A paid click blocked by the profile offer does not fire this.</td><td><code>tier_id</code>, <code>is_free</code>, <code>price_usd</code>, <code>is_demo</code></td></tr>
         <tr><td><code>payment_submitted</code></td><td>The wallet finished <code>signAndSendTransaction</code>.</td><td><code>ride_id</code>, <code>tier_id</code>. The signature is in scope and is not sent.</td></tr>
         <tr><td><code>payment_failed</code></td><td><code>buyRide</code> threw, other than the 90 second give-up.</td><td><code>stage</code>: <code>no_provider</code>, <code>web3_load_failed</code>, <code>order_failed</code>, <code>instructions_failed</code>, <code>wallet_rejected</code>, <code>confirm_rejected</code>, <code>unexpected_status</code>. Plus <code>http_status</code>, <code>code</code>. Not also <code>api_request_failed</code>.</td></tr>

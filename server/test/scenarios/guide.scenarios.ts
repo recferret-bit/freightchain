@@ -79,7 +79,7 @@ export function guideScenarios(h: () => Harness): void {
     const w = await login();
     expect(await earned(w, 'on-my-own')).toBeNull();
     await complete(w, { assist: true, tutorial: true });
-    expect(await earned(w, 'shift-complete')).not.toBeNull();
+    expect(await earned(w, 'free-easy')).not.toBeNull();
     expect(await earned(w, 'on-my-own')).toBeNull();
     await complete(w, { tutorial: true });
     expect(await earned(w, 'on-my-own')).not.toBeNull();
