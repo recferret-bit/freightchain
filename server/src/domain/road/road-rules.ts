@@ -19,7 +19,7 @@ export const HOLE_CHANCE = 0.045;
 export const HOLE_FIRST = 150;
 /** …per trip (client/js/trips.js `holesFrom`; a ride's trip is Ride.trip, domain/rides/ride-trip.ts): the free run's natural sinkholes start where its
     one minute can never reach (a brisk driver covers ~820 m of a 60 s run from the depot) – every other trip, and a ride from before trips, HOLE_FIRST */
-export const TRIP_HOLE_FIRST: Readonly<Record<string, number>> = { free: 1200, 'free-1': 1200, 'free-2': 400 };
+export const TRIP_HOLE_FIRST: Readonly<Record<string, number>> = { free: 1200, 'free-1': 1200, 'free-2': 400, 'free-g': 2500, 'free-1b': 4000, 'free-2b': 400 };
 export const holeFirstOf = (trip: string | null): number => (trip !== null ? TRIP_HOLE_FIRST[trip] : undefined) ?? HOLE_FIRST;
 /** CFG.OFFROAD_FAIL_SECONDS – the game ends the ride after this long off the tarmac (draining 2× as fast once back on it) */
 export const OFFROAD_FAIL_SECONDS = 20;
@@ -51,6 +51,10 @@ export const PATTERNS: Readonly<Record<string, RoadPattern>> = {
   town: { lanes: [[1, 1, 2], [2, 2, 1]], seg: [300, 700], len: [500, 1100], bends: 0.15, junction: { gap: [170, 320], cross: 0.7, signal: 0.75, side: [1] } },
   dual: { lanes: [[2, 2, 1]], seg: [700, 1500], len: [1500, 3200], bends: 0.6, junction: null },
   fork: { lanes: [[1, 1, 1]], seg: [1200, 1200], len: [1200, 1200], bends: 0, junction: null, fork: true },
+  /* the free levels' blocks: a fixed 500 m stretch with exactly one crossroads (xroad 1+1, xroad4 2+2) or none (open) – net/patterns.js says why the count is exact */
+  open: { lanes: [[1, 1, 1]], seg: [500, 500], len: [500, 500], bends: 1, junction: null },
+  xroad: { lanes: [[1, 1, 1]], seg: [500, 500], len: [500, 500], bends: 1, junction: { gap: [380, 500], cross: 1, signal: 0.5, side: [1, 1, 2] } },
+  xroad4: { lanes: [[2, 2, 1]], seg: [500, 500], len: [500, 500], bends: 0.6, junction: { gap: [380, 500], cross: 1, signal: 0.5, side: [1, 1, 2] } },
 };
 /** net/patterns.js FORK – a fork pattern splits the road into two mirror-image roads of the same length that meet again `len` m on: in (s, d) they are one
     road, so the judge needs nothing of the geometry – only that before `commit` m after the split, and in the last `commit` m before the merge, both
@@ -65,17 +69,23 @@ export const FORK_SWITCH_REACH = 1.5;
     no switch – the truck stayed on its road, and its wheels are measured against the holes there like anywhere else (world-facts.ts holePasses). */
 export const FORK_SWITCH_JUMP = 4;
 /** client/js/trips.js `road` – a trip's LAYOUT: the patterns it opens with (first = the depot exit, drawn with the length 500–1100 m), the pattern weights after
-    them, and × HOLE_CHANCE. Judged, so every trip id is here or gets the default (the old trips and a ride from before trips). road-drift.spec.ts. */
-export interface TripRoad { first: readonly string[]; weights: Readonly<Record<string, number>>; holeChance: number }
+    them, and × HOLE_CHANCE; `firstLen` = the length drawn for that first pattern (default 500–1100 m: `500 + r · 600`). Judged, so every trip id is here or gets the default (the old trips and a ride from before trips). road-drift.spec.ts. */
+export interface TripRoad { first: readonly string[]; weights: Readonly<Record<string, number>>; holeChance: number; firstLen: readonly [number, number] }
+const DEFAULT_FIRST_LEN: readonly [number, number] = [500, 1100];
 export const TRIP_ROADS: Readonly<Record<string, TripRoad>> = {
-  'free-1': { first: ['dual'], weights: { dual: 1 }, holeChance: 1 },
-  'free-2': { first: ['country', 'fork'], weights: { country: 3, arterial: 1, town: 1, fork: 2 }, holeChance: 1.5 },
-  'free-3': { first: ['country', 'fork'], weights: { country: 3, highway: 1, arterial: 1.5, town: 1.5, fork: 1.5 }, holeChance: 2 },
+  'free-1': { first: ['dual'], weights: { dual: 1 }, holeChance: 1, firstLen: DEFAULT_FIRST_LEN },   // the first free levels (2026-10, retired by the *b ids below – their rides keep this road)
+  'free-2': { first: ['country', 'fork'], weights: { country: 3, arterial: 1, town: 1, fork: 2 }, holeChance: 1.5, firstLen: DEFAULT_FIRST_LEN },
+  'free-3': { first: ['country', 'fork'], weights: { country: 3, highway: 1, arterial: 1.5, town: 1.5, fork: 1.5 }, holeChance: 2, firstLen: DEFAULT_FIRST_LEN },
+  /* the free levels' second round: an EXACT number of crossroads (net/patterns.js xroad), nothing but open road after the opening list */
+  'free-g': { first: ['xroad4'], weights: { dual: 1 }, holeChance: 1, firstLen: [500, 500] },   // the guest run: 1 crossroads, never judged
+  'free-1b': { first: ['xroad4'], weights: { dual: 1 }, holeChance: 1, firstLen: [500, 500] },   // EASY: 1 crossroads
+  'free-2b': { first: ['open', 'xroad', 'fork', 'xroad', 'xroad', 'xroad'], weights: { open: 2, highway: 1 }, holeChance: 1.5, firstLen: [450, 450] },   // CROSSROADS: a crossroads, a fork, 3 more crossroads
+  'free-3b': { first: ['open', 'xroad', 'highway', 'xroad', 'fork', 'xroad', 'xroad', 'fork', 'xroad', 'xroad'], weights: { open: 2, highway: 1 }, holeChance: 2, firstLen: [450, 450] },   // HARD: 6 crossroads, 2 forks, a highway
 };
 /** net/patterns.js DEFAULT_WEIGHTS – no route sets its own `roads.weights`, so every route gets this layout (the drift spec pins that too) */
 export const DEFAULT_WEIGHTS: Readonly<Record<string, number>> = { country: 3, highway: 1, arterial: 1, town: 1 };
 
-export const tripRoadOf = (trip: string | null): TripRoad => (trip !== null ? TRIP_ROADS[trip] : undefined) ?? { first: ['country'], weights: DEFAULT_WEIGHTS, holeChance: 1 };
+export const tripRoadOf = (trip: string | null): TripRoad => (trip !== null ? TRIP_ROADS[trip] : undefined) ?? { first: ['country'], weights: DEFAULT_WEIGHTS, holeChance: 1, firstLen: DEFAULT_FIRST_LEN };
 
 /* net/obstacles.js HOLES – the hole types. Only types with `cones` are rolled onto the road (today: the sinkhole); the others are what spectators can pay for.
    ells = ellipses relative to the hole's centre: ds along the road (+ forward), dl across (+ right), a / b half length / half width.

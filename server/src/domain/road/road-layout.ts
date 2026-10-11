@@ -69,7 +69,7 @@ export class RoadLayout {
     this.sA = Math.round(START_ACCESS);
     this.Sm = this.sA + L;
     this.genEnd = this.patEnd = this.Sm;
-    this.pickPattern(road.first[0]!, 500 + this.rng() * 600); // the depot exit (a plain two-lane road, unless the trip says otherwise)
+    this.pickPattern(road.first[0]!, road.firstLen[0] + this.rng() * (road.firstLen[1] - road.firstLen[0])); // the depot exit (a plain two-lane road, unless the trip says otherwise)
     this.ensure(this.Sm + 1);
     const halfL = edgeOf(this.segs[0]!.nL) + 0.3, R = L / (Math.PI / 2);
     this.js.unshift({ id: 'j0', kind: 'start', s: this.Sm, signal: false, arms: [], sideHalf: 0, mouth: 0, len: 0, pad: { a0: -(R + 7.5), a1: 4, l0: -(halfL + SHOULDER), l1: R + 2 } });

@@ -6,7 +6,12 @@
    junction: { gap: m between junctions, cross: P(crossroads) else a T, signal: P(traffic lights), side: lanes per direction on the side road (picked uniformly) }.
    Weights per route: `roads: { weights: { country, highway, arterial, town } }` in themes/<route>/index.js (missing = DEFAULT_WEIGHTS); a TRIP can replace
    them (trips.js `road.weights`, and `road.first` = the patterns it starts with) – 'dual' and 'fork' have weight 0 everywhere else, so the layout of the
-   old trips (and the random stream that draws it) is unchanged. Keys are walked in this order: append new patterns, never insert. */
+   old trips (and the random stream that draws it) is unchanged. Keys are walked in this order: append new patterns, never insert.
+   'xroad' / 'xroad4' / 'open' are the free levels' building blocks (trips.js free-*b): a fixed 500 m stretch that holds EXACTLY ONE crossroads ('xroad' 1+1 lanes,
+   'xroad4' 2+2) or none ('open'), so a trip's `road.first` list = an exact number of crossroads, in order. Why it is exact: the junction lands in [220, 380) m of
+   the stretch (gap[0] = 380 = the room before its last 120 m; the first junction is r · gap[0], never before TAPER + 100), the next one would lie ≥ 600 m on (past
+   the stretch), and the carried-over `nextJ` (< gap[0] + gap[1] = 880) still falls inside the NEXT stretch's window (220..380 + 500) – after 'open' or any pattern
+   without junctions `nextJ` is reset, so a stretch never inherits a stale one. */
 /* A FORK: the road splits into two roads that meet again FORK_LEN m on – mirror images of each other about the straight line (the chord) between the
    split and the merge, so both are exactly as long and have the same lanes: in road coordinates (s along it, d across – everything the server judges in)
    the two roads are ONE road, and the server needs no word of which one the driver took (server/src/domain/road: the fork's corridor in onRoad only).
@@ -24,5 +29,8 @@ export const PATTERNS = {
   town:     { name: 'TOWN', lanes: [[1, 1, 2], [2, 2, 1]], seg: [300, 700], len: [500, 1100], bends: .15, centre: null, junction: { gap: [170, 320], cross: .7, signal: .75, side: [1] } },
   dual:     { name: 'DUAL ROAD', lanes: [[2, 2, 1]], seg: [700, 1500], len: [1500, 3200], bends: .6, centre: 'double', junction: null },   // the easy free run: four lanes, no junctions
   fork:     { name: 'COUNTRY ROAD', lanes: [[1, 1, 1]], seg: [FORK_LEN, FORK_LEN], len: [FORK_LEN, FORK_LEN], bends: 0, centre: null, junction: null, fork: true },   // the road splits in two and meets again (FORK below)
+  open:     { name: 'COUNTRY ROAD', lanes: [[1, 1, 1]], seg: [500, 500], len: [500, 500], bends: 1, centre: null, junction: null },   // a calm 1+1 stretch, no junction
+  xroad:    { name: 'COUNTRY ROAD', lanes: [[1, 1, 1]], seg: [500, 500], len: [500, 500], bends: 1, centre: null, junction: { gap: [380, 500], cross: 1, signal: .5, side: [1, 1, 2] } },   // 1+1 with exactly one crossroads
+  xroad4:   { name: 'DUAL ROAD', lanes: [[2, 2, 1]], seg: [500, 500], len: [500, 500], bends: .6, centre: 'double', junction: { gap: [380, 500], cross: 1, signal: .5, side: [1, 1, 2] } },   // 2+2 with exactly one crossroads (the easy free run)
 };
 export const DEFAULT_WEIGHTS = { country: 3, highway: 1, arterial: 1, town: 1 };

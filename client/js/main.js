@@ -56,7 +56,7 @@ const wantOffline = offlineWanted() && !online.ride && !online.error;   // the g
 if (online.ride) { selectTheme(online.ride.route ?? THEMES[0].id, true); if (online.ride.startHour != null) setClock(online.ride.startHour, true, true); }   // what the server assigned: a free level's country, or worldFor for a paid ride
 if (wantOffline) setGuide({ tutorial: false, assist: false });   // the guest run: the menu's two checkboxes set the helpers at START (ui/game.js)
 else setGuide(online.ride ?? {});   // the free ride's tutorial / assist: the SERVER's flags of the ride
-if (wantOffline) { setTrip('free-1'); selectTheme(FREE_COUNTRIES[1].route, true); }   // the guest run = the EASY level, on that button's country
+if (wantOffline) { setTrip('free-g'); selectTheme(FREE_COUNTRIES[1].route, true); }   // the guest run = 2 min with one crossroads, on the EASY level's country
 else setTrip(online.ride ? tripOf(online.ride) : null);   // the ride's road (trips.js): the trip the server stamped on it (a replay sets its own below); before the road is built
 if (trip.tutorial === false) guide.tutorial = false;   // the HARD free run has no tutorial (the server refuses it on the ride too)
 if (trip.assist === false) guide.assist = false;   // the HARD free run has no assist (the server refuses it on the ride too)

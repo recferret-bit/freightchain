@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Level check – is every FREE LEVEL (client/js/trips.js free-1 / free-2 / free-3: EASY / CROSSROADS / HARD) passable by a human, and does each one mean
+// Level check – is every FREE LEVEL (client/js/trips.js free-1b / free-2b / free-3b: EASY / CROSSROADS / HARD) passable by a human, and does each one mean
 // what its name says? Runs the REAL game modules in Node (stubbed three.js + a fake DOM, like client/tools/headless-test.mjs) on many seeds × routes:
 //   ROAD   the road a level's shift covers (its finish line + 40 %): junctions, forks, lanes, the sharpest bend, sinkholes – and for every sinkhole whether a
 //          driver who reacts to its warning sign HOLE_WARN m ahead can still stop or steer round it at the speed the road allows there.
@@ -9,7 +9,7 @@
 //          off-road, how long.
 //   VERDICT per level, against LIMITS below (the level's promise). Exit 1 if a level fails one – a road change that makes EASY need skill, or HARD impossible,
 //          fails here.
-// Usage (repo root): node .claude/skills/level-check/check.mjs [--levels free-1,free-2,free-3] [--routes all|route66,siberia] [--seeds 6] [--react 1.0]
+// Usage (repo root): node .claude/skills/level-check/check.mjs [--levels free-1b,free-2b,free-3b] [--routes level|all|route66,siberia] [--seeds 6] [--react 1.0]
 //                    [--no-drive] [--no-road] [--care .8] [--verbose] [--only route66:39608 – one drive, with TRACE=1 a line per second]
 import { execFileSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
@@ -22,14 +22,15 @@ const arg = (k, d) => { const i = process.argv.indexOf('--' + k); return i < 0 ?
 const flag = k => process.argv.includes('--' + k);
 const ONLY = arg('only', null), SEEDS = +arg('seeds', 6), REACT = +arg('react', 1.0), VERBOSE = flag('verbose');
 
-/* What each level promises. `road` is checked on every seed × route, `drive` over all of them.
-   EASY: a first-timer's minute – no junction, no fork, no sinkhole, four lanes, gentle bends; every drive finishes almost unscratched.
-   CROSSROADS: junctions and a fork really come up in its 3 minutes; still forgiving – nearly every drive finishes.
-   HARD: everything, ten minutes, no assist – most careful drives still finish; a sinkhole is never a trap (always a way round or time to stop). */
+/* What each level promises. `road` is checked on every seed, `drive` over all of them – on the level's OWN country (client/js/free-countries.js: EASY Stuart Highway,
+   CROSSROADS Route 66, HARD Brenner Pass – the server stamps that route); `--routes all` sweeps the five themes.
+   EASY: a first-timer's 3 minutes – exactly ONE crossroads, no fork, no sinkhole, four lanes, winding but wide bends; every drive finishes almost unscratched.
+   CROSSROADS: exactly FOUR crossroads and a fork come up in its 6 minutes; still forgiving – nearly every drive finishes.
+   HARD: everything, fifteen minutes, no assist – exactly SIX crossroads, two forks, a highway run; most careful drives still finish; a sinkhole is never a trap (always a way round or time to stop). */
 const LIMITS = {
-  'free-1': { name: 'EASY', road: { junctionsMax: 0, forksMax: 0, holesMax: 0, lanesMin: 2, radiusMin: 220 }, drive: { finishMin: 1, hullLostMax: 10, crashesMax: 0 } },
-  'free-2': { name: 'CROSSROADS', road: { junctionsMin: 1, forksMin: 1, radiusMin: 120, trapsMax: 0 }, drive: { finishMin: .9, hullLostMax: 35, crashesMax: 0 } },
-  'free-3': { name: 'HARD', road: { junctionsMin: 2, forksMin: 1, radiusMin: 60, trapsMax: 0 }, drive: { finishMin: .75, hullLostMax: 60, crashesMax: 1 } },
+  'free-1b': { name: 'EASY', road: { junctionsMin: 1, junctionsMax: 1, forksMax: 0, holesMax: 0, lanesMin: 2, radiusMin: 220 }, drive: { finishMin: 1, hullLostMax: 10, crashesMax: 0 } },
+  'free-2b': { name: 'CROSSROADS', road: { junctionsMin: 4, junctionsMax: 4, forksMin: 1, radiusMin: 90, trapsMax: 0 }, drive: { finishMin: .9, hullLostMax: 35, crashesMax: 0 } },
+  'free-3b': { name: 'HARD', road: { junctionsMin: 6, junctionsMax: 6, forksMin: 2, radiusMin: 55, trapsMax: 0 }, drive: { finishMin: .75, hullLostMax: 60, crashesMax: 1 } },
 };
 const levels = arg('levels', Object.keys(LIMITS).join(',')).split(',');
 
@@ -52,7 +53,8 @@ await import(pathToFileURL(bundle).href);
 const G = globalThis.__game, { st, input, net, CFG } = G, TRIPS = (await import(pathToFileURL(join(CLIENT, 'js/trips.js')).href)).TRIPS;
 const fire = (type, code) => (listeners[type] || []).forEach(f => f({ code, repeat: false, preventDefault() {}, timeStamp: now }));
 const step = (n = 1) => { for (let i = 0; i < n; i++) { now += 1000 / 60; const cb = rafCb; rafCb = null; cb(now); } };
-const routesArg = arg('routes', 'all'), routes = routesArg === 'all' ? G.THEMES.map(t => t.id) : routesArg.split(',');
+const { FREE_COUNTRIES } = await import(pathToFileURL(join(CLIENT, 'js/free-countries.js')).href);
+const routesArg = arg('routes', 'level'), routesOf = id => routesArg === 'all' ? G.THEMES.map(t => t.id) : routesArg === 'level' ? [FREE_COUNTRIES[TRIPS[id].level].route] : routesArg.split(',');
 for (const id of levels) if (!LIMITS[id] || !TRIPS[id]) { console.error(`unknown level ${id} (have ${Object.keys(LIMITS).join(', ')})`); process.exit(2); }
 const GRIP = 2.2 * +(arg('care', .8));   // the lateral m/s² the driver takes bends at (2.2 = trip-design's experienced driver; --care scales it)
 const pad = (v, n) => String(v).padStart(n), f1 = v => v.toFixed(1), F = G.forkRules, BRAKE = CFG.TRUCK.BRAKE, CRAWL = 3;
@@ -78,11 +80,11 @@ function roadOf(id, rid, sd) {
   }
   return { junctions: junctions.length, signals: junctions.filter(j => j.signal).length, forks: forks.length, lanesMin, radius: kMax ? Math.round(1 / kMax) : Infinity, holes: holes.length, traps, tight };
 }
-if (!flag('no-road')) console.log(`\nROAD  each level's reach (its finish line × 1.4 + 200 m) · ${SEEDS} seeds × ${routes.length} routes · reaction ${REACT} s · stopping at full pedal ${BRAKE} m/s²`);
+if (!flag('no-road')) console.log(`\nROAD  each level's reach (its finish line × 1.4 + 200 m) · ${SEEDS} seeds × ${routesArg === 'level' ? 'each level\'s country' : routesOf(levels[0]).length + ' routes'} · reaction ${REACT} s · stopping at full pedal ${BRAKE} m/s²`);
 if (!flag('no-road')) console.log('level        route        junctions  signals  forks  min lanes  min R m  sinkholes  traps  tight');
 if (!flag('no-road')) for (const id of levels) {
   const L = LIMITS[id].road, agg = { junctions: [], forks: [], holes: [], radius: [], lanes: [], traps: 0 };
-  for (const rid of routes) {
+  for (const rid of routesOf(id)) {
     const rs = []; for (let k = 1; k <= SEEDS; k++) rs.push(roadOf(id, rid, k * 7919 + 13));
     for (const r of rs) {
       agg.junctions.push(r.junctions); agg.forks.push(r.forks); agg.holes.push(r.holes); agg.radius.push(r.radius); agg.lanes.push(r.lanesMin); agg.traps += r.traps.length;
@@ -183,19 +185,19 @@ function driveOnce(id, rid, sd, takeOther) {
   }
   input.gas = input.brake = input.left = input.right = 0;
   const why = /Reason<\/span><span class="bad">([^<]*)/.exec(document.getElementById('panel').innerHTML)?.[1];
-  return { rid, sd, t: st.t, s: st.s, hullLost: 100 - st.hull, crashes: st.crashV + st.crashB, crashV: st.crashV, crashB: st.crashB, offT, otherRoad: other > 0, forks: forks.size, end: st.complete ? 'complete' : st.mode === 'done' ? 'failed' : 'timeout', why };
+  return { rid, sd, t: st.t, s: st.s, hullLost: 100 - st.hull, crashes: st.crashV + st.crashB, crashV: st.crashV, crashB: st.crashB, offT, otherRoad: other > 0, forks: forks.size, end: st.complete ? 'complete' : st.mode === 'done' ? 'failed' : 'timeout', why, offNow: st.offT, dEnd: st.d, speedEnd: st.v };
 }
 if (!flag('no-drive')) {
-  console.log(`\nDRIVE  a human-paced driver on the shipped truck handling, ASSIST off, reaction ${REACT} s · ${SEEDS} seeds × ${routes.length} routes · every second ride takes the other road at each fork`);
+  console.log(`\nDRIVE  a human-paced driver on the shipped truck handling, ASSIST off, reaction ${REACT} s · ${SEEDS} seeds × ${routesArg === 'level' ? 'each level\'s country' : routesOf(levels[0]).length + ' routes'} · every second ride takes the other road at each fork`);
   console.log('level          shift            finished  median t s  max t s  hull lost % (median / max)  vehicles hit (median)  off-road s  other road taken');
   for (const id of levels) {
     const L = LIMITS[id].drive, { secs, dist } = shiftOf(id), rs = [];
-    for (const rid of routes) for (let k = 1; k <= SEEDS; k++) if (!ONLY || ONLY === `${rid}:${k * 7919 + 13}`) rs.push(driveOnce(id, rid, k * 7919 + 13, k % 2 === 0));
+    for (const rid of routesOf(id)) for (let k = 1; k <= SEEDS; k++) if (!ONLY || ONLY === `${rid}:${k * 7919 + 13}`) rs.push(driveOnce(id, rid, k * 7919 + 13, k % 2 === 0));
     const ok = rs.filter(r => r.end === 'complete'), ts = ok.map(r => r.t).sort((a, b) => a - b), hl = rs.map(r => r.hullLost).sort((a, b) => a - b);
     const med = a => a.length ? a[a.length >> 1] : NaN, crashes = med(rs.map(r => r.crashV).sort((a, b) => a - b)), offT = rs.reduce((a, r) => a + r.offT, 0) / rs.length;
     const otherOk = rs.filter(r => r.otherRoad && r.end === 'complete').length, otherAll = rs.filter(r => r.otherRoad).length;
     console.log(`${(id + ' ' + LIMITS[id].name).padEnd(14)} ${(secs + ' s / ' + Math.round(dist) + ' m').padEnd(16)} ${pad(ok.length + '/' + rs.length, 8)}  ${pad(ts.length ? f1(med(ts)) : '–', 10)}  ${pad(ts.length ? f1(ts.at(-1)) : '–', 7)}  ${pad(f1(med(hl)) + ' / ' + f1(hl.at(-1)), 26)}  ${pad(crashes, 21)}  ${pad(f1(offT), 10)}  ${pad(otherAll ? otherOk + '/' + otherAll + ' finished' : '–', 16)}`);
-    for (const r of rs.filter(r => r.end !== 'complete' || VERBOSE)) console.log(`      ${r.rid} seed ${r.sd}: ${r.end} at ${f1(r.t)} s, ${Math.round(r.s)} m, hull −${f1(r.hullLost)} %${r.why ? ' – ' + r.why : ''} (vehicle ${r.crashV}, building ${r.crashB})`);
+    for (const r of rs.filter(r => r.end !== 'complete' || VERBOSE)) console.log(`      ${r.rid} seed ${r.sd}: ${r.end} at ${f1(r.t)} s, ${Math.round(r.s)} m, hull −${f1(r.hullLost)} %${r.why ? ' – ' + r.why : ''} (vehicle ${r.crashV}, building ${r.crashB})${r.end === 'failed' ? `, off-road clock ${f1(r.offNow)} s, d ${f1(r.dEnd)}, v ${f1(r.speedEnd)}` : ''}`);
     if (ok.length / rs.length < L.finishMin) fails.push(`${id} DRIVE: ${ok.length}/${rs.length} finished (needs ${Math.round(L.finishMin * 100)} %)`);
     if (med(hl) > L.hullLostMax) fails.push(`${id} DRIVE: median hull lost ${f1(med(hl))} % (max ${L.hullLostMax} %)`);
     if (crashes > L.crashesMax) fails.push(`${id} DRIVE: median ride touched ${crashes} vehicle(s) (max ${L.crashesMax})`);
