@@ -3,7 +3,7 @@
 # on Solana DEVNET. Never touches production, the global Solana config or ~/.config/solana/id.json; never prints a secret.
 #   bash server/scripts/devnet.sh keys                generate the devnet keypairs (once) into deploy/secrets/devnet/ of the MAIN checkout, print their addresses
 #   bash server/scripts/devnet.sh balances            their devnet balances (needs server/.env.devnet or RPC=…)
-#   RPC=<https url> WS=<wss url> bash server/scripts/devnet.sh env    write server/.env.devnet from the keys (+ a fresh WEBHOOK_SECRET); TICKET_PROGRAM_ID once deployed
+#   RPC=<https url> WS=<wss url> bash server/scripts/devnet.sh env    write server/.env.devnet from the keys (crank, payout; + a fresh WEBHOOK_SECRET); TICKET_PROGRAM_ID once deployed
 #   bash server/scripts/devnet.sh check-rpc           the endpoint is devnet, answers getProgramAccounts (the crank), the fee calls; the websocket URL is set
 #   bash server/scripts/devnet.sh db                  create + migrate the local database freightchain_devnet
 #   bash server/scripts/devnet.sh server              build and run the server with ENV_FILE=.env.devnet (http://localhost:3000)
@@ -20,7 +20,7 @@ MAIN="$(cd "$(dirname "$(git -C "$SERVER" rev-parse --path-format=absolute --git
 KEYS="${KEYS:-$MAIN/deploy/secrets/devnet}"
 ENVF="$SERVER/.env.devnet"
 export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
-ROLES=(program-id deploy admin crank fee seed plat funder)
+ROLES=(program-id deploy admin crank fee seed plat funder payout)
 fail() { echo "✗ $*" >&2; exit 1; }
 envkey() { [ -f "$ENVF" ] && grep -E "^$1=" "$ENVF" | head -1 | cut -d= -f2- | sed 's/[[:space:]]*#.*$//' || true; }   # by key name; never echoed by this script
 rpc() { local u="${RPC:-$(envkey SOLANA_RPC)}"; [ -n "$u" ] || fail "no RPC: set RPC=… or write server/.env.devnet (devnet.sh env)"; echo "$u"; }
@@ -35,7 +35,8 @@ case "${1:-help}" in
     printf '  %-11s %s  %s\n' program-id "$(pub program-id)" 'the program address (no SOL)' deploy "$(pub deploy)" 'upgrade authority + pays the deploy: ~5 SOL' \
       admin "$(pub admin)" 'Config.authority = TREASURY_PUBKEY, import into Phantom: ~0.5 SOL' \
       crank "$(pub crank)" 'crank fees: ~0.3 SOL' fee "$(pub fee)" 'fee treasury: 0.01 SOL (rent-exempt)' seed "$(pub seed)" 'seed treasury: 0.01 SOL' \
-      plat "$(pub plat)" 'platform treasury: 0.01 SOL' funder "$(pub funder)" 'funds the rehearsal players: ~1 SOL'
+      plat "$(pub plat)" 'platform treasury: 0.01 SOL' funder "$(pub funder)" 'funds the rehearsal players: ~1 SOL' \
+      payout "$(pub payout)" 'PAYOUT_SECRET, named by set-payout-authority (program v2): ~0.05 SOL'
     ;;
   balances)
     for r in "${ROLES[@]}"; do [ -f "$KEYS/$r.json" ] || continue; l=$(call getBalance "[\"$(pub "$r")\"]" | node -pe 'JSON.parse(require("fs").readFileSync(0)).result?.value ?? "?"'); printf '  %-11s %-44s %s SOL\n' "$r" "$(pub "$r")" "$(node -pe "($l/1e9).toFixed(4)" 2>/dev/null || echo "$l")"; done
@@ -48,9 +49,9 @@ case "${1:-help}" in
     umask 077
     # values travel through the environment into node (no shell quoting / sed escaping of URLs and keys); nothing is printed
     V_RPC="$RPC" V_WS="${WS:-}" V_PROGRAM="$PROGRAM" V_ADMIN="$(pub admin)" V_FEE="$(pub fee)" V_SEED="$(pub seed)" V_WEBHOOK="$WEBHOOK" \
-    V_CRANK="$(tr -d ' \n' < "$KEYS/crank.json")" node -e '
+    V_CRANK="$(tr -d ' \n' < "$KEYS/crank.json")" V_PAYOUT="$([ -f "$KEYS/payout.json" ] && tr -d ' \n' < "$KEYS/payout.json")" node -e '
       const fs = require("fs"), e = process.env, set = { SOLANA_RPC: e.V_RPC, SOLANA_WS: e.V_WS, TICKET_PROGRAM_ID: e.V_PROGRAM, TREASURY_PUBKEY: e.V_ADMIN,
-        FEE_TREASURY: e.V_FEE, SEED_TREASURY: e.V_SEED, CRANK_SECRET: e.V_CRANK, WEBHOOK_SECRET: e.V_WEBHOOK };
+        FEE_TREASURY: e.V_FEE, SEED_TREASURY: e.V_SEED, CRANK_SECRET: e.V_CRANK, PAYOUT_SECRET: e.V_PAYOUT, WEBHOOK_SECRET: e.V_WEBHOOK };
       const out = fs.readFileSync(process.argv[1], "utf8").split("\n").map(l => { const k = l.split("=")[0]; return k in set ? `${k}=${set[k]}` : l; }).join("\n");
       fs.writeFileSync(process.argv[2], out, { mode: 0o600 });' "$SERVER/.env.devnet.example" "$ENVF"
     echo "✓ wrote server/.env.devnet (gitignored, mode 600)$([ -z "$PROGRAM" ] && echo ' – TICKET_PROGRAM_ID empty until the program is deployed (then rerun with TICKET_PROGRAM_ID=…)')"
@@ -96,7 +97,7 @@ case "${1:-help}" in
     ;;
   distribute)
     # target balances in lamports; only the missing part is sent, from the deploy wallet (which keeps the rest for the program deploy)
-    for pair in admin:500000000 crank:300000000 funder:1000000000 fee:10000000 seed:10000000 plat:10000000; do
+    for pair in admin:500000000 crank:300000000 funder:1000000000 fee:10000000 seed:10000000 plat:10000000 payout:50000000; do
       r="${pair%%:*}"; want="${pair##*:}"
       have=$(call getBalance "[\"$(pub "$r")\"]" | node -pe 'JSON.parse(require("fs").readFileSync(0)).result.value')
       [ "$have" -ge "$want" ] && { echo "  $r has enough"; continue; }
