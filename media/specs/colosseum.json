@@ -56,7 +56,7 @@
         { "stat": ["12", "EVENTS"], "x": 900, "y": 420, "w": 160, "h": 110, "fx": "pop", "at": 1.5 },
         { "stat": ["24", "ERROR CODES"], "x": 1080, "y": 420, "w": 160, "h": 110, "fx": "pop", "at": 1.7 }
       ],
-      "captions": [ { "n": "05", "at": 0.3, "dur": 6.5, "head": "ESCROW ON SOLANA", "sub": "Our program holds each prize pool. Deployed on devnet." } ] },
+      "captions": [ { "n": "05", "at": 0.3, "dur": 6.5, "head": "ESCROW ON SOLANA", "sub": "Entry fees escrowed by our own Anchor program, on devnet." } ] },
 
     { "id": "localnet", "dur": 5.0, "route": "stuart", "time": "day", "speed": 20, "bg": "sol", "grade": "blur(8px) brightness(.3) saturate(1.4)",
       "transition": { "type": "whip", "dur": 0.3 },
