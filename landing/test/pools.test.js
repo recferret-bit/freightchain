@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { escrowExplainer, explorerUrl, explorerTx, poolPhase, phaseLine, payoutText, poolSchedule, scheduleText, hasStandings, span, statusChip, progressText, deadline, splitParts, rulesText, tierTickets, buyRoom, cardAction, rideError, promoError, promoOk, buyError, usd, pct, sol } from '../../client/site/pools.js';
+import { escrowExplainer, explorerUrl, explorerTx, poolPhase, phaseLine, payoutText, poolSchedule, scheduleText, hasStandings, span, statusChip, progressText, deadline, splitParts, rulesText, tierTickets, ridableTickets, buyRoom, cardAction, rideError, promoError, promoOk, buyError, usd, pct, sol } from '../../client/site/pools.js';
 import { salesOpen } from '../../client/site/tickets-api.js';
 
 /* The pool wording the lobby AND the landing show (client/site/pools.js is pure). Every pool status – incl. `refunding`, which the dev seeds can't produce – is pinned here. */
@@ -118,6 +118,19 @@ test('tickets per tier: only ACTIVE balances are ridable, across every pool of t
   assert.equal(tierTickets(undefined, '1h').ridable, 0);
 });
 
+test('tickets past their pool\'s play deadline are not ridable (the server flag or rideBy on this clock) and are listed as closed', () => {
+  const live = ticket({ poolId: 1, tier: '1h', status: 'active', balance: 1, ridable: true, rideBy: NOW + 60_000 });
+  const over = ticket({ poolId: 0, tier: '1h', status: 'active', balance: 1, ridable: true, rideBy: NOW - 1 });
+  const flagged = ticket({ poolId: 2, tier: '1h', status: 'active', balance: 1, ridable: false, rideBy: NOW + 60_000 });
+  const t = tierTickets([live, over, flagged], '1h', NOW);
+  assert.equal(t.ridable, 1);
+  assert.equal(t.rideBy, NOW + 60_000);
+  assert.deepEqual(t.closed.map(c => c.poolId), [0, 2]);
+  assert.equal(ridableTickets([live, over, flagged], NOW), 1);
+  assert.equal(tierTickets([over], '1h', NOW).rideBy, null);
+  assert.equal(cardAction(pool({ status: 'open' }), tierTickets([over], '1h', NOW), NOW).kind, 'buy');
+});
+
 test('the card action: RIDE > CLAIM REFUND > WAITING > BUY', () => {
   const tt = rows => tierTickets(rows, '4h');
   assert.deepEqual(cardAction(pool({ status: 'active' }), tt([ticket({ status: 'active', balance: 2 })]), NOW), { kind: 'ride', text: 'RIDE (2 left)' });
@@ -134,6 +147,7 @@ test('buy room: the per-wallet cap counts what was ever BOUGHT (like the program
 
 test('every 409 of POST /api/rides reads as a sentence', () => {
   assert.equal(rideError(problem(409, 'no_tickets', 'no 1h tickets left'), '1h'), 'No 1 HOUR tickets left – buy one or redeem a promo code.');
+  assert.equal(rideError(problem(409, 'rides_closed', 'rides for pool #0 closed at 2026-10-11T17:00:00.000Z'), '1h'), 'Rides for your 1 HOUR ticket are over (rides for pool #0 closed at 2026-10-11 17:00 UTC). A ticket counts only in its own pool – buy one in the pool on sale now.');
   assert.match(rideError(problem(409, 'pool_not_live', 'pool not live yet – 3 more tickets needed'), '4h'), /^The pool is still waiting for riders \(pool not live yet – 3 more tickets needed\)\. .*refunded in full/);
   assert.match(rideError(problem(409, 'conflict', 'a ride is already in progress'), '1h'), /already have a ride on the road/);
   assert.equal(rideError(problem(503, 'service_unavailable', 'no SOL/USD price available right now'), '8h'), 'no SOL/USD price available right now');

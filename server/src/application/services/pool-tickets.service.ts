@@ -40,26 +40,30 @@ export class PoolTicketsService {
   /**
    * Spends one ticket of `tier` for the ride `rideId`: from the active pool (still before its play deadline) that ends soonest among those the wallet holds
    * tickets in – at a week boundary two pools of a tier overlap and the older tickets go first. 409 `pool_not_live` when the wallet's only tickets are in a
-   * pool that has not reached its minimum yet, 409 `no_tickets` when it has none. Returns the pool the ride belongs to.
+   * pool that has not reached its minimum yet, 409 `rides_closed` when they are in a live pool whose play deadline has passed (the ticket is spent on nothing –
+   * its money stays in that pool's pot), 409 `no_tickets` when it has none. Returns the pool the ride belongs to.
    */
   async spendForRide(wallet: string, tier: PaidTierId, rideId: string, now: Date, tx: TransactionHandle): Promise<Pool> {
     const pools = await this.pools.listLiveOfTier(tier, tx);
     let waiting: Pool | null = null;
+    let closed: Pool | null = null;
     for (const pool of pools) {
       const ticket = await this.tickets.find(wallet, pool.id, tx);
       if (!ticket || ticket.balance <= 0) continue;
-      if (pool.isActive && now.getTime() < pool.playDeadline.getTime()) {
+      if (pool.isRidable(now)) {
         ticket.spend();
         await this.tickets.save(ticket, tx);
         await this.tickets.appendGrant({ wallet, poolId: pool.id, delta: -1, source: 'spend', ref: rideId, at: now }, tx);
         return pool;
       }
       if (pool.status === 'open') waiting ??= pool;
+      else if (pool.isActive) closed ??= pool;
     }
     if (waiting) {
       const n = waiting.ticketsToGo;
       throw new ConflictError(`pool not live yet – ${n} more ticket${n === 1 ? '' : 's'} needed`, 'pool_not_live');
     }
+    if (closed) throw new ConflictError(`rides for pool #${closed.id} closed at ${closed.playDeadline.toISOString()}`, 'rides_closed');
     throw new ConflictError(`no ${tier} tickets left`, 'no_tickets');
   }
 

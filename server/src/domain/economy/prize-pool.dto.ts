@@ -65,12 +65,19 @@ export interface TicketBalanceDto {
   cap: number;
   /** the pool failed and this wallet paid into it on chain: it can claim its lamports back (cleared when its Refunded event lands – `bought` goes to 0) */
   refundable: boolean;
+  /** an unused ticket here can be ridden NOW (live pool, before its play deadline) – what POST /api/rides spends */
+  ridable: boolean;
+  /** the pool's play deadline (ms): the last moment a ride can be ordered with this ticket; unused tickets after it are spent on nothing */
+  rideBy: number;
 }
 
 /** `refundable` = money is owed back: the pool failed, or it missed its goal and nobody has failed it yet (the refund transaction then fails it first). */
 export const toTicketBalanceDto = (ticket: RideTicket, pool: Pool, now: Date): TicketBalanceDto => {
   const s = pool.snapshot();
-  return { poolId: s.id, tier: s.tier, label: s.label, status: s.status, balance: ticket.balance, bought: ticket.bought, cap: s.maxPerWallet, refundable: (s.status === 'refunding' || pool.isPastDeadlineUnderMinimum(now)) && ticket.bought > 0 };
+  return {
+    poolId: s.id, tier: s.tier, label: s.label, status: s.status, balance: ticket.balance, bought: ticket.bought, cap: s.maxPerWallet,
+    refundable: (s.status === 'refunding' || pool.isPastDeadlineUnderMinimum(now)) && ticket.bought > 0, ridable: ticket.balance > 0 && pool.isRidable(now), rideBy: s.playDeadline.getTime(),
+  };
 };
 
 /** One line of the ticket audit trail (/api/profile). */

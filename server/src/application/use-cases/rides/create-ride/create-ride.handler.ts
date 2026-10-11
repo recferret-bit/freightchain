@@ -47,7 +47,7 @@ interface CreateFacts {
  *   awaiting payment       → the same order while its tier matches and the price is still held; otherwise it lapses (a late matching payment is still honoured)
  * A paid tier that is not on sale (1h, 4h, 8h) and has no live pool is refused before the lock (409 `tier_not_on_sale`), so an open order of another tier is not expired.
  * A registered live pool of that tier still sells tickets. A paid tier that sells through escrowed pools is paid with a TICKET: one is spent in the same locked
- * transaction and the ride is ready at once (409 `no_tickets` / `pool_not_live`). In `program` mode that is the only way; in `transfer` mode an on-sale tier with no pool still uses the legacy pay-per-ride order.
+ * transaction and the ride is ready at once (409 `no_tickets` / `pool_not_live` / `rides_closed` – a ticket of a live pool past its play deadline). In `program` mode that is the only way; in `transfer` mode an on-sale tier with no pool still uses the legacy pay-per-ride order.
  * A FREE ride is ordered at a LEVEL (ride-trip.ts FREE_LEVELS, default 1): its trip, FREE_RIDE_SECONDS × its multiple, its finish line. TUTORIAL or ASSIST on a
  * level without it (HARD) is refused (409 `tutorial_not_allowed` / `assist_not_allowed`), a level on a paid tier too (409 `level_free_only`). Asking for the ready free ride again re-chooses
  * its level (trip, country, length) and helpers on that SAME ride (same seed, same credit) – the lobby never sends you onto a road you did not pick; a request with no `level` keeps

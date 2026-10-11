@@ -276,11 +276,11 @@ describe('CreateRideHandler', () => {
       await expect(t.create('8h')).rejects.toMatchObject({ errorCode: 'tier_not_on_sale' }); // no pool at all: soon, not "no tickets"
     });
 
-    it('an active pool past its play deadline is not ridden from', async () => {
+    it('an active pool past its play deadline is not ridden from (409 rides_closed names the pool and the deadline)', async () => {
       const { ctx, create, give } = await withPools({ id: 1, status: 'active' });
       await give(1, 1);
       ctx.clock.advance(15 * 86_400);
-      await expect(create('1h')).rejects.toThrow(new ConflictError('no 1h tickets left', 'no_tickets'));
+      await expect(create('1h')).rejects.toMatchObject({ errorCode: 'rides_closed', message: expect.stringMatching(/^rides for pool #1 closed at /) });
     });
 
     it('buying with a ticket while holding an unstarted free ride cancels it and refunds the credit', async () => {

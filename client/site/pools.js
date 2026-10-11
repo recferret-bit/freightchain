@@ -18,6 +18,7 @@ export const plural = (n, one, many = one + 's') => `${n} ${n === 1 ? one : many
 const pad = n => String(Math.floor(n)).padStart(2, '0');
 export const left = ms => { const s = Math.max(0, Math.floor(ms / 1000)), d = Math.floor(s / 86400); return `${d ? d + 'd ' : ''}${pad((s % 86400) / 3600)}:${pad((s % 3600) / 60)}:${pad(s % 60)}`; };
 export const day = ms => new Date(ms).toISOString().slice(0, 10);   // UTC date, the same for every viewer
+export const hhmm = ms => `${new Date(ms).toISOString().slice(11, 16)} UTC`;
 
 export const STATUS_CLS = { active: 'live', open: 'open', refunding: 'fail', settled: 'done', cancelled: 'done' };
 
@@ -96,14 +97,21 @@ export const splitParts = p => [
 /** The rules copy on a pool card (§2.8). */
 export const rulesText = p => `Your entry sits in the pool’s vault on chain – not with us. If fewer than ${p.minTickets} riders commit by ${day(p.prepDeadline)}, every ticket is refunded in full. Live pool: ${pct(p.split.prizeBps)} prizes, ${pct(p.split.seedBps)} seeds the next pool, ${pct(p.split.feeBps)} fees.`;
 
-/** What a wallet holds for one tier, across every pool of it (pools overlap at a week boundary). `ridable` = unused tickets in ACTIVE pools – what POST /api/rides can spend. */
-export function tierTickets(tickets, tier) {
-  const rows = (tickets ?? []).filter(t => t.tier === tier);
-  return { rows, ridable: rows.filter(t => t.status === 'active').reduce((a, t) => a + t.balance, 0), waiting: rows.filter(t => t.status === 'open').reduce((a, t) => a + t.balance, 0), refundable: rows.filter(t => t.refundable) };
+/** An unused ticket POST /api/rides can spend now: a live pool before its play deadline (`rideBy`, checked against this clock too – the list may be minutes old). */
+export const canRide = (t, now) => t.status === 'active' && t.ridable !== false && !(t.rideBy <= now);
+
+/** What a wallet holds for one tier, across every pool of it (pools overlap). `ridable` = unused tickets that can be ridden now, `rideBy` = the soonest of their
+    deadlines, `closed` = unused tickets of live pools whose rides are over (spent on nothing). */
+export function tierTickets(tickets, tier, now = Date.now()) {
+  const rows = (tickets ?? []).filter(t => t.tier === tier), live = rows.filter(t => canRide(t, now) && t.balance > 0);
+  return {
+    rows, ridable: live.reduce((a, t) => a + t.balance, 0), rideBy: live.length ? Math.min(...live.map(t => t.rideBy ?? Infinity)) : null,
+    closed: rows.filter(t => t.status === 'active' && t.balance > 0 && !canRide(t, now)), waiting: rows.filter(t => t.status === 'open').reduce((a, t) => a + t.balance, 0), refundable: rows.filter(t => t.refundable),
+  };
 }
 
-/** Every unused ticket the wallet can ride with right now (active pools, all tiers). */
-export const ridableTickets = tickets => (tickets ?? []).filter(t => t.status === 'active').reduce((a, t) => a + t.balance, 0);
+/** Every unused ticket the wallet can ride with right now (all tiers). */
+export const ridableTickets = (tickets, now = Date.now()) => (tickets ?? []).filter(t => canRide(t, now)).reduce((a, t) => a + t.balance, 0);
 
 /** How many more tickets this wallet may buy into the pool (the cap counts what it ever bought, like the program does). */
 export const buyRoom = (p, held) => Math.max(0, p.maxPerWallet - (held?.bought ?? 0));
@@ -125,6 +133,7 @@ export function rideError(e, tier) {
   if (e?.code === 'no_tickets') return `No ${tierName(tier)} tickets left – buy one or redeem a promo code.`;
   if (e?.code === 'assist_not_allowed') return `${e.message[0]?.toUpperCase() ?? ''}${e.message.slice(1)} – untick ASSIST or pick an easier level.`;
   if (e?.code === 'tutorial_not_allowed') return `${e.message[0]?.toUpperCase() ?? ''}${e.message.slice(1)} – untick TUTORIAL or pick an easier level.`;
+  if (e?.code === 'rides_closed') return `Rides for your ${tierName(tier)} ticket are over (${e.message.replace(/T(\d\d:\d\d):\d\d\.\d+Z$/, ' $1 UTC')}). A ticket counts only in its own pool – buy one in the pool on sale now.`;
   if (e?.code === 'pool_not_live') return `The pool is still waiting for riders (${e.message}). Your tickets wait – and are refunded in full if it misses its goal.`;
   if (e?.status === 409 && /in progress/.test(e.message ?? '')) return 'You already have a ride on the road (another tab?). It frees up about 2½ minutes after its last signal.';
   return e?.message ?? String(e);

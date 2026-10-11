@@ -70,6 +70,8 @@ export class Pool {
   /** the road every ride of this pool is driven on – one seed for the whole pool, so all its riders compete on the same ride */
   get rideSeed(): number { return this.p.rideSeed; }
   get isActive(): boolean { return this.p.status === 'active'; }
+  /** A ticket of this pool can be ridden now: the pool is live and its play deadline has not passed (POST /api/rides spends one only then). */
+  isRidable(now: Date): boolean { return this.isActive && now.getTime() < this.p.playDeadline.getTime(); }
   get isRefunding(): boolean { return this.p.status === 'refunding'; }
 
   /** Tickets still missing before the pool goes live (0 once it is active). */

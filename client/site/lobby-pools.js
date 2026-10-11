@@ -1,5 +1,5 @@
 import { el } from './dom.js';
-import { escrowExplainer, explorerUrl, explorerTx, shortAddr, sol, usd, pct, plural, day, left, statusChip, progressText, deadline, splitParts, rulesText, tierTickets, buyRoom, cardAction, GRANT_SOURCE, STATUS_CLS, phaseLine, payoutText, poolSchedule, scheduleText, span } from './pools.js';
+import { escrowExplainer, explorerUrl, explorerTx, shortAddr, sol, usd, pct, plural, day, left, statusChip, progressText, deadline, splitParts, rulesText, tierTickets, canRide, hhmm, buyRoom, cardAction, GRANT_SOURCE, STATUS_CLS, phaseLine, payoutText, poolSchedule, scheduleText, span } from './pools.js';
 
 /* The lobby's escrowed-pool views (DOM; the decisions are the pure functions of pools.js). Countdowns are `.pcd[data-at]` – lobby.js ticks them every second. */
 
@@ -17,9 +17,9 @@ export function paidShift(info) {
 
 /** One paid tier sold through an escrowed pool. ctx = { me, solUsd, now, busy, sales, qty, act: { ride, buy, refund, qty } }. */
 export function poolCard(t, info, ctx) {
-  const p = t.pool, now = ctx.now, tt = tierTickets(ctx.me.tickets, t.id), held = tt.rows.find(r => r.poolId === p.id), a = cardAction(p, tt, now);
+  const p = t.pool, now = ctx.now, tt = tierTickets(ctx.me.tickets, t.id, now), held = tt.rows.find(r => r.poolId === p.id), a = cardAction(p, tt, now);
   const room = buyRoom(p, held), q = Math.min(Math.max(1, ctx.qty), Math.max(1, room)), sellable = phaseLine(p, now).phase === 'selling';   // the sale ends at prepDeadline, open or active alike
-  const dl = deadline(p, now), off = !!ctx.busy, mine = held?.balance ?? 0, other = tt.ridable - (p.status === 'active' ? mine : 0);
+  const dl = deadline(p, now), off = !!ctx.busy, mine = held?.balance ?? 0, other = tt.ridable - (held && canRide(held, now) ? mine : 0);
   const primary = a.kind === 'ride' ? el('button', { class: 'go', disabled: off, onclick: () => ctx.act.ride(t.id) }, a.text)
     : a.kind === 'refund' ? el('button', { class: 'go refund', disabled: off, onclick: () => ctx.act.refund(tt.refundable[0].poolId, t.id) }, a.text)
       : a.kind === 'wait' || a.kind === 'none' ? el('button', { class: 'go', disabled: true }, a.text) : '';
@@ -45,6 +45,8 @@ export function poolCard(t, info, ctx) {
     el('div', { class: 'legend' }, ...splitParts(p).map(s => el('span', { class: s.cls }, `${pct(s.bps)} ${s.label}`))),
     el('span', { class: 'sub addrs' }, 'pool ', addr(p.address, 'pool account'), ' · seed ', addr(p.treasuries.seed, 'seed treasury'), ' · fees ', addr(p.treasuries.fee, 'fee treasury')),
     el('span', { class: 'mine' }, 'your tickets: ', el('b', {}, mine), other > 0 ? ` (+${other} in another live ${info.name} pool)` : '', ` · max ${p.maxPerWallet} per wallet`),
+    tt.rideBy ? el('span', { class: 'sub ride-by' }, `ride by ${hhmm(tt.rideBy)} · `, countdown(tt.rideBy)) : '',   // the ticket is spent when the ride is ordered: order it before this
+    ...tt.closed.map(c => el('span', { class: 'sub closed' }, `${plural(c.balance, 'unused ticket')} of pool #${c.poolId} expired – its rides closed at ${hhmm(c.rideBy)}; a ticket counts only in its own pool`)),
     primary, buyRow,
     el('span', { class: 'dim fee' }, note),
     ctx.winners ? winners(ctx.winners, ctx.me.wallet, now) : '',
