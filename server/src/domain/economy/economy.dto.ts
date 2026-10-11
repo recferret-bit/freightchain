@@ -2,13 +2,14 @@ import type { PrizePoolDto } from './prize-pool.dto.js';
 import type { Split } from './prize-split.js';
 import type { FreeLevel } from '../rides/ride-trip.js';
 
-/** one of the free ride's LEVELS (ride-trip.ts FREE_LEVELS) – the lobby's picker: `seconds` = FREE_RIDE_SECONDS × its multiple, `assist` = may ASSIST be on */
+/** one of the free ride's LEVELS (ride-trip.ts FREE_LEVELS) – the lobby's picker: `seconds` = FREE_RIDE_SECONDS × its multiple, `tutorial` / `assist` = may that helper be on */
 export interface FreeLevelDto {
   level: number;
   trip: string;
   name: string;
   seconds: number;
   completeDist: number;
+  tutorial: boolean;
   assist: boolean;
 }
 

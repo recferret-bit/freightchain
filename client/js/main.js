@@ -36,6 +36,7 @@ import { toggleMap } from './ui/map.js';
 import { phone } from './phone.js';
 import { updateGuide } from './ui/assist.js';
 import { trip, setTrip, tripOf } from './trips.js';
+import { FREE_COUNTRIES } from './free-countries.js';
 import './ui/input.js';
 import './ui/tuning.js';
 
@@ -52,11 +53,12 @@ function frame(now) {
 selectTheme(THEMES[0].id, true); setClock(12, true, true);   // the prototype's world: Route 66 at noon (no picker, nothing remembered). A real ride gets the SERVER's route + start hour just below
 await initOnline();   // only with ?ride=<id> (see online.js); offline it returns at once
 const wantOffline = offlineWanted() && !online.ride && !online.error;   // the guest run is every page that is not a ride (?ride=, or a failed load of one) or a replay (?watch=)
-if (online.ride) { selectTheme(online.ride.route ?? THEMES[0].id, true); if (online.ride.startHour != null) setClock(online.ride.startHour, true, true); }   // what the server assigned to this ride at creation (ride-rules.ts worldFor)
+if (online.ride) { selectTheme(online.ride.route ?? THEMES[0].id, true); if (online.ride.startHour != null) setClock(online.ride.startHour, true, true); }   // what the server assigned: a free level's country, or worldFor for a paid ride
 if (wantOffline) setGuide({ tutorial: false, assist: false });   // the guest run: the menu's two checkboxes set the helpers at START (ui/game.js)
 else setGuide(online.ride ?? {});   // the free ride's tutorial / assist: the SERVER's flags of the ride
-if (wantOffline) setTrip('free-1');   // the guest run = the EASY level's road
+if (wantOffline) { setTrip('free-1'); selectTheme(FREE_COUNTRIES[1].route, true); }   // the guest run = the EASY level, on that button's country
 else setTrip(online.ride ? tripOf(online.ride) : null);   // the ride's road (trips.js): the trip the server stamped on it (a replay sets its own below); before the road is built
+if (trip.tutorial === false) guide.tutorial = false;   // the HARD free run has no tutorial (the server refuses it on the ride too)
 if (trip.assist === false) guide.assist = false;   // the HARD free run has no assist (the server refuses it on the ride too)
 const shift0 = { s: CFG.RIDE_MIN_SECONDS, d: CFG.COMPLETE_DIST };   // the shift before a free level's own
 if (!online.ride && trip.seconds) { CFG.RIDE_MIN_SECONDS = trip.seconds; CFG.COMPLETE_DIST = trip.k * CFG.MAX_SPEED * trip.seconds; }   // the guest run's own shift (online the server's ride sets both)

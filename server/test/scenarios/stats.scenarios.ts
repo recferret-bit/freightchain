@@ -4,6 +4,8 @@ import { ReconcileStatsCommand } from '../../src/application/use-cases/stats/rec
 import { StatsRepositoryPort } from '../../src/application/ports/stats/stats.repository.port.js';
 import { bindClient, type Rider } from '../support/client.js';
 import type { Harness } from '../support/harness.js';
+import { setTierOnSaleForTest } from '../../src/domain/rides/ride-tier.js';
+import { TREASURY } from '../support/fake-chain.js';
 
 /* Statistics (docs/statistics.md): the running totals per rider and for the whole game – every started ride that ends counts what it drove (the bug this
    fixed: the landing counted only COMPLETE shifts, so a young game showed 0.00 km), plus time, crashes (vehicle / building) and donations during streams.
@@ -13,9 +15,17 @@ const ZERO = { rides: 0, ridesFree: 0, ridesPaid: 0, ridesCompleted: 0, seconds:
 
 export function statsScenarios(h: () => Harness): void {
   const { anon, login, sec } = bindClient(h);
-  beforeEach(() => h().reset());
+  beforeEach(() => { setTierOnSaleForTest('1h', true); return h().reset(); });
+  afterEach(() => setTierOnSaleForTest('1h', false));
 
   const startFree = async (w: Rider) => { const r = (await w.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body; await w.agent.post(`/api/rides/${r.id}/start`).expect(200); return r.id as string; };
+  const startPaid = async (w: Rider) => {
+    const r = (await w.agent.post('/api/rides').send({ tier: '1h' }).expect(200)).body;
+    const sig = h().chain.addPayment({ payer: w.address, destination: TREASURY, lamports: r.lamports, memo: r.id });
+    await w.agent.post(`/api/rides/${r.id}/confirm`).send({ signature: sig }).expect(200);
+    await w.agent.post(`/api/rides/${r.id}/start`).expect(200);
+    return r.id as string;
+  };
   const beat = async (w: Rider, id: string, body: Record<string, unknown>) => { sec(5); await w.agent.post(`/api/rides/${id}/heartbeat`).send({ hull: 100, ...body }).expect(200); };
   const stats = async () => (await anon().get('/api/stats').expect(200)).body;
   const career = async (w: Rider) => (await w.agent.get('/api/profile').expect(200)).body.career;
@@ -80,8 +90,13 @@ export function statsScenarios(h: () => Harness): void {
     expect(await stats()).toMatchObject({ rides: 0, drivers: 0 });
   });
 
-  it('donations during a stream count on the DRIVER (the spectator\'s own record stays empty); chat does not', async () => {
-    const driver = await login(), fan = await login(), id = await startFree(driver);
+  it('donations during a stream count on the DRIVER (the spectator\'s own record stays empty); chat does not; free rides refuse stream interactions', async () => {
+    const driver = await login(), fan = await login();
+    const freeId = await startFree(driver);
+    await fan.agent.post(`/api/watch/${freeId}/messages`).send({ text: 'go go' }).expect(403);
+    await fan.agent.post(`/api/watch/${freeId}/donations`).send({ effect: 'tip' }).expect(403);
+    await driver.agent.post(`/api/rides/${freeId}/end`).send({ outcome: 'failed', s: 0, t: 1 }).expect(200);
+    const id = await startPaid(driver);
     await fan.agent.post(`/api/watch/${id}/messages`).send({ text: 'go go' }).expect(200);
     await fan.agent.post(`/api/watch/${id}/donations`).send({ effect: 'tip' }).expect(200);
     expect(await career(driver)).toMatchObject({ donations: 1, donationLamports: 0 });   // a mock tip: counted, no lamports

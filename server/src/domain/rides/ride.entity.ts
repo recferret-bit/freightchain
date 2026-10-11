@@ -12,7 +12,7 @@ import {
   DRIVE_CREDIT_SLACK, DRIVE_CREDIT_SLACK_SECONDS, MAX_SPEED, REASON_MAX_LENGTH, SLACK_METRES, SPEED_SLACK,
   completeDist, completeDistK, crashCap, worldFor, type RideTimingRules,
 } from './ride-rules.js';
-import { DEFAULT_FREE_LEVEL, FREE_LEVELS, assertAssistAllowed, levelOfTrip, tripOf, type FreeLevel } from './ride-trip.js';
+import { DEFAULT_FREE_LEVEL, FREE_LEVELS, assertAssistAllowed, assertTutorialAllowed, levelOfTrip, tripOf, type FreeLevel } from './ride-trip.js';
 
 export interface RideProps {
   id: string;
@@ -32,7 +32,7 @@ export interface RideProps {
   /** the prize pool whose ticket paid for this ride (null = free, or a legacy pay-per-ride order) */
   poolId: number | null;
   paidAt: Date | null;
-  /** the route and the clock hour the ride starts at – assigned by the SERVER at creation from the seed (ride-rules.ts worldFor), never reported by the game; null = a ride from before this */
+  /** the route the ride is driven on. A free ride: its level's country (FREE_LEVELS.route), moved when a ready ride is re-chosen. A paid ride: from the seed (worldFor). Never reported by the game; null = a ride from before this */
   route: string | null;
   startHour: number | null;
   /** the cosmetics worn when the ride started (null = all classic) */
@@ -91,12 +91,13 @@ export class Ride {
     };
   }
 
-  /** A free ride is ready at once (its credit is spent by the caller). Driven on its LEVEL's trip, to that level's finish line; ASSIST on a level that forbids it is refused (409). */
+  /** A free ride is ready at once (its credit is spent by the caller). Driven on its LEVEL's trip, to that level's finish line; TUTORIAL or ASSIST on a level that forbids it is refused (409). */
   static createFree(i: FreeRideInput): Ride {
     const level = FREE_LEVELS[i.level ?? DEFAULT_FREE_LEVEL];
-    const assist = i.assist === true;
+    const tutorial = i.tutorial === true, assist = i.assist === true;
     assertAssistAllowed(level.level, assist);
-    return new Ride({ ...Ride.blank(), id: i.id, wallet: i.wallet, tier: 'free', trip: level.trip, ...worldFor(i.seed), seed: i.seed, minSeconds: i.minSeconds, completeDist: completeDist(i.minSeconds, completeDistK('free', level.trip)), status: RideStatus.Created, createdAt: i.now, tutorial: i.tutorial === true, assist });
+    assertTutorialAllowed(level.level, tutorial);
+    return new Ride({ ...Ride.blank(), id: i.id, wallet: i.wallet, tier: 'free', trip: level.trip, route: level.route, startHour: worldFor(i.seed).startHour, seed: i.seed, minSeconds: i.minSeconds, completeDist: completeDist(i.minSeconds, completeDistK('free', level.trip)), status: RideStatus.Created, createdAt: i.now, tutorial, assist });
   }
 
   /** A paid ride bought with a pool ticket (the money is already in the pool's escrow): ready at once, ranked in the pool's round. The caller spends the ticket. */
@@ -185,17 +186,19 @@ export class Ride {
     return now.getTime() - (this.p.lastHbAt?.getTime() ?? 0) >= rules.hbMinIntervalMs;
   }
 
-  /** A ready FREE ride re-chosen as a whole (the lobby's level picker + its two checkboxes) until it starts: the LEVEL's trip, shift length (`minSeconds`, the
-      caller's FREE_RIDE_SECONDS × the level's multiple) and finish line, and the helpers – the same ride, seed and credit. ASSIST on a level without it = 409,
-      nothing changed. Returns whether anything changed (= the ride must be saved). */
+  /** A ready FREE ride re-chosen as a whole (the lobby's level picker + its two checkboxes) until it starts: the LEVEL's trip, country (`route`), shift length
+      (`minSeconds`, the caller's FREE_RIDE_SECONDS × the level's multiple) and finish line, and the helpers – the same ride, seed and credit. TUTORIAL or ASSIST
+      on a level without it = 409, nothing changed. Returns whether anything changed (= the ride must be saved). */
   chooseFree(level: FreeLevel, minSeconds: number, tutorial: boolean, assist: boolean): boolean {
     this.mustBe(RideStatus.Created);
     if (!this.isFree) throw new ConflictError('a level is for free rides only', 'level_free_only');
     assertAssistAllowed(level, assist);
-    const trip = FREE_LEVELS[level].trip;
+    assertTutorialAllowed(level, tutorial);
+    const def = FREE_LEVELS[level];
+    const trip = def.trip, route = def.route;
     const dist = completeDist(minSeconds, completeDistK('free', trip));
-    if (this.p.trip === trip && this.p.minSeconds === minSeconds && this.p.completeDist === dist && this.p.tutorial === tutorial && this.p.assist === assist) return false;
-    Object.assign(this.p, { trip, minSeconds, completeDist: dist, tutorial, assist });
+    if (this.p.trip === trip && this.p.route === route && this.p.minSeconds === minSeconds && this.p.completeDist === dist && this.p.tutorial === tutorial && this.p.assist === assist) return false;
+    Object.assign(this.p, { trip, route, minSeconds, completeDist: dist, tutorial, assist });
     return true;
   }
 

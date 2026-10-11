@@ -8,8 +8,9 @@ import { TREASURY, newSignature } from '../support/fake-chain.js';
 import type { Harness } from '../support/harness.js';
 import { chainPool } from '../support/pools.js';
 import { aPromo, ticketEffect } from '../support/promos.js';
+import { setTierOnSaleForTest } from '../../src/domain/rides/ride-tier.js';
 
-/* ONE ROAD PER COMPETITION, end to end over HTTP: every paid ride of one competition – a pool, or (pay-per-ride, production today) a paid tier on one UTC
+/* ONE ROAD PER COMPETITION, end to end over HTTP: every paid ride of one competition – a pool, or (pay-per-ride, opted on in this file) a paid tier on one UTC
    day – is driven on the same seed, so it gets the same route, start hour, trip, road layout and holes, from the first minute of the window to the last;
    the next pool / the next day is another road. The road is read the way the game and every replay read it: the ride's world from the API, the holes
    from the public obstacle plan (GET /api/watch/:id/road), the layout rebuilt from the served seed + trip with the server's own port of the generator. */
@@ -20,21 +21,26 @@ const DAY = 86_400_000;
 
 export function sharedRoadScenarios(h: () => Harness): void {
   const { anon, login, sec, now } = bindClient(h);
-  beforeEach(() => h().reset());
+  beforeEach(() => { setTierOnSaleForTest('1h', true); return h().reset(); }); // the pay-per-ride half; production leaves 1h off until a pool exists
+  afterEach(() => setTierOnSaleForTest('1h', false));
 
   /** what a rider of a started ride drives: its world, its holes and its layout – everything that makes the road */
   const roadOf = async (w: Rider, id: string) => {
     const ride = (await w.agent.get(`/api/rides/${id}`).expect(200)).body;
-    const watched = (await anon().get(`/api/watch/${id}`).expect(200)).body.ride;
+    if (ride.tier === 'free') {
+      await anon().get(`/api/watch/${id}`).expect(403);
+    } else {
+      const watched = (await anon().get(`/api/watch/${id}`).expect(200)).body.ride;
+      expect(watched).toMatchObject({ seed: ride.seed, route: ride.route, trip: ride.trip }); // spectators rebuild the same road the driver got
+    }
     const plan = (await anon().get(`/api/watch/${id}/road?from=0&to=${KM}`).expect(200)).body;
-    expect(watched).toMatchObject({ seed: ride.seed, route: ride.route, trip: ride.trip }); // spectators rebuild the same road the driver got
     expect(plan.seed).toBe(ride.seed);
     return { seed: ride.seed, route: ride.route, startHour: ride.startHour, trip: ride.trip, holes: plan.holes, layout: new RoadLayout(ride.seed, ride.trip).describe(KM) };
   };
   /** the road WITHOUT the seed: two different seeds must still give two different roads */
   const content = (r: Awaited<ReturnType<typeof roadOf>>) => ({ holes: r.holes, layout: r.layout });
 
-  describe('pay-per-ride (production today): one road per paid tier per UTC day', () => {
+  describe('pay-per-ride (opted on in this file): one road per paid tier per UTC day', () => {
     /** order the 1-hour shift, pay it on the fake chain, start it */
     const paidRide = async (w: Rider): Promise<string> => {
       const r = (await w.agent.post('/api/rides').send({ tier: '1h' }).expect(200)).body;

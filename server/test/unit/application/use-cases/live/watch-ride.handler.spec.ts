@@ -3,7 +3,7 @@ import { WatchRideQuery } from '../../../../../src/application/use-cases/live/wa
 import { RideEvent } from '../../../../../src/domain/live/ride-event.entity.js';
 import { RideBatch } from '../../../../../src/domain/telemetry/ride-batch.entity.js';
 import { WATCH_BATCH_PAGE } from '../../../../../src/domain/live/live-rules.js';
-import { NotFoundError } from '../../../../../src/domain/shared/errors.js';
+import { ForbiddenError, NotFoundError } from '../../../../../src/domain/shared/errors.js';
 import { hashBatch, INPUT_BIT, recording } from '../../../../support/recording.js';
 import { SAMPLE_INPUT_COL } from '../../../../../src/domain/telemetry/telemetry-rules.js';
 import { unitContext } from '../../../../support/unit-context.js';
@@ -17,14 +17,14 @@ describe('WatchRideHandler', () => {
 
   it('a running ride: its seed + route for the road, the recording page from `from` (samples only, no inputs), the feed and the viewers', async () => {
     const { ctx, watch } = setup();
-    const ride = await ctx.freeRide('driver', true);
+    const ride = await ctx.paidRide('driver', true);
     const bodies = recording(ride.id, { seconds: 60 });
     ctx.clock.advance(60);
     for (const b of bodies) await ctx.batches.insert(RideBatch.accept(ride.id, b, hashBatch(b), ctx.now()));
     ride.applyReport({ s: 140, t: 60, hull: 90, paused: false, night: false }, ctx.now(), ctx.rules.get()); await ctx.rides.save(ride);
     await ctx.rideEvents.insert(RideEvent.message({ rideId: ride.id, wallet: 'fan', text: 'hi', now: ctx.now() }));
     const view = await watch(ride.id, 1, 0, 'viewer-1');
-    expect(view.ride).toMatchObject({ id: ride.id, wallet: 'driver', seed: ride.seed, route: 'siberia', loadout: null, status: 'running', live: true, distance: 140, hull: 90, endedAt: null });
+    expect(view.ride).toMatchObject({ id: ride.id, wallet: 'driver', seed: ride.seed, route: ride.route, loadout: null, status: 'running', live: true, distance: 140, hull: 90, endedAt: null });
     expect(view.recording).toEqual({ lastSeq: 3, t1: bodies[3]!.t1 });
     expect(view.batches.map((b) => b.seq)).toEqual([1, 2, 3]);
     expect(Object.keys(view.batches[0]!).sort()).toEqual(['samples', 'seq', 't0', 't1']);
@@ -37,7 +37,7 @@ describe('WatchRideHandler', () => {
 
   it('the replay columns go out as uploaded – the input column (controls per 100 ms sample) is how spectators see the driver\'s keys and clicks; the raw events never', async () => {
     const { ctx, watch } = setup();
-    const ride = await ctx.freeRide('driver', true);
+    const ride = await ctx.paidRide('driver', true);
     const [b0] = recording(ride.id, { seconds: 15, replay: true });
     ctx.clock.advance(15);
     await ctx.batches.insert(RideBatch.accept(ride.id, b0!, hashBatch(b0!), ctx.now()));
@@ -49,7 +49,7 @@ describe('WatchRideHandler', () => {
 
   it('what the driver wore goes with it, so spectators and replays draw the real cockpit', async () => {
     const { ctx, watch } = setup();
-    const ride = await ctx.freeRide('driver');
+    const ride = await ctx.paidRide('driver', false);
     ride.start(ctx.now(), { wheel: 'gold', truck_color: 'blue', gearbox: 'stick', dice: 'white', needle: 'orange' }); await ctx.rides.save(ride);
     expect((await watch(ride.id)).ride.loadout).toEqual({ wheel: 'gold', truck_color: 'blue', gearbox: 'stick', dice: 'white', needle: 'orange' });
   });
@@ -69,7 +69,7 @@ describe('WatchRideHandler', () => {
 
   it('an effect stamped after the spectator\'s cursor moved past it comes back through `since` (once, in id order)', async () => {
     const { ctx, watch } = setup();
-    const ride = await ctx.freeRide('driver', true);
+    const ride = await ctx.paidRide('driver', true);
     const hole = (await ctx.rideEvents.insert(RideEvent.donation({ rideId: ride.id, wallet: 'fan', effect: 'sinkhole', now: ctx.now() })))!;
     ctx.clock.advance(5);
     const first = await watch(ride.id, 0, 0);
@@ -84,14 +84,14 @@ describe('WatchRideHandler', () => {
 
   it('a script inventing viewer ids from one address counts as at most 3 viewers', async () => {
     const { ctx, watch } = setup();
-    const ride = await ctx.freeRide('driver', true);
+    const ride = await ctx.paidRide('driver', true);
     for (let i = 0; i < 10; i++) await watch(ride.id, 0, 0, `fake-${i}`, 0, '10.9.9.9');
     expect((await watch(ride.id, 0, 0, 'real', 0, '10.0.0.2')).viewers).toBe(4);
   });
 
   it('a closing watch page (leave) stops counting at once – only its own id from its own address', async () => {
     const { ctx, watch } = setup();
-    const ride = await ctx.freeRide('driver', true);
+    const ride = await ctx.paidRide('driver', true);
     await watch(ride.id, 0, 0, 'viewer-a', 0, '10.0.0.1'); await watch(ride.id, 0, 0, 'viewer-b', 0, '10.0.0.2');
     expect((await watch(ride.id, 0, 0, 'viewer-a', 0, '10.0.0.9', true)).viewers).toBe(2);   // another address cannot make viewer-a leave
     expect((await watch(ride.id, 0, 0, 'viewer-a', 0, '10.0.0.1', true)).viewers).toBe(1);
@@ -100,13 +100,22 @@ describe('WatchRideHandler', () => {
 
   it('carries the ride\'s features and hides what the driver muted (lines gone, notes blanked, donations kept)', async () => {
     const { ctx, watch } = setup();
-    const ride = await ctx.freeRide('driver', true);
+    const ride = await ctx.paidRide('driver', true);
     await ctx.rideEvents.insert(RideEvent.message({ rideId: ride.id, wallet: 'troll', text: 'boo', now: ctx.now() }));
     await ctx.rideEvents.insert(RideEvent.donation({ rideId: ride.id, wallet: 'troll', effect: 'tip', note: 'rude', now: ctx.now() }));
     await ctx.rideMutes.set(ride.id, 'troll', true, ctx.now());
     const view = await watch(ride.id);
     expect(view.events.map((e) => [e.kind, e.text])).toEqual([['donation', null]]);
     expect(view.features).toEqual({ chat: true, donations: true, payment: 'mock', effects: true });
+  });
+
+  it('running free rides cannot be watched on /api/watch (403), but their replay can be watched once ended (200)', async () => {
+    const { ctx, watch } = setup();
+    const ride = await ctx.freeRide('driver', true);
+    await expect(watch(ride.id)).rejects.toThrow(new ForbiddenError('stream watching is not available on free rides', 'free_ride_no_stream'));
+    ride.finish('shift', null, ctx.now()); await ctx.rides.save(ride);
+    const replay = await watch(ride.id);
+    expect(replay.ride).toMatchObject({ id: ride.id, status: 'abandoned', live: false });
   });
 
   it('nothing to watch before the start (no seed handed out early), and an unknown id is 404', async () => {

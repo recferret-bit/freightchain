@@ -7,6 +7,7 @@ import { FixedRules, DEMO_UNIT_WALLET, unitContext, unitRules } from '../../../.
 import { RecordingAnalytics } from '../../../../support/recording-analytics.js';
 import { StubPrice } from '../../../../support/stub-price.js';
 import { aPool } from '../../../../support/pools.js';
+import { setTierOnSaleForTest } from '../../../../../src/domain/rides/ride-tier.js';
 
 const setup = (price = new StubPrice(), rules = unitRules()) => {
   const ctx = unitContext(rules);
@@ -18,6 +19,14 @@ const setup = (price = new StubPrice(), rules = unitRules()) => {
 };
 
 describe('CreateRideHandler', () => {
+  beforeEach(() => setTierOnSaleForTest('1h', true)); // pay-per-ride cases below; production leaves 1h off until a pool exists
+  afterEach(() => setTierOnSaleForTest('1h', false));
+
+  it('the 1-hour shift with no pool is not on sale', async () => {
+    setTierOnSaleForTest('1h', false);
+    await expect(setup().create('1h')).rejects.toThrow(new ConflictError('the 1-hour shift is not on sale yet', 'tier_not_on_sale'));
+  });
+
   it('a free ride: ready at once, one credit spent, a re-ask hands back the same ride', async () => {
     const { ctx, analytics, create } = setup();
     const ride = await create('free');
@@ -59,9 +68,9 @@ describe('CreateRideHandler', () => {
 
   it('a free ride at a LEVEL: its trip, FREE_RIDE_SECONDS × its multiple (10 s here) and its K; no level = EASY', async () => {
     const { create } = setup();
-    expect(await create('free')).toMatchObject({ level: 1, trip: 'free-1', minSeconds: 10, completeDist: 0.25 * 28 * 10 });
-    expect(await setup().create('free', 'w', false, false, 2)).toMatchObject({ level: 2, trip: 'free-2', minSeconds: 30, completeDist: 0.3 * 28 * 30 });
-    expect(await setup().create('free', 'w', false, false, 3)).toMatchObject({ level: 3, trip: 'free-3', minSeconds: 100, completeDist: 0.4 * 28 * 100 });
+    expect(await create('free')).toMatchObject({ level: 1, trip: 'free-1', route: 'stuart', minSeconds: 10, completeDist: 0.25 * 28 * 10 });
+    expect(await setup().create('free', 'w', false, false, 2)).toMatchObject({ level: 2, trip: 'free-2', route: 'route66', minSeconds: 30, completeDist: 0.3 * 28 * 30 });
+    expect(await setup().create('free', 'w', false, false, 3)).toMatchObject({ level: 3, trip: 'free-3', route: 'brenner', minSeconds: 100, completeDist: 0.4 * 28 * 100 });
   });
 
   it('HARD refuses ASSIST before anything changes (409 assist_not_allowed): no ride, no credit spent; the ready ride keeps its level', async () => {
@@ -80,18 +89,26 @@ describe('CreateRideHandler', () => {
     expect(await ctx.rides.findOpenByWallet('w')).toBeNull();
   });
 
+  it('HARD refuses TUTORIAL before anything changes (409 tutorial_not_allowed): the ready ride keeps its level and its tutorial', async () => {
+    const { ctx, create } = setup();
+    const ready = await create('free', 'w', true, false, 1);
+    await expect(create('free', 'w', true, false, 3)).rejects.toThrow(new ConflictError('the HARD free run has no tutorial', 'tutorial_not_allowed'));
+    expect(await ctx.reload(ready.id)).toMatchObject({ trip: 'free-1', tutorial: true });
+    expect((await ctx.storedPlayer('w')).freeRides).toBe(9);
+  });
+
   it('asking for the ready free ride at ANOTHER level moves the SAME ride (trip, length, line, helpers) – one credit, one ride, saved', async () => {
     const { ctx, create } = setup();
     const first = await create('free', 'w', false, true, 1);
-    const hard = await create('free', 'w', true, false, 3);
-    expect(hard).toMatchObject({ id: first.id, level: 3, trip: 'free-3', minSeconds: 100, completeDist: 0.4 * 28 * 100, tutorial: true, assist: false });
-    expect((await ctx.reload(first.id)).snapshot()).toMatchObject({ trip: 'free-3', minSeconds: 100, tutorial: true, assist: false });
+    const hard = await create('free', 'w', false, false, 3);
+    expect(hard).toMatchObject({ id: first.id, level: 3, trip: 'free-3', route: 'brenner', minSeconds: 100, completeDist: 0.4 * 28 * 100, tutorial: false, assist: false });
+    expect((await ctx.reload(first.id)).snapshot()).toMatchObject({ trip: 'free-3', route: 'brenner', minSeconds: 100, tutorial: false, assist: false });
     expect((await ctx.storedPlayer('w')).freeRides).toBe(9);
   });
 
   it('asking for the ready free ride again WITHOUT a level keeps its own level (never a silent fall back to EASY); HARD + assist is still refused', async () => {
     const { ctx, create } = setup();
-    const hard = await create('free', 'w', true, false, 3);
+    const hard = await create('free', 'w', false, false, 3);
     expect(await create('free', 'w', false, false)).toMatchObject({ id: hard.id, level: 3, trip: 'free-3', minSeconds: 100, completeDist: 0.4 * 28 * 100, tutorial: false });
     await expect(create('free', 'w', false, true)).rejects.toMatchObject({ errorCode: 'assist_not_allowed' });
     expect(await ctx.reload(hard.id)).toMatchObject({ trip: 'free-3', assist: false });
@@ -234,9 +251,10 @@ describe('CreateRideHandler', () => {
     });
 
     it('program mode: a tier whose only pool failed has no tickets to ride – never the legacy order', async () => {
+      setTierOnSaleForTest('1h', false); // the product table: no live pool is "not on sale", not a pay-per-ride order
       const t = setup(new StubPrice(), unitRules({ paymentMode: 'program', programId: '9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx' }));
       await t.ctx.pools.upsert(aPool({ id: 1, status: 'refunding' }, t.ctx.now()));
-      await expect(t.create('1h')).rejects.toMatchObject({ errorCode: 'no_tickets' });
+      await expect(t.create('1h')).rejects.toMatchObject({ errorCode: 'tier_not_on_sale' });
       await expect(t.create('8h')).rejects.toMatchObject({ errorCode: 'tier_not_on_sale' }); // no pool at all: soon, not "no tickets"
     });
 

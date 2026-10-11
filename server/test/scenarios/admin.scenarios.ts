@@ -1,6 +1,7 @@
 import { bindClient, newWallet, sign, type Rider } from '../support/client.js';
 import type { Harness } from '../support/harness.js';
 import { PoolRepositoryPort } from '../../src/application/ports/economy/pool.repository.port.js';
+import { setTierOnSaleForTest } from '../../src/domain/rides/ride-tier.js';
 import { aPool } from '../support/pools.js';
 import { recording, upload } from '../support/recording.js';
 
@@ -129,7 +130,8 @@ export function adminScenarios(h: () => Harness): void {
 
   /** a completed demo paid 1 h shift (60 s, 910 m) with NO recording – the machine rejects it ('no-recording') */
   async function paidShiftWithoutRecording(rider: Rider) {
-    const r = (await rider.agent.post('/api/rides').send({ tier: '1h' }).expect(200)).body;
+    setTierOnSaleForTest('1h', true);   // the pay-per-ride order; production leaves 1h off until a pool exists
+    const r = await rider.agent.post('/api/rides').send({ tier: '1h' }).expect(200).then((res) => res.body).finally(() => setTierOnSaleForTest('1h', false));
     const signature = h().chain.addPayment({ payer: rider.address, lamports: r.lamports, memo: r.id });
     await rider.agent.post(`/api/rides/${r.id}/confirm`).send({ signature }).expect(200);
     await rider.agent.post(`/api/rides/${r.id}/start`).expect(200);
@@ -195,7 +197,11 @@ export function adminScenarios(h: () => Harness): void {
     expect(list.find((p) => p.wallet === rider.address)?.lastSignInAt).toEqual(expect.any(Number));
     const prefix = rider.address.slice(0, 8);
     expect((await admin.agent.get(`/api/admin/players?q=${prefix}`).expect(200)).body.rows.map((p: { wallet: string }) => p.wallet)).toEqual([rider.address]);
-    expect((await admin.agent.get(`/api/admin/players?q=${prefix.toLowerCase() === prefix ? prefix.toUpperCase() : prefix.toLowerCase()}`).expect(200)).body.rows).toEqual([]);
+    const otherPrefix = prefix.replace(/[a-zA-Z]/g, (c) => {
+      const flipped = c.toLowerCase() === c ? c.toUpperCase() : c.toLowerCase();
+      return '0OIl'.includes(flipped) ? (c.toLowerCase() === 'o' ? 'p' : 'a') : flipped;
+    });
+    expect((await admin.agent.get(`/api/admin/players?q=${otherPrefix}`).expect(200)).body.rows).toEqual([]);
     expect((await admin.agent.get('/api/admin/players?q=0OIl').expect(400)).body.code).toBeDefined();
     const one = (await admin.agent.get(`/api/admin/players/${rider.address}`).expect(200)).body;
     expect(one.player).toMatchObject({ wallet: rider.address, freeRides: 9 });

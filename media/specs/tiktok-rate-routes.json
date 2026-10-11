@@ -1,0 +1,314 @@
+{
+ "name": "tiktok-rate-routes",
+ "crop": "vertical",
+ "fps": 30,
+ "maxSeconds": 26,
+ "audio": {
+  "ignition": {
+   "at": 0,
+   "dur": 0.8
+  },
+  "music": {
+   "id": "brainrot",
+   "gain": 0.5,
+   "repeat": 2
+  },
+  "engine": {
+   "gain": 0.25
+  },
+  "sfx": {
+   "mute": [
+    "game-over"
+   ],
+   "extra": [
+    {
+     "t": 3.5,
+     "id": "airhorn"
+    },
+    {
+     "t": 6.6,
+     "id": "bruh"
+    },
+    {
+     "t": 9.8,
+     "id": "ding"
+    },
+    {
+     "t": 13.0,
+     "id": "ding"
+    },
+    {
+     "t": 16.2,
+     "id": "ding"
+    },
+    {
+     "t": 19.9,
+     "id": "scratch"
+    },
+    {
+     "t": 21.0,
+     "id": "wah"
+    },
+    {
+     "t": 22.0,
+     "id": "levelup",
+     "gain": 0.6
+    }
+   ]
+  }
+ },
+ "scenes": [
+  {
+   "id": "intro",
+   "dur": 2.2,
+   "route": "brenner",
+   "time": "day",
+   "speed": 22,
+   "captions": [
+    {
+     "at": 0.1,
+     "dur": 2.0,
+     "head": "RATING EVERY\nROAD 1-10",
+     "fx": "slam",
+     "size": 150
+    },
+    {
+     "at": 0.7,
+     "dur": 1.4,
+     "head": "@dispatch\nbe honest",
+     "fx": "bubble",
+     "pos": "low"
+    }
+   ]
+  },
+  {
+   "id": "siberia",
+   "dur": 3.2,
+   "route": "siberia",
+   "time": "day",
+   "speed": 20,
+   "captions": [
+    {
+     "at": 0.1,
+     "dur": 3.0,
+     "head": "SIBERIA",
+     "fx": "slam",
+     "size": 170
+    },
+    {
+     "at": 1.2,
+     "dur": 1.8,
+     "head": "10/10\nWOULD FREEZE AGAIN",
+     "fx": "stamp",
+     "color": "lcd",
+     "size": 100,
+     "y": 1250
+    }
+   ],
+   "cold": true,
+   "preroll": 12,
+   "transition": {
+    "type": "punch",
+    "dur": 0.4
+   }
+  },
+  {
+   "id": "route66",
+   "dur": 3.2,
+   "route": "route66",
+   "time": "day",
+   "speed": 32,
+   "captions": [
+    {
+     "at": 0.1,
+     "dur": 3.0,
+     "head": "ROUTE 66",
+     "fx": "slam",
+     "size": 170
+    },
+    {
+     "at": 1.2,
+     "dur": 1.8,
+     "head": "3/10\nIT'S STRAIGHT",
+     "fx": "stamp",
+     "color": "red",
+     "size": 100,
+     "y": 1250
+    }
+   ],
+   "lines": 0.5,
+   "transition": {
+    "type": "whip",
+    "dur": 0.3
+   }
+  },
+  {
+   "id": "stuart",
+   "dur": 3.2,
+   "route": "stuart",
+   "time": "day",
+   "speed": 22,
+   "captions": [
+    {
+     "at": 0.1,
+     "dur": 3.0,
+     "head": "AUSTRALIA",
+     "fx": "slam",
+     "size": 170
+    },
+    {
+     "at": 1.2,
+     "dur": 1.8,
+     "head": "7/10\nTHE DUST HAS OPINIONS",
+     "fx": "stamp",
+     "color": "yellow",
+     "size": 90,
+     "y": 1250
+    }
+   ],
+   "preroll": 14,
+   "events": [
+    {
+     "t": 0.35,
+     "do": "wipers",
+     "mode": 2
+    },
+    {
+     "t": 0.9,
+     "do": "washer",
+     "on": true
+    },
+    {
+     "t": 1.5,
+     "do": "washer",
+     "on": false
+    }
+   ],
+   "transition": {
+    "type": "glitch",
+    "dur": 0.4
+   }
+  },
+  {
+   "id": "brenner",
+   "dur": 3.2,
+   "route": "brenner",
+   "time": "dusk",
+   "speed": 24,
+   "captions": [
+    {
+     "at": 0.1,
+     "dur": 3.0,
+     "head": "BRENNER PASS",
+     "fx": "slam",
+     "size": 170
+    },
+    {
+     "at": 1.2,
+     "dur": 1.8,
+     "head": "9/10\nBENDS. SO MANY BENDS",
+     "fx": "stamp",
+     "color": "cyan",
+     "size": 90,
+     "y": 1250
+    }
+   ],
+   "lines": 0.3,
+   "transition": {
+    "type": "spin",
+    "dur": 0.4
+   }
+  },
+  {
+   "id": "panam",
+   "dur": 3.2,
+   "route": "panamerican",
+   "time": "night",
+   "speed": 28,
+   "captions": [
+    {
+     "at": 0.1,
+     "dur": 3.0,
+     "head": "PAN-AMERICAN",
+     "fx": "slam",
+     "size": 170
+    },
+    {
+     "at": 1.2,
+     "dur": 1.8,
+     "head": "6/10\nSAME TREE x40",
+     "fx": "stamp",
+     "color": "pink",
+     "size": 100,
+     "y": 1250
+    }
+   ],
+   "transition": {
+    "type": "punch",
+    "dur": 0.4
+   }
+  },
+  {
+   "id": "crash",
+   "dur": 3.6,
+   "route": "route66",
+   "time": "day",
+   "speed": 25,
+   "captions": [
+    {
+     "at": 0.1,
+     "dur": 1.6,
+     "head": "MY DRIVING:",
+     "fx": "slam",
+     "size": 150
+    },
+    {
+     "at": 2.1,
+     "dur": 1.4,
+     "head": "0/10",
+     "fx": "stamp",
+     "color": "red",
+     "size": 200,
+     "y": 1250
+    }
+   ],
+   "damage": true,
+   "sway": 0,
+   "events": [
+    {
+     "t": 0.05,
+     "do": "spawn",
+     "type": "truck",
+     "preset": "slow",
+     "zone": "ahead",
+     "dist": 20
+    }
+   ],
+   "transition": {
+    "type": "flash-red",
+    "dur": 0.3
+   }
+  },
+  {
+   "id": "end",
+   "dur": 2.6,
+   "route": "brenner",
+   "time": "dusk",
+   "speed": 16,
+   "captions": [],
+   "beat": false,
+   "transition": {
+    "type": "flash",
+    "dur": 0.4
+   },
+   "card": {
+    "title": [
+     "NOW RATE IT",
+     "YOURSELF"
+    ],
+    "steps": [],
+    "cta": "10 FREE RIDES ▸"
+   }
+  }
+ ]
+}

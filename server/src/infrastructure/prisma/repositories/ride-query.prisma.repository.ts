@@ -24,7 +24,7 @@ export class RideQueryPrismaRepository extends RideQueryPort {
 
   async live(heartbeatSince: Date, limit: number): Promise<LiveRideRow[]> {
     const rows = await this.prisma.ride.findMany({
-      where: { status: 'running', lastHbAt: { gte: heartbeatSince } },
+      where: { status: 'running', tier: { not: 'free' }, lastHbAt: { gte: heartbeatSince } },
       orderBy: [{ startedAt: 'desc' }, { seq: 'desc' }],
       take: limit,
     });

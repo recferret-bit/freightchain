@@ -2,14 +2,10 @@ import { bindClient, newWallet, sign } from '../support/client.js';
 import type { Harness } from '../support/harness.js';
 import type { Rider } from '../support/client.js';
 
-/* Signup balance, the settings table, the signed admin adjust, and anonymous offline runs.
-   Same scenarios on in-memory and PostgreSQL. A free shift is 10 s here; the offline allowance reports that length. */
+/* Signup balance, the settings table, and the signed admin adjust.
+   Same scenarios on in-memory and PostgreSQL. A free shift is 10 s here. */
 export const FREE_RIDES_ADMIN = newWallet();
 export const FREE_RIDES_ENV = { FREE_RIDE_SECONDS: '10', ADMIN_WALLETS: FREE_RIDES_ADMIN.address };
-
-const FP = 'a'.repeat(64);
-const FP_B = 'b'.repeat(64);
-const FP_C = 'c'.repeat(64);
 
 export function freeRideScenarios(h: () => Harness): void {
   const { anon, login, loginAdmin, sec } = bindClient(h);
@@ -37,7 +33,7 @@ export function freeRideScenarios(h: () => Harness): void {
     expect(await me(rider)).toMatchObject({ freeRides: 10, freeRidesMax: 5, nextFreeRideAt: null });
     const admin = await loginAdmin(FREE_RIDES_ADMIN);
     expect((await admin.agent.get('/api/admin/settings').expect(200)).body).toEqual({
-      freeOnSignup: 10, freeRidesDailyMax: 5, offlineFreeRides: 3, offlineFreeRidesPerIp: 10,
+      freeOnSignup: 10, freeRidesDailyMax: 5,
     });
   });
 
@@ -105,52 +101,6 @@ export function freeRideScenarios(h: () => Harness): void {
     expect(ok.body).toMatchObject({ key: 'free_on_signup', value: 7, settings: { freeOnSignup: 7, freeRidesDailyMax: 5 } });
   });
 
-  it('offline claims: three per fingerprint, a status read spends nothing, a signed-in cookie spends nothing', async () => {
-    const look = await anon().get('/api/offline-rides').query({ fingerprint: FP }).expect(200);
-    expect(look.body).toMatchObject({
-      signedIn: false, allowed: true, claimed: false, remaining: 3,
-      usedFingerprint: 0, usedIp: 0, limitFingerprint: 3, limitIp: 10, minSeconds: 10, completeDist: 70,
-    });
-    const again = await anon().get('/api/offline-rides').query({ fingerprint: FP }).expect(200);
-    expect(again.body).toMatchObject({ claimed: false, remaining: 3, usedFingerprint: 0 });
-
-    const claims = [];
-    for (let i = 0; i < 3; i++) claims.push(await anon().post('/api/offline-rides').send({ fingerprint: FP }).expect(200));
-    expect(claims[0].body).toMatchObject({ claimed: true, allowed: true, remaining: 2, usedFingerprint: 1, usedIp: 1, minSeconds: 10, completeDist: 70 });
-    expect(claims[2].body).toMatchObject({ claimed: true, allowed: false, remaining: 0, usedFingerprint: 3 });
-    const spent = await anon().post('/api/offline-rides').send({ fingerprint: FP });
-    expect(spent.status).toBe(409);
-    expect(spent.body).toMatchObject({ code: 'offline_rides_spent', detail: 'offline free rides are used up' });
-
-    const other = await anon().post('/api/offline-rides').send({ fingerprint: FP_B }).expect(200);
-    expect(other.body).toMatchObject({ claimed: true, usedFingerprint: 1, usedIp: 4 });
-
-    const before = (await anon().get('/api/offline-rides').query({ fingerprint: FP_C }).expect(200)).body.remaining;
-    const rider = await login();
-    const signed = await rider.agent.post('/api/offline-rides').send({ fingerprint: FP_C }).expect(200);
-    expect(signed.body).toMatchObject({ signedIn: true, claimed: false, allowed: false });
-    expect((await anon().get('/api/offline-rides').query({ fingerprint: FP_C }).expect(200)).body.remaining).toBe(before);
-
-    const bad = await anon().post('/api/offline-rides').send({ fingerprint: 'zz' });
-    expect(bad.status).toBe(400);
-    expect(bad.body.code).toBe('validation_error');
-  });
-
-  it('the per-address cap and a zero fingerprint limit each stop the next claim', async () => {
-    const admin = await loginAdmin(FREE_RIDES_ADMIN);
-    expect((await setSetting(admin, 'offline_free_rides_per_ip', 1)).status).toBe(200);
-    await anon().post('/api/offline-rides').send({ fingerprint: FP }).expect(200);
-    const blocked = await anon().post('/api/offline-rides').send({ fingerprint: FP_B });
-    expect(blocked.status).toBe(409);
-    expect(blocked.body.code).toBe('offline_rides_spent');
-
-    expect((await setSetting(admin, 'offline_free_rides_per_ip', 10)).status).toBe(200);   // room on the address again, so the next refusal is the fingerprint bucket
-    expect((await setSetting(admin, 'offline_free_rides', 0)).status).toBe(200);
-    const none = await anon().post('/api/offline-rides').send({ fingerprint: FP_C });
-    expect(none.status).toBe(409);
-    expect(none.body.code).toBe('offline_rides_spent');
-  });
-
   it('the admin api: no session is a 404, a change without the header is a 403, the player cookie of an admin wallet grants nothing', async () => {
     const rider = await login();
     const body = { key: 'free_on_signup', value: 1, signature: 's' };
@@ -177,18 +127,18 @@ export function freeRideScenarios(h: () => Harness): void {
   it('a signature is single-use and expires in 5 minutes; the audit row keeps the signed text; 0 and 100_000 are legal settings', async () => {
     const admin = await loginAdmin(FREE_RIDES_ADMIN);
     const rider = await login();
-    const issued = await admin.agent.post('/api/admin/settings/challenge').set('x-fc-admin', '1').send({ action: 'setting_update', key: 'offline_free_rides', value: 0 }).expect(200);
+    const issued = await admin.agent.post('/api/admin/settings/challenge').set('x-fc-admin', '1').send({ action: 'setting_update', key: 'free_rides_daily_max', value: 0 }).expect(200);
     const signature = sign(admin.kp, issued.body.message as string);
-    const wrote = await admin.agent.post('/api/admin/settings').set('x-fc-admin', '1').send({ key: 'offline_free_rides', value: 0, signature }).expect(200);
-    expect(wrote.body.settings.offlineFreeRides).toBe(0);
-    const replay = await admin.agent.post('/api/admin/settings').set('x-fc-admin', '1').send({ key: 'offline_free_rides', value: 0, signature });
+    const wrote = await admin.agent.post('/api/admin/settings').set('x-fc-admin', '1').send({ key: 'free_rides_daily_max', value: 0, signature }).expect(200);
+    expect(wrote.body.settings.freeRidesDailyMax).toBe(0);
+    const replay = await admin.agent.post('/api/admin/settings').set('x-fc-admin', '1').send({ key: 'free_rides_daily_max', value: 0, signature });
     expect(replay.status).toBe(401);
     expect(replay.body.code).toBe('unauthorized');
-    expect((await admin.agent.get('/api/admin/settings').expect(200)).body.offlineFreeRides).toBe(0);
+    expect((await admin.agent.get('/api/admin/settings').expect(200)).body.freeRidesDailyMax).toBe(0);
 
     const top = await setSetting(admin, 'free_rides_daily_max', 100_000);
     expect(top.status).toBe(200);
-    expect((await admin.agent.get('/api/admin/settings').expect(200)).body).toMatchObject({ offlineFreeRides: 0, freeRidesDailyMax: 100_000 });
+    expect((await admin.agent.get('/api/admin/settings').expect(200)).body).toMatchObject({ freeRidesDailyMax: 100_000 });
 
     const crossed = await challenge(admin, '/api/admin/settings/challenge', { action: 'setting_update', key: 'free_on_signup', value: 4 });
     const wrongRoute = await admin.agent.post('/api/admin/players/free-rides').set('x-fc-admin', '1').send({ wallet: rider.address, delta: 4, signature: crossed });
@@ -212,8 +162,8 @@ export function freeRideScenarios(h: () => Harness): void {
     expect((await me(await login())).freeRides).toBe(10); // the expired write did not change signup
 
     const rows = (await admin.agent.get('/api/admin/actions').expect(200)).body.rows as { action: string; target: string; detail: { value?: number; delta?: number; freeRides?: number; signed?: { message: string; signature: string } } }[];
-    const setting = rows.find((row) => row.action === 'setting.update' && row.target === 'offline_free_rides');
-    expect(setting?.detail.signed?.message).toContain('Action: SET setting offline_free_rides');
+    const setting = rows.find((row) => row.action === 'setting.update' && row.target === 'free_rides_daily_max' && row.detail.value === 0);
+    expect(setting?.detail.signed?.message).toContain('Action: SET setting free_rides_daily_max');
     expect(setting?.detail.signed?.message).toContain('Value: 0');
     expect(setting?.detail.signed?.signature).toBe(signature);
     expect(setting?.detail.value).toBe(0);

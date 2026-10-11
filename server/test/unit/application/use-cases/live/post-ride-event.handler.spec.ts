@@ -11,12 +11,18 @@ describe('PostRideEventHandler', () => {
     const handler = new PostRideEventHandler(ctx.liveAccess, ctx.rideEvents, ctx.clock, ctx.stats);
     return { ctx, post: (wallet: string, id: string, input: RideEventInput) => handler.execute(new PostRideEventCommand(wallet, id, input)) };
   };
+  const paidRide = async (ctx: ReturnType<typeof unitContext>, wallet = 'driver') => {
+    const ride = await ctx.paidOrder(wallet);
+    ride.markPaid(1, ctx.now());
+    ride.start(ctx.now());
+    return ctx.rides.save(ride);
+  };
   const say = (text: string): RideEventInput => ({ kind: 'message', text });
   const give = (effect: 'tip' | 'night' | 'sinkhole', note: string | null = null): RideEventInput => ({ kind: 'donation', effect, note });
 
   it('a spectator writes to a running ride: numbered, cleaned, a mock donation priced from the table', async () => {
     const { ctx, post } = setup();
-    const ride = await ctx.freeRide('driver', true);
+    const ride = await paidRide(ctx, 'driver');
     const line = await post('fan', ride.id, say('  go\ngo  '));
     expect(line).toMatchObject({ kind: 'message', wallet: 'fan', text: 'go go', effect: null, lamports: 0, at: ctx.clock.ms, applied: null });
     ctx.clock.advance(3);
@@ -26,9 +32,16 @@ describe('PostRideEventHandler', () => {
     expect(await ctx.rideEvents.totals(ride.id)).toEqual({ messages: 1, donations: 1, lamports: EFFECTS.sinkhole.lamports });
   });
 
+  it('refuses posts on free rides with 403 free_ride_no_stream', async () => {
+    const { ctx, post } = setup();
+    const free = await ctx.freeRide('driver', true);
+    await expect(post('fan', free.id, say('hello'))).rejects.toThrow(new ForbiddenError('stream watching and interactions are not available on free rides', 'free_ride_no_stream'));
+    await expect(post('fan', free.id, give('tip'))).rejects.toThrow(new ForbiddenError('stream watching and interactions are not available on free rides', 'free_ride_no_stream'));
+  });
+
   it('one game effect per ride per window (whoever is first), one line per wallet per window – a 429 with the wait', async () => {
     const { ctx, post } = setup();
-    const ride = await ctx.freeRide('driver', true);
+    const ride = await paidRide(ctx, 'driver');
     await post('a', ride.id, give('night'));
     ctx.clock.advance(5);
     await expect(post('b', ride.id, give('sinkhole'))).rejects.toThrow(new TooManyRequestsError('one effect per 20 s on this ride – someone was quicker; the next in 15 s', 'live_rate_limited', 15));
@@ -42,7 +55,7 @@ describe('PostRideEventHandler', () => {
 
   it('the effect gap is SLIDING: two effects either side of a 20 s bucket edge are still 20 s apart; the 429 carries the real wait', async () => {
     const { ctx, post } = setup();
-    const ride = await ctx.freeRide('driver', true);
+    const ride = await paidRide(ctx, 'driver');
     ctx.clock.advance(19.9); // 100 ms before a bucket edge
     await post('a', ride.id, give('night'));
     ctx.clock.advance(0.2);  // the next bucket, 200 ms later
@@ -53,35 +66,28 @@ describe('PostRideEventHandler', () => {
     expect(await post('b', ride.id, give('sinkhole'))).toMatchObject({ effect: 'sinkhole' });
   });
 
-  it('feature flags: chat / donations / effects off – a 403 live_feature_off naming what is off; "free" = only on free test rides', async () => {
+  it('feature flags: chat / donations / effects off – a 403 live_feature_off naming what is off', async () => {
     const off = setup({ chat: 'off', effects: 'off' });
-    const ride = await off.ctx.freeRide('driver', true);
+    const ride = await paidRide(off.ctx, 'driver');
     await expect(off.post('fan', ride.id, say('hi'))).rejects.toThrow(new ForbiddenError('chat is off on this ride', 'live_feature_off'));
     await expect(off.post('fan', ride.id, give('night'))).rejects.toThrow(/effects are off on this ride – a tip still works/);
     expect(await off.post('fan', ride.id, give('tip'))).toMatchObject({ effect: 'tip' });
     const none = setup({ donations: false });
-    const r2 = await none.ctx.freeRide('driver', true);
+    const r2 = await paidRide(none.ctx, 'driver');
     await expect(none.post('fan', r2.id, give('tip'))).rejects.toThrow(/donations are off/);
     expect(await none.post('fan', r2.id, say('chat still works'))).toMatchObject({ kind: 'message' });
-    const freeOnly = setup({ chat: 'free', effects: 'free' });
-    const free = await freeOnly.ctx.freeRide('driver', true);
-    expect(await freeOnly.post('fan', free.id, give('night'))).toMatchObject({ effect: 'night' });
-    const paid = await freeOnly.ctx.paidOrder('payer'); paid.markPaid(1, freeOnly.ctx.now()); paid.start(freeOnly.ctx.now()); await freeOnly.ctx.rides.save(paid);
-    await expect(freeOnly.post('fan', paid.id, say('hi'))).rejects.toThrow(/chat is off/);
-    await expect(freeOnly.post('fan', paid.id, give('sinkhole'))).rejects.toThrow(/effects are off/);
-    expect(await freeOnly.post('fan2', paid.id, give('tip'))).toMatchObject({ effect: 'tip' });
   });
 
   it('when donations must be paid (LIVE_FREE_DONATIONS=off) the free route refuses them – 403 payment_required; chat is unaffected', async () => {
     const { ctx, post } = setup({ freeDonations: false });
-    const ride = await ctx.freeRide('driver', true);
+    const ride = await paidRide(ctx, 'driver');
     await expect(post('fan', ride.id, give('tip'))).rejects.toThrow(new ForbiddenError('donations are paid with a real transfer here – use a donation order', 'payment_required'));
     expect(await post('fan', ride.id, say('hi'))).toMatchObject({ kind: 'message' });
   });
 
   it('a wallet the driver muted cannot post on that ride (403 muted) – on other rides it can', async () => {
     const { ctx, post } = setup();
-    const ride = await ctx.freeRide('driver', true), other = await ctx.freeRide('driver2', true);
+    const ride = await paidRide(ctx, 'driver'), other = await paidRide(ctx, 'driver2');
     await ctx.rideMutes.set(ride.id, 'troll', true, ctx.now());
     await expect(post('troll', ride.id, say('boo'))).rejects.toThrow(new ForbiddenError('the driver muted you on this ride', 'muted'));
     await expect(post('troll', ride.id, give('sinkhole'))).rejects.toThrow(/muted/);
@@ -90,20 +96,19 @@ describe('PostRideEventHandler', () => {
 
   it('never the driver on its own ride; only rides on the air: unknown / unstarted 404, ended or silent 409', async () => {
     const { ctx, post } = setup();
-    const ride = await ctx.freeRide('driver', true);
+    const ride = await paidRide(ctx, 'driver');
     await expect(post('driver', ride.id, say('me'))).rejects.toBeInstanceOf(ForbiddenError);
     await expect(post('fan', 'nope', say('hi'))).rejects.toBeInstanceOf(NotFoundError);
-    const unstarted = await ctx.freeRide('other');
-    await expect(post('fan', unstarted.id, say('hi'))).rejects.toBeInstanceOf(NotFoundError);
+    const unstarted = await paidRide(ctx, 'other');
+    unstarted.finish('failed', 'crash', ctx.now()); await ctx.rides.save(unstarted);
+    await expect(post('fan', unstarted.id, say('hi'))).rejects.toThrow(new ConflictError('the ride is failed', 'ride_not_live'));
     ctx.clock.advance(151); // no heartbeat for longer than the timeout
     await expect(post('fan', ride.id, say('hi'))).rejects.toThrow(new ConflictError('the ride is off the air', 'ride_not_live'));
-    ride.finish('failed', 'crash', ctx.now()); await ctx.rides.save(ride);
-    await expect(post('fan', ride.id, say('hi'))).rejects.toThrow(new ConflictError('the ride is failed', 'ride_not_live'));
   });
 
   it('statistics: a mock donation counts on the DRIVER (no lamports); chat lines count nothing; a refused post counts nothing', async () => {
     const { ctx, post } = setup();
-    const ride = await ctx.freeRide('driver', true);
+    const ride = await paidRide(ctx, 'driver');
     await post('fan', ride.id, say('hello'));
     expect(await ctx.stats.player('driver')).toMatchObject({ donations: 0 });
     await post('fan', ride.id, give('tip'));

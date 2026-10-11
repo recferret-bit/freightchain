@@ -1,7 +1,7 @@
 import { Ride } from '../../../src/domain/rides/ride.entity.js';
 import { RIDE_TIER_IDS } from '../../../src/domain/rides/ride-tier.js';
-import { FREE_LEVELS, FREE_LEVEL_IDS, TRIP_IDS, TRIP_OF_TIER, assertAssistAllowed, completedLevels, freeLevelSeconds, isFreeLevel, levelOfTrip, tripOf } from '../../../src/domain/rides/ride-trip.js';
-import { FREE_COMPLETE_DIST_K, completeDistK } from '../../../src/domain/rides/ride-rules.js';
+import { FREE_LEVELS, FREE_LEVEL_IDS, TRIP_IDS, TRIP_OF_TIER, assertAssistAllowed, assertTutorialAllowed, completedLevels, freeLevelSeconds, isFreeLevel, levelOfTrip, tripOf } from '../../../src/domain/rides/ride-trip.js';
+import { FREE_COMPLETE_DIST_K, ROUTE_IDS, completeDistK } from '../../../src/domain/rides/ride-rules.js';
 import { ConflictError } from '../../../src/domain/shared/errors.js';
 import { validateEnv } from '../../../src/infrastructure/config/env.schema.js';
 
@@ -44,6 +44,17 @@ describe('ride trips (server ⇄ client/js/trips.js)', () => {
     expect(new Set(Object.values(TRIPS).filter((t: any) => t.level).map((t: any) => t.id))).toEqual(new Set(FREE_LEVEL_IDS.map((l) => FREE_LEVELS[l].trip)));
   });
 
+  it('each free level is one country, the same one the lobby hardcodes, and the three countries differ', async () => {
+    const { FREE_COUNTRIES } = await import(/* @vite-ignore */ new URL('../../../../client/js/free-countries.js', import.meta.url).href) as { FREE_COUNTRIES: Record<number, { route: string }> };
+    const routes = FREE_LEVEL_IDS.map((l) => FREE_LEVELS[l].route);
+    expect(routes).toEqual(['stuart', 'route66', 'brenner']);
+    expect(new Set(routes).size).toBe(routes.length);
+    for (const l of FREE_LEVEL_IDS) {
+      expect(ROUTE_IDS).toContain(FREE_LEVELS[l].route);
+      expect(FREE_COUNTRIES[l].route).toBe(FREE_LEVELS[l].route);
+    }
+  });
+
   it('the levels: EASY ×1 K .25 with assist, CROSSROADS ×3 K .3 with assist, HARD ×10 K .4 without; EASY is the old free K', () => {
     expect(FREE_LEVEL_IDS.map((l) => [FREE_LEVELS[l].trip, FREE_LEVELS[l].name, FREE_LEVELS[l].multiple, FREE_LEVELS[l].k, FREE_LEVELS[l].assist])).toEqual([
       ['free-1', 'EASY', 1, 0.25, true], ['free-2', 'CROSSROADS', 3, 0.3, true], ['free-3', 'HARD', 10, 0.4, false],
@@ -59,9 +70,13 @@ describe('ride trips (server ⇄ client/js/trips.js)', () => {
     expect([completeDistK('free', 'free-2'), completeDistK('free', 'free-3'), completeDistK('free', 'free'), completeDistK('free'), completeDistK('1h', '1h')]).toEqual([0.3, 0.4, 0.25, 0.25, 0.5]);
   });
 
-  it('assertAssistAllowed: only HARD refuses, and only with assist on', () => {
+  it('assertTutorialAllowed / assertAssistAllowed: only HARD refuses, and only with that helper on', () => {
+    expect(() => assertTutorialAllowed(3, true)).toThrow(new ConflictError('the HARD free run has no tutorial', 'tutorial_not_allowed'));
     expect(() => assertAssistAllowed(3, true)).toThrow(new ConflictError('the HARD free run has no assist', 'assist_not_allowed'));
-    for (const [l, a] of [[1, true], [2, true], [3, false]] as const) expect(() => assertAssistAllowed(l, a)).not.toThrow();
+    for (const [l, on] of [[1, true], [2, true], [3, false]] as const) {
+      expect(() => assertTutorialAllowed(l, on)).not.toThrow();
+      expect(() => assertAssistAllowed(l, on)).not.toThrow();
+    }
   });
 
   it('a new ride carries the trip of its tier (a free one: its level); the finish distance follows the level too', () => {

@@ -2,6 +2,8 @@ import { CommandBus } from '@nestjs/cqrs';
 import { SweepStaleRidesCommand } from '../../src/application/use-cases/rides/sweep-stale-rides/sweep-stale-rides.command.js';
 import { bindClient, type Rider } from '../support/client.js';
 import type { Harness } from '../support/harness.js';
+import { setTierOnSaleForTest } from '../../src/domain/rides/ride-tier.js';
+import { TREASURY } from '../support/fake-chain.js';
 
 /* The lobby: live feed, profile + persisted achievements, route / night in heartbeats, free ride vs paid purchase, leaderboard boards.
    Free shift = 10 s driven AND 140 m; the fake clock and fake chain drive everything. */
@@ -9,9 +11,17 @@ export const LOBBY_ENV = { FREE_RIDE_SECONDS: '10' };
 
 export function lobbyScenarios(h: () => Harness): void {
   const { anon, login, sec, now } = bindClient(h);
-  beforeEach(() => h().reset());
+  beforeEach(() => { setTierOnSaleForTest('1h', true); return h().reset(); });
+  afterEach(() => setTierOnSaleForTest('1h', false));
 
   const freeRide = async (w: Rider) => { const r = (await w.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body; await w.agent.post(`/api/rides/${r.id}/start`).expect(200); return r.id as string; };
+  const paidRide = async (w: Rider) => {
+    const r = (await w.agent.post('/api/rides').send({ tier: '1h' }).expect(200)).body;
+    const sig = h().chain.addPayment({ payer: w.address, destination: TREASURY, lamports: r.lamports, memo: r.id });
+    await w.agent.post(`/api/rides/${r.id}/confirm`).send({ signature: sig }).expect(200);
+    await w.agent.post(`/api/rides/${r.id}/start`).expect(200);
+    return r.id as string;
+  };
   /** drive a free ride to completion (10 s, 140 m) */
   async function finish(w: Rider, extra: Record<string, unknown> = {}, hull = 100) {
     const id = await freeRide(w);
@@ -19,32 +29,34 @@ export function lobbyScenarios(h: () => Harness): void {
     return (await w.agent.post(`/api/rides/${id}/end`).send({ outcome: 'shift', s: 150, t: 15, hull, ...extra }).expect(200)).body;
   }
   describe('live feed (public)', () => {
-    it('shows running rides with route, progress, pause state and the ride id (the watch link) – no seed or reason', async () => {
-      h().seedFor('brenner');   // the SERVER decides the route, from the seed
-      const w = await login(), id = await freeRide(w);
+    it('shows running rides with route, progress, pause state and the ride id (the watch link) – no seed or reason; free rides excluded', async () => {
+      const w = await login(), id = await paidRide(w);
+      const other = await login(), freeId = await freeRide(other);
       sec(5); await w.agent.post(`/api/rides/${id}/heartbeat`).send({ s: 70, t: 5, hull: 80, night: false }).expect(200);
+      sec(1); await other.agent.post(`/api/rides/${freeId}/heartbeat`).send({ s: 10, t: 1, hull: 100 }).expect(200);
       const { body } = await anon().get('/api/live').expect(200);   // no cookie
       const mine = body.rides.find((r: { wallet: string }) => r.wallet === w.address);
-      expect(mine).toMatchObject({ tier: 'free', route: 'brenner', distance: 70, hull: 80, paused: false, driveSeconds: 5, minSeconds: 10, completeDist: 70, timeScale: 1 });
-      expect(mine.progress).toBeCloseTo(0.5, 2);
+      expect(mine).toMatchObject({ tier: '1h', route: expect.any(String), distance: 70, hull: 80, paused: false, driveSeconds: 5, minSeconds: 3600, completeDist: 50_400, timeScale: 1 });
+      expect(mine.progress).toBeCloseTo(70 / 50_400, 2);
       expect(mine.id).toBe(id); expect(Object.keys(mine)).not.toContain('reason'); expect(Object.keys(mine)).not.toContain('seed');
+      expect(body.rides.find((r: { id: string }) => r.id === freeId)).toBeUndefined();
       sec(5); await w.agent.post(`/api/rides/${id}/heartbeat`).send({ s: 70, t: 5, hull: 80, paused: true }).expect(200);
       expect((await anon().get('/api/live')).body.rides.find((r: { wallet: string }) => r.wallet === w.address).paused).toBe(true);
     });
 
     it('drops a ride whose tab vanished (no heartbeat for a while) and rides that ended', async () => {
-      const a = await login(), b = await login(); await freeRide(a); const idB = await freeRide(b);
+      const a = await login(), b = await login(); await paidRide(a); const idB = await paidRide(b);
       sec(200);                                               // both silent for > the 150 s timeout
       let rides = (await anon().get('/api/live')).body.rides.map((r: { wallet: string }) => r.wallet);
       expect(rides).not.toContain(a.address); expect(rides).not.toContain(b.address);
-      const c = await login(), idC = await freeRide(c);
+      const c = await login(), idC = await paidRide(c);
       sec(2); await c.agent.post(`/api/rides/${idC}/end`).send({ outcome: 'failed', s: 0, t: 1 }).expect(200);
       const body = (await anon().get('/api/live')).body;
       rides = body.rides.map((r: { wallet: string }) => r.wallet);
       expect(rides).not.toContain(c.address); void idB;
       // the ended ride moves to the landing's "recent" ticker: status + distance + id (its replay), still no reason
       const rc = body.recent.find((r: { wallet: string }) => r.wallet === c.address);
-      expect(rc).toMatchObject({ tier: 'free', status: 'failed', distance: 0 });
+      expect(rc).toMatchObject({ tier: '1h', status: 'failed', distance: 0 });
       expect(rc.id).toBe(idC); expect(Object.keys(rc)).not.toContain('reason');
       expect(body.upcoming).toEqual([]);   // free rides are never "next up" – only paid, unstarted shifts
       expect(body.totals).toMatchObject({ shifts: expect.any(Number), metres: expect.any(Number), drivers: expect.any(Number) });
@@ -64,7 +76,7 @@ export function lobbyScenarios(h: () => Harness): void {
     });
 
     it('who is online: the landing / lobby polls count (a signed-in one as a player), drivers and watchers too; junk presence params never fail the feed', async () => {
-      const w = await login(), id = await freeRide(w);
+      const w = await login(), id = await paidRide(w);
       const fan = await login();
       await anon().get('/api/live').query({ visitor: 'landing-visitor-1', page: 'landing' }).expect(200);
       await fan.agent.get('/api/live').query({ visitor: 'lobby-visitor-01', page: 'lobby' }).expect(200);
@@ -94,7 +106,7 @@ export function lobbyScenarios(h: () => Harness): void {
     });
 
     it('a closing page leaves at once: the lobby / landing beacon (leave=1), and the game tab\'s /end beacon (text/plain) ends its ride now', async () => {
-      const w = await login(), id = await freeRide(w);
+      const w = await login(), id = await paidRide(w);
       await w.agent.get('/api/live').query({ visitor: 'closing-visitor-1', page: 'lobby' }).expect(200);
       expect((await anon().get('/api/live').expect(200)).body.online).toMatchObject({ browsing: 1, driving: 1 });
       await w.agent.get('/api/live').query({ visitor: 'closing-visitor-1', page: 'lobby', leave: '1' }).expect(200);
@@ -107,16 +119,17 @@ export function lobbyScenarios(h: () => Harness): void {
       await anon().post(`/api/rides/${id}/end`).set('content-type', 'text/plain').send('{"outcome":"shift"}').expect(401);   // a beacon still needs the session cookie
     });
 
-    it('the route is the SERVER\'s: assigned from the seed when the ride is ordered, and nothing a heartbeat says changes it', async () => {
-      h().seedFor('siberia');
+    it('a free ride\'s country is its level\'s, and nothing a heartbeat says changes it', async () => {
+      h().seedFor('siberia', 1);   // the hour still comes from the seed; the country does not
       const w = await login(), ride = (await w.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
-      expect(ride).toMatchObject({ route: 'siberia' });
-      expect([6.5, 12, 18.5, 22]).toContain(ride.startHour);
+      expect(ride).toMatchObject({ route: 'stuart', startHour: 12 });
+      const hard = (await w.agent.post('/api/rides').send({ tier: 'free', level: 3 }).expect(200)).body;
+      expect(hard).toMatchObject({ id: ride.id, route: 'brenner' });
       await w.agent.post(`/api/rides/${ride.id}/start`).expect(200);
-      sec(2); await w.agent.post(`/api/rides/${ride.id}/heartbeat`).send({ s: 10, t: 2, route: 'brenner' }).expect(200);
+      sec(2); await w.agent.post(`/api/rides/${ride.id}/heartbeat`).send({ s: 10, t: 2, route: 'route66' }).expect(200);
       sec(2); await w.agent.post(`/api/rides/${ride.id}/heartbeat`).send({ s: 20, t: 4, route: '<img src=x onerror=alert(1)>' }).expect(200);
-      expect((await anon().get('/api/live')).body.rides.find((r: { wallet: string }) => r.wallet === w.address).route).toBe('siberia');
-      expect((await w.agent.get(`/api/rides/${ride.id}`).expect(200)).body).toMatchObject({ route: 'siberia', startHour: ride.startHour });
+      expect((await anon().get('/api/live')).body.rides.find((r: { wallet: string }) => r.wallet === w.address)).toBeUndefined();
+      expect((await w.agent.get(`/api/rides/${ride.id}`).expect(200)).body).toMatchObject({ route: 'brenner', startHour: 12 });
     });
   });
 
@@ -131,15 +144,14 @@ export function lobbyScenarios(h: () => Harness): void {
       expect(p.achievements.find((a: { id: string }) => a.id === 'top-20').awardedAtRoundClose).toBe(true);
     });
 
-    it('a clean night shift on Siberia unlocks seven (a free ride: EASY cleared too), persisted with the time; they never disappear', async () => {
-      h().seedFor('siberia');
+    it('a clean night shift on the EASY country unlocks six (Cold Start needs the Trans-Siberian, which a free level is not), persisted with the time; they never disappear', async () => {
       const w = await login(), end = await finish(w, { night: true }, 100);
       expect(end.status).toBe('completed');
       const p = (await w.agent.get('/api/profile').expect(200)).body, got = (id: string) => p.achievements.find((a: { id: string }) => a.id === id).earnedAt;
-      for (const id of ['first-mile', 'shift-complete', 'night-owl', 'clean-run', 'cold-start', 'on-my-own', 'free-easy']) expect(got(id), id).toBe(now());
-      expect(got('century')).toBeNull(); expect(got('top-20')).toBeNull(); expect(got('free-crossroads')).toBeNull(); expect(got('free-hard')).toBeNull();
+      for (const id of ['first-mile', 'shift-complete', 'night-owl', 'clean-run', 'on-my-own', 'free-easy']) expect(got(id), id).toBe(now());
+      expect(got('cold-start')).toBeNull(); expect(got('century')).toBeNull(); expect(got('top-20')).toBeNull(); expect(got('free-crossroads')).toBeNull(); expect(got('free-hard')).toBeNull();
       expect(p.stats).toMatchObject({ rides: 1, completed: 1, metres: 150, bestMetres: 150 });
-      expect(p.recent[0]).toMatchObject({ tier: 'free', status: 'completed', distance: 150, route: 'siberia' });
+      expect(p.recent[0]).toMatchObject({ tier: 'free', status: 'completed', distance: 150, route: 'stuart' });
       const before = got('night-owl'); sec(3600);
       await finish(w, {}, 60);                                                      // a later, dirty, daytime ride changes nothing already earned
       expect((await w.agent.get('/api/profile')).body.achievements.find((a: { id: string }) => a.id === 'night-owl').earnedAt).toBe(before);
@@ -172,6 +184,9 @@ export function lobbyScenarios(h: () => Harness): void {
   });
 
   describe('buying while holding an unstarted free ride', () => {
+    beforeEach(() => setTierOnSaleForTest('1h', true)); // pay-per-ride; production leaves 1h off until a pool exists
+    afterEach(() => setTierOnSaleForTest('1h', false));
+
     it('cancels the free ride, gives the credit back, and orders the paid one', async () => {
       const w = await login(), free = (await w.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
       expect((await w.agent.get('/api/me')).body.freeRides).toBe(9);

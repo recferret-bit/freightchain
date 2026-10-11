@@ -33,8 +33,7 @@ import { FakeChain, TREASURY } from './fake-chain.js';
 import { FakePoolChain } from './fake-pool-chain.js';
 import { FakeClock } from './fake-clock.js';
 import { MemoryDb } from './in-memory/memory-db.js';
-import { MemoryOfflineRideRepository, MemorySettingsRepository } from './in-memory/memory-settings.js';
-import { OfflineRideRepositoryPort } from '../../src/application/ports/offline/offline-ride.repository.port.js';
+import { MemorySettingsRepository } from './in-memory/memory-settings.js';
 import { DailySeedRepositoryPort } from '../../src/application/ports/rides/daily-seed.repository.port.js';
 import { MemoryDailySeedRepository } from './in-memory/memory-daily-seeds.js';
 import { SettingsRepositoryPort } from '../../src/application/ports/settings/settings.repository.port.js';
@@ -74,7 +73,7 @@ export const testDatabaseUrl = (): string => process.env['TEST_DATABASE_URL'] ??
 export interface Harness {
   app: INestApplication;
   clock: FakeClock;
-  /** the NEXT ride's seed (and so its route + start hour, ride-rules.ts worldFor) can be chosen: `h.seedFor('siberia')` before ordering a ride */
+  /** the NEXT ride's seed: a paid ride's route and every ride's start hour (ride-rules.ts worldFor). A free ride's country is its level's, not this. `h.seedFor('siberia')` before ordering. */
   seedFor(route: string, hourIndex?: number): void;
   chain: FakeChain;
   /** the pool program (PoolChainPort) */
@@ -142,8 +141,7 @@ export async function createHarness(persistence: Persistence, env: Record<string
       .overrideProvider(RideMuteRepositoryPort).useValue(new MemoryRideMuteRepository(memory))
       .overrideProvider(DonationOrderRepositoryPort).useValue(new MemoryDonationOrderRepository(memory))
       .overrideProvider(StatsRepositoryPort).useValue(new MemoryStatsRepository(memory))
-      .overrideProvider(SettingsRepositoryPort).useValue(new MemorySettingsRepository(memory))
-      .overrideProvider(OfflineRideRepositoryPort).useValue(new MemoryOfflineRideRepository(memory));
+      .overrideProvider(SettingsRepositoryPort).useValue(new MemorySettingsRepository(memory));
   }
   const moduleRef = await builder.compile();
   const app = moduleRef.createNestApplication();

@@ -104,8 +104,9 @@ export function promoScenarios(h: () => Harness): void {
       const plain = (await w.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
       expect(plain.loadout).toBeNull(); // not started yet
       expect((await w.agent.post(`/api/rides/${plain.id}/start`).expect(200)).body.loadout).toEqual(classic);
-      expect((await anon().get(`/api/watch/${plain.id}`).expect(200)).body.ride.loadout).toEqual(classic);
+      await anon().get(`/api/watch/${plain.id}`).expect(403);
       await w.agent.post(`/api/rides/${plain.id}/end`).send({ outcome: 'failed', s: 0, t: 1 }).expect(200);
+      expect((await anon().get(`/api/watch/${plain.id}`).expect(200)).body.ride.loadout).toEqual(classic);
       await redeem(w, 'GOLDWHEEL').expect(200); await redeem(w, 'BLUE').expect(200);   // wears them from now on
       const styled = (await w.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
       const worn = { wheel: 'gold', truck_color: 'blue', gearbox: 'stick', dice: 'white', needle: 'orange' };
@@ -113,9 +114,9 @@ export function promoScenarios(h: () => Harness): void {
       await w.agent.post('/api/wardrobe/equip').send({ slot: 'wheel', item: 'classic' }).expect(200);
       await w.agent.post('/api/wardrobe/equip').send({ slot: 'truck_color', item: 'red' }).expect(200);
       expect((await w.agent.get(`/api/rides/${styled.id}`).expect(200)).body.loadout).toEqual(worn);
-      expect((await anon().get(`/api/watch/${styled.id}`).expect(200)).body.ride).toMatchObject({ loadout: worn, wallet: w.address });
+      await anon().get(`/api/watch/${styled.id}`).expect(403);
       await w.agent.post(`/api/rides/${styled.id}/end`).send({ outcome: 'failed', s: 0, t: 1 }).expect(200);
-      expect((await anon().get(`/api/watch/${styled.id}`).expect(200)).body.ride.loadout).toEqual(worn); // the replay of the finished ride
+      expect((await anon().get(`/api/watch/${styled.id}`).expect(200)).body.ride).toMatchObject({ loadout: worn, wallet: w.address }); // the replay of the finished ride
     });
   });
 

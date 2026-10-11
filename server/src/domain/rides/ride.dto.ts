@@ -30,7 +30,7 @@ export interface RideDto {
   trip: string | null;
   /** the free LEVEL (1 EASY · 2 CROSSROADS · 3 HARD – ride-trip.ts FREE_LEVELS), from the trip; null = a paid ride or a free one from before the levels */
   level: number | null;
-  /** the world the SERVER assigned at creation (from the seed): the route id and the clock hour the game starts at – the game applies them, nothing in it can change them (null = a ride from before this) */
+  /** the world the SERVER assigned: the route (a free level's country, otherwise from the seed) and the clock hour (always from the seed). The game applies them; nothing in it can change them (null = a ride from before this) */
   route: string | null;
   startHour: number | null;
   /** a free ride's helpers (false on every paid one): the tutorial dialog, and ASSIST = half the wear + a tip on every control – the game reads both from here */

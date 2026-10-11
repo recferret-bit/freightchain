@@ -19,11 +19,10 @@ export interface LiveFeaturesDto {
   effects: boolean;
 }
 
-const where = (flag: 'all' | 'free' | 'off', freeRide: boolean): boolean => flag === 'all' || (flag === 'free' && freeRide);
-
 export function liveFeatures(flags: LiveFlags, ride: { isFree: boolean }): LiveFeaturesDto {
+  if (ride.isFree) return { chat: false, donations: false, payment: 'mock', effects: false };
   const donations = flags.donations;
-  return { chat: where(flags.chat, ride.isFree), donations, payment: flags.freeDonations ? 'mock' : 'chain', effects: donations && where(flags.effects, ride.isFree) };
+  return { chat: flags.chat === 'all', donations, payment: flags.freeDonations ? 'mock' : 'chain', effects: donations && flags.effects === 'all' };
 }
 
 /** null = allowed; otherwise why not (the 403's text) */

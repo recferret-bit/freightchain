@@ -28,7 +28,7 @@ export function mountWatchPanel() {
     el('div', { class: 'w-top' },
       el('div', {}, el('div', { class: 'w-k' }, 'WATCHING'), el('b', { class: 'w-who', title: r.wallet }, short(r.wallet))),
       el('button', { class: 'alt w-fold', title: 'fold the panel', onclick: () => P.root.classList.toggle('folded') }, '⇥')),
-    el('div', { class: 'w-meta' }, el('span', { id: 'w-route' }), ' · ', TIER[r.tier] ?? r.tier, r.timeScale > 1 ? ` · DEMO ×${r.timeScale}` : ''),
+    el('div', { class: 'w-meta' }, el('span', { id: 'w-route' }), ' · ', TIER[r.tier] ?? r.tier),
     el('div', { class: 'w-badges' }, el('span', { id: 'w-state', class: 'w-badge' }), el('span', { id: 'w-viewers', class: 'w-badge dim' })),
     el('div', { class: 'w-stats' }, el('span', {}, '⏱ ', el('b', { id: 'w-time' })), el('span', {}, '↦ ', el('b', { id: 'w-dist' })), el('span', {}, 'hull ', el('b', { id: 'w-hull' }))),
     el('div', { id: 'w-note', class: 'dim w-small' }),

@@ -10,6 +10,11 @@ const chip = (p, now) => { const c = statusChip(p, now); return el('span', { cla
 const phase = (p, now) => { const f = phaseLine(p, now); return el('span', { class: `phase ${f.cls}` }, f.head, f.at ? [' · ', f.pre, el('b', { class: 'phcd', 'data-at': f.at }, span(f.at - now)), f.post] : ''); };
 const schedule = (p, s) => { const t = scheduleText(s ?? poolSchedule(p)); return t ? el('span', { class: 'sub sched' }, t) : ''; };
 
+/* the real tier, then the shorter ride a demo wallet actually drives */
+export function paidShift(info) {
+  return [el('span', { class: 'sub' }, info.shift), info.driven ? el('span', { class: 'sub demo' }, 'this ride ', el('b', {}, info.driven)) : ''];
+}
+
 /** One paid tier sold through an escrowed pool. ctx = { me, solUsd, now, busy, sales, qty, act: { ride, buy, refund, qty } }. */
 export function poolCard(t, info, ctx) {
   const p = t.pool, now = ctx.now, tt = tierTickets(ctx.me.tickets, t.id), held = tt.rows.find(r => r.poolId === p.id), a = cardAction(p, tt, now);
@@ -30,7 +35,7 @@ export function poolCard(t, info, ctx) {
     el('div', { class: 'hd' }, el('span', { class: 'nm' }, info.name), chip(p, now)),
     el('span', { class: 'plabel' }, `${p.label} · pool #${p.id}`),
     el('span', { class: 'pr' }, sol(p.priceLamports), el('small', {}, ` per ticket ${usd(p.priceLamports, ctx.solUsd)}`)),
-    el('span', { class: 'sub' }, info.shift),
+    ...paidShift(info),
     el('div', { class: 'prog', role: 'progressbar', 'aria-valuemin': 0, 'aria-valuemax': p.minTickets, 'aria-valuenow': Math.min(p.sold, p.minTickets), 'aria-label': 'tickets committed' }, el('i', { style: `width:${p.progressPct}%` })),
     el('span', { class: 'sub ptext' }, progressText(p, now)),
     phase(p, now), schedule(p, t.schedule),

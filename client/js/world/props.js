@@ -7,7 +7,9 @@ import { mesh } from './pool.js';
 export const GEO = { cyl: new THREE.CylinderGeometry(1, 1, 1, 7), box: new THREE.BoxGeometry(1, 1, 1), rock: new THREE.DodecahedronGeometry(1, 0), cone: new THREE.ConeGeometry(1, 1, 6) };
 /* boxHalf = half-extent of this geometry in its own space, one value per vertex. The form shade (world/nightlight.js) turns that into a 2 cm edge. Not set on cylinders. */
 export function markBox(geo) {
-  const p = geo.attributes.position, n = p.count, a = new Float32Array(n * 3);
+  const p = geo?.attributes?.position;
+  if (!p) return geo;
+  const n = p.count, a = new Float32Array(n * 3);
   let hx = 0, hy = 0, hz = 0;
   for (let i = 0; i < n; i++) { hx = Math.max(hx, Math.abs(p.getX(i))); hy = Math.max(hy, Math.abs(p.getY(i))); hz = Math.max(hz, Math.abs(p.getZ(i))); }
   for (let i = 0; i < n; i++) { a[i * 3] = hx; a[i * 3 + 1] = hy; a[i * 3 + 2] = hz; }

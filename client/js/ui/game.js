@@ -12,7 +12,7 @@ import { resetScreen, wip } from '../cockpit/windscreen.js';
 import { telemetry, FLAGS } from '../telemetry.js';
 import { radio } from '../sim/radio.js';
 import { trafficSnapshot } from '../sim/traffic.js';
-import { clockText } from '../world/daynight.js';
+import { clockText, setClock } from '../world/daynight.js';
 import { online, beginOnline, endOnline, rideNow } from '../online.js';
 import { offlineRide, connectHref } from '../offline-ride.js';
 import { startLiveFeed, stopLiveFeed } from './live-feed.js';
@@ -26,12 +26,16 @@ import { SITE_BASE } from '../hosts.js';
 import { resetMap } from './map.js';
 
 /* Ride flow: menu / start / end / pause overlay and per-ride reset. */
+let lastOutcome = null;
 
 export function resetRide(seed = online.ride?.seed) {   // seed: the server's for an online ride, the watched ride's for a replay (watch.js), random offline
+  lastOutcome = null;
   Object.assign(st, rideStart({ rpm: CFG.START_ENGINE_OFF ? 0 : IDLE, engineOn: !CFG.START_ENGINE_OFF, temp: ambientC(), pull: 1 }));
   resetDisp(); destroyed.clear(); clearDebris(); roads.newTrip(seed); resetScreen();   // new road layout, depot, traffic
   st.pull = mulberry32(roads.seed ^ 0x2545f491)() < .5 ? -1 : 1;   // a damaged truck's pull side comes from the road seed: every rider of a pool (one seed) gets the same one
   resetMap();   // the phone back on its mount, the map's view from scratch (an end / pause closes it too: ui/map.js)
+  const hour = online.ride?.startHour ?? (seed != null ? [6.5, 12, 18.5, 22][Math.floor(seed / 5) % 4] : null);
+  if (hour != null) setClock(hour, true, true);
 }
 
 online.extra = () => ({ route: env.theme.id, night: dn.night });   // what the server's public live feed shows next to the ride
@@ -44,14 +48,6 @@ telemetry.extra = () => [Math.round(dn.t * 100) / 100,
 
 /* ───────────────────────── overlay / game flow ───────────────────────── */
 const overlay = document.getElementById('overlay'), panel = document.getElementById('panel');
-const CONTROLS = `<table>
-<tr><td>W / ↑</td><td>Gas</td></tr><tr><td>S / ↓</td><td>Brake</td></tr>
-<tr><td>A D / ← →</td><td>Steer (the road bends – and the wind pushes you!)</td></tr>
-<tr><td>SHIFT / SPACE</td><td>Hold = clutch pedal in</td></tr>
-<tr><td>E / Q</td><td>Gear up / down (clutch must be in) · 1-7 / 0 select gear / neutral · Q from neutral or G = REVERSE (stop first; beeper + slow, trailer swings)</td></tr>
-<tr><td>I</td><td>Start engine (and restart after a stall) · P pause · M mute · top right: lobby · landing</td></tr><tr><td>L / C</td><td>Headlights · cab light (or the HEAD / CAB dash buttons and the dome lamp above the windscreen)</td></tr><tr><td>H</td><td>Cab heater (HEAT button) – clears frost on the glass, but only as warm as the engine is · cold engine: keep the revs low until TEMP rises</td></tr><tr><td>J</td><td>Cab cooling (COLD button) – on a warm route the windscreen fogs if this stays off. It clears that fog once the engine is running, and it draws the same battery current as the heater</td></tr><tr><td>R / X</td><td>Wipers off / slow / fast · hold X = washer spray + wipe (or click WIPER / WASH on the dash)</td></tr>
-<tr><td>F8</td><td>Form shade on / off – sun on the sides of things, a thin edge on boxes. The road stays flat</td></tr></table>
-<div style="font-size:12px;color:#b9ad8d">Launch: hold clutch → E (1st) → press gas, ease the clutch out. Clutch out too fast at low revs = stall.<br>Everything beside the road can be smashed – but it damages the hull. 0% hull = wrecked.<br>Other traffic: scratches cost hull, a direct head-on / rear-end hit ends the ride – overtake only when the opposite lane is clear.<br>You start at the depot: give way at the main road, turn right slowly. Crossroads have traffic lights – side traffic goes on its green.</div>`;
 const FREE_HINT = `<div style="font-size:12px;color:#b9ad8d">This run is the easy straight road. It ends itself when the shift is done.</div>`;
 const BAIL_BTN = {
   yard: { id: 'bail-yard', name: 'I MISS THE YARD', tip: 'lobby' },
@@ -64,17 +60,15 @@ function showOfflineMenu(title, sub, extra) {
   const again = !!extra;
   panel.innerHTML = `<h1>${extra ? title : 'FREE RUN'}</h1><h2>${extra ? sub : 'Just drive – nothing is recorded or ranked.'}</h2>${extra}
     <div class="row"><span>Shift</span><b>${fmt(CFG.RIDE_MIN_SECONDS)} · ${(CFG.COMPLETE_DIST / 1000).toFixed(1)} km</b></div>${FREE_HINT}
-    <div style="font-size:12px;color:#b9ad8d">F8 toggles form shade: sun on the sides of things, a thin edge on boxes. The road stays flat.</div>
     <label class="row" style="cursor:pointer"><span>TUTORIAL – step-by-step lessons over the road</span><input type="checkbox" id="g-tutorial" ${guestOpt.tutorial ? 'checked' : ''}></label>
     <label class="row" style="cursor:pointer"><span>ASSIST – the truck lasts twice as long, a tip on every control</span><input type="checkbox" id="g-assist" ${guestOpt.assist ? 'checked' : ''}></label>
-    <div class="btns"><button id="go">${again ? 'DRIVE AGAIN' : 'START FREE RUN'}</button><button class="alt" id="connect">CONNECT A WALLET</button></div>
-    <div class="btns">${bailBtn('yard')}${bailBtn('done')}</div>`;
+    <div class="btns"><button id="go">${again ? 'DRIVE AGAIN' : 'START FREE RUN'}</button><button class="alt" id="connect">CONNECT A WALLET</button></div>`;
   overlay.classList.remove('hide');
   document.getElementById('g-tutorial').onchange = e => { guestOpt.tutorial = e.target.checked; store.set('freightchain.guest-tutorial', guestOpt.tutorial ? '1' : '0'); };
   document.getElementById('g-assist').onchange = e => { guestOpt.assist = e.target.checked; store.set('freightchain.assist', guestOpt.assist ? '1' : '0'); };
   document.getElementById('go').onclick = startRide;
   document.getElementById('connect').onclick = () => { location.href = connectHref(); };
-  bindBail(); syncBail();
+  syncBail();
 }
 let menuArgs = ['FREIGHT CHAIN', 'Long-haul truck simulator', ''];
 export function showMenu(title, sub, extra = '') {
@@ -83,16 +77,36 @@ export function showMenu(title, sub, extra = '') {
   if (offlineRide.on) showOfflineMenu(title, sub, extra);   // no page at all (the headless test): no menu
   syncBail();
 }
-/* online ride (play.html?ride=…): the server issued it, so no mock wallet here – START begins the server-timed ride, afterwards the only way on is the lobby */
+/* online ride (play.html?ride=…): the server issued it, so no mock wallet here – START begins the server-timed ride, afterwards the only way on is the lobby.
+   No key chart: tutorial and assist are chosen before the drive (the lobby, or the guest menu), and the tutorial dialog teaches the truck. */
 function showOnlineMenu(title, sub, extra) {
   const over = online.done, bad = !!online.error;
   panel.innerHTML = `<h1>${title}</h1><h2>${sub}</h2>${extra}
-    ${bad ? `<div class="row"><span>Ride</span><span class="bad">${online.error}</span></div>` : `<div class="row"><span>Shift (server-timed)</span><b>${fmt(CFG.RIDE_MIN_SECONDS)} · ${(CFG.COMPLETE_DIST / 1000).toFixed(1)} km${online.ride.timeScale > 1 ? ` · DEMO ×${online.ride.timeScale}` : ''}</b></div>
-    <div class="row"><span>Route (set by the server)</span><b>${env.theme.name} · starts ${clockText()}</b></div>`}${over || bad ? '' : CONTROLS}
-    <div class="btns"><button id="go" ${bad || over ? 'disabled' : ''}>START RIDE</button><button class="alt bail-link" id="lobby" title="lobby"><b>I MISS THE YARD</b><small>lobby</small></button>${bailBtn('done')}</div>`;
+    ${bad ? `<div class="row"><span>Ride</span><span class="bad">${online.error}</span></div>` : `<div class="row"><span>Shift (server-timed)</span><b>${fmt(CFG.RIDE_MIN_SECONDS)} · ${(CFG.COMPLETE_DIST / 1000).toFixed(1)} km</b></div>
+    <div class="row"><span>Route (set by the server)</span><b>${env.theme.name} · starts ${clockText()}</b></div>`}
+    <div class="btns"><button id="go" ${bad || over ? 'disabled' : ''}>START RIDE</button>${over || bad ? `<button class="alt bail-link" id="lobby" title="lobby"><b>I MISS THE YARD</b><small>lobby</small></button>${over && online.ride ? '<button type="button" class="alt share-x-btn" id="share-x-end" title="Share your ride on 𝕏"><b>POST ON 𝕏</b><small>share progress & receipt</small></button>' : ''}${bailBtn('done')}` : ''}</div>`;
   overlay.classList.remove('hide');
   document.getElementById('go').onclick = startRide;
-  document.getElementById('lobby').onclick = () => { location.href = `${SITE_BASE}/lobby.html`; };   // one click: the ride is not running on this screen (the suites press #lobby)
+  const lobby = document.getElementById('lobby');
+  if (lobby) lobby.onclick = () => { location.href = `${SITE_BASE}/lobby.html`; };   // one click: the ride is not running on this screen (the suites press #lobby)
+  const shareEnd = document.getElementById('share-x-end');
+  if (shareEnd) {
+    shareEnd.onclick = () => {
+      if (!online.ride) return;
+      const routeName = env.theme?.name ?? 'Route';
+      const baseOutcome = lastOutcome ? (lastOutcome.ok ? 'COMPLETE' : lastOutcome.abandoned ? 'ABANDONED' : 'FAILED') : (st.complete ? 'COMPLETE' : 'FAILED');
+      const vEl = document.getElementById('verdict');
+      const vText = (vEl && vEl.textContent && vEl.textContent !== '…') ? ` (${vEl.textContent.slice(0, 50)})` : '';
+      const outcome = `${baseOutcome}${vText}`;
+      const text = `Just finished a ${online.ride.tier} shift on ${routeName} in @FreightChainSol! 🚛 ${(st.s / 1000).toFixed(2)} km driven · ${outcome} · devnet pool. Check the receipt on @solana: `;
+      const base = SITE_BASE || (typeof location !== 'undefined' ? location.origin : '');
+      const link = `${base}/r/${online.ride.id}`;
+      if (typeof window !== 'undefined' && window.open) {
+        window.open('https://x.com/intent/post?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent(link), '_blank', 'noopener,noreferrer');
+      }
+      toast('Opening 𝕏 to share ride receipt...', 2000);
+    };
+  }
   bindBail(); syncBail();
 }
 /* Same strings the server stores, so a client "I finished" can be compared with the verdict. Not a completion metric. */
@@ -119,7 +133,7 @@ export async function startRide() {   // only an online ride awaits the server
       showMenu('RIDE REFUSED', 'The server did not accept this ride.');
       return;
     }
-    startLiveFeed();   // spectators' chat + effects (live streams)
+    if (online.ride.tier !== 'free') startLiveFeed();   // spectators' chat + effects (live streams) – paid shifts only
   } else if (offlineRide.on) {
     if (st.mode === 'drive' || st.mode === 'paused') return;
     if (!offlineRide.dev) setGuide({ tutorial: guestOpt.tutorial, assist: guestOpt.assist });   // the guest's two checkboxes (a tool's devRun picks its own)
@@ -148,6 +162,7 @@ export function endRide(ok, reason, outcome = ok ? 'shift' : 'failed', silent = 
   st.mode = 'done'; stopLiveFeed(); if (!ok && outcome !== 'shift') audio.play('game-over');
   const verdict = endOnline(outcome, reason);   // null offline
   const abandoned = !ok && outcome === 'shift';
+  lastOutcome = { ok, abandoned };
   if (!silent) showMenu(ok ? 'SHIFT COMPLETE' : abandoned ? 'SHIFT ABANDONED' : 'RIDE FAILED', ok ? 'Freight on its way. Another one?' : '',
     `<div class="row"><span>Result</span><b class="${ok ? 'good' : 'bad'}">${ok ? 'COMPLETE' : abandoned ? 'ABANDONED' : 'FAILED'}</b></div>
      <div class="row"><span>Time driven</span><b>${fmt(st.t)}</b></div>

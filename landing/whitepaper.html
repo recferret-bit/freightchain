@@ -60,10 +60,10 @@
 <section id="abstract" class="ch lead">
   <p class="eyebrow">FREIGHT CHAIN · WHITEPAPER v0.1 · SOLANA DEVNET</p>
   <h1>A long drive with a public clock and a pool nobody can reach into.</h1>
-  <p class="lede">Freight Chain is a browser game in which you drive a manual-gearbox truck down a road that never ends. The shift on sale is 1 hour. The 4 hour and 8 hour shifts are soon. Nothing is skipped and nothing can be bought to speed it up. A server keeps the clock and judges the finish; the money for a paid shift sits in an escrow program on Solana, not with the operator.</p>
+  <p class="lede">Freight Chain is a browser game in which you drive a manual-gearbox truck down a road that never ends. The 1 hour, 4 hour and 8 hour shifts are soon. Nothing is skipped and nothing can be bought to speed it up. A server keeps the clock and judges the finish; the money for a paid shift sits in an escrow program on Solana, not with the operator.</p>
   <p>This paper describes the game as it is built today and says plainly which parts are live on devnet, which are written but not deployed, and which are only plans. It is written for players who want to know how to drive and what the rules are, for people who might put in money (on devnet, for now) and want to know where it goes, and for reviewers who want to check the claims against the source.</p>
   <div class="stats">
-    <div class="stat"><span class="lbl">SHIFTS</span><b class="num lcd">FREE · 1 · 4 · 8 H</b><span class="unit">1 h on sale · 4 h and 8 h soon</span></div>
+    <div class="stat"><span class="lbl">SHIFTS</span><b class="num lcd">FREE · 1 · 4 · 8 H</b><span class="unit">free rides on · paid shifts soon</span></div>
     <div class="stat"><span class="lbl">SPEED GOVERNOR</span><b class="num lcd">28 m/s</b><span class="unit">100.8 km/h for every truck</span></div>
     <div class="stat"><span class="lbl">RECORDING</span><b class="num lcd">10 Hz</b><span class="unit">sealed in 15 s hash-chained batches</span></div>
     <div class="stat"><span class="lbl">STREAM DELAY</span><b class="num lcd">≈ 25 s</b><span class="unit">anyone can watch any ride</span></div>
@@ -207,14 +207,14 @@
   <div class="tblwrap"><table class="tbl tiers2">
     <thead><tr><th>Tier</th><th>Minimum time</th><th>List price</th><th>What it is</th></tr></thead>
     <tbody>
-      <tr><td><b>FREE</b></td><td>1–10 minutes</td><td>$0</td><td>Three levels: EASY, CROSSROADS (3 min, a fork), HARD (10 min, no assist); it ends by itself at the line. Ten at sign-up; daily refill stops at five. Its own leaderboard and badges. No pool.</td></tr>
-      <tr><td><b>1 H</b></td><td>1 hour</td><td>$5</td><td>On sale. Opens at 20 tickets, or it refunds. The standard road.</td></tr>
+      <tr><td><b>FREE</b></td><td>1–10 minutes</td><td>$0</td><td>Three levels: EASY, CROSSROADS (3 min, a fork), HARD (10 min, no assist, no tutorial); it ends by itself at the line. Ten at sign-up; daily refill stops at five. Its own leaderboard and badges. No pool.</td></tr>
+      <tr><td><b>1 H</b></td><td>1 hour</td><td>$5</td><td>Soon. Opens at 20 tickets, or it refunds. The standard road.</td></tr>
       <tr><td><b>4 H</b></td><td>4 hours</td><td>$15</td><td>Soon. Tighter bends, busier traffic. Sold only once a 4-hour pool opens.</td></tr>
       <tr><td><b>8 H</b></td><td>8 hours</td><td>$50</td><td>Soon. The hardest road. Sold only once an 8-hour pool opens.</td></tr>
     </tbody>
   </table></div>
-  <p class="dim">The 1 hour shift is the one on sale. $15 and $50 are planned list prices. List prices are in US dollars. A pool fixes its price in lamports at creation and that price never changes. Devnet SOL has no value.</p>
-  <p class="dim">Ten free rides at sign-up. Daily refill stops at five. A few offline runs here need no wallet, counted by fingerprint and address (the address cap is the backstop). Then connect a Solana wallet.</p>
+  <p class="dim">Paid shifts are soon. $5, $15 and $50 are the planned list prices. List prices are in US dollars. A pool fixes its price in lamports at creation and that price never changes. Devnet SOL has no value.</p>
+  <p class="dim">Ten free rides at sign-up. Daily refill stops at five. Offline practice runs need no wallet. Then connect a Solana wallet.</p>
 
   <h3 class="sub">HOW A SHIFT RUNS</h3>
   <ol class="flow">

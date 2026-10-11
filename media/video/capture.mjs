@@ -2,12 +2,13 @@
 // Also writes <framesDir>/../timeline.json: what really happened in the footage (gear shifts, the crash) + rpm / speed / gear per frame – the audio stage syncs its sounds to it.
 import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
 import { launch, sleep } from '../../client/tools/cdp.mjs';
-const here = path.dirname(fileURLToPath(import.meta.url)), CLIENT = path.resolve(here, '../../client');
-const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
+const here = path.dirname(fileURLToPath(import.meta.url)), CLIENT = path.resolve(here, '../../client'), ASSETS = path.resolve(here, '../assets');
+const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.jpg': 'image/jpeg' };
 
-function serveClient() {   // tiny static server: the game must be served over http (ES modules); no API needed offline
+function serveClient() {   // tiny static server: the game must be served over http (ES modules); no API needed offline. /__assets/ = media/assets (the collage screenshots)
   const srv = http.createServer((req, res) => {
-    const f = path.join(CLIENT, decodeURIComponent(new URL(req.url, 'http://x').pathname)); const ok = f.startsWith(CLIENT) && fs.existsSync(f) && fs.statSync(f).isFile();
+    const p = decodeURIComponent(new URL(req.url, 'http://x').pathname), root = p.startsWith('/__assets/') ? ASSETS : CLIENT;
+    const f = path.join(root, root === ASSETS ? p.slice(9) : p); const ok = f.startsWith(root) && fs.existsSync(f) && fs.statSync(f).isFile();
     if (!ok) { res.writeHead(404).end(); return; } res.writeHead(200, { 'content-type': MIME[path.extname(f)] || 'application/octet-stream' }); fs.createReadStream(f).pipe(res);
   });
   return new Promise(r => srv.listen(0, '127.0.0.1', () => r(srv)));
@@ -23,7 +24,9 @@ export async function capture(spec, framesDir, { log = console.log, only = null 
   const srv = await serveClient(), port = srv.address().port;
   const { send, ev, filt, finish } = await launch({ port: +process.env.PORT || 9555, shotsDir: 'fc-video', args: ['--autoplay-policy=no-user-gesture-required', '--mute-audio', ...GPU_ARGS, ...(process.env.EXTRA_ARGS ? process.env.EXTRA_ARGS.split(' ') : []), `--window-size=${spec.width},${spec.height}`], evalProblems: true });
   try {
-    await send('Emulation.setDeviceMetricsOverride', { width: spec.width, height: spec.height, deviceScaleFactor: 1, mobile: false });
+    await send('Emulation.setDeviceMetricsOverride', { width: spec.width, height: spec.height, deviceScaleFactor: spec.dsf ?? 1, mobile: false });
+    // vertical: the page is 1080×1920 but the GAME believes it is 1280×720 (its normal landscape cockpit, rendered 1:1 for the 1.5× window in page.js); page.js places the canvases
+    if (spec.crop === 'vertical') await send('Page.addScriptToEvaluateOnNewDocument', { source: `Object.defineProperty(window,'innerWidth',{get:()=>1280});Object.defineProperty(window,'innerHeight',{get:()=>720});Object.defineProperty(window,'devicePixelRatio',{get:()=>${1.5 * (spec.dsf ?? 1)}})` });
     await send('Page.addScriptToEvaluateOnNewDocument', { source: fs.readFileSync(path.join(here, 'clock.js'), 'utf8') });
     await send('Page.navigate', { url: `http://127.0.0.1:${port}/play.html` });
     for (let i = 0; i < 100 && await ev('typeof window.__game') !== 'object'; i++) await sleep(150);
@@ -31,7 +34,7 @@ export async function capture(spec, framesDir, { log = console.log, only = null 
     await ev('__game.devRun()');   // the classic road, no helpers (a bare page is the guest's FREE RUN)
     for (let i = 0; i < 5; i++) await ev('__vstep(50)');
     await ev(fs.readFileSync(path.join(here, 'page.js'), 'utf8'));
-    await ev(`__dir.init(${JSON.stringify(spec)})`);
+    const bad = await ev(`__dir.init(${JSON.stringify(spec)})`); if (bad) throw new Error('overlay init failed: ' + bad);
     const dtMs = 1000 / spec.fps, n = Math.round(spec.total * spec.fps), t0 = Date.now(), frames = []; let wrote = 0;
     for (let i = 0; i < n; i++) {
       if (only && (i / spec.fps < only[0] || i / spec.fps >= only[1])) { const f = await ev(`__dir.frame(${i / spec.fps}, ${dtMs})`); if (typeof f === 'object') frames.push([i, f]); continue; }   // still stepped, so state stays right, just not saved

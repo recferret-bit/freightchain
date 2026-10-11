@@ -69,8 +69,31 @@ test('mix: works without a timeline and for a spec with only audio (no scenes)',
   const raw = { audio: { ignition: { dur: .6 }, music: { id: 'road-rush' } } }, s = { name: 'x', look: 'classic', fps: 24, scenes: [], total: 6 }; s.audio = loadAudio(raw.audio, 6); assert.equal(mixAudio(s, null).mix.length, 6 * SR);
 });
 
-test('the committed specs: every one loads; hero + intro-square stay silent, intro has the sound', () => {
-  for (const f of fs.readdirSync(path.join(root, 'specs'))) { const raw = JSON.parse(fs.readFileSync(path.join(root, 'specs', f), 'utf8')), s = loadSpec(raw); s.audio = loadAudio(raw.audio, s.total); assert.equal(!!s.audio, f === 'intro.json', f); }
+test('the committed specs: every one loads; hero + intro-square stay silent, intro + colosseum have the sound', () => {
+  for (const f of fs.readdirSync(path.join(root, 'specs'))) { const raw = JSON.parse(fs.readFileSync(path.join(root, 'specs', f), 'utf8')), s = loadSpec(raw); s.audio = loadAudio(raw.audio, s.total); assert.equal(!!s.audio, ['intro.json', 'colosseum.json'].includes(f) || f.startsWith('tiktok-'), f); }
+});
+
+test('vertical (TikTok) clips: crop vertical means look meme at 1080×1920; the meme captions and cues work; a mismatch is refused', () => {
+  const raw = { crop: 'vertical', maxSeconds: 12, audio: { music: { id: 'brainrot' } }, scenes: [{ id: 'a', dur: 4, captions: [{ at: 0, dur: 1, head: 'ONE', fx: 'slam' }, { at: 1, dur: 1, head: 'TWO THREE', fx: 'words' }, { at: 2, dur: 1, head: 'X', fx: 'bubble' }], transition: 'punch' }, { id: 'b', dur: 3, transition: { type: 'spin', dur: .4 }, clock: { from: 0, to: 60 } }] };
+  const s = clip(raw); assert.equal(s.look, 'meme'); assert.equal([s.width, s.height].join('x'), '1080x1920');
+  const ids = buildCues(s, null).map(c => c.id); for (const id of ['slam', 'click', 'caption', 'tr-whip']) assert.ok(ids.includes(id), id);
+  assert.throws(() => loadSpec({ ...raw, look: 'classic' }), /meme/); assert.throws(() => loadSpec({ ...raw, scenes: [{ ...raw.scenes[0], captions: [{ at: 0, dur: 1, head: 'A', fx: 'nope' }] }] }), /fx/);
+  assert.throws(() => loadSpec({ ...raw, scenes: [{ id: 'c', dur: 2, clock: { from: 0 } }] }), /clock/);
+});
+test('scores: a long clip repeats the score near its own tempo; a short one is one pass, unchanged', () => {
+  const rr = SCORES['road-rush'], one = 32 * 60 / rr.bpm;
+  assert.deepEqual(renderScore(rr, { seconds: 14.25 }), renderScore(rr, { seconds: 14.25, repeat: 1 }));
+  let turns = 0; const spy = { ...rr, drums: (bar, st, o) => { if (o?.turn) turns++; return rr.drums(bar, st, o); } }, long = renderScore(spy, { seconds: 58 });
+  assert.equal(Math.round(58 / one), 4); assert.equal(long.length, 58 * SR); assert.ok(peak(long) < 1.5);
+  assert.equal(turns, 3 * 16, 'passes 1–3 end on the turnaround, only the 4th holds the ending');
+});
+test('collage shots: validated (asset exists, fx, inside the scene); cues on landing; the engine is quiet under them', () => {
+  const base = { name: 'x', scenes: [{ dur: 3, shots: [{ src: 'colosseum/pp-states.jpg', x: 0, y: 0, w: 300, fx: 'slide-l', at: .5 }, { stat: ['14', 'INSTRUCTIONS'], x: 0, y: 0, w: 100, at: 1 }] }, { dur: 3 }], audio: { ignition: false, music: false } };
+  const s = clip(base), cues = buildCues(s, null); assert.deepEqual(cues.map(c => [c.t, c.id]), [[.5, 'tr-whip'], [1, 'click']]);
+  for (const bad of [{ src: 'nope.jpg', x: 0, y: 0, w: 1 }, { src: 'colosseum/pp-states.jpg', x: 0, y: 0 }, { src: 'colosseum/pp-states.jpg', x: 0, y: 0, w: 1, fx: 'spin' }, { stat: ['1', 'X'], x: 0, y: 0, w: 1, at: 2, dur: 2 }])
+    assert.throws(() => loadSpec({ scenes: [{ dur: 3, shots: [bad] }] }), /Bad spec/);
+  const e = mixAudio(clip({ ...base, audio: { ignition: false, music: false, engine: { gain: .5 } } }), null).engine, rms = (t0, t1) => Math.sqrt([...e.subarray(Math.round(t0 * SR), Math.round(t1 * SR))].reduce((x, v) => x + v * v, 0) / ((t1 - t0) * SR));
+  assert.ok(rms(2, 2.9) < rms(5, 5.9) * .1, 'engine bed still loud under the collage');
 });
 test('the sound store is current: every recipe + score is on disk, byte for byte, and in the manifest', () => {
   const store = path.join(root, 'out/audio/_store'), man = JSON.parse(fs.readFileSync(path.join(store, 'manifest.json'), 'utf8')), ids = man.items.map(i => i.id).sort();

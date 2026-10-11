@@ -38,6 +38,7 @@ Start on the public site. The form, the two videos, and the founder bio live in 
 | Landing + lobby | [freightchain.fun](https://freightchain.fun) | The pitch, the live boards, sign-in, the lobby |
 | Whitepaper | [whitepaper.freightchain.fun](https://whitepaper.freightchain.fun) | Rules, escrow chapter, validation, streams, risks |
 | Game | [ride.freightchain.fun/play.html](https://ride.freightchain.fun/play.html) | The truck. A ride id comes from the lobby. Bare `play.html` is the guest free run |
+| Public ride receipts | [freightchain.fun/r/:id](https://freightchain.fun/r/example) | Real-time / completed ride proof, Solana devnet explorer link, dynamic 𝕏 card |
 | Model viewer | [storybook.freightchain.fun](https://storybook.freightchain.fun) | Vehicles, props, furniture, landmarks |
 | API | [api.freightchain.fun/api/health](https://api.freightchain.fun/api/health) | JSON only. Other paths on that host 404 |
 | Admin | [admin.freightchain.fun](https://admin.freightchain.fun) | HTTP basic auth, then a second wallet sign-in |
@@ -56,7 +57,7 @@ The landing has six chapters: [RIDE](https://freightchain.fun/#ride), [LOOP](htt
 6. Open the [program on the explorer](https://explorer.solana.com/address/9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx?cluster=devnet) and the [contract spec](docs/pool-program/index.html). A buy on freightchain.fun today is the legacy memo transfer into the weekly round. Tickets into this program are the other path, in [Economy](#economy).
 7. If you build the repo: `npm run test:localnet` runs the real program on a local validator and checks every lamport. Walkthrough: [`docs/localnet-e2e/index.html`](docs/localnet-e2e/index.html).
 
-A wallet listed in `DEMO_WALLETS` drives a paid shift `DEMO_SCALE` times shorter (default 60). The cab, the lobby, and the watch page badge that ride `DEMO ×60`. The speed governor stays 28 m/s. Say the demo clock out loud if a one-hour shift finishes in a minute.
+A wallet listed in `DEMO_WALLETS` drives a paid shift `DEMO_SCALE` times shorter (default 60). The speed governor stays 28 m/s.
 
 ### Status
 
@@ -67,6 +68,7 @@ A wallet listed in `DEMO_WALLETS` drives a paid shift `DEMO_SCALE` times shorter
 | Server-rebuilt road and hole checks | Yes | The whitepaper still says "next deploy" |
 | Live watch, replays, CB chat, devnet tips to the driver | Yes | Live. Effects run on free rides only |
 | Garage, promo codes | Yes | Lobby tabs. Cosmetics are colours |
+| Public ride receipts, 𝕏 card SSR, in-game 𝕏 sharing | Yes (`/r/:id`, Web Intent) | Live |
 | Escrow program | v1 on devnet, initialized. v2 (one pool a day, a payout key, a review window) on branch `pool-series`: 17 instructions, 14 events, 25 errors | v2 is not deployed; it needs a fresh program id. The website is still `PAYMENT_MODE=transfer` |
 | Prize payouts from a pool vault | v2: the server's payout job pays the verified top 20 after the 48 h review, once every ride of the pool is decided; an admin can HOLD it | After the results, on an explicit switch |
 | Token, mainnet, captcha, NFT badges | No | No |
@@ -76,6 +78,7 @@ Production stays on the transfer path until the Colosseum results, the devnet ex
 ### What a Solana judge can check
 
 - **Sign-in.** Sign-In With Solana. The server stores one challenge, consumes it on the first attempt, and sets an httpOnly cookie. The statement says the signature does not send a transaction. [`server/src/domain/auth/sign-in.ts`](server/src/domain/auth/sign-in.ts)
+- **Public ride receipts and 𝕏 / Solana verification.** Every online shift (free or paid) gets an open public URL (`/r/:id`) showing live or completed telemetry, route seed proof, and a direct link to Solana Explorer (devnet) verifying the ticket escrow transaction. Drivers can share ride progress mid-shift from the dashboard (styled with Solana branding near the parking brake) or post the final receipt from the end screen via 𝕏 Web Intent; server-side middleware renders dynamic Twitter Card and Open Graph metadata with live stats so preview cards render directly on 𝕏 feeds.
 - **A program-owned vault.** Each pool has a zero-data PDA. Only the program can sign for it. Price, minimum, deadlines, and the prize / seed / fee split are fixed at `create_pool`. [`programs/freightchain-pools/README.md`](programs/freightchain-pools/README.md)
 - **A missed pool refunds without the operator.** `fail_pool`, `refund`, `expire_pool`, and the grace `close_pool` are permissionless. After 14 days an unpaid active pool can only be expired and refunded, so an absent admin cannot sweep the players' money to the seed treasury.
 - **Prizes are capped on chain.** `pay_prize` refuses once `prizes_paid` would pass the prize share. The 25 / 15 / 10 ranking is server policy inside that cap. The program does not hard-code the ranks.
@@ -123,6 +126,7 @@ flowchart LR
 - **Landing** — [`landing/`](landing/index.html). Vite. Wallet sign-in, live pool and boards, dash cards drawn by the game's cockpit code. The hero video loads after the page, and never on a phone. [Read the page](https://freightchain.fun).
 - **Lobby** — [`client/lobby.html`](client/lobby.html). Tabs: New ride, Live, Replays, Leaderboard, Garage, Promo, Profile. Server text goes in with `textContent`.
 - **Game** — [`client/play.html`](client/play.html). `?ride=` is an online shift. `?watch=` is a spectator. Any other `play.html` (bare or `?offline=1`) is an uncounted guest free run (tutorial / assist picked in its menu, nothing recorded). `file://` cannot load the modules.
+- **Ride Receipts & 𝕏 Cards** — [`client/r.html`](client/r.html) + [`client/site/ride.js`](client/site/ride.js). Public permanent URL `/r/:id` with real-time or completed telemetry, route seed, driver wallet, and devnet Solana transaction explorer link. Server middleware ([`server/src/infrastructure/http/middleware/ride-page.middleware.ts`](server/src/infrastructure/http/middleware/ride-page.middleware.ts)) injects SSR Twitter Card and Open Graph tags for 𝕏 crawlers.
 - **Whitepaper** — [`landing/whitepaper.html`](landing/whitepaper.html). A long read. Its only request is web vitals to the API. Its numbers are asserted against the code by [`landing/test/whitepaper.test.js`](landing/test/whitepaper.test.js).
 - **Model viewer** — [`client/viewer.html`](client/viewer.html). Same builders as the game. No API on that host.
 - **Admin** — [`client/admin.html`](client/admin.html). Nginx basic auth, then an admin wallet session (`ADMIN_WALLETS`, 2 hours). Every change is a wallet signature over that exact action, and the row is kept. The player cookie grants nothing there. On a split deploy the API answers `/api/admin` only when `Host` is `admin.<apex>`.
@@ -209,8 +213,8 @@ Read: [`client/js/themes/index.js`](client/js/themes/index.js) · [model viewer]
 | --- | --- | --- | --- | --- |
 | Free · EASY | 60 s, finish at 420 m | 0 | Yes | Four lanes, no junctions, straight start, calm traffic, ends itself |
 | Free · CROSSROADS | 180 s, finish at 1512 m | 0 | Yes | Depot turn, junctions, a fork, holes ×1.5 |
-| Free · HARD | 600 s, finish at 6720 m | 0 | Yes, no assist | Full network, forks, bends ×1.3, traffic ×1.4, holes ×2 |
-| 1 hour | 3600 s | $5 in SOL | Yes, pool minimum 20 | Depot, STOP line, right turn |
+| Free · HARD | 600 s, finish at 6720 m | 0 | Yes, no assist, no tutorial | Full network, forks, bends ×1.3, traffic ×1.4, holes ×2 |
+| 1 hour | 3600 s | $5 in SOL | When a pool is registered, minimum 20 | Depot, STOP line, right turn |
 | 4 hour | 4 h | $15 planned | When a pool is registered | Bends ×1.2, traffic ×1.4 |
 | 8 hour | 8 h | $50 planned | When a pool is registered | Bends ×1.4, traffic ×1.8 |
 
@@ -225,6 +229,12 @@ Read: [`client/js/trips.js`](client/js/trips.js) · [`server/src/domain/rides/ri
 Online rides upload every key and dash-button event, plus a 10 Hz sample of the truck, in SHA-256 hash-chained batches. A completed shift is marked `verified`, `flagged`, or `rejected`. The server does not re-simulate the physics. Paid boards rank verified shifts when `VERDICT_ENFORCE` is on. Production runs shadow mode: the verdict is stored and shown, and the boards ignore it.
 
 Read: [Anti-cheat](#anti-cheat) · [`docs/anti-cheat/index.html`](docs/anti-cheat/index.html)
+
+### Public receipts and 𝕏 sharing
+
+Every online shift (free or paid) has an unauthenticated public receipt page at `/r/:id`. While running, it displays live telemetry and lets visitors watch the stream or tip the driver in SOL; when completed, it shows the verdict, distance, seed commitment, and a Solana devnet explorer link for the ticket escrow. Drivers can share live progress directly from the truck dashboard via the Solana-styled `POST ON 𝕏` button (near the parking brake), or share their ride receipt on completion. The server injects dynamic Open Graph and Twitter Card tags so shared links show live stats and route previews directly on 𝕏.
+
+Read: [`server/src/presentation/rides/public-rides.http.controller.ts`](server/src/presentation/rides/public-rides.http.controller.ts) · [`server/src/infrastructure/http/middleware/ride-page.middleware.ts`](server/src/infrastructure/http/middleware/ride-page.middleware.ts) · [`client/r.html`](client/r.html)
 
 ### Live board
 
@@ -363,7 +373,7 @@ flowchart TB
 
 The landing's ECONOMY chapter describes the program split, 70 / 20 / 10. The live transfer round is still the 50 / 20 / 20 / 10 function above.
 
-Prices are quoted in USD and charged in devnet SOL at the server's rate. The 4 hour and 8 hour shifts are not offered until a pool of that tier is registered.
+Prices are quoted in USD and charged in devnet SOL at the server's rate. The 1 hour, 4 hour and 8 hour shifts are not offered until a pool of that tier is registered.
 
 ## Security
 
@@ -437,7 +447,7 @@ Every directory at the repo root. `.git` is the only one left out.
 - [`client/`](client) — the game, the lobby, the admin page, and the model viewer.
 - [`deploy/`](deploy/README.md) — Docker, host nginx, certbot. `npm run deploy` ships `git archive HEAD`.
 - [`design/`](design) — icon candidates and the YouTube banners. The shipped icon is generated into `client/`.
-- [`docs/`](docs) — plans and explainers. [`docs/agents/`](docs/agents) holds the agent detail `AGENTS.md` points to. The public escrow chapter is the whitepaper, not a file in this folder.
+- [`docs/`](docs) — plans and explainers. [`docs/agents/`](docs/agents) holds the agent detail [`AGENTS.md`](AGENTS.md) points to.
 - [`landing/`](landing) — the `/` page and the whitepaper. Its own Vite project.
 - [`media/`](media) — promo clips and the chiptune synth, including the game's own sound effects.
 - [`programs/`](programs/freightchain-pools) — the Anchor escrow.

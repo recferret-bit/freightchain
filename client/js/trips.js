@@ -31,12 +31,12 @@ export const TRIPS = {
   classic: { id: 'classic', name: 'CLASSIC', bends: 1, traffic: 1,   cross: 1, calm: false, props: 1,   finish: false, start: 'depot' },   // rides from before trips
   free: { id: 'free', name: 'FREE RUN',     bends: .4,  traffic: .4,  cross: 0, calm: true,  props: .5,  finish: true,  start: 'straight', seconds: 60, k: .25, holesFrom: 1200 },   // free rides from before the levels
   // the three FREE levels (2026-10): easy = four lanes, no junctions, no turn, 60 s · crossroads = junctions, the depot turn, forks, more holes, 3 min · hard = the full
-  // network, sharper bends, busy traffic, the most holes, 10 min and no ASSIST. Their seconds / k are the GUEST shift; online the server's ride sets both.
-  'free-1': { id: 'free-1', name: 'FREE · EASY', level: 1, assist: true, bends: .5, traffic: .4, cross: 0, calm: true, props: .5, finish: true, start: 'straight', seconds: 60, k: .25, holesFrom: 1200,
+  // network, sharper bends, busy traffic, the most holes, 10 min, no TUTORIAL and no ASSIST. Their seconds / k are the GUEST shift; online the server's ride sets both.
+  'free-1': { id: 'free-1', name: 'FREE · EASY', level: 1, tutorial: true, assist: true, bends: .5, traffic: .4, cross: 0, calm: true, props: .5, finish: true, start: 'straight', seconds: 60, k: .25, holesFrom: 1200,
     road: { first: ['dual'], weights: { dual: 1 } } },
-  'free-2': { id: 'free-2', name: 'FREE · CROSSROADS', level: 2, assist: true, bends: .8, traffic: .7, cross: .7, calm: true, props: .8, finish: true, start: 'depot', seconds: 180, k: .3, holesFrom: 400,
+  'free-2': { id: 'free-2', name: 'FREE · CROSSROADS', level: 2, tutorial: true, assist: true, bends: .8, traffic: .7, cross: .7, calm: true, props: .8, finish: true, start: 'depot', seconds: 180, k: .3, holesFrom: 400,
     road: { first: ['country', 'fork'], weights: { country: 3, arterial: 1, town: 1, fork: 2 }, holeChance: 1.5 } },
-  'free-3': { id: 'free-3', name: 'FREE · HARD', level: 3, assist: false, bends: 1.3, traffic: 1.4, cross: 1.4, calm: false, props: 1.2, finish: true, start: 'depot', seconds: 600, k: .4,
+  'free-3': { id: 'free-3', name: 'FREE · HARD', level: 3, tutorial: false, assist: false, bends: 1.3, traffic: 1.4, cross: 1.4, calm: false, props: 1.2, finish: true, start: 'depot', seconds: 600, k: .4,
     road: { first: ['country', 'fork'], weights: { country: 3, highway: 1, arterial: 1.5, town: 1.5, fork: 1.5 }, holeChance: 2 } },
   '1h': { id: '1h',   name: '1 HOUR HAUL',  bends: 1,   traffic: 1,   cross: 1, calm: false, props: 1,   finish: false, start: 'depot' },
   '4h': { id: '4h',   name: '4 HOUR HAUL',  bends: 1.2, traffic: 1.4, cross: 1.4, calm: false, props: 1.2, finish: false, start: 'depot' },

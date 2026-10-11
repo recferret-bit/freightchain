@@ -3,7 +3,7 @@ import { GetProfileQuery } from '../../../../../src/application/use-cases/lobby/
 import { RecordingAnalytics } from '../../../../support/recording-analytics.js';
 import { unitContext } from '../../../../support/unit-context.js';
 import { aPool } from '../../../../support/pools.js';
-import { worldFor } from '../../../../../src/domain/rides/ride-rules.js';
+import { FREE_LEVELS } from '../../../../../src/domain/rides/ride-trip.js';
 
 describe('GetProfileHandler', () => {
   it('a fresh wallet: zero stats, 10 credits under a cap of 5, every achievement locked', async () => {
@@ -22,7 +22,7 @@ describe('GetProfileHandler', () => {
     await ctx.rides.save(ride);
     const p = await new GetProfileHandler(ctx.sessions, ctx.achievements, ctx.rideQuery, ctx.payments, ctx.rules, ctx.clock, ctx.poolTickets, ctx.tickets, ctx.orders, new RecordingAnalytics(), ctx.stats).execute(new GetProfileQuery('w'));
     expect(p.stats).toMatchObject({ rides: 1, completed: 0, metres: 60, bestMetres: 0 });
-    expect(p.recent[0]).toMatchObject({ tier: 'free', status: 'failed', distance: 60, hull: 90, route: worldFor(ride.seed).route, endedAt: ctx.clock.ms });
+    expect(p.recent[0]).toMatchObject({ tier: 'free', status: 'failed', distance: 60, hull: 90, route: FREE_LEVELS[1].route, endedAt: ctx.clock.ms });
     expect(p.achievements.find((a) => a.id === 'first-mile')?.earnedAt).toBe(ctx.clock.ms);
   });
 

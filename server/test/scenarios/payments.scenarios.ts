@@ -3,6 +3,7 @@ import { newSignature, TREASURY, type PaymentOptions } from '../support/fake-cha
 import { bindClient, newWallet, type Rider } from '../support/client.js';
 import type { Harness } from '../support/harness.js';
 import { recording, upload } from '../support/recording.js';
+import { setTierOnSaleForTest } from '../../src/domain/rides/ride-tier.js';
 
 /* Tiers + SOL quote, paying a ride on chain, the weekly prize pool, demo scale, leaderboards. The chain is a FAKE (transactions we craft),
    the price is pinned (SOL_USD=100 → $5 = 0.05 SOL); a real devnet run is scripts/devnet-pay.mjs. */
@@ -16,21 +17,30 @@ interface Order {
 
 export function paymentScenarios(h: () => Harness): void {
   const { anon, login, sec, now } = bindClient(h);
-  beforeEach(() => h().reset());
+  beforeEach(() => { setTierOnSaleForTest('1h', false); return h().reset(); });
+  afterEach(() => setTierOnSaleForTest('1h', false));
 
-  /** create an order */
-  const order = async (a: Rider, tier = '1h') => (await a.agent.post('/api/rides').send({ tier }).expect(200)).body;
+  /** create an order. 1h is off the product table; these cases opt it back on to exercise pay-per-ride. */
+  const order = async (a: Rider, tier = '1h') => {
+    if (tier === '1h') setTierOnSaleForTest('1h', true);
+    return (await a.agent.post('/api/rides').send({ tier }).expect(200)).body;
+  };
   /** a matching payment on the fake chain (override pieces to make it wrong); returns its signature */
   const pay = (a: { address: string }, ride: Order, over: Partial<PaymentOptions> = {}) =>
     h().chain.addPayment({ payer: a.address, lamports: ride.lamports, memo: over.memo === undefined ? ride.id : over.memo, ...over });
 
   describe('tiers and the SOL quote', () => {
-    it('lists the tiers with live lamports (pinned $100 → $5 = 0.05 SOL)', async () => {
+    it('lists the tiers; a paid shift with no pool has no lamport price and is not on sale', async () => {
       const { body } = await anon().get('/api/tiers').expect(200);
       expect(body.solUsd).toBe(100);
       expect(body.treasury).toBe(TREASURY);
-      expect(Object.fromEntries(body.tiers.map((x: { id: string; lamports: number | null }) => [x.id, x.lamports]))).toEqual({ free: null, '1h': 50_000_000, '4h': null, '8h': null });
-      expect(body.tiers.map((x: { id: string; available: boolean; onSale: boolean }) => [x.id, x.available, x.onSale])).toEqual([['free', true, true], ['1h', true, true], ['4h', false, false], ['8h', false, false]]);
+      expect(Object.fromEntries(body.tiers.map((x: { id: string; lamports: number | null }) => [x.id, x.lamports]))).toEqual({ free: null, '1h': null, '4h': null, '8h': null });
+      expect(body.tiers.map((x: { id: string; available: boolean; onSale: boolean }) => [x.id, x.available, x.onSale])).toEqual([['free', true, true], ['1h', false, false], ['4h', false, false], ['8h', false, false]]);
+    });
+
+    it('POST /api/rides for the 1-hour shift with no pool is refused', async () => {
+      const a = await login();
+      expect((await a.agent.post('/api/rides').send({ tier: '1h' }).expect(409)).body.code).toBe('tier_not_on_sale');
     });
 
     it('an order locks lamports, price and an expiry; it cannot start until paid', async () => {

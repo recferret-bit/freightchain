@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Freight Chain – Ride</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="View ride progress, distance driven, server verdict and Solana devnet transaction proof.">
+<link rel="canonical" href="https://freightchain.fun/r/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Freight Chain">
+<meta property="og:title" content="Freight Chain – Long-Haul Shift">
+<meta property="og:description" content="View ride progress, distance driven, server verdict and Solana devnet transaction proof on Freight Chain.">
+<meta property="og:image" content="https://freightchain.fun/media/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@FreightChainSol">
+<meta name="twitter:title" content="Freight Chain – Long-Haul Shift">
+<meta name="twitter:description" content="View ride progress, distance driven, server verdict and Solana devnet transaction proof on Freight Chain.">
+<meta name="twitter:image" content="https://freightchain.fun/media/og.jpg">
+<meta name="theme-color" content="#0b0a09">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="stylesheet" href="/site/site.css">
+<style>
+  .nav-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; width: 100%; }
+  .nav-bar a { color: #ffcf5a; text-decoration: none; font-weight: bold; font-size: 14px; letter-spacing: 1px; }
+  .nav-bar a:hover { text-decoration: underline; }
+  .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
+  .badge.live { background: #14f19522; color: #14f195; border: 1px solid #14f19566; animation: pulse 2s infinite; }
+  .badge.complete { background: #7cff7c22; color: #7cff7c; border: 1px solid #7cff7c66; }
+  .badge.failed { background: #ff6b5a22; color: #ff6b5a; border: 1px solid #ff6b5a66; }
+  .badge.abandoned { background: #ffb02e22; color: #ffb02e; border: 1px solid #ffb02e66; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+  .receipt-box { background: #0c0a08; border: 1px solid #2a251e; border-radius: 6px; padding: 14px; margin: 16px 0; }
+  .receipt-box .row { margin: 6px 0; font-size: 13px; }
+  .receipt-box .row a { color: #14f195; text-decoration: none; word-break: break-all; }
+  .receipt-box .row a:hover { text-decoration: underline; }
+  .share-x-btn {
+    background: #0a0908;
+    color: #efe6cf;
+    border: 1px solid #9945FF;
+    position: relative;
+    box-shadow: 0 0 12px rgba(153, 69, 255, 0.25), inset 0 0 6px rgba(20, 241, 149, 0.15);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+  }
+  .share-x-btn:hover {
+    box-shadow: 0 0 18px rgba(153, 69, 255, 0.5), inset 0 0 10px rgba(20, 241, 149, 0.3);
+    border-color: #14F195;
+    color: #fff;
+  }
+  .x-logo { font-size: 17px; font-weight: 900; line-height: 1; }
+</style>
+</head>
+<body>
+<main>
+  <div class="nav-bar">
+    <a href="/">⛟ FREIGHT CHAIN</a>
+    <a href="/lobby.html">LOBBY →</a>
+  </div>
+  <div class="panel" id="ride-card">
+    <span class="badge" id="ride-badge">CHECKING RIDE…</span>
+    <h1 id="ride-title">LOADING RIDE</h1>
+    <h2 id="ride-sub">Fetching telemetry from the server…</h2>
+
+    <div class="row"><span>Status</span><b id="ride-status">–</b></div>
+    <div class="row"><span>Distance</span><b id="ride-distance">–</b></div>
+    <div class="row"><span>Time driven</span><b id="ride-time">–</b></div>
+    <div class="row"><span>Shift tier</span><b id="ride-tier">–</b></div>
+    <div class="row"><span>Driver</span><b id="ride-wallet">–</b></div>
+    <div class="row" id="row-verdict" style="display:none"><span>Server verdict</span><b id="ride-verdict">–</b></div>
+
+    <div class="receipt-box" id="chain-box" style="display:none">
+      <div class="row" id="row-tx" style="display:none"><span>Payment (Solana devnet)</span><span id="ride-tx">–</span></div>
+      <div class="row"><span>Road seed</span><span id="ride-seed" class="dim">–</span></div>
+      <div class="row" id="row-slot" style="display:none"><span>Block slot</span><span id="ride-slot" class="dim">–</span></div>
+    </div>
+
+    <div class="btns">
+      <button id="btn-watch" style="display:none">WATCH STREAM</button>
+      <button type="button" class="share-x-btn" id="btn-share-x" style="display:none">
+        <span class="x-logo">𝕏</span> <b>POST ON 𝕏</b>
+      </button>
+    </div>
+    <div class="btns" style="margin-top:10px">
+      <button class="alt" id="btn-take-wheel" style="width:100%">TAKE THE WHEEL (DRIVE)</button>
+    </div>
+  </div>
+</main>
+<script type="module" src="/site/ride.js"></script>
+</body>
+</html>

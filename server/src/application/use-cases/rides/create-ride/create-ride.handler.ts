@@ -4,7 +4,7 @@ import { toRideDto, type RideDto } from '../../../../domain/rides/ride.dto.js';
 import { Ride, type RideProps } from '../../../../domain/rides/ride.entity.js';
 import { RideStatus } from '../../../../domain/rides/ride-status.js';
 import { isPaidTier, isTierOnSale, rideTier, tierShiftName, type PaidTierId } from '../../../../domain/rides/ride-tier.js';
-import { DEFAULT_FREE_LEVEL, assertAssistAllowed, freeLevelSeconds, type FreeLevel } from '../../../../domain/rides/ride-trip.js';
+import { DEFAULT_FREE_LEVEL, assertAssistAllowed, assertTutorialAllowed, freeLevelSeconds, type FreeLevel } from '../../../../domain/rides/ride-trip.js';
 import type { Round } from '../../../../domain/economy/round.entity.js';
 import { PoolTicketsService } from '../../../services/pool-tickets.service.js';
 import { RoundService } from '../../../services/round.service.js';
@@ -45,16 +45,16 @@ interface CreateFacts {
  *   running                → 409
  *   ready (created)        → the same ride back – a PAID one is never lost; an unstarted FREE one is cancelled (credit refunded) when a paid tier is bought
  *   awaiting payment       → the same order while its tier matches and the price is still held; otherwise it lapses (a late matching payment is still honoured)
- * A paid tier that is not on sale (4h, 8h) and has no live pool is refused before the lock (409 `tier_not_on_sale`), so an open order of another tier is not expired.
+ * A paid tier that is not on sale (1h, 4h, 8h) and has no live pool is refused before the lock (409 `tier_not_on_sale`), so an open order of another tier is not expired.
  * A registered live pool of that tier still sells tickets. A paid tier that sells through escrowed pools is paid with a TICKET: one is spent in the same locked
  * transaction and the ride is ready at once (409 `no_tickets` / `pool_not_live`). In `program` mode that is the only way; in `transfer` mode an on-sale tier with no pool still uses the legacy pay-per-ride order.
- * A FREE ride is ordered at a LEVEL (ride-trip.ts FREE_LEVELS, default 1): its trip, FREE_RIDE_SECONDS × its multiple, its finish line. ASSIST on a level
- * without it (HARD) is refused (409 `assist_not_allowed`), a level on a paid tier too (409 `level_free_only`). Asking for the ready free ride again re-chooses
- * its level and helpers on that SAME ride (same seed, same credit) – the lobby never sends you onto a road you did not pick; a request with no `level` keeps
- * the ride's own level.
+ * A FREE ride is ordered at a LEVEL (ride-trip.ts FREE_LEVELS, default 1): its trip, FREE_RIDE_SECONDS × its multiple, its finish line. TUTORIAL or ASSIST on a
+ * level without it (HARD) is refused (409 `tutorial_not_allowed` / `assist_not_allowed`), a level on a paid tier too (409 `level_free_only`). Asking for the ready free ride again re-chooses
+ * its level (trip, country, length) and helpers on that SAME ride (same seed, same credit) – the lobby never sends you onto a road you did not pick; a request with no `level` keeps
+ * the ride's own level. The country is the level's (FREE_LEVELS.route), not the seed's.
  * ONE ROAD PER COMPETITION: a ticket ride is driven on its pool's seed (`Pool.rideSeed`), a pay-per-ride order on its tier's seed of the UTC day it was ordered
  * (`DailySeedRepositoryPort`, the day's first order draws it) – every rider of a pool, or of a tier that day, drives the same route, start hour, layout and holes.
- * Free rides draw a seed each.
+ * Free rides draw a seed each (layout, holes, start hour); the country is the level's.
  */
 @CommandHandler(CreateRideCommand)
 export class CreateRideHandler implements ICommandHandler<CreateRideCommand, RideDto> {
@@ -80,7 +80,7 @@ export class CreateRideHandler implements ICommandHandler<CreateRideCommand, Rid
     if (paid && (tutorial || assist)) throw new ConflictError('the tutorial and assist are for free rides only'); // assist must never reach a ranked, paid ride
     if (paid && asked !== null) throw new ConflictError('a level is for free rides only', 'level_free_only');
     const level = asked ?? DEFAULT_FREE_LEVEL;
-    if (!paid) assertAssistAllowed(level, assist); // before the lock: a refused HARD + ASSIST leaves the ride in hand alone
+    if (!paid) { assertAssistAllowed(level, assist); assertTutorialAllowed(level, tutorial); } // before the lock: a refused HARD helper leaves the ride in hand alone
     const livePool = paid && (await this.poolTickets.tierHasPools(tier as PaidTierId));
     // before the lock, and before touch: a soon-tier request must not expire the order in hand and must not open a player row
     if (paid && !isTierOnSale(tier) && !livePool) throw new ConflictError(`the ${tierShiftName(tier as PaidTierId)} shift is not on sale yet`, 'tier_not_on_sale');

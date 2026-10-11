@@ -40,10 +40,21 @@ function count(elm, target, fmt) {
 function paintHero() {
   const p = S.pool, l = S.live;
   if (p) {
-    const esc = p.pools?.length ? p.pools.reduce((a, x) => a + x.vaultLamports, 0) : null, pot = esc ?? p.split.grand;   // escrowed pools on sale: their vaults ARE the pot
-    $('hero-pot-lbl').textContent = esc != null ? `IN ESCROW · ${plural(p.pools.length, 'POOL', 'POOLS')}` : 'IN THE POT THIS WEEK';
-    count($('hero-pot'), pot, v => sol(v));
-    $('hero-usd').textContent = esc != null ? (p.solUsd ? `≈ $${((esc / 1e9) * p.solUsd).toFixed(2)}` : '') : p.usd.grand != null ? `≈ $${p.usd.grand}` : '';
+    const esc = p.pools?.length ? p.pools.reduce((a, x) => a + x.vaultLamports, 0) : null;
+    if (esc != null) {
+      $('hero-pot-lbl').textContent = `IN ESCROW · ${plural(p.pools.length, 'POOL', 'POOLS')}`;
+      count($('hero-pot'), esc, v => sol(v));
+      $('hero-usd').textContent = p.solUsd ? `≈ $${((esc / 1e9) * p.solUsd).toFixed(2)}` : '';
+      if ($('hero-pot-note')) $('hero-pot-note').hidden = true;
+    } else {
+      $('hero-pot-lbl').textContent = 'IN THE POT THIS WEEK';
+      $('hero-pot').textContent = '∞';
+      $('hero-usd').textContent = '≈ $∞';
+      if ($('hero-pot-note')) {
+        $('hero-pot-note').hidden = false;
+        $('hero-pot-note').textContent = 'No devnet at the moment · offline & free rides only · devnet will be soon';
+      }
+    }
     $('hero-cd').textContent = left(p.round.endsAt - now());
   }
   if (l) {
@@ -60,7 +71,11 @@ function paintHero() {
 function paintBoardsLive() {
   const p = S.pool, l = S.live;
   if (l) { $('lb-drivers').textContent = plural(l.totals.drivers, 'driver'); $('lb-live').textContent = `${l.rides.length} on the road now`; $('sheet-km').textContent = km(l.totals.metres); }
-  if (p) { $('lb-entries').textContent = `${p.entries} this round`; $('lb-pot').textContent = `${sol(p.split.grand)} SOL`; }
+  if (p) {
+    const esc = p.pools?.length;
+    $('lb-entries').textContent = esc ? `${p.entries} this round` : 'devnet soon';
+    $('lb-pot').textContent = esc ? `${sol(p.split.grand)} SOL` : '∞ SOL';
+  }
 }
 
 function paintPool() {
@@ -68,6 +83,18 @@ function paintPool() {
   if (!p) { box.replaceChildren(el('span', { class: 'dim' }, 'Prize pool unavailable right now.')); return; }
   const s = p.split, parts = [s.grand, s.top20, s.nextSeed, s.fees], total = parts.reduce((x, y) => x + y, 0), pct = total ? parts.map(x => (x / total) * 100) : [50, 20, 20, 10];
   const part = (cls, label, l) => el('span', { class: cls }, `${label} `, el('b', {}, `${sol(l)} SOL`));
+  const esc = p.pools?.length ? p.pools.reduce((a, x) => a + x.vaultLamports, 0) : null;
+  if (esc == null) {
+    box.replaceChildren(
+      el('span', { class: 'lbl' }, 'GRAND PRIZE · DEVNET SOON'),
+      el('div', { class: 'big' }, '∞ SOL'),
+      el('div', { class: 'usd' }, '≈ $∞ · Devnet prize draw soon'),
+      el('div', { class: 'split' }, ...['s-grand', 's-top', 's-seed', 's-fees'].map((c, i) => el('i', { class: c, style: `width:${pct[i]}%` }))),
+      el('div', { class: 'legend' }, part('s-grand', '50% grand prize · draw, weight = tier', s.grand), part('s-top', '20% top 20 · by distance', s.top20), part('s-seed', '20% seeds next week', s.nextSeed), part('s-fees', '10% platform', s.fees)),
+      el('div', { class: 'meta' }, el('span', {}, el('b', {}, 'No devnet at the moment'), ' · only offline & free rides · devnet will be soon')),
+      el('div', { class: 'dim' }, 'Integer lamports, floored shares, remainder to fees. settled: false – the draw and payouts are not live in this build.'));
+    return;
+  }
   box.replaceChildren(
     el('span', { class: 'lbl' }, 'GRAND PRIZE · ACCRUED THIS WEEK'),
     el('div', { class: 'big' }, `${sol(s.grand)} SOL`),
@@ -84,8 +111,10 @@ function paintTiers(t) {   // a tier sold through a pool: the ticket price is th
   const paidWith = x => x.pool ? 'pool ticket' : !x.usd ? 'free' : x.onSale === false ? 'soon' : program ? 'pool ticket · none on sale' : `$${x.usd}`;
   const rows = t.tiers.map(x => el('tr', {}, el('td', {}, TIER_LONG[x.id] ?? x.id), el('td', {}, hours(x.seconds)), el('td', {}, paidWith(x)), el('td', {}, price(x))));
   $('tiers').replaceChildren(el('thead', {}, el('tr', {}, ...['SHIFT', 'LENGTH', 'PAID WITH', 'IN SOL'].map(h => el('th', {}, h)))), el('tbody', {}, rows));
-  const pooled = t.tiers.some(x => x.pool), legacy = !program && t.tiers.some(x => x.usd && !x.pool && x.onSale !== false), soon = t.tiers.some(x => x.onSale === false && !x.pool);
-  $('price').textContent = [pooled && 'Pool tickets: the price is part of the pool’s rules, fixed when it was created.', legacy && (t.solUsd ? `Pay-per-ride: SOL ≈ $${t.solUsd}, the quote is locked for 10 minutes when you order.` : 'Pay-per-ride: SOL price unavailable right now.'), soon && 'The 4 hour and 8 hour shifts are planned and not on sale yet.', 'Devnet SOL only.'].filter(Boolean).join(' ');
+  const pooled = t.tiers.some(x => x.pool), legacy = !program && t.tiers.some(x => x.usd && !x.pool && x.onSale !== false);
+  const soonNames = t.tiers.flatMap(x => x.onSale === false && !x.pool && x.usd ? [x.id === '1h' ? '1 hour' : x.id === '4h' ? '4 hour' : '8 hour'] : []);
+  const soonText = !soonNames.length ? '' : `The ${soonNames.length === 1 ? soonNames[0] : `${soonNames.slice(0, -1).join(', ')} and ${soonNames.at(-1)}`} shift${soonNames.length === 1 ? ' is' : 's are'} planned and not on sale yet.`;
+  $('price').textContent = [pooled && 'Pool tickets: the price is part of the pool’s rules, fixed when it was created.', legacy && (t.solUsd ? `Pay-per-ride: SOL ≈ $${t.solUsd}, the quote is locked for 10 minutes when you order.` : 'Pay-per-ride: SOL price unavailable right now.'), soonText, 'Devnet SOL only.'].filter(Boolean).join(' ');
 }
 
 /* the escrowed pools on sale or running (the same list as GET /api/pools, carried by /api/pool so the page polls once) – each with its phase: ON SALE · RIDES COUNT · IN REVIEW · PAYING… */
@@ -146,10 +175,10 @@ function paintBoards() {
 const watchUrl = id => `${GAME_BASE}/play.html?watch=${encodeURIComponent(id)}`;
 function paintTicker() {
   const l = S.live, p = S.pool, items = [];   // a string, or [text, href] for a line that opens the watch page
-  if (l) for (const r of l.rides.slice(0, 4)) items.push([`● LIVE · ${short(r.wallet)} on ${r.route ? ROUTE[r.route] ?? r.route : 'the road'} · ${km(r.distance)} km · ▶ watch`, watchUrl(r.id)]);
+  if (l) for (const r of l.rides.filter(r => r.tier !== 'free').slice(0, 4)) items.push([`● LIVE · ${short(r.wallet)} on ${r.route ? ROUTE[r.route] ?? r.route : 'the road'} · ${km(r.distance)} km · ▶ watch`, watchUrl(r.id)]);
   if (l) for (const r of l.recent.slice(0, 8)) items.push([`${short(r.wallet)} ${r.status === 'completed' ? 'finished' : r.status === 'failed' ? 'wrecked' : 'abandoned'} a ${TIER_LONG[r.tier]?.toLowerCase() ?? r.tier} shift${r.route ? ` on ${ROUTE[r.route] ?? r.route}` : ''} · ${km(r.distance)} km · ▶ replay`, watchUrl(r.id)]);
-  if (p) items.push(`${sol(p.split.grand)} SOL in the pot · ${plural(p.entries, 'paid entry', 'paid entries')} this round`);
   if (p?.pools?.length) items.push(`${sol(p.pools.reduce((a, x) => a + x.vaultLamports, 0))} SOL in escrow across ${plural(p.pools.length, 'prize pool')} · ${plural(p.pools.reduce((a, x) => a + x.toGo, 0), 'more rider')} to go live`);
+  else if (p) items.push('No devnet at the moment · offline & free rides only · devnet will be soon');
   if (l) {
     items.push(`${plural(l.rides.length, 'truck')} on the road right now`, `${km(l.totals.metres)} km driven by ${plural(l.totals.drivers, 'driver')} all time`);
     if (l.upcoming.length) items.push(`${plural(l.upcoming.length, 'paid shift')} waiting to start`);
@@ -304,6 +333,8 @@ const so = new IntersectionObserver(es => {
 document.querySelectorAll('section[id]').forEach(s => so.observe(s));
 
 /* ───── boot ───── */
+$('hero-pot').textContent = '∞';
+$('hero-usd').textContent = '≈ $∞';
 refresh();
 api('tiers', undefined, { report: false }).then(paintTiers, () => { $('tiers').replaceChildren(el('tbody', {}, el('tr', {}, el('td', { class: 'dim' }, 'Prices unavailable right now.')))); });
 refreshBoard();

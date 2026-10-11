@@ -3,26 +3,33 @@ import { GetLiveQuery } from '../../../../../src/application/use-cases/lobby/get
 import { unitContext } from '../../../../support/unit-context.js';
 
 describe('GetLiveHandler', () => {
+  const paidRide = async (ctx: ReturnType<typeof unitContext>, wallet: string) => {
+    const r = await ctx.paidOrder(wallet);
+    r.markPaid(1, ctx.now());
+    r.start(ctx.now());
+    return ctx.rides.save(r);
+  };
+
   it('running rides with a recent heartbeat, newest first, with the ride id (the watch link) but no seed or reason', async () => {
     const ctx = unitContext();
-    const first = await ctx.freeRide('alice', true);
+    const first = await paidRide(ctx, 'alice');
     ctx.clock.advance(1);
-    await ctx.freeRide('bob', true);
+    await paidRide(ctx, 'bob');
     ctx.clock.advance(4);
     first.applyReport({ s: 70, t: 5, hull: 80, paused: true, night: false }, ctx.now(), ctx.rules.get());
     await ctx.rides.save(first);
-    await ctx.freeRide('carol'); // not started
+    await ctx.freeRide('carol', true); // free ride: not on the live board
     const feed = await new GetLiveHandler(ctx.rideQuery, ctx.rules, ctx.clock, ctx.sitePresence, ctx.viewers, ctx.stats).execute();
     expect(feed.now).toBe(ctx.clock.ms);
     expect(feed.rides.map((r) => r.wallet)).toEqual(['bob', 'alice']);
-    expect(feed.rides[1]).toMatchObject({ tier: 'free', route: 'siberia', paused: true, hull: 80, distance: 70, driveSeconds: 5, minSeconds: 10, completeDist: 70, sinceBeat: 0, progress: 0.5 });
+    expect(feed.rides[1]).toMatchObject({ tier: '1h', route: first.route, paused: true, hull: 80, distance: 70, driveSeconds: 5, minSeconds: 3600, completeDist: 50_400, sinceBeat: 0 });
     expect(feed.rides[1]?.id).toBe(first.id);
     expect(Object.keys(feed.rides[1] ?? {})).not.toContain('seed'); expect(Object.keys(feed.rides[1] ?? {})).not.toContain('reason');
   });
 
   it('drops a ride whose heartbeats stopped longer than the timeout ago', async () => {
     const ctx = unitContext();
-    await ctx.freeRide('alice', true);
+    await paidRide(ctx, 'alice');
     ctx.clock.advance(151);
     expect((await new GetLiveHandler(ctx.rideQuery, ctx.rules, ctx.clock, ctx.sitePresence, ctx.viewers, ctx.stats).execute()).rides).toEqual([]);
   });
@@ -54,7 +61,7 @@ describe('GetLiveHandler', () => {
   it('who is online: the polling page counts (≤ 3 ids per address), signed-in wallets and drivers are players, watchers from the watch pages', async () => {
     const ctx = unitContext();
     const handler = new GetLiveHandler(ctx.rideQuery, ctx.rules, ctx.clock, ctx.sitePresence, ctx.viewers, ctx.stats);
-    const ride = await ctx.freeRide('driver', true);
+    const ride = await paidRide(ctx, 'driver');
     ctx.viewers.seen(ride.id, '10.0.0.9', 'watcher-1', ctx.now());
     await handler.execute(new GetLiveQuery('visitor-aaaa', 'landing', '10.0.0.1', null));
     for (let i = 0; i < 6; i++) await handler.execute(new GetLiveQuery(`bot-${i}-xxxxxx`, 'lobby', '10.0.0.2', null));

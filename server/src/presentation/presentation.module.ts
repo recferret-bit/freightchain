@@ -8,6 +8,7 @@ import { HealthHttpController } from './health/health.http.controller.js';
 import { LobbyHttpController } from './lobby/lobby.http.controller.js';
 import { StatsHttpController } from './stats/stats.http.controller.js';
 import { RidesHttpController } from './rides/rides.http.controller.js';
+import { PublicRidesHttpController } from './rides/public-rides.http.controller.js';
 import { TelemetryHttpController } from './telemetry/telemetry.http.controller.js';
 
 import { PoolsHttpController } from './economy/pools.http.controller.js';
@@ -20,9 +21,8 @@ import { LiveHttpController } from './live/live.http.controller.js';
 import { AdminDirectoryHttpController } from './admin/admin-directory.http.controller.js';
 import { AdminSettingsHttpController } from './admin/admin-settings.http.controller.js';
 import { AdminPoolsHttpController } from './admin/admin-pools.http.controller.js';
-import { OfflineRidesHttpController } from './offline/offline-rides.http.controller.js';
 @Module({
   imports: [ApplicationModule],
-  controllers: [HealthHttpController, AuthHttpController, RidesHttpController, EconomyHttpController, PoolsHttpController, TicketsHttpController, LobbyHttpController, StatsHttpController, ChainHttpController, ChainWebhookHttpController, AdminHttpController, AdminPromosHttpController, AdminSettingsHttpController, AdminDirectoryHttpController, PromosHttpController, GarageHttpController, LiveHttpController, TelemetryHttpController, OfflineRidesHttpController, AdminPoolsHttpController],
+  controllers: [HealthHttpController, AuthHttpController, RidesHttpController, PublicRidesHttpController, EconomyHttpController, PoolsHttpController, TicketsHttpController, LobbyHttpController, StatsHttpController, ChainHttpController, ChainWebhookHttpController, AdminHttpController, AdminPromosHttpController, AdminSettingsHttpController, AdminDirectoryHttpController, PromosHttpController, GarageHttpController, LiveHttpController, TelemetryHttpController, AdminPoolsHttpController],
 })
 export class PresentationModule {}

@@ -31,7 +31,7 @@ function phaseHour(p, th = env.theme) {
   return p === 'day' ? (d.rise + d.set) / 2 : p === 'dusk' ? d.set + d.tw * .1 : p === 'dawn' ? d.rise - d.tw * .1 : (d.set + n / 2) % 24;
 }
 /* The clock is NOT the player's to set: a real ride (online / watch / counted free run) starts at the hour the SERVER assigned (RideDto.startHour) and then runs at the fixed day-cycle speed
-   (dn.scale 60 = one game minute per second). lockClock() is called by main.js for those pages: after it every call without `assigned` is ignored – the menu cards, the N key and the F2 clock
+   (dn.scale 20 = 20 game seconds per real second). lockClock() is called by main.js for those pages: after it every call without `assigned` is ignored – the menu cards, the N key and the F2 clock
    are gone, and window.__game no longer carries setClock / setPhase / setNight there. `assigned` is for the server's own values: the start hour, a paid NIGHT / DAY effect (live-feed.js). Client-side
    this is a guard rail, not security – the server stores the route + hour on the ride (domain/rides/ride-rules.ts worldFor). The offline prototype page (tests, tools) stays unlocked. */
 let locked = false;

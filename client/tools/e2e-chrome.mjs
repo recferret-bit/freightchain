@@ -116,7 +116,7 @@ if(await ev('typeof window.__game')==='object' && await ev('typeof __game.setNig
   await sleep(1200); await shot('dark-nolights'); await ev('__game.dn.head=true'); await sleep(1200); await shot('dark-headlights');
   await ev(`__game.selectTheme('siberia', false); __game.st.s=__game.net.Sm+300`); await sleep(1500); await shot('dark-siberia-lamps');
   for(const r of ['route66','brenner']) for(const ph of ['dusk','dawn']){ await ev(`__game.selectTheme('${r}', false); __game.setPhase('${ph}',true,false); __game.st.s=__game.net.Sm+260`); await sleep(1200); await shot(ph+'-'+r); }
-  await ev(`__game.dn.run=true; __game.dn.scale=600; __game.setClock(5.5,true,false)`); const t0=await ev('__game.dn.t'); await sleep(2500); console.log('clock x600 5.5 ->',t0,await ev('__game.dn.t'),await ev('__game.dn.phase')); await ev('__game.dn.scale=60; __game.setNight(false,true,false)');
+  await ev(`__game.dn.run=true; __game.dn.scale=600; __game.setClock(5.5,true,false)`); const t0=await ev('__game.dn.t'); await sleep(2500); console.log('clock x600 5.5 ->',t0,await ev('__game.dn.t'),await ev('__game.dn.phase')); await ev('__game.dn.scale=20; __game.setNight(false,true,false)');
   // menu cards: click NIGHT, check the state flipped and the .sel class followed; then the N key must move it back
   await ev("__game.st.mode='menu'; document.getElementById('overlay').classList.remove('hide'); __game.startRide&&0"); 
 }

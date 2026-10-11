@@ -15,7 +15,7 @@ import { GetTiersQuery } from './get-tiers.query.js';
 /** the free ride's levels for the lobby's picker, easiest first */
 const freeLevels = (freeRideSeconds: number): FreeLevelDto[] => FREE_LEVEL_IDS.map((l) => {
   const d = FREE_LEVELS[l], seconds = freeLevelSeconds(l, freeRideSeconds);
-  return { level: l, trip: d.trip, name: d.name, seconds, completeDist: completeDist(seconds, d.k), assist: d.assist };
+  return { level: l, trip: d.trip, name: d.name, seconds, completeDist: completeDist(seconds, d.k), tutorial: d.tutorial, assist: d.assist };
 });
 
 /** The ride list with live lamport prices – public (the landing page and the lobby show it before / without a wallet). */

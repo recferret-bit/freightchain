@@ -1,14 +1,12 @@
 import { BadRequestError } from '../shared/errors.js';
 
 /** Owner-tweakable integers in `player.GameSetting`. A missing or out-of-range row falls back to the code default. */
-export const SETTING_KEYS = ['free_on_signup', 'free_rides_daily_max', 'offline_free_rides', 'offline_free_rides_per_ip'] as const;
+export const SETTING_KEYS = ['free_on_signup', 'free_rides_daily_max'] as const;
 export type SettingKey = (typeof SETTING_KEYS)[number];
 
 export const SETTING_DEFAULTS: Record<SettingKey, number> = {
   free_on_signup: 10,
   free_rides_daily_max: 5,
-  offline_free_rides: 3,
-  offline_free_rides_per_ip: 10,
 };
 
 export const SETTING_MIN = 0;
@@ -20,15 +18,11 @@ export const FREE_RIDES_HARD_MAX = 100_000;
 export interface GameSettings {
   freeOnSignup: number;
   freeRidesDailyMax: number;
-  offlineFreeRides: number;
-  offlineFreeRidesPerIp: number;
 }
 
 const CAMEL: Record<SettingKey, keyof GameSettings> = {
   free_on_signup: 'freeOnSignup',
   free_rides_daily_max: 'freeRidesDailyMax',
-  offline_free_rides: 'offlineFreeRides',
-  offline_free_rides_per_ip: 'offlineFreeRidesPerIp',
 };
 
 export const isSettingKey = (key: string): key is SettingKey => (SETTING_KEYS as readonly string[]).includes(key);
@@ -40,8 +34,6 @@ export function resolveSettings(rows: readonly { key: string; value: number }[])
   const out: GameSettings = {
     freeOnSignup: SETTING_DEFAULTS.free_on_signup,
     freeRidesDailyMax: SETTING_DEFAULTS.free_rides_daily_max,
-    offlineFreeRides: SETTING_DEFAULTS.offline_free_rides,
-    offlineFreeRidesPerIp: SETTING_DEFAULTS.offline_free_rides_per_ip,
   };
   for (const row of rows) {
     if (!isSettingKey(row.key) || !inBounds(row.value)) continue;

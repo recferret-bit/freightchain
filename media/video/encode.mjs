@@ -60,9 +60,11 @@ export function compress(mp4, maxMB) {
 
 // <name>.tiny.gif: the whole clip in ≤ TINY.bytes (500 kB, decimal) for embeds / chats. Ladder from the largest rung; flat colours (no dither:
 // noise costs bytes); a still-too-big last rung is an error rather than a silent trim. Intro: 240 px @ 5 fps, 48 colours ≈ 476 kB.
-export const TINY = { bytes: 500_000, ladder: [[320, 6, 48], [288, 5, 48], [256, 5, 48], [240, 5, 48], [224, 5, 40], [200, 4, 32], [160, 4, 32]] };
+// A clip longer than TINY.maxSeconds gets none (a minute cannot fit 500 kB at any size worth looking at).
+export const TINY = { bytes: 500_000, maxSeconds: 20, ladder: [[320, 6, 48], [288, 5, 48], [256, 5, 48], [240, 5, 48], [224, 5, 40], [200, 4, 32], [160, 4, 32]] };
 function tinyGif(mp4, out, seconds) {
-  const tried = [];
+  const tried = [], dim = /, (\d+)x(\d+)/.exec(spawnSync(ffmpeg, ['-hide_banner', '-i', mp4], { encoding: 'utf8' }).stderr);   // a portrait clip (TikTok) cannot fit 500 kB at any readable size either
+  if (seconds > TINY.maxSeconds || (dim && +dim[2] > +dim[1])) { fs.rmSync(out, { force: true }); return { skipped: true, tried }; }
   for (const [w, f, c] of TINY.ladder) {
     const vf = `fps=${f},scale=${w}:-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff:max_colors=${c}[p];[b][p]paletteuse=dither=none:diff_mode=rectangle`;
     const r = run(['-i', mp4, '-t', seconds.toFixed(2), '-vf', vf, '-loop', '0', out]); if (r.status) throw new Error('tiny gif encode failed: ' + r.stderr);
@@ -72,9 +74,9 @@ function tinyGif(mp4, out, seconds) {
   throw new Error(`tiny gif cannot fit ${TINY.bytes / 1000} kB: ${tried.join('; ')}`);
 }
 
-export function contactSheet(video, out, cols = 6, rows = 5) {
+export function contactSheet(video, out, cols = 6, rows = 5, w = 320) {
   const d = duration(video), step = Math.max(.25, d / (cols * rows));
-  const r = run(['-i', video, '-vf', `fps=1/${step.toFixed(3)},scale=320:-1,tile=${cols}x${rows}:padding=4:color=black`, '-frames:v', '1', '-q:v', '3', out]);
+  const r = run(['-i', video, '-vf', `fps=1/${step.toFixed(3)},scale=${w}:-1,tile=${cols}x${rows}:padding=4:color=black`, '-frames:v', '1', '-q:v', '3', out]);
   if (r.status) throw new Error('contact sheet failed: ' + r.stderr);
   return out;
 }

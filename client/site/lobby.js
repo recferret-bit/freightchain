@@ -2,7 +2,7 @@ import { api, signOut } from './wallet.js';
 import { buyRide, buyTickets, claimRefund, waitPaid, ORDER_SIG } from './pay.js';
 import { salesOpen, pendingOrder } from './tickets-api.js';
 import { ridableTickets, escrowExplainer, explorerTx, rideError, promoError, promoOk, buyError, sol, left, span, hasStandings, shortAddr as short } from './pools.js';
-import { poolCard, resultCard, escrowSummary, refundRows, profileTickets } from './lobby-pools.js';
+import { poolCard, paidShift, resultCard, escrowSummary, refundRows, profileTickets } from './lobby-pools.js';
 import { careerTiles } from './lobby-career.js';
 import { redemptionList } from './lobby-promo.js';
 import { dirty, garageActions, garageProgress, garageSlots } from './lobby-garage.js';
@@ -14,6 +14,7 @@ import { API_BASE, GAME_BASE } from '../js/hosts.js';
 import { track, flushSoon } from '../js/analytics.js';
 import { reportWebVitals } from '../js/web-vitals.js';
 import { store } from '../js/util.js';
+import { FREE_COUNTRIES } from '../js/free-countries.js';
 
 /* The lobby: NEW RIDE · LIVE · LEADERBOARD · GARAGE · PROMO · PROFILE. Vanilla DOM, no framework.
    Everything that comes from the server (wallet addresses, route ids, statuses…) goes in with textContent – never innerHTML – because other riders' data is rendered here. */
@@ -46,7 +47,6 @@ function paintHeader() {
   $('chip-free').textContent = `${freeLeft(m)} · ${freeCd(m)}`;
   paintPaid(m);
   $('chip-live').textContent = liveChip();
-  $('chip-demo').hidden = !m.demo; $('chip-demo').textContent = `DEMO ×${m.demoScale}`;
 }
 
 function go() {
@@ -59,10 +59,10 @@ function go() {
 
 /* ───────── NEW RIDE ─────────
    One card per shift. A paid tier with an escrowed pool (tiers[].pool) is ridden with a TICKET (RIDE spends one, the ride is ready at once); buying tickets / refunds go through
-   pay.js → tickets-api.js (not built server-side yet: shown as SOON). A paid tier without a pool keeps the legacy pay-per-ride order (buyRide). */
+   pay.js → tickets-api.js (not built server-side yet: shown as SOON). A paid tier without a pool is the SOON card when it is not on sale, and the legacy pay-per-ride order when it is. */
 function renderNew() {
   view.replaceChildren(
-    el('div', { class: 'card pool', id: 'poolbox' }), el('div', { id: 'pendingbox' }), el('div', { id: 'orderbox' }), el('div', { id: 'refunds' }),
+    el('div', { class: 'card pool', id: 'poolbox', hidden: true, style: 'display:none' }), el('div', { id: 'pendingbox' }), el('div', { id: 'orderbox' }), el('div', { id: 'refunds' }),
     el('div', { id: 'freebox' }), el('h2', {}, 'PAID SHIFTS'), el('div', { class: 'tiers', id: 'tiers' }), el('div', { id: 'results' }),
     el('div', { class: 'card', id: 'rules', style: 'margin-top:12px' }));
   paintPool(); paintPending(); paintTiers(); paintRules();
@@ -73,16 +73,14 @@ const refreshMe = () => api('me').then(m => { S.me = m; paintHeader(); paintTier
 
 function paintPool() {
   const box = $('poolbox'), p = S.pool; if (!box) return;
-  if (!p) { box.replaceChildren(el('span', { class: 'dim' }, 'Prize pool unavailable right now.')); return; }
-  if (p.pools?.length) { box.replaceChildren(...escrowSummary(p, now(), salesOpen(S.tiers))); return; }
-  const s = p.split, parts = [s.grand, s.top20, s.nextSeed, s.fees], total = parts.reduce((x, y) => x + y, 0), w = parts.map(x => (total ? (x / total) * 100 : 0)), pct = total ? w : [50, 20, 20, 10];
-  const part = (cls, label, l, usd) => el('span', { class: cls }, `${label} `, el('b', {}, sol(l)), usd != null ? ` ≈ $${usd}` : '');
-  box.replaceChildren(
-    el('div', { class: 'lbl' }, 'GRAND PRIZE · ACCRUED THIS WEEK'),
-    el('div', { class: 'big' }, sol(s.grand)), el('div', { class: 'usd' }, p.usd.grand != null ? `≈ $${p.usd.grand} at the current price` : ''),
-    el('div', { class: 'split' }, ...['s-grand', 's-top', 's-seed', 's-fees'].map((c, i) => el('i', { class: c, style: `width:${pct[i]}%` }))),
-    el('div', { class: 'legend' }, part('s-grand', '50% grand', s.grand), part('s-top', '20% top 20', s.top20), part('s-seed', '20% next week', s.nextSeed), part('s-fees', '10% fees', s.fees)),
-    el('div', { class: 'dim' }, `${p.entries} paid entr${p.entries === 1 ? 'y' : 'ies'} · round closes in `, el('b', { id: 'cd', class: 'cd' }, left(p.round.endsAt - now())), ' · the draw and payouts are not live in this build'));
+  if (!p) { box.hidden = true; box.style.display = 'none'; return; }
+  if (p.pools?.length) {
+    box.hidden = false; box.style.display = '';
+    box.replaceChildren(...escrowSummary(p, now(), salesOpen(S.tiers)));
+    return;
+  }
+  // Temporarily hide the weekly accrued round while devnet is not active
+  box.hidden = true; box.style.display = 'none';
 }
 
 async function checkPending() {
@@ -126,9 +124,9 @@ function paintOrder() {
     el('button', { disabled: !!S.busy, onclick: retry }, sig ? 'RETRY CONFIRM' : 'CHECK AGAIN'), el('p', { class: 'msg dim', id: 'msg-order' })));
 }
 
-const tierInfo = t => {   // what the card shows: a demo wallet's paid shifts are shorter
+const tierInfo = t => {   // the card states the real shift; a demo wallet also shows the shorter ride it actually drives
   const scale = S.me.demo && t.id !== 'free' ? S.me.demoScale : 1, seconds = t.seconds / scale, dist = t.completeDist / scale;
-  return { seconds, dist, scale, name: TIER_NAME[t.id] ?? t.id, shift: `${dur(seconds)} · ≥ ${km(dist)} km` };
+  return { seconds, dist, scale, name: TIER_NAME[t.id] ?? t.id, shift: `${dur(t.seconds)} · ≥ ${km(t.completeDist)} km`, driven: scale > 1 ? `${dur(seconds)} · ≥ ${km(dist)} km` : '' };
 };
 function tierOff(t) {
   if (S.pending) return 'finish the paid ride waiting for you first';
@@ -137,11 +135,13 @@ function tierOff(t) {
 }
 /* /api/me's `readyFreeRide` = the free ride ordered but not started (its credit already spent): START hands it back, so it stays on at 0 credits (tierOff).
    A ready free ride seen for the first time picks the card's level + checkboxes from it (once – the player may still change them; START re-chooses that same ride).
-   ASSIST only where its level allows it: HARD's assist:false was forced, not chosen, and must not overwrite the remembered box. */
+   A helper HARD forced off was not chosen, and must not overwrite the remembered box. */
 function adoptReady(free) {
   const r = S.me?.readyFreeRide; if (!r || r.id === S.readyId) return;
-  S.readyId = r.id; if (r.level != null) S.opt.level = r.level; S.opt.tutorial = r.tutorial;
-  if (freeLevels(free).find(l => l.level === r.level)?.assist !== false) S.opt.assist = r.assist;
+  S.readyId = r.id; if (r.level != null) S.opt.level = r.level;
+  const lv = freeLevels(free).find(l => l.level === r.level);   // a forced-off helper on HARD was not chosen, so it must not wipe the remembered box
+  if (lv?.tutorial !== false) S.opt.tutorial = r.tutorial;
+  if (lv?.assist !== false) S.opt.assist = r.assist;
 }
 function paintTiers() {
   const box = $('tiers'), fbox = $('freebox'); if (!box) return;
@@ -178,51 +178,73 @@ async function loadStandings(pools) {
   if (S.tab === 'new' && !S.busy) paintTiers();
 }
 const tutorialOn = () => S.opt.tutorial ?? !S.me?.tutorialPassed;
-function guideBox(id, name, hint, on, set, off = '') {   // one of the free ride's two checkboxes (kept in S.opt, so a repaint does not reset it); off = why it is locked (unchecked + disabled)
-  return el('label', { class: `opt${off ? ' locked' : ''}`, for: id }, el('input', { type: 'checkbox', id, checked: on && !off, disabled: !!off, onchange: e => set(e.target.checked) }), el('span', {}, el('b', {}, name), off ? el('small', { class: 'why' }, off) : '', el('small', {}, hint)));
+function guideBox(id, name, hint, on, set, locked = false) {   // one of the free ride's two checkboxes (kept in S.opt, so a repaint does not reset it); locked = unchecked + disabled, the hint stays
+  return el('label', { class: `opt${locked ? ' locked' : ''}`, for: id }, el('input', { type: 'checkbox', id, checked: on && !locked, disabled: !!locked, onchange: e => set(e.target.checked) }), el('span', {}, el('b', {}, name), el('small', {}, hint)));
 }
-/* the free ride's LEVELS come from the server (GET /api/tiers → the free tier's `levels`: EASY / CROSSROADS / HARD, their length and whether ASSIST is allowed);
+/* the free ride's LEVELS come from the server (GET /api/tiers → the free tier's `levels`: EASY / CROSSROADS / HARD, their length and whether TUTORIAL and ASSIST are allowed);
    a server without them = no picker and no `level` sent. The pick is remembered (localStorage freightchain.level); one the server does not offer falls back to the easiest. */
 const freeLevels = t => t?.levels ?? [];
 const pickedLevel = t => { const ls = freeLevels(t); return ls.find(l => l.level === S.opt.level) ?? ls[0] ?? null; };
+const tutorialAllowed = t => pickedLevel(t)?.tutorial !== false;
 const assistAllowed = t => pickedLevel(t)?.assist !== false;
+const lockOpt = (id, on, allowed) => {   // unchecked + disabled while the level forbids it; the remembered choice stays in S.opt
+  const input = $(id), label = input?.closest('.opt'); if (!input || !label) return;
+  input.disabled = !allowed; input.checked = !!on && allowed; label.classList.toggle('locked', !allowed);
+};
 function levelPicker(t) {
   const ls = freeLevels(t), on = pickedLevel(t); if (!ls.length) return '';
-  const pick = n => { S.opt.level = n; store.set('freightchain.level', String(n)); paintTiers(); };
+  const pick = n => { S.opt.level = n; store.set('freightchain.level', String(n)); syncFreeLevel(); };   // in place: rebuilding the card flashed the level line
   return el('div', { class: 'levels', role: 'radiogroup', 'aria-label': 'Level' },
-    ls.map(l => el('label', { class: `lv${l.level === on.level ? ' on' : ''}`, for: `level-${l.level}` },
-      el('input', { type: 'radio', name: 'level', id: `level-${l.level}`, value: String(l.level), checked: l.level === on.level, disabled: !!S.busy, onchange: () => pick(l.level) }),
-      el('b', {}, l.name), el('small', {}, `${dur(l.seconds)} · ≥ ${km(l.completeDist)} km`), l.assist ? '' : el('small', { class: 'why' }, 'no assist'))));
+    ls.map(l => {
+      const c = FREE_COUNTRIES[l.level];   // hardcoded country + description; the server stamps the same route id when this level is ordered
+      return el('label', { class: `lv${l.level === on.level ? ' on' : ''}`, for: `level-${l.level}`, ...(c ? { style: `--stripe:${c.stripe}` } : {}) },
+        el('input', { type: 'radio', name: 'level', id: `level-${l.level}`, value: String(l.level), checked: l.level === on.level, disabled: !!S.busy, onchange: () => pick(l.level) }),
+        c ? el('span', { class: 'cty' }, c.country) : '',
+        el('b', {}, l.name),
+        c ? el('small', { class: 'where' }, `${c.title} · ${c.place}`) : '',
+        c ? el('small', { class: 'desc' }, c.desc) : '',
+        el('small', {}, `${dur(l.seconds)} · ≥ ${km(l.completeDist)} km`),
+        l.assist ? '' : el('small', { class: 'why' }, 'no assist'));
+    }));
+}
+/* the picked level already prints its time and distance on its chip, so nothing under the picker repeats it. The two locks follow the pick without a repaint. */
+function syncFreeLevel() {
+  const t = S.tiers?.tiers.find(x => x.id === 'free'), lv = pickedLevel(t), card = $('tier-free'); if (!card || !lv) return;
+  card.querySelectorAll('.lv').forEach(node => { const input = node.querySelector('input'), on = Number(input.value) === lv.level; node.classList.toggle('on', on); input.checked = on; });
+  lockOpt('opt-tutorial', tutorialOn(), tutorialAllowed(t));
+  lockOpt('opt-assist', S.opt.assist, assistAllowed(t));   // HARD: both blocks stay, the checkboxes do not
 }
 function freeCard(t) {
-  const off = tierOff(t), lv = pickedLevel(t), i = tierInfo(lv ? { ...t, seconds: lv.seconds, completeDist: lv.completeDist } : t);   // the shift line follows the picked level
+  const off = tierOff(t);
   return el('article', { class: 'tier free', id: 'tier-free' },
     el('div', { class: 'freeinfo' },
-      el('div', { class: 'hd' }, el('span', { class: 'nm' }, TIER_NAME.free), el('span', { class: 'st done' }, 'NO PRIZE')),
+      el('div', { class: 'hd' }, el('span', { class: 'nm' }, TIER_NAME.free)),
+      el('div', { class: 'prize' },
+        el('span', { class: 'st done' }, 'NO PRIZE'),
+        el('span', { class: 'st done' }, 'FOR THE FREE LEADERBOARD AND ACHIEVEMENTS')),
       levelPicker(t),
-      el('span', { class: 'sub', id: 'free-shift' }, lv ? `${lv.name} · ${i.shift}` : i.shift),
-      el('span', { class: 'sub more' }, 'Counts for the free leaderboard and achievements.'),
+      freeLevels(t).length ? '' : el('span', { class: 'sub', id: 'free-shift' }, tierInfo(t).shift),   // a server without levels: the one shift, once
       el('div', { class: 'guide' },
-        guideBox('opt-tutorial', 'TUTORIAL', S.me?.tutorialPassed ? 'Step-by-step tips over the game – you have done it, switch it on to see it again.' : 'Step-by-step tips over the game: ignition, gears, steering, lights, hull. On for your first ride.', tutorialOn(), v => { S.opt.tutorial = v; }),
-        guideBox('opt-assist', 'ASSIST', 'The truck and the battery last twice as long and every control gets a tip when it matters. Finish a free ride WITHOUT it for the “On My Own” achievement.', S.opt.assist, v => { S.opt.assist = v; store.set('freightchain.assist', v ? '1' : '0'); }, assistAllowed(t) ? '' : `no assist on ${lv?.name ?? 'this level'}`)),
-      off ? el('span', { class: 'tag' }, off) : ''),
-    el('button', { class: 'go', id: 'start', disabled: !!off || !!S.busy, onclick: startFree }, S.busy === 'free' ? 'WORKING…' : S.me.readyFreeRide ? 'START FREE RIDE · ready' : 'START FREE RIDE'),
+        guideBox('opt-tutorial', 'TUTORIAL', S.me?.tutorialPassed ? 'Step-by-step tips over the game – you have done it, switch it on to see it again.' : 'Step-by-step tips over the game: ignition, gears, steering, lights, hull. On for your first ride.', tutorialOn(), v => { S.opt.tutorial = v; }, !tutorialAllowed(t)),
+        guideBox('opt-assist', 'ASSIST', 'The truck and the battery last twice as long and every control gets a tip when it matters. Finish a free ride WITHOUT it for the “On My Own” achievement.', S.opt.assist, v => { S.opt.assist = v; store.set('freightchain.assist', v ? '1' : '0'); }, !assistAllowed(t))),
+      off ? el('span', { class: 'tag' }, off) : '',
+      el('button', { class: 'go', id: 'start', disabled: !!off || !!S.busy, onclick: startFree }, S.busy === 'free' ? 'WORKING…' : S.me.readyFreeRide ? 'START FREE RIDE · ready' : 'START FREE RIDE')),
     el('p', { class: 'msg dim', id: 'msg-free' }));
 }
-function soonCard(t) {   // 4h / 8h with no live pool: the planned price is text, the button does nothing
+function soonCard(t) {   // a paid shift with no live pool: the planned price is text, the button does nothing
   const i = tierInfo(t);
   return el('article', { class: 'tier legacy', id: `tier-${t.id}` },
     el('div', { class: 'hd' }, el('span', { class: 'nm' }, i.name), el('span', { class: 'st done' }, 'SOON')),
     el('span', { class: 'pr' }, `$${t.usd}`, el('small', {}, ' · planned')),
-    el('span', { class: 'sub' }, i.shift),
-    el('span', { class: 'sub more' }, 'Not on sale yet. The 1 hour shift is the one you can buy.'),
+    ...paidShift(i),
+    el('span', { class: 'sub more' }, 'Available soon.'),
     el('button', { class: 'go', disabled: true }, 'SOON'),
     el('p', { class: 'msg dim', id: `msg-${t.id}` }));
 }
 function noPoolCard(t) {   // program mode is ticket-only: an on-sale tier whose pool failed / settled and no new one is open yet
   const i = tierInfo(t);
   return el('article', { class: 'tier legacy', id: `tier-${t.id}` },
-    el('div', { class: 'hd' }, el('span', { class: 'nm' }, i.name), el('span', { class: 'st done' }, 'NO POOL')), el('span', { class: 'sub' }, i.shift),
+    el('div', { class: 'hd' }, el('span', { class: 'nm' }, i.name), el('span', { class: 'st done' }, 'NO POOL')), ...paidShift(i),
     el('span', { class: 'sub' }, 'No pool open right now.'),
     el('button', { class: 'go', disabled: true }, 'NEXT POOL SOON'),
     el('p', { class: 'msg dim', id: `msg-${t.id}` }));
@@ -231,8 +253,8 @@ function legacyCard(t) {   // a paid tier with no pool registered: pay per ride 
   const off = tierOff(t), i = tierInfo(t);
   return el('article', { class: 'tier legacy', id: `tier-${t.id}` },
     el('div', { class: 'hd' }, el('span', { class: 'nm' }, i.name), el('span', { class: 'st done' }, 'PAY PER RIDE')),
-    el('span', { class: 'pr' }, `$${t.usd}`, el('small', {}, t.lamports ? ` · ${sol(t.lamports)}` : ' · price unavailable')), el('span', { class: 'sub' }, i.shift),
-    el('span', { class: 'sub more' }, 'Price locked 10 min after you order. ', el('b', {}, 'Non-refundable'), ': goes to the weekly round (50% grand · 20% top 20 · 20% next week · 10% fees).', i.scale > 1 ? ` DEMO ×${i.scale}: shifts shortened for demos.` : ''),
+    el('span', { class: 'pr' }, `$${t.usd}`, el('small', {}, t.lamports ? ` · ${sol(t.lamports)}` : ' · price unavailable')), ...paidShift(i),
+    el('span', { class: 'sub more' }, 'Price locked 10 min after you order. ', el('b', {}, 'Non-refundable'), ': goes to the weekly round (50% grand · 20% top 20 · 20% next week · 10% fees).'),
     off ? el('span', { class: 'tag' }, off) : '',
     el('button', { class: 'go', disabled: !!off || !!S.busy, onclick: () => startLegacy(t.id) }, S.busy === t.id ? 'WORKING…' : [`PAY $${t.usd}${t.lamports ? ` · ${sol(t.lamports)}` : ''}`, el('small', { class: 'go-sub' }, 'LET’S RIDE →')]),
     el('p', { class: 'msg dim', id: `msg-${t.id}` }));
@@ -271,7 +293,7 @@ function play(r, tier, level = null) {
   flushSoon(); location.href = `${GAME_BASE}/play.html?ride=${r.id}`;
 }
 const clicked = (id, usd = 0) => track('ride_buy_clicked', { tier_id: id, is_free: id === 'free', price_usd: usd, is_demo: !!S.me?.demo });
-const freeBody = () => { const t = S.tiers?.tiers.find(x => x.id === 'free'), lv = pickedLevel(t); return { tier: 'free', tutorial: tutorialOn(), assist: S.opt.assist && assistAllowed(t), ...(lv ? { level: lv.level } : {}) }; };   // HARD: assist is never sent (the server would refuse it)
+const freeBody = () => { const t = S.tiers?.tiers.find(x => x.id === 'free'), lv = pickedLevel(t); return { tier: 'free', tutorial: tutorialOn() && tutorialAllowed(t), assist: S.opt.assist && assistAllowed(t), ...(lv ? { level: lv.level } : {}) }; };   // HARD: neither helper is sent (the server would refuse it)
 const startFree = () => busy('free', async () => { clicked('free'); const body = freeBody(); try { play(await api('rides', body), 'free', body.level ?? null); } catch (e) { say('free', rideError(e, 'free'), true); await refreshMe(); } });
 const startLegacy = id => busy(id, async () => { clicked(id, S.tiers?.tiers.find(t => t.id === id)?.usd ?? 0); try { play(await buyRide(id, text => say(id, text)), id); } catch (e) { say(id, rideError(e, id), true); } });
 const ride = tier => busy(tier, async () => {   // spends one ticket: the ride is ready at once
@@ -358,7 +380,7 @@ async function saveGarage() {
    Every ride on the air (the stale-ride sweeper ends the ones whose tab vanished), with how many watch it and its signal; sort / filter to pick one and
    ▶ WATCH it (the "join": the watch page, ~25 s behind the driver – chat and donations from there). */
 const rows = new Map();   // wallet|startedAt → { root, … }
-const liveChip = () => { const o = S.live.online; return `${o ? `${o.total} online · ` : ''}${S.live.rides.length} on the road`; };
+const liveChip = () => { const o = S.live.online, n = (S.live.rides || []).filter(r => r.tier !== 'free').length; return `${o ? `${o.total} online · ` : ''}${n} on the road`; };
 const SORTS = { newest: (a, b) => b.startedAt - a.startedAt, watched: (a, b) => b.viewers - a.viewers || b.startedAt - a.startedAt, furthest: (a, b) => b.distance - a.distance };
 function liveControls() {
   const sort = el('select', { id: 'live-sort', 'aria-label': 'sort the rides', onchange: e => { S.liveSort = e.target.value; paintLive(); } },
@@ -366,7 +388,7 @@ function liveControls() {
   const route = el('select', { id: 'live-route', 'aria-label': 'only one route', onchange: e => { S.liveRoute = e.target.value; paintLive(); } },
     el('option', { value: '' }, 'every route'), ...Object.entries(ROUTES).map(([v, t]) => el('option', { value: v, selected: S.liveRoute === v }, t)));
   const random = el('button', { type: 'button', class: 'alt', id: 'live-random', title: 'open a ride on the air at random', onclick: () => {
-    const pool = S.live.rides.filter(r => r.signal !== 'weak' && r.wallet !== S.me.wallet); if (!pool.length) return;
+    const pool = (S.live.rides || []).filter(r => r.tier !== 'free' && r.signal !== 'weak' && r.wallet !== S.me.wallet); if (!pool.length) return;
     location.href = `${GAME_BASE}/play.html?watch=${encodeURIComponent(pool[Math.floor(Math.random() * pool.length)].id)}`;
   } }, '▶ WATCH A RANDOM ONE');
   return el('div', { class: 'filters' }, el('label', {}, 'Sort ', sort), el('label', {}, 'Route ', route), random);
@@ -378,7 +400,7 @@ function renderLive() {
 }
 function paintLive() {
   const box = $('rides'); if (!box) return;
-  const rides = S.live.rides, keys = new Set();
+  const rides = (S.live.rides || []).filter(r => r.tier !== 'free'), keys = new Set();
   const o = S.live.online; if ($('live-online')) $('live-online').textContent = o ? `${o.total} online now: ${o.browsing} looking around, ${o.watching} watching, ${o.driving} driving (${o.players} signed in).` : '';
   if ($('live-random')) $('live-random').disabled = !rides.some(r => r.signal !== 'weak' && r.wallet !== S.me.wallet);
   if (!rides.length) { rows.clear(); box.replaceChildren(el('div', { class: 'card empty' }, 'No trucks on the road right now.', el('br'), el('a', { href: '#new' }, 'Be the first →'), ' · ', el('a', { href: '#replays' }, 'or watch a replay →'))); return; }
@@ -389,7 +411,7 @@ function paintLive() {
     if (!row) {
       row = { fill: el('div', { class: 'fill' }), truck: el('span', { class: 'truck' }, '⛟'), time: el('b'), dist: el('b'), hull: el('b'), eyes: el('b'), badge: el('span', { class: 'badge' }) };
       row.root = el('div', { class: 'card ride' }, avatar(r.wallet),
-        el('div', { class: 'who' }, el('b', {}, short(r.wallet), r.wallet === S.me.wallet ? ' (you)' : ''), el('span', { class: `badge${r.tier === 'free' ? '' : ' p'}` }, TIER_NAME[r.tier] ?? r.tier), r.route ? el('span', { class: 'badge' }, ROUTES[r.route] ?? '') : '', r.timeScale > 1 ? el('span', { class: 'badge d' }, `DEMO ×${r.timeScale}`) : '', row.badge),
+        el('div', { class: 'who' }, el('b', {}, short(r.wallet), r.wallet === S.me.wallet ? ' (you)' : ''), el('span', { class: `badge${r.tier === 'free' ? '' : ' p'}` }, TIER_NAME[r.tier] ?? r.tier), r.route ? el('span', { class: 'badge' }, ROUTES[r.route] ?? '') : '', row.badge),
         el('div', { class: 'road' }, row.fill, row.truck),
         el('div', { class: 'stats' }, el('span', {}, '⏱ ', row.time), el('span', {}, '↦ ', row.dist), el('span', {}, 'hull ', row.hull), el('span', { title: 'watching now' }, '👁 ', row.eyes),
           el('a', { class: 'watch', href: `${GAME_BASE}/play.html?watch=${encodeURIComponent(r.id)}`, title: 'watch this ride live – chat with the driver, send donations' }, '▶ WATCH')));
@@ -416,7 +438,7 @@ function tickLive() {   // between polls: run the clock and the truck forward fr
 }
 async function pollLive() {
   try { const j = await api(livePath('lobby'), undefined, { report: false }); S.live = j; S.liveAt = Date.now(); S.skew = j.now - Date.now(); } catch { return; }
-  const n = S.live.rides.length;
+  const n = (S.live.rides || []).filter(r => r.tier !== 'free').length;
   $('chip-live').textContent = liveChip(); $('tab-live-n').textContent = n || '';
   if (S.tab === 'live') paintLive();
 }
@@ -456,12 +478,10 @@ async function renderProfile() {
   try { p = await api('profile', undefined, { report: false }); } catch (e) { if (my === seq) view.replaceChildren(el('p', { class: 'bad' }, e.message)); return; }
   if (my !== seq) return;
   Object.assign(S.me, { freeRides: p.freeRides, freeRidesMax: p.freeRidesMax, nextFreeRideAt: p.nextFreeRideAt, tickets: p.tickets }); paintHeader();
-  const tile = (v, l) => el('div', { class: 'tile' }, el('b', {}, v), el('span', {}, l)), got = p.achievements.filter(a => a.earnedAt).length;
+  const got = p.achievements.filter(a => a.earnedAt).length;
   view.replaceChildren(
     el('div', { class: 'who', style: 'display:flex;gap:10px;align-items:center' }, avatar(p.wallet), el('div', {}, el('b', {}, short(p.wallet)), el('div', { class: 'dim' }, `rider since ${new Date(p.createdAt).toLocaleDateString()}`))),
-    ...careerTiles(p.career, { km, sol }),
-    el('h2', {}, 'STATS'),
-    el('div', { class: 'tiles' }, tile(km(p.stats.bestMetres), 'best shift, km'), tile(p.stats.paidRides, 'paid rides'), tile(sol(p.stats.spentLamports), 'spent'), p.stats.ticketsBought != null ? tile(p.stats.ticketsBought, 'tickets bought') : ''),
+    ...careerTiles(p.career, p.stats, { km, sol }),
     ...profileTickets(p, S.busy, refund),
     el('h2', {}, `ACHIEVEMENTS · ${got}/${p.achievements.length}`),
     el('div', { class: 'ach' }, p.achievements.map(a => el('div', { class: `a${a.earnedAt ? '' : ' lock'}${a.awardedAtRoundClose ? ' soon' : ''}` }, el('span', { class: 'ic' }, a.icon), el('span', { class: 'nm' }, a.name), el('span', { class: 'ds' }, a.desc),
@@ -469,7 +489,7 @@ async function renderProfile() {
     el('p', { class: 'dim' }, 'Achievements become NFTs in your wallet soon – they are recorded now and can’t be lost.'),
         el('h2', {}, 'RECENT RIDES'),
     p.recent.length ? el('div', { class: 'hist' }, p.recent.map(r => el('div', { class: 'hrow' },
-      el('span', {}, new Date(r.startedAt).toLocaleString(), ' · ', TIER_NAME[r.tier] ?? r.tier, r.route ? ` · ${ROUTES[r.route] ?? ''}` : '', r.timeScale > 1 ? ` · DEMO ×${r.timeScale}` : ''),
+      el('span', {}, new Date(r.startedAt).toLocaleString(), ' · ', TIER_NAME[r.tier] ?? r.tier, r.route ? ` · ${ROUTES[r.route] ?? ''}` : ''),
       el('span', {}, `${km(r.distance)} km · `, el('b', { class: r.status === 'completed' ? 'good' : 'bad' }, r.status.toUpperCase()), rideCheck(r)),
       r.review === 'under_review' ? el('span', { class: 'dim rnote' }, 'An admin checks this ride before prizes are paid.') : ''))) : el('div', { class: 'card empty' }, 'No rides yet – start one!'));
 }
@@ -508,7 +528,7 @@ if (S.me) {
   if (S.pool?.round?.id != null) viewed.round_id = S.pool.round.id;   // pool is not loaded yet; do not delay the pageview for it
   track('lobby_viewed', viewed);
   paintHeader();
-  for (const a of document.querySelectorAll('a[href="/play.html"]')) a.href = `${GAME_BASE}/play.html?offline=1`;   // counted free runs. The click listener above stays on the element. Paid and watch links already carry their own query
+  for (const a of document.querySelectorAll('a[href="/play.html"]')) a.href = `${GAME_BASE}/play.html?offline=1`;   // guest free runs. The click listener above stays on the element. Paid and watch links already carry their own query
   $('promo').onsubmit = redeem;
   $('out').onclick = async () => { track('player_signed_out'); flushSoon(); await signOut(); location.href = '/'; };
   [S.tiers, S.pool, S.pools] = await Promise.all(['tiers', 'pool', 'pools'].map(x => api(x, undefined, { report: false }).catch(() => null)));

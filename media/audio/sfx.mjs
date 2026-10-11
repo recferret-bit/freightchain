@@ -84,6 +84,50 @@ export const SFX = {
     for (const [n, v] of [['A4', .17], ['E5', .15], ['A5', .17], ['C6', .12]]) voice(b, .4, .38, { wave: 'pulse', f: mtof(midi(n)), duty: .5, vol: v, a: .002, d: .1, s: .6, r: .2 });
     voice(b, .4, .38, { wave: 'tri', f: mtof(midi('A2')), vol: .3, a: .002, d: .1, s: .8, r: .2 }); voice(b, .4, .04, { wave: 'white', lp: 6000, vol: .3, a: .0005, d: .03, s: 0, r: .01, seed: 19 });
   }), .001, .1); } },
+
+  // ── meme sounds (the TikTok clips): all synthesised from the same chip voices, nothing sampled ──
+  // the "vine boom": a long sub drop with a crushed noise thump on top
+  boom: { dur: .95, make() { return fade(make(.95, b => {
+    voice(b, 0, .8, { wave: 'sine', f: t => 96 * Math.exp(-t * 2.6) + 30, vol: .95, a: .001, d: .7, s: .05, r: .15 });
+    voice(b, 0, .35, { wave: 'white', lp: 900, vol: .6, a: .001, d: .3, s: 0, r: .05, seed: 51, crush: 6, hold: 2 });
+    voice(b, 0, .5, { wave: 'pulse', f: t => 70 * Math.exp(-t * 3) + 36, duty: .25, vol: .3, a: .001, d: .4, s: 0, r: .08, crush: 5 });
+  }), .001, .1); } },
+  // record scratch: two quick swept noise-and-pulse "wikka" strokes
+  scratch: { dur: .5, make() { return fade(make(.5, b => {
+    voice(b, 0, .17, { wave: 'pulse', f: t => 300 + 5400 * t, duty: .25, vol: .24, a: .002, d: .1, s: .6, r: .02, crush: 5 }); voice(b, 0, .17, { wave: 'white', hp: 900, lp: 6000, vol: .35, a: .002, d: .1, s: .7, r: .02, seed: 52 });
+    voice(b, .19, .24, { wave: 'pulse', f: t => 1900 - 7200 * t, duty: .125, vol: .24, a: .002, d: .15, s: .5, r: .04, crush: 5 }); voice(b, .19, .24, { wave: 'white', hp: 700, lp: 5000, vol: .35, a: .002, d: .15, s: .6, r: .04, seed: 53 });
+  }), .001, .04); } },
+  // airhorn: "da da daaa" – a stack of detuned square waves with a shaky end
+  airhorn: { dur: 1.1, make() { return fade(make(1.1, b => {
+    for (const [t, d] of [[0, .17], [.21, .17], [.42, .62]]) for (const [f, v] of [[466, .17], [554, .15], [698, .14], [932, .08]]) voice(b, t, d, { wave: 'pulse', f: f * 1.0, duty: .5, vol: v, a: .006, d: .05, s: .85, r: .05, vib: d > .5 ? { rate: 7, depth: .25, delay: .2 } : undefined });
+    voice(b, 0, 1.04, { wave: 'white', hp: 1800, lp: 6500, vol: .05, a: .01, d: .1, s: .8, r: .05, seed: 54 });
+  }), .001, .08); } },
+  // "bruh": two sagging FM groans
+  bruh: { dur: .6, make() { return fade(make(.6, b => {
+    voice(b, 0, .24, { wave: 'fm', f: t => 190 - 280 * t, ratio: 2, index: t => 3 - 8 * t, vol: .55, a: .004, d: .12, s: .6, r: .04 });
+    voice(b, .27, .3, { wave: 'fm', f: t => 130 - 150 * t, ratio: 1, index: t => 2.4 - 5 * t, vol: .55, a: .004, d: .15, s: .55, r: .06 });
+  }), .001, .05); } },
+  // a bell "ding" (the meme notification)
+  ding: { dur: .55, make() { return fade(make(.55, b => {
+    voice(b, 0, .45, { wave: 'sine', f: 1319, vol: .5, a: .001, d: .35, s: 0, r: .1 }); voice(b, 0, .3, { wave: 'sine', f: 2637, vol: .22, a: .001, d: .2, s: 0, r: .08 }); voice(b, 0, .2, { wave: 'pulse', f: 3951, duty: .125, vol: .05, a: .001, d: .12, s: 0, r: .05 });
+  }), .001, .06); } },
+  // LEVEL UP: a quick climbing arpeggio into a bright chord
+  levelup: { dur: .85, make() { return fade(make(.85, b => {
+    ['C5', 'E5', 'G5', 'C6', 'E6'].forEach((n, i) => voice(b, i * .07, .1, { wave: 'pulse', f: mtof(midi(n)), duty: .25, vol: .22, a: .002, d: .05, s: .6, r: .03 }));
+    for (const [n, v] of [['C5', .17], ['G5', .15], ['C6', .17], ['E6', .12]]) voice(b, .38, .4, { wave: 'pulse', f: mtof(midi(n)), duty: .5, vol: v, a: .002, d: .1, s: .6, r: .2 });
+    voice(b, .38, .4, { wave: 'tri', f: mtof(midi('C3')), vol: .3, a: .002, d: .1, s: .8, r: .2 });
+  }), .001, .1); } },
+  // a tension riser (dur option): noise opening up under a climbing pulse, ends on the cut
+  riser: { dur: 1.5, make(o = {}) { const D = o.dur ?? 1.5; return fade(make(D, b => {
+    voice(b, 0, D, { wave: 'white', hp: 500, lp: 8000, vol: .3, a: D * .85, d: .05, s: 1, r: .02, seed: 55 });
+    voice(b, 0, D, { wave: 'pulse', f: t => 140 * 2 ** (t / D * 3.4), duty: t => .125 + .375 * clamp(t / D), vol: .22, a: D * .5, d: .05, s: 1, r: .02 });
+  }), .01, .03); } },
+  // the sad trombone: four sagging notes, the last one wobbling
+  wah: { dur: 1.9, make() { return fade(make(1.9, b => {
+    [[0, 'Bb3', .38], [.42, 'A3', .38], [.84, 'Ab3', .38], [1.26, 'G3', .6]].forEach(([t, n, d], i) => voice(b, t, d, { wave: 'saw', f: mtof(midi(n)) * (i === 3 ? 1 : 1), vol: .3, a: .04, d: .1, s: .8, r: .06, lp: 1500 + 500 * (i % 2), vib: { rate: i === 3 ? 6 : 4, depth: i === 3 ? .7 : .15, delay: i === 3 ? .1 : .15 } }));
+  }), .002, .1); } },
+  // clock "tock" (alternate with the click: o.low = the lower tick)
+  tock: { dur: .09, make(o = {}) { const lo = o.low ? .7 : 1; return fade(make(.09, b => { voice(b, 0, .05, { wave: 'sine', f: t => 1100 * lo * Math.exp(-t * 30) + 380 * lo, vol: .7, a: .0005, d: .04, s: 0, r: .01 }); voice(b, 0, .006, { wave: 'white', hp: 2000, vol: .35, a: .0003, d: .005, s: 0, r: .002, seed: 56 }); }), .0005, .015); } },
 };
 // A recipe sums many voices: scale a sound that would clip (> 0.9) down so the stored WAV and the mix never clip; quieter sounds keep their relative level.
 for (const s of Object.values(SFX)) { const raw = s.make; s.make = (o = {}) => { const b = raw(o), p = peak(b); return p > .9 ? gain(b, .9 / p) : b; }; }
