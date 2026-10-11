@@ -105,6 +105,17 @@ export function tierTickets(tickets, tier) {
 /** Every unused ticket the wallet can ride with right now (active pools, all tiers). */
 export const ridableTickets = tickets => (tickets ?? []).filter(t => t.status === 'active').reduce((a, t) => a + t.balance, 0);
 
+/** Unused tickets the wallet holds: a live pool, or an open one that is still filling. A failed pool has already voided its balance. */
+export const heldTickets = tickets => (tickets ?? []).filter(t => t.status === 'active' || t.status === 'open').reduce((a, t) => a + t.balance, 0);
+
+/** The lobby header. The count is every ticket held; a pool that is still filling is called out so the number is not read as "ride now". */
+export function paidChip(tickets) {
+  const n = heldTickets(tickets);
+  const wait = (tickets ?? []).filter(t => t.status === 'open').reduce((a, t) => a + t.balance, 0);
+  const label = `${n} paid ride ticket${n === 1 ? '' : 's'}`;
+  return wait > 0 && wait < n ? `${label} · ${wait} waiting` : wait > 0 ? `${label} · waiting` : label;
+}
+
 /** How many more tickets this wallet may buy into the pool (the cap counts what it ever bought, like the program does). */
 export const buyRoom = (p, held) => Math.max(0, p.maxPerWallet - (held?.bought ?? 0));
 

@@ -4,7 +4,7 @@ import { track, flushSoon } from '../../client/js/analytics.js';
 import { reportWebVitals } from '../../client/js/web-vitals.js';
 import { livePath, leaveOnClose } from '../../client/site/presence.js';   // this page counts as online in the live feed – and leaves it when closed
 import { sol, km, left, short, hue, hours, driven, ago, plural, TIER, TIER_LONG, ROUTE } from './format.js';
-import { ridableTickets, escrowExplainer, explorerUrl, shortAddr, progressText, phaseLine, poolPhase } from '../../client/site/pools.js';   // the lobby's pool wording, so both pages say the same thing
+import { heldTickets, escrowExplainer, explorerUrl, shortAddr, progressText, phaseLine, poolPhase } from '../../client/site/pools.js';   // the lobby's pool wording, so both pages say the same thing
 
 /* Landing: four chapters (ride · loop · economy · about), fed by the public API only – no session needed to look.
    Everything from the server goes in with textContent (other riders' wallets are rendered here). */
@@ -276,7 +276,7 @@ const onConnect = async () => {
 function paintSession(me) {
   S.me = me; btn.textContent = 'OPEN THE LOBBY →'; btn.onclick = onConnect; playTop.textContent = 'LOBBY';
   chip.textContent = short(me.wallet); chip.title = `signed in: ${me.wallet}`; chip.hidden = false;
-  chipRides.textContent = `${me.freeRides} free · ${plural(ridableTickets(me.tickets), 'paid ride')}`; chipRides.hidden = false;
+  chipRides.textContent = `${me.freeRides} free · ${plural(heldTickets(me.tickets), 'paid ride')}`; chipRides.hidden = false;
   msg.textContent = ''; msg.className = 'msg';
   paintBoards();
 }
