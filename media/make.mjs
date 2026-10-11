@@ -12,7 +12,7 @@
 // The reusable sounds and scores live in out/audio/_store (node audio/cli.mjs store).
 import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
 import { loadSpec } from './video/spec.mjs'; import { loadAudio } from './audio/spec.mjs'; import { renderVideo } from './video/render.mjs'; import { renderAudio } from './audio/render.mjs';
-import { mux, compress, duration, MIN } from './video/encode.mjs';
+import { mux, compress, duration, MIN, TINY } from './video/encode.mjs';
 const here = path.dirname(fileURLToPath(import.meta.url)), a = process.argv.slice(2), flag = f => a.includes(f), val = f => { const i = a.indexOf(f); return i >= 0 ? a[i + 1] : null; };
 const VALUED = ['--only', '--add-audio', '--out', '--timeline'], file = a.find((x, i) => !x.startsWith('--') && !VALUED.includes(a[i - 1]));
 const USAGE = 'usage: node make.mjs <spec.json> [--video-only | --audio-only | --remux | --compress | --add-audio in.mp4 [--out out.mp4] [--timeline t.json]] [--preview] [--keep] [--only a-b]';
@@ -35,7 +35,7 @@ try {
 if (spec.name.startsWith('_') || /[\\/]/.test(spec.name)) fail('spec name must not start with _ (out/audio/_store is the sound library) or contain a slash');
 const vdir = path.join(here, 'out/video', spec.name), adir = path.join(here, 'out/audio', spec.name), mp4 = path.join(vdir, spec.name + '.mp4');   // out/video/<name>/ and out/audio/<name>/
 const minify = () => { const m = compress(mp4, spec.gif.maxMB);
-  console.log(`min  mp4 ${m.mp4.mb.toFixed(1)} MB (crf ${MIN.crf})  ${m.mp4.file}\n     gif ${m.gif.mb.toFixed(1)} MB (${MIN.colors} colours, ${m.gif.width}px @ ${m.gif.fps} fps)${m.gif.over ? `  OVER the ${spec.gif.maxMB} MB limit` : ''}  ${m.gif.file}\n     tiny gif ${m.tiny.kb.toFixed(0)} kB (≤ 500 kB, ${m.tiny.width}px @ ${m.tiny.fps} fps, ${m.tiny.colors} colours)  ${m.tiny.file}\n     tried: ${m.tiny.tried.join(' → ')}`); };
+  console.log(`min  mp4 ${m.mp4.mb.toFixed(1)} MB (crf ${MIN.crf})  ${m.mp4.file}\n     gif ${m.gif.mb.toFixed(1)} MB (${MIN.colors} colours, ${m.gif.width}px @ ${m.gif.fps} fps)${m.gif.over ? `  OVER the ${spec.gif.maxMB} MB limit` : ''}  ${m.gif.file}\n     ${m.tiny.skipped ? `tiny gif: none – the clip is longer than ${TINY.maxSeconds} s` : `tiny gif ${m.tiny.kb.toFixed(0)} kB (≤ 500 kB, ${m.tiny.width}px @ ${m.tiny.fps} fps, ${m.tiny.colors} colours)  ${m.tiny.file}\n     tried: ${m.tiny.tried.join(' → ')}`}`); };
 const need = (...x) => { const miss = x.filter(f => !fs.existsSync(path.join(vdir, f))); if (miss.length) fail(`no ${miss.join(' + ')} in ${vdir} – render it first`); };
 const sound = (timelineFile) => {
   if (!spec.audio) fail('the spec has no `audio` block');

@@ -17,6 +17,7 @@ export function buildCues(spec, timeline) {
       else if (e.do === 'wipers' && e.mode > 0) add(t0 + e.t, 'wiper');
       else if (e.do === 'washer' && e.on) { const off = sc.events.slice(j + 1).find(x => x.do === 'washer' && !x.on); add(t0 + e.t, 'washer', { dur: off ? off.t - e.t : .6 }); }
     });
+    for (const sh of sc.shots ?? []) add(t0 + sh.at, ['pop', 'zoom'].includes(sh.fx) || sh.stat ? 'click' : 'tr-whip', ['pop', 'zoom'].includes(sh.fx) || sh.stat ? { gain: .8 } : { dur: .3, gain: .4 });   // a collage tile landing
     if (sc.card) { add(t0 + .25, 'card'); }
   });
   for (const e of timeline?.events ?? []) {

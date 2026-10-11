@@ -1,7 +1,10 @@
+import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
 // Spec validation + defaults. A spec is plain JSON (see specs/intro.json and .claude/skills/gameplay-video/SKILL.md for the vocabulary).
 export const ROUTES = ['route66', 'stuart', 'siberia', 'brenner', 'panamerican'];
 export const TRANSITIONS = ['cut', 'flash', 'flash-red', 'glitch', 'whip', 'zoom', 'dip'];
 export const LOOKS = ['classic', 'big'];   // big = no small text: no ticker / brand / badge / sub lines, one huge word per caption, a bare end card
+export const SHOT_FX = ['pop', 'slide-l', 'slide-r', 'slide-u', 'slide-d', 'drop', 'flip', 'zoom'];   // how a collage tile lands (scene.shots)
+export const ASSETS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../assets');
 export const EVENTS = ['gear', 'lights', 'cab', 'wipers', 'washer', 'heater', 'night', 'spawn', 'steer', 'phase'];
 export function loadSpec(raw) {
   const s = { name: 'clip', look: 'classic', crop: null, ticker: 'RIDE ◆ COMPETE ◆ WIN PRIZES ◆ ON SOLANA ◆ ', fps: 24, width: 1280, height: 720, maxSeconds: 15, gif: { maxMB: 20, width: 640, fps: 15 }, ...raw };
@@ -19,6 +22,16 @@ export function loadSpec(raw) {
     for (const c of o.captions) if (!(c.head && (s.look === 'big' || c.sub)) || c.at + c.dur > o.dur + 1e-6) bad.push(`${o.id}: caption "${c.head}" needs head (+ sub unless look is big) and must end inside the scene (at+dur <= ${o.dur})`);
     if (o.card && !o.card.cta) bad.push(`${o.id}: card needs cta`);
     for (const e of o.events) if (e.t > o.dur) bad.push(`${o.id}: event "${e.do}" at ${e.t}s is after the scene ends`);
+    o.shots = (o.shots ?? []).map(sh => ({ at: 0, fx: 'pop', ...sh }));
+    for (const sh of o.shots) {
+      const nm = sh.src ?? sh.stat?.[1];
+      if (!sh.src === !sh.stat || (sh.stat && !(Array.isArray(sh.stat) && sh.stat.length === 2))) bad.push(`${o.id}: a shot needs src (a file in media/assets) or stat [big, small], not both`);
+      else if (sh.src && !fs.existsSync(path.join(ASSETS, sh.src))) bad.push(`${o.id}: shot ${sh.src} is not in media/assets`);
+      if (![sh.x, sh.y, sh.w].every(Number.isFinite)) bad.push(`${o.id}: shot ${nm} needs x, y, w (1280×720 frame pixels)`);
+      if (!SHOT_FX.includes(sh.fx)) bad.push(`${o.id}: shot ${nm} fx "${sh.fx}" not in ${SHOT_FX}`);
+      if (sh.at + (sh.dur ?? 0) > o.dur + 1e-6) bad.push(`${o.id}: shot ${nm} must end inside the scene`);
+    }
+    if (o.bg != null && o.bg !== 'sol') bad.push(`${o.id}: bg "${o.bg}" must be "sol" or absent`);
     for (const e of o.events) if (!EVENTS.includes(e.do)) bad.push(`${o.id}: event "${e.do}" not in ${EVENTS}`);
     return o;
   });

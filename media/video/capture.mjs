@@ -2,12 +2,13 @@
 // Also writes <framesDir>/../timeline.json: what really happened in the footage (gear shifts, the crash) + rpm / speed / gear per frame – the audio stage syncs its sounds to it.
 import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
 import { launch, sleep } from '../../client/tools/cdp.mjs';
-const here = path.dirname(fileURLToPath(import.meta.url)), CLIENT = path.resolve(here, '../../client');
-const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
+const here = path.dirname(fileURLToPath(import.meta.url)), CLIENT = path.resolve(here, '../../client'), ASSETS = path.resolve(here, '../assets');
+const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.jpg': 'image/jpeg' };
 
-function serveClient() {   // tiny static server: the game must be served over http (ES modules); no API needed offline
+function serveClient() {   // tiny static server: the game must be served over http (ES modules); no API needed offline. /__assets/ = media/assets (the collage screenshots)
   const srv = http.createServer((req, res) => {
-    const f = path.join(CLIENT, decodeURIComponent(new URL(req.url, 'http://x').pathname)); const ok = f.startsWith(CLIENT) && fs.existsSync(f) && fs.statSync(f).isFile();
+    const p = decodeURIComponent(new URL(req.url, 'http://x').pathname), root = p.startsWith('/__assets/') ? ASSETS : CLIENT;
+    const f = path.join(root, root === ASSETS ? p.slice(9) : p); const ok = f.startsWith(root) && fs.existsSync(f) && fs.statSync(f).isFile();
     if (!ok) { res.writeHead(404).end(); return; } res.writeHead(200, { 'content-type': MIME[path.extname(f)] || 'application/octet-stream' }); fs.createReadStream(f).pipe(res);
   });
   return new Promise(r => srv.listen(0, '127.0.0.1', () => r(srv)));
@@ -31,7 +32,7 @@ export async function capture(spec, framesDir, { log = console.log, only = null 
     await ev('__game.devRun()');   // the classic road, no helpers (a bare page is the guest's FREE RUN)
     for (let i = 0; i < 5; i++) await ev('__vstep(50)');
     await ev(fs.readFileSync(path.join(here, 'page.js'), 'utf8'));
-    await ev(`__dir.init(${JSON.stringify(spec)})`);
+    const bad = await ev(`__dir.init(${JSON.stringify(spec)})`); if (bad) throw new Error('overlay init failed: ' + bad);
     const dtMs = 1000 / spec.fps, n = Math.round(spec.total * spec.fps), t0 = Date.now(), frames = []; let wrote = 0;
     for (let i = 0; i < n; i++) {
       if (only && (i / spec.fps < only[0] || i / spec.fps >= only[1])) { const f = await ev(`__dir.frame(${i / spec.fps}, ${dtMs})`); if (typeof f === 'object') frames.push([i, f]); continue; }   // still stepped, so state stays right, just not saved

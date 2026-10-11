@@ -18,7 +18,7 @@ window.__dir = (() => {
     const css = `
 :root{--bg:#0b0a09;--amber:#ffcf5a;--gear:#ffb03a;--needle:#ff7a2e;--cream:#e8e2cf;--dim:#9d957f;--lcd:#7cff7c;--lcd-bg:#0d2410;--red:#d22;--sol:linear-gradient(90deg,#9945FF,#14F195);--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--u:${U}}
 #fx,#fx *{box-sizing:border-box;font-family:var(--mono)} #fx{position:fixed;inset:0;z-index:50;pointer-events:none;overflow:hidden;color:var(--cream)}
-#toast,#overlay{display:none!important}
+#toast,#overlay,#bail{display:none!important}
 #fx .a{position:absolute}
 #fx .tick{left:0;right:0;top:0;height:${px(30)};background:var(--lcd-bg);border-bottom:1px solid #1e4a22;color:var(--lcd);font-size:${px(14)};letter-spacing:.5px;white-space:nowrap;overflow:hidden;line-height:${px(30)}}
 #fx .brand{left:${px(24)};top:${px(44)};display:flex;gap:${px(10)};align-items:center;color:var(--amber);font-weight:700;letter-spacing:2px;font-size:${px(20)};text-shadow:0 2px 12px #000}
@@ -53,11 +53,23 @@ window.__dir = (() => {
 #fx.big .cap h2,#fx.big .card h1{margin:0;min-height:0;white-space:pre-line;line-height:.98;letter-spacing:${px(3)};-webkit-text-stroke:${px(2)} #1b1408;text-shadow:0 ${px(5)} 0 #000,0 0 ${px(10)} #000,0 0 ${px(44)} #000d}
 #fx.big .card h1 b{text-shadow:0 ${px(5)} 0 #000,0 0 ${px(10)} #000,0 0 ${px(44)} #ffb02e88}
 #fx.big .card .mk{font-size:${px(96)}} #fx.big .cta{font-size:${px(44)};padding:${px(16)} ${px(40)}}
-#fx.big .stamp{top:62%;font-size:${px(64)};padding:${px(6)} ${px(20)};border-width:${px(6)}}`;
+#fx.big .stamp{top:62%;font-size:${px(64)};padding:${px(6)} ${px(20)};border-width:${px(6)}}
+#fx .tiles{inset:0}
+#fx .glow{inset:0;opacity:0;background:radial-gradient(42% 58% at 12% 22%,#9945FF55,#0000 70%),radial-gradient(46% 62% at 88% 82%,#14F19544,#0000 70%),radial-gradient(34% 44% at 72% 12%,#ffb03a2a,#0000 70%)}
+#fx .grid{inset:0;opacity:0;background-image:linear-gradient(#ffffff0d 1px,#0000 1px),linear-gradient(90deg,#ffffff0d 1px,#0000 1px);background-size:${px(40)} ${px(40)}}
+#fx .tile{position:absolute;left:0;top:0;border-radius:${px(10)};padding:${px(3)};background:var(--sol);box-shadow:0 ${px(18)} ${px(50)} #000d,0 0 ${px(34)} #9945ff40;transform-origin:50% 50%;display:none}
+#fx .tile.amber{background:linear-gradient(135deg,#ffcf5a,#ff7a2e);box-shadow:0 ${px(18)} ${px(50)} #000d,0 0 ${px(34)} #ffb02e40}
+#fx .tile .win{position:relative;overflow:hidden;border-radius:${px(7)};background:#0b0a09;width:100%;height:100%}
+#fx .tile img{position:absolute;left:0;top:0;width:100%;display:block}
+#fx .tile .lb{position:absolute;left:${px(12)};top:${px(-13)};z-index:2;font-weight:700}
+#fx .tile.stat .win{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:${px(4)};background:#0b0a09ee}
+#fx .tile.stat b{font-size:${px(64)};line-height:1;background:var(--sol);-webkit-background-clip:text;background-clip:text;color:transparent}
+#fx .tile.stat.amber b{background:none;color:var(--amber);text-shadow:0 0 ${px(24)} #ffb02e66}
+#fx .tile.stat span{font-size:${px(15)};letter-spacing:3px;color:var(--cream);font-weight:700}`;
     const sol = '<svg viewBox="0 0 24 22"><defs><linearGradient id="sg" x1="0" x2="1"><stop offset="0" stop-color="#9945FF"/><stop offset="1" stop-color="#14F195"/></linearGradient></defs><path fill="url(#sg)" d="M4 0H24L20 6H0Z M0 8H20L24 14H4Z M4 16H24L20 22H0Z"/></svg>';
     document.head.insertAdjacentHTML('beforeend', `<style>${css}</style>`);
     document.body.insertAdjacentHTML('beforeend', `<div id="fx">
-      <div class="a vig"></div><div class="a scan"></div>
+      <div class="a glow" id="fx-glow"></div><div class="a grid" id="fx-grid"></div><div class="a vig"></div><div class="a tiles" id="fx-tiles"></div><div class="a scan"></div>
       <div class="a tick"><span id="fx-tk"></span></div>
       <div class="a brand"><span style="color:var(--gear)">⛟</span> FREIGHT CHAIN<span class="chip lcd" id="fx-route"></span></div>
       <div class="sol">${sol} SOLANA</div>
@@ -67,7 +79,44 @@ window.__dir = (() => {
       <div class="a bars" id="fx-bars">${'<div></div>'.repeat(7)}</div>
       <div class="a cover" id="fx-cover"></div></div>`);
     const fx = document.getElementById('fx'); if (spec.look === 'big') fx.classList.add('big'); if (spec.crop === 'square') fx.classList.add('sq');
-    for (const id of ['tk', 'route', 'cap', 'n', 'h', 'p', 'bar', 'stamp', 'card', 't', 'steps', 'cta', 'ft', 'bars', 'cover']) fxEl[id] = document.getElementById('fx-' + id);
+    for (const id of ['glow', 'grid', 'tiles', 'tk', 'route', 'cap', 'n', 'h', 'p', 'bar', 'stamp', 'card', 't', 'steps', 'cta', 'ft', 'bars', 'cover']) fxEl[id] = document.getElementById('fx-' + id);
+  }
+
+  // collage tiles (scene.shots): one framed screenshot (media/assets, served at /__assets/) or a stat card each, built once, laid out per frame by drawTiles()
+  let tiles = [];
+  async function buildTiles() {
+    spec.scenes.forEach((s, si) => (s.shots ?? []).forEach((o, j) => {
+      const el = document.createElement('div'); el.className = 'tile' + (o.frame === 'amber' ? ' amber' : '') + (o.stat ? ' stat' : '');
+      el.innerHTML = `<div class="win">${o.stat ? `<b></b><span>${o.stat[1]}</span>` : `<img src="/__assets/${o.src}">`}</div>${o.label ? `<span class="chip lcd lb">${o.label}</span>` : ''}`;
+      fxEl.tiles.appendChild(el); tiles.push({ el, o, si, j, img: el.querySelector('img'), num: el.querySelector('b') });
+    }));
+    await Promise.all(tiles.filter(t => t.img).map(t => t.img.decode().catch(() => { throw new Error('asset did not load: ' + t.o.src); })));
+  }
+  function drawTiles(T, local) {
+    const s = sc;
+    for (const t of tiles) {
+      const { el, o } = t, end = o.dur != null ? o.at + o.dur : s.dur, l = local - o.at;
+      if (t.si !== k || l < 0 || local > end) { el.style.display = 'none'; continue; }
+      const w = o.w * U, nat = t.img ? t.img.naturalHeight / t.img.naturalWidth : .5, hh = (o.h ?? o.w * nat) * U;   // h = a window onto a taller page (scrolled by `scroll`)
+      const e = ease(l / .5), b = back(l / .45), out = o.dur != null ? clamp((end - local) / .3) : 1, i = t.j + 3 * t.si;
+      let tf = `translate(${o.x * U}px,${o.y * U}px)`, op = clamp(l / .12) * out;
+      const fx = o.fx ?? 'pop', off = (1 - e);
+      if (fx === 'slide-l') tf += ` translateX(${-off * 760 * U}px)`; else if (fx === 'slide-r') tf += ` translateX(${off * 760 * U}px)`;
+      else if (fx === 'slide-u') tf += ` translateY(${off * 520 * U}px)`; else if (fx === 'slide-d') tf += ` translateY(${-off * 520 * U}px)`;
+      else if (fx === 'drop') tf += ` translateY(${-off * 420 * U}px) rotate(${-off * 14}deg)`;
+      tf += ` perspective(${1400 * U}px)`;
+      if (fx === 'flip') tf += ` rotateY(${off * 85}deg)`;
+      tf += ` rotate(${o.rot ?? 0}deg) rotateY(${o.tilt ?? 0}deg) translateY(${Math.sin(T * 1.3 + i * 1.7) * 4 * U}px)`;
+      const sc0 = fx === 'pop' ? .35 + .65 * b : fx === 'zoom' ? 1 + 1.4 * off : 1;
+      tf += ` scale(${sc0 * (out < 1 ? .92 + .08 * out : 1)})`;
+      el.style.display = 'block'; el.style.width = w + 'px'; el.style.height = hh + 'px'; el.style.transform = tf; el.style.opacity = op; el.style.zIndex = o.z ?? t.j;
+      const g = clamp(1 - l / .32); el.style.filter = g > 0 ? `drop-shadow(${7 * g * U}px 0 0 #9945ffcc) drop-shadow(${-7 * g * U}px 0 0 #14f195cc) brightness(${1 + .8 * g})` : 'none';   // RGB split + flash as it lands
+      if (t.img) {
+        const p = clamp(l / Math.max(.1, end - o.at)), [s0, s1] = o.scroll ?? [0, 0], [z0, z1] = o.zoom ?? [1, 1], ih = w * nat, sp = ease(clamp((l - .3) / Math.max(.1, end - o.at - .6)));
+        t.img.style.transformOrigin = o.origin ?? '50% 0';
+        t.img.style.transform = `translateY(${-(s0 + (s1 - s0) * sp) * Math.max(0, ih - hh)}px) scale(${z0 + (z1 - z0) * p})`;
+      } else if (t.num) { const v = o.stat[0], n = parseFloat(v); t.num.textContent = isFinite(n) && String(n) === v ? Math.round(n * ease(l / .7)) : v; }
+    }
   }
 
   /* ───────── scene setup / per-step hook ───────── */
@@ -122,6 +171,10 @@ window.__dir = (() => {
     const s = sc, local = T - starts[k], G = g(), st = G.st, cvs = [document.getElementById('world'), document.getElementById('cockpit')];
     // ticker + route chip
     fxEl.tk.textContent = ((spec.ticker || 'RIDE ◆ COMPETE ◆ WIN PRIZES ◆ ON SOLANA ◆ ').repeat(8)); fxEl.tk.style.cssText = `display:inline-block;transform:translateX(${-((T * 140 * U) % (spec.ticker.length * 8.4 * U))}px)`;
+    fxEl.route.style.display = s.shots?.length ? 'none' : '';   // a collage scene is not about the road behind it
+    const bgA = s.bg === 'sol' ? ease(local / .35) : 0; fxEl.glow.style.opacity = bgA; fxEl.grid.style.opacity = bgA * .8;
+    fxEl.glow.style.transform = `translate(${Math.sin(T * .4) * 30 * U}px,${Math.cos(T * .33) * 20 * U}px) scale(1.15)`; fxEl.grid.style.backgroundPosition = `0 ${(T * 18 * U) % (40 * U)}px`;
+    drawTiles(T, local);
     const th = G.THEMES.find(t => t.id === s.route); fxEl.route.textContent = `${th?.name ?? s.route} · ${Math.round(st.v * 3.6)} KM/H`.toUpperCase();
     // captions
     let cap = null; for (const c of s.captions) if (local >= c.at && local < c.at + c.dur) cap = c;
@@ -184,7 +237,7 @@ window.__dir = (() => {
   /* ───────── API used by capture.mjs ───────── */
   return {
     log: () => log,
-    async init(sp) { spec = sp; U = sp.height / 720; build(); let a = 0; starts = sp.scenes.map(x => { const r = a; a += x.dur; return r; }); },
+    async init(sp) { spec = sp; U = sp.height / 720; build(); await buildTiles(); let a = 0; starts = sp.scenes.map(x => { const r = a; a += x.dur; return r; }); },
     async frame(T, dtMs) {
       let i = starts.length - 1; while (starts[i] > T + 1e-6) i--;
       if (i !== k) { k = i; sc = spec.scenes[k]; await setup(sc); fxEl.steps.innerHTML = ''; }

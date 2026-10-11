@@ -1,0 +1,109 @@
+{
+  "name": "colosseum",
+  "fps": 24, "width": 1280, "height": 720, "maxSeconds": 59,
+  "gif": { "maxMB": 20, "width": 480, "fps": 10 },
+  "audio": { "ignition": { "at": 0, "dur": 0.8 }, "music": { "id": "road-rush", "gain": 0.55 }, "engine": { "gain": 0.45 } },
+  "ticker": "WORK SO FAR ◆ THE GAME ◆ LOBBY ◆ LIVE STREAMS ◆ CB CHAT ◆ REPLAYS ◆ RECORDED RIDES ◆ ESCROW PROGRAM ON SOLANA DEVNET ◆ ADMIN CONSOLE ◆ WHITEPAPER ◆ ",
+  "scenes": [
+    { "id": "game-gears", "dur": 4.2, "route": "route66", "time": "day", "speed": [5, 24], "push": 0.08,
+      "transition": { "type": "flash", "dur": 0.4 },
+      "captions": [ { "n": "01", "at": 0.25, "dur": 3.85, "head": "THE GAME", "sub": "Manual gearbox, endless road, right in the browser." } ] },
+
+    { "id": "game-crash", "dur": 2.4, "route": "route66", "time": "day", "speed": 25, "damage": true, "sway": 0,
+      "transition": { "type": "whip", "dur": 0.3 },
+      "events": [ { "t": 0.05, "do": "spawn", "type": "truck", "preset": "slow", "zone": "ahead", "dist": 20 } ],
+      "captions": [ { "at": 0.1, "dur": 1.5, "head": "ONE MISTAKE ENDS IT", "sub": "Plough into traffic and the shift is over on the spot." } ] },
+
+    { "id": "game-frost", "dur": 2.8, "route": "siberia", "time": "day", "cold": true, "preroll": 12, "speed": 18, "push": 0.06,
+      "transition": { "type": "zoom", "dur": 0.4 },
+      "captions": [ { "at": 0.2, "dur": 2.5, "head": "FIVE ROUTES", "sub": "Siberia, the outback, the Alps, Route 66, the Andes." } ] },
+
+    { "id": "lobby", "dur": 7.0, "route": "stuart", "time": "dusk", "speed": 18, "bg": "sol", "grade": "blur(8px) brightness(.3) saturate(1.4)",
+      "transition": { "type": "glitch", "dur": 0.4 },
+      "shots": [
+        { "src": "colosseum/lobby-new.jpg", "x": 40, "y": 92, "w": 600, "h": 420, "fx": "slide-l", "rot": -1.5, "scroll": [0, 0.3], "label": "LOBBY" },
+        { "src": "colosseum/lobby-garage.jpg", "x": 680, "y": 96, "w": 400, "fx": "flip", "at": 0.5, "tilt": -10, "frame": "amber", "label": "GARAGE" },
+        { "src": "colosseum/lobby-profile.jpg", "x": 680, "y": 360, "w": 400, "fx": "slide-u", "at": 0.9, "rot": 1.5, "label": "DRIVING RECORD" },
+        { "src": "colosseum/lobby-garage-phone.jpg", "x": 1100, "y": 150, "w": 150, "fx": "slide-r", "at": 1.3, "rot": 3 }
+      ],
+      "captions": [ { "n": "02", "at": 0.3, "dur": 6.5, "head": "ONE LOBBY, EVERY RIDE", "sub": "Free rides, devnet SOL shifts, garage, driving record." } ] },
+
+    { "id": "streams", "dur": 7.0, "route": "route66", "time": "night", "speed": 20, "bg": "sol", "grade": "blur(8px) brightness(.3) saturate(1.4)",
+      "transition": { "type": "whip", "dur": 0.3 },
+      "shots": [
+        { "src": "colosseum/watch-day.jpg", "x": 300, "y": 86, "w": 690, "fx": "zoom", "zoom": [1, 1.08], "origin": "85% 40%", "label": "LIVE WATCH" },
+        { "src": "colosseum/watch-driver-cb.jpg", "x": 36, "y": 290, "w": 400, "fx": "slide-l", "at": 0.7, "rot": -3, "label": "CB CHAT" },
+        { "src": "colosseum/watch-phone.jpg", "x": 1040, "y": 104, "w": 200, "fx": "slide-r", "at": 1.1, "rot": 2.5 },
+        { "src": "colosseum/lobby-replays.jpg", "x": 860, "y": 420, "w": 340, "fx": "pop", "at": 1.6, "rot": -2, "label": "REPLAYS" }
+      ],
+      "captions": [ { "n": "03", "at": 0.3, "dur": 6.5, "head": "WATCH ANY RIDE LIVE", "sub": "Rebuilt from the recording. CB chat, devnet tips." } ] },
+
+    { "id": "recorded", "dur": 5.6, "route": "brenner", "time": "day", "speed": 18, "bg": "sol", "grade": "blur(8px) brightness(.3) saturate(1.4)",
+      "transition": { "type": "glitch", "dur": 0.4 },
+      "shots": [
+        { "src": "colosseum/doc-verified.jpg", "x": 40, "y": 90, "w": 560, "fx": "slide-d", "rot": -1.5, "label": "VERIFIED PLAY" },
+        { "src": "colosseum/admin-ride.jpg", "x": 640, "y": 96, "w": 580, "fx": "flip", "at": 0.5, "tilt": -8, "label": "VERDICT" },
+        { "src": "colosseum/doc-anti-cheat.jpg", "x": 860, "y": 390, "w": 360, "fx": "pop", "at": 1.0, "rot": 2 }
+      ],
+      "captions": [ { "n": "04", "at": 0.3, "dur": 5.1, "head": "EVERY RIDE IS RECORDED", "sub": "Hash-chained batches, judged on the server's own road." } ] },
+
+    { "id": "escrow", "dur": 7.0, "route": "panamerican", "time": "dusk", "speed": 18, "bg": "sol", "grade": "blur(8px) brightness(.28) saturate(1.5)",
+      "transition": { "type": "zoom", "dur": 0.4 },
+      "shots": [
+        { "src": "colosseum/pp-states.jpg", "x": 40, "y": 92, "w": 640, "fx": "zoom", "zoom": [1, 1.06], "label": "ANCHOR PROGRAM" },
+        { "src": "colosseum/wp-onchain.jpg", "x": 720, "y": 92, "w": 520, "h": 300, "fx": "slide-r", "at": 0.6, "scroll": [0.15, 0.45], "frame": "amber", "label": "MONEY FLOW" },
+        { "stat": ["14", "INSTRUCTIONS"], "x": 720, "y": 420, "w": 160, "h": 110, "fx": "pop", "at": 1.3 },
+        { "stat": ["12", "EVENTS"], "x": 900, "y": 420, "w": 160, "h": 110, "fx": "pop", "at": 1.5 },
+        { "stat": ["24", "ERROR CODES"], "x": 1080, "y": 420, "w": 160, "h": 110, "fx": "pop", "at": 1.7 }
+      ],
+      "captions": [ { "n": "05", "at": 0.3, "dur": 6.5, "head": "ESCROW ON SOLANA", "sub": "Our program holds each prize pool. Deployed on devnet." } ] },
+
+    { "id": "localnet", "dur": 5.0, "route": "stuart", "time": "day", "speed": 20, "bg": "sol", "grade": "blur(8px) brightness(.3) saturate(1.4)",
+      "transition": { "type": "whip", "dur": 0.3 },
+      "shots": [
+        { "src": "colosseum/doc-localnet.jpg", "x": 40, "y": 92, "w": 560, "fx": "slide-l", "rot": -1.5, "label": "LOCALNET TEST" },
+        { "src": "colosseum/pp-money.jpg", "x": 640, "y": 92, "w": 600, "h": 340, "fx": "slide-r", "at": 0.4, "scroll": [0, 0.3], "frame": "amber" },
+        { "src": "colosseum/localnet-refunded.jpg", "x": 900, "y": 360, "w": 330, "fx": "pop", "at": 1.0, "rot": 2.5, "label": "REFUND" }
+      ],
+      "captions": [ { "n": "06", "at": 0.3, "dur": 4.5, "head": "EVERY LAMPORT CHECKED", "sub": "Real program on a local validator. Ten riders, one pool." } ] },
+
+    { "id": "admin", "dur": 6.0, "route": "brenner", "time": "dusk", "speed": 16, "bg": "sol", "grade": "blur(8px) brightness(.3) saturate(1.4)",
+      "transition": { "type": "glitch", "dur": 0.4 },
+      "shots": [
+        { "src": "colosseum/admin-overview.jpg", "x": 40, "y": 92, "w": 580, "fx": "slide-d", "label": "ADMIN" },
+        { "src": "colosseum/admin-queue.jpg", "x": 40, "y": 260, "w": 580, "fx": "slide-l", "at": 0.4 },
+        { "src": "colosseum/admin-settings.jpg", "x": 660, "y": 92, "w": 580, "fx": "flip", "at": 0.7, "tilt": -8, "frame": "amber", "label": "SIGNED SETTINGS" },
+        { "src": "colosseum/admin-logs.jpg", "x": 860, "y": 360, "w": 380, "fx": "pop", "at": 1.2, "rot": 2 }
+      ],
+      "captions": [ { "n": "07", "at": 0.3, "dur": 5.5, "head": "ONE CONSOLE TO RUN IT", "sub": "Review queue, wallet-signed decisions, audit log." } ] },
+
+    { "id": "whitepaper", "dur": 5.0, "route": "route66", "time": "dawn", "speed": 18, "bg": "sol", "grade": "blur(8px) brightness(.3) saturate(1.4)",
+      "transition": { "type": "whip", "dur": 0.3 },
+      "shots": [
+        { "src": "colosseum/wp-tall.jpg", "x": 60, "y": 88, "w": 560, "h": 430, "fx": "slide-u", "scroll": [0, 0.75], "label": "WHITEPAPER" },
+        { "src": "colosseum/landing-top.jpg", "x": 660, "y": 100, "w": 560, "fx": "flip", "at": 0.5, "tilt": -8, "frame": "amber", "label": "FREIGHTCHAIN.FUN" },
+        { "src": "colosseum/storybook.jpg", "x": 900, "y": 400, "w": 320, "fx": "pop", "at": 1.1, "rot": 2, "label": "STORYBOOK" }
+      ],
+      "captions": [ { "n": "08", "at": 0.3, "dur": 4.5, "head": "THE RULES ARE PUBLIC", "sub": "Rides, escrow, validation, streams, limits. One paper." } ] },
+
+    { "id": "montage", "dur": 3.0, "route": "panamerican", "time": "night", "speed": 22, "bg": "sol", "grade": "blur(10px) brightness(.25) saturate(1.5)",
+      "transition": { "type": "flash", "dur": 0.4 },
+      "shots": [
+        { "src": "colosseum/watch-night.jpg", "x": 30, "y": 70, "w": 300, "fx": "pop", "at": 0.0, "rot": -3 },
+        { "src": "colosseum/pp-instructions.jpg", "x": 350, "y": 60, "w": 280, "fx": "pop", "at": 0.12, "rot": 2 },
+        { "src": "colosseum/admin-promos.jpg", "x": 650, "y": 80, "w": 290, "fx": "pop", "at": 0.24, "rot": -2 },
+        { "src": "colosseum/wp-stream.jpg", "x": 960, "y": 64, "w": 290, "fx": "pop", "at": 0.36, "rot": 3 },
+        { "src": "colosseum/lobby-live.jpg", "x": 40, "y": 270, "w": 260, "fx": "pop", "at": 0.48, "rot": 2 },
+        { "src": "colosseum/admin-stats.jpg", "x": 330, "y": 290, "w": 300, "fx": "pop", "at": 0.6, "rot": -2 },
+        { "src": "colosseum/wp-verify.jpg", "x": 660, "y": 280, "w": 290, "fx": "pop", "at": 0.72, "rot": 2.5 },
+        { "src": "colosseum/storybook.jpg", "x": 975, "y": 290, "w": 270, "fx": "pop", "at": 0.84, "rot": -3 },
+        { "src": "colosseum/wp-top.jpg", "x": 120, "y": 470, "w": 300, "fx": "pop", "at": 0.96, "rot": -1.5 },
+        { "src": "colosseum/replay-night.jpg", "x": 470, "y": 480, "w": 300, "fx": "pop", "at": 1.08, "rot": 2 },
+        { "src": "colosseum/pp-top.jpg", "x": 830, "y": 480, "w": 300, "fx": "pop", "at": 1.2, "rot": -2 }
+      ] },
+
+    { "id": "end-card", "dur": 4.0, "route": "brenner", "time": "dusk", "speed": 16,
+      "transition": { "type": "flash", "dur": 0.4 },
+      "card": { "title": ["THE ROAD NEVER ENDS.", "YOUR SHIFT DOES."], "steps": ["DRIVE A FREE RIDE", "WATCH ONE LIVE", "ESCROW ON DEVNET"], "cta": "FREIGHTCHAIN.FUN ▸", "foot": "BUILT ON SOLANA · DEVNET BUILD" } }
+  ]
+}
