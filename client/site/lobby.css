@@ -208,53 +208,68 @@ th button.on{color:var(--amber)}
 #offer{margin:20px 0 28px}#offer .opt + .opt{margin-top:8px}#offer-note{margin:0 0 8px}#offer .opt:has(input:disabled){cursor:default}
 .seg + .seg{margin-left:8px}
 
-/* paid-ticket result (ticket-toast.js): a Solana ticket on success, the same ticket slumped when the buy fails.
-   The host is only as wide as the card, so the rest of the lobby still takes clicks. */
-#ticket-toast{--tt-bg:#140f1e;position:fixed;z-index:40;top:auto;bottom:18px;left:50%;width:min(440px,calc(100vw - 20px));transform:translateX(-50%);pointer-events:none}
-#ticket-toast[hidden]{display:none}
-#ticket-toast.ok{animation:tt-rise .32s ease-out}
-#ticket-toast.sad{--tt-bg:#171412;transform:translateX(-50%) rotate(-1.15deg);transform-origin:50% 100%;animation:tt-slump .55s cubic-bezier(.2,.8,.2,1)}
-@keyframes tt-slump{0%{opacity:0;transform:translateX(-50%) translateY(12px) rotate(0)}100%{opacity:1;transform:translateX(-50%) rotate(-1.15deg)}}
-#ticket-toast .tt{pointer-events:auto;position:relative;display:grid;grid-template-columns:96px 1fr;border-radius:16px;overflow:hidden;background:var(--tt-bg);color:#f4f0ff}
-#ticket-toast.ok .tt{box-shadow:0 0 0 1px #9945FF99,0 0 28px #14F19540,0 16px 40px #000b;animation:tt-glow 2.6s ease-in-out 1}
-#ticket-toast.sad .tt{box-shadow:0 0 0 1px #ff6b5a66,0 16px 36px #000c}
-@keyframes tt-glow{0%,100%{box-shadow:0 0 0 1px #9945FF99,0 0 22px #14F19533,0 16px 40px #000b}50%{box-shadow:0 0 0 1px #14F195cc,0 0 36px #9945FF66,0 16px 40px #000b}}
-#ticket-toast .tt-stub{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:124px;padding:14px 10px 12px}
-#ticket-toast.ok .tt-stub{background:linear-gradient(165deg,#9945FF 0%,#7b5cff 46%,#14F195 100%)}
-#ticket-toast.sad .tt-stub{background:linear-gradient(165deg,#4a3a3e 0%,#2c2624 72%,#3a3030)}
-#ticket-toast .tt-stub::before{content:"";position:absolute;right:0;top:8px;bottom:8px;width:12px;background:radial-gradient(circle at 6px 7px,var(--tt-bg) 3.5px,transparent 4px);background-size:12px 14px}
-#ticket-toast .tt-face{position:relative;display:flex;gap:10px;justify-content:center;width:36px;height:18px;margin-top:8px}
-#ticket-toast .tt-face i{width:4px;height:4px;border-radius:50%;background:#fff}
-#ticket-toast .tt-face b{position:absolute;left:50%;bottom:0;width:18px;height:8px;margin-left:-9px;border:2px solid #fff;border-top:0;border-radius:0 0 12px 12px}
-#ticket-toast.sad .tt-face i{background:#e7d2cc;transform:translateY(2px)}
-#ticket-toast.sad .tt-face b{bottom:auto;top:8px;height:7px;border:2px solid #e7d2cc;border-bottom:0;border-radius:12px 12px 0 0}
-#ticket-toast.sad .tt-face::after{content:"";position:absolute;width:3px;height:7px;left:calc(50% + 7px);top:0;border-radius:40% 40% 50% 50%;background:#9ec9ea}
-#ticket-toast .tt-shift{margin-top:8px;font-size:11px;letter-spacing:.16em;font-weight:bold;color:#fff}
-#ticket-toast.sad .tt-shift{color:#e7d2cc}
-#ticket-toast .tt-copy{padding:14px 36px 14px 16px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center}
-#ticket-toast .tt-kicker{font-size:10px;letter-spacing:.16em;color:#c4b0e8}
-#ticket-toast.sad .tt-kicker{color:#c4a8a2}
-#ticket-toast .tt-title{display:block;margin:3px 0 6px;font-size:15px;letter-spacing:.04em;color:#f7f4ff}
-#ticket-toast.ok .tt-title::after{content:"";display:block;width:72px;height:2px;margin-top:5px;border-radius:2px;background:linear-gradient(90deg,#9945FF,#14F195)}
-#ticket-toast.sad .tt-title{color:#ffc3b8}
-#ticket-toast .tt-copy p{margin:0;font-size:13px;line-height:1.4;color:#f3eefe}
-#ticket-toast.sad .tt-copy p{color:#f0e4df}
-#ticket-toast .tt-detail{margin-top:4px;color:#cbbbe4;font-size:12px}
-#ticket-toast.sad .tt-detail{color:#c4b0aa}
-#ticket-toast a{display:inline-block;margin-top:8px;color:#14F195;text-decoration:none;font-size:12px;letter-spacing:.03em}
-#ticket-toast a:hover{text-decoration:underline}
-#ticket-toast button.tt-x,#ticket-toast button.tt-ok{background:transparent;border:0;box-shadow:none;font-weight:bold;color:inherit}
-#ticket-toast button.tt-x{position:absolute;top:6px;right:6px;width:28px;height:28px;padding:0;color:#d9d0ea;font-size:18px;line-height:1;border-radius:8px}
-#ticket-toast.sad button.tt-x{color:#e4d2cc}
-#ticket-toast button.tt-x:hover{background:#ffffff14}
-#ticket-toast button.tt-ok{margin-top:10px;padding:6px 16px;border:1px solid #ff8b7a88;color:#ffd0c8;font-size:12px;letter-spacing:.12em;border-radius:999px}
-#ticket-toast button.tt-ok:hover{background:#ff6b5a22}
-#ticket-toast .tt-spark{position:absolute;width:6px;height:6px;border-radius:50%;opacity:0;pointer-events:none;background:#14F195}
-#ticket-toast .tt-spark.s2{width:5px;height:5px;background:#fff}
-#ticket-toast .tt-spark.s3{width:4px;height:4px;background:#e4d4ff}
+/* paid-ticket result (ticket-dialog.js): a Solana ticket with the on-chain receipt and POST ON 𝕏 on success, the same ticket slumped when the buy fails.
+   Centred over a dimmed lobby; a click on the backdrop, Esc, × or CLOSE dismisses it. */
+#ticket-dialog{--tt-bg:#140f1e;position:fixed;inset:0;z-index:40;display:grid;place-items:center;padding:16px;overflow-y:auto}
+#ticket-dialog[hidden]{display:none}
+#ticket-dialog .td-back{position:fixed;inset:0;background:radial-gradient(ellipse at 50% 40%,#9945ff26,#000c 70%);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);animation:td-fade .25s ease-out}
+#ticket-dialog.sad .td-back{background:#000b}
+@keyframes td-fade{from{opacity:0}to{opacity:1}}
+#ticket-dialog .tt{position:relative;width:min(520px,100%);display:grid;grid-template-columns:112px 1fr;border-radius:18px;overflow:hidden;background:var(--tt-bg);color:#f4f0ff}
+#ticket-dialog.ok .tt{background:linear-gradient(180deg,#1a1229,var(--tt-bg) 55%);box-shadow:0 0 0 1px #9945FF99,0 0 42px #14F19540,0 24px 60px #000d;animation:td-rise .38s cubic-bezier(.2,.9,.25,1.15),tt-glow 2.6s ease-in-out .38s 1}
+#ticket-dialog.sad{--tt-bg:#171412}
+#ticket-dialog.sad .tt{box-shadow:0 0 0 1px #ff6b5a66,0 20px 48px #000d;transform:rotate(-1.15deg);animation:tt-slump .55s cubic-bezier(.2,.8,.2,1)}
+@keyframes td-rise{from{opacity:0;transform:translateY(22px) scale(.94)}to{opacity:1;transform:none}}
+@keyframes tt-slump{0%{opacity:0;transform:translateY(12px) rotate(0)}100%{opacity:1;transform:rotate(-1.15deg)}}
+@keyframes tt-glow{0%,100%{box-shadow:0 0 0 1px #9945FF99,0 0 34px #14F19533,0 24px 60px #000d}50%{box-shadow:0 0 0 1px #14F195cc,0 0 52px #9945FF66,0 24px 60px #000d}}
+#ticket-dialog .tt-stub{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:160px;padding:16px 12px 14px}
+#ticket-dialog.ok .tt-stub{background:linear-gradient(165deg,#9945FF 0%,#7b5cff 46%,#14F195 100%)}
+#ticket-dialog.sad .tt-stub{background:linear-gradient(165deg,#4a3a3e 0%,#2c2624 72%,#3a3030)}
+#ticket-dialog .tt-stub::before{content:"";position:absolute;right:0;top:8px;bottom:8px;width:12px;background:radial-gradient(circle at 6px 7px,var(--tt-bg) 3.5px,transparent 4px);background-size:12px 14px}
+#ticket-dialog .tt-face{position:relative;display:flex;gap:10px;justify-content:center;width:36px;height:18px;margin-top:8px}
+#ticket-dialog .tt-face i{width:4px;height:4px;border-radius:50%;background:#fff}
+#ticket-dialog .tt-face b{position:absolute;left:50%;bottom:0;width:18px;height:8px;margin-left:-9px;border:2px solid #fff;border-top:0;border-radius:0 0 12px 12px}
+#ticket-dialog.sad .tt-face i{background:#e7d2cc;transform:translateY(2px)}
+#ticket-dialog.sad .tt-face b{bottom:auto;top:8px;height:7px;border:2px solid #e7d2cc;border-bottom:0;border-radius:12px 12px 0 0}
+#ticket-dialog.sad .tt-face::after{content:"";position:absolute;width:3px;height:7px;left:calc(50% + 7px);top:0;border-radius:40% 40% 50% 50%;background:#9ec9ea}
+#ticket-dialog .tt-shift{margin-top:10px;font-size:20px;letter-spacing:.12em;font-weight:bold;color:#fff;text-shadow:0 1px 0 #0003}
+#ticket-dialog .tt-qty{font-size:12px;letter-spacing:.14em;font-weight:bold;color:#0b2a1d;background:#ffffffcc;border-radius:999px;padding:1px 8px;margin-top:4px}
+#ticket-dialog.sad .tt-shift{color:#e7d2cc}
+#ticket-dialog .tt-copy{min-width:0;padding:18px 40px 18px 18px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center}
+#ticket-dialog .tt-kicker{font-size:10px;letter-spacing:.16em;color:#14F195}
+#ticket-dialog.sad .tt-kicker{color:#c4a8a2}
+#ticket-dialog .tt-title{display:block;margin:4px 0 8px;font-size:22px;letter-spacing:.06em;color:#f7f4ff}
+#ticket-dialog.ok .tt-title{background:linear-gradient(90deg,#c9a6ff,#fff 45%,#14F195);-webkit-background-clip:text;background-clip:text;color:transparent}
+#ticket-dialog.ok .tt-title::after{content:"";display:block;width:84px;height:2px;margin-top:6px;border-radius:2px;background:linear-gradient(90deg,#9945FF,#14F195)}
+#ticket-dialog.sad .tt-title{color:#ffc3b8;font-size:17px}
+#ticket-dialog .tt-copy p{margin:0;font-size:13px;line-height:1.4;color:#f3eefe}
+#ticket-dialog.sad .tt-copy p{color:#f0e4df}
+#ticket-dialog .tt-detail{margin-top:4px;color:#cbbbe4;font-size:12px}
+#ticket-dialog.sad .tt-detail{color:#c4b0aa}
+#ticket-dialog .td-receipt{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;width:100%;margin:12px 0 2px;padding:10px 12px;border:1px solid #9945FF40;border-radius:10px;background:#0006;font-size:12px}
+#ticket-dialog .td-receipt dt{color:#9d8cbf;letter-spacing:.08em;text-transform:uppercase;font-size:10px;align-self:center}
+#ticket-dialog .td-receipt dd{margin:0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#f3eefe}
+#ticket-dialog a{color:#14F195;text-decoration:none;font-size:12px;letter-spacing:.03em}
+#ticket-dialog .tt-copy > a{margin-top:8px}
+#ticket-dialog a:hover{text-decoration:underline}
+#ticket-dialog .td-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+#ticket-dialog a.td-x{display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:999px;background:#0a0908;color:#fff;border:1px solid #9945FF;box-shadow:0 0 14px #9945FF55,inset 0 0 8px #14F19526;font-weight:bold;font-size:13px;letter-spacing:.08em;text-decoration:none;transition:box-shadow .15s,border-color .15s}
+#ticket-dialog a.td-x:hover,#ticket-dialog a.td-x:focus-visible{border-color:#14F195;box-shadow:0 0 22px #9945FF88,inset 0 0 10px #14F19544}
+#ticket-dialog .x-logo{font-size:16px;font-weight:900;line-height:1}
+#ticket-dialog button.tt-x,#ticket-dialog button.td-close{background:transparent;box-shadow:none;font-weight:bold;color:inherit}
+#ticket-dialog button.tt-x{position:absolute;top:8px;right:8px;width:30px;height:30px;padding:0;border:0;color:#d9d0ea;font-size:20px;line-height:1;border-radius:8px}
+#ticket-dialog.sad button.tt-x{color:#e4d2cc}
+#ticket-dialog button.tt-x:hover{background:#ffffff14}
+#ticket-dialog button.td-close{padding:9px 16px;border:1px solid #c4b0e855;color:#d9d0ea;font-size:12px;letter-spacing:.12em;border-radius:999px}
+#ticket-dialog button.td-close:hover{background:#ffffff10}
+#ticket-dialog.sad button.td-close{border-color:#ff8b7a88;color:#ffd0c8}
+#ticket-dialog.sad button.td-close:hover{background:#ff6b5a22}
+#ticket-dialog .tt-spark{position:absolute;width:6px;height:6px;border-radius:50%;opacity:0;pointer-events:none;background:#14F195}
+#ticket-dialog .tt-spark.s2{width:5px;height:5px;background:#fff}
+#ticket-dialog .tt-spark.s3{width:4px;height:4px;background:#e4d4ff}
 @keyframes tt-spark{0%{opacity:0;transform:translateY(6px) scale(.4)}30%{opacity:1}100%{opacity:0;transform:translate(var(--dx),-26px) scale(1)}}
-#ticket-toast.ok .s1{--dx:-14px;left:22px;top:10px;animation:tt-spark .9s ease-out .05s}
-#ticket-toast.ok .s2{--dx:8px;left:48px;top:6px;animation:tt-spark 1s ease-out .12s}
-#ticket-toast.ok .s3{--dx:-2px;left:34px;top:2px;animation:tt-spark .85s ease-out .18s}
-@keyframes tt-rise{from{opacity:0;transform:translateX(-50%) translateY(14px)}to{opacity:1;transform:translateX(-50%)}}
-@media (max-width:560px){#ticket-toast{bottom:12px}#ticket-toast .tt{grid-template-columns:78px 1fr}#ticket-toast .tt-title{font-size:14px}#ticket-toast .tt-copy{padding-right:32px}}
+#ticket-dialog.ok .s1{--dx:-14px;left:26px;top:12px;animation:tt-spark .9s ease-out .3s}
+#ticket-dialog.ok .s2{--dx:8px;left:56px;top:8px;animation:tt-spark 1s ease-out .38s}
+#ticket-dialog.ok .s3{--dx:-2px;left:40px;top:4px;animation:tt-spark .85s ease-out .44s}
+@media (max-width:560px){#ticket-dialog .tt{grid-template-columns:1fr}#ticket-dialog .tt-stub{flex-direction:row;min-height:0;gap:12px;padding:12px 16px}#ticket-dialog .tt-stub::before{display:none}#ticket-dialog .tt-face,#ticket-dialog .tt-shift{margin-top:0}#ticket-dialog .tt-title{font-size:19px}#ticket-dialog .tt-copy{padding:14px 16px 16px}}
+@media (prefers-reduced-motion:reduce){#ticket-dialog .tt,#ticket-dialog .td-back,#ticket-dialog .tt-spark{animation:none!important}}

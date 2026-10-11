@@ -167,6 +167,11 @@ export function promoOk(r) {
   return `+${plural(r.added, 'ticket')} (${r.code}) in pool #${r.poolId} · you hold ${r.balance} · cap ${r.cap}${r.added === 0 ? ' – you are at the cap, nothing added' : ''}`;
 }
 
+/** The 𝕏 post after a ticket buy: `shift` = the tier's name (1 HOUR…), lamports = what the order paid (0 = unknown). The intent's url is the explorer receipt (t.co: 23 chars). */
+export const ticketShareText = ({ shift, qty, lamports, poolId }) =>
+  `Ride paid 🚛 ${plural(qty, 'ticket')} for a ${shift} shift in @FreightChainSol${lamports ? ` – ${sol(lamports)}` : ''} locked in pool #${poolId}’s escrow vault on @solana devnet, not with the devs. On-chain receipt:`;
+export const xIntent = (text, url) => `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+
 /** …and of the (provisional, §2.4) ticket order / refund routes. */
 export function buyError(e) {
   if (e?.code === 'agreements_required') return 'Accept the 18+ and loss offer on your profile before a paid shift.';

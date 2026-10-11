@@ -99,7 +99,7 @@ export async function buyTickets(poolId, qty, onStep = () => {}) {
     const signature = await selfPay(p, w3.Transaction.from(fromB64(pay.transaction)));
     remember(order.id, signature); onStep('Waiting for the network to confirm…');
     const r = await waitPaid(order.id, signature);
-    if (r.status === 'paid') return r;
+    if (r.status === 'paid') return { ...r, programId: pay.programId };   // the dialog links the program
     if (attempt) throw new Error('The order lapsed twice before the payment landed – nothing was charged. Try again in a minute.');
     onStep('The order lapsed before the payment landed (nothing was charged) – starting a new one…');
   }

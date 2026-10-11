@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { escrowExplainer, explorerUrl, explorerTx, poolPhase, phaseLine, payoutText, poolSchedule, scheduleText, hasStandings, span, statusChip, progressText, deadline, splitParts, rulesText, tierTickets, buyRoom, cardAction, rideError, promoError, promoOk, buyError, usd, pct, sol, heldTickets, paidChip, ridableTickets } from '../../client/site/pools.js';
+import { escrowExplainer, explorerUrl, explorerTx, poolPhase, phaseLine, payoutText, poolSchedule, scheduleText, hasStandings, span, statusChip, progressText, deadline, splitParts, rulesText, tierTickets, buyRoom, cardAction, rideError, promoError, promoOk, buyError, ticketShareText, xIntent, usd, pct, sol, heldTickets, paidChip, ridableTickets } from '../../client/site/pools.js';
 import { salesOpen } from '../../client/site/tickets-api.js';
 
 /* The pool wording the lobby AND the landing show (client/site/pools.js is pure). Every pool status – incl. `refunding`, which the dev seeds can't produce – is pinned here. */
@@ -182,6 +182,15 @@ test('promo redeem: every kind of effect reads as one sentence; an item you own 
   assert.match(promoError(problem(409, 'promo_unavailable', 'this promo code is not active yet')), /not active yet/);
 });
 
+test('the 𝕏 post after a ticket buy: tier, count, amount, pool, the escrow on Solana devnet – short enough for the receipt link', () => {
+  const text = ticketShareText({ shift: '4 HOURS', qty: 2, lamports: 100_000_000, poolId: 7 });
+  assert.equal(text, 'Ride paid 🚛 2 tickets for a 4 HOURS shift in @FreightChainSol – 0.100 SOL locked in pool #7’s escrow vault on @solana devnet, not with the devs. On-chain receipt:');
+  assert.ok(text.length + 1 + 23 <= 280);   // t.co counts every url as 23
+  assert.match(ticketShareText({ shift: '1 HOUR', qty: 1, lamports: 0, poolId: 3 }), /^Ride paid 🚛 1 ticket for a 1 HOUR shift in @FreightChainSol locked in pool #3’s/);
+  const tx = explorerTx('5abc');
+  assert.equal(xIntent('a b & c', tx), `https://x.com/intent/post?text=a%20b%20%26%20c&url=${encodeURIComponent(tx)}`);
+});
+
 test('ticket sales: on when the server sells through the program (tiers.paymentMode), a ticketSales flag would win; every refusal names the fix', () => {
   assert.equal(salesOpen({ paymentMode: 'transfer' }), false); assert.equal(salesOpen({ paymentMode: 'program' }), true); assert.equal(salesOpen(null), false);
   assert.equal(salesOpen({ paymentMode: 'program', ticketSales: false }), false); assert.equal(salesOpen({ paymentMode: 'transfer', ticketSales: true }), true);
@@ -197,7 +206,7 @@ test('ticket sales: on when the server sells through the program (tiers.paymentM
 
 test('the lobby and the landing never call a bare /api path or render with innerHTML', () => {
   const site = join(new URL('..', import.meta.url).pathname, '..', 'client', 'site');
-  for (const f of ['lobby.js', 'lobby-pools.js', 'admin-pools.js', 'lobby-promo.js', 'lobby-garage.js', 'garage-cab.js', 'pools.js', 'tickets-api.js', 'pay.js', 'dom.js', 'admin.js', 'admin-promos.js', 'ticket-toast.js']) {
+  for (const f of ['lobby.js', 'lobby-pools.js', 'admin-pools.js', 'lobby-promo.js', 'lobby-garage.js', 'garage-cab.js', 'pools.js', 'tickets-api.js', 'pay.js', 'dom.js', 'admin.js', 'admin-promos.js', 'ticket-dialog.js']) {
     const src = readFileSync(join(site, f), 'utf8');
     assert.doesNotMatch(src, /\.(innerHTML|outerHTML)\s*[+]?=|insertAdjacentHTML\(|document\.write\(/, f);
     assert.doesNotMatch(src, /['"`]\/api\//, `${f}: API calls go through wallet.js (API_BASE)`);
