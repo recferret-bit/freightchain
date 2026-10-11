@@ -1,11 +1,12 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
-import { Connection, PublicKey } from '@solana/web3.js';
+import { type AccountInfo, Connection, PublicKey } from '@solana/web3.js';
 import { createHash } from 'node:crypto';
 import { NameServicePort } from '../../application/ports/sns/name-service.port.js';
 import { CachePort } from '../../application/ports/shared/cache.port.js';
 import { EnvService } from '../config/env.service.js';
 import { SolanaRpc } from '../solana/solana-rpc.js';
 import { isWalletAddress } from '../../domain/players/wallet-address.js';
+import { isDomainName } from '../../domain/sns/sns-name.js';
 
 // Protocol Constants
 const NAME_PROGRAM_ID = new PublicKey('namesLPneVptA9Z5rqUDD9tMTWEJwofgaYwp8cawRkX');
@@ -159,6 +160,11 @@ export class SnsNameServiceAdapter extends NameServicePort {
         }
 
         const domainName = `${label.replace(/\.sol$/, '')}.sol`;
+        if (!isDomainName(domainName)) {
+          await this.cache.set(cacheKey, { name: null }, this.negativeTtlSeconds);
+          return null;
+        }
+
         await this.cache.set(cacheKey, { name: domainName }, this.positiveTtlSeconds);
         return domainName;
       } catch (err) {
@@ -200,7 +206,12 @@ export class SnsNameServiceAdapter extends NameServicePort {
 
     try {
       const favKeys = misses.map((w) => getFavoriteKey(new PublicKey(w)));
-      const favAccounts = await this.rpcCall((conn) => conn.getMultipleAccountsInfo(favKeys));
+      const favAccounts: (AccountInfo<Buffer> | null)[] = [];
+      for (let i = 0; i < favKeys.length; i += 100) {
+        const chunk = favKeys.slice(i, i + 100);
+        const chunkRes = await this.rpcCall((conn) => conn.getMultipleAccountsInfo(chunk));
+        favAccounts.push(...chunkRes);
+      }
 
       const candidates: { wallet: string; nameAccount: PublicKey; reverseKey: PublicKey }[] = [];
       for (let i = 0; i < misses.length; i++) {
@@ -222,7 +233,13 @@ export class SnsNameServiceAdapter extends NameServicePort {
           fetchKeys.push(c.nameAccount, c.reverseKey);
         }
 
-        const accounts = await this.rpcCall((conn) => conn.getMultipleAccountsInfo(fetchKeys));
+        const accounts: (AccountInfo<Buffer> | null)[] = [];
+        for (let i = 0; i < fetchKeys.length; i += 100) {
+          const chunk = fetchKeys.slice(i, i + 100);
+          const chunkRes = await this.rpcCall((conn) => conn.getMultipleAccountsInfo(chunk));
+          accounts.push(...chunkRes);
+        }
+
         for (let j = 0; j < candidates.length; j++) {
           const c = candidates[j]!;
           const domainAcc = accounts[j * 2];
@@ -249,7 +266,19 @@ export class SnsNameServiceAdapter extends NameServicePort {
           }
 
           const label = reverseAcc.data.subarray(100, 100 + nameLen).toString('utf8').replace(/\0/g, '').trim().toLowerCase();
+          if (!label) {
+            results.set(c.wallet, null);
+            await this.cache.set(`sns:rev:${c.wallet}`, { name: null }, this.negativeTtlSeconds);
+            continue;
+          }
+
           const domainName = `${label.replace(/\.sol$/, '')}.sol`;
+          if (!isDomainName(domainName)) {
+            results.set(c.wallet, null);
+            await this.cache.set(`sns:rev:${c.wallet}`, { name: null }, this.negativeTtlSeconds);
+            continue;
+          }
+
           results.set(c.wallet, domainName);
           await this.cache.set(`sns:rev:${c.wallet}`, { name: domainName }, this.positiveTtlSeconds);
         }
