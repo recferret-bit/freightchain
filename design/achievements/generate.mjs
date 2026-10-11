@@ -88,15 +88,17 @@ const GLYPHS = {
   shift(c) { // a chequered flag
     const cols = 6, rows = 4, x0 = -52, w = 22, y0 = -88, h = 22;
     const wave = (x) => Math.sin((x + 60) / 26) * 9;
+    // every edge follows the same fine-sampled wave, so the cloth and the two border bars stay parallel (a cell edge is a curve, not a chord)
+    const curve = (xa, xb, y) => { const pts = []; const n = Math.max(2, Math.round((xb - xa) / 2)); for (let k = 0; k <= n; k++) { const x = xa + ((xb - xa) * k) / n; pts.push(`${r1(x)},${r1(y + wave(x))}`); } return pts; };
     let cells = '';
     for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) {
       const xa = x0 + i * w, xb = xa + w, ya = y0 + j * h, yb = ya + h;
-      cells += `<polygon points="${xa},${r1(ya + wave(xa))} ${xb},${r1(ya + wave(xb))} ${xb},${r1(yb + wave(xb))} ${xa},${r1(yb + wave(xa))}" fill="${(i + j) % 2 ? c.d : c.s}"/>`;
+      cells += `<polygon points="${curve(xa, xb, ya).join(' ')} ${curve(xa, xb, yb).reverse().join(' ')}" fill="${(i + j) % 2 ? c.d : c.s}" stroke="${(i + j) % 2 ? c.d : c.s}" stroke-width=".6"/>`;
     }
+    const bar = (y) => `<polyline points="${curve(x0, x0 + cols * w, y).join(' ')}" fill="none" stroke="${c.p}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>`;
     return `<g>
-      <path d="M${x0 - 2},${y0 - 2 + wave(x0)}Q${x0 + 66},${y0 - 18} ${x0 + cols * w + 2},${y0 - 2 + wave(x0 + cols * w)}" fill="none" stroke="${c.p}" stroke-width="3" opacity="0"/>
       ${cells}
-      <path d="M${x0},${y0 + wave(x0)}H${x0 + cols * w}M${x0},${y0 + rows * h + wave(x0)}H${x0 + cols * w}" stroke="${c.p}" stroke-width="5" stroke-linecap="round"/>
+      ${bar(y0)}${bar(y0 + rows * h)}
       <rect x="-66" y="-100" width="12" height="206" rx="6" fill="${c.p}"/>
       <circle cx="-60" cy="-102" r="11" fill="${c.p}"/>
       <rect x="-80" y="100" width="40" height="9" rx="4.5" fill="${c.s}" opacity=".85"/>
