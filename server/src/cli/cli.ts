@@ -30,6 +30,7 @@ Commands:
                Read the pool's account from chain (TICKET_PROGRAM_ID, SOLANA_RPC) into the mirror, or refresh it – the chain wins; --label renames it
   pool:crank   One crank pass now (CRANK_SECRET): open each tier's next pool when its slot has come, fail missed pools, expire unsettled ones, refund their tickets, close refunded pools – by the chain clock
   pool:payout [--pool N]  One payout pass now (PAYOUT_SECRET = the program's payout key): pools past their review window – every ride decided, then the verified top 20 paid and the pool closed
+  achievement:mint [--retry]  One badge-mint pass now (ACHIEVEMENT_MINT_SECRET + ACHIEVEMENT_TREE + ACHIEVEMENT_COLLECTION): queue old-enough unlocks, resolve transactions in flight, mint soulbound cNFTs; --retry puts failed rows back first
   verdict:rejudge [--status unjudged|verified|flagged|rejected|all] [--since DATE] [--limit N] [--dry-run]
                Judge completed shifts again at the CURRENT verdict rules (after a threshold change) – an admin's decision is kept, a swept recording skipped; audited
   pool:attention --pool N

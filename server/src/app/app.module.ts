@@ -12,6 +12,7 @@ import { InfrastructureModule } from '../infrastructure/infrastructure.module.js
 import { DailyFreeRideScheduler } from '../infrastructure/scheduling/daily-free-ride.scheduler.js';
 import { ProgramWatcher } from '../infrastructure/scheduling/program-watcher.js';
 import { PoolCrankScheduler } from '../infrastructure/scheduling/pool-crank.scheduler.js';
+import { AchievementMintScheduler } from '../infrastructure/scheduling/achievement-mint.scheduler.js';
 import { PoolPayoutScheduler } from '../infrastructure/scheduling/pool-payout.scheduler.js';
 import { TelemetryRetentionScheduler } from '../infrastructure/scheduling/telemetry-retention.scheduler.js';
 import { StaleRideScheduler } from '../infrastructure/scheduling/stale-ride.scheduler.js';
@@ -39,6 +40,6 @@ export function siteRoots(env: EnvService): ServeStaticModuleOptions[] {
     ApplicationModule, // the scheduler dispatches on its bus
     PresentationModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }, DailyFreeRideScheduler, TelemetryRetentionScheduler, StaleRideScheduler, ProgramWatcher, PoolCrankScheduler, PoolPayoutScheduler],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }, DailyFreeRideScheduler, TelemetryRetentionScheduler, StaleRideScheduler, ProgramWatcher, PoolCrankScheduler, PoolPayoutScheduler, AchievementMintScheduler],
 })
 export class AppModule {}

@@ -4,6 +4,9 @@ import type { Server } from 'node:http';
 import { configureApp } from '../../src/app/configure-app.js';
 import { AppModule } from '../../src/app/app.module.js';
 import { StaleRideScheduler } from '../../src/infrastructure/scheduling/stale-ride.scheduler.js';
+import { AchievementMintRepositoryPort } from '../../src/application/ports/achievements/achievement-mint.repository.port.js';
+import { AchievementMintChainPort } from '../../src/application/ports/achievements/achievement-mint-chain.port.js';
+import { FakeMintChain } from './fake-mint-chain.js';
 import { AchievementRepositoryPort } from '../../src/application/ports/achievements/achievement.repository.port.js';
 import { ChallengeRepositoryPort } from '../../src/application/ports/auth/challenge.repository.port.js';
 import { ChainPort } from '../../src/application/ports/economy/chain.port.js';
@@ -38,7 +41,7 @@ import { DailySeedRepositoryPort } from '../../src/application/ports/rides/daily
 import { MemoryDailySeedRepository } from './in-memory/memory-daily-seeds.js';
 import { SettingsRepositoryPort } from '../../src/application/ports/settings/settings.repository.port.js';
 import {
-  MemoryAchievementRepository, MemoryChallengeRepository, MemoryHealthProbe, MemoryPaymentRepository, MemoryPlayerRepository,
+  MemoryAchievementRepository, MemoryAchievementMintRepository, MemoryChallengeRepository, MemoryHealthProbe, MemoryPaymentRepository, MemoryPlayerRepository,
   MemoryRideBatchRepository, MemoryRideQuery, MemoryRideVerdictRepository, MemorySignInRepository, MemoryAdminActionRepository, MemoryAdminQuery, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
 } from './in-memory/memory-repositories.js';
 import { MemoryCosmeticRepository, MemoryPoolPayoutRepository, MemoryPoolRepository, MemoryPromoRepository, MemoryRideTicketRepository, MemoryTicketOrderRepository } from './in-memory/memory-ledger-repositories.js';
@@ -121,6 +124,8 @@ export async function createHarness(persistence: Persistence, env: Record<string
       .overrideProvider(RoundRepositoryPort).useValue(new MemoryRoundRepository(memory))
       .overrideProvider(PaymentRepositoryPort).useValue(new MemoryPaymentRepository(memory))
       .overrideProvider(AchievementRepositoryPort).useValue(new MemoryAchievementRepository(memory))
+      .overrideProvider(AchievementMintRepositoryPort).useValue(new MemoryAchievementMintRepository(memory))
+      .overrideProvider(AchievementMintChainPort).useValue(new FakeMintChain())
       .overrideProvider(PoolRepositoryPort).useValue(new MemoryPoolRepository(memory))
       .overrideProvider(PoolPayoutRepositoryPort).useValue(new MemoryPoolPayoutRepository(memory))
       .overrideProvider(RideTicketRepositoryPort).useValue(new MemoryRideTicketRepository(memory))

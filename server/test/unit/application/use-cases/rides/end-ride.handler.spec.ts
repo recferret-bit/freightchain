@@ -25,11 +25,11 @@ describe('EndRideHandler', () => {
     const ride = await ctx.freeRide('w', true);
     ctx.clock.advance(10);
     expect(await end(ride.id, 'shift', { s: 140, t: 10, hull: 100 })).toMatchObject({ status: 'completed', reason: 'shift complete' });
-    expect((await ctx.unlocks.listByWallet('w')).map((u) => u.achievementId).sort()).toEqual(['clean-run', 'first-mile', 'free-easy', 'on-my-own', 'shift-complete'].sort());   // EASY is Australia, not the Trans-Siberian, so Cold Start stays locked
+    expect((await ctx.unlocks.listByWallet('w')).map((u) => u.achievementId).sort()).toEqual(['clean-run', 'first-mile', 'free-easy', 'on-my-own'].sort());   // EASY is Australia, not the Trans-Siberian, so Cold Start stays locked; a FREE ride is never a shift (Shift Complete is for paid rides)
     expect(analytics.named('ride_completed')).toHaveLength(1);
     expect(analytics.named('ride_completed')[0]?.dedupeKey).toBe(`ride:${ride.id}:completed`);
     expect(analytics.named('ride_abandoned')).toEqual([]);
-    expect(analytics.named('achievement_unlocked').map((e) => e.properties['achievement_id']).sort()).toEqual(['clean-run', 'first-mile', 'free-easy', 'on-my-own', 'shift-complete'].sort());
+    expect(analytics.named('achievement_unlocked').map((e) => e.properties['achievement_id']).sort()).toEqual(['clean-run', 'first-mile', 'free-easy', 'on-my-own'].sort());
     expect(analytics.named('achievement_unlocked').every((e) => e.properties['achievement_id'] !== 'top-20')).toBe(true);
   });
 

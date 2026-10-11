@@ -139,16 +139,19 @@ export function lobbyScenarios(h: () => Harness): void {
     it('a fresh wallet has stats of zero and every achievement locked', async () => {
       const w = await login(), p = (await w.agent.get('/api/profile').expect(200)).body;
       expect(p).toMatchObject({ wallet: w.address, freeRides: 10, freeRidesMax: 5, demo: false, stats: { rides: 0, completed: 0, metres: 0 } });
-      expect(p.achievements).toHaveLength(11);
+      expect(p.achievements).toHaveLength(32); // 8 ladders of 3-4 tiers + the legacy top-20
+      expect(p.achievements.find((a: { id: string }) => a.id === 'century-3')).toMatchObject({ family: 'distance', tier: 3, tierName: 'Gold', progress: { value: 0, target: 2000 }, nft: null, earnedAt: null });
+      expect(p.badgeChain).toBeNull();                      // minting is not configured here
       expect(p.achievements.every((a: { earnedAt: number | null }) => a.earnedAt === null)).toBe(true);
       expect(p.achievements.find((a: { id: string }) => a.id === 'top-20').awardedAtRoundClose).toBe(true);
     });
 
-    it('a clean night shift on the EASY country unlocks six (Cold Start needs the Trans-Siberian, which a free level is not), persisted with the time; they never disappear', async () => {
+    it('a clean night shift on the EASY country unlocks five (Cold Start needs the Trans-Siberian, which a free level is not), persisted with the time; they never disappear', async () => {
       const w = await login(), end = await finish(w, { night: true }, 100);
       expect(end.status).toBe('completed');
       const p = (await w.agent.get('/api/profile').expect(200)).body, got = (id: string) => p.achievements.find((a: { id: string }) => a.id === id).earnedAt;
-      for (const id of ['first-mile', 'shift-complete', 'night-owl', 'clean-run', 'on-my-own', 'free-easy']) expect(got(id), id).toBe(now());
+      for (const id of ['first-mile', 'night-owl', 'clean-run', 'on-my-own', 'free-easy']) expect(got(id), id).toBe(now());
+      expect(got('shift-complete')).toBeNull();                                     // Shifts are for PAID rides only
       expect(got('cold-start')).toBeNull(); expect(got('century')).toBeNull(); expect(got('top-20')).toBeNull(); expect(got('free-crossroads')).toBeNull(); expect(got('free-hard')).toBeNull();
       expect(p.stats).toMatchObject({ rides: 1, completed: 1, metres: 150, bestMetres: 150 });
       expect(p.recent[0]).toMatchObject({ tier: 'free', status: 'completed', distance: 150, route: 'stuart' });
@@ -164,7 +167,7 @@ export function lobbyScenarios(h: () => Harness): void {
       sec(2); await w.agent.post(`/api/rides/${id}/end`).send({ outcome: 'shift', s: 150, t: 12, hull: 100, night: true }).expect(200);   // N pressed just before the end
       const got = (p: { achievements: { id: string; earnedAt: number | null }[] }, k: string) => p.achievements.find(a => a.id === k)!.earnedAt;
       let p = (await w.agent.get('/api/profile')).body;
-      expect(got(p, 'shift-complete')).not.toBeNull(); expect(got(p, 'night-owl')).toBeNull();
+      expect(got(p, 'free-easy')).not.toBeNull(); expect(got(p, 'night-owl')).toBeNull();
       const w2 = await login(); await finish(w2, { night: true });                          // night for the whole shift
       p = (await w2.agent.get('/api/profile')).body; expect(got(p, 'night-owl')).not.toBeNull();
     });

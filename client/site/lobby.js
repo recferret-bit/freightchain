@@ -4,6 +4,7 @@ import { salesOpen, pendingOrder } from './tickets-api.js';
 import { paidChip, escrowExplainer, explorerTx, explorerUrl, rideError, promoError, promoOk, buyError, sol, usd, left, span, hasStandings, progressText, ticketShareText, xIntent, shortAddr as short } from './pools.js';
 import { poolCard, paidShift, resultCard, escrowSummary, refundRows, profileTickets } from './lobby-pools.js';
 import { careerTiles } from './lobby-career.js';
+import { achievementsSection } from './lobby-achievements.js';
 import { agreementsCard, blockPaid } from './lobby-agreements.js';
 import { redemptionList } from './lobby-promo.js';
 import { dirty, garageActions, garageProgress, garageSlots } from './lobby-garage.js';
@@ -533,17 +534,13 @@ async function renderProfile() {
   try { p = await api('profile', undefined, { report: false }); } catch (e) { if (my === seq) view.replaceChildren(el('p', { class: 'bad' }, e.message)); return; }
   if (my !== seq) return;
   meGen++; Object.assign(S.me, { freeRides: p.freeRides, freeRidesMax: p.freeRidesMax, nextFreeRideAt: p.nextFreeRideAt, tickets: p.tickets, agreements: p.agreements }); paintHeader();
-  const got = p.achievements.filter(a => a.earnedAt).length;
   const card = agreementsCard(S.me);
   view.replaceChildren(
     ...(card ? [card] : []),
     el('div', { class: 'who', style: 'display:flex;gap:10px;align-items:center' }, avatar(p.wallet), el('div', {}, el('b', {}, short(p.wallet)), el('div', { class: 'dim' }, `rider since ${new Date(p.createdAt).toLocaleDateString()}`))),
     ...careerTiles(p.career, p.stats, { km, sol }),
     ...profileTickets(p, S.busy, refund),
-    el('h2', {}, `ACHIEVEMENTS · ${got}/${p.achievements.length}`),
-    el('div', { class: 'ach' }, p.achievements.map(a => el('div', { class: `a${a.earnedAt ? '' : ' lock'}${a.awardedAtRoundClose ? ' soon' : ''}` }, el('span', { class: 'ic' }, a.icon), el('span', { class: 'nm' }, a.name), el('span', { class: 'ds' }, a.desc),
-      el('span', { class: 'when' }, a.earnedAt ? `unlocked ${new Date(a.earnedAt).toLocaleDateString()}` : a.awardedAtRoundClose ? 'awarded when the round closes' : 'locked')))),
-    el('p', { class: 'dim' }, 'Achievements become NFTs in your wallet soon – they are recorded now and can’t be lost.'),
+    ...achievementsSection(p.achievements, track, p.badgeChain),
         el('h2', {}, 'RECENT RIDES'),
     p.recent.length ? el('div', { class: 'hist' }, p.recent.map(r => el('div', { class: 'hrow' },
       el('span', {}, new Date(r.startedAt).toLocaleString(), ' · ', TIER_NAME[r.tier] ?? r.tier, r.route ? ` · ${ROUTES[r.route] ?? ''}` : ''),
