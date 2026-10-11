@@ -159,6 +159,8 @@ export interface ProfileDto {
   grants: TicketGrantDto[];
   /** the same two boxes as /api/me, so the PROFILE tab and the NEW RIDE tab share one read */
   agreements: { age18: boolean; loss: boolean; age18At: number | null; lossAt: number | null };
+  /** primary Solana Name Service (.sol) domain name, or null */
+  sns?: string | null;
 }
 
 export const LIVE_FEED_LIMIT = 50;

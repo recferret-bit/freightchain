@@ -125,4 +125,15 @@ describe('GetPublicRideHandler', () => {
       reasons: ['suspicious_hold'],
     });
   });
+
+  it('enriches public ride DTO with driver primary .sol domain when nameService is available', async () => {
+    const ctx = unitContext();
+    const wallet = 'GseaEsNWMLScZ5RH8yQ4xmoCP97H86HjLSA9xkyFCqbn';
+    ctx.nameService.setReverse(wallet, 'driver.sol');
+    const handler = new GetPublicRideHandler(ctx.rides, ctx.verdictRepo, ctx.nameService);
+    const ride = await ctx.freeRide(wallet);
+
+    const dto = await handler.execute(new GetPublicRideQuery(ride.id));
+    expect(dto.sns).toBe('driver.sol');
+  });
 });

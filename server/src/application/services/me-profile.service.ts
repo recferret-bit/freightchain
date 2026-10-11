@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import type { Player } from '../../domain/players/player.entity.js';
 import { toMeDto, type MeDto } from '../../domain/players/player.dto.js';
 import { readyFreeRideOf } from '../../domain/rides/ride.dto.js';
 import { RulesConfigPort } from '../ports/config/rules-config.port.js';
 import { RideRepositoryPort } from '../ports/rides/ride.repository.port.js';
+import { NameServicePort } from '../ports/sns/name-service.port.js';
 import { demoScaleOf, isDemoWallet } from './demo.js';
 import { PoolTicketsService } from './pool-tickets.service.js';
 
@@ -15,12 +16,17 @@ export class MeProfileService {
     private readonly rules: RulesConfigPort,
     private readonly tickets: PoolTicketsService,
     private readonly rides: RideRepositoryPort,
+    @Optional() private readonly nameService?: NameServicePort,
   ) {}
 
   /** `now`: the instant the caller touched the player at (so the grant and `nextFreeRideAt` agree) */
   async of(player: Player, now: Date): Promise<MeDto> {
     const rules = this.rules.get(), wallet = player.wallet;
-    const [tickets, open] = await Promise.all([this.tickets.balances(wallet, now), this.rides.listOpenByWallet(wallet)]);
-    return toMeDto(player, now, isDemoWallet(rules, wallet), demoScaleOf(rules), tickets, readyFreeRideOf(open));
+    const [tickets, open, sns] = await Promise.all([
+      this.tickets.balances(wallet, now),
+      this.rides.listOpenByWallet(wallet),
+      this.nameService ? this.nameService.reverse(wallet) : Promise.resolve(undefined),
+    ]);
+    return toMeDto(player, now, isDemoWallet(rules, wallet), demoScaleOf(rules), tickets, readyFreeRideOf(open), sns);
   }
 }

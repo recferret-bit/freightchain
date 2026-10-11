@@ -100,6 +100,8 @@ import { RedisCacheAdapter } from './cache/redis-cache.adapter.js';
 import { MemoryViewerPresenceAdapter } from './live/viewer-presence.memory.adapter.js';
 import { SitePresencePort } from '../application/ports/live/site-presence.port.js';
 import { MemorySitePresenceAdapter } from './live/site-presence.memory.adapter.js';
+import { NameServicePort } from '../application/ports/sns/name-service.port.js';
+import { SnsNameServiceAdapter } from './sns/sns-name-service.adapter.js';
 
 /** Every port the application layer declares is bound to its adapter here – the only place that knows which implementation runs. */
 const ports: Provider[] = [
@@ -149,6 +151,7 @@ const ports: Provider[] = [
   { provide: AnalyticsPort, useClass: PostHogAnalyticsAdapter },
   { provide: StatsRepositoryPort, useClass: StatsPrismaRepository },
   { provide: CachePort, inject: [EnvService, ClockPort], useFactory: (env: EnvService, clock: ClockPort): CachePort => (env.redisUrl ? new RedisCacheAdapter(env.redisUrl, clock) : new MemoryCacheAdapter(clock)) },
+  { provide: NameServicePort, useClass: SnsNameServiceAdapter },
 ];
 
 const portTokens = ports.map((p) => (p as { provide: unknown }).provide as typeof ClockPort);

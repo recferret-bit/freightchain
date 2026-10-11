@@ -38,6 +38,7 @@ import { GameSettingsService } from '../../src/application/services/game-setting
 import { LiveAccessService } from '../../src/application/services/live-access.service.js';
 import { MemorySettingsRepository } from './in-memory/memory-settings.js';
 import { MemoryDailySeedRepository } from './in-memory/memory-daily-seeds.js';
+import { StubNameServiceAdapter } from './stub-name-service.js';
 
 /** Fixed rules for unit tests: 10 s free shift (140 m), treasury configured, one demo wallet. */
 export const DEMO_UNIT_WALLET = 'DemoWa11et1111111111111111111111111111111111';
@@ -117,7 +118,8 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const dailySeeds = new MemoryDailySeedRepository(db);
   const sessions = new PlayerSessionService(players, settings, rulesPort, clock, analytics);
   const lookup = new RideLookupService(rides);
-  const meProfile = new MeProfileService(rulesPort, poolTickets, rides);
+  const nameService = new StubNameServiceAdapter();
+  const meProfile = new MeProfileService(rulesPort, poolTickets, rides, nameService);
   const rounds = new RoundService(roundRepo, rulesPort, transactions, clock, analytics);
   const achievements = new AchievementService(unlocks, rideQuery, clock, rulesPort);
   const ticketSettlement = new TicketSettlementService(players, pools, tickets, orders, sessions, rounds, transactions, clock, entropy);
@@ -166,7 +168,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
     db, clock, chain, entropy, dailySeeds, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, batches, hasher, verdictRepo, verdicts, proofs, signIns, adminActions, adminQuery, adminDirectory, health, analytics,
     pools, poolPayouts, tickets, promos, cosmetics, promoCreation, orders, poolTickets, ticketSettlement,
     sessions, meProfile, settings, settingsRepo, lookup, rounds, achievements, settlement, now, player, accept, freeRide, paidOrder, paidRide, reload, storedPlayer,
-    poolChain, chainEvents, chainCursors, registry, rideEvents, viewers, sitePresence, rideMutes, donationOrders, liveAccess, statsRepo, cache, stats,
+    poolChain, chainEvents, chainCursors, registry, rideEvents, viewers, sitePresence, rideMutes, donationOrders, liveAccess, statsRepo, cache, stats, nameService,
   };
 }
 export type UnitContext = ReturnType<typeof unitContext>;

@@ -6,7 +6,20 @@ const prod = { ...base, NODE_ENV: 'production', JWT_SECRET: 'x'.repeat(32), TREA
 
 describe('validateEnv', () => {
   it('needs only DATABASE_URL in development and applies the defaults', () => {
-    expect(validateEnv(base)).toMatchObject({ PORT: 3000, NODE_ENV: 'development', FREE_RIDE_SECONDS: 180, CHALLENGE_FREE_RIDES: 'on', THROTTLE_LIMIT: 600, THROTTLE_AUTH_LIMIT: 30, DEMO_SCALE: 60, DEMO_WALLETS: '' });
+    expect(validateEnv(base)).toMatchObject({
+      PORT: 3000,
+      NODE_ENV: 'development',
+      FREE_RIDE_SECONDS: 180,
+      CHALLENGE_FREE_RIDES: 'on',
+      THROTTLE_LIMIT: 600,
+      THROTTLE_AUTH_LIMIT: 30,
+      DEMO_SCALE: 60,
+      DEMO_WALLETS: '',
+      SNS_RPC: 'https://api.mainnet-beta.solana.com',
+      SNS_RPC_FALLBACKS: '',
+      SNS_CACHE_TTL_SECONDS: 86400,
+      SNS_NEGATIVE_CACHE_TTL_SECONDS: 1800,
+    });
     expect(validateEnv(base).TRUST_PROXY).toBeUndefined(); // dev: 0 hops by default (EnvService)
     expect(() => validateEnv({})).toThrow(/DATABASE_URL/);
   });
@@ -20,7 +33,7 @@ describe('validateEnv', () => {
     expect(() => validateEnv({ ...base, POSTHOG_DISABLED: 'yes' })).toThrow(/POSTHOG_DISABLED/);
   });
   it('coerces numbers and rejects nonsense', () => {
-    expect(validateEnv({ ...base, SOL_USD: '118.5', FREE_RIDE_SECONDS: '10', THROTTLE_AUTH_LIMIT: '2' })).toMatchObject({ SOL_USD: 118.5, FREE_RIDE_SECONDS: 10, THROTTLE_AUTH_LIMIT: 2 });
+    expect(validateEnv({ ...base, SOL_USD: '118.5', FREE_RIDE_SECONDS: '10', THROTTLE_AUTH_LIMIT: '2', SNS_CACHE_TTL_SECONDS: '3600', SNS_NEGATIVE_CACHE_TTL_SECONDS: '600' })).toMatchObject({ SOL_USD: 118.5, FREE_RIDE_SECONDS: 10, THROTTLE_AUTH_LIMIT: 2, SNS_CACHE_TTL_SECONDS: 3600, SNS_NEGATIVE_CACHE_TTL_SECONDS: 600 });
     expect(() => validateEnv({ ...base, PORT: 'abc' })).toThrow(/PORT/);
     expect(() => validateEnv({ ...base, TREASURY_PUBKEY: 'not-an-address' })).toThrow(/TREASURY_PUBKEY/);
   });

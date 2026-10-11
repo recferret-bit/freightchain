@@ -50,6 +50,12 @@ export class EnvService {
   get hbMinIntervalMs(): number { return this.env.HB_MIN_INTERVAL_MS; }
   get hbTimeoutMs(): number { return this.env.HB_TIMEOUT_MS; }
   get solanaRpc(): string { return this.env.SOLANA_RPC; }
+  get snsRpc(): string { return this.env.SNS_RPC; }
+  get snsRpcFallbacks(): string[] {
+    return this.env.SNS_RPC_FALLBACKS.split(',').map((u) => u.trim()).filter((u) => u.length > 0);
+  }
+  get snsCacheTtlSeconds(): number { return this.env.SNS_CACHE_TTL_SECONDS; }
+  get snsNegativeCacheTtlSeconds(): number { return this.env.SNS_NEGATIVE_CACHE_TTL_SECONDS; }
   get solUsdFixed(): number | undefined { return this.env.SOL_USD || undefined; }
   get demoScale(): number { return this.env.DEMO_SCALE; }
 

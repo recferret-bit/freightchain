@@ -24,4 +24,12 @@ describe('MeProfileService', () => {
     await ctx.paidOrder('payer');
     expect((await ctx.meProfile.of(await ctx.storedPlayer('payer'), now)).readyFreeRide).toBeNull();
   });
+
+  it('attaches primary .sol domain to MeDto when registered', async () => {
+    const ctx = unitContext();
+    const now = ctx.now(), player = await ctx.sessions.touch('w', now);
+    ctx.nameService.setReverse('w', 'driver.sol');
+    const me = await ctx.meProfile.of(player, now);
+    expect(me.sns).toBe('driver.sol');
+  });
 });

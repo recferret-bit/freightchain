@@ -27,6 +27,10 @@ export const envSchema = z
     HB_TIMEOUT_MS: z.coerce.number().int().min(5000).default(150_000), // no heartbeat for this long = the tab is gone: off the live feed, its next heartbeat would fail it, the stale-ride sweeper ends it (failed · heartbeat lost)
     TREASURY_PUBKEY: optional(z.string()),
     SOLANA_RPC: z.string().min(1).default('https://api.devnet.solana.com'),
+    SNS_RPC: z.string().min(1).default('https://api.mainnet-beta.solana.com'),
+    SNS_RPC_FALLBACKS: z.string().default(''),
+    SNS_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(86400),
+    SNS_NEGATIVE_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(1800),
     SOL_USD: optional(z.coerce.number().min(0)), // 0 = not pinned (live price), as before
     DEMO_WALLETS: z.string().default(''),
     DEMO_SCALE: z.coerce.number().positive().default(60),

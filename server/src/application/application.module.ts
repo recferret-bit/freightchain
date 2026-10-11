@@ -113,6 +113,8 @@ import { RegisterPoolFromChainHandler } from './use-cases/pools/register-pool-fr
 import { AdjustFreeRidesHandler } from './use-cases/admin/adjust-free-rides/adjust-free-rides.handler.js';
 import { GetSettingsHandler } from './use-cases/admin/get-settings/get-settings.handler.js';
 import { UpdateSettingHandler } from './use-cases/admin/update-setting/update-setting.handler.js';
+import { GetSnsReverseHandler } from './use-cases/sns/get-sns-reverse/get-sns-reverse.handler.js';
+import { ResolveSnsHandler } from './use-cases/sns/resolve-sns/resolve-sns.handler.js';
 
 const services: Provider[] = [
   AchievementService, PaymentSettlementService, PlayerSessionService, GameSettingsService, RideLookupService, RoundService, VerdictService, AdminProofService,
@@ -145,6 +147,7 @@ const handlers: Provider[] = [
   GetChainFeesHandler,
   PollProgramHandler, SyncPoolsHandler, CrankPoolsHandler, PayPoolsHandler, ReceiveChainWebhookHandler, RegisterPoolFromChainHandler,
   AdjustFreeRidesHandler, GetSettingsHandler, UpdateSettingHandler,
+  GetSnsReverseHandler, ResolveSnsHandler,
 ];
 
 @Module({

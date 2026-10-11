@@ -1,3 +1,4 @@
+import { Optional } from '@nestjs/common';
 import { StatsService } from '../../../services/stats.service.js';
 import { QueryHandler, type IQueryHandler } from '@nestjs/cqrs';
 import { nextFreeRideAt, toAgreementsDto } from '../../../../domain/players/player.dto.js';
@@ -16,6 +17,7 @@ import { achievementUnlocked } from '../../../services/analytics-events.js';
 import { emitAnalytics } from '../../../services/analytics-emit.js';
 import { PlayerSessionService } from '../../../services/player-session.service.js';
 import { demoScaleOf, isDemoWallet } from '../../../services/demo.js';
+import { NameServicePort } from '../../../ports/sns/name-service.port.js';
 import { GetProfileQuery } from './get-profile.query.js';
 import { reviewOf } from '../../../../domain/verdict/ride-review.js';
 
@@ -33,6 +35,7 @@ export class GetProfileHandler implements IQueryHandler<GetProfileQuery, Profile
     private readonly orders: TicketOrderRepositoryPort,
     private readonly analytics: AnalyticsPort,
     private readonly totals: StatsService,
+    @Optional() private readonly nameService?: NameServicePort,
   ) {}
 
   async execute(query: GetProfileQuery): Promise<ProfileDto> {
@@ -45,8 +48,9 @@ export class GetProfileHandler implements IQueryHandler<GetProfileQuery, Profile
       if (unlock.id === 'top-20') continue;
       emitAnalytics(this.analytics, () => achievementUnlocked(wallet, unlock.id, unlock.earnedAt, null, isDemoWallet(this.rules.get(), wallet)));
     }
-    const [spent, recent, achievements, tickets, grants, ordered, career] = await Promise.all([
+    const [spent, recent, achievements, tickets, grants, ordered, career, sns] = await Promise.all([
       this.payments.totalsOf(wallet), this.rideQuery.recent(wallet, RECENT_RIDES_LIMIT), this.achievements.list(wallet), this.poolTickets.balances(wallet, now), this.tickets.recentGrants(wallet, RECENT_GRANTS_LIMIT), this.orders.totalsOf(wallet), this.totals.player(wallet),
+      this.nameService ? this.nameService.reverse(wallet) : Promise.resolve(undefined),
     ]);
     const rules = this.rules.get();
     return {
@@ -62,6 +66,7 @@ export class GetProfileHandler implements IQueryHandler<GetProfileQuery, Profile
       tickets,
       grants: grants.map(toTicketGrantDto),
       agreements: toAgreementsDto(player),
+      ...(sns !== undefined ? { sns } : {}),
     };
   }
 }

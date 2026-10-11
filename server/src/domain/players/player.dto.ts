@@ -25,6 +25,8 @@ export interface MeDto {
   readyFreeRide: ReadyFreeRideDto | null;
   /** the two profile boxes. Both true before a paid shift. Timestamps are epoch ms, null while that box is off. */
   agreements: AgreementsDto;
+  /** primary Solana Name Service (.sol) domain name, or null */
+  sns?: string | null;
 }
 
 /** What PUT /api/profile/agreements and the profile / me payloads say about the two boxes. */
@@ -42,7 +44,15 @@ export const toAgreementsDto = (player: Player): AgreementsDto => ({
   lossAt: player.lossAt?.getTime() ?? null,
 });
 
-export const toMeDto = (player: Player, now: Date, demo: boolean, demoScale: number, tickets: TicketBalanceDto[], readyFreeRide: ReadyFreeRideDto | null): MeDto => ({
+export const toMeDto = (
+  player: Player,
+  now: Date,
+  demo: boolean,
+  demoScale: number,
+  tickets: TicketBalanceDto[],
+  readyFreeRide: ReadyFreeRideDto | null,
+  sns?: string | null,
+): MeDto => ({
   wallet: player.wallet,
   freeRides: player.freeRides,
   freeRidesMax: player.freeRidesMax,
@@ -54,4 +64,5 @@ export const toMeDto = (player: Player, now: Date, demo: boolean, demoScale: num
   tickets,
   readyFreeRide,
   agreements: toAgreementsDto(player),
+  ...(sns !== undefined ? { sns } : {}),
 });
