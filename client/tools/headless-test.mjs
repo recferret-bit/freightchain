@@ -143,6 +143,9 @@ check(nightX.night===true&&dayX.night===false&&G.THEMES.some(t=>t.id===dayX.rout
   st.engineOn=true; st.stalled=false; st.rpm=900; step(60*7); check(G.guide.note===''&&ids().startsWith('GAS'),'… and the lesson is back once the engine runs again ['+ids()+']');
   st.t=1e3; st.s=1e6; step(3); check(!st.complete&&G.guide.hold,'the tutorial holds the finish line while it is open');
   G.setGuide({}); step(3); check(!G.guide.hold&&st.complete,'… and lets the ride complete once it is closed'); fire('keyup','ShiftLeft'); }
+{ G.setGuide({ tutorial: true }); G.setTrip('free-1b'); const D=G.CFG.COMPLETE_DIST; G.startRide(); st.t=5; st.s=D+500; st.v=20; step(3);
+  check(!st.complete&&!G.guide.hold&&st.s===D&&st.v===0,'a finish-line trip: the truck can not pass the line before the clock is done (and an open tutorial is cut off)');
+  st.t=1e3; step(3); check(st.complete,'… and the ride completes at the line once the clock is done'); G.setGuide({}); G.setTrip('1h'); }
 // the free LEVELS (trips.js free-1/2/3) and FORKS (net/patterns.js FORK): the easy run is four lanes without a junction; a fork's two roads meet again where
 // they parted, so switching roads changes nothing after the merge; crossing the commit point on the other road's side switches the spine and keeps the truck in place
 { const F=G.forkRules; G.setGuide({}); G.setTrip('free-1'); G.roads.newTrip(777); net.ensure(6000);

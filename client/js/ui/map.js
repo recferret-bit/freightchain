@@ -23,7 +23,7 @@ const ZOOMS = [.6, 1.2, 2.4, 4.8, 9.6, 19.2];   // metres per CSS pixel of the b
 const MAX_R = 4000, GROW = 1500;   // the big map draws at most 4 km around the truck, and reaches ≤ 1.5 km further per frame (no 11 km of road integrated in one frame)
 const CH = CFG.CHUNK_LEN;   // the roadside's chunk (world/chunks.js): one landmark at most per chunk
 const { FREE_MAX, FREE_IDLE } = CFG.PHONE;   // how far (m) the map can be dragged from the truck, and how long (ms) it stays where it was left before it follows the truck again
-const view = { sites: new Map(), off: false, bounce: null, z: 2, northUp: false, rot: null, vAvg: 10, vLong: 10, last: 0, reach: 0, wheel: 0, k: 1, hits: [], pois: [], free: null, touched: 0, drag: null, sel: null, el: null, cv: null, raf: 0 };
+const view = { sites: new Map(), off: false, bounce: null, z: 2, northUp: false, rot: null, vAvg: 10, last: 0, reach: 0, wheel: 0, k: 1, hits: [], pois: [], free: null, touched: 0, drag: null, sel: null, el: null, cv: null, raf: 0 };
 /* the places by the road (the theme's landmarks): a colour and a glyph per type; motels and hotels are both lodging */
 const POI = { motel: { col: '#8e44ad', kind: 'bed', name: 'MOTEL' }, hotel: { col: '#8e44ad', kind: 'bed', name: 'HOTEL' }, gas: { col: '#e8710a', kind: 'pump', name: 'GAS STATION' }, police: { col: '#3949ab', kind: 'badge', name: 'POLICE' }, restaurant: { col: '#d84315', kind: 'fork', name: 'FOOD' } };
 const THUMB = { thumb: true, mpp: 5 };
@@ -36,10 +36,8 @@ function palette() {
 
 /* where the truck is, in the world (roadAt + st.d across) and where it points */
 function truck() { const p = roadAt(st.s); return { x: p.x + Math.cos(p.t) * st.d, z: p.z + Math.sin(p.t) * st.d, h: p.t + st.psi }; }
-/** the finish of the shift on the road (s), or null once it is complete. The shift ends when BOTH the clock (RIDE_MIN_SECONDS) and the distance (COMPLETE_DIST – the floor
-    that idling can't bank) are done, so the finish is where the truck will be when the clock runs out at its recent pace – never nearer than the floor. It moves ahead while you
-    drive, so you never "pass" it before the clock is done, and it lands on the truck the moment the shift completes. */
-const target = () => st.complete ? null : Math.max(CFG.COMPLETE_DIST, st.s + Math.max(view.vLong, 6) * Math.max(0, CFG.RIDE_MIN_SECONDS - st.t), 0);
+/** the finish of the shift on the road (s), or null once it is complete: always the fixed distance COMPLETE_DIST (server-set online) – it never moves with your speed. */
+const target = () => (st.complete ? null : Math.max(CFG.COMPLETE_DIST, 0));
 const roadName = s => { if (s < net.Sm) return 'DEPOT ROAD'; const x = net.mainXs(s); return PATTERNS[x.pat]?.name ?? 'ROAD'; };
 
 /** the landmarks between s0 and s1 along the road, as the world builds them: the same `site(ci)` rule chunks.js asks, the same roadside offset; without the smashed ones and those the world drops (a junction, a side road).
@@ -70,7 +68,7 @@ function glyph(g, kind, k) {   // white pictograms in a 20 px badge
 function paintMap(g, X, Y, W, H, o = {}) {
   const P = palette(), T = truck(), C = !o.thumb && view.free ? view.free : T, mpp = o.mpp ?? ZOOMS[view.z], thumb = !!o.thumb;
   const now = typeof performance === 'undefined' ? 0 : performance.now(), dt = view.last ? clamp((now - view.last) / 1000, 0, .25) : 0; view.last = now;
-  if (st.mode === 'drive') { view.vAvg += (st.v - view.vAvg) * (1 - Math.exp(-dt / 4)); view.vLong += (st.v - view.vLong) * (1 - Math.exp(-dt / 40)); }   // vLong: the ~40 s pace the finish marker is projected with (stops at lights and queues don't make it jump)   // the ETA's speed: a ~4 s average, every frame (the dash phone too), not while paused
+  if (st.mode === 'drive') { view.vAvg += (st.v - view.vAvg) * (1 - Math.exp(-dt / 4)); }   // the ETA's speed: a ~4 s average, every frame (the dash phone too), not while paused
   if (view.rot === null || !Number.isFinite(view.rot)) view.rot = T.h;
   if (!thumb && view.free && performance.now() - view.touched > FREE_IDLE && !view.drag) { view.free = null; recordPhone('recenter-auto'); }   // left alone for a while: back to following the truck
   let dr = T.h - view.rot; dr = Math.atan2(Math.sin(dr), Math.cos(dr)); if (thumb || !view.free) view.rot += dr * (1 - Math.exp(-dt * (thumb ? 13 : 7.5)));   // ease the heading-up rotation (no jitter from steering)
@@ -495,6 +493,6 @@ export function toggleMap(open = !phone.open) {
 function closeMap() { if (view.el && phone.open) show(false); phone.open = false; }
 /** a new ride (ui/game.js resetRide): the phone back on its mount, quietly, and the map's view state from scratch */
 export function resetMap() { closeMap(); Object.assign(phone, { power: st.watch ? 3 : 0, bootAt: 0, homeAt: 0, readyAt: 0 });   // the phone is off again until this ride's engine runs
-  Object.assign(view, { sites: new Map(), off: false, rot: null, vAvg: 10, vLong: 10, last: 0, reach: 0, wheel: 0, free: null, drag: null, sel: null }); }
+  Object.assign(view, { sites: new Map(), off: false, rot: null, vAvg: 10, last: 0, reach: 0, wheel: 0, free: null, drag: null, sel: null }); }
 if (typeof addEventListener === 'function') addEventListener('keydown', e => { if (e.code === 'Escape' && phone.open) toggleMap(false); });
 phone.thumb = (g, x, y, w, h) => drawMap(g, x, y, w, h, THUMB);
