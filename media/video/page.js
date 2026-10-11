@@ -82,6 +82,74 @@ window.__dir = (() => {
     for (const id of ['glow', 'grid', 'tiles', 'tk', 'route', 'cap', 'n', 'h', 'p', 'bar', 'stamp', 'card', 't', 'steps', 'cta', 'ft', 'bars', 'cover']) fxEl[id] = document.getElementById('fx-' + id);
   }
 
+
+  /* ───────── the TikTok layout (look "meme", crop "vertical"): a 1080×1920 page, the game (still 1280×720 for itself) in a 1080² window at SY, impact-font captions in the bands above / below ───────── */
+  const SY = 520, WIN = 1080, ZOOM0 = WIN / 720, FONT = `Impact,Haettenschweiler,"Arial Narrow Bold","Arial Black",sans-serif`;   // ZOOM0: the window shows the middle 720×720 of the 1280×720 cockpit (windscreen, dash, wheel; the mirrors fall outside)
+  const COLORS = { white: '#fff', yellow: '#ffe14a', red: '#ff3b30', lcd: '#7cff7c', cyan: '#35d6ff', pink: '#ff4fd8', amber: '#ffcf5a' }, YS = { top: 330, mid: 1010, low: 1200 };
+  let memeCaps = [];
+  function buildMeme() {
+    document.body.classList.add('fcm'); fxEl.fx = document.getElementById('fx'); fxEl.fx.classList.add('meme');
+    const outline = (w, c = '#000') => [[w, 0], [-w, 0], [0, w], [0, -w], [w, w], [-w, w], [w, -w], [-w, -w]].map(([x, y]) => `${x}px ${y}px 0 ${c}`).join(',');
+    document.head.insertAdjacentHTML('beforeend', `<style>
+body.fcm #world,body.fcm #cockpit{position:absolute!important;inset:auto!important;left:0!important;top:0!important;width:1280px!important;height:720px!important;transform-origin:0 0}
+#fx.meme .tick,#fx.meme .brand,#fx.meme .sol,#fx.meme .cap,#fx.meme .vig{display:none!important}
+#fx .band{position:absolute;left:0;right:0;background:#07060a;overflow:hidden}
+#fx .band i{position:absolute;inset:0;background:radial-gradient(60% 70% at 15% 30%,#9945FF40,#0000 70%),radial-gradient(60% 70% at 85% 90%,#14F19530,#0000 70%),linear-gradient(#ffffff0c 2px,#0000 2px),linear-gradient(90deg,#ffffff0c 2px,#0000 2px);background-size:auto,auto,54px 54px,54px 54px}
+#fx .band b{position:absolute;left:0;right:0;height:16px;background:repeating-linear-gradient(135deg,#ffcf5a 0 22px,#14110a 22px 44px)}
+#fx .mbrand{left:30px;top:${SY + 22}px;color:var(--amber);font-weight:700;letter-spacing:3px;font-size:24px;text-shadow:0 2px 12px #000;white-space:nowrap}
+#fx .mc{position:absolute;left:0;top:0;width:900px;margin-left:-450px;text-align:center;font-family:${FONT};text-transform:uppercase;line-height:.96;letter-spacing:1px;white-space:pre-line;display:none;color:#fff;text-shadow:${outline(7)},0 11px 0 #000}
+#fx .mc.bub{width:auto;max-width:820px;margin-left:0;text-align:left;font-family:-apple-system,"SF Pro Text",Helvetica,Arial,sans-serif;text-transform:none;line-height:1.15;letter-spacing:0;background:#fff;color:#111;text-shadow:none;border-radius:46px;padding:24px 38px 28px;box-shadow:0 14px 40px #000b;font-weight:600;font-size:46px}
+#fx .mc.bub u{display:block;text-decoration:none;color:#777;font-size:30px;font-weight:700;margin-bottom:6px}
+#fx .mc.stp{border:12px solid currentColor;padding:6px 30px 12px;background:#000b;text-shadow:none;box-shadow:0 0 40px currentColor}
+#fx .clock{left:0;right:0;top:${SY + WIN - 250}px;text-align:center;display:none}
+#fx .clock span{display:inline-block;padding:4px 18px;border-radius:999px;background:#000c;font-size:26px;letter-spacing:6px;color:#cfc7b0;font-weight:700}
+#fx .clock b{display:inline-block;margin-top:6px;padding:6px 36px;background:#0d2410;border:3px solid #1e4a22;border-radius:14px;color:var(--lcd);font-size:112px;line-height:1.05;letter-spacing:6px;text-shadow:0 0 28px #1c8;font-weight:700}
+#fx .clock.red b{background:#2a0d0d;border-color:#5a1e1e;color:#ff5a4a;text-shadow:0 0 28px #d22}
+#fx .clock .pb{width:560px;height:14px;margin:12px auto 0;border:2px solid #1e4a22;border-radius:8px;background:#0d2410;overflow:hidden} #fx .clock .pb em{display:block;height:100%;background:var(--lcd);transform-origin:0 50%}
+#fx .lines{left:0;width:${WIN}px;top:${SY}px;height:${WIN}px;opacity:0;mix-blend-mode:screen;background:repeating-conic-gradient(from 0deg at 50% 52%,#fff 0 .7deg,#0000 .7deg 5deg);-webkit-mask-image:radial-gradient(circle at 50% 52%,#0000 34%,#000 82%);mask-image:radial-gradient(circle at 50% 52%,#0000 34%,#000 82%)}
+#fx.meme .stamp{top:${SY + 470}px;font-size:92px;font-family:${FONT}} .fail-stamp,.fail-flash{display:none!important}   /* the game's own SHIFT OVER / flash are timers (they would linger into the next scene); the overlay's stamp is a pure function of the video time */
+#fx.meme .card h1,#fx.meme .card h1 b{font-family:${FONT}} #fx.meme .card h1{font-size:132px;line-height:1;text-transform:uppercase;letter-spacing:2px;text-shadow:${outline(6)}} #fx.meme .card h1 b{color:var(--amber)} #fx.meme .card .mk{font-size:120px} #fx.meme .card .nm{font-size:30px} #fx.meme .cta{font-size:50px;padding:20px 54px} #fx.meme .card .ft{display:none} #fx.meme .card li{font-size:28px;padding:14px 22px}
+</style>`);
+    const x = document.getElementById('fx'), cover = document.getElementById('fx-cover');
+    cover.insertAdjacentHTML('beforebegin', `<div class="a mbrand">⛟ FREIGHT CHAIN</div><div class="a clock" id="fx-clock"><span id="fx-cl"></span><b id="fx-ct"></b><div class="pb"><em id="fx-cb"></em></div></div><div class="a lines" id="fx-lines"></div>`);
+    x.insertAdjacentHTML('afterbegin', `<div class="band" id="fx-bt" style="top:0;height:${SY}px"><i></i><b style="bottom:0"></b></div><div class="band" id="fx-bb" style="top:${SY + WIN}px;bottom:0"><i></i><b style="top:0"></b></div>`);
+    for (const id of ['bt', 'bb', 'clock', 'cl', 'ct', 'cb', 'lines']) fxEl[id] = document.getElementById('fx-' + id);
+    spec.scenes.forEach((sc, si) => sc.captions.forEach((c, j) => {   // one element per caption, shown / styled per frame by drawMeme()
+      const el = document.createElement('div'), fx = c.fx ?? 'slam', lines = c.head.split('\n'); el.className = 'mc' + (fx === 'bubble' ? ' bub' : fx === 'stamp' ? ' stp' : '');
+      if (fx === 'bubble') el.innerHTML = `<u>${lines[0]}</u>${lines.slice(1).join('<br>')}`; else el.textContent = c.head;
+      if (fx !== 'bubble' || c.color) el.style.color = COLORS[c.color] ?? c.color ?? '#fff'; if (fx !== 'bubble') el.style.fontSize = Math.min(c.size ?? 130, 880 / (Math.max(...lines.map(l => l.length)) * .5)) + 'px';
+      document.getElementById('fx').insertBefore(el, cover); memeCaps.push({ el, c, si, j, fx });
+    }));
+  }
+  function drawMeme(T, local) {
+    const s = sc;
+    for (const m of memeCaps) {
+      const { el, c, fx } = m, l = local - c.at;
+      if (m.si !== k || l < 0 || l >= c.dur) { el.style.display = 'none'; continue; }
+      const out = clamp((c.dur - l) / .12), y = c.y ?? YS[c.pos ?? 'top'] ?? YS.top, x = 540 + (c.x ?? 0), rot = c.rot ?? 0, i = m.j + 5 * m.si, jt = Math.floor(T * 30);
+      let z = 1, dx = 0, dy = 0, op = clamp(l / .05) * out, skew = 0;
+      if (fx === 'slam' || fx === 'shake' || fx === 'glitch') z = 1.75 - .75 * back(l / .2);
+      if (fx === 'shake') { dx = (h(jt, i) - .5) * 14; dy = (h(jt, i + 9) - .5) * 14; }
+      if (fx === 'glitch') { const o = (h(jt, i + 3) > .6 ? 14 : 4) * (1 + Math.sin(T * 40)); el.style.textShadow = `${o}px 0 #ff2d6f,${-o}px 0 #14f1ff,0 11px 0 #000`; skew = h(jt, i + 5) > .8 ? (h(jt, i + 6) - .5) * 20 : 0; dx = skew; }
+      if (fx === 'bubble') { dy = (1 - ease(l / .35)) * 140; z = .85 + .15 * back(l / .35); }
+      if (fx === 'stamp') z = 1.9 - .9 * back(l / .22);
+      if (fx === 'type') { const n = Math.floor(l * (c.cps ?? 30)), t = c.head.slice(0, n); el.innerHTML = `${t}${n < c.head.length || Math.floor(T * 6) % 2 ? '▌' : ' '}<span style="opacity:0">${c.head.slice(n)}</span>`; }
+      if (fx === 'words') { const tk = c.head.replace(/\n/g, ' \n ').split(' ').filter(Boolean), nw = tk.filter(t => t !== '\n').length, per = c.per ?? .22, n = Math.min(nw, Math.floor(l / per) + 1); let seen = 0, cut = tk.length; for (let q = 0; q < tk.length; q++) if (tk[q] !== '\n' && ++seen > n) { cut = q; break; } el.innerHTML = `${tk.slice(0, cut).join(' ')} <span style="opacity:0">${tk.slice(cut).join(' ')}</span>`; z = 1 + .22 * (1 - ease((l - (n - 1) * per) / .12)); }
+      el.style.display = 'block'; el.style.opacity = op; el.style.transform = `translate(${x + dx}px,${y + dy}px) translate(${fx === 'bubble' ? '-50%' : '0'},-50%) rotate(${rot}deg) skewX(${skew}deg) scale(${z})`;
+    }
+    const ck = s.clock; fxEl.clock.style.display = ck ? 'block' : 'none';
+    if (ck) {
+      const p = clamp(local / (ck.dur ?? s.dur)), e = ck.ease === 'in' ? p * p : ck.ease === 'out' ? 1 - (1 - p) ** 2 : p, v = Math.max(0, ck.from + (ck.to - ck.from) * e), pad = n => String(Math.floor(n)).padStart(2, '0');
+      fxEl.clock.classList.toggle('red', ck.color === 'red'); fxEl.cl.textContent = ck.label ?? 'RIDE TIME'; fxEl.ct.textContent = ck.fmt === 'ms' ? `${pad(v / 60)}:${pad(v % 60)}` : `${pad(v / 3600)}:${pad(v / 60 % 60)}:${pad(v % 60)}`;
+      fxEl.cb.parentElement.style.display = ck.of ? '' : 'none'; if (ck.of) fxEl.cb.style.transform = `scaleX(${clamp(v / ck.of)})`;
+    }
+    const ln = Array.isArray(s.lines) ? s.lines[0] + (s.lines[1] - s.lines[0]) * clamp(local / s.dur) : s.lines ?? 0;
+    fxEl.lines.style.opacity = ln * .6; fxEl.lines.style.transform = `rotate(${h(Math.floor(T * 24), 7) * 5}deg) scale(${1 + .06 * h(Math.floor(T * 24), 8)})`;
+    const b = spec.beat && s.beat !== false && T >= spec.beat.t0 ? (1 - (((T - spec.beat.t0) * spec.beat.bpm / 60) % 1)) ** 3 : 0, amt = typeof s.beat === 'number' ? s.beat : 1;
+    for (const id of ['bt', 'bb']) { fxEl[id].style.background = s.band ?? '#07060a'; fxEl[id].style.filter = `brightness(${1 + .35 * b * amt})`; fxEl[id].firstChild.style.backgroundPosition = `0 0,0 0,0 ${(T * 30) % 54}px,${(T * 12) % 54}px 0`; }
+    return b * amt;
+  }
+
   // collage tiles (scene.shots): one framed screenshot (media/assets, served at /__assets/) or a stat card each, built once, laid out per frame by drawTiles()
   let tiles = [];
   async function buildTiles() {
@@ -174,7 +242,7 @@ window.__dir = (() => {
     fxEl.route.style.display = s.shots?.length ? 'none' : '';   // a collage scene is not about the road behind it
     const bgA = s.bg === 'sol' ? ease(local / .35) : 0; fxEl.glow.style.opacity = bgA; fxEl.grid.style.opacity = bgA * .8;
     fxEl.glow.style.transform = `translate(${Math.sin(T * .4) * 30 * U}px,${Math.cos(T * .33) * 20 * U}px) scale(1.15)`; fxEl.grid.style.backgroundPosition = `0 ${(T * 18 * U) % (40 * U)}px`;
-    drawTiles(T, local);
+    drawTiles(T, local); const beat = spec.look === 'meme' ? drawMeme(T, local) : 0;
     const th = G.THEMES.find(t => t.id === s.route); fxEl.route.textContent = `${th?.name ?? s.route} · ${Math.round(st.v * 3.6)} KM/H`.toUpperCase();
     // captions
     let cap = null; for (const c of s.captions) if (local >= c.at && local < c.at + c.dur) cap = c;
@@ -202,7 +270,8 @@ window.__dir = (() => {
     }
     // grade: blurred road behind the end card, slow push-in on scenes with `push`
     const push = 1 + (s.push ?? 0) * clamp(local / s.dur);
-    let tf = `scale(${push})`, fl = c ? 'blur(5px) brightness(.5) saturate(1.2)' : s.grade ?? '';
+    let tf = `scale(${push * (1 + .035 * beat)})`, fl = c ? 'blur(5px) brightness(.5) saturate(1.2)' : s.grade ?? '';
+    if (s.shake) tf += ` translate(${(h(Math.floor(T * 30), 11) - .5) * s.shake}px,${(h(Math.floor(T * 30), 12) - .5) * s.shake}px)`;   // continuous rumble (speed, panic)
     // impact: shake + red flash + stamp
     let cover = '', coverA = 0;
     if (cur?.crashed) {
@@ -228,16 +297,21 @@ window.__dir = (() => {
         [...bars].forEach((b, i) => { const y = h(Math.floor(T * 30) + i, 5) * 100; b.style.opacity = E * .85; b.style.top = y + '%'; b.style.height = (2 + h(i, Math.floor(T * 30)) * 9) + '%'; b.style.background = i % 2 ? '#14F195' : '#9945FF'; b.style.transform = `translateX(${(h(i, Math.floor(T * 30) + 9) - .5) * 40 * U * E}px)`; });
         cover = '#000'; coverA = Math.max(coverA, cv);
       } else if (type === 'whip') { tf += ` translateX(${S * E * 12 * U}%) scale(${1 + E * .12})`; fl += ` blur(${E * 16 * U}px)`; cover = '#ffe9b0'; coverA = Math.max(coverA, cv); }
+      else if (type === 'punch') { tf += ` scale(${1 + E * .55})`; fl += ` blur(${E * 5}px) brightness(${1 + E * .9}) hue-rotate(${E * 50}deg) saturate(${1 + E})`; cover = '#fff'; coverA = Math.max(coverA, cv * .75); }
+      else if (type === 'spin') { tf += ` rotate(${S * E * 9}deg) scale(${1 + E * .3})`; fl += ` blur(${E * 10}px)`; cover = '#000'; coverA = Math.max(coverA, cv * .6); }
       else if (type === 'zoom') { tf += ` scale(${1 + E * .7})`; fl += ` blur(${E * 10 * U}px) brightness(${1 + E * 1.6})`; cover = '#fff'; coverA = Math.max(coverA, cv); }
     }
-    for (const cv of cvs) { cv.style.transformOrigin = '50% 50%'; cv.style.transform = tf; cv.style.filter = fl.trim() || 'none'; }
+    if (spec.look === 'meme') {   // the game's 1280×720 canvases into the window: focus point (cx, cy) in game pixels at zoom z, effects (tf) applied around the window's centre
+      const cm = s.cam ?? {}, L = clamp(local / s.dur), at = (v, d) => Array.isArray(v) ? v[0] + (v[1] - v[0]) * L : v ?? d, z = at(cm.z, 1), cx = at(cm.x, 640), cy = at(cm.y, 360), S = ZOOM0 * z, mx = WIN / 2, my = SY + WIN / 2;
+      for (const cv of cvs) { cv.style.transformOrigin = '0 0'; cv.style.transform = `translate(${mx}px,${my}px) ${tf} translate(${-mx}px,${-my}px) translate(${mx - cx * S}px,${my - cy * S}px) scale(${S})`; cv.style.filter = fl.trim() || 'none'; }
+    } else for (const cv of cvs) { cv.style.transformOrigin = '50% 50%'; cv.style.transform = tf; cv.style.filter = fl.trim() || 'none'; }
     fxEl.cover.style.background = cover || '#000'; fxEl.cover.style.opacity = coverA;
   }
 
   /* ───────── API used by capture.mjs ───────── */
   return {
     log: () => log,
-    async init(sp) { spec = sp; U = sp.height / 720; build(); await buildTiles(); let a = 0; starts = sp.scenes.map(x => { const r = a; a += x.dur; return r; }); },
+    async init(sp) { spec = sp; U = sp.crop === 'vertical' ? 1 : sp.height / 720; build(); if (sp.look === 'meme') buildMeme(); await buildTiles(); let a = 0; starts = sp.scenes.map(x => { const r = a; a += x.dur; return r; }); },
     async frame(T, dtMs) {
       let i = starts.length - 1; while (starts[i] > T + 1e-6) i--;
       if (i !== k) { k = i; sc = spec.scenes[k]; await setup(sc); fxEl.steps.innerHTML = ''; }

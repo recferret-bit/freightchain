@@ -123,6 +123,69 @@
    "note": "end card arpeggio + CTA hit"
   },
   {
+   "id": "boom",
+   "kind": "sfx",
+   "file": "sfx/boom.wav",
+   "seconds": 0.95,
+   "note": "meme boom: sub drop + crushed thump"
+  },
+  {
+   "id": "scratch",
+   "kind": "sfx",
+   "file": "sfx/scratch.wav",
+   "seconds": 0.5,
+   "note": "record scratch"
+  },
+  {
+   "id": "airhorn",
+   "kind": "sfx",
+   "file": "sfx/airhorn.wav",
+   "seconds": 1.1,
+   "note": "chip airhorn (da da daaa)"
+  },
+  {
+   "id": "bruh",
+   "kind": "sfx",
+   "file": "sfx/bruh.wav",
+   "seconds": 0.6,
+   "note": "two sagging FM groans"
+  },
+  {
+   "id": "ding",
+   "kind": "sfx",
+   "file": "sfx/ding.wav",
+   "seconds": 0.55,
+   "note": "notification bell"
+  },
+  {
+   "id": "levelup",
+   "kind": "sfx",
+   "file": "sfx/levelup.wav",
+   "seconds": 0.85,
+   "note": "LEVEL UP arpeggio + chord"
+  },
+  {
+   "id": "riser",
+   "kind": "sfx",
+   "file": "sfx/riser.wav",
+   "seconds": 1.5,
+   "note": "tension riser (dur option)"
+  },
+  {
+   "id": "wah",
+   "kind": "sfx",
+   "file": "sfx/wah.wav",
+   "seconds": 1.9,
+   "note": "sad trombone, four notes"
+  },
+  {
+   "id": "tock",
+   "kind": "sfx",
+   "file": "sfx/tock.wav",
+   "seconds": 0.09,
+   "note": "clock tock (low option)"
+  },
+  {
    "id": "road-rush",
    "kind": "music",
    "file": "music/road-rush.wav",
@@ -130,6 +193,33 @@
    "bpm": 136,
    "bars": 8,
    "note": "ROAD RUSH – chiptune loop-length score; a clip fits its tempo to the video"
+  },
+  {
+   "id": "bus-stop",
+   "kind": "music",
+   "file": "music/bus-stop.wav",
+   "seconds": 20.87,
+   "bpm": 92,
+   "bars": 8,
+   "note": "BUS STOP – chiptune loop-length score; a clip fits its tempo to the video"
+  },
+  {
+   "id": "brainrot",
+   "kind": "music",
+   "file": "music/brainrot.wav",
+   "seconds": 11.429,
+   "bpm": 168,
+   "bars": 8,
+   "note": "BRAINROT – chiptune loop-length score; a clip fits its tempo to the video"
+  },
+  {
+   "id": "uneasy",
+   "kind": "music",
+   "file": "music/uneasy.wav",
+   "seconds": 26.667,
+   "bpm": 72,
+   "bars": 8,
+   "note": "UNEASY – chiptune loop-length score; a clip fits its tempo to the video"
   }
  ]
 }

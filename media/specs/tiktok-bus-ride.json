@@ -1,0 +1,47 @@
+{
+  "name": "tiktok-bus-ride",
+  "crop": "vertical", "fps": 30, "maxSeconds": 24,
+  "audio": { "ignition": { "at": 0, "dur": 0.8 }, "music": { "id": "bus-stop", "gain": 0.5 }, "engine": { "gain": 0.3 },
+    "sfx": { "mute": ["game-over"], "extra": [
+      { "t": 4.1, "id": "ding" }, { "t": 6.35, "id": "boom" }, { "t": 7.6, "id": "bruh" }, { "t": 9.75, "id": "boom" }, { "t": 11.2, "id": "ding" },
+      { "t": 13.2, "id": "riser", "dur": 3.3 }, { "t": 18.55, "id": "wah" }, { "t": 20.5, "id": "levelup", "gain": 0.7 } ] } },
+  "scenes": [
+    { "id": "ticket", "dur": 2.6, "route": "route66", "time": "day", "speed": [4, 24],
+      "clock": { "from": 0, "to": 14, "label": "RIDE TIME" },
+      "captions": [ { "at": 0.15, "dur": 2.35, "head": "POV: YOU BOUGHT\nA 30 MIN RIDE", "fx": "type", "color": "white", "cps": 26 } ] },
+
+    { "id": "fine", "dur": 3.6, "route": "route66", "time": "day", "speed": 26, "lines": [0, 0.5],
+      "transition": { "type": "whip", "dur": 0.3 },
+      "clock": { "from": 14, "to": 300, "ease": "in" },
+      "captions": [ { "at": 0.2, "dur": 3.2, "head": "IT'S FINE", "fx": "slam", "color": "white", "size": 170 },
+                    { "at": 1.5, "dur": 2.0, "head": "@trucker_dave\nthis is actually relaxing", "fx": "bubble", "pos": "low" } ] },
+
+    { "id": "still-fine", "dur": 3.4, "route": "route66", "time": "dusk", "speed": 30, "lines": 0.7, "shake": 4, "seed": 3,
+      "transition": { "type": "punch", "dur": 0.4 },
+      "clock": { "from": 300, "to": 720 },
+      "captions": [ { "at": 0.2, "dur": 3.0, "head": "STILL FINE", "fx": "glitch", "color": "yellow", "size": 170 },
+                    { "at": 1.3, "dur": 2.0, "head": "THAT CACTUS\nAGAIN??", "fx": "shake", "color": "cyan", "size": 100, "pos": "low" } ] },
+
+    { "id": "legs", "dur": 3.6, "route": "route66", "time": "night", "speed": 34, "lines": [0.6, 1], "shake": 8,
+      "transition": { "type": "glitch", "dur": 0.4 },
+      "clock": { "from": 720, "to": 1440, "color": "red" },
+      "captions": [ { "at": 0.2, "dur": 3.2, "head": "MY LEGS HAVE\nLEFT THE CHAT", "fx": "shake", "color": "red", "size": 130 },
+                    { "at": 1.6, "dur": 1.9, "head": "@mom\nhave you eaten??", "fx": "bubble", "pos": "low" } ] },
+
+    { "id": "delirium", "dur": 3.4, "route": "siberia", "time": "dawn", "speed": 46, "lines": 1, "shake": 16, "cam": { "z": [1, 1.5] },
+      "transition": { "type": "spin", "dur": 0.4 },
+      "clock": { "from": 1440, "to": 1798, "ease": "out", "color": "red" },
+      "captions": [ { "at": 0.2, "dur": 3.0, "head": "I FORGOT\nMY NAME", "fx": "glitch", "color": "pink", "size": 150 } ] },
+
+    { "id": "crash", "dur": 3.8, "route": "route66", "time": "day", "speed": 25, "damage": true, "sway": 0,
+      "transition": { "type": "flash-red", "dur": 0.3 },
+      "clock": { "from": 1798, "to": 1799, "ease": "out", "color": "red" },
+      "events": [ { "t": 0.05, "do": "spawn", "type": "truck", "preset": "slow", "zone": "ahead", "dist": 20 } ],
+      "captions": [ { "at": 0.1, "dur": 1.4, "head": "29:58…", "fx": "slam", "color": "red", "size": 190 },
+                    { "at": 1.9, "dur": 1.8, "head": "RESTART\nFROM 00:00", "fx": "stamp", "color": "red", "size": 110, "y": 1330 } ] },
+
+    { "id": "end", "dur": 2.6, "route": "brenner", "time": "dusk", "speed": 16, "beat": false,
+      "transition": { "type": "flash", "dur": 0.4 },
+      "card": { "title": ["WORST BUS RIDE", "OF YOUR LIFE"], "steps": [], "cta": "10 FREE RIDES ▸" } }
+  ]
+}

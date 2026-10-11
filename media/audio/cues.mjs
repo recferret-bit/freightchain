@@ -1,6 +1,6 @@
 // The cue sheet: WHAT sound plays WHEN. Derived from the spec (transitions, captions, dash events, the end card) plus what really happened in the footage
 // (timeline.json from the capture: every gear shift, the crash) so the sounds sit on the frames. Returns [{ t, id, gain?, dur?, low?, duck? }] sorted by time.
-const TR = { flash: 'tr-flash', 'flash-red': 'tr-flash-red', whip: 'tr-whip', glitch: 'tr-glitch', zoom: 'tr-zoom', dip: 'tr-dip' };
+const TR = { flash: 'tr-flash', 'flash-red': 'tr-flash-red', whip: 'tr-whip', glitch: 'tr-glitch', zoom: 'tr-zoom', dip: 'tr-dip', punch: 'tr-zoom', spin: 'tr-whip' };
 export function buildCues(spec, timeline) {
   const A = spec.audio, cues = [], at = [], starts = spec.scenes.map(s => { const r = at.reduce((a, b) => a + b, 0); at.push(s.dur); return r; });
   const add = (t, id, o = {}) => { if (t >= 0 && t < spec.total && !A.sfx.mute.includes(id)) cues.push({ t: +t.toFixed(3), id, ...o }); };
@@ -10,6 +10,7 @@ export function buildCues(spec, timeline) {
     if (i > 0 && TR[tr.type]) add(t0 - tr.dur / 2, TR[tr.type], { dur: tr.dur });   // the cut hides under the middle of the transition
     for (const c of sc.captions) {
       if (spec.look === 'big') add(t0 + c.at, 'slam');
+      else if (spec.look === 'meme') { const fx = c.fx ?? 'slam'; if (['slam', 'shake', 'glitch', 'stamp'].includes(fx)) add(t0 + c.at, 'slam', { gain: .8 }); else if (fx === 'bubble') add(t0 + c.at, 'caption'); else if (fx === 'words') for (let k = 0; k < c.head.split(/\s+/).length; k++) add(t0 + c.at + k * (c.per ?? .22), 'click'); else for (let k = 0; k < c.head.length; k += 2) add(t0 + c.at + k / (c.cps ?? 30), 'tick'); }
       else { add(t0 + c.at, 'caption'); for (let k = 3; k < c.head.length; k += 3) add(t0 + c.at + k / 34, 'tick'); }   // 34 characters / s = the typewriter in video/page.js
     }
     sc.events.forEach((e, j) => {

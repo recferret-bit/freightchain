@@ -4,6 +4,8 @@
 // a minute is four); every pass but the last swaps the held ending bar for the score's `turn` (a driving turnaround into the next pass).
 import { buf, voice, mtof, fade } from './synth.mjs';
 const TRIAD = { m: [0, 3, 7], M: [0, 4, 7] };
+// The tempo renderScore() fits to a clip, and where the beats start: the vertical clips pulse on it (make.mjs → spec.beat).
+export function fitBpm(score, { seconds, repeat = null }) { const passes = repeat ?? Math.max(1, Math.round(seconds / (score.bars * 4 * 60 / score.bpm))); return score.bars * 4 * passes * 60 / seconds; }
 export function renderScore(score, { seconds = null, gainDb = 0, repeat = null } = {}) {
   const passes = repeat ?? (seconds ? Math.max(1, Math.round(seconds / (score.bars * 4 * 60 / score.bpm))) : 1);
   const beats = score.bars * 4 * passes, bpm = seconds ? beats * 60 / seconds : score.bpm, step = 60 / bpm / 4, total = seconds ?? beats * 60 / bpm, out = buf(total);
