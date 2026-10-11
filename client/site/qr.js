@@ -1,3 +1,4 @@
+/* global DOMParser */
 import { qrcode } from './qrcode-gen.mjs';
 
 /** Byte-mode QR, error correction M. The matrix includes the 4-module quiet zone. */
