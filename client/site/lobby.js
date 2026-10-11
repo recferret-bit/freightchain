@@ -1,7 +1,7 @@
 import { api, signOut } from './wallet.js';
 import { buyRide, buyTickets, claimRefund, waitPaid, ORDER_SIG } from './pay.js';
 import { salesOpen, pendingOrder } from './tickets-api.js';
-import { paidChip, escrowExplainer, explorerTx, rideError, promoError, promoOk, buyError, sol, left, span, hasStandings, shortAddr as short } from './pools.js';
+import { paidChip, escrowExplainer, explorerTx, explorerUrl, rideError, promoError, promoOk, buyError, sol, usd, left, span, hasStandings, progressText, ticketShareText, xIntent, shortAddr as short } from './pools.js';
 import { poolCard, paidShift, resultCard, escrowSummary, refundRows, profileTickets } from './lobby-pools.js';
 import { careerTiles } from './lobby-career.js';
 import { agreementsCard, blockPaid } from './lobby-agreements.js';
@@ -18,7 +18,7 @@ import { reportWebVitals } from '../js/web-vitals.js';
 import { store } from '../js/util.js';
 import { FREE_COUNTRIES } from '../js/free-countries.js';
 import { isMobileDevice } from '../js/mobile.js';
-import { ticketToast, hideTicketToast } from './ticket-toast.js';
+import { ticketDialog, hideTicketDialog } from './ticket-dialog.js';
 
 /* The lobby: NEW RIDE · LIVE · LEADERBOARD · GARAGE · PROMO · PROFILE. Vanilla DOM, no framework.
    Everything that comes from the server (wallet addresses, route ids, statuses…) goes in with textContent – never innerHTML – because other riders' data is rendered here. */
@@ -146,8 +146,8 @@ function paintOrder() {
       const r = await waitPaid(o.id, sig); S.order = r.status === 'paid' ? null : r.order;
       if (r.status === 'paid') creditLocal(o.poolId, o.qty);
       await refreshMe();
-      if (r.status === 'paid') creditToast(S.tiers?.tiers.find(t => t.pool?.id === o.poolId)?.id, o.qty, r.order?.signature ?? sig);
-    } catch (e) { const line = buyError(e); say('order', line, true); failToast(S.tiers?.tiers.find(t => t.pool?.id === o.poolId)?.id, line); }
+      if (r.status === 'paid') creditDialog(o.poolId, o.qty, { lamports: r.order?.lamports ?? o.lamports, signature: r.order?.signature ?? sig });
+    } catch (e) { const line = buyError(e); say('order', line, true); failDialog(S.tiers?.tiers.find(t => t.pool?.id === o.poolId)?.id, line); }
     paintOrder();
   });
   // with a signature something was sent ("in flight"); without one the wallet never sent it – say so, nothing was charged, the order just lapses
@@ -320,13 +320,24 @@ function say(key, text, bad = false, link = null) {   // link = { href, text } a
 }
 async function busy(key, fn) {
   if (S.busy) return;
-  S.busy = key; hideTicketToast(); for (const k of Object.keys(S.msgs)) say(k, ''); paintTiers();
+  S.busy = key; hideTicketDialog(); for (const k of Object.keys(S.msgs)) say(k, ''); paintTiers();
   try { await fn(); } finally { S.busy = null; if ($('tiers')) paintTiers(); }
 }
 const SHIFT = { '1h': '1H', '4h': '4H', '8h': '8H' };
 const paidLine = qty => `Paid – ${qty} ticket${qty === 1 ? '' : 's'} credited.`;
-const creditToast = (tier, qty, signature) => ticketToast({ ok: true, shift: SHIFT[tier] ?? '', text: paidLine(qty), detail: `${TIER_NAME[tier] ?? 'Paid shift'} · held in the pool vault on Solana devnet.`, href: signature ? explorerTx(signature) : null, link: signature ? `${signature.slice(0, 8)}… ↗` : '' });
-const failToast = (tier, text) => ticketToast({ ok: false, shift: SHIFT[tier] ?? '', text });
+/** RIDE PAID: the on-chain receipt (transaction, the pool's escrow account, the program) and POST ON 𝕏. Called after refreshPool, so the pool already counts this buy. */
+const creditDialog = (poolId, qty, { lamports = 0, signature = null, programId = null } = {}) => {
+  const t = S.tiers?.tiers.find(x => x.pool?.id === poolId), p = t?.pool, solUsd = S.tiers?.solUsd, tier = t?.id ?? S.me?.tickets?.find(r => r.poolId === poolId)?.tier;   // the card may already sell the next pool
+  const rows = [lamports ? { k: 'paid', v: `${sol(lamports)}${solUsd ? ` ${usd(lamports, solUsd)}` : ''}` } : null,
+    { k: 'pool', v: p ? `#${poolId} · ${p.label}` : `#${poolId}` },
+    signature ? { k: 'transaction', v: short(signature), href: explorerTx(signature), title: signature } : null,
+    p?.address ? { k: 'escrow', v: short(p.address), href: explorerUrl(p.address), title: `pool account ${p.address}` } : null,
+    programId ? { k: 'program', v: short(programId), href: explorerUrl(programId), title: `program ${programId}` } : null].filter(Boolean);
+  const proof = signature ? explorerTx(signature) : p?.address ? explorerUrl(p.address) : null;   // the post links the receipt
+  ticketDialog({ ok: true, shift: SHIFT[tier] ?? '', qty, text: `${paidLine(qty)} Your entry sits in the pool’s vault on chain, not with us.`, detail: p ? progressText(p, now()) : '', rows,
+    more: { href: escrowExplainer(), text: 'How the escrow works →' }, share: proof && xIntent(ticketShareText({ shift: TIER_NAME[tier] ?? 'paid', qty, lamports, poolId }), proof) });
+};
+const failDialog = (tier, text) => ticketDialog({ ok: false, shift: SHIFT[tier] ?? '', text });
 function play(r, tier, level = null) {
   if (r.tier !== tier) { checkPending(); say(tier, `You already have a ${TIER_NAME[r.tier] ?? r.tier} ride ready – start that one first.`, true); return; }   // never send you into the wrong ride silently
   if (level != null && r.level != null && r.level !== level) { say(tier, 'The server kept your ride at another level – pick it again or start that one.', true); return; }   // (the server re-chooses the ready ride's level, so this is only an old server)
@@ -363,10 +374,10 @@ const buy = (tier, poolId, qty) => busy(tier, async () => {
   if (blockPaid(S.me)) return;
   try {
     const r = await buyTickets(poolId, qty, text => say(tier, text)); S.qty[tier] = 1; creditLocal(poolId, qty); await Promise.all([refreshMe(), refreshPool()]);
-    const line = paidLine(qty);   // the card keeps it (the checks read #msg-*); the toast is the same news as a ticket
+    const line = paidLine(qty);   // the card keeps it (the checks read #msg-*); the dialog is the same news as a ticket
     say(tier, line, false, r.order?.signature ? { href: explorerTx(r.order.signature), text: `${r.order.signature.slice(0, 8)}… ↗` } : null);
-    creditToast(tier, qty, r.order?.signature);
-  } catch (e) { refusedOffer(e); const line = buyError(e); say(tier, line, true); failToast(tier, line); }
+    creditDialog(poolId, qty, { lamports: r.order?.lamports, signature: r.order?.signature, programId: r.programId });
+  } catch (e) { refusedOffer(e); const line = buyError(e); say(tier, line, true); failDialog(tier, line); }
 });
 const refund = (poolId, key) => busy(key, async () => {
   try {
