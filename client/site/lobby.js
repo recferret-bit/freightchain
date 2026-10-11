@@ -1,7 +1,7 @@
 import { api, signOut } from './wallet.js';
 import { buyRide, buyTickets, claimRefund, waitPaid, ORDER_SIG } from './pay.js';
 import { salesOpen, pendingOrder } from './tickets-api.js';
-import { ridableTickets, escrowExplainer, explorerTx, rideError, promoError, promoOk, buyError, sol, left, span, hasStandings, shortAddr as short } from './pools.js';
+import { paidChip, escrowExplainer, explorerTx, rideError, promoError, promoOk, buyError, sol, left, span, hasStandings, shortAddr as short } from './pools.js';
 import { poolCard, paidShift, resultCard, escrowSummary, refundRows, profileTickets } from './lobby-pools.js';
 import { careerTiles } from './lobby-career.js';
 import { agreementsCard, blockPaid } from './lobby-agreements.js';
@@ -18,6 +18,7 @@ import { reportWebVitals } from '../js/web-vitals.js';
 import { store } from '../js/util.js';
 import { FREE_COUNTRIES } from '../js/free-countries.js';
 import { isMobileDevice } from '../js/mobile.js';
+import { ticketToast, hideTicketToast } from './ticket-toast.js';
 
 /* The lobby: NEW RIDE · LIVE · LEADERBOARD · GARAGE · PROMO · PROFILE. Vanilla DOM, no framework.
    Everything that comes from the server (wallet addresses, route ids, statuses…) goes in with textContent – never innerHTML – because other riders' data is rendered here. */
@@ -42,7 +43,23 @@ const now = () => Date.now() + S.skew;   // server clock (skew learned from /api
 const freeLeft = m => `${m.freeRides}/${m.freeRidesMax} free ride${m.freeRides === 1 ? '' : 's'}`;   // always balance/daily cap. A surplus (signup, a promo, an admin grant) stays; the refill stops at the cap
 const freeCd = m => m.nextFreeRideAt == null ? 'full' : `+1 in ${left(m.nextFreeRideAt - now())}`;   // the daily credit lands at 00:00 UTC, up to the cap
 
-const paintPaid = m => { const n = ridableTickets(m.tickets); $('chip-paid').textContent = `${n} paid ride ticket${n === 1 ? '' : 's'}`; };
+const paintPaid = m => { $('chip-paid').textContent = paidChip(m.tickets); };
+let meGen = 0;   // a slower /api/me from before a buy must not paint the old ticket count over the new one
+const takeMe = m => { S.me = m; paintHeader(); if ($('tiers')) paintTiers(); };
+const refreshMe = () => { const gen = ++meGen; return api('me').then(m => { if (gen === meGen) takeMe(m); return m; }, () => {}); };
+/** The confirm already credited these on the server. Paint them now; the refresh that follows replaces this with /api/me. */
+const creditLocal = (poolId, qty) => {
+  if (!S.me || !qty) return;
+  meGen++;
+  const rows = S.me.tickets ?? (S.me.tickets = []);
+  const row = rows.find(t => t.poolId === poolId);
+  if (row) { row.balance += qty; row.bought += qty; }
+  else {
+    const tier = S.tiers?.tiers.find(t => t.pool?.id === poolId), p = tier?.pool;
+    rows.push({ poolId, tier: tier?.id ?? '', label: p?.label ?? '', status: p?.status === 'active' ? 'active' : 'open', balance: qty, bought: qty, cap: p?.maxPerWallet ?? 0, refundable: false });
+  }
+  paintHeader();
+};
 
 function paintHeader() {
   const m = S.me;
@@ -66,13 +83,12 @@ function go() {
 function renderNew() {
   view.replaceChildren(
     el('div', { class: 'card pool', id: 'poolbox', hidden: true, style: 'display:none' }), el('div', { id: 'pendingbox' }), el('div', { id: 'orderbox' }), el('div', { id: 'refunds' }),
-    el('div', { id: 'freebox' }), el('h2', {}, 'PAID SHIFTS'), el('div', { class: 'tiers', id: 'tiers' }), el('div', { id: 'results' }),
+    el('h2', {}, 'PAID SHIFTS'), el('div', { class: 'tiers', id: 'tiers' }), el('div', { id: 'freebox' }), el('div', { id: 'results' }),
     el('div', { class: 'card', id: 'rules', style: 'margin-top:12px' }));
   paintPool(); paintPending(); paintTiers(); paintRules();
   refreshMe();   // free-ride count + tickets after a ride / refund
   if (salesOpen(S.tiers)) checkOrder();
 }
-const refreshMe = () => api('me').then(m => { S.me = m; paintHeader(); paintTiers(); }, () => {});
 
 function paintPool() {
   const box = $('poolbox'), p = S.pool; if (!box) return;
@@ -126,7 +142,12 @@ function paintOrder() {
   if (!o || o.status === 'paid') { box.replaceChildren(); return; }
   let sig = o.signature; try { sig ??= localStorage.getItem(ORDER_SIG(o.id)); } catch { /* private mode */ }
   const retry = () => busy('order', async () => {
-    try { const r = await waitPaid(o.id, sig); S.order = r.status === 'paid' ? null : r.order; await refreshMe(); } catch (e) { say('order', buyError(e), true); }
+    try {
+      const r = await waitPaid(o.id, sig); S.order = r.status === 'paid' ? null : r.order;
+      if (r.status === 'paid') creditLocal(o.poolId, o.qty);
+      await refreshMe();
+      if (r.status === 'paid') creditToast(S.tiers?.tiers.find(t => t.pool?.id === o.poolId)?.id, o.qty, r.order?.signature ?? sig);
+    } catch (e) { const line = buyError(e); say('order', line, true); failToast(S.tiers?.tiers.find(t => t.pool?.id === o.poolId)?.id, line); }
     paintOrder();
   });
   // with a signature something was sent ("in flight"); without one the wallet never sent it – say so, nothing was charged, the order just lapses
@@ -299,9 +320,13 @@ function say(key, text, bad = false, link = null) {   // link = { href, text } a
 }
 async function busy(key, fn) {
   if (S.busy) return;
-  S.busy = key; for (const k of Object.keys(S.msgs)) say(k, ''); paintTiers();
+  S.busy = key; hideTicketToast(); for (const k of Object.keys(S.msgs)) say(k, ''); paintTiers();
   try { await fn(); } finally { S.busy = null; if ($('tiers')) paintTiers(); }
 }
+const SHIFT = { '1h': '1H', '4h': '4H', '8h': '8H' };
+const paidLine = qty => `Paid – ${qty} ticket${qty === 1 ? '' : 's'} credited.`;
+const creditToast = (tier, qty, signature) => ticketToast({ ok: true, shift: SHIFT[tier] ?? '', text: paidLine(qty), detail: `${TIER_NAME[tier] ?? 'Paid shift'} · held in the pool vault on Solana devnet.`, href: signature ? explorerTx(signature) : null, link: signature ? `${signature.slice(0, 8)}… ↗` : '' });
+const failToast = (tier, text) => ticketToast({ ok: false, shift: SHIFT[tier] ?? '', text });
 function play(r, tier, level = null) {
   if (r.tier !== tier) { checkPending(); say(tier, `You already have a ${TIER_NAME[r.tier] ?? r.tier} ride ready – start that one first.`, true); return; }   // never send you into the wrong ride silently
   if (level != null && r.level != null && r.level !== level) { say(tier, 'The server kept your ride at another level – pick it again or start that one.', true); return; }   // (the server re-chooses the ready ride's level, so this is only an old server)
@@ -336,7 +361,12 @@ const ride = tier => busy(tier, async () => {   // spends one ticket: the ride i
 });
 const buy = (tier, poolId, qty) => busy(tier, async () => {
   if (blockPaid(S.me)) return;
-  try { await buyTickets(poolId, qty, text => say(tier, text)); S.qty[tier] = 1; await Promise.all([refreshMe(), refreshPool()]); say(tier, `Paid – ${qty} ticket${qty === 1 ? '' : 's'} credited.`); } catch (e) { refusedOffer(e); say(tier, buyError(e), true); }
+  try {
+    const r = await buyTickets(poolId, qty, text => say(tier, text)); S.qty[tier] = 1; creditLocal(poolId, qty); await Promise.all([refreshMe(), refreshPool()]);
+    const line = paidLine(qty);   // the card keeps it (the checks read #msg-*); the toast is the same news as a ticket
+    say(tier, line, false, r.order?.signature ? { href: explorerTx(r.order.signature), text: `${r.order.signature.slice(0, 8)}… ↗` } : null);
+    creditToast(tier, qty, r.order?.signature);
+  } catch (e) { refusedOffer(e); const line = buyError(e); say(tier, line, true); failToast(tier, line); }
 });
 const refund = (poolId, key) => busy(key, async () => {
   try {
@@ -489,7 +519,7 @@ async function renderProfile() {
   let p; const my = seq;
   try { p = await api('profile', undefined, { report: false }); } catch (e) { if (my === seq) view.replaceChildren(el('p', { class: 'bad' }, e.message)); return; }
   if (my !== seq) return;
-  Object.assign(S.me, { freeRides: p.freeRides, freeRidesMax: p.freeRidesMax, nextFreeRideAt: p.nextFreeRideAt, tickets: p.tickets, agreements: p.agreements }); paintHeader();
+  meGen++; Object.assign(S.me, { freeRides: p.freeRides, freeRidesMax: p.freeRidesMax, nextFreeRideAt: p.nextFreeRideAt, tickets: p.tickets, agreements: p.agreements }); paintHeader();
   const got = p.achievements.filter(a => a.earnedAt).length;
   const card = agreementsCard(S.me);
   view.replaceChildren(
@@ -523,7 +553,8 @@ function tickFree() {   // the "next free ride" counter; at 00:00 UTC ask the se
   document.querySelectorAll('.fr-cd').forEach(n => { n.textContent = freeCd(m); });
   if (m.nextFreeRideAt != null && now() >= m.nextFreeRideAt && (S.meMiss ?? 0) < 3 && Date.now() - (S.meAt ?? 0) > 5000) {   // gives up after 3 refreshes that bring no new time (clock skew); a reload retries
     S.meAt = Date.now();
-    api('me', undefined, { report: false }).then(x => { S.meMiss = x.nextFreeRideAt === m.nextFreeRideAt ? (S.meMiss ?? 0) + 1 : 0; S.me = x; paintHeader(); paintTiers(); }, () => { S.meMiss = (S.meMiss ?? 0) + 1; });
+    const gen = ++meGen, prev = m.nextFreeRideAt;
+    api('me', undefined, { report: false }).then(x => { if (gen !== meGen) return; S.meMiss = x.nextFreeRideAt === prev ? (S.meMiss ?? 0) + 1 : 0; takeMe(x); }, () => { if (gen === meGen) S.meMiss = (S.meMiss ?? 0) + 1; });
   }
 }
 function tick() {

@@ -46,7 +46,7 @@ h2{margin:22px 0 10px;font-size:13px;letter-spacing:2px;color:var(--amber);font-
 .tier.free{margin:12px 0}.tier.free .freeinfo{display:grid;gap:16px}.tier.free .hd{justify-content:flex-start}.tier.free .nm{font-size:28px;letter-spacing:2px;line-height:1.05}.tier.free .prize{display:flex;flex-wrap:wrap;gap:8px}.tier.free .go{margin-top:2px}.tier.free .msg{margin:0}.tier.free .msg:empty{display:none}
 /* the amber button stays the cab's; the pulse is Solana green and purple so START FREE RIDE reads as the action. A disabled button (no credit, or WORKING) stays still. */
 @keyframes free-go{0%,100%{transform:scale(1);box-shadow:0 0 8px #9945FF66,0 0 18px #14F19533}50%{transform:scale(1.03);box-shadow:0 0 16px #14F195dd,0 0 32px #9945FFbb}}
-.tier.free .go:not(:disabled){animation:free-go 1.8s ease-in-out infinite}
+.tier.free .go:not(:disabled),.tier.pooled .go:not(:disabled),.tier.pooled .buyb:not(.ghost):not(:disabled){animation:free-go 1.8s ease-in-out infinite}
 .tier .more{max-height:0;overflow:hidden;opacity:0;transition:max-height .2s,opacity .2s}
 .tier:hover .more,.tier:focus-within .more{max-height:12em;opacity:1}
 @media (hover:none){.tier .more{max-height:none;opacity:1}}
@@ -72,7 +72,7 @@ h2{margin:22px 0 10px;font-size:13px;letter-spacing:2px;color:var(--amber);font-
 .tier .mine{font-size:13px;margin-top:4px}.tier .mine b{color:var(--amber)}
 .tier .fee{font-size:11px}
 .tier .split{height:8px;margin:6px 0 2px}.tier .legend{font-size:11px;gap:2px 10px}
-.tier details{font-size:12px;color:var(--dim)}.tier summary{cursor:pointer;color:var(--amber);font-size:11px;letter-spacing:1px;margin-top:4px}.tier details p{margin:6px 0 0}
+.tier details{font-size:12px;color:var(--dim)}.tier summary{cursor:pointer;color:var(--amber);font-size:11px;letter-spacing:1px;margin-top:4px}.tier details p{margin:6px 0 0}.tier details[open]{display:grid;gap:4px}
 .tier .msg{margin:4px 0 0;font-size:12px;min-height:0}
 .tier ul.rules{margin:6px 0 0}
 /* the daily series: phase line, the series rule, the winners list (lobby-pools.js) */
@@ -207,3 +207,54 @@ th button.on{color:var(--amber)}
 .opt{display:flex;align-items:flex-start;gap:8px;cursor:pointer;max-width:340px}.opt input{margin-top:3px;accent-color:var(--good);width:16px;height:16px;flex:none}.opt b{letter-spacing:.06em;font-size:12px}.opt small{display:block;font-size:11px;line-height:1.35;color:var(--dim)}
 #offer{margin:20px 0 28px}#offer .opt + .opt{margin-top:8px}#offer-note{margin:0 0 8px}#offer .opt:has(input:disabled){cursor:default}
 .seg + .seg{margin-left:8px}
+
+/* paid-ticket result (ticket-toast.js): a Solana ticket on success, the same ticket slumped when the buy fails.
+   The host is only as wide as the card, so the rest of the lobby still takes clicks. */
+#ticket-toast{--tt-bg:#140f1e;position:fixed;z-index:40;top:auto;bottom:18px;left:50%;width:min(440px,calc(100vw - 20px));transform:translateX(-50%);pointer-events:none}
+#ticket-toast[hidden]{display:none}
+#ticket-toast.ok{animation:tt-rise .32s ease-out}
+#ticket-toast.sad{--tt-bg:#171412;transform:translateX(-50%) rotate(-1.15deg);transform-origin:50% 100%;animation:tt-slump .55s cubic-bezier(.2,.8,.2,1)}
+@keyframes tt-slump{0%{opacity:0;transform:translateX(-50%) translateY(12px) rotate(0)}100%{opacity:1;transform:translateX(-50%) rotate(-1.15deg)}}
+#ticket-toast .tt{pointer-events:auto;position:relative;display:grid;grid-template-columns:96px 1fr;border-radius:16px;overflow:hidden;background:var(--tt-bg);color:#f4f0ff}
+#ticket-toast.ok .tt{box-shadow:0 0 0 1px #9945FF99,0 0 28px #14F19540,0 16px 40px #000b;animation:tt-glow 2.6s ease-in-out 1}
+#ticket-toast.sad .tt{box-shadow:0 0 0 1px #ff6b5a66,0 16px 36px #000c}
+@keyframes tt-glow{0%,100%{box-shadow:0 0 0 1px #9945FF99,0 0 22px #14F19533,0 16px 40px #000b}50%{box-shadow:0 0 0 1px #14F195cc,0 0 36px #9945FF66,0 16px 40px #000b}}
+#ticket-toast .tt-stub{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:124px;padding:14px 10px 12px}
+#ticket-toast.ok .tt-stub{background:linear-gradient(165deg,#9945FF 0%,#7b5cff 46%,#14F195 100%)}
+#ticket-toast.sad .tt-stub{background:linear-gradient(165deg,#4a3a3e 0%,#2c2624 72%,#3a3030)}
+#ticket-toast .tt-stub::before{content:"";position:absolute;right:0;top:8px;bottom:8px;width:12px;background:radial-gradient(circle at 6px 7px,var(--tt-bg) 3.5px,transparent 4px);background-size:12px 14px}
+#ticket-toast .tt-face{position:relative;display:flex;gap:10px;justify-content:center;width:36px;height:18px;margin-top:8px}
+#ticket-toast .tt-face i{width:4px;height:4px;border-radius:50%;background:#fff}
+#ticket-toast .tt-face b{position:absolute;left:50%;bottom:0;width:18px;height:8px;margin-left:-9px;border:2px solid #fff;border-top:0;border-radius:0 0 12px 12px}
+#ticket-toast.sad .tt-face i{background:#e7d2cc;transform:translateY(2px)}
+#ticket-toast.sad .tt-face b{bottom:auto;top:8px;height:7px;border:2px solid #e7d2cc;border-bottom:0;border-radius:12px 12px 0 0}
+#ticket-toast.sad .tt-face::after{content:"";position:absolute;width:3px;height:7px;left:calc(50% + 7px);top:0;border-radius:40% 40% 50% 50%;background:#9ec9ea}
+#ticket-toast .tt-shift{margin-top:8px;font-size:11px;letter-spacing:.16em;font-weight:bold;color:#fff}
+#ticket-toast.sad .tt-shift{color:#e7d2cc}
+#ticket-toast .tt-copy{padding:14px 36px 14px 16px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center}
+#ticket-toast .tt-kicker{font-size:10px;letter-spacing:.16em;color:#c4b0e8}
+#ticket-toast.sad .tt-kicker{color:#c4a8a2}
+#ticket-toast .tt-title{display:block;margin:3px 0 6px;font-size:15px;letter-spacing:.04em;color:#f7f4ff}
+#ticket-toast.ok .tt-title::after{content:"";display:block;width:72px;height:2px;margin-top:5px;border-radius:2px;background:linear-gradient(90deg,#9945FF,#14F195)}
+#ticket-toast.sad .tt-title{color:#ffc3b8}
+#ticket-toast .tt-copy p{margin:0;font-size:13px;line-height:1.4;color:#f3eefe}
+#ticket-toast.sad .tt-copy p{color:#f0e4df}
+#ticket-toast .tt-detail{margin-top:4px;color:#cbbbe4;font-size:12px}
+#ticket-toast.sad .tt-detail{color:#c4b0aa}
+#ticket-toast a{display:inline-block;margin-top:8px;color:#14F195;text-decoration:none;font-size:12px;letter-spacing:.03em}
+#ticket-toast a:hover{text-decoration:underline}
+#ticket-toast button.tt-x,#ticket-toast button.tt-ok{background:transparent;border:0;box-shadow:none;font-weight:bold;color:inherit}
+#ticket-toast button.tt-x{position:absolute;top:6px;right:6px;width:28px;height:28px;padding:0;color:#d9d0ea;font-size:18px;line-height:1;border-radius:8px}
+#ticket-toast.sad button.tt-x{color:#e4d2cc}
+#ticket-toast button.tt-x:hover{background:#ffffff14}
+#ticket-toast button.tt-ok{margin-top:10px;padding:6px 16px;border:1px solid #ff8b7a88;color:#ffd0c8;font-size:12px;letter-spacing:.12em;border-radius:999px}
+#ticket-toast button.tt-ok:hover{background:#ff6b5a22}
+#ticket-toast .tt-spark{position:absolute;width:6px;height:6px;border-radius:50%;opacity:0;pointer-events:none;background:#14F195}
+#ticket-toast .tt-spark.s2{width:5px;height:5px;background:#fff}
+#ticket-toast .tt-spark.s3{width:4px;height:4px;background:#e4d4ff}
+@keyframes tt-spark{0%{opacity:0;transform:translateY(6px) scale(.4)}30%{opacity:1}100%{opacity:0;transform:translate(var(--dx),-26px) scale(1)}}
+#ticket-toast.ok .s1{--dx:-14px;left:22px;top:10px;animation:tt-spark .9s ease-out .05s}
+#ticket-toast.ok .s2{--dx:8px;left:48px;top:6px;animation:tt-spark 1s ease-out .12s}
+#ticket-toast.ok .s3{--dx:-2px;left:34px;top:2px;animation:tt-spark .85s ease-out .18s}
+@keyframes tt-rise{from{opacity:0;transform:translateX(-50%) translateY(14px)}to{opacity:1;transform:translateX(-50%)}}
+@media (max-width:560px){#ticket-toast{bottom:12px}#ticket-toast .tt{grid-template-columns:78px 1fr}#ticket-toast .tt-title{font-size:14px}#ticket-toast .tt-copy{padding-right:32px}}

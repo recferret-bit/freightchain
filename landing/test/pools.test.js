@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { escrowExplainer, explorerUrl, explorerTx, poolPhase, phaseLine, payoutText, poolSchedule, scheduleText, hasStandings, span, statusChip, progressText, deadline, splitParts, rulesText, tierTickets, ridableTickets, buyRoom, cardAction, rideError, promoError, promoOk, buyError, usd, pct, sol } from '../../client/site/pools.js';
+import { escrowExplainer, explorerUrl, explorerTx, poolPhase, phaseLine, payoutText, poolSchedule, scheduleText, hasStandings, span, statusChip, progressText, deadline, splitParts, rulesText, tierTickets, buyRoom, cardAction, rideError, promoError, promoOk, buyError, usd, pct, sol, heldTickets, paidChip, ridableTickets } from '../../client/site/pools.js';
 import { salesOpen } from '../../client/site/tickets-api.js';
 
 /* The pool wording the lobby AND the landing show (client/site/pools.js is pure). Every pool status – incl. `refunding`, which the dev seeds can't produce – is pinned here. */
@@ -131,6 +131,17 @@ test('tickets past their pool\'s play deadline are not ridable (the server flag 
   assert.equal(cardAction(pool({ status: 'open' }), tierTickets([over], '1h', NOW), NOW).kind, 'buy');
 });
 
+test('the header counts tickets you hold, including a pool that is still filling', () => {
+  const rows = [ticket({ poolId: 1, tier: '1h', status: 'active', balance: 2 }), ticket({ status: 'open', balance: 1 }), ticket({ poolId: 4, status: 'refunding', balance: 0, bought: 2, refundable: true })];
+  assert.equal(ridableTickets(rows), 2);
+  assert.equal(heldTickets(rows), 3);
+  assert.equal(paidChip(rows), '3 paid ride tickets · 1 waiting');
+  assert.equal(paidChip([ticket({ status: 'open', balance: 1 })]), '1 paid ride ticket · waiting');
+  assert.equal(paidChip([ticket({ status: 'active', balance: 1 })]), '1 paid ride ticket');
+  assert.equal(paidChip(undefined), '0 paid ride tickets');
+  assert.equal(paidChip([ticket({ status: 'active', balance: 1, rideBy: NOW - 1 })], NOW), '0 paid ride tickets'); // rides closed: expired, not held
+});
+
 test('the card action: RIDE > CLAIM REFUND > WAITING > BUY', () => {
   const tt = rows => tierTickets(rows, '4h');
   assert.deepEqual(cardAction(pool({ status: 'active' }), tt([ticket({ status: 'active', balance: 2 })]), NOW), { kind: 'ride', text: 'RIDE (2 left)' });
@@ -186,7 +197,7 @@ test('ticket sales: on when the server sells through the program (tiers.paymentM
 
 test('the lobby and the landing never call a bare /api path or render with innerHTML', () => {
   const site = join(new URL('..', import.meta.url).pathname, '..', 'client', 'site');
-  for (const f of ['lobby.js', 'lobby-pools.js', 'admin-pools.js', 'lobby-promo.js', 'lobby-garage.js', 'garage-cab.js', 'pools.js', 'tickets-api.js', 'pay.js', 'dom.js', 'admin.js', 'admin-promos.js']) {
+  for (const f of ['lobby.js', 'lobby-pools.js', 'admin-pools.js', 'lobby-promo.js', 'lobby-garage.js', 'garage-cab.js', 'pools.js', 'tickets-api.js', 'pay.js', 'dom.js', 'admin.js', 'admin-promos.js', 'ticket-toast.js']) {
     const src = readFileSync(join(site, f), 'utf8');
     assert.doesNotMatch(src, /\.(innerHTML|outerHTML)\s*[+]?=|insertAdjacentHTML\(|document\.write\(/, f);
     assert.doesNotMatch(src, /['"`]\/api\//, `${f}: API calls go through wallet.js (API_BASE)`);

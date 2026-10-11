@@ -30,27 +30,29 @@ export function poolCard(t, info, ctx) {
       el('button', { class: 'ghost', 'aria-label': 'one more', disabled: buyOff || q >= room, onclick: () => ctx.act.qty(t.id, q + 1) }, '+')),
     el('button', { class: a.kind === 'buy' ? 'buyb' : 'buyb ghost', disabled: buyOff, onclick: () => ctx.act.buy(t.id, p.id, q) }, ctx.sales ? `BUY ${plural(q, 'TICKET', 'TICKETS')} · ${sol(p.priceLamports * q)}` : 'BUY TICKETS · SOON'));
   const note = p.status === 'refunding' ? 'This pool failed: every buyer gets the full price back from the vault – anyone can trigger it.'
-    : !sellable ? 'Sales for this pool are closed – the next pool of this shift opens on its schedule.' : !ctx.sales ? 'On-chain checkout opens soon – redeem a promo code meanwhile.' : room <= 0 ? `You hold the maximum of ${p.maxPerWallet} tickets for this pool.` : 'On top of the price: the network fee (≈ 0.0001 SOL) and a Ticket account deposit (≈ 0.0015 SOL, returned when the ticket is refunded or closed).';
+    : !sellable ? 'Sales for this pool are closed – the next pool of this shift opens on its schedule.' : !ctx.sales ? 'On-chain checkout opens soon – redeem a promo code meanwhile.' : room <= 0 ? `You hold the maximum of ${p.maxPerWallet} tickets for this pool.` : '';
+  const progress = p.status === 'open' ? `${p.sold} / ${p.minTickets} committed` : progressText(p, now);   // the chip already says "needs N more"
   return el('article', { class: `tier pooled${t.id === ctx.focus ? ' sel' : ''}`, id: `tier-${t.id}`, 'data-pool': p.id },
     el('div', { class: 'hd' }, el('span', { class: 'nm' }, info.name), chip(p, now)),
-    el('span', { class: 'plabel' }, `${p.label} · pool #${p.id}`),
     el('span', { class: 'pr' }, sol(p.priceLamports), el('small', {}, ` per ticket ${usd(p.priceLamports, ctx.solUsd)}`)),
     ...paidShift(info),
     el('div', { class: 'prog', role: 'progressbar', 'aria-valuemin': 0, 'aria-valuemax': p.minTickets, 'aria-valuenow': Math.min(p.sold, p.minTickets), 'aria-label': 'tickets committed' }, el('i', { style: `width:${p.progressPct}%` })),
-    el('span', { class: 'sub ptext' }, progressText(p, now)),
-    phase(p, now), schedule(p, t.schedule),
-    p.status === 'open' && dl.label ? el('span', { class: 'sub' }, dl.label, dl.at ? countdown(dl.at) : '') : '',   // the goal deadline (= the sale end) – an active pool's phase line says it all
-    el('span', { class: 'sub' }, 'in escrow ', el('b', { class: 'esc' }, sol(p.vaultLamports)), p.sponsoredLamports ? ` · sponsored ${sol(p.sponsoredLamports)}` : '', ` · ${plural(p.buyers, 'buyer')}`),
-    el('div', { class: 'split' }, ...splitParts(p).map(s => el('i', { class: s.cls, style: `width:${s.bps / 100}%` }))),
-    el('div', { class: 'legend' }, ...splitParts(p).map(s => el('span', { class: s.cls }, `${pct(s.bps)} ${s.label}`))),
-    el('span', { class: 'sub addrs' }, 'pool ', addr(p.address, 'pool account'), ' · seed ', addr(p.treasuries.seed, 'seed treasury'), ' · fees ', addr(p.treasuries.fee, 'fee treasury')),
-    el('span', { class: 'mine' }, 'your tickets: ', el('b', {}, mine), other > 0 ? ` (+${other} in another live ${info.name} pool)` : '', ` · max ${p.maxPerWallet} per wallet`),
+    el('span', { class: 'sub ptext' }, progress, ' · in escrow ', el('b', { class: 'esc' }, sol(p.vaultLamports))),
+    phase(p, now),
+    el('span', { class: 'mine' }, 'your tickets: ', el('b', {}, mine), other > 0 ? ` (+${other} in another live ${info.name} pool)` : '', ` · max ${p.maxPerWallet}`),
     tt.rideBy ? el('span', { class: 'sub ride-by' }, `ride by ${hhmm(tt.rideBy)} · `, countdown(tt.rideBy)) : '',   // the ticket is spent when the ride is ordered: order it before this
     ...tt.closed.map(c => el('span', { class: 'sub closed' }, `${plural(c.balance, 'unused ticket')} of pool #${c.poolId} expired – its rides closed at ${hhmm(c.rideBy)}; a ticket counts only in its own pool`)),
     primary, buyRow,
-    el('span', { class: 'dim fee' }, note),
+    note ? el('span', { class: 'dim fee' }, note) : '',
     ctx.winners ? winners(ctx.winners, ctx.me.wallet, now) : '',
-    el('details', {}, el('summary', {}, 'RULES · WHY IT IS SAFE'), el('p', {}, rulesText(p), ' ', el('a', { href: escrowExplainer(), target: '_blank', rel: 'noopener' }, 'How the escrow works →'))),
+    el('details', {}, el('summary', {}, 'DETAILS · RULES'),
+      el('span', { class: 'sub' }, `${p.label} · pool #${p.id} · ${plural(p.buyers, 'buyer')}`, p.sponsoredLamports ? ` · sponsored ${sol(p.sponsoredLamports)}` : ''),
+      schedule(p, t.schedule),
+      p.status === 'open' && dl.label ? el('span', { class: 'sub' }, dl.label, dl.at ? countdown(dl.at) : '') : '',
+      el('div', { class: 'split' }, ...splitParts(p).map(s => el('i', { class: s.cls, style: `width:${s.bps / 100}%` }))),
+      el('div', { class: 'legend' }, ...splitParts(p).map(s => el('span', { class: s.cls }, `${pct(s.bps)} ${s.label}`))),
+      el('span', { class: 'sub addrs' }, 'pool ', addr(p.address, 'pool account'), ' · seed ', addr(p.treasuries.seed, 'seed treasury'), ' · fees ', addr(p.treasuries.fee, 'fee treasury')),
+      el('p', {}, rulesText(p), ' On top of the price: the network fee (≈ 0.0001 SOL) and a Ticket account deposit (≈ 0.0015 SOL, returned when the ticket is refunded or closed). ', el('a', { href: escrowExplainer(), target: '_blank', rel: 'noopener' }, 'How the escrow works →'))),
     el('p', { class: 'msg dim', id: `msg-${t.id}` }));
 }
 

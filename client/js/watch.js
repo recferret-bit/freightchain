@@ -6,6 +6,8 @@ import { roadAt } from './road.js';
 import { net } from './net/network.js';
 import { roads } from './net/orchestrator.js';
 import { FLAGS } from './telemetry.js';
+import { phone } from './phone.js';
+import { toggleMap } from './ui/map.js';
 import { bodySway, trailerYaw } from './sim/physics.js';
 import { wip } from './cockpit/windscreen.js';
 import { placeHole, flagHole } from './world/holes.js';
@@ -41,7 +43,7 @@ const viewerId = visitorId;   // the same id the landing / lobby send (site/pres
 export const watch = {
   id: null, ride: null, error: '', now: 0, skew: 0,
   features: { chat: true, donations: true, payment: 'mock', effects: true },   // what spectators may do on THIS ride (the server's LIVE_* flags)
-  rec: { lastSeq: null, t1: 0 }, batches: new Map(), rows: [], tframes: [], cars: new Map(), rowsSeq: -1, events: new Map(), cursor: 0, since: 0, totals: { messages: 0, donations: 0, lamports: 0 }, viewers: 0,
+  rec: { lastSeq: null, t1: 0 }, finT: null, batches: new Map(), rows: [], tframes: [], cars: new Map(), rowsSeq: -1, events: new Map(), cursor: 0, since: 0, totals: { messages: 0, donations: 0, lamports: 0 }, viewers: 0,
   inputs: inputLights, inT: -1,   // the controls lit now (cockpit/index.js draws them) · the playhead's time when they were last read
   roadSeq: new Map(), road: new Map(), stamp: null, roadT: -1,   // batch seq → its hole outcomes (kept when the batch is pruned) · hole id → merged (the server's measurement) · the NO IMPACT stamp on screen · the playhead when last checked
   wt: 0, playing: true, speed: 1, follow: true, buffering: false, seeking: false, started: false, jumped: true, lastHull: 100, timer: 0, polling: null,
@@ -88,6 +90,7 @@ function addBatches(list) {
   const fresh = list.filter(b => !watch.batches.has(b.seq)).sort((a, b) => a.seq - b.seq);
   if (!fresh.length) return;
   for (const b of fresh) { watch.batches.set(b.seq, b); if (b.road && !watch.roadSeq.has(b.seq)) { watch.roadSeq.set(b.seq, b.road); for (const o of b.road) addOutcome(o); } }
+  if (watch.finT === null) for (const b of fresh) { const r = b.samples.find(x => usable(x) && x[1] >= CFG.COMPLETE_DIST); if (r) { watch.finT = r[0]; break; } }   // the first sample on the finish line
   let pruned = false;
   if (watch.batches.size > KEEP_BATCHES) for (const [seq, b] of watch.batches) if (b.t1 < watch.wt - KEEP_AROUND || b.t0 > watch.wt + PREFETCH + KEEP_AROUND) { watch.batches.delete(seq); pruned = true; }
   if (!pruned && fresh[0].seq === watch.rowsSeq + 1 && fresh.every((b, i) => b.seq === fresh[0].seq + i)) for (const b of fresh) { watch.rows.push(...b.samples.filter(usable)); watch.tframes.push(...(b.traffic ?? []).filter(usable)); }
@@ -163,9 +166,13 @@ async function tick() {
 
 /* ───────── playback ───────── */
 export const recordedEnd = () => watch.rows.at(-1)?.[0] ?? 0;
+/* where a FINISHED ride's replay ends: a shift that reached the line ends there (END_PAD s later) – recordings from before "the line completes at once" go on parked
+   for the rest of the nominal shift, and that tail is not part of the ride. Anything else (failed, abandoned, live): the whole recording. */
+const END_PAD = 3;
+export const replayEnd = () => (!watch.ride?.live && watch.ride?.status === 'completed' && watch.finT !== null ? Math.min(watch.rec.t1, watch.finT + END_PAD) : watch.rec.t1);
 export const liveTarget = () => Math.max(watch.rows[0]?.[0] ?? 0, watch.rec.t1 - LIVE_LAG);
 /* a seek to a part that is not loaded yet HOLDS the target (seeking) until it is fetched, instead of snapping back to what is loaded */
-export function seek(t) { watch.follow = false; watch.wt = Math.max(0, Math.min(t, watch.rec.t1)); watch.jumped = true; watch.seeking = true; schedule(0); }
+export function seek(t) { watch.follow = false; watch.wt = Math.max(0, Math.min(t, replayEnd())); watch.jumped = true; watch.seeking = true; schedule(0); }
 export function goLive() { watch.follow = true; watch.speed = 1; watch.playing = true; watch.wt = liveTarget(); watch.jumped = true; watch.seeking = true; schedule(0); }
 
 function find(t, R = watch.rows) {   // index of the last row at or before t (binary search)
@@ -194,6 +201,7 @@ export function stepWatch(dt) {
     let rate = watch.speed;
     if (live) { const lag = liveTarget() - watch.wt; if (Math.abs(lag) > 60) { watch.wt = liveTarget(); watch.jumped = true; } else rate = 1 + Math.max(-.3, Math.min(.5, lag / 20)); }   // ease towards LIVE_LAG behind the edge
     watch.wt += dt * rate;
+    if (!live && watch.wt > replayEnd()) { watch.wt = replayEnd(); if (!watch.ride?.live) watch.playing = false; }   // the end of a finished ride: stop there
   }
   let i = find(watch.wt);
   if (i < 0) { watch.wt = R[0][0]; i = 0; }
@@ -246,6 +254,8 @@ function apply(a, b, k, dt) {
   if (Number.isFinite(f)) {
     st.engineOn = !!(f & FLAGS.engine); st.keyOn = !!(f & FLAGS.key); st.park = !!(f & FLAGS.park); dn.head = !!(f & FLAGS.head); dn.cab = !!(f & FLAGS.cab);
     st.heater = !!(f & FLAGS.heater); st.cooler = !!(f & FLAGS.cooler); st.washing = !!(f & FLAGS.washing); wip.mode = f & FLAGS.wipeFast ? 2 : f & FLAGS.wipeSlow ? 1 : 0; st.rev = !!(f & FLAGS.rev);
+    if (!!(f & FLAGS.phone) !== phone.open && (watch.jumped || !!(f & FLAGS.phone) !== watch.phoneRec)) toggleMap(!!(f & FLAGS.phone));   // the driver took the phone in hand / put it back (a seek shows its state; a spectator's own toggle stands until the driver's next change)
+    watch.phoneRec = !!(f & FLAGS.phone);
     st.heatEff = st.heater && (st.engineOn || st.keyOn) ? 1 : 0; st.coolEff = st.cooler && st.engineOn ? 1 : 0;   // the recording has the switches, not the engine temperature: the glass follows the switch
   } else { st.engineOn = st.rpm > 300; st.keyOn = st.engineOn; st.park = false; st.rev = st.gear < 0; }   // a recording from before the flag column
   if (Number.isFinite(a[12]) && Number.isFinite(b[12])) dn.t = hourLerp(a[12], b[12], k);

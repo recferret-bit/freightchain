@@ -49,7 +49,7 @@ const sample = () => { const m = maskOf(rec.held) | rec.tapped; rec.tapped = 0; 
 /** the window lost focus: no key-up will come for what was held (ui/input.js) */
 export function releaseInputs() { rec.held.clear(); }
 /* set by ui/game.js (it can see the day/night, wiper and radio state; this module stays below world/ and cockpit/): [clock hour, FLAGS bitmask] */
-export const FLAGS = { engine: 1, key: 2, park: 4, head: 8, cab: 16, heater: 32, washing: 64, wipeSlow: 128, wipeFast: 256, radio: 512, rev: 1024, cooler: 2048 };   // append bits; old recordings keep their meaning
+export const FLAGS = { engine: 1, key: 2, park: 4, head: 8, cab: 16, heater: 32, washing: 64, wipeSlow: 128, wipeFast: 256, radio: 512, rev: 1024, cooler: 2048, phone: 4096 };   // append bits; old recordings keep their meaning
 
 export function startTelemetry(rideId) {
   Object.assign(rec, { on: true, rideId, seq: 0, prevHash: rideId, t0: st.t, acc: 0, tacc: 0, wall0: performance.now(), held: new Set(), tapped: 0, samples: [], inputs: [], traffic: [], queue: [], sealing: Promise.resolve(), sending: null, refused: null });

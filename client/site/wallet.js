@@ -20,7 +20,7 @@ export async function api(path, body, opts) {
   const timeoutMs = opts?.timeoutMs;
   const method = opts?.method ?? (body ? 'POST' : 'GET');
   try {
-    const r = await fetch(`${API_BASE}/api/${path}`, { credentials: 'include', method, headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined, signal: timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined });
+    const r = await fetch(`${API_BASE}/api/${path}`, { credentials: 'include', cache: 'no-store', method, headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined, signal: timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined });   // no-store: a buy credits tickets, and a cached GET /api/me would paint the old count
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw Object.assign(new Error(j.detail || j.title || `server error ${r.status}`), { status: r.status, code: j.code ?? null });   // RFC 9457 problem+json: { title, detail, code, … }
     return j;
