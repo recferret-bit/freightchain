@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { canvasTex } from '../../world/scene.js';
 import { trackMat } from './mats.js';
 
+/* Depth order (polygon offsets, so 3 cm of real height still wins at 500 m, where the depth buffer steps are ~5 cm): ground 0 < landmark apron -1 < surface -2 < pad -3 < marks -4 < hole decals -5…. */
 /* A route's road look. The road is built from strips of variable width (world/roadmesh.js), so the markings are NOT painted into the surface any more:
    surface: shoulder | asphalt | shoulder across u (0 .. .125 | .125 .. .875 | .875 .. 1; the asphalt stretches with the lane count), repeats every 9 m along the road.
    pad:     the same surface for junction aprons (drawn on top of the road strips: polygon offset).
@@ -25,9 +26,9 @@ export function roadMaterial({ shoulder, asphalt, speck = 40, edge = '#e8e4d6', 
   });
   marksTex.wrapS = THREE.ClampToEdgeWrapping; marksTex.generateMipmaps = false; marksTex.minFilter = THREE.LinearFilter;
   return {
-    surface: trackMat(new THREE.MeshBasicMaterial({ map: tex })),
-    pad: trackMat(new THREE.MeshBasicMaterial({ map: tex, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 })),
-    marks: trackMat(new THREE.MeshBasicMaterial({ map: marksTex, alphaTest: .5, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })),
+    surface: trackMat(new THREE.MeshBasicMaterial({ map: tex, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })),
+    pad: trackMat(new THREE.MeshBasicMaterial({ map: tex, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 })),
+    marks: trackMat(new THREE.MeshBasicMaterial({ map: marksTex, alphaTest: .5, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 })),
     edge: !!edge, centre: centre?.style ?? null,
   };
 }
