@@ -43,6 +43,7 @@ for(const g of [3,4,5,6,7]){ fire('keydown','KeyW'); for(let i=0;i<300&&st.rpm<2
 fire('keydown','KeyR'); drive(2,'wipers slow'); fire('keydown','KeyX'); drive(2,'washing'); fire('keyup','KeyX'); drive(3,'after wash');
 drive(6,'cruise');
 check(G.traffic.some(a=>a.road.main),'traffic on the main road');
+check(G.traffic.length&&G.traffic.every(a=>Number.isFinite(a.mesh.position.x)&&Number.isFinite(a.mesh.position.z)),'every vehicle mesh is placed (a NaN position draws nothing while the sim still crashes into it)');
 // a signalled crossroads: put the truck 220 m before it (engine running, 14 m/s) and let the cycle + cross traffic run
 const j=net.nextJunction(st.s,1,40000,q=>q.signal&&q.kind==='cross'); check(!!j,'a signalled crossroads within 40 km');
 if(j){ Object.assign(st,{s:j.s-220,d:2.4,psi:0,v:14,hull:100,offT:0}); const seen=new Set(); let crossCars=0;
@@ -145,6 +146,7 @@ check(nightX.night===true&&dayX.night===false&&G.THEMES.some(t=>t.id===dayX.rout
   G.setGuide({}); step(3); check(!G.guide.hold&&st.complete,'… and lets the ride complete once it is closed'); fire('keyup','ShiftLeft'); }
 { G.setGuide({ tutorial: true }); G.setTrip('free-1b'); const D=G.CFG.COMPLETE_DIST; G.startRide(); st.t=5; st.s=D+500; st.v=20; step(3);
   check(!st.complete&&!G.guide.hold&&st.s===D&&st.v===0,'a finish-line trip: the truck can not pass the line before the clock is done (and an open tutorial is cut off)');
+  st.engineOn=true; st.gear=7; st.clutch=0; st.rpm=2200; G.input.gas=1; step(60); G.input.gas=0; check(st.engineOn&&st.gear===0&&st.park&&st.gas===0&&st.strain===0,'… parked there in neutral: the engine idles instead of stalling, and the throttle does nothing');
   st.t=1e3; step(3); check(st.complete,'… and the ride completes at the line once the clock is done'); G.setGuide({}); G.setTrip('1h'); }
 // the free LEVELS (trips.js free-1/2/3) and FORKS (net/patterns.js FORK): the easy run is four lanes without a junction; a fork's two roads meet again where
 // they parted, so switching roads changes nothing after the merge; crossing the commit point on the other road's side switches the spine and keeps the truck in place
