@@ -4,7 +4,7 @@ import { PAID_TIER_IDS, type PaidTierId } from '../../../domain/rides/ride-tier.
 import { FREE_LEVEL_IDS, isFreeLevel, type FreeLevel } from '../../../domain/rides/ride-trip.js';
 
 /** An unknown board falls back to the current round's, as before. An unknown sort falls back to distance.
-    `level` (1 EASY · 2 CROSSROADS · 3 HARD) picks the free board's level – absent = HARD; a paid board refuses it (400).
+    `level` (1 EASY · 2 MEDIUM · 3 HARD) picks the free board's level – absent = HARD; a paid board refuses it (400).
     `tier` (1h / 4h / 8h) limits a paid board to that shift – absent = every paid shift; the free board refuses it (400).
     `page` is 1..4 (25 a page, the top 100). `me=1` asks for the signed-in rider's place. */
 export const leaderboardQuerySchema = z.object({

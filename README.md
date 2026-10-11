@@ -52,7 +52,7 @@ The landing has six chapters: [RIDE](https://freightchain.fun/#ride), [LOOP](htt
 1. Open the [landing](https://freightchain.fun). Read the hero, then ECONOMY. The footer says devnet, and that nothing there is real money.
 2. Open the [whitepaper](https://whitepaper.freightchain.fun). The status pills are dated 8 Oct. The escrow pill still says the program is not deployed, and the garage is grouped with planned work. The program account is on devnet, and the garage is a lobby tab. The rest of that page is the public rules.
 3. Connect a devnet wallet (Phantom or Solflare). Sign-in is a message, not a transaction. The page sends you to the lobby.
-4. Start the free ride. EASY is three minutes on four lanes with one crossroads, and it ends itself at 1260 m. The cab can show a tutorial and an assist mode. Both are free-tier only.
+4. Start the free ride. EASY is three minutes on four lanes with two crossroads, and it ends itself at 1512 m. The cab can show a tutorial and an assist mode. Both are free-tier only.
 5. Watch someone from LIVE, or open REPLAYS. The watch page draws the truck from the recording, about 25 seconds behind, on a road rebuilt from the ride seed.
 6. Open the [program on the explorer](https://explorer.solana.com/address/9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx?cluster=devnet) and the [contract spec](docs/pool-program/index.html). A buy on freightchain.fun today is the legacy memo transfer into the weekly round. Tickets into this program are the other path, in [Economy](#economy).
 7. If you build the repo: `npm run test:localnet` runs the real program on a local validator and checks every lamport. Walkthrough: [`docs/localnet-e2e/index.html`](docs/localnet-e2e/index.html).
@@ -210,14 +210,14 @@ Read: [`client/js/themes/index.js`](client/js/themes/index.js) · [model viewer]
 
 | Tier | Length | Price | On sale | Road |
 | --- | --- | --- | --- | --- |
-| Free · EASY | 180 s, finish at 1260 m | 0 | Yes | Four lanes, one crossroads, winding (bends ×2), straight start, calm traffic, ends itself |
-| Free · CROSSROADS | 360 s, finish at 4032 m | 0 | Yes | Depot turn, four crossroads, a fork, bends ×1.1, holes ×1.5 |
+| Free · EASY | 180 s, finish at 1512 m | 0 | Yes | Four lanes, two crossroads, winding (bends ×3), straight start, calm traffic, ends itself |
+| Free · MEDIUM | 300 s, finish at 3360 m | 0 | Yes | Depot turn, three crossroads, a fork, bends ×1.35, traffic ×0.8, holes ×1.5 |
 | Free · HARD | 900 s, finish at 10 080 m | 0 | Yes, no assist, no tutorial | Six crossroads, two forks, a highway run, bends ×1.6, traffic ×1.4, holes ×2 |
 | 1 hour | 3600 s | $5 in SOL | When a pool is registered, minimum 20 | Depot, STOP line, right turn |
 | 4 hour | 4 h | $15 planned | When a pool is registered | Bends ×1.2, traffic ×1.4 |
 | 8 hour | 8 h | $50 planned | When a pool is registered | Bends ×1.4, traffic ×1.8 |
 
-A new wallet starts with 10 free rides. The daily refill adds one at 00:00 UTC and stops at 5. A promo can sit above that cap. `play.html?offline=1` is an uncounted guest run with no account (two minutes, one crossroads).
+A new wallet starts with 10 free rides. The daily refill adds one at 00:00 UTC and stops at 5. A promo can sit above that cap. `play.html?offline=1` is an uncounted guest run with no account (two minutes, one crossroads, a winding road).
 
 The free ride is picked at a level in the lobby (`POST /api/rides` `level` 1–3). Each level has its own leaderboard (HARD by default) and its own achievement: Learner's Permit, Crossroads, Long Haul. Tutorial and assist exist only on a free ride; HARD refuses assist. Assist halves hull damage and battery drain. The achievement On My Own is a completed free ride without assist. While the verdict is enforced, a rejected recording earns no badge. `node .claude/skills/level-check/check.mjs` checks every level is what it promises and passable by a human-paced driver.
 
@@ -271,11 +271,11 @@ Read: [`media/specs/intro.json`](media/specs/intro.json) · [Skills](#skills) `g
 
 The drivable world is one centre-line. Distance along it is `s`. Offset across it is `d`. Lanes, junctions, and side roads are features of that line.
 
-- A ride seed feeds `mulberry32`. Segments and junctions are appended in one RNG order, so the layout is a pure function of the seed and the ride's trip (the free levels have their own patterns: `dual` = four lanes, `fork`, and the 500 m blocks `xroad` / `xroad4` / `open` – exactly one crossroads or none – that make each level's crossroads count exact: EASY 1, CROSSROADS 4, HARD 6).
+- A ride seed feeds `mulberry32`. Segments and junctions are appended in one RNG order, so the layout is a pure function of the seed and the ride's trip (the free levels have their own patterns: `dual` = four lanes, `fork`, and the 500 m blocks `xroad` / `xroad4` / `open` – exactly one crossroads or none – that make each level's crossroads count exact: guest run 1, EASY 2, MEDIUM 3, HARD 6).
 - Curvature integrates into Float64 tables, one metre a step. The tables grow as the truck approaches. There is no finish line in the geometry.
 - The start is a depot access road, then a 90° right turn onto the main road. The free trip skips that turn and runs straight on.
 - Patterns are `country`, `highway`, `arterial`, and `town`. Each sets lanes (1–3 each way), length, and bend scale. A lane change is a 120 m taper. The spine is straight through a junction.
-- The player cannot turn into a side road. On CROSSROADS and HARD the road FORKS: it splits into two roads that meet again 1200 m on. They are mirror images about the chord, the same length with the same lanes and holes, so in `s` and `d` they are one road and the server never needs to know which one was taken. The driver commits 205 m after the split; sample column 15 records which road.
+- The player cannot turn into a side road. On MEDIUM and HARD the road FORKS: it splits into two roads that meet again 1200 m on. They are mirror images about the chord, the same length with the same lanes and holes, so in `s` and `d` they are one road and the server never needs to know which one was taken. The driver commits 205 m after the split; sample column 15 records which road.
 
 ```mermaid
 flowchart LR
@@ -293,7 +293,7 @@ Read: [`client/js/net/network.js`](client/js/net/network.js) · [`client/js/net/
 
 `rollHole(chunk)` places at most one natural hole. The only natural type is the sinkhole. Pothole, deep, cluster, and trench are the holes a spectator can pay for, and they sit beside the chunk's own hole. They are not judged.
 
-The EASY run's first natural hole is 4000 m into the main road, so its three minutes never reach one (CROSSROADS: 400 m). That distance, the pattern weights and the hole chance are the trip knobs the server shares (`road-rules.ts` `TRIP_HOLE_FIRST`, `TRIP_ROADS`). An online ride installs the server plan from `GET /api/watch/:id/road`. The local roll is the offline fallback.
+The EASY run's first natural hole is 4000 m into the main road, so its three minutes never reach one (MEDIUM: 400 m). That distance, the pattern weights and the hole chance are the trip knobs the server shares (`road-rules.ts` `TRIP_HOLE_FIRST`, `TRIP_ROADS`). An online ride installs the server plan from `GET /api/watch/:id/road`. The local roll is the offline fallback.
 
 Read: [`client/js/net/obstacles.js`](client/js/net/obstacles.js) · [`server/src/domain/road/road-plan.ts`](server/src/domain/road/road-plan.ts)
 
@@ -479,7 +479,7 @@ Skills live in `.claude/skills/<name>/`. A coding agent reads that folder's `SKI
 | `admin-coverage` | Check that the admin page uses every admin API (guarded, called, no dead calls, tabs match the views) and add what is missing | `node .claude/skills/admin-coverage/check.mjs` |
 | `stats-reconcile` | Check and repair the statistics (rides, time, km, crashes, stream donations – per rider and global) by recomputing them from the rides; production read-only | `bash .claude/skills/stats-reconcile/run.sh [--fix]` · `--prod` |
 | `test-census` | Count the tests by pyramid layer, grade test coverage per feature, user flow, controller and route (static attribution, line + branch coverage, the routes each browser suite hits), name gaps, and rewrite the Tests block below and docs/test-coverage.md | `npm run test:census` · `npm run test:census -- features` · `npm run test:census -- coverage` · `npm run test:census -- run` · `npm run test:census -- readme` |
-| `level-check` | Each free level (EASY / CROSSROADS / HARD) is what it promises and passable by a human: the road each level's shift covers (junctions, forks, lanes, bends, sinkhole traps), then a human-paced driver on the real truck with ASSIST off on many seeds × all routes – finish rate, hull, vehicles hit, against the level's limits | `node .claude/skills/level-check/check.mjs` |
+| `level-check` | Each free level (EASY / MEDIUM / HARD) is what it promises and passable by a human: the road each level's shift covers (junctions, forks, lanes, bends, sinkhole traps), then a human-paced driver on the real truck with ASSIST off on many seeds × all routes – finish rate, hull, vehicles hit, against the level's limits | `node .claude/skills/level-check/check.mjs` |
 | `trip-design` | The road per ride tier – the free run and the 1 h / 4 h / 8 h shifts: bends, traffic, roadside, whether it ends by itself at the line, its length and finish distance – measured with the real game modules and looked at in Chrome | `node .claude/skills/trip-design/measure.mjs` · `node .claude/skills/trip-design/shots.mjs` |
 | `verified-play-test` | The anti-bot / anti-cheat end to end, positive and negative: a person and a bot in Chrome (dispatch prompts answered / ignored), API-level bots with hand-built recordings (every verdict code), the upload protocol, the admin's signed decisions, the profile in Chrome, retention + the CLI's bulk re-judge | `bash .claude/skills/verified-play-test/run.sh` |
 | `storybook-models` | Review and fix a mesh in the model viewer (`client/viewer.html`), or add or update a 3D object the game draws | `node .claude/skills/storybook-models/shot.mjs` · `node .claude/skills/storybook-models/shot.mjs <id>` |

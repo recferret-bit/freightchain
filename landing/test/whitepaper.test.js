@@ -91,7 +91,7 @@ test('numbers: tiers, governor and completion distance equal the server rules', 
   const landing = readFileSync(join(root, 'index.html'), 'utf8'); assert.match(landing, /id="why-20"/); assert.match(landing, /20 tickets of \$5/); assert.match(landing, /\$26/);
   const rules = src('server/src/domain/rides/ride-rules.ts'); assert.match(rules, /MAX_SPEED = 28/); assert.match(rules, /COMPLETE_DIST_K = 0\.5/);
   assert.match(text, /28 m\/s/); assert.match(text, /100\.8 km\/h/); assert.match(text, /50\.4 km/, '½ × 28 m/s × 3600 s');
-  // the free run: FREE_RIDE_SECONDS (180 = EASY's length) × the level's multiple – EASY 1 · CROSSROADS 2 · HARD 5, i.e. 3 · 6 · 15 minutes (server/src/domain/rides/ride-trip.ts FREE_LEVELS – not quoted here: the landing image does not copy it), ending by itself at the line
+  // the free run: FREE_RIDE_SECONDS (180 = EASY's length) × the level's multiple – EASY 1 · MEDIUM 5⁄3 · HARD 5, i.e. 3 · 5 · 15 minutes (server/src/domain/rides/ride-trip.ts FREE_LEVELS – not quoted here: the landing image does not copy it), ending by itself at the line
   assert.match(src('server/src/infrastructure/config/env.schema.ts'), /FREE_RIDE_SECONDS: z\.coerce\.number\(\)\.positive\(\)\.default\(180\)/); assert.match(text, /FREE\s+3–15 minutes/);
   assert.match(src('client/js/trips.js'), /free: \{[^}]*finish: true/); assert.match(text, /ends by itself at the line/);
 });

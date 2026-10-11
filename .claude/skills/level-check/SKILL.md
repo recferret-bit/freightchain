@@ -1,7 +1,7 @@
 ---
 name: level-check
 description: >
-  Check that each FREE LEVEL of Freight Chain (EASY / CROSSROADS / HARD – client/js/trips.js free-1 / free-2 / free-3) is what its name promises
+  Check that each FREE LEVEL of Freight Chain (EASY / MEDIUM / HARD – client/js/trips.js free-1 / free-2 / free-3) is what its name promises
   and passable by a human: the road each level's shift covers (junctions, forks, lanes, the sharpest bend, sinkholes and whether a driver who reacts
   to the warning sign can still stop or steer round them), then a human-paced driver on the REAL truck handling with ASSIST off drives every level on
   many seeds × all five routes (reacts after ~1 s, takes bends gently, stops for red, waits for a gap at the depot exit, gives way when a fork's
@@ -12,8 +12,8 @@ description: >
 
 # Level check
 
-The free ride is three **levels** (the lobby's picker; `client/js/trips.js` `free-1b` / `free-2b` / `free-3b`, the server's `server/src/domain/rides/ride-trip.ts`
-`FREE_LEVELS`). Each one promises something – EASY is a first-timer's three minutes with exactly one crossroads, CROSSROADS has its four crossroads and a fork, HARD is fifteen minutes (six crossroads, two forks) with no assist
+The free ride is three **levels** (the lobby's picker; `client/js/trips.js` `free-1c` / `free-2c` / `free-3b`, the server's `server/src/domain/rides/ride-trip.ts`
+`FREE_LEVELS`). Each one promises something – EASY is a first-timer's three minutes with exactly two crossroads, MEDIUM has its three crossroads and a fork in five minutes, HARD is fifteen minutes (six crossroads, two forks) with no assist
 that a careful person still finishes. This skill checks those promises with the game's own modules, in Node (no browser, ~4 min for the default run).
 
 ```sh
@@ -29,8 +29,8 @@ Options: `--seeds N` (6), `--routes level|all|route66,brenner` (default `level`:
 
 | level | ROAD (on every seed × route, over the finish line × 1.4 + 200 m) | DRIVE (over all seeds × routes, ASSIST off) |
 |---|---|---|
-| `free-1b` EASY 3 min / 1260 m | exactly 1 crossroads, no fork, no sinkhole, ≥ 2 lanes each way, no bend under R 220 m | every drive finishes, median hull lost ≤ 10 %, no vehicle hit |
-| `free-2b` CROSSROADS 6 min / 4.0 km | exactly 4 crossroads and ≥ 1 fork, no bend under R 90 m, no sinkhole TRAP | ≥ 90 % finish, median hull lost ≤ 35 %, the median drive hits no vehicle, a drive took the other road at a fork |
+| `free-1c` EASY 3 min / 1512 m | exactly 2 crossroads, no fork, no sinkhole, ≥ 2 lanes each way, no bend under R 220 m | every drive finishes, median hull lost ≤ 10 %, no vehicle hit |
+| `free-2c` MEDIUM 5 min / 3.4 km | exactly 3 crossroads and ≥ 1 fork, no bend under R 90 m, no sinkhole TRAP | ≥ 90 % finish, median hull lost ≤ 35 %, the median drive hits no vehicle, a drive took the other road at a fork |
 | `free-3b` HARD 15 min / 10.1 km | exactly 6 crossroads and ≥ 2 forks, no bend under R 55 m, no sinkhole TRAP | ≥ 75 % finish, median hull lost ≤ 60 %, the median drive hits ≤ 1 vehicle, a drive took the other road |
 
 - **A sinkhole TRAP**: in the driver's own lane, on a one-lane-each-way stretch, and a driver who reacts `--react` s after its warning sign (`CFG.HOLE_WARN`
@@ -47,9 +47,10 @@ Decide whether it is the ROAD (fix the trip / generator – `trip-design`, or th
 `makeDriver` / `wheelFor`; it is a careful person, not a perfect one – don't tune it until a level passes, tune it until it drives like a person would).
 
 What the driver does NOT model: traffic AI faults it cannot avoid (an oncoming car overtaking into its lane, an emergency vehicle squeezing past), so a few
-HARD drives end in a pile of vehicle contacts – that is why the crash limit is on the MEDIAN drive. Known as of 2026-10-10 (6 seeds × 5 routes): EASY 30/30,
-CROSSROADS 29/30, HARD 26/30; every lane-wide sinkhole on HARD / CROSSROADS stops only ~3 m short at full pedal from the governor (HOLE_WARN 90 m) – tight
-for a 1 s reaction.
+HARD drives end in a pile of vehicle contacts – that is why the crash limit is on the MEDIAN drive. Known as of 2026-10-10 for the retired second round (6 seeds × 5 routes): EASY 30/30,
+CROSSROADS (free-2b) 29/30, HARD 26/30; every lane-wide sinkhole on HARD / MEDIUM stops only ~3 m short at full pedal from the governor (HOLE_WARN 90 m) – tight
+for a 1 s reaction. Third round (2026-10-11, 6 seeds × each level's own country): EASY 6/6 (180 s), MEDIUM 6/6 (median 403 s for its 300 s shift), HARD 5/6
+(median 1135 s for its 900 s shift) – "finished" waits for the distance too, so the median time is what a careful driver really spends.
 
 ## After a change
 

@@ -59,7 +59,7 @@ describe('GetMeHandler', () => {
     const p = await ctx.storedPlayer('w');
     while (p.freeRides > 0) p.spendFreeRide();
     await ctx.players.save(p);
-    expect(await handler.execute(new GetMeQuery('w'))).toMatchObject({ freeRides: 0, readyFreeRide: { id: 'r1', level: 2, trip: 'free-2b', tutorial: true, assist: true } });
+    expect(await handler.execute(new GetMeQuery('w'))).toMatchObject({ freeRides: 0, readyFreeRide: { id: 'r1', level: 2, trip: 'free-2c', tutorial: true, assist: true } });
     ride.start(ctx.now()); await ctx.rides.save(ride);
     expect((await handler.execute(new GetMeQuery('w'))).readyFreeRide).toBeNull();
     await ctx.paidOrder('payer');

@@ -34,7 +34,7 @@ describe('CreateRideHandler', () => {
   it('a free ride: ready at once, one credit spent, a re-ask hands back the same ride', async () => {
     const { ctx, analytics, create } = setup();
     const ride = await create('free');
-    expect(ride).toMatchObject({ tier: 'free', status: 'created', minSeconds: 10, completeDist: 70, lamports: 0 });
+    expect(ride).toMatchObject({ tier: 'free', status: 'created', minSeconds: 10, completeDist: 84, lamports: 0 });
     expect((await create('free')).id).toBe(ride.id);
     expect((await ctx.storedPlayer('w')).freeRides).toBe(9);
     expect(analytics.named('ride_ordered')).toHaveLength(1);
@@ -84,10 +84,10 @@ describe('CreateRideHandler', () => {
     expect(await ctx.rides.findOpenByWallet('w')).toBeNull();
   });
 
-  it('a free ride at a LEVEL: its trip, FREE_RIDE_SECONDS × its multiple (10 s here × 1 / 2 / 5) and its K; no level = EASY', async () => {
+  it('a free ride at a LEVEL: its trip, FREE_RIDE_SECONDS × its multiple (10 s here × 1 / 5⁄3 / 5, whole seconds) and its K; no level = EASY', async () => {
     const { create } = setup();
-    expect(await create('free')).toMatchObject({ level: 1, trip: 'free-1b', route: 'stuart', minSeconds: 10, completeDist: 0.25 * 28 * 10 });
-    expect(await setup().create('free', 'w', false, false, 2)).toMatchObject({ level: 2, trip: 'free-2b', route: 'route66', minSeconds: 20, completeDist: 0.4 * 28 * 20 });
+    expect(await create('free')).toMatchObject({ level: 1, trip: 'free-1c', route: 'stuart', minSeconds: 10, completeDist: 0.3 * 28 * 10 });
+    expect(await setup().create('free', 'w', false, false, 2)).toMatchObject({ level: 2, trip: 'free-2c', route: 'route66', minSeconds: 17, completeDist: 0.4 * 28 * 17 });
     expect(await setup().create('free', 'w', false, false, 3)).toMatchObject({ level: 3, trip: 'free-3b', route: 'brenner', minSeconds: 50, completeDist: 0.4 * 28 * 50 });
   });
 
@@ -97,7 +97,7 @@ describe('CreateRideHandler', () => {
     expect(await ctx.rides.findOpenByWallet('w')).toBeNull();
     const ready = await create('free', 'w', false, true, 2);
     await expect(create('free', 'w', false, true, 3)).rejects.toMatchObject({ errorCode: 'assist_not_allowed' });
-    expect(await ctx.reload(ready.id)).toMatchObject({ trip: 'free-2b', assist: true });
+    expect(await ctx.reload(ready.id)).toMatchObject({ trip: 'free-2c', assist: true });
     expect((await ctx.storedPlayer('w')).freeRides).toBe(9);
   });
 
@@ -111,7 +111,7 @@ describe('CreateRideHandler', () => {
     const { ctx, create } = setup();
     const ready = await create('free', 'w', true, false, 1);
     await expect(create('free', 'w', true, false, 3)).rejects.toThrow(new ConflictError('the HARD free run has no tutorial', 'tutorial_not_allowed'));
-    expect(await ctx.reload(ready.id)).toMatchObject({ trip: 'free-1b', tutorial: true });
+    expect(await ctx.reload(ready.id)).toMatchObject({ trip: 'free-1c', tutorial: true });
     expect((await ctx.storedPlayer('w')).freeRides).toBe(9);
   });
 

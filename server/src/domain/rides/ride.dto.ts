@@ -27,7 +27,7 @@ export interface RideDto {
   loadout: Loadout | null;
   /** the road it is driven on (a client/js/trips.js id; null = a ride from before trips: 'classic') – the game builds it before the menu */
   trip: string | null;
-  /** the free LEVEL (1 EASY · 2 CROSSROADS · 3 HARD – ride-trip.ts FREE_LEVELS), from the trip; null = a paid ride or a free one from before the levels */
+  /** the free LEVEL (1 EASY · 2 MEDIUM · 3 HARD – ride-trip.ts FREE_LEVELS), from the trip; null = a paid ride or a free one from before the levels */
   level: number | null;
   /** the world the SERVER assigned: the route (a free level's country, otherwise from the seed) and the clock hour (always from the seed). The game applies them; nothing in it can change them (null = a ride from before this) */
   route: string | null;
@@ -73,7 +73,7 @@ export const toRideDto = (r: Ride, verdict: VerdictDto | null = null, now: Date 
     helpers asked for, without a credit (create-ride.handler.ts). /api/me carries it so the lobby keeps START on at 0 credits. */
 export interface ReadyFreeRideDto {
   id: string;
-  /** 1 EASY · 2 CROSSROADS · 3 HARD; null = a free ride from before the levels */
+  /** 1 EASY · 2 MEDIUM · 3 HARD; null = a free ride from before the levels */
   level: FreeLevel | null;
   trip: string | null;
   tutorial: boolean;

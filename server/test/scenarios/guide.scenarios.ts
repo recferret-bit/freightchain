@@ -3,7 +3,7 @@ import type { Harness } from '../support/harness.js';
 
 /* The free ride's TUTORIAL and ASSIST (the lobby's two checkboxes): chosen when the ride is ordered, stored on the ride, handed to the game in the ride DTO;
    starting a ride with the tutorial on marks the player (`tutorialPassed` in /api/me); assist is free-only and never counts for the "On My Own" achievement.
-   Free shift = 10 s driven AND 70 m. Same scenarios on in-memory and PostgreSQL. */
+   Free shift (EASY) = 10 s driven AND 84 m. Same scenarios on in-memory and PostgreSQL. */
 export const GUIDE_ENV = { FREE_RIDE_SECONDS: '10' };
 
 export function guideScenarios(h: () => Harness): void {
@@ -13,11 +13,11 @@ export function guideScenarios(h: () => Harness): void {
   const order = async (w: Rider, flags: Record<string, unknown> = {}) => (await w.agent.post('/api/rides').send({ tier: 'free', ...flags }).expect(200)).body;
   const start = async (w: Rider, id: string) => (await w.agent.post(`/api/rides/${id}/start`).expect(200)).body;
   const me = async (w: Rider) => (await w.agent.get('/api/me').expect(200)).body;
-  const complete = async (w: Rider, flags: Record<string, unknown>) => {   // order → start → a complete 10 s / 70 m shift → end
+  const complete = async (w: Rider, flags: Record<string, unknown>) => {   // order → start → a complete 10 s / 84 m shift (EASY: 0.3 × 28 × 10) → end
     const id = (await order(w, flags)).id;
     await start(w, id);
-    for (const [i, s] of [30, 60, 80].entries()) { sec(5); await w.agent.post(`/api/rides/${id}/heartbeat`).send({ hull: 100, s, t: (i + 1) * 5 }).expect(200); }
-    const end = (await w.agent.post(`/api/rides/${id}/end`).send({ outcome: 'shift', s: 80, t: 15, hull: 100 }).expect(200)).body;
+    for (const [i, s] of [30, 60, 90].entries()) { sec(5); await w.agent.post(`/api/rides/${id}/heartbeat`).send({ hull: 100, s, t: (i + 1) * 5 }).expect(200); }
+    const end = (await w.agent.post(`/api/rides/${id}/end`).send({ outcome: 'shift', s: 90, t: 15, hull: 100 }).expect(200)).body;
     expect(end.status).toBe('completed');
     return id;
   };

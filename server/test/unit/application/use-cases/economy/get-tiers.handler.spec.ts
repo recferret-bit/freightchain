@@ -18,10 +18,10 @@ describe('GetTiersHandler', () => {
     expect(dto.paymentMode).toBe('transfer');
     expect(dto.tiers).toEqual([
       {
-        id: 'free', usd: 0, seconds: 10, completeDist: 70, lamports: null, available: true, onSale: true, pool: null,
-        levels: [   // FREE_RIDE_SECONDS (10 here) × 1 / 2 / 5, each at its own K
-          { level: 1, trip: 'free-1b', name: 'EASY', seconds: 10, completeDist: 0.25 * 28 * 10, tutorial: true, assist: true },
-          { level: 2, trip: 'free-2b', name: 'CROSSROADS', seconds: 20, completeDist: 0.4 * 28 * 20, tutorial: true, assist: true },
+        id: 'free', usd: 0, seconds: 10, completeDist: 84, lamports: null, available: true, onSale: true, pool: null,
+        levels: [   // FREE_RIDE_SECONDS (10 here) × 1 / 5⁄3 / 5, whole seconds, each at its own K
+          { level: 1, trip: 'free-1c', name: 'EASY', seconds: 10, completeDist: 0.3 * 28 * 10, tutorial: true, assist: true },
+          { level: 2, trip: 'free-2c', name: 'MEDIUM', seconds: 17, completeDist: 0.4 * 28 * 17, tutorial: true, assist: true },
           { level: 3, trip: 'free-3b', name: 'HARD', seconds: 50, completeDist: 0.4 * 28 * 50, tutorial: false, assist: false },
         ],
       },

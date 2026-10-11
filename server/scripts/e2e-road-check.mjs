@@ -29,7 +29,7 @@ const LANE = 2.4, SPEED = 22, HOLES_TO_CROSS = 2;
 /* ───────────── A + B: a driver in Chrome ───────────── */
 async function drive({ port, mode }) {
   const who = await signIn();
-  const { j: ride } = await call('POST', 'rides', { body: { tier: 'free', level: 2 }, ...who });   // CROSSROADS: its sinkholes start 400 m in, mostly on 1+1 road (EASY has none within reach, and four lanes)
+  const { j: ride } = await call('POST', 'rides', { body: { tier: 'free', level: 2 }, ...who });   // MEDIUM: its sinkholes start 400 m in, mostly on 1+1 road (EASY has none within reach, and four lanes)
   const tab = await launch({ port, shotsDir: SHOTS, evalProblems: true });
   const [name, value] = who.cookie.split('=');
   await tab.send('Network.setCookie', { name, value, url: BASE, httpOnly: true });

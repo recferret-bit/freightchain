@@ -174,7 +174,7 @@ const tutorialOn = () => S.opt.tutorial ?? !S.me?.tutorialPassed;
 function guideBox(id, name, hint, on, set, locked = false) {   // one of the free ride's two checkboxes (kept in S.opt, so a repaint does not reset it); locked = unchecked + disabled, the hint stays
   return el('label', { class: `opt${locked ? ' locked' : ''}`, for: id }, el('input', { type: 'checkbox', id, checked: on && !locked, disabled: !!locked, onchange: e => set(e.target.checked) }), el('span', {}, el('b', {}, name), el('small', {}, hint)));
 }
-/* the free ride's LEVELS come from the server (GET /api/tiers → the free tier's `levels`: EASY / CROSSROADS / HARD, their length and whether TUTORIAL and ASSIST are allowed);
+/* the free ride's LEVELS come from the server (GET /api/tiers → the free tier's `levels`: EASY / MEDIUM / HARD, their length and whether TUTORIAL and ASSIST are allowed);
    a server without them = no picker and no `level` sent. The pick is remembered (localStorage freightchain.level); one the server does not offer falls back to the easiest. */
 const freeLevels = t => t?.levels ?? [];
 const pickedLevel = t => { const ls = freeLevels(t); return ls.find(l => l.level === S.opt.level) ?? ls[0] ?? null; };
