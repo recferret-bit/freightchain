@@ -48,6 +48,15 @@ export const audio = {
     src.buffer = buf; f.type = 'lowpass'; f.frequency.value = 500 + 900 * i; g.gain.value = Math.min(1, .25 + .6 * i);
     src.connect(f); f.connect(g); g.connect(c.destination); src.start();
   },
+  honk(vol = 1) {   // a stuck vehicle's horn: two short blasts (vol = distance falloff, 0..1)
+    if (!this.ctx || this.muted || vol < .03) return;
+    const c = this.ctx, t = c.currentTime, g = c.createGain();
+    g.connect(c.destination);
+    for (const t0 of [0, .3]) for (const f of [420, 530]) {   // a minor-third horn pair
+      const o = c.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.connect(g); o.start(t + t0); o.stop(t + t0 + .22);
+    }
+    g.gain.setValueAtTime(.05 * vol, t); g.gain.setValueAtTime(0, t + .22); g.gain.setValueAtTime(.05 * vol, t + .3); g.gain.setValueAtTime(0, t + .52);
+  },
   beep() {   // reverse beeper
     if (!this.ctx || this.muted) return;
     const c = this.ctx, t = c.currentTime, o = c.createOscillator(), g = c.createGain();
