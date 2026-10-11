@@ -1,7 +1,8 @@
 import { api } from './wallet.js';
 import { el } from './dom.js';
-import { left, shortAddr as short, sol } from './pools.js';
+import { left, sol } from './pools.js';
 import { store } from '../js/util.js';
+import { formatDriver, seedSns, seedSnsBatch } from './sns.js';
 
 /* The lobby's LEADERBOARD tab. The shell (the board buttons, the blurb, the table) is painted before the request and
    stays put while a board, a level, a sort or a page is loading — replacing the whole view with "Loading…" flashed. */
@@ -123,6 +124,8 @@ async function load() {
 function apply(j) {
   B.verifiedOnly = j.verifiedOnly; B.prizeRanks = j.prizeRanks; B.endsAt = j.round?.endsAt ?? B.endsAt; B.failed = false;
   syncHead();
+  if (j.rows) seedSnsBatch(j.rows);
+  if (j.me) seedSns(j.me.wallet, j.me.sns);
   const sig = JSON.stringify([j.board, j.level, j.sort, j.page, j.total, j.rows, j.me, j.standing, j.verifiedOnly]);
   if (B.shown === sig && document.getElementById('board-body')?.children.length) { setBusy(false); return; }
   B.shown = sig;
@@ -151,7 +154,7 @@ function paintTable(j) {
   cols.replaceChildren(el('tr', {}, el('th', {}, '#'), el('th', {}, 'RIDER'), ...COLS.map(([id, label, title]) => el('th', { class: 'r', 'aria-sort': j.sort === id ? 'descending' : 'none' },
     el('button', { type: 'button', class: j.sort === id ? 'on' : '', title, onclick: () => pickSort(id) }, label)))));
   const lines = j.rows.map((r) => line(r, you, prize, false));
-  if (j.me && !j.rows.some((r) => r.wallet === you)) lines.push(line({ ...j.me, wallet: you }, you, prize, true));
+  if (j.me && !j.rows.some((r) => r.wallet === you)) lines.push(line({ ...j.me, wallet: you, sns: C.S.me?.sns }, you, prize, true));
   body.replaceChildren(...(lines.length ? lines : [el('tr', {}, el('td', { colspan: '6', class: 'empty' }, 'Nobody has finished a shift here yet.'))]));
 }
 
@@ -160,7 +163,7 @@ function line(r, you, prize, pin) {
   const medal = r.rank === 1 ? ' g' : r.rank === 2 ? ' s' : r.rank === 3 ? ' b' : '';
   return el('tr', { class: `${prize && r.rank <= B.prizeRanks ? 'prize ' : ''}${mine ? 'me ' : ''}${pin ? 'cut' : ''}` },
     el('td', {}, el('span', { class: `rk${medal}` }, r.rank)),
-    el('td', {}, C.avatar(r.wallet), ' ', short(r.wallet), mine ? ' (you)' : ''),
+    el('td', {}, C.avatar(r.wallet), ' ', formatDriver(r.wallet, r.sns), mine ? ' (you)' : ''),
     el('td', { class: 'r' }, C.km(r.distance)), el('td', { class: 'r' }, C.dur(r.seconds)),
     el('td', { class: 'r' }, r.hull == null ? '–' : `${r.hull}%`), el('td', { class: 'r' }, r.rides));
 }

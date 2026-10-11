@@ -19,6 +19,7 @@ import { store } from '../js/util.js';
 import { FREE_COUNTRIES } from '../js/free-countries.js';
 import { isMobileDevice } from '../js/mobile.js';
 import { ticketDialog, hideTicketDialog } from './ticket-dialog.js';
+import { formatDriver, getCachedSns, reverseResolveSns, seedSns } from './sns.js';
 
 /* The lobby: NEW RIDE · LIVE · LEADERBOARD · GARAGE · PROMO · PROFILE. Vanilla DOM, no framework.
    Everything that comes from the server (wallet addresses, route ids, statuses…) goes in with textContent – never innerHTML – because other riders' data is rendered here. */
@@ -63,7 +64,9 @@ const creditLocal = (poolId, qty) => {
 
 function paintHeader() {
   const m = S.me;
-  $('chip-wallet').replaceChildren(el('span', { class: 'dot', style: `background:hsl(${hue(m.wallet)} 60% 50%)` }), short(m.wallet));
+  if (m.sns) seedSns(m.wallet, m.sns);
+  $('chip-wallet').replaceChildren(el('span', { class: 'dot', style: `background:hsl(${hue(m.wallet)} 60% 50%)` }), formatDriver(m.wallet, m.sns));
+  $('chip-wallet').title = m.wallet;
   $('chip-free').textContent = `${freeLeft(m)} · ${freeCd(m)}`;
   paintPaid(m);
   $('chip-live').textContent = liveChip();
@@ -485,8 +488,14 @@ function paintLive() {
     let row = rows.get(k);
     if (!row) {
       row = { fill: el('div', { class: 'fill' }), truck: el('span', { class: 'truck' }, '⛟'), time: el('b'), dist: el('b'), hull: el('b'), eyes: el('b'), badge: el('span', { class: 'badge' }) };
+      const whoB = el('b', { title: r.wallet }, formatDriver(r.wallet, r.sns ?? getCachedSns(r.wallet)), r.wallet === S.me.wallet ? ' (you)' : '');
+      if (!r.sns && r.wallet && getCachedSns(r.wallet) === undefined) {
+        reverseResolveSns(r.wallet).then(domain => {
+          if (domain && whoB.isConnected) whoB.textContent = domain + (r.wallet === S.me.wallet ? ' (you)' : '');
+        }).catch(() => {});
+      }
       row.root = el('div', { class: 'card ride' }, avatar(r.wallet),
-        el('div', { class: 'who' }, el('b', {}, short(r.wallet), r.wallet === S.me.wallet ? ' (you)' : ''), el('span', { class: `badge${r.tier === 'free' ? '' : ' p'}` }, TIER_NAME[r.tier] ?? r.tier), r.route ? el('span', { class: 'badge' }, ROUTES[r.route] ?? '') : '', row.badge),
+        el('div', { class: 'who' }, whoB, el('span', { class: `badge${r.tier === 'free' ? '' : ' p'}` }, TIER_NAME[r.tier] ?? r.tier), r.route ? el('span', { class: 'badge' }, ROUTES[r.route] ?? '') : '', row.badge),
         el('div', { class: 'road' }, row.fill, row.truck),
         el('div', { class: 'stats' }, el('span', {}, '⏱ ', row.time), el('span', {}, '↦ ', row.dist), el('span', {}, 'hull ', row.hull), el('span', { title: 'watching now' }, '👁 ', row.eyes),
           el('a', { class: 'watch', href: `${GAME_BASE}/play.html?watch=${encodeURIComponent(r.id)}`, title: 'watch this ride live – chat with the driver, send donations' }, '▶ WATCH')));
@@ -530,12 +539,13 @@ async function renderProfile() {
   let p; const my = seq;
   try { p = await api('profile', undefined, { report: false }); } catch (e) { if (my === seq) view.replaceChildren(el('p', { class: 'bad' }, e.message)); return; }
   if (my !== seq) return;
+  if (p.sns) { S.me.sns = p.sns; seedSns(p.wallet, p.sns); }
   meGen++; Object.assign(S.me, { freeRides: p.freeRides, freeRidesMax: p.freeRidesMax, nextFreeRideAt: p.nextFreeRideAt, tickets: p.tickets, agreements: p.agreements }); paintHeader();
   const got = p.achievements.filter(a => a.earnedAt).length;
   const card = agreementsCard(S.me);
   view.replaceChildren(
     ...(card ? [card] : []),
-    el('div', { class: 'who', style: 'display:flex;gap:10px;align-items:center' }, avatar(p.wallet), el('div', {}, el('b', {}, short(p.wallet)), el('div', { class: 'dim' }, `rider since ${new Date(p.createdAt).toLocaleDateString()}`))),
+    el('div', { class: 'who', style: 'display:flex;gap:10px;align-items:center' }, avatar(p.wallet), el('div', {}, el('b', { title: p.wallet }, formatDriver(p.wallet, p.sns)), el('div', { class: 'dim' }, `rider since ${new Date(p.createdAt).toLocaleDateString()}`))),
     ...careerTiles(p.career, p.stats, { km, sol }),
     ...profileTickets(p, S.busy, refund),
     el('h2', {}, `ACHIEVEMENTS · ${got}/${p.achievements.length}`),

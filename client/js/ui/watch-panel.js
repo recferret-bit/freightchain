@@ -4,11 +4,12 @@ import { audio } from '../sim/audio.js';
 import { getTheme } from '../themes/index.js';
 import { SITE_BASE } from '../hosts.js';
 import { watch, seek, goLive, addEvent, roadCheck, replayEnd, LIVE_LAG } from '../watch.js';
-import { EFFECT_INFO, short, solText } from '../live-effects.js';
+import { EFFECT_INFO, solText } from '../live-effects.js';
 import { el } from '../../site/dom.js';
 import { api, signIn } from '../../site/wallet.js';
 import { signAndSend } from '../../site/pay.js';
 import { explorerTx } from '../../site/pools.js';
+import { formatDriver, getCachedSns, reverseResolveSns } from '../../site/sns.js';
 
 /* The watch page's panel (play.html?watch=<id>): who / where / how far, the timeline (live edge or replay with speeds), the ride's feed, and – signed in –
    the chat box and the MOCK donation buttons. Server text only through el() / textContent. Spectator actions go to /api/watch/:id/* (server/src/presentation/live). */
@@ -29,9 +30,15 @@ export function mountWatchPanel() {
     const btn = P.root.querySelector('.w-fold');
     if (btn) btn.textContent = P.root.classList.contains('folded') ? '⇤' : '⇥';
   };
+  const whoEl = el('b', { class: 'w-who', title: r.wallet }, formatDriver(r.wallet, r.sns ?? getCachedSns(r.wallet)));
+  if (!r.sns && r.wallet && getCachedSns(r.wallet) === undefined) {
+    reverseResolveSns(r.wallet).then(domain => {
+      if (domain && whoEl.isConnected) whoEl.textContent = domain;
+    }).catch(() => {});
+  }
   P.root = el('aside', { id: 'watch', 'aria-label': 'Watching a ride' },
     el('div', { class: 'w-top' },
-      el('div', {}, el('div', { class: 'w-k' }, 'WATCHING'), el('b', { class: 'w-who', title: r.wallet }, short(r.wallet))),
+      el('div', {}, el('div', { class: 'w-k' }, 'WATCHING'), whoEl),
       el('button', { class: 'alt w-fold', title: 'fold / expand the panel', onclick: toggleFold }, '⇥')),
     el('div', { class: 'w-meta' }, el('span', { id: 'w-route' }), ' · ', TIER[r.tier] ?? r.tier),
     el('div', { class: 'w-badges' }, el('span', { id: 'w-state', class: 'w-badge' }), el('span', { id: 'w-viewers', class: 'w-badge dim' })),
@@ -115,7 +122,7 @@ function feedLine(e) {
   const body = e.kind === 'message' ? [e.text] : [`${fx?.icon ?? '💰'} ${fx?.says ?? 'donated'} · ${solText(e.lamports)} `,
     e.signature ? el('a', { href: explorerTx(e.signature), target: '_blank', rel: 'noopener', title: 'the transfer to the driver on the Solana explorer (devnet)' }, 'paid ↗') : el('small', {}, '(mock)'), e.text ? ` – “${e.text}”` : ''];
   const row = el('div', { class: `w-line${e.kind === 'donation' ? ' gift' : ''}${mine ? ' me' : ''}`, 'data-id': e.id },
-    el('b', { title: e.wallet }, `${short(e.wallet)}${e.wallet === watch.ride?.wallet ? ' (driver)' : ''}: `), ...body,
+    el('b', { title: e.wallet }, `${formatDriver(e.wallet, e.sns)}${e.wallet === watch.ride?.wallet ? ' (driver)' : ''}: `), ...body,
     e.kind === 'donation' && e.effect !== 'tip' ? el('span', { class: 'w-ap dim' }, appliedText(e)) : '');
   const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
   box.append(row); while (box.children.length > 200) box.firstChild.remove();
@@ -147,7 +154,7 @@ function paintMe() {
       el('div', { class: 'w-fx' }, ...fx.map(([id, e]) => el('button', { class: 'alt', title: `${e.says}${chain ? ' – paid to the driver in devnet SOL' : ''}`, onclick: () => donate(id) }, `${e.icon} ${e.label}`, el('small', {}, `${e.sol} SOL`)))),
       el('input', { id: 'w-note-in', maxlength: 80, placeholder: 'note with a donation (optional)', autocomplete: 'off' }));
   } else parts.push(el('p', { class: 'dim w-small' }, 'Donations are off.'));
-  box.replaceChildren(...parts, el('div', { id: 'w-msg', class: 'w-small' }), el('div', { class: 'dim w-small' }, `signed in as ${short(P.me.wallet)}`));
+  box.replaceChildren(...parts, el('div', { id: 'w-msg', class: 'w-small' }), el('div', { class: 'dim w-small', title: P.me.wallet }, `signed in as ${formatDriver(P.me.wallet, P.me.sns)}`));
 }
 const say = (text, cls = 'dim') => { const m = $('w-msg'); if (m) { m.textContent = text; m.className = `w-small ${cls}`; } };
 async function connect() {

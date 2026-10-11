@@ -1,5 +1,6 @@
 import { API_BASE, GAME_BASE, SITE_BASE } from '../js/hosts.js';
 import { isMobileDevice } from '../js/mobile.js';
+import { formatDriver } from './sns.js';
 
 function fmt(sec) {
   const s = Math.max(0, Math.floor(sec || 0));
@@ -72,7 +73,8 @@ function render(ride) {
   el('ride-distance').textContent = `${(ride.km || 0).toFixed(2)} km`;
   el('ride-time').textContent = fmt(ride.driveSeconds);
   el('ride-tier').textContent = (ride.tier || 'free').toUpperCase();
-  el('ride-wallet').textContent = ride.wallet || 'Anonymous';
+  el('ride-wallet').textContent = formatDriver(ride.wallet, ride.sns) || 'Anonymous';
+  if (ride.wallet) el('ride-wallet').title = ride.wallet;
 
   // Server verdict
   if (ride.verdict) {
