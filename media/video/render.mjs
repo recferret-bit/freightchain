@@ -11,7 +11,7 @@ export function renderVideo(spec, dir, { only = [], keep = false, log = console.
   log(`mp4  ${mp4.seconds.toFixed(2)} s  ${mp4.mb.toFixed(1)} MB  ${mp4.file}`);
   const gif = encodeGif(frames, spec.fps, path.join(dir, spec.name + '.gif'), spec.gif, mp4.seconds, spec.crop);
   log(`gif  ${gif.seconds.toFixed(1)} s  ${gif.mb.toFixed(1)} MB (limit ${spec.gif.maxMB})  ${gif.width}px @ ${gif.fps} fps${gif.trimmed ? '  TRIMMED to fit' : ''}  ${gif.file}\n     tried: ${gif.tried.join(' → ')}`);
-  log('sheet ' + contactSheet(mp4.file, path.join(dir, 'contact.jpg')));
+  log('sheet ' + (spec.crop === 'vertical' ? contactSheet(mp4.file, path.join(dir, 'contact.jpg'), 10, 3, 216) : contactSheet(mp4.file, path.join(dir, 'contact.jpg'))));
   if (!keep) fs.rmSync(frames, { recursive: true, force: true });
   return { mp4, gif };
 }

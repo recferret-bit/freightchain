@@ -70,7 +70,15 @@ test('mix: works without a timeline and for a spec with only audio (no scenes)',
 });
 
 test('the committed specs: every one loads; hero + intro-square stay silent, intro + colosseum have the sound', () => {
-  for (const f of fs.readdirSync(path.join(root, 'specs'))) { const raw = JSON.parse(fs.readFileSync(path.join(root, 'specs', f), 'utf8')), s = loadSpec(raw); s.audio = loadAudio(raw.audio, s.total); assert.equal(!!s.audio, ['intro.json', 'colosseum.json'].includes(f), f); }
+  for (const f of fs.readdirSync(path.join(root, 'specs'))) { const raw = JSON.parse(fs.readFileSync(path.join(root, 'specs', f), 'utf8')), s = loadSpec(raw); s.audio = loadAudio(raw.audio, s.total); assert.equal(!!s.audio, ['intro.json', 'colosseum.json'].includes(f) || f.startsWith('tiktok-'), f); }
+});
+
+test('vertical (TikTok) clips: crop vertical means look meme at 1080×1920; the meme captions and cues work; a mismatch is refused', () => {
+  const raw = { crop: 'vertical', maxSeconds: 12, audio: { music: { id: 'brainrot' } }, scenes: [{ id: 'a', dur: 4, captions: [{ at: 0, dur: 1, head: 'ONE', fx: 'slam' }, { at: 1, dur: 1, head: 'TWO THREE', fx: 'words' }, { at: 2, dur: 1, head: 'X', fx: 'bubble' }], transition: 'punch' }, { id: 'b', dur: 3, transition: { type: 'spin', dur: .4 }, clock: { from: 0, to: 60 } }] };
+  const s = clip(raw); assert.equal(s.look, 'meme'); assert.equal([s.width, s.height].join('x'), '1080x1920');
+  const ids = buildCues(s, null).map(c => c.id); for (const id of ['slam', 'click', 'caption', 'tr-whip']) assert.ok(ids.includes(id), id);
+  assert.throws(() => loadSpec({ ...raw, look: 'classic' }), /meme/); assert.throws(() => loadSpec({ ...raw, scenes: [{ ...raw.scenes[0], captions: [{ at: 0, dur: 1, head: 'A', fx: 'nope' }] }] }), /fx/);
+  assert.throws(() => loadSpec({ ...raw, scenes: [{ id: 'c', dur: 2, clock: { from: 0 } }] }), /clock/);
 });
 test('scores: a long clip repeats the score near its own tempo; a short one is one pass, unchanged', () => {
   const rr = SCORES['road-rush'], one = 32 * 60 / rr.bpm;

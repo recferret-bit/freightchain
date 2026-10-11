@@ -1,0 +1,287 @@
+{
+ "name": "tiktok-boss-levels",
+ "crop": "vertical",
+ "fps": 30,
+ "maxSeconds": 26,
+ "audio": {
+  "ignition": {
+   "at": 0,
+   "dur": 0.8
+  },
+  "music": {
+   "id": "bus-stop",
+   "gain": 0.5
+  },
+  "engine": {
+   "gain": 0.3
+  },
+  "sfx": {
+   "extra": [
+    {
+     "t": 2.1,
+     "id": "levelup"
+    },
+    {
+     "t": 5.5,
+     "id": "levelup"
+    },
+    {
+     "t": 9.1,
+     "id": "levelup"
+    },
+    {
+     "t": 10.8,
+     "id": "ding"
+    },
+    {
+     "t": 12.8,
+     "id": "riser",
+     "dur": 3.0
+    },
+    {
+     "t": 14.4,
+     "id": "bruh"
+    },
+    {
+     "t": 15.9,
+     "id": "boom"
+    },
+    {
+     "t": 15.9,
+     "id": "levelup"
+    },
+    {
+     "t": 19.3,
+     "id": "riser",
+     "dur": 0.9
+    },
+    {
+     "t": 20.4,
+     "id": "airhorn"
+    }
+   ]
+  }
+ },
+ "scenes": [
+  {
+   "id": "intro",
+   "dur": 2.0,
+   "route": "brenner",
+   "time": "day",
+   "speed": 22,
+   "captions": [
+    {
+     "at": 0.1,
+     "dur": 1.8,
+     "head": "HOW LONG CAN\nYOU DRIVE?",
+     "fx": "words",
+     "size": 140,
+     "per": 0.3
+    }
+   ]
+  },
+  {
+   "id": "level1",
+   "dur": 3.4,
+   "route": "stuart",
+   "time": "day",
+   "speed": 20,
+   "captions": [
+    {
+     "at": 0.1,
+     "dur": 3.1,
+     "head": "LEVEL 1\n1 MINUTE",
+     "fx": "slam",
+     "color": "yellow",
+     "size": 150
+    },
+    {
+     "at": 2.3,
+     "dur": 0.9,
+     "head": "EASY",
+     "fx": "stamp",
+     "color": "lcd",
+     "size": 140,
+     "y": 1190
+    }
+   ],
+   "clock": {
+    "from": 0,
+    "to": 60,
+    "fmt": "ms",
+    "label": "LEVEL 1",
+    "of": 60
+   },
+   "transition": {
+    "type": "punch",
+    "dur": 0.4
+   }
+  },
+  {
+   "id": "level2",
+   "dur": 3.6,
+   "route": "route66",
+   "time": "dusk",
+   "speed": 28,
+   "captions": [
+    {
+     "at": 0.1,
+     "dur": 3.3,
+     "head": "LEVEL 2\n10 MINUTES",
+     "fx": "slam",
+     "color": "cyan",
+     "size": 150
+    },
+    {
+     "at": 2.6,
+     "dur": 0.9,
+     "head": "OK...",
+     "fx": "stamp",
+     "color": "yellow",
+     "size": 140,
+     "y": 1190
+    }
+   ],
+   "lines": 0.4,
+   "clock": {
+    "from": 0,
+    "to": 600,
+    "fmt": "ms",
+    "label": "LEVEL 2",
+    "of": 600
+   },
+   "transition": {
+    "type": "punch",
+    "dur": 0.4
+   }
+  },
+  {
+   "id": "level3",
+   "dur": 3.8,
+   "route": "siberia",
+   "time": "night",
+   "speed": 36,
+   "captions": [
+    {
+     "at": 0.1,
+     "dur": 3.5,
+     "head": "LEVEL 3\n30 MINUTES",
+     "fx": "slam",
+     "color": "red",
+     "size": 150
+    },
+    {
+     "at": 2.0,
+     "dur": 1.6,
+     "head": "@you\nwhy am i still here",
+     "fx": "bubble",
+     "pos": "low"
+    }
+   ],
+   "lines": 0.8,
+   "shake": 8,
+   "clock": {
+    "from": 0,
+    "to": 1800,
+    "fmt": "ms",
+    "label": "LEVEL 3",
+    "of": 1800,
+    "color": "red"
+   },
+   "transition": {
+    "type": "punch",
+    "dur": 0.4
+   }
+  },
+  {
+   "id": "interlude",
+   "dur": 3.0,
+   "route": "panamerican",
+   "time": "dawn",
+   "speed": 40,
+   "captions": [
+    {
+     "at": 0.1,
+     "dur": 1.4,
+     "head": "MINUTE 14:\n\"I'M BUILT DIFFERENT\"",
+     "fx": "slam",
+     "color": "yellow",
+     "size": 110
+    },
+    {
+     "at": 1.6,
+     "dur": 1.3,
+     "head": "MINUTE 27:\n\"I AM THE ROAD\"",
+     "fx": "glitch",
+     "color": "pink",
+     "size": 110
+    }
+   ],
+   "lines": 1,
+   "shake": 10,
+   "transition": {
+    "type": "spin",
+    "dur": 0.4
+   }
+  },
+  {
+   "id": "level4",
+   "dur": 4.4,
+   "route": "panamerican",
+   "time": "dusk",
+   "speed": 52,
+   "captions": [
+    {
+     "at": 0.1,
+     "dur": 4.1,
+     "head": "LEVEL 4\n8 HOURS",
+     "fx": "glitch",
+     "color": "red",
+     "size": 180
+    }
+   ],
+   "lines": 1,
+   "shake": 16,
+   "cam": {
+    "z": [
+     1,
+     1.6
+    ]
+   },
+   "band": "#2a0606",
+   "clock": {
+    "from": 0,
+    "to": 28798,
+    "ease": "in",
+    "label": "LEVEL 4",
+    "color": "red",
+    "of": 28800
+   },
+   "transition": {
+    "type": "punch",
+    "dur": 0.4
+   }
+  },
+  {
+   "id": "end",
+   "dur": 2.8,
+   "route": "brenner",
+   "time": "dusk",
+   "speed": 16,
+   "captions": [],
+   "beat": false,
+   "transition": {
+    "type": "flash",
+    "dur": 0.4
+   },
+   "card": {
+    "title": [
+     "8 HOUR SHIFTS",
+     "ARE SOON"
+    ],
+    "steps": [],
+    "cta": "10 FREE RIDES ▸"
+   }
+  }
+ ]
+}

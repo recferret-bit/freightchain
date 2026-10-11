@@ -1,0 +1,263 @@
+{
+ "name": "tiktok-escape-ride",
+ "crop": "vertical",
+ "fps": 30,
+ "maxSeconds": 22,
+ "audio": {
+  "ignition": {
+   "at": 0,
+   "dur": 0.8
+  },
+  "music": {
+   "id": "uneasy",
+   "gain": 0.55
+  },
+  "engine": {
+   "gain": 0.25
+  },
+  "sfx": {
+   "extra": [
+    {
+     "t": 3.9,
+     "id": "bruh"
+    },
+    {
+     "t": 9.4,
+     "id": "riser",
+     "dur": 3.6
+    },
+    {
+     "t": 13.3,
+     "id": "levelup"
+    },
+    {
+     "t": 13.4,
+     "id": "airhorn",
+     "gain": 0.8
+    }
+   ]
+  }
+ },
+ "scenes": [
+  {
+   "id": "day1",
+   "dur": 3.0,
+   "route": "route66",
+   "time": "day",
+   "speed": 24,
+   "captions": [
+    {
+     "at": 0.1,
+     "dur": 2.8,
+     "head": "DAY 1",
+     "fx": "slam",
+     "size": 190
+    },
+    {
+     "at": 1.0,
+     "dur": 1.8,
+     "head": "@me\nfeeling great!!",
+     "fx": "bubble",
+     "pos": "low"
+    }
+   ],
+   "clock": {
+    "from": 0,
+    "to": 300
+   }
+  },
+  {
+   "id": "day2",
+   "dur": 3.0,
+   "route": "route66",
+   "time": "dusk",
+   "speed": 26,
+   "captions": [
+    {
+     "at": 0.1,
+     "dur": 2.8,
+     "head": "DAY 2",
+     "fx": "slam",
+     "size": 190
+    },
+    {
+     "at": 1.0,
+     "dur": 1.8,
+     "head": "THAT'S THE\nSAME TREE",
+     "fx": "shake",
+     "color": "cyan",
+     "size": 110,
+     "pos": "low"
+    }
+   ],
+   "seed": 3,
+   "clock": {
+    "from": 300,
+    "to": 900
+   },
+   "transition": {
+    "type": "whip",
+    "dur": 0.3
+   }
+  },
+  {
+   "id": "day3",
+   "dur": 3.4,
+   "route": "route66",
+   "time": "night",
+   "speed": 28,
+   "captions": [
+    {
+     "at": 0.1,
+     "dur": 3.2,
+     "head": "DAY 3",
+     "fx": "glitch",
+     "color": "yellow",
+     "size": 190
+    },
+    {
+     "at": 1.0,
+     "dur": 2.2,
+     "head": "SOMEONE IS\nBEHIND ME",
+     "fx": "type",
+     "color": "red",
+     "size": 110,
+     "pos": "low",
+     "cps": 18
+    }
+   ],
+   "lines": 0.3,
+   "shake": 3,
+   "events": [
+    {
+     "t": 0.2,
+     "do": "spawn",
+     "type": "truck",
+     "preset": "tailgate",
+     "zone": "behind",
+     "dist": -35
+    }
+   ],
+   "clock": {
+    "from": 900,
+    "to": 1500,
+    "color": "red"
+   },
+   "transition": {
+    "type": "glitch",
+    "dur": 0.4
+   }
+  },
+  {
+   "id": "mirror",
+   "dur": 3.8,
+   "route": "route66",
+   "time": "night",
+   "speed": 28,
+   "captions": [
+    {
+     "at": 0.1,
+     "dur": 1.7,
+     "head": "CHECK THE\nMIRROR",
+     "fx": "words",
+     "color": "pink",
+     "size": 130,
+     "per": 0.3
+    },
+    {
+     "at": 2.0,
+     "dur": 1.7,
+     "head": "...JUST A\nTRUCK",
+     "fx": "shake",
+     "color": "white",
+     "size": 130
+    }
+   ],
+   "events": [
+    {
+     "t": 0.05,
+     "do": "spawn",
+     "type": "truck",
+     "preset": "tailgate",
+     "zone": "behind",
+     "dist": -30
+    }
+   ],
+   "cam": {
+    "z": [
+     1,
+     2.4
+    ],
+    "x": [
+     640,
+     175
+    ],
+    "y": [
+     360,
+     235
+    ]
+   },
+   "transition": {
+    "type": "punch",
+    "dur": 0.4
+   }
+  },
+  {
+   "id": "finish",
+   "dur": 3.2,
+   "route": "route66",
+   "time": "day",
+   "speed": 20,
+   "captions": [
+    {
+     "at": 0.1,
+     "dur": 2.9,
+     "head": "30:00",
+     "fx": "slam",
+     "size": 230,
+     "color": "lcd"
+    },
+    {
+     "at": 0.9,
+     "dur": 2.1,
+     "head": "SHIFT\nCOMPLETE",
+     "fx": "stamp",
+     "color": "lcd",
+     "size": 140,
+     "y": 1250
+    }
+   ],
+   "clock": {
+    "from": 1790,
+    "to": 1800,
+    "label": "RIDE TIME",
+    "of": 1800
+   },
+   "transition": {
+    "type": "flash",
+    "dur": 0.4
+   }
+  },
+  {
+   "id": "end",
+   "dur": 2.8,
+   "route": "brenner",
+   "time": "dusk",
+   "speed": 16,
+   "captions": [],
+   "beat": false,
+   "transition": {
+    "type": "flash",
+    "dur": 0.4
+   },
+   "card": {
+    "title": [
+     "YOU SURVIVED",
+     "THE LONG ROAD"
+    ],
+    "steps": [],
+    "cta": "10 FREE RIDES ▸"
+   }
+  }
+ ]
+}

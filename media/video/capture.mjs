@@ -24,7 +24,9 @@ export async function capture(spec, framesDir, { log = console.log, only = null 
   const srv = await serveClient(), port = srv.address().port;
   const { send, ev, filt, finish } = await launch({ port: +process.env.PORT || 9555, shotsDir: 'fc-video', args: ['--autoplay-policy=no-user-gesture-required', '--mute-audio', ...GPU_ARGS, ...(process.env.EXTRA_ARGS ? process.env.EXTRA_ARGS.split(' ') : []), `--window-size=${spec.width},${spec.height}`], evalProblems: true });
   try {
-    await send('Emulation.setDeviceMetricsOverride', { width: spec.width, height: spec.height, deviceScaleFactor: 1, mobile: false });
+    await send('Emulation.setDeviceMetricsOverride', { width: spec.width, height: spec.height, deviceScaleFactor: spec.dsf ?? 1, mobile: false });
+    // vertical: the page is 1080×1920 but the GAME believes it is 1280×720 (its normal landscape cockpit, rendered 1:1 for the 1.5× window in page.js); page.js places the canvases
+    if (spec.crop === 'vertical') await send('Page.addScriptToEvaluateOnNewDocument', { source: `Object.defineProperty(window,'innerWidth',{get:()=>1280});Object.defineProperty(window,'innerHeight',{get:()=>720});Object.defineProperty(window,'devicePixelRatio',{get:()=>${1.5 * (spec.dsf ?? 1)}})` });
     await send('Page.addScriptToEvaluateOnNewDocument', { source: fs.readFileSync(path.join(here, 'clock.js'), 'utf8') });
     await send('Page.navigate', { url: `http://127.0.0.1:${port}/play.html` });
     for (let i = 0; i < 100 && await ev('typeof window.__game') !== 'object'; i++) await sleep(150);

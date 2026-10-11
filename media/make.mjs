@@ -12,6 +12,7 @@
 // The reusable sounds and scores live in out/audio/_store (node audio/cli.mjs store).
 import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
 import { loadSpec } from './video/spec.mjs'; import { loadAudio } from './audio/spec.mjs'; import { renderVideo } from './video/render.mjs'; import { renderAudio } from './audio/render.mjs';
+import { SCORES } from './audio/scores/index.mjs'; import { fitBpm } from './audio/music.mjs';
 import { mux, compress, duration, MIN, TINY } from './video/encode.mjs';
 const here = path.dirname(fileURLToPath(import.meta.url)), a = process.argv.slice(2), flag = f => a.includes(f), val = f => { const i = a.indexOf(f); return i >= 0 ? a[i + 1] : null; };
 const VALUED = ['--only', '--add-audio', '--out', '--timeline'], file = a.find((x, i) => !x.startsWith('--') && !VALUED.includes(a[i - 1]));
@@ -20,7 +21,7 @@ if (!file) { console.error(USAGE); process.exit(2); }
 const modes = ['--video-only', '--audio-only', '--remux', '--compress', '--add-audio'].filter(flag); if (modes.length > 1) { console.error(`pick one mode, got ${modes.join(' ')}\n${USAGE}`); process.exit(2); }
 for (const f of VALUED) if (flag(f) && (val(f) == null || val(f).startsWith('--'))) { console.error(`${f} needs a value\n${USAGE}`); process.exit(2); }
 const raw = JSON.parse(fs.readFileSync(file, 'utf8')), only = val('--only'), addIn = val('--add-audio');
-if (flag('--preview')) Object.assign(raw, { width: 640, height: 360, fps: 12, name: (raw.name || 'clip') + '-preview' });
+if (flag('--preview')) Object.assign(raw, raw.crop === 'vertical' ? { dsf: .5, fps: 12, name: (raw.name || 'clip') + '-preview' } : { width: 640, height: 360, fps: 12, name: (raw.name || 'clip') + '-preview' });   // vertical: same 1080×1920 layout, half the pixels (device scale factor)
 if (only) raw.name = (raw.name || 'clip') + '-partial';   // a time-range test must never overwrite the real render
 const fail = m => { console.error(m); process.exit(2); };
 let spec;
@@ -31,11 +32,12 @@ try {
     else spec = { name: 'clip', look: 'classic', fps: 24, maxSeconds: Math.ceil(len), scenes: [], ...raw, total: len };
   } else spec = loadSpec(raw);
   spec.audio = loadAudio(raw.audio, spec.total);
+  if (spec.look === 'meme' && spec.audio?.music) spec.beat = { t0: spec.audio.music.start, bpm: +fitBpm(SCORES[spec.audio.music.id], { seconds: spec.total - spec.audio.music.start, repeat: spec.audio.music.repeat }).toFixed(3) };   // the page pulses the picture on the music's beat
 } catch (e) { fail(e.message); }
 if (spec.name.startsWith('_') || /[\\/]/.test(spec.name)) fail('spec name must not start with _ (out/audio/_store is the sound library) or contain a slash');
 const vdir = path.join(here, 'out/video', spec.name), adir = path.join(here, 'out/audio', spec.name), mp4 = path.join(vdir, spec.name + '.mp4');   // out/video/<name>/ and out/audio/<name>/
 const minify = () => { const m = compress(mp4, spec.gif.maxMB);
-  console.log(`min  mp4 ${m.mp4.mb.toFixed(1)} MB (crf ${MIN.crf})  ${m.mp4.file}\n     gif ${m.gif.mb.toFixed(1)} MB (${MIN.colors} colours, ${m.gif.width}px @ ${m.gif.fps} fps)${m.gif.over ? `  OVER the ${spec.gif.maxMB} MB limit` : ''}  ${m.gif.file}\n     ${m.tiny.skipped ? `tiny gif: none – the clip is longer than ${TINY.maxSeconds} s` : `tiny gif ${m.tiny.kb.toFixed(0)} kB (≤ 500 kB, ${m.tiny.width}px @ ${m.tiny.fps} fps, ${m.tiny.colors} colours)  ${m.tiny.file}\n     tried: ${m.tiny.tried.join(' → ')}`}`); };
+  console.log(`min  mp4 ${m.mp4.mb.toFixed(1)} MB (crf ${MIN.crf})  ${m.mp4.file}\n     gif ${m.gif.mb.toFixed(1)} MB (${MIN.colors} colours, ${m.gif.width}px @ ${m.gif.fps} fps)${m.gif.over ? `  OVER the ${spec.gif.maxMB} MB limit` : ''}  ${m.gif.file}\n     ${m.tiny.skipped ? `tiny gif: none – the clip is longer than ${TINY.maxSeconds} s or vertical` : `tiny gif ${m.tiny.kb.toFixed(0)} kB (≤ 500 kB, ${m.tiny.width}px @ ${m.tiny.fps} fps, ${m.tiny.colors} colours)  ${m.tiny.file}\n     tried: ${m.tiny.tried.join(' → ')}`}`); };
 const need = (...x) => { const miss = x.filter(f => !fs.existsSync(path.join(vdir, f))); if (miss.length) fail(`no ${miss.join(' + ')} in ${vdir} – render it first`); };
 const sound = (timelineFile) => {
   if (!spec.audio) fail('the spec has no `audio` block');
