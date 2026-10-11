@@ -6,7 +6,7 @@
    Bits are FOREVER (old recordings keep their meaning): append new controls, never renumber. ≤ 30 bits (JS bitwise is 32-bit signed). */
 export const INPUT_COL = 14;   // the sample column (server/src/domain/telemetry/telemetry-rules.ts SAMPLE_INPUT_COL)
 export const CONTROLS = ['gas', 'brake', 'left', 'right', 'clutch', 'up', 'down', 'gear', 'reverse', 'start', 'stop', 'keyOn', 'park', 'heat', 'wiper', 'wash',
-  'head', 'cab', 'night', 'radio', 'prev', 'next', 'volume', 'pause', 'mute', 'map', 'cold'];
+  'head', 'cab', 'night', 'radio', 'prev', 'next', 'volume', 'pause', 'mute', 'map', 'cold', 'share'];
 export const MOUSE = 1 << 25;   // a dash button was clicked (with the mouse / a tap)
 export const BIT = Object.fromEntries(CONTROLS.map((c, i) => [c, 1 << (i < 25 ? i : i + 1)]));   // controls appended after 'mute' skip bit 25 (MOUSE): 'map' = 1 << 26, 'cold' = 1 << 27
 
@@ -19,7 +19,7 @@ const KEY = {
 };
 for (let g = 0; g <= 7; g++) KEY[`Digit${g}`] = 'gear';
 /* dash button id (cockpit uiBtns, recorded as `btn:<id>`) → control */
-const BTN = { wiper: 'wiper', wash: 'wash', 'key-off': 'stop', 'key-on': 'keyOn', 'key-start': 'start', park: 'park', head: 'head', cab: 'cab', heat: 'heat', cold: 'cold', 'r-pwr': 'radio', 'r-prev': 'prev', 'r-next': 'next', map: 'map' };
+const BTN = { wiper: 'wiper', wash: 'wash', 'key-off': 'stop', 'key-on': 'keyOn', 'key-start': 'start', park: 'park', head: 'head', cab: 'cab', heat: 'heat', cold: 'cold', 'r-pwr': 'radio', 'r-prev': 'prev', 'r-next': 'next', map: 'map', 'share-x': 'share' };
 /** the dash buttons a control is drawn around (its key and its click light the same button) */
 export const DASH = Object.fromEntries(CONTROLS.map(c => [c, Object.keys(BTN).filter(id => BTN[id] === c)]));
 /** the key cap shown for a control pressed on the keyboard; the driving cluster (Q W E / A S D / ⇧) is always on screen in a replay */

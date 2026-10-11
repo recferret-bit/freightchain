@@ -24,6 +24,7 @@ import { guide, setGuide } from '../guide.js';
 import { startGuide } from './assist.js';
 import { SITE_BASE } from '../hosts.js';
 import { resetMap } from './map.js';
+import { phone } from '../phone.js';
 
 /* Ride flow: menu / start / end / pause overlay and per-ride reset. */
 let lastOutcome = null;
@@ -44,7 +45,7 @@ prompt.onShow = () => audio.play('warn'); prompt.onAnswer = () => audio.play('ui
 telemetry.trafficOf = () => trafficSnapshot();   // the cars around the truck, recorded beside each batch for spectators' replays
 telemetry.extra = () => [Math.round(dn.t * 100) / 100,
   (st.engineOn ? FLAGS.engine : 0) | (st.keyOn ? FLAGS.key : 0) | (st.park ? FLAGS.park : 0) | (dn.head ? FLAGS.head : 0) | (dn.cab ? FLAGS.cab : 0) | (st.heater ? FLAGS.heater : 0) | (st.cooler ? FLAGS.cooler : 0)
-  | (st.washing ? FLAGS.washing : 0) | (wip.mode === 1 ? FLAGS.wipeSlow : wip.mode === 2 ? FLAGS.wipeFast : 0) | (radio.on ? FLAGS.radio : 0) | (st.rev ? FLAGS.rev : 0)];
+  | (st.washing ? FLAGS.washing : 0) | (wip.mode === 1 ? FLAGS.wipeSlow : wip.mode === 2 ? FLAGS.wipeFast : 0) | (radio.on ? FLAGS.radio : 0) | (st.rev ? FLAGS.rev : 0) | (phone.open ? FLAGS.phone : 0)];
 
 /* ───────────────────────── overlay / game flow ───────────────────────── */
 const overlay = document.getElementById('overlay'), panel = document.getElementById('panel');
