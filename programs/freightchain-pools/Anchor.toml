@@ -7,7 +7,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-freightchain_pools = "9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx"
+freightchain_pools = "8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p"
 
 [provider]
 cluster = "localnet"

@@ -1,5 +1,5 @@
 {
-  "address": "9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx",
+  "address": "8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p",
   "metadata": {
     "name": "freightchain_pools",
     "version": "0.1.0",
@@ -675,7 +675,7 @@
         },
         {
           "name": "program",
-          "address": "9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx"
+          "address": "8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p"
         },
         {
           "name": "program_data"
