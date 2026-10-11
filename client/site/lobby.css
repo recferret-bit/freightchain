@@ -46,7 +46,7 @@ h2{margin:22px 0 10px;font-size:13px;letter-spacing:2px;color:var(--amber);font-
 .tier.free{margin:12px 0}.tier.free .freeinfo{display:grid;gap:16px}.tier.free .hd{justify-content:flex-start}.tier.free .nm{font-size:28px;letter-spacing:2px;line-height:1.05}.tier.free .prize{display:flex;flex-wrap:wrap;gap:8px}.tier.free .go{margin-top:2px}.tier.free .msg{margin:0}.tier.free .msg:empty{display:none}
 /* the amber button stays the cab's; the pulse is Solana green and purple so START FREE RIDE reads as the action. A disabled button (no credit, or WORKING) stays still. */
 @keyframes free-go{0%,100%{transform:scale(1);box-shadow:0 0 8px #9945FF66,0 0 18px #14F19533}50%{transform:scale(1.03);box-shadow:0 0 16px #14F195dd,0 0 32px #9945FFbb}}
-.tier.free .go:not(:disabled){animation:free-go 1.8s ease-in-out infinite}
+.tier.free .go:not(:disabled),.tier.pooled .go:not(:disabled),.tier.pooled .buyb:not(.ghost):not(:disabled){animation:free-go 1.8s ease-in-out infinite}
 .tier .more{max-height:0;overflow:hidden;opacity:0;transition:max-height .2s,opacity .2s}
 .tier:hover .more,.tier:focus-within .more{max-height:12em;opacity:1}
 @media (hover:none){.tier .more{max-height:none;opacity:1}}
@@ -72,7 +72,7 @@ h2{margin:22px 0 10px;font-size:13px;letter-spacing:2px;color:var(--amber);font-
 .tier .mine{font-size:13px;margin-top:4px}.tier .mine b{color:var(--amber)}
 .tier .fee{font-size:11px}
 .tier .split{height:8px;margin:6px 0 2px}.tier .legend{font-size:11px;gap:2px 10px}
-.tier details{font-size:12px;color:var(--dim)}.tier summary{cursor:pointer;color:var(--amber);font-size:11px;letter-spacing:1px;margin-top:4px}.tier details p{margin:6px 0 0}
+.tier details{font-size:12px;color:var(--dim)}.tier summary{cursor:pointer;color:var(--amber);font-size:11px;letter-spacing:1px;margin-top:4px}.tier details p{margin:6px 0 0}.tier details[open]{display:grid;gap:4px}
 .tier .msg{margin:4px 0 0;font-size:12px;min-height:0}
 .tier ul.rules{margin:6px 0 0}
 /* the daily series: phase line, the series rule, the winners list (lobby-pools.js) */
