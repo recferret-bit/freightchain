@@ -2,7 +2,14 @@
 
 export const pad = n => String(Math.floor(n)).padStart(2, '0');
 export const sol = l => (l / 1e9).toFixed(l >= 1e9 ? 2 : 3);
-export const km = m => (m / 1000).toFixed(m < 10_000 ? 2 : m < 1e6 ? 1 : 0);
+export const km = m => {
+  let v = Math.max(0, m) / 1000, t = 0;
+  if (v < 9.995) return v.toFixed(2);
+  if (v < 999.5) return v.toFixed(1);
+  while (v >= 999.5) { v /= 1000; t++; }
+  const s = (v < 10 ? v.toFixed(2) : v < 100 ? v.toFixed(1) : v.toFixed(0)).replace(/\.?0+$/, '');
+  return `${s}${'k'.repeat(t)}`;
+};
 export const left = ms => { const s = Math.max(0, Math.floor(ms / 1000)), d = Math.floor(s / 86400); return `${d ? d + 'd ' : ''}${pad((s % 86400) / 3600)}:${pad((s % 3600) / 60)}:${pad(s % 60)}`; };
 export const dur = s => { s = Math.max(0, Math.round(s)); return s >= 3600 ? `${Math.floor(s / 3600)}:${pad((s % 3600) / 60)}:${pad(s % 60)}` : `${Math.floor(s / 60)}:${pad(s % 60)}`; };
 export { shortAddr as short } from '../../client/site/pools.js';   // one shortener for every page

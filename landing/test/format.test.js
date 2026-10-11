@@ -8,8 +8,11 @@ test('sol: lamports → SOL, 3 decimals below 1 SOL, 2 above', () => {
   assert.equal(sol(0), '0.000'); assert.equal(sol(123_456_789), '0.123'); assert.equal(sol(1e9), '1.00'); assert.equal(sol(12_345_678_901), '12.35');
 });
 
-test('km: precision shrinks as the number grows', () => {
-  assert.equal(km(0), '0.00'); assert.equal(km(1234), '1.23'); assert.equal(km(54_321), '54.3'); assert.equal(km(2_500_000), '2500');
+test('km: precision shrinks as the number grows, uses k, kk, kkk suffixes', () => {
+  assert.equal(km(0), '0.00'); assert.equal(km(1234), '1.23'); assert.equal(km(54_321), '54.3');
+  assert.equal(km(1_000_000), '1k'); assert.equal(km(2_500_000), '2.5k');
+  assert.equal(km(1_000_000_000), '1kk'); assert.equal(km(2_500_000_000), '2.5kk');
+  assert.equal(km(1_000_000_000_000), '1kkk'); assert.equal(km(2_500_000_000_000), '2.5kkk');
 });
 
 test('left: countdown with days only when needed, never negative', () => {
