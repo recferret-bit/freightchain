@@ -12,7 +12,7 @@ import { resetScreen, wip } from '../cockpit/windscreen.js';
 import { telemetry, FLAGS } from '../telemetry.js';
 import { radio } from '../sim/radio.js';
 import { trafficSnapshot } from '../sim/traffic.js';
-import { clockText } from '../world/daynight.js';
+import { clockText, setClock } from '../world/daynight.js';
 import { online, beginOnline, endOnline } from '../online.js';
 import { offlineRide, connectHref } from '../offline-ride.js';
 import { startLiveFeed, stopLiveFeed } from './live-feed.js';
@@ -34,6 +34,8 @@ export function resetRide(seed = online.ride?.seed) {   // seed: the server's fo
   resetDisp(); destroyed.clear(); clearDebris(); roads.newTrip(seed); resetScreen();   // new road layout, depot, traffic
   st.pull = mulberry32(roads.seed ^ 0x2545f491)() < .5 ? -1 : 1;   // a damaged truck's pull side comes from the road seed: every rider of a pool (one seed) gets the same one
   resetMap();   // the phone back on its mount, the map's view from scratch (an end / pause closes it too: ui/map.js)
+  const hour = online.ride?.startHour ?? (seed != null ? [6.5, 12, 18.5, 22][Math.floor(seed / 5) % 4] : null);
+  if (hour != null) setClock(hour, true, true);
 }
 
 online.extra = () => ({ route: env.theme.id, night: dn.night });   // what the server's public live feed shows next to the ride
@@ -80,9 +82,9 @@ export function showMenu(title, sub, extra = '') {
 function showOnlineMenu(title, sub, extra) {
   const over = online.done, bad = !!online.error;
   panel.innerHTML = `<h1>${title}</h1><h2>${sub}</h2>${extra}
-    ${bad ? `<div class="row"><span>Ride</span><span class="bad">${online.error}</span></div>` : `<div class="row"><span>Shift (server-timed)</span><b>${fmt(CFG.RIDE_MIN_SECONDS)} · ${(CFG.COMPLETE_DIST / 1000).toFixed(1)} km${online.ride.timeScale > 1 ? ` · DEMO ×${online.ride.timeScale}` : ''}</b></div>
+    ${bad ? `<div class="row"><span>Ride</span><span class="bad">${online.error}</span></div>` : `<div class="row"><span>Shift (server-timed)</span><b>${fmt(CFG.RIDE_MIN_SECONDS)} · ${(CFG.COMPLETE_DIST / 1000).toFixed(1)} km</b></div>
     <div class="row"><span>Route (set by the server)</span><b>${env.theme.name} · starts ${clockText()}</b></div>`}
-    <div class="btns"><button id="go" ${bad || over ? 'disabled' : ''}>START RIDE</button>${over || bad || !(online.ride?.tutorial || online.ride?.assist) ? `<button class="alt bail-link" id="lobby" title="lobby"><b>I MISS THE YARD</b><small>lobby</small></button>${over && online.ride ? '<button type="button" class="alt share-x-btn" id="share-x-end" title="Share your ride on 𝕏"><b>POST ON 𝕏</b><small>share progress & receipt</small></button>' : ''}${bailBtn('done')}` : ''}</div>`;
+    <div class="btns"><button id="go" ${bad || over ? 'disabled' : ''}>START RIDE</button>${over || bad ? `<button class="alt bail-link" id="lobby" title="lobby"><b>I MISS THE YARD</b><small>lobby</small></button>${over && online.ride ? '<button type="button" class="alt share-x-btn" id="share-x-end" title="Share your ride on 𝕏"><b>POST ON 𝕏</b><small>share progress & receipt</small></button>' : ''}${bailBtn('done')}` : ''}</div>`;
   overlay.classList.remove('hide');
   document.getElementById('go').onclick = startRide;
   const lobby = document.getElementById('lobby');
@@ -131,7 +133,7 @@ export async function startRide() {   // only an online ride awaits the server
       showMenu('RIDE REFUSED', 'The server did not accept this ride.');
       return;
     }
-    startLiveFeed();   // spectators' chat + effects (live streams)
+    if (online.ride.tier !== 'free') startLiveFeed();   // spectators' chat + effects (live streams) – paid shifts only
   } else if (offlineRide.on) {
     if (st.mode === 'drive' || st.mode === 'paused') return;
     if (!offlineRide.dev) setGuide({ tutorial: guestOpt.tutorial, assist: guestOpt.assist });   // the guest's two checkboxes (a tool's devRun picks its own)

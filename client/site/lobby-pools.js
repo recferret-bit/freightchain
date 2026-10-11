@@ -9,7 +9,7 @@ const chip = (p, now) => { const c = statusChip(p, now); return el('span', { cla
 
 /* the real tier, then the shorter ride a demo wallet actually drives */
 export function paidShift(info) {
-  return [el('span', { class: 'sub' }, info.shift), info.driven ? el('span', { class: 'sub demo' }, `DEMO ×${info.scale}`, ' · this ride ', el('b', {}, info.driven)) : ''];
+  return [el('span', { class: 'sub' }, info.shift), info.driven ? el('span', { class: 'sub demo' }, 'this ride ', el('b', {}, info.driven)) : ''];
 }
 
 /** One paid tier sold through an escrowed pool. ctx = { me, solUsd, now, busy, sales, qty, act: { ride, buy, refund, qty } }. */

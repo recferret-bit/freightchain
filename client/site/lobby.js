@@ -47,7 +47,6 @@ function paintHeader() {
   $('chip-free').textContent = `${freeLeft(m)} · ${freeCd(m)}`;
   paintPaid(m);
   $('chip-live').textContent = liveChip();
-  $('chip-demo').hidden = !m.demo; $('chip-demo').textContent = `DEMO ×${m.demoScale}`;
 }
 
 function go() {
@@ -393,7 +392,7 @@ function paintLive() {
     if (!row) {
       row = { fill: el('div', { class: 'fill' }), truck: el('span', { class: 'truck' }, '⛟'), time: el('b'), dist: el('b'), hull: el('b'), eyes: el('b'), badge: el('span', { class: 'badge' }) };
       row.root = el('div', { class: 'card ride' }, avatar(r.wallet),
-        el('div', { class: 'who' }, el('b', {}, short(r.wallet), r.wallet === S.me.wallet ? ' (you)' : ''), el('span', { class: `badge${r.tier === 'free' ? '' : ' p'}` }, TIER_NAME[r.tier] ?? r.tier), r.route ? el('span', { class: 'badge' }, ROUTES[r.route] ?? '') : '', r.timeScale > 1 ? el('span', { class: 'badge d' }, `DEMO ×${r.timeScale}`) : '', row.badge),
+        el('div', { class: 'who' }, el('b', {}, short(r.wallet), r.wallet === S.me.wallet ? ' (you)' : ''), el('span', { class: `badge${r.tier === 'free' ? '' : ' p'}` }, TIER_NAME[r.tier] ?? r.tier), r.route ? el('span', { class: 'badge' }, ROUTES[r.route] ?? '') : '', row.badge),
         el('div', { class: 'road' }, row.fill, row.truck),
         el('div', { class: 'stats' }, el('span', {}, '⏱ ', row.time), el('span', {}, '↦ ', row.dist), el('span', {}, 'hull ', row.hull), el('span', { title: 'watching now' }, '👁 ', row.eyes),
           el('a', { class: 'watch', href: `${GAME_BASE}/play.html?watch=${encodeURIComponent(r.id)}`, title: 'watch this ride live – chat with the driver, send donations' }, '▶ WATCH')));
@@ -465,7 +464,7 @@ async function renderProfile() {
     el('p', { class: 'dim' }, 'Achievements become NFTs in your wallet soon – they are recorded now and can’t be lost.'),
         el('h2', {}, 'RECENT RIDES'),
     p.recent.length ? el('div', { class: 'hist' }, p.recent.map(r => el('div', { class: 'hrow' },
-      el('span', {}, new Date(r.startedAt).toLocaleString(), ' · ', TIER_NAME[r.tier] ?? r.tier, r.route ? ` · ${ROUTES[r.route] ?? ''}` : '', r.timeScale > 1 ? ` · DEMO ×${r.timeScale}` : ''),
+      el('span', {}, new Date(r.startedAt).toLocaleString(), ' · ', TIER_NAME[r.tier] ?? r.tier, r.route ? ` · ${ROUTES[r.route] ?? ''}` : ''),
       el('span', {}, `${km(r.distance)} km · `, el('b', { class: r.status === 'completed' ? 'good' : 'bad' }, r.status.toUpperCase()),
         r.verdict ? el('b', { class: r.verdict === 'verified' ? 'good' : 'bad', title: 'recording check – only verified shifts rank' }, ` · ${r.verdict.toUpperCase()}`) : '')))) : el('div', { class: 'card empty' }, 'No rides yet – start one!'));
 }

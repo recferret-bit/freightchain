@@ -57,7 +57,7 @@ The landing has six chapters: [RIDE](https://freightchain.fun/#ride), [LOOP](htt
 6. Open the [program on the explorer](https://explorer.solana.com/address/9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx?cluster=devnet) and the [contract spec](docs/pool-program/index.html). A buy on freightchain.fun today is the legacy memo transfer into the weekly round. Tickets into this program are the other path, in [Economy](#economy).
 7. If you build the repo: `npm run test:localnet` runs the real program on a local validator and checks every lamport. Walkthrough: [`docs/localnet-e2e/index.html`](docs/localnet-e2e/index.html).
 
-A wallet listed in `DEMO_WALLETS` drives a paid shift `DEMO_SCALE` times shorter (default 60). The cab, the lobby, and the watch page badge that ride `DEMO ×60`. The speed governor stays 28 m/s. Say the demo clock out loud if a one-hour shift finishes in a minute.
+A wallet listed in `DEMO_WALLETS` drives a paid shift `DEMO_SCALE` times shorter (default 60). The speed governor stays 28 m/s.
 
 ### Status
 
