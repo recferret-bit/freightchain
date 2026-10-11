@@ -294,7 +294,7 @@ function think(a, dt, tb) {
 }
 /* contact pushes a car out of the truck in one step (a.s / a.lat jump by the overlap) – the mesh eases over it instead: a.vs / a.vl = the pushed distance still to show (m), fading at VIS_EASE /s */
 const VIS_EASE = 9;
-function place(a, dt) {
+function place(a, dt = 0) {   // (spawn: no dt – an undefined one made vs / vl NaN and every car's mesh vanished)
   const k = Math.exp(-VIS_EASE * dt); a.vs *= k; a.vl *= k;
   const p = a.road.at(a.s + a.dir * a.vs), m = a.mesh, lat = a.lat + a.vl;
   m.position.set(p.x + Math.cos(p.t) * lat, 0, p.z + Math.sin(p.t) * lat);
