@@ -28,3 +28,10 @@ Agent reference (see AGENTS.md "Maps stay current"). Read it before changing the
 - **Failure modes**: a simulation that would fail leaves the row `planned` with the error (nothing claimed); a signed transaction that never lands is resolved from its signature (`expired` → a new one is safe: the blockhash is gone); `failed` rows wait for `achievement:mint --retry`. The asset id is read from the finalized transaction – until then the row stays `sent`.
 - **Not done**: a `podium` family (round / pool winners – `top-20` is only a placeholder); a DAS-based reconciler that cross-checks `minted` rows against the tree; mainnet tree + collection; wallets (Phantom / Solflare / Backpack) show v2 cNFTs but marketplaces do not yet – which suits a soulbound badge.
 - **Tests**: `test/unit/domain/achievements.spec.ts` (ladders, exact targets, frozen legacy ids), `…/mint-achievements.handler.spec.ts` (delay, demo, crash-after-sign, expiry, attempts, concurrency, batch), the scheduler + adapter specs, `achievement-mint.prisma.repository.integration.spec.ts` (claims under real concurrency), the profile scenario in `test/scenarios/lobby.scenarios.ts`.
+
+## Devnet deployment (11 Oct 2026)
+
+- Achievement key (mint + fees; secret in `deploy/secrets/achievement-mint.json`, gitignored): `k5GepWFN9Hj1arH9YBJtPsnypd7RycLgt5by1x74Nkf`.
+- Collection `56ijQ5t2RFpXezbPtEuqECo5gCQiGSek2LBsp7cfMoXC` (soulbound, nobody can thaw) · Merkle tree `45NKrZA9rGFcKr62VY5NvM89yarFuBqtBseRK7ZSM336` (depth 16, buffer 64, canopy 10, 65,536 badges, private).
+- Art + metadata on devnet Irys (`nft-metadata-uris.ts`, ~60 days of retention on devnet – re-upload with `upload-irys.mjs` before they lapse; mainnet needs its own upload).
+- Verified on devnet: `smoke-mint.mjs` minted a badge to a throwaway wallet and the owner's transfer was refused ("Collection is frozen"; DAS still shows the leaf's own `frozen: false`); the real mint job (`achievement:mint`) minted `first-mile` to a wallet from a database row, read the tree usage and did not mint twice on a second pass. The public devnet RPC answers DAS.
