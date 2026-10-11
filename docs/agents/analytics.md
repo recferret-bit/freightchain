@@ -11,6 +11,7 @@ The full event list, funnels and board recipe: `docs/analytics/index.html` (docs
 - **Identity.** Anon id `anon_<uuid v4>` in `localStorage` `freightchain.anon`. **Open bug — do not flip `$create_alias`** (`distinct_id` = the anon id, `properties.alias` = the wallet) until one real `session_restored` is checked in the UI.
 - **Env.** Opt-in: only `POSTHOG_ENABLED=1|true` sends (a `phc_` token alone stays off); `POSTHOG_DISABLED=1|true` wins. Local `server/.env` pins 0, production `deploy/.env` sets 1. Never print or commit `POSTHOG_KEY`.
 - **Page speed** = ONE Trends insight on `web_vital` (Total count, breakdown `metric` then `rating`, bar chart of the period, name Page speed) – not five charts, not PostHog's `$web_vitals` page, not a tile on dashboard 1006663.
+- **Evidence.** Three PostHog screenshots (11 Oct 2026: the board, the insight list, FC · Acquisition 24 h) live in `docs/analytics/img/`; the README judges section embeds them small and `docs/analytics/index.html` shows them in the board section. Retake them when the board changes.
 - **Not this work.** Session replay / ride replay are verified play; verdicts, escrow ticket buys and live-stream events are not analytics events. If PostHog and SQL disagree, quote SQL.
 - Skills: `posthog-test` (local smoke), `posthog-prod` (read-only production ingest), `analytics-review` (three local passes), `posthog-map` (event map), `posthog-audit` (board vs spec; apply only when the user says **apply the PostHog fixes**).
 

@@ -87,6 +87,9 @@ Production stays on the transfer path until the Colosseum results, the devnet ex
 - **The crank key is not the admin.** `CRANK_SECRET` sends only `open_next_pool` (v2), `fail_pool`, `expire_pool`, `refund`, and `close_pool`. It never sends `pay_prize`.
 - **The payout key can only pay (v2).** `set_payout_authority` names a key that may sign `pay_prize` (capped) and `close_pool`, and only after the pool's review window `payout_at`. Not even the admin pays earlier. The server holds it as `PAYOUT_SECRET` and pays only verified rides, once every ride of the pool is decided.
 - **Verifiable build.** `npm run program:verify` rebuilds in the Solana Foundation image and compares the hash to [`programs/freightchain-pools/verifiable-build.hash`](programs/freightchain-pools/verifiable-build.hash). The explorer "verified" badge needs a public repo and a signed PDA. That step is still open.
+- **Real product analytics, not a mock.** Screenshots of the private PostHog Cloud EU project (297915), taken 11 Oct 2026. The numbers are small: this is devnet traffic and a few test wallets, and the demo-wallet funnels run on the ×60 clock. Click for full size. Detail: [`docs/analytics/index.html`](docs/analytics/index.html).
+
+  [<img src="docs/analytics/img/posthog-dashboard.png" alt="PostHog dashboard: free, paid and payment funnels" width="260">](docs/analytics/img/posthog-dashboard.png) [<img src="docs/analytics/img/posthog-insights.png" alt="PostHog insight list: FC funnels, path, retention, stickiness" width="130">](docs/analytics/img/posthog-insights.png) [<img src="docs/analytics/img/posthog-acquisition.png" alt="PostHog acquisition funnel, 24 hours: 85 landing views, 3 wallet clicks, 1 lobby view" width="200">](docs/analytics/img/posthog-acquisition.png)
 - **Not audited.** Devnet only. `deploy` refuses an RPC whose genesis is not devnet.
 
 ### Disclosure
