@@ -14,7 +14,7 @@ const CH = CFG.CHUNK_LEN, SIGN_LAT = 7.6;   // CH = chunks.js CH (not imported: 
 
 /* ───────────────────────── meshes ───────────────────────── */
 /* Route-independent materials, DoubleSide (so the mirror pass leaves them alone). Drawn just above the road ribbon (y .03) with a polygon offset against z-fighting. */
-const dec = (color, up = 0, lit = false) => new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2 - up, polygonOffsetUnits: -2 - up, toneMapped: !lit });   // lit: self-lit, the night does not darken it
+const dec = (color, up = 0, lit = false) => new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -5 - up, polygonOffsetUnits: -5 - up, toneMapped: !lit });   // lit: self-lit, the night does not darken it
 const M = { flag: dec(0xff1f1f, -1, true), rim: dec(0x68625a), crumb: dec(0x4a4540, 1), pit: dec(0x0f0d0c, 2), deep: dec(0x000000, 3), cone: new THREE.MeshBasicMaterial({ color: 0xff6a1a }), band: new THREE.MeshBasicMaterial({ color: 0xf2f2ea }), gravel: new THREE.MeshBasicMaterial({ color: 0x6b6258 }) };
 export const holeMats = [M.cone, M.band, M.gravel];   // single-sided: the mirror pass must flip them (render.js)
 const DISC = new THREE.CircleGeometry(1, 20);
