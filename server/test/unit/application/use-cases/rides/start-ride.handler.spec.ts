@@ -80,6 +80,9 @@ describe('StartRideHandler', () => {
     await start(ride.id);
     await expect(start(ride.id)).rejects.toThrow(new ConflictError('ride is running'));
     await expect(start((await ctx.paidOrder('w')).id)).rejects.toThrow(new ConflictError('ride is awaiting_payment'));
+    const ready = await ctx.paidOrder('w2', 50_000_000, { offer: false }); // w already accepted above; this wallet never did
+    ready.markPaid(1, ctx.now()); await ctx.rides.save(ready);
+    await expect(start(ready.id, 'w2')).rejects.toMatchObject({ errorCode: 'agreements_required' });
     await expect(start(ride.id, 'stranger')).rejects.toBeInstanceOf(NotFoundError);
   });
 

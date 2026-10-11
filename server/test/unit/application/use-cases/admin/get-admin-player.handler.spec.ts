@@ -19,7 +19,7 @@ describe('GetAdminPlayerHandler', () => {
     ctx.db.playerStats.set('alice', { totals: { ...EMPTY_STATS, rides: 2, ridesFree: 2, seconds: 10.4, metres: 140.6 }, updatedAt: ctx.now() });
     await ctx.tickets.appendGrant({ wallet: 'alice', poolId: 1, delta: 2, source: 'promo', ref: 'WELCOME', at: ctx.now() });
     const d = await handler(ctx).execute(new GetAdminPlayerQuery('alice'));
-    expect(d.player).toMatchObject({ wallet: 'alice', freeRides: 10, freeRidesMax: 5, tutorialPassedAt: null, createdAt: ctx.clock.ms });
+    expect(d.player).toMatchObject({ wallet: 'alice', freeRides: 10, freeRidesMax: 5, tutorialPassedAt: null, age18At: null, lossAt: null, createdAt: ctx.clock.ms });
     expect(d.stats).toMatchObject({ rides: 2, seconds: 10, metres: 141 });
     expect(d.grants).toEqual([{ poolId: 1, delta: 2, source: 'promo', ref: 'WELCOME', at: ctx.clock.ms }]);
     expect(d.payments).toEqual({ count: 0, lamports: 0 });

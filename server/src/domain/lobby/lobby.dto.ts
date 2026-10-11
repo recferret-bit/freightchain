@@ -157,6 +157,8 @@ export interface ProfileDto {
   tickets: TicketBalanceDto[];
   /** the newest lines of the ticket audit trail */
   grants: TicketGrantDto[];
+  /** the same two boxes as /api/me, so the PROFILE tab and the NEW RIDE tab share one read */
+  agreements: { age18: boolean; loss: boolean; age18At: number | null; lossAt: number | null };
 }
 
 export const LIVE_FEED_LIMIT = 50;

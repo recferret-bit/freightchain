@@ -12,6 +12,10 @@ export interface PlayerProps {
   createdAt: Date;
   /** when a ride was first STARTED with the tutorial on (null = never): the lobby then leaves the tutorial off by default */
   tutorialPassedAt: Date | null;
+  /** when the rider ticked "I am 18 or older" (null = off). The first stamp stays until the box is cleared. */
+  age18At: Date | null;
+  /** when the rider ticked the loss offer (null = off). Paid play needs this and `age18At`. */
+  lossAt: Date | null;
 }
 
 /** A rider, identified by the Solana wallet that signed in. Owns the free-ride credits. */
@@ -23,7 +27,7 @@ export class Player {
 
   /** First sight of a wallet: the signup free rides. */
   static register(wallet: string, now: Date, freeOnSignup: number, freeRidesMax: number): Player {
-    return new Player({ wallet, version: 1, freeRides: freeOnSignup, freeDay: utcDay(now), freeRidesMax, createdAt: now, tutorialPassedAt: null });
+    return new Player({ wallet, version: 1, freeRides: freeOnSignup, freeDay: utcDay(now), freeRidesMax, createdAt: now, tutorialPassedAt: null, age18At: null, lossAt: null });
   }
 
   static restore(props: PlayerProps): Player {
@@ -38,6 +42,10 @@ export class Player {
   get createdAt(): Date { return this.props.createdAt; }
   get tutorialPassedAt(): Date | null { return this.props.tutorialPassedAt; }
   get tutorialPassed(): boolean { return this.props.tutorialPassedAt !== null; }
+  get age18At(): Date | null { return this.props.age18At; }
+  get lossAt(): Date | null { return this.props.lossAt; }
+  /** Both boxes on. Free rides do not ask. */
+  get paidPlayAllowed(): boolean { return this.props.age18At !== null && this.props.lossAt !== null; }
   /** True only when this process inserted the row on the touch that returned this instance. */
   get isNewPlayer(): boolean { return this.fresh; }
 
@@ -85,6 +93,33 @@ export class Player {
   grantFreeRides(count: number): void {
     if (!Number.isInteger(count) || count < 1) throw new Error('grantFreeRides needs a whole number ≥ 1');
     this.props.freeRides += count;
+  }
+
+  /**
+   * The profile boxes. Turning one on stamps `now` and keeps that stamp; turning it off clears it.
+   * `becameAccepted` is only the transition into both-on (the analytics event).
+   */
+  setAgreements(next: { age18: boolean; loss: boolean }, now: Date): { changed: boolean; becameAccepted: boolean } {
+    const was = this.paidPlayAllowed;
+    const age = this.applyAgreement('age18At', next.age18, now);
+    const loss = this.applyAgreement('lossAt', next.loss, now);
+    return { changed: age || loss, becameAccepted: !was && this.paidPlayAllowed };
+  }
+
+  /** A paid shift, a ticket order, or the unsigned transaction that spends SOL. Free rides do not call this. */
+  requirePaidPlay(): void {
+    if (!this.paidPlayAllowed) throw new ConflictError('accept the 18+ and loss offer on your profile before a paid shift', 'agreements_required');
+  }
+
+  private applyAgreement(key: 'age18At' | 'lossAt', on: boolean, now: Date): boolean {
+    if (on) {
+      if (this.props[key]) return false;
+      this.props[key] = now;
+      return true;
+    }
+    if (!this.props[key]) return false;
+    this.props[key] = null;
+    return true;
   }
 
   /** Starting a ride with the tutorial on counts as having done it – the first time only (the stamp never moves). Returns whether the player changed. */

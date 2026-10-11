@@ -1,4 +1,5 @@
 import { API_BASE, GAME_BASE, SITE_BASE } from '../js/hosts.js';
+import { isMobileDevice } from '../js/mobile.js';
 
 function fmt(sec) {
   const s = Math.max(0, Math.floor(sec || 0));
@@ -46,7 +47,6 @@ function render(ride) {
   const isRunning = ride.status === 'running' || ride.status === 'created';
   const isCompleted = ride.status === 'completed';
   const isAbandoned = ride.status === 'abandoned' || (ride.status === 'failed' && (ride.reason || '').toLowerCase().includes('abandon'));
-  const isFailed = !isRunning && !isCompleted && !isAbandoned;
 
   // Badge & Title
   const badge = el('ride-badge');
@@ -138,7 +138,14 @@ function render(ride) {
     window.open(intent, '_blank', 'noopener,noreferrer');
   };
 
+  if (isMobileDevice()) {
+    el('btn-take-wheel').textContent = 'TAKE THE WHEEL (DESKTOP ONLY)';
+  }
   el('btn-take-wheel').onclick = () => {
+    if (isMobileDevice()) {
+      window.alert('Driving requires a desktop browser with keyboard controls. Tap WATCH STREAM or WATCH REPLAY above to spectate on mobile!');
+      return;
+    }
     location.href = `${GAME_BASE}/play.html`;
   };
 }

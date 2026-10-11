@@ -14,7 +14,11 @@ const setup = (price = new StubPrice(), rules = unitRules()) => {
   const analytics = new RecordingAnalytics();
   const handler = new CreateRideHandler(ctx.players, ctx.rides, ctx.sessions, price, new FixedRules(rules), ctx.transactions, ctx.clock, ctx.entropy, ctx.poolTickets, ctx.rounds, analytics, ctx.stats, ctx.dailySeeds);
   return {
-    ctx, analytics, handler, create: (tier: 'free' | '1h' | '4h' | '8h', wallet = 'w', tutorial = false, assist = false, level: 1 | 2 | 3 | null = null) => handler.execute(new CreateRideCommand(wallet, tier, tutorial, assist, level)),
+    ctx, analytics, handler,
+    create: async (tier: 'free' | '1h' | '4h' | '8h', wallet = 'w', tutorial = false, assist = false, level: 1 | 2 | 3 | null = null, opts: { offer?: boolean } = {}) => {
+      if (tier !== 'free' && opts.offer !== false) await ctx.accept(wallet); // the product default is off; paid cases here are about the order, not the boxes
+      return handler.execute(new CreateRideCommand(wallet, tier, tutorial, assist, level));
+    },
   };
 };
 
@@ -57,6 +61,20 @@ describe('CreateRideHandler', () => {
     expect(await ctx.reload(first.id)).toMatchObject({ tutorial: false, assist: true });
     expect((await ctx.storedPlayer('w')).freeRides).toBe(9);
     expect(await create('free', 'w', false, true)).toMatchObject({ id: first.id, assist: true });   // unchanged: nothing to save
+  });
+
+  it('a paid tier without both boxes is 409 agreements_required, before a ticket or an order, and a free ride is not', async () => {
+    const { ctx, create } = setup();
+    await expect(create('1h', 'w', false, false, null, { offer: false })).rejects.toThrow(new ConflictError('accept the 18+ and loss offer on your profile before a paid shift', 'agreements_required'));
+    expect(await ctx.rides.findOpenByWallet('w')).toBeNull();
+    expect(await create('free', 'w')).toMatchObject({ tier: 'free', status: 'created' });
+    const paid = await create('1h');
+    expect(paid.status).toBe('awaiting_payment');
+    const player = await ctx.storedPlayer('w');
+    player.setAgreements({ age18: false, loss: true }, ctx.now());
+    await ctx.players.save(player);
+    await expect(create('1h', 'w', false, false, null, { offer: false })).rejects.toMatchObject({ errorCode: 'agreements_required' });
+    expect((await ctx.rides.findOpenByWallet('w'))?.id).toBe(paid.id); // the order in hand is not expired by the refusal
   });
 
   it('a paid tier refuses the tutorial and assist (409) – assist never reaches a ranked ride – and creates nothing', async () => {

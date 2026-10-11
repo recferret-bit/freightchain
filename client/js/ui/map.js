@@ -36,7 +36,7 @@ function palette() {
 
 /* where the truck is, in the world (roadAt + st.d across) and where it points */
 function truck() { const p = roadAt(st.s); return { x: p.x + Math.cos(p.t) * st.d, z: p.z + Math.sin(p.t) * st.d, h: p.t + st.psi }; }
-/** the finish of the shift on the road (s), or null once it is complete */
+/** the finish of the shift on the road (s), or null once it is complete: always the fixed distance COMPLETE_DIST (server-set online) – it never moves with your speed. */
 const target = () => (st.complete ? null : Math.max(CFG.COMPLETE_DIST, 0));
 const roadName = s => { if (s < net.Sm) return 'DEPOT ROAD'; const x = net.mainXs(s); return PATTERNS[x.pat]?.name ?? 'ROAD'; };
 
@@ -68,7 +68,7 @@ function glyph(g, kind, k) {   // white pictograms in a 20 px badge
 function paintMap(g, X, Y, W, H, o = {}) {
   const P = palette(), T = truck(), C = !o.thumb && view.free ? view.free : T, mpp = o.mpp ?? ZOOMS[view.z], thumb = !!o.thumb;
   const now = typeof performance === 'undefined' ? 0 : performance.now(), dt = view.last ? clamp((now - view.last) / 1000, 0, .25) : 0; view.last = now;
-  if (st.mode === 'drive') view.vAvg += (st.v - view.vAvg) * (1 - Math.exp(-dt / 4));   // the ETA's speed: a ~4 s average, every frame (the dash phone too), not while paused
+  if (st.mode === 'drive') { view.vAvg += (st.v - view.vAvg) * (1 - Math.exp(-dt / 4)); }   // the ETA's speed: a ~4 s average, every frame (the dash phone too), not while paused
   if (view.rot === null || !Number.isFinite(view.rot)) view.rot = T.h;
   if (!thumb && view.free && performance.now() - view.touched > FREE_IDLE && !view.drag) { view.free = null; recordPhone('recenter-auto'); }   // left alone for a while: back to following the truck
   let dr = T.h - view.rot; dr = Math.atan2(Math.sin(dr), Math.cos(dr)); if (thumb || !view.free) view.rot += dr * (1 - Math.exp(-dt * (thumb ? 13 : 7.5)));   // ease the heading-up rotation (no jitter from steering)
@@ -366,10 +366,20 @@ function drawPhone() {
   g.restore(); g.globalAlpha = ui;
   // the bottom sheet's top; the floating buttons (compass: heading up ⇄ north up, zoom in / out, and – once the map is dragged away – back to the truck) stay above it
   const sh = 120, sy = H - sh, bx = W - 46; let by = Math.max(SB + 88, Math.min(SB + 92, sy - 8 - 4 * 44));
-  for (const [id, glyph] of [['north', view.northUp ? 'N' : '➤'], ['in', '+'], ['out', '−'], ...(view.free ? [['home', '◎']] : [])]) {
-    g.fillStyle = P.card; g.strokeStyle = dn.k > .5 ? 'rgba(255,255,255,.22)' : 'rgba(0,0,0,.2)'; g.lineWidth = 1; g.beginPath(); g.arc(bx + 18, by + 18, 18, 0, 7); g.fill(); g.stroke();
-    g.fillStyle = id === 'north' ? '#ea4335' : id === 'home' ? P.route : P.text; g.font = `700 ${id === 'north' ? 14 : 20}px ${MONO}`; g.textAlign = 'center';
-    if (id === 'north' && !view.northUp) { g.save(); g.translate(bx + 18, by + 18); g.rotate(-Math.PI / 2 - (view.rot ?? 0)); g.fillText('➤', 0, 1); g.restore(); } else g.fillText(glyph, bx + 18, by + 19);
+  for (const id of ['north', 'in', 'out', ...(view.free ? ['home'] : [])]) {
+    const cx = bx + 18, cy = by + 18;
+    g.fillStyle = P.card; g.strokeStyle = dn.k > .5 ? 'rgba(255,255,255,.22)' : 'rgba(0,0,0,.2)'; g.lineWidth = 1; g.beginPath(); g.arc(cx, cy, 18, 0, 7); g.fill(); g.stroke();
+    g.save(); g.translate(cx, cy); g.lineCap = 'round'; g.lineWidth = 2.6; g.strokeStyle = g.fillStyle = P.text;   // drawn, not font glyphs: the same weight and centre on every device
+    if (id === 'in' || id === 'out') { g.beginPath(); g.moveTo(-6.5, 0); g.lineTo(6.5, 0); if (id === 'in') { g.moveTo(0, -6.5); g.lineTo(0, 6.5); } g.stroke(); }
+    else if (id === 'home') {   // the locate target
+      g.strokeStyle = g.fillStyle = P.route; g.lineWidth = 2; g.beginPath(); g.arc(0, 0, 6.5, 0, 7); g.stroke();
+      g.beginPath(); g.arc(0, 0, 2.6, 0, 7); g.fill(); g.beginPath(); for (const a of [0, 1, 2, 3]) { g.moveTo(Math.cos(a * Math.PI / 2) * 6.5, Math.sin(a * Math.PI / 2) * 6.5); g.lineTo(Math.cos(a * Math.PI / 2) * 10, Math.sin(a * Math.PI / 2) * 10); } g.stroke();
+    } else {   // the compass needle: red tip = north; north up keeps it straight, heading up turns it with the map
+      g.rotate(view.northUp ? 0 : -(view.rot ?? 0));
+      g.beginPath(); g.moveTo(0, -10); g.lineTo(5.5, 3); g.lineTo(0, 0); g.lineTo(-5.5, 3); g.closePath(); g.fillStyle = '#ea4335'; g.fill();
+      g.beginPath(); g.moveTo(0, 10); g.lineTo(5.5, 3); g.lineTo(0, 0); g.lineTo(-5.5, 3); g.closePath(); g.fillStyle = dn.k > .5 ? 'rgba(255,255,255,.55)' : 'rgba(0,0,0,.35)'; g.fill();
+    }
+    g.restore();
     hits.push({ id, x: bx, y: by, w: 36, h: 36 }); by += 44;
   }
   g.globalAlpha = 1; g.save(); g.translate(0, (1 - ui) * 150);

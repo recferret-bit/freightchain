@@ -13,6 +13,7 @@ import { updateBattery } from './battery.js';
 import { endRide } from '../ui/game.js';
 import { trip } from '../trips.js';
 import { guide } from '../guide.js';
+import { offlineRide } from '../offline-ride.js';
 
 let beepT = 0, washT = 0;
 const LUG_RPM = 900;   // below this (gear in, clutch out) the engine labours
@@ -34,7 +35,7 @@ export function tryShift(to) {
 }
 export function ignition(manual = false) {   // manual = key held with the mouse: cranks only while held (~1 s), release aborts
   if (st.mode !== 'drive' || st.engineOn || st.ign) return;
-  if (st.batt < CFG.BATT.START_MIN) { st.keyDeny = 1; toast('Battery too flat to crank the engine', 2500); return; }
+  if (st.batt < CFG.BATT.START_MIN) { st.keyDeny = 1; toast('Battery too flat to crank – switch lights, heater, cooler and radio off and wait: it recovers by itself', 4000); return; }
   if (st.gear !== 0 && st.clutch < 0.8) { st.keyDeny = 1; toast('Press the clutch (SHIFT) or select neutral to start'); return; }
   audio.play('key'); st.ign = { t: manual ? (st.keyOn ? 1.0 : .6) : 0, manual }; st.keyOn = true; st.test = 1; st.rpm = 0; st.stalled = false; st.shiftT = 0; st.stall = 0;   // 0-1 s key-on gauge sweep + bulb check, 1-2.3 s starter cranking, then the engine catches
 }
@@ -143,6 +144,11 @@ export function update(dt) {
   if (st.s < 0) { st.s = 0; st.v = st.vel = 0; toast('Loading dock – no further back'); }
   st.offT = off ? st.offT + dt : Math.max(0, st.offT - dt * 2);
   if (off && !st._offWarned) { audio.play('warn'); toast('OFF ROAD!'); st._offWarned = true; } if (!off) st._offWarned = false;
+  if (trip.finish && !st.complete && st.s >= CFG.COMPLETE_DIST) {   // a trip that ends at the line: it can't be driven past – an open tutorial is cut off, and a ride whose clock isn't done waits AT the line (the server's minimum time)
+    guide.hold = false;
+    if (!offlineRide.on && st.t < CFG.RIDE_MIN_SECONDS) { st.s = CFG.COMPLETE_DIST; st.v = st.vel = 0; if (!st._lineWarned) { st._lineWarned = true; toast('FINISH LINE – wait here until the clock runs out', 6000); } }
+    else if (offlineRide.on) st.t = Math.max(st.t, CFG.RIDE_MIN_SECONDS);   // offline nothing is judged: the line is the end
+  }
   if (!st.complete && !guide.hold && st.t >= CFG.RIDE_MIN_SECONDS && st.s >= CFG.COMPLETE_DIST) {
     st.complete = true; audio.play('complete');
     if (trip.finish) endRide(true);   // a trip that ends at the line (trips.js – the free run): the win stamp, no "keep driving"

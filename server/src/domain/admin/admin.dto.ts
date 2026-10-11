@@ -126,7 +126,7 @@ export interface AdminPlayerRowDto {
 }
 
 export interface AdminPlayerDetailDto {
-  player: { wallet: string; freeRides: number; freeRidesMax: number; freeDay: string; createdAt: number; tutorialPassedAt: number | null };
+  player: { wallet: string; freeRides: number; freeRidesMax: number; freeDay: string; createdAt: number; tutorialPassedAt: number | null; age18At: number | null; lossAt: number | null };
   stats: StatsDto | null;
   tickets: { poolId: number; balance: number; bought: number }[];
   grants: { poolId: number; delta: number; source: string; ref: string | null; at: number }[];

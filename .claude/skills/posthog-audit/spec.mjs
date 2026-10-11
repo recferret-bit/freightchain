@@ -143,6 +143,12 @@ export const insights = [
     step('ride_started', [S]),
     step('ride_completed', [S]),
   ], 'Does a redeemed code turn into a finished shift?'),
+  funnel('paid-consent', 'FC · Paid consent clicks', false, { interval: 7, unit: 'day' }, [
+    step('lobby_tab_viewed', [{ key: 'tab', operator: 'exact', value: ['profile'] }]),
+    step('agreement_toggled', [{ key: 'kind', operator: 'exact', value: ['age18'] }, { key: 'on', operator: 'exact', value: ['true'] }]),
+    step('agreement_toggled', [{ key: 'kind', operator: 'exact', value: ['loss'] }, { key: 'on', operator: 'exact', value: ['true'] }]),
+    step('ride_buy_clicked', [free(false)]),
+  ], 'Client clicks only, so it does not depend on $create_alias. The boxes are top to bottom: age, then the loss offer. A rider who ticks loss first does not convert. Window 7 days, the same clock as activation. Off the judge board.'),
   {
     id: 'retention', name: 'FC · Retention (finish → next start)', pin: false, kind: 'RetentionQuery',
     period: 'Day', target: 'ride_completed', returning: 'ride_started',

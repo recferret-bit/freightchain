@@ -30,7 +30,8 @@ function assistTips() {
   if (st.off) T.push(K('OFF ROAD', 'Off the road – steer back before the ride ends', 'A D'));
   if (dn.k > .5 && !dn.head && powered()) T.push(K('head', 'It is dark – headlights on', 'L'));
   if (st.hull < 60) T.push(K('HUL', `Hull ${Math.round(st.hull)} % – avoid holes, signs and cars`));
-  if (powered() && st.batt < CFG.BATT.LOW) T.push(K('BAT', 'Battery low – lights / heater / cooling off, keep the engine running'));
+  if (powered() && !st.engineOn && st.batt < CFG.BATT.START_MIN) T.push(K('BAT', 'Battery too flat to crank – switch lights, heater, cooler and radio off and wait a few seconds, it recovers by itself'));
+  else if (powered() && st.batt < CFG.BATT.LOW) T.push(K('BAT', 'Battery low – lights / heater / cooling off, keep the engine running'));
   if (coldK() > .5 && st.rpm > 1800) T.push(K('COLD', 'Cold engine – keep the revs low until TEMP rises'));
   if (st.strain > .15) T.push(K('STRAIN', 'Too many revs for too long – shift up or ease off', 'E'));
   if (st.brakeT > .3) T.push(K('BRAKES', 'The brakes are hot – ease off the pedal'));

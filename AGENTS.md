@@ -56,7 +56,7 @@ Client:
 - Modules are acyclic (`sim/*` never imports `cockpit/*`; `cockpit/*` never imports the scene). Canvas size from the shared `view` object. Tunables in `js/config.js`. Use `store()` not raw `localStorage`.
 - Theme materials only inside `create*()` via `basic()` / `trackMat()`; every single-sided material tracked or in `flipMats()` (mirrors). `mesh.position.set()`, never assign `position`.
 - User-tuned, leave alone unless asked: `SHAKE_START 0.45`, `SHAKE_MOVING 0.09`, `SHAKE_RPM 0.315`, `START_ENGINE_OFF = true`. Numeric tuning requests are relative to the current value ("lower it twice" = halve it).
-- Serve over http (`client/serve.sh` or `npm run server:dev` on :3000); `file://` can't load the modules.
+- Serve over http (`client/serve.sh` or `npm run server:dev` on :3000); `file://` can't load the modules. Driving is desktop-only; spectating streams/replays works on mobile.
 
 Escrow: the money is in the program; the server only mirrors pools and credits tickets from program events; every wallet signs and sends its own transaction; the server holds two keys – the crank (permissionless steps + opening each day's pool from the admin's `Series`) and the payout key (`PAYOUT_SECRET`: `pay_prize` / `close_pool` only, after a pool's review window, verified winners only once every ride is decided – `pool:payout`). Program v2 (the pool day) is in `docs/agents/escrow.md`. Never touch the global Solana config or `~/.config/solana/id.json`; always an explicit `--url devnet`; no program deploy or pool creation without the user. Keep `docs/escrow-open-items.md` current.
 

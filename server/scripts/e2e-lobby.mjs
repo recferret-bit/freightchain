@@ -128,6 +128,14 @@ check('promo: WELCOME (any case) → +2 tickets, balance and cap shown', /^\+2 t
 check('…the 1h card now offers RIDE (2 left) and counts your tickets', await until(async () => (await txt(tix, '#tier-1h .go')) === 'RIDE (2 left)') && /your tickets: 2/.test(await txt(tix, '#tier-1h .mine')), await txt(tix, '#tier-1h .go'));
 check('promo: a second WELCOME is refused with the reason', /already redeemed/.test(await redeem('WELCOME')), await txt(tix, '#promo-msg'));
 check('promo: OPEN4H puts a ticket into the OPEN pool → WAITING FOR n MORE RIDERS (disabled)', /^\+1 ticket \(OPEN4H\)/.test(await redeem('OPEN4H')) && await until(async () => /^WAITING FOR \d+ MORE RIDERS?$/.test(await txt(tix, '#tier-4h .go'))) && await tix.ev('document.querySelector("#tier-4h .go").disabled'), await txt(tix, '#tier-4h .go'));
+await tix.ev('document.querySelector("#tier-1h .go").click()');
+check('a paid RIDE with the boxes off stays in the lobby and opens the profile offer', await until(async () => (await tix.ev('location.hash')) === '#profile' && !/play\.html/.test(await tix.ev('location.pathname')) && (await tix.ev('!!document.getElementById("agree-age") && !!document.getElementById("agree-loss")'))));
+await tix.ev('document.getElementById("agree-age").click()');
+check('the age box stays on after the server saves it', await until(async () => await tix.ev('document.getElementById("agree-age").checked && !document.getElementById("agree-age").disabled')));
+await tix.ev('document.getElementById("agree-loss").click()');
+check('the loss box stays on and locks after the server saves it', await until(async () => await tix.ev('document.getElementById("agree-loss").checked && document.getElementById("agree-loss").disabled && document.getElementById("agree-age").checked')));
+await tix.ev('location.hash = "#new"');
+check('back on NEW RIDE the cards are there', await until(async () => (await tix.ev('document.querySelectorAll(".tier").length')) === 4));
 const nl = await post('rides', { tier: '4h' }, D.cookie);
 check('API: a ride on the open pool is 409 pool_not_live (the lobby never offers it)', nl.r.status === 409 && nl.j.code === 'pool_not_live', JSON.stringify(nl.j));
 await tix.shot('tickets-desktop'); await size(tix, 390, 844, true); await sleep(300); await tix.shot('tickets-phone'); await size(tix, 1100, 900, false);
@@ -143,6 +151,7 @@ const r2 = await post('rides', { tier: '1h' }, D.cookie); await finishOob(r2.j.i
 await tix.ev('document.querySelector("#tier-1h .go").click()');   // the page still says 1 left
 check('409 no_tickets on a stale page reads as a sentence (and the card refreshes)', await until(async () => /No 1 HOUR tickets left – buy one or redeem a promo code/.test(await txt(tix, '#msg-1h'))) && await until(async () => !(await tix.ev('!!document.querySelector("#tier-1h .go")'))), await txt(tix, '#msg-1h'));
 await tix.ev('location.hash = "#profile"');
+check('BEFORE A PAID SHIFT is gone once accepted and left', await until(async () => !(await tix.ev('!!document.getElementById("offer")'))));
 check('PROFILE: tickets per pool (1h spent, 4h waiting) + the grant audit trail', await until(async () => /OPEN/.test(await txt(tix, '.tix')) && /ACTIVE/.test(await txt(tix, '.tix'))) && await until(async () => { const h = [...await tix.ev('[...document.querySelectorAll(".hist")].map(n => n.textContent)')].join('|'); return /promo code WELCOME\+2/.test(h) && /ride.*-1/.test(h); }), await txt(tix, '.tix'));
 await tix.shot('profile-tickets-desktop'); await size(tix, 390, 844, true); await sleep(300); await tix.shot('profile-tickets-phone'); await size(tix, 1100, 900, false);
 check('…and no unexpected page errors (ticket holder)', problems(tix).length === 0, problems(tix).join(' | '));
@@ -164,9 +173,8 @@ check('a wallet without tickets: "No tickets yet"', /No tickets yet/.test(await 
 await rider.shot('profile-desktop'); await size(rider, 390, 844, true); await sleep(300); await rider.shot('profile-phone'); await size(rider, 1100, 900, false);
 
 // ── LEADERBOARD (free board) + reload keeps the tab
-await rider.ev('location.hash = "#board"'); await until(async () => (await rider.ev('document.querySelectorAll(".seg button").length')) === 3);
-await rider.ev('[...document.querySelectorAll(".seg button")][2].click()');
-check('LEADERBOARD › FREE: EASY / CROSSROADS / HARD under it, HARD by default', await until(async () => (await txt(rider, '#board-levels')) === 'EASYCROSSROADSHARD' && (await txt(rider, '#board-levels .on')) === 'HARD'), await txt(rider, '#board-levels'));
+await rider.ev('location.hash = "#board"');
+check('LEADERBOARD opens on FREE RIDES (THIS ROUND and ALL TIME are unavailable): EASY / CROSSROADS / HARD, HARD by default', await until(async () => (await txt(rider, '#board-levels')) === 'EASYCROSSROADSHARD' && (await txt(rider, '#board-levels .on')) === 'HARD' && (await rider.ev('document.querySelector("[data-board=free]")?.classList.contains("on") && document.querySelector("[data-board=round]")?.disabled && document.querySelector("[data-board=all]")?.disabled'))), await txt(rider, '#board-levels'));
 await rider.ev('document.querySelector("#board-levels button").click()');   // the rider drove EASY – its own board
 check('…EASY picked: the board says so', await until(async () => (await txt(rider, '#board-levels .on')) === 'EASY' && /on EASY/.test(await txt(rider, '#view'))), await txt(rider, '#view'));
 check('LEADERBOARD › FREE: the rider is on the board and highlighted (the database persists between runs, so not necessarily #1)', await until(async () => /^\d+$/.test(await rider.ev('document.querySelector("tr.me .rk")?.textContent || ""'))));

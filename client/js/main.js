@@ -37,6 +37,7 @@ import { phone } from './phone.js';
 import { updateGuide } from './ui/assist.js';
 import { trip, setTrip, tripOf } from './trips.js';
 import { FREE_COUNTRIES } from './free-countries.js';
+import { isMobileDevice, showMobileBlocker } from './mobile.js';
 import './ui/input.js';
 import './ui/tuning.js';
 
@@ -70,23 +71,28 @@ if (online.ride) {
   const stage = online.error.startsWith('not signed in') ? 'not_signed_in' : online.error.startsWith('this ride is') ? 'bad_status' : typeof online.status === 'number' ? 'http' : 'unknown';
   track('ride_load_failed', { stage, http_status: typeof online.status === 'number' ? online.status : null, code: typeof online.code === 'string' ? online.code : null });
 }
-if (await initWatch()) {   // only with ?watch=<id> (see watch.js): the watched ride's route + seed, no menu, the watch panel instead
+const isWatching = await initWatch();
+if (isWatching) {   // only with ?watch=<id> (see watch.js): the watched ride's route + seed, no menu, the watch panel instead
   CFG.TRAFFIC = false;   // no traffic SIM in a replay: watch.js draws the traffic the driver's game RECORDED (an empty road for recordings from before that)
   if (watch.ride) followRoadPlan(watch.ride.id);   // a replay draws the server's holes, never a copy of what the driver's game had
   if (watch.ride) { setTrip(tripOf(watch.ride)); selectTheme(THEMES.some(t => t.id === watch.ride.route) ? watch.ride.route : THEMES[0].id, true); resize(); resetRide(watch.ride.seed); st.mode = 'drive'; startWatch(); }
   else resize();
   mountWatchPanel();
+} else if (isMobileDevice()) {
+  showMobileBlocker();
 } else { if (wantOffline) offlineRide.on = true; resize(); resetRide(); showMenu('FREIGHT CHAIN', 'Long-haul truck simulator'); }
-requestAnimationFrame(frame);
+if (isWatching || !isMobileDevice()) requestAnimationFrame(frame);
 /* a real ride (online, a failed load of one, a watched ride): the route and the clock are fixed – no function to change them stays reachable from the page */
 const pageQuery = typeof location === 'undefined' ? null : new URL(location.href).searchParams;
 const realRide = !!(online.ride || online.error || watch.ride || (pageQuery && (pageQuery.get('ride') || pageQuery.get('watch'))));
 if (realRide) { lockTheme(); lockClock(); }
 /** tools and the console (e2e, promo capture, tuning): the plain sim instead of the guest run – the trip `id` (default the classic road) with its shift, no helpers; `startRide()` then needs no menu */
 function devRun(id = '1h') {
+  document.getElementById('overlay')?.classList.remove('mobile-blocked');
   offlineRide.dev = true; setGuide({}); setTrip(id);
   CFG.RIDE_MIN_SECONDS = trip.seconds ?? shift0.s; CFG.COMPLETE_DIST = trip.seconds ? trip.k * CFG.MAX_SPEED * trip.seconds : shift0.d; resetRide();
+  requestAnimationFrame(frame);
 }
-window.__game = { devRun, forkRules: FORK, toggleMap, phone, guide, setGuide, hurt, trip, setTrip, offlineRide, audio, cosmetics, online, telemetry, prompt, watch, roadPlan, liveFeed, radio, roadObjects, chunks, spacing, roads, net, st, disp, CFG, input, tryShift, ignition, startRide, curv, spawn, traffic: cars, THEMES, screenClimate, ...(realRide ? {} : { selectTheme, setNight, setPhase, setClock }), dn, weather, uiBtns, inputBits, holes: { HOLES, holeAt, holesNear, clearHoleCache, plan, flagged } };   // handy for console debugging
+window.__game = { isMobileBlocked: !isWatching && isMobileDevice(), devRun, forkRules: FORK, toggleMap, phone, guide, setGuide, hurt, trip, setTrip, offlineRide, audio, cosmetics, online, telemetry, prompt, watch, roadPlan, liveFeed, radio, roadObjects, chunks, spacing, roads, net, st, disp, CFG, input, tryShift, ignition, startRide, curv, spawn, traffic: cars, THEMES, screenClimate, ...(realRide ? {} : { selectTheme, setNight, setPhase, setClock }), dn, weather, uiBtns, inputBits, holes: { HOLES, holeAt, holesNear, clearHoleCache, plan, flagged } };   // handy for console debugging
 
  

@@ -7,6 +7,8 @@ model Player {
   freeRidesMax Int                 @default(5) // where the daily refill stops (the live setting free_rides_daily_max; a surplus balance is kept)
   createdAt    DateTime
   tutorialPassedAt DateTime? // the first time a ride was STARTED with the tutorial on – the lobby then defaults the tutorial off (null = never)
+  age18At      DateTime? // when the rider ticked "I am 18 or older" (null = off). Both stamps are required before a paid shift.
+  lossAt       DateTime? // when the rider ticked the loss offer: SOL spent on a shift can be lost (null = off)
   rides        Ride[]
   payments     Payment[]
   achievements AchievementUnlock[]

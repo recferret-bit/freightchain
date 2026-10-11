@@ -1,10 +1,11 @@
 import { badgeRejected } from '../../../domain/achievements/achievements.js';
 import { Injectable } from '@nestjs/common';
-import type { Prisma, RideStatus as RideStatusRow } from '@prisma/client';
-import type { LeaderboardBoard } from '../../../domain/economy/economy.dto.js';
+import { Prisma, type RideStatus as RideStatusRow } from '@prisma/client';
+import type { LeaderboardBoard, LeaderboardSort } from '../../../domain/economy/economy.dto.js';
+import type { PaidTierId } from '../../../domain/rides/ride-tier.js';
 import {
   type RejudgeFilter,
-  RideQueryPort, type FinishedRideRow, type HistoryFilter, type HistoryRideRow, type LeaderboardRow, type LiveRideRow, type RecentRideRow, type RideSummary, type UpcomingRideRow,
+  RideQueryPort, type FinishedRideRow, type HistoryFilter, type HistoryRideRow, type LeaderboardEntry, type LeaderboardPage, type LeaderboardRow, type LiveRideRow, type RecentRideRow, type RideSummary, type UpcomingRideRow,
 } from '../../../application/ports/rides/ride-query.port.js';
 import { completedLevels } from '../../../domain/rides/ride-trip.js';
 import { PrismaService } from '../prisma.service.js';
@@ -14,7 +15,13 @@ const NIGHT_SHARE = 0.5;
 const SIBERIA = 'siberia';
 
 /** The read side over rides: projections that no aggregate needs. */
-const VERIFIED: Prisma.RideWhereInput = { verdict: { is: { status: 'verified' } } };
+/** Same order as compareLeaderboard (domain/economy/leaderboard-order.ts). Null hull sorts last. */
+const ORDER: Record<LeaderboardSort, Prisma.Sql> = {
+  distance: Prisma.sql`distance DESC, rides DESC, first_end ASC, wallet ASC`,
+  time: Prisma.sql`seconds DESC, distance DESC, rides DESC, first_end ASC, wallet ASC`,
+  hull: Prisma.sql`hull DESC NULLS LAST, distance DESC, rides DESC, first_end ASC, wallet ASC`,
+  rides: Prisma.sql`rides DESC, distance DESC, first_end ASC, wallet ASC`,
+};
 
 @Injectable()
 export class RideQueryPrismaRepository extends RideQueryPort {
@@ -102,13 +109,21 @@ export class RideQueryPrismaRepository extends RideQueryPort {
       : []));
   }
 
-  async leaderboard(board: LeaderboardBoard, roundId: number | null, limit: number, verifiedOnly: boolean, trip: string | null): Promise<LeaderboardRow[]> {
-    const tierFilter: Prisma.RideWhereInput = board === 'free' ? { tier: 'free', trip: trip ?? '' } : { tier: { not: 'free' }, ...(verifiedOnly ? VERIFIED : {}), ...(board === 'round' ? { roundId } : {}) }; // paid boards: verified recordings only (unless shadow mode)
-    return this.ranked(tierFilter, limit);
+  async leaderboard(board: LeaderboardBoard, roundId: number | null, verifiedOnly: boolean, trip: string | null, tier: PaidTierId | null, sort: LeaderboardSort, offset: number, limit: number, cap: number): Promise<LeaderboardPage> {
+    return this.ranked(this.boardWhere(board, roundId, verifiedOnly, trip, tier), sort, offset, limit, cap);
+  }
+
+  async leaderboardPlace(board: LeaderboardBoard, roundId: number | null, verifiedOnly: boolean, trip: string | null, tier: PaidTierId | null, wallet: string, sort: LeaderboardSort): Promise<LeaderboardEntry | null> {
+    const rows = await this.prisma.$queryRaw<RawRank[]>`
+      WITH grouped AS (${this.grouped(this.boardWhere(board, roundId, verifiedOnly, trip, tier))}),
+      ranked AS (SELECT wallet, distance, seconds, rides, hull, ROW_NUMBER() OVER (ORDER BY ${ORDER[sort]})::int AS rank FROM grouped)
+      SELECT wallet, distance, seconds, rides, hull, rank FROM ranked WHERE wallet = ${wallet}`;
+    return rows[0] ? toEntry(rows[0]) : null;
   }
 
   async poolRanking(poolId: number, limit: number, verifiedOnly: boolean): Promise<LeaderboardRow[]> {
-    return this.ranked({ poolId, ...(verifiedOnly ? VERIFIED : {}) }, limit);
+    const page = await this.ranked(this.paidWhere(Prisma.sql`r."poolId" = ${poolId}`, verifiedOnly), 'distance', 0, limit, limit);
+    return page.rows.map(({ wallet, distance, seconds, hull, rides }) => ({ wallet, distance, seconds, hull, rides }));
   }
 
   async poolUnreviewed(poolId: number, limit: number): Promise<{ id: string; wallet: string; verdict: string | null }[]> {
@@ -128,16 +143,46 @@ export class RideQueryPrismaRepository extends RideQueryPort {
     return rows.map((r) => ({ id: r.id, verdict: r.verdict?.status ?? null }));
   }
 
-  private async ranked(filter: Prisma.RideWhereInput, limit: number): Promise<LeaderboardRow[]> {
-    const groups = await this.prisma.ride.groupBy({
-      by: ['wallet'],
-      where: { status: 'completed', ...filter },
-      _sum: { lastS: true },
-      _count: { _all: true },
-      _min: { endedAt: true },
-      orderBy: [{ _sum: { lastS: 'desc' } }, { _count: { wallet: 'desc' } }, { _min: { endedAt: 'asc' } }, { wallet: 'asc' }],
-      take: limit,
-    });
-    return groups.map((g) => ({ wallet: g.wallet, distance: g._sum.lastS ?? 0, rides: g._count._all }));
+  /** Paid boards count a verified recording only (unless shadow mode). The free board counts every completed ride on its trip. */
+  private boardWhere(board: LeaderboardBoard, roundId: number | null, verifiedOnly: boolean, trip: string | null, tier: PaidTierId | null): Prisma.Sql {
+    if (board === 'free') return Prisma.sql`r."tier" = 'free' AND r."trip" = ${trip ?? ''}`;
+    const shift = tier ? Prisma.sql`r."tier" = ${tier}` : Prisma.sql`r."tier" <> 'free'`;
+    const round = board !== 'round' ? Prisma.empty : roundId == null ? Prisma.sql`AND r."roundId" IS NULL` : Prisma.sql`AND r."roundId" = ${roundId}`;
+    return this.paidWhere(Prisma.sql`${shift} ${round}`, verifiedOnly);
+  }
+
+  private paidWhere(match: Prisma.Sql, verifiedOnly: boolean): Prisma.Sql {
+    const verified = verifiedOnly
+      ? Prisma.sql`AND EXISTS (SELECT 1 FROM "verdict"."RideVerdict" v WHERE v."rideId" = r.id AND v.status::text = 'verified')`
+      : Prisma.empty;
+    return Prisma.sql`${match} ${verified}`;
+  }
+
+  /** Hull is the one left on the furthest shift (greatest distance, then the later finish, then the later insert) — not the best hull. */
+  private grouped(where: Prisma.Sql): Prisma.Sql {
+    return Prisma.sql`
+      SELECT r.wallet AS wallet, SUM(r."lastS")::float8 AS distance, SUM(r."driveSeconds")::float8 AS seconds, COUNT(*)::int AS rides, MIN(r."endedAt") AS first_end,
+             (ARRAY_AGG(r.hull ORDER BY r."lastS" DESC, r."endedAt" DESC NULLS LAST, r.seq DESC))[1]::float8 AS hull
+      FROM "ride"."Ride" r WHERE r.status::text = 'completed' AND ${where} GROUP BY r.wallet`;
+  }
+
+  private async ranked(where: Prisma.Sql, sort: LeaderboardSort, offset: number, limit: number, cap: number): Promise<LeaderboardPage> {
+    const rows = await this.prisma.$queryRaw<RawRank[]>`
+      WITH grouped AS (${this.grouped(where)}),
+      ranked AS (
+        SELECT wallet, distance, seconds, rides, hull, ROW_NUMBER() OVER (ORDER BY ${ORDER[sort]})::int AS rank, COUNT(*) OVER ()::int AS total FROM grouped
+      )
+      SELECT wallet, distance, seconds, rides, hull, rank, total FROM ranked
+      WHERE rank > ${offset} AND rank <= LEAST(${offset + limit}, ${cap}) ORDER BY rank`;
+    if (rows.length) return { rows: rows.map(toEntry), total: num(rows[0]?.total) };
+    const [count] = await this.prisma.$queryRaw<{ total: number }[]>`WITH grouped AS (${this.grouped(where)}) SELECT COUNT(*)::int AS total FROM grouped`;
+    return { rows: [], total: num(count?.total) };
   }
 }
+
+interface RawRank { wallet: string; distance: unknown; seconds: unknown; rides: unknown; hull: unknown; rank: unknown; total?: unknown }
+const num = (v: unknown) => { const n = typeof v === 'number' ? v : Number(v); return Number.isFinite(n) ? n : 0; };
+const toEntry = (r: RawRank): LeaderboardEntry => ({
+  wallet: r.wallet, distance: num(r.distance), seconds: num(r.seconds), rides: num(r.rides), rank: num(r.rank),
+  hull: r.hull == null ? null : num(r.hull),
+});

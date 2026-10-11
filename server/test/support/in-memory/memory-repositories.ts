@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { AchievementUnlock } from '../../../src/domain/achievements/achievement-unlock.entity.js';
 import type { AuthChallenge } from '../../../src/domain/auth/auth-challenge.entity.js';
-import type { LeaderboardBoard } from '../../../src/domain/economy/economy.dto.js';
+import type { LeaderboardBoard, LeaderboardSort } from '../../../src/domain/economy/economy.dto.js';
+import type { PaidTierId } from '../../../src/domain/rides/ride-tier.js';
+import { compareLeaderboard, type LeaderboardKeys } from '../../../src/domain/economy/leaderboard-order.js';
 import type { Payment } from '../../../src/domain/economy/payment.entity.js';
 import { Round, type RoundProps } from '../../../src/domain/economy/round.entity.js';
 import { Player } from '../../../src/domain/players/player.entity.js';
@@ -15,7 +17,7 @@ import { PaymentRepositoryPort } from '../../../src/application/ports/economy/pa
 import { RoundRepositoryPort, type RoundEntries } from '../../../src/application/ports/economy/round.repository.port.js';
 import { HealthProbePort } from '../../../src/application/ports/health/health-probe.port.js';
 import { PlayerRepositoryPort } from '../../../src/application/ports/players/player.repository.port.js';
-import { RideQueryPort, type FinishedRideRow, type LeaderboardRow, type LiveRideRow, type RecentRideRow, type RideSummary, type UpcomingRideRow , type HistoryFilter, type HistoryRideRow, type RejudgeFilter } from '../../../src/application/ports/rides/ride-query.port.js';
+import { RideQueryPort, type FinishedRideRow, type LeaderboardEntry, type LeaderboardPage, type LeaderboardRow, type LiveRideRow, type RecentRideRow, type RideSummary, type UpcomingRideRow , type HistoryFilter, type HistoryRideRow, type RejudgeFilter } from '../../../src/application/ports/rides/ride-query.port.js';
 import { RideRepositoryPort } from '../../../src/application/ports/rides/ride.repository.port.js';
 import { TransactionPort } from '../../../src/application/ports/shared/transaction.port.js';
 import { RideBatchRepositoryPort } from '../../../src/application/ports/telemetry/ride-batch.repository.port.js';
@@ -225,13 +227,23 @@ export class MemoryRideQuery extends RideQueryPort {
         : []));
   }
 
-  async leaderboard(board: LeaderboardBoard, roundId: number | null, limit: number, verifiedOnly: boolean, trip: string | null): Promise<LeaderboardRow[]> {
-    return this.ranked((r) => (board === 'free' ? r.tier === 'free' && r.trip === (trip ?? '')
-      : r.tier !== 'free' && (!verifiedOnly || this.verified(r)) && (board === 'round' ? r.roundId === roundId : true)), limit);
+  async leaderboard(board: LeaderboardBoard, roundId: number | null, verifiedOnly: boolean, trip: string | null, tier: PaidTierId | null, sort: LeaderboardSort, offset: number, limit: number, cap: number): Promise<LeaderboardPage> {
+    return this.ranked((r) => this.onBoard(r, board, roundId, verifiedOnly, trip, tier), sort, offset, limit, cap);
+  }
+
+  async leaderboardPlace(board: LeaderboardBoard, roundId: number | null, verifiedOnly: boolean, trip: string | null, tier: PaidTierId | null, wallet: string, sort: LeaderboardSort): Promise<LeaderboardEntry | null> {
+    return this.ranked((r) => this.onBoard(r, board, roundId, verifiedOnly, trip, tier), sort, 0, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER)
+      .rows.find((r) => r.wallet === wallet) ?? null;
+  }
+
+  private onBoard(r: RideProps, board: LeaderboardBoard, roundId: number | null, verifiedOnly: boolean, trip: string | null, tier: PaidTierId | null): boolean {
+    if (board === 'free') return r.tier === 'free' && r.trip === (trip ?? '');
+    return (tier ? r.tier === tier : r.tier !== 'free') && (!verifiedOnly || this.verified(r)) && (board === 'round' ? r.roundId === roundId : true);
   }
 
   async poolRanking(poolId: number, limit: number, verifiedOnly: boolean): Promise<LeaderboardRow[]> {
-    return this.ranked((r) => r.poolId === poolId && (!verifiedOnly || this.verified(r)), limit);
+    const page = this.ranked((r) => r.poolId === poolId && (!verifiedOnly || this.verified(r)), 'distance', 0, limit, limit);
+    return page.rows.map(({ wallet, distance, seconds, hull, rides }) => ({ wallet, distance, seconds, hull, rides }));
   }
 
   async poolUnreviewed(poolId: number, limit: number): Promise<{ id: string; wallet: string; verdict: string | null }[]> {
@@ -254,17 +266,20 @@ export class MemoryRideQuery extends RideQueryPort {
       .sort((a, b) => a.endedAt - b.endedAt || a.seq - b.seq).slice(0, f.limit).map(({ id, verdict }) => ({ id, verdict }));
   }
 
-  private ranked(keep: (r: RideProps) => boolean, limit: number): LeaderboardRow[] {
-    const done = [...this.db.rides.values()].map((r) => r.props).filter((r) => r.status === RideStatus.Completed && keep(r));
-    const groups = new Map<string, { distance: number; rides: number; first: number }>();
-    for (const r of done) {
-      const g = groups.get(r.wallet) ?? { distance: 0, rides: 0, first: Number.POSITIVE_INFINITY };
-      g.distance += r.lastS; g.rides += 1; g.first = Math.min(g.first, r.endedAt?.getTime() ?? Number.POSITIVE_INFINITY);
+  /** Hull is the one left on the furthest shift (greatest distance, then the later finish, then the later insert) — the SQL ARRAY_AGG order. */
+  private ranked(keep: (r: RideProps) => boolean, sort: LeaderboardSort, offset: number, limit: number, cap: number): LeaderboardPage {
+    const groups = new Map<string, LeaderboardKeys & { bestS: number; bestAt: number; bestSeq: number }>();
+    for (const { props: r, seq } of this.db.rides.values()) {
+      if (r.status !== RideStatus.Completed || !keep(r)) continue;
+      const g = groups.get(r.wallet) ?? { wallet: r.wallet, distance: 0, seconds: 0, hull: null, rides: 0, first: Number.POSITIVE_INFINITY, bestS: -1, bestAt: -1, bestSeq: -1 };
+      g.distance += r.lastS; g.seconds += r.driveSeconds; g.rides += 1; g.first = Math.min(g.first, r.endedAt?.getTime() ?? Number.POSITIVE_INFINITY);
+      const at = r.endedAt?.getTime() ?? -1;
+      if (r.lastS > g.bestS || (r.lastS === g.bestS && (at > g.bestAt || (at === g.bestAt && seq >= g.bestSeq)))) { g.bestS = r.lastS; g.bestAt = at; g.bestSeq = seq; g.hull = r.hull; }
       groups.set(r.wallet, g);
     }
-    return [...groups.entries()]
-      .sort(([wa, a], [wb, b]) => b.distance - a.distance || b.rides - a.rides || a.first - b.first || wa.localeCompare(wb))
-      .slice(0, limit).map(([wallet, g]) => ({ wallet, distance: g.distance, rides: g.rides }));
+    const sorted = [...groups.values()].sort((a, b) => compareLeaderboard(sort, a, b));
+    const from = offset, to = Math.min(offset + limit, cap);
+    return { total: sorted.length, rows: sorted.slice(from, Math.max(from, to)).map((g, i) => ({ wallet: g.wallet, distance: g.distance, seconds: g.seconds, hull: g.hull, rides: g.rides, rank: from + i + 1 })) };
   }
 }
 

@@ -217,7 +217,15 @@ export function lobbyScenarios(h: () => Harness): void {
       const w = await login(); await finish(w);                                    // a finished free ride puts its rider on the free board
       const free = (await anon().get('/api/leaderboard?board=free&level=1').expect(200)).body;   // the free ride ordered with no level is EASY
       expect(free).toMatchObject({ board: 'free', level: 1 });
-      expect(free.rows[0]).toMatchObject({ rank: 1, wallet: w.address, distance: 150, rides: 1 });
+      expect(free.rows[0]).toMatchObject({ rank: 1, wallet: w.address, distance: 150, rides: 1, hull: 100 });
+      expect(free).toMatchObject({ sort: 'distance', page: 1, pageSize: 25, total: 1, me: null, standing: null });
+      const mine = (await w.agent.get('/api/leaderboard?board=free&level=1&sort=time&me=1').expect(200)).body;
+      expect(mine.sort).toBe('time');
+      expect(mine.me).toMatchObject({ rank: 1, rides: 1, hull: 100 });
+      expect(mine.standing.filter((s: { board: string }) => s.board === 'free').map((s: { level: number | null; rank: number | null }) => [s.level, s.rank])).toEqual([[1, 1], [2, null], [3, null]]);
+      expect(mine.standing.filter((s: { board: string; tier: string | null }) => s.board === 'round').every((s: { rank: number | null }) => s.rank == null)).toBe(true);
+      expect((await anon().get('/api/leaderboard?page=5').expect(400)).body.status).toBe(400);
+      expect((await anon().get('/api/leaderboard?sort=hull').expect(200)).body.sort).toBe('hull');
       const hard = (await anon().get('/api/leaderboard?board=free').expect(200)).body;               // no level = HARD: an EASY run is not on it
       expect(hard).toMatchObject({ board: 'free', level: 3, rows: [] });
       expect((await anon().get('/api/leaderboard?board=all').expect(200)).body.level).toBeNull();

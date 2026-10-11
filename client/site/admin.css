@@ -5,6 +5,8 @@ main{max-width:1180px}
 .filters input,.filters select,textarea{font:inherit;font-size:13px;background:#0008;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:7px 9px}
 .filters input{min-width:240px;flex:1}
 .filters button,.actions button{padding:7px 12px;font-size:12px}
+table.dense{display:table;max-width:100%;overflow-x:auto}
+@media (max-width:700px){table.dense{display:block;-webkit-overflow-scrolling:touch}}
 table.dense td,table.dense th{padding:6px 8px;font-size:12.5px;vertical-align:top}
 table.dense tr.click{cursor:pointer}table.dense tr.click:hover td{background:#ffcf5a0d}
 .mono{font-family:ui-monospace,Menlo,Consolas,monospace;word-break:break-all}

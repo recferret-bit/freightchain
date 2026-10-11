@@ -4,17 +4,20 @@ import { salesOpen, pendingOrder } from './tickets-api.js';
 import { ridableTickets, escrowExplainer, explorerTx, rideError, promoError, promoOk, buyError, sol, left, span, hasStandings, shortAddr as short } from './pools.js';
 import { poolCard, paidShift, resultCard, escrowSummary, refundRows, profileTickets } from './lobby-pools.js';
 import { careerTiles } from './lobby-career.js';
+import { agreementsCard, blockPaid } from './lobby-agreements.js';
 import { redemptionList } from './lobby-promo.js';
 import { dirty, garageActions, garageProgress, garageSlots } from './lobby-garage.js';
 import { garageCab } from './garage-cab.js';
 import { el } from './dom.js';
 import { livePath, leaveOnClose } from './presence.js';
 import { renderReplays } from './lobby-replays.js';
+import { renderBoard } from './lobby-board.js';
 import { API_BASE, GAME_BASE } from '../js/hosts.js';
 import { track, flushSoon } from '../js/analytics.js';
 import { reportWebVitals } from '../js/web-vitals.js';
 import { store } from '../js/util.js';
 import { FREE_COUNTRIES } from '../js/free-countries.js';
+import { isMobileDevice } from '../js/mobile.js';
 
 /* The lobby: NEW RIDE · LIVE · LEADERBOARD · GARAGE · PROMO · PROFILE. Vanilla DOM, no framework.
    Everything that comes from the server (wallet addresses, route ids, statuses…) goes in with textContent – never innerHTML – because other riders' data is rendered here. */
@@ -33,7 +36,7 @@ const dur = s => { s = Math.max(0, Math.round(s)); return s >= 3600 ? `${Math.fl
 const km = m => (m / 1000).toFixed(m < 10_000 ? 2 : 1);
 
 /* ───────── state ───────── */
-const S = { me: null, tiers: null, pool: null, live: { rides: [] }, liveAt: 0, skew: 0, board: 'round', boardLevel: Number(store.get('freightchain.board-level')) || 3, pending: null, pendingNote: '', pools: null, standings: {}, stAt: {}, tab: 'new', busy: null, qty: {}, msgs: {}, poolInfo: {}, order: null, focus: null, opt: { tutorial: null, assist: store.get('freightchain.assist') === '1', level: Number(store.get('freightchain.level')) || 1 } };   // opt = the free ride's level + two checkboxes: tutorial null = follow the server (on until a ride was started with it), assist and the level are remembered here
+const S = { me: null, tiers: null, pool: null, live: { rides: [] }, liveAt: 0, skew: 0, board: 'free', boardLevel: Number(store.get('freightchain.board-level')) || 3, boardTier: store.get('freightchain.board-tier') === '4h' || store.get('freightchain.board-tier') === '8h' ? store.get('freightchain.board-tier') : '1h', pending: null, pendingNote: '', pools: null, standings: {}, stAt: {}, tab: 'new', busy: null, qty: {}, msgs: {}, poolInfo: {}, order: null, focus: null, opt: { tutorial: null, assist: store.get('freightchain.assist') === '1', level: Number(store.get('freightchain.level')) || 1 } };   // opt = the free ride's level + two checkboxes: tutorial null = follow the server (on until a ride was started with it), assist and the level are remembered here
 let seq = 0;   // one number per tab render: an answer that comes back after the player moved on (or re-asked) is dropped, not painted over the new tab
 const now = () => Date.now() + S.skew;   // server clock (skew learned from /api/live)
 const freeLeft = m => `${m.freeRides}/${m.freeRidesMax} free ride${m.freeRides === 1 ? '' : 's'}`;   // always balance/daily cap. A surplus (signup, a promo, an admin grant) stays; the refill stops at the cap
@@ -54,7 +57,7 @@ function go() {
   S.tab = TABS.includes(t) ? t : 'new'; seq++;
   track('lobby_tab_viewed', { tab: S.tab });   // hash enter, not the 1 s tick
   document.querySelectorAll('.tabs a').forEach(a => { const on = a.dataset.tab === S.tab; a.classList.toggle('on', on); a.setAttribute('aria-selected', on); });
-  ({ new: renderNew, live: renderLive, replays: () => renderReplays(view, { me: S.me, ROUTES, TIER_NAME, dur, km, avatar }), board: renderBoard, garage: renderGarage, promo: renderPromo, profile: renderProfile })[S.tab]();
+  ({ new: renderNew, live: renderLive, replays: () => renderReplays(view, { me: S.me, ROUTES, TIER_NAME, dur, km, avatar }), board: () => renderBoard(view, { S, now, track, km, dur, avatar }), garage: renderGarage, promo: renderPromo, profile: renderProfile })[S.tab]();
 }
 
 /* ───────── NEW RIDE ─────────
@@ -100,7 +103,16 @@ function paintPending() {
   const box = $('pendingbox'); if (!box) return;
   const r = S.pending;
   if (r && !pendingShown.has(r.id)) { pendingShown.add(r.id); track('pending_ride_shown', { ride_id: r.id, tier_id: r.tier }); }
-  const startIt = () => { track('pending_ride_start_clicked', { ride_id: r.id }); flushSoon(); location.href = `${GAME_BASE}/play.html?ride=${r.id}`; };
+  const startIt = () => {
+    if (isMobileDevice()) {
+      window.alert('Driving requires a desktop browser with keyboard controls. Open Freight Chain on desktop to drive, or watch streams on the LIVE tab!');
+      return;
+    }
+    if (r.tier !== 'free' && blockPaid(S.me)) return;
+    track('pending_ride_start_clicked', { ride_id: r.id });
+    flushSoon();
+    location.href = `${GAME_BASE}/play.html?ride=${r.id}`;
+  };
   box.replaceChildren(r ? el('div', { class: 'note' }, el('span', {}, el('b', {}, `Your paid ${TIER_NAME[r.tier] ?? r.tier} ride is waiting`), S.pendingNote ? ` · ${S.pendingNote}` : ''), el('button', { onclick: startIt }, 'START IT')) : S.pendingNote ? el('p', { class: 'dim' }, S.pendingNote) : '');
 }
 
@@ -216,19 +228,22 @@ function syncFreeLevel() {
 }
 function freeCard(t) {
   const off = tierOff(t);
+  const mobile = isMobileDevice();
+  const btnLabel = S.busy === 'free' ? 'WORKING…' : mobile ? 'DESKTOP TO DRIVE · WATCH LIVE' : S.me.readyFreeRide ? 'START FREE RIDE · ready' : 'START FREE RIDE';
   return el('article', { class: 'tier free', id: 'tier-free' },
     el('div', { class: 'freeinfo' },
       el('div', { class: 'hd' }, el('span', { class: 'nm' }, TIER_NAME.free)),
       el('div', { class: 'prize' },
         el('span', { class: 'st done' }, 'NO PRIZE'),
-        el('span', { class: 'st done' }, 'FOR THE FREE LEADERBOARD AND ACHIEVEMENTS')),
+        el('span', { class: 'st done' }, 'FOR THE FREE LEADERBOARD AND ACHIEVEMENTS'),
+        mobile ? el('span', { class: 'st live' }, 'DESKTOP TO DRIVE · SPECTATE ON MOBILE') : ''),
       levelPicker(t),
       freeLevels(t).length ? '' : el('span', { class: 'sub', id: 'free-shift' }, tierInfo(t).shift),   // a server without levels: the one shift, once
       el('div', { class: 'guide' },
         guideBox('opt-tutorial', 'TUTORIAL', S.me?.tutorialPassed ? 'Step-by-step tips over the game – you have done it, switch it on to see it again.' : 'Step-by-step tips over the game: ignition, gears, steering, lights, hull. On for your first ride.', tutorialOn(), v => { S.opt.tutorial = v; }, !tutorialAllowed(t)),
         guideBox('opt-assist', 'ASSIST', 'The truck and the battery last twice as long and every control gets a tip when it matters. Finish a free ride WITHOUT it for the “On My Own” achievement.', S.opt.assist, v => { S.opt.assist = v; store.set('freightchain.assist', v ? '1' : '0'); }, !assistAllowed(t))),
       off ? el('span', { class: 'tag' }, off) : '',
-      el('button', { class: 'go', id: 'start', disabled: !!off || !!S.busy, onclick: startFree }, S.busy === 'free' ? 'WORKING…' : S.me.readyFreeRide ? 'START FREE RIDE · ready' : 'START FREE RIDE')),
+      el('button', { class: 'go', id: 'start', disabled: !!off || !!S.busy, onclick: startFree }, btnLabel)),
     el('p', { class: 'msg dim', id: 'msg-free' }));
 }
 function soonCard(t) {   // a paid shift with no live pool: the planned price is text, the button does nothing
@@ -294,15 +309,34 @@ function play(r, tier, level = null) {
 }
 const clicked = (id, usd = 0) => track('ride_buy_clicked', { tier_id: id, is_free: id === 'free', price_usd: usd, is_demo: !!S.me?.demo });
 const freeBody = () => { const t = S.tiers?.tiers.find(x => x.id === 'free'), lv = pickedLevel(t); return { tier: 'free', tutorial: tutorialOn() && tutorialAllowed(t), assist: S.opt.assist && assistAllowed(t), ...(lv ? { level: lv.level } : {}) }; };   // HARD: neither helper is sent (the server would refuse it)
-const startFree = () => busy('free', async () => { clicked('free'); const body = freeBody(); try { play(await api('rides', body), 'free', body.level ?? null); } catch (e) { say('free', rideError(e, 'free'), true); await refreshMe(); } });
-const startLegacy = id => busy(id, async () => { clicked(id, S.tiers?.tiers.find(t => t.id === id)?.usd ?? 0); try { play(await buyRide(id, text => say(id, text)), id); } catch (e) { say(id, rideError(e, id), true); } });
+const startFree = () => busy('free', async () => {
+  if (isMobileDevice()) {
+    say('free', 'Driving requires a desktop browser with keyboard controls. Check out the LIVE tab to watch streams and replays on mobile!', true);
+    return;
+  }
+  clicked('free'); const body = freeBody(); try { play(await api('rides', body), 'free', body.level ?? null); } catch (e) { say('free', rideError(e, 'free'), true); await refreshMe(); }
+});
+const refusedOffer = (e) => { if (e?.code === 'agreements_required') location.hash = '#profile'; };
+const startLegacy = id => busy(id, async () => {
+  if (isMobileDevice()) {
+    say(id, 'Driving requires a desktop browser with keyboard controls. Check out the LIVE tab to watch streams on mobile!', true);
+    return;
+  }
+  if (blockPaid(S.me)) return; clicked(id, S.tiers?.tiers.find(t => t.id === id)?.usd ?? 0); try { play(await buyRide(id, text => say(id, text)), id); } catch (e) { refusedOffer(e); say(id, rideError(e, id), true); }
+});
 const ride = tier => busy(tier, async () => {   // spends one ticket: the ride is ready at once
+  if (isMobileDevice()) {
+    say(tier, 'Driving requires a desktop browser with keyboard controls. Check out the LIVE tab to watch streams on mobile!', true);
+    return;
+  }
+  if (blockPaid(S.me)) return;   // before ride_buy_clicked: a blocked click is not a buy
   clicked(tier, S.tiers?.tiers.find(t => t.id === tier)?.usd ?? 0);
   say(tier, 'Spending a ticket…');
-  try { play(await api('rides', { tier }), tier); } catch (e) { say(tier, rideError(e, tier), true); await refreshMe(); }
+  try { play(await api('rides', { tier }), tier); } catch (e) { refusedOffer(e); say(tier, rideError(e, tier), true); await refreshMe(); }
 });
 const buy = (tier, poolId, qty) => busy(tier, async () => {
-  try { await buyTickets(poolId, qty, text => say(tier, text)); S.qty[tier] = 1; await Promise.all([refreshMe(), refreshPool()]); say(tier, `Paid – ${qty} ticket${qty === 1 ? '' : 's'} credited.`); } catch (e) { say(tier, buyError(e), true); }
+  if (blockPaid(S.me)) return;
+  try { await buyTickets(poolId, qty, text => say(tier, text)); S.qty[tier] = 1; await Promise.all([refreshMe(), refreshPool()]); say(tier, `Paid – ${qty} ticket${qty === 1 ? '' : 's'} credited.`); } catch (e) { refusedOffer(e); say(tier, buyError(e), true); }
 });
 const refund = (poolId, key) => busy(key, async () => {
   try {
@@ -443,28 +477,6 @@ async function pollLive() {
   if (S.tab === 'live') paintLive();
 }
 
-/* ───────── LEADERBOARD ───────── */
-async function renderBoard() {
-  view.replaceChildren(el('p', { class: 'dim' }, 'Loading…'));
-  let j; const my = ++seq;
-  const free = S.board === 'free';
-  try { [j] = await Promise.all([api(`leaderboard?board=${S.board}${free ? `&level=${S.boardLevel}` : ''}`, undefined, { report: false }), free && !S.tiers ? api('tiers', undefined, { report: false }).then(t => { S.tiers ??= t; }, () => {}) : null]); } catch (e) { if (my === seq) view.replaceChildren(el('p', { class: 'bad' }, e.message)); return; }   // the level tabs come from the tiers (asked again when the boot's request failed)
-  if (my !== seq) return;   // switched away (or re-asked) while loading
-  track('leaderboard_filtered', { board: S.board });
-  const seg = el('div', { class: 'seg' }, ...[['round', 'THIS ROUND'], ['all', 'ALL TIME'], ['free', 'FREE RIDES']].map(([id, label]) => el('button', { class: id === S.board ? 'on' : '', onclick: () => { S.board = id; renderBoard(); } }, label)));
-  const levels = freeLevels(S.tiers?.tiers.find(t => t.id === 'free')), lvName = levels.find(l => l.level === j.level)?.name ?? '';   // the free board ranks ONE level (HARD unless picked; the pick is remembered) – the levels are GET /api/tiers' (none = no tabs, the server's default board)
-  const lvSeg = free && levels.length ? el('div', { class: 'seg', id: 'board-levels', role: 'group', 'aria-label': 'Level' }, ...levels.map(({ level: n, name }) => el('button', { class: n === j.level ? 'on' : '', 'aria-pressed': String(n === j.level), onclick: () => { S.boardLevel = n; store.set('freightchain.board-level', String(n)); renderBoard(); } }, name))) : '';
-  const prize = S.board === 'round', mine = j.rows.find(r => r.wallet === S.me.wallet);
-  view.replaceChildren(
-    el('h2', {}, 'LEADERBOARD'), seg, lvSeg,
-    prize ? el('p', { class: 'dim' }, `Ranked by distance of finished${j.verifiedOnly ? ', verified' : ''} paid shifts${j.verifiedOnly ? '' : ' (recording checks are shown in your profile, not enforced yet)'}. The top ${j.prizeRanks} share `, el('b', {}, '20%'), S.pool ? ` of the round’s entries (${sol(S.pool.split.top20)} so far)` : '', ' · closes in ', el('b', { class: 'cd', id: 'cd' }, left(j.round.endsAt - now()))) : el('p', { class: 'dim' }, S.board === 'all' ? `All finished${j.verifiedOnly ? ', verified' : ''} paid shifts, all time.` : `Finished free rides${lvName ? ` on ${lvName}` : ''}, all time – each level its own board. No prizes – bragging rights.`),
-    j.rows.length ? el('div', { class: 'card' }, el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, '#'), el('th', {}, 'RIDER'), el('th', { class: 'r' }, 'KM'), el('th', { class: 'r' }, 'SHIFTS'))),
-      el('tbody', {}, j.rows.map(r => el('tr', { class: `${prize ? 'prize' : ''}${r.wallet === S.me.wallet ? ' me' : ''}` },
-        el('td', {}, el('span', { class: `rk${r.rank === 1 ? ' g' : r.rank === 2 ? ' s' : r.rank === 3 ? ' b' : ''}` }, r.rank)),
-        el('td', {}, avatar(r.wallet), ' ', short(r.wallet), r.wallet === S.me.wallet ? ' (you)' : ''), el('td', { class: 'r' }, km(r.distance)), el('td', { class: 'r' }, r.rides)))))) : el('div', { class: 'card empty' }, 'Nobody has finished a shift here yet.'),
-    el('p', { class: 'dim' }, mine ? `You are #${mine.rank}.` : 'You are not on this board yet – finish a shift.'));
-}
-
 /* ───────── PROFILE ───────── */
 /* a ride's check in the history: a PAID ride shows its REVIEW (server/src/domain/verdict/ride-review.ts – under review until the recording check
    verifies it or an admin decides), a free ride its recording check as before */
@@ -477,9 +489,11 @@ async function renderProfile() {
   let p; const my = seq;
   try { p = await api('profile', undefined, { report: false }); } catch (e) { if (my === seq) view.replaceChildren(el('p', { class: 'bad' }, e.message)); return; }
   if (my !== seq) return;
-  Object.assign(S.me, { freeRides: p.freeRides, freeRidesMax: p.freeRidesMax, nextFreeRideAt: p.nextFreeRideAt, tickets: p.tickets }); paintHeader();
+  Object.assign(S.me, { freeRides: p.freeRides, freeRidesMax: p.freeRidesMax, nextFreeRideAt: p.nextFreeRideAt, tickets: p.tickets, agreements: p.agreements }); paintHeader();
   const got = p.achievements.filter(a => a.earnedAt).length;
+  const card = agreementsCard(S.me);
   view.replaceChildren(
+    ...(card ? [card] : []),
     el('div', { class: 'who', style: 'display:flex;gap:10px;align-items:center' }, avatar(p.wallet), el('div', {}, el('b', {}, short(p.wallet)), el('div', { class: 'dim' }, `rider since ${new Date(p.createdAt).toLocaleDateString()}`))),
     ...careerTiles(p.career, p.stats, { km, sol }),
     ...profileTickets(p, S.busy, refund),

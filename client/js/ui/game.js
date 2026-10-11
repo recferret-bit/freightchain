@@ -84,9 +84,10 @@ function showOnlineMenu(title, sub, extra) {
   panel.innerHTML = `<h1>${title}</h1><h2>${sub}</h2>${extra}
     ${bad ? `<div class="row"><span>Ride</span><span class="bad">${online.error}</span></div>` : `<div class="row"><span>Shift (server-timed)</span><b>${fmt(CFG.RIDE_MIN_SECONDS)} · ${(CFG.COMPLETE_DIST / 1000).toFixed(1)} km</b></div>
     <div class="row"><span>Route (set by the server)</span><b>${env.theme.name} · starts ${clockText()}</b></div>`}
-    <div class="btns"><button id="go" ${bad || over ? 'disabled' : ''}>START RIDE</button>${over || bad ? `<button class="alt bail-link" id="lobby" title="lobby"><b>I MISS THE YARD</b><small>lobby</small></button>${over && online.ride ? '<button type="button" class="alt share-x-btn" id="share-x-end" title="Share your ride on 𝕏"><b>POST ON 𝕏</b><small>share progress & receipt</small></button>' : ''}${bailBtn('done')}` : ''}</div>`;
+    <div class="btns">${over || bad ? `${over && online.ride ? '<button type="button" class="alt share-x-btn" id="share-x-end" title="Share your ride on 𝕏"><b>POST ON 𝕏</b><small>share progress & receipt</small></button>' : ''}<button class="alt bail-link" id="lobby" title="lobby" style="margin-left:auto"><b>${lastOutcome?.ok ? 'BACK TO THE LOBBY' : 'I MISS THE YARD'}</b><small>lobby</small></button>` : '<button id="go">START RIDE</button>'}</div>`;
   overlay.classList.remove('hide');
-  document.getElementById('go').onclick = startRide;
+  const go = document.getElementById('go');
+  if (go) go.onclick = startRide;
   const lobby = document.getElementById('lobby');
   if (lobby) lobby.onclick = () => { location.href = `${SITE_BASE}/lobby.html`; };   // one click: the ride is not running on this screen (the suites press #lobby)
   const shareEnd = document.getElementById('share-x-end');

@@ -16,7 +16,7 @@ describe('Player', () => {
   });
 
   it('registers with the signup credits and the cap on today', () => {
-    expect(Player.register('w', WED, 5, 5).snapshot()).toEqual({ wallet: 'w', version: 1, freeRides: 5, freeDay: '2026-10-07', freeRidesMax: 5, createdAt: WED, tutorialPassedAt: null });
+    expect(Player.register('w', WED, 5, 5).snapshot()).toEqual({ wallet: 'w', version: 1, freeRides: 5, freeDay: '2026-10-07', freeRidesMax: 5, createdAt: WED, tutorialPassedAt: null, age18At: null, lossAt: null });
   });
 
   it('grants +1 free ride once per UTC day, no backlog', () => {
@@ -131,6 +131,25 @@ describe('Player – daily cap and an admin adjust', () => {
     expect(p.freeRides).toBe(110);
     p.adjustFreeRides(-110);
     expect(p.freeRides).toBe(0);
+  });
+});
+
+describe('Player – the paid-play offer', () => {
+  it('starts off; the first stamp stays, clearing a box drops it, and both-on is the only acceptance', () => {
+    const p = Player.register('w', WED, 5, 5);
+    expect(p.paidPlayAllowed).toBe(false);
+    expect(() => p.requirePaidPlay()).toThrow(new ConflictError('accept the 18+ and loss offer on your profile before a paid shift', 'agreements_required'));
+    expect(p.setAgreements({ age18: true, loss: false }, WED)).toEqual({ changed: true, becameAccepted: false });
+    expect(p.setAgreements({ age18: true, loss: false }, NEXT_DAY)).toEqual({ changed: false, becameAccepted: false });
+    expect(p.age18At).toBe(WED);
+    expect(p.setAgreements({ age18: true, loss: true }, NEXT_DAY)).toEqual({ changed: true, becameAccepted: true });
+    expect(p.lossAt).toBe(NEXT_DAY);
+    expect(p.paidPlayAllowed).toBe(true);
+    expect(() => p.requirePaidPlay()).not.toThrow();
+    expect(p.setAgreements({ age18: false, loss: true }, NEXT_DAY)).toEqual({ changed: true, becameAccepted: false });
+    expect(p.age18At).toBeNull();
+    expect(p.paidPlayAllowed).toBe(false);
+    expect(Player.restore(p.snapshot()).lossAt).toBe(NEXT_DAY);
   });
 });
 

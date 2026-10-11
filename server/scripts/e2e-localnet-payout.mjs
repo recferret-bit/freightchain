@@ -72,7 +72,10 @@ async function signIn(kp) {
   const wallet = kp.publicKey.toBase58(), { j } = await api('auth/nonce', { body: { wallet } });
   const res = await fetchy(`${BASE}/api/auth/verify`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ wallet, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(j.message), kp.secretKey)) }) });
   if (!res.ok) throw new Error(`sign-in failed: ${res.status} ${await res.text()}`);
-  return res.headers.get('set-cookie').split(';')[0];
+  const cookie = res.headers.get('set-cookie').split(';')[0];
+  const offer = await api('profile/agreements', { body: { age18: true, loss: true }, cookie, method: 'PUT' });
+  if (!offer.ok) throw new Error(`agreements failed: ${offer.status}`);
+  return cookie;
 }
 async function player(name) {
   const kp = Keypair.generate(), wallet = kp.publicKey.toBase58();

@@ -75,6 +75,7 @@ import { CreateAdminPromoHandler } from './use-cases/admin/create-admin-promo/cr
 import { DisableAdminPromoHandler } from './use-cases/admin/disable-admin-promo/disable-admin-promo.handler.js';
 import { ListPromoRedemptionsHandler } from './use-cases/admin/list-promo-redemptions/list-promo-redemptions.handler.js';
 import { EquipCosmeticHandler } from './use-cases/players/equip-cosmetic/equip-cosmetic.handler.js';
+import { AcceptAgreementsHandler } from './use-cases/players/accept-agreements/accept-agreements.handler.js';
 import { GetMyPromosHandler } from './use-cases/players/get-my-promos/get-my-promos.handler.js';
 import { GetGarageHandler } from './use-cases/players/get-garage/get-garage.handler.js';
 import { SaveGarageHandler } from './use-cases/players/save-garage/save-garage.handler.js';
@@ -135,7 +136,7 @@ const handlers: Provider[] = [
   GetLivenessHandler, GetReadinessHandler,
   GrantDailyFreeRidesHandler,
   RecordTelemetryHandler,
-  ListPoolsHandler, GetPrizePoolHandler, GetPoolStandingsHandler, HoldPoolPayoutHandler, ListPoolPayoutsHandler, RedeemPromoHandler, GetMyPromosHandler, GetWardrobeHandler, EquipCosmeticHandler, GetGarageHandler, SaveGarageHandler,
+  ListPoolsHandler, GetPrizePoolHandler, GetPoolStandingsHandler, HoldPoolPayoutHandler, ListPoolPayoutsHandler, RedeemPromoHandler, GetMyPromosHandler, GetWardrobeHandler, EquipCosmeticHandler, AcceptAgreementsHandler, GetGarageHandler, SaveGarageHandler,
   CreateAdminPromoHandler, DisableAdminPromoHandler, ListPromoRedemptionsHandler,
   CreatePromoHandler, ListPromosHandler, DisablePromoHandler, GrantTicketsHandler, RegisterPoolHandler,
   CreateTicketOrderHandler, GetTicketOrderHandler, GetPendingTicketOrderHandler,

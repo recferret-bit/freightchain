@@ -121,6 +121,7 @@ const tierName = t => TIER_NAME[t] ?? t;
 
 /** A readable sentence for every refusal of POST /api/rides (409 codes of the ledger; the server's detail carries the numbers). */
 export function rideError(e, tier) {
+  if (e?.code === 'agreements_required') return 'Accept the 18+ and loss offer on your profile before a paid shift.';
   if (e?.code === 'no_tickets') return `No ${tierName(tier)} tickets left – buy one or redeem a promo code.`;
   if (e?.code === 'assist_not_allowed') return `${e.message[0]?.toUpperCase() ?? ''}${e.message.slice(1)} – untick ASSIST or pick an easier level.`;
   if (e?.code === 'tutorial_not_allowed') return `${e.message[0]?.toUpperCase() ?? ''}${e.message.slice(1)} – untick TUTORIAL or pick an easier level.`;
@@ -148,6 +149,7 @@ export function promoOk(r) {
 
 /** …and of the (provisional, §2.4) ticket order / refund routes. */
 export function buyError(e) {
+  if (e?.code === 'agreements_required') return 'Accept the 18+ and loss offer on your profile before a paid shift.';
   if (e?.notConfigured) return 'On-chain ticket sales are not switched on in this build yet – use a promo code meanwhile.';
   if (e?.status === 503) return 'The chain is not reachable from the server right now – nothing was charged. Try again in a minute.';
   if (e?.status === 429) return 'Too many requests – wait a moment and try again.';

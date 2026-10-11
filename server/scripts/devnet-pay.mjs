@@ -23,6 +23,7 @@ const tiers = (await api('tiers')).j; check('quote + treasury', tiers.solUsd > 1
 const poolBefore = (await api('pool')).j;
 const ch = (await api('auth/nonce', { wallet: me })).j;
 check('sign-in', (await api('auth/verify', { wallet: me, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(ch.message), kp.secretKey)) })).status === 200);
+check('the 18+ and loss offer is on', (await fetch(`${BASE}/api/profile/agreements`, { method: 'PUT', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ age18: true, loss: true }) })).status === 200);
 const ride = (await api('rides', { tier: '1h' })).j; check('ordered a 1 h ride', ride.status === 'awaiting_payment', `${ride.lamports} lamports ($${ride.priceUsd}), ×${ride.timeScale} → ${ride.minSeconds} s`);
 check('cannot start unpaid', (await api(`rides/${ride.id}/start`, {})).status === 409);
 const p = (await api(`rides/${ride.id}/payment`)).j, tx = Transaction.from(Buffer.from(p.transaction, 'base64')); tx.partialSign(kp);

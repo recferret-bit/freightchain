@@ -38,7 +38,9 @@ export class CreateTicketOrderHandler implements ICommandHandler<CreateTicketOrd
     await this.sessions.touch(wallet);
     return this.transactions.run(async (tx) => {
       const now = this.clock.now();
-      if (!(await this.players.findByWalletForUpdate(wallet, tx))) throw new NotFoundError('player not found');
+      const player = await this.players.findByWalletForUpdate(wallet, tx);
+      if (!player) throw new NotFoundError('player not found');
+      player.requirePaidPlay(); // before a new order and before handing back the live one
       const pool = await this.pools.findById(poolId, tx);
       if (!pool) throw new NotFoundError('no such pool');
       const live = await this.orders.findAwaitingByWallet(wallet, tx);

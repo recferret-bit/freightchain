@@ -1,6 +1,6 @@
 import { StatsService } from '../../../services/stats.service.js';
 import { QueryHandler, type IQueryHandler } from '@nestjs/cqrs';
-import { nextFreeRideAt } from '../../../../domain/players/player.dto.js';
+import { nextFreeRideAt, toAgreementsDto } from '../../../../domain/players/player.dto.js';
 import { RECENT_RIDES_LIMIT, RECENT_GRANTS_LIMIT, type ProfileDto } from '../../../../domain/lobby/lobby.dto.js';
 import { toTicketGrantDto } from '../../../../domain/economy/prize-pool.dto.js';
 import { AnalyticsPort } from '../../../ports/analytics/analytics.port.js';
@@ -61,6 +61,7 @@ export class GetProfileHandler implements IQueryHandler<GetProfileQuery, Profile
       achievements,
       tickets,
       grants: grants.map(toTicketGrantDto),
+      agreements: toAgreementsDto(player),
     };
   }
 }

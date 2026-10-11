@@ -14,6 +14,7 @@ export async function paymentSetup(over: Parameters<typeof unitRules>[0] = {}) {
   const wallet = buyer.publicKey.toBase58();
   await ctx.pools.upsert(aPool({ id: 1, minTickets: 2 }, ctx.now()));
   await ctx.player(wallet);
+  await ctx.accept(wallet);
   const order = TicketOrder.create({ id: '00000000-0000-4000-8000-0000000000b1', wallet, pool: (await ctx.pools.findById(1))!, qty: 2, walletBought: 0, now: ctx.now() });
   await ctx.orders.insert(order);
   const settle = new SettleChainSignatureHandler(ctx.poolChain, ctx.chainEvents, ctx.ticketSettlement, ctx.registry, ctx.clock);

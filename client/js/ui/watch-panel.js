@@ -24,10 +24,15 @@ export function mountWatchPanel() {
   if (watch.error && !watch.ride) return mountError();
   const r = watch.ride;
   const speeds = [1, 4, 16].map(x => el('button', { class: 'alt spd', 'data-x': x, onclick: () => { watch.speed = x; watch.follow = false; watch.playing = true; paint(); } }, `${x}×`));
+  const toggleFold = () => {
+    P.root.classList.toggle('folded');
+    const btn = P.root.querySelector('.w-fold');
+    if (btn) btn.textContent = P.root.classList.contains('folded') ? '⇤' : '⇥';
+  };
   P.root = el('aside', { id: 'watch', 'aria-label': 'Watching a ride' },
     el('div', { class: 'w-top' },
       el('div', {}, el('div', { class: 'w-k' }, 'WATCHING'), el('b', { class: 'w-who', title: r.wallet }, short(r.wallet))),
-      el('button', { class: 'alt w-fold', title: 'fold the panel', onclick: () => P.root.classList.toggle('folded') }, '⇥')),
+      el('button', { class: 'alt w-fold', title: 'fold / expand the panel', onclick: toggleFold }, '⇥')),
     el('div', { class: 'w-meta' }, el('span', { id: 'w-route' }), ' · ', TIER[r.tier] ?? r.tier),
     el('div', { class: 'w-badges' }, el('span', { id: 'w-state', class: 'w-badge' }), el('span', { id: 'w-viewers', class: 'w-badge dim' })),
     el('div', { class: 'w-stats' }, el('span', {}, '⏱ ', el('b', { id: 'w-time' })), el('span', {}, '↦ ', el('b', { id: 'w-dist' })), el('span', {}, 'hull ', el('b', { id: 'w-hull' }))),

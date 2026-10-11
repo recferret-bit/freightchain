@@ -23,7 +23,24 @@ export interface MeDto {
   tickets: TicketBalanceDto[];
   /** the free ride ordered but not started yet (its credit is spent): START hands it back – re-chosen, no new credit – even at 0 free rides; null = none */
   readyFreeRide: ReadyFreeRideDto | null;
+  /** the two profile boxes. Both true before a paid shift. Timestamps are epoch ms, null while that box is off. */
+  agreements: AgreementsDto;
 }
+
+/** What PUT /api/profile/agreements and the profile / me payloads say about the two boxes. */
+export interface AgreementsDto {
+  age18: boolean;
+  loss: boolean;
+  age18At: number | null;
+  lossAt: number | null;
+}
+
+export const toAgreementsDto = (player: Player): AgreementsDto => ({
+  age18: player.age18At !== null,
+  loss: player.lossAt !== null,
+  age18At: player.age18At?.getTime() ?? null,
+  lossAt: player.lossAt?.getTime() ?? null,
+});
 
 export const toMeDto = (player: Player, now: Date, demo: boolean, demoScale: number, tickets: TicketBalanceDto[], readyFreeRide: ReadyFreeRideDto | null): MeDto => ({
   wallet: player.wallet,
@@ -36,4 +53,5 @@ export const toMeDto = (player: Player, now: Date, demo: boolean, demoScale: num
   demoScale,
   tickets,
   readyFreeRide,
+  agreements: toAgreementsDto(player),
 });
