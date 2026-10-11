@@ -35,6 +35,9 @@ export const orderPayment = orderId => call(`tickets/orders/${id(orderId)}/payme
 /** POST /api/tickets/orders/:id/confirm {signature} → `{ status: paid|pending, order }` · 400 `transaction_invalid` / `transaction_mismatch`. */
 export const confirmOrder = (orderId, signature) => call(`tickets/orders/${id(orderId)}/confirm`, { signature });
 
+/** POST /api/tickets/orders/:id/reconcile → `{ status: paid|pending|not_found, order }`. Finds a phone payment by its reference key. */
+export const reconcileOrder = orderId => call(`tickets/orders/${id(orderId)}/reconcile`, {});
+
 /** GET /api/pools/:id/refund → `{ poolId, needsFail, lamports, transaction, message, feePayer, lastValidBlockHeight }` (the wallet signs AND sends)
  *  · 409 `not_refundable` / `nothing_to_refund`. */
 export const refundTransaction = poolId => call(`pools/${id(poolId)}/refund`);

@@ -7,7 +7,7 @@ export class TicketOrderMapper {
     return TicketOrder.restore({
       id: row.id, wallet: row.wallet, poolId: row.poolId, qty: row.qty, lamports: Number(row.lamports), status: row.status as OrderStatus, txMessage: row.txMessage,
       lastValidBlockHeight: row.lastValidBlockHeight === null ? null : Number(row.lastValidBlockHeight), createdAt: row.createdAt, paidAt: row.paidAt, refundedAt: row.refundedAt,
-      signature: row.signature, eventIndex: row.eventIndex,
+      signature: row.signature, eventIndex: row.eventIndex, paymentReference: row.paymentReference,
     });
   }
 

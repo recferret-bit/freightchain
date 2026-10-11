@@ -97,7 +97,7 @@
   <div class="grid3">
     <article class="card"><h3>WHO IT IS FOR</h3><p>Players who like manual-gearbox sims and long, quiet challenges; people who watch streams of them; and Solana users who want to see escrow and verification done in the open.</p></article>
     <article class="card"><h3>WHAT IT IS NOT</h3><p>Not a token launch, not a yield product and not a casino game: the drive is skill and patience, the finish is verified, and no outcome depends on a random draw in the current design.</p></article>
-    <article class="card"><h3>WHERE IT RUNS</h3><p>In a desktop browser, no download. Wallet: Phantom or Solflare. Network: Solana <b>devnet</b>. Mobile wallets and touch controls are not built.</p></article>
+    <article class="card"><h3>WHERE IT RUNS</h3><p>In a desktop browser, no download. Wallet: Phantom or Solflare, on this computer or by scanning a Solana Pay code with the same account on a phone. Network: Solana <b>devnet</b>. Touch controls for driving are not built.</p></article>
   </div>
 </section>
 
@@ -223,6 +223,7 @@
     <li><i>3</i><b>DRIVE</b><span>The game heartbeats the server. Driven seconds come from those beats, capped by wall time. The recording uploads every 15 s.</span></li>
     <li><i>4</i><b>FINISH</b><span>After the minimum time <em>and</em> the minimum distance the shift is <em>complete</em>. You may keep driving, then end it (P → END SHIFT).</span></li>
   </ol>
+  <p>A paid ticket is bought before that start. The server builds an unsigned devnet transaction. Sign it in Phantom or Solflare on this computer, or scan the Solana Pay code with the same wallet on a phone. A reference key on the transaction is how the server finds the payment. A free ride skips it.</p>
   <p><b>The completion rule.</b> A shift completes when its minimum time has been driven <em>and</em> the distance reaches ½ × 28 m/s × that time (for 1 hour: 50.4 km). The governor is the same for everyone, so this distance cannot be reached faster than half the time.</p>
 
   <h3 class="sub">HOW IT ENDS</h3>
@@ -234,7 +235,7 @@
 
   <h3 class="sub">RULES OF PARTICIPATION</h3>
   <ol class="rules">
-    <li><b>You need a wallet, not a balance, to look around.</b> Watching a ride, the boards and this paper need no sign-in. Driving, chatting and tipping need one signature.</li>
+    <li><b>You need a wallet, not a balance, to look around.</b> Watching a ride, the boards and this paper need no sign-in. Driving, chatting and tipping need one signature. A payment can be signed in this browser, or by scanning a Solana Pay code with the same account on a phone.</li>
     <li><b>One account is one wallet.</b> Free rides, tickets, badges and rank belong to the wallet that signed in. A session cookie is not revocable one by one; sign out of shared computers.</li>
     <li><b>A ticket is spent when the shift starts.</b> A paid ticket is not returned if you crash or abandon. It is returned only if the <em>pool</em> fails: if too few riders buy in during the 24-hour sale, every buyer is refunded in full (<a href="#onchain">05</a>). Starting a ride while one is open resumes it.</li>
     <li><b>Per-wallet cap.</b> A pool states how many tickets one wallet may hold; the program and the server both enforce it. Promo codes add tickets of a tier and count against the same cap.</li>
@@ -354,7 +355,7 @@
       <rect class="bx dash" x="20" y="250" width="420" height="64" rx="8"/><text class="tx b" x="230" y="278" text-anchor="middle">Game server</text><text class="tx s" x="230" y="298" text-anchor="middle">reads events · credits tickets · holds no key</text>
       <path class="ln dsh" d="M440 215V250" marker-end="url(#ar)"/>
     </svg>
-    <figcaption>Every arrow that moves money starts or ends at the vault. The server's link is dashed because it only reads what the program announced and hands players transactions to sign.</figcaption>
+    <figcaption>Every arrow that moves money starts or ends at the vault. The server's link is dashed because it only reads what the program announced and hands players transactions to sign. A phone can sign the same transaction by scanning a Solana Pay code. A reference key on the memo lets the server find that payment without reading the wallet's history.</figcaption>
   </figure>
 
   <h3 class="sub">THE LIFE OF A POOL</h3>
@@ -651,7 +652,7 @@
       <tr><td>⚠ Sinkhole</td><td>0.05 SOL</td><td>Lane-wide with cones; up to 14 % hull per axle and 35 % of speed. At full speed it can wreck a damaged truck.</td></tr>
     </tbody>
   </table></div>
-  <p>A donation may carry a note of up to 80 characters. In production it is a <b>real devnet SOL transfer from the spectator's wallet to the driver's</b>: the server builds the unsigned transaction (with a memo naming the order), the wallet signs and sends it, and the donation exists in the feed only once the server has seen it on chain. The platform never touches the money. One conditional update claims the order once (signatures are unique), so two tabs confirming at once make one donation.</p>
+  <p>A donation may carry a note of up to 80 characters. In production it is a <b>real devnet SOL transfer from the spectator's wallet to the driver's</b>: the server builds the unsigned transaction (a memo names the order, and a reference key sits on that memo), the wallet signs and sends it – on this computer, or by scanning the Solana Pay code with the same account on a phone – and the donation exists in the feed only once the server has seen it on chain. The platform never touches the money. One conditional update claims the order once (signatures are unique), so two tabs confirming at once make one donation.</p>
   <p><b>Money that moved is never refused.</b> If the effect can no longer happen when the payment is confirmed – another effect landed, effects were switched off, or the ride ended – the donation is delivered as a tip and its text says why.</p>
   <p><b>Where a paid hole goes.</b> Past the stretch of road already built (so it never pops into view), plus the warning sign's 90 m, in the lane the truck is in – about 940 m ahead. The driver's game reports back where and when it landed (“the stamp”, first report wins), and every replay then puts the hole exactly there, now or in a month. If there is no suitable chunk within about 1.3 km, the effect fizzles and says so.</p>
 
@@ -669,7 +670,7 @@
     </tbody>
   </table></div>
   <p>Four server switches decide what a ride offers; the server refuses what is off and tells the page what is on. In production today: <b>chat on for every ride, donations on and paid (real devnet SOL to the driver), game effects on free rides only</b> – never on a paid ticket ride – with tips available everywhere.</p>
-  <p class="dim">Open: a paid donation whose page closed before confirmation has no chain watcher yet, and a real Phantom on the game's own host is still to be tried by hand.</p>
+  <p class="dim">Open: reloading the watch page finds a tip this browser started. If that browser never comes back, there is still no chain watcher for the transfer. The SOL is already in the driver's wallet. A real Phantom on the game's own host is still to be tried by hand.</p>
   <p><a class="link" data-to="game" data-path="/play.html" href="/play.html">Open the game, then use a ride's WATCH link from the lobby's Live tab →</a></p>
 </section>
 

@@ -6,6 +6,7 @@ import { ProblemDetailsFilter } from '../infrastructure/http/filters/problem-det
 import { requestIdMiddleware } from '../infrastructure/http/middleware/request-id.middleware.js';
 import { requestLogMiddleware } from '../infrastructure/http/middleware/request-log.middleware.js';
 import { beaconBodyMiddleware } from '../infrastructure/http/middleware/beacon-body.middleware.js';
+import { solanaPayCors } from '../infrastructure/http/middleware/solana-pay-cors.middleware.js';
 import { ridePageMiddleware } from '../infrastructure/http/middleware/ride-page.middleware.js';
 import { PrismaService } from '../infrastructure/prisma/prisma.service.js';
 import { JsonLogger } from '../infrastructure/logging/json-logger.js';
@@ -18,6 +19,8 @@ export function configureApp(app: INestApplication): void {
   app.useLogger(logger);   // JSON lines in production (`npm run ops -- logs`), and the in-memory ring the admin page reads
   // behind a reverse proxy (Railway / Fly) req.ip would be the proxy's: tell Express how many hops to trust, or every rider shares one rate-limit bucket
   (app.getHttpAdapter().getInstance() as Express).set('trust proxy', env.trustProxy);
+  // before the allowlist: a phone wallet's Solana Pay POST is not one of our origins. OPTIONS is answered here; GET/POST keep this header if the allowlist does not replace it.
+  app.use(solanaPayCors);
   // the game and the lobby call the API from sibling origins (ride.* / the apex): exact-origin allowlist + credentials (the session cookie); no wildcard
   if (env.corsOrigins.length > 0) app.enableCors({ origin: env.corsOrigins, credentials: true, exposedHeaders: ['X-Request-Id'], maxAge: 600 });
   app.use(compression());   // text (HTML, JS, CSS, JSON) over 1 kB is gzipped; images are already compressed and pass through untouched

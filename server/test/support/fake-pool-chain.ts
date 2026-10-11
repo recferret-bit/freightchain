@@ -63,7 +63,7 @@ export class FakePoolChain extends PoolChainPort {
 
   // ---- the port
 
-  async buildBuyTransaction(input: { payer: string; poolId: number; qty: number; orderId: string }): Promise<BuiltTransaction> {
+  async buildBuyTransaction(input: { payer: string; poolId: number; qty: number; orderId: string; reference?: string | null }): Promise<BuiltTransaction> {
     return this.build('buy', input, input.payer, [input.payer]);
   }
   async buildRefundTransaction(input: { caller: string; poolId: number; buyer: string; needsFail: boolean }): Promise<BuiltTransaction> {

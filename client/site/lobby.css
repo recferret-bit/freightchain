@@ -74,6 +74,7 @@ h2{margin:22px 0 10px;font-size:13px;letter-spacing:2px;color:var(--amber);font-
 .tier .split{height:8px;margin:6px 0 2px}.tier .legend{font-size:11px;gap:2px 10px}
 .tier details{font-size:12px;color:var(--dim)}.tier summary{cursor:pointer;color:var(--amber);font-size:11px;letter-spacing:1px;margin-top:4px}.tier details p{margin:6px 0 0}.tier details[open]{display:grid;gap:4px}
 .tier .msg{margin:4px 0 0;font-size:12px;min-height:0}
+.pay-qr{margin:8px 0}.pay-qr svg{width:168px;height:168px;background:#fff;display:block}.pay-qr p{margin:4px 0 0;font-size:12px}
 .tier ul.rules{margin:6px 0 0}
 /* the daily series: phase line, the series rule, the winners list (lobby-pools.js) */
 .tier .phase{font-size:13px;font-weight:bold;letter-spacing:.5px;margin-top:2px}.tier .phase b{font-weight:bold}.phase.live{color:var(--good)}.phase.open{color:var(--amber)}.phase.fail{color:var(--bad)}.phase.done{color:var(--dim)}

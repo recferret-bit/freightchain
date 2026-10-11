@@ -8,6 +8,8 @@ import { EFFECT_INFO, short, solText } from '../live-effects.js';
 import { el } from '../../site/dom.js';
 import { api, signIn } from '../../site/wallet.js';
 import { signAndSend } from '../../site/pay.js';
+import { solanaPayUrl, donationPayPath } from '../../site/solana-pay.js';
+import { API_BASE } from '../hosts.js';
 import { explorerTx } from '../../site/pools.js';
 
 /* The watch page's panel (play.html?watch=<id>): who / where / how far, the timeline (live edge or replay with speeds), the ride's feed, and – signed in –
@@ -59,9 +61,23 @@ function mountError() {
   document.body.append(el('aside', { id: 'watch', class: 'w-error' }, el('b', {}, 'NOTHING TO WATCH'), el('p', {}, watch.error), el('a', { href: `${SITE_BASE}/lobby.html#live` }, '← trucks on the road')));
 }
 
+const donationKey = rideId => `freightchain.donation.${rideId}`;
+const rememberDonation = (rideId, orderId) => { try { sessionStorage.setItem(donationKey(rideId), orderId); } catch { /* private mode */ } };
+const forgetDonation = rideId => { try { sessionStorage.removeItem(donationKey(rideId)); } catch { /* private mode */ } };
 async function refreshMe() {
   try { P.me = await api('me'); } catch { P.me = null; }
   paintMe();
+  if (P.me) resumeDonation().catch(() => {});
+}
+/** A phone payment whose page reloaded before confirm: the order id is in this browser, the reference is on the server. */
+async function resumeDonation() {
+  if (watch.features?.payment !== 'chain' || !watch.id) return;
+  let orderId = null; try { orderId = sessionStorage.getItem(donationKey(watch.id)); } catch { return; }
+  if (!orderId) return;
+  const r = await api(`watch/${encodeURIComponent(watch.id)}/donation-orders/${orderId}/reconcile`, {}).catch(() => null);
+  if (r?.status !== 'paid') return;
+  forgetDonation(watch.id);
+  if (!watch.events.has(r.event.id)) addOwn(r.event);
 }
 
 /* ───── the parts that change ───── */
@@ -161,6 +177,14 @@ async function send() {
   catch (e) { say(e.message, 'bad'); if (e.status === 401) refreshMe(); }
 }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function showDonationQr(url) {
+  if (!url) { $('w-qr')?.remove(); return; }
+  const { qrNode } = await import('../../site/qr.js');
+  const msg = $('w-msg'); if (!msg?.isConnected) return;
+  let box = $('w-qr');
+  if (!box) { box = el('div', { id: 'w-qr', class: 'pay-qr' }); msg.before(box); }
+  box.replaceChildren(qrNode(url), el('p', { class: 'dim w-small' }, 'or scan with a phone wallet · same account · devnet'));
+}
 const sent = (effect, how) => (effect === 'tip' ? `Tip sent (${how}).` : `${EFFECT_INFO[effect].label} sent (${how}) – it happens when the driver's game picks it up; you see it here ~${LIVE_LAG} s later.`);
 async function donate(effect) {
   if (P.busy) return;
@@ -172,18 +196,43 @@ async function donate(effect) {
     } else {   // PAID: the server builds the transfer to the driver, your wallet signs and sends it, the server sees it on chain
       say('Preparing the transfer…');
       const { order, transaction } = await api(`watch/${id}/donation-orders`, { effect, note });
-      say(`Approve ${solText(order.lamports)} (devnet) to the driver in your wallet…`);
-      const signature = await signAndSend(transaction.transaction);
+      rememberDonation(watch.id, order.id);
+      await showDonationQr(solanaPayUrl(API_BASE, location.origin, donationPayPath(order.id)));
+      const phone = async () => {
+        const end = Date.now() + 90000;
+        while (Date.now() < end) {
+          const r = await api(`watch/${id}/donation-orders/${order.id}/reconcile`, {}).catch(() => null);
+          if (r?.status === 'paid') return r;
+          await sleep(3000);
+        }
+        return null;
+      };
+      let signature;
+      try {
+        say(`Approve ${solText(order.lamports)} (devnet) to the driver in your wallet…`);
+        signature = await signAndSend(transaction.transaction);
+      } catch (e) {
+        say('Browser wallet closed. Scan the code with the phone wallet that holds this account (devnet)…');
+        const found = await phone();
+        if (found?.status === 'paid') { forgetDonation(watch.id); if (n) n.value = ''; addOwn(found.event); say(found.event.effect === effect ? sent(effect, 'paid') : `Paid – ${found.event.text ?? 'delivered as a tip'}.`, 'good'); return; }
+        throw e;
+      }
       say('Sent – waiting for the network to confirm…');
+      const phonePaid = phone();
       for (let i = 0; i < 60; i++) {
-        const r = await api(`watch/${id}/donation-orders/${order.id}/confirm`, { signature });
-        if (r.status === 'paid') { if (n) n.value = ''; addOwn(r.event); say(r.event.effect === effect ? sent(effect, 'paid') : `Paid – ${r.event.text ?? 'delivered as a tip'}.`, 'good'); return; }
+        const r = await Promise.race([
+          api(`watch/${id}/donation-orders/${order.id}/confirm`, { signature }),
+          phonePaid.then(hit => hit ?? new Promise(() => {})),
+        ]);
+        if (r.status === 'paid') { forgetDonation(watch.id); if (n) n.value = ''; addOwn(r.event); say(r.event.effect === effect ? sent(effect, 'paid') : `Paid – ${r.event.text ?? 'delivered as a tip'}.`, 'good'); return; }
         await sleep(1500);
       }
+      const late = await phonePaid;
+      if (late?.status === 'paid') { forgetDonation(watch.id); if (n) n.value = ''; addOwn(late.event); say(late.event.effect === effect ? sent(effect, 'paid') : `Paid – ${late.event.text ?? 'delivered as a tip'}.`, 'good'); return; }
       say('The network has not confirmed it yet – it appears in the feed once it does (reload to check).', 'dim');
     }
     if (n) n.value = '';
   } catch (e) { say(e.message, 'bad'); if (e.status === 401) refreshMe(); }
-  finally { P.busy = false; }
+  finally { P.busy = false; $('w-qr')?.remove(); }
 }
 const addOwn = e => addEvent(e);   // shown at once (onEvent paints it); the next poll knows the id

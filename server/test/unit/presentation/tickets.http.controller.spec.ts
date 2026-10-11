@@ -4,6 +4,7 @@ import { GetPendingTicketOrderQuery } from '../../../src/application/use-cases/t
 import { GetTicketOrderQuery } from '../../../src/application/use-cases/tickets/get-ticket-order/get-ticket-order.query.js';
 import { GetTicketPaymentQuery } from '../../../src/application/use-cases/tickets/get-ticket-payment/get-ticket-payment.query.js';
 import { ConfirmTicketOrderCommand } from '../../../src/application/use-cases/tickets/confirm-ticket-order/confirm-ticket-order.command.js';
+import { ReconcileTicketOrderCommand } from '../../../src/application/use-cases/tickets/reconcile-ticket-order/reconcile-ticket-order.command.js';
 import { confirmTicketOrderBodySchema, createTicketOrderBodySchema, orderIdParamsSchema } from '../../../src/presentation/economy/dto/pools.dto.js';
 import { busMock } from '../../support/bus.js';
 
@@ -17,6 +18,7 @@ describe('TicketsHttpController', () => {
     await c.order({ wallet: 'w' }, { id: 'x' }); expect(queries.last()).toEqual(new GetTicketOrderQuery('w', 'x'));
     await c.payment({ wallet: 'w' }, { id: 'x' }); expect(queries.last()).toEqual(new GetTicketPaymentQuery('w', 'x'));
     await c.confirm({ wallet: 'w' }, { id: 'x' }, { signature: 's' }); expect(commands.last()).toEqual(new ConfirmTicketOrderCommand('w', 'x', 's'));
+    await c.reconcile({ wallet: 'w' }, { id: 'x' }); expect(commands.last()).toEqual(new ReconcileTicketOrderCommand('w', 'x'));
   });
 
   it('bodies and ids are validated', () => {

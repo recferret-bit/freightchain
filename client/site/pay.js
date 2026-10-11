@@ -3,6 +3,7 @@ import { API_BASE } from '../js/hosts.js';
 import { chainFees, createOrder, getOrder, orderPayment, confirmOrder, refundTransaction, settleSignature } from './tickets-api.js';
 import { sol } from './pools.js';
 import { track } from '../js/analytics.js';
+import { solanaPayUrl, ridePayPath, orderPayPath } from './solana-pay.js';
 
 /* Paying: (legacy, a tier without a pool) `buyRide` – the server builds an unsigned SOL transfer (+ memo = ride id), the wallet signs and sends it, the server verifies it on chain;
    (escrowed pools) `buyTickets` / `claimRefund` – the server builds the program transaction, the wallet signs it, the program holds the money (routes in tickets-api.js).
@@ -19,50 +20,90 @@ const noWallet = () => new Error('No Solana wallet found – install Phantom or 
 const selfPay = async (p, tx) => { const r = await p.signAndSendTransaction(tx); return r.signature ?? r; };   // Phantom / Solflare: { signature }
 const httpStatus = e => typeof e?.status === 'number' ? e.status : null;
 const problemCode = e => typeof e?.code === 'string' ? e.code : null;
+const PHONE = 'Browser wallet closed. Scan the code with the phone wallet that holds this account (devnet)…';
+const payUrl = path => solanaPayUrl(API_BASE, typeof location === 'undefined' ? '' : location.origin, path);
 
-/** order → pay → wait for the server to see it on chain. Resolves to the ready (paid) ride. `onStep(text)` reports progress. */
-export async function buyRide(tier, onStep = () => {}) {
+/** Poll `load` until it returns a hit, `ms` passes, or `stop.done` (the desktop path finished). */
+async function pollPaid(load, ms = 90000, stop = { done: false }) {
+  const end = Date.now() + ms;
+  while (!stop.done && Date.now() < end) {
+    const hit = await load().catch(() => null);
+    if (stop.done) return null;
+    if (hit) return hit;
+    await sleep(3000);
+  }
+  return null;
+}
+
+/** order → pay → wait for the server to see it on chain. Resolves to the ready (paid) ride. `onStep(text)` reports progress.
+ *  `onPayLink(url|null)` is the phone QR: the same transaction, signed by the phone wallet that holds this account. */
+export async function buyRide(tier, onStep = () => {}, onPayLink = () => {}) {
   const failed = (stage, err, rideId) => {
     const properties = { stage, tier_id: tier, http_status: httpStatus(err), code: problemCode(err) };
     if (rideId) properties.ride_id = rideId;
     track('payment_failed', properties);   // never e.message: the give-up string embeds the signature
   };
   const p = provider();
-  if (!p) {
-    const err = new Error('No Solana wallet found – install Phantom or Solflare (and switch it to Devnet)');   // before ordering: no stray orders
-    failed('no_provider', err);
-    throw err;
-  }
   let w3;
-  try { w3 = await loadWeb3(); } catch (e) { failed('web3_load_failed', e); throw e; }
+  if (p) { try { w3 = await loadWeb3(); } catch (e) { failed('web3_load_failed', e); throw e; } }
   onStep('Creating the order…');
   let ride;
   try { ride = await api('rides', { tier }, { report: false }); } catch (e) { failed('order_failed', e); throw e; }
   if (ride.status !== 'awaiting_payment') return ride;   // already paid / ready (e.g. an unstarted ride you already own)
-  onStep('Approve the payment in your wallet (devnet SOL)…');
   let transaction;
   try { ({ transaction } = await api(`rides/${ride.id}/payment`, undefined, { report: false })); } catch (e) { failed('instructions_failed', e, ride.id); throw e; }   // GET
-  let res;
-  try { res = await p.signAndSendTransaction(w3.Transaction.from(Uint8Array.from(atob(transaction), c => c.charCodeAt(0)))); }
-  catch (e) { failed('wallet_rejected', e, ride.id); throw e; }
-  track('payment_submitted', { ride_id: ride.id, tier_id: tier });   // no signature, even though it is in scope
-  const signature = res.signature ?? res;   // Phantom / Solflare: { signature }
-  onStep('Waiting for the network to confirm…');
+  onPayLink(payUrl(ridePayPath(ride.id)));
+  const stop = { done: false };
+  const phone = () => pollPaid(async () => {
+    const r = await api(`rides/${ride.id}/reconcile`, {});
+    return r.status === 'paid' ? r.ride : null;
+  }, 90000, stop);
   try {
-    for (let i = 0; i < 60; i++) {
-      const r = await fetch(`${API_BASE}/api/rides/${ride.id}/confirm`, { credentials: 'include', method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ signature }) });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw Object.assign(new Error(j.detail || j.title || `payment not accepted (${r.status})`), { status: r.status, code: j.code ?? null });   // RFC 9457 problem+json
-      if (j.status === 'paid') return j.ride;
-      if (j.status !== 'pending') throw new Error(`unexpected payment status: ${j.status}`);   // 'pending' = not on chain yet: ask again
-      await sleep(1500);
+    if (!p) {
+      onStep('No browser wallet. Scan the code with the phone wallet that holds this account (devnet)…');
+      const found = await phone();
+      if (found) return found;
+      const err = noWallet();
+      failed('no_provider', err, ride.id);
+      throw err;
     }
-  } catch (e) {
-    failed(typeof e.status === 'number' ? 'confirm_rejected' : 'unexpected_status', e, ride.id);
-    throw e;
-  }
-  track('payment_confirm_gave_up', { ride_id: ride.id, tier_id: tier, attempts: 60 });   // no signature
-  throw new Error(`still not confirmed – your transaction ${signature} may land later; reopen the lobby (a paid ride is kept)`);
+    onStep('Approve the payment in your wallet (devnet SOL)…');
+    let res;
+    try { res = await p.signAndSendTransaction(w3.Transaction.from(Uint8Array.from(atob(transaction), c => c.charCodeAt(0)))); }
+    catch (e) {
+      onStep(PHONE);
+      const found = await phone();
+      if (found) return found;
+      failed('wallet_rejected', e, ride.id);
+      throw e;
+    }
+    track('payment_submitted', { ride_id: ride.id, tier_id: tier });   // no signature, even though it is in scope
+    const signature = res.signature ?? res;   // Phantom / Solflare: { signature }
+    onStep('Waiting for the network to confirm…');
+    let fromPhone = null;
+    const phoneRide = phone().then(hit => { fromPhone = hit; return hit; });
+    try {
+      for (let i = 0; i < 60; i++) {
+        if (fromPhone) return fromPhone;
+        const r = await fetch(`${API_BASE}/api/rides/${ride.id}/confirm`, { credentials: 'include', method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ signature }) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw Object.assign(new Error(j.detail || j.title || `payment not accepted (${r.status})`), { status: r.status, code: j.code ?? null });   // RFC 9457 problem+json
+        if (j.status === 'paid') return j.ride;
+        if (j.status !== 'pending') throw new Error(`unexpected payment status: ${j.status}`);   // 'pending' = not on chain yet: ask again
+        if (fromPhone) return fromPhone;
+        await sleep(1500);
+      }
+    } catch (e) {
+      const found = fromPhone ?? await phoneRide;
+      if (found) return found;
+      failed(typeof e.status === 'number' ? 'confirm_rejected' : 'unexpected_status', e, ride.id);
+      throw e;
+    }
+    const found = fromPhone ?? await phoneRide;
+    if (found) return found;
+    track('payment_confirm_gave_up', { ride_id: ride.id, tier_id: tier, attempts: 60 });   // no signature
+    throw new Error(`still not confirmed – your transaction ${signature} may land later; reopen the lobby (a paid ride is kept)`);
+  } finally { stop.done = true; onPayLink(null); }
 }
 
 /* ───── escrowed pools (docs/paid-tickets-plan.md §2.8 / §2.10) – the W3/W4 routes, all behind tickets-api.js ───── */
@@ -87,21 +128,59 @@ export async function waitPaid(orderId, signature) {
 
 /** order → payment → the wallet signs AND sends it (it pays the network fee and the Ticket rent) → confirm → paid.
  *  An order that lapses is replaced ONCE automatically. Resolves `{ status: 'paid', order }`. `onStep(text)` reports progress. Rejects with `{ notConfigured: true }` while sales are off. */
-export async function buyTickets(poolId, qty, onStep = () => {}) {
-  const p = provider(); if (!p) throw noWallet();   // before ordering: no stray orders
-  const w3 = await loadWeb3();
+export async function buyTickets(poolId, qty, onStep = () => {}, onPayLink = () => {}) {
+  const p = provider();
+  const w3 = p ? await loadWeb3() : null;
   for (let attempt = 0; ; attempt++) {
     onStep('Creating the order…');
     const order = await createOrder(poolId, qty);
     const pay = await orderPayment(order.id);
-    const fee = await chainFees(poolId).then(f => ` – network fee ≈ ${sol(f.estimatedFeeLamports)}`, () => '');
-    onStep(`Approve ${sol(pay.lamports)} in your wallet${fee}…`);
-    const signature = await selfPay(p, w3.Transaction.from(fromB64(pay.transaction)));
-    remember(order.id, signature); onStep('Waiting for the network to confirm…');
-    const r = await waitPaid(order.id, signature);
-    if (r.status === 'paid') return { ...r, programId: pay.programId };   // the dialog links the program
-    if (attempt) throw new Error('The order lapsed twice before the payment landed – nothing was charged. Try again in a minute.');
-    onStep('The order lapsed before the payment landed (nothing was charged) – starting a new one…');
+    onPayLink(payUrl(orderPayPath(order.id)));
+    const stop = { done: false };
+    const phone = () => pollPaid(async () => {
+      const r = await api(`tickets/orders/${order.id}/reconcile`, {});
+      return r.status === 'paid' ? r : null;
+    }, 90000, stop);
+    try {
+      if (!p) {
+        onStep('No browser wallet. Scan the code with the phone wallet that holds this account (devnet)…');
+        const found = await phone();
+        if (found?.status === 'paid') return { ...found, programId: pay.programId };
+        throw noWallet();
+      }
+      const fee = await chainFees(poolId).then(f => ` – network fee ≈ ${sol(f.estimatedFeeLamports)}`, () => '');
+      onStep(`Approve ${sol(pay.lamports)} in your wallet${fee}…`);
+      let signature;
+      try { signature = await selfPay(p, w3.Transaction.from(fromB64(pay.transaction))); }
+      catch (e) {
+        onStep(PHONE);
+        const found = await phone();
+        if (found?.status === 'paid') return { ...found, programId: pay.programId };
+        throw e;
+      }
+      remember(order.id, signature); onStep('Waiting for the network to confirm…');
+      let fromPhone = null;
+      const phonePaid = phone().then(hit => { fromPhone = hit; return hit; });
+      let status = 'pending', paidOrder = null;
+      try {
+        for (let i = 0; i < 60 && !fromPhone; i++) {
+          const step = await confirmOrder(order.id, signature);
+          const st = step.status === 'paid' ? 'paid' : step.order?.status;
+          if (st === 'paid' || st === 'expired' || st === 'refunded') { status = st; paidOrder = step.order; break; }
+          if (step.status !== 'pending') throw new Error(`unexpected order status: ${step.status}`);
+          await sleep(1500);
+        }
+      } catch (e) {
+        const found = fromPhone ?? await phonePaid;
+        if (found?.status === 'paid') return { ...found, programId: pay.programId };
+        throw e;
+      }
+      const found = fromPhone ?? (status === 'pending' ? await phonePaid : null);
+      if (found?.status === 'paid') return { ...found, programId: pay.programId };
+      if (status === 'paid') return { status: 'paid', order: paidOrder, programId: pay.programId };
+      if (attempt) throw new Error('The order lapsed twice before the payment landed – nothing was charged. Try again in a minute.');
+      onStep('The order lapsed before the payment landed (nothing was charged) – starting a new one…');
+    } finally { stop.done = true; onPayLink(null); }
   }
 }
 

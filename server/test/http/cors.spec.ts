@@ -21,6 +21,15 @@ describe('HTTP · CORS + shared cookie domain', () => {
     expect(get.headers['access-control-expose-headers']).toMatch(/X-Request-Id/i);
   });
 
+  it('opens /api/solana-pay to any origin (a phone wallet is not one of ours)', async () => {
+    const id = '00000000-0000-4000-8000-000000000001';
+    const pre = await request(h.server()).options(`/api/solana-pay/rides/${id}`).set('Origin', 'https://phantom.app').set('Access-Control-Request-Method', 'POST').set('Access-Control-Request-Headers', 'content-type').expect(204);
+    expect(pre.headers['access-control-allow-origin']).toBe('*');
+    const get = await request(h.server()).get(`/api/solana-pay/rides/${id}`).set('Origin', 'https://phantom.app').expect(200);
+    expect(get.headers['access-control-allow-origin']).toBe('*');
+    expect(get.body).toMatchObject({ label: 'Freight Chain' });
+  });
+
   it('gives another origin no CORS headers (the browser blocks it)', async () => {
     const res = await request(h.server()).get('/api/health/live').set('Origin', 'https://evil.example').expect(200);
     expect(res.headers['access-control-allow-origin']).toBeUndefined();

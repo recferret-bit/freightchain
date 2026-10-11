@@ -118,7 +118,7 @@ export interface InboxDto {
 
 /** A paid donation's order: what to pay, to whom, with which memo – and the unsigned transfer the wallet signs and sends. */
 export interface DonationOrderDto {
-  order: { id: string; effect: EffectId; lamports: number; to: string; memo: string };
+  order: { id: string; effect: EffectId; lamports: number; to: string; memo: string; reference: string | null };
   transaction: { transaction: string; blockhash: string; lastValidBlockHeight: number };
 }
 

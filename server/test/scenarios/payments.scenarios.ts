@@ -167,6 +167,25 @@ export function paymentScenarios(h: () => Harness): void {
       expect(chain.fetched).toBe(1);
     });
 
+    it('a reference key finds a payment that is not in the wallet history, and a second reconcile stays paid', async () => {
+      const a = await login(), r = await order(a);
+      const p = (await a.agent.get(`/api/rides/${r.id}/payment`).expect(200)).body;
+      expect(typeof p.reference).toBe('string');
+      expect((await a.agent.get(`/api/rides/${r.id}/payment`).expect(200)).body.reference).toBe(p.reference);
+      const link = await anon().get(`/api/solana-pay/rides/${r.id}`).expect(200);
+      expect(link.body).toMatchObject({ label: 'Freight Chain' });
+      expect(String(link.body.icon)).toMatch(/\/icons\/icon-512\.png$/);
+      await anon().post(`/api/solana-pay/rides/${r.id}`).send({ account: Keypair.generate().publicKey.toBase58() }).expect(404);
+      const phone = await anon().post(`/api/solana-pay/rides/${r.id}`).send({ account: a.address }).expect(200);
+      expect(phone.body.message).toMatch(/devnet/);
+      expect(typeof phone.body.transaction).toBe('string');
+      for (let i = 0; i < 30; i++) h().chain.addHistory(a.address, newSignature(), 'noise');
+      h().chain.addPayment({ payer: a.address, lamports: r.lamports, memo: r.id, reference: p.reference });
+      h().chain.history.set(a.address, []); // the wallet's own history does not contain it; the reference index does
+      expect((await a.agent.post(`/api/rides/${r.id}/reconcile`).expect(200)).body).toMatchObject({ status: 'paid', ride: { id: r.id, status: 'created' } });
+      expect((await a.agent.post(`/api/rides/${r.id}/reconcile`).expect(200)).body.status).toBe('paid');
+    });
+
     it('ignores transactions that do not pay this order, and other wallets', async () => {
       const a = await login(), b = await login(), r = await order(a);
       pay(a, r, { lamports: r.lamports - 1 });

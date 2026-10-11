@@ -10,6 +10,7 @@ import { ClockPort } from '../../application/ports/shared/clock.port.js';
 import { PoolChainPort, type BuiltTransaction, type ChainTxKind, type FeeQuote, type ProgramSignature, type SignatureStatus } from '../../application/ports/economy/pool-chain.port.js';
 import { EnvService } from '../config/env.service.js';
 import { FeeEstimator, estimateFeeLamports, type QnPriorityFees } from './fee-estimator.js';
+import { memoInstruction } from './chain-transaction.mapper.js';
 import { PoolProgramCodec, UnrepresentableValueError } from './pool-program.codec.js';
 import { SolanaRpc, sleep } from './solana-rpc.js';
 
@@ -103,12 +104,14 @@ export class ProgramChainAdapter extends PoolChainPort {
 
   // ---- builders
 
-  async buildBuyTransaction(i: { payer: string; poolId: number; qty: number; orderId: string }): Promise<BuiltTransaction> {
+  async buildBuyTransaction(i: { payer: string; poolId: number; qty: number; orderId: string; reference?: string | null }): Promise<BuiltTransaction> {
     const c = this.codec;
     const ix = c.instruction('buy_ticket', {
       buyer: i.payer, fee_payer: i.payer, config: c.configPda(), pool: c.poolPda(i.poolId), vault: c.vaultPda(i.poolId), ticket: c.ticketPda(i.poolId, i.payer),
     }, { pool_id: i.poolId, qty: i.qty, order_id: orderIdToBytes(i.orderId) });
-    return this.build([ix], i.payer, i.poolId, CU_LIMITS.buy);
+    // The reference sits on its own memo. buy_ticket's account list is fixed; Anchor rejects an extra account there.
+    const ixs = i.reference ? [ix, memoInstruction(i.orderId, [], i.reference)] : [ix];
+    return this.build(ixs, i.payer, i.poolId, CU_LIMITS.buy);
   }
 
   async buildRefundTransaction(i: { caller: string; poolId: number; buyer: string; needsFail: boolean }): Promise<BuiltTransaction> {

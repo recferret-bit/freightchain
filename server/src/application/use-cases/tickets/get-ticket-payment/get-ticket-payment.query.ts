@@ -22,4 +22,6 @@ export interface TicketPaymentDto {
   blockhash: string;
   /** the transaction can land until this block height (~60–90 s) – build a new one after */
   lastValidBlockHeight: number;
+  /** Solana Pay reference on the buy_ticket memo */
+  reference: string;
 }

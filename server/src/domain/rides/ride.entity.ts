@@ -61,6 +61,8 @@ export interface RideProps {
   /** drive-seconds at which the next prompt is due (null = not scheduled yet) */
   nextChallengeAt: number | null;
   version: number;
+  /** Solana Pay reference. Null until the first payment transaction is built. */
+  paymentReference?: string | null;
 }
 
 /** What issuing a prompt needs from the caller: an id and a random draw (the entity stays pure). */
@@ -87,7 +89,7 @@ export class Ride {
   private static blank(): Omit<RideProps, 'id' | 'wallet' | 'tier' | 'seed' | 'minSeconds' | 'completeDist' | 'status' | 'createdAt'> {
     return {
       timeScale: 1, priceUsd: 0, lamports: 0, solUsd: null, quoteExpiresAt: null, roundId: null, poolId: null, paidAt: null, route: null, startHour: null, loadout: null, trip: null, tutorial: false, assist: false, nightSeconds: 0, crashesVehicle: 0, crashesBuilding: 0, paused: false,
-      startedAt: null, lastHbAt: null, lastS: 0, lastT: 0, driveSeconds: 0, hull: null, endedAt: null, reason: null, challenges: [], nextChallengeAt: null, version: 1,
+      startedAt: null, lastHbAt: null, lastS: 0, lastT: 0, driveSeconds: 0, hull: null, endedAt: null, reason: null, challenges: [], nextChallengeAt: null, version: 1, paymentReference: null,
     };
   }
 
@@ -119,7 +121,16 @@ export class Ride {
   }
 
   static restore(props: RideProps): Ride {
-    return new Ride({ ...props });
+    return new Ride({ ...props, paymentReference: props.paymentReference ?? null });
+  }
+
+  get paymentReference(): string | null { return this.p.paymentReference ?? null; }
+
+  /** The first payment build stores the reference. A later build keeps it, so a phone that pays the first QR still matches. */
+  assignPaymentReference(reference: string): boolean {
+    if (this.p.paymentReference) return false;
+    this.p.paymentReference = reference;
+    return true;
   }
 
   get id(): string { return this.p.id; }

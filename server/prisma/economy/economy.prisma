@@ -176,6 +176,7 @@ model TicketOrder {
   refundedAt           DateTime?
   signature            String? // the transaction whose TicketBought event paid it
   eventIndex           Int? // that event's position in the transaction – (signature, eventIndex) is unique: one purchase event pays one order
+  paymentReference     String? @unique // Solana Pay reference on the buy_ticket memo. Null on an order from before reference keys.
 
   @@unique([signature, eventIndex])
   @@index([wallet, status])

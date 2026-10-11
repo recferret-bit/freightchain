@@ -4,7 +4,7 @@ import { ConflictError, NotFoundError } from '../../../../../src/domain/shared/e
 import { paymentSetup } from './ticket-payment.support.js';
 
 describe('GetTicketPaymentHandler', () => {
-  const handlerOf = (s: Awaited<ReturnType<typeof paymentSetup>>) => new GetTicketPaymentHandler(s.ctx.orders, s.ctx.players, s.ctx.poolChain, s.rules, s.ctx.transactions, s.ctx.clock);
+  const handlerOf = (s: Awaited<ReturnType<typeof paymentSetup>>) => new GetTicketPaymentHandler(s.ctx.orders, s.ctx.players, s.ctx.poolChain, s.rules, s.ctx.transactions, s.ctx.clock, s.ctx.entropy);
 
   it('a buy_ticket paid by the wallet itself (fee + Ticket rent), its message kept on the order', async () => {
     const s = await paymentSetup();

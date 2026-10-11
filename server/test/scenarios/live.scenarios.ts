@@ -238,7 +238,7 @@ export function liveFlagsScenarios(h: () => Harness): void {
     expect(typeof transaction.transaction).toBe('string');
     expect((await anon().get(`/api/watch/${ride.id}`).expect(200)).body.events).toEqual([]);   // nothing until paid
     const confirm = (signature: string) => fan.agent.post(`/api/watch/${ride.id}/donation-orders/${order.id}/confirm`).send({ signature });
-    const sig = h().chain.addPayment({ payer: fan.address, destination: driver.address, lamports: order.lamports, memo: order.memo });
+    const sig = h().chain.addPayment({ payer: fan.address, destination: driver.address, lamports: order.lamports, memo: order.memo, reference: order.reference });
     expect((await confirm('5'.repeat(88)).expect(200)).body).toEqual({ status: 'pending' });
     const paid = (await confirm(sig).expect(200)).body;
     expect(paid).toMatchObject({ status: 'paid', event: { effect: 'night', signature: sig, lamports: 20_000_000, text: 'lights' } });
@@ -251,7 +251,7 @@ export function liveFlagsScenarios(h: () => Harness): void {
     sec(1);
     const other = (await fan.agent.post(`/api/watch/${ride.id}/donation-orders`).send({ effect: 'tip' }).expect(200)).body.order;
     expect((await fan.agent.post(`/api/watch/${ride.id}/donation-orders/${other.id}/confirm`).send({ signature: sig }).expect(409)).body.code).toBe('signature_reused');
-    const wrong = h().chain.addPayment({ payer: fan.address, lamports: other.lamports, memo: other.memo });   // to the treasury, not the driver
+    const wrong = h().chain.addPayment({ payer: fan.address, lamports: other.lamports, memo: other.memo, reference: other.reference });   // to the treasury, not the driver
     expect((await fan.agent.post(`/api/watch/${ride.id}/donation-orders/${other.id}/confirm`).send({ signature: wrong }).expect(400)).body.detail).toBe('no transfer of the donation from your wallet to the driver');
   });
 }

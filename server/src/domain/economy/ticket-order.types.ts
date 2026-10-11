@@ -21,4 +21,6 @@ export interface TicketOrderProps {
   /** the TicketBought event that paid it: (signature, eventIndex) is unique */
   signature: string | null;
   eventIndex: number | null;
+  /** Solana Pay reference. Null on an order from before reference keys. */
+  paymentReference?: string | null;
 }

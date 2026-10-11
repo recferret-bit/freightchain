@@ -1,6 +1,6 @@
 import { api, signOut } from './wallet.js';
 import { buyRide, buyTickets, claimRefund, waitPaid, ORDER_SIG } from './pay.js';
-import { salesOpen, pendingOrder } from './tickets-api.js';
+import { salesOpen, pendingOrder, reconcileOrder } from './tickets-api.js';
 import { paidChip, escrowExplainer, explorerTx, explorerUrl, rideError, promoError, promoOk, buyError, sol, usd, left, span, hasStandings, progressText, ticketShareText, xIntent, shortAddr as short } from './pools.js';
 import { poolCard, paidShift, resultCard, escrowSummary, refundRows, profileTickets } from './lobby-pools.js';
 import { careerTiles } from './lobby-career.js';
@@ -134,8 +134,21 @@ function paintPending() {
 
 /* a ticket payment in flight (GET /api/tickets/pending – only once sales are on): RETRY CONFIRM uses the signature this browser kept */
 async function checkOrder() {
-  try { S.order = (await pendingOrder()).order; } catch { S.order = null; }
+  try {
+    let order = (await pendingOrder()).order;
+    if (order && order.status !== 'paid') {
+      const looked = await reconcileOrder(order.id).catch(() => null); // a phone may have paid after this page closed; no signature was stored here
+      if (looked?.status === 'paid') { await paidTickets(order, looked.order); order = null; }
+      else if (looked?.order) order = looked.order;
+    }
+    S.order = order && order.status !== 'paid' ? order : null;
+  } catch { S.order = null; }
   paintOrder();
+}
+async function paidTickets(order, paid) {
+  creditLocal(order.poolId, order.qty);
+  await Promise.all([refreshMe(), refreshPool()]);
+  creditDialog(order.poolId, order.qty, { lamports: paid?.lamports ?? order.lamports, signature: paid?.signature ?? null });
 }
 function paintOrder() {
   const box = $('orderbox'), o = S.order; if (!box) return;
@@ -143,10 +156,10 @@ function paintOrder() {
   let sig = o.signature; try { sig ??= localStorage.getItem(ORDER_SIG(o.id)); } catch { /* private mode */ }
   const retry = () => busy('order', async () => {
     try {
-      const r = await waitPaid(o.id, sig); S.order = r.status === 'paid' ? null : r.order;
-      if (r.status === 'paid') creditLocal(o.poolId, o.qty);
-      await refreshMe();
-      if (r.status === 'paid') creditDialog(o.poolId, o.qty, { lamports: r.order?.lamports ?? o.lamports, signature: r.order?.signature ?? sig });
+      const looked = await reconcileOrder(o.id).catch(() => null);
+      const r = looked?.status === 'paid' ? looked : (sig ? await waitPaid(o.id, sig) : looked);
+      S.order = r?.status === 'paid' ? null : (r?.order ?? o);
+      if (r?.status === 'paid') { await paidTickets(o, r.order); return; }
     } catch (e) { const line = buyError(e); say('order', line, true); failDialog(S.tiers?.tiers.find(t => t.pool?.id === o.poolId)?.id, line); }
     paintOrder();
   });
@@ -189,6 +202,7 @@ function paintTiers() {
     return salesOpen(S.tiers) ? noPoolCard(t) : legacyCard(t);
   }));
   for (const [k, m] of Object.entries(S.msgs)) say(k, ...m);   // messages survive a repaint
+  mountPayQr();
   paintResults(ctx); paintRefunds(); tickCountdowns();
 }
 
@@ -314,6 +328,17 @@ function paintRules() {
     el('li', {}, `Free rides: no fee, no prize. A new wallet starts with a few; the daily refill (+1 at 00:00 UTC) tops you up to ${S.me?.freeRidesMax ?? 5}. A promo or an admin grant can sit above that.`)));
 }
 /* per-card message lines (msg-<key>); kept in S.msgs so a repaint (poll, +/−) does not wipe them */
+function setPayQr(key, url) { S.payQr = url ? { key, url } : null; mountPayQr(); }
+async function mountPayQr() {
+  const wanted = S.payQr;
+  if (!wanted) { $('pay-qr')?.remove(); return; }
+  const { qrNode } = await import('./qr.js');
+  if (S.payQr !== wanted) return; // a repaint started another mount
+  const msg = $(`msg-${wanted.key}`); if (!msg?.isConnected) return;
+  let holder = $('pay-qr');
+  if (!holder) { holder = el('div', { id: 'pay-qr', class: 'pay-qr' }); msg.after(holder); }
+  holder.replaceChildren(qrNode(wanted.url), el('p', { class: 'dim' }, 'or scan with a phone wallet · same account · devnet'));
+}
 function say(key, text, bad = false, link = null) {   // link = { href, text } appended after the text (an explorer link)
   if (text) S.msgs[key] = [text, bad, link]; else delete S.msgs[key];
   const m = $(`msg-${key}`); if (m) { m.replaceChildren(text, link ? el('a', { href: link.href, target: '_blank', rel: 'noopener' }, link.text) : ''); m.className = `msg ${bad ? 'bad' : 'dim'}`; }
@@ -358,7 +383,7 @@ const startLegacy = id => busy(id, async () => {
     say(id, 'Driving requires a desktop browser with keyboard controls. Check out the LIVE tab to watch streams on mobile!', true);
     return;
   }
-  if (blockPaid(S.me)) return; clicked(id, S.tiers?.tiers.find(t => t.id === id)?.usd ?? 0); try { play(await buyRide(id, text => say(id, text)), id); } catch (e) { refusedOffer(e); say(id, rideError(e, id), true); }
+  if (blockPaid(S.me)) return; clicked(id, S.tiers?.tiers.find(t => t.id === id)?.usd ?? 0); try { play(await buyRide(id, text => say(id, text), url => setPayQr(id, url)), id); } catch (e) { refusedOffer(e); say(id, rideError(e, id), true); }
 });
 const ride = tier => busy(tier, async () => {   // spends one ticket: the ride is ready at once
   if (isMobileDevice()) {
@@ -373,7 +398,7 @@ const ride = tier => busy(tier, async () => {   // spends one ticket: the ride i
 const buy = (tier, poolId, qty) => busy(tier, async () => {
   if (blockPaid(S.me)) return;
   try {
-    const r = await buyTickets(poolId, qty, text => say(tier, text)); S.qty[tier] = 1; creditLocal(poolId, qty); await Promise.all([refreshMe(), refreshPool()]);
+    const r = await buyTickets(poolId, qty, text => say(tier, text), url => setPayQr(tier, url)); S.qty[tier] = 1; creditLocal(poolId, qty); await Promise.all([refreshMe(), refreshPool()]);
     const line = paidLine(qty);   // the card keeps it (the checks read #msg-*); the dialog is the same news as a ticket
     say(tier, line, false, r.order?.signature ? { href: explorerTx(r.order.signature), text: `${r.order.signature.slice(0, 8)}… ↗` } : null);
     creditDialog(poolId, qty, { lamports: r.order?.lamports, signature: r.order?.signature, programId: r.programId });

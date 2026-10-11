@@ -54,7 +54,7 @@ The landing has six chapters: [RIDE](https://freightchain.fun/#ride), [LOOP](htt
 3. Connect a devnet wallet (Phantom or Solflare). Sign-in is a message, not a transaction. The page sends you to the lobby.
 4. Start the free ride. EASY is three minutes on four lanes with two crossroads, and it ends itself at 1512 m. The cab can show a tutorial and an assist mode. Both are free-tier only.
 5. Watch someone from LIVE, or open REPLAYS. The watch page draws the truck from the recording, about 25 seconds behind, on a road rebuilt from the ride seed.
-6. Open the [program on the explorer](https://explorer.solana.com/address/9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx?cluster=devnet) and the [contract spec](docs/pool-program/index.html). A buy on freightchain.fun today is the legacy memo transfer into the weekly round. Tickets into this program are the other path, in [Economy](#economy).
+6. Open the [program on the explorer](https://explorer.solana.com/address/9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx?cluster=devnet) and the [contract spec](docs/pool-program/index.html). A buy on freightchain.fun today is the legacy memo transfer into the weekly round. Tickets into this program are the other path, in [Economy](#economy). Either path is also a Solana Pay code: scan it with the same devnet wallet on a phone.
 7. If you build the repo: `npm run test:localnet` runs the real program on a local validator and checks every lamport. Walkthrough: [`docs/localnet-e2e/index.html`](docs/localnet-e2e/index.html).
 
 A wallet listed in `DEMO_WALLETS` drives a paid shift `DEMO_SCALE` times shorter (default 60). The speed governor stays 28 m/s.
@@ -71,6 +71,7 @@ A wallet listed in `DEMO_WALLETS` drives a paid shift `DEMO_SCALE` times shorter
 | Public ride receipts, 𝕏 card SSR, in-game 𝕏 sharing | Yes (`/r/:id`, Web Intent) | Live |
 | Escrow program | v1 on devnet, initialized. v2 (one pool a day, a payout key, a review window): 17 instructions, 14 events, 25 errors, on devnet since Oct 11 (`8No42h…GCA1p`, v1 `9e7phd…` retired) | Initialized, payout key named, the 1 h series runs a test schedule. freightchain.fun runs it (`PAYMENT_MODE=program`, Oct 11) |
 | Prize payouts from a pool vault | v2: the server's payout job pays the verified top 20 after the 48 h review, once every ride of the pool is decided; an admin can HOLD it | After the results, on an explicit switch |
+| Solana Pay | Transaction request plus a reference key on a ticket buy, a legacy shift payment, and a paid tip | In this build. Devnet. The lobby and the watch page show a QR for the same wallet on a phone. |
 | Token, mainnet, captcha, NFT badges | No | No |
 
 Production stays on the transfer path until the Colosseum results, the devnet exit list, and an explicit deploy. That rule is [`docs/escrow-open-items.md`](docs/escrow-open-items.md) (Q-K, Q-L). The top of that file still says "nothing deployed"; Phase 1 below it records the 8 Oct deploy. The explorer is the check.
@@ -84,6 +85,7 @@ Production stays on the transfer path until the Colosseum results, the devnet ex
 - **Prizes are capped on chain.** `pay_prize` refuses once `prizes_paid` would pass the prize share. The 25 / 15 / 10 ranking is server policy inside that cap. The program does not hard-code the ranks.
 - **Integer lamports.** One shared table pins the server and the program. [`server/src/domain/economy/vault-split.ts`](server/src/domain/economy/vault-split.ts) · [`server/test/fixtures/chain/vault-split-cases.json`](server/test/fixtures/chain/vault-split-cases.json)
 - **The buyer pays the fee.** `buy_ticket` has a separate fee-payer account. The server sets it to the buyer. There is no gas-sponsor key on the server. A leftover `FEE_PAYER_SECRET` is ignored.
+- **Solana Pay.** A ticket, a legacy shift payment, and a paid tip are transaction requests. The phone `POST`s its wallet to `/api/solana-pay/{rides|orders|donations}/:id` and signs the same unsigned transaction the desktop signs. Each order stores one reference key, a read-only account on the memo, and reconcile finds the payment with `getSignaturesForAddress`. `buy_ticket`'s program accounts are unchanged. Devnet only. A plain `solana:<treasury>?amount=` link is not used: it would not buy a ticket.
 - **The crank key is not the admin.** `CRANK_SECRET` sends only `open_next_pool` (v2), `fail_pool`, `expire_pool`, `refund`, and `close_pool`. It never sends `pay_prize`.
 - **The payout key can only pay (v2).** `set_payout_authority` names a key that may sign `pay_prize` (capped) and `close_pool`, and only after the pool's review window `payout_at`. Not even the admin pays earlier. The server holds it as `PAYOUT_SECRET` and pays only verified rides, once every ride of the pool is decided.
 - **Verifiable build.** `npm run program:verify` rebuilds in the Solana Foundation image and compares the hash to [`programs/freightchain-pools/verifiable-build.hash`](programs/freightchain-pools/verifiable-build.hash). The explorer "verified" badge needs a public repo and a signed PDA. That step is still open.
@@ -172,7 +174,7 @@ flowchart TB
   game -->|"heartbeats, batches, /end"| http
   site -->|"SIWS, rides, tickets"| http
   infra --> pg[(PostgreSQL<br/>one schema per context)]
-  infra --> chain["Solana devnet<br/>program + memo transfers"]
+  infra --> chain["Solana devnet<br/>program, Solana Pay, memo transfers"]
 ```
 
 Layers point inward. Domain code does not read the clock or the environment. Time comes from `ClockPort`. Env comes from `EnvService`. A Prisma change ships with a SQL migration.
@@ -221,7 +223,7 @@ Read: [`client/js/themes/index.js`](client/js/themes/index.js) · [model viewer]
 | 4 hour | 4 h | $15 planned | When a pool is registered | Bends ×1.2, traffic ×1.4 |
 | 8 hour | 8 h | $50 planned | When a pool is registered | Bends ×1.4, traffic ×1.8 |
 
-A new wallet starts with 10 free rides. The daily refill adds one at 00:00 UTC and stops at 5. A promo can sit above that cap. `play.html?offline=1` is an uncounted guest run with no account (two minutes, one crossroads, a winding road).
+A new wallet starts with 10 free rides. The daily refill adds one at 00:00 UTC and stops at 5. A promo can sit above that cap. `play.html?offline=1` is an uncounted guest run with no account (two minutes, one crossroads, a winding road). A paid shift or a tip is signed in Phantom or Solflare on the desktop, or by scanning the Solana Pay code with that same wallet on a phone. Devnet.
 
 The free ride is picked at a level in the lobby (`POST /api/rides` `level` 1–3). Each level has its own leaderboard (HARD by default) and its own achievement: Learner's Permit, Crossroads, Long Haul. Tutorial and assist exist only on a free ride; HARD refuses assist. Assist halves hull damage and battery drain. The achievement On My Own is a completed free ride without assist. While the verdict is enforced, a rejected recording earns no badge. `node .claude/skills/level-check/check.mjs` checks every level is what it promises and passable by a human-paced driver.
 

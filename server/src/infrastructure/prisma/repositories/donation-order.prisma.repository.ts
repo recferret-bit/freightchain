@@ -8,7 +8,7 @@ import { PrismaService } from '../prisma.service.js';
 
 const toDomain = (r: DonationOrderRow): DonationOrder => DonationOrder.restore({
   id: r.id, rideId: r.rideId, wallet: r.wallet, recipient: r.recipient, effect: isEffectId(r.effect) ? r.effect : 'tip', note: r.note, lamports: Number(r.lamports),
-  status: r.status === 'paid' ? 'paid' : 'pending', signature: r.signature, eventId: r.eventId, createdAt: r.createdAt, paidAt: r.paidAt,
+  status: r.status === 'paid' ? 'paid' : 'pending', signature: r.signature, eventId: r.eventId, createdAt: r.createdAt, paidAt: r.paidAt, paymentReference: r.paymentReference,
 });
 
 @Injectable()
@@ -40,5 +40,9 @@ export class DonationOrderPrismaRepository extends DonationOrderRepositoryPort {
 
   async setEvent(id: string, eventId: number): Promise<void> {
     await this.prisma.donationOrder.update({ where: { id }, data: { eventId } });
+  }
+
+  async setReference(id: string, reference: string): Promise<void> {
+    await this.prisma.donationOrder.updateMany({ where: { id, paymentReference: null }, data: { paymentReference: reference } });
   }
 }

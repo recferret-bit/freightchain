@@ -53,7 +53,7 @@ export class ConfirmPaymentHandler implements ICommandHandler<ConfirmPaymentComm
 
     const tx = await this.chain.getTransaction(signature);
     if (!tx) return { status: 'pending' };
-    const why = verifyPayment(tx, { wallet, treasury: this.rules.get().treasury, lamports: ride.lamports, memo: ride.id });
+    const why = verifyPayment(tx, { wallet, treasury: this.rules.get().treasury, lamports: ride.lamports, memo: ride.id, reference: ride.paymentReference });
     if (why) {
       const reasonCode = paymentRejectCode(why);
       if (reasonCode) emitAnalytics(this.analytics, () => paymentRejected({ wallet, signature, ride: ride.snapshot(), reasonCode, isDemo: isDemoWallet(this.rules.get(), wallet), now }));

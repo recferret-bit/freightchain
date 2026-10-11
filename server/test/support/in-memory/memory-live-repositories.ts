@@ -101,4 +101,9 @@ export class MemoryDonationOrderRepository extends DonationOrderRepositoryPort {
     const p = this.db.donationOrders.get(id);
     if (p) p.eventId = eventId;
   }
+
+  async setReference(id: string, reference: string): Promise<void> {
+    const p = this.db.donationOrders.get(id);
+    if (p && !p.paymentReference) p.paymentReference = reference;
+  }
 }

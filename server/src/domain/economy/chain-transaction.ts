@@ -16,6 +16,8 @@ export interface ChainTransaction {
   transfers: ChainTransfer[];
   /** every top-level memo, as plain text */
   memos: string[];
+  /** every account in the message. A Solana Pay reference is found here – it is not a transfer and not a memo string. Omitted on hand-built fixtures that predate it. */
+  accountKeys?: string[];
 }
 
 /** An entry of a wallet's recent history. `memo` is the RPC's own rendering – "[<len>] <text>", several memos joined by "; ". */

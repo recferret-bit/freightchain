@@ -1,3 +1,4 @@
+import bs58 from 'bs58';
 import { RecordingAnalytics } from './recording-analytics.js';
 import { RulesConfigPort, type RulesConfig } from '../../src/application/ports/config/rules-config.port.js';
 import { EntropyPort } from '../../src/application/ports/shared/entropy.port.js';
@@ -63,6 +64,7 @@ export class SequenceEntropy extends EntropyPort {
   uuid(): string { this.n++; return `00000000-0000-4000-8000-${String(this.n).padStart(12, '0')}`; }
   hex(bytes: number): string { this.n++; return String(this.n).padStart(bytes * 2, '0'); }
   seed31(): number { this.n++; return 1000 + this.n; }
+  referenceKey(): string { this.n++; const buf = Buffer.alloc(32); buf.writeUInt32BE(this.n, 28); return bs58.encode(buf); }
 }
 
 /**

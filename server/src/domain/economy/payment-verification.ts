@@ -7,6 +7,8 @@ export interface ExpectedPayment {
   lamports: number;
   /** the ride id */
   memo: string;
+  /** when the order has one, the transaction must include this read-only account */
+  reference?: string | null;
 }
 
 /** null = the transaction pays this order; otherwise why not. Scans ALL top-level instructions (wallets may add compute-budget etc.). */
@@ -17,6 +19,7 @@ export function verifyPayment(tx: ChainTransaction, expected: ExpectedPayment): 
   const paid = tx.transfers.some((t) => t.source === expected.wallet && t.destination === expected.treasury && t.lamports >= expected.lamports);
   if (!paid) return 'no transfer of the ordered amount from your wallet to the treasury';
   if (!tx.memos.includes(expected.memo)) return 'the memo does not match this ride';
+  if (expected.reference && !(tx.accountKeys ?? []).includes(expected.reference)) return 'the reference key is missing';
   return null;
 }
 

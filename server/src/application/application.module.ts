@@ -95,6 +95,10 @@ import { ListAdminPoolsHandler } from './use-cases/admin/list-admin-pools/list-a
 import { ListPoolPayoutsHandler } from './use-cases/admin/list-pool-payouts/list-pool-payouts.handler.js';
 import { RedeemPromoHandler } from './use-cases/players/redeem-promo/redeem-promo.handler.js';
 
+import { GetDonationPaymentHandler } from './use-cases/live/get-donation-payment/get-donation-payment.handler.js';
+import { ReconcileDonationHandler } from './use-cases/live/reconcile-donation/reconcile-donation.handler.js';
+import { GetSolanaPayLinkHandler, GetSolanaPayTransactionHandler } from './use-cases/solana-pay/solana-pay.handler.js';
+import { ReconcileTicketOrderHandler } from './use-cases/tickets/reconcile-ticket-order/reconcile-ticket-order.handler.js';
 import { CreateTicketOrderHandler } from './use-cases/tickets/create-ticket-order/create-ticket-order.handler.js';
 import { GetTicketOrderHandler } from './use-cases/tickets/get-ticket-order/get-ticket-order.handler.js';
 import { GetPendingTicketOrderHandler } from './use-cases/tickets/get-pending-ticket-order/get-pending-ticket-order.handler.js';
@@ -129,7 +133,7 @@ const handlers: Provider[] = [
   CreateRideHandler, GetRideHandler, GetPendingRideHandler, GetPublicRideHandler, StartRideHandler, HeartbeatRideHandler, EndRideHandler,
   GetPaymentInstructionsHandler, ConfirmPaymentHandler, ReconcilePaymentHandler,
   UploadBatchHandler, SweepTelemetryHandler, SweepSignInsHandler, RejudgeRidesHandler,
-  PostRideEventHandler, AckEffectHandler, GetInboxHandler, WatchRideHandler, GetRoadPlanHandler, MuteWalletHandler, CreateDonationOrderHandler, ConfirmDonationHandler, SweepStaleRidesHandler, GetReplaysHandler,
+  PostRideEventHandler, AckEffectHandler, GetInboxHandler, WatchRideHandler, GetRoadPlanHandler, MuteWalletHandler, CreateDonationOrderHandler, ConfirmDonationHandler, GetDonationPaymentHandler, ReconcileDonationHandler, SweepStaleRidesHandler, GetReplaysHandler,
   GetAdminQueueCountHandler, ListAdminPlayersHandler, GetAdminPlayerHandler, ListAdminPoolsHandler, GetAdminPoolHandler, GetAdminStatsHandler, ListAdminSessionsHandler, GetAdminOverviewHandler, ListAdminRidesHandler, GetAdminRideHandler, ListSignInsHandler, ListAdminActionsHandler, GetAdminLogsHandler, OverrideVerdictHandler, RejudgeRideHandler, RequestAdminChallengeHandler, VerifyAdminSignInHandler, RequestActionChallengeHandler,
   GetTiersHandler, GetPoolHandler, GetLeaderboardHandler,
   GetLiveHandler, GetProfileHandler,
@@ -140,7 +144,8 @@ const handlers: Provider[] = [
   CreateAdminPromoHandler, DisableAdminPromoHandler, ListPromoRedemptionsHandler,
   CreatePromoHandler, ListPromosHandler, DisablePromoHandler, GrantTicketsHandler, RegisterPoolHandler,
   CreateTicketOrderHandler, GetTicketOrderHandler, GetPendingTicketOrderHandler,
-  SettleChainSignatureHandler, GetTicketPaymentHandler, ConfirmTicketOrderHandler,
+  SettleChainSignatureHandler, GetTicketPaymentHandler, ConfirmTicketOrderHandler, ReconcileTicketOrderHandler,
+  GetSolanaPayLinkHandler, GetSolanaPayTransactionHandler,
   GetRefundTransactionHandler, GetPayoutTransactionsHandler,
   GetChainFeesHandler,
   PollProgramHandler, SyncPoolsHandler, CrankPoolsHandler, PayPoolsHandler, ReceiveChainWebhookHandler, RegisterPoolFromChainHandler,

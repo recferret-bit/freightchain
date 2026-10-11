@@ -62,6 +62,18 @@ describe('ProgramChainAdapter – builds what the program accepted', () => {
     expect(tx.signatures.map((s) => s.publicKey.toBase58())).toEqual([fx.keys.b]);
   });
 
+  it('a buy with a reference keeps the program instruction and adds the reference on a memo, read-only', async () => {
+    const { adapter } = adapterWith();
+    const reference = Keypair.generate().publicKey.toBase58();
+    const built = await adapter.buildBuyTransaction({ payer: fx.keys.b, poolId: 0, qty: 1, orderId: ORDER_B, reference });
+    const { tx, ixs } = programIxs(built.transaction);
+    expect(ixs[0]).toEqual(asCompiled(fixtureTx('buy_ticket self-paid').instructions, built.feePayer)[0]);
+    expect(tx.instructions[3]?.programId.toBase58()).toBe('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
+    expect(tx.instructions[3]?.data.toString()).toBe(ORDER_B);
+    expect(tx.instructions[3]?.keys).toEqual([expect.objectContaining({ isSigner: false, isWritable: false })]);
+    expect(tx.instructions[3]?.keys[0]?.pubkey.toBase58()).toBe(reference);
+  });
+
   it('a refund (+ fail_pool) reads the ticket\'s rent payer; refused when there is no ticket', async () => {
     const { adapter } = adapterWith({ getAccountInfo: async () => accountInfo('ticket pool 1 C') });
     const built = await adapter.buildRefundTransaction({ caller: fx.keys.d, poolId: 1, buyer: fx.keys.c, needsFail: true });

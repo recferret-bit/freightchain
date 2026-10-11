@@ -47,7 +47,7 @@ export class CreateTicketOrderHandler implements ICommandHandler<CreateTicketOrd
       if (live?.isLive(now, rules.orderTtlMs) && live.poolId === poolId && live.qty === qty) return toTicketOrderDto(live, rules.orderTtlMs);
       if (live) { live.expire(); await this.orders.save(live, tx); }
       const walletBought = (await this.tickets.find(wallet, poolId, tx))?.bought ?? 0;
-      const order = TicketOrder.create({ id: this.entropy.uuid(), wallet, pool, qty, walletBought, now });
+      const order = TicketOrder.create({ id: this.entropy.uuid(), wallet, pool, qty, walletBought, now, paymentReference: this.entropy.referenceKey() });
       await this.orders.insert(order, tx);
       return toTicketOrderDto(order, rules.orderTtlMs);
     });

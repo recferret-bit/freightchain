@@ -40,7 +40,7 @@ export type SignatureStatus = 'processed' | 'confirmed' | 'finalized' | 'expired
  */
 export abstract class PoolChainPort {
   /** Unsigned `buy_ticket` (+ compute budget), paid by `payer` (it also pays the Ticket rent, recorded as `rent_payer` and returned at refund / close). */
-  abstract buildBuyTransaction(input: { payer: string; poolId: number; qty: number; orderId: string }): Promise<BuiltTransaction>;
+  abstract buildBuyTransaction(input: { payer: string; poolId: number; qty: number; orderId: string; reference?: string | null }): Promise<BuiltTransaction>;
   /** Unsigned `fail_pool` (when `needsFail`) + `refund` for `buyer`, signed by `caller` (anyone); the price goes to the buyer, the rent to the ticket's rent payer.
       ConflictError when the buyer holds no Ticket account (never bought, or refunded already). */
   abstract buildRefundTransaction(input: { caller: string; poolId: number; buyer: string; needsFail: boolean }): Promise<BuiltTransaction>;

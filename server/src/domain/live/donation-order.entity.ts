@@ -16,6 +16,8 @@ export interface DonationOrderProps {
   eventId: number | null;
   createdAt: Date;
   paidAt: Date | null;
+  /** Solana Pay reference on the transfer memo. Null on an order from before reference keys. */
+  paymentReference?: string | null;
 }
 
 /** A donation in flight when donations must be paid (LIVE_FREE_DONATIONS=off): a SOL transfer from the spectator to the DRIVER, priced from EFFECTS.
@@ -28,11 +30,11 @@ export class DonationOrder {
     if (note.length > NOTE_MAX_LENGTH) throw new BadRequestError(`a donation note is at most ${NOTE_MAX_LENGTH} characters`, 'bad_message');
     return new DonationOrder({
       id: i.id, rideId: i.rideId, wallet: i.wallet, recipient: i.recipient, effect: i.effect, note: note || null, lamports: EFFECTS[i.effect].lamports,
-      status: 'pending', signature: null, eventId: null, createdAt: i.now, paidAt: null,
+      status: 'pending', signature: null, eventId: null, createdAt: i.now, paidAt: null, paymentReference: null,
     });
   }
 
-  static restore(props: DonationOrderProps): DonationOrder { return new DonationOrder({ ...props }); }
+  static restore(props: DonationOrderProps): DonationOrder { return new DonationOrder({ ...props, paymentReference: props.paymentReference ?? null }); }
 
   get id(): string { return this.p.id; }
   get rideId(): string { return this.p.rideId; }
@@ -44,6 +46,14 @@ export class DonationOrder {
   get status(): 'pending' | 'paid' { return this.p.status; }
   get signature(): string | null { return this.p.signature; }
   get eventId(): number | null { return this.p.eventId; }
+  get paymentReference(): string | null { return this.p.paymentReference ?? null; }
+
+  /** The first build stores the reference. A rebuilt blockhash keeps it. */
+  assignReference(reference: string): boolean {
+    if (this.p.paymentReference) return false;
+    this.p.paymentReference = reference;
+    return true;
+  }
   /** the memo the transfer must carry – ties the transfer to this order */
   get memo(): string { return `fc-donation:${this.p.id}`; }
 
@@ -57,5 +67,6 @@ export function verifyDonation(tx: ChainTransaction, order: DonationOrder): stri
   if (!tx.feePayerSigned || tx.feePayer !== order.wallet) return 'not signed by your wallet';
   if (!tx.transfers.some((t) => t.source === order.wallet && t.destination === order.recipient && t.lamports >= order.lamports)) return 'no transfer of the donation from your wallet to the driver';
   if (!tx.memos.includes(order.memo)) return 'the memo does not match this donation';
+  if (order.paymentReference && !(tx.accountKeys ?? []).includes(order.paymentReference)) return 'the reference key is missing';
   return null;
 }
