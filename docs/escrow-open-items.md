@@ -87,7 +87,7 @@ Related: [deploy + operate](program-deploy.md) · [paid tickets status](paid-tic
 ## Todo
 
 **Rule: devnet first. Production is switched only after the Solana Colosseum results are announced, after the devnet phase passed its exit list, and only on an explicit "deploy" from the owner (Q-K).**
-Until then production stays as it is (`PAYMENT_MODE=transfer`, no escrow keys in `deploy/.env`).
+**Oct 11: the owner switched production to program mode early** (release `20261011-161246-234e634`, still on devnet, test schedule) – rollback = `PAYMENT_MODE=transfer` in `deploy/.env` + redeploy.
 
 ### Phase 0 – local (no chain, no money)
 - [x] Merge `localnet-e2e` into `main` – Q-A (done; the note below is history). Rebased on `main` and green (`npm run check` 901 tests, localnet 80 checks, devnet path 70) on Oct 8; the fast-forward waits for the main checkout's uncommitted `landing/src/main.js` edits (another session) – then `git merge --ff-only localnet-e2e` there. After the merge, rerun `devnet.sh env` in the main checkout (`server/.env.devnet` is per checkout)
@@ -129,11 +129,11 @@ Until then production stays as it is (`PAYMENT_MODE=transfer`, no escrow keys in
 **Phase 2 exit list** (all, twice, on two different days – Q-K): every box above ticked · no manual DB or chain fix needed · `npm run ops`-style logs clean (no `crank: … ✗`, no `batch-refused`, no 5xx) · lamports reconciled for each pool (vault 0 after close, treasuries = `closeSplit`) · the explorer shows the program as the pinned hash.
 
 ### Phase 3 – production (only after the Colosseum results AND the Phase 2 exit list, only on "deploy")
-- [ ] Gate: the Colosseum results are out (Q-K)
-- [ ] A production QuickNode devnet endpoint (or the same one) + fund the production sponsor + crank (devnet SOL – production still runs on devnet)
-- [ ] `deploy/.env`: `PAYMENT_MODE=program`, `TICKET_PROGRAM_ID`, `TREASURY_PUBKEY` = admin, `FEE_TREASURY`, `SEED_TREASURY`, `CRANK_SECRET`, `CRANK_INTERVAL_MS`, `SOLANA_RPC`, `SOLANA_WS`, `WEBHOOK_SECRET`
+- [ ] Gate: the Colosseum results are out (Q-K) – skipped on the owner's go, Oct 11
+- [x] A production QuickNode devnet endpoint (or the same one) + fund the production sponsor + crank (devnet SOL – production still runs on devnet)
+- [x] `deploy/.env` (Oct 11; `TREASURY_PUBKEY` kept as the owner's wallet, not the devnet admin – the manual payout page stays closed, the payout job pays; plus `PAYOUT_SECRET`, `PAYOUT_INTERVAL_MS=300000`, `SOLANA_RPC_FALLBACKS`): `PAYMENT_MODE=program`, `TICKET_PROGRAM_ID`, `TREASURY_PUBKEY` = admin, `FEE_TREASURY`, `SEED_TREASURY`, `CRANK_SECRET`, `CRANK_INTERVAL_MS`, `SOLANA_RPC`, `SOLANA_WS`, `WEBHOOK_SECRET`
 - [ ] Settle the legacy weekly round first (Q13)
-- [ ] `npm run deploy -- --dry-run` → the owner says "deploy" → `npm run deploy` → smoke (with the new program checks)
+- [x] `npm run deploy -- --dry-run` → the owner says "deploy" → `npm run deploy` → smoke (with the new program checks)
 - [ ] QuickNode Stream → `https://api.freightchain.fun/api/chain/webhook`
 - [ ] The Phase 2 Phantom run once more on freightchain.fun; rollback = `PAYMENT_MODE=transfer` + redeploy (money stays refundable on chain)
 - [ ] Say "devnet only, not audited" in the submission
