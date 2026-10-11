@@ -13,6 +13,7 @@ import { TransactionPort } from '../../src/application/ports/shared/transaction.
 import { RideTicketRepositoryPort } from '../../src/application/ports/players/ride-ticket.repository.port.js';
 import { aPromo, ticketEffect } from '../support/promos.js';
 import { aPool } from '../support/pools.js';
+import { setTierOnSaleForTest } from '../../src/domain/rides/ride-tier.js';
 import { TicketSettlementService, type PurchaseEvent } from '../../src/application/services/ticket-settlement.service.js';
 import { FinalityService } from '../../src/application/services/finality.service.js';
 import { ChainEventRepositoryPort } from '../../src/application/ports/economy/chain-event.repository.port.js';
@@ -33,7 +34,8 @@ describe('concurrency (PostgreSQL)', () => {
     prisma = harness.app.get(PrismaService, { strict: false });
   });
   afterAll(() => harness.close());
-  beforeEach(() => harness.reset());
+  beforeEach(() => { setTierOnSaleForTest('1h', true); return harness.reset(); }); // paid-order races are pay-per-ride; production leaves 1h off until a pool exists
+  afterEach(() => setTierOnSaleForTest('1h', false));
 
   const parallel = <T>(n: number, fn: (i: number) => Promise<T>): Promise<T[]> => Promise.all(Array.from({ length: n }, (_, i) => fn(i)));
   const rideCount = (wallet: string) => prisma.ride.count({ where: { wallet } });

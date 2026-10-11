@@ -2,6 +2,7 @@ import { CommandBus } from '@nestjs/cqrs';
 import { SweepStaleRidesCommand } from '../../src/application/use-cases/rides/sweep-stale-rides/sweep-stale-rides.command.js';
 import { bindClient, type Rider } from '../support/client.js';
 import type { Harness } from '../support/harness.js';
+import { setTierOnSaleForTest } from '../../src/domain/rides/ride-tier.js';
 
 /* The lobby: live feed, profile + persisted achievements, route / night in heartbeats, free ride vs paid purchase, leaderboard boards.
    Free shift = 10 s driven AND 140 m; the fake clock and fake chain drive everything. */
@@ -172,6 +173,9 @@ export function lobbyScenarios(h: () => Harness): void {
   });
 
   describe('buying while holding an unstarted free ride', () => {
+    beforeEach(() => setTierOnSaleForTest('1h', true)); // pay-per-ride; production leaves 1h off until a pool exists
+    afterEach(() => setTierOnSaleForTest('1h', false));
+
     it('cancels the free ride, gives the credit back, and orders the paid one', async () => {
       const w = await login(), free = (await w.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
       expect((await w.agent.get('/api/me')).body.freeRides).toBe(9);

@@ -84,8 +84,10 @@ function paintTiers(t) {   // a tier sold through a pool: the ticket price is th
   const paidWith = x => x.pool ? 'pool ticket' : !x.usd ? 'free' : x.onSale === false ? 'soon' : program ? 'pool ticket · none on sale' : `$${x.usd}`;
   const rows = t.tiers.map(x => el('tr', {}, el('td', {}, TIER_LONG[x.id] ?? x.id), el('td', {}, hours(x.seconds)), el('td', {}, paidWith(x)), el('td', {}, price(x))));
   $('tiers').replaceChildren(el('thead', {}, el('tr', {}, ...['SHIFT', 'LENGTH', 'PAID WITH', 'IN SOL'].map(h => el('th', {}, h)))), el('tbody', {}, rows));
-  const pooled = t.tiers.some(x => x.pool), legacy = !program && t.tiers.some(x => x.usd && !x.pool && x.onSale !== false), soon = t.tiers.some(x => x.onSale === false && !x.pool);
-  $('price').textContent = [pooled && 'Pool tickets: the price is part of the pool’s rules, fixed when it was created.', legacy && (t.solUsd ? `Pay-per-ride: SOL ≈ $${t.solUsd}, the quote is locked for 10 minutes when you order.` : 'Pay-per-ride: SOL price unavailable right now.'), soon && 'The 4 hour and 8 hour shifts are planned and not on sale yet.', 'Devnet SOL only.'].filter(Boolean).join(' ');
+  const pooled = t.tiers.some(x => x.pool), legacy = !program && t.tiers.some(x => x.usd && !x.pool && x.onSale !== false);
+  const soonNames = t.tiers.flatMap(x => x.onSale === false && !x.pool && x.usd ? [x.id === '1h' ? '1 hour' : x.id === '4h' ? '4 hour' : '8 hour'] : []);
+  const soonText = !soonNames.length ? '' : `The ${soonNames.length === 1 ? soonNames[0] : `${soonNames.slice(0, -1).join(', ')} and ${soonNames.at(-1)}`} shift${soonNames.length === 1 ? ' is' : 's are'} planned and not on sale yet.`;
+  $('price').textContent = [pooled && 'Pool tickets: the price is part of the pool’s rules, fixed when it was created.', legacy && (t.solUsd ? `Pay-per-ride: SOL ≈ $${t.solUsd}, the quote is locked for 10 minutes when you order.` : 'Pay-per-ride: SOL price unavailable right now.'), soonText, 'Devnet SOL only.'].filter(Boolean).join(' ');
 }
 
 /* the escrowed pools on sale (the same list as GET /api/pools, carried by /api/pool so the page polls once) */

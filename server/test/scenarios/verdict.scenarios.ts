@@ -3,6 +3,7 @@ import type { Harness } from '../support/harness.js';
 import { answersFor, ownLaneHoles, recording, upload, type RecordingOptions } from '../support/recording.js';
 import type { ChallengeDto } from '../../src/domain/rides/ride-challenge.js';
 import { RECORDING_BYTES_SLACK } from '../../src/domain/telemetry/telemetry-rules.js';
+import { setTierOnSaleForTest } from '../../src/domain/rides/ride-tier.js';
 
 /* Verified play end to end: the game uploads its recording, /end judges it, only verified paid shifts rank. Nothing is simulated on the server –
    the verdict validates the recording and measures how human the input timing looks. Same scenarios on in-memory and PostgreSQL. */
@@ -11,7 +12,8 @@ export const VERDICT_ENV = { FREE_RIDE_SECONDS: '10', DEMO_WALLETS: VERDICT_DEMO
 
 export function verdictScenarios(h: () => Harness): void {
   const { anon, login, sec } = bindClient(h);
-  beforeEach(() => h().reset());
+  beforeEach(() => { setTierOnSaleForTest('1h', true); return h().reset(); }); // paid shifts here are pay-per-ride; production leaves 1h off until a pool exists
+  afterEach(() => setTierOnSaleForTest('1h', false));
 
   /** a demo paid 1 h shift (60 s, 840 m): pay, start, beat (collecting the dispatch prompts the heartbeats carry), upload the recording – with the prompts
       answered `reactionMs` after they were issued (null = ignored) –, end */

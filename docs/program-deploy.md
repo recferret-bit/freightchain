@@ -48,7 +48,7 @@ bash $D admin show
 PROGRAM_ID=$(solana-keygen pubkey $K/program-id.json) RPC_URL="$(grep -E '^SOLANA_RPC=' server/.env.devnet | cut -d= -f2-)" bash .claude/skills/program-check/check.sh onchain
 # 7. the program id into the profile, then the server on this machine (http://localhost:3000) – it registers pools from chain by itself
 TICKET_PROGRAM_ID=$(solana-keygen pubkey $K/program-id.json) RPC='…' WS='…' bash $D env && bash $D server
-# 8. pools (admin key). The 1 hour pool on sale omits --min and gets 20 (ride-tier.ts): below 20 it refunds.
+# 8. pools (admin key). The 1 hour pool omits --min and gets 20 (ride-tier.ts): below 20 it refunds.
 #    This line is a short test pool, so it passes --min 2. One meant to miss its goal can use the same small minimum.
 bash $D admin create-pool -k $PWD/$K/admin.json --tier 1h --price 2000000 --min 2 --per-wallet 3 --prep +3600 --play +7200 \
   --fee-treasury "$(solana-keygen pubkey $K/fee.json)" --seed-treasury "$(solana-keygen pubkey $K/seed.json)"

@@ -26,7 +26,7 @@ Related: [deploy + operate](program-deploy.md) · [paid tickets status](paid-tic
 **Admin tooling**
 - No UI for Phantom-signed admin actions: `create_pool`, `set_config` (pause, platform cut), `propose_authority` / `accept_authority`, `cancel_pool`. Only `server/scripts/pool-admin.mjs` with keypair FILES.
 - Payouts: `GET /api/pools/:id/payout` builds the `pay_prize` / `close_pool` transactions, but there is no button for them on the admin page.
-- Nobody creates the weekly pools automatically: when the 1 hour pool ends, that card shows "NO POOL · NEXT POOL SOON" until the admin creates the next one. Create that pool at **min 20** (`ride-tier.ts`; `pool-admin create-pool` defaults to it). Fewer tickets by the prep deadline and the pool refunds. The 4 hour and 8 hour shifts are not on sale (`onSale: false`): with no live pool the card says SOON and a pay-per-ride order is 409 `tier_not_on_sale`. A registered live pool of either still sells.
+- Nobody creates the weekly pools automatically. The 1 hour, 4 hour and 8 hour shifts are not on sale (`onSale: false`): with no live pool the card says SOON and a pay-per-ride order is 409 `tier_not_on_sale`. A registered live pool of a tier still sells. Create the 1 hour pool at **min 20** (`ride-tier.ts`; `pool-admin create-pool` defaults to it). Fewer tickets by the prep deadline and the pool refunds.
 - Nothing rolls the seed treasury into the next pool: "seeds the next pool" (the lobby's rules text) is an operator step – `pool-admin.mjs sponsor -k seed.json` (the localnet payout scenario does exactly that).
 
 **Crank operations**

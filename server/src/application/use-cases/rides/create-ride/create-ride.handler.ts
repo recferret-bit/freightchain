@@ -45,7 +45,7 @@ interface CreateFacts {
  *   running                → 409
  *   ready (created)        → the same ride back – a PAID one is never lost; an unstarted FREE one is cancelled (credit refunded) when a paid tier is bought
  *   awaiting payment       → the same order while its tier matches and the price is still held; otherwise it lapses (a late matching payment is still honoured)
- * A paid tier that is not on sale (4h, 8h) and has no live pool is refused before the lock (409 `tier_not_on_sale`), so an open order of another tier is not expired.
+ * A paid tier that is not on sale (1h, 4h, 8h) and has no live pool is refused before the lock (409 `tier_not_on_sale`), so an open order of another tier is not expired.
  * A registered live pool of that tier still sells tickets. A paid tier that sells through escrowed pools is paid with a TICKET: one is spent in the same locked
  * transaction and the ride is ready at once (409 `no_tickets` / `pool_not_live`). In `program` mode that is the only way; in `transfer` mode an on-sale tier with no pool still uses the legacy pay-per-ride order.
  * A FREE ride is ordered at a LEVEL (ride-trip.ts FREE_LEVELS, default 1): its trip, FREE_RIDE_SECONDS × its multiple, its finish line. ASSIST on a level

@@ -6,9 +6,12 @@ import { FakeClock } from '../../../../support/fake-clock.js';
 import { MemoryDb } from '../../../../support/in-memory/memory-db.js';
 import { MemoryPoolRepository } from '../../../../support/in-memory/memory-ledger-repositories.js';
 import { aPool } from '../../../../support/pools.js';
+import { setTierOnSaleForTest } from '../../../../../src/domain/rides/ride-tier.js';
 
 describe('GetTiersHandler', () => {
-  it('every tier with its live lamport price, shift length and minimum distance', async () => {
+  beforeEach(() => setTierOnSaleForTest('1h', false));
+
+  it('every tier with its shift length and minimum distance; a lamport price only when the shift is on sale or has a pool', async () => {
     const dto = await new GetTiersHandler(new FixedRules(), new StubPrice(100), new MemoryPoolRepository(new MemoryDb()), new FakeClock()).execute();
     expect(dto.solUsd).toBe(100);
     expect(dto.treasury).toBe(TREASURY);
@@ -22,7 +25,7 @@ describe('GetTiersHandler', () => {
           { level: 3, trip: 'free-3', name: 'HARD', seconds: 100, completeDist: 0.4 * 28 * 100, assist: false },
         ],
       },
-      { id: '1h', usd: 5, seconds: 3600, completeDist: 50_400, lamports: 50_000_000, available: true, onSale: true, pool: null },
+      { id: '1h', usd: 5, seconds: 3600, completeDist: 50_400, lamports: null, available: false, onSale: false, pool: null },
       { id: '4h', usd: 15, seconds: 14_400, completeDist: 201_600, lamports: null, available: false, onSale: false, pool: null },
       { id: '8h', usd: 50, seconds: 28_800, completeDist: 403_200, lamports: null, available: false, onSale: false, pool: null },
     ]);
@@ -43,7 +46,7 @@ describe('GetTiersHandler', () => {
     await pools.upsert(aPool({ id: 2, tier: '4h', status: 'open', prepDeadline: new Date(clock.ms - 1) })); // preparation over: not buyable
     const dto = await new GetTiersHandler(new FixedRules(unitRules({ treasury: '' })), new StubPrice(null), pools, clock).execute();
     const [, h1, h4, h8] = dto.tiers;
-    expect(h1).toMatchObject({ lamports: 20_000_000, available: true, onSale: true, pool: { id: 1, status: 'active' } });
+    expect(h1).toMatchObject({ lamports: 20_000_000, available: true, onSale: false, pool: { id: 1, status: 'active' } });
     expect(h4).toMatchObject({ available: false, onSale: false, pool: { id: 2 } }); // a registered pool is still shown
     expect(h8).toMatchObject({ lamports: null, available: false, onSale: false, pool: null });
   });
@@ -55,7 +58,7 @@ describe('GetTiersHandler', () => {
     const dto = await new GetTiersHandler(new FixedRules(unitRules({ paymentMode: 'program' })), new StubPrice(100), pools, clock).execute();
     expect(dto.paymentMode).toBe('program');
     expect(dto.tiers.map((t) => [t.id, t.available, t.lamports, t.pool?.id ?? null, t.onSale])).toEqual([
-      ['free', true, null, null, true], ['1h', true, 20_000_000, 1, true], ['4h', false, null, null, false], ['8h', false, null, null, false],
+      ['free', true, null, null, true], ['1h', true, 20_000_000, 1, false], ['4h', false, null, null, false], ['8h', false, null, null, false],
     ]);
   });
 });

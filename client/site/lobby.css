@@ -58,6 +58,7 @@ h2{margin:22px 0 10px;font-size:13px;letter-spacing:2px;color:var(--amber);font-
 .tier .plabel{font-size:12px;color:var(--dim)}
 .tier .pr{font-size:22px;font-weight:bold}.tier .pr small{font-size:12px;font-weight:normal;color:var(--dim)}
 .tier .sub{font-size:12px;color:var(--dim);overflow-wrap:anywhere}.tier .sub b{color:var(--text);font-weight:normal}
+.tier .sub.demo{color:var(--bad)}
 .tier .tag{font-size:11px;color:var(--bad)}
 .tier .go{margin-top:8px;width:100%}
 .tier .go .go-sub{display:block;margin-top:2px;font-size:.72em;letter-spacing:.12em;opacity:.7}

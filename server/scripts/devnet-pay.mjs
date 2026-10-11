@@ -1,4 +1,5 @@
-// REAL devnet run of the Day-1 loop: fund a fresh wallet from the faucet, sign in, order a 1 h ride, pay it on chain, let the server verify it, ride it (demo-scaled), check pool + leaderboard.
+// REAL devnet run of the Day-1 pay-per-ride loop: fund a fresh wallet from the faucet, sign in, order a 1 h ride, pay it on chain, let the server verify it, ride it (demo-scaled), check pool + leaderboard.
+// The 1 h shift is not on sale until a pool of it is registered (409 tier_not_on_sale), so this script does not pass against that server.
 // Server (other terminal; PostgreSQL up + migrated):  TREASURY_PUBKEY=<any address, or run `npm run treasury:init`>  DEMO_WALLETS='*' DEMO_SCALE=600  PORT=3112  node dist/main.js
 //   (DEMO_SCALE=600 → the 1 h shift is 6 s / 84 m).  Then:  BASE=http://localhost:3112 node scripts/devnet-pay.mjs
 // The public devnet faucet is rate-limited: if the airdrop fails this prints the address – fund it at https://faucet.solana.com and re-run with WALLET_SECRET=<that base58 secret>.

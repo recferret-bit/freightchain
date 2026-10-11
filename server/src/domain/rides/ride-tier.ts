@@ -10,21 +10,33 @@ export interface RideTierDef {
   usd: number;
   /** false = the shift exists but is not sold until a live pool of it is registered */
   onSale: boolean;
-  /** Tickets that must sell or the pool refunds. Null = no product minimum (free, or a shift not on sale). */
+  /** Tickets that must sell or the pool refunds. Null = no product minimum (free, or a shift whose minimum is not set). */
   minTickets: number | null;
 }
 
 const HOUR = 3600;
 
+/** Paid rows are mutable so pay-per-ride tests can opt a tier back on. Production leaves every paid shift off until a pool of it is registered. */
+const PAID: RideTierDef[] = [
+  // 20 × $5 = a $100 pot: 1st $26, 2nd $16, 3rd $11, each place 4–20 $1. Fewer tickets and the pool refunds. Off the counter until that pool exists.
+  { id: '1h', seconds: HOUR, usd: 5, onSale: false, minTickets: 20 },
+  { id: '4h', seconds: 4 * HOUR, usd: 15, onSale: false, minTickets: null },
+  { id: '8h', seconds: 8 * HOUR, usd: 50, onSale: false, minTickets: null },
+];
+
 /** The tier table. Only the free shift length is configurable (tests / demos shorten it). */
 export function rideTiers(freeRideSeconds: number): readonly RideTierDef[] {
   return [
     { id: 'free', seconds: freeRideSeconds, usd: 0, onSale: true, minTickets: null },
-    // 20 × $5 = a $100 pot: 1st $26, 2nd $16, 3rd $11, each place 4–20 $1. Fewer tickets and the pool refunds.
-    { id: '1h', seconds: HOUR, usd: 5, onSale: true, minTickets: 20 },
-    { id: '4h', seconds: 4 * HOUR, usd: 15, onSale: false, minTickets: null },
-    { id: '8h', seconds: 8 * HOUR, usd: 50, onSale: false, minTickets: null },
+    ...PAID.map((t) => ({ ...t })),
   ];
+}
+
+/** Pay-per-ride tests opt a tier back on. Reset it: the product table is what the lobby and `POST /api/rides` use. */
+export function setTierOnSaleForTest(id: PaidTierId, on: boolean): void {
+  const row = PAID.find((t) => t.id === id);
+  if (!row) throw new Error(`unknown tier ${id}`);
+  row.onSale = on;
 }
 
 export function rideTier(id: RideTierId, freeRideSeconds: number): RideTierDef {
@@ -35,7 +47,7 @@ export function rideTier(id: RideTierId, freeRideSeconds: number): RideTierDef {
 
 export const isPaidTier = (id: RideTierId): boolean => id !== 'free';
 
-/** False for a planned shift (4h, 8h). A registered live pool of that tier still sells; this only gates the offer when none is open. */
+/** False for a planned shift (1h, 4h, 8h). A registered live pool of that tier still sells; this only gates the offer when none is open. */
 export const isTierOnSale = (id: RideTierId): boolean => rideTiers(0).find((t) => t.id === id)?.onSale ?? false;
 
 /** The tiers that cost money – each is sold as tickets into a pool (docs/paid-tickets-plan.md). */

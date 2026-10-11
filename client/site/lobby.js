@@ -2,7 +2,7 @@ import { api, signOut } from './wallet.js';
 import { buyRide, buyTickets, claimRefund, waitPaid, ORDER_SIG } from './pay.js';
 import { salesOpen, pendingOrder } from './tickets-api.js';
 import { ridableTickets, escrowExplainer, explorerTx, rideError, promoError, promoOk, buyError, sol, left, shortAddr as short } from './pools.js';
-import { poolCard, escrowSummary, refundRows, profileTickets } from './lobby-pools.js';
+import { poolCard, paidShift, escrowSummary, refundRows, profileTickets } from './lobby-pools.js';
 import { careerTiles } from './lobby-career.js';
 import { redemptionList } from './lobby-promo.js';
 import { dirty, garageActions, garageProgress, garageSlots } from './lobby-garage.js';
@@ -59,7 +59,7 @@ function go() {
 
 /* ───────── NEW RIDE ─────────
    One card per shift. A paid tier with an escrowed pool (tiers[].pool) is ridden with a TICKET (RIDE spends one, the ride is ready at once); buying tickets / refunds go through
-   pay.js → tickets-api.js (not built server-side yet: shown as SOON). A paid tier without a pool keeps the legacy pay-per-ride order (buyRide). */
+   pay.js → tickets-api.js (not built server-side yet: shown as SOON). A paid tier without a pool is the SOON card when it is not on sale, and the legacy pay-per-ride order when it is. */
 function renderNew() {
   view.replaceChildren(
     el('div', { class: 'card pool', id: 'poolbox' }), el('div', { id: 'pendingbox' }), el('div', { id: 'orderbox' }), el('div', { id: 'refunds' }),
@@ -126,9 +126,9 @@ function paintOrder() {
     el('button', { disabled: !!S.busy, onclick: retry }, sig ? 'RETRY CONFIRM' : 'CHECK AGAIN'), el('p', { class: 'msg dim', id: 'msg-order' })));
 }
 
-const tierInfo = t => {   // what the card shows: a demo wallet's paid shifts are shorter
+const tierInfo = t => {   // the card states the real shift; a demo wallet also shows the shorter ride it actually drives
   const scale = S.me.demo && t.id !== 'free' ? S.me.demoScale : 1, seconds = t.seconds / scale, dist = t.completeDist / scale;
-  return { seconds, dist, scale, name: TIER_NAME[t.id] ?? t.id, shift: `${dur(seconds)} · ≥ ${km(dist)} km` };
+  return { seconds, dist, scale, name: TIER_NAME[t.id] ?? t.id, shift: `${dur(t.seconds)} · ≥ ${km(t.completeDist)} km`, driven: scale > 1 ? `${dur(seconds)} · ≥ ${km(dist)} km` : '' };
 };
 function tierOff(t) {
   if (S.pending) return 'finish the paid ride waiting for you first';
@@ -200,20 +200,20 @@ function freeCard(t) {
       off ? el('span', { class: 'tag' }, off) : ''),
     el('p', { class: 'msg dim', id: 'msg-free' }));
 }
-function soonCard(t) {   // 4h / 8h with no live pool: the planned price is text, the button does nothing
+function soonCard(t) {   // a paid shift with no live pool: the planned price is text, the button does nothing
   const i = tierInfo(t);
   return el('article', { class: 'tier legacy', id: `tier-${t.id}` },
     el('div', { class: 'hd' }, el('span', { class: 'nm' }, i.name), el('span', { class: 'st done' }, 'SOON')),
     el('span', { class: 'pr' }, `$${t.usd}`, el('small', {}, ' · planned')),
-    el('span', { class: 'sub' }, i.shift),
-    el('span', { class: 'sub more' }, 'Not on sale yet. The 1 hour shift is the one you can buy.'),
+    ...paidShift(i),
+    el('span', { class: 'sub more' }, 'Available soon.'),
     el('button', { class: 'go', disabled: true }, 'SOON'),
     el('p', { class: 'msg dim', id: `msg-${t.id}` }));
 }
 function noPoolCard(t) {   // program mode is ticket-only: an on-sale tier whose pool failed / settled and no new one is open yet
   const i = tierInfo(t);
   return el('article', { class: 'tier legacy', id: `tier-${t.id}` },
-    el('div', { class: 'hd' }, el('span', { class: 'nm' }, i.name), el('span', { class: 'st done' }, 'NO POOL')), el('span', { class: 'sub' }, i.shift),
+    el('div', { class: 'hd' }, el('span', { class: 'nm' }, i.name), el('span', { class: 'st done' }, 'NO POOL')), ...paidShift(i),
     el('span', { class: 'sub' }, 'No pool open right now.'),
     el('button', { class: 'go', disabled: true }, 'NEXT POOL SOON'),
     el('p', { class: 'msg dim', id: `msg-${t.id}` }));
@@ -222,8 +222,8 @@ function legacyCard(t) {   // a paid tier with no pool registered: pay per ride 
   const off = tierOff(t), i = tierInfo(t);
   return el('article', { class: 'tier legacy', id: `tier-${t.id}` },
     el('div', { class: 'hd' }, el('span', { class: 'nm' }, i.name), el('span', { class: 'st done' }, 'PAY PER RIDE')),
-    el('span', { class: 'pr' }, `$${t.usd}`, el('small', {}, t.lamports ? ` · ${sol(t.lamports)}` : ' · price unavailable')), el('span', { class: 'sub' }, i.shift),
-    el('span', { class: 'sub more' }, 'Price locked 10 min after you order. ', el('b', {}, 'Non-refundable'), ': goes to the weekly round (50% grand · 20% top 20 · 20% next week · 10% fees).', i.scale > 1 ? ` DEMO ×${i.scale}: shifts shortened for demos.` : ''),
+    el('span', { class: 'pr' }, `$${t.usd}`, el('small', {}, t.lamports ? ` · ${sol(t.lamports)}` : ' · price unavailable')), ...paidShift(i),
+    el('span', { class: 'sub more' }, 'Price locked 10 min after you order. ', el('b', {}, 'Non-refundable'), ': goes to the weekly round (50% grand · 20% top 20 · 20% next week · 10% fees).'),
     off ? el('span', { class: 'tag' }, off) : '',
     el('button', { class: 'go', disabled: !!off || !!S.busy, onclick: () => startLegacy(t.id) }, S.busy === t.id ? 'WORKING…' : [`PAY $${t.usd}${t.lamports ? ` · ${sol(t.lamports)}` : ''}`, el('small', { class: 'go-sub' }, 'LET’S RIDE →')]),
     el('p', { class: 'msg dim', id: `msg-${t.id}` }));
