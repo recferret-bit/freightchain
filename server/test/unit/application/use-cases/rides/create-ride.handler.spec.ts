@@ -89,18 +89,26 @@ describe('CreateRideHandler', () => {
     expect(await ctx.rides.findOpenByWallet('w')).toBeNull();
   });
 
+  it('HARD refuses TUTORIAL before anything changes (409 tutorial_not_allowed): the ready ride keeps its level and its tutorial', async () => {
+    const { ctx, create } = setup();
+    const ready = await create('free', 'w', true, false, 1);
+    await expect(create('free', 'w', true, false, 3)).rejects.toThrow(new ConflictError('the HARD free run has no tutorial', 'tutorial_not_allowed'));
+    expect(await ctx.reload(ready.id)).toMatchObject({ trip: 'free-1', tutorial: true });
+    expect((await ctx.storedPlayer('w')).freeRides).toBe(9);
+  });
+
   it('asking for the ready free ride at ANOTHER level moves the SAME ride (trip, length, line, helpers) – one credit, one ride, saved', async () => {
     const { ctx, create } = setup();
     const first = await create('free', 'w', false, true, 1);
-    const hard = await create('free', 'w', true, false, 3);
-    expect(hard).toMatchObject({ id: first.id, level: 3, trip: 'free-3', minSeconds: 100, completeDist: 0.4 * 28 * 100, tutorial: true, assist: false });
-    expect((await ctx.reload(first.id)).snapshot()).toMatchObject({ trip: 'free-3', minSeconds: 100, tutorial: true, assist: false });
+    const hard = await create('free', 'w', false, false, 3);
+    expect(hard).toMatchObject({ id: first.id, level: 3, trip: 'free-3', minSeconds: 100, completeDist: 0.4 * 28 * 100, tutorial: false, assist: false });
+    expect((await ctx.reload(first.id)).snapshot()).toMatchObject({ trip: 'free-3', minSeconds: 100, tutorial: false, assist: false });
     expect((await ctx.storedPlayer('w')).freeRides).toBe(9);
   });
 
   it('asking for the ready free ride again WITHOUT a level keeps its own level (never a silent fall back to EASY); HARD + assist is still refused', async () => {
     const { ctx, create } = setup();
-    const hard = await create('free', 'w', true, false, 3);
+    const hard = await create('free', 'w', false, false, 3);
     expect(await create('free', 'w', false, false)).toMatchObject({ id: hard.id, level: 3, trip: 'free-3', minSeconds: 100, completeDist: 0.4 * 28 * 100, tutorial: false });
     await expect(create('free', 'w', false, true)).rejects.toMatchObject({ errorCode: 'assist_not_allowed' });
     expect(await ctx.reload(hard.id)).toMatchObject({ trip: 'free-3', assist: false });

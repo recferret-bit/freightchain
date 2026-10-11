@@ -212,7 +212,7 @@ Read: [`client/js/themes/index.js`](client/js/themes/index.js) · [model viewer]
 | --- | --- | --- | --- | --- |
 | Free · EASY | 60 s, finish at 420 m | 0 | Yes | Four lanes, no junctions, straight start, calm traffic, ends itself |
 | Free · CROSSROADS | 180 s, finish at 1512 m | 0 | Yes | Depot turn, junctions, a fork, holes ×1.5 |
-| Free · HARD | 600 s, finish at 6720 m | 0 | Yes, no assist | Full network, forks, bends ×1.3, traffic ×1.4, holes ×2 |
+| Free · HARD | 600 s, finish at 6720 m | 0 | Yes, no assist, no tutorial | Full network, forks, bends ×1.3, traffic ×1.4, holes ×2 |
 | 1 hour | 3600 s | $5 in SOL | When a pool is registered, minimum 20 | Depot, STOP line, right turn |
 | 4 hour | 4 h | $15 planned | When a pool is registered | Bends ×1.2, traffic ×1.4 |
 | 8 hour | 8 h | $50 planned | When a pool is registered | Bends ×1.4, traffic ×1.8 |

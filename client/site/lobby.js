@@ -137,11 +137,13 @@ function tierOff(t) {
 }
 /* /api/me's `readyFreeRide` = the free ride ordered but not started (its credit already spent): START hands it back, so it stays on at 0 credits (tierOff).
    A ready free ride seen for the first time picks the card's level + checkboxes from it (once – the player may still change them; START re-chooses that same ride).
-   ASSIST only where its level allows it: HARD's assist:false was forced, not chosen, and must not overwrite the remembered box. */
+   A helper HARD forced off was not chosen, and must not overwrite the remembered box. */
 function adoptReady(free) {
   const r = S.me?.readyFreeRide; if (!r || r.id === S.readyId) return;
-  S.readyId = r.id; if (r.level != null) S.opt.level = r.level; S.opt.tutorial = r.tutorial;
-  if (freeLevels(free).find(l => l.level === r.level)?.assist !== false) S.opt.assist = r.assist;
+  S.readyId = r.id; if (r.level != null) S.opt.level = r.level;
+  const lv = freeLevels(free).find(l => l.level === r.level);   // a forced-off helper on HARD was not chosen, so it must not wipe the remembered box
+  if (lv?.tutorial !== false) S.opt.tutorial = r.tutorial;
+  if (lv?.assist !== false) S.opt.assist = r.assist;
 }
 function paintTiers() {
   const box = $('tiers'), fbox = $('freebox'); if (!box) return;
@@ -162,11 +164,16 @@ const tutorialOn = () => S.opt.tutorial ?? !S.me?.tutorialPassed;
 function guideBox(id, name, hint, on, set, locked = false) {   // one of the free ride's two checkboxes (kept in S.opt, so a repaint does not reset it); locked = unchecked + disabled, the hint stays
   return el('label', { class: `opt${locked ? ' locked' : ''}`, for: id }, el('input', { type: 'checkbox', id, checked: on && !locked, disabled: !!locked, onchange: e => set(e.target.checked) }), el('span', {}, el('b', {}, name), el('small', {}, hint)));
 }
-/* the free ride's LEVELS come from the server (GET /api/tiers → the free tier's `levels`: EASY / CROSSROADS / HARD, their length and whether ASSIST is allowed);
+/* the free ride's LEVELS come from the server (GET /api/tiers → the free tier's `levels`: EASY / CROSSROADS / HARD, their length and whether TUTORIAL and ASSIST are allowed);
    a server without them = no picker and no `level` sent. The pick is remembered (localStorage freightchain.level); one the server does not offer falls back to the easiest. */
 const freeLevels = t => t?.levels ?? [];
 const pickedLevel = t => { const ls = freeLevels(t); return ls.find(l => l.level === S.opt.level) ?? ls[0] ?? null; };
+const tutorialAllowed = t => pickedLevel(t)?.tutorial !== false;
 const assistAllowed = t => pickedLevel(t)?.assist !== false;
+const lockOpt = (id, on, allowed) => {   // unchecked + disabled while the level forbids it; the remembered choice stays in S.opt
+  const input = $(id), label = input?.closest('.opt'); if (!input || !label) return;
+  input.disabled = !allowed; input.checked = !!on && allowed; label.classList.toggle('locked', !allowed);
+};
 function levelPicker(t) {
   const ls = freeLevels(t), on = pickedLevel(t); if (!ls.length) return '';
   const pick = n => { S.opt.level = n; store.set('freightchain.level', String(n)); syncFreeLevel(); };   // in place: rebuilding the card flashed the level line
@@ -175,29 +182,28 @@ function levelPicker(t) {
       el('input', { type: 'radio', name: 'level', id: `level-${l.level}`, value: String(l.level), checked: l.level === on.level, disabled: !!S.busy, onchange: () => pick(l.level) }),
       el('b', {}, l.name), el('small', {}, `${dur(l.seconds)} · ≥ ${km(l.completeDist)} km`), l.assist ? '' : el('small', { class: 'why' }, 'no assist'))));
 }
-/* the picked level already prints its time and distance on its chip, so nothing under the picker repeats it. ASSIST's lock follows the pick without a repaint. */
+/* the picked level already prints its time and distance on its chip, so nothing under the picker repeats it. The two locks follow the pick without a repaint. */
 function syncFreeLevel() {
   const t = S.tiers?.tiers.find(x => x.id === 'free'), lv = pickedLevel(t), card = $('tier-free'); if (!card || !lv) return;
   card.querySelectorAll('.lv').forEach(node => { const input = node.querySelector('input'), on = Number(input.value) === lv.level; node.classList.toggle('on', on); input.checked = on; });
-  const input = $('opt-assist'), label = input?.closest('.opt'); if (!input || !label) return;
-  const allowed = assistAllowed(t);
-  input.disabled = !allowed; input.checked = !!S.opt.assist && allowed; label.classList.toggle('locked', !allowed);   // HARD: the block stays, the checkbox does not
+  lockOpt('opt-tutorial', tutorialOn(), tutorialAllowed(t));
+  lockOpt('opt-assist', S.opt.assist, assistAllowed(t));   // HARD: both blocks stay, the checkboxes do not
 }
 function freeCard(t) {
   const off = tierOff(t);
   return el('article', { class: 'tier free', id: 'tier-free' },
     el('div', { class: 'freeinfo' },
-      el('div', { class: 'hd' },
-        el('span', { class: 'nm' }, TIER_NAME.free),
+      el('div', { class: 'hd' }, el('span', { class: 'nm' }, TIER_NAME.free)),
+      el('div', { class: 'prize' },
         el('span', { class: 'st done' }, 'NO PRIZE'),
-        el('span', { class: 'st done' }, 'FOR THE FREE LEADERBOARD AND ACHIEVEMENTS'),
-        el('button', { class: 'go', id: 'start', disabled: !!off || !!S.busy, onclick: startFree }, S.busy === 'free' ? 'WORKING…' : S.me.readyFreeRide ? 'START FREE RIDE · ready' : 'START FREE RIDE')),
+        el('span', { class: 'st done' }, 'FOR THE FREE LEADERBOARD AND ACHIEVEMENTS')),
       levelPicker(t),
       freeLevels(t).length ? '' : el('span', { class: 'sub', id: 'free-shift' }, tierInfo(t).shift),   // a server without levels: the one shift, once
       el('div', { class: 'guide' },
-        guideBox('opt-tutorial', 'TUTORIAL', S.me?.tutorialPassed ? 'Step-by-step tips over the game – you have done it, switch it on to see it again.' : 'Step-by-step tips over the game: ignition, gears, steering, lights, hull. On for your first ride.', tutorialOn(), v => { S.opt.tutorial = v; }),
+        guideBox('opt-tutorial', 'TUTORIAL', S.me?.tutorialPassed ? 'Step-by-step tips over the game – you have done it, switch it on to see it again.' : 'Step-by-step tips over the game: ignition, gears, steering, lights, hull. On for your first ride.', tutorialOn(), v => { S.opt.tutorial = v; }, !tutorialAllowed(t)),
         guideBox('opt-assist', 'ASSIST', 'The truck and the battery last twice as long and every control gets a tip when it matters. Finish a free ride WITHOUT it for the “On My Own” achievement.', S.opt.assist, v => { S.opt.assist = v; store.set('freightchain.assist', v ? '1' : '0'); }, !assistAllowed(t))),
-      off ? el('span', { class: 'tag' }, off) : ''),
+      off ? el('span', { class: 'tag' }, off) : '',
+      el('button', { class: 'go', id: 'start', disabled: !!off || !!S.busy, onclick: startFree }, S.busy === 'free' ? 'WORKING…' : S.me.readyFreeRide ? 'START FREE RIDE · ready' : 'START FREE RIDE')),
     el('p', { class: 'msg dim', id: 'msg-free' }));
 }
 function soonCard(t) {   // a paid shift with no live pool: the planned price is text, the button does nothing
@@ -262,7 +268,7 @@ function play(r, tier, level = null) {
   flushSoon(); location.href = `${GAME_BASE}/play.html?ride=${r.id}`;
 }
 const clicked = (id, usd = 0) => track('ride_buy_clicked', { tier_id: id, is_free: id === 'free', price_usd: usd, is_demo: !!S.me?.demo });
-const freeBody = () => { const t = S.tiers?.tiers.find(x => x.id === 'free'), lv = pickedLevel(t); return { tier: 'free', tutorial: tutorialOn(), assist: S.opt.assist && assistAllowed(t), ...(lv ? { level: lv.level } : {}) }; };   // HARD: assist is never sent (the server would refuse it)
+const freeBody = () => { const t = S.tiers?.tiers.find(x => x.id === 'free'), lv = pickedLevel(t); return { tier: 'free', tutorial: tutorialOn() && tutorialAllowed(t), assist: S.opt.assist && assistAllowed(t), ...(lv ? { level: lv.level } : {}) }; };   // HARD: neither helper is sent (the server would refuse it)
 const startFree = () => busy('free', async () => { clicked('free'); const body = freeBody(); try { play(await api('rides', body), 'free', body.level ?? null); } catch (e) { say('free', rideError(e, 'free'), true); await refreshMe(); } });
 const startLegacy = id => busy(id, async () => { clicked(id, S.tiers?.tiers.find(t => t.id === id)?.usd ?? 0); try { play(await buyRide(id, text => say(id, text)), id); } catch (e) { say(id, rideError(e, id), true); } });
 const ride = tier => busy(tier, async () => {   // spends one ticket: the ride is ready at once

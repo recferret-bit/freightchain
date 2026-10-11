@@ -44,20 +44,24 @@ describe('Ride – the free LEVELS (EASY / CROSSROADS / HARD)', () => {
     expect(Ride.restore({ ...freeRide().snapshot(), trip: 'free' }).level).toBeNull();   // a free ride from before the levels
   });
 
-  it('HARD refuses ASSIST (409 assist_not_allowed) – at creation and when re-chosen; EASY and CROSSROADS take it', () => {
+  it('HARD refuses TUTORIAL and ASSIST (409) – at creation and when re-chosen; EASY and CROSSROADS take them', () => {
     expect(() => free(3, 600, true)).toThrow(new ConflictError('the HARD free run has no assist', 'assist_not_allowed'));
+    expect(() => Ride.createFree({ id: 'r', wallet: 'w', seed: 7, minSeconds: 600, now: T0, level: 3, tutorial: true })).toThrow(new ConflictError('the HARD free run has no tutorial', 'tutorial_not_allowed'));
     expect(free(1, 60, true).assist).toBe(true);
     expect(free(2, 180, true).assist).toBe(true);
+    expect(Ride.createFree({ id: 'r', wallet: 'w', seed: 7, minSeconds: 60, now: T0, level: 1, tutorial: true }).tutorial).toBe(true);
     expect(() => free(3, 600).chooseFree(3, 600, false, true)).toThrow(ConflictError);
+    expect(() => free(3, 600).chooseFree(3, 600, true, false)).toThrow(new ConflictError('the HARD free run has no tutorial', 'tutorial_not_allowed'));
   });
 
   it('a ready free ride is re-chosen as a whole: level (trip, length, line) + helpers; nothing changed = false; HARD + assist changes nothing', () => {
     const r = free(2, 180, true);
     expect(r.chooseFree(2, 180, false, true)).toBe(false);
     expect(() => r.chooseFree(3, 600, false, true)).toThrow(ConflictError);
+    expect(() => r.chooseFree(3, 600, true, false)).toThrow(ConflictError);
     expect(r).toMatchObject({ trip: 'free-2', minSeconds: 180, assist: true });
-    expect(r.chooseFree(3, 600, true, false)).toBe(true);
-    expect(r).toMatchObject({ trip: 'free-3', level: 3, minSeconds: 600, completeDist: 0.4 * 28 * 600, tutorial: true, assist: false });
+    expect(r.chooseFree(3, 600, false, false)).toBe(true);
+    expect(r).toMatchObject({ trip: 'free-3', level: 3, minSeconds: 600, completeDist: 0.4 * 28 * 600, tutorial: false, assist: false });
     expect(() => order().chooseFree(1, 60, false, false)).toThrow(ConflictError);
     r.start(T0);
     expect(() => r.chooseFree(1, 60, false, false)).toThrow(ConflictError);   // a running ride keeps its road

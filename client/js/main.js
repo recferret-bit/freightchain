@@ -57,6 +57,7 @@ if (wantOffline) setGuide({ tutorial: false, assist: false });   // the guest ru
 else setGuide(online.ride ?? {});   // the free ride's tutorial / assist: the SERVER's flags of the ride
 if (wantOffline) setTrip('free-1');   // the guest run = the EASY level's road
 else setTrip(online.ride ? tripOf(online.ride) : null);   // the ride's road (trips.js): the trip the server stamped on it (a replay sets its own below); before the road is built
+if (trip.tutorial === false) guide.tutorial = false;   // the HARD free run has no tutorial (the server refuses it on the ride too)
 if (trip.assist === false) guide.assist = false;   // the HARD free run has no assist (the server refuses it on the ride too)
 const shift0 = { s: CFG.RIDE_MIN_SECONDS, d: CFG.COMPLETE_DIST };   // the shift before a free level's own
 if (!online.ride && trip.seconds) { CFG.RIDE_MIN_SECONDS = trip.seconds; CFG.COMPLETE_DIST = trip.k * CFG.MAX_SPEED * trip.seconds; }   // the guest run's own shift (online the server's ride sets both)

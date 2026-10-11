@@ -1,6 +1,6 @@
 import { Ride } from '../../../src/domain/rides/ride.entity.js';
 import { RIDE_TIER_IDS } from '../../../src/domain/rides/ride-tier.js';
-import { FREE_LEVELS, FREE_LEVEL_IDS, TRIP_IDS, TRIP_OF_TIER, assertAssistAllowed, completedLevels, freeLevelSeconds, isFreeLevel, levelOfTrip, tripOf } from '../../../src/domain/rides/ride-trip.js';
+import { FREE_LEVELS, FREE_LEVEL_IDS, TRIP_IDS, TRIP_OF_TIER, assertAssistAllowed, assertTutorialAllowed, completedLevels, freeLevelSeconds, isFreeLevel, levelOfTrip, tripOf } from '../../../src/domain/rides/ride-trip.js';
 import { FREE_COMPLETE_DIST_K, completeDistK } from '../../../src/domain/rides/ride-rules.js';
 import { ConflictError } from '../../../src/domain/shared/errors.js';
 import { validateEnv } from '../../../src/infrastructure/config/env.schema.js';
@@ -59,9 +59,13 @@ describe('ride trips (server ⇄ client/js/trips.js)', () => {
     expect([completeDistK('free', 'free-2'), completeDistK('free', 'free-3'), completeDistK('free', 'free'), completeDistK('free'), completeDistK('1h', '1h')]).toEqual([0.3, 0.4, 0.25, 0.25, 0.5]);
   });
 
-  it('assertAssistAllowed: only HARD refuses, and only with assist on', () => {
+  it('assertTutorialAllowed / assertAssistAllowed: only HARD refuses, and only with that helper on', () => {
+    expect(() => assertTutorialAllowed(3, true)).toThrow(new ConflictError('the HARD free run has no tutorial', 'tutorial_not_allowed'));
     expect(() => assertAssistAllowed(3, true)).toThrow(new ConflictError('the HARD free run has no assist', 'assist_not_allowed'));
-    for (const [l, a] of [[1, true], [2, true], [3, false]] as const) expect(() => assertAssistAllowed(l, a)).not.toThrow();
+    for (const [l, on] of [[1, true], [2, true], [3, false]] as const) {
+      expect(() => assertTutorialAllowed(l, on)).not.toThrow();
+      expect(() => assertAssistAllowed(l, on)).not.toThrow();
+    }
   });
 
   it('a new ride carries the trip of its tier (a free one: its level); the finish distance follows the level too', () => {

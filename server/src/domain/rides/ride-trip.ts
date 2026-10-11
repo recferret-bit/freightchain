@@ -28,18 +28,25 @@ export interface FreeLevelDef {
   multiple: number;
   /** the finish line: k × MAX_SPEED × the shift length */
   k: number;
+  /** may the ride be ordered with the TUTORIAL on (false = refused, 409) */
+  tutorial: boolean;
   /** may the ride be ordered with ASSIST on (false = refused, 409) */
   assist: boolean;
 }
 export const FREE_LEVELS: Readonly<Record<FreeLevel, FreeLevelDef>> = {
-  1: { level: 1, trip: 'free-1', name: 'EASY', multiple: 1, k: 0.25, assist: true },
-  2: { level: 2, trip: 'free-2', name: 'CROSSROADS', multiple: 3, k: 0.3, assist: true },
-  3: { level: 3, trip: 'free-3', name: 'HARD', multiple: 10, k: 0.4, assist: false },
+  1: { level: 1, trip: 'free-1', name: 'EASY', multiple: 1, k: 0.25, tutorial: true, assist: true },
+  2: { level: 2, trip: 'free-2', name: 'CROSSROADS', multiple: 3, k: 0.3, tutorial: true, assist: true },
+  3: { level: 3, trip: 'free-3', name: 'HARD', multiple: 10, k: 0.4, tutorial: false, assist: false },
 };
 export const DEFAULT_FREE_LEVEL: FreeLevel = 1;
 export const isFreeLevel = (v: unknown): v is FreeLevel => typeof v === 'number' && (FREE_LEVEL_IDS as readonly number[]).includes(v);
 /** a free level's shift length, from the configured FREE_RIDE_SECONDS */
 export const freeLevelSeconds = (level: FreeLevel, freeRideSeconds: number): number => freeRideSeconds * FREE_LEVELS[level].multiple;
+/** TUTORIAL is refused (409 `tutorial_not_allowed`) on a free level that does not allow it (HARD) – the dialog holds the finish line */
+export function assertTutorialAllowed(level: FreeLevel, tutorial: boolean): void {
+  const def = FREE_LEVELS[level];
+  if (tutorial && !def.tutorial) throw new ConflictError(`the ${def.name} free run has no tutorial`, 'tutorial_not_allowed');
+}
 /** ASSIST is refused (409 `assist_not_allowed`) on a free level that does not allow it (HARD) – it would halve the wear on the hardest run */
 export function assertAssistAllowed(level: FreeLevel, assist: boolean): void {
   const def = FREE_LEVELS[level];
