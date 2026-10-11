@@ -6,6 +6,7 @@ import { RequestChallengeHandler } from '../../../../../src/application/use-case
 import { RequestChallengeCommand } from '../../../../../src/application/use-cases/auth/request-challenge/request-challenge.command.js';
 import { TokenSignerPort } from '../../../../../src/application/ports/auth/token-signer.port.js';
 import { UnauthorizedError } from '../../../../../src/domain/shared/errors.js';
+import { formatSignInMessage } from '../../../../../src/domain/auth/auth-challenge.entity.js';
 import { NaclSignatureVerifier } from '../../../../../src/infrastructure/auth/nacl.signature-verifier.js';
 import { RecordingAnalytics } from '../../../../support/recording-analytics.js';
 import { unitContext } from '../../../../support/unit-context.js';
@@ -31,6 +32,123 @@ describe('VerifySignInHandler', () => {
     expect(analytics.named('player_signed_in')).toHaveLength(1);
     expect(analytics.named('player_signed_in')[0]?.properties).toMatchObject({ is_new_player: true, is_demo: false });
     expect(analytics.named('$create_alias')).toEqual([]);
+  });
+
+  it('native 1-click SIWS: signs canonical message with anonymous challenge', async () => {
+    const ch = await challenge.execute(new RequestChallengeCommand());
+    const canonicalMsg = formatSignInMessage({
+      domain: ch.domain!,
+      address: wallet,
+      statement: ch.statement,
+      uri: ch.uri,
+      version: ch.version,
+      chainId: ch.chainId,
+      nonce: ch.nonce!,
+      issuedAt: ch.issuedAt!,
+      expirationTime: ch.expirationTime,
+    });
+    const sig = sign(canonicalMsg);
+    const client = { ip: '1.2.3.4', userAgent: 'Chrome' };
+    const res = await handler.execute(new VerifySignInCommand(wallet, sig, client, canonicalMsg, ch.nonce!));
+    expect(res.session.token).toBe(`token-for-${wallet}`);
+    expect(res.profile.wallet).toBe(wallet);
+  });
+
+  it('native 1-click SIWS replay attack: second verify attempt is rejected', async () => {
+    const ch = await challenge.execute(new RequestChallengeCommand());
+    const canonicalMsg = formatSignInMessage({
+      domain: ch.domain!,
+      address: wallet,
+      statement: ch.statement,
+      uri: ch.uri,
+      nonce: ch.nonce!,
+      issuedAt: ch.issuedAt!,
+      expirationTime: ch.expirationTime,
+    });
+    const sig = sign(canonicalMsg);
+    await handler.execute(new VerifySignInCommand(wallet, sig, { ip: null, userAgent: null }, canonicalMsg, ch.nonce!));
+    await expect(
+      handler.execute(new VerifySignInCommand(wallet, sig, { ip: null, userAgent: null }, canonicalMsg, ch.nonce!)),
+    ).rejects.toThrow(new UnauthorizedError('no valid challenge – request a new nonce'));
+  });
+
+  it('native SIWS domain mismatch: rejects phishing domain', async () => {
+    const ch = await challenge.execute(new RequestChallengeCommand());
+    const phishingMsg = formatSignInMessage({
+      domain: 'phishing.evil.com',
+      address: wallet,
+      statement: ch.statement,
+      uri: 'https://phishing.evil.com',
+      nonce: ch.nonce!,
+      issuedAt: ch.issuedAt!,
+      expirationTime: ch.expirationTime,
+    });
+    const sig = sign(phishingMsg);
+    await expect(
+      handler.execute(new VerifySignInCommand(wallet, sig, { ip: null, userAgent: null }, phishingMsg, ch.nonce!)),
+    ).rejects.toThrow(new UnauthorizedError('domain mismatch'));
+  });
+
+  it('native SIWS address mismatch: rejects message signed for another address', async () => {
+    const ch = await challenge.execute(new RequestChallengeCommand());
+    const otherKp = nacl.sign.keyPair();
+    const otherWallet = bs58.encode(otherKp.publicKey);
+    const msg = formatSignInMessage({
+      domain: ch.domain!,
+      address: otherWallet,
+      statement: ch.statement,
+      uri: ch.uri,
+      nonce: ch.nonce!,
+      issuedAt: ch.issuedAt!,
+      expirationTime: ch.expirationTime,
+    });
+    const sig = sign(msg, otherKp);
+    await expect(
+      handler.execute(new VerifySignInCommand(wallet, sig, { ip: null, userAgent: null }, msg, ch.nonce!)),
+    ).rejects.toThrow(new UnauthorizedError('address mismatch'));
+  });
+
+  it('native SIWS nonce mismatch: rejects forged nonce in message', async () => {
+    const ch = await challenge.execute(new RequestChallengeCommand());
+    const msg = formatSignInMessage({
+      domain: ch.domain!,
+      address: wallet,
+      statement: ch.statement,
+      uri: ch.uri,
+      nonce: 'forgednonce1234567890',
+      issuedAt: ch.issuedAt!,
+      expirationTime: ch.expirationTime,
+    });
+    const sig = sign(msg);
+    await expect(
+      handler.execute(new VerifySignInCommand(wallet, sig, { ip: null, userAgent: null }, msg, ch.nonce!)),
+    ).rejects.toThrow(new UnauthorizedError('nonce mismatch'));
+  });
+
+  it('native SIWS expiration in message: rejects expired timestamp', async () => {
+    const ch = await challenge.execute(new RequestChallengeCommand());
+    const expiredMsg = formatSignInMessage({
+      domain: ch.domain!,
+      address: wallet,
+      statement: ch.statement,
+      uri: ch.uri,
+      nonce: ch.nonce!,
+      issuedAt: new Date(ctx.now().getTime() - 400_000).toISOString(),
+      expirationTime: new Date(ctx.now().getTime() - 100_000).toISOString(),
+    });
+    const sig = sign(expiredMsg);
+    await expect(
+      handler.execute(new VerifySignInCommand(wallet, sig, { ip: null, userAgent: null }, expiredMsg, ch.nonce!)),
+    ).rejects.toThrow(new UnauthorizedError('challenge expired'));
+  });
+
+  it('native SIWS malformed message: rejects bad grammar', async () => {
+    const ch = await challenge.execute(new RequestChallengeCommand());
+    const badMsg = 'malformed garbage without header';
+    const sig = sign(badMsg);
+    await expect(
+      handler.execute(new VerifySignInCommand(wallet, sig, { ip: null, userAgent: null }, badMsg, ch.nonce!)),
+    ).rejects.toThrow(new UnauthorizedError('bad signature'));
   });
 
   it('records the sign-in (wallet, time, ip, browser) for the admin page; a failed attempt records nothing', async () => {

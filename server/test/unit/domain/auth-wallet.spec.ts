@@ -1,5 +1,5 @@
 import { Keypair } from '@solana/web3.js';
-import { AuthChallenge } from '../../../src/domain/auth/auth-challenge.entity.js';
+import { AuthChallenge, formatSignInMessage, parseSignInMessage, extractNonce } from '../../../src/domain/auth/auth-challenge.entity.js';
 import { BadRequestError } from '../../../src/domain/shared/errors.js';
 import { isWalletAddress, parseWalletAddress } from '../../../src/domain/players/wallet-address.js';
 import { ACHIEVEMENTS, earnedIds, type Facts } from '../../../src/domain/achievements/achievements.js';
@@ -25,6 +25,67 @@ describe('AuthChallenge', () => {
       'URI: https://freight.example', 'Nonce: abc123', 'Issued At: 2026-10-07T12:00:00.000Z', 'Expiration Time: 2026-10-07T12:05:00.000Z',
     ]);
   });
+
+  it('formats standard SIWS with Version and Chain ID in ABNF order', () => {
+    const siws = AuthChallenge.issue({
+      wallet: 'WALLET', domain: 'freight.test', origin: 'https://freight.test',
+      nonce: 'hexnonce123', now, ttlMs: 300_000, version: '1', chainId: 'solana:mainnet',
+    });
+    expect(siws.message.split('\n')).toEqual([
+      'freight.test wants you to sign in with your Solana account:', 'WALLET', '',
+      'Sign in to Freight Chain. This request will not trigger a transaction or cost any fees.', '',
+      'URI: https://freight.test', 'Version: 1', 'Chain ID: solana:mainnet', 'Nonce: hexnonce123', 'Issued At: 2026-10-07T12:00:00.000Z', 'Expiration Time: 2026-10-07T12:05:00.000Z',
+    ]);
+  });
+
+  it('issues anonymous 1-click challenge under nonce:nonce with {{address}} placeholder and dynamic substitution', () => {
+    const anon = AuthChallenge.issue({
+      domain: 'freight.test', origin: 'https://freight.test', nonce: '0123456789abcdef', now, ttlMs: 300_000,
+    });
+    expect(anon.wallet).toBe('nonce:0123456789abcdef');
+    expect(anon.message).toContain('{{address}}');
+    const bound = anon.messageFor('TargetWalletAddress123');
+    expect(bound).toContain('TargetWalletAddress123');
+    expect(bound).not.toContain('{{address}}');
+  });
+
+  it('parses canonical SIWS messages accurately', () => {
+    const text = formatSignInMessage({
+      domain: 'freight.test',
+      address: 'Driver111111111111111111111111111111111111',
+      statement: 'Sign in to Freight Chain.',
+      uri: 'https://freight.test',
+      version: '1',
+      chainId: 'solana:mainnet',
+      nonce: 'nonce999',
+      issuedAt: '2026-10-07T12:00:00.000Z',
+      expirationTime: '2026-10-07T12:05:00.000Z',
+    });
+    const parsed = parseSignInMessage(text);
+    expect(parsed).toEqual({
+      domain: 'freight.test',
+      address: 'Driver111111111111111111111111111111111111',
+      statement: 'Sign in to Freight Chain.',
+      uri: 'https://freight.test',
+      version: '1',
+      chainId: 'solana:mainnet',
+      nonce: 'nonce999',
+      issuedAt: '2026-10-07T12:00:00.000Z',
+      expirationTime: '2026-10-07T12:05:00.000Z',
+      notBefore: undefined,
+      requestId: undefined,
+      resources: undefined,
+    });
+    expect(extractNonce(text)).toBe('nonce999');
+  });
+
+  it('returns null on invalid or malformed SIWS messages', () => {
+    expect(parseSignInMessage('')).toBeNull();
+    expect(parseSignInMessage('Not a sign in message')).toBeNull();
+    expect(parseSignInMessage('freight.test wants you to sign in with your Solana account:\nWALLET\n\nURI: https://freight.test')).toBeNull(); // missing Nonce
+    expect(extractNonce('no nonce here')).toBeNull();
+  });
+
   it('expires strictly after its expiry', () => {
     expect(challenge.isExpired(new Date('2026-10-07T12:05:00.000Z'))).toBe(false);
     expect(challenge.isExpired(new Date('2026-10-07T12:05:00.001Z'))).toBe(true);

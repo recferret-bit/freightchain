@@ -94,9 +94,9 @@ export class MemoryChallengeRepository extends ChallengeRepositoryPort {
 
   async upsert(challenge: AuthChallenge): Promise<void> { this.db.challenges.set(challenge.wallet, challenge); }
 
-  async consume(wallet: string): Promise<AuthChallenge | null> {
-    const c = this.db.challenges.get(wallet) ?? null;
-    this.db.challenges.delete(wallet);
+  async consume(key: string): Promise<AuthChallenge | null> {
+    const c = this.db.challenges.get(key) ?? null;
+    this.db.challenges.delete(key);
     return c;
   }
 }

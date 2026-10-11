@@ -9,20 +9,45 @@ describe('RequestChallengeHandler', () => {
   const handler = new RequestChallengeHandler(ctx.challenges, ctx.rules, ctx.clock, ctx.entropy);
   const wallet = Keypair.generate().publicKey.toBase58();
 
-  it('builds the sign-in message for the configured domain, stores it, and returns it', async () => {
-    const { message } = await handler.execute(new RequestChallengeCommand(wallet));
-    expect(message).toContain('freight.test wants you to sign in with your Solana account:');
-    expect(message).toContain(wallet);
-    expect(message).toContain('URI: https://freight.test');
-    expect(message).toMatch(/Nonce: \d{32}/);
-    expect((await ctx.challenges.consume(wallet))?.message).toBe(message);
+  it('builds the sign-in message for the configured domain, stores it, and returns structured fields + message', async () => {
+    const res = await handler.execute(new RequestChallengeCommand(wallet));
+    expect(res.message).toContain('freight.test wants you to sign in with your Solana account:');
+    expect(res.message).toContain(wallet);
+    expect(res.message).toContain('URI: https://freight.test');
+    expect(res.message).toMatch(/Nonce: \d{32}/);
+    expect(res).toMatchObject({
+      domain: 'freight.test',
+      statement: 'Sign in to Freight Chain. This request will not trigger a transaction or cost any fees.',
+      uri: 'https://freight.test',
+      version: '1',
+      chainId: 'solana:mainnet',
+      address: wallet,
+    });
+    expect(res.nonce).toBeDefined();
+    expect(res.issuedAt).toBeDefined();
+    expect(res.expirationTime).toBeDefined();
+    expect((await ctx.challenges.consume(wallet))?.message).toBe(res.message);
+  });
+
+  it('anonymous 1-click challenge: issues structured fields without address, stored under nonce:nonce', async () => {
+    const res = await handler.execute(new RequestChallengeCommand());
+    expect(res.address).toBeUndefined();
+    expect(res.message).toContain('{{address}}');
+    expect(res.domain).toBe('freight.test');
+    expect(res.version).toBe('1');
+    expect(res.chainId).toBe('solana:mainnet');
+    expect(res.nonce).toBeDefined();
+    const stored = await ctx.challenges.consume(`nonce:${res.nonce}`);
+    expect(stored).not.toBeNull();
+    expect(stored?.message).toBe(res.message);
   });
 
   it('split hosts: a sign-in from the game host (the watch page) names that host; any other Origin gets the app domain', async () => {
     const split = unitContext(unitRules({ gameDomain: 'ride.freight.test', gameOrigin: 'https://ride.freight.test' }));
     const h = new RequestChallengeHandler(split.challenges, split.rules, split.clock, split.entropy);
     const fromGame = (await h.execute(new RequestChallengeCommand(wallet, 'https://ride.freight.test'))).message;
-    expect(fromGame).toMatch(/^ride\.freight\.test wants you to sign in/); expect(fromGame).toContain('URI: https://ride.freight.test');
+    expect(fromGame).toMatch(/^ride\.freight\.test wants you to sign in/);
+    expect(fromGame).toContain('URI: https://ride.freight.test');
     for (const origin of ['https://evil.example', 'https://ride.freight.test.evil.example', null]) {
       expect((await h.execute(new RequestChallengeCommand(wallet, origin))).message).toMatch(/^freight\.test wants you to sign in/);
     }
