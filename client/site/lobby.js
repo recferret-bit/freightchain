@@ -10,6 +10,7 @@ import { garageCab } from './garage-cab.js';
 import { el } from './dom.js';
 import { livePath, leaveOnClose } from './presence.js';
 import { renderReplays } from './lobby-replays.js';
+import { renderBoard } from './lobby-board.js';
 import { API_BASE, GAME_BASE } from '../js/hosts.js';
 import { track, flushSoon } from '../js/analytics.js';
 import { reportWebVitals } from '../js/web-vitals.js';
@@ -33,7 +34,7 @@ const dur = s => { s = Math.max(0, Math.round(s)); return s >= 3600 ? `${Math.fl
 const km = m => (m / 1000).toFixed(m < 10_000 ? 2 : 1);
 
 /* ───────── state ───────── */
-const S = { me: null, tiers: null, pool: null, live: { rides: [] }, liveAt: 0, skew: 0, board: 'round', boardLevel: Number(store.get('freightchain.board-level')) || 3, pending: null, pendingNote: '', tab: 'new', busy: null, qty: {}, msgs: {}, poolInfo: {}, order: null, focus: null, opt: { tutorial: null, assist: store.get('freightchain.assist') === '1', level: Number(store.get('freightchain.level')) || 1 } };   // opt = the free ride's level + two checkboxes: tutorial null = follow the server (on until a ride was started with it), assist and the level are remembered here
+const S = { me: null, tiers: null, pool: null, live: { rides: [] }, liveAt: 0, skew: 0, board: 'free', boardLevel: Number(store.get('freightchain.board-level')) || 3, boardTier: store.get('freightchain.board-tier') === '4h' || store.get('freightchain.board-tier') === '8h' ? store.get('freightchain.board-tier') : '1h', pending: null, pendingNote: '', tab: 'new', busy: null, qty: {}, msgs: {}, poolInfo: {}, order: null, focus: null, opt: { tutorial: null, assist: store.get('freightchain.assist') === '1', level: Number(store.get('freightchain.level')) || 1 } };   // opt = the free ride's level + two checkboxes: tutorial null = follow the server (on until a ride was started with it), assist and the level are remembered here
 let seq = 0;   // one number per tab render: an answer that comes back after the player moved on (or re-asked) is dropped, not painted over the new tab
 const now = () => Date.now() + S.skew;   // server clock (skew learned from /api/live)
 const freeLeft = m => `${m.freeRides}/${m.freeRidesMax} free ride${m.freeRides === 1 ? '' : 's'}`;   // always balance/daily cap. A surplus (signup, a promo, an admin grant) stays; the refill stops at the cap
@@ -54,7 +55,7 @@ function go() {
   S.tab = TABS.includes(t) ? t : 'new'; seq++;
   track('lobby_tab_viewed', { tab: S.tab });   // hash enter, not the 1 s tick
   document.querySelectorAll('.tabs a').forEach(a => { const on = a.dataset.tab === S.tab; a.classList.toggle('on', on); a.setAttribute('aria-selected', on); });
-  ({ new: renderNew, live: renderLive, replays: () => renderReplays(view, { me: S.me, ROUTES, TIER_NAME, dur, km, avatar }), board: renderBoard, garage: renderGarage, promo: renderPromo, profile: renderProfile })[S.tab]();
+  ({ new: renderNew, live: renderLive, replays: () => renderReplays(view, { me: S.me, ROUTES, TIER_NAME, dur, km, avatar }), board: () => renderBoard(view, { S, now, track, km, dur, avatar }), garage: renderGarage, promo: renderPromo, profile: renderProfile })[S.tab]();
 }
 
 /* ───────── NEW RIDE ─────────
@@ -422,28 +423,6 @@ async function pollLive() {
   const n = (S.live.rides || []).filter(r => r.tier !== 'free').length;
   $('chip-live').textContent = liveChip(); $('tab-live-n').textContent = n || '';
   if (S.tab === 'live') paintLive();
-}
-
-/* ───────── LEADERBOARD ───────── */
-async function renderBoard() {
-  view.replaceChildren(el('p', { class: 'dim' }, 'Loading…'));
-  let j; const my = ++seq;
-  const free = S.board === 'free';
-  try { [j] = await Promise.all([api(`leaderboard?board=${S.board}${free ? `&level=${S.boardLevel}` : ''}`, undefined, { report: false }), free && !S.tiers ? api('tiers', undefined, { report: false }).then(t => { S.tiers ??= t; }, () => {}) : null]); } catch (e) { if (my === seq) view.replaceChildren(el('p', { class: 'bad' }, e.message)); return; }   // the level tabs come from the tiers (asked again when the boot's request failed)
-  if (my !== seq) return;   // switched away (or re-asked) while loading
-  track('leaderboard_filtered', { board: S.board });
-  const seg = el('div', { class: 'seg' }, ...[['round', 'THIS ROUND'], ['all', 'ALL TIME'], ['free', 'FREE RIDES']].map(([id, label]) => el('button', { class: id === S.board ? 'on' : '', onclick: () => { S.board = id; renderBoard(); } }, label)));
-  const levels = freeLevels(S.tiers?.tiers.find(t => t.id === 'free')), lvName = levels.find(l => l.level === j.level)?.name ?? '';   // the free board ranks ONE level (HARD unless picked; the pick is remembered) – the levels are GET /api/tiers' (none = no tabs, the server's default board)
-  const lvSeg = free && levels.length ? el('div', { class: 'seg', id: 'board-levels', role: 'group', 'aria-label': 'Level' }, ...levels.map(({ level: n, name }) => el('button', { class: n === j.level ? 'on' : '', 'aria-pressed': String(n === j.level), onclick: () => { S.boardLevel = n; store.set('freightchain.board-level', String(n)); renderBoard(); } }, name))) : '';
-  const prize = S.board === 'round', mine = j.rows.find(r => r.wallet === S.me.wallet);
-  view.replaceChildren(
-    el('h2', {}, 'LEADERBOARD'), seg, lvSeg,
-    prize ? el('p', { class: 'dim' }, `Ranked by distance of finished${j.verifiedOnly ? ', verified' : ''} paid shifts${j.verifiedOnly ? '' : ' (recording checks are shown in your profile, not enforced yet)'}. The top ${j.prizeRanks} share `, el('b', {}, '20%'), S.pool ? ` of the round’s entries (${sol(S.pool.split.top20)} so far)` : '', ' · closes in ', el('b', { class: 'cd', id: 'cd' }, left(j.round.endsAt - now()))) : el('p', { class: 'dim' }, S.board === 'all' ? `All finished${j.verifiedOnly ? ', verified' : ''} paid shifts, all time.` : `Finished free rides${lvName ? ` on ${lvName}` : ''}, all time – each level its own board. No prizes – bragging rights.`),
-    j.rows.length ? el('div', { class: 'card' }, el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, '#'), el('th', {}, 'RIDER'), el('th', { class: 'r' }, 'KM'), el('th', { class: 'r' }, 'SHIFTS'))),
-      el('tbody', {}, j.rows.map(r => el('tr', { class: `${prize ? 'prize' : ''}${r.wallet === S.me.wallet ? ' me' : ''}` },
-        el('td', {}, el('span', { class: `rk${r.rank === 1 ? ' g' : r.rank === 2 ? ' s' : r.rank === 3 ? ' b' : ''}` }, r.rank)),
-        el('td', {}, avatar(r.wallet), ' ', short(r.wallet), r.wallet === S.me.wallet ? ' (you)' : ''), el('td', { class: 'r' }, km(r.distance)), el('td', { class: 'r' }, r.rides)))))) : el('div', { class: 'card empty' }, 'Nobody has finished a shift here yet.'),
-    el('p', { class: 'dim' }, mine ? `You are #${mine.rank}.` : 'You are not on this board yet – finish a shift.'));
 }
 
 /* ───────── PROFILE ───────── */

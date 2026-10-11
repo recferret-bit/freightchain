@@ -1,5 +1,6 @@
 import type { Facts } from '../../../domain/achievements/achievements.js';
-import type { LeaderboardBoard } from '../../../domain/economy/economy.dto.js';
+import type { LeaderboardBoard, LeaderboardSort } from '../../../domain/economy/economy.dto.js';
+import type { PaidTierId } from '../../../domain/rides/ride-tier.js';
 
 export interface LiveRideRow {
   id: string;
@@ -99,7 +100,22 @@ export interface RejudgeFilter {
 export interface LeaderboardRow {
   wallet: string;
   distance: number;
+  /** total drive time of the counted shifts, seconds */
+  seconds: number;
+  /** hull left at the end of the furthest counted shift (the one with the greatest distance); null when that shift reported none */
+  hull: number | null;
   rides: number;
+}
+
+export interface LeaderboardEntry extends LeaderboardRow {
+  /** 1-based place in the requested sort. Not capped. */
+  rank: number;
+}
+
+export interface LeaderboardPage {
+  rows: LeaderboardEntry[];
+  /** wallets with a counted shift, before the top-100 cap */
+  total: number;
 }
 
 /** The read side: projections over rides that no aggregate needs. */
@@ -117,10 +133,15 @@ export abstract class RideQueryPort {
   /** skipRejected: the badge facts leave out rides the verdict rejected (achievements.ts badgeRejected) – the caller passes VERDICT_ENFORCE; `stats` never do */
   abstract summary(wallet: string, opts?: { skipRejected?: boolean }): Promise<RideSummary>;
   abstract recent(wallet: string, limit: number): Promise<RecentRideRow[]>;
-  /** Completed rides ranked by total distance (ties: more rides, earlier first finish, wallet). `roundId` is required for the 'round' board.
-      `verifiedOnly`: the PAID boards ('round', 'all') count only rides whose recording was verified (false = shadow mode); the free board always counts every completed free ride – of the trip `trip` (a free LEVEL's, ride-trip.ts FREE_LEVELS; required for 'free', ignored by the paid boards). */
-  abstract leaderboard(board: LeaderboardBoard, roundId: number | null, limit: number, verifiedOnly: boolean, trip: string | null): Promise<LeaderboardRow[]>;
-  /** The same ranking over the completed rides paid with one pool's tickets – what that pool's prizes are paid by (`verifiedOnly` as for the paid boards). */
+  /** Completed rides grouped by wallet. `sort` orders the page (`distance` is the prize order — domain/economy/leaderboard-order.ts, mirrored in SQL).
+      `offset` / `limit` page that order; `cap` drops places past it (the lobby's top 100) but `total` still counts every wallet.
+      `roundId` is required for the 'round' board. `tier` (1h / 4h / 8h) limits a paid board to that shift; null counts every paid shift. The free board ignores it.
+      `verifiedOnly`: the PAID boards count only rides whose recording was verified (false = shadow mode);
+      the free board always counts every completed free ride of the trip `trip` (a free LEVEL's, ride-trip.ts FREE_LEVELS; required for 'free', ignored by the paid boards). */
+  abstract leaderboard(board: LeaderboardBoard, roundId: number | null, verifiedOnly: boolean, trip: string | null, tier: PaidTierId | null, sort: LeaderboardSort, offset: number, limit: number, cap: number): Promise<LeaderboardPage>;
+  /** One wallet's place in that same order, or null when they have no counted shift. The rank is not capped. */
+  abstract leaderboardPlace(board: LeaderboardBoard, roundId: number | null, verifiedOnly: boolean, trip: string | null, tier: PaidTierId | null, wallet: string, sort: LeaderboardSort): Promise<LeaderboardEntry | null>;
+  /** The distance ranking over the completed rides paid with one pool's tickets – what that pool's prizes are paid by (`verifiedOnly` as for the paid boards). */
   abstract poolRanking(poolId: number, limit: number, verifiedOnly: boolean): Promise<LeaderboardRow[]>;
   /** Completed shifts for the bulk re-judge, oldest end first, with the status of their verdict (null = never judged). */
   abstract forRejudge(filter: RejudgeFilter): Promise<{ id: string; verdict: string | null }[]>;

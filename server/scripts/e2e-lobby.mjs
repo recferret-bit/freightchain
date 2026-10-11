@@ -163,9 +163,8 @@ check('a wallet without tickets: "No tickets yet"', /No tickets yet/.test(await 
 await rider.shot('profile-desktop'); await size(rider, 390, 844, true); await sleep(300); await rider.shot('profile-phone'); await size(rider, 1100, 900, false);
 
 // ── LEADERBOARD (free board) + reload keeps the tab
-await rider.ev('location.hash = "#board"'); await until(async () => (await rider.ev('document.querySelectorAll(".seg button").length')) === 3);
-await rider.ev('[...document.querySelectorAll(".seg button")][2].click()');
-check('LEADERBOARD › FREE: EASY / CROSSROADS / HARD under it, HARD by default', await until(async () => (await txt(rider, '#board-levels')) === 'EASYCROSSROADSHARD' && (await txt(rider, '#board-levels .on')) === 'HARD'), await txt(rider, '#board-levels'));
+await rider.ev('location.hash = "#board"');
+check('LEADERBOARD opens on FREE RIDES (THIS ROUND and ALL TIME are unavailable): EASY / CROSSROADS / HARD, HARD by default', await until(async () => (await txt(rider, '#board-levels')) === 'EASYCROSSROADSHARD' && (await txt(rider, '#board-levels .on')) === 'HARD' && (await rider.ev('document.querySelector("[data-board=free]")?.classList.contains("on") && document.querySelector("[data-board=round]")?.disabled && document.querySelector("[data-board=all]")?.disabled'))), await txt(rider, '#board-levels'));
 await rider.ev('document.querySelector("#board-levels button").click()');   // the rider drove EASY – its own board
 check('…EASY picked: the board says so', await until(async () => (await txt(rider, '#board-levels .on')) === 'EASY' && /on EASY/.test(await txt(rider, '#view'))), await txt(rider, '#view'));
 check('LEADERBOARD › FREE: the rider is on the board and highlighted (the database persists between runs, so not necessarily #1)', await until(async () => /^\d+$/.test(await rider.ev('document.querySelector("tr.me .rk")?.textContent || ""'))));

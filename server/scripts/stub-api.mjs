@@ -13,6 +13,9 @@ const DAY = 86_400_000, NOW = () => Date.now(), SOL_USD = 118, B58 = '123456789A
 const sig = () => Array.from({ length: 88 }, () => B58[Math.floor(Math.random() * 58)]).join('');   // looks like a signature; it is not one
 const addr = () => Keypair.generate().publicKey.toBase58();
 const WALLET = Keypair.generate().publicKey, PROGRAM = addr(), TREASURY = { fee: addr(), seed: addr() };
+// 30 riders so the lobby board can page (25 a page). They take turns on 1h / 4h / 8h. Index 11 is the signed-in wallet.
+const BOARD_TIERS = ['1h', '4h', '8h'];
+const BOARD_RIDERS = Array.from({ length: 30 }, (_, i) => ({ wallet: i === 11 ? WALLET.toBase58() : Keypair.generate().publicKey.toBase58(), tier: BOARD_TIERS[i % 3], distance: 80_000 - i * 1500, seconds: 4000 + (29 - i) * 90, hull: i === 4 ? null : 100 - (i % 35), rides: 1 + (i % 4) }));
 
 /* ───── state ───── */
 const t0 = NOW();
@@ -77,9 +80,21 @@ const R = [
   ['GET', /^pools\/(\d+)$/, m => { const p = pools.find(x => x.id === +m[1]); return p ? { body: poolDto(p) } : problem(404, 'not_found', 'no such pool'); }],
   ['GET', /^live$/, () => ({ body: { now: NOW(), rides: [], upcoming: [], recent: [], totals: { shifts: 1, metres: 4200, drivers: 1 } } })],
   ['GET', /^leaderboard$/, (m, b, q) => {   // board=free&level=1|2|3 (absent = 3 HARD); a level on a paid board = 400, as the server's query schema
-    const board = q.get('board') === 'free' || q.get('board') === 'all' ? q.get('board') : 'round', lv = q.get('level');
+    const board = q.get('board') === 'free' || q.get('board') === 'all' ? q.get('board') : 'round', lv = q.get('level'), tier = q.get('tier');
     if (lv != null && (board !== 'free' || !['1', '2', '3'].includes(lv))) return problem(400, 'validation_error', board !== 'free' ? 'level is for the free board only' : 'level must be one of 1, 2, 3');
-    return { body: { board, level: board === 'free' ? Number(lv ?? 3) : null, round: { id: 1, endsAt: t0 + 4 * DAY }, prizeRanks: 20, verifiedOnly: false, rows: [] } };
+    if (tier != null && (board === 'free' || !BOARD_TIERS.includes(tier))) return problem(400, 'validation_error', board === 'free' ? 'tier is for a paid board only' : 'tier must be one of 1h, 4h, 8h');
+    const sort = q.get('sort') === 'time' || q.get('sort') === 'hull' || q.get('sort') === 'rides' ? q.get('sort') : 'distance';
+    const page = Number(q.get('page') ?? 1);
+    if (!Number.isInteger(page) || page < 1 || page > 4) return problem(400, 'validation_error', 'page must be 1..4');
+    const by = { distance: r => r.distance, time: r => r.seconds, hull: r => r.hull ?? -1, rides: r => r.rides };
+    const pool = board === 'free' || !tier ? BOARD_RIDERS : BOARD_RIDERS.filter(r => r.tier === tier);
+    const ranked = [...pool].sort((a, b) => by[sort](b) - by[sort](a) || b.distance - a.distance);
+    const mine = ranked.find(r => r.wallet === WALLET.toBase58());
+    const at = ranked.indexOf(mine);
+    const rows = ranked.slice((page - 1) * 25, Math.min(page * 25, 100)).map((r, i) => ({ rank: (page - 1) * 25 + i + 1, ...r }));
+    const on = (list) => { const i = [...list].sort((a, b) => b.distance - a.distance).findIndex(r => r.wallet === WALLET.toBase58()); const r = i < 0 ? null : [...list].sort((a, b) => b.distance - a.distance)[i]; return { rank: i < 0 ? null : i + 1, distance: r?.distance ?? 0, seconds: r?.seconds ?? 0, hull: r?.hull ?? null, rides: r?.rides ?? 0 }; };
+    const standing = [...BOARD_TIERS.map(t => ({ board: 'round', level: null, tier: t, ...on(BOARD_RIDERS.filter(r => r.tier === t)) })), ...BOARD_TIERS.map(t => ({ board: 'all', level: null, tier: t, ...on(BOARD_RIDERS.filter(r => r.tier === t)) })), ...[1, 2, 3].map(level => ({ board: 'free', level, tier: null, ...on(BOARD_RIDERS) }))];
+    return { body: { board, level: board === 'free' ? Number(lv ?? 3) : null, tier: board === 'free' ? null : tier, round: { id: 1, endsAt: t0 + 4 * DAY }, prizeRanks: 20, verifiedOnly: false, sort, page, pageSize: 25, total: Math.min(ranked.length, 100), rows, me: mine ? { rank: at + 1, distance: mine.distance, seconds: mine.seconds, hull: mine.hull, rides: mine.rides } : null, standing: q.get('me') === '1' ? standing : null } };
   }],
   ['GET', /^rides\/pending$/, () => ({ body: { ride: [...rides.values()].find(r => r.status === 'awaiting_payment') ?? null } })],   // a ready free ride is not a pending payment (get-pending-ride.handler.ts)
   ['GET', /^rides\/([^/]+)$/, m => { const r = rides.get(m[1]); return r ? { body: r } : problem(404, 'not_found', 'no such ride'); }],
