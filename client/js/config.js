@@ -25,6 +25,14 @@ export const CFG = {
   TRAFFIC_LOOK: 12,          // s – a vehicle pulls into a lane (to overtake, round a hole) only if the truck won't be in it within this; an overtake that meets the truck closer than half of it pulls back in
   TRAFFIC_DRIFT: 2.5,        // s – the AI reads the truck's sideways motion this far ahead (turning out of the depot, wandering over the centre line); slower than .6 m/s sideways is ignored
   TRAFFIC_RUB_GAP: 1.5,      // s – contacts with the SAME vehicle less than this apart are one crash: counted once (st.crashV) and a re-hit costs only what it exceeds that crash's worst
+  CRASH_TRUCK_MASS: 6,       // the rig's weight in a vehicle contact, in the units of VEHICLES.mass (sedan 1, bus 2.2, freighter 3): momentum is shared by mass, so it shoves a car and stalls against a freighter (NOT TRUCK.MASS: that is the handling feel)
+  CRASH_BOUNCE: .15,         // restitution of the FIRST touch of a crash (0 = they stick, 1 = perfect bounce); a sustained push is always 0
+  CRASH_FRICTION: 4,         // m/s² a wrecked vehicle slows down by on its own (brakes on, wheels dragging)
+  CAR_STUN: 1.2,             // s a vehicle sits dazed after a crash before it tries to recover (sim/traffic.js: crashed → back / honk / drive)
+  CAR_BLOCK_T: 5,            // s a stopped vehicle waits for the truck standing in front of it before it backs off (or honks when it can't)
+  CAR_FREE_GAP: 6,           // m of free road ahead that counts as "not blocked": it drives on
+  CAR_BACK_GAP: 12,          // m a vehicle backs off from what blocks it, then waits there until the way is clear
+  CAR_REVERSE_MAX: 3,        // m/s – top speed of a vehicle in reverse
   // road network (js/net/): the road is endless and generated from patterns (country / highway / arterial / town, weights per route in themes/*/index.js `roads`)
   COMPLETE_DIST_K: 0.5,      // the shift counts as complete after RIDE_MIN_SECONDS AND this × MAX_SPEED × RIDE_MIN_SECONDS metres (idling can't bank it); the road itself never ends
   TELEMETRY_HZ: 10,          // online rides only (js/telemetry.js): samples per GAME second – keep = SAMPLE_HZ in server/src/domain/telemetry/telemetry-rules.ts

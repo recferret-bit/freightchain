@@ -61,6 +61,7 @@ Depot geometry: `CFG.START_ACCESS`, `CFG.START_TURN_R`. The turn is a balance pr
 | traffic density | `CFG.TRAFFIC`, `TRAFFIC_MAX`, `TRAFFIC_GAP`, `CROSS_MAX`, `CROSS_GAP` |
 | how fast / how heavy other vehicles are | `js/world/vehicles.js` `VEHICLES`: `v` is the cruise range in m/s, `mass`, `presets` weights. Behaviour multipliers: `PRESETS` in `sim/traffic.js` (`speed`, headway `T`, `over`, `weave`) |
 | crash vs bump vs scratch | `CFG.CRASH_OVERLAP`, `CRASH_CLOSING`, `SCRATCH_DMG`. `contact` / `alignedContact` in `sim/traffic.js`. A direct hit returns a reason and `physics.js` calls `endRide` before the hull check. Bump damage is `bumpDmg` (mass × closing², capped). Do not write `st.s` on a fatal hit: the server treats a jump in `s` as a teleport |
+| crash weight, stuck vehicles | `CFG.CRASH_TRUCK_MASS` (the rig vs `VEHICLES.mass`), `CRASH_BOUNCE`, `CRASH_FRICTION`; recovery: `CAR_STUN`, `CAR_BLOCK_T`, `CAR_FREE_GAP`, `CAR_BACK_GAP`, `CAR_REVERSE_MAX`. `exchange()` / `limp()` / `settle()` in `sim/traffic.js`. The truck must never GAIN speed from a touch (verdict `accel-without-gas`) |
 
 Signal timing (how long you wait at a light): `CFG.SIGNAL_GREEN`, `SIGNAL_CROSS`, `SIGNAL_AMBER`, `SIGNAL_CLEAR`.
 

@@ -175,6 +175,29 @@ check(nightX.night===true&&dayX.night===false&&G.THEMES.some(t=>t.id===dayX.rout
     const fire=G.spawn('fire','emergency','oncoming',20,2.4);
     if(fire){ for(let i=0;i<60*6&&st.mode==='drive';i++){ hold(1); Object.assign(fire,{s:st.s+3.3+fire.def.len/2-.3,lat:2.4,v:0,lv:0}); step(1); } }
     check(!!fire&&st.crashV===1&&100-st.hull<1.5&&st.mode==='drive','a vehicle pinned against the truck for 6 s is one crash (crashV '+st.crashV+', hull −'+(100-st.hull).toFixed(2)+' %)'); }
+  if(s0!==null){ const hold=(v,d=2.4)=>{ st.d=d; st.psi=0; st.v=v; st.vel=v; };
+    // WEIGHT: the rig at 5 m/s into a stopped sedan keeps most of its speed and shoves it along; into a freighter it loses far more and the freighter barely moves
+    const bump=(type,len)=>{ Object.assign(st,{s:s0+300,d:2.4,psi:0,v:5,vel:5,rev:false,hull:100,crashV:0}); G.roads.lastS=st.s; step(2); G.traffic.length=0;
+      const c=G.spawn(type,'slow','ahead',3.3+len/2+2.5,2.4); if(!c) return null; Object.assign(c,{v:0,vDes:.05}); let r=null;
+      for(let i=0;i<90&&st.mode==='drive'&&!r;i++){ step(1); if(c.state==='crashed') r={truck:st.v,car:c.v,state:c.state}; } return r; };
+    const sed=bump('sedan',4.6), fr=bump('freighter',17);
+    check(!!sed&&!!fr&&sed.truck>4&&sed.car>sed.truck&&fr.truck<sed.truck-.4&&fr.car<sed.car-.8,'weight: the rig keeps '+sed?.truck.toFixed(2)+' of 5 m/s and shoves a sedan to '+sed?.car.toFixed(2)+'; against a freighter it keeps '+fr?.truck.toFixed(2)+' and the freighter moves at '+fr?.car.toFixed(2));
+    // THE STUCK BUS: nose to nose with the truck. It must not sit there forever: room behind → it reverses out, then waits; the truck is free to move on. A car right behind it makes it honk instead,
+    // and that car waits in its lane (no overtake round a crashed bus).
+    const nose=(behind)=>{ Object.assign(st,{s:s0+150,d:-2.4,psi:0,v:0,vel:0,rev:false,hull:100,crashV:0}); G.roads.lastS=st.s; step(2); G.traffic.length=0; const bus=G.spawn('bus','cruise','oncoming',20,-2.4); if(!bus) return null;
+      Object.assign(bus,{s:st.s+3.3+bus.def.len/2-.3,v:0,lv:0,vDes:6}); let q=null; for(let i=0;i<3;i++){ hold(0,-2.4); step(1); }   // (it is crashed by now: a car arriving later sees a wreck, not a slow car to pass)
+      if(behind!==null){ q=G.spawn('sedan','overtake','oncoming',60,-2.4); if(!q) return null; Object.assign(q,{s:bus.s+(bus.def.len+q.def.len)/2+behind,v:0,vDes:8}); }
+      const seen=new Set(); let over=false, laneLine=q?q.lane:0, sedWait=false;
+      for(let i=0;i<60*12&&st.mode==='drive';i++){ hold(0,-2.4); step(1); seen.add(bus.state); if(q){ over=over||q.over; sedWait=sedWait||q.wait; } }
+      return { bus, q, seen:[...seen].join('>'), away:bus.s-st.s, over, sedWait, lane:q&&q.lane===laneLine }; };
+    const free=nose(null);
+    check(!!free&&free.seen.includes('crashed')&&free.seen.includes('back')&&free.away>14&&free.bus.state==='hold','a bus nose to nose with the truck backs out and waits ['+free?.seen+'] ('+free?.away.toFixed(1)+' m away)');
+    if(free){ const s1=st.s, c1=st.crashV; for(let i=0;i<60*4&&st.mode==='drive';i++){ st.d=-2.4; st.psi=0; st.v=st.vel=3; step(1); }
+      check(st.mode==='drive'&&st.s-s1>9&&st.crashV===c1,'… and the truck drives on (moved '+(st.s-s1).toFixed(1)+' m, new crashes '+(st.crashV-c1)+')'); }
+    const jam=nose(2);
+    check(!!jam&&jam.seen.includes('honk')&&jam.bus.s-st.s<12&&jam.q.state==='drive'&&!jam.over&&jam.sedWait&&jam.lane,'a bus with a car right behind it honks ['+jam?.seen+'], the car waits in its lane (overtake '+jam?.over+', waiting '+jam?.sedWait+')');
+    const chain=nose(7);
+    check(!!chain&&chain.seen.includes('back')&&chain.away>14&&!chain.over,'a car 7 m behind the bus backs away with it, the bus gets out ['+chain?.seen+'] ('+chain?.away.toFixed(1)+' m)'); }
   st.mode='done'; }
 // one pool, one ride (the server gives every rider of a pool its seed): the same seed starts the trip among the same cars, whatever the last trip left behind
 { const cars=()=>{ st.s=0; G.roads.newTrip(12345); return G.traffic.map(a=>a.preset+a.pick+'@'+a.s.toFixed(2)+'/'+a.lat.toFixed(2)+'>'+a.vDes.toFixed(2)).join(' '); };
