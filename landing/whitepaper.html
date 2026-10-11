@@ -236,7 +236,7 @@
   <ol class="rules">
     <li><b>You need a wallet, not a balance, to look around.</b> Watching a ride, the boards and this paper need no sign-in. Driving, chatting and tipping need one signature.</li>
     <li><b>One account is one wallet.</b> Free rides, tickets, badges and rank belong to the wallet that signed in. A session cookie is not revocable one by one; sign out of shared computers.</li>
-    <li><b>A ticket is spent when the shift starts.</b> A paid ticket is not returned if you crash or abandon. It is returned only if the <em>pool</em> fails: if too few riders buy in during the pool's 24-hour sale window, every buyer is refunded in full (<a href="#onchain">05</a>). Starting a ride while one is open resumes it.</li>
+    <li><b>A ticket is spent when the shift starts.</b> A paid ticket is not returned if you crash or abandon. It is returned only if the <em>pool</em> fails: if too few riders buy in during the 24-hour sale, every buyer is refunded in full (<a href="#onchain">05</a>). Starting a ride while one is open resumes it.</li>
     <li><b>Per-wallet cap.</b> A pool states how many tickets one wallet may hold; the program and the server both enforce it. Promo codes add tickets of a tier and count against the same cap.</li>
     <li><b>Drive by hand, in the real game.</b> The browser records your key presses and the truck's state; timing that looks scripted is <em>flagged</em> for a person to review, and recordings that are impossible are <em>rejected</em>. Using bots, macros or a modified client is against the rules and is the thing the validation is built to catch (<a href="#verify">06</a>).</li>
     <li><b>Keep the tab visible.</b> Time with the tab hidden is not driven time. Slow computers are not penalised: times come from the browser's event clock, and if the game runs below real time it simply takes longer.</li>
@@ -335,7 +335,7 @@
 <!-- ───────── 05 · ON-CHAIN ───────── -->
 <section id="onchain" class="ch">
   <header class="ch-h"><i>05</i><h2>On-chain: the escrow program</h2><p>One Solana program, many prize pools. The vault holds the money; the rules move it.</p></header>
-  <p class="note"><b>Status.</b> The program <code>freightchain_pools</code> (Anchor 1.2, Rust) is written and has 61 passing tests on a local Solana simulator against the reproducible build. An earlier version runs on devnet for testing; this one – the daily schedule and the payout key – is <b>not deployed</b> yet and <b>not audited</b>, devnet only. Nothing on this page is live on a public network yet.</p>
+  <p class="note"><b>Status.</b> The program <code>freightchain_pools</code> (Anchor 1.2, Rust) has 61 passing tests against the reproducible build and runs on <b>devnet</b> for testing. It is <b>not audited</b> and not on mainnet.</p>
 
   <h3 class="sub">WHERE THE MONEY GOES</h3>
   <figure class="diagram">
@@ -417,7 +417,7 @@
 
   <h3 class="sub">THE CLOCK</h3>
   <figure class="diagram wide">
-    <svg viewBox="0 0 960 230" role="img" aria-label="Timeline of a 1-hour pool: anyone opens it on its daily slot; for 24 hours tickets sell; 2 more hours rides count; 48 hours of review; then the winners are paid; 14 days after the review anyone can expire or close it.">
+    <svg viewBox="0 0 960 230" role="img" aria-label="A 1-hour pool: 24 h on sale, 2 h more rides, 48 h review, then payout; 14 days later anyone can expire or close it.">
           <line x1="40" y1="90" x2="930" y2="90" class="ln i"/>
           <line x1="50" y1="80" x2="50" y2="100" class="ln i"/>
           <line x1="300" y1="80" x2="300" y2="100" class="ln i"/>
@@ -435,7 +435,7 @@
           <text x="750" y="116" text-anchor="middle" class="tx s">grace</text>
           <rect x="50" y="132" width="246" height="78" rx="3" class="bx hi"/>
           <text x="66" y="156" class="tx b big" style="font-size:17px">On sale</text>
-          <text x="66" y="177" class="tx">reach the minimum or all refunded;</text>
+          <text x="66" y="177" class="tx">reach the minimum or refund;</text>
           <text x="66" y="195" class="tx">rides count once it is reached</text>
           <rect x="304" y="132" width="112" height="78" rx="3" class="bx"/>
           <text x="316" y="156" class="tx t">Last rides</text>
@@ -443,7 +443,7 @@
           <rect x="424" y="132" width="232" height="78" rx="3" class="bx"/>
           <text x="440" y="156" class="tx t">Review</text>
           <text x="440" y="177" class="tx s">winners published; admins check</text>
-          <text x="440" y="195" class="tx s">every ride that looks strange</text>
+          <text x="440" y="195" class="tx s">every odd-looking ride</text>
           <rect x="664" y="132" width="172" height="78" rx="3" class="bx"/>
           <text x="680" y="156" class="tx t">Payout</text>
           <text x="680" y="177" class="tx s">verified winners paid,</text>
@@ -452,11 +452,11 @@
           <text x="854" y="156" class="tx t">Net</text>
           <text x="854" y="177" class="tx s">anyone</text>
         </svg>
-    <figcaption><b>A new 1-hour pool every 24 hours.</b> No prize is paid before the review window ends – the program refuses it, even from the admin. If nobody settles, 14 days later any wallet can start the refunds (no prize paid yet) or finish the split to the declared treasuries.</figcaption>
+    <figcaption><b>A new 1-hour pool every 24 hours.</b> The program refuses any prize before the review ends, even from the admin. If nobody settles, 14 days later any wallet can refund (no prize paid yet) or finish the split.</figcaption>
   </figure>
   <div class="grid3">
-    <article class="card"><h3>SALE WINDOW</h3><p>24 hours. Tickets sell; no ticket after it. Below the minimum, every buyer is refunded.</p></article>
-    <article class="card"><h3>REVIEW WINDOW</h3><p>48 hours after the last rides. The winners list is public; every flagged ride gets a human look.</p></article>
+    <article class="card"><h3>SALE WINDOW</h3><p>24 hours of ticket sales. Below the minimum, every buyer is refunded.</p></article>
+    <article class="card"><h3>REVIEW WINDOW</h3><p>48 hours. The winners list is public; every flagged ride gets a human look.</p></article>
     <article class="card"><h3>14-DAY SAFETY NET</h3><p>After the review plus 14 days the last window needs nobody's key: anyone can expire or close the pool.</p></article>
   </div>
   <p class="dim">The program reads the chain's own clock, so these windows are enforced on chain and cannot be moved later.</p>
@@ -683,7 +683,7 @@
     <tbody>
       <tr><td><b>Smart-contract</b></td><td>Bugs in an unaudited program can lose funds.</td><td>Devnet only; reproducible build; 51 tests; refund paths that need no key. An independent audit is a precondition for mainnet.</td></tr>
       <tr><td><b>Cheating</b></td><td>A modified or scripted client could still pass inside the checks.</td><td>Chain, physics and the server's road; challenge channel (kinds table empty); human review of flags; a captcha on the roadmap (<a href="#risks">08</a>); replay core planned (<a href="#verify">06</a>).</td></tr>
-      <tr><td><b>Operator trust</b></td><td>The server's payout key pays verified winners within the cap; the admin holds the treasuries.</td><td>Signed, audited decisions; payouts capped on chain; all of it readable on chain.</td></tr>
+      <tr><td><b>Operator trust</b></td><td>A payout key pays verified winners within the cap; the admin holds the treasuries.</td><td>Signed, audited decisions; payouts capped on chain; all of it readable on chain.</td></tr>
       <tr><td><b>Availability</b></td><td>A long shift can be lost if your tab or connection dies for more than 150 s.</td><td>Resume of an open ride; honest pauses cost nothing; final upload retries.</td></tr>
       <tr><td><b>Regulation</b></td><td>Paid prize games are regulated differently around the world.</td><td>Devnet, no value. The mainnet question is answered per region before any mainnet launch.</td></tr>
       <tr><td><b>Loss of SOL</b></td><td>SOL spent on a shift can be lost. A prize is not guaranteed. Not a deposit or an investment.</td><td>Both profile boxes must be on before a paid shift. Devnet SOL has no monetary value.</td></tr>
