@@ -17,8 +17,8 @@ export const SIGNAL_CLEAR = 2;
 export const HOLES_ON = true;
 export const HOLE_CHANCE = 0.045;
 export const HOLE_FIRST = 150;
-/** …per trip (client/js/trips.js `holesFrom`; a ride's trip is Ride.trip, domain/rides/ride-trip.ts): the free run's natural sinkholes start where its
-    one minute can never reach (a brisk driver covers ~820 m of a 60 s run from the depot) – every other trip, and a ride from before trips, HOLE_FIRST */
+/** …per trip (client/js/trips.js `holesFrom`; a ride's trip is Ride.trip, domain/rides/ride-trip.ts): the easy free runs' natural sinkholes start where their
+    shift can never reach (free / free-1: a brisk driver covers ~820 m of a 60 s run; free-g 2500 m for 2 min, free-1b 4000 m for 3 min) – every other trip, and a ride from before trips, HOLE_FIRST */
 export const TRIP_HOLE_FIRST: Readonly<Record<string, number>> = { free: 1200, 'free-1': 1200, 'free-2': 400, 'free-g': 2500, 'free-1b': 4000, 'free-2b': 400 };
 export const holeFirstOf = (trip: string | null): number => (trip !== null ? TRIP_HOLE_FIRST[trip] : undefined) ?? HOLE_FIRST;
 /** CFG.OFFROAD_FAIL_SECONDS – the game ends the ride after this long off the tarmac (draining 2× as fast once back on it) */
