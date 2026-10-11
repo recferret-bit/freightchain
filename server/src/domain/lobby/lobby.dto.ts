@@ -154,6 +154,8 @@ export interface ProfileDto {
   career: StatsDto;
   recent: RecentRideDto[];
   achievements: AchievementDto[];
+  /** where the badge cNFTs live (explorer links); null while minting is not configured */
+  badgeChain: { collection: string; tree: string } | null;
   tickets: TicketBalanceDto[];
   /** the newest lines of the ticket audit trail */
   grants: TicketGrantDto[];

@@ -3,7 +3,12 @@
   "symbol": "FCHAIN",
   "description": "Every free run is a licence of its own. This one is stamped and framed. Condition: Clear the EASY free run. A soulbound Freight Chain achievement – compressed NFT, non-transferable.",
   "image": "__IMAGE__",
+  "seller_fee_basis_points": 0,
   "external_url": "https://freightchain.fun/",
+  "collection": {
+    "name": "Freight Chain Achievements",
+    "family": "Freight Chain"
+  },
   "attributes": [
     {
       "trait_type": "Family",
@@ -20,6 +25,11 @@
     {
       "trait_type": "Condition",
       "value": "Clear the EASY free run."
+    },
+    {
+      "trait_type": "Requirement",
+      "value": 1,
+      "display_type": "number"
     },
     {
       "trait_type": "Soulbound",

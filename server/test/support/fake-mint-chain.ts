@@ -11,6 +11,8 @@ export class FakeMintChain extends AchievementMintChainPort {
   readonly assets = new Map<string, string>();
   /** make the next mint throw after signing (`onSigned` already ran) or before (`before`) */
   failNext: { error: Error; before: boolean } | null = null;
+  /** what the tree reports (null = unknown) */
+  usage: { minted: number; capacity: number } | null = { minted: 0, capacity: 65_536 };
   /** an asset id is not parseable yet */
   assetPending = false;
   private n = 0;
@@ -30,6 +32,7 @@ export class FakeMintChain extends AchievementMintChainPort {
     return { signature };
   }
 
+  async treeUsage() { return this.usage; }
   async signatureStatus(signature: string): Promise<MintSignatureStatus> { return this.statuses.get(signature) ?? 'pending'; }
   async assetIdOf(signature: string): Promise<string | null> { return this.assets.get(signature) ?? null; }
 }

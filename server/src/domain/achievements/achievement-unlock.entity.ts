@@ -23,5 +23,5 @@ export interface AchievementDto {
   /** how far along the wallet is (value clamped to the target) – the locked cards show it */
   progress: { value: number; target: number };
   /** the compressed NFT of an earned badge: null = none yet / not mintable; status planned | sent | minted | failed | skipped */
-  nft: { status: string; assetId: string | null } | null;
+  nft: { status: string; assetId: string | null; signature: string | null } | null;
 }

@@ -35,6 +35,9 @@ export interface RulesConfig {
   orderTtlMs: number;
   /** credit tickets at 'confirmed'; 'finalized' also gates rides on finality (mainnet) */
   commitment: 'confirmed' | 'finalized';
+  /** the badge cNFT collection + tree (the profile links them in the explorer); unset = minting is not configured */
+  achievementCollection?: string;
+  achievementTree?: string;
   /** is a crank key configured? (the key itself stays in EnvService) */
   crankEnabled: boolean;
   priorityFee: { percentile: number; minMicrolamports: number; maxMicrolamports: number };

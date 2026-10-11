@@ -141,6 +141,7 @@ export function lobbyScenarios(h: () => Harness): void {
       expect(p).toMatchObject({ wallet: w.address, freeRides: 10, freeRidesMax: 5, demo: false, stats: { rides: 0, completed: 0, metres: 0 } });
       expect(p.achievements).toHaveLength(32); // 8 ladders of 3-4 tiers + the legacy top-20
       expect(p.achievements.find((a: { id: string }) => a.id === 'century-3')).toMatchObject({ family: 'distance', tier: 3, tierName: 'Gold', progress: { value: 0, target: 2000 }, nft: null, earnedAt: null });
+      expect(p.badgeChain).toBeNull();                      // minting is not configured here
       expect(p.achievements.every((a: { earnedAt: number | null }) => a.earnedAt === null)).toBe(true);
       expect(p.achievements.find((a: { id: string }) => a.id === 'top-20').awardedAtRoundClose).toBe(true);
     });

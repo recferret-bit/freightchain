@@ -3,7 +3,12 @@
   "symbol": "FCHAIN",
   "description": "No assist, no net. Just a driver, a wheel and the truth about their reflexes. Condition: Complete 20 free rides without assist. A soulbound Freight Chain achievement – compressed NFT, non-transferable.",
   "image": "__IMAGE__",
+  "seller_fee_basis_points": 0,
   "external_url": "https://freightchain.fun/",
+  "collection": {
+    "name": "Freight Chain Achievements",
+    "family": "Freight Chain"
+  },
   "attributes": [
     {
       "trait_type": "Family",
@@ -20,6 +25,11 @@
     {
       "trait_type": "Condition",
       "value": "Complete 20 free rides without assist."
+    },
+    {
+      "trait_type": "Requirement",
+      "value": 20,
+      "display_type": "number"
     },
     {
       "trait_type": "Soulbound",

@@ -137,4 +137,16 @@ describe('MintAchievementsHandler – soulbound badge cNFTs', () => {
     expect(await row()).toMatchObject({ status: 'planned', attempts: 0, error: 'mint would fail' });
     expect(await run()).toMatchObject({ minted: 1 });
   });
+
+  it('a FULL tree sends nothing (the rows wait for a new tree) but still resolves what is in flight; a nearly full one is reported', async () => {
+    const { ctx, run, row } = await setup();
+    ctx.mintChain.usage = { minted: 65_536, capacity: 65_536 };
+    expect(await run()).toMatchObject({ queued: 1, minted: 0, waiting: 1, tree: { minted: 65_536, capacity: 65_536 } });
+    expect(await row()).toMatchObject({ status: 'planned', attempts: 0 });
+    expect(ctx.mintChain.minted).toEqual([]);
+    ctx.mintChain.usage = { minted: 100, capacity: 65_536 };
+    expect(await run()).toMatchObject({ minted: 1, tree: { minted: 100 } });
+    ctx.mintChain.usage = null; // unknown (RPC cannot read it): no guard, the program is the judge
+    expect(await run()).toMatchObject({ tree: null });
+  });
 });

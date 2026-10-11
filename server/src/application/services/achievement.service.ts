@@ -43,7 +43,7 @@ export class AchievementService {
   async list(wallet: string, facts?: Facts): Promise<AchievementDto[]> {
     const [unlocked, minted, f] = await Promise.all([this.unlocks.listByWallet(wallet), this.mints.listByWallet(wallet), facts ?? this.facts(wallet)]);
     const got = new Map(unlocked.map((u) => [u.achievementId, u.earnedAt.getTime()]));
-    const nft = new Map(minted.map((m) => [m.achievementId, { status: m.status, assetId: m.assetId }]));
+    const nft = new Map(minted.map((m) => [m.achievementId, { status: m.status, assetId: m.assetId, signature: m.status === 'minted' ? m.signature : null }]));
     return ACHIEVEMENTS.map((a) => {
       const { value, target } = progressOf(a, f);
       return {

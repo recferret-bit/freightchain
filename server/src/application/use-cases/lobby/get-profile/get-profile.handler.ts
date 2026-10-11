@@ -58,6 +58,7 @@ export class GetProfileHandler implements IQueryHandler<GetProfileQuery, Profile
         review: reviewOf(r.tier, r.verdict === null ? null : { status: r.verdict, overridden: r.overridden }, r.status),
       })),
       achievements,
+      badgeChain: rules.achievementCollection && rules.achievementTree ? { collection: rules.achievementCollection, tree: rules.achievementTree } : null,
       tickets,
       grants: grants.map(toTicketGrantDto),
       agreements: toAgreementsDto(player),

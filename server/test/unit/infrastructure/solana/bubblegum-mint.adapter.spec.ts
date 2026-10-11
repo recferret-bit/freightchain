@@ -27,6 +27,10 @@ describe('BubblegumMintAdapter', () => {
     expect(a.metadataUri('no-such-badge')).toBeNull();
   });
 
+  it('the tree usage is unknown (null, never a throw) when minting is not configured', async () => {
+    expect(await new BubblegumMintAdapter(env()).treeUsage()).toBeNull();
+  });
+
   it('reads a transaction\'s state: landed with an error = failed, confirmed / finalized, still pending, expired once the blockhash is gone', async () => {
     const a = new BubblegumMintAdapter(env());
     const at = (status: unknown, height = 0) => { (a as unknown as { rpc: unknown }).rpc = rpcWith(status, height); return a.signatureStatus('sig', 100); };

@@ -16,6 +16,8 @@ import { MintAchievementsCommand, type MintPassDto } from './mint-achievements.c
 
 /** unlocks queued per pass (the batch limits the transactions, this limits the read) */
 const QUEUE_READ = 200;
+/** the tree is reported as an error from this share of its capacity */
+const TREE_WARN_AT = 0.9;
 
 /**
  * The badge mint job (docs/agents/achievements.md). An UNLOCK is a database row that is never removed; a compressed NFT cannot be taken back, so a mint is
@@ -41,11 +43,15 @@ export class MintAchievementsHandler implements ICommandHandler<MintAchievements
 
   async execute(cmd: MintAchievementsCommand): Promise<MintPassDto> {
     const minter = this.chain.address;
-    const pass: MintPassDto = { enabled: minter !== null, minter, queued: 0, minted: 0, skipped: 0, waiting: 0, failed: 0, retried: 0 };
+    const pass: MintPassDto = { enabled: minter !== null, minter, queued: 0, minted: 0, skipped: 0, waiting: 0, failed: 0, retried: 0, tree: null };
     if (!minter) return pass;
     if (cmd.retry) pass.retried = await this.mints.retryFailed(this.clock.now());
     pass.queued = await this.queue(cmd.delayMs);
-    let sends = 0;
+    pass.tree = await this.chain.treeUsage().catch(() => null);
+    const full = pass.tree !== null && pass.tree.minted >= pass.tree.capacity;
+    if (pass.tree && pass.tree.minted >= pass.tree.capacity * TREE_WARN_AT) this.log.error({ event: 'achievement-tree', msg: `the badge tree is ${pass.tree.minted}/${pass.tree.capacity} full${full ? ' – NO badge can be minted until a new tree is set up (setup-tree.mjs, then ACHIEVEMENT_TREE)' : ' – set up a new tree soon'}` });
+    let sends = full ? cmd.batch : 0; // a full tree: planned rows wait (the program would refuse them); sent rows are still resolved
+
     for (const row of await this.mints.listWork(Math.max(50, cmd.batch * 4))) {
       if (row.status === 'planned' && sends >= cmd.batch) { pass.waiting += 1; continue; }
       if (row.status === 'planned') sends += 1;

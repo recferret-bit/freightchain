@@ -66,7 +66,7 @@ const ALLOW: Record<ClientEventName, readonly string[]> = {
   session_restored: ['surface', 'request_alias', 'is_demo'],
   lobby_viewed: ['is_demo', 'round_id'],
   lobby_tab_viewed: ['tab'],
-  achievement_nft_clicked: ['achievement_id', 'tier'],
+  achievement_nft_clicked: ['achievement_id', 'tier', 'link'],
   ride_buy_clicked: ['tier_id', 'is_free', 'price_usd', 'is_demo'],
   agreement_toggled: ['kind', 'on'],
   payment_submitted: ['ride_id', 'tier_id'],

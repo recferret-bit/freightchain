@@ -21,4 +21,6 @@ export interface MintPassDto {
   waiting: number;
   failed: number;
   retried: number;
+  /** the tree's fill (null = unknown); a full tree sends nothing */
+  tree: { minted: number; capacity: number } | null;
 }

@@ -264,12 +264,15 @@ const metadata = (a) => {
     symbol: 'FCHAIN',
     description: `${fam.flavour} Condition: ${a.desc} A soulbound Freight Chain achievement – compressed NFT, non-transferable.`,
     image: '__IMAGE__',
+    seller_fee_basis_points: 0,
     external_url: 'https://freightchain.fun/',
+    collection: { name: 'Freight Chain Achievements', family: 'Freight Chain' },
     attributes: [
       { trait_type: 'Family', value: FAMILY_NAMES[a.family] },
       { trait_type: 'Tier', value: tier.name },
       { trait_type: 'Tier Number', value: a.tier },
       { trait_type: 'Condition', value: a.desc },
+      { trait_type: 'Requirement', value: a.target, display_type: 'number' },
       { trait_type: 'Soulbound', value: 'Yes' },
       { trait_type: 'Game', value: 'Freight Chain' },
     ],
@@ -294,6 +297,7 @@ if (!ONLY.length) {
     symbol: 'FCHAIN',
     description: 'Soulbound compressed NFTs earned by driving in Freight Chain – first mile to platinum legend. One badge per milestone, minted to the wallet that earned it.',
     image: '__IMAGE__',
+    seller_fee_basis_points: 0,
     external_url: 'https://freightchain.fun/',
     properties: { category: 'image', files: [{ uri: '__IMAGE__', type: 'image/png' }] },
   }, null, 2) + '\n');

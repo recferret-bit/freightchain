@@ -167,6 +167,7 @@ th button.on{color:var(--amber)}
 .ac img{width:112px;height:112px;border-radius:12px}
 .ac .nm{font-weight:bold;font-size:13px}.ac .tr{font-size:10px;letter-spacing:.16em}.ac .ds{font-size:11px;color:var(--dim);min-height:2.6em}
 .ac .when{font-size:11px;color:var(--good)}.ac .when.mint{color:var(--amber)}.ac .when.warn{color:var(--needle)}.ac .when a{color:inherit}
+.ac .nft{display:grid;gap:3px;justify-items:center}.ac .lk{display:flex;flex-wrap:wrap;justify-content:center;gap:2px 8px;font-size:10px}.ac .lk a{color:var(--dim)}.ac .lk a:last-child{color:var(--amber)}.ach-chain{font-size:12px}
 .ac.t1 .tr{color:#c8844a}.ac.t2 .tr{color:#c9ced6}.ac.t3 .tr{color:var(--amber)}.ac.t4 .tr{color:#9be7ff}
 .ac.got.t1{border-color:#c8844a66}.ac.got.t2{border-color:#c9ced66a}.ac.got.t3{border-color:#ffcf5a88}.ac.got.t4{border-color:#9be7ff99}
 .ac.lock{opacity:.78}.ac.lock .tr{color:var(--dim)}

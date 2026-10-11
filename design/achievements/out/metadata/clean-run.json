@@ -3,7 +3,12 @@
   "symbol": "FCHAIN",
   "description": "Not a dent, not a scratch. The hull came home as pristine as it left. Condition: Finish a shift without a scratch (hull 100 %). A soulbound Freight Chain achievement – compressed NFT, non-transferable.",
   "image": "__IMAGE__",
+  "seller_fee_basis_points": 0,
   "external_url": "https://freightchain.fun/",
+  "collection": {
+    "name": "Freight Chain Achievements",
+    "family": "Freight Chain"
+  },
   "attributes": [
     {
       "trait_type": "Family",
@@ -20,6 +25,11 @@
     {
       "trait_type": "Condition",
       "value": "Finish a shift without a scratch (hull 100 %)."
+    },
+    {
+      "trait_type": "Requirement",
+      "value": 1,
+      "display_type": "number"
     },
     {
       "trait_type": "Soulbound",

@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Connection, type Keypair } from '@solana/web3.js';
 import bs58 from 'bs58';
-import { mintV2, mplBubblegum, parseLeafFromMintV2Transaction } from '@metaplex-foundation/mpl-bubblegum';
+import { mintV2, mplBubblegum, parseLeafFromMintV2Transaction, safeFetchTreeConfigFromSeeds } from '@metaplex-foundation/mpl-bubblegum';
 import { setComputeUnitLimit, setComputeUnitPrice } from '@metaplex-foundation/mpl-toolbox';
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
 import { createSignerFromKeypair, keypairIdentity, publicKey, some, type Umi } from '@metaplex-foundation/umi';
@@ -78,6 +78,16 @@ export class BubblegumMintAdapter extends AchievementMintChainPort {
     if (s?.confirmationStatus === 'finalized') return 'finalized';
     if (s?.confirmationStatus === 'confirmed' || s?.confirmationStatus === 'processed') return s.confirmationStatus === 'processed' ? 'pending' : 'confirmed';
     return lastValidBlockHeight > 0 && (await this.rpc.primaryOnly((x) => x.getBlockHeight(this.env.solanaCommitment))) > lastValidBlockHeight ? 'expired' : 'pending';
+  }
+
+  async treeUsage(): Promise<{ minted: number; capacity: number } | null> {
+    try {
+      const cfg = await safeFetchTreeConfigFromSeeds(this.umi, { merkleTree: publicKey(this.env.achievementTree!) });
+      return cfg ? { minted: Number(cfg.numMinted), capacity: Number(cfg.totalMintCapacity) } : null;
+    } catch (e) {
+      this.logger.debug(`tree usage: ${(e as Error).message}`);
+      return null;
+    }
   }
 
   async assetIdOf(signature: string): Promise<string | null> {
