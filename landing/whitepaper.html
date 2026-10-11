@@ -77,7 +77,8 @@
       <tr><td>Anti-cheat v3: challenge channel (kinds table empty), the server's road, budgets, bulk re-judge</td><td><span class="pill wip">BUILT · NEXT DEPLOY</span></td><td><a href="#verify">06</a></td></tr>
       <tr><td>Live streams, replays, chat, paid donations to the driver</td><td><span class="pill ok">LIVE · DEVNET SOL</span></td><td><a href="#stream">07</a></td></tr>
       <tr><td>Escrowed prize pools (Anchor program)</td><td><span class="pill wip">WRITTEN, TESTED · NOT DEPLOYED</span></td><td><a href="#onchain">05</a></td></tr>
-      <tr><td>Prize payouts, the garage, badges as tokens, mainnet</td><td><span class="pill plan">PLANNED</span></td><td><a href="#rewards">04</a>, <a href="#risks">08</a></td></tr>
+      <tr><td>Achievement badges as soulbound compressed NFTs</td><td><span class="pill ok">LIVE · DEVNET</span></td><td><a href="#rewards">04</a></td></tr>
+      <tr><td>Prize payouts, the garage, mainnet</td><td><span class="pill plan">PLANNED</span></td><td><a href="#rewards">04</a>, <a href="#risks">08</a></td></tr>
     </tbody>
   </table></div>
   <p class="dim note">There is no Freight Chain token and none is planned in this document. Nothing here is an offer to sell anything, or financial advice. Read <a href="#risks">section 08</a> before you put anything in.</p>
@@ -257,12 +258,12 @@
     <tbody>
       <tr><td><b>Free rides</b> – 10 at sign-up, daily refill stops at 5</td><td>Every wallet</td><td><span class="pill ok">LIVE</span></td></tr>
       <tr><td><b>Free board</b> – every completed free ride ranks</td><td>Free drivers</td><td><span class="pill ok">LIVE</span></td></tr>
-      <tr><td><b>Badges</b> – First Mile, Shift Complete, Night Owl, Century, Clean Run, Cold Start, On My Own, one per free level; Top 20 after a round closes</td><td>Wallets that earn them</td><td><span class="pill ok">LIVE (server-side)</span></td></tr>
+      <tr><td><b>Badges</b> – 31 in eight ladders of 3–4 tiers, Bronze to Platinum: rides started, paid shifts, night shifts, distance, clean runs, Siberia, unassisted free rides, the three free levels. The server counts them from the rides it judged; a rejected recording earns nothing</td><td>Wallets that earn them</td><td><span class="pill ok">LIVE</span></td></tr>
       <tr><td><b>Tips and effects from spectators</b> – SOL from a viewer's wallet straight to yours</td><td>The driver being watched</td><td><span class="pill ok">LIVE · DEVNET</span></td></tr>
       <tr><td><b>Promo codes</b> – free tickets of a tier</td><td>Whoever holds a code</td><td><span class="pill wip">BUILT</span></td></tr>
       <tr><td><b>Pool prizes</b> – the prize share of a pool, to the top of its board</td><td>Verified finishers of that pool</td><td><span class="pill wip">PROGRAM WRITTEN · NOT DEPLOYED</span></td></tr>
       <tr><td><b>Sponsorship</b> – anyone adds SOL to a pool's pot</td><td>The pool, split by its rules</td><td><span class="pill wip">PROGRAM WRITTEN · NOT DEPLOYED</span></td></tr>
-      <tr><td><b>Click-to-mint badges</b> – a badge you choose to mint, never auto-minted</td><td>Wallets with a paid ride</td><td><span class="pill plan">PLANNED</span></td></tr>
+      <tr><td><b>Badge NFTs</b> – each earned badge is minted an hour later as a soulbound compressed NFT (Metaplex Bubblegum v2; the collection is frozen for good, so it cannot be sold or moved). A dedicated key mints and nothing else; art on Arweave</td><td>Wallets that earn them</td><td><span class="pill ok">LIVE · DEVNET</span></td></tr>
       <tr><td><b>The garage</b> – cosmetic and comfort parts (gold wheel, gauge faces, paint, a heavier battery)</td><td>Owners</td><td><span class="pill plan">PLANNED</span></td></tr>
     </tbody>
   </table></div>
@@ -504,7 +505,7 @@
     <li><b>Blinks.</b> A Solana Action in a social post that opens “enter / sponsor this week's pool”.</li>
     <li><b>Chain-anchored seeds and receipts.</b> A ride seed derived from a block hash recorded at start, and payout transactions that carry the ride's recording root in a memo.</li>
     <li><b>A pool crank and session keys.</b> A server-side <code>fail_pool</code> and wallet session keys. Not needed for safety: a player can always trigger the refund.</li>
-    <li><b>Badges as tokens.</b> Non-transferable badges that encode the shift (“8 hours on the Trans-Siberian at night”), minted on request.</li>
+    <li><b>Badges on mainnet.</b> A mainnet collection and tree, with the art re-uploaded, once the pool program is there.</li>
   </ul>
 </section>
 
@@ -696,7 +697,7 @@
     <li class="done"><b>Built</b> (mid-Sep – Oct 2026) The driving sim; sign-in with Solana; server-timed rides; verified-play recording and verdicts (shadow); signed admin review; live streams, replays, chat, paid donations; the escrow program and its server mirror, written and tested; garage, promo codes, cosmetics; analytics half wired.</li>
     <li class="now"><b>Devnet release</b> (Oct 13 – Nov 30) The verified program build on devnet; the first real pools – tickets bought, a missed goal refunded, prizes paid; verdict thresholds (prompts included) tuned on real rides, then enforced; analytics finished; twenty outside drivers; a heavy load test; a small crew of four – a CPO / COO hybrid, QA, community and support, a content creator.</li>
     <li><b>Mainnet</b> (Dec 2026) Legals (the skill prizes, terms, privacy, regions blocked where needed); an outside penetration test of the API, sessions and admin zone; a program review on the published build; the load test repeated on the release candidate; mainnet pools with published rules; a public Dune board of the program.</li>
-    <li><b>Long haul</b> (2027) Garage parts and promo cosmetics as NFTs; achievements as soulbound cNFTs; sponsors, per-km pledges and convoys on top of tips; a storybook workshop where SOL buys attempts at a new prop, vehicle or landmark and drivers vote what ships; a deterministic replay core that re-simulates a paid finish.</li>
+    <li><b>Long haul</b> (2027) Garage parts and promo cosmetics as NFTs; sponsors, per-km pledges and convoys on top of tips; a storybook workshop where SOL buys attempts at a new prop, vehicle or landmark and drivers vote what ships; a deterministic replay core that re-simulates a paid finish.</li>
   </ol>
   <p class="dim">Cut on purpose: a token, pay-to-win parts, mobile and Telegram, paid ads before someone owns growth, a big team, an eight-hour mandatory ride with forced stops, a second chain.</p>
 

@@ -71,7 +71,8 @@ A wallet listed in `DEMO_WALLETS` drives a paid shift `DEMO_SCALE` times shorter
 | Public ride receipts, 𝕏 card SSR, in-game 𝕏 sharing | Yes (`/r/:id`, Web Intent) | Live |
 | Escrow program | v1 on devnet, initialized. v2 (one pool a day, a payout key, a review window): 17 instructions, 14 events, 25 errors, on devnet since Oct 11 (`8No42h…GCA1p`, v1 `9e7phd…` retired) | Initialized, payout key named, the 1 h series runs a test schedule. freightchain.fun runs it (`PAYMENT_MODE=program`, Oct 11) |
 | Prize payouts from a pool vault | v2: the server's payout job pays the verified top 20 after the 48 h review, once every ride of the pool is decided; an admin can HOLD it | After the results, on an explicit switch |
-| Token, mainnet, captcha, NFT badges | No | No |
+| Achievement badges as soulbound cNFTs | Yes: 31 tiered badges, a Bubblegum v2 mint job, devnet collection + tree (`56ijQ5…XoMC`, `45NKrZ…M336`); transfer refused on chain | Live on devnet. Mainnet waits for the same gates as the program |
+| Token, mainnet, captcha | No | No |
 
 Production stays on the transfer path until the Colosseum results, the devnet exit list, and an explicit deploy. That rule is [`docs/escrow-open-items.md`](docs/escrow-open-items.md) (Q-K, Q-L). The top of that file still says "nothing deployed"; Phase 1 below it records the 8 Oct deploy. The explorer is the check.
 
@@ -250,6 +251,12 @@ Read: [`docs/replay-and-donations/index.html`](docs/replay-and-donations/index.h
 Running totals per rider and for the whole game: rides, time, kilometres, crashes, donations. Every started ride that ended counts. Free and paid are counted apart. Reads are cached for 15 seconds. Production Redis has a password and no published port.
 
 Read: [`docs/statistics.md`](docs/statistics.md)
+
+### Achievements and badge NFTs
+
+Eight ladders of three or four tiers (Road, Shifts, Night, Distance, Clean, Siberia, Solo, Licence), 31 badges from Bronze to Platinum; the Shifts ladder counts paid shifts only. The server derives every count from the rides it judged, and a rejected recording earns nothing. Each earned badge is minted, an hour later and after a second check, as a **soulbound compressed NFT** (Metaplex Bubblegum v2 in an MPL-Core collection whose freeze plugin nobody can lift) to the wallet that earned it, by a dedicated key that can mint and nothing else. Art and metadata live on Arweave through Irys. The profile shows locked and earned cards with progress, the explorer, Solscan and Orb links, the mint transaction and a POST ON X button. `scripts/achievements/` creates the tree and collection, uploads the art and smoke-tests the mint and the refused transfer.
+
+Read: [`docs/agents/achievements.md`](docs/agents/achievements.md)
 
 ### Garage and promo codes
 
@@ -449,7 +456,7 @@ Every directory at the repo root. `.git` is the only one left out.
 - [`.claude/`](.claude) — project skills. One folder per skill. The index is [Skills](#skills).
 - [`client/`](client) — the game, the lobby, the admin page, and the model viewer.
 - [`deploy/`](deploy/README.md) — Docker, host nginx, certbot. `npm run deploy` ships `git archive HEAD`.
-- [`design/`](design) — icon candidates and the YouTube banners. The shipped icon is generated into `client/`.
+- [`design/`](design) — icon candidates, the YouTube banners and the achievement badge art generator (`design/achievements/`). The shipped icon is generated into `client/`.
 - [`docs/`](docs) — plans and explainers. [`docs/agents/`](docs/agents) holds the agent detail [`AGENTS.md`](AGENTS.md) points to.
 - [`landing/`](landing) — the `/` page and the whitepaper. Its own Vite project.
 - [`media/`](media) — promo clips and the chiptune synth, including the game's own sound effects.
