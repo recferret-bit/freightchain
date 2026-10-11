@@ -69,7 +69,7 @@ A wallet listed in `DEMO_WALLETS` drives a paid shift `DEMO_SCALE` times shorter
 | Live watch, replays, CB chat, devnet tips to the driver | Yes | Live. Effects run on free rides only |
 | Garage, promo codes | Yes | Lobby tabs. Cosmetics are colours |
 | Public ride receipts, 𝕏 card SSR, in-game 𝕏 sharing | Yes (`/r/:id`, Web Intent) | Live |
-| Escrow program | v1 on devnet, initialized. v2 (one pool a day, a payout key, a review window) on branch `pool-series`: 17 instructions, 14 events, 25 errors | v2 is not deployed; it needs a fresh program id. The website is still `PAYMENT_MODE=transfer` |
+| Escrow program | v1 on devnet, initialized. v2 (one pool a day, a payout key, a review window): 17 instructions, 14 events, 25 errors, built for `8No42h…GCA1p` | v2 is not deployed yet. The website is still `PAYMENT_MODE=transfer` |
 | Prize payouts from a pool vault | v2: the server's payout job pays the verified top 20 after the 48 h review, once every ride of the pool is decided; an admin can HOLD it | After the results, on an explicit switch |
 | Token, mainnet, captcha, NFT badges | No | No |
 
