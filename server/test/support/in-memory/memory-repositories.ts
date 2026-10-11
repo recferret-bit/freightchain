@@ -209,7 +209,7 @@ export class MemoryRideQuery extends RideQueryPort {
     return {
       stats: { started: started.length, completed: done.length, metres, best: done.reduce((m, r) => Math.max(m, r.lastS), 0) },
       facts: {
-        started: started.length, completed: fair.length, totalMetres: metres - rejected.reduce((sum, r) => sum + r.lastS, 0),
+        started: started.length, paidShifts: fair.filter((r) => r.tier !== 'free').length, totalMetres: metres - rejected.reduce((sum, r) => sum + r.lastS, 0),
         nightShifts: fair.filter((r) => r.driveSeconds > 0 && r.nightSeconds >= 0.5 * r.driveSeconds).length,
         cleanRuns: fair.filter((r) => r.hull !== null && r.hull >= 99.5).length,
         siberiaShifts: fair.filter((r) => r.route === 'siberia').length,

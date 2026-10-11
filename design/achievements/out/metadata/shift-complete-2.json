@@ -1,7 +1,7 @@
 {
   "name": "Shift Worker",
   "symbol": "FCHAIN",
-  "description": "The clock ran out and the line was crossed. Paperwork stamped, cargo delivered. Condition: Finish 5 shifts. A soulbound Freight Chain achievement – compressed NFT, non-transferable.",
+  "description": "The clock ran out and the line was crossed. Paperwork stamped, cargo delivered. Condition: Finish 5 paid shifts. A soulbound Freight Chain achievement – compressed NFT, non-transferable.",
   "image": "__IMAGE__",
   "external_url": "https://freightchain.fun/",
   "attributes": [
@@ -19,7 +19,7 @@
     },
     {
       "trait_type": "Condition",
-      "value": "Finish 5 shifts."
+      "value": "Finish 5 paid shifts."
     },
     {
       "trait_type": "Soulbound",

@@ -3,7 +3,7 @@
    the tiers existed – unlock rows in production reference those ids, so an id is FROZEN once a wallet could have earned it. A new tier = a new id. */
 export interface Facts {
   started: number; // rides that were actually started
-  completed: number; // rides the server judged complete
+  paidShifts: number; // PAID rides (any tier) the server judged complete – a free ride is never a shift
   totalMetres: number; // distance over all started rides
   nightShifts: number; // completed shifts with most of their drive time reported as night
   cleanRuns: number; // completed shifts with the hull at ~100 %
@@ -42,10 +42,10 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   { id: 'first-mile-3', family: 'road', tier: 3, name: 'Road Dog', desc: 'Start 50 rides.', icon: '⛟', measure: (f) => f.started, target: 50 },
   { id: 'first-mile-4', family: 'road', tier: 4, name: 'Asphalt Legend', desc: 'Start 250 rides.', icon: '⛟', measure: (f) => f.started, target: 250 },
 
-  { id: 'shift-complete', family: 'shift', tier: 1, name: 'Shift Complete', desc: 'Finish a full shift: the time AND the distance.', icon: '✔', measure: (f) => f.completed, target: 1 },
-  { id: 'shift-complete-2', family: 'shift', tier: 2, name: 'Shift Worker', desc: 'Finish 5 shifts.', icon: '✔', measure: (f) => f.completed, target: 5 },
-  { id: 'shift-complete-3', family: 'shift', tier: 3, name: 'Company Driver', desc: 'Finish 25 shifts.', icon: '✔', measure: (f) => f.completed, target: 25 },
-  { id: 'shift-complete-4', family: 'shift', tier: 4, name: 'Cargo Captain', desc: 'Finish 100 shifts.', icon: '✔', measure: (f) => f.completed, target: 100 },
+  { id: 'shift-complete', family: 'shift', tier: 1, name: 'Shift Complete', desc: 'Finish a paid shift.', icon: '✔', measure: (f) => f.paidShifts, target: 1 },
+  { id: 'shift-complete-2', family: 'shift', tier: 2, name: 'Shift Worker', desc: 'Finish 5 paid shifts.', icon: '✔', measure: (f) => f.paidShifts, target: 5 },
+  { id: 'shift-complete-3', family: 'shift', tier: 3, name: 'Company Driver', desc: 'Finish 25 paid shifts.', icon: '✔', measure: (f) => f.paidShifts, target: 25 },
+  { id: 'shift-complete-4', family: 'shift', tier: 4, name: 'Cargo Captain', desc: 'Finish 100 paid shifts.', icon: '✔', measure: (f) => f.paidShifts, target: 100 },
 
   { id: 'night-owl', family: 'night', tier: 1, name: 'Night Owl', desc: 'Finish a shift driven mostly in the dark.', icon: '☾', measure: (f) => f.nightShifts, target: 1 },
   { id: 'night-owl-2', family: 'night', tier: 2, name: 'Moonlighter', desc: 'Finish 5 shifts driven mostly in the dark.', icon: '☾', measure: (f) => f.nightShifts, target: 5 },

@@ -1,6 +1,6 @@
 import { ACHIEVEMENTS, FAMILY_NAMES, TIER_NAMES, earnedIds, progressOf, type Facts } from '../../../src/domain/achievements/achievements.js';
 
-const none: Facts = { started: 0, completed: 0, totalMetres: 0, nightShifts: 0, cleanRuns: 0, siberiaShifts: 0, freeUnassisted: 0, completedFreeLevels: [] };
+const none: Facts = { started: 0, paidShifts: 0, totalMetres: 0, nightShifts: 0, cleanRuns: 0, siberiaShifts: 0, freeUnassisted: 0, completedFreeLevels: [] };
 const families = [...new Set(ACHIEVEMENTS.map((a) => a.family))];
 
 /* the ids production unlock rows already reference – FROZEN (docs/agents/achievements.md): a rename or a changed meaning of tier 1 breaks them */
@@ -33,7 +33,7 @@ describe('achievement tiers', () => {
       const f: Facts = { ...none, started: 0 };
       const at = (value: number): Facts => ({
         ...f,
-        started: a.family === 'road' ? value : 0, completed: a.family === 'shift' ? value : 0, totalMetres: a.family === 'distance' ? value * 1000 : 0, nightShifts: a.family === 'night' ? value : 0,
+        started: a.family === 'road' ? value : 0, paidShifts: a.family === 'shift' ? value : 0, totalMetres: a.family === 'distance' ? value * 1000 : 0, nightShifts: a.family === 'night' ? value : 0,
         cleanRuns: a.family === 'clean' ? value : 0, siberiaShifts: a.family === 'siberia' ? value : 0, freeUnassisted: a.family === 'solo' ? value : 0,
         completedFreeLevels: a.family === 'licence' && value >= 1 ? [a.tier] : [],
       });

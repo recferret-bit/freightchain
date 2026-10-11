@@ -164,8 +164,8 @@ const ach = await rider.ev('[...document.querySelectorAll(".a, .ac")].map(a => (
 // the drive above sets the distance directly, so its recording is REJECTED (line ~106); with the verdict enforced (this server's default) a rejected recording
 // earns its ride no badge (achievements.ts badgeRejected) – only First Mile (a started ride) – while a verified / flagged one earns them
 const rejected = /COMPLETED · REJECTED/.test(await rider.ev('document.querySelector(".hist .hrow")?.textContent || ""'));
-check(rejected ? 'First Mile unlocked; the REJECTED drive earns no Shift Complete (enforced verdict); Top 20 locked' : 'First Mile + Shift Complete unlocked, Top 20 locked',
-  /\+First Mile/.test(ach) && (rejected ? /-Shift Complete/ : /\+Shift Complete/).test(ach) && /-Top 20/.test(ach), ach);
+check('First Mile unlocked; Shift Complete stays locked (it is for PAID shifts – this drive is free); Top 20 locked',
+  /\+First Mile/.test(ach) && /-Shift Complete/.test(ach) && /-Top 20/.test(ach), ach);
 check(rejected ? 'the rejected EASY run clears no level: Learner’s Permit, Crossroads, Long Haul locked' : 'the EASY free run cleared: Learner’s Permit unlocked, Crossroads + Long Haul locked',
   (rejected ? /-Learner’s Permit/ : /\+Learner’s Permit/).test(ach) && /-Crossroads/.test(ach) && /-Long Haul/.test(ach), ach);
 check('history lists the ride as COMPLETED', /COMPLETED/.test(await rider.ev('[...document.querySelectorAll(".hist")].map(n => n.textContent).join("|")')));

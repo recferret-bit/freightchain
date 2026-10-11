@@ -145,11 +145,12 @@ export function lobbyScenarios(h: () => Harness): void {
       expect(p.achievements.find((a: { id: string }) => a.id === 'top-20').awardedAtRoundClose).toBe(true);
     });
 
-    it('a clean night shift on the EASY country unlocks six (Cold Start needs the Trans-Siberian, which a free level is not), persisted with the time; they never disappear', async () => {
+    it('a clean night shift on the EASY country unlocks five (Cold Start needs the Trans-Siberian, which a free level is not), persisted with the time; they never disappear', async () => {
       const w = await login(), end = await finish(w, { night: true }, 100);
       expect(end.status).toBe('completed');
       const p = (await w.agent.get('/api/profile').expect(200)).body, got = (id: string) => p.achievements.find((a: { id: string }) => a.id === id).earnedAt;
-      for (const id of ['first-mile', 'shift-complete', 'night-owl', 'clean-run', 'on-my-own', 'free-easy']) expect(got(id), id).toBe(now());
+      for (const id of ['first-mile', 'night-owl', 'clean-run', 'on-my-own', 'free-easy']) expect(got(id), id).toBe(now());
+      expect(got('shift-complete')).toBeNull();                                     // Shifts are for PAID rides only
       expect(got('cold-start')).toBeNull(); expect(got('century')).toBeNull(); expect(got('top-20')).toBeNull(); expect(got('free-crossroads')).toBeNull(); expect(got('free-hard')).toBeNull();
       expect(p.stats).toMatchObject({ rides: 1, completed: 1, metres: 150, bestMetres: 150 });
       expect(p.recent[0]).toMatchObject({ tier: 'free', status: 'completed', distance: 150, route: 'stuart' });
@@ -165,7 +166,7 @@ export function lobbyScenarios(h: () => Harness): void {
       sec(2); await w.agent.post(`/api/rides/${id}/end`).send({ outcome: 'shift', s: 150, t: 12, hull: 100, night: true }).expect(200);   // N pressed just before the end
       const got = (p: { achievements: { id: string; earnedAt: number | null }[] }, k: string) => p.achievements.find(a => a.id === k)!.earnedAt;
       let p = (await w.agent.get('/api/profile')).body;
-      expect(got(p, 'shift-complete')).not.toBeNull(); expect(got(p, 'night-owl')).toBeNull();
+      expect(got(p, 'free-easy')).not.toBeNull(); expect(got(p, 'night-owl')).toBeNull();
       const w2 = await login(); await finish(w2, { night: true });                          // night for the whole shift
       p = (await w2.agent.get('/api/profile')).body; expect(got(p, 'night-owl')).not.toBeNull();
     });

@@ -92,7 +92,7 @@ export class RideQueryPrismaRepository extends RideQueryPort {
     return {
       stats: { started: started._count._all, completed: done.length, metres, best: done.reduce((max, r) => Math.max(max, r.lastS), 0) },
       facts: {
-        started: started._count._all, completed: fair.length, totalMetres: metres - rejected.reduce((sum, r) => sum + r.lastS, 0),
+        started: started._count._all, paidShifts: fair.filter((r) => r.tier !== 'free').length, totalMetres: metres - rejected.reduce((sum, r) => sum + r.lastS, 0),
         nightShifts: fair.filter((r) => r.driveSeconds > 0 && r.nightSeconds >= NIGHT_SHARE * r.driveSeconds).length, // most of the shift in the dark: pressing N just before the end doesn't count
         cleanRuns: fair.filter((r) => r.hull !== null && r.hull >= CLEAN_HULL).length,
         siberiaShifts: fair.filter((r) => r.route === SIBERIA).length,

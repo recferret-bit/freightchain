@@ -8,7 +8,7 @@ import { VerdictStatus } from '../../../../src/domain/verdict/verdict.dto.js';
 import { RULES_VERSION } from '../../../../src/domain/verdict/verdict-rules.js';
 import { ACHIEVEMENTS, badgeRejected } from '../../../../src/domain/achievements/achievements.js';
 
-const facts = (over: Partial<Facts>): Facts => ({ started: 0, completed: 0, totalMetres: 0, nightShifts: 0, cleanRuns: 0, siberiaShifts: 0, freeUnassisted: 0, completedFreeLevels: [], ...over });
+const facts = (over: Partial<Facts>): Facts => ({ started: 0, paidShifts: 0, totalMetres: 0, nightShifts: 0, cleanRuns: 0, siberiaShifts: 0, freeUnassisted: 0, completedFreeLevels: [], ...over });
 
 describe('AchievementService', () => {
   it('persists only the NEW unlocks, in one insert, and never removes one', async () => {
@@ -20,9 +20,9 @@ describe('AchievementService', () => {
     }
     const service = new AchievementService(new Counting(), ctx.mints, ctx.rideQuery, ctx.clock, ctx.rules);
     const ids = (rows: { id: string }[]) => rows.map((u) => u.id);
-    expect(ids(await service.evaluate('w', 'r1', facts({ started: 1, completed: 1, cleanRuns: 1 })))).toEqual(['first-mile', 'shift-complete', 'clean-run']);
+    expect(ids(await service.evaluate('w', 'r1', facts({ started: 1, paidShifts: 1, cleanRuns: 1 })))).toEqual(['first-mile', 'shift-complete', 'clean-run']);
     expect(inserts).toBe(1);
-    expect(ids(await service.evaluate('w', 'r2', facts({ started: 2, completed: 2, cleanRuns: 1 })))).toEqual([]);
+    expect(ids(await service.evaluate('w', 'r2', facts({ started: 2, paidShifts: 2, cleanRuns: 1 })))).toEqual([]);
     expect(inserts).toBe(1); // nothing new → no insert at all
     expect(ids(await service.evaluate('w', null, facts({})))).toEqual([]); // weaker facts later never remove
     expect((await ctx.unlocks.listByWallet('w')).map((u) => u.rideId)).toEqual(['r1', 'r1', 'r1']);
@@ -35,7 +35,7 @@ describe('AchievementService', () => {
       listByWallet = () => ctx.unlocks.listByWallet('w');
     }
     const service = new AchievementService(new Partial(), ctx.mints, ctx.rideQuery, ctx.clock, ctx.rules);
-    expect((await service.evaluate('w', 'r1', facts({ started: 1, completed: 1 }))).map((u) => u.id)).toEqual(['first-mile']);
+    expect((await service.evaluate('w', 'r1', facts({ started: 1, paidShifts: 1 }))).map((u) => u.id)).toEqual(['first-mile']);
   });
 
   it('reads the facts itself when the caller has none', async () => {
@@ -68,14 +68,14 @@ describe('AchievementService', () => {
 
   it('while the verdict is ENFORCED a rejected recording earns no badge for its ride; a flagged / verified one does', async () => {
     expect(await judgedEasyRun(true, VerdictStatus.Rejected, ['obstacle-ignored'])).toEqual(['first-mile']);   // started counts – it is not a judged fact; its metres don't (Century)
-    expect(await judgedEasyRun(true, VerdictStatus.Flagged, ['uniform-holds'])).toEqual(expect.arrayContaining(['shift-complete', 'free-easy', 'on-my-own']));
-    expect(await judgedEasyRun(true, VerdictStatus.Verified, [])).toEqual(expect.arrayContaining(['shift-complete', 'free-easy']));
+    expect(await judgedEasyRun(true, VerdictStatus.Flagged, ['uniform-holds'])).toEqual(expect.arrayContaining(['free-easy', 'on-my-own']));
+    expect(await judgedEasyRun(true, VerdictStatus.Verified, [])).toEqual(expect.arrayContaining(['free-easy']));
   });
 
   it('in shadow mode (VERDICT_ENFORCE=false, production today) the verdict changes no badge; a ride with NO recording is never "rejected" for badges', async () => {
-    expect(await judgedEasyRun(false, VerdictStatus.Rejected, ['obstacle-ignored'])).toEqual(expect.arrayContaining(['shift-complete', 'free-easy']));
-    expect(await judgedEasyRun(true, VerdictStatus.Rejected, ['no-recording'])).toEqual(expect.arrayContaining(['shift-complete', 'free-easy']));
-    expect(await judgedEasyRun(true, null, [])).toEqual(expect.arrayContaining(['shift-complete', 'free-easy']));   // not judged (yet)
+    expect(await judgedEasyRun(false, VerdictStatus.Rejected, ['obstacle-ignored'])).toEqual(expect.arrayContaining(['free-easy']));
+    expect(await judgedEasyRun(true, VerdictStatus.Rejected, ['no-recording'])).toEqual(expect.arrayContaining(['free-easy']));
+    expect(await judgedEasyRun(true, null, [])).toEqual(expect.arrayContaining(['free-easy']));   // not judged (yet)
     expect(badgeRejected({ status: 'rejected', reasons: [{ code: 'no-recording' }, { code: 'teleport' }] })).toBe(true);
     expect(badgeRejected({ status: 'rejected', reasons: 'junk' })).toBe(true);
     expect(badgeRejected(null)).toBe(false);
