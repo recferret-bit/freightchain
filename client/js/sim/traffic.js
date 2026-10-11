@@ -87,7 +87,7 @@ function spawnAt(type, preset, road, dir, s, lat) {
   const home = lat ?? laneLat(dir, lane);
   for (const o of cars) if (o.road === road && Math.abs(o.lat - home) < 2.5 && Math.abs(o.s - s) < 40 + (o.def.len + def.len) / 2) return null;
   let vDes = Math.min(34, (def.v[0] + T.rng() * (def.v[1] - def.v[0])) * P.speed); if (!road.main) vDes = Math.min(vDes, 15 + T.rng() * 3);
-  const pick = T.rng() * 100 | 0, mesh = buildVehicle(def, pick), a = { id: ++T.ids, pick, def, P, preset, road, dir, s, lat: home, lane, target: home, lv: 0, v: vDes, vDes, brake: false, mesh, lcT: 0, ph: T.rng() * 6.28, t: 0, cool: 0, touch: 99, worst: 0, counted: false, over: false, dV: Infinity };
+  const pick = T.rng() * 100 | 0, mesh = buildVehicle(def, pick), a = { id: ++T.ids, pick, def, P, preset, road, dir, s, lat: home, lane, target: home, lv: 0, v: vDes, vDes, brake: false, mesh, lcT: 0, ph: T.rng() * 6.28, t: 0, cool: 0, touch: 99, worst: 0, vs: 0, vl: 0, counted: false, over: false, dV: Infinity };
   cars.push(a); place(a); return a;
 }
 function pickType(ok) {
@@ -245,9 +245,12 @@ function think(a, dt, tb) {
   a.lv = approach(a.lv, clamp((want - a.lat) * 1.2, -1.8, 1.8), 3, dt); a.lat += a.lv * dt;
   a.s += a.dir * a.v * dt;
 }
-function place(a) {
-  const p = a.road.at(a.s), m = a.mesh;
-  m.position.set(p.x + Math.cos(p.t) * a.lat, 0, p.z + Math.sin(p.t) * a.lat);
+/* contact pushes a car out of the truck in one step (a.s / a.lat jump by the overlap) – the mesh eases over it instead: a.vs / a.vl = the pushed distance still to show (m), fading at VIS_EASE /s */
+const VIS_EASE = 9;
+function place(a, dt) {
+  const k = Math.exp(-VIS_EASE * dt); a.vs *= k; a.vl *= k;
+  const p = a.road.at(a.s + a.dir * a.vs), m = a.mesh, lat = a.lat + a.vl;
+  m.position.set(p.x + Math.cos(p.t) * lat, 0, p.z + Math.sin(p.t) * lat);
   m.rotation.y = -(p.t + (a.dir < 0 ? Math.PI : 0) + a.dir * Math.atan2(a.lv, Math.max(a.v, 3)));
   const u = m.userData; if (u.brake) u.brake.visible = a.brake;
   if (u.ind) {   // indicate where the car is going, including a hole dodge (dLat). Using the lane centre lights the return direction while it is still swerving out.
@@ -338,10 +341,13 @@ export function updateTraffic(dt) {
   }
   let fatal = null;
   for (let i = cars.length - 1; i >= 0; i--) {
-    const a = cars[i], tb = boxFor(a.road); a.t += dt; a.touch += dt; a.cool = Math.max(0, a.cool - dt); think(a, dt, tb); place(a);
+    const a = cars[i], tb = boxFor(a.road); a.t += dt; a.touch += dt; a.cool = Math.max(0, a.cool - dt); think(a, dt, tb); place(a, dt);
     const gone = a.road.main ? a.s < TK.m - 300 || a.s > TK.m + 900 || a.s < (net.straight ? 40 : net.Sm - 1450) : Math.abs(a.s) > a.road.j.len - 5 || Math.abs(a.road.j.s - TK.m) > 1100;
     if (gone) { removeVehicle(a.mesh); cars.splice(i, 1); continue; }
-    if (!fatal && tb && Math.abs(a.s - tb.s) < 25 + a.def.len + tb.len / 2) fatal = contact(a, tb);
+    if (!fatal && tb && Math.abs(a.s - tb.s) < 25 + a.def.len + tb.len / 2) {
+      const s0 = a.s, l0 = a.lat; fatal = contact(a, tb);
+      a.vs = clamp(a.vs + (s0 - a.s) * a.dir, -3, 3); a.vl = clamp(a.vl + l0 - a.lat, -3, 3);   // (the shown position stays where it was; the push fades in)
+    }
   }
   return fatal;
 }
