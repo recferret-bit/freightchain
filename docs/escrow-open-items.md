@@ -14,7 +14,7 @@ Related: [deploy + operate](program-deploy.md) · [paid tickets status](paid-tic
 | localnet money test, pool crank, ticket-only program mode, refundable missed goals, `docs/localnet-e2e/`, this file | `main` | merged (`git log main..localnet-e2e` is empty) |
 | ten-rider payout scenario + the program coverage gate (`SCENARIO=payout`, `server/scripts/localnet-coverage.mjs`), `pool-admin.mjs` refund / close-ticket / cancel-pool / propose- / accept-authority, the LiteSVM `MathOverflow` test | `main` | Oct 9: 14/14 instructions + 12/12 events on the validator, 24/24 error codes asserted |
 | program v2: `set_series` / `open_next_pool` (one 1 h pool a day: 24 h sale, 2 h more rides, 48 h review), `set_payout_authority`, `payout_at` on every pool (no prize / close before it, grace counted from it), sales close for active pools too; server: the crank opens pools, the payout job (`pool:payout`, `PAYOUT_SECRET`) pays verified winners once every ride is decided, the signed HOLD, public standings, paid-ride review + `ride-review` skill | branch `pool-series` | not merged, **not deployed** – v2 needs a fresh program id (Config / Pool grew); `program-deploy.md` "v2" |
-| devnet / production | – | v1 on devnet since Oct 8 (`9e7ph…BSvx`, every pool terminal); production runs `PAYMENT_MODE=transfer` |
+| devnet / production | – | **v2 on devnet since Oct 11** (`8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p`, deployed bytes = pin `84fe8679…`, `Config.authority` = the devnet admin, platform cut 0, `payout_authority` = `6zoY5f…Utds`; 1 h series: a TEST schedule – 1 h sale, 0 h more rides, 1 h review, min 2, 0.002 SOL, slots on the hour from 10:00 UTC); v1 `9e7ph…BSvx` stays, every pool terminal |
 
 ## Not done
 
@@ -140,7 +140,7 @@ Until then production stays as it is (`PAYMENT_MODE=transfer`, no escrow keys in
 
 ### v2 (the pool day) – to do
 - [ ] Merge `pool-series` into `main` (needs the owner's go; it also carries the paid-ride review and `pool-ride-seed`'s identical hunks)
-- [ ] Deploy v2 to devnet under its fresh program id `8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p` (code, IDL, fixtures and the pin `84fe8679…` are built for it; the key is `deploy/secrets/devnet/program-id.json`, v1's is `program-id-v1.json`; `bash server/scripts/devnet.sh deploy`); then `set-payout-authority`, `set-series --tier 1h`, `PAYOUT_SECRET` + `CRANK_SECRET` in `server/.env.devnet`
+- [x] Deploy v2 to devnet under its fresh program id `8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p` (code, IDL, fixtures and the pin `84fe8679…` are built for it; the key is `deploy/secrets/devnet/program-id.json`, v1's is `program-id-v1.json`; `bash server/scripts/devnet.sh deploy`); then `set-payout-authority`, `set-series --tier 1h`, `PAYOUT_SECRET` + `CRANK_SECRET` in `server/.env.devnet`
 - [ ] Watch one whole day on devnet with a short series (`--sale-hours 1 --review-hours 1 --min 2`): open → sell → refunds for a missed goal / rides → review → automatic payout → close
 - [x] The localnet scenario + its coverage gate for the three new instructions, two new events and `SeriesDisabled` (17 / 14 / 25) – Oct 11: `SCENARIO=day` (phase 3: the 1h series opened by the crank on its schedule, the missed next slot failed + refunded by it, review window, marks + the admin's signed decisions and HOLD, the payout key pays and closes); `npm run test:localnet` green in ~16 min, 17/17 instructions + 14/14 events on the validator, 24/25 errors there (`MathOverflow` LiteSVM only)
 - [ ] Alerting for `payout-grace` / `error` pools beyond the log and the admin page
