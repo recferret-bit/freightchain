@@ -79,7 +79,7 @@ Change one with the signed admin API (`GET /api/admin/settings`, then the challe
 
 | Key | Default | Notes |
 |---|---|---|
-| `FREE_RIDE_SECONDS` | `60` | Free-ride length – the EASY level's (one minute, an easy road – `client/js/trips.js`); CROSSROADS is × 3, HARD × 10 (`ride-trip.ts` `FREE_LEVELS`). Test/demo override |
+| `FREE_RIDE_SECONDS` | `180` | Free-ride length – the EASY level's (three minutes, one crossroads – `client/js/trips.js`); CROSSROADS is × 2 (6 min), HARD × 5 (15 min) (`ride-trip.ts` `FREE_LEVELS`). Production's `deploy/.env` must say 180 (it said 60 for the first round of levels). Test/demo override |
 | `HB_MIN_INTERVAL_MS` | `1000` | Minimum spacing of ride heartbeats |
 | `HB_TIMEOUT_MS` | `150000` | A running ride with no heartbeat this long has lost its tab – it could not resume anyway (its next heartbeat would fail it): it leaves the live feed and the stale-ride sweeper (every min(30 s, timeout / 3)) ends it as *failed · heartbeat lost*. Tests set it low |
 | `DEMO_WALLETS` | empty | Comma-separated wallets (or `*`) whose **paid** rides run `DEMO_SCALE`× shorter – for demo videos |

@@ -39,7 +39,8 @@ class RoadNetwork {
     this.segs = []; this.js = []; this.forks = []; this.genEnd = this.Sm; this.patEnd = this.Sm; this.pat = null; this.nextJ = Infinity; this.jn = 0;
     const first = trip.road?.first ?? ['country'];
     this.weights = trip.road?.weights ?? this.style.weights; this.queue = first.slice(1);   // the trip's layout (trips.js road), else the route's pattern weights
-    this.pickPattern(first[0], 500 + this.rng() * 600);   // the depot exit: a plain two-lane road (the easy free run: straight onto four lanes)
+    const fl = trip.road?.firstLen ?? [500, 1100];   // the first pattern's length (default 500 + r · 600 – one draw either way)
+    this.pickPattern(first[0], fl[0] + this.rng() * (fl[1] - fl[0]));   // the depot exit: a plain two-lane road (the easy free run: straight onto four lanes)
     this.ensure(this.Sm + 1);
     const s0 = this.segs[0], halfR = edgeOf(s0.nR) + .3, halfL = edgeOf(s0.nL) + .3;
     this.start = { id: 'j0', kind: 'start', s: this.Sm, signal: false, halfR, halfL, pad: { a0: -(this.R + 7.5), a1: 4, l0: -(halfL + SHOULDER), l1: this.R + 2 } };

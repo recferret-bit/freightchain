@@ -166,7 +166,7 @@ describe('RideQueryPrismaRepository (PostgreSQL)', () => {
     expect(await query.leaderboard('round', 1, 20, true, null)).toEqual([{ wallet: 'bob', distance: 500, rides: 2 }, { wallet: 'alice', distance: 500, rides: 1 }]);
     expect(await query.leaderboard('round', 2, 20, true, null)).toEqual([]);
     expect((await query.leaderboard('all', null, 20, true, null)).map((r) => r.wallet)).toEqual(['bob', 'alice']);
-    expect(await query.leaderboard('free', null, 20, true, 'free-1')).toEqual([{ wallet: 'carol', distance: 140, rides: 1 }]);
+    expect(await query.leaderboard('free', null, 20, true, 'free-1b')).toEqual([{ wallet: 'carol', distance: 140, rides: 1 }]);
     expect(await query.leaderboard('all', null, 1, true, null)).toHaveLength(1);
   });
 
@@ -178,9 +178,9 @@ describe('RideQueryPrismaRepository (PostgreSQL)', () => {
     await ride('carol', { metres: 9000, outcome: 'shift', start: 200, trip: 'free' }); // the one free trip before the levels
     await ride('carol', { metres: 9000, outcome: 'shift', start: 300, trip: null }); // classic
     await ride('alice', { level: 1, metres: 9000, outcome: 'failed', start: 400 }); // not completed
-    expect(await query.leaderboard('free', null, 20, true, 'free-1')).toEqual([{ wallet: 'bob', distance: 850, rides: 2 }]);
-    expect(await query.leaderboard('free', null, 20, true, 'free-2')).toEqual([{ wallet: 'carol', distance: 1500, rides: 1 }]);
-    expect(await query.leaderboard('free', null, 20, true, 'free-3')).toEqual([{ wallet: 'alice', distance: 6700, rides: 1 }]);
+    expect(await query.leaderboard('free', null, 20, true, 'free-1b')).toEqual([{ wallet: 'bob', distance: 850, rides: 2 }]);
+    expect(await query.leaderboard('free', null, 20, true, 'free-2b')).toEqual([{ wallet: 'carol', distance: 1500, rides: 1 }]);
+    expect(await query.leaderboard('free', null, 20, true, 'free-3b')).toEqual([{ wallet: 'alice', distance: 6700, rides: 1 }]);
     expect(await query.leaderboard('free', null, 20, true, null)).toEqual([]);
   });
 
@@ -191,7 +191,7 @@ describe('RideQueryPrismaRepository (PostgreSQL)', () => {
     await ride('carol', { metres: 140, outcome: 'shift', verdict: 'rejected' });
     expect((await query.leaderboard('round', 1, 20, true, null)).map((r) => r.wallet)).toEqual(['alice']);
     expect((await query.leaderboard('all', null, 20, true, null)).map((r) => r.wallet)).toEqual(['alice']);
-    expect((await query.leaderboard('free', null, 20, true, 'free-1')).map((r) => r.wallet)).toEqual(['carol']);
+    expect((await query.leaderboard('free', null, 20, true, 'free-1b')).map((r) => r.wallet)).toEqual(['carol']);
     expect((await query.leaderboard('round', 1, 20, false, null)).map((r) => r.wallet)).toEqual(['bob', 'carol', 'alice']); // shadow mode: verdicts ignored
     expect((await query.recent('bob', 5))[0]?.verdict).toBe('flagged');
     const carol = await query.recent('carol', 5);

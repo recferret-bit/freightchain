@@ -48,7 +48,7 @@ describe('VerifySignInHandler', () => {
     expect((await handler.execute(new VerifySignInCommand(wallet, sign(message)))).profile.readyFreeRide).toBeNull();
     const ride = await ctx.freeRide(wallet);
     const again = await challenge.execute(new RequestChallengeCommand(wallet));
-    expect((await handler.execute(new VerifySignInCommand(wallet, sign(again.message)))).profile.readyFreeRide).toEqual({ id: ride.id, level: 1, trip: 'free-1', tutorial: false, assist: false });
+    expect((await handler.execute(new VerifySignInCommand(wallet, sign(again.message)))).profile.readyFreeRide).toEqual({ id: ride.id, level: 1, trip: 'free-1b', tutorial: false, assist: false });
     ride.start(ctx.now()); await ctx.rides.save(ride);
   });
 

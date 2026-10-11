@@ -19,10 +19,10 @@ describe('GetTiersHandler', () => {
     expect(dto.tiers).toEqual([
       {
         id: 'free', usd: 0, seconds: 10, completeDist: 70, lamports: null, available: true, onSale: true, schedule: null, pool: null,
-        levels: [   // FREE_RIDE_SECONDS (10 here) × 1 / 3 / 10, each at its own K
-          { level: 1, trip: 'free-1', name: 'EASY', seconds: 10, completeDist: 0.25 * 28 * 10, tutorial: true, assist: true },
-          { level: 2, trip: 'free-2', name: 'CROSSROADS', seconds: 30, completeDist: 0.3 * 28 * 30, tutorial: true, assist: true },
-          { level: 3, trip: 'free-3', name: 'HARD', seconds: 100, completeDist: 0.4 * 28 * 100, tutorial: false, assist: false },
+        levels: [   // FREE_RIDE_SECONDS (10 here) × 1 / 2 / 5, each at its own K
+          { level: 1, trip: 'free-1b', name: 'EASY', seconds: 10, completeDist: 0.25 * 28 * 10, tutorial: true, assist: true },
+          { level: 2, trip: 'free-2b', name: 'CROSSROADS', seconds: 20, completeDist: 0.4 * 28 * 20, tutorial: true, assist: true },
+          { level: 3, trip: 'free-3b', name: 'HARD', seconds: 50, completeDist: 0.4 * 28 * 50, tutorial: false, assist: false },
         ],
       },
       { id: '1h', usd: 5, seconds: 3600, completeDist: 50_400, lamports: null, available: false, onSale: false, schedule: { saleHours: 24, playHours: 2, reviewHours: 48 }, pool: null },

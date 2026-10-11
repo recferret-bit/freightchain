@@ -215,6 +215,12 @@ check(nightX.night===true&&dayX.night===false&&G.THEMES.some(t=>t.id===dayX.rout
   for(let i=0;i<60*15;i++){ st.v=0; st.park=true; step(1); } const brD=G.screenClimate();
   check(brD.fog<.002&&brD.frost<.002,'Brenner by day does neither (frost '+brD.frost.toFixed(4)+', fog '+brD.fog.toFixed(4)+')');
   G.selectTheme('route66',false); G.setNight(false,true,false); }
+// the second round of free levels – LAST in the file, so it cannot move the random stream the checks above ran on (the trace diff stays identical)
+  // the second round (free-1b / -2b / -3b): an EXACT number of four-way crossroads, all before the finish line (net/patterns.js xroad – road-drift.spec.ts proves the server's port the same)
+  { const cross=(id,seed,upto)=>{ G.setTrip(id); G.startRide(); G.roads.newTrip(seed); net.ensure(upto); const js=net.js.filter(j=>j.kind!=='start'); return { n:js.length, all4:js.every(j=>j.kind==='cross'), forks:net.forks.length, last:js.at(-1)?.s??0 }; };
+    for(const [id,n,forks,seed] of [['free-g',1,0,777],['free-1b',1,0,777],['free-2b',4,1,4242],['free-3b',6,2,31337]]){ const r=cross(id,seed,12000), T=G.trip, dist=T.k*28*T.seconds;
+      check(r.n===n&&r.all4&&r.forks===forks&&r.last<dist-100,id+': exactly '+n+' crossroads (all four-way) and '+forks+' fork(s) in 12 km, the last one at '+Math.round(r.last)+' m of a '+Math.round(dist)+' m shift'); }
+    G.setTrip('free-1b'); G.roads.newTrip(777); net.ensure(3000); check(net.lanes(net.Sm+700,1)===2&&net.lanes(net.Sm+700,-1)===2,'free-1b (EASY): four lanes after the crossroads too'); }
 out.push(...checks); out.push('errors='+errors.length+(errors[0]?' '+errors[0].message:''));
 console.log(out.join('\n'));
 const failed=checks.filter(c=>c.startsWith('FAIL'));

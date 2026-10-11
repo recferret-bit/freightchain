@@ -121,7 +121,7 @@ describe('a fork\'s road switch (the server\'s layout decides where)', () => {
     const judged = (level: 1 | 2) => {
       const ride = Ride.createFree({ id: 'ride-f', wallet: 'w', seed: SEED, minSeconds: 3, now: T0, level });
       ride.start(T0);
-      const done = Ride.restore({ ...ride.snapshot(), lastS: b.at(-1)![1]!, lastT: 5, driveSeconds: 5, lastHbAt: new Date(T0.getTime() + 5000) });
+      const done = Ride.restore({ ...ride.snapshot(), trip: level === 2 ? 'free-2' : 'free-1', lastS: b.at(-1)![1]!, lastT: 5, driveSeconds: 5, lastHbAt: new Date(T0.getTime() + 5000) });
       const bodies: BatchBody[] = [];
       let prevHash = 'ride-f';
       for (const [seq, part] of [a, b].entries()) {
@@ -132,8 +132,8 @@ describe('a fork\'s road switch (the server\'s layout decides where)', () => {
       const stored = bodies.map((x, i) => RideBatch.accept('ride-f', x, x.hash!, T0, undefined, undefined, 0, RoadPlan.forSeed(SEED, done.trip), i ? a : []));
       return RideVerdict.judge(done, stored, new Date(T0.getTime() + 6000)).reasons.map((r) => r.code);
     };
-    expect(judged(2)).not.toContain('teleport'); // level 2 = the free-2 trip: the seed's fork is there
-    expect(judged(1)).toContain('teleport'); // level 1 = free-1: no fork on that road – the same jump is a teleport
+    expect(judged(2)).not.toContain('teleport'); // the first round's free-2 trip: the seed's fork is there (rides stamped before the retune keep their road)
+    expect(judged(1)).toContain('teleport'); // the first round's free-1: no fork on that road – the same jump is a teleport
   });
   it('a truck that STAYS on its road over the commit point is measured like anywhere else: through the sinkhole there without a scratch = ignored (the exemption is only for the step that jumped)', () => {
     const rows: Row[] = [];
@@ -163,7 +163,7 @@ describe('a fork\'s road switch (the server\'s layout decides where)', () => {
     const judge = (parts: Row[][]) => {
       const ride = Ride.createFree({ id: 'ride-l', wallet: 'w', seed: SEED, minSeconds: 3, now: T0, level: 2 });
       ride.start(T0);
-      const done = Ride.restore({ ...ride.snapshot(), lastS: parts.at(-1)!.at(-1)![1]!, lastT: 5, driveSeconds: 5, lastHbAt: new Date(T0.getTime() + 5000) });
+      const done = Ride.restore({ ...ride.snapshot(), trip: TRIP, lastS: parts.at(-1)!.at(-1)![1]!, lastT: 5, driveSeconds: 5, lastHbAt: new Date(T0.getTime() + 5000) });
       let prevHash = 'ride-l';
       const stored = parts.map((part, seq) => {
         const body = { seq, prevHash, t0: part[0]![0]!, t1: part.at(-1)![0]!, samples: part, inputs: [] };

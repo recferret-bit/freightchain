@@ -96,11 +96,14 @@ describe('the server\'s road = the game\'s road (drift)', () => {
     } finally { trips.setTrip('1h'); obstacles.clearHoleCache(); }
   });
 
+  /** the second round of free levels: [crossroads, forks] each layout holds, however the seed falls (net/patterns.js xroad / open – exact by construction) */
+  const EXACT: Record<string, [number, number]> = { 'free-g': [1, 0], 'free-1b': [1, 0], 'free-2b': [4, 1], 'free-3b': [6, 2] };
+
   it('each trip\'s LAYOUT knobs are the same on both sides (trips.js road = TRIP_ROADS), and so are its layout and holes', async () => {
     const { net, obstacles } = game, trips = await load('trips.js');
     for (const id of Object.keys(trips.TRIPS)) {
       const r = trips.TRIPS[id].road, mine = R.tripRoadOf(id);
-      expect({ first: r?.first ?? ['country'], weights: r?.weights ?? R.DEFAULT_WEIGHTS, holeChance: r?.holeChance ?? 1 }, id).toEqual(mine);
+      expect({ first: r?.first ?? ['country'], weights: r?.weights ?? R.DEFAULT_WEIGHTS, holeChance: r?.holeChance ?? 1, firstLen: r?.firstLen ?? [500, 1100] }, id).toEqual(mine);
     }
     try {
       for (const id of Object.keys(R.TRIP_ROADS)) {
@@ -114,8 +117,16 @@ describe('the server\'s road = the game\'s road (drift)', () => {
           const theirs = RoadPlan.forSeed(seed, id).holesBetween(0, 30_000), game_ = [];
           for (let ci = 0; ci * R.CHUNK_LEN < 30_000; ci++) { const h = obstacles.rollHole(ci); if (h) game_.push({ id: h.id, ci: h.ci, type: h.type, s: h.s, lat: h.lat }); }
           expect(theirs, `${id} seed ${seed}`).toEqual(game_);
-          if (id === 'free-1') expect(layout.junctions.length).toBe(1); // the easy free run: four lanes, no junction but the start
-          if (id !== 'free-1') expect(layout.segs.some((g) => g.pat === 'fork')).toBe(true); // the others split into two roads at least once
+          const forks = layout.segs.filter((g) => g.pat === 'fork').length, cross = layout.junctions.filter((j) => j.kind !== 'start');
+          if (id === 'free-1') expect(layout.junctions.length).toBe(1); // the first EASY: four lanes, no junction but the start
+          if (['free-2', 'free-3'].includes(id)) expect(forks).toBeGreaterThan(0); // the first CROSSROADS / HARD split into two roads at least once
+          const exact = EXACT[id];   // the second round: an EXACT number of crossroads (every one a four-way) and forks – and all of them before the finish line
+          if (exact) {
+            expect([cross.length, forks], `${id} seed ${seed}`).toEqual(exact);
+            expect(cross.every((j) => j.kind === 'cross'), `${id} seed ${seed}`).toBe(true);
+            const row = trips.TRIPS[id], dist = row.k * 28 * row.seconds, last = cross.at(-1)!;
+            expect(last.s, `${id} seed ${seed}: the last crossroads lies before the finish line (${dist} m)`).toBeLessThan(dist - 100);
+          }
         }
       }
     } finally { trips.setTrip('1h'); obstacles.clearHoleCache(); }

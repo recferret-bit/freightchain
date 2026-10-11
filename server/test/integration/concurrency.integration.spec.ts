@@ -531,8 +531,8 @@ describe('concurrency (PostgreSQL)', () => {
   });
 
   it('re-choosing the ready free ride\'s LEVEL racing its START: started as the old level or re-chosen and then started – never a mix, never a second credit', async () => {
-    const LEVEL_1 = { trip: 'free-1', minSeconds: 10, completeDist: 0.25 * 28 * 10 };    // FREE_RIDE_SECONDS 10 (the harness) × the level's multiple, k × MAX_SPEED × that
-    const LEVEL_3 = { trip: 'free-3', minSeconds: 100, completeDist: 0.4 * 28 * 100, assist: false };
+    const LEVEL_1 = { trip: 'free-1b', minSeconds: 10, completeDist: 0.25 * 28 * 10 };    // FREE_RIDE_SECONDS 10 (the harness) × the level's multiple, k × MAX_SPEED × that
+    const LEVEL_3 = { trip: 'free-3b', minSeconds: 50, completeDist: 0.4 * 28 * 50, assist: false };
     for (let round = 0; round < 6; round++) {   // either order may win each round; every round must be one whole level
       const a = await login(), credits = await freeRides(a);
       const ride = (await a.agent.post('/api/rides').send({ tier: 'free', level: 1 }).expect(200)).body;

@@ -18,7 +18,7 @@ describe('MeProfileService', () => {
     const now = ctx.now(), player = await ctx.sessions.touch('w', now);
     const ride = Ride.createFree({ id: 'r1', wallet: 'w', seed: 7, minSeconds: 300, now, level: 3 });
     await ctx.rides.insert(ride);
-    expect((await ctx.meProfile.of(player, now)).readyFreeRide).toEqual({ id: 'r1', level: 3, trip: 'free-3', tutorial: false, assist: false });
+    expect((await ctx.meProfile.of(player, now)).readyFreeRide).toEqual({ id: 'r1', level: 3, trip: 'free-3b', tutorial: false, assist: false });
     ride.start(now); await ctx.rides.save(ride);
     expect((await ctx.meProfile.of(player, now)).readyFreeRide).toBeNull();
     await ctx.paidOrder('payer');
