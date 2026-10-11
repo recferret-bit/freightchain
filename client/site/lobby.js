@@ -83,7 +83,7 @@ function go() {
 function renderNew() {
   view.replaceChildren(
     el('div', { class: 'card pool', id: 'poolbox', hidden: true, style: 'display:none' }), el('div', { id: 'pendingbox' }), el('div', { id: 'orderbox' }), el('div', { id: 'refunds' }),
-    el('div', { id: 'freebox' }), el('h2', {}, 'PAID SHIFTS'), el('div', { class: 'tiers', id: 'tiers' }), el('div', { id: 'results' }),
+    el('h2', {}, 'PAID SHIFTS'), el('div', { class: 'tiers', id: 'tiers' }), el('div', { id: 'freebox' }), el('div', { id: 'results' }),
     el('div', { class: 'card', id: 'rules', style: 'margin-top:12px' }));
   paintPool(); paintPending(); paintTiers(); paintRules();
   refreshMe();   // free-ride count + tickets after a ride / refund
