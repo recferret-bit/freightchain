@@ -13,7 +13,7 @@ describe('PlayerPrismaRepository (PostgreSQL)', () => {
   it('insertIfAbsent creates once and is a no-op afterwards; findByWallet maps the row back', async () => {
     await repo.insertIfAbsent(Player.register('w', T0, 5, 5));
     await repo.insertIfAbsent(Player.register('w', T0, 99, 5));
-    expect((await repo.findByWallet('w'))?.snapshot()).toEqual({ wallet: 'w', version: 1, freeRides: 5, freeDay: '2036-10-08', freeRidesMax: 5, createdAt: T0, tutorialPassedAt: null });
+    expect((await repo.findByWallet('w'))?.snapshot()).toEqual({ wallet: 'w', version: 1, freeRides: 5, freeDay: '2036-10-08', freeRidesMax: 5, createdAt: T0, tutorialPassedAt: null, age18At: null, lossAt: null });
     expect(await repo.findByWallet('nobody')).toBeNull();
   });
 
@@ -49,9 +49,21 @@ describe('PlayerPrismaRepository (PostgreSQL)', () => {
     expect((await repo.findByWallet('w'))).toMatchObject({ tutorialPassed: true, tutorialPassedAt: T0 });
   });
 
+  it('the agreement stamps round-trip, and clearing a box writes null', async () => {
+    await repo.insertIfAbsent(Player.register('w', T0, 5, 5));
+    const p = (await repo.findByWallet('w')) as Player;
+    expect(p.setAgreements({ age18: true, loss: true }, T0).becameAccepted).toBe(true);
+    await repo.save(p);
+    const back = (await repo.findByWallet('w')) as Player;
+    expect(back).toMatchObject({ age18At: T0, lossAt: T0 });
+    back.setAgreements({ age18: false, loss: true }, T0);
+    await repo.save(back);
+    expect((await repo.findByWallet('w'))?.snapshot()).toMatchObject({ age18At: null, lossAt: T0, version: 3 });
+  });
+
   describe('grantDailyFreeRides – the midnight bulk update', () => {
     const seed = async (wallet: string, freeRides: number, freeDay = '2036-10-08', freeRidesMax = 5) => {
-      await repo.insertIfAbsent(Player.restore({ wallet, version: 1, freeRides, freeDay, freeRidesMax, createdAt: T0, tutorialPassedAt: null }));
+      await repo.insertIfAbsent(Player.restore({ wallet, version: 1, freeRides, freeDay, freeRidesMax, createdAt: T0, tutorialPassedAt: null, age18At: null, lossAt: null }));
     };
 
     it('adds one below the cap, stops at the cap, leaves an over-cap balance, stamps the day and bumps the version', async () => {

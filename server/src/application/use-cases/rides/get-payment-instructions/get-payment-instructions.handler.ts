@@ -1,8 +1,9 @@
 import { QueryHandler, type IQueryHandler } from '@nestjs/cqrs';
 import { RideStatus } from '../../../../domain/rides/ride-status.js';
-import { ConflictError, ServiceUnavailableError } from '../../../../domain/shared/errors.js';
+import { ConflictError, NotFoundError, ServiceUnavailableError } from '../../../../domain/shared/errors.js';
 import { RulesConfigPort } from '../../../ports/config/rules-config.port.js';
 import { ChainPort } from '../../../ports/economy/chain.port.js';
+import { PlayerRepositoryPort } from '../../../ports/players/player.repository.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
 import { RideLookupService } from '../../../services/ride-lookup.service.js';
 import { GetPaymentInstructionsQuery, type PaymentInstructionsDto } from './get-payment-instructions.query.js';
@@ -15,6 +16,7 @@ export class GetPaymentInstructionsHandler implements IQueryHandler<GetPaymentIn
     private readonly chain: ChainPort,
     private readonly rules: RulesConfigPort,
     private readonly clock: ClockPort,
+    private readonly players: PlayerRepositoryPort,
   ) {}
 
   async execute({ wallet, rideId }: GetPaymentInstructionsQuery): Promise<PaymentInstructionsDto> {
@@ -23,6 +25,9 @@ export class GetPaymentInstructionsHandler implements IQueryHandler<GetPaymentIn
     if (!treasury) throw new ServiceUnavailableError('no treasury configured');
     if (!ride.isInStatus(RideStatus.AwaitingPayment)) throw new ConflictError(`ride is ${ride.status}`);
     if (!ride.quoteIsLive(this.clock.now())) throw new ConflictError('the price quote expired – create the ride again');
+    const player = await this.players.findByWallet(wallet);
+    if (!player) throw new NotFoundError('player not found');
+    player.requirePaidPlay(); // the unsigned memo transaction. Confirming one already sent is not this query.
     const tx = await this.chain.buildPaymentTransaction({ payer: wallet, treasury, lamports: ride.lamports, memo: ride.id });
     return {
       treasury, lamports: ride.lamports, memo: ride.id, quoteExpiresAt: ride.quoteExpiresAt?.getTime() ?? null,

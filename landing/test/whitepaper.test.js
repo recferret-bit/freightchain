@@ -27,6 +27,13 @@ test('the contents list and the sections match, one h1 and one h2 per chapter 01
 
 test('the smoke test marker is on the page', () => { assert.match(html, /FREIGHT CHAIN · WHITEPAPER/); });
 
+test('a paid shift needs both profile boxes, and the loss offer is not an investment', () => {
+  assert.match(text, /18 or older/);
+  assert.match(text, /SOL spent on a shift can be lost/);
+  assert.match(text, /not a deposit or an investment/i);
+  assert.match(text, /Loss of SOL/);
+});
+
 test('heat, cooling, fog and the replay switches match the game', () => {
   const cfg = src('client/js/config.js'), rules = src('server/src/domain/telemetry/telemetry-rules.ts'), flags = src('client/js/telemetry.js');
   const fog = Number(cfg.match(/FOG_FROM:\s*([\d.]+)/)[1]);

@@ -155,6 +155,7 @@ h3.sub{margin:40px 0 14px}
 .legend{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;font-size:12px;color:var(--dim)}
 .legend span::before{content:"";display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;background:var(--c)}
 .legend b{color:var(--cream);font-weight:400}
+.card.tiers{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .tiers table{width:100%;border-collapse:collapse;margin-top:8px}
 .tiers td,.tiers th{text-align:left;padding:8px 4px;border-bottom:1px solid var(--line);font-size:14px}
 .tiers th{font-size:11px;color:var(--dim);font-weight:400;letter-spacing:1px}
@@ -292,7 +293,8 @@ footer{width:min(1100px,100%);margin:0 auto;padding:30px 20px 50px;color:var(--d
   .ch{padding:50px 16px 40px}
   .stats,.flow,.about,.boards{grid-template-columns:1fr}.rt{grid-template-columns:1fr 1fr}
   .cards{grid-template-columns:1fr;max-width:380px}
-.sheet{padding:34px 14px 14px;transform:none}.legs .note{display:none}.legs .stamp{width:70px}
+  .sheet{padding:34px 14px 14px;transform:none;overflow-x:auto;-webkit-overflow-scrolling:touch}.legs .note{display:none}.legs .stamp{width:70px}
+  .tiers td,.tiers th{font-size:12px;padding:6px 2px}
   /* load board → one card per lane */
   .loads thead{display:none}.loads tr{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:10px 12px;border-bottom:1px solid #1e4a2266}
   .loads td{display:block;padding:0;border:0}.loads td:first-child{white-space:normal;grid-column:1}.loads td:last-child{grid-column:2;grid-row:1;justify-self:end}

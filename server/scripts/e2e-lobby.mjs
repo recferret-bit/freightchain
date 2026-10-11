@@ -127,6 +127,14 @@ check('promo: WELCOME (any case) → +2 tickets, balance and cap shown', /^\+2 t
 check('…the 1h card now offers RIDE (2 left) and counts your tickets', await until(async () => (await txt(tix, '#tier-1h .go')) === 'RIDE (2 left)') && /your tickets: 2/.test(await txt(tix, '#tier-1h .mine')), await txt(tix, '#tier-1h .go'));
 check('promo: a second WELCOME is refused with the reason', /already redeemed/.test(await redeem('WELCOME')), await txt(tix, '#promo-msg'));
 check('promo: OPEN4H puts a ticket into the OPEN pool → WAITING FOR n MORE RIDERS (disabled)', /^\+1 ticket \(OPEN4H\)/.test(await redeem('OPEN4H')) && await until(async () => /^WAITING FOR \d+ MORE RIDERS?$/.test(await txt(tix, '#tier-4h .go'))) && await tix.ev('document.querySelector("#tier-4h .go").disabled'), await txt(tix, '#tier-4h .go'));
+await tix.ev('document.querySelector("#tier-1h .go").click()');
+check('a paid RIDE with the boxes off stays in the lobby and opens the profile offer', await until(async () => (await tix.ev('location.hash')) === '#profile' && !/play\.html/.test(await tix.ev('location.pathname')) && (await tix.ev('!!document.getElementById("agree-age") && !!document.getElementById("agree-loss")'))));
+await tix.ev('document.getElementById("agree-age").click()');
+check('the age box stays on after the server saves it', await until(async () => await tix.ev('document.getElementById("agree-age").checked && !document.getElementById("agree-age").disabled')));
+await tix.ev('document.getElementById("agree-loss").click()');
+check('the loss box stays on after the server saves it', await until(async () => await tix.ev('document.getElementById("agree-loss").checked && !document.getElementById("agree-loss").disabled && document.getElementById("agree-age").checked')));
+await tix.ev('location.hash = "#new"');
+check('back on NEW RIDE the cards are there', await until(async () => (await tix.ev('document.querySelectorAll(".tier").length')) === 4));
 const nl = await post('rides', { tier: '4h' }, D.cookie);
 check('API: a ride on the open pool is 409 pool_not_live (the lobby never offers it)', nl.r.status === 409 && nl.j.code === 'pool_not_live', JSON.stringify(nl.j));
 await tix.shot('tickets-desktop'); await size(tix, 390, 844, true); await sleep(300); await tix.shot('tickets-phone'); await size(tix, 1100, 900, false);

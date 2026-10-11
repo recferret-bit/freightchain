@@ -65,6 +65,7 @@ export class StartRideHandler implements ICommandHandler<StartRideCommand, RideD
       } else if (running) {
         throw new ConflictError('another ride is in progress');
       }
+      if (!ride.isFree) player.requirePaidPlay(); // a free start stays open; SOL already sent is confirmed by a different command
       const wardrobe = toWardrobeDto(await this.cosmetics.listUnlocked(wallet, tx), await this.cosmetics.listEquipped(wallet, tx));
       ride.start(now, wardrobe.equipped);   // what is worn right now (owned items only) goes with the ride: live streams and replays draw it
       const saved = await this.rides.save(ride, tx);

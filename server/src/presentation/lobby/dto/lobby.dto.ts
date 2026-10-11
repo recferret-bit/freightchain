@@ -19,3 +19,7 @@ export const replaysQuerySchema = z.object({
   status: z.enum(['completed', 'abandoned', 'failed']).optional().transform((v) => v ?? null),
 });
 export type ReplaysQuery = z.infer<typeof replaysQuerySchema>;
+
+/** Both boxes, every time. A missing one is a 400, not "leave it as it was". */
+export const agreementsBodySchema = z.object({ age18: z.boolean(), loss: z.boolean() });
+export type AgreementsBody = z.infer<typeof agreementsBodySchema>;

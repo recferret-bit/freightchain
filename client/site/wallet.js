@@ -13,13 +13,14 @@ import { track } from '../js/analytics.js';
 
 const REJECT = /reject|cancel|closed/i;
 
-/* `opts` is the third argument: never serialized, never the method switch. Omitted opts still report.
+/* `opts` is the third argument: never serialized. The method is POST when there is a body, unless opts.method says otherwise (the profile boxes are PUT).
    timeoutMs: give up (the game's polls – a hung request must not stall the next one). */
 export async function api(path, body, opts) {
   const report = opts?.report !== false;
   const timeoutMs = opts?.timeoutMs;
+  const method = opts?.method ?? (body ? 'POST' : 'GET');
   try {
-    const r = await fetch(`${API_BASE}/api/${path}`, { credentials: 'include', method: body ? 'POST' : 'GET', headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined, signal: timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined });
+    const r = await fetch(`${API_BASE}/api/${path}`, { credentials: 'include', method, headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined, signal: timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw Object.assign(new Error(j.detail || j.title || `server error ${r.status}`), { status: r.status, code: j.code ?? null });   // RFC 9457 problem+json: { title, detail, code, … }
     return j;

@@ -107,10 +107,13 @@ export class CreateRideHandler implements ICommandHandler<CreateRideCommand, Rid
       }
       if (open?.isInStatus(RideStatus.Running)) throw new ConflictError('a ride is already in progress');
       if (open?.isInStatus(RideStatus.Created) && (!open.isFree || !paid)) {
+        if (!open.isFree) player.requirePaidPlay(); // handing back a paid ride is still paid play, even when this request asked for a free one
         const again = asked ?? open.level ?? DEFAULT_FREE_LEVEL; // no level in the request = the ride keeps its own (never a silent fall back to EASY)
         if (open.isFree && !paid && open.chooseFree(again, freeLevelSeconds(again, rules.freeRideSeconds), tutorial, assist)) await this.rides.save(open, tx); // the same ready free ride, re-chosen: the level + checkboxes the lobby sent this time
         return { dto: toRideDto(open), now, ordered: null, resumed: open.snapshot(), failed, expired: null, cancelled: null, freeRidesLeft: player.freeRides };
       }
+      // after the cheap refusals (tutorial, level, not on sale, no treasury) and before a ticket, a resumed quote, or a new order
+      if (paid) player.requirePaidPlay();
       // the ticket is spent before anything else changes, so a refused spend (409) leaves the wallet exactly as it was
       const ticketed = viaTickets ? await this.ticketRide(wallet, tier as PaidTierId, round as Round, now, tx) : null;
       let creditRefunded = false;

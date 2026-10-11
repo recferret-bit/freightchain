@@ -33,7 +33,7 @@ export class GetAdminPlayerHandler implements IQueryHandler<GetAdminPlayerQuery,
       this.signIns.recent(RECENT, wallet), this.admin.rides({ wallet, limit: RECENT }),
     ]);
     return {
-      player: { wallet, freeRides: player.freeRides, freeRidesMax: player.freeRidesMax, freeDay: player.freeDay, createdAt: player.createdAt.getTime(), tutorialPassedAt: player.tutorialPassedAt?.getTime() ?? null },
+      player: { wallet, freeRides: player.freeRides, freeRidesMax: player.freeRidesMax, freeDay: player.freeDay, createdAt: player.createdAt.getTime(), tutorialPassedAt: player.tutorialPassedAt?.getTime() ?? null, age18At: player.age18At?.getTime() ?? null, lossAt: player.lossAt?.getTime() ?? null },
       stats: stats ? toStatsDto(stats.totals) : null,
       tickets: tickets.map((t) => ({ poolId: t.poolId, balance: t.balance, bought: t.bought })),
       grants: grants.map((g) => ({ poolId: g.poolId, delta: g.delta, source: g.source, ref: g.ref, at: g.at.getTime() })),

@@ -23,12 +23,30 @@
   #info, #opts { position: fixed; right: 10px; background: rgba(20,22,25,.85); border: 1px solid #3a3e44; border-radius: 4px; padding: 8px 10px; }
   #info { top: 10px; max-width: 280px; } #info b { color: #fff; font-size: 14px; } #info table { border-collapse: collapse; margin-top: 4px; } #info td { padding: 0 8px 0 0; color: #b9ad8d; } #info td+td { color: #d8d4c8; }
   #opts { bottom: 10px; } #opts label { display: block; cursor: pointer; } #opts label.off { opacity: .35; pointer-events: none; }
-  #help { position: fixed; left: 240px; right: 230px; bottom: 8px; color: #7d8187; font-size: 11px; }
-  @media (max-width: 700px) { #side { width: 150px; } #help { display: none; } #info { max-width: 160px; } }
+  #side-toggle { display: none; }
+  @media (max-width: 700px) {
+    #side-toggle {
+      display: block; position: fixed; left: 10px; top: 10px; z-index: 20;
+      background: rgba(20,22,25,.92); border: 1px solid #ffcf5a; color: #ffcf5a;
+      font: inherit; font-size: 11px; font-weight: bold; padding: 6px 10px; border-radius: 4px; cursor: pointer;
+    }
+    #side {
+      width: 220px; max-width: 80vw; z-index: 15;
+      transform: translateX(-100%); transition: transform .25s ease-out;
+      box-shadow: 4px 0 20px rgba(0,0,0,.6);
+      padding-top: 44px;
+    }
+    #side.open { transform: translateX(0); }
+    #help { display: none; }
+    #info { top: 10px; right: 10px; max-width: 170px; font-size: 11px; padding: 6px 8px; z-index: 5; }
+    #info b { font-size: 12px; }
+    #opts { bottom: 10px; right: 10px; font-size: 11px; padding: 6px 8px; z-index: 5; }
+  }
 </style>
 </head>
 <body>
 <canvas id="world"></canvas>
+<button id="side-toggle" aria-label="Toggle models list">☰ MODELS</button>
 <div id="side"><h1>MODEL VIEWER</h1><div id="list"></div></div>
 <div id="info"></div>
 <div id="opts"></div>
@@ -37,7 +55,13 @@
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
 <script type="module" src="js/viewer.js"></script>
 <script>
-  setTimeout(() => { if (!window.__viewer) document.getElementById('info').innerHTML = '<b>COULD NOT START</b><br>Serve this folder over http (<b>./serve.sh</b>, then open <b>/viewer.html</b>) – ES modules do not load from file://. Needs internet for three.js.'; }, 2000);
+  document.getElementById('side-toggle')?.addEventListener('click', () => {
+    document.getElementById('side')?.classList.toggle('open');
+  });
+  document.getElementById('list')?.addEventListener('click', e => {
+    if (e.target.classList.contains('item')) document.getElementById('side')?.classList.remove('open');
+  });
+  setTimeout(() => { if (!window.__viewer) document.getElementById('info').innerHTML = '<b>COULD NOT START</b><br>Serve this folder over http (<b>./serve.sh</b>, then open <b>/viewer.html</b>) – ES modules do not load from file://. Needs internet for three.js.'; }, 8000);
 </script>
 </body>
 </html>

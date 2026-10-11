@@ -6,7 +6,7 @@ import { PoolChainPort } from '../../../ports/economy/pool-chain.port.js';
 import { TicketOrderRepositoryPort } from '../../../ports/economy/ticket-order.repository.port.js';
 import { PlayerRepositoryPort } from '../../../ports/players/player.repository.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
-import { TransactionPort } from '../../../ports/shared/transaction.port.js';
+import { TransactionPort, type TransactionHandle } from '../../../ports/shared/transaction.port.js';
 import { GetTicketPaymentQuery, type TicketPaymentDto } from './get-ticket-payment.query.js';
 
 /**
@@ -27,9 +27,10 @@ export class GetTicketPaymentHandler implements IQueryHandler<GetTicketPaymentQu
   async execute({ wallet, orderId }: GetTicketPaymentQuery): Promise<TicketPaymentDto> {
     const rules = this.rules.get();
     const order = this.mustBeLive(await this.orders.findById(orderId), wallet);
+    await this.requirePaidPlay(wallet); // before the RPC build, and again under the lock before the message is attached
     const tx = await this.chain.buildBuyTransaction({ payer: wallet, poolId: order.poolId, qty: order.qty, orderId: order.id });
     await this.transactions.run(async (handle) => {
-      await this.players.findByWalletForUpdate(wallet, handle);
+      await this.requirePaidPlay(wallet, handle);
       const fresh = this.mustBeLive(await this.orders.findById(orderId, handle), wallet);
       fresh.attachTransaction(tx.message, tx.lastValidBlockHeight);
       await this.orders.save(fresh, handle);
@@ -39,6 +40,12 @@ export class GetTicketPaymentHandler implements IQueryHandler<GetTicketPaymentQu
       feePayer: tx.feePayer, computeUnits: tx.computeUnits, priorityMicrolamports: tx.priorityMicrolamports, blockhash: tx.blockhash,
       lastValidBlockHeight: tx.lastValidBlockHeight,
     };
+  }
+
+  private async requirePaidPlay(wallet: string, tx?: TransactionHandle) {
+    const player = tx ? await this.players.findByWalletForUpdate(wallet, tx) : await this.players.findByWallet(wallet);
+    if (!player) throw new NotFoundError('player not found');
+    player.requirePaidPlay();
   }
 
   private mustBeLive(order: TicketOrder | null, wallet: string): TicketOrder {

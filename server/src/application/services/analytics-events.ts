@@ -162,6 +162,11 @@ export function promoRedeemed(p: { wallet: string; code: string; n: number; isDe
   return serverEvent('promo_redeemed', p.wallet, `promo:${p.code}:${p.wallet}:${p.n}`, p.now, properties, set);
 }
 
+/** Both profile boxes just became on (after the commit). A later uncheck and re-check is a new pair of stamps, so a new event. */
+export function agreementsAccepted(wallet: string, age18At: number, lossAt: number, now: Date): AnalyticsEvent {
+  return serverEvent('agreements_accepted', wallet, `player:${wallet}:agreements:${age18At}:${lossAt}`, now, { age18_at: age18At, loss_at: lossAt });
+}
+
 /** The wallet put a cosmetic on (the wardrobe's WEAR button; a redemption also wears it but is `promo_redeemed`). */
 export function cosmeticEquipped(wallet: string, slot: string, item: string, isDefault: boolean, now: Date): AnalyticsEvent {
   return serverEvent('cosmetic_equipped', wallet, null, now, { slot, item, is_default: isDefault }, { [slot]: item });

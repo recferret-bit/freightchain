@@ -170,6 +170,9 @@ footer{padding:34px 20px 50px;text-align:center;color:var(--dim);font-size:12px;
   .rules li,.tips li{padding-left:46px}
   .tbl{font-size:12.5px}
 }
+@media (max-width:420px){
+  .toc{grid-template-columns:1fr}
+}
 /* print / save as PDF: ink on paper, no chrome */
 @media print{
   :root{--bg:#fff;--bg2:#f6f4ee;--panel:#fff;--dash:#ddd;--line:#bbb;--line2:#999;--amber:#7a4a00;--gear:#8a5200;--needle:#a33a00;--cream:#111;--dim:#555;--sand:#333;--lcd:#0a5a0a;--lcd-bg:#e8f5e8;color-scheme:light}

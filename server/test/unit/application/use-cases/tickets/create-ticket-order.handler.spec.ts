@@ -12,7 +12,10 @@ describe('CreateTicketOrderHandler', () => {
     await ctx.pools.upsert(aPool({ id: 1, maxPerWallet: 5 }, ctx.now()));
     await ctx.pools.upsert(aPool({ id: 2, tier: '4h' }, ctx.now()));
     const handler = new CreateTicketOrderHandler(ctx.players, ctx.pools, ctx.tickets, ctx.orders, ctx.sessions, new FixedRules(rules), ctx.transactions, ctx.clock, ctx.entropy);
-    return { ctx, order: (poolId: number, qty: number, wallet = 'w') => handler.execute(new CreateTicketOrderCommand(wallet, poolId, qty)) };
+    return { ctx, order: async (poolId: number, qty: number, wallet = 'w', opts: { offer?: boolean } = {}) => {
+      if (opts.offer !== false) await ctx.accept(wallet);
+      return handler.execute(new CreateTicketOrderCommand(wallet, poolId, qty));
+    } };
   };
 
   it('an order priced by the pool, expiring after the TTL; the same request hands it back', async () => {
@@ -31,6 +34,17 @@ describe('CreateTicketOrderHandler', () => {
     const c = await order(2, 1);
     expect(c.id).not.toBe(b.id);
     expect((await ctx.orders.findById(b.id))?.status).toBe('expired');
+  });
+
+  it('refuses a new order and a handed-back live order until both boxes are on', async () => {
+    const { ctx, order } = await setup();
+    await expect(order(1, 1, 'w', { offer: false })).rejects.toMatchObject({ errorCode: 'agreements_required' });
+    const live = await order(1, 1);
+    const player = await ctx.storedPlayer('w');
+    player.setAgreements({ age18: true, loss: false }, ctx.now());
+    await ctx.players.save(player);
+    await expect(order(1, 1, 'w', { offer: false })).rejects.toMatchObject({ errorCode: 'agreements_required' });
+    expect((await ctx.orders.findById(live.id))?.status).toBe('awaiting_payment');
   });
 
   it('refuses: no program (503), unknown pool (404), over the per-wallet cap counting what was bought (409)', async () => {

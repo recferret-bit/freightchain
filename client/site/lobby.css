@@ -106,8 +106,7 @@ td .av{width:18px;height:18px;margin-right:6px}
 .road::before{content:"";position:absolute;left:0;right:0;top:50%;border-top:2px dashed #ffffff33}
 .road .fill{position:absolute;left:0;top:0;bottom:0;background:#ffcf5a1f;transition:width 1s linear}
 .road .truck{position:absolute;top:0;font-size:16px;line-height:22px;transition:left 1s linear}
-.stats{grid-column:1/-1;display:flex;gap:4px 16px;flex-wrap:wrap;font-size:12px;color:var(--dim)}.stats b{color:var(--text);font-weight:normal}
-.stats .watch{margin-left:auto;color:var(--accent,#ffcf5a);font-weight:bold;text-decoration:none;letter-spacing:1px}.stats .watch:hover{text-decoration:underline}
+.stats .watch{margin-left:auto;color:var(--amber);background:#ffcf5a18;border:1px solid var(--amber);border-radius:4px;padding:4px 10px;font-weight:bold;text-decoration:none;letter-spacing:1px;font-size:12px;display:inline-flex;align-items:center;white-space:nowrap;transition:background .15s,color .15s}.stats .watch:hover{background:var(--amber);color:#1b1408}
 .empty{text-align:center;padding:40px 10px;color:var(--dim)}
 
 /* board */
@@ -168,7 +167,7 @@ th button.on{color:var(--amber)}
 .gprog,.gprev,#garage-slots .slot{margin-bottom:10px}.gprev{padding:8px}.gprev canvas{display:block;width:100%;max-width:760px;aspect-ratio:1280/633;margin:0 auto;border-radius:6px;background:#26221d;touch-action:manipulation}.cabnote{text-align:center;margin:6px 0 0;font-size:12px}
 #garage-slots .slot.ping{border-color:var(--amber);box-shadow:0 0 0 1px var(--amber)}
 
-@media (max-width:560px){.top{padding:10px 12px}.tabs{padding:0 6px;gap:0}.tabs a{padding:11px 8px;letter-spacing:0;font-size:12px}.tier .pr{font-size:19px}td,th{padding:8px 4px;font-size:13px}.tiers{grid-template-columns:1fr}.promo-top{order:3;width:100%}.promo-top input{flex:1}.tix th:nth-child(4),.tix td:nth-child(4){display:none}}
+@media (max-width:560px){.top{padding:10px 12px}.tabs{padding:0 6px;gap:0}.tabs a{padding:11px 8px;letter-spacing:0;font-size:12px}.tier .pr{font-size:19px}td,th{padding:8px 4px;font-size:13px}.tiers{grid-template-columns:1fr}.promo-top{order:3;width:100%}.promo-top input{flex:1}.tix th:nth-child(4),.tix td:nth-child(4){display:none}.tier.free .go{width:100%;justify-self:stretch}.buy{flex-wrap:wrap}.buy .buyb{width:100%}.chips{gap:5px}.chip{font-size:11px;padding:2px 8px}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 .filters{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin:0 0 12px}.filters label{font-size:12px;color:var(--dim)}
 .filters select{font:inherit;font-size:12px;background:#000a;color:var(--text);border:1px solid var(--line);border-radius:4px;padding:4px 6px}

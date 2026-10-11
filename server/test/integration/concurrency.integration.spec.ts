@@ -58,6 +58,18 @@ describe('concurrency (PostgreSQL)', () => {
     expect(await freeRides(a)).toBe(9); // 10 at signup, one credit
   });
 
+  it('N parallel agreement PUTs each return their own pair, and the row equals one of those pairs', async () => {
+    const a = await login(newWallet(), { offer: false });
+    const bodies = Array.from({ length: PARALLEL }, (_, i) => (i % 2 === 0 ? { age18: true, loss: false } : { age18: false, loss: true }));
+    const results = await parallel(PARALLEL, (i) => a.agent.put('/api/profile/agreements').send(bodies[i]!));
+    expect(results.map((r) => r.status)).toEqual(Array.from({ length: PARALLEL }, () => 200));
+    results.forEach((r, i) => expect(r.body).toMatchObject(bodies[i]!));
+    const me = (await a.agent.get('/api/me').expect(200)).body.agreements;
+    expect(bodies).toContainEqual({ age18: me.age18, loss: me.loss }); // a torn mix (both on, or both off) is neither submitted body
+    expect(me.age18At === null).toBe(!me.age18);
+    expect(me.lossAt === null).toBe(!me.loss);
+  });
+
   it('N parallel paid orders for the same tier are ONE order', async () => {
     const a = await login();
     const results = await parallel(PARALLEL, () => a.agent.post('/api/rides').send({ tier: '1h' }));

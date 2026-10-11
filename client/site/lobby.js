@@ -4,6 +4,7 @@ import { salesOpen, pendingOrder } from './tickets-api.js';
 import { ridableTickets, escrowExplainer, explorerTx, rideError, promoError, promoOk, buyError, sol, left, shortAddr as short } from './pools.js';
 import { poolCard, paidShift, escrowSummary, refundRows, profileTickets } from './lobby-pools.js';
 import { careerTiles } from './lobby-career.js';
+import { agreementsCard, blockPaid } from './lobby-agreements.js';
 import { redemptionList } from './lobby-promo.js';
 import { dirty, garageActions, garageProgress, garageSlots } from './lobby-garage.js';
 import { garageCab } from './garage-cab.js';
@@ -16,6 +17,7 @@ import { track, flushSoon } from '../js/analytics.js';
 import { reportWebVitals } from '../js/web-vitals.js';
 import { store } from '../js/util.js';
 import { FREE_COUNTRIES } from '../js/free-countries.js';
+import { isMobileDevice } from '../js/mobile.js';
 
 /* The lobby: NEW RIDE · LIVE · LEADERBOARD · GARAGE · PROMO · PROFILE. Vanilla DOM, no framework.
    Everything that comes from the server (wallet addresses, route ids, statuses…) goes in with textContent – never innerHTML – because other riders' data is rendered here. */
@@ -101,7 +103,16 @@ function paintPending() {
   const box = $('pendingbox'); if (!box) return;
   const r = S.pending;
   if (r && !pendingShown.has(r.id)) { pendingShown.add(r.id); track('pending_ride_shown', { ride_id: r.id, tier_id: r.tier }); }
-  const startIt = () => { track('pending_ride_start_clicked', { ride_id: r.id }); flushSoon(); location.href = `${GAME_BASE}/play.html?ride=${r.id}`; };
+  const startIt = () => {
+    if (isMobileDevice()) {
+      window.alert('Driving requires a desktop browser with keyboard controls. Open Freight Chain on desktop to drive, or watch streams on the LIVE tab!');
+      return;
+    }
+    if (r.tier !== 'free' && blockPaid(S.me)) return;
+    track('pending_ride_start_clicked', { ride_id: r.id });
+    flushSoon();
+    location.href = `${GAME_BASE}/play.html?ride=${r.id}`;
+  };
   box.replaceChildren(r ? el('div', { class: 'note' }, el('span', {}, el('b', {}, `Your paid ${TIER_NAME[r.tier] ?? r.tier} ride is waiting`), S.pendingNote ? ` · ${S.pendingNote}` : ''), el('button', { onclick: startIt }, 'START IT')) : S.pendingNote ? el('p', { class: 'dim' }, S.pendingNote) : '');
 }
 
@@ -198,19 +209,22 @@ function syncFreeLevel() {
 }
 function freeCard(t) {
   const off = tierOff(t);
+  const mobile = isMobileDevice();
+  const btnLabel = S.busy === 'free' ? 'WORKING…' : mobile ? 'DESKTOP TO DRIVE · WATCH LIVE' : S.me.readyFreeRide ? 'START FREE RIDE · ready' : 'START FREE RIDE';
   return el('article', { class: 'tier free', id: 'tier-free' },
     el('div', { class: 'freeinfo' },
       el('div', { class: 'hd' }, el('span', { class: 'nm' }, TIER_NAME.free)),
       el('div', { class: 'prize' },
         el('span', { class: 'st done' }, 'NO PRIZE'),
-        el('span', { class: 'st done' }, 'FOR THE FREE LEADERBOARD AND ACHIEVEMENTS')),
+        el('span', { class: 'st done' }, 'FOR THE FREE LEADERBOARD AND ACHIEVEMENTS'),
+        mobile ? el('span', { class: 'st live' }, 'DESKTOP TO DRIVE · SPECTATE ON MOBILE') : ''),
       levelPicker(t),
       freeLevels(t).length ? '' : el('span', { class: 'sub', id: 'free-shift' }, tierInfo(t).shift),   // a server without levels: the one shift, once
       el('div', { class: 'guide' },
         guideBox('opt-tutorial', 'TUTORIAL', S.me?.tutorialPassed ? 'Step-by-step tips over the game – you have done it, switch it on to see it again.' : 'Step-by-step tips over the game: ignition, gears, steering, lights, hull. On for your first ride.', tutorialOn(), v => { S.opt.tutorial = v; }, !tutorialAllowed(t)),
         guideBox('opt-assist', 'ASSIST', 'The truck and the battery last twice as long and every control gets a tip when it matters. Finish a free ride WITHOUT it for the “On My Own” achievement.', S.opt.assist, v => { S.opt.assist = v; store.set('freightchain.assist', v ? '1' : '0'); }, !assistAllowed(t))),
       off ? el('span', { class: 'tag' }, off) : '',
-      el('button', { class: 'go', id: 'start', disabled: !!off || !!S.busy, onclick: startFree }, S.busy === 'free' ? 'WORKING…' : S.me.readyFreeRide ? 'START FREE RIDE · ready' : 'START FREE RIDE')),
+      el('button', { class: 'go', id: 'start', disabled: !!off || !!S.busy, onclick: startFree }, btnLabel)),
     el('p', { class: 'msg dim', id: 'msg-free' }));
 }
 function soonCard(t) {   // a paid shift with no live pool: the planned price is text, the button does nothing
@@ -276,15 +290,34 @@ function play(r, tier, level = null) {
 }
 const clicked = (id, usd = 0) => track('ride_buy_clicked', { tier_id: id, is_free: id === 'free', price_usd: usd, is_demo: !!S.me?.demo });
 const freeBody = () => { const t = S.tiers?.tiers.find(x => x.id === 'free'), lv = pickedLevel(t); return { tier: 'free', tutorial: tutorialOn() && tutorialAllowed(t), assist: S.opt.assist && assistAllowed(t), ...(lv ? { level: lv.level } : {}) }; };   // HARD: neither helper is sent (the server would refuse it)
-const startFree = () => busy('free', async () => { clicked('free'); const body = freeBody(); try { play(await api('rides', body), 'free', body.level ?? null); } catch (e) { say('free', rideError(e, 'free'), true); await refreshMe(); } });
-const startLegacy = id => busy(id, async () => { clicked(id, S.tiers?.tiers.find(t => t.id === id)?.usd ?? 0); try { play(await buyRide(id, text => say(id, text)), id); } catch (e) { say(id, rideError(e, id), true); } });
+const startFree = () => busy('free', async () => {
+  if (isMobileDevice()) {
+    say('free', 'Driving requires a desktop browser with keyboard controls. Check out the LIVE tab to watch streams and replays on mobile!', true);
+    return;
+  }
+  clicked('free'); const body = freeBody(); try { play(await api('rides', body), 'free', body.level ?? null); } catch (e) { say('free', rideError(e, 'free'), true); await refreshMe(); }
+});
+const refusedOffer = (e) => { if (e?.code === 'agreements_required') location.hash = '#profile'; };
+const startLegacy = id => busy(id, async () => {
+  if (isMobileDevice()) {
+    say(id, 'Driving requires a desktop browser with keyboard controls. Check out the LIVE tab to watch streams on mobile!', true);
+    return;
+  }
+  if (blockPaid(S.me)) return; clicked(id, S.tiers?.tiers.find(t => t.id === id)?.usd ?? 0); try { play(await buyRide(id, text => say(id, text)), id); } catch (e) { refusedOffer(e); say(id, rideError(e, id), true); }
+});
 const ride = tier => busy(tier, async () => {   // spends one ticket: the ride is ready at once
+  if (isMobileDevice()) {
+    say(tier, 'Driving requires a desktop browser with keyboard controls. Check out the LIVE tab to watch streams on mobile!', true);
+    return;
+  }
+  if (blockPaid(S.me)) return;   // before ride_buy_clicked: a blocked click is not a buy
   clicked(tier, S.tiers?.tiers.find(t => t.id === tier)?.usd ?? 0);
   say(tier, 'Spending a ticket…');
-  try { play(await api('rides', { tier }), tier); } catch (e) { say(tier, rideError(e, tier), true); await refreshMe(); }
+  try { play(await api('rides', { tier }), tier); } catch (e) { refusedOffer(e); say(tier, rideError(e, tier), true); await refreshMe(); }
 });
 const buy = (tier, poolId, qty) => busy(tier, async () => {
-  try { await buyTickets(poolId, qty, text => say(tier, text)); S.qty[tier] = 1; await Promise.all([refreshMe(), refreshPool()]); say(tier, `Paid – ${qty} ticket${qty === 1 ? '' : 's'} credited.`); } catch (e) { say(tier, buyError(e), true); }
+  if (blockPaid(S.me)) return;
+  try { await buyTickets(poolId, qty, text => say(tier, text)); S.qty[tier] = 1; await Promise.all([refreshMe(), refreshPool()]); say(tier, `Paid – ${qty} ticket${qty === 1 ? '' : 's'} credited.`); } catch (e) { refusedOffer(e); say(tier, buyError(e), true); }
 });
 const refund = (poolId, key) => busy(key, async () => {
   try {
@@ -431,9 +464,10 @@ async function renderProfile() {
   let p; const my = seq;
   try { p = await api('profile', undefined, { report: false }); } catch (e) { if (my === seq) view.replaceChildren(el('p', { class: 'bad' }, e.message)); return; }
   if (my !== seq) return;
-  Object.assign(S.me, { freeRides: p.freeRides, freeRidesMax: p.freeRidesMax, nextFreeRideAt: p.nextFreeRideAt, tickets: p.tickets }); paintHeader();
+  Object.assign(S.me, { freeRides: p.freeRides, freeRidesMax: p.freeRidesMax, nextFreeRideAt: p.nextFreeRideAt, tickets: p.tickets, agreements: p.agreements }); paintHeader();
   const got = p.achievements.filter(a => a.earnedAt).length;
   view.replaceChildren(
+    agreementsCard(S.me),
     el('div', { class: 'who', style: 'display:flex;gap:10px;align-items:center' }, avatar(p.wallet), el('div', {}, el('b', {}, short(p.wallet)), el('div', { class: 'dim' }, `rider since ${new Date(p.createdAt).toLocaleDateString()}`))),
     ...careerTiles(p.career, p.stats, { km, sol }),
     ...profileTickets(p, S.busy, refund),

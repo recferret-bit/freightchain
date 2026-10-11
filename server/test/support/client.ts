@@ -25,11 +25,15 @@ export const sign = (kp: nacl.SignKeyPair, message: string): string => bs58.enco
 export function bindClient(h: () => Harness) {
   const server = () => h().server();
   const anon = () => request(server());
-  /** a signed-in rider (full Sign-In-With-Solana through the real endpoints) */
-  async function login(w: Wallet = newWallet()): Promise<Rider> {
+  /**
+   * A signed-in rider (full Sign-In-With-Solana through the real endpoints).
+   * The product default is both boxes OFF. This fixture turns them ON unless `{ offer: false }`, so paid-flow tests stay about payments.
+   */
+  async function login(w: Wallet = newWallet(), opts: { offer?: boolean } = {}): Promise<Rider> {
     const agent = request.agent(server());
     const { body } = await agent.post('/api/auth/nonce').send({ wallet: w.address }).expect(200);
     await agent.post('/api/auth/verify').send({ wallet: w.address, signature: sign(w.kp, body.message) }).expect(200);
+    if (opts.offer !== false) await agent.put('/api/profile/agreements').send({ age18: true, loss: true }).expect(200);
     return { agent, ...w };
   }
   /** an admin: the ADMIN sign-in (/api/admin/auth/*, the fc_admin cookie) – no player session; pass an agent to add it to a signed-in rider */

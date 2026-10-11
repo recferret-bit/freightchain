@@ -136,9 +136,16 @@ export function unitContext(rules: RulesConfig = unitRules()) {
     await rides.insert(ride);
     return ride;
   };
-  /** a stored paid order (awaiting payment) */
-  const paidOrder = async (wallet: string, lamports = 50_000_000) => {
+  /** Both boxes on. The product default is off; paid helpers call this so their tests stay about payments. Pass `false` to leave them off. */
+  const accept = async (wallet: string, on = true) => {
+    const stored = await sessions.touch(wallet);
+    const { changed } = stored.setAgreements({ age18: on, loss: on }, clock.now());
+    return changed ? players.save(stored) : stored;
+  };
+  /** a stored paid order (awaiting payment). Accepts the offer unless `{ offer: false }`. */
+  const paidOrder = async (wallet: string, lamports = 50_000_000, opts: { offer?: boolean } = {}) => {
     await player(wallet);
+    if (opts.offer !== false) await accept(wallet);
     const ride = Ride.createPaidOrder({ id: entropy.uuid(), wallet, tier: '1h', seed: entropy.seed31(), minSeconds: 3600, timeScale: 1, priceUsd: 5, lamports, solUsd: 100, now: now(), quoteTtlMs: rules.quoteTtlMs });
     await rides.insert(ride);
     return ride;
@@ -157,7 +164,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   return {
     db, clock, chain, entropy, dailySeeds, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, batches, hasher, verdictRepo, verdicts, proofs, signIns, adminActions, adminQuery, adminDirectory, health, analytics,
     pools, tickets, promos, cosmetics, promoCreation, orders, poolTickets, ticketSettlement,
-    sessions, meProfile, settings, settingsRepo, lookup, rounds, achievements, settlement, now, player, freeRide, paidOrder, paidRide, reload, storedPlayer,
+    sessions, meProfile, settings, settingsRepo, lookup, rounds, achievements, settlement, now, player, accept, freeRide, paidOrder, paidRide, reload, storedPlayer,
     poolChain, chainEvents, chainCursors, registry, rideEvents, viewers, sitePresence, rideMutes, donationOrders, liveAccess, statsRepo, cache, stats,
   };
 }

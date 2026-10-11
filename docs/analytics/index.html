@@ -100,7 +100,7 @@
 <section aria-labelledby="s-funnels">
   <div class="head">
     <span class="eyebrow">Person-scoped funnels</span>
-    <h2 id="s-funnels">Nine funnels, each with a window</h2>
+    <h2 id="s-funnels">Ten funnels, each with a window</h2>
     <p class="soft">A drop means that person did not fire the next event inside the window. That is sometimes a product bug and sometimes a judge who only looked at the pool. Click-together: Funnels → step → property filter → the window written here → breakdown one of <code>is_demo</code>, <code>is_free</code>, <code>tier_id</code>, <code>stage</code>, <code>fail_code</code>. Leave “exclude events between steps” off except where an exclusion is written. Ordered steps are already the order. PostHog does not OR a step, so free and paid are two funnels, and session restore is two funnels.</p>
   </div>
 
@@ -215,11 +215,21 @@
     </div>
     <p><code>promo_redeem_clicked</code> without a later <code>promo_redeemed</code> is a refusal: read <code>api_request_failed</code> for <code>route=/api/promo/redeem</code> (<code>http_status</code> 404 unknown code, 409 with <code>code</code> <code>promo_unavailable</code>, <code>no_open_pool</code>, <code>ticket_cap</code>, <code>already_owned</code>). Unknown codes are not stored anywhere on the server side of PostHog – only the click and the failure class. Operations: <code>promo_created</code> / <code>promo_disabled</code> (aggregate, distinct id <code>freightchain</code>) say when a code went live or stopped and how much it had been used.</p>
   </article>
+  <article class="card">
+    <div class="top"><h3>10 · Paid consent clicks</h3><span class="chip ok">7 days</span></div>
+    <div class="funnel"><ol>
+      <li><span class="n">1</span><span><code>lobby_tab_viewed</code> · <code>tab=profile</code></span></li>
+      <li><span class="n">2</span><span><code>agreement_toggled</code> · <code>kind=age18</code> · <code>on=true</code></span></li>
+      <li><span class="n">3</span><span><code>agreement_toggled</code> · <code>kind=loss</code> · <code>on=true</code></span></li>
+      <li><span class="n">4</span><span><code>ride_buy_clicked</code> · <code>is_free=false</code></span></li>
+    </ol></div>
+    <p>Client clicks only, so it does not depend on <code>$create_alias</code>. The boxes are top to bottom: age, then the loss offer. A rider who ticks loss first does not convert. Window 7 days, the same clock as activation. Off the judge board. The server event <code>agreements_accepted</code> is the commit, and is not a step here.</p>
+  </article>
 </section>
 
 <section aria-labelledby="s-server">
   <div class="head">
-    <span class="eyebrow">Server events · 24</span>
+    <span class="eyebrow">Server events · 25</span>
     <h2 id="s-server">What the database already decided</h2>
     <p class="soft">Emitted only after the save resolves, inside <code>emitAnalytics</code>. <code>dedupe_key</code> is a property. The capture <code>uuid</code> is a UUID v5 of <code>https://freightchain.fun/analytics/</code> plus that key, computed in the adapter. Handlers pass <code>uuid: null</code>. Timestamp is the column named here, from <code>ClockPort</code>, except the reconcile-miss row. No <code>$insert_id</code>, no <code>sent_at</code>, no <code>$groups</code>. <code>round_id</code> is a property and is null until a payment sets it.</p>
   </div>
@@ -256,6 +266,7 @@
         <tr><td><code>achievement_unlocked</code></td><td>This statement inserted the achievement id.</td><td><code>ach:&lt;wallet&gt;:&lt;id&gt;</code></td><td>Ids: <code>first-mile</code>, <code>shift-complete</code>, <code>night-owl</code>, <code>century</code>, <code>clean-run</code>, <code>cold-start</code>, <code>on-my-own</code>, <code>free-easy</code>, <code>free-crossroads</code>, <code>free-hard</code>. Never <code>top-20</code>.</td></tr>
         <tr><td><code>promo_redeemed</code></td><td>A promo code was redeemed: the transaction committed (the grant, the redemption and the per-wallet key). A refusal emits nothing.</td><td><code>promo:&lt;CODE&gt;:&lt;wallet&gt;:&lt;n&gt;</code> · the redemption's <code>now</code><span class="c">n = this wallet's n-th use</span></td><td><code>code</code>, <code>kind</code> (tickets, free_rides, cosmetic), <code>redemption_n</code>, <code>is_demo</code>; tickets: <code>tier_id</code>, <code>pool_id</code>, <code>tickets_added</code>, <code>ticket_balance</code>; free rides: <code>rides_added</code>, <code>free_rides</code> (the balance, may exceed the daily cap); cosmetic: <code>slot</code> (wheel, truck_color, gearbox, dice, needle), <code>item</code>. Person properties: <code>free_rides</code>, or the slot's own (<code>wheel</code> / <code>truck_color</code> / <code>gearbox</code> / <code>dice</code> / <code>needle</code>). Never the description or the note.</td></tr>
         <tr><td><code>cosmetic_equipped</code></td><td>The wallet pressed WEAR in the lobby wardrobe (an owned item, or the slot's default again). A redemption also wears the item but is <code>promo_redeemed</code>.</td><td>none · the request's <code>now</code></td><td><code>slot</code>, <code>item</code>, <code>is_default</code>. Person property = the slot (<code>wheel</code> / <code>truck_color</code> / <code>gearbox</code> / <code>dice</code> / <code>needle</code>).</td></tr>
+        <tr><td><code>agreements_accepted</code></td><td>Both profile boxes just became on, after the commit. One box, a repeat, or switching one off emits nothing.</td><td><code>player:&lt;wallet&gt;:agreements:&lt;age18At&gt;:&lt;lossAt&gt;</code> · the request's <code>now</code></td><td><code>age18_at</code>, <code>loss_at</code> (epoch ms). A later uncheck and re-check is a new pair of stamps, so a new event. Not a step of funnel 10.</td></tr>
         <tr><td><code>garage_saved</code></td><td>The player pressed SAVE LOADOUT in the lobby's Garage and the all-or-nothing save committed. A refused part saves nothing and emits nothing.</td><td>none · the request's <code>now</code></td><td>The five slots of the loadout now worn (<code>wheel</code>, <code>truck_color</code>, <code>gearbox</code>, <code>dice</code>, <code>needle</code>) and <code>parts_saved</code> (how many parts the save touched). The five are set on the person.</td></tr>
         <tr><td><code>promo_created</code> / <code>promo_disabled</code></td><td>An admin's signed create / disable of a code on the admin page committed (the audit row is in the same transaction). The dev / ops CLI (<code>promo:create</code>, <code>promo:disable</code>) is unsigned, unaudited and emits nothing.</td><td><code>promo:&lt;CODE&gt;:created</code> / <code>…:disabled</code> · <code>now</code></td><td>Distinct id <code>freightchain</code> – no wallet. Created: <code>code</code>, <code>kind</code>, the effect (<code>tier_id</code>/<code>credits</code>/<code>pool_id</code>, <code>rides</code>, or <code>slot</code>/<code>item</code>), <code>max_redemptions</code>, <code>per_wallet</code>, <code>starts_at</code>, <code>expires_at</code>. Disabled: <code>code</code>, <code>kind</code>, <code>redeemed</code>. No free text.</td></tr>
         <tr><td><code>round_opened</code></td><td>This process inserted the round. The race loser emits nothing.</td><td><code>round-open:&lt;startsAt&gt;</code></td><td>Distinct id <code>freightchain</code>. <code>carry_lamports</code> is what was passed forward. A round-turning 503 emits nothing.</td></tr>
@@ -267,7 +278,7 @@
 
 <section aria-labelledby="s-client">
   <div class="head">
-    <span class="eyebrow">Browser events · 38 names, allowlisted properties</span>
+    <span class="eyebrow">Browser events · 39 names, allowlisted properties</span>
     <h2 id="s-client">What the player did before the server knew</h2>
     <p class="soft">The relay stamps <code>source=client</code> and, when the cookie verifies, the session wallet. Properties are strings of at most 200 characters, or an integer, a boolean, or null. A float drops that event, not the whole batch. At most 20 keys. Anything not in the allowlist is removed. These names are hard-deleted even if someone allowlists them later: <code>signature</code>, <code>transaction</code>, <code>seed</code>, <code>nonce</code>, <code>message</code>, <code>token</code>, <code>cookie</code>, <code>authorization</code>, <code>detail</code>, <code>secret</code>, <code>anon_id</code>.</p>
   </div>
@@ -286,7 +297,7 @@
         <tr><td><code>session_restored</code></td><td>The first <code>/api/me</code> on the landing or the lobby succeeded, and this document did not just finish <code>signIn()</code>.</td><td><code>surface</code> landing|lobby, <code>request_alias</code> (boolean; the string <code>"true"</code> does not alias), <code>is_demo</code>. The only client event that may ask for an alias.</td></tr>
         <tr><td><code>lobby_viewed</code></td><td>Once, after the lobby has a session, before the first tab paint.</td><td><code>is_demo</code>, <code>round_id</code> if the pool is already loaded</td></tr>
         <tr><td><code>lobby_tab_viewed</code></td><td><code>go()</code> actually switches. First paint and hash changes. Not the live poll.</td><td><code>tab</code>: new, live, replays, board, garage, promo, profile</td></tr>
-        <tr><td><code>ride_buy_clicked</code></td><td><code>start()</code> begins, before the order or the wallet.</td><td><code>tier_id</code>, <code>is_free</code>, <code>price_usd</code>, <code>is_demo</code></td></tr>
+        <tr><td><code>ride_buy_clicked</code></td><td><code>start()</code> begins, before the order or the wallet. A paid click blocked by the profile offer does not fire this.</td><td><code>tier_id</code>, <code>is_free</code>, <code>price_usd</code>, <code>is_demo</code></td></tr>
         <tr><td><code>payment_submitted</code></td><td>The wallet finished <code>signAndSendTransaction</code>.</td><td><code>ride_id</code>, <code>tier_id</code>. The signature is in scope and is not sent.</td></tr>
         <tr><td><code>payment_failed</code></td><td><code>buyRide</code> threw, other than the 90 second give-up.</td><td><code>stage</code>: <code>no_provider</code>, <code>web3_load_failed</code>, <code>order_failed</code>, <code>instructions_failed</code>, <code>wallet_rejected</code>, <code>confirm_rejected</code>, <code>unexpected_status</code>. Plus <code>http_status</code>, <code>code</code>. Not also <code>api_request_failed</code>.</td></tr>
         <tr><td><code>payment_confirm_gave_up</code></td><td>The confirm loop hit 60 iterations.</td><td><code>ride_id</code>, <code>tier_id</code>, <code>attempts=60</code>. Later reconcile can still become <code>payment_confirmed</code> <code>via=reconcile</code>.</td></tr>
@@ -304,6 +315,7 @@
     <table>
       <thead><tr><th>Event</th><th>When</th><th>Properties</th></tr></thead>
       <tbody>
+        <tr><td><code>agreement_toggled</code></td><td>A profile box changed. The server stores the pair; this is the click. Funnel 10 reads age, then the loss offer, both with <code>on=true</code>.</td><td><code>kind</code>: age18 or loss. <code>on</code> (boolean).</td></tr>
         <tr><td><code>promo_invite_viewed</code></td><td>The landing opened with <code>/?promo=CODE</code> (a shared invite link).</td><td><code>code</code> (upper-case, ≤ 32 characters)</td></tr>
         <tr><td><code>promo_invite_submitted</code></td><td>CLAIM on the landing's invite block with a non-empty code, before anything else happens (signed out: the code waits for the sign-in).</td><td><code>code</code>, <code>signed_in</code>, <code>from_link</code> (the code is the one the link carried)</td></tr>
         <tr><td><code>promo_redeem_clicked</code></td><td>REDEEM in the lobby with a code typed, before the request. The outcome is the server's <code>promo_redeemed</code>, or <code>api_request_failed</code>.</td><td><code>surface</code>: new (the NEW RIDE form) or promo (the PROMO tab), <code>prefilled</code> (the code came from an invite link)</td></tr>

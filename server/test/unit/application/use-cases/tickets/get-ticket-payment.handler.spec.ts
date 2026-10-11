@@ -14,6 +14,14 @@ describe('GetTicketPaymentHandler', () => {
     expect((await s.ctx.orders.findById(s.order.id))?.snapshot()).toMatchObject({ txMessage: dto.message, lastValidBlockHeight: 250 });
   });
 
+  it('an unsigned buy is refused until both boxes are on', async () => {
+    const s = await paymentSetup();
+    const player = await s.ctx.storedPlayer(s.wallet);
+    player.setAgreements({ age18: false, loss: true }, s.ctx.now());
+    await s.ctx.players.save(player);
+    await expect(handlerOf(s).execute(new GetTicketPaymentQuery(s.wallet, s.order.id))).rejects.toMatchObject({ errorCode: 'agreements_required' });
+  });
+
   it('someone else\'s or a missing order is 404; a lapsed or paid one 409', async () => {
     const s = await paymentSetup();
     const h = handlerOf(s);
