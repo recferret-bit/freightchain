@@ -50,11 +50,11 @@ interface CreateFacts {
  * transaction and the ride is ready at once (409 `no_tickets` / `pool_not_live`). In `program` mode that is the only way; in `transfer` mode an on-sale tier with no pool still uses the legacy pay-per-ride order.
  * A FREE ride is ordered at a LEVEL (ride-trip.ts FREE_LEVELS, default 1): its trip, FREE_RIDE_SECONDS × its multiple, its finish line. TUTORIAL or ASSIST on a
  * level without it (HARD) is refused (409 `tutorial_not_allowed` / `assist_not_allowed`), a level on a paid tier too (409 `level_free_only`). Asking for the ready free ride again re-chooses
- * its level and helpers on that SAME ride (same seed, same credit) – the lobby never sends you onto a road you did not pick; a request with no `level` keeps
- * the ride's own level.
+ * its level (trip, country, length) and helpers on that SAME ride (same seed, same credit) – the lobby never sends you onto a road you did not pick; a request with no `level` keeps
+ * the ride's own level. The country is the level's (FREE_LEVELS.route), not the seed's.
  * ONE ROAD PER COMPETITION: a ticket ride is driven on its pool's seed (`Pool.rideSeed`), a pay-per-ride order on its tier's seed of the UTC day it was ordered
  * (`DailySeedRepositoryPort`, the day's first order draws it) – every rider of a pool, or of a tier that day, drives the same route, start hour, layout and holes.
- * Free rides draw a seed each.
+ * Free rides draw a seed each (layout, holes, start hour); the country is the level's.
  */
 @CommandHandler(CreateRideCommand)
 export class CreateRideHandler implements ICommandHandler<CreateRideCommand, RideDto> {

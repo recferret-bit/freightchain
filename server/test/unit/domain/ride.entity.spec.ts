@@ -2,6 +2,7 @@ import { Ride } from '../../../src/domain/rides/ride.entity.js';
 import { RideStatus } from '../../../src/domain/rides/ride-status.js';
 import type { RideReport } from '../../../src/domain/rides/ride-report.js';
 import { ConflictError } from '../../../src/domain/shared/errors.js';
+import { FREE_LEVELS } from '../../../src/domain/rides/ride-trip.js';
 import { ROUTE_IDS, START_HOURS, worldFor } from '../../../src/domain/rides/ride-rules.js';
 
 const T0 = new Date('2026-10-07T12:00:00.000Z');
@@ -61,7 +62,7 @@ describe('Ride – the free LEVELS (EASY / CROSSROADS / HARD)', () => {
     expect(() => r.chooseFree(3, 600, true, false)).toThrow(ConflictError);
     expect(r).toMatchObject({ trip: 'free-2', minSeconds: 180, assist: true });
     expect(r.chooseFree(3, 600, false, false)).toBe(true);
-    expect(r).toMatchObject({ trip: 'free-3', level: 3, minSeconds: 600, completeDist: 0.4 * 28 * 600, tutorial: false, assist: false });
+    expect(r).toMatchObject({ trip: 'free-3', route: 'brenner', level: 3, minSeconds: 600, completeDist: 0.4 * 28 * 600, tutorial: false, assist: false });
     expect(() => order().chooseFree(1, 60, false, false)).toThrow(ConflictError);
     r.start(T0);
     expect(() => r.chooseFree(1, 60, false, false)).toThrow(ConflictError);   // a running ride keeps its road
@@ -69,13 +70,22 @@ describe('Ride – the free LEVELS (EASY / CROSSROADS / HARD)', () => {
 });
 
 describe('Ride – the world the server assigns', () => {
-  it('the route and the start hour come from the seed at creation, are stored on the ride and cannot be reported', () => {
+  it('a free ride\'s country is its level\'s; the start hour still comes from the seed; a paid ride takes both from the seed; a report cannot change the route', () => {
     const r = freeRide();
-    expect(r).toMatchObject({ route: worldFor(7).route, startHour: worldFor(7).startHour });
+    expect(r).toMatchObject({ route: FREE_LEVELS[1].route, startHour: worldFor(7).startHour });
+    expect(r.route).not.toBe(worldFor(7).route);   // seed 7 is not the EASY country: the level wins
+    expect(Ride.createFree({ id: 'r2', wallet: 'w', seed: 7, minSeconds: 180, now: T0, level: 2 }).route).toBe(FREE_LEVELS[2].route);
+    expect(Ride.createFree({ id: 'r3', wallet: 'w', seed: 7, minSeconds: 600, now: T0, level: 3 }).route).toBe(FREE_LEVELS[3].route);
     expect(order()).toMatchObject({ route: worldFor(1).route, startHour: worldFor(1).startHour });
     r.start(T0);
     r.applyReport({ ...report({ s: 1, t: 1 }), route: 'siberia' } as RideReport, at(1), rules);
-    expect(r.route).toBe(worldFor(7).route);
+    expect(r.route).toBe(FREE_LEVELS[1].route);
+  });
+  it('re-choosing a ready free ride moves its country with the level, including one ordered before the countries were fixed', () => {
+    const old = Ride.restore({ ...freeRide().snapshot(), route: 'siberia' });
+    expect(old.chooseFree(1, 10, false, false)).toBe(true);
+    expect(old.route).toBe(FREE_LEVELS[1].route);
+    expect(old.chooseFree(1, 10, false, false)).toBe(false);
   });
   it('worldFor is a pure function of the seed that reaches every route and every hour', () => {
     const seen = new Set<string>(), hours = new Set<number>();

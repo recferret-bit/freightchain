@@ -1,7 +1,7 @@
 import { Ride } from '../../../src/domain/rides/ride.entity.js';
 import { RIDE_TIER_IDS } from '../../../src/domain/rides/ride-tier.js';
 import { FREE_LEVELS, FREE_LEVEL_IDS, TRIP_IDS, TRIP_OF_TIER, assertAssistAllowed, assertTutorialAllowed, completedLevels, freeLevelSeconds, isFreeLevel, levelOfTrip, tripOf } from '../../../src/domain/rides/ride-trip.js';
-import { FREE_COMPLETE_DIST_K, completeDistK } from '../../../src/domain/rides/ride-rules.js';
+import { FREE_COMPLETE_DIST_K, ROUTE_IDS, completeDistK } from '../../../src/domain/rides/ride-rules.js';
 import { ConflictError } from '../../../src/domain/shared/errors.js';
 import { validateEnv } from '../../../src/infrastructure/config/env.schema.js';
 
@@ -42,6 +42,17 @@ describe('ride trips (server ⇄ client/js/trips.js)', () => {
     }
     // only the level rows carry a level
     expect(new Set(Object.values(TRIPS).filter((t: any) => t.level).map((t: any) => t.id))).toEqual(new Set(FREE_LEVEL_IDS.map((l) => FREE_LEVELS[l].trip)));
+  });
+
+  it('each free level is one country, the same one the lobby hardcodes, and the three countries differ', async () => {
+    const { FREE_COUNTRIES } = await import(/* @vite-ignore */ new URL('../../../../client/js/free-countries.js', import.meta.url).href) as { FREE_COUNTRIES: Record<number, { route: string }> };
+    const routes = FREE_LEVEL_IDS.map((l) => FREE_LEVELS[l].route);
+    expect(routes).toEqual(['stuart', 'route66', 'brenner']);
+    expect(new Set(routes).size).toBe(routes.length);
+    for (const l of FREE_LEVEL_IDS) {
+      expect(ROUTE_IDS).toContain(FREE_LEVELS[l].route);
+      expect(FREE_COUNTRIES[l].route).toBe(FREE_LEVELS[l].route);
+    }
   });
 
   it('the levels: EASY ×1 K .25 with assist, CROSSROADS ×3 K .3 with assist, HARD ×10 K .4 without; EASY is the old free K', () => {

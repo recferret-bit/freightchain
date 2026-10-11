@@ -14,6 +14,7 @@ import { API_BASE, GAME_BASE } from '../js/hosts.js';
 import { track, flushSoon } from '../js/analytics.js';
 import { reportWebVitals } from '../js/web-vitals.js';
 import { store } from '../js/util.js';
+import { FREE_COUNTRIES } from '../js/free-countries.js';
 
 /* The lobby: NEW RIDE · LIVE · LEADERBOARD · GARAGE · PROMO · PROFILE. Vanilla DOM, no framework.
    Everything that comes from the server (wallet addresses, route ids, statuses…) goes in with textContent – never innerHTML – because other riders' data is rendered here. */
@@ -62,7 +63,7 @@ function go() {
    pay.js → tickets-api.js (not built server-side yet: shown as SOON). A paid tier without a pool is the SOON card when it is not on sale, and the legacy pay-per-ride order when it is. */
 function renderNew() {
   view.replaceChildren(
-    el('div', { class: 'card pool', id: 'poolbox' }), el('div', { id: 'pendingbox' }), el('div', { id: 'orderbox' }), el('div', { id: 'refunds' }),
+    el('div', { class: 'card pool', id: 'poolbox', hidden: true, style: 'display:none' }), el('div', { id: 'pendingbox' }), el('div', { id: 'orderbox' }), el('div', { id: 'refunds' }),
     el('div', { id: 'freebox' }), el('h2', {}, 'PAID SHIFTS'), el('div', { class: 'tiers', id: 'tiers' }),
     el('div', { class: 'card', id: 'rules', style: 'margin-top:12px' }));
   paintPool(); paintPending(); paintTiers(); paintRules();
@@ -73,16 +74,14 @@ const refreshMe = () => api('me').then(m => { S.me = m; paintHeader(); paintTier
 
 function paintPool() {
   const box = $('poolbox'), p = S.pool; if (!box) return;
-  if (!p) { box.replaceChildren(el('span', { class: 'dim' }, 'Prize pool unavailable right now.')); return; }
-  if (p.pools?.length) { box.replaceChildren(...escrowSummary(p, now(), salesOpen(S.tiers))); return; }
-  const s = p.split, parts = [s.grand, s.top20, s.nextSeed, s.fees], total = parts.reduce((x, y) => x + y, 0), w = parts.map(x => (total ? (x / total) * 100 : 0)), pct = total ? w : [50, 20, 20, 10];
-  const part = (cls, label, l, usd) => el('span', { class: cls }, `${label} `, el('b', {}, sol(l)), usd != null ? ` ≈ $${usd}` : '');
-  box.replaceChildren(
-    el('div', { class: 'lbl' }, 'GRAND PRIZE · ACCRUED THIS WEEK'),
-    el('div', { class: 'big' }, sol(s.grand)), el('div', { class: 'usd' }, p.usd.grand != null ? `≈ $${p.usd.grand} at the current price` : ''),
-    el('div', { class: 'split' }, ...['s-grand', 's-top', 's-seed', 's-fees'].map((c, i) => el('i', { class: c, style: `width:${pct[i]}%` }))),
-    el('div', { class: 'legend' }, part('s-grand', '50% grand', s.grand), part('s-top', '20% top 20', s.top20), part('s-seed', '20% next week', s.nextSeed), part('s-fees', '10% fees', s.fees)),
-    el('div', { class: 'dim' }, `${p.entries} paid entr${p.entries === 1 ? 'y' : 'ies'} · round closes in `, el('b', { id: 'cd', class: 'cd' }, left(p.round.endsAt - now())), ' · the draw and payouts are not live in this build'));
+  if (!p) { box.hidden = true; box.style.display = 'none'; return; }
+  if (p.pools?.length) {
+    box.hidden = false; box.style.display = '';
+    box.replaceChildren(...escrowSummary(p, now(), salesOpen(S.tiers)));
+    return;
+  }
+  // Temporarily hide the weekly accrued round while devnet is not active
+  box.hidden = true; box.style.display = 'none';
 }
 
 async function checkPending() {
@@ -178,9 +177,17 @@ function levelPicker(t) {
   const ls = freeLevels(t), on = pickedLevel(t); if (!ls.length) return '';
   const pick = n => { S.opt.level = n; store.set('freightchain.level', String(n)); syncFreeLevel(); };   // in place: rebuilding the card flashed the level line
   return el('div', { class: 'levels', role: 'radiogroup', 'aria-label': 'Level' },
-    ls.map(l => el('label', { class: `lv${l.level === on.level ? ' on' : ''}`, for: `level-${l.level}` },
-      el('input', { type: 'radio', name: 'level', id: `level-${l.level}`, value: String(l.level), checked: l.level === on.level, disabled: !!S.busy, onchange: () => pick(l.level) }),
-      el('b', {}, l.name), el('small', {}, `${dur(l.seconds)} · ≥ ${km(l.completeDist)} km`), l.assist ? '' : el('small', { class: 'why' }, 'no assist'))));
+    ls.map(l => {
+      const c = FREE_COUNTRIES[l.level];   // hardcoded country + description; the server stamps the same route id when this level is ordered
+      return el('label', { class: `lv${l.level === on.level ? ' on' : ''}`, for: `level-${l.level}`, ...(c ? { style: `--stripe:${c.stripe}` } : {}) },
+        el('input', { type: 'radio', name: 'level', id: `level-${l.level}`, value: String(l.level), checked: l.level === on.level, disabled: !!S.busy, onchange: () => pick(l.level) }),
+        c ? el('span', { class: 'cty' }, c.country) : '',
+        el('b', {}, l.name),
+        c ? el('small', { class: 'where' }, `${c.title} · ${c.place}`) : '',
+        c ? el('small', { class: 'desc' }, c.desc) : '',
+        el('small', {}, `${dur(l.seconds)} · ≥ ${km(l.completeDist)} km`),
+        l.assist ? '' : el('small', { class: 'why' }, 'no assist'));
+    }));
 }
 /* the picked level already prints its time and distance on its chip, so nothing under the picker repeats it. The two locks follow the pick without a repaint. */
 function syncFreeLevel() {

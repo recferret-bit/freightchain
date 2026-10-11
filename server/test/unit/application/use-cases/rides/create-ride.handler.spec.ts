@@ -68,9 +68,9 @@ describe('CreateRideHandler', () => {
 
   it('a free ride at a LEVEL: its trip, FREE_RIDE_SECONDS × its multiple (10 s here) and its K; no level = EASY', async () => {
     const { create } = setup();
-    expect(await create('free')).toMatchObject({ level: 1, trip: 'free-1', minSeconds: 10, completeDist: 0.25 * 28 * 10 });
-    expect(await setup().create('free', 'w', false, false, 2)).toMatchObject({ level: 2, trip: 'free-2', minSeconds: 30, completeDist: 0.3 * 28 * 30 });
-    expect(await setup().create('free', 'w', false, false, 3)).toMatchObject({ level: 3, trip: 'free-3', minSeconds: 100, completeDist: 0.4 * 28 * 100 });
+    expect(await create('free')).toMatchObject({ level: 1, trip: 'free-1', route: 'stuart', minSeconds: 10, completeDist: 0.25 * 28 * 10 });
+    expect(await setup().create('free', 'w', false, false, 2)).toMatchObject({ level: 2, trip: 'free-2', route: 'route66', minSeconds: 30, completeDist: 0.3 * 28 * 30 });
+    expect(await setup().create('free', 'w', false, false, 3)).toMatchObject({ level: 3, trip: 'free-3', route: 'brenner', minSeconds: 100, completeDist: 0.4 * 28 * 100 });
   });
 
   it('HARD refuses ASSIST before anything changes (409 assist_not_allowed): no ride, no credit spent; the ready ride keeps its level', async () => {
@@ -101,8 +101,8 @@ describe('CreateRideHandler', () => {
     const { ctx, create } = setup();
     const first = await create('free', 'w', false, true, 1);
     const hard = await create('free', 'w', false, false, 3);
-    expect(hard).toMatchObject({ id: first.id, level: 3, trip: 'free-3', minSeconds: 100, completeDist: 0.4 * 28 * 100, tutorial: false, assist: false });
-    expect((await ctx.reload(first.id)).snapshot()).toMatchObject({ trip: 'free-3', minSeconds: 100, tutorial: false, assist: false });
+    expect(hard).toMatchObject({ id: first.id, level: 3, trip: 'free-3', route: 'brenner', minSeconds: 100, completeDist: 0.4 * 28 * 100, tutorial: false, assist: false });
+    expect((await ctx.reload(first.id)).snapshot()).toMatchObject({ trip: 'free-3', route: 'brenner', minSeconds: 100, tutorial: false, assist: false });
     expect((await ctx.storedPlayer('w')).freeRides).toBe(9);
   });
 

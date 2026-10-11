@@ -32,11 +32,14 @@ export interface FreeLevelDef {
   tutorial: boolean;
   /** may the ride be ordered with ASSIST on (false = refused, 409) */
   assist: boolean;
+  /** the country this level is driven in – a theme id (client/js/themes, ride-rules.ts ROUTE_IDS). Fixed, not drawn from the seed.
+      The lobby's copy of the same three ids is client/js/free-countries.js (ride-trip.spec.ts holds them together). */
+  route: 'stuart' | 'route66' | 'brenner';
 }
 export const FREE_LEVELS: Readonly<Record<FreeLevel, FreeLevelDef>> = {
-  1: { level: 1, trip: 'free-1', name: 'EASY', multiple: 1, k: 0.25, tutorial: true, assist: true },
-  2: { level: 2, trip: 'free-2', name: 'CROSSROADS', multiple: 3, k: 0.3, tutorial: true, assist: true },
-  3: { level: 3, trip: 'free-3', name: 'HARD', multiple: 10, k: 0.4, tutorial: false, assist: false },
+  1: { level: 1, trip: 'free-1', name: 'EASY', multiple: 1, k: 0.25, tutorial: true, assist: true, route: 'stuart' },
+  2: { level: 2, trip: 'free-2', name: 'CROSSROADS', multiple: 3, k: 0.3, tutorial: true, assist: true, route: 'route66' },
+  3: { level: 3, trip: 'free-3', name: 'HARD', multiple: 10, k: 0.4, tutorial: false, assist: false, route: 'brenner' },
 };
 export const DEFAULT_FREE_LEVEL: FreeLevel = 1;
 export const isFreeLevel = (v: unknown): v is FreeLevel => typeof v === 'number' && (FREE_LEVEL_IDS as readonly number[]).includes(v);

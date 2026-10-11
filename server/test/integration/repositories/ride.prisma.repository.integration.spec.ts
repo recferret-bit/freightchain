@@ -41,7 +41,7 @@ describe('RidePrismaRepository (PostgreSQL)', () => {
     const again = (await repo.findById(ride.id))!;
     expect(again.chooseFree(3, 600, false, false)).toBe(true);
     await repo.save(again);
-    expect((await repo.findById(ride.id))?.snapshot()).toMatchObject({ trip: 'free-3', minSeconds: 600, completeDist: 0.4 * 28 * 600, version: 2 });
+    expect((await repo.findById(ride.id))?.snapshot()).toMatchObject({ trip: 'free-3', route: 'brenner', minSeconds: 600, completeDist: 0.4 * 28 * 600, version: 2 });
   });
 
   it('what a ride started with (wheel, truck colour, gearbox) is saved with the start and read back (null before it, and for rides that never had one)', async () => {

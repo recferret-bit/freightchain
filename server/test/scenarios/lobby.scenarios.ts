@@ -21,12 +21,11 @@ export function lobbyScenarios(h: () => Harness): void {
   }
   describe('live feed (public)', () => {
     it('shows running rides with route, progress, pause state and the ride id (the watch link) – no seed or reason', async () => {
-      h().seedFor('brenner');   // the SERVER decides the route, from the seed
-      const w = await login(), id = await freeRide(w);
+      const w = await login(), id = await freeRide(w);   // a free ride with no level is EASY, so the country is Australia
       sec(5); await w.agent.post(`/api/rides/${id}/heartbeat`).send({ s: 70, t: 5, hull: 80, night: false }).expect(200);
       const { body } = await anon().get('/api/live').expect(200);   // no cookie
       const mine = body.rides.find((r: { wallet: string }) => r.wallet === w.address);
-      expect(mine).toMatchObject({ tier: 'free', route: 'brenner', distance: 70, hull: 80, paused: false, driveSeconds: 5, minSeconds: 10, completeDist: 70, timeScale: 1 });
+      expect(mine).toMatchObject({ tier: 'free', route: 'stuart', distance: 70, hull: 80, paused: false, driveSeconds: 5, minSeconds: 10, completeDist: 70, timeScale: 1 });
       expect(mine.progress).toBeCloseTo(0.5, 2);
       expect(mine.id).toBe(id); expect(Object.keys(mine)).not.toContain('reason'); expect(Object.keys(mine)).not.toContain('seed');
       sec(5); await w.agent.post(`/api/rides/${id}/heartbeat`).send({ s: 70, t: 5, hull: 80, paused: true }).expect(200);
@@ -108,16 +107,17 @@ export function lobbyScenarios(h: () => Harness): void {
       await anon().post(`/api/rides/${id}/end`).set('content-type', 'text/plain').send('{"outcome":"shift"}').expect(401);   // a beacon still needs the session cookie
     });
 
-    it('the route is the SERVER\'s: assigned from the seed when the ride is ordered, and nothing a heartbeat says changes it', async () => {
-      h().seedFor('siberia');
+    it('a free ride\'s country is its level\'s, and nothing a heartbeat says changes it', async () => {
+      h().seedFor('siberia', 1);   // the hour still comes from the seed; the country does not
       const w = await login(), ride = (await w.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
-      expect(ride).toMatchObject({ route: 'siberia' });
-      expect([6.5, 12, 18.5, 22]).toContain(ride.startHour);
+      expect(ride).toMatchObject({ route: 'stuart', startHour: 12 });
+      const hard = (await w.agent.post('/api/rides').send({ tier: 'free', level: 3 }).expect(200)).body;
+      expect(hard).toMatchObject({ id: ride.id, route: 'brenner' });
       await w.agent.post(`/api/rides/${ride.id}/start`).expect(200);
-      sec(2); await w.agent.post(`/api/rides/${ride.id}/heartbeat`).send({ s: 10, t: 2, route: 'brenner' }).expect(200);
+      sec(2); await w.agent.post(`/api/rides/${ride.id}/heartbeat`).send({ s: 10, t: 2, route: 'route66' }).expect(200);
       sec(2); await w.agent.post(`/api/rides/${ride.id}/heartbeat`).send({ s: 20, t: 4, route: '<img src=x onerror=alert(1)>' }).expect(200);
-      expect((await anon().get('/api/live')).body.rides.find((r: { wallet: string }) => r.wallet === w.address).route).toBe('siberia');
-      expect((await w.agent.get(`/api/rides/${ride.id}`).expect(200)).body).toMatchObject({ route: 'siberia', startHour: ride.startHour });
+      expect((await anon().get('/api/live')).body.rides.find((r: { wallet: string }) => r.wallet === w.address).route).toBe('brenner');
+      expect((await w.agent.get(`/api/rides/${ride.id}`).expect(200)).body).toMatchObject({ route: 'brenner', startHour: 12 });
     });
   });
 
@@ -132,15 +132,14 @@ export function lobbyScenarios(h: () => Harness): void {
       expect(p.achievements.find((a: { id: string }) => a.id === 'top-20').awardedAtRoundClose).toBe(true);
     });
 
-    it('a clean night shift on Siberia unlocks seven (a free ride: EASY cleared too), persisted with the time; they never disappear', async () => {
-      h().seedFor('siberia');
+    it('a clean night shift on the EASY country unlocks six (Cold Start needs the Trans-Siberian, which a free level is not), persisted with the time; they never disappear', async () => {
       const w = await login(), end = await finish(w, { night: true }, 100);
       expect(end.status).toBe('completed');
       const p = (await w.agent.get('/api/profile').expect(200)).body, got = (id: string) => p.achievements.find((a: { id: string }) => a.id === id).earnedAt;
-      for (const id of ['first-mile', 'shift-complete', 'night-owl', 'clean-run', 'cold-start', 'on-my-own', 'free-easy']) expect(got(id), id).toBe(now());
-      expect(got('century')).toBeNull(); expect(got('top-20')).toBeNull(); expect(got('free-crossroads')).toBeNull(); expect(got('free-hard')).toBeNull();
+      for (const id of ['first-mile', 'shift-complete', 'night-owl', 'clean-run', 'on-my-own', 'free-easy']) expect(got(id), id).toBe(now());
+      expect(got('cold-start')).toBeNull(); expect(got('century')).toBeNull(); expect(got('top-20')).toBeNull(); expect(got('free-crossroads')).toBeNull(); expect(got('free-hard')).toBeNull();
       expect(p.stats).toMatchObject({ rides: 1, completed: 1, metres: 150, bestMetres: 150 });
-      expect(p.recent[0]).toMatchObject({ tier: 'free', status: 'completed', distance: 150, route: 'siberia' });
+      expect(p.recent[0]).toMatchObject({ tier: 'free', status: 'completed', distance: 150, route: 'stuart' });
       const before = got('night-owl'); sec(3600);
       await finish(w, {}, 60);                                                      // a later, dirty, daytime ride changes nothing already earned
       expect((await w.agent.get('/api/profile')).body.achievements.find((a: { id: string }) => a.id === 'night-owl').earnedAt).toBe(before);

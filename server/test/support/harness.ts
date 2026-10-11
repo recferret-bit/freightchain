@@ -72,7 +72,7 @@ export const testDatabaseUrl = (): string => process.env['TEST_DATABASE_URL'] ??
 export interface Harness {
   app: INestApplication;
   clock: FakeClock;
-  /** the NEXT ride's seed (and so its route + start hour, ride-rules.ts worldFor) can be chosen: `h.seedFor('siberia')` before ordering a ride */
+  /** the NEXT ride's seed: a paid ride's route and every ride's start hour (ride-rules.ts worldFor). A free ride's country is its level's, not this. `h.seedFor('siberia')` before ordering. */
   seedFor(route: string, hourIndex?: number): void;
   chain: FakeChain;
   /** the pool program (PoolChainPort) */

@@ -159,7 +159,11 @@ export function adminScenarios(h: () => Harness): void {
     expect(list.find((p) => p.wallet === rider.address)?.lastSignInAt).toEqual(expect.any(Number));
     const prefix = rider.address.slice(0, 8);
     expect((await admin.agent.get(`/api/admin/players?q=${prefix}`).expect(200)).body.rows.map((p: { wallet: string }) => p.wallet)).toEqual([rider.address]);
-    expect((await admin.agent.get(`/api/admin/players?q=${prefix.toLowerCase() === prefix ? prefix.toUpperCase() : prefix.toLowerCase()}`).expect(200)).body.rows).toEqual([]);
+    const otherPrefix = prefix.replace(/[a-zA-Z]/g, (c) => {
+      const flipped = c.toLowerCase() === c ? c.toUpperCase() : c.toLowerCase();
+      return '0OIl'.includes(flipped) ? (c.toLowerCase() === 'o' ? 'p' : 'a') : flipped;
+    });
+    expect((await admin.agent.get(`/api/admin/players?q=${otherPrefix}`).expect(200)).body.rows).toEqual([]);
     expect((await admin.agent.get('/api/admin/players?q=0OIl').expect(400)).body.code).toBeDefined();
     const one = (await admin.agent.get(`/api/admin/players/${rider.address}`).expect(200)).body;
     expect(one.player).toMatchObject({ wallet: rider.address, freeRides: 9 });

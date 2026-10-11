@@ -15,7 +15,7 @@ describe('GetLiveHandler', () => {
     const feed = await new GetLiveHandler(ctx.rideQuery, ctx.rules, ctx.clock, ctx.sitePresence, ctx.viewers, ctx.stats).execute();
     expect(feed.now).toBe(ctx.clock.ms);
     expect(feed.rides.map((r) => r.wallet)).toEqual(['bob', 'alice']);
-    expect(feed.rides[1]).toMatchObject({ tier: 'free', route: 'siberia', paused: true, hull: 80, distance: 70, driveSeconds: 5, minSeconds: 10, completeDist: 70, sinceBeat: 0, progress: 0.5 });
+    expect(feed.rides[1]).toMatchObject({ tier: 'free', route: 'stuart', paused: true, hull: 80, distance: 70, driveSeconds: 5, minSeconds: 10, completeDist: 70, sinceBeat: 0, progress: 0.5 });
     expect(feed.rides[1]?.id).toBe(first.id);
     expect(Object.keys(feed.rides[1] ?? {})).not.toContain('seed'); expect(Object.keys(feed.rides[1] ?? {})).not.toContain('reason');
   });

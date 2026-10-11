@@ -40,12 +40,12 @@ export function freeLevelScenarios(h: () => Harness): void {
 
   it('a free ride with no level is EASY: trip free-1, the plain FREE_RIDE_SECONDS, K .25', async () => {
     const w = await login(), ride = await order(w);
-    expect(ride).toMatchObject({ tier: 'free', level: 1, trip: 'free-1', minSeconds: 60, completeDist: dist(0.25, 60) });
+    expect(ride).toMatchObject({ tier: 'free', level: 1, trip: 'free-1', route: 'stuart', minSeconds: 60, completeDist: dist(0.25, 60) });
   });
 
   it('level 2 = CROSSROADS: trip free-2, 180 s and K .3, kept on the ride and in the watch payload', async () => {
     const w = await login(), ride = await order(w, { level: 2 });
-    expect(ride).toMatchObject({ level: 2, trip: 'free-2', minSeconds: 180, completeDist: dist(0.3, 180) });
+    expect(ride).toMatchObject({ level: 2, trip: 'free-2', route: 'route66', minSeconds: 180, completeDist: dist(0.3, 180) });
     expect((await w.agent.get(`/api/rides/${ride.id}`).expect(200)).body).toMatchObject({ level: 2, trip: 'free-2', minSeconds: 180 });
     await w.agent.post(`/api/rides/${ride.id}/start`).expect(200);
     expect((await anon().get(`/api/watch/${ride.id}`).expect(200)).body.ride).toMatchObject({ level: 2, trip: 'free-2', minSeconds: 180 });
@@ -59,7 +59,7 @@ export function freeLevelScenarios(h: () => Harness): void {
     const tutorial = (await w.agent.post('/api/rides').send({ tier: 'free', level: 3, tutorial: true }).expect(409)).body;
     expect(tutorial).toMatchObject({ code: 'tutorial_not_allowed', detail: 'the HARD free run has no tutorial' });
     expect((await me(w)).freeRides).toBe(10);
-    expect(await order(w, { level: 3 })).toMatchObject({ level: 3, trip: 'free-3', minSeconds: 600, completeDist: dist(0.4, 600), assist: false, tutorial: false });
+    expect(await order(w, { level: 3 })).toMatchObject({ level: 3, trip: 'free-3', route: 'brenner', minSeconds: 600, completeDist: dist(0.4, 600), assist: false, tutorial: false });
   });
 
   it('a level is for free rides only (409), and only 1, 2 or 3 (400)', async () => {
@@ -72,10 +72,10 @@ export function freeLevelScenarios(h: () => Harness): void {
   it('the ready free ride is re-chosen at another level: the SAME ride and credit, its trip / length / line moved; HARD + assist leaves it alone', async () => {
     const w = await login(), first = await order(w, { level: 2, assist: true });
     const hard = await order(w, { level: 3 });                                // assist off in the same request: allowed
-    expect(hard).toMatchObject({ id: first.id, level: 3, trip: 'free-3', minSeconds: 600, completeDist: dist(0.4, 600), assist: false });
+    expect(hard).toMatchObject({ id: first.id, level: 3, trip: 'free-3', route: 'brenner', minSeconds: 600, completeDist: dist(0.4, 600), assist: false });
     await w.agent.post('/api/rides').send({ tier: 'free', level: 3, assist: true }).expect(409);
     expect((await w.agent.get(`/api/rides/${first.id}`).expect(200)).body).toMatchObject({ level: 3, assist: false });
-    expect(await order(w, { level: 1, assist: true })).toMatchObject({ id: first.id, level: 1, trip: 'free-1', minSeconds: 60, assist: true });
+    expect(await order(w, { level: 1, assist: true })).toMatchObject({ id: first.id, level: 1, trip: 'free-1', route: 'stuart', minSeconds: 60, assist: true });
     expect((await me(w)).freeRides).toBe(9);
   });
 

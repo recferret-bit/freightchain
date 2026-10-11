@@ -7,8 +7,9 @@ export const COMPLETE_DIST_K = 0.5; // CFG.COMPLETE_DIST_K: complete = minSecond
 /** Theme ids of client/js/themes/* – a ride's route (worldFor) is one of these; the analytics only ever carry an id from this list. */
 export const ROUTE_IDS = ['route66', 'stuart', 'siberia', 'brenner', 'panamerican'] as const;
 export type RouteId = (typeof ROUTE_IDS)[number];
-/** A ride's WORLD – the route it is driven on and the clock hour it starts at – is decided by the SERVER when the ride is created, from its seed, and is never taken from the client
-    (no picker in the game; heartbeats cannot change it). Hours: dawn · noon · dusk · night, so every kind of light comes round. The game applies exactly these (RideDto.route / startHour). */
+/** A PAID ride's route, and EVERY ride's clock hour, are decided by the SERVER when the ride is created, from its seed, and are never taken from the client
+    (no picker in the game; heartbeats cannot change them). A FREE ride's route is its level's country instead (ride-trip.ts FREE_LEVELS.route) – the hour is still this.
+    Hours: dawn · noon · dusk · night, so every kind of light comes round. The game applies exactly these (RideDto.route / startHour). */
 export const START_HOURS = [6.5, 12, 18.5, 22] as const;
 export const worldFor = (seed: number): { route: RouteId; startHour: number } => ({
   route: ROUTE_IDS[seed % ROUTE_IDS.length] as RouteId,
