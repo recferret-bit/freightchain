@@ -7,11 +7,13 @@ function engineBed(spec, timeline, n) {
   const A = spec.audio, out = new Float32Array(n), fr = timeline?.frames; if (!A.engine) return out;
   const rpmAt = t => { if (!fr?.length) return 1800; const i = Math.min(fr.length - 1, Math.max(0, Math.round(t * (timeline.fps ?? spec.fps)))); return fr[i].rpm; };
   const alive = t => { if (!fr?.length) return 1; const i = Math.min(fr.length - 1, Math.max(0, Math.round(t * (timeline.fps ?? spec.fps)))); return fr[i].mode === 'drive' ? 1 : 0; };
+  const starts = []; spec.scenes.reduce((a, sc) => (starts.push([a, a + sc.dur, sc.engine ?? !sc.shots?.length]), a + sc.dur), 0);
+  const gate = t => { const s = starts.find(([a, b]) => t >= a && t < b); return !s || s[2] ? 1 : 0; };   // a collage scene (shots) is quiet unless it says engine: true
   const rnd = mulberry32(77), up = A.ignition ? A.ignition.at + A.ignition.dur - .25 : 0;
   let ph = 0, ph2 = 0, rpm = rpmAt(0), run = 0, fire = 0, nz = 0, lp = 0;
   for (let i = 0; i < n; i++) {
     const t = i / SR; rpm += (rpmAt(t) - rpm) * .0012;   // ≈ 25 ms smoothing, so cuts between scenes glide
-    run += (alive(t) - run) * .004;   // engine dies fast at the crash
+    run += (alive(t) * gate(t) - run) * .004;   // engine dies fast at the crash (and fades under a collage)
     const hz = 30 + rpm * .05; ph = (ph + hz / SR) % 1; ph2 = (ph2 + hz / 2 / SR) % 1; fire = (fire + rpm / 60 * 2 / SR) % 1;
     if (i % 3 === 0) nz = rnd() * 2 - 1; lp += (nz - lp) * .25;
     const flutter = .72 + .28 * Math.cos(2 * Math.PI * fire), fadeIn = Math.min(1, Math.max(0, (t - up) / .35));
@@ -29,7 +31,7 @@ export function mixAudio(spec, timeline) {
     if (dk) { const i0 = Math.round(t * SR), hold = Math.round(dk.hold * SR), rel = Math.round(dk.release * SR); for (let i = i0; i < Math.min(n, i0 + hold + rel); i++) duck[i] = Math.min(duck[i], 1 - dk.depth * (i < i0 + hold ? 1 : 1 - (i - i0 - hold) / rel)); }
   }
   if (A.music) {
-    const m = A.music, len = spec.total - m.start, seq = renderScore(SCORES[m.id], { seconds: len });
+    const m = A.music, len = spec.total - m.start, seq = renderScore(SCORES[m.id], { seconds: len, repeat: m.repeat });
     const f = Math.round(m.fadeOut * SR); for (let i = 0; i < seq.length; i++) { const k = Math.min(1, (seq.length - 1 - i) / f); music[Math.round(m.start * SR) + i] = seq[i] * k * m.gain; }
     for (let i = 0; i < n; i++) music[i] *= duck[i];
   }

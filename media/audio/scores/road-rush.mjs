@@ -13,7 +13,10 @@ export default {
     [[0, 79, 2], [2, 83, 2], [4, 86, 2], [6, 83, 2], [8, 86, 2], [10, 88, 2], [12, 91, 4]],
     [[0, 93, 16]],
   ],
-  drums: (bar, s) => {   // 'k' kick · 's' snare · 'h' hat · 'o' open hat · 'c' crash
+  turn: [[0, 93, 6], [6, 88, 2], [8, 84, 2], [10, 88, 2], [12, 91, 2], [14, 88, 2]],   // bar 8 when another pass follows: no held ending, run back up into bar 1
+
+  drums: (bar, s, { turn } = {}) => {   // 'k' kick · 's' snare · 'h' hat · 'o' open hat · 'c' crash
+    if (bar === 7 && turn) return (s % 4 === 0 ? 'k' : '') + (s >= 8 && s % 2 === 0 ? 's' : s % 2 === 0 ? 'h' : '') + (s === 0 ? 'c' : '');   // turnaround: a crash on the one, a snare run into the next pass
     if (bar === 7) return s === 0 ? 'kc' : s === 8 ? 'k' : '';
     let d = ''; if (s % 8 === 0 || (s === 6 && bar % 2) || s === 10) d += 'k';
     if (bar > 0 && (s === 4 || s === 12)) d += 's'; if (bar === 6 && s >= 8 && s % 2 === 0) d += 's';   // snare roll into the last bar
