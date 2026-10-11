@@ -125,7 +125,7 @@ export const CFG = {
     START: 0.85,             // charge at the start of a ride
     HEAD: 0.0025, CAB: 0.0015, HEATER: 0.005, COOLER: 0.005, RADIO: 0.001, KEY_ON: 0.0008,   // consumers (engine off or on); headlights alone flatten it in ≈ 6 min, the heater or the cooler (engine off, ×OFF_X) in ≈ 70 s. The cooler draws the same current as the heater. TEST-scale like the 5 min ride
     OFF_X: 2.5,              // the consumers above drain this many times faster with the engine OFF (only the battery feeds them): HEAD + CAB + key-on ≈ 70 s from full to flat
-    REST: 0.004, REST_MAX: 0.5,   // engine off, no lights / heater / cooler / radio (key ON or OFF): the charge creeps back per second, up to REST_MAX (net of the key-on drain ≈ 1 min from flat to a startable .12) – a rest buys a restart, not a full battery. Never a dead end
+    REST: 0.008, REST_MAX: 0.5,   // engine off, no lights / heater / cooler / radio (key ON or OFF): the charge creeps back per second, up to REST_MAX (net of the key-on drain ≈ 30 s from flat to a startable .12) – a rest buys a restart, not a full battery. Never a dead end
     CRITICAL: 0.2,           // engine off below this: alarm + toast; at DEAD (below) every consumer cuts out and the rest recovery takes over
     STARTER: 0.06,           // while cranking (~1.3 s)
     CHARGE_MIN: 0.004, CHARGE_RPM: 0.003,   // alternator: at idle … at redline (≈ .0055 at cruise); × a taper above ~75 % charge. Headlights alone are sustainable while driving; the heater or the cooler alone only at cruise revs; HEAD + HEAT and HEAD + COLD (.0075 > .007) never are

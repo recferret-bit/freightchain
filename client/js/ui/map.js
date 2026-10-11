@@ -366,10 +366,20 @@ function drawPhone() {
   g.restore(); g.globalAlpha = ui;
   // the bottom sheet's top; the floating buttons (compass: heading up ⇄ north up, zoom in / out, and – once the map is dragged away – back to the truck) stay above it
   const sh = 120, sy = H - sh, bx = W - 46; let by = Math.max(SB + 88, Math.min(SB + 92, sy - 8 - 4 * 44));
-  for (const [id, glyph] of [['north', view.northUp ? 'N' : '➤'], ['in', '+'], ['out', '−'], ...(view.free ? [['home', '◎']] : [])]) {
-    g.fillStyle = P.card; g.strokeStyle = dn.k > .5 ? 'rgba(255,255,255,.22)' : 'rgba(0,0,0,.2)'; g.lineWidth = 1; g.beginPath(); g.arc(bx + 18, by + 18, 18, 0, 7); g.fill(); g.stroke();
-    g.fillStyle = id === 'north' ? '#ea4335' : id === 'home' ? P.route : P.text; g.font = `700 ${id === 'north' ? 14 : 20}px ${MONO}`; g.textAlign = 'center';
-    if (id === 'north' && !view.northUp) { g.save(); g.translate(bx + 18, by + 18); g.rotate(-Math.PI / 2 - (view.rot ?? 0)); g.fillText('➤', 0, 1); g.restore(); } else g.fillText(glyph, bx + 18, by + 19);
+  for (const id of ['north', 'in', 'out', ...(view.free ? ['home'] : [])]) {
+    const cx = bx + 18, cy = by + 18;
+    g.fillStyle = P.card; g.strokeStyle = dn.k > .5 ? 'rgba(255,255,255,.22)' : 'rgba(0,0,0,.2)'; g.lineWidth = 1; g.beginPath(); g.arc(cx, cy, 18, 0, 7); g.fill(); g.stroke();
+    g.save(); g.translate(cx, cy); g.lineCap = 'round'; g.lineWidth = 2.6; g.strokeStyle = g.fillStyle = P.text;   // drawn, not font glyphs: the same weight and centre on every device
+    if (id === 'in' || id === 'out') { g.beginPath(); g.moveTo(-6.5, 0); g.lineTo(6.5, 0); if (id === 'in') { g.moveTo(0, -6.5); g.lineTo(0, 6.5); } g.stroke(); }
+    else if (id === 'home') {   // the locate target
+      g.strokeStyle = g.fillStyle = P.route; g.lineWidth = 2; g.beginPath(); g.arc(0, 0, 6.5, 0, 7); g.stroke();
+      g.beginPath(); g.arc(0, 0, 2.6, 0, 7); g.fill(); g.beginPath(); for (const a of [0, 1, 2, 3]) { g.moveTo(Math.cos(a * Math.PI / 2) * 6.5, Math.sin(a * Math.PI / 2) * 6.5); g.lineTo(Math.cos(a * Math.PI / 2) * 10, Math.sin(a * Math.PI / 2) * 10); } g.stroke();
+    } else {   // the compass needle: red tip = north; north up keeps it straight, heading up turns it with the map
+      g.rotate(view.northUp ? 0 : -(view.rot ?? 0));
+      g.beginPath(); g.moveTo(0, -10); g.lineTo(5.5, 3); g.lineTo(0, 0); g.lineTo(-5.5, 3); g.closePath(); g.fillStyle = '#ea4335'; g.fill();
+      g.beginPath(); g.moveTo(0, 10); g.lineTo(5.5, 3); g.lineTo(0, 0); g.lineTo(-5.5, 3); g.closePath(); g.fillStyle = dn.k > .5 ? 'rgba(255,255,255,.55)' : 'rgba(0,0,0,.35)'; g.fill();
+    }
+    g.restore();
     hits.push({ id, x: bx, y: by, w: 36, h: 36 }); by += 44;
   }
   g.globalAlpha = 1; g.save(); g.translate(0, (1 - ui) * 150);

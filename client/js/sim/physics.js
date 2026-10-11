@@ -34,7 +34,7 @@ export function tryShift(to) {
 }
 export function ignition(manual = false) {   // manual = key held with the mouse: cranks only while held (~1 s), release aborts
   if (st.mode !== 'drive' || st.engineOn || st.ign) return;
-  if (st.batt < CFG.BATT.START_MIN) { st.keyDeny = 1; toast('Battery too flat to crank the engine', 2500); return; }
+  if (st.batt < CFG.BATT.START_MIN) { st.keyDeny = 1; toast('Battery too flat to crank – switch lights, heater, cooler and radio off and wait: it recovers by itself', 4000); return; }
   if (st.gear !== 0 && st.clutch < 0.8) { st.keyDeny = 1; toast('Press the clutch (SHIFT) or select neutral to start'); return; }
   audio.play('key'); st.ign = { t: manual ? (st.keyOn ? 1.0 : .6) : 0, manual }; st.keyOn = true; st.test = 1; st.rpm = 0; st.stalled = false; st.shiftT = 0; st.stall = 0;   // 0-1 s key-on gauge sweep + bulb check, 1-2.3 s starter cranking, then the engine catches
 }
