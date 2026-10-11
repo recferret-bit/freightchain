@@ -8,7 +8,7 @@ describe('GetInboxHandler', () => {
   it('the driver reads its feed after a cursor, with the totals and how many watch (without counting itself)', async () => {
     const ctx = unitContext();
     const handler = new GetInboxHandler(ctx.lookup, ctx.rideEvents, ctx.viewers, ctx.rideMutes, ctx.rules, ctx.clock);
-    const ride = await ctx.freeRide('driver', true);
+    const ride = await ctx.paidRide('driver', true);
     const a = (await ctx.rideEvents.insert(RideEvent.message({ rideId: ride.id, wallet: 'fan', text: 'one', now: ctx.now() })))!;
     ctx.clock.advance(3);
     await ctx.rideEvents.insert(RideEvent.donation({ rideId: ride.id, wallet: 'fan', effect: 'day', now: ctx.now() }));
@@ -24,5 +24,9 @@ describe('GetInboxHandler', () => {
     const muted = await handler.execute(new GetInboxQuery('driver', ride.id, 0));
     expect(muted.events.map((e) => e.kind)).toEqual(['donation']); // the muted wallet's line is gone, its donation stays
     expect(muted.muted).toEqual(['fan']);
+
+    const free = await ctx.freeRide('driver2', true);
+    const freeInbox = await handler.execute(new GetInboxQuery('driver2', free.id, 0));
+    expect(freeInbox.features).toEqual({ chat: false, donations: false, payment: 'mock', effects: false });
   });
 });

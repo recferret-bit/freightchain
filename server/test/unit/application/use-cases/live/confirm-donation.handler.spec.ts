@@ -12,7 +12,7 @@ describe('ConfirmDonationHandler', () => {
   const setup = async (effects: 'all' | 'off' = 'all') => {
     const ctx = unitContext(unitRules({ live: { chat: 'all', donations: true, freeDonations: false, effects } }));
     const handler = new ConfirmDonationHandler(ctx.donationOrders, ctx.rideEvents, ctx.rides, ctx.chain, ctx.rules, ctx.clock, ctx.stats);
-    const ride = await ctx.freeRide(driver, true);
+    const ride = await ctx.paidRide(driver, true);
     const order = async (effect: EffectId = 'sinkhole') => { const o = DonationOrder.create({ id: ctx.entropy.uuid(), rideId: ride.id, wallet: fan, recipient: driver, effect, note: 'gg', now: ctx.now() }); await ctx.donationOrders.insert(o); return o; };
     const pay = (o: DonationOrder, over: { lamports?: number; destination?: string; memo?: string } = {}) => ctx.chain.addPayment({ payer: fan, destination: over.destination ?? driver, lamports: over.lamports ?? o.lamports, memo: over.memo ?? o.memo });
     const confirm = (o: DonationOrder, sig: string, wallet = fan) => handler.execute(new ConfirmDonationCommand(wallet, ride.id, o.id, sig));

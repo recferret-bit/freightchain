@@ -27,9 +27,13 @@ export function sharedRoadScenarios(h: () => Harness): void {
   /** what a rider of a started ride drives: its world, its holes and its layout – everything that makes the road */
   const roadOf = async (w: Rider, id: string) => {
     const ride = (await w.agent.get(`/api/rides/${id}`).expect(200)).body;
-    const watched = (await anon().get(`/api/watch/${id}`).expect(200)).body.ride;
+    if (ride.tier === 'free') {
+      await anon().get(`/api/watch/${id}`).expect(403);
+    } else {
+      const watched = (await anon().get(`/api/watch/${id}`).expect(200)).body.ride;
+      expect(watched).toMatchObject({ seed: ride.seed, route: ride.route, trip: ride.trip }); // spectators rebuild the same road the driver got
+    }
     const plan = (await anon().get(`/api/watch/${id}/road?from=0&to=${KM}`).expect(200)).body;
-    expect(watched).toMatchObject({ seed: ride.seed, route: ride.route, trip: ride.trip }); // spectators rebuild the same road the driver got
     expect(plan.seed).toBe(ride.seed);
     return { seed: ride.seed, route: ride.route, startHour: ride.startHour, trip: ride.trip, holes: plan.holes, layout: new RoadLayout(ride.seed, ride.trip).describe(KM) };
   };

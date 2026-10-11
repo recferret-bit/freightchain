@@ -36,10 +36,11 @@ describe('RideQueryPrismaRepository (PostgreSQL)', () => {
     return ended;
   }
 
-  it('live: running rides with a heartbeat since the cut-off, newest start first', async () => {
-    await ride('alice', { metres: 50, outcome: 'running', start: 0 });
-    await ride('bob', { metres: 70, outcome: 'running', start: 5 });
-    await ride('carol', { metres: 10, outcome: 'shift', start: 0 });
+  it('live: running rides with a heartbeat since the cut-off, newest start first; free rides excluded', async () => {
+    await ride('alice', { paid: true, seconds: 10, metres: 50, outcome: 'running', start: 0 });
+    await ride('bob', { paid: true, seconds: 10, metres: 70, outcome: 'running', start: 5 });
+    await ride('carol', { paid: true, seconds: 10, metres: 10, outcome: 'shift', start: 0 });
+    await ride('carol', { metres: 30, outcome: 'running', start: 1 }); // free ride: excluded
     expect((await query.live(at(0), 50)).map((r) => r.wallet)).toEqual(['bob', 'alice']);
     expect((await query.live(at(12), 50)).map((r) => r.wallet)).toEqual(['bob']); // alice's last beat was at 10
     expect(await query.live(at(0), 1)).toHaveLength(1);

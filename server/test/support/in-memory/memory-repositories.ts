@@ -153,7 +153,7 @@ export class MemoryRideQuery extends RideQueryPort {
 
   async live(heartbeatSince: Date, limit: number): Promise<LiveRideRow[]> {
     return [...this.db.rides.values()]
-      .filter((r) => r.props.status === RideStatus.Running && r.props.lastHbAt && r.props.lastHbAt >= heartbeatSince)
+      .filter((r) => r.props.status === RideStatus.Running && r.props.tier !== 'free' && r.props.lastHbAt && r.props.lastHbAt >= heartbeatSince)
       .sort((a, b) => (b.props.startedAt?.getTime() ?? 0) - (a.props.startedAt?.getTime() ?? 0) || b.seq - a.seq)
       .slice(0, limit)
       .flatMap(({ props: p }) => (p.startedAt && p.lastHbAt

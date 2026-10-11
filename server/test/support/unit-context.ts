@@ -143,13 +143,21 @@ export function unitContext(rules: RulesConfig = unitRules()) {
     await rides.insert(ride);
     return ride;
   };
+  /** a stored paid ride, started */
+  const paidRide = async (wallet: string, started = true, lamports = 50_000_000) => {
+    let ride = await paidOrder(wallet, lamports);
+    ride.markPaid(1, now());
+    if (started) ride.start(now());
+    ride = await rides.save(ride);
+    return ride;
+  };
   const reload = async (id: string) => (await rides.findById(id)) as Ride;
   const storedPlayer = async (wallet: string) => (await players.findByWallet(wallet)) as Player;
 
   return {
     db, clock, chain, entropy, dailySeeds, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, batches, hasher, verdictRepo, verdicts, proofs, signIns, adminActions, adminQuery, adminDirectory, health, analytics,
     pools, tickets, promos, cosmetics, promoCreation, orders, poolTickets, ticketSettlement,
-    sessions, meProfile, settings, settingsRepo, lookup, rounds, achievements, settlement, now, player, freeRide, paidOrder, reload, storedPlayer,
+    sessions, meProfile, settings, settingsRepo, lookup, rounds, achievements, settlement, now, player, freeRide, paidOrder, paidRide, reload, storedPlayer,
     poolChain, chainEvents, chainCursors, registry, rideEvents, viewers, sitePresence, rideMutes, donationOrders, liveAccess, statsRepo, cache, stats,
   };
 }

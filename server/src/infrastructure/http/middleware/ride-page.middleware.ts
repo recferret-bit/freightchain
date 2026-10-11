@@ -53,7 +53,9 @@ export function ridePageMiddleware(prisma: PrismaService | null, env: EnvService
 
         if (ride.status === 'running' || ride.status === 'created') {
           title = `Freight Chain · ${route} [LIVE · ${km} km]`;
-          desc = `Driver ${walletShort} is driving on ${route}. Watch live stream or tip on @solana devnet!`;
+          desc = ride.tier === 'free'
+            ? `Driver ${walletShort} is driving on ${route}. View live telemetry on Freight Chain.`
+            : `Driver ${walletShort} is driving on ${route}. Watch live stream or tip on @solana devnet!`;
         } else if (ride.status === 'completed') {
           const verified = ride.verdict?.status === 'verified';
           title = `Freight Chain · ${km} km on ${route} · COMPLETED${verified ? ' (VERIFIED)' : ''}`;

@@ -361,7 +361,7 @@ async function saveGarage() {
    Every ride on the air (the stale-ride sweeper ends the ones whose tab vanished), with how many watch it and its signal; sort / filter to pick one and
    ▶ WATCH it (the "join": the watch page, ~25 s behind the driver – chat and donations from there). */
 const rows = new Map();   // wallet|startedAt → { root, … }
-const liveChip = () => { const o = S.live.online; return `${o ? `${o.total} online · ` : ''}${S.live.rides.length} on the road`; };
+const liveChip = () => { const o = S.live.online, n = (S.live.rides || []).filter(r => r.tier !== 'free').length; return `${o ? `${o.total} online · ` : ''}${n} on the road`; };
 const SORTS = { newest: (a, b) => b.startedAt - a.startedAt, watched: (a, b) => b.viewers - a.viewers || b.startedAt - a.startedAt, furthest: (a, b) => b.distance - a.distance };
 function liveControls() {
   const sort = el('select', { id: 'live-sort', 'aria-label': 'sort the rides', onchange: e => { S.liveSort = e.target.value; paintLive(); } },
@@ -369,7 +369,7 @@ function liveControls() {
   const route = el('select', { id: 'live-route', 'aria-label': 'only one route', onchange: e => { S.liveRoute = e.target.value; paintLive(); } },
     el('option', { value: '' }, 'every route'), ...Object.entries(ROUTES).map(([v, t]) => el('option', { value: v, selected: S.liveRoute === v }, t)));
   const random = el('button', { type: 'button', class: 'alt', id: 'live-random', title: 'open a ride on the air at random', onclick: () => {
-    const pool = S.live.rides.filter(r => r.signal !== 'weak' && r.wallet !== S.me.wallet); if (!pool.length) return;
+    const pool = (S.live.rides || []).filter(r => r.tier !== 'free' && r.signal !== 'weak' && r.wallet !== S.me.wallet); if (!pool.length) return;
     location.href = `${GAME_BASE}/play.html?watch=${encodeURIComponent(pool[Math.floor(Math.random() * pool.length)].id)}`;
   } }, '▶ WATCH A RANDOM ONE');
   return el('div', { class: 'filters' }, el('label', {}, 'Sort ', sort), el('label', {}, 'Route ', route), random);
@@ -381,7 +381,7 @@ function renderLive() {
 }
 function paintLive() {
   const box = $('rides'); if (!box) return;
-  const rides = S.live.rides, keys = new Set();
+  const rides = (S.live.rides || []).filter(r => r.tier !== 'free'), keys = new Set();
   const o = S.live.online; if ($('live-online')) $('live-online').textContent = o ? `${o.total} online now: ${o.browsing} looking around, ${o.watching} watching, ${o.driving} driving (${o.players} signed in).` : '';
   if ($('live-random')) $('live-random').disabled = !rides.some(r => r.signal !== 'weak' && r.wallet !== S.me.wallet);
   if (!rides.length) { rows.clear(); box.replaceChildren(el('div', { class: 'card empty' }, 'No trucks on the road right now.', el('br'), el('a', { href: '#new' }, 'Be the first →'), ' · ', el('a', { href: '#replays' }, 'or watch a replay →'))); return; }
@@ -419,7 +419,7 @@ function tickLive() {   // between polls: run the clock and the truck forward fr
 }
 async function pollLive() {
   try { const j = await api(livePath('lobby'), undefined, { report: false }); S.live = j; S.liveAt = Date.now(); S.skew = j.now - Date.now(); } catch { return; }
-  const n = S.live.rides.length;
+  const n = (S.live.rides || []).filter(r => r.tier !== 'free').length;
   $('chip-live').textContent = liveChip(); $('tab-live-n').textContent = n || '';
   if (S.tab === 'live') paintLive();
 }

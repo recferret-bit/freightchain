@@ -5,7 +5,7 @@ import { liveFeatures } from '../../../../domain/live/live-features.js';
 import { RideMuteRepositoryPort } from '../../../ports/live/ride-mute.repository.port.js';
 import { RideStatus } from '../../../../domain/rides/ride-status.js';
 import { holeOutcomes } from '../../../../domain/verdict/world-checks.js';
-import { NotFoundError } from '../../../../domain/shared/errors.js';
+import { ForbiddenError, NotFoundError } from '../../../../domain/shared/errors.js';
 import { RulesConfigPort } from '../../../ports/config/rules-config.port.js';
 import { RideEventRepositoryPort } from '../../../ports/live/ride-event.repository.port.js';
 import { ViewerPresencePort } from '../../../ports/live/viewer-presence.port.js';
@@ -36,6 +36,7 @@ export class WatchRideHandler implements IQueryHandler<WatchRideQuery, WatchDto>
   async execute({ rideId, from, after, viewer, since, source, leave }: WatchRideQuery): Promise<WatchDto> {
     const ride = await this.rides.findById(rideId);
     if (!ride || !ride.startedAt) throw new NotFoundError('ride not found'); // not started yet: nothing to watch (and no seed handed out early)
+    if (ride.isFree && ride.isInStatus(RideStatus.Running)) throw new ForbiddenError('stream watching is not available on free rides', 'free_ride_no_stream');
     const now = this.clock.now();
     const [extent, page, fresh, stamped, totals, muted] = await Promise.all([
       this.batches.extent(ride.id), this.batches.listFrom(ride.id, from, WATCH_BATCH_PAGE), this.events.listAfter(ride.id, after, FEED_PAGE),

@@ -163,7 +163,7 @@ function paintBoards() {
 const watchUrl = id => `${GAME_BASE}/play.html?watch=${encodeURIComponent(id)}`;
 function paintTicker() {
   const l = S.live, p = S.pool, items = [];   // a string, or [text, href] for a line that opens the watch page
-  if (l) for (const r of l.rides.slice(0, 4)) items.push([`● LIVE · ${short(r.wallet)} on ${r.route ? ROUTE[r.route] ?? r.route : 'the road'} · ${km(r.distance)} km · ▶ watch`, watchUrl(r.id)]);
+  if (l) for (const r of l.rides.filter(r => r.tier !== 'free').slice(0, 4)) items.push([`● LIVE · ${short(r.wallet)} on ${r.route ? ROUTE[r.route] ?? r.route : 'the road'} · ${km(r.distance)} km · ▶ watch`, watchUrl(r.id)]);
   if (l) for (const r of l.recent.slice(0, 8)) items.push([`${short(r.wallet)} ${r.status === 'completed' ? 'finished' : r.status === 'failed' ? 'wrecked' : 'abandoned'} a ${TIER_LONG[r.tier]?.toLowerCase() ?? r.tier} shift${r.route ? ` on ${ROUTE[r.route] ?? r.route}` : ''} · ${km(r.distance)} km · ▶ replay`, watchUrl(r.id)]);
   if (p?.pools?.length) items.push(`${sol(p.pools.reduce((a, x) => a + x.vaultLamports, 0))} SOL in escrow across ${plural(p.pools.length, 'prize pool')} · ${plural(p.pools.reduce((a, x) => a + x.toGo, 0), 'more rider')} to go live`);
   else if (p) items.push('No devnet at the moment · offline & free rides only · devnet will be soon');

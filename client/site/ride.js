@@ -107,12 +107,17 @@ function render(ride) {
   }
 
   // Action buttons
+  const isFree = (ride.tier || 'free') === 'free';
   const btnWatch = el('btn-watch');
-  btnWatch.style.display = 'block';
-  btnWatch.textContent = isRunning ? 'WATCH LIVE STREAM' : 'WATCH REPLAY';
-  btnWatch.onclick = () => {
-    location.href = `${GAME_BASE}/play.html?watch=${encodeURIComponent(ride.id)}`;
-  };
+  if (isRunning && isFree) {
+    btnWatch.style.display = 'none';
+  } else {
+    btnWatch.style.display = 'block';
+    btnWatch.textContent = isRunning ? 'WATCH LIVE STREAM' : 'WATCH REPLAY';
+    btnWatch.onclick = () => {
+      location.href = `${GAME_BASE}/play.html?watch=${encodeURIComponent(ride.id)}`;
+    };
+  }
 
   const btnShareX = el('btn-share-x');
   btnShareX.style.display = 'inline-flex';
@@ -120,7 +125,9 @@ function render(ride) {
     const url = `${SITE_BASE}/r/${encodeURIComponent(ride.id)}`;
     let text = '';
     if (isRunning) {
-      text = `Driving on ${routeName} in @FreightChainSol! 🚛 Currently ${(ride.km || 0).toFixed(1)} km in (${fmt(ride.driveSeconds)}). Watch me live or send a roadside tip on @solana devnet: `;
+      text = isFree
+        ? `Driving on ${routeName} in @FreightChainSol! 🚛 Currently ${(ride.km || 0).toFixed(1)} km in (${fmt(ride.driveSeconds)}). Follow along on @solana devnet: `
+        : `Driving on ${routeName} in @FreightChainSol! 🚛 Currently ${(ride.km || 0).toFixed(1)} km in (${fmt(ride.driveSeconds)}). Watch me live or send a roadside tip on @solana devnet: `;
     } else if (isCompleted) {
       const vText = ride.verdict?.status === 'verified' ? 'COMPLETED (VERIFIED)' : 'COMPLETED';
       text = `Just finished a ${ride.tier} shift on ${routeName} in @FreightChainSol! 🚛 ${(ride.km || 0).toFixed(2)} km driven · ${vText} · devnet pool. Check receipt on @solana: `;

@@ -74,7 +74,10 @@ function shareRideProgress() {
   const time = fmt(st.t);
   const base = SITE_BASE || (typeof location !== 'undefined' ? location.origin : '');
   const link = `${base}/r/${online.ride.id}`;
-  const text = `Driving on ${routeName} in @FreightChainSol! 🚛 Currently ${km} in (${time}). Watch live or tip on @solana devnet: `;
+  const isFree = online.ride.tier === 'free';
+  const text = isFree
+    ? `Driving on ${routeName} in @FreightChainSol! 🚛 Currently ${km} in (${time}). Live telemetry: `
+    : `Driving on ${routeName} in @FreightChainSol! 🚛 Currently ${km} in (${time}). Watch live or tip on @solana devnet: `;
   if (typeof window !== 'undefined' && window.open) {
     window.open('https://x.com/intent/post?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent(link), '_blank', 'noopener,noreferrer');
   }

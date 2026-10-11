@@ -2,6 +2,8 @@ import { bindClient } from '../support/client.js';
 import type { Harness } from '../support/harness.js';
 import { INPUT_BIT, recording, upload } from '../support/recording.js';
 import { SAMPLE_INPUT_COL } from '../../src/domain/telemetry/telemetry-rules.js';
+import { TREASURY } from '../support/fake-chain.js';
+import { setTierOnSaleForTest } from '../../src/domain/rides/ride-tier.js';
 
 /* Live streams: anyone watches (the replay of the recording + the feed), a signed-in spectator writes / donates (mock), the driver's game reads its inbox and
    stamps the effects it applied. Same scenarios on in-memory and PostgreSQL. */
@@ -9,11 +11,14 @@ export const LIVE_ENV = { FREE_RIDE_SECONDS: '10' };
 
 export function liveScenarios(h: () => Harness): void {
   const { anon, login, sec } = bindClient(h);
-  beforeEach(() => h().reset());
+  beforeEach(() => { setTierOnSaleForTest('1h', true); return h().reset(); });
+  afterEach(() => setTierOnSaleForTest('1h', false));
 
   const onTheRoad = async () => {
     const driver = await login();
-    const ride = (await driver.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
+    const ride = (await driver.agent.post('/api/rides').send({ tier: '1h' }).expect(200)).body;
+    const sig = h().chain.addPayment({ payer: driver.address, destination: TREASURY, lamports: ride.lamports, memo: ride.id });
+    await driver.agent.post(`/api/rides/${ride.id}/confirm`).send({ signature: sig }).expect(200);
     await driver.agent.post(`/api/rides/${ride.id}/start`).expect(200);
     return { driver, ride };
   };
@@ -37,7 +42,7 @@ export function liveScenarios(h: () => Harness): void {
     const live = (await anon().get('/api/live').expect(200)).body.rides[0];
     expect(live.id).toBe(ride.id);
     const { body } = await anon().get(`/api/watch/${live.id}`).query({ viewer: 'v-1' }).expect(200);
-    expect(body.ride).toMatchObject({ id: ride.id, wallet: driver.address, seed: ride.seed, trip: 'free-1', level: 1, route: 'stuart', status: 'running', live: true });   // trip: the road the replay rebuilds (client/js/trips.js)
+    expect(body.ride).toMatchObject({ id: ride.id, wallet: driver.address, seed: ride.seed, trip: '1h', level: null, route: 'stuart', status: 'running', live: true });   // trip: the road the replay rebuilds (client/js/trips.js)
     expect(body.recording).toEqual({ lastSeq: 1, t1: batches[1]!.t1 });
     expect(body.batches.map((b: { seq: number }) => b.seq)).toEqual([0, 1]);
     expect(body.batches[0].samples).toEqual(batches[0]!.samples);
@@ -47,10 +52,38 @@ export function liveScenarios(h: () => Harness): void {
     expect((await anon().get(`/api/watch/${ride.id}`).query({ from: 1 }).expect(200)).body.batches.map((b: { seq: number }) => b.seq)).toEqual([1]);
     await anon().get('/api/watch/no-such-ride').expect(404);
     const unstarted = await login();
-    const fresh = (await unstarted.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
+    const fresh = (await unstarted.agent.post('/api/rides').send({ tier: '1h' }).expect(200)).body;
     await anon().get(`/api/watch/${fresh.id}`).expect(404); // no seed before the start
     expect((await anon().get(`/api/watch/${ride.id}`).query({ from: -1 }).expect(400)).body.status).toBe(400);
     await anon().get(`/api/watch/${ride.id}`).query({ viewer: '<script>' }).expect(400);
+  });
+
+  it('free rides: stream watching and live interactions are refused with 403 free_ride_no_stream; replay works once ended', async () => {
+    const driver = await login();
+    const free = (await driver.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
+    await driver.agent.post(`/api/rides/${free.id}/start`).expect(200);
+    sec(2); await driver.agent.post(`/api/rides/${free.id}/heartbeat`).send({ s: 50, t: 2, hull: 100 }).expect(200);
+
+    // does not appear in live feed
+    const liveRides = (await anon().get('/api/live').expect(200)).body.rides;
+    expect(liveRides.find((r: { id: string }) => r.id === free.id)).toBeUndefined();
+
+    // cannot watch live on /api/watch/:id
+    const err = await anon().get(`/api/watch/${free.id}`).expect(403);
+    expect(err.body).toMatchObject({ status: 403, code: 'free_ride_no_stream' });
+
+    // road plan is still accessible (game needs it)
+    await anon().get(`/api/watch/${free.id}/road`).query({ from: 0, to: 6000 }).expect(200);
+
+    // cannot post chat or donations
+    const fan = await login();
+    await fan.agent.post(`/api/watch/${free.id}/messages`).send({ text: 'cheers' }).expect(403);
+    await fan.agent.post(`/api/watch/${free.id}/donations`).send({ effect: 'tip' }).expect(403);
+
+    // after ending, replay is available
+    sec(5); await driver.agent.post(`/api/rides/${free.id}/end`).send({ outcome: 'shift', s: 100, t: 7, hull: 100 }).expect(200);
+    const replay = (await anon().get(`/api/watch/${free.id}`).expect(200)).body;
+    expect(replay.ride).toMatchObject({ id: free.id, status: 'abandoned', live: false });
   });
 
   it('the ride\'s obstacle plan is public once it started – the holes the server rebuilt from the seed; every watched batch says what the truck did at them', async () => {
@@ -63,7 +96,7 @@ export function liveScenarios(h: () => Harness): void {
     await anon().get(`/api/watch/${ride.id}/road`).query({ from: 0, to: 20_000 }).expect(400); // a window of at most 10 km
     await anon().get(`/api/watch/${ride.id}/road`).query({ from: 500, to: 100 }).expect(400);
     const unstarted = await login();
-    const fresh = (await unstarted.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
+    const fresh = (await unstarted.agent.post('/api/rides').send({ tier: '1h' }).expect(200)).body;
     await anon().get(`/api/watch/${fresh.id}/road`).query({ from: 0, to: 6000 }).expect(404); // no road before the start
     const own = plan.holes.find((x: { lat: number }) => Math.abs(x.lat - 2.4) < 0.01);
     const distance = Math.ceil(own.s + 40), seconds = Math.ceil(distance / 20);
@@ -172,26 +205,33 @@ export function liveScenarios(h: () => Harness): void {
 
 /* The LIVE_* feature flags as production runs them by default (deploy/docker-compose.prod.yml): chat everywhere, effects only on free test rides,
    donations paid on chain (no free mock) – here with chat on free rides only, to see every refusal. */
-export const LIVE_FLAGS_ENV = { FREE_RIDE_SECONDS: '10', LIVE_CHAT: 'free', LIVE_EFFECTS: 'free', LIVE_FREE_DONATIONS: 'off' };
+export const LIVE_FLAGS_ENV = { FREE_RIDE_SECONDS: '10', LIVE_CHAT: 'all', LIVE_EFFECTS: 'all', LIVE_FREE_DONATIONS: 'off' };
 export const LIVE_OFF_ENV = { FREE_RIDE_SECONDS: '10', LIVE_CHAT: 'off', LIVE_DONATIONS: 'off' };
 
 export function liveFlagsScenarios(h: () => Harness): void {
   const { anon, login, sec } = bindClient(h);
-  beforeEach(() => h().reset());
+  beforeEach(() => { setTierOnSaleForTest('1h', true); return h().reset(); });
+  afterEach(() => setTierOnSaleForTest('1h', false));
 
-  it('free rides: chat and effects allowed, donations need a real transfer (payment chain); the flags reach the watch page', async () => {
+  const onTheRoad = async () => {
     const driver = await login();
-    const ride = (await driver.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
+    const ride = (await driver.agent.post('/api/rides').send({ tier: '1h' }).expect(200)).body;
+    const sig = h().chain.addPayment({ payer: driver.address, destination: TREASURY, lamports: ride.lamports, memo: ride.id });
+    await driver.agent.post(`/api/rides/${ride.id}/confirm`).send({ signature: sig }).expect(200);
     await driver.agent.post(`/api/rides/${ride.id}/start`).expect(200);
+    return { driver, ride };
+  };
+
+  it('paid shifts: chat and effects allowed, donations need a real transfer (payment chain); the flags reach the watch page', async () => {
+    const { driver, ride } = await onTheRoad();
     expect((await anon().get(`/api/watch/${ride.id}`).expect(200)).body.features).toEqual({ chat: true, donations: true, payment: 'chain', effects: true });
     const fan = await login();
     await fan.agent.post(`/api/watch/${ride.id}/messages`).send({ text: 'hi' }).expect(200);
   });
 
   it('a PAID donation: order → the spectator\'s transfer to the driver (memo) → confirm → it enters the feed; nothing before; the free route refuses', async () => {
-    const driver = await login(), fan = await login();
-    const ride = (await driver.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
-    await driver.agent.post(`/api/rides/${ride.id}/start`).expect(200);
+    const { driver, ride } = await onTheRoad();
+    const fan = await login();
     expect((await fan.agent.post(`/api/watch/${ride.id}/donations`).send({ effect: 'tip' }).expect(403)).body.code).toBe('payment_required');
     const { order, transaction } = (await fan.agent.post(`/api/watch/${ride.id}/donation-orders`).send({ effect: 'night', note: 'lights' }).expect(200)).body;
     expect(order).toMatchObject({ effect: 'night', lamports: 20_000_000, to: driver.address, memo: `fc-donation:${order.id}` });
@@ -218,12 +258,20 @@ export function liveFlagsScenarios(h: () => Harness): void {
 
 export function liveOffScenarios(h: () => Harness): void {
   const { anon, login } = bindClient(h);
-  beforeEach(() => h().reset());
+  beforeEach(() => { setTierOnSaleForTest('1h', true); return h().reset(); });
+  afterEach(() => setTierOnSaleForTest('1h', false));
+
+  const onTheRoad = async () => {
+    const driver = await login();
+    const ride = (await driver.agent.post('/api/rides').send({ tier: '1h' }).expect(200)).body;
+    const sig = h().chain.addPayment({ payer: driver.address, destination: TREASURY, lamports: ride.lamports, memo: ride.id });
+    await driver.agent.post(`/api/rides/${ride.id}/confirm`).send({ signature: sig }).expect(200);
+    await driver.agent.post(`/api/rides/${ride.id}/start`).expect(200);
+    return { driver, ride };
+  };
 
   it('chat and donations switched off: every post is a 403 live_feature_off, watching still works', async () => {
-    const driver = await login();
-    const ride = (await driver.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
-    await driver.agent.post(`/api/rides/${ride.id}/start`).expect(200);
+    const { driver, ride } = await onTheRoad();
     const fan = await login();
     expect((await fan.agent.post(`/api/watch/${ride.id}/messages`).send({ text: 'hi' }).expect(403)).body).toMatchObject({ code: 'live_feature_off', detail: 'chat is off on this ride' });
     expect((await fan.agent.post(`/api/watch/${ride.id}/donations`).send({ effect: 'tip' }).expect(403)).body.detail).toBe('donations are off');

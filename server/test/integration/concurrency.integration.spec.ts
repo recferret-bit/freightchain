@@ -40,6 +40,14 @@ describe('concurrency (PostgreSQL)', () => {
   const parallel = <T>(n: number, fn: (i: number) => Promise<T>): Promise<T[]> => Promise.all(Array.from({ length: n }, (_, i) => fn(i)));
   const rideCount = (wallet: string) => prisma.ride.count({ where: { wallet } });
   const freeRides = async (a: Rider) => (await a.agent.get('/api/me').expect(200)).body.freeRides as number;
+  const liveRide = async () => {
+    const driver = await login();
+    const ride = (await driver.agent.post('/api/rides').send({ tier: '1h' }).expect(200)).body;
+    const sig = harness.chain.addPayment({ payer: driver.address, destination: TREASURY, lamports: ride.lamports, memo: ride.id });
+    await driver.agent.post(`/api/rides/${ride.id}/confirm`).send({ signature: sig }).expect(200);
+    await driver.agent.post(`/api/rides/${ride.id}/start`).expect(200);
+    return { driver, ride };
+  };
 
   it('N parallel "free ride" requests create ONE ride and spend ONE credit', async () => {
     const a = await login();
@@ -390,12 +398,6 @@ describe('concurrency (PostgreSQL)', () => {
   });
 
   describe('live streams', () => {
-    const liveRide = async () => {
-      const driver = await login();
-      const ride = (await driver.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
-      await driver.agent.post(`/api/rides/${ride.id}/start`).expect(200);
-      return { driver, ride };
-    };
 
     it('N spectators paying for an effect in the same window: ONE effect stored, every other caller a 429 (no lock – the unique window does it)', async () => {
       const { ride } = await liveRide();
@@ -550,9 +552,7 @@ describe('concurrency (PostgreSQL)', () => {
   });
 
   it('statistics: donations from many spectators in parallel are all counted on the driver', async () => {
-    const driver = await login();
-    const ride = (await driver.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
-    await driver.agent.post(`/api/rides/${ride.id}/start`).expect(200);
+    const { driver, ride } = await liveRide();
     const fans = await Promise.all(Array.from({ length: PARALLEL }, () => login()));
     const res = await Promise.all(fans.map((f) => f.agent.post(`/api/watch/${ride.id}/donations`).send({ effect: 'tip' })));
     const ok = res.filter((r) => r.status === 200).length;
@@ -563,9 +563,8 @@ describe('concurrency (PostgreSQL)', () => {
 
   it('statistics: a FIRST donation and the driver\'s ride ending at the same moment (no stats row yet) never deadlock – both are counted', async () => {
     for (let round = 0; round < 6; round++) {
-      const driver = await login(), fan = await login();
-      const ride = (await driver.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
-      await driver.agent.post(`/api/rides/${ride.id}/start`).expect(200);
+      const { driver, ride } = await liveRide();
+      const fan = await login();
       sec(3);
       const [end, tip] = await Promise.all([
         driver.agent.post(`/api/rides/${ride.id}/end`).send({ outcome: 'failed', s: 10, t: 3, hull: 0 }),

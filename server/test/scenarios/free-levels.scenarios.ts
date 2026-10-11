@@ -48,6 +48,8 @@ export function freeLevelScenarios(h: () => Harness): void {
     expect(ride).toMatchObject({ level: 2, trip: 'free-2', route: 'route66', minSeconds: 180, completeDist: dist(0.3, 180) });
     expect((await w.agent.get(`/api/rides/${ride.id}`).expect(200)).body).toMatchObject({ level: 2, trip: 'free-2', minSeconds: 180 });
     await w.agent.post(`/api/rides/${ride.id}/start`).expect(200);
+    await anon().get(`/api/watch/${ride.id}`).expect(403);
+    await w.agent.post(`/api/rides/${ride.id}/end`).send({ outcome: 'failed', s: 10, t: 1 }).expect(200);
     expect((await anon().get(`/api/watch/${ride.id}`).expect(200)).body.ride).toMatchObject({ level: 2, trip: 'free-2', minSeconds: 180 });
   });
 
