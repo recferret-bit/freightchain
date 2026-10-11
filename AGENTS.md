@@ -1,6 +1,6 @@
 # Freight Chain
 
-Browser game after *Desert Bus*: a 2D truck cockpit over an endless, seeded 3D road; each ride costs a free ride or an escrowed ticket and takes a minimum real time. Client = vanilla ES modules + three.js r160 from a CDN (no build step, no framework). Server = NestJS + Prisma + PostgreSQL. Escrow = an Anchor program on Solana devnet.
+Browser game after *Desert Bus*: a 2D truck cockpit over an endless, seeded 3D road; each ride costs a free ride or an escrowed ticket and is complete at its finish line (distance only – the speed governor sets the fastest possible time). Client = vanilla ES modules + three.js r160 from a CDN (no build step, no framework). Server = NestJS + Prisma + PostgreSQL. Escrow = an Anchor program on Solana devnet.
 
 This file is the map and the hard rules only. The detail lives in **`docs/agents/<topic>.md` – read the topic file before changing that area.** Skills (with their commands): `README.md` → "Skills".
 
@@ -49,7 +49,7 @@ Game ⇄ server:
 - The server rebuilds the road and judges on it (`server/src/domain/road` ports `js/net/network.js` + `js/net/obstacles.js`). Changing the generator, `PATTERNS`, a trip's `road` / `holesFrom`, `FORK`, `HOLES`, the hole roll, the damage rule in `sim/damage.js` or the off-road rule = change the port in the same commit (`road-drift.spec.ts`).
 - Trip ids are FROZEN once rides carry them – retune with a new id. The route and start hour of a ride are the server's.
 - Recorded sample columns are append-only; input bits are frozen.
-- `RIDE_MIN_SECONDS` 300 is a test value (production 1800). Client-side checks are not security. The sim is not deterministic (floats, variable `dt`, `Math.random`) – don't add `Math.random()` to gameplay logic without noting it.
+- `RIDE_MIN_SECONDS` 300 is a test value (production 1800); it is only the NOMINAL shift length now (it sets the finish line, `completeDist`) – a shift completes the moment the line is reached, no minimum time. Client-side checks are not security. The sim is not deterministic (floats, variable `dt`, `Math.random`) – don't add `Math.random()` to gameplay logic without noting it.
 
 Client:
 - Reach the API and other hosts only through `client/js/hosts.js` with `credentials: 'include'` – never a bare `/api/…` or `/play.html` (landing included). A new subdomain = its own nginx template + `deploy/scripts/remote/setup.sh` + smoke check, and `hosts.js` must strip the prefix.

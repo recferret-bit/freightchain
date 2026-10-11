@@ -38,7 +38,7 @@ export class HeartbeatRideHandler implements ICommandHandler<HeartbeatRideComman
     if (!ride.isInStatus(RideStatus.Running)) throw new ConflictError(`ride is ${ride.status}`);
     const now = this.clock.now();
     if (!ride.canAcceptHeartbeat(now, this.rules.get())) return toRideDto(ride, null, now); // ignored, but the open prompt still rides along
-    const before = progressRatio(ride.driveSeconds, ride.minSeconds, ride.distance, ride.completeDist);
+    const before = progressRatio(ride.distance, ride.completeDist);
     const accepted = ride.applyReport(report, now, this.rules.get()); // a report that fails the ride is persisted too
     const rules = this.rules.get(), interval = ride.isFree && !rules.challengeFreeRides ? 0 : rules.challengeIntervalSeconds; // CHALLENGE_FREE_RIDES=off: none on the free run
     if (accepted) ride.issueChallenge(now, interval, { id: this.entropy.hex(6), rnd: parseInt(this.entropy.hex(4), 16) / 0x1_0000_0000 });
@@ -55,7 +55,7 @@ export class HeartbeatRideHandler implements ICommandHandler<HeartbeatRideComman
     if (!accepted || props.status === RideStatus.Failed) {
       emitAnalytics(this.analytics, () => rideFailed(props, demo(), 'heartbeat'));
     } else {
-      const after = progressRatio(props.driveSeconds, props.minSeconds, props.lastS, props.completeDist);
+      const after = progressRatio(props.lastS, props.completeDist);
       for (const milestone of progressMilestones(before, after)) emitAnalytics(this.analytics, () => rideProgressed(props, demo(), milestone, now));
     }
     return toRideDto(saved, null, now);

@@ -306,7 +306,7 @@ The frame `dt` is clamped to 0.05 s. The step uses floats. A watch replay does n
 
 ### Shift completion
 
-A shift is complete when driven time has reached the minimum and distance has reached `k × 28 m/s × minimum`. Paid tiers use `k = 0.5`. The free levels use `k = 0.25` / `0.3` / `0.4`. Idling does not bank distance, because the governor caps speed. After a paid shift is complete the road continues until the driver ends it. The free run ends itself at the line.
+A shift is complete when the distance has reached `k × 28 m/s × nominal shift length` – no minimum time (the governor already bounds how fast that can be). Paid tiers use `k = 0.5`. The free levels use `k = 0.25` / `0.3` / `0.4`. Idling does not bank distance, because the governor caps speed. After a paid shift is complete the road continues until the driver ends it. The free run ends itself at the line.
 
 The client default of 300 seconds is a test value. An online ride overwrites both numbers with the server ride.
 

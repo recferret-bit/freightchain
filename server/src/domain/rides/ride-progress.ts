@@ -11,8 +11,8 @@ export function progressMilestones(before: number, after: number): ProgressMiles
   return out;
 }
 
-/** min(time credit, distance credit). Either axis alone cannot finish a shift, so neither alone is a milestone. */
-export function progressRatio(driveSeconds: number, minSeconds: number, distance: number, completeDist: number): number {
-  if (minSeconds <= 0 || completeDist <= 0) return 0;
-  return Math.min(driveSeconds / minSeconds, distance / completeDist);
+/** The share of the finish line covered – the line is the whole condition of a complete shift. */
+export function progressRatio(distance: number, completeDist: number): number {
+  if (completeDist <= 0) return 0;
+  return distance / completeDist;
 }

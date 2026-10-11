@@ -10,9 +10,9 @@ describe('progressMilestones', () => {
     expect(progressMilestones(0, 1)).toEqual([25, 50, 75]);
   });
 
-  it('the ratio is the slower of time and distance', () => {
-    expect(progressRatio(10, 10, 0, 140)).toBe(0);
-    expect(progressRatio(3, 10, 40, 140)).toBeCloseTo(40 / 140);
-    expect(progressRatio(1, 0, 1, 1)).toBe(0);
+  it('the ratio is the share of the finish line covered', () => {
+    expect(progressRatio(0, 140)).toBe(0);
+    expect(progressRatio(40, 140)).toBeCloseTo(40 / 140);
+    expect(progressRatio(1, 0)).toBe(0);
   });
 });

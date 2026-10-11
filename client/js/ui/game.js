@@ -59,7 +59,7 @@ const guestOpt = { tutorial: store.get('freightchain.guest-tutorial') !== '0', a
 function showOfflineMenu(title, sub, extra) {
   const again = !!extra;
   panel.innerHTML = `<h1>${extra ? title : 'FREE RUN'}</h1><h2>${extra ? sub : 'Just drive – nothing is recorded or ranked.'}</h2>${extra}
-    <div class="row"><span>Shift</span><b>${fmt(CFG.RIDE_MIN_SECONDS)} · ${(CFG.COMPLETE_DIST / 1000).toFixed(1)} km</b></div>${FREE_HINT}
+    <div class="row"><span>Finish line</span><b>${(CFG.COMPLETE_DIST / 1000).toFixed(1)} km</b></div>${FREE_HINT}
     <label class="row" style="cursor:pointer"><span>TUTORIAL – step-by-step lessons over the road</span><input type="checkbox" id="g-tutorial" ${guestOpt.tutorial ? 'checked' : ''}></label>
     <label class="row" style="cursor:pointer"><span>ASSIST – the truck lasts twice as long, a tip on every control</span><input type="checkbox" id="g-assist" ${guestOpt.assist ? 'checked' : ''}></label>
     <div class="btns"><button id="go">${again ? 'DRIVE AGAIN' : 'START FREE RUN'}</button><button class="alt" id="connect">CONNECT A WALLET</button></div>`;
@@ -82,7 +82,7 @@ export function showMenu(title, sub, extra = '') {
 function showOnlineMenu(title, sub, extra) {
   const over = online.done, bad = !!online.error;
   panel.innerHTML = `<h1>${title}</h1><h2>${sub}</h2>${extra}
-    ${bad ? `<div class="row"><span>Ride</span><span class="bad">${online.error}</span></div>` : `<div class="row"><span>Shift (server-timed)</span><b>${fmt(CFG.RIDE_MIN_SECONDS)} · ${(CFG.COMPLETE_DIST / 1000).toFixed(1)} km</b></div>
+    ${bad ? `<div class="row"><span>Ride</span><span class="bad">${online.error}</span></div>` : `<div class="row"><span>Finish line</span><b>${(CFG.COMPLETE_DIST / 1000).toFixed(1)} km</b></div>
     <div class="row"><span>Route (set by the server)</span><b>${env.theme.name} · starts ${clockText()}</b></div>`}
     <div class="btns">${over || bad ? `${over && online.ride ? '<button type="button" class="alt share-x-btn" id="share-x-end" title="Share your ride on 𝕏"><b>POST ON 𝕏</b><small>share progress & receipt</small></button>' : ''}<button class="alt bail-link" id="lobby" title="lobby" style="margin-left:auto"><b>${lastOutcome?.ok ? 'BACK TO THE LOBBY' : 'I MISS THE YARD'}</b><small>lobby</small></button>` : '<button id="go">START RIDE</button>'}</div>`;
   overlay.classList.remove('hide');
@@ -144,7 +144,7 @@ export async function startRide() {   // only an online ride awaits the server
   setTimeout(() => { if (st.mode === 'drive' && st.s < 60) toast(net.straight ? 'Loaded. The road runs straight ahead – go up through the gears' : 'Loaded. Drive slowly to the main road, stop at the line, turn RIGHT into a gap', 7000); }, 6500);
 }
 /* The road never ends: a ride ends by failing, or by the driver ending the shift (pause menu). It pays out only once the shift is complete
-   (st.complete: RIDE_MIN_SECONDS driven AND CFG.COMPLETE_DIST covered, set in sim/physics.js). */
+   (st.complete: CFG.COMPLETE_DIST covered, set in sim/physics.js). */
 export function endRide(ok, reason, outcome = ok ? 'shift' : 'failed', silent = false) {   // outcome: what the server is told – abandoning a shift is 'shift' (the server judges it), a crash is 'failed'. silent: a walk-off that is about to leave the page
   if (st.mode !== 'drive' && st.mode !== 'paused') return;
   if (offlineRide.on) {   // no account, no recording, no payout
@@ -206,7 +206,7 @@ function watchReview(left = REVIEW_POLL_MAX) {
     if (!v || showVerdict(v)) watchReview(left - 1);
   }, REVIEW_POLL_MS);
 }
-const abandonReason = () => `Shift abandoned before it was complete (${fmt(CFG.RIDE_MIN_SECONDS)} and ${(CFG.COMPLETE_DIST / 1000).toFixed(1)} km).`;
+const abandonReason = () => `Shift abandoned before the finish line (${(CFG.COMPLETE_DIST / 1000).toFixed(1)} km).`;
 const endShift = (silent = false) => st.complete ? endRide(true, undefined, 'shift', silent) : endRide(false, abandonReason(), 'shift', silent);
 /* Walk off. Top-right while driving, and on the pause screen. Each one asks YES / I'M STAYING first.
    I MISS THE YARD is the lobby. I'M DONE is the landing. Leaving ends the shift (complete if it is, otherwise abandoned).

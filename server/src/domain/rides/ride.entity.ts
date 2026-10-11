@@ -79,8 +79,8 @@ export interface PaidOrderInput {
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
 
 /* A ride. The CLIENT does not decide whether a ride counts: it reports progress and the server judges it –
-   complete = driven ≥ minSeconds (the game's own clock, capped by the server's wall clock) AND the reported distance ≥ completeDist,
-   where the distance may only grow at ≤ MAX_SPEED. This is server-timed telemetry, not a replay: a modified client can still lie within those bounds. */
+   complete = the reported distance ≥ completeDist (the finish line), where the distance may only grow at ≤ MAX_SPEED per second of the server's wall clock –
+   that governor is the only time gate: a shift can't finish faster than completeDist / MAX_SPEED. This is server-timed telemetry, not a replay: a modified client can still lie within those bounds. */
 export class Ride {
   private constructor(private readonly p: RideProps) {}
 
@@ -298,7 +298,7 @@ export class Ride {
     this.mustBe(RideStatus.Running);
     if (outcome === 'failed') {
       this.close(RideStatus.Failed, (reason ?? 'failed').slice(0, REASON_MAX_LENGTH), now);
-    } else if (this.p.driveSeconds >= this.p.minSeconds && this.p.lastS >= this.p.completeDist) {
+    } else if (this.p.lastS >= this.p.completeDist) {
       this.close(RideStatus.Completed, 'shift complete', now);
     } else {
       this.close(RideStatus.Abandoned, 'shift abandoned before it was complete', now);

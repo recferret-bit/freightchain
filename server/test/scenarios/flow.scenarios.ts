@@ -104,12 +104,19 @@ export function flowScenarios(h: () => Harness): void {
       return r.id as string;
     };
 
-    it('completes after the minimum time AND distance; pausing earns no time', async () => {
+    it('completes at the line, however little time it took; pausing earns no time', async () => {
       const { agent } = await login(), id = await begin(agent), hb = (s: number, paused = false) => agent.post(`/api/rides/${id}/heartbeat`).send({ s, hull: 100, paused });
       sec(5); expect((await hb(70).expect(200)).body.driveSeconds).toBe(5);
       sec(5); expect((await hb(140, true).expect(200)).body.driveSeconds).toBe(5);   // paused beat: wall time passes, drive time doesn't
       const end = await agent.post(`/api/rides/${id}/end`).send({ outcome: 'shift', s: 140, hull: 90 }).expect(200);
-      expect(end.body.status).toBe('abandoned');                                     // distance reached (140 m) but only 5 s driven of 10
+      expect(end.body).toMatchObject({ status: 'completed', driveSeconds: 5 });      // the line (84 m) was reached after 5 s driven of the nominal 10: no minimum time
+    });
+
+    it('distance short of the line is abandoned, however long it took', async () => {
+      const { agent } = await login(), id = await begin(agent);
+      sec(30);
+      const end = await agent.post(`/api/rides/${id}/end`).send({ outcome: 'shift', s: 30, t: 30, hull: 100 }).expect(200);
+      expect(end.body.status).toBe('abandoned');
     });
 
     it("credits the game's own clock: a pause mid-window and the stretch after the last beat both count", async () => {

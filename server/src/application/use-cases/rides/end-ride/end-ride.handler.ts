@@ -59,7 +59,7 @@ export class EndRideHandler implements ICommandHandler<EndRideCommand, RideDto> 
       const ride = await this.lookup.require(rideId, wallet, tx);
       if (!ride.isInStatus(RideStatus.Running)) throw new ConflictError(`ride is ${ride.status}`);
       const now = this.clock.now();
-      const before = progressRatio(ride.driveSeconds, ride.minSeconds, ride.distance, ride.completeDist);
+      const before = progressRatio(ride.distance, ride.completeDist);
       const accepted = ride.applyReport(report, now, this.rules.get());
       if (accepted) ride.finish(outcome, reason, now);
       const saved = await this.rides.save(ride, tx);
@@ -83,7 +83,7 @@ export class EndRideHandler implements ICommandHandler<EndRideCommand, RideDto> 
   private emitVerdict(wallet: string, facts: EndFacts): void {
     const demo = (): boolean => isDemoWallet(this.rules.get(), wallet);
     if (facts.accepted) {
-      const after = progressRatio(facts.props.driveSeconds, facts.props.minSeconds, facts.props.lastS, facts.props.completeDist);
+      const after = progressRatio(facts.props.lastS, facts.props.completeDist);
       for (const milestone of progressMilestones(facts.before, after)) emitAnalytics(this.analytics, () => rideProgressed(facts.props, demo(), milestone, facts.now));
     }
     if (facts.props.status === RideStatus.Completed) emitAnalytics(this.analytics, () => rideCompleted(facts.props, demo()));

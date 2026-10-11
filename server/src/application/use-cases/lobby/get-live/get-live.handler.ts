@@ -46,7 +46,7 @@ export class GetLiveHandler implements IQueryHandler<GetLiveQuery, LiveFeedDto> 
           id: r.id, wallet: r.wallet, tier: r.tier, route: r.route, timeScale: r.timeScale, paused: r.paused,
           hull: r.hull === null ? null : Math.round(r.hull), driveSeconds: Math.round(r.driveSeconds), minSeconds: r.minSeconds,
           distance: Math.round(r.lastS), completeDist: r.completeDist,
-          progress: Math.min(1, r.driveSeconds / r.minSeconds, r.lastS / r.completeDist),
+          progress: Math.min(1, r.lastS / r.completeDist),
           sinceBeat, startedAt: r.startedAt.getTime(),
           viewers: this.viewers.count(r.id, now), signal: r.paused ? 'paused' as const : sinceBeat > WEAK_SIGNAL_SECONDS ? 'weak' as const : 'live' as const,
         };

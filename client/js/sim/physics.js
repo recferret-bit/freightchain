@@ -13,7 +13,6 @@ import { updateBattery } from './battery.js';
 import { endRide } from '../ui/game.js';
 import { trip } from '../trips.js';
 import { guide } from '../guide.js';
-import { offlineRide } from '../offline-ride.js';
 
 let beepT = 0, washT = 0;
 const LUG_RPM = 900;   // below this (gear in, clutch out) the engine labours
@@ -25,7 +24,7 @@ const LUG_RPM = 900;   // below this (gear in, clutch out) the engine labours
 const ENGINE_BRAKE_EXP = .4, THRUST_REF = Math.pow(RATIOS[1], ENGINE_BRAKE_EXP);
 function steerGain() { const T = CFG.TRUCK; return T.STEER_GAIN + ((T.STEER_GAIN_LOW ?? T.STEER_GAIN) - T.STEER_GAIN) * clamp(1 - st.v / (T.STEER_LOW_V || 1), 0, 1); }
 export function tryShift(to) {
-  if (st.mode !== 'drive' || to < -1 || to > MAX_GEAR || to === st.gear || st.atLine) return;   // (parked at a finish line: stays in neutral)
+  if (st.mode !== 'drive' || to < -1 || to > MAX_GEAR || to === st.gear) return;
   if (st.clutch < 0.8) { st.grind = 0.5; st.jolt = 1; audio.play('grind'); toast('⚠ GRIND! Hold the clutch (SHIFT) to change gear'); return; }
   if (to !== 0 && st.v > .8 && (to < 0) !== st.rev) { st.grind = 0.5; st.jolt = 1; audio.play('grind'); toast('⚠ GRIND! Stop before changing between forward and reverse'); return; }
   if (st.shiftT > 0) return;   // still moving the lever
@@ -62,7 +61,7 @@ export function update(dt) {
   st.shiftT = Math.max(0, (st.shiftT || 0) - dt);
   st.clutch = approach(st.clutch, input.clutch ? 1 : 0, input.clutch ? 7 : 1.7, dt);
   if (st.shiftT > 0) st.clutch = Math.max(st.clutch, .9);   // the lever is still moving: the clutch stays in (even if the key is released), so engagement afterwards is gradual, not a stall
-  st.gas = approach(st.gas, input.gas && !st.atLine ? 1 : 0, input.gas ? 3.5 : 5, dt);
+  st.gas = approach(st.gas, input.gas ? 1 : 0, input.gas ? 3.5 : 5, dt);
   st.brake = approach(st.brake, input.brake ? 1 : 0, 6, dt);
   const tgt = input.right - input.left, T = CFG.TRUCK;
   st.steer = approach(st.steer, tgt, tgt ? T.STEER_RATE : T.STEER_RETURN, dt);
@@ -144,15 +143,8 @@ export function update(dt) {
   if (st.s < 0) { st.s = 0; st.v = st.vel = 0; toast('Loading dock – no further back'); }
   st.offT = off ? st.offT + dt : Math.max(0, st.offT - dt * 2);
   if (off && !st._offWarned) { audio.play('warn'); toast('OFF ROAD!'); st._offWarned = true; } if (!off) st._offWarned = false;
-  if (trip.finish && !st.complete && st.s >= CFG.COMPLETE_DIST) {   // a trip that ends at the line: it can't be driven past – an open tutorial is cut off, and a ride whose clock isn't done waits AT the line (the server's minimum time)
-    guide.hold = false;
-    if (!offlineRide.on && st.t < CFG.RIDE_MIN_SECONDS) {   // parked at the line: neutral, brake on, no throttle – stopped in gear the engine stalled at once and the STALL toast hid this one (players took it for a lost ride)
-      st.s = CFG.COMPLETE_DIST; st.v = st.vel = 0; st.gear = 0; st.park = true; st.atLine = true;
-      const left = Math.ceil(CFG.RIDE_MIN_SECONDS - st.t); if (left !== st._lineWarned) { st._lineWarned = left; toast(`FINISH LINE REACHED – the shift completes in ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`, 1500); }
-    }
-    else if (offlineRide.on) st.t = Math.max(st.t, CFG.RIDE_MIN_SECONDS);   // offline nothing is judged: the line is the end
-  }
-  if (!st.complete && !guide.hold && st.t >= CFG.RIDE_MIN_SECONDS && st.s >= CFG.COMPLETE_DIST) {
+  if (trip.finish && !st.complete && st.s >= CFG.COMPLETE_DIST) guide.hold = false;   // a trip that ends at the line: an open tutorial is cut off there
+  if (!st.complete && !guide.hold && st.s >= CFG.COMPLETE_DIST) {   // the line is the whole condition – no minimum time (the server's governor keeps the distance honest)
     st.complete = true; audio.play('complete');
     if (trip.finish) endRide(true);   // a trip that ends at the line (trips.js – the free run): the win stamp, no "keep driving"
     else toast('SHIFT COMPLETE – the road goes on. Keep driving, or leave from the top right (lobby or the front page).', 6000);

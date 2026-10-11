@@ -251,7 +251,7 @@ function apply(a, b, k, dt) {
   if (Number.isFinite(a[12]) && Number.isFinite(b[12])) dn.t = hourLerp(a[12], b[12], k);
   st.vel = st.rev ? -st.v : st.v; st.ign = null; st.test = 1; st.stalled = false;
   st.off = !net.onRoad(st.s, st.d); net.clock = st.t;   // the signal lights show what the driver saw
-  st.complete = st.t >= CFG.RIDE_MIN_SECONDS && st.s >= CFG.COMPLETE_DIST;
+  st.complete = st.s >= CFG.COMPLETE_DIST;
   const drop = watch.lastHull - st.hull;
   if (drop > .2 && !watch.jumped) { st.jolt = Math.min(1, st.jolt + .3 + drop / 10); st.crash = Math.min(1, st.crash + drop / 8 + .15); st.flash = Math.min(1, st.flash + drop / 12 + .15); }   // a hit, sized like sim/damage.js hurt(): a scrape flickers, a crash flashes
   watch.lastHull = st.hull;

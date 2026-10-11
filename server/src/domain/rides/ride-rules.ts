@@ -2,7 +2,7 @@ import { FREE_LEVEL_IDS, FREE_LEVELS } from './ride-trip.js';
 
 /* The ride rules that must stay identical to the game client (client/js/config.js) and to what the server judges a shift by. */
 export const MAX_SPEED = 28; // m/s – CFG.MAX_SPEED, the game's governor
-export const COMPLETE_DIST_K = 0.5; // CFG.COMPLETE_DIST_K: complete = minSeconds driven AND K × MAX_SPEED × minSeconds metres
+export const COMPLETE_DIST_K = 0.5; // CFG.COMPLETE_DIST_K: complete = K × MAX_SPEED × minSeconds metres covered (minSeconds is the nominal shift length – no minimum time any more)
 
 /** Theme ids of client/js/themes/* – a ride's route (worldFor) is one of these; the analytics only ever carry an id from this list. */
 export const ROUTE_IDS = ['route66', 'stuart', 'siberia', 'brenner', 'panamerican'] as const;

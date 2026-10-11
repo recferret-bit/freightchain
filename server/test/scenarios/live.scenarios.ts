@@ -81,7 +81,7 @@ export function liveScenarios(h: () => Harness): void {
     await fan.agent.post(`/api/watch/${free.id}/donations`).send({ effect: 'tip' }).expect(403);
 
     // after ending, replay is available
-    sec(5); await driver.agent.post(`/api/rides/${free.id}/end`).send({ outcome: 'shift', s: 100, t: 7, hull: 100 }).expect(200);
+    sec(5); await driver.agent.post(`/api/rides/${free.id}/end`).send({ outcome: 'shift', s: 20, t: 7, hull: 100 }).expect(200);
     const replay = (await anon().get(`/api/watch/${free.id}`).expect(200)).body;
     expect(replay.ride).toMatchObject({ id: free.id, status: 'abandoned', live: false });
   });

@@ -18,7 +18,6 @@ import { recordPhone } from '../telemetry.js';
    A spectator's replay can open it too. Everything is drawn into a canvas (no map tiles, no network): the world is the ride's own generated road. */
 
 const LAND = { route66: '#f1e7d3', stuart: '#f2e1cf', siberia: '#eef2f5', brenner: '#e4efdc', panamerican: '#f3ede3' };   // the route's ground, washed out like a map
-const SHIELD = { route66: '66', stuart: 'A87', siberia: 'R255', brenner: 'A13', panamerican: 'RUTA 5' };
 const ZOOMS = [.6, 1.2, 2.4, 4.8, 9.6, 19.2];   // metres per CSS pixel of the big map
 const MAX_R = 4000, GROW = 1500;   // the big map draws at most 4 km around the truck, and reaches ≤ 1.5 km further per frame (no 11 km of road integrated in one frame)
 const CH = CFG.CHUNK_LEN;   // the roadside's chunk (world/chunks.js): one landmark at most per chunk
@@ -167,8 +166,6 @@ function paintMap(g, X, Y, W, H, o = {}) {
     if (f.f1 < st.s || !altPts[i].length) return;
     const m = altPts[i][altPts[i].length >> 1]; label(g, 'OTHER ROAD · SAME DISTANCE', m[0], m[1], P);
   });
-  // the road shield + name ahead of the truck
-  if (!thumb) { const p = roadAt(st.s + 60 * mpp), [x, y] = pr(p.x, p.z); label(g, (SHIELD[env.theme?.id] ? SHIELD[env.theme.id] + ' · ' : '') + roadName(st.s + 60 * mpp), x + 46, y, P); }
   // the truck: a blue arrow in a halo, pointing where it drives
   { const [x, y] = pr(T.x, T.z), a = T.h - rot, k = thumb ? .6 : 1;
     g.fillStyle = 'rgba(66,133,244,.18)'; g.beginPath(); g.arc(x, y, 18 * k, 0, 7); g.fill();
@@ -383,19 +380,18 @@ function drawPhone() {
     hits.push({ id, x: bx, y: by, w: 36, h: 36 }); by += 44;
   }
   g.globalAlpha = 1; g.save(); g.translate(0, (1 - ui) * 150);
-  // the bottom sheet: time and distance – to go, and driven – the trip, EXIT. The shift is complete when BOTH are done: the clock is the game's driven seconds (st.t), the distance the road's metres (st.s)
+  // the bottom sheet: time and distance – to go, and driven – the trip, EXIT. The shift is complete at the line (st.s ≥ COMPLETE_DIST); the clock (st.t) only shows how long it has taken
   g.fillStyle = P.card; g.shadowColor = 'rgba(0,0,0,.25)'; g.shadowBlur = 12; g.beginPath(); g.roundRect(0, sy, W, sh + 20, [16, 16, 0, 0]); g.fill(); g.shadowBlur = 0;
   g.fillStyle = 'rgba(0,0,0,.18)'; g.beginPath(); g.roundRect(W / 2 - 18, sy + 6, 36, 4, 2); g.fill();
-  const total = Math.max(1, CFG.RIDE_MIN_SECONDS), goal = Math.max(1, CFG.COMPLETE_DIST), left = T0 !== null ? Math.max(0, T0 - st.s) : 0, tLeft = Math.max(0, total - st.t);
-  const eta = Math.max(left / Math.max(view.vAvg, 6), tLeft), pt = clamp(st.t / total, 0, 1), pd = clamp(st.s / goal, 0, 1);
+  const goal = Math.max(1, CFG.COMPLETE_DIST), left = T0 !== null ? Math.max(0, T0 - st.s) : 0;
+  const eta = left / Math.max(view.vAvg, 6), pd = clamp(st.s / goal, 0, 1);
   const big = st.complete ? 'DONE' : fmt(eta);
   g.textAlign = 'left'; g.fillStyle = P.go; g.font = `700 22px ${MONO}`; g.fillText(big, 16, sy + 30);
   const dw = g.measureText(big).width;
-  g.fillStyle = P.sub; g.font = `600 14px ${MONO}`; g.fillText(fit(g, st.complete ? '· shift complete' : left <= 0 ? '· distance done – wait for the time' : '· ' + distText(left) + (tLeft <= 0 ? ' – time done' : ''), W - 100 - (24 + dw)), 24 + dw, sy + 31);   // never under EXIT
-  g.font = `600 12px ${MONO}`; g.fillText(fit(g, `TIME ${fmt(Math.min(st.t, total))} / ${fmt(total)}`, W - 120), 16, sy + 50);
+  g.fillStyle = P.sub; g.font = `600 14px ${MONO}`; g.fillText(fit(g, st.complete ? '· shift complete' : '· ' + distText(left), W - 100 - (24 + dw)), 24 + dw, sy + 31);   // never under EXIT
+  g.font = `600 12px ${MONO}`; g.fillText(fit(g, `TIME ${fmt(st.t)}`, W - 120), 16, sy + 50);
   g.fillText(fit(g, `DIST ${(Math.min(st.s, goal) / 1000).toFixed(2)} / ${(goal / 1000).toFixed(2)} km`, W - 120), 16, sy + 76);
-  g.fillStyle = P.bar; g.beginPath(); g.roundRect(16, sy + 58, W - 120, 6, 3); g.roundRect(16, sy + 84, W - 120, 6, 3); g.fill();
-  g.fillStyle = P.route; g.beginPath(); g.roundRect(16, sy + 58, Math.max(6, (W - 120) * pt), 6, 3); g.fill();
+  g.fillStyle = P.bar; g.beginPath(); g.roundRect(16, sy + 84, W - 120, 6, 3); g.fill();
   g.fillStyle = P.go; g.beginPath(); g.roundRect(16, sy + 84, Math.max(6, (W - 120) * pd), 6, 3); g.fill();
   g.fillStyle = P.sub; g.font = `11px ${MONO}`; g.fillText(fit(g, (trip.name ?? 'SHIFT') + ' · ' + (env.theme?.name ?? '') + (trip.finish ? ' · ends at the line' : ''), W - 32), 16, sy + 104);
   g.fillStyle = '#ea4335'; g.beginPath(); g.roundRect(W - 92, sy + 20, 78, 40, 20); g.fill();

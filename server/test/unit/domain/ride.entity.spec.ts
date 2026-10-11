@@ -218,16 +218,16 @@ describe('Ride – progress reports', () => {
 describe('Ride – finishing', () => {
   const drive = (r: Ride, seconds: number, metres: number) => { r.applyReport(report({ s: metres, t: seconds }), at(seconds), rules); };
 
-  it('completed = driven ≥ min AND distance ≥ completeDist', () => {
+  it('completed = distance ≥ completeDist', () => {
     const r = running(); drive(r, 10, 140); r.finish('shift', null, at(10));
     expect(r).toMatchObject({ status: RideStatus.Completed, reason: 'shift complete' });
   });
 
-  it('time without distance, or distance without time, is abandoned', () => {
+  it('the line is the whole condition: time without distance is abandoned, distance in less than the nominal time completes', () => {
     const idle = running(); drive(idle, 60, 5); idle.finish('shift', null, at(60));
     const fast = running(); drive(fast, 5, 140); fast.finish('shift', null, at(5));
     expect(idle.status).toBe(RideStatus.Abandoned);
-    expect(fast.status).toBe(RideStatus.Abandoned);
+    expect(fast.status).toBe(RideStatus.Completed);
   });
 
   it("'failed' ends the ride with the (truncated) reason", () => {

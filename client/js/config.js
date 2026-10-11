@@ -34,7 +34,7 @@ export const CFG = {
   CAR_BACK_GAP: 12,          // m a vehicle backs off from what blocks it, then waits there until the way is clear
   CAR_REVERSE_MAX: 3,        // m/s – top speed of a vehicle in reverse
   // road network (js/net/): the road is endless and generated from patterns (country / highway / arterial / town, weights per route in themes/*/index.js `roads`)
-  COMPLETE_DIST_K: 0.5,      // the shift counts as complete after RIDE_MIN_SECONDS AND this × MAX_SPEED × RIDE_MIN_SECONDS metres (idling can't bank it); the road itself never ends
+  COMPLETE_DIST_K: 0.5,      // the shift counts as complete after this × MAX_SPEED × RIDE_MIN_SECONDS metres (the finish line; no minimum time – the governor bounds the speed); the road itself never ends
   TELEMETRY_HZ: 10,          // online rides only (js/telemetry.js): samples per GAME second – keep = SAMPLE_HZ in server/src/domain/telemetry/telemetry-rules.ts
   TELEMETRY_BATCH_SECONDS: 15, // game seconds per uploaded recording batch
   START_ACCESS: 190,         // m of depot access road from the start (yard) to the turn onto the main road
@@ -157,6 +157,6 @@ export const CFG = {
   SNOW_FLAKES: 240,          // falling snowflakes at snow = 1
   PHONE: { BOOT: 3000, HOME: 2500, LAUNCH_AT: 2000, UI_MS: 450, FREE_MAX: 3000, FREE_IDLE: 15000 },   // the cab phone (ui/map.js), ms: the boot animation · the home screen (Maps is pressed at LAUNCH_AT, open by HOME) · the map's controls sliding in; the map's drag limit (m from the truck) and the idle time (ms) before it follows the truck again
 };
-// The road never ends. A shift is complete after RIDE_MIN_SECONDS of driving AND COMPLETE_DIST metres (speed is governed, so the distance
-// can't be covered faster than COMPLETE_DIST_K × RIDE_MIN_SECONDS, and idling/backgrounding the tab can't "bank" progress).
+// The road never ends. A shift is complete after COMPLETE_DIST metres (speed is governed, so the distance can't be covered faster than
+// COMPLETE_DIST_K × RIDE_MIN_SECONDS; RIDE_MIN_SECONDS is the nominal shift length, not a minimum time).
 CFG.COMPLETE_DIST = CFG.COMPLETE_DIST_K * CFG.MAX_SPEED * CFG.RIDE_MIN_SECONDS;
