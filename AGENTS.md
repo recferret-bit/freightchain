@@ -44,6 +44,7 @@ Server (`docs/backend-architecture.md`, enforced by `server/test/architecture`):
 - Every path that ends a ride, and every donation, calls `StatsService` (player row lock first).
 - A ride silent for `HB_TIMEOUT_MS` is ended by the stale-ride sweeper – never leave a ride `running`.
 - Admin API: only the admin session (`fc_admin`), only on `admin.<COOKIE_DOMAIN>` (read `headers.host`), every change wallet-signed + audited; new routes guarded by default.
+- Solana Actions (`/actions.json`, `/api/actions/*`) are public devnet blinks: CORS `*` on those paths only, `{message}` errors, one program-mode ticket, both profile stamps still required. Detail in `docs/agents/server.md`.
 
 Game ⇄ server:
 - The server rebuilds the road and judges on it (`server/src/domain/road` ports `js/net/network.js` + `js/net/obstacles.js`). Changing the generator, `PATTERNS`, a trip's `road` / `holesFrom`, `FORK`, `HOLES`, the hole roll, the damage rule in `sim/damage.js` or the off-road rule = change the port in the same commit (`road-drift.spec.ts`).

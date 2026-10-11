@@ -16,7 +16,7 @@ describe('siteRoots', () => {
     const roots = siteRoots(env(landing));
     expect(roots.map((r) => r.rootPath)).toEqual([landing, '/srv/client']);
     expect(roots[0]?.renderPath).toBe('/');
-    for (const r of roots) { expect(r.exclude).toEqual(['/api/{*path}']); expect(r.serveStaticOptions?.setHeaders).toBeTypeOf('function'); }
+    for (const r of roots) { expect(r.exclude).toEqual(['/api/{*path}', '/actions.json', '/.well-known/{*path}']); expect(r.serveStaticOptions?.setHeaders).toBeTypeOf('function'); }
   });
 
   it('no landing build (or an empty folder): only client/ – / is its placeholder page', () => {

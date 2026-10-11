@@ -19,7 +19,7 @@ describe('configureApp', () => {
       enableShutdownHooks: () => undefined,
     } as unknown as INestApplication;
     configureApp(app);
-    expect(used).toEqual(['compression', 'requestIdMiddleware', 'requestLog', 'beaconBodyMiddleware', 'ridePageMiddleware']);
+    expect(used).toEqual(['actionHeadersMiddleware', 'compression', 'requestIdMiddleware', 'requestLog', 'beaconBodyMiddleware', 'ridePageMiddleware']);
     expect(installed).toBe(logger);
   });
 });

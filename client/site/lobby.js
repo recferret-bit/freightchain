@@ -12,7 +12,8 @@ import { el } from './dom.js';
 import { livePath, leaveOnClose } from './presence.js';
 import { renderReplays } from './lobby-replays.js';
 import { renderBoard } from './lobby-board.js';
-import { API_BASE, GAME_BASE } from '../js/hosts.js';
+import { API_BASE, GAME_BASE, SITE_BASE } from '../js/hosts.js';
+import { homeBlinkUrl } from '../js/ui/share.js';
 import { track, flushSoon } from '../js/analytics.js';
 import { reportWebVitals } from '../js/web-vitals.js';
 import { store } from '../js/util.js';
@@ -37,7 +38,7 @@ const dur = s => { s = Math.max(0, Math.round(s)); return s >= 3600 ? `${Math.fl
 const km = m => (m / 1000).toFixed(m < 10_000 ? 2 : 1);
 
 /* ───────── state ───────── */
-const S = { me: null, tiers: null, pool: null, live: { rides: [] }, liveAt: 0, skew: 0, board: 'free', boardLevel: Number(store.get('freightchain.board-level')) || 3, boardTier: store.get('freightchain.board-tier') === '4h' || store.get('freightchain.board-tier') === '8h' ? store.get('freightchain.board-tier') : '1h', pending: null, pendingNote: '', pools: null, standings: {}, stAt: {}, tab: 'new', busy: null, qty: {}, msgs: {}, poolInfo: {}, order: null, focus: null, opt: { tutorial: null, assist: store.get('freightchain.assist') === '1', level: Number(store.get('freightchain.level')) || 1 } };   // opt = the free ride's level + two checkboxes: tutorial null = follow the server (on until a ride was started with it), assist and the level are remembered here
+const S = { me: null, tiers: null, pool: null, live: { rides: [] }, liveAt: 0, skew: 0, board: 'free', boardLevel: Number(store.get('freightchain.board-level')) || 3, boardTier: store.get('freightchain.board-tier') === '4h' || store.get('freightchain.board-tier') === '8h' ? store.get('freightchain.board-tier') : '1h', pending: null, pendingNote: '', pools: null, standings: {}, stAt: {}, tab: 'new', busy: null, qty: {}, msgs: {}, poolInfo: {}, order: null, focus: null, opt: { tutorial: null, assist: store.get('freightchain.assist') !== '0', level: Number(store.get('freightchain.level')) || 1 } };   // opt = the free ride's level + two checkboxes: tutorial null = follow the server (on until a ride was started with it), assist and the level are remembered here
 let seq = 0;   // one number per tab render: an answer that comes back after the player moved on (or re-asked) is dropped, not painted over the new tab
 const now = () => Date.now() + S.skew;   // server clock (skew learned from /api/live)
 const freeLeft = m => `${m.freeRides}/${m.freeRidesMax} free ride${m.freeRides === 1 ? '' : 's'}`;   // always balance/daily cap. A surplus (signup, a promo, an admin grant) stays; the refill stops at the cap
@@ -83,7 +84,8 @@ function go() {
 function renderNew() {
   view.replaceChildren(
     el('div', { class: 'card pool', id: 'poolbox', hidden: true, style: 'display:none' }), el('div', { id: 'pendingbox' }), el('div', { id: 'orderbox' }), el('div', { id: 'refunds' }),
-    el('h2', {}, 'PAID SHIFTS'), el('div', { class: 'tiers', id: 'tiers' }), el('div', { id: 'freebox' }), el('div', { id: 'results' }),
+    el('div', { id: 'freebox' }),
+    el('h2', {}, 'PAID SHIFTS · COMING SOON'), el('div', { class: 'tiers', id: 'tiers' }), el('div', { id: 'results' }),
     el('div', { class: 'card', id: 'rules', style: 'margin-top:12px' }));
   paintPool(); paintPending(); paintTiers(); paintRules();
   refreshMe();   // free-ride count + tickets after a ride / refund
@@ -255,8 +257,8 @@ function freeCard(t) {
     el('div', { class: 'freeinfo' },
       el('div', { class: 'hd' }, el('span', { class: 'nm' }, TIER_NAME.free)),
       el('div', { class: 'prize' },
-        el('span', { class: 'st done' }, 'NO PRIZE'),
-        el('span', { class: 'st done' }, 'FOR THE FREE LEADERBOARD AND ACHIEVEMENTS'),
+        el('span', { class: 'st live' }, 'FREE PLAY'),
+        el('span', { class: 'st done' }, 'OFFICIAL LEADERBOARD & ACHIEVEMENTS'),
         mobile ? el('span', { class: 'st live' }, 'DESKTOP TO DRIVE · SPECTATE ON MOBILE') : ''),
       levelPicker(t),
       freeLevels(t).length ? '' : el('span', { class: 'sub', id: 'free-shift' }, tierInfo(t).shift),   // a server without levels: the one shift, once
@@ -333,9 +335,9 @@ const creditDialog = (poolId, qty, { lamports = 0, signature = null, programId =
     signature ? { k: 'transaction', v: short(signature), href: explorerTx(signature), title: signature } : null,
     p?.address ? { k: 'escrow', v: short(p.address), href: explorerUrl(p.address), title: `pool account ${p.address}` } : null,
     programId ? { k: 'program', v: short(programId), href: explorerUrl(programId), title: `program ${programId}` } : null].filter(Boolean);
-  const proof = signature ? explorerTx(signature) : p?.address ? explorerUrl(p.address) : null;   // the post links the receipt
+  const proof = signature ? explorerTx(signature) : p?.address ? explorerUrl(p.address) : null;   // the dialog is the receipt; the post's url is the site home (a blink), and only when there is a receipt
   ticketDialog({ ok: true, shift: SHIFT[tier] ?? '', qty, text: `${paidLine(qty)} Your entry sits in the pool’s vault on chain, not with us.`, detail: p ? progressText(p, now()) : '', rows,
-    more: { href: escrowExplainer(), text: 'How the escrow works →' }, share: proof && xIntent(ticketShareText({ shift: TIER_NAME[tier] ?? 'paid', qty, lamports, poolId }), proof) });
+    more: { href: escrowExplainer(), text: 'How the escrow works →' }, share: proof && xIntent(ticketShareText({ shift: TIER_NAME[tier] ?? 'paid', qty, lamports, poolId }), homeBlinkUrl(SITE_BASE, location.origin)) });
 };
 const failDialog = (tier, text) => ticketDialog({ ok: false, shift: SHIFT[tier] ?? '', text });
 function play(r, tier, level = null) {

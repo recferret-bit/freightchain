@@ -21,7 +21,7 @@ import { PresentationModule } from '../presentation/presentation.module.js';
 
 /** The site roots, first match wins: the landing's Vite build (answers `/` and its own fingerprinted /assets, /media) in front of client/ (lobby, game, viewer). Without a landing build, `/` is client/index.html. */
 export function siteRoots(env: EnvService): ServeStaticModuleOptions[] {
-  const exclude = ['/api/{*path}'], serveStaticOptions = { setHeaders: staticHeaders };
+  const exclude = ['/api/{*path}', '/actions.json', '/.well-known/{*path}'], serveStaticOptions = { setHeaders: staticHeaders }; // blink discovery is a route, not a static file
   const landing = existsSync(join(env.landingDir, 'index.html'));
   if (!landing) new Logger('AppModule').warn(`no landing build at ${env.landingDir} – / is the placeholder client/index.html (run: npm run landing:build)`);
   return [...(landing ? [{ rootPath: env.landingDir, renderPath: '/', exclude, serveStaticOptions }] : []), { rootPath: env.clientDir, exclude, serveStaticOptions }];

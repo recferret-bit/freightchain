@@ -15,6 +15,7 @@ import { toggleFormShade } from '../world/nightlight.js';
 import { online } from '../online.js';
 import { fmt } from '../util.js';
 import { SITE_BASE } from '../hosts.js';
+import { ridePageUrl, rideShareText, xIntent } from './share.js';
 import { env } from '../world/environment.js';
 
 /* Keyboard + mouse input. Side effects only: listeners are attached on import. */
@@ -69,18 +70,9 @@ let heldBtn = null;
 let recBtn = null;   // the dash button whose press was recorded, so the release is recorded too
 function shareRideProgress() {
   if (!online.ride) return;
-  const routeName = env.theme?.name ?? 'Route';
-  const km = (st.s / 1000).toFixed(1) + ' km';
-  const time = fmt(st.t);
-  const base = SITE_BASE || (typeof location !== 'undefined' ? location.origin : '');
-  const link = `${base}/r/${online.ride.id}`;
-  const isFree = online.ride.tier === 'free';
-  const text = isFree
-    ? `Driving on ${routeName} in @FreightChainSol! 🚛 Currently ${km} in (${time}). Live telemetry: `
-    : `Driving on ${routeName} in @FreightChainSol! 🚛 Currently ${km} in (${time}). Watch live or tip on @solana devnet: `;
-  if (typeof window !== 'undefined' && window.open) {
-    window.open('https://x.com/intent/post?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent(link), '_blank', 'noopener,noreferrer');
-  }
+  const text = rideShareText({ phase: 'driving', route: env.theme?.name, km: `${(st.s / 1000).toFixed(1)} km`, time: fmt(st.t), free: online.ride.tier === 'free' });
+  const url = ridePageUrl(SITE_BASE, typeof location !== 'undefined' ? location.origin : '', online.ride.id);
+  if (typeof window !== 'undefined' && window.open) window.open(xIntent(text, url), '_blank', 'noopener,noreferrer');
   toast('Opening 𝕏 to share ride progress...', 2000);
 }
 addEventListener('pointerdown', e => { if (st.watch && btnAt(e)?.id === 'map') { toggleMap(); return; } if (st.mode !== 'drive' || st.watch) return; const b = btnAt(e); if (!b) return; recBtn = `btn:${b.id}`; recordInput(recBtn, 1, e.timeStamp); answerPrompt(recBtn); if (b.id === 'wiper') cycleWipers(); else if (b.id === 'wash') { input.wash = 1; heldBtn = 'wash'; } else if (b.id === 'key-off') keySwitch(false); else if (b.id === 'key-on') keySwitch(true); else if (b.id === 'key-start') { if (!st.engineOn) { ignition(true); heldBtn = 'key'; } } else if (b.id === 'park') toggleParkingBrake(); else if (b.id === 'share-x') shareRideProgress(); else if (b.id === 'head') { dn.head = !dn.head; audio.play(dn.head ? 'switch' : 'switch-off'); } else if (b.id === 'cab') toggleCab(); else if (b.id === 'heat') toggleHeater(); else if (b.id === 'cold') toggleCooler(); else if (b.id === 'r-pwr') radioMsg(radio.toggle()); else if (b.id === 'r-prev') { radio.seek(-1); radioMsg(true); } else if (b.id === 'r-next') { radio.seek(1); radioMsg(true); } else if (b.id === 'map') toggleMap(); });
