@@ -636,6 +636,7 @@ Real code, not required for the five judge numbers. The Dedupe key column is the
 | `offline_practice_clicked` | client | Click on a link whose destination is `play.html` without `ride` (the landing and lobby now send `?offline=1`). Landing demo fallback and footer, lobby footer. |
 | `storybook_link_clicked` | client | `#storybook-link`. Does not load analytics on `viewer.html`. |
 | `social_clicked` | client | `data-net` on a link `SOCIALS` actually rendered. Today all three are null, so the nodes do not exist. |
+| `chain_card_flipped` | client | `card` (proof, pledge, sns, blink, siws): a landing UNDER THE HOOD card turned over by a tap or a 0.6 s mouse hover, once per card per load. |
 
 ### Not built — do not emit, do not put on the board
 

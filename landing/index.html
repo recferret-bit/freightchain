@@ -182,7 +182,7 @@
 
 <!-- ───────── 03 · ECONOMY & TECH ───────── -->
 <section class="ch" id="economy">
-  <header class="ch-h rv"><i>03</i><h2>ECONOMY</h2><p>Paid shifts are tickets into escrowed prize pools – one Solana account per pool holds the entry fees and states its rules in public. A prize goes only to a wallet with a verified attestation on chain.</p></header>
+  <header class="ch-h rv"><i>03</i><h2>ECONOMY</h2><p>Paid shifts are tickets into escrowed prize pools – one Solana account per pool holds the entry fees and states its rules in public. On-chain Attestation PDAs strictly gate prize payouts.</p></header>
 
   <div class="econ rv">
     <div class="card pool" id="poolbox"><span class="dim">Loading the pool…</span></div>
@@ -197,13 +197,13 @@
       <ol class="esc" aria-label="how a ticket moves through an escrow pool">
         <li class="esc-n"><b>RIDERS</b><span>buy a ticket</span></li>
         <li class="esc-a" aria-hidden="true"><i></i><em>entry fee</em></li>
-        <li class="esc-v"><b>POOL VAULT</b><span>program-owned account – nothing is staked, the money waits for the result</span></li>
+        <li class="esc-v"><b>POOL VAULT</b><span>program-owned account – holds the entry fees until the pool pays out or refunds</span></li>
         <li class="esc-a" aria-hidden="true"><i></i><em>deadline</em></li>
         <li class="esc-f">
           <div class="miss"><b>GOAL MISSED</b><span>too few riders</span><strong>100% back</strong><small>anyone can trigger the refunds</small></div>
           <div class="hit"><b>POOL LIVE</b><span>split as declared</span>
             <div class="bar3" aria-hidden="true"><i style="flex:70"></i><i style="flex:20"></i><i style="flex:10"></i></div>
-            <small><u>70%</u> prizes (attestation gated) · <u>20%</u> next pool · <u>10%</u> fees</small></div>
+            <small><u>70%</u> prizes (Attestation PDA gated) · <u>20%</u> next pool · <u>10%</u> fees</small></div>
         </li>
       </ol>
       <p class="dim" id="escrow-status">Program v3 is on devnet: the program commits each pool's road seed from the SlotHashes sysvar, and a prize needs the payout key's attestation (verified km + the ride's RFC 6962 telemetry root). Spectators can pledge SOL per km to a driver. Connect with 1-click Native SIWS, display your .sol name via SNS, and pay via Phantom, Solflare, or Solana Pay.</p>
@@ -211,38 +211,45 @@
     </div>
   </div>
 
-  <h3 class="sub rv">SOLANA INNOVATIONS · SIX ON-CHAIN PILLARS</h3>
-  <div class="about rv">
-    <article class="card">
-      <h3 style="color:var(--amber)">01 · A ROAD FROM THE CHAIN</h3>
-      <p><b>Committed by the program:</b> when a pool opens, the program hashes the newest SlotHashes entry into the pool's road seed. Nobody passes a seed, so neither the server nor a driver picks the curves and sinkholes.</p>
-      <p><b>Same road for everyone:</b> every rider of the pool drives it, and anyone can recompute the commitment from the pool account.</p>
-    </article>
-    <article class="card">
-      <h3 style="color:var(--amber)">02 · ATTESTED PAYOUTS</h3>
-      <p><b>The verdict on chain:</b> after the review, the payout key writes each winner's verified km and the RFC 6962 root of the ride's 15-second telemetry batches.</p>
-      <p><b>No attestation, no prize:</b> the program refuses <code>pay_prize</code> to a wallet without a verified one. The judging itself stays the server's (see the whitepaper).</p>
-    </article>
-    <article class="card">
-      <h3 style="color:var(--amber)">03 · PER-KM PLEDGES</h3>
-      <p><b>Back a driver while you watch:</b> lock e.g. 0.001 SOL per km for a ticket ride, held by the program, signed by your own wallet.</p>
-      <p><b>Paid for verified km only:</b> after the review the driver gets the km they verifiably drove; the rest and the rent come back. No judged ride, everything back.</p>
-    </article>
-    <article class="card">
-      <h3 style="color:var(--amber)">04 · 1-CLICK NATIVE SIWS</h3>
-      <p><b>Wallet Standard SignIn:</b> Full implementation of <code>solana:signIn</code> (CAIP-122). Connect and sign in a single native modal in Phantom, Solflare, and Backpack with domain origin binding.</p>
-      <p><b>Replay &amp; Phishing Proof:</b> Single-use cryptographically burned nonces and detached Ed25519 signature checks, with seamless fallback to legacy signing for older wallets.</p>
-    </article>
-    <article class="card">
-      <h3 style="color:var(--amber)">05 · SNS (.SOL) DRIVER IDENTITY</h3>
-      <p><b>Mainnet-Beta Name Resolution:</b> Native SPL Name Service PDA derivation resolving reverse and forward records directly via <code>@solana/web3.js</code> with zero third-party SDK bloat.</p>
-      <p><b>Zero-Waterfall Leaderboards:</b> Drivers appear as <code>driver.sol</code> across all boards, profile dialogs, and public <code>/r/:id</code> receipts, backed by multi-tier caching (24h positive / 30m negative).</p>
-    </article>
-    <article class="card">
-      <h3 style="color:var(--amber)">06 · SOULBOUND cNFTs &amp; BLINKS</h3>
-      <p><b>Bubblegum v2 Badges:</b> 31 tiered driver achievements, minted as soulbound compressed NFTs on a dedicated devnet tree. The MPL-Core collection has a permanent freeze, so the chain itself refuses a transfer. <a href="#achievements">See the badges</a>.</p>
-      <p><b>Blinks &amp; Solana Pay:</b> Enter shifts or tip drivers directly from 𝕏 via Solana Actions (Blinks), or scan Solana Pay QR codes with a mobile wallet.</p>
-    </article>
+  <h3 class="sub rv">UNDER THE HOOD · ON SOLANA</h3>
+  <p class="dim oc-kick rv">Hover or tap a card for its receipt. The figures on the receipts are examples.</p>
+  <!-- flip cards like the lobby's achievements: hover, a tap (main.js .flip) or Tab onto a link on the back (:focus-within); the drawings are public/media/chain/*.svg, animated by src/chain-scenes.js -->
+  <div class="oc-grid rv">
+    <article data-card="proof" class="oc w"><div class="oc-in">
+      <div class="fr"><div class="stage"><img src="/media/chain/proof.svg" width="240" height="124" loading="lazy" decoding="async" alt="Four 15-second batches hash up into one verified Merkle root"><i class="stk p tl">RFC 6962</i><i class="stk tr">PDA ✓</i><i class="stk a br">blockhash</i></div>
+        <footer><b>PROVEN DRIVE</b><span>Nobody picks the road. A prize needs proof.</span></footer></div>
+      <div class="bk"><div class="rcpt"><b class="t">ATTESTATION · EXAMPLE</b><p><span>seed</span><b>SHA-256(pool · slot hash · slot)</b></p><p><span>batches</span><b>164 × 15 s</b></p><p><span>root</span><b>9f3a…c21</b></p><p><span>status</span><b class="ok">VERIFIED</b></p></div>
+        <p>Same road for every rider of a pool. No attestation, no prize.</p>
+        <ul><li>The program hashes the newest Solana slot hash into the pool’s road seed when the pool opens – nobody passes a seed in.</li><li>Every 15 s of driving is a hashed batch; a ride’s batches roll up into one Merkle root.</li><li>The program pays a prize only to a wallet the payout key attested as VERIFIED – the server’s verdict, on chain.</li></ul>
+        <nav><a href="/whitepaper.html#onchain">Whitepaper →</a><a href="/whitepaper.html#verify">Anti-cheat →</a></nav></div></div></article>
+    <article data-card="pledge" class="oc"><div class="oc-in">
+      <div class="fr"><div class="stage"><img src="/media/chain/pledge.svg" width="240" height="124" loading="lazy" decoding="async" alt="412 km of a 0.5 SOL pledge: 0.412 SOL to the driver, 0.088 SOL back"><i class="stk p tl">Pledge PDA</i></div>
+        <footer><b>BACK A DRIVER</b><span>Pledge per kilometre of verified driving.</span></footer></div>
+      <div class="bk"><div class="rcpt"><b class="t">PLEDGE · EXAMPLE</b><p><span>rate</span><b>0.001 SOL / km</b></p><p><span>deposit</span><b>0.500 SOL</b></p><p><span>verified</span><b>412 km</b></p><p><span>to driver</span><b class="ok">0.412 SOL</b></p><p><span>back to you</span><b>0.088 SOL</b></p></div>
+        <p>Sponsors pay for distance, never for a promise.</p>
+        <ul><li>Settles on verified kilometres only.</li><li>The rest returns to you; nothing stays in the account.</li></ul>
+        <nav><a href="/whitepaper.html#onchain">Whitepaper →</a></nav></div></div></article>
+    <article data-card="sns" class="oc"><div class="oc-in">
+      <div class="fr"><div class="stage"><img src="/media/chain/sns.svg" width="240" height="124" loading="lazy" decoding="async" alt="A leaderboard showing .sol names instead of wallet addresses"><i class="stk tr">SNS</i></div>
+        <footer><b>YOUR .SOL NAME</b><span>Boards show driver.sol, not 7xKX…9fQd.</span></footer></div>
+      <div class="bk"><div class="rcpt"><b class="t">NAME · EXAMPLE</b><p><span>wallet</span><b>7xKX…9fQd</b></p><p><span>name</span><b class="ok">driver.sol</b></p><p><span>cached</span><b>24 h</b></p><p><span>no name</span><b>asked again in 30 min</b></p></div>
+        <p>Your name follows you from board to receipt.</p>
+        <ul><li>Looked up from the Solana Name Service.</li><li>Shown on the boards, profiles and public ride receipts.</li></ul>
+        <nav><a href="/lobby.html#board">Leaderboard →</a></nav></div></div></article>
+    <article data-card="blink" class="oc"><div class="oc-in">
+      <div class="fr"><div class="stage"><img src="/media/chain/blink.svg" width="240" height="124" loading="lazy" decoding="async" alt="A post on X with ticket and watch buttons, and a Solana Pay QR code for tips"><i class="stk p tl">Actions</i><i class="stk a tr">devnet</i></div>
+        <footer><b>BLINKS &amp; SOLANA PAY</b><span>Buy a shift from a post on 𝕏. Tip a driver by QR.</span></footer></div>
+      <div class="bk"><div class="rcpt"><b class="t">BLINK · EXAMPLE</b><p><span>action</span><b>buy ticket · 1 h</b></p><p><span>where</span><b>a post on 𝕏</b></p><p><span>tip</span><b>Solana Pay QR on a stream</b></p><p><span>signed by</span><b class="ok">your wallet</b></p></div>
+        <p>The game travels with the post.</p>
+        <ul><li>Solana Actions turn a post into BUY TICKET and WATCH buttons.</li><li>On a live stream, a phone wallet tips the driver through a Solana Pay QR.</li></ul>
+        <nav><a href="#achievements">Badges →</a><a href="/whitepaper.html#onchain">Whitepaper →</a></nav></div></div></article>
+    <article data-card="siws" class="oc"><div class="oc-in">
+      <div class="fr"><div class="stage"><img src="/media/chain/siws.svg" width="240" height="124" loading="lazy" decoding="async" alt="One wallet prompt: sign in to freightchain.fun with a one-time nonce"><i class="stk p tl">CAIP-122</i></div>
+        <footer><b>ONE-TAP SIGN-IN</b><span>Connect and sign in with one wallet prompt.</span></footer></div>
+      <div class="bk"><div class="rcpt"><b class="t">SIGN-IN · EXAMPLE</b><p><span>domain</span><b>freightchain.fun</b></p><p><span>nonce</span><b>7c1e…a4 · once</b></p><p><span>wallets</span><b>Phantom · Solflare</b></p><p><span>older</span><b class="ok">signed message</b></p></div>
+        <p>No password, no second pop-up.</p>
+        <ul><li>Sign In With Solana names our domain and a one-time nonce, so a copied signature is useless elsewhere.</li></ul>
+        <nav><a href="/lobby.html">Lobby →</a></nav></div></div></article>
   </div>
 
   <div class="card tiers why rv" id="why-20">
@@ -381,10 +388,10 @@
   <div class="about rv">
     <article><h3>WHY A TRUCK</h3><p>Desert Bus (1995) was an eight-hour drive from Tucson to Las Vegas at 45 mph for one point. Nobody should have finished it, and people did – and other people watched. The scarce thing was attention. This is that, with the finish decided by a server and the pot in SOL.</p></article>
     <article><h3>BUILT · CUT · NEXT</h3>
-      <ul class="bcn"><li><i class="ok"></i><b>Built:</b> the sim, 1-click Native SIWS, SNS (.sol) lookup, Anchor v3 escrow with attestation-gated prizes, per-km pledges, soulbound cNFT badges, Solana Pay, Blinks, server-timed rides, verified play, live streams, garage, promo codes.</li>
+      <ul class="bcn"><li><i class="ok"></i><b>Built:</b> the sim, 1-click Native SIWS, SNS (.sol) lookup, Anchor v3 escrow with Attestation PDAs, per-km Pledge PDAs, soulbound cNFT badges, Solana Pay, Blinks, server-timed rides, verified play, live streams, garage, promo codes.</li>
       <li><i class="cut"></i><b>Cut on purpose:</b> performance upgrades, mobile driving before touch controls, paid ads before a growth hire, a token, mainnet before legals and audit.</li>
       <li><i class="next"></i><b>Next:</b> program audit and mainnet migration, a four-seat crew (CPO / COO, QA, community, content), convoy team drives, mobile driving controls.</li></ul></article>
-    <article><h3>THE STACK</h3><p>Vanilla ES modules + three.js in the browser, no bundler, zero runtime npm dependencies. NestJS + PostgreSQL on the server (Clean Architecture). An Anchor v3 (Rust) escrow program with vault PDAs, attestation-gated prizes, per-km pledges and an on-chain road seed. Native 1-click SIWS, SPL Name Service PDA resolution, Metaplex Bubblegum v2 cNFT badges, Solana Pay, and Blinks. Solo build entered in the Colosseum Crypto World's Fair.</p></article>
+    <article><h3>THE STACK</h3><p>Vanilla ES modules + three.js in the browser, no bundler, zero runtime npm dependencies. NestJS + PostgreSQL on the server (Clean Architecture). An Anchor v3 (Rust) escrow program with vault PDAs and Attestation gating. Native 1-click SIWS, SPL Name Service PDA resolution, Metaplex Bubblegum v2 cNFT badges, Solana Pay, and Blinks. Solo build entered in the Colosseum Crypto World's Fair.</p></article>
   </div>
   <div class="socials rv" id="socials">
     <span class="lbl">JOIN THE CONVOY</span>
