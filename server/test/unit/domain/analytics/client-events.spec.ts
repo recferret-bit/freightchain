@@ -14,7 +14,8 @@ describe('the promo events of the browser plane', () => {
     for (const name of ['promo_redeemed', 'cosmetic_equipped', 'garage_saved', 'promo_created', 'promo_disabled']) expect(isClientEvent(name), name).toBe(false);
   });
   it('keeps one web vital and drops a float value', () => {
-    expect(CLIENT_EVENTS).toHaveLength(42);
+    expect(CLIENT_EVENTS).toHaveLength(43);
+    expect(allowClientProperties('cab_chain_link_clicked', { link: 'seal', wallet: 'x' })).toEqual({ link: 'seal' });
     expect(allowClientProperties('chain_card_flipped', { card: 'proof', wallet: 'x' })).toEqual({ card: 'proof' });
     expect(allowClientProperties('faq_item_opened', { item: 'wallet', via: 'hover', wallet: 'x' })).toEqual({ item: 'wallet', via: 'hover' });
     expect(allowClientProperties('agreement_toggled', { kind: 'age18', on: true, wallet: 'x' })).toEqual({ kind: 'age18', on: true });

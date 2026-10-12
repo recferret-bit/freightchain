@@ -8,6 +8,10 @@ export { xIntent };
 
 /** The cluster the pools live on (explorer links). '' = mainnet-beta (no query parameter). */
 export const CLUSTER = 'devnet';
+/** The escrow program (`declare_id!` in programs/freightchain-pools/…/lib.rs) and the cluster's PUBLIC RPC: the game reads a pool account straight from the
+    chain with it (ui/cab-chain.js – the road seal), so that check does not rest on our server. Change both with CLUSTER. */
+export const POOL_PROGRAM = '8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p';
+export const publicRpc = (cluster = CLUSTER) => `https://api.${cluster || 'mainnet-beta'}.solana.com`;
 export const explorerUrl = (address, cluster = CLUSTER) => `https://explorer.solana.com/address/${encodeURIComponent(address)}${cluster ? `?cluster=${cluster}` : ''}`;
 export const explorerTx = (signature, cluster = CLUSTER) => `https://explorer.solana.com/tx/${encodeURIComponent(signature)}${cluster ? `?cluster=${cluster}` : ''}`;
 /** The one public escrow explainer: whitepaper chapter 05. On a split host that is whitepaper.<apex>; elsewhere /whitepaper.html. */

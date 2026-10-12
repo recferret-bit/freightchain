@@ -281,7 +281,7 @@
 
 <section aria-labelledby="s-client">
   <div class="head">
-    <span class="eyebrow">Browser events · 42 names, allowlisted properties</span>
+    <span class="eyebrow">Browser events · 43 names, allowlisted properties</span>
     <h2 id="s-client">What the player did before the server knew</h2>
     <p class="soft">The relay stamps <code>source=client</code> and, when the cookie verifies, the session wallet. Properties are strings of at most 200 characters, or an integer, a boolean, or null. A float drops that event, not the whole batch. At most 20 keys. Anything not in the allowlist is removed. These names are hard-deleted even if someone allowlists them later: <code>signature</code>, <code>transaction</code>, <code>seed</code>, <code>nonce</code>, <code>message</code>, <code>token</code>, <code>cookie</code>, <code>authorization</code>, <code>detail</code>, <code>secret</code>, <code>anon_id</code>.</p>
   </div>
@@ -331,6 +331,7 @@
         <tr><td><code>pending_ride_shown</code> / <code>pending_ride_start_clicked</code></td><td>The waiting-ride banner, once per ride per load, and its START IT button.</td><td><code>ride_id</code>, and <code>tier_id</code> on the shown event</td></tr>
         <tr><td><code>ride_paused</code> / <code>ride_unpaused</code></td><td>Pause transitions on an online ride. Not per frame. The corner leave control pauses before its question; staying unpauses.</td><td><code>source</code>: key, visibility, or bail. The unpause name is not <code>ride_resumed</code>.</td></tr>
         <tr><td><code>ride_end_requested</code></td><td>The client asked to end, before the server answered.</td><td><code>outcome</code> shift|failed, <code>client_complete</code>, <code>fail_code</code>. Never a completion metric. It exists to see “the browser painted COMPLETE, the server said abandoned”.</td></tr>
+        <tr><td><code>cab_chain_link_clicked</code></td><td>A ticket ride's ON CHAIN strip or the seal row of its START / end panel (<code>client/js/ui/cab-chain.js</code>): an explorer link was opened.</td><td><code>link</code> pool|seal|pledge</td></tr>
         <tr><td><code>player_signed_out</code></td><td>The lobby sign-out click, before the request.</td><td>none. The server logout handler has no wallet, so there is no server twin.</td></tr>
         <tr><td><code>offline_practice_clicked</code></td><td>A link to <code>play.html</code> without <code>?ride</code> (the landing, the lobby, and the whitepaper PLAY button send <code>?offline=1</code>).</td><td>none. The offline page itself loads no analytics.</td></tr>
         <tr><td><code>storybook_link_clicked</code></td><td>The model-viewer link on the landing or the whitepaper.</td><td>none. <code>viewer.html</code> does not load analytics.</td></tr>

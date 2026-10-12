@@ -29,8 +29,30 @@ export async function checkSeal(ride) {
   } catch (e) { return { ok: false, why: e.message, commitment: '', slot: ride.slot }; }
 }
 
+/* The Pool account as the program stores it (Anchor: 8-byte discriminator, then the fields in IDL order – server/src/infrastructure/solana/pool-program.idl.ts):
+   pool_id u32 at 8 … seed_commitment [u8;32] at 200, seed_slot u64 at 232, seed_slot_hash [u8;32] at 240; 272 bytes. Checked on the recorded program
+   fixture (server/test/fixtures/chain/pool-program.json) by test/seal.test.mjs. */
+const POOL_DISC = [241, 154, 109, 4, 17, 177, 109, 188], POOL_LEN = 272;
+/** the seal fields of a Pool account's data, or null when it is not one */
+export function poolAccountSeal(data) {
+  if (!(data instanceof Uint8Array) || data.length < POOL_LEN || POOL_DISC.some((b, i) => data[i] !== b)) return null;
+  const v = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  return { poolId: v.getUint32(8, true), commitment: hex(data.subarray(200, 232)), slot: Number(v.getBigUint64(232, true)), slotHash: hex(data.subarray(240, 272)) };
+}
+/** does the account the CHAIN holds (`owner` = its program, `data` = its bytes) carry exactly this ride's seal? → '' or why not */
+export function chainSealMismatch(ride, owner, program, data) {
+  if (owner !== program) return 'the pool account is not the escrow program\'s';
+  const a = poolAccountSeal(data);
+  if (!a) return 'not a pool account';
+  if (a.poolId !== ride.poolId) return 'another pool';
+  if (a.commitment !== hex(b64(ride.seedCommitment)) || a.slot !== Number(ride.slot) || a.slotHash !== hex(b58decode(ride.blockhash ?? ''))) return 'the chain holds another seal';
+  return '';
+}
+export const b64bytes = b64;
+
 /** what a ride's pledges would pay at `metres` driven: rate × WHOLE km (the payout key attests whole km), each capped at its target km and its locked
-    max. Active pledges only; the lamport fields are strings on the wire. An estimate – a pledge pays only once the ride is verified after the review. */
+    max. Active pledges only; the lamport fields are strings on the wire. An estimate: settle_pledge pays on the driver's BEST verified ride of the pool
+    (one attestation per pool and driver – it can be another, longer ride), a FLAGGED one pays nothing, and only after the pool's review. */
 export const pledgeEstimate = (pledges, metres) => pledges.filter(p => p.status === 'active')
   .reduce((a, p) => a + Math.min(Number(p.lamportsPerKm) * Math.min(Math.floor(metres / 1000), p.targetKm), Number(p.maxLamports)), 0);
 

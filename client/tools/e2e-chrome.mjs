@@ -3,6 +3,7 @@
 //   node tools/e2e-chrome.mjs [url]       default url http://localhost:8765/play.html (run ./serve.sh first)
 //   env: CHROME=/path/to/chrome  SHOTS=/dir/for/screenshots (default: <tmp>/fc-shots)
 // Exits 1 if anything threw. Needs Node >= 22 (global WebSocket/fetch). Look at the screenshots – the script can't judge visuals.
+import fs from 'node:fs';
 import { launch, sleep } from './cdp.mjs';
 const PORT=+process.env.PORT||9333, URL=process.argv[2]||'http://localhost:8765/play.html';
 const { send, ev, shot, filt, problems, SHOTS, finish } = await launch({ port: PORT, shotsDir: 'fc-shots', args: ['--autoplay-policy=no-user-gesture-required'], evalProblems: true });
@@ -119,6 +120,39 @@ if(await ev('typeof window.__game')==='object' && await ev('typeof __game.setNig
   await ev(`__game.dn.run=true; __game.dn.scale=600; __game.setClock(5.5,true,false)`); const t0=await ev('__game.dn.t'); await sleep(2500); console.log('clock x600 5.5 ->',t0,await ev('__game.dn.t'),await ev('__game.dn.phase')); await ev('__game.dn.scale=20; __game.setNight(false,true,false)');
   // menu cards: click NIGHT, check the state flipped and the .sel class followed; then the N key must move it back
   await ev("__game.st.mode='menu'; document.getElementById('overlay').classList.remove('hide'); __game.startRide&&0"); 
+}
+// a TICKET ride's ON CHAIN strip (ui/cab-chain.js) with the API and the public RPC stubbed: the program's own recorded pool 1 (server/test/fixtures/chain/
+// pool-program.json) – the seal is re-hashed AND matched against the account bytes; then the RPC down = "server copy"; a pledge locked mid-ride = a toast
+if(await ev('typeof window.__game')==='object'){
+  const fx=JSON.parse(fs.readFileSync(new URL('../../server/test/fixtures/chain/pool-program.json',import.meta.url),'utf8')).accounts.find(a=>a.decoded?.seedSlotHash&&a.decoded.poolId===1);
+  const ride={id:'e2e-ticket',tier:'1h',poolId:1,seed:1133767732,slot:0,blockhash:'CmpNeggWJ4JaWJeJ8YKN1Zypmk7uvQq3PECGUCAEMbky',seedCommitment:fx.decoded.seedCommitment};
+  await ev(`(() => { const A='A1ice11111111111111111111111111111111111111', W='Me1111111111111111111111111111111111111111';
+    window.__pl=[{id:'p1',status:'active',sponsor:A,driver:W,lamportsPerKm:'500000',targetKm:50,maxLamports:'25000000',createSignature:'5'.repeat(88)}]; window.__rpcUp=true;
+    const R={me:{wallet:W},'pools/1':{id:1,address:'Poo1Addr3ss11111111111111111111111111111111',buyers:3,potLamports:3e9},'pools/1/standings':{prizeLamports:2.1e9,ranks:[{rank:1,wallet:'L',distance:41230}]}};
+    window.__f0=window.__f0||window.fetch;
+    window.fetch=(u,o)=>{ u=String(u);
+      if(u.includes('solana.com')) return window.__rpcUp?Promise.resolve(new Response(JSON.stringify({result:{value:{owner:'8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p',data:[${JSON.stringify(fx.data)},'base64']}}}))):Promise.reject(new TypeError('Failed to fetch'));
+      const m=u.match(/\\/api\\/(.*)$/); if(!m) return window.__f0(u,o); const k=m[1].split('?')[0], b=k.endsWith('/pledges')?window.__pl:k.endsWith('/inbox')?{viewers:0,events:[],now:Date.now()}:R[k];
+      return Promise.resolve(new Response(JSON.stringify(b??{}),{status:b?200:404,headers:{'content-type':'application/json'}})); };
+    __game.CFG.CHAIN_PLEDGE_POLL_MS=1500; __game.online.ride=${JSON.stringify(ride)};
+    __game.st.mode='drive'; document.getElementById('overlay').classList.add('hide');
+    return import('./js/ui/cab-chain.js').then(m=>{ window.__cc=m; m.startCabChain(); }); })()`);
+  await sleep(2500); await shot('chain-strip');
+  const strip=await ev(`document.getElementById('chain')?.innerText||''`); console.log('ON CHAIN strip:',JSON.stringify(strip));
+  if(!/ROAD SEALED .*✓ on chain/.test(strip)) problems.push('chain strip: the seal is not "on chain": '+strip);
+  if(!/PRIZES 2\.10 SOL · 3 riders · LEADER 41\.2 km · YOU not ranked yet/.test(strip)) problems.push('chain strip: the pool line: '+strip);
+  if(!/PLEDGES 1 · 0\.0005 SOL\/km/.test(strip)) problems.push('chain strip: the pledge line: '+strip);
+  if(/locked/.test(await ev(`document.getElementById('toast').textContent`))) problems.push('chain strip: a pledge locked before START was toasted');
+  await ev(`window.__pl.push({id:'p2',status:'active',sponsor:'B0b11111111111111111111111111111111111111111',lamportsPerKm:'1000000',targetKm:20,maxLamports:'20000000',createSignature:'6'.repeat(88)})`);
+  await sleep(2200); const tst=await ev(`document.getElementById('toast').textContent`); console.log('pledge toast:',tst);
+  if(!/B0b1…1111 locked 0\.001 SOL\/km for you on chain/.test(tst)) problems.push('chain strip: no toast for a new pledge: '+tst);
+  // the RPC down: the seal is still re-hashed, but says "server copy" (amber) – on the strip and on the panel row
+  await ev(`window.__cc.stopCabChain(); Object.assign(__game.cabChain,{seal:null,sealv:null}); window.__rpcUp=false; window.__cc.startCabChain()`); await sleep(2000);
+  const down=await ev(`document.getElementById('chain')?.innerText||''`); if(!/✓ server copy/.test(down)) problems.push('chain strip: RPC down not shown as "server copy": '+down);
+  await ev(`import('./js/ui/game.js').then(m=>{ __game.st.mode='menu'; m.showMenu('FREIGHT CHAIN','Long-haul truck simulator'); })`); await sleep(1500); await shot('chain-seal-row');
+  const row=await ev(`document.querySelector('.seal')?.innerText||''`); console.log('seal row (RPC down):',JSON.stringify(row));
+  if(!/sealed ✓ \(server copy – the chain could not be reached\) · pool #1 · slot 0/.test(row)) problems.push('seal row: '+row);
+  await ev(`window.__cc.stopCabChain(); __game.online.ride=null; window.fetch=window.__f0`);
 }
 console.log('PROBLEMS ('+problems.length+'):'); for(const p of [...new Set(problems)].slice(0,25)) console.log(' -',p.slice(0,300));
 console.log('screenshots in',SHOTS); finish(filt().length?1:0,500);
