@@ -40,6 +40,8 @@ peak (the buffer's rent comes back after the deploy; the program-data extension,
 Attestation's rent (≈ 0.0017 SOL per attested driver). Order (v2 tooling = a checkout from before v3, e.g. `git worktree add --detach <dir> fa99e22a~1`,
 its `server/` built with `npx tsc -p tsconfig.build.json`):
 
+**Done on Oct 12**: series off; v2 pools 23–25 failed / cancelled and closed, pool 0 (2 tickets, no verified winner) closed by the admin, its two Ticket rents closed back to the buyers and each buyer repaid 0.002 SOL from the seed treasury; `extend` +90 600 bytes; upgrade tx `2qJNYBef…VpDH`; on-chain hash = pin `47a630e8…`; payout key topped up to 0.35 SOL. The series is switched back on right after the production server release with the v3 code.
+
 ```sh
 # 0. pinned v3 build in this checkout (UPDATE_PIN=1 npm run program:verify was committed with the change); the deploy wallet funded
 # 1. stop new v2 pools: switch the 1h series off (v2 tooling, admin key)
