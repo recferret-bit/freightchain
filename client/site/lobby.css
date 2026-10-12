@@ -163,16 +163,41 @@ th button.on{color:var(--amber)}
 .a.soon{border-style:dashed}
 /* achievements: a ladder per family, a card per tier (lobby-achievements.js); the tier colours echo the badge rims */
 .ach-fam{display:grid;gap:14px}.fam h3{margin:0 0 6px;font-size:12px;letter-spacing:.14em;color:var(--dim)}
-.ladder{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
-.ac{display:flex;flex-direction:column;align-items:center;text-align:center;gap:3px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 8px 12px}
+.ladder{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+/* a card flips (hover, keyboard focus or a tap) from the badge to its details; the transition is a Solana-coloured sweep (purple → green) */
+.ac{--sol1:#9945ff;--sol2:#14f195;--sol3:#00c2ff;--tier:#c8844a;perspective:900px;cursor:pointer;outline:none;animation:acin .55s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i,0)*70ms)}
+.ac.t2{--tier:#c9ced6}.ac.t3{--tier:var(--amber)}.ac.t4{--tier:#b9a6ff}
+.ac{display:flex}.ac .in{flex:1;display:grid;transform-style:preserve-3d;transition:transform .75s cubic-bezier(.2,.8,.2,1)}
+.ac .fr,.ac .bk{grid-area:1/1;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;padding:10px 8px 12px;border:1px solid transparent;border-radius:12px;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.ac .fr{background:linear-gradient(var(--panel),var(--panel)) padding-box,linear-gradient(135deg,var(--line),var(--line)) border-box}
+.ac.got .fr{background:linear-gradient(var(--panel),var(--panel)) padding-box,linear-gradient(135deg,var(--sol1),var(--sol2)) border-box;box-shadow:0 0 14px #9945ff22}
+.ac .bk{transform:rotateY(180deg);justify-content:center;visibility:hidden;transition:visibility 0s .38s;background:linear-gradient(160deg,#9945ff26,#0b0a0900 45%,#14f19520) padding-box,linear-gradient(var(--panel),var(--panel)) padding-box,linear-gradient(135deg,var(--sol1),var(--sol2)) border-box}
+.ac:is(.flip,:focus-visible,:has(a:focus-visible)) .in{transform:rotateY(180deg)}
+.ac:is(.flip,:focus-visible,:has(a:focus-visible)) .bk{visibility:visible;transition-delay:0s}
+@media (hover:hover){.ac:hover .in{transform:rotateY(180deg)}.ac:hover .bk{visibility:visible;transition-delay:0s}}
+/* the sweep: one band of Solana colour crosses both faces as the card turns */
+.ac .fr::after,.ac .bk::after{content:"";position:absolute;inset:-20% -60%;background:linear-gradient(105deg,transparent 38%,#9945ff66 44%,#00c2ff55 50%,#14f19566 56%,transparent 62%);transform:translateX(-100%);pointer-events:none;opacity:0}
+.ac:is(.flip,:focus-visible) :is(.fr,.bk)::after{animation:solsweep .85s ease-out}
+@media (hover:hover){.ac:hover :is(.fr,.bk)::after{animation:solsweep .85s ease-out}}
+@keyframes solsweep{0%{transform:translateX(-100%);opacity:1}100%{transform:translateX(100%);opacity:1}}
+@keyframes acin{from{opacity:0;transform:translateY(10px) scale(.96)}to{opacity:1;transform:none}}
 .ac img{width:112px;height:112px;border-radius:12px}
-.ac .nm{font-weight:bold;font-size:13px}.ac .tr{font-size:10px;letter-spacing:.16em}.ac .ds{font-size:11px;color:var(--dim);min-height:2.6em}
-.ac .when{font-size:11px;color:var(--good)}.ac .when.mint{color:var(--amber)}.ac .when.warn{color:var(--needle)}.ac .when a{color:inherit}
-.ac .nft{display:grid;gap:3px;justify-items:center}.ac .lk{display:flex;flex-wrap:wrap;justify-content:center;gap:2px 8px;font-size:10px}.ac .lk a{color:var(--dim)}.ac .lk a:last-child{color:var(--amber)}.ach-chain{font-size:12px}
-.ac.t1 .tr{color:#c8844a}.ac.t2 .tr{color:#c9ced6}.ac.t3 .tr{color:var(--amber)}.ac.t4 .tr{color:#9be7ff}
-.ac.got.t1{border-color:#c8844a66}.ac.got.t2{border-color:#c9ced66a}.ac.got.t3{border-color:#ffcf5a88}.ac.got.t4{border-color:#9be7ff99}
-.ac.lock{opacity:.78}.ac.lock .tr{color:var(--dim)}
-.ac .pg{position:relative;display:block;width:100%;height:16px;line-height:14px;background:#0008;border:1px solid var(--line);border-radius:7px;overflow:hidden}.ac .pg i{position:absolute;inset:0 auto 0 0;background:#ffcf5a55}.ac .pg em{position:relative;font-style:normal;font-size:10px;color:var(--cream)}
+.ac .nm{font-weight:bold;font-size:13px}.ac .ds{font-size:12px;color:var(--text)}
+.ac .lvl{display:flex;gap:3px;font-size:17px;line-height:1}.ac .lvl i{font-style:normal;color:transparent;-webkit-text-stroke:1px #9d957f99}
+.ac .lvl i.on{color:var(--tier);-webkit-text-stroke:0;text-shadow:0 0 8px color-mix(in srgb,var(--tier) 60%,transparent)}
+.ac.t4 .lvl i.on{background:linear-gradient(135deg,#9bffd7,#8fe9ff,#c79bff,#ff9bd9);-webkit-background-clip:text;background-clip:text;color:transparent}
+.ac .when{font-size:11px;color:var(--good)}.ac .when.mint{color:var(--amber)}.ac .when.warn{color:var(--bad)}.ac .when.dim{color:var(--dim)}
+.ac .nx{font-size:11px;color:var(--text);line-height:1.3}.ac .nx b{display:block;font-size:9px;letter-spacing:.18em;font-weight:bold;background:linear-gradient(90deg,var(--sol1),var(--sol2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.ac.lock .fr img{opacity:.85}
+.ac .lk{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:4px}
+.ac .lk a{font-size:11px;text-decoration:none;color:var(--text);border:1px solid #9945ff88;border-radius:999px;padding:3px 9px;background:#0007;transition:background .2s,border-color .2s,color .2s}
+.ac .lk a:hover,.ac .lk a:focus-visible{background:linear-gradient(90deg,var(--sol1),var(--sol2));border-color:transparent;color:#0b0a09}
+.ac .lk a.x{border-color:var(--amber);color:var(--amber)}.ac .lk a.x:hover,.ac .lk a.x:focus-visible{color:#0b0a09;background:var(--amber)}
+.ac:focus-visible .fr{outline:2px solid #fff}
+.ach-chain{font-size:12px}
+.ac .pg{position:relative;display:block;width:100%;height:16px;line-height:14px;background:#0008;border:1px solid var(--line);border-radius:7px;overflow:hidden}.ac .pg i{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,#9945ff88,#14f19588)}.ac .pg em{position:relative;font-style:normal;font-size:10px;color:var(--text)}
+@media (prefers-reduced-motion:reduce){.ac{animation:none}.ac .in{transition:none;transform:none!important}.ac .bk{transform:none;opacity:0;transition:opacity .2s}.ac .fr{transition:opacity .2s}.ac:is(.flip,:focus-visible,:has(a:focus-visible)) .bk{opacity:1}.ac:is(.flip,:focus-visible,:has(a:focus-visible)) .fr{opacity:0}.ac .fr::after,.ac .bk::after{display:none}}
+@media (prefers-reduced-motion:reduce) and (hover:hover){.ac:hover .bk{opacity:1}.ac:hover .fr{opacity:0}}
 .hist{display:grid;gap:6px}.hrow .rnote{flex-basis:100%;font-size:12px}.hrow{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;background:var(--panel);border:1px solid #ffffff12;border-radius:6px;padding:8px 12px;font-size:13px}
 
 /* promo tab: the wardrobe */

@@ -49,11 +49,10 @@
       <path d="M-34 -14V-38A34 34 0 0 1 34 -38V-14" fill="none" stroke="#c7ccd3" stroke-width="15" stroke-linecap="round"/>
       <rect x="-52" y="-16" width="104" height="80" rx="15" fill="#a8adb5"/><rect x="-52" y="-16" width="104" height="80" rx="15" fill="none" stroke="#3c4047" stroke-width="4"/>
       <circle cy="20" r="11" fill="#2b2e33"/><rect x="-4.5" y="26" width="9" height="22" rx="4.5" fill="#2b2e33"/></g>
-  <polygon points="446,676 459,689 446,702 433,689" fill="#5b5f66" stroke="#5b5f66" stroke-width="3" opacity="1"/><polygon points="490,676 503,689 490,702 477,689" fill="#5b5f66" stroke="#5b5f66" stroke-width="3" opacity="1"/><polygon points="534,676 547,689 534,702 521,689" fill="none" stroke="#5b5f66" stroke-width="3" opacity="0.5"/><polygon points="578,676 591,689 578,702 565,689" fill="none" stroke="#5b5f66" stroke-width="3" opacity="0.5"/>
   <polygon points="512,106 811.6,279 811.6,625 512,798 212.4,625 212.4,279" fill="url(#sheen)" stroke="none"/>
   
   <rect x="86" y="800" width="852" height="98" rx="18" fill="url(#bevel)" stroke="url(#rim)" stroke-width="6"/>
     <rect x="104" y="814" width="816" height="70" rx="10" fill="#0a0806" opacity=".9"/>
     <text x="512" y="864" text-anchor="middle" font-family="ui-monospace,'SF Mono',Menlo,Consolas,'Liberation Mono','DejaVu Sans Mono',monospace" font-size="66" font-weight="800" fill="#8d9299" letter-spacing="1">REGULAR HAULER</text>
-  <text x="512" y="942" text-anchor="middle" font-family="ui-monospace,'SF Mono',Menlo,Consolas,'Liberation Mono','DejaVu Sans Mono',monospace" font-size="30" font-weight="700" fill="#9d957f" letter-spacing="2"><tspan x="512" dy="0">Start 10 rides.</tspan></text>
+  <polygon points="404,910 414.6,935.4 442,937.6 421.1,955.6 427.5,982.4 404,968 380.5,982.4 386.9,955.6 366,937.6 393.4,935.4" fill="#5b5f66" fill-opacity=".08" stroke="#5b5f66" stroke-width="5" stroke-linejoin="round" stroke-dasharray="0" stroke-linecap="round" opacity="0.55"/><polygon points="512,910 522.6,935.4 550,937.6 529.1,955.6 535.5,982.4 512,968 488.5,982.4 494.9,955.6 474,937.6 501.4,935.4" fill="#5b5f66" fill-opacity=".08" stroke="#5b5f66" stroke-width="5" stroke-linejoin="round" stroke-dasharray="0" stroke-linecap="round" opacity="0.55"/><polygon points="620,910 630.6,935.4 658,937.6 637.1,955.6 643.5,982.4 620,968 596.5,982.4 602.9,955.6 582,937.6 609.4,935.4" fill="#5b5f66" fill-opacity=".08" stroke="#5b5f66" stroke-width="5" stroke-linejoin="round" stroke-dasharray="0" stroke-linecap="round" opacity="0.55"/>
 </svg>

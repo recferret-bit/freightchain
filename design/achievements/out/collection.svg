@@ -45,7 +45,6 @@
       <rect x="38" y="74" width="30" height="30" rx="9" fill="#120d08" stroke="#e8e2cf" stroke-width="4"/>
     </g></g>
   
-  <polygon points="446,676 459,689 446,702 433,689" fill="#8fe9ff" stroke="#8fe9ff" stroke-width="3" opacity="1"/><polygon points="490,676 503,689 490,702 477,689" fill="#8fe9ff" stroke="#8fe9ff" stroke-width="3" opacity="1"/><polygon points="534,676 547,689 534,702 521,689" fill="#8fe9ff" stroke="#8fe9ff" stroke-width="3" opacity="1"/><polygon points="578,676 591,689 578,702 565,689" fill="#8fe9ff" stroke="#8fe9ff" stroke-width="3" opacity="1"/>
   <polygon points="512,106 811.6,279 811.6,625 512,798 212.4,625 212.4,279" fill="url(#sheen)" stroke="none"/>
   <polygon points="512,106 811.6,279 811.6,625 512,798 212.4,625 212.4,279" fill="none" stroke="url(#rimB)" stroke-width="3" stroke-linejoin="round" opacity=".9" filter="url(#glow)"/>
   <rect x="86" y="812" width="852" height="104" rx="18" fill="url(#bevel)" stroke="url(#rim)" stroke-width="6"/>

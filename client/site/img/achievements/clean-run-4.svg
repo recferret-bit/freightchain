@@ -37,11 +37,10 @@
       <path d="M-44 -48 Q-41.48 -36.52 -30 -34 Q-41.48 -31.48 -44 -20 Q-46.52 -31.48 -58 -34 Q-46.52 -36.52 -44 -48Z" fill="#e8e2cf" opacity="0.85"/><path d="M48 31 Q49.98 40.02 59 42 Q49.98 43.98 48 53 Q46.02 43.98 37 42 Q46.02 40.02 48 31Z" fill="#e8e2cf" opacity="0.8"/>
     </g></g>
   
-  <polygon points="446,676 459,689 446,702 433,689" fill="#8fe9ff" stroke="#8fe9ff" stroke-width="3" opacity="1"/><polygon points="490,676 503,689 490,702 477,689" fill="#8fe9ff" stroke="#8fe9ff" stroke-width="3" opacity="1"/><polygon points="534,676 547,689 534,702 521,689" fill="#8fe9ff" stroke="#8fe9ff" stroke-width="3" opacity="1"/><polygon points="578,676 591,689 578,702 565,689" fill="#8fe9ff" stroke="#8fe9ff" stroke-width="3" opacity="1"/>
   <polygon points="512,106 811.6,279 811.6,625 512,798 212.4,625 212.4,279" fill="url(#sheen)" stroke="none"/>
   <polygon points="512,106 811.6,279 811.6,625 512,798 212.4,625 212.4,279" fill="none" stroke="url(#rimB)" stroke-width="3" stroke-linejoin="round" opacity=".9" filter="url(#glow)"/>
   <rect x="86" y="812" width="852" height="104" rx="18" fill="url(#bevel)" stroke="url(#rim)" stroke-width="6"/>
     <rect x="104" y="826" width="816" height="76" rx="10" fill="#0a0806" opacity=".9"/>
     <text x="512" y="882" text-anchor="middle" font-family="ui-monospace,'SF Mono',Menlo,Consolas,'Liberation Mono','DejaVu Sans Mono',monospace" font-size="66" font-weight="800" fill="#f0eaff" letter-spacing="1">MIRROR FINISH</text>
-  <text x="512" y="978" text-anchor="middle" font-family="ui-monospace,'SF Mono',Menlo,Consolas,'Liberation Mono','DejaVu Sans Mono',monospace" font-size="38" font-weight="700" fill="#8fe9ff" letter-spacing="8">PLATINUM · IV</text>
+  <polygon points="404,928 414.6,953.4 442,955.6 421.1,973.6 427.5,1000.4 404,986 380.5,1000.4 386.9,973.6 366,955.6 393.4,953.4" fill="url(#rimB)" stroke="#34306a" stroke-width="4" stroke-linejoin="round" filter="url(#glow)"/><polygon points="512,928 522.6,953.4 550,955.6 529.1,973.6 535.5,1000.4 512,986 488.5,1000.4 494.9,973.6 474,955.6 501.4,953.4" fill="url(#rimB)" stroke="#34306a" stroke-width="4" stroke-linejoin="round" filter="url(#glow)"/><polygon points="620,928 630.6,953.4 658,955.6 637.1,973.6 643.5,1000.4 620,986 596.5,1000.4 602.9,973.6 582,955.6 609.4,953.4" fill="url(#rimB)" stroke="#34306a" stroke-width="4" stroke-linejoin="round" filter="url(#glow)"/>
 </svg>

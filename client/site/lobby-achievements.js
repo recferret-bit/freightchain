@@ -18,33 +18,46 @@ export const nftLinks = (assetId, signature, cluster = CLUSTER) => [
 ];
 export const badgeShareText = a => `Earned “${a.name}” (${a.tierName}) in @FreightChainSol – a soulbound compressed NFT on @solana devnet, minted to my wallet. Proof:`;
 
-/** the NFT line under an earned badge */
-function nftLine(a, track) {
+const fmtDate = t => new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+const STARS = 3; // every badge shows three levels; tier 1 lights one, tier 2 two, tier 3 (and the platinum 4) all three
+/** the level as three stars, `tier` of them lit */
+const stars = (tier, earned) => el('span', { class: 'lvl', role: 'img', 'aria-label': `level ${Math.min(tier, STARS)} of ${STARS}` },
+  Array.from({ length: STARS }, (_, n) => el('i', { class: earned && (n < tier || tier > STARS) ? 'on' : '' }, '★')));
+
+/** the back of an earned card: where the soulbound compressed NFT lives (cNFT, Solscan, Orb, the mint transaction) and the share link */
+function nftLinksRow(a, track) {
   const n = a.nft, click = link => () => track('achievement_nft_clicked', { achievement_id: a.id, tier: a.tier, link });
-  const when = el('span', { class: 'when' }, `unlocked ${new Date(a.earnedAt).toLocaleDateString()}`);
-  if (!n) return when;
-  if (n.status === 'minted' && n.assetId) {
-    const links = nftLinks(n.assetId, n.signature);
-    return el('span', { class: 'nft' },
-      el('span', { class: 'when' }, 'cNFT ', el('a', { href: links[0][2], target: '_blank', rel: 'noopener', title: `soulbound compressed NFT ${n.assetId} (Solana explorer)`, onclick: click('explorer') }, `${shortAddr(n.assetId)} ↗`)),
-      el('span', { class: 'lk' }, links.slice(1).map(([k, label, href]) => el('a', { href, target: '_blank', rel: 'noopener', onclick: click(k) }, label)),
-        el('a', { href: xIntent(badgeShareText(a), links[0][2]), target: '_blank', rel: 'noopener', onclick: click('share'), title: 'Post this badge on X' }, 'POST ON X')));
+  if (n && n.status === 'minted' && n.assetId) {
+    const links = nftLinks(n.assetId, n.signature), ln = (k, label, href, extra = {}) => el('a', { href, target: '_blank', rel: 'noopener', onclick: click(k), ...extra }, label);
+    return el('span', { class: 'lk' },
+      ln('explorer', 'cNFT', links[0][2], { title: `soulbound compressed NFT ${n.assetId} (Solana Explorer)` }),
+      links.slice(1).map(([k, label, href]) => ln(k, label, href)),
+      ln('share', 'Post on X', xIntent(badgeShareText(a), links[0][2]), { class: 'x', title: 'Post this badge on X' }));
   }
-  if (n.status === 'planned' || n.status === 'sent') return el('span', { class: 'when mint' }, 'minting to your wallet…');
-  if (n.status === 'failed') return el('span', { class: 'when warn' }, 'mint on hold – we are looking at it');
-  return when;
+  if (n && (n.status === 'planned' || n.status === 'sent')) return el('span', { class: 'when mint' }, 'minting to your wallet…');
+  if (n && n.status === 'failed') return el('span', { class: 'when warn' }, 'mint on hold – we are looking at it');
+  return null;
 }
 
-function card(a, track) {
+/** one tier = one flip card: the front is the badge, the date (or the progress) and – for the next level up – what to do; the back (hover / tap) the condition and the NFT links */
+function card(a, track, next, i) {
   const earned = !!a.earnedAt, pct = a.progress.target ? Math.round((100 * a.progress.value) / a.progress.target) : 0;
-  return el('div', { class: `ac t${a.tier}${earned ? ' got' : ' lock'}`, 'data-id': a.id, 'data-tier': a.tier },
-    el('img', { src: art(a.id, !earned), alt: `${a.name} – ${earned ? a.tierName : 'locked'}`, loading: 'lazy', width: 112, height: 112 }),
+  const prog = () => el('span', { class: 'pg', title: `${a.progress.value} / ${a.progress.target}` }, el('i', { style: `width:${pct}%` }), el('em', {}, `${a.progress.value.toLocaleString('en')} / ${a.progress.target.toLocaleString('en')}`));
+  const front = el('div', { class: 'fr' },
+    el('img', { src: art(a.id, !earned), alt: `${a.name} – ${earned ? `level ${Math.min(a.tier, STARS)}` : 'locked'}`, loading: 'lazy', width: 112, height: 112 }),
     el('span', { class: 'nm' }, a.name),
-    el('span', { class: 'tr' }, a.tierName.toUpperCase()),
+    stars(a.tier, earned),
+    earned ? el('span', { class: 'when' }, `✓ ${fmtDate(a.earnedAt)}`) : [next ? el('span', { class: 'nx' }, el('b', {}, 'NEXT LEVEL'), a.desc) : null, prog]);
+  const back = el('div', { class: 'bk' },
+    el('span', { class: 'nm' }, a.name),
+    stars(a.tier, earned),
     el('span', { class: 'ds' }, a.desc),
-    earned
-      ? nftLine(a, track)
-      : el('span', { class: 'pg', title: `${a.progress.value} / ${a.progress.target}` }, el('i', { style: `width:${pct}%` }), el('em', {}, `${a.progress.value.toLocaleString('en')} / ${a.progress.target.toLocaleString('en')}`)));
+    earned ? [el('span', { class: 'when' }, `unlocked ${fmtDate(a.earnedAt)}`), nftLinksRow(a, track)] : [prog(), el('span', { class: 'when dim' }, 'earn it to get a soulbound cNFT')]);
+  const c = el('div', { class: `ac t${a.tier}${earned ? ' got' : ' lock'}${next ? ' next' : ''}`, 'data-id': a.id, 'data-tier': a.tier, tabindex: 0, 'aria-expanded': 'false', style: `--i:${i}`, title: 'Hover or tap for details' }, el('div', { class: 'in' }, front, back));
+  const flip = () => { const on = c.classList.toggle('flip'); c.setAttribute('aria-expanded', String(on)); };
+  c.addEventListener('click', e => { if (!e.target.closest('a')) flip(); });
+  c.addEventListener('keydown', e => { if (e.target === c && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); flip(); } });
+  return c;
 }
 
 /** the profile section: header + the families + the legacy "awarded at round close" cards */
@@ -55,11 +68,11 @@ export function achievementsSection(achievements, track = () => {}, badgeChain =
     el('h2', {}, `ACHIEVEMENTS · ${got}/${mintable.length}`),
     el('div', { class: 'ach-fam', id: 'ach' }, families.map(f => el('div', { class: 'fam', 'data-family': f },
       el('h3', {}, FAMILY_TITLE[f] ?? f.toUpperCase()),
-      el('div', { class: 'ladder' }, mintable.filter(a => a.family === f).sort((x, y) => x.tier - y.tier).map(a => card(a, track)))))),
+      el('div', { class: 'ladder' }, (list => { const nextId = list.find(a => !a.earnedAt)?.id; return list.map((a, i) => card(a, track, a.id === nextId, i)); })(mintable.filter(a => a.family === f).sort((x, y) => x.tier - y.tier)))))),
     ...achievements.filter(a => a.awardedAtRoundClose).map(a => el('div', { class: 'a lock soon' }, el('span', { class: 'ic' }, a.icon), el('span', { class: 'nm' }, a.name), el('span', { class: 'ds' }, a.desc), el('span', { class: 'when' }, 'awarded when the round closes'))),
     ...(badgeChain ? [el('p', { class: 'dim ach-chain' }, 'The badge collection ', el('a', { href: explorerUrl(badgeChain.collection), target: '_blank', rel: 'noopener', onclick: () => track('achievement_nft_clicked', { link: 'collection' }) }, `${shortAddr(badgeChain.collection)} ↗`),
       ' · Merkle tree ', el('a', { href: explorerUrl(badgeChain.tree), target: '_blank', rel: 'noopener', onclick: () => track('achievement_nft_clicked', { link: 'tree' }) }, `${shortAddr(badgeChain.tree)} ↗`),
-      ' · Phantom, Solflare and Backpack list them under your collectibles; if a wallet or marketplace does not show them yet, the links on each badge always do.')] : []),
+      ' · Phantom, Solflare and Backpack list them under your collectibles; if a wallet or marketplace does not show them yet, the links on the back of each badge always do.')] : []),
     el('p', { class: 'dim' }, 'Every achievement is minted as a soulbound compressed NFT to your wallet (Solana) a little after you earn it – it can’t be sold or moved, and it can’t be lost.'),
   ];
 }

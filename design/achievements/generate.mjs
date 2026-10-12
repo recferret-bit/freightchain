@@ -47,7 +47,10 @@ const TIERS = [
   { name: 'Gold', rim: ['#fff3b0', '#ffd24d', '#b97a08', '#ffe27a', '#fff6c9'], edge: '#6e4300', glow: '#ffcf5a', ink: '#ffe9a0' },
   { name: 'Platinum', rim: ['#e8fbff', '#8fe9ff', '#c79bff', '#ff9bd9', '#ffe29a', '#9bffd7', '#e8fbff'], edge: '#34306a', glow: '#b9a6ff', ink: '#f0eaff' },
 ];
-const ROMAN = ['', 'I', 'II', 'III', 'IV'];
+/** a five-pointed star: outer radius R, inner r */
+const starPts = (cx, cy, R, r = R * 0.45) => Array.from({ length: 10 }, (_, k) => { const a = ((-90 + 36 * k) * Math.PI) / 180, d = k % 2 ? r : R; return `${r1(cx + d * Math.cos(a))},${r1(cy + d * Math.sin(a))}`; }).join(' ');
+/** every badge shows three stars – the level: tier 1 lights one, tier 2 two, tier 3 all three; tier 4 (platinum) lights all three in holographic colour */
+const STARS = 3;
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const r1 = (n) => Math.round(n * 10) / 10;
@@ -62,7 +65,6 @@ const seeded = (str) => {
 
 const hexPts = (cx, cy, r) => Array.from({ length: 6 }, (_, k) => { const a = ((-90 + 60 * k) * Math.PI) / 180; return `${r1(cx + r * Math.cos(a))},${r1(cy + r * Math.sin(a))}`; }).join(' ');
 const star4 = (x, y, r, fill, op = 1) => `<path d="M${x} ${y - r} Q${x + r * 0.18} ${y - r * 0.18} ${x + r} ${y} Q${x + r * 0.18} ${y + r * 0.18} ${x} ${y + r} Q${x - r * 0.18} ${y + r * 0.18} ${x - r} ${y} Q${x - r * 0.18} ${y - r * 0.18} ${x} ${y - r}Z" fill="${fill}" opacity="${op}"/>`;
-const wrap = (text, max) => { const out = []; let line = ''; for (const w of text.split(' ')) { if ((line + ' ' + w).trim().length > max) { out.push(line); line = w; } else line = (line + ' ' + w).trim(); } if (line) out.push(line); return out; };
 /** font size that makes `len` monospace glyphs fit `width` px (a monospace glyph is ~0.6 em wide) */
 const fit = (len, width, max) => Math.min(max, Math.floor(width / (Math.max(len, 1) * 0.62)));
 
@@ -201,7 +203,6 @@ function badge(a, locked, over = {}) {
   const c = { p: 'url(#ga)', s: cream, d: locked ? '#17181a' : '#120d08', k: !locked };
   const glyphScale = 1.62;
   const glyph = GLYPHS[a.family] ? GLYPHS[a.family](c, a) : GLYPHS.road(c, a);
-  const pips = Array.from({ length: 4 }, (_, i) => { const x = CX + (i - 1.5) * 44, on = i < a.tier; return `<polygon points="${x},${CY + 224} ${x + 13},${CY + 237} ${x},${CY + 250} ${x - 13},${CY + 237}" fill="${on ? (locked ? '#5b5f66' : tier.rim[1]) : 'none'}" stroke="${locked ? '#5b5f66' : tier.rim[1]}" stroke-width="3" opacity="${on ? 1 : 0.5}"/>`; }).join('');
 
   // tier decoration: gold/platinum get an extra outer ring, platinum a holographic sheen and sparkles
   const extra = (!locked && a.tier >= 3 ? `<polygon points="${hexPts(CX, CY, 356)}" fill="none" stroke="url(#rim)" stroke-width="5" stroke-linejoin="round" opacity=".8"/>` : '')
@@ -209,15 +210,22 @@ function badge(a, locked, over = {}) {
     + (!locked && a.tier === 2 ? star4(842, 168, 16, '#fff', 0.55) : '');
 
   const nameFs = fit(name.length, 790, 66);
-  const cond = wrap(a.desc, 36);
   const bannerTop = locked ? 800 : 812, bannerH = locked ? 98 : 104;
   const banner = `<rect x="86" y="${bannerTop}" width="852" height="${bannerH}" rx="18" fill="url(#bevel)" stroke="url(#rim)" stroke-width="6"/>
     <rect x="104" y="${bannerTop + 14}" width="816" height="${bannerH - 28}" rx="10" fill="#0a0806" opacity=".9"/>
     <text x="512" y="${bannerTop + (locked ? 64 : 70)}" text-anchor="middle" font-family="${FONT}" font-size="${nameFs}" font-weight="800" fill="${locked ? '#8d9299' : tier.ink}" letter-spacing="1">${esc(name.toUpperCase())}</text>`;
 
-  const bottom = locked
-    ? `<text x="512" y="${bannerTop + bannerH + 44}" text-anchor="middle" font-family="${FONT}" font-size="30" font-weight="700" fill="${DIM}" letter-spacing="2">${cond.map((l, i) => `<tspan x="512" dy="${i ? 38 : 0}">${esc(l)}</tspan>`).join('')}</text>`
-    : `<text x="512" y="${bannerTop + bannerH + 62}" text-anchor="middle" font-family="${FONT}" font-size="38" font-weight="700" fill="${tier.rim[1]}" letter-spacing="8">${esc(over.bottom ?? `${tier.name.toUpperCase()} · ${ROMAN[a.tier]}`)}</text>`;
+  // the level: three stars under the banner, `tier` of them lit (the same row on the locked art, all unlit)
+  const lit = (n) => (locked ? false : n < Math.min(a.tier, STARS) || a.tier > STARS);
+  const starRow = (cy, R) => Array.from({ length: STARS }, (_, n) => {
+    const x = CX + (n - 1) * R * 2.7, on = lit(n), line = locked ? '#5b5f66' : tier.rim[1];
+    return on
+      ? `<polygon points="${starPts(x, cy, R)}" fill="${a.tier > 3 ? 'url(#rimB)' : 'url(#rim)'}" stroke="${edge}" stroke-width="4" stroke-linejoin="round" ${a.tier > 3 ? 'filter="url(#glow)"' : ''}/>`
+      : `<polygon points="${starPts(x, cy, R)}" fill="${line}" fill-opacity=".08" stroke="${line}" stroke-width="5" stroke-linejoin="round" stroke-dasharray="${locked ? '0' : '2 9'}" stroke-linecap="round" opacity="${locked ? 0.55 : 0.75}"/>`;
+  }).join('');
+  const bottom = over.bottom
+    ? `<text x="512" y="${bannerTop + bannerH + 62}" text-anchor="middle" font-family="${FONT}" font-size="38" font-weight="700" fill="${tier.rim[1]}" letter-spacing="8">${esc(over.bottom)}</text>`
+    : starRow(bannerTop + bannerH + 52, 40);
 
   const lockIcon = locked ? `<g transform="translate(${CX} ${CY + 18})">
       <circle r="92" fill="#0b0a09" opacity=".62"/>
@@ -246,7 +254,6 @@ function badge(a, locked, over = {}) {
   ${bolts}
   <g transform="translate(${CX} ${CY - 12}) scale(${glyphScale})" ${locked ? 'opacity=".34"' : 'filter="url(#glow)"'}>${glyph}</g>
   ${lockIcon}
-  ${pips}
   <polygon points="${hexPts(CX, CY, 346)}" fill="url(#sheen)" stroke="none"/>
   ${a.tier === 4 && !locked ? `<polygon points="${hexPts(CX, CY, 346)}" fill="none" stroke="url(#rimB)" stroke-width="3" stroke-linejoin="round" opacity=".9" filter="url(#glow)"/>` : ''}
   ${banner}
