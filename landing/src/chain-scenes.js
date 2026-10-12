@@ -59,27 +59,6 @@ export const SCENES = {
       alpha(lit, () => text(scramble(v.root, sc), 152, 15, 8, DI)); alpha(ok, () => text('✓ VERIFIED', 152, 26, 8, GR));
     };
   },
-  /* the pot's yield accrues across the 24 h sale and 48 h review: this round's APY, a slightly uneven line, the end dot pulses */
-  yield() {
-    const x0 = 14, x1 = 226, s = x0 + (x1 - x0) / 3, Y = val => 96 - (val / 0.058) * 66;
-    const cyc = cycle(7, () => ({ end: (100 * rnd(0.062, 0.078) * 3) / 365, ph: rnd(0, 6.3), amp: rnd(0.6, 1.6), sp: [0, 1, 2].map(() => [rnd(-10, 6), rnd(0.8, 0.9)]) }));
-    return t => {
-      const [p, v] = cyc(t), a = fade(p), h = seg(p, 0.05, 0.78), hx = lerp(x0, x1, h);
-      line(x0, 96, x1, 96, '#9d957f66'); for (let i = 0; i < 4; i++) line(x0 + (i * (x1 - x0)) / 3, 96, x0 + (i * (x1 - x0)) / 3, 100, '#9d957f66');
-      c.setLineDash([3, 4]); line(x0, 30, x1, 30, '#9d957f33'); line(s, 22, s, 96, '#ffcf5a55'); c.setLineDash([]);
-      text('example', x0, 24, 8, DI); text('SALE 24 h', (x0 + s) / 2, 112, 8.5, hx <= s && h > 0 ? AM : '#ffcf5a99', 'center'); text('REVIEW 48 h', (s + x1) / 2, 112, 8.5, hx > s ? CR : DI, 'center');
-      alpha(a, () => {
-        const pts = []; for (let i = 0; i <= 48; i++) { const f = (i / 48) * h; pts.push([lerp(x0, x1, f), Y(v.end * f) + Math.sin(f * 14 + v.ph) * v.amp * Math.sin(f * Math.PI)]); }
-        const g = c.createLinearGradient(0, 30, 0, 96); g.addColorStop(0, '#14f19559'); g.addColorStop(1, '#14f19500');
-        c.beginPath(); c.moveTo(x0, 96); pts.forEach(([x, y]) => c.lineTo(x, y)); c.lineTo(hx, 96); c.closePath(); c.fillStyle = g; c.fill();
-        c.beginPath(); pts.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y))); c.strokeStyle = grad(x0, x1); c.lineWidth = 2.5; c.stroke();
-        const [ex, ey] = pts[pts.length - 1]; dot(ex, ey, 4, GR);
-        if (h >= 1) { const r = (t * 1.1) % 1; alpha(1 - r, () => { c.beginPath(); c.arc(ex, ey, 4 + r * 10, 0, 7); c.strokeStyle = GR; c.lineWidth = 1; c.stroke(); }); }
-        v.sp.forEach(([dx, at]) => { const q = seg(p, at - 0.04, at + 0.08); if (q > 0 && q < 1) alpha(1 - q, () => dot(ex + dx, ey - 4 - q * 16, 1.4, q > 0.5 ? CR : GR)); });
-        text(`+${(v.end * h).toFixed(3)} SOL`, Math.min(hx, x1) - 6, Math.min(ey - 9, 88), 9, GR, hx > 120 ? 'right' : 'left');
-      });
-    };
-  },
   /* a pledge fills km by km with 15 s checkpoints popping along it; the unspent rest slides back to the sponsor */
   pledge() {
     const x0 = 14, w = 212, k = w / 500;

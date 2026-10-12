@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { SCENES, drawScene } from '../src/chain-scenes.js';
 
-/* UNDER THE HOOD (index.html .oc-grid): six flip cards, each a still SVG (no JS / reduced motion) that src/chain-scenes.js swaps for a canvas scene. */
+/* UNDER THE HOOD (index.html .oc-grid): five flip cards, each a still SVG (no JS / reduced motion) that src/chain-scenes.js swaps for a canvas scene. */
 const root = new URL('..', import.meta.url).pathname;
 const html = readFileSync(`${root}index.html`, 'utf8'), wp = readFileSync(`${root}whitepaper.html`, 'utf8');
 const cards = [...html.matchAll(/<article data-card="(\w+)" class="oc[^"]*">([\s\S]*?)<\/article>/g)].map(m => ({ k: m[1], body: m[2] }));
 
-test('six cards, each with its still drawing, a scene, a receipt and working links', () => {
+test('five cards, each with its still drawing, a scene, a receipt and working links', () => {
   assert.deepEqual(cards.map(c => c.k).sort(), Object.keys(SCENES).sort());
   for (const { k, body } of cards) {
     const img = body.match(/<img src="\/media\/chain\/(\w+)\.svg" width="240" height="124"[^>]* alt="([^"]+)"/);

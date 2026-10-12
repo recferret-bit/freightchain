@@ -15,7 +15,7 @@ The sorting rule: the game's defining trait is a shift that is **long, slow and 
 | Devnet guard | `deploy/scripts/validate-env.mjs` | Genesis-hash check; mainnet refused. |
 | Achievements persisted, "become NFTs soon" | `domain/achievements/achievements.ts`, lobby Profile tab | 7 unlock rules, nothing minted. |
 | Socials | `landing/src/main.js` `SOCIALS` | All `null`, buttons hidden; waits on the X account (Q11). |
-| Anchor program v3 escrow & JitoSOL yield | `programs/freightchain-pools/`, `server/src/infrastructure/solana/` | Built (devnet): 21 instructions, 18 events, 30 errors, 81 tests passing. Vault PDAs, JitoSOL liquid staking yield (`staked_lamports`, `yield_earned`). |
+| Anchor program v3 escrow | `programs/freightchain-pools/`, `server/src/infrastructure/solana/` | Built (devnet): 21 instructions, 18 events, 30 errors, 81 tests passing. Vault PDAs. |
 | Provable seed commitment & RFC 6962 telemetry attestation | `server/src/domain/road/provable-seed.ts`, `server/src/domain/telemetry/telemetry-merkle.ts`, `Attestation` PDA | Built (devnet): Seed `SHA256(poolId \|\| blockhash \|\| slot)`, Merkle root over 15s chunks, on-chain Attestation PDA gating `pay_prize`. |
 | Community Sponsorship Pledges | `programs/freightchain-pools/src/instructions/pledge.rs`, `server/src/presentation/economy/pledges.http.controller.ts` | Built (devnet): On-chain `Pledge` PDA (`[b"pledge", ride_id, sponsor]`). `create_pledge`, `settle_pledge` (proportional per-km payout), `refund_pledge` (0 stranded). |
 
@@ -74,7 +74,6 @@ Effort below = focused days for one person, excluding external waits (registry a
 
 **F15 · Anchor escrow program v3.** **Built & Verified on Devnet (21 instructions, 18 events, 30 errors, 81 tests passing).** The complete escrow architecture is implemented and verified on Solana devnet:
 - Zero-data PDA vaults per pool (`[b"vault", pool_id]`)
-- JitoSOL liquid staking yield accounting (`staked_lamports`, `yield_earned`, auto-compounding prize pots)
 - Community Sponsorship Pledges (`[b"pledge", ride_id, sponsor]`) with proportional payouts and zero-stranded refunds
 - Provable road seed commitments (`SHA256(poolId || blockhash || slot)`)
 - RFC 6962 telemetry Merkle root attestation PDAs (`[b"attestation", pool, driver]`) gating `pay_prize`

@@ -11,7 +11,6 @@ Agent reference, moved verbatim out of `AGENTS.md` (which keeps only the map and
     - Provable road seed: `server/src/domain/road/provable-seed.ts` derives deterministic `SHA256(poolId || blockhash || slot)` preventing operator seed gaming.
     - Telemetry Merkle attestation: `server/src/domain/telemetry/telemetry-merkle.ts` builds RFC 6962 compliant Merkle trees over 15-second `RideBatch` chunks (`computeTelemetryMerkleRoot`). `AttestationService` formats the root and submits on-chain to create `Attestation` PDA (`[b"attestation", pool, driver]`), which strictly gates `pay_prize`.
     - Community pledges: `PledgesHttpController` (`/api/pledges`) and CQRS handlers (`CreatePledgeHandler`, `SettlePledgeHandler`, `RefundPledgeHandler`) coordinate with Anchor program `create_pledge`, `settle_pledge` (proportional per-km payout), and `refund_pledge` (0 stranded lamports).
-    - JitoSOL liquid staking yield: tracked via `staked_lamports` and `yield_earned` in Pool entity, compounding into the prize pot.
   - **Native SIWS & SNS identity**:
     - Native Sign-In With Solana: `server/src/application/use-cases/auth/verify-signin` validates 1-click `solana:signIn` and standard `signMessage` challenges via Ed25519; single-use nonces are burned immediately (`nonce:${nonce}`).
     - Solana Name Service (SNS): `server/src/infrastructure/sns/sns-name-service.adapter.ts` queries Mainnet-Beta RPC (`SNS_RPC`) for favorite/reverse `.sol` domain PDAs with 24h positive / 30m negative caching; enriches player profiles and public board DTOs.
