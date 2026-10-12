@@ -123,7 +123,8 @@ if(await ev('typeof window.__game')==='object' && await ev('typeof __game.setNig
 }
 // a TICKET ride's ON CHAIN strip (ui/cab-chain.js) with the API and the public RPC stubbed: the program's own recorded pool 1 (server/test/fixtures/chain/
 // pool-program.json) – the seal is re-hashed AND matched against the account bytes; then the RPC down = "server copy"; a pledge locked mid-ride = a toast
-if(await ev('typeof window.__game')==='object'){
+async function chainSection(){   // → false when the page reloaded under it (swiftshader under load has restarted the renderer once; no game code reloads here)
+  const mark=Math.random(); await ev(`window.__chainRun=${mark}`); const p0=problems.length;
   const fx=JSON.parse(fs.readFileSync(new globalThis.URL('../../server/test/fixtures/chain/pool-program.json',import.meta.url),'utf8')).accounts.find(a=>a.decoded?.seedSlotHash&&a.decoded.poolId===1);
   const ride={id:'e2e-ticket',tier:'1h',poolId:1,seed:1133767732,slot:0,blockhash:'CmpNeggWJ4JaWJeJ8YKN1Zypmk7uvQq3PECGUCAEMbky',seedCommitment:fx.decoded.seedCommitment};
   await ev(`(() => { const A='A1ice11111111111111111111111111111111111111', W='Me1111111111111111111111111111111111111111';
@@ -154,6 +155,13 @@ if(await ev('typeof window.__game')==='object'){
   const row=await ev(`document.querySelector('.seal')?.innerText||''`); console.log('seal row (RPC down):',JSON.stringify(row));
   if(!/sealed ✓ \(server copy – the chain could not be reached\) · pool #1 · slot 0/.test(row)) problems.push('seal row: '+row);
   await ev(`window.__cc.stopCabChain(); __game.online.ride=null; window.fetch=window.__f0`);
+  if(await ev(`window.__chainRun`)!==mark){ problems.splice(p0); return false; }
+  return true;
+}
+if(await ev('typeof window.__game')==='object' && !await chainSection()){
+  console.log('the page reloaded during the ON CHAIN section – once more on a fresh page');
+  await ev(`window.__game.devRun(); window.__game.startRide()`); await sleep(1500);
+  if(!await chainSection()) problems.push('ON CHAIN section: the page reloaded twice');
 }
 console.log('PROBLEMS ('+problems.length+'):'); for(const p of [...new Set(problems)].slice(0,25)) console.log(' -',p.slice(0,300));
 console.log('screenshots in',SHOTS); finish(filt().length?1:0,500);
