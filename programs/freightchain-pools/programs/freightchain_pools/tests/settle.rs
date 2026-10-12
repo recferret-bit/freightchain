@@ -419,57 +419,6 @@ fn pay_prize_strictly_requires_verified_attestation() {
 }
 
 #[test]
-fn record_yield_credits_vault_and_expands_pot() {
-    let mut e = Env::new();
-    let (id, _) = active_pool(&mut e, 2, 5); // 10 tickets, pot 1 SOL, prize 60% = 600_000_000
-    let auth = e.authority_kp();
-    let stranger = funded(&mut e.svm, SOL);
-
-    // Unauthorized caller rejected
-    assert_err!(
-        e.record_yield(id, &stranger, 5 * SOL, 10_000_000),
-        PoolError::Unauthorized
-    );
-
-    let v0 = e.vault(id);
-    let auth_bal_0 = e.bal(&auth.pubkey());
-
-    // Record initial yield
-    let r = e.record_yield(id, &auth, 5 * SOL, 10_000_000).unwrap();
-    assert_eq!(e.pool(id).staked_lamports, 5 * SOL);
-    assert_eq!(e.pool(id).yield_earned, 10_000_000);
-    assert_eq!(e.vault(id), v0 + 10_000_000);
-    assert_eq!(e.bal(&auth.pubkey()), auth_bal_0 - 10_000_000);
-
-    let evs = events::<freightchain_pools::events::YieldRecorded>(&r.logs);
-    assert_eq!(evs.len(), 1);
-    assert_eq!(evs[0].pool_id, id);
-    assert_eq!(evs[0].staked_lamports, 5 * SOL);
-    assert_eq!(evs[0].yield_earned, 10_000_000);
-    assert_eq!(evs[0].yield_earned_total, 10_000_000);
-
-    // Incremental yield accumulation
-    e.record_yield(id, &auth, 7 * SOL, 5_000_000).unwrap();
-    assert_eq!(e.pool(id).staked_lamports, 7 * SOL);
-    assert_eq!(e.pool(id).yield_earned, 15_000_000);
-    assert_eq!(e.vault(id), v0 + 15_000_000);
-
-    // Zero incremental yield only updates staked_lamports without transferring
-    let v_before = e.vault(id);
-    let a_before = e.bal(&auth.pubkey());
-    e.record_yield(id, &auth, 8 * SOL, 0).unwrap();
-    assert_eq!(e.pool(id).staked_lamports, 8 * SOL);
-    assert_eq!(e.pool(id).yield_earned, 15_000_000);
-    assert_eq!(e.vault(id), v_before);
-    assert_eq!(e.bal(&auth.pubkey()), a_before);
-
-    // Prize share now includes yield in pot
-    // pot = 1 SOL + 15_000_000 = 1_015_000_000
-    // prize 60% = 609_000_000
-    assert_eq!(e.pool(id).prize_share_for_test(), 609_000_000);
-}
-
-#[test]
 fn adversarial_pay_prize_deep_stress_matrix() {
     let mut e = Env::new();
     let (id, _) = active_pool(&mut e, 2, 5); // 10 tickets, pot 1 SOL

@@ -69,10 +69,10 @@ fn decoded_events(logs: &[String]) -> Vec<Value> {
                 "prizesPaidTotal": s(e.prizes_paid_total)}));
             try_ev!(d, PoolClosed, |e: PoolClosed| json!({"kind": "PoolClosed", "poolId": e.pool_id, "prizePaid": s(e.prize_paid), "seed": s(e.seed), "fee": s(e.fee),
                 "platformFee": s(e.platform_fee), "unclaimed": s(e.unclaimed), "rentReturned": s(e.rent_returned), "cancelled": e.cancelled}));
-            try_ev!(d, YieldRecorded, |e: YieldRecorded| json!({"kind": "YieldRecorded", "poolId": e.pool_id, "stakedLamports": s(e.staked_lamports), "yieldEarned": s(e.yield_earned), "yieldEarnedTotal": s(e.yield_earned_total)}));
             try_ev!(d, AttestationRecorded, |e: AttestationRecorded| json!({"kind": "AttestationRecorded", "poolId": e.pool_id, "pool": e.pool.to_string(), "driver": e.driver.to_string(), "telemetryRoot": b64(&e.telemetry_root), "verifiedKm": e.verified_km, "status": e.status, "recordedAt": e.recorded_at}));
             try_ev!(d, PledgeCreated, |e: PledgeCreated| json!({"kind": "PledgeCreated", "rideId": b64(&e.ride_id), "sponsor": e.sponsor.to_string(), "driver": e.driver.to_string(), "pool": e.pool.to_string(), "maxLamports": s(e.max_lamports), "lamportsPerKm": s(e.lamports_per_km), "targetKm": e.target_km, "createdAt": e.created_at}));
             try_ev!(d, PledgeSettled, |e: PledgeSettled| json!({"kind": "PledgeSettled", "rideId": b64(&e.ride_id), "sponsor": e.sponsor.to_string(), "driver": e.driver.to_string(), "pool": e.pool.to_string(), "verifiedKm": e.verified_km, "targetKm": e.target_km, "earnedLamports": s(e.earned_lamports), "refundedLamports": s(e.refunded_lamports)}));
+            try_ev!(d, PledgeRefunded, |e: PledgeRefunded| json!({"kind": "PledgeRefunded", "rideId": b64(&e.ride_id), "sponsor": e.sponsor.to_string(), "driver": e.driver.to_string(), "pool": e.pool.to_string(), "refundedLamports": s(e.refunded_lamports)}));
             panic!("unknown event discriminator {:?}", &d[..8]);
         })
         .collect()
@@ -127,7 +127,7 @@ impl Rec {
                 "payoutAt": p.payout_at, "prizeBps": p.prize_bps, "seedBps": p.seed_bps, "feeBps": p.fee_bps, "feeTreasury": p.fee_treasury.to_string(), "seedTreasury": p.seed_treasury.to_string(),
                 "status": p.status, "ticketsSold": p.tickets_sold, "buyers": p.buyers, "sponsored": s(p.sponsored), "prizesPaid": s(p.prizes_paid),
                 "refunded": s(p.refunded), "createdAt": p.created_at, "bump": p.bump, "vaultBump": p.vault_bump,
-                "seedCommitment": b64(&p.seed_commitment), "stakedLamports": s(p.staked_lamports), "yieldEarned": s(p.yield_earned)})
+                "seedCommitment": b64(&p.seed_commitment)})
         } else if a.data.len() >= 8 && a.data[..8] == *Ticket::DISCRIMINATOR {
             let t = Ticket::try_deserialize(&mut &a.data[..]).unwrap();
             json!({"type": "Ticket", "buyer": t.buyer.to_string(), "rentPayer": t.rent_payer.to_string(), "poolId": t.pool_id, "qty": t.qty, "lamports": s(t.lamports), "bump": t.bump})

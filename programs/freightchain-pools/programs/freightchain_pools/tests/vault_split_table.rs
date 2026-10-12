@@ -55,8 +55,6 @@ fn pool_of(r: &Value) -> Pool {
         bump: 0,
         vault_bump: 0,
         seed_commitment: [0u8; 32],
-        staked_lamports: 0,
-        yield_earned: 0,
     }
 }
 

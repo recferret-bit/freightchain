@@ -141,14 +141,6 @@ pub struct PoolClosed {
 }
 
 #[event]
-pub struct YieldRecorded {
-    pub pool_id: u32,
-    pub staked_lamports: u64,
-    pub yield_earned: u64,
-    pub yield_earned_total: u64,
-}
-
-#[event]
 pub struct AttestationRecorded {
     pub pool_id: u32,
     pub pool: Pubkey,
@@ -180,5 +172,14 @@ pub struct PledgeSettled {
     pub verified_km: u32,
     pub target_km: u32,
     pub earned_lamports: u64,
+    pub refunded_lamports: u64,
+}
+
+#[event]
+pub struct PledgeRefunded {
+    pub ride_id: [u8; 32],
+    pub sponsor: Pubkey,
+    pub driver: Pubkey,
+    pub pool: Pubkey,
     pub refunded_lamports: u64,
 }

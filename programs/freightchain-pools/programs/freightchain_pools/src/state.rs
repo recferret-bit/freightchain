@@ -78,13 +78,9 @@ pub struct Pool {
     pub created_at: i64,
     pub bump: u8,
     pub vault_bump: u8,
-    // --- v3 Provable Integrity & JitoSOL Staking Yield ---
-    /// SHA256(poolId || blockhash || slot) captured at pool opening for provable road seed derivation.
+    /// v3: SHA256(pool_id LE u32 || blockhash || slot LE u64) of a recent block, fixed when the pool opens; the pool's road seed is
+    /// derived from it, so the operator could not have picked the road after seeing it. All zero for a `create_pool` pool given none.
     pub seed_commitment: [u8; 32],
-    /// Lamports currently deployed in liquid staking (JitoSOL / Stake Pool).
-    pub staked_lamports: u64,
-    /// Cumulative net staking yield harvested and deposited into the pool vault.
-    pub yield_earned: u64,
 }
 
 #[account]
@@ -169,11 +165,10 @@ impl Pool {
         u64::try_from(v).map_err(|_| PoolError::MathOverflow.into())
     }
 
-    /// Money the split is computed on: tickets + sponsorship + harvested staking yield.
+    /// Money the split is computed on: tickets + sponsorship.
     pub fn pot(&self) -> Result<u64> {
         self.tickets_lamports()?
             .checked_add(self.sponsored)
-            .and_then(|v| v.checked_add(self.yield_earned))
             .ok_or_else(|| PoolError::MathOverflow.into())
     }
 

@@ -579,31 +579,6 @@ impl Env {
         )
     }
 
-    pub fn record_yield(
-        &mut self,
-        id: u32,
-        who: &Keypair,
-        staked_lamports: u64,
-        yield_earned: u64,
-    ) -> Res {
-        let c = clone_kp(&self.cranker);
-        let i = ix(
-            instruction::RecordYield {
-                pool_id: id,
-                staked_lamports,
-                yield_earned,
-            },
-            accounts::RecordYield {
-                authority: who.pubkey(),
-                config: config_pda(),
-                pool: pool_pda(id),
-                vault: vault_pda(id),
-                system_program: system_program::ID,
-            },
-        );
-        self.send(&[i], &c, &[who])
-    }
-
     pub fn create_pledge(
         &mut self,
         pool_id: u32,

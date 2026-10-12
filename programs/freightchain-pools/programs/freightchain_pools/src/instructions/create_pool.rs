@@ -177,8 +177,6 @@ pub fn init_pool<'info>(
     pool.bump = pool_bump;
     pool.vault_bump = vault_bump;
     pool.seed_commitment = r.seed_commitment;
-    pool.staked_lamports = 0;
-    pool.yield_earned = 0;
 
     emit!(PoolCreated {
         pool_id,
