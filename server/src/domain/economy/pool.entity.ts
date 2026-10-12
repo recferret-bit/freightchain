@@ -41,8 +41,8 @@ export class Pool {
       rideSeed: resolvedRideSeed, createdAt: state.createdAt, syncedAt: now,
       payoutState: existing?.p.payoutState ?? 'pending', payoutNote: existing?.p.payoutNote ?? null, hold: existing?.p.hold ?? null,
       seedCommitment: state.seedCommitment ?? existing?.p.seedCommitment ?? null,
-      blockhash: existing?.p.blockhash ?? null,
-      slot: existing?.p.slot ?? null,
+      blockhash: state.seedSlotHash ?? existing?.p.blockhash ?? null,
+      slot: state.seedSlot ?? existing?.p.slot ?? null,
     });
   }
 

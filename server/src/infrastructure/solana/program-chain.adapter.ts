@@ -42,7 +42,7 @@ export function poolStateOf(c: PoolProgramCodec, poolId: number, info: AccountIn
     priceLamports: p['priceLamports'] as number, minTickets: p['minTickets'] as number, maxTickets: p['maxTickets'] as number, maxPerWallet: p['maxPerWallet'] as number,
     prepDeadline: p['prepDeadline'] as Date, playDeadline: p['playDeadline'] as Date, payoutAt: p['payoutAt'] as Date, prizeBps: p['prizeBps'] as number, seedBps: p['seedBps'] as number,
     feeBps: p['feeBps'] as number, feeTreasury: p['feeTreasury'] as string, seedTreasury: p['seedTreasury'] as string, createdAt: p['createdAt'] as Date,
-    seedCommitment,
+    seedCommitment, seedSlot: p['seedSlot'] as number | undefined, seedSlotHash: p['seedSlotHash'] ? bs58.encode(Buffer.from(String(p['seedSlotHash']), 'base64')) : undefined,
   };
 }
 

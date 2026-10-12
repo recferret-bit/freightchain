@@ -12,9 +12,10 @@ import { solanaPayUrl, donationPayPath } from '../../site/solana-pay.js';
 import { API_BASE } from '../hosts.js';
 import { explorerTx } from '../../site/pools.js';
 import { formatDriver, getCachedSns, reverseResolveSns } from '../../site/sns.js';
+import { paintPledges, pledgeForm } from './watch-pledges.js';
 
 /* The watch page's panel (play.html?watch=<id>): who / where / how far, the timeline (live edge or replay with speeds), the ride's feed, and – signed in –
-   the chat box and the MOCK donation buttons. Server text only through el() / textContent. Spectator actions go to /api/watch/:id/* (server/src/presentation/live). */
+   the chat box, the donation buttons and – on a ticket ride – pledges per km (watch-pledges.js). Server text only through el() / textContent. Spectator actions go to /api/watch/:id/* (server/src/presentation/live). */
 const TIER = { free: 'TEST RIDE', '1h': '1 HOUR', '4h': '4 HOURS', '8h': '8 HOURS' };
 const STATUS = { running: 'ON THE ROAD', completed: 'COMPLETED', abandoned: 'ABANDONED', failed: 'FAILED' };
 const P = { me: null, root: null, busy: false, endShown: false };
@@ -59,12 +60,14 @@ export function mountWatchPanel() {
       el('button', { id: 'w-sound', class: 'alt', title: 'engine sound (M mutes)', onclick: () => { if (audio.ctx) audio.muted = !audio.muted; else { audio.start(); audio.muted = false; } paint(); } }, '🔇')),
     el('div', { class: 'w-feed', id: 'w-feed', 'aria-live': 'polite' }),
     el('div', { id: 'w-me' }),
+    el('div', { id: 'w-pledges', class: 'w-pledges' }),
     el('div', { class: 'w-foot' }, el('span', { class: 'dim' }, 'replays the verified-play recording')));
   document.body.append(P.root, el('div', { id: 'w-stamp', class: 'w-stamp', hidden: true, role: 'status' }));
   for (const e of watch.events.values()) feedLine(e);
   watch.onUpdate = paint; watch.onEvent = (e, why) => (why === 'new' ? feedLine(e) : markApplied(e));
   setInterval(paintClock, 250);
   refreshMe(); paint();
+  if (r.poolId !== null && r.poolId !== undefined) { const pl = () => paintPledges($('w-pledges'), watch.ride, P.me); pl(); setInterval(pl, 20000); }
 }
 
 function mountError() {
@@ -188,6 +191,8 @@ function paintMe() {
       el('div', { class: 'w-fx' }, ...fx.map(([id, e]) => el('button', { class: 'alt', title: `${e.says}${chain ? ' – paid to the driver in devnet SOL' : ''}`, onclick: () => donate(id) }, `${e.icon} ${e.label}`, el('small', {}, `${e.sol} SOL`)))),
       el('input', { id: 'w-note-in', maxlength: 80, placeholder: 'note with a donation (optional)', autocomplete: 'off' }));
   } else parts.push(el('p', { class: 'dim w-small' }, 'Donations are off.'));
+  const pf = pledgeForm(r, say, () => paintPledges($('w-pledges'), watch.ride, P.me));
+  if (pf) parts.push(pf);
   box.replaceChildren(...parts, el('div', { id: 'w-msg', class: 'w-small' }), el('div', { class: 'dim w-small', title: P.me.wallet }, `signed in as ${formatDriver(P.me.wallet, P.me.sns)}`));
 }
 const say = (text, cls = 'dim') => { const m = $('w-msg'); if (m) { m.textContent = text; m.className = `w-small ${cls}`; } };
