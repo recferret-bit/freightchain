@@ -1,4 +1,4 @@
-import { ACTIONS_JSON, buyTx, rideCard, sellableOffers, shiftCard, solLabel, type OfferPool } from '../../../../src/domain/actions/action-card.js';
+import { ACTIONS_JSON, buyTx, rideCard, sellableOffers, shiftCard, siteLink, solLabel, watchLink, type OfferPool } from '../../../../src/domain/actions/action-card.js';
 
 const pool = (over: Partial<OfferPool> & Pick<OfferPool, 'id' | 'tier' | 'prepDeadline'>): OfferPool => ({
   priceLamports: 50_000_000, whyNotSellable: () => null, ...over,
@@ -27,7 +27,9 @@ describe('action card', () => {
     expect(bare.description).toMatch(/No paid pool is on sale right now/);
     expect(bare.description).toMatch(/Not a wager/);
     expect(bare.links.actions.map((a) => a.label)).toEqual(['Drive free', 'Watch live']);
-    expect(bare.links.actions[1]?.href).toBe('https://freightchain.fun/#economy');
+    expect(bare.links.actions.map((a) => a.href)).toEqual(['/api/actions/go/home', '/api/actions/go/live']); // POSTed by blink clients: API paths, never pages
+    expect(siteLink('https://freightchain.fun/', 'live')).toMatchObject({ type: 'external-link', externalLink: 'https://freightchain.fun/#economy' });
+    expect(siteLink('https://freightchain.fun', 'home').externalLink).toBe('https://freightchain.fun/');
     const selling = shiftCard('https://freightchain.fun', [{ tier: '1h', poolId: 7, lamports: 50_000_000 }]);
     expect(selling.icon).toBe('https://freightchain.fun/icons/icon-512.png');
     expect(selling.links.actions[0]).toEqual({ type: 'transaction', label: '1 HOUR · 0.050 SOL', href: '/api/actions/shift/1h' });
@@ -35,13 +37,16 @@ describe('action card', () => {
   });
 
   it('a running free ride has no watch link, and the card never says verified', () => {
-    const running = rideCard('https://freightchain.fun', 'https://ride.freightchain.fun', { id: 'ab/c', route: null, tier: 'free', status: 'running', km: 1.5, reason: null, verdictRejected: false }, []);
+    const running = rideCard('https://freightchain.fun', { id: 'ab/c', route: null, tier: 'free', status: 'running', km: 1.5, reason: null, verdictRejected: false }, []);
     expect(running.title).toBe('1.5 km on the road');
-    expect(running.links.actions.map((a) => a.label)).toEqual(['Open the ride']);
+    expect(running.links.actions).toEqual([{ type: 'external-link', label: 'Open the ride', href: '/api/actions/ride/ab%2Fc' }]);
+    expect(watchLink('https://freightchain.fun', 'https://ride.freightchain.fun', { id: 'ab/c', tier: 'free', status: 'running' }).externalLink).toBe('https://freightchain.fun/r/ab%2Fc');
     expect(JSON.stringify(running).toLowerCase()).not.toContain('verified');
-    const done = rideCard('https://freightchain.fun', '', { id: 'r', route: 'route-66', tier: '1h', status: 'completed', km: 12, reason: null, verdictRejected: true }, [{ tier: '1h', poolId: 4, lamports: 50_000_000 }]);
+    const done = rideCard('https://freightchain.fun', { id: 'r', route: 'route-66', tier: '1h', status: 'completed', km: 12, reason: null, verdictRejected: true }, [{ tier: '1h', poolId: 4, lamports: 50_000_000 }]);
     expect(done.links.actions.map((a) => a.type)).toEqual(['external-link', 'external-link', 'transaction']);
-    expect(done.links.actions[1]?.href).toBe('https://freightchain.fun/play.html?watch=r');
+    expect(done.links.actions[1]?.href).toBe('/api/actions/ride/r/watch');
+    expect(watchLink('https://freightchain.fun', '', { id: 'r', tier: '1h', status: 'completed' })).toMatchObject({ externalLink: 'https://freightchain.fun/play.html?watch=r' });
+    expect(watchLink('https://freightchain.fun', 'https://ride.freightchain.fun/', { id: 'r', tier: '1h', status: 'running' }).externalLink).toBe('https://ride.freightchain.fun/play.html?watch=r');
     expect(done.description).toMatch(/did not count this shift/);
     expect(JSON.stringify(done).toLowerCase()).not.toContain('verified');
   });

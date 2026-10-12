@@ -20,5 +20,10 @@ describe('ride actions', () => {
     expect(execute).toHaveBeenCalledWith(new GetPublicRideQuery('ride-1'));
     const link = await new OpenRideActionHandler(queries, rules).execute(new OpenRideActionCommand('ride-1', 'Wallet'));
     expect(link).toEqual({ type: 'external-link', externalLink: 'https://freightchain.fun/r/ride-1', message: 'Opens the ride page. Devnet.' });
+    const freeLive = await new OpenRideActionHandler(queries, rules).execute(new OpenRideActionCommand('ride-1', 'Wallet', 'watch'));
+    expect(freeLive.externalLink).toBe('https://freightchain.fun/r/ride-1'); // a live free ride has no watch page
+    execute.mockResolvedValueOnce({ ...ride, tier: '1h', status: 'completed' });
+    const watch = await new OpenRideActionHandler(queries, rules).execute(new OpenRideActionCommand('ride-1', 'Wallet', 'watch'));
+    expect(watch).toMatchObject({ type: 'external-link', externalLink: 'https://ride.freightchain.fun/play.html?watch=ride-1' });
   });
 });

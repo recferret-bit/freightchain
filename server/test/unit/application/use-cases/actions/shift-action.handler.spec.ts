@@ -7,9 +7,10 @@ import type { PlayerRepositoryPort } from '../../../../../src/application/ports/
 import type { ClockPort } from '../../../../../src/application/ports/shared/clock.port.js';
 import { CreateTicketOrderCommand } from '../../../../../src/application/use-cases/tickets/create-ticket-order/create-ticket-order.command.js';
 import { GetTicketPaymentQuery } from '../../../../../src/application/use-cases/tickets/get-ticket-payment/get-ticket-payment.query.js';
-import { GetShiftActionHandler, PrepareShiftActionHandler } from '../../../../../src/application/use-cases/actions/shift-action.handler.js';
+import { GetShiftActionHandler, OpenSiteActionHandler, PrepareShiftActionHandler } from '../../../../../src/application/use-cases/actions/shift-action.handler.js';
 import { GetShiftActionQuery } from '../../../../../src/application/use-cases/actions/get-shift-action.query.js';
 import { PrepareShiftActionCommand } from '../../../../../src/application/use-cases/actions/prepare-shift-action.command.js';
+import { OpenSiteActionCommand } from '../../../../../src/application/use-cases/actions/open-site-action.command.js';
 import { aPool } from '../../../../support/pools.js';
 
 const NOW = new Date('2030-06-01T00:00:00Z');
@@ -45,5 +46,11 @@ describe('shift actions', () => {
     expect(tx).toEqual(buyTx('https://freightchain.fun', '1h', 7, 'AAAA'));
     expect(commands.execute).toHaveBeenCalledWith(new CreateTicketOrderCommand(ACCOUNT, 7, 1));
     expect(queries.execute).toHaveBeenCalledWith(new GetTicketPaymentQuery(ACCOUNT, 'order-1'));
+  });
+
+  it('the link buttons answer an external link to the site, the way a blink client opens it', async () => {
+    const handler = new OpenSiteActionHandler(rules());
+    expect(await handler.execute(new OpenSiteActionCommand('home', ACCOUNT))).toMatchObject({ type: 'external-link', externalLink: 'https://freightchain.fun/' });
+    expect(await handler.execute(new OpenSiteActionCommand('live', ACCOUNT))).toMatchObject({ type: 'external-link', externalLink: 'https://freightchain.fun/#economy' });
   });
 });

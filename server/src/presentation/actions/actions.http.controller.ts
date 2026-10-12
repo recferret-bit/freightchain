@@ -4,14 +4,16 @@ import type { ActionCard, ActionLink, ActionsJson, ActionTx } from '../../domain
 import { GetActionsJsonQuery } from '../../application/use-cases/actions/get-actions-json.query.js';
 import { GetRideActionQuery } from '../../application/use-cases/actions/get-ride-action.query.js';
 import { OpenRideActionCommand } from '../../application/use-cases/actions/open-ride-action.command.js';
+import { OpenSiteActionCommand } from '../../application/use-cases/actions/open-site-action.command.js';
 import { GetShiftActionQuery } from '../../application/use-cases/actions/get-shift-action.query.js';
 import { PrepareShiftActionCommand } from '../../application/use-cases/actions/prepare-shift-action.command.js';
 import { ZodBody, ZodParams, ZodQuery } from '../../infrastructure/http/decorators/zod.js';
 import { ActionErrorFilter } from '../../infrastructure/http/filters/action-error.filter.js';
 import { rideIdParamsSchema, type RideIdParams } from '../common/dto/common.dto.js';
-import { actionAccountBodySchema, actionTierParamsSchema, actionTierQuerySchema, type ActionAccountBody, type ActionTierParams, type ActionTierQuery } from './action.dto.js';
+import { actionAccountBodySchema, actionSiteParamsSchema, actionTierParamsSchema, actionTierQuerySchema, type ActionAccountBody, type ActionSiteParams, type ActionTierParams, type ActionTierQuery } from './action.dto.js';
 
-/** Public Solana Actions. No session. Errors are `{ message }` (ActionErrorFilter), not problem+json. */
+/** Public Solana Actions. No session. Errors are `{ message }` (ActionErrorFilter), not problem+json.
+    Every link button is a POST route here: blink clients POST to an external-link href too and open the `externalLink` it answers. */
 @Controller()
 @UseFilters(ActionErrorFilter)
 export class ActionsHttpController {
@@ -44,6 +46,12 @@ export class ActionsHttpController {
     return this.commandBus.execute<PrepareShiftActionCommand, ActionTx>(new PrepareShiftActionCommand(body.account, params.tier));
   }
 
+  @Post('api/actions/go/:to')
+  @HttpCode(200)
+  site(@ZodParams(actionSiteParamsSchema) params: ActionSiteParams, @ZodBody(actionAccountBodySchema) body: ActionAccountBody): Promise<ActionLink> {
+    return this.commandBus.execute<OpenSiteActionCommand, ActionLink>(new OpenSiteActionCommand(params.to, body.account));
+  }
+
   @Get('api/actions/ride/:id')
   ride(@ZodParams(rideIdParamsSchema) params: RideIdParams): Promise<ActionCard> {
     return this.queryBus.execute<GetRideActionQuery, ActionCard>(new GetRideActionQuery(params.id));
@@ -53,5 +61,11 @@ export class ActionsHttpController {
   @HttpCode(200)
   ridePost(@ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodBody(actionAccountBodySchema) body: ActionAccountBody): Promise<ActionLink> {
     return this.commandBus.execute<OpenRideActionCommand, ActionLink>(new OpenRideActionCommand(params.id, body.account));
+  }
+
+  @Post('api/actions/ride/:id/watch')
+  @HttpCode(200)
+  rideWatch(@ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodBody(actionAccountBodySchema) body: ActionAccountBody): Promise<ActionLink> {
+    return this.commandBus.execute<OpenRideActionCommand, ActionLink>(new OpenRideActionCommand(params.id, body.account, 'watch'));
   }
 }

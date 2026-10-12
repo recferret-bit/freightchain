@@ -12,6 +12,7 @@ const NO_SALE = ' No paid pool is on sale right now.';
 
 export interface ActionRule { pathPattern: string; apiPath: string }
 export interface ActionsJson { rules: ActionRule[] }
+/** `href` is always an action API path: a blink client POSTs `{ account, type }` to it, also for an external link (it answers `ActionLink`), never to a web page. */
 export interface LinkedAction { type: 'transaction' | 'external-link'; label: string; href: string }
 export interface ActionCard { type: 'action'; icon: string; title: string; description: string; label: string; links: { actions: LinkedAction[] } }
 export interface ActionTx {
@@ -69,7 +70,7 @@ export function shiftCard(origin: string, offers: readonly SellableTier[]): Acti
   return {
     type: 'action', icon: actionIcon(site), title: 'Freight Chain', label: 'Buy a ticket',
     description: SHIFT_DESCRIPTION + (offers.length ? '' : NO_SALE),
-    links: { actions: [...offers.map(buyLink), { type: 'external-link', label: 'Drive free', href: `${site}/` }, { type: 'external-link', label: 'Watch live', href: `${site}/#economy` }] },
+    links: { actions: [...offers.map(buyLink), { type: 'external-link', label: 'Drive free', href: '/api/actions/go/home' }, { type: 'external-link', label: 'Watch live', href: '/api/actions/go/live' }] },
   };
 }
 
@@ -92,13 +93,13 @@ const ridePhase = (status: string, reason: string | null): string => {
 };
 
 /** Created and running free rides have no watch page (the public ride page hides it too). */
-const showWatch = (ride: RideBlink): boolean => !((ride.status === 'running' || ride.status === 'created') && ride.tier === 'free');
+const showWatch = (ride: Pick<RideBlink, 'tier' | 'status'>): boolean => !((ride.status === 'running' || ride.status === 'created') && ride.tier === 'free');
 
-export function rideCard(origin: string, gameOrigin: string, ride: RideBlink, offers: readonly SellableTier[]): ActionCard {
-  const site = originOf(origin), game = originOf(gameOrigin || origin), road = ride.route || 'the road';
+export function rideCard(origin: string, ride: RideBlink, offers: readonly SellableTier[]): ActionCard {
+  const site = originOf(origin), road = ride.route || 'the road', path = `/api/actions/ride/${encodeURIComponent(ride.id)}`;
   const tier = (TIER_LABEL as Record<string, string>)[ride.tier] ?? ride.tier;
-  const actions: LinkedAction[] = [{ type: 'external-link', label: 'Open the ride', href: `${site}/r/${encodeURIComponent(ride.id)}` }];
-  if (showWatch(ride)) actions.push({ type: 'external-link', label: 'Watch', href: `${game}/play.html?watch=${encodeURIComponent(ride.id)}` });
+  const actions: LinkedAction[] = [{ type: 'external-link', label: 'Open the ride', href: path }];
+  if (showWatch(ride)) actions.push({ type: 'external-link', label: 'Watch', href: `${path}/watch` });
   actions.push(...offers.map(buyLink));
   const counted = ride.verdictRejected ? ' The server did not count this shift.' : '';
   return {
@@ -117,3 +118,16 @@ export function buyTx(origin: string, tier: PaidTierId, poolId: number, transact
 }
 
 export const rideLink = (origin: string, id: string): ActionLink => ({ type: 'external-link', externalLink: `${originOf(origin)}/r/${encodeURIComponent(id)}`, message: 'Opens the ride page. Devnet.' });
+
+/** The watch page on the game host; a ride with no watch page (a live free ride) opens its ride page instead. */
+export function watchLink(origin: string, gameOrigin: string, ride: Pick<RideBlink, 'id' | 'tier' | 'status'>): ActionLink {
+  if (!showWatch(ride)) return rideLink(origin, ride.id);
+  return { type: 'external-link', externalLink: `${originOf(gameOrigin || origin)}/play.html?watch=${encodeURIComponent(ride.id)}`, message: 'Opens the stream or its replay. Devnet.' };
+}
+
+export type SiteLinkTarget = 'home' | 'live';
+const SITE_LINK: Record<SiteLinkTarget, { path: string; message: string }> = {
+  home: { path: '/', message: 'Opens Freight Chain. The free drive needs no ticket. Devnet.' },
+  live: { path: '/#economy', message: 'Opens the boards: next up, this round, recent rides to watch. Devnet.' },
+};
+export const siteLink = (origin: string, to: SiteLinkTarget): ActionLink => ({ type: 'external-link', externalLink: `${originOf(origin)}${SITE_LINK[to].path}`, message: SITE_LINK[to].message });
