@@ -632,6 +632,27 @@ impl Env {
         self.send(&[i], caller, &[])
     }
 
+    pub fn refund_pledge(
+        &mut self,
+        pool_id: u32,
+        ride_id: [u8; 32],
+        caller: &Keypair,
+        driver: &Pubkey,
+        sponsor: &Pubkey,
+    ) -> Res {
+        let i = ix(
+            instruction::RefundPledge { ride_id },
+            accounts::RefundPledge {
+                caller: caller.pubkey(),
+                sponsor: *sponsor,
+                pool: pool_pda(pool_id),
+                attestation: attestation_pda(pool_id, driver),
+                pledge: pledge_pda(&ride_id, sponsor),
+            },
+        );
+        self.send(&[i], caller, &[])
+    }
+
     pub fn attestation(&self, pool_id: u32, driver: &Pubkey) -> Option<Attestation> {
         let a = self.svm.get_account(&attestation_pda(pool_id, driver))?;
         if a.data.is_empty() {

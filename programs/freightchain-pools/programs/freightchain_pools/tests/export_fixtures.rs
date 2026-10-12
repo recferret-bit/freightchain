@@ -16,7 +16,7 @@ use anchor_lang::{
 };
 use base64::Engine;
 use common::*;
-use freightchain_pools::{accounts, events::*, instruction, Config, CreatePoolParams, Pool, Series, Ticket};
+use freightchain_pools::{accounts, events::*, instruction, Attestation, Config, CreatePoolParams, Pledge, Pool, Series, Ticket};
 use serde_json::{json, Value};
 use solana_keypair::Keypair;
 use solana_signer::Signer;
@@ -131,6 +131,15 @@ impl Rec {
         } else if a.data.len() >= 8 && a.data[..8] == *Ticket::DISCRIMINATOR {
             let t = Ticket::try_deserialize(&mut &a.data[..]).unwrap();
             json!({"type": "Ticket", "buyer": t.buyer.to_string(), "rentPayer": t.rent_payer.to_string(), "poolId": t.pool_id, "qty": t.qty, "lamports": s(t.lamports), "bump": t.bump})
+        } else if a.data.len() >= 8 && a.data[..8] == *Attestation::DISCRIMINATOR {
+            let x = Attestation::try_deserialize(&mut &a.data[..]).unwrap();
+            json!({"type": "Attestation", "pool": x.pool.to_string(), "driver": x.driver.to_string(), "telemetryRoot": b64(&x.telemetry_root),
+                "verifiedKm": x.verified_km, "status": x.status, "recordedAt": x.recorded_at, "bump": x.bump})
+        } else if a.data.len() >= 8 && a.data[..8] == *Pledge::DISCRIMINATOR {
+            let x = Pledge::try_deserialize(&mut &a.data[..]).unwrap();
+            json!({"type": "Pledge", "rideId": b64(&x.ride_id), "sponsor": x.sponsor.to_string(), "driver": x.driver.to_string(), "pool": x.pool.to_string(),
+                "maxLamports": s(x.max_lamports), "lamportsPerKm": s(x.lamports_per_km), "targetKm": x.target_km, "settled": x.settled,
+                "earnedLamports": s(x.earned_lamports), "refundedLamports": s(x.refunded_lamports), "createdAt": x.created_at, "bump": x.bump})
         } else if a.data.len() >= 8 && a.data[..8] == *Series::DISCRIMINATOR {
             let x = Series::try_deserialize(&mut &a.data[..]).unwrap();
             json!({"type": "Series", "tier": x.tier, "enabled": x.enabled, "priceLamports": s(x.price_lamports), "minTickets": x.min_tickets, "maxTickets": x.max_tickets,
@@ -291,11 +300,67 @@ fn export_pool_program_fixtures() {
     rec.account(&e, "pool 4 open (series)", &pool_pda(p4));
     let i = buy(&e, p4, &a.pubkey(), &a.pubkey(), 3, [5u8; 16]);
     rec.send(&mut e, "buy_ticket into pool 4 activates", vec![i], &a, &[], true).unwrap();
+    //      v3 pledges while rides count: the brand pledges per km on the winner's ride and on C's (C never finishes)
+    let (ride_w, ride_c) = ([0x51u8; 32], [0x52u8; 32]);
+    for (ride_id, driver, name) in [(ride_w, winner.pubkey(), "create_pledge (winner)"), (ride_c, c.pubkey(), "create_pledge (C)")] {
+        let i = ix(
+            instruction::CreatePledge { ride_id, driver, max_lamports: 1_000_000, lamports_per_km: 10_000, target_km: 100 },
+            accounts::CreatePledge {
+                sponsor: brand.pubkey(),
+                driver,
+                config: config_pda(),
+                pool: pool_pda(p4),
+                pledge: pledge_pda(&ride_id, &brand.pubkey()),
+                system_program: anchor_lang::solana_program::system_program::ID,
+            },
+        );
+        let args = json!({"rideId": b64(&ride_id), "driver": driver.to_string(), "maxLamports": s(1_000_000), "lamportsPerKm": s(10_000), "targetKm": 100});
+        rec.send(&mut e, name, vec![(i, "create_pledge", args)], &brand, &[], true).unwrap();
+    }
+    rec.account(&e, "pledge on the winner's ride", &pledge_pda(&ride_w, &brand.pubkey()));
     e.warp(e.pool(p4).payout_at);
-    e.record_verified_attestation(p4, &payout, &winner.pubkey(), 100).unwrap();
+    let i = ix(
+        instruction::RecordAttestation { pool_id: p4, driver: winner.pubkey(), telemetry_root: [7u8; 32], verified_km: 60, status: freightchain_pools::ATTESTATION_STATUS_VERIFIED },
+        accounts::RecordAttestation {
+            authority: payout.pubkey(),
+            config: config_pda(),
+            pool: pool_pda(p4),
+            driver_account: winner.pubkey(),
+            attestation: attestation_pda(p4, &winner.pubkey()),
+            system_program: anchor_lang::solana_program::system_program::ID,
+        },
+    );
+    let args = json!({"poolId": p4, "driver": winner.pubkey().to_string(), "telemetryRoot": b64(&[7u8; 32]), "verifiedKm": 60, "status": 1});
+    rec.send(&mut e, "record_attestation by the payout key", vec![(i, "record_attestation", args)], &cranker, &[&payout], true).unwrap();
+    rec.account(&e, "attestation pool 4 winner", &attestation_pda(p4, &winner.pubkey()));
     rec.send(&mut e, "pay_prize by the payout key", vec![pay_prize_ix(p4, &payout.pubkey(), &winner.pubkey(), PRICE, 1)], &cranker, &[&payout], true).unwrap();
     let i = close_pool_ix(&e, p4, &payout.pubkey());
     rec.send(&mut e, "close_pool by the payout key", vec![i], &cranker, &[&payout], true).unwrap();
+    //      after the close: anyone settles the winner's pledge (60 of 100 km) and refunds C's (no attestation)
+    let i = ix(
+        instruction::SettlePledge { ride_id: ride_w },
+        accounts::SettlePledge {
+            caller: cranker.pubkey(),
+            driver: winner.pubkey(),
+            sponsor: brand.pubkey(),
+            pool: pool_pda(p4),
+            attestation: attestation_pda(p4, &winner.pubkey()),
+            pledge: pledge_pda(&ride_w, &brand.pubkey()),
+            system_program: anchor_lang::solana_program::system_program::ID,
+        },
+    );
+    rec.send(&mut e, "settle_pledge", vec![(i, "settle_pledge", json!({"rideId": b64(&ride_w)}))], &cranker, &[], true).unwrap();
+    let i = ix(
+        instruction::RefundPledge { ride_id: ride_c },
+        accounts::RefundPledge {
+            caller: cranker.pubkey(),
+            sponsor: brand.pubkey(),
+            pool: pool_pda(p4),
+            attestation: attestation_pda(p4, &c.pubkey()),
+            pledge: pledge_pda(&ride_c, &brand.pubkey()),
+        },
+    );
+    rec.send(&mut e, "refund_pledge", vec![(i, "refund_pledge", json!({"rideId": b64(&ride_c)}))], &cranker, &[], true).unwrap();
     rec.account(&e, "config with payout key", &config_pda());
 
     // ---- the authority handover (program events that are NOT pool events)
@@ -305,7 +370,7 @@ fn export_pool_program_fixtures() {
     rec.send(&mut e, "accept_authority", vec![(i, "accept_authority", json!({}))], &cranker, &[&next_admin], true).unwrap();
 
     let kinds: Vec<String> = rec.txs.iter().flat_map(|t| t["events"].as_array().unwrap().iter().map(|e| e["kind"].as_str().unwrap().to_string())).collect();
-    for k in ["PoolCreated", "TicketBought", "PoolActivated", "Sponsored", "PoolFailed", "PoolCancelled", "PoolExpired", "Refunded", "PrizePaid", "PoolClosed", "AuthorityProposed", "AuthorityChanged", "SeriesSet", "PayoutAuthoritySet"] {
+    for k in ["PoolCreated", "TicketBought", "PoolActivated", "Sponsored", "PoolFailed", "PoolCancelled", "PoolExpired", "Refunded", "PrizePaid", "PoolClosed", "AuthorityProposed", "AuthorityChanged", "SeriesSet", "PayoutAuthoritySet", "AttestationRecorded", "PledgeCreated", "PledgeSettled", "PledgeRefunded"] {
         assert!(kinds.iter().any(|x| x == k), "no {k} recorded");
     }
     let out = json!({
