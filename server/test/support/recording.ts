@@ -16,6 +16,9 @@ export const sha256 = (text: string): string => createHash('sha256').update(text
 
 export class TestHasher extends HasherPort {
   sha256Hex(text: string): string { return sha256(text); }
+  sha256(data: Uint8Array | Buffer | string): Buffer {
+    return createHash('sha256').update(data).digest();
+  }
 }
 
 /** The client's hash of a batch (over the canonical text, `hash` itself excluded). */

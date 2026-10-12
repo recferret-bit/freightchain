@@ -36,4 +36,17 @@ export class SolanaRpc {
       throw new ServiceUnavailableError('Solana RPC unavailable');
     }
   }
+
+  /** captures the cluster's latest blockhash and slot atomically */
+  async getLatestBlockhashAndSlot(): Promise<{ blockhash: string; slot: number }> {
+    return this.read(async (conn) => {
+      if (typeof conn.getLatestBlockhashAndContext === 'function') {
+        const res = await conn.getLatestBlockhashAndContext('confirmed');
+        return { blockhash: res.value.blockhash, slot: res.context.slot };
+      }
+      const bh = await conn.getLatestBlockhash('confirmed');
+      const slot = typeof conn.getSlot === 'function' ? await conn.getSlot('confirmed') : 0;
+      return { blockhash: bh.blockhash, slot };
+    });
+  }
 }

@@ -40,6 +40,7 @@ fn pay_prize_authority_only_and_not_before_play_deadline() {
     let (id, _) = active_pool(&mut e, 2, 5); // 10 tickets, pot 1 SOL, prize share 0.6 SOL
     let winner = funded(&mut e.svm, SOL);
     let auth = e.authority_kp();
+    e.record_verified_attestation(id, &auth, &winner.pubkey(), 100).unwrap();
     // before play_deadline
     e.warp(PLAY - 1);
     assert_err!(e.pay_prize(id, &auth, &winner.pubkey(), 1_000_000, 1), PoolError::TooEarly);
@@ -69,6 +70,7 @@ fn pay_prize_bounded_by_prize_share() {
     assert_eq!(e.pool(id).prize_share_for_test(), share);
     let winner = funded(&mut e.svm, SOL);
     let auth = e.authority_kp();
+    e.record_verified_attestation(id, &auth, &winner.pubkey(), 100).unwrap();
     e.warp(PLAY);
     assert_err!(e.pay_prize(id, &auth, &winner.pubkey(), share + 1, 1), PoolError::PrizeExceedsShare);
     e.pay_prize(id, &auth, &winner.pubkey(), share - 10, 1).unwrap();
@@ -94,6 +96,7 @@ fn pay_prize_needs_active_pool_and_rent_exempt_receiver() {
     let auth = e.authority_kp();
     e.warp(PLAY);
     let w = funded(&mut e.svm, SOL);
+    e.set_attestation(id, &w.pubkey(), 100, freightchain_pools::constants::ATTESTATION_STATUS_VERIFIED);
     assert_err!(e.pay_prize(id, &auth, &w.pubkey(), 1, 1), PoolError::PoolNotActive);
 
     let mut e = Env::new();
@@ -101,10 +104,12 @@ fn pay_prize_needs_active_pool_and_rent_exempt_receiver() {
     let auth = e.authority_kp();
     e.warp(PLAY);
     let fresh = Keypair::new(); // empty account: a payout below rent_min would be rejected by the runtime
+    e.record_verified_attestation(id, &auth, &fresh.pubkey(), 100).unwrap();
     assert_err!(e.pay_prize(id, &auth, &fresh.pubkey(), e.rent_min() - 1, 1), PoolError::BelowRentMin);
     e.pay_prize(id, &auth, &fresh.pubkey(), e.rent_min(), 1).unwrap();
     // an already funded wallet may get less than the minimum
     let funded_w = funded(&mut e.svm, SOL);
+    e.record_verified_attestation(id, &auth, &funded_w.pubkey(), 100).unwrap();
     e.pay_prize(id, &auth, &funded_w.pubkey(), 10, 2).unwrap();
 }
 
@@ -158,6 +163,7 @@ fn close_pool_splits_exactly_for_random_amounts() {
         let paid = if prize > 3 * e.rent_min() { rng.range(e.rent_min(), prize / 2) } else { 0 };
         if paid > 0 {
             let w = funded(&mut e.svm, SOL);
+            e.record_verified_attestation(id, &auth, &w.pubkey(), 100).unwrap();
             e.pay_prize(id, &auth, &w.pubkey(), paid, 1).unwrap();
         }
         let unclaimed = prize - paid;
@@ -278,6 +284,7 @@ fn checked_maths_refuse_overflow_instead_of_wrapping() {
     };
     e.warp(PLAY);
     let w = funded(&mut e.svm, SOL);
+    e.record_verified_attestation(id, &auth, &w.pubkey(), 100).unwrap();
     let (price, vault) = (e.pool(id).price_lamports, e.vault(id));
     // price × tickets_sold past u64: the prize cap of pay_prize and the split of close_pool
     forge(&mut e, &|p| p.price_lamports = u64::MAX / 2 + 1);
@@ -301,3 +308,308 @@ fn checked_maths_refuse_overflow_instead_of_wrapping() {
     // nothing moved, the pool is still live
     assert_eq!((e.vault(id), e.pool(id).status, e.pool(id).prizes_paid), (vault, 1, 0));
 }
+
+#[test]
+fn pay_prize_strictly_requires_verified_attestation() {
+    let mut e = Env::new();
+    let (id, _) = active_pool(&mut e, 2, 5); // 10 tickets, pot 1 SOL
+    let (id2, _) = active_pool(&mut e, 2, 5); // second pool for cross-pool tests
+    let winner = funded(&mut e.svm, SOL);
+    let other_driver = funded(&mut e.svm, SOL);
+    let auth = e.authority_kp();
+    e.warp(PLAY);
+
+    // 0. Missing attestation PDA: winner has no attestation account initialized on-chain
+    assert!(
+        e.pay_prize(id, &auth, &winner.pubkey(), 100_000, 1).is_err(),
+        "pay_prize must fail when attestation account does not exist"
+    );
+    // Passing an arbitrary existing account (e.g. config PDA) as attestation fails
+    assert!(
+        e.pay_prize_with_attestation(id, &auth, &winner.pubkey(), config_pda(), 100_000, 1).is_err(),
+        "pay_prize must fail when arbitrary account is passed as attestation"
+    );
+
+    // 1. Unverified attestation (status = 0)
+    e.record_attestation(
+        id,
+        &auth,
+        &winner.pubkey(),
+        [1u8; 32],
+        100,
+        freightchain_pools::constants::ATTESTATION_STATUS_UNVERIFIED,
+    )
+    .unwrap();
+    assert_err!(
+        e.pay_prize(id, &auth, &winner.pubkey(), 100_000, 1),
+        PoolError::UnverifiedAttestation
+    );
+
+    // 2. Flagged attestation (status = 2)
+    e.record_attestation(
+        id,
+        &auth,
+        &winner.pubkey(),
+        [1u8; 32],
+        100,
+        freightchain_pools::constants::ATTESTATION_STATUS_FLAGGED,
+    )
+    .unwrap();
+    assert_err!(
+        e.pay_prize(id, &auth, &winner.pubkey(), 100_000, 1),
+        PoolError::UnverifiedAttestation
+    );
+
+    // 3. Status = VERIFIED (1), but verified_km = 0: rejected by record_attestation
+    assert_err!(
+        e.record_attestation(
+            id,
+            &auth,
+            &winner.pubkey(),
+            [1u8; 32],
+            0,
+            freightchain_pools::constants::ATTESTATION_STATUS_VERIFIED,
+        ),
+        PoolError::ZeroVerifiedKm
+    );
+    // Defense-in-depth: pay_prize also rejects attestation with verified_km == 0
+    e.set_attestation(
+        id,
+        &winner.pubkey(),
+        0,
+        freightchain_pools::constants::ATTESTATION_STATUS_VERIFIED,
+    );
+    assert_err!(
+        e.pay_prize(id, &auth, &winner.pubkey(), 100_000, 1),
+        PoolError::ZeroVerifiedKm
+    );
+
+    // 4. Attestation mismatch: attestation is for other_driver, but pay_prize called for winner
+    e.record_verified_attestation(id, &auth, &other_driver.pubkey(), 100).unwrap();
+    let other_att = attestation_pda(id, &other_driver.pubkey());
+    assert!(
+        e.pay_prize_with_attestation(id, &auth, &winner.pubkey(), other_att, 100_000, 1)
+            .is_err()
+    );
+
+    // Cross-pool attestation reuse rejected: attestation for winner in id2 passed to pay_prize in id
+    e.record_verified_attestation(id2, &auth, &winner.pubkey(), 100).unwrap();
+    let id2_att = attestation_pda(id2, &winner.pubkey());
+    assert!(
+        e.pay_prize_with_attestation(id, &auth, &winner.pubkey(), id2_att, 100_000, 1)
+            .is_err(),
+        "attestation for a different pool must be rejected"
+    );
+
+    // Invalid status (e.g. status 255) rejected
+    e.set_attestation(id, &winner.pubkey(), 100, 255);
+    assert_err!(
+        e.pay_prize(id, &auth, &winner.pubkey(), 100_000, 1),
+        PoolError::UnverifiedAttestation
+    );
+
+    // 5. Valid verified attestation: status == VERIFIED, verified_km > 0
+    e.record_verified_attestation(id, &auth, &winner.pubkey(), 100).unwrap();
+    let w0 = e.bal(&winner.pubkey());
+    let r = e.pay_prize(id, &auth, &winner.pubkey(), 100_000, 1).unwrap();
+    assert_eq!(e.bal(&winner.pubkey()), w0 + 100_000);
+    let ev = events::<PrizePaid>(&r.logs);
+    assert_eq!(ev[0].lamports, 100_000);
+    assert_eq!(e.pool(id).prizes_paid, 100_000);
+}
+
+#[test]
+fn record_yield_credits_vault_and_expands_pot() {
+    let mut e = Env::new();
+    let (id, _) = active_pool(&mut e, 2, 5); // 10 tickets, pot 1 SOL, prize 60% = 600_000_000
+    let auth = e.authority_kp();
+    let stranger = funded(&mut e.svm, SOL);
+
+    // Unauthorized caller rejected
+    assert_err!(
+        e.record_yield(id, &stranger, 5 * SOL, 10_000_000),
+        PoolError::Unauthorized
+    );
+
+    let v0 = e.vault(id);
+    let auth_bal_0 = e.bal(&auth.pubkey());
+
+    // Record initial yield
+    let r = e.record_yield(id, &auth, 5 * SOL, 10_000_000).unwrap();
+    assert_eq!(e.pool(id).staked_lamports, 5 * SOL);
+    assert_eq!(e.pool(id).yield_earned, 10_000_000);
+    assert_eq!(e.vault(id), v0 + 10_000_000);
+    assert_eq!(e.bal(&auth.pubkey()), auth_bal_0 - 10_000_000);
+
+    let evs = events::<freightchain_pools::events::YieldRecorded>(&r.logs);
+    assert_eq!(evs.len(), 1);
+    assert_eq!(evs[0].pool_id, id);
+    assert_eq!(evs[0].staked_lamports, 5 * SOL);
+    assert_eq!(evs[0].yield_earned, 10_000_000);
+    assert_eq!(evs[0].yield_earned_total, 10_000_000);
+
+    // Incremental yield accumulation
+    e.record_yield(id, &auth, 7 * SOL, 5_000_000).unwrap();
+    assert_eq!(e.pool(id).staked_lamports, 7 * SOL);
+    assert_eq!(e.pool(id).yield_earned, 15_000_000);
+    assert_eq!(e.vault(id), v0 + 15_000_000);
+
+    // Zero incremental yield only updates staked_lamports without transferring
+    let v_before = e.vault(id);
+    let a_before = e.bal(&auth.pubkey());
+    e.record_yield(id, &auth, 8 * SOL, 0).unwrap();
+    assert_eq!(e.pool(id).staked_lamports, 8 * SOL);
+    assert_eq!(e.pool(id).yield_earned, 15_000_000);
+    assert_eq!(e.vault(id), v_before);
+    assert_eq!(e.bal(&auth.pubkey()), a_before);
+
+    // Prize share now includes yield in pot
+    // pot = 1 SOL + 15_000_000 = 1_015_000_000
+    // prize 60% = 609_000_000
+    assert_eq!(e.pool(id).prize_share_for_test(), 609_000_000);
+}
+
+#[test]
+fn adversarial_pay_prize_deep_stress_matrix() {
+    let mut e = Env::new();
+    let (id, _) = active_pool(&mut e, 2, 5); // 10 tickets, pot 1 SOL
+    let (id_other, _) = active_pool(&mut e, 2, 5); // second pool
+    let auth = e.authority_kp();
+    let driver_a = funded(&mut e.svm, SOL);
+    let driver_b = funded(&mut e.svm, SOL);
+    let driver_c = funded(&mut e.svm, SOL);
+
+    e.warp(PLAY);
+
+    // =========================================================================
+    // Vector 1: Missing Attestation PDA Attacks
+    // =========================================================================
+    // 1.1: Driver A has never had an attestation recorded
+    assert!(
+        e.pay_prize(id, &auth, &driver_a.pubkey(), 50_000, 1).is_err(),
+        "Must fail when attestation account does not exist"
+    );
+    // 1.2: Supplying config PDA as attestation
+    assert!(
+        e.pay_prize_with_attestation(id, &auth, &driver_a.pubkey(), config_pda(), 50_000, 1).is_err(),
+        "Must fail when config PDA is supplied as attestation"
+    );
+    // 1.3: Supplying pool PDA as attestation
+    assert!(
+        e.pay_prize_with_attestation(id, &auth, &driver_a.pubkey(), pool_pda(id), 50_000, 1).is_err(),
+        "Must fail when pool PDA is supplied as attestation"
+    );
+    // 1.4: Supplying vault PDA as attestation
+    assert!(
+        e.pay_prize_with_attestation(id, &auth, &driver_a.pubkey(), vault_pda(id), 50_000, 1).is_err(),
+        "Must fail when vault PDA is supplied as attestation"
+    );
+    // 1.5: Supplying system program as attestation
+    assert!(
+        e.pay_prize_with_attestation(id, &auth, &driver_a.pubkey(), anchor_lang::solana_program::system_program::ID, 50_000, 1).is_err(),
+        "Must fail when system program is supplied as attestation"
+    );
+
+    // =========================================================================
+    // Vector 2: Unverified Attestation (status == 0)
+    // =========================================================================
+    // 2.1: Attestation recorded with status = UNVERIFIED (0)
+    e.record_attestation(
+        id,
+        &auth,
+        &driver_a.pubkey(),
+        [0xAA; 32],
+        120,
+        freightchain_pools::constants::ATTESTATION_STATUS_UNVERIFIED,
+    ).unwrap();
+    assert_err!(
+        e.pay_prize(id, &auth, &driver_a.pubkey(), 50_000, 1),
+        PoolError::UnverifiedAttestation
+    );
+
+    // =========================================================================
+    // Vector 3: Flagged Attestation (status == 2)
+    // =========================================================================
+    // 3.1: Attestation recorded with status = FLAGGED (2)
+    e.record_attestation(
+        id,
+        &auth,
+        &driver_b.pubkey(),
+        [0xBB; 32],
+        250,
+        freightchain_pools::constants::ATTESTATION_STATUS_FLAGGED,
+    ).unwrap();
+    assert_err!(
+        e.pay_prize(id, &auth, &driver_b.pubkey(), 50_000, 1),
+        PoolError::UnverifiedAttestation
+    );
+
+    // =========================================================================
+    // Vector 4: Driver Mismatch Attacks
+    // =========================================================================
+    // Driver C gets a legitimate VERIFIED attestation with 300 km
+    e.record_verified_attestation(id, &auth, &driver_c.pubkey(), 300).unwrap();
+    let att_c = attestation_pda(id, &driver_c.pubkey());
+
+    // 4.1: Authority attempts to pay Driver A (who is unverified) using Driver C's attestation
+    assert!(
+        e.pay_prize_with_attestation(id, &auth, &driver_a.pubkey(), att_c, 50_000, 1).is_err(),
+        "Must reject payout to Driver A using Driver C's attestation PDA"
+    );
+
+    // 4.2: Authority attempts to pay Driver B (who is flagged) using Driver C's attestation
+    assert!(
+        e.pay_prize_with_attestation(id, &auth, &driver_b.pubkey(), att_c, 50_000, 1).is_err(),
+        "Must reject payout to Driver B using Driver C's attestation PDA"
+    );
+
+    // 4.3: Cross-pool replay attack: Driver C has verified attestation in id_other, attempt to pay in id
+    e.record_verified_attestation(id_other, &auth, &driver_c.pubkey(), 300).unwrap();
+    let att_c_other = attestation_pda(id_other, &driver_c.pubkey());
+    assert!(
+        e.pay_prize_with_attestation(id, &auth, &driver_c.pubkey(), att_c_other, 50_000, 1).is_err(),
+        "Must reject replay of attestation from a different pool"
+    );
+
+    // =========================================================================
+    // Vector 5: Zero Verified Km Attacks
+    // =========================================================================
+    let driver_d = funded(&mut e.svm, SOL);
+    // 5.1: Attempting to record verified attestation with 0 km is refused
+    assert_err!(
+        e.record_attestation(
+            id,
+            &auth,
+            &driver_d.pubkey(),
+            [0xDD; 32],
+            0,
+            freightchain_pools::constants::ATTESTATION_STATUS_VERIFIED,
+        ),
+        PoolError::ZeroVerifiedKm
+    );
+    // 5.2: State-injection attack: forcibly set attestation state to verified with 0 km
+    e.set_attestation(
+        id,
+        &driver_d.pubkey(),
+        0,
+        freightchain_pools::constants::ATTESTATION_STATUS_VERIFIED,
+    );
+    assert_err!(
+        e.pay_prize(id, &auth, &driver_d.pubkey(), 50_000, 1),
+        PoolError::ZeroVerifiedKm
+    );
+
+    // =========================================================================
+    // Vector 6: Legitimate Payout Verification
+    // =========================================================================
+    let bal_c_before = e.bal(&driver_c.pubkey());
+    let r = e.pay_prize(id, &auth, &driver_c.pubkey(), 50_000, 1).unwrap();
+    assert_eq!(e.bal(&driver_c.pubkey()), bal_c_before + 50_000);
+    assert_eq!(e.pool(id).prizes_paid, 50_000);
+    let ev = events::<PrizePaid>(&r.logs);
+    assert_eq!(ev[0].to, driver_c.pubkey());
+    assert_eq!(ev[0].lamports, 50_000);
+    assert_eq!(ev[0].rank, 1);
+}
+
+

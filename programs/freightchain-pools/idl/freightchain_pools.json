@@ -448,6 +448,126 @@
       ]
     },
     {
+      "name": "create_pledge",
+      "discriminator": [
+        86,
+        26,
+        21,
+        66,
+        130,
+        186,
+        102,
+        36
+      ],
+      "accounts": [
+        {
+          "name": "sponsor",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "driver"
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool.pool_id",
+                "account": "Pool"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pledge",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  101,
+                  100,
+                  103,
+                  101
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "ride_id"
+              },
+              {
+                "kind": "account",
+                "path": "sponsor"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "ride_id",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "driver",
+          "type": "pubkey"
+        },
+        {
+          "name": "max_lamports",
+          "type": "u64"
+        },
+        {
+          "name": "lamports_per_km",
+          "type": "u64"
+        },
+        {
+          "name": "target_km",
+          "type": "u32"
+        }
+      ]
+    },
+    {
       "name": "create_pool",
       "discriminator": [
         233,
@@ -829,6 +949,15 @@
         {
           "name": "tier",
           "type": "u8"
+        },
+        {
+          "name": "seed_commitment",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
         }
       ]
     },
@@ -889,7 +1018,10 @@
                 "path": "pool_id"
               }
             ]
-          }
+          },
+          "relations": [
+            "attestation"
+          ]
         },
         {
           "name": "vault",
@@ -916,6 +1048,40 @@
         {
           "name": "to",
           "writable": true
+        },
+        {
+          "name": "attestation",
+          "docs": [
+            "Cryptographic Attestation PDA proving verified gameplay"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  116,
+                  116,
+                  101,
+                  115,
+                  116,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool"
+              },
+              {
+                "kind": "account",
+                "path": "to"
+              }
+            ]
+          }
         },
         {
           "name": "system_program",
@@ -981,6 +1147,232 @@
         {
           "name": "new_authority",
           "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "record_attestation",
+      "discriminator": [
+        148,
+        43,
+        225,
+        77,
+        15,
+        134,
+        217,
+        54
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "pool_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "driver_account"
+        },
+        {
+          "name": "attestation",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  116,
+                  116,
+                  101,
+                  115,
+                  116,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool"
+              },
+              {
+                "kind": "arg",
+                "path": "driver"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "pool_id",
+          "type": "u32"
+        },
+        {
+          "name": "driver",
+          "type": "pubkey"
+        },
+        {
+          "name": "telemetry_root",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "verified_km",
+          "type": "u32"
+        },
+        {
+          "name": "status",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "record_yield",
+      "discriminator": [
+        80,
+        136,
+        238,
+        204,
+        216,
+        161,
+        41,
+        88
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "docs": [
+            "Config authority or payout authority (checked via config.may_settle)"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "pool_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "pool_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "pool_id",
+          "type": "u32"
+        },
+        {
+          "name": "staked_lamports",
+          "type": "u64"
+        },
+        {
+          "name": "yield_earned",
+          "type": "u64"
         }
       ]
     },
@@ -1279,6 +1671,139 @@
       ]
     },
     {
+      "name": "settle_pledge",
+      "discriminator": [
+        10,
+        255,
+        168,
+        255,
+        64,
+        232,
+        134,
+        135
+      ],
+      "accounts": [
+        {
+          "name": "caller",
+          "docs": [
+            "Settlement is permissionless: anyone can crank it once attestation is available"
+          ],
+          "signer": true
+        },
+        {
+          "name": "driver",
+          "writable": true,
+          "relations": [
+            "pledge"
+          ]
+        },
+        {
+          "name": "sponsor",
+          "writable": true,
+          "relations": [
+            "pledge"
+          ]
+        },
+        {
+          "name": "pool",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool.pool_id",
+                "account": "Pool"
+              }
+            ]
+          },
+          "relations": [
+            "pledge"
+          ]
+        },
+        {
+          "name": "attestation",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  116,
+                  116,
+                  101,
+                  115,
+                  116,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool"
+              },
+              {
+                "kind": "account",
+                "path": "driver"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pledge",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  101,
+                  100,
+                  103,
+                  101
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "ride_id"
+              },
+              {
+                "kind": "account",
+                "path": "sponsor"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "ride_id",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
       "name": "sponsor",
       "discriminator": [
         178,
@@ -1376,6 +1901,19 @@
   ],
   "accounts": [
     {
+      "name": "Attestation",
+      "discriminator": [
+        152,
+        125,
+        183,
+        86,
+        36,
+        146,
+        121,
+        73
+      ]
+    },
+    {
       "name": "Config",
       "discriminator": [
         155,
@@ -1386,6 +1924,19 @@
         250,
         204,
         130
+      ]
+    },
+    {
+      "name": "Pledge",
+      "discriminator": [
+        161,
+        197,
+        121,
+        46,
+        99,
+        75,
+        169,
+        131
       ]
     },
     {
@@ -1430,6 +1981,19 @@
   ],
   "events": [
     {
+      "name": "AttestationRecorded",
+      "discriminator": [
+        207,
+        97,
+        52,
+        58,
+        217,
+        238,
+        97,
+        21
+      ]
+    },
+    {
       "name": "AuthorityChanged",
       "discriminator": [
         31,
@@ -1466,6 +2030,32 @@
         13,
         132,
         94
+      ]
+    },
+    {
+      "name": "PledgeCreated",
+      "discriminator": [
+        136,
+        23,
+        54,
+        57,
+        67,
+        87,
+        142,
+        26
+      ]
+    },
+    {
+      "name": "PledgeSettled",
+      "discriminator": [
+        87,
+        219,
+        206,
+        37,
+        165,
+        40,
+        127,
+        213
       ]
     },
     {
@@ -1610,6 +2200,19 @@
         3,
         166
       ]
+    },
+    {
+      "name": "YieldRecorded",
+      "discriminator": [
+        150,
+        185,
+        66,
+        75,
+        78,
+        119,
+        86,
+        229
+      ]
     }
   ],
   "errors": [
@@ -1737,9 +2340,116 @@
       "code": 6024,
       "name": "SeriesDisabled",
       "msg": "This pool series is switched off"
+    },
+    {
+      "code": 6025,
+      "name": "UnverifiedAttestation",
+      "msg": "Driver attestation is not verified"
+    },
+    {
+      "code": 6026,
+      "name": "AttestationMismatch",
+      "msg": "Attestation account does not match pool or driver"
+    },
+    {
+      "code": 6027,
+      "name": "InvalidAttestationStatus",
+      "msg": "Attestation status is invalid"
+    },
+    {
+      "code": 6028,
+      "name": "ZeroVerifiedKm",
+      "msg": "Attestation has zero verified distance"
+    },
+    {
+      "code": 6029,
+      "name": "AlreadySettled",
+      "msg": "Pledge has already been settled"
     }
   ],
   "types": [
+    {
+      "name": "Attestation",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "driver",
+            "type": "pubkey"
+          },
+          {
+            "name": "telemetry_root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "verified_km",
+            "type": "u32"
+          },
+          {
+            "name": "status",
+            "type": "u8"
+          },
+          {
+            "name": "recorded_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AttestationRecorded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool_id",
+            "type": "u32"
+          },
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "driver",
+            "type": "pubkey"
+          },
+          {
+            "name": "telemetry_root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "verified_km",
+            "type": "u32"
+          },
+          {
+            "name": "status",
+            "type": "u8"
+          },
+          {
+            "name": "recorded_at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
     {
       "name": "AuthorityChanged",
       "type": {
@@ -1885,6 +2595,15 @@
           {
             "name": "fee_bps",
             "type": "u16"
+          },
+          {
+            "name": "seed_commitment",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
           }
         ]
       }
@@ -1903,6 +2622,157 @@
             "type": {
               "option": "pubkey"
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Pledge",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "ride_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "sponsor",
+            "type": "pubkey"
+          },
+          {
+            "name": "driver",
+            "type": "pubkey"
+          },
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "max_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "lamports_per_km",
+            "type": "u64"
+          },
+          {
+            "name": "target_km",
+            "type": "u32"
+          },
+          {
+            "name": "settled",
+            "type": "bool"
+          },
+          {
+            "name": "earned_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "refunded_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PledgeCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "ride_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "sponsor",
+            "type": "pubkey"
+          },
+          {
+            "name": "driver",
+            "type": "pubkey"
+          },
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "max_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "lamports_per_km",
+            "type": "u64"
+          },
+          {
+            "name": "target_km",
+            "type": "u32"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PledgeSettled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "ride_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "sponsor",
+            "type": "pubkey"
+          },
+          {
+            "name": "driver",
+            "type": "pubkey"
+          },
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "verified_km",
+            "type": "u32"
+          },
+          {
+            "name": "target_km",
+            "type": "u32"
+          },
+          {
+            "name": "earned_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "refunded_lamports",
+            "type": "u64"
           }
         ]
       }
@@ -2016,6 +2886,32 @@
           {
             "name": "vault_bump",
             "type": "u8"
+          },
+          {
+            "name": "seed_commitment",
+            "docs": [
+              "SHA256(poolId || blockhash || slot) captured at pool opening for provable road seed derivation."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "staked_lamports",
+            "docs": [
+              "Lamports currently deployed in liquid staking (JitoSOL / Stake Pool)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "yield_earned",
+            "docs": [
+              "Cumulative net staking yield harvested and deposited into the pool vault."
+            ],
+            "type": "u64"
           }
         ]
       }
@@ -2187,6 +3083,15 @@
               "true = opened by `open_next_pool` from the tier's series, false = `create_pool` by the admin"
             ],
             "type": "bool"
+          },
+          {
+            "name": "seed_commitment",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
           }
         ]
       }
@@ -2620,6 +3525,30 @@
           {
             "name": "activated",
             "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "YieldRecorded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool_id",
+            "type": "u32"
+          },
+          {
+            "name": "staked_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "yield_earned",
+            "type": "u64"
+          },
+          {
+            "name": "yield_earned_total",
+            "type": "u64"
           }
         ]
       }

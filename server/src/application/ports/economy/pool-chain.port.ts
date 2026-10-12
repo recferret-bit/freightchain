@@ -64,4 +64,6 @@ export abstract class PoolChainPort {
   abstract simulate(tx: UnsignedPaymentTx): Promise<{ ok: true; unitsConsumed: number } | { ok: false; reason: string }>;
   /** 'expired' = unknown to the network and past `lastValidBlockHeight` – it will never land (both answers from the primary RPC, else 503). */
   abstract signatureStatus(signature: string, lastValidBlockHeight: number): Promise<SignatureStatus>;
+  /** Derives the on-chain Pledge PDA address [b"pledge", rideId(32), sponsor] */
+  abstract pledgePda(rideId: Uint8Array | Buffer | number[], sponsor: string): string;
 }

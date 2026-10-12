@@ -14,13 +14,15 @@ export class RideMapper {
       solUsd: row.solUsd, quoteExpiresAt: row.quoteExpiresAt, roundId: row.roundId, poolId: row.poolId, paidAt: row.paidAt, route: row.route, startHour: row.startHour, loadout: parseLoadout(row.loadout), trip: row.trip, tutorial: row.tutorial, assist: row.assist, nightSeconds: row.nightSeconds, crashesVehicle: row.crashesVehicle, crashesBuilding: row.crashesBuilding,
       paused: row.paused, startedAt: row.startedAt, lastHbAt: row.lastHbAt, lastS: row.lastS, lastT: row.lastT, driveSeconds: row.driveSeconds,
       hull: row.hull, endedAt: row.endedAt, reason: row.reason, challenges: parseChallenges(row.challenges), nextChallengeAt: row.nextChallengeAt, version: row.version, paymentReference: row.paymentReference,
+      seedCommitment: row.seedCommitment, blockhash: row.blockhash, slot: row.slot,
     });
   }
 
   static toCreateData(ride: Ride) {
     const p = ride.snapshot();
     return { ...RideMapper.mutableData(p), id: p.id, wallet: p.wallet, tier: p.tier, seed: p.seed,
-      createdAt: p.createdAt, timeScale: p.timeScale, priceUsd: p.priceUsd, lamports: BigInt(p.lamports), solUsd: p.solUsd, quoteExpiresAt: p.quoteExpiresAt, poolId: p.poolId, version: p.version };
+      createdAt: p.createdAt, timeScale: p.timeScale, priceUsd: p.priceUsd, lamports: BigInt(p.lamports), solUsd: p.solUsd, quoteExpiresAt: p.quoteExpiresAt, poolId: p.poolId, version: p.version,
+      seedCommitment: p.seedCommitment ?? null, blockhash: p.blockhash ?? null, slot: p.slot !== null && p.slot !== undefined ? BigInt(p.slot) : null };
   }
 
   /** The columns that change during a ride's life (everything else is fixed at creation). minSeconds / completeDist / trip: a READY free ride re-chosen at another level (Ride.chooseFree). */

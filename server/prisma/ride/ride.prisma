@@ -60,6 +60,10 @@ model Ride {
   donationOrders DonationOrder[]
   verdict        RideVerdict?
   paymentReference String? @unique // Solana Pay reference (base58 of 32 bytes). Null until the first payment transaction is built.
+  seedCommitment   String?
+  blockhash        String?
+  slot             BigInt?
+  pledges          Pledge[]
 
   @@index([wallet, status])
   @@index([status, lastHbAt])

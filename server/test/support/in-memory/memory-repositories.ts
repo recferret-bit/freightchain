@@ -148,6 +148,17 @@ export class MemoryRideRepository extends RideRepositoryPort {
     this.db.rides.set(s.id, { props: next, seq: stored.seq });
     return Ride.restore(next);
   }
+
+  async findBestVerifiedByPoolAndWallet(poolId: number, wallet: string): Promise<Ride | null> {
+    const verified = [...this.db.rides.values()]
+      .filter((r) => r.props.wallet === wallet && r.props.poolId === poolId && r.props.status === RideStatus.Completed)
+      .filter((r) => {
+        const v = this.db.verdicts.get(r.props.id);
+        return v ? v.status === 'verified' : false;
+      })
+      .sort((a, b) => b.props.lastS - a.props.lastS || a.props.driveSeconds - b.props.driveSeconds);
+    return verified[0] ? Ride.restore(verified[0].props) : null;
+  }
 }
 
 @Injectable()

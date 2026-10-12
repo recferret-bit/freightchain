@@ -88,10 +88,16 @@ model Pool {
   holdBy        String? // an admin's signed hold on the payout (wallet), null = none
   holdAt        DateTime?
   holdNote      String?
+  seedCommitment String?
+  blockhash      String?
+  slot           BigInt?
+  stakedLamports BigInt        @default(0)
+  yieldEarned    BigInt        @default(0)
   payouts       PoolPayout[]
   tickets       RideTicket[]
   orders        TicketOrder[]
   rides         Ride[]
+  pledges       Pledge[]
 
   @@index([status, prepDeadline])
   @@index([roundId])
@@ -215,4 +221,37 @@ model ChainEvent {
   @@index([poolId])
   @@schema("economy")
 }
+
+// A community sponsorship pledge for a ride
+model Pledge {
+  id               String    @id @default(uuid())
+  pdaAddress       String    @unique
+  rideId           String
+  ride             Ride      @relation(fields: [rideId], references: [id])
+  sponsor          String
+  sponsorPlayer    Player    @relation("SponsorPledges", fields: [sponsor], references: [wallet])
+  driver           String
+  driverPlayer     Player    @relation("DriverPledges", fields: [driver], references: [wallet])
+  poolId           Int
+  pool             Pool      @relation(fields: [poolId], references: [id])
+  maxLamports      BigInt
+  lamportsPerKm    BigInt
+  targetKm         Int
+  settled          Boolean   @default(false)
+  earnedLamports   BigInt    @default(0)
+  refundedLamports BigInt    @default(0)
+  createdAt        DateTime
+  settledAt        DateTime?
+  signature        String?
+  slot             BigInt?
+  blockhash        String?
+
+  @@unique([rideId, sponsor])
+  @@index([driver, settled])
+  @@index([sponsor, settled])
+  @@index([poolId])
+  @@index([rideId])
+  @@schema("economy")
+}
+
 

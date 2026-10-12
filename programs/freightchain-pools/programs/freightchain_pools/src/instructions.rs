@@ -1,16 +1,22 @@
 pub mod admin;
+pub mod attestation;
 pub mod buy_ticket;
 pub mod create_pool;
 pub mod lifecycle;
+pub mod pledge;
+pub mod record_yield;
 pub mod refund;
 pub mod series;
 pub mod settle;
 pub mod sponsor;
 
 pub use admin::*;
+pub use attestation::*;
 pub use buy_ticket::*;
 pub use create_pool::*;
 pub use lifecycle::*;
+pub use pledge::*;
+pub use record_yield::*;
 pub use refund::*;
 pub use series::*;
 pub use settle::*;

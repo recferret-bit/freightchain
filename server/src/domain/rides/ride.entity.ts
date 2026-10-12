@@ -63,6 +63,9 @@ export interface RideProps {
   version: number;
   /** Solana Pay reference. Null until the first payment transaction is built. */
   paymentReference?: string | null;
+  seedCommitment?: string | null;
+  blockhash?: string | null;
+  slot?: bigint | number | null;
 }
 
 /** What issuing a prompt needs from the caller: an id and a random draw (the entity stays pure). */
@@ -72,6 +75,7 @@ export interface ChallengeDraw { id: string; rnd: number }
 export interface FreeRideInput { id: string; wallet: string; seed: number; minSeconds: number; now: Date; tutorial?: boolean; assist?: boolean; level?: FreeLevel }
 export interface TicketRideInput {
   id: string; wallet: string; tier: RideTierId; seed: number; minSeconds: number; timeScale: number; poolId: number; roundId: number; now: Date;
+  seedCommitment?: string | null; blockhash?: string | null; slot?: bigint | number | null;
 }
 export interface PaidOrderInput {
   id: string; wallet: string; tier: RideTierId; seed: number; minSeconds: number; timeScale: number;
@@ -90,6 +94,7 @@ export class Ride {
     return {
       timeScale: 1, priceUsd: 0, lamports: 0, solUsd: null, quoteExpiresAt: null, roundId: null, poolId: null, paidAt: null, route: null, startHour: null, loadout: null, trip: null, tutorial: false, assist: false, nightSeconds: 0, crashesVehicle: 0, crashesBuilding: 0, paused: false,
       startedAt: null, lastHbAt: null, lastS: 0, lastT: 0, driveSeconds: 0, hull: null, endedAt: null, reason: null, challenges: [], nextChallengeAt: null, version: 1, paymentReference: null,
+      seedCommitment: null, blockhash: null, slot: null,
     };
   }
 
@@ -108,6 +113,7 @@ export class Ride {
     return new Ride({
       ...Ride.blank(), id: i.id, wallet: i.wallet, tier: i.tier, trip: tripOf(i.tier), ...worldFor(i.seed), seed: i.seed, minSeconds: i.minSeconds, completeDist: completeDist(i.minSeconds, completeDistK(i.tier)),
       status: RideStatus.Created, createdAt: i.now, timeScale: i.timeScale, poolId: i.poolId, roundId: i.roundId, paidAt: i.now,
+      seedCommitment: i.seedCommitment ?? null, blockhash: i.blockhash ?? null, slot: i.slot ?? null,
     });
   }
 
@@ -133,6 +139,7 @@ export class Ride {
     return true;
   }
 
+  get props(): RideProps { return this.p; }
   get id(): string { return this.p.id; }
   get wallet(): string { return this.p.wallet; }
   get tier(): RideTierId { return this.p.tier; }
@@ -164,6 +171,9 @@ export class Ride {
   get hull(): number | null { return this.p.hull; }
   get version(): number { return this.p.version; }
   get isFree(): boolean { return this.p.tier === 'free'; }
+  get seedCommitment(): string | null { return this.p.seedCommitment ?? null; }
+  get blockhash(): string | null { return this.p.blockhash ?? null; }
+  get slot(): bigint | number | null { return this.p.slot ?? null; }
   get challenges(): readonly RideChallenge[] { return this.p.challenges; }
 
   isInStatus(...statuses: RideStatus[]): boolean {

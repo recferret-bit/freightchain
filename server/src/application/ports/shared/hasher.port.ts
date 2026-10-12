@@ -2,4 +2,6 @@
 export abstract class HasherPort {
   /** lowercase hex SHA-256 of the UTF-8 text */
   abstract sha256Hex(text: string): string;
+  /** 32-byte SHA-256 binary digest of buffer / Uint8Array / text */
+  abstract sha256(data: Uint8Array | Buffer | string): Buffer;
 }

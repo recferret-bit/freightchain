@@ -13,6 +13,7 @@ export const getRequestId = (req: Request): string => (req as Partial<RequestWit
 export interface PlayerIdentity {
   wallet: string;
 }
+export type PlayerAuthPayload = PlayerIdentity;
 
 export interface RequestWithPlayer extends Request {
   player: PlayerIdentity;

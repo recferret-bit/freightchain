@@ -52,4 +52,14 @@ pub enum PoolError {
     MustExpire,
     #[msg("This pool series is switched off")]
     SeriesDisabled,
+    #[msg("Driver attestation is not verified")]
+    UnverifiedAttestation,
+    #[msg("Attestation account does not match pool or driver")]
+    AttestationMismatch,
+    #[msg("Attestation status is invalid")]
+    InvalidAttestationStatus,
+    #[msg("Attestation has zero verified distance")]
+    ZeroVerifiedKm,
+    #[msg("Pledge has already been settled")]
+    AlreadySettled,
 }

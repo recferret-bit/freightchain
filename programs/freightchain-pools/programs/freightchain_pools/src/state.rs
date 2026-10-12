@@ -78,6 +78,13 @@ pub struct Pool {
     pub created_at: i64,
     pub bump: u8,
     pub vault_bump: u8,
+    // --- v3 Provable Integrity & JitoSOL Staking Yield ---
+    /// SHA256(poolId || blockhash || slot) captured at pool opening for provable road seed derivation.
+    pub seed_commitment: [u8; 32],
+    /// Lamports currently deployed in liquid staking (JitoSOL / Stake Pool).
+    pub staked_lamports: u64,
+    /// Cumulative net staking yield harvested and deposited into the pool vault.
+    pub yield_earned: u64,
 }
 
 #[account]
@@ -88,6 +95,41 @@ pub struct Ticket {
     pub pool_id: u32,
     pub qty: u16,
     pub lamports: u64,
+    pub bump: u8,
+}
+
+#[account]
+#[derive(InitSpace)]
+pub struct Attestation {
+    pub pool: Pubkey,
+    pub driver: Pubkey,
+    pub telemetry_root: [u8; 32],
+    pub verified_km: u32,
+    pub status: u8,
+    pub recorded_at: i64,
+    pub bump: u8,
+}
+
+impl Attestation {
+    pub fn is_verified(&self) -> bool {
+        self.status == ATTESTATION_STATUS_VERIFIED
+    }
+}
+
+#[account]
+#[derive(InitSpace)]
+pub struct Pledge {
+    pub ride_id: [u8; 32],
+    pub sponsor: Pubkey,
+    pub driver: Pubkey,
+    pub pool: Pubkey,
+    pub max_lamports: u64,
+    pub lamports_per_km: u64,
+    pub target_km: u32,
+    pub settled: bool,
+    pub earned_lamports: u64,
+    pub refunded_lamports: u64,
+    pub created_at: i64,
     pub bump: u8,
 }
 
@@ -127,10 +169,11 @@ impl Pool {
         u64::try_from(v).map_err(|_| PoolError::MathOverflow.into())
     }
 
-    /// Money the split is computed on: tickets + sponsorship.
+    /// Money the split is computed on: tickets + sponsorship + harvested staking yield.
     pub fn pot(&self) -> Result<u64> {
         self.tickets_lamports()?
             .checked_add(self.sponsored)
+            .and_then(|v| v.checked_add(self.yield_earned))
             .ok_or_else(|| PoolError::MathOverflow.into())
     }
 

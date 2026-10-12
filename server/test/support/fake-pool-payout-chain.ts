@@ -17,12 +17,23 @@ export class FakePoolPayoutChain extends PoolPayoutChainPort {
   readonly dropping = new Set<number>();
   readonly prizes: { poolId: number; to: string; lamports: number; rank: number; signature: string }[] = [];
   readonly closed: number[] = [];
+  readonly attestations = new Map<string, { telemetryRoot: Uint8Array | Buffer; verifiedKm: number; status: number }>();
 
   constructor(private readonly chain: FakePoolChain) { super(); }
 
   get address(): string | null { return this.payoutAddress; }
   async chainNow(): Promise<Date> { return this.now; }
   async configuredPayoutAuthority(): Promise<string | null> { return this.named === undefined ? this.payoutAddress : this.named; }
+
+  async isAttested(poolId: number, driver: string): Promise<boolean> {
+    const a = this.attestations.get(`${poolId}:${driver}`);
+    return a !== undefined && a.status === 1 && a.verifiedKm > 0;
+  }
+
+  async recordAttestation(i: { poolId: number; driver: string; telemetryRoot: Uint8Array | Buffer; verifiedKm: number; status: number }): Promise<{ signature: string }> {
+    this.attestations.set(`${i.poolId}:${i.driver}`, { telemetryRoot: i.telemetryRoot, verifiedKm: i.verifiedKm, status: i.status });
+    return { signature: newPoolSignature() };
+  }
 
   async payPrize(i: { poolId: number; to: string; lamports: number; rank: number }, onSigned: (tx: SignedPayout) => Promise<void>): Promise<{ signature: string }> {
     if (!this.payoutAddress) throw new ServiceUnavailableError('no payout key');

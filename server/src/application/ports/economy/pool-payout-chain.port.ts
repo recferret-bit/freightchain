@@ -21,4 +21,14 @@ export abstract class PoolPayoutChainPort {
   abstract payPrize(input: { poolId: number; to: string; lamports: number; rank: number }, onSigned: (tx: SignedPayout) => Promise<void>): Promise<{ signature: string }>;
   /** build + sign `close_pool` (treasuries from the Pool and Config accounts), send and wait */
   abstract closePool(poolId: number): Promise<{ signature: string }>;
+  /** check if driver already has an on-chain Verified Attestation account */
+  abstract isAttested(poolId: number, driver: string): Promise<boolean>;
+  /** submit on-chain Attestation account signed by the payout authority */
+  abstract recordAttestation(input: {
+    poolId: number;
+    driver: string;
+    telemetryRoot: Uint8Array | Buffer;
+    verifiedKm: number;
+    status: number;
+  }): Promise<{ signature: string }>;
 }

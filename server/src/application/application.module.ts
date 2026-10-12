@@ -10,6 +10,7 @@ import { StatsService } from './services/stats.service.js';
 import { RoundService } from './services/round.service.js';
 import { VerdictService } from './services/verdict.service.js';
 import { PoolAttentionService } from './services/pool-attention.service.js';
+import { AttestationService } from './services/attestation.service.js';
 import { AdminProofService } from './services/admin-proof.service.js';
 import { GameSettingsService } from './services/game-settings.service.js';
 import { GrantDailyFreeRidesHandler } from './use-cases/players/grant-daily-free-rides/grant-daily-free-rides.handler.js';
@@ -121,10 +122,14 @@ import { UpdateSettingHandler } from './use-cases/admin/update-setting/update-se
 import { GetActionsJsonHandler } from './use-cases/actions/get-actions-json.handler.js';
 import { GetShiftActionHandler, PrepareShiftActionHandler } from './use-cases/actions/shift-action.handler.js';
 import { GetRideActionHandler, OpenRideActionHandler } from './use-cases/actions/ride-action.handler.js';
+import { CreatePledgeHandler } from './use-cases/pledges/create-pledge/create-pledge.handler.js';
+import { SettlePledgeHandler } from './use-cases/pledges/settle-pledge/settle-pledge.handler.js';
+import { GetRidePledgesHandler } from './use-cases/pledges/get-ride-pledges/get-ride-pledges.handler.js';
+import { GetPledgeHandler } from './use-cases/pledges/get-pledge/get-pledge.handler.js';
 
 const services: Provider[] = [
   AchievementService, PaymentSettlementService, PlayerSessionService, GameSettingsService, RideLookupService, RoundService, VerdictService, AdminProofService,
-  PoolTicketsService, PromoCreationService, TicketSettlementService, PoolRegistryService, FinalityService, LiveAccessService, StatsService, MeProfileService, PoolAttentionService,
+  PoolTicketsService, PromoCreationService, TicketSettlementService, PoolRegistryService, FinalityService, LiveAccessService, StatsService, MeProfileService, PoolAttentionService, AttestationService,
 ];
 
 import { ReconcileStatsHandler } from './use-cases/stats/reconcile-stats/reconcile-stats.handler.js';
@@ -155,6 +160,7 @@ const handlers: Provider[] = [
   PollProgramHandler, SyncPoolsHandler, CrankPoolsHandler, PayPoolsHandler, MintAchievementsHandler, ReceiveChainWebhookHandler, RegisterPoolFromChainHandler,
   AdjustFreeRidesHandler, GetSettingsHandler, UpdateSettingHandler,
   GetActionsJsonHandler, GetShiftActionHandler, PrepareShiftActionHandler, GetRideActionHandler, OpenRideActionHandler,
+  CreatePledgeHandler, SettlePledgeHandler, GetRidePledgesHandler, GetPledgeHandler,
 ];
 
 @Module({

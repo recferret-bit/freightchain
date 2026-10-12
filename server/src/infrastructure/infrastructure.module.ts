@@ -72,6 +72,8 @@ import { ProgramPayoutAdapter } from './solana/program-payout.adapter.js';
 import { PoolPayoutChainPort } from '../application/ports/economy/pool-payout-chain.port.js';
 import { PoolPayoutRepositoryPort } from '../application/ports/economy/pool-payout.repository.port.js';
 import { PoolPayoutPrismaRepository } from './prisma/repositories/pool-payout.prisma.repository.js';
+import { PledgeRepositoryPort } from '../application/ports/economy/pledge.repository.port.js';
+import { PledgePrismaRepository } from './prisma/repositories/pledge.prisma.repository.js';
 import { ChainCursorPrismaRepository } from './prisma/repositories/chain-cursor.prisma.repository.js';
 import { ChainEventPrismaRepository } from './prisma/repositories/chain-event.prisma.repository.js';
 import { SystemClock } from './time/system.clock.js';
@@ -145,6 +147,7 @@ const ports: Provider[] = [
   { provide: PoolCrankChainPort, useClass: ProgramCrankAdapter },
   { provide: PoolPayoutChainPort, useClass: ProgramPayoutAdapter },
   { provide: PoolPayoutRepositoryPort, useClass: PoolPayoutPrismaRepository },
+  { provide: PledgeRepositoryPort, useClass: PledgePrismaRepository },
   { provide: ChainEventRepositoryPort, useClass: ChainEventPrismaRepository },
   { provide: ChainCursorRepositoryPort, useClass: ChainCursorPrismaRepository },
   { provide: RideEventRepositoryPort, useClass: RideEventPrismaRepository },

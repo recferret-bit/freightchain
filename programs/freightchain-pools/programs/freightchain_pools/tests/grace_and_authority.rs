@@ -60,6 +60,7 @@ fn expire_before_and_after_grace_then_full_refunds_and_permissionless_close() {
     let mut e = Env::new();
     let (id, buyers) = active(&mut e);
     let stranger = funded(&mut e.svm, SOL);
+    e.record_verified_attestation(id, &e.authority_kp(), &stranger.pubkey(), 100).unwrap();
     e.warp(PLAY);
     assert_err!(e.expire(id, &stranger), PoolError::TooEarly);
     e.warp(GRACE_END - 1);
@@ -99,6 +100,7 @@ fn expire_refused_when_prizes_were_paid_or_pool_not_active() {
     let (id, _) = active(&mut e);
     let auth = e.authority_kp();
     let w = funded(&mut e.svm, SOL);
+    e.record_verified_attestation(id, &auth, &w.pubkey(), 100).unwrap();
     e.warp(PLAY);
     e.pay_prize(id, &auth, &w.pubkey(), 1_000_000, 1).unwrap();
     e.warp(GRACE_END);
@@ -150,6 +152,7 @@ fn permissionless_close_only_after_grace_and_money_to_declared_treasuries() {
 
     // the authority pays part of the prize share; now the declared split may be closed by anyone
     let w = funded(&mut e.svm, SOL);
+    e.record_verified_attestation(id, &auth, &w.pubkey(), 100).unwrap();
     e.pay_prize(id, &auth, &w.pubkey(), 100_000_000, 1).unwrap();
     let (s0, f0, a0, x0) =
         (e.bal(&e.seed_t.pubkey()), e.bal(&e.fee_t.pubkey()), e.bal(&auth.pubkey()), e.bal(&stranger.pubkey()));
@@ -257,6 +260,7 @@ fn rotated_authority_takes_over_existing_pools() {
     e.cancel(cancel_me, &new).unwrap();
 
     let w = funded(&mut e.svm, SOL);
+    e.record_verified_attestation(id, &new, &w.pubkey(), 100).unwrap();
     e.warp(PLAY);
     assert_err!(e.pay_prize(id, &old, &w.pubkey(), 1_000_000, 1), PoolError::Unauthorized);
     e.pay_prize(id, &new, &w.pubkey(), 1_000_000, 1).unwrap();

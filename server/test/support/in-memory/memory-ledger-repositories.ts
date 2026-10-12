@@ -15,6 +15,8 @@ import { PromoRepositoryPort, type PromoRedemptionRecord } from '../../../src/ap
 import { CosmeticRepositoryPort, type CosmeticUnlockRecord } from '../../../src/application/ports/players/cosmetic.repository.port.js';
 import type { CosmeticSlot } from '../../../src/domain/economy/cosmetics.js';
 import { RideTicketRepositoryPort } from '../../../src/application/ports/players/ride-ticket.repository.port.js';
+import { Pledge } from '../../../src/domain/economy/pledge.entity.js';
+import { PledgeRepositoryPort } from '../../../src/application/ports/economy/pledge.repository.port.js';
 import type { MemoryDb } from './memory-db.js';
 
 /* In-memory twins of the pool / ticket / promo / order repositories (same contracts as the Prisma ones; see memory-repositories.ts). */
@@ -299,3 +301,53 @@ export class MemoryPoolPayoutRepository extends PoolPayoutRepositoryPort {
     this.move(poolId, rank, () => true, { error: error.slice(0, 500), updatedAt: now });
   }
 }
+
+@Injectable()
+export class MemoryPledgeRepository extends PledgeRepositoryPort {
+  constructor(private readonly db: MemoryDb) { super(); }
+
+  async insert(pledge: Pledge): Promise<void> {
+    this.db.pledges.set(pledge.id, pledge.snapshot());
+  }
+
+  async save(pledge: Pledge): Promise<void> {
+    this.db.pledges.set(pledge.id, pledge.snapshot());
+  }
+
+  async findById(id: string): Promise<Pledge | null> {
+    const p = this.db.pledges.get(id);
+    return p ? Pledge.restore(p) : null;
+  }
+
+  async findByPdaAddress(pdaAddress: string): Promise<Pledge | null> {
+    const p = [...this.db.pledges.values()].find((x) => x.pdaAddress === pdaAddress);
+    return p ? Pledge.restore(p) : null;
+  }
+
+  async findByRideAndSponsor(rideId: string, sponsor: string): Promise<Pledge | null> {
+    const p = [...this.db.pledges.values()].find((x) => x.rideId === rideId && x.sponsor === sponsor);
+    return p ? Pledge.restore(p) : null;
+  }
+
+  async findByRideId(rideId: string): Promise<Pledge[]> {
+    return [...this.db.pledges.values()]
+      .filter((x) => x.rideId === rideId)
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+      .map((p) => Pledge.restore(p));
+  }
+
+  async findByDriver(driver: string): Promise<Pledge[]> {
+    return [...this.db.pledges.values()]
+      .filter((x) => x.driver === driver)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .map((p) => Pledge.restore(p));
+  }
+
+  async findBySponsor(sponsor: string): Promise<Pledge[]> {
+    return [...this.db.pledges.values()]
+      .filter((x) => x.sponsor === sponsor)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .map((p) => Pledge.restore(p));
+  }
+}
+

@@ -165,7 +165,7 @@
 
 <!-- ───────── 03 · ECONOMY & TECH ───────── -->
 <section class="ch" id="economy">
-  <header class="ch-h rv"><i>03</i><h2>ECONOMY</h2><p>Paid shifts are tickets into escrowed prize pools – one Solana account per pool holds the entry fees and states its rules in public. Integer lamports, floored shares, the remainder to fees.</p></header>
+  <header class="ch-h rv"><i>03</i><h2>ECONOMY</h2><p>Paid shifts are tickets into escrowed prize pools – one Solana account per pool holds the entry fees, earns JitoSOL staking yield, and states its rules in public. On-chain Attestation PDAs strictly gate prize payouts.</p></header>
 
   <div class="econ rv">
     <div class="card pool" id="poolbox"><span class="dim">Loading the pool…</span></div>
@@ -180,18 +180,37 @@
       <ol class="esc" aria-label="how a ticket moves through an escrow pool">
         <li class="esc-n"><b>RIDERS</b><span>buy a ticket</span></li>
         <li class="esc-a" aria-hidden="true"><i></i><em>entry fee</em></li>
-        <li class="esc-v"><b>POOL VAULT</b><span>a program-owned account – no key exists, only the program's fixed rules move it</span></li>
+        <li class="esc-v"><b>POOL VAULT</b><span>program-owned account – earns JitoSOL liquid staking yield during sale and review</span></li>
         <li class="esc-a" aria-hidden="true"><i></i><em>deadline</em></li>
         <li class="esc-f">
           <div class="miss"><b>GOAL MISSED</b><span>too few riders</span><strong>100% back</strong><small>anyone can trigger the refunds</small></div>
           <div class="hit"><b>POOL LIVE</b><span>split as declared</span>
             <div class="bar3" aria-hidden="true"><i style="flex:70"></i><i style="flex:20"></i><i style="flex:10"></i></div>
-            <small><u>70%</u> prizes, capped on chain · <u>20%</u> next pool · <u>10%</u> fees</small></div>
+            <small><u>70%</u> prizes (Attestation PDA gated) + Jito yield · <u>20%</u> next pool · <u>10%</u> fees</small></div>
         </li>
       </ol>
-      <p class="dim" id="escrow-status">The escrow program is on devnet. Not audited, not on mainnet, and prize payouts are off. Pay in Phantom or Solflare here, or scan the Solana Pay code with the same wallet on a phone. Each payment carries a reference key so the server can find it on chain.</p>
+      <p class="dim" id="escrow-status">The Anchor v3 program is on devnet with provable blockhash road seed commitments, RFC 6962 telemetry roots, and on-chain Attestation PDAs gating prize settlement. Idle vault lamports earn JitoSOL liquid staking yield throughout ticket sales and review. Community sponsors back drivers with per-km Pledge PDAs. Pay via Phantom, Solflare, or Solana Pay.</p>
       <a class="link" id="escrow-link" href="/whitepaper.html#onchain">The whole escrow, with diagrams, in the whitepaper →</a>
     </div>
+  </div>
+
+  <h3 class="sub rv">SOLANA INNOVATIONS · PROVABLE FAIRNESS &amp; CAPITAL EFFICIENCY</h3>
+  <div class="about rv">
+    <article class="card">
+      <h3 style="color:var(--amber)">01 · PROVABLE INTEGRITY</h3>
+      <p><b>Blockhash-Anchored Road:</b> The endless road seed is deterministically locked to a Solana blockhash at ride start. Neither the server nor drivers can cherry-pick curves, potholes, or weather.</p>
+      <p><b>Attestation PDA Gated:</b> 15-second driving telemetry compiles into an RFC 6962 Merkle tree. The Anchor smart contract strictly refuses prize payouts unless an Attestation PDA proves verified human play.</p>
+    </article>
+    <article class="card">
+      <h3 style="color:var(--amber)">02 · JITOSOL STAKING YIELD</h3>
+      <p><b>Capital-Efficient Escrow:</b> Ticket fees locked in pool vaults do not sit idle during 24h ticket sales and 48h review windows.</p>
+      <p><b>Auto-Compounding Pots:</b> Accrued JitoSOL staking and MEV yield automatically compound into the winner prize pool, boosting payouts without risking driver principal or raising ticket costs.</p>
+    </article>
+    <article class="card">
+      <h3 style="color:var(--amber)">03 · PER-KM PLEDGES</h3>
+      <p><b>Micro-Marathon Sponsorship:</b> Spectators back live drivers with on-chain Pledge PDAs (e.g. 0.001 SOL per km) directly while watching the stream.</p>
+      <p><b>Zero Stranded Lamports:</b> Programmatic settlement pays drivers for verified distance driven and refunds unearned surplus back to the sponsor instantly.</p>
+    </article>
   </div>
 
   <div class="card tiers why rv" id="why-20">
@@ -242,7 +261,7 @@
           <tr class="leg"><th colspan="3">LEG 2 · THE FAIR <small>Oct 6–12</small></th><td class="stamp"><span class="st now">ROLLING</span></td></tr>
           <tr class="done"><td class="box">☑</td><td>Verified play: every input recorded, a server verdict, shadow mode, a signed admin review queue</td><td class="note">Oct 7</td><td></td></tr>
           <tr class="done"><td class="box">☑</td><td>Live streams + replays: watch any ride 25 s behind, CB chat, paid night / potholes, the history</td><td class="note">Oct 8</td><td></td></tr>
-          <tr class="done"><td class="box">☑</td><td>Escrowed pools: the Anchor program (50 tests), tickets, refunds, the crank – written, not deployed</td><td class="note">Oct 8</td><td></td></tr>
+          <tr class="done"><td class="box">☑</td><td>Anchor v3 on devnet (81 tests): Attestation PDAs gating prizes, JitoSOL liquid staking yield, per-km Pledge PDAs</td><td class="note">Oct 12</td><td></td></tr>
           <tr class="done"><td class="box">☑</td><td>Garage (5 slots), promo codes, cosmetics; the storybook and the whitepaper; the admin page</td><td class="note">Oct 8</td><td></td></tr>
           <tr class="done"><td class="box">☑</td><td>X, YouTube, a trailer cut from real gameplay with its own 8-bit soundtrack</td><td class="note">Oct 9</td><td></td></tr>
           <tr class="next"><td class="box">☐</td><td>Product analytics: the PostHog relay and ten funnels are wired, half the board reads</td><td class="note">50 %</td><td></td></tr>
@@ -269,7 +288,8 @@
           <tr class="leg"><th colspan="3">LEG 5 · LONG HAUL <small>2027</small></th><td class="stamp"><span class="st later">BOOKED</span></td></tr>
           <tr class="later"><td class="box">☐</td><td>Garage parts and promo cosmetics as NFTs the wallet owns and trades</td><td class="note">cosmetics only</td><td></td></tr>
           <tr class="done"><td class="box">☑</td><td>Achievements on chain: 31 tiered badges, each a soulbound compressed NFT on devnet</td><td class="note">October</td><td></td></tr>
-          <tr class="later"><td class="box">☐</td><td>Spectator economy on top of today's tips: sponsors, per-km pledges, convoys</td><td class="note">streams</td><td></td></tr>
+          <tr class="done"><td class="box">☑</td><td>Spectator per-km pledges: on-chain Pledge PDAs with verified settlement and zero lost lamports</td><td class="note">October</td><td></td></tr>
+          <tr class="later"><td class="box">☐</td><td>Spectator convoys: shared side pots for teams riding together</td><td class="note">streams</td><td></td></tr>
           <tr class="later"><td class="box">☐</td><td>Storybook workshop: pay SOL for attempts at a new prop, vehicle or landmark; drivers vote, winners ship, the maker is credited</td><td class="note">community assets</td><td></td></tr>
           <tr class="later"><td class="box">☐</td><td>Deterministic replay core: fixed tick, fixed-point maths, a paid finish re-simulated</td><td class="note">design doc</td><td></td></tr>
 

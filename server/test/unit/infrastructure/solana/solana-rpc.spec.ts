@@ -29,4 +29,13 @@ describe('SolanaRpc', () => {
     expect(asked).toEqual(['primary']);
     expect(await rpc.primaryOnly(async (c) => nameOf(c))).toBe('primary');
   });
+
+  it('reads blockhash and slot from getLatestBlockhashAndContext', async () => {
+    const c = {
+      getLatestBlockhashAndContext: async () => ({ value: { blockhash: 'hash123' }, context: { slot: 42 } }),
+    } as unknown as Connection;
+    const rpc = new SolanaRpc(c);
+    const res = await rpc.getLatestBlockhashAndSlot();
+    expect(res).toEqual({ blockhash: 'hash123', slot: 42 });
+  });
 });

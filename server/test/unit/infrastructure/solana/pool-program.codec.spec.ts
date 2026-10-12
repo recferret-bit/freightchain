@@ -21,11 +21,12 @@ function idlArgs(name: string, a: Record<string, unknown>): Record<string, unkno
     case 'sponsor': return { pool_id: a['poolId'], lamports: BigInt(String(a['lamports'])) };
     case 'pay_prize': return { pool_id: a['poolId'], lamports: BigInt(String(a['lamports'])), rank: a['rank'] };
     case 'create_pool': return { params: { tier: a['tier'], price_lamports: BigInt(String(a['priceLamports'])), min_tickets: a['minTickets'], max_tickets: a['maxTickets'], max_per_wallet: a['maxPerWallet'],
-      prep_deadline: BigInt(Number(a['prepDeadline'])), play_deadline: BigInt(Number(a['playDeadline'])), payout_at: BigInt(Number(a['payoutAt'])), prize_bps: a['prizeBps'], seed_bps: a['seedBps'], fee_bps: a['feeBps'] } };
+      prep_deadline: BigInt(Number(a['prepDeadline'])), play_deadline: BigInt(Number(a['playDeadline'])), payout_at: BigInt(Number(a['payoutAt'])), prize_bps: a['prizeBps'], seed_bps: a['seedBps'], fee_bps: a['feeBps'],
+      seed_commitment: b64(String(a['seedCommitment'])) } };
     case 'set_series': return { params: { tier: a['tier'], enabled: a['enabled'], price_lamports: BigInt(String(a['priceLamports'])), min_tickets: a['minTickets'], max_tickets: a['maxTickets'],
       max_per_wallet: a['maxPerWallet'], sale_secs: BigInt(Number(a['saleSecs'])), play_secs: BigInt(Number(a['playSecs'])), verify_secs: BigInt(Number(a['verifySecs'])),
       prize_bps: a['prizeBps'], seed_bps: a['seedBps'], fee_bps: a['feeBps'], start_at: BigInt(Number(a['startAt'])) } };
-    case 'open_next_pool': return { tier: a['tier'] };
+    case 'open_next_pool': return { tier: a['tier'], seed_commitment: b64(String(a['seedCommitment'])) };
     case 'set_payout_authority': return { payout_authority: a['payoutAuthority'] };
     case 'propose_authority': return { new_authority: fx.keys.nextAdmin };
     case 'accept_authority': return {};
@@ -114,6 +115,12 @@ describe('PoolProgramCodec – instructions', () => {
     expect(codec.poolPda(poolId).toBase58()).toBe(buy.accounts[3]!.pubkey);
     expect(codec.vaultPda(poolId).toBase58()).toBe(buy.accounts[4]!.pubkey);
     expect(codec.ticketPda(poolId, fx.keys.a).toBase58()).toBe(buy.accounts[5]!.pubkey);
+    const pay = fixtureTx('pay_prize').instructions[0]!;
+    expect(codec.attestationPda(0, fx.keys.winner).toBase58()).toBe(pay.accounts[5]!.pubkey);
+    const rideId = Buffer.alloc(32, 7);
+    const pledge = codec.pledgePda(rideId, fx.keys.a);
+    expect(pledge.toBase58()).toBeTruthy();
+    expect(() => codec.pledgePda(Buffer.alloc(16), fx.keys.a)).toThrow(/32 bytes/);
   });
 
   it('refuses missing accounts and out-of-range args', () => {

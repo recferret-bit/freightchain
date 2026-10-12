@@ -118,7 +118,7 @@ pub fn handle_set_series(ctx: Context<SetSeries>, p: SeriesParams) -> Result<()>
 }
 
 #[derive(Accounts)]
-#[instruction(tier: u8)]
+#[instruction(tier: u8, seed_commitment: [u8; 32])]
 pub struct OpenNextPool<'info> {
     /// Anyone (the server's crank in practice): pays the Pool account rent and the vault rent minimum, which comes back at close.
     #[account(mut)]
@@ -153,7 +153,7 @@ pub struct OpenNextPool<'info> {
 /// Permissionless: once the series' slot has come, open the pool of the CURRENT slot from the series' rules. Slots sit on a fixed grid
 /// (`next_open_at + k * sale_secs`), so a late caller never shifts the schedule – a slot nobody opened in time is skipped, and the pool of
 /// the current slot just sells for what is left of it. One pool per slot: `next_open_at` moves to this pool's sale end.
-pub fn handle_open_next_pool(ctx: Context<OpenNextPool>, tier: u8) -> Result<()> {
+pub fn handle_open_next_pool(ctx: Context<OpenNextPool>, tier: u8, seed_commitment: [u8; 32]) -> Result<()> {
     let a = &ctx.accounts;
     require!(!a.config.paused, PoolError::Paused);
     require!(a.series.enabled, PoolError::SeriesDisabled);
@@ -183,6 +183,7 @@ pub fn handle_open_next_pool(ctx: Context<OpenNextPool>, tier: u8) -> Result<()>
         fee_bps: s.fee_bps,
         fee_treasury: s.fee_treasury,
         seed_treasury: s.seed_treasury,
+        seed_commitment,
     };
     let creator = a.caller.to_account_info();
     let (pool_bump, vault_bump) = (ctx.bumps.pool, ctx.bumps.vault);

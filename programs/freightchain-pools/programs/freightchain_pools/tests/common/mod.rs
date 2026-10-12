@@ -8,7 +8,7 @@ use {
         AccountDeserialize, AnchorDeserialize, Discriminator, Event, InstructionData, ToAccountMetas,
     },
     base64::Engine,
-    freightchain_pools::{accounts, instruction, Config, CreatePoolParams, Pool, Series, SeriesParams, Ticket},
+    freightchain_pools::{accounts, instruction, Attestation, Config, CreatePoolParams, Pledge, Pool, Series, SeriesParams, Ticket},
     litesvm::{
         types::{FailedTransactionMetadata, TransactionMetadata},
         LiteSVM,
@@ -98,6 +98,13 @@ pub fn vault_pda(id: u32) -> Pubkey {
 pub fn series_pda(tier: u8) -> Pubkey {
     Pubkey::find_program_address(&[b"series", &[tier]], &pid()).0
 }
+pub fn attestation_pda(pool_id: u32, driver: &Pubkey) -> Pubkey {
+    let pool = pool_pda(pool_id);
+    Pubkey::find_program_address(&[b"attestation", pool.as_ref(), driver.as_ref()], &pid()).0
+}
+pub fn pledge_pda(ride_id: &[u8; 32], sponsor: &Pubkey) -> Pubkey {
+    Pubkey::find_program_address(&[b"pledge", ride_id, sponsor.as_ref()], &pid()).0
+}
 pub const HOUR: i64 = 3_600;
 pub const DAY: i64 = 86_400;
 
@@ -141,6 +148,7 @@ pub fn default_params() -> CreatePoolParams {
         prize_bps: 6000,
         seed_bps: 2500,
         fee_bps: 1500,
+        seed_commitment: [0u8; 32],
     }
 }
 
@@ -384,6 +392,10 @@ impl Env {
     }
 
     pub fn pay_prize(&mut self, id: u32, who: &Keypair, to: &Pubkey, lamports: u64, rank: u8) -> Res {
+        self.pay_prize_with_attestation(id, who, to, attestation_pda(id, to), lamports, rank)
+    }
+
+    pub fn pay_prize_with_attestation(&mut self, id: u32, who: &Keypair, to: &Pubkey, attestation: Pubkey, lamports: u64, rank: u8) -> Res {
         let c = clone_kp(&self.cranker);
         let i = ix(
             instruction::PayPrize { pool_id: id, lamports, rank },
@@ -393,6 +405,7 @@ impl Env {
                 pool: pool_pda(id),
                 vault: vault_pda(id),
                 to: *to,
+                attestation,
                 system_program: system_program::ID,
             },
         );
@@ -481,9 +494,13 @@ impl Env {
     }
 
     pub fn open_next_pool_ix(&self, tier: u8, caller: &Pubkey, fee_t: Pubkey, seed_t: Pubkey) -> Instruction {
+        self.open_next_pool_with_seed_ix(tier, caller, fee_t, seed_t, [1u8; 32])
+    }
+
+    pub fn open_next_pool_with_seed_ix(&self, tier: u8, caller: &Pubkey, fee_t: Pubkey, seed_t: Pubkey, seed_commitment: [u8; 32]) -> Instruction {
         let id = self.config().pool_count;
         ix(
-            instruction::OpenNextPool { tier },
+            instruction::OpenNextPool { tier, seed_commitment },
             accounts::OpenNextPool {
                 caller: *caller,
                 config: config_pda(),
@@ -519,6 +536,161 @@ impl Env {
 
     pub fn authority_kp(&self) -> Keypair {
         clone_kp(&self.authority)
+    }
+
+    pub fn record_attestation(
+        &mut self,
+        id: u32,
+        who: &Keypair,
+        driver: &Pubkey,
+        telemetry_root: [u8; 32],
+        verified_km: u32,
+        status: u8,
+    ) -> Res {
+        let c = clone_kp(&self.cranker);
+        let i = ix(
+            instruction::RecordAttestation {
+                pool_id: id,
+                driver: *driver,
+                telemetry_root,
+                verified_km,
+                status,
+            },
+            accounts::RecordAttestation {
+                authority: who.pubkey(),
+                config: config_pda(),
+                pool: pool_pda(id),
+                driver_account: *driver,
+                attestation: attestation_pda(id, driver),
+                system_program: system_program::ID,
+            },
+        );
+        self.send(&[i], &c, &[who])
+    }
+
+    pub fn record_verified_attestation(&mut self, id: u32, who: &Keypair, driver: &Pubkey, km: u32) -> Res {
+        self.record_attestation(
+            id,
+            who,
+            driver,
+            [1u8; 32],
+            km,
+            freightchain_pools::constants::ATTESTATION_STATUS_VERIFIED,
+        )
+    }
+
+    pub fn record_yield(
+        &mut self,
+        id: u32,
+        who: &Keypair,
+        staked_lamports: u64,
+        yield_earned: u64,
+    ) -> Res {
+        let c = clone_kp(&self.cranker);
+        let i = ix(
+            instruction::RecordYield {
+                pool_id: id,
+                staked_lamports,
+                yield_earned,
+            },
+            accounts::RecordYield {
+                authority: who.pubkey(),
+                config: config_pda(),
+                pool: pool_pda(id),
+                vault: vault_pda(id),
+                system_program: system_program::ID,
+            },
+        );
+        self.send(&[i], &c, &[who])
+    }
+
+    pub fn create_pledge(
+        &mut self,
+        pool_id: u32,
+        ride_id: [u8; 32],
+        driver: &Pubkey,
+        sponsor: &Keypair,
+        max_lamports: u64,
+        lamports_per_km: u64,
+        target_km: u32,
+    ) -> Res {
+        let i = ix(
+            instruction::CreatePledge {
+                ride_id,
+                driver: *driver,
+                max_lamports,
+                lamports_per_km,
+                target_km,
+            },
+            accounts::CreatePledge {
+                sponsor: sponsor.pubkey(),
+                driver: *driver,
+                config: config_pda(),
+                pool: pool_pda(pool_id),
+                pledge: pledge_pda(&ride_id, &sponsor.pubkey()),
+                system_program: system_program::ID,
+            },
+        );
+        self.send(&[i], sponsor, &[])
+    }
+
+    pub fn settle_pledge(
+        &mut self,
+        pool_id: u32,
+        ride_id: [u8; 32],
+        caller: &Keypair,
+        driver: &Pubkey,
+        sponsor: &Pubkey,
+    ) -> Res {
+        let i = ix(
+            instruction::SettlePledge { ride_id },
+            accounts::SettlePledge {
+                caller: caller.pubkey(),
+                driver: *driver,
+                sponsor: *sponsor,
+                pool: pool_pda(pool_id),
+                attestation: attestation_pda(pool_id, driver),
+                pledge: pledge_pda(&ride_id, sponsor),
+                system_program: system_program::ID,
+            },
+        );
+        self.send(&[i], caller, &[])
+    }
+
+    pub fn attestation(&self, pool_id: u32, driver: &Pubkey) -> Option<Attestation> {
+        let a = self.svm.get_account(&attestation_pda(pool_id, driver))?;
+        if a.data.is_empty() {
+            return None;
+        }
+        Some(Attestation::try_deserialize(&mut &a.data[..]).unwrap())
+    }
+
+    pub fn pledge(&self, ride_id: &[u8; 32], sponsor: &Pubkey) -> Option<Pledge> {
+        let a = self.svm.get_account(&pledge_pda(ride_id, sponsor))?;
+        if a.data.is_empty() {
+            return None;
+        }
+        Some(Pledge::try_deserialize(&mut &a.data[..]).unwrap())
+    }
+
+    pub fn set_attestation(&mut self, pool_id: u32, driver: &Pubkey, verified_km: u32, status: u8) {
+        let pda = attestation_pda(pool_id, driver);
+        self.svm.airdrop(&pda, 10_000_000).unwrap();
+        let mut acc = self.svm.get_account(&pda).unwrap();
+        let mut data = Attestation::DISCRIMINATOR.to_vec();
+        let att = Attestation {
+            pool: pool_pda(pool_id),
+            driver: *driver,
+            telemetry_root: [1u8; 32],
+            verified_km,
+            status,
+            recorded_at: T0,
+            bump: Pubkey::find_program_address(&[b"attestation", pool_pda(pool_id).as_ref(), driver.as_ref()], &pid()).1,
+        };
+        anchor_lang::AnchorSerialize::serialize(&att, &mut data).unwrap();
+        acc.data = data;
+        acc.owner = pid();
+        self.svm.set_account(pda, acc).unwrap();
     }
 }
 
