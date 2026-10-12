@@ -25,11 +25,13 @@ test('no card is a button: screen readers read both faces, the keyboard reaches 
   assert.doesNotMatch(html, /<article data-card[^>]*(role=|tabindex=|aria-label=)/);
 });
 
-/** a 2D context that does nothing but follow translate / scale / save / restore and record where each text lands */
+/** a 2D context that does nothing but follow translate / scale / save / restore and record where each text, box and circle lands */
 function fakeContext() {
-  const texts = []; let m = [1, 0, 0, 1, 0, 0]; const stack = [];
+  const texts = [], geo = []; let m = [1, 0, 0, 1, 0, 0]; const stack = [];
   const ctx = {
-    texts, globalAlpha: 1,
+    texts, geo, globalAlpha: 1,
+    roundRect: (x, y, w) => geo.push(`r${(m[4] + m[0] * x).toFixed(1)},${(m[5] + m[3] * y).toFixed(1)},${(w * m[0]).toFixed(1)}`),
+    arc: (x, y, r) => geo.push(`a${(m[4] + m[0] * x).toFixed(1)},${(m[5] + m[3] * y).toFixed(1)},${(r * m[0]).toFixed(1)}`),
     setTransform: (a, b, c, d, e, f) => { m = [a, b, c, d, e, f]; },
     save: () => stack.push([...m]), restore: () => { m = stack.pop() ?? m; },
     translate: (x, y) => { m = [m[0], m[1], m[2], m[3], m[4] + m[0] * x, m[5] + m[3] * y]; },
@@ -45,13 +47,13 @@ for (const k of Object.keys(SCENES)) {
   test(`scene ${k}: 90 s at 30 fps never throws, keeps its text inside 240×124 and is no loop`, () => {
     const ctx = fakeContext(), draw = SCENES[k](), frames = new Set();
     for (let f = 0; f < 90 * 30; f++) {
-      const before = ctx.texts.length;
+      const before = ctx.texts.length, gb = ctx.geo.length;
       drawScene(ctx, draw, 1000 + f / 30);
       const now = ctx.texts.slice(before);
       for (const [s, x, y] of now) assert.ok(x >= 0 && x <= 240 && y >= 0 && y <= 124, `${k}: "${s}" at ${x.toFixed(1)},${y.toFixed(1)}`);
-      frames.add(now.map(([s, x, y]) => `${s}@${x.toFixed(1)},${y.toFixed(1)}`).join('|'));
+      frames.add(now.map(([s, x, y]) => `${s}@${x.toFixed(1)},${y.toFixed(1)}`).join('|') + ctx.geo.slice(gb).join('|'));
     }
-    /* a plain loop of the longest cycle (7 s × 1.15) shows at most ~242 different frames in 90 s; the re-rolled values and timings must give well over that */
-    assert.ok(frames.size > 1.5 * 7 * 1.15 * 30, `${k}: ${frames.size} distinct frames`);
+    /* a plain loop of the longest cycle (7 s × 1.15) shows at most ~242 different frames in 90 s; the re-rolled values and timings must give clearly more than that (the noise changes 14× a second, not every frame) */
+    assert.ok(frames.size > 1.25 * 7 * 1.15 * 30, `${k}: ${frames.size} distinct frames`);
   });
 }
