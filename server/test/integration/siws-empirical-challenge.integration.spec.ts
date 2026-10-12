@@ -283,7 +283,7 @@ describe('Empirical SIWS Challenge Suite (PostgreSQL)', () => {
       expect(flowResults.every((r) => r.status === 200)).toBe(true);
       const returnedWallets = flowResults.map((r) => r.body.wallet);
       expect(new Set(returnedWallets).size).toBe(PARALLEL);
-      expect(await prisma.signIn.count()).toBe(PARALLEL);
+      expect(await prisma.signIn.count({ where: { wallet: { in: wallets.map((w) => w.address) } } })).toBe(PARALLEL);
     });
   });
 

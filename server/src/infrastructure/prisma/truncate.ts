@@ -26,7 +26,19 @@ export async function connectedDatabase(prisma: Pick<PrismaService, '$queryRaw'>
 export async function truncateAllTables(prisma: Db, options: TruncateOptions = {}): Promise<void> {
   const name = await connectedDatabase(prisma);
   if (!options.force && !name.endsWith('_test')) throw new Error(`refusing to truncate "${name}": only databases named *_test are wiped automatically (db:reset passes force)`);
-  await prisma.$executeRawUnsafe(
-    'TRUNCATE "admin"."AdminAction", "player"."SignIn", "telemetry"."RideBatch", "verdict"."RideVerdict", "achievement"."AchievementMint", "achievement"."AchievementUnlock", "economy"."Payment", "economy"."Pledge", "ride"."Ride", "economy"."Round", "player"."AuthChallenge", "player"."Player", "player"."TicketGrant", "economy"."PromoCode", "player"."CosmeticUnlock", "player"."CosmeticEquip", "economy"."ChainCursor", "economy"."ChainEvent", "live"."RideEvent", "live"."RideMute", "live"."DonationOrder", "stats"."GlobalStats", "stats"."PlayerStats", "stats"."DailyStats", "player"."GameSetting", "ride"."DailySeed" RESTART IDENTITY CASCADE',
-  );
+  const stmt =
+    'TRUNCATE "admin"."AdminAction", "player"."SignIn", "telemetry"."RideBatch", "verdict"."RideVerdict", "achievement"."AchievementMint", "achievement"."AchievementUnlock", "economy"."Payment", "economy"."Pledge", "ride"."Ride", "economy"."Round", "economy"."Pool", "economy"."PoolPayout", "economy"."TicketOrder", "economy"."PromoCode", "economy"."PromoRedemption", "player"."AuthChallenge", "player"."Player", "player"."RideTicket", "player"."TicketGrant", "player"."CosmeticUnlock", "player"."CosmeticEquip", "economy"."ChainCursor", "economy"."ChainEvent", "live"."RideEvent", "live"."RideMute", "live"."DonationOrder", "stats"."GlobalStats", "stats"."PlayerStats", "stats"."DailyStats", "player"."GameSetting", "ride"."DailySeed" RESTART IDENTITY CASCADE';
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      await prisma.$executeRawUnsafe(stmt);
+      return;
+    } catch (err: unknown) {
+      const code = typeof err === 'object' && err !== null && 'code' in err ? (err as { code: string }).code : '';
+      if (attempt < 4 && (code === '40P01' || String(err).includes('deadlock'))) {
+        await new Promise((resolve) => setTimeout(resolve, 50 * (attempt + 1)));
+        continue;
+      }
+      throw err;
+    }
+  }
 }
