@@ -66,6 +66,7 @@ admin(['buy', '-k', g1, '--pool', String(Y)]);
 const now = async () => Number((await conn.getAccountInfo(new PublicKey('SysvarC1ock11111111111111111111111111111111'))).data.readBigInt64LE(32));
 const play = Number(codec.decodeAccount('Pool', (await conn.getAccountInfo(codec.poolPda(Y))).data).playDeadline.getTime() / 1000);
 while ((await now()) < play + 1) await sleep(1000);
+admin(['record-attestation', '-k', `${KEYS}/admin.json`, '--pool', String(Y), '--driver', pub('grace-buyer'), '--km', '3']);   // v3: no prize without the winner's VERIFIED attestation
 admin(['pay-prize', '-k', `${KEYS}/admin.json`, '--pool', String(Y), '--to', pub('grace-buyer'), '--lamports', '10000000']);
 
 // dump: Config, both pools, their vaults, the three tickets; edit only the deadlines (16 days back), verify by decoding

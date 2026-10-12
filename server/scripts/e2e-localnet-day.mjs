@@ -14,6 +14,9 @@
 //      every ride (signed); the job says `held` and pays nothing; release → the job pays the verified ranks with the payout key and closes the pool –
 //      every lamport asserted; the standings are final with each rank paid + its signature; a second pass pays nothing more
 //   6. the next slot's pool missed its goal: the crank fails it, refunds the rider (price + Ticket rent) and closes it – by itself
+//   v3: the pool's road seed is committed on chain from SlotHashes (recomputed here); a sponsor PLEDGES per km (POST /api/pledges → the wallet signs AND sends
+//   create_pledge → /confirm) to R1 (verified), R7 (rejected) and R8 (never finishes); the payout pass attests every pledged driver before close_pool, the
+//   pledge job (pool:pledges) settles R1 (earned by verified km) and R7 (flagged: all back) and refunds R8's (no attestation) – every lamport asserted
 // env: BASE, RPC, KEYS, COVERAGE, DAY (phase 1's day.json), CHROME_PORT, DATABASE_URL + PAYOUT_SECRET (the CLI passes = the day server's database and key)
 import { createHash } from 'node:crypto';
 import nacl from 'tweetnacl'; import bs58 from 'bs58'; import { readFileSync, writeFileSync } from 'node:fs'; import { execFileSync } from 'node:child_process';
@@ -31,7 +34,7 @@ if (!BASE || !RPC || !KEYS || !DAY) { console.error('run it through .claude/skil
 const D = JSON.parse(readFileSync(DAY, 'utf8'));   // { saleSecs, playSecs, reviewSecs, minTickets, maxPerWallet, price, split }
 const PRICE = D.price, [PRIZE_BPS, SEED_BPS] = D.split;
 const CDP = +(process.env.CHROME_PORT || 9411);
-const MIN_LEFT = +(process.env.DAY_MIN_LEFT || 75);   // seconds of sale the funded pool needs (buys + rides); a later pool is taken when the first slot is shorter
+const MIN_LEFT = +(process.env.DAY_MIN_LEFT || 100);   // seconds of sale the funded pool needs (buys + rides); a later pool is taken when the first slot is shorter
 const cov = coverage(process.env.COVERAGE || `${KEYS}/../coverage.json`);
 const T0 = Date.now(), fails = [];
 const check = (n, ok, x = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'} [${((Date.now() - T0) / 1000).toFixed(0)} s] ${n}${x ? ' – ' + x : ''}`); if (!ok) fails.push(n); return ok; };
@@ -51,7 +54,7 @@ const config = () => account('Config', codec.configPda());
 const series = () => account('Series', codec.seriesPda(1));
 const secs = d => d.getTime() / 1000;   // the codec turns every i64 into a Date
 const ticketRent = await conn.getMinimumBalanceForRentExemption(8 + 79);
-const POOL_RENT = await conn.getMinimumBalanceForRentExemption(8 + 192);
+const rentOf = async a => conn.getMinimumBalanceForRentExemption((await conn.getAccountInfo(new PublicKey(a), 'confirmed')).data.length);   // v3 accounts grew: read the size
 const RENT0 = await conn.getMinimumBalanceForRentExemption(0);
 const admintool = args => JSON.parse(execFileSync('node', ['scripts/pool-admin.mjs', ...args, '--url', RPC], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim().split('\n').pop());
 const cli = (...args) => JSON.parse(execFileSync('node', ['dist/cli/index.js', ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }));
@@ -91,7 +94,10 @@ async function player(name) {
   const kp = Keypair.generate(), wallet = kp.publicKey.toBase58(), ip = `198.51.100.${nextIp++}`;
   await conn.confirmTransaction(await conn.requestAirdrop(kp.publicKey, 3e9), 'confirmed');
   const keyfile = `${KEYS}/day-${name}.json`; writeFileSync(keyfile, JSON.stringify([...kp.secretKey]));
-  return { name, kp, wallet, keyfile, ip, cookie: await signIn(kp, ip) };
+  const cookie = await signIn(kp, ip);
+  const offer = await api('profile/agreements', { body: { age18: true, loss: true }, cookie, ip, method: 'PUT' });   // paid play (tickets, pledges) needs the 18+ and loss offer
+  if (!offer.ok) throw new Error(`agreements failed: ${offer.status}`);
+  return { name, kp, wallet, keyfile, ip, cookie };
 }
 const signedB64 = (b64, kp) => { const tx = Transaction.from(Buffer.from(b64, 'base64')); tx.partialSign(kp); return tx; };
 const sendSigned = async tx => { const sig = await conn.sendRawTransaction(tx.serialize()); await conn.confirmTransaction(sig, 'confirmed'); return sig; };
@@ -106,15 +112,34 @@ async function buySelf(p, poolId, qty = 1) {
   return { order: o, sig, paid: !!(await until(async () => (await api(`tickets/orders/${o.j.id}/confirm`, { body: { signature: sig }, cookie: p.cookie, ip: p.ip })).j.status === 'paid')) };
 }
 
+// ── a PLEDGE per km (program v3) through the server: POST /api/pledges → the sponsor's wallet signs AND sends create_pledge → /confirm reads its events.
+//    One at a time (the sponsor's balance is measured around each).
+let pledgeChain = Promise.resolve();
+const PER_KM = 1_000_000, TARGET_KM = 2;   // a 2 000 000-lamport cap
+function pledgeTo(S, rideId) {
+  const run = async () => {
+    const b0 = await bal(S.wallet);
+    const c = await api('pledges', { body: { rideId, lamportsPerKm: String(PER_KM), targetKm: TARGET_KM }, cookie: S.cookie, ip: S.ip });
+    if (!c.ok) return { error: `${c.status} ${JSON.stringify(c.j).slice(0, 200)}` };
+    const sig = await sendSigned(signedB64(c.j.transaction.transaction, S.kp));
+    const done = await until(async () => { const r = await api(`pledges/${c.j.pledge.id}/confirm`, { body: { signature: sig }, cookie: S.cookie, ip: S.ip }); return r.j.status === 'active' ? r.j : null; }, 20000, 1000);
+    const pda = c.j.pledge.pdaAddress;
+    return { id: c.j.pledge.id, rideId, pda, sig, rent: await rentOf(pda), fee: (await txInfo(sig)).fee, max: PER_KM * TARGET_KM, active: !!done, spent: b0 - (await bal(S.wallet)), built: c.j };
+  };
+  return (pledgeChain = pledgeChain.then(run, run));
+}
+
 // ── a FINISHED RIDE over the player API (the e2e-localnet-payout.mjs / e2e-verified-play.mjs recipe): hash-chained 10 Hz batches that take the planned holes' damage
 const sha256 = text => createHash('sha256').update(text, 'utf8').digest('hex');
 const r = (v, d) => Math.round(v * 10 ** d) / 10 ** d;
-async function apiRide(p, { seconds = 20, speed = 15, mutate = () => null, hashOf = (_b, text) => sha256(text) } = {}) {
+// drives past the finish line (completeDist, 1 050 m at DEMO_SCALE=48) by `extra` m – program v3 attests whole verified km; `onStart(rideId)` runs once it is on the road
+async function apiRide(p, { seconds = 20, speed = 15, extra = 60, onStart = async () => {}, mutate = () => null, hashOf = (_b, text) => sha256(text) } = {}) {
   const o = { cookie: p.cookie, ip: p.ip };
   const made = await api('rides', { body: { tier: '1h' }, ...o });
   if (!made.ok) return { error: `${made.status} ${JSON.stringify(made.j).slice(0, 160)}` };
   const ride = made.j;
   await api(`rides/${ride.id}/start`, { body: {}, ...o });
+  await onStart(ride.id);
   const d = { id: ride.id, t0: Date.now(), t: 0, s: 0, seq: 0, prevHash: ride.id, samples: [], inputs: [], bt0: 0, prompts: [], road: honestRoad(BASE, ride.id) };
   const row = (t, s, v) => [r(t, 2), r(s, 1), 2.4, 0, r(v, 2), Math.round(900 + v * 50), 6, 100, 0.6, 0, 0, 0, 12, 1 | 2 | 8];
   const cut = async () => {
@@ -144,7 +169,7 @@ async function apiRide(p, { seconds = 20, speed = 15, mutate = () => null, hashO
     }
     if (d.t - d.bt0 >= 15) await cut();
     if (now - lastBeat >= 5_000) { lastBeat = now; await heartbeat(); }
-    if (d.t >= seconds) break;
+    if (d.t >= seconds && d.s >= Math.max(ride.completeDist ?? 0, 1000) + extra) break;
   }
   await cut(); await heartbeat();
   const end = await api(`rides/${d.id}/end`, { body: { outcome: 'shift', s: d.s, t: d.t, hull: 100 }, ...o });
@@ -204,6 +229,10 @@ async function checkOpened(id, label) {
   const open = await txInfo((await sigsOf(codec.poolPda(id).toBase58()))[0]);
   const ev = open.events.find(e => e.name === 'PoolCreated')?.fields;
   check(`${label}: opened by the CRANK's own open_next_pool (fee payer = the crank key), PoolCreated.from_series = true`, open.ixs.join() === 'open_next_pool' && open.feePayer === addr('crank') && ev?.fromSeries === true && ev.poolId === id, JSON.stringify({ ixs: open.ixs, payer: open.feePayer, ev: ev && { fromSeries: ev.fromSeries, poolId: ev.poolId } }));
+  const POOL_RENT = await rentOf(codec.poolPda(id).toBase58());
+  const want = createHash('sha256').update(Buffer.concat([Buffer.from(Uint32Array.of(id).buffer), Buffer.from(p.seedSlotHash, 'base64'), Buffer.from(BigUint64Array.of(BigInt(p.seedSlot)).buffer)])).digest('base64');
+  check(`${label}: the road seed was committed BY THE PROGRAM from SlotHashes – SHA-256(pool id ‖ slot hash ‖ slot) recomputes, PoolCreated carries the same`, p.seedCommitment === want && p.seedSlot > 0
+    && ev?.seedCommitment === want && ev.seedSlot === p.seedSlot && ev.seedSlotHash === p.seedSlotHash && !/^A+=*$/.test(want), JSON.stringify({ commitment: p.seedCommitment, want, slot: p.seedSlot }));
   check(`${label}: the crank paid the Pool rent + the vault rent minimum + its fee, exactly; it is the pool's creator record`, open.change(addr('crank')) === -(POOL_RENT + RENT0 + open.fee) && p.authority === addr('crank') && open.change(codec.vaultPda(id).toBase58()) === RENT0, `${open.change(addr('crank'))} vs −${POOL_RENT + RENT0 + open.fee}`);
   check(`${label}: rules + deadlines from the series (sale ${D.saleSecs} s on the grid, play +${D.playSecs} s, review +${D.reviewSecs} s)`, p.status === 0 && p.tier === 1 && p.priceLamports === PRICE && p.minTickets === D.minTickets && p.maxPerWallet === D.maxPerWallet && p.prizeBps === PRIZE_BPS
     && secs(p.prepDeadline) === secs(sr.nextOpenAt) && secs(p.playDeadline) === secs(p.prepDeadline) + D.playSecs && secs(p.payoutAt) === secs(p.playDeadline) + D.reviewSecs && secs(p.createdAt) >= secs(p.prepDeadline) - D.saleSecs,
@@ -243,6 +272,7 @@ try {
   const empty = cli('pool:payout');
   check('pool:payout with the payout key named: on, nothing to pay yet', empty.enabled === true && empty.refused === null && empty.pools.length === 0, JSON.stringify(empty));
   const R = []; for (let i = 1; i <= 9; i++) R.push(await player(`r${i}`));
+  const S = await player('sponsor');
   const [R1, R2, R3, R4, R5, R6, R7, R8, R9] = R;
   const h1 = await browser(R1, CDP);
 
@@ -277,10 +307,26 @@ try {
   let pc = await poolAcc(P);
   check(`chain: 8 tickets, pool ${P} ACTIVE (min ${D.minTickets}), still inside its sale window`, pc.ticketsSold === 8 && pc.status === 1 && (await chainNow()) < secs(pc.prepDeadline), JSON.stringify({ sold: pc.ticketsSold, status: pc.status }));
   check('server mirror: active, 8 sold', !!(await until(async () => { const s = await serverPool(P); return s.status === 'active' && s.sold === 8; }, 20000)));
-  console.log('     … 7 rides over the player API (≈ 25 s): R1–R5 honest, R6 an unhashed batch, R7 a teleport; R8 never rides');
-  const plan = { r1: { speed: 11 }, r2: { speed: 13 }, r3: { speed: 15 }, r4: { speed: 17 }, r5: { speed: 19 }, r6: { speed: 21, hashOf: unhashed }, r7: { speed: 9, mutate: teleport } };
+  console.log('     … 7 rides over the player API, each past the 1 050 m line (≈ 55 s): R1–R5 honest, R6 an unhashed batch, R7 a teleport; R8 takes its ride but never drives it; the sponsor pledges to R1, R7, R8');
+  const pledges = {};
+  const plan = { r1: { speed: 20, extra: 50, onStart: async id => { pledges.r1 = await pledgeTo(S, id); } }, r2: { speed: 21, extra: 100 }, r3: { speed: 22, extra: 150 }, r4: { speed: 23, extra: 200 },
+    r5: { speed: 24, extra: 250 }, r6: { speed: 25, extra: 300, hashOf: unhashed }, r7: { speed: 20, mutate: teleport, onStart: async id => { pledges.r7 = await pledgeTo(S, id); } } };
   const rides = {};
+  const r8ride = await api('rides', { body: { tier: '1h' }, cookie: R8.cookie, ip: R8.ip });   // its ticket spent, the shift never driven
+  const own = await api('pledges', { body: { rideId: r8ride.j.id, lamportsPerKm: String(PER_KM), targetKm: TARGET_KM }, cookie: R8.cookie, ip: R8.ip });
+  check('POST /api/pledges by the driver to its own ride: 400', own.status === 400, `${own.status} ${JSON.stringify(own.j).slice(0, 120)}`);
+  pledges.r8 = await pledgeTo(S, r8ride.j.id);
   await Promise.all([R1, R2, R3, R4, R5, R6, R7].map(async p => { rides[p.name] = await apiRide(p, plan[p.name]); }));
+  for (const [k, x] of Object.entries(pledges)) {
+    check(`pledge to ${k}: active after /confirm, the sponsor paid exactly cap + the Pledge account's rent + its fee, the PDA holds cap + rent`, !x.error && x.active && x.spent === x.max + x.rent + x.fee && (await bal(x.pda)) === x.max + x.rent,
+      JSON.stringify(x.error ?? { spent: x.spent, max: x.max, rent: x.rent, fee: x.fee, pda: await bal(x.pda) }));
+    const created = (await txInfo(x.sig)).events.find(e => e.name === 'PledgeCreated')?.fields;
+    check(`…its PledgeCreated: sponsor, driver, ${PER_KM} per km up to ${TARGET_KM} km`, created?.sponsor === S.wallet && created.maxLamports === x.max && created.lamportsPerKm === PER_KM && created.targetKm === TARGET_KM, JSON.stringify(created));
+  }
+  const listed = (await api(`rides/${pledges.r1.rideId}/pledges`)).j;
+  check('GET /api/rides/:id/pledges (public): R1\'s pledge, active, with its create signature', Array.isArray(listed) && listed.length === 1 && listed[0].status === 'active' && listed[0].createSignature === pledges.r1.sig, JSON.stringify(listed).slice(0, 200));
+  const pk = k => ['--pool', String(P), '--ride', pledges[k].rideId, '--sponsor', S.wallet, '--driver', R.find(p => p.name === k).wallet];
+  refuse('refund_pledge while the pool still runs', ['refund-pledge', ...pk('r8'), '-k', Z.keyfile], 'PledgeNotRefundable');
   const vOf = p => rides[p.name]?.end?.verdict?.status ?? null;
   check('rides: R1–R5 COMPLETED + VERIFIED, R6 FLAGGED (unhashed-batch), R7 REJECTED (teleport)', [R1, R2, R3, R4, R5].every(p => rides[p.name].end?.status === 'completed' && vOf(p) === 'verified') && vOf(R6) === 'flagged' && vOf(R7) === 'rejected',
     JSON.stringify(Object.fromEntries(Object.entries(rides).map(([k, x]) => [k, x.error ?? [x.end?.status, x.end?.verdict?.status, (x.end?.verdict?.reasons ?? []).map(z => z.code).join('+')]]))));
@@ -305,6 +351,9 @@ try {
   await untilChain(secs(pc.playDeadline), `pool ${P}'s play deadline`);
   const pend = cli('pool:payout', '--pool', String(P));
   check('pool:payout inside the review window: pending, nothing paid', pend.pools[0]?.state === 'pending' && pend.pools[0].paid.length === 0 && !pend.pools[0].closed, JSON.stringify(pend.pools));
+  refuse('create_pledge after the play deadline', ['create-pledge', '--pool', String(P), '--ride', rides.r2.id, '--driver', R2.wallet, '--per-km', String(PER_KM), '--km', '1', '-k', Z.keyfile], 'TooLate');
+  // v3: the account check runs before the handler – the payout key attests R5 (allowed while the pool is ACTIVE), so the refusal is about the review window
+  admintool(['record-attestation', '--pool', String(P), '--driver', R5.wallet, '--km', '1', '-k', `${KEYS}/payout.json`]);
   refuse('the payout key\'s pay_prize inside the review window', ['pay-prize', '--pool', String(P), '--to', R5.wallet, '--lamports', '1000000', '-k', `${KEYS}/payout.json`], 'TooEarly');
   refuse('the payout key\'s close_pool inside the review window', ['close-pool', '--pool', String(P), '-k', `${KEYS}/payout.json`], 'TooEarly');
   let st = await standings(P);
@@ -312,7 +361,7 @@ try {
 
   // ── 6. payout_at: the job runs the pool-level marks and waits for every ride to be decided
   await untilChain(secs(pc.payoutAt), `pool ${P}'s payout time`);
-  refuse('pay_prize by a stranger after payout_at', ['pay-prize', '--pool', String(P), '--to', Z.wallet, '--lamports', '1000000', '-k', Z.keyfile], 'Unauthorized');
+  refuse('pay_prize by a stranger after payout_at', ['pay-prize', '--pool', String(P), '--to', R5.wallet, '--lamports', '1000000', '-k', Z.keyfile], 'Unauthorized');
   const wait = cli('pool:payout', '--pool', String(P));
   check('pool:payout at payout_at: waiting_review (a ride nobody decided blocks the pool), nothing paid', wait.pools[0]?.state === 'waiting_review' && wait.pools[0].paid.length === 0, JSON.stringify(wait.pools));
   const verdictOf = async p => (await api(`rides/${rides[p.name].id}`, { cookie: p.cookie, ip: p.ip })).j.verdict;
@@ -349,9 +398,11 @@ try {
   pc = await poolAcc(P);
   const bound = prizeBound({ priceLamports: PRICE, ticketsSold: 8, sponsored: 0, prizeBps: PRIZE_BPS, seedBps: SEED_BPS });
   const payouts = poolPayouts(bound, want.map(p => p.wallet));
+  const payoutSigs0 = new Set(await sigsOf(PAYOUT));
   before = await bals(everyone);
   const pass = cli('pool:payout', '--pool', String(P));
   after = await bals(everyone);
+  const passTx = await Promise.all((await sigsOf(PAYOUT)).filter(x => !payoutSigs0.has(x)).map(txInfo));
   const res = pass.pools[0] ?? {}, d = delta(before, after);
   check('pool:payout after the release: paid – 6 prizes + close_pool in one pass', res.state === 'paid' && res.paid?.length === 6 && !!res.closed, JSON.stringify(res).slice(0, 400));
   console.log(`     ranking: ${want.map((p, i) => `#${i + 1} ${p.name} ${Math.round(rides[p.name].end.distance)} m → ${payouts[i].lamports}`).join(' · ')}`);
@@ -367,8 +418,15 @@ try {
   check('prizes on chain = the plan, ≤ the prize share', pc.prizesPaid === paid && paid <= bound && legs.unclaimed === bound - paid, `${pc.prizesPaid} / ${paid} / ${bound}`);
   check('close_pool by the payout key: fee / platform / seed legs = closeSplit, the creator (the crank) + the vault rent minimum', closeTx.feePayer === PAYOUT && closeTx.ixs.join() === 'close_pool' && closeTx.change(addr('fee')) === legs.fee && closeTx.change(addr('plat')) === legs.platformFee
     && closeTx.change(addr('seed')) === legs.seed && closeTx.change(CRANK) === RENT0 && legs.fee > 0 && legs.seed > 0, JSON.stringify({ fee: closeTx.change(addr('fee')), plat: closeTx.change(addr('plat')), seed: closeTx.change(addr('seed')), crank: closeTx.change(CRANK), legs }));
-  const payoutFees = [...prizeTx, closeTx].reduce((a, t) => a + t.fee, 0);
-  check('the payout key paid only the fees of its 7 transactions', d.payout === -payoutFees, `${d.payout} vs −${payoutFees}`);
+  const attTx = passTx.filter(t => t.ixs.join() === 'record_attestation'), attRent = await rentOf(codec.attestationPda(P, R1.wallet).toBase58());
+  const attOf = async p => account('Attestation', codec.attestationPda(P, p.wallet));
+  const [a1, a7, a8] = [await attOf(R1), await attOf(R7), await attOf(R8)];
+  check(`v3: before close_pool the payout key attested the verified winners (R1–R4, R6 – R5 was already) and the pledged R7 (FLAGGED), not R8 (no finished ride): ${attTx.length} record_attestation`,
+    attTx.length === 6 && attTx.every(t => t.feePayer === PAYOUT && t.events.some(e => e.name === 'AttestationRecorded')) && passTx.indexOf(attTx.at(-1)) < passTx.findIndex(t => t.ixs.join() === 'close_pool'), passTx.map(t => t.ixs.join()).join(', '));
+  check('…R1 VERIFIED with its whole verified km and the recording\'s Merkle root; R7 FLAGGED (0 km); R8 none', a1?.status === 1 && a1.verifiedKm === Math.floor(rides.r1.end.distance / 1000) && a1.verifiedKm >= 1 && !/^A+=*$/.test(a1.telemetryRoot)
+    && a7?.status === 2 && a7.verifiedKm === 0 && a8 === null, JSON.stringify({ a1, a7, a8, d1: rides.r1.end.distance }));
+  const payoutFees = passTx.reduce((a, t) => a + t.fee, 0);
+  check(`the payout key paid only the fees of its ${passTx.length} transactions + the rent of the ${attTx.length} attestations`, d.payout === -(payoutFees + attTx.length * attRent) && passTx.length === 6 + 1 + attTx.length, `${d.payout} vs −${payoutFees + attTx.length * attRent}`);
   check(`vault ${P} = 0, settled on chain and on the server`, after.vault === 0 && pc.status === 3 && !!(await until(async () => (await serverPool(P)).status === 'settled', 20000)));
   check('conservation: 8 tickets = prizes + fee + platform + seed', 8 * PRICE === paid + legs.fee + legs.platformFee + legs.seed, `${8 * PRICE} vs ${paid + legs.fee + legs.platformFee + legs.seed}`);
   st = await standings(P);
@@ -377,6 +435,31 @@ try {
   const again = cli('pool:payout', '--pool', String(P)), all = cli('pool:payout');
   check('a second payout pass pays nothing more (the pool is settled)', again.pools[0]?.state === 'paid' && again.pools[0].paid.length === 0 && !again.pools[0].closed && all.pools.every(x => x.paid.length === 0), JSON.stringify({ again: again.pools, all: all.pools }));
   refuse('pay_prize on the settled pool (payout key)', ['pay-prize', '--pool', String(P), '--to', R5.wallet, '--lamports', '1000000', '-k', `${KEYS}/payout.json`], 'PoolNotActive');
+
+  // ── 7b. the pledge job: settles what is attested, refunds the rest – the payout key only pays the fees, the money goes from each Pledge account
+  refuse('refund_pledge of a driver with an attestation (it must be settled)', ['refund-pledge', ...pk('r1'), '-k', Z.keyfile], 'AttestationExists');
+  const sBefore = await bal(S.wallet), r1Before = await bal(R1.wallet), r7Before = await bal(R7.wallet);
+  const pj = cli('pool:pledges');
+  check('pool:pledges: 2 settled (R1, R7), 1 refunded (R8), no error', pj.sending === true && pj.settled === 2 && pj.refunded === 1 && pj.errors.length === 0, JSON.stringify(pj));
+  const last = async k => txInfo((await sigsOf(pledges[k].pda)).at(-1));
+  const [t1, t7, t8] = [await last('r1'), await last('r7'), await last('r8')];
+  const earned1 = Math.floor(pledges.r1.max * Math.min(a1.verifiedKm, TARGET_KM) / TARGET_KM);
+  const ev = (t, n) => t.events.find(e => e.name === n)?.fields;
+  check(`settle_pledge R1 (sent + paid by the payout key): R1 +${earned1} (rate × ${Math.min(a1.verifiedKm, TARGET_KM)} verified km), the sponsor + the rest + the account's rent`, t1.ixs.join() === 'settle_pledge' && t1.feePayer === PAYOUT
+    && t1.change(R1.wallet) === earned1 && t1.change(S.wallet) === pledges.r1.max - earned1 + pledges.r1.rent && t1.change(pledges.r1.pda) === -(pledges.r1.max + pledges.r1.rent)
+    && ev(t1, 'PledgeSettled')?.earnedLamports === earned1, JSON.stringify({ ixs: t1.ixs, r1: t1.change(R1.wallet), s: t1.change(S.wallet), ev: ev(t1, 'PledgeSettled') }));
+  check('settle_pledge R7 (FLAGGED): R7 nothing, the sponsor the whole cap + the rent', t7.ixs.join() === 'settle_pledge' && t7.change(R7.wallet) === 0 && t7.change(S.wallet) === pledges.r7.max + pledges.r7.rent && ev(t7, 'PledgeSettled')?.earnedLamports === 0,
+    JSON.stringify({ ixs: t7.ixs, s: t7.change(S.wallet), ev: ev(t7, 'PledgeSettled') }));
+  check('refund_pledge R8 (no attestation, the pool is over): the sponsor the whole cap + the rent', t8.ixs.join() === 'refund_pledge' && t8.feePayer === PAYOUT && t8.change(S.wallet) === pledges.r8.max + pledges.r8.rent && ev(t8, 'PledgeRefunded')?.refundedLamports === pledges.r8.max,
+    JSON.stringify({ ixs: t8.ixs, s: t8.change(S.wallet), ev: ev(t8, 'PledgeRefunded') }));
+  check('every Pledge account closed (0 lamports), R1 / R7 / sponsor deltas over the pass add up', (await Promise.all(Object.values(pledges).map(x => bal(x.pda)))).every(x => x === 0)
+    && (await bal(R1.wallet)) - r1Before === earned1 && (await bal(R7.wallet)) - r7Before === 0
+    && (await bal(S.wallet)) - sBefore === 3 * (pledges.r1.max) - earned1 + pledges.r1.rent + pledges.r7.rent + pledges.r8.rent);
+  const states = await Promise.all(['r1', 'r7', 'r8'].map(async k => (await api(`rides/${pledges[k].rideId}/pledges`)).j[0]));
+  check('the mirror: R1 settled (earned / back), R7 settled (all back), R8 refunded – each with its settle / refund signature', states[0]?.status === 'settled' && states[0].earnedLamports === String(earned1)
+    && states[1]?.status === 'settled' && states[1].earnedLamports === '0' && states[2]?.status === 'refunded' && states[2].refundedLamports === String(pledges.r8.max) && states.every(x => !!x?.signature), JSON.stringify(states).slice(0, 400));
+  check('a second pledge pass has nothing left to do', cli('pool:pledges').checked === 0);
+  refuse('settle_pledge of a pledge already settled (the account is gone)', ['settle-pledge', ...pk('r1'), '-k', Z.keyfile], 'AccountNotInitialized');
 
   // ── 8. the next slot's pool missed its goal: the crank fails it, refunds R9 and closes it – by itself
   await untilChain(secs(pool2.prepDeadline), `pool ${P2}'s sale end`);

@@ -64,16 +64,20 @@ describe('ProgramChainAdapter – builds what the program accepted', () => {
     expect(tx.signatures.map((s) => s.publicKey.toBase58())).toEqual([fx.keys.b]);
   });
 
-  it('a buy with a reference keeps the program instruction and adds the reference on a memo, read-only', async () => {
+  it('a buy with a reference: the reference rides on buy_ticket as a read-only remaining account; the memo carries only the order id, no accounts', async () => {
     const { adapter } = adapterWith();
     const reference = Keypair.generate().publicKey.toBase58();
     const built = await adapter.buildBuyTransaction({ payer: fx.keys.b, poolId: 0, qty: 1, orderId: ORDER_B, reference });
     const { tx, ixs } = programIxs(built.transaction);
-    expect(ixs[0]).toEqual(asCompiled(fixtureTx('buy_ticket self-paid').instructions, built.feePayer)[0]);
+    const plain = tx.instructions[2]!, want = fixtureTx('buy_ticket self-paid').instructions[0]!;
+    expect(plain.data.toString('base64')).toBe(Buffer.from(want.data, 'base64').toString('base64'));
+    expect(plain.keys.slice(0, -1).map((k) => k.pubkey.toBase58())).toEqual(want.accounts.map((a: { pubkey: string }) => a.pubkey));
+    expect(plain.keys.at(-1)).toMatchObject({ isSigner: false, isWritable: false });
+    expect(plain.keys.at(-1)?.pubkey.toBase58()).toBe(reference);
     expect(tx.instructions[3]?.programId.toBase58()).toBe('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
     expect(tx.instructions[3]?.data.toString()).toBe(ORDER_B);
-    expect(tx.instructions[3]?.keys).toEqual([expect.objectContaining({ isSigner: false, isWritable: false })]);
-    expect(tx.instructions[3]?.keys[0]?.pubkey.toBase58()).toBe(reference);
+    expect(tx.instructions[3]?.keys).toEqual([]);
+    void ixs;
   });
 
   it('a refund (+ fail_pool) reads the ticket\'s rent payer; refused when there is no ticket', async () => {

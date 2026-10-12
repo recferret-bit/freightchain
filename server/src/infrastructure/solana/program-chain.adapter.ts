@@ -11,7 +11,7 @@ import { ClockPort } from '../../application/ports/shared/clock.port.js';
 import { PoolChainPort, type BuiltTransaction, type ChainTxKind, type FeeQuote, type ProgramSignature, type SignatureStatus } from '../../application/ports/economy/pool-chain.port.js';
 import { EnvService } from '../config/env.service.js';
 import { FeeEstimator, estimateFeeLamports, type QnPriorityFees } from './fee-estimator.js';
-import { memoInstruction } from './chain-transaction.mapper.js';
+import { memoInstruction, withReference } from './chain-transaction.mapper.js';
 import { PoolProgramCodec, UnrepresentableValueError } from './pool-program.codec.js';
 import { SolanaRpc, sleep } from './solana-rpc.js';
 
@@ -124,8 +124,9 @@ export class ProgramChainAdapter extends PoolChainPort {
     const ix = c.instruction('buy_ticket', {
       buyer: i.payer, fee_payer: i.payer, config: c.configPda(), pool: c.poolPda(i.poolId), vault: c.vaultPda(i.poolId), ticket: c.ticketPda(i.poolId, i.payer),
     }, { pool_id: i.poolId, qty: i.qty, order_id: orderIdToBytes(i.orderId) });
-    // The reference sits on its own memo. buy_ticket's account list is fixed; Anchor rejects an extra account there.
-    const ixs = i.reference ? [ix, memoInstruction(i.orderId, [], i.reference)] : [ix];
+    // Solana Pay's reference rides on buy_ticket as a read-only remaining account (Anchor leaves extra accounts alone); a memo could not carry it – the memo
+    // program wants every account it is handed to sign. The order id stays readable in a plain memo.
+    const ixs = i.reference ? [withReference(ix, i.reference), memoInstruction(i.orderId, [])] : [ix];
     return this.build(ixs, i.payer, i.poolId, CU_LIMITS.buy);
   }
 

@@ -4,13 +4,16 @@ import type { ChainTransaction, ChainTransfer } from '../../domain/economy/chain
 
 export const MEMO_PROGRAM = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
 
-/** Memo instruction. `reference`, when set, is a read-only non-signer so getSignaturesForAddress can find the payment. The memo program ignores extra accounts. */
-export function memoInstruction(memo: string, signers: PublicKey[], reference?: string | null): TransactionInstruction {
-  const keys = [
-    ...signers.map((pubkey) => ({ pubkey, isSigner: true, isWritable: false })),
-    ...(reference ? [{ pubkey: new PublicKey(reference), isSigner: false, isWritable: false }] : []),
-  ];
-  return new TransactionInstruction({ keys, programId: MEMO_PROGRAM, data: Buffer.from(memo) });
+/** Memo instruction. Every account handed to the memo program must SIGN (it fails with "missing required signature" otherwise) – so no reference here. */
+export function memoInstruction(memo: string, signers: PublicKey[]): TransactionInstruction {
+  return new TransactionInstruction({ keys: signers.map((pubkey) => ({ pubkey, isSigner: true, isWritable: false })), programId: MEMO_PROGRAM, data: Buffer.from(memo) });
+}
+
+/** Solana Pay's reference: a read-only non-signer key appended to the PAYMENT instruction itself (the System transfer ignores extra accounts; for an Anchor
+    instruction it is a remaining account), so getSignaturesForAddress(reference) finds the payment. Returns the same instruction. */
+export function withReference(ix: TransactionInstruction, reference?: string | null): TransactionInstruction {
+  if (reference) ix.keys.push({ pubkey: new PublicKey(reference), isSigner: false, isWritable: false });
+  return ix;
 }
 
 /** Memo text. A reference account makes some RPCs leave the instruction unparsed (`data` is base58); the payment still has to match. */

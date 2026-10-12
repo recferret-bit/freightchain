@@ -170,7 +170,7 @@ if [ "$PHASE3" = 1 ]; then
   echo "  rpc $RPC"
   (cd "$SERVER" && node scripts/pool-admin.mjs initialize --url "$RPC" -k "$TMP/keys/upgrader.json" --admin "$(pub admin)" --platform-treasury "$(pub plat)" --platform-fee-bps 500 >/dev/null) || fail "initialize (phase 3)"
   DAY_ENV=(PAYOUT_SECRET="$(cat "$TMP/keys/payout.json")" PAYOUT_INTERVAL_MS=0 TRUST_PROXY=1)   # the server AND the scenario's CLI passes (pool:payout) – same database, same keys
-  start_server "$DB_DAY" "$TMP/server-day.log" "${DAY_ENV[@]}" CRANK_INTERVAL_MS="${DAY_CRANK_MS:-2000}"
+  start_server "$DB_DAY" "$TMP/server-day.log" "${DAY_ENV[@]}" CRANK_INTERVAL_MS="${DAY_CRANK_MS:-2000}" DEMO_SCALE=48   # the day's rides are all over the API: a 1 050 m line, so every winner has the whole km v3 attests
   echo "▸ scenario – the autonomous day: the crank opens the 1h pools on their slots, riders buy and ride, the review window, the payout key pays"
   (cd "$SERVER" && env "${DAY_ENV[@]}" DATABASE_URL="$URL_DAY" BASE="$BASE" RPC="$RPC" KEYS="$TMP/keys" COVERAGE="$COV" DAY="$TMP/accounts/day/day.json" CHROME_PORT="$(free_port)" node scripts/e2e-localnet-day.mjs) || { echo "--- server log (tail) ---"; tail -40 "$TMP/server-day.log"; exit 1; }
   (cd "$SERVER" && node scripts/localnet-coverage.mjs scan "$COV" "$RPC" "phase 3 (the autonomous day)") || fail "coverage scan of phase 3"
