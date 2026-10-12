@@ -1,0 +1,130 @@
+{
+ "name": "hero-a",
+ "look": "big",
+ "fps": 24,
+ "width": 1280,
+ "height": 720,
+ "maxSeconds": 15,
+ "gif": {
+  "maxMB": 20,
+  "width": 640,
+  "fps": 15
+ },
+ "scenes": [
+  {
+   "id": "a1",
+   "dur": 2.8,
+   "route": "brenner",
+   "time": "day",
+   "speed": [
+    5,
+    24
+   ],
+   "transition": {
+    "type": "flash",
+    "dur": 0.4
+   },
+   "push": 0.08
+  },
+  {
+   "id": "a2",
+   "dur": 2.4,
+   "route": "brenner",
+   "time": "day",
+   "speed": 25,
+   "transition": {
+    "type": "whip",
+    "dur": 0.3
+   },
+   "damage": true,
+   "sway": 0,
+   "seed": 11,
+   "events": [
+    {
+     "t": 0.05,
+     "do": "spawn",
+     "type": "truck",
+     "preset": "slow",
+     "zone": "ahead",
+     "dist": 20
+    }
+   ]
+  },
+  {
+   "id": "a3",
+   "dur": 2.8,
+   "route": "panamerican",
+   "time": "day",
+   "speed": 21,
+   "transition": {
+    "type": "glitch",
+    "dur": 0.4
+   },
+   "events": [
+    {
+     "t": 0.9,
+     "do": "spawn",
+     "type": "sedan",
+     "preset": "cruise",
+     "zone": "oncoming",
+     "dist": 110
+    }
+   ]
+  },
+  {
+   "id": "a4",
+   "dur": 2.4,
+   "route": "siberia",
+   "time": "day",
+   "speed": 18,
+   "transition": {
+    "type": "zoom",
+    "dur": 0.4
+   },
+   "cold": true,
+   "preroll": 12,
+   "push": 0.06
+  },
+  {
+   "id": "a5",
+   "dur": 2.2,
+   "route": "stuart",
+   "time": "day",
+   "speed": 22,
+   "transition": {
+    "type": "whip",
+    "dur": 0.3
+   },
+   "preroll": 14,
+   "events": [
+    {
+     "t": 0.35,
+     "do": "wipers",
+     "mode": 2
+    },
+    {
+     "t": 0.9,
+     "do": "washer",
+     "on": true
+    },
+    {
+     "t": 1.5,
+     "do": "washer",
+     "on": false
+    }
+   ]
+  },
+  {
+   "id": "a6",
+   "dur": 2.2,
+   "route": "route66",
+   "time": "dusk",
+   "speed": 16,
+   "transition": {
+    "type": "flash",
+    "dur": 0.4
+   }
+  }
+ ],
+ "loop": true
+}

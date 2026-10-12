@@ -36,6 +36,8 @@ window.__dir = (() => {
 #fx .scan{inset:0;background:repeating-linear-gradient(0deg,#0000 0 ${px(3)},#0000002e ${px(3)} ${px(4)});mix-blend-mode:multiply}
 #fx .cover{inset:0;opacity:0}
 #fx .bars div{position:absolute;left:0;right:0;mix-blend-mode:screen;opacity:0}
+/* the game's own SHIFT OVER stamp doubled the overlay's (a timer, too: it lingers into the next scene) */
+.fail-stamp{display:none!important}
 #fx .stamp{left:50%;top:44%;padding:${px(8)} ${px(26)};border:${px(7)} solid var(--red);color:var(--red);font-size:${px(88)};font-weight:700;letter-spacing:6px;background:#0009;white-space:nowrap;text-shadow:0 0 ${px(30)} #d22}
 #fx .card{inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:${px(20)};text-align:center;background:radial-gradient(ellipse at 50% 40%,#0b0a0966,#0b0a09ee 75%)}
 #fx .card .mk{color:var(--gear);font-size:${px(54)};line-height:1;text-shadow:0 0 ${px(30)} #ffb03a88} #fx .card .nm{font-size:${px(22)};letter-spacing:7px;color:var(--amber);font-weight:700}
