@@ -1,5 +1,6 @@
 :root{--bg:#0e0b08;--panel:#17130f;--line:#ffcf5a33;--amber:#ffcf5a;--text:#efe6cf;--dim:#b9ad8d;--bad:#ff6b5a;--good:#7be07b;--blue:#6aa8ff;color-scheme:dark}
 *{box-sizing:border-box}
+html{scrollbar-gutter:stable}   /* a short tab has no scrollbar, a long one has: without the gutter the whole page shifts sideways between tabs */
 body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 50% -10%,#2a1f10,var(--bg) 60%) fixed;color:var(--text);font:15px/1.45 ui-monospace,Menlo,Consolas,monospace}
 a{color:var(--amber)}
 .dim{color:var(--dim);font-size:13px}.bad{color:var(--bad)}.good{color:var(--good)}.warn{color:var(--amber)}
@@ -50,7 +51,7 @@ h2{margin:22px 0 10px;font-size:13px;letter-spacing:2px;color:var(--amber);font-
 .tier .more{max-height:0;overflow:hidden;opacity:0;transition:max-height .2s,opacity .2s}
 .tier:hover .more,.tier:focus-within .more{max-height:12em;opacity:1}
 @media (hover:none){.tier .more{max-height:none;opacity:1}}
-.promo-top{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.promo-top{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-right:auto}   /* right next to the brand, whatever the chips say (space-between moved it with their widths) */
 .promo-top input{width:150px;font:inherit;font-size:12px;text-transform:uppercase;letter-spacing:1px;background:#0008;color:var(--text);border:1px solid var(--line);border-radius:999px;padding:4px 12px}
 .promo-top input:focus-visible{outline:2px solid var(--amber)}
 .promo-top button{padding:4px 12px;font-size:12px}
