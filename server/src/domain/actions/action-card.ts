@@ -12,8 +12,8 @@ const NO_SALE = ' No paid pool is on sale right now.';
 
 export interface ActionRule { pathPattern: string; apiPath: string }
 export interface ActionsJson { rules: ActionRule[] }
-/** `href` is always an action API path: a blink client POSTs `{ account, type }` to it, also for an external link (it answers `ActionLink`), never to a web page. */
-export interface LinkedAction { type: 'transaction' | 'external-link'; label: string; href: string }
+/** `href` is always an action API path: a blink client POSTs `{ account, type }` to it, also for an external link (it answers `ActionLink`), never to a web page. `post` answers `ActionPost` and signs nothing. */
+export interface LinkedAction { type: 'transaction' | 'external-link' | 'post'; label: string; href: string }
 export interface ActionCard { type: 'action'; icon: string; title: string; description: string; label: string; links: { actions: LinkedAction[] } }
 export interface ActionTx {
   type: 'transaction';
@@ -22,6 +22,11 @@ export interface ActionTx {
   links: { next: { type: 'inline'; action: { type: 'completed'; icon: string; title: string; description: string; label: string } } };
 }
 export interface ActionLink { type: 'external-link'; externalLink: string; message: string }
+export interface ActionPost {
+  type: 'post';
+  message: string;
+  links: { next: { type: 'inline'; action: { type: 'completed'; icon: string; title: string; description: string; label: string } } };
+}
 export interface SellableTier { tier: PaidTierId; poolId: number; lamports: number }
 export interface OfferPool {
   id: number;
@@ -35,6 +40,7 @@ export interface OfferPool {
 export const ACTIONS_JSON: ActionsJson = {
   rules: [
     { pathPattern: '/', apiPath: '/api/actions/shift' },
+    { pathPattern: '/hello', apiPath: '/api/actions/hello' },
     { pathPattern: '/r/**', apiPath: '/api/actions/ride/**' },
     { pathPattern: '/api/actions/**', apiPath: '/api/actions/**' },
   ],
@@ -135,3 +141,20 @@ const SITE_LINK: Record<SiteLinkTarget, { path: string; message: string }> = {
   live: { path: '/#economy', message: 'Opens the boards: next up, this round, recent rides to watch. Devnet.' },
 };
 export const siteLink = (origin: string, to: SiteLinkTarget): ActionLink => ({ type: 'external-link', externalLink: `${originOf(origin)}${SITE_LINK[to].path}`, message: SITE_LINK[to].message });
+
+/** One button, no chain. dial.to can render this without a pool, a wallet stamp, or a transaction. */
+export function helloCard(origin: string): ActionCard {
+  return {
+    type: 'action', icon: actionIcon(origin), title: 'Hello', label: 'Say hello',
+    description: 'A one-button blink. Nothing is signed and nothing is spent. Devnet.',
+    links: { actions: [{ type: 'post', label: 'Say hello', href: '/api/actions/hello' }] },
+  };
+}
+
+export function helloReply(origin: string): ActionPost {
+  const icon = actionIcon(origin);
+  return {
+    type: 'post', message: 'Hello.',
+    links: { next: { type: 'inline', action: { type: 'completed', icon, label: 'Hello', title: 'Hello', description: 'The blink answered. No transaction. Devnet.' } } },
+  };
+}

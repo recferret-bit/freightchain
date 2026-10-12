@@ -1,12 +1,14 @@
 import { Controller, Get, HttpCode, Post, UseFilters } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
-import type { ActionCard, ActionLink, ActionsJson, ActionTx } from '../../domain/actions/action-card.js';
+import type { ActionCard, ActionLink, ActionPost, ActionsJson, ActionTx } from '../../domain/actions/action-card.js';
 import { GetActionsJsonQuery } from '../../application/use-cases/actions/get-actions-json.query.js';
+import { GetHelloActionQuery } from '../../application/use-cases/actions/get-hello-action.query.js';
 import { GetRideActionQuery } from '../../application/use-cases/actions/get-ride-action.query.js';
 import { OpenRideActionCommand } from '../../application/use-cases/actions/open-ride-action.command.js';
 import { OpenSiteActionCommand } from '../../application/use-cases/actions/open-site-action.command.js';
 import { GetShiftActionQuery } from '../../application/use-cases/actions/get-shift-action.query.js';
 import { PrepareShiftActionCommand } from '../../application/use-cases/actions/prepare-shift-action.command.js';
+import { SayHelloActionCommand } from '../../application/use-cases/actions/say-hello-action.command.js';
 import { ZodBody, ZodParams, ZodQuery } from '../../infrastructure/http/decorators/zod.js';
 import { ActionErrorFilter } from '../../infrastructure/http/filters/action-error.filter.js';
 import { rideIdParamsSchema, type RideIdParams } from '../common/dto/common.dto.js';
@@ -22,6 +24,17 @@ export class ActionsHttpController {
   @Get('actions.json')
   json(): Promise<ActionsJson> {
     return this.queryBus.execute<GetActionsJsonQuery, ActionsJson>(new GetActionsJsonQuery());
+  }
+
+  @Get('api/actions/hello')
+  hello(): Promise<ActionCard> {
+    return this.queryBus.execute<GetHelloActionQuery, ActionCard>(new GetHelloActionQuery());
+  }
+
+  @Post('api/actions/hello')
+  @HttpCode(200)
+  helloPost(@ZodBody(actionAccountBodySchema) body: ActionAccountBody): Promise<ActionPost> {
+    return this.commandBus.execute<SayHelloActionCommand, ActionPost>(new SayHelloActionCommand(body.account));
   }
 
   @Get('api/actions/shift')

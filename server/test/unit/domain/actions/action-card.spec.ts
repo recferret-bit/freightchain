@@ -1,4 +1,4 @@
-import { ACTIONS_JSON, buyTx, rideCard, sellableOffers, shiftCard, siteLink, solLabel, watchLink, type OfferPool } from '../../../../src/domain/actions/action-card.js';
+import { ACTIONS_JSON, buyTx, helloCard, helloReply, rideCard, sellableOffers, shiftCard, siteLink, solLabel, watchLink, type OfferPool } from '../../../../src/domain/actions/action-card.js';
 
 const pool = (over: Partial<OfferPool> & Pick<OfferPool, 'id' | 'tier' | 'prepDeadline'>): OfferPool => ({
   priceLamports: 50_000_000, whyNotSellable: () => null, ...over,
@@ -8,7 +8,9 @@ describe('action card', () => {
   it('formats lamports to 3 decimal SOL and publishes the three blink rules', () => {
     expect(solLabel(100_000_000)).toBe('0.100 SOL');
     expect(solLabel(50_000_000)).toBe('0.050 SOL');
-    expect(ACTIONS_JSON.rules.map((r) => r.pathPattern)).toEqual(['/', '/r/**', '/api/actions/**']);
+    expect(ACTIONS_JSON.rules.map((r) => r.pathPattern)).toEqual(['/', '/hello', '/r/**', '/api/actions/**']);
+    expect(helloCard('https://freightchain.fun').links.actions).toEqual([{ type: 'post', label: 'Say hello', href: '/api/actions/hello' }]);
+    expect(helloReply('https://freightchain.fun/')).toMatchObject({ type: 'post', message: 'Hello.', links: { next: { action: { type: 'completed', icon: 'https://freightchain.fun/icons/icon-512.png' } } } });
   });
 
   it('picks the sale that ends soonest, one pool per tier', () => {

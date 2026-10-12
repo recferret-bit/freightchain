@@ -9,6 +9,7 @@ export const ACTIONS_PROGRAM_ENV = { PAYMENT_MODE: 'program', TICKET_PROGRAM_ID:
 
 const RULES = [
   { pathPattern: '/', apiPath: '/api/actions/shift' },
+  { pathPattern: '/hello', apiPath: '/api/actions/hello' },
   { pathPattern: '/r/**', apiPath: '/api/actions/ride/**' },
   { pathPattern: '/api/actions/**', apiPath: '/api/actions/**' },
 ];
@@ -29,6 +30,15 @@ export function actionsScenarios(h: () => Harness): void {
     expect(pre.headers['access-control-allow-origin']).toBe('*');
     expect(pre.headers['access-control-allow-credentials']).toBeUndefined();
     expect(pre.headers['x-blockchain-ids']).toBe(DEVNET_BLOCKCHAIN_ID);
+  });
+
+  it('hello is one button and a post that signs nothing', async () => {
+    const card = await anon().get('/api/actions/hello').expect(200);
+    expect(card.headers['access-control-allow-origin']).toBe('*');
+    expect(card.body).toMatchObject({ type: 'action', title: 'Hello', links: { actions: [{ type: 'post', href: '/api/actions/hello', label: 'Say hello' }] } });
+    const said = await anon().post('/api/actions/hello').send({ account: newWallet().address }).expect(200);
+    expect(said.body).toMatchObject({ type: 'post', message: 'Hello.', links: { next: { type: 'inline', action: { type: 'completed', title: 'Hello' } } } });
+    expect(said.body).not.toHaveProperty('transaction');
   });
 
   it('transfer mode has no buy button; a bad account is {message}, not problem+json', async () => {
