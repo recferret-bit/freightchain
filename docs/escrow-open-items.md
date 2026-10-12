@@ -1,6 +1,6 @@
 # Escrow program – what is not done, open questions, todo
 
-State on 2026-10-10, after program v2 (the pool day: daily series, payout key, review window – branch `pool-series`), the program verification, the `initialize` fix, the localnet money test, the pool crank and the ten-rider payout run with its coverage gate. Keep this file current: tick items
+State on 2026-10-12, after program v3 (attestation-gated prizes, per-km pledges, the road seed committed on chain – an in-place upgrade of `8No42h…`), on top of v2 (the pool day: daily series, payout key, review window), the program verification, the localnet money test, the pool crank and the ten-rider payout run with its coverage gate. Keep this file current: tick items
 off here, move answers into the docs they belong to (`program-deploy.md`, `paid-tickets-status.md`, the program README), delete what no longer applies.
 Related: [deploy + operate](program-deploy.md) · [paid tickets status](paid-tickets-status.md) (its §3 Q1–Q8 still stand, Q3 is answered below) ·
 [contract spec](pool-program/index.html) · [localnet test](localnet-e2e/index.html).
@@ -14,6 +14,7 @@ Related: [deploy + operate](program-deploy.md) · [paid tickets status](paid-tic
 | localnet money test, pool crank, ticket-only program mode, refundable missed goals, `docs/localnet-e2e/`, this file | `main` | merged (`git log main..localnet-e2e` is empty) |
 | ten-rider payout scenario + the program coverage gate (`SCENARIO=payout`, `server/scripts/localnet-coverage.mjs`), `pool-admin.mjs` refund / close-ticket / cancel-pool / propose- / accept-authority, the LiteSVM `MathOverflow` test | `main` | Oct 9: 14/14 instructions + 12/12 events on the validator, 24/24 error codes asserted |
 | program v2: `set_series` / `open_next_pool` (one 1 h pool a day: 24 h sale, 2 h more rides, 48 h review), `set_payout_authority`, `payout_at` on every pool (no prize / close before it, grace counted from it), sales close for active pools too; server: the crank opens pools, the payout job (`pool:payout`, `PAYOUT_SECRET`) pays verified winners once every ride is decided, the signed HOLD, public standings, paid-ride review + `ride-review` skill | branch `pool-series` | not merged, **not deployed** – v2 needs a fresh program id (Config / Pool grew); `program-deploy.md` "v2" |
+| program v3: `record_attestation`, `create_pledge` / `settle_pledge` / `refund_pledge`, `pay_prize` needs a VERIFIED attestation, `create_pool` / `open_next_pool` commit the road seed from SlotHashes; `record_yield` ("JitoSOL yield", nothing staked) removed; server: attestations for winners and pledged drivers, pledges that follow the chain (`POST /api/pledges` + `/confirm`, the pledge job), the watch page's PLEDGE block | `main` (Oct 12, branch `escrow-v3-fix`) | pin `47a630e8…`; the first v3 commit `fa99e22a` reached production's SERVER on Oct 12 while devnet still ran v2 – the server could not decode v2 pools (no pool synced, payouts stalled) until the program upgrade |
 | devnet / production | – | **v2 on devnet since Oct 11** (`8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p`, deployed bytes = pin `84fe8679…`, `Config.authority` = the devnet admin, platform cut 0, `payout_authority` = `6zoY5f…Utds`; 1 h series: a TEST schedule – 1 h sale, 2 h more rides (from pool #1, Oct 11 17:00 UTC; pool #0 had 0), 1 h review, min 2, 0.002 SOL, slots on the hour); v1 `9e7ph…BSvx` stays, every pool terminal |
 
 ## Not done
@@ -137,6 +138,13 @@ Related: [deploy + operate](program-deploy.md) · [paid tickets status](paid-tic
 - [ ] QuickNode Stream → `https://api.freightchain.fun/api/chain/webhook`
 - [ ] The Phase 2 Phantom run once more on freightchain.fun; rollback = `PAYMENT_MODE=transfer` + redeploy (money stays refundable on chain)
 - [ ] Say "devnet only, not audited" in the submission
+
+### v3 – to do
+- [ ] Not audited – v3 adds three money paths (pledges) and the attestation gate; `program-check` (Trail of Bits classes by hand) before any real money
+- [ ] A pledge settles on the driver's attestation for the POOL (best verified ride there), not on the ride id it names – documented; per-ride attestations only if that matters
+- [ ] Pledge UI: no "refund it myself" button (the pledge job sends `refund_pledge`; the instruction is permissionless if the server is gone – `pool-admin.mjs refund-pledge`)
+- [ ] The attestation is the server's verdict (payout key), not a proof the program checks – said in README / whitepaper; a trustless version is a research item
+- [ ] Alerting when the payout key runs low (it now pays Attestation rents)
 
 ### v2 (the pool day) – to do
 - [ ] Merge `pool-series` into `main` (needs the owner's go; it also carries the paid-ride review and `pool-ride-seed`'s identical hunks)
