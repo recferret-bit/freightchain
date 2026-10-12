@@ -27,7 +27,7 @@ function tap(p, at, from, x, y) {
   return seg(p, at, at + 0.03) - seg(p, at + 0.05, at + 0.1);   // the press, 0…1…0
 }
 
-const SCENES = {
+export const SCENES = {
   /* 15 s batches rise from the road into the leaves, hash up the tree, the root settles on a fresh hash and turns VERIFIED */
   proof() {
     const L = [30, 90, 150, 210], cyc = cycle(6.5, () => ({ at: L.map((_, i) => 0.06 + i * 0.1 + rnd(-0.03, 0.03)), root: `${str(4)}…${str(3)}`, road: rnd(12, 26) }));
@@ -136,10 +136,10 @@ const SCENES = {
       text('no name? the short address stays', 10, 114, 8, DI); alpha(none, () => text('no name? the short address stays', 10, 114, 8, AM));
     };
   },
-  /* a post on X: a finger taps BUY TICKET or TIP, the wallet confirms; the Solana Pay QR twinkles and gets scanned now and then */
+  /* a post on X (a Blink): a finger taps BUY TICKET or WATCH; beside it the stream's Solana Pay QR twinkles, and now and then a phone scans it and a tip lands */
   blink() {
     const qr = Array.from({ length: 81 }, (_, i) => { const x = i % 9, y = (i / 9) | 0, f = (x < 3 && y < 3) || (x > 5 && y < 3) || (x < 3 && y > 5); return f ? 2 : +(R() < 0.4); });
-    const cyc = cycle(5.5, () => ({ tip: R() < 0.35, amt: rnd(0.005, 0.02).toFixed(3), at: rnd(0.25, 0.35), from: [rnd(60, 150), rnd(2, 30)], scan: rnd(0.45, 0.75) }));
+    const cyc = cycle(5.5, () => ({ watch: R() < 0.35, amt: rnd(0.005, 0.02).toFixed(3), at: rnd(0.25, 0.35), from: [rnd(60, 150), rnd(2, 30)], scan: rnd(0.45, 0.75) }));
     let last = 0;
     return t => {
       const [p, v] = cyc(t), a = fade(p), dt = Math.min(0.1, t - last); last = t;
@@ -148,24 +148,28 @@ const SCENES = {
       box(16, 38, 124, 34, 5, '#26221d');
       const toast = seg(p, v.at + 0.1, v.at + 0.15) * (1 - seg(p, 0.8, 0.88)) * a;   // the wallet's confirmation replaces the card's title for a moment
       alpha(1 - toast, () => text('FREIGHT CHAIN · 1 h', 78, 59, 8.5, AM, 'center'));
-      const press = tap(p, v.at, v.from, v.tip ? 117 : 52, 88), sc = 1 - 0.06 * press;
-      c.save(); c.translate(52, 88); if (!v.tip) c.scale(sc, sc); box(-36, -10, 72, 20, 10, grad(-36, 36)); text('BUY TICKET', 0, 3.5, 8.5, BG, 'center', true); c.restore();
-      c.save(); c.translate(117, 88); if (v.tip) c.scale(sc, sc); box(-23, -10, 46, 20, 10, v.tip && press > 0 ? '#9945ff33' : null, PU); text('TIP', 0, 3.5, 8.5, LI, 'center'); c.restore();
-      alpha(toast, () => { box(20, 44 - toast * 3, 116, 22, 5, '#0b0a09ee', GR); text(v.tip ? `✓ tip ${v.amt} SOL` : '✓ ticket · 1 h', 78, 58.5 - toast * 3, 8.5, GR, 'center'); });
+      const press = tap(p, v.at, v.from, v.watch ? 117 : 52, 88), sc = 1 - 0.06 * press;
+      c.save(); c.translate(52, 88); if (!v.watch) c.scale(sc, sc); box(-36, -10, 72, 20, 10, grad(-36, 36)); text('BUY TICKET', 0, 3.5, 8.5, BG, 'center', true); c.restore();
+      c.save(); c.translate(117, 88); if (v.watch) c.scale(sc, sc); box(-23, -10, 46, 20, 10, v.watch && press > 0 ? '#9945ff33' : null, PU); text('WATCH', 0, 3.5, 8.5, LI, 'center'); c.restore();
+      alpha(toast, () => { box(20, 44 - toast * 3, 116, 22, 5, '#0b0a09ee', GR); text(v.watch ? '▶ live ride opened' : '✓ ticket · 1 h', 78, 58.5 - toast * 3, 8.5, GR, 'center'); });
       box(158, 20, 75, 75, 6, BG, '#9d957f55');
       qr.forEach((on, i) => { if (on) box(164 + (i % 9) * 7, 26 + ((i / 9) | 0) * 7, 6, 6, 0, on === 2 ? CR : GR); });
       const q = seg(p, v.scan, v.scan + 0.14);
       if (q > 0 && q < 1) { c.shadowColor = GR; c.shadowBlur = 8; line(161, 26 + q * 63, 230, 26 + q * 63, '#14f195cc', 1.5); c.shadowBlur = 0; }
-      text('Solana Pay', 195, 110, 8, DI, 'center');
+      const tip = seg(p, v.scan + 0.14, v.scan + 0.3); if (tip > 0 && tip < 1) alpha(1 - tip, () => text(`+${v.amt} SOL tip`, 195, 22 - tip * 8, 8, GR, 'center'));
+      text('tip · Solana Pay', 195, 110, 8, DI, 'center');
     };
   },
 };
+
+/** one frame of a scene (`draw` = SCENES[k]()) at t s on a context scaled k × the 240×124 design; exported for the tests' fake context */
+export function drawScene(ctx, draw, t, k = 1) { c = ctx; c.setTransform(k, 0, 0, k, 0, 0); c.clearRect(0, 0, W, H); c.globalAlpha = 1; draw(t); }
 
 /** swap each card's drawing for its scene and run one rAF loop for all of them */
 export function startChainScenes(cards) {
   const live = [];
   for (const card of cards) {
-    const img = card.querySelector('.stage img'), make = SCENES[img?.getAttribute('src').match(/chain\/(\w+)\.svg/)?.[1]];
+    const img = card.querySelector('.stage img'), make = SCENES[card.dataset.card];
     const cv = document.createElement('canvas'), ctx = cv.getContext('2d');
     if (!make || !ctx?.roundRect) continue;   // an old browser without roundRect keeps the SVG
     cv.width = W * 2; cv.height = H * 2; cv.setAttribute('role', 'img'); cv.setAttribute('aria-label', img.alt); img.replaceWith(cv);
@@ -173,13 +177,13 @@ export function startChainScenes(cards) {
   }
   const io = new IntersectionObserver(es => { for (const e of es) live.find(s => s.cv === e.target).on = e.isIntersecting; });
   live.forEach(s => io.observe(s.cv));
-  const turned = matchMedia('(hover:hover)').matches ? '.flip,:hover,:focus-visible' : '.flip,:focus-visible';   // a phone keeps :hover on the last tapped card – it would freeze once flipped back; no :has() – matches() throws where it is missing
+  const turned = matchMedia('(hover:hover)').matches ? '.flip,:hover,:focus-within' : '.flip,:focus-within';   // a phone keeps :hover on the last tapped card – it would freeze once flipped back
   const frame = ms => {
     for (const s of live) {
       if (!s.on || s.card.matches(turned)) continue;   // off screen or turned over: nothing to see
       const w = Math.round(s.cv.clientWidth * Math.min(3, devicePixelRatio || 1));
       if (w && s.cv.width !== w) { s.cv.width = w; s.cv.height = Math.round((w * H) / W); }
-      c = s.ctx; c.setTransform(s.cv.width / W, 0, 0, s.cv.width / W, 0, 0); c.clearRect(0, 0, W, H); c.globalAlpha = 1; s.draw(ms / 1000);
+      drawScene(s.ctx, s.draw, ms / 1000, s.cv.width / W);
     }
     requestAnimationFrame(frame);
   };

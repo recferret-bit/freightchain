@@ -213,44 +213,44 @@
 
   <h3 class="sub rv">UNDER THE HOOD · ON SOLANA</h3>
   <p class="dim oc-kick rv">Hover or tap a card for its receipt. The figures on the receipts are examples.</p>
-  <!-- flip cards like the lobby's achievements (main.js toggles .flip on a tap); the drawings are public/media/chain/*.svg -->
+  <!-- flip cards like the lobby's achievements: hover, a tap (main.js .flip) or Tab onto a link on the back (:focus-within); the drawings are public/media/chain/*.svg, animated by src/chain-scenes.js -->
   <div class="oc-grid rv">
-    <article class="oc w" tabindex="0" role="button" aria-expanded="false" aria-label="Proven drive – details"><div class="oc-in">
+    <article data-card="proof" class="oc w"><div class="oc-in">
       <div class="fr"><div class="stage"><img src="/media/chain/proof.svg" width="240" height="124" loading="lazy" decoding="async" alt="Four 15-second batches hash up into one verified Merkle root"><i class="stk p tl">RFC 6962</i><i class="stk tr">PDA ✓</i><i class="stk a br">blockhash</i></div>
         <footer><b>PROVEN DRIVE</b><span>Nobody picks the road. A prize needs proof.</span></footer></div>
       <div class="bk"><div class="rcpt"><b class="t">ATTESTATION · EXAMPLE</b><p><span>seed</span><b>SHA-256(pool · blockhash · slot)</b></p><p><span>batches</span><b>164 × 15 s</b></p><p><span>root</span><b>9f3a…c21</b></p><p><span>status</span><b class="ok">VERIFIED</b></p></div>
         <p>Same road for every rider of a pool. No attestation, no prize.</p>
-        <ul><li>The road’s seed comes from a Solana blockhash, committed on chain before anyone drives.</li><li>Every 15 s of driving is a hashed batch; a ride’s batches roll up into one Merkle root.</li><li>The program pays a prize only to a wallet with a VERIFIED Attestation PDA.</li></ul>
+        <ul><li>The pool’s road seed is hashed from a Solana blockhash and stored on chain when the pool opens, before anyone drives.</li><li>Every 15 s of driving is a hashed batch; a ride’s batches roll up into one Merkle root.</li><li>The program pays a prize only to a wallet with a VERIFIED Attestation PDA.</li></ul>
         <nav><a href="/whitepaper.html#onchain">Whitepaper →</a><a href="/whitepaper.html#verify">Anti-cheat →</a></nav></div></div></article>
-    <article class="oc" tabindex="0" role="button" aria-expanded="false" aria-label="The pot earns – details"><div class="oc-in">
+    <article data-card="yield" class="oc"><div class="oc-in">
       <div class="fr"><div class="stage"><img src="/media/chain/yield.svg" width="240" height="124" loading="lazy" decoding="async" alt="Yield grows over the 24 hour sale and the 48 hour review"><i class="stk tl">JitoSOL</i><i class="stk a tr">72 h</i></div>
         <footer><b>THE POT EARNS</b><span>Ticket money earns staking yield while it waits.</span></footer></div>
       <div class="bk"><div class="rcpt"><b class="t">POOL · EXAMPLE</b><p><span>tickets</span><b>100.000 SOL</b></p><p><span>staked</span><b>24 h + 48 h · ~7 % APY</b></p><p><span>yield</span><b class="ok">+0.058 SOL</b></p><p><span>prize pot</span><b>100.058 SOL</b></p></div>
         <p>Idle escrow money works for the winners.</p>
         <ul><li>The vault’s SOL is staked as JitoSOL through the sale and the review; the yield joins the pot.</li><li>Tickets cost the same. Too few riders, and every ticket is refunded.</li></ul>
         <nav><a href="/whitepaper.html#onchain">Whitepaper →</a></nav></div></div></article>
-    <article class="oc" tabindex="0" role="button" aria-expanded="false" aria-label="Back a driver – details"><div class="oc-in">
+    <article data-card="pledge" class="oc"><div class="oc-in">
       <div class="fr"><div class="stage"><img src="/media/chain/pledge.svg" width="240" height="124" loading="lazy" decoding="async" alt="412 km of a 0.5 SOL pledge: 0.412 SOL to the driver, 0.088 SOL back"><i class="stk p tl">Pledge PDA</i></div>
-        <footer><b>BACK A DRIVER</b><span>Pledge per kilometre, from the stream.</span></footer></div>
+        <footer><b>BACK A DRIVER</b><span>Pledge per kilometre of verified driving.</span></footer></div>
       <div class="bk"><div class="rcpt"><b class="t">PLEDGE · EXAMPLE</b><p><span>rate</span><b>0.001 SOL / km</b></p><p><span>deposit</span><b>0.500 SOL</b></p><p><span>verified</span><b>412 km</b></p><p><span>to driver</span><b class="ok">0.412 SOL</b></p><p><span>back to you</span><b>0.088 SOL</b></p></div>
         <p>Sponsors pay for distance, never for a promise.</p>
         <ul><li>Settles on verified kilometres only.</li><li>The rest returns to you; nothing stays in the account.</li></ul>
-        <nav><a href="/lobby.html#live">Live rides →</a></nav></div></div></article>
-    <article class="oc w" tabindex="0" role="button" aria-expanded="false" aria-label="Your .sol name – details"><div class="oc-in">
+        <nav><a href="/whitepaper.html#onchain">Whitepaper →</a></nav></div></div></article>
+    <article data-card="sns" class="oc w"><div class="oc-in">
       <div class="fr"><div class="stage"><img src="/media/chain/sns.svg" width="240" height="124" loading="lazy" decoding="async" alt="A leaderboard showing .sol names instead of wallet addresses"><i class="stk tr">SNS</i></div>
         <footer><b>YOUR .SOL NAME</b><span>Boards show driver.sol, not 7xKX…9fQd.</span></footer></div>
       <div class="bk"><div class="rcpt"><b class="t">NAME · EXAMPLE</b><p><span>wallet</span><b>7xKX…9fQd</b></p><p><span>name</span><b class="ok">driver.sol</b></p><p><span>cached</span><b>24 h</b></p><p><span>no name</span><b>asked again in 30 min</b></p></div>
         <p>Your name follows you from board to receipt.</p>
         <ul><li>Looked up from the Solana Name Service.</li><li>Shown on the boards, profiles and public ride receipts.</li></ul>
         <nav><a href="/lobby.html#board">Leaderboard →</a></nav></div></div></article>
-    <article class="oc w" tabindex="0" role="button" aria-expanded="false" aria-label="Blinks and Solana Pay – details"><div class="oc-in">
-      <div class="fr"><div class="stage"><img src="/media/chain/blink.svg" width="240" height="124" loading="lazy" decoding="async" alt="A post on X with ticket and tip buttons, and a Solana Pay QR code"><i class="stk p tl">Actions</i><i class="stk a tr">devnet</i></div>
-        <footer><b>BLINKS &amp; SOLANA PAY</b><span>Buy a shift or tip a driver from a post on 𝕏.</span></footer></div>
-      <div class="bk"><div class="rcpt"><b class="t">BLINK · EXAMPLE</b><p><span>action</span><b>buy ticket · 1 h</b></p><p><span>where</span><b>a post on 𝕏</b></p><p><span>phone</span><b>Solana Pay QR</b></p><p><span>signed by</span><b class="ok">your wallet</b></p></div>
+    <article data-card="blink" class="oc w"><div class="oc-in">
+      <div class="fr"><div class="stage"><img src="/media/chain/blink.svg" width="240" height="124" loading="lazy" decoding="async" alt="A post on X with ticket and watch buttons, and a Solana Pay QR code for tips"><i class="stk p tl">Actions</i><i class="stk a tr">devnet</i></div>
+        <footer><b>BLINKS &amp; SOLANA PAY</b><span>Buy a shift from a post on 𝕏. Tip a driver by QR.</span></footer></div>
+      <div class="bk"><div class="rcpt"><b class="t">BLINK · EXAMPLE</b><p><span>action</span><b>buy ticket · 1 h</b></p><p><span>where</span><b>a post on 𝕏</b></p><p><span>tip</span><b>Solana Pay QR on a stream</b></p><p><span>signed by</span><b class="ok">your wallet</b></p></div>
         <p>The game travels with the post.</p>
-        <ul><li>Solana Actions turn a post into a ticket or a tip button.</li><li>Earned badges are soulbound cNFTs.</li></ul>
+        <ul><li>Solana Actions turn a post into BUY TICKET and WATCH buttons.</li><li>On a live stream, a phone wallet tips the driver through a Solana Pay QR.</li></ul>
         <nav><a href="#achievements">Badges →</a><a href="/whitepaper.html#onchain">Whitepaper →</a></nav></div></div></article>
-    <article class="oc" tabindex="0" role="button" aria-expanded="false" aria-label="One-tap sign-in – details"><div class="oc-in">
+    <article data-card="siws" class="oc"><div class="oc-in">
       <div class="fr"><div class="stage"><img src="/media/chain/siws.svg" width="240" height="124" loading="lazy" decoding="async" alt="One wallet prompt: sign in to freightchain.fun with a one-time nonce"><i class="stk p tl">CAIP-122</i></div>
         <footer><b>ONE-TAP SIGN-IN</b><span>Connect and sign in with one wallet prompt.</span></footer></div>
       <div class="bk"><div class="rcpt"><b class="t">SIGN-IN · EXAMPLE</b><p><span>domain</span><b>freightchain.fun</b></p><p><span>nonce</span><b>7c1e…a4 · once</b></p><p><span>wallets</span><b>Phantom · Solflare</b></p><p><span>older</span><b class="ok">signed message</b></p></div>

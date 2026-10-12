@@ -245,11 +245,14 @@ $('storybook-link').addEventListener('click', () => track('storybook_link_clicke
 $('escrow-link').href = escrowExplainer();   // whitepaper chapter 05 is the one public escrow explainer
 for (const a of document.querySelectorAll('a[href^="/whitepaper.html#"]')) if (WHITEPAPER_BASE) a.href = `${WHITEPAPER_BASE}/${a.hash}`;   // deep links straight to whitepaper.<apex> (the apex would only 301 there)
 
-/* ───── UNDER THE HOOD cards: hover flips them in CSS; a tap or Enter / Space toggles .flip (the lobby's achievement card), a link on the back stays a link ───── */
+/* ───── UNDER THE HOOD cards: hover (CSS) or a tap (.flip) turns one over; the keyboard gets there by Tab onto a link on the back (:focus-within). A link stays a link.
+   chain_card_flipped once per card per load: a tap, or a hover that lasts 0.6 s (a pointer passing over is not a read) ───── */
+const flipped = new Set(), seen = card => { if (!flipped.has(card)) { flipped.add(card); track('chain_card_flipped', { card }); } };
 for (const c of document.querySelectorAll('.oc')) {
-  const flip = () => c.setAttribute('aria-expanded', String(c.classList.toggle('flip')));
-  c.addEventListener('click', e => { if (!e.target.closest('a')) flip(); });
-  c.addEventListener('keydown', e => { if (e.target === c && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); flip(); } });
+  let dwell = 0;
+  c.addEventListener('click', e => { if (!e.target.closest('a') && c.classList.toggle('flip')) seen(c.dataset.card); });
+  c.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') dwell = setTimeout(() => seen(c.dataset.card), 600); });
+  c.addEventListener('pointerleave', () => clearTimeout(dwell));
 }
 /* their drawings come alive as canvas scenes (chain-scenes.js, a lazy chunk) when the grid gets near; reduced motion keeps the still SVGs */
 const ocGrid = document.querySelector('.oc-grid');
