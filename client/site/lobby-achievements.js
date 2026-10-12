@@ -19,10 +19,6 @@ export const nftLinks = (assetId, signature, cluster = CLUSTER) => [
 export const badgeShareText = a => `Earned “${a.name}” (${a.tierName}) in @FreightChainSol – a soulbound compressed NFT on @solana${CLUSTER === 'devnet' ? ' devnet' : ''}, minted to my wallet. Proof:`;
 
 const fmtDate = t => new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
-const STARS = 3; // every badge shows three levels; tier 1 lights one, tier 2 two, tier 3 (and the platinum 4) all three
-/** the level as three stars, `tier` of them lit */
-const stars = (tier, earned) => el('span', { class: 'lvl', role: 'img', 'aria-label': `level ${Math.min(tier, STARS)} of ${STARS}` },
-  Array.from({ length: STARS }, (_, n) => el('i', { class: earned && (n < tier || tier > STARS) ? 'on' : '' }, '★')));
 
 /** the back of an earned card: where the soulbound compressed NFT lives (cNFT, Solscan, Orb, the mint transaction) and the share link */
 function nftLinksRow(a, track) {
@@ -45,13 +41,11 @@ function card(a, track, next, i) {
   const earned = !!a.earnedAt, pct = a.progress.target ? Math.round((100 * a.progress.value) / a.progress.target) : 0;
   const prog = () => el('span', { class: 'pg', title: `${a.progress.value} / ${a.progress.target}` }, el('i', { style: `width:${pct}%` }), el('em', {}, `${a.progress.value.toLocaleString('en')} / ${a.progress.target.toLocaleString('en')}`));
   const front = el('div', { class: 'fr' },
-    el('img', { src: art(a.id, !earned), alt: `${a.name} – ${earned ? `level ${Math.min(a.tier, STARS)}` : 'locked'}`, loading: 'lazy', width: 112, height: 112 }),
+    el('img', { src: art(a.id, !earned), alt: `${a.name} – ${earned ? `level ${a.tier}` : 'locked'}`, loading: 'lazy', width: 112, height: 112 }),
     el('span', { class: 'nm' }, a.name),
-    stars(a.tier, earned),
-    earned ? el('span', { class: 'when' }, `✓ ${fmtDate(a.earnedAt)}`) : [next ? el('span', { class: 'nx' }, el('b', {}, 'NEXT LEVEL'), a.desc) : null, prog()]);
+    earned ? el('span', { class: 'when' }, `✓ ${fmtDate(a.earnedAt)}`) : [next ? el('span', { class: 'nx' }, a.desc) : null, prog()]);
   const back = el('div', { class: 'bk' },
     el('span', { class: 'nm' }, a.name),
-    stars(a.tier, earned),
     el('span', { class: 'ds' }, a.desc),
     earned ? [el('span', { class: 'when' }, `unlocked ${fmtDate(a.earnedAt)}`), nftLinksRow(a, track)] : [prog(), el('span', { class: 'when dim' }, 'earn it to get a soulbound cNFT')]);
   const c = el('div', { class: `ac t${a.tier}${earned ? ' got' : ' lock'}${next ? ' next' : ''}`, 'data-id': a.id, 'data-tier': a.tier, tabindex: 0, role: 'button', 'aria-label': `${a.name} – details`, 'aria-expanded': 'false', style: `--i:${i}`, title: 'Hover or tap for details' }, el('div', { class: 'in' }, front, back));
