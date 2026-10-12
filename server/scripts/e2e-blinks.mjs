@@ -36,6 +36,8 @@ async function loadCore() {
 }
 
 const hdr = (r, k) => r.headers.get(k) || '';
+/** fetch that answers a failed connection as a 599 response: a dead link is a FAIL line, not a crash. */
+const get = (url, init) => fetch(url, init).catch(e => new Response(String(e?.cause?.code ?? e), { status: 599 }));
 /** What every action response must carry for a browser blink client on another origin (dial.to): ACAO *, no credentials, the version + chain headers, readable. */
 function corsOk(name, r) {
   const expose = hdr(r, 'access-control-expose-headers').toLowerCase();
@@ -73,7 +75,7 @@ async function card(core, siteUrl, expectApi, account) {
   const blink = await core.BlinkInstance.fetch(api);
   const sup = await core.defaultBlinkSupportStrategy(blink, { metadata: { supportedBlockchainIds: [DEVNET] } });
   check('the client supports it (version, chain)', sup.isSupported, JSON.stringify(blink.metadata) + (sup.message ? ' ' + sup.message : ''));
-  const icon = await fetch(blink.data.icon);
+  const icon = await get(blink.data.icon);
   check('icon: absolute https/http, png/svg/webp, loads', /^https?:\/\//.test(blink.data.icon) && icon.ok && /image\/(png|svg\+xml|webp)/.test(hdr(icon, 'content-type')), `${blink.data.icon} ${icon.status} ${hdr(icon, 'content-type')}`);
   check('type action, title, description, label', blink.data.type === 'action' && !!(blink.title && blink.description && blink.data.label), blink.title);
   console.log(`  buttons: ${blink.actions.map(a => `[${a.type}] ${a.label} → ${a.href}`).join(' | ')}`);
@@ -86,7 +88,7 @@ async function card(core, siteUrl, expectApi, account) {
     let res; try { res = await a.post(account); } catch (e) { res = { error: e?.message ?? String(e) }; }
     if (a.type === 'external-link') {
       check(`"${a.label}": POST answers an external link`, res?.type === 'external-link' && /^https?:\/\//.test(res.externalLink ?? ''), JSON.stringify(res).slice(0, 180));
-      if (res?.externalLink) { const page = await fetch(res.externalLink); check(`  → ${res.externalLink} opens`, page.ok && /text\/html/.test(hdr(page, 'content-type')), String(page.status)); }
+      if (res?.externalLink) { const page = await get(res.externalLink); check(`  → ${res.externalLink} opens`, page.ok && /text\/html/.test(hdr(page, 'content-type')), String(page.status)); }
     } else if (a.type === 'transaction') {
       if (res?.error) { check(`"${a.label}": POST`, false, res.error); continue; }
       const tx = Transaction.from(Buffer.from(res.transaction, 'base64')), msg = tx.compileMessage();
