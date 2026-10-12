@@ -22,6 +22,8 @@ pub struct PoolCreated {
     /// true = opened by `open_next_pool` from the tier's series, false = `create_pool` by the admin
     pub from_series: bool,
     pub seed_commitment: [u8; 32],
+    pub seed_slot: u64,
+    pub seed_slot_hash: [u8; 32],
 }
 
 #[event]

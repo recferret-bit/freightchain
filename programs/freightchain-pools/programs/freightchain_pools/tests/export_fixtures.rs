@@ -47,7 +47,7 @@ fn decoded_events(logs: &[String]) -> Vec<Value> {
             try_ev!(d, PoolCreated, |e: PoolCreated| json!({"kind": "PoolCreated", "poolId": e.pool_id, "pool": e.pool.to_string(), "vault": e.vault.to_string(),
                 "authority": e.authority.to_string(), "tier": e.tier, "priceLamports": s(e.price_lamports), "minTickets": e.min_tickets, "maxTickets": e.max_tickets,
                 "maxPerWallet": e.max_per_wallet, "prepDeadline": e.prep_deadline, "playDeadline": e.play_deadline, "payoutAt": e.payout_at, "prizeBps": e.prize_bps, "seedBps": e.seed_bps,
-                "feeBps": e.fee_bps, "feeTreasury": e.fee_treasury.to_string(), "seedTreasury": e.seed_treasury.to_string(), "fromSeries": e.from_series, "seedCommitment": b64(&e.seed_commitment)}));
+                "feeBps": e.fee_bps, "feeTreasury": e.fee_treasury.to_string(), "seedTreasury": e.seed_treasury.to_string(), "fromSeries": e.from_series, "seedCommitment": b64(&e.seed_commitment), "seedSlot": s(e.seed_slot), "seedSlotHash": b64(&e.seed_slot_hash)}));
             try_ev!(d, SeriesSet, |e: SeriesSet| json!({"kind": "SeriesSet", "tier": e.tier, "enabled": e.enabled, "priceLamports": s(e.price_lamports),
                 "minTickets": e.min_tickets, "maxTickets": e.max_tickets, "maxPerWallet": e.max_per_wallet, "saleSecs": e.sale_secs, "playSecs": e.play_secs,
                 "verifySecs": e.verify_secs, "prizeBps": e.prize_bps, "seedBps": e.seed_bps, "feeBps": e.fee_bps, "feeTreasury": e.fee_treasury.to_string(),
@@ -127,7 +127,7 @@ impl Rec {
                 "payoutAt": p.payout_at, "prizeBps": p.prize_bps, "seedBps": p.seed_bps, "feeBps": p.fee_bps, "feeTreasury": p.fee_treasury.to_string(), "seedTreasury": p.seed_treasury.to_string(),
                 "status": p.status, "ticketsSold": p.tickets_sold, "buyers": p.buyers, "sponsored": s(p.sponsored), "prizesPaid": s(p.prizes_paid),
                 "refunded": s(p.refunded), "createdAt": p.created_at, "bump": p.bump, "vaultBump": p.vault_bump,
-                "seedCommitment": b64(&p.seed_commitment)})
+                "seedCommitment": b64(&p.seed_commitment), "seedSlot": s(p.seed_slot), "seedSlotHash": b64(&p.seed_slot_hash)})
         } else if a.data.len() >= 8 && a.data[..8] == *Ticket::DISCRIMINATOR {
             let t = Ticket::try_deserialize(&mut &a.data[..]).unwrap();
             json!({"type": "Ticket", "buyer": t.buyer.to_string(), "rentPayer": t.rent_payer.to_string(), "poolId": t.pool_id, "qty": t.qty, "lamports": s(t.lamports), "bump": t.bump})
@@ -187,7 +187,7 @@ fn pay_prize_ix(id: u32, authority: &Pubkey, to: &Pubkey, lamports: u64, rank: u
 fn create(e: &mut Env, rec: &mut Rec, p: CreatePoolParams) -> u32 {
     let id = e.next_pool;
     let args = json!({"tier": p.tier, "priceLamports": s(p.price_lamports), "minTickets": p.min_tickets, "maxTickets": p.max_tickets, "maxPerWallet": p.max_per_wallet,
-        "prepDeadline": p.prep_deadline, "playDeadline": p.play_deadline, "payoutAt": p.payout_at, "prizeBps": p.prize_bps, "seedBps": p.seed_bps, "feeBps": p.fee_bps, "seedCommitment": b64(&p.seed_commitment)});
+        "prepDeadline": p.prep_deadline, "playDeadline": p.play_deadline, "payoutAt": p.payout_at, "prizeBps": p.prize_bps, "seedBps": p.seed_bps, "feeBps": p.fee_bps});
     let i = e.create_pool_ix(p, e.fee_t.pubkey(), e.seed_t.pubkey());
     let (a, c) = (e.authority_kp(), clone_kp(&e.cranker));
     rec.send(e, &format!("create_pool {id}"), vec![(i, "create_pool", args)], &c, &[&a], true).unwrap();

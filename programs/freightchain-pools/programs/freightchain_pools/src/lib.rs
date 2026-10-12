@@ -46,8 +46,8 @@ pub mod freightchain_pools {
         instructions::series::handle_set_series(ctx, params)
     }
 
-    pub fn open_next_pool(ctx: Context<OpenNextPool>, tier: u8, seed_commitment: [u8; 32]) -> Result<()> {
-        instructions::series::handle_open_next_pool(ctx, tier, seed_commitment)
+    pub fn open_next_pool(ctx: Context<OpenNextPool>, tier: u8) -> Result<()> {
+        instructions::series::handle_open_next_pool(ctx, tier)
     }
 
     pub fn create_pool(ctx: Context<CreatePool>, params: CreatePoolParams) -> Result<()> {

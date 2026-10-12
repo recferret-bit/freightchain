@@ -662,6 +662,10 @@
           "name": "platform_treasury"
         },
         {
+          "name": "slot_hashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
@@ -941,6 +945,10 @@
           "name": "platform_treasury"
         },
         {
+          "name": "slot_hashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
@@ -949,15 +957,6 @@
         {
           "name": "tier",
           "type": "u8"
-        },
-        {
-          "name": "seed_commitment",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          }
         }
       ]
     },
@@ -2626,15 +2625,6 @@
           {
             "name": "fee_bps",
             "type": "u16"
-          },
-          {
-            "name": "seed_commitment",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
           }
         ]
       }
@@ -2963,6 +2953,22 @@
                 32
               ]
             }
+          },
+          {
+            "name": "seed_slot",
+            "docs": [
+              "the SlotHashes entry the commitment was made from (create_pool.rs seed_commitment_of)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "seed_slot_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
           }
         ]
       }
@@ -3137,6 +3143,19 @@
           },
           {
             "name": "seed_commitment",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "seed_slot",
+            "type": "u64"
+          },
+          {
+            "name": "seed_slot_hash",
             "type": {
               "array": [
                 "u8",

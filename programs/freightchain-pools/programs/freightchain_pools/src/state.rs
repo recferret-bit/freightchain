@@ -81,6 +81,9 @@ pub struct Pool {
     /// v3: SHA256(pool_id LE u32 || blockhash || slot LE u64) of a recent block, fixed when the pool opens; the pool's road seed is
     /// derived from it, so the operator could not have picked the road after seeing it. All zero for a `create_pool` pool given none.
     pub seed_commitment: [u8; 32],
+    /// the SlotHashes entry the commitment was made from (create_pool.rs seed_commitment_of)
+    pub seed_slot: u64,
+    pub seed_slot_hash: [u8; 32],
 }
 
 #[account]

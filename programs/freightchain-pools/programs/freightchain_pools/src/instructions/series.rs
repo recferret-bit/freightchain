@@ -118,7 +118,7 @@ pub fn handle_set_series(ctx: Context<SetSeries>, p: SeriesParams) -> Result<()>
 }
 
 #[derive(Accounts)]
-#[instruction(tier: u8, seed_commitment: [u8; 32])]
+#[instruction(tier: u8)]
 pub struct OpenNextPool<'info> {
     /// Anyone (the server's crank in practice): pays the Pool account rent and the vault rent minimum, which comes back at close.
     #[account(mut)]
@@ -147,13 +147,16 @@ pub struct OpenNextPool<'info> {
     /// CHECK: config.platform_treasury
     #[account(address = config.platform_treasury @ PoolError::AccountMismatch)]
     pub platform_treasury: UncheckedAccount<'info>,
+    /// CHECK: the SlotHashes sysvar – the pool's road seed is committed from its newest entry
+    #[account(address = SLOT_HASHES_ID @ PoolError::AccountMismatch)]
+    pub slot_hashes: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
 }
 
 /// Permissionless: once the series' slot has come, open the pool of the CURRENT slot from the series' rules. Slots sit on a fixed grid
 /// (`next_open_at + k * sale_secs`), so a late caller never shifts the schedule – a slot nobody opened in time is skipped, and the pool of
 /// the current slot just sells for what is left of it. One pool per slot: `next_open_at` moves to this pool's sale end.
-pub fn handle_open_next_pool(ctx: Context<OpenNextPool>, tier: u8, seed_commitment: [u8; 32]) -> Result<()> {
+pub fn handle_open_next_pool(ctx: Context<OpenNextPool>, tier: u8) -> Result<()> {
     let a = &ctx.accounts;
     require!(!a.config.paused, PoolError::Paused);
     require!(a.series.enabled, PoolError::SeriesDisabled);
@@ -183,12 +186,11 @@ pub fn handle_open_next_pool(ctx: Context<OpenNextPool>, tier: u8, seed_commitme
         fee_bps: s.fee_bps,
         fee_treasury: s.fee_treasury,
         seed_treasury: s.seed_treasury,
-        seed_commitment,
     };
     let creator = a.caller.to_account_info();
     let (pool_bump, vault_bump) = (ctx.bumps.pool, ctx.bumps.vault);
     let a = ctx.accounts;
-    let pool_id = init_pool(&mut a.config, &mut a.pool, &a.vault.to_account_info(), &creator, &a.system_program, rules, now, pool_bump, vault_bump, true)?;
+    let pool_id = init_pool(&mut a.config, &mut a.pool, &a.vault.to_account_info(), &creator, &a.system_program, &a.slot_hashes.to_account_info(), rules, now, pool_bump, vault_bump, true)?;
     let s = &mut a.series;
     s.next_open_at = sale_end;
     s.pools_opened = s.pools_opened.checked_add(1).ok_or(PoolError::MathOverflow)?;

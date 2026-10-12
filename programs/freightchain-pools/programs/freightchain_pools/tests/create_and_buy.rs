@@ -218,3 +218,31 @@ fn buy_wrong_state_and_zero_qty() {
     e.cancel(id, &auth).unwrap();
     assert_err!(e.buy(id, &a, 1), PoolError::PoolNotOpen);
 }
+
+#[test]
+fn the_road_seed_is_committed_from_the_slot_hashes_sysvar() {
+    let mut e = Env::new();
+    let id = e.next_pool;
+    let i = e.create_pool_ix(default_params(), e.fee_t.pubkey(), e.seed_t.pubkey());
+    let (a, c) = (e.authority_kp(), clone_kp(&e.cranker));
+    let r = e.send(&[i], &c, &[&a]).unwrap();
+    e.next_pool += 1;
+    let pool = e.pool(id);
+    // recomputable by anyone from what the pool keeps: SHA-256(pool_id LE u32 || slot hash || slot LE u64)
+    let want = solana_sha256_hasher::hashv(&[&id.to_le_bytes(), &pool.seed_slot_hash, &pool.seed_slot.to_le_bytes()]).to_bytes();
+    assert_eq!(pool.seed_commitment, want);
+    assert_ne!(pool.seed_commitment, [0u8; 32]);
+    let ev = events::<PoolCreated>(&r.logs);
+    assert_eq!((ev[0].seed_commitment, ev[0].seed_slot, ev[0].seed_slot_hash), (pool.seed_commitment, pool.seed_slot, pool.seed_slot_hash));
+}
+
+#[test]
+fn a_forged_slot_hashes_account_is_refused() {
+    let mut e = Env::new();
+    let fake = funded(&mut e.svm, SOL);
+    let mut i = e.create_pool_ix(default_params(), e.fee_t.pubkey(), e.seed_t.pubkey());
+    let at = i.accounts.iter().position(|m| m.pubkey == freightchain_pools::constants::SLOT_HASHES_ID).unwrap();
+    i.accounts[at].pubkey = fake.pubkey(); // a caller that would like to pick the road
+    let (a, c) = (e.authority_kp(), clone_kp(&e.cranker));
+    assert_err!(e.send(&[i], &c, &[&a]), PoolError::AccountMismatch);
+}
