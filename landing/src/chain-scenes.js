@@ -173,9 +173,10 @@ export function startChainScenes(cards) {
   }
   const io = new IntersectionObserver(es => { for (const e of es) live.find(s => s.cv === e.target).on = e.isIntersecting; });
   live.forEach(s => io.observe(s.cv));
+  const turned = matchMedia('(hover:hover)').matches ? '.flip,:hover,:focus-visible' : '.flip,:focus-visible';   // a phone keeps :hover on the last tapped card – it would freeze once flipped back; no :has() – matches() throws where it is missing
   const frame = ms => {
     for (const s of live) {
-      if (!s.on || s.card.matches('.flip,:hover,:focus-visible,:has(a:focus-visible)')) continue;   // off screen or turned over: nothing to see
+      if (!s.on || s.card.matches(turned)) continue;   // off screen or turned over: nothing to see
       const w = Math.round(s.cv.clientWidth * Math.min(3, devicePixelRatio || 1));
       if (w && s.cv.width !== w) { s.cv.width = w; s.cv.height = Math.round((w * H) / W); }
       c = s.ctx; c.setTransform(s.cv.width / W, 0, 0, s.cv.width / W, 0, 0); c.clearRect(0, 0, W, H); c.globalAlpha = 1; s.draw(ms / 1000);
