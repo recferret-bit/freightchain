@@ -15,12 +15,14 @@ export interface TicketOrderDto {
   refundedAt: number | null;
   /** the transaction that paid it */
   signature: string | null;
+  /** Solana Pay reference, once the order has one */
+  reference: string | null;
 }
 
 export const toTicketOrderDto = (order: TicketOrder, ttlMs: number): TicketOrderDto => {
   const s = order.snapshot();
   return {
     id: s.id, poolId: s.poolId, qty: s.qty, lamports: s.lamports, status: s.status, createdAt: s.createdAt.getTime(), expiresAt: order.expiresAt(ttlMs).getTime(),
-    paidAt: s.paidAt?.getTime() ?? null, refundedAt: s.refundedAt?.getTime() ?? null, signature: s.signature,
+    paidAt: s.paidAt?.getTime() ?? null, refundedAt: s.refundedAt?.getTime() ?? null, signature: s.signature, reference: s.paymentReference ?? null,
   };
 };

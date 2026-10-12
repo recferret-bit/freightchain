@@ -4,7 +4,7 @@ use crate::{
     constants::*,
     error::PoolError,
     events::{PoolClosed, PrizePaid},
-    state::{bps_of, split, Config, Pool},
+    state::{bps_of, split, Attestation, Config, Pool},
     vault::{pay_from_vault, raw_from_vault, rent_min},
 };
 
@@ -23,6 +23,14 @@ pub struct PayPrize<'info> {
     /// CHECK: the winner; must end rent-exempt (checked in the handler)
     #[account(mut, constraint = to.key() != vault.key() @ PoolError::AccountMismatch)]
     pub to: UncheckedAccount<'info>,
+    /// Cryptographic Attestation PDA proving verified gameplay
+    #[account(
+        seeds = [ATTESTATION_SEED, pool.key().as_ref(), to.key().as_ref()],
+        bump = attestation.bump,
+        has_one = pool @ PoolError::AccountMismatch,
+        constraint = attestation.driver == to.key() @ PoolError::AttestationMismatch,
+    )]
+    pub attestation: Account<'info, Attestation>,
     pub system_program: Program<'info, System>,
 }
 
@@ -34,6 +42,14 @@ pub fn handle_pay_prize(mut ctx: Context<PayPrize>, pool_id: u32, lamports: u64,
     // nobody pays before the review window is over – not even the admin: the window is what lets anyone check the winners first
     require!(now >= a.pool.payout_at, PoolError::TooEarly);
     require!(lamports > 0, PoolError::InvalidParams);
+
+    // Driver must have a verified gameplay attestation with valid non-zero distance
+    require!(
+        a.attestation.status == ATTESTATION_STATUS_VERIFIED,
+        PoolError::UnverifiedAttestation
+    );
+    require!(a.attestation.verified_km > 0, PoolError::ZeroVerifiedKm);
+
     let paid = a.pool.prizes_paid.checked_add(lamports).ok_or(PoolError::MathOverflow)?;
     require!(paid <= a.pool.prize_share()?, PoolError::PrizeExceedsShare);
     // the winner's wallet must end rent-exempt (a transfer into a near-empty account below the minimum fails)

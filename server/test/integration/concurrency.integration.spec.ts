@@ -481,7 +481,7 @@ describe('concurrency (PostgreSQL)', () => {
       const driverWallet = (await prisma.ride.findUniqueOrThrow({ where: { id: ride.id } })).wallet;
       const fan = await login();
       const { order } = (await fan.agent.post(`/api/watch/${ride.id}/donation-orders`).send({ effect: 'sinkhole' }).expect(200)).body;
-      const signature = harness.chain.addPayment({ payer: fan.address, destination: driverWallet, lamports: order.lamports, memo: order.memo });
+      const signature = harness.chain.addPayment({ payer: fan.address, destination: driverWallet, lamports: order.lamports, memo: order.memo, reference: order.reference });
       const results = await parallel(PARALLEL, () => fan.agent.post(`/api/watch/${ride.id}/donation-orders/${order.id}/confirm`).send({ signature }));
       expect(results.every((r) => r.status === 200)).toBe(true);
       const ids = new Set(results.filter((r) => r.body.status === 'paid').map((r) => r.body.event.id));

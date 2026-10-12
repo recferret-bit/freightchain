@@ -1,9 +1,10 @@
 import { api, signOut } from './wallet.js';
 import { buyRide, buyTickets, claimRefund, waitPaid, ORDER_SIG } from './pay.js';
-import { salesOpen, pendingOrder } from './tickets-api.js';
+import { salesOpen, pendingOrder, reconcileOrder } from './tickets-api.js';
 import { paidChip, escrowExplainer, explorerTx, explorerUrl, rideError, promoError, promoOk, buyError, sol, usd, left, span, hasStandings, progressText, ticketShareText, xIntent, shortAddr as short } from './pools.js';
 import { poolCard, paidShift, resultCard, escrowSummary, refundRows, profileTickets } from './lobby-pools.js';
 import { careerTiles } from './lobby-career.js';
+import { achievementsSection } from './lobby-achievements.js';
 import { agreementsCard, blockPaid } from './lobby-agreements.js';
 import { redemptionList } from './lobby-promo.js';
 import { dirty, garageActions, garageProgress, garageSlots } from './lobby-garage.js';
@@ -12,7 +13,8 @@ import { el } from './dom.js';
 import { livePath, leaveOnClose } from './presence.js';
 import { renderReplays } from './lobby-replays.js';
 import { renderBoard } from './lobby-board.js';
-import { API_BASE, GAME_BASE } from '../js/hosts.js';
+import { API_BASE, GAME_BASE, SITE_BASE } from '../js/hosts.js';
+import { homeBlinkUrl } from '../js/ui/share.js';
 import { track, flushSoon } from '../js/analytics.js';
 import { reportWebVitals } from '../js/web-vitals.js';
 import { store } from '../js/util.js';
@@ -38,7 +40,7 @@ const dur = s => { s = Math.max(0, Math.round(s)); return s >= 3600 ? `${Math.fl
 const km = m => (m / 1000).toFixed(m < 10_000 ? 2 : 1);
 
 /* ───────── state ───────── */
-const S = { me: null, tiers: null, pool: null, live: { rides: [] }, liveAt: 0, skew: 0, board: 'free', boardLevel: Number(store.get('freightchain.board-level')) || 3, boardTier: store.get('freightchain.board-tier') === '4h' || store.get('freightchain.board-tier') === '8h' ? store.get('freightchain.board-tier') : '1h', pending: null, pendingNote: '', pools: null, standings: {}, stAt: {}, tab: 'new', busy: null, qty: {}, msgs: {}, poolInfo: {}, order: null, focus: null, opt: { tutorial: null, assist: store.get('freightchain.assist') === '1', level: Number(store.get('freightchain.level')) || 1 } };   // opt = the free ride's level + two checkboxes: tutorial null = follow the server (on until a ride was started with it), assist and the level are remembered here
+const S = { me: null, tiers: null, pool: null, live: { rides: [] }, liveAt: 0, skew: 0, board: 'free', boardLevel: Number(store.get('freightchain.board-level')) || 3, boardTier: store.get('freightchain.board-tier') === '4h' || store.get('freightchain.board-tier') === '8h' ? store.get('freightchain.board-tier') : '1h', pending: null, pendingNote: '', pools: null, standings: {}, stAt: {}, tab: 'new', busy: null, qty: {}, msgs: {}, poolInfo: {}, order: null, focus: null, opt: { tutorial: null, assist: store.get('freightchain.assist') !== '0', level: Number(store.get('freightchain.level')) || 1 } };   // opt = the free ride's level + two checkboxes: tutorial null = follow the server (on until a ride was started with it), assist and the level are remembered here
 let seq = 0;   // one number per tab render: an answer that comes back after the player moved on (or re-asked) is dropped, not painted over the new tab
 const now = () => Date.now() + S.skew;   // server clock (skew learned from /api/live)
 const freeLeft = m => `${m.freeRides}/${m.freeRidesMax} free ride${m.freeRides === 1 ? '' : 's'}`;   // always balance/daily cap. A surplus (signup, a promo, an admin grant) stays; the refill stops at the cap
@@ -86,7 +88,8 @@ function go() {
 function renderNew() {
   view.replaceChildren(
     el('div', { class: 'card pool', id: 'poolbox', hidden: true, style: 'display:none' }), el('div', { id: 'pendingbox' }), el('div', { id: 'orderbox' }), el('div', { id: 'refunds' }),
-    el('h2', {}, 'PAID SHIFTS'), el('div', { class: 'tiers', id: 'tiers' }), el('div', { id: 'freebox' }), el('div', { id: 'results' }),
+    el('div', { id: 'freebox' }),
+    el('h2', {}, 'PAID SHIFTS · COMING SOON'), el('div', { class: 'tiers', id: 'tiers' }), el('div', { id: 'results' }),
     el('div', { class: 'card', id: 'rules', style: 'margin-top:12px' }));
   paintPool(); paintPending(); paintTiers(); paintRules();
   refreshMe();   // free-ride count + tickets after a ride / refund
@@ -137,8 +140,21 @@ function paintPending() {
 
 /* a ticket payment in flight (GET /api/tickets/pending – only once sales are on): RETRY CONFIRM uses the signature this browser kept */
 async function checkOrder() {
-  try { S.order = (await pendingOrder()).order; } catch { S.order = null; }
+  try {
+    let order = (await pendingOrder()).order;
+    if (order && order.status !== 'paid') {
+      const looked = await reconcileOrder(order.id).catch(() => null); // a phone may have paid after this page closed; no signature was stored here
+      if (looked?.status === 'paid') { await paidTickets(order, looked.order); order = null; }
+      else if (looked?.order) order = looked.order;
+    }
+    S.order = order && order.status !== 'paid' ? order : null;
+  } catch { S.order = null; }
   paintOrder();
+}
+async function paidTickets(order, paid) {
+  creditLocal(order.poolId, order.qty);
+  await Promise.all([refreshMe(), refreshPool()]);
+  creditDialog(order.poolId, order.qty, { lamports: paid?.lamports ?? order.lamports, signature: paid?.signature ?? null });
 }
 function paintOrder() {
   const box = $('orderbox'), o = S.order; if (!box) return;
@@ -146,10 +162,10 @@ function paintOrder() {
   let sig = o.signature; try { sig ??= localStorage.getItem(ORDER_SIG(o.id)); } catch { /* private mode */ }
   const retry = () => busy('order', async () => {
     try {
-      const r = await waitPaid(o.id, sig); S.order = r.status === 'paid' ? null : r.order;
-      if (r.status === 'paid') creditLocal(o.poolId, o.qty);
-      await refreshMe();
-      if (r.status === 'paid') creditDialog(o.poolId, o.qty, { lamports: r.order?.lamports ?? o.lamports, signature: r.order?.signature ?? sig });
+      const looked = await reconcileOrder(o.id).catch(() => null);
+      const r = looked?.status === 'paid' ? looked : (sig ? await waitPaid(o.id, sig) : looked);
+      S.order = r?.status === 'paid' ? null : (r?.order ?? o);
+      if (r?.status === 'paid') { await paidTickets(o, r.order); return; }
     } catch (e) { const line = buyError(e); say('order', line, true); failDialog(S.tiers?.tiers.find(t => t.pool?.id === o.poolId)?.id, line); }
     paintOrder();
   });
@@ -192,6 +208,7 @@ function paintTiers() {
     return salesOpen(S.tiers) ? noPoolCard(t) : legacyCard(t);
   }));
   for (const [k, m] of Object.entries(S.msgs)) say(k, ...m);   // messages survive a repaint
+  mountPayQr();
   paintResults(ctx); paintRefunds(); tickCountdowns();
 }
 
@@ -258,8 +275,8 @@ function freeCard(t) {
     el('div', { class: 'freeinfo' },
       el('div', { class: 'hd' }, el('span', { class: 'nm' }, TIER_NAME.free)),
       el('div', { class: 'prize' },
-        el('span', { class: 'st done' }, 'NO PRIZE'),
-        el('span', { class: 'st done' }, 'FOR THE FREE LEADERBOARD AND ACHIEVEMENTS'),
+        el('span', { class: 'st live' }, 'FREE PLAY'),
+        el('span', { class: 'st done' }, 'OFFICIAL LEADERBOARD & ACHIEVEMENTS'),
         mobile ? el('span', { class: 'st live' }, 'DESKTOP TO DRIVE · SPECTATE ON MOBILE') : ''),
       levelPicker(t),
       freeLevels(t).length ? '' : el('span', { class: 'sub', id: 'free-shift' }, tierInfo(t).shift),   // a server without levels: the one shift, once
@@ -317,6 +334,17 @@ function paintRules() {
     el('li', {}, `Free rides: no fee, no prize. A new wallet starts with a few; the daily refill (+1 at 00:00 UTC) tops you up to ${S.me?.freeRidesMax ?? 5}. A promo or an admin grant can sit above that.`)));
 }
 /* per-card message lines (msg-<key>); kept in S.msgs so a repaint (poll, +/−) does not wipe them */
+function setPayQr(key, url) { S.payQr = url ? { key, url } : null; mountPayQr(); }
+async function mountPayQr() {
+  const wanted = S.payQr;
+  if (!wanted) { $('pay-qr')?.remove(); return; }
+  const { qrNode } = await import('./qr.js');
+  if (S.payQr !== wanted) return; // a repaint started another mount
+  const msg = $(`msg-${wanted.key}`); if (!msg?.isConnected) return;
+  let holder = $('pay-qr');
+  if (!holder) { holder = el('div', { id: 'pay-qr', class: 'pay-qr' }); msg.after(holder); }
+  holder.replaceChildren(qrNode(wanted.url), el('p', { class: 'dim' }, 'or scan with a phone wallet · same account · devnet'));
+}
 function say(key, text, bad = false, link = null) {   // link = { href, text } appended after the text (an explorer link)
   if (text) S.msgs[key] = [text, bad, link]; else delete S.msgs[key];
   const m = $(`msg-${key}`); if (m) { m.replaceChildren(text, link ? el('a', { href: link.href, target: '_blank', rel: 'noopener' }, link.text) : ''); m.className = `msg ${bad ? 'bad' : 'dim'}`; }
@@ -336,9 +364,9 @@ const creditDialog = (poolId, qty, { lamports = 0, signature = null, programId =
     signature ? { k: 'transaction', v: short(signature), href: explorerTx(signature), title: signature } : null,
     p?.address ? { k: 'escrow', v: short(p.address), href: explorerUrl(p.address), title: `pool account ${p.address}` } : null,
     programId ? { k: 'program', v: short(programId), href: explorerUrl(programId), title: `program ${programId}` } : null].filter(Boolean);
-  const proof = signature ? explorerTx(signature) : p?.address ? explorerUrl(p.address) : null;   // the post links the receipt
+  const proof = signature ? explorerTx(signature) : p?.address ? explorerUrl(p.address) : null;   // the dialog is the receipt; the post's url is the site home (a blink), and only when there is a receipt
   ticketDialog({ ok: true, shift: SHIFT[tier] ?? '', qty, text: `${paidLine(qty)} Your entry sits in the pool’s vault on chain, not with us.`, detail: p ? progressText(p, now()) : '', rows,
-    more: { href: escrowExplainer(), text: 'How the escrow works →' }, share: proof && xIntent(ticketShareText({ shift: TIER_NAME[tier] ?? 'paid', qty, lamports, poolId }), proof) });
+    more: { href: escrowExplainer(), text: 'How the escrow works →' }, share: proof && xIntent(ticketShareText({ shift: TIER_NAME[tier] ?? 'paid', qty, lamports, poolId }), homeBlinkUrl(SITE_BASE, location.origin)) });
 };
 const failDialog = (tier, text) => ticketDialog({ ok: false, shift: SHIFT[tier] ?? '', text });
 function play(r, tier, level = null) {
@@ -361,7 +389,7 @@ const startLegacy = id => busy(id, async () => {
     say(id, 'Driving requires a desktop browser with keyboard controls. Check out the LIVE tab to watch streams on mobile!', true);
     return;
   }
-  if (blockPaid(S.me)) return; clicked(id, S.tiers?.tiers.find(t => t.id === id)?.usd ?? 0); try { play(await buyRide(id, text => say(id, text)), id); } catch (e) { refusedOffer(e); say(id, rideError(e, id), true); }
+  if (blockPaid(S.me)) return; clicked(id, S.tiers?.tiers.find(t => t.id === id)?.usd ?? 0); try { play(await buyRide(id, text => say(id, text), url => setPayQr(id, url)), id); } catch (e) { refusedOffer(e); say(id, rideError(e, id), true); }
 });
 const ride = tier => busy(tier, async () => {   // spends one ticket: the ride is ready at once
   if (isMobileDevice()) {
@@ -376,7 +404,7 @@ const ride = tier => busy(tier, async () => {   // spends one ticket: the ride i
 const buy = (tier, poolId, qty) => busy(tier, async () => {
   if (blockPaid(S.me)) return;
   try {
-    const r = await buyTickets(poolId, qty, text => say(tier, text)); S.qty[tier] = 1; creditLocal(poolId, qty); await Promise.all([refreshMe(), refreshPool()]);
+    const r = await buyTickets(poolId, qty, text => say(tier, text), url => setPayQr(tier, url)); S.qty[tier] = 1; creditLocal(poolId, qty); await Promise.all([refreshMe(), refreshPool()]);
     const line = paidLine(qty);   // the card keeps it (the checks read #msg-*); the dialog is the same news as a ticket
     say(tier, line, false, r.order?.signature ? { href: explorerTx(r.order.signature), text: `${r.order.signature.slice(0, 8)}… ↗` } : null);
     creditDialog(poolId, qty, { lamports: r.order?.lamports, signature: r.order?.signature, programId: r.programId });
@@ -541,17 +569,13 @@ async function renderProfile() {
   if (my !== seq) return;
   if (p.sns) { S.me.sns = p.sns; seedSns(p.wallet, p.sns); }
   meGen++; Object.assign(S.me, { freeRides: p.freeRides, freeRidesMax: p.freeRidesMax, nextFreeRideAt: p.nextFreeRideAt, tickets: p.tickets, agreements: p.agreements }); paintHeader();
-  const got = p.achievements.filter(a => a.earnedAt).length;
   const card = agreementsCard(S.me);
   view.replaceChildren(
     ...(card ? [card] : []),
     el('div', { class: 'who', style: 'display:flex;gap:10px;align-items:center' }, avatar(p.wallet), el('div', {}, el('b', { title: p.wallet }, formatDriver(p.wallet, p.sns)), el('div', { class: 'dim' }, `rider since ${new Date(p.createdAt).toLocaleDateString()}`))),
     ...careerTiles(p.career, p.stats, { km, sol }),
     ...profileTickets(p, S.busy, refund),
-    el('h2', {}, `ACHIEVEMENTS · ${got}/${p.achievements.length}`),
-    el('div', { class: 'ach' }, p.achievements.map(a => el('div', { class: `a${a.earnedAt ? '' : ' lock'}${a.awardedAtRoundClose ? ' soon' : ''}` }, el('span', { class: 'ic' }, a.icon), el('span', { class: 'nm' }, a.name), el('span', { class: 'ds' }, a.desc),
-      el('span', { class: 'when' }, a.earnedAt ? `unlocked ${new Date(a.earnedAt).toLocaleDateString()}` : a.awardedAtRoundClose ? 'awarded when the round closes' : 'locked')))),
-    el('p', { class: 'dim' }, 'Achievements become NFTs in your wallet soon – they are recorded now and can’t be lost.'),
+    ...achievementsSection(p.achievements, track, p.badgeChain),
         el('h2', {}, 'RECENT RIDES'),
     p.recent.length ? el('div', { class: 'hist' }, p.recent.map(r => el('div', { class: 'hrow' },
       el('span', {}, new Date(r.startedAt).toLocaleString(), ' · ', TIER_NAME[r.tier] ?? r.tier, r.route ? ` · ${ROUTES[r.route] ?? ''}` : ''),

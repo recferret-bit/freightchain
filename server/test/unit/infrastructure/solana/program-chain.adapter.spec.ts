@@ -62,6 +62,18 @@ describe('ProgramChainAdapter – builds what the program accepted', () => {
     expect(tx.signatures.map((s) => s.publicKey.toBase58())).toEqual([fx.keys.b]);
   });
 
+  it('a buy with a reference keeps the program instruction and adds the reference on a memo, read-only', async () => {
+    const { adapter } = adapterWith();
+    const reference = Keypair.generate().publicKey.toBase58();
+    const built = await adapter.buildBuyTransaction({ payer: fx.keys.b, poolId: 0, qty: 1, orderId: ORDER_B, reference });
+    const { tx, ixs } = programIxs(built.transaction);
+    expect(ixs[0]).toEqual(asCompiled(fixtureTx('buy_ticket self-paid').instructions, built.feePayer)[0]);
+    expect(tx.instructions[3]?.programId.toBase58()).toBe('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
+    expect(tx.instructions[3]?.data.toString()).toBe(ORDER_B);
+    expect(tx.instructions[3]?.keys).toEqual([expect.objectContaining({ isSigner: false, isWritable: false })]);
+    expect(tx.instructions[3]?.keys[0]?.pubkey.toBase58()).toBe(reference);
+  });
+
   it('a refund (+ fail_pool) reads the ticket\'s rent payer; refused when there is no ticket', async () => {
     const { adapter } = adapterWith({ getAccountInfo: async () => accountInfo('ticket pool 1 C') });
     const built = await adapter.buildRefundTransaction({ caller: fx.keys.d, poolId: 1, buyer: fx.keys.c, needsFail: true });
@@ -118,6 +130,7 @@ describe('ProgramChainAdapter – reads', () => {
       vault: fixtureTx('buy_ticket self-paid').instructions[0]!.accounts[4]!.pubkey, authority: fx.keys.authority, tier: 1, priceLamports: 100_000_000, minTickets: 3, maxTickets: 10, maxPerWallet: 4,
       prepDeadline: new Date(Number(d['prepDeadline']) * 1000), playDeadline: new Date(Number(d['playDeadline']) * 1000), payoutAt: new Date(Number(d['payoutAt']) * 1000), prizeBps: 6000, seedBps: 2500, feeBps: 1500,
       feeTreasury: fx.keys.feeTreasury, seedTreasury: fx.keys.seedTreasury, createdAt: new Date(Number(d['createdAt']) * 1000),
+      seedCommitment: (d['seedCommitment'] as string | undefined) ?? 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=', stakedLamports: 0, yieldEarned: 0,
     });
     // the rent minimum is the cluster's own (read once): devnet's is lower than mainnet's, so the escrow there is vault − 650 240
     let rentReads = 0;
@@ -149,7 +162,7 @@ describe('ProgramChainAdapter – reads', () => {
     expect(asked).toEqual([fixtureAccount('pool 0 active').address, fixtureTx('buy_ticket self-paid').instructions[0]!.accounts[4]!.pubkey]);
     expect((await adapterWith(rpc).adapter.feeQuote({ poolId: null, kind: 'buy' })).estimatedFeeLamports).toBe(5_000 + 600);
     expect(asked).toEqual([fx.programId]);
-    expect((await adapterWith(rpc).adapter.feeQuote({ poolId: 0, kind: 'pay_prize' })).estimatedFeeLamports).toBe(5_000 + 170);
+    expect((await adapterWith(rpc).adapter.feeQuote({ poolId: 0, kind: 'pay_prize' })).estimatedFeeLamports).toBe(5_000 + 220);
     await adapterWith(rpc, { ticketProgramId: '' }).adapter.feeQuote({ poolId: null, kind: 'buy' }); // transfer mode: the network's own recent fees
     expect(asked).toEqual([]);
   });

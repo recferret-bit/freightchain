@@ -23,7 +23,7 @@ export function updateBattery(dt) {
   if (dn.head) drain += B.HEAD;
   if (dn.cab) drain += B.CAB;
   if (powered()) {
-    if (!st.engineOn) drain += B.KEY_ON;   // instruments + ECU with the engine off
+    if (!st.engineOn && !(guide.tutorial && guide.hold && st.s === 0)) drain += B.KEY_ON;   // instruments + ECU with the engine off (freezes while stationary at start with tutorial)
     if (st.heater) drain += B.HEATER;
     if (st.cooler) drain += B.COOLER;
     if (radio.on) drain += B.RADIO;

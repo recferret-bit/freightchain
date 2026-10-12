@@ -45,9 +45,10 @@ export function agreementsScenarios(h: () => Harness): void {
     expect((await w.agent.post('/api/rides').send({ tier: '1h' }).expect(409)).body.code).toBe('agreements_required');
     expect((await w.agent.get(`/api/rides/${ride.id}/payment`).expect(409)).body.code).toBe('agreements_required');
     await put(w, { age18: true, loss: true }).expect(200);
-    expect((await w.agent.get(`/api/rides/${ride.id}/payment`).expect(200)).body.lamports).toBe(ride.lamports);
+    const payment = (await w.agent.get(`/api/rides/${ride.id}/payment`).expect(200)).body;
+    expect(payment.lamports).toBe(ride.lamports);
     await put(w, { age18: false, loss: false }).expect(200);
-    const sig = h().chain.addPayment({ payer: w.address, lamports: ride.lamports, memo: ride.id });
+    const sig = h().chain.addPayment({ payer: w.address, lamports: ride.lamports, memo: ride.id, reference: payment.reference });
     expect((await w.agent.post(`/api/rides/${ride.id}/confirm`).send({ signature: sig }).expect(200)).body).toMatchObject({ status: 'paid' });
     expect((await w.agent.post(`/api/rides/${ride.id}/start`).expect(409)).body.code).toBe('agreements_required');
     sec(1);

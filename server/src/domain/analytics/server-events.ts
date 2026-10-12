@@ -23,6 +23,8 @@ export const SERVER_EVENTS = [
   'promo_created',
   'promo_disabled',
   'achievement_unlocked',
+  'achievement_minted',
+  'achievement_mint_failed',
   'round_opened',
   'round_closed',
 ] as const;

@@ -1,0 +1,52 @@
+{
+  "name": "Ice Road King",
+  "symbol": "FCHAIN",
+  "description": "Ice on the road, frost on the glass, a thousand empty kilometres of white. Condition: Finish 15 shifts on the Trans-Siberian route. A soulbound Freight Chain achievement – compressed NFT, non-transferable.",
+  "image": "__IMAGE__",
+  "seller_fee_basis_points": 0,
+  "external_url": "https://freightchain.fun/",
+  "collection": {
+    "name": "Freight Chain Achievements",
+    "family": "Freight Chain"
+  },
+  "attributes": [
+    {
+      "trait_type": "Family",
+      "value": "Siberia"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Gold"
+    },
+    {
+      "trait_type": "Tier Number",
+      "value": 3
+    },
+    {
+      "trait_type": "Condition",
+      "value": "Finish 15 shifts on the Trans-Siberian route."
+    },
+    {
+      "trait_type": "Requirement",
+      "value": 15,
+      "display_type": "number"
+    },
+    {
+      "trait_type": "Soulbound",
+      "value": "Yes"
+    },
+    {
+      "trait_type": "Game",
+      "value": "Freight Chain"
+    }
+  ],
+  "properties": {
+    "category": "image",
+    "files": [
+      {
+        "uri": "__IMAGE__",
+        "type": "image/png"
+      }
+    ]
+  }
+}

@@ -63,7 +63,7 @@ export class FakePoolChain extends PoolChainPort {
 
   // ---- the port
 
-  async buildBuyTransaction(input: { payer: string; poolId: number; qty: number; orderId: string }): Promise<BuiltTransaction> {
+  async buildBuyTransaction(input: { payer: string; poolId: number; qty: number; orderId: string; reference?: string | null }): Promise<BuiltTransaction> {
     return this.build('buy', input, input.payer, [input.payer]);
   }
   async buildRefundTransaction(input: { caller: string; poolId: number; buyer: string; needsFail: boolean }): Promise<BuiltTransaction> {
@@ -122,5 +122,14 @@ export class FakePoolChain extends PoolChainPort {
     };
     this.built.push({ kind, input, tx: built });
     return built;
+  }
+
+  pledgePda(rideId: Uint8Array | Buffer | number[], sponsor: string): string {
+    try {
+      const rideIdBuf = Buffer.isBuffer(rideId) ? rideId : Buffer.from(rideId);
+      return PublicKey.findProgramAddressSync([Buffer.from('pledge'), rideIdBuf, new PublicKey(sponsor).toBuffer()], new PublicKey(FAKE_PROGRAM_ID))[0].toBase58();
+    } catch {
+      return `PledgePDA_${sponsor}_${Buffer.from(rideId).slice(0, 4).toString('hex')}`;
+    }
   }
 }

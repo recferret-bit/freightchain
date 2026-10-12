@@ -14,7 +14,7 @@ describe('the promo events of the browser plane', () => {
     for (const name of ['promo_redeemed', 'cosmetic_equipped', 'garage_saved', 'promo_created', 'promo_disabled']) expect(isClientEvent(name), name).toBe(false);
   });
   it('keeps one web vital and drops a float value', () => {
-    expect(CLIENT_EVENTS).toHaveLength(39);
+    expect(CLIENT_EVENTS).toHaveLength(40);
     expect(allowClientProperties('agreement_toggled', { kind: 'age18', on: true, wallet: 'x' })).toEqual({ kind: 'age18', on: true });
     expect(isClientEvent('web_vital')).toBe(true);
     expect(isClientEvent('whitepaper_viewed')).toBe(true);

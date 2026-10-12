@@ -1,3 +1,4 @@
+import bs58 from 'bs58';
 import { RecordingAnalytics } from './recording-analytics.js';
 import { RulesConfigPort, type RulesConfig } from '../../src/application/ports/config/rules-config.port.js';
 import { EntropyPort } from '../../src/application/ports/shared/entropy.port.js';
@@ -18,14 +19,15 @@ import { Player } from '../../src/domain/players/player.entity.js';
 import { Ride } from '../../src/domain/rides/ride.entity.js';
 import { FakeChain, TREASURY } from './fake-chain.js';
 import { FakePoolChain } from './fake-pool-chain.js';
+import { FakeMintChain } from './fake-mint-chain.js';
 import { FakeClock } from './fake-clock.js';
 import { MemoryDb } from './in-memory/memory-db.js';
 import {
-  MemoryAchievementRepository, MemoryChallengeRepository, MemoryHealthProbe, MemoryPaymentRepository, MemoryPlayerRepository,
+  MemoryAchievementRepository, MemoryAchievementMintRepository, MemoryChallengeRepository, MemoryHealthProbe, MemoryPaymentRepository, MemoryPlayerRepository,
   MemoryRideBatchRepository, MemoryRideQuery, MemoryRideVerdictRepository, MemorySignInRepository, MemoryAdminActionRepository, MemoryAdminQuery, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
 } from './in-memory/memory-repositories.js';
 import { MemoryAdminDirectory } from './in-memory/memory-admin-directory.js';
-import { MemoryCosmeticRepository, MemoryPoolPayoutRepository, MemoryPoolRepository, MemoryPromoRepository, MemoryRideTicketRepository, MemoryTicketOrderRepository } from './in-memory/memory-ledger-repositories.js';
+import { MemoryCosmeticRepository, MemoryPoolPayoutRepository, MemoryPoolRepository, MemoryPledgeRepository, MemoryPromoRepository, MemoryRideTicketRepository, MemoryTicketOrderRepository } from './in-memory/memory-ledger-repositories.js';
 import { MemoryChainCursorRepository, MemoryChainEventRepository } from './in-memory/memory-repositories.js';
 import { TestHasher } from './recording.js';
 import { MemoryDonationOrderRepository, MemoryRideEventRepository, MemoryRideMuteRepository } from './in-memory/memory-live-repositories.js';
@@ -64,6 +66,7 @@ export class SequenceEntropy extends EntropyPort {
   uuid(): string { this.n++; return `00000000-0000-4000-8000-${String(this.n).padStart(12, '0')}`; }
   hex(bytes: number): string { this.n++; return String(this.n).padStart(bytes * 2, '0'); }
   seed31(): number { this.n++; return 1000 + this.n; }
+  referenceKey(): string { this.n++; const buf = Buffer.alloc(32); buf.writeUInt32BE(this.n, 28); return bs58.encode(buf); }
 }
 
 /**
@@ -95,6 +98,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const analytics = new RecordingAnalytics();
   const pools = new MemoryPoolRepository(db);
   const poolPayouts = new MemoryPoolPayoutRepository(db);
+  const pledges = new MemoryPledgeRepository(db);
   const tickets = new MemoryRideTicketRepository(db);
   const promos = new MemoryPromoRepository(db);
   const cosmetics = new MemoryCosmeticRepository(db);
@@ -121,7 +125,9 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const nameService = new StubNameServiceAdapter();
   const meProfile = new MeProfileService(rulesPort, poolTickets, rides, nameService);
   const rounds = new RoundService(roundRepo, rulesPort, transactions, clock, analytics);
-  const achievements = new AchievementService(unlocks, rideQuery, clock, rulesPort);
+  const mints = new MemoryAchievementMintRepository(db);
+  const mintChain = new FakeMintChain();
+  const achievements = new AchievementService(unlocks, mints, rideQuery, clock, rulesPort);
   const ticketSettlement = new TicketSettlementService(players, pools, tickets, orders, sessions, rounds, transactions, clock, entropy);
   const registry = new PoolRegistryService(poolChain, pools, clock, entropy);
   const verdicts = new VerdictService(rides, players, batches, verdictRepo, adminActions, transactions, clock);
@@ -165,8 +171,8 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const storedPlayer = async (wallet: string) => (await players.findByWallet(wallet)) as Player;
 
   return {
-    db, clock, chain, entropy, dailySeeds, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, batches, hasher, verdictRepo, verdicts, proofs, signIns, adminActions, adminQuery, adminDirectory, health, analytics,
-    pools, poolPayouts, tickets, promos, cosmetics, promoCreation, orders, poolTickets, ticketSettlement,
+    db, clock, chain, entropy, dailySeeds, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, mints, mintChain, batches, hasher, verdictRepo, verdicts, proofs, signIns, adminActions, adminQuery, adminDirectory, health, analytics,
+    pools, poolPayouts, pledges, tickets, promos, cosmetics, promoCreation, orders, poolTickets, ticketSettlement,
     sessions, meProfile, settings, settingsRepo, lookup, rounds, achievements, settlement, now, player, accept, freeRide, paidOrder, paidRide, reload, storedPlayer,
     poolChain, chainEvents, chainCursors, registry, rideEvents, viewers, sitePresence, rideMutes, donationOrders, liveAccess, statsRepo, cache, stats, nameService,
   };

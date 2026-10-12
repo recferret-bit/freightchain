@@ -1,0 +1,52 @@
+{
+  "name": "On My Own",
+  "symbol": "FCHAIN",
+  "description": "No assist, no net. Just a driver, a wheel and the truth about their reflexes. Condition: Complete a free ride without assist. A soulbound Freight Chain achievement – compressed NFT, non-transferable.",
+  "image": "__IMAGE__",
+  "seller_fee_basis_points": 0,
+  "external_url": "https://freightchain.fun/",
+  "collection": {
+    "name": "Freight Chain Achievements",
+    "family": "Freight Chain"
+  },
+  "attributes": [
+    {
+      "trait_type": "Family",
+      "value": "Solo"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Bronze"
+    },
+    {
+      "trait_type": "Tier Number",
+      "value": 1
+    },
+    {
+      "trait_type": "Condition",
+      "value": "Complete a free ride without assist."
+    },
+    {
+      "trait_type": "Requirement",
+      "value": 1,
+      "display_type": "number"
+    },
+    {
+      "trait_type": "Soulbound",
+      "value": "Yes"
+    },
+    {
+      "trait_type": "Game",
+      "value": "Freight Chain"
+    }
+  ],
+  "properties": {
+    "category": "image",
+    "files": [
+      {
+        "uri": "__IMAGE__",
+        "type": "image/png"
+      }
+    ]
+  }
+}

@@ -203,6 +203,7 @@ fn nobody_pays_a_prize_before_the_review_window_ends() {
     let p = e.pool(id);
     let w = funded(&mut e.svm, SOL);
     let a = e.authority_kp();
+    e.record_verified_attestation(id, &a, &w.pubkey(), 100).unwrap();
     // the play deadline is over, the review window is not: neither the payout key nor the admin may pay or close
     e.warp(p.play_deadline);
     assert_err!(e.pay_prize(id, &payout, &w.pubkey(), PRICE, 1), PoolError::TooEarly);
@@ -253,6 +254,7 @@ fn the_payout_key_can_do_nothing_else() {
     e.set_payout_authority(&a, None).unwrap();
     e.warp(e.pool(id).payout_at);
     let w = funded(&mut e.svm, SOL);
+    e.record_verified_attestation(id, &a, &w.pubkey(), 100).unwrap();
     assert_err!(e.pay_prize(id, &payout, &w.pubkey(), PRICE, 1), PoolError::Unauthorized);
     assert_err!(e.close_pool(id, &payout), PoolError::Unauthorized);
 }
@@ -300,6 +302,8 @@ fn a_day_of_the_one_hour_series() {
 
     e.warp(p.payout_at);
     let w = funded(&mut e.svm, SOL);
+    let a = e.authority_kp();
+    e.record_verified_attestation(id, &a, &w.pubkey(), 100).unwrap();
     e.pay_prize(id, &payout, &w.pubkey(), PRICE, 1).unwrap();
     e.close_pool(id, &payout).unwrap();
     assert_eq!((e.pool(id).status, e.vault(id)), (3, 0));

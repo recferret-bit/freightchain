@@ -7,6 +7,7 @@ import { GetRoadPlanQuery } from '../../../src/application/use-cases/live/get-ro
 import { MuteWalletCommand } from '../../../src/application/use-cases/live/mute-wallet/mute-wallet.command.js';
 import { CreateDonationOrderCommand } from '../../../src/application/use-cases/live/create-donation-order/create-donation-order.command.js';
 import { ConfirmDonationCommand } from '../../../src/application/use-cases/live/confirm-donation/confirm-donation.command.js';
+import { ReconcileDonationCommand } from '../../../src/application/use-cases/live/reconcile-donation/reconcile-donation.command.js';
 import { busMock } from '../../support/bus.js';
 
 describe('LiveHttpController', () => {
@@ -31,5 +32,7 @@ describe('LiveHttpController', () => {
     expect(commands.last()).toEqual(new CreateDonationOrderCommand('F', 'R', 'night', 'n'));
     await c.confirm({ wallet: 'F' }, { id: 'R', orderId: 'O' }, { signature: 'S' });
     expect(commands.last()).toEqual(new ConfirmDonationCommand('F', 'R', 'O', 'S'));
+    await c.reconcileDonation({ wallet: 'F' }, { id: 'R', orderId: 'O' });
+    expect(commands.last()).toEqual(new ReconcileDonationCommand('F', 'R', 'O'));
   });
 });

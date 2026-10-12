@@ -46,6 +46,7 @@ export interface PoolCreatedFields {
   seedTreasury?: string;
   /** opened by `open_next_pool` from the tier's series (else `create_pool` by the admin) */
   fromSeries?: boolean;
+  seedCommitment?: string;
 }
 
 /* The *Total fields are running totals kept by the program: replaying an event that carries one is harmless, which is what lets the mirror recompute its balances instead of adding. */
@@ -124,6 +125,9 @@ export interface PoolChainState {
   feeTreasury: string;
   seedTreasury: string;
   createdAt: Date;
+  seedCommitment?: string;
+  stakedLamports?: number;
+  yieldEarned?: number;
 }
 
 /** A tier's schedule as read from chain (the program's Series account, written by the admin's `set_series`). Pools tile time: the next one may be opened by

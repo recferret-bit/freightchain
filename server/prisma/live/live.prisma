@@ -52,6 +52,7 @@ model DonationOrder {
   status    String // pending | paid
   signature String?   @unique
   eventId   Int? // the RideEvent it became
+  paymentReference String? @unique // Solana Pay reference on the transfer's memo
   createdAt DateTime
   paidAt    DateTime?
 

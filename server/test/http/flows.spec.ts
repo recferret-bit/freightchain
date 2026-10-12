@@ -20,6 +20,7 @@ import { FREE_LEVELS_ENV, freeLevelScenarios } from '../scenarios/free-levels.sc
 import { FREE_RIDES_ENV, freeRideScenarios } from '../scenarios/free-rides.scenarios.js';
 import { LIVE_ENV, LIVE_FLAGS_ENV, LIVE_OFF_ENV, liveFlagsScenarios, liveOffScenarios, liveScenarios } from '../scenarios/live.scenarios.js';
 import { AGREEMENTS_ENV, agreementsScenarios } from '../scenarios/agreements.scenarios.js';
+import { ACTIONS_PROGRAM_ENV, actionsBuyScenarios, actionsScenarios } from '../scenarios/actions.scenarios.js';
 
 /* The whole HTTP surface on in-memory repositories (no Docker). test/integration/flows.integration.spec.ts runs these same scenarios on PostgreSQL. */
 for (const [name, env, scenarios] of [
@@ -46,6 +47,8 @@ for (const [name, env, scenarios] of [
   ['chain: the webhook settles what the chain did', WEBHOOK_ENV, webhookScenarios],
   ['client telemetry relay', {}, analyticsScenarios],
   ['profile: the 18+ and loss offer before a paid shift', AGREEMENTS_ENV, agreementsScenarios],
+  ['solana actions: discovery, shift card, ride blink', {}, actionsScenarios],
+  ['solana actions: one program-mode ticket', ACTIONS_PROGRAM_ENV, actionsBuyScenarios],
 ] as const) {
   describe(`HTTP (in-memory) · ${name}`, () => {
     let harness: Harness;

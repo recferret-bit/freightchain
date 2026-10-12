@@ -1,0 +1,52 @@
+{
+  "name": "Shift Complete",
+  "symbol": "FCHAIN",
+  "description": "The clock ran out and the line was crossed. Paperwork stamped, cargo delivered. Condition: Finish a paid shift. A soulbound Freight Chain achievement – compressed NFT, non-transferable.",
+  "image": "__IMAGE__",
+  "seller_fee_basis_points": 0,
+  "external_url": "https://freightchain.fun/",
+  "collection": {
+    "name": "Freight Chain Achievements",
+    "family": "Freight Chain"
+  },
+  "attributes": [
+    {
+      "trait_type": "Family",
+      "value": "Shifts"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Bronze"
+    },
+    {
+      "trait_type": "Tier Number",
+      "value": 1
+    },
+    {
+      "trait_type": "Condition",
+      "value": "Finish a paid shift."
+    },
+    {
+      "trait_type": "Requirement",
+      "value": 1,
+      "display_type": "number"
+    },
+    {
+      "trait_type": "Soulbound",
+      "value": "Yes"
+    },
+    {
+      "trait_type": "Game",
+      "value": "Freight Chain"
+    }
+  ],
+  "properties": {
+    "category": "image",
+    "files": [
+      {
+        "uri": "__IMAGE__",
+        "type": "image/png"
+      }
+    ]
+  }
+}

@@ -6,6 +6,7 @@ import { PoolChainPort } from '../../../ports/economy/pool-chain.port.js';
 import { TicketOrderRepositoryPort } from '../../../ports/economy/ticket-order.repository.port.js';
 import { PlayerRepositoryPort } from '../../../ports/players/player.repository.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
+import { EntropyPort } from '../../../ports/shared/entropy.port.js';
 import { TransactionPort, type TransactionHandle } from '../../../ports/shared/transaction.port.js';
 import { GetTicketPaymentQuery, type TicketPaymentDto } from './get-ticket-payment.query.js';
 
@@ -22,13 +23,15 @@ export class GetTicketPaymentHandler implements IQueryHandler<GetTicketPaymentQu
     private readonly rules: RulesConfigPort,
     private readonly transactions: TransactionPort,
     private readonly clock: ClockPort,
+    private readonly entropy: EntropyPort,
   ) {}
 
   async execute({ wallet, orderId }: GetTicketPaymentQuery): Promise<TicketPaymentDto> {
     const rules = this.rules.get();
     const order = this.mustBeLive(await this.orders.findById(orderId), wallet);
     await this.requirePaidPlay(wallet); // before the RPC build, and again under the lock before the message is attached
-    const tx = await this.chain.buildBuyTransaction({ payer: wallet, poolId: order.poolId, qty: order.qty, orderId: order.id });
+    const reference = await this.referenceOf(wallet, order);
+    const tx = await this.chain.buildBuyTransaction({ payer: wallet, poolId: order.poolId, qty: order.qty, orderId: order.id, reference });
     await this.transactions.run(async (handle) => {
       await this.requirePaidPlay(wallet, handle);
       const fresh = this.mustBeLive(await this.orders.findById(orderId, handle), wallet);
@@ -38,8 +41,19 @@ export class GetTicketPaymentHandler implements IQueryHandler<GetTicketPaymentQu
     return {
       orderId: order.id, mode: 'program', programId: rules.programId, poolId: order.poolId, lamports: order.lamports, transaction: tx.transaction, message: tx.message,
       feePayer: tx.feePayer, computeUnits: tx.computeUnits, priorityMicrolamports: tx.priorityMicrolamports, blockhash: tx.blockhash,
-      lastValidBlockHeight: tx.lastValidBlockHeight,
+      lastValidBlockHeight: tx.lastValidBlockHeight, reference,
     };
+  }
+
+  /** Created orders already have one. An older row gets one under the player lock, and a racing build keeps the first. */
+  private async referenceOf(wallet: string, order: TicketOrder): Promise<string> {
+    if (order.paymentReference) return order.paymentReference;
+    return this.transactions.run(async (handle) => {
+      await this.requirePaidPlay(wallet, handle);
+      const fresh = this.mustBeLive(await this.orders.findById(order.id, handle), wallet);
+      if (fresh.assignPaymentReference(this.entropy.referenceKey())) await this.orders.save(fresh, handle);
+      return fresh.paymentReference ?? '';
+    });
   }
 
   private async requirePaidPlay(wallet: string, tx?: TransactionHandle) {

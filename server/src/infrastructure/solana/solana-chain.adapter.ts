@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { Connection, PublicKey, SystemProgram, Transaction, TransactionInstruction } from '@solana/web3.js';
+import { Connection, PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
 import type { ChainSignature, ChainTransaction, UnsignedPaymentTx } from '../../domain/economy/chain-transaction.js';
 import { ServiceUnavailableError } from '../../domain/shared/errors.js';
 import { ChainPort, type PaymentTxInput } from '../../application/ports/economy/chain.port.js';
 import { EnvService } from '../config/env.service.js';
-import { MEMO_PROGRAM, toChainTransaction } from './chain-transaction.mapper.js';
+import { memoInstruction, toChainTransaction } from './chain-transaction.mapper.js';
 
 /** Plan A payment: a plain SOL transfer to the treasury with the ride id as a memo. The only module that talks to a Solana RPC. */
 @Injectable()
@@ -21,7 +21,7 @@ export class SolanaChainAdapter extends ChainPort {
     const payer = new PublicKey(input.payer);
     const tx = new Transaction({ feePayer: payer, recentBlockhash: blockhash })
       .add(SystemProgram.transfer({ fromPubkey: payer, toPubkey: new PublicKey(input.treasury), lamports: input.lamports }))
-      .add(new TransactionInstruction({ keys: [{ pubkey: payer, isSigner: true, isWritable: false }], programId: MEMO_PROGRAM, data: Buffer.from(input.memo) }));
+      .add(memoInstruction(input.memo, [payer], input.reference));
     return { blockhash, lastValidBlockHeight, transaction: tx.serialize({ requireAllSignatures: false, verifySignatures: false }).toString('base64') };
   }
 
@@ -31,7 +31,11 @@ export class SolanaChainAdapter extends ChainPort {
   }
 
   async recentSignatures(wallet: string, limit: number): Promise<ChainSignature[]> {
-    const entries = await this.rpc(() => this.connection.getSignaturesForAddress(new PublicKey(wallet), { limit }, 'confirmed'));
+    return this.signaturesForAddress(wallet, limit);
+  }
+
+  async signaturesForAddress(address: string, limit: number): Promise<ChainSignature[]> {
+    const entries = await this.rpc(() => this.connection.getSignaturesForAddress(new PublicKey(address), { limit }, 'confirmed'));
     return entries.filter((e) => !e.err).map((e) => ({ signature: e.signature, memo: e.memo }));
   }
 

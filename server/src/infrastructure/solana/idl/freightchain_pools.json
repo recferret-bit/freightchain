@@ -1,0 +1,3557 @@
+{
+  "address": "8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p",
+  "metadata": {
+    "name": "freightchain_pools",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Escrowed prize pools: assurance-contract tickets, trustless refunds, public split"
+  },
+  "instructions": [
+    {
+      "name": "accept_authority",
+      "discriminator": [
+        107,
+        86,
+        198,
+        91,
+        33,
+        12,
+        107,
+        160
+      ],
+      "accounts": [
+        {
+          "name": "new_authority",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "buy_ticket",
+      "discriminator": [
+        11,
+        24,
+        17,
+        193,
+        168,
+        116,
+        164,
+        169
+      ],
+      "accounts": [
+        {
+          "name": "buyer",
+          "docs": [
+            "Pays the ticket price. May be the same key as `fee_payer`."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "fee_payer",
+          "docs": [
+            "Pays the transaction fee and the Ticket rent (recorded as `rent_payer`). The sponsor when gasless."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "pool_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "pool_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "ticket",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  105,
+                  99,
+                  107,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool"
+              },
+              {
+                "kind": "account",
+                "path": "buyer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "pool_id",
+          "type": "u32"
+        },
+        {
+          "name": "qty",
+          "type": "u16"
+        },
+        {
+          "name": "order_id",
+          "type": {
+            "array": [
+              "u8",
+              16
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "cancel_pool",
+      "discriminator": [
+        211,
+        11,
+        27,
+        100,
+        252,
+        115,
+        57,
+        77
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "pool_id"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "pool_id",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "close_pool",
+      "discriminator": [
+        140,
+        189,
+        209,
+        23,
+        239,
+        62,
+        239,
+        11
+      ],
+      "accounts": [
+        {
+          "name": "caller",
+          "docs": [
+            "`config.authority` / `config.payout_authority` from `payout_at`; anyone after the settle grace; anyone for a fully refunded pool."
+          ],
+          "signer": true
+        },
+        {
+          "name": "pool_authority",
+          "writable": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "pool_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "pool_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "seed_treasury",
+          "writable": true
+        },
+        {
+          "name": "fee_treasury",
+          "writable": true
+        },
+        {
+          "name": "platform_treasury",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "pool_id",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "close_ticket",
+      "discriminator": [
+        66,
+        209,
+        114,
+        197,
+        75,
+        27,
+        182,
+        117
+      ],
+      "accounts": [
+        {
+          "name": "caller",
+          "docs": [
+            "Anyone."
+          ],
+          "signer": true
+        },
+        {
+          "name": "pool",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "pool_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "ticket",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  105,
+                  99,
+                  107,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool"
+              },
+              {
+                "kind": "account",
+                "path": "ticket.buyer",
+                "account": "Ticket"
+              }
+            ]
+          }
+        },
+        {
+          "name": "rent_payer",
+          "writable": true,
+          "relations": [
+            "ticket"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "pool_id",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "create_pledge",
+      "discriminator": [
+        86,
+        26,
+        21,
+        66,
+        130,
+        186,
+        102,
+        36
+      ],
+      "accounts": [
+        {
+          "name": "sponsor",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "driver"
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool.pool_id",
+                "account": "Pool"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pledge",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  101,
+                  100,
+                  103,
+                  101
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "ride_id"
+              },
+              {
+                "kind": "account",
+                "path": "sponsor"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "ride_id",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "driver",
+          "type": "pubkey"
+        },
+        {
+          "name": "max_lamports",
+          "type": "u64"
+        },
+        {
+          "name": "lamports_per_km",
+          "type": "u64"
+        },
+        {
+          "name": "target_km",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "create_pool",
+      "discriminator": [
+        233,
+        146,
+        209,
+        142,
+        207,
+        104,
+        64,
+        188
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.pool_count",
+                "account": "Config"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.pool_count",
+                "account": "Config"
+              }
+            ]
+          }
+        },
+        {
+          "name": "fee_treasury"
+        },
+        {
+          "name": "seed_treasury"
+        },
+        {
+          "name": "platform_treasury"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "CreatePoolParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "expire_pool",
+      "discriminator": [
+        197,
+        132,
+        108,
+        174,
+        19,
+        201,
+        67,
+        78
+      ],
+      "accounts": [
+        {
+          "name": "caller",
+          "docs": [
+            "Anyone: the exit when the admin never settles."
+          ],
+          "signer": true
+        },
+        {
+          "name": "pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "pool_id"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "pool_id",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "fail_pool",
+      "discriminator": [
+        57,
+        43,
+        175,
+        236,
+        87,
+        34,
+        32,
+        9
+      ],
+      "accounts": [
+        {
+          "name": "caller",
+          "docs": [
+            "Anyone: a permissionless crank."
+          ],
+          "signer": true
+        },
+        {
+          "name": "pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "pool_id"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "pool_id",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "initialize",
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "upgrade_authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "program",
+          "address": "8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p"
+        },
+        {
+          "name": "program_data"
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "platform_treasury_account"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "authority",
+          "type": "pubkey"
+        },
+        {
+          "name": "platform_treasury",
+          "type": "pubkey"
+        },
+        {
+          "name": "platform_fee_bps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "open_next_pool",
+      "discriminator": [
+        67,
+        23,
+        193,
+        206,
+        62,
+        220,
+        69,
+        100
+      ],
+      "accounts": [
+        {
+          "name": "caller",
+          "docs": [
+            "Anyone (the server's crank in practice): pays the Pool account rent and the vault rent minimum, which comes back at close."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "series",
+          "writable": true
+        },
+        {
+          "name": "pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.pool_count",
+                "account": "Config"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.pool_count",
+                "account": "Config"
+              }
+            ]
+          }
+        },
+        {
+          "name": "fee_treasury"
+        },
+        {
+          "name": "seed_treasury"
+        },
+        {
+          "name": "platform_treasury"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "tier",
+          "type": "u8"
+        },
+        {
+          "name": "seed_commitment",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "pay_prize",
+      "discriminator": [
+        80,
+        130,
+        106,
+        28,
+        177,
+        138,
+        226,
+        26
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "docs": [
+            "`config.authority` or `config.payout_authority`"
+          ],
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "pool_id"
+              }
+            ]
+          },
+          "relations": [
+            "attestation"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "pool_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "to",
+          "writable": true
+        },
+        {
+          "name": "attestation",
+          "docs": [
+            "Cryptographic Attestation PDA proving verified gameplay"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  116,
+                  116,
+                  101,
+                  115,
+                  116,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool"
+              },
+              {
+                "kind": "account",
+                "path": "to"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "pool_id",
+          "type": "u32"
+        },
+        {
+          "name": "lamports",
+          "type": "u64"
+        },
+        {
+          "name": "rank",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "propose_authority",
+      "discriminator": [
+        20,
+        148,
+        236,
+        198,
+        76,
+        119,
+        99,
+        142
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "new_authority",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "record_attestation",
+      "discriminator": [
+        148,
+        43,
+        225,
+        77,
+        15,
+        134,
+        217,
+        54
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "pool_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "driver_account"
+        },
+        {
+          "name": "attestation",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  116,
+                  116,
+                  101,
+                  115,
+                  116,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool"
+              },
+              {
+                "kind": "arg",
+                "path": "driver"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "pool_id",
+          "type": "u32"
+        },
+        {
+          "name": "driver",
+          "type": "pubkey"
+        },
+        {
+          "name": "telemetry_root",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "verified_km",
+          "type": "u32"
+        },
+        {
+          "name": "status",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "record_yield",
+      "discriminator": [
+        80,
+        136,
+        238,
+        204,
+        216,
+        161,
+        41,
+        88
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "docs": [
+            "Config authority or payout authority (checked via config.may_settle)"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "pool_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "pool_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "pool_id",
+          "type": "u32"
+        },
+        {
+          "name": "staked_lamports",
+          "type": "u64"
+        },
+        {
+          "name": "yield_earned",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "refund",
+      "discriminator": [
+        2,
+        96,
+        183,
+        251,
+        63,
+        208,
+        46,
+        46
+      ],
+      "accounts": [
+        {
+          "name": "caller",
+          "docs": [
+            "Anyone can crank refunds (the fee payer of the transaction)."
+          ],
+          "signer": true
+        },
+        {
+          "name": "pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "pool_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "pool_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "ticket",
+          "docs": [
+            "must give the readable `AlreadyRefunded`, not an Anchor deserialization error."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  105,
+                  99,
+                  107,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool"
+              },
+              {
+                "kind": "account",
+                "path": "buyer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "buyer",
+          "writable": true
+        },
+        {
+          "name": "rent_payer",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "pool_id",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "set_config",
+      "discriminator": [
+        108,
+        158,
+        154,
+        175,
+        212,
+        98,
+        52,
+        66
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "new_platform_treasury"
+        }
+      ],
+      "args": [
+        {
+          "name": "paused",
+          "type": {
+            "option": "bool"
+          }
+        },
+        {
+          "name": "platform_treasury",
+          "type": {
+            "option": "pubkey"
+          }
+        },
+        {
+          "name": "platform_fee_bps",
+          "type": {
+            "option": "u16"
+          }
+        }
+      ]
+    },
+    {
+      "name": "set_payout_authority",
+      "discriminator": [
+        112,
+        100,
+        95,
+        230,
+        10,
+        85,
+        156,
+        69
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "payout_authority",
+          "type": {
+            "option": "pubkey"
+          }
+        }
+      ]
+    },
+    {
+      "name": "set_series",
+      "discriminator": [
+        193,
+        170,
+        58,
+        61,
+        118,
+        121,
+        253,
+        249
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "series",
+          "writable": true
+        },
+        {
+          "name": "fee_treasury"
+        },
+        {
+          "name": "seed_treasury"
+        },
+        {
+          "name": "platform_treasury"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "SeriesParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "settle_pledge",
+      "discriminator": [
+        10,
+        255,
+        168,
+        255,
+        64,
+        232,
+        134,
+        135
+      ],
+      "accounts": [
+        {
+          "name": "caller",
+          "docs": [
+            "Settlement is permissionless: anyone can crank it once attestation is available"
+          ],
+          "signer": true
+        },
+        {
+          "name": "driver",
+          "writable": true,
+          "relations": [
+            "pledge"
+          ]
+        },
+        {
+          "name": "sponsor",
+          "writable": true,
+          "relations": [
+            "pledge"
+          ]
+        },
+        {
+          "name": "pool",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool.pool_id",
+                "account": "Pool"
+              }
+            ]
+          },
+          "relations": [
+            "pledge"
+          ]
+        },
+        {
+          "name": "attestation",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  116,
+                  116,
+                  101,
+                  115,
+                  116,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool"
+              },
+              {
+                "kind": "account",
+                "path": "driver"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pledge",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  101,
+                  100,
+                  103,
+                  101
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "ride_id"
+              },
+              {
+                "kind": "account",
+                "path": "sponsor"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "ride_id",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "sponsor",
+      "discriminator": [
+        178,
+        108,
+        177,
+        165,
+        239,
+        218,
+        13,
+        127
+      ],
+      "accounts": [
+        {
+          "name": "sponsor",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "pool_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "pool_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "pool_id",
+          "type": "u32"
+        },
+        {
+          "name": "lamports",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Attestation",
+      "discriminator": [
+        152,
+        125,
+        183,
+        86,
+        36,
+        146,
+        121,
+        73
+      ]
+    },
+    {
+      "name": "Config",
+      "discriminator": [
+        155,
+        12,
+        170,
+        224,
+        30,
+        250,
+        204,
+        130
+      ]
+    },
+    {
+      "name": "Pledge",
+      "discriminator": [
+        161,
+        197,
+        121,
+        46,
+        99,
+        75,
+        169,
+        131
+      ]
+    },
+    {
+      "name": "Pool",
+      "discriminator": [
+        241,
+        154,
+        109,
+        4,
+        17,
+        177,
+        109,
+        188
+      ]
+    },
+    {
+      "name": "Series",
+      "discriminator": [
+        240,
+        97,
+        8,
+        183,
+        139,
+        77,
+        250,
+        162
+      ]
+    },
+    {
+      "name": "Ticket",
+      "discriminator": [
+        41,
+        228,
+        24,
+        165,
+        78,
+        90,
+        235,
+        200
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "AttestationRecorded",
+      "discriminator": [
+        207,
+        97,
+        52,
+        58,
+        217,
+        238,
+        97,
+        21
+      ]
+    },
+    {
+      "name": "AuthorityChanged",
+      "discriminator": [
+        31,
+        19,
+        174,
+        152,
+        4,
+        82,
+        215,
+        226
+      ]
+    },
+    {
+      "name": "AuthorityProposed",
+      "discriminator": [
+        244,
+        117,
+        94,
+        112,
+        53,
+        151,
+        35,
+        89
+      ]
+    },
+    {
+      "name": "PayoutAuthoritySet",
+      "discriminator": [
+        43,
+        108,
+        132,
+        99,
+        52,
+        13,
+        132,
+        94
+      ]
+    },
+    {
+      "name": "PledgeCreated",
+      "discriminator": [
+        136,
+        23,
+        54,
+        57,
+        67,
+        87,
+        142,
+        26
+      ]
+    },
+    {
+      "name": "PledgeSettled",
+      "discriminator": [
+        87,
+        219,
+        206,
+        37,
+        165,
+        40,
+        127,
+        213
+      ]
+    },
+    {
+      "name": "PoolActivated",
+      "discriminator": [
+        201,
+        79,
+        203,
+        77,
+        3,
+        105,
+        233,
+        1
+      ]
+    },
+    {
+      "name": "PoolCancelled",
+      "discriminator": [
+        204,
+        15,
+        86,
+        4,
+        124,
+        97,
+        170,
+        173
+      ]
+    },
+    {
+      "name": "PoolClosed",
+      "discriminator": [
+        106,
+        46,
+        29,
+        231,
+        42,
+        44,
+        73,
+        119
+      ]
+    },
+    {
+      "name": "PoolCreated",
+      "discriminator": [
+        202,
+        44,
+        41,
+        88,
+        104,
+        220,
+        157,
+        82
+      ]
+    },
+    {
+      "name": "PoolExpired",
+      "discriminator": [
+        115,
+        21,
+        47,
+        101,
+        131,
+        21,
+        67,
+        210
+      ]
+    },
+    {
+      "name": "PoolFailed",
+      "discriminator": [
+        250,
+        62,
+        192,
+        205,
+        50,
+        148,
+        227,
+        250
+      ]
+    },
+    {
+      "name": "PrizePaid",
+      "discriminator": [
+        6,
+        20,
+        237,
+        248,
+        90,
+        77,
+        102,
+        211
+      ]
+    },
+    {
+      "name": "Refunded",
+      "discriminator": [
+        35,
+        103,
+        149,
+        246,
+        196,
+        123,
+        221,
+        99
+      ]
+    },
+    {
+      "name": "SeriesSet",
+      "discriminator": [
+        108,
+        79,
+        217,
+        160,
+        61,
+        67,
+        42,
+        99
+      ]
+    },
+    {
+      "name": "Sponsored",
+      "discriminator": [
+        13,
+        53,
+        40,
+        13,
+        165,
+        80,
+        85,
+        131
+      ]
+    },
+    {
+      "name": "TicketBought",
+      "discriminator": [
+        80,
+        244,
+        35,
+        181,
+        211,
+        143,
+        3,
+        166
+      ]
+    },
+    {
+      "name": "YieldRecorded",
+      "discriminator": [
+        150,
+        185,
+        66,
+        75,
+        78,
+        119,
+        86,
+        229
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "Paused",
+      "msg": "The program is paused"
+    },
+    {
+      "code": 6001,
+      "name": "Unauthorized",
+      "msg": "Signer is not the authority"
+    },
+    {
+      "code": 6002,
+      "name": "InvalidParams",
+      "msg": "Invalid pool parameters"
+    },
+    {
+      "code": 6003,
+      "name": "BpsSum",
+      "msg": "Prize, seed and fee shares must sum to 10000 bps"
+    },
+    {
+      "code": 6004,
+      "name": "PriceBelowRentMin",
+      "msg": "Ticket price is below the rent-exempt minimum"
+    },
+    {
+      "code": 6005,
+      "name": "TreasuryNotRentExempt",
+      "msg": "A treasury account is not rent-exempt yet"
+    },
+    {
+      "code": 6006,
+      "name": "PoolNotOpen",
+      "msg": "Pool is not open for tickets"
+    },
+    {
+      "code": 6007,
+      "name": "SoldOut",
+      "msg": "Not enough tickets left in the pool"
+    },
+    {
+      "code": 6008,
+      "name": "WalletCap",
+      "msg": "Per-wallet ticket limit reached"
+    },
+    {
+      "code": 6009,
+      "name": "TooLate",
+      "msg": "Too late for this action"
+    },
+    {
+      "code": 6010,
+      "name": "TooEarly",
+      "msg": "Too early for this action"
+    },
+    {
+      "code": 6011,
+      "name": "NotFailable",
+      "msg": "Pool cannot be failed (not Open, deadline not passed, or minimum reached)"
+    },
+    {
+      "code": 6012,
+      "name": "NotRefunding",
+      "msg": "Pool is not refunding"
+    },
+    {
+      "code": 6013,
+      "name": "AlreadyRefunded",
+      "msg": "Ticket was already refunded"
+    },
+    {
+      "code": 6014,
+      "name": "PoolNotActive",
+      "msg": "Pool is not active"
+    },
+    {
+      "code": 6015,
+      "name": "NotSettled",
+      "msg": "Pool is not settled"
+    },
+    {
+      "code": 6016,
+      "name": "PrizeExceedsShare",
+      "msg": "Prize payments would exceed the pool's prize share"
+    },
+    {
+      "code": 6017,
+      "name": "BelowRentMin",
+      "msg": "Transfer would leave an account below the rent-exempt minimum"
+    },
+    {
+      "code": 6018,
+      "name": "RefundsPending",
+      "msg": "Refunds are still pending"
+    },
+    {
+      "code": 6019,
+      "name": "AccountMismatch",
+      "msg": "Account does not match the recorded one"
+    },
+    {
+      "code": 6020,
+      "name": "MathOverflow",
+      "msg": "Arithmetic overflow"
+    },
+    {
+      "code": 6021,
+      "name": "PrizesAlreadyPaid",
+      "msg": "Prizes were already paid from this pool"
+    },
+    {
+      "code": 6022,
+      "name": "NoPendingAuthority",
+      "msg": "No authority handover is pending"
+    },
+    {
+      "code": 6023,
+      "name": "MustExpire",
+      "msg": "No prize was paid: an unsettled pool must be expired and refunded, not closed"
+    },
+    {
+      "code": 6024,
+      "name": "SeriesDisabled",
+      "msg": "This pool series is switched off"
+    },
+    {
+      "code": 6025,
+      "name": "UnverifiedAttestation",
+      "msg": "Driver attestation is not verified"
+    },
+    {
+      "code": 6026,
+      "name": "AttestationMismatch",
+      "msg": "Attestation account does not match pool or driver"
+    },
+    {
+      "code": 6027,
+      "name": "InvalidAttestationStatus",
+      "msg": "Attestation status is invalid"
+    },
+    {
+      "code": 6028,
+      "name": "ZeroVerifiedKm",
+      "msg": "Attestation has zero verified distance"
+    },
+    {
+      "code": 6029,
+      "name": "AlreadySettled",
+      "msg": "Pledge has already been settled"
+    }
+  ],
+  "types": [
+    {
+      "name": "Attestation",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "driver",
+            "type": "pubkey"
+          },
+          {
+            "name": "telemetry_root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "verified_km",
+            "type": "u32"
+          },
+          {
+            "name": "status",
+            "type": "u8"
+          },
+          {
+            "name": "recorded_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AttestationRecorded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool_id",
+            "type": "u32"
+          },
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "driver",
+            "type": "pubkey"
+          },
+          {
+            "name": "telemetry_root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "verified_km",
+            "type": "u32"
+          },
+          {
+            "name": "status",
+            "type": "u8"
+          },
+          {
+            "name": "recorded_at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AuthorityChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "old_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_authority",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AuthorityProposed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "pending_authority",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Config",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "platform_treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "platform_fee_bps",
+            "docs": [
+              "Share of the FEE share (not of the pool) that goes to `platform_treasury` at close."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "pool_count",
+            "type": "u32"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "pending_authority",
+            "docs": [
+              "Two-step authority handover: set by `propose_authority`, consumed by `accept_authority`."
+            ],
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "payout_authority",
+            "docs": [
+              "May pay prizes and close a pool once its `payout_at` has come (the server's payout key) – nothing else. None = only `authority`."
+            ],
+            "type": {
+              "option": "pubkey"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CreatePoolParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "tier",
+            "type": "u8"
+          },
+          {
+            "name": "price_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "min_tickets",
+            "type": "u32"
+          },
+          {
+            "name": "max_tickets",
+            "docs": [
+              "0 = unlimited"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "max_per_wallet",
+            "type": "u16"
+          },
+          {
+            "name": "prep_deadline",
+            "docs": [
+              "end of the sale window: no ticket is sold from here on; under the minimum the pool can only fail (refunds)"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "play_deadline",
+            "docs": [
+              "rides count until here"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "payout_at",
+            "docs": [
+              "end of the review window: prizes and the close only from here on"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "prize_bps",
+            "type": "u16"
+          },
+          {
+            "name": "seed_bps",
+            "type": "u16"
+          },
+          {
+            "name": "fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "seed_commitment",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "PayoutAuthoritySet",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "payout_authority",
+            "type": {
+              "option": "pubkey"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Pledge",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "ride_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "sponsor",
+            "type": "pubkey"
+          },
+          {
+            "name": "driver",
+            "type": "pubkey"
+          },
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "max_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "lamports_per_km",
+            "type": "u64"
+          },
+          {
+            "name": "target_km",
+            "type": "u32"
+          },
+          {
+            "name": "settled",
+            "type": "bool"
+          },
+          {
+            "name": "earned_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "refunded_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PledgeCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "ride_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "sponsor",
+            "type": "pubkey"
+          },
+          {
+            "name": "driver",
+            "type": "pubkey"
+          },
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "max_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "lamports_per_km",
+            "type": "u64"
+          },
+          {
+            "name": "target_km",
+            "type": "u32"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PledgeSettled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "ride_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "sponsor",
+            "type": "pubkey"
+          },
+          {
+            "name": "driver",
+            "type": "pubkey"
+          },
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "verified_km",
+            "type": "u32"
+          },
+          {
+            "name": "target_km",
+            "type": "u32"
+          },
+          {
+            "name": "earned_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "refunded_lamports",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Pool",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool_id",
+            "type": "u32"
+          },
+          {
+            "name": "authority",
+            "docs": [
+              "Creator record (receives the vault rent minimum at close). Admin rights come from `Config.authority`."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "tier",
+            "type": "u8"
+          },
+          {
+            "name": "price_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "min_tickets",
+            "type": "u32"
+          },
+          {
+            "name": "max_tickets",
+            "docs": [
+              "0 = unlimited"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "max_per_wallet",
+            "type": "u16"
+          },
+          {
+            "name": "prep_deadline",
+            "type": "i64"
+          },
+          {
+            "name": "play_deadline",
+            "type": "i64"
+          },
+          {
+            "name": "payout_at",
+            "docs": [
+              "end of the review window: no prize is paid and the pool is not closed before it"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "prize_bps",
+            "type": "u16"
+          },
+          {
+            "name": "seed_bps",
+            "type": "u16"
+          },
+          {
+            "name": "fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "fee_treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "seed_treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "status",
+            "type": "u8"
+          },
+          {
+            "name": "tickets_sold",
+            "type": "u32"
+          },
+          {
+            "name": "buyers",
+            "type": "u32"
+          },
+          {
+            "name": "sponsored",
+            "type": "u64"
+          },
+          {
+            "name": "prizes_paid",
+            "type": "u64"
+          },
+          {
+            "name": "refunded",
+            "type": "u64"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "vault_bump",
+            "type": "u8"
+          },
+          {
+            "name": "seed_commitment",
+            "docs": [
+              "SHA256(poolId || blockhash || slot) captured at pool opening for provable road seed derivation."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "staked_lamports",
+            "docs": [
+              "Lamports currently deployed in liquid staking (JitoSOL / Stake Pool)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "yield_earned",
+            "docs": [
+              "Cumulative net staking yield harvested and deposited into the pool vault."
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PoolActivated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool_id",
+            "type": "u32"
+          },
+          {
+            "name": "tickets_sold",
+            "type": "u32"
+          },
+          {
+            "name": "at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PoolCancelled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool_id",
+            "type": "u32"
+          },
+          {
+            "name": "tickets_sold",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PoolClosed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool_id",
+            "type": "u32"
+          },
+          {
+            "name": "prize_paid",
+            "docs": [
+              "prizes paid out over the pool's life"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "seed",
+            "docs": [
+              "everything that went to seed_treasury (seed share + unclaimed prize [+ donations / sponsorship of a failed pool])"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "fee",
+            "docs": [
+              "fee share that went to fee_treasury (after the platform cut)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "platform_fee",
+            "type": "u64"
+          },
+          {
+            "name": "unclaimed",
+            "type": "u64"
+          },
+          {
+            "name": "rent_returned",
+            "docs": [
+              "vault rent minimum returned to the authority"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "cancelled",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PoolCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool_id",
+            "type": "u32"
+          },
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "tier",
+            "type": "u8"
+          },
+          {
+            "name": "price_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "min_tickets",
+            "type": "u32"
+          },
+          {
+            "name": "max_tickets",
+            "type": "u32"
+          },
+          {
+            "name": "max_per_wallet",
+            "type": "u16"
+          },
+          {
+            "name": "prep_deadline",
+            "type": "i64"
+          },
+          {
+            "name": "play_deadline",
+            "type": "i64"
+          },
+          {
+            "name": "payout_at",
+            "type": "i64"
+          },
+          {
+            "name": "prize_bps",
+            "type": "u16"
+          },
+          {
+            "name": "seed_bps",
+            "type": "u16"
+          },
+          {
+            "name": "fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "fee_treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "seed_treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "from_series",
+            "docs": [
+              "true = opened by `open_next_pool` from the tier's series, false = `create_pool` by the admin"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "seed_commitment",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "PoolExpired",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool_id",
+            "type": "u32"
+          },
+          {
+            "name": "tickets_sold",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PoolFailed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool_id",
+            "type": "u32"
+          },
+          {
+            "name": "tickets_sold",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PrizePaid",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool_id",
+            "type": "u32"
+          },
+          {
+            "name": "to",
+            "type": "pubkey"
+          },
+          {
+            "name": "lamports",
+            "type": "u64"
+          },
+          {
+            "name": "rank",
+            "type": "u8"
+          },
+          {
+            "name": "prizes_paid_total",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Refunded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool_id",
+            "type": "u32"
+          },
+          {
+            "name": "buyer",
+            "type": "pubkey"
+          },
+          {
+            "name": "rent_payer",
+            "type": "pubkey"
+          },
+          {
+            "name": "qty",
+            "type": "u16"
+          },
+          {
+            "name": "lamports",
+            "type": "u64"
+          },
+          {
+            "name": "refunded_total",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Series",
+      "docs": [
+        "One schedule per tier, written by the admin (`set_series`): every pool `open_next_pool` creates takes these rules. Pools tile time:",
+        "the next one opens when this one stops selling (`next_open_at`), so a 24 h sale window = one pool a day."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "tier",
+            "type": "u8"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "price_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "min_tickets",
+            "type": "u32"
+          },
+          {
+            "name": "max_tickets",
+            "docs": [
+              "0 = unlimited"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "max_per_wallet",
+            "type": "u16"
+          },
+          {
+            "name": "sale_secs",
+            "docs": [
+              "sale window = cadence (seconds)"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "play_secs",
+            "docs": [
+              "after the sale ends, rides of the pool still count this long"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "verify_secs",
+            "docs": [
+              "after the play deadline: the review window before any prize is paid"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "prize_bps",
+            "type": "u16"
+          },
+          {
+            "name": "seed_bps",
+            "type": "u16"
+          },
+          {
+            "name": "fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "fee_treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "seed_treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "next_open_at",
+            "docs": [
+              "the start of the next sale slot; `open_next_pool` is refused before it"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "pools_opened",
+            "type": "u32"
+          },
+          {
+            "name": "last_pool_id",
+            "type": {
+              "option": "u32"
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SeriesParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "tier",
+            "type": "u8"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "price_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "min_tickets",
+            "type": "u32"
+          },
+          {
+            "name": "max_tickets",
+            "docs": [
+              "0 = unlimited"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "max_per_wallet",
+            "type": "u16"
+          },
+          {
+            "name": "sale_secs",
+            "docs": [
+              "sale window AND cadence: the next pool opens when this one stops selling"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "play_secs",
+            "docs": [
+              "rides still count this long after the sale ends"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "verify_secs",
+            "docs": [
+              "review window after the play deadline, before any prize"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "prize_bps",
+            "type": "u16"
+          },
+          {
+            "name": "seed_bps",
+            "type": "u16"
+          },
+          {
+            "name": "fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "start_at",
+            "docs": [
+              "the first sale slot starts here; 0 = keep the series' current `next_open_at` (refused for a new series)"
+            ],
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SeriesSet",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "tier",
+            "type": "u8"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "price_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "min_tickets",
+            "type": "u32"
+          },
+          {
+            "name": "max_tickets",
+            "type": "u32"
+          },
+          {
+            "name": "max_per_wallet",
+            "type": "u16"
+          },
+          {
+            "name": "sale_secs",
+            "type": "i64"
+          },
+          {
+            "name": "play_secs",
+            "type": "i64"
+          },
+          {
+            "name": "verify_secs",
+            "type": "i64"
+          },
+          {
+            "name": "prize_bps",
+            "type": "u16"
+          },
+          {
+            "name": "seed_bps",
+            "type": "u16"
+          },
+          {
+            "name": "fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "fee_treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "seed_treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "next_open_at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Sponsored",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool_id",
+            "type": "u32"
+          },
+          {
+            "name": "sponsor",
+            "type": "pubkey"
+          },
+          {
+            "name": "lamports",
+            "type": "u64"
+          },
+          {
+            "name": "sponsored_total",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Ticket",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "buyer",
+            "type": "pubkey"
+          },
+          {
+            "name": "rent_payer",
+            "type": "pubkey"
+          },
+          {
+            "name": "pool_id",
+            "type": "u32"
+          },
+          {
+            "name": "qty",
+            "type": "u16"
+          },
+          {
+            "name": "lamports",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TicketBought",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool_id",
+            "type": "u32"
+          },
+          {
+            "name": "buyer",
+            "type": "pubkey"
+          },
+          {
+            "name": "qty",
+            "type": "u16"
+          },
+          {
+            "name": "lamports",
+            "type": "u64"
+          },
+          {
+            "name": "order_id",
+            "type": {
+              "array": [
+                "u8",
+                16
+              ]
+            }
+          },
+          {
+            "name": "tickets_sold",
+            "type": "u32"
+          },
+          {
+            "name": "activated",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "YieldRecorded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool_id",
+            "type": "u32"
+          },
+          {
+            "name": "staked_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "yield_earned",
+            "type": "u64"
+          },
+          {
+            "name": "yield_earned_total",
+            "type": "u64"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -15,4 +15,6 @@ export interface PaymentInstructionsDto {
   lastValidBlockHeight: number;
   /** base64 of the unsigned transaction */
   transaction: string;
+  /** Solana Pay reference on the memo. The phone QR does not carry it; the transaction does. */
+  reference: string;
 }

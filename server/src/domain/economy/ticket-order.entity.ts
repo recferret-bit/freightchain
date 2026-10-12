@@ -14,12 +14,12 @@ import type { OrderStatus, TicketOrderProps } from './ticket-order.types.js';
 export class TicketOrder {
   private constructor(private readonly p: TicketOrderProps) {}
 
-  static create(i: { id: string; wallet: string; pool: Pool; qty: number; walletBought: number; now: Date }): TicketOrder {
+  static create(i: { id: string; wallet: string; pool: Pool; qty: number; walletBought: number; now: Date; paymentReference?: string | null }): TicketOrder {
     const why = i.pool.whyNotSellable(i.now, i.qty, i.walletBought);
     if (why) throw new ConflictError(why, 'not_sellable');
     return new TicketOrder({
       id: i.id, wallet: i.wallet, poolId: i.pool.id, qty: i.qty, lamports: i.pool.costOf(i.qty), status: 'awaiting_payment', txMessage: null, lastValidBlockHeight: null,
-      createdAt: i.now, paidAt: null, refundedAt: null, signature: null, eventIndex: null,
+      createdAt: i.now, paidAt: null, refundedAt: null, signature: null, eventIndex: null, paymentReference: i.paymentReference ?? null,
     });
   }
 
@@ -27,12 +27,12 @@ export class TicketOrder {
   static adopt(i: { id: string; wallet: string; poolId: number; qty: number; lamports: number; signature: string; eventIndex: number; now: Date }): TicketOrder {
     return new TicketOrder({
       id: i.id, wallet: i.wallet, poolId: i.poolId, qty: i.qty, lamports: i.lamports, status: 'paid', txMessage: null, lastValidBlockHeight: null,
-      createdAt: i.now, paidAt: i.now, refundedAt: null, signature: i.signature, eventIndex: i.eventIndex,
+      createdAt: i.now, paidAt: i.now, refundedAt: null, signature: i.signature, eventIndex: i.eventIndex, paymentReference: null,
     });
   }
 
   static restore(props: TicketOrderProps): TicketOrder {
-    return new TicketOrder({ ...props });
+    return new TicketOrder({ ...props, paymentReference: props.paymentReference ?? null });
   }
 
   get id(): string { return this.p.id; }
@@ -43,6 +43,14 @@ export class TicketOrder {
   get status(): OrderStatus { return this.p.status; }
   get txMessage(): string | null { return this.p.txMessage; }
   get signature(): string | null { return this.p.signature; }
+  get paymentReference(): string | null { return this.p.paymentReference ?? null; }
+
+  /** The first build stores the reference. A rebuilt blockhash keeps it. */
+  assignPaymentReference(reference: string): boolean {
+    if (this.p.paymentReference) return false;
+    this.p.paymentReference = reference;
+    return true;
+  }
 
   /** Still waiting for its payment and not lapsed. */
   isLive(now: Date, ttlMs: number): boolean {

@@ -76,8 +76,10 @@
       <tr><td>Server-timed shifts, recording, verdicts (shadow mode)</td><td><span class="pill ok">LIVE</span></td><td><a href="#verify">06</a></td></tr>
       <tr><td>Anti-cheat v3: challenge channel (kinds table empty), the server's road, budgets, bulk re-judge</td><td><span class="pill wip">BUILT · NEXT DEPLOY</span></td><td><a href="#verify">06</a></td></tr>
       <tr><td>Live streams, replays, chat, paid donations to the driver</td><td><span class="pill ok">LIVE · DEVNET SOL</span></td><td><a href="#stream">07</a></td></tr>
-      <tr><td>Escrowed prize pools (Anchor program)</td><td><span class="pill wip">WRITTEN, TESTED · NOT DEPLOYED</span></td><td><a href="#onchain">05</a></td></tr>
-      <tr><td>Prize payouts, the garage, badges as tokens, mainnet</td><td><span class="pill plan">PLANNED</span></td><td><a href="#rewards">04</a>, <a href="#risks">08</a></td></tr>
+      <tr><td>Escrowed prize pools (Anchor program)</td><td><span class="pill ok">ON DEVNET · NOT AUDITED</span></td><td><a href="#onchain">05</a></td></tr>
+      <tr><td>Achievement badges as soulbound compressed NFTs</td><td><span class="pill ok">LIVE · DEVNET</span></td><td><a href="#rewards">04</a></td></tr>
+      <tr><td>Garage colours</td><td><span class="pill ok">LIVE</span></td><td><a href="#rewards">04</a></td></tr>
+      <tr><td>Prize payouts, mainnet</td><td><span class="pill plan">PLANNED</span></td><td><a href="#rewards">04</a>, <a href="#risks">08</a></td></tr>
     </tbody>
   </table></div>
   <p class="dim note">There is no Freight Chain token and none is planned in this document. Nothing here is an offer to sell anything, or financial advice. Read <a href="#risks">section 08</a> before you put anything in.</p>
@@ -97,7 +99,7 @@
   <div class="grid3">
     <article class="card"><h3>WHO IT IS FOR</h3><p>Players who like manual-gearbox sims and long, quiet challenges; people who watch streams of them; and Solana users who want to see escrow and verification done in the open.</p></article>
     <article class="card"><h3>WHAT IT IS NOT</h3><p>Not a token launch, not a yield product and not a casino game: the drive is skill and patience, the finish is verified, and no outcome depends on a random draw in the current design.</p></article>
-    <article class="card"><h3>WHERE IT RUNS</h3><p>In a desktop browser, no download. Wallet: Phantom or Solflare. Network: Solana <b>devnet</b>. Mobile wallets and touch controls are not built.</p></article>
+    <article class="card"><h3>WHERE IT RUNS</h3><p>In a desktop browser, no download. Wallet: Phantom or Solflare, on this computer or by scanning a Solana Pay code with the same account on a phone. Network: Solana <b>devnet</b>. Touch controls for driving are not built.</p></article>
   </div>
 </section>
 
@@ -223,6 +225,7 @@
     <li><i>3</i><b>DRIVE</b><span>The game heartbeats the server. Driven seconds come from those beats, capped by wall time. The recording uploads every 15 s.</span></li>
     <li><i>4</i><b>FINISH</b><span>After the minimum time <em>and</em> the minimum distance the shift is <em>complete</em>. You may keep driving, then end it (P → END SHIFT).</span></li>
   </ol>
+  <p>A paid ticket is bought before that start. The server builds an unsigned devnet transaction. Sign it in Phantom or Solflare on this computer, or scan the Solana Pay code with the same wallet on a phone. A reference key on the transaction is how the server finds the payment. A free ride skips it.</p>
   <p><b>The completion rule.</b> A shift completes when its minimum time has been driven <em>and</em> the distance reaches ½ × 28 m/s × that time (for 1 hour: 50.4 km). The governor is the same for everyone, so this distance cannot be reached faster than half the time.</p>
 
   <h3 class="sub">HOW IT ENDS</h3>
@@ -234,7 +237,7 @@
 
   <h3 class="sub">RULES OF PARTICIPATION</h3>
   <ol class="rules">
-    <li><b>You need a wallet, not a balance, to look around.</b> Watching a ride, the boards and this paper need no sign-in. Driving, chatting and tipping need one signature.</li>
+    <li><b>You need a wallet, not a balance, to look around.</b> Watching a ride, the boards and this paper need no sign-in. Driving, chatting and tipping need one signature. A payment can be signed in this browser, or by scanning a Solana Pay code with the same account on a phone.</li>
     <li><b>One account is one wallet.</b> Free rides, tickets, badges and rank belong to the wallet that signed in. A session cookie is not revocable one by one; sign out of shared computers.</li>
     <li><b>A ticket is spent when the shift starts.</b> A paid ticket is not returned if you crash or abandon. It is returned only if the <em>pool</em> fails: if too few riders buy in during the 24-hour sale, every buyer is refunded in full (<a href="#onchain">05</a>). Starting a ride while one is open resumes it.</li>
     <li><b>Per-wallet cap.</b> A pool states how many tickets one wallet may hold; the program and the server both enforce it. Promo codes add tickets of a tier and count against the same cap.</li>
@@ -257,13 +260,13 @@
     <tbody>
       <tr><td><b>Free rides</b> – 10 at sign-up, daily refill stops at 5</td><td>Every wallet</td><td><span class="pill ok">LIVE</span></td></tr>
       <tr><td><b>Free board</b> – every completed free ride ranks</td><td>Free drivers</td><td><span class="pill ok">LIVE</span></td></tr>
-      <tr><td><b>Badges</b> – First Mile, Shift Complete, Night Owl, Century, Clean Run, Cold Start, On My Own, one per free level; Top 20 after a round closes</td><td>Wallets that earn them</td><td><span class="pill ok">LIVE (server-side)</span></td></tr>
+      <tr><td><b>Badges</b> – 31 in eight ladders of 3–4 tiers, Bronze to Platinum: rides started, paid shifts, night shifts, distance, clean runs, Siberia, unassisted free rides, the three free levels. The server counts them from the rides it judged; a rejected recording earns nothing</td><td>Wallets that earn them</td><td><span class="pill ok">LIVE</span></td></tr>
       <tr><td><b>Tips and effects from spectators</b> – SOL from a viewer's wallet straight to yours</td><td>The driver being watched</td><td><span class="pill ok">LIVE · DEVNET</span></td></tr>
       <tr><td><b>Promo codes</b> – free tickets of a tier</td><td>Whoever holds a code</td><td><span class="pill wip">BUILT</span></td></tr>
-      <tr><td><b>Pool prizes</b> – the prize share of a pool, to the top of its board</td><td>Verified finishers of that pool</td><td><span class="pill wip">PROGRAM WRITTEN · NOT DEPLOYED</span></td></tr>
-      <tr><td><b>Sponsorship</b> – anyone adds SOL to a pool's pot</td><td>The pool, split by its rules</td><td><span class="pill wip">PROGRAM WRITTEN · NOT DEPLOYED</span></td></tr>
-      <tr><td><b>Click-to-mint badges</b> – a badge you choose to mint, never auto-minted</td><td>Wallets with a paid ride</td><td><span class="pill plan">PLANNED</span></td></tr>
-      <tr><td><b>The garage</b> – cosmetic and comfort parts (gold wheel, gauge faces, paint, a heavier battery)</td><td>Owners</td><td><span class="pill plan">PLANNED</span></td></tr>
+      <tr><td><b>Pool prizes</b> – the prize share of a pool, to the top of its board</td><td>Verified finishers of that pool</td><td><span class="pill wip">ON DEVNET · PAYOUTS OFF</span></td></tr>
+      <tr><td><b>Sponsorship</b> – anyone adds SOL to a pool's pot</td><td>The pool, split by its rules</td><td><span class="pill wip">ON DEVNET · NO PAGE</span></td></tr>
+      <tr><td><b>Badge NFTs</b> – each earned badge is minted an hour later as a soulbound compressed NFT (Metaplex Bubblegum v2; the collection is frozen for good, so it cannot be sold or moved). A dedicated key mints and nothing else; art on Arweave</td><td>Wallets that earn them</td><td><span class="pill ok">LIVE · DEVNET</span></td></tr>
+      <tr><td><b>The garage</b> – cab colours are in the lobby. A gold wheel, gauge faces and a heavier battery are not.</td><td>Owners</td><td><span class="pill ok">LIVE · COLOURS</span></td></tr>
     </tbody>
   </table></div>
 
@@ -329,87 +332,76 @@
     <article class="card"><h3>WATCH BEFORE YOU BUY</h3><p>Every ride has a public live page and a replay. A visitor sees real drivers, real distances and the real board before connecting a wallet.</p></article>
     <article class="card"><h3>PROMO &amp; SPONSORS</h3><p>Promo codes hand out tickets of a tier. Sponsors can add SOL to a pool; it is split like ticket money and visibly raises the pot.</p></article>
   </div>
-  <p class="dim">What is deliberately not on this list: paid advertising, a referral token, staking, and anything that promises a return. The business is the fee share of a pool, only once pools pay out.</p>
+  <p class="dim">What is deliberately not on this list: paid advertising, a referral token, user-side yield promises or staking lockups. The business is the fee share of a pool, only once pools pay out.</p>
 </section>
 
 <!-- ───────── 05 · ON-CHAIN ───────── -->
 <section id="onchain" class="ch">
   <header class="ch-h"><i>05</i><h2>On-chain: the escrow program</h2><p>One Solana program, many prize pools. The vault holds the money; the rules move it.</p></header>
-  <p class="note"><b>Status.</b> The program <code>freightchain_pools</code> (Anchor 1.2, Rust) has 61 passing tests against the reproducible build and runs on <b>devnet</b> for testing. It is <b>not audited</b> and not on mainnet.</p>
+  <p class="note"><b>Status.</b> The program <code>freightchain_pools</code> (Anchor v3, Rust) has 81 passing tests across LiteSVM suites against the reproducible build and runs on <b>devnet</b> for testing. It is <b>not audited</b> and not on mainnet.</p>
 
   <h3 class="sub">WHERE THE MONEY GOES</h3>
   <figure class="diagram">
     <svg viewBox="0 0 860 330" role="img" aria-labelledby="d1t d1d">
-      <title id="d1t">Escrow money flow</title><desc id="d1d">Players buy tickets into the pool vault. The vault pays refunds to buyers, capped prizes to winners, and the remainder to the seed and fee treasuries at close. The game server only reads events and builds unsigned transactions.</desc>
+      <title id="d1t">Escrow money flow</title><desc id="d1d">Players buy tickets into the pool vault. Idle vault funds earn JitoSOL yield. The vault pays refunds to buyers, capped prizes to drivers with Verified Attestation PDAs, community pledges per verified km, and remainder to seed and fee treasuries.</desc>
       <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ah"/></marker></defs>
       <rect class="bx" x="20" y="120" width="170" height="80" rx="8"/><text class="tx b" x="105" y="150" text-anchor="middle">Player wallets</text><text class="tx s" x="105" y="172" text-anchor="middle">each purchase signed</text>
-      <rect class="bx hi" x="345" y="105" width="190" height="110" rx="8"/><text class="tx b" x="440" y="135" text-anchor="middle">Pool vault</text><text class="tx s" x="440" y="156" text-anchor="middle">program-owned account</text><text class="tx s" x="440" y="174" text-anchor="middle">PDA ["vault", pool_id]</text><text class="tx s" x="440" y="192" text-anchor="middle">no private key exists</text>
+      <rect class="bx hi" x="345" y="105" width="190" height="110" rx="8"/><text class="tx b" x="440" y="135" text-anchor="middle">Pool vault</text><text class="tx s" x="440" y="156" text-anchor="middle">program-owned account</text><text class="tx s" x="440" y="174" text-anchor="middle">PDA ["vault", pool_id]</text><text class="tx s" x="440" y="192" text-anchor="middle">earns JitoSOL yield</text>
       <rect class="bx" x="670" y="20" width="170" height="60" rx="8"/><text class="tx b" x="755" y="56" text-anchor="middle">Buyers (refund)</text>
       <rect class="bx" x="670" y="105" width="170" height="60" rx="8"/><text class="tx b" x="755" y="141" text-anchor="middle">Winners (pay_prize)</text>
       <rect class="bx" x="670" y="190" width="170" height="60" rx="8"/><text class="tx b" x="755" y="226" text-anchor="middle">Seed treasury</text>
       <rect class="bx" x="670" y="262" width="170" height="56" rx="8"/><text class="tx b" x="755" y="295" text-anchor="middle">Fee treasury</text>
       <path class="ln" d="M190 160H345" marker-end="url(#ar)"/><text class="tx s" x="268" y="150" text-anchor="middle">buy_ticket</text>
       <path class="ln" d="M535 130L670 55" marker-end="url(#ar)"/><path class="ln" d="M535 160H670" marker-end="url(#ar)"/><path class="ln" d="M535 190L670 220" marker-end="url(#ar)"/><path class="ln" d="M535 205L670 285" marker-end="url(#ar)"/>
-      <text class="tx s" x="568" y="82" text-anchor="middle">full price</text><text class="tx s" x="603" y="152" text-anchor="middle">capped</text><text class="tx s" x="590" y="268" text-anchor="middle">close_pool</text>
-      <rect class="bx dash" x="20" y="250" width="420" height="64" rx="8"/><text class="tx b" x="230" y="278" text-anchor="middle">Game server</text><text class="tx s" x="230" y="298" text-anchor="middle">reads events · credits tickets · holds no key</text>
+      <text class="tx s" x="568" y="82" text-anchor="middle">full price</text><text class="tx s" x="603" y="152" text-anchor="middle">attestation gated</text><text class="tx s" x="590" y="268" text-anchor="middle">close_pool</text>
+      <rect class="bx dash" x="20" y="250" width="420" height="64" rx="8"/><text class="tx b" x="230" y="278" text-anchor="middle">Game server</text><text class="tx s" x="230" y="298" text-anchor="middle">reads events · submits attestation · holds no key</text>
       <path class="ln dsh" d="M440 215V250" marker-end="url(#ar)"/>
     </svg>
-    <figcaption>Every arrow that moves money starts or ends at the vault. The server's link is dashed because it only reads what the program announced and hands players transactions to sign.</figcaption>
+    <figcaption>Every arrow that moves money starts or ends at the vault. The server's link is dashed because it only reads what the program announced and hands players transactions to sign. Idle vault funds earn JitoSOL liquid staking yield during sale and review windows, compounding the prize pot. A phone can sign the same transaction by scanning a Solana Pay code.</figcaption>
   </figure>
+
+  <h3 class="sub">YIELD &amp; COMMUNITY PLEDGES</h3>
+  <p><b>JitoSOL Yield.</b> In Anchor v3, escrowed pool lamports earn liquid staking yield throughout the 24-hour sale and 48-hour review windows: accumulated rewards (<code>yield_earned</code>) compound directly into the prize pot, increasing payouts without locking capital.</p>
+  <p><b>Community Pledges.</b> Spectators can back drivers with per-kilometre sponsorship PDAs (<code>[b"pledge", ride_id, sponsor]</code>). Pledged lamports are committed upfront via <code>create_pledge</code> and settled trustlessly by <code>settle_pledge</code>: drivers receive earnings proportional to verified distance (<code>Attestation.verified_km</code>), and all unearned surplus returns automatically to the sponsor with zero stranded lamports.</p>
 
   <h3 class="sub">THE LIFE OF A POOL</h3>
   <p>A pool opens with a commitment goal. The 1 hour pool's is 20 tickets: live on the 20th sale, or a refund if the deadline comes first. Every path ends as the declared split, or every buyer paid back.</p>
   <figure class="diagram wide">
     <svg viewBox="0 0 960 360" role="img" aria-label="Pool state machine: Open becomes Active automatically when the minimum is sold; Open becomes Refunding when the deadline is missed (anyone) or the admin cancels; Active becomes Settled through close_pool; Active becomes Refunding through expire_pool, which anyone may call 14 days after the play deadline if no prize was paid; Refunding becomes Cancelled once every ticket is refunded.">
-          <defs>
-            <marker id="st-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="ah i"/></marker>
-            <marker id="st-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="ah a"/></marker>
-            <marker id="st-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="ah g"/></marker>
-          </defs>
-
-          <!-- legend -->
-          <line x1="40" y1="22" x2="80" y2="22" class="ln a"/><text x="88" y="27" class="tx s">automatic</text>
-          <line x1="180" y1="22" x2="220" y2="22" class="ln g"/><text x="228" y="27" class="tx s">anyone can trigger</text>
-          <line x1="370" y1="22" x2="410" y2="22" class="ln"/><text x="418" y="27" class="tx s">admin only</text>
-          <rect x="520" y="12" width="26" height="20" rx="3" class="bx term"/><text x="554" y="27" class="tx s">final state</text>
-
-          <!-- nodes -->
-          <rect x="40" y="70" width="160" height="60" rx="4" class="bx"/><text x="120" y="106" text-anchor="middle" class="tx t">Open</text>
-          <rect x="400" y="70" width="160" height="60" rx="4" class="bx hi"/><text x="480" y="107" text-anchor="middle" class="tx b big">Active</text>
-          <rect x="760" y="70" width="160" height="60" rx="4" class="bx term"/><text x="840" y="106" text-anchor="middle" class="tx t">Settled</text>
-          <rect x="400" y="250" width="160" height="60" rx="4" class="bx net"/><text x="480" y="286" text-anchor="middle" class="tx t">Refunding</text>
-          <rect x="760" y="250" width="160" height="60" rx="4" class="bx term"/><text x="840" y="286" text-anchor="middle" class="tx t">Cancelled</text>
-
-          <!-- Open -> Active -->
-          <line x1="200" y1="100" x2="394" y2="100" class="ln a" marker-end="url(#st-amber)"/>
-          <text x="298" y="88" text-anchor="middle" class="tx a">minimum sold</text>
-          <text x="298" y="121" text-anchor="middle" class="tx s">on that purchase</text>
-
-          <!-- Active -> Settled -->
-          <line x1="560" y1="100" x2="754" y2="100" class="ln" marker-end="url(#st-ink)"/>
-          <text x="658" y="88" text-anchor="middle" class="tx m">close_pool</text>
-          <text x="658" y="121" text-anchor="middle" class="tx s">after the review window</text>
-          <text x="658" y="138" text-anchor="middle" class="tx s">anyone +14 d, if paid</text>
-
-          <!-- Open -> Refunding -->
-          <polyline points="120,130 120,280 394,280" class="ln g" marker-end="url(#st-teal)"/>
-          <text x="258" y="268" text-anchor="middle" class="tx g">fail_pool</text>
-          <text x="258" y="300" text-anchor="middle" class="tx s">deadline missed: anyone</text>
-          <text x="258" y="317" text-anchor="middle" class="tx s">or cancel_pool: admin</text>
-
-          <!-- Active -> Refunding -->
-          <line x1="480" y1="130" x2="480" y2="244" class="ln g" marker-end="url(#st-teal)"/>
-          <text x="492" y="176" class="tx g">expire_pool</text>
-          <text x="492" y="196" class="tx s">anyone, 14 days after the</text>
-          <text x="492" y="213" class="tx s">review, no prize paid</text>
-
-          <!-- Refunding -> Cancelled -->
-          <line x1="560" y1="280" x2="754" y2="280" class="ln g" marker-end="url(#st-teal)"/>
-          <text x="658" y="268" text-anchor="middle" class="tx g">close_pool</text>
-          <text x="658" y="300" text-anchor="middle" class="tx s">anyone, once all refunded</text>
-
-          <text x="480" y="340" text-anchor="middle" class="tx s">while Refunding: anyone can send refund, the money always lands with the buyer</text>
-        </svg>
+      <defs>
+        <marker id="st-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="ah i"/></marker>
+        <marker id="st-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="ah a"/></marker>
+        <marker id="st-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="ah g"/></marker>
+      </defs>
+      <line x1="40" y1="22" x2="80" y2="22" class="ln a"/><text x="88" y="27" class="tx s">automatic</text>
+      <line x1="180" y1="22" x2="220" y2="22" class="ln g"/><text x="228" y="27" class="tx s">anyone can trigger</text>
+      <line x1="370" y1="22" x2="410" y2="22" class="ln"/><text x="418" y="27" class="tx s">admin only</text>
+      <rect x="520" y="12" width="26" height="20" rx="3" class="bx term"/><text x="554" y="27" class="tx s">final state</text>
+      <rect x="40" y="70" width="160" height="60" rx="4" class="bx"/><text x="120" y="106" text-anchor="middle" class="tx t">Open</text>
+      <rect x="400" y="70" width="160" height="60" rx="4" class="bx hi"/><text x="480" y="107" text-anchor="middle" class="tx b big">Active</text>
+      <rect x="760" y="70" width="160" height="60" rx="4" class="bx term"/><text x="840" y="106" text-anchor="middle" class="tx t">Settled</text>
+      <rect x="400" y="250" width="160" height="60" rx="4" class="bx net"/><text x="480" y="286" text-anchor="middle" class="tx t">Refunding</text>
+      <rect x="760" y="250" width="160" height="60" rx="4" class="bx term"/><text x="840" y="286" text-anchor="middle" class="tx t">Cancelled</text>
+      <line x1="200" y1="100" x2="394" y2="100" class="ln a" marker-end="url(#st-amber)"/>
+      <text x="298" y="88" text-anchor="middle" class="tx a">minimum sold</text>
+      <text x="298" y="121" text-anchor="middle" class="tx s">on that purchase</text>
+      <line x1="560" y1="100" x2="754" y2="100" class="ln" marker-end="url(#st-ink)"/>
+      <text x="658" y="88" text-anchor="middle" class="tx m">close_pool</text>
+      <text x="658" y="121" text-anchor="middle" class="tx s">after the review window</text>
+      <text x="658" y="138" text-anchor="middle" class="tx s">anyone +14 d, if paid</text>
+      <polyline points="120,130 120,280 394,280" class="ln g" marker-end="url(#st-teal)"/>
+      <text x="258" y="268" text-anchor="middle" class="tx g">fail_pool</text>
+      <text x="258" y="300" text-anchor="middle" class="tx s">deadline missed: anyone</text>
+      <text x="258" y="317" text-anchor="middle" class="tx s">or cancel_pool: admin</text>
+      <line x1="480" y1="130" x2="480" y2="244" class="ln g" marker-end="url(#st-teal)"/>
+      <text x="492" y="176" class="tx g">expire_pool</text>
+      <text x="492" y="196" class="tx s">anyone, 14 days after the</text>
+      <text x="492" y="213" class="tx s">review, no prize paid</text>
+      <line x1="560" y1="280" x2="754" y2="280" class="ln g" marker-end="url(#st-teal)"/>
+      <text x="658" y="268" text-anchor="middle" class="tx g">close_pool</text>
+      <text x="658" y="300" text-anchor="middle" class="tx s">anyone, once all refunded</text>
+      <text x="480" y="340" text-anchor="middle" class="tx s">while Refunding: anyone can send refund, the money always lands with the buyer</text>
+    </svg>
     <figcaption><b>Both ways out of a stuck pool are green.</b> A pool that misses its goal and a pool the operator abandons after it went live both end in refunds that anyone can trigger. Only the normal settlement of a live pool needs the admin.</figcaption>
   </figure>
 
@@ -418,40 +410,40 @@
   <h3 class="sub">THE CLOCK</h3>
   <figure class="diagram wide">
     <svg viewBox="0 0 960 230" role="img" aria-label="A 1-hour pool: 24 h on sale, 2 h more rides, 48 h review, then payout; 14 days later anyone can expire or close it.">
-          <line x1="40" y1="90" x2="930" y2="90" class="ln i"/>
-          <line x1="50" y1="80" x2="50" y2="100" class="ln i"/>
-          <line x1="300" y1="80" x2="300" y2="100" class="ln i"/>
-          <line x1="420" y1="80" x2="420" y2="100" class="ln i"/>
-          <line x1="660" y1="80" x2="660" y2="100" class="ln i"/>
-          <line x1="840" y1="80" x2="840" y2="100" class="ln i"/>
-          <text x="50" y="64" class="tx m">open_next_pool</text>
-          <text x="300" y="64" text-anchor="middle" class="tx m">sale end</text>
-          <text x="420" y="64" text-anchor="middle" class="tx m">play</text>
-          <text x="660" y="64" text-anchor="middle" class="tx m">payout_at</text>
-          <text x="840" y="64" text-anchor="middle" class="tx g">+14 days</text>
-          <text x="175" y="116" text-anchor="middle" class="tx s">24 h</text>
-          <text x="360" y="116" text-anchor="middle" class="tx s">+2 h</text>
-          <text x="540" y="116" text-anchor="middle" class="tx s">48 h</text>
-          <text x="750" y="116" text-anchor="middle" class="tx s">grace</text>
-          <rect x="50" y="132" width="246" height="78" rx="3" class="bx hi"/>
-          <text x="66" y="156" class="tx b big" style="font-size:17px">On sale</text>
-          <text x="66" y="177" class="tx">reach the minimum or refund;</text>
-          <text x="66" y="195" class="tx">rides count once it is reached</text>
-          <rect x="304" y="132" width="112" height="78" rx="3" class="bx"/>
-          <text x="316" y="156" class="tx t">Last rides</text>
-          <text x="316" y="177" class="tx s">no sales</text>
-          <rect x="424" y="132" width="232" height="78" rx="3" class="bx"/>
-          <text x="440" y="156" class="tx t">Review</text>
-          <text x="440" y="177" class="tx s">winners published; admins check</text>
-          <text x="440" y="195" class="tx s">every odd-looking ride</text>
-          <rect x="664" y="132" width="172" height="78" rx="3" class="bx"/>
-          <text x="680" y="156" class="tx t">Payout</text>
-          <text x="680" y="177" class="tx s">verified winners paid,</text>
-          <text x="680" y="195" class="tx s">pool closed</text>
-          <rect x="844" y="132" width="86" height="78" rx="3" class="bx net"/>
-          <text x="854" y="156" class="tx t">Net</text>
-          <text x="854" y="177" class="tx s">anyone</text>
-        </svg>
+      <line x1="40" y1="90" x2="930" y2="90" class="ln i"/>
+      <line x1="50" y1="80" x2="50" y2="100" class="ln i"/>
+      <line x1="300" y1="80" x2="300" y2="100" class="ln i"/>
+      <line x1="420" y1="80" x2="420" y2="100" class="ln i"/>
+      <line x1="660" y1="80" x2="660" y2="100" class="ln i"/>
+      <line x1="840" y1="80" x2="840" y2="100" class="ln i"/>
+      <text x="50" y="64" class="tx m">open_next_pool</text>
+      <text x="300" y="64" text-anchor="middle" class="tx m">sale end</text>
+      <text x="420" y="64" text-anchor="middle" class="tx m">play</text>
+      <text x="660" y="64" text-anchor="middle" class="tx m">payout_at</text>
+      <text x="840" y="64" text-anchor="middle" class="tx g">+14 days</text>
+      <text x="175" y="116" text-anchor="middle" class="tx s">24 h</text>
+      <text x="360" y="116" text-anchor="middle" class="tx s">+2 h</text>
+      <text x="540" y="116" text-anchor="middle" class="tx s">48 h</text>
+      <text x="750" y="116" text-anchor="middle" class="tx s">grace</text>
+      <rect x="50" y="132" width="246" height="78" rx="3" class="bx hi"/>
+      <text x="66" y="156" class="tx b big" style="font-size:17px">On sale</text>
+      <text x="66" y="177" class="tx">reach the minimum or refund;</text>
+      <text x="66" y="195" class="tx">rides count once it is reached</text>
+      <rect x="304" y="132" width="112" height="78" rx="3" class="bx"/>
+      <text x="316" y="156" class="tx t">Last rides</text>
+      <text x="316" y="177" class="tx s">no sales</text>
+      <rect x="424" y="132" width="232" height="78" rx="3" class="bx"/>
+      <text x="440" y="156" class="tx t">Review</text>
+      <text x="440" y="177" class="tx s">winners published; admins check</text>
+      <text x="440" y="195" class="tx s">every odd-looking ride</text>
+      <rect x="664" y="132" width="172" height="78" rx="3" class="bx"/>
+      <text x="680" y="156" class="tx t">Payout</text>
+      <text x="680" y="177" class="tx s">verified winners paid,</text>
+      <text x="680" y="195" class="tx s">pool closed</text>
+      <rect x="844" y="132" width="86" height="78" rx="3" class="bx net"/>
+      <text x="854" y="156" class="tx t">Net</text>
+      <text x="854" y="177" class="tx s">anyone</text>
+    </svg>
     <figcaption><b>A new 1-hour pool every 24 hours.</b> The program refuses any prize before the review ends, even from the admin. If nobody settles, 14 days later any wallet can refund (no prize paid yet) or finish the split.</figcaption>
   </figure>
   <div class="grid3">
@@ -469,28 +461,29 @@
     <article class="claim"><em>RECEIVER</em><b>Nobody redirects a refund</b><span>The ticket is tied to your wallet. It lands with you, once.</span></article>
     <article class="claim"><em>FIXED</em><b>Rules never change</b><span>Price, deadlines, split and treasuries are written at creation.</span></article>
     <article class="claim"><em>CAP</em><b>Prizes have a ceiling</b><span>No payout can take the total above the prize share.</span></article>
+    <article class="claim"><em>ATTEST</em><b>Attestation gated</b><span>pay_prize strictly requires a Verified Attestation PDA.</span></article>
+    <article class="claim"><em>PLEDGE</em><b>Per-km solvency</b><span>settle_pledge enforces exact lamport conservation with refunds.</span></article>
+    <article class="claim"><em>YIELD</em><b>Staking compounds</b><span>Idle lamports earn JitoSOL yield during sale and review.</span></article>
     <article class="claim"><em>NO TRAP</em><b>A vanished operator can't trap it</b><span>14 days after the review anyone can expire the pool.</span></article>
     <article class="claim"><em>ADDRESSES</em><b>Money goes where declared</b><span>Only to the treasuries stored in the pool; the vault ends at zero.</span></article>
-    <article class="claim"><em>PAUSE</em><b>A pause can't block a refund</b><span>It stops new sales only. Refunds and closing always work.</span></article>
-    <article class="claim"><em>FEES</em><b>Price + network fee</b><span>Ticket rent comes back.</span></article>
   </div>
-  <p class="dim">Technical posture: 17 instructions, 14 events, 25 error codes · integer lamports with overflow checks · Anchor 1.2.1, SBPF v0 · deployed only from a <code>solana-verify</code> reproducible build whose hash is pinned in the repository, so anyone can rebuild it and compare.</p>
+  <p class="dim">Technical posture: 21 instructions, 18 events, 30 error codes · integer lamports with overflow checks · Anchor 1.2.1, SBPF v0 · deployed only from a <code>solana-verify</code> reproducible build whose hash is pinned in the repository, so anyone can rebuild it and compare.</p>
 
   <h3 class="sub">WHO CAN DO WHAT</h3>
   <p class="core"><b>Anyone can rescue the money. Only the admin and the payout key can pay it out – after the review.</b></p>
   <div class="roles">
-    <div class="role pl"><b>PLAYER</b><span>puts money in</span><ul><li>Buy a ticket</li></ul></div>
-    <div class="role any"><b>ANYONE</b><span>can rescue it</span><ul><li>Sponsor a pool</li><li>Fail a pool that missed its goal</li><li>Refund a ticket – it lands with the buyer</li><li>Open the next daily pool</li><li>Expire a stuck pool <small>+14 days</small></li></ul></div>
-    <div class="role adm"><b>ADMIN</b><span>sets the rules</span><ul><li>Schedule · create · cancel · pause</li><li>Pay a prize <small>within the cap</small></li><li>Close and split <small>anyone after +14 days</small></li></ul></div>
-    <div class="role srv"><b>GAME SERVER</b><span>payout key</span><ul><li>Pays verified winners <small>after review</small></li><li>Closes the pool</li><li class="no">Rules, refunds, treasuries: never</li></ul></div>
+    <div class="role pl"><b>PLAYER</b><span>puts money in</span><ul><li>Buy a ticket</li><li>Create a pledge</li></ul></div>
+    <div class="role any"><b>ANYONE</b><span>can rescue it</span><ul><li>Sponsor a pool</li><li>Fail a pool that missed its goal</li><li>Refund a ticket – it lands with the buyer</li><li>Open the next daily pool</li><li>Settle a finished pledge</li><li>Expire a stuck pool <small>+14 days</small></li></ul></div>
+    <div class="role adm"><b>ADMIN</b><span>sets the rules</span><ul><li>Schedule · create · cancel · pause</li><li>Record JitoSOL yield</li><li>Close and split <small>anyone after +14 days</small></li></ul></div>
+    <div class="role srv"><b>GAME SERVER</b><span>payout key</span><ul><li>Records driver attestation PDA</li><li>Pays verified winners <small>requires Verified PDA</small></li><li>Closes the pool</li><li class="no">Rules, refunds, treasuries: never</li></ul></div>
   </div>
 
   <h3 class="sub">WHAT THE PROGRAM DOES NOT PROMISE</h3>
   <ul class="honest">
-    <li><b>Who wins.</b> Rankings come from the game server's checks (<a href="#verify">06</a>). That is not proof of human play, and a modified client can still lie within the limits.</li>
-    <li><b>Which winner gets paid.</b> The program caps the total. It cannot tell a rightful winner from any other wallet, so the admin could pay a wrong address within the cap. Each payout is signed by the admin's wallet.</li>
+    <li><b>Telemetry truth.</b> The program verifies the telemetry root and km recorded in the <code>Attestation</code> PDA, but the off-chain engine produces those facts (<a href="#verify">06</a>).</li>
+    <li><b>Off-chain ranking.</b> The program enforces a <code>Verified</code> attestation before paying, but order (1st vs 2nd) follows server ranking within the prize cap.</li>
     <li><b>The treasuries.</b> The seed and fee treasuries are wallets the operator controls. A pool fixes their addresses, not what happens to the money afterwards.</li>
-    <li><b>Maturity.</b> Not deployed, not audited, devnet only.</li>
+    <li><b>Maturity.</b> Not audited, devnet only.</li>
   </ul>
 
   <h3 class="sub">HOW THE GAME SERVER FITS</h3>
@@ -499,12 +492,10 @@
   <h3 class="sub">IDEAS ON THE TABLE</h3>
   <p class="dim">Not built; ordered roughly by fit, from the Solana feature plan.</p>
   <ul class="ideas">
-    <li><b>Per-kilometre pledges.</b> A sponsor pledges lamports per km for a live driver, capped upfront and settled against the server-recorded distance – paying for finishing, not for entering.</li>
     <li><b>Convoys.</b> Three to five wallets ride the same round and share a side pot by combined distance.</li>
-    <li><b>Blinks.</b> A Solana Action in a social post that opens “enter / sponsor this week's pool”.</li>
-    <li><b>Chain-anchored seeds and receipts.</b> A ride seed derived from a block hash recorded at start, and payout transactions that carry the ride's recording root in a memo.</li>
-    <li><b>A pool crank and session keys.</b> A server-side <code>fail_pool</code> and wallet session keys. Not needed for safety: a player can always trigger the refund.</li>
-    <li><b>Badges as tokens.</b> Non-transferable badges that encode the shift (“8 hours on the Trans-Siberian at night”), minted on request.</li>
+    <li><b>Blinks in dialect registry.</b> Formal Dialect registry listing for the already-implemented Solana Actions.</li>
+    <li><b>Deterministic replay core.</b> Fixed-tick, fixed-point re-simulation of paid shifts.</li>
+    <li><b>Badges on mainnet.</b> A mainnet collection and tree, with the art re-uploaded, once the pool program is there.</li>
   </ul>
 </section>
 
@@ -516,14 +507,14 @@
   <h3 class="sub">NINE LAYERS, FROM CHEAPEST TO STRONGEST</h3>
   <ol class="flow">
     <li><i>1</i><b>SERVER-TIMED SHIFT</b><span>Driven time from heartbeats capped by the wall clock; distance capped by top speed; 150 s without a beat ends the ride. An instant finish is impossible.</span></li>
-    <li><i>2</i><b>A CHECKABLE RECORDING</b><span>Every key and a 10 Hz sample of the truck, sealed every 15 s into SHA-256 hash-chained batches the server re-hashes on arrival. Edits and holes reject.</span></li>
+    <li><i>2</i><b>A CHECKABLE RECORDING</b><span>Every key and a 10 Hz sample of the truck, sealed every 15 s into SHA-256 hash-chained batches. The server re-hashes on arrival and computes an RFC 6962 Merkle tree root.</span></li>
     <li><i>3</i><b>PHYSICS BOUNDS</b><span>Under the governor, no step the truck cannot make, samples in order. Speed hacks and teleports reject.</span></li>
     <li><i>4</i><b>AGREEMENT WITH THE RIDE</b><span>The recording ends where the ride ended and covers the driven time; a moving truck has hands on it.</span></li>
-    <li><i>5</i><b>THE SERVER'S ROAD</b><span>The holes come from the ride's seed, rebuilt by the server and handed to the game. A truck that drives through one at speed must lose hull; a game with the holes removed rejects.</span></li>
+    <li><i>5</i><b>THE SERVER'S ROAD &amp; SEED</b><span>Holes come from an on-chain provable seed commitment SHA256(poolId || blockhash || slot). A truck driving through at speed must lose hull; holes removed rejects.</span></li>
     <li><i>6</i><b>BUDGETS</b><span>Time, batches and bytes per ride, size per batch, rate limits. Uploading faster than real time is refused.</span></li>
     <li><i>7</i><b>HOW HUMAN THE HANDS LOOK</b><span>Hold lengths, rhythms, press durations – statistics that only flag.</span></li>
     <li><i>8</i><b>CHALLENGE CHANNEL</b><span>The heartbeat can ask for a challenge; the cab handler shows whatever the DTO names. Kinds are a table, empty today so none are issued. When a kind is live: no answer is a bot that cannot see; an instant one is a script reading the heartbeat.</span></li>
-    <li><i>9</i><b>A PERSON DECIDES</b><span>Flagged shifts wait for a signed, logged decision; rules are versioned and old rides can be judged again.</span></li>
+    <li><i>9</i><b>ON-CHAIN ATTESTATION PDA</b><span>Flagged shifts wait for signed decision; verified shifts get an on-chain Attestation PDA ([b"attestation", pool, driver]), strictly gating pay_prize.</span></li>
   </ol>
 
   <h3 class="sub">WHAT IS RECORDED – AND WHAT IS NOT</h3>
@@ -533,14 +524,14 @@
   </div>
   <p class="dim"><b>Never recorded:</b> mouse movement, your screen, other tabs or apps, microphone or camera, anything after the ride. The offline game records nothing.</p>
 
-  <h3 class="sub">THE CHAIN</h3>
-  <p>Each batch carries the SHA-256 fingerprint of the batch before it; the first links to the ride's own id. Change one number anywhere and that fingerprint changes, so the next link no longer matches – the verdict says <code>chain-broken</code> and the ride is rejected. The server recomputes every fingerprint itself on arrival, so a batch cannot claim a fingerprint it does not have, and sending the same batch number again is ignored. A batch the browser could not fingerprint is kept and only flagged – the server fingerprinted it.</p>
+  <h3 class="sub">THE CHAIN &amp; RFC 6962 MERKLE ROOT</h3>
+  <p>Each batch carries the SHA-256 fingerprint of the batch before it; the first links to the ride's own id. Change one number anywhere and that fingerprint changes, so the next link no longer matches – the verdict says <code>chain-broken</code> and the ride is rejected. The server recomputes every fingerprint itself on arrival, so a batch cannot claim a fingerprint it does not have, and sending the same batch number again is ignored. For verified shifts, an RFC 6962 Merkle tree is computed over all accepted <code>RideBatch</code> recordings (leaf: <code>SHA256(0x00 || batchHash)</code>, interior: <code>SHA256(0x01 || left || right)</code>). The 32-byte <code>telemetry_root</code> is committed to the on-chain <code>Attestation</code> PDA gating settlement.</p>
 
   <h3 class="sub">CHALLENGE CHANNEL</h3>
   <p>The heartbeat can carry a challenge about every 240 s of driving (none on the free run; at most four on a short shift, 0.6–1.4 intervals apart so the rhythm cannot be guessed). The cab handler shows whatever the DTO names as an amber banner with a 20 s bar. Kinds live in a table on the server; that table is empty today, so none are issued. When a kind is live, the judge looks for that key within 20 s of the moment the server issued the prompt. Half or more of 3+ prompts ignored rejects; one missed only flags; a median answer under 80 ms after the server issued it is faster than a person can read it and flags. A prompt still open when the ride ends is not judged.</p>
 
-  <h3 class="sub">THE SERVER'S ROAD</h3>
-  <p>The road and its sinkholes are a pure function of the ride's seed and trip. The server rebuilds them itself and hands the game the ride's <b>obstacle plan</b> (<code>GET /api/watch/:id/road</code>); the game drives over those holes, and every batch is measured against the same plan when it arrives. Each axle entering a pit costs the hull <code>dmg × (v/28)²</code> – 14 % for the front axle in a sinkhole at 28 m/s, rear axles × 0.6. A wheel that runs through a planned hole at speed must show at least a quarter of that loss. Two or more holes driven through untouched reject; one flags.</p>
+  <h3 class="sub">THE SERVER'S ROAD &amp; SEED COMMITMENT</h3>
+  <p>The road and its sinkholes are a pure function of the ride's seed and trip. In Anchor v3, this seed is committed on-chain when the pool opens: <code>SHA256(poolId || blockhash || slot)</code> projected into a 31-bit seed. Neither driver nor operator can bias or predict the layout in advance. The server rebuilds them itself and hands the game the ride's <b>obstacle plan</b> (<code>GET /api/watch/:id/road</code>); the game drives over those holes, and every batch is measured against the same plan when it arrives. Each axle entering a pit costs the hull <code>dmg × (v/28)²</code> – 14 % for the front axle in a sinkhole at 28 m/s, rear axles × 0.6. A wheel that runs through a planned hole at speed must show at least a quarter of that loss. Two or more holes driven through untouched reject; one flags.</p>
   <figure class="diagram">
     <svg viewBox="0 0 920 250" role="img" aria-labelledby="d4t d4d">
       <title id="d4t">The server's road</title><desc id="d4d">The ride's seed gives the server's obstacle plan. The game drives over it and a replay draws it. The recording is measured against the same plan: a hit shows a hull drop at the hole, a game without the hole shows none and is rejected.</desc>
@@ -605,6 +596,7 @@
     <li><i>2</i><b>ADMIN WALLET</b><span>Only listed wallets can sign in, for 2 hours. A player login opens nothing.</span></li>
     <li><i>3</i><b>EVERY DECISION SIGNED</b><span>Accept, reject and re-judge are each signed by the admin's wallet for that exact ride and decision.</span></li>
     <li><i>4</i><b>AUDIT LOG</b><span>Who decided what, when, why, and the signature are kept for good. A late upload never overturns a human decision; neither does a bulk re-judge after a rules change.</span></li>
+    <li><i>5</i><b>ON-CHAIN ATTESTATION GATING</b><span>The server's payout authority commits an on-chain <code>Attestation</code> PDA (<code>[b"attestation", pool, driver]</code>) storing the telemetry root and verified km. <code>pay_prize</code> strictly verifies status on-chain.</span></li>
   </ol>
 
   <h3 class="sub">LIMITS, SAID PLAINLY</h3>
@@ -651,7 +643,7 @@
       <tr><td>⚠ Sinkhole</td><td>0.05 SOL</td><td>Lane-wide with cones; up to 14 % hull per axle and 35 % of speed. At full speed it can wreck a damaged truck.</td></tr>
     </tbody>
   </table></div>
-  <p>A donation may carry a note of up to 80 characters. In production it is a <b>real devnet SOL transfer from the spectator's wallet to the driver's</b>: the server builds the unsigned transaction (with a memo naming the order), the wallet signs and sends it, and the donation exists in the feed only once the server has seen it on chain. The platform never touches the money. One conditional update claims the order once (signatures are unique), so two tabs confirming at once make one donation.</p>
+  <p>A donation may carry a note of up to 80 characters. In production it is a <b>real devnet SOL transfer from the spectator's wallet to the driver's</b>: the server builds the unsigned transaction (a memo names the order, and a reference key sits on that memo), the wallet signs and sends it – on this computer, or by scanning the Solana Pay code with the same account on a phone – and the donation exists in the feed only once the server has seen it on chain. The platform never touches the money. One conditional update claims the order once (signatures are unique), so two tabs confirming at once make one donation.</p>
   <p><b>Money that moved is never refused.</b> If the effect can no longer happen when the payment is confirmed – another effect landed, effects were switched off, or the ride ended – the donation is delivered as a tip and its text says why.</p>
   <p><b>Where a paid hole goes.</b> Past the stretch of road already built (so it never pops into view), plus the warning sign's 90 m, in the lane the truck is in – about 940 m ahead. The driver's game reports back where and when it landed (“the stamp”, first report wins), and every replay then puts the hole exactly there, now or in a month. If there is no suitable chunk within about 1.3 km, the effect fizzles and says so.</p>
 
@@ -669,7 +661,7 @@
     </tbody>
   </table></div>
   <p>Four server switches decide what a ride offers; the server refuses what is off and tells the page what is on. In production today: <b>chat on for every ride, donations on and paid (real devnet SOL to the driver), game effects on free rides only</b> – never on a paid ticket ride – with tips available everywhere.</p>
-  <p class="dim">Open: a paid donation whose page closed before confirmation has no chain watcher yet, and a real Phantom on the game's own host is still to be tried by hand.</p>
+  <p class="dim">Open: reloading the watch page finds a tip this browser started. If that browser never comes back, there is still no chain watcher for the transfer. The SOL is already in the driver's wallet. A real Phantom on the game's own host is still to be tried by hand.</p>
   <p><a class="link" data-to="game" data-path="/play.html" href="/play.html">Open the game, then use a ride's WATCH link from the lobby's Live tab →</a></p>
 </section>
 
@@ -696,7 +688,7 @@
     <li class="done"><b>Built</b> (mid-Sep – Oct 2026) The driving sim; sign-in with Solana; server-timed rides; verified-play recording and verdicts (shadow); signed admin review; live streams, replays, chat, paid donations; the escrow program and its server mirror, written and tested; garage, promo codes, cosmetics; analytics half wired.</li>
     <li class="now"><b>Devnet release</b> (Oct 13 – Nov 30) The verified program build on devnet; the first real pools – tickets bought, a missed goal refunded, prizes paid; verdict thresholds (prompts included) tuned on real rides, then enforced; analytics finished; twenty outside drivers; a heavy load test; a small crew of four – a CPO / COO hybrid, QA, community and support, a content creator.</li>
     <li><b>Mainnet</b> (Dec 2026) Legals (the skill prizes, terms, privacy, regions blocked where needed); an outside penetration test of the API, sessions and admin zone; a program review on the published build; the load test repeated on the release candidate; mainnet pools with published rules; a public Dune board of the program.</li>
-    <li><b>Long haul</b> (2027) Garage parts and promo cosmetics as NFTs; achievements attested on chain; sponsors, per-km pledges and convoys on top of tips; a storybook workshop where SOL buys attempts at a new prop, vehicle or landmark and drivers vote what ships; a deterministic replay core that re-simulates a paid finish.</li>
+    <li><b>Long haul</b> (2027) Garage parts and promo cosmetics as NFTs; sponsors, per-km pledges and convoys on top of tips; a storybook workshop where SOL buys attempts at a new prop, vehicle or landmark and drivers vote what ships; a deterministic replay core that re-simulates a paid finish.</li>
   </ol>
   <p class="dim">Cut on purpose: a token, pay-to-win parts, mobile and Telegram, paid ads before someone owns growth, a big team, an eight-hour mandatory ride with forced stops, a second chain.</p>
 

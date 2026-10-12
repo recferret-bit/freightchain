@@ -52,7 +52,7 @@ function paintHero() {
       $('hero-usd').textContent = '≈ $∞';
       if ($('hero-pot-note')) {
         $('hero-pot-note').hidden = false;
-        $('hero-pot-note').textContent = 'No devnet at the moment · offline & free rides only · devnet will be soon';
+        $('hero-pot-note').textContent = 'Free rides & practice mode active · Devnet prize pool opening soon';
       }
     }
     $('hero-cd').textContent = left(p.round.endsAt - now());
@@ -91,7 +91,7 @@ function paintPool() {
       el('div', { class: 'usd' }, '≈ $∞ · Devnet prize draw soon'),
       el('div', { class: 'split' }, ...['s-grand', 's-top', 's-seed', 's-fees'].map((c, i) => el('i', { class: c, style: `width:${pct[i]}%` }))),
       el('div', { class: 'legend' }, part('s-grand', '50% grand prize · draw, weight = tier', s.grand), part('s-top', '20% top 20 · by distance', s.top20), part('s-seed', '20% seeds next week', s.nextSeed), part('s-fees', '10% platform', s.fees)),
-      el('div', { class: 'meta' }, el('span', {}, el('b', {}, 'No devnet at the moment'), ' · only offline & free rides · devnet will be soon')),
+      el('div', { class: 'meta' }, el('span', {}, el('b', {}, 'Free rides & practice active'), ' · devnet prize pool opening soon')),
       el('div', { class: 'dim' }, 'Integer lamports, floored shares, remainder to fees. settled: false – the draw and payouts are not live in this build.'));
     return;
   }
@@ -178,7 +178,7 @@ function paintTicker() {
   if (l) for (const r of l.rides.filter(r => r.tier !== 'free').slice(0, 4)) items.push([`● LIVE · ${short(r.wallet)} on ${r.route ? ROUTE[r.route] ?? r.route : 'the road'} · ${km(r.distance)} km · ▶ watch`, watchUrl(r.id)]);
   if (l) for (const r of l.recent.slice(0, 8)) items.push([`${short(r.wallet)} ${r.status === 'completed' ? 'finished' : r.status === 'failed' ? 'wrecked' : 'abandoned'} a ${TIER_LONG[r.tier]?.toLowerCase() ?? r.tier} shift${r.route ? ` on ${ROUTE[r.route] ?? r.route}` : ''} · ${km(r.distance)} km · ▶ replay`, watchUrl(r.id)]);
   if (p?.pools?.length) items.push(`${sol(p.pools.reduce((a, x) => a + x.vaultLamports, 0))} SOL in escrow across ${plural(p.pools.length, 'prize pool')} · ${plural(p.pools.reduce((a, x) => a + x.toGo, 0), 'more rider')} to go live`);
-  else if (p) items.push('No devnet at the moment · offline & free rides only · devnet will be soon');
+  else if (p) items.push('Free rides & practice mode active · devnet prize pool opening soon');
   if (l) {
     items.push(`${plural(l.rides.length, 'truck')} on the road right now`, `${km(l.totals.metres)} km driven by ${plural(l.totals.drivers, 'driver')} all time`);
     if (l.upcoming.length) items.push(`${plural(l.upcoming.length, 'paid shift')} waiting to start`);
@@ -275,6 +275,7 @@ const onConnect = async () => {
 };
 function paintSession(me) {
   S.me = me; btn.textContent = 'OPEN THE LOBBY →'; btn.onclick = onConnect; playTop.textContent = 'LOBBY';
+  const playFree = $('play-free'); if (playFree) { playFree.textContent = 'OPEN THE LOBBY →'; playFree.href = `${SITE_BASE}/lobby.html#new`; }
   chip.textContent = short(me.wallet); chip.title = `signed in: ${me.wallet}`; chip.hidden = false;
   chipRides.textContent = `${me.freeRides} free · ${plural(heldTickets(me.tickets), 'paid ride')}`; chipRides.hidden = false;
   msg.textContent = ''; msg.className = 'msg';
@@ -291,7 +292,7 @@ $('invite').onsubmit = e => {
   btn.scrollIntoView({ block: 'center' }); btn.focus();   // the code goes with the sign-in below
 };
 btn.onclick = onConnect;
-playTop.onclick = () => { track('play_top_clicked', { signed_in: !!S.me }); if (S.me) toLobby(); else { location.hash = '#ride'; btn.focus(); } };
+playTop.onclick = () => { track('play_top_clicked', { signed_in: !!S.me }); if (S.me) toLobby(); else { flushSoon(); location.href = `${GAME_BASE}/play.html?offline=1`; } };
 track('landing_viewed', { surface: 'landing' });   // once per load, not on the 10 s refresh, and not after /api/pool
 if (linkCode) track('promo_invite_viewed', { code: CODE_SHAPE.test(codeOf(linkCode)) ? codeOf(linkCode) : null });   // an invite link was opened
 api('me', undefined, { report: false }).then(me => { track('session_restored', { surface: 'landing', wallet: me.wallet, ...(me.demo ? { is_demo: true } : {}) }); paintSession(me); }, () => {});   // signed in already: no forced redirect – the pool is the point of this page. Anonymous 401 stays a quiet GET.

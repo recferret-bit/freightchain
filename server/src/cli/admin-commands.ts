@@ -15,6 +15,7 @@ import type { PoolProps } from '../domain/economy/pool.types.js';
 import { EnvService } from '../infrastructure/config/env.service.js';
 import { RegisterPoolFromChainCommand } from '../application/use-cases/pools/register-pool-from-chain/register-pool-from-chain.command.js';
 import { CrankPoolsCommand } from '../application/use-cases/chain/crank-pools/crank-pools.command.js';
+import { MintAchievementsCommand } from '../application/use-cases/achievements/mint-achievements/mint-achievements.command.js';
 import { PayPoolsCommand } from '../application/use-cases/chain/pay-pools/pay-pools.command.js';
 import { parsePoolPayout, parsePoolRegister, parsePoolSeed, parsePromoCreate, parseTicketsGrant, parseStatsReconcile, parseVerdictRejudge, type PoolSeedArgs } from './admin-args.js';
 import { parsePoolAttention } from './admin-args.js';
@@ -79,6 +80,10 @@ export async function runAdmin(command: string, args: readonly string[]): Promis
     case 'pool:payout': {
       const r = parsePoolPayout(args);
       return typeof r === 'string' ? usage(r) : withBuses(({ commands }) => commands.execute(new PayPoolsCommand(r.poolId)));
+    }
+    case 'achievement:mint': {
+      if (args.some((a) => a !== '--retry')) return usage('achievement:mint takes only --retry');
+      return withBuses(({ commands, app }) => { const env = app.get(EnvService); return commands.execute(new MintAchievementsCommand(env.achievementMintDelayMs, env.achievementMintBatch, args.includes('--retry'))); });
     }
     case 'verdict:rejudge': {
       const r = parseVerdictRejudge(args);

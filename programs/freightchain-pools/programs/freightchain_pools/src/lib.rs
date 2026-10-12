@@ -46,12 +46,47 @@ pub mod freightchain_pools {
         instructions::series::handle_set_series(ctx, params)
     }
 
-    pub fn open_next_pool(ctx: Context<OpenNextPool>, tier: u8) -> Result<()> {
-        instructions::series::handle_open_next_pool(ctx, tier)
+    pub fn open_next_pool(ctx: Context<OpenNextPool>, tier: u8, seed_commitment: [u8; 32]) -> Result<()> {
+        instructions::series::handle_open_next_pool(ctx, tier, seed_commitment)
     }
 
     pub fn create_pool(ctx: Context<CreatePool>, params: CreatePoolParams) -> Result<()> {
         instructions::create_pool::handle_create_pool(ctx, params)
+    }
+
+    pub fn record_yield(
+        ctx: Context<RecordYield>,
+        pool_id: u32,
+        staked_lamports: u64,
+        yield_earned: u64,
+    ) -> Result<()> {
+        instructions::record_yield::handle_record_yield(ctx, pool_id, staked_lamports, yield_earned)
+    }
+
+    pub fn record_attestation(
+        ctx: Context<RecordAttestation>,
+        pool_id: u32,
+        driver: Pubkey,
+        telemetry_root: [u8; 32],
+        verified_km: u32,
+        status: u8,
+    ) -> Result<()> {
+        instructions::attestation::handle_record_attestation(ctx, pool_id, driver, telemetry_root, verified_km, status)
+    }
+
+    pub fn create_pledge(
+        ctx: Context<CreatePledge>,
+        ride_id: [u8; 32],
+        driver: Pubkey,
+        max_lamports: u64,
+        lamports_per_km: u64,
+        target_km: u32,
+    ) -> Result<()> {
+        instructions::pledge::handle_create_pledge(ctx, ride_id, driver, max_lamports, lamports_per_km, target_km)
+    }
+
+    pub fn settle_pledge(ctx: Context<SettlePledge>, ride_id: [u8; 32]) -> Result<()> {
+        instructions::pledge::handle_settle_pledge(ctx, ride_id)
     }
 
     pub fn buy_ticket(ctx: Context<BuyTicket>, pool_id: u32, qty: u16, order_id: [u8; 16]) -> Result<()> {

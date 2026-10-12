@@ -12,4 +12,6 @@ export abstract class RideRepositoryPort {
   abstract insert(ride: Ride, tx?: TransactionHandle): Promise<void>;
   /** Optimistic lock on the ride's version (heartbeat vs end). Returns the saved entity (version + 1). */
   abstract save(ride: Ride, tx?: TransactionHandle): Promise<Ride>;
+  /** Finds the driver's best completed and verified ride in the given pool (longest distance, then fastest time). */
+  abstract findBestVerifiedByPoolAndWallet(poolId: number, wallet: string, tx?: TransactionHandle): Promise<Ride | null>;
 }

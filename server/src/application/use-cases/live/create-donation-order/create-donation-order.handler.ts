@@ -37,8 +37,9 @@ export class CreateDonationOrderHandler implements ICommandHandler<CreateDonatio
       if (left > 0) throw new TooManyRequestsError(`one effect per ${EFFECT_WINDOW_MS / 1000} s on this ride – the next in ${Math.ceil(left / 1000)} s`, 'live_rate_limited', left / 1000);
     }
     const order = DonationOrder.create({ id: this.entropy.uuid(), rideId, wallet, recipient: ride.wallet, effect, note, now });
-    const transaction = await this.chain.buildPaymentTransaction({ payer: wallet, treasury: order.recipient, lamports: order.lamports, memo: order.memo });
+    order.assignReference(this.entropy.referenceKey());
+    const transaction = await this.chain.buildPaymentTransaction({ payer: wallet, treasury: order.recipient, lamports: order.lamports, memo: order.memo, reference: order.paymentReference });
     await this.orders.insert(order);
-    return { order: { id: order.id, effect: order.effect, lamports: order.lamports, to: order.recipient, memo: order.memo }, transaction };
+    return { order: { id: order.id, effect: order.effect, lamports: order.lamports, to: order.recipient, memo: order.memo, reference: order.paymentReference }, transaction };
   }
 }

@@ -37,11 +37,15 @@ export class ReconcilePaymentHandler implements ICommandHandler<ReconcilePayment
       return { status: ride.isInStatus(RideStatus.Created) && ride.paidAt ? 'paid' : ride.status, ride: toRideDto(ride) };
     }
     const treasury = this.rules.get().treasury;
-    for (const { signature, memo } of await this.chain.recentSignatures(wallet, HISTORY_LIMIT)) {
-      if (!memoMentions(memo, ride.id)) continue; // only a transaction carrying this ride id can be its payment – usually 0–1 fetches instead of up to 25
+    const expected = { wallet, treasury, lamports: ride.lamports, memo: ride.id, reference: ride.paymentReference };
+    // A reference finds the payment however busy the wallet is. Orders from before reference keys still scan the last 25 signatures.
+    const candidates = ride.paymentReference
+      ? await this.chain.signaturesForAddress(ride.paymentReference, 10)
+      : (await this.chain.recentSignatures(wallet, HISTORY_LIMIT)).filter((s) => memoMentions(s.memo, ride.id));
+    for (const { signature } of candidates) {
       if (await this.payments.findBySignature(signature)) continue;
       const tx = await this.chain.getTransaction(signature);
-      if (tx && !verifyPayment(tx, { wallet, treasury, lamports: ride.lamports, memo: ride.id })) {
+      if (tx && !verifyPayment(tx, expected)) {
         const settled = await this.settlement.settle(ride.id, wallet, signature);
         if (settled.inserted && settled.paidAt) {
           const paidAt = settled.paidAt;

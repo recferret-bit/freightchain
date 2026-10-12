@@ -3,6 +3,7 @@ import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import type { ConfirmDonationResultDto, DonationOrderDto, InboxDto, MuteDto, RideEventDto, WatchDto } from '../../domain/live/live.dto.js';
 import { CreateDonationOrderCommand } from '../../application/use-cases/live/create-donation-order/create-donation-order.command.js';
 import { ConfirmDonationCommand } from '../../application/use-cases/live/confirm-donation/confirm-donation.command.js';
+import { ReconcileDonationCommand, type ReconcileDonationResultDto } from '../../application/use-cases/live/reconcile-donation/reconcile-donation.command.js';
 import { MuteWalletCommand } from '../../application/use-cases/live/mute-wallet/mute-wallet.command.js';
 import { AckEffectCommand } from '../../application/use-cases/live/ack-effect/ack-effect.command.js';
 import { GetInboxQuery } from '../../application/use-cases/live/get-inbox/get-inbox.query.js';
@@ -66,6 +67,12 @@ export class LiveHttpController {
   @Post('watch/:id/donation-orders/:orderId/confirm') @HttpCode(200) @UseGuards(PlayerAuthGuard)
   confirm(@CurrentPlayer() player: PlayerIdentity, @ZodParams(orderParamsSchema) params: OrderParams, @ZodBody(confirmDonationBodySchema) body: ConfirmDonationBody): Promise<ConfirmDonationResultDto> {
     return this.commandBus.execute<ConfirmDonationCommand, ConfirmDonationResultDto>(new ConfirmDonationCommand(player.wallet, params.id, params.orderId, body.signature));
+  }
+
+  /** The phone paid: look the transfer up by the order's reference key. */
+  @Post('watch/:id/donation-orders/:orderId/reconcile') @HttpCode(200) @UseGuards(PlayerAuthGuard)
+  reconcileDonation(@CurrentPlayer() player: PlayerIdentity, @ZodParams(orderParamsSchema) params: OrderParams): Promise<ReconcileDonationResultDto> {
+    return this.commandBus.execute<ReconcileDonationCommand, ReconcileDonationResultDto>(new ReconcileDonationCommand(player.wallet, params.id, params.orderId));
   }
 
   @Get('rides/:id/inbox') @UseGuards(PlayerAuthGuard)

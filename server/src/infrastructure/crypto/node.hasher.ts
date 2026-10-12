@@ -7,4 +7,8 @@ export class NodeHasher extends HasherPort {
   sha256Hex(text: string): string {
     return createHash('sha256').update(text, 'utf8').digest('hex');
   }
+
+  sha256(data: Uint8Array | Buffer | string): Buffer {
+    return createHash('sha256').update(data).digest();
+  }
 }

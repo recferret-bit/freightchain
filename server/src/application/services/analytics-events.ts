@@ -1,4 +1,5 @@
 import type { AnalyticsEvent, AnalyticsPort, AnalyticsValue } from '../ports/analytics/analytics.port.js';
+import { ACHIEVEMENT_BY_ID, TIER_NAMES } from '../../domain/achievements/achievements.js';
 import { isRouteId } from '../../domain/rides/ride-rules.js';
 import { failCode } from '../../domain/rides/fail-code.js';
 import type { RideProps } from '../../domain/rides/ride.entity.js';
@@ -150,7 +151,20 @@ export function freeRideGranted(wallet: string, day: string, isDemo: boolean, no
 }
 
 export function achievementUnlocked(wallet: string, achievementId: string, earnedAt: Date, rideId: string | null, isDemo: boolean): AnalyticsEvent {
-  return serverEvent('achievement_unlocked', wallet, `ach:${wallet}:${achievementId}`, earnedAt, { achievement_id: achievementId, ride_id: rideId, is_demo: isDemo });
+  const a = ACHIEVEMENT_BY_ID.get(achievementId);
+  return serverEvent('achievement_unlocked', wallet, `ach:${wallet}:${achievementId}`, earnedAt, { achievement_id: achievementId, family: a?.family ?? null, tier: a?.tier ?? null, tier_name: a ? TIER_NAMES[a.tier - 1] : null, ride_id: rideId, is_demo: isDemo });
+}
+
+/** The badge's soulbound compressed NFT landed on chain (after the DB write). `attempts` = transactions it took. */
+export function achievementMinted(wallet: string, achievementId: string, assetId: string, signature: string, attempts: number, now: Date): AnalyticsEvent {
+  const a = ACHIEVEMENT_BY_ID.get(achievementId);
+  return serverEvent('achievement_minted', wallet, `ach-mint:${wallet}:${achievementId}`, now, { achievement_id: achievementId, family: a?.family ?? null, tier: a?.tier ?? null, asset_id: assetId, signature, attempts });
+}
+
+/** The mint of a badge ran out of attempts (the row stays `failed` until an admin retries it). The error text is not sent. */
+export function achievementMintFailed(wallet: string, achievementId: string, attempts: number, now: Date): AnalyticsEvent {
+  const a = ACHIEVEMENT_BY_ID.get(achievementId);
+  return serverEvent('achievement_mint_failed', wallet, `ach-mint-failed:${wallet}:${achievementId}:${attempts}`, now, { achievement_id: achievementId, family: a?.family ?? null, tier: a?.tier ?? null, attempts });
 }
 
 /** A promo code was redeemed (after the commit). `n` = this wallet's n-th use of the code. The code is a marketing string, not a secret of the wallet; free text (the description, the note) never goes. */

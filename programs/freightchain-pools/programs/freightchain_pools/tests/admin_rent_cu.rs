@@ -101,6 +101,7 @@ fn rent_rule_vault_never_left_between_zero_and_rent_min() {
     let mut acct = e.svm.get_account(&vault_pda(id)).unwrap();
     acct.lamports = min + 5_000_000;
     e.svm.set_account(vault_pda(id), acct).unwrap();
+    e.record_verified_attestation(id, &auth, &w.pubkey(), 100).unwrap();
 
     // taking all but 1000 lamports would leave the vault strictly between 0 and rent_min -> rejected
     assert_err!(e.pay_prize(id, &auth, &w.pubkey(), 5_000_000 + min - 1_000, 1), PoolError::BelowRentMin);
@@ -146,6 +147,7 @@ fn compute_units_are_in_budget() {
     e2.warp(PLAY);
     let auth = e2.authority_kp();
     let w = funded(&mut e2.svm, SOL);
+    e2.record_verified_attestation(id2, &auth, &w.pubkey(), 100).unwrap();
     let pay = e2.pay_prize(id2, &auth, &w.pubkey(), 1_000_000, 1).unwrap().compute_units_consumed;
     let close = e2.close_pool(id2, &auth).unwrap().compute_units_consumed;
 

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { escrowExplainer, explorerUrl, explorerTx, poolPhase, phaseLine, payoutText, poolSchedule, scheduleText, hasStandings, span, statusChip, progressText, deadline, splitParts, rulesText, tierTickets, buyRoom, cardAction, rideError, promoError, promoOk, buyError, ticketShareText, xIntent, usd, pct, sol, heldTickets, paidChip, ridableTickets } from '../../client/site/pools.js';
+import { homeBlinkUrl, ridePageUrl, rideShareText } from '../../client/js/ui/share.js';
 import { salesOpen } from '../../client/site/tickets-api.js';
 
 /* The pool wording the lobby AND the landing show (client/site/pools.js is pure). Every pool status – incl. `refunding`, which the dev seeds can't produce – is pinned here. */
@@ -182,13 +183,29 @@ test('promo redeem: every kind of effect reads as one sentence; an item you own 
   assert.match(promoError(problem(409, 'promo_unavailable', 'this promo code is not active yet')), /not active yet/);
 });
 
-test('the 𝕏 post after a ticket buy: tier, count, amount, pool, the escrow on Solana devnet – short enough for the receipt link', () => {
+test('the 𝕏 post after a ticket buy: tier, count, amount, pool, the escrow on Solana devnet – short enough for the blink link', () => {
   const text = ticketShareText({ shift: '4 HOURS', qty: 2, lamports: 100_000_000, poolId: 7 });
-  assert.equal(text, 'Ride paid 🚛 2 tickets for a 4 HOURS shift in @FreightChainSol – 0.100 SOL locked in pool #7’s escrow vault on @solana devnet, not with the devs. On-chain receipt:');
+  assert.equal(text, 'Ride paid 🚛 2 tickets for a 4 HOURS shift in @FreightChainSol – 0.100 SOL in pool #7’s escrow on @solana devnet. The link buys one ticket into a pool on sale (18+ and loss terms on the site).');
   assert.ok(text.length + 1 + 23 <= 280);   // t.co counts every url as 23
-  assert.match(ticketShareText({ shift: '1 HOUR', qty: 1, lamports: 0, poolId: 3 }), /^Ride paid 🚛 1 ticket for a 1 HOUR shift in @FreightChainSol locked in pool #3’s/);
+  assert.match(ticketShareText({ shift: '1 HOUR', qty: 1, lamports: 0, poolId: 3 }), /^Ride paid 🚛 1 ticket for a 1 HOUR shift in @FreightChainSol in pool #3’s/);
   const tx = explorerTx('5abc');
   assert.equal(xIntent('a b & c', tx), `https://x.com/intent/post?text=a%20b%20%26%20c&url=${encodeURIComponent(tx)}`);
+});
+
+test('blink urls: the site home, and a ride page whose id is encoded', () => {
+  assert.equal(homeBlinkUrl('', 'http://localhost:3000'), 'http://localhost:3000/');
+  assert.equal(homeBlinkUrl('https://freightchain.fun/', 'http://localhost:3000'), 'https://freightchain.fun/');
+  assert.equal(ridePageUrl('', 'http://localhost:3000', 'ride_1'), 'http://localhost:3000/r/ride_1');
+  assert.equal(ridePageUrl('https://freightchain.fun', '', 'ab/c d'), 'https://freightchain.fun/r/ab%2Fc%20d');
+});
+
+test('ride share text: free driving, paid driving, a finished shift that never says verified', () => {
+  assert.equal(rideShareText({ phase: 'driving', route: 'I-80', km: '12.3 km', time: '04:05', free: true }), 'Driving I-80 in @FreightChainSol. 12.3 km in (04:05). Watch along from the link. @solana devnet.');
+  assert.equal(rideShareText({ phase: 'driving', route: '', km: '1.0 km', time: '00:10', free: false }), 'Driving the road in @FreightChainSol. 1.0 km in (00:10). Watch the shift, or buy a ticket, from the link. @solana devnet.');
+  const done = rideShareText({ phase: 'finished', route: 'I-80', tier: '4h', km: '412.00', outcome: 'COMPLETE' });
+  assert.equal(done, 'Finished a 4h shift on I-80 in @FreightChainSol. 412.00 km · COMPLETE. Watch the replay or buy a ticket from the link. @solana devnet.');
+  assert.doesNotMatch(done, /verified/i);
+  assert.doesNotMatch(rideShareText({ phase: 'finished', tier: '1h', km: '3.00', outcome: 'FAILED' }), /verified/i);
 });
 
 test('ticket sales: on when the server sells through the program (tiers.paymentMode), a ticketSales flag would win; every refusal names the fix', () => {

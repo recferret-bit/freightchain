@@ -1,5 +1,9 @@
 import { Module, type Provider } from '@nestjs/common';
 import { EnvService } from './config/env.service.js';
+import { AchievementMintRepositoryPort } from '../application/ports/achievements/achievement-mint.repository.port.js';
+import { AchievementMintChainPort } from '../application/ports/achievements/achievement-mint-chain.port.js';
+import { AchievementMintPrismaRepository } from './prisma/repositories/achievement-mint.prisma.repository.js';
+import { BubblegumMintAdapter } from './solana/bubblegum-mint.adapter.js';
 import { AchievementRepositoryPort } from '../application/ports/achievements/achievement.repository.port.js';
 import { ChallengeRepositoryPort } from '../application/ports/auth/challenge.repository.port.js';
 import { SignatureVerifierPort } from '../application/ports/auth/signature-verifier.port.js';
@@ -68,6 +72,8 @@ import { ProgramPayoutAdapter } from './solana/program-payout.adapter.js';
 import { PoolPayoutChainPort } from '../application/ports/economy/pool-payout-chain.port.js';
 import { PoolPayoutRepositoryPort } from '../application/ports/economy/pool-payout.repository.port.js';
 import { PoolPayoutPrismaRepository } from './prisma/repositories/pool-payout.prisma.repository.js';
+import { PledgeRepositoryPort } from '../application/ports/economy/pledge.repository.port.js';
+import { PledgePrismaRepository } from './prisma/repositories/pledge.prisma.repository.js';
 import { ChainCursorPrismaRepository } from './prisma/repositories/chain-cursor.prisma.repository.js';
 import { ChainEventPrismaRepository } from './prisma/repositories/chain-event.prisma.repository.js';
 import { SystemClock } from './time/system.clock.js';
@@ -129,6 +135,8 @@ const ports: Provider[] = [
   { provide: RoundRepositoryPort, useClass: RoundPrismaRepository },
   { provide: PaymentRepositoryPort, useClass: PaymentPrismaRepository },
   { provide: AchievementRepositoryPort, useClass: AchievementPrismaRepository },
+  { provide: AchievementMintRepositoryPort, useClass: AchievementMintPrismaRepository },
+  { provide: AchievementMintChainPort, useClass: BubblegumMintAdapter },
   { provide: PriceQuotePort, useClass: HttpPriceQuoteAdapter },
   { provide: ChainPort, useClass: SolanaChainAdapter },
   { provide: HealthProbePort, useClass: PrismaHealthProbe },
@@ -141,6 +149,7 @@ const ports: Provider[] = [
   { provide: PoolCrankChainPort, useClass: ProgramCrankAdapter },
   { provide: PoolPayoutChainPort, useClass: ProgramPayoutAdapter },
   { provide: PoolPayoutRepositoryPort, useClass: PoolPayoutPrismaRepository },
+  { provide: PledgeRepositoryPort, useClass: PledgePrismaRepository },
   { provide: ChainEventRepositoryPort, useClass: ChainEventPrismaRepository },
   { provide: ChainCursorRepositoryPort, useClass: ChainCursorPrismaRepository },
   { provide: RideEventRepositoryPort, useClass: RideEventPrismaRepository },

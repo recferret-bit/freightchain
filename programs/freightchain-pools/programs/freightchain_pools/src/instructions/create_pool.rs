@@ -28,6 +28,7 @@ pub struct CreatePoolParams {
     pub prize_bps: u16,
     pub seed_bps: u16,
     pub fee_bps: u16,
+    pub seed_commitment: [u8; 32],
 }
 
 #[derive(Accounts)]
@@ -104,6 +105,7 @@ pub fn handle_create_pool(ctx: Context<CreatePool>, p: CreatePoolParams) -> Resu
         fee_bps: p.fee_bps,
         fee_treasury: a.fee_treasury.key(),
         seed_treasury: a.seed_treasury.key(),
+        seed_commitment: p.seed_commitment,
     };
     let (pool_bump, vault_bump) = (ctx.bumps.pool, ctx.bumps.vault);
     let a = ctx.accounts;
@@ -126,6 +128,7 @@ pub struct PoolRules {
     pub fee_bps: u16,
     pub fee_treasury: Pubkey,
     pub seed_treasury: Pubkey,
+    pub seed_commitment: [u8; 32],
 }
 
 /// Funds the vault with the rent minimum from `creator` (it gets it back at close, as `pool.authority`), takes the next pool id and writes the pool.
@@ -173,6 +176,9 @@ pub fn init_pool<'info>(
     pool.created_at = now;
     pool.bump = pool_bump;
     pool.vault_bump = vault_bump;
+    pool.seed_commitment = r.seed_commitment;
+    pool.staked_lamports = 0;
+    pool.yield_earned = 0;
 
     emit!(PoolCreated {
         pool_id,
@@ -193,6 +199,7 @@ pub fn init_pool<'info>(
         fee_treasury: r.fee_treasury,
         seed_treasury: r.seed_treasury,
         from_series,
+        seed_commitment: r.seed_commitment,
     });
     Ok(pool_id)
 }

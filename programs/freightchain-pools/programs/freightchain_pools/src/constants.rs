@@ -3,6 +3,13 @@ pub const POOL_SEED: &[u8] = b"pool";
 pub const VAULT_SEED: &[u8] = b"vault";
 pub const TICKET_SEED: &[u8] = b"ticket";
 pub const SERIES_SEED: &[u8] = b"series";
+pub const ATTESTATION_SEED: &[u8] = b"attestation";
+pub const PLEDGE_SEED: &[u8] = b"pledge";
+
+// Attestation.status
+pub const ATTESTATION_STATUS_UNVERIFIED: u8 = 0;
+pub const ATTESTATION_STATUS_VERIFIED: u8 = 1;
+pub const ATTESTATION_STATUS_FLAGGED: u8 = 2;
 
 pub const BPS_DENOM: u64 = 10_000;
 

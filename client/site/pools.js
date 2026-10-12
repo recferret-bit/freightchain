@@ -2,6 +2,9 @@
    Inputs are the server's DTOs: PrizePoolDto (/api/pools, /api/tiers[].pool), TicketBalanceDto (/api/me.tickets), RFC 9457 problems (Error with .status/.code). Lamports and epoch ms. */
 
 import { WHITEPAPER_BASE } from '../js/hosts.js';
+import { ticketShareText as ticketSentence, xIntent } from '../js/ui/share.js';
+
+export { xIntent };
 
 /** The cluster the pools live on (explorer links). '' = mainnet-beta (no query parameter). */
 export const CLUSTER = 'devnet';
@@ -167,10 +170,9 @@ export function promoOk(r) {
   return `+${plural(r.added, 'ticket')} (${r.code}) in pool #${r.poolId} · you hold ${r.balance} · cap ${r.cap}${r.added === 0 ? ' – you are at the cap, nothing added' : ''}`;
 }
 
-/** The 𝕏 post after a ticket buy: `shift` = the tier's name (1 HOUR…), lamports = what the order paid (0 = unknown). The intent's url is the explorer receipt (t.co: 23 chars). */
+/** The 𝕏 post after a ticket buy: `shift` = the tier's name (1 HOUR…), lamports = what the order paid (0 = unknown). The intent url is the site home (a blink), not the explorer receipt – that stays in the dialog. t.co counts the url as 23. */
 export const ticketShareText = ({ shift, qty, lamports, poolId }) =>
-  `Ride paid 🚛 ${plural(qty, 'ticket')} for a ${shift} shift in @FreightChainSol${lamports ? ` – ${sol(lamports)}` : ''} locked in pool #${poolId}’s escrow vault on @solana devnet, not with the devs. On-chain receipt:`;
-export const xIntent = (text, url) => `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+  ticketSentence({ shift, tickets: plural(qty, 'ticket'), amount: lamports ? sol(lamports) : '', poolId });
 
 /** …and of the (provisional, §2.4) ticket order / refund routes. */
 export function buyError(e) {

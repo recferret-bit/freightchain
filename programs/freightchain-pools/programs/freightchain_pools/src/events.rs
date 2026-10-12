@@ -21,6 +21,7 @@ pub struct PoolCreated {
     pub seed_treasury: Pubkey,
     /// true = opened by `open_next_pool` from the tier's series, false = `create_pool` by the admin
     pub from_series: bool,
+    pub seed_commitment: [u8; 32],
 }
 
 #[event]
@@ -137,4 +138,47 @@ pub struct PoolClosed {
     /// vault rent minimum returned to the authority
     pub rent_returned: u64,
     pub cancelled: bool,
+}
+
+#[event]
+pub struct YieldRecorded {
+    pub pool_id: u32,
+    pub staked_lamports: u64,
+    pub yield_earned: u64,
+    pub yield_earned_total: u64,
+}
+
+#[event]
+pub struct AttestationRecorded {
+    pub pool_id: u32,
+    pub pool: Pubkey,
+    pub driver: Pubkey,
+    pub telemetry_root: [u8; 32],
+    pub verified_km: u32,
+    pub status: u8,
+    pub recorded_at: i64,
+}
+
+#[event]
+pub struct PledgeCreated {
+    pub ride_id: [u8; 32],
+    pub sponsor: Pubkey,
+    pub driver: Pubkey,
+    pub pool: Pubkey,
+    pub max_lamports: u64,
+    pub lamports_per_km: u64,
+    pub target_km: u32,
+    pub created_at: i64,
+}
+
+#[event]
+pub struct PledgeSettled {
+    pub ride_id: [u8; 32],
+    pub sponsor: Pubkey,
+    pub driver: Pubkey,
+    pub pool: Pubkey,
+    pub verified_km: u32,
+    pub target_km: u32,
+    pub earned_lamports: u64,
+    pub refunded_lamports: u64,
 }

@@ -1,8 +1,10 @@
+import { createHash } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import { Connection, Keypair, SYSVAR_CLOCK_PUBKEY, type Commitment, type TransactionInstruction } from '@solana/web3.js';
 import bs58 from 'bs58';
 import { CHAIN_TIER_CODES, type PoolChainState, type SeriesChainState } from '../../domain/economy/chain-events.js';
 import { REFUND_BATCH } from '../../domain/economy/pool-crank.js';
+import { packSeedPreimage } from '../../domain/road/provable-seed.js';
 import { ConflictError, NotFoundError, ServiceUnavailableError } from '../../domain/shared/errors.js';
 import { PoolChainPort } from '../../application/ports/economy/pool-chain.port.js';
 import { PoolCrankChainPort, type ChainTicket, type CrankInstruction } from '../../application/ports/economy/pool-crank-chain.port.js';
@@ -104,7 +106,7 @@ export class ProgramCrankAdapter extends PoolCrankChainPort {
   /** the program instructions + their compute-unit limit; the crank is the `caller` of every one */
   private async instructions(i: CrankInstruction, caller: string): Promise<[TransactionInstruction[], number]> {
     const c = this.codec;
-    if (i.step === 'open_next_pool') return this.openNextPoolIx(i.tier, caller);
+    if (i.step === 'open_next_pool') return this.openNextPoolIx(i.tier, caller, i.seedCommitment);
     const pool = c.poolPda(i.poolId), vault = c.vaultPda(i.poolId);
     switch (i.step) {
       case 'fail_pool':
@@ -130,7 +132,7 @@ export class ProgramCrankAdapter extends PoolCrankChainPort {
   }
 
   /** open_next_pool: the series' treasuries, and the pool / vault PDAs seeded with the id the program will give the pool (Config.pool_count) */
-  private async openNextPoolIx(tier: number | undefined, caller: string): Promise<[TransactionInstruction[], number]> {
+  private async openNextPoolIx(tier: number | undefined, caller: string, seedCommitment?: Uint8Array | Buffer): Promise<[TransactionInstruction[], number]> {
     const c = this.codec;
     if (tier === undefined) throw new ConflictError('open_next_pool needs a tier', 'bad_crank_step');
     const series = c.seriesPda(tier);
@@ -139,9 +141,25 @@ export class ProgramCrankAdapter extends PoolCrankChainPort {
     const config = configInfo?.owner.equals(c.programId) ? c.decodeAccount('Config', configInfo.data) : null;
     if (!s || !config) throw new NotFoundError(`tier ${tier} has no series on chain`);
     const next = config['poolCount'] as number; // the pool PDA is seeded with the id the program will give it
+
+    let commitment = seedCommitment;
+    if (!commitment) {
+      try {
+        const { blockhash, slot } = await this.rpc.getLatestBlockhashAndSlot();
+        if (blockhash && slot > 0) {
+          commitment = createHash('sha256').update(packSeedPreimage(next, blockhash, slot)).digest();
+        }
+      } catch {
+        // fallback
+      }
+    }
+    if (!commitment) {
+      commitment = Buffer.alloc(32, 1);
+    }
+
     return [[c.instruction('open_next_pool', {
       caller, config: c.configPda(), series, pool: c.poolPda(next), vault: c.vaultPda(next), fee_treasury: s.feeTreasury, seed_treasury: s.seedTreasury,
       platform_treasury: String(config['platformTreasury']),
-    }, { tier })], CU_LIMITS.open_next_pool];
+    }, { tier, seed_commitment: commitment })], CU_LIMITS.open_next_pool];
   }
 }

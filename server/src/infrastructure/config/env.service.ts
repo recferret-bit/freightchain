@@ -82,6 +82,12 @@ export class EnvService {
   get crankSecret(): string | undefined { return this.env.CRANK_SECRET; }
   get payoutSecret(): string | undefined { return this.env.PAYOUT_SECRET; }
   get payoutIntervalMs(): number { return this.env.PAYOUT_INTERVAL_MS; }
+  get achievementMintSecret(): string | undefined { return this.env.ACHIEVEMENT_MINT_SECRET; }
+  get achievementTree(): string | undefined { return this.env.ACHIEVEMENT_TREE; }
+  get achievementCollection(): string | undefined { return this.env.ACHIEVEMENT_COLLECTION; }
+  get achievementMintIntervalMs(): number { return this.env.ACHIEVEMENT_MINT_INTERVAL_MS; }
+  get achievementMintDelayMs(): number { return this.env.ACHIEVEMENT_MINT_DELAY_MS; }
+  get achievementMintBatch(): number { return this.env.ACHIEVEMENT_MINT_BATCH; }
   get initialSeedLamports(): number { return Math.round(this.env.INITIAL_SEED_SOL * 1e9); }
   get verdictEnforce(): boolean { return this.env.VERDICT_ENFORCE; }
   get telemetryRetentionDays(): number { return this.env.TELEMETRY_RETENTION_DAYS; }

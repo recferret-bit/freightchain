@@ -5,6 +5,7 @@ import { CreateTicketOrderCommand } from '../../application/use-cases/tickets/cr
 import { GetPendingTicketOrderQuery, type PendingTicketOrderDto } from '../../application/use-cases/tickets/get-pending-ticket-order/get-pending-ticket-order.query.js';
 import { GetTicketOrderQuery } from '../../application/use-cases/tickets/get-ticket-order/get-ticket-order.query.js';
 import { ConfirmTicketOrderCommand, type ConfirmTicketOrderResultDto } from '../../application/use-cases/tickets/confirm-ticket-order/confirm-ticket-order.command.js';
+import { ReconcileTicketOrderCommand, type ReconcileTicketOrderResultDto } from '../../application/use-cases/tickets/reconcile-ticket-order/reconcile-ticket-order.command.js';
 import { GetTicketPaymentQuery, type TicketPaymentDto } from '../../application/use-cases/tickets/get-ticket-payment/get-ticket-payment.query.js';
 import { CurrentPlayer } from '../../infrastructure/http/decorators/current-player.js';
 import { ZodBody, ZodParams } from '../../infrastructure/http/decorators/zod.js';
@@ -50,5 +51,11 @@ export class TicketsHttpController {
   @Post('orders/:id/confirm') @HttpCode(200)
   confirm(@CurrentPlayer() player: PlayerIdentity, @ZodParams(orderIdParamsSchema) params: OrderIdParams, @ZodBody(confirmTicketOrderBodySchema) body: ConfirmTicketOrderBody): Promise<ConfirmTicketOrderResultDto> {
     return this.commandBus.execute<ConfirmTicketOrderCommand, ConfirmTicketOrderResultDto>(new ConfirmTicketOrderCommand(player.wallet, params.id, body.signature));
+  }
+
+  /** The phone paid: look the transaction up by the order's reference key. */
+  @Post('orders/:id/reconcile') @HttpCode(200)
+  reconcile(@CurrentPlayer() player: PlayerIdentity, @ZodParams(orderIdParamsSchema) params: OrderIdParams): Promise<ReconcileTicketOrderResultDto> {
+    return this.commandBus.execute<ReconcileTicketOrderCommand, ReconcileTicketOrderResultDto>(new ReconcileTicketOrderCommand(player.wallet, params.id));
   }
 }

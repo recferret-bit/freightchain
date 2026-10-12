@@ -50,11 +50,11 @@ The landing has six chapters: [RIDE](https://freightchain.fun/#ride), [LOOP](htt
 ### Ten minutes
 
 1. Open the [landing](https://freightchain.fun). Read the hero, then ECONOMY. The footer says devnet, and that nothing there is real money.
-2. Open the [whitepaper](https://whitepaper.freightchain.fun). The status pills are dated 8 Oct. The escrow pill still says the program is not deployed, and the garage is grouped with planned work. The program account is on devnet, and the garage is a lobby tab. The rest of that page is the public rules.
+2. Open the [whitepaper](https://whitepaper.freightchain.fun). Escrow is on devnet and not audited, prize payouts are off, and garage colours are a lobby tab. The rest of that page is the public rules.
 3. Connect a devnet wallet (Phantom or Solflare). Sign-in is a message, not a transaction. The page sends you to the lobby.
 4. Start the free ride. EASY is three minutes on four lanes with two crossroads, and it ends itself at 1512 m. The cab can show a tutorial and an assist mode. Both are free-tier only.
 5. Watch someone from LIVE, or open REPLAYS. The watch page draws the truck from the recording, about 25 seconds behind, on a road rebuilt from the ride seed.
-6. Open the [program on the explorer](https://explorer.solana.com/address/9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx?cluster=devnet) and the [contract spec](docs/pool-program/index.html). A buy on freightchain.fun today is the legacy memo transfer into the weekly round. Tickets into this program are the other path, in [Economy](#economy).
+6. Open the [program on the explorer](https://explorer.solana.com/address/9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx?cluster=devnet) and the [contract spec](docs/pool-program/index.html). freightchain.fun sells tickets into that program (`PAYMENT_MODE=program`, devnet). The legacy memo transfer is the other path, in [Economy](#economy). Either path is also a Solana Pay code: scan it with the same devnet wallet on a phone.
 7. If you build the repo: `npm run test:localnet` runs the real program on a local validator and checks every lamport. Walkthrough: [`docs/localnet-e2e/index.html`](docs/localnet-e2e/index.html).
 
 A wallet listed in `DEMO_WALLETS` drives a paid shift `DEMO_SCALE` times shorter (default 60). The speed governor stays 28 m/s.
@@ -69,23 +69,57 @@ A wallet listed in `DEMO_WALLETS` drives a paid shift `DEMO_SCALE` times shorter
 | Live watch, replays, CB chat, devnet tips to the driver | Yes | Live. Effects run on free rides only |
 | Garage, promo codes | Yes | Lobby tabs. Cosmetics are colours |
 | Public ride receipts, 𝕏 card SSR, in-game 𝕏 sharing | Yes (`/r/:id`, Web Intent) | Live |
-| Escrow program | v1 on devnet, initialized. v2 (one pool a day, a payout key, a review window): 17 instructions, 14 events, 25 errors, on devnet since Oct 11 (`8No42h…GCA1p`, v1 `9e7phd…` retired) | Initialized, payout key named, the 1 h series runs a test schedule. freightchain.fun runs it (`PAYMENT_MODE=program`, Oct 11) |
-| Prize payouts from a pool vault | v2: the server's payout job pays the verified top 20 after the 48 h review, once every ride of the pool is decided; an admin can HOLD it | After the results, on an explicit switch |
-| Token, mainnet, captcha, NFT badges | No | No |
+| Escrow program | Anchor v3 on devnet: 21 instructions, 18 events, 30 errors, 81 tests passing in LiteSVM. Vault PDAs, JitoSOL liquid staking yield (`staked_lamports`, `yield_earned`), on-chain `Attestation` PDAs (`[b"attestation", pool, driver]`), and Community Sponsorship Pledges (`[b"pledge", ride_id, sponsor]`). | Initialized on devnet, freightchain.fun runs it (`PAYMENT_MODE=program`) |
+| Prize payouts from a pool vault | v3: `pay_prize` is strictly gated on-chain by the `Attestation` PDA bearing the RFC 6962 telemetry Merkle root; payout job pays verified top 20 drivers after the review window. | After the results, on an explicit switch |
+| Community Sponsorship Pledges | Yes: on-chain `Pledge` PDAs (`[b"pledge", ride_id, sponsor]`), `create_pledge`, `settle_pledge` (proportional per-km payout), `refund_pledge` (100% refund of unused/cancelled). | Live on devnet |
+| Provable Road Seed & Telemetry Merkle Root | Yes: deterministic seed `SHA256(poolId \|\| blockhash \|\| slot)` committed on-chain; RFC 6962 Merkle tree root over 15s `RideBatch` chunks submitted to `Attestation` PDA gating `pay_prize`. | Live on devnet |
+| Solana Pay | Transaction request plus a reference key on a ticket buy, a legacy shift payment, and a paid tip | In this build. Devnet. The lobby and the watch page show a QR for the same wallet on a phone. |
+| Achievement badges as soulbound cNFTs | Yes: 31 tiered badges, a Bubblegum v2 mint job, devnet collection + tree (`56ijQ5…XoMC`, `45NKrZ…M336`); transfer refused on chain | Live on devnet. Mainnet waits for the same gates as the program |
+| Token, mainnet, captcha | No | No |
 
-Production stays on the transfer path until the Colosseum results, the devnet exit list, and an explicit deploy. That rule is [`docs/escrow-open-items.md`](docs/escrow-open-items.md) (Q-K, Q-L). The top of that file still says "nothing deployed"; Phase 1 below it records the 8 Oct deploy. The explorer is the check.
+freightchain.fun runs `PAYMENT_MODE=program` on devnet since Oct 11. Rollback is `PAYMENT_MODE=transfer`. Mainnet still waits on the Colosseum results, the devnet exit list, and an explicit deploy ([`docs/escrow-open-items.md`](docs/escrow-open-items.md)). The top of that file still says nothing is deployed; the Oct 11 note records the switch. The explorer is the check.
 
 ### What a Solana judge can check
 
+#### Solana Features — The Dual Pillars
+
+Freight Chain unlocks two fundamental pillars on Solana that web2 or legacy evm gaming cannot match:
+
+- **Pillar 1: Provable Gaming Integrity**
+  - **Chain-Anchored Seed Commitment**: When a pool opens, its endless road seed is deterministically committed on-chain as `SHA256(poolId || blockhash || slot)` in `Pool.seed_commitment`. The operator cannot choose an easy road or manipulate bend frequency after players commit funds.
+  - **RFC 6962 Telemetry Merkle Root**: During shifts, the truck client streams 15-second telemetry batches (`RideBatch`) signed and hash-chained. The server builds an RFC 6962 compliant Merkle tree (`computeTelemetryMerkleRoot`) across every chunk.
+  - **On-Chain Attestation PDA Gating**: When a ride passes physical verification (bounds, road agreement, holes, timing), `AttestationService` invokes `submit_attestation` to initialize an `Attestation` PDA (`[b"attestation", pool, driver]`). The Anchor program's `pay_prize` instruction *strictly requires* this PDA to exist—making prize distribution cryptographically dependent on genuine telemetry.
+
+- **Pillar 2: Capital Efficient Jito Yield**
+  - **Liquid Staking Yield Accumulation**: Escrowed pool lamports held in pool vaults do not sit idle during ticket sale phases and 48-hour review windows. Through JitoSOL liquid staking yield accounting (`staked_lamports`, `yield_earned`), yield accrues continuously.
+  - **Auto-Compounding Prize Pots**: Accrued staking yield is tracked in the Pool PDA and automatically compounds into the driver prize pool (`record_yield`), boosting tournament prize payouts without increasing driver entry ticket costs or risking principal.
+
+- **Community Sponsorship Pledges (Per-Kilometre Escrow)**
+  - **Trustless PDA Pledges**: Spectators sponsor live drivers per kilometre via `create_pledge`, creating an on-chain `Pledge` PDA (`[b"pledge", ride_id, sponsor]`).
+  - **Proportional Settlement & Zero Stranded Lamports**: Upon ride completion, `settle_pledge` pays the driver proportionally based on verified distance driven. Any unearned balance or cancelled drive is returned via `refund_pledge` with zero stranded lamports.
+
+##### Judge Quick-Evaluation Matrix
+
+| Feature | Solana Primitive | What It Proves to Judges | Code Location |
+| :--- | :--- | :--- | :--- |
+| **Provable Road Seed** | `SHA256(poolId \|\| blockhash \|\| slot)` committed to `Pool` PDA | Eliminates road cherry-picking; guarantees fair conditions across all contestants | [`provable-seed.ts`](server/src/domain/road/provable-seed.ts) |
+| **Telemetry Merkle Root** | RFC 6962 tree over 15s telemetry chunks | Cryptographic audit trail of human driving physics and inputs | [`telemetry-merkle.ts`](server/src/domain/telemetry/telemetry-merkle.ts) |
+| **Attestation-Gated Payouts** | `Attestation` PDA strictly checked in `pay_prize` | Smart contract programmatically blocks invalid or unverified payouts | [`instructions/settle.rs`](programs/freightchain-pools/programs/freightchain_pools/src/instructions/settle.rs) |
+| **JitoSOL Staking Yield** | Staking yield tracking (`staked_lamports`, `yield_earned`, `record_yield`) | Capital efficiency: idle vault funds auto-compound into tournament prize pots | [`instructions/record_yield.rs`](programs/freightchain-pools/programs/freightchain_pools/src/instructions/record_yield.rs) |
+| **Per-KM Spectator Pledges** | `Pledge` PDA (`create_pledge`, `settle_pledge`) | Trustless micro-sponsorship with proportional payout and 100% surplus refund | [`instructions/pledge.rs`](programs/freightchain-pools/programs/freightchain_pools/src/instructions/pledge.rs) |
+
+#### Program and Platform Verifications
+
 - **Sign-in.** Sign-In With Solana. The server stores one challenge, consumes it on the first attempt, and sets an httpOnly cookie. The statement says the signature does not send a transaction. [`server/src/domain/auth/sign-in.ts`](server/src/domain/auth/sign-in.ts)
-- **Public ride receipts and 𝕏 / Solana verification.** Every online shift (free or paid) gets an open public URL (`/r/:id`) showing live or completed telemetry, route seed proof, and a direct link to Solana Explorer (devnet) verifying the ticket escrow transaction. Drivers can share ride progress mid-shift from the dashboard (styled with Solana branding near the parking brake) or post the final receipt from the end screen via 𝕏 Web Intent; server-side middleware renders dynamic Twitter Card and Open Graph metadata with live stats so preview cards render directly on 𝕏 feeds.
+- **Public ride receipts, 𝕏 posts, and Solana Actions.** Every online shift (free or paid) gets an open public URL (`/r/:id`) showing live or completed telemetry, route seed proof, and a direct link to Solana Explorer (devnet) for the ticket escrow transaction. Drivers still post from their own account with an 𝕏 web intent. The link in that post is the site (`/` after a ticket buy, `/r/:id` for a ride), and `/actions.json` maps those URLs to Solana Actions so a blink client can buy one devnet ticket or open the ride. The explorer receipt stays in the lobby dialog. Server-side middleware also renders Twitter Card and Open Graph tags for clients that only show a preview.
 - **A program-owned vault.** Each pool has a zero-data PDA. Only the program can sign for it. Price, minimum, deadlines, and the prize / seed / fee split are fixed at `create_pool`. [`programs/freightchain-pools/README.md`](programs/freightchain-pools/README.md)
 - **A missed pool refunds without the operator.** `fail_pool`, `refund`, `expire_pool`, and the grace `close_pool` are permissionless. After 14 days an unpaid active pool can only be expired and refunded, so an absent admin cannot sweep the players' money to the seed treasury.
 - **Prizes are capped on chain.** `pay_prize` refuses once `prizes_paid` would pass the prize share. The 25 / 15 / 10 ranking is server policy inside that cap. The program does not hard-code the ranks.
 - **Integer lamports.** One shared table pins the server and the program. [`server/src/domain/economy/vault-split.ts`](server/src/domain/economy/vault-split.ts) · [`server/test/fixtures/chain/vault-split-cases.json`](server/test/fixtures/chain/vault-split-cases.json)
 - **The buyer pays the fee.** `buy_ticket` has a separate fee-payer account. The server sets it to the buyer. There is no gas-sponsor key on the server. A leftover `FEE_PAYER_SECRET` is ignored.
+- **Solana Pay.** A ticket, a legacy shift payment, and a paid tip are transaction requests. The phone `POST`s its wallet to `/api/solana-pay/{rides|orders|donations}/:id` and signs the same unsigned transaction the desktop signs. Each order stores one reference key, a read-only account on the memo, and reconcile finds the payment with `getSignaturesForAddress`. `buy_ticket`'s program accounts are unchanged. Devnet only. A plain `solana:<treasury>?amount=` link is not used: it would not buy a ticket.
 - **The crank key is not the admin.** `CRANK_SECRET` sends only `open_next_pool` (v2), `fail_pool`, `expire_pool`, `refund`, and `close_pool`. It never sends `pay_prize`.
-- **The payout key can only pay (v2).** `set_payout_authority` names a key that may sign `pay_prize` (capped) and `close_pool`, and only after the pool's review window `payout_at`. Not even the admin pays earlier. The server holds it as `PAYOUT_SECRET` and pays only verified rides, once every ride of the pool is decided.
+- **The payout key is gated by Attestation PDAs (v3).** `set_payout_authority` names a key that may sign `pay_prize` (capped) and `close_pool`, and only after the pool's review window `payout_at`. Not even the admin pays earlier. Moreover, `pay_prize` strictly checks the presence and validity of the driver's `Attestation` PDA containing the RFC 6962 telemetry Merkle root. The server holds it as `PAYOUT_SECRET` and pays only verified rides, once every ride of the pool is decided.
 - **Verifiable build.** `npm run program:verify` rebuilds in the Solana Foundation image and compares the hash to [`programs/freightchain-pools/verifiable-build.hash`](programs/freightchain-pools/verifiable-build.hash). The explorer "verified" badge needs a public repo and a signed PDA. That step is still open.
 - **Real product analytics, not a mock.** Screenshots of the private PostHog Cloud EU project (297915), taken 11 Oct 2026. The numbers are small: this is devnet traffic and a few test wallets, and the demo-wallet funnels run on the ×60 clock. Click for full size. Detail: [`docs/analytics/index.html`](docs/analytics/index.html).
 
@@ -172,12 +206,33 @@ flowchart TB
   game -->|"heartbeats, batches, /end"| http
   site -->|"SIWS, rides, tickets"| http
   infra --> pg[(PostgreSQL<br/>one schema per context)]
-  infra --> chain["Solana devnet<br/>program + memo transfers"]
+  infra --> chain["Solana devnet<br/>program, Solana Pay, memo transfers"]
 ```
 
 Layers point inward. Domain code does not read the clock or the environment. Time comes from `ClockPort`. Env comes from `EnvService`. A Prisma change ships with a SQL migration.
 
-Anything a wallet does to its rides, tickets, or payments takes the player row lock first, then the pool row, then ticket rows. [`docs/backend-architecture.md`](docs/backend-architecture.md)
+Anything a wallet does to its rides, tickets, payments, or pledges takes the player row lock first, then the pool row, then ticket / pledge rows. [`docs/backend-architecture.md`](docs/backend-architecture.md)
+
+On-chain integrity and capital efficiency flow:
+
+```mermaid
+flowchart TB
+  subgraph solana [Solana Devnet: Anchor v3 Escrow & Integrity]
+    slot["Solana Blockhash & Slot"]
+    pool["Pool PDA<br/>seed_commitment: SHA256(poolId || blockhash || slot)<br/>staked_lamports + yield_earned"]
+    vault["Vault PDA<br/>idle lamports earn JitoSOL liquid staking yield"]
+    pledge["Pledge PDA [pledge, ride_id, sponsor]<br/>per-km escrowed balance"]
+    attest["Attestation PDA [attestation, pool, driver]<br/>RFC 6962 Telemetry Merkle Root"]
+    prize["pay_prize<br/>(gated by Attestation PDA)"]
+  end
+  slot -->|"commit seed"| pool
+  tickets["Ticket Sales"] -->|"buy_ticket"| vault
+  vault -.->|"auto-compound yield"| pool
+  sponsor["Sponsor"] -->|"create_pledge"| pledge
+  judge["Server Physics Verdict"] -->|"submit_attestation"| attest
+  attest -->|"strictly gates"| prize
+  pledge -->|"settle_pledge (per-km) / refund_pledge"| driver["Driver Wallet / Sponsor Refund"]
+```
 
 A ride, as the server sees it:
 
@@ -221,9 +276,9 @@ Read: [`client/js/themes/index.js`](client/js/themes/index.js) · [model viewer]
 | 4 hour | 4 h | $15 planned | When a pool is registered | Bends ×1.2, traffic ×1.4 |
 | 8 hour | 8 h | $50 planned | When a pool is registered | Bends ×1.4, traffic ×1.8 |
 
-A new wallet starts with 10 free rides. The daily refill adds one at 00:00 UTC and stops at 5. A promo can sit above that cap. `play.html?offline=1` is an uncounted guest run with no account (two minutes, one crossroads, a winding road).
+A new wallet starts with 10 free rides. The daily refill adds one at 00:00 UTC and stops at 5. A promo can sit above that cap. `play.html?offline=1` is an uncounted guest run with no account (two minutes, one crossroads, a winding road). A paid shift or a tip is signed in Phantom or Solflare on the desktop, or by scanning the Solana Pay code with that same wallet on a phone. Devnet.
 
-The free ride is picked at a level in the lobby (`POST /api/rides` `level` 1–3). Each level has its own leaderboard (HARD by default) and its own achievement: Learner's Permit, Crossroads, Long Haul. Tutorial and assist exist only on a free ride; HARD refuses assist. Assist halves hull damage and battery drain. The achievement On My Own is a completed free ride without assist. While the verdict is enforced, a rejected recording earns no badge. `node .claude/skills/level-check/check.mjs` checks every level is what it promises and passable by a human-paced driver.
+The free ride is picked at a level in the lobby (`POST /api/rides` `level` 1–3). Each level has its own leaderboard (HARD by default) and its own achievement: Learner's Permit, Crossroads, Long Haul. Tutorial and assist exist only on a free ride; HARD refuses assist. Assist halves hull damage and battery drain. The achievement On My Own is a completed free ride without assist (achievements are ladders of 3-4 tiers, each minted as a soulbound compressed NFT – `docs/agents/achievements.md`). While the verdict is enforced, a rejected recording earns no badge. `node .claude/skills/level-check/check.mjs` checks every level is what it promises and passable by a human-paced driver.
 
 Read: [`client/js/trips.js`](client/js/trips.js) · [`server/src/domain/rides/ride-tier.ts`](server/src/domain/rides/ride-tier.ts) · [`server/src/domain/settings/game-settings.ts`](server/src/domain/settings/game-settings.ts)
 
@@ -235,7 +290,7 @@ Read: [Anti-cheat](#anti-cheat) · [`docs/anti-cheat/index.html`](docs/anti-chea
 
 ### Public receipts and 𝕏 sharing
 
-Every online shift (free or paid) has an unauthenticated public receipt page at `/r/:id`. While running, it displays live telemetry and lets visitors watch the stream or tip the driver in SOL; when completed, it shows the verdict, distance, seed commitment, and a Solana devnet explorer link for the ticket escrow. Drivers can share live progress directly from the truck dashboard via the Solana-styled `POST ON 𝕏` button (near the parking brake), or share their ride receipt on completion. The server injects dynamic Open Graph and Twitter Card tags so shared links show live stats and route previews directly on 𝕏.
+Every online shift (free or paid) has an unauthenticated public receipt page at `/r/:id`. While running, it displays live telemetry and lets visitors watch the stream or tip the driver in SOL; when completed, it shows the verdict, distance, seed commitment, and a Solana devnet explorer link for the ticket escrow. Drivers can share from the dashboard (`POST ON 𝕏`, near the parking brake) or the end screen. The composed post’s URL is that ride page, or the site home after a ticket buy, which `/actions.json` maps to a Solana Action (one program-mode ticket, or open the ride). The action is devnet-only, still requires the 18+ and loss stamps, and is not registered with Dialect yet — dial.to renders it meanwhile. The server also injects Open Graph and Twitter Card tags for a plain preview.
 
 Read: [`server/src/presentation/rides/public-rides.http.controller.ts`](server/src/presentation/rides/public-rides.http.controller.ts) · [`server/src/infrastructure/http/middleware/ride-page.middleware.ts`](server/src/infrastructure/http/middleware/ride-page.middleware.ts) · [`client/r.html`](client/r.html)
 
@@ -250,6 +305,12 @@ Read: [`docs/replay-and-donations/index.html`](docs/replay-and-donations/index.h
 Running totals per rider and for the whole game: rides, time, kilometres, crashes, donations. Every started ride that ended counts. Free and paid are counted apart. Reads are cached for 15 seconds. Production Redis has a password and no published port.
 
 Read: [`docs/statistics.md`](docs/statistics.md)
+
+### Achievements and badge NFTs
+
+Eight ladders of three or four tiers (Road, Shifts, Night, Distance, Clean, Siberia, Solo, Licence), 31 badges from Bronze to Platinum; the Shifts ladder counts paid shifts only. The server derives every count from the rides it judged, and a rejected recording earns nothing. Each earned badge is minted, an hour later and after a second check, as a **soulbound compressed NFT** (Metaplex Bubblegum v2 in an MPL-Core collection whose freeze plugin nobody can lift) to the wallet that earned it, by a dedicated key that can mint and nothing else. Art and metadata live on Arweave through Irys. The profile shows locked and earned cards with progress, the explorer, Solscan and Orb links, the mint transaction and a POST ON X button. `scripts/achievements/` creates the tree and collection, uploads the art and smoke-tests the mint and the refused transfer.
+
+Read: [`docs/agents/achievements.md`](docs/agents/achievements.md)
 
 ### Garage and promo codes
 
@@ -324,10 +385,12 @@ Anchor program `freightchain_pools`. One program, many pools. Each pool is its o
 | Account | Seeds | Role |
 | --- | --- | --- |
 | Config | `["config"]` | Admin, platform treasury, fee bps, pool count, pause |
-| Pool | `["pool", id]` | Immutable rules and counters. 192 bytes in v2 (`payout_at` added) |
+| Pool | `["pool", id]` | Rules, counters, seed commitment (`seed_commitment: [u8; 32]`), JitoSOL yield (`staked_lamports`, `yield_earned`) |
 | Series (v2) | `["series", tier]` | One schedule per tier. Anyone opens the next pool from it |
 | Ticket | `["ticket", pool, buyer]` | One buyer per pool. A refund closes it |
-| Vault | `["vault", id]` | Zero-data PDA. The escrow |
+| Vault | `["vault", id]` | Zero-data PDA. Escrow vault earning liquid staking yield |
+| Pledge (v3) | `["pledge", ride_id, sponsor]` | Community per-km sponsorship pledge with proportional payout and 0-stranded refund |
+| Attestation (v3) | `["attestation", pool, driver]` | RFC 6962 telemetry Merkle root attestation gating `pay_prize` |
 
 Status bytes: Open, Active, Refunding, Settled, Cancelled.
 
@@ -386,7 +449,7 @@ Prices are quoted in USD and charged in devnet SOL at the server's rate. The 1 h
 - **The buyer pays the network fee** on a server-built buy. The message is stored on the order and checked when the signature comes back.
 - **The crank key pays permissionless steps only.**
 - **Admin changes are signed twice.** Nginx basic auth, then an admin session cookie, then a wallet signature over the exact text of that accept, reject, re-judge, promo edit, or free-ride grant. The player session is a different cookie and a different audience.
-- **Lock order** is player, then pool, then tickets.
+- **Lock order** is player, then pool, then tickets / pledges.
 - **Recordings are budgeted.** Game seconds, batch count, and bytes are capped by wall time. A batch the server refuses stops the chain.
 - **Not audited.** After the play deadline the admin may close a pool without paying prizes. The prize share then goes to the seed treasury. The 14-day grace protects players from a lost admin key. It does not protect them from a dishonest admin. `pay_prize` pays the address the admin signs, up to the prize cap.
 - **Session keys are not built.**
@@ -449,7 +512,7 @@ Every directory at the repo root. `.git` is the only one left out.
 - [`.claude/`](.claude) — project skills. One folder per skill. The index is [Skills](#skills).
 - [`client/`](client) — the game, the lobby, the admin page, and the model viewer.
 - [`deploy/`](deploy/README.md) — Docker, host nginx, certbot. `npm run deploy` ships `git archive HEAD`.
-- [`design/`](design) — icon candidates and the YouTube banners. The shipped icon is generated into `client/`.
+- [`design/`](design) — icon candidates, the YouTube banners and the achievement badge art generator (`design/achievements/`). The shipped icon is generated into `client/`.
 - [`docs/`](docs) — plans and explainers. [`docs/agents/`](docs/agents) holds the agent detail [`AGENTS.md`](AGENTS.md) points to.
 - [`landing/`](landing) — the `/` page and the whitepaper. Its own Vite project.
 - [`media/`](media) — promo clips and the chiptune synth, including the game's own sound effects.

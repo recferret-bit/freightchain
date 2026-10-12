@@ -1,0 +1,52 @@
+{
+  "name": "Asphalt Legend",
+  "symbol": "FCHAIN",
+  "description": "Every haul starts with a single turn of the key. The road has noticed you. Condition: Start 250 rides. A soulbound Freight Chain achievement – compressed NFT, non-transferable.",
+  "image": "__IMAGE__",
+  "seller_fee_basis_points": 0,
+  "external_url": "https://freightchain.fun/",
+  "collection": {
+    "name": "Freight Chain Achievements",
+    "family": "Freight Chain"
+  },
+  "attributes": [
+    {
+      "trait_type": "Family",
+      "value": "Road"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Platinum"
+    },
+    {
+      "trait_type": "Tier Number",
+      "value": 4
+    },
+    {
+      "trait_type": "Condition",
+      "value": "Start 250 rides."
+    },
+    {
+      "trait_type": "Requirement",
+      "value": 250,
+      "display_type": "number"
+    },
+    {
+      "trait_type": "Soulbound",
+      "value": "Yes"
+    },
+    {
+      "trait_type": "Game",
+      "value": "Freight Chain"
+    }
+  ],
+  "properties": {
+    "category": "image",
+    "files": [
+      {
+        "uri": "__IMAGE__",
+        "type": "image/png"
+      }
+    ]
+  }
+}

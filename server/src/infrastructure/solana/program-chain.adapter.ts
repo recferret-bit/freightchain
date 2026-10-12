@@ -10,6 +10,7 @@ import { ClockPort } from '../../application/ports/shared/clock.port.js';
 import { PoolChainPort, type BuiltTransaction, type ChainTxKind, type FeeQuote, type ProgramSignature, type SignatureStatus } from '../../application/ports/economy/pool-chain.port.js';
 import { EnvService } from '../config/env.service.js';
 import { FeeEstimator, estimateFeeLamports, type QnPriorityFees } from './fee-estimator.js';
+import { memoInstruction } from './chain-transaction.mapper.js';
 import { PoolProgramCodec, UnrepresentableValueError } from './pool-program.codec.js';
 import { SolanaRpc, sleep } from './solana-rpc.js';
 
@@ -18,7 +19,7 @@ import { SolanaRpc, sleep } from './solana-rpc.js';
     (a wallet needing k extra tries has probability 2^-k). With 30k / 18k an unlucky wallet (~1 in 128 for buys, ~1 in 8 for refunds) could NEVER buy / be refunded
     by a server-built transaction – found by the devnet rehearsal ("exceeded CUs meter"). 60k / 45k leave ≥ 20 extra tries (2^-20). The limit is a cap, not a charge
     (the fee is priority price × limit, ~0 on devnet). */
-export const CU_LIMITS = { buy: 60_000, refund: 45_000, fail_pool: 6_000, expire_pool: 6_000, pay_prize: 17_000, close_pool: 30_000, open_next_pool: 40_000 } as const;
+export const CU_LIMITS = { buy: 60_000, refund: 45_000, fail_pool: 6_000, expire_pool: 6_000, pay_prize: 22_000, record_attestation: 25_000, close_pool: 30_000, open_next_pool: 40_000 } as const;
 const MAX_SIGNATURE_PAGES = 10;
 const STATUS = ['open', 'active', 'refunding', 'settled', 'cancelled'] as const;
 
@@ -31,6 +32,8 @@ export function poolStateOf(c: PoolProgramCodec, poolId: number, info: AccountIn
   const status = STATUS[p['status'] as number];
   if (!status) throw new Error(`pool ${poolId} has an unknown status ${String(p['status'])}`);
   const vaultLamports = vaultInfo?.lamports ?? 0;
+  const rawSeed = p['seedCommitment'];
+  const seedCommitment = rawSeed instanceof Uint8Array ? Buffer.from(rawSeed).toString('base64') : (typeof rawSeed === 'string' ? rawSeed : undefined);
   return {
     poolId: p['poolId'] as number, address: c.poolPda(poolId).toBase58(), status, ticketsSold: p['ticketsSold'] as number, buyers: p['buyers'] as number,
     sponsored: p['sponsored'] as number, prizesPaid: p['prizesPaid'] as number, refunded: p['refunded'] as number,
@@ -38,6 +41,7 @@ export function poolStateOf(c: PoolProgramCodec, poolId: number, info: AccountIn
     priceLamports: p['priceLamports'] as number, minTickets: p['minTickets'] as number, maxTickets: p['maxTickets'] as number, maxPerWallet: p['maxPerWallet'] as number,
     prepDeadline: p['prepDeadline'] as Date, playDeadline: p['playDeadline'] as Date, payoutAt: p['payoutAt'] as Date, prizeBps: p['prizeBps'] as number, seedBps: p['seedBps'] as number,
     feeBps: p['feeBps'] as number, feeTreasury: p['feeTreasury'] as string, seedTreasury: p['seedTreasury'] as string, createdAt: p['createdAt'] as Date,
+    seedCommitment, stakedLamports: Number(p['stakedLamports'] ?? 0), yieldEarned: Number(p['yieldEarned'] ?? 0),
   };
 }
 
@@ -103,12 +107,14 @@ export class ProgramChainAdapter extends PoolChainPort {
 
   // ---- builders
 
-  async buildBuyTransaction(i: { payer: string; poolId: number; qty: number; orderId: string }): Promise<BuiltTransaction> {
+  async buildBuyTransaction(i: { payer: string; poolId: number; qty: number; orderId: string; reference?: string | null }): Promise<BuiltTransaction> {
     const c = this.codec;
     const ix = c.instruction('buy_ticket', {
       buyer: i.payer, fee_payer: i.payer, config: c.configPda(), pool: c.poolPda(i.poolId), vault: c.vaultPda(i.poolId), ticket: c.ticketPda(i.poolId, i.payer),
     }, { pool_id: i.poolId, qty: i.qty, order_id: orderIdToBytes(i.orderId) });
-    return this.build([ix], i.payer, i.poolId, CU_LIMITS.buy);
+    // The reference sits on its own memo. buy_ticket's account list is fixed; Anchor rejects an extra account there.
+    const ixs = i.reference ? [ix, memoInstruction(i.orderId, [], i.reference)] : [ix];
+    return this.build(ixs, i.payer, i.poolId, CU_LIMITS.buy);
   }
 
   async buildRefundTransaction(i: { caller: string; poolId: number; buyer: string; needsFail: boolean }): Promise<BuiltTransaction> {
@@ -126,8 +132,10 @@ export class ProgramChainAdapter extends PoolChainPort {
 
   async buildPayPrizeTransaction(i: { authority: string; poolId: number; to: string; lamports: number; rank: number }): Promise<BuiltTransaction> {
     const c = this.codec;
-    const ix = c.instruction('pay_prize', { authority: i.authority, config: c.configPda(), pool: c.poolPda(i.poolId), vault: c.vaultPda(i.poolId), to: i.to },
-      { pool_id: i.poolId, lamports: i.lamports, rank: i.rank });
+    const ix = c.instruction('pay_prize', {
+      authority: i.authority, config: c.configPda(), pool: c.poolPda(i.poolId), vault: c.vaultPda(i.poolId), to: i.to,
+      attestation: c.attestationPda(i.poolId, i.to),
+    }, { pool_id: i.poolId, lamports: i.lamports, rank: i.rank });
     return this.build([ix], i.authority, i.poolId, CU_LIMITS.pay_prize);
   }
 
@@ -250,5 +258,9 @@ export class ProgramChainAdapter extends PoolChainPort {
       const height = await x.getBlockHeight(this.commitment);
       return { status: height > lastValidBlockHeight ? 'expired' : 'unknown', err: null };
     });
+  }
+
+  pledgePda(rideId: Uint8Array | Buffer | number[], sponsor: string): string {
+    return this.codec.pledgePda(rideId, sponsor).toBase58();
   }
 }

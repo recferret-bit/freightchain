@@ -4,8 +4,10 @@ export interface PaymentTxInput {
   payer: string;
   treasury: string;
   lamports: number;
-  /** the ride id */
+  /** the ride id, or `fc-donation:<id>` */
   memo: string;
+  /** read-only account on the memo instruction, so the payment can be found without the payer's history */
+  reference?: string | null;
 }
 
 /** The only door to the Solana network. */
@@ -14,6 +16,8 @@ export abstract class ChainPort {
   abstract buildPaymentTransaction(input: PaymentTxInput): Promise<UnsignedPaymentTx>;
   /** null = not visible at `confirmed` yet (retry). An RPC failure is a ServiceUnavailableError, never "not found". */
   abstract getTransaction(signature: string): Promise<ChainTransaction | null>;
-  /** Newest-first successful transactions of a wallet (to find a payment whose confirm call never arrived). */
+  /** Newest-first successful transactions of a wallet (legacy orders that have no reference key). */
   abstract recentSignatures(wallet: string, limit: number): Promise<ChainSignature[]>;
+  /** Newest-first transactions that mention `address` (a Solana Pay reference). */
+  abstract signaturesForAddress(address: string, limit: number): Promise<ChainSignature[]>;
 }
