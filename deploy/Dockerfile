@@ -21,6 +21,7 @@ COPY server/src/domain/rides/ride-tier.ts server/src/domain/rides/ride-rules.ts 
 COPY server/src/domain/verdict/verdict-rules.ts ./server/src/domain/verdict/
 COPY server/src/domain/telemetry/telemetry-rules.ts ./server/src/domain/telemetry/
 COPY server/src/domain/live/live-rules.ts ./server/src/domain/live/
+COPY server/src/domain/achievements/achievements.ts ./server/src/domain/achievements/
 COPY server/src/infrastructure/config/env.schema.ts ./server/src/infrastructure/config/
 COPY deploy/docker-compose.prod.yml deploy/Dockerfile ./deploy/
 COPY .dockerignore ./
