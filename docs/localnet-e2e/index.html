@@ -70,7 +70,7 @@
         <ul>
           <li><b>Phantom</b>: a 40-line fake wallet injected into the page. It signs with a throwaway key through the same web3.js the lobby loads, and sends to the local RPC.</li>
           <li><b>The calendar</b>: a validator clock can't be moved forward, so two "three weeks old" pools are made by the program itself, then only their three deadline fields are moved back; and the day's series gets a 120-second slot instead of the program's one-hour minimum, edited into its account (see <a href="#phases">Three validators</a>).</li>
-          <li><b>Shift length</b>: <code>DEMO_SCALE=1200</code> turns a 1-hour ticket ride into 3 seconds of driving.</li>
+          <li><b>Shift length</b>: <code>DEMO_SCALE=1200</code> turns a 1-hour ticket ride into 3 seconds of driving (phases 1–2); the autonomous day runs at <code>DEMO_SCALE=48</code> and its API riders drive past 1 km, because program v3 attests whole verified km (a ride under 1 km can win nothing).</li>
           <li><b>SOL price</b>: fixed at <code>SOL_USD=118</code>, so no price API is called.</li>
         </ul>
       </div>
