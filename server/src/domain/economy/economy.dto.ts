@@ -44,7 +44,7 @@ export interface PoolDto {
   round: { id: number; startsAt: number; endsAt: number };
   entries: number;
   split: Split;
-  /** settlement (draw, payouts) is not built: the grand prize shown is what has ACCRUED */
+  /** settlement / payouts not built: the grand prize shown is what has ACCRUED */
   settled: boolean;
   solUsd: number | null;
   /** "≈ at the current price" – lamports are the truth */

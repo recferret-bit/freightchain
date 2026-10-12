@@ -16,7 +16,7 @@ export interface RoundProps {
   status: RoundStatus;
 }
 
-/** ONE global weekly prize round (UTC Monday → Monday): every paid entry feeds the same pool. Accounting only – settlement (draw, payouts) is not built. */
+/** ONE global weekly prize round (UTC Monday → Monday): every paid entry feeds the same pool. Accounting only – settlement / payouts not built. */
 export class Round {
   private constructor(private readonly p: RoundProps) {}
 

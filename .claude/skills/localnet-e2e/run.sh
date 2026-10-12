@@ -10,7 +10,7 @@
 #   server on a throwaway database with the crank schedule off (the scenario runs `pool:crank`). Needs the program deployed + initialized (Phase 1).
 # SCENARIO=chaos: the server's view of the chain made flaky (scripts/localnet-fault-proxy.mjs) + several servers / crankers on one pool at once
 #   (scripts/e2e-localnet-chaos.mjs) – local only, no coverage gate (it adds no new instructions).
-# SCENARIO=all (default) | money (e2e-localnet.mjs only) | payout (e2e-localnet-payout.mjs only: ten riders, one pool, the payout job, the jackpot, the
+# SCENARIO=all (default) | money (e2e-localnet.mjs only) | payout (e2e-localnet-payout.mjs only: ten riders, one pool, the payout job, the next seed, the
 #   remaining program paths) | day (e2e-localnet-day.mjs only: THE AUTONOMOUS DAY of program v2 – phase 3, a fresh validator with the 1h series phase 1
 #   wrote, its own server + database: the crank opens the pools on their slots, the payout key pays the verified ranks after the review window, no admin
 #   signature on chain). `all` ends with the coverage gate (scripts/localnet-coverage.mjs): every instruction and event on the validator, every error
@@ -144,7 +144,7 @@ if [ "$SCENARIO" = all ] || [ "$SCENARIO" = money ]; then
 fi
 if [ "$SCENARIO" = all ] || [ "$SCENARIO" = payout ]; then
   [ "$TARGET" = devnet ] && fail "the payout scenario is local only (it pauses the program and hands its authority around)"
-  echo "▸ scenario – ten riders, one pool: buys, rides, the cron, the payout job, ticket rents, the next jackpot, the rest of the program"
+  echo "▸ scenario – ten riders, one pool: buys, rides, the cron, the payout job, ticket rents, the next seed, the rest of the program"
   (cd "$SERVER" && BASE="$BASE" RPC="$RPC" KEYS="$TMP/keys" COVERAGE="$COV" CHROME_PORT="$(free_port)" node scripts/e2e-localnet-payout.mjs) || { echo "--- server log (tail) ---"; tail -40 "$TMP/server.log"; exit 1; }
 fi
 if [ "$SCENARIO" = chaos ]; then

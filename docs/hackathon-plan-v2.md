@@ -208,7 +208,7 @@ Record on real Chrome, clean profile, the live URL.
 
 ## What not to do this week
 
-Building the verified-play system (design only) · mainnet · a React rewrite · Telegram · ~~Anchor~~ (built for the pools) · a second chain · NFT mint · claiming rides are "verified" or "replayable" in this build · any sentence with "draw" or "jackpot" · a single video that is both pitch and demo · putting the treasury key on the server · `npm run deploy` without the smoke test.
+Building the verified-play system (design only) · mainnet · a React rewrite · Telegram · ~~Anchor~~ (built for the pools) · a second chain · NFT mint · claiming rides are "verified" or "replayable" in this build · any sentence with "draw" or lottery framing · a single video that is both pitch and demo · putting the treasury key on the server · `npm run deploy` without the smoke test.
 
 ## Known gaps to mention if asked
 
