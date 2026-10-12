@@ -260,9 +260,46 @@ a.r{color:inherit;text-decoration:none}a.r:hover,a.r:focus-visible{background:#f
 .lb-f b{color:var(--lcd);letter-spacing:2px;margin-right:6px}
 
 /* 04 */
-.about{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-.about article{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px 20px}
-.about p{margin:8px 0 0;font-size:14px;color:var(--dim)}
+/* UNDER THE HOOD · ON SOLANA: flip cards ported from the lobby's achievement card (client/site/lobby.css .ac) – hover, keyboard focus or a tap (main.js .flip) turns the collage into its receipt with the purple → green sweep. Both faces share one grid cell, so a card is as tall as its taller face. */
+.oc-kick{margin:-6px 0 14px;font-size:13px}
+/* three columns, a wide card zig-zagging down (PROOF · .SOL · BLINKS); each row is as tall as its tallest back face */
+.oc-grid{--sol1:#9945ff;--sol2:#14f195;display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.oc-grid .w{grid-column:span 2}
+.oc{display:flex;perspective:1000px;cursor:pointer;outline:none}
+.oc-in{flex:1;display:grid;transform-style:preserve-3d;transition:transform .75s cubic-bezier(.2,.8,.2,1)}
+.oc :is(.fr,.bk){grid-area:1/1;position:relative;overflow:hidden;min-width:0;border:1px solid transparent;border-radius:12px;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.oc .fr{display:grid;grid-template-rows:1fr auto;background:linear-gradient(var(--panel),var(--panel)) padding-box,linear-gradient(135deg,#9945ff88,#14f19588) border-box}
+.oc .bk{display:grid;align-content:start;gap:10px;padding:14px 16px;transform:rotateY(180deg);visibility:hidden;transition:visibility 0s .38s;background:linear-gradient(160deg,#9945ff26,#0b0a0900 45%,#14f19520) padding-box,linear-gradient(var(--panel),var(--panel)) padding-box,linear-gradient(135deg,var(--sol1),var(--sol2)) border-box}
+/* the turned-away face is hidden outright: backface-visibility alone leaves edge pixels at the rounded corners */
+.oc:is(.flip,:focus-visible,:has(a:focus-visible)) .oc-in{transform:rotateY(180deg)}
+.oc:is(.flip,:focus-visible,:has(a:focus-visible)) .bk{visibility:visible;transition-delay:0s}
+.oc:is(.flip,:focus-visible,:has(a:focus-visible)) .fr{visibility:hidden;transition:visibility 0s .38s}
+@media (hover:hover){.oc:hover .oc-in{transform:rotateY(180deg)}.oc:hover .bk{visibility:visible;transition-delay:0s}.oc:hover .fr{visibility:hidden;transition:visibility 0s .38s}}
+.oc :is(.fr,.bk)::after{content:"";position:absolute;inset:-20% -60%;background:linear-gradient(105deg,transparent 38%,#9945ff66 44%,#00c2ff55 50%,#14f19566 56%,transparent 62%);transform:translateX(-100%);pointer-events:none;opacity:0}
+.oc:is(.flip,:focus-visible) :is(.fr,.bk)::after{animation:solsweep .85s ease-out}
+@media (hover:hover){.oc:hover :is(.fr,.bk)::after{animation:solsweep .85s ease-out}}
+@keyframes solsweep{0%{transform:translateX(-100%);opacity:1}100%{transform:translateX(100%);opacity:1}}
+.oc:focus-visible .bk{outline:2px solid #fff;outline-offset:1px}
+/* front: the drawing + stickers on a blueprint grid, captioned like the cab cards */
+.oc .stage{position:relative;display:grid;place-items:center;padding:30px 14px 18px;background:repeating-linear-gradient(0deg,#ffffff06 0 1px,transparent 1px 22px),repeating-linear-gradient(90deg,#ffffff06 0 1px,transparent 1px 22px),radial-gradient(110% 80% at 30% 0%,#9945ff22,transparent 60%),radial-gradient(90% 70% at 100% 100%,#14f19518,transparent 60%)}
+.oc .stage img{display:block;width:100%;max-width:420px;height:auto}.oc.w .stage img{max-width:460px}
+.oc .stk{position:absolute;font-style:normal;font-size:10px;letter-spacing:1.5px;padding:3px 7px;border-radius:4px;background:var(--bg);border:1px solid #14f19566;color:var(--sol2);white-space:nowrap;transform:rotate(-3deg)}
+.oc .stk.p{border-color:#9945ff88;color:#c4a2ff}.oc .stk.a{border-color:#ffcf5a66;color:var(--amber)}
+.oc .tl{top:10px;left:12px;transform:rotate(-4deg)}.oc .tr{top:10px;right:12px;transform:rotate(3deg)}.oc .br{bottom:12px;right:14px;transform:rotate(-2deg)}
+.oc footer{display:grid;gap:2px;padding:10px 14px 12px;border-top:1px solid #ffffff10;background:#0b0a09cc}
+.oc footer b{font-size:13px;letter-spacing:2px;color:var(--amber)}.oc footer span{font-size:12px;color:var(--dim)}
+/* back: a receipt, one sentence, the points, links */
+.oc .rcpt{display:grid;gap:3px;padding:8px 10px;border:1px dashed #9d957f66;border-radius:8px;background:#0006;font-size:12px;font-variant-numeric:tabular-nums}
+.oc .rcpt .t{font-size:10px;font-weight:400;letter-spacing:2px;color:var(--dim);border-bottom:1px dashed #9d957f44;padding-bottom:4px;margin-bottom:2px}
+.oc .rcpt p{display:flex;justify-content:space-between;gap:10px;min-width:0;margin:0}.oc .rcpt span{color:var(--dim)}.oc .rcpt p b{font-weight:400;text-align:right;overflow-wrap:anywhere}.oc .rcpt b.ok{color:var(--sol2)}
+.oc .bk>p{margin:0;font-size:13px;line-height:1.4}
+.oc ul{margin:0;padding:0;list-style:none;display:grid;gap:7px}
+.oc li{position:relative;padding-left:14px;font-size:13px;line-height:1.4;color:var(--dim)}
+.oc li::before{content:"";position:absolute;left:0;top:.55em;width:6px;height:6px;border-radius:2px;background:linear-gradient(135deg,var(--sol1),var(--sol2))}
+.oc nav{display:flex;flex-wrap:wrap;gap:6px}
+.oc nav a{font-size:11px;text-decoration:none;color:var(--cream);border:1px solid #9945ff88;border-radius:999px;padding:3px 9px;background:#0007;transition:background .2s,border-color .2s,color .2s}
+.oc nav a:hover,.oc nav a:focus-visible{background:linear-gradient(90deg,var(--sol1),var(--sol2));background-origin:border-box;border-color:transparent;color:var(--bg)}
+@media (prefers-reduced-motion:reduce){.oc-in{transition:none;transform:none!important}.oc .bk{transform:none;opacity:0;transition:opacity .2s}.oc .fr{transition:opacity .2s}.oc:is(.flip,:focus-visible,:has(a:focus-visible)) .bk{opacity:1}.oc:is(.flip,:focus-visible,:has(a:focus-visible)) .fr{opacity:0}.oc :is(.fr,.bk)::after{display:none}}
+@media (prefers-reduced-motion:reduce) and (hover:hover){.oc:hover .bk{opacity:1}.oc:hover .fr{opacity:0}}
 .bcn{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:8px;font-size:13px;color:var(--dim)}
 .bcn b{color:var(--cream)}
 .bcn i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;vertical-align:1px}.bcn .ok{background:var(--lcd)}.bcn .cut{background:var(--red)}.bcn .next{background:var(--blue)}
@@ -296,7 +333,7 @@ footer{width:min(1100px,100%);margin:0 auto;padding:30px 20px 50px;color:var(--d
 @media (max-width:900px){
   .stats{grid-template-columns:1fr 1fr}
   .flow{grid-template-columns:1fr 1fr}.flow li:nth-child(2)::after{display:none}
-  .about,.cards,.boards{grid-template-columns:1fr 1fr}.rt{grid-template-columns:repeat(3,1fr)}
+  .cards,.boards,.oc-grid{grid-template-columns:1fr 1fr}.oc-grid .w{grid-column:auto}.rt{grid-template-columns:repeat(3,1fr)}
   .econ,.escrow{grid-template-columns:1fr}.lb-f{grid-template-columns:1fr}
   .loads th:nth-child(3),.loads td:nth-child(3){display:none}
 }
@@ -304,7 +341,7 @@ footer{width:min(1100px,100%);margin:0 auto;padding:30px 20px 50px;color:var(--d
   .top{padding:10px 14px}.brand small{display:none}.right .chip{display:none}
   .hero{padding:40px 16px 80px}
   .ch{padding:50px 16px 40px}
-  .stats,.flow,.about,.boards{grid-template-columns:1fr}.rt{grid-template-columns:1fr 1fr}
+  .stats,.flow,.boards,.oc-grid{grid-template-columns:1fr}.rt{grid-template-columns:1fr 1fr}
   .cards{grid-template-columns:1fr;max-width:380px}
   .sheet{padding:34px 14px 14px;transform:none;overflow-x:auto;-webkit-overflow-scrolling:touch}.legs .note{display:none}.legs .stamp{width:70px}
   .tiers td,.tiers th{font-size:12px;padding:6px 2px}

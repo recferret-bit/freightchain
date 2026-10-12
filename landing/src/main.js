@@ -244,6 +244,13 @@ $('whitepaper-link').href = $('whitepaper-cta').href = WHITEPAPER_BASE || '/whit
 $('storybook-link').addEventListener('click', () => track('storybook_link_clicked'));
 $('escrow-link').href = escrowExplainer();   // whitepaper chapter 05 is the one public escrow explainer
 
+/* ───── UNDER THE HOOD cards: hover flips them in CSS; a tap or Enter / Space toggles .flip (the lobby's achievement card), a link on the back stays a link ───── */
+for (const c of document.querySelectorAll('.oc')) {
+  const flip = () => c.setAttribute('aria-expanded', String(c.classList.toggle('flip')));
+  c.addEventListener('click', e => { if (!e.target.closest('a')) flip(); });
+  c.addEventListener('keydown', e => { if (e.target === c && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); flip(); } });
+}
+
 /* ───── socials ───── */
 for (const [net, url] of Object.entries(SOCIALS)) if (url) {
   const a = el('a', { href: url, 'data-net': net, target: '_blank', rel: 'noopener' }, net.toUpperCase());
