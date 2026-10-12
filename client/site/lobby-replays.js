@@ -51,11 +51,18 @@ function paint(ctx) {
   if (more) { more.hidden = !R.next; more.disabled = R.loading; }
   if (R.error) { box.replaceChildren(el('div', { class: 'card empty' }, `Could not load the replays: ${R.error}`)); return; }
   if (!R.rows.length) { box.replaceChildren(el('div', { class: 'card empty' }, R.loading ? 'Loading…' : R.who === 'mine' ? 'You have no finished rides yet.' : 'No finished rides yet.')); return; }
-  box.replaceChildren(...R.rows.map(r => el('div', { class: 'card ride replay', 'data-id': r.id }, ctx.avatar(r.wallet),
-    el('div', { class: 'who' }, el('b', {}, shortAddr(r.wallet), r.wallet === ctx.me?.wallet ? ' (you)' : ''),
-      el('span', { class: `badge${r.tier === 'free' ? '' : ' p'}` }, ctx.TIER_NAME[r.tier] ?? r.tier), r.route ? el('span', { class: 'badge' }, ctx.ROUTES[r.route] ?? r.route) : '',
-      el('span', { class: `badge st ${r.status}` }, STATUS[r.status] ?? r.status, r.failCode ? ` · ${FAIL[r.failCode] ?? r.failCode}` : '')),
-    el('div', { class: 'stats' }, el('span', {}, '⏱ ', el('b', {}, `${ctx.dur(r.driveSeconds)} / ${ctx.dur(r.minSeconds)}`)), el('span', {}, '↦ ', el('b', {}, `${ctx.km(r.distance)} km`)),
-      el('span', {}, `ended ${ago(Date.now() - r.endedAt)}`),
-      r.replay ? el('a', { class: 'watch', href: `${GAME_BASE}/play.html?watch=${encodeURIComponent(r.id)}`, title: 'replay this ride on the watch page' }, '▶ REPLAY') : el('span', { class: 'dim norec', title: 'its recording is gone (or was never uploaded)' }, 'no recording')))));
+  box.replaceChildren(...R.rows.map(r => {
+    const pct = r.status === 'completed' ? 100 : Math.min(100, Math.round(100 * r.driveSeconds / Math.max(1, r.minSeconds)));   // completed = the line was reached, whatever the clock says
+    return el('div', { class: `card ride replay ${r.status}`, 'data-id': r.id },
+      el('span', { class: 'edge' }),
+      el('div', { class: 'body' },
+        el('div', { class: 'row1' }, ctx.avatar(r.wallet), el('b', { title: r.wallet }, shortAddr(r.wallet), r.wallet === ctx.me?.wallet ? ' (you)' : ''),
+          el('span', { class: `badge${r.tier === 'free' ? '' : ' p'}` }, ctx.TIER_NAME[r.tier] ?? r.tier), r.route ? el('span', { class: 'badge' }, ctx.ROUTES[r.route] ?? r.route) : '',
+          el('span', { class: 'when dim' }, ago(Date.now() - r.endedAt))),
+        el('div', { class: 'row2' }, el('span', { class: 'big' }, ctx.km(r.distance), el('small', {}, ' km')),
+          el('span', { class: `badge st ${r.status}` }, STATUS[r.status] ?? r.status, r.failCode ? ` · ${FAIL[r.failCode] ?? r.failCode}` : '')),
+        el('div', { class: 'rp-prog dim' }, el('span', {}, `${ctx.dur(r.driveSeconds)} / ${ctx.dur(r.minSeconds)}`), el('div', { class: `rp-bar ${r.status}` }, el('i', { style: `width:${pct}%` })))),
+      r.replay ? el('a', { class: 'watch', href: `${GAME_BASE}/play.html?watch=${encodeURIComponent(r.id)}`, title: 'replay this ride on the watch page' }, el('span', {}, '▶'), 'REPLAY')
+        : el('span', { class: 'dim norec', title: 'its recording is gone (or was never uploaded)' }, 'no recording'));
+  }));
 }

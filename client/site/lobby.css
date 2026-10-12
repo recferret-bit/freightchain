@@ -226,7 +226,16 @@ th button.on{color:var(--amber)}
 .filters .f{padding:4px 9px;font-size:11px;background:transparent;color:var(--amber)}.filters .f.on{background:var(--amber);color:#1b1408}
 #live-random{padding:6px 12px;font-size:12px}.filters .sep{flex:0 0 1px;height:18px;background:var(--line)}
 .badge.st.completed{color:var(--good,#7be07b);border-color:var(--good,#7be07b)}.badge.st.failed{color:var(--bad);border-color:var(--bad)}
-.ride.replay .norec{margin-left:auto;font-size:11px}.more{display:flex;justify-content:center;margin:12px 0}
+.ride.replay{grid-template-columns:6px 1fr auto;gap:0;padding:0;overflow:hidden;align-items:stretch}
+.ride.replay .edge{background:var(--dim)}.ride.replay.completed .edge{background:var(--good)}.ride.replay.failed .edge{background:var(--bad)}
+.ride.replay .body{padding:12px 16px;display:grid;gap:8px;min-width:0}
+.ride.replay .row1{display:flex;gap:8px 10px;align-items:center;flex-wrap:wrap}.ride.replay .row1 .av{width:28px;height:28px}.ride.replay .when{margin-left:auto}
+.ride.replay .row2{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}.ride.replay .big{font-size:26px;font-weight:bold}.ride.replay .big small{font-size:13px;color:var(--dim);font-weight:normal}
+.ride.replay .rp-prog{display:flex;gap:10px;align-items:center;font-size:12px}.ride.replay .rp-bar{flex:1;max-width:320px;height:5px;margin:0;border-radius:3px;background:#ffffff14;overflow:hidden}
+.ride.replay .rp-bar i{display:block;height:100%;background:var(--amber)}.ride.replay .rp-bar.completed i{background:var(--good)}.ride.replay .rp-bar.failed i{background:var(--bad)}
+.ride.replay .watch{color:var(--amber);background:#ffcf5a18;font-weight:bold;text-decoration:none;letter-spacing:1px;display:inline-flex;align-items:center;transition:background .15s,color .15s;margin:0;border-radius:0;border:0;border-left:1px solid var(--line);width:92px;flex-direction:column;justify-content:center;gap:2px;font-size:11px}.ride.replay .watch span{font-size:22px}.ride.replay .watch:hover{background:var(--amber);color:#1b1408}
+@media(max-width:520px){.ride.replay .watch,.ride.replay .norec{width:64px}.ride.replay .when{margin-left:0;flex-basis:100%;order:9}}
+.ride.replay .norec{display:flex;align-items:center;justify-content:center;width:92px;border-left:1px solid var(--line);font-size:11px;text-align:center;padding:0 6px}.more{display:flex;justify-content:center;margin:12px 0}
 #garage-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
 #garage-actions button{flex:0 0 170px;min-width:170px;padding:11px 0;text-align:center}
 #garage-actions .msg{flex-basis:100%;margin:0}
