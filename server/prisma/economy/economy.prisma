@@ -91,10 +91,6 @@ model Pool {
   seedCommitment String?
   blockhash      String?
   slot           BigInt?
-  /// unused: v3's never-built "staking yield" (migration 20261025000000), kept so no deploy drops a column; always 0
-  stakedLamports BigInt        @default(0)
-  /// unused, always 0 (see stakedLamports)
-  yieldEarned    BigInt        @default(0)
   payouts       PoolPayout[]
   tickets       RideTicket[]
   orders        TicketOrder[]
