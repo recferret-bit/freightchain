@@ -17,10 +17,10 @@ test('JS: the eager bundle is small, nothing in dist/assets is large', { skip: !
   assert.ok(js.reduce((a, f) => a + gz(f), 0) <= 55 * KB, 'all JS together ≤ 55 kB gzipped (incl. the lazy live-dash chunks)');   // 40 → 44 on Oct 11: the cab radio's eleven stations (client/js/sim/radio.js, ~5.7 kB gz) ride in the lazy dash chunk; the eager entry is unchanged; 50 → 55 on Oct 12: the UNDER THE HOOD canvas scenes (src/chain-scenes.js, ~4.6 kB gz), lazy as well
 });
 
-test('CSS ≤ 14 kB gzipped (landing + whitepaper), HTML ≤ 15 kB gzipped (landing) / ≤ 31 kB (the whitepaper, a long read)', { skip: !has }, () => {
+test('CSS ≤ 14 kB gzipped (landing + whitepaper), HTML ≤ 15 kB gzipped (landing) / ≤ 33 kB (the whitepaper, a long read)', { skip: !has }, () => {
   assert.ok(files.filter(f => f.endsWith('.css')).reduce((a, f) => a + gz(f), 0) <= 14 * KB);
   assert.ok(gz(join(dist, 'index.html')) <= 15 * KB);
-  assert.ok(gz(join(dist, 'whitepaper.html')) <= 31 * KB);   // 26 → 27 on Oct 10 (the free levels, forks and the phone map); 27 → 28 on Oct 11 (the soulbound cNFT badges); 28 → 29 on Oct 12 (Native SIWS & SNS identity); 29 → 31 (the achievements chapter)
+  assert.ok(gz(join(dist, 'whitepaper.html')) <= 33 * KB);   // 26 → 27 on Oct 10 (the free levels, forks and the phone map); 27 → 28 on Oct 11 (the soulbound cNFT badges); 28 → 29 on Oct 12 (Native SIWS & SNS identity); 29 → 31 (the achievements chapter); 31 → 33 (the 31 badge cards with descriptions and art)
 });
 
 test('media: no single image over 120 kB, all images together ≤ 600 kB; the lazy hero video ≤ 3 MB', { skip: !has }, () => {

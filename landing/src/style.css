@@ -14,7 +14,7 @@ h1,h2,h3{margin:0;font-weight:700;letter-spacing:1px}
 .lbl{font-size:11px;letter-spacing:2px;color:var(--dim)}
 .lcd{color:var(--lcd);text-shadow:0 0 8px #7cff7c66}
 button{font:inherit;cursor:pointer}
-button:focus-visible,a:focus-visible,.card3d:focus-visible{outline:2px solid #fff;outline-offset:2px}
+button:focus-visible,a:focus-visible,.card3d:focus-visible,.fq button:focus-visible{outline:2px solid #fff;outline-offset:2px}
 
 /* ── ticker ── */
 .ticker{position:sticky;top:0;z-index:40;height:26px;overflow:hidden;width:100%;contain:paint;background:var(--lcd-bg);border-bottom:1px solid #1e4a22;font-size:12px;color:var(--lcd);letter-spacing:.5px}
@@ -367,3 +367,24 @@ footer{width:min(1100px,100%);margin:0 auto;padding:30px 20px 50px;color:var(--d
 .invite .hint{font-size:12px;color:var(--dim,#9d957f)}.invite .hint.bad{color:#ff8a7a}
 @media (max-width:760px){.promo-in{grid-template-columns:1fr;padding:32px 20px}.perks li{grid-template-columns:1fr;gap:2px}.invite-row{flex-direction:column}}
 .dot.done{background:var(--dim)}
+
+/* 07 · FAQ. The card opens on hover (fine pointer) and when pinned (.on). The chevron is a marker: it does not take the click. */
+.faq{display:grid;gap:8px}
+.fq{display:grid;grid-template-columns:1fr auto;align-items:start;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:0 18px;cursor:pointer;transition:border-color .6s ease}
+.fq.on{border-color:var(--line2)}
+.fq button{grid-column:1;grid-row:1;width:100%;margin:0;padding:14px 8px 14px 0;border:0;background:none;color:var(--cream);font:inherit;text-align:left;cursor:pointer}
+.fq .chev{grid-column:2;grid-row:1;align-self:center;width:22px;height:22px;margin-left:8px;display:grid;place-items:center;cursor:default}
+.fq .chev::before{content:"";width:8px;height:8px;border-right:2px solid var(--needle);border-bottom:2px solid var(--needle);transform:translateY(-2px) rotate(-45deg);transition:transform .6s ease}
+.fq.on .chev::before{transform:translateY(2px) rotate(45deg)}
+.fq-a{grid-column:1 / -1;display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows .6s ease,opacity .6s ease}
+.fq-a>div{overflow:hidden;min-height:0}
+.fq.on .fq-a{grid-template-rows:1fr;opacity:1}
+.fq-a p{margin:0 0 16px;color:var(--dim);max-width:72ch}
+@media (hover:hover) and (pointer:fine){
+  .fq:hover:not(.shut){border-color:var(--line2)}
+  .fq:hover:not(.shut) .chev::before{transform:translateY(2px) rotate(45deg)}
+  .fq:hover:not(.shut) .fq-a{grid-template-rows:1fr;opacity:1}
+}
+@media (prefers-reduced-motion:reduce){
+  .fq,.fq-a,.fq .chev::before{transition:none}
+}

@@ -59,10 +59,16 @@ test('head basics, icons that exist, no inline scripts or handlers, noopener on 
   for (const tag of html.match(/<a [^>]*target="_blank"[^>]*>/g) ?? []) assert.match(tag, /noopener/);
 });
 
-test('images: local WebP, alt, intrinsic size, async decode, and the files exist', () => {
-  const tags = html.match(/<img [^>]*>/g) ?? [];   // chapter 02's dash cards are canvases, not images
-  for (const t of tags) { assert.match(t, /\balt="[^"]+"/, t); assert.match(t, /\bwidth="\d+"/, t); assert.match(t, /\bheight="\d+"/, t); assert.match(t, /decoding="async"/, t); assert.match(t, /src="\/media\/[\w./-]+\.webp"/, t); }
-  for (const f of [...html.matchAll(/src="(\/media\/[\w./-]+)"/g)].map(m => m[1])) assert.ok(existsSync(join(root, 'public', f)), f);
+test('images: local WebP or badge SVG, alt, intrinsic size, async decode, and the files exist', () => {
+  const tags = html.match(/<img [^>]*>/g) ?? [];   // dash cards are canvases; badges and screenshots are images
+  for (const t of tags) {
+    assert.match(t, /\balt="[^"]+"/, t);
+    assert.match(t, /\bwidth="\d+"/, t);
+    assert.match(t, /\bheight="\d+"/, t);
+    assert.match(t, /decoding="async"/, t);
+    assert.match(t, /src="(?:\/media\/[\w./-]+\.webp|\/badges\/[\w.-]+\.svg)"/, t);
+  }
+  for (const f of [...html.matchAll(/src="(\/(?:media|badges)\/[\w./-]+)"/g)].map(m => m[1])) assert.ok(existsSync(join(root, 'public', f)), f);
 });
 
 test('links that leave the page go through the host bases; analytics posts go through analytics.js', () => {
@@ -140,6 +146,18 @@ test('numbers: live-stream prices and limits equal live-rules.ts', () => {
   }
   assert.match(l, /MESSAGE_MAX_LENGTH = 140/); assert.match(text, /140 characters/); assert.match(l, /NOTE_MAX_LENGTH = 80/); assert.match(text, /80 characters/);
   assert.match(l, /EFFECT_WINDOW_MS = 20_000/); assert.match(text, /per ride per 20 s/); assert.match(l, /LINE_WINDOW_MS = 3_000/); assert.match(text, /per 3 s/);
+});
+
+test('all 31 achievements, their names and descriptions match domain achievements.ts', () => {
+  const achCode = src('server/src/domain/achievements/achievements.ts');
+  const ids = [...achCode.matchAll(/id: '([^']+)', family: '([^']+)', tier: (\d+), name: '([^']+)', desc: '([^']+)'/g)];
+  assert.equal(ids.length, 32);
+  for (const [, id, family,, name, desc] of ids) {
+    if (family === 'podium') continue;
+    assert.ok(html.includes(name), `whitepaper missing badge name ${name}`);
+    assert.ok(html.includes(desc), `whitepaper missing badge desc ${desc}`);
+    assert.ok(html.includes(`/badges/${id}.svg`), `whitepaper missing badge image for ${id}`);
+  }
 });
 
 test('the landing image copies every repo file this test reads', () => {

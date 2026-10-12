@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Real-Chrome end-to-end runs against a freshly built server on a THROWAWAY database (dropped at the end, also on failure).
-#   bash .claude/skills/run-tests/e2e.sh [browser|lobby|admin|promo|watch|replay|flags|wallet|wallet-split|board|close|close-split|verified|verified-deep|road|stats ...]   (default: all sixteen)
+#   bash .claude/skills/run-tests/e2e.sh [browser|lobby|admin|promo|watch|replay|flags|wallet|wallet-split|board|close|close-split|verified|verified-deep|road|stats|blinks ...]   (default: all seventeen)
 # Needs: the compose PostgreSQL (npm run db:up), server/ and landing/ dependencies installed, Chrome.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 SERVER="$ROOT/server"
-SUITES=("$@"); [ ${#SUITES[@]} -gt 0 ] || SUITES=(browser lobby admin promo watch replay flags wallet wallet-split board close close-split verified verified-deep road stats)
+SUITES=("$@"); [ ${#SUITES[@]} -gt 0 ] || SUITES=(browser lobby admin promo watch replay flags wallet wallet-split board close close-split verified verified-deep road stats blinks)
 DB="freightchain_e2e_$$"
 URL="postgresql://freight:freight_dev_password@localhost:15433/$DB"
 TREASURY=GseaEsNWMLScZ5RH8yQ4xmoCP97H86HjLSA9xkyFCqbn   # any valid address: paid clicks never reach the chain here
@@ -34,7 +34,7 @@ printf '{ "extends": "./tsconfig.build.json", "compilerOptions": { "outDir": "./
 
 # start the server: $1 = FREE_RIDE_SECONDS, $2 = ADMIN_WALLETS, $EXTRA_ENV = more server env
 start() {
-  PORT="$(free_port)"
+  PORT="${FIXED_PORT:-$(free_port)}"   # FIXED_PORT: a suite that must put the port into the env too (APP_ORIGIN)
   (cd "$SERVER" && exec env ${EXTRA_ENV:-} DATABASE_URL="$URL" FREE_RIDE_SECONDS="$1" ADMIN_WALLETS="${2:-}" SOL_USD=118 TREASURY_PUBKEY="$TREASURY" PORT="$PORT" LANDING_DIR="$LANDING_OUT" node "$BUILD/main.js" > "/tmp/fc-e2e-$DB.log" 2>&1) &   # exec: $! is the server itself, so stop() really stops it; EXTRA_ENV="K=V …" = more server env (the live flags suite)
   PID=$!
   for _ in $(seq 1 60); do curl -sf "http://localhost:$PORT/api/health/live" >/dev/null && return 0; sleep 0.5; done
@@ -81,7 +81,12 @@ for suite in "${SUITES[@]}"; do
       EXTRA_ENV="TRUST_PROXY=1 HB_TIMEOUT_MS=15000 CHALLENGE_INTERVAL_SECONDS=0 REDIS_URL=redis://:$RPW@127.0.0.1:$RPORT" start 300
       (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" CLI="$BUILD/cli/index.js" DATABASE_URL="$URL" REDIS_CONTAINER="$REDIS_CT" node scripts/e2e-stats.mjs) || fails=$((fails + 1))
       EXTRA_ENV=""; docker rm -f "$REDIS_CT" >/dev/null 2>&1 || true; trap cleanup EXIT ;;
-    *) echo "unknown suite $suite (browser | lobby | admin | promo | watch | replay | flags | wallet | wallet-split | board | close | close-split | verified | verified-deep | road | stats)"; fails=$((fails + 1)) ;;
+    blinks)  # Solana Actions through Dialect's own blink client (blinks-core): program mode with a selling 1h pool, so the buy button builds a real devnet transaction (needs the devnet RPC; nothing is sent)
+      BLINK_ENV="PAYMENT_MODE=program TICKET_PROGRAM_ID=9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx WATCH_INTERVAL_MS=0 CRANK_INTERVAL_MS=0"
+      (cd "$SERVER" && env $BLINK_ENV DATABASE_URL="$URL" TREASURY_PUBKEY="$TREASURY" node "$BUILD/cli/index.js" pool:seed --id 1 --tier 1h --status active --min 2 >/dev/null 2>&1) || true   # already seeded by an earlier run of this suite: fine
+      FIXED_PORT="$(free_port)"; EXTRA_ENV="$BLINK_ENV APP_ORIGIN=http://localhost:$FIXED_PORT APP_DOMAIN=localhost:$FIXED_PORT" start 3   # the cards' icon + links are absolute on APP_ORIGIN
+      (cd "$SERVER" && BASE="http://localhost:$PORT" node scripts/e2e-blinks.mjs) || fails=$((fails + 1)); EXTRA_ENV=""; FIXED_PORT="" ;;
+    *) echo "unknown suite $suite (browser | lobby | admin | promo | watch | replay | flags | wallet | wallet-split | board | close | close-split | verified | verified-deep | road | stats | blinks)"; fails=$((fails + 1)) ;;
   esac
   stop
 done

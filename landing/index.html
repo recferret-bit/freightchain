@@ -41,7 +41,7 @@
 <header class="top">
   <a class="brand" href="#ride"><span class="mark">⛟</span> FREIGHT CHAIN</a>
   <nav class="nav" aria-label="Sections">
-    <a href="#ride"><i>01</i> RIDE</a><a href="#loop"><i>02</i> LOOP</a><a href="#economy"><i>03</i> ECONOMY</a><a href="#roadmap"><i>04</i> ROADMAP</a><a href="#market"><i>05</i> MARKET</a><a href="#about"><i>06</i> ABOUT</a>
+    <a href="#ride"><i>01</i> RIDE</a><a href="#loop"><i>02</i> LOOP</a><a href="#economy"><i>03</i> ECONOMY</a><a href="#roadmap"><i>04</i> ROADMAP</a><a href="#market"><i>05</i> MARKET</a><a href="#about"><i>06</i> ABOUT</a><a href="#faq"><i>07</i> FAQ</a>
   </nav>
   <div class="right">
     <span class="chip lcd" id="chip-live" title="trucks on the road right now">– ON THE ROAD</span>
@@ -397,6 +397,65 @@
     <span class="lbl">JOIN THE CONVOY</span>
     <a href="https://github.com/recferret-bit/freightchain" data-net="github">GITHUB</a>
     <a href="/lobby.html#live" data-net="live"><i class="dot live"></i><span id="soc-live">–</span>&nbsp;ON THE ROAD · WATCH</a>
+  </div>
+</section>
+
+<div class="road" aria-hidden="true"><i></i></div>
+
+<!-- ───────── 07 · FAQ (answers stay in the HTML; the script only opens, pins, and measures) ───────── -->
+<section class="ch" id="faq">
+  <header class="ch-h rv"><i>07</i><h2>FAQ</h2><p>Plain answers for a first ride and for a wallet.</p></header>
+  <div class="faq rv">
+    <article class="fq" data-item="wallet">
+      <button type="button" aria-expanded="false">Can I play without a crypto wallet?</button>
+      <i class="chev" aria-hidden="true"></i>
+      <div class="fq-a"><div><p>A <a href="/play.html">practice ride</a> needs no account and is not recorded. The 10 signup rides, the daily refill and a ticket need a sign-in with Phantom or Solflare.</p></div></div>
+    </article>
+    <article class="fq" data-item="free">
+      <button type="button" aria-expanded="false">Is Freight Chain free?</button>
+      <i class="chev" aria-hidden="true"></i>
+      <div class="fq-a"><div><p>Practice is free. A new wallet gets 10 free rides, then a daily refill up to 5, and a promo code can add more. A paid shift is a ticket into a pool. Those shifts are marked soon.</p></div></div>
+    </article>
+    <article class="fq" data-item="buy">
+      <button type="button" aria-expanded="false">Do I have to buy a token, an NFT, or any crypto to try it?</button>
+      <i class="chev" aria-hidden="true"></i>
+      <div class="fq-a"><div><p>Nothing is for sale to start. Badges are soulbound, and we pay the mint.</p></div></div>
+    </article>
+    <article class="fq" data-item="token">
+      <button type="button" aria-expanded="false">Is there a Freight Chain token?</button>
+      <i class="chev" aria-hidden="true"></i>
+      <div class="fq-a"><div><p>There is no token. A ticket is one entry into one pool. SOL is the entry and the prize.</p></div></div>
+    </article>
+    <article class="fq" data-item="prize">
+      <button type="button" aria-expanded="false">What can I win, and is that money real today?</button>
+      <i class="chev" aria-hidden="true"></i>
+      <div class="fq-a"><div><p>Finishers rank by verified distance. This is a devnet build: nothing on it is real money, and no prize has been paid out. <a href="#why-20">The split on this page</a> is the rule a pool publishes.</p></div></div>
+    </article>
+    <article class="fq" data-item="vault">
+      <button type="button" aria-expanded="false">Who holds the entry fees, and what if a pool does not fill?</button>
+      <i class="chev" aria-hidden="true"></i>
+      <div class="fq-a"><div><p>The vault is an account the program owns. It holds the fees until the pool pays or refunds. Miss the ticket goal and every entry comes back. <a href="/whitepaper.html#onchain">The escrow, in the whitepaper</a>.</p></div></div>
+    </article>
+    <article class="fq" data-item="shift">
+      <button type="button" aria-expanded="false">How long is a shift, and what ends it?</button>
+      <i class="chev" aria-hidden="true"></i>
+      <div class="fq-a"><div><p>The server keeps the clock. Speed is capped at about 100 km/h, so the finish is a distance. Reach the line and it is complete. A crash fails it. Quit and it is abandoned.</p></div></div>
+    </article>
+    <article class="fq" data-item="watch">
+      <button type="button" aria-expanded="false">Can I watch without playing or signing in?</button>
+      <i class="chev" aria-hidden="true"></i>
+      <div class="fq-a"><div><p>A live cab is about 25 seconds behind, and a finished ride can be replayed. Neither needs a wallet. Driving needs a desktop keyboard. A phone can watch, and it can tip a driver with the Solana Pay code.</p></div></div>
+    </article>
+    <article class="fq" data-item="install">
+      <button type="button" aria-expanded="false">Do I install anything?</button>
+      <i class="chev" aria-hidden="true"></i>
+      <div class="fq-a"><div><p>No download. A desktop browser and a keyboard. Phantom or Solflare only when you want a counted ride or a ticket.</p></div></div>
+    </article>
+    <article class="fq" data-item="earn">
+      <button type="button" aria-expanded="false">Is this play-to-earn?</button>
+      <i class="chev" aria-hidden="true"></i>
+      <div class="fq-a"><div><p>It is a driving game with optional prize pools. Free rides count on the leaderboard and toward badges. A paid pool pays places by verified distance. It is not a wage.</p></div></div>
+    </article>
   </div>
 </section>
 </main>

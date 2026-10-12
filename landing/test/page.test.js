@@ -53,7 +53,7 @@ test('head basics: lang, title, description, viewport, theme colour, social prev
 
 test('exactly one h1 (the hero), one h2 per remaining chapter + the promo band\'s (no level skipped before chapter 02)', () => {
   assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
-  assert.equal((html.match(/<h2[\s>]/g) ?? []).length, 6, 'the promo band + chapters 02–06');
+  assert.equal((html.match(/<h2[\s>]/g) ?? []).length, 7, 'the promo band + chapters 02–07');
   assert.doesNotMatch(html.slice(0, html.indexOf('<h2')), /<h3[\s>]/, 'no h3 before the first h2');
 });
 
@@ -132,6 +132,31 @@ test('the icons the pages name exist (what Phantom, tabs and home screens show f
   const manifest = JSON.parse(readFileSync(join(client, 'manifest.webmanifest'), 'utf8'));
   assert.deepEqual(manifest.icons.map(i => i.src).filter(l => !existsSync(join(client, l))), []);
   assert.ok(manifest.icons.some(i => i.sizes === '192x192') && manifest.icons.some(i => i.sizes === '512x512'));
+});
+
+test('faq: ten questions in the html, every card starts closed, the chevron is not a control', () => {
+  const block = html.slice(html.indexOf('id="faq"'), html.indexOf('</section>', html.indexOf('id="faq"')));
+  const q = [...block.matchAll(/<button type="button"[^>]*>([^<]+)<\/button>/g)].map(m => m[1]);
+  assert.deepEqual(q, [
+    'Can I play without a crypto wallet?',
+    'Is Freight Chain free?',
+    'Do I have to buy a token, an NFT, or any crypto to try it?',
+    'Is there a Freight Chain token?',
+    'What can I win, and is that money real today?',
+    'Who holds the entry fees, and what if a pool does not fill?',
+    'How long is a shift, and what ends it?',
+    'Can I watch without playing or signing in?',
+    'Do I install anything?',
+    'Is this play-to-earn?',
+  ]);
+  assert.equal((block.match(/class="fq on"/g) ?? []).length, 0);
+  assert.equal((block.match(/aria-expanded="false"/g) ?? []).length, 10);
+  assert.deepEqual([...block.matchAll(/data-item="([^"]+)"/g)].map(m => m[1]), ['wallet', 'free', 'buy', 'token', 'prize', 'vault', 'shift', 'watch', 'install', 'earn']);
+  assert.equal((block.match(/<i class="chev" aria-hidden="true">/g) ?? []).length, 10);
+  assert.doesNotMatch(block, /<details|<summary/);
+  assert.match(main, /faq_item_opened/);
+  assert.match(main, /closest\('a, \.chev'\)/);
+  assert.match(block, /There is no token/); assert.match(block, /nothing on it is real money/); assert.match(block, /about 100 km\/h/);
 });
 
 test('pools: the live board + the escrow block exist, the explainer is the whitepaper chapter, the pool wording is the lobby\'s', () => {

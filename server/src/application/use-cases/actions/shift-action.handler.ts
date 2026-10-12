@@ -1,5 +1,5 @@
 import { CommandBus, CommandHandler, QueryBus, QueryHandler, type ICommandHandler, type IQueryHandler } from '@nestjs/cqrs';
-import { sellableOffers, shiftCard, buyTx, type ActionCard, type ActionTx, type SellableTier } from '../../../domain/actions/action-card.js';
+import { sellableOffers, shiftCard, buyTx, siteLink, type ActionCard, type ActionLink, type ActionTx, type SellableTier } from '../../../domain/actions/action-card.js';
 import type { PaidTierId } from '../../../domain/rides/ride-tier.js';
 import { ConflictError, ServiceUnavailableError } from '../../../domain/shared/errors.js';
 import type { TicketOrderDto } from '../../../domain/economy/ticket-order.dto.js';
@@ -10,6 +10,7 @@ import { ClockPort } from '../../ports/shared/clock.port.js';
 import { CreateTicketOrderCommand } from '../tickets/create-ticket-order/create-ticket-order.command.js';
 import { GetTicketPaymentQuery, type TicketPaymentDto } from '../tickets/get-ticket-payment/get-ticket-payment.query.js';
 import { GetShiftActionQuery } from './get-shift-action.query.js';
+import { OpenSiteActionCommand } from './open-site-action.command.js';
 import { PrepareShiftActionCommand } from './prepare-shift-action.command.js';
 
 @QueryHandler(GetShiftActionQuery)
@@ -43,6 +44,15 @@ export class PrepareShiftActionHandler implements ICommandHandler<PrepareShiftAc
     const order = await this.commands.execute<CreateTicketOrderCommand, TicketOrderDto>(new CreateTicketOrderCommand(account, offer.poolId, 1));
     const payment = await this.queries.execute<GetTicketPaymentQuery, TicketPaymentDto>(new GetTicketPaymentQuery(account, order.id));
     return buyTx(rules.appOrigin, tier, offer.poolId, payment.transaction);
+  }
+}
+
+@CommandHandler(OpenSiteActionCommand)
+export class OpenSiteActionHandler implements ICommandHandler<OpenSiteActionCommand, ActionLink> {
+  constructor(private readonly rules: RulesConfigPort) {}
+
+  async execute({ to }: OpenSiteActionCommand): Promise<ActionLink> {
+    return siteLink(this.rules.get().appOrigin, to);
   }
 }
 

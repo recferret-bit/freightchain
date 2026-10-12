@@ -281,7 +281,7 @@
 
 <section aria-labelledby="s-client">
   <div class="head">
-    <span class="eyebrow">Browser events · 41 names, allowlisted properties</span>
+    <span class="eyebrow">Browser events · 42 names, allowlisted properties</span>
     <h2 id="s-client">What the player did before the server knew</h2>
     <p class="soft">The relay stamps <code>source=client</code> and, when the cookie verifies, the session wallet. Properties are strings of at most 200 characters, or an integer, a boolean, or null. A float drops that event, not the whole batch. At most 20 keys. Anything not in the allowlist is removed. These names are hard-deleted even if someone allowlists them later: <code>signature</code>, <code>transaction</code>, <code>seed</code>, <code>nonce</code>, <code>message</code>, <code>token</code>, <code>cookie</code>, <code>authorization</code>, <code>detail</code>, <code>secret</code>, <code>anon_id</code>.</p>
   </div>
@@ -291,7 +291,7 @@
       <thead><tr><th>Event</th><th>When</th><th>Properties</th></tr></thead>
       <tbody>
         <tr><td><code>landing_viewed</code></td><td>Once per document load. Not on the 10 second refresh.</td><td><code>surface=landing</code></td></tr>
-        <tr><td><code>landing_chapter_viewed</code></td><td>First time a chapter section intersects. Once per id per load.</td><td><code>chapter</code>: ride, loop, economy, roadmap, market, about</td></tr>
+        <tr><td><code>landing_chapter_viewed</code></td><td>First time a chapter section intersects. Once per id per load.</td><td><code>chapter</code>: ride, loop, economy, roadmap, market, about, faq</td></tr>
         <tr><td><code>whitepaper_viewed</code></td><td>Once per document load of the whitepaper. A contents link is not a second event.</td><td><code>surface=whitepaper</code></td></tr>
         <tr><td><code>wallet_connect_clicked</code></td><td>CONNECT while signed out, before <code>signIn()</code>.</td><td><code>surface</code>, <code>wallet_name</code> (phantom, solflare, injected, none) — the same provider <code>signIn</code> uses</td></tr>
         <tr><td><code>lobby_open_clicked</code></td><td>The same button once a session is already painted (OPEN THE LOBBY).</td><td><code>surface=landing</code></td></tr>
@@ -329,12 +329,13 @@
         <tr><td><code>play_top_clicked</code></td><td>The top play control.</td><td><code>signed_in</code></td></tr>
         <tr><td><code>leaderboard_filtered</code></td><td>A board render succeeded.</td><td><code>board</code>: round, all, free</td></tr>
         <tr><td><code>pending_ride_shown</code> / <code>pending_ride_start_clicked</code></td><td>The waiting-ride banner, once per ride per load, and its START IT button.</td><td><code>ride_id</code>, and <code>tier_id</code> on the shown event</td></tr>
-        <tr><td><code>ride_paused</code> / <code>ride_unpaused</code></td><td>Pause transitions on an online ride. Not per frame.</td><td><code>source</code>: key or visibility. The unpause name is not <code>ride_resumed</code>.</td></tr>
+        <tr><td><code>ride_paused</code> / <code>ride_unpaused</code></td><td>Pause transitions on an online ride. Not per frame. The corner leave control pauses before its question; staying unpauses.</td><td><code>source</code>: key, visibility, or bail. The unpause name is not <code>ride_resumed</code>.</td></tr>
         <tr><td><code>ride_end_requested</code></td><td>The client asked to end, before the server answered.</td><td><code>outcome</code> shift|failed, <code>client_complete</code>, <code>fail_code</code>. Never a completion metric. It exists to see “the browser painted COMPLETE, the server said abandoned”.</td></tr>
         <tr><td><code>player_signed_out</code></td><td>The lobby sign-out click, before the request.</td><td>none. The server logout handler has no wallet, so there is no server twin.</td></tr>
         <tr><td><code>offline_practice_clicked</code></td><td>A link to <code>play.html</code> without <code>?ride</code> (the landing, the lobby, and the whitepaper PLAY button send <code>?offline=1</code>).</td><td>none. The offline page itself loads no analytics.</td></tr>
         <tr><td><code>storybook_link_clicked</code></td><td>The model-viewer link on the landing or the whitepaper.</td><td>none. <code>viewer.html</code> does not load analytics.</td></tr>
         <tr><td><code>chain_card_flipped</code></td><td>A landing UNDER THE HOOD card turned over: a tap, or a mouse hover that lasts 0.6 s. Once per card per load.</td><td><code>card</code>: proof, pledge, sns, blink, siws</td></tr>
+        <tr><td><code>faq_item_opened</code></td><td>A landing FAQ card was opened. Once per item per load. Every card starts closed, so loading the page is not an event. A mouse hover counts only after 0.6 s, so a pointer passing down the list is not a read. A click or a key counts at once.</td><td><code>item</code>: wallet, free, buy, token, prize, vault, shift, watch, install, earn. <code>via</code>: hover, click, key</td></tr>
         <tr><td><code>social_clicked</code></td><td>A rendered social link.</td><td><code>net</code>. The three links are null today, so the nodes do not exist.</td></tr>
         <tr><td><code>web_vital</code></td><td>Once per metric per document, on the landing, the whitepaper, and the lobby. FCP and TTFB as soon as they exist. LCP at the first input or when the page hides. CLS and INP when the page hides. No interaction means no INP. Not on <code>play.html</code> or <code>viewer.html</code>.</td><td><code>surface</code> landing|whitepaper|lobby, <code>metric</code> LCP|INP|CLS|FCP|TTFB, <code>value</code> (milliseconds, except CLS which is the score × 1000, so 0.1 is <code>100</code>), <code>rating</code> good|needs-improvement|poor, <code>navigation</code> navigate|reload|back_forward|prerender. A float is dropped, same as every other client event. Not one of the five judge numbers.</td></tr>
       </tbody>
@@ -482,7 +483,7 @@
   <span>Freight Chain · product analytics</span>
   <span>on main</span>
   <span><a href="https://eu.posthog.com/project/297915/dashboard/1006663">EU dashboard 1006663</a></span>
-  <span>as of Oct 10, 2026</span>
+  <span>as of Oct 12, 2026</span>
 </footer>
 
 </div>

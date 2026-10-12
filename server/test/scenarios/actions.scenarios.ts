@@ -9,6 +9,7 @@ export const ACTIONS_PROGRAM_ENV = { PAYMENT_MODE: 'program', TICKET_PROGRAM_ID:
 
 const RULES = [
   { pathPattern: '/', apiPath: '/api/actions/shift' },
+  { pathPattern: '/hello', apiPath: '/api/actions/hello' },
   { pathPattern: '/r/**', apiPath: '/api/actions/ride/**' },
   { pathPattern: '/api/actions/**', apiPath: '/api/actions/**' },
 ];
@@ -31,6 +32,15 @@ export function actionsScenarios(h: () => Harness): void {
     expect(pre.headers['x-blockchain-ids']).toBe(DEVNET_BLOCKCHAIN_ID);
   });
 
+  it('hello is one button and a post that signs nothing', async () => {
+    const card = await anon().get('/api/actions/hello').expect(200);
+    expect(card.headers['access-control-allow-origin']).toBe('*');
+    expect(card.body).toMatchObject({ type: 'action', title: 'Hello', links: { actions: [{ type: 'post', href: '/api/actions/hello', label: 'Say hello' }] } });
+    const said = await anon().post('/api/actions/hello').send({ account: newWallet().address }).expect(200);
+    expect(said.body).toMatchObject({ type: 'post', message: 'Hello.', links: { next: { type: 'inline', action: { type: 'completed', title: 'Hello' } } } });
+    expect(said.body).not.toHaveProperty('transaction');
+  });
+
   it('transfer mode has no buy button; a bad account is {message}, not problem+json', async () => {
     const card = await anon().get('/api/actions/shift').expect(200);
     expect(card.body.type).toBe('action');
@@ -43,6 +53,14 @@ export function actionsScenarios(h: () => Harness): void {
     expect(bad.body).toEqual({ message: expect.stringMatching(/Solana account/) });
     const off = await anon().post('/api/actions/shift/1h').send({ account: newWallet().address }).expect(503);
     expect(off.body.message).toMatch(/not on this server yet/);
+    // a blink client POSTs { account, type } to every href, link buttons included, and opens the externalLink it answers
+    for (const a of card.body.links.actions as { type: string; href: string }[]) {
+      expect(a.href).toMatch(/^\/api\/actions\//);
+      const link = await anon().post(a.href).send({ account: newWallet().address, type: a.type }).expect(200);
+      expect(link.body).toMatchObject({ type: 'external-link', externalLink: expect.stringMatching(/^https?:\/\//) });
+      expect(link.headers['access-control-allow-origin']).toBe('*');
+    }
+    expect((await anon().post('/api/actions/go/elsewhere').send({ account: newWallet().address }).expect(400)).body).toEqual({ message: expect.any(String) });
   });
 
   it('a ride blink describes the shift and never says verified; an unknown id is 404 {message}', async () => {
@@ -52,9 +70,13 @@ export function actionsScenarios(h: () => Harness): void {
     expect(card.body.type).toBe('action');
     expect(JSON.stringify(card.body).toLowerCase()).not.toContain('verified');
     expect(card.body.links.actions.some((a: { label: string }) => a.label === 'Open the ride')).toBe(true);
-    const open = await anon().post(`/api/actions/ride/${ride.id}`).send({ account: w.address }).expect(200);
-    expect(open.body.type).toBe('external-link');
-    expect(open.body.externalLink).toMatch(new RegExp(`/r/${ride.id}$`));
+    for (const a of card.body.links.actions as { type: string; href: string }[]) {
+      const link = await anon().post(a.href).send({ account: w.address, type: a.type }).expect(200);
+      expect(link.body.type).toBe('external-link');
+      expect(link.body.externalLink).toMatch(new RegExp(`/r/${ride.id}$`)); // a created free ride: the page, and no watch button
+    }
+    const watch = await anon().post(`/api/actions/ride/${ride.id}/watch`).send({ account: w.address }).expect(200);
+    expect(watch.body.externalLink).toMatch(new RegExp(`/r/${ride.id}$`));
     const missing = await anon().get('/api/actions/ride/missing-ride').expect(404);
     expect(missing.body).toEqual({ message: expect.any(String) });
     expect(missing.headers['content-type']).not.toMatch(/problem\+json/);

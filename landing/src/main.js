@@ -6,7 +6,7 @@ import { livePath, leaveOnClose } from '../../client/site/presence.js';   // thi
 import { sol, km, left, short, hue, hours, driven, ago, plural, TIER, TIER_LONG, ROUTE } from './format.js';
 import { heldTickets, escrowExplainer, explorerUrl, shortAddr, progressText, phaseLine, poolPhase } from '../../client/site/pools.js';   // the lobby's pool wording, so both pages say the same thing
 
-/* Landing: four chapters (ride · loop · economy · about), fed by the public API only – no session needed to look.
+/* Landing: seven chapters (ride · loop · economy · roadmap · market · about · faq), fed by the public API only – no session needed to look.
    Everything from the server goes in with textContent (other riders' wallets are rendered here). */
 reportWebVitals('landing');   // before the first track(), so the leave flush includes the final metrics
 
@@ -261,6 +261,62 @@ const ocGrid = document.querySelector('.oc-grid');
 if (ocGrid && !reduced) {
   const cio = new IntersectionObserver(es => { if (!es.some(e => e.isIntersecting)) return; cio.disconnect(); import('./chain-scenes.js').then(m => m.startChainScenes(ocGrid.querySelectorAll('.oc'))).catch(e => console.warn('chain scenes unavailable', e)); }, { rootMargin: '600px' });
   cio.observe(ocGrid);
+}
+
+/* FAQ: hover (a fine pointer) opens the card and leave closes it, unless a click pinned it (.on).
+   A click on a hover-open card pins it; the next click unpins and, while the pointer is still inside, .shut keeps it closed until the pointer leaves.
+   The chevron is not a control. Every card starts closed. faq_item_opened once per item per load — a click or a key at once, a mouse hover only after 0.6 s. */
+const faqFine = matchMedia('(hover: hover) and (pointer: fine)').matches;
+const faqSeen = new Set();
+const faqOpen = (item, via) => {
+  const slug = item.dataset.item;
+  if (!slug || faqSeen.has(slug)) return;
+  faqSeen.add(slug);
+  track('faq_item_opened', { item: slug, via });
+};
+for (const item of document.querySelectorAll('.fq')) {
+  const btn = item.querySelector('button'), panel = item.querySelector('.fq-a');
+  let dwell = 0, hide = 0;
+  const openNow = () => item.classList.contains('on') || (faqFine && item.matches(':hover') && !item.classList.contains('shut'));
+  const sync = immediate => {
+    const open = openNow();
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    clearTimeout(hide);
+    if (open) { panel.inert = false; return; }
+    /* inert after the close, not during it: setting it on the way down cancels the height transition */
+    if (immediate || reduced) { panel.inert = true; return; }
+    hide = setTimeout(() => { if (!openNow()) panel.inert = true; }, 620);
+  };
+  item.addEventListener('pointerenter', e => {
+    if (!faqFine || e.pointerType !== 'mouse') return;
+    item.classList.remove('shut');
+    clearTimeout(dwell);
+    dwell = setTimeout(() => faqOpen(item, 'hover'), 600);
+    sync();
+  });
+  item.addEventListener('pointerleave', () => { clearTimeout(dwell); item.classList.remove('shut'); sync(); });
+  const toggle = via => {
+    clearTimeout(dwell);
+    if (item.classList.contains('on')) {
+      item.classList.remove('on');
+      if (item.matches(':hover')) item.classList.add('shut');
+    } else {
+      item.classList.remove('shut');
+      item.classList.add('on');
+      faqOpen(item, via);
+    }
+    sync();
+  };
+  btn.addEventListener('keydown', e => {
+    if ((e.key !== 'Enter' && e.key !== ' ') || e.repeat) return;
+    e.preventDefault();   // the click that would follow is detail 0; count this one as a key
+    toggle('key');
+  });
+  item.addEventListener('click', e => {
+    if (e.target.closest('a, .chev') || e.detail === 0) return;   // a link follows itself; the marker is not a button
+    toggle('click');
+  });
+  sync(true);
 }
 
 /* ───── socials ───── */

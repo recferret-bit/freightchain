@@ -11,6 +11,9 @@ describe('ActionErrorFilter', () => {
     expect(actionError(new ServiceUnavailableError('rpc down')).message).toMatch(/not reachable/);
     expect(actionError(new ConflictError('this pool is not selling tickets right now', 'not_sellable')).message).toMatch(/not selling/);
     expect(actionError(new ZodError([{ code: ZodIssueCode.custom, path: ['account'], message: 'bad' }]))).toMatchObject({ status: 400 });
+    expect(actionError(new ZodError([{ code: ZodIssueCode.custom, path: ['account'], message: 'bad' }])).message).toMatch(/Solana account/);
+    expect(actionError(new ZodError([{ code: ZodIssueCode.custom, path: ['tier'], message: 'bad' }])).message).toMatch(/Unknown shift/);
+    expect(actionError(new ZodError([{ code: ZodIssueCode.custom, path: ['to'], message: 'bad' }])).message).toMatch(/not valid/);
     expect(actionError(new Error('boom'))).toEqual({ status: 500, message: 'Something went wrong. Nothing was charged.' });
     expect(actionError(new HttpException('no', 400)).status).toBe(400);
   });

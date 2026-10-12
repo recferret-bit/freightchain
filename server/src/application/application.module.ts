@@ -122,7 +122,8 @@ import { UpdateSettingHandler } from './use-cases/admin/update-setting/update-se
 import { GetSnsReverseHandler } from './use-cases/sns/get-sns-reverse/get-sns-reverse.handler.js';
 import { ResolveSnsHandler } from './use-cases/sns/resolve-sns/resolve-sns.handler.js';
 import { GetActionsJsonHandler } from './use-cases/actions/get-actions-json.handler.js';
-import { GetShiftActionHandler, PrepareShiftActionHandler } from './use-cases/actions/shift-action.handler.js';
+import { GetHelloActionHandler, SayHelloActionHandler } from './use-cases/actions/hello-action.handler.js';
+import { GetShiftActionHandler, PrepareShiftActionHandler, OpenSiteActionHandler } from './use-cases/actions/shift-action.handler.js';
 import { GetRideActionHandler, OpenRideActionHandler } from './use-cases/actions/ride-action.handler.js';
 import { CreatePledgeHandler } from './use-cases/pledges/create-pledge/create-pledge.handler.js';
 import { ConfirmPledgeHandler } from './use-cases/pledges/confirm-pledge/confirm-pledge.handler.js';
@@ -163,7 +164,7 @@ const handlers: Provider[] = [
   PollProgramHandler, SyncPoolsHandler, CrankPoolsHandler, PayPoolsHandler, MintAchievementsHandler, ReceiveChainWebhookHandler, RegisterPoolFromChainHandler,
   AdjustFreeRidesHandler, GetSettingsHandler, UpdateSettingHandler,
   GetSnsReverseHandler, ResolveSnsHandler,
-  GetActionsJsonHandler, GetShiftActionHandler, PrepareShiftActionHandler, GetRideActionHandler, OpenRideActionHandler,
+  GetActionsJsonHandler, GetHelloActionHandler, SayHelloActionHandler, GetShiftActionHandler, PrepareShiftActionHandler, OpenSiteActionHandler, GetRideActionHandler, OpenRideActionHandler,
   CreatePledgeHandler, ConfirmPledgeHandler, SyncPledgesHandler, GetRidePledgesHandler, GetPledgeHandler,
 ];
 
