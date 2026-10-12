@@ -77,6 +77,7 @@ check('/api/me returns the signed-in wallet', me.wallet === addr, `${me.freeRide
 await send('Page.navigate', { url: BASE + '/' }); await sleep(1800); await until(`!document.getElementById('chip-wallet').hidden`);
 check('landing shows the wallet chip', (await ev(`document.getElementById('chip-wallet').textContent`)) === short);
 check('CTA becomes OPEN THE LOBBY, top button LOBBY', /OPEN THE LOBBY/.test(await ev(`document.getElementById('connect').textContent`)) && (await ev(`document.getElementById('play-top').textContent`)) === 'LOBBY');
+check('play-free is hidden when signed in (only one OPEN THE LOBBY button in hero)', await ev(`document.getElementById('play-free').hidden`));
 check('rides chip shows the free rides and paid tickets (no duplicate "Signed in as" line)', /^\d+ free · \d+ paid rides?$/.test(await ev(`document.getElementById('chip-rides').hidden ? '' : document.getElementById('chip-rides').textContent`)) && !(await ev(`document.getElementById('msg').textContent`)).includes(short));
 await shot('landing-signed-in');
 await ev(`document.getElementById('connect').click()`);

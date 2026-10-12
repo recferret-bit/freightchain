@@ -274,8 +274,8 @@ const onConnect = async () => {
   try { await signIn(); msg.textContent = 'Signed in – opening the lobby…'; toLobby(); } catch (e) { msg.textContent = e.message; msg.className = 'msg bad'; btn.disabled = false; }
 };
 function paintSession(me) {
-  S.me = me; btn.textContent = 'OPEN THE LOBBY →'; btn.onclick = onConnect; playTop.textContent = 'LOBBY';
-  const playFree = $('play-free'); if (playFree) { playFree.textContent = 'OPEN THE LOBBY →'; playFree.href = `${SITE_BASE}/lobby.html#new`; }
+  S.me = me; btn.textContent = 'OPEN THE LOBBY →'; btn.classList.remove('ghost'); btn.onclick = onConnect; playTop.textContent = 'LOBBY';
+  const playFree = $('play-free'); if (playFree) playFree.hidden = true;
   chip.textContent = short(me.wallet); chip.title = `signed in: ${me.wallet}`; chip.hidden = false;
   chipRides.textContent = `${me.freeRides} free · ${plural(heldTickets(me.tickets), 'paid ride')}`; chipRides.hidden = false;
   msg.textContent = ''; msg.className = 'msg';
