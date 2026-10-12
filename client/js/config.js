@@ -37,6 +37,8 @@ export const CFG = {
   COMPLETE_DIST_K: 0.5,      // the shift counts as complete after this × MAX_SPEED × RIDE_MIN_SECONDS metres (the finish line; no minimum time – the governor bounds the speed); the road itself never ends
   TELEMETRY_HZ: 10,          // online rides only (js/telemetry.js): samples per GAME second – keep = SAMPLE_HZ in server/src/domain/telemetry/telemetry-rules.ts
   TELEMETRY_BATCH_SECONDS: 15, // game seconds per uploaded recording batch
+  CHAIN_POOL_POLL_MS: 30000, // ticket rides only (ui/cab-chain.js): how often the cab's ON CHAIN strip re-reads the pool + its standings
+  CHAIN_PLEDGE_POLL_MS: 12000, // … and the ride's pledges (a new one is toasted)
   START_ACCESS: 190,         // m of depot access road from the start (yard) to the turn onto the main road
   START_FADE: 150,           // m – a straight start (js/trips.js `start`): the bends fade in over this much main road. The per-tier road multipliers themselves live in js/trips.js
   START_TURN_R: 22,          // m, radius of the right turn from the access road onto the main road (the truck in its lane turns at ≈ R − 2.4)

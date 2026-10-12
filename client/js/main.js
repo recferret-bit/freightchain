@@ -28,6 +28,7 @@ import { initWatch, startWatch, stepWatch, watch } from './watch.js';
 import { roadPlan, followRoadPlan, updateRoadPlan } from './road-plan.js';
 import { mountWatchPanel } from './ui/watch-panel.js';
 import { liveFeed } from './ui/live-feed.js';
+import { cabChain } from './ui/cab-chain.js';
 import { track } from './analytics.js';
 import { guide, setGuide } from './guide.js';
 import { offlineRide, offlineWanted } from './offline-ride.js';
@@ -93,6 +94,6 @@ function devRun(id = '1h') {
   CFG.RIDE_MIN_SECONDS = trip.seconds ?? shift0.s; CFG.COMPLETE_DIST = trip.seconds ? trip.k * CFG.MAX_SPEED * trip.seconds : shift0.d; resetRide();
   if (!looping) { looping = true; requestAnimationFrame(frame); }   // the mobile blocker never started the loop; a second one would step every frame twice
 }
-window.__game = { isMobileBlocked: !isWatching && isMobileDevice(), devRun, forkRules: FORK, toggleMap, phone, guide, setGuide, hurt, trip, setTrip, offlineRide, audio, cosmetics, online, telemetry, prompt, watch, roadPlan, liveFeed, radio, roadObjects, chunks, spacing, roads, net, st, disp, CFG, input, tryShift, ignition, startRide, curv, spawn, traffic: cars, THEMES, screenClimate, ...(realRide ? {} : { selectTheme, setNight, setPhase, setClock }), dn, weather, uiBtns, inputBits, holes: { HOLES, holeAt, holesNear, clearHoleCache, plan, flagged } };   // handy for console debugging
+window.__game = { isMobileBlocked: !isWatching && isMobileDevice(), devRun, forkRules: FORK, toggleMap, phone, guide, setGuide, hurt, trip, setTrip, offlineRide, audio, cosmetics, online, telemetry, prompt, watch, roadPlan, liveFeed, cabChain, radio, roadObjects, chunks, spacing, roads, net, st, disp, CFG, input, tryShift, ignition, startRide, curv, spawn, traffic: cars, THEMES, screenClimate, ...(realRide ? {} : { selectTheme, setNight, setPhase, setClock }), dn, weather, uiBtns, inputBits, holes: { HOLES, holeAt, holesNear, clearHoleCache, plan, flagged } };   // handy for console debugging
 
  

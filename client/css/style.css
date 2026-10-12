@@ -46,6 +46,16 @@ button:disabled{opacity:.4;cursor:not-allowed}
 #cb .cb-mute{flex:0 0 auto;margin-left:8px;padding:0 6px;font:inherit;font-size:10px;font-weight:normal;border-radius:3px;border:1px solid #ff6b5a88;background:transparent;color:#ff9a8a;cursor:pointer;pointer-events:auto;opacity:.5}#cb .cb-mute:hover{opacity:1}
 #cb .cb-line{margin-top:4px;padding:4px 8px;border-radius:4px;background:#000a;transition:opacity 2s;overflow-wrap:anywhere}
 #cb .cb-line b{color:#ffcf5a}#cb .cb-line.gift{border-left:3px solid #7be07b}#cb .cb-line.old{opacity:0}
+/* ticket rides: the cab's ON CHAIN strip (ui/cab-chain.js) – the pool, the road seal, pledges. In the sky between the CB column (left) and the corner
+   buttons (right), like a toast; the toast moves under it. A narrow window: under the corner buttons, full width */
+#chain{position:absolute;left:calc(8vw + min(400px,28vw) + 14px);right:164px;top:8px;z-index:4;max-width:560px;box-sizing:border-box;padding:5px 10px;border:1px solid #9945ff88;border-radius:6px;background:#0b0912d9;color:#e6defa;font-size:11px;line-height:1.5;text-shadow:0 1px 2px #000;box-shadow:0 0 14px #9945ff33;pointer-events:none}
+#chain[hidden]{display:none}
+#chain .ch-row{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#chain b{color:#c9a6ff;letter-spacing:.06em}#chain .good{color:#14f195}#chain .bad{color:#ff6b5a}
+#chain a{color:#14f195;text-decoration:none;pointer-events:auto}#chain a:hover{text-decoration:underline}
+.seal a{margin-left:6px;color:#14f195;font-weight:normal}
+body:has(#chain:not([hidden])) #toast{top:calc(14% + 40px)}
+@media (max-width:920px){#chain{left:12px;right:12px;top:96px;max-width:none}}
 #watch{position:absolute;top:0;right:0;bottom:0;width:340px;z-index:6;display:flex;flex-direction:column;gap:8px;padding:14px;box-sizing:border-box;
        background:#120f0ce6;border-left:2px solid #ffcf5a88;font-size:13px;overflow-y:auto;overscroll-behavior:contain}
 #watch button{flex:0 0 auto;font-size:12px;padding:6px 9px}

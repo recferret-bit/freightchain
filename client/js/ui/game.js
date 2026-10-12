@@ -16,6 +16,7 @@ import { clockText, setClock } from '../world/daynight.js';
 import { online, beginOnline, endOnline, rideNow } from '../online.js';
 import { offlineRide, connectHref } from '../offline-ride.js';
 import { startLiveFeed, stopLiveFeed } from './live-feed.js';
+import { startCabChain, stopCabChain, paintSeal } from './cab-chain.js';
 import { failFx, winFx } from './fail-fx.js';
 import { prompt } from '../prompt.js';
 import { track, flushSoon } from '../analytics.js';
@@ -85,7 +86,8 @@ function showOnlineMenu(title, sub, extra) {
   const over = online.done, bad = !!online.error;
   panel.innerHTML = `<h1>${title}</h1><h2>${sub}</h2>${extra}
     ${bad ? `<div class="row"><span>Ride</span><span class="bad">${online.error}</span></div>` : `<div class="row"><span>Finish line</span><b>${(CFG.COMPLETE_DIST / 1000).toFixed(1)} km</b></div>
-    <div class="row"><span>Route (set by the server)</span><b>${env.theme.name} · starts ${clockText()}</b></div>`}
+    <div class="row"><span>Route (set by the server)</span><b>${env.theme.name} · starts ${clockText()}</b></div>
+    ${online.ride?.poolId != null ? '<div class="row"><span>Road</span><b class="seal">checking the seal…</b></div>' : ''}`}
     <div class="btns">${over || bad ? `${over && online.ride ? '<button type="button" class="alt share-x-btn" id="share-x-end" title="Share your ride on 𝕏"><b>POST ON 𝕏</b><small>share progress & receipt</small></button>' : ''}<button class="alt bail-link" id="lobby" title="lobby" style="margin-left:auto"><b>${lastOutcome?.ok ? 'BACK TO THE LOBBY' : 'I MISS THE YARD'}</b><small>lobby</small></button>` : '<button id="go">START RIDE</button>'}</div>`;
   overlay.classList.remove('hide');
   const go = document.getElementById('go');
@@ -103,7 +105,7 @@ function showOnlineMenu(title, sub, extra) {
       toast('Opening 𝕏 to share ride receipt...', 2000);
     };
   }
-  bindBail(); syncBail();
+  paintSeal(); bindBail(); syncBail();
 }
 /* Same strings the server stores, so a client "I finished" can be compared with the verdict. Not a completion metric. */
 function failCode(outcome, reason) {
@@ -130,6 +132,7 @@ export async function startRide() {   // only an online ride awaits the server
       return;
     }
     if (online.ride.tier !== 'free') startLiveFeed();   // spectators' chat + effects (live streams) – paid shifts only
+    startCabChain();   // ticket rides only: the pool, the road seal, pledges (ui/cab-chain.js)
   } else if (offlineRide.on) {
     if (st.mode === 'drive' || st.mode === 'paused') return;
     if (!offlineRide.dev) setGuide({ tutorial: guestOpt.tutorial, assist: guestOpt.assist });   // the guest's two checkboxes (a tool's devRun picks its own)
@@ -155,7 +158,7 @@ export function endRide(ok, reason, outcome = ok ? 'shift' : 'failed', silent = 
     return;
   }
   if (online.ride) { track('ride_end_requested', { outcome, client_complete: !!st.complete, fail_code: failCode(outcome, reason) }); flushSoon(); }   // before endOnline; the server verdict is the completion metric
-  st.mode = 'done'; stopLiveFeed(); if (!ok && outcome !== 'shift') audio.play('game-over');
+  st.mode = 'done'; stopLiveFeed(); stopCabChain(); if (!ok && outcome !== 'shift') audio.play('game-over');
   const verdict = endOnline(outcome, reason);   // null offline
   const abandoned = !ok && outcome === 'shift';
   lastOutcome = { ok, abandoned };
