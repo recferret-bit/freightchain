@@ -9,6 +9,7 @@ export function isActionRequest(req: { originalUrl?: string; url?: string }): bo
 }
 
 /** Blink clients are arbitrary origins. No credentials, so `*` is legal. OPTIONS ends here, before the allowlist CORS.
+    Allow-Headers is `ACTIONS_CORS_HEADERS` of @solana/actions: a client that sends X-Accept-* fails the preflight without them.
     `/.well-known/actions.json` is rewritten onto `/actions.json`: a leading-dot path does not register as a Nest route. */
 export function actionHeadersMiddleware(req: Request, res: Response, next: NextFunction): void {
   const raw = req.originalUrl ?? req.url ?? '';
@@ -21,7 +22,7 @@ export function actionHeadersMiddleware(req: Request, res: Response, next: NextF
   if (!isActionRequest(req)) { next(); return; }
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Encoding, Accept-Encoding');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Encoding, Accept-Encoding, X-Accept-Action-Version, X-Accept-Blockchain-Ids');
   res.setHeader('Access-Control-Expose-Headers', 'X-Action-Version, X-Blockchain-Ids, X-Request-Id');
   res.setHeader('X-Action-Version', ACTION_VERSION);
   res.setHeader('X-Blockchain-Ids', DEVNET_BLOCKCHAIN_ID);

@@ -25,6 +25,7 @@ describe('action headers', () => {
     expect(headers['Access-Control-Allow-Origin']).toBe('*');
     expect(headers['X-Blockchain-Ids']).toBe(DEVNET_BLOCKCHAIN_ID);
     expect(headers['X-Action-Version']).toBe('2.4');
+    expect(headers['Access-Control-Allow-Headers']).toMatch(/X-Accept-Action-Version, X-Accept-Blockchain-Ids/);
     expect(headers['Access-Control-Allow-Credentials']).toBeUndefined();
     const aliased = { method: 'GET', url: '/.well-known/actions.json', originalUrl: '/.well-known/actions.json' } as Request;
     actionHeadersMiddleware(aliased, resOf().res, next as NextFunction);
