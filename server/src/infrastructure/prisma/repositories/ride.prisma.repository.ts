@@ -54,4 +54,21 @@ export class RidePrismaRepository extends RideRepositoryPort {
     if (count !== 1) throw new VersionConflictError();
     return RideEntity.restore({ ...p, version: p.version + 1 });
   }
+
+  async findBestVerifiedByPoolAndWallet(poolId: number, wallet: string, tx?: TransactionHandle): Promise<Ride | null> {
+    const rows = await clientFor(this.prisma, tx).ride.findMany({
+      where: {
+        poolId,
+        wallet,
+        status: 'completed',
+        verdict: {
+          is: {
+            status: 'verified',
+          },
+        },
+      },
+      orderBy: [{ lastS: 'desc' }, { driveSeconds: 'asc' }],
+    });
+    return rows[0] ? RideMapper.toDomain(rows[0]) : null;
+  }
 }

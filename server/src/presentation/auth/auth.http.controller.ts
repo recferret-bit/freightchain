@@ -12,7 +12,7 @@ import { ZodBody } from '../../infrastructure/http/decorators/zod.js';
 import { PlayerAuthGuard } from '../../infrastructure/http/guards/player-auth.guard.js';
 import { ClearSessionCookieInterceptor, SetSessionCookieInterceptor } from '../../infrastructure/http/interceptors/session-cookie.interceptor.js';
 import type { PlayerIdentity } from '../../infrastructure/http/types/http-request.js';
-import { challengeBodySchema, verifyBodySchema, type ChallengeBody, type VerifyBody } from './dto/auth.dto.js';
+import { requestChallengeBodySchema, verifyBodySchema, type RequestChallengeBody, type VerifyBody } from './dto/auth.dto.js';
 
 /** Sign-In With Solana: nonce → the wallet signs → verify (sets the httpOnly session cookie). /api/auth/* has its own stricter rate limit (THROTTLE_AUTH_LIMIT). */
 @Controller('api')
@@ -23,14 +23,14 @@ export class AuthHttpController {
   ) {}
 
   @Post('auth/nonce') @HttpCode(200)
-  nonce(@ZodBody(challengeBodySchema) body: ChallengeBody, @CurrentOrigin() origin: string | null): Promise<ChallengeDto> {
+  nonce(@ZodBody(requestChallengeBodySchema) body: RequestChallengeBody, @CurrentOrigin() origin: string | null): Promise<ChallengeDto> {
     return this.commandBus.execute<RequestChallengeCommand, ChallengeDto>(new RequestChallengeCommand(body.wallet, origin));
   }
 
   /** The wire body is the rider's profile (MeDto): SetSessionCookieInterceptor moves the session token into the cookie and unwraps `profile`. */
   @Post('auth/verify') @HttpCode(200) @UseInterceptors(SetSessionCookieInterceptor)
   verify(@ZodBody(verifyBodySchema) body: VerifyBody, @CurrentClient() client: ClientInfo): Promise<SignInResultDto> {
-    return this.commandBus.execute<VerifySignInCommand, SignInResultDto>(new VerifySignInCommand(body.wallet, body.signature, client));
+    return this.commandBus.execute<VerifySignInCommand, SignInResultDto>(new VerifySignInCommand(body.wallet, body.signature, client, body.message, body.nonce));
   }
 
   @Post('auth/logout') @HttpCode(200) @UseInterceptors(ClearSessionCookieInterceptor)

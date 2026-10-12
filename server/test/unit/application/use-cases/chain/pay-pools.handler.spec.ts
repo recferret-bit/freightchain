@@ -4,6 +4,7 @@ import { PayPoolsHandler } from '../../../../../src/application/use-cases/chain/
 import { SettleChainSignatureCommand } from '../../../../../src/application/use-cases/chain/settle-chain-signature/settle-chain-signature.command.js';
 import { SettleChainSignatureHandler } from '../../../../../src/application/use-cases/chain/settle-chain-signature/settle-chain-signature.handler.js';
 import { PoolAttentionService } from '../../../../../src/application/services/pool-attention.service.js';
+import { AttestationService } from '../../../../../src/application/services/attestation.service.js';
 import { FakePoolPayoutChain } from '../../../../support/fake-pool-payout-chain.js';
 import { poolRide } from '../../../../support/pool-rides.js';
 import { chainPool } from '../../../../support/pools.js';
@@ -32,7 +33,8 @@ describe('PayPoolsHandler – the payout job', () => {
     const settle = new SettleChainSignatureHandler(ctx.poolChain, ctx.chainEvents, ctx.ticketSettlement, ctx.registry, ctx.clock);
     const bus = { execute: async (c: object) => { if (!(c instanceof SettleChainSignatureCommand)) throw new Error('unexpected command'); return settle.execute(c); } };
     const attention = new PoolAttentionService(ctx.adminQuery, ctx.signIns, ctx.players, ctx.verdicts);
-    const handler = new PayPoolsHandler(payout, ctx.poolChain, ctx.pools, ctx.poolPayouts, ctx.rideQuery, ctx.chainEvents, ctx.registry, attention, bus as unknown as CommandBus, ctx.clock);
+    const attestation = new AttestationService(payout, ctx.rides, ctx.batches, ctx.hasher);
+    const handler = new PayPoolsHandler(payout, ctx.poolChain, ctx.pools, ctx.poolPayouts, ctx.rideQuery, ctx.chainEvents, ctx.registry, attention, bus as unknown as CommandBus, ctx.clock, attestation);
     const mirror = async () => (await ctx.pools.findById(1))!;
     return { ctx, payout, run: (poolId: number | null = null) => handler.execute(new PayPoolsCommand(poolId)), mirror };
   };

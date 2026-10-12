@@ -15,6 +15,7 @@ export interface CrankInstruction {
   poolId: number;
   tickets?: ChainTicket[];
   tier?: number;
+  seedCommitment?: Uint8Array | Buffer;
 }
 
 /**

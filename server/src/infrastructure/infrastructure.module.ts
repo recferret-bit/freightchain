@@ -72,6 +72,8 @@ import { ProgramPayoutAdapter } from './solana/program-payout.adapter.js';
 import { PoolPayoutChainPort } from '../application/ports/economy/pool-payout-chain.port.js';
 import { PoolPayoutRepositoryPort } from '../application/ports/economy/pool-payout.repository.port.js';
 import { PoolPayoutPrismaRepository } from './prisma/repositories/pool-payout.prisma.repository.js';
+import { PledgeRepositoryPort } from '../application/ports/economy/pledge.repository.port.js';
+import { PledgePrismaRepository } from './prisma/repositories/pledge.prisma.repository.js';
 import { ChainCursorPrismaRepository } from './prisma/repositories/chain-cursor.prisma.repository.js';
 import { ChainEventPrismaRepository } from './prisma/repositories/chain-event.prisma.repository.js';
 import { SystemClock } from './time/system.clock.js';
@@ -104,6 +106,8 @@ import { RedisCacheAdapter } from './cache/redis-cache.adapter.js';
 import { MemoryViewerPresenceAdapter } from './live/viewer-presence.memory.adapter.js';
 import { SitePresencePort } from '../application/ports/live/site-presence.port.js';
 import { MemorySitePresenceAdapter } from './live/site-presence.memory.adapter.js';
+import { NameServicePort } from '../application/ports/sns/name-service.port.js';
+import { SnsNameServiceAdapter } from './sns/sns-name-service.adapter.js';
 
 /** Every port the application layer declares is bound to its adapter here – the only place that knows which implementation runs. */
 const ports: Provider[] = [
@@ -145,6 +149,7 @@ const ports: Provider[] = [
   { provide: PoolCrankChainPort, useClass: ProgramCrankAdapter },
   { provide: PoolPayoutChainPort, useClass: ProgramPayoutAdapter },
   { provide: PoolPayoutRepositoryPort, useClass: PoolPayoutPrismaRepository },
+  { provide: PledgeRepositoryPort, useClass: PledgePrismaRepository },
   { provide: ChainEventRepositoryPort, useClass: ChainEventPrismaRepository },
   { provide: ChainCursorRepositoryPort, useClass: ChainCursorPrismaRepository },
   { provide: RideEventRepositoryPort, useClass: RideEventPrismaRepository },
@@ -155,6 +160,7 @@ const ports: Provider[] = [
   { provide: AnalyticsPort, useClass: PostHogAnalyticsAdapter },
   { provide: StatsRepositoryPort, useClass: StatsPrismaRepository },
   { provide: CachePort, inject: [EnvService, ClockPort], useFactory: (env: EnvService, clock: ClockPort): CachePort => (env.redisUrl ? new RedisCacheAdapter(env.redisUrl, clock) : new MemoryCacheAdapter(clock)) },
+  { provide: NameServicePort, useClass: SnsNameServiceAdapter },
 ];
 
 const portTokens = ports.map((p) => (p as { provide: unknown }).provide as typeof ClockPort);

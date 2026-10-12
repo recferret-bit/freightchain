@@ -4,6 +4,7 @@ import { toPublicRideDto, type PublicRideDto, type PublicRideVerdictDto } from '
 import { DomainError } from '../../../../domain/shared/errors.js';
 import { RideRepositoryPort } from '../../../ports/rides/ride.repository.port.js';
 import { RideVerdictRepositoryPort } from '../../../ports/verdict/ride-verdict.repository.port.js';
+import { NameServicePort } from '../../../ports/sns/name-service.port.js';
 import { GetPublicRideQuery } from './get-public-ride.query.js';
 
 @QueryHandler(GetPublicRideQuery)
@@ -11,14 +12,20 @@ export class GetPublicRideHandler implements IQueryHandler<GetPublicRideQuery, P
   constructor(
     private readonly rides: RideRepositoryPort,
     @Optional() private readonly verdicts?: RideVerdictRepositoryPort,
+    @Optional() private readonly nameService?: NameServicePort,
   ) {}
 
   async execute({ rideId }: GetPublicRideQuery): Promise<PublicRideDto> {
     const ride = await this.rides.findById(rideId);
     if (!ride) throw DomainError.notFound('ride_not_found', 'Ride not found');
 
+    const rawWallet = typeof ride.snapshot === 'function' ? ride.snapshot().wallet : (ride as any).wallet;
+    const [v, sns] = await Promise.all([
+      (ride as any).verdict ?? (this.verdicts ? this.verdicts.findByRide(ride.id) : Promise.resolve(null)),
+      rawWallet && this.nameService ? this.nameService.reverse(rawWallet) : Promise.resolve(undefined),
+    ]);
+
     let verdict: PublicRideVerdictDto | null = null;
-    const v = (ride as any).verdict ?? (this.verdicts ? await this.verdicts.findByRide(ride.id) : null);
     if (v) {
       const dto = typeof v.toDto === 'function' ? v.toDto() : v;
       if (dto.status === 'verified' || dto.status === 'flagged' || dto.status === 'rejected') {
@@ -29,6 +36,6 @@ export class GetPublicRideHandler implements IQueryHandler<GetPublicRideQuery, P
       }
     }
 
-    return toPublicRideDto(ride, verdict);
+    return toPublicRideDto(ride, verdict, undefined, sns);
   }
 }

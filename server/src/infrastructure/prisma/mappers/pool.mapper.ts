@@ -13,13 +13,28 @@ export class PoolMapper {
       roundId: row.roundId, rideSeed: row.rideSeed, createdAt: row.createdAt, syncedAt: row.syncedAt,
       payoutState: row.payoutState as PayoutState, payoutNote: row.payoutNote,
       hold: row.holdBy && row.holdAt ? { by: row.holdBy, at: row.holdAt, note: row.holdNote } : null,
+      seedCommitment: row.seedCommitment,
+      blockhash: row.blockhash,
+      slot: row.slot,
+      stakedLamports: row.stakedLamports,
+      yieldEarned: row.yieldEarned,
     });
   }
 
   static toData(pool: Pool): Prisma.PoolUncheckedCreateInput {
     const { hold, ...s } = pool.snapshot();
     return {
-      ...s, holdBy: hold?.by ?? null, holdAt: hold?.at ?? null, holdNote: hold?.note ?? null, status: s.status as PoolStatusRow, priceLamports: BigInt(s.priceLamports), vaultLamports: BigInt(s.vaultLamports), sponsored: BigInt(s.sponsored),
+      ...s,
+      holdBy: hold?.by ?? null,
+      holdAt: hold?.at ?? null,
+      holdNote: hold?.note ?? null,
+      status: s.status as PoolStatusRow,
+      priceLamports: BigInt(s.priceLamports),
+      vaultLamports: BigInt(s.vaultLamports),
+      sponsored: BigInt(s.sponsored),
+      stakedLamports: BigInt(s.stakedLamports ?? 0n),
+      yieldEarned: BigInt(s.yieldEarned ?? 0n),
+      slot: s.slot !== null && s.slot !== undefined ? BigInt(s.slot) : null,
     };
   }
 }

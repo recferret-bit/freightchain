@@ -30,6 +30,8 @@ import { AdminActionRepositoryPort } from '../../src/application/ports/admin/adm
 import { MemoryAdminDirectory } from './in-memory/memory-admin-directory.js';
 import { AdminDirectoryPort } from '../../src/application/ports/admin/admin-directory.port.js';
 import { AdminQueryPort } from '../../src/application/ports/admin/admin-query.port.js';
+import { NameServicePort } from '../../src/application/ports/sns/name-service.port.js';
+import { StubNameServiceAdapter } from './stub-name-service.js';
 import { PrismaService } from '../../src/infrastructure/prisma/prisma.service.js';
 import { truncateAllTables } from '../../src/infrastructure/prisma/truncate.js';
 import { FakeChain, TREASURY } from './fake-chain.js';
@@ -81,6 +83,7 @@ export interface Harness {
   chain: FakeChain;
   /** the pool program (PoolChainPort) */
   poolChain: FakePoolChain;
+  nameService: StubNameServiceAdapter;
   persistence: Persistence;
   server(): Server;
   /** wipes every table / map and the fake chain (the clock keeps running forward) */
@@ -111,9 +114,10 @@ export async function createHarness(persistence: Persistence, env: Record<string
   const chain = new FakeChain();
   const poolChain = new FakePoolChain();
   const memory = new MemoryDb();
+  const nameService = new StubNameServiceAdapter();
 
   // the stale-ride sweep runs on a REAL timer – it would race the fake clock; scenarios run SweepStaleRidesCommand themselves
-  let builder = Test.createTestingModule({ imports: [AppModule] }).overrideProvider(EntropyPort).useValue(entropy).overrideProvider(StaleRideScheduler).useValue({}).overrideProvider(ClockPort).useValue(clock).overrideProvider(ChainPort).useValue(chain).overrideProvider(PoolChainPort).useValue(poolChain);
+  let builder = Test.createTestingModule({ imports: [AppModule] }).overrideProvider(EntropyPort).useValue(entropy).overrideProvider(StaleRideScheduler).useValue({}).overrideProvider(ClockPort).useValue(clock).overrideProvider(ChainPort).useValue(chain).overrideProvider(PoolChainPort).useValue(poolChain).overrideProvider(NameServicePort).useValue(nameService);
   if (persistence === 'memory') {
     builder = builder
       .overrideProvider(PrismaService).useValue({ $connect: async () => undefined, $disconnect: async () => undefined })
@@ -156,13 +160,14 @@ export async function createHarness(persistence: Persistence, env: Record<string
   const prisma = persistence === 'postgres' ? app.get(PrismaService, { strict: false }) : null;
 
   return {
-    app, clock, chain, poolChain, persistence,
+    app, clock, chain, poolChain, nameService, persistence,
     seedFor: (route, hourIndex = 0) => { let s = 1000; while (worldFor(s).route !== route || worldFor(s).startHour !== START_HOURS[hourIndex]) s++; entropy.next = s; },
     server: () => app.getHttpServer() as Server,
     reset: async () => {
       chain.reset();
       poolChain.reset();
       memory.reset();
+      nameService.reset();
       if (prisma) await truncateAllTables(prisma);
       const cache = app.get(CachePort);   // the cached statistics describe the database that was just wiped
       if (cache instanceof MemoryCacheAdapter) cache.clear();

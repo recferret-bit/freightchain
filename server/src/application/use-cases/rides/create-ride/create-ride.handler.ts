@@ -152,7 +152,10 @@ export class CreateRideHandler implements ICommandHandler<CreateRideCommand, Rid
     const seed = pool.rideSeed;
     const timeScale = isDemoWallet(rules, wallet) ? demoScaleOf(rules) : 1;
     const minSeconds = rideTier(tier, rules.freeRideSeconds).seconds / timeScale;
-    return Ride.createFromTicket({ id, wallet, tier, seed, minSeconds, timeScale, poolId: pool.id, roundId: pool.roundId ?? round.id, now });
+    return Ride.createFromTicket({
+      id, wallet, tier, seed, minSeconds, timeScale, poolId: pool.id, roundId: pool.roundId ?? round.id, now,
+      seedCommitment: pool.seedCommitment, blockhash: pool.blockhash, slot: pool.slot,
+    });
   }
 
   private emit(wallet: string, facts: CreateFacts): void {

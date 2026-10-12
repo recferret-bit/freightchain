@@ -16,6 +16,7 @@ import { RideQueryPort } from '../../../ports/rides/ride-query.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
 import { PoolAttentionService } from '../../../services/pool-attention.service.js';
 import { PoolRegistryService } from '../../../services/pool-registry.service.js';
+import { AttestationService } from '../../../services/attestation.service.js';
 import { SettleChainSignatureCommand } from '../settle-chain-signature/settle-chain-signature.command.js';
 import { PayPoolsCommand, type PaidPrizeDto, type PayoutPassDto, type PoolPayoutResultDto } from './pay-pools.command.js';
 
@@ -54,6 +55,7 @@ export class PayPoolsHandler implements ICommandHandler<PayPoolsCommand, PayoutP
     private readonly attention: PoolAttentionService,
     private readonly commands: CommandBus,
     private readonly clock: ClockPort,
+    private readonly attestation: AttestationService,
   ) {}
 
   async execute({ poolId }: PayPoolsCommand): Promise<PayoutPassDto> {
@@ -158,6 +160,12 @@ export class PayPoolsHandler implements ICommandHandler<PayPoolsCommand, PayoutP
     if (paidOnChain.has(row.wallet)) {
       await this.payouts.markPaidElsewhere(pool.id, row.rank, this.clock.now());
       return ok;
+    }
+    try {
+      await this.attestation.ensureAttestation(pool.id, row.wallet);
+    } catch (attestError) {
+      const msg = attestError instanceof Error ? attestError.message : String(attestError);
+      return { outcome: 'error', note: `attestation failed for ${row.wallet}: ${msg}` };
     }
     let claimed: string | null = null;
     try {

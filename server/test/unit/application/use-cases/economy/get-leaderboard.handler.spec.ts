@@ -121,4 +121,17 @@ describe('GetLeaderboardHandler', () => {
     expect(await wallets('4h')).toEqual(['bob']);
     expect(await wallets(null)).toEqual(['bob', 'alice']);
   });
+
+  it('enriches leaderboard rows with primary .sol domain names via NameServicePort', async () => {
+    const ctx = unitContext();
+    await completed(ctx, 'alice', 500);
+    await completed(ctx, 'bob', 300);
+    ctx.nameService.setReverse('alice', 'alice.sol');
+    const handler = new GetLeaderboardHandler(ctx.rounds, ctx.rideQuery, ctx.rules, ctx.nameService);
+    const board = await handler.execute(new GetLeaderboardQuery('round'));
+    expect(board.rows).toEqual([
+      { rank: 1, wallet: 'alice', distance: 500, seconds: 1, hull: 100, rides: 1, sns: 'alice.sol' },
+      { rank: 2, wallet: 'bob', distance: 300, seconds: 1, hull: 100, rides: 1, sns: null },
+    ]);
+  });
 });

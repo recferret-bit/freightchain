@@ -8,10 +8,13 @@ import { EntropyPort } from '../../../ports/shared/entropy.port.js';
 import { RequestChallengeCommand, type ChallengeDto } from './request-challenge.command.js';
 
 const NONCE_BYTES = 16;
+const DEFAULT_STATEMENT = 'Sign in to Freight Chain. This request will not trigger a transaction or cost any fees.';
+const SIWS_VERSION = '1';
+const SOLANA_CHAIN_ID = 'solana:mainnet';
 
-/** Step 1 of Sign-In With Solana: the server builds the message, stores it, and hands it to the wallet to sign. The message names the page's own host – the
-    apex, or the game host (ride.<apex>, the watch page signs in there) when the request's Origin is exactly that configured origin; any other Origin gets the
-    apex, so a phishing page never gets a message with its own domain in it (the wallet's domain check then warns). */
+/** Step 1 of Sign-In With Solana: the server builds the structured challenge, stores it, and hands it to the wallet.
+ * Supports both wallet-bound challenges (legacy fallback) and anonymous 1-click challenges keyed by nonce:nonce.
+ */
 @CommandHandler(RequestChallengeCommand)
 export class RequestChallengeHandler implements ICommandHandler<RequestChallengeCommand, ChallengeDto> {
   constructor(
@@ -22,13 +25,40 @@ export class RequestChallengeHandler implements ICommandHandler<RequestChallenge
   ) {}
 
   async execute(command: RequestChallengeCommand): Promise<ChallengeDto> {
-    const wallet = parseWalletAddress(command.wallet);
+    const wallet = command.wallet ? parseWalletAddress(command.wallet) : null;
     const rules = this.rules.get();
     const game = rules.gameOrigin !== null && rules.gameDomain !== null && command.origin === rules.gameOrigin;
+    const domain = game ? (rules.gameDomain as string) : rules.appDomain;
+    const uri = game ? (rules.gameOrigin as string) : rules.appOrigin;
+    const nonce = this.entropy.hex(NONCE_BYTES);
+    const now = this.clock.now();
+    const ttlMs = rules.nonceTtlMs;
+    const expiresAt = new Date(now.getTime() + ttlMs);
+
     const challenge = AuthChallenge.issue({
-      wallet, domain: game ? (rules.gameDomain as string) : rules.appDomain, origin: game ? (rules.gameOrigin as string) : rules.appOrigin, nonce: this.entropy.hex(NONCE_BYTES), now: this.clock.now(), ttlMs: rules.nonceTtlMs,
+      wallet: wallet ?? undefined,
+      domain,
+      origin: uri,
+      nonce,
+      now,
+      ttlMs,
+      statement: DEFAULT_STATEMENT,
     });
+
+    // Key in storage by wallet if specified, or by nonce:nonce for 1-click SIWS
     await this.challenges.upsert(challenge);
-    return { message: challenge.message };
+
+    return {
+      message: challenge.message,
+      domain,
+      statement: DEFAULT_STATEMENT,
+      uri,
+      version: SIWS_VERSION,
+      chainId: SOLANA_CHAIN_ID,
+      nonce,
+      issuedAt: now.toISOString(),
+      expirationTime: expiresAt.toISOString(),
+      ...(wallet ? { address: wallet } : {}),
+    };
   }
 }

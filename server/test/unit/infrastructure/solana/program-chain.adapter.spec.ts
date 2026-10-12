@@ -130,6 +130,7 @@ describe('ProgramChainAdapter – reads', () => {
       vault: fixtureTx('buy_ticket self-paid').instructions[0]!.accounts[4]!.pubkey, authority: fx.keys.authority, tier: 1, priceLamports: 100_000_000, minTickets: 3, maxTickets: 10, maxPerWallet: 4,
       prepDeadline: new Date(Number(d['prepDeadline']) * 1000), playDeadline: new Date(Number(d['playDeadline']) * 1000), payoutAt: new Date(Number(d['payoutAt']) * 1000), prizeBps: 6000, seedBps: 2500, feeBps: 1500,
       feeTreasury: fx.keys.feeTreasury, seedTreasury: fx.keys.seedTreasury, createdAt: new Date(Number(d['createdAt']) * 1000),
+      seedCommitment: (d['seedCommitment'] as string | undefined) ?? 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=', stakedLamports: 0, yieldEarned: 0,
     });
     // the rent minimum is the cluster's own (read once): devnet's is lower than mainnet's, so the escrow there is vault − 650 240
     let rentReads = 0;
@@ -161,7 +162,7 @@ describe('ProgramChainAdapter – reads', () => {
     expect(asked).toEqual([fixtureAccount('pool 0 active').address, fixtureTx('buy_ticket self-paid').instructions[0]!.accounts[4]!.pubkey]);
     expect((await adapterWith(rpc).adapter.feeQuote({ poolId: null, kind: 'buy' })).estimatedFeeLamports).toBe(5_000 + 600);
     expect(asked).toEqual([fx.programId]);
-    expect((await adapterWith(rpc).adapter.feeQuote({ poolId: 0, kind: 'pay_prize' })).estimatedFeeLamports).toBe(5_000 + 170);
+    expect((await adapterWith(rpc).adapter.feeQuote({ poolId: 0, kind: 'pay_prize' })).estimatedFeeLamports).toBe(5_000 + 220);
     await adapterWith(rpc, { ticketProgramId: '' }).adapter.feeQuote({ poolId: null, kind: 'buy' }); // transfer mode: the network's own recent fees
     expect(asked).toEqual([]);
   });

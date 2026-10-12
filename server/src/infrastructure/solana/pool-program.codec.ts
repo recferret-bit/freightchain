@@ -31,13 +31,17 @@ function convert(type: IdlType, v: BorshValue, where: string): unknown {
     return Number(n);
   }
   if (type === 'i64') return new Date(Number(v as bigint) * 1000);
-  if (typeof type === 'object' && 'array' in type) return orderIdFromBytes(v as Uint8Array);
+  if (typeof type === 'object' && 'array' in type) {
+    if (type.array[1] === 16) return orderIdFromBytes(v as Uint8Array);
+    if (type.array[1] === 32) return Buffer.from(v as Uint8Array).toString('base64');
+    return v;
+  }
   if (typeof type === 'object' && 'option' in type) return v === null ? null : convert(type.option, v, where);
   if (typeof type === 'object' && 'defined' in type) return toDomain(TYPES.get(type.defined.name)!.type.fields, v as BorshStruct, where);
   return v;
 }
 
-export type PoolAccountName = 'Pool' | 'Ticket' | 'Config' | 'Series';
+export type PoolAccountName = 'Pool' | 'Ticket' | 'Config' | 'Series' | 'Attestation' | 'Pledge';
 export type AccountKeys = Record<string, PublicKey | string>;
 
 export interface ProgramDataLine {
@@ -60,6 +64,14 @@ export class PoolProgramCodec {
   seriesPda(tier: number): PublicKey { return PublicKey.findProgramAddressSync([Buffer.from('series'), Buffer.from([tier])], this.programId)[0]; }
   ticketPda(poolId: number, buyer: string | PublicKey): PublicKey {
     return PublicKey.findProgramAddressSync([Buffer.from('ticket'), this.poolPda(poolId).toBuffer(), new PublicKey(buyer).toBuffer()], this.programId)[0];
+  }
+  attestationPda(poolId: number, driver: string | PublicKey): PublicKey {
+    return PublicKey.findProgramAddressSync([Buffer.from('attestation'), this.poolPda(poolId).toBuffer(), new PublicKey(driver).toBuffer()], this.programId)[0];
+  }
+  pledgePda(rideId: Uint8Array | Buffer | number[], sponsor: string | PublicKey): PublicKey {
+    const rideIdBuf = Buffer.isBuffer(rideId) ? rideId : Buffer.from(rideId);
+    if (rideIdBuf.length !== 32) throw new RangeError(`ride_id must be 32 bytes, got ${rideIdBuf.length}`);
+    return PublicKey.findProgramAddressSync([Buffer.from('pledge'), rideIdBuf, new PublicKey(sponsor).toBuffer()], this.programId)[0];
   }
 
   /** discriminator + borsh args, in the IDL's order (args keyed by their IDL snake_case names) */

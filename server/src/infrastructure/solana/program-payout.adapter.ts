@@ -57,8 +57,10 @@ export class ProgramPayoutAdapter extends PoolPayoutChainPort {
 
   async payPrize(i: { poolId: number; to: string; lamports: number; rank: number }, onSigned: (tx: SignedPayout) => Promise<void>): Promise<{ signature: string }> {
     const c = this.codec, key = this.signer;
-    const ix = c.instruction('pay_prize', { authority: key.publicKey, config: c.configPda(), pool: c.poolPda(i.poolId), vault: c.vaultPda(i.poolId), to: i.to },
-      { pool_id: i.poolId, lamports: i.lamports, rank: i.rank });
+    const ix = c.instruction('pay_prize', {
+      authority: key.publicKey, config: c.configPda(), pool: c.poolPda(i.poolId), vault: c.vaultPda(i.poolId), to: i.to,
+      attestation: c.attestationPda(i.poolId, i.to),
+    }, { pool_id: i.poolId, lamports: i.lamports, rank: i.rank });
     const quote = await this.chain.feeQuote({ poolId: i.poolId, kind: 'pay_prize' });
     const tx = await signWith(this.rpc, this.commitment, key, [ix], CU_LIMITS.pay_prize, quote.priorityMicrolamports);
     const label = `pay_prize #${i.rank} of pool ${i.poolId}`;
@@ -81,6 +83,44 @@ export class ProgramPayoutAdapter extends PoolPayoutChainPort {
     const quote = await this.chain.feeQuote({ poolId, kind: 'close_pool' });
     const tx = await signWith(this.rpc, this.commitment, key, [ix], CU_LIMITS.close_pool, quote.priorityMicrolamports);
     const label = `close_pool ${poolId}`;
+    await simulateSigned(this.rpc, this.commitment, tx, label);
+    await broadcastUntilConfirmed(this.rpc, this.commitment, tx, label, (ms) => this.wait(ms), (m) => this.logger.debug(m));
+    return { signature: tx.signature };
+  }
+
+  async isAttested(poolId: number, driver: string): Promise<boolean> {
+    const c = this.codec;
+    const pda = c.attestationPda(poolId, driver);
+    const info = await this.rpc.read((x) => x.getAccountInfo(pda, this.commitment));
+    if (!info || !info.owner.equals(c.programId)) return false;
+    const acc = c.decodeAccount('Attestation', info.data);
+    return acc !== null && acc['status'] === 1 && (acc['verifiedKm'] as number) > 0;
+  }
+
+  async recordAttestation(i: {
+    poolId: number;
+    driver: string;
+    telemetryRoot: Uint8Array | Buffer;
+    verifiedKm: number;
+    status: number;
+  }): Promise<{ signature: string }> {
+    const c = this.codec, key = this.signer;
+    const ix = c.instruction('record_attestation', {
+      authority: key.publicKey,
+      config: c.configPda(),
+      pool: c.poolPda(i.poolId),
+      driver_account: i.driver,
+      attestation: c.attestationPda(i.poolId, i.driver),
+    }, {
+      pool_id: i.poolId,
+      driver: i.driver,
+      telemetry_root: i.telemetryRoot,
+      verified_km: i.verifiedKm,
+      status: i.status,
+    });
+    const quote = await this.chain.feeQuote({ poolId: i.poolId, kind: 'pay_prize' });
+    const tx = await signWith(this.rpc, this.commitment, key, [ix], CU_LIMITS.record_attestation, quote.priorityMicrolamports);
+    const label = `record_attestation pool ${i.poolId} driver ${i.driver}`;
     await simulateSigned(this.rpc, this.commitment, tx, label);
     await broadcastUntilConfirmed(this.rpc, this.commitment, tx, label, (ms) => this.wait(ms), (m) => this.logger.debug(m));
     return { signature: tx.signature };

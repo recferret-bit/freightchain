@@ -1,4 +1,4 @@
-import { ComputeBudgetProgram, Transaction, VersionedTransaction, type Commitment, type Keypair, type TransactionInstruction } from '@solana/web3.js';
+import { ComputeBudgetProgram, Transaction, VersionedTransaction, type Commitment, type Keypair, type SignatureStatus, type TransactionInstruction } from '@solana/web3.js';
 import bs58 from 'bs58';
 import { ConflictError } from '../../domain/shared/errors.js';
 import type { SolanaRpc } from './solana-rpc.js';
@@ -30,16 +30,42 @@ export async function simulateSigned(rpc: SolanaRpc, commitment: Commitment, tx:
   if (sim.value.err) throw new ConflictError(`${label} would fail: ${JSON.stringify(sim.value.err)} – ${sim.value.logs?.at(-1) ?? ''}`, 'transaction_would_fail');
 }
 
+/**
+ * Checks signature status against primary RPC. Catches transient RPC errors during polling
+ * so a single transient RPC timeout does not prematurely abort transaction confirmation.
+ * Returns SignatureStatus if found, null if not found, or undefined if transiently errored.
+ */
+export async function confirmSignatureViaStatuses(
+  rpc: SolanaRpc,
+  signature: string,
+  debug: (m: string) => void = () => {},
+): Promise<SignatureStatus | null | undefined> {
+  try {
+    return await rpc.primaryOnly(async (x) => (await x.getSignatureStatuses([signature], { searchTransactionHistory: true })).value[0]);
+  } catch (err) {
+    debug(`confirmSignatureViaStatuses transient error: ${(err as Error).message}`);
+    return undefined;
+  }
+}
+
 /** re-send until confirmed (at `commitment`); ConflictError `transaction_failed` / `transaction_dropped` (the blockhash expired – it will never land) / `transaction_unconfirmed` */
 export async function broadcastUntilConfirmed(rpc: SolanaRpc, commitment: Commitment, tx: SignedTx, label: string, wait: (ms: number) => Promise<void>, debug: (m: string) => void): Promise<void> {
   for (let n = 0; n < MAX_RESENDS; n++) {
     await rpc.primaryOnly((x) => x.sendRawTransaction(tx.raw, { skipPreflight: true, maxRetries: 0 })).catch((e: unknown) => debug(`re-send: ${(e as Error).message}`));
     await wait(RESEND_MS);
-    const s = await rpc.primaryOnly(async (x) => (await x.getSignatureStatuses([tx.signature], { searchTransactionHistory: true })).value[0]);
+    const s = await confirmSignatureViaStatuses(rpc, tx.signature, debug);
     if (s?.err) throw new ConflictError(`${label} failed on chain: ${JSON.stringify(s.err)}`, 'transaction_failed');
     if (s?.confirmationStatus === 'finalized' || (s?.confirmationStatus === 'confirmed' && commitment === 'confirmed')) return;
-    if (!s && (await rpc.primaryOnly((x) => x.getBlockHeight(commitment))) > tx.lastValidBlockHeight) {
-      throw new ConflictError(`${label} was dropped – the next pass sends it again`, 'transaction_dropped');
+    if (s === null) {
+      let height: number | undefined;
+      try {
+        height = await rpc.primaryOnly((x) => x.getBlockHeight(commitment));
+      } catch (err) {
+        debug(`getBlockHeight transient error: ${(err as Error).message}`);
+      }
+      if (height !== undefined && height > tx.lastValidBlockHeight) {
+        throw new ConflictError(`${label} was dropped – the next pass sends it again`, 'transaction_dropped');
+      }
     }
   }
   throw new ConflictError(`${label} (${tx.signature}) is not confirmed yet – the watcher settles it when it lands`, 'transaction_unconfirmed');

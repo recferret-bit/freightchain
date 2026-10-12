@@ -18,6 +18,8 @@ model Player {
   cosmetics    CosmeticUnlock[]
   equipped     CosmeticEquip[]
   stats        PlayerStats?
+  sponsorPledges Pledge[] @relation("SponsorPledges")
+  driverPledges  Pledge[] @relation("DriverPledges")
 
   @@index([createdAt]) // the admin PLAYERS list: newest first
   @@schema("player")

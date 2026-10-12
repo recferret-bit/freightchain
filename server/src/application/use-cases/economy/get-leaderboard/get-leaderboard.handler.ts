@@ -1,3 +1,4 @@
+import { Optional } from '@nestjs/common';
 import { QueryHandler, type IQueryHandler } from '@nestjs/cqrs';
 import { DEFAULT_BOARD_LEVEL, LEADERBOARD_PAGE, LEADERBOARD_SIZE, PRIZE_RANKS, type LeaderboardDto, type LeaderboardStandingDto } from '../../../../domain/economy/economy.dto.js';
 import { PAID_TIER_IDS } from '../../../../domain/rides/ride-tier.js';
@@ -6,6 +7,7 @@ import type { LeaderboardEntry } from '../../../ports/rides/ride-query.port.js';
 import { RulesConfigPort } from '../../../ports/config/rules-config.port.js';
 import { RideQueryPort } from '../../../ports/rides/ride-query.port.js';
 import { RoundService } from '../../../services/round.service.js';
+import { NameServicePort } from '../../../ports/sns/name-service.port.js';
 import { GetLeaderboardQuery } from './get-leaderboard.query.js';
 
 const roundNum = (n: number) => Math.round(n);
@@ -21,6 +23,7 @@ export class GetLeaderboardHandler implements IQueryHandler<GetLeaderboardQuery,
     private readonly roundService: RoundService,
     private readonly rideQuery: RideQueryPort,
     private readonly rules: RulesConfigPort,
+    @Optional() private readonly nameService?: NameServicePort,
   ) {}
 
   async execute(query: GetLeaderboardQuery): Promise<LeaderboardDto> {
@@ -33,10 +36,17 @@ export class GetLeaderboardHandler implements IQueryHandler<GetLeaderboardQuery,
     const page = await this.rideQuery.leaderboard(query.board, query.board === 'round' ? round.id : null, verifiedOnly, trip, tier, query.sort, offset, LEADERBOARD_PAGE, LEADERBOARD_SIZE);
     const standing = query.wallet ? await this.standing(query.wallet, round.id, verifiedOnly) : null;
     const me = query.wallet ? await this.me(query, round.id, verifiedOnly, trip, tier, standing) : null;
+    const wallets = page.rows.map((r) => r.wallet);
+    const snsMap = this.nameService ? await this.nameService.reverseBatch(wallets) : null;
     return {
       board: query.board, level, tier, round: { id: round.id, endsAt: round.endsAt.getTime() }, prizeRanks: PRIZE_RANKS, verifiedOnly,
       sort: query.sort, page: query.page, pageSize: LEADERBOARD_PAGE, total: Math.min(page.total, LEADERBOARD_SIZE),
-      rows: page.rows.map((r) => ({ rank: r.rank, wallet: r.wallet, ...stats(r) })),
+      rows: page.rows.map((r) => ({
+        rank: r.rank,
+        wallet: r.wallet,
+        ...stats(r),
+        ...(snsMap ? { sns: snsMap.get(r.wallet) ?? null } : {}),
+      })),
       me: me ? { rank: me.rank, ...stats(me) } : null,
       standing,
     };

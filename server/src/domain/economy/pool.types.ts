@@ -65,4 +65,9 @@ export interface PoolProps {
   payoutNote: string | null;
   /** an admin's hold on the payout, null = none */
   hold: PoolHold | null;
+  seedCommitment?: string | null;
+  blockhash?: string | null;
+  slot?: bigint | number | null;
+  stakedLamports?: bigint | number;
+  yieldEarned?: bigint | number;
 }

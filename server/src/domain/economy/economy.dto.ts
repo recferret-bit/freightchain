@@ -66,6 +66,8 @@ export interface LeaderboardRowDto {
   /** hull (0–100) left at the end of the furthest counted shift; null when that shift reported none */
   hull: number | null;
   rides: number;
+  /** primary Solana Name Service (.sol) domain name, or null */
+  sns?: string | null;
 }
 
 /** the signed-in rider's distance rank on one board. `rank` null = no counted shift there.

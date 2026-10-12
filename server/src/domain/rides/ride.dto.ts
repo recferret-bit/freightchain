@@ -43,6 +43,9 @@ export interface RideDto {
   review: RideReview | null;
   /** the challenge whose window is open right now (the heartbeat response carries it; null elsewhere). Kinds live in CHALLENGE_KINDS, empty today. */
   challenge: ChallengeDto | null;
+  seedCommitment?: string | null;
+  blockhash?: string | null;
+  slot?: number | null;
 }
 
 /** `now`: when given, the open prompt is included (the heartbeat); without it the DTO never carries one. */
@@ -72,6 +75,9 @@ export const toRideDto = (r: Ride, verdict: VerdictDto | null = null, now: Date 
   verdict,
   review: reviewOf(r.tier, verdict ? { status: verdict.status, overridden: verdict.override !== null } : null, r.status),
   challenge: now ? (() => { const c = r.openChallenge(now); return c ? toChallengeDto(c) : null; })() : null,
+  seedCommitment: r.seedCommitment,
+  blockhash: r.blockhash,
+  slot: r.slot !== null && r.slot !== undefined ? Number(r.slot) : null,
 });
 
 /** The wallet's READY free ride (ordered, not started – its credit is already spent): ordering a free ride again hands it back, re-chosen at the level and

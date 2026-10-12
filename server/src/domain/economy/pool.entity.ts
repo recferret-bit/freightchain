@@ -1,4 +1,5 @@
 import { BadRequestError, ConflictError } from '../shared/errors.js';
+import { projectRoadSeed } from '../road/provable-seed.js';
 import { tierFromChainCode, type ChainEventRecord, type PoolChainState } from './chain-events.js';
 import type { PayoutState, PoolHold, PoolProps, PoolStatus } from './pool.types.js';
 
@@ -28,13 +29,22 @@ export class Pool {
   static fromChain(state: PoolChainState, now: Date, existing: Pool | null, rideSeed: number): Pool {
     const tier = tierFromChainCode(state.tier);
     if (!tier) throw new BadRequestError(`pool ${state.poolId}: unknown tier code ${state.tier}`, 'bad_pool');
+    let resolvedRideSeed = existing?.p.rideSeed ?? rideSeed;
+    if (state.seedCommitment && !existing) {
+      resolvedRideSeed = projectRoadSeed(Buffer.from(state.seedCommitment, 'base64'));
+    }
     return Pool.register({
       id: state.poolId, address: state.address, tier, label: existing?.p.label ?? `${tier.toUpperCase()} · pool ${state.poolId}`, priceLamports: state.priceLamports,
       minTickets: state.minTickets, maxTickets: state.maxTickets, maxPerWallet: state.maxPerWallet, prepDeadline: state.prepDeadline, playDeadline: state.playDeadline, payoutAt: state.payoutAt,
       prizeBps: state.prizeBps, seedBps: state.seedBps, feeBps: state.feeBps, feeTreasury: state.feeTreasury, seedTreasury: state.seedTreasury, status: state.status,
       ticketsSold: state.ticketsSold, buyers: state.buyers, vaultLamports: state.escrowLamports, sponsored: state.sponsored, roundId: existing?.p.roundId ?? null,
-      rideSeed: existing?.p.rideSeed ?? rideSeed, createdAt: state.createdAt, syncedAt: now,
+      rideSeed: resolvedRideSeed, createdAt: state.createdAt, syncedAt: now,
       payoutState: existing?.p.payoutState ?? 'pending', payoutNote: existing?.p.payoutNote ?? null, hold: existing?.p.hold ?? null,
+      seedCommitment: state.seedCommitment ?? existing?.p.seedCommitment ?? null,
+      blockhash: existing?.p.blockhash ?? null,
+      slot: existing?.p.slot ?? null,
+      stakedLamports: state.stakedLamports ?? existing?.p.stakedLamports ?? 0n,
+      yieldEarned: state.yieldEarned ?? existing?.p.yieldEarned ?? 0n,
     });
   }
 
@@ -69,6 +79,11 @@ export class Pool {
   get roundId(): number | null { return this.p.roundId; }
   /** the road every ride of this pool is driven on – one seed for the whole pool, so all its riders compete on the same ride */
   get rideSeed(): number { return this.p.rideSeed; }
+  get seedCommitment(): string | null { return this.p.seedCommitment ?? null; }
+  get blockhash(): string | null { return this.p.blockhash ?? null; }
+  get slot(): bigint | number | null { return this.p.slot ?? null; }
+  get stakedLamports(): bigint | number { return this.p.stakedLamports ?? 0n; }
+  get yieldEarned(): bigint | number { return this.p.yieldEarned ?? 0n; }
   get isActive(): boolean { return this.p.status === 'active'; }
   /** A ticket of this pool can be ridden now: the pool is live and its play deadline has not passed (POST /api/rides spends one only then). */
   isRidable(now: Date): boolean { return this.isActive && now.getTime() < this.p.playDeadline.getTime(); }

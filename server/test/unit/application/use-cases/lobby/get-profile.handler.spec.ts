@@ -45,4 +45,12 @@ describe('GetProfileHandler', () => {
     await ctx.stats.invalidate('w');
     expect((await handler.execute(new GetProfileQuery('w'))).career).toEqual({ rides: 2, ridesFree: 1, ridesPaid: 1, ridesCompleted: 1, seconds: 125, metres: 4322, crashes: 4, crashesVehicle: 3, crashesBuilding: 1, donations: 2, donationLamports: 70_000 });
   });
+
+  it('enriches profile with primary .sol domain name via NameServicePort', async () => {
+    const ctx = unitContext();
+    ctx.nameService.setReverse('w', 'driver.sol');
+    const handler = new GetProfileHandler(ctx.sessions, ctx.achievements, ctx.rideQuery, ctx.payments, ctx.rules, ctx.clock, ctx.poolTickets, ctx.tickets, ctx.orders, new RecordingAnalytics(), ctx.stats, ctx.nameService);
+    const p = await handler.execute(new GetProfileQuery('w'));
+    expect(p.sns).toBe('driver.sol');
+  });
 });

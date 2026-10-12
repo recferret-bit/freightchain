@@ -24,6 +24,8 @@ export interface PublicRideDto {
   tipsLamports: number;
   pledgesLamports: number;
   verdict: PublicRideVerdictDto | null;
+  /** primary Solana Name Service (.sol) domain name of the driver, or null */
+  sns?: string | null;
 }
 
 export function shortenWallet(wallet: string): string {
@@ -41,6 +43,7 @@ export function toPublicRideDto(
     tipsLamports?: number;
     pledgesLamports?: number;
   },
+  sns?: string | null,
 ): PublicRideDto {
   const p = typeof ride.snapshot === 'function' ? ride.snapshot() : (ride as any);
   const distance = typeof ride.distance === 'number' ? ride.distance : (p.distance ?? p.lastS ?? 0);
@@ -67,5 +70,6 @@ export function toPublicRideDto(
     tipsLamports: extras?.tipsLamports ?? (ride as any).tipsLamports ?? (p as any).tipsLamports ?? 0,
     pledgesLamports: extras?.pledgesLamports ?? (ride as any).pledgesLamports ?? (p as any).pledgesLamports ?? 0,
     verdict,
+    ...(sns !== undefined ? { sns } : {}),
   };
 }
