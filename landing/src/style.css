@@ -56,7 +56,7 @@ button:focus-visible,a:focus-visible,.card3d:focus-visible{outline:2px solid #ff
 .slides img{opacity:0;animation:kb 24s infinite;transform-origin:50% 60%}
 .slides img:nth-child(2){animation-delay:8s}.slides img:nth-child(3){animation-delay:16s}
 @keyframes kb{0%{opacity:0;transform:scale(1.05)}8%{opacity:1}33%{opacity:1}41%{opacity:0;transform:scale(1.18)}100%{opacity:0}}
-.shade{position:absolute;inset:0;background:linear-gradient(180deg,#0b0a09 0%,#0b0a0966 25%,#0b0a0999 60%,var(--bg) 100%),radial-gradient(ellipse at 30% 50%,#0000 0%,#0b0a09aa 70%)}
+.shade{position:absolute;inset:0;background:linear-gradient(180deg,#0b0a0999 0%,#0b0a0929 22%,#0b0a094d 58%,var(--bg) 100%),radial-gradient(ellipse at 28% 52%,#0b0a0966 0%,#0b0a0900 75%)}
 .hero-in{width:min(1100px,100%);margin:0 auto}
 .eyebrow{font-size:12px;letter-spacing:2px;color:var(--sand);margin:0 0 14px}.eyebrow b{color:var(--lcd)}
 h1{font-size:clamp(34px,6.4vw,76px);line-height:1;color:var(--amber);text-shadow:0 2px 0 #7a4a00,0 0 40px #ffb02e55;letter-spacing:-1px}
@@ -187,7 +187,7 @@ h3.sub{margin:40px 0 14px}
 .r2{grid-template-columns:1fr auto}.r .wt{display:grid;min-width:0;white-space:nowrap}.r .wt small{overflow:hidden;text-overflow:ellipsis}
 a.r{color:inherit;text-decoration:none}a.r:hover,a.r:focus-visible{background:#ffcf5a12}.r .watch{color:var(--dim);font-size:11px;letter-spacing:1px;text-align:right}a.r:hover .watch{color:var(--cream)}
 .board .link{display:inline-block;margin-top:10px;font-size:12px}
-.escrow{display:grid;grid-template-columns:3fr 2fr;gap:12px}
+.escrow{display:grid;grid-template-columns:3fr 2fr;gap:12px;align-items:start}
 .prow{grid-template-columns:1fr auto}.prow .w{flex-wrap:wrap;gap:4px 8px}.prow .w b{color:var(--amber);white-space:nowrap}
 .prow .pmeta{grid-column:1/-1;font-size:11px;color:var(--dim);overflow-wrap:anywhere}.prow .pmeta b{color:var(--cream);font-weight:400}
 .pst{border:1px solid currentColor;border-radius:4px;padding:0 6px;font-size:10px;letter-spacing:1px;white-space:nowrap}   /* not .st: that is the roadmap's rubber stamp */
