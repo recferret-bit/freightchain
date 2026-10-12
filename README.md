@@ -322,10 +322,10 @@ Drive well and the road pays you in proof. Eight ladders (Road, Shifts, Night, D
 
 | | |
 |---|---|
-| What counts | The server counts from the rides it judged. A rejected recording earns nothing. The Shifts ladder counts paid shifts only. |
+| What counts | The server counts from the rides it judged. A ride whose recording is rejected counts for nothing (it still counts as a ride started). The Shifts ladder counts paid shifts only; Night, Clean and Siberia count any completed ride, free or paid. |
 | The lobby | An ACHIEVEMENTS tab: a flip card per badge. Front: art, three stars, the date earned, or a progress bar and what to do for the next level. Back (hover or tap): the condition, cNFT, Solscan, Orb, the mint transaction and POST ON X. Solana-coloured transition, plain crossfade with reduced motion. |
 | The mint | An hour after the unlock and after a second check, a dedicated key (it can mint and nothing else) mints through Metaplex Bubblegum v2 into one Merkle tree: depth 16, 65,536 badges for about 0.7 SOL of rent. The player signs nothing and pays nothing. |
-| Crash-safe | An outbox (planned, sent, minted, failed, skipped), the signature stored before broadcast and resent until it confirms: a crash never mints twice. A full tree sends nothing. |
+| Crash-safe | An outbox (planned, sent, minted, failed, skipped), the signature stored before broadcast. After a crash the job waits for that blockhash to expire (checking the signature one last time) before it signs a new transaction, so a crash delays a badge by a minute or two and never mints it twice. A full tree sends nothing. |
 | Soulbound | An MPL-Core collection with a permanent freeze (authority removed): the chain refuses the transfer. The smoke test mints a badge and fails to move it as its owner ("Collection is frozen"). |
 | Art | `design/achievements/generate.mjs` draws all 31 (earned and locked); art and metadata are on Arweave through Irys. |
 | Analytics | `achievement_unlocked`, `achievement_minted`, `achievement_mint_failed` (server), `achievement_nft_clicked` (browser). |

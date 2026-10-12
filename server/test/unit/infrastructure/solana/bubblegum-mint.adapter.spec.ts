@@ -41,4 +41,11 @@ describe('BubblegumMintAdapter', () => {
     expect(await at(null, 99)).toBe('pending');
     expect(await at(null, 101)).toBe('expired');
   });
+
+  it('a transaction that lands in its very last slot (unknown at the first read, known after the height check) is NOT reported expired', async () => {
+    const a = new BubblegumMintAdapter(env());
+    const reads = [null, { err: null, confirmationStatus: 'confirmed' }];
+    (a as unknown as { rpc: unknown }).rpc = { primaryOnly: async (call: (c: unknown) => unknown) => call({ getSignatureStatuses: async () => ({ value: [reads.shift()] }), getBlockHeight: async () => 101 }) };
+    expect(await a.signatureStatus('sig', 100)).toBe('confirmed');
+  });
 });

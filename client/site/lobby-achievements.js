@@ -16,7 +16,7 @@ export const nftLinks = (assetId, signature, cluster = CLUSTER) => [
   ['orb', 'Orb', `https://orb.helius.dev/address/${encodeURIComponent(assetId)}${q(cluster)}`],
   ...(signature ? [['tx', 'mint tx', explorerTx(signature, cluster)]] : []),
 ];
-export const badgeShareText = a => `Earned “${a.name}” (${a.tierName}) in @FreightChainSol – a soulbound compressed NFT on @solana devnet, minted to my wallet. Proof:`;
+export const badgeShareText = a => `Earned “${a.name}” (${a.tierName}) in @FreightChainSol – a soulbound compressed NFT on @solana${CLUSTER === 'devnet' ? ' devnet' : ''}, minted to my wallet. Proof:`;
 
 const fmtDate = t => new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 const STARS = 3; // every badge shows three levels; tier 1 lights one, tier 2 two, tier 3 (and the platinum 4) all three
@@ -35,6 +35,7 @@ function nftLinksRow(a, track) {
       ln('share', 'Post on X', xIntent(badgeShareText(a), links[0][2]), { class: 'x', title: 'Post this badge on X' }));
   }
   if (n && (n.status === 'planned' || n.status === 'sent')) return el('span', { class: 'when mint' }, 'minting to your wallet…');
+  if (n && n.status === 'skipped') return el('span', { class: 'when dim' }, 'no NFT was minted for this one');
   if (n && n.status === 'failed') return el('span', { class: 'when warn' }, 'mint on hold – we are looking at it');
   return null;
 }
@@ -47,13 +48,13 @@ function card(a, track, next, i) {
     el('img', { src: art(a.id, !earned), alt: `${a.name} – ${earned ? `level ${Math.min(a.tier, STARS)}` : 'locked'}`, loading: 'lazy', width: 112, height: 112 }),
     el('span', { class: 'nm' }, a.name),
     stars(a.tier, earned),
-    earned ? el('span', { class: 'when' }, `✓ ${fmtDate(a.earnedAt)}`) : [next ? el('span', { class: 'nx' }, el('b', {}, 'NEXT LEVEL'), a.desc) : null, prog]);
+    earned ? el('span', { class: 'when' }, `✓ ${fmtDate(a.earnedAt)}`) : [next ? el('span', { class: 'nx' }, el('b', {}, 'NEXT LEVEL'), a.desc) : null, prog()]);
   const back = el('div', { class: 'bk' },
     el('span', { class: 'nm' }, a.name),
     stars(a.tier, earned),
     el('span', { class: 'ds' }, a.desc),
     earned ? [el('span', { class: 'when' }, `unlocked ${fmtDate(a.earnedAt)}`), nftLinksRow(a, track)] : [prog(), el('span', { class: 'when dim' }, 'earn it to get a soulbound cNFT')]);
-  const c = el('div', { class: `ac t${a.tier}${earned ? ' got' : ' lock'}${next ? ' next' : ''}`, 'data-id': a.id, 'data-tier': a.tier, tabindex: 0, 'aria-expanded': 'false', style: `--i:${i}`, title: 'Hover or tap for details' }, el('div', { class: 'in' }, front, back));
+  const c = el('div', { class: `ac t${a.tier}${earned ? ' got' : ' lock'}${next ? ' next' : ''}`, 'data-id': a.id, 'data-tier': a.tier, tabindex: 0, role: 'button', 'aria-label': `${a.name} – details`, 'aria-expanded': 'false', style: `--i:${i}`, title: 'Hover or tap for details' }, el('div', { class: 'in' }, front, back));
   const flip = () => { const on = c.classList.toggle('flip'); c.setAttribute('aria-expanded', String(on)); };
   c.addEventListener('click', e => { if (!e.target.closest('a')) flip(); });
   c.addEventListener('keydown', e => { if (e.target === c && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); flip(); } });

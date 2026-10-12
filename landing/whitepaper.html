@@ -278,20 +278,20 @@
     <tbody>
       <tr><td><b>Road</b></td><td>Rides started</td><td>1 · 10 · 50 · 250</td></tr>
       <tr><td><b>Shifts</b></td><td>Paid shifts finished (a free ride is never a shift)</td><td>1 · 5 · 25 · 100</td></tr>
-      <tr><td><b>Night</b></td><td>Shifts driven mostly in the dark</td><td>1 · 5 · 20 · 50</td></tr>
+      <tr><td><b>Night</b></td><td>Completed rides (free or paid) driven mostly in the dark</td><td>1 · 5 · 20 · 50</td></tr>
       <tr><td><b>Distance</b></td><td>Kilometres driven in total</td><td>100 · 500 · 2,000 · 10,000</td></tr>
-      <tr><td><b>Clean</b></td><td>Shifts finished with the hull at 100 %</td><td>1 · 5 · 20 · 50</td></tr>
-      <tr><td><b>Siberia</b></td><td>Shifts on the Trans-Siberian route</td><td>1 · 5 · 15 · 40</td></tr>
+      <tr><td><b>Clean</b></td><td>Completed rides (free or paid) with the hull at 100 %</td><td>1 · 5 · 20 · 50</td></tr>
+      <tr><td><b>Siberia</b></td><td>Completed rides (free or paid) on the Trans-Siberian route</td><td>1 · 5 · 15 · 40</td></tr>
       <tr><td><b>Solo</b></td><td>Free rides finished without assist</td><td>1 · 5 · 20 · 50</td></tr>
       <tr><td><b>Licence</b></td><td>The EASY, MEDIUM and HARD free runs</td><td>one badge each</td></tr>
     </tbody>
   </table></div>
   <h3 class="sub">HOW A BADGE IS MADE</h3>
   <ol>
-    <li><b>The server decides.</b> Counts come from the rides the server judged, never from the client. A ride whose recording is rejected earns no badge. Unlock rows are append-only and badge ids never change.</li>
+    <li><b>The server decides.</b> Counts come from the rides the server judged, never from the client. A ride whose recording is rejected counts for nothing, except as a ride started. Unlock rows are append-only and badge ids never change.</li>
     <li><b>An hour later, a second look.</b> The mint job waits an hour, re-checks the facts (a ride that was rejected in the meantime no longer counts) and skips demo wallets. A badge no longer earned is skipped, not minted.</li>
     <li><b>One key that can only mint.</b> A dedicated key, separate from the pool crank and the payout key, mints through Metaplex Bubblegum v2 into one Merkle tree (depth 16: 65,536 badges for about 0.7 SOL of rent, well under a cent each). The player signs nothing and pays nothing.</li>
-    <li><b>Crash-safe.</b> Every mint is a row in an outbox (planned, sent, minted, failed or skipped). The signature is stored before the transaction is broadcast and the job keeps resending the same one, so a crash never mints twice. A full tree sends nothing; the job raises an error from 90 % full.</li>
+    <li><b>Crash-safe.</b> Every mint is a row in an outbox (planned, sent, minted, failed or skipped). The signature is stored before the transaction is broadcast. After a crash the job waits until that transaction's blockhash has expired, looks the signature up one last time and only then signs a new one, so a crash delays a badge by a minute or two and never mints it twice. A full tree sends nothing; the job raises an error from 90 % full.</li>
     <li><b>Soulbound by the chain.</b> The collection is an MPL-Core collection with the permanent freeze plugin, authority removed. A transfer is refused by the program, not by our server: our smoke test mints a badge to a fresh wallet and then tries to move it as the owner (error: "Collection is frozen").</li>
     <li><b>Art and metadata live on Arweave</b> (through Irys): 31 badges drawn by one generator in the repo, a descriptive trait set (family, tier, condition, requirement), no royalties. Devnet files are kept for about 60 days; mainnet gets its own upload.</li>
   </ol>

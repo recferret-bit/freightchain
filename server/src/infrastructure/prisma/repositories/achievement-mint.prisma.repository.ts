@@ -32,7 +32,7 @@ export class AchievementMintPrismaRepository extends AchievementMintRepositoryPo
   }
 
   async listWork(limit: number): Promise<AchievementMintRecord[]> {
-    const rows = await this.prisma.achievementMint.findMany({ where: { status: { in: ['planned', 'sent'] } }, orderBy: [{ createdAt: 'asc' }, { wallet: 'asc' }, { achievementId: 'asc' }], take: limit });
+    const rows = await this.prisma.achievementMint.findMany({ where: { status: { in: ['planned', 'sent'] } }, orderBy: [{ updatedAt: 'asc' }, { createdAt: 'asc' }, { wallet: 'asc' }, { achievementId: 'asc' }], take: limit });   // oldest TOUCH first: a row that keeps failing before its claim (noteError) rotates to the back instead of eating the batch every pass
     return rows.map(toRecord);
   }
 

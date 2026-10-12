@@ -8,6 +8,7 @@ import { createSignerFromKeypair, keypairIdentity, publicKey, some, type Umi } f
 import { NFT_METADATA_URIS } from '../../domain/achievements/nft-metadata-uris.js';
 import { ServiceUnavailableError } from '../../domain/shared/errors.js';
 import { AchievementMintChainPort, type MintSignatureStatus, type SignedMint } from '../../application/ports/achievements/achievement-mint-chain.port.js';
+import { NFT_SYMBOL } from '../../domain/achievements/achievement-mint.js';
 import { EnvService } from '../config/env.service.js';
 import { parseKeypair } from './program-chain.adapter.js';
 import { broadcastUntilConfirmed, simulateSigned, type SignedTx } from './signed-sender.js';
@@ -56,7 +57,7 @@ export class BubblegumMintAdapter extends AchievementMintChainPort {
       .add(setComputeUnitPrice(umi, { microLamports: this.env.priorityFee.minMicrolamports }))
       .add(mintV2(umi, {
         leafOwner: publicKey(i.wallet), merkleTree: tree, coreCollection: collection, collectionAuthority: umi.identity,
-        metadata: { name: i.name, uri: i.uri, sellerFeeBasisPoints: 0, collection: some(collection), creators: [] },
+        metadata: { name: i.name, symbol: NFT_SYMBOL, uri: i.uri, sellerFeeBasisPoints: 0, collection: some(collection), creators: [] },
       }));
     const latest = await this.rpc.read(async () => umi.rpc.getLatestBlockhash({ commitment: this.env.solanaCommitment }));
     const signed = await builder.setBlockhash(latest).buildAndSign(umi);
@@ -73,11 +74,18 @@ export class BubblegumMintAdapter extends AchievementMintChainPort {
   }
 
   async signatureStatus(signature: string, lastValidBlockHeight: number): Promise<MintSignatureStatus> {
-    const s = await this.rpc.primaryOnly(async (x) => (await x.getSignatureStatuses([signature], { searchTransactionHistory: true })).value[0]);
-    if (s?.err) return 'failed';
-    if (s?.confirmationStatus === 'finalized') return 'finalized';
-    if (s?.confirmationStatus === 'confirmed' || s?.confirmationStatus === 'processed') return s.confirmationStatus === 'processed' ? 'pending' : 'confirmed';
-    return lastValidBlockHeight > 0 && (await this.rpc.primaryOnly((x) => x.getBlockHeight(this.env.solanaCommitment))) > lastValidBlockHeight ? 'expired' : 'pending';
+    const read = () => this.rpc.primaryOnly(async (x) => (await x.getSignatureStatuses([signature], { searchTransactionHistory: true })).value[0]);
+    const known = (s: Awaited<ReturnType<typeof read>>): MintSignatureStatus | null => {
+      if (s?.err) return 'failed';
+      if (s?.confirmationStatus === 'finalized') return 'finalized';
+      if (s?.confirmationStatus === 'confirmed') return 'confirmed';
+      return s ? 'pending' : null;
+    };
+    const first = known(await read());
+    if (first) return first;
+    if (!(lastValidBlockHeight > 0 && (await this.rpc.primaryOnly((x) => x.getBlockHeight(this.env.solanaCommitment))) > lastValidBlockHeight)) return 'pending';
+    // the blockhash is past its last valid height: read the status ONCE MORE – the transaction may have landed in its very last slot between the two reads, and a new one would mint twice
+    return known(await read()) ?? 'expired';
   }
 
   async treeUsage(): Promise<{ minted: number; capacity: number } | null> {
