@@ -182,7 +182,7 @@
 
 <!-- ───────── 03 · ECONOMY & TECH ───────── -->
 <section class="ch" id="economy">
-  <header class="ch-h rv"><i>03</i><h2>ECONOMY</h2><p>Paid shifts are tickets into escrowed prize pools – one Solana account per pool holds the entry fees, earns JitoSOL staking yield, and states its rules in public. On-chain Attestation PDAs strictly gate prize payouts.</p></header>
+  <header class="ch-h rv"><i>03</i><h2>ECONOMY</h2><p>Paid shifts are tickets into escrowed prize pools – one Solana account per pool holds the entry fees and states its rules in public. On-chain Attestation PDAs strictly gate prize payouts.</p></header>
 
   <div class="econ rv">
     <div class="card pool" id="poolbox"><span class="dim">Loading the pool…</span></div>
@@ -197,16 +197,16 @@
       <ol class="esc" aria-label="how a ticket moves through an escrow pool">
         <li class="esc-n"><b>RIDERS</b><span>buy a ticket</span></li>
         <li class="esc-a" aria-hidden="true"><i></i><em>entry fee</em></li>
-        <li class="esc-v"><b>POOL VAULT</b><span>program-owned account – earns JitoSOL liquid staking yield during sale and review</span></li>
+        <li class="esc-v"><b>POOL VAULT</b><span>program-owned account – holds the entry fees until the pool pays out or refunds</span></li>
         <li class="esc-a" aria-hidden="true"><i></i><em>deadline</em></li>
         <li class="esc-f">
           <div class="miss"><b>GOAL MISSED</b><span>too few riders</span><strong>100% back</strong><small>anyone can trigger the refunds</small></div>
           <div class="hit"><b>POOL LIVE</b><span>split as declared</span>
             <div class="bar3" aria-hidden="true"><i style="flex:70"></i><i style="flex:20"></i><i style="flex:10"></i></div>
-            <small><u>70%</u> prizes (Attestation PDA gated) + Jito yield · <u>20%</u> next pool · <u>10%</u> fees</small></div>
+            <small><u>70%</u> prizes (Attestation PDA gated) · <u>20%</u> next pool · <u>10%</u> fees</small></div>
         </li>
       </ol>
-      <p class="dim" id="escrow-status">The Anchor v3 program is on devnet with provable blockhash road seed commitments, RFC 6962 telemetry roots, and on-chain Attestation PDAs gating prize settlement. Idle vault lamports earn JitoSOL liquid staking yield throughout ticket sales and review. Community sponsors back drivers with per-km Pledge PDAs. Connect with 1-click Native SIWS, display your .sol name via SNS, and pay via Phantom, Solflare, or Solana Pay.</p>
+      <p class="dim" id="escrow-status">The Anchor v3 program is on devnet with provable blockhash road seed commitments, RFC 6962 telemetry roots, and on-chain Attestation PDAs gating prize settlement. Community sponsors back drivers with per-km Pledge PDAs. Connect with 1-click Native SIWS, display your .sol name via SNS, and pay via Phantom, Solflare, or Solana Pay.</p>
       <a class="link" id="escrow-link" href="/whitepaper.html#onchain">The whole escrow, with diagrams, in the whitepaper →</a>
     </div>
   </div>
@@ -222,13 +222,6 @@
         <p>Same road for every rider of a pool. No attestation, no prize.</p>
         <ul><li>The pool’s road seed is hashed from a Solana blockhash and stored on chain when the pool opens, before anyone drives.</li><li>Every 15 s of driving is a hashed batch; a ride’s batches roll up into one Merkle root.</li><li>The program pays a prize only to a wallet with a VERIFIED Attestation PDA.</li></ul>
         <nav><a href="/whitepaper.html#onchain">Whitepaper →</a><a href="/whitepaper.html#verify">Anti-cheat →</a></nav></div></div></article>
-    <article data-card="yield" class="oc"><div class="oc-in">
-      <div class="fr"><div class="stage"><img src="/media/chain/yield.svg" width="240" height="124" loading="lazy" decoding="async" alt="Yield grows over the 24 hour sale and the 48 hour review"><i class="stk tl">JitoSOL</i><i class="stk a tr">72 h</i></div>
-        <footer><b>THE POT EARNS</b><span>Ticket money earns staking yield while it waits.</span></footer></div>
-      <div class="bk"><div class="rcpt"><b class="t">POOL · EXAMPLE</b><p><span>tickets</span><b>100.000 SOL</b></p><p><span>staked</span><b>24 h + 48 h · ~7 % APY</b></p><p><span>yield</span><b class="ok">+0.058 SOL</b></p><p><span>prize pot</span><b>100.058 SOL</b></p></div>
-        <p>Idle escrow money works for the winners.</p>
-        <ul><li>The vault’s SOL is staked as JitoSOL through the sale and the review; the yield joins the pot.</li><li>Tickets cost the same. Too few riders, and every ticket is refunded.</li></ul>
-        <nav><a href="/whitepaper.html#onchain">Whitepaper →</a></nav></div></div></article>
     <article data-card="pledge" class="oc"><div class="oc-in">
       <div class="fr"><div class="stage"><img src="/media/chain/pledge.svg" width="240" height="124" loading="lazy" decoding="async" alt="412 km of a 0.5 SOL pledge: 0.412 SOL to the driver, 0.088 SOL back"><i class="stk p tl">Pledge PDA</i></div>
         <footer><b>BACK A DRIVER</b><span>Pledge per kilometre of verified driving.</span></footer></div>
@@ -236,14 +229,14 @@
         <p>Sponsors pay for distance, never for a promise.</p>
         <ul><li>Settles on verified kilometres only.</li><li>The rest returns to you; nothing stays in the account.</li></ul>
         <nav><a href="/whitepaper.html#onchain">Whitepaper →</a></nav></div></div></article>
-    <article data-card="sns" class="oc w"><div class="oc-in">
+    <article data-card="sns" class="oc"><div class="oc-in">
       <div class="fr"><div class="stage"><img src="/media/chain/sns.svg" width="240" height="124" loading="lazy" decoding="async" alt="A leaderboard showing .sol names instead of wallet addresses"><i class="stk tr">SNS</i></div>
         <footer><b>YOUR .SOL NAME</b><span>Boards show driver.sol, not 7xKX…9fQd.</span></footer></div>
       <div class="bk"><div class="rcpt"><b class="t">NAME · EXAMPLE</b><p><span>wallet</span><b>7xKX…9fQd</b></p><p><span>name</span><b class="ok">driver.sol</b></p><p><span>cached</span><b>24 h</b></p><p><span>no name</span><b>asked again in 30 min</b></p></div>
         <p>Your name follows you from board to receipt.</p>
         <ul><li>Looked up from the Solana Name Service.</li><li>Shown on the boards, profiles and public ride receipts.</li></ul>
         <nav><a href="/lobby.html#board">Leaderboard →</a></nav></div></div></article>
-    <article data-card="blink" class="oc w"><div class="oc-in">
+    <article data-card="blink" class="oc"><div class="oc-in">
       <div class="fr"><div class="stage"><img src="/media/chain/blink.svg" width="240" height="124" loading="lazy" decoding="async" alt="A post on X with ticket and watch buttons, and a Solana Pay QR code for tips"><i class="stk p tl">Actions</i><i class="stk a tr">devnet</i></div>
         <footer><b>BLINKS &amp; SOLANA PAY</b><span>Buy a shift from a post on 𝕏. Tip a driver by QR.</span></footer></div>
       <div class="bk"><div class="rcpt"><b class="t">BLINK · EXAMPLE</b><p><span>action</span><b>buy ticket · 1 h</b></p><p><span>where</span><b>a post on 𝕏</b></p><p><span>tip</span><b>Solana Pay QR on a stream</b></p><p><span>signed by</span><b class="ok">your wallet</b></p></div>
@@ -307,7 +300,7 @@
           <tr class="leg"><th colspan="3">LEG 2 · THE FAIR <small>Oct 6–12</small></th><td class="stamp"><span class="st now">ROLLING</span></td></tr>
           <tr class="done"><td class="box">☑</td><td>Verified play: every input recorded, a server verdict, shadow mode, a signed admin review queue</td><td class="note">Oct 7</td><td></td></tr>
           <tr class="done"><td class="box">☑</td><td>Live streams + replays: watch any ride 25 s behind, CB chat, paid night / potholes, the history</td><td class="note">Oct 8</td><td></td></tr>
-          <tr class="done"><td class="box">☑</td><td>Anchor v3 on devnet (81 tests): Attestation PDAs gating prizes, JitoSOL liquid staking yield, per-km Pledge PDAs</td><td class="note">Oct 12</td><td></td></tr>
+          <tr class="done"><td class="box">☑</td><td>Anchor v3 on devnet (81 tests): Attestation PDAs gating prizes, per-km Pledge PDAs</td><td class="note">Oct 12</td><td></td></tr>
           <tr class="done"><td class="box">☑</td><td>Garage (5 slots), promo codes, cosmetics; the storybook and the whitepaper; the admin page</td><td class="note">Oct 8</td><td></td></tr>
           <tr class="done"><td class="box">☑</td><td>X, YouTube, a trailer cut from real gameplay with its own 8-bit soundtrack</td><td class="note">Oct 9</td><td></td></tr>
           <tr class="next"><td class="box">☐</td><td>Product analytics: the PostHog relay and ten funnels are wired, half the board reads</td><td class="note">50 %</td><td></td></tr>
@@ -395,10 +388,10 @@
   <div class="about rv">
     <article><h3>WHY A TRUCK</h3><p>Desert Bus (1995) was an eight-hour drive from Tucson to Las Vegas at 45 mph for one point. Nobody should have finished it, and people did – and other people watched. The scarce thing was attention. This is that, with the finish decided by a server and the pot in SOL.</p></article>
     <article><h3>BUILT · CUT · NEXT</h3>
-      <ul class="bcn"><li><i class="ok"></i><b>Built:</b> the sim, 1-click Native SIWS, SNS (.sol) lookup, Anchor v3 escrow with JitoSOL yield & Attestation PDAs, per-km Pledge PDAs, soulbound cNFT badges, Solana Pay, Blinks, server-timed rides, verified play, live streams, garage, promo codes.</li>
+      <ul class="bcn"><li><i class="ok"></i><b>Built:</b> the sim, 1-click Native SIWS, SNS (.sol) lookup, Anchor v3 escrow with Attestation PDAs, per-km Pledge PDAs, soulbound cNFT badges, Solana Pay, Blinks, server-timed rides, verified play, live streams, garage, promo codes.</li>
       <li><i class="cut"></i><b>Cut on purpose:</b> performance upgrades, mobile driving before touch controls, paid ads before a growth hire, a token, mainnet before legals and audit.</li>
       <li><i class="next"></i><b>Next:</b> program audit and mainnet migration, a four-seat crew (CPO / COO, QA, community, content), convoy team drives, mobile driving controls.</li></ul></article>
-    <article><h3>THE STACK</h3><p>Vanilla ES modules + three.js in the browser, no bundler, zero runtime npm dependencies. NestJS + PostgreSQL on the server (Clean Architecture). An Anchor v3 (Rust) escrow program with vault PDAs, JitoSOL liquid staking yield, and Attestation gating. Native 1-click SIWS, SPL Name Service PDA resolution, Metaplex Bubblegum v2 cNFT badges, Solana Pay, and Blinks. Solo build entered in the Colosseum Crypto World's Fair.</p></article>
+    <article><h3>THE STACK</h3><p>Vanilla ES modules + three.js in the browser, no bundler, zero runtime npm dependencies. NestJS + PostgreSQL on the server (Clean Architecture). An Anchor v3 (Rust) escrow program with vault PDAs and Attestation gating. Native 1-click SIWS, SPL Name Service PDA resolution, Metaplex Bubblegum v2 cNFT badges, Solana Pay, and Blinks. Solo build entered in the Colosseum Crypto World's Fair.</p></article>
   </div>
   <div class="socials rv" id="socials">
     <span class="lbl">JOIN THE CONVOY</span>

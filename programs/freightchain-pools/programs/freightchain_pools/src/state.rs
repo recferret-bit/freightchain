@@ -78,12 +78,12 @@ pub struct Pool {
     pub created_at: i64,
     pub bump: u8,
     pub vault_bump: u8,
-    // --- v3 Provable Integrity & JitoSOL Staking Yield ---
+    // --- v3 Provable Integrity ---
     /// SHA256(poolId || blockhash || slot) captured at pool opening for provable road seed derivation.
     pub seed_commitment: [u8; 32],
-    /// Lamports currently deployed in liquid staking (JitoSOL / Stake Pool).
+    /// Unused: nothing stakes the vault (decided Oct 12). Frozen account layout; kept at 0.
     pub staked_lamports: u64,
-    /// Cumulative net staking yield harvested and deposited into the pool vault.
+    /// Lamports an operator topped up through `record_yield` (nothing calls it); counts into `pot()`.
     pub yield_earned: u64,
 }
 

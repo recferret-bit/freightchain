@@ -71,7 +71,7 @@ A wallet listed in `DEMO_WALLETS` drives a paid shift `DEMO_SCALE` times shorter
 | Public ride receipts, 𝕏 card SSR, in-game 𝕏 sharing | Yes (`/r/:id`, Web Intent) | Live |
 | Native 1-Click SIWS (`solana:signIn`) with legacy fallback | Yes | Live |
 | SNS (.sol) reverse and forward resolution with multi-tier caching | Yes (Mainnet-Beta RPC) | Live |
-| Escrow program | Anchor v3 on devnet: 21 instructions, 18 events, 30 errors, 81 tests passing in LiteSVM. Vault PDAs, JitoSOL liquid staking yield (`staked_lamports`, `yield_earned`), on-chain `Attestation` PDAs (`[b"attestation", pool, driver]`), and Community Sponsorship Pledges (`[b"pledge", ride_id, sponsor]`). | Initialized on devnet, freightchain.fun runs it (`PAYMENT_MODE=program`) |
+| Escrow program | Anchor v3 on devnet: 21 instructions, 18 events, 30 errors, 81 tests passing in LiteSVM. Vault PDAs, on-chain `Attestation` PDAs (`[b"attestation", pool, driver]`), and Community Sponsorship Pledges (`[b"pledge", ride_id, sponsor]`). | Initialized on devnet, freightchain.fun runs it (`PAYMENT_MODE=program`) |
 | Prize payouts from a pool vault | v3: `pay_prize` is strictly gated on-chain by the `Attestation` PDA bearing the RFC 6962 telemetry Merkle root; payout job pays verified top 20 drivers after the review window. | After the results, on an explicit switch |
 | Community Sponsorship Pledges | Yes: on-chain `Pledge` PDAs (`[b"pledge", ride_id, sponsor]`), `create_pledge`, `settle_pledge` (proportional per-km payout), `refund_pledge` (100% refund of unused/cancelled). | Live on devnet |
 | Provable Road Seed & Telemetry Merkle Root | Yes: deterministic seed `SHA256(poolId \|\| blockhash \|\| slot)` committed on-chain; RFC 6962 Merkle tree root over 15s `RideBatch` chunks submitted to `Attestation` PDA gating `pay_prize`. | Live on devnet |
@@ -92,9 +92,7 @@ Freight Chain unlocks four fundamental pillars on Solana that web2 or legacy evm
   - **RFC 6962 Telemetry Merkle Root**: During shifts, the truck client streams 15-second telemetry batches (`RideBatch`) signed and hash-chained. The server builds an RFC 6962 compliant Merkle tree (`computeTelemetryMerkleRoot`) across every chunk.
   - **On-Chain Attestation PDA Gating**: When a ride passes physical verification (bounds, road agreement, holes, timing), `AttestationService` invokes `submit_attestation` to initialize an `Attestation` PDA (`[b"attestation", pool, driver]`). The Anchor program's `pay_prize` instruction *strictly requires* this PDA to exist—making prize distribution cryptographically dependent on genuine telemetry.
 
-- **Pillar 2: Capital Efficient Jito Yield & Per-KM Pledges**
-  - **Liquid Staking Yield Accumulation**: Escrowed pool lamports held in pool vaults do not sit idle during ticket sale phases and 48-hour review windows. Through JitoSOL liquid staking yield accounting (`staked_lamports`, `yield_earned`), yield accrues continuously.
-  - **Auto-Compounding Prize Pots**: Accrued staking yield is tracked in the Pool PDA and automatically compounds into the driver prize pool (`record_yield`), boosting tournament prize payouts without increasing driver entry ticket costs or risking principal.
+- **Pillar 2: Per-KM Pledges**
   - **Community Sponsorship Pledges**: Spectators back live drivers with on-chain Pledge PDAs (`[b"pledge", ride_id, sponsor]`). Drivers earn lamports proportionally based on verified distance driven, and any unearned surplus is refunded with zero stranded lamports.
 
 - **Pillar 3: Native 1-Click SIWS (`solana:signIn`)**
@@ -114,7 +112,6 @@ Freight Chain unlocks four fundamental pillars on Solana that web2 or legacy evm
 | **Provable Road Seed** | `SHA256(poolId \|\| blockhash \|\| slot)` committed to `Pool` PDA | Eliminates road cherry-picking; guarantees fair conditions across all contestants | [`provable-seed.ts`](server/src/domain/road/provable-seed.ts) |
 | **Telemetry Merkle Root** | RFC 6962 tree over 15s telemetry chunks | Cryptographic audit trail of human driving physics and inputs | [`telemetry-merkle.ts`](server/src/domain/telemetry/telemetry-merkle.ts) |
 | **Attestation-Gated Payouts** | `Attestation` PDA strictly checked in `pay_prize` | Smart contract programmatically blocks invalid or unverified payouts | [`instructions/settle.rs`](programs/freightchain-pools/programs/freightchain_pools/src/instructions/settle.rs) |
-| **JitoSOL Staking Yield** | Staking yield tracking (`staked_lamports`, `yield_earned`, `record_yield`) | Capital efficiency: idle vault funds auto-compound into tournament prize pots | [`instructions/record_yield.rs`](programs/freightchain-pools/programs/freightchain_pools/src/instructions/record_yield.rs) |
 | **Per-KM Spectator Pledges** | `Pledge` PDA (`create_pledge`, `settle_pledge`) | Trustless micro-sponsorship with proportional payout and 100% surplus refund | [`instructions/pledge.rs`](programs/freightchain-pools/programs/freightchain_pools/src/instructions/pledge.rs) |
 
 #### Program and Platform Verifications
@@ -229,15 +226,14 @@ On-chain integrity and capital efficiency flow:
 flowchart TB
   subgraph solana [Solana Devnet: Anchor v3 Escrow & Integrity]
     slot["Solana Blockhash & Slot"]
-    pool["Pool PDA<br/>seed_commitment: SHA256(poolId || blockhash || slot)<br/>staked_lamports + yield_earned"]
-    vault["Vault PDA<br/>idle lamports earn JitoSOL liquid staking yield"]
+    pool["Pool PDA<br/>seed_commitment: SHA256(poolId || blockhash || slot)"]
+    vault["Vault PDA<br/>holds the entry fees"]
     pledge["Pledge PDA [pledge, ride_id, sponsor]<br/>per-km escrowed balance"]
     attest["Attestation PDA [attestation, pool, driver]<br/>RFC 6962 Telemetry Merkle Root"]
     prize["pay_prize<br/>(gated by Attestation PDA)"]
   end
   slot -->|"commit seed"| pool
   tickets["Ticket Sales"] -->|"buy_ticket"| vault
-  vault -.->|"auto-compound yield"| pool
   sponsor["Sponsor"] -->|"create_pledge"| pledge
   judge["Server Physics Verdict"] -->|"submit_attestation"| attest
   attest -->|"strictly gates"| prize
@@ -407,10 +403,10 @@ Anchor program `freightchain_pools`. One program, many pools. Each pool is its o
 | Account | Seeds | Role |
 | --- | --- | --- |
 | Config | `["config"]` | Admin, platform treasury, fee bps, pool count, pause |
-| Pool | `["pool", id]` | Rules, counters, seed commitment (`seed_commitment: [u8; 32]`), JitoSOL yield (`staked_lamports`, `yield_earned`) |
+| Pool | `["pool", id]` | Rules, counters, seed commitment (`seed_commitment: [u8; 32]`) |
 | Series (v2) | `["series", tier]` | One schedule per tier. Anyone opens the next pool from it |
 | Ticket | `["ticket", pool, buyer]` | One buyer per pool. A refund closes it |
-| Vault | `["vault", id]` | Zero-data PDA. Escrow vault earning liquid staking yield |
+| Vault | `["vault", id]` | Zero-data PDA. Holds the pool's escrowed lamports |
 | Pledge (v3) | `["pledge", ride_id, sponsor]` | Community per-km sponsorship pledge with proportional payout and 0-stranded refund |
 | Attestation (v3) | `["attestation", pool, driver]` | RFC 6962 telemetry Merkle root attestation gating `pay_prize` |
 

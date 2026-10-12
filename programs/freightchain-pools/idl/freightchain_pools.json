@@ -2902,14 +2902,14 @@
           {
             "name": "staked_lamports",
             "docs": [
-              "Lamports currently deployed in liquid staking (JitoSOL / Stake Pool)."
+              "Unused: nothing stakes the vault (decided Oct 12). Frozen account layout; kept at 0."
             ],
             "type": "u64"
           },
           {
             "name": "yield_earned",
             "docs": [
-              "Cumulative net staking yield harvested and deposited into the pool vault."
+              "Lamports an operator topped up through `record_yield` (nothing calls it); counts into `pot()`."
             ],
             "type": "u64"
           }
