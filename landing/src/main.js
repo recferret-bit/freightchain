@@ -254,6 +254,8 @@ for (const c of document.querySelectorAll('.oc')) {
   c.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') dwell = setTimeout(() => seen(c.dataset.card), 600); });
   c.addEventListener('pointerleave', () => clearTimeout(dwell));
 }
+/* back from a link on a card (bfcache restores the page as it was): the card must not stay turned – drop .flip and the focus :focus-within holds on to */
+addEventListener('pageshow', e => { if (!e.persisted) return; for (const c of document.querySelectorAll('.oc.flip')) c.classList.remove('flip'); if (document.activeElement?.closest('.oc')) document.activeElement.blur(); });
 /* their drawings come alive as canvas scenes (chain-scenes.js, a lazy chunk) when the grid gets near; reduced motion keeps the still SVGs */
 const ocGrid = document.querySelector('.oc-grid');
 if (ocGrid && !reduced) {

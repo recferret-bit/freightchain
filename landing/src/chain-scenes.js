@@ -8,7 +8,8 @@ const cl = x => Math.min(1, Math.max(0, x)), ease = x => (x = cl(x), x * x * (3 
 const fade = p => 1 - seg(p, 0.93, 1);   // every cycle fades its moving parts out before the next roll
 const HEX = '0123456789abcdef', B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 const str = (n, abc = HEX) => Array.from({ length: n }, () => pick(abc)).join('');
-const scramble = (s, k) => [...s].map(ch => ('….· '.includes(ch) || R() > k ? ch : pick(HEX))).join('');   // k = share of letters still scrambled
+/* k = share of the string still scrambled, resolving left to right; the noise changes 14× a second and each glyph keeps its own value in between (a fresh random pick every frame flickered) */
+const scramble = (s, k, t) => { const step = Math.floor(t * 14); return [...s].map((ch, i) => ('….· '.includes(ch) || k <= 1 - (i + 1) / s.length ? ch : HEX[(Math.imul(i + 1, 2654435761) ^ Math.imul(step, 40503)) >>> 28])).join(''); };
 
 let c;   // the context being drawn
 const grad = (x0, x1) => { const g = c.createLinearGradient(x0, 0, x1, 0); g.addColorStop(0, PU); g.addColorStop(1, GR); return g; };
@@ -19,12 +20,13 @@ function dot(x, y, r, color) { c.beginPath(); c.arc(x, y, r, 0, 7); c.fillStyle 
 const alpha = (a, f) => { const o = c.globalAlpha; c.globalAlpha = o * cl(a); f(); c.globalAlpha = o; };
 /** a cycle of ~len s: [phase 0…1, this round's rolled values]; each round is 0.85–1.15 × len */
 function cycle(len, roll) { let t0 = -1e9, d = 1, v; return t => { if (t - t0 >= d) { t0 = t; d = len * rnd(0.85, 1.15); v = roll(); } return [(t - t0) / d, v]; }; }
-/** a finger that travels to (x, y) and taps at phase `at`: ring + ripple */
-function tap(p, at, from, x, y) {
+/** the press of a tap at phase `at`, 0…1…0 */
+const press = (p, at) => seg(p, at, at + 0.03) - seg(p, at + 0.05, at + 0.1);
+/** a finger that travels to (x, y) and taps at phase `at`: ring + ripple – draw it AFTER the button so it stays on top */
+function finger(p, at, from, x, y) {
   const k = seg(p, at - 0.2, at), px = lerp(from[0], x, k), py = lerp(from[1], y, k), r = seg(p, at, at + 0.15);
   alpha((seg(p, at - 0.25, at - 0.15) - seg(p, at + 0.1, at + 0.2)), () => { dot(px, py, 5, '#ffffff55'); c.beginPath(); c.arc(px, py, 5, 0, 7); c.strokeStyle = '#fff'; c.lineWidth = 1; c.stroke(); });
   if (r > 0 && r < 1) alpha(1 - r, () => { c.beginPath(); c.arc(x, y, 4 + r * 26, 0, 7); c.strokeStyle = GR; c.lineWidth = 1.5; c.stroke(); });
-  return seg(p, at, at + 0.03) - seg(p, at + 0.05, at + 0.1);   // the press, 0…1…0
 }
 
 export const SCENES = {
@@ -56,7 +58,7 @@ export const SCENES = {
       c.shadowColor = GR; c.shadowBlur = 12 * lit * (0.75 + 0.25 * Math.sin(t * 4));
       box(96, 8, 48, 20, 5, BG, lit > 0.05 ? grad(96, 144) : '#9d957f88', 2); c.shadowBlur = 0;
       text('ROOT', 120, 21.5, 9, lit > 0.5 ? GR : DI, 'center');
-      alpha(lit, () => text(scramble(v.root, sc), 152, 15, 8, DI)); alpha(ok, () => text('✓ VERIFIED', 152, 26, 8, GR));
+      alpha(lit, () => text(scramble(v.root, sc, t), 152, 15, 8, DI)); alpha(ok, () => text('✓ VERIFIED', 152, 26, 8, GR));
     };
   },
   /* a pledge fills km by km with 15 s checkpoints popping along it; the unspent rest slides back to the sponsor */
@@ -86,11 +88,12 @@ export const SCENES = {
       c.beginPath(); c.arc(58, 22, 7, 0, 7); c.fillStyle = grad(51, 65); c.fill(); text('Sign in', 70, 25.5, 9, CR);
       text('domain', 52, 46, 8.5, DI); text('freightchain.fun', 188, 46, 8.5, CR, 'right');
       text('nonce', 52, 60, 8.5, DI); text('chain', 52, 74, 8.5, DI); text('solana', 188, 74, 8.5, CR, 'right');
-      const n = `${scramble(v.nonce, 1 - seg(p, 0.05, 0.25))} · once`; text(n, 188, 60, 8.5, AM, 'right');
+      const n = `${scramble(v.nonce, 1 - seg(p, 0.05, 0.25), t)} · once`; text(n, 188, 60, 8.5, AM, 'right');
       const burn = seg(p, v.at + 0.15, v.at + 0.25) * a; if (burn > 0) { const wn = c.measureText(n).width; line(188 - wn, 57, 188 - wn + wn * burn, 57, '#ffcf5acc', 1); }
-      const press = tap(p, v.at, v.from, 120, 97), done = seg(p, v.at + 0.08, v.at + 0.14) * a, sc = 1 - 0.05 * press;
+      const pr = press(p, v.at), done = seg(p, v.at + 0.08, v.at + 0.14) * a, sc = 1 - 0.05 * pr;
       c.save(); c.translate(120, 97); c.scale(sc, sc); box(-68, -11, 136, 22, 11, grad(-68, 68));
       alpha(1 - done, () => text('APPROVE', 0, 3.5, 9.5, BG, 'center', true)); alpha(done, () => text('✓ SIGNED IN', 0, 3.5, 9.5, BG, 'center', true)); c.restore();
+      finger(p, v.at, v.from, 120, 97);
     };
   },
   /* a live board: km tick up at random, rows swap places, and each round one wallet is looked up – mostly a .sol name, sometimes none */
@@ -109,7 +112,7 @@ export const SCENES = {
       order.forEach((r, i) => {
         box(10, r.y, 220, 24, 5, i ? BG : '#9945ff1a', i ? '#9d957f33' : grad(10, 230)); text(String(i + 1), 22, r.y + 16, 10, AM);
         const resolving = r === v.r && v.r.next && look > 0;
-        text(r.n ?? (resolving ? scramble(r.a, look) : r.a), 40, r.y + 16, 10.5, r.n ? GR : resolving ? LI : DI); text(`${r.km} km`, 220, r.y + 16, 10, CR, 'right');
+        text(r.n ?? (resolving ? scramble(r.a, look, t) : r.a), 40, r.y + 16, 10.5, r.n ? GR : resolving ? LI : DI); text(`${r.km} km`, 220, r.y + 16, 10, CR, 'right');
       });
       const none = !v.r.n && !v.r.next ? seg(p, 0.45, 0.55) * fade(p) : 0;   // this round's lookup found no name
       text('no name? the short address stays', 10, 114, 8, DI); alpha(none, () => text('no name? the short address stays', 10, 114, 8, AM));
@@ -127,9 +130,10 @@ export const SCENES = {
       box(16, 38, 124, 34, 5, '#26221d');
       const toast = seg(p, v.at + 0.1, v.at + 0.15) * (1 - seg(p, 0.8, 0.88)) * a;   // the wallet's confirmation replaces the card's title for a moment
       alpha(1 - toast, () => text('FREIGHT CHAIN · 1 h', 78, 59, 8.5, AM, 'center'));
-      const press = tap(p, v.at, v.from, v.watch ? 117 : 52, 88), sc = 1 - 0.06 * press;
+      const pr = press(p, v.at), sc = 1 - 0.06 * pr;
       c.save(); c.translate(52, 88); if (!v.watch) c.scale(sc, sc); box(-36, -10, 72, 20, 10, grad(-36, 36)); text('BUY TICKET', 0, 3.5, 8.5, BG, 'center', true); c.restore();
-      c.save(); c.translate(117, 88); if (v.watch) c.scale(sc, sc); box(-23, -10, 46, 20, 10, v.watch && press > 0 ? '#9945ff33' : null, PU); text('WATCH', 0, 3.5, 8.5, LI, 'center'); c.restore();
+      c.save(); c.translate(117, 88); if (v.watch) c.scale(sc, sc); box(-23, -10, 46, 20, 10, v.watch && pr > 0 ? '#9945ff33' : null, PU); text('WATCH', 0, 3.5, 8.5, LI, 'center'); c.restore();
+      finger(p, v.at, v.from, v.watch ? 117 : 52, 88);
       alpha(toast, () => { box(20, 44 - toast * 3, 116, 22, 5, '#0b0a09ee', GR); text(v.watch ? '▶ live ride opened' : '✓ ticket · 1 h', 78, 58.5 - toast * 3, 8.5, GR, 'center'); });
       box(158, 20, 75, 75, 6, BG, '#9d957f55');
       qr.forEach((on, i) => { if (on) box(164 + (i % 9) * 7, 26 + ((i / 9) | 0) * 7, 6, 6, 0, on === 2 ? CR : GR); });
