@@ -1,5 +1,5 @@
 /* UNDER THE HOOD cards (index.html .oc): each card's drawing becomes a small canvas scene, loaded lazily by main.js (never with reduced motion – the SVG stays).
-   A scene runs a cycle of ~6 s, but every time round it rolls new numbers and timings (the km driven, the APY, a nonce, which button gets tapped, a cycle ±15 % long)
+   A scene runs a cycle of ~6 s, but every time round it rolls new numbers and timings (the km driven, a nonce, which button gets tapped, a cycle ±15 % long)
    and sprinkles events that are not on any cycle (QR cells, km ticks, checkpoints), so it never reads as a looped GIF. Logical space 240×124 = public/media/chain/*.svg,
    which stay the no-JS / reduced-motion picture. Only scenes on screen with their front face up are drawn. Not gameplay: Math.random is fine here. */
 const W = 240, H = 124, PU = '#9945ff', GR = '#14f195', AM = '#ffcf5a', CR = '#e8e2cf', DI = '#9d957f', BG = '#0b0a09', LI = '#c4a2ff';
