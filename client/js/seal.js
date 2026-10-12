@@ -33,3 +33,6 @@ export async function checkSeal(ride) {
     max. Active pledges only; the lamport fields are strings on the wire. An estimate – a pledge pays only once the ride is verified after the review. */
 export const pledgeEstimate = (pledges, metres) => pledges.filter(p => p.status === 'active')
   .reduce((a, p) => a + Math.min(Number(p.lamportsPerKm) * Math.min(Math.floor(metres / 1000), p.targetKm), Number(p.maxLamports)), 0);
+
+/** a pledge amount, exact to the lamport-thousand: per-km rates are tiny (0.0005 SOL), so not pools.js `sol` (3 decimals) – the same as ui/watch-pledges.js */
+export const pledgeSol = l => `${(Number(l) / 1e9).toFixed(Number(l) % 1e6 ? 6 : 3).replace(/0+$/, '').replace(/\.$/, '')} SOL`;

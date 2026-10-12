@@ -4,7 +4,7 @@ import { online } from '../online.js';
 import { toast } from './toast.js';
 import { api as siteApi } from '../../site/wallet.js';
 import { explorerUrl, explorerTx, shortAddr, sol } from '../../site/pools.js';
-import { checkSeal, pledgeEstimate } from '../seal.js';
+import { checkSeal, pledgeEstimate, pledgeSol } from '../seal.js';
 
 /* ON CHAIN, the driver's side of a TICKET ride (online.ride.poolId set; free rides, guests, replays and the headless test see nothing):
    1. the road seal (js/seal.js) – checked in the browser on the START and the end panel, and shown while driving;
@@ -13,7 +13,7 @@ import { checkSeal, pledgeEstimate } from '../seal.js';
    Polls, no sockets; every server string goes in through textContent. */
 const km = m => `${(m / 1000).toFixed(1)} km`;
 
-const chain = { on: false, seal: null, sealv: null, pool: null, standings: null, me: null, pledges: [], seen: new Set(), timers: [], box: null, rows: null };
+const chain = { on: false, seal: null, sealv: null, pool: null, standings: null, me: null, pledges: [], polled: false, seen: new Set(), timers: [], box: null, rows: null };
 
 /** the ride's seal check (seal.js), cached: it never changes. null = not a pool ride / a pool from before the seal */
 export const rideSeal = () => (chain.seal ??= checkSeal(online.ride));
@@ -50,9 +50,9 @@ export function startCabChain() {
     if (!list) return;
     for (const p of list) if (p.status === 'active' && !chain.seen.has(p.id)) {
       chain.seen.add(p.id);
-      toast(`🔒 ${shortAddr(p.sponsor)} locked ${sol(Number(p.lamportsPerKm))}/km for you on chain (up to ${p.targetKm} km)`, 5000);
+      if (chain.polled) toast(`🔒 ${shortAddr(p.sponsor)} locked ${pledgeSol(p.lamportsPerKm)}/km for you on chain (up to ${p.targetKm} km)`, 5000);   // not the ones locked before START: the row shows them, and the first toast is the controls hint
     }
-    chain.pledges = list; paint();
+    chain.pledges = list; chain.polled = true; paint();
   };
   const every = (fn, ms) => { fn(); chain.timers.push(setInterval(() => { if (online.done) stopCabChain(); else fn(); }, ms)); };
   every(pool, CFG.CHAIN_POOL_POLL_MS); every(pledges, CFG.CHAIN_PLEDGE_POLL_MS);
@@ -95,7 +95,7 @@ function paint() {
   if (!active.length) pl.textContent = 'PLEDGES none yet – spectators can lock SOL per km for you';
   else {
     const rate = active.reduce((a, x) => a + Number(x.lamportsPerKm), 0);
-    pl.textContent = `PLEDGES ${active.length} · ${sol(rate)}/km · ≈ ${sol(pledgeEstimate(active, st.s))} so far, paid if verified`;
+    pl.textContent = `PLEDGES ${active.length} · ${pledgeSol(rate)}/km · ≈ ${pledgeSol(pledgeEstimate(active, st.s))} so far, paid if verified`;
     const last = active.find(x => x.createSignature);
     if (last) pl.append(' ', link(explorerTx(last.createSignature), '↗', 'the newest pledge\'s lock transaction (devnet)'));
   }

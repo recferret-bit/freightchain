@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { checkSeal, b58decode, pledgeEstimate } from '../js/seal.js';
+import { checkSeal, b58decode, pledgeEstimate, pledgeSol } from '../js/seal.js';
 
 /* vectors made with the SERVER's packSeedPreimage + projectRoadSeed (server/src/domain/road/provable-seed.ts) and node:crypto SHA-256 – the second has
    two leading zero bytes in the slot hash ('11…' in base58) and a slot above 2^32 */
@@ -34,4 +34,10 @@ test('pledge estimate: whole km, capped by target and max, active only', () => {
   assert.equal(pledgeEstimate([p(1000, 10, 50000)], 30_000), 10_000);
   assert.equal(pledgeEstimate([p(1000, 50, 5000)], 30_000), 5000);
   assert.equal(pledgeEstimate([p(1000, 50, 50000), p(500, 50, 50000, 'pending'), p(2000, 5, 10000)], 7_400), 7000 + 10000);
+});
+test('pledge amounts keep the small digits', () => {
+  assert.equal(pledgeSol('500000'), '0.0005 SOL');
+  assert.equal(pledgeSol(2_000_000), '0.002 SOL');
+  assert.equal(pledgeSol(0), '0 SOL');
+  assert.equal(pledgeSol(1_500_000_000), '1.5 SOL');
 });
