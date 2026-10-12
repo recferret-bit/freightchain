@@ -51,11 +51,11 @@ h2{margin:22px 0 10px;font-size:13px;letter-spacing:2px;color:var(--amber);font-
 .tier .more{max-height:0;overflow:hidden;opacity:0;transition:max-height .2s,opacity .2s}
 .tier:hover .more,.tier:focus-within .more{max-height:12em;opacity:1}
 @media (hover:none){.tier .more{max-height:none;opacity:1}}
-.promo-top{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-right:auto}   /* right next to the brand, whatever the chips say (space-between moved it with their widths) */
-.promo-top input{width:150px;font:inherit;font-size:12px;text-transform:uppercase;letter-spacing:1px;background:#0008;color:var(--text);border:1px solid var(--line);border-radius:999px;padding:4px 12px}
-.promo-top input:focus-visible{outline:2px solid var(--amber)}
-.promo-top button{padding:4px 12px;font-size:12px}
-.promo-top .msg{margin:0;font-size:12px;flex-basis:100%}.promo-top .msg:empty{display:none}
+.promo-form{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:0 0 10px}
+.promo-form input{width:220px;max-width:100%;font:inherit;font-size:12px;text-transform:uppercase;letter-spacing:1px;background:#0008;color:var(--text);border:1px solid var(--line);border-radius:999px;padding:4px 12px}
+.promo-form input:focus-visible{outline:2px solid var(--amber)}
+.promo-form button{padding:4px 12px;font-size:12px}
+.promo-form .msg{margin:0;font-size:12px;flex-basis:100%}.promo-form .msg:empty{display:none}
 .tier{text-align:left;background:var(--panel);color:var(--text);border:2px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;gap:4px;min-width:0}
 .tier.sel{border-color:var(--amber);box-shadow:0 0 22px #ffb02e33}
 .tier.pooled{border-color:#ffcf5a66}
@@ -216,7 +216,7 @@ th button.on{color:var(--amber)}
 .gprog,.gprev,#garage-slots .slot{margin-bottom:10px}.gprev{padding:8px}.gprev canvas{display:block;width:100%;max-width:760px;aspect-ratio:1280/633;margin:0 auto;border-radius:6px;background:#26221d;touch-action:manipulation}.cabnote{text-align:center;margin:6px 0 0;font-size:12px}
 #garage-slots .slot.ping{border-color:var(--amber);box-shadow:0 0 0 1px var(--amber)}
 
-@media (max-width:560px){.top{padding:10px 12px}.tabs{padding:0 6px;gap:0}.tabs a{padding:11px 8px;letter-spacing:0;font-size:12px}.tier .pr{font-size:19px}td,th{padding:8px 4px;font-size:13px}.tiers{grid-template-columns:1fr}.promo-top{order:3;width:100%}.promo-top input{flex:1}.tix th:nth-child(4),.tix td:nth-child(4){display:none}.tier.free .go{width:100%;justify-self:stretch}.buy{flex-wrap:wrap}.buy .buyb{width:100%}.chips{gap:5px}.chip{font-size:11px;padding:2px 8px}}
+@media (max-width:560px){.top{padding:10px 12px}.tabs{padding:0 6px;gap:0}.tabs a{padding:11px 8px;letter-spacing:0;font-size:12px}.tier .pr{font-size:19px}td,th{padding:8px 4px;font-size:13px}.tiers{grid-template-columns:1fr}.promo-form input{flex:1}.tix th:nth-child(4),.tix td:nth-child(4){display:none}.tier.free .go{width:100%;justify-self:stretch}.buy{flex-wrap:wrap}.buy .buyb{width:100%}.chips{gap:5px}.chip{font-size:11px;padding:2px 8px}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 .filters{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin:0 0 12px}.filters label{font-size:12px;color:var(--dim)}
 .filters select{font:inherit;font-size:12px;background:#000a;color:var(--text);border:1px solid var(--line);border-radius:4px;padding:4px 6px}

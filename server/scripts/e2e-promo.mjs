@@ -99,9 +99,10 @@ await A.shot('admin-promos-created');
 
 // ═══ 2 · players use them in the lobby, and see the changes ═══════════════════════════════════════════════════════════
 const u1 = await signIn(), u2 = await signIn(), u3 = await signIn();
-const lobbyAs = async (w, hash = '') => { await login(B, w, `${BASE}/lobby.html${hash}`); return until(async () => (await B.ev('!!document.getElementById("promo-code")')) && /free ride/.test(await txt(B, '#chip-free'))); };
-/** type a code into the header field and press REDEEM; resolves with the message and whether it was shown as good or bad */
+const lobbyAs = async (w, hash = '') => { await login(B, w, `${BASE}/lobby.html${hash}`); return until(async () => /free ride/.test(await txt(B, '#chip-free'))); };
+/** open the PROFILE, type a code into its field and press REDEEM; resolves with the message and whether it was shown as good or bad */
 async function redeemUI(code) {
+  await B.ev('if (location.hash !== "#profile" && location.hash !== "#promo") location.hash = "#profile"'); await until(async () => await B.ev('!!document.getElementById("promo-code")'));
   await B.ev(`(() => { const i = document.getElementById('promo-code'); i.value = ${JSON.stringify(code)}; })()`);
   await B.ev('document.getElementById("promo-msg").textContent = ""; document.getElementById("promo-go").click()');
   await until(async () => { const t = await txt(B, '#promo-msg'); return t && !/Redeeming/.test(t); });
@@ -153,7 +154,7 @@ await L.shot('promo-landing-invite');
 await L.ev('document.getElementById("invite").requestSubmit()');
 check('landing (signed out): CLAIM keeps the code and takes the player to CONNECT', /saved/.test(await txt(L, '#invite-msg')) && (await L.ev('document.activeElement?.id')) === 'connect', await txt(L, '#invite-msg'));
 await L.ev('document.getElementById("connect").click()');
-check('landing → lobby: after the wallet signs, the PROMO tab opens with the code typed in – and not redeemed yet', await until(async () => (await L.ev('location.pathname')) === '/lobby.html' && (await L.ev('document.getElementById("promo-code")?.value || ""')).toLowerCase() === C('dice').toLowerCase(), 20000) && (await get('promo/mine', await signInCookie(L))).j.redemptions?.length === 0);
+check('landing → lobby: after the wallet signs, the PROFILE opens with the code typed in – and not redeemed yet', await until(async () => (await L.ev('location.pathname')) === '/lobby.html' && (await L.ev('document.getElementById("promo-code")?.value || ""')).toLowerCase() === C('dice').toLowerCase(), 20000) && (await get('promo/mine', await signInCookie(L))).j.redemptions?.length === 0);
 async function signInCookie(h) { const c = (await h.send('Network.getCookies', { urls: [BASE] })).cookies.find(k => k.name === 'fc_session'); return c ? `fc_session=${c.value}` : ''; }
 await L.ev('document.getElementById("promo-go").click()');
 check('lobby (arrived from the landing): REDEEM works – the dice part is unlocked and worn', await until(async () => /Unlocked dice: pink/.test(await txt(L, '#promo-msg'))), await txt(L, '#promo-msg'));

@@ -434,11 +434,14 @@ async function redeem(e) {
 }
 
 /* ───────── PROMO CODES (a section of the PROFILE) ─────────
-   The code field is the header's (a code from the landing's invite block arrives as ?promo=CODE and only PRE-FILLS it – the player clicks REDEEM); here is what this wallet redeemed. The parts are in the GARAGE. */
+   The code field is here (a code from the landing's invite block arrives as ?promo=CODE and only PRE-FILLS it – the player clicks REDEEM); here is what this wallet redeemed. The parts are in the GARAGE. */
 function promoSection() {
-  if (S.invite) { $('promo-code').value = S.invite; S.invited = S.invite.replace(/\s+/g, '').toUpperCase(); S.invite = null; $('promo-code').focus(); }
+  const input = el('input', { id: 'promo-code', name: 'code', autocapitalize: 'characters', spellcheck: 'false', maxlength: 64, placeholder: 'PROMO CODE', 'aria-label': 'promo code', 'aria-describedby': 'promo-msg' });
+  if (S.invite) { input.value = S.invite; S.invited = S.invite.replace(/\s+/g, '').toUpperCase(); S.invite = null; setTimeout(() => input.focus()); }   // focus once it is in the page
   paintPromoLists();
-  return [el('h2', {}, 'PROMO CODES'), el('p', { class: 'dim' }, 'Redeem codes in the box at the top. Parts you unlock are waiting in your ', el('a', { href: '#garage' }, 'garage →')),
+  return [el('h2', {}, 'PROMO CODES'),
+    el('form', { class: 'promo-form', id: 'promo', autocomplete: 'off', onsubmit: redeem }, input, el('button', { id: 'promo-go', type: 'submit' }, 'REDEEM'), el('p', { class: 'msg dim', id: 'promo-msg', role: 'status' })),
+    el('p', { class: 'dim' }, 'Parts you unlock are waiting in your ', el('a', { href: '#garage' }, 'garage →')),
     el('div', { id: 'mycodes' }, el('p', { class: 'dim' }, 'Loading…'))];
 }
 async function paintPromoLists() {
@@ -469,7 +472,7 @@ function paintGarage(note) {
 }
 function pickPart(slot, part) {
   track('garage_part_clicked', { slot, item: part.id, owned: part.owned });
-  if (!part.owned) { paintGarage({ text: `${part.id} is locked – a promo code unlocks it. Redeem one on the PROMO tab.`, bad: true }); return; }
+  if (!part.owned) { paintGarage({ text: `${part.id} is locked – a promo code unlocks it. Redeem one in your PROFILE.`, bad: true }); return; }
   S.pick = { ...S.pick, [slot]: part.id };
   paintGarage();
 }
@@ -627,11 +630,10 @@ if (S.me) {
   track('lobby_viewed', viewed);
   paintHeader();
   for (const a of document.querySelectorAll('a[href="/play.html"]')) a.href = `${GAME_BASE}/play.html?offline=1`;   // guest free runs. The click listener above stays on the element. Paid and watch links already carry their own query
-  $('promo').onsubmit = redeem;
   $('out').onclick = async () => { track('player_signed_out'); flushSoon(); await signOut(); location.href = '/'; };
   [S.tiers, S.pool, S.pools] = await Promise.all(['tiers', 'pool', 'pools'].map(x => api(x, undefined, { report: false }).catch(() => null)));
   await pollLive();
-  const invite = new URLSearchParams(location.search).get('promo');   // the landing's invite block: lobby.html?promo=CODE – pre-fills the PROMO tab, never redeems by itself
+  const invite = new URLSearchParams(location.search).get('promo');   // the landing's invite block: lobby.html?promo=CODE – pre-fills the code field in the PROFILE, never redeems by itself
   if (invite?.trim()) { S.invite = invite.trim().slice(0, 64); history.replaceState(null, '', `${location.pathname}#promo`); }
   go();
   checkPending();   // once: an RPC lookup may run here, so never on a timer

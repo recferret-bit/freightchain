@@ -17,7 +17,7 @@ export function garageProgress(g) {
     el('div', { class: 'big' }, `${collected} / ${total}`, el('small', {}, ` parts · ${percent}%`)),
     el('div', { class: 'bar', role: 'progressbar', 'aria-valuenow': String(percent), 'aria-valuemin': '0', 'aria-valuemax': '100' }, el('i', { style: `width:${percent}%` })),
     el('div', { class: 'gslots' }, g.slots.map(s => el('span', { 'data-slot': s.slot }, `${SLOT_NAME[s.slot] ?? s.slot} `, el('b', {}, `${s.collected}/${s.total}`)))),
-    el('p', { class: 'dim' }, collected === total ? 'Every part collected – the garage is complete.' : 'Parts come from promo codes: redeem one on the PROMO tab and the part lands here.'));
+    el('p', { class: 'dim' }, collected === total ? 'Every part collected – the garage is complete.' : 'Parts come from promo codes: redeem one in your profile and the part lands here.'));
 }
 
 const badge = (part, picked) => (!part.owned ? '🔒' : picked ? (part.worn ? 'WORN' : 'SELECTED') : 'SELECT');

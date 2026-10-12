@@ -98,13 +98,13 @@ check('invite: an empty field is explained, nothing happens', /Type the code fir
 await ev(`document.getElementById('invite-code').value = ' bluepaint '; document.getElementById('invite').requestSubmit()`);
 check('invite (signed out): the code is kept and the CONNECT button takes focus', /BLUEPAINT saved/.test(await ev(`document.getElementById('invite-msg').textContent`)) && (await ev(`document.activeElement?.id`)) === 'connect');
 await click();
-check('invite: after the sign-in the lobby opens on the PROMO tab with the code typed in – and the URL is clean', await until(`location.pathname === '/lobby.html' && location.hash === '#promo' && location.search === '' && document.getElementById('promo-code')?.value === 'bluepaint'`, 12000), await ev('location.href'));
+check('invite: after the sign-in the lobby opens on the PROFILE (#promo) with the code typed in – and the URL is clean', await until(`location.pathname === '/lobby.html' && location.hash === '#promo' && location.search === '' && document.getElementById('promo-code')?.value === 'bluepaint'`, 12000), await ev('location.href'));
 await shot('lobby-invite');
 const mine = await ev(`fetch(${JSON.stringify(API + '/api/promo/mine')}, { credentials: 'include' }).then(r => r.json())`);
 check('…and nothing was redeemed by the link itself', Array.isArray(mine.redemptions) && mine.redemptions.length === 0, JSON.stringify(mine));
 await send('Page.navigate', { url: BASE + '/' }); await sleep(1500); await until(`!document.getElementById('chip-wallet').hidden`);
 await ev(`document.getElementById('invite-code').value = 'welcome'; document.getElementById('invite').requestSubmit()`);
-check('invite (signed in): straight to the lobby PROMO tab with the code', await until(`location.pathname === '/lobby.html' && location.hash === '#promo' && document.getElementById('promo-code')?.value === 'welcome'`), await ev('location.href'));
+check('invite (signed in): straight to the lobby PROFILE (#promo) with the code', await until(`location.pathname === '/lobby.html' && location.hash === '#promo' && document.getElementById('promo-code')?.value === 'welcome'`), await ev('location.href'));
 
 const problems = c.filt().filter(p => !/401|Failed to load resource/.test(p));
 check('no page errors', problems.length === 0, problems.join(' | ').slice(0, 200));
