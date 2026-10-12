@@ -121,7 +121,7 @@ export function profileTickets(p, busy, onRefund) {
         el('td', { class: 'r' }, t.balance), el('td', { class: 'r' }, t.bought), el('td', { class: 'r' }, t.cap),
         el('td', { class: 'r' }, t.refundable ? el('button', { class: 'ghost', disabled: !!busy, onclick: () => onRefund(t.poolId, 'profile') }, 'CLAIM REFUND') : '')))))) : el('div', { class: 'card empty' }, 'No tickets yet – redeem a promo code or buy one on NEW RIDE.'),
     el('p', { class: 'msg dim', id: 'msg-profile' }),
-    el('h2', {}, 'TICKET HISTORY'),
+    el('h2', { class: 'sub' }, 'TICKET HISTORY'),
     p.grants.length ? el('div', { class: 'hist' }, p.grants.map(g => el('div', { class: 'hrow' },
       el('span', {}, new Date(g.at).toLocaleString(), ' · ', label(g.poolId), ' · ', GRANT_SOURCE[g.source] ?? g.source, g.ref ? el('small', { class: 'dim' }, ` ${g.ref.length > 16 ? shortAddr(g.ref) : g.ref}`) : ''),
       el('b', { class: g.delta > 0 ? 'good' : g.delta < 0 ? 'bad' : '' }, g.delta > 0 ? `+${g.delta}` : String(g.delta))))) : el('div', { class: 'card empty' }, 'Nothing yet. Every ticket you get, spend or get back shows up here.'),

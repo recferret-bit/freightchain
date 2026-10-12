@@ -582,16 +582,18 @@ async function renderProfile() {
   meGen++; Object.assign(S.me, { freeRides: p.freeRides, freeRidesMax: p.freeRidesMax, nextFreeRideAt: p.nextFreeRideAt, tickets: p.tickets, agreements: p.agreements }); paintHeader();
   const card = agreementsCard(S.me);
   view.replaceChildren(
-    ...(card ? [card] : []),
-    el('div', { class: 'who', style: 'display:flex;gap:10px;align-items:center' }, avatar(p.wallet), el('div', {}, el('b', { title: p.wallet }, formatDriver(p.wallet, p.sns)), el('div', { class: 'dim' }, `rider since ${new Date(p.createdAt).toLocaleDateString()}`))),
-    ...careerTiles(p.career, p.stats, { km, sol }),
-    ...profileTickets(p, S.busy, refund),
-    ...promoSection(),
-    el('h2', {}, 'RECENT RIDES'),
-    p.recent.length ? el('div', { class: 'hist' }, p.recent.map(r => el('div', { class: 'hrow' },
-      el('span', {}, new Date(r.startedAt).toLocaleString(), ' · ', TIER_NAME[r.tier] ?? r.tier, r.route ? ` · ${ROUTES[r.route] ?? ''}` : ''),
-      el('span', {}, `${km(r.distance)} km · `, el('b', { class: r.status === 'completed' ? 'good' : 'bad' }, r.status.toUpperCase()), rideCheck(r)),
-      r.review === 'under_review' ? el('span', { class: 'dim rnote' }, 'An admin checks this ride before prizes are paid.') : ''))) : el('div', { class: 'card empty' }, 'No rides yet – start one!'));
+    el('section', { class: 'prof-sec ch prof-identity' },
+      ...(card ? [card] : []),
+      el('div', { class: 'who', style: 'display:flex;gap:12px;align-items:center' }, avatar(p.wallet), el('div', {}, el('b', { title: p.wallet }, formatDriver(p.wallet, p.sns)), el('div', { class: 'dim' }, `rider since ${new Date(p.createdAt).toLocaleDateString()}`)))),
+    el('section', { class: 'prof-sec ch' }, ...careerTiles(p.career, p.stats, { km, sol })),
+    el('section', { class: 'prof-sec ch' }, ...profileTickets(p, S.busy, refund)),
+    el('section', { class: 'prof-sec ch' }, ...promoSection()),
+    el('section', { class: 'prof-sec ch' },
+      el('h2', {}, 'RECENT RIDES'),
+      p.recent.length ? el('div', { class: 'hist' }, p.recent.map(r => el('div', { class: 'hrow' },
+        el('span', {}, new Date(r.startedAt).toLocaleString(), ' · ', TIER_NAME[r.tier] ?? r.tier, r.route ? ` · ${ROUTES[r.route] ?? ''}` : ''),
+        el('span', {}, `${km(r.distance)} km · `, el('b', { class: r.status === 'completed' ? 'good' : 'bad' }, r.status.toUpperCase()), rideCheck(r)),
+        r.review === 'under_review' ? el('span', { class: 'dim rnote' }, 'An admin checks this ride before prizes are paid.') : ''))) : el('div', { class: 'card empty' }, 'No rides yet – start one!')));
 }
 
 /* ───────── refresh + 1 s tick ───────── */
