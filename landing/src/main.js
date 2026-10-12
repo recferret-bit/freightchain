@@ -251,6 +251,12 @@ for (const c of document.querySelectorAll('.oc')) {
   c.addEventListener('click', e => { if (!e.target.closest('a')) flip(); });
   c.addEventListener('keydown', e => { if (e.target === c && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); flip(); } });
 }
+/* their drawings come alive as canvas scenes (chain-scenes.js, a lazy chunk) when the grid gets near; reduced motion keeps the still SVGs */
+const ocGrid = document.querySelector('.oc-grid');
+if (ocGrid && !reduced) {
+  const cio = new IntersectionObserver(es => { if (!es.some(e => e.isIntersecting)) return; cio.disconnect(); import('./chain-scenes.js').then(m => m.startChainScenes(ocGrid.querySelectorAll('.oc'))).catch(e => console.warn('chain scenes unavailable', e)); }, { rootMargin: '600px' });
+  cio.observe(ocGrid);
+}
 
 /* ───── socials ───── */
 for (const [net, url] of Object.entries(SOCIALS)) if (url) {

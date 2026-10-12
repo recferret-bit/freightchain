@@ -14,7 +14,7 @@ const KB = 1024;
 test('JS: the eager bundle is small, nothing in dist/assets is large', { skip: !has }, () => {
   const js = files.filter(f => f.endsWith('.js'));
   for (const f of js) assert.ok(statSync(f).size <= 34 * KB, `${f} ${statSync(f).size} B > 34 kB`);
-  assert.ok(js.reduce((a, f) => a + gz(f), 0) <= 50 * KB, 'all JS together ≤ 50 kB gzipped (incl. the lazy live-dash chunks)');   // 40 → 44 on Oct 11: the cab radio's eleven stations (client/js/sim/radio.js, ~5.7 kB gz) ride in the lazy dash chunk; the eager entry is unchanged
+  assert.ok(js.reduce((a, f) => a + gz(f), 0) <= 55 * KB, 'all JS together ≤ 55 kB gzipped (incl. the lazy live-dash chunks)');   // 40 → 44 on Oct 11: the cab radio's eleven stations (client/js/sim/radio.js, ~5.7 kB gz) ride in the lazy dash chunk; the eager entry is unchanged; 50 → 55 on Oct 12: the UNDER THE HOOD canvas scenes (src/chain-scenes.js, ~4.6 kB gz), lazy as well
 });
 
 test('CSS ≤ 14 kB gzipped (landing + whitepaper), HTML ≤ 15 kB gzipped (landing) / ≤ 31 kB (the whitepaper, a long read)', { skip: !has }, () => {
