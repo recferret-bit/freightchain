@@ -8,7 +8,7 @@ The sorting rule: the game's defining trait is a shift that is **long, slow and 
 
 | Piece | Where | Note |
 |---|---|---|
-| Sign-In With Solana (challenge + ed25519 `signMessage`) | `client/site/wallet.js`, `server/src/domain/auth`, `infrastructure/auth/nacl.signature-verifier.ts` | Phantom → `window.solana` → Solflare. Hand-rolled SIWS text, not the wallet-standard `signIn` call. |
+| Sign-In With Solana (Wallet Standard `solana:signIn` + ed25519 fallback) | `client/site/wallet.js`, `server/src/domain/auth`, `infrastructure/auth/nacl.signature-verifier.ts` | Built & Verified (2026-10-12): 1-click native SIWS modal for Phantom/Solflare, fallback to connect+signMessage, single-use nonce burn, domain/expiration checks. |
 | Paid shift = `SystemProgram.transfer` + Memo (ride UUID) to the treasury pubkey | `client/site/pay.js`, `infrastructure/solana/solana-chain.adapter.ts`, `domain/economy/payment-verification.ts` | Unsigned tx built by the server, signed in the wallet, confirmed by polling `getParsedTransaction`. `reconcile` sees only the wallet's last 25 signatures. |
 | SOL/USD price | `infrastructure/solana/http-price-quote.adapter.ts` | Coinbase → CoinGecko, not a Solana oracle. |
 | Weekly pool in integer lamports, split 50/20/20/10 (→ top-3 25/15/10 on Thursday) | `domain/economy/prize-split.ts`, `round.entity.ts` | Accounting only, no payout code; payouts manual, admin-signed (Q8). |
@@ -54,7 +54,7 @@ Effort below = focused days for one person, excluding external waits (registry a
 
 **M1 · The project X account posts by itself.** `SocialPostPort` with an `XApiAdapter` (OAuth user context, write-only) and a `NullSocialPostAdapter`; posts: Monday 00:00 UTC "round N closed: top 3 … pool … SOL" with the winner's `/r/:id` (so the post carries a Blink – the community "raid" post), a new pool record, and optionally "a driver finished a 1h shift, 94 km" per finished paid ride (the hackathon plan's P2 promise). Needs a **round-close job** – today the round closes lazily on the first request of the week; add a scheduler next to `daily-free-ride.scheduler.ts` dispatching `CloseRoundCommand`, then the post. X API: the free tier is write-only with a low monthly post cap and paid tiers cost money – check the current limits before relying on per-ride posts; start with the weekly post. Effort 1 d + app approval.
 
-**M2 · Wallet-standard `signIn` (native SIWS).** Phantom and Solflare render a proper sign-in sheet (domain, statement, nonce) instead of a raw message; fall back to `signMessage`. Effort 0.5 d. Less phishing-looking, one sentence for the judges.
+**M2 · Wallet-standard `signIn` (native SIWS).** **Built & Verified (2026-10-12):** Phantom and Solflare render a proper sign-in sheet (domain, statement, nonce) via `solana:signIn` instead of raw message; falls back seamlessly to `signMessage`. Replay-proof ed25519 validation on backend with burned single-use nonces and domain verification.
 
 **M3 · Pyth for SOL/USD.** Primary quote from Pyth (Hermes HTTP, SOL/USD feed id), Coinbase/CoinGecko as fallback; same cache and sanity bounds. Effort 0.5 d. Solana-native oracle; a judge nods, a player does not notice.
 
@@ -66,7 +66,7 @@ Effort below = focused days for one person, excluding external waits (registry a
 
 **W1 · Achievement badges as compressed NFTs.** As a plain badge list this is the feature every game has. It only becomes ours if the badge **encodes the shift**: "8 hours on the Trans-Siberian at night", a per-route odometer that counts up in the wallet, the weekly trophy as a Metaplex Core asset minted in the admin's payout batch. Mechanics if done: one Bubblegum v2 tree (~0.00001 SOL per leaf), non-transferable; badges minted by a dedicated tree-delegate key on the server (worthless to steal) or admin-signed weekly; wallets see them through a DAS API (Helius / QuickNode). Effort 2 d. Decision: build the **weekly trophy** with the payout batch (3 per week, zero server keys), leave the badge list until the odometer design exists.
 
-**W2 · `.sol` names on the boards.** Reverse-lookup via SNS (a **read-only mainnet RPC call** – note it in the devnet rule), cached in `Player.displayName`. Nice on the board, zero relation to trucks. Effort 0.5–1 d. Only if a board screenshot is going into a post and the wallets look bad.
+**W2 · `.sol` names on the boards.** **Built & Verified (2026-10-12):** Reverse lookup via SNS Mainnet-Beta RPC/resolver (`server/src/infrastructure/sns/sns-name-service.adapter.ts` with PDA derivation and in-memory TTL caching; client `site/sns.js`). Driver identities rendered across leaderboards, profile, and spectator HUD.
 
 **W3 · Solana Mobile (Seeker / dApp Store).** Blocked on touch controls in the game; roadmap row only.
 

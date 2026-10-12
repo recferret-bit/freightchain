@@ -220,7 +220,7 @@
 
   <h3 class="sub">HOW A SHIFT RUNS</h3>
   <ol class="flow">
-    <li><i>1</i><b>SIGN IN</b><span>Sign a message with Phantom or Solflare. No transaction, no fee. A cookie keeps the session; the site never sees your key.</span></li>
+    <li><i>1</i><b>SIGN IN</b><span>Native 1-click Sign-In With Solana (solana:signIn). Modern wallets (Phantom, Solflare, Backpack) connect and sign in a single verified modal; automatic fallback to signMessage. Your .sol domain from SNS automatically displays on all boards and receipts.</span></li>
     <li><i>2</i><b>START</b><span>Free: spend a free ride. Paid: spend one ticket of that tier's live pool. The server issues a signed ride with a seed shared by its pool, or by its tier that day: everyone drives one road and a start time.</span></li>
     <li><i>3</i><b>DRIVE</b><span>The game heartbeats the server. Driven seconds come from those beats, capped by wall time. The recording uploads every 15 s.</span></li>
     <li><i>4</i><b>FINISH</b><span>After the minimum time <em>and</em> the minimum distance the shift is <em>complete</em>. You may keep driving, then end it (P → END SHIFT).</span></li>
@@ -260,6 +260,8 @@
     <tbody>
       <tr><td><b>Free rides</b> – 10 at sign-up, daily refill stops at 5</td><td>Every wallet</td><td><span class="pill ok">LIVE</span></td></tr>
       <tr><td><b>Free board</b> – every completed free ride ranks</td><td>Free drivers</td><td><span class="pill ok">LIVE</span></td></tr>
+      <tr><td><b>SNS (.sol) driver identity</b> – drivers holding a .sol primary domain are recognized across all leaderboards, profile dialogs, and ride receipts via zero-dependency Mainnet-Beta PDA resolution</td><td>All .sol owners</td><td><span class="pill ok">LIVE · MAINNET RPC</span></td></tr>
+      <tr><td><b>Native 1-click SIWS</b> – unified wallet-standard connect and sign sheet (solana:signIn) with domain origin binding and single-use burned nonces</td><td>Phantom, Solflare, Backpack</td><td><span class="pill ok">LIVE</span></td></tr>
       <tr><td><b>Badges</b> – 31 in eight ladders of 3–4 tiers, Bronze to Platinum: rides started, paid shifts, night shifts, distance, clean runs, Siberia, unassisted free rides, the three free levels. The server counts them from the rides it judged; a rejected recording earns nothing</td><td>Wallets that earn them</td><td><span class="pill ok">LIVE</span></td></tr>
       <tr><td><b>Tips and effects from spectators</b> – SOL from a viewer's wallet straight to yours</td><td>The driver being watched</td><td><span class="pill ok">LIVE · DEVNET</span></td></tr>
       <tr><td><b>Promo codes</b> – free tickets of a tier</td><td>Whoever holds a code</td><td><span class="pill wip">BUILT</span></td></tr>
@@ -363,6 +365,10 @@
   <h3 class="sub">YIELD &amp; COMMUNITY PLEDGES</h3>
   <p><b>JitoSOL Yield.</b> In Anchor v3, escrowed pool lamports earn liquid staking yield throughout the 24-hour sale and 48-hour review windows: accumulated rewards (<code>yield_earned</code>) compound directly into the prize pot, increasing payouts without locking capital.</p>
   <p><b>Community Pledges.</b> Spectators can back drivers with per-kilometre sponsorship PDAs (<code>[b"pledge", ride_id, sponsor]</code>). Pledged lamports are committed upfront via <code>create_pledge</code> and settled trustlessly by <code>settle_pledge</code>: drivers receive earnings proportional to verified distance (<code>Attestation.verified_km</code>), and all unearned surplus returns automatically to the sponsor with zero stranded lamports.</p>
+
+  <h3 class="sub">WALLET STANDARD &amp; DECENTRALIZED IDENTITY</h3>
+  <p><b>Native 1-Click SIWS.</b> Freight Chain implements the official Solana Wallet Standard <code>solana:signIn</code> specification (CAIP-122). Instead of sequential "Connect" and "Sign Message" popups, modern Solana wallets (Phantom, Solflare, Backpack) present a single native approval sheet verifying domain origin, issued timestamps, and single-use burned nonces (<code>nonce:${nonce}</code>), with automatic fallback to standard message signing for older wallets.</p>
+  <p><b>Zero-Dependency SNS Resolution.</b> Driver public keys are resolved on-chain against the Solana Name Service (SPL Name Service program on Mainnet-Beta, <code>namesLPneVptA9Z5rqUDD9tMTWEJwofgaYwp8cawRkX</code>). The backend derives reverse registry and favorite domain PDAs directly via <code>@solana/web3.js</code> with multi-tier caching (24h positive / 30m negative), displaying <code>driver.sol</code> across all leaderboards, profiles, and receipts without third-party SDK bloat.</p>
 
   <h3 class="sub">THE LIFE OF A POOL</h3>
   <p>A pool opens with a commitment goal. The 1 hour pool's is 20 tickets: live on the 20th sale, or a refund if the deadline comes first. Every path ends as the declared split, or every buyer paid back.</p>

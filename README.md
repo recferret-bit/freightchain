@@ -69,6 +69,8 @@ A wallet listed in `DEMO_WALLETS` drives a paid shift `DEMO_SCALE` times shorter
 | Live watch, replays, CB chat, devnet tips to the driver | Yes | Live. Effects run on free rides only |
 | Garage, promo codes | Yes | Lobby tabs. Cosmetics are colours |
 | Public ride receipts, 𝕏 card SSR, in-game 𝕏 sharing | Yes (`/r/:id`, Web Intent) | Live |
+| Native 1-Click SIWS (`solana:signIn`) with legacy fallback | Yes | Live |
+| SNS (.sol) reverse and forward resolution with multi-tier caching | Yes (Mainnet-Beta RPC) | Live |
 | Escrow program | Anchor v3 on devnet: 21 instructions, 18 events, 30 errors, 81 tests passing in LiteSVM. Vault PDAs, JitoSOL liquid staking yield (`staked_lamports`, `yield_earned`), on-chain `Attestation` PDAs (`[b"attestation", pool, driver]`), and Community Sponsorship Pledges (`[b"pledge", ride_id, sponsor]`). | Initialized on devnet, freightchain.fun runs it (`PAYMENT_MODE=program`) |
 | Prize payouts from a pool vault | v3: `pay_prize` is strictly gated on-chain by the `Attestation` PDA bearing the RFC 6962 telemetry Merkle root; payout job pays verified top 20 drivers after the review window. | After the results, on an explicit switch |
 | Community Sponsorship Pledges | Yes: on-chain `Pledge` PDAs (`[b"pledge", ride_id, sponsor]`), `create_pledge`, `settle_pledge` (proportional per-km payout), `refund_pledge` (100% refund of unused/cancelled). | Live on devnet |
@@ -81,27 +83,34 @@ freightchain.fun runs `PAYMENT_MODE=program` on devnet since Oct 11. Rollback is
 
 ### What a Solana judge can check
 
-#### Solana Features — The Dual Pillars
+#### Solana Features — The Four Pillars
 
-Freight Chain unlocks two fundamental pillars on Solana that web2 or legacy evm gaming cannot match:
+Freight Chain unlocks four fundamental pillars on Solana that web2 or legacy evm gaming cannot match:
 
 - **Pillar 1: Provable Gaming Integrity**
   - **Chain-Anchored Seed Commitment**: When a pool opens, its endless road seed is deterministically committed on-chain as `SHA256(poolId || blockhash || slot)` in `Pool.seed_commitment`. The operator cannot choose an easy road or manipulate bend frequency after players commit funds.
   - **RFC 6962 Telemetry Merkle Root**: During shifts, the truck client streams 15-second telemetry batches (`RideBatch`) signed and hash-chained. The server builds an RFC 6962 compliant Merkle tree (`computeTelemetryMerkleRoot`) across every chunk.
   - **On-Chain Attestation PDA Gating**: When a ride passes physical verification (bounds, road agreement, holes, timing), `AttestationService` invokes `submit_attestation` to initialize an `Attestation` PDA (`[b"attestation", pool, driver]`). The Anchor program's `pay_prize` instruction *strictly requires* this PDA to exist—making prize distribution cryptographically dependent on genuine telemetry.
 
-- **Pillar 2: Capital Efficient Jito Yield**
+- **Pillar 2: Capital Efficient Jito Yield & Per-KM Pledges**
   - **Liquid Staking Yield Accumulation**: Escrowed pool lamports held in pool vaults do not sit idle during ticket sale phases and 48-hour review windows. Through JitoSOL liquid staking yield accounting (`staked_lamports`, `yield_earned`), yield accrues continuously.
   - **Auto-Compounding Prize Pots**: Accrued staking yield is tracked in the Pool PDA and automatically compounds into the driver prize pool (`record_yield`), boosting tournament prize payouts without increasing driver entry ticket costs or risking principal.
+  - **Community Sponsorship Pledges**: Spectators back live drivers with on-chain Pledge PDAs (`[b"pledge", ride_id, sponsor]`). Drivers earn lamports proportionally based on verified distance driven, and any unearned surplus is refunded with zero stranded lamports.
 
-- **Community Sponsorship Pledges (Per-Kilometre Escrow)**
-  - **Trustless PDA Pledges**: Spectators sponsor live drivers per kilometre via `create_pledge`, creating an on-chain `Pledge` PDA (`[b"pledge", ride_id, sponsor]`).
-  - **Proportional Settlement & Zero Stranded Lamports**: Upon ride completion, `settle_pledge` pays the driver proportionally based on verified distance driven. Any unearned balance or cancelled drive is returned via `refund_pledge` with zero stranded lamports.
+- **Pillar 3: Native 1-Click SIWS (`solana:signIn`)**
+  - **Official Wallet Standard Specification**: Implements CAIP-122 `solana:signIn` in Phantom, Solflare, and Backpack. Merges wallet connection and authentication into a single native dialog verifying domain origin, cryptographic Ed25519 detached signatures, and single-use burned nonces (`nonce:${nonce}`).
+  - **Zero-Friction Fallback**: Automatically and transparently falls back to standard `connect()` + `signMessage()` for older wallet extensions without disrupting the driver experience.
+
+- **Pillar 4: Zero-Dependency SNS (.sol) Driver Identity**
+  - **Decentralized Driver Names**: Resolves driver public keys to primary `.sol` domain names directly on Solana Mainnet-Beta via native SPL Name Service PDA derivation (`namesLPneVptA9Z5rqUDD9tMTWEJwofgaYwp8cawRkX`) using pure `@solana/web3.js` without third-party SDK bloat.
+  - **Zero-Waterfall Leaderboards & Receipts**: Backed by positive (24h) and negative (30m) TTL caching to prevent RPC rate-limits. Drivers appear by their `.sol` handles across all leaderboards, profile dialogs, and public `/r/:id` receipts.
 
 ##### Judge Quick-Evaluation Matrix
 
 | Feature | Solana Primitive | What It Proves to Judges | Code Location |
 | :--- | :--- | :--- | :--- |
+| **1-Click Native SIWS** | `solana:signIn` (CAIP-122) | Single-click wallet standard onboarding, domain binding, and Ed25519 signature checks | [`wallet.js`](client/site/wallet.js), [`verify-signin.handler.ts`](server/src/application/use-cases/auth/verify-signin/verify-signin.handler.ts) |
+| **SNS (.sol) Name Resolution** | SPL Name Service PDA on Mainnet-Beta | Decentralized driver identity on leaderboards and receipts without SDK bloat | [`sns-name-service.adapter.ts`](server/src/infrastructure/sns/sns-name-service.adapter.ts), [`lobby-board.js`](client/site/lobby-board.js) |
 | **Provable Road Seed** | `SHA256(poolId \|\| blockhash \|\| slot)` committed to `Pool` PDA | Eliminates road cherry-picking; guarantees fair conditions across all contestants | [`provable-seed.ts`](server/src/domain/road/provable-seed.ts) |
 | **Telemetry Merkle Root** | RFC 6962 tree over 15s telemetry chunks | Cryptographic audit trail of human driving physics and inputs | [`telemetry-merkle.ts`](server/src/domain/telemetry/telemetry-merkle.ts) |
 | **Attestation-Gated Payouts** | `Attestation` PDA strictly checked in `pay_prize` | Smart contract programmatically blocks invalid or unverified payouts | [`instructions/settle.rs`](programs/freightchain-pools/programs/freightchain_pools/src/instructions/settle.rs) |
@@ -110,7 +119,8 @@ Freight Chain unlocks two fundamental pillars on Solana that web2 or legacy evm 
 
 #### Program and Platform Verifications
 
-- **Sign-in.** Sign-In With Solana. The server stores one challenge, consumes it on the first attempt, and sets an httpOnly cookie. The statement says the signature does not send a transaction. [`server/src/domain/auth/sign-in.ts`](server/src/domain/auth/sign-in.ts)
+- **Sign-in.** Native 1-Click Sign-In With Solana (`solana:signIn`). The server issues structured CAIP-122 challenges, burns nonces atomically on the first attempt (`nonce:${nonce}`), verifies Ed25519 detached signatures, and sets an httpOnly session cookie with automatic fallback for older wallets. [`server/src/domain/auth/sign-in.ts`](server/src/domain/auth/sign-in.ts)
+- **SNS Decentralized Identity.** Drivers holding a `.sol` primary domain are automatically resolved via Solana Mainnet-Beta RPC and displayed on all leaderboards, profiles, and receipts without SDK bloat. [`server/src/infrastructure/sns/sns-name-service.adapter.ts`](server/src/infrastructure/sns/sns-name-service.adapter.ts)
 - **Public ride receipts, 𝕏 posts, and Solana Actions.** Every online shift (free or paid) gets an open public URL (`/r/:id`) showing live or completed telemetry, route seed proof, and a direct link to Solana Explorer (devnet) for the ticket escrow transaction. Drivers still post from their own account with an 𝕏 web intent. The link in that post is the site (`/` after a ticket buy, `/r/:id` for a ride), and `/actions.json` maps those URLs to Solana Actions so a blink client can buy one devnet ticket or open the ride. The explorer receipt stays in the lobby dialog. Server-side middleware also renders Twitter Card and Open Graph tags for clients that only show a preview.
 - **A program-owned vault.** Each pool has a zero-data PDA. Only the program can sign for it. Price, minimum, deadlines, and the prize / seed / fee split are fixed at `create_pool`. [`programs/freightchain-pools/README.md`](programs/freightchain-pools/README.md)
 - **A missed pool refunds without the operator.** `fail_pool`, `refund`, `expire_pool`, and the grace `close_pool` are permissionless. After 14 days an unpaid active pool can only be expired and refunded, so an absent admin cannot sweep the players' money to the seed treasury.

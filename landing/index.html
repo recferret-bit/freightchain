@@ -189,12 +189,12 @@
             <small><u>70%</u> prizes (Attestation PDA gated) + Jito yield · <u>20%</u> next pool · <u>10%</u> fees</small></div>
         </li>
       </ol>
-      <p class="dim" id="escrow-status">The Anchor v3 program is on devnet with provable blockhash road seed commitments, RFC 6962 telemetry roots, and on-chain Attestation PDAs gating prize settlement. Idle vault lamports earn JitoSOL liquid staking yield throughout ticket sales and review. Community sponsors back drivers with per-km Pledge PDAs. Pay via Phantom, Solflare, or Solana Pay.</p>
+      <p class="dim" id="escrow-status">The Anchor v3 program is on devnet with provable blockhash road seed commitments, RFC 6962 telemetry roots, and on-chain Attestation PDAs gating prize settlement. Idle vault lamports earn JitoSOL liquid staking yield throughout ticket sales and review. Community sponsors back drivers with per-km Pledge PDAs. Connect with 1-click Native SIWS, display your .sol name via SNS, and pay via Phantom, Solflare, or Solana Pay.</p>
       <a class="link" id="escrow-link" href="/whitepaper.html#onchain">The whole escrow, with diagrams, in the whitepaper →</a>
     </div>
   </div>
 
-  <h3 class="sub rv">SOLANA INNOVATIONS · PROVABLE FAIRNESS &amp; CAPITAL EFFICIENCY</h3>
+  <h3 class="sub rv">SOLANA INNOVATIONS · SIX ON-CHAIN PILLARS</h3>
   <div class="about rv">
     <article class="card">
       <h3 style="color:var(--amber)">01 · PROVABLE INTEGRITY</h3>
@@ -210,6 +210,21 @@
       <h3 style="color:var(--amber)">03 · PER-KM PLEDGES</h3>
       <p><b>Micro-Marathon Sponsorship:</b> Spectators back live drivers with on-chain Pledge PDAs (e.g. 0.001 SOL per km) directly while watching the stream.</p>
       <p><b>Zero Stranded Lamports:</b> Programmatic settlement pays drivers for verified distance driven and refunds unearned surplus back to the sponsor instantly.</p>
+    </article>
+    <article class="card">
+      <h3 style="color:var(--amber)">04 · 1-CLICK NATIVE SIWS</h3>
+      <p><b>Wallet Standard SignIn:</b> Full implementation of <code>solana:signIn</code> (CAIP-122). Connect and sign in a single native modal in Phantom, Solflare, and Backpack with domain origin binding.</p>
+      <p><b>Replay &amp; Phishing Proof:</b> Single-use cryptographically burned nonces and detached Ed25519 signature checks, with seamless fallback to legacy signing for older wallets.</p>
+    </article>
+    <article class="card">
+      <h3 style="color:var(--amber)">05 · SNS (.SOL) DRIVER IDENTITY</h3>
+      <p><b>Mainnet-Beta Name Resolution:</b> Native SPL Name Service PDA derivation resolving reverse and forward records directly via <code>@solana/web3.js</code> with zero third-party SDK bloat.</p>
+      <p><b>Zero-Waterfall Leaderboards:</b> Drivers appear as <code>driver.sol</code> across all boards, profile dialogs, and public <code>/r/:id</code> receipts, backed by multi-tier caching (24h positive / 30m negative).</p>
+    </article>
+    <article class="card">
+      <h3 style="color:var(--amber)">06 · SOULBOUND cNFTs &amp; BLINKS</h3>
+      <p><b>Bubblegum v2 Badges:</b> 31 tiered driver achievements minted as compressed NFTs on a dedicated devnet tree, cryptographically locked to the earner with on-chain transfer refusal.</p>
+      <p><b>Blinks &amp; Solana Pay:</b> Enter shifts or tip drivers directly from 𝕏 via Solana Actions (Blinks), or scan Solana Pay QR codes with a mobile wallet.</p>
     </article>
   </div>
 
@@ -349,10 +364,10 @@
   <div class="about rv">
     <article><h3>WHY A TRUCK</h3><p>Desert Bus (1995) was an eight-hour drive from Tucson to Las Vegas at 45 mph for one point. Nobody should have finished it, and people did – and other people watched. The scarce thing was attention. This is that, with the finish decided by a server and the pot in SOL.</p></article>
     <article><h3>BUILT · CUT · NEXT</h3>
-      <ul class="bcn"><li><i class="ok"></i><b>Built:</b> the sim, Sign-In With Solana, server-timed rides, verified play, live streams and replays, the escrow program and its server mirror, garage, promo codes, analytics, this page.</li>
-      <li><i class="cut"></i><b>Cut on purpose:</b> performance upgrades, mobile / Telegram, paid ads before a growth hire, a token, mainnet before legals, a penetration test and a load test.</li>
-      <li><i class="next"></i><b>Next:</b> the program on devnet with real pools, a four-seat crew (CPO / COO, QA, community, content), a load test, a penetration test and legals, mainnet in December.</li></ul></article>
-    <article><h3>THE STACK</h3><p>Vanilla ES modules + three.js in the browser, no bundler. NestJS + PostgreSQL on the server. An Anchor (Rust) escrow program, one vault per pool. Phantom / Solflare, or a Solana Pay code for the same wallet on a phone. SOL/USD from Coinbase then CoinGecko. Solo build since mid-September 2026, entered in the Colosseum Crypto World's Fair; the driving sim predates it and is disclosed in the README.</p></article>
+      <ul class="bcn"><li><i class="ok"></i><b>Built:</b> the sim, 1-click Native SIWS, SNS (.sol) lookup, Anchor v3 escrow with JitoSOL yield & Attestation PDAs, per-km Pledge PDAs, soulbound cNFT badges, Solana Pay, Blinks, server-timed rides, verified play, live streams, garage, promo codes.</li>
+      <li><i class="cut"></i><b>Cut on purpose:</b> performance upgrades, mobile driving before touch controls, paid ads before a growth hire, a token, mainnet before legals and audit.</li>
+      <li><i class="next"></i><b>Next:</b> program audit and mainnet migration, a four-seat crew (CPO / COO, QA, community, content), convoy team drives, mobile driving controls.</li></ul></article>
+    <article><h3>THE STACK</h3><p>Vanilla ES modules + three.js in the browser, no bundler, zero runtime npm dependencies. NestJS + PostgreSQL on the server (Clean Architecture). An Anchor v3 (Rust) escrow program with vault PDAs, JitoSOL liquid staking yield, and Attestation gating. Native 1-click SIWS, SPL Name Service PDA resolution, Metaplex Bubblegum v2 cNFT badges, Solana Pay, and Blinks. Solo build entered in the Colosseum Crypto World's Fair.</p></article>
   </div>
   <div class="socials rv" id="socials">
     <span class="lbl">JOIN THE CONVOY</span>
