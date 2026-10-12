@@ -221,8 +221,8 @@ function bindBail() {
 }
 function paintPause() {
   panel.innerHTML = `<h1>PAUSED</h1><h2>Time does not accrue while paused. The road never ends.</h2>
-    <div class="btns"><button id="resume">RESUME</button><button class="alt" id="endshift" hidden>${st.complete ? 'END SHIFT (complete)' : 'ABANDON SHIFT'}</button></div>
-    <h2>Walk off, if you mean it.</h2>
+    <div class="btns"><button class="stay" id="resume">RESUME</button><button class="alt" id="endshift" hidden>${st.complete ? 'END SHIFT (complete)' : 'ABANDON SHIFT'}</button></div>
+    <h2 class="walkoff">Walk off, if you mean it.</h2>
     <div class="btns">${bailBtn('yard')}${bailBtn('done')}</div>`;
   overlay.classList.remove('hide');
   document.getElementById('resume').onclick = () => setPaused(false);
