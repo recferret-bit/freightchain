@@ -17,7 +17,7 @@ import { formatDriver, getCachedSns, reverseResolveSns } from '../../site/sns.js
    the chat box and the MOCK donation buttons. Server text only through el() / textContent. Spectator actions go to /api/watch/:id/* (server/src/presentation/live). */
 const TIER = { free: 'TEST RIDE', '1h': '1 HOUR', '4h': '4 HOURS', '8h': '8 HOURS' };
 const STATUS = { running: 'ON THE ROAD', completed: 'COMPLETED', abandoned: 'ABANDONED', failed: 'FAILED' };
-const P = { me: null, root: null, busy: false };
+const P = { me: null, root: null, busy: false, endShown: false };
 const $ = id => document.getElementById(id);
 const hms = t => (t >= 3600 ? `${Math.floor(t / 3600)}:${fmt(t % 3600)}` : fmt(t));
 const km = m => (m / 1000).toFixed(1);
@@ -42,6 +42,9 @@ export function mountWatchPanel() {
     el('div', { class: 'w-top' },
       el('div', {}, el('div', { class: 'w-k' }, 'WATCHING'), whoEl),
       el('button', { class: 'alt w-fold', title: 'fold / expand the panel', onclick: toggleFold }, '⇥')),
+    el('div', { class: 'w-leave', role: 'navigation', 'aria-label': 'Leave the replay' },
+      ...[['yard', 'I MISS THE YARD', 'lobby', '/lobby.html'], ['done', "I'M DONE", 'landing', '/']].map(([k, name, tip, path]) =>
+        el('button', { type: 'button', id: `watch-${k}`, class: 'alt', title: tip, onclick: () => { location.href = `${SITE_BASE}${path}`; } }, el('b', {}, name), el('small', {}, tip)))),
     el('div', { class: 'w-meta' }, el('span', { id: 'w-route' }), ' · ', TIER[r.tier] ?? r.tier),
     el('div', { class: 'w-badges' }, el('span', { id: 'w-state', class: 'w-badge' }), el('span', { id: 'w-viewers', class: 'w-badge dim' })),
     el('div', { class: 'w-stats' }, el('span', {}, '⏱ ', el('b', { id: 'w-time' })), el('span', {}, '↦ ', el('b', { id: 'w-dist' })), el('span', {}, 'hull ', el('b', { id: 'w-hull' }))),
@@ -56,7 +59,7 @@ export function mountWatchPanel() {
       el('button', { id: 'w-sound', class: 'alt', title: 'engine sound (M mutes)', onclick: () => { if (audio.ctx) audio.muted = !audio.muted; else { audio.start(); audio.muted = false; } paint(); } }, '🔇')),
     el('div', { class: 'w-feed', id: 'w-feed', 'aria-live': 'polite' }),
     el('div', { id: 'w-me' }),
-    el('div', { class: 'w-foot' }, el('a', { href: `${SITE_BASE}/lobby.html#live` }, '← all trucks on the road'), el('span', { class: 'dim' }, 'replays the verified-play recording')));
+    el('div', { class: 'w-foot' }, el('span', { class: 'dim' }, 'replays the verified-play recording')));
   document.body.append(P.root, el('div', { id: 'w-stamp', class: 'w-stamp', hidden: true, role: 'status' }));
   for (const e of watch.events.values()) feedLine(e);
   watch.onUpdate = paint; watch.onEvent = (e, why) => (why === 'new' ? feedLine(e) : markApplied(e));
@@ -101,6 +104,21 @@ function paint() {
   $('w-sound').textContent = audio.muted || !audio.ctx ? '🔇' : '🔊';
   paintMe(); paintClock();
 }
+/* the end of a finished ride's replay: the same result dialog a driver gets (game.js showOnlineMenu), with the lobby as the only way on. It hides again when the viewer seeks back. */
+function paintEnd() {
+  const r = watch.ride, ov = $('overlay'), panel = $('panel');
+  const atEnd = !!r && !r.live && r.status !== 'running' && watch.rows.length > 0 && !watch.playing && !watch.buffering && watch.wt >= replayEnd() - 0.5;
+  if (!ov || !panel) return;
+  if (!atEnd) { if (P.endShown) { ov.classList.add('hide'); P.endShown = false; } return; }
+  if (P.endShown) return;
+  P.endShown = true;
+  const ok = r.status === 'completed';
+  panel.replaceChildren(el('h1', {}, ok ? 'SHIFT COMPLETE' : r.status === 'abandoned' ? 'SHIFT ABANDONED' : 'RIDE FAILED'), el('h2', {}, 'End of the replay.'),
+    ...[['Result', el('b', { class: ok ? 'good' : 'bad' }, (STATUS[r.status] ?? r.status))], ['Time driven', el('b', {}, hms(st.t))], ['Distance', el('b', {}, `${(st.s / 1000).toFixed(2)} km`)], ['Hull', el('b', {}, `${Math.round(st.hull)}%`)]]
+      .map(([k, v]) => el('div', { class: 'row' }, el('span', {}, k), v)),
+    el('div', { class: 'btns' }, el('button', { type: 'button', id: 'lobby', class: 'alt bail-link', style: 'margin-left:auto', onclick: () => { location.href = `${SITE_BASE}/lobby.html`; } }, el('b', {}, 'BACK TO THE LOBBY'), el('small', {}, 'lobby'))));
+  ov.classList.remove('hide');
+}
 function paintClock() {
   const r = watch.ride; if (!r || !P.root) return;
   const sk = $('w-seek'), end = Math.max(1, Math.floor(replayEnd()));
@@ -111,7 +129,7 @@ function paintClock() {
   const note = !watch.rows.length ? (watch.rec.lastSeq === null && !r.live ? 'no recording kept for this ride' : 'waiting for the first recording…')
     : watch.buffering ? (r.live && watch.follow ? 'the driver is paused or the next batch is on its way…' : watch.wt >= replayEnd() - 1 && !r.live ? `end of the ride · ${STATUS[r.status] ?? r.status}` : 'loading…') : '';
   $('w-note').textContent = note;
-  paintRoad(end);
+  paintRoad(end); paintEnd();
 }
 
 /* the ROAD CHECK: what the recorded truck did at the server's holes (watch.js roadCheck) – a line in the panel, a mark on the timeline per hole hit (amber)
