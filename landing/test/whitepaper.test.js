@@ -16,6 +16,10 @@ test('ids are unique and every in-page anchor points at an element', () => {
   assert.deepEqual([...new Set([...html.matchAll(/href="#([\w-]+)"/g)].map(m => m[1]))].filter(h => !ids.includes(h)), []);
 });
 
+test('contents shortcuts scroll through anchor.js', () => {
+  assert.match(js, /bindAnchors\(\)/);
+});
+
 test('the contents list and the sections match, one h1 and one h2 per chapter 01–08', () => {
   const toc = [...html.match(/<nav class="toc"[\s\S]*?<\/nav>/)[0].matchAll(/href="#([\w-]+)"/g)].map(m => m[1]);
   const sections = [...html.matchAll(/<section[^>]*\bid="([\w-]+)"/g)].map(m => m[1]);

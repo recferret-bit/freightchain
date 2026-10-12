@@ -5,6 +5,9 @@ import { reportWebVitals } from '../../client/js/web-vitals.js';
 import { livePath, leaveOnClose } from '../../client/site/presence.js';   // this page counts as online in the live feed – and leaves it when closed
 import { sol, km, left, short, hue, hours, driven, ago, plural, TIER, TIER_LONG, ROUTE } from './format.js';
 import { heldTickets, escrowExplainer, explorerUrl, shortAddr, progressText, phaseLine, poolPhase } from '../../client/site/pools.js';   // the lobby's pool wording, so both pages say the same thing
+import { bindAnchors } from './anchor.js';
+
+bindAnchors();   // before the chapter observer, so a #faq load is already on the heading it highlights
 
 /* Landing: seven chapters (ride · loop · economy · roadmap · market · about · faq), fed by the public API only – no session needed to look.
    Everything from the server goes in with textContent (other riders' wallets are rendered here). */
