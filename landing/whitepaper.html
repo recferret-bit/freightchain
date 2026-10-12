@@ -77,6 +77,7 @@
       <tr><td>Anti-cheat v3: challenge channel (kinds table empty), the server's road, budgets, bulk re-judge</td><td><span class="pill wip">BUILT · NEXT DEPLOY</span></td><td><a href="#verify">06</a></td></tr>
       <tr><td>Live streams, replays, chat, paid donations to the driver</td><td><span class="pill ok">LIVE · DEVNET SOL</span></td><td><a href="#stream">07</a></td></tr>
       <tr><td>Escrowed prize pools (Anchor program)</td><td><span class="pill ok">ON DEVNET · NOT AUDITED</span></td><td><a href="#onchain">05</a></td></tr>
+      <tr><td>Blinks (Solana Actions): buy a ticket or open a ride from a shared link</td><td><span class="pill ok">LIVE · DEVNET</span> <span class="pill plan">ON 𝕏 AFTER THE HACKATHON</span></td><td><a href="#onchain">05</a></td></tr>
       <tr><td>Achievement badges as soulbound compressed NFTs</td><td><span class="pill ok">LIVE · DEVNET</span></td><td><a href="#rewards">04</a></td></tr>
       <tr><td>Garage colours</td><td><span class="pill ok">LIVE</span></td><td><a href="#rewards">04</a></td></tr>
       <tr><td>Prize payouts, mainnet</td><td><span class="pill plan">PLANNED</span></td><td><a href="#rewards">04</a>, <a href="#risks">08</a></td></tr>
@@ -596,11 +597,13 @@
   <h3 class="sub">HOW THE GAME SERVER FITS</h3>
   <p>The server <em>mirrors</em> pools and tickets; the chain wins. A ticket is credited from <code>TicketBought</code>, once per signature, by confirm, the log watcher, or a webhook. The server never holds the admin or treasury key.</p>
 
+  <h3 class="sub">BLINKS</h3>
+  <p>A shared link to the site or to a ride page is also a Solana Action (spec 2.4, devnet): a blink client shows the card and its buttons – <b>buy one ticket</b> into the pool on sale, <b>open the ride</b>, <b>watch</b> it. The buy is the lobby's own unsigned transaction: your wallet pays the fee and is the only signer, and the 18+ and loss terms must be accepted on the site first. 𝕏 only turns a link into a blink once Dialect lists the site in its registry; that listing is booked for after the hackathon. Until then <a href="https://freightchain.fun/blink.html">freightchain.fun/blink.html</a> renders the cards, and the shared post shows a plain preview.</p>
+
   <h3 class="sub">IDEAS ON THE TABLE</h3>
   <p class="dim">Not built; ordered roughly by fit, from the Solana feature plan.</p>
   <ul class="ideas">
     <li><b>Convoys.</b> Three to five wallets ride the same round and share a side pot by combined distance.</li>
-    <li><b>Blinks in dialect registry.</b> Formal Dialect registry listing for the already-implemented Solana Actions.</li>
     <li><b>Deterministic replay core.</b> Fixed-tick, fixed-point re-simulation of paid shifts.</li>
     <li><b>Badges on mainnet.</b> A mainnet collection and tree, with the art re-uploaded, once the pool program is there.</li>
   </ul>
