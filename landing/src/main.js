@@ -265,8 +265,7 @@ if (ocGrid && !reduced) {
 
 /* FAQ: hover (a fine pointer) opens the card and leave closes it, unless a click pinned it (.on).
    A click on a hover-open card pins it; the next click unpins and, while the pointer is still inside, .shut keeps it closed until the pointer leaves.
-   The chevron is not a control. faq_item_opened once per item per load — a click or a key at once, a mouse hover only after 0.6 s.
-   The wallet card starts pinned; that first paint is not an open. */
+   The chevron is not a control. Every card starts closed. faq_item_opened once per item per load — a click or a key at once, a mouse hover only after 0.6 s. */
 const faqFine = matchMedia('(hover: hover) and (pointer: fine)').matches;
 const faqSeen = new Set();
 const faqOpen = (item, via) => {

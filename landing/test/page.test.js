@@ -134,7 +134,7 @@ test('the icons the pages name exist (what Phantom, tabs and home screens show f
   assert.ok(manifest.icons.some(i => i.sizes === '192x192') && manifest.icons.some(i => i.sizes === '512x512'));
 });
 
-test('faq: ten questions in the html, the wallet one starts open, the chevron is not a control', () => {
+test('faq: ten questions in the html, every card starts closed, the chevron is not a control', () => {
   const block = html.slice(html.indexOf('id="faq"'), html.indexOf('</section>', html.indexOf('id="faq"')));
   const q = [...block.matchAll(/<button type="button"[^>]*>([^<]+)<\/button>/g)].map(m => m[1]);
   assert.deepEqual(q, [
@@ -149,7 +149,8 @@ test('faq: ten questions in the html, the wallet one starts open, the chevron is
     'Do I install anything?',
     'Is this play-to-earn?',
   ]);
-  assert.equal((block.match(/class="fq on"/g) ?? []).length, 1);
+  assert.equal((block.match(/class="fq on"/g) ?? []).length, 0);
+  assert.equal((block.match(/aria-expanded="false"/g) ?? []).length, 10);
   assert.deepEqual([...block.matchAll(/data-item="([^"]+)"/g)].map(m => m[1]), ['wallet', 'free', 'buy', 'token', 'prize', 'vault', 'shift', 'watch', 'install', 'earn']);
   assert.equal((block.match(/<i class="chev" aria-hidden="true">/g) ?? []).length, 10);
   assert.doesNotMatch(block, /<details|<summary/);
