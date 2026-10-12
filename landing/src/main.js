@@ -243,6 +243,23 @@ $('storybook-link').href = STORYBOOK_BASE || '/viewer.html';   // the model view
 $('whitepaper-link').href = $('whitepaper-cta').href = WHITEPAPER_BASE || '/whitepaper.html';   // the whitepaper: whitepaper.<apex> in production, /whitepaper.html elsewhere
 $('storybook-link').addEventListener('click', () => track('storybook_link_clicked'));
 $('escrow-link').href = escrowExplainer();   // whitepaper chapter 05 is the one public escrow explainer
+for (const a of document.querySelectorAll('a[href^="/whitepaper.html#"]')) if (WHITEPAPER_BASE) a.href = `${WHITEPAPER_BASE}/${a.hash}`;   // deep links straight to whitepaper.<apex> (the apex would only 301 there)
+
+/* ───── UNDER THE HOOD cards: hover (CSS) or a tap (.flip) turns one over; the keyboard gets there by Tab onto a link on the back (:focus-within). A link stays a link.
+   chain_card_flipped once per card per load: a tap, or a hover that lasts 0.6 s (a pointer passing over is not a read) ───── */
+const flipped = new Set(), seen = card => { if (!flipped.has(card)) { flipped.add(card); track('chain_card_flipped', { card }); } };
+for (const c of document.querySelectorAll('.oc')) {
+  let dwell = 0;
+  c.addEventListener('click', e => { if (!e.target.closest('a') && c.classList.toggle('flip')) seen(c.dataset.card); });
+  c.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') dwell = setTimeout(() => seen(c.dataset.card), 600); });
+  c.addEventListener('pointerleave', () => clearTimeout(dwell));
+}
+/* their drawings come alive as canvas scenes (chain-scenes.js, a lazy chunk) when the grid gets near; reduced motion keeps the still SVGs */
+const ocGrid = document.querySelector('.oc-grid');
+if (ocGrid && !reduced) {
+  const cio = new IntersectionObserver(es => { if (!es.some(e => e.isIntersecting)) return; cio.disconnect(); import('./chain-scenes.js').then(m => m.startChainScenes(ocGrid.querySelectorAll('.oc'))).catch(e => console.warn('chain scenes unavailable', e)); }, { rootMargin: '600px' });
+  cio.observe(ocGrid);
+}
 
 /* ───── socials ───── */
 for (const [net, url] of Object.entries(SOCIALS)) if (url) {
