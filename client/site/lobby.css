@@ -197,7 +197,7 @@ th button.on{color:var(--amber)}
 .ac.lock .fr img{opacity:.85}
 .ac .lk{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:4px}
 .ac .lk a{font-size:11px;text-decoration:none;color:var(--text);border:1px solid #9945ff88;border-radius:999px;padding:3px 9px;background:#0007;transition:background .2s,border-color .2s,color .2s}
-.ac .lk a:hover,.ac .lk a:focus-visible{background:linear-gradient(90deg,var(--sol1),var(--sol2));border-color:transparent;color:#0b0a09}
+.ac .lk a:hover,.ac .lk a:focus-visible{background:linear-gradient(90deg,var(--sol1),var(--sol2));background-origin:border-box;border-color:transparent;color:#0b0a09}
 .ac .lk a.x{border-color:var(--amber);color:var(--amber)}.ac .lk a.x:hover,.ac .lk a.x:focus-visible{color:#0b0a09;background:var(--amber)}
 .ac:focus-visible .bk{outline:2px solid #fff;outline-offset:1px}
 /* the turned-away front face is hidden outright: backface-visibility alone leaves its square outline / edge pixels peeking out at the back's rounded corners */
