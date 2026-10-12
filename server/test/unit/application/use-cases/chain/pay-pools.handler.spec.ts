@@ -10,6 +10,7 @@ import { poolRide } from '../../../../support/pool-rides.js';
 import { chainPool } from '../../../../support/pools.js';
 import { unitContext } from '../../../../support/unit-context.js';
 import { VerdictStatus } from '../../../../../src/domain/verdict/verdict.dto.js';
+import { Pledge } from '../../../../../src/domain/economy/pledge.entity.js';
 
 const KEY = 'Payout11111111111111111111111111111111111111';
 const DAY = 86_400_000;
@@ -34,7 +35,7 @@ describe('PayPoolsHandler – the payout job', () => {
     const bus = { execute: async (c: object) => { if (!(c instanceof SettleChainSignatureCommand)) throw new Error('unexpected command'); return settle.execute(c); } };
     const attention = new PoolAttentionService(ctx.adminQuery, ctx.signIns, ctx.players, ctx.verdicts);
     const attestation = new AttestationService(payout, ctx.rides, ctx.batches, ctx.hasher);
-    const handler = new PayPoolsHandler(payout, ctx.poolChain, ctx.pools, ctx.poolPayouts, ctx.rideQuery, ctx.chainEvents, ctx.registry, attention, bus as unknown as CommandBus, ctx.clock, attestation);
+    const handler = new PayPoolsHandler(payout, ctx.poolChain, ctx.pools, ctx.poolPayouts, ctx.rideQuery, ctx.chainEvents, ctx.registry, attention, bus as unknown as CommandBus, ctx.clock, attestation, ctx.pledges);
     const mirror = async () => (await ctx.pools.findById(1))!;
     return { ctx, payout, run: (poolId: number | null = null) => handler.execute(new PayPoolsCommand(poolId)), mirror };
   };
@@ -56,8 +57,8 @@ describe('PayPoolsHandler – the payout job', () => {
 
   it('pays the verified ranking (top 3 extra + the top-20 share), closes the pool, settles every signature into the mirror', async () => {
     const { ctx, payout, run, mirror } = await setup();
-    await poolRide(ctx, 'bob', 500); await poolRide(ctx, 'bob', 500); await poolRide(ctx, 'alice', 900);
-    await poolRide(ctx, 'mallory', 9_000, 'refused'); // an admin rejected it: decided, never paid
+    await poolRide(ctx, 'bob', 5_000); await poolRide(ctx, 'bob', 5_000); await poolRide(ctx, 'alice', 9_000);
+    await poolRide(ctx, 'mallory', 90_000, 'refused'); // an admin rejected it: decided, never paid
     const pass = await run();
     expect(pass).toMatchObject({ enabled: true, payout: KEY, chainNow: ctx.now().getTime() });
     expect(pass.pools).toEqual([{ poolId: 1, state: 'paid', note: null, closed: expect.any(String), paid: [
@@ -74,10 +75,10 @@ describe('PayPoolsHandler – the payout job', () => {
 
   it('waits while ANY completed ride of the pool is undecided (flagged, machine-rejected, unjudged) – then pays once an admin decided', async () => {
     const { ctx, payout, run, mirror } = await setup();
-    await poolRide(ctx, 'alice', 900);
-    const flagged = await poolRide(ctx, 'bob', 1_000, 'flagged');
-    const rejected = await poolRide(ctx, 'carol', 800, 'rejected');
-    const unjudged = await poolRide(ctx, 'dave', 850, 'none'); // similar distances: no pool-level mark, only the verdicts are under test
+    await poolRide(ctx, 'alice', 9_000);
+    const flagged = await poolRide(ctx, 'bob', 10_000, 'flagged');
+    const rejected = await poolRide(ctx, 'carol', 8_000, 'rejected');
+    const unjudged = await poolRide(ctx, 'dave', 8_500, 'none'); // similar distances: no pool-level mark, only the verdicts are under test
     expect((await run()).pools[0]).toMatchObject({ state: 'waiting_review', note: '3 ride(s) of this pool wait for an admin\'s decision', paid: [] });
     expect((await mirror()).payoutState).toBe('waiting_review');
     expect(payout.prizes).toEqual([]);
@@ -91,7 +92,7 @@ describe('PayPoolsHandler – the payout job', () => {
 
   it('an admin hold stops it; releasing the hold lets the next pass pay', async () => {
     const { ctx, payout, run, mirror } = await setup();
-    await poolRide(ctx, 'alice', 900);
+    await poolRide(ctx, 'alice', 9_000);
     const pool = await mirror();
     pool.putOnHold('Admin', 'check rank 1', ctx.now());
     await ctx.pools.saveHold(1, pool.hold);
@@ -112,14 +113,14 @@ describe('PayPoolsHandler – the payout job', () => {
 
   it('no verified ride ranks → no_winners: nothing paid, nothing closed – the admin decides', async () => {
     const { ctx, payout, run } = await setup();
-    await poolRide(ctx, 'alice', 900, 'refused');
+    await poolRide(ctx, 'alice', 9_000, 'refused');
     expect((await run()).pools[0]).toMatchObject({ state: 'no_winners', paid: [], closed: null });
     expect(payout.closed).toEqual([]);
   });
 
   it('before the review window ends (chain clock) the pool is not on the work list', async () => {
     const { ctx, payout, run } = await setup();
-    await poolRide(ctx, 'alice', 900);
+    await poolRide(ctx, 'alice', 9_000);
     payout.now = new Date(ctx.now().getTime() - 1);
     expect((await run()).pools).toEqual([]);
     expect(payout.prizes).toEqual([]);
@@ -127,7 +128,7 @@ describe('PayPoolsHandler – the payout job', () => {
 
   it('a prize whose transaction was dropped goes back to planned and is paid ONCE by the next pass', async () => {
     const { ctx, payout, run } = await setup();
-    await poolRide(ctx, 'alice', 900); await poolRide(ctx, 'bob', 500);
+    await poolRide(ctx, 'alice', 9_000); await poolRide(ctx, 'bob', 5_000);
     payout.dropping.add(2);
     const first = await run();
     expect(first.pools[0]).toMatchObject({ state: 'paying', paid: [{ rank: 1, wallet: 'alice' }] });
@@ -139,13 +140,13 @@ describe('PayPoolsHandler – the payout job', () => {
 
   it('a crash after the claim: the `sent` row is resolved from its signature – landed = paid, nothing sent again', async () => {
     const { ctx, payout, run } = await setup();
-    await poolRide(ctx, 'alice', 900);
+    await poolRide(ctx, 'alice', 9_000);
     await run(); // plans + pays + closes
     // replay the crash on a fresh pool: plan by hand, claim, the transaction landed but the server died before markPaid
     const t = ctx.now().getTime();
     ctx.poolChain.pools.set(2, chainPool(ctx.now(), { poolId: 2, status: 'active', ticketsSold: 10, minTickets: 2, priceLamports: 50_000_000, prepDeadline: new Date(t - 4 * DAY), playDeadline: new Date(t - 3 * DAY), payoutAt: new Date(t) }));
     await ctx.registry.syncFromChain(2);
-    await poolRide(ctx, 'bob', 700, 'verified', 2);
+    await poolRide(ctx, 'bob', 7_000, 'verified', 2);
     await ctx.poolPayouts.plan([{ poolId: 2, rank: 1, wallet: 'bob', lamports: 300_000_000, status: 'planned' }], ctx.now());
     await ctx.poolPayouts.claimSent(2, 1, 'LandedSig', 250, ctx.now());
     ctx.poolChain.statuses.set('LandedSig', 'confirmed');
@@ -159,7 +160,7 @@ describe('PayPoolsHandler – the payout job', () => {
 
   it('a row claimed by another pass is never broadcast by this one', async () => {
     const { ctx, payout, run } = await setup();
-    await poolRide(ctx, 'alice', 900);
+    await poolRide(ctx, 'alice', 9_000);
     await ctx.poolPayouts.plan([{ poolId: 1, rank: 1, wallet: 'alice', lamports: 300_000_000, status: 'planned' }], ctx.now());
     await ctx.poolPayouts.claimSent(1, 1, 'InFlight', 250, ctx.now()); // the other pass's transaction, still unknown to the network
     ctx.poolChain.statuses.set('InFlight', 'processed');
@@ -169,7 +170,7 @@ describe('PayPoolsHandler – the payout job', () => {
 
   it('a wallet the chain already shows paid (the admin paid by hand) is not paid again', async () => {
     const { ctx, payout, run } = await setup();
-    await poolRide(ctx, 'alice', 900); await poolRide(ctx, 'bob', 500);
+    await poolRide(ctx, 'alice', 9_000); await poolRide(ctx, 'bob', 5_000);
     await ctx.chainEvents.record({ signature: 'byhand', index: 0, kind: 'PrizePaid', poolId: 1, wallet: 'alice', orderId: null, lamports: 175_000_000, outcome: 'applied', detail: null, at: ctx.now(), finalizedAt: null, lastValidBlockHeight: null });
     await run();
     expect(payout.prizes.map((p) => p.to)).toEqual(['bob']);
@@ -178,7 +179,7 @@ describe('PayPoolsHandler – the payout job', () => {
 
   it('a prize the chain refuses before anything is signed → error with the reason; the next pass retries it', async () => {
     const { ctx, payout, run } = await setup();
-    await poolRide(ctx, 'alice', 900);
+    await poolRide(ctx, 'alice', 9_000);
     payout.failing.add('1');
     expect((await run()).pools[0]).toMatchObject({ state: 'error', note: expect.stringMatching(/rank 1: .*scripted/) });
     expect((await ctx.poolPayouts.listByPool(1))[0]).toMatchObject({ status: 'planned', error: expect.stringMatching(/scripted/) });
@@ -188,8 +189,8 @@ describe('PayPoolsHandler – the payout job', () => {
 
   it('the pool-level checks run before the plan: a distance outlier goes back under review and the pool waits for the admin', async () => {
     const { ctx, payout, run } = await setup();
-    for (const w of ['alice', 'bob', 'carol']) await poolRide(ctx, w, 500);
-    await poolRide(ctx, 'dave', 5_000); // 10 × the median of the four
+    for (const w of ['alice', 'bob', 'carol']) await poolRide(ctx, w, 5_000);
+    await poolRide(ctx, 'dave', 50_000); // 10 × the median of the four
     const pass = await run();
     expect(pass.pools[0]).toMatchObject({ state: 'waiting_review', note: '1 ride(s) of this pool wait for an admin\'s decision' });
     expect(payout.prizes).toEqual([]);
@@ -198,14 +199,14 @@ describe('PayPoolsHandler – the payout job', () => {
   it('a wallet that signed up the day of the pool and ranks top 3 goes under review first', async () => {
     const { ctx, payout, run } = await setup();
     await ctx.player('newcomer');
-    await poolRide(ctx, 'alice', 500); await poolRide(ctx, 'newcomer', 600);
+    await poolRide(ctx, 'alice', 5_000); await poolRide(ctx, 'newcomer', 6_000);
     expect((await run()).pools[0]).toMatchObject({ state: 'waiting_review' });
     expect(payout.prizes).toEqual([]);
   });
 
   it('a crash after the claim, and the transaction landed but FAILED on chain: not counted as paid – back to planned, paid by a new transaction', async () => {
     const { ctx, payout, run } = await setup();
-    await poolRide(ctx, 'alice', 900);
+    await poolRide(ctx, 'alice', 9_000);
     await ctx.poolPayouts.plan([{ poolId: 1, rank: 1, wallet: 'alice', lamports: 300_000_000, status: 'planned' }], ctx.now());
     await ctx.poolPayouts.claimSent(1, 1, 'FailedSig', 250, ctx.now());
     ctx.poolChain.statuses.set('FailedSig', 'confirmed'); // a failed transaction is "confirmed" too
@@ -215,5 +216,51 @@ describe('PayPoolsHandler – the payout job', () => {
     expect(payout.prizes.map((p) => [p.rank, p.to])).toEqual([[1, 'alice']]); // paid once, by a NEW transaction
     expect((await ctx.poolPayouts.listByPool(1))[0]).toMatchObject({ status: 'paid', attempts: 2 });
     expect((await ctx.poolPayouts.listByPool(1))[0]?.signature).not.toBe('FailedSig');
+  });
+
+  describe('pledged drivers', () => {
+    /** an active pledge (its PledgeCreated mirrored) from 'zed' to `driver` in pool 1 */
+    const pledgeTo = async (ctx: Awaited<ReturnType<typeof setup>>['ctx'], driver: string) => {
+      const rideId = ctx.entropy.uuid();
+      const p = Pledge.create({ id: ctx.entropy.uuid(), pdaAddress: `pda-${driver}`, rideId, sponsor: 'zed', driver, poolId: 1, lamportsPerKm: 1_000n, targetKm: 10, now: ctx.now() });
+      p.apply({ kind: 'PledgeCreated', signature: 'create', slot: 1, rideId, sponsor: 'zed', driver, pool: 'pool1', maxLamports: 10_000n, lamportsPerKm: 1_000n, targetKm: 10 }, ctx.now());
+      await ctx.pledges.insert(p);
+    };
+
+    it('every pledged driver is attested BEFORE close_pool: verified km, flagged when every finished ride was rejected, nothing without a finished ride', async () => {
+      const { ctx, payout, run } = await setup();
+      await poolRide(ctx, 'alice', 9_000);
+      await poolRide(ctx, 'dave', 8_500, 'refused');
+      await pledgeTo(ctx, 'alice'); await pledgeTo(ctx, 'dave'); await pledgeTo(ctx, 'carol'); await pledgeTo(ctx, 'carol');
+      expect((await run()).pools[0]).toMatchObject({ state: 'paid' });
+      expect(payout.calls).toEqual(['attest 1 alice 1', 'prize 1 1', 'attest 1 dave 2', 'close 1']); // alice already attested as the winner; carol finished nothing
+      expect(payout.attestations.get('1:alice')).toMatchObject({ status: 1, verifiedKm: 9 });
+      expect(payout.attestations.get('1:dave')).toMatchObject({ status: 2, verifiedKm: 0 });
+      expect(payout.attestations.has('1:carol')).toBe(false);
+    });
+
+    it('a failed attestation leaves the pool in error and does NOT close it (after the close no attestation is possible); the next pass finishes', async () => {
+      const { ctx, payout, run, mirror } = await setup();
+      await poolRide(ctx, 'alice', 9_000);
+      await poolRide(ctx, 'dave', 8_500, 'refused');
+      await pledgeTo(ctx, 'dave');
+      payout.failingAttestations.add('dave');
+      expect((await run()).pools[0]).toMatchObject({ state: 'error', note: expect.stringMatching(/attestation for pledges to dave failed/), closed: null });
+      expect(payout.closed).toEqual([]);
+      expect((await mirror()).status).toBe('active');
+      payout.failingAttestations.clear();
+      expect((await run()).pools[0]).toMatchObject({ state: 'paid' });
+      expect(payout.calls.slice(-2)).toEqual(['attest 1 dave 2', 'close 1']);
+    });
+
+    it('a pool with no winners still attests its pledged drivers (their sponsors are refunded by settle)', async () => {
+      const { ctx, payout, run } = await setup();
+      await poolRide(ctx, 'alice', 9_000, 'refused');
+      await pledgeTo(ctx, 'alice');
+      expect((await run()).pools[0]).toMatchObject({ state: 'no_winners', closed: null });
+      expect(payout.calls).toEqual(['attest 1 alice 2']);
+      expect((await run()).pools[0]).toMatchObject({ state: 'no_winners' }); // decided on chain already: nothing sent again
+      expect(payout.calls).toHaveLength(1);
+    });
   });
 });

@@ -46,7 +46,10 @@ import {
   MemoryAchievementRepository, MemoryAchievementMintRepository, MemoryChallengeRepository, MemoryHealthProbe, MemoryPaymentRepository, MemoryPlayerRepository,
   MemoryRideBatchRepository, MemoryRideQuery, MemoryRideVerdictRepository, MemorySignInRepository, MemoryAdminActionRepository, MemoryAdminQuery, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
 } from './in-memory/memory-repositories.js';
-import { MemoryCosmeticRepository, MemoryPoolPayoutRepository, MemoryPoolRepository, MemoryPromoRepository, MemoryRideTicketRepository, MemoryTicketOrderRepository } from './in-memory/memory-ledger-repositories.js';
+import { MemoryCosmeticRepository, MemoryPledgeRepository, MemoryPoolPayoutRepository, MemoryPoolRepository, MemoryPromoRepository, MemoryRideTicketRepository, MemoryTicketOrderRepository } from './in-memory/memory-ledger-repositories.js';
+import { PledgeRepositoryPort } from '../../src/application/ports/economy/pledge.repository.port.js';
+import { PoolPayoutChainPort } from '../../src/application/ports/economy/pool-payout-chain.port.js';
+import { FakePoolPayoutChain } from './fake-pool-payout-chain.js';
 import { TicketOrderRepositoryPort } from '../../src/application/ports/economy/ticket-order.repository.port.js';
 import { PoolRepositoryPort } from '../../src/application/ports/economy/pool.repository.port.js';
 import { PoolPayoutRepositoryPort } from '../../src/application/ports/economy/pool-payout.repository.port.js';
@@ -83,6 +86,8 @@ export interface Harness {
   chain: FakeChain;
   /** the pool program (PoolChainPort) */
   poolChain: FakePoolChain;
+  /** the payout key on that program (PoolPayoutChainPort) – no key (address null) unless a test sets `payoutAddress` */
+  payoutChain: FakePoolPayoutChain;
   nameService: StubNameServiceAdapter;
   persistence: Persistence;
   server(): Server;
@@ -113,11 +118,12 @@ export async function createHarness(persistence: Persistence, env: Record<string
   const clock = new FakeClock();
   const chain = new FakeChain();
   const poolChain = new FakePoolChain();
+  const payoutChain = new FakePoolPayoutChain(poolChain);
   const memory = new MemoryDb();
   const nameService = new StubNameServiceAdapter();
 
   // the stale-ride sweep runs on a REAL timer – it would race the fake clock; scenarios run SweepStaleRidesCommand themselves
-  let builder = Test.createTestingModule({ imports: [AppModule] }).overrideProvider(EntropyPort).useValue(entropy).overrideProvider(StaleRideScheduler).useValue({}).overrideProvider(ClockPort).useValue(clock).overrideProvider(ChainPort).useValue(chain).overrideProvider(PoolChainPort).useValue(poolChain).overrideProvider(NameServicePort).useValue(nameService);
+  let builder = Test.createTestingModule({ imports: [AppModule] }).overrideProvider(EntropyPort).useValue(entropy).overrideProvider(StaleRideScheduler).useValue({}).overrideProvider(ClockPort).useValue(clock).overrideProvider(ChainPort).useValue(chain).overrideProvider(PoolChainPort).useValue(poolChain).overrideProvider(PoolPayoutChainPort).useValue(payoutChain).overrideProvider(NameServicePort).useValue(nameService);
   if (persistence === 'memory') {
     builder = builder
       .overrideProvider(PrismaService).useValue({ $connect: async () => undefined, $disconnect: async () => undefined })
@@ -133,6 +139,7 @@ export async function createHarness(persistence: Persistence, env: Record<string
       .overrideProvider(AchievementMintChainPort).useValue(new FakeMintChain())
       .overrideProvider(PoolRepositoryPort).useValue(new MemoryPoolRepository(memory))
       .overrideProvider(PoolPayoutRepositoryPort).useValue(new MemoryPoolPayoutRepository(memory))
+      .overrideProvider(PledgeRepositoryPort).useValue(new MemoryPledgeRepository(memory))
       .overrideProvider(RideTicketRepositoryPort).useValue(new MemoryRideTicketRepository(memory))
       .overrideProvider(PromoRepositoryPort).useValue(new MemoryPromoRepository(memory))
       .overrideProvider(CosmeticRepositoryPort).useValue(new MemoryCosmeticRepository(memory))
@@ -160,12 +167,13 @@ export async function createHarness(persistence: Persistence, env: Record<string
   const prisma = persistence === 'postgres' ? app.get(PrismaService, { strict: false }) : null;
 
   return {
-    app, clock, chain, poolChain, nameService, persistence,
+    app, clock, chain, poolChain, payoutChain, nameService, persistence,
     seedFor: (route, hourIndex = 0) => { let s = 1000; while (worldFor(s).route !== route || worldFor(s).startHour !== START_HOURS[hourIndex]) s++; entropy.next = s; },
     server: () => app.getHttpServer() as Server,
     reset: async () => {
       chain.reset();
       poolChain.reset();
+      payoutChain.reset();
       memory.reset();
       nameService.reset();
       if (prisma) await truncateAllTables(prisma);

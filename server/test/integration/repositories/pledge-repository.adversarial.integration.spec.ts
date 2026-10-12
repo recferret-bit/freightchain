@@ -301,38 +301,6 @@ describe('Adversarial Stress Test: PledgePrismaRepository (PostgreSQL Constraint
       expect(fulfilled).toHaveLength(1);
       expect(rejected).toHaveLength(1);
     });
-
-    it('demonstrates lack of optimistic locking on Pledge updates (last-write-wins)', async () => {
-      const ride = freeRideAt(DRIVER_1, T0);
-      await rideRepo.insert(ride);
-
-      const p = Pledge.create({
-        id: '00000000-0000-4000-8000-000000000001',
-        pdaAddress: 'PDA_RACE_111111111111111111111111111111111',
-        rideId: ride.id,
-        sponsor: SPONSOR_1,
-        driver: DRIVER_1,
-        poolId: 1,
-        lamportsPerKm: 1_000_000n,
-        targetKm: 10,
-        now: T0,
-      });
-      await repo.insert(p);
-
-      // Two concurrent loaded instances
-      const loadedA = await repo.findById(p.id);
-      const loadedB = await repo.findById(p.id);
-
-      loadedA!.settle(5, false, at(10), 'sigA', 100n);
-      loadedB!.settle(10, false, at(20), 'sigB', 200n);
-
-      await repo.save(loadedA!);
-      await repo.save(loadedB!); // overwrites without version check!
-
-      const finalState = await repo.findById(p.id);
-      expect(finalState!.signature).toBe('sigB');
-      expect(finalState!.slot).toBe(200n);
-    });
   });
 
   describe('Query Filtering and Sorting Order', () => {

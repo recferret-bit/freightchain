@@ -35,6 +35,8 @@ describe('Pledge aggregate & ride ID codec', () => {
       expect(p.targetKm).toBe(50);
       expect(p.maxLamports).toBe(500_000_000n);
       expect(p.isSettled).toBe(false);
+      expect(p.status).toBe('pending');
+      expect(p.createSignature).toBeNull();
       expect(p.earnedLamports).toBe(0n);
       expect(p.refundedLamports).toBe(0n);
       expect(p.createdAt).toEqual(NOW);
@@ -63,112 +65,75 @@ describe('Pledge aggregate & ride ID codec', () => {
     });
   });
 
-  describe('Pledge.settle and mathematical conservation invariant', () => {
-    it('settles proportionally when verifiedKm < targetKm: earned + refund === maxLamports', () => {
-      const p = Pledge.create({
-        id: ID, pdaAddress: PDA, rideId: ID, sponsor: SPONSOR, driver: DRIVER, poolId: 1,
-        lamportsPerKm: 10_000_000n, targetKm: 100, now: NOW,
-      });
+  describe('Pledge.apply – the row follows the program\'s events', () => {
+    const POOL = 'PoolPda1111111111111111111111111111111111111';
+    const make = (lamportsPerKm = 10_000_000n, targetKm = 100) => Pledge.create({ id: ID, pdaAddress: PDA, rideId: ID, sponsor: SPONSOR, driver: DRIVER, poolId: 1, lamportsPerKm, targetKm, now: NOW });
+    const base = { rideId: ID, sponsor: SPONSOR, driver: DRIVER, pool: POOL, slot: 7 };
+    const created = (p: Pledge, signature = 'sigCreate') => ({ ...base, signature, kind: 'PledgeCreated' as const, maxLamports: p.maxLamports, lamportsPerKm: p.lamportsPerKm, targetKm: p.targetKm });
+    const settled = (earned: bigint, refunded: bigint, signature = 'sigSettle') => ({ ...base, signature, kind: 'PledgeSettled' as const, verifiedKm: 40, earnedLamports: earned, refundedLamports: refunded });
+    const refunded = (lamports: bigint, signature = 'sigRefund') => ({ ...base, signature, kind: 'PledgeRefunded' as const, refundedLamports: lamports });
+    const LATER = new Date('2026-10-12T13:00:00Z');
 
-      const settleNow = new Date('2026-10-12T13:00:00Z');
-      const { earnedLamports, refundedLamports } = p.settle(40, false, settleNow, 'sig123', 12345n);
+    it('starts pending; PledgeCreated with the same terms makes it active once (idempotent)', () => {
+      const p = make();
+      expect(p.status).toBe('pending');
+      expect(p.apply(created(p), NOW)).toBe(true);
+      expect(p.status).toBe('active');
+      expect(p.createSignature).toBe('sigCreate');
+      expect(p.apply(created(p, 'other'), NOW)).toBe(false);
+      expect(p.createSignature).toBe('sigCreate');
+    });
 
-      expect(earnedLamports).toBe(400_000_000n);
-      expect(refundedLamports).toBe(600_000_000n);
-      expect(earnedLamports + refundedLamports).toBe(p.maxLamports);
+    it('refuses a PledgeCreated with other terms, and an event of another pledge', () => {
+      const p = make();
+      expect(() => p.apply({ ...created(p), targetKm: 99 }, NOW)).toThrow(ConflictError);
+      expect(() => p.apply({ ...created(p), maxLamports: p.maxLamports + 1n }, NOW)).toThrow(ConflictError);
+      expect(() => p.apply({ ...created(p), sponsor: 'Someone' }, NOW)).toThrow(ConflictError);
+      expect(p.status).toBe('pending');
+    });
+
+    it('PledgeSettled records what the program paid: earned + refunded must equal the cap', () => {
+      const p = make();
+      p.apply(created(p), NOW);
+      expect(() => p.apply(settled(400_000_000n, 600_000_001n), LATER)).toThrow(RangeError);
+      expect(p.apply(settled(400_000_000n, 600_000_000n), LATER)).toBe(true);
+      expect(p.status).toBe('settled');
       expect(p.isSettled).toBe(true);
       expect(p.earnedLamports).toBe(400_000_000n);
       expect(p.refundedLamports).toBe(600_000_000n);
-      expect(p.settledAt).toEqual(settleNow);
-      expect(p.signature).toBe('sig123');
-      expect(p.slot).toBe(12345n);
+      expect(p.settledAt).toEqual(LATER);
+      expect(p.signature).toBe('sigSettle');
+      expect(p.slot).toBe(7n);
+      expect(p.apply(refunded(p.maxLamports), LATER)).toBe(false); // a settled pledge stays settled
     });
 
-    it('caps earned at maxLamports when verifiedKm >= targetKm: refund is 0', () => {
-      const p = Pledge.create({
-        id: ID, pdaAddress: PDA, rideId: ID, sponsor: SPONSOR, driver: DRIVER, poolId: 1,
-        lamportsPerKm: 5_000_000n, targetKm: 20, now: NOW,
-      });
-
-      const { earnedLamports, refundedLamports } = p.settle(25, false, NOW);
-      expect(earnedLamports).toBe(100_000_000n);
-      expect(refundedLamports).toBe(0n);
-      expect(earnedLamports + refundedLamports).toBe(p.maxLamports);
+    it('PledgeRefunded gives the whole cap back; a pledge first seen at its refund (create missed) still ends refunded', () => {
+      const p = make(3n, 7);
+      expect(() => p.apply(refunded(20n), LATER)).toThrow(RangeError);
+      expect(p.apply(refunded(21n), LATER)).toBe(true);
+      expect(p.status).toBe('refunded');
+      expect(p.earnedLamports).toBe(0n);
+      expect(p.refundedLamports).toBe(21n);
     });
 
-    it('allocates 100% refund and 0 earned when verifiedKm is 0', () => {
-      const p = Pledge.create({
-        id: ID, pdaAddress: PDA, rideId: ID, sponsor: SPONSOR, driver: DRIVER, poolId: 1,
-        lamportsPerKm: 5_000_000n, targetKm: 20, now: NOW,
-      });
-
-      const { earnedLamports, refundedLamports } = p.settle(0, false, NOW);
-      expect(earnedLamports).toBe(0n);
-      expect(refundedLamports).toBe(100_000_000n);
-      expect(earnedLamports + refundedLamports).toBe(p.maxLamports);
+    it('abandon: only a pending pledge; an abandoned one comes back if its create shows up after all', () => {
+      const p = make();
+      p.abandon();
+      expect(p.status).toBe('abandoned');
+      expect(p.apply(created(p), NOW)).toBe(true);
+      expect(p.status).toBe('active');
+      p.abandon();
+      expect(p.status).toBe('active');
     });
 
-    it('allocates 100% refund and 0 earned when flagged, regardless of verifiedKm', () => {
-      const p = Pledge.create({
-        id: ID, pdaAddress: PDA, rideId: ID, sponsor: SPONSOR, driver: DRIVER, poolId: 1,
-        lamportsPerKm: 5_000_000n, targetKm: 20, now: NOW,
-      });
-
-      const { earnedLamports, refundedLamports } = p.settle(100, true, NOW);
-      expect(earnedLamports).toBe(0n);
-      expect(refundedLamports).toBe(100_000_000n);
-      expect(earnedLamports + refundedLamports).toBe(p.maxLamports);
-    });
-
-    it('preserves exact lamport conservation with prime numbers / truncated integer divisions', () => {
-      // 3 lamports per km, target 7 km -> maxLamports = 21
-      const p = Pledge.create({
-        id: ID, pdaAddress: PDA, rideId: ID, sponsor: SPONSOR, driver: DRIVER, poolId: 1,
-        lamportsPerKm: 3n, targetKm: 7, now: NOW,
-      });
-
-      // 2 km driven: earned = (21 * 2) / 7 = 6, refund = 15 -> 6 + 15 = 21
-      const res = p.settle(2, false, NOW);
-      expect(res.earnedLamports).toBe(6n);
-      expect(res.refundedLamports).toBe(15n);
-      expect(res.earnedLamports + res.refundedLamports).toBe(21n);
-    });
-
-    it('refuses double settlement', () => {
-      const p = Pledge.create({
-        id: ID, pdaAddress: PDA, rideId: ID, sponsor: SPONSOR, driver: DRIVER, poolId: 1,
-        lamportsPerKm: 1_000_000n, targetKm: 10, now: NOW,
-      });
-
-      p.settle(5, false, NOW);
-      expect(() => p.settle(5, false, NOW)).toThrow(ConflictError);
-    });
-
-    it('maps to DTO correctly', () => {
-      const p = Pledge.create({
-        id: ID, pdaAddress: PDA, rideId: ID, sponsor: SPONSOR, driver: DRIVER, poolId: 1,
-        lamportsPerKm: 10_000_000n, targetKm: 10, now: NOW,
-      });
-      p.settle(5, false, NOW, 'txSig', 999n);
-
-      const dto = toPledgeDto(p);
-      expect(dto).toEqual({
-        id: ID,
-        pdaAddress: PDA,
-        rideId: ID,
-        sponsor: SPONSOR,
-        driver: DRIVER,
-        poolId: 1,
-        maxLamports: '100000000',
-        lamportsPerKm: '10000000',
-        targetKm: 10,
-        settled: true,
-        earnedLamports: '50000000',
-        refundedLamports: '50000000',
-        createdAt: NOW.getTime(),
-        settledAt: NOW.getTime(),
-        signature: 'txSig',
-        slot: '999',
+    it('maps to the DTO', () => {
+      const p = make(10_000_000n, 10);
+      p.apply(created(p), NOW);
+      p.apply(settled(50_000_000n, 50_000_000n, 'txSig'), NOW);
+      expect(toPledgeDto(p)).toEqual({
+        id: ID, pdaAddress: PDA, rideId: ID, sponsor: SPONSOR, driver: DRIVER, poolId: 1, maxLamports: '100000000', lamportsPerKm: '10000000', targetKm: 10,
+        status: 'settled', createSignature: 'sigCreate', settled: true, earnedLamports: '50000000', refundedLamports: '50000000',
+        createdAt: NOW.getTime(), settledAt: NOW.getTime(), signature: 'txSig', slot: '7',
       });
     });
   });

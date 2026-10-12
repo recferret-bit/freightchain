@@ -1,13 +1,13 @@
 import { PledgesHttpController } from '../../../src/presentation/economy/pledges.http.controller.js';
 import { CreatePledgeCommand } from '../../../src/application/use-cases/pledges/create-pledge/create-pledge.command.js';
-import { SettlePledgeCommand } from '../../../src/application/use-cases/pledges/settle-pledge/settle-pledge.command.js';
+import { ConfirmPledgeCommand } from '../../../src/application/use-cases/pledges/confirm-pledge/confirm-pledge.command.js';
 import { GetRidePledgesQuery } from '../../../src/application/use-cases/pledges/get-ride-pledges/get-ride-pledges.query.js';
 import { GetPledgeQuery } from '../../../src/application/use-cases/pledges/get-pledge/get-pledge.query.js';
 import {
   createPledgeBodySchema,
   pledgeIdParamsSchema,
   pledgeRideIdParamsSchema,
-  settlePledgeBodySchema,
+  confirmPledgeBodySchema,
 } from '../../../src/presentation/economy/dto/pledges.dto.js';
 import { busMock } from '../../support/bus.js';
 
@@ -57,16 +57,13 @@ describe('PledgesHttpController', () => {
     expect(queries.last()).toEqual(new GetRidePledgesQuery('r1'));
   });
 
-  it('dispatches SettlePledgeCommand with pledgeId and optional settlement details', async () => {
+  it('dispatches ConfirmPledgeCommand with the signed-in wallet, the pledge id and the signature; there is no settle route', async () => {
     const commands = busMock(dummyPledge);
-    const queries = busMock();
-    const c = new PledgesHttpController(commands.bus, queries.bus);
-
-    await c.settle({ id: 'p1' }, { signature: 'sig123', slot: 100n });
-    expect(commands.last()).toEqual(new SettlePledgeCommand('p1', 'sig123', 100n));
-
-    await c.settle({ id: 'p1' }, {});
-    expect(commands.last()).toEqual(new SettlePledgeCommand('p1', undefined, undefined));
+    const c = new PledgesHttpController(commands.bus, busMock().bus);
+    const sig = '5'.repeat(88);
+    expect(await c.confirm({ wallet: 'W1' }, { id: 'p1' }, { signature: sig })).toEqual(dummyPledge);
+    expect(commands.last()).toEqual(new ConfirmPledgeCommand('W1', 'p1', sig));
+    expect('settle' in c).toBe(false);
   });
 
   it('dispatches GetPledgeQuery by id', async () => {
@@ -79,10 +76,11 @@ describe('PledgesHttpController', () => {
     expect(queries.last()).toEqual(new GetPledgeQuery('p1'));
   });
 
-  it('validates createPledgeBodySchema, settlePledgeBodySchema, and param schemas', () => {
+  it('validates createPledgeBodySchema, confirmPledgeBodySchema, and param schemas', () => {
+    const RIDE = '6ba7b810-9dad-41d1-80b4-00c04fd430c8';
     // Valid create body
     const valid = createPledgeBodySchema.parse({
-      rideId: 'r1',
+      rideId: RIDE,
       lamportsPerKm: '1000000',
       targetKm: '10',
     });
@@ -92,21 +90,24 @@ describe('PledgesHttpController', () => {
     // Extraneous sponsor field is stripped
     const stripped = createPledgeBodySchema.parse({
       sponsor: 'SpoofedWallet111111111111111111111111111111',
-      rideId: 'r1',
-      lamportsPerKm: 10n,
+      rideId: RIDE,
+      lamportsPerKm: 1_000n,
       targetKm: 1,
     }) as any;
     expect(stripped.sponsor).toBeUndefined();
 
-    // Non-positive lamports
-    expect(createPledgeBodySchema.safeParse({ rideId: 'r1', lamportsPerKm: 0, targetKm: 1 }).success).toBe(false);
-    expect(createPledgeBodySchema.safeParse({ rideId: 'r1', lamportsPerKm: -5, targetKm: 1 }).success).toBe(false);
+    // a ride id is a uuid; at least 1 000 lamports a km, at most 1 SOL a km; 1..10 000 km
+    expect(createPledgeBodySchema.safeParse({ rideId: 'r1', lamportsPerKm: 1_000, targetKm: 1 }).success).toBe(false);
+    expect(createPledgeBodySchema.safeParse({ rideId: RIDE, lamportsPerKm: 999, targetKm: 1 }).success).toBe(false);
+    expect(createPledgeBodySchema.safeParse({ rideId: RIDE, lamportsPerKm: -5, targetKm: 1 }).success).toBe(false);
+    expect(createPledgeBodySchema.safeParse({ rideId: RIDE, lamportsPerKm: 1_000_000_001, targetKm: 1 }).success).toBe(false);
+    expect(createPledgeBodySchema.safeParse({ rideId: RIDE, lamportsPerKm: 1_000, targetKm: 0 }).success).toBe(false);
+    expect(createPledgeBodySchema.safeParse({ rideId: RIDE, lamportsPerKm: 1_000, targetKm: 10_001 }).success).toBe(false);
 
-    // Non-positive targetKm
-    expect(createPledgeBodySchema.safeParse({ rideId: 'r1', lamportsPerKm: 100n, targetKm: 0 }).success).toBe(false);
-
-    // Settle body defaults and types
-    expect(settlePledgeBodySchema.parse({})).toEqual({});
+    // confirm needs a transaction signature
+    expect(confirmPledgeBodySchema.safeParse({}).success).toBe(false);
+    expect(confirmPledgeBodySchema.safeParse({ signature: 'nope' }).success).toBe(false);
+    expect(confirmPledgeBodySchema.safeParse({ signature: '5'.repeat(88) }).success).toBe(true);
     expect(pledgeIdParamsSchema.safeParse({ id: '' }).success).toBe(false);
     expect(pledgeRideIdParamsSchema.safeParse({ id: '' }).success).toBe(false);
   });

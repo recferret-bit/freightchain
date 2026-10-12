@@ -5,6 +5,8 @@ import { TREASURY } from '../../../../support/fake-chain.js';
 import { unitContext, unitRules } from '../../../../support/unit-context.js';
 import { aPool } from '../../../../support/pools.js';
 import { poolRide } from '../../../../support/pool-rides.js';
+import { AttestationService } from '../../../../../src/application/services/attestation.service.js';
+import { FakePoolPayoutChain } from '../../../../support/fake-pool-payout-chain.js';
 
 const ADMIN = TREASURY; // unitRules' treasury = the pool authority
 
@@ -14,7 +16,8 @@ describe('GetPayoutTransactionsHandler', () => {
     // 10 tickets × 0.05 SOL = 0.5 SOL pot → prize 70 % = 0.35 SOL
     await ctx.pools.upsert(aPool({ id: 1, status: 'active', ticketsSold: 10, minTickets: 2 }, ctx.now()));
     const completed = async (wallet: string, metres: number, poolId = 1) => { await poolRide(ctx, wallet, metres, 'verified', poolId); };
-    const h = new GetPayoutTransactionsHandler(ctx.pools, ctx.rideQuery, ctx.chainEvents, ctx.poolChain, ctx.rules, ctx.clock);
+    const attestation = new AttestationService(new FakePoolPayoutChain(ctx.poolChain), ctx.rides, ctx.batches, ctx.hasher);
+    const h = new GetPayoutTransactionsHandler(ctx.pools, ctx.rideQuery, ctx.chainEvents, ctx.poolChain, ctx.rules, ctx.clock, attestation);
     return { ctx, completed, payout: (wallet = ADMIN) => h.execute(new GetPayoutTransactionsQuery(wallet, 1)) };
   };
 
@@ -32,7 +35,19 @@ describe('GetPayoutTransactionsHandler', () => {
     expect(dto.transactions.map((t) => [t.rank, t.to, t.lamports])).toEqual([[1, 'bob', 175_000_000], [2, 'alice', 125_000_000]]);
     expect(ctx.poolChain.built.map((b) => b.kind)).toEqual(['pay_prize', 'pay_prize']);
     expect(ctx.poolChain.built[0]?.input).toMatchObject({ authority: ADMIN, poolId: 1, to: 'bob', lamports: 175_000_000, rank: 1 });
+    expect(ctx.poolChain.built.map((b) => b.input['attest'])).toEqual([undefined, undefined]); // rides under 1 km: no VERIFIED attestation is ever offered
     expect(dto.close).toBeNull();
+  });
+
+  it('a winner with a verified ride of at least 1 km gets its record_attestation facts in front of the pay_prize (program v3 pays no prize without one)', async () => {
+    const { ctx, completed, payout } = await setup();
+    await completed('alice', 2_400);
+    ctx.clock.advance(15 * 86_400);
+    await payout();
+    const attest = ctx.poolChain.built[0]?.input['attest'] as { telemetryRoot: Uint8Array; verifiedKm: number };
+    expect(attest.verifiedKm).toBe(2);
+    expect(attest.telemetryRoot).toHaveLength(32);
+    expect(Buffer.from(attest.telemetryRoot).every((b) => b === 0)).toBe(false);
   });
 
   it('ranks already paid on chain are left out; with none left the close_pool transaction is offered', async () => {

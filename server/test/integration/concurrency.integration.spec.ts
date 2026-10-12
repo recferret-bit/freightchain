@@ -21,6 +21,8 @@ import { FinalityService } from '../../src/application/services/finality.service
 import { ChainEventRepositoryPort } from '../../src/application/ports/economy/chain-event.repository.port.js';
 import { PollProgramCommand, type PollProgramResultDto } from '../../src/application/use-cases/chain/poll-program/poll-program.command.js';
 import { ReceiveChainWebhookCommand, type ChainWebhookResultDto } from '../../src/application/use-cases/chain/receive-chain-webhook/receive-chain-webhook.command.js';
+import { SyncPledgesCommand } from '../../src/application/use-cases/pledges/sync-pledges/sync-pledges.command.js';
+import { PledgeRepositoryPort } from '../../src/application/ports/economy/pledge.repository.port.js';
 
 /* What in-memory fakes can never tell you: parallel requests against a real database. Every critical section the old synchronous SQLite server got "for free"
    is exercised here with Promise.all and EXACT counts – one ride, one credit, one successful verify, one round, one payment. */
@@ -280,6 +282,48 @@ describe('concurrency (PostgreSQL)', () => {
       expect(voided + ridden).toBe(8); // 4 wallets × 2 tickets: each one either voided or spent, never both, never lost
       expect(await prisma.rideTicket.aggregate({ _sum: { balance: true } })).toMatchObject({ _sum: { balance: 0 } });
       expect(await prisma.ticketGrant.count({ where: { source: 'spend' } })).toBe(ridden);
+    });
+  });
+
+  describe('pledges', () => {
+    /** a started ticket ride of pool 1 and an active-to-be pledge on it: the create_pledge is on the (fake) chain, nobody confirmed it yet */
+    const pledged = async () => {
+      const now = new Date(harness.clock.ms), payoutAt = new Date(harness.clock.ms + 3_600_000);
+      await harness.app.get(PoolRepositoryPort, { strict: false }).upsert(aPool({ id: 1, status: 'active', payoutAt, playDeadline: payoutAt }, now));
+      await harness.app.get(PromoRepositoryPort, { strict: false }).insert(aPromo(now, { code: 'ONE', maxRedemptions: null, effect: ticketEffect({ credits: 1 }) }));
+      const driver = await login();
+      await driver.agent.post('/api/promo/redeem').send({ code: 'ONE' }).expect(200);
+      const ride = (await driver.agent.post('/api/rides').send({ tier: '1h' }).expect(200)).body;
+      await driver.agent.post(`/api/rides/${ride.id}/start`).expect(200);
+      const sponsor = await login();
+      const pledge = (await sponsor.agent.post('/api/pledges').send({ rideId: ride.id, lamportsPerKm: '1000', targetKm: 10 }).expect(200)).body.pledge;
+      const sig = harness.poolChain.addPledgeTransaction([{ kind: 'PledgeCreated', rideId: ride.id, sponsor: sponsor.address, driver: driver.address, pool: 'pool1', maxLamports: 10_000n, lamportsPerKm: 1_000n, targetKm: 10 }]);
+      return { driver, sponsor, ride, pledge, sig };
+    };
+    const row = async (id: string) => (await harness.app.get(PledgeRepositoryPort, { strict: false }).findById(id))!;
+
+    it('N parallel confirms of one pledge racing the pledge job: active ONCE, with the create signature, every caller a 200 with that state', async () => {
+      const { sponsor, pledge, sig } = await pledged();
+      const bus = harness.app.get(CommandBus);
+      const [confirms] = await Promise.all([
+        parallel(PARALLEL, () => sponsor.agent.post(`/api/pledges/${pledge.id}/confirm`).send({ signature: sig })),
+        parallel(3, () => bus.execute(new SyncPledgesCommand())),
+      ]);
+      expect(confirms.map((r) => r.status)).toEqual(Array(PARALLEL).fill(200));
+      expect(new Set(confirms.map((r) => r.body.status))).toEqual(new Set(['active']));
+      expect((await row(pledge.id)).snapshot()).toMatchObject({ status: 'active', createSignature: sig, settled: false });
+    });
+
+    it('N pledge-job passes racing to end one pledge: settle_pledge lands ONCE on chain, the row is settled once with the program\'s numbers', async () => {
+      const { driver, sponsor, pledge, sig } = await pledged();
+      await sponsor.agent.post(`/api/pledges/${pledge.id}/confirm`).send({ signature: sig }).expect(200);
+      harness.payoutChain.payoutAddress = 'Payout11111111111111111111111111111111111111';
+      harness.payoutChain.attestations.set(`1:${driver.address}`, { telemetryRoot: new Uint8Array(32), verifiedKm: 4, status: 1 });
+      const bus = harness.app.get(CommandBus);
+      await parallel(PARALLEL, () => bus.execute(new SyncPledgesCommand()));
+      expect(harness.payoutChain.calls.filter((c) => c.startsWith('settle'))).toHaveLength(1); // the others found the account closed (would fail) – nothing paid twice
+      await bus.execute(new SyncPledgesCommand()); // a pass that lost its race follows the chain on the next one
+      expect((await row(pledge.id)).snapshot()).toMatchObject({ status: 'settled', settled: true, earnedLamports: 4_000n, refundedLamports: 6_000n });
     });
   });
 
