@@ -63,7 +63,8 @@ export function sellableOffers(pools: readonly OfferPool[], now: Date, only?: Pa
   return out;
 }
 
-const buyLink = (o: SellableTier): LinkedAction => ({ type: 'transaction', label: `${TIER_LABEL[o.tier]} · ${solLabel(o.lamports)}`, href: `/api/actions/shift/${o.tier}` });
+/** The spec's button rule: a verb first, at most five words (`Buy 1 HOUR · 0.050 SOL`). */
+const buyLink = (o: SellableTier): LinkedAction => ({ type: 'transaction', label: `Buy ${TIER_LABEL[o.tier]} · ${solLabel(o.lamports)}`, href: `/api/actions/shift/${o.tier}` });
 
 export function shiftCard(origin: string, offers: readonly SellableTier[]): ActionCard {
   const site = originOf(origin);
@@ -95,9 +96,12 @@ const ridePhase = (status: string, reason: string | null): string => {
 /** Created and running free rides have no watch page (the public ride page hides it too). */
 const showWatch = (ride: Pick<RideBlink, 'tier' | 'status'>): boolean => !((ride.status === 'running' || ride.status === 'created') && ride.tier === 'free');
 
+/** As the ride page writes it (ride-page.middleware): `route-66` → `ROUTE 66`. */
+const routeName = (route: string | null): string => (route ? route.replace(/[-_]/g, ' ').toUpperCase() : 'the road');
+
 export function rideCard(origin: string, ride: RideBlink, offers: readonly SellableTier[]): ActionCard {
-  const site = originOf(origin), road = ride.route || 'the road', path = `/api/actions/ride/${encodeURIComponent(ride.id)}`;
-  const tier = (TIER_LABEL as Record<string, string>)[ride.tier] ?? ride.tier;
+  const site = originOf(origin), road = routeName(ride.route), path = `/api/actions/ride/${encodeURIComponent(ride.id)}`;
+  const tier = (TIER_LABEL as Record<string, string>)[ride.tier] ?? (ride.tier === 'free' ? 'FREE' : ride.tier.toUpperCase());
   const actions: LinkedAction[] = [{ type: 'external-link', label: 'Open the ride', href: path }];
   if (showWatch(ride)) actions.push({ type: 'external-link', label: 'Watch', href: `${path}/watch` });
   actions.push(...offers.map(buyLink));

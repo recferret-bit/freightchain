@@ -32,13 +32,14 @@ describe('action card', () => {
     expect(siteLink('https://freightchain.fun', 'home').externalLink).toBe('https://freightchain.fun/');
     const selling = shiftCard('https://freightchain.fun', [{ tier: '1h', poolId: 7, lamports: 50_000_000 }]);
     expect(selling.icon).toBe('https://freightchain.fun/icons/icon-512.png');
-    expect(selling.links.actions[0]).toEqual({ type: 'transaction', label: '1 HOUR · 0.050 SOL', href: '/api/actions/shift/1h' });
+    expect(selling.links.actions[0]).toEqual({ type: 'transaction', label: 'Buy 1 HOUR · 0.050 SOL', href: '/api/actions/shift/1h' });
     expect(selling.description).not.toMatch(/on sale right now/);
   });
 
   it('a running free ride has no watch link, and the card never says verified', () => {
     const running = rideCard('https://freightchain.fun', { id: 'ab/c', route: null, tier: 'free', status: 'running', km: 1.5, reason: null, verdictRejected: false }, []);
     expect(running.title).toBe('1.5 km on the road');
+    expect(running.description).toMatch(/FREE\./);
     expect(running.links.actions).toEqual([{ type: 'external-link', label: 'Open the ride', href: '/api/actions/ride/ab%2Fc' }]);
     expect(watchLink('https://freightchain.fun', 'https://ride.freightchain.fun', { id: 'ab/c', tier: 'free', status: 'running' }).externalLink).toBe('https://freightchain.fun/r/ab%2Fc');
     expect(JSON.stringify(running).toLowerCase()).not.toContain('verified');
@@ -48,6 +49,7 @@ describe('action card', () => {
     expect(watchLink('https://freightchain.fun', '', { id: 'r', tier: '1h', status: 'completed' })).toMatchObject({ externalLink: 'https://freightchain.fun/play.html?watch=r' });
     expect(watchLink('https://freightchain.fun', 'https://ride.freightchain.fun/', { id: 'r', tier: '1h', status: 'running' }).externalLink).toBe('https://ride.freightchain.fun/play.html?watch=r');
     expect(done.description).toMatch(/did not count this shift/);
+    expect(done.title).toBe('12 km on ROUTE 66');
     expect(JSON.stringify(done).toLowerCase()).not.toContain('verified');
   });
 
