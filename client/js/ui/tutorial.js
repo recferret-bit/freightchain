@@ -70,7 +70,7 @@ function mount() {
   head.append(count, title, dots);
   const text = h('p', 'tu-text'), row = h('div', 'tu-row'), skip = h('button', 'tu-skip', 'SKIP ▸'), end = h('button', 'tu-end', 'END TUTORIAL');
   for (const b of [skip, end]) { b.type = 'button'; b.tabIndex = -1; b.addEventListener('mousedown', e => e.preventDefault()); }   // never take the keyboard focus: SPACE is the clutch
-  skip.addEventListener('click', () => { audio.play('ui'); advance(); }); end.addEventListener('click', () => finish('closed'));
+  skip.addEventListener('click', advanceTutorial); end.addEventListener('click', endTutorial);
   row.append(skip, end); box.append(head, text, row); document.body.append(box);
   parts = { count, title, dots, text, skip, end };
 }
@@ -96,6 +96,7 @@ function finish(how) {
   guide.hold = false; guide.tips.length = 0; over = true; closeAt = now() + (how === 'done' ? 4500 : 0);
   if (how === 'done') cheer('TUTORIAL COMPLETE – drive on!');
   if (how === 'done' && box) { box.classList.add('fin'); parts.count.textContent = '✓'; parts.title.textContent = 'TUTORIAL COMPLETE'; parts.text.textContent = 'That is everything. Drive on to the finish line – the HUL bar is your hull, keep it up.'; parts.dots.textContent = ''; parts.skip.hidden = parts.end.hidden = true; }
+  if (how === 'closed') show(false);
 }
 
 /** a new ride starts (ui/game.js): rewind the lesson */
@@ -108,18 +109,24 @@ export function resetTutorial() {
 export function tutorialTips() {
   if (!guide.tutorial || !box) return null;
   if (st.mode !== 'drive') { show(false); return null; }
-  if (over) { show(closeAt > now()); return null; }
+  if (over) { show(closeAt > now()); return closeAt > now() ? [] : null; }
   show(true);
   const s = STEPS[i];
-  if (doneAt) { if (now() - doneAt > DONE_MS) advance(); return null; }
+  if (doneAt) {
+    if (!s.done()) { doneAt = 0; box.classList.remove('ok'); parts.title.textContent = s.title; }
+    else if (now() - doneAt > DONE_MS && now() - stepAt > MIN_STEP) advance();
+    return null;
+  }
   s.track?.();
   if (st.engineOn) ran = true;
-  if (now() - stepAt > MIN_STEP && s.done()) { doneAt = now(); box.classList.add('ok'); audio.play('ui'); box.classList.remove('warn'); parts.title.textContent = `${s.title} ✓`; if (s.win) cheer(s.win); return null; }
   const raw = trouble(i), t = now();
   if (raw?.key !== pend?.tr.key) pend = raw ? { tr: raw, at: t } : null;   // a candidate warning, and since when it has held
   if (cur) { if (raw?.key === cur.tr.key) cur.last = t; else if (t - cur.last > WARN_GONE && t - cur.at > WARN_HOLD) { if (cur.tr.key === 'stall' && st.engineOn) cheer('ENGINE BACK ON – good recovery'); cur = null; } }
   if (!cur && pend && t - pend.at > WARN_AFTER) cur = { tr: pend.tr, at: t, last: t };
   warn(cur?.tr);
+  if (!cur && s.done()) { doneAt = now(); box.classList.add('ok'); audio.play('ui'); box.classList.remove('warn'); parts.title.textContent = `${s.title} ✓`; if (s.win) cheer(s.win); return null; }
   return cur ? cur.tr.tips : s.tips();
 }
-export const tutorialOpen = () => guide.tutorial && !over;
+export const endTutorial = () => finish('closed');
+export const advanceTutorial = () => { audio.play('ui'); advance(); };
+export const tutorialOpen = () => guide.tutorial && (!over || closeAt > now());

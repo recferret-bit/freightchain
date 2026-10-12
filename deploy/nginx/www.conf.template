@@ -6,5 +6,8 @@ server {
     listen [::]:80;
     server_name www.__ROOT__;
 
+    # Solana Actions discovery: a browser blink client follows this 301 cross-origin, which needs the CORS header on the redirect itself
+    # (setup.sh leaves an existing site file alone – on a box set up before this line, add it by hand above `location /`, then nginx -t + reload)
+    location ~ ^/(\.well-known/)?actions\.json$ { add_header Access-Control-Allow-Origin "*" always; return 301 https://__ROOT__$request_uri; }
     location / { return 301 https://__ROOT__$request_uri; }
 }

@@ -15,7 +15,7 @@ export function ridePageMiddleware(prisma: PrismaService | null, env: EnvService
     if (!cachedTemplate && rHtmlPath && existsSync(rHtmlPath)) {
       cachedTemplate = readFileSync(rHtmlPath, 'utf8');
     }
-    return cachedTemplate ?? '<!doctype html><html><head><title>Freight Chain – Ride</title><meta property="og:title" content=""><meta property="og:description" content=""><meta name="twitter:title" content=""><meta name="twitter:description" content=""></head><body>Loading…</body></html>';
+    return cachedTemplate ?? '<!doctype html><html><head><title>Freight Chain – Ride</title><meta property="og:url" content=""><meta property="og:title" content=""><meta property="og:description" content=""><meta name="twitter:title" content=""><meta name="twitter:description" content=""></head><body>Loading…</body></html>';
   };
 
   return function ridePageMiddleware(req: Request, res: Response, next: NextFunction): void {
@@ -71,6 +71,7 @@ export function ridePageMiddleware(prisma: PrismaService | null, env: EnvService
         let html = template
           .replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`)
           .replace(/<link rel="canonical"[^>]*>/, `<link rel="canonical" href="${canonical}">`)
+          .replace(/<meta property="og:url" content="[^"]*"/, `<meta property="og:url" content="${canonical}"`)   // X / Discord / Telegram name the shared ride, not the template's /r/
           .replace(/<meta property="og:title" content="[^"]*"/, `<meta property="og:title" content="${title}"`)
           .replace(/<meta property="og:description" content="[^"]*"/, `<meta property="og:description" content="${desc}"`)
           .replace(/<meta name="twitter:title" content="[^"]*"/, `<meta name="twitter:title" content="${title}"`)

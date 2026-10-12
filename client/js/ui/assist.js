@@ -12,17 +12,17 @@ import { phone } from '../phone.js';
    parking brake still on, gear up / down, a stall, the lights at night, a low battery, a failing hull… The tutorial (ui/tutorial.js) takes the tips while a lesson step is open;
    a stalled engine always wins (every lesson after the engine started needs it restarted). Tips stay up ≥ STICKY ms so a needle crossing a threshold does not flicker. */
 const K = (id, text, key) => ({ id, text, key }), STICKY = 1400, MAX = 3;
-let everOn = false, lastSeen = new Map(), wiperHinted = 0;
+let everOn = false, lastSeen = new Map(), wiperHinted = 0, hadTutorial = false, wasTutOpen = false;
 
 const stalled = () => everOn && !st.engineOn && !st.ign;
 const stallTips = () => [K('STALL', 'Engine stopped – hold the clutch in and press I to restart', 'I'), K('key-start', 'Or hold START on the key')];
 
 function assistTips() {
   const T = [];
-  if (!st.engineOn && !st.ign) { if (stalled()) return stallTips(); T.push(st.keyOn ? K('key-start', 'Hold START to crank the engine', 'I') : K('key-on', 'Turn the key to ON, then START', 'I')); return T; }
-  if (st.park) { T.push(K('park', st.v > .5 ? 'The parking brake is ON – release it' : 'Release the parking brake', 'B')); return T; }
-  if (st.gear === 0 && st.v < 1) T.push(K('CLU', 'Hold the clutch in', 'SHIFT'), K('SHIFTER', 'Select 1st gear', 'E'));
-  else if (st.gear > 0 && st.v < 1.5 && st.gas < .1) T.push(K('GAS', 'Gas, then ease the clutch out', 'W'));
+  if (!st.engineOn && !st.ign) { if (stalled()) return stallTips(); if (!hadTutorial) T.push(st.keyOn ? K('key-start', 'Hold START to crank the engine', 'I') : K('key-on', 'Turn the key to ON, then START', 'I')); return T; }
+  if (st.park) { if (st.v > .5 || !hadTutorial) T.push(K('park', st.v > .5 ? 'The parking brake is ON – release it' : 'Release the parking brake', 'B')); return T; }
+  if (!hadTutorial && st.gear === 0 && st.v < 1) T.push(K('CLU', 'Hold the clutch in', 'SHIFT'), K('SHIFTER', 'Select 1st gear', 'E'));
+  else if (!hadTutorial && st.gear > 0 && st.v < 1.5 && st.gas < .1) T.push(K('GAS', 'Gas, then ease the clutch out', 'W'));
   if (st.v >= 1.5) {
     if (st.rpm > 2300 && st.gear > 0 && st.gear < 7) T.push(K('RPM×100', 'Revs are high – gear UP (clutch in first)', 'E'), K('SHIFTER', 'Shift up'));
     if (st.lug > .25) T.push(K('RPM×100', 'The engine is lugging – gear DOWN (clutch in first)', 'Q'), K('SHIFTER', 'Shift down'));
@@ -44,12 +44,15 @@ function assistTips() {
 }
 
 /** a ride starts (ui/game.js) */
-export function startGuide() { everOn = false; lastSeen = new Map(); wiperHinted = 0; guide.tips.length = 0; resetTutorial(); }
+export function startGuide() { everOn = false; lastSeen = new Map(); wiperHinted = 0; guide.tips.length = 0; hadTutorial = guide.tutorial; wasTutOpen = guide.tutorial; resetTutorial(); }
 
 /** every frame (main.js), only for a ride with the tutorial or the assist */
 export function updateGuide() {
   if (st.mode !== 'drive') { guide.tips.length = 0; tutorialTips(); return; }
   if (st.engineOn) everOn = true;
+  const tutOpen = tutorialOpen();
+  if (wasTutOpen && !tutOpen) { lastSeen.clear(); guide.tips.length = 0; }
+  wasTutOpen = tutOpen;
   let tips = tutorialTips();
   if (!tips && guide.assist && !tutorialOpen()) tips = assistTips();
   const t = performance.now(), out = [];

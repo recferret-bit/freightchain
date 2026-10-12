@@ -24,6 +24,7 @@ test('link previews: og:image is absolute and the file exists; titles are distin
   for (const p of ['landing', 'whitepaper', 'play']) {
     const img = meta(pages[p], 'property', 'og:image');
     assert.match(img, /^https:\/\/freightchain\.fun\/media\/og\.jpg$/, p);
+    if (p === 'landing') assert.equal(meta(pages[p], 'name', 'twitter:image'), img, 'X reads twitter:image first');
     assert.ok(meta(pages[p], 'name', 'description')?.length >= 50, `${p}: a real description`);
   }
   const titles = Object.values(pages).map(h => h.match(/<title>([^<]+)<\/title>/)[1]);

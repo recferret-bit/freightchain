@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Blink preview – Freight Chain</title>
+<meta name="robots" content="noindex">   <!-- a tool page: it renders whatever URL it is given -->
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Render a Solana Action as a blink card and run its buttons with your wallet – Freight Chain's own blink client while dial.to is paused.">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="stylesheet" href="site/lobby.css">
+<style>
+  form.go{display:flex;gap:8px;flex-wrap:wrap}
+  form.go input{flex:1 1 280px;min-width:0;font:inherit;padding:11px 12px;border-radius:6px;border:1px solid var(--line);background:#0008;color:var(--text)}
+  .blink{max-width:460px;margin:18px auto 0;padding:0;overflow:hidden}
+  .blink img{display:block;width:100%;height:auto;aspect-ratio:1;object-fit:cover;background:#000}
+  .blink .body{padding:14px 18px 18px}
+  .blink h1{font-size:18px;margin:2px 0 8px;color:var(--amber)}
+  .blink .host{margin:0}
+  .blink .acts{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+  .facts{max-width:460px;margin:12px auto 0;display:grid;grid-template-columns:max-content 1fr;gap:2px 12px;word-break:break-all}
+  .facts dd{margin:0}
+  details{max-width:460px;margin:10px auto 0}
+  .raw{white-space:pre-wrap;word-break:break-word;font-size:12px;background:#0008;border:1px solid var(--line);border-radius:8px;padding:10px;max-height:360px;overflow:auto}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/">FREIGHT CHAIN</a>
+  <span class="chips"><span class="chip">BLINK PREVIEW · DEVNET</span><button class="ghost" id="connect" type="button">CONNECT WALLET</button><span class="chip" id="who">no wallet</span></span>
+</header>
+<main>
+  <p class="dim">A Solana Action, rendered the way a blink client shows it on X or dial.to – for any page, a <code>solana-action:</code> URL or a dial.to link. Buttons ask your wallet; a buy is signed and sent by you on devnet.</p>
+  <form class="go" id="go"><input id="url" type="url" inputmode="url" autocomplete="off" spellcheck="false" aria-label="Page or action URL" required><button type="submit">SHOW</button></form>
+  <section id="out" aria-live="polite"></section>
+</main>
+<footer>Devnet SOL has no value. Not a wager. Nothing is signed without your wallet asking you.</footer>
+<script type="module" src="site/blink.js"></script>
+</body>
+</html>
