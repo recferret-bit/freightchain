@@ -243,6 +243,7 @@ $('storybook-link').href = STORYBOOK_BASE || '/viewer.html';   // the model view
 $('whitepaper-link').href = $('whitepaper-cta').href = WHITEPAPER_BASE || '/whitepaper.html';   // the whitepaper: whitepaper.<apex> in production, /whitepaper.html elsewhere
 $('storybook-link').addEventListener('click', () => track('storybook_link_clicked'));
 $('escrow-link').href = escrowExplainer();   // whitepaper chapter 05 is the one public escrow explainer
+for (const a of document.querySelectorAll('a[href^="/whitepaper.html#"]')) if (WHITEPAPER_BASE) a.href = `${WHITEPAPER_BASE}/${a.hash}`;   // deep links straight to whitepaper.<apex> (the apex would only 301 there)
 
 /* ───── UNDER THE HOOD cards: hover flips them in CSS; a tap or Enter / Space toggles .flip (the lobby's achievement card), a link on the back stays a link ───── */
 for (const c of document.querySelectorAll('.oc')) {
