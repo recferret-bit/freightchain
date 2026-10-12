@@ -5,9 +5,12 @@
 //     BASE=http://localhost:3111 node scripts/e2e-blinks.mjs        (bash .claude/skills/run-tests/e2e.sh blinks runs it in program mode with a selling pool)
 //   Production, read-only (no sign-in, no buy POST – a buy would create an order; link buttons only answer a URL):
 //     BASE=https://freightchain.fun READONLY=1 [RIDE=<id>] [HOSTS=https://ride.freightchain.fun,https://www.freightchain.fun] node scripts/e2e-blinks.mjs
+// Then our own blink client, /blink.html, in headless Chrome (NO_CHROME=1 skips it; CHROME_PORT, SHOTS): both cards render, a link button opens its
+// page, and (not read-only) the buy is handed to a stub wallet and the card chains to its completed state. Screenshots in $TMPDIR/fc-blink-shots.
 // blinks-core 0.20.7 (+ nanoid) is fetched once from the npm registry, checked against its pinned sha512 and cached in $TMPDIR – not a dependency.
 import { createHash } from 'node:crypto'; import { execFileSync } from 'node:child_process'; import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path';
 import { Transaction } from '@solana/web3.js'; import nacl from 'tweetnacl'; import bs58 from 'bs58';
+import { launch, sleep } from '../../client/tools/cdp.mjs';
 
 const BASE = (process.env.BASE || 'http://localhost:3111').replace(/\/$/, ''), READONLY = process.env.READONLY === '1';
 const HOSTS = (process.env.HOSTS || '').split(',').map(h => h.trim().replace(/\/$/, '')).filter(Boolean);
@@ -18,6 +21,7 @@ const PKGS = [
 ];
 const CORE_CHUNK = 'dist/chunk-ZIGSGW2L.js';   // 0.20.7's React-free core (BlinkInstance, the URL mapper, the support strategy); index.js pulls React
 
+let rules = [];   // the apex's actions.json, read by discovery()
 const fails = []; const check = (n, ok, x = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x ? ' – ' + x : ''}`); if (!ok) fails.push(n); };
 
 async function loadCore() {
@@ -59,7 +63,9 @@ async function discovery(origin) {
     if (r.status >= 300 && r.status < 400) { check(`${p} redirects (${r.status} → ${hdr(r, 'location')}); a browser client needs ACAO on the redirect too`, hdr(r, 'access-control-allow-origin') === '*'); continue; }
     corsOk(p, r);
     const body = await r.json().catch(() => null);
-    check(`${p}: rules map / and /r/** and are idempotent for /api/actions/**`, JSON.stringify(body?.rules?.map(x => x.pathPattern)) === JSON.stringify(['/', '/r/**', '/api/actions/**']), JSON.stringify(body));
+    const rule = (from, to) => body?.rules?.some(x => x.pathPattern === from && x.apiPath === to);
+    check(`${p}: rules map / and /r/** and are idempotent for /api/actions/**`, rule('/', '/api/actions/shift') && rule('/r/**', '/api/actions/ride/**') && rule('/api/actions/**', '/api/actions/**'), JSON.stringify(body));
+    if (p === '/actions.json') rules = body?.rules ?? [];
     await preflight(origin + p, 'GET');
   }
 }
@@ -89,6 +95,9 @@ async function card(core, siteUrl, expectApi, account) {
     if (a.type === 'external-link') {
       check(`"${a.label}": POST answers an external link`, res?.type === 'external-link' && /^https?:\/\//.test(res.externalLink ?? ''), JSON.stringify(res).slice(0, 180));
       if (res?.externalLink) { const page = await get(res.externalLink); check(`  → ${res.externalLink} opens`, page.ok && /text\/html/.test(hdr(page, 'content-type')), String(page.status)); }
+    } else if (a.type === 'post') {
+      check(`"${a.label}": POST answers a post response`, res?.type === 'post' && !res.error, JSON.stringify(res).slice(0, 180));
+      if (res?.links?.next) { const next = await blink.chain(res.links.next, { account }); check('  then the card chains on', !!next?.type, `${next?.type} ${next?.title}`); }
     } else if (a.type === 'transaction') {
       if (res?.error) { check(`"${a.label}": POST`, false, res.error); continue; }
       const tx = Transaction.from(Buffer.from(res.transaction, 'base64')), msg = tx.compileMessage();
@@ -114,6 +123,56 @@ async function errors(origin) {
   }
 }
 
+/** /blink.html in real Chrome. The wallet is a stub that records what it was asked to sign; window.open records instead of opening. */
+async function page(account, ride) {
+  console.log(`\n▸ ${BASE}/blink.html in headless Chrome`);
+  const has = await fetch(`${BASE}/blink.html`).then(r => r.ok, () => false);
+  if (!has) { check('/blink.html is served', !READONLY, 'not on this server (not deployed yet?)'); return; }
+  const t = await launch({ port: +(process.env.CHROME_PORT || 9471), shotsDir: 'fc-blink-shots' });
+  await t.send('Page.addScriptToEvaluateOnNewDocument', { source: `
+    window.__opened = []; window.open = u => { window.__opened.push(u); return null; };
+    const pk = { toString: () => ${JSON.stringify(account)}, toBase58: () => ${JSON.stringify(account)} };
+    window.phantom = { solana: { isPhantom: true, publicKey: pk, connect: async () => ({ publicKey: pk }),
+      signAndSendTransaction: async tx => { window.__signed = { feePayer: tx.feePayer?.toBase58?.(), ixs: tx.instructions.length }; return { signature: '5'.repeat(88) }; } } };` });
+  const shot = async name => { await t.ev(`document.querySelector('.blink .body')?.scrollIntoView({ block: 'center' })`); await sleep(150); await t.shot(name); };   // the buttons sit below the square icon
+  const until = async (expr, ms = 15000) => { for (let i = 0; i < ms / 200; i++) { const v = await t.ev(expr); if (v) return v; await sleep(200); } return null; };
+  const click = label => t.ev(`(() => { const b = [...document.querySelectorAll('.blink button')].find(b => b.textContent.startsWith(${JSON.stringify(label)})); b?.click(); return !!b; })()`);
+  const open = async url => { await t.send('Page.navigate', { url: `${BASE}/blink.html?url=${encodeURIComponent(url)}` }); return until(`document.querySelector('.blink h1')?.textContent`); };
+
+  const title = await open(`${BASE}/`);
+  check('the shift card renders', title === 'Freight Chain', title);
+  const facts = await t.ev(`document.querySelector('.facts')?.textContent ?? ''`);
+  check('  it shows the version + devnet from the headers and how actions.json mapped it', /2\.4/.test(facts) && /devnet/.test(facts) && /actions\.json maps \//.test(facts), facts.slice(0, 160));
+  check('  the icon loads', await until(`document.querySelector('.blink img')?.naturalWidth > 0`));
+  const labels = await t.ev(`[...document.querySelectorAll('.blink button')].map(b => b.textContent)`);
+  console.log(`  buttons: ${labels.join(' | ')}`);
+  await shot('blink-shift');
+  check('  "Drive free" opens the site', await click('Drive free') && (await until(`window.__opened[0]`)) === `${BASE}/`, await t.ev('JSON.stringify(window.__opened)'));
+  const buy = labels.find(l => l.startsWith('Buy '));
+  if (buy && !READONLY) {
+    check(`  "${buy}" hands one transaction to the wallet, fee payer = the account`, await click(buy) && (await until('window.__signed?.feePayer', 30000)) === account, await t.ev('JSON.stringify(window.__signed)'));
+    check('  then the card chains to its completed state', (await until(`document.querySelector('.blink h1')?.textContent?.startsWith('Sign and send') && document.querySelector('.blink h1').textContent`, 20000)) !== null);
+    check('  and keeps the explorer link of what was sent', /explorer\.solana\.com\/tx\/5{88}\?cluster=devnet/.test(await t.ev(`document.querySelector('.blink a[href*="explorer"]')?.href ?? ''`)));
+    await shot('blink-bought');
+  }
+  for (const r of rules.filter(x => !['/', '/r/**', '/api/actions/**'].includes(x.pathPattern) && !/[*]/.test(x.pathPattern))) {
+    const t2 = await open(`${BASE}${r.pathPattern}`);
+    const first = (await t.ev(`[...document.querySelectorAll('.blink button')].map(b => b.textContent)`))[0];
+    check(`the ${r.pathPattern} card renders and its first button chains on`, !!t2 && !!first && await click(first) && (await until(`!document.querySelector('.blink .acts') && document.querySelector('.blink h1')?.textContent`)) !== null, `${t2} → ${first}`);   // a completed card has no buttons
+  }
+  if (ride) {
+    const rt = await open(`${BASE}/r/${ride}`);
+    check('the ride card renders', / km on /.test(rt ?? ''), rt);
+    await t.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true }); await sleep(300);
+    check('  no sideways scroll at phone width', await t.ev('document.documentElement.scrollWidth <= innerWidth'));
+    await shot('blink-ride-phone');
+  }
+  const problems = t.filt();
+  check('no page errors', problems.length === 0, problems.slice(0, 3).join(' | '));
+  console.log(`  screenshots: ${t.SHOTS}`);
+  return t;   // the caller closes Chrome: finish() also exits the process
+}
+
 async function signUp() {
   const kp = nacl.sign.keyPair(), wallet = bs58.encode(kp.publicKey);
   const post = (p, b, cookie, method = 'POST') => fetch(`${BASE}/api/${p}`, { method, headers: { 'content-type': 'application/json', ...(cookie && { cookie }) }, body: JSON.stringify(b) });
@@ -135,6 +194,8 @@ for (const h of HOSTS) await discovery(h);
 await card(core, `${BASE}/`, `${BASE}/api/actions/shift`, account);
 if (ride) await card(core, `${BASE}/r/${ride}`, `${BASE}/api/actions/ride/${ride}`, account);
 for (const h of HOSTS) if (!/^https?:\/\/www\./.test(h)) await card(core, `${h}/`, `${h}/api/actions/shift`, account);
+for (const r of rules) if (!['/', '/r/**', '/api/actions/**'].includes(r.pathPattern) && !/[*]/.test(r.pathPattern)) await card(core, `${BASE}${r.pathPattern}`, `${BASE}${r.apiPath}`, account);   // any other card actions.json publishes
 await errors(BASE);
+const chrome = process.env.NO_CHROME === '1' ? null : await page(account, ride);
 console.log(fails.length ? `\n${fails.length} FAILED:\n  ${fails.join('\n  ')}` : '\nall blink checks passed');
-process.exit(fails.length ? 1 : 0);
+if (chrome) chrome.finish(fails.length ? 1 : 0, 100); else process.exit(fails.length ? 1 : 0);
