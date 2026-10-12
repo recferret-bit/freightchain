@@ -313,6 +313,9 @@ try {
   const { j: an } = await api('auth/nonce', { body: { wallet: ADM.wallet } });
   ADM.cookie = (await fetch(`${BASE}/api/auth/verify`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ wallet: ADM.wallet, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(an.message), admin.secretKey)) }) })).headers.get('set-cookie').split(';')[0];
   check('payouts are refused to a player (403)', (await api(`pools/${A}/payout`, { cookie: P1.cookie })).status === 403);
+  // v3: no prize without a VERIFIED attestation. These game rides end at the 42 m line (DEMO_SCALE=1200) – under the whole km the server attests – so the admin
+  // records them by hand (a test shortcut: the payout scenario covers the server putting record_attestation in front of pay_prize for rides past 1 km)
+  for (const p of [P1, P2]) admintool(['record-attestation', '--pool', String(A), '--driver', p.wallet, '--km', '1', '-k', `${KEYS}/admin.json`]);
   const po = await api(`pools/${A}/payout`, { cookie: ADM.cookie });
   const chainA = await poolAcc(A);
   const bound = prizeBound({ priceLamports: PRICE_A, ticketsSold: 3, sponsored: SPONSOR_A, prizeBps: 7000, seedBps: 2000 });

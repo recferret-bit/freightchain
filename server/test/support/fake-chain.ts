@@ -3,7 +3,7 @@ import bs58 from 'bs58';
 import { randomBytes } from 'node:crypto';
 import type { ChainSignature, ChainTransaction, UnsignedPaymentTx } from '../../src/domain/economy/chain-transaction.js';
 import { ChainPort, type PaymentTxInput } from '../../src/application/ports/economy/chain.port.js';
-import { memoInstruction } from '../../src/infrastructure/solana/chain-transaction.mapper.js';
+import { memoInstruction, withReference } from '../../src/infrastructure/solana/chain-transaction.mapper.js';
 
 export const TREASURY = Keypair.generate().publicKey.toBase58();
 export const newSignature = (): string => bs58.encode(randomBytes(64));
@@ -37,8 +37,8 @@ export class FakeChain extends ChainPort {
     const blockhash = Keypair.generate().publicKey.toBase58();
     const payer = new PublicKey(input.payer);
     const tx = new Transaction({ feePayer: payer, recentBlockhash: blockhash })
-      .add(SystemProgram.transfer({ fromPubkey: payer, toPubkey: new PublicKey(input.treasury), lamports: input.lamports }))
-      .add(memoInstruction(input.memo, [payer], input.reference));
+      .add(withReference(SystemProgram.transfer({ fromPubkey: payer, toPubkey: new PublicKey(input.treasury), lamports: input.lamports }), input.reference))
+      .add(memoInstruction(input.memo, [payer]));
     return { blockhash, lastValidBlockHeight: 1, transaction: tx.serialize({ requireAllSignatures: false, verifySignatures: false }).toString('base64') };
   }
 

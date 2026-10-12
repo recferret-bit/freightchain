@@ -16,7 +16,7 @@ use anchor_lang::{
 };
 use base64::Engine;
 use common::*;
-use freightchain_pools::{accounts, events::*, instruction, Config, CreatePoolParams, Pool, Series, Ticket};
+use freightchain_pools::{accounts, events::*, instruction, Attestation, Config, CreatePoolParams, Pledge, Pool, Series, Ticket};
 use serde_json::{json, Value};
 use solana_keypair::Keypair;
 use solana_signer::Signer;
@@ -47,7 +47,7 @@ fn decoded_events(logs: &[String]) -> Vec<Value> {
             try_ev!(d, PoolCreated, |e: PoolCreated| json!({"kind": "PoolCreated", "poolId": e.pool_id, "pool": e.pool.to_string(), "vault": e.vault.to_string(),
                 "authority": e.authority.to_string(), "tier": e.tier, "priceLamports": s(e.price_lamports), "minTickets": e.min_tickets, "maxTickets": e.max_tickets,
                 "maxPerWallet": e.max_per_wallet, "prepDeadline": e.prep_deadline, "playDeadline": e.play_deadline, "payoutAt": e.payout_at, "prizeBps": e.prize_bps, "seedBps": e.seed_bps,
-                "feeBps": e.fee_bps, "feeTreasury": e.fee_treasury.to_string(), "seedTreasury": e.seed_treasury.to_string(), "fromSeries": e.from_series, "seedCommitment": b64(&e.seed_commitment)}));
+                "feeBps": e.fee_bps, "feeTreasury": e.fee_treasury.to_string(), "seedTreasury": e.seed_treasury.to_string(), "fromSeries": e.from_series, "seedCommitment": b64(&e.seed_commitment), "seedSlot": s(e.seed_slot), "seedSlotHash": b64(&e.seed_slot_hash)}));
             try_ev!(d, SeriesSet, |e: SeriesSet| json!({"kind": "SeriesSet", "tier": e.tier, "enabled": e.enabled, "priceLamports": s(e.price_lamports),
                 "minTickets": e.min_tickets, "maxTickets": e.max_tickets, "maxPerWallet": e.max_per_wallet, "saleSecs": e.sale_secs, "playSecs": e.play_secs,
                 "verifySecs": e.verify_secs, "prizeBps": e.prize_bps, "seedBps": e.seed_bps, "feeBps": e.fee_bps, "feeTreasury": e.fee_treasury.to_string(),
@@ -69,10 +69,10 @@ fn decoded_events(logs: &[String]) -> Vec<Value> {
                 "prizesPaidTotal": s(e.prizes_paid_total)}));
             try_ev!(d, PoolClosed, |e: PoolClosed| json!({"kind": "PoolClosed", "poolId": e.pool_id, "prizePaid": s(e.prize_paid), "seed": s(e.seed), "fee": s(e.fee),
                 "platformFee": s(e.platform_fee), "unclaimed": s(e.unclaimed), "rentReturned": s(e.rent_returned), "cancelled": e.cancelled}));
-            try_ev!(d, YieldRecorded, |e: YieldRecorded| json!({"kind": "YieldRecorded", "poolId": e.pool_id, "stakedLamports": s(e.staked_lamports), "yieldEarned": s(e.yield_earned), "yieldEarnedTotal": s(e.yield_earned_total)}));
             try_ev!(d, AttestationRecorded, |e: AttestationRecorded| json!({"kind": "AttestationRecorded", "poolId": e.pool_id, "pool": e.pool.to_string(), "driver": e.driver.to_string(), "telemetryRoot": b64(&e.telemetry_root), "verifiedKm": e.verified_km, "status": e.status, "recordedAt": e.recorded_at}));
             try_ev!(d, PledgeCreated, |e: PledgeCreated| json!({"kind": "PledgeCreated", "rideId": b64(&e.ride_id), "sponsor": e.sponsor.to_string(), "driver": e.driver.to_string(), "pool": e.pool.to_string(), "maxLamports": s(e.max_lamports), "lamportsPerKm": s(e.lamports_per_km), "targetKm": e.target_km, "createdAt": e.created_at}));
             try_ev!(d, PledgeSettled, |e: PledgeSettled| json!({"kind": "PledgeSettled", "rideId": b64(&e.ride_id), "sponsor": e.sponsor.to_string(), "driver": e.driver.to_string(), "pool": e.pool.to_string(), "verifiedKm": e.verified_km, "targetKm": e.target_km, "earnedLamports": s(e.earned_lamports), "refundedLamports": s(e.refunded_lamports)}));
+            try_ev!(d, PledgeRefunded, |e: PledgeRefunded| json!({"kind": "PledgeRefunded", "rideId": b64(&e.ride_id), "sponsor": e.sponsor.to_string(), "driver": e.driver.to_string(), "pool": e.pool.to_string(), "refundedLamports": s(e.refunded_lamports)}));
             panic!("unknown event discriminator {:?}", &d[..8]);
         })
         .collect()
@@ -127,10 +127,19 @@ impl Rec {
                 "payoutAt": p.payout_at, "prizeBps": p.prize_bps, "seedBps": p.seed_bps, "feeBps": p.fee_bps, "feeTreasury": p.fee_treasury.to_string(), "seedTreasury": p.seed_treasury.to_string(),
                 "status": p.status, "ticketsSold": p.tickets_sold, "buyers": p.buyers, "sponsored": s(p.sponsored), "prizesPaid": s(p.prizes_paid),
                 "refunded": s(p.refunded), "createdAt": p.created_at, "bump": p.bump, "vaultBump": p.vault_bump,
-                "seedCommitment": b64(&p.seed_commitment), "stakedLamports": s(p.staked_lamports), "yieldEarned": s(p.yield_earned)})
+                "seedCommitment": b64(&p.seed_commitment), "seedSlot": s(p.seed_slot), "seedSlotHash": b64(&p.seed_slot_hash)})
         } else if a.data.len() >= 8 && a.data[..8] == *Ticket::DISCRIMINATOR {
             let t = Ticket::try_deserialize(&mut &a.data[..]).unwrap();
             json!({"type": "Ticket", "buyer": t.buyer.to_string(), "rentPayer": t.rent_payer.to_string(), "poolId": t.pool_id, "qty": t.qty, "lamports": s(t.lamports), "bump": t.bump})
+        } else if a.data.len() >= 8 && a.data[..8] == *Attestation::DISCRIMINATOR {
+            let x = Attestation::try_deserialize(&mut &a.data[..]).unwrap();
+            json!({"type": "Attestation", "pool": x.pool.to_string(), "driver": x.driver.to_string(), "telemetryRoot": b64(&x.telemetry_root),
+                "verifiedKm": x.verified_km, "status": x.status, "recordedAt": x.recorded_at, "bump": x.bump})
+        } else if a.data.len() >= 8 && a.data[..8] == *Pledge::DISCRIMINATOR {
+            let x = Pledge::try_deserialize(&mut &a.data[..]).unwrap();
+            json!({"type": "Pledge", "rideId": b64(&x.ride_id), "sponsor": x.sponsor.to_string(), "driver": x.driver.to_string(), "pool": x.pool.to_string(),
+                "maxLamports": s(x.max_lamports), "lamportsPerKm": s(x.lamports_per_km), "targetKm": x.target_km, "settled": x.settled,
+                "earnedLamports": s(x.earned_lamports), "refundedLamports": s(x.refunded_lamports), "createdAt": x.created_at, "bump": x.bump})
         } else if a.data.len() >= 8 && a.data[..8] == *Series::DISCRIMINATOR {
             let x = Series::try_deserialize(&mut &a.data[..]).unwrap();
             json!({"type": "Series", "tier": x.tier, "enabled": x.enabled, "priceLamports": s(x.price_lamports), "minTickets": x.min_tickets, "maxTickets": x.max_tickets,
@@ -178,7 +187,7 @@ fn pay_prize_ix(id: u32, authority: &Pubkey, to: &Pubkey, lamports: u64, rank: u
 fn create(e: &mut Env, rec: &mut Rec, p: CreatePoolParams) -> u32 {
     let id = e.next_pool;
     let args = json!({"tier": p.tier, "priceLamports": s(p.price_lamports), "minTickets": p.min_tickets, "maxTickets": p.max_tickets, "maxPerWallet": p.max_per_wallet,
-        "prepDeadline": p.prep_deadline, "playDeadline": p.play_deadline, "payoutAt": p.payout_at, "prizeBps": p.prize_bps, "seedBps": p.seed_bps, "feeBps": p.fee_bps, "seedCommitment": b64(&p.seed_commitment)});
+        "prepDeadline": p.prep_deadline, "playDeadline": p.play_deadline, "payoutAt": p.payout_at, "prizeBps": p.prize_bps, "seedBps": p.seed_bps, "feeBps": p.fee_bps});
     let i = e.create_pool_ix(p, e.fee_t.pubkey(), e.seed_t.pubkey());
     let (a, c) = (e.authority_kp(), clone_kp(&e.cranker));
     rec.send(e, &format!("create_pool {id}"), vec![(i, "create_pool", args)], &c, &[&a], true).unwrap();
@@ -291,11 +300,67 @@ fn export_pool_program_fixtures() {
     rec.account(&e, "pool 4 open (series)", &pool_pda(p4));
     let i = buy(&e, p4, &a.pubkey(), &a.pubkey(), 3, [5u8; 16]);
     rec.send(&mut e, "buy_ticket into pool 4 activates", vec![i], &a, &[], true).unwrap();
+    //      v3 pledges while rides count: the brand pledges per km on the winner's ride and on C's (C never finishes)
+    let (ride_w, ride_c) = ([0x51u8; 32], [0x52u8; 32]);
+    for (ride_id, driver, name) in [(ride_w, winner.pubkey(), "create_pledge (winner)"), (ride_c, c.pubkey(), "create_pledge (C)")] {
+        let i = ix(
+            instruction::CreatePledge { ride_id, driver, max_lamports: 1_000_000, lamports_per_km: 10_000, target_km: 100 },
+            accounts::CreatePledge {
+                sponsor: brand.pubkey(),
+                driver,
+                config: config_pda(),
+                pool: pool_pda(p4),
+                pledge: pledge_pda(&ride_id, &brand.pubkey()),
+                system_program: anchor_lang::solana_program::system_program::ID,
+            },
+        );
+        let args = json!({"rideId": b64(&ride_id), "driver": driver.to_string(), "maxLamports": s(1_000_000), "lamportsPerKm": s(10_000), "targetKm": 100});
+        rec.send(&mut e, name, vec![(i, "create_pledge", args)], &brand, &[], true).unwrap();
+    }
+    rec.account(&e, "pledge on the winner's ride", &pledge_pda(&ride_w, &brand.pubkey()));
     e.warp(e.pool(p4).payout_at);
-    e.record_verified_attestation(p4, &payout, &winner.pubkey(), 100).unwrap();
+    let i = ix(
+        instruction::RecordAttestation { pool_id: p4, driver: winner.pubkey(), telemetry_root: [7u8; 32], verified_km: 60, status: freightchain_pools::ATTESTATION_STATUS_VERIFIED },
+        accounts::RecordAttestation {
+            authority: payout.pubkey(),
+            config: config_pda(),
+            pool: pool_pda(p4),
+            driver_account: winner.pubkey(),
+            attestation: attestation_pda(p4, &winner.pubkey()),
+            system_program: anchor_lang::solana_program::system_program::ID,
+        },
+    );
+    let args = json!({"poolId": p4, "driver": winner.pubkey().to_string(), "telemetryRoot": b64(&[7u8; 32]), "verifiedKm": 60, "status": 1});
+    rec.send(&mut e, "record_attestation by the payout key", vec![(i, "record_attestation", args)], &cranker, &[&payout], true).unwrap();
+    rec.account(&e, "attestation pool 4 winner", &attestation_pda(p4, &winner.pubkey()));
     rec.send(&mut e, "pay_prize by the payout key", vec![pay_prize_ix(p4, &payout.pubkey(), &winner.pubkey(), PRICE, 1)], &cranker, &[&payout], true).unwrap();
     let i = close_pool_ix(&e, p4, &payout.pubkey());
     rec.send(&mut e, "close_pool by the payout key", vec![i], &cranker, &[&payout], true).unwrap();
+    //      after the close: anyone settles the winner's pledge (60 of 100 km) and refunds C's (no attestation)
+    let i = ix(
+        instruction::SettlePledge { ride_id: ride_w },
+        accounts::SettlePledge {
+            caller: cranker.pubkey(),
+            driver: winner.pubkey(),
+            sponsor: brand.pubkey(),
+            pool: pool_pda(p4),
+            attestation: attestation_pda(p4, &winner.pubkey()),
+            pledge: pledge_pda(&ride_w, &brand.pubkey()),
+            system_program: anchor_lang::solana_program::system_program::ID,
+        },
+    );
+    rec.send(&mut e, "settle_pledge", vec![(i, "settle_pledge", json!({"rideId": b64(&ride_w)}))], &cranker, &[], true).unwrap();
+    let i = ix(
+        instruction::RefundPledge { ride_id: ride_c },
+        accounts::RefundPledge {
+            caller: cranker.pubkey(),
+            sponsor: brand.pubkey(),
+            pool: pool_pda(p4),
+            attestation: attestation_pda(p4, &c.pubkey()),
+            pledge: pledge_pda(&ride_c, &brand.pubkey()),
+        },
+    );
+    rec.send(&mut e, "refund_pledge", vec![(i, "refund_pledge", json!({"rideId": b64(&ride_c)}))], &cranker, &[], true).unwrap();
     rec.account(&e, "config with payout key", &config_pda());
 
     // ---- the authority handover (program events that are NOT pool events)
@@ -305,7 +370,7 @@ fn export_pool_program_fixtures() {
     rec.send(&mut e, "accept_authority", vec![(i, "accept_authority", json!({}))], &cranker, &[&next_admin], true).unwrap();
 
     let kinds: Vec<String> = rec.txs.iter().flat_map(|t| t["events"].as_array().unwrap().iter().map(|e| e["kind"].as_str().unwrap().to_string())).collect();
-    for k in ["PoolCreated", "TicketBought", "PoolActivated", "Sponsored", "PoolFailed", "PoolCancelled", "PoolExpired", "Refunded", "PrizePaid", "PoolClosed", "AuthorityProposed", "AuthorityChanged", "SeriesSet", "PayoutAuthoritySet"] {
+    for k in ["PoolCreated", "TicketBought", "PoolActivated", "Sponsored", "PoolFailed", "PoolCancelled", "PoolExpired", "Refunded", "PrizePaid", "PoolClosed", "AuthorityProposed", "AuthorityChanged", "SeriesSet", "PayoutAuthoritySet", "AttestationRecorded", "PledgeCreated", "PledgeSettled", "PledgeRefunded"] {
         assert!(kinds.iter().any(|x| x == k), "no {k} recorded");
     }
     let out = json!({

@@ -4,7 +4,7 @@ import type { ChainSignature, ChainTransaction, UnsignedPaymentTx } from '../../
 import { ServiceUnavailableError } from '../../domain/shared/errors.js';
 import { ChainPort, type PaymentTxInput } from '../../application/ports/economy/chain.port.js';
 import { EnvService } from '../config/env.service.js';
-import { memoInstruction, toChainTransaction } from './chain-transaction.mapper.js';
+import { memoInstruction, withReference, toChainTransaction } from './chain-transaction.mapper.js';
 
 /** Plan A payment: a plain SOL transfer to the treasury with the ride id as a memo. The only module that talks to a Solana RPC. */
 @Injectable()
@@ -20,8 +20,8 @@ export class SolanaChainAdapter extends ChainPort {
     const { blockhash, lastValidBlockHeight } = await this.rpc(() => this.connection.getLatestBlockhash('confirmed'));
     const payer = new PublicKey(input.payer);
     const tx = new Transaction({ feePayer: payer, recentBlockhash: blockhash })
-      .add(SystemProgram.transfer({ fromPubkey: payer, toPubkey: new PublicKey(input.treasury), lamports: input.lamports }))
-      .add(memoInstruction(input.memo, [payer], input.reference));
+      .add(withReference(SystemProgram.transfer({ fromPubkey: payer, toPubkey: new PublicKey(input.treasury), lamports: input.lamports }), input.reference))
+      .add(memoInstruction(input.memo, [payer]));
     return { blockhash, lastValidBlockHeight, transaction: tx.serialize({ requireAllSignatures: false, verifySignatures: false }).toString('base64') };
   }
 

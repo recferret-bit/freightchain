@@ -14,4 +14,6 @@ export abstract class RideRepositoryPort {
   abstract save(ride: Ride, tx?: TransactionHandle): Promise<Ride>;
   /** Finds the driver's best completed and verified ride in the given pool (longest distance, then fastest time). */
   abstract findBestVerifiedByPoolAndWallet(poolId: number, wallet: string, tx?: TransactionHandle): Promise<Ride | null>;
+  /** The driver finished (completed) at least one ride of the pool, whatever its verdict. */
+  abstract hasCompletedInPool(poolId: number, wallet: string, tx?: TransactionHandle): Promise<boolean>;
 }

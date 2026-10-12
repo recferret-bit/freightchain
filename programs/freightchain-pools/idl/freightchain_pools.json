@@ -662,6 +662,10 @@
           "name": "platform_treasury"
         },
         {
+          "name": "slot_hashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
@@ -941,6 +945,10 @@
           "name": "platform_treasury"
         },
         {
+          "name": "slot_hashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
@@ -949,15 +957,6 @@
         {
           "name": "tier",
           "type": "u8"
-        },
-        {
-          "name": "seed_commitment",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          }
         }
       ]
     },
@@ -1275,108 +1274,6 @@
       ]
     },
     {
-      "name": "record_yield",
-      "discriminator": [
-        80,
-        136,
-        238,
-        204,
-        216,
-        161,
-        41,
-        88
-      ],
-      "accounts": [
-        {
-          "name": "authority",
-          "docs": [
-            "Config authority or payout authority (checked via config.may_settle)"
-          ],
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "pool",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  112,
-                  111,
-                  111,
-                  108
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "pool_id"
-              }
-            ]
-          }
-        },
-        {
-          "name": "vault",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  97,
-                  117,
-                  108,
-                  116
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "pool_id"
-              }
-            ]
-          }
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "pool_id",
-          "type": "u32"
-        },
-        {
-          "name": "staked_lamports",
-          "type": "u64"
-        },
-        {
-          "name": "yield_earned",
-          "type": "u64"
-        }
-      ]
-    },
-    {
       "name": "refund",
       "discriminator": [
         2,
@@ -1486,6 +1383,129 @@
         {
           "name": "pool_id",
           "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "refund_pledge",
+      "discriminator": [
+        94,
+        154,
+        65,
+        172,
+        38,
+        217,
+        41,
+        206
+      ],
+      "accounts": [
+        {
+          "name": "caller",
+          "docs": [
+            "Permissionless, like settle"
+          ],
+          "signer": true
+        },
+        {
+          "name": "sponsor",
+          "writable": true,
+          "relations": [
+            "pledge"
+          ]
+        },
+        {
+          "name": "pool",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool.pool_id",
+                "account": "Pool"
+              }
+            ]
+          },
+          "relations": [
+            "pledge"
+          ]
+        },
+        {
+          "name": "attestation",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  116,
+                  116,
+                  101,
+                  115,
+                  116,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool"
+              },
+              {
+                "kind": "account",
+                "path": "pledge.driver",
+                "account": "Pledge"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pledge",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  101,
+                  100,
+                  103,
+                  101
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "ride_id"
+              },
+              {
+                "kind": "account",
+                "path": "sponsor"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "ride_id",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
         }
       ]
     },
@@ -1686,7 +1706,7 @@
         {
           "name": "caller",
           "docs": [
-            "Settlement is permissionless: anyone can crank it once attestation is available"
+            "Settlement is permissionless: anyone can crank it once the driver's attestation exists"
           ],
           "signer": true
         },
@@ -2046,6 +2066,19 @@
       ]
     },
     {
+      "name": "PledgeRefunded",
+      "discriminator": [
+        81,
+        129,
+        58,
+        177,
+        203,
+        224,
+        70,
+        191
+      ]
+    },
+    {
       "name": "PledgeSettled",
       "discriminator": [
         87,
@@ -2200,19 +2233,6 @@
         3,
         166
       ]
-    },
-    {
-      "name": "YieldRecorded",
-      "discriminator": [
-        150,
-        185,
-        66,
-        75,
-        78,
-        119,
-        86,
-        229
-      ]
     }
   ],
   "errors": [
@@ -2365,6 +2385,16 @@
       "code": 6029,
       "name": "AlreadySettled",
       "msg": "Pledge has already been settled"
+    },
+    {
+      "code": 6030,
+      "name": "PledgeNotRefundable",
+      "msg": "The pledge cannot be refunded yet: its pool is still running"
+    },
+    {
+      "code": 6031,
+      "name": "AttestationExists",
+      "msg": "The driver has an attestation for this pool: settle the pledge instead"
     }
   ],
   "types": [
@@ -2595,15 +2625,6 @@
           {
             "name": "fee_bps",
             "type": "u16"
-          },
-          {
-            "name": "seed_commitment",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
           }
         ]
       }
@@ -2728,6 +2749,39 @@
           {
             "name": "created_at",
             "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PledgeRefunded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "ride_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "sponsor",
+            "type": "pubkey"
+          },
+          {
+            "name": "driver",
+            "type": "pubkey"
+          },
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "refunded_lamports",
+            "type": "u64"
           }
         ]
       }
@@ -2890,7 +2944,8 @@
           {
             "name": "seed_commitment",
             "docs": [
-              "SHA256(poolId || blockhash || slot) captured at pool opening for provable road seed derivation."
+              "v3: SHA256(pool_id LE u32 || blockhash || slot LE u64) of a recent block, fixed when the pool opens; the pool's road seed is",
+              "derived from it, so the operator could not have picked the road after seeing it. All zero for a `create_pool` pool given none."
             ],
             "type": {
               "array": [
@@ -2900,18 +2955,20 @@
             }
           },
           {
-            "name": "staked_lamports",
+            "name": "seed_slot",
             "docs": [
-              "Unused: nothing stakes the vault (decided Oct 12). Frozen account layout; kept at 0."
+              "the SlotHashes entry the commitment was made from (create_pool.rs seed_commitment_of)"
             ],
             "type": "u64"
           },
           {
-            "name": "yield_earned",
-            "docs": [
-              "Lamports an operator topped up through `record_yield` (nothing calls it); counts into `pot()`."
-            ],
-            "type": "u64"
+            "name": "seed_slot_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
           }
         ]
       }
@@ -3086,6 +3143,19 @@
           },
           {
             "name": "seed_commitment",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "seed_slot",
+            "type": "u64"
+          },
+          {
+            "name": "seed_slot_hash",
             "type": {
               "array": [
                 "u8",
@@ -3525,30 +3595,6 @@
           {
             "name": "activated",
             "type": "bool"
-          }
-        ]
-      }
-    },
-    {
-      "name": "YieldRecorded",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "pool_id",
-            "type": "u32"
-          },
-          {
-            "name": "staked_lamports",
-            "type": "u64"
-          },
-          {
-            "name": "yield_earned",
-            "type": "u64"
-          },
-          {
-            "name": "yield_earned_total",
-            "type": "u64"
           }
         ]
       }

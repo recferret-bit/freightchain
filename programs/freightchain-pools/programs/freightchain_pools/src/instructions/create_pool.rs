@@ -28,7 +28,6 @@ pub struct CreatePoolParams {
     pub prize_bps: u16,
     pub seed_bps: u16,
     pub fee_bps: u16,
-    pub seed_commitment: [u8; 32],
 }
 
 #[derive(Accounts)]
@@ -55,6 +54,9 @@ pub struct CreatePool<'info> {
     /// CHECK: must equal config.platform_treasury and be rent-exempt
     #[account(address = config.platform_treasury @ PoolError::AccountMismatch)]
     pub platform_treasury: UncheckedAccount<'info>,
+    /// CHECK: the SlotHashes sysvar – the pool's road seed is committed from its newest entry
+    #[account(address = SLOT_HASHES_ID @ PoolError::AccountMismatch)]
+    pub slot_hashes: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
 }
 
@@ -105,11 +107,10 @@ pub fn handle_create_pool(ctx: Context<CreatePool>, p: CreatePoolParams) -> Resu
         fee_bps: p.fee_bps,
         fee_treasury: a.fee_treasury.key(),
         seed_treasury: a.seed_treasury.key(),
-        seed_commitment: p.seed_commitment,
     };
     let (pool_bump, vault_bump) = (ctx.bumps.pool, ctx.bumps.vault);
     let a = ctx.accounts;
-    init_pool(&mut a.config, &mut a.pool, &a.vault.to_account_info(), &creator, &a.system_program, rules, now, pool_bump, vault_bump, false)?;
+    init_pool(&mut a.config, &mut a.pool, &a.vault.to_account_info(), &creator, &a.system_program, &a.slot_hashes.to_account_info(), rules, now, pool_bump, vault_bump, false)?;
     Ok(())
 }
 
@@ -128,7 +129,20 @@ pub struct PoolRules {
     pub fee_bps: u16,
     pub fee_treasury: Pubkey,
     pub seed_treasury: Pubkey,
-    pub seed_commitment: [u8; 32],
+}
+
+/// The road seed's commitment: SHA-256(pool_id LE u32 || hash || slot LE u64) over the NEWEST entry of the SlotHashes sysvar, read here – no caller
+/// (not the admin, not the crank) can choose it, and nobody knew it before that slot. Returns (slot, hash, commitment); the pool and its PoolCreated
+/// keep all three, so anyone can recompute the commitment, and the server derives the pool's road from it (server/src/domain/road/provable-seed.ts).
+pub fn seed_commitment_of(pool_id: u32, slot_hashes: &AccountInfo) -> Result<(u64, [u8; 32], [u8; 32])> {
+    let data = slot_hashes.try_borrow_data()?;
+    // layout: u64 entry count, then (u64 slot, [u8; 32] hash) newest first
+    require!(data.len() >= 48 && data[..8] != [0u8; 8], PoolError::InvalidParams);
+    let slot = u64::from_le_bytes(data[8..16].try_into().map_err(|_| PoolError::InvalidParams)?);
+    let mut hash = [0u8; 32];
+    hash.copy_from_slice(&data[16..48]);
+    let commitment = solana_sha256_hasher::hashv(&[&pool_id.to_le_bytes(), &hash, &slot.to_le_bytes()]).to_bytes();
+    Ok((slot, hash, commitment))
 }
 
 /// Funds the vault with the rent minimum from `creator` (it gets it back at close, as `pool.authority`), takes the next pool id and writes the pool.
@@ -139,6 +153,7 @@ pub fn init_pool<'info>(
     vault: &AccountInfo<'info>,
     creator: &AccountInfo<'info>,
     system_program: &Program<'info, System>,
+    slot_hashes: &AccountInfo<'info>,
     r: PoolRules,
     now: i64,
     pool_bump: u8,
@@ -150,6 +165,7 @@ pub fn init_pool<'info>(
         rent_min()?,
     )?;
     let pool_id = config.pool_count;
+    let (seed_slot, seed_slot_hash, seed_commitment) = seed_commitment_of(pool_id, slot_hashes)?;
     config.pool_count = pool_id.checked_add(1).ok_or(PoolError::MathOverflow)?;
 
     pool.pool_id = pool_id;
@@ -176,9 +192,9 @@ pub fn init_pool<'info>(
     pool.created_at = now;
     pool.bump = pool_bump;
     pool.vault_bump = vault_bump;
-    pool.seed_commitment = r.seed_commitment;
-    pool.staked_lamports = 0;
-    pool.yield_earned = 0;
+    pool.seed_commitment = seed_commitment;
+    pool.seed_slot = seed_slot;
+    pool.seed_slot_hash = seed_slot_hash;
 
     emit!(PoolCreated {
         pool_id,
@@ -199,7 +215,9 @@ pub fn init_pool<'info>(
         fee_treasury: r.fee_treasury,
         seed_treasury: r.seed_treasury,
         from_series,
-        seed_commitment: r.seed_commitment,
+        seed_commitment,
+        seed_slot,
+        seed_slot_hash,
     });
     Ok(pool_id)
 }

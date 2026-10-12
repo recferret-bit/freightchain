@@ -21,12 +21,14 @@ function idlArgs(name: string, a: Record<string, unknown>): Record<string, unkno
     case 'sponsor': return { pool_id: a['poolId'], lamports: BigInt(String(a['lamports'])) };
     case 'pay_prize': return { pool_id: a['poolId'], lamports: BigInt(String(a['lamports'])), rank: a['rank'] };
     case 'create_pool': return { params: { tier: a['tier'], price_lamports: BigInt(String(a['priceLamports'])), min_tickets: a['minTickets'], max_tickets: a['maxTickets'], max_per_wallet: a['maxPerWallet'],
-      prep_deadline: BigInt(Number(a['prepDeadline'])), play_deadline: BigInt(Number(a['playDeadline'])), payout_at: BigInt(Number(a['payoutAt'])), prize_bps: a['prizeBps'], seed_bps: a['seedBps'], fee_bps: a['feeBps'],
-      seed_commitment: b64(String(a['seedCommitment'])) } };
+      prep_deadline: BigInt(Number(a['prepDeadline'])), play_deadline: BigInt(Number(a['playDeadline'])), payout_at: BigInt(Number(a['payoutAt'])), prize_bps: a['prizeBps'], seed_bps: a['seedBps'], fee_bps: a['feeBps'] } };
     case 'set_series': return { params: { tier: a['tier'], enabled: a['enabled'], price_lamports: BigInt(String(a['priceLamports'])), min_tickets: a['minTickets'], max_tickets: a['maxTickets'],
       max_per_wallet: a['maxPerWallet'], sale_secs: BigInt(Number(a['saleSecs'])), play_secs: BigInt(Number(a['playSecs'])), verify_secs: BigInt(Number(a['verifySecs'])),
       prize_bps: a['prizeBps'], seed_bps: a['seedBps'], fee_bps: a['feeBps'], start_at: BigInt(Number(a['startAt'])) } };
-    case 'open_next_pool': return { tier: a['tier'], seed_commitment: b64(String(a['seedCommitment'])) };
+    case 'open_next_pool': return { tier: a['tier'] }; // the seed commitment is the program's own (SlotHashes), not an argument
+    case 'record_attestation': return { pool_id: a['poolId'], driver: a['driver'], telemetry_root: b64(String(a['telemetryRoot'])), verified_km: a['verifiedKm'], status: a['status'] };
+    case 'create_pledge': return { ride_id: b64(String(a['rideId'])), driver: a['driver'], max_lamports: BigInt(String(a['maxLamports'])), lamports_per_km: BigInt(String(a['lamportsPerKm'])), target_km: a['targetKm'] };
+    case 'settle_pledge': case 'refund_pledge': return { ride_id: b64(String(a['rideId'])) };
     case 'set_payout_authority': return { payout_authority: a['payoutAuthority'] };
     case 'propose_authority': return { new_authority: fx.keys.nextAdmin };
     case 'accept_authority': return {};
@@ -94,7 +96,7 @@ describe('PoolProgramCodec – instructions', () => {
   const all = fx.transactions.flatMap((t) => t.instructions);
 
   it('covers every instruction the server builds', () => {
-    for (const n of ['buy_ticket', 'fail_pool', 'refund', 'pay_prize', 'close_pool']) expect(all.some((i) => i.name === n), n).toBe(true);
+    for (const n of ['buy_ticket', 'fail_pool', 'refund', 'pay_prize', 'close_pool', 'open_next_pool', 'record_attestation', 'create_pledge', 'settle_pledge', 'refund_pledge']) expect(all.some((i) => i.name === n), n).toBe(true);
   });
 
   for (const ix of all.filter((i, k) => all.findIndex((j) => j.name === i.name) === k)) {
@@ -134,7 +136,7 @@ describe('PoolProgramCodec – instructions', () => {
 describe('PoolProgramCodec – accounts', () => {
   for (const a of fx.accounts) {
     it(`${a.name}: decodes field for field`, () => {
-      const got = codec.decodeAccount(a.decoded.type as 'Pool' | 'Ticket' | 'Config' | 'Series', b64(a.data));
+      const got = codec.decodeAccount(a.decoded.type as 'Pool' | 'Ticket' | 'Config' | 'Series' | 'Attestation' | 'Pledge', b64(a.data));
       const { type: _type, ...fields } = a.decoded;
       expect(got).toEqual(expectedEvent(fields as never));
     });

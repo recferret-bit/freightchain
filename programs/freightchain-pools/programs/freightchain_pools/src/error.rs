@@ -62,4 +62,8 @@ pub enum PoolError {
     ZeroVerifiedKm,
     #[msg("Pledge has already been settled")]
     AlreadySettled,
+    #[msg("The pledge cannot be refunded yet: its pool is still running")]
+    PledgeNotRefundable,
+    #[msg("The driver has an attestation for this pool: settle the pledge instead")]
+    AttestationExists,
 }

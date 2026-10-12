@@ -50,6 +50,7 @@ export class WatchRideHandler implements IQueryHandler<WatchRideQuery, WatchDto>
         id: ride.id, wallet: ride.wallet, tier: ride.tier, trip: ride.trip, level: ride.level, route: ride.route, loadout: ride.loadout, seed: ride.seed, status: ride.status, live, timeScale: ride.timeScale,
         minSeconds: ride.minSeconds, completeDist: ride.completeDist, startedAt: ride.startedAt.getTime(), endedAt: ride.endedAt?.getTime() ?? null,
         driveSeconds: Math.round(ride.driveSeconds), distance: Math.round(ride.distance), hull: ride.hull === null ? null : Math.round(ride.hull),
+        poolId: ride.props.poolId ?? null,
       },
       recording: extent,
       batches: page.map((b) => ({

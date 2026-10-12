@@ -15,9 +15,9 @@ The sorting rule: the game's defining trait is a shift that is **long, slow and 
 | Devnet guard | `deploy/scripts/validate-env.mjs` | Genesis-hash check; mainnet refused. |
 | Achievements persisted, "become NFTs soon" | `domain/achievements/achievements.ts`, lobby Profile tab | 7 unlock rules, nothing minted. |
 | Socials | `landing/src/main.js` `SOCIALS` | All `null`, buttons hidden; waits on the X account (Q11). |
-| Anchor program v3 escrow | `programs/freightchain-pools/`, `server/src/infrastructure/solana/` | Built (devnet): 21 instructions, 18 events, 30 errors, 81 tests passing. Vault PDAs. |
-| Provable seed commitment & RFC 6962 telemetry attestation | `server/src/domain/road/provable-seed.ts`, `server/src/domain/telemetry/telemetry-merkle.ts`, `Attestation` PDA | Built (devnet): Seed `SHA256(poolId \|\| blockhash \|\| slot)`, Merkle root over 15s chunks, on-chain Attestation PDA gating `pay_prize`. |
-| Community Sponsorship Pledges | `programs/freightchain-pools/src/instructions/pledge.rs`, `server/src/presentation/economy/pledges.http.controller.ts` | Built (devnet): On-chain `Pledge` PDA (`[b"pledge", ride_id, sponsor]`). `create_pledge`, `settle_pledge` (proportional per-km payout), `refund_pledge` (0 stranded). |
+| Anchor program v3 | `programs/freightchain-pools/`, `server/src/infrastructure/solana/` | Devnet (in-place upgrade of `8No42h…`): 21 instructions, 18 events, 32 errors. No staking: a draft "JitoSOL yield" (`record_yield`, nothing staked) was removed before deploy. |
+| Road seed committed on chain & telemetry attestation | `instructions/create_pool.rs` (`seed_commitment_of`), `server/src/domain/road/provable-seed.ts`, `server/src/domain/telemetry/telemetry-merkle.ts`, `Attestation` account | Devnet: the program commits `SHA-256(pool_id ‖ slot hash ‖ slot)` from SlotHashes; the payout key's attestation (Merkle root, verified km) gates `pay_prize`. |
+| Per-km pledges | `instructions/pledge.rs`, `server/src/application/use-cases/pledges/`, `client/js/ui/watch-pledges.js` | Devnet: `create_pledge` (sponsor's wallet), `settle_pledge` / `refund_pledge` (permissionless, sent by the payout key after the review); the watch page's PLEDGE block. |
 
 ## Principles (inherit the hackathon ground rules)
 
@@ -34,7 +34,7 @@ Effort below = focused days for one person, excluding external waits (registry a
 
 **F1 · Live tab with tips and sponsors.** A 1h–8h drive is a stream. While a shift is live, a spectator on the Live tab (no sign-in needed to watch) can **tip the driver** – a wallet-to-wallet SOL transfer with memo `tip:<ride>`, the platform touches no money and only counts what it sees – or **sponsor the pool** – SOL to the treasury with memo `sponsor:<round>`, credited to the round's prize side with no fee, landing shows "sponsored by … +0.5 SOL". Both are one built tx each, signed in the wallet. Needs the treasury watcher (F8) to see sponsorships and the drivers' addresses to see tips. Effort 1.5 d after F8. The boring middle of a shift becomes the product; the pool grows without players, which is the strongest landing number.
 
-**F2 · Pledge per kilometre.** **Built & Verified (Anchor v3, devnet, 81 tests).** A sponsor pledges lamports per km for a live driver (or pool), capped at an amount they sign upfront in an on-chain `Pledge` PDA (`[b"pledge", ride_id, sponsor]`). The pledge is **settled at ride end against the verified distance recorded on-chain**. Implementation: `create_pledge` locks the maximum cap in trustless escrow; `settle_pledge` transfers the owed lamports per verified kilometre directly to the driver; `refund_pledge` returns 100% of any unearned lamports or cancelled rides back to the sponsor, leaving zero stranded funds. Server CQRS handlers (`CreatePledgeHandler`, `SettlePledgeHandler`, `RefundPledgeHandler`) and `PledgesHttpController` coordinate with the Anchor program under row locks. This is the charity-marathon mechanic Desert Bus was built on, now secured entirely on-chain.
+**F2 · Pledge per kilometre.** **Built (program v3, devnet).** A spectator pledges lamports per km for the driver of a ticket ride, up to a cap, in a `Pledge` account (`[b"pledge", ride_id, sponsor]`) – the sponsor's wallet signs and sends `create_pledge`, the server never holds the money. After the pool's review the payout key records the driver's attestation (verified km of the driver's best verified ride in that pool, or flagged), and `settle_pledge` pays `cap × min(km, target) / target` to the driver and closes the account (the rest + rent to the sponsor). A driver with no finished, judged ride, or a failed / cancelled pool → `refund_pledge` returns everything. Both are permissionless; the server's pledge job (`SyncPledgesHandler`) sends them. Server rows only mirror the chain (`pending → active → settled / refunded`). This is the charity-marathon mechanic Desert Bus was built on.
 
 **F3 · Convoys.** Three to five wallets buy shifts together within the same round and share one **side pot** by combined distance: each member's entry adds a convoy fee (say 10 %) to the pot, the pot splits by each member's share of the convoy's km. Convoy page = one `/c/:id` with the members' live bars; one X post per convoy start. Long solo drives are lonely; a convoy gives people a reason to be online at the same hours and to post about it. Server: `Convoy` aggregate (members, pot in lamports, settled at round close), the pot is part of the admin payout batch. Effort 3 d. Deliberately simple: no chat, no voice.
 
@@ -43,8 +43,8 @@ Effort below = focused days for one person, excluding external waits (registry a
 **F5 · Ride page `/r/:id` with explorer links and "post on X".** **Built (2026-10-11):** Public, no session: route, km, tier, server verdict (completed / abandoned / failed with the reason), round rank, payment signature as explorer link (`?cluster=devnet`), seed, tips and pledges. In-game dashboard button near the parking brake and end-screen button trigger X web intent (`https://x.com/intent/post?text=…&url=…`) with Solana-styled UI – zero API cost, driver posts from own account. Dynamic OG/Twitter Card SSR tags rendered by server middleware. Plus explorer links to Anchor pool vault transactions.
 
 **F6 · Chain-anchored seed commitment & RFC 6962 telemetry attestation.** **Built & Verified (Anchor v3, devnet).**
-(a) **Provable Road Seed Commitment**: Deterministic seed derived as `SHA256(poolId || blockhash || slot)` (`server/src/domain/road/provable-seed.ts`) and committed on-chain in the Pool PDA (`seed_commitment: [u8; 32]`) when the pool opens. Anyone can verify that the endless road geometry was fixed by a past Solana blockhash, eliminating server bias.
-(b) **RFC 6962 Telemetry Merkle Root & Attestation PDA**: Each shift's 15-second `RideBatch` recordings form leaves in an RFC 6962 compliant Merkle tree (`computeTelemetryMerkleRoot`). Upon successful physics verdict, `submit_attestation` commits the Merkle root on-chain to an `Attestation` PDA (`[b"attestation", pool, driver]`). Crucially, Anchor v3 `pay_prize` strictly requires this Attestation PDA to exist, making prize distribution cryptographically dependent on verified telemetry.
+(a) **Road seed committed by the program**: `create_pool` / `open_next_pool` read the newest SlotHashes entry and store `seed_commitment = SHA-256(pool_id LE ‖ slot hash ‖ slot LE)` with `seed_slot` / `seed_slot_hash` in the Pool account. No caller passes a seed (an earlier v3 draft let the permissionless caller choose it); the server projects the pool's road from it (`provable-seed.ts`). Anyone can recompute the commitment from the account.
+(b) **RFC 6962 telemetry root & attestation**: the hashes of a ride's 15-second batches form the leaves of an RFC 6962 Merkle tree (`computeTelemetryMerkleRoot`). After the review, the payout key records `record_attestation` (`[b"attestation", pool, driver]`: root, verified km, status). `pay_prize` refuses a wallet without a VERIFIED one. It is the server's verdict written on chain and tied to one recording – not a proof the program can check by itself.
 
 **F7 · Solana Pay transaction request + reference key.** **Built.** A fresh `reference` (32 random bytes, base58, private key discarded) per pay-per-ride order, ticket order and paid donation, attached as a read-only account on the memo instruction (`buy_ticket` accounts stay fixed). Confirmation uses `getSignaturesForAddress(reference)`. The lobby QR is a transaction request, `solana:` + the URL-encoded `https://<api>/api/solana-pay/{rides|orders|donations}/:id`: the phone POSTs `{ account }` and signs the same transaction the desktop signs. A transfer-request URL (`solana:<treasury>?amount=`) is not used – it cannot buy a ticket, and a mainnet wallet could send real SOL. Schema: `paymentReference` on `Ride`, `TicketOrder` and `DonationOrder`.
 
@@ -72,12 +72,12 @@ Effort below = focused days for one person, excluding external waits (registry a
 
 ## Tier 3 / Post-Hackathon – Mainnet Hardening
 
-**F15 · Anchor escrow program v3.** **Built & Verified on Devnet (21 instructions, 18 events, 30 errors, 81 tests passing).** The complete escrow architecture is implemented and verified on Solana devnet:
-- Zero-data PDA vaults per pool (`[b"vault", pool_id]`)
-- Community Sponsorship Pledges (`[b"pledge", ride_id, sponsor]`) with proportional payouts and zero-stranded refunds
-- Provable road seed commitments (`SHA256(poolId || blockhash || slot)`)
-- RFC 6962 telemetry Merkle root attestation PDAs (`[b"attestation", pool, driver]`) gating `pay_prize`
-- Permissionless lifecycle triggers (`fail_pool`, `expire_pool`, `claim_refund`, `close_pool` grace)
+**F15 · Anchor escrow program v3.** **On devnet (21 instructions, 18 events, 32 errors; LiteSVM tests on the pinned verifiable build + the localnet money run).**
+- Zero-data PDA vaults per pool (`[b"vault", pool_id]`); no staking of pool money
+- Per-km pledges (`[b"pledge", ride_id, sponsor]`): settle for verified km, refund when nothing was judged; every lamport and the rent returned
+- The road seed committed by the program from the SlotHashes sysvar
+- Attestations (`[b"attestation", pool, driver]`) by the payout key gating `pay_prize`
+- Permissionless lifecycle steps (`fail_pool`, `expire_pool`, `refund`, `close_pool` after the grace, `settle_pledge`, `refund_pledge`)
 
 Post-hackathon Tier 3 scope focuses on **Mainnet Hardening**: external formal audit, Squads multisig governance authority, Jupiter swap integration ("pay with anything"), and mainnet environment validation.
 
@@ -151,7 +151,7 @@ Formal audit → Squads multisig governance → **M4** USDC / Jupiter → mainne
 - **Dialect registry and X API are external gates** with unknown lead time; start both in tier 1 and never make a demo depend on them (dial.to and web intents are the fallbacks).
 - **Vendor lock.** Helius/QuickNode DAS and webhooks are conveniences; keep the RPC WebSocket path and plain `getParsedTransaction` working so a public RPC still runs the product.
 - **Mainnet names on a devnet product** (W2) is a read; say so rather than hide it, if it is ever built.
-- **Anchor v3 is built on devnet** (21 instructions, 18 events, 30 errors, 81 tests passing in LiteSVM). Mainnet launch is gated on formal audit and Squads multisig governance.
+- **Anchor v3 is on devnet** (21 instructions, 18 events, 32 errors). Not audited. Mainnet launch is gated on a formal audit and Squads multisig governance.
 - **Test pyramid.** Each adapter/handler/scheduler above ships with its spec or the audit fails; budget ~30 % of each estimate for tests.
 
 ## Open questions for you

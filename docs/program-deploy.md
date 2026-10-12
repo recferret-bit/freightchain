@@ -31,6 +31,31 @@ bash $D admin set-series -k $PWD/$K/admin.json --tier 1h --price 2000000 --per-w
 
 A short test day: `set-series --sale-hours 1 --play-hours 0 --review-hours 1 --min 2` (the program refuses a sale window under an hour). `create-pool` still exists for a one-off pool and takes `--payout <unix|+secs>` (default = `--play`).
 
+## v3 (attestations, pledges, the road seed on chain) – an in-place upgrade
+
+v3 keeps `Config` and `Series` byte for byte and grows `Pool` (+ the seed commitment, its slot and slot hash), so it is an **upgrade of `8No42h…`**, not a new
+program id: the pool numbering continues (the production mirror's pool ids stay unique). The catch: a v2 `Pool` account no longer deserializes under v3, so
+every v2 pool must be terminal (settled / cancelled) before the upgrade – nothing can touch it afterwards. The upgrade costs the deploy wallet ≈ 4.4 SOL at the
+peak (the buffer's rent comes back after the deploy; the program-data extension, ≈ 0.6 SOL for +90 kB, does not). The payout key now also pays each
+Attestation's rent (≈ 0.0017 SOL per attested driver). Order (v2 tooling = a checkout from before v3, e.g. `git worktree add --detach <dir> fa99e22a~1`,
+its `server/` built with `npx tsc -p tsconfig.build.json`):
+
+**Done on Oct 12**: series off; v2 pools 23–25 failed / cancelled and closed, pool 0 (2 tickets, no verified winner) closed by the admin, its two Ticket rents closed back to the buyers and each buyer repaid 0.002 SOL from the seed treasury; `extend` +90 600 bytes; upgrade tx `2qJNYBef…VpDH`; on-chain hash = pin `47a630e8…`; payout key topped up to 0.35 SOL. The series is switched back on right after the production server release with the v3 code.
+
+```sh
+# 0. pinned v3 build in this checkout (UPDATE_PIN=1 npm run program:verify was committed with the change); the deploy wallet funded
+# 1. stop new v2 pools: switch the 1h series off (v2 tooling, admin key)
+node <v2>/server/scripts/pool-admin.mjs set-series --url $RPC -k $K/admin.json --tier 1h … --enabled false
+# 2. settle every v2 pool that is not Settled / Cancelled: open with 0 sold → cancel-pool (admin) or fail-pool (after its sale) → close-pool;
+#    an active one past payout_at → pay its winners or close-pool (admin: the prize share goes to the seed treasury) → close-ticket per buyer
+# 3. the upgrade itself: extend the program data, then deploy the pinned .so over the program id (public RPC: QuickNode refuses the upload batches)
+solana program extend 8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p <bytes> --url https://api.devnet.solana.com --keypair $K/deploy.json
+solana program deploy $SO --program-id 8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p --upgrade-authority $K/deploy.json --keypair $K/deploy.json --url https://api.devnet.solana.com
+PROGRAM_ID=8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p RPC_URL=$RPC bash .claude/skills/program-check/check.sh onchain   # deployed = pin
+# 4. the series back on (v3 tooling), then the server release with the v3 code; the crank opens the next pool with a program-made seed commitment
+bash $D admin set-series -k $PWD/$K/admin.json --tier 1h … --enabled true
+```
+
 ## Devnet first (the program on devnet, the server on your machine)
 
 Run it in the **main checkout** (keys live in its gitignored `deploy/secrets/devnet/`; a worktree's `target/` goes away with it). Everything goes through

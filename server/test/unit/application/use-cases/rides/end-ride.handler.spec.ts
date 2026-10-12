@@ -76,6 +76,7 @@ describe('EndRideHandler', () => {
       listOpenByWallet = (w: string) => base.rides.listOpenByWallet(w);
       findPendingPaid = (w: string, s: Date) => base.rides.findPendingPaid(w, s);
       findBestVerifiedByPoolAndWallet = (p: number, w: string) => base.rides.findBestVerifiedByPoolAndWallet(p, w);
+      hasCompletedInPool = (p: number, w: string) => base.rides.hasCompletedInPool(p, w);
       insert = (r: Ride) => base.rides.insert(r);
       async save(r: Ride) { if (saves++ === 0) throw new VersionConflictError(); return base.rides.save(r); }
     }

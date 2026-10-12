@@ -96,7 +96,8 @@ async function buySelf(p, poolId, qty = 1) {
 
 // ── a FINISHED RIDE made over the player API (the verified-play bots' recipe, scripts/e2e-verified-play.mjs apiDrive): the ticket is spent by POST /rides
 //    `mutate(batch)` edits a batch before it is hashed, `hashOf` overrides the hash (null = an unhashed batch), `crashAt` ends it as failed at that second
-async function apiRide(p, { seconds = 20, speed = 15, mutate = () => null, hashOf = (_b, text) => sha256(text), crashAt = 0 } = {}) {
+// a finished ride drives `extra` metres past the finish line or past 1 km, whichever is further: program v3 attests whole verified km, and a winner needs at least 1
+async function apiRide(p, { seconds = 20, speed = 15, extra = 60, mutate = () => null, hashOf = (_b, text) => sha256(text), crashAt = 0 } = {}) {
   const made = await api('rides', { body: { tier: '1h' }, cookie: p.cookie });
   if (!made.ok) return { error: `${made.status} ${JSON.stringify(made.j).slice(0, 160)}` };
   const ride = made.j;
@@ -130,7 +131,7 @@ async function apiRide(p, { seconds = 20, speed = 15, mutate = () => null, hashO
     }
     if (d.t - d.bt0 >= 15) await cut();
     if (now - lastBeat >= 5_000) { lastBeat = now; await heartbeat(); }
-    if (crashAt ? d.t >= crashAt : d.t >= seconds) break;
+    if (crashAt ? d.t >= crashAt : d.t >= seconds && d.s >= Math.max(ride.completeDist ?? 0, 1000) + extra) break;
   }
   await cut(); await heartbeat();
   const end = await api(`rides/${d.id}/end`, { body: crashAt ? { outcome: 'failed', s: d.s, t: d.t, hull: 0, reason: 'direct hit – a bus' } : { outcome: 'shift', s: d.s, t: d.t, hull: 100 }, cookie: p.cookie });
@@ -248,15 +249,22 @@ try {
   refuse('cancel_pool on the live pool D (only an open pool)', ['cancel-pool', '--pool', String(D), '-k', `${KEYS}/admin.json`], 'PoolNotOpen');
   refuse('refund from the live pool D', ['refund', '--pool', String(D), '--buyer', R5.wallet, '-k', Z.keyfile], 'NotRefunding');
   refuse('close_ticket in the live pool D (only once settled)', ['close-ticket', '--pool', String(D), '--buyer', R5.wallet, '-k', Z.keyfile], 'NotSettled');
+  // v3: no prize without the winner's VERIFIED attestation (the account is checked before the handler) – a pay_prize to a wallet without one never gets as far as
+  // the rule its refusal is about, so R2 is attested here by the admin (the payout key / admin may record one while the pool is ACTIVE); the job later keeps it
+  refuse('pay_prize to a wallet with no attestation (program v3)', ['pay-prize', '--pool', String(D), '--to', R2.wallet, '--lamports', '1000000', '-k', `${KEYS}/admin.json`], 'AccountNotInitialized');
+  refuse('record_attestation by a stranger', ['record-attestation', '--pool', String(D), '--driver', R2.wallet, '--km', '1', '-k', Z.keyfile], 'Unauthorized');
+  refuse('record_attestation VERIFIED with 0 km', ['record-attestation', '--pool', String(D), '--driver', R2.wallet, '--km', '0', '-k', `${KEYS}/admin.json`], 'ZeroVerifiedKm');
+  const attR2 = admintool(['record-attestation', '--pool', String(D), '--driver', R2.wallet, '--km', '1', '-k', `${KEYS}/admin.json`]).attestation;
+  check('record_attestation by the admin: R2 VERIFIED in pool D (1 km)', attR2?.status === 1 && attR2.verifiedKm === 1 && attR2.driver === R2.wallet, JSON.stringify(attR2));
   refuse('pay_prize before the play deadline', ['pay-prize', '--pool', String(D), '--to', R2.wallet, '--lamports', '1000000', '-k', `${KEYS}/admin.json`], 'TooEarly');
 
   // ── 3. the rides: finished rides over the player API (+ one in the real game), all at once
-  console.log('     … 11 rides: the real game in Chrome + 10 recordings over the API (≈ 30 s)');
+  console.log('     … 11 rides: the real game in Chrome + 10 recordings over the API, each past 1 km (≈ 60 s)');
   const plan = {
-    [R2.wallet]: [{ speed: 13 }], [R3.wallet]: [{ speed: 15 }], [R4.wallet]: [{ speed: 17 }], [R5.wallet]: [{ speed: 19 }], [R6.wallet]: [{ speed: 21 }],
+    [R2.wallet]: [{ speed: 18, extra: 60 }], [R3.wallet]: [{ speed: 19, extra: 120 }], [R4.wallet]: [{ speed: 20, extra: 180 }], [R5.wallet]: [{ speed: 21, extra: 240 }], [R6.wallet]: [{ speed: 22, extra: 300 }],
     [R7.wallet]: [{ speed: 20, crashAt: 4 }],                       // crashes: the ride fails, never completes
-    [R8.wallet]: [{ speed: 11 }, { speed: 12 }],                    // two tickets, two rides – the ranking sums them
-    [R9.wallet]: [{ speed: 25, hashOf: unhashed }],                 // one batch the client "could not hash" → FLAGGED, the admin reviews it
+    [R8.wallet]: [{ speed: 24, extra: 30 }, { speed: 25, extra: 40 }],   // two tickets, two rides – the ranking sums them
+    [R9.wallet]: [{ speed: 23, extra: 360, hashOf: unhashed }],     // one batch the client "could not hash" → FLAGGED, the admin reviews it
     [R10.wallet]: [{ speed: 26, mutate: teleport }],                // +500 m in a tenth of a second → REJECTED
   };
   const rides = {};
@@ -302,10 +310,14 @@ try {
   pd = await poolAcc(D);
   const bound = prizeBound({ priceLamports: PRICE, ticketsSold: 11, sponsored: SPONSOR, prizeBps: SPLIT[0], seedBps: SPLIT[1] });
   check('the pot counts EVERY ticket – the crash\'s and the cheater\'s money stays in it', pd.ticketsSold === 11 && pd.sponsored === SPONSOR && bound === Math.floor((11 * PRICE + SPONSOR) * SPLIT[0] / 10_000));
-  refuse('pay_prize by a stranger', ['pay-prize', '--pool', String(D), '--to', Z.wallet, '--lamports', '1000000', '-k', Z.keyfile], 'Unauthorized');
+  refuse('pay_prize by a stranger', ['pay-prize', '--pool', String(D), '--to', R2.wallet, '--lamports', '1000000', '-k', Z.keyfile], 'Unauthorized');
   refuse('pay_prize above the prize share', ['pay-prize', '--pool', String(D), '--to', R2.wallet, '--lamports', String(bound + 1), '-k', `${KEYS}/admin.json`], 'PrizeExceedsShare');
-  refuse('pay_prize into the vault itself', ['pay-prize', '--pool', String(D), '--to', vD, '--lamports', '1000000', '-k', `${KEYS}/admin.json`], 'AccountMismatch');
-  refuse('pay_prize that leaves an empty wallet below the rent minimum', ['pay-prize', '--pool', String(D), '--to', Keypair.generate().publicKey.toBase58(), '--lamports', '1000', '-k', `${KEYS}/admin.json`], 'BelowRentMin');
+  // both need an attestation for the address first, or the program stops at the missing account (an admin attesting the vault is what a forger would try)
+  admintool(['record-attestation', '--pool', String(D), '--driver', vD, '--km', '1', '-k', `${KEYS}/admin.json`]);
+  refuse('pay_prize into the vault itself (even with an attestation for it)', ['pay-prize', '--pool', String(D), '--to', vD, '--lamports', '1000000', '-k', `${KEYS}/admin.json`], 'AccountMismatch');
+  const emptyWallet = Keypair.generate().publicKey.toBase58();
+  admintool(['record-attestation', '--pool', String(D), '--driver', emptyWallet, '--km', '1', '-k', `${KEYS}/admin.json`]);
+  refuse('pay_prize that leaves an empty wallet below the rent minimum', ['pay-prize', '--pool', String(D), '--to', emptyWallet, '--lamports', '1000', '-k', `${KEYS}/admin.json`], 'BelowRentMin');
   // the expected ranking, from what each wallet drove in its counted rides (completed + verified, R9 by the admin's decision)
   const counted = [R1, R2, R3, R4, R5, R6, R8, R9];
   const dist = p => rides[p.wallet].reduce((a, x) => a + (x.end?.distance ?? 0), 0);
@@ -316,6 +328,11 @@ try {
     && po.j.ranks.map(x => x.lamports).join() === payouts.map(x => x.lamports).join(), JSON.stringify((po.j.ranks ?? po.j)).slice(0, 400));
   console.log(`     ranking: ${want.map((p, i) => `#${i + 1} ${p.name} ${Math.round(dist(p))} m → ${payouts[i].lamports}`).join(' · ')}`);
   const everyone = { ...Object.fromEntries(R.map(p => [p.name, p.wallet])), fee: addr('fee'), plat: addr('plat'), seed: addr('seed'), admin: ADMIN, vault: vD };
+  // R1 drove the real game, which ends at the 42 m line (DEMO_SCALE=1200) – under the whole km v3 attests – so the admin attests it by hand (a test shortcut);
+  // the 7 API riders drove past 1 km: the server puts their record_attestation in front of each pay_prize
+  admintool(['record-attestation', '--pool', String(D), '--driver', R1.wallet, '--km', '1', '-k', `${KEYS}/admin.json`]);
+  const attested = async () => (await Promise.all(want.map(async p => !!(await conn.getAccountInfo(codec.attestationPda(D, p.wallet), 'confirmed'))))).filter(Boolean).length;
+  const attestedBefore = await attested();
   before = await bals(everyone);
   const vaultBefore = before.vault;
   const job = execFileSync('node', ['scripts/devnet-payout.mjs', String(D), '--yes'], { encoding: 'utf8', env: { ...process.env, BASE, RPC, ADMIN: `${KEYS}/admin.json` } });
@@ -333,7 +350,10 @@ try {
   check('fee treasury: exactly its leg', d.fee === legs.fee && legs.fee > 0, `${d.fee} vs ${legs.fee}`);
   check(`platform treasury: exactly ${PLAT_BPS} bps of the fee share`, d.plat === legs.platformFee && (PLAT_BPS === 0 || legs.platformFee > 0), `${d.plat} vs ${legs.platformFee}`);
   check('seed treasury (the next pool\'s jackpot): seed share + unclaimed prize', d.seed === legs.seed && legs.seed > 0, `${d.seed} vs ${legs.seed}`);
-  check('creator (admin): + the vault rent minimum − the fees of the 9 transactions it signed', d.admin === RENT0 - adminFees, `${d.admin} vs ${RENT0 - adminFees}`);
+  const newAtt = (await attested()) - attestedBefore, attRent = await conn.getMinimumBalanceForRentExemption((await conn.getAccountInfo(codec.attestationPda(D, want[0].wallet), 'confirmed')).data.length);
+  const attTx = (await Promise.all(sigs.map(async s => (await conn.getTransaction(s, { commitment: 'confirmed', maxSupportedTransactionVersion: 0 })).meta.logMessages.some(l => /Instruction: RecordAttestation/.test(l))))).filter(Boolean).length;
+  check(`v3: every winner VERIFIED before its prize – ${newAtt} record_attestation(s) by the admin went in front of their pay_prize (the others were attested already)`, newAtt === want.length - attestedBefore && attTx === newAtt && (await attested()) === want.length, `${newAtt} new / ${attTx} in txs / ${attestedBefore} before`);
+  check('creator (admin): + the vault rent minimum − the fees of the 9 transactions it signed − the rent of the attestations they made', d.admin === RENT0 - adminFees - newAtt * attRent, `${d.admin} vs ${RENT0 - adminFees - newAtt * attRent}`);
   check('vault D = 0, settled on chain and on the server', after.vault === 0 && pd.status === 3 && await until(async () => (await serverPool(D)).status === 'settled'));
   check('conservation: 11 tickets + sponsorship = prizes + fee + platform + seed', 11 * PRICE + SPONSOR === paid + legs.fee + legs.platformFee + legs.seed, `${11 * PRICE + SPONSOR} vs ${paid + legs.fee + legs.platformFee + legs.seed}`);
   refuse('pay_prize on the settled pool D', ['pay-prize', '--pool', String(D), '--to', R2.wallet, '--lamports', '1000000', '-k', `${KEYS}/admin.json`], 'PoolNotActive');
@@ -382,7 +402,8 @@ try {
   admintool(['cancel-pool', '--pool', String(G), ...adm]);
   check('cancel_pool: G refunding', (await poolAcc(G)).status === 2);
   refuse('buy into a cancelled pool', ['buy', '-k', R4.keyfile, '--pool', String(G)], 'PoolNotOpen');
-  refuse('pay_prize from a refunding pool', ['pay-prize', '--pool', String(G), '--to', R3.wallet, '--lamports', '1000000', ...adm], 'PoolNotActive');
+  refuse('record_attestation in a pool that never went live (refunding)', ['record-attestation', '--pool', String(G), '--driver', R3.wallet, '--km', '1', ...adm], 'PoolNotActive');
+  refuse('pay_prize from a refunding pool (it never was live, so no attestation can exist)', ['pay-prize', '--pool', String(G), '--to', R3.wallet, '--lamports', '1000000', ...adm], 'AccountNotInitialized');
   refuse('close_pool before every ticket is refunded', ['close-pool', '--pool', String(G), '-k', Z.keyfile], 'RefundsPending');
   before = await bals({ r3: R3.wallet });
   admintool(['refund', '--pool', String(G), '--buyer', R3.wallet, '-k', Z.keyfile]);

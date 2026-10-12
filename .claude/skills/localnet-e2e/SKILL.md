@@ -44,7 +44,8 @@ PostgreSQL), `solana-test-validator` (Agave 4.1.2), Chrome, `server/node_modules
 3. **Phase 2**: a fresh ledger with `--upgradeable-program <id> <so> <upgrader>` + `--account` for every dumped account (Config `pool_count = 2`).
 4. The server (`dist/main.js`) with every chain key set explicitly (a stray `server/.env` cannot leak in): program mode, local RPC + WS, crank with
    `CRANK_INTERVAL_MS=0` (the scenario runs `pool:crank` itself), treasuries, `WATCH_INTERVAL_MS=2000`, `SOL_USD=118`, `DEMO_WALLETS=* DEMO_SCALE=1200`
-   (a 1h ticket ride = 3 s / 42 m), `VERDICT_ENFORCE=true`, PostHog off, priority fee 0, `ADMIN_WALLETS` = the admin (the signed ride review).
+   (a 1h ticket ride = 3 s / 42 m; phase 3 runs at 48 = 1 050 m – program v3 attests whole verified km and a winner needs at least 1: the API bots drive past 1 km,
+   the short Chrome game rides' winners are attested by hand with `pool-admin.mjs record-attestation`), `VERDICT_ENFORCE=true`, PostHog off, priority fee 0, `ADMIN_WALLETS` = the admin (the signed ride review).
 5. **Phase 3 – the autonomous day** (`SCENARIO=all|day`): the phase-2 server and validator stop; the series dump gets `next_open_at` (byte 122) = now +
    `DAY_LEAD` (75 s) (`RETIME=1 localnet-fixtures.mjs`); a fresh ledger with the program + that one account; `initialize` by the upgrader (Config fresh,
    pool ids from 0); a second throwaway database and server with `PAYOUT_SECRET` = the payout key, `CRANK_INTERVAL_MS=2000` (the crank on its schedule – the

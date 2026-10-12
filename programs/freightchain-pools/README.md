@@ -111,6 +111,37 @@ Emitted with `emit!` (`Program data: <base64>`: 8-byte IDL discriminator + borsh
 
 `TicketBought.lamports` is the cost of this order (`price * qty`), `qty` this order's tickets (not the wallet's total). The tests decode `TicketBought`, `PoolActivated` and `Refunded` from raw logs with the IDL discriminators and check every event discriminator against the IDL (`tests/admin_rent_cu.rs`); that file is the server team's reference.
 
+## v3 – attestations, pledges, the road seed on chain
+
+An in-place upgrade of the v2 program id: `Config` and `Series` are unchanged, `Pool` grew (a v2 Pool account no longer deserializes – every v2 pool must be settled before the upgrade, see `docs/program-deploy.md` "v3").
+
+| account | PDA seeds | data bytes (+8) | notes |
+|---|---|---|---|
+| `Pool` (grew) | `["pool", pool_id]` | 264 (+8 = 272) | + `seed_commitment` [u8;32], `seed_slot` u64, `seed_slot_hash` [u8;32] |
+| `Attestation` | `["attestation", pool pubkey, driver pubkey]` | 110 (+8 = 118) | `pool`, `driver`, `telemetry_root` [u8;32], `verified_km` u32, `status` u8 (0 unverified · 1 verified · 2 flagged), `recorded_at` i64, `bump` |
+| `Pledge` | `["pledge", ride_id [u8;32], sponsor pubkey]` | 174 (+8 = 182) | `ride_id` (the server's ride uuid, 16 bytes zero-padded), `sponsor`, `driver`, `pool`, `max_lamports`, `lamports_per_km`, `target_km` u32, `settled`, `earned_lamports`, `refunded_lamports`, `created_at`, `bump` |
+
+| instruction (args) | accounts | rules | errors |
+|---|---|---|---|
+| `create_pool` / `open_next_pool` (changed) | + `slot_hashes` (the SlotHashes sysvar, fixed address) | the program commits the road seed itself: `seed_commitment = SHA-256(pool_id LE u32 ‖ hash ‖ slot LE u64)` over the NEWEST SlotHashes entry, and keeps `seed_slot` / `seed_slot_hash`; no instruction takes a seed (`create_pool`'s params and `open_next_pool`'s args have none) | AccountMismatch (another account as the sysvar) |
+| `record_attestation(pool_id, driver, telemetry_root, verified_km, status)` | authority (S, mut, pays the rent), config, pool, driver_account (= driver), attestation (init_if_needed) | `config.authority` or the payout key; not paused; pool Active; status 0/1/2; VERIFIED needs a non-zero root and km > 0; may be rewritten while the pool is Active; emits `AttestationRecorded` | Paused, Unauthorized, PoolNotActive, InvalidAttestationStatus, InvalidParams, ZeroVerifiedKm |
+| `pay_prize` (changed) | + `attestation` (`["attestation", pool, to]`) | the account must exist (else Anchor 3012, checked before the handler), belong to the pool and `to`, be VERIFIED with km > 0 | + UnverifiedAttestation, AttestationMismatch, ZeroVerifiedKm |
+| `create_pledge(ride_id, driver, max_lamports, lamports_per_km, target_km)` | sponsor (S, mut), driver, config, pool, pledge (init) | not paused; pool Open/Active and `now < play_deadline`; sponsor ≠ driver; all > 0 and `max = rate × target` exactly; the sponsor pays the cap + the account's rent; emits `PledgeCreated` | Paused, PoolNotOpen, TooLate, InvalidParams, AccountMismatch, MathOverflow |
+| `settle_pledge(ride_id)` | caller (S), driver (mut), sponsor (mut), pool, attestation (pool, driver), pledge (mut, **closed to the sponsor**) | **permissionless**; the attestation is VERIFIED or FLAGGED; earned = `max × min(verified_km, target) / target` (0 when flagged, or when the driver's account would stay under the rent minimum) → driver; the rest + the rent → sponsor; emits `PledgeSettled` | UnverifiedAttestation, AlreadySettled, AccountMismatch |
+| `refund_pledge(ride_id)` | caller (S), sponsor (mut), pool, attestation (unchecked, `["attestation", pool, pledge.driver]`), pledge (mut, closed to the sponsor) | **permissionless**; the pool is Refunding / Cancelled / Settled, or Active past `payout_at + SETTLE_GRACE_SECS`; the driver has no decided attestation (none, or UNVERIFIED); everything + the rent → sponsor; emits `PledgeRefunded` | PledgeNotRefundable, AttestationExists, AlreadySettled, AccountMismatch |
+
+Errors added (6000 + index, appended so older codes keep their numbers): UnverifiedAttestation 6025 · AttestationMismatch 6026 · InvalidAttestationStatus 6027 · ZeroVerifiedKm 6028 · AlreadySettled 6029 · PledgeNotRefundable 6030 · AttestationExists 6031.
+
+| event | fields |
+|---|---|
+| `PoolCreated` (grew) | + seed_commitment [u8;32], seed_slot u64, seed_slot_hash [u8;32] |
+| `AttestationRecorded` | pool_id u32, pool, driver, telemetry_root [u8;32], verified_km u32, status u8, recorded_at i64 |
+| `PledgeCreated` | ride_id [u8;32], sponsor, driver, pool, max_lamports u64, lamports_per_km u64, target_km u32, created_at i64 |
+| `PledgeSettled` | ride_id [u8;32], sponsor, driver, pool, verified_km u32, target_km u32, earned_lamports u64, refunded_lamports u64 |
+| `PledgeRefunded` | ride_id [u8;32], sponsor, driver, pool, refunded_lamports u64 |
+
+Trust, said plainly: an attestation is the server's verdict that the payout key writes; the program checks the signer, not the drive. The Merkle root ties it to one recording (anyone holding the batches can recompute it). A pledge settles on the driver's attestation for the pool – the driver's best verified ride in that pool, not necessarily the ride id it was made for. Nothing is staked: an earlier v3 draft had a `record_yield` ("JitoSOL yield") that only let the authority deposit SOL; it was removed before deploy.
+
 ## The money maths (bps)
 
 All in u128 with checked casts back to u64. `pot = price_lamports * tickets_sold + sponsored` (the price is immutable, so ticket money is derived, not stored).
@@ -179,5 +210,4 @@ The clock is warped with `svm.set_sysvar::<Clock>()`; no test waits. Together th
 
 - Session keys, `Balance`, `deposit` / `withdraw`, `buy_ticket_with_session` (phase 2).
 - No `refund_sponsor`, no `sweep`, no Pool account close. `Pool.authority` is copied from the signer of `create_pool` and never changes.
-- Deploy, `initialize` and pool creation on devnet are not done (task scope).
 - Trust in the admin is by design: after `payout_at` it (or the payout key) may close a pool without paying prizes (the prize share goes to the seed treasury), and `pay_prize` pays whatever `to` it signs (capped). The escape hatches protect against an absent admin, not a malicious one. `buy_ticket`'s `dup` markers are documentation only (Anchor 1.2.1 checks duplicates for `Account` types, not signers).

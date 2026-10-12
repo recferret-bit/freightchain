@@ -12,6 +12,7 @@ import { PoolChainPort } from '../../../ports/economy/pool-chain.port.js';
 import { PoolPayoutChainPort } from '../../../ports/economy/pool-payout-chain.port.js';
 import { PoolPayoutRepositoryPort } from '../../../ports/economy/pool-payout.repository.port.js';
 import { PoolRepositoryPort } from '../../../ports/economy/pool.repository.port.js';
+import { PledgeRepositoryPort } from '../../../ports/economy/pledge.repository.port.js';
 import { RideQueryPort } from '../../../ports/rides/ride-query.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
 import { PoolAttentionService } from '../../../services/pool-attention.service.js';
@@ -37,7 +38,9 @@ const UNREVIEWED_LIMIT = 100;
  *      with pool-payouts.ts, written once (PoolPayout rows). No verified ride = `no_winners`: the admin decides.
  *   3. every planned prize is CLAIMED (planned → sent, with its signature) before its transaction goes out, then paid and settled; a prize left `sent` by a crash is
  *      resolved from its signature (landed → paid, expired → planned again). A wallet the chain already shows paid is not paid twice.
- *   4. all paid → close_pool with the payout key (money only to the pool's declared treasuries) → `paid`.
+ *   4. every driver someone pledged to gets an attestation (verified km, or flagged when all their finished rides were rejected) – the program refuses one after
+ *      the close, and settle_pledge needs it (SyncPledgesHandler settles right after); also for a pool with no winners.
+ *   5. all paid → close_pool with the payout key (money only to the pool's declared treasuries) → `paid`.
  * Each signature is settled at once (SettleChainSignatureCommand), so the mirror follows without waiting for the watcher.
  */
 @CommandHandler(PayPoolsCommand)
@@ -56,6 +59,7 @@ export class PayPoolsHandler implements ICommandHandler<PayPoolsCommand, PayoutP
     private readonly commands: CommandBus,
     private readonly clock: ClockPort,
     private readonly attestation: AttestationService,
+    private readonly pledges: PledgeRepositoryPort,
   ) {}
 
   async execute({ poolId }: PayPoolsCommand): Promise<PayoutPassDto> {
@@ -104,7 +108,11 @@ export class PayPoolsHandler implements ICommandHandler<PayPoolsCommand, PayoutP
 
       if (!rows.length) {
         rows = await this.plan(pool);
-        if (!rows.length) return await done(pool, 'no_winners', 'no verified ride ranks in this pool – the admin decides: close it by hand (the prize share goes to the seed treasury) or let it expire into refunds');
+        if (!rows.length) {
+          const attested = await this.attestPledged(pool);
+          if (attested) return await done(pool, 'error', attested);
+          return await done(pool, 'no_winners', 'no verified ride ranks in this pool – the admin decides: close it by hand (the prize share goes to the seed treasury) or let it expire into refunds');
+        }
       }
       const paidOnChain = await this.paidWallets(pool.id);
       for (const row of rows) {
@@ -112,12 +120,27 @@ export class PayPoolsHandler implements ICommandHandler<PayPoolsCommand, PayoutP
         const { outcome, note } = await this.payRow(pool, row, paidOnChain, paid);
         if (outcome !== 'paid') return await done(pool, outcome === 'error' ? 'error' : 'paying', note);
       }
+      const attested = await this.attestPledged(pool);
+      if (attested) return await done(pool, 'error', attested);
       const { signature } = await this.payout.closePool(pool.id);
       await this.settle(signature);
       return await done(pool, 'paid', null, signature);
     } catch (error) {
       return await done(pool, 'error', error instanceof Error ? error.message : String(error));
     }
+  }
+
+  /** an attestation for every driver with an active pledge in the pool; the first failure as a note (the close waits for the next pass), null = all done */
+  private async attestPledged(pool: Pool): Promise<string | null> {
+    const drivers = [...new Set((await this.pledges.listActiveByPool(pool.id)).map((p) => p.driver))];
+    for (const driver of drivers) {
+      try {
+        await this.attestation.attestForPledges(pool.id, driver);
+      } catch (e) {
+        return `attestation for pledges to ${driver} failed: ${e instanceof Error ? e.message : String(e)}`;
+      }
+    }
+    return null;
   }
 
   /** the plan from the verified ranking; written once (rows that exist are kept) */

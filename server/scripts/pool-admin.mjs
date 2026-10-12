@@ -15,7 +15,11 @@
 //   node scripts/pool-admin.mjs close-pool  --url <rpc> -k <caller.json> --pool N        (admin / payout key after payout_at; anyone for a fully refunded pool)
 //   node scripts/pool-admin.mjs sponsor     --url <rpc> -k <sponsor.json> --pool N --lamports L   (anyone; split like ticket money)
 //   node scripts/pool-admin.mjs buy         --url <rpc> -k <buyer.json> [--fee-payer <payer.json>] --pool N [--qty 1]   (no server order: tests / fixtures)
-//   node scripts/pool-admin.mjs pay-prize   --url <rpc> -k <admin-or-payout.json> --pool N --to <pubkey> --lamports L [--rank 1]   (after payout_at)
+//   node scripts/pool-admin.mjs pay-prize   --url <rpc> -k <admin-or-payout.json> --pool N --to <pubkey> --lamports L [--rank 1]   (after payout_at; `to` needs a VERIFIED attestation)
+//   node scripts/pool-admin.mjs record-attestation --url <rpc> -k <admin-or-payout.json> --pool N --driver <pubkey> --km K [--status verified|flagged|unverified] [--root <64 hex>]
+//                                           (Active pool: the server's verdict on chain – pay_prize and settle_pledge read it; the payout job writes it itself)
+//   node scripts/pool-admin.mjs create-pledge --url <rpc> -k <sponsor.json> --pool N --ride <uuid> --driver <pubkey> --per-km L --km K   (no server row: tests)
+//   node scripts/pool-admin.mjs settle-pledge | refund-pledge --url <rpc> -k <caller.json> --pool N --ride <uuid> --sponsor <pubkey> --driver <pubkey>   (permissionless)
 //   node scripts/pool-admin.mjs fail-pool | expire-pool --url <rpc> -k <caller.json> --pool N   (permissionless cranks)
 //   node scripts/pool-admin.mjs refund      --url <rpc> -k <caller.json> --pool N --buyer <pubkey> [--rent-payer <pubkey>]   (permissionless: price → buyer, Ticket rent → its rent_payer)
 //   node scripts/pool-admin.mjs close-ticket --url <rpc> -k <caller.json> --pool N --buyer <pubkey>  (permissionless, Settled pool: Ticket rent → its rent_payer)
@@ -38,7 +42,7 @@ for (let i = 0; i < rest.length; i++) {
   opt[k === 'k' ? 'keypair' : k] = v; i++;
 }
 const die = msg => { console.error(`pool-admin: ${msg}`); process.exit(1); };
-if (!cmd || cmd === 'help') die('commands: show | initialize | create-pool | set-series | open-next-pool | set-payout-authority | set-config | close-pool | sponsor | buy | pay-prize | fail-pool | expire-pool | refund | close-ticket | cancel-pool | propose-authority | accept-authority (see the header of scripts/pool-admin.mjs)');
+if (!cmd || cmd === 'help') die('commands: show | initialize | create-pool | set-series | open-next-pool | set-payout-authority | set-config | close-pool | sponsor | buy | pay-prize | record-attestation | create-pledge | settle-pledge | refund-pledge | fail-pool | expire-pool | refund | close-ticket | cancel-pool | propose-authority | accept-authority (see the header of scripts/pool-admin.mjs)');
 if (!opt.url) die('--url <rpc> is required (never the global config)');
 if (/mainnet/i.test(opt.url)) die('refusing a mainnet RPC – the program is devnet only, not audited');
 
@@ -172,9 +176,29 @@ try {
     out({ signature: sig, ticket: await account('Ticket', codec.ticketPda(id, buyer.publicKey)) });
   } else if (cmd === 'pay-prize') {
     const admin = keypair(), id = int('pool');
-    const sig = await send(admin, codec.instruction('pay_prize', { authority: admin.publicKey, config: codec.configPda(), pool: codec.poolPda(id), vault: codec.vaultPda(id), to: pk('to') },
-      { pool_id: id, lamports: int('lamports'), rank: int('rank', 1) }));
+    const sig = await send(admin, codec.instruction('pay_prize', { authority: admin.publicKey, config: codec.configPda(), pool: codec.poolPda(id), vault: codec.vaultPda(id), to: pk('to'),
+      attestation: codec.attestationPda(id, pk('to')) }, { pool_id: id, lamports: int('lamports'), rank: int('rank', 1) }));
     out({ signature: sig, pool: await account('Pool', codec.poolPda(id)) });
+  } else if (cmd === 'record-attestation') {
+    const who = keypair(), id = int('pool'), driver = pk('driver');
+    const status = { unverified: 0, verified: 1, flagged: 2 }[opt.status ?? 'verified'] ?? die('--status verified|flagged|unverified');
+    const root = opt.root ? Buffer.from(opt.root, 'hex') : crypto.createHash('sha256').update(`attestation:${id}:${driver}`).digest();
+    if (root.length !== 32) die('--root is 32 bytes of hex');
+    const sig = await send(who, codec.instruction('record_attestation', { authority: who.publicKey, config: codec.configPda(), pool: codec.poolPda(id), driver_account: driver,
+      attestation: codec.attestationPda(id, driver) }, { pool_id: id, driver, telemetry_root: root, verified_km: int('km'), status }));
+    out({ signature: sig, attestation: await account('Attestation', codec.attestationPda(id, driver)) });
+  } else if (cmd === 'create-pledge' || cmd === 'settle-pledge' || cmd === 'refund-pledge') {
+    const who = keypair(), id = int('pool'), driver = pk('driver');
+    const rideId = Buffer.alloc(32); Buffer.from(String(opt.ride ?? die('--ride <uuid>')).replace(/-/g, ''), 'hex').copy(rideId);   // the server's rideIdToBytes: 16 uuid bytes, zero-padded
+    const sponsor = cmd === 'create-pledge' ? who.publicKey : pk('sponsor'), pledge = codec.pledgePda(rideId, sponsor);
+    const ix = cmd === 'create-pledge'
+      ? codec.instruction('create_pledge', { sponsor, driver, config: codec.configPda(), pool: codec.poolPda(id), pledge },
+        { ride_id: rideId, driver, max_lamports: BigInt(int('per-km')) * BigInt(int('km')), lamports_per_km: int('per-km'), target_km: int('km') })
+      : codec.instruction(cmd.replace('-', '_'), cmd === 'settle-pledge'
+        ? { caller: who.publicKey, driver, sponsor, pool: codec.poolPda(id), attestation: codec.attestationPda(id, driver), pledge }
+        : { caller: who.publicKey, sponsor, pool: codec.poolPda(id), attestation: codec.attestationPda(id, driver), pledge }, { ride_id: rideId });
+    const sig = await send(who, ix);
+    out({ signature: sig, pledge: pledge.toBase58(), account: await account('Pledge', pledge) });
   } else if (cmd === 'fail-pool' || cmd === 'expire-pool') {
     const who = keypair(), id = int('pool');
     const sig = await send(who, codec.instruction(cmd.replace('-', '_'), { caller: who.publicKey, pool: codec.poolPda(id) }, { pool_id: id }));

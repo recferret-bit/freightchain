@@ -91,8 +91,6 @@ model Pool {
   seedCommitment String?
   blockhash      String?
   slot           BigInt?
-  stakedLamports BigInt        @default(0)
-  yieldEarned    BigInt        @default(0)
   payouts       PoolPayout[]
   tickets       RideTicket[]
   orders        TicketOrder[]
@@ -237,6 +235,10 @@ model Pledge {
   maxLamports      BigInt
   lamportsPerKm    BigInt
   targetKm         Int
+  /// pending | active | settled | refunded | abandoned (domain/economy/pledge.types.ts)
+  status           String    @default("pending")
+  /// the create_pledge transaction
+  createSignature  String?
   settled          Boolean   @default(false)
   earnedLamports   BigInt    @default(0)
   refundedLamports BigInt    @default(0)
@@ -251,6 +253,7 @@ model Pledge {
   @@index([sponsor, settled])
   @@index([poolId])
   @@index([rideId])
+  @@index([status, poolId])
   @@schema("economy")
 }
 

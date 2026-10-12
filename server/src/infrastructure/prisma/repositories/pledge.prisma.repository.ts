@@ -23,6 +23,8 @@ export class PledgePrismaRepository extends PledgeRepositoryPort {
     await clientFor(this.prisma, tx).pledge.update({
       where: { id: pledge.id },
       data: {
+        status: data.status,
+        createSignature: data.createSignature,
         settled: data.settled,
         earnedLamports: data.earnedLamports,
         refundedLamports: data.refundedLamports,
@@ -63,6 +65,16 @@ export class PledgePrismaRepository extends PledgeRepositoryPort {
       where: { driver },
       orderBy: { createdAt: 'desc' },
     });
+    return rows.map(PledgeMapper.toDomain);
+  }
+
+  async listOpen(tx?: TransactionHandle): Promise<Pledge[]> {
+    const rows = await clientFor(this.prisma, tx).pledge.findMany({ where: { status: { in: ['pending', 'active'] } }, orderBy: { createdAt: 'asc' }, take: 500 });
+    return rows.map(PledgeMapper.toDomain);
+  }
+
+  async listActiveByPool(poolId: number, tx?: TransactionHandle): Promise<Pledge[]> {
+    const rows = await clientFor(this.prisma, tx).pledge.findMany({ where: { poolId, status: 'active' }, orderBy: { createdAt: 'asc' } });
     return rows.map(PledgeMapper.toDomain);
   }
 

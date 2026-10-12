@@ -46,21 +46,12 @@ pub mod freightchain_pools {
         instructions::series::handle_set_series(ctx, params)
     }
 
-    pub fn open_next_pool(ctx: Context<OpenNextPool>, tier: u8, seed_commitment: [u8; 32]) -> Result<()> {
-        instructions::series::handle_open_next_pool(ctx, tier, seed_commitment)
+    pub fn open_next_pool(ctx: Context<OpenNextPool>, tier: u8) -> Result<()> {
+        instructions::series::handle_open_next_pool(ctx, tier)
     }
 
     pub fn create_pool(ctx: Context<CreatePool>, params: CreatePoolParams) -> Result<()> {
         instructions::create_pool::handle_create_pool(ctx, params)
-    }
-
-    pub fn record_yield(
-        ctx: Context<RecordYield>,
-        pool_id: u32,
-        staked_lamports: u64,
-        yield_earned: u64,
-    ) -> Result<()> {
-        instructions::record_yield::handle_record_yield(ctx, pool_id, staked_lamports, yield_earned)
     }
 
     pub fn record_attestation(
@@ -87,6 +78,10 @@ pub mod freightchain_pools {
 
     pub fn settle_pledge(ctx: Context<SettlePledge>, ride_id: [u8; 32]) -> Result<()> {
         instructions::pledge::handle_settle_pledge(ctx, ride_id)
+    }
+
+    pub fn refund_pledge(ctx: Context<RefundPledge>, ride_id: [u8; 32]) -> Result<()> {
+        instructions::pledge::handle_refund_pledge(ctx, ride_id)
     }
 
     pub fn buy_ticket(ctx: Context<BuyTicket>, pool_id: u32, qty: u16, order_id: [u8; 16]) -> Result<()> {

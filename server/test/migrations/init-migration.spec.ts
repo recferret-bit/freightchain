@@ -41,9 +41,10 @@ describe('prisma migrations', () => {
     expect(sql).toMatch(/CONSTRAINT "DailySeed_pkey" PRIMARY KEY \("tier","day"\)/); // one road per tier per day, however many first orders race
   });
 
-  it('is forward-only: nothing is dropped, renamed or truncated – except the reviewed removal of the retired gas sponsor and offline rate ledger', () => {
+  it('is forward-only: nothing is dropped, renamed or truncated – except the reviewed removal of the retired gas sponsor, offline rate ledger and the unused staking-yield columns', () => {
     const RETIRED = /^DROP TABLE "(economy"\."SponsoredTx|player"\."OfflineRideUse)";$/gm; // gasless purchases and offline ride restriction ledger were removed
-    expect(sql.replace(RETIRED, '')).not.toMatch(/\bDROP\s+(TABLE|COLUMN|SCHEMA|TYPE|INDEX)\b/i);
+    const UNUSED_COLUMNS = /^ALTER TABLE "economy"\."Pool" DROP COLUMN "(stakedLamports|yieldEarned)";$/gm; // always 0: nothing stakes the vault (Oct 12)
+    expect(sql.replace(RETIRED, '').replace(UNUSED_COLUMNS, '')).not.toMatch(/\bDROP\s+(TABLE|COLUMN|SCHEMA|TYPE|INDEX)\b/i);
     expect(sql).not.toMatch(/\bRENAME\b|\bTRUNCATE\b/i);
   });
 });

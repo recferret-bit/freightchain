@@ -1,8 +1,9 @@
 import bs58 from 'bs58';
 
 /**
- * Preimage packing: poolId (4B LE) || blockhash (32B raw) || slot (8B LE) = 44 bytes.
- * Fully pure domain: uses standard Uint8Array, DataView, and bs58.
+ * The road seed of a pool (program v3): the program commits SHA-256(poolId LE u32 || slot hash || slot LE u64) over the newest SlotHashes entry when the
+ * pool opens (create_pool.rs seed_commitment_of) and keeps the slot and hash beside it. This is the 44-byte preimage – a verifier hashes it and compares.
+ * `blockhash` = that slot's bank hash, base58.
  */
 export function packSeedPreimage(poolId: number, blockhash: string, slot: number | bigint): Uint8Array {
   const buf = new Uint8Array(44);

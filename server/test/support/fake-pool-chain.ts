@@ -4,6 +4,7 @@ import { randomBytes } from 'node:crypto';
 import type { UnsignedPaymentTx } from '../../src/domain/economy/chain-transaction.js';
 import type { ChainEventKind, ChainEventRecord, PoolChainState } from '../../src/domain/economy/chain-events.js';
 import { ServiceUnavailableError } from '../../src/domain/shared/errors.js';
+import { rideIdToBytes, type PledgeChainEvent } from '../../src/domain/economy/pledge.types.js';
 import { PoolChainPort, type BuiltTransaction, type ChainTxKind, type FeeQuote, type ProgramSignature, type SignatureStatus } from '../../src/application/ports/economy/pool-chain.port.js';
 
 export const newPoolSignature = (): string => bs58.encode(randomBytes(64));
@@ -11,7 +12,13 @@ export const newPoolSignature = (): string => bs58.encode(randomBytes(64));
 export const FAKE_PROGRAM_ID = new PublicKey(new Uint8Array(32).fill(9)).toBase58();
 
 type EventFields<K extends ChainEventKind> = Omit<Extract<ChainEventRecord, { kind: K }>, 'kind' | 'signature' | 'index' | 'slot'>;
-export interface BuiltRecord { kind: ChainTxKind; input: Record<string, unknown>; tx: BuiltTransaction }
+export type BuiltKind = ChainTxKind | 'create_pledge';
+export interface BuiltRecord { kind: BuiltKind; input: Record<string, unknown>; tx: BuiltTransaction }
+export type ReadPledgeEventsAnswer = PledgeChainEvent[] | 'pending' | { invalid: string };
+/** a pledge event as a test scripts it: the fake adds the signature and the slot */
+export type PledgeEventInput = PledgeChainEvent extends infer E ? E extends PledgeChainEvent ? Omit<E, 'signature' | 'slot'> : never : never;
+/** a Pledge account the fake holds (create_pledge put it there; settle / refund close it) */
+export interface FakePledgeAccount { rideId: string; sponsor: string; driver: string; pool: string; maxLamports: bigint; lamportsPerKm: bigint; targetKm: number }
 export type ReadEventsAnswer = ChainEventRecord[] | 'pending' | { invalid: string };
 
 /**
@@ -35,6 +42,14 @@ export class FakePoolChain extends PoolChainPort {
   readonly feeQuotes: { poolId: number | null; kind: ChainTxKind }[] = [];
   /** true = the RPC is down: every network call is a 503 */
   rpcDown = false;
+  /** pledge events per signature (readPledgeEvents) */
+  readonly pledgeEvents = new Map<string, ReadPledgeEventsAnswer>();
+  /** each pledge PDA's transactions, OLDEST first (pledgeSignatures answers newest first) */
+  readonly pledgeHistory = new Map<string, string[]>();
+  /** the open Pledge accounts by PDA */
+  readonly pledgeAccounts = new Map<string, FakePledgeAccount>();
+  /** PDAs whose history read fails (an RPC error on one pledge) */
+  readonly failingPledgePdas = new Set<string>();
   private slot = 0;
 
   reset(): void {
@@ -43,6 +58,7 @@ export class FakePoolChain extends PoolChainPort {
     this.simulation = { ok: true, unitsConsumed: 20_000 };
     this.blockHeight = 100; this.lastValidBlockHeight = 250; this.readCount = 0; this.slot = 0;
     this.feeQuotes.length = 0; this.rpcDown = false;
+    this.pledgeEvents.clear(); this.pledgeHistory.clear(); this.pledgeAccounts.clear(); this.failingPledgePdas.clear();
   }
 
   // ---- scripting
@@ -57,6 +73,20 @@ export class FakePoolChain extends PoolChainPort {
   /** one event – typed by kind */
   addEvent<K extends ChainEventKind>(kind: K, fields: EventFields<K>, signature?: string): string {
     return this.addTransaction([{ kind, ...fields }], signature);
+  }
+  /** Puts a transaction with these pledge events on the chain: readPledgeEvents answers them, each event's pledge PDA lists the signature; a PledgeCreated
+      opens the account, a PledgeSettled / PledgeRefunded closes it (as the program does). Returns its signature. */
+  addPledgeTransaction(events: PledgeEventInput[], signature = newPoolSignature()): string {
+    const slot = ++this.slot;
+    this.pledgeEvents.set(signature, events.map((e) => ({ ...e, signature, slot }) as PledgeChainEvent));
+    for (const e of events) {
+      const pda = this.pledgePda(rideIdToBytes(e.rideId), e.sponsor);
+      this.pledgeHistory.set(pda, [...(this.pledgeHistory.get(pda) ?? []), signature]);
+      if (e.kind === 'PledgeCreated') this.pledgeAccounts.set(pda, { rideId: e.rideId, sponsor: e.sponsor, driver: e.driver, pool: e.pool, maxLamports: e.maxLamports, lamportsPerKm: e.lamportsPerKm, targetKm: e.targetKm });
+      else this.pledgeAccounts.delete(pda);
+    }
+    this.statuses.set(signature, 'confirmed');
+    return signature;
   }
   /** the websocket saw `signature` */
   emitLogs(signature: string): void { for (const l of this.listeners) l(signature); }
@@ -74,6 +104,19 @@ export class FakePoolChain extends PoolChainPort {
   }
   async buildClosePoolTransaction(input: { authority: string; poolId: number }): Promise<BuiltTransaction> {
     return this.build('close_pool', input, input.authority, [input.authority]);
+  }
+
+  async buildCreatePledgeTransaction(input: { sponsor: string; poolId: number; rideId: string; driver: string; lamportsPerKm: bigint; targetKm: number }): Promise<BuiltTransaction> {
+    return this.build('create_pledge', { ...input, lamportsPerKm: input.lamportsPerKm.toString() }, input.sponsor, [input.sponsor]);
+  }
+  async readPledgeEvents(signature: string): Promise<ReadPledgeEventsAnswer> {
+    this.up();
+    return this.pledgeEvents.get(signature) ?? 'pending';
+  }
+  async pledgeSignatures(pda: string): Promise<string[]> {
+    this.up();
+    if (this.failingPledgePdas.has(pda)) throw new ServiceUnavailableError(`Solana RPC unavailable (history of ${pda})`);
+    return [...(this.pledgeHistory.get(pda) ?? [])].reverse();
   }
 
   async readEvents(signature: string): Promise<ReadEventsAnswer> {
@@ -108,7 +151,7 @@ export class FakePoolChain extends PoolChainPort {
     if (this.rpcDown) throw new ServiceUnavailableError('Solana RPC unavailable');
   }
 
-  private build(kind: ChainTxKind, input: Record<string, unknown>, feePayer: string, signers: string[]): BuiltTransaction {
+  private build(kind: BuiltKind, input: Record<string, unknown>, feePayer: string, signers: string[]): BuiltTransaction {
     this.up();
     const blockhash = Keypair.generate().publicKey.toBase58();
     const ix = new TransactionInstruction({

@@ -21,6 +21,8 @@ custom-panic = []
 
 [dependencies]
 anchor-lang = { version = "1.2.1", features = ["init-if-needed"] }
+# SHA-256 of the road seed commitment (the sol_sha256 syscall on chain; the sha2 crate only off chain – tests, IDL build)
+solana-sha256-hasher = { version = "3.1.0", features = ["sha2"] }
 
 [dev-dependencies]
 litesvm = "0.10.0"

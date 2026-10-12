@@ -206,7 +206,7 @@
             <small><u>70%</u> prizes (Attestation PDA gated) · <u>20%</u> next pool · <u>10%</u> fees</small></div>
         </li>
       </ol>
-      <p class="dim" id="escrow-status">The Anchor v3 program is on devnet with provable blockhash road seed commitments, RFC 6962 telemetry roots, and on-chain Attestation PDAs gating prize settlement. Community sponsors back drivers with per-km Pledge PDAs. Connect with 1-click Native SIWS, display your .sol name via SNS, and pay via Phantom, Solflare, or Solana Pay.</p>
+      <p class="dim" id="escrow-status">Program v3 is on devnet: the program commits each pool's road seed from the SlotHashes sysvar, and a prize needs the payout key's attestation (verified km + the ride's RFC 6962 telemetry root). Spectators can pledge SOL per km to a driver. Connect with 1-click Native SIWS, display your .sol name via SNS, and pay via Phantom, Solflare, or Solana Pay.</p>
       <a class="link" id="escrow-link" href="/whitepaper.html#onchain">The whole escrow, with diagrams, in the whitepaper →</a>
     </div>
   </div>
@@ -218,9 +218,9 @@
     <article data-card="proof" class="oc w"><div class="oc-in">
       <div class="fr"><div class="stage"><img src="/media/chain/proof.svg" width="240" height="124" loading="lazy" decoding="async" alt="Four 15-second batches hash up into one verified Merkle root"><i class="stk p tl">RFC 6962</i><i class="stk tr">PDA ✓</i><i class="stk a br">blockhash</i></div>
         <footer><b>PROVEN DRIVE</b><span>Nobody picks the road. A prize needs proof.</span></footer></div>
-      <div class="bk"><div class="rcpt"><b class="t">ATTESTATION · EXAMPLE</b><p><span>seed</span><b>SHA-256(pool · blockhash · slot)</b></p><p><span>batches</span><b>164 × 15 s</b></p><p><span>root</span><b>9f3a…c21</b></p><p><span>status</span><b class="ok">VERIFIED</b></p></div>
+      <div class="bk"><div class="rcpt"><b class="t">ATTESTATION · EXAMPLE</b><p><span>seed</span><b>SHA-256(pool · slot hash · slot)</b></p><p><span>batches</span><b>164 × 15 s</b></p><p><span>root</span><b>9f3a…c21</b></p><p><span>status</span><b class="ok">VERIFIED</b></p></div>
         <p>Same road for every rider of a pool. No attestation, no prize.</p>
-        <ul><li>The pool’s road seed is hashed from a Solana blockhash and stored on chain when the pool opens, before anyone drives.</li><li>Every 15 s of driving is a hashed batch; a ride’s batches roll up into one Merkle root.</li><li>The program pays a prize only to a wallet with a VERIFIED Attestation PDA.</li></ul>
+        <ul><li>The program hashes the newest Solana slot hash into the pool’s road seed when the pool opens – nobody passes a seed in.</li><li>Every 15 s of driving is a hashed batch; a ride’s batches roll up into one Merkle root.</li><li>The program pays a prize only to a wallet the payout key attested as VERIFIED – the server’s verdict, on chain.</li></ul>
         <nav><a href="/whitepaper.html#onchain">Whitepaper →</a><a href="/whitepaper.html#verify">Anti-cheat →</a></nav></div></div></article>
     <article data-card="pledge" class="oc"><div class="oc-in">
       <div class="fr"><div class="stage"><img src="/media/chain/pledge.svg" width="240" height="124" loading="lazy" decoding="async" alt="412 km of a 0.5 SOL pledge: 0.412 SOL to the driver, 0.088 SOL back"><i class="stk p tl">Pledge PDA</i></div>
@@ -300,7 +300,7 @@
           <tr class="leg"><th colspan="3">LEG 2 · THE FAIR <small>Oct 6–12</small></th><td class="stamp"><span class="st now">ROLLING</span></td></tr>
           <tr class="done"><td class="box">☑</td><td>Verified play: every input recorded, a server verdict, shadow mode, a signed admin review queue</td><td class="note">Oct 7</td><td></td></tr>
           <tr class="done"><td class="box">☑</td><td>Live streams + replays: watch any ride 25 s behind, CB chat, paid night / potholes, the history</td><td class="note">Oct 8</td><td></td></tr>
-          <tr class="done"><td class="box">☑</td><td>Anchor v3 on devnet (81 tests): Attestation PDAs gating prizes, per-km Pledge PDAs</td><td class="note">Oct 12</td><td></td></tr>
+          <tr class="done"><td class="box">☑</td><td>Program v3 on devnet: attestation-gated prizes, per-km pledges, the road seed committed on chain</td><td class="note">Oct 12</td><td></td></tr>
           <tr class="done"><td class="box">☑</td><td>Garage (5 slots), promo codes, cosmetics; the storybook and the whitepaper; the admin page</td><td class="note">Oct 8</td><td></td></tr>
           <tr class="done"><td class="box">☑</td><td>X, YouTube, a trailer cut from real gameplay with its own 8-bit soundtrack</td><td class="note">Oct 9</td><td></td></tr>
           <tr class="next"><td class="box">☐</td><td>Product analytics: the PostHog relay and ten funnels are wired, half the board reads</td><td class="note">50 %</td><td></td></tr>

@@ -75,6 +75,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 #watch .w-fx{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin:4px 0}
 #watch .w-fx button{display:flex;flex-direction:column;align-items:center;gap:2px}#watch .w-fx small{font-weight:normal;opacity:.8}
 #watch .w-small{font-size:11px;margin:2px 0;min-height:1em}
+#watch .w-pledge .w-say{align-items:center}#watch .w-pledge input{flex:1 1 4em}#watch .w-pledges:empty{display:none}#watch .w-pledges .w-line{font-size:12px}
 #watch .pay-qr svg{width:148px;height:148px;background:#fff;display:block}
 #watch .w-foot{display:flex;justify-content:space-between;gap:8px;font-size:11px}#watch a{color:#ffcf5a}
 #watch.folded{width:auto;bottom:auto}#watch.folded>*:not(.w-top):not(.w-leave){display:none}

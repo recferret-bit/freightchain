@@ -4,6 +4,8 @@ import { ProgramChainAdapter, CU_LIMITS, parseKeypair } from '../../../../src/in
 import type { EnvService } from '../../../../src/infrastructure/config/env.service.js';
 import { NotFoundError, ServiceUnavailableError } from '../../../../src/domain/shared/errors.js';
 import { FakeClock } from '../../../support/fake-clock.js';
+import { rideIdToBytes } from '../../../../src/domain/economy/pledge.types.js';
+import { PoolProgramCodec } from '../../../../src/infrastructure/solana/pool-program.codec.js';
 import { expectedEvent, fixtureAccount, fixtureTx, poolProgramFixture, type FixtureInstruction } from '../../../support/chain-fixtures.js';
 
 /* The RPC is replaced (no network): this checks what the adapter asks for and builds, against the REAL program's instructions and logs (LiteSVM fixtures). */
@@ -62,16 +64,20 @@ describe('ProgramChainAdapter – builds what the program accepted', () => {
     expect(tx.signatures.map((s) => s.publicKey.toBase58())).toEqual([fx.keys.b]);
   });
 
-  it('a buy with a reference keeps the program instruction and adds the reference on a memo, read-only', async () => {
+  it('a buy with a reference: the reference rides on buy_ticket as a read-only remaining account; the memo carries only the order id, no accounts', async () => {
     const { adapter } = adapterWith();
     const reference = Keypair.generate().publicKey.toBase58();
     const built = await adapter.buildBuyTransaction({ payer: fx.keys.b, poolId: 0, qty: 1, orderId: ORDER_B, reference });
     const { tx, ixs } = programIxs(built.transaction);
-    expect(ixs[0]).toEqual(asCompiled(fixtureTx('buy_ticket self-paid').instructions, built.feePayer)[0]);
+    const plain = tx.instructions[2]!, want = fixtureTx('buy_ticket self-paid').instructions[0]!;
+    expect(plain.data.toString('base64')).toBe(Buffer.from(want.data, 'base64').toString('base64'));
+    expect(plain.keys.slice(0, -1).map((k) => k.pubkey.toBase58())).toEqual(want.accounts.map((a: { pubkey: string }) => a.pubkey));
+    expect(plain.keys.at(-1)).toMatchObject({ isSigner: false, isWritable: false });
+    expect(plain.keys.at(-1)?.pubkey.toBase58()).toBe(reference);
     expect(tx.instructions[3]?.programId.toBase58()).toBe('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
     expect(tx.instructions[3]?.data.toString()).toBe(ORDER_B);
-    expect(tx.instructions[3]?.keys).toEqual([expect.objectContaining({ isSigner: false, isWritable: false })]);
-    expect(tx.instructions[3]?.keys[0]?.pubkey.toBase58()).toBe(reference);
+    expect(tx.instructions[3]?.keys).toEqual([]);
+    void ixs;
   });
 
   it('a refund (+ fail_pool) reads the ticket\'s rent payer; refused when there is no ticket', async () => {
@@ -107,6 +113,74 @@ describe('ProgramChainAdapter – builds what the program accepted', () => {
   });
 });
 
+describe('ProgramChainAdapter – pledges and attestations', () => {
+  const RIDE = '6ba7b810-9dad-41d1-80b4-00c04fd430c8';
+  /** the fixture tx's logs with its event's ride id (bytes 8..40 of the event, a test pattern) swapped for a server ride id (a uuid zero-padded to 32 bytes) */
+  const withRide = (name: string) => fixtureTx(name).logs.map((l) => {
+    if (!l.startsWith('Program data: ')) return l;
+    const b = Buffer.from(l.slice('Program data: '.length), 'base64');
+    Buffer.from(rideIdToBytes(RIDE)).copy(b, 8);
+    return `Program data: ${b.toString('base64')}`;
+  });
+  const readerOf = (logs: string[] | null, err: unknown = null) => adapterWith({ getTransaction: async () => (logs ? { slot: 9, meta: { err, logMessages: logs } } : null) }).adapter;
+
+  it('readPledgeEvents decodes the program\'s real PledgeCreated / PledgeSettled / PledgeRefunded (lamports as bigint, the ride id back as the uuid)', async () => {
+    const created = fixtureTx('create_pledge (winner)').events[0]!;
+    expect(await readerOf(withRide('create_pledge (winner)')).readPledgeEvents('sigC')).toEqual([{
+      kind: 'PledgeCreated', signature: 'sigC', slot: 9, rideId: RIDE, sponsor: created['sponsor'], driver: created['driver'], pool: created['pool'],
+      maxLamports: 1_000_000n, lamportsPerKm: 10_000n, targetKm: 100,
+    }]);
+    expect(await readerOf(withRide('settle_pledge')).readPledgeEvents('sigS')).toEqual([expect.objectContaining({
+      kind: 'PledgeSettled', rideId: RIDE, verifiedKm: 60, earnedLamports: 600_000n, refundedLamports: 400_000n,
+    })]);
+    expect(await readerOf(withRide('refund_pledge')).readPledgeEvents('sigR')).toEqual([expect.objectContaining({ kind: 'PledgeRefunded', rideId: RIDE, refundedLamports: 1_000_000n })]);
+    expect(await readerOf(fixtureTx('buy_ticket self-paid').logs).readPledgeEvents('sigB')).toEqual([]); // pool events are not pledge events
+  });
+
+  it('readPledgeEvents: pending / failed / truncated, and a ride id that is no padded uuid is invalid, never guessed', async () => {
+    expect(await readerOf(null).readPledgeEvents('s')).toBe('pending');
+    expect(await readerOf([], { InstructionError: [0, { Custom: 6000 }] }).readPledgeEvents('s')).toEqual({ invalid: expect.stringMatching(/failed/) });
+    expect(await readerOf([...withRide('settle_pledge'), 'Log truncated']).readPledgeEvents('s')).toEqual({ invalid: expect.stringMatching(/truncated/) });
+    expect(await readerOf(fixtureTx('settle_pledge').logs).readPledgeEvents('s')).toEqual({ invalid: expect.stringMatching(/undecodable/) });
+  });
+
+  it('create_pledge: the sponsor signs and pays; the pledge PDA of (ride uuid, sponsor); the args the program checks (max = rate × km)', async () => {
+    const { adapter } = adapterWith();
+    const built = await adapter.buildCreatePledgeTransaction({ sponsor: fx.keys.a, poolId: 4, rideId: RIDE, driver: fx.keys.winner, lamportsPerKm: 10_000n, targetKm: 100 });
+    const codec = new PoolProgramCodec(fx.programId);
+    const fixtureIx = fixtureTx('create_pledge (winner)').instructions[0]!;
+    const expected = codec.instruction('create_pledge', {
+      sponsor: fx.keys.a, driver: fx.keys.winner, config: codec.configPda(), pool: codec.poolPda(4), pledge: codec.pledgePda(rideIdToBytes(RIDE), fx.keys.a),
+    }, { ride_id: rideIdToBytes(RIDE), driver: fx.keys.winner, max_lamports: 1_000_000n, lamports_per_km: 10_000n, target_km: 100 });
+    const { ixs, tx } = programIxs(built.transaction);
+    expect(ixs[0]!.data).toBe(expected.data.toString('base64'));
+    expect(ixs[0]!.accounts.map((a) => a.pubkey)).toEqual(expected.keys.map((k) => k.pubkey.toBase58()));
+    expect(ixs[0]!.accounts.map((a) => a.pubkey)[2]).toBe(fixtureIx.accounts[2]!.pubkey); // the config, as the program saw it
+    expect(built).toMatchObject({ feePayer: fx.keys.a, computeUnits: CU_LIMITS.create_pledge });
+    expect(tx.signatures.map((s) => s.publicKey.toBase58())).toEqual([fx.keys.a]);
+  });
+
+  it('pay_prize with `attest`: a record_attestation (the same admin) goes first unless the winner already has one; the fixture\'s data and accounts', async () => {
+    const att = fixtureTx('record_attestation by the payout key').instructions[0]!;
+    const facts = { telemetryRoot: Buffer.alloc(32, 7), verifiedKm: 60 };
+    const none = adapterWith({ getAccountInfo: async () => null }).adapter;
+    const built = await none.buildPayPrizeTransaction({ authority: fx.keys.payout, poolId: 4, to: fx.keys.winner, lamports: 100_000, rank: 1, attest: facts });
+    const { ixs } = programIxs(built.transaction);
+    expect(ixs).toHaveLength(2);
+    expect(ixs[0]!.data).toBe(att.data); // the program's own bytes (flags differ only by the message's per-account union with pay_prize)
+    expect(ixs[0]!.accounts.map((a) => a.pubkey)).toEqual(att.accounts.map((a) => a.pubkey));
+    expect(built.computeUnits).toBe(CU_LIMITS.pay_prize + CU_LIMITS.record_attestation);
+    const attested = adapterWith({ getAccountInfo: async () => accountInfo('attestation pool 4 winner') }).adapter;
+    const plain = await attested.buildPayPrizeTransaction({ authority: fx.keys.payout, poolId: 4, to: fx.keys.winner, lamports: 100_000, rank: 1, attest: facts });
+    expect(programIxs(plain.transaction).ixs).toHaveLength(1);
+  });
+
+  it('pledgeSignatures: the account\'s successful transactions, newest first', async () => {
+    const { adapter } = adapterWith({ getSignaturesForAddress: async () => [{ signature: 'new', err: null }, { signature: 'failed', err: { x: 1 } }, { signature: 'old', err: null }] });
+    expect(await adapter.pledgeSignatures(fx.keys.a)).toEqual(['new', 'old']);
+  });
+});
+
 describe('ProgramChainAdapter – reads', () => {
   it('readEvents decodes the program\'s events; pending / failed / unrelated / truncated', async () => {
     const t = fixtureTx('buy_ticket self-paid');
@@ -130,7 +204,8 @@ describe('ProgramChainAdapter – reads', () => {
       vault: fixtureTx('buy_ticket self-paid').instructions[0]!.accounts[4]!.pubkey, authority: fx.keys.authority, tier: 1, priceLamports: 100_000_000, minTickets: 3, maxTickets: 10, maxPerWallet: 4,
       prepDeadline: new Date(Number(d['prepDeadline']) * 1000), playDeadline: new Date(Number(d['playDeadline']) * 1000), payoutAt: new Date(Number(d['payoutAt']) * 1000), prizeBps: 6000, seedBps: 2500, feeBps: 1500,
       feeTreasury: fx.keys.feeTreasury, seedTreasury: fx.keys.seedTreasury, createdAt: new Date(Number(d['createdAt']) * 1000),
-      seedCommitment: (d['seedCommitment'] as string | undefined) ?? 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=', stakedLamports: 0, yieldEarned: 0,
+      seedCommitment: (d['seedCommitment'] as string | undefined) ?? 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
+      seedSlot: Number(d['seedSlot']), seedSlotHash: bs58.encode(Buffer.from(String(d['seedSlotHash']), 'base64')),
     });
     // the rent minimum is the cluster's own (read once): devnet's is lower than mainnet's, so the escrow there is vault − 650 240
     let rentReads = 0;

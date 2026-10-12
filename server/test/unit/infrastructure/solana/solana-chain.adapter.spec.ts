@@ -23,15 +23,15 @@ describe('SolanaChainAdapter', () => {
     expect(tx.instructions[1]?.data.toString()).toBe('ride-1');
   });
 
-  it('puts the reference on the memo as a read-only non-signer (a writable key would have to exist)', async () => {
+  it('puts the reference on the TRANSFER as a read-only non-signer – the memo program wants every account it gets to sign', async () => {
     const reference = Keypair.generate().publicKey.toBase58();
     const blockhash = Keypair.generate().publicKey.toBase58();
     const adapter = adapterWith({ getLatestBlockhash: async () => ({ blockhash, lastValidBlockHeight: 99 }) });
     const out = await adapter.buildPaymentTransaction({ payer, treasury, lamports: 42, memo: 'ride-1', reference });
     const tx = Transaction.from(Buffer.from(out.transaction, 'base64'));
-    const key = tx.instructions[1]?.keys.find((k) => k.pubkey.toBase58() === reference);
+    const key = tx.instructions[0]?.keys.find((k) => k.pubkey.toBase58() === reference);
     expect(key).toMatchObject({ isSigner: false, isWritable: false });
-    expect(tx.instructions[0]?.keys.some((k) => k.pubkey.toBase58() === reference)).toBe(false); // the memo carries it; the transfer stays two accounts
+    expect(tx.instructions[1]?.keys.every((k) => k.isSigner)).toBe(true); // the memo only carries signers (the payer)
   });
 
   it('getTransaction: null when not visible yet; the chain view when it is', async () => {

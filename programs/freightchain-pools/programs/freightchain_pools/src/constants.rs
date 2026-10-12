@@ -1,3 +1,5 @@
+use anchor_lang::prelude::*;
+
 pub const CONFIG_SEED: &[u8] = b"config";
 pub const POOL_SEED: &[u8] = b"pool";
 pub const VAULT_SEED: &[u8] = b"vault";
@@ -5,6 +7,9 @@ pub const TICKET_SEED: &[u8] = b"ticket";
 pub const SERIES_SEED: &[u8] = b"series";
 pub const ATTESTATION_SEED: &[u8] = b"attestation";
 pub const PLEDGE_SEED: &[u8] = b"pledge";
+
+/// The SlotHashes sysvar (anchor-lang 1.2 does not re-export its module)
+pub const SLOT_HASHES_ID: Pubkey = pubkey!("SysvarS1otHashes111111111111111111111111111");
 
 // Attestation.status
 pub const ATTESTATION_STATUS_UNVERIFIED: u8 = 0;

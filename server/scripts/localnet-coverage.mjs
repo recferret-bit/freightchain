@@ -17,7 +17,9 @@ import { POOL_PROGRAM_IDL as IDL } from '../dist/infrastructure/solana/pool-prog
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const TESTS = join(ROOT, 'programs/freightchain-pools/programs/freightchain_pools/tests');
 const codec = new PoolProgramCodec(IDL.address);
-const errName = code => IDL.errors.find(e => e.code === code)?.name ?? null;
+/** Anchor's own account errors a scenario provokes on purpose (v3: pay_prize to a wallet with no Attestation account fails before the handler runs) */
+const ANCHOR_ERRORS = { 2006: 'ConstraintSeeds', 3007: 'AccountOwnedByWrongProgram', 3012: 'AccountNotInitialized' };
+const errName = code => IDL.errors.find(e => e.code === code)?.name ?? ANCHOR_ERRORS[code] ?? null;
 const same = (a, b) => a.length >= b.length && b.every((x, i) => a[i] === x);
 
 /** the program error code in a simulation / transaction error ({"InstructionError":[i,{"Custom":6023}]} or the stderr text of pool-admin.mjs) */

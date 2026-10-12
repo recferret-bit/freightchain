@@ -55,8 +55,8 @@ fn pool_of(r: &Value) -> Pool {
         bump: 0,
         vault_bump: 0,
         seed_commitment: [0u8; 32],
-        staked_lamports: 0,
-        yield_earned: 0,
+        seed_slot: 0,
+        seed_slot_hash: [0u8; 32],
     }
 }
 
@@ -119,7 +119,6 @@ fn shared_table_matches_close_pool_on_chain() {
             prize_bps: n(&r, "prizeBps") as u16,
             seed_bps: n(&r, "seedBps") as u16,
             fee_bps: n(&r, "feeBps") as u16,
-            seed_commitment: [0u8; 32],
         };
         let id = e.create_pool(params);
         let buyer = funded(&mut e.svm, price * sold as u64 + 10 * SOL);

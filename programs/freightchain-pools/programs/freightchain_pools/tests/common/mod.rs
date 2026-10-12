@@ -8,7 +8,7 @@ use {
         AccountDeserialize, AnchorDeserialize, Discriminator, Event, InstructionData, ToAccountMetas,
     },
     base64::Engine,
-    freightchain_pools::{accounts, instruction, Attestation, Config, CreatePoolParams, Pledge, Pool, Series, SeriesParams, Ticket},
+    freightchain_pools::{accounts, constants::SLOT_HASHES_ID, instruction, Attestation, Config, CreatePoolParams, Pledge, Pool, Series, SeriesParams, Ticket},
     litesvm::{
         types::{FailedTransactionMetadata, TransactionMetadata},
         LiteSVM,
@@ -148,7 +148,6 @@ pub fn default_params() -> CreatePoolParams {
         prize_bps: 6000,
         seed_bps: 2500,
         fee_bps: 1500,
-        seed_commitment: [0u8; 32],
     }
 }
 
@@ -272,6 +271,7 @@ impl Env {
                 fee_treasury: fee_t,
                 seed_treasury: seed_t,
                 platform_treasury: self.plat_t.pubkey(),
+                slot_hashes: SLOT_HASHES_ID,
                 system_program: system_program::ID,
             },
         )
@@ -494,13 +494,9 @@ impl Env {
     }
 
     pub fn open_next_pool_ix(&self, tier: u8, caller: &Pubkey, fee_t: Pubkey, seed_t: Pubkey) -> Instruction {
-        self.open_next_pool_with_seed_ix(tier, caller, fee_t, seed_t, [1u8; 32])
-    }
-
-    pub fn open_next_pool_with_seed_ix(&self, tier: u8, caller: &Pubkey, fee_t: Pubkey, seed_t: Pubkey, seed_commitment: [u8; 32]) -> Instruction {
         let id = self.config().pool_count;
         ix(
-            instruction::OpenNextPool { tier, seed_commitment },
+            instruction::OpenNextPool { tier },
             accounts::OpenNextPool {
                 caller: *caller,
                 config: config_pda(),
@@ -510,6 +506,7 @@ impl Env {
                 fee_treasury: fee_t,
                 seed_treasury: seed_t,
                 platform_treasury: self.plat_t.pubkey(),
+                slot_hashes: SLOT_HASHES_ID,
                 system_program: system_program::ID,
             },
         )
@@ -579,31 +576,6 @@ impl Env {
         )
     }
 
-    pub fn record_yield(
-        &mut self,
-        id: u32,
-        who: &Keypair,
-        staked_lamports: u64,
-        yield_earned: u64,
-    ) -> Res {
-        let c = clone_kp(&self.cranker);
-        let i = ix(
-            instruction::RecordYield {
-                pool_id: id,
-                staked_lamports,
-                yield_earned,
-            },
-            accounts::RecordYield {
-                authority: who.pubkey(),
-                config: config_pda(),
-                pool: pool_pda(id),
-                vault: vault_pda(id),
-                system_program: system_program::ID,
-            },
-        );
-        self.send(&[i], &c, &[who])
-    }
-
     pub fn create_pledge(
         &mut self,
         pool_id: u32,
@@ -652,6 +624,27 @@ impl Env {
                 attestation: attestation_pda(pool_id, driver),
                 pledge: pledge_pda(&ride_id, sponsor),
                 system_program: system_program::ID,
+            },
+        );
+        self.send(&[i], caller, &[])
+    }
+
+    pub fn refund_pledge(
+        &mut self,
+        pool_id: u32,
+        ride_id: [u8; 32],
+        caller: &Keypair,
+        driver: &Pubkey,
+        sponsor: &Pubkey,
+    ) -> Res {
+        let i = ix(
+            instruction::RefundPledge { ride_id },
+            accounts::RefundPledge {
+                caller: caller.pubkey(),
+                sponsor: *sponsor,
+                pool: pool_pda(pool_id),
+                attestation: attestation_pda(pool_id, driver),
+                pledge: pledge_pda(&ride_id, sponsor),
             },
         );
         self.send(&[i], caller, &[])

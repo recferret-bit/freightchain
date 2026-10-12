@@ -65,9 +65,9 @@ export interface PoolProps {
   payoutNote: string | null;
   /** an admin's hold on the payout, null = none */
   hold: PoolHold | null;
+  /** base64 SHA-256 commitment the program made when the pool opened (chain-events.ts PoolCreatedFields) */
   seedCommitment?: string | null;
+  /** the SlotHashes entry behind it: the bank hash (base58 – the column is named blockhash) and its slot */
   blockhash?: string | null;
   slot?: bigint | number | null;
-  stakedLamports?: bigint | number;
-  yieldEarned?: bigint | number;
 }

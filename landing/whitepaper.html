@@ -374,7 +374,7 @@
       <title id="d1t">Escrow money flow</title><desc id="d1d">Players buy tickets into the pool vault. The vault pays refunds to buyers, capped prizes to drivers with Verified Attestation PDAs, community pledges per verified km, and remainder to seed and fee treasuries.</desc>
       <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ah"/></marker></defs>
       <rect class="bx" x="20" y="120" width="170" height="80" rx="8"/><text class="tx b" x="105" y="150" text-anchor="middle">Player wallets</text><text class="tx s" x="105" y="172" text-anchor="middle">each purchase signed</text>
-      <rect class="bx hi" x="345" y="105" width="190" height="110" rx="8"/><text class="tx b" x="440" y="135" text-anchor="middle">Pool vault</text><text class="tx s" x="440" y="156" text-anchor="middle">program-owned account</text><text class="tx s" x="440" y="174" text-anchor="middle">PDA ["vault", pool_id]</text><text class="tx s" x="440" y="192" text-anchor="middle">no private key</text>
+      <rect class="bx hi" x="345" y="105" width="190" height="110" rx="8"/><text class="tx b" x="440" y="135" text-anchor="middle">Pool vault</text><text class="tx s" x="440" y="156" text-anchor="middle">program-owned account</text><text class="tx s" x="440" y="174" text-anchor="middle">PDA ["vault", pool_id]</text><text class="tx s" x="440" y="192" text-anchor="middle">nothing is staked</text>
       <rect class="bx" x="670" y="20" width="170" height="60" rx="8"/><text class="tx b" x="755" y="56" text-anchor="middle">Buyers (refund)</text>
       <rect class="bx" x="670" y="105" width="170" height="60" rx="8"/><text class="tx b" x="755" y="141" text-anchor="middle">Winners (pay_prize)</text>
       <rect class="bx" x="670" y="190" width="170" height="60" rx="8"/><text class="tx b" x="755" y="226" text-anchor="middle">Seed treasury</text>
@@ -388,8 +388,8 @@
     <figcaption>Every arrow that moves money starts or ends at the vault. The server's link is dashed because it only reads what the program announced and hands players transactions to sign. A phone can sign the same transaction by scanning a Solana Pay code.</figcaption>
   </figure>
 
-  <h3 class="sub">COMMUNITY PLEDGES</h3>
-  <p><b>Community Pledges.</b> Spectators can back drivers with per-kilometre sponsorship PDAs (<code>[b"pledge", ride_id, sponsor]</code>). Pledged lamports are committed upfront via <code>create_pledge</code> and settled trustlessly by <code>settle_pledge</code>: drivers receive earnings proportional to verified distance (<code>Attestation.verified_km</code>), and all unearned surplus returns automatically to the sponsor with zero stranded lamports.</p>
+  <h3 class="sub">PLEDGES PER KM</h3>
+  <p>A spectator on the watch page can lock SOL per km for the driver of a ticket ride, up to a cap, in a <code>Pledge</code> account (<code>[b"pledge", ride_id, sponsor]</code>) that their own wallet signs. After the pool's review, <code>settle_pledge</code> pays the driver for the verified km in the driver's attestation and returns the rest and the account's rent. A driver with no judged ride, or a failed pool, means <code>refund_pledge</code> returns it all. Anyone may send either; the server does. Pool money is not staked.</p>
 
   <h3 class="sub">WALLET STANDARD &amp; DECENTRALIZED IDENTITY</h3>
   <p><b>Native 1-Click SIWS.</b> Freight Chain implements the official Solana Wallet Standard <code>solana:signIn</code> specification (CAIP-122). Instead of sequential "Connect" and "Sign Message" popups, modern Solana wallets (Phantom, Solflare, Backpack) present a single native approval sheet verifying domain origin, issued timestamps, and single-use burned nonces (<code>nonce:${nonce}</code>), with automatic fallback to standard message signing for older wallets.</p>
@@ -492,25 +492,26 @@
     <article class="claim"><em>RECEIVER</em><b>Nobody redirects a refund</b><span>The ticket is tied to your wallet. It lands with you, once.</span></article>
     <article class="claim"><em>FIXED</em><b>Rules never change</b><span>Price, deadlines, split and treasuries are written at creation.</span></article>
     <article class="claim"><em>CAP</em><b>Prizes have a ceiling</b><span>No payout can take the total above the prize share.</span></article>
-    <article class="claim"><em>ATTEST</em><b>Attestation gated</b><span>pay_prize strictly requires a Verified Attestation PDA.</span></article>
+    <article class="claim"><em>ATTEST</em><b>Attestation gated</b><span>pay_prize needs the payout key's VERIFIED attestation.</span></article>
     <article class="claim"><em>PLEDGE</em><b>Per-km solvency</b><span>settle_pledge enforces exact lamport conservation with refunds.</span></article>
+    <article class="claim"><em>SEED</em><b>Road from the chain</b><span>The program commits each pool's road seed from SlotHashes.</span></article>
     <article class="claim"><em>NO TRAP</em><b>A vanished operator can't trap it</b><span>14 days after the review anyone can expire the pool.</span></article>
     <article class="claim"><em>ADDRESSES</em><b>Money goes where declared</b><span>Only to the treasuries stored in the pool; the vault ends at zero.</span></article>
   </div>
-  <p class="dim">Technical posture: 21 instructions, 18 events, 30 error codes · integer lamports with overflow checks · Anchor 1.2.1, SBPF v0 · deployed only from a <code>solana-verify</code> reproducible build whose hash is pinned in the repository, so anyone can rebuild it and compare.</p>
+  <p class="dim">Technical posture: 21 instructions, 18 events, 32 error codes · integer lamports with overflow checks · Anchor 1.2.1, SBPF v0 · deployed only from a <code>solana-verify</code> reproducible build whose hash is pinned in the repository, so anyone can rebuild it and compare.</p>
 
   <h3 class="sub">WHO CAN DO WHAT</h3>
   <p class="core"><b>Anyone can rescue the money. Only the admin and the payout key can pay it out – after the review.</b></p>
   <div class="roles">
     <div class="role pl"><b>PLAYER</b><span>puts money in</span><ul><li>Buy a ticket</li><li>Create a pledge</li></ul></div>
     <div class="role any"><b>ANYONE</b><span>can rescue it</span><ul><li>Sponsor a pool</li><li>Fail a pool that missed its goal</li><li>Refund a ticket – it lands with the buyer</li><li>Open the next daily pool</li><li>Settle a finished pledge</li><li>Expire a stuck pool <small>+14 days</small></li></ul></div>
-    <div class="role adm"><b>ADMIN</b><span>sets the rules</span><ul><li>Schedule · create · cancel · pause</li><li>Close and split <small>anyone after +14 days</small></li></ul></div>
+    <div class="role adm"><b>ADMIN</b><span>sets the rules</span><ul><li>Schedule · create · cancel · pause</li><li>Attest verdicts <small>payout key</small></li><li>Close and split <small>anyone after +14 days</small></li></ul></div>
     <div class="role srv"><b>GAME SERVER</b><span>payout key</span><ul><li>Records driver attestation PDA</li><li>Pays verified winners <small>requires Verified PDA</small></li><li>Closes the pool</li><li class="no">Rules, refunds, treasuries: never</li></ul></div>
   </div>
 
   <h3 class="sub">WHAT THE PROGRAM DOES NOT PROMISE</h3>
   <ul class="honest">
-    <li><b>Telemetry truth.</b> The program verifies the telemetry root and km recorded in the <code>Attestation</code> PDA, but the off-chain engine produces those facts (<a href="#verify">06</a>).</li>
+    <li><b>Telemetry truth.</b> The program only checks that the payout key signed the <code>Attestation</code>; the telemetry root and km in it are the off-chain judge's (<a href="#verify">06</a>).</li>
     <li><b>Off-chain ranking.</b> The program enforces a <code>Verified</code> attestation before paying, but order (1st vs 2nd) follows server ranking within the prize cap.</li>
     <li><b>The treasuries.</b> The seed and fee treasuries are wallets the operator controls. A pool fixes their addresses, not what happens to the money afterwards.</li>
     <li><b>Maturity.</b> Not audited, devnet only.</li>
@@ -540,11 +541,11 @@
     <li><i>2</i><b>A CHECKABLE RECORDING</b><span>Every key and a 10 Hz sample of the truck, sealed every 15 s into SHA-256 hash-chained batches. The server re-hashes on arrival and computes an RFC 6962 Merkle tree root.</span></li>
     <li><i>3</i><b>PHYSICS BOUNDS</b><span>Under the governor, no step the truck cannot make, samples in order. Speed hacks and teleports reject.</span></li>
     <li><i>4</i><b>AGREEMENT WITH THE RIDE</b><span>The recording ends where the ride ended and covers the driven time; a moving truck has hands on it.</span></li>
-    <li><i>5</i><b>THE SERVER'S ROAD &amp; SEED</b><span>Holes come from an on-chain provable seed commitment SHA256(poolId || blockhash || slot). A truck driving through at speed must lose hull; holes removed rejects.</span></li>
+    <li><i>5</i><b>THE SERVER'S ROAD &amp; SEED</b><span>Holes come from the pool's seed, which the program commits from the SlotHashes sysvar. A truck driving through at speed must lose hull; holes removed rejects.</span></li>
     <li><i>6</i><b>BUDGETS</b><span>Time, batches and bytes per ride, size per batch, rate limits. Uploading faster than real time is refused.</span></li>
     <li><i>7</i><b>HOW HUMAN THE HANDS LOOK</b><span>Hold lengths, rhythms, press durations – statistics that only flag.</span></li>
     <li><i>8</i><b>CHALLENGE CHANNEL</b><span>The heartbeat can ask for a challenge; the cab handler shows whatever the DTO names. Kinds are a table, empty today so none are issued. When a kind is live: no answer is a bot that cannot see; an instant one is a script reading the heartbeat.</span></li>
-    <li><i>9</i><b>ON-CHAIN ATTESTATION PDA</b><span>Flagged shifts wait for signed decision; verified shifts get an on-chain Attestation PDA ([b"attestation", pool, driver]), strictly gating pay_prize.</span></li>
+    <li><i>9</i><b>ON-CHAIN ATTESTATION PDA</b><span>Flagged shifts wait for signed decision; verified shifts get the payout key's Attestation ([b"attestation", pool, driver]), which pay_prize requires.</span></li>
   </ol>
 
   <h3 class="sub">WHAT IS RECORDED – AND WHAT IS NOT</h3>
@@ -561,7 +562,7 @@
   <p>The heartbeat can carry a challenge about every 240 s of driving (none on the free run; at most four on a short shift, 0.6–1.4 intervals apart so the rhythm cannot be guessed). The cab handler shows whatever the DTO names as an amber banner with a 20 s bar. Kinds live in a table on the server; that table is empty today, so none are issued. When a kind is live, the judge looks for that key within 20 s of the moment the server issued the prompt. Half or more of 3+ prompts ignored rejects; one missed only flags; a median answer under 80 ms after the server issued it is faster than a person can read it and flags. A prompt still open when the ride ends is not judged.</p>
 
   <h3 class="sub">THE SERVER'S ROAD &amp; SEED COMMITMENT</h3>
-  <p>The road and its sinkholes are a pure function of the ride's seed and trip. In Anchor v3, this seed is committed on-chain when the pool opens: <code>SHA256(poolId || blockhash || slot)</code> projected into a 31-bit seed. Neither driver nor operator can bias or predict the layout in advance. The server rebuilds them itself and hands the game the ride's <b>obstacle plan</b> (<code>GET /api/watch/:id/road</code>); the game drives over those holes, and every batch is measured against the same plan when it arrives. Each axle entering a pit costs the hull <code>dmg × (v/28)²</code> – 14 % for the front axle in a sinkhole at 28 m/s, rear axles × 0.6. A wheel that runs through a planned hole at speed must show at least a quarter of that loss. Two or more holes driven through untouched reject; one flags.</p>
+  <p>The road and its sinkholes are a pure function of the ride's seed and trip. In program v3 the program itself commits it when the pool opens: <code>SHA-256(pool_id ‖ slot hash ‖ slot)</code> over the newest SlotHashes entry, projected into a 31-bit seed. No caller passes a seed, so neither a driver nor the operator picks the road, and anyone can recompute the commitment from the pool account. The server rebuilds them itself and hands the game the ride's <b>obstacle plan</b> (<code>GET /api/watch/:id/road</code>); the game drives over those holes, and every batch is measured against the same plan when it arrives. Each axle entering a pit costs the hull <code>dmg × (v/28)²</code> – 14 % for the front axle in a sinkhole at 28 m/s, rear axles × 0.6. A wheel that runs through a planned hole at speed must show at least a quarter of that loss. Two or more holes driven through untouched reject; one flags.</p>
   <figure class="diagram">
     <svg viewBox="0 0 920 250" role="img" aria-labelledby="d4t d4d">
       <title id="d4t">The server's road</title><desc id="d4d">The ride's seed gives the server's obstacle plan. The game drives over it and a replay draws it. The recording is measured against the same plan: a hit shows a hull drop at the hole, a game without the hole shows none and is rejected.</desc>
@@ -626,7 +627,7 @@
     <li><i>2</i><b>ADMIN WALLET</b><span>Only listed wallets can sign in, for 2 hours. A player login opens nothing.</span></li>
     <li><i>3</i><b>EVERY DECISION SIGNED</b><span>Accept, reject and re-judge are each signed by the admin's wallet for that exact ride and decision.</span></li>
     <li><i>4</i><b>AUDIT LOG</b><span>Who decided what, when, why, and the signature are kept for good. A late upload never overturns a human decision; neither does a bulk re-judge after a rules change.</span></li>
-    <li><i>5</i><b>ON-CHAIN ATTESTATION GATING</b><span>The server's payout authority commits an on-chain <code>Attestation</code> PDA (<code>[b"attestation", pool, driver]</code>) storing the telemetry root and verified km. <code>pay_prize</code> strictly verifies status on-chain.</span></li>
+    <li><i>5</i><b>ON-CHAIN ATTESTATION GATING</b><span>The server's payout authority commits an on-chain <code>Attestation</code> PDA (<code>[b"attestation", pool, driver]</code>) storing the telemetry root and verified km. <code>pay_prize</code> refuses a wallet without a verified one.</span></li>
   </ol>
 
   <h3 class="sub">LIMITS, SAID PLAINLY</h3>
