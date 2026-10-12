@@ -8,12 +8,14 @@ import { PoolChainPort } from '../../../ports/economy/pool-chain.port.js';
 import { PoolRepositoryPort } from '../../../ports/economy/pool.repository.port.js';
 import { RideQueryPort } from '../../../ports/rides/ride-query.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
+import { AttestationService } from '../../../services/attestation.service.js';
 import { GetPayoutTransactionsQuery, type PayoutTransactionsDto, type PayoutTxDto } from './get-payout-transactions.query.js';
 
 /**
  * Admin only (the wallet in TREASURY_PUBKEY – the program's authority): the payouts of an active pool after its review window (payout_at – the program refuses
  * any prize before it), ranked by the VERIFIED completed rides paid with its tickets (always – shadow mode is for the public boards, never for money) (top 3 25 / 15 / 10 parts of 70, top 20 share 20 parts – domain/economy/pool-payouts.ts), as unsigned pay_prize transactions the admin
- * signs in Phantom (the admin pays their fee). Ranks already paid on chain are left out; close_pool follows once none is left. The server holds no key.
+ * signs in Phantom (the admin pays their fee). A winner without a VERIFIED attestation gets its record_attestation (the server's verdict + the recording's Merkle
+ * root, signed by the same admin) in front of its pay_prize – program v3 pays no prize without one. Ranks already paid on chain are left out; close_pool follows once none is left. The server holds no key.
  */
 @QueryHandler(GetPayoutTransactionsQuery)
 export class GetPayoutTransactionsHandler implements IQueryHandler<GetPayoutTransactionsQuery, PayoutTransactionsDto> {
@@ -24,6 +26,7 @@ export class GetPayoutTransactionsHandler implements IQueryHandler<GetPayoutTran
     private readonly chain: PoolChainPort,
     private readonly rules: RulesConfigPort,
     private readonly clock: ClockPort,
+    private readonly attestation: AttestationService,
   ) {}
 
   async execute({ wallet, poolId }: GetPayoutTransactionsQuery): Promise<PayoutTransactionsDto> {
@@ -40,7 +43,8 @@ export class GetPayoutTransactionsHandler implements IQueryHandler<GetPayoutTran
     const ranks = ranking.map((r, i) => ({ rank: i + 1, wallet: r.wallet, distance: Math.round(r.distance), rides: r.rides, lamports: amounts.get(r.wallet) ?? 0, paid: paidTo.has(r.wallet) }));
     const transactions: PayoutTxDto[] = [];
     for (const r of ranks.filter((x) => !x.paid && x.lamports > 0)) {
-      const tx = await this.chain.buildPayPrizeTransaction({ authority: wallet, poolId, to: r.wallet, lamports: r.lamports, rank: r.rank });
+      const attest = (await this.attestation.verifiedFacts(poolId, r.wallet)) ?? undefined;
+      const tx = await this.chain.buildPayPrizeTransaction({ authority: wallet, poolId, to: r.wallet, lamports: r.lamports, rank: r.rank, attest });
       transactions.push({ rank: r.rank, to: r.wallet, lamports: r.lamports, transaction: tx.transaction, message: tx.message, lastValidBlockHeight: tx.lastValidBlockHeight });
     }
     const closeTx = transactions.length === 0 ? await this.chain.buildClosePoolTransaction({ authority: wallet, poolId }) : null;

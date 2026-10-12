@@ -142,13 +142,21 @@ export class ProgramChainAdapter extends PoolChainPort {
     return this.build(ixs, i.caller, i.poolId, CU_LIMITS.refund + (i.needsFail ? CU_LIMITS.fail_pool : 0));
   }
 
-  async buildPayPrizeTransaction(i: { authority: string; poolId: number; to: string; lamports: number; rank: number }): Promise<BuiltTransaction> {
-    const c = this.codec;
-    const ix = c.instruction('pay_prize', {
-      authority: i.authority, config: c.configPda(), pool: c.poolPda(i.poolId), vault: c.vaultPda(i.poolId), to: i.to,
-      attestation: c.attestationPda(i.poolId, i.to),
-    }, { pool_id: i.poolId, lamports: i.lamports, rank: i.rank });
-    return this.build([ix], i.authority, i.poolId, CU_LIMITS.pay_prize);
+  async buildPayPrizeTransaction(i: { authority: string; poolId: number; to: string; lamports: number; rank: number; attest?: { telemetryRoot: Uint8Array; verifiedKm: number } }): Promise<BuiltTransaction> {
+    const c = this.codec, attestation = c.attestationPda(i.poolId, i.to);
+    const ixs: TransactionInstruction[] = [];
+    if (i.attest) {
+      const info = await this.rpc.read((x) => x.getAccountInfo(attestation, this.commitment));
+      const a = info?.owner.equals(c.programId) ? c.decodeAccount('Attestation', info.data) : null;
+      if (!a || a['status'] !== 1 || !((a['verifiedKm'] as number) > 0)) {
+        ixs.push(c.instruction('record_attestation', { authority: i.authority, config: c.configPda(), pool: c.poolPda(i.poolId), driver_account: i.to, attestation },
+          { pool_id: i.poolId, driver: i.to, telemetry_root: i.attest.telemetryRoot, verified_km: i.attest.verifiedKm, status: 1 }));
+      }
+    }
+    ixs.push(c.instruction('pay_prize', {
+      authority: i.authority, config: c.configPda(), pool: c.poolPda(i.poolId), vault: c.vaultPda(i.poolId), to: i.to, attestation,
+    }, { pool_id: i.poolId, lamports: i.lamports, rank: i.rank }));
+    return this.build(ixs, i.authority, i.poolId, CU_LIMITS.pay_prize + (ixs.length > 1 ? CU_LIMITS.record_attestation : 0));
   }
 
   async buildClosePoolTransaction(i: { authority: string; poolId: number }): Promise<BuiltTransaction> {

@@ -9,7 +9,7 @@ use freightchain_pools::{
 };
 use litesvm::types::TransactionMetadata;
 use solana_keypair::Keypair;
-use anchor_lang::prelude::Pubkey;
+use anchor_lang::{prelude::Pubkey, AccountDeserialize};
 use solana_signer::Signer;
 
 /// What a successful settle_pledge moved: the pledge account is closed, so its whole balance (cap + rent) leaves it.
@@ -779,4 +779,56 @@ fn refund_pledge_allowed_with_an_unverified_attestation() {
     // and a refunded pledge cannot be settled
     let caller = funded(&mut e.svm, SOL);
     assert_closed_err(e.settle_pledge(id, ride_id, &caller, &driver.pubkey(), &sponsor.pubkey()));
+}
+
+// ── defensive checks only a forged account (or a bad argument) reaches – the coverage gate wants every error code asserted somewhere
+
+#[test]
+fn record_attestation_refuses_an_unknown_status() {
+    let mut e = Env::new();
+    let id = active_pool(&mut e);
+    let auth = e.authority_kp();
+    let driver = funded(&mut e.svm, SOL);
+    assert_err!(e.record_attestation(id, &auth, &driver.pubkey(), [1u8; 32], 5, 3), PoolError::InvalidAttestationStatus);
+}
+
+#[test]
+fn pay_prize_refuses_an_attestation_naming_another_driver() {
+    // the PDA is seeded with the winner, so the program itself never writes one naming someone else; a forged account must still not pay
+    let mut e = Env::new();
+    let id = active_pool(&mut e);
+    let auth = e.authority_kp();
+    let (winner, other) = (funded(&mut e.svm, SOL), funded(&mut e.svm, SOL));
+    e.set_attestation(id, &winner.pubkey(), 5, ATTESTATION_STATUS_VERIFIED);
+    let pda = attestation_pda(id, &winner.pubkey());
+    let mut acc = e.svm.get_account(&pda).unwrap();
+    let mut a = freightchain_pools::Attestation::try_deserialize(&mut &acc.data[..]).unwrap();
+    a.driver = other.pubkey();
+    let mut data = <freightchain_pools::Attestation as anchor_lang::Discriminator>::DISCRIMINATOR.to_vec();
+    anchor_lang::AnchorSerialize::serialize(&a, &mut data).unwrap();
+    acc.data = data;
+    e.svm.set_account(pda, acc).unwrap();
+    assert_err!(e.pay_prize_with_attestation(id, &auth, &winner.pubkey(), pda, 1_000_000, 1), PoolError::AttestationMismatch);
+}
+
+#[test]
+fn settle_pledge_refuses_an_account_marked_settled() {
+    // settle and refund close the account, so `settled` is never true on a live one; a forged flag must not pay twice
+    let mut e = Env::new();
+    let id = active_pool(&mut e);
+    let (driver, sponsor) = (funded(&mut e.svm, SOL), funded(&mut e.svm, 5 * SOL));
+    let ride_id = [0x7a; 32];
+    e.create_pledge(id, ride_id, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
+    e.set_attestation(id, &driver.pubkey(), 50, ATTESTATION_STATUS_VERIFIED);
+    let pda = pledge_pda(&ride_id, &sponsor.pubkey());
+    let mut acc = e.svm.get_account(&pda).unwrap();
+    let mut p = freightchain_pools::Pledge::try_deserialize(&mut &acc.data[..]).unwrap();
+    p.settled = true;
+    let mut data = <freightchain_pools::Pledge as anchor_lang::Discriminator>::DISCRIMINATOR.to_vec();
+    anchor_lang::AnchorSerialize::serialize(&p, &mut data).unwrap();
+    acc.data = data;
+    e.svm.set_account(pda, acc).unwrap();
+    let caller = funded(&mut e.svm, SOL);
+    assert_err!(e.settle_pledge(id, ride_id, &caller, &driver.pubkey(), &sponsor.pubkey()), PoolError::AlreadySettled);
+    assert_err!(e.refund_pledge(id, ride_id, &caller, &driver.pubkey(), &sponsor.pubkey()), PoolError::AlreadySettled);
 }

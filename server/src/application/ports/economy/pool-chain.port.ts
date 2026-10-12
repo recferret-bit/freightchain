@@ -45,8 +45,9 @@ export abstract class PoolChainPort {
   /** Unsigned `fail_pool` (when `needsFail`) + `refund` for `buyer`, signed by `caller` (anyone); the price goes to the buyer, the rent to the ticket's rent payer.
       ConflictError when the buyer holds no Ticket account (never bought, or refunded already). */
   abstract buildRefundTransaction(input: { caller: string; poolId: number; buyer: string; needsFail: boolean }): Promise<BuiltTransaction>;
-  /** Unsigned `pay_prize` for the admin to sign AND send in Phantom (the admin pays its own fee). */
-  abstract buildPayPrizeTransaction(input: { authority: string; poolId: number; to: string; lamports: number; rank: number }): Promise<BuiltTransaction>;
+  /** Unsigned `pay_prize` for the admin to sign AND send in Phantom (the admin pays its own fee). `attest`: when the winner has no VERIFIED attestation on chain
+      yet, a `record_attestation` with these facts (signed by the same admin) goes first in the same transaction – the program pays no prize without one. */
+  abstract buildPayPrizeTransaction(input: { authority: string; poolId: number; to: string; lamports: number; rank: number; attest?: { telemetryRoot: Uint8Array; verifiedKm: number } }): Promise<BuiltTransaction>;
   /** Unsigned `close_pool` (treasuries read from the Pool and Config accounts), signed and paid by `authority`. NotFoundError when the pool does not exist. */
   abstract buildClosePoolTransaction(input: { authority: string; poolId: number }): Promise<BuiltTransaction>;
 

@@ -53,21 +53,30 @@ export class AttestationService {
     try { return await promise; } finally { this.inFlight.delete(key); }
   }
 
+  /** What a VERIFIED attestation of (pool, driver) says – the best verified ride's whole km and its recording's Merkle root; null = no verified ride, or one under
+      1 km (a paid shift is far longer: a short ride is never rounded up into a prize or a pledge payment). Read only: the admin's manual payout signs it itself. */
+  async verifiedFacts(poolId: number, driver: string): Promise<{ telemetryRoot: Uint8Array; verifiedKm: number } | null> {
+    const ride = await this.rides.findBestVerifiedByPoolAndWallet(poolId, driver);
+    if (!ride) return null;
+    const verifiedKm = Math.floor((ride.distance || ride.completeDist) / 1000);
+    if (verifiedKm < 1) return null;
+    const facts = await this.batches.listFactsByRide(ride.id);
+    const telemetryRoot = computeTelemetryMerkleRoot(facts, (d) => this.hasher.sha256(d));
+    if (facts.length === 0 || telemetryRoot.every((b) => b === 0)) throw new ConflictError(`the recording of ride ${ride.id} has no batches (purged?)`, 'recording_purged');
+    return { telemetryRoot, verifiedKm };
+  }
+
   private async attest(poolId: number, driver: string): Promise<AttestationResult> {
     const onChain = await this.payout.attestationOf(poolId, driver);
     if (onChain?.status === ATTESTATION_VERIFIED && onChain.verifiedKm > 0) return { status: 'verified', signature: null };
     if (onChain?.status === ATTESTATION_FLAGGED) return { status: 'flagged', signature: null };
 
-    const ride = await this.rides.findBestVerifiedByPoolAndWallet(poolId, driver);
-    if (ride) {
-      const verifiedKm = Math.floor((ride.distance || ride.completeDist) / 1000);
-      if (verifiedKm < 1) return { status: 'none', signature: null }; // a paid shift is far longer; never round a short ride up into a prize or a pledge payment
-      const facts = await this.batches.listFactsByRide(ride.id);
-      const telemetryRoot = computeTelemetryMerkleRoot(facts, (d) => this.hasher.sha256(d));
-      if (facts.length === 0 || telemetryRoot.every((b) => b === 0)) throw new ConflictError(`the recording of ride ${ride.id} has no batches (purged?)`, 'recording_purged');
-      const { signature } = await this.payout.recordAttestation({ poolId, driver, telemetryRoot, verifiedKm, status: ATTESTATION_VERIFIED });
+    const verified = await this.verifiedFacts(poolId, driver);
+    if (verified) {
+      const { signature } = await this.payout.recordAttestation({ poolId, driver, ...verified, status: ATTESTATION_VERIFIED });
       return { status: 'verified', signature };
     }
+    if (await this.rides.findBestVerifiedByPoolAndWallet(poolId, driver)) return { status: 'none', signature: null }; // verified but under 1 km
     if (!(await this.rides.hasCompletedInPool(poolId, driver))) return { status: 'none', signature: null };
     const { signature } = await this.payout.recordAttestation({ poolId, driver, telemetryRoot: new Uint8Array(32), verifiedKm: 0, status: ATTESTATION_FLAGGED });
     return { status: 'flagged', signature };
