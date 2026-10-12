@@ -349,5 +349,14 @@ export class MemoryPledgeRepository extends PledgeRepositoryPort {
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       .map((p) => Pledge.restore(p));
   }
+  async listOpen(): Promise<Pledge[]> {
+    return [...this.db.pledges.values()].filter((x) => x.status === 'pending' || x.status === 'active')
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime()).map((p) => Pledge.restore(p));
+  }
+
+  async listActiveByPool(poolId: number): Promise<Pledge[]> {
+    return [...this.db.pledges.values()].filter((x) => x.poolId === poolId && x.status === 'active')
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime()).map((p) => Pledge.restore(p));
+  }
 }
 

@@ -1,6 +1,10 @@
 import { BadRequestError, ConflictError } from '../shared/errors.js';
-import type { PledgeProps } from './pledge.types.js';
+import type { PledgeChainEvent, PledgeProps, PledgeStatus } from './pledge.types.js';
 
+/**
+ * The mirror of one Pledge account (programs/freightchain-pools pledge.rs). The money never moves here: the sponsor's wallet sends create_pledge, the payout
+ * key (or anyone) sends settle_pledge / refund_pledge, and this row only follows the program's events – it never computes a payout of its own.
+ */
 export class Pledge {
   private constructor(private readonly p: PledgeProps) {}
 
@@ -17,29 +21,13 @@ export class Pledge {
     blockhash?: string | null;
   }): Pledge {
     if (i.sponsor === i.driver) throw new BadRequestError('sponsor cannot be driver');
-    if (i.targetKm <= 0) throw new BadRequestError('targetKm must be positive');
+    if (!Number.isInteger(i.targetKm) || i.targetKm <= 0) throw new BadRequestError('targetKm must be a positive integer');
     if (i.lamportsPerKm <= 0n) throw new BadRequestError('lamportsPerKm must be positive');
-
-    const maxLamports = i.lamportsPerKm * BigInt(i.targetKm);
-
     return new Pledge({
-      id: i.id,
-      pdaAddress: i.pdaAddress,
-      rideId: i.rideId,
-      sponsor: i.sponsor,
-      driver: i.driver,
-      poolId: i.poolId,
-      maxLamports,
-      lamportsPerKm: i.lamportsPerKm,
-      targetKm: i.targetKm,
-      settled: false,
-      earnedLamports: 0n,
-      refundedLamports: 0n,
-      createdAt: i.now,
-      settledAt: null,
-      signature: null,
-      slot: null,
-      blockhash: i.blockhash ?? null,
+      id: i.id, pdaAddress: i.pdaAddress, rideId: i.rideId, sponsor: i.sponsor, driver: i.driver, poolId: i.poolId,
+      maxLamports: i.lamportsPerKm * BigInt(i.targetKm), lamportsPerKm: i.lamportsPerKm, targetKm: i.targetKm,
+      status: 'pending', createSignature: null, settled: false, earnedLamports: 0n, refundedLamports: 0n,
+      createdAt: i.now, settledAt: null, signature: null, slot: null, blockhash: i.blockhash ?? null,
     });
   }
 
@@ -57,6 +45,8 @@ export class Pledge {
   get maxLamports(): bigint { return this.p.maxLamports; }
   get lamportsPerKm(): bigint { return this.p.lamportsPerKm; }
   get targetKm(): number { return this.p.targetKm; }
+  get status(): PledgeStatus { return this.p.status; }
+  get createSignature(): string | null { return this.p.createSignature; }
   get isSettled(): boolean { return this.p.settled; }
   get earnedLamports(): bigint { return this.p.earnedLamports; }
   get refundedLamports(): bigint { return this.p.refundedLamports; }
@@ -70,43 +60,41 @@ export class Pledge {
     return { ...this.p };
   }
 
+  /** an event of THIS pledge: same ride, sponsor and driver */
+  matches(e: PledgeChainEvent): boolean {
+    return e.rideId === this.p.rideId && e.sponsor === this.p.sponsor && e.driver === this.p.driver;
+  }
+
   /**
-   * Settles the pledge based on verified kilometers or flagged status.
-   * Enforces the mathematical conservation invariant: earnedLamports + refundedLamports === maxLamports.
+   * Applies one program event; false = nothing changed (already applied, or a later state is recorded). A PledgeCreated whose terms differ from the row's
+   * is refused – the row would lie about the money on chain.
    */
-  settle(
-    verifiedKm: number,
-    isFlagged: boolean,
-    now: Date,
-    signature?: string | null,
-    slot?: bigint | null,
-  ): { earnedLamports: bigint; refundedLamports: bigint } {
-    if (this.p.settled) throw new ConflictError('pledge already settled');
-
-    let earned: bigint;
-    let refund: bigint;
-
-    if (isFlagged) {
-      earned = 0n;
-      refund = this.p.maxLamports;
-    } else {
-      const effectiveKm = Math.min(Math.max(0, verifiedKm), this.p.targetKm);
-      earned = (this.p.maxLamports * BigInt(effectiveKm)) / BigInt(this.p.targetKm);
-      refund = this.p.maxLamports - earned;
+  apply(e: PledgeChainEvent, now: Date): boolean {
+    if (!this.matches(e)) throw new ConflictError(`event of another pledge (ride ${e.rideId}, sponsor ${e.sponsor})`, 'pledge_mismatch');
+    if (e.kind === 'PledgeCreated') {
+      if (e.maxLamports !== this.p.maxLamports || e.lamportsPerKm !== this.p.lamportsPerKm || e.targetKm !== this.p.targetKm) {
+        throw new ConflictError('the pledge on chain has other terms than this one', 'pledge_terms_differ');
+      }
+      if (this.p.status !== 'pending' && this.p.status !== 'abandoned') return false;
+      this.p.status = 'active';
+      this.p.createSignature = e.signature;
+      return true;
     }
-
-    // Mathematical conservation assertion
-    if (earned + refund !== this.p.maxLamports) {
-      throw new RangeError(`Lamport conservation invariant violated: ${earned} + ${refund} !== ${this.p.maxLamports}`);
-    }
-
+    if (this.p.settled) return false;
+    const earned = e.kind === 'PledgeSettled' ? e.earnedLamports : 0n;
+    if (earned + e.refundedLamports !== this.p.maxLamports) throw new RangeError(`pledge ${this.p.id}: ${earned} + ${e.refundedLamports} ≠ ${this.p.maxLamports}`);
+    this.p.status = e.kind === 'PledgeSettled' ? 'settled' : 'refunded';
     this.p.settled = true;
     this.p.earnedLamports = earned;
-    this.p.refundedLamports = refund;
+    this.p.refundedLamports = e.refundedLamports;
     this.p.settledAt = now;
-    if (signature !== undefined) this.p.signature = signature;
-    if (slot !== undefined) this.p.slot = slot;
+    this.p.signature = e.signature;
+    this.p.slot = BigInt(e.slot);
+    return true;
+  }
 
-    return { earnedLamports: earned, refundedLamports: refund };
+  /** built but never signed: no account on chain long after it was built */
+  abandon(): void {
+    if (this.p.status === 'pending') this.p.status = 'abandoned';
   }
 }

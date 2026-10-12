@@ -1,5 +1,6 @@
 import type { Pledge as PledgeRow, Prisma } from '@prisma/client';
 import { Pledge } from '../../../domain/economy/pledge.entity.js';
+import type { PledgeStatus } from '../../../domain/economy/pledge.types.js';
 
 export class PledgeMapper {
   static toDomain(row: PledgeRow): Pledge {
@@ -13,6 +14,8 @@ export class PledgeMapper {
       maxLamports: row.maxLamports,
       lamportsPerKm: row.lamportsPerKm,
       targetKm: row.targetKm,
+      status: row.status as PledgeStatus,
+      createSignature: row.createSignature,
       settled: row.settled,
       earnedLamports: row.earnedLamports,
       refundedLamports: row.refundedLamports,
@@ -36,6 +39,8 @@ export class PledgeMapper {
       maxLamports: s.maxLamports,
       lamportsPerKm: s.lamportsPerKm,
       targetKm: s.targetKm,
+      status: s.status,
+      createSignature: s.createSignature,
       settled: s.settled,
       earnedLamports: s.earnedLamports,
       refundedLamports: s.refundedLamports,

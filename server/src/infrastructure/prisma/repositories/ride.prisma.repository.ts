@@ -71,4 +71,8 @@ export class RidePrismaRepository extends RideRepositoryPort {
     });
     return rows[0] ? RideMapper.toDomain(rows[0]) : null;
   }
+
+  async hasCompletedInPool(poolId: number, wallet: string, tx?: TransactionHandle): Promise<boolean> {
+    return (await clientFor(this.prisma, tx).ride.count({ where: { poolId, wallet, status: 'completed' } })) > 0;
+  }
 }

@@ -126,8 +126,6 @@ export interface PoolChainState {
   seedTreasury: string;
   createdAt: Date;
   seedCommitment?: string;
-  stakedLamports?: number;
-  yieldEarned?: number;
 }
 
 /** A tier's schedule as read from chain (the program's Series account, written by the admin's `set_series`). Pools tile time: the next one may be opened by

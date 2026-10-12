@@ -68,6 +68,4 @@ export interface PoolProps {
   seedCommitment?: string | null;
   blockhash?: string | null;
   slot?: bigint | number | null;
-  stakedLamports?: bigint | number;
-  yieldEarned?: bigint | number;
 }

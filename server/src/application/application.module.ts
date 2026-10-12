@@ -125,7 +125,8 @@ import { GetActionsJsonHandler } from './use-cases/actions/get-actions-json.hand
 import { GetShiftActionHandler, PrepareShiftActionHandler } from './use-cases/actions/shift-action.handler.js';
 import { GetRideActionHandler, OpenRideActionHandler } from './use-cases/actions/ride-action.handler.js';
 import { CreatePledgeHandler } from './use-cases/pledges/create-pledge/create-pledge.handler.js';
-import { SettlePledgeHandler } from './use-cases/pledges/settle-pledge/settle-pledge.handler.js';
+import { ConfirmPledgeHandler } from './use-cases/pledges/confirm-pledge/confirm-pledge.handler.js';
+import { SyncPledgesHandler } from './use-cases/pledges/sync-pledges/sync-pledges.handler.js';
 import { GetRidePledgesHandler } from './use-cases/pledges/get-ride-pledges/get-ride-pledges.handler.js';
 import { GetPledgeHandler } from './use-cases/pledges/get-pledge/get-pledge.handler.js';
 
@@ -163,7 +164,7 @@ const handlers: Provider[] = [
   AdjustFreeRidesHandler, GetSettingsHandler, UpdateSettingHandler,
   GetSnsReverseHandler, ResolveSnsHandler,
   GetActionsJsonHandler, GetShiftActionHandler, PrepareShiftActionHandler, GetRideActionHandler, OpenRideActionHandler,
-  CreatePledgeHandler, SettlePledgeHandler, GetRidePledgesHandler, GetPledgeHandler,
+  CreatePledgeHandler, ConfirmPledgeHandler, SyncPledgesHandler, GetRidePledgesHandler, GetPledgeHandler,
 ];
 
 @Module({

@@ -4,6 +4,7 @@ import bs58 from 'bs58';
 import type { UnsignedPaymentTx } from '../../domain/economy/chain-transaction.js';
 import type { ChainEventRecord, PoolChainState, SeriesChainState } from '../../domain/economy/chain-events.js';
 import { orderIdToBytes } from '../../domain/economy/ticket-purchase-verification.js';
+import { rideIdFromBytes, rideIdToBytes, type PledgeChainEvent } from '../../domain/economy/pledge.types.js';
 import { escrowOf } from '../../domain/economy/vault-split.js';
 import { ConflictError, NotFoundError, ServiceUnavailableError } from '../../domain/shared/errors.js';
 import { ClockPort } from '../../application/ports/shared/clock.port.js';
@@ -19,7 +20,7 @@ import { SolanaRpc, sleep } from './solana-rpc.js';
     (a wallet needing k extra tries has probability 2^-k). With 30k / 18k an unlucky wallet (~1 in 128 for buys, ~1 in 8 for refunds) could NEVER buy / be refunded
     by a server-built transaction – found by the devnet rehearsal ("exceeded CUs meter"). 60k / 45k leave ≥ 20 extra tries (2^-20). The limit is a cap, not a charge
     (the fee is priority price × limit, ~0 on devnet). */
-export const CU_LIMITS = { buy: 60_000, refund: 45_000, fail_pool: 6_000, expire_pool: 6_000, pay_prize: 22_000, record_attestation: 25_000, close_pool: 30_000, open_next_pool: 40_000 } as const;
+export const CU_LIMITS = { buy: 60_000, refund: 45_000, fail_pool: 6_000, expire_pool: 6_000, pay_prize: 22_000, record_attestation: 25_000, close_pool: 30_000, open_next_pool: 40_000, create_pledge: 30_000, settle_pledge: 25_000, refund_pledge: 25_000 } as const;
 const MAX_SIGNATURE_PAGES = 10;
 const STATUS = ['open', 'active', 'refunding', 'settled', 'cancelled'] as const;
 
@@ -41,7 +42,7 @@ export function poolStateOf(c: PoolProgramCodec, poolId: number, info: AccountIn
     priceLamports: p['priceLamports'] as number, minTickets: p['minTickets'] as number, maxTickets: p['maxTickets'] as number, maxPerWallet: p['maxPerWallet'] as number,
     prepDeadline: p['prepDeadline'] as Date, playDeadline: p['playDeadline'] as Date, payoutAt: p['payoutAt'] as Date, prizeBps: p['prizeBps'] as number, seedBps: p['seedBps'] as number,
     feeBps: p['feeBps'] as number, feeTreasury: p['feeTreasury'] as string, seedTreasury: p['seedTreasury'] as string, createdAt: p['createdAt'] as Date,
-    seedCommitment, stakedLamports: Number(p['stakedLamports'] ?? 0), yieldEarned: Number(p['yieldEarned'] ?? 0),
+    seedCommitment,
   };
 }
 
@@ -57,6 +58,17 @@ export function seriesStateOf(c: PoolProgramCodec, info: AccountInfo<Buffer> | n
     prizeBps: s['prizeBps'] as number, seedBps: s['seedBps'] as number, feeBps: s['feeBps'] as number, feeTreasury: s['feeTreasury'] as string,
     seedTreasury: s['seedTreasury'] as string, nextOpenAt: s['nextOpenAt'] as Date, poolsOpened: s['poolsOpened'] as number, lastPoolId: (s['lastPoolId'] as number | null) ?? null,
   };
+}
+
+const PLEDGE_EVENTS = new Set(['PledgeCreated', 'PledgeSettled', 'PledgeRefunded']);
+
+/** A decoded Pledge* event as the domain's PledgeChainEvent (the codec gives [u8; 32] as base64, u64 as an exact number). */
+function pledgeEventOf(name: string, f: Record<string, unknown>, signature: string, slot: number): PledgeChainEvent {
+  const base = { signature, slot, rideId: rideIdFromBytes(Buffer.from(String(f['rideId']), 'base64')), sponsor: String(f['sponsor']), driver: String(f['driver']), pool: String(f['pool']) };
+  const big = (k: string) => BigInt(f[k] as number);
+  if (name === 'PledgeCreated') return { ...base, kind: 'PledgeCreated', maxLamports: big('maxLamports'), lamportsPerKm: big('lamportsPerKm'), targetKm: f['targetKm'] as number };
+  if (name === 'PledgeSettled') return { ...base, kind: 'PledgeSettled', verifiedKm: f['verifiedKm'] as number, earnedLamports: big('earnedLamports'), refundedLamports: big('refundedLamports') };
+  return { ...base, kind: 'PledgeRefunded', refundedLamports: big('refundedLamports') };
 }
 
 /** `CRANK_SECRET`: base58 of the 64-byte secret key, or the JSON array `solana-keygen` writes. */
@@ -262,5 +274,37 @@ export class ProgramChainAdapter extends PoolChainPort {
 
   pledgePda(rideId: Uint8Array | Buffer | number[], sponsor: string): string {
     return this.codec.pledgePda(rideId, sponsor).toBase58();
+  }
+
+  async buildCreatePledgeTransaction(i: { sponsor: string; poolId: number; rideId: string; driver: string; lamportsPerKm: bigint; targetKm: number }): Promise<BuiltTransaction> {
+    const c = this.codec, rideId = rideIdToBytes(i.rideId);
+    const ix = c.instruction('create_pledge', {
+      sponsor: i.sponsor, driver: i.driver, config: c.configPda(), pool: c.poolPda(i.poolId), pledge: c.pledgePda(rideId, i.sponsor),
+    }, { ride_id: rideId, driver: i.driver, max_lamports: i.lamportsPerKm * BigInt(i.targetKm), lamports_per_km: i.lamportsPerKm, target_km: i.targetKm });
+    return this.build([ix], i.sponsor, i.poolId, CU_LIMITS.create_pledge);
+  }
+
+  async readPledgeEvents(signature: string): Promise<PledgeChainEvent[] | 'pending' | { invalid: string }> {
+    const c = this.codec;
+    const tx = await this.rpc.read((x) => x.getTransaction(signature, { commitment: this.commitment === 'finalized' ? 'finalized' : 'confirmed', maxSupportedTransactionVersion: 0 }));
+    if (!tx) return 'pending';
+    if (!tx.meta) return { invalid: 'the transaction has no metadata' };
+    if (tx.meta.err) return { invalid: `the transaction failed: ${JSON.stringify(tx.meta.err)}` };
+    const lines = c.programData(tx.meta.logMessages ?? []);
+    if (lines === 'truncated') return { invalid: 'the transaction logs were truncated' };
+    try {
+      return lines.flatMap(({ bytes }) => {
+        const ev = c.decodeEvent(bytes);
+        return ev && PLEDGE_EVENTS.has(ev.name) ? [pledgeEventOf(ev.name, ev.fields, signature, tx.slot)] : [];
+      });
+    } catch (e) {
+      return { invalid: `undecodable program data: ${(e as Error).message}` };
+    }
+  }
+
+  async pledgeSignatures(pda: string): Promise<string[]> {
+    const commitment = this.commitment === 'finalized' ? 'finalized' : 'confirmed';
+    const sigs = await this.rpc.read((x) => x.getSignaturesForAddress(new PublicKey(pda), { limit: 20 }, commitment));
+    return sigs.filter((s) => s.err === null).map((s) => s.signature);
   }
 }

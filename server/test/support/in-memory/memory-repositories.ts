@@ -159,6 +159,10 @@ export class MemoryRideRepository extends RideRepositoryPort {
       .sort((a, b) => b.props.lastS - a.props.lastS || a.props.driveSeconds - b.props.driveSeconds);
     return verified[0] ? Ride.restore(verified[0].props) : null;
   }
+
+  async hasCompletedInPool(poolId: number, wallet: string): Promise<boolean> {
+    return [...this.db.rides.values()].some((r) => r.props.wallet === wallet && r.props.poolId === poolId && r.props.status === RideStatus.Completed);
+  }
 }
 
 @Injectable()

@@ -43,8 +43,6 @@ export class Pool {
       seedCommitment: state.seedCommitment ?? existing?.p.seedCommitment ?? null,
       blockhash: existing?.p.blockhash ?? null,
       slot: existing?.p.slot ?? null,
-      stakedLamports: state.stakedLamports ?? existing?.p.stakedLamports ?? 0n,
-      yieldEarned: state.yieldEarned ?? existing?.p.yieldEarned ?? 0n,
     });
   }
 
@@ -82,8 +80,6 @@ export class Pool {
   get seedCommitment(): string | null { return this.p.seedCommitment ?? null; }
   get blockhash(): string | null { return this.p.blockhash ?? null; }
   get slot(): bigint | number | null { return this.p.slot ?? null; }
-  get stakedLamports(): bigint | number { return this.p.stakedLamports ?? 0n; }
-  get yieldEarned(): bigint | number { return this.p.yieldEarned ?? 0n; }
   get isActive(): boolean { return this.p.status === 'active'; }
   /** A ticket of this pool can be ridden now: the pool is live and its play deadline has not passed (POST /api/rides spends one only then). */
   isRidable(now: Date): boolean { return this.isActive && now.getTime() < this.p.playDeadline.getTime(); }

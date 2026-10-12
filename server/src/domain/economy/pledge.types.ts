@@ -1,5 +1,17 @@
 import { orderIdToBytes, orderIdFromBytes } from './ticket-purchase-verification.js';
 
+/** pending = the server built the create_pledge, the chain has not shown it (yet); active = the PledgeCreated is on chain; settled / refunded = the pledge
+    account is closed, its money paid out; abandoned = never signed (no account on chain an hour after it was built). */
+export const PLEDGE_STATUSES = ['pending', 'active', 'settled', 'refunded', 'abandoned'] as const;
+export type PledgeStatus = (typeof PLEDGE_STATUSES)[number];
+
+/** A pledge event of the program, decoded (events.rs PledgeCreated / PledgeSettled / PledgeRefunded); rideId as the uuid, lamports as bigint. */
+export type PledgeChainEvent = { signature: string; slot: number; rideId: string; sponsor: string; driver: string; pool: string } & (
+  | { kind: 'PledgeCreated'; maxLamports: bigint; lamportsPerKm: bigint; targetKm: number }
+  | { kind: 'PledgeSettled'; verifiedKm: number; earnedLamports: bigint; refundedLamports: bigint }
+  | { kind: 'PledgeRefunded'; refundedLamports: bigint }
+);
+
 export interface PledgeProps {
   id: string; // UUID
   pdaAddress: string; // Solana Base58 PDA
@@ -10,11 +22,16 @@ export interface PledgeProps {
   maxLamports: bigint;
   lamportsPerKm: bigint;
   targetKm: number;
+  status: PledgeStatus;
+  /** the create_pledge transaction, once the chain showed it */
+  createSignature: string | null;
+  /** status is settled or refunded (kept as a column for the indexes) */
   settled: boolean;
   earnedLamports: bigint;
   refundedLamports: bigint;
   createdAt: Date;
   settledAt: Date | null;
+  /** the settle_pledge / refund_pledge transaction */
   signature: string | null;
   slot: bigint | null;
   blockhash?: string | null;

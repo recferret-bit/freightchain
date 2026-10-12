@@ -1,5 +1,6 @@
 import type { UnsignedPaymentTx } from '../../../domain/economy/chain-transaction.js';
 import type { ChainEventRecord, PoolChainState } from '../../../domain/economy/chain-events.js';
+import type { PledgeChainEvent } from '../../../domain/economy/pledge.types.js';
 
 /** The transactions the server builds – each has its own compute-unit budget (programs/freightchain-pools/README.md "Compute units"). */
 export type ChainTxKind = 'buy' | 'refund' | 'pay_prize' | 'close_pool';
@@ -66,4 +67,10 @@ export abstract class PoolChainPort {
   abstract signatureStatus(signature: string, lastValidBlockHeight: number): Promise<SignatureStatus>;
   /** Derives the on-chain Pledge PDA address [b"pledge", rideId(32), sponsor] */
   abstract pledgePda(rideId: Uint8Array | Buffer | number[], sponsor: string): string;
+  /** Unsigned `create_pledge` for the sponsor to sign AND send: the cap (lamportsPerKm × targetKm) + the Pledge account's rent leave the sponsor's wallet. */
+  abstract buildCreatePledgeTransaction(input: { sponsor: string; poolId: number; rideId: string; driver: string; lamportsPerKm: bigint; targetKm: number }): Promise<BuiltTransaction>;
+  /** The pledge events of one transaction ('pending' / `{ invalid }` as readEvents). */
+  abstract readPledgeEvents(signature: string): Promise<PledgeChainEvent[] | 'pending' | { invalid: string }>;
+  /** Successful transactions that touched a pledge account, newest first (it is closed at settle / refund, its history stays). */
+  abstract pledgeSignatures(pda: string): Promise<string[]>;
 }

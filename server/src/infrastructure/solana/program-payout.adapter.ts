@@ -1,8 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Connection, Keypair, SYSVAR_CLOCK_PUBKEY, type Commitment } from '@solana/web3.js';
+import { Connection, Keypair, SYSVAR_CLOCK_PUBKEY, type Commitment, type TransactionInstruction } from '@solana/web3.js';
+import { rideIdToBytes } from '../../domain/economy/pledge.types.js';
 import { NotFoundError, ServiceUnavailableError } from '../../domain/shared/errors.js';
 import { PoolChainPort } from '../../application/ports/economy/pool-chain.port.js';
-import { PoolPayoutChainPort, type SignedPayout } from '../../application/ports/economy/pool-payout-chain.port.js';
+import { PoolPayoutChainPort, type PledgeKeys, type SignedPayout } from '../../application/ports/economy/pool-payout-chain.port.js';
 import { EnvService } from '../config/env.service.js';
 import { PoolProgramCodec } from './pool-program.codec.js';
 import { CU_LIMITS, parseKeypair } from './program-chain.adapter.js';
@@ -88,13 +89,11 @@ export class ProgramPayoutAdapter extends PoolPayoutChainPort {
     return { signature: tx.signature };
   }
 
-  async isAttested(poolId: number, driver: string): Promise<boolean> {
+  async attestationOf(poolId: number, driver: string): Promise<{ status: number; verifiedKm: number } | null> {
     const c = this.codec;
-    const pda = c.attestationPda(poolId, driver);
-    const info = await this.rpc.read((x) => x.getAccountInfo(pda, this.commitment));
-    if (!info || !info.owner.equals(c.programId)) return false;
-    const acc = c.decodeAccount('Attestation', info.data);
-    return acc !== null && acc['status'] === 1 && (acc['verifiedKm'] as number) > 0;
+    const info = await this.rpc.read((x) => x.getAccountInfo(c.attestationPda(poolId, driver), this.commitment));
+    const acc = info?.owner.equals(c.programId) ? c.decodeAccount('Attestation', info.data) : null;
+    return acc ? { status: acc['status'] as number, verifiedKm: acc['verifiedKm'] as number } : null;
   }
 
   async recordAttestation(i: {
@@ -118,9 +117,30 @@ export class ProgramPayoutAdapter extends PoolPayoutChainPort {
       verified_km: i.verifiedKm,
       status: i.status,
     });
-    const quote = await this.chain.feeQuote({ poolId: i.poolId, kind: 'pay_prize' });
-    const tx = await signWith(this.rpc, this.commitment, key, [ix], CU_LIMITS.record_attestation, quote.priorityMicrolamports);
-    const label = `record_attestation pool ${i.poolId} driver ${i.driver}`;
+    return this.send(i.poolId, ix, CU_LIMITS.record_attestation, `record_attestation pool ${i.poolId} driver ${i.driver}`);
+  }
+
+  async settlePledge(k: PledgeKeys): Promise<{ signature: string }> {
+    const c = this.codec, key = this.signer, rideId = rideIdToBytes(k.rideId);
+    const ix = c.instruction('settle_pledge', {
+      caller: key.publicKey, driver: k.driver, sponsor: k.sponsor, pool: c.poolPda(k.poolId), attestation: c.attestationPda(k.poolId, k.driver),
+      pledge: c.pledgePda(rideId, k.sponsor),
+    }, { ride_id: rideId });
+    return this.send(k.poolId, ix, CU_LIMITS.settle_pledge, `settle_pledge ride ${k.rideId} sponsor ${k.sponsor}`);
+  }
+
+  async refundPledge(k: PledgeKeys): Promise<{ signature: string }> {
+    const c = this.codec, key = this.signer, rideId = rideIdToBytes(k.rideId);
+    const ix = c.instruction('refund_pledge', {
+      caller: key.publicKey, sponsor: k.sponsor, pool: c.poolPda(k.poolId), attestation: c.attestationPda(k.poolId, k.driver), pledge: c.pledgePda(rideId, k.sponsor),
+    }, { ride_id: rideId });
+    return this.send(k.poolId, ix, CU_LIMITS.refund_pledge, `refund_pledge ride ${k.rideId} sponsor ${k.sponsor}`);
+  }
+
+  /** sign with the payout key, simulate (a program error is a ConflictError naming it), send until confirmed */
+  private async send(poolId: number, ix: TransactionInstruction, units: number, label: string): Promise<{ signature: string }> {
+    const quote = await this.chain.feeQuote({ poolId, kind: 'pay_prize' });
+    const tx = await signWith(this.rpc, this.commitment, this.signer, [ix], units, quote.priorityMicrolamports);
     await simulateSigned(this.rpc, this.commitment, tx, label);
     await broadcastUntilConfirmed(this.rpc, this.commitment, tx, label, (ms) => this.wait(ms), (m) => this.logger.debug(m));
     return { signature: tx.signature };

@@ -10,6 +10,8 @@ export interface PledgeDto {
   maxLamports: string;
   lamportsPerKm: string;
   targetKm: number;
+  status: string;
+  createSignature: string | null;
   settled: boolean;
   earnedLamports: string;
   refundedLamports: string;
@@ -29,6 +31,8 @@ export const toPledgeDto = (p: Pledge): PledgeDto => ({
   maxLamports: p.maxLamports.toString(),
   lamportsPerKm: p.lamportsPerKm.toString(),
   targetKm: p.targetKm,
+  status: p.status,
+  createSignature: p.createSignature,
   settled: p.isSettled,
   earnedLamports: p.earnedLamports.toString(),
   refundedLamports: p.refundedLamports.toString(),

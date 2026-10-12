@@ -16,8 +16,6 @@ export class PoolMapper {
       seedCommitment: row.seedCommitment,
       blockhash: row.blockhash,
       slot: row.slot,
-      stakedLamports: row.stakedLamports,
-      yieldEarned: row.yieldEarned,
     });
   }
 
@@ -32,8 +30,6 @@ export class PoolMapper {
       priceLamports: BigInt(s.priceLamports),
       vaultLamports: BigInt(s.vaultLamports),
       sponsored: BigInt(s.sponsored),
-      stakedLamports: BigInt(s.stakedLamports ?? 0n),
-      yieldEarned: BigInt(s.yieldEarned ?? 0n),
       slot: s.slot !== null && s.slot !== undefined ? BigInt(s.slot) : null,
     };
   }
