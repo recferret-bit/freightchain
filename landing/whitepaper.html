@@ -262,15 +262,41 @@
       <tr><td><b>Free board</b> – every completed free ride ranks</td><td>Free drivers</td><td><span class="pill ok">LIVE</span></td></tr>
       <tr><td><b>SNS (.sol) driver identity</b> – drivers holding a .sol primary domain are recognized across all leaderboards, profile dialogs, and ride receipts via zero-dependency Mainnet-Beta PDA resolution</td><td>All .sol owners</td><td><span class="pill ok">LIVE · MAINNET RPC</span></td></tr>
       <tr><td><b>Native 1-click SIWS</b> – unified wallet-standard connect and sign sheet (solana:signIn) with domain origin binding and single-use burned nonces</td><td>Phantom, Solflare, Backpack</td><td><span class="pill ok">LIVE</span></td></tr>
-      <tr><td><b>Badges</b> – 31 in eight ladders of 3–4 tiers, Bronze to Platinum: rides started, paid shifts, night shifts, distance, clean runs, Siberia, unassisted free rides, the three free levels. The server counts them from the rides it judged; a rejected recording earns nothing</td><td>Wallets that earn them</td><td><span class="pill ok">LIVE</span></td></tr>
+      <tr><td><b>Achievements</b> – 31 badges in eight ladders, three stars each (Platinum on top). Every earned badge is a soulbound compressed NFT in your wallet, <a href="#achievements">details below</a></td><td>Wallets that earn them</td><td><span class="pill ok">LIVE · DEVNET</span></td></tr>
       <tr><td><b>Tips and effects from spectators</b> – SOL from a viewer's wallet straight to yours</td><td>The driver being watched</td><td><span class="pill ok">LIVE · DEVNET</span></td></tr>
       <tr><td><b>Promo codes</b> – free tickets of a tier</td><td>Whoever holds a code</td><td><span class="pill wip">BUILT</span></td></tr>
       <tr><td><b>Pool prizes</b> – the prize share of a pool, to the top of its board</td><td>Verified finishers of that pool</td><td><span class="pill wip">ON DEVNET · PAYOUTS OFF</span></td></tr>
       <tr><td><b>Sponsorship</b> – anyone adds SOL to a pool's pot</td><td>The pool, split by its rules</td><td><span class="pill wip">ON DEVNET · NO PAGE</span></td></tr>
-      <tr><td><b>Badge NFTs</b> – each earned badge is minted an hour later as a soulbound compressed NFT (Metaplex Bubblegum v2; the collection is frozen for good, so it cannot be sold or moved). A dedicated key mints and nothing else; art on Arweave</td><td>Wallets that earn them</td><td><span class="pill ok">LIVE · DEVNET</span></td></tr>
       <tr><td><b>The garage</b> – cab colours are in the lobby. A gold wheel, gauge faces and a heavier battery are not.</td><td>Owners</td><td><span class="pill ok">LIVE · COLOURS</span></td></tr>
     </tbody>
   </table></div>
+
+  <h3 class="sub" id="achievements">ACHIEVEMENTS: SOULBOUND BADGES ON SOLANA</h3>
+  <p>Money is one reason to drive well. Pride is the other. Every wallet climbs eight ladders; each rung is an achievement, and each achievement, once earned, becomes a <b>soulbound compressed NFT</b> (cNFT) in that wallet. The lobby has its own ACHIEVEMENTS tab: a card per badge, three stars for the level (Bronze one, Silver two, Gold three; Platinum, the fourth rung of most ladders, lights all three in holographic colour), the date earned, a progress bar for what is still locked, and what to do for the next level. Flip a card (hover or tap) for the condition and the proof: the cNFT in the Solana Explorer, Solscan, Orb, the mint transaction and a share link for 𝕏.</p>
+  <div class="tblwrap"><table class="tbl">
+    <thead><tr><th>Ladder</th><th>What counts</th><th>Rungs (rides, shifts, km…)</th></tr></thead>
+    <tbody>
+      <tr><td><b>Road</b></td><td>Rides started</td><td>1 · 10 · 50 · 250</td></tr>
+      <tr><td><b>Shifts</b></td><td>Paid shifts finished (a free ride is never a shift)</td><td>1 · 5 · 25 · 100</td></tr>
+      <tr><td><b>Night</b></td><td>Shifts driven mostly in the dark</td><td>1 · 5 · 20 · 50</td></tr>
+      <tr><td><b>Distance</b></td><td>Kilometres driven in total</td><td>100 · 500 · 2,000 · 10,000</td></tr>
+      <tr><td><b>Clean</b></td><td>Shifts finished with the hull at 100 %</td><td>1 · 5 · 20 · 50</td></tr>
+      <tr><td><b>Siberia</b></td><td>Shifts on the Trans-Siberian route</td><td>1 · 5 · 15 · 40</td></tr>
+      <tr><td><b>Solo</b></td><td>Free rides finished without assist</td><td>1 · 5 · 20 · 50</td></tr>
+      <tr><td><b>Licence</b></td><td>The EASY, MEDIUM and HARD free runs</td><td>one badge each</td></tr>
+    </tbody>
+  </table></div>
+  <h3 class="sub">HOW A BADGE IS MADE</h3>
+  <ol>
+    <li><b>The server decides.</b> Counts come from the rides the server judged, never from the client. A ride whose recording is rejected earns no badge. Unlock rows are append-only and badge ids never change.</li>
+    <li><b>An hour later, a second look.</b> The mint job waits an hour, re-checks the facts (a ride that was rejected in the meantime no longer counts) and skips demo wallets. A badge no longer earned is skipped, not minted.</li>
+    <li><b>One key that can only mint.</b> A dedicated key, separate from the pool crank and the payout key, mints through Metaplex Bubblegum v2 into one Merkle tree (depth 16: 65,536 badges for about 0.7 SOL of rent, well under a cent each). The player signs nothing and pays nothing.</li>
+    <li><b>Crash-safe.</b> Every mint is a row in an outbox (planned, sent, minted, failed or skipped). The signature is stored before the transaction is broadcast and the job keeps resending the same one, so a crash never mints twice. A full tree sends nothing; the job raises an error from 90 % full.</li>
+    <li><b>Soulbound by the chain.</b> The collection is an MPL-Core collection with the permanent freeze plugin, authority removed. A transfer is refused by the program, not by our server: our smoke test mints a badge to a fresh wallet and then tries to move it as the owner (error: "Collection is frozen").</li>
+    <li><b>Art and metadata live on Arweave</b> (through Irys): 31 badges drawn by one generator in the repo, a descriptive trait set (family, tier, condition, requirement), no royalties. Devnet files are kept for about 60 days; mainnet gets its own upload.</li>
+  </ol>
+  <p><b>Verify it yourself.</b> The collection <a href="https://explorer.solana.com/address/56ijQ5t2RFpXezbPtEuqECo5gCQiGSek2LBsp7cfMoXC?cluster=devnet" target="_blank" rel="noopener">56ijQ5…XoMC</a> and the tree <a href="https://explorer.solana.com/address/45NKrZA9rGFcKr62VY5NvM89yarFuBqtBseRK7ZSM336?cluster=devnet" target="_blank" rel="noopener">45NKrZ…M336</a> are on devnet. Each badge card links its asset and its mint transaction. Wallets differ in how they show compressed NFTs on devnet (some need testnet mode, some do not index Bubblegum v2 yet); if yours does not show a badge, the links on the card always do.</p>
+  <p><b>Honest limits.</b> Badges are devnet-only until the pool program is on mainnet. Compressed NFTs depend on an indexer (the DAS API) for display; the mint transaction and the Merkle tree are the receipts that do not. The Top 20 round badge is designed but not minted yet.</p>
 
   <h3 class="sub">HOW A POOL'S MONEY IS SPLIT (EXAMPLE)</h3>
   <p>A pool is every ticket sold plus any sponsorship. Its split is written in basis points when it is created and cannot be changed. The proposed default is <b>70 % prizes · 20 % seeds the next pool · 10 % fees</b>. Shares are rounded down and the rounding remainder goes to fees, so the pieces always add up to the pot exactly.</p>

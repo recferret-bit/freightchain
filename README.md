@@ -76,7 +76,7 @@ A wallet listed in `DEMO_WALLETS` drives a paid shift `DEMO_SCALE` times shorter
 | Community Sponsorship Pledges | Yes: on-chain `Pledge` PDAs (`[b"pledge", ride_id, sponsor]`), `create_pledge`, `settle_pledge` (proportional per-km payout), `refund_pledge` (100% refund of unused/cancelled). | Live on devnet |
 | Provable Road Seed & Telemetry Merkle Root | Yes: deterministic seed `SHA256(poolId \|\| blockhash \|\| slot)` committed on-chain; RFC 6962 Merkle tree root over 15s `RideBatch` chunks submitted to `Attestation` PDA gating `pay_prize`. | Live on devnet |
 | Solana Pay | Transaction request plus a reference key on a ticket buy, a legacy shift payment, and a paid tip | In this build. Devnet. The lobby and the watch page show a QR for the same wallet on a phone. |
-| Achievement badges as soulbound cNFTs | Yes: 31 tiered badges, a Bubblegum v2 mint job, devnet collection + tree (`56ijQ5…XoMC`, `45NKrZ…M336`); transfer refused on chain | Live on devnet. Mainnet waits for the same gates as the program |
+| Achievement badges as soulbound cNFTs | Yes: 31 badges in 8 ladders, an ACHIEVEMENTS tab of flip cards, a Bubblegum v2 mint job, devnet collection + tree (`56ijQ5…XoMC`, `45NKrZ…M336`); transfer refused on chain | Live on devnet. Mainnet waits for the same gates as the program |
 | Token, mainnet, captcha | No | No |
 
 freightchain.fun runs `PAYMENT_MODE=program` on devnet since Oct 11. Rollback is `PAYMENT_MODE=transfer`. Mainnet still waits on the Colosseum results, the devnet exit list, and an explicit deploy ([`docs/escrow-open-items.md`](docs/escrow-open-items.md)). The top of that file still says nothing is deployed; the Oct 11 note records the switch. The explorer is the check.
@@ -318,7 +318,19 @@ Read: [`docs/statistics.md`](docs/statistics.md)
 
 ### Achievements and badge NFTs
 
-Eight ladders of three or four tiers (Road, Shifts, Night, Distance, Clean, Siberia, Solo, Licence), 31 badges from Bronze to Platinum; the Shifts ladder counts paid shifts only. The server derives every count from the rides it judged, and a rejected recording earns nothing. Each earned badge is minted, an hour later and after a second check, as a **soulbound compressed NFT** (Metaplex Bubblegum v2 in an MPL-Core collection whose freeze plugin nobody can lift) to the wallet that earned it, by a dedicated key that can mint and nothing else. Art and metadata live on Arweave through Irys. The profile shows locked and earned cards with progress, the explorer, Solscan and Orb links, the mint transaction and a POST ON X button. `scripts/achievements/` creates the tree and collection, uploads the art and smoke-tests the mint and the refused transfer.
+Drive well and the road pays you in proof. Eight ladders (Road, Shifts, Night, Distance, Clean, Siberia, Solo, Licence), 31 badges, three stars per ladder (Bronze, Silver, Gold; Platinum, the fourth rung of most ladders, lights all three in holographic colour). Every earned badge becomes a **soulbound compressed NFT** in the wallet that earned it.
+
+| | |
+|---|---|
+| What counts | The server counts from the rides it judged. A rejected recording earns nothing. The Shifts ladder counts paid shifts only. |
+| The lobby | An ACHIEVEMENTS tab: a flip card per badge. Front: art, three stars, the date earned, or a progress bar and what to do for the next level. Back (hover or tap): the condition, cNFT, Solscan, Orb, the mint transaction and POST ON X. Solana-coloured transition, plain crossfade with reduced motion. |
+| The mint | An hour after the unlock and after a second check, a dedicated key (it can mint and nothing else) mints through Metaplex Bubblegum v2 into one Merkle tree: depth 16, 65,536 badges for about 0.7 SOL of rent. The player signs nothing and pays nothing. |
+| Crash-safe | An outbox (planned, sent, minted, failed, skipped), the signature stored before broadcast and resent until it confirms: a crash never mints twice. A full tree sends nothing. |
+| Soulbound | An MPL-Core collection with a permanent freeze (authority removed): the chain refuses the transfer. The smoke test mints a badge and fails to move it as its owner ("Collection is frozen"). |
+| Art | `design/achievements/generate.mjs` draws all 31 (earned and locked); art and metadata are on Arweave through Irys. |
+| Analytics | `achievement_unlocked`, `achievement_minted`, `achievement_mint_failed` (server), `achievement_nft_clicked` (browser). |
+
+**For judges: verify it in a minute.** Collection [`56ijQ5…XoMC`](https://explorer.solana.com/address/56ijQ5t2RFpXezbPtEuqECo5gCQiGSek2LBsp7cfMoXC?cluster=devnet) and tree [`45NKrZ…M336`](https://explorer.solana.com/address/45NKrZA9rGFcKr62VY5NvM89yarFuBqtBseRK7ZSM336?cluster=devnet) on devnet; the mint transaction of each badge is linked on its card. Run `node server/scripts/achievements/smoke-mint.mjs` (see the doc) to watch a mint and the refused transfer. Devnet only for now; mainnet waits for the pool program. Compressed NFTs need an indexer (DAS) to show in a wallet; the transaction and the tree are the receipts that do not.
 
 Read: [`docs/agents/achievements.md`](docs/agents/achievements.md)
 
