@@ -135,7 +135,10 @@ check(nightX.night===true&&dayX.night===false&&G.THEMES.some(t=>t.id===dayX.rout
   G.setGuide({}); st.hull=100; G.hurt(10,10); const hit=100-st.hull; G.setGuide({assist:true}); st.hull=100; G.hurt(10,10); const easedHit=100-st.hull; st.hull=100; G.hurt(100,10,'X',true);
   check(Math.abs(hit-10)<1e-9&&Math.abs(easedHit-10*G.CFG.ASSIST.HULL_DMG)<1e-9&&st.hull===0,'assist: a hit costs half the hull ('+hit.toFixed(1)+' → '+easedHit.toFixed(1)+'), a fatal one is still fatal');
   G.setGuide({}); batFresh(); step(5); check(G.guide.tips.length===0&&!G.guide.hold,'no tutorial, no assist: nothing highlighted, nothing held');
+  const toastEl=document.getElementById('toast'); toastEl.textContent='marker';
   G.setGuide({tutorial:true}); G.st.mode='done'; G.startRide(); step(5); const ids=()=>G.guide.tips.map(t=>t.id).join();
+  check(toastEl.textContent==='marker','tutorial: the opening key toast does not repeat the lesson');
+  G.tryShift(1); check(toastEl.textContent==='marker'&&st.grind>0,'tutorial: a grind is the amber warning, not a second toast');
   check(G.guide.hold&&st.mode==='drive'&&ids().startsWith('key-on'),'tutorial step 1 (ignition): the key is highlighted ['+ids()+']');
   fire('keydown','KeyI'); step(60*4); check(G.guide.banner&&/ENGINE RUNNING/.test(G.guide.banner.text),'a finished step cheers with a green banner ['+(G.guide.banner?.text)+']'); step(60*4); check(st.engineOn&&ids()==='park','tutorial step 2 (parking brake) once the engine runs ['+ids()+']');
   fire('keydown','KeyB'); step(60*7); check(!st.park&&ids().startsWith('CLU'),'tutorial step 3 (first gear + clutch) once the brake is off ['+ids()+']');
@@ -143,7 +146,23 @@ check(nightX.night===true&&dayX.night===false&&G.THEMES.some(t=>t.id===dayX.rout
   st.engineOn=false; st.stalled=true; st.rpm=0; step(70); check(G.guide.note==='ENGINE STALLED'&&ids().startsWith('STALL,CLU,key-start'),'tutorial step 4, the engine stalls: a warning with the next actions ['+G.guide.note+' | '+ids()+']');
   st.engineOn=true; st.stalled=false; st.rpm=900; step(60*7); check(G.guide.note===''&&ids().startsWith('GAS'),'… and the lesson is back once the engine runs again ['+ids()+']');
   st.t=1e3; st.s=1e6; step(3); check(!st.complete&&G.guide.hold,'the tutorial holds the finish line while it is open');
-  G.setGuide({}); step(3); check(!G.guide.hold&&st.complete,'… and lets the ride complete once it is closed'); fire('keyup','ShiftLeft'); }
+  G.setGuide({}); step(3); check(!G.guide.hold&&st.complete,'… and lets the ride complete once it is closed'); fire('keyup','ShiftLeft');
+  toastEl.textContent='marker'; G.setGuide({assist:true}); G.st.mode='done'; G.startRide(); step(5);
+  check(toastEl.textContent==='marker','assist: the opening key toast does not repeat the tip');
+  G.tryShift(1); check(toastEl.textContent==='marker'&&st.grind>0,'assist: grinding does not also raise the grind toast');
+  fire('keydown','KeyM'); check(/Sound /.test(toastEl.textContent),'assist: a toast the tip does not teach still shows');
+  G.setGuide({}); }
+{ G.setGuide({ tutorial: true, assist: true }); G.st.mode = 'done'; G.startRide(); step(5);
+  check(G.guide.tips.length > 0, 'tutorial+assist: step 1 ignition tips present');
+  G.endTutorial(); step(5);
+  check(G.guide.tips.length === 0, 'tutorial+assist: ending tutorial clears tips (no lingering highlights)');
+  G.setGuide({}); }
+{ G.setGuide({ tutorial: true, assist: true }); G.st.mode = 'done'; G.startRide(); step(5);
+  for (let s = 0; s < 8; s++) { G.advanceTutorial(); step(5); }
+  check(G.guide.tips.length === 0, 'tutorial+assist: skipping through all tutorial steps leaves zero input highlights');
+  step(60 * 5);
+  check(G.guide.tips.length === 0, 'tutorial+assist: after tutorial completion banner fades, zero input highlights');
+  G.setGuide({}); }
 { G.setGuide({ tutorial: true }); G.setTrip('free-1c'); const D=G.CFG.COMPLETE_DIST; G.startRide(); st.t=5; st.s=D+500; st.v=20; step(3);
   check(st.complete&&!G.guide.hold,'a finish-line trip completes the moment the line is reached – the clock (5 s of the shift) does not matter – and an open tutorial is cut off'); G.setGuide({}); G.setTrip('1h'); }
 // the free LEVELS (trips.js free-1/2/3) and FORKS (net/patterns.js FORK): the easy run is four lanes without a junction; a fork's two roads meet again where

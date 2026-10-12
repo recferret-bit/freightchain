@@ -135,8 +135,19 @@ export async function startRide() {   // only an online ride awaits the server
     if (!offlineRide.dev) setGuide({ tutorial: guestOpt.tutorial, assist: guestOpt.assist });   // the guest's two checkboxes (a tool's devRun picks its own)
   }
   resetRide(); st.mode = 'drive'; audio.start(); audio.play('start'); overlay.classList.add('hide'); startGuide(); syncBail();
-  if (!guide.tutorial) toast(CFG.START_ENGINE_OFF ? 'Press I (engine) · B (release brake) · SHIFT+E (1st gear) · W (gas)' : 'Release parking brake (B) · SHIFT+E (1st gear) · W (gas)', 5000);
-  setTimeout(() => { if (st.mode === 'drive' && st.s < 60) toast(net.straight ? 'Loaded. The road runs straight ahead – go up through the gears' : 'Loaded. Drive slowly to the main road, stop at the line, turn RIGHT into a gap', 7000); }, 6500);
+  if (!guide.tutorial && !guide.assist) toast(CFG.START_ENGINE_OFF ? 'Press I (engine) · B (release brake) · SHIFT+E (1st gear) · W (gas)' : 'Release parking brake (B) · SHIFT+E (1st gear) · W (gas)', 5000);
+  armRoadHint();
+}
+/* the yard hint. The tutorial already teaches the launch, so this waits until that dialog is gone – and only if the truck is still in the yard. */
+let roadGen = 0;
+function armRoadHint() {
+  const gen = ++roadGen;
+  const fire = () => {
+    if (gen !== roadGen || st.mode !== 'drive' || st.s >= 60) return;
+    if (guide.hold || document.body?.classList?.contains?.('tutorial')) { setTimeout(fire, 1000); return; }
+    toast(net.straight ? 'Loaded. The road runs straight ahead – go up through the gears' : 'Loaded. Drive slowly to the main road, stop at the line, turn RIGHT into a gap', 7000);
+  };
+  setTimeout(fire, 6500);
 }
 /* The road never ends: a ride ends by failing, or by the driver ending the shift (pause menu). It pays out only once the shift is complete
    (st.complete: CFG.COMPLETE_DIST covered, set in sim/physics.js). */
