@@ -66,6 +66,7 @@ describe('ridePageMiddleware', () => {
     await new Promise((r) => setTimeout(r, 10));
 
     expect(sentBody).toContain('LIVE · 25.4 km');
+    expect(sentBody).toMatch(/<meta property="og:url" content="https?:\/\/[^"]+\/r\/test-uuid"/);
     expect(sentBody).toContain('Gsea…Cqbn');
   });
 
