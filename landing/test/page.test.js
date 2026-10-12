@@ -110,10 +110,11 @@ test('promo invite: a form in its own band right after the hero (an <aside>, not
   assert.doesNotMatch(main, /inviteMsg\.(innerHTML|insertAdjacentHTML)/);
 });
 
-test('the lobby has the PROMO tab and takes the invite code only as a pre-fill', () => {
+test('the lobby has no PROMO tab (the codes are in the PROFILE) and takes the invite code only as a pre-fill', () => {
   const lobbyHtml = readFileSync(join(root, '..', 'client', 'lobby.html'), 'utf8'), lobby = readFileSync(join(root, '..', 'client', 'site', 'lobby.js'), 'utf8');
-  assert.match(lobbyHtml, /<a role="tab" href="#promo" data-tab="promo">PROMO<\/a>/);
-  assert.match(lobby, /const TABS = \['new', 'live', 'replays', 'board', 'garage', 'promo', 'profile'\]/);
+  assert.doesNotMatch(lobbyHtml, /data-tab="promo"/);
+  assert.match(lobbyHtml, /<a role="tab" href="#achievements" data-tab="achievements">ACHIEVEMENTS<\/a>/);
+  assert.match(lobby, /const TABS = \['new', 'live', 'replays', 'board', 'achievements', 'garage', 'profile'\]/);
   assert.match(lobbyHtml, /<a role="tab" href="#garage" data-tab="garage">GARAGE<\/a>/);
   assert.match(lobby, /api\('garage\/loadout'/); assert.match(lobby, /track\('garage_part_clicked'/);
   assert.match(lobby, /reportWebVitals\('lobby'\)/);

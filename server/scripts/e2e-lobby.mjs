@@ -158,7 +158,9 @@ check('…and no unexpected page errors (ticket holder)', problems(tix).length =
 
 // ── PROFILE
 await rider.ev('location.hash = "#profile"');
-check('PROFILE: stats + achievements unlocked + the ride in history', await until(async () => (await rider.ev('document.querySelectorAll(".a, .ac").length')) === 32));
+check('PROFILE: stats + the ride in history', await until(async () => (await rider.ev('document.querySelectorAll(".hist .hrow").length')) >= 1));
+await rider.ev('location.hash = "#achievements"');
+check('ACHIEVEMENTS tab: every badge is a card', await until(async () => (await rider.ev('document.querySelectorAll(".a, .ac").length')) === 32));
 check('PROFILE: the ride in history carries its recording verdict', /COMPLETED · (VERIFIED|FLAGGED|REJECTED)/.test(await rider.ev('document.querySelector(".hist .hrow")?.textContent || ""')), await rider.ev('document.querySelector(".hist .hrow")?.textContent || ""'));
 const ach = await rider.ev('[...document.querySelectorAll(".a, .ac")].map(a => (a.classList.contains("lock") ? "-" : "+") + a.querySelector(".nm").textContent).join("|")');
 // the drive above sets the distance directly, so its recording is REJECTED (line ~106); with the verdict enforced (this server's default) a rejected recording
@@ -168,7 +170,8 @@ check('First Mile unlocked; Shift Complete stays locked (it is for PAID shifts �
   /\+First Mile/.test(ach) && /-Shift Complete/.test(ach) && /-Top 20/.test(ach), ach);
 check(rejected ? 'the rejected EASY run clears no level: Learner’s Permit, Crossroads, Long Haul locked' : 'the EASY free run cleared: Learner’s Permit unlocked, Crossroads + Long Haul locked',
   (rejected ? /-Learner’s Permit/ : /\+Learner’s Permit/).test(ach) && /-Crossroads/.test(ach) && /-Long Haul/.test(ach), ach);
-check('history lists the ride as COMPLETED', /COMPLETED/.test(await rider.ev('[...document.querySelectorAll(".hist")].map(n => n.textContent).join("|")')));
+await rider.ev('location.hash = "#profile"');
+check('history lists the ride as COMPLETED', await until(async () => /COMPLETED/.test(await rider.ev('[...document.querySelectorAll(".hist")].map(n => n.textContent).join("|")'))));
 check('a wallet without tickets: "No tickets yet"', /No tickets yet/.test(await rider.ev('document.getElementById("view").textContent')));
 await rider.shot('profile-desktop'); await size(rider, 390, 844, true); await sleep(300); await rider.shot('profile-phone'); await size(rider, 1100, 900, false);
 
@@ -186,8 +189,8 @@ await obs.send('Page.navigate', { url: `${BASE}/lobby.html#new` }); await sleep(
 const P = await wallet(); await size(obs, 1100, 900, false);
 await open(obs, P, `${BASE}/lobby.html#new`);
 check('PROMO: the code field lives in the header, on the NEW RIDE tab too', await until(async () => (await obs.ev('!!document.getElementById("promo-code") && !!document.getElementById("promo-go") && location.hash !== "#promo"')) === true));
-await obs.ev('location.hash = "#promo"');
-check('PROMO tab: the form, a link to the garage, no codes yet', await until(async () => /Parts you unlock are waiting in your garage/.test(await txt(obs, '#view')) && /No codes redeemed yet/.test(await txt(obs, '#my-codes'))));
+await obs.ev('location.hash = "#profile"');
+check('PROFILE: the promo codes section – a link to the garage, no codes yet', await until(async () => /Parts you unlock are waiting in your garage/.test(await txt(obs, '#view')) && /No codes redeemed yet/.test(await txt(obs, '#my-codes'))));
 const promoGo = async code => { await obs.ev(`document.getElementById("promo-code").value = ${JSON.stringify(code)}; document.getElementById("promo-go").click()`); await until(async () => !/Redeeming/.test(await txt(obs, '#promo-msg')) && (await txt(obs, '#promo-msg')) !== ''); return txt(obs, '#promo-msg'); };
 check('PROMO: THREE → +3 free rides, the chip shows 13/5 (above the daily cap)', /^\+3 free rides \(THREE\) · you now have 13/.test(await promoGo('three')) && await until(async () => /13\/5 free rides/.test(await txt(obs, '#chip-free'))), await txt(obs, '#chip-free'));
 check('PROMO: …and the next daily credit is not counted down (at / above the cap)', /full/.test(await txt(obs, '#chip-free')), await txt(obs, '#chip-free'));

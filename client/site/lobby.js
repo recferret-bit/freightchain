@@ -22,14 +22,15 @@ import { FREE_COUNTRIES } from '../js/free-countries.js';
 import { isMobileDevice } from '../js/mobile.js';
 import { ticketDialog, hideTicketDialog } from './ticket-dialog.js';
 
-/* The lobby: NEW RIDE · LIVE · LEADERBOARD · GARAGE · PROMO · PROFILE. Vanilla DOM, no framework.
+/* The lobby: NEW RIDE · LIVE · REPLAYS · LEADERBOARD · ACHIEVEMENTS · GARAGE · PROFILE. Vanilla DOM, no framework.
    Everything that comes from the server (wallet addresses, route ids, statuses…) goes in with textContent – never innerHTML – because other riders' data is rendered here. */
 reportWebVitals('lobby');   // before the session check, so a bounce back to the landing still reports the load
 const $ = id => document.getElementById(id);
 const view = $('view');
 const ROUTES = { route66: 'Route 66', stuart: 'Stuart Hwy', siberia: 'Trans-Siberian', brenner: 'Brenner Pass', panamerican: 'Pan-American' };   // = client/js/themes ids
 const TIER_NAME = { free: 'TEST RIDE', '1h': '1 HOUR', '4h': '4 HOURS', '8h': '8 HOURS' };
-const TABS = ['new', 'live', 'replays', 'board', 'garage', 'promo', 'profile'];
+const TABS = ['new', 'live', 'replays', 'board', 'achievements', 'garage', 'profile'];
+const TAB_ALIAS = { promo: 'profile' };   // the old PROMO tab (the landing's invite link, bookmarks) lives in the PROFILE now
 
 /* ───────── helpers ───────── */
 const hue = w => { let h = 0; for (const c of w) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
@@ -73,10 +74,10 @@ function paintHeader() {
 
 function go() {
   const t = location.hash.slice(1).split('/')[0];
-  S.tab = TABS.includes(t) ? t : 'new'; seq++;
+  const tab = TAB_ALIAS[t] ?? t; S.tab = TABS.includes(tab) ? tab : 'new'; seq++;
   track('lobby_tab_viewed', { tab: S.tab });   // hash enter, not the 1 s tick
   document.querySelectorAll('.tabs a').forEach(a => { const on = a.dataset.tab === S.tab; a.classList.toggle('on', on); a.setAttribute('aria-selected', on); });
-  ({ new: renderNew, live: renderLive, replays: () => renderReplays(view, { me: S.me, ROUTES, TIER_NAME, dur, km, avatar }), board: () => renderBoard(view, { S, now, track, km, dur, avatar }), garage: renderGarage, promo: renderPromo, profile: renderProfile })[S.tab]();
+  ({ new: renderNew, live: renderLive, replays: () => renderReplays(view, { me: S.me, ROUTES, TIER_NAME, dur, km, avatar }), board: () => renderBoard(view, { S, now, track, km, dur, avatar }), achievements: renderAchievements, garage: renderGarage, profile: renderProfile })[S.tab]();
 }
 
 /* ───────── NEW RIDE ─────────
@@ -419,23 +420,23 @@ async function redeem(e) {
   const input = $('promo-code'), go = $('promo-go'), code = input.value.trim(), m = $('promo-msg');
   const show = (text, cls) => { m.textContent = text; m.className = `msg ${cls}`; };
   if (!code) { show('Type a promo code first.', 'bad'); return; }
-  track('promo_redeem_clicked', { surface: S.tab === 'promo' ? 'promo' : 'new', prefilled: !!S.invited && code.replace(/\s+/g, '').toUpperCase() === S.invited }); S.invited = null;   // before the request; the server's promo_redeemed is the outcome
+  track('promo_redeem_clicked', { surface: S.tab === 'profile' ? 'profile' : 'new', prefilled: !!S.invited && code.replace(/\s+/g, '').toUpperCase() === S.invited }); S.invited = null;   // before the request; the server's promo_redeemed is the outcome
   go.disabled = true; show('Redeeming…', 'dim');
   try {
     const r = await api('promo/redeem', { code }); input.value = ''; show(promoOk(r), 'good'); if (r.kind === 'tickets') S.focus = r.tier;
     await refreshMe();
     S.garage = null;   // a new part: the GARAGE reloads next time it is opened
-    if (S.tab === 'promo') await paintPromoLists();   // the new code in the list
+    if (S.tab === 'profile') await paintPromoLists();   // the new code in the list
   } catch (err) { show(promoError(err), 'bad'); } finally { go.disabled = false; }
 }
 
-/* ───────── PROMO ─────────
-   The code field (a code from the landing's invite block arrives as ?promo=CODE and only PRE-FILLS it – the player clicks REDEEM) and what this wallet redeemed. The parts are in the GARAGE. */
-function renderPromo() {
-  view.replaceChildren(el('p', { class: 'dim' }, 'Redeem codes in the box at the top. Parts you unlock are waiting in your ', el('a', { href: '#garage' }, 'garage →')),
-    el('h2', {}, 'CODES YOU REDEEMED'), el('div', { id: 'mycodes' }, el('p', { class: 'dim' }, 'Loading…')));
+/* ───────── PROMO CODES (a section of the PROFILE) ─────────
+   The code field is the header's (a code from the landing's invite block arrives as ?promo=CODE and only PRE-FILLS it – the player clicks REDEEM); here is what this wallet redeemed. The parts are in the GARAGE. */
+function promoSection() {
   if (S.invite) { $('promo-code').value = S.invite; S.invited = S.invite.replace(/\s+/g, '').toUpperCase(); S.invite = null; $('promo-code').focus(); }
   paintPromoLists();
+  return [el('h2', {}, 'PROMO CODES'), el('p', { class: 'dim' }, 'Redeem codes in the box at the top. Parts you unlock are waiting in your ', el('a', { href: '#garage' }, 'garage →')),
+    el('div', { id: 'mycodes' }, el('p', { class: 'dim' }, 'Loading…'))];
 }
 async function paintPromoLists() {
   const my = seq, mine = await api('promo/mine', undefined, { report: false }).catch(e => e);
@@ -546,6 +547,13 @@ async function pollLive() {
   if (S.tab === 'live') paintLive();
 }
 
+/* ───────── ACHIEVEMENTS ───────── */
+async function renderAchievements() {
+  view.replaceChildren(el('p', { class: 'dim' }, 'Loading…'));
+  const my = seq;
+  try { const p = await api('profile', undefined, { report: false }); if (my === seq) view.replaceChildren(...achievementsSection(p.achievements, track, p.badgeChain)); } catch (e) { if (my === seq) view.replaceChildren(el('p', { class: 'bad' }, e.message)); }
+}
+
 /* ───────── PROFILE ───────── */
 /* a ride's check in the history: a PAID ride shows its REVIEW (server/src/domain/verdict/ride-review.ts – under review until the recording check
    verifies it or an admin decides), a free ride its recording check as before */
@@ -565,8 +573,8 @@ async function renderProfile() {
     el('div', { class: 'who', style: 'display:flex;gap:10px;align-items:center' }, avatar(p.wallet), el('div', {}, el('b', {}, short(p.wallet)), el('div', { class: 'dim' }, `rider since ${new Date(p.createdAt).toLocaleDateString()}`))),
     ...careerTiles(p.career, p.stats, { km, sol }),
     ...profileTickets(p, S.busy, refund),
-    ...achievementsSection(p.achievements, track, p.badgeChain),
-        el('h2', {}, 'RECENT RIDES'),
+    ...promoSection(),
+    el('h2', {}, 'RECENT RIDES'),
     p.recent.length ? el('div', { class: 'hist' }, p.recent.map(r => el('div', { class: 'hrow' },
       el('span', {}, new Date(r.startedAt).toLocaleString(), ' · ', TIER_NAME[r.tier] ?? r.tier, r.route ? ` · ${ROUTES[r.route] ?? ''}` : ''),
       el('span', {}, `${km(r.distance)} km · `, el('b', { class: r.status === 'completed' ? 'good' : 'bad' }, r.status.toUpperCase()), rideCheck(r)),
