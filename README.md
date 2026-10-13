@@ -31,6 +31,35 @@ The live site is [freightchain.fun](https://freightchain.fun). The escrow progra
 
 Start on the public site. The form, the two videos, and the founder bio live in [`docs/hackathon-plan-v2.md`](docs/hackathon-plan-v2.md). This section is the product, the chain, and the claims that match the code.
 
+### Live traction (PostHog, queried 13 Oct 2026)
+
+Read straight from the product-analytics project (PostHog Cloud EU 297915) with HogQL, window 8 Oct – 13 Oct 06:15 UTC. These are the live numbers, not a mock. They are small and honest: public devnet, no paid marketing, and ride events come from a handful of test accounts (2 anon ids), so read them as "the pipeline works end to end", not as a user base.
+
+| Signal | Number |
+|---|---|
+| Events captured, 8–13 Oct | **3,819** (3,602 browser, 217 server-side after the DB commit) from 189 distinct ids |
+| Landing visitors | **113 unique** over 6 days, steady 20–27 a day (no one-day spike) |
+| Watched the hero video | **56 of 115** landing views (49 %) |
+| Whitepaper readers | **11 unique** (16 views) |
+| Shifts | **32 started, 6 completed, 7 failed, 19 abandoned** (`ride_started` / `ride_completed` / `ride_failed` / `ride_abandoned`) |
+| Wallet sign-ins | **60** `player_signed_in` events from 52 distinct wallets (server events are keyed by wallet, so this is not the same id space as the landing funnel) |
+| Badges | 10 `achievement_unlocked` |
+| Peak day | 12 Oct (the deadline): 1,080 events, 46 ids |
+
+**Page speed** (`web_vital`, share of samples rated *good* by Google's thresholds, landing + whitepaper + lobby):
+
+| Metric | Good | Samples |
+|---|---|---|
+| TTFB | **89 %** | 359 |
+| FCP | **88 %** | 330 |
+| LCP | **92 %** (good samples average 0.88 s) | 285 |
+| CLS | **90 %** | 285 |
+| INP | **99 %** | 163 |
+
+**What the data told us.** Roughly half of landing visitors press play on the hero video, so the pitch lands, but only 4 clicked *connect wallet* (18 clicks in all), so the step between "watch" and "sign in" is the leak. `hero_video_failed` fired for 17 ids and `api_request_failed` for 12, the two things to fix next. The slow tail is small (10 poor LCP and 18 poor TTFB samples); we have not yet looked into its cause. If PostHog and SQL ever disagree, SQL is the truth ([`docs/agents/analytics.md`](docs/agents/analytics.md)).
+
+Screenshots of the private board are below under "Real product analytics". Event list, funnels and identity rules: [`docs/analytics/index.html`](docs/analytics/index.html).
+
 ### Open these
 
 | Surface | URL | What you get |
