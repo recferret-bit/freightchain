@@ -14,7 +14,7 @@ const MAX_PAGES = 10;
 const BOOTSTRAP_LIMIT = 1000;
 
 /**
- * The watcher's poll (docs/paid-tickets-plan.md §2.7): from the 'program' cursor, the program's transactions OLDEST first → SettleChainSignatureCommand for each
+ * The watcher's poll (docs/agents/escrow.md): from the 'program' cursor, the program's transactions OLDEST first → SettleChainSignatureCommand for each
  * successful one (failed ones are passed over – they moved no money). The cursor moves past a transaction only once it is done or invalid; one that is
  * still `pending` (not visible at the configured commitment) stops the batch there, so it is the first one asked next time. With no cursor yet (first boot)
  * the newest BOOTSTRAP_LIMIT transactions are replayed, oldest first – the whole history of a young program. Settling is idempotent, so the

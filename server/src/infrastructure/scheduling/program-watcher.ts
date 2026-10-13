@@ -11,7 +11,7 @@ export const LOGS_DEBOUNCE_MS = SECOND_MS;
 export const POOL_SYNC_MS = 60 * SECOND_MS;
 
 /**
- * The program-log watcher (docs/paid-tickets-plan.md §2.7), registered in AppModule only – the admin CLI boots the application layer without timers or sockets.
+ * The program-log watcher (docs/agents/escrow.md), registered in AppModule only – the admin CLI boots the application layer without timers or sockets.
  * With WATCH_INTERVAL_MS > 0: on boot and every interval it dispatches PollProgramCommand (settle new program transactions + the finality pass); the program's
  * log subscription (websocket, when SOLANA_WS is set) triggers an early poll, debounced. Polls never overlap in this process: a poll asked for while one runs
  * is coalesced into ONE more right after it (across instances settling is idempotent anyway). On boot and every 60 s it also dispatches SyncPoolsCommand –

@@ -1,4 +1,4 @@
-/* An order for tickets: "n tickets of pool X". The server builds the transaction; the chain event settles it (docs/paid-tickets-plan.md §2.2, §2.7). */
+/* An order for tickets: "n tickets of pool X". The server builds the transaction; the chain event settles it (docs/agents/escrow.md). */
 
 export const ORDER_STATUSES = ['awaiting_payment', 'paid', 'expired', 'refunded'] as const;
 export type OrderStatus = (typeof ORDER_STATUSES)[number];

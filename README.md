@@ -8,7 +8,7 @@ Paid entries are SOL on Solana devnet. The program holds the money. There is no 
 
 The live site is [freightchain.fun](https://freightchain.fun). The program in this repo is [`8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p`](https://explorer.solana.com/address/8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p?cluster=devnet) on devnet (v3, upgraded in place on 12 Oct 2026). Its config account is [`9zRUyontAnwj65WHpEazpmW1eyHb8oYfPDvxcpMrSw7F`](https://explorer.solana.com/address/9zRUyontAnwj65WHpEazpmW1eyHb8oYfPDvxcpMrSw7F?cluster=devnet), 146 bytes, read from the public devnet RPC on 13 Oct 2026. An older program, `9e7phdJz…BSvx`, is still on devnet with its pools finished. The site does not sell into it.
 
-The truck, the five routes, the cockpit, traffic, and climate in `client/js` were built before this hackathon. The window added the server, the lobby, the landing, the whitepaper, verified play, live watch, the admin page, the garage, promo codes, and the escrow program. Coding agents also read [`AGENTS.md`](AGENTS.md). The 7 Oct worksheet ([`docs/hackathon-plan-v2.md`](docs/hackathon-plan-v2.md)) is older than this file.
+The entire project was built in two weeks during the hackathon, entering in the final 6 days of the submission window—the truck simulation and cockpit, the five routes, traffic, climate, the server, the lobby, the landing, the whitepaper, verified play, live watch, the admin page, the garage, promo codes, and the escrow program. Coding agents also read [`AGENTS.md`](AGENTS.md).
 
 ## Contents
 

@@ -7,7 +7,7 @@ import { EnvService } from '../../config/env.service.js';
 export const WEBHOOK_SECRET_HEADER = 'x-webhook-secret';
 
 /**
- * POST /api/chain/webhook (docs/paid-tickets-plan.md §2.7): WEBHOOK_SECRET unset → 404 (the route does not exist); otherwise the secret must come in the
+ * POST /api/chain/webhook (docs/agents/escrow.md): WEBHOOK_SECRET unset → 404 (the route does not exist); otherwise the secret must come in the
  * `x-webhook-secret` header (a QuickNode Streams custom header) or as the `Authorization` header, bare or `Bearer <secret>` (Helius' auth header) – else 401.
  * Compared in constant time (sha256 digests, so the length does not leak either). The body is never trusted anyway: only signatures are taken from it.
  */

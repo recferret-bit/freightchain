@@ -1,4 +1,4 @@
-// A STUB of the API for front-end work on the ticket flows without a chain (docs/paid-tickets-plan.md §2.4, W5): pools in EVERY status (open, active,
+// A STUB of the API for front-end work on the ticket flows without a chain (docs/agents/escrow.md): pools in EVERY status (open, active,
 // refunding – which the dev seeds can't make), and the order / payment / confirm / refund / settle routes of W3/W4 with real (unsigned, never sent) web3.js
 // transactions, so client/site/pay.js runs end to end against a fake wallet. Serves landing/dist at / (if built) and client/ like Nest. One signed-in wallet, no auth, all in memory.
 // Nothing touches a network or a chain: the "chain" here is a counter. Usage (from server/): PORT=3150 node scripts/stub-api.mjs   then open http://localhost:3150/lobby.html

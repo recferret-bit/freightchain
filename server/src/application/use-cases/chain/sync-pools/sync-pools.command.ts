@@ -1,4 +1,4 @@
-/** The periodic truth check (docs/paid-tickets-plan.md §2.7 "PoolSyncService"): every open / active pool of the mirror re-read from its account. */
+/** The periodic truth check (docs/agents/escrow.md "PoolSyncService"): every open / active pool of the mirror re-read from its account. */
 export class SyncPoolsCommand {}
 
 export interface PoolDriftDto {

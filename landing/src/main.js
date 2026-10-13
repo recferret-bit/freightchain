@@ -15,7 +15,7 @@ reportWebVitals('landing');   // before the first track(), so the leave flush in
 
 /* ───── things to fill in ───── */
 const DEMO_VIDEO = '/media/demo.mp4';  // the demo clip, served by our own host (nginx caches /media/*.mp4 and answers Range); to move it to a CDN put the full https URL here; null = the dialog explains and links to offline play
-const SOCIALS = { x: 'https://x.com/FreightChainSol', youtube: 'https://www.youtube.com/@FreightChainGame', discord: null, telegram: null };   // URLs; null hides the button (Q11 in docs/hackathon-plan-v2.md; files go in landing/public/media/; the hero loop is `data-src` on #hero-video in index.html)
+const SOCIALS = { x: 'https://x.com/FreightChainSol', youtube: 'https://www.youtube.com/@FreightChainGame', discord: null, telegram: null };   // URLs; null hides the button (files go in landing/public/media/; the hero loop is `data-src` on #hero-video in index.html)
 
 const $ = id => document.getElementById(id);
 function el(tag, attrs = {}, ...kids) {

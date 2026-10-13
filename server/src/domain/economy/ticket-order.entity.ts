@@ -3,7 +3,7 @@ import type { Pool } from './pool.entity.js';
 import type { OrderStatus, TicketOrderProps } from './ticket-order.types.js';
 
 /**
- * "n tickets of pool X" (docs/paid-tickets-plan.md §2.2, §2.7). The server builds the transaction; the program's TicketBought event pays it:
+ * "n tickets of pool X" (docs/agents/escrow.md). The server builds the transaction; the program's TicketBought event pays it:
  *   awaiting_payment → paid       its event was verified (also after it lapsed – money that arrived is always honoured)
  *   awaiting_payment → expired    nobody paid within the order TTL
  *   paid → awaiting_payment       the finality pass saw its transaction dropped (never landed): pay again, nothing was charged

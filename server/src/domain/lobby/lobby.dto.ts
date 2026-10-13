@@ -4,7 +4,7 @@ import type { TicketBalanceDto, TicketGrantDto } from '../economy/prize-pool.dto
 import type { AchievementDto } from '../achievements/achievement-unlock.entity.js';
 
 /** One truck on the road. Public, so no seed or free-text reason. The ride id IS here (since live streams): it is what the watch page takes, and every
-    owner-side route checks the wallet anyway – an id grants nothing (docs/solana-features-plan.md F5 publishes ride pages by id too). */
+    owner-side route checks the wallet anyway – an id grants nothing (docs/agents/live.md publishes ride pages by id too). */
 export interface LiveRideDto {
   id: string;
   wallet: string;

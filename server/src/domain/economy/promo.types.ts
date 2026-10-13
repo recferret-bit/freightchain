@@ -2,7 +2,7 @@ import type { PaidTierId } from '../rides/ride-tier.js';
 import type { CosmeticSlot } from './cosmetics.js';
 
 /* What redeeming a promo code does (one effect per code):
-   - tickets: free paid-ride tickets of a tier – an off-chain grant into a pool, i.e. a sponsored entry; it does NOT count towards the pool's minimum (docs/paid-tickets-plan.md §8)
+   - tickets: free paid-ride tickets of a tier – an off-chain grant into a pool, i.e. a sponsored entry; it does NOT count towards the pool's minimum (docs/promocodes.md)
    - free_rides: extra FREE rides on top of the daily ones – may take the balance above `freeRidesMax` (the daily refill only adds below the cap and never takes anything away)
    - cosmetic: unlocks one colour part of the cockpit (wheel / truck colour / gearbox / dice / needle) and equips it – docs/promocodes.md */
 export type PromoEffect =

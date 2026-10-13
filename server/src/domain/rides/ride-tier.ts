@@ -54,7 +54,7 @@ export const isPaidTier = (id: RideTierId): boolean => id !== 'free';
 /** False for a planned shift (1h, 4h, 8h). A registered live pool of that tier still sells; this only gates the offer when none is open. */
 export const isTierOnSale = (id: RideTierId): boolean => rideTiers(0).find((t) => t.id === id)?.onSale ?? false;
 
-/** The tiers that cost money – each is sold as tickets into a pool (docs/paid-tickets-plan.md). */
+/** The tiers that cost money – each is sold as tickets into a pool (docs/agents/escrow.md). */
 export const PAID_TIER_IDS = ['1h', '4h', '8h'] as const;
 export type PaidTierId = (typeof PAID_TIER_IDS)[number];
 export const isPaidTierId = (v: unknown): v is PaidTierId => typeof v === 'string' && (PAID_TIER_IDS as readonly string[]).includes(v);

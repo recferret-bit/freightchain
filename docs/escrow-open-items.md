@@ -1,8 +1,8 @@
 # Escrow program – what is not done, open questions, todo
 
 State on 2026-10-12, after program v3 (attestation-gated prizes, per-km pledges, the road seed committed on chain – an in-place upgrade of `8No42h…`), on top of v2 (the pool day: daily series, payout key, review window), the program verification, the localnet money test, the pool crank and the ten-rider payout run with its coverage gate. Keep this file current: tick items
-off here, move answers into the docs they belong to (`program-deploy.md`, `paid-tickets-status.md`, the program README), delete what no longer applies.
-Related: [deploy + operate](program-deploy.md) · [paid tickets status](paid-tickets-status.md) (its §3 Q1–Q8 still stand, Q3 is answered below) ·
+off here, move answers into the docs they belong to (`program-deploy.md`, `docs/agents/escrow.md`, the program README), delete what no longer applies.
+Related: [deploy + operate](program-deploy.md) · [escrow detail](agents/escrow.md) ·
 [contract spec](pool-program/index.html) · [localnet test](localnet-e2e/index.html).
 
 ## Where things are

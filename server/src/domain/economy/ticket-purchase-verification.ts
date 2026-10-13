@@ -1,7 +1,7 @@
 import type { ChainEventRecord } from './chain-events.js';
 import type { TicketOrderProps } from './ticket-order.types.js';
 
-/* Does an on-chain TicketBought pay THIS order? (docs/paid-tickets-plan.md §2.5 / §2.7). Pure: the settlement handler finds the order by the event's order id and asks.
+/* Does an on-chain TicketBought pay THIS order? (docs/agents/escrow.md). Pure: the settlement handler finds the order by the event's order id and asks.
    The program already guarantees the money moved (buyer → vault, price × qty, under its rules); this only checks the event is the one the order asked for, so an
    order is never marked paid by somebody else's purchase. A mismatch is not lost money: the settlement still credits the tickets to the buyer (unmatched → applied). */
 

@@ -125,7 +125,7 @@ export async function buyRide(tier, onStep = () => {}, onPayLink = () => {}) {
   } finally { stop.done = true; onPayLink(null); }
 }
 
-/* ───── escrowed pools (docs/paid-tickets-plan.md §2.8 / §2.10) – the W3/W4 routes, all behind tickets-api.js ───── */
+/* ───── escrowed pools (docs/agents/escrow.md) – the W3/W4 routes, all behind tickets-api.js ───── */
 
 /** Keeps the signature of an order in flight, so the lobby's RETRY CONFIRM works after a reload (per-browser convenience; the watcher credits the payment anyway). */
 export const ORDER_SIG = id => `freightchain.order.${id}`;

@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Freight Chain · Poster</title>
+<link rel="icon" href="assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=JetBrains+Mono:wght@500;700&display=swap">
+<link rel="stylesheet" href="deck-base.css">
+<style>
+/* Option B · POSTER – the TikTok cards: black, condensed caps, red / yellow / white, the Solana purple→green bar. */
+:root{--bg:#050505;--panel:#111;--ink:#fff;--muted:#9a9a9a;--accent:#ffcf5a;--accent2:#ff3b2f;--good:#14f195;--line:#2a2a2a;
+  --head:"Anton",Impact,"Arial Narrow Bold",sans-serif;--body:"JetBrains Mono",ui-monospace,monospace;--sol:linear-gradient(90deg,#9945ff,#14f195);--radius:16px}
+#stage{background:radial-gradient(circle at 85% 15%,#2a0f4a 0%,#0000 40%),radial-gradient(circle at 15% 95%,#0b3a26 0%,#0000 40%),#050505}
+h1{font:400 150px/.92 var(--head);letter-spacing:0;text-transform:uppercase;color:var(--ink)}
+h1::after{content:"";display:block;width:260px;height:12px;margin-top:34px;border-radius:6px;background:var(--sol)}
+h1 em{color:var(--accent)}
+h1 small{font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;color:var(--accent);margin-top:22px}
+.lbl{display:inline-block;padding:10px 20px;border-radius:999px;border:2px solid #9945ff;color:#fff;font-weight:700;letter-spacing:4px}
+.pts li{font:700 30px/1.2 var(--body);text-transform:uppercase;letter-spacing:.5px}
+.pts li::before{background:var(--accent2);width:16px;height:16px;border-radius:50%;top:.3em}
+.shot{border-radius:var(--radius);box-shadow:0 0 0 4px #050505,0 0 0 8px transparent,0 40px 90px #000;outline:4px solid transparent;
+  background:var(--sol);padding:6px}
+.shot img,.shot video{border-radius:calc(var(--radius) - 6px)}
+.L-wall h1{font-size:180px}
+.L-bleed h1{font-size:140px}
+.L-bleed .shade{background:linear-gradient(90deg,#000e 0%,#000a 50%,#0000 80%),linear-gradient(0deg,#000 0%,#0000 55%)}
+.L-split h1,.L-money h1{font-size:130px}
+.L-end h1{font-size:112px}
+.L-end h1::after{margin-top:24px}
+.L-money h1{font-size:112px}
+.split div{border-radius:12px}
+.split div:nth-child(1){background:var(--accent)}
+.split div:nth-child(2){background:var(--accent2);color:#fff}
+.split div:nth-child(3){background:#fff}
+.split b{font:400 46px/1 var(--head)}
+.fine{color:var(--good)}
+.L-chart h1{font-size:120px}
+.L-chart h1::after{display:none}
+.stats div{background:#0e0e0e;border:2px solid #222}
+.stats b{font:400 96px/1 var(--head);color:var(--ink)}
+.stats div:nth-child(2) b{color:var(--accent2)}
+.stats .hot b{background:var(--sol);-webkit-background-clip:text;background-clip:text;color:transparent}
+.charts section{background:#0e0e0e;border:2px solid #222}
+.c-bar{fill:var(--accent)}
+.c-val{font-family:var(--head);font-weight:400;font-size:32px}
+.road li{font:400 54px/1 var(--head);text-transform:uppercase}
+.road b{font:700 22px var(--body)}
+.cta{background:var(--sol);color:#fff;font:400 64px/1 var(--head);padding:24px 36px}
+.cta span{font-family:var(--body)}
+.tags span{background:#050505;color:#fff;border:2px solid #14f195}
+.badge.live{background:var(--accent2);font-family:var(--body)}
+.ladder li.on{border-color:var(--good)}
+.ladder li b{font:400 46px/1 var(--head)}
+.ladder li.on b{color:var(--good)}
+#bar{background:var(--sol)}
+.brand{color:#fff}
+</style>
+</head>
+<body>
+<div id="stage"><div id="deck"></div><div id="bar"></div></div>
+<div id="notes"><span id="clock"></span><div id="notes-text"></div><div id="notes-warn"></div></div>
+<div id="tip" hidden></div>
+<div id="help">← → · F full screen · N script · P play to the clock</div>
+<script src="deck.js"></script>
+</body>
+</html>

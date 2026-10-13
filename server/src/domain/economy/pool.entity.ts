@@ -4,7 +4,7 @@ import { tierFromChainCode, type ChainEventRecord, type PoolChainState } from '.
 import type { PayoutState, PoolHold, PoolProps, PoolStatus } from './pool.types.js';
 
 /**
- * The server's view of an escrowed prize pool (docs/paid-tickets-plan.md §0, §2.6; programs/freightchain-pools/README.md). The chain is the truth: `applyEvent` replays what
+ * The server's view of an escrowed prize pool (docs/agents/escrow.md; programs/freightchain-pools/README.md). The chain is the truth: `applyEvent` replays what
  * the program emitted, in order. The state machine mirrors the program's:
  *   open → active      the minimum is sold
  *   open → refunding   the preparation period ended short (PoolFailed) or an admin cancelled (PoolCancelled)

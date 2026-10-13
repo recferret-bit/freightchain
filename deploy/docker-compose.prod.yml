@@ -93,7 +93,7 @@ services:
       DEMO_WALLETS: ${DEMO_WALLETS:-}
       DEMO_SCALE: ${DEMO_SCALE:-60}
       INITIAL_SEED_SOL: ${INITIAL_SEED_SOL:-0}
-      # escrowed pools (docs/paid-tickets-status.md) – all optional: unset TICKET_PROGRAM_ID = the legacy transfer mode
+      # escrowed pools (docs/agents/escrow.md) – all optional: unset TICKET_PROGRAM_ID = the legacy transfer mode
       PAYMENT_MODE: ${PAYMENT_MODE:-}
       TICKET_PROGRAM_ID: ${TICKET_PROGRAM_ID:-}
       FEE_TREASURY: ${FEE_TREASURY:-}

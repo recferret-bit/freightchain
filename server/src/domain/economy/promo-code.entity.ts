@@ -8,7 +8,7 @@ export const MAX_FREE_RIDES_PER_CODE = 20;
 export const MAX_DESCRIPTION = 200;
 export const MAX_NOTE = 500;
 
-/** A promo code (docs/promocodes.md, docs/paid-tickets-plan.md §3 W2): one effect, redeemable a limited number of times overall and per wallet, between `startsAt` and `expiresAt`, until it is disabled.
+/** A promo code (docs/promocodes.md): one effect, redeemable a limited number of times overall and per wallet, between `startsAt` and `expiresAt`, until it is disabled.
  *  That a pinned `poolId` really is a pool of `tier` is checked by the use case that creates the code (it needs the pool). A code is immutable once created apart from being disabled
  *  – so the redemption log always reads against the effect that was actually granted. */
 export class PromoCode {

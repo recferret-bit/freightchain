@@ -1,6 +1,6 @@
 import { api } from './wallet.js';
 
-/* THE seam for the ticket routes of W3 (orders, refunds, payouts) and W4 (chain): one function per route, shapes as BUILT on `paid-tickets` @ b860f9d
+/* THE seam for the ticket routes of W3 (orders, refunds, payouts) and W4 (chain): one function per route, shapes as built in the API
    (TicketOrderDto, TicketPaymentDto, RefundTransactionDto, SettledSignatureDto, ChainFeesDto). If a shape changes, fix it HERE only.
    The lobby never calls them on page load unless sales are on: `salesOpen()` = the server sells through the program (`GET /api/tiers` → paymentMode 'program';
    a `ticketSales` boolean there would win). A call that reaches a server without the route (404 "Cannot GET …") or without a program (503 on POST /api/tickets)

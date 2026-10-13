@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common';
 
-/* The compute-unit price for a transaction (docs/paid-tickets-plan.md §2.9 "Priority fees"): the fee market is per HOT ACCOUNT (every buyer writes the Pool and its
+/* The compute-unit price for a transaction (docs/agents/escrow.md "Priority fees"): the fee market is per HOT ACCOUNT (every buyer writes the Pool and its
    vault), so the price is a percentile of what recently landed while writing those accounts, clamped to [PRIORITY_FEE_MIN, PRIORITY_FEE_MAX]:
      1. QuickNode's `qn_estimatePriorityFees` (over the last 100 blocks, for the hottest account) when the endpoint offers it – remembered as unsupported otherwise;
      2. the standard `getRecentPrioritizationFees(hot accounts)` (the last ~150 slots): the percentile over every sample, zeros included (a quiet account is cheap).

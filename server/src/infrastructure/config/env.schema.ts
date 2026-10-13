@@ -46,7 +46,7 @@ export const envSchema = z
     POSTHOG_PROJECT_ID: optional(z.string()),
     /** Cache for the public statistics (docs/statistics.md): `redis://[:password@]host:6379`. Unset / empty = an in-process cache (dev, tests). A Redis that is down is a miss, never an error. */
     REDIS_URL: optional(z.string().url()),
-    // ---- paid tickets (docs/paid-tickets-plan.md §2.1). Nothing here is required yet: today's deploy keeps booting; the workstreams add their own production checks.
+    // ---- paid tickets (docs/agents/escrow.md). Nothing here is required yet: today's deploy keeps booting; the workstreams add their own production checks.
     /** 'program' = escrow pools through the Anchor program, 'transfer' = plain transfers to the treasuries (fallback). Unset: 'program' when TICKET_PROGRAM_ID is set, else 'transfer'. */
     PAYMENT_MODE: optional(z.enum(['program', 'transfer'])),
     TICKET_PROGRAM_ID: optional(z.string()),

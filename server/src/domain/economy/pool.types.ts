@@ -1,6 +1,6 @@
 import type { PaidTierId } from '../rides/ride-tier.js';
 
-/* Data shapes of an escrowed prize pool (docs/paid-tickets-plan.md §0 and §2.6). The CHAIN is the source of truth: a Pool row is the server's mirror of the on-chain account,
+/* Data shapes of an escrowed prize pool (docs/agents/escrow.md). The CHAIN is the source of truth: a Pool row is the server's mirror of the on-chain account,
    kept in step by the program-log watcher and PoolSyncService. Lamports are plain numbers (a pool holds far below 2^53 lamports ≈ 9 million SOL). The rules (state machine,
    sale window, caps) live in the Pool entity of the pools workstream; this file only fixes the shape the ports speak. */
 

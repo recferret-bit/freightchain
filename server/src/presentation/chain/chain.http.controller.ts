@@ -5,7 +5,7 @@ import { GetChainFeesQuery } from '../../application/use-cases/chain/get-chain-f
 import { ZodQuery } from '../../infrastructure/http/decorators/zod.js';
 import { chainFeesQuerySchema, type ChainFeesQuery } from './dto/chain.dto.js';
 
-/** Public: the network's side of a purchase (docs/paid-tickets-plan.md §2.4). */
+/** Public: the network's side of a purchase (docs/agents/escrow.md). */
 @Controller('api/chain')
 export class ChainHttpController {
   constructor(private readonly queryBus: QueryBus) {}
