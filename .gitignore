@@ -82,3 +82,6 @@ docs/analytics/generated/
 # Multi-agent teamwork artifacts
 .agents/
 PROJECT.md
+
+# Local social plans (TikTok warmup and the like). Not product.
+social/

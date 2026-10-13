@@ -334,6 +334,7 @@ The intro clip is real gameplay, 14.8 seconds, with the in-game synth: [`media/o
 - [`docs/`](docs) — explainers. [`docs/agents/`](docs/agents) is the detail [`AGENTS.md`](AGENTS.md) points at.
 - [`landing/`](landing) — the `/` page and the whitepaper. Vite.
 - [`media/`](media) — promo clips and the chiptune synth.
+- [`pentest/`](pentest) — multi-agent penetration testing and quorum security review suite (Claude, Grok, Agy CLIs).
 - [`programs/`](programs/freightchain-pools) — the Anchor program. Anchor 1.2.
 - [`server/`](server) — NestJS 12, Prisma, PostgreSQL.
 
@@ -371,6 +372,7 @@ Skills live in `.claude/skills/<name>/`. A coding agent reads that folder's `SKI
 | `trip-design` | The road per ride tier – the free run and the 1 h / 4 h / 8 h shifts: bends, traffic, roadside, whether it ends by itself at the line, its length and finish distance – measured with the real game modules and looked at in Chrome | `node .claude/skills/trip-design/measure.mjs` · `node .claude/skills/trip-design/shots.mjs` |
 | `verified-play-test` | The anti-bot / anti-cheat end to end, positive and negative: a person and a bot in Chrome (dispatch prompts answered / ignored), API-level bots with hand-built recordings (every verdict code), the upload protocol, the admin's signed decisions, the profile in Chrome, retention + the CLI's bulk re-judge | `bash .claude/skills/verified-play-test/run.sh` |
 | `storybook-models` | Review and fix a mesh in the model viewer (`client/viewer.html`), or add or update a 3D object the game draws | `node .claude/skills/storybook-models/shot.mjs` · `node .claude/skills/storybook-models/shot.mjs <id>` |
+| `pentest-audit` | Adversarial penetration review across on-chain escrow, server money, anti-cheat, identity, client, and infra; multi-agent quorum review | `./pentest/bin/pentest run --surface all` · `./pentest/bin/pentest report` |
 
 A new, renamed, or removed skill updates this table in the same change. The rule is [`AGENTS.md`](AGENTS.md) → "Maps stay current".
 
