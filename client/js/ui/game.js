@@ -27,6 +27,7 @@ import { SITE_BASE } from '../hosts.js';
 import { ridePageUrl, rideShareText, xIntent } from './share.js';
 import { resetMap } from './map.js';
 import { phone } from '../phone.js';
+import { isMobileDevice, showMobileBlocker } from '../mobile.js';
 
 /* Ride flow: menu / start / end / pause overlay and per-ride reset. */
 let lastOutcome = null;
@@ -75,6 +76,10 @@ function showOfflineMenu(title, sub, extra) {
 }
 let menuArgs = ['FREIGHT CHAIN', 'Long-haul truck simulator', ''];
 export function showMenu(title, sub, extra = '') {
+  if (isMobileDevice() && !st.watch) {
+    showMobileBlocker();
+    return;
+  }
   menuArgs = [title, sub, extra];
   if (online.ride || online.error) return showOnlineMenu(title, sub, extra);
   if (offlineRide.on) showOfflineMenu(title, sub, extra);   // no page at all (the headless test): no menu
@@ -122,6 +127,10 @@ function failCode(outcome, reason) {
   return 'other';
 }
 export async function startRide() {   // only an online ride awaits the server
+  if (isMobileDevice()) {
+    showMobileBlocker();
+    return;
+  }
   if (online.error || online.done) return;
   if (online.ride) {
     track('ride_start_clicked', { ride_id: online.ride.id, route_id: env.theme.id, phase: dn.phase });

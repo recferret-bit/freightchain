@@ -1,0 +1,54 @@
+{
+ "name": "tiktok-fail-free-level",
+ "crop": "vertical",
+ "fps": 30,
+ "maxSeconds": 15,
+ "audio": {
+  "ignition": false,
+  "music": { "id": "brainrot", "gain": 0.5 },
+  "engine": { "gain": 0.25 },
+  "sfx": {
+   "mute": ["game-over"],
+   "extra": [
+    { "t": 0.2, "id": "airhorn", "gain": 0.8 },
+    { "t": 1.4, "id": "bruh" },
+    { "t": 3.9, "id": "wah" },
+    { "t": 6.8, "id": "scratch" },
+    { "t": 7.0, "id": "wah" },
+    { "t": 8.8, "id": "levelup", "gain": 0.6 }
+   ]
+  }
+ },
+ "scenes": [
+  {
+   "id": "fail-1", "dur": 2.4, "route": "route66", "time": "day", "speed": 25, "damage": true, "sway": 0,
+   "captions": [
+    { "at": 0.05, "dur": 1.1, "head": "3 WAYS TO FAIL\nTHE FREE LEVEL", "fx": "slam", "size": 120 },
+    { "at": 1.2, "dur": 1.1, "head": "#1 HIT\nA TRUCK", "fx": "stamp", "color": "red", "size": 120, "y": 1250 }
+   ],
+   "events": [ { "t": 0.05, "do": "spawn", "type": "truck", "preset": "slow", "zone": "ahead", "dist": 20 } ]
+  },
+  {
+   "id": "fail-2", "dur": 3.0, "route": "route66", "time": "night", "lights": false, "speed": 20,
+   "captions": [
+    { "at": 0.05, "dur": 2.9, "head": "#2 NO\nHEADLIGHTS", "fx": "slam", "size": 150 },
+    { "at": 1.1, "dur": 1.8, "head": "AT NIGHT.\nON A ROAD.", "fx": "stamp", "color": "yellow", "size": 100, "y": 1250 }
+   ],
+   "transition": { "type": "punch", "dur": 0.3 }
+  },
+  {
+   "id": "fail-3", "dur": 3.0, "route": "stuart", "time": "day", "speed": 34, "lines": 0.5,
+   "captions": [
+    { "at": 0.05, "dur": 2.9, "head": "#3 WRONG\nGEAR", "fx": "shake", "size": 150 },
+    { "at": 1.1, "dur": 1.8, "head": "ENGINE:\n\"HELP\"", "fx": "stamp", "color": "cyan", "size": 100, "y": 1250 }
+   ],
+   "events": [ { "t": 0.0, "do": "gear", "value": 2 } ],
+   "transition": { "type": "whip", "dur": 0.3 }
+  },
+  {
+   "id": "end", "dur": 2.6, "route": "brenner", "time": "dusk", "speed": 16, "captions": [], "beat": false,
+   "transition": { "type": "flash", "dur": 0.3 },
+   "card": { "title": ["NOW FAIL IT", "YOURSELF"], "steps": [], "cta": "10 FREE RIDES ▸" }
+  }
+ ]
+}

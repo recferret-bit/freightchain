@@ -2,7 +2,7 @@
    Driving Freight Chain requires a physical keyboard for manual gearbox, clutch, steering and cab switches.
    Spectating live streams and replays is fully supported on mobile. */
 
-import { SITE_BASE, WHITEPAPER_BASE } from './hosts.js';
+import { API_BASE, GAME_BASE, SITE_BASE, WHITEPAPER_BASE } from './hosts.js';
 
 export function isMobileDevice() {
   if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
@@ -68,7 +68,7 @@ export function showMobileBlocker() {
       <div class="note" style="border-left:3px solid #14f195;background:#0c160eee;border-radius:6px;padding:10px 14px;margin-bottom:18px;font-size:13px;color:#c9f0c9">
         <b>Spectating is supported on mobile!</b> You can watch any active truck live on the road or replay past completed shifts right on your phone.
       </div>
-      <div class="btns" style="flex-direction:column;align-items:stretch;gap:10px">
+      <div class="btns" id="mobile-blocker-btns" style="flex-direction:column;align-items:stretch;gap:10px">
         <a href="${liveUrl}" class="mobile-cta-btn live-btn">
           ▶ WATCH LIVE STREAMS
         </a>
@@ -85,5 +85,157 @@ export function showMobileBlocker() {
         </div>
       </div>
     `;
+
+    if (typeof fetch !== 'undefined' && typeof window !== 'undefined') {
+      fetch(`${API_BASE}/api/live?surface=game`, { credentials: 'include' })
+        .then(r => (r.ok ? r.json() : null))
+        .then(d => {
+          if (!d) return;
+          const live = d.rides && d.rides.length > 0 ? d.rides[0] : null;
+          const target = live || (d.recent && d.recent.length > 0 ? d.recent[0] : null);
+          const btns = document.getElementById('mobile-blocker-btns');
+          if (!target || !btns || btns.querySelector('.direct-watch')) return;
+          const a = document.createElement('a');
+          a.className = 'mobile-cta-btn live-btn direct-watch';
+          a.href = `${GAME_BASE}/play.html?watch=${encodeURIComponent(target.id)}`;
+          const km = ((target.distance || target.metres || 0) / 1000).toFixed(1);
+          const w = target.wallet ? `${target.wallet.slice(0, 4)}…${target.wallet.slice(-4)}` : 'driver';
+          a.textContent = live ? `▶ WATCH ${w} LIVE NOW (${km} km)` : `▶ REPLAY ${w}'S SHIFT (${km} km)`;
+          btns.prepend(a);
+        })
+        .catch(() => {});
+    }
   }
+}
+
+function ensureMobileToastStyles() {
+  if (typeof document === 'undefined' || document.getElementById('fc-mobile-toast-styles')) return;
+
+  const style = document.createElement('style');
+  style.id = 'fc-mobile-toast-styles';
+  style.textContent = '.fc-mobile-toast{position:fixed;top:max(16px,env(safe-area-inset-top,16px));left:50%;transform:translateX(-50%) translateY(-130%);width:min(480px,calc(100vw - 24px));box-sizing:border-box;z-index:99999;padding:14px 16px;background:linear-gradient(135deg,rgba(22,17,12,.97),rgba(10,9,8,.98));border:1.5px solid #ffcf5a;border-radius:12px;box-shadow:0 12px 40px #000d,0 0 24px #ffb02e59;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);font-family:ui-monospace,Menlo,Consolas,monospace;color:#efe6cf;opacity:0;transition:transform .32s cubic-bezier(.16,1,.3,1),opacity .25s ease;pointer-events:auto}.fc-mobile-toast.fc-toast-visible{transform:translateX(-50%) translateY(0);opacity:1}.fc-mobile-toast.fc-toast-pulse{animation:fcP .3s ease}@keyframes fcP{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.03)}}.fc-toast-top-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.fc-toast-brand{font-size:12px;font-weight:bold;letter-spacing:1.2px;color:#ffcf5a;display:flex;align-items:center;gap:6px}.fc-toast-close{background:transparent;border:0;color:#b9ad8d;font-size:16px;line-height:1;cursor:pointer;padding:4px 8px;border-radius:4px;font-family:inherit}.fc-toast-close:hover{color:#ffcf5a;background:#ffcf5a26}.fc-toast-msg{margin:0 0 8px;font-size:12.5px;line-height:1.45;color:#d9ccaa}.fc-toast-note{margin:0 0 12px;font-size:12px;line-height:1.4;color:#c9f0c9;background:#14f19514;border-left:3px solid #14f195;padding:6px 10px;border-radius:4px}.fc-toast-actions{display:flex;gap:8px;flex-wrap:wrap}.fc-toast-btn{display:inline-flex;align-items:center;justify-content:center;padding:7px 13px;border-radius:6px;font:inherit;font-size:11.5px;font-weight:bold;letter-spacing:.5px;cursor:pointer;text-decoration:none;box-sizing:border-box;border:0}.fc-toast-btn.live{background:#ffcf5a;color:#1b1408;box-shadow:0 0 12px #ffcf5a59}.fc-toast-btn.replays{background:transparent;color:#14f195;border:1.5px solid #14f19599}';
+  (document.head || document.documentElement).appendChild(style);
+}
+
+let toastTimeout = null;
+
+export function dismissMobileToast() {
+  if (typeof document === 'undefined') return;
+  const existing = document.getElementById('fc-mobile-toast');
+  if (existing) {
+    existing.classList.remove('fc-toast-visible');
+    clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => {
+      existing.remove();
+    }, 320);
+  }
+}
+
+export function showMobileToast(opts = {}) {
+  if (typeof document === 'undefined') return null;
+
+  ensureMobileToastStyles();
+
+  let toast = document.getElementById('fc-mobile-toast');
+  const isNew = !toast;
+
+  if (isNew) {
+    toast = document.createElement('div');
+    toast.id = 'fc-mobile-toast';
+    toast.className = 'fc-mobile-toast';
+    toast.setAttribute('role', 'alert');
+    toast.setAttribute('aria-live', 'assertive');
+    const target = document.body || document.documentElement;
+    target.appendChild(toast);
+  } else {
+    toast.classList.remove('fc-toast-pulse');
+    void toast.offsetWidth;
+    toast.classList.add('fc-toast-pulse');
+  }
+
+  toast.replaceChildren();
+
+  const topRow = document.createElement('div');
+  topRow.className = 'fc-toast-top-row';
+
+  const brand = document.createElement('div');
+  brand.className = 'fc-toast-brand';
+  brand.textContent = opts.title || '⛟ DESKTOP REQUIRED TO DRIVE';
+
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'fc-toast-close';
+  closeBtn.setAttribute('aria-label', 'Dismiss toast');
+  closeBtn.textContent = '✕';
+  closeBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    dismissMobileToast();
+  });
+
+  topRow.append(brand, closeBtn);
+
+  const msg = document.createElement('p');
+  msg.className = 'fc-toast-msg';
+  msg.textContent = opts.message || 'Freight Chain requires a physical keyboard for manual gearbox, clutch, steering and cab switches.';
+
+  const note = document.createElement('div');
+  note.className = 'fc-toast-note';
+  const noteBold = document.createElement('b');
+  noteBold.textContent = 'Spectating is supported on mobile! ';
+  note.append(noteBold, document.createTextNode(opts.note || 'Watch active trucks live or replay finished shifts right now.'));
+
+  const actions = document.createElement('div');
+  actions.className = 'fc-toast-actions';
+
+  const liveAction = opts.liveAction ?? `${SITE_BASE}/lobby.html#live`;
+  const replaysAction = opts.replaysAction ?? `${SITE_BASE}/lobby.html#replays`;
+
+  const liveBtn = document.createElement(typeof liveAction === 'string' ? 'a' : 'button');
+  liveBtn.className = 'fc-toast-btn live';
+  liveBtn.textContent = '▶ WATCH LIVE';
+  if (typeof liveAction === 'string') {
+    liveBtn.setAttribute('href', liveAction);
+    liveBtn.addEventListener('click', () => {
+      dismissMobileToast();
+    });
+  } else {
+    liveBtn.setAttribute('type', 'button');
+    liveBtn.addEventListener('click', () => {
+      dismissMobileToast();
+      liveAction();
+    });
+  }
+
+  const replaysBtn = document.createElement(typeof replaysAction === 'string' ? 'a' : 'button');
+  replaysBtn.className = 'fc-toast-btn replays';
+  replaysBtn.textContent = '▶ REPLAYS';
+  if (typeof replaysAction === 'string') {
+    replaysBtn.setAttribute('href', replaysAction);
+    replaysBtn.addEventListener('click', () => {
+      dismissMobileToast();
+    });
+  } else {
+    replaysBtn.setAttribute('type', 'button');
+    replaysBtn.addEventListener('click', () => {
+      dismissMobileToast();
+      replaysAction();
+    });
+  }
+
+  actions.append(liveBtn, replaysBtn);
+  toast.append(topRow, msg, note, actions);
+
+  requestAnimationFrame(() => {
+    toast.classList.add('fc-toast-visible');
+  });
+
+  clearTimeout(toastTimeout);
+  const timeoutMs = opts.timeoutMs ?? 7000;
+  if (timeoutMs > 0) {
+    toastTimeout = setTimeout(() => {
+      dismissMobileToast();
+    }, timeoutMs);
+  }
+
+  return toast;
 }

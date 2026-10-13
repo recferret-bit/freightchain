@@ -17,6 +17,7 @@ import { fmt } from '../util.js';
 import { SITE_BASE } from '../hosts.js';
 import { ridePageUrl, rideShareText, xIntent } from './share.js';
 import { env } from '../world/environment.js';
+import { isMobileDevice } from '../mobile.js';
 
 /* Keyboard + mouse input. Side effects only: listeners are attached on import. */
 
@@ -28,6 +29,7 @@ const KEYS = {
 const volumeMsg = d => { radio.volume(d); toast('Radio volume ' + Math.round(radio.vol * 100) + '%', 900); };
 const radioMsg = on => toast(!on ? 'Radio off' : st.mode === 'drive' && !powered() ? 'Radio: turn the key to ON' : 'FM ' + radio.station.freq.toFixed(1) + ' · ' + radio.station.name, 1600);
 addEventListener('keydown', e => {
+  if (!st.watch && isMobileDevice()) return;
   if (e.code === 'F8' && !e.repeat && !e.target.closest?.('input, textarea')) { e.preventDefault(); toast(toggleFormShade() ? 'Form shade on' : 'Form shade off', 1200); return; }   // not recorded: a look switch, not a driving input
   if (st.watch) {   // a spectator drives nothing: keys belong to the watch panel (chat box), only M mutes and N opens the map
     if (e.code === 'KeyM' && !e.target.closest?.('input, textarea')) { audio.muted = !audio.muted; toast(audio.muted ? 'Sound off' : 'Sound on', 1000); }
@@ -75,7 +77,7 @@ function shareRideProgress() {
   if (typeof window !== 'undefined' && window.open) window.open(xIntent(text, url), '_blank', 'noopener,noreferrer');
   toast('Opening 𝕏 to share ride progress...', 2000);
 }
-addEventListener('pointerdown', e => { if (st.watch && btnAt(e)?.id === 'map') { toggleMap(); return; } if (st.mode !== 'drive' || st.watch) return; const b = btnAt(e); if (!b) return; recBtn = `btn:${b.id}`; recordInput(recBtn, 1, e.timeStamp); answerPrompt(recBtn); if (b.id === 'wiper') cycleWipers(); else if (b.id === 'wash') { input.wash = 1; heldBtn = 'wash'; } else if (b.id === 'key-off') keySwitch(false); else if (b.id === 'key-on') keySwitch(true); else if (b.id === 'key-start') { if (!st.engineOn) { ignition(true); heldBtn = 'key'; } } else if (b.id === 'park') toggleParkingBrake(); else if (b.id === 'share-x') shareRideProgress(); else if (b.id === 'head') { dn.head = !dn.head; audio.play(dn.head ? 'switch' : 'switch-off'); } else if (b.id === 'cab') toggleCab(); else if (b.id === 'heat') toggleHeater(); else if (b.id === 'cold') toggleCooler(); else if (b.id === 'r-pwr') radioMsg(radio.toggle()); else if (b.id === 'r-prev') { radio.seek(-1); radioMsg(true); } else if (b.id === 'r-next') { radio.seek(1); radioMsg(true); } else if (b.id === 'map') toggleMap(); });
+addEventListener('pointerdown', e => { if (st.watch && btnAt(e)?.id === 'map') { toggleMap(); return; } if (st.mode !== 'drive' || st.watch || isMobileDevice()) return; const b = btnAt(e); if (!b) return; recBtn = `btn:${b.id}`; recordInput(recBtn, 1, e.timeStamp); answerPrompt(recBtn); if (b.id === 'wiper') cycleWipers(); else if (b.id === 'wash') { input.wash = 1; heldBtn = 'wash'; } else if (b.id === 'key-off') keySwitch(false); else if (b.id === 'key-on') keySwitch(true); else if (b.id === 'key-start') { if (!st.engineOn) { ignition(true); heldBtn = 'key'; } } else if (b.id === 'park') toggleParkingBrake(); else if (b.id === 'share-x') shareRideProgress(); else if (b.id === 'head') { dn.head = !dn.head; audio.play(dn.head ? 'switch' : 'switch-off'); } else if (b.id === 'cab') toggleCab(); else if (b.id === 'heat') toggleHeater(); else if (b.id === 'cold') toggleCooler(); else if (b.id === 'r-pwr') radioMsg(radio.toggle()); else if (b.id === 'r-prev') { radio.seek(-1); radioMsg(true); } else if (b.id === 'r-next') { radio.seek(1); radioMsg(true); } else if (b.id === 'map') toggleMap(); });
 const releaseHeld = e => { if (recBtn) { recordInput(recBtn, 0, e?.timeStamp); recBtn = null; } if (heldBtn === 'wash') input.wash = 0; else if (heldBtn === 'key') releaseKey(); heldBtn = null; };
 addEventListener('pointerup', releaseHeld); addEventListener('pointercancel', releaseHeld); addEventListener('blur', releaseHeld);
 addEventListener('pointermove', e => { const b = btnAt(e); document.body.style.cursor = st.mode === 'drive' && b && (!st.watch || b.id === 'map') ? 'pointer' : ''; });

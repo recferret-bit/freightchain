@@ -1,0 +1,32 @@
+{
+  "name": "desert-bus-big",
+  "look": "big",
+  "fps": 24, "width": 1280, "height": 720, "maxSeconds": 15,
+  "gif": { "maxMB": 20, "width": 640, "fps": 15 },
+  "audio": { "ignition": { "at": 0, "dur": 0.8 }, "music": { "id": "road-rush", "gain": 0.55 }, "engine": { "gain": 0.5 } },
+  "scenes": [
+    { "id": "desert", "dur": 2.6, "route": "stuart", "time": "day", "speed": [4, 22], "push": 0.08,
+      "captions": [ { "at": 0.2, "dur": 2.2, "head": "DESERT BUS\n1995" } ] },
+
+    { "id": "eight-hours", "dur": 2.4, "route": "stuart", "time": "dusk", "speed": 22,
+      "transition": { "type": "whip", "dur": 0.3 },
+      "captions": [ { "at": 0.1, "dur": 2.2, "head": "8 HOURS\nREAL TIME" } ] },
+
+    { "id": "one-point", "dur": 2.2, "route": "stuart", "time": "night", "speed": 22,
+      "transition": { "type": "glitch", "dur": 0.4 },
+      "captions": [ { "at": 0.1, "dur": 2.0, "head": "REWARD:\n1 POINT" } ] },
+
+    { "id": "crash", "dur": 2.2, "route": "route66", "time": "day", "speed": 25, "damage": true, "sway": 0,
+      "transition": { "type": "flash-red", "dur": 0.3 },
+      "events": [ { "t": 0.05, "do": "spawn", "type": "truck", "preset": "slow", "zone": "ahead", "dist": 20 } ],
+      "captions": [ { "at": 0.1, "dur": 2.0, "head": "NOW IT\nPAYS" } ] },
+
+    { "id": "solana", "dur": 2.0, "route": "route66", "time": "day", "speed": 24, "push": 0.06,
+      "transition": { "type": "zoom", "dur": 0.4 },
+      "captions": [ { "at": 0.1, "dur": 1.8, "head": "ESCROW\nON SOLANA" } ] },
+
+    { "id": "end-card", "dur": 2.4, "route": "brenner", "time": "dusk", "speed": 16,
+      "transition": { "type": "flash", "dur": 0.4 },
+      "card": { "title": ["DESERT BUS,", "BUT WITH MONEY"], "steps": ["-"], "cta": "FREIGHTCHAIN.FUN ▸" } }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "name": "desert-bus-classic",
+  "fps": 24, "width": 1280, "height": 720, "maxSeconds": 15,
+  "gif": { "maxMB": 20, "width": 640, "fps": 15 },
+  "audio": { "ignition": { "at": 0, "dur": 0.8 }, "music": { "id": "road-rush", "gain": 0.55 }, "engine": { "gain": 0.5 } },
+  "ticker": "1995: 8 HOURS FOR 1 POINT ◆ 2026: ESCROW ON SOLANA ◆ DESERT BUS, BUT WITH MONEY ◆ DEVNET BUILD ◆ ",
+  "scenes": [
+    { "id": "desert", "dur": 3.4, "route": "stuart", "time": "day", "speed": [4, 22], "push": 0.08, "preroll": 8,
+      "captions": [ { "n": "1995", "at": 0.25, "dur": 3.0, "head": "DESERT BUS", "sub": "Drive 8 real-time hours across the desert. Reward: 1 point." } ] },
+
+    { "id": "night", "dur": 3.0, "route": "stuart", "time": "night", "speed": 22,
+      "transition": { "type": "dip", "dur": 0.4 },
+      "captions": [ { "n": "NOW", "at": 0.2, "dur": 2.6, "head": "SAME LONG ROAD", "sub": "Still no autopilot. Still the clutch, the gears and the dark." } ] },
+
+    { "id": "crash", "dur": 2.4, "route": "route66", "time": "day", "speed": 25, "damage": true, "sway": 0,
+      "transition": { "type": "whip", "dur": 0.3 },
+      "events": [ { "t": 0.05, "do": "spawn", "type": "truck", "preset": "slow", "zone": "ahead", "dist": 20 } ],
+      "captions": [ { "n": "NOW", "at": 0.1, "dur": 2.1, "head": "BUT A SHIFT COSTS SOL", "sub": "One mistake and it ends. Every ride is verified." } ] },
+
+    { "id": "end-card", "dur": 3.0, "route": "brenner", "time": "dusk", "speed": 16,
+      "transition": { "type": "flash", "dur": 0.4 },
+      "card": { "title": ["DESERT BUS,", "BUT WITH MONEY."], "steps": ["BUY A SHIFT IN SOL", "FINISH THE HAUL", "SPLIT THE WEEKLY POOL"], "cta": "RIDE NOW ▸", "foot": "ESCROW ON SOLANA · DEVNET BUILD" } }
+  ]
+}

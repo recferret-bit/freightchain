@@ -5,6 +5,7 @@ import { reportWebVitals } from '../../client/js/web-vitals.js';
 import { livePath, leaveOnClose } from '../../client/site/presence.js';   // this page counts as online in the live feed – and leaves it when closed
 import { sol, km, left, short, hue, hours, driven, ago, plural, TIER, TIER_LONG, ROUTE } from './format.js';
 import { heldTickets, escrowExplainer, explorerUrl, shortAddr, progressText, phaseLine, poolPhase } from '../../client/site/pools.js';   // the lobby's pool wording, so both pages say the same thing
+import { isMobileDevice } from '../../client/js/mobile.js';
 import { bindAnchors } from './anchor.js';
 
 bindAnchors();   // before the chapter observer, so a #faq load is already on the heading it highlights
@@ -231,7 +232,20 @@ if (document.readyState === 'complete') whenIdle(loadHeroVideo, { timeout: 4000 
       $('demo-note').textContent = 'Devnet demo.';
     } else {
       const practice = el('a', { href: `${GAME_BASE}/play.html?offline=1` }, 'Try the game offline');
-      practice.addEventListener('click', () => { track('offline_practice_clicked'); flushSoon(); });
+      practice.addEventListener('click', async (e) => {
+        if (isMobileDevice()) {
+          e.preventDefault();
+          dlg.close();
+          const { showMobileToast } = await import('../../client/js/mobile.js');
+          showMobileToast({
+            liveAction: `${SITE_BASE}/lobby.html#live`,
+            replaysAction: `${SITE_BASE}/lobby.html#replays`,
+          });
+          return;
+        }
+        track('offline_practice_clicked');
+        flushSoon();
+      });
       $('demo-note').replaceChildren('The demo video is not here yet. ', practice, ' – a few free runs, then connect a Solana wallet.');
     }
     dlg.showModal();
@@ -243,7 +257,19 @@ if (document.readyState === 'complete') whenIdle(loadHeroVideo, { timeout: 4000 
 /* ───── links to the game (static markup says /play.html; on split hosts that lives on ride.<apex>) ───── */
 for (const a of document.querySelectorAll('a[href="/play.html"]')) {
   a.href = `${GAME_BASE}/play.html?offline=1`;
-  a.addEventListener('click', () => { track('offline_practice_clicked'); flushSoon(); });
+  a.addEventListener('click', async (e) => {
+    if (isMobileDevice()) {
+      e.preventDefault();
+      const { showMobileToast } = await import('../../client/js/mobile.js');
+      showMobileToast({
+        liveAction: `${SITE_BASE}/lobby.html#live`,
+        replaysAction: `${SITE_BASE}/lobby.html#replays`,
+      });
+      return;
+    }
+    track('offline_practice_clicked');
+    flushSoon();
+  });
 }
 $('storybook-link').href = STORYBOOK_BASE || '/viewer.html';   // the model viewer: storybook.<apex> in production, /viewer.html elsewhere
 $('whitepaper-link').href = $('whitepaper-cta').href = WHITEPAPER_BASE || '/whitepaper.html';   // the whitepaper: whitepaper.<apex> in production, /whitepaper.html elsewhere
@@ -373,7 +399,20 @@ $('invite').onsubmit = e => {
   btn.scrollIntoView({ block: 'center' }); btn.focus();   // the code goes with the sign-in below
 };
 btn.onclick = onConnect;
-playTop.onclick = () => { track('play_top_clicked', { signed_in: !!S.me }); if (S.me) toLobby(); else { flushSoon(); location.href = `${GAME_BASE}/play.html?offline=1`; } };
+playTop.onclick = async () => {
+  track('play_top_clicked', { signed_in: !!S.me });
+  if (S.me) toLobby();
+  else if (isMobileDevice()) {
+    const { showMobileToast } = await import('../../client/js/mobile.js');
+    showMobileToast({
+      liveAction: `${SITE_BASE}/lobby.html#live`,
+      replaysAction: `${SITE_BASE}/lobby.html#replays`,
+    });
+  } else {
+    flushSoon();
+    location.href = `${GAME_BASE}/play.html?offline=1`;
+  }
+};
 track('landing_viewed', { surface: 'landing' });   // once per load, not on the 10 s refresh, and not after /api/pool
 if (linkCode) track('promo_invite_viewed', { code: CODE_SHAPE.test(codeOf(linkCode)) ? codeOf(linkCode) : null });   // an invite link was opened
 api('me', undefined, { report: false }).then(me => { track('session_restored', { surface: 'landing', wallet: me.wallet, ...(me.demo ? { is_demo: true } : {}) }); paintSession(me); }, () => {});   // signed in already: no forced redirect – the pool is the point of this page. Anonymous 401 stays a quiet GET.

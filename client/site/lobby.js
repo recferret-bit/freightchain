@@ -19,7 +19,7 @@ import { track, flushSoon } from '../js/analytics.js';
 import { reportWebVitals } from '../js/web-vitals.js';
 import { store } from '../js/util.js';
 import { FREE_COUNTRIES } from '../js/free-countries.js';
-import { isMobileDevice } from '../js/mobile.js';
+import { isMobileDevice, showMobileToast } from '../js/mobile.js';
 import { ticketDialog, hideTicketDialog } from './ticket-dialog.js';
 import { formatDriver, getCachedSns, reverseResolveSns, seedSns } from './sns.js';
 
@@ -128,7 +128,10 @@ function paintPending() {
   if (r && !pendingShown.has(r.id)) { pendingShown.add(r.id); track('pending_ride_shown', { ride_id: r.id, tier_id: r.tier }); }
   const startIt = () => {
     if (isMobileDevice()) {
-      window.alert('Driving requires a desktop browser with keyboard controls. Open Freight Chain on desktop to drive, or watch streams on the LIVE tab!');
+      showMobileToast({
+        liveAction: () => { location.hash = '#live'; },
+        replaysAction: () => { location.hash = '#replays'; },
+      });
       return;
     }
     if (r.tier !== 'free' && blockPaid(S.me)) return;
@@ -371,6 +374,13 @@ const creditDialog = (poolId, qty, { lamports = 0, signature = null, programId =
 };
 const failDialog = (tier, text) => ticketDialog({ ok: false, shift: SHIFT[tier] ?? '', text });
 function play(r, tier, level = null) {
+  if (isMobileDevice()) {
+    showMobileToast({
+      liveAction: () => { location.hash = '#live'; },
+      replaysAction: () => { location.hash = '#replays'; },
+    });
+    return;
+  }
   if (r.tier !== tier) { checkPending(); say(tier, `You already have a ${TIER_NAME[r.tier] ?? r.tier} ride ready – start that one first.`, true); return; }   // never send you into the wrong ride silently
   if (level != null && r.level != null && r.level !== level) { say(tier, 'The server kept your ride at another level – pick it again or start that one.', true); return; }   // (the server re-chooses the ready ride's level, so this is only an old server)
   flushSoon(); location.href = `${GAME_BASE}/play.html?ride=${r.id}`;
@@ -379,6 +389,10 @@ const clicked = (id, usd = 0) => track('ride_buy_clicked', { tier_id: id, is_fre
 const freeBody = () => { const t = S.tiers?.tiers.find(x => x.id === 'free'), lv = pickedLevel(t); return { tier: 'free', tutorial: tutorialOn() && tutorialAllowed(t), assist: S.opt.assist && assistAllowed(t), ...(lv ? { level: lv.level } : {}) }; };   // HARD: neither helper is sent (the server would refuse it)
 const startFree = () => busy('free', async () => {
   if (isMobileDevice()) {
+    showMobileToast({
+      liveAction: () => { location.hash = '#live'; },
+      replaysAction: () => { location.hash = '#replays'; },
+    });
     say('free', 'Driving requires a desktop browser with keyboard controls. Check out the LIVE tab to watch streams and replays on mobile!', true);
     return;
   }
@@ -387,6 +401,10 @@ const startFree = () => busy('free', async () => {
 const refusedOffer = (e) => { if (e?.code === 'agreements_required') location.hash = '#profile'; };
 const startLegacy = id => busy(id, async () => {
   if (isMobileDevice()) {
+    showMobileToast({
+      liveAction: () => { location.hash = '#live'; },
+      replaysAction: () => { location.hash = '#replays'; },
+    });
     say(id, 'Driving requires a desktop browser with keyboard controls. Check out the LIVE tab to watch streams on mobile!', true);
     return;
   }
@@ -394,6 +412,10 @@ const startLegacy = id => busy(id, async () => {
 });
 const ride = tier => busy(tier, async () => {   // spends one ticket: the ride is ready at once
   if (isMobileDevice()) {
+    showMobileToast({
+      liveAction: () => { location.hash = '#live'; },
+      replaysAction: () => { location.hash = '#replays'; },
+    });
     say(tier, 'Driving requires a desktop browser with keyboard controls. Check out the LIVE tab to watch streams on mobile!', true);
     return;
   }
@@ -622,8 +644,18 @@ function tick() {
   if (S.tab === 'live' && !document.hidden) tickLive();
 }
 
-/* ───────── boot (last on purpose: everything above is `const`, initialised only once the module has run that far) ───────── */
-for (const a of document.querySelectorAll('a[href="/play.html"]')) a.addEventListener('click', () => { track('offline_practice_clicked'); flushSoon(); });
+for (const a of document.querySelectorAll('a[href="/play.html"]')) a.addEventListener('click', (e) => {
+  if (isMobileDevice()) {
+    e.preventDefault();
+    showMobileToast({
+      liveAction: () => { location.hash = '#live'; },
+      replaysAction: () => { location.hash = '#replays'; },
+    });
+    return;
+  }
+  track('offline_practice_clicked');
+  flushSoon();
+});
 try { S.me = await api('me'); } catch { flushSoon(); location.href = '/'; }   // reporting GET: a failure here is api_request_failed, then back to the landing
 if (S.me) {
   track('session_restored', { surface: 'lobby', wallet: S.me.wallet, ...(S.me.demo ? { is_demo: true } : {}) });

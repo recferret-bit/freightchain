@@ -1,6 +1,6 @@
 import { API_BASE, GAME_BASE, SITE_BASE } from '../js/hosts.js';
 import { ridePageUrl, rideShareText, xIntent } from '../js/ui/share.js';
-import { isMobileDevice } from '../js/mobile.js';
+import { isMobileDevice, showMobileToast } from '../js/mobile.js';
 import { formatDriver } from './sns.js';
 
 function fmt(sec) {
@@ -137,7 +137,14 @@ function render(ride) {
   }
   el('btn-take-wheel').onclick = () => {
     if (isMobileDevice()) {
-      window.alert('Driving requires a desktop browser with keyboard controls. Tap WATCH STREAM or WATCH REPLAY above to spectate on mobile!');
+      showMobileToast({
+        liveAction: () => {
+          const btnWatch = el('btn-watch');
+          if (btnWatch && btnWatch.style.display !== 'none') btnWatch.click();
+          else location.href = `${SITE_BASE}/lobby.html#live`;
+        },
+        replaysAction: () => { location.href = `${SITE_BASE}/lobby.html#replays`; },
+      });
       return;
     }
     location.href = `${GAME_BASE}/play.html`;

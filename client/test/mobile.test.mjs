@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isMobileDevice, showMobileBlocker } from '../js/mobile.js';
+import { isMobileDevice, showMobileBlocker, showMobileToast, dismissMobileToast } from '../js/mobile.js';
 
 function setMockEnv({ nav, win }) {
   const origNavDesc = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
@@ -127,5 +127,114 @@ test('showMobileBlocker updates the overlay and panel with mobile guidance and s
     assert.ok(panel.innerHTML.includes('OPEN LOBBY'));
   } finally {
     globalThis.document = origDoc;
+  }
+});
+
+test('showMobileToast creates toast element with title, message, and action callbacks', () => {
+  const origDoc = globalThis.document;
+  const origRAF = globalThis.requestAnimationFrame;
+
+  try {
+    globalThis.requestAnimationFrame = fn => fn();
+
+    class MockElement {
+      constructor(tag) {
+        this.tagName = tag.toUpperCase();
+        this.id = '';
+        this.className = '';
+        this.classList = {
+          classes: new Set(),
+          add(...names) { names.forEach(n => this.classes.add(n)); },
+          remove(...names) { names.forEach(n => this.classes.delete(n)); },
+          contains(name) { return this.classes.has(name); },
+        };
+        this.attributes = new Map();
+        this.children = [];
+        this.listeners = new Map();
+        this.textContent = '';
+      }
+      setAttribute(k, v) { this.attributes.set(k, v); }
+      getAttribute(k) { return this.attributes.get(k); }
+      appendChild(c) { this.children.push(c); return c; }
+      append(...items) { items.forEach(i => this.children.push(i)); }
+      replaceChildren(...items) { this.children = [...items]; }
+      addEventListener(evt, fn) {
+        if (!this.listeners.has(evt)) this.listeners.set(evt, []);
+        this.listeners.get(evt).push(fn);
+      }
+      click() {
+        (this.listeners.get('click') || []).forEach(fn => fn({ stopPropagation: () => {} }));
+      }
+      remove() {
+        if (body.children.includes(this)) {
+          body.children = body.children.filter(x => x !== this);
+        }
+      }
+    }
+
+    const body = new MockElement('BODY');
+    const head = new MockElement('HEAD');
+    let toastInstance = null;
+
+    globalThis.document = {
+      body,
+      head,
+      createElement(tag) {
+        return new MockElement(tag);
+      },
+      createTextNode(txt) {
+        return { textContent: txt };
+      },
+      getElementById(id) {
+        if (id === 'fc-mobile-toast') return toastInstance;
+        if (id === 'fc-mobile-toast-styles') return null;
+        return null;
+      },
+    };
+
+    let liveClicked = false;
+    let replaysClicked = false;
+
+    const toast = showMobileToast({
+      title: '⛟ DESKTOP REQUIRED TO DRIVE',
+      message: 'Custom keyboard message',
+      note: 'Custom note',
+      liveAction: () => { liveClicked = true; },
+      replaysAction: () => { replaysClicked = true; },
+      timeoutMs: 0,
+    });
+    toastInstance = toast;
+
+    assert.ok(toast);
+    assert.equal(toast.id, 'fc-mobile-toast');
+    assert.equal(toast.getAttribute('role'), 'alert');
+    assert.equal(toast.getAttribute('aria-live'), 'assertive');
+    assert.ok(toast.classList.contains('fc-toast-visible'));
+
+    // Check children
+    const brand = toast.children[0].children[0];
+    assert.equal(brand.textContent, '⛟ DESKTOP REQUIRED TO DRIVE');
+
+    const msg = toast.children[1];
+    assert.equal(msg.textContent, 'Custom keyboard message');
+
+    const actions = toast.children[3];
+    const liveBtn = actions.children[0];
+    const replaysBtn = actions.children[1];
+
+    assert.equal(liveBtn.textContent, '▶ WATCH LIVE');
+    assert.equal(replaysBtn.textContent, '▶ REPLAYS');
+
+    liveBtn.click();
+    assert.equal(liveClicked, true);
+
+    replaysBtn.click();
+    assert.equal(replaysClicked, true);
+
+    dismissMobileToast();
+    assert.ok(!toast.classList.contains('fc-toast-visible'));
+  } finally {
+    globalThis.document = origDoc;
+    globalThis.requestAnimationFrame = origRAF;
   }
 });

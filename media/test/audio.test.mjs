@@ -70,7 +70,7 @@ test('mix: works without a timeline and for a spec with only audio (no scenes)',
 });
 
 test('the committed specs: every one loads; hero + intro-square stay silent, intro + colosseum have the sound', () => {
-  for (const f of fs.readdirSync(path.join(root, 'specs'))) { const raw = JSON.parse(fs.readFileSync(path.join(root, 'specs', f), 'utf8')), s = loadSpec(raw); s.audio = loadAudio(raw.audio, s.total); assert.equal(!!s.audio, ['intro.json', 'colosseum.json'].includes(f) || f.startsWith('tiktok-'), f); }
+  for (const f of fs.readdirSync(path.join(root, 'specs'))) { const raw = JSON.parse(fs.readFileSync(path.join(root, 'specs', f), 'utf8')), s = loadSpec(raw); s.audio = loadAudio(raw.audio, s.total); assert.equal(!!s.audio, ['intro.json', 'colosseum.json'].includes(f) || f.startsWith('tiktok-') || f.startsWith('desert-bus-'), f); }
 });
 
 test('vertical (TikTok) clips: crop vertical means look meme at 1080×1920; the meme captions and cues work; a mismatch is refused', () => {

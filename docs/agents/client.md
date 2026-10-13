@@ -33,7 +33,7 @@ js/net/orchestrator.js `roads` = RoadOrchestrator: newTrip / setTheme / per-fram
 js/hosts.js           `API_BASE` / `GAME_BASE` / `SITE_BASE` / `STORYBOOK_BASE`: where the API, the game and the lobby live (`api.`/`ride.`/`storybook.`/apex on a real domain, '' = same origin elsewhere) – see "Split hosts"
 js/fingerprint.js     browser fingerprint (SHA-256 of UA, screen…) – a LEAF; no longer used (the guest run sends nothing)
 js/offline-ride.js    the guest run's flags (`offlineRide.on` / `.dev`, `offlineWanted()` = not a ride, not a replay) + the connect-wallet link – imports hosts.js only
-js/mobile.js          mobile device detection (`isMobileDevice`) and desktop-only driving blocker (`showMobileBlocker`) – a LEAF
+js/mobile.js          mobile device detection (`isMobileDevice`), toast notification (`showMobileToast`), and desktop-only driving blocker (`showMobileBlocker`) – a LEAF
 js/cosmetics.js       promo cosmetics: the catalog (mirrors the server's), `LOOKS`, the worn `loadout` / `setLoadout` / `look(slot)` – a LEAF module, read by cockpit/rig.js, set by online.js from GET /api/wardrobe
 js/trips.js           TRIPS: the road per ride tier (the free levels free-1c / free-2c / free-3b + the guest run free-g, 1h / 4h / 8h, the frozen classic / free / free-1 / free-2 / free-3 / free-1b / free-2b – bends, traffic, cross traffic, calm presets, roadside density, `finish` = the free run ends itself as a win, `start` = 'depot' (STOP line + right turn) or 'straight', `level` / `assist` = the free levels, `holesFrom` + `road` (first patterns, weights, × hole chance) = JUDGED, mirrored by the server's `road-rules.ts`); `FREE_LEVELS`; multipliers on CFG, '1h' = all 1 = the old road; set from the trip id the server stamped on the ride (`tripOf`) before the road is built, `?trip=` offline (a free trip's own shift, e.g. `?trip=free-2` = 180 s / 1512 m) – a LEAF; skill `trip-design`
 js/world/scene.js     renderer, scene, camera, canvasTex() (nothing route-specific any more)
@@ -142,7 +142,7 @@ Props are **not** pooled as wholes (sizes are continuous and baked into child sc
 - New builders: use `mk()`/`group()` (or plain `new THREE.*` – works, just not recycled). Don't draw canvases or call `Math.random()` in pool create/reset (keeps the headless trace stable).
 
 ### Mobile support & spectating
-- **Driving is blocked on mobile**: `isMobileDevice()` detects mobile UAs and touchscreen devices. Driving mode halts the frame loop and physics, rendering a desktop requirement modal (`showMobileBlocker()`).
+- **Driving is blocked on mobile**: `isMobileDevice()` detects mobile UAs and touchscreen devices. Driving attempts from the landing page or lobby trigger a toast notification (`showMobileToast()`) directing players to live streams and replays. Opening `play.html` directly in driving mode halts the frame loop and physics, rendering a desktop requirement modal (`showMobileBlocker()`).
 - **Spectating streams and replays is supported on mobile**: `play.html?watch=<id>` permits mobile devices; the `#watch` panel adapts responsively as a bottom sheet (portrait) or right-docked side sheet (landscape) with touch-friendly targets.
 
 ## Not implemented / known gaps

@@ -1,13 +1,26 @@
 import { GAME_BASE, SITE_BASE, STORYBOOK_BASE } from '../../client/js/hosts.js';   // '' on localhost; on a real domain the game is on ride.<apex>, the lobby on the apex, the model viewer on storybook.<apex>
 import { track, flushSoon } from '../../client/js/analytics.js';
 import { reportWebVitals } from '../../client/js/web-vitals.js';   // web vitals and the page view both post through analytics.js to API_BASE (api.<apex> in production)
+import { isMobileDevice } from '../../client/js/mobile.js';
 import { bindAnchors } from './anchor.js';
 
 bindAnchors();   // before the contents observer, so a #onchain load is already on the chapter it highlights
 
 reportWebVitals('whitepaper');
 track('whitepaper_viewed', { surface: 'whitepaper' });   // once per load, same idea as landing_viewed
-document.getElementById('play-top')?.addEventListener('click', () => { track('offline_practice_clicked'); flushSoon(); });
+document.getElementById('play-top')?.addEventListener('click', async (e) => {
+  if (isMobileDevice()) {
+    e.preventDefault();
+    const { showMobileToast } = await import('../../client/js/mobile.js');
+    showMobileToast({
+      liveAction: `${SITE_BASE}/lobby.html#live`,
+      replaysAction: `${SITE_BASE}/lobby.html#replays`,
+    });
+    return;
+  }
+  track('offline_practice_clicked');
+  flushSoon();
+});
 document.getElementById('storybook-link')?.addEventListener('click', () => track('storybook_link_clicked'));
 
 /* Links that leave this page: the HTML carries a same-origin fallback (works with no script), the bases make them point at the right host in production. */
@@ -15,6 +28,18 @@ const BASES = { site: SITE_BASE, game: GAME_BASE };
 for (const a of document.querySelectorAll('a[data-to]')) {
   const to = a.dataset.to, path = a.dataset.path ?? '/';
   a.href = to === 'storybook' ? (STORYBOOK_BASE || path) : `${BASES[to] ?? ''}${path}`;
+  if (to === 'game' && a.id !== 'play-top' && !path.includes('watch=')) {
+    a.addEventListener('click', async (e) => {
+      if (isMobileDevice()) {
+        e.preventDefault();
+        const { showMobileToast } = await import('../../client/js/mobile.js');
+        showMobileToast({
+          liveAction: `${SITE_BASE}/lobby.html#live`,
+          replaysAction: `${SITE_BASE}/lobby.html#replays`,
+        });
+      }
+    });
+  }
 }
 
 /* contents: highlight the chapter in view */

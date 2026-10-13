@@ -1,0 +1,64 @@
+{
+ "name": "tiktok-rate-npcs",
+ "crop": "vertical",
+ "fps": 30,
+ "maxSeconds": 15,
+ "audio": {
+  "ignition": false,
+  "music": { "id": "road-rush", "gain": 0.5 },
+  "engine": { "gain": 0.25 },
+  "sfx": {
+   "mute": ["game-over"],
+   "extra": [
+    { "t": 1.5, "id": "bruh" },
+    { "t": 3.6, "id": "ding" },
+    { "t": 6.6, "id": "ding" },
+    { "t": 9.6, "id": "ding" },
+    { "t": 11.6, "id": "levelup", "gain": 0.6 }
+   ]
+  }
+ },
+ "scenes": [
+  {
+   "id": "hook-crash", "dur": 2.4, "route": "route66", "time": "day", "speed": 25, "damage": true, "sway": 0,
+   "captions": [
+    { "at": 0.05, "dur": 1.0, "head": "THIS NPC:", "fx": "slam", "size": 160 },
+    { "at": 1.1, "dur": 1.2, "head": "0/10", "fx": "stamp", "color": "red", "size": 220, "y": 1250 },
+    { "at": 0.2, "dur": 0.9, "head": "@dispatch\nrating NPC drivers", "fx": "bubble", "pos": "low" }
+   ],
+   "events": [ { "t": 0.05, "do": "spawn", "type": "truck", "preset": "slow", "zone": "ahead", "dist": 20 } ]
+  },
+  {
+   "id": "no-signal", "dur": 3.0, "route": "brenner", "time": "dusk", "speed": 22, "lines": 0.3,
+   "captions": [
+    { "at": 0.05, "dur": 2.9, "head": "NO-SIGNAL\nGUY", "fx": "slam", "size": 150 },
+    { "at": 1.1, "dur": 1.8, "head": "2/10\nNEVER INDICATES", "fx": "stamp", "color": "yellow", "size": 95, "y": 1250 }
+   ],
+   "events": [ { "t": 0.4, "do": "spawn", "type": "sedan", "preset": "cruise", "zone": "oncoming", "dist": 90 } ],
+   "transition": { "type": "punch", "dur": 0.3 }
+  },
+  {
+   "id": "camper", "dur": 3.0, "route": "stuart", "time": "day", "speed": 20,
+   "captions": [
+    { "at": 0.05, "dur": 2.9, "head": "LEFT-LANE\nCAMPER", "fx": "slam", "size": 150 },
+    { "at": 1.1, "dur": 1.8, "head": "4/10\nHAS ALL DAY", "fx": "stamp", "color": "cyan", "size": 100, "y": 1250 }
+   ],
+   "events": [ { "t": 0.4, "do": "spawn", "type": "sedan", "preset": "cruise", "zone": "oncoming", "dist": 90 } ],
+   "transition": { "type": "whip", "dur": 0.3 }
+  },
+  {
+   "id": "night-truck", "dur": 3.0, "route": "panamerican", "time": "night", "speed": 24,
+   "captions": [
+    { "at": 0.05, "dur": 2.9, "head": "NIGHT\nTRUCKER", "fx": "slam", "size": 150 },
+    { "at": 1.1, "dur": 1.8, "head": "7/10\nLIGHTS ON. FINALLY.", "fx": "stamp", "color": "lcd", "size": 90, "y": 1250 }
+   ],
+   "events": [ { "t": 0.4, "do": "spawn", "type": "truck", "preset": "cruise", "zone": "oncoming", "dist": 100 } ],
+   "transition": { "type": "glitch", "dur": 0.3 }
+  },
+  {
+   "id": "end", "dur": 2.4, "route": "brenner", "time": "dusk", "speed": 16, "captions": [], "beat": false,
+   "transition": { "type": "flash", "dur": 0.3 },
+   "card": { "title": ["RATE THE NPCs", "YOURSELF"], "steps": [], "cta": "10 FREE RIDES ▸" }
+  }
+ ]
+}
