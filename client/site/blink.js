@@ -5,7 +5,7 @@
    and the spec says the GET must not identify the user – so these are not hosts.js API calls; only the default page URL comes from hosts.js.
    Server text only via textContent (el()). */
 import { el } from './dom.js';
-import { provider } from './wallet.js';
+import { chooseWallet, rememberWallet } from './wallet.js';
 import { signAndSend } from './pay.js';
 import { SITE_BASE } from '../js/hosts.js';
 import { mapRule, resolveHref, unwrap } from './blink-map.js';
@@ -37,8 +37,8 @@ async function resolve(raw) {
 }
 
 async function connect() {
-  const p = provider();
-  if (!p) throw new Error('No Solana wallet in this browser (Phantom, Solflare…). The card renders without one; a button needs one.');
+  const p = await chooseWallet().catch(e => { throw e.stage === 'no_provider' ? new Error('No Solana wallet in this browser (Phantom, Solflare…). The card renders without one; a button needs one.') : e; });
+  rememberWallet(p);
   const r = await p.connect();
   account = String(r?.publicKey ?? p.publicKey);
   $('who').textContent = `${account.slice(0, 4)}…${account.slice(-4)}`;
@@ -92,7 +92,7 @@ async function press(btn, a, href, status, api, info) {
     }
     if (res.type === 'transaction' || typeof res.transaction === 'string') {
       say(`${res.message ?? 'A transaction to sign.'} Check it in the wallet…`);
-      const signature = await signAndSend(res.transaction);
+      const signature = await signAndSend(res.transaction, account);
       const cluster = info.chains.includes('devnet') ? '?cluster=devnet' : '';
       const sent = el('p', { class: 'good' }, 'Sent: ', el('a', { href: `https://explorer.solana.com/tx/${signature}${cluster}`, target: '_blank', rel: 'noopener' }, `${signature.slice(0, 10)}…`));
       say(''); status.append(sent);

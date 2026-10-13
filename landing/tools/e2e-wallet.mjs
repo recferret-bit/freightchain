@@ -6,6 +6,8 @@
 //   this:     RESOLVE='MAP app.localhost 127.0.0.1:3111, MAP api.app.localhost 127.0.0.1:3111' BASE=http://app.localhost API=http://api.app.localhost node landing/tools/e2e-wallet.mjs
 //             (RESOLVE makes Chrome send port 80 of those names to the server's port, so no privileged port is needed)
 // A fake Phantom (window.solana) signs with WebCrypto ed25519 – same bytes a real wallet produces – so the server really verifies the signature.
+// The std* modes are Wallet Standard wallets instead (wallet-standard:register-wallet, standard:connect, solana:signIn builds the SIWS text from the input like
+// @solana/wallet-standard-util): one-click sign-in, two wallets → the picker, a rejected sign-in → no second prompt, a phone browser with none → open-in-wallet links.
 // Covers: no wallet, the user rejecting, a forged signature (the backend must refuse and set no session), a good sign-in → redirect to the lobby with the session, and the landing
 // recognising the session afterwards (wallet chip, OPEN THE LOBBY). Screenshots in the harness folder – LOOK at them.
 import { launch, sleep } from '../../client/tools/cdp.mjs';
@@ -33,19 +35,56 @@ const provider = mode => `(() => {
     async disconnect() {} };
   window.solana = p; window.__addr = async () => b58((await keys).pub);
 })();`;
+/** Wallet Standard fakes; mode: std | std2 (two wallets, "Second" is used) | stdreject. window.__calls counts what the page asked each wallet for. */
+const standard = mode => `(() => {
+  const mode = ${JSON.stringify(mode)};
+  const A = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  const b58 = bytes => { let n = 0n; for (const b of bytes) n = (n << 8n) | BigInt(b); let o = ''; while (n > 0n) { o = A[Number(n % 58n)] + o; n /= 58n; } for (const b of bytes) { if (b) break; o = '1' + o; } return o; };
+  const siws = (i, address) => { let m = (i.domain) + ' wants you to sign in with your Solana account:\\n' + address; if (i.statement) m += '\\n\\n' + i.statement; const f = [];
+    if (i.uri) f.push('URI: ' + i.uri); if (i.version) f.push('Version: ' + i.version); if (i.chainId) f.push('Chain ID: ' + i.chainId); if (i.nonce) f.push('Nonce: ' + i.nonce);
+    if (i.issuedAt) f.push('Issued At: ' + i.issuedAt); if (i.expirationTime) f.push('Expiration Time: ' + i.expirationTime); if (f.length) m += '\\n\\n' + f.join('\\n'); return m; };
+  window.__calls = [];   // also in sessionStorage: the sign-in navigates to the lobby, which must still see what the landing asked for
+  const call = c => { window.__calls.push(c); sessionStorage.setItem('fakecalls', JSON.stringify(window.__calls)); };
+  const make = name => {
+    const keys = (async () => { const k = await crypto.subtle.generateKey({ name: 'Ed25519' }, true, ['sign', 'verify']); return { priv: k.privateKey, pub: new Uint8Array(await crypto.subtle.exportKey('raw', k.publicKey)) }; })();
+    const account = async () => { const k = await keys; return { address: b58(k.pub), publicKey: k.pub, chains: ['solana:devnet'], features: ['solana:signIn', 'solana:signMessage'] }; };
+    const w = { version: '1.0.0', name, icon: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxIDEiPjxyZWN0IHdpZHRoPSIxIiBoZWlnaHQ9IjEiIGZpbGw9IiM5YjVkZTUiLz48L3N2Zz4=', chains: ['solana:devnet', 'solana:mainnet'], accounts: [],
+      features: {
+        'standard:connect': { version: '1.0.0', connect: async () => { call(name + ':connect'); w.accounts = [await account()]; return { accounts: w.accounts }; } },
+        'standard:events': { version: '1.0.0', on: () => () => {} },
+        'solana:signIn': { version: '1.0.0', signIn: async (...inputs) => { call(name + ':signIn');
+          if (mode === 'stdreject') throw Object.assign(new Error('User rejected the request.'), { code: 4001 });
+          const k = await keys, acc = await account(), msg = new TextEncoder().encode(siws(inputs[0], acc.address)); w.accounts = [acc];
+          return [{ account: acc, signedMessage: msg, signature: new Uint8Array(await crypto.subtle.sign('Ed25519', k.priv, msg)) }]; } },
+        'solana:signMessage': { version: '1.0.0', signMessage: async ({ message }) => { call(name + ':signMessage'); const k = await keys; return [{ signedMessage: message, signature: new Uint8Array(await crypto.subtle.sign('Ed25519', k.priv, message)) }]; } },
+      } };
+    w.__addr = async () => (await account()).address;
+    return w;
+  };
+  const list = mode === 'std2' ? [make('First'), make('Second')] : [make('Phantom')];
+  window.__addr = () => list[list.length - 1].__addr();
+  const register = ({ register }) => register(...list);
+  window.addEventListener('wallet-standard:app-ready', ({ detail }) => register(detail));
+  window.dispatchEvent(Object.assign(new Event('wallet-standard:register-wallet'), { detail: register }));
+})();`;
 let scriptId = null;
 async function open(mode, path = '/') {
   if (scriptId) await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: scriptId });
-  scriptId = (await send('Page.addScriptToEvaluateOnNewDocument', { source: provider(mode) })).identifier;
+  scriptId = (await send('Page.addScriptToEvaluateOnNewDocument', { source: mode.startsWith('std') ? standard(mode) : provider(mode) })).identifier;
   await send('Page.navigate', { url: BASE + path }); await sleep(1800);
+  await ev(`sessionStorage.removeItem('fakecalls')`);
 }
+const calls = () => ev(`sessionStorage.getItem('fakecalls') ?? '[]'`);
 const until = async (expr, ms = 8000) => { const t = Date.now(); while (Date.now() - t < ms) { if (await ev(expr)) return true; await sleep(150); } return false; };
 const session = async () => (await send('Network.getAllCookies')).cookies.find(k => k.name === 'fc_session');
 const click = () => ev(`document.getElementById('connect').click()`);
 
-// 1 · no wallet extension: a clear message, nothing breaks, no session
+// 1 · no wallet extension: the dialog offers the extensions; closing it leaves a clear message, nothing breaks, no session
 await send('Network.clearBrowserCookies'); await open('none');
-await click(); await until(`document.getElementById('msg').textContent.length > 0`);
+await click(); await until(`document.querySelector('dialog[open]')`);
+check('no wallet: the dialog links the Phantom and Solflare downloads', (await ev(`[...document.querySelectorAll('dialog[open] a')].map(a => a.href).join(' ')`)) === 'https://phantom.com/download https://solflare.com/download');
+await shot('no-wallet-dialog');
+await ev(`[...document.querySelectorAll('dialog[open] button')].find(b => b.textContent === 'CANCEL').click()`); await until(`document.getElementById('msg').classList.contains('bad')`);
 check('no wallet installed: clear message, button usable again', /No Solana wallet/.test(await ev(`document.getElementById('msg').textContent`)) && (await ev(`!document.getElementById('connect').disabled`)));
 check('…and no session cookie', !(await session()));
 
@@ -106,6 +145,34 @@ check('…and nothing was redeemed by the link itself', Array.isArray(mine.redem
 await send('Page.navigate', { url: BASE + '/' }); await sleep(1500); await until(`!document.getElementById('chip-wallet').hidden`);
 await ev(`document.getElementById('invite-code').value = 'welcome'; document.getElementById('invite').requestSubmit()`);
 check('invite (signed in): straight to the lobby PROMO tab with the code', await until(`location.pathname === '/lobby.html' && location.hash === '#promo' && document.getElementById('promo-code')?.value === 'welcome'`), await ev('location.href'));
+
+// 8 · Wallet Standard: one wallet signs in with solana:signIn in ONE prompt (no connect, no signMessage) – the server checks every SIWS field it issued
+await send('Network.clearBrowserCookies'); await open('std');
+const stdAddr = await ev('window.__addr()'); await click();
+check('Wallet Standard sign-in (solana:signIn) → the lobby', await until(`location.pathname === '/lobby.html'`, 12000), await ev('location.href'));
+check('…one prompt: signIn only (no connect, no signMessage)', (await calls()) === '["Phantom:signIn"]', await calls());
+check('…/api/me is that wallet', (await ev(`fetch(${JSON.stringify(API + '/api/me')}, { credentials: 'include' }).then(r => r.json())`)).wallet === stdAddr);
+
+// 9 · two wallets: the picker lists both (icons are data: URIs); the one picked signs in
+await send('Network.clearBrowserCookies'); await open('std2');
+const second = await ev('window.__addr()'); await click(); await until(`document.querySelector('dialog[open]')`);
+check('two wallets: the picker lists both', (await ev(`[...document.querySelectorAll('dialog[open] button')].map(b => b.textContent).filter(t => t !== 'CANCEL').join(',')`)) === 'First,Second');
+await shot('wallet-picker');
+await ev(`[...document.querySelectorAll('dialog[open] button')].find(b => b.textContent.startsWith('Second')).click()`);
+check('…the picked wallet signs in', (await until(`location.pathname === '/lobby.html'`, 12000)) && (await ev(`fetch(${JSON.stringify(API + '/api/me')}, { credentials: 'include' }).then(r => r.json())`)).wallet === second);
+
+// 10 · a rejected one-click sign-in stops there – no connect + signMessage second prompt
+await send('Network.clearBrowserCookies'); await open('stdreject'); await click(); await until(`document.getElementById('msg').classList.contains('bad')`);
+check('rejected signIn: the message is shown, no second prompt', /rejected/i.test(await ev(`document.getElementById('msg').textContent`)) && (await calls()) === '["Phantom:signIn"]', await calls());
+check('…and no session cookie', !(await session()));
+
+// 11 · a phone browser with no wallet: "open this page in the wallet" universal links (phantom.com / solflare.com browse), the current URL encoded
+await send('Network.clearBrowserCookies'); await open('none', '/?mobile=1');
+await click(); await until(`document.querySelector('dialog[open]')`);
+const here = await ev('location.href'), origin = await ev('location.origin');
+check('phone, no wallet: Open in Phantom / Solflare browse links', (await ev(`[...document.querySelectorAll('dialog[open] a')].map(a => a.href).join(' ')`)) === `https://phantom.com/ul/browse/${encodeURIComponent(here)}?ref=${encodeURIComponent(origin)} https://solflare.com/ul/v1/browse/${encodeURIComponent(here)}?ref=${encodeURIComponent(origin)}`);
+await shot('phone-open-in-wallet');
+await ev(`[...document.querySelectorAll('dialog[open] button')].find(b => b.textContent === 'CANCEL').click()`);
 
 const problems = c.filt().filter(p => !/401|Failed to load resource/.test(p));
 check('no page errors', problems.length === 0, problems.join(' | ').slice(0, 200));

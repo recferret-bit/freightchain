@@ -175,7 +175,8 @@ export function paymentScenarios(h: () => Harness): void {
       const link = await anon().get(`/api/solana-pay/rides/${r.id}`).expect(200);
       expect(link.body).toMatchObject({ label: 'Freight Chain' });
       expect(String(link.body.icon)).toMatch(/\/icons\/icon-512\.png$/);
-      await anon().post(`/api/solana-pay/rides/${r.id}`).send({ account: Keypair.generate().publicKey.toBase58() }).expect(404);
+      const wrong = await anon().post(`/api/solana-pay/rides/${r.id}`).send({ account: Keypair.generate().publicKey.toBase58() }).expect(404);
+      expect(wrong.body.message).toBe(`This code is for the wallet ${a.address.slice(0, 4)}…${a.address.slice(-4)} – pay it from the wallet app that holds that account (on devnet).`); // the phone wallet shows `message`
       const phone = await anon().post(`/api/solana-pay/rides/${r.id}`).send({ account: a.address }).expect(200);
       expect(phone.body.message).toMatch(/devnet/);
       expect(typeof phone.body.transaction).toBe('string');

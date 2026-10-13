@@ -86,6 +86,17 @@ export class VerifySignInHandler implements ICommandHandler<VerifySignInCommand,
         }
       }
 
+      // Every field the stored challenge set must come back unchanged (what @solana/wallet-standard-util verifySignIn checks): the server's text, not the client's copy
+      const issued = challenge.parse();
+      if (issued) {
+        for (const key of ['domain', 'statement', 'uri', 'version', 'chainId', 'issuedAt', 'expirationTime'] as const) {
+          if (issued[key] !== undefined && parsed[key] !== issued[key]) {
+            this.logger.warn({ event: 'signin_field_mismatch', msg: `sign-in of ${wallet}: the wallet changed ${key}`, wallet, field: key });   // which wallets rewrite the SIWS text
+            throw new UnauthorizedError(`${key} mismatch`);
+          }
+        }
+      }
+
       // Cryptographic ed25519 verification over the signed SIWS message
       if (!this.verifier.verify(command.message, command.signature, wallet)) {
         throw new UnauthorizedError('bad signature');

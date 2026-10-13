@@ -69,7 +69,7 @@ test('1-click SIWS executes when provider supports signIn', async () => {
           statement: 'Sign in to Freight Chain',
           uri: 'http://localhost:3000',
           version: '1',
-          chainId: 'solana:mainnet',
+          chainId: 'solana:devnet',
           nonce: 'mocknonce1234567890abcdef',
           issuedAt: '2026-10-12T00:00:00.000Z',
           expirationTime: '2026-10-12T00:10:00.000Z',
@@ -182,7 +182,7 @@ test('signInOrFallback seamlessly falls back to legacy signing when provider lac
   }
 });
 
-test('signInOrFallback seamlessly falls back to legacy when native signIn throws/rejects', async () => {
+test('signInOrFallback seamlessly falls back to legacy when native signIn throws (not a rejection)', async () => {
   const originalFetch = globalThis.fetch;
   const calls = [];
 
@@ -309,7 +309,7 @@ test('dev-wallet mock implements signIn and solana:signIn standard feature', asy
     statement: 'Dev wallet SIWS sign-in',
     uri: 'http://localhost:3000',
     version: '1',
-    chainId: 'solana:mainnet',
+    chainId: 'solana:devnet',
     nonce: 'devtestnonce1234',
     issuedAt: '2026-10-12T00:00:00.000Z',
   };
@@ -327,4 +327,17 @@ test('dev-wallet mock implements signIn and solana:signIn standard feature', asy
   const [standardOut] = await dw.features['solana:signIn'].signIn(input);
   assert.equal(standardOut.account.address, DEV_ADMIN_WALLET);
   assert.equal(standardOut.signature.length, 64);
+});
+
+test('a REJECTED native sign-in stops there: no second prompt (connect + signMessage)', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async url => (String(url).endsWith('auth/nonce')
+    ? { ok: true, status: 200, json: async () => ({ domain: 'localhost', nonce: 'nonce-rej-1', message: 'm' }) }
+    : { ok: false, status: 404, json: async () => ({}) });
+  let connected = false;
+  const p = { publicKey: null, async signIn() { throw Object.assign(new Error('User rejected the request.'), { code: 4001 }); }, async connect() { connected = true; }, async signMessage() { return { signature: new Uint8Array(64) }; } };
+  try {
+    await assert.rejects(signInOrFallback(p), e => e.stage === 'sign_rejected');
+    assert.equal(connected, false);
+  } finally { globalThis.fetch = originalFetch; }
 });

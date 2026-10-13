@@ -74,8 +74,9 @@ export function formatSignInMessage(input: SiwsMessageInput): string {
 }
 
 /** Pure TypeScript parser for canonical SIWS and legacy challenge messages without external dependencies. */
-export function parseSignInMessage(message: string): ParsedSiwsMessage | null {
-  if (!message || typeof message !== 'string') return null;
+export function parseSignInMessage(raw: string): ParsedSiwsMessage | null {
+  if (!raw || typeof raw !== 'string') return null;
+  const message = raw.replace(/\r\n/g, '\n');   // CRLF parses like LF (the signature is still checked over the exact bytes signed)
 
   const headerMatch = /^([^\r\n]+)\s+wants you to sign in with your Solana account:\r?\n([^\r\n]+)/.exec(message);
   if (!headerMatch) return null;

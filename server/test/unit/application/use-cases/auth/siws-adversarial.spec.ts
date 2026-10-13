@@ -55,6 +55,8 @@ describe('SIWS Adversarial Verification Suite', () => {
         address: walletA,
         statement: ch.statement,
         uri: ch.uri,
+        version: ch.version,
+        chainId: ch.chainId,
         nonce: ch.nonce!,
         issuedAt: ch.issuedAt!,
         expirationTime: ch.expirationTime,
@@ -72,6 +74,8 @@ describe('SIWS Adversarial Verification Suite', () => {
         address: walletA,
         statement: ch.statement,
         uri: ch.uri,
+        version: ch.version,
+        chainId: ch.chainId,
         nonce: ch.nonce!,
         issuedAt: ch.issuedAt!,
         expirationTime: ch.expirationTime,
@@ -89,6 +93,8 @@ describe('SIWS Adversarial Verification Suite', () => {
         address: walletA,
         statement: ch.statement,
         uri: ch.uri,
+        version: ch.version,
+        chainId: ch.chainId,
         nonce: ch.nonce!,
         issuedAt: ch.issuedAt!,
         expirationTime: ch.expirationTime,
@@ -106,6 +112,8 @@ describe('SIWS Adversarial Verification Suite', () => {
         address: walletA,
         statement: ch.statement,
         uri: ch.uri,
+        version: ch.version,
+        chainId: ch.chainId,
         nonce: ch.nonce!,
         issuedAt: ch.issuedAt!,
         expirationTime: ch.expirationTime,
@@ -122,6 +130,8 @@ describe('SIWS Adversarial Verification Suite', () => {
         address: walletA,
         statement: ch.statement,
         uri: ch.uri,
+        version: ch.version,
+        chainId: ch.chainId,
         nonce: ch.nonce!,
         issuedAt: ch.issuedAt!,
         expirationTime: ch.expirationTime,
@@ -143,6 +153,8 @@ describe('SIWS Adversarial Verification Suite', () => {
         address: walletA,
         statement: ch.statement,
         uri: ch.uri,
+        version: ch.version,
+        chainId: ch.chainId,
         nonce: ch.nonce!,
         issuedAt: ch.issuedAt!,
         expirationTime: ch.expirationTime,
@@ -162,6 +174,8 @@ describe('SIWS Adversarial Verification Suite', () => {
         address: walletA,
         statement: ch.statement,
         uri: ch.uri,
+        version: ch.version,
+        chainId: ch.chainId,
         nonce: ch.nonce!,
         issuedAt: ch.issuedAt!,
         expirationTime: ch.expirationTime,
@@ -246,6 +260,8 @@ describe('SIWS Adversarial Verification Suite', () => {
         address: walletA,
         statement: ch.statement,
         uri: ch.uri,
+        version: ch.version,
+        chainId: ch.chainId,
         nonce: ch.nonce!,
         issuedAt: ch.issuedAt!,
         expirationTime: ch.expirationTime,
@@ -264,6 +280,8 @@ describe('SIWS Adversarial Verification Suite', () => {
         address: walletA,
         statement: ch.statement,
         uri: ch.uri,
+        version: ch.version,
+        chainId: ch.chainId,
         nonce: ch.nonce!,
         issuedAt: ch.issuedAt!,
         expirationTime: ch.expirationTime,
@@ -281,6 +299,8 @@ describe('SIWS Adversarial Verification Suite', () => {
         address: walletA,
         statement: ch.statement,
         uri: ch.uri,
+        version: ch.version,
+        chainId: ch.chainId,
         nonce: ch.nonce!,
         issuedAt: ch.issuedAt!,
         expirationTime: ch.expirationTime,
@@ -299,6 +319,8 @@ describe('SIWS Adversarial Verification Suite', () => {
         address: walletA,
         statement: ch.statement,
         uri: ch.uri,
+        version: ch.version,
+        chainId: ch.chainId,
         nonce: '00000000000000000000000000000000',
         issuedAt: ch.issuedAt!,
         expirationTime: ch.expirationTime,
@@ -349,6 +371,8 @@ describe('SIWS Adversarial Verification Suite', () => {
         address: walletA,
         statement: ch.statement,
         uri: ch.uri,
+        version: ch.version,
+        chainId: ch.chainId,
         nonce: ch.nonce!,
         issuedAt: ch.issuedAt!,
         expirationTime: ch.expirationTime,
@@ -371,6 +395,8 @@ describe('SIWS Adversarial Verification Suite', () => {
         address: walletA,
         statement: ch.statement,
         uri: ch.uri,
+        version: ch.version,
+        chainId: ch.chainId,
         nonce: ch.nonce!,
         issuedAt: ch.issuedAt!,
         expirationTime: ch.expirationTime,
@@ -396,6 +422,8 @@ describe('SIWS Adversarial Verification Suite', () => {
         address: walletA,
         statement: ch.statement,
         uri: ch.uri,
+        version: ch.version,
+        chainId: ch.chainId,
         nonce: ch.nonce!,
         issuedAt: ch.issuedAt!,
         expirationTime: ch.expirationTime,
@@ -414,6 +442,8 @@ describe('SIWS Adversarial Verification Suite', () => {
         address: walletA,
         statement: ch.statement,
         uri: ch.uri,
+        version: ch.version,
+        chainId: ch.chainId,
         nonce: ch.nonce!,
         issuedAt: new Date(ctx.now().getTime() - 10000).toISOString(),
         expirationTime: new Date(ctx.now().getTime() - 1000).toISOString(),
@@ -430,6 +460,8 @@ describe('SIWS Adversarial Verification Suite', () => {
         address: walletA,
         statement: ch.statement,
         uri: ch.uri,
+        version: ch.version,
+        chainId: ch.chainId,
         nonce: ch.nonce!,
         issuedAt: ch.issuedAt!,
         expirationTime: 'not-a-valid-date-format',
@@ -448,6 +480,8 @@ describe('SIWS Adversarial Verification Suite', () => {
         address: walletA, // Victim address
         statement: ch.statement,
         uri: ch.uri,
+        version: ch.version,
+        chainId: ch.chainId,
         nonce: ch.nonce!,
         issuedAt: ch.issuedAt!,
         expirationTime: ch.expirationTime,
@@ -466,6 +500,8 @@ describe('SIWS Adversarial Verification Suite', () => {
         address: walletA,
         statement: ch.statement,
         uri: ch.uri,
+        version: ch.version,
+        chainId: ch.chainId,
         nonce: ch.nonce!,
         issuedAt: ch.issuedAt!,
         expirationTime: ch.expirationTime,
@@ -516,6 +552,8 @@ describe('SIWS Adversarial Verification Suite', () => {
         address: walletA,
         statement: ch.statement,
         uri: ch.uri,
+        version: ch.version,
+        chainId: ch.chainId,
         nonce: ch.nonce!,
         issuedAt: ch.issuedAt!,
         expirationTime: ch.expirationTime,
@@ -528,7 +566,7 @@ describe('SIWS Adversarial Verification Suite', () => {
       expect(res.profile.wallet).toBe(walletA);
     });
 
-    it('safely handles SQL injection and XSS payloads in statement', async () => {
+    it('safely handles SQL injection and XSS payloads in statement: a statement other than the issued one is refused', async () => {
       const ch = await challenge.execute(new RequestChallengeCommand());
       const maliciousStatement = "'; DROP TABLE \"player\".\"Player\"; -- <script>alert('xss')</script>";
       const msg = formatSignInMessage({
@@ -536,14 +574,24 @@ describe('SIWS Adversarial Verification Suite', () => {
         address: walletA,
         statement: maliciousStatement,
         uri: ch.uri,
+        version: ch.version,
+        chainId: ch.chainId,
         nonce: ch.nonce!,
         issuedAt: ch.issuedAt!,
         expirationTime: ch.expirationTime,
       });
       const sig = sign(msg, kpA);
 
-      const res = await handler.execute(new VerifySignInCommand(walletA, sig, { ip: null, userAgent: null }, msg, ch.nonce!));
-      expect(res.session.token).toBe(`token-for-${walletA}`);
+      await expect(handler.execute(new VerifySignInCommand(walletA, sig, { ip: null, userAgent: null }, msg, ch.nonce!))).rejects.toThrow(new UnauthorizedError('statement mismatch'));
+    });
+
+    it('every field the server issued must come back unchanged (uri, chain, issued-at)', async () => {
+      for (const change of [{ uri: 'https://evil.example' }, { chainId: 'solana:mainnet' }, { issuedAt: '2020-01-01T00:00:00.000Z' }, { version: '2' }]) {
+        const ch = await challenge.execute(new RequestChallengeCommand());
+        const msg = formatSignInMessage({ domain: ch.domain!, address: walletA, statement: ch.statement, uri: ch.uri, version: ch.version, chainId: ch.chainId, nonce: ch.nonce!, issuedAt: ch.issuedAt!, expirationTime: ch.expirationTime, ...change });
+        const key = Object.keys(change)[0];
+        await expect(handler.execute(new VerifySignInCommand(walletA, sign(msg, kpA), { ip: null, userAgent: null }, msg, ch.nonce!))).rejects.toThrow(new UnauthorizedError(`${key} mismatch`));
+      }
     });
   });
 

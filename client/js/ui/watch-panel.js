@@ -7,7 +7,7 @@ import { watch, seek, goLive, addEvent, roadCheck, replayEnd, LIVE_LAG } from '.
 import { EFFECT_INFO, solText } from '../live-effects.js';
 import { el } from '../../site/dom.js';
 import { api, signIn } from '../../site/wallet.js';
-import { signAndSend } from '../../site/pay.js';
+import { phoneStep, signAndSend } from '../../site/pay.js';
 import { solanaPayUrl, donationPayPath } from '../../site/solana-pay.js';
 import { API_BASE } from '../hosts.js';
 import { explorerTx } from '../../site/pools.js';
@@ -209,17 +209,18 @@ async function send() {
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 async function showDonationQr(url) {
   if (!url) { $('w-qr')?.remove(); return; }
-  const { qrNode } = await import('../../site/qr.js');
+  const { payQrBlock } = await import('../../site/qr.js');
   const msg = $('w-msg'); if (!msg?.isConnected) return;
   let box = $('w-qr');
   if (!box) { box = el('div', { id: 'w-qr', class: 'pay-qr' }); msg.before(box); }
-  box.replaceChildren(qrNode(url), el('p', { class: 'dim w-small' }, 'or scan with a phone wallet · same account · devnet'));
+  box.replaceChildren(...payQrBlock(url, 'dim w-small'));
 }
 const sent = (effect, how) => (effect === 'tip' ? `Tip sent (${how}).` : `${EFFECT_INFO[effect].label} sent (${how}) – it happens when the driver's game picks it up; you see it here ~${LIVE_LAG} s later.`);
 async function donate(effect) {
   if (P.busy) return;
   const n = $('w-note-in'), note = n?.value.trim() || null, id = encodeURIComponent(watch.id);
   P.busy = true;
+  const stop = { done: false };   // set when this donation is settled either way: the phone poll must not outlive it
   try {
     if (watch.features.payment !== 'chain') {   // MOCK: nothing is charged
       addOwn(await api(`watch/${id}/donations`, { effect, note })); say(sent(effect, 'mock'), 'good');
@@ -230,7 +231,7 @@ async function donate(effect) {
       await showDonationQr(solanaPayUrl(API_BASE, location.origin, donationPayPath(order.id)));
       const phone = async () => {
         const end = Date.now() + 90000;
-        while (Date.now() < end) {
+        while (!stop.done && Date.now() < end) {
           const r = await api(`watch/${id}/donation-orders/${order.id}/reconcile`, {}).catch(() => null);
           if (r?.status === 'paid') return r;
           await sleep(3000);
@@ -242,7 +243,7 @@ async function donate(effect) {
         say(`Approve ${solText(order.lamports)} (devnet) to the driver in your wallet…`);
         signature = await signAndSend(transaction.transaction);
       } catch (e) {
-        say('Browser wallet closed. Scan the code with the phone wallet that holds this account (devnet)…');
+        say(e?.code === 'no_wallet' ? 'No browser wallet. Scan the code with the phone wallet that holds this account (devnet)…' : phoneStep(e));
         const found = await phone();
         if (found?.status === 'paid') { forgetDonation(watch.id); if (n) n.value = ''; addOwn(found.event); say(found.event.effect === effect ? sent(effect, 'paid') : `Paid – ${found.event.text ?? 'delivered as a tip'}.`, 'good'); return; }
         throw e;
@@ -263,6 +264,6 @@ async function donate(effect) {
     }
     if (n) n.value = '';
   } catch (e) { say(e.message, 'bad'); if (e.status === 401) refreshMe(); }
-  finally { P.busy = false; $('w-qr')?.remove(); }
+  finally { stop.done = true; P.busy = false; $('w-qr')?.remove(); }
 }
 const addOwn = e => addEvent(e);   // shown at once (onEvent paints it); the next poll knows the id

@@ -1,5 +1,6 @@
 /* global DOMParser */
 import { qrcode } from './qrcode-gen.mjs';
+import { isMobileDevice } from '../js/mobile.js';
 
 /** Byte-mode QR, error correction M. The matrix includes the 4-module quiet zone. */
 export function qrModules(text) {
@@ -33,4 +34,16 @@ export function qrSvg(text) {
 export function qrNode(text) {
   const svg = new DOMParser().parseFromString(qrSvg(text), 'image/svg+xml').documentElement;
   return document.importNode(svg, true);
+}
+
+/** The pay block under a purchase: the QR plus its caption; on a phone the QR is also a `solana:` link (a tap opens the wallet app that handles Solana Pay –
+ *  a desktop usually has no handler for the scheme). `cls` = the caption's class. One node for the lobby and the watch panel. */
+export function payQrBlock(url, cls = 'dim') {
+  const mobile = isMobileDevice();
+  let code = qrNode(url);
+  if (mobile) { const a = document.createElement('a'); a.href = url; a.className = 'pay-qr-link'; a.setAttribute('aria-label', 'Pay in a wallet app (Solana Pay)'); a.append(code); code = a; }
+  const p = document.createElement('p');
+  p.className = cls;
+  p.textContent = mobile ? 'or tap the code to pay in your wallet app · same account · devnet' : 'or scan with a phone wallet · same account · devnet';
+  return [code, p];
 }

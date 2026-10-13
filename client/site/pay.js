@@ -1,4 +1,4 @@
-import { api, provider } from './wallet.js';
+import { api, b58, ensureAccount, payingWallet, provider } from './wallet.js';
 import { API_BASE } from '../js/hosts.js';
 import { chainFees, createOrder, getOrder, orderPayment, confirmOrder, refundTransaction, settleSignature } from './tickets-api.js';
 import { sol } from './pools.js';
@@ -7,7 +7,7 @@ import { solanaPayUrl, ridePayPath, orderPayPath } from './solana-pay.js';
 
 /* Paying: (legacy, a tier without a pool) `buyRide` – the server builds an unsigned SOL transfer (+ memo = ride id), the wallet signs and sends it, the server verifies it on chain;
    (escrowed pools) `buyTickets` / `claimRefund` – the server builds the program transaction, the wallet signs it, the program holds the money (routes in tickets-api.js).
-   web3.js (IIFE build) is only loaded when a paid ride is actually bought – it is needed to turn the server's bytes into a Transaction the wallet accepts. */
+   A Wallet Standard wallet takes the server's wire bytes as they are; web3.js (IIFE build) is only loaded for a legacy injected wallet, which wants a Transaction. */
 const WEB3 = 'https://cdn.jsdelivr.net/npm/@solana/web3.js@1.99.0/lib/index.iife.min.js';
 let web3;
 const loadWeb3 = () => web3 ??= new Promise((ok, no) => {
@@ -17,10 +17,30 @@ const loadWeb3 = () => web3 ??= new Promise((ok, no) => {
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const fromB64 = b => Uint8Array.from(atob(b), c => c.charCodeAt(0));
 const noWallet = () => new Error('No Solana wallet found – install Phantom or Solflare (and switch it to Devnet)');
-const selfPay = async (p, tx) => { const r = await p.signAndSendTransaction(tx); return r.signature ?? r; };   // Phantom / Solflare: { signature }
+const shortVec = (b, o) => { let v = 0, s = 0; for (;;) { const x = b[o++]; v |= (x & 0x7f) << s; if (!(x & 0x80)) return [v, o]; s += 7; } };
+/** The fee payer of a wire transaction (legacy or v0): the first account key of its message. The server builds every payment for the signed-in wallet as the fee payer. */
+export function feePayerOf(bytes) {
+  let [n, o] = shortVec(bytes, 0); o += 64 * n;
+  if (bytes[o] & 0x80) o++;   // v0 message: version prefix
+  [, o] = shortVec(bytes, o + 3);   // past the 3-byte header to the account keys
+  return b58(bytes.slice(o, o + 32));
+}
+/** A wallet left on mainnet cannot find a devnet blockhash: say so instead of the RPC's words. A rejection keeps its own error (code 4001). */
+const devnetHint = e => (/blockhash not found/i.test(e?.message ?? '') ? Object.assign(new Error('The wallet is not on devnet – switch it to Devnet (Phantom: Settings → Developer Settings → Testnet Mode) and try again.'), { code: 'wallet_wrong_cluster' }) : e);
+/** Sign and send a transaction the SERVER built (base64 wire bytes, unsigned) on the account it was built for (`account`, default its fee payer), with the wallet that holds it → its signature (base58). */
+async function selfPay(transactionB64, account = null) {
+  const bytes = fromB64(transactionB64), address = account ?? feePayerOf(bytes);
+  const p = await payingWallet(address);
+  if (!p) throw Object.assign(noWallet(), { code: 'no_wallet' });
+  await ensureAccount(p, address);
+  try { const r = await p.signAndSendTransaction(p.standard ? bytes : (await loadWeb3()).Transaction.from(bytes)); return r.signature ?? r; }   // Phantom / Solflare: { signature }
+  catch (e) { throw devnetHint(e); }
+}
 const httpStatus = e => typeof e?.status === 'number' ? e.status : null;
 const problemCode = e => typeof e?.code === 'string' ? e.code : null;
 const PHONE = 'Browser wallet closed. Scan the code with the phone wallet that holds this account (devnet)…';
+/** What to say while the phone may still pay: the wallet's own reason when it is a mismatch / wrong cluster, else "closed". */
+const phoneStep = e => (e?.code === 'wallet_account_mismatch' || e?.code === 'wallet_wrong_cluster' ? `${e.message} Or scan the code with the phone wallet that holds this account (devnet)…` : PHONE);
 const payUrl = path => solanaPayUrl(API_BASE, typeof location === 'undefined' ? '' : location.origin, path);
 
 /** Poll `load` until it returns a hit, `ms` passes, or `stop.done` (the desktop path finished). */
@@ -44,8 +64,7 @@ export async function buyRide(tier, onStep = () => {}, onPayLink = () => {}) {
     track('payment_failed', properties);   // never e.message: the give-up string embeds the signature
   };
   const p = provider();
-  let w3;
-  if (p) { try { w3 = await loadWeb3(); } catch (e) { failed('web3_load_failed', e); throw e; } }
+  if (p && !p.standard) { try { await loadWeb3(); } catch (e) { failed('web3_load_failed', e); throw e; } }   // before the order: a legacy wallet cannot pay without it
   onStep('Creating the order…');
   let ride;
   try { ride = await api('rides', { tier }, { report: false }); } catch (e) { failed('order_failed', e); throw e; }
@@ -69,16 +88,16 @@ export async function buyRide(tier, onStep = () => {}, onPayLink = () => {}) {
     }
     onStep('Approve the payment in your wallet (devnet SOL)…');
     let res;
-    try { res = await p.signAndSendTransaction(w3.Transaction.from(Uint8Array.from(atob(transaction), c => c.charCodeAt(0)))); }
+    try { res = await selfPay(transaction); }
     catch (e) {
-      onStep(PHONE);
+      onStep(phoneStep(e));
       const found = await phone();
       if (found) return found;
       failed('wallet_rejected', e, ride.id);
       throw e;
     }
     track('payment_submitted', { ride_id: ride.id, tier_id: tier });   // no signature, even though it is in scope
-    const signature = res.signature ?? res;   // Phantom / Solflare: { signature }
+    const signature = res;
     onStep('Waiting for the network to confirm…');
     let fromPhone = null;
     const phoneRide = phone().then(hit => { fromPhone = hit; return hit; });
@@ -130,7 +149,7 @@ export async function waitPaid(orderId, signature) {
  *  An order that lapses is replaced ONCE automatically. Resolves `{ status: 'paid', order }`. `onStep(text)` reports progress. Rejects with `{ notConfigured: true }` while sales are off. */
 export async function buyTickets(poolId, qty, onStep = () => {}, onPayLink = () => {}) {
   const p = provider();
-  const w3 = p ? await loadWeb3() : null;
+  if (p && !p.standard) await loadWeb3();
   for (let attempt = 0; ; attempt++) {
     onStep('Creating the order…');
     const order = await createOrder(poolId, qty);
@@ -151,9 +170,9 @@ export async function buyTickets(poolId, qty, onStep = () => {}, onPayLink = () 
       const fee = await chainFees(poolId).then(f => ` – network fee ≈ ${sol(f.estimatedFeeLamports)}`, () => '');
       onStep(`Approve ${sol(pay.lamports)} in your wallet${fee}…`);
       let signature;
-      try { signature = await selfPay(p, w3.Transaction.from(fromB64(pay.transaction))); }
+      try { signature = await selfPay(pay.transaction); }
       catch (e) {
-        onStep(PHONE);
+        onStep(phoneStep(e));
         const found = await phone();
         if (found?.status === 'paid') return { ...found, programId: pay.programId };
         throw e;
@@ -188,11 +207,10 @@ export async function buyTickets(poolId, qty, onStep = () => {}, onPayLink = () 
  *  about the signature (POST /api/chain/settle). Resolves `{ signature, settled }` – settled = the server already saw the Refunded event. */
 export async function claimRefund(poolId, onStep = () => {}) {
   const p = provider(); if (!p) throw noWallet();
-  const w3 = await loadWeb3();
   onStep('Building the refund transaction…');
   const r = await refundTransaction(poolId);
   onStep(`Approve the refund of ${sol(r.lamports)} in your wallet${r.needsFail ? ' (it also closes the failed pool – anyone may)' : ''}…`);
-  const signature = await selfPay(p, w3.Transaction.from(fromB64(r.transaction)));
+  const signature = await selfPay(r.transaction);
   onStep('Refund sent – waiting for the network…');
   for (let i = 0; i < 20; i++) {   // ~30 s; after that the program-log watcher records it anyway
     const s = await settleSignature(signature).catch(() => ({ status: 'pending' }));
@@ -203,10 +221,10 @@ export async function claimRefund(poolId, onStep = () => {}) {
   return { signature, settled: false };
 }
 
-/** Sign and send a transaction the SERVER built (base64, unsigned) with the injected wallet → its signature. Live streams: a paid donation to a driver. */
-export async function signAndSend(transactionB64) {
-  const p = provider();
-  if (!p) throw noWallet();
-  const w3 = await loadWeb3();
-  return selfPay(p, w3.Transaction.from(fromB64(transactionB64)));
+/** Sign and send a transaction a server built (base64) with the browser wallet → its signature. Live streams: a paid donation to a driver (the fee payer is the
+ *  signed-in wallet); the blink page passes `account` (the connected one – an action may name a sponsor as the fee payer).
+ *  Rejects with `{ code: 'no_wallet' }` when the page has none (the phone QR is the way then). */
+export async function signAndSend(transactionB64, account = null) {
+  return selfPay(transactionB64, account);
 }
+export { phoneStep };

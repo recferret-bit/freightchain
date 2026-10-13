@@ -19,8 +19,24 @@ const FAKE = `window.__asked = []; window.phantom = { solana: { isPhantom: true,
   connect: async () => ({}), disconnect: async () => {},
   signTransaction: async tx => { __asked.push('signTransaction'); return tx; },
   signAndSendTransaction: async tx => { __asked.push('signAndSendTransaction'); return { signature: 'self' + Math.random().toString(36).slice(2) }; } } };`;
+// STANDARD=1: the same fake as a Wallet Standard wallet (registers through the window events; no window.phantom, so pay.js must not need web3.js). It answers
+// signAndSendTransaction only for the wire bytes, chain solana:devnet and the signed-in account (from /api/me) – anything else lands in __asked as "bad:…".
+const STANDARD_FAKE = `window.__asked = []; (() => {
+  const me = () => fetch('/api/me', { credentials: 'include' }).then(r => r.json()).then(j => j.wallet);
+  let account = null;
+  const w = { version: '1.0.0', name: 'Phantom', icon: 'data:image/svg+xml;base64,PHN2Zy8+', chains: ['solana:devnet'], accounts: [], features: {
+    'standard:connect': { version: '1.0.0', connect: async () => { account = { address: await me(), publicKey: new Uint8Array(32), chains: ['solana:devnet'], features: [] }; w.accounts = [account]; return { accounts: w.accounts }; } },
+    'standard:events': { version: '1.0.0', on: () => () => {} },
+    'solana:signAndSendTransaction': { version: '1.0.0', signAndSendTransaction: async ({ account: a, transaction, chain }) => {
+      const bad = !(transaction instanceof Uint8Array) ? 'not bytes' : chain !== 'solana:devnet' ? 'chain ' + chain : a?.address !== (await me()) ? 'account' : null;
+      __asked.push(bad ? 'bad:' + bad : 'signAndSendTransaction');
+      return [{ signature: crypto.getRandomValues(new Uint8Array(64)) }]; } } } };
+  const reg = ({ register }) => register(w);
+  window.addEventListener('wallet-standard:app-ready', ({ detail }) => reg(detail));
+  window.dispatchEvent(Object.assign(new Event('wallet-standard:register-wallet'), { detail: reg }));
+})();`;
 const h = await launch({ port: CDP, shotsDir: 'fc-tickets-shots', evalProblems: true });
-await h.send('Page.addScriptToEvaluateOnNewDocument', { source: FAKE });
+await h.send('Page.addScriptToEvaluateOnNewDocument', { source: process.env.STANDARD ? STANDARD_FAKE : FAKE });
 const size = (w, hgt, mobile) => h.send('Emulation.setDeviceMetricsOverride', { width: w, height: hgt, deviceScaleFactor: 1, mobile });
 const txt = sel => h.ev(`document.querySelector(${JSON.stringify(sel)})?.textContent ?? ''`);
 const click = sel => h.ev(`document.querySelector(${JSON.stringify(sel)}).click()`);
@@ -40,7 +56,7 @@ check('…the wallet was asked to sign AND send (it pays its own fee)', JSON.str
 check('…RIDE now has 3 tickets', (await txt('#tier-1h .go')) === 'RIDE (3 left)', await txt('#tier-1h .go'));
 const dlg = () => h.ev(`(() => { const n = document.getElementById('ticket-dialog'), x = n?.querySelector('#td-share-x'); return n && !n.hidden ? { cls: n.className, title: n.querySelector('#tt-title')?.textContent, rows: [...n.querySelectorAll('dt')].map(d => d.textContent).join(','), tx: n.querySelector('dd a[href*="/tx/"]')?.href ?? '', x: x?.href ?? '', focus: document.activeElement === x } : null; })()`);
 const d1 = await dlg(), post = d1 ? new URL(d1.x) : null;
-check('…the RIDE PAID dialog: the receipt (paid, pool, transaction, escrow, program) on the explorer, focus on POST ON 𝕏', d1?.cls === 'ok' && d1.title === 'RIDE PAID' && d1.rows === 'paid,pool,transaction,escrow,program' && /explorer\.solana\.com\/tx\/self.+cluster=devnet/.test(d1.tx) && d1.focus, JSON.stringify(d1));
+check('…the RIDE PAID dialog: the receipt (paid, pool, transaction, escrow, program) on the explorer, focus on POST ON 𝕏', d1?.cls === 'ok' && d1.title === 'RIDE PAID' && d1.rows === 'paid,pool,transaction,escrow,program' && /explorer\.solana\.com\/tx\/[^?]+\?cluster=devnet/.test(d1.tx) && d1.focus, JSON.stringify(d1));
 const origin = await h.ev('location.origin'), shareUrl = post?.searchParams.get('url') ?? '';
 check('…POST ON 𝕏 is an x.com intent: the paid shift in its text, the site home (a blink) as its url', post?.origin === 'https://x.com' && post.pathname === '/intent/post' && /^Ride paid .*2 tickets for a 1 HOUR shift in @FreightChainSol – 0\.100 SOL .*@solana devnet/.test(post.searchParams.get('text')) && /The link buys one ticket/.test(post.searchParams.get('text')) && shareUrl === `${origin}/` && new URL(shareUrl).pathname === '/' && shareUrl !== d1.tx, d1?.x);
 await h.shot('stub-ride-paid-desktop');

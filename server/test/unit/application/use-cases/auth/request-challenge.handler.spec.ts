@@ -20,7 +20,7 @@ describe('RequestChallengeHandler', () => {
       statement: 'Sign in to Freight Chain. This request will not trigger a transaction or cost any fees.',
       uri: 'https://freight.test',
       version: '1',
-      chainId: 'solana:mainnet',
+      chainId: 'solana:devnet',
       address: wallet,
     });
     expect(res.nonce).toBeDefined();
@@ -35,7 +35,7 @@ describe('RequestChallengeHandler', () => {
     expect(res.message).toContain('{{address}}');
     expect(res.domain).toBe('freight.test');
     expect(res.version).toBe('1');
-    expect(res.chainId).toBe('solana:mainnet');
+    expect(res.chainId).toBe('solana:devnet');
     expect(res.nonce).toBeDefined();
     const stored = await ctx.challenges.consume(`nonce:${res.nonce}`);
     expect(stored).not.toBeNull();

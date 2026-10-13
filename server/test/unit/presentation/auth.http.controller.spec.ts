@@ -14,7 +14,7 @@ describe('AuthHttpController', () => {
     statement: 'Sign in to Freight Chain.',
     uri: 'https://freight.test',
     version: '1',
-    chainId: 'solana:mainnet',
+    chainId: 'solana:devnet',
     nonce: '0123456789abcdef0123456789abcdef',
     issuedAt: '2026-10-11T20:00:00.000Z',
     expirationTime: '2026-10-11T20:05:00.000Z',

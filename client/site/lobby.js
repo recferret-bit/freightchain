@@ -339,12 +339,12 @@ function setPayQr(key, url) { S.payQr = url ? { key, url } : null; mountPayQr();
 async function mountPayQr() {
   const wanted = S.payQr;
   if (!wanted) { $('pay-qr')?.remove(); return; }
-  const { qrNode } = await import('./qr.js');
+  const { payQrBlock } = await import('./qr.js');
   if (S.payQr !== wanted) return; // a repaint started another mount
   const msg = $(`msg-${wanted.key}`); if (!msg?.isConnected) return;
   let holder = $('pay-qr');
   if (!holder) { holder = el('div', { id: 'pay-qr', class: 'pay-qr' }); msg.after(holder); }
-  holder.replaceChildren(qrNode(wanted.url), el('p', { class: 'dim' }, 'or scan with a phone wallet · same account · devnet'));
+  holder.replaceChildren(...payQrBlock(wanted.url));
 }
 function say(key, text, bad = false, link = null) {   // link = { href, text } appended after the text (an explorer link)
   if (text) S.msgs[key] = [text, bad, link]; else delete S.msgs[key];

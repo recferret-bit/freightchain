@@ -1,5 +1,5 @@
 import { ADMIN_BASE, SITE_BASE } from '../js/hosts.js';
-import { b58, provider } from './wallet.js';
+import { b58, chooseWallet, ensureAccount, provider, rememberWallet } from './wallet.js';
 import { shortAddr } from './pools.js';
 import { promosTab } from './admin-promos.js';
 import { settingsTab } from './admin-settings.js';
@@ -242,8 +242,8 @@ function paintSession(s) {
   $('signout').hidden = !s;
 }
 async function adminSignIn() {
-  const p = provider();
-  if (!p) throw new Error('No Solana wallet found – install Phantom or Solflare');
+  const p = await chooseWallet();
+  rememberWallet(p);
   await p.connect();
   const walletAddr = p.publicKey.toString();
   const { message } = await api('auth/nonce', { wallet: walletAddr });
@@ -255,9 +255,8 @@ async function adminSignIn() {
 async function signAt(path, intent) {
   const p = provider();
   if (!p) throw new Error('No Solana wallet found – changes are signed by your admin wallet (Phantom / Solflare)');
-  await p.connect();
   const s = stored();
-  if (s && p.publicKey.toString() !== s.wallet) throw new Error(`The wallet is ${short(p.publicKey.toString())}, the admin session is ${short(s.wallet)} – switch the wallet's account`);
+  if (s) await ensureAccount(p, s.wallet); else await p.connect();   // a Wallet Standard wallet that authorised several accounts signs with the admin's one
   const { message } = await api(path, intent);
   const res = await p.signMessage(new TextEncoder().encode(message), 'utf8');
   return b58(res.signature ?? res);
