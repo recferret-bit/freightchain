@@ -63,7 +63,7 @@
   <div class="hero-in">
     <p class="eyebrow rv">SOLANA DEVNET · IN YOUR BROWSER · NO DOWNLOAD · <b>10 FREE RIDES</b></p>
     <h1 class="rv">The road never ends.<br>Your shift does.</h1>
-    <p class="lede rv">Drive every minute of it – manual gearbox, cold engine, traffic, night. The server keeps the clock and calls the finish. Escrowed on Solana. We never hold the funds.</p>
+    <p class="lede rv">Drive every minute of it – manual gearbox, cold engine, traffic, night. The server keeps the clock and calls the finish. A paid shift is a ticket into a devnet pool, and the program's account holds the fees.</p>
     <div class="cta-row rv">
       <a class="cta" id="play-free" href="/play.html">PLAY FREE RIDE NOW</a>
       <button class="cta ghost" id="connect">CONNECT WALLET → 10 FREE RIDES</button>
@@ -107,7 +107,7 @@
 
 <!-- ───────── 02 · LOOP ───────── -->
 <section class="ch" id="loop">
-  <header class="ch-h rv"><i>02</i><h2>CORE MECHANICS &amp; THE LOOP</h2><p>Freight Chain puts money on the line: the only skill that pays is staying on the road, awake, for the whole shift.</p></header>
+  <header class="ch-h rv"><i>02</i><h2>CORE MECHANICS &amp; THE LOOP</h2><p>Stay on the road for the whole shift. The server records the drive and calls the finish.</p></header>
 
   <ol class="flow rv">
     <li><i>1</i><b>BUY A SHIFT</b><span>Free test ride today. The $5, $15 and $50 shifts are soon.</span></li>
@@ -159,9 +159,9 @@
   </div>
 
   <div class="ach rv" id="achievements">
-    <header><span class="lbl">ACHIEVEMENTS · LIVE ON DEVNET</span>
-      <h3>EVERY MILE LEAVES A MARK. ON-CHAIN.</h3>
-      <p>Drive well and the road pays you in proof. Finish rides, stay clean, cross Siberia at night: each milestone becomes a <b>soulbound compressed NFT</b> in your wallet. It cannot be sold, moved or faked, and it costs you nothing: we pay the mint.</p></header>
+    <header><span class="lbl">ACHIEVEMENTS · DEVNET</span>
+      <h3>EIGHT LADDERS, 31 BADGES</h3>
+      <p>Finish rides, stay clean, drive Siberia at night. A badge you earn can be minted into your wallet as a compressed NFT. The collection is frozen on chain, so it cannot be transferred. You sign nothing, and you pay nothing.</p></header>
     <div class="ach-show">
       <figure><img src="/badges/first-mile.svg" width="200" height="200" loading="lazy" decoding="async" alt="First Mile badge, one of three stars lit"><figcaption><b>★☆☆ Road</b>Start your first ride</figcaption></figure>
       <figure><img src="/badges/shift-complete-2.svg" width="200" height="200" loading="lazy" decoding="async" alt="Shift Worker badge, silver"><figcaption><b>★★☆ Shifts</b>Finish 5 paid shifts</figcaption></figure>
@@ -171,10 +171,10 @@
     <ol class="ach-flow">
       <li><b>DRIVE</b>Eight ladders, 31 badges: Road, Shifts, Night, Distance, Clean, Siberia, Solo, Licence. Three stars per ladder, Platinum on top.</li>
       <li><b>PROVEN</b>The server counts from the rides it judged. A ride whose recording is rejected counts for nothing. The Shifts ladder counts paid rides only.</li>
-      <li><b>MINTED</b>An hour later, after a second check, a Bubblegum v2 cNFT lands in your wallet. Thousands of badges for the rent of one tree.</li>
+      <li><b>MINTED</b>An hour later, after a second check, a Bubblegum v2 compressed NFT lands in your wallet.</li>
       <li><b>LOCKED</b>The collection carries a permanent freeze: the transfer is refused on chain, by Solana, not by us.</li>
     </ol>
-    <p class="ach-note">New ACHIEVEMENTS tab in the lobby: flip any card for its cNFT, Solscan, Orb, mint transaction and a one-tap share to 𝕏. <a href="/whitepaper.html#achievements">How it works</a> · <a href="https://explorer.solana.com/address/56ijQ5t2RFpXezbPtEuqECo5gCQiGSek2LBsp7cfMoXC?cluster=devnet" target="_blank" rel="noopener">collection ↗</a> · <a href="https://explorer.solana.com/address/45NKrZA9rGFcKr62VY5NvM89yarFuBqtBseRK7ZSM336?cluster=devnet" target="_blank" rel="noopener">Merkle tree ↗</a></p>
+    <p class="ach-note">The lobby's ACHIEVEMENTS tab flips a card for the badge, Solscan, Orb, the mint transaction and a share to 𝕏. <a href="/whitepaper.html#achievements">How it works</a> · <a href="https://explorer.solana.com/address/56ijQ5t2RFpXezbPtEuqECo5gCQiGSek2LBsp7cfMoXC?cluster=devnet" target="_blank" rel="noopener">collection ↗</a> · <a href="https://explorer.solana.com/address/45NKrZA9rGFcKr62VY5NvM89yarFuBqtBseRK7ZSM336?cluster=devnet" target="_blank" rel="noopener">Merkle tree ↗</a></p>
     <div class="badges"><span>Road</span><span>Shifts · paid</span><span>Night</span><span>Distance</span><span>Clean</span><span>Siberia</span><span>Solo</span><span>Licence</span><span class="locked">Top 20 · after the first round closes</span></div>
   </div>
 </section>
@@ -183,7 +183,7 @@
 
 <!-- ───────── 03 · ECONOMY & TECH ───────── -->
 <section class="ch" id="economy">
-  <header class="ch-h rv"><i>03</i><h2>ECONOMY</h2><p>Paid shifts are tickets into escrowed prize pools – one Solana account per pool holds the entry fees and states its rules in public. On-chain Attestation PDAs strictly gate prize payouts.</p></header>
+  <header class="ch-h rv"><i>03</i><h2>ECONOMY</h2><p>A paid shift is a ticket into a prize pool. One Solana account holds that pool's entry fees and states the split in public. A prize leaves the account only after the payout key attests the ride. None has been paid.</p></header>
 
   <div class="econ rv">
     <div class="card pool" id="poolbox"><span class="dim">Loading the pool…</span></div>
@@ -204,10 +204,10 @@
           <div class="miss"><b>GOAL MISSED</b><span>too few riders</span><strong>100% back</strong><small>anyone can trigger the refunds</small></div>
           <div class="hit"><b>POOL LIVE</b><span>split as declared</span>
             <div class="bar3" aria-hidden="true"><i style="flex:70"></i><i style="flex:20"></i><i style="flex:10"></i></div>
-            <small><u>70%</u> prizes (Attestation PDA gated) · <u>20%</u> next pool · <u>10%</u> fees</small></div>
+            <small><u>70%</u> prizes · <u>20%</u> next pool · <u>10%</u> fees</small></div>
         </li>
       </ol>
-      <p class="dim" id="escrow-status">Program v3 is on devnet: the program commits each pool's road seed from the SlotHashes sysvar, and a prize needs the payout key's attestation (verified km + the ride's RFC 6962 telemetry root). Spectators can pledge SOL per km to a driver. Connect with 1-click Native SIWS, display your .sol name via SNS, and pay via Phantom, Solflare, or Solana Pay.</p>
+      <p class="dim" id="escrow-status">Program v3 is on devnet. It sets each pool's road seed from the latest slot hash, and it pays a prize only when the payout key has attested that ride.</p>
       <a class="link" id="escrow-link" href="/whitepaper.html#onchain">The whole escrow, with diagrams, in the whitepaper →</a>
     </div>
   </div>
@@ -220,14 +220,14 @@
       <div class="fr"><div class="stage"><img src="/media/chain/proof.svg" width="240" height="124" loading="lazy" decoding="async" alt="Four 15-second batches hash up into one verified Merkle root"><i class="stk p tl">RFC 6962</i><i class="stk tr">PDA ✓</i><i class="stk a br">blockhash</i></div>
         <footer><b>PROVEN DRIVE</b><span>Nobody picks the road. A prize needs proof.</span></footer></div>
       <div class="bk"><div class="rcpt"><b class="t">ATTESTATION · EXAMPLE</b><p><span>seed</span><b>SHA-256(pool · slot hash · slot)</b></p><p><span>batches</span><b>164 × 15 s</b></p><p><span>root</span><b>9f3a…c21</b></p><p><span>status</span><b class="ok">VERIFIED</b></p></div>
-        <p>Same road for every rider of a pool. No attestation, no prize.</p>
+        <p>The program sets the road seed. No attestation, no prize.</p>
         <ul><li>The program hashes the newest Solana slot hash into the pool’s road seed when the pool opens – nobody passes a seed in.</li><li>Every 15 s of driving is a hashed batch; a ride’s batches roll up into one Merkle root.</li><li>The program pays a prize only to a wallet the payout key attested as VERIFIED – the server’s verdict, on chain.</li></ul>
         <nav><a href="/whitepaper.html#onchain">Whitepaper →</a><a href="/whitepaper.html#verify">Anti-cheat →</a></nav></div></div></article>
     <article data-card="pledge" class="oc"><div class="oc-in">
       <div class="fr"><div class="stage"><img src="/media/chain/pledge.svg" width="240" height="124" loading="lazy" decoding="async" alt="412 km of a 0.5 SOL pledge: 0.412 SOL to the driver, 0.088 SOL back"><i class="stk p tl">Pledge PDA</i></div>
         <footer><b>BACK A DRIVER</b><span>Pledge per kilometre of verified driving.</span></footer></div>
       <div class="bk"><div class="rcpt"><b class="t">PLEDGE · EXAMPLE</b><p><span>rate</span><b>0.001 SOL / km</b></p><p><span>deposit</span><b>0.500 SOL</b></p><p><span>verified</span><b>412 km</b></p><p><span>to driver</span><b class="ok">0.412 SOL</b></p><p><span>back to you</span><b>0.088 SOL</b></p></div>
-        <p>Sponsors pay for distance, never for a promise.</p>
+        <p>Pays verified kilometres. Unspent SOL comes back.</p>
         <ul><li>Settles on verified kilometres only.</li><li>The rest returns to you; nothing stays in the account.</li></ul>
         <nav><a href="/whitepaper.html#onchain">Whitepaper →</a></nav></div></div></article>
     <article data-card="sns" class="oc"><div class="oc-in">
@@ -239,16 +239,16 @@
         <nav><a href="/lobby.html#board">Leaderboard →</a></nav></div></div></article>
     <article data-card="blink" class="oc"><div class="oc-in">
       <div class="fr"><div class="stage"><img src="/media/chain/blink.svg" width="240" height="124" loading="lazy" decoding="async" alt="A post on X with ticket and watch buttons, and a Solana Pay QR code for tips"><i class="stk p tl">Actions</i><i class="stk a tr">devnet</i></div>
-        <footer><b>BLINKS &amp; SOLANA PAY</b><span>Buy a shift from a post on 𝕏. Tip a driver by QR.</span></footer></div>
-      <div class="bk"><div class="rcpt"><b class="t">BLINK · EXAMPLE</b><p><span>action</span><b>buy ticket · 1 h</b></p><p><span>where</span><b>a post on 𝕏</b></p><p><span>tip</span><b>Solana Pay QR on a stream</b></p><p><span>signed by</span><b class="ok">your wallet</b></p></div>
-        <p>The game travels with the post.</p>
+        <footer><b>BLINKS &amp; SOLANA PAY</b><span>Buy a ticket from a blink. Tip a live driver by QR.</span></footer></div>
+      <div class="bk"><div class="rcpt"><b class="t">BLINK · EXAMPLE</b><p><span>action</span><b>buy ticket · 1 h</b></p><p><span>where</span><b>a blink client</b></p><p><span>tip</span><b>Solana Pay QR on a stream</b></p><p><span>signed by</span><b class="ok">your wallet</b></p></div>
+        <p>A shared link can buy a ticket or open the ride.</p>
         <ul><li>Solana Actions put BUY TICKET and WATCH buttons on a shared link – in a blink client today, on 𝕏 once Dialect lists us (after the hackathon).</li><li>On a live stream, a phone wallet tips the driver through a Solana Pay QR.</li></ul>
         <nav><a href="/blink.html">Try the blink →</a><a href="#achievements">Badges →</a><a href="/whitepaper.html#onchain">Whitepaper →</a></nav></div></div></article>
     <article data-card="siws" class="oc"><div class="oc-in">
       <div class="fr"><div class="stage"><img src="/media/chain/siws.svg" width="240" height="124" loading="lazy" decoding="async" alt="One wallet prompt: sign in to freightchain.fun with a one-time nonce"><i class="stk p tl">CAIP-122</i></div>
-        <footer><b>ONE-TAP SIGN-IN</b><span>Connect and sign in with one wallet prompt.</span></footer></div>
+        <footer><b>ONE-TAP SIGN-IN</b><span>One prompt on Phantom and Solflare. Older wallets sign a message.</span></footer></div>
       <div class="bk"><div class="rcpt"><b class="t">SIGN-IN · EXAMPLE</b><p><span>domain</span><b>freightchain.fun</b></p><p><span>nonce</span><b>7c1e…a4 · once</b></p><p><span>wallets</span><b>Phantom · Solflare</b></p><p><span>older</span><b class="ok">signed message</b></p></div>
-        <p>No password, no second pop-up.</p>
+        <p>No password. The signature names this site and a one-time nonce.</p>
         <ul><li>Sign In With Solana names our domain and a one-time nonce, so a copied signature is useless elsewhere.</li></ul>
         <nav><a href="/lobby.html">Lobby →</a></nav></div></div></article>
   </div>
@@ -276,7 +276,7 @@
   </div>
 
   <aside class="wp-invite rv" aria-labelledby="wp-h">
-    <div><h3 id="wp-h">Want the full picture?</h3><p>How a shift is timed, what the server checks, how the escrow pools work and what is built or still planned – all in the whitepaper.</p></div>
+    <div><h3 id="wp-h">WHITEPAPER</h3><p>How a shift is timed, what the server checks, how the escrow pools work, and what is still planned.</p></div>
     <a class="cta" id="whitepaper-cta" href="/whitepaper.html">READ THE WHITEPAPER →</a>
   </aside>
 </section>
@@ -285,11 +285,11 @@
 
 <!-- ───────── 04 · ROADMAP (the driver's trip sheet) ───────── -->
 <section class="ch" id="roadmap">
-  <header class="ch-h rv"><i>04</i><h2>ROADMAP</h2><p>Written the way a driver writes a trip sheet: legs, stops, a tick when it is behind us, a stamp when it got cut. Dates only where we have them.</p></header>
+  <header class="ch-h rv"><i>04</i><h2>ROADMAP</h2><p>Legs, stops, a tick when it is behind us, a stamp when it was cut.</p></header>
   <div class="clip rv">
     <div class="clamp"></div>
     <div class="sheet">
-      <div class="sheet-h"><b>FREIGHT CHAIN · TRIP SHEET</b><span>DRIVER: solo, four seats open &nbsp;·&nbsp; UNIT: FC-01 &nbsp;·&nbsp; DISPATCHED: mid-Sep 2026 &nbsp;·&nbsp; NEXT STOP: Colosseum Crypto World's Fair, Oct 12 2026, 11:59 PT &nbsp;·&nbsp; DESTINATION: mainnet, Dec 2026</span></div>
+      <div class="sheet-h"><b>FREIGHT CHAIN · TRIP SHEET</b><span>DRIVER: solo, four seats open &nbsp;·&nbsp; UNIT: FC-01 &nbsp;·&nbsp; DISPATCHED: mid-Sep 2026 &nbsp;·&nbsp; NEXT STOP: devnet release &nbsp;·&nbsp; DESTINATION: mainnet, Dec 2026</span></div>
       <table class="legs">
         <tbody>
           <tr class="leg"><th colspan="3">LEG 1 · DEPOT <small>mid-Sep – Oct 5</small></th><td class="stamp"><span class="st done">DONE</span></td></tr>
@@ -305,6 +305,7 @@
           <tr class="done"><td class="box">☑</td><td>Garage (5 slots), promo codes, cosmetics; the storybook and the whitepaper; the admin page</td><td class="note">Oct 8</td><td></td></tr>
           <tr class="done"><td class="box">☑</td><td>X, YouTube, a trailer cut from real gameplay with its own 8-bit soundtrack</td><td class="note">Oct 9</td><td></td></tr>
           <tr class="done"><td class="box">☑</td><td>Blinks: a shared link buys a ticket or opens the ride (Solana Actions, devnet); our own blink page while dial.to is paused</td><td class="note">Oct 12</td><td></td></tr>
+          <tr class="done"><td class="box">☑</td><td>Achievements: 31 badges, each a soulbound compressed NFT on devnet</td><td class="note">October</td><td></td></tr>
           <tr class="next"><td class="box">☐</td><td>Product analytics: the PostHog relay and ten funnels are wired, half the board reads</td><td class="note">50 %</td><td></td></tr>
           <tr class="next"><td class="box">☐</td><td>Submission: 2–3 min pitch, ≤ 3 min demo, form, disclosure</td><td class="note">Oct 12 noon PT</td><td></td></tr>
 
@@ -329,8 +330,6 @@
 
           <tr class="leg"><th colspan="3">LEG 5 · LONG HAUL <small>2027</small></th><td class="stamp"><span class="st later">BOOKED</span></td></tr>
           <tr class="later"><td class="box">☐</td><td>Garage parts and promo cosmetics as NFTs the wallet owns and trades</td><td class="note">cosmetics only</td><td></td></tr>
-          <tr class="done"><td class="box">☑</td><td>Achievements on chain: 31 tiered badges, each a soulbound compressed NFT on devnet</td><td class="note">October</td><td></td></tr>
-          <tr class="done"><td class="box">☑</td><td>Spectator per-km pledges: on-chain Pledge PDAs with verified settlement and zero lost lamports</td><td class="note">October</td><td></td></tr>
           <tr class="later"><td class="box">☐</td><td>Spectator convoys: shared side pots for teams riding together</td><td class="note">streams</td><td></td></tr>
           <tr class="later"><td class="box">☐</td><td>Storybook workshop: pay SOL for attempts at a new prop, vehicle or landmark; drivers vote, winners ship, the maker is credited</td><td class="note">community assets</td><td></td></tr>
           <tr class="later"><td class="box">☐</td><td>Deterministic replay core: fixed tick, fixed-point maths, a paid finish re-simulated</td><td class="note">design doc</td><td></td></tr>
@@ -339,7 +338,7 @@
           <tr class="cut"><td class="box">☒</td><td>Performance upgrades bought for SOL – a part never changes the clock or the speed</td><td class="note">pay-to-win</td><td></td></tr>
           <tr class="cut"><td class="box">☒</td><td>Mobile, touch controls, a Telegram Mini App – desktop browser, Phantom / Solflare</td><td class="note">focus</td><td></td></tr>
           <tr class="cut"><td class="box">☒</td><td>Paid ads before someone owns growth</td><td class="note">see the board</td><td></td></tr>
-          <tr class="cut"><td class="box">☒</td><td>A big team: four seats, each owning a whole area, no more before mainnet</td><td class="note">small, cool</td><td></td></tr>
+          <tr class="cut"><td class="box">☒</td><td>A big team: four seats, each owning a whole area, no more before mainnet</td><td class="note">headcount</td><td></td></tr>
           <tr class="cut"><td class="box">☒</td><td>A token, a second chain, a React rewrite, the 8-hour spec ride</td><td class="note">focus</td><td></td></tr>
         </tbody>
       </table>
@@ -352,33 +351,33 @@
 
 <!-- ───────── 05 · GO TO MARKET (the dispatch load board) ───────── -->
 <section class="ch" id="market">
-  <header class="ch-h rv"><i>05</i><h2>GO TO MARKET</h2><p>Read it like a load board at the depot: every lane is a way a driver finds us, RATE is what it costs, FILL is live wherever the server knows the number. No lane carries a number we made up.</p></header>
+  <header class="ch-h rv"><i>05</i><h2>GO TO MARKET</h2><p>Every lane is a way a driver finds the game. RATE is the cost. FILL is a live count when the server has one.</p></header>
   <div class="loadboard rv">
     <div class="lb-h"><span>FREIGHT CHAIN DISPATCH · LOAD BOARD</span><span><i class="dot live"></i> LIVE · <b id="lb-clock">--:--:--</b> UTC</span></div>
     <table class="loads">
       <thead><tr><th>LANE</th><th>CARGO</th><th>RATE</th><th>FILL</th><th>STATUS</th></tr></thead>
       <tbody>
         <tr><td>FREE RIDES</td><td>10 at signup, daily refill up to 5, more with a promo code. The habit; its own leaderboard and badges.</td><td>$0</td><td class="num" id="lb-drivers">–</td><td><em class="rolling">ROLLING</em></td></tr>
-        <tr><td>TICKETS</td><td>A paid shift is a ticket into an escrowed pool of its tier. Too few sold by the deadline: everyone is refunded, on chain.</td><td>SOL</td><td class="num" id="lb-entries">–</td><td><em class="rolling">ROLLING · DEVNET</em></td></tr>
-        <tr><td>THE POOLS</td><td>One public number per pool. Prize 70 % – the top 3 by verified distance take 25 / 15 / 10, the top 20 share the rest – seed 20 %, fee 10 %.</td><td>70/20/10</td><td class="num" id="lb-pot">–</td><td><em class="rolling">ACCRUING</em></td></tr>
+        <tr><td>TICKETS</td><td>A paid shift is a ticket into an escrowed pool of its tier. Too few sold by the deadline: everyone is refunded, on chain.</td><td>SOL</td><td class="num" id="lb-entries">–</td><td><em class="bid" id="lb-tickets-st">SOON</em></td></tr>
+        <tr><td>THE POOLS</td><td>One public number per pool. Prize 70% – the top 3 by verified distance take 25 / 15 / 10, the top 20 share the rest – seed 20%, fee 10%.</td><td>70/20/10</td><td class="num" id="lb-pot">–</td><td><em class="bid" id="lb-pools-st">SOON</em></td></tr>
         <tr><td>WATCH</td><td>No wallet needed: who is driving, 25 s behind, every finish replayable. A spectator talks on the CB and buys the driver a night or a pothole.</td><td>$0</td><td class="num" id="lb-live">–</td><td><em class="rolling">ROLLING</em></td></tr>
         <tr><td>REPLAY LINKS</td><td>One URL per ride is the share page: the watch link, with the route, the distance and the verdict.</td><td>a link</td><td class="num">–</td><td><em class="rolling">ROLLING</em></td></tr>
         <tr><td><a href="https://x.com/FreightChainSol" target="_blank" rel="noopener">X</a></td><td>@FreightChainSol: clips, pool numbers, finishes as they happen.</td><td>time</td><td class="num">–</td><td><em class="rolling">ROLLING</em></td></tr>
         <tr><td><a href="https://www.youtube.com/@FreightChainGame" target="_blank" rel="noopener">YOUTUBE</a></td><td>@FreightChainGame: the trailer, shift recordings, how the escrow works.</td><td>time</td><td class="num">–</td><td><em class="rolling">ROLLING</em></td></tr>
-        <tr><td>SOLANA CROWDS</td><td>The fair's audience, Solana gaming communities, leaderboard chasers – people who already sit through long on-chain spectacles.</td><td>time</td><td class="num">–</td><td><em class="bid">BID</em></td></tr>
-        <tr><td>PLAYTESTS</td><td>Twenty drivers outside the team on the devnet release. Finishes and ticket buys counted – that is the demand number, whatever it is.</td><td>20 favours</td><td class="num" id="lb-tests">–</td><td><em class="bid">BID</em></td></tr>
+        <tr><td>SOLANA CROWDS</td><td>The fair's audience and Solana gaming communities.</td><td>time</td><td class="num">–</td><td><em class="bid">BID</em></td></tr>
+        <tr><td>PLAYTESTS</td><td>Twenty drivers outside the team on the devnet release. Finishes and ticket buys counted.</td><td>20 asks</td><td class="num" id="lb-tests">–</td><td><em class="bid">BID</em></td></tr>
         <tr><td>CREW · CPO / COO</td><td>A hybrid who owns product, marketing and user performance; the founder keeps the code. Write to <a href="https://x.com/FreightChainSol" target="_blank" rel="noopener">X DMs</a>.</td><td>a seat</td><td class="num">1 open</td><td><em class="booked">OPEN SEAT</em></td></tr>
         <tr><td>CREW · QA</td><td>Breaks every build before a driver does: wallets, rides, refunds, replays, the lobby on real browsers.</td><td>a seat</td><td class="num">1 open</td><td><em class="booked">OPEN SEAT</em></td></tr>
-        <tr><td>CREW · COMMUNITY</td><td>Community and support: answers drivers, runs the convoy on X and Discord, turns bug reports and ride questions into fixes.</td><td>a seat</td><td class="num">1 open</td><td><em class="booked">OPEN SEAT</em></td></tr>
+        <tr><td>CREW · COMMUNITY</td><td>Community and support: answers drivers on X, and turns bug reports and ride questions into fixes.</td><td>a seat</td><td class="num">1 open</td><td><em class="booked">OPEN SEAT</em></td></tr>
         <tr><td>CREW · CONTENT</td><td>A creator for game assets and promos: new props, vehicles and landmarks for the storybook, clips, trailers and key art.</td><td>a seat</td><td class="num">1 open</td><td><em class="booked">OPEN SEAT</em></td></tr>
         <tr class="off"><td>PAID ADS</td><td>Not before someone owns growth; organic until then.</td><td>–</td><td class="num">–</td><td><em class="unlisted">NOT LISTED</em></td></tr>
-        <tr class="off"><td>MOBILE · KYC</td><td>Driving stays on a desktop keyboard. A phone wallet can pay a shift or a tip by scanning the Solana Pay code. Regions wait on the legal review before mainnet.</td><td>–</td><td class="num">–</td><td><em class="unlisted">NOT LISTED</em></td></tr>
+        <tr class="off"><td>MOBILE</td><td>Driving stays on a desktop keyboard. A phone can watch, and a phone wallet can pay a shift or a tip by scanning the Solana Pay code. Regions wait on the legal review before mainnet.</td><td>–</td><td class="num">–</td><td><em class="unlisted">NOT LISTED</em></td></tr>
       </tbody>
     </table>
     <div class="lb-f">
-      <span><b>COMMISSION</b> 10 % of every pool – the business, once pools pay out.</span>
-      <span><b>SEED</b> 20 % carried into the next pool so the board never shows zero.</span>
-      <span><b>THESIS</b> attention is the scarce good; a public clock, a public pool and a public board sell it.</span>
+      <span><b>FEE</b> 10% of a pool, once a pool pays out.</span>
+      <span><b>SEED</b> 20% of a pool, carried into the next one.</span>
+      <span><b>MONEY</b> Devnet only. No prize has been paid.</span>
     </div>
   </div>
 </section>
@@ -387,19 +386,22 @@
 
 <!-- ───────── 06 · ABOUT ───────── -->
 <section class="ch" id="about">
-  <header class="ch-h rv"><i>06</i><h2>ABOUT</h2><p>Freight Chain sells proven time-on-road. The truck-driving sim is the first title.</p></header>
+  <header class="ch-h rv"><i>06</i><h2>ABOUT</h2><p>Who built it, and why the game is a long drive. What is done, and what was cut, is on the trip sheet above.</p></header>
   <div class="about rv">
-    <article><h3>WHY A TRUCK</h3><p>Desert Bus (1995) was an eight-hour drive from Tucson to Las Vegas at 45 mph for one point. Nobody should have finished it, and people did – and other people watched. The scarce thing was attention. This is that, with the finish decided by a server and the pot in SOL.</p></article>
-    <article><h3>BUILT · CUT · NEXT</h3>
-      <ul class="bcn"><li><i class="ok"></i><b>Built:</b> the sim, 1-click Native SIWS, SNS (.sol) lookup, Anchor v3 escrow with Attestation PDAs, per-km Pledge PDAs, soulbound cNFT badges, Solana Pay, Blinks, server-timed rides, verified play, live streams, garage, promo codes.</li>
-      <li><i class="cut"></i><b>Cut on purpose:</b> performance upgrades, mobile driving before touch controls, paid ads before a growth hire, a token, mainnet before legals and audit.</li>
-      <li><i class="next"></i><b>Next:</b> program audit and mainnet migration, a four-seat crew (CPO / COO, QA, community, content), convoy team drives, mobile driving controls.</li></ul></article>
-    <article><h3>THE STACK</h3><p>Vanilla ES modules + three.js in the browser, no bundler, zero runtime npm dependencies. NestJS + PostgreSQL on the server (Clean Architecture). An Anchor v3 (Rust) escrow program with vault PDAs and Attestation gating. Native 1-click SIWS, SPL Name Service PDA resolution, Metaplex Bubblegum v2 cNFT badges, Solana Pay, and Blinks. Solo build entered in the Colosseum Crypto World's Fair.</p></article>
-  </div>
-  <div class="socials rv" id="socials">
-    <span class="lbl">JOIN THE CONVOY</span>
-    <a href="https://github.com/recferret-bit/freightchain" data-net="github">GITHUB</a>
-    <a href="/lobby.html#live" data-net="live"><i class="dot live"></i><span id="soc-live">–</span>&nbsp;ON THE ROAD · WATCH</a>
+    <article>
+      <h3>WHY A TRUCK</h3>
+      <p>Desert Bus (1995) was an eight-hour drive from Tucson to Las Vegas at 45 mph, for one point. People finished it, and other people watched. Freight Chain is that drive in a browser: you hold the wheel, the server keeps the clock, and a finished shift can rank in a devnet pool.</p>
+    </article>
+    <article>
+      <h3>WHO</h3>
+      <p>One person built it. The cab, the routes and the weather came first. Sign-in, the lobby, live watch and the Anchor program were built around them for the Colosseum Crypto World's Fair.</p>
+      <p>Devnet only. There is no token, and no prize has been paid. The rules of a pool are in the <a href="/whitepaper.html#onchain">whitepaper</a>.</p>
+    </article>
+    <div class="socials" id="socials">
+      <span class="lbl">FIND US</span>
+      <a href="https://github.com/recferret-bit/freightchain" data-net="github">GITHUB</a>
+      <a href="/lobby.html#live" data-net="live"><i class="dot live"></i><span id="soc-live">–</span>&nbsp;ON THE ROAD · WATCH</a>
+    </div>
   </div>
 </section>
 

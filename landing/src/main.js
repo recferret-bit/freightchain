@@ -50,12 +50,13 @@ function paintHero() {
       $('hero-usd').textContent = p.solUsd ? `≈ $${((esc / 1e9) * p.solUsd).toFixed(2)}` : '';
       if ($('hero-pot-note')) $('hero-pot-note').hidden = true;
     } else {
-      $('hero-pot-lbl').textContent = 'IN THE POT THIS WEEK';
-      $('hero-pot').textContent = '∞';
-      $('hero-usd').textContent = '≈ $∞';
+      $('hero-pot-lbl').textContent = 'ACCRUED THIS WEEK · NOT PAID';
+      if (p.split.grand > 0) count($('hero-pot'), p.split.grand, v => sol(v));
+      else $('hero-pot').textContent = '–';
+      $('hero-usd').textContent = p.split.grand > 0 && p.usd.grand != null ? `≈ $${p.usd.grand}` : '';
       if ($('hero-pot-note')) {
         $('hero-pot-note').hidden = false;
-        $('hero-pot-note').textContent = 'Free rides & practice mode active · Devnet prize pool opening soon';
+        $('hero-pot-note').textContent = 'Free rides and practice are open. No prize has been paid.';
       }
     }
     $('hero-cd').textContent = left(p.round.endsAt - now());
@@ -70,14 +71,16 @@ function paintHero() {
   paintBoardsLive();
 }
 
-/* the load board (06) and the trip sheet (05): live cells only where the server knows the number */
+/* the load board (05) and the trip sheet (04): live cells only where the server knows the number */
 function paintBoardsLive() {
   const p = S.pool, l = S.live;
   if (l) { $('lb-drivers').textContent = plural(l.totals.drivers, 'driver'); $('lb-live').textContent = `${l.rides.length} on the road now`; $('sheet-km').textContent = km(l.totals.metres); }
   if (p) {
     const esc = p.pools?.length;
     $('lb-entries').textContent = esc ? `${p.entries} this round` : 'devnet soon';
-    $('lb-pot').textContent = esc ? `${sol(p.split.grand)} SOL` : '∞ SOL';
+    $('lb-pot').textContent = esc ? `${sol(p.pools.reduce((a, x) => a + x.vaultLamports, 0))} SOL` : '–';
+    $('lb-tickets-st').textContent = esc ? 'ROLLING · DEVNET' : 'SOON'; $('lb-tickets-st').className = esc ? 'rolling' : 'bid';
+    $('lb-pools-st').textContent = esc ? 'ACCRUING' : 'SOON'; $('lb-pools-st').className = esc ? 'rolling' : 'bid';
   }
 }
 
@@ -89,13 +92,13 @@ function paintPool() {
   const esc = p.pools?.length ? p.pools.reduce((a, x) => a + x.vaultLamports, 0) : null;
   if (esc == null) {
     box.replaceChildren(
-      el('span', { class: 'lbl' }, 'GRAND PRIZE · DEVNET SOON'),
-      el('div', { class: 'big' }, '∞ SOL'),
-      el('div', { class: 'usd' }, '≈ $∞ · Devnet prize draw soon'),
+      el('span', { class: 'lbl' }, 'WEEKLY ROUND · ACCRUED, NOT PAID'),
+      el('div', { class: 'big' }, `${sol(s.grand)} SOL`),
+      el('div', { class: 'usd' }, p.usd.grand != null ? `≈ $${p.usd.grand}` : 'No prize has been paid out'),
       el('div', { class: 'split' }, ...['s-grand', 's-top', 's-seed', 's-fees'].map((c, i) => el('i', { class: c, style: `width:${pct[i]}%` }))),
-      el('div', { class: 'legend' }, part('s-grand', '50% grand prize · draw, weight = tier', s.grand), part('s-top', '20% top 20 · by distance', s.top20), part('s-seed', '20% seeds next week', s.nextSeed), part('s-fees', '10% platform', s.fees)),
-      el('div', { class: 'meta' }, el('span', {}, el('b', {}, 'Free rides & practice active'), ' · devnet prize pool opening soon')),
-      el('div', { class: 'dim' }, 'Integer lamports, floored shares, remainder to fees. settled: false – the draw and payouts are not live in this build.'));
+      el('div', { class: 'legend' }, part('s-grand', '50% grand prize · accrued', s.grand), part('s-top', '20% top 20 · by distance', s.top20), part('s-seed', '20% seeds next week', s.nextSeed), part('s-fees', '10% platform', s.fees)),
+      el('div', { class: 'meta' }, el('span', {}, el('b', {}, 'Free rides and practice are open'), ' · paid shifts are marked soon')),
+      el('div', { class: 'dim' }, 'Integer lamports, floored shares, remainder to fees. This round is accounted. It is not paid out.'));
     return;
   }
   box.replaceChildren(
@@ -103,9 +106,9 @@ function paintPool() {
     el('div', { class: 'big' }, `${sol(s.grand)} SOL`),
     el('div', { class: 'usd' }, p.usd.grand != null ? `≈ $${p.usd.grand} at the current price${p.solUsd ? ` · SOL $${p.solUsd}` : ''}` : ''),
     el('div', { class: 'split' }, ...['s-grand', 's-top', 's-seed', 's-fees'].map((c, i) => el('i', { class: c, style: `width:${pct[i]}%` }))),
-    el('div', { class: 'legend' }, part('s-grand', '50% grand prize · draw, weight = tier', s.grand), part('s-top', '20% top 20 · by distance', s.top20), part('s-seed', '20% seeds next week', s.nextSeed), part('s-fees', '10% platform', s.fees)),
+    el('div', { class: 'legend' }, part('s-grand', '50% grand prize · accrued', s.grand), part('s-top', '20% top 20 · by distance', s.top20), part('s-seed', '20% seeds next week', s.nextSeed), part('s-fees', '10% platform', s.fees)),
     el('div', { class: 'meta' }, el('span', {}, el('b', {}, p.entries), ` paid ${p.entries === 1 ? 'entry' : 'entries'}`), el('span', {}, 'closes in ', el('b', { class: 'cd' }, left(p.round.endsAt - now()))), el('span', {}, s.carry ? ['carried from last week: ', el('b', {}, `${sol(s.carry)} SOL`)] : 'first round – nothing carried yet')),
-    el('div', { class: 'dim' }, 'Integer lamports, floored shares, remainder to fees. settled: false – the draw and payouts are not live in this build.'));
+    el('div', { class: 'dim' }, 'Integer lamports, floored shares, remainder to fees. This round is accounted. It is not paid out.'));
 }
 
 function paintTiers(t) {   // a tier sold through a pool: the ticket price is the pool's (fixed in lamports on chain); an on-sale tier without one: the legacy USD quote; an off-sale tier: soon
@@ -325,7 +328,7 @@ for (const item of document.querySelectorAll('.fq')) {
 /* ───── socials ───── */
 for (const [net, url] of Object.entries(SOCIALS)) if (url) {
   const a = el('a', { href: url, 'data-net': net, target: '_blank', rel: 'noopener' }, net.toUpperCase());
-  a.addEventListener('click', () => track('social_clicked', { net }));   // nodes exist only when a URL is set; today all three are null
+  a.addEventListener('click', () => track('social_clicked', { net }));   // a null URL (discord, telegram) adds no button
   $('socials').append(a);
 }
 
@@ -412,8 +415,6 @@ const so = new IntersectionObserver(es => {
 document.querySelectorAll('section[id]').forEach(s => so.observe(s));
 
 /* ───── boot ───── */
-$('hero-pot').textContent = '∞';
-$('hero-usd').textContent = '≈ $∞';
 refresh();
 api('tiers', undefined, { report: false }).then(paintTiers, () => { $('tiers').replaceChildren(el('tbody', {}, el('tr', {}, el('td', { class: 'dim' }, 'Prices unavailable right now.')))); });
 refreshBoard();
