@@ -20,6 +20,11 @@ test('every in-page anchor points at an element', () => {
   assert.deepEqual(hrefs.filter(h => !ids.includes(h)), []);
 });
 
+test('header shortcuts scroll through anchor.js (native smooth scroll lands short of the heading)', () => {
+  assert.match(main, /bindAnchors\(\)/);
+  assert.match(readFileSync(join(root, 'src/anchor.js'), 'utf8'), /contentVisibility = 'visible'/);
+});
+
 test('every nav link has a chapter section and vice versa', () => {
   const nav = [...html.matchAll(/<nav class="nav"[\s\S]*?<\/nav>/g)][0][0], links = [...nav.matchAll(/href="#([\w-]+)"/g)].map(m => m[1]);
   const sections = [...html.matchAll(/<section[^>]*\bid="([\w-]+)"/g)].map(m => m[1]);

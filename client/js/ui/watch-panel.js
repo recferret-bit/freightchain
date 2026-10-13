@@ -107,20 +107,20 @@ function paint() {
   $('w-sound').textContent = audio.muted || !audio.ctx ? '🔇' : '🔊';
   paintMe(); paintClock();
 }
-/* the end of a finished ride's replay: the same result dialog a driver gets (game.js showOnlineMenu), with the lobby as the only way on. It hides again when the viewer seeks back. */
+/* the end of a finished ride's replay: the same result dialog a driver gets (game.js showOnlineMenu). watch.atEnd is every way it ends
+   (the finish line, a crash, an abandon, the recording running out — the last frame is held buffering). Seeking back hides it. */
 function paintEnd() {
   const r = watch.ride, ov = $('overlay'), panel = $('panel');
-  const atEnd = !!r && !r.live && r.status !== 'running' && watch.rows.length > 0 && !watch.playing && !watch.buffering && watch.wt >= replayEnd() - 0.5;
   if (!ov || !panel) return;
-  if (!atEnd) { if (P.endShown) { ov.classList.add('hide'); P.endShown = false; } return; }
+  if (!watch.atEnd || !r) { if (P.endShown) { ov.classList.add('hide'); ov.classList.remove('replay-end'); P.endShown = false; } return; }
   if (P.endShown) return;
   P.endShown = true;
-  const ok = r.status === 'completed';
+  const ok = r.status === 'completed', driven = watch.rows.length ? st.t : (r.driveSeconds || 0), distM = watch.rows.length ? st.s : (r.distance || 0), hull = watch.rows.length ? st.hull : (r.hull ?? 0);
   panel.replaceChildren(el('h1', {}, ok ? 'SHIFT COMPLETE' : r.status === 'abandoned' ? 'SHIFT ABANDONED' : 'RIDE FAILED'), el('h2', {}, 'End of the replay.'),
-    ...[['Result', el('b', { class: ok ? 'good' : 'bad' }, (STATUS[r.status] ?? r.status))], ['Time driven', el('b', {}, hms(st.t))], ['Distance', el('b', {}, `${(st.s / 1000).toFixed(2)} km`)], ['Hull', el('b', {}, `${Math.round(st.hull)}%`)]]
+    ...[['Result', el('b', { class: ok ? 'good' : 'bad' }, (STATUS[r.status] ?? r.status))], ['Time driven', el('b', {}, hms(driven))], ['Distance', el('b', {}, `${(distM / 1000).toFixed(2)} km`)], ['Hull', el('b', {}, `${Math.round(hull)}%`)]]
       .map(([k, v]) => el('div', { class: 'row' }, el('span', {}, k), v)),
     el('div', { class: 'btns' }, el('button', { type: 'button', id: 'lobby', class: 'alt bail-link', style: 'margin-left:auto', onclick: () => { location.href = `${SITE_BASE}/lobby.html`; } }, el('b', {}, 'BACK TO THE LOBBY'), el('small', {}, 'lobby'))));
-  ov.classList.remove('hide');
+  ov.classList.remove('hide', 'booting'); ov.classList.add('replay-end');
 }
 function paintClock() {
   const r = watch.ride; if (!r || !P.root) return;
@@ -129,7 +129,7 @@ function paintClock() {
   $('w-time').textContent = `${hms(st.t)} / ${hms(r.live ? r.minSeconds : replayEnd())}`;   // a finished ride: its own length, not the nominal shift
   $('w-dist').textContent = `${km(st.s)} / ${km(r.completeDist)} km`;
   $('w-hull').textContent = `${Math.round(st.hull)}%`;
-  const note = !watch.rows.length ? (watch.rec.lastSeq === null && !r.live ? 'no recording kept for this ride' : 'waiting for the first recording…')
+  const note = !watch.rows.length ? (r.live || (watch.rec.lastSeq !== null && !watch.batches.has(watch.rec.lastSeq)) ? 'waiting for the first recording…' : 'no recording kept for this ride')
     : watch.buffering ? (r.live && watch.follow ? 'the driver is paused or the next batch is on its way…' : watch.wt >= replayEnd() - 1 && !r.live ? `end of the ride · ${STATUS[r.status] ?? r.status}` : 'loading…') : '';
   $('w-note').textContent = note;
   paintRoad(end); paintEnd();

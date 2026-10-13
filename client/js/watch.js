@@ -20,6 +20,7 @@ import { visitorId, leaveOnClose } from '../site/presence.js';
 import { VEHICLES, buildVehicle, removeVehicle } from './world/vehicles.js';
 import { TRAFFIC_TYPES } from './sim/traffic.js';
 import { INPUT_COL, passedMask, lightInputs, inputLights } from './input-bits.js';
+import { replayOver, REPLAY_END_GAP } from './replay-end.js';
 
 /* Live streams, the SPECTATOR's side: play.html?watch=<rideId>. OPT-IN like online.js – without ?watch nothing here runs.
    No video and no WebSockets: the page polls GET /api/watch/:id and REPLAYS the ride's verified-play recording (10 Hz samples, uploaded every ~15 s) on its
@@ -36,7 +37,7 @@ import { INPUT_COL, passedMask, lightInputs, inputLights } from './input-bits.js
 const POLL_LIVE_MS = 4000, POLL_REPLAY_MS = 10_000;
 export const LIVE_LAG = 25;                 // s behind the newest recorded second: one ~15 s batch + its upload, with room for jitter
 const PREFETCH = 90;                        // s of recording kept loaded ahead of the playhead in a replay
-const GAP = 2;                              // s between two samples = a hole in what is loaded (a seek) – hold there until it is fetched
+const GAP = REPLAY_END_GAP;                 // s between two samples = a hole in what is loaded (a seek) – hold there until it is fetched. Same gap replay-end.js uses to tell "the last frame" from "not loaded yet"
 
 const viewerId = visitorId;   // the same id the landing / lobby send (site/presence.js): one person counts once wherever they are
 
@@ -46,7 +47,7 @@ export const watch = {
   rec: { lastSeq: null, t1: 0 }, finT: null, batches: new Map(), rows: [], tframes: [], cars: new Map(), rowsSeq: -1, events: new Map(), cursor: 0, since: 0, totals: { messages: 0, donations: 0, lamports: 0 }, viewers: 0,
   inputs: inputLights, inT: -1,   // the controls lit now (cockpit/index.js draws them) · the playhead's time when they were last read
   roadSeq: new Map(), road: new Map(), stamp: null, roadT: -1,   // batch seq → its hole outcomes (kept when the batch is pruned) · hole id → merged (the server's measurement) · the NO IMPACT stamp on screen · the playhead when last checked
-  wt: 0, playing: true, speed: 1, follow: true, buffering: false, seeking: false, started: false, jumped: true, lastHull: 100, timer: 0, polling: null,
+  wt: 0, playing: true, speed: 1, follow: true, buffering: false, seeking: false, started: false, jumped: true, lastHull: 100, timer: 0, polling: null, atEnd: false,
   onUpdate: null, onEvent: null,   // set by ui/watch-panel.js: repaint the panel / a new feed line
 };
 const BATCH = () => CFG.TELEMETRY_BATCH_SECONDS;
@@ -184,9 +185,31 @@ function find(t, R = watch.rows) {   // index of the last row at or before t (bi
 const lerp = (a, b, k) => a + (b - a) * k;
 const hourLerp = (a, b, k) => { let d = b - a; if (d > 12) d -= 24; else if (d < -12) d += 24; return (a + d * k + 24) % 24; };
 
+/* the result dialog (ui/watch-panel.js) reads watch.atEnd. A finished ride stops on its last frame even when that frame is short of rec.t1 — see replay-end.js. */
+function endView(sampleT, nextT) {
+  const rows = watch.rows;
+  return {
+    live: !!watch.ride?.live, status: watch.ride?.status, seeking: !!watch.seeking, rows: rows.length > 0,
+    hasLast: watch.rec.lastSeq !== null && watch.batches.has(watch.rec.lastSeq), playing: !!watch.playing, wt: watch.wt, end: replayEnd(),
+    lastT: rows.length ? rows[rows.length - 1][0] : 0, lastSeq: watch.rec.lastSeq, sampleT, nextT,
+  };
+}
+function settleEnd(sampleT, nextT) {
+  const show = replayOver(endView(sampleT, nextT));
+  const stopped = show && watch.playing;   // the hold on the last frame never walks past replayEnd() at 1×, so the clamp above never fires
+  if (stopped) watch.playing = false;
+  const edge = show !== watch.atEnd;
+  watch.atEnd = show;
+  if (stopped || edge) watch.onUpdate?.();   // the play button and the dialog, the same frame — paintClock is only every 250 ms
+}
+
 /** every frame instead of the sim (main.js) */
 export function stepWatch(dt) {
-  if (!watch.started || !watch.rows.length) return;
+  if (!watch.started || !watch.rows.length) {   // nothing to play. No batch, or the last batch is already in and has no samples: a seek has no frame to wait for, so it must not stay seeking (that hides the dialog for good)
+    if (watch.started && (watch.rec.lastSeq === null || watch.batches.has(watch.rec.lastSeq))) watch.seeking = false;
+    if (watch.started) settleEnd(0, null);
+    return;
+  }
   const live = watch.ride?.live && watch.follow;
   const R = watch.rows;
   /* the effects the sim would fade (it never runs here): a hit's shake, red flash and rumble must die away, or one recorded hit tints the replay for good */
@@ -194,14 +217,14 @@ export function stepWatch(dt) {
   if (watch.seeking) {   // hold the target until a sample at (or right before) it is loaded – the frame keeps the last picture meanwhile
     if (live) watch.wt = liveTarget();
     const i = find(watch.wt), a = R[i], b = R[i + 1];
-    if (!a || (!b ? watch.wt - a[0] > GAP : b[0] - a[0] > GAP && watch.wt - a[0] > GAP)) { watch.buffering = true; lightInputs(0, dt); return; }
+    if (!a || (!b ? watch.wt - a[0] > GAP : b[0] - a[0] > GAP && watch.wt - a[0] > GAP)) { watch.buffering = true; lightInputs(0, dt); settleEnd(a?.[0] ?? watch.wt, b?.[0] ?? null); return; }
     watch.seeking = false;
   }
   if (watch.playing) {
     let rate = watch.speed;
     if (live) { const lag = liveTarget() - watch.wt; if (Math.abs(lag) > 60) { watch.wt = liveTarget(); watch.jumped = true; } else rate = 1 + Math.max(-.3, Math.min(.5, lag / 20)); }   // ease towards LIVE_LAG behind the edge
     watch.wt += dt * rate;
-    if (!live && watch.wt > replayEnd()) { watch.wt = replayEnd(); if (!watch.ride?.live) watch.playing = false; }   // the end of a finished ride: stop there
+    if (!live && watch.wt > replayEnd()) { watch.wt = replayEnd(); if (!watch.ride?.live) watch.playing = false; }   // the finish line + 3 s, where later samples still exist
   }
   let i = find(watch.wt);
   if (i < 0) { watch.wt = R[0][0]; i = 0; }
@@ -213,6 +236,7 @@ export function stepWatch(dt) {
   stampPassed(watch.wt);   // before apply() too (a seek is not a pass)
   apply(a, b ?? a, k, dt);
   drawTraffic(watch.wt);
+  settleEnd(a[0], b ? b[0] : null);
 }
 
 const inputsPassed = i => { const m = passedMask(watch.rows, i, watch.jumped ? -1 : watch.inT); watch.inT = watch.rows[i][0]; return m; };

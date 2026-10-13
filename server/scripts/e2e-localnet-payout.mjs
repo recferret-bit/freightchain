@@ -9,9 +9,9 @@
 //   3. "cron": `verdict:rejudge --status all` re-judges every completed ride from its telemetry (nothing may change, the admin's decision stays), and a
 //      `pool:crank` pass must leave the live pool alone
 //   4. after the play deadline: the payout job (devnet-payout.mjs – signs as the program authority what GET /api/pools/:id/payout builds): each ranked
-//      wallet gets exactly its share, the cheater and the crash get nothing, then close_pool: fee / platform / seed (= the next pool's jackpot) / creator legs
+//      wallet gets exactly its share, the cheater and the crash get nothing, then close_pool: fee / platform / seed (= the next pool's seed) / creator legs
 //   5. every Ticket rent back to whoever advanced it (close_ticket – nothing in the server does this yet: docs/escrow-open-items.md)
-//   6. the jackpot rolls on: the seed treasury sponsors the next 1h pool with exactly what pool D left it; the lobby shows it
+//   6. the seed rolls on: the seed treasury sponsors the next 1h pool with exactly what pool D left it; the lobby shows it
 //   7. the rest of the program on the validator: pause, sold out, cancel_pool + refunds, an unpaid pool closed by the admin, the authority handover and
 //      every error code the validator can reach – recorded into COVERAGE (scripts/localnet-coverage.mjs) for the 100 % report
 // env: BASE, RPC, KEYS, CHROME_PORT, COVERAGE (file), PREP_D / PLAY_D (seconds from pool D's creation)
@@ -349,7 +349,7 @@ try {
   check('prizes on chain = the table, ≤ the prize share; the rounding stays unclaimed', pd.prizesPaid === paid && paid <= bound && legs.unclaimed === bound - paid, `${pd.prizesPaid} / ${paid} / ${bound}`);
   check('fee treasury: exactly its leg', d.fee === legs.fee && legs.fee > 0, `${d.fee} vs ${legs.fee}`);
   check(`platform treasury: exactly ${PLAT_BPS} bps of the fee share`, d.plat === legs.platformFee && (PLAT_BPS === 0 || legs.platformFee > 0), `${d.plat} vs ${legs.platformFee}`);
-  check('seed treasury (the next pool\'s jackpot): seed share + unclaimed prize', d.seed === legs.seed && legs.seed > 0, `${d.seed} vs ${legs.seed}`);
+  check('seed treasury (the next pool\'s seed): seed share + unclaimed prize', d.seed === legs.seed && legs.seed > 0, `${d.seed} vs ${legs.seed}`);
   const newAtt = (await attested()) - attestedBefore, attRent = await conn.getMinimumBalanceForRentExemption((await conn.getAccountInfo(codec.attestationPda(D, want[0].wallet), 'confirmed')).data.length);
   const attTx = (await Promise.all(sigs.map(async s => (await conn.getTransaction(s, { commitment: 'confirmed', maxSupportedTransactionVersion: 0 })).meta.logMessages.some(l => /Instruction: RecordAttestation/.test(l))))).filter(Boolean).length;
   check(`v3: every winner VERIFIED before its prize – ${newAtt} record_attestation(s) by the admin went in front of their pay_prize (the others were attested already)`, newAtt === want.length - attestedBefore && attTx === newAtt && (await attested()) === want.length, `${newAtt} new / ${attTx} in txs / ${attestedBefore} before`);
@@ -367,7 +367,7 @@ try {
   check('close_ticket ×10 by a stranger: every buyer got its own Ticket rent back', R.every(p => dt[p.name] === ticketRent), JSON.stringify(dt));
   check('…the stranger paid only the fees; every Ticket account is gone', -dt.z === (await Promise.all(ctSigs.map(fee))).reduce((a, b) => a + b, 0) && (await Promise.all(R.map(p => conn.getAccountInfo(codec.ticketPda(D, p.wallet))))).every(x => x === null));
 
-  // ── 7. the jackpot rolls on: the seed treasury sponsors the next 1h pool with what pool D left it (an operator step – no code moves it by itself)
+  // ── 7. the seed rolls on: the seed treasury sponsors the next 1h pool with what pool D left it (an operator step – no code moves it by itself)
   const E = admintool(mkArgs('1h', PRICE, 2, 0, 2, 900, 1200)).poolId;
   execFileSync('node', ['dist/cli/index.js', 'pool:register', String(E), '--label', 'NEXT WEEK'], { stdio: 'ignore' });
   const seedFromD = d.seed;
@@ -381,7 +381,7 @@ try {
   await h1.lobby();
   const seedTxt = `sponsored ${(seedFromD / 1e9).toFixed(seedFromD >= 1e9 ? 2 : 3)} SOL`;
   check(`lobby: the 1h card shows the next pool with "${seedTxt}"`, !!(await until(async () => (await h1.txt('#tier-1h')).includes(seedTxt), 15000)), (await h1.txt('#tier-1h')).slice(0, 240));
-  await h1.shot('payout-2-next-jackpot');
+  await h1.shot('payout-2-next-seed');
 
   // ── 8. the rest of the program on the validator (coverage): pause, sold out, cancel + refunds, an unpaid pool closed by the admin, the handover
   const adm = ['-k', `${KEYS}/admin.json`];

@@ -12,7 +12,7 @@ Written Sat Oct 11, 2026, 18:30 UTC (11:30 PT). Supersedes the schedule in [`hac
 | Traction | `/api/stats`: 25 rides, 24 free, 1 paid, 5 completed, 2 drivers – both test wallets. PostHog 24 h: 85 landing views, 3 wallet clicks, 1 lobby view. |
 | Socials | X account linked. YouTube: one 59 s clip, 2 views. TikTok `@freightchain`: 0 videos (five `tiktok-*` specs + `design/tiktok/` captions exist locally). TikTok not in the landing `SOCIALS`. |
 | Repo | **private** (`gh repo view` → PRIVATE). The submission links it. |
-| Colosseum project | status **draft**, `tracks: []` (not in the Solana track), no presentation / demo / pitch links, `marketValidation` / `traction` / `competition` / `monetization` / `teamCommitment` / `additionalInfo` empty, description says "weekly jackpot", technologies list AI tools only, chain-usage text ends mid-word ("Sp"), says gas can be sponsored (removed Oct 10). Two build logs + one hackathon update posted. |
+| Colosseum project | status **draft**, `tracks: []` (not in the Solana track), no presentation / demo / pitch links, `marketValidation` / `traction` / `competition` / `monetization` / `teamCommitment` / `additionalInfo` empty, description says "weekly pool" (drop lottery framing), technologies list AI tools only, chain-usage text ends mid-word ("Sp"), says gas can be sponsored (removed Oct 10). Two build logs + one hackathon update posted. |
 
 Judge's score today (the seven factors of the hackathon FAQ): fit 6 · insight 7 · product 8 built / 5 visible · market 4 · communication 4 · viability 5 · traction 2 → **≈ 4.5 / 10 overall, 6 / 10 Solana track**.
 
@@ -62,13 +62,13 @@ Record on real Chrome, a clean profile, the live URL, 1080p. Say "Solana devnet"
   8. profile → VERDICT (verified / flagged, the reasons)
   9. LIVE / REPLAYS → the watch page replaying the ride 25 s behind
   10. one sentence on what the payout job does after the 48 h review (do not show a payout that has not happened)
-- [ ] E2 You: **demo ≤ 3 min** = the shot list, no slides. **Presentation 2–3 min** = the seven-factor spine from `hackathon-plan-v2.md` → "Sat Oct 11", in your words: insight (Desert Bus, verified human performance) · product · you · market · money (10 % of every pool, 20 % seeds the next) · built vs next · distribution. Say why the game is off-chain and the money is on-chain, and name the Solana-native next steps.
+- [ ] E2 You (script + shot list: [`pitch-script.md`](pitch-script.md)): **demo ≤ 3 min** = the shot list, no slides. **Presentation 2–3 min** = the seven-factor spine from `hackathon-plan-v2.md` → "Sat Oct 11", in your words: insight (Desert Bus, verified human performance) · product · you · market · money (10 % of every pool, 20 % seeds the next) · built vs next · distribution. Say why the game is off-chain and the money is on-chain, and name the Solana-native next steps.
 - [ ] E3 Upload both to YouTube (public), paste the links into the form (F6).
 
 ### F · Sun by noon PT – the submission form (you, ~1.5 h). I do not write these texts; judges read them as yours. Outline per field:
 
 - [ ] F1 **Track**: Solana Ecosystem. Today `tracks: []` – without this you are not in the $100k track pool.
-- [ ] F2 **Description**: drop "weekly jackpot" (your own ground rule). One pool per shift length, a ticket priced in dollars paid in SOL, verified finishers share the pool.
+- [ ] F2 **Description**: drop any lottery or draw wording (your own ground rule). One pool per shift length, a ticket priced in dollars paid in SOL, verified finishers share the pool.
 - [ ] F3 **Technologies**: Anchor, @solana/web3.js, Phantom, Solflare, Sign-In With Solana, QuickNode devnet RPC, NestJS, Prisma, PostgreSQL, three.js, Docker, nginx, PostHog. AI tools after the stack, if at all.
 - [ ] F4 **Chain usage**: re-paste the full text (it ends in "Sp"); remove "gas can be sponsored" (every wallet pays its own fee since Oct 10); add: program-owned vault per pool, permissionless refunds after a missed goal, prizes capped on chain, a payout key that can only pay after the review window, verifiable build hash, not audited, devnet.
 - [ ] F5 **Empty fields**: traction (the C3 numbers + PostHog, labelled devnet) · market validation (what players did, what they said) · competition (Supersize and Lana Roads on Solana – fully on-chain games; Desert Bus for Hope and web2 skill-prize platforms – why a recorded, server-judged shift is different) · monetization (10 % fee of every pool, 20 % seed, platform cut 0 on devnet) · team commitment (solo, hours per week, the four-seat crew on the landing roadmap) · legal entity / fundraising / token (honest answers; no token).

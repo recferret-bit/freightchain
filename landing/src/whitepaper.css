@@ -6,7 +6,7 @@
   --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
   color-scheme:dark}
 *{box-sizing:border-box}
-html{scroll-behavior:smooth;scroll-padding-top:76px}
+html{scroll-behavior:auto;scroll-padding-top:76px}   /* # links are moved by anchor.js; native smooth scroll stops short of the heading */
 body{margin:0;background:var(--bg);color:var(--cream);font:15px/1.65 var(--mono)}
 a{color:var(--amber)}
 h1,h2,h3{margin:0;font-weight:700;letter-spacing:1px}

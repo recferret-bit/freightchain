@@ -123,6 +123,7 @@ if (nightAt) {
 }
 await seekTo(Math.floor(rec.t1) - 2);
 check('replay: playing to the end holds the last frame and says the ride is over', await until(() => S.ev(`__game.watch.buffering && /end of the ride/.test(document.getElementById('w-note').textContent) && __game.st.t > ${rec.t1 - 3}`), 20_000), await S.ev(`document.getElementById('w-note').textContent`));
+check('replay: the finish dialog is up however the ride ended', await until(() => S.ev(`(() => { const r = __game.watch.ride, t = document.getElementById('panel')?.textContent ?? ''; const title = r?.status === 'completed' ? 'SHIFT COMPLETE' : r?.status === 'abandoned' ? 'SHIFT ABANDONED' : 'RIDE FAILED'; return __game.watch.atEnd && !document.getElementById('overlay').classList.contains('hide') && t.includes('End of the replay') && t.includes(title); })()`), 5_000), await S.ev(`(__game.watch.ride?.status ?? '') + ' ' + (document.getElementById('panel')?.textContent ?? '')`));
 const minHull = await S.ev('Math.min(...__game.watch.rows.map(r => r[7]))');
 await sleep(1500);
 check('replay: a recorded hit\'s red flash and shake fade (the sim that fades them never runs in a replay)', await S.ev('__game.st.flash < .01 && __game.st.jolt < .01'), `flash ${(await S.ev('__game.st.flash'))?.toFixed?.(2)}, lowest recorded hull ${minHull}`);
@@ -131,6 +132,8 @@ await S.shot('replay-end');
 await S.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 780, deviceScaleFactor: 2, mobile: true }); await sleep(1200);
 await S.shot('replay-phone');
 await S.send('Emulation.clearDeviceMetricsOverride');
+await seekTo(1);
+check('replay: seeking back hides the finish dialog', await until(() => S.ev(`!__game.watch.atEnd && document.getElementById('overlay').classList.contains('hide')`), 5_000), await S.ev(`__game.watch.atEnd + ' ' + document.getElementById('overlay').className`));
 
 await S.send('Page.navigate', { url: `${BASE}/play.html?watch=00000000-0000-4000-8000-000000000000` }); await boot(S);
 check('replay: an unknown ride says there is nothing to watch', await until(() => S.ev(`/NOTHING TO WATCH/.test(document.querySelector('#watch.w-error')?.textContent ?? '')`), 10_000));
