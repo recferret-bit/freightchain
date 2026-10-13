@@ -12,8 +12,7 @@ What is live, built or only planned changes week to week – the whitepaper's "S
 - [Whitepaper](https://whitepaper.freightchain.fun/): how to drive, rides and rules, rewards, the escrow program on Solana, validation and anti-cheat, live streams and replays, limits and risks
 - [Play](https://ride.freightchain.fun/play.html): the free run in the browser – no wallet, no download
 
-## Source and channels
+## Channels
 
-- [Source code on GitHub](https://github.com/recferret-bit/freightchain): the game (vanilla JS + three.js), the NestJS server, the Anchor escrow program
 - [X @FreightChainSol](https://x.com/FreightChainSol): clips, pool numbers, finishes
 - [YouTube @FreightChainGame](https://www.youtube.com/@FreightChainGame): the trailer and shift recordings
