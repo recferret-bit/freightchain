@@ -103,6 +103,7 @@ function showOnlineMenu(title, sub, extra) {
   if (shareEnd) {
     shareEnd.onclick = () => {
       if (!online.ride) return;
+      track('ride_share_clicked', { surface: 'end', link: 'ride', ride_id: online.ride.id });
       const outcome = lastOutcome ? (lastOutcome.ok ? 'COMPLETE' : lastOutcome.abandoned ? 'ABANDONED' : 'FAILED') : (st.complete ? 'COMPLETE' : 'FAILED');
       const text = rideShareText({ phase: 'finished', route: env.theme?.name, tier: online.ride.tier, km: (st.s / 1000).toFixed(2), outcome });
       const url = ridePageUrl(SITE_BASE, typeof location !== 'undefined' ? location.origin : '', online.ride.id);

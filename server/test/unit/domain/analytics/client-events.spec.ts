@@ -5,7 +5,7 @@ describe('the promo events of the browser plane', () => {
     for (const name of ['promo_invite_viewed', 'promo_invite_submitted', 'promo_redeem_clicked', 'garage_part_clicked']) expect(isClientEvent(name), name).toBe(true);
     expect(allowClientProperties('promo_invite_viewed', { code: 'WELCOME', extra: 1 })).toEqual({ code: 'WELCOME' });
     expect(allowClientProperties('promo_invite_submitted', { code: 'WELCOME', signed_in: false, from_link: true, nonce: 'x' })).toEqual({ code: 'WELCOME', signed_in: false, from_link: true });
-    expect(allowClientProperties('promo_redeem_clicked', { surface: 'promo', prefilled: true, signature: 's' })).toEqual({ surface: 'promo', prefilled: true });
+    expect(allowClientProperties('promo_redeem_clicked', { surface: 'profile', prefilled: true, signature: 's' })).toEqual({ surface: 'profile', prefilled: true });
     expect(allowClientProperties('garage_part_clicked', { slot: 'dice', item: 'pink', owned: false, code: 'X' })).toEqual({ slot: 'dice', item: 'pink', owned: false });
   });
   it('drop on a float or a long string, like every client event; the server events cannot be minted', () => {
@@ -14,7 +14,7 @@ describe('the promo events of the browser plane', () => {
     for (const name of ['promo_redeemed', 'cosmetic_equipped', 'garage_saved', 'promo_created', 'promo_disabled']) expect(isClientEvent(name), name).toBe(false);
   });
   it('keeps one web vital and drops a float value', () => {
-    expect(CLIENT_EVENTS).toHaveLength(43);
+    expect(CLIENT_EVENTS).toHaveLength(45);
     expect(allowClientProperties('cab_chain_link_clicked', { link: 'seal', wallet: 'x' })).toEqual({ link: 'seal' });
     expect(allowClientProperties('chain_card_flipped', { card: 'proof', wallet: 'x' })).toEqual({ card: 'proof' });
     expect(allowClientProperties('faq_item_opened', { item: 'wallet', via: 'hover', wallet: 'x' })).toEqual({ item: 'wallet', via: 'hover' });
@@ -28,5 +28,9 @@ describe('the promo events of the browser plane', () => {
     });
     expect(allowClientProperties('web_vital', { surface: 'landing', metric: 'CLS', value: 0, rating: 'good' })).toEqual({ surface: 'landing', metric: 'CLS', value: 0, rating: 'good' });
     expect(allowClientProperties('web_vital', { surface: 'lobby', metric: 'CLS', value: 0.12, rating: 'needs-improvement' })).toBeNull();
+    expect(allowClientProperties('ride_share_clicked', { surface: 'dash', link: 'ride', ride_id: 'abc', signature: 's' })).toEqual({ surface: 'dash', link: 'ride', ride_id: 'abc' });
+    expect(allowClientProperties('blink_link_clicked', { card: 'blink' })).toEqual({});
+    expect(allowClientProperties('ride_buy_clicked', { tier_id: 'free', is_free: true, price_usd: 0, is_demo: false, level: 3, seed: 1 })).toEqual({ tier_id: 'free', is_free: true, price_usd: 0, is_demo: false, level: 3 });
+    expect(allowClientProperties('ride_buy_clicked', { tier_id: 'free', is_free: true, price_usd: 0, is_demo: false, level: 1.5 })).toBeNull();
   });
 });

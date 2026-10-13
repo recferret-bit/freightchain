@@ -38,9 +38,9 @@ describe('CreateRideHandler', () => {
     expect((await create('free')).id).toBe(ride.id);
     expect((await ctx.storedPlayer('w')).freeRides).toBe(9);
     expect(analytics.named('ride_ordered')).toHaveLength(1);
-    expect(analytics.named('ride_ordered')[0]?.properties).toMatchObject({ is_free: true, is_demo: false, time_scale: 1, lamports: 0, free_rides_left: 9, ride_id: ride.id, tutorial: false, assist: false });
+    expect(analytics.named('ride_ordered')[0]?.properties).toMatchObject({ is_free: true, is_demo: false, time_scale: 1, lamports: 0, free_rides_left: 9, ride_id: ride.id, level: 1, tutorial: false, assist: false });
     expect(analytics.named('ride_resumed')).toHaveLength(1);
-    expect(analytics.named('ride_resumed')[0]?.properties).toMatchObject({ ride_id: ride.id, status: 'created' });
+    expect(analytics.named('ride_resumed')[0]?.properties).toMatchObject({ ride_id: ride.id, status: 'created', level: 1 });
   });
 
   it('the tutorial / assist checkboxes are stored on a free ride and sent to the game; off by default', async () => {
@@ -116,10 +116,12 @@ describe('CreateRideHandler', () => {
   });
 
   it('asking for the ready free ride at ANOTHER level moves the SAME ride (trip, length, line, helpers) – one credit, one ride, saved', async () => {
-    const { ctx, create } = setup();
+    const { ctx, analytics, create } = setup();
     const first = await create('free', 'w', false, true, 1);
     const hard = await create('free', 'w', false, false, 3);
     expect(hard).toMatchObject({ id: first.id, level: 3, trip: 'free-3b', route: 'brenner', minSeconds: 50, completeDist: 0.4 * 28 * 50, tutorial: false, assist: false });
+    expect(analytics.named('ride_ordered')).toHaveLength(1);
+    expect(analytics.named('ride_resumed').at(-1)?.properties).toMatchObject({ ride_id: first.id, level: 3, tutorial: false, assist: false });
     expect((await ctx.reload(first.id)).snapshot()).toMatchObject({ trip: 'free-3b', route: 'brenner', minSeconds: 50, tutorial: false, assist: false });
     expect((await ctx.storedPlayer('w')).freeRides).toBe(9);
   });

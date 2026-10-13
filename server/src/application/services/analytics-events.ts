@@ -1,6 +1,7 @@
 import type { AnalyticsEvent, AnalyticsPort, AnalyticsValue } from '../ports/analytics/analytics.port.js';
 import { ACHIEVEMENT_BY_ID, TIER_NAMES } from '../../domain/achievements/achievements.js';
 import { isRouteId } from '../../domain/rides/ride-rules.js';
+import { levelOfTrip } from '../../domain/rides/ride-trip.js';
 import { failCode } from '../../domain/rides/fail-code.js';
 import type { RideProps } from '../../domain/rides/ride.entity.js';
 import type { ProgressMilestone } from '../../domain/rides/ride-progress.js';
@@ -32,6 +33,7 @@ function withRoute(properties: Props, route: string | null, setOnce?: Props): { 
 
 const identity = (v: RideProps, isDemo: boolean): Props => ({
   ride_id: v.id, tier_id: v.tier, is_free: v.tier === 'free', is_demo: isDemo, time_scale: v.timeScale,
+  level: levelOfTrip(v.trip),   // 1 EASY, 2 MEDIUM, 3 HARD; null on a paid ride or a free ride from before the levels
   tutorial: v.tutorial, assist: v.assist,   // free-ride checkboxes; a paid ride stores false
 });
 
@@ -59,19 +61,19 @@ export function rideOrdered(v: RideProps, isDemo: boolean, freeRidesLeft: number
 
 export function rideResumed(v: RideProps, isDemo: boolean, now: Date): AnalyticsEvent {
   return serverEvent('ride_resumed', v.wallet, null, now, {
-    ride_id: v.id, tier_id: v.tier, status: v.status, is_free: v.tier === 'free', is_demo: isDemo, tutorial: v.tutorial, assist: v.assist,
+    ride_id: v.id, tier_id: v.tier, status: v.status, is_free: v.tier === 'free', is_demo: isDemo, level: levelOfTrip(v.trip), tutorial: v.tutorial, assist: v.assist,
   });
 }
 
 export function rideExpired(v: RideProps, isDemo: boolean): AnalyticsEvent {
   return serverEvent('ride_expired', v.wallet, `ride:${v.id}:expired`, endedAt(v), {
-    ride_id: v.id, tier_id: v.tier, status: v.status, is_free: v.tier === 'free', is_demo: isDemo, reason: v.reason, tutorial: v.tutorial, assist: v.assist,
+    ride_id: v.id, tier_id: v.tier, status: v.status, is_free: v.tier === 'free', is_demo: isDemo, reason: v.reason, level: levelOfTrip(v.trip), tutorial: v.tutorial, assist: v.assist,
   });
 }
 
 export function rideCancelled(v: RideProps, isDemo: boolean): AnalyticsEvent {
   return serverEvent('ride_cancelled', v.wallet, `ride:${v.id}:cancelled`, endedAt(v), {
-    ride_id: v.id, tier_id: v.tier, status: v.status, is_free: v.tier === 'free', is_demo: isDemo, reason_code: 'replaced_by_paid', tutorial: v.tutorial, assist: v.assist,
+    ride_id: v.id, tier_id: v.tier, status: v.status, is_free: v.tier === 'free', is_demo: isDemo, reason_code: 'replaced_by_paid', level: levelOfTrip(v.trip), tutorial: v.tutorial, assist: v.assist,
   });
 }
 
@@ -108,7 +110,7 @@ export function rideFailed(v: RideProps, isDemo: boolean, endedBy: EndedBy): Ana
   const routed = withRoute({
     ride_id: v.id, tier_id: v.tier, is_free: v.tier === 'free', is_demo: isDemo, time_scale: v.timeScale, round_id: v.roundId, lamports: v.lamports,
     fail_code: failCode(v.reason) ?? 'other', ended_by: endedBy, reason: v.reason, drive_ms: ms(v.driveSeconds), distance_m: Math.round(v.lastS), hull: hullOf(v.hull),
-    tutorial: v.tutorial, assist: v.assist,
+    level: levelOfTrip(v.trip), tutorial: v.tutorial, assist: v.assist,
   }, v.route);
   return serverEvent('ride_failed', v.wallet, `ride:${v.id}:failed`, endedAt(v), routed.properties, undefined, routed.setOnce);
 }
@@ -181,7 +183,7 @@ export function agreementsAccepted(wallet: string, age18At: number, lossAt: numb
   return serverEvent('agreements_accepted', wallet, `player:${wallet}:agreements:${age18At}:${lossAt}`, now, { age18_at: age18At, loss_at: lossAt });
 }
 
-/** The wallet put a cosmetic on (the wardrobe's WEAR button; a redemption also wears it but is `promo_redeemed`). */
+/** The wallet put a cosmetic on (POST /api/wardrobe/equip). The lobby APPLY is garage_saved. A redemption that wears a part is promo_redeemed. */
 export function cosmeticEquipped(wallet: string, slot: string, item: string, isDefault: boolean, now: Date): AnalyticsEvent {
   return serverEvent('cosmetic_equipped', wallet, null, now, { slot, item, is_default: isDefault }, { [slot]: item });
 }

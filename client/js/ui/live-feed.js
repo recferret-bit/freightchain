@@ -16,7 +16,7 @@ import { store } from '../util.js';
 const POLL_MS = 4000, CB_LINES = 4, CB_TTL = 25_000;
 const feed = { on: false, cursor: 0, seen: new Set(), pending: [], timer: 0, viewers: 0, totals: null, features: null, muted: new Set(), hidden: store.get('freightchain.cb') === 'hidden', box: null, lines: null, head: null };
 
-const api = (path, body) => siteApi(path, body, { timeoutMs: 8000 });
+const api = (path, body) => siteApi(path, body, { timeoutMs: 8000, report: false });   // chat, donations and effects are not analytics; a failed poll must not become api_request_failed
 
 export function startLiveFeed() {
   if (!online.ride || feed.on) return;

@@ -40,7 +40,7 @@ export const insights = [
     step('ride_ordered', [S, free(true), demo(false)]),
     step('ride_started', [S, demo(false)]),
     step('ride_completed', [S, demo(false)]),
-  ], 'Free run is 60 seconds and 420 m and ends itself. No tier click.'),
+  ], 'A free start is level 1, 2, or 3 (property level). No separate level click.'),
   funnel('free-demo', 'FC · Free activation (demo ×60)', true, { interval: 7, unit: 'day' }, [
     step('lobby_tab_viewed', [tabNew]),
     step('ride_buy_clicked', [free(true), demo(true)]),
@@ -127,14 +127,14 @@ export const insights = [
   funnel('promo-viewed', 'FC · Promo from an invite view', false, { interval: 7, unit: 'day' }, [
     step('promo_invite_viewed'),
     step('player_signed_in', [S]),
-    step('lobby_tab_viewed', [{ key: 'tab', operator: 'exact', value: ['promo'] }]),
+    step('lobby_tab_viewed', [{ key: 'tab', operator: 'exact', value: ['profile'] }]),
     step('promo_redeem_clicked', [{ key: 'prefilled', operator: 'exact', value: ['true'] }]),
     step('promo_redeemed', [S]),
   ], 'PostHog cannot OR a step, so the submitted-code path is a second funnel.'),
   funnel('promo-submitted', 'FC · Promo from a submitted code', false, { interval: 7, unit: 'day' }, [
     step('promo_invite_submitted'),
     step('player_signed_in', [S]),
-    step('lobby_tab_viewed', [{ key: 'tab', operator: 'exact', value: ['promo'] }]),
+    step('lobby_tab_viewed', [{ key: 'tab', operator: 'exact', value: ['profile'] }]),
     step('promo_redeem_clicked'),
     step('promo_redeemed', [S]),
   ], 'The second promo entrance.'),

@@ -18,6 +18,7 @@ import { SITE_BASE } from '../hosts.js';
 import { ridePageUrl, rideShareText, xIntent } from './share.js';
 import { env } from '../world/environment.js';
 import { isMobileDevice } from '../mobile.js';
+import { track } from '../analytics.js';
 
 /* Keyboard + mouse input. Side effects only: listeners are attached on import. */
 
@@ -71,7 +72,8 @@ const btnAt = e => (onCab(e) ? uiBtns.find(b => e.clientX >= b.x && e.clientX <=
 let heldBtn = null;
 let recBtn = null;   // the dash button whose press was recorded, so the release is recorded too
 function shareRideProgress() {
-  if (!online.ride) return;
+  if (!online.ride) return;   // a guest run and a replay never post; the watch page returns before this button
+  track('ride_share_clicked', { surface: 'dash', link: 'ride', ride_id: online.ride.id });
   const text = rideShareText({ phase: 'driving', route: env.theme?.name, km: `${(st.s / 1000).toFixed(1)} km`, time: fmt(st.t), free: online.ride.tier === 'free' });
   const url = ridePageUrl(SITE_BASE, typeof location !== 'undefined' ? location.origin : '', online.ride.id);
   if (typeof window !== 'undefined' && window.open) window.open(xIntent(text, url), '_blank', 'noopener,noreferrer');

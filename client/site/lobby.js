@@ -385,7 +385,7 @@ function play(r, tier, level = null) {
   if (level != null && r.level != null && r.level !== level) { say(tier, 'The server kept your ride at another level – pick it again or start that one.', true); return; }   // (the server re-chooses the ready ride's level, so this is only an old server)
   flushSoon(); location.href = `${GAME_BASE}/play.html?ride=${r.id}`;
 }
-const clicked = (id, usd = 0) => track('ride_buy_clicked', { tier_id: id, is_free: id === 'free', price_usd: usd, is_demo: !!S.me?.demo });
+const clicked = (id, usd = 0, level = null) => track('ride_buy_clicked', { tier_id: id, is_free: id === 'free', price_usd: usd, is_demo: !!S.me?.demo, level });   // level is 1/2/3 on a free ride, null on a paid one
 const freeBody = () => { const t = S.tiers?.tiers.find(x => x.id === 'free'), lv = pickedLevel(t); return { tier: 'free', tutorial: tutorialOn() && tutorialAllowed(t), assist: S.opt.assist && assistAllowed(t), ...(lv ? { level: lv.level } : {}) }; };   // HARD: neither helper is sent (the server would refuse it)
 const startFree = () => busy('free', async () => {
   if (isMobileDevice()) {
@@ -396,7 +396,7 @@ const startFree = () => busy('free', async () => {
     say('free', 'Driving requires a desktop browser with keyboard controls. Check out the LIVE tab to watch streams and replays on mobile!', true);
     return;
   }
-  clicked('free'); const body = freeBody(); try { play(await api('rides', body), 'free', body.level ?? null); } catch (e) { say('free', rideError(e, 'free'), true); await refreshMe(); }
+  const body = freeBody(); clicked('free', 0, body.level ?? null); try { play(await api('rides', body), 'free', body.level ?? null); } catch (e) { say('free', rideError(e, 'free'), true); await refreshMe(); }
 });
 const refusedOffer = (e) => { if (e?.code === 'agreements_required') location.hash = '#profile'; };
 const startLegacy = id => busy(id, async () => {
@@ -445,7 +445,7 @@ async function redeem(e) {
   const input = $('promo-code'), go = $('promo-go'), code = input.value.trim(), m = $('promo-msg');
   const show = (text, cls) => { m.textContent = text; m.className = `msg ${cls}`; };
   if (!code) { show('Type a promo code first.', 'bad'); return; }
-  track('promo_redeem_clicked', { surface: S.tab === 'profile' ? 'profile' : 'new', prefilled: !!S.invited && code.replace(/\s+/g, '').toUpperCase() === S.invited }); S.invited = null;   // before the request; the server's promo_redeemed is the outcome
+  track('promo_redeem_clicked', { surface: 'profile', prefilled: !!S.invited && code.replace(/\s+/g, '').toUpperCase() === S.invited }); S.invited = null;   // the form is only painted on the profile; before the request; the server's promo_redeemed is the outcome
   go.disabled = true; show('Redeeming…', 'dim');
   try {
     const r = await api('promo/redeem', { code }); input.value = ''; show(promoOk(r), 'good'); if (r.kind === 'tickets') S.focus = r.tier;

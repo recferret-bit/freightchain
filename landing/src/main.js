@@ -357,12 +357,18 @@ for (const [net, url] of Object.entries(SOCIALS)) if (url) {
   a.addEventListener('click', () => track('social_clicked', { net }));   // a null URL (discord, telegram) adds no button
   $('socials').append(a);
 }
+for (const a of document.querySelectorAll('a[href="https://x.com/FreightChainSol"], a[href="https://www.youtube.com/@FreightChainGame"]')) {
+  if (a.dataset.net) continue;   // FIND US already listened above
+  const net = a.href.includes('youtube') ? 'youtube' : 'x';
+  a.addEventListener('click', () => track('social_clicked', { net }));
+}
+document.querySelector('a[href="/blink.html"]')?.addEventListener('click', () => track('blink_link_clicked'));
 
 /* ───── sign-in / CTA ─────
    CONNECT asks the injected wallet (Phantom / Solflare) to sign the server's challenge; the server verifies the ed25519 signature and sets the httpOnly session cookie
    (Domain = the apex in production, so the lobby, the game and the API share it). The landing never sees the token: it only asks /api/me who is signed in. */
 const btn = $('connect'), msg = $('msg'), playTop = $('play-top'), chip = $('chip-wallet'), chipRides = $('chip-rides');
-/* The invite block: a code typed here (or arriving as /?promo=CODE – a shareable invite link) rides along to the lobby's PROMO tab, where it only pre-fills the field. */
+/* The invite block: a code typed here (or arriving as /?promo=CODE – a shareable invite link) rides along to the lobby profile (#promo, the old tab), where it only pre-fills the field. */
 const inviteIn = $('invite-code'), inviteMsg = $('invite-msg');
 let invite = (new URLSearchParams(location.search).get('promo') ?? '').trim().slice(0, 64);
 const linkCode = invite;   // what the invite link carried (analytics: was the submit the link's own code?)

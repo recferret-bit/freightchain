@@ -2,6 +2,7 @@ import { API_BASE, GAME_BASE, SITE_BASE } from '../js/hosts.js';
 import { ridePageUrl, rideShareText, xIntent } from '../js/ui/share.js';
 import { isMobileDevice, showMobileToast } from '../js/mobile.js';
 import { formatDriver } from './sns.js';
+import { track } from '../js/analytics.js';
 
 function fmt(sec) {
   const s = Math.max(0, Math.floor(sec || 0));
@@ -125,6 +126,7 @@ function render(ride) {
   const btnShareX = el('btn-share-x');
   btnShareX.style.display = 'inline-flex';
   btnShareX.onclick = () => {
+    track('ride_share_clicked', { surface: 'receipt', link: 'ride', ride_id: ride.id });
     const km = ride.km || 0, time = fmt(ride.driveSeconds);
     const text = isRunning
       ? rideShareText({ phase: 'driving', route: routeName, km: `${km.toFixed(1)} km`, time, free: isFree })

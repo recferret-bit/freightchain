@@ -37,7 +37,9 @@ for (const a of document.querySelectorAll('a[data-to]')) {
           liveAction: `${SITE_BASE}/lobby.html#live`,
           replaysAction: `${SITE_BASE}/lobby.html#replays`,
         });
+        return;
       }
+      if (!path.includes('ride=')) { track('offline_practice_clicked'); flushSoon(); }   // the stream chapter's "open the game" link is the same guest run as PLAY
     });
   }
 }
