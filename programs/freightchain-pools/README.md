@@ -1,6 +1,6 @@
 # freightchain-pools (Anchor 1.2.1 program `freightchain_pools`)
 
-Escrowed prize pools on Solana: an assurance contract for skill prizes. Program id (devnet): `9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx` – its keypair is `deploy/secrets/devnet/program-id.json` of the main checkout (gitignored; copied to `target/deploy/freightchain_pools-keypair.json` for `anchor keys sync`). It appears in `declare_id!`, `Anchor.toml` and the IDL `address`; a new id = `anchor keys sync` + rebuild + a new pin (`docs/program-deploy.md`).
+Escrowed prize pools on Solana: an assurance contract for skill prizes. Program id (devnet, v3): `8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p`, the value in `declare_id!`, `Anchor.toml`, and the IDL `address`. Its keypair is `deploy/secrets/devnet/program-id.json` of the main checkout (gitignored; copied to `target/deploy/freightchain_pools-keypair.json` for `anchor keys sync`). A new id means `anchor keys sync`, a rebuild, and a new pin (`docs/program-deploy.md`). The v1 id `9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx` is still on devnet. Its pools are finished, and the site does not sell into it.
 
 Core instructions only; the phase-2 session / deposit instructions (plan 2.6 / 2.10) are not built.
 
