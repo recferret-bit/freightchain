@@ -164,7 +164,7 @@ describe('SIWS Adversarial Verification Suite', () => {
 
       await expect(
         handler.execute(new VerifySignInCommand(walletA, sig1, { ip: null, userAgent: null }, msg2, ch.nonce!)),
-      ).rejects.toThrow(new UnauthorizedError('bad signature'));
+      ).rejects.toThrow(new UnauthorizedError('the signed text is not the issued challenge'));   // refused before the signature is even read (pentest M2)
     });
 
     it('rejects cross-key signature forgery (keypair B signs message claiming wallet A)', async () => {
@@ -582,15 +582,14 @@ describe('SIWS Adversarial Verification Suite', () => {
       });
       const sig = sign(msg, kpA);
 
-      await expect(handler.execute(new VerifySignInCommand(walletA, sig, { ip: null, userAgent: null }, msg, ch.nonce!))).rejects.toThrow(new UnauthorizedError('statement mismatch'));
+      await expect(handler.execute(new VerifySignInCommand(walletA, sig, { ip: null, userAgent: null }, msg, ch.nonce!))).rejects.toThrow(new UnauthorizedError('the signed text is not the issued challenge'));
     });
 
     it('every field the server issued must come back unchanged (uri, chain, issued-at)', async () => {
       for (const change of [{ uri: 'https://evil.example' }, { chainId: 'solana:mainnet' }, { issuedAt: '2020-01-01T00:00:00.000Z' }, { version: '2' }]) {
         const ch = await challenge.execute(new RequestChallengeCommand());
         const msg = formatSignInMessage({ domain: ch.domain!, address: walletA, statement: ch.statement, uri: ch.uri, version: ch.version, chainId: ch.chainId, nonce: ch.nonce!, issuedAt: ch.issuedAt!, expirationTime: ch.expirationTime, ...change });
-        const key = Object.keys(change)[0];
-        await expect(handler.execute(new VerifySignInCommand(walletA, sign(msg, kpA), { ip: null, userAgent: null }, msg, ch.nonce!))).rejects.toThrow(new UnauthorizedError(`${key} mismatch`));
+        await expect(handler.execute(new VerifySignInCommand(walletA, sign(msg, kpA), { ip: null, userAgent: null }, msg, ch.nonce!))).rejects.toThrow(new UnauthorizedError("the signed text is not the issued challenge"));
       }
     });
   });

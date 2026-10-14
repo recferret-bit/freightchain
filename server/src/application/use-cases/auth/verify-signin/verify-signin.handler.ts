@@ -86,15 +86,15 @@ export class VerifySignInHandler implements ICommandHandler<VerifySignInCommand,
         }
       }
 
-      // Every field the stored challenge set must come back unchanged (what @solana/wallet-standard-util verifySignIn checks): the server's text, not the client's copy
-      const issued = challenge.parse();
-      if (issued) {
-        for (const key of ['domain', 'statement', 'uri', 'version', 'chainId', 'issuedAt', 'expirationTime'] as const) {
-          if (issued[key] !== undefined && parsed[key] !== issued[key]) {
-            this.logger.warn({ event: 'signin_field_mismatch', msg: `sign-in of ${wallet}: the wallet changed ${key}`, wallet, field: key });   // which wallets rewrite the SIWS text
-            throw new UnauthorizedError(`${key} mismatch`);
-          }
-        }
+      // The signed text must BE the issued challenge, byte for byte (line endings aside) – pentest M2: a preamble, a duplicated field or one the challenge never
+      // set (Not Before, Request ID, Resources) used to pass because only seven parsed fields were compared. The wallet builds the text from our fields with the
+      // standard formatter (formatSignInMessage mirrors it); a wallet that rewrites it is refused here and the client falls back to signing the plain challenge.
+      const expected = challenge.messageFor(wallet);
+      if (command.message.replace(/\r\n/g, '\n') !== expected) {
+        const issued = parseSignInMessage(expected);
+        const fields = issued ? (Object.keys(issued) as (keyof typeof issued)[]).filter((k) => parsed[k] !== issued[k]) : [];
+        this.logger.warn({ event: 'signin_text_mismatch', msg: `sign-in of ${wallet}: the signed text is not the issued challenge${fields.length ? ` (${fields.join(', ')})` : ' (extra lines)'}`, wallet, fields });   // which wallets rewrite the SIWS text
+        throw new UnauthorizedError('the signed text is not the issued challenge');
       }
 
       // Cryptographic ed25519 verification over the signed SIWS message
