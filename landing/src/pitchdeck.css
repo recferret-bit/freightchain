@@ -216,7 +216,7 @@ h1 small{font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;c
 .L-wall .vis:has(.tags span:nth-child(4):is(:hover,.hot)) .w3,
 .L-wall .vis:has(.tags span:nth-child(3):is(:hover,.hot)) .w4{--s:1.09;z-index:6;filter:drop-shadow(0 0 20px #14f195aa) drop-shadow(0 0 34px #9945ff88)}
 @keyframes tagglow{0%,100%{box-shadow:0 0 10px 0 #14f19522}50%{box-shadow:0 0 20px 2px #9945ff66}}
-@media (prefers-reduced-motion:reduce){.fx .shot,.fx .badge,.L-wall .tags span,#help,#help b{animation:none!important}}
+@media (prefers-reduced-motion:reduce){#ticker span{transition:none}.fx .shot,.fx .badge,.L-wall .tags span,#help,#help b{animation:none!important}}
 
 .L-wall .tags{z-index:8}   /* above a lifted screen (z 6), so no tag is ever covered */
 
@@ -253,7 +253,8 @@ h1 small{font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;c
 /* header ticker (pinned to the very top of the window, outside the letterboxed stage; fit() scales it) – the landing's running text (LCD green, ◆ between facts) on black, over every slide; .code = a real line from the repo */
 #ticker{position:fixed;left:0;top:0;width:1920px;transform-origin:0 0;height:38px;overflow:hidden;z-index:20;contain:paint;background:#030803;border-top:2px solid #1e4a22;border-bottom:2px solid #1e4a22;color:#7cff7c;font:700 16px/36px var(--body);letter-spacing:1.5px;text-transform:uppercase;text-shadow:0 0 8px #7cff7c55}   /* a rule above AND below, so the gap from the caps to each is the same (measured at 4×) */
 #ticker .tk{position:absolute;left:0;top:0;display:inline-flex;white-space:nowrap;will-change:transform}   /* moved by script (tkTick) */
-#ticker span{position:relative;padding:0 38px}
+#ticker span{position:relative;padding:0 38px;transition:transform .3s cubic-bezier(.2,.8,.2,1),color .3s,text-shadow .3s;cursor:default}
+#ticker span:hover{transform:scale(1.15);color:#d6ffd6;text-shadow:0 0 14px #7cff7cbb}   /* the fact under the pointer swells a little (the strip is slow while hovered) */
 #ticker span::after{content:"◆";position:absolute;right:-6px;top:calc(50% - 1.5px);translate:0 -50%;line-height:1;opacity:.5;font-size:11px}
 #ticker span.code{font-weight:500;text-transform:none;letter-spacing:0}   /* a code line: the same green as the facts */
 
