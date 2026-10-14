@@ -41,7 +41,7 @@ function convert(type: IdlType, v: BorshValue, where: string): unknown {
   return v;
 }
 
-export type PoolAccountName = 'Pool' | 'Ticket' | 'Config' | 'Series' | 'Attestation' | 'Pledge';
+export type PoolAccountName = 'Pool' | 'Ticket' | 'Config' | 'Series' | 'Attestation' | 'Pledge' | 'RideAttestation' | 'SponsorReceipt';
 export type AccountKeys = Record<string, PublicKey | string>;
 
 export interface ProgramDataLine {
@@ -67,6 +67,15 @@ export class PoolProgramCodec {
   }
   attestationPda(poolId: number, driver: string | PublicKey): PublicKey {
     return PublicKey.findProgramAddressSync([Buffer.from('attestation'), this.poolPda(poolId).toBuffer(), new PublicKey(driver).toBuffer()], this.programId)[0];
+  }
+  /** v4 (H4): one pledged ride's attestation – [b"ride_attestation", pool, ride_id (32 bytes)] */
+  rideAttestationPda(poolId: number, rideId: Uint8Array | Buffer): PublicKey {
+    if (rideId.length !== 32) throw new RangeError(`ride_id must be 32 bytes, got ${rideId.length}`);
+    return PublicKey.findProgramAddressSync([Buffer.from('ride_attestation'), this.poolPda(poolId).toBuffer(), Buffer.from(rideId)], this.programId)[0];
+  }
+  /** v4 (M8): one sponsor's receipt in one pool – [b"sponsor_receipt", pool, sponsor] */
+  sponsorReceiptPda(poolId: number, sponsor: string | PublicKey): PublicKey {
+    return PublicKey.findProgramAddressSync([Buffer.from('sponsor_receipt'), this.poolPda(poolId).toBuffer(), new PublicKey(sponsor).toBuffer()], this.programId)[0];
   }
   pledgePda(rideId: Uint8Array | Buffer | number[], sponsor: string | PublicKey): PublicKey {
     const rideIdBuf = Buffer.isBuffer(rideId) ? rideId : Buffer.from(rideId);

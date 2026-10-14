@@ -1,12 +1,13 @@
 import { PublicKey } from '@solana/web3.js';
 
 /* The slice of Anchor's IDL (spec 0.1.0) and of borsh that the pool program uses – by hand, so the server needs no Anchor SDK: little-endian integers, bool as one
-   byte, 32-byte keys, fixed arrays, Option (one tag byte), structs in field order. u64 / i64 come out as bigint (the caller decides how to narrow them). */
+   byte, 32-byte keys, fixed arrays, Vec (u32 length, then the items – v4's Merkle proof), Option (one tag byte), structs in field order. u64 / i64 come out as bigint (the caller decides how to narrow them). */
 
 export type IdlType =
   | 'u8' | 'u16' | 'u32' | 'u64' | 'i64' | 'bool' | 'pubkey'
   | { array: [IdlType, number] }
   | { option: IdlType }
+  | { vec: IdlType }
   | { defined: { name: string } };
 export interface IdlField { name: string; type: IdlType }
 export interface IdlAccountItem { name: string; writable?: boolean; signer?: boolean; address?: string; pda?: unknown; relations?: string[]; optional?: boolean }
@@ -63,6 +64,11 @@ export class BorshReader {
       if (inner === 'u8') return Uint8Array.from(this.take(len));
       throw new Error(`borsh: arrays of ${JSON.stringify(inner)} are not used by the program`);
     }
+    if ('vec' in type) {
+      const n = this.view(4).getUint32(0, true);
+      if (n > 1024) throw new RangeError(`borsh: vec of ${n}`);
+      return Array.from({ length: n }, () => this.read(type.vec, types)) as unknown as BorshValue;
+    }
     if ('option' in type) {
       const tag = this.view(1).getUint8(0);
       if (tag > 1) throw new RangeError(`borsh: option tag ${tag}`);
@@ -116,6 +122,12 @@ export class BorshWriter {
       const [inner, len] = type.array;
       if (inner !== 'u8' || !(value instanceof Uint8Array) || value.length !== len) throw new TypeError(`${path}: needs ${len} bytes`);
       return this.raw(value);
+    }
+    if ('vec' in type) {
+      if (!Array.isArray(value)) throw new TypeError(`${path}: needs an array`);
+      this.write('u32', value.length, types, `${path}.length`);
+      value.forEach((v, i) => this.write(type.vec, v, types, `${path}[${i}]`));
+      return this;
     }
     if ('option' in type) return value === null || value === undefined ? this.raw([0]) : this.raw([1]).write(type.option, value, types, path);
     const def = types.get(type.defined.name);

@@ -19,14 +19,18 @@ function idlArgs(name: string, a: Record<string, unknown>): Record<string, unkno
   switch (name) {
     case 'buy_ticket': return { pool_id: a['poolId'], qty: a['qty'], order_id: b64(String(a['orderId'])) };
     case 'sponsor': return { pool_id: a['poolId'], lamports: BigInt(String(a['lamports'])) };
-    case 'pay_prize': return { pool_id: a['poolId'], lamports: BigInt(String(a['lamports'])), rank: a['rank'] };
+    case 'pay_prize': return { pool_id: a['poolId'], rank: a['rank'], lamports: BigInt(String(a['lamports'])), proof: (a['proof'] as string[]).map(b64) };
+    case 'commit_winners': return { pool_id: a['poolId'], root: b64(String(a['root'])), total: BigInt(String(a['total'])), count: a['count'] };
+    case 'record_ride_attestation': return { pool_id: a['poolId'], ride_id: b64(String(a['rideId'])), driver: a['driver'], telemetry_root: b64(String(a['telemetryRoot'])), verified_km: a['verifiedKm'], status: a['status'] };
+    case 'close_ride_attestation': return { pool_id: a['poolId'], ride_id: b64(String(a['rideId'])) };
+    case 'set_config': return { paused: null, platform_treasury: null, platform_fee_bps: null, min_review_secs: BigInt(Number(a['minReviewSecs'])), min_finish_secs: BigInt(Number(a['minFinishSecs'])) };
+    case 'migrate_config_v4': return {};
     case 'create_pool': return { params: { tier: a['tier'], price_lamports: BigInt(String(a['priceLamports'])), min_tickets: a['minTickets'], max_tickets: a['maxTickets'], max_per_wallet: a['maxPerWallet'],
       prep_deadline: BigInt(Number(a['prepDeadline'])), play_deadline: BigInt(Number(a['playDeadline'])), payout_at: BigInt(Number(a['payoutAt'])), prize_bps: a['prizeBps'], seed_bps: a['seedBps'], fee_bps: a['feeBps'] } };
     case 'set_series': return { params: { tier: a['tier'], enabled: a['enabled'], price_lamports: BigInt(String(a['priceLamports'])), min_tickets: a['minTickets'], max_tickets: a['maxTickets'],
       max_per_wallet: a['maxPerWallet'], sale_secs: BigInt(Number(a['saleSecs'])), play_secs: BigInt(Number(a['playSecs'])), verify_secs: BigInt(Number(a['verifySecs'])),
       prize_bps: a['prizeBps'], seed_bps: a['seedBps'], fee_bps: a['feeBps'], start_at: BigInt(Number(a['startAt'])) } };
     case 'open_next_pool': return { tier: a['tier'] }; // the seed commitment is the program's own (SlotHashes), not an argument
-    case 'record_attestation': return { pool_id: a['poolId'], driver: a['driver'], telemetry_root: b64(String(a['telemetryRoot'])), verified_km: a['verifiedKm'], status: a['status'] };
     case 'create_pledge': return { ride_id: b64(String(a['rideId'])), driver: a['driver'], max_lamports: BigInt(String(a['maxLamports'])), lamports_per_km: BigInt(String(a['lamportsPerKm'])), target_km: a['targetKm'] };
     case 'settle_pledge': case 'refund_pledge': return { ride_id: b64(String(a['rideId'])) };
     case 'set_payout_authority': return { payout_authority: a['payoutAuthority'] };
@@ -96,7 +100,7 @@ describe('PoolProgramCodec – instructions', () => {
   const all = fx.transactions.flatMap((t) => t.instructions);
 
   it('covers every instruction the server builds', () => {
-    for (const n of ['buy_ticket', 'fail_pool', 'refund', 'pay_prize', 'close_pool', 'open_next_pool', 'record_attestation', 'create_pledge', 'settle_pledge', 'refund_pledge']) expect(all.some((i) => i.name === n), n).toBe(true);
+    for (const n of ['buy_ticket', 'fail_pool', 'refund', 'pay_prize', 'close_pool', 'open_next_pool', 'create_pledge', 'settle_pledge', 'refund_pledge', 'commit_winners', 'veto_winners', 'seal_road', 'record_ride_attestation', 'refund_sponsor', 'close_ride_attestation', 'close_sponsor_receipt', 'set_config']) expect(all.some((i) => i.name === n), n).toBe(true);
   });
 
   for (const ix of all.filter((i, k) => all.findIndex((j) => j.name === i.name) === k)) {
@@ -117,8 +121,11 @@ describe('PoolProgramCodec – instructions', () => {
     expect(codec.poolPda(poolId).toBase58()).toBe(buy.accounts[3]!.pubkey);
     expect(codec.vaultPda(poolId).toBase58()).toBe(buy.accounts[4]!.pubkey);
     expect(codec.ticketPda(poolId, fx.keys.a).toBase58()).toBe(buy.accounts[5]!.pubkey);
-    const pay = fixtureTx('pay_prize').instructions[0]!;
-    expect(codec.attestationPda(0, fx.keys.winner).toBase58()).toBe(pay.accounts[5]!.pubkey);
+    const att = fixtureTx('record_ride_attestation').instructions[0]!;
+    expect(codec.rideAttestationPda(Number(att.args['poolId']), b64(String(att.args['rideId']))).toBase58()).toBe(att.accounts[3]!.pubkey);
+    const refundSponsor = fixtureTx('refund_sponsor').instructions[0]!;
+    expect(codec.sponsorReceiptPda(Number(refundSponsor.args['poolId']), fx.keys.brand).toBase58()).toBe(refundSponsor.accounts[3]!.pubkey);
+    expect(() => codec.rideAttestationPda(1, Buffer.alloc(16))).toThrow(/32 bytes/);
     const rideId = Buffer.alloc(32, 7);
     const pledge = codec.pledgePda(rideId, fx.keys.a);
     expect(pledge.toBase58()).toBeTruthy();
@@ -127,7 +134,8 @@ describe('PoolProgramCodec – instructions', () => {
 
   it('refuses missing accounts and out-of-range args', () => {
     expect(() => codec.instruction('fail_pool', {}, { pool_id: 1 })).toThrow(/account caller missing/);
-    expect(() => codec.encodeData('pay_prize', { pool_id: 1, lamports: -1n, rank: 1 })).toThrow(RangeError);
+    expect(() => codec.encodeData('pay_prize', { pool_id: 1, rank: 1, lamports: -1n, proof: [] })).toThrow(RangeError);
+    expect(() => codec.encodeData('pay_prize', { pool_id: 1, rank: 1, lamports: 1n, proof: [new Uint8Array(31)] })).toThrow(/32 bytes/);
     expect(() => codec.encodeData('buy_ticket', { pool_id: 1, qty: 1, order_id: new Uint8Array(15) })).toThrow(/16 bytes/);
     expect(() => codec.encodeData('nope', {})).toThrow(/no instruction/);
   });

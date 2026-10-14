@@ -7,7 +7,9 @@ import type { PaidTierId } from '../rides/ride-tier.js';
    makes the transaction `{ invalid }` instead of being rounded; i64 unix seconds → Date; Pubkey → base58; order_id [u8; 16] → the uuid string (lowercase, 8-4-4-4-12).
    AuthorityProposed / AuthorityChanged / SeriesSet / PayoutAuthoritySet are program events too, but not POOL events: the decoder skips them (they still occupy their `index`). */
 
-export const CHAIN_EVENT_KINDS = ['PoolCreated', 'TicketBought', 'PoolActivated', 'Sponsored', 'PoolFailed', 'PoolCancelled', 'PoolExpired', 'Refunded', 'PrizePaid', 'PoolClosed'] as const;
+export const CHAIN_EVENT_KINDS = ['PoolCreated', 'TicketBought', 'PoolActivated', 'Sponsored', 'PoolFailed', 'PoolCancelled', 'PoolExpired', 'Refunded', 'PrizePaid', 'PoolClosed',
+  // program v4 (pentest WP5): the road sealed (L4), the winners committed / vetoed (H5-B), a pledged ride's attestation (H4), a sponsor refunded (M8)
+  'RoadSealed', 'WinnersCommitted', 'WinnersVetoed', 'RideAttestationRecorded', 'SponsorRefunded'] as const;
 export type ChainEventKind = (typeof CHAIN_EVENT_KINDS)[number];
 
 /** The program's tier byte (docs/agents/escrow.md). */
@@ -71,6 +73,15 @@ export type ChainEventRecord = EventBase & (
   | { kind: 'PrizePaid'; to: string; lamports: number; rank: number; prizesPaidTotal: number }
   /** cancelled = a fully refunded pool was swept (→ cancelled), otherwise an active pool was split (→ settled) */
   | { kind: 'PoolClosed'; prizePaid: number; seed: number; fee: number; platformFee: number; unclaimed: number; rentReturned: number; cancelled: boolean }
+  /** v4: the road seed, fixed from the hash of `seedSlot` (a slot after the pool opened); seedCommitment / seedSlotHash base64 */
+  | { kind: 'RoadSealed'; seedSlot: number; seedSlotHash: string; seedCommitment: string }
+  /** v4: the winners root (base64), public until `payFrom` – nobody is paid before */
+  | { kind: 'WinnersCommitted'; root: string; total: number; count: number; committedAt: Date; payFrom: Date; by: string }
+  | { kind: 'WinnersVetoed'; root: string }
+  /** v4: the payout key's verdict on one pledged ride (rideId base64 of the zero-padded uuid); its pledges settle from `settleFrom` */
+  | { kind: 'RideAttestationRecorded'; pool: string; rideId: string; driver: string; telemetryRoot: string; verifiedKm: number; status: number; recordedAt: Date; settleFrom: Date }
+  /** v4: a failed pool's sponsorship back to its sponsor */
+  | { kind: 'SponsorRefunded'; sponsor: string; lamports: number; sponsorRefundedTotal: number }
 );
 
 /** What became of an observed event (the ChainEvent table's `outcome`). */

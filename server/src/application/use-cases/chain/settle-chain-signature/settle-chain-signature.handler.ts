@@ -49,7 +49,9 @@ export class SettleChainSignatureHandler implements ICommandHandler<SettleChainS
 }
 
 const walletOf = (e: ChainEventRecord): string | null =>
-  e.kind === 'TicketBought' || e.kind === 'Refunded' ? e.buyer : e.kind === 'Sponsored' ? e.sponsor : e.kind === 'PrizePaid' ? e.to : null;
+  e.kind === 'TicketBought' || e.kind === 'Refunded' ? e.buyer : e.kind === 'Sponsored' || e.kind === 'SponsorRefunded' ? e.sponsor : e.kind === 'PrizePaid' ? e.to
+    : e.kind === 'RideAttestationRecorded' ? e.driver : null;
 
 const lamportsOf = (e: ChainEventRecord): number | null =>
-  e.kind === 'TicketBought' || e.kind === 'Refunded' || e.kind === 'Sponsored' || e.kind === 'PrizePaid' ? e.lamports : null;
+  e.kind === 'TicketBought' || e.kind === 'Refunded' || e.kind === 'Sponsored' || e.kind === 'PrizePaid' || e.kind === 'SponsorRefunded' ? e.lamports
+    : e.kind === 'WinnersCommitted' ? e.total : null;

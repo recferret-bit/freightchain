@@ -223,6 +223,12 @@ export class Pool {
         else this.moveTo('settled', 'active');
         this.p.vaultLamports = 0;
         return;
+      case 'SponsorRefunded': // v4 (M8): a failed pool's sponsorship goes back; the next sync from the account sets the exact balance
+        this.mustBe('refunding');
+        this.p.vaultLamports = Math.max(0, this.p.vaultLamports - e.lamports);
+        return;
+      case 'RoadSealed': case 'WinnersCommitted': case 'WinnersVetoed': case 'RideAttestationRecorded':
+        return; // no balance moves: the payout job and the crank read these from the Pool account
     }
   }
 
