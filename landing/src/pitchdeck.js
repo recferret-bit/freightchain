@@ -48,14 +48,14 @@ const achTier = id => id.startsWith('free-') ? 'LICENCE' : TIER[(id.match(/-(\d)
 /* slide 6 – the plan: four months (Nov–Feb), one lane each; a bar spans the months it runs. `more` shows on hover / tap. It is a plan, not a promise: the audit gates the mainnet, the mainnet gates the token. */
 const MONTHS = [['NOV', 'M1 · 2026'], ['DEC', 'M2'], ['JAN', 'M3 · 2027'], ['FEB', 'M4']];
 const PLAN = [
-  { k: 'MAINNET', sub: 'after the audit', c: '#14f195', from: 3, to: 3, t: 'Beta launch', n: 'capped pools first',
-    more: 'Real SOL pools, capped at first. The same program and proofs: only the cluster changes.' },
+  { k: 'MAINNET', sub: 'once the audit clears', c: '#14f195', from: 2, to: 2, t: 'Beta launch', n: 'capped pools first',
+    more: 'Real SOL pools, capped at first. Same program, same proofs.' },
   { k: 'LOAD · PENTEST · AUDIT', sub: 'break it, then prove it', c: '#ffcf5a', from: 1, to: 2, t: 'Load test → pentest fixes → audit', n: 'server + escrow program',
     more: 'Load-test the API and the replay worker, close every pentest finding, then a third-party audit of the escrow program.' },
   { k: 'COMMUNITY', sub: 'players and streamers', c: '#b98cff', from: 1, to: 4, t: 'Streamers · Discord · weekly challenges', n: 'build in public, every week',
     more: 'People before money: streamer partnerships, a Discord and weekly challenges, so the first pools already have an audience.' },
   { k: 'TOKEN LAUNCH', sub: 'HONK', c: '#ffffff', from: 4, to: 4, t: 'HONK on chain', n: 'genesis → pool',
-    more: 'HONK leaves the game ledger for an SPL mint: 100M cap, 2M genesis for the pool, 98M earned by verified rides.' },
+    more: 'An SPL mint: 100M cap, 2M to the pool, 98M earned by rides.' },
   { k: 'PAID EVENTS', sub: 'backed by us', c: '#ff5a4d', from: 2, to: 4, t: 'Funded prize pools · streamer cups', n: 'we seed the pool',
     more: 'We fund the prizes: marketing rides and streamer cups, so a pool never opens empty and the stream has a reason to exist.' },
   { k: 'NEW GAME MODES', sub: 'then modding', c: '#6fb0ff', from: 3, to: 4, t: 'New modes, same rails', n: 'same road, same verification',
@@ -95,7 +95,7 @@ const SLIDES = [
       <div class="copy">
         <div class="lbl">02 · The insight</div>
         <h1>The game<br>is the door.</h1>
-        ${pts(['<b>Streams</b> · live watch, replays', ['<b>Donations</b> · chat, night, holes', 'don'], '<b>Web2</b> · no wallet to watch', '<b>Goal</b> · Web3 adoption', '<b>Reach</b> · the stream is the ad'])}
+        ${pts(['<b>Streams</b> · live watch, replays', ['<b>Donations</b> · chat, night, holes', 'don'], '<b>Web2</b> · no wallet to watch', ['<b>Goal</b> · <span class="sink">Web3 adoption</span>', 'adopt'], '<b>Reach</b> · the stream is the ad'])}
       </div>
       <div class="vis">
         ${clip('promo-clip.mp4', 'v-main')}
@@ -382,7 +382,7 @@ fxVis.forEach(v => {
   v.parentElement.addEventListener('pointerleave', () => setTilt(v, 0, 0));
 });
 /* everything interactive (the cards, slide 0's tags, the LIVE badge, the Merkle canvas, the 70 / 20 / 10 blocks, the FREE / 1 H / 4 H / 8 H ladder) gives a tiny, tweened shake at random intervals while its slide is showing – a quiet "touch me". It animates the individual `rotate` property, so it never fights the float / lean / zoom transforms. */
-const nudgeables = [...deck.querySelectorAll('.fx .shot, .fx .badge, .fx canvas.glyph, .L-wall .tags span, .split > div, .ladder li, .cards5 .cc, .pts li.don')];
+const nudgeables = [...deck.querySelectorAll('.fx .shot, .fx .badge, .fx canvas.glyph, .L-wall .tags span, .split > div, .ladder li, .cards5 .cc, .pts li.don, .pts li.adopt')];
 const canShake = el => !tkReduced && document.visibilityState === 'visible' && !!el.closest('.slide.on') && !el.matches(':hover,.hot,.drag')
   && ![...(el.closest('.split')?.classList ?? [])].some(c => c.startsWith('s-'));   // not while it is being used
 function shakeLater(el) {
@@ -402,7 +402,7 @@ const DONATE = [['TIP', 0.01], ['NIGHT', 0.02], ['DAY', 0.02], ['POTHOLES', 0.02
 const COIN_MAX = 120, G = 2600, FLOOR = 1075, CEIL = 40, E_FLOOR = .45, E_COIN = .3;   // G in stage px/s²; the floor sits on the progress bar, the ceiling under the ticker
 const CARD_SEL = '.slide.on :is(.shot, .badge, .cc, .ladder li, .split > div, .tags span)';   // what the coins bounce off on the showing slide
 const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz', b58 = n => Array.from({ length: n }, () => B58[Math.floor(Math.random() * 58)]).join('');
-const coinCv = document.createElement('canvas'), cctx = coinCv.getContext('2d'), coins = [];
+const coinCv = document.createElement('canvas'), cctx = coinCv.getContext('2d'), coins = [], sucking = [];   // sucking = coins on their way into Web3 adoption (adopt())
 coinCv.id = 'coins'; coinCv.setAttribute('aria-hidden', 'true'); stage.insertBefore(coinCv, pager);
 const coinImg = (() => {   // one 128 px sprite: the Solana mark on a dark face inside a purple→green rim, a soft highlight on top
   const S = 128, c = document.createElement('canvas'), g = c.getContext('2d'); c.width = c.height = S;
@@ -420,6 +420,8 @@ let coinK = 1, coinRaf = 0, coinStill = 0, coinT = 0;
 function drawCoins() {
   cctx.setTransform(1, 0, 0, 1, 0, 0); cctx.clearRect(0, 0, coinCv.width, coinCv.height);
   for (const c of coins) { const k = coinK, cs = Math.cos(c.a) * k, sn = Math.sin(c.a) * k; cctx.setTransform(cs, sn, -sn, cs, c.x * k, c.y * k); cctx.drawImage(coinImg, -c.r, -c.r, c.r * 2, c.r * 2); }
+  for (const { c, sc, al } of sucking) { const k = coinK * sc, cs = Math.cos(c.a) * k, sn = Math.sin(c.a) * k; cctx.globalAlpha = al; cctx.setTransform(cs, sn, -sn, cs, c.x * coinK, c.y * coinK); cctx.drawImage(coinImg, -c.r, -c.r, c.r * 2, c.r * 2); }
+  cctx.globalAlpha = 1;
 }
 const coinFit = () => { coinK = Math.min(2, devicePixelRatio * scale); coinCv.width = Math.round(1920 * coinK); coinCv.height = Math.round(1080 * coinK); drawCoins(); };   // backing store at screen resolution, drawn in stage px
 addEventListener('resize', coinFit); coinFit();
@@ -466,13 +468,14 @@ function bounds(c, h) {
 function coinTick(t) {
   const dt = Math.min(1 / 30, (t - coinT) / 1000 || 1 / 60), h = dt / 4; coinT = t;
   readBoxes(); boxTouch = false;
+  if (suckOn) suckStep(t);
   for (let s = 0; s < 4; s++) {   // 4 substeps a frame, 4 collision passes each: enough for a stable pile of ~120
     for (const c of coins) { if (c === held) { c.vx = Math.max(-4000, Math.min(4000, (hx - c.x) * 20)); c.vy = Math.max(-4000, Math.min(4000, (hy - c.y) * 20)); } else c.vy += G * h; c.x += c.vx * h; c.y += c.vy * h; c.a += c.w * h; c.touch = false; }
     for (let it = 0; it < 4; it++) for (let i = 0; i < coins.length; i++) for (let j = i + 1; j < coins.length; j++) collide(coins[i], coins[j]);
     for (const c of coins) { for (const b of boxes) hitBox(c, b); bounds(c, h); }
   }
   let vmax = 0; for (const c of coins) vmax = Math.max(vmax, Math.abs(c.vx), Math.abs(c.vy), Math.abs(c.w * c.r));
-  coinStill = vmax < 20 && !held && !boxTouch ? coinStill + 1 : 0;   // coins on a card never sleep: the card floats under them
+  coinStill = vmax < 20 && !held && !boxTouch && !suckOn ? coinStill + 1 : 0;   // coins on a card never sleep: the card floats under them
   drawCoins();
   coinRaf = coinStill > 60 ? 0 : requestAnimationFrame(coinTick);   // a settled pile sleeps until the next donation
 }
@@ -501,16 +504,63 @@ addEventListener('pointerup', letGo); addEventListener('pointercancel', letGo);
 addEventListener('click', e => { if (eatClick) { eatClick = false; e.stopPropagation(); } }, true);
 addEventListener('touchstart', e => { if (touchCoin) e.stopPropagation(); }, { capture: true, passive: true });
 addEventListener('touchend', e => { if (touchCoin) { touchCoin = false; e.stopPropagation(); } }, { capture: true, passive: true });
+const pop = (cls, html, x, y, ms = 2400) => {   // a one-shot stage element (author-made text only) that removes itself when its animation ends
+  const el = document.createElement('div'); el.className = cls; el.innerHTML = html; el.style.left = `${x}px`; el.style.top = `${y}px`;
+  el.addEventListener('animationend', e => { if (e.target === el) el.remove(); }); stage.append(el);
+  if (tkReduced) setTimeout(() => el.remove(), ms);
+  return el;
+};
+const toast = (big, small) => pop('sol-toast', `<b>${big}</b><span>${small}</span>`, 760 + Math.random() * 820, 150 + Math.random() * 520);
+const shakeScreen = () => { if (!tkReduced) stage.animate({ translate: ['0 0', '-4px 2px', '3px -3px', '-2px 2px', '1px -1px', '0 0'] }, { duration: 320, easing: 'ease-out' }); };   // a very small jolt: the `translate` property, so fit()'s transform is untouched
 function donate() {
-  const [what, sol] = DONATE[Math.floor(Math.random() * DONATE.length)], toast = document.createElement('div');
-  toast.className = 'sol-toast';
-  toast.innerHTML = `<b>+${sol.toFixed(2)} SOL</b><span>${what} · ${b58(4)}…${b58(4)}</span>`;   // author-made text only
-  toast.style.left = `${760 + Math.random() * 820}px`; toast.style.top = `${150 + Math.random() * 520}px`;
-  toast.addEventListener('animationend', () => toast.remove()); stage.append(toast);
-  if (tkReduced) { setTimeout(() => toast.remove(), 2400); return; }
+  const [what, sol] = DONATE[Math.floor(Math.random() * DONATE.length)];
+  toast(`+${sol.toFixed(2)} SOL`, `${what} · ${b58(4)}…${b58(4)}`); shakeScreen();
+  if (tkReduced) return;
   for (let i = 5 + Math.floor(Math.random() * 5); i > 0; i--) coins.push({ x: 120 + Math.random() * 1680, y: -60 - Math.random() * 520, vx: (Math.random() - .5) * 260, vy: Math.random() * 200, r: 18 + Math.random() * 12, a: Math.random() * 6.3, w: (Math.random() - .5) * 8 });
   coins.splice(0, Math.max(0, coins.length - COIN_MAX));
   coinStill = 0; coinRaf ||= requestAnimationFrame(coinTick);
+}
+
+/* slide 3's "Web3 adoption" bullet: a click pulls every coin into it, one by one (nearest first) – each curves in, speeding up, shrinks to 0.1 and fades as it arrives,
+   and pays out a little fiat: a "+$" and a bill pop out of the bullet, which gulps. A total toast once the stage is empty. */
+const SUCK_MS = 1100, SUCK_FLY = .7;   // a coin's whole tween; the share of it spent flying (the rest: shrinking and fading at the bullet)
+let suckOn = false, suckNext = 0, suckEvery = 200, suckUsd = 0, suckN = 0;
+const sinkAt = () => { const r = deck.querySelector('.pts li.adopt .sink').getBoundingClientRect(), s = stage.getBoundingClientRect(); return [(r.left + r.width / 2 - s.left) / scale, (r.top + r.height / 2 - s.top) / scale]; };
+function adopt() {
+  if (suckOn) return;
+  if (!coins.length) { toast('NO SOL YET', 'CLICK DONATIONS FIRST'); return; }
+  if (tkReduced) { const n = coins.length; coins.length = 0; drawCoins(); toast(`+$${(n * 3.14).toFixed(2)}`, `${n} SOL ADOPTED`); return; }
+  suckOn = true; suckNext = 0; suckUsd = 0; suckN = 0; suckEvery = Math.max(90, Math.min(260, 9000 / coins.length));   // the whole pile in about 9 s, never faster than 90 ms a coin
+  coinStill = 0; coinRaf ||= requestAnimationFrame(coinTick);
+}
+function suckStep(t) {
+  const [tx, ty] = sinkAt(), li = deck.querySelector('.pts li.adopt');
+  if (t >= suckNext && coins.length) {   // the next coin: the nearest one not in a hand
+    let best = -1, bd = Infinity;
+    coins.forEach((c, i) => { const d = (c.x - tx) ** 2 + (c.y - ty) ** 2; if (c !== held && d < bd) { bd = d; best = i; } });
+    if (best >= 0) { const [c] = coins.splice(best, 1); sucking.push({ c, x0: c.x, y0: c.y, t0: t, bend: (Math.random() - .5) * 320, sc: 1, al: 1, got: false }); }
+    suckNext = t + suckEvery;
+  }
+  for (let i = sucking.length - 1; i >= 0; i--) {
+    const s = sucking[i], c = s.c, p = Math.min(1, (t - s.t0) / SUCK_MS), m = Math.min(1, p / SUCK_FLY), e = m * m * m;   // ease-in: a vacuum pulls harder the closer it gets
+    const dx = tx - s.x0, dy = ty - s.y0, len = Math.hypot(dx, dy) || 1, off = Math.sin(Math.PI * m) * s.bend;
+    c.x = s.x0 + dx * e - dy / len * off; c.y = s.y0 + dy * e + dx / len * off; c.a += .08 + m * .5;
+    if (m < 1) s.sc = 1 - .4 * e;
+    else {
+      const q = (p - SUCK_FLY) / (1 - SUCK_FLY); s.sc = .6 - .5 * q; s.al = 1 - q;
+      if (!s.got) { s.got = true; payOut(tx, ty, li); }
+    }
+    if (p >= 1) sucking.splice(i, 1);
+  }
+  if (!coins.length && !sucking.length) { suckOn = false; toast(`+$${suckUsd.toFixed(2)}`, `${suckN} SOL · WEB3 ADOPTED`); }
+}
+function payOut(x, y, li) {   // one coin in: "+$", a bill thrown up and out, the bullet gulps
+  const usd = 1 + Math.random() * 8; suckUsd += usd; suckN++;
+  const a = pop('usd', `+$${usd.toFixed(2)}`, x + (Math.random() - .5) * 60, y - 10);
+  a.style.setProperty('--dx', `${(Math.random() - .5) * 90}px`);
+  const b = pop('bill', '💵', x, y);
+  b.style.setProperty('--dx', `${(Math.random() - .5) * 420}px`); b.style.setProperty('--dy', `${-120 - Math.random() * 200}px`); b.style.setProperty('--rot', `${(Math.random() - .5) * 720}deg`);
+  li.animate({ scale: [1, 1.1, 1] }, { duration: 240, easing: 'ease-out' });
 }
 
 /* dragging a screen: it follows the pointer at about half the distance, trailing behind (a slow lerp), and eases home when let go */
@@ -566,6 +616,7 @@ addEventListener('click', e => {
   if (e.target.closest('.split')) return;   // the bar's own click handler (a tap opens / closes a block)
   if (e.target.closest('#ticker')) { tkHold = performance.now() + 1400; return; }   // a click on the header slows it for a moment instead of turning the page
   if (e.target.closest('.pts li.don')) { donate(); return; }   // slide 3: a mock donation, not a page turn
+  if (e.target.closest('.pts li.adopt')) { adopt(); return; }   // slide 3: the coins go into Web3 adoption
   const card = e.target.closest('.fx .shot, .fx .badge, .fx canvas.glyph, .L-wall .tags span, .cards5 .cc, .plan .bar');
   if (card) {
     if (moved) { moved = false; return; }   // the end of a drag is not a tap

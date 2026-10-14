@@ -326,17 +326,17 @@ canvas.glyph{height:auto;aspect-ratio:240/124;background:none}
 @keyframes achcap{0%{opacity:0;translate:26px 0}100%{opacity:1;translate:0 0}}
 @media (prefers-reduced-motion:reduce){.cc,.cc .more,.ci,.ach-cap,.ach-ring{transition:none!important;animation:none!important}}
 
-/* slide 3's DONATIONS bullet is a button: it shakes now and then like the cards; a click drops SOL coins onto the stage (#coins, script) and pops a donation toast */
-.pts li.don{width:fit-content;cursor:pointer;transform-origin:30% 50%;transition:scale .3s cubic-bezier(.2,.8,.2,1),text-shadow .3s}
-.pts li.don:hover{scale:1.05;text-shadow:0 0 18px #14f19566}
-.pts li.don:active{scale:.97}
+/* slide 3's DONATIONS and WEB3 ADOPTION bullets are buttons: it shakes now and then like the cards; a click drops SOL coins onto the stage (#coins, script) and pops a donation toast */
+.pts li:is(.don,.adopt){width:fit-content;cursor:pointer;transform-origin:30% 50%;transition:scale .3s cubic-bezier(.2,.8,.2,1),text-shadow .3s}
+.pts li:is(.don,.adopt):hover{scale:1.05;text-shadow:0 0 18px #14f19566}
+.pts li:is(.don,.adopt):active{scale:.97}
 #coins{position:absolute;left:0;top:0;width:1920px;height:1080px;z-index:9;pointer-events:none}   /* over the slides, under the page counter and the bar */
 .sol-toast{position:absolute;z-index:11;translate:-50% -50%;display:grid;gap:6px;justify-items:center;padding:16px 26px;border-radius:16px;background:#050505e6;border:2px solid #14f195;
   box-shadow:0 0 34px #14f19555,0 0 60px #9945ff44;pointer-events:none;animation:soltoast 2.4s cubic-bezier(.2,.8,.2,1) both}
 .sol-toast b{font:400 54px/1 var(--head);background:var(--sol);-webkit-background-clip:text;background-clip:text;color:transparent}
 .sol-toast span{font:700 15px/1 var(--body);letter-spacing:3px;color:#fff}
 @keyframes soltoast{0%{opacity:0;transform:translateY(24px) scale(.5)}14%{opacity:1;transform:translateY(0) scale(1.12)}24%{transform:scale(1)}75%{opacity:1;transform:translateY(-34px)}100%{opacity:0;transform:translateY(-70px)}}
-@media (prefers-reduced-motion:reduce){.sol-toast{animation:none}.pts li.don{transition:none}}
+@media (prefers-reduced-motion:reduce){.sol-toast,.usd,.bill{animation:none}.pts li:is(.don,.adopt){transition:none}}
 /* a coin under the pointer can be grabbed (script toggles these on the stage) */
 #stage.coin-over,#stage.coin-over *{cursor:grab!important}
 #stage.coin-drag,#stage.coin-drag *{cursor:grabbing!important;user-select:none;-webkit-user-select:none}
@@ -371,3 +371,8 @@ canvas.glyph{height:auto;aspect-ratio:240/124;background:none}
 .plan .bar:is(:hover,.hot) b,.plan .bar:is(:hover,.hot) small{opacity:0}
 .plan .bar:is(:hover,.hot) p{opacity:1;translate:0 -50%;transition-delay:.1s}
 @media (prefers-reduced-motion:reduce){.plan .bar,.plan .bar p,.plan .bar b,.plan .bar small,.plan .pin i::after{transition:none!important;animation:none!important}.plan .bar{clip-path:none}}
+/* WEB3 ADOPTION pays out: a "+$" rises and fades, a bill is thrown up and falls away spinning (--dx / --dy / --rot set per pop) */
+.usd{position:absolute;z-index:11;translate:-50% -50%;pointer-events:none;font:400 40px/1 var(--head);color:#7cff7c;text-shadow:0 0 16px #14f19599,0 2px 0 #050505;white-space:nowrap;animation:usdup 1.3s cubic-bezier(.2,.8,.2,1) both}
+.bill{position:absolute;z-index:11;translate:-50% -50%;pointer-events:none;font-size:44px;line-height:1;animation:billout 1.1s cubic-bezier(.25,.6,.4,1) both}
+@keyframes usdup{0%{opacity:0;transform:translateY(8px) scale(.6)}18%{opacity:1;transform:translateY(-6px) scale(1.15)}100%{opacity:0;transform:translate(var(--dx,0px),-90px) scale(1)}}
+@keyframes billout{0%{opacity:0;transform:scale(.3)}15%{opacity:1}60%{opacity:1;transform:translate(var(--dx),var(--dy)) rotate(calc(var(--rot) * .6)) scale(1)}100%{opacity:0;transform:translate(calc(var(--dx) * 1.25),calc(var(--dy) + 260px)) rotate(var(--rot)) scale(.8)}}
