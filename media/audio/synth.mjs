@@ -20,7 +20,7 @@ export function voice(out, t0, dur, o) {
   const lpA = lp ? 1 - Math.exp(-TAU * lp / SR) : 1, hpA = hp ? Math.exp(-TAU * hp / SR) : 0;
   for (let i = 0; i < n; i++) {
     const t = i / SR, k = i0 + i; if (k < 0) continue; if (k >= out.length) break;
-    let hz = f(t); if (vib && t > (vib.delay ?? 0)) hz *= 2 ** (vib.depth * Math.sin(TAU * vib.rate * (t - (vib.delay ?? 0))) / 12);
+    let hz = f(t); if (!Number.isFinite(hz)) hz = 0; if (vib && t > (vib.delay ?? 0)) hz *= 2 ** (vib.depth * Math.sin(TAU * vib.rate * (t - (vib.delay ?? 0))) / 12);   // a /0 in a sweep must not write NaN into the mix
     // envelope: attack → decay to sustain → (note-off at dur) release
     let e = t < a ? t / a : t < a + d ? 1 - (1 - s) * (t - a) / d : s; if (t > dur) e *= Math.max(0, 1 - (t - dur) / r);
     let x = 0; ph += hz / SR; ph -= Math.floor(ph);
@@ -46,3 +46,9 @@ export const peak = b => { let p = 0; for (let i = 0; i < b.length; i++) p = Mat
 export const fade = (b, inS = .002, outS = .01) => { const a = Math.round(inS * SR), z = Math.round(outS * SR); for (let i = 0; i < Math.min(a, b.length); i++) b[i] *= i / a; for (let i = 0; i < Math.min(z, b.length); i++) b[b.length - 1 - i] *= i / z; return b; };
 // add `src` into `dst` at t (s), scaled by g
 export const mixInto = (dst, src, t, g = 1) => { const i0 = Math.round(t * SR); for (let i = 0; i < src.length; i++) { const k = i0 + i; if (k >= 0 && k < dst.length) dst[k] += src[i] * g; } return dst; };
+// One-pole DC block, float64. A Web Audio biquad highpass at ~20 Hz is the wrong tool at 32 kHz: the poles sit on the unit circle in float32 and the passband rings (a 30 Hz tone comes out louder).
+export function dcBlock(b, fc = 20, rate = SR) {
+  const R = Math.exp(-2 * Math.PI * fc / rate); let x1 = 0, y1 = 0;
+  for (let i = 0; i < b.length; i++) { const x = b[i]; y1 = x - x1 + R * y1; x1 = x; b[i] = y1; }
+  return b;
+}

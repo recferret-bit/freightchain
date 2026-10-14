@@ -408,7 +408,7 @@ Also at the root: `package.json`, `docker-compose.yml` (PostgreSQL on `127.0.0.1
 
 ## Skills
 
-Skills live in `.claude/skills/<name>/`. A coding agent reads that folder's `SKILL.md` before the work. The same command is what you run yourself. The read-only skills never deploy and never write to production.
+Skills live in `.claude/skills/<name>/`. A coding agent reads that folder's `SKILL.md` before the work. Gemini CLI reads `.agents/skills/` instead of `.claude/skills/`; `game-audio` is linked there (same folder, not a second copy). The same command is what you run yourself. The read-only skills never deploy and never write to production.
 
 | Skill | What it is for | Run |
 | --- | --- | --- |

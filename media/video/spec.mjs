@@ -22,11 +22,15 @@ export function loadSpec(raw) {
     if (!(o.dur > 0)) bad.push(`${o.id}: dur must be > 0`);
     o.transition = { type: 'cut', dur: .3, ...(typeof sc.transition === 'string' ? { type: sc.transition } : sc.transition) };
     if (!TRANSITIONS.includes(o.transition.type)) bad.push(`${o.id}: transition "${o.transition.type}" not in ${TRANSITIONS}`);
-    for (const c of o.captions) if (!(c.head && (s.look !== 'classic' || c.sub)) || c.at + c.dur > o.dur + 1e-6) bad.push(`${o.id}: caption "${c.head}" needs head (+ sub unless look is big) and must end inside the scene (at+dur <= ${o.dur})`);
-    for (const c of o.captions) if (c.fx && !MEME_FX.includes(c.fx)) bad.push(`${o.id}: caption fx "${c.fx}" not in ${MEME_FX}`);
+    if (!(o.transition.dur > 0)) bad.push(`${o.id}: transition dur must be > 0`);
+    for (const c of o.captions) {
+      if (!(Number.isFinite(c.at) && Number.isFinite(c.dur) && c.at >= 0 && c.dur >= 0)) bad.push(`${o.id}: caption "${c.head}" at and dur must be numbers`);
+      else if (!(c.head && (s.look !== 'classic' || c.sub)) || c.at + c.dur > o.dur + 1e-6) bad.push(`${o.id}: caption "${c.head}" needs head (+ sub unless look is big) and must end inside the scene (at+dur <= ${o.dur})`);
+      if (c.fx && !MEME_FX.includes(c.fx)) bad.push(`${o.id}: caption fx "${c.fx}" not in ${MEME_FX}`);
+    }
     if (o.clock && !(Number.isFinite(o.clock.from) && Number.isFinite(o.clock.to))) bad.push(`${o.id}: clock needs from and to (seconds)`);
     if (o.card && !o.card.cta) bad.push(`${o.id}: card needs cta`);
-    for (const e of o.events) if (e.t > o.dur) bad.push(`${o.id}: event "${e.do}" at ${e.t}s is after the scene ends`);
+    for (const e of o.events) if (!Number.isFinite(e.t) || e.t < 0 || e.t > o.dur) bad.push(`${o.id}: event "${e.do}" at ${e.t}s is outside the scene`);
     o.shots = (o.shots ?? []).map(sh => ({ at: 0, fx: 'pop', ...sh }));
     for (const sh of o.shots) {
       const nm = sh.src ?? sh.stat?.[1];
@@ -37,7 +41,7 @@ export function loadSpec(raw) {
       if (sh.at + (sh.dur ?? 0) > o.dur + 1e-6) bad.push(`${o.id}: shot ${nm} must end inside the scene`);
     }
     if (o.bg != null && o.bg !== 'sol') bad.push(`${o.id}: bg "${o.bg}" must be "sol" or absent`);
-    for (const e of o.events) if (!EVENTS.includes(e.do)) bad.push(`${o.id}: event "${e.do}" not in ${EVENTS}`);
+    for (const e of o.events) if (!EVENTS.includes(e.do)) bad.push(`${o.id}: event "${e.do}" not in ${EVENTS}`);   // t is checked above; a string t used to pass and then throw inside toFixed
     return o;
   });
   s.total = s.scenes.reduce((a, c) => a + c.dur, 0);

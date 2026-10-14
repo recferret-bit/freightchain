@@ -25,7 +25,9 @@ test('--audio-only uses timeline.json when it is there (synced)', () => {
 });
 test('--remux needs the video first; with one it replaces the audio and keeps the picture', () => {
   assert.equal(make(spec({ ...intro, name }), '--remux').status, 2);
-  const silent = testVideo(14.8); fs.copyFileSync(silent, path.join(vDir, name + '.mp4')); fs.copyFileSync(silent, path.join(vDir, name + '.gif'));   // stand-ins: the muxer only needs a video stream
+  const silent = testVideo(14.8); fs.copyFileSync(silent, path.join(vDir, name + '.mp4'));
+  const early = make(spec({ ...intro, name }), '--remux'); assert.equal(early.status, 2); assert.equal(streams(path.join(vDir, name + '.mp4')).length, 1, 'a missing gif must not replace the audio');
+  fs.copyFileSync(silent, path.join(vDir, name + '.gif'));   // stand-ins: the muxer only needs a video stream
   const r = make(spec({ ...intro, name }), '--remux'); assert.equal(r.status, 0, stderrAll(r)); const s = streams(path.join(vDir, name + '.mp4'));
   assert.equal(s.length, 2); assert.match(s[0], /Video: h264.*320x180/); assert.match(s[1], /Audio: aac/); assert.ok(Math.abs(duration(path.join(vDir, name + '.mp4')) - 14.8) < .1);
   assert.equal(streams(path.join(vDir, name + '.min.mp4')).length, 2, 'the .min copy keeps the audio');

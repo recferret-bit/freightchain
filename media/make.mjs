@@ -52,7 +52,7 @@ else if (addIn) {
   if (path.resolve(out) === path.resolve(addIn)) fail('--out must be a different file than the input (the original is never overwritten)');
   fs.copyFileSync(addIn, out); console.log('mux  ' + mp4Info(mux(out, r.files.mix, Math.max(spec.maxSeconds, spec.total))));
 } else if (flag('--audio-only')) sound();
-else if (flag('--remux')) { need(spec.name + '.mp4'); const r = sound(); console.log('mux  ' + mp4Info(mux(mp4, r.files.mix, spec.maxSeconds))); if (!flag('--preview')) { need(spec.name + '.gif'); minify(); } }
+else if (flag('--remux')) { need(spec.name + '.mp4'); if (!flag('--preview')) need(spec.name + '.gif'); const r = sound(); console.log('mux  ' + mp4Info(mux(mp4, r.files.mix, spec.maxSeconds))); if (!flag('--preview')) minify(); }
 else {
   console.log(`${spec.name}: ${spec.scenes.length} scenes, ${spec.total.toFixed(2)} s, ${spec.width}x${spec.height} @ ${spec.fps} fps${spec.audio && !flag('--video-only') && !only ? ', with audio' : ''}`);
   renderVideo(spec, vdir, { only: only ? only.split('-') : [], keep: flag('--keep') });
