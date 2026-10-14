@@ -248,3 +248,11 @@ h1 small{font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;c
 @keyframes turn{0%,20%{transform:rotate(0)}60%,100%{transform:rotate(-90deg)}}
 #turn button{font:600 13px var(--body);letter-spacing:2px;text-transform:uppercase;color:#fff9;background:none;border:1px solid #fff4;border-radius:999px;padding:10px 18px}
 @media (prefers-reduced-motion:reduce){#turn .phone{animation:none}}
+
+/* header ticker – the landing's running text (LCD green, ◆ between facts) on black, over every slide */
+#ticker{position:absolute;left:0;right:0;top:0;height:50px;overflow:hidden;z-index:15;contain:paint;background:#030803;border-bottom:2px solid #1e4a22;color:#7cff7c;font:700 22px/50px var(--body);letter-spacing:2px;text-transform:uppercase;text-shadow:0 0 10px #7cff7c55}
+#ticker .tk{position:absolute;left:0;top:0;display:inline-flex;white-space:nowrap;animation:tkrun 120s linear infinite}
+#ticker span{position:relative;padding:0 52px}
+#ticker span::after{content:"◆";position:absolute;right:-8px;opacity:.5;font-size:14px}
+@keyframes tkrun{to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){#ticker .tk{animation:none}}

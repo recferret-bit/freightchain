@@ -182,6 +182,13 @@ function daily(el) {
   el.append(s);
 }
 
+/* ── header ticker: the landing's running text (LCD green on black), project facts ── */
+const FACTS = ['One endless road · one shift', 'Manual gearbox · clutch · stalls', 'Cold engine · heat · battery', 'Traffic · forks · sinkholes', 'Day and night', 'Speed capped near 100 km/h',
+  '10 free rides · no download · in your browser', 'Three free levels: easy · medium · hard', 'Five routes', 'Live watch and replays · no wallet to watch', '31 achievement badges',
+  'Prize pool split 70 / 20 / 10', 'Solana devnet · no token', 'Built solo in Belgrade'];
+const tk = document.querySelector('#ticker .tk');
+tk.append(...FACTS.map(t => { const e = document.createElement('span'); e.textContent = t; return e; }), ...FACTS.map(t => { const e = document.createElement('span'); e.textContent = t; return e; }));   // doubled: the -50% translate loops seamlessly
+
 /* ── engine ── */
 const deck = document.getElementById('deck');
 deck.innerHTML = SLIDES.map((s, i) => `<section class="slide L-${s.layout.split(' ').join(' L-')}" id="s-${s.id}" data-i="${i}">${s.html}<div class="num">${String(i + 1).padStart(2, '0')} / ${String(SLIDES.length).padStart(2, '0')}</div></section>`).join('');
