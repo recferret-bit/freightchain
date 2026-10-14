@@ -19,7 +19,7 @@ Related: [deploy + operate](program-deploy.md) · [escrow detail](agents/escrow.
 
 ## Not done
 
-**Pentest Oct 2026 (program findings H4, H5, M6, M8, L4–L8)**: planned as one in-place v3.1 upgrade – WP5 in [the fix plan](reviews/pentest-2026-10/fix-plan.md). Not started.
+**Pentest Oct 2026 (program findings H4, H5, M6, M8, L4–L8)**: planned as ONE settle-first program v4 upgrade (H5 = a committed winners root grows `Pool`; with it H4, M6, M8, L4 `seal_road`, L5–L8) – WP5 in [the fix plan](reviews/pentest-2026-10/fix-plan.md). Not started.
 
 **Deploy and keys**
 - The program is not on devnet yet. The keys exist (`deploy/secrets/devnet/`) and the code carries the devnet id `9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx`; the wallets are unfunded, so nothing is deployed (`program-deploy.md` devnet runbook).
