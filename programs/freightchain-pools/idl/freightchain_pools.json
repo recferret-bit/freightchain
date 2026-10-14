@@ -2295,7 +2295,7 @@
         {
           "name": "caller",
           "docs": [
-            "Settlement is permissionless: anyone can crank it once the driver's attestation exists"
+            "Settlement is permissionless: anyone can crank it once THIS ride's attestation exists and its `settle_from` lock is over"
           ],
           "signer": true
         },

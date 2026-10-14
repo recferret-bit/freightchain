@@ -152,8 +152,9 @@ pub struct SetPayoutAuthority<'info> {
     pub config: Account<'info, Config>,
 }
 
-/// Admin: name (or clear, `None`) the payout key – the one key besides the admin that may `pay_prize` and `close_pool`, and only once a
-/// pool's review window is over. It can open, cancel or configure nothing.
+/// Admin: name (or clear, `None`) the payout key – it commits a pool's winners root (`commit_winners`, once its rides are over), writes the
+/// ride attestations pledges settle on, and closes a pool; `pay_prize` itself is permissionless against the committed root once its lock ends.
+/// It can open, cancel, veto or configure nothing.
 pub fn handle_set_payout_authority(ctx: Context<SetPayoutAuthority>, payout_authority: Option<Pubkey>) -> Result<()> {
     require!(payout_authority != Some(Pubkey::default()), PoolError::InvalidParams);
     ctx.accounts.config.payout_authority = payout_authority;

@@ -20,7 +20,8 @@ import { SolanaRpc, sleep } from './solana-rpc.js';
     (a wallet needing k extra tries has probability 2^-k). With 30k / 18k an unlucky wallet (~1 in 128 for buys, ~1 in 8 for refunds) could NEVER buy / be refunded
     by a server-built transaction – found by the devnet rehearsal ("exceeded CUs meter"). 60k / 45k leave ≥ 20 extra tries (2^-20). The limit is a cap, not a charge
     (the fee is priority price × limit, ~0 on devnet). */
-export const CU_LIMITS = { buy: 60_000, refund: 45_000, fail_pool: 6_000, expire_pool: 6_000, pay_prize: 22_000, close_pool: 30_000, open_next_pool: 40_000, create_pledge: 30_000,
+// fail_pool / expire_pool: the v4 Pool is bigger – 5 852 CU each on a real validator (localnet e2e) + the two ComputeBudget instructions (~300) went over 6 000
+export const CU_LIMITS = { buy: 60_000, refund: 45_000, fail_pool: 10_000, expire_pool: 10_000, pay_prize: 22_000, close_pool: 30_000, open_next_pool: 40_000, create_pledge: 30_000,
   settle_pledge: 25_000, refund_pledge: 25_000,
   // program v4 (LiteSVM: commit 8.8k, a 64-winner pay 15.5k, refund_sponsor 13.5k, sponsor with a new receipt 18.1k)
   commit_winners: 15_000, veto_winners: 11_000, record_ride_attestation: 30_000, seal_road: 40_000, refund_sponsor: 25_000 } as const;

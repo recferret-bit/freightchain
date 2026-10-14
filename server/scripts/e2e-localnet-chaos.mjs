@@ -14,6 +14,7 @@ import { Connection, Keypair, PublicKey, SYSVAR_CLOCK_PUBKEY, Transaction } from
 import { PoolProgramCodec } from '../dist/infrastructure/solana/pool-program.codec.js';
 import { POOL_PROGRAM_IDL } from '../dist/infrastructure/solana/pool-program.idl.js';
 import { startFaultProxy } from './localnet-fault-proxy.mjs';
+import { sealRoad } from './localnet-seal.mjs';
 
 const { RPC, KEYS, WEBHOOK_SECRET } = process.env;
 if (!RPC || !KEYS) { console.error('run it through .claude/skills/localnet-e2e/run.sh (SCENARIO=chaos)'); process.exit(2); }
@@ -59,7 +60,10 @@ const signIn = async (s, kp) => {
   const wallet = kp.publicKey.toBase58(), { j } = await api(s, 'auth/nonce', { body: { wallet } });
   const r = await fetch(`${s.base}/api/auth/verify`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ wallet, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(j.message), kp.secretKey)) }) });
   if (!r.ok) throw new Error(`sign-in failed: ${r.status}`);
-  return r.headers.get('set-cookie').split(';')[0];
+  const cookie = r.headers.get('set-cookie').split(';')[0];
+  const offer = await api(s, 'profile/agreements', { body: { age18: true, loss: true }, cookie, method: 'PUT' });   // paid play (tickets) needs the 18+ and loss offer
+  if (!offer.ok) throw new Error(`agreements failed: ${offer.status}`);
+  return cookie;
 };
 async function player(on, lamports = 3e9) {
   const kp = Keypair.generate(), wallet = kp.publicKey.toBase58();
@@ -99,13 +103,18 @@ try {
   execFileSync('node', ['dist/cli/index.js', 'pool:crank'], { stdio: 'ignore' });
   const treas = ['--fee-treasury', addr('fee'), '--seed-treasury', addr('seed'), '-k', `${KEYS}/admin.json`];
   const PRICE = 40_000_000;
-  const mk = (min, prep, perWallet = 4) => { const id = admintool(['create-pool', '--tier', '8h', '--price', String(PRICE), '--min', String(min), '--max', '0', '--per-wallet', String(perWallet), '--prep', `+${prep}`, '--play', `+${prep + 60}`, '--split', '7000/2000/1000', ...treas]).poolId; execFileSync('node', ['dist/cli/index.js', 'pool:register', String(id), '--label', `CHAOS ${id}`], { stdio: 'ignore' }); return id; };
-  const X = mk(1000, 900), Y = mk(5, 110), W = mk(5, 110), Z = mk(50, 220, 2);   // X stays open for the purchase tests; Y + W fail first (W has no tickets, id after Y); Z = the race
+  const mk = (min, prep, perWallet = 4) => admintool(['create-pool', '--tier', '8h', '--price', String(PRICE), '--min', String(min), '--max', '0', '--per-wallet', String(perWallet), '--prep', `+${prep}`, '--play', `+${prep + 60}`, '--split', '7000/2000/1000', ...treas]).poolId;
+  const X = mk(1000, 900), Y = mk(5, 125), W = mk(5, 125), Z = mk(50, 235, 2);   // X stays open for the purchase tests; Y + W fail first (W has no tickets, id after Y); Z = the race
+  // v4 (L4): every road sealed (the crank would do it first otherwise – its first steps here must be the ones under test), then registered
+  for (const id of [X, Y, W, Z]) { await sealRoad({ conn, codec, admintool, id, keyfile: `${KEYS}/admin.json` }); execFileSync('node', ['dist/cli/index.js', 'pool:register', String(id), '--label', `CHAOS ${id}`], { stdio: 'ignore' }); }
   check('pools X (purchases), Y + W (a crank pass with a refused read), Z (the race) created', [X, Y, W, Z].every((id, i, a) => i === 0 || id === a[i - 1] + 1), `${X} ${Y} ${W} ${Z}`);
   const [P1w, P5w, P6w] = [await player([S1, S2]), await player([S1, S2]), await player([S1, S2])];
   const buy = (p, pool) => admintoolAsync(['buy', '--pool', String(pool), '--qty', '1', '-k', p.keyfile]);   // pool-admin: the buyer pays its own fee + rent
-  const [y1, y2] = [await player([S1]), await player([S1])];
+  const [y1, y2, ys] = [await player([S1]), await player([S1]), await player([S1])];
   await Promise.all([buy(y1, Y), buy(y2, Y)]);
+  const SPONSOR_Y = 15_000_000;
+  await admintoolAsync(['sponsor', '--pool', String(Y), '--lamports', String(SPONSOR_Y), '-k', ys.keyfile]);   // v4 (M8): a failed pool owes its sponsor too
+  const ysRent = await conn.getMinimumBalanceForRentExemption((await conn.getAccountInfo(codec.sponsorReceiptPda(Y, ys.wallet), 'confirmed')).data.length);
   const zs = []; for (let i = 0; i < 10; i++) zs.push(await player([S1]));
   const strangerW = await player([S1]);
   await Promise.all(zs.map(p => buy(p, Z)));
@@ -148,7 +157,7 @@ try {
   await untilChain(Number((await poolAcc(Y)).prepDeadline.getTime() / 1000), 'pool Y / W prep deadline');
   const gpa = PC.fault({ method: 'getProgramAccounts', mode: 'error' });
   const swallow = PC.fault({ method: 'sendTransaction', mode: 'blackhole', times: 2 });   // the crank's first two sends are "accepted" and never forwarded
-  const yb = { y1: await bal(y1.wallet), y2: await bal(y2.wallet) };
+  const yb = { y1: await bal(y1.wallet), y2: await bal(y2.wallet), ys: await bal(ys.wallet) };
   const pass5 = await cranker();
   note(`T5 crank pass with getProgramAccounts refused: ${pass5.ok ? pass5.actions.filter(a => [Y, W].includes(a.poolId)).map(a => `${a.step}#${a.poolId}${a.error ? ' ✗ ' + a.error.slice(0, 60) : ''}`).join(', ') : 'the pass THREW – ' + pass5.stderr}`);
   check('T5 the pass survives the refused read (it does not throw) and reports pool Y\'s refund as failed', pass5.ok && stepsOf(pass5, Y).includes('refund✗'), stepsOf(pass5, Y) || pass5.stderr);
@@ -157,8 +166,9 @@ try {
   swallow.off();
   check('T5 pool Y is left refunding (failed, nothing refunded, nothing closed)', (await poolAcc(Y)).status === 2 && (await poolAcc(Y)).refunded === 0);
   const pass5b = await cranker({ SOLANA_RPC_FALLBACKS: RPC });
-  check('T5 primary refuses getProgramAccounts but a fallback RPC answers: the next pass refunds both tickets and closes Y', pass5b.ok && stepsOf(pass5b, Y) === 'refund close_pool' && (await poolAcc(Y)).status === 4, stepsOf(pass5b, Y) || pass5b.stderr);
-  check('T5 …each buyer got the price + its own Ticket rent back, exactly (the crank paid the fees)', (await bal(y1.wallet)) - yb.y1 === PRICE + ticketRent && (await bal(y2.wallet)) - yb.y2 === PRICE + ticketRent);
+  check('T5 primary refuses getProgramAccounts but a fallback RPC answers: the next pass refunds both tickets, the sponsor (v4, M8) and closes Y', pass5b.ok && stepsOf(pass5b, Y) === 'refund refund_sponsor close_pool' && (await poolAcc(Y)).status === 4, stepsOf(pass5b, Y) || pass5b.stderr);
+  check('T5 …each buyer got the price + its own Ticket rent back, the sponsor its sponsorship + its receipt\'s rent, exactly (the crank paid the fees)', (await bal(y1.wallet)) - yb.y1 === PRICE + ticketRent && (await bal(y2.wallet)) - yb.y2 === PRICE + ticketRent
+    && (await bal(ys.wallet)) - yb.ys === SPONSOR_Y + ysRent, `${(await bal(ys.wallet)) - yb.ys} vs ${SPONSOR_Y + ysRent}`);
   gpa.off();
 
   // ── T6. the race: Z has 10 tickets (two refund batches of 8). Three crank CLIs + a stranger's refund at once.

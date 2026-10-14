@@ -25,6 +25,8 @@ import { closeSplit, prizeBound } from '../dist/domain/economy/vault-split.js';
 import { poolPayouts } from '../dist/domain/economy/pool-payouts.js';
 import { honestRoad } from './road-damage.mjs';
 import { coverage } from './localnet-coverage.mjs';
+import { CU_LIMITS } from '../dist/infrastructure/solana/program-chain.adapter.js';
+import { sealRoad } from './localnet-seal.mjs';
 
 const { BASE, RPC, KEYS } = process.env;
 if (!BASE || !RPC || !KEYS) { console.error('run it through .claude/skills/localnet-e2e/run.sh (needs BASE, RPC, KEYS)'); process.exit(2); }
@@ -32,6 +34,7 @@ const CDP = +(process.env.CHROME_PORT || 9391);
 const PREP_D = +(process.env.PREP_D || 150), PLAY_D = +(process.env.PLAY_D || 270), REVIEW_D = +(process.env.REVIEW_D || 20);   // v2: payout_at = play + REVIEW_D
 const PRICE = 100_000_000, SPONSOR = 50_000_000, SPLIT = [7000, 2000, 1000];   // 0.1 SOL a ticket, 0.05 SOL sponsored
 const cov = coverage(process.env.COVERAGE || `${KEYS}/../coverage.json`);
+BigInt.prototype.toJSON ??= function () { return String(this); };   // the codec decodes Pool.paid_mask (u64 bit mask) as a BigInt
 const T0 = Date.now(), fails = [];
 const check = (n, ok, x = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'} [${((Date.now() - T0) / 1000).toFixed(0)} s] ${n}${x ? ' – ' + x : ''}`); if (!ok) fails.push(n); return ok; };
 const until = async (fn, ms = 30000, step = 500) => { for (let i = 0; i <= ms / step; i++) { const v = await fn(); if (v) return v; await sleep(step); } return false; };
@@ -60,6 +63,7 @@ const refuse = (step, args, want) => {
 };
 const sha256 = text => createHash('sha256').update(text, 'utf8').digest('hex');
 const r = (v, d) => Math.round(v * 10 ** d) / 10 ** d;
+const ms = v => (v instanceof Date ? v.getTime() : Date.parse(v));   // pool-admin prints the codec's Dates as ISO strings
 
 // ── HTTP as a wallet
 // a socket the server closed while idle (its keep-alive timeout, 5 s – the crank / CLI steps leave such gaps) fails the next request before it is sent: once more
@@ -103,7 +107,9 @@ async function apiRide(p, { seconds = 20, speed = 15, extra = 60, mutate = () =>
   const ride = made.j;
   await api(`rides/${ride.id}/start`, { body: {}, cookie: p.cookie });
   const d = { id: ride.id, t0: Date.now(), t: 0, s: 0, seq: 0, prevHash: ride.id, samples: [], inputs: [], bt0: 0, prompts: [], road: honestRoad(BASE, ride.id) };
-  const row = (t, s, v) => [r(t, 2), r(s, 1), 2.4, 0, r(v, 2), Math.round(900 + v * 50), 6, 100, 0.6, 0, 0, 0, 12, 1 | 2 | 8];
+  // each driver holds its own line across the road (a slow weave, its own phase and length): identical lines are what the pool's duplicate-recording mark catches
+  const ph = Math.random() * 2 * Math.PI, wl = 25 + Math.random() * 40, lane = s => 2.4 + 0.45 * Math.sin(s / wl + ph);
+  const row = (t, s, v) => [r(t, 2), r(s, 1), r(lane(s), 2), 0, r(v, 2), Math.round(900 + v * 50), 6, 100, 0.6, 0, 0, 0, 12, 1 | 2 | 8];
   const cut = async () => {
     await d.road.take(d.samples);
     const base = { seq: d.seq++, prevHash: d.prevHash, t0: r(d.bt0, 2), t1: r(d.t, 2), samples: d.samples, inputs: d.inputs };
@@ -206,9 +212,11 @@ try {
   const empty = Keypair.generate().publicKey.toBase58();
   refuse('create_pool: a fee treasury that is not rent-exempt', mkArgs('1h', PRICE, 10, 0, 2, 60, 120, SPLIT.join('/'), ['--fee-treasury', empty, '--seed-treasury', addr('seed')]), 'TreasuryNotRentExempt');
   const D = admintool([...mkArgs('1h', PRICE, 10, 0, 2, PREP_D, PLAY_D), '--payout', `+${PLAY_D + REVIEW_D}`]).poolId;
+  const sealD = await sealRoad({ conn, codec, admintool, id: D, keyfile: `${KEYS}/admin.json` });   // v4 (L4): no ride before the road is sealed (the crank's job on a server)
   execFileSync('node', ['dist/cli/index.js', 'pool:register', String(D), '--label', 'TEN RIDERS'], { stdio: 'ignore' });
   const vD = codec.vaultPda(D).toBase58();
-  check(`pool D (#${D}, 1h, min 10, ≤ 2 per wallet): open on chain and on the server, vault = rent minimum`, (await poolAcc(D)).status === 0 && (await serverPool(D)).status === 'open' && (await bal(vD)) === RENT0);
+  check(`pool D (#${D}, 1h, min 10, ≤ 2 per wallet): open on chain and on the server, vault = rent minimum, its road sealed`, (await poolAcc(D)).status === 0 && (await serverPool(D)).status === 'open' && (await bal(vD)) === RENT0 && Number(sealD?.pool.sealSlot) === 0 && Number(sealD.pool.seedSlot) > 0);
+  refuse('seal_road of a pool already sealed', ['seal-road', '--pool', String(D), '-k', `${KEYS}/admin.json`], 'RoadAlreadySealed');
 
   // ── 2. ten wallets buy eleven tickets
   const R = []; for (let i = 1; i <= 10; i++) R.push(await player(`r${i}`));
@@ -240,7 +248,8 @@ try {
   before = await bals({ s: S.wallet, vault: vD });
   const sp = admintool(['sponsor', '--pool', String(D), '--lamports', String(SPONSOR), '-k', S.keyfile]);
   after = await bals({ s: S.wallet, vault: vD });
-  check('a fan sponsors 0.05 SOL: −(amount + fee), the vault holds it', before.s - after.s === SPONSOR + (await fee(sp.signature)) && after.vault - before.vault === SPONSOR);
+  const receiptRent = await conn.getMinimumBalanceForRentExemption((await conn.getAccountInfo(codec.sponsorReceiptPda(D, S.wallet), 'confirmed')).data.length);
+  check('a fan sponsors 0.05 SOL: −(amount + fee + its SponsorReceipt\'s rent – v4, M8), the vault holds it', before.s - after.s === SPONSOR + (await fee(sp.signature)) + receiptRent && after.vault - before.vault === SPONSOR, `${before.s - after.s}`);
   check('server mirror: active, 11 sold, the sponsorship counted', await until(async () => { const s = await serverPool(D); return s.status === 'active' && s.sold === 11 && s.sponsoredLamports === SPONSOR; }, 20000), JSON.stringify(await serverPool(D)).slice(0, 200));
   check('every wallet holds its tickets on the server', (await Promise.all(R.map(async p => (await myTickets(p, D))?.balance === (p === R8 ? 2 : 1)))).every(Boolean));
   check(`vault D = rent + 11 × price + sponsorship`, (await bal(vD)) === RENT0 + 11 * PRICE + SPONSOR);
@@ -249,14 +258,13 @@ try {
   refuse('cancel_pool on the live pool D (only an open pool)', ['cancel-pool', '--pool', String(D), '-k', `${KEYS}/admin.json`], 'PoolNotOpen');
   refuse('refund from the live pool D', ['refund', '--pool', String(D), '--buyer', R5.wallet, '-k', Z.keyfile], 'NotRefunding');
   refuse('close_ticket in the live pool D (only once settled)', ['close-ticket', '--pool', String(D), '--buyer', R5.wallet, '-k', Z.keyfile], 'NotSettled');
-  // v3: no prize without the winner's VERIFIED attestation (the account is checked before the handler) – a pay_prize to a wallet without one never gets as far as
-  // the rule its refusal is about, so R2 is attested here by the admin (the payout key / admin may record one while the pool is ACTIVE); the job later keeps it
-  refuse('pay_prize to a wallet with no attestation (program v3)', ['pay-prize', '--pool', String(D), '--to', R2.wallet, '--lamports', '1000000', '-k', `${KEYS}/admin.json`], 'AccountNotInitialized');
-  refuse('record_attestation by a stranger', ['record-attestation', '--pool', String(D), '--driver', R2.wallet, '--km', '1', '-k', Z.keyfile], 'Unauthorized');
-  refuse('record_attestation VERIFIED with 0 km', ['record-attestation', '--pool', String(D), '--driver', R2.wallet, '--km', '0', '-k', `${KEYS}/admin.json`], 'ZeroVerifiedKm');
-  const attR2 = admintool(['record-attestation', '--pool', String(D), '--driver', R2.wallet, '--km', '1', '-k', `${KEYS}/admin.json`]).attestation;
-  check('record_attestation by the admin: R2 VERIFIED in pool D (1 km)', attR2?.status === 1 && attR2.verifiedKm === 1 && attR2.driver === R2.wallet, JSON.stringify(attR2));
-  refuse('pay_prize before the play deadline', ['pay-prize', '--pool', String(D), '--to', R2.wallet, '--lamports', '1000000', '-k', `${KEYS}/admin.json`], 'TooEarly');
+  // v4 (H5-B): a prize is paid only from a committed winners root – committed by the admin / payout key once the rides are over, public until its lock ends
+  const probe = `${R2.wallet}:1000000`, aRide = '00000000-0000-4000-8000-000000000001';
+  refuse('pay_prize before any winners root (anyone may send one – the root decides)', ['pay-prize', '--pool', String(D), '--winners', probe, '--rank', '1', '-k', Z.keyfile], 'WinnersNotCommitted');
+  refuse('commit_winners by a stranger', ['commit-winners', '--pool', String(D), '--winners', probe, '-k', Z.keyfile], 'Unauthorized');
+  refuse('commit_winners before the play deadline', ['commit-winners', '--pool', String(D), '--winners', probe, '-k', `${KEYS}/admin.json`], 'TooEarly');
+  refuse('record_ride_attestation by a stranger', ['record-ride-attestation', '--pool', String(D), '--ride', aRide, '--driver', R2.wallet, '--km', '1', '-k', Z.keyfile], 'Unauthorized');
+  refuse('record_ride_attestation VERIFIED with 0 km', ['record-ride-attestation', '--pool', String(D), '--ride', aRide, '--driver', R2.wallet, '--km', '0', '-k', `${KEYS}/admin.json`], 'ZeroVerifiedKm');
 
   // ── 3. the rides: finished rides over the player API (+ one in the real game), all at once
   console.log('     … 11 rides: the real game in Chrome + 10 recordings over the API, each past 1 km (≈ 60 s)');
@@ -286,6 +294,10 @@ try {
   const acc = await A.override(rides[R9.wallet][0].id, 'verified', 'payout e2e: the unhashed batch is a known client hiccup');
   const r9 = (await api(`rides/${rides[R9.wallet][0].id}`, { cookie: R9.cookie })).j.verdict;
   check('admin ACCEPTS R9 (signed review): verified, by the admin wallet', acc.status === 200 && r9?.status === 'verified' && r9?.override?.by === ADMIN, `${acc.status} ${JSON.stringify(r9)}`);
+  // a machine-rejected ride waits for an admin's decision too (the payout gate, WP2 review): the admin confirms R10's rejection (signed)
+  const rej = await A.override(rides[R10.wallet][0].id, 'rejected', 'payout e2e: the teleport stands');
+  const r10 = (await api(`rides/${rides[R10.wallet][0].id}`, { cookie: R10.cookie })).j.verdict;
+  check('admin CONFIRMS R10\'s rejection (signed review): rejected, by the admin wallet', rej.status === 200 && r10?.status === 'rejected' && r10?.override?.by === ADMIN, `${rej.status} ${JSON.stringify(r10)}`);
 
   // ── 4. "cron": re-judge every completed ride from its telemetry, then a crank pass
   const rj = cli('verdict:rejudge', '--status', 'all');
@@ -293,6 +305,8 @@ try {
   check('cron verdict:rejudge --status all: re-judged the completed rides; R9 keeps the admin\'s decision, R10 stays rejected', after9?.status === 'verified' && after9?.override && after10?.status === 'rejected', JSON.stringify(rj).slice(0, 300));
   const crank = cli('pool:crank');
   check('cron pool:crank: nothing to do for the live pool D', !crank.actions.some(a => a.poolId === D), JSON.stringify(crank.actions));
+  // pool L: opened now and sealed LATE on purpose (no crank pass runs before it) – seal_road then walks most of the 512-entry SlotHashes: its worst case in CU
+  const L = admintool(mkArgs('8h', PRICE, 1, 0, 1, 3600, 3700)).poolId, lTarget = Number((await poolAcc(L)).sealSlot);
   check('GET payout before the payout time: 409 too_early (admin), 403 (a rider)', (await api(`pools/${D}/payout`, { cookie: await signIn(admin) })).status === 409 && (await api(`pools/${D}/payout`, { cookie: R1.cookie })).status === 403);
 
   // ── 5. the sale ends (v2: an ACTIVE pool stops selling too), the play deadline passes, the review window binds the admin too; then the payout job pays
@@ -301,62 +315,91 @@ try {
   const lateBuy = await api('tickets', { body: { poolId: D, qty: 1 }, cookie: Z.cookie });
   check('POST /api/tickets after the sale end: 409', lateBuy.status === 409, `${lateBuy.status} ${JSON.stringify(lateBuy.j).slice(0, 120)}`);
   await untilChain(Number((await poolAcc(D)).playDeadline.getTime() / 1000), 'pool D play deadline');
-  refuse('pay_prize by the admin inside the review window (after the play deadline, before payout_at)', ['pay-prize', '--pool', String(D), '--to', R2.wallet, '--lamports', '1000000', '-k', `${KEYS}/admin.json`], 'TooEarly');
-  check('GET payout inside the review window: 409 too_early', (await api(`pools/${D}/payout`, { cookie: await signIn(admin) })).status === 409);
-  // the admin's manual payout script waits for payout_at by itself (a dry run here – it sends nothing without --yes)
-  const dry = execFileSync('node', ['scripts/devnet-payout.mjs', String(D)], { encoding: 'utf8', env: { ...process.env, BASE, RPC, ADMIN: `${KEYS}/admin.json` } });
-  check('devnet-payout.mjs inside the review window: says when it ends, waits for it on the chain clock, then prints the plan', /the review window ends/.test(dry) && /ranked wallet/.test(dry) && /rerun with --yes/.test(dry) && (await chainNow()) >= Number((await poolAcc(D)).payoutAt.getTime() / 1000), dry.trim().split('\n').slice(0, 2).join(' | '));
-  await untilChain(Number((await poolAcc(D)).payoutAt.getTime() / 1000), 'pool D payout time (end of the review window)');
   pd = await poolAcc(D);
   const bound = prizeBound({ priceLamports: PRICE, ticketsSold: 11, sponsored: SPONSOR, prizeBps: SPLIT[0], seedBps: SPLIT[1] });
   check('the pot counts EVERY ticket – the crash\'s and the cheater\'s money stays in it', pd.ticketsSold === 11 && pd.sponsored === SPONSOR && bound === Math.floor((11 * PRICE + SPONSOR) * SPLIT[0] / 10_000));
-  refuse('pay_prize by a stranger', ['pay-prize', '--pool', String(D), '--to', R2.wallet, '--lamports', '1000000', '-k', Z.keyfile], 'Unauthorized');
-  refuse('pay_prize above the prize share', ['pay-prize', '--pool', String(D), '--to', R2.wallet, '--lamports', String(bound + 1), '-k', `${KEYS}/admin.json`], 'PrizeExceedsShare');
-  // both need an attestation for the address first, or the program stops at the missing account (an admin attesting the vault is what a forger would try)
-  admintool(['record-attestation', '--pool', String(D), '--driver', vD, '--km', '1', '-k', `${KEYS}/admin.json`]);
-  refuse('pay_prize into the vault itself (even with an attestation for it)', ['pay-prize', '--pool', String(D), '--to', vD, '--lamports', '1000000', '-k', `${KEYS}/admin.json`], 'AccountMismatch');
-  const emptyWallet = Keypair.generate().publicKey.toBase58();
-  admintool(['record-attestation', '--pool', String(D), '--driver', emptyWallet, '--km', '1', '-k', `${KEYS}/admin.json`]);
-  refuse('pay_prize that leaves an empty wallet below the rent minimum', ['pay-prize', '--pool', String(D), '--to', emptyWallet, '--lamports', '1000', '-k', `${KEYS}/admin.json`], 'BelowRentMin');
   // the expected ranking, from what each wallet drove in its counted rides (completed + verified, R9 by the admin's decision)
   const counted = [R1, R2, R3, R4, R5, R6, R8, R9];
   const dist = p => rides[p.wallet].reduce((a, x) => a + (x.end?.distance ?? 0), 0);
   const want = counted.slice().sort((a, b) => dist(b) - dist(a));
   const payouts = poolPayouts(bound, want.map(p => p.wallet));
-  const po = await api(`pools/${D}/payout`, { cookie: await signIn(admin) });
-  check('GET payout: 8 ranked wallets by distance (crash + cheater out), amounts = the payout table, cap = the prize share', po.ok && po.j.prizeLamports === bound && po.j.ranks.map(x => x.wallet).join() === want.map(p => p.wallet).join()
-    && po.j.ranks.map(x => x.lamports).join() === payouts.map(x => x.lamports).join(), JSON.stringify((po.j.ranks ?? po.j)).slice(0, 400));
+  const winnersArg = payouts.map(x => `${x.wallet}:${x.lamports}`).join(',');
+  // v4 (H5-B): the winners are committed at the PLAY deadline (inside the review window) – GET payout offers the commit, not prizes
+  const adminCookie = await signIn(admin);
+  let po = await api(`pools/${D}/payout`, { cookie: adminCookie });
+  check('GET payout at the play deadline (inside the review window): 8 ranked wallets by distance (crash + cheater out), amounts = the payout table, cap = the prize share; commit_winners offered, no prize yet',
+    po.ok && po.j.prizeLamports === bound && po.j.ranks.map(x => x.wallet).join() === want.map(p => p.wallet).join() && po.j.ranks.map(x => x.lamports).join() === payouts.map(x => x.lamports).join() && !!po.j.commit && po.j.transactions.length === 0 && po.j.committedRoot === null,
+    JSON.stringify(po.j.ranks ?? po.j).slice(0, 400));
   console.log(`     ranking: ${want.map((p, i) => `#${i + 1} ${p.name} ${Math.round(dist(p))} m → ${payouts[i].lamports}`).join(' · ')}`);
+  const dry = execFileSync('node', ['scripts/devnet-payout.mjs', String(D)], { encoding: 'utf8', env: { ...process.env, BASE, RPC, ADMIN: `${KEYS}/admin.json` } });
+  check('devnet-payout.mjs (dry run) at the play deadline: prints the ranked plan, offers commit_winners, sends nothing without --yes', /ranked wallet/.test(dry) && /nothing committed yet/.test(dry) && /commit_winners to sign/.test(dry) && /rerun with --yes/.test(dry) && (await poolAcc(D)).winnersCount === 0, dry.trim().split('\n').slice(-2).join(' | '));
+  // a WRONG root first – the admin's (or a stolen payout key's) mistake: public for the whole lock, and the cold admin's veto strikes it
+  const emptyWallet = Keypair.generate().publicKey.toBase58(), wrong = `${vD}:1000000,${emptyWallet}:1000`;
+  refuse('commit_winners above the prize share', ['commit-winners', '--pool', String(D), '--winners', `${R2.wallet}:${bound + 1}`, '-k', `${KEYS}/admin.json`], 'PrizeExceedsShare');
+  const wc = admintool(['commit-winners', '--pool', String(D), '--winners', wrong, '-k', `${KEYS}/admin.json`]).pool;
+  check('commit_winners of a wrong list (the vault + an empty wallet) lands: public now, pays only from max(payout_at, commit + the review lock)', wc.winnersCount === 2 && ms(wc.payFrom) >= ms(wc.payoutAt) && ms(wc.payFrom) >= ms(wc.committedAt) + REVIEW_D * 1000, JSON.stringify({ at: wc.committedAt, from: wc.payFrom, payoutAt: wc.payoutAt }));
+  refuse('commit_winners while a root is committed', ['commit-winners', '--pool', String(D), '--winners', winnersArg, '-k', `${KEYS}/admin.json`], 'WinnersCommitted');
+  refuse('pay_prize inside the lock (anyone)', ['pay-prize', '--pool', String(D), '--winners', wrong, '--rank', '2', '-k', Z.keyfile], 'TooEarly');
+  refuse('pay_prize into the vault itself (even as a committed leaf)', ['pay-prize', '--pool', String(D), '--winners', wrong, '--rank', '1', '-k', Z.keyfile], 'AccountMismatch');
+  refuse('veto_winners by a stranger (the cold admin only)', ['veto-winners', '--pool', String(D), '-k', Z.keyfile], 'Unauthorized');
+  po = await api(`pools/${D}/payout`, { cookie: adminCookie });
+  check('GET payout: the committed root is not the ranking → veto offered, nothing to pay', po.ok && po.j.committedRoot === wc.winnersRoot && !!po.j.veto && !po.j.commit && po.j.transactions.length === 0 && /not the ranking/.test(po.j.note ?? ''), JSON.stringify({ note: po.j.note, veto: !!po.j.veto }));
+  await untilChain(Math.ceil(ms(wc.payFrom) / 1000), 'the wrong root\'s lock');
+  refuse('pay_prize of a committed leaf that leaves an empty wallet below the rent minimum', ['pay-prize', '--pool', String(D), '--winners', wrong, '--rank', '2', '-k', Z.keyfile], 'BelowRentMin');
+  refuse('pay_prize with a proof that is not the committed root\'s', ['pay-prize', '--pool', String(D), '--winners', `${R2.wallet}:1000,${emptyWallet}:1000`, '--rank', '1', '-k', Z.keyfile], 'InvalidProof');
+  const vetoRun = execFileSync('node', ['scripts/devnet-payout.mjs', String(D), '--yes', '--veto'], { encoding: 'utf8', env: { ...process.env, BASE, RPC, ADMIN: `${KEYS}/admin.json` } });
+  const vetoSig = /veto_winners: ([1-9A-HJ-NP-Za-km-z]{80,90})/.exec(vetoRun)?.[1];
+  pd = await poolAcc(D);
+  check('the admin vetoes the wrong root (devnet-payout.mjs --veto): WinnersVetoed, no root, nothing paid', !!vetoSig && pd.winnersCount === 0 && pd.committedAt.getTime() === 0 && pd.prizesPaid === 0, vetoRun.trim().split('\n').slice(-2).join(' | '));
+  refuse('veto_winners with no root', ['veto-winners', '--pool', String(D), '-k', `${KEYS}/admin.json`], 'WinnersNotCommitted');
+  {
+    let sl = await conn.getSlot('confirmed');
+    while (sl < lTarget + 440) { await sleep(1000); sl = await conn.getSlot('confirmed'); }
+    if (sl > lTarget + 500) console.log(`NOTE pool ${L}: ${sl - lTarget} slots after its target – too close to the window's end for the worst-case seal measurement, skipped`);
+    else {
+      const ls = admintool(['seal-road', '--pool', String(L), '-k', Z.keyfile]);
+      const lt = await conn.getTransaction(ls.signature, { commitment: 'confirmed', maxSupportedTransactionVersion: 0 });
+      const lines = codec.programData(lt.meta.logMessages), units = lt.meta.computeUnitsConsumed;
+      check(`seal_road ${lt.slot - lTarget} slots after its target (near the oldest end of the 512-entry SlotHashes): RoadSealed, ${units} CU – under the crank's CU_LIMITS.seal_road ${CU_LIMITS.seal_road}`,
+        lines !== 'truncated' && lines.some(l => codec.decodeEvent(l.bytes)?.name === 'RoadSealed') && Number(ls.pool.sealSlot) === 0 && units < CU_LIMITS.seal_road, `${units} CU`);
+    }
+  }
+  // the admin's payout job (devnet-payout.mjs --yes: what the admin page signs): commits the ranking, waits out its lock on the chain clock, pays every rank, closes
   const everyone = { ...Object.fromEntries(R.map(p => [p.name, p.wallet])), fee: addr('fee'), plat: addr('plat'), seed: addr('seed'), admin: ADMIN, vault: vD };
-  // R1 drove the real game, which ends at the 42 m line (DEMO_SCALE=1200) – under the whole km v3 attests – so the admin attests it by hand (a test shortcut);
-  // the 7 API riders drove past 1 km: the server puts their record_attestation in front of each pay_prize
-  admintool(['record-attestation', '--pool', String(D), '--driver', R1.wallet, '--km', '1', '-k', `${KEYS}/admin.json`]);
-  const attested = async () => (await Promise.all(want.map(async p => !!(await conn.getAccountInfo(codec.attestationPda(D, p.wallet), 'confirmed'))))).filter(Boolean).length;
-  const attestedBefore = await attested();
   before = await bals(everyone);
   const vaultBefore = before.vault;
   const job = execFileSync('node', ['scripts/devnet-payout.mjs', String(D), '--yes'], { encoding: 'utf8', env: { ...process.env, BASE, RPC, ADMIN: `${KEYS}/admin.json` } });
   after = await bals(everyone);
   const d = delta(before, after);
   const sigs = [...job.matchAll(/: ([1-9A-HJ-NP-Za-km-z]{80,90})$/gm)].map(m => m[1]);
-  check('payout job: 8 pay_prize + close_pool sent', sigs.length === 9, job.trim().split('\n').slice(-3).join(' | '));
+  check('payout job: commit_winners + 8 pay_prize + close_pool sent', sigs.length === 10, job.trim().split('\n').slice(-3).join(' | '));
+  const txs = await Promise.all(sigs.map(async x => ({ sig: x, tx: await conn.getTransaction(x, { commitment: 'confirmed', maxSupportedTransactionVersion: 0 }) })));
+  const evOf = t => { const l = codec.programData(t.tx.meta.logMessages ?? []); return l === 'truncated' ? [] : l.map(z => codec.decodeEvent(z.bytes)).filter(Boolean); };
+  const ixOf = t => t.tx.meta.logMessages.filter(l => /^Program log: Instruction: /.test(l)).map(l => l.replace('Program log: Instruction: ', ''));
+  const commitEv = evOf(txs[0]).find(e => e.name === 'WinnersCommitted')?.fields, prizeTx = txs.slice(1, 9);
+  check('the job\'s first transaction is the commit (WinnersCommitted: 8 ranks, total = the plan) – it lands before any PrizePaid', !!commitEv && commitEv.count === 8 && commitEv.total === payouts.reduce((a, x) => a + x.lamports, 0) && prizeTx.every(t => t.tx.slot > txs[0].tx.slot), JSON.stringify(commitEv));
+  const payFromS = Math.floor(new Date(commitEv?.payFrom ?? 0).getTime() / 1000);
+  check(`no PrizePaid before the root's pay_from (${new Date(payFromS * 1000).toISOString()}: commit + the ${REVIEW_D} s review lock) – each pay_prize's block time is past it`, prizeTx.every(t => t.tx.blockTime >= payFromS) && payFromS >= Math.floor(new Date(commitEv?.committedAt ?? 0).getTime() / 1000) + REVIEW_D, prizeTx.map(t => t.tx.blockTime - payFromS).join(','));
+  check('PrizePaid.rank is the 0-based leaf index: rank 1 … 8 → 0 … 7, each to its committed wallet', prizeTx.every((t, i) => { const e = evOf(t).find(x => x.name === 'PrizePaid')?.fields; return e?.rank === i && e.to === payouts[i].wallet && e.lamports === payouts[i].lamports; }), JSON.stringify(prizeTx.map(t => evOf(t).find(x => x.name === 'PrizePaid')?.fields?.rank)));
+  check('attestations only for PLEDGED rides: no pledge in pool D → the job wrote no RideAttestation (commit, 8 pay_prize, close_pool – nothing else)', txs.map(ixOf).flat().join() === ['CommitWinners', ...Array(8).fill('PayPrize'), 'ClosePool'].join(), txs.map(ixOf).flat().join());
   for (const [i, p] of want.entries()) check(`rank ${i + 1} ${p.name} received exactly ${payouts[i].lamports} lamports`, d[p.name] === payouts[i].lamports, `${d[p.name]}`);
   check('R7 (crash) and R10 (cheater) received nothing', d.r7 === 0 && d.r10 === 0, `${d.r7} / ${d.r10}`);
   const paid = payouts.reduce((a, x) => a + x.lamports, 0);
   pd = await poolAcc(D);
   const legs = closeSplit({ priceLamports: PRICE, ticketsSold: 11, sponsored: SPONSOR, prizeBps: SPLIT[0], seedBps: SPLIT[1], platformFeeBps: PLAT_BPS, prizesPaid: paid, vaultLamports: vaultBefore - paid, cancelled: false, rentMin: RENT0 });
   const adminFees = (await Promise.all(sigs.map(fee))).reduce((a, b) => a + b, 0);
-  check('prizes on chain = the table, ≤ the prize share; the rounding stays unclaimed', pd.prizesPaid === paid && paid <= bound && legs.unclaimed === bound - paid, `${pd.prizesPaid} / ${paid} / ${bound}`);
+  check('prizes on chain = the table, ≤ the prize share, every committed rank paid; the rounding stays unclaimed', pd.prizesPaid === paid && paid <= bound && legs.unclaimed === bound - paid && Number(pd.paidMask) === 255, `${pd.prizesPaid} / ${paid} / ${bound} mask ${pd.paidMask}`);
   check('fee treasury: exactly its leg', d.fee === legs.fee && legs.fee > 0, `${d.fee} vs ${legs.fee}`);
   check(`platform treasury: exactly ${PLAT_BPS} bps of the fee share`, d.plat === legs.platformFee && (PLAT_BPS === 0 || legs.platformFee > 0), `${d.plat} vs ${legs.platformFee}`);
   check('seed treasury (the next pool\'s seed): seed share + unclaimed prize', d.seed === legs.seed && legs.seed > 0, `${d.seed} vs ${legs.seed}`);
-  const newAtt = (await attested()) - attestedBefore, attRent = await conn.getMinimumBalanceForRentExemption((await conn.getAccountInfo(codec.attestationPda(D, want[0].wallet), 'confirmed')).data.length);
-  const attTx = (await Promise.all(sigs.map(async s => (await conn.getTransaction(s, { commitment: 'confirmed', maxSupportedTransactionVersion: 0 })).meta.logMessages.some(l => /Instruction: RecordAttestation/.test(l))))).filter(Boolean).length;
-  check(`v3: every winner VERIFIED before its prize – ${newAtt} record_attestation(s) by the admin went in front of their pay_prize (the others were attested already)`, newAtt === want.length - attestedBefore && attTx === newAtt && (await attested()) === want.length, `${newAtt} new / ${attTx} in txs / ${attestedBefore} before`);
-  check('creator (admin): + the vault rent minimum − the fees of the 9 transactions it signed − the rent of the attestations they made', d.admin === RENT0 - adminFees - newAtt * attRent, `${d.admin} vs ${RENT0 - adminFees - newAtt * attRent}`);
+  check('creator (admin): + the vault rent minimum − the fees of the 10 transactions it signed', d.admin === RENT0 - adminFees, `${d.admin} vs ${RENT0 - adminFees}`);
   check('vault D = 0, settled on chain and on the server', after.vault === 0 && pd.status === 3 && await until(async () => (await serverPool(D)).status === 'settled'));
   check('conservation: 11 tickets + sponsorship = prizes + fee + platform + seed', 11 * PRICE + SPONSOR === paid + legs.fee + legs.platformFee + legs.seed, `${11 * PRICE + SPONSOR} vs ${paid + legs.fee + legs.platformFee + legs.seed}`);
-  refuse('pay_prize on the settled pool D', ['pay-prize', '--pool', String(D), '--to', R2.wallet, '--lamports', '1000000', '-k', `${KEYS}/admin.json`], 'PoolNotActive');
+  refuse('pay_prize on the settled pool D', ['pay-prize', '--pool', String(D), '--winners', winnersArg, '--rank', '1', '-k', Z.keyfile], 'PoolNotActive');
+  refuse('close_sponsor_receipt with nothing to close (a stranger never sponsored D)', ['close-sponsor-receipt', '--pool', String(D), '--sponsor', Z.wallet, '-k', Z.keyfile], 'AccountNotInitialized');
+  before = await bals({ s: S.wallet });
+  admintool(['close-sponsor-receipt', '--pool', String(D), '--sponsor', S.wallet, '-k', Z.keyfile]);
+  check('close_sponsor_receipt of the settled pool D (a stranger sends it): the fan gets the receipt\'s rent back', (await bal(S.wallet)) - before.s === receiptRent && (await conn.getAccountInfo(codec.sponsorReceiptPda(D, S.wallet), 'confirmed')) === null, `${(await bal(S.wallet)) - before.s}`);
 
   // ── 6. the Ticket rents: close_ticket (permissionless) gives each back to whoever paid it – the buyer
   const payers = { ...Object.fromEntries(R.map(p => [p.name, p.wallet])), z: Z.wallet };
@@ -369,12 +412,13 @@ try {
 
   // ── 7. the seed rolls on: the seed treasury sponsors the next 1h pool with what pool D left it (an operator step – no code moves it by itself)
   const E = admintool(mkArgs('1h', PRICE, 2, 0, 2, 900, 1200)).poolId;
+  await sealRoad({ conn, codec, admintool, id: E, keyfile: Z.keyfile });   // anyone may seal (permissionless)
   execFileSync('node', ['dist/cli/index.js', 'pool:register', String(E), '--label', 'NEXT WEEK'], { stdio: 'ignore' });
   const seedFromD = d.seed;
   before = await bals({ seed: addr('seed'), vault: codec.vaultPda(E).toBase58() });
   const se = admintool(['sponsor', '--pool', String(E), '--lamports', String(seedFromD), '-k', `${KEYS}/seed.json`]);
   after = await bals({ seed: addr('seed'), vault: codec.vaultPda(E).toBase58() });
-  check('the seed treasury sponsors pool E with exactly pool D\'s seed leg', after.vault - before.vault === seedFromD && before.seed - after.seed === seedFromD + (await fee(se.signature)) && se.pool.sponsored === seedFromD);
+  check('the seed treasury sponsors pool E with exactly pool D\'s seed leg (+ its fee and the SponsorReceipt\'s rent)', after.vault - before.vault === seedFromD && before.seed - after.seed === seedFromD + (await fee(se.signature)) + receiptRent && se.pool.sponsored === seedFromD, `${before.seed - after.seed}`);
   const eBound = prizeBound({ priceLamports: PRICE, ticketsSold: 0, sponsored: seedFromD, prizeBps: SPLIT[0], seedBps: SPLIT[1] });
   check(`pool E's prize cap before a single ticket: ${eBound} lamports (70 % of the rolled-over seed)`, eBound === Math.floor(seedFromD * SPLIT[0] / 10_000) && eBound > 0);
   check('server mirror: pool E open with the sponsorship', await until(async () => { const s = await serverPool(E); return s.status === 'open' && s.sponsoredLamports === seedFromD; }, 20000), JSON.stringify(await serverPool(E)).slice(0, 200));
@@ -391,32 +435,68 @@ try {
   refuse('create_pool while paused', mkArgs('4h', PRICE, 1, 1, 1, 30, 40), 'Paused');
   admintool(['set-config', '--paused', 'false', ...adm]);
   check('set_config: running again', (await account('Config', codec.configPda())).paused === false);
-  // F: one ticket max – sold out at the second; never paid a prize: the admin closes it after the deadline (the prize share goes to the seed)
+  // v4 floors: the cold admin may raise them – a new pool must then leave that long after its sale (min_finish_secs) / its play deadline (min_review_secs)
+  const fl = admintool(['set-config', '--min-finish-secs', '100000', ...adm]).config;
+  check('set_config: the finish floor raised to 100 000 s (FloorsSet)', ms(fl.minFinishSecs) === 100_000_000, JSON.stringify(fl.minFinishSecs));
+  refuse('create_pool with a play window under the finish floor', mkArgs('4h', PRICE, 1, 1, 1, 30, 40), 'WindowTooShort');
+  admintool(['set-config', '--min-finish-secs', '0', ...adm]);
+  refuse('migrate_config_v4 of a Config already in the v4 layout', ['migrate-config', ...adm], 'AlreadyMigrated');
+  // F: one ticket max – sold out at the second; never paid a prize: the admin commits NO winner after the deadline and closes it (the prize share goes to the seed)
   const F = admintool(mkArgs('4h', PRICE, 1, 1, 1, 25, 35)).poolId;
   admintool(['buy', '-k', Z.keyfile, '--pool', String(F)]);
   refuse('buy into a sold-out pool', ['buy', '-k', R2.keyfile, '--pool', String(F)], 'SoldOut');
-  // G: open, one buyer – the admin cancels it, the refunds follow
+  // G: open, one buyer and a sponsor – the admin cancels it, the refunds follow (v4, M8: the sponsor's too)
   const G = admintool(mkArgs('8h', PRICE, 5, 0, 2, 900, 1200)).poolId;
   admintool(['buy', '-k', R3.keyfile, '--pool', String(G)]);
+  admintool(['sponsor', '--pool', String(G), '--lamports', '20000000', '-k', S.keyfile]);
+  refuse('refund_sponsor of a pool that still sells', ['refund-sponsor', '--pool', String(G), '--sponsor', S.wallet, '-k', Z.keyfile], 'NotRefunding');
   refuse('cancel_pool by a stranger', ['cancel-pool', '--pool', String(G), '-k', Z.keyfile], 'Unauthorized');
   admintool(['cancel-pool', '--pool', String(G), ...adm]);
   check('cancel_pool: G refunding', (await poolAcc(G)).status === 2);
   refuse('buy into a cancelled pool', ['buy', '-k', R4.keyfile, '--pool', String(G)], 'PoolNotOpen');
-  refuse('record_attestation in a pool that never went live (refunding)', ['record-attestation', '--pool', String(G), '--driver', R3.wallet, '--km', '1', ...adm], 'PoolNotActive');
-  refuse('pay_prize from a refunding pool (it never was live, so no attestation can exist)', ['pay-prize', '--pool', String(G), '--to', R3.wallet, '--lamports', '1000000', ...adm], 'AccountNotInitialized');
+  refuse('record_ride_attestation in a pool that never went live (refunding)', ['record-ride-attestation', '--pool', String(G), '--ride', aRide, '--driver', R3.wallet, '--km', '1', ...adm], 'PoolNotActive');
+  refuse('pay_prize from a refunding pool', ['pay-prize', '--pool', String(G), '--winners', `${R3.wallet}:1000000`, '--rank', '1', '-k', Z.keyfile], 'PoolNotActive');
+  refuse('commit_winners on a refunding pool', ['commit-winners', '--pool', String(G), '--winners', `${R3.wallet}:1000000`, ...adm], 'PoolNotActive');
   refuse('close_pool before every ticket is refunded', ['close-pool', '--pool', String(G), '-k', Z.keyfile], 'RefundsPending');
   before = await bals({ r3: R3.wallet });
   admintool(['refund', '--pool', String(G), '--buyer', R3.wallet, '-k', Z.keyfile]);
   check('refund by a stranger: R3 + price + its own Ticket rent', (await bal(R3.wallet)) - before.r3 === PRICE + ticketRent);
   refuse('the same refund again', ['refund', '--pool', String(G), '--buyer', R3.wallet, '--rent-payer', R3.wallet, '-k', Z.keyfile], 'AlreadyRefunded');
+  refuse('close_pool before the sponsor is refunded (v4, M8)', ['close-pool', '--pool', String(G), '-k', Z.keyfile], 'SponsorRefundsPending');
+  before = await bals({ s: S.wallet });
+  admintool(['refund-sponsor', '--pool', String(G), '--sponsor', S.wallet, '-k', Z.keyfile]);
+  check('refund_sponsor by a stranger: the sponsor gets its 0.02 SOL + the receipt\'s rent back', (await bal(S.wallet)) - before.s === 20_000_000 + receiptRent && (await poolAcc(G)).sponsorRefunded === 20_000_000, `${(await bal(S.wallet)) - before.s}`);
   admintool(['close-pool', '--pool', String(G), '-k', Z.keyfile]);
   check('G closed by a stranger: cancelled, vault 0', (await poolAcc(G)).status === 4 && (await bal(codec.vaultPda(G))) === 0);
+  refuse('close_sponsor_receipt of a cancelled pool (refunded, the receipt is gone)', ['close-sponsor-receipt', '--pool', String(G), '--sponsor', S.wallet, '-k', Z.keyfile], 'AccountNotInitialized');
   await untilChain(Number((await poolAcc(F)).playDeadline.getTime() / 1000), 'pool F play deadline');
   const fv = await bal(codec.vaultPda(F)), fLegs = closeSplit({ priceLamports: PRICE, ticketsSold: 1, sponsored: 0, prizeBps: SPLIT[0], seedBps: SPLIT[1], platformFeeBps: PLAT_BPS, prizesPaid: 0, vaultLamports: fv, cancelled: false, rentMin: RENT0 });
+  refuse('close_pool of an active pool with no winners root', ['close-pool', '--pool', String(F), ...adm], 'WinnersNotCommitted');
+  const fc = admintool(['commit-winners', '--pool', String(F), '--winners', 'none', ...adm]).pool;
+  check('commit_winners with no winner (count 0): the pool may close, its prize share unclaimed', fc.winnersCount === 0 && ms(fc.committedAt) > 0 && fc.winnersTotal === 0, JSON.stringify({ count: fc.winnersCount, at: fc.committedAt }));
   before = await bals({ seed: addr('seed'), fee: addr('fee') });
   admintool(['close-pool', '--pool', String(F), ...adm]);
   after = await bals({ seed: addr('seed'), fee: addr('fee') });
   check('the admin closes F without paying a prize: the whole prize share goes to the seed as unclaimed', (await poolAcc(F)).status === 3 && after.seed - before.seed === fLegs.seed && fLegs.unclaimed === Math.floor(PRICE * SPLIT[0] / 10_000) && after.fee - before.fee === fLegs.fee);
+  // v4 (L4): a pool nobody sealed in time – phase 1's REARM pool (never sealed; the crank leaves it alone, see localnet-fixtures.mjs): its seal slot has left
+  // the SlotHashes window, so the first seal_road can only re-arm it a few slots ahead; the next one seals it
+  const FX = process.env.FIXTURES ? JSON.parse(readFileSync(process.env.FIXTURES, 'utf8')) : null;
+  if (FX?.rearmPool !== undefined) {
+    const RA = FX.rearmPool, p0 = await poolAcc(RA);
+    let slot = await conn.getSlot('confirmed');
+    if (slot <= Number(p0.sealSlot) + 520) { console.log(`     … waiting for slot ${Number(p0.sealSlot) + 520} (the seal slot leaves the SlotHashes window)`); while ((slot = await conn.getSlot('confirmed')) <= Number(p0.sealSlot) + 520) await sleep(2000); }
+    check(`pool ${RA} (opened in phase 1, never sealed): open, its seal slot ${p0.sealSlot} has left the 512-slot SlotHashes window (slot ${slot})`, p0.status === 0 && Number(p0.sealSlot) > 0 && /^A+=*$/.test(p0.seedCommitment));
+    const rr = admintool(['seal-road', '--pool', String(RA), '-k', Z.keyfile]);
+    const lines = codec.programData((await conn.getTransaction(rr.signature, { commitment: 'confirmed', maxSupportedTransactionVersion: 0 })).meta.logMessages);
+    const evs = lines === 'truncated' ? [] : lines.map(l => codec.decodeEvent(l.bytes)).filter(Boolean);
+    const re = evs.find(e => e.name === 'SealRearmed')?.fields;
+    check('seal_road re-arms it (SealRearmed): a new target a few slots ahead, still no road', !!re && re.sealSlot === Number(rr.pool.sealSlot) && Number(rr.pool.sealSlot) > slot && !evs.some(e => e.name === 'RoadSealed') && /^A+=*$/.test(rr.pool.seedCommitment), JSON.stringify({ re, seal: rr.pool.sealSlot, slot }));
+    const rs = await sealRoad({ conn, codec, admintool, id: RA, keyfile: Z.keyfile });
+    check('…the next seal_road past the new target seals it (RoadSealed from a slot at or after it)', Number(rs?.pool.sealSlot) === 0 && Number(rs.pool.seedSlot) >= Number(rr.pool.sealSlot) && !/^A+=*$/.test(rs.pool.seedCommitment), JSON.stringify(rs?.pool && { seal: rs.pool.sealSlot, slot: rs.pool.seedSlot }));
+    admintool(['cancel-pool', '--pool', String(RA), ...adm]); admintool(['close-pool', '--pool', String(RA), '-k', Z.keyfile]);
+    check(`pool ${RA} cancelled and closed (nothing sold)`, (await poolAcc(RA)).status === 4 && (await bal(codec.vaultPda(RA).toBase58())) === 0);
+  }
+  admintool(['cancel-pool', '--pool', String(L), ...adm]); admintool(['close-pool', '--pool', String(L), '-k', Z.keyfile]);   // the late-sealed pool L: nothing sold
   // the authority handover, there and back
   const admin2 = await player('admin2');
   refuse('accept_authority with nothing proposed', ['accept-authority', '-k', admin2.keyfile], 'NoPendingAuthority');

@@ -80,10 +80,12 @@ pub() { solana-keygen pubkey "$TMP/keys/$1.json"; }
 RPC_PORT="$(free_pair)"; FAUCET_PORT="$(free_port)"; GOSSIP_PORT="$(free_port)"; DYN=$(( RPC_PORT < 40000 ? RPC_PORT + 2000 : RPC_PORT - 2000 ))
 RPC="http://127.0.0.1:$RPC_PORT"; WS="ws://127.0.0.1:$((RPC_PORT + 1))"
 # start_validator <ledger> [extra args…]: the program as an UPGRADEABLE program (real ProgramData, upgrade authority = upgrader), waits for health
+# --limit-ledger-size: the test validator keeps only 10 000 shreds by default – a phase-2 ledger of ~12 minutes outgrew it and the coverage scan
+# (getSignaturesForAddress) lost the money scenario's transactions
 start_validator() {
   local ledger="$1"; shift
   solana-test-validator --ledger "$ledger" --reset --quiet --bind-address 127.0.0.1 --rpc-port "$RPC_PORT" --faucet-port "$FAUCET_PORT" \
-    --gossip-port "$GOSSIP_PORT" --dynamic-port-range "$DYN-$((DYN + 30))" --mint "$(pub mint)" \
+    --gossip-port "$GOSSIP_PORT" --dynamic-port-range "$DYN-$((DYN + 30))" --mint "$(pub mint)" --limit-ledger-size 2000000 \
     --upgradeable-program "$PROGRAM_ID" "$SO" "$(pub upgrader)" "$@" > "$ledger.log" 2>&1 &
   VAL_PID=$!
   for _ in $(seq 1 90); do curl -sf -X POST -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"getHealth"}' "$RPC" 2>/dev/null | grep -q '"ok"' && break; kill -0 "$VAL_PID" 2>/dev/null || { tail -20 "$ledger.log"; fail "validator exited"; }; sleep 1; done
@@ -105,6 +107,8 @@ if [ "$PHASE2" = 1 ]; then
 echo "▸ phase 2 – a fresh ledger with the program + the baked Config, pools, vaults and tickets (${#ACCOUNTS[@]} args)"
 start_validator "$TMP/ledger" "${ACCOUNTS[@]}"
 echo "  rpc $RPC"
+echo "▸ phase 2 – the baked Config is in the v3 layout: migrate_config_v4 by the admin (refusals first), then the floors back to 0"
+(cd "$SERVER" && MIGRATE=1 RPC="$RPC" KEYS="$TMP/keys" OUT="$TMP/accounts" COVERAGE="$COV" node scripts/localnet-fixtures.mjs) || fail "config migration (phase 2)"
 fi
 FIXTURES="$TMP/accounts/fixtures.json"
 fi
@@ -145,7 +149,7 @@ fi
 if [ "$SCENARIO" = all ] || [ "$SCENARIO" = payout ]; then
   [ "$TARGET" = devnet ] && fail "the payout scenario is local only (it pauses the program and hands its authority around)"
   echo "▸ scenario – ten riders, one pool: buys, rides, the cron, the payout job, ticket rents, the next seed, the rest of the program"
-  (cd "$SERVER" && BASE="$BASE" RPC="$RPC" KEYS="$TMP/keys" COVERAGE="$COV" CHROME_PORT="$(free_port)" node scripts/e2e-localnet-payout.mjs) || { echo "--- server log (tail) ---"; tail -40 "$TMP/server.log"; exit 1; }
+  (cd "$SERVER" && BASE="$BASE" RPC="$RPC" KEYS="$TMP/keys" FIXTURES="$FIXTURES" COVERAGE="$COV" CHROME_PORT="$(free_port)" node scripts/e2e-localnet-payout.mjs) || { echo "--- server log (tail) ---"; tail -40 "$TMP/server.log"; exit 1; }
 fi
 if [ "$SCENARIO" = chaos ]; then
   echo "▸ scenario – chaos: two servers on one database behind a fault-injecting RPC proxy, several crankers at once (the server started above is inert: no watcher)"
@@ -169,8 +173,11 @@ if [ "$PHASE3" = 1 ]; then
   start_validator "$TMP/day-ledger" --account "$(node -p 'require(process.argv[1]).pubkey' "$SER")" "$SER"
   echo "  rpc $RPC"
   (cd "$SERVER" && node scripts/pool-admin.mjs initialize --url "$RPC" -k "$TMP/keys/upgrader.json" --admin "$(pub admin)" --platform-treasury "$(pub plat)" --platform-fee-bps 500 >/dev/null) || fail "initialize (phase 3)"
+  # v4: initialize sets the floors (1 h review, 3 h to finish) – the day's grid is seconds wide, and every pool snapshots Config.min_review_secs when it opens,
+  # so they go to 0 BEFORE the crank can open slot 1 (the series itself was written in phase 1 under floors of 0)
+  (cd "$SERVER" && node scripts/pool-admin.mjs set-config --url "$RPC" -k "$TMP/keys/admin.json" --min-review-secs 0 --min-finish-secs 0 >/dev/null) || fail "set-config floors (phase 3)"
   DAY_ENV=(PAYOUT_SECRET="$(cat "$TMP/keys/payout.json")" PAYOUT_INTERVAL_MS=0 TRUST_PROXY=1)   # the server AND the scenario's CLI passes (pool:payout) – same database, same keys
-  start_server "$DB_DAY" "$TMP/server-day.log" "${DAY_ENV[@]}" CRANK_INTERVAL_MS="${DAY_CRANK_MS:-2000}" DEMO_SCALE=48   # the day's rides are all over the API: a 1 050 m line, so every winner has the whole km v3 attests
+  start_server "$DB_DAY" "$TMP/server-day.log" "${DAY_ENV[@]}" CRANK_INTERVAL_MS="${DAY_CRANK_MS:-2000}" DEMO_SCALE=48   # the day's rides are all over the API: a 1 050 m line, so every winner has the whole km the payout key attests (v4: on the ride's own attestation)
   echo "▸ scenario – the autonomous day: the crank opens the 1h pools on their slots, riders buy and ride, the review window, the payout key pays"
   (cd "$SERVER" && env "${DAY_ENV[@]}" DATABASE_URL="$URL_DAY" BASE="$BASE" RPC="$RPC" KEYS="$TMP/keys" COVERAGE="$COV" DAY="$TMP/accounts/day/day.json" CHROME_PORT="$(free_port)" node scripts/e2e-localnet-day.mjs) || { echo "--- server log (tail) ---"; tail -40 "$TMP/server-day.log"; exit 1; }
   (cd "$SERVER" && node scripts/localnet-coverage.mjs scan "$COV" "$RPC" "phase 3 (the autonomous day)") || fail "coverage scan of phase 3"

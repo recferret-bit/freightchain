@@ -116,7 +116,7 @@ pub fn handle_create_pledge(
 #[derive(Accounts)]
 #[instruction(ride_id: [u8; 32])]
 pub struct SettlePledge<'info> {
-    /// Settlement is permissionless: anyone can crank it once the driver's attestation exists
+    /// Settlement is permissionless: anyone can crank it once THIS ride's attestation exists and its `settle_from` lock is over
     pub caller: Signer<'info>,
 
     /// CHECK: Driver wallet receiving earned lamports

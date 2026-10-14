@@ -19,6 +19,13 @@ const TESTS = join(ROOT, 'programs/freightchain-pools/programs/freightchain_pool
 const codec = new PoolProgramCodec(IDL.address);
 /** Anchor's own account errors a scenario provokes on purpose (v3: pay_prize to a wallet with no Attestation account fails before the handler runs) */
 const ANCHOR_ERRORS = { 2006: 'ConstraintSeeds', 3007: 'AccountOwnedByWrongProgram', 3012: 'AccountNotInitialized' };
+/** what cannot happen on a fresh v4 validator – shown in the report with its reason, never silently skipped (a name listed here that DID run counts as covered) */
+export const EXEMPT = {
+  instructions: {},
+  events: {
+    AttestationRecorded: 'a v3 event kept in the IDL so old transactions still decode – no v4 instruction emits it (v4: RideAttestationRecorded)',
+  },
+};
 const errName = code => IDL.errors.find(e => e.code === code)?.name ?? ANCHOR_ERRORS[code] ?? null;
 const same = (a, b) => a.length >= b.length && b.every((x, i) => a[i] === x);
 
@@ -50,17 +57,20 @@ export function coverage(file) {
         if (page.length < 1000) break;
         before = page.at(-1).signature;
       }
-      const out = { transactions: sigs.length, instructions: {}, events: {}, errors: {} };
+      const out = { transactions: sigs.length, instructions: {}, events: {}, errors: {}, cu: {} };   // cu: max compute units of a landed transaction with ONE instruction of the program
       const bump = (m, k) => { m[k] = (m[k] ?? 0) + 1; };
       for (const sig of sigs) {
         const tx = await conn.getTransaction(sig, { commitment: 'confirmed', maxSupportedTransactionVersion: 0 });
         if (!tx) continue;
-        const msg = tx.transaction.message, keys = msg.staticAccountKeys ?? msg.accountKeys;
+        const msg = tx.transaction.message, keys = msg.staticAccountKeys ?? msg.accountKeys, mine = [];
         for (const ix of msg.compiledInstructions) {
           if (!keys[ix.programIdIndex].equals(program)) continue;
           const data = Uint8Array.from(ix.data), def = IDL.instructions.find(i => same(data, i.discriminator));
           bump(out.instructions, `${def?.name ?? 'unknown'}${tx.meta?.err ? ' (failed)' : ''}`);
+          mine.push(def?.name ?? 'unknown');
         }
+        const units = tx.meta?.computeUnitsConsumed;
+        if (mine.length === 1 && !tx.meta?.err && typeof units === 'number') out.cu[mine[0]] = Math.max(out.cu[mine[0]] ?? 0, units);
         const lines = codec.programData(tx.meta?.logMessages ?? []);
         if (lines !== 'truncated') for (const { bytes } of lines) bump(out.events, codec.decodeEvent(bytes)?.name ?? 'unknown');
         const code = tx.meta?.err ? errorCode(tx.meta.err) : null;
@@ -91,6 +101,7 @@ export function report(file) {
   const scans = Object.values(ledger);
   const sum = key => { const m = {}; for (const s of scans) for (const [k, n] of Object.entries(s[key])) m[k] = (m[k] ?? 0) + n; return m; };
   const ix = sum('instructions'), ev = sum('events'), landedErr = sum('errors');
+  const cu = {}; for (const sc of scans) for (const [k, n] of Object.entries(sc.cu ?? {})) cu[k] = Math.max(cu[k] ?? 0, n);
   const svm = liteSvm();
   const refusedBy = {}; for (const r of refused) if (r.error) (refusedBy[r.error] ??= []).push(r.step);
   const lines = [], missing = [];
@@ -99,14 +110,16 @@ export function report(file) {
   lines.push('', `INSTRUCTIONS (${IDL.instructions.length})                validator  LiteSVM`);
   for (const { name } of IDL.instructions) {
     const n = ix[name] ?? 0, failed = ix[`${name} (failed)`] ?? 0, s = svm.instructions.has(name);
-    if (!n) missing.push(`instruction ${name} never succeeded on the validator`);
-    lines.push(`  ${n ? '✓' : '✗'} ${pad(name, 28)}${pad(n + (failed ? ` (+${failed} failed)` : ''), 11)}${s ? 'yes' : '–'}`);
+    const ex = !n && EXEMPT.instructions[name];
+    if (!n && !ex) missing.push(`instruction ${name} never succeeded on the validator`);
+    lines.push(`  ${n ? '✓' : ex ? '○' : '✗'} ${pad(name, 28)}${pad(n + (failed ? ` (+${failed} failed)` : ''), 11)}${pad(s ? 'yes' : '–', 9)}${ex ? `exempt: ${ex}` : ''}`);
   }
   lines.push('', `EVENTS (${IDL.events.length})                      validator`);
   for (const { name } of IDL.events) {
     const n = ev[name] ?? 0;
-    if (!n) missing.push(`event ${name} never emitted on the validator`);
-    lines.push(`  ${n ? '✓' : '✗'} ${pad(name, 28)}${n}`);
+    const ex = !n && EXEMPT.events[name];
+    if (!n && !ex) missing.push(`event ${name} never emitted on the validator`);
+    lines.push(`  ${n ? '✓' : ex ? '○' : '✗'} ${pad(name, 28)}${pad(n, 11)}${ex ? `exempt: ${ex}` : ''}`);
   }
   lines.push('', `ERRORS (${IDL.errors.length})                      validator             LiteSVM  where on the validator`);
   let onValidator = 0;
@@ -121,7 +134,9 @@ export function report(file) {
   if (unexpected.length) missing.push(`${unexpected.length} refusal(s) without a program error: ${unexpected.map(r => r.step).join(' · ')}`);
   const unknown = Object.keys(ix).filter(k => k.startsWith('unknown')).concat(Object.keys(ev).filter(k => k === 'unknown'));
   if (unknown.length) missing.push(`undecodable instructions / events on the ledger: ${unknown.join(', ')}`);
-  lines.push('', `instructions ${IDL.instructions.filter(i => ix[i.name]).length}/${IDL.instructions.length} on the validator · events ${IDL.events.filter(e => ev[e.name]).length}/${IDL.events.length} · errors ${onValidator}/${IDL.errors.length} on the validator, ${IDL.errors.filter(e => svm.errors.has(e.name) || refusedBy[e.name] || landedErr[e.name]).length}/${IDL.errors.length} with LiteSVM`);
+  lines.push('', `COMPUTE UNITS (max of a landed one-instruction transaction, ComputeBudget instructions included): ${Object.entries(cu).sort().map(([k, n]) => `${k} ${n}`).join(' · ')}`);
+  const exI = IDL.instructions.filter(i => !ix[i.name] && EXEMPT.instructions[i.name]).length, exE = IDL.events.filter(e => !ev[e.name] && EXEMPT.events[e.name]).length;
+  lines.push('', `instructions ${IDL.instructions.filter(i => ix[i.name]).length}/${IDL.instructions.length} on the validator${exI ? ` (+${exI} exempt ○)` : ''} · events ${IDL.events.filter(e => ev[e.name]).length}/${IDL.events.length}${exE ? ` (+${exE} exempt ○)` : ''} · errors ${onValidator}/${IDL.errors.length} on the validator, ${IDL.errors.filter(e => svm.errors.has(e.name) || refusedBy[e.name] || landedErr[e.name]).length}/${IDL.errors.length} with LiteSVM`);
   return { text: lines.join('\n'), missing };
 }
 

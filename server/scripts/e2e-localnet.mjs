@@ -15,16 +15,18 @@ import { POOL_PROGRAM_IDL } from '../dist/infrastructure/solana/pool-program.idl
 import { closeSplit, prizeBound } from '../dist/domain/economy/vault-split.js';
 import { poolPayouts } from '../dist/domain/economy/pool-payouts.js';
 import { coverage } from './localnet-coverage.mjs';
+import { sealRoad } from './localnet-seal.mjs';
 
 const { BASE, RPC, KEYS } = process.env;
 if (!BASE || !RPC || !KEYS) { console.error('run it through .claude/skills/localnet-e2e/run.sh (needs BASE, RPC, KEYS)'); process.exit(2); }
 const CDP = +(process.env.CHROME_PORT || 9371);
-const PREP_A = +(process.env.PREP_A || 170), PLAY_A = +(process.env.PLAY_A || 240), PREP_B = +(process.env.PREP_B || 45), PREP_C = +(process.env.PREP_C || 50);   // PREP_A: pool A's rides (step 6) must start inside its sale – no new rides after it
+const PREP_A = +(process.env.PREP_A || 170), PLAY_A = +(process.env.PLAY_A || 240), PREP_B = +(process.env.PREP_B || 60), PREP_C = +(process.env.PREP_C || 65);   // PREP_A: pool A's rides (step 6) must start inside its sale – no new rides after it
 // amounts: localnet defaults; TARGET=devnet passes small ones (devnet SOL is scarce) – a price must stay ≥ the 890 880-lamport rent minimum
 const SPONSOR_A = +(process.env.SPONSOR_A || 30_000_000), SPONSOR_C = +(process.env.SPONSOR_C || 20_000_000);
 const PRICE_A = +(process.env.PRICE_A || 100_000_000), PRICE_B = +(process.env.PRICE_B || 50_000_000);   // 0.1 / 0.05 SOL
 const solTxt = l => `${(l / 1e9).toFixed(l >= 1e9 ? 2 : 3)} SOL`;   // the lobby's format
 const ON_DEVNET = !!process.env.FUND_FROM;   // devnet: other pools may exist, players are funded by transfer and swept back
+BigInt.prototype.toJSON ??= function () { return String(this); };   // the codec decodes Pool.paid_mask (u64 bit mask) as a BigInt
 const T0 = Date.now(), fails = [];
 const check = (n, ok, x = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'} [${((Date.now() - T0) / 1000).toFixed(0)} s] ${n}${x ? ' – ' + x : ''}`); if (!ok) fails.push(n); return ok; };
 const until = async (fn, ms = 30000, step = 500) => { for (let i = 0; i <= ms / step; i++) { const v = await fn(); if (v) return v; await sleep(step); } return false; };
@@ -157,6 +159,9 @@ try {
   const B = mk('4h', PRICE_B, 5, PREP_B, PREP_B + 60, '6000/2500/1500', 2);
   const C = mk('8h', PRICE_B, 5, PREP_C, PREP_C + 60, '7000/2000/1000', 2);
   check('new pools get consecutive ids from Config.pool_count (after the baked ones on localnet)', (!FX || A === FX.poolCount) && C === A + 2, `${A} ${B} ${C}`);
+  // v4 (L4): no ride is served before the road is sealed from a slot after the pool opened (the server's crank does it; here the scenario runs it by hand)
+  const seals = []; for (const id of [A, B, C]) seals.push(await sealRoad({ conn, codec, admintool, id, keyfile: `${KEYS}/admin.json` }));
+  check('seal_road A / B / C: each road sealed from a later slot (seal_slot 0, a seed commitment)', seals.every(x => x && Number(x.pool.sealSlot) === 0 && !/^A+=*$/.test(x.pool.seedCommitment) && Number(x.pool.seedSlot) > 0), JSON.stringify(seals.map(x => x?.pool && { seal: x.pool.sealSlot, slot: x.pool.seedSlot })));
   for (const [id, label] of [[A, 'LOCAL 1H'], [B, 'LOCAL 4H'], [C, 'LOCAL 8H']]) execFileSync('node', ['dist/cli/index.js', 'pool:register', String(id), '--label', label], { stdio: 'ignore' });
   check('…open on chain and on the server, vaults hold exactly the rent minimum', (await Promise.all([A, B, C].map(async id => (await poolAcc(id))?.status === 0 && (await serverPool(id)).status === 'open' && (await bal(codec.vaultPda(id))) === RENT0)))
     .every(Boolean));
@@ -193,7 +198,10 @@ try {
   before = await bals({ s: S.wallet, vault: vA });
   const sp = admintool(['sponsor', '--pool', String(A), '--lamports', String(SPONSOR_A), '-k', S.keyfile]);
   after = await bals({ s: S.wallet, vault: vA });
-  check('sponsor: the sponsor paid the amount + fee, the vault holds it, Pool.sponsored counts it', before.s - after.s === SPONSOR_A + (await fee(sp.signature)) && after.vault - before.vault === SPONSOR_A && sp.pool.sponsored === SPONSOR_A);
+  const receiptA = codec.sponsorReceiptPda(A, S.wallet), receiptRent = await conn.getMinimumBalanceForRentExemption((await conn.getAccountInfo(receiptA, 'confirmed')).data.length);
+  const rcA = await account('SponsorReceipt', receiptA);
+  check('sponsor: the sponsor paid the amount + fee + its SponsorReceipt\'s rent (v4, M8), the vault holds it, Pool.sponsored counts it', before.s - after.s === SPONSOR_A + (await fee(sp.signature)) + receiptRent && after.vault - before.vault === SPONSOR_A && sp.pool.sponsored === SPONSOR_A
+    && rcA?.lamports === SPONSOR_A && rcA.sponsor === S.wallet, `${before.s - after.s} vs ${SPONSOR_A} + fee + ${receiptRent}`);
   check('…the server mirror shows it (Sponsored event via the watcher)', await until(async () => (await serverPool(A)).sponsoredLamports === SPONSOR_A, 20000), String((await serverPool(A)).sponsoredLamports));
 
   // ── 5. pools B and C take a few tickets, C a sponsorship – both will miss their minimum of 5
@@ -270,15 +278,16 @@ try {
   // ── 9. the CRANK (CRANK_SECRET, one pass from the CLI): fails pool C and refunds it (and on localnet expires the baked pool and refunds it), closes them
   await untilChain(Number((await poolAcc(C)).prepDeadline.getTime() / 1000), 'pool C prep deadline');
   if (FX) check('the baked unpaid pool: a stranger may not close it after the grace (MustExpire – it would sweep the prize share)', refuses(['close-pool', '--pool', String(FX.expirePool), '-k', Z.keyfile], /MustExpire|0x1787/, 'close_pool by a stranger of an unpaid pool after the grace'));
+  if (FX) check('the baked unpaid pool: a winners root committed now could not be paid before its grace (CommitTooLate, rule f)', refuses(['commit-winners', '--pool', String(FX.expirePool), '--winners', `${addr('expire-buyer-1')}:1000000`, '-k', `${KEYS}/admin.json`], /CommitTooLate|0x1794/, 'commit_winners on a pool past its settle grace'));
   const xb = FX ? { e1: addr('expire-buyer-1'), e2: addr('expire-buyer-2') } : {};
-  before = await bals({ crank: addr('crank'), p5: P5.wallet, p6: P6.wallet, seed: addr('seed'), admin: addr('admin'), ...xb });
+  before = await bals({ crank: addr('crank'), p5: P5.wallet, p6: P6.wallet, seed: addr('seed'), admin: addr('admin'), s: S.wallet, ...xb });
   const pass = crankPass();
-  after = await bals({ crank: addr('crank'), p5: P5.wallet, p6: P6.wallet, seed: addr('seed'), admin: addr('admin'), ...xb });
+  after = await bals({ crank: addr('crank'), p5: P5.wallet, p6: P6.wallet, seed: addr('seed'), admin: addr('admin'), s: S.wallet, ...xb });
   const ours = new Set([C, ...(FX ? [FX.expirePool] : [])]);
   const stepsOf = id => pass.actions.filter(a => a.poolId === id).map(a => `${a.step}${a.error ? '✗' : ''}`).join(' ');
   const others = pass.actions.filter(a => !ours.has(a.poolId));
-  check('crank pass: pool C fail + refund + close' + (FX ? ', the baked pool expire + refund + close' : ''), stepsOf(C) === 'fail_pool refund close_pool' && (!FX || stepsOf(FX.expirePool) === 'expire_pool refund close_pool')
-    && pass.actions.every(a => !a.error && a.settled === 'done'), pass.actions.map(a => `${a.step}#${a.poolId}${a.error ? '✗' : ''}`).join(' '));
+  check('crank pass: pool C fail + refund + refund_sponsor (v4, M8) + close' + (FX ? ', the baked pool expire + refund + close' : ''), stepsOf(C) === 'fail_pool refund refund_sponsor close_pool' && (!FX || stepsOf(FX.expirePool) === 'expire_pool refund close_pool')
+    && pass.actions.every(a => !a.error && a.settled === 'done'), pass.actions.map(a => `${a.step}#${a.poolId}${a.error ? `✗ ${a.error.slice(0, 200)}` : ''}`).join(' '));
   if (others.length) console.log(`NOTE the crank also handled other pools on this cluster: ${others.map(a => `${a.step}#${a.poolId}`).join(' ')} – the balance checks below are skipped where they would mix in`);
   check('…judged by the chain clock it reported', Math.abs(pass.chainNow / 1000 - (await chainNow())) < 30);
   const crankFees = (await Promise.all(pass.actions.filter(a => a.signature).map(a => fee(a.signature)))).reduce((a, b) => a + b, 0);
@@ -287,7 +296,8 @@ try {
   if (FX) check('baked pool refunds: e1 and e2 each +price +their own rent', after.e1 - before.e1 === PRICE_B + ticketRent && after.e2 - before.e2 === PRICE_B + ticketRent);
   if (!others.length) {
     const creatorRents = FX ? 2 : 1;
-    check('closes: the seed gets C\'s sponsorship, the creator the vault rent minimum(s)', after.seed - before.seed === SPONSOR_C && after.admin - before.admin === creatorRents * RENT0, `${after.seed - before.seed} / ${after.admin - before.admin}`);
+    check('closes: C\'s sponsorship goes back to its sponsor with the receipt\'s rent (v4, M8 – the seed gets nothing of it), the creator the vault rent minimum(s)', after.s - before.s === SPONSOR_C + receiptRent && after.seed === before.seed && after.admin - before.admin === creatorRents * RENT0
+      && (await conn.getAccountInfo(codec.sponsorReceiptPda(C, S.wallet), 'confirmed')) === null, `${after.s - before.s} / ${after.seed - before.seed} / ${after.admin - before.admin}`);
   }
   check('chain: cancelled, vault(s) 0', (await poolAcc(C)).status === 4 && (await bal(vC)) === 0 && (!FX || ((await poolAcc(FX.expirePool)).status === 4 && (await bal(codec.vaultPda(FX.expirePool))) === 0)));
   check('server mirror: cancelled', await until(async () => (await serverPool(C)).status === 'cancelled' && (!FX || (await serverPool(FX.expirePool)).status === 'cancelled')));
@@ -298,6 +308,8 @@ try {
     check('the baked pool that paid a prize cannot be expired (the refund maths assumes nothing left the vault)', refuses(['expire-pool', '--pool', String(FX.gracePool), '-k', Z.keyfile], /PrizesAlreadyPaid|0x1785/, 'expire_pool on a pool that paid a prize'));
     const gy = await poolAcc(FX.gracePool), gyVault = await bal(codec.vaultPda(FX.gracePool));
     const gLegs = closeSplit({ priceLamports: gy.priceLamports, ticketsSold: gy.ticketsSold, sponsored: gy.sponsored, prizeBps: gy.prizeBps, seedBps: gy.seedBps, platformFeeBps: PLAT_BPS, prizesPaid: gy.prizesPaid, vaultLamports: gyVault, cancelled: false, rentMin: RENT0 });
+    const v3 = FX.v3Attestation, v3Args = ['close-attestation', '--pool', String(v3.pool), '--driver', v3.driver, '-k', Z.keyfile];
+    check('a v3 Attestation of a pool still live cannot be closed (NotSettled)', refuses(v3Args, /NotSettled|0x177f/, 'close_attestation of a live pool\'s v3 attestation'));
     before = await bals({ fee: addr('fee'), plat: addr('plat'), seed: addr('seed'), admin: addr('admin'), stranger: Z.wallet });
     const cy = admintool(['close-pool', '--pool', String(FX.gracePool), '-k', Z.keyfile]);
     after = await bals({ fee: addr('fee'), plat: addr('plat'), seed: addr('seed'), admin: addr('admin'), stranger: Z.wallet });
@@ -305,6 +317,13 @@ try {
     check('…legs exact (fee / platform / seed incl. the unclaimed prize / creator rent), the stranger only paid its fee', after.fee - before.fee === gLegs.fee && after.plat - before.plat === gLegs.platformFee && after.seed - before.seed === gLegs.seed
       && after.admin - before.admin === RENT0 && before.stranger - after.stranger === (await fee(cy.signature)),
       JSON.stringify({ got: Object.fromEntries(Object.keys(after).map(k => [k, after[k] - before[k]])), legs: gLegs, closeFee: await fee(cy.signature) }));
+    // v4 (L7): the settled pool's v3 per-driver Attestation (what record_attestation left on a v3 deployment) gives its rent back – to the payout key, the admin when none is named
+    const attAddr = codec.attestationPda(v3.pool, v3.driver), attLamports = await bal(attAddr.toBase58()), a0 = await bal(addr('admin'));
+    const ca = admintool(v3Args);
+    const caEv = (await conn.getTransaction(ca.signature, { commitment: 'confirmed', maxSupportedTransactionVersion: 0 })).meta.logMessages;
+    const closedEv = codec.programData(caEv).map?.(l => codec.decodeEvent(l.bytes)).find(e => e?.name === 'AttestationClosed')?.fields;
+    check('close_attestation by a stranger: the v3 Attestation is gone, its rent to the admin (no payout key named), AttestationClosed', (await conn.getAccountInfo(attAddr, 'confirmed')) === null && (await bal(addr('admin'))) - a0 === attLamports && attLamports > 0
+      && closedEv?.rentTo === addr('admin') && closedEv.lamports === attLamports, JSON.stringify({ got: (await bal(addr('admin'))) - a0, attLamports, closedEv }));
   }
 
   // ── 11. pool A after its play deadline: the admin pays the ranked prizes, then closes – the sponsorship is in the pot
@@ -313,21 +332,31 @@ try {
   const { j: an } = await api('auth/nonce', { body: { wallet: ADM.wallet } });
   ADM.cookie = (await fetch(`${BASE}/api/auth/verify`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ wallet: ADM.wallet, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(an.message), admin.secretKey)) }) })).headers.get('set-cookie').split(';')[0];
   check('payouts are refused to a player (403)', (await api(`pools/${A}/payout`, { cookie: P1.cookie })).status === 403);
-  // v3: no prize without a VERIFIED attestation. These game rides end at the 42 m line (DEMO_SCALE=1200) – under the whole km the server attests – so the admin
-  // records them by hand (a test shortcut: the payout scenario covers the server putting record_attestation in front of pay_prize for rides past 1 km)
-  for (const p of [P1, P2]) admintool(['record-attestation', '--pool', String(A), '--driver', p.wallet, '--km', '1', '-k', `${KEYS}/admin.json`]);
-  const po = await api(`pools/${A}/payout`, { cookie: ADM.cookie });
+  // v4 (H5-B): the ranking is first COMMITTED as a winners root (public until its lock ends – here at once: no review window, floors 0), then each rank
+  // is paid with its Merkle proof (anyone may send it), then the pool closes. No attestation stands in front of a prize any more.
+  let po = await api(`pools/${A}/payout`, { cookie: ADM.cookie });
   const chainA = await poolAcc(A);
   const bound = prizeBound({ priceLamports: PRICE_A, ticketsSold: 3, sponsored: SPONSOR_A, prizeBps: 7000, seedBps: 2000 });
   const want = poolPayouts(bound, [P1.wallet, P2.wallet]);
-  check('ranking: P1 (2 rides) first, P2 second; the prize cap includes the sponsorship; amounts = the payout table', po.ok && po.j.ranks.map(r => r.wallet).join() === [P1.wallet, P2.wallet].join() && po.j.transactions.map(t => t.lamports).join() === want.map(w => w.lamports).join() && po.j.prizeLamports === bound, JSON.stringify(po.j.ranks ?? po.j).slice(0, 300));
-  check('…no close_pool offered while ranks are unpaid', po.j.close === null);
+  check('ranking: P1 (2 rides) first, P2 second; the prize cap includes the sponsorship; amounts = the payout table; nothing committed yet → commit_winners offered', po.ok && po.j.ranks.map(r => r.wallet).join() === [P1.wallet, P2.wallet].join() && po.j.ranks.map(r => r.lamports).join() === want.map(w => w.lamports).join() && po.j.prizeLamports === bound
+    && !!po.j.commit && po.j.committedRoot === null && po.j.transactions.length === 0 && po.j.close === null, JSON.stringify(po.j.ranks ?? po.j).slice(0, 300));
+  const winnersArg = want.map(w => `${w.wallet}:${w.lamports}`).join(',');
+  check('pay_prize before any commit → refused (WinnersNotCommitted)', refuses(['pay-prize', '--pool', String(A), '--winners', winnersArg, '--rank', '1', '-k', Z.keyfile], /WinnersNotCommitted|0x1792/, 'pay_prize before commit_winners'));
+  const sigCommit = await sendSigned(signedB64(po.j.commit.transaction, admin)); await settle(sigCommit, ADM.cookie);
+  const committed = await poolAcc(A);
+  check('commit_winners (the admin signs what GET payout built): root, total = the plan, 2 ranks, nothing paid; pays from the commit (payout_at = play, floor 0)', committed.winnersCount === 2 && committed.winnersTotal === want.reduce((a, w) => a + w.lamports, 0) && Number(committed.paidMask) === 0
+    && committed.payFrom.getTime() === committed.committedAt.getTime() && committed.committedAt.getTime() >= committed.playDeadline.getTime(), JSON.stringify({ count: committed.winnersCount, total: committed.winnersTotal, at: committed.committedAt, from: committed.payFrom }));
+  check('…a second commit is refused (WinnersCommitted)', refuses(['commit-winners', '--pool', String(A), '--winners', winnersArg, '-k', `${KEYS}/admin.json`], /WinnersCommitted|0x1791/, 'commit_winners twice'));
+  check('…close_pool before the committed ranks are paid → refused (PrizesUnpaid)', refuses(['close-pool', '--pool', String(A), '-k', `${KEYS}/admin.json`], /PrizesUnpaid|0x1798/, 'close_pool with committed ranks unpaid'));
+  po = await until(async () => { const r = await api(`pools/${A}/payout`, { cookie: ADM.cookie }); return r.j.transactions?.length ? r : null; }, 20000, 1000);   // the server judges payFrom by its own clock
+  check('GET payout after the commit: the committed root is the ranking, one pay_prize per rank, a veto still offered (nothing paid)', !!po && po.j.committedRoot === committed.winnersRoot && po.j.transactions.map(t => t.lamports).join() === want.map(w => w.lamports).join() && !!po.j.veto, JSON.stringify(po?.j ?? null).slice(0, 300));
   let paidTotal = 0;
-  for (const t of po.j.transactions ?? []) {
+  for (const t of po?.j.transactions ?? []) {
     const b0 = await bal(t.to), sig = await sendSigned(signedB64(t.transaction, admin)); await settle(sig, ADM.cookie);
     check(`pay_prize rank ${t.rank}: the winner got exactly ${t.lamports} lamports`, (await bal(t.to)) - b0 === t.lamports, `${(await bal(t.to)) - b0}`);
     paidTotal += t.lamports;
   }
+  check('the same rank once more (anyone, with the committed list) → refused (RankAlreadyPaid)', refuses(['pay-prize', '--pool', String(A), '--winners', winnersArg, '--rank', '1', '-k', Z.keyfile], /RankAlreadyPaid|0x1796/, 'pay_prize of a paid rank'));
   const po2 = await api(`pools/${A}/payout`, { cookie: ADM.cookie });
   check('every rank paid → close_pool offered', po2.j.close && po2.j.transactions.length === 0 && po2.j.ranks.every(r => r.paid));
   const vaultBefore = await bal(vA), paidOnChain = (await poolAcc(A)).prizesPaid;
@@ -341,6 +370,10 @@ try {
   check('close_pool: seed treasury = seed share + unclaimed prize', after.seed - before.seed === legs.seed && legs.unclaimed === bound - paidTotal, `${after.seed - before.seed} vs ${legs.seed} (unclaimed ${legs.unclaimed})`);
   check('close_pool: creator +rent minimum − the close fee', after.admin - before.admin === RENT0 - (await fee(sigC)), `${after.admin - before.admin}`);
   check('vault A = 0, pool settled on chain and on the server', (await bal(vA)) === 0 && (await poolAcc(A)).status === 3 && await until(async () => (await serverPool(A)).status === 'settled'));
+  // v4 (M8): the settled pool's sponsorship was in the split – its receipt only gives its rent back (anyone may send it)
+  before = await bals({ s: S.wallet });
+  admintool(['close-sponsor-receipt', '--pool', String(A), '--sponsor', S.wallet, '-k', Z.keyfile]);
+  check('close_sponsor_receipt of the settled pool A by a stranger: the sponsor gets the receipt\'s rent back, the account is gone', (await bal(S.wallet)) - before.s === receiptRent && (await conn.getAccountInfo(receiptA, 'confirmed')) === null, `${(await bal(S.wallet)) - before.s}`);
   check('conservation: tickets + sponsorship = prizes + every close leg', 3 * PRICE_A + SPONSOR_A === paidTotal + legs.fee + legs.platformFee + legs.seed, `${3 * PRICE_A + SPONSOR_A} vs ${paidTotal + legs.fee + legs.platformFee + legs.seed}`);
 
   const noise = p => !/favicon|status of 409|status of 404/.test(p);
