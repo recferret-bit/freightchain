@@ -1,26 +1,11 @@
 /* Freight Chain pitch deck (pitchdeck.<apex>, landing/pitchdeck.html – the "Poster" theme, src/pitchdeck.css). Makes NO request of its own: every file is the landing build's.
    The slides are author-written constants, so they go in with innerHTML (the landing's no-innerHTML rule is for server text; this file takes none).
-   Keys: → / space next · ← back · F fullscreen · Home / End.
-   Every number on the traction slide is PostHog EU, Oct 8–12 2026, distinct people (see DATA). */
+   Keys: → / space next · ← back · F fullscreen · Home / End. */
 
 const A = '/media/pitchdeck/', BADGES = '/badges/';   // absolute: on pitchdeck.<apex> a relative path would resolve against the host's /
 const shot = (src, cls = '', alt = '') => `<figure class="shot ${cls}"><img src="${A}${src}" alt="${alt}" loading="eager"></figure>`;
 const clip = (src, cls = '') => `<figure class="shot clip ${cls}"><video src="${A}${src}" muted playsinline loop preload="auto"></video></figure>`;   // promo-clip.mp4 = the promo's 16–24 s, cut once
 const pts = items => `<ul class="pts">${items.map(i => `<li>${i}</li>`).join('')}</ul>`;
-
-/* PostHog EU project 297915, queried Oct 12 2026 23:10 UTC. Distinct person ids.
-   Server-side player_signed_in (51 new ids, 2 of them ever saw the landing) are the deploy smoke test's throwaway wallets – left out. */
-const DATA = {
-  funnel: [
-    ['Visited the landing', 104],
-    ['Started the film', 49],
-    ['Scrolled past the hero', 13],
-    ['Clicked play', 9],
-    ['Clicked connect wallet', 4],
-  ],
-  daily: [['Oct 8', 27], ['Oct 9', 24], ['Oct 10', 22], ['Oct 11', 19], ['Oct 12', 20]],
-  source: 'PostHog EU · Oct 8–12 2026 · distinct visitors · test wallets excluded',
-};
 
 const SLIDES = [
   { layout: 'wall', id: 'product',
@@ -100,22 +85,49 @@ const SLIDES = [
         <div class="vblock" aria-hidden="true">✓ Attestation<small>PDA gated · pays only verified rides</small></div>
       </div>` },
 
-  { layout: 'chart', id: 'traction',
+  { layout: 'chain', id: 'chain',
     html: `
       <div class="copy">
-        <div class="lbl">05 · Traction</div>
-        <h1>104 visitors · 5 days</h1>
+        <div class="lbl">05 · The chain</div>
+        <h1>Five systems. <em>One wallet.</em></h1>
       </div>
-      <div class="stats">
-        <div><b>1 in 2</b><span>start the film</span></div>
-        <div><b>9 in 10</b><span>never scroll past the hero</span></div>
-        <div class="hot"><b>4</b><span>reached connect wallet · <em>next number</em></span></div>
-      </div>
-      <div class="charts">
-        <section><h3>Landing funnel · people</h3><div class="chart" data-chart="funnel"></div></section>
-        <section><h3>Visitors per day</h3><div class="chart" data-chart="daily"></div></section>
-      </div>
-      <div class="src">${DATA.source}</div>` },
+      <div class="cards5">
+        <article class="cc" style="--c:#14f195">
+          <span class="st">LIVE LOOKUP</span>
+          <h3>SNS</h3>
+          <div class="big">YOU.SOL</div>
+          <p>Sign in with a Solana wallet. Your Solana Name Service name, when you have one, shows on your profile instead of a wallet string.</p>
+          <small>Chain read · 24 h cache</small>
+        </article>
+        <article class="cc" style="--c:#ffcf5a">
+          <span class="st">DEVNET · NOT AUDITED</span>
+          <h3>Escrow</h3>
+          <div class="big">70 / 20 / 10</div>
+          <p>An Anchor program holds every pool. Prizes go only to attested rides. A missed goal refunds everyone, without us.</p>
+          <small>14 instructions · 12 events</small>
+        </article>
+        <article class="cc" style="--c:#ff5a4d">
+          <span class="st">MOCK OR DEVNET SOL</span>
+          <h3>Donations</h3>
+          <div class="big">NIGHT · SINKHOLE</div>
+          <p>Spectators of a live ride can chat and donate to turn day to night or open a hole in the road ahead. One effect per 20 seconds.</p>
+          <small>Applied by the driver's game</small>
+        </article>
+        <article class="cc" style="--c:#b98cff">
+          <span class="st">BUILT</span>
+          <h3>Soulbound NFTs</h3>
+          <div class="big">31 BADGES</div>
+          <p>Achievements mint as compressed NFTs, frozen in your wallet: nobody can sell or thaw them. Art on Arweave.</p>
+          <div class="bdg">${['shift-complete-4', 'night-owl-4', 'century-4', 'clean-run-4'].map(b => `<img src="${BADGES}${b}.svg" alt="" width="56" height="56">`).join('')}</div>
+        </article>
+        <article class="cc" style="--c:#ffffff">
+          <span class="st">SPEC · NOT LIVE</span>
+          <h3>HONK</h3>
+          <div class="big">100M CAP</div>
+          <p>A capped meme coin, minted only for the distance a verified paid ride reached: 20, 50 and 100 % checkpoints. Burn it in chat or for cab visuals.</p>
+          <small>An in-game ledger for now · not a chain mint</small>
+        </article>
+      </div>` },
 
   { layout: 'end', id: 'next',
     html: `
@@ -151,37 +163,6 @@ const SLIDES = [
         ${shot('landing-market.webp', 'v-main', 'Go to market load board')}
       </div>` },
 ];
-
-/* ── charts (SVG, single hue per chart: magnitude, not identity) ── */
-const svgEl = (tag, attrs, text) => { const e = document.createElementNS('http://www.w3.org/2000/svg', tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; return e; };
-
-function funnel(el) {
-  const W = 820, rowH = 62, H = DATA.funnel.length * rowH, labW = 330, valW = 130, max = DATA.funnel[0][1];
-  const s = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, preserveAspectRatio: 'xMinYMid meet', role: 'img', 'aria-label': DATA.funnel.map(([k, v]) => `${k} ${v}`).join(', ') });
-  DATA.funnel.forEach(([k, v], i) => {
-    const y = i * rowH, bw = Math.max(6, (W - labW - valW) * v / max);
-    s.append(svgEl('text', { x: 0, y: y + rowH / 2 + 7, class: 'c-lab' }, k));
-    s.append(svgEl('rect', { x: labW, y: y + 12, width: W - labW - valW, height: rowH - 24, rx: 4, class: 'c-track' }));
-    const r = svgEl('rect', { x: labW, y: y + 12, width: bw, height: rowH - 24, rx: 4, class: 'c-bar', 'data-tip': `${k}: ${v} people · ${Math.round(100 * v / max)}% of visitors` });
-    s.append(r);
-    s.append(svgEl('text', { x: labW + bw + 12, y: y + rowH / 2 + 8, class: 'c-val' }, String(v)));
-    if (i) s.append(svgEl('text', { x: W, y: y + rowH / 2 + 8, class: 'c-pct', 'text-anchor': 'end' }, `${Math.round(100 * v / max)}%`));
-  });
-  el.append(s);
-}
-
-function daily(el) {
-  const W = 560, H = 310, base = 260, top = 40, max = 30, n = DATA.daily.length, gap = 26, bw = (W - gap * (n - 1)) / n;
-  const s = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': DATA.daily.map(([d, v]) => `${d}: ${v}`).join(', ') });
-  s.append(svgEl('line', { x1: 0, x2: W, y1: base, y2: base, class: 'c-axis' }));
-  DATA.daily.forEach(([d, v], i) => {
-    const x = i * (bw + gap), h = (base - top) * v / max;
-    s.append(svgEl('path', { d: `M${x},${base} v${-(h - 4)} q0,-4 4,-4 h${bw - 8} q4,0 4,4 v${h - 4} z`, class: 'c-bar', 'data-tip': `${d}: ${v} visitors` }));
-    s.append(svgEl('text', { x: x + bw / 2, y: base - h - 12, class: 'c-val', 'text-anchor': 'middle' }, String(v)));
-    s.append(svgEl('text', { x: x + bw / 2, y: base + 36, class: 'c-lab', 'text-anchor': 'middle' }, d));
-  });
-  el.append(s);
-}
 
 /* ── header ticker: the landing's running text (LCD green on black) – project facts, and real lines from the code (client/shared/physics.js, road.js, prng.js, js/config.js, the Anchor program) ── */
 const FACTS = [
@@ -223,8 +204,6 @@ requestAnimationFrame(tkTick);
 /* ── engine ── */
 const deck = document.getElementById('deck');
 deck.innerHTML = SLIDES.map((s, i) => `<section class="slide L-${s.layout.split(' ').join(' L-')}" id="s-${s.id}" data-i="${i}">${s.html}</section>`).join('');
-deck.querySelectorAll('[data-chart=funnel]').forEach(funnel);
-deck.querySelectorAll('[data-chart=daily]').forEach(daily);
 
 const slides = [...deck.children];
 
@@ -358,7 +337,7 @@ fxVis.forEach(v => {
   v.parentElement.addEventListener('pointerleave', () => setTilt(v, 0, 0));
 });
 /* everything interactive (the cards, slide 0's tags, the LIVE badge, the Merkle canvas, the 70 / 20 / 10 blocks, the FREE / 1 H / 4 H / 8 H ladder) gives a tiny, tweened shake at random intervals while its slide is showing – a quiet "touch me". It animates the individual `rotate` property, so it never fights the float / lean / zoom transforms. */
-const nudgeables = [...deck.querySelectorAll('.fx .shot, .fx .badge, .fx canvas.glyph, .L-wall .tags span, .split > div, .ladder li')];
+const nudgeables = [...deck.querySelectorAll('.fx .shot, .fx .badge, .fx canvas.glyph, .L-wall .tags span, .split > div, .ladder li, .cards5 .cc')];
 const canShake = el => !tkReduced && document.visibilityState === 'visible' && !!el.closest('.slide.on') && !el.matches(':hover,.hot,.drag')
   && ![...(el.closest('.split')?.classList ?? [])].some(c => c.startsWith('s-'));   // not while it is being used
 function shakeLater(el) {
@@ -467,13 +446,6 @@ if (touch && window.DeviceOrientationEvent) {
     addEventListener('click', () => window.DeviceOrientationEvent.requestPermission().then(r => { if (r === 'granted') listenTilt(); }).catch(() => {}), { once: true });
   } else listenTilt();
 }
-
-const tip = document.getElementById('tip');
-addEventListener('mousemove', e => {
-  const t = e.target.closest?.('[data-tip]');
-  if (!t) { tip.hidden = true; return; }
-  tip.hidden = false; tip.textContent = t.dataset.tip; tip.style.left = e.clientX + 14 + 'px'; tip.style.top = e.clientY + 14 + 'px';
-});
 
 const fromHash = () => show((parseInt(location.hash.slice(1), 10) || 1) - 1);
 addEventListener('hashchange', fromHash);
