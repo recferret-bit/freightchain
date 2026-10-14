@@ -7,6 +7,7 @@ import { requestIdMiddleware } from '../infrastructure/http/middleware/request-i
 import { requestLogMiddleware } from '../infrastructure/http/middleware/request-log.middleware.js';
 import { beaconBodyMiddleware } from '../infrastructure/http/middleware/beacon-body.middleware.js';
 import { jsonOnlyMiddleware } from '../infrastructure/http/middleware/json-only.middleware.js';
+import { legacySessionMiddleware } from '../infrastructure/http/middleware/legacy-session.middleware.js';
 import { solanaPayCors } from '../infrastructure/http/middleware/solana-pay-cors.middleware.js';
 import { actionHeadersMiddleware, isActionRequest } from '../infrastructure/http/middleware/action-headers.middleware.js';
 import { ridePageMiddleware } from '../infrastructure/http/middleware/ride-page.middleware.js';
@@ -29,6 +30,7 @@ export function configureApp(app: INestApplication): void {
   app.use(compression());   // text (HTML, JS, CSS, JSON) over 1 kB is gzipped; images are already compressed and pass through untouched
   app.use(requestIdMiddleware);
   app.use(requestLogMiddleware(logger));   // after the request id: every API line carries it
+  app.use(legacySessionMiddleware(env));   // production: expire the apex-wide session cookie of before H7-B
   app.use(jsonOnlyMiddleware);   // a form / text/plain POST is a 415 (no CORS preflight – the login-CSRF shape), but for the beacon routes
   app.use(beaconBodyMiddleware);   // a closing game tab's /end beacon (text/plain JSON) – before Nest's own JSON parser
   app.use(ridePageMiddleware(prisma, env));   // public ride page (/r/:id) with dynamic Twitter Cards & OpenGraph tags

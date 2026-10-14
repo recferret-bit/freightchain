@@ -1,8 +1,11 @@
 import type { AdminTokenPort } from '../../application/ports/admin/admin-token.port.js';
 import type { TokenSignerPort } from '../../application/ports/auth/token-signer.port.js';
 
-/** The session lives in an httpOnly cookie: page JavaScript never sees the token. */
+/** The session lives in an httpOnly cookie: page JavaScript never sees the token. Outside production (dev, tests) it is this name… */
 export const SESSION_COOKIE = 'fc_session';
+/** …and in production this one (pentest H7-B): `__Host-` = Secure, Path=/ and NO Domain, so the browser keeps it to the API host alone – a sibling
+    subdomain (storybook.*, whitepaper.*) neither receives it nor can plant one in its place (cookie tossing / session fixation). EnvService.sessionCookie. */
+export const HOST_SESSION_COOKIE = '__Host-fc_session';
 /** The admin session: its own cookie – host-only (admin.<apex>), path /api/admin, SameSite=Strict, short (admin-cookie.interceptor.ts). */
 export const ADMIN_COOKIE = 'fc_admin';
 export const ADMIN_COOKIE_PATH = '/api/admin';
@@ -17,11 +20,12 @@ export function readCookie(header: string | undefined, name: string): string | u
 const VERIFIED = Symbol('freight.sessionWallet');
 type WithSession = { headers: { cookie?: string }; [VERIFIED]?: Promise<string | null> };
 
-/** The wallet of the request's session cookie, or null – verified ONCE per request and shared (the rate limiter and PlayerAuthGuard both need it). */
-export function sessionWallet(request: { headers: { cookie?: string } }, tokens: TokenSignerPort): Promise<string | null> {
+/** The wallet of the request's session cookie (`name` = EnvService.sessionCookie), or null – verified ONCE per request and shared (the rate limiter and
+    PlayerAuthGuard both need it). */
+export function sessionWallet(request: { headers: { cookie?: string } }, tokens: TokenSignerPort, name: string = SESSION_COOKIE): Promise<string | null> {
   const r = request as WithSession;
   r[VERIFIED] ??= (async () => {
-    const token = readCookie(r.headers.cookie, SESSION_COOKIE);
+    const token = readCookie(r.headers.cookie, name);
     return token ? tokens.verify(token) : null;
   })();
   return r[VERIFIED];

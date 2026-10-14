@@ -10,7 +10,7 @@ describe('configureApp', () => {
     const logger = { log: () => undefined };
     let installed: unknown = null;
     const app = {
-      get: (token: unknown) => (token === EnvService ? ({ trustProxy: 0, corsOrigins: [] } as unknown as EnvService) : logger),
+      get: (token: unknown) => (token === EnvService ? ({ trustProxy: 0, corsOrigins: [], isProduction: false } as unknown as EnvService) : logger),
       useLogger: (l: unknown) => { installed = l; },
       getHttpAdapter: () => ({ getInstance: () => ({ set: () => undefined }) }),
       use: (fn: { name: string }) => { used.push(fn.name); },
@@ -19,7 +19,7 @@ describe('configureApp', () => {
       enableShutdownHooks: () => undefined,
     } as unknown as INestApplication;
     configureApp(app);
-    expect(used).toEqual(['solanaPayCors', 'actionHeadersMiddleware', 'compression', 'requestIdMiddleware', 'requestLog', 'jsonOnlyMiddleware', 'beaconBodyMiddleware', 'ridePageMiddleware']);
+    expect(used).toEqual(['solanaPayCors', 'actionHeadersMiddleware', 'compression', 'requestIdMiddleware', 'requestLog', 'legacySession', 'jsonOnlyMiddleware', 'beaconBodyMiddleware', 'ridePageMiddleware']);
     expect(installed).toBe(logger);
   });
 });

@@ -13,7 +13,7 @@ const contextWith = (cookie?: string) => {
 };
 
 describe('OptionalSessionGuard', () => {
-  const guard = new OptionalSessionGuard(new Tokens());
+  const guard = new OptionalSessionGuard(new Tokens(), { sessionCookie: "fc_session" } as never);
 
   it('a valid session cookie stores the wallet and still allows the request', async () => {
     const { request, ctx } = contextWith('fc_session=good');

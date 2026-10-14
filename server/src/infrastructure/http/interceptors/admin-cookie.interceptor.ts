@@ -28,11 +28,13 @@ export class SetAdminCookieInterceptor implements NestInterceptor<AdminSignInRes
 /** Admin sign-out: clears the cookie (same path, or the browser keeps it). */
 @Injectable()
 export class ClearAdminCookieInterceptor implements NestInterceptor<LogoutResultDto, LogoutResultDto> {
+  constructor(private readonly env: EnvService) {}
+
   intercept(context: ExecutionContext, next: CallHandler<LogoutResultDto>): Observable<LogoutResultDto> {
     const response = context.switchToHttp().getResponse<Response>();
     return next.handle().pipe(
       map((result) => {
-        response.clearCookie(ADMIN_COOKIE, { path: ADMIN_COOKIE_PATH });
+        response.clearCookie(ADMIN_COOKIE, { httpOnly: true, sameSite: 'strict', secure: this.env.isProduction, path: ADMIN_COOKIE_PATH });   // the attributes it was set with (M3)
         return result;
       }),
     );

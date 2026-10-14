@@ -15,7 +15,7 @@ export const envSchema = z
     APP_ORIGIN: z.string().min(1).default('http://localhost:3000'),
     CLIENT_DIR: optional(z.string()),
     LANDING_DIR: optional(z.string()),
-    /** Split deployment (landing / game / api on sibling subdomains): the session cookie's Domain (e.g. freightchain.fun, shared by all subdomains) and the browser origins allowed to call the API with it. Unset = single origin. */
+    /** Split deployment (landing / game / api on sibling subdomains): the apex (e.g. freightchain.fun): the admin host (admin.<apex>) and the shared cookie of a NON-production split deployment derive from it – in production the player session is host-only on the API host (`__Host-fc_session`, pentest H7-B) and the browser origins allowed to call the API with it. Unset = single origin. */
     COOKIE_DOMAIN: optional(z.string().regex(/^[a-z0-9.-]+$/i, 'COOKIE_DOMAIN must be a bare host name (no scheme, no port)')),
     CORS_ORIGINS: z.string().default(''),
     TRUST_PROXY: optional(z.coerce.number().int().min(0)),

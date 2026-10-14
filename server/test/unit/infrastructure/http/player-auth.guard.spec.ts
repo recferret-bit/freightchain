@@ -13,7 +13,7 @@ const contextWith = (cookie?: string) => {
 };
 
 describe('PlayerAuthGuard', () => {
-  const guard = new PlayerAuthGuard(new Tokens());
+  const guard = new PlayerAuthGuard(new Tokens(), { sessionCookie: "fc_session" } as never);
 
   it('a valid session cookie puts the wallet on the request', async () => {
     const { request, ctx } = contextWith('other=1; fc_session=good');

@@ -24,7 +24,7 @@ const isHealthRoute = (context: ExecutionContext): boolean => pathOf(context).st
 export function throttlerOptions(env: EnvService, tokens: TokenSignerPort): ThrottlerModuleOptions {
   const byWalletOrIp = async (req: Record<string, unknown>): Promise<string> => {
     const request = req as unknown as Request;
-    const wallet = await sessionWallet(request, tokens); // cached on the request: PlayerAuthGuard reuses it
+    const wallet = await sessionWallet(request, tokens, env.sessionCookie); // cached on the request: PlayerAuthGuard reuses it
     return wallet ? `wallet:${wallet}` : `ip:${request.ip ?? 'unknown'}`;
   };
   return [

@@ -40,6 +40,8 @@ export class EnvService {
   get clientDir(): string { return this.env.CLIENT_DIR ?? defaultClientDir(); }
   get landingDir(): string { return this.env.LANDING_DIR ?? defaultLandingDir(); }
   get cookieDomain(): string | undefined { return this.env.COOKIE_DOMAIN; }
+  /** the player session cookie's name: host-only `__Host-fc_session` in production (pentest H7-B), `fc_session` elsewhere */
+  get sessionCookie(): string { return this.isProduction ? '__Host-fc_session' : 'fc_session'; }
   /** exact browser origins (scheme + host) that may call the API with the session cookie; empty = CORS off (single origin) */
   get corsOrigins(): string[] { return this.env.CORS_ORIGINS.split(',').map((o) => o.trim().replace(/\/$/, '')).filter((o) => o.length > 0); }
   get trustProxy(): number { return this.env.TRUST_PROXY ?? 0; }

@@ -30,7 +30,7 @@ describe('SetAdminCookieInterceptor', () => {
 describe('ClearAdminCookieInterceptor', () => {
   it('clears fc_admin on its own path and passes the body through (the player session is not touched)', async () => {
     const { calls, ctx } = responseSpy();
-    expect(await lastValueFrom(new ClearAdminCookieInterceptor().intercept(ctx, handlerOf({ ok: true as const })))).toEqual({ ok: true });
-    expect(calls).toEqual([{ method: 'clearCookie', args: ['fc_admin', { path: '/api/admin' }] }]);
+    expect(await lastValueFrom(new ClearAdminCookieInterceptor({ isProduction: true } as EnvService).intercept(ctx, handlerOf({ ok: true as const })))).toEqual({ ok: true });
+    expect(calls).toEqual([{ method: 'clearCookie', args: ['fc_admin', { httpOnly: true, sameSite: 'strict', secure: true, path: '/api/admin' }] }]);   // the attributes it was set with (pentest M3)
   });
 });
