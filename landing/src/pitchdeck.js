@@ -244,10 +244,14 @@ addEventListener('keydown', e => {
   else if (e.key === 'End') show(slides.length - 1);
   else if (e.key === 'f' || e.key === 'F') document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
 });
-/* slide 1's cards and tags: the mouse nudges them (parallax), a tap / click lifts one (.hot) instead of turning the page */
-const wall = document.querySelector('.L-wall .vis');
-wall?.parentElement.addEventListener('pointermove', e => { wall.style.setProperty('--px', (e.clientX / innerWidth - .5).toFixed(3)); wall.style.setProperty('--py', (e.clientY / innerHeight - .5).toFixed(3)); });
-wall?.parentElement.addEventListener('pointerleave', () => { wall.style.setProperty('--px', 0); wall.style.setProperty('--py', 0); });
+/* the cards of slides 0–2 (.fx) and slide 0's tags: the mouse nudges them (parallax), a tap / click lifts one (.hot) instead of turning the page */
+['product', 'game', 'insight'].forEach(id => document.getElementById(`s-${id}`)?.classList.add('fx'));
+const fxVis = [...deck.querySelectorAll('.fx .vis')];
+const setTilt = (v, px, py) => { v.style.setProperty('--px', px); v.style.setProperty('--py', py); };
+fxVis.forEach(v => {
+  v.parentElement.addEventListener('pointermove', e => setTilt(v, (e.clientX / innerWidth - .5).toFixed(3), (e.clientY / innerHeight - .5).toFixed(3)));
+  v.parentElement.addEventListener('pointerleave', () => setTilt(v, 0, 0));
+});
 /* dragging a screen: it follows the pointer at about half the distance, trailing behind (a slow lerp), and eases home when let go */
 const drags = new Map(); let raf = 0, moved = false;
 function trail() {
@@ -259,7 +263,7 @@ function trail() {
   });
   raf = busy ? requestAnimationFrame(trail) : 0;
 }
-wall?.querySelectorAll('.shot').forEach(c => {
+deck.querySelectorAll('.fx .shot').forEach(c => {
   c.addEventListener('pointerdown', e => {
     if (e.button) return;
     try { c.setPointerCapture(e.pointerId); } catch { /* a synthetic pointer */ }
@@ -277,21 +281,21 @@ wall?.querySelectorAll('.shot').forEach(c => {
 });
 
 addEventListener('click', e => {
-  const card = e.target.closest('.L-wall .shot, .L-wall .tags span');
+  const card = e.target.closest('.fx .shot, .L-wall .tags span');
   if (card) {
     if (moved) { moved = false; return; }   // the end of a drag is not a tap
-    const on = card.classList.toggle('hot'); wall.querySelectorAll('.hot').forEach(c => { if (c !== card && on) c.classList.remove('hot'); });
+    const on = card.classList.toggle('hot'); card.closest('.vis').querySelectorAll('.hot').forEach(c => { if (c !== card && on) c.classList.remove('hot'); });
     return;
   }
   if (e.target.closest('a,button')) return;
   show(cur + (e.clientX > innerWidth / 3 ? 1 : -1));
 });
 
-/* phones: a swipe turns the page, the tip says "swipe", a portrait screen is asked to turn sideways, and the gyro tilts slide 1's screens */
+/* phones: a swipe turns the page, the tip says "swipe", a portrait screen is asked to turn sideways, and the gyro tilts the screens */
 const touch = matchMedia('(hover: none) and (pointer: coarse)').matches;
 document.body.classList.toggle('touch', touch);
 let sx = 0, sy = 0, swipe = false;
-addEventListener('touchstart', e => { swipe = !e.target.closest('.L-wall .shot'); sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+addEventListener('touchstart', e => { swipe = !e.target.closest('.fx .shot'); sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
 addEventListener('touchend', e => {
   if (!swipe) return;
   const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
@@ -306,12 +310,12 @@ portrait.addEventListener('change', askTurn); document.getElementById('turn-skip
 /* tilt: the phone's gyro drives the same --px / --py as the mouse (zeroed on the first reading and whenever the screen turns); iOS asks for permission on the first tap */
 let base = null;
 const onTilt = e => {
-  if (e.gamma == null || e.beta == null || !wall) return;
+  if (e.gamma == null || e.beta == null || !fxVis.length) return;
   const a = ((window.screen.orientation?.angle ?? 0) + 360) % 360;
   const [x, y] = a === 90 ? [e.beta, -e.gamma] : a === 270 ? [-e.beta, e.gamma] : a === 180 ? [-e.gamma, -e.beta] : [e.gamma, e.beta];
   base ??= [x, y];
   const f = v => Math.max(-.5, Math.min(.5, v / 40)).toFixed(3);
-  wall.style.setProperty('--px', f(x - base[0])); wall.style.setProperty('--py', f(y - base[1]));
+  fxVis.forEach(v => setTilt(v, f(x - base[0]), f(y - base[1])));
 };
 const listenTilt = () => { addEventListener('deviceorientation', onTilt); window.screen.orientation?.addEventListener('change', () => { base = null; }); };
 if (touch && window.DeviceOrientationEvent) {

@@ -182,10 +182,10 @@ h1 small{font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;c
 @keyframes tip{0%,100%{box-shadow:0 0 0 0 #9945ff00;opacity:.72}50%{box-shadow:0 0 18px 2px #9945ff88,0 0 28px 4px #14f19533;opacity:1}}
 
 /* slide 1: the screens hang in the air, lean away from the mouse, lift on hover / tap; the border is a flowing Solana glow */
-.L-wall .shot{--r:0deg;--k:0;--s:1;--dl:0s;transform:translate(var(--dx,0px),var(--dy,0px)) rotate(var(--r)) translate(calc(var(--px,0)*var(--k)*1px),calc(var(--py,0)*var(--k)*1px)) scale(var(--s));
+.fx .shot{--r:0deg;--k:0;--s:1;--dl:0s;transform:translate(var(--dx,0px),var(--dy,0px)) rotate(var(--r)) translate(calc(var(--px,0)*var(--k)*1px),calc(var(--py,0)*var(--k)*1px)) scale(var(--s));
   transition:transform .35s cubic-bezier(.2,.8,.2,1),filter .35s;cursor:pointer;animation:float 6s ease-in-out var(--dl) infinite,glow 4s ease-in-out var(--dl) infinite,flow 7s linear infinite;
   background:linear-gradient(110deg,#9945ff,#14f195,#9945ff,#14f195) 0 0/300% 100%}
-.L-wall .shot:hover,.L-wall .shot.hot{--s:1.045;z-index:6;animation-play-state:running}
+.fx .shot:hover,.fx .shot.hot{--s:1.045;z-index:6;animation-play-state:running}
 .L-wall .w1{--r:-3deg;--k:-26;--dl:-1s}
 .L-wall .w2{--r:2.5deg;--k:34;--dl:-2.5s}
 .L-wall .w3{--r:1.5deg;--k:-40;--dl:-4s}
@@ -194,7 +194,7 @@ h1 small{font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;c
 @keyframes float{0%,100%{translate:0 0}50%{translate:0 -16px}}
 @keyframes flow{to{background-position:300% 0}}
 @keyframes glow{0%,100%{box-shadow:0 0 0 4px #050505,0 0 22px 2px #9945ffaa,0 40px 90px #000}50%{box-shadow:0 0 0 4px #050505,0 0 34px 6px #14f19577,0 40px 90px #000}}
-.L-wall .shot.hot{box-shadow:0 0 0 4px #050505,0 0 48px 10px #9945ffcc,0 0 70px 12px #14f19555}
+.fx .shot.hot{box-shadow:0 0 0 4px #050505,0 0 48px 10px #9945ffcc,0 0 70px 12px #14f19555}
 /* the four tags are part of the same floating set: same drift, lean and lift, their own phases */
 .L-wall .tags span{--r:0deg;--k:0;--s:1;--dl:0s;cursor:pointer;transform:rotate(var(--r)) translate(calc(var(--px,0)*var(--k)*1px),calc(var(--py,0)*var(--k)*1px)) scale(var(--s));
   transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s,background-color .25s,color .25s,border-color .25s;animation:float 5s ease-in-out var(--dl) infinite,tagglow 4s ease-in-out var(--dl) infinite}
@@ -210,30 +210,31 @@ h1 small{font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;c
 .L-wall .vis:has(.w3:is(:hover,.hot)) .tags span:nth-child(4),
 .L-wall .vis:has(.w4:is(:hover,.hot)) .tags span:nth-child(3){--s:1.15;background:var(--accent);border-color:var(--accent);color:#1b1408;font-weight:800;box-shadow:0 0 30px 6px #ffcf5a77,0 0 50px 8px #9945ff55;z-index:7}
 /* ...and the other way round: hovering / tapping a tag lifts its screen the same way (a drop-shadow, since the glow animation owns box-shadow) */
-.L-wall .shot:is(:hover,.hot),
+.fx .shot:is(:hover,.hot),
 .L-wall .vis:has(.tags span:nth-child(1):is(:hover,.hot)) .w1,
 .L-wall .vis:has(.tags span:nth-child(2):is(:hover,.hot)) .w2,
 .L-wall .vis:has(.tags span:nth-child(4):is(:hover,.hot)) .w3,
 .L-wall .vis:has(.tags span:nth-child(3):is(:hover,.hot)) .w4{--s:1.09;z-index:6;filter:drop-shadow(0 0 20px #14f195aa) drop-shadow(0 0 34px #9945ff88)}
 @keyframes tagglow{0%,100%{box-shadow:0 0 10px 0 #14f19522}50%{box-shadow:0 0 20px 2px #9945ff66}}
-@media (prefers-reduced-motion:reduce){.L-wall .shot,.L-wall .tags span,#help,#help b{animation:none!important}}
+@media (prefers-reduced-motion:reduce){.fx .shot,.fx .badge,.L-wall .tags span,#help,#help b{animation:none!important}}
 
 .L-wall .tags{z-index:8}   /* above a lifted screen (z 6), so no tag is ever covered */
 
 /* a screen's picture starts cropped in (zoomed) and opens out to the whole shot when its screen is selected, while the screen itself grows */
-.L-wall .shot img{transform:scale(1.2);transition:transform .55s cubic-bezier(.2,.8,.2,1)}
-.L-wall .shot:is(:hover,.hot) img,
+.fx .shot img,.fx .shot video{transform:scale(1.2);transition:transform .55s cubic-bezier(.2,.8,.2,1)}
+.fx .shot:is(:hover,.hot) img,
+.fx .shot:is(:hover,.hot) video,
 .L-wall .vis:has(.tags span:nth-child(1):is(:hover,.hot)) .w1 img,
 .L-wall .vis:has(.tags span:nth-child(2):is(:hover,.hot)) .w2 img,
 .L-wall .vis:has(.tags span:nth-child(4):is(:hover,.hot)) .w3 img,
 .L-wall .vis:has(.tags span:nth-child(3):is(:hover,.hot)) .w4 img{transform:scale(1)}
-@media (prefers-reduced-motion:reduce){.L-wall .shot img{transition:none}}
+@media (prefers-reduced-motion:reduce){.fx .shot img,.fx .shot video{transition:none}}
 
 /* dragged: lifted like a selected screen, no CSS transition on the move (the script's lerp is the lag), nothing selects or scrolls */
-.L-wall .shot{touch-action:none;user-select:none;-webkit-user-select:none}
-.L-wall .shot img{pointer-events:none;-webkit-user-drag:none}
-.L-wall .shot.drag{--s:1.09;z-index:6;cursor:grabbing;transition:filter .35s;filter:drop-shadow(0 0 20px #14f195aa) drop-shadow(0 0 34px #9945ff88)}
-.L-wall .shot.drag img{transform:scale(1)}
+.fx .shot{touch-action:none;user-select:none;-webkit-user-select:none}
+.fx .shot img,.fx .shot video{pointer-events:none;-webkit-user-drag:none}
+.fx .shot.drag{--s:1.09;z-index:6;cursor:grabbing;transition:filter .35s;filter:drop-shadow(0 0 20px #14f195aa) drop-shadow(0 0 34px #9945ff88)}
+.fx .shot.drag img,.fx .shot.drag video{transform:scale(1)}
 
 /* phones (script adds body.touch): the tip says swipe, safe areas, and the portrait "turn your phone" cover */
 #help .t{display:none}
@@ -257,3 +258,8 @@ h1 small{font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;c
 #ticker span.code{font-weight:500;text-transform:none;letter-spacing:0;color:#b9ffe1;text-shadow:0 0 8px #14f19577}
 @keyframes tkrun{to{transform:translateX(-50%)}}
 @media (prefers-reduced-motion:reduce){#ticker .tk{animation:none}}
+
+/* slides 1–2 join slide 0's floating cards: their own tilt / phase, and the LIVE badge drifts above a lifted card */
+.fx .poster{--r:2deg;--k:-30;--dl:-.8s}
+.fx .v-main{--r:-1.5deg;--k:26;--dl:-2s}
+.fx .badge{z-index:8;animation:float 5s ease-in-out -1.5s infinite}
