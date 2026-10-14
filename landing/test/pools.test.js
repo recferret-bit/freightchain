@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { escrowExplainer, explorerUrl, explorerTx, poolPhase, phaseLine, payoutText, poolSchedule, scheduleText, hasStandings, span, statusChip, progressText, deadline, splitParts, rulesText, tierTickets, buyRoom, cardAction, rideError, promoError, promoOk, buyError, ticketShareText, xIntent, usd, pct, sol, heldTickets, paidChip, ridableTickets } from '../../client/site/pools.js';
-import { homeBlinkUrl, ridePageUrl, rideShareText } from '../../client/js/ui/share.js';
+import { homeBlinkUrl, pledgeShareText, ridePageUrl, rideShareText } from '../../client/js/ui/share.js';
 import { salesOpen } from '../../client/site/tickets-api.js';
 
 /* The pool wording the lobby AND the landing show (client/site/pools.js is pure). Every pool status – incl. `refunding`, which the dev seeds can't produce – is pinned here. */
@@ -197,6 +197,14 @@ test('blink urls: the site home, and a ride page whose id is encoded', () => {
   assert.equal(homeBlinkUrl('https://freightchain.fun/', 'http://localhost:3000'), 'https://freightchain.fun/');
   assert.equal(ridePageUrl('', 'http://localhost:3000', 'ride_1'), 'http://localhost:3000/r/ride_1');
   assert.equal(ridePageUrl('https://freightchain.fun', '', 'ab/c d'), 'https://freightchain.fun/r/ab%2Fc%20d');
+});
+
+test('the 𝕏 post after a pledge: who, the rate, the cap – short enough for the ride link, and not a bet', () => {
+  const text = pledgeShareText({ driver: 'AbCd…wxyz', rate: '0.001 SOL', km: 10 });
+  assert.equal(text, 'Locked 0.001 SOL/km for AbCd…wxyz, up to 10 km, in @FreightChainSol. They are paid for the kilometres they finish. The rest comes back. Watch the ride. @solana devnet.');
+  assert.ok(text.length + 1 + 23 <= 280);
+  assert.equal(pledgeShareText({ driver: '', rate: '0.000001 SOL', km: 1 }), 'Locked 0.000001 SOL/km for the driver, up to 1 km, in @FreightChainSol. They are paid for the kilometres they finish. The rest comes back. Watch the ride. @solana devnet.');
+  assert.doesNotMatch(text, /verified|prize|bet|jackpot|lottery/i);
 });
 
 test('ride share text: free driving, paid driving, a finished shift that never says verified', () => {
