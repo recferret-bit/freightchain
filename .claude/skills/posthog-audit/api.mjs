@@ -36,13 +36,20 @@ export async function api(path, { method = 'GET', body } = {}) {
   return text ? JSON.parse(text) : {};
 }
 
+/** `next` may be a path or an absolute URL. Follow it on this host either way. */
+function nextPath(next) {
+  if (!next) return '';
+  const url = new URL(next, 'https://eu.posthog.com');
+  return `${url.pathname}${url.search}`;
+}
+
 export async function listInsights() {
   const out = [];
   let path = '/api/projects/297915/insights/?limit=100';
   while (path) {
     const page = await api(path);
     out.push(...(page.results ?? []));
-    path = page.next ? page.next.replace('https://eu.posthog.com', '') : '';
+    path = nextPath(page.next);
   }
   return out;
 }
