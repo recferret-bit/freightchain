@@ -4,11 +4,11 @@ import { spawn } from 'node:child_process'; import fs from 'node:fs'; import os 
 
 export const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-/** Headless Chrome cannot really drive: this page snippet keeps the truck at `speed` m/s in its lane with the gas held, and lets the GAME's physics move it –
+/** Headless Chrome cannot really drive: this page snippet keeps the truck at `speed` m/s in its lane (no pedal held: with the engine on that would blow it at max revs), and lets the GAME's physics move it –
     so s grows with v × the game clock, as in a real drive (verdict rules v4 reject a position that outruns the recorded speed: the old hook pushed st.s with
     v at 0, a generator's recording). `extra` = statements run on every tick before (e.g. 'st.park = false; st.engineOn = true;'); `lane` = the d to hold once
-    out on the main road (default: where the truck started). The interval is window.__drive (clearInterval it to let go). */
-export const driveHook = (speed = 20, extra = '', lane = null) => `(() => { const g = __game, st = g.st, d0 = st.d; window.__drive = setInterval(() => { if (st.mode !== 'drive') return; ${extra} g.input.gas = 1; st.v = st.vel = ${speed}; st.d = ${lane === null ? 'd0' : `st.s > g.net.Sm + 10 ? ${lane} : d0`}; st.psi = 0; }, 40); })()`;
+    out on the main road – the depot turn before it is left to the game (default: hold where the truck started, all the way). The interval is window.__drive (clearInterval it to let go). */
+export const driveHook = (speed = 20, extra = '', lane = null) => `(() => { const g = __game, st = g.st, d0 = st.d; window.__drive = setInterval(() => { if (st.mode !== 'drive') return; ${extra} st.v = st.vel = ${speed}; ${lane === null ? 'st.d = d0; st.psi = 0;' : `if (st.s > g.net.Sm + 10) { st.d = ${lane}; st.psi = 0; }`} }, 40); })()`;
 
 export async function launch({ port, shotsDir, args = [], evalProblems = false }) {
   const CH = process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
