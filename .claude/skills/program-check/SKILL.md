@@ -57,13 +57,13 @@ which **writes a PDA on chain signed by the upgrade authority** (then `solana-ve
 1. **Trail of Bits `solana-vulnerability-scanner`** – open source (CC-BY-SA-4.0, `trailofbits/skills`), instructions only (ripgrep over `programs/`, no binaries, no network).
    Six classes: arbitrary CPI, PDA bump canonicalisation, owner checks, signer checks, sysvar spoofing, instruction introspection.
    If it is not installed, ask the user to run `/plugin marketplace add trailofbits/skills` then install `building-secure-contracts` from `/plugin` (it changes their Claude Code config – don't do it for them). Run it on `programs/freightchain-pools/programs/freightchain_pools/src`.
-2. **This program's own checklist** – `review-checklist.md` next to this file. Money, rent, the state machine, authority, and the six Sealevel classes the Trail of Bits six do not cover (account-data matching, type cosplay, re-init, duplicate mutable accounts, PDA sharing, closing). Source for those six: `coral-xyz/sealevel-attacks`, the set Anchor's security page points at. Open every instruction in the program module. An instruction you did not open is an incomplete review. ✓ / ✗ with the line. A regex hit is a lead, not a pass.
+2. **This program's own checklist** – `review-checklist.md` next to this file. Money, rent, the state machine, authority, and the six Sealevel classes the Trail of Bits six do not cover (account-data matching, type cosplay, re-init, duplicate mutable accounts, PDA sharing, closing). Source for those six: `coral-xyz/sealevel-attacks`, the set Anchor's security page points at. Open every instruction in the program module. An instruction you did not open is an incomplete review. The escrow rows (reload after CPI, who a PDA signs for, stored payment keys, direct lamports, the slot-hashes sysvar) are in that file too. ✓ / ✗ with the line. A regex hit is a lead, not a pass. The OWASP Solana Programs Top 10 is unpublished. Do not invent S01–S10.
 3. Report findings with file:line and a failing LiteSVM test where one can be written (`tests/common/mod.rs` has the harness). A finding without a reproducing test is "plausible", not "confirmed".
 
 Considered and **not** wired in (2026-10-08): Anchor's built-in fuzzer Crucible (`anchor fuzz`) is Anchor 2.0 only – this is Anchor 1.2.1;
 Trident (Ackee) documents Anchor ≤ 0.3x / Solana SDK 2.3 for 0.12 and 0.13 is a release candidate – revisit after an Anchor upgrade;
 `crytic/solana-lints` (dylint, nightly Rust, small project) and young static analysers (solsec) – not proven enough to gate on.
-The pentest harness (`pentest/scripts/harness.mjs`) emits regex leads for the same Sealevel classes. It is not this gate, and a clean lead file is not a clear program.
+The pentest harness (`pentest/scripts/harness.mjs`) emits regex leads for the greppable Sealevel classes, `new_with_signer`, and a direct lamport write. It is not this gate, and a clean lead file is not a clear program.
 
 ## Reporting
 
