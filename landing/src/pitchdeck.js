@@ -28,15 +28,15 @@ const SLIDES = [
       <div class="copy">
         <div class="brand"><img src="/icons/icon-192.png" alt=""><span>FREIGHT CHAIN</span></div>
         <div class="lbl">00 · The product</div>
-        <h1>Freight Chain<small>Competitive truck sim</small></h1>
-        ${pts(['<b>Gearbox</b> · manual, clutch, stalls', '<b>Engine</b> · cold starts, heat, battery', '<b>Road</b> · endless, day and night', '<b>Traffic</b> · forks, bends, sinkholes', '<b>One mistake</b> · ends the shift', '<b>Speed</b> · capped near 100 km/h'])}
+        <h1>Freight Chain<small>Competitive · GameFi</small></h1>
+        ${pts(['<b>Site</b> · landing, lobby, whitepaper', '<b>Streams</b> · live watch + replays', '<b>Analytics</b> · PostHog funnels', '<b>Solana</b> · devnet escrow, no token', '<b>Details</b> · gearbox, cold engine, night', '<b>Passion</b> · built solo, shipped fast'])}
       </div>
       <div class="vis">
-        ${shot('landing-hero.webp', 'w1', 'The road never ends')}
+        ${shot('landing-hero.webp', 'w1', 'The landing')}
         ${shot('watch-replay.webp', 'w2', 'Watching a replay')}
-        ${shot('game-guest.webp', 'w3', 'The cab: gauges, gearbox and a free run')}
-        ${shot('01-one-mistake.webp', 'w4', 'One mistake ends the shift')}
-        <div class="tags"><span>THE ROAD</span><span>REPLAYS</span><span>ONE MISTAKE</span><span>THE CAB</span></div>
+        ${shot('wp-onchain.webp', 'w3', 'Whitepaper, on-chain chapter')}
+        ${shot('receipt-card.webp', 'w4', 'A public ride receipt')}
+        <div class="tags"><span>SITE</span><span>STREAMS</span><span>ANALYTICS</span><span>SOLANA ESCROW</span></div>
       </div>` },
 
   { layout: 'bleed', id: 'game',
