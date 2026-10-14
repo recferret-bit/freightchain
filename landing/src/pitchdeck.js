@@ -203,8 +203,21 @@ const FACTS = [
 const tk = document.querySelector('#ticker .tk');
 const tkItems = () => FACTS.map(f => { const e = document.createElement('span'), [kind, text] = Array.isArray(f) ? f : ['', f]; e.textContent = text; if (kind) e.className = kind; return e; });
 tk.append(...tkItems(), ...tkItems());   // doubled: the -50% translate loops seamlessly
-const tkSpeed = () => { tk.style.animationDuration = `${Math.round(tk.scrollWidth / 2 / 190)}s`; };   // a steady ~190 px/s (stage px), however long the list is
-tkSpeed(); document.fonts?.ready.then(tkSpeed);
+/* the ticker is driven by script, not CSS: ~190 px/s (stage px), easing down to a crawl while the pointer is over it and for a moment after a click / tap, then easing back up */
+const TK_FAST = 190, TK_SLOW = 24, tkReduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let tkX = 0, tkV = TK_FAST, tkHold = 0, tkOver = false, tkLast = 0;
+const tkEl = document.getElementById('ticker');
+tkEl.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') tkOver = true; });
+tkEl.addEventListener('pointerleave', () => { tkOver = false; });
+function tkTick(t) {
+  const dt = Math.min(.1, (t - tkLast) / 1000) || 0; tkLast = t;
+  const target = tkReduced ? 0 : (tkOver || t < tkHold) ? TK_SLOW : TK_FAST;
+  tkV += (target - tkV) * (1 - Math.exp(-dt * 3.5));   // an exponential tween: ~0.3 s to most of the way either direction
+  tkX = (tkX + tkV * dt) % (tk.scrollWidth / 2);   // the list is doubled, so half its width is one seamless loop
+  tk.style.transform = `translateX(${-tkX.toFixed(1)}px)`;
+  requestAnimationFrame(tkTick);
+}
+requestAnimationFrame(tkTick);
 
 /* ── engine ── */
 const deck = document.getElementById('deck');
@@ -281,6 +294,7 @@ deck.querySelectorAll('.fx .shot').forEach(c => {
 });
 
 addEventListener('click', e => {
+  if (e.target.closest('#ticker')) { tkHold = performance.now() + 1400; return; }   // a click on the header slows it for a moment instead of turning the page
   const card = e.target.closest('.fx .shot, .L-wall .tags span');
   if (card) {
     if (moved) { moved = false; return; }   // the end of a drag is not a tap
