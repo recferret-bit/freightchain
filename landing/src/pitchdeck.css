@@ -203,7 +203,7 @@ h1 small{font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;c
 .L-wall .tags span:nth-child(3){--k:-36;--r:1.5deg;--dl:-3s}
 .L-wall .tags span:nth-child(4){--k:56;--r:-2deg;--dl:-4.2s}
 .L-wall .tags span:hover,.L-wall .tags span.hot{--s:1.08;box-shadow:0 0 26px 4px #14f19577,0 0 40px 6px #9945ff66}
-/* hover / tap on a screen selects its tag: site ↔ landing, streams ↔ replay, solana escrow ↔ whitepaper's on-chain chapter, analytics ↔ the ride receipt – amber, extra bold, 15 % bigger */
+/* hover / tap on a screen selects its tag: the road ↔ the landing's hero, replays ↔ the replay, the cab ↔ the free run, one mistake ↔ the poster – amber, extra bold, 15 % bigger */
 .L-wall .tags span:is(:hover,.hot),
 .L-wall .vis:has(.w1:is(:hover,.hot)) .tags span:nth-child(1),
 .L-wall .vis:has(.w2:is(:hover,.hot)) .tags span:nth-child(2),
@@ -248,3 +248,5 @@ h1 small{font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;c
 @keyframes turn{0%,20%{transform:rotate(0)}60%,100%{transform:rotate(-90deg)}}
 #turn button{font:600 13px var(--body);letter-spacing:2px;text-transform:uppercase;color:#fff9;background:none;border:1px solid #fff4;border-radius:999px;padding:10px 18px}
 @media (prefers-reduced-motion:reduce){#turn .phone{animation:none}}
+
+.L-wall .w4 img{object-position:50% 100%}   /* the poster's truck, not its headline */
