@@ -50,15 +50,17 @@ test('JSON-LD parses: the game + organisation on the landing, the article on the
   assert.equal(article.url, URLS.whitepaper); assert.equal(article.about['@id'], game['@id']);
 });
 
-test('noindex exactly where a page is not for search (lobby, model viewer, admin), never on the public pages', () => {
+test('noindex exactly where a page is not for search (lobby, model viewer, admin, the pitch deck), never on the public pages', () => {
   for (const p of ['lobby', 'viewer']) assert.match(pages[p], /<meta name="robots" content="noindex[^"]*">/, p);
   assert.match(read(join(client, 'admin.html')), /<meta name="robots" content="noindex/);
+  assert.match(read(join(root, 'pitchdeck.html')), /<meta name="robots" content="noindex[^"]*">/, 'pitchdeck');
+  assert.doesNotMatch(sitemap + llms, /pitchdeck/, 'the deck is not advertised to search or AI crawlers');
   for (const p of Object.keys(URLS)) assert.doesNotMatch(pages[p], /name="robots"/, p);
 });
 
 test('robots.txt: everything open but the API, AI crawlers named and allowed, the sitemap absolute', () => {
   assert.doesNotMatch(robots, /^Disallow:\s*\/\s*$/m, 'nothing blocks the whole site');
-  assert.doesNotMatch(robots, /^Disallow:.*(lobby|viewer)/m, 'a noindex page must stay fetchable, or its tag is never read');
+  assert.doesNotMatch(robots, /^Disallow:.*(lobby|viewer|pitchdeck)/m, 'a noindex page must stay fetchable, or its tag is never read');
   const groups = robots.split(/\n\s*\n/).filter(g => /^User-agent:/m.test(g));
   for (const g of groups) assert.match(g, /^Disallow: \/api\/$/m, `every group keeps /api/ out: ${g.split('\n')[0]}`);
   for (const bot of ['GPTBot', 'OAI-SearchBot', 'ClaudeBot', 'PerplexityBot', 'Google-Extended']) assert.match(robots, new RegExp(`^User-agent: ${bot}$`, 'm'), bot);

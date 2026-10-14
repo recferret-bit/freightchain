@@ -88,8 +88,8 @@ test('links that leave the page go through the host bases; analytics posts go th
   assert.match(html, /id="landing-top"[^>]*>← <span class="hide-sm">LANDING<\/span><\/a>/);
 });
 
-test('host wiring: hosts.js knows the whitepaper prefix and exports its base; vite builds both pages', () => {
-  const hosts = src('client/js/hosts.js'); assert.match(hosts, /\(ride\|api\|storybook\|whitepaper\|admin\|www\)/); assert.match(hosts, /export const WHITEPAPER_BASE/);
+test('host wiring: hosts.js knows the whitepaper + pitchdeck prefixes and exports the whitepaper base; vite builds all three pages', () => {
+  const hosts = src('client/js/hosts.js'); assert.match(hosts, /\(ride\|api\|storybook\|whitepaper\|pitchdeck\|admin\|www\)/); assert.match(hosts, /export const WHITEPAPER_BASE/);
   assert.match(readFileSync(join(root, 'vite.config.js'), 'utf8'), /whitepaper: 'whitepaper\.html'/);
 });
 

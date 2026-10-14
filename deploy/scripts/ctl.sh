@@ -18,6 +18,6 @@ case "$CMD" in
     [ "$fix" = 1 ] && { confirm "Rewrite the statistics rows on production from the rides?"; extra+=("FIX=1"); }
     [ -n "$wallet" ] && extra+=("WALLET=$wallet")
     rscript "$DEPLOY_DIR/scripts/remote/ctl.sh" stats "${args[@]}" ${extra[@]+"${extra[@]}"} ;;
-  smoke) SMOKE_ADMIN_AUTH="${DEPLOY_ADMIN_USER:-}${DEPLOY_ADMIN_PASSWORD:+:$DEPLOY_ADMIN_PASSWORD}" node "$DEPLOY_DIR/scripts/smoke.mjs" "https://${DEPLOY_DOMAIN}" --api "https://api.${DEPLOY_DOMAIN}" --game "https://ride.${DEPLOY_DOMAIN}" --storybook "https://storybook.${DEPLOY_DOMAIN}" --whitepaper "https://whitepaper.${DEPLOY_DOMAIN}" --admin "https://admin.${DEPLOY_DOMAIN}" --treasury "$TREASURY_PUBKEY" ;;
+  smoke) SMOKE_ADMIN_AUTH="${DEPLOY_ADMIN_USER:-}${DEPLOY_ADMIN_PASSWORD:+:$DEPLOY_ADMIN_PASSWORD}" node "$DEPLOY_DIR/scripts/smoke.mjs" "https://${DEPLOY_DOMAIN}" --api "https://api.${DEPLOY_DOMAIN}" --game "https://ride.${DEPLOY_DOMAIN}" --storybook "https://storybook.${DEPLOY_DOMAIN}" --whitepaper "https://whitepaper.${DEPLOY_DOMAIN}" --pitchdeck "https://pitchdeck.${DEPLOY_DOMAIN}" --admin "https://admin.${DEPLOY_DOMAIN}" --treasury "$TREASURY_PUBKEY" ;;
   *) die "unknown command $CMD" ;;
 esac

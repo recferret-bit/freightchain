@@ -172,6 +172,7 @@ On 13 Oct twelve AI auditors from four vendors attacked six surfaces in pairs, b
 | Whitepaper | [whitepaper.freightchain.fun](https://whitepaper.freightchain.fun) | Rules, escrow, validation, streams, risks |
 | Game | [ride.freightchain.fun/play.html](https://ride.freightchain.fun/play.html) | The truck. A ride id comes from the lobby. Bare `play.html` is a guest run |
 | Ride receipt | `freightchain.fun/r/:id` | Live or finished ride, explorer link, X card. Open one from [REPLAYS](https://freightchain.fun/lobby.html#replays) |
+| Pitch deck | [pitchdeck.freightchain.fun](https://pitchdeck.freightchain.fun) | The slides. ← → to move, F full screen, N the script |
 | Model viewer | [storybook.freightchain.fun](https://storybook.freightchain.fun) | The meshes, no API |
 | API | [api.freightchain.fun/api/health](https://api.freightchain.fun/api/health) | JSON under `/api/`. Anything else on that host 404s |
 | Admin | [admin.freightchain.fun](https://admin.freightchain.fun) | HTTP basic auth, then a second wallet sign-in |
@@ -417,13 +418,14 @@ Admin changes pass three gates: nginx basic auth, an admin session, then a walle
 
 ## Sites
 
-Six names, one app. [`client/js/hosts.js`](client/js/hosts.js) picks the host. On localhost every base is empty and the pages share an origin.
+Seven names, one app. [`client/js/hosts.js`](client/js/hosts.js) picks the host. On localhost every base is empty and the pages share an origin.
 
 ```mermaid
 flowchart LR
   landing["freightchain.fun<br/>landing and lobby"] --> api["api.freightchain.fun<br/>NestJS"]
   ride["ride.freightchain.fun<br/>the game"] --> api
   paper["whitepaper.freightchain.fun"] --> api
+  deck["pitchdeck.freightchain.fun<br/>no requests"]
   admin["admin.freightchain.fun<br/>page and /api/admin"] --> api
   story["storybook.freightchain.fun<br/>meshes only"]
   api --> pg[(PostgreSQL)]
@@ -455,7 +457,7 @@ The intro clip is real gameplay, 14.8 seconds, with the in-game synth: [`media/o
 - [`deploy/`](deploy/README.md) — Docker, nginx, certbot (`app`, `worker`, `postgres`, `redis`). `npm run deploy` ships `git archive HEAD`.
 - [`design/`](design) — icons, banners, badge art.
 - [`docs/`](docs) — explainers. [`docs/agents/`](docs/agents) is the detail [`AGENTS.md`](AGENTS.md) points at.
-- [`landing/`](landing) — the `/` page and the whitepaper. Vite.
+- [`landing/`](landing) — the `/` page, the whitepaper and the pitch deck. Vite.
 - [`media/`](media) — promo clips and the chiptune synth.
 - [`pentest/`](pentest) — multi-agent penetration testing and quorum security review suite (Claude, Grok, Agy CLIs).
 - [`programs/`](programs/freightchain-pools) — the Anchor program. Anchor 1.2.

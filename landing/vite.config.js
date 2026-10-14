@@ -8,6 +8,6 @@ const toNest = ['/api', '/lobby.html', '/play.html', '/viewer.html', '/site/', '
 
 export default defineConfig({
   server: { port: 5173, proxy: Object.fromEntries(toNest.map(p => [p, { target: NEST, changeOrigin: false }])), fs: { allow: ['..'] } },   // fs.allow: wallet.js is imported from ../client
-  build: { outDir: 'dist', rollupOptions: { input: { index: 'index.html', whitepaper: 'whitepaper.html' } }, emptyOutDir: true, target: 'es2022', sourcemap: 'hidden', assetsInlineLimit: 0, chunkSizeWarningLimit: 60 },   // 'hidden': maps are built (for error reports) but not linked from the bundles; 60 kB warns long before the page gets heavy
+  build: { outDir: 'dist', rollupOptions: { input: { index: 'index.html', whitepaper: 'whitepaper.html', pitchdeck: 'pitchdeck.html' } }, emptyOutDir: true, target: 'es2022', sourcemap: 'hidden', assetsInlineLimit: 0, chunkSizeWarningLimit: 60 },   // 'hidden': maps are built (for error reports) but not linked from the bundles; 60 kB warns long before the page gets heavy
   esbuild: { legalComments: 'none' },
 });
