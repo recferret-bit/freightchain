@@ -19,7 +19,7 @@ import { coverage } from './localnet-coverage.mjs';
 const { BASE, RPC, KEYS } = process.env;
 if (!BASE || !RPC || !KEYS) { console.error('run it through .claude/skills/localnet-e2e/run.sh (needs BASE, RPC, KEYS)'); process.exit(2); }
 const CDP = +(process.env.CHROME_PORT || 9371);
-const PREP_A = +(process.env.PREP_A || 100), PLAY_A = +(process.env.PLAY_A || 170), PREP_B = +(process.env.PREP_B || 45), PREP_C = +(process.env.PREP_C || 50);
+const PREP_A = +(process.env.PREP_A || 170), PLAY_A = +(process.env.PLAY_A || 240), PREP_B = +(process.env.PREP_B || 45), PREP_C = +(process.env.PREP_C || 50);   // PREP_A: pool A's rides (step 6) must start inside its sale – no new rides after it
 // amounts: localnet defaults; TARGET=devnet passes small ones (devnet SOL is scarce) – a price must stay ≥ the 890 880-lamport rent minimum
 const SPONSOR_A = +(process.env.SPONSOR_A || 30_000_000), SPONSOR_C = +(process.env.SPONSOR_C || 20_000_000);
 const PRICE_A = +(process.env.PRICE_A || 100_000_000), PRICE_B = +(process.env.PRICE_B || 50_000_000);   // 0.1 / 0.05 SOL

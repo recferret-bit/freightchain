@@ -158,7 +158,7 @@ check('payouts: the tab renders one card per pool of GET /api/admin/pool-payouts
 const holdable = adminPools.find(x => ['open', 'active'].includes(x.pool.status) && x.pool.payout.state !== 'paid' && !x.hold);
 if (holdable) {
   const id = holdable.pool.id, card = `#apool-${id}`, cardText = () => A.ev(`document.querySelector(${JSON.stringify(card)})?.textContent || ""`);
-  check('payouts: the card shows the phase, sold / min, the payout time, the payout job and the winners heading', /ON SALE|RIDES COUNT|IN REVIEW|PAY|NO WINNERS/.test(await cardText()) && (await cardText()).includes(`${holdable.pool.sold} / ${holdable.pool.minTickets} min`) && /payout at/.test(await cardText()) && /WINNERS · (FINAL|PROVISIONAL)/.test(await cardText()), (await cardText()).slice(0, 300));
+  check('payouts: the card shows the phase, sold / min, the payout time, the payout job and the winners heading', /ON SALE|FINISHING|IN REVIEW|PAY|NO WINNERS/.test(await cardText()) && (await cardText()).includes(`${holdable.pool.sold} / ${holdable.pool.minTickets} min`) && /payout at/.test(await cardText()) && /WINNERS · (FINAL|PROVISIONAL)/.test(await cardText()), (await cardText()).slice(0, 300));
   await A.shot('payouts-desktop');
   const signedBefore = await A.ev('window.__signed');
   await A.ev(`document.querySelector(${JSON.stringify(`${card} textarea`)}).value = "e2e: checking a lap"`);

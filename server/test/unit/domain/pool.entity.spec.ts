@@ -56,14 +56,21 @@ describe('Pool – what can be bought', () => {
 });
 
 describe('Pool – the ride window (pentest H6: a ride counts only when it ENDED by the play deadline)', () => {
-  const live = (playDeadline: Date) => pool({ status: 'active', prepDeadline: new Date(playDeadline.getTime() - 2 * 3600_000), playDeadline });
-  it('a shift may start until the play deadline minus its length (1 h for the tier by default, the ride\'s own for a demo shift)', () => {
-    const p = live(PLAY), last = PLAY.getTime() - 3600_000;
+  const live = (playDeadline: Date, windowH = 3) => pool({ status: 'active', prepDeadline: new Date(playDeadline.getTime() - windowH * 3600_000), playDeadline });
+  it('no new ride after the sale end: the last start is the prep deadline – the 3 h after it only let shifts on the road finish', () => {
+    const p = live(PLAY), sale = PLAY.getTime() - 3 * 3600_000;
     expect(p.rideWindow()).toEqual({ endBy: PLAY });
-    expect(p.startBy().getTime()).toBe(last);
-    expect([p.isRidable(new Date(last)), p.isRidable(new Date(last + 1))]).toEqual([true, false]);
-    expect(p.isRidable(new Date(last + 1), 60)).toBe(true);
-    expect(pool({ status: 'open', playDeadline: PLAY }).isRidable(new Date(last - 1))).toBe(false);   // not live yet
+    expect(p.startBy().getTime()).toBe(sale);
+    expect([p.isRidable(new Date(sale)), p.isRidable(new Date(sale + 1))]).toEqual([true, false]);
+    expect(p.isRidable(new Date(sale + 1), 60)).toBe(false);   // a short demo shift too: the rule is the clock, not the shift
+    expect(pool({ status: 'open', prepDeadline: new Date(sale), playDeadline: PLAY }).isRidable(new Date(sale - 1))).toBe(false);   // not live yet
+  });
+  it('a window shorter than a shift (4 h / 8 h tiers, a demo pool): the last start is the play deadline minus the shift', () => {
+    const p = live(PLAY, 2), last = PLAY.getTime() - 3600_000;
+    expect(p.startBy().getTime()).toBe(PLAY.getTime() - 2 * 3600_000);
+    expect(p.startBy(4 * 3600).getTime()).toBe(PLAY.getTime() - 4 * 3600_000);
+    expect(live(PLAY, 0.5).startBy().getTime()).toBe(last);
+    expect([live(PLAY, 0.5).isRidable(new Date(last)), live(PLAY, 0.5).isRidable(new Date(last + 1))]).toEqual([true, false]);
   });
   it('a ride ordered in time may START while it can still reach its finish line by the deadline (half its shift at the governor)', () => {
     const p = live(PLAY), half = 1800;

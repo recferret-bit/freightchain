@@ -124,7 +124,7 @@ function paintTiers(t) {   // a tier sold through a pool: the ticket price is th
   $('price').textContent = [pooled && 'Pool tickets: the price is part of the pool’s rules, fixed when it was created.', legacy && (t.solUsd ? `Pay-per-ride: SOL ≈ $${t.solUsd}, the quote is locked for 10 minutes when you order.` : 'Pay-per-ride: SOL price unavailable right now.'), soonText, 'Devnet SOL only.'].filter(Boolean).join(' ');
 }
 
-/* the escrowed pools on sale or running (the same list as GET /api/pools, carried by /api/pool so the page polls once) – each with its phase: ON SALE · RIDES COUNT · IN REVIEW · PAYING… */
+/* the escrowed pools on sale or running (the same list as GET /api/pools, carried by /api/pool so the page polls once) – each with its phase: ON SALE · FINISHING · IN REVIEW · PAYING… */
 function paintPools() {
   const box = $('pools'), list = S.pool?.pools;
   if (!list) { box.replaceChildren(...empty('Pools unavailable right now.')); return; }

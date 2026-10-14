@@ -22,8 +22,8 @@ const HOUR = 3600;
 /** Paid rows are mutable so pay-per-ride tests can opt a tier back on. Production leaves every paid shift off until a pool of it is registered. */
 const PAID: RideTierDef[] = [
   // 20 × $5 = a $100 pot: 1st $26, 2nd $16, 3rd $11, each place 4–20 $1. Fewer tickets and the pool refunds. Off the counter until that pool exists.
-  // one pool a day: 24 h on sale (rides count from the moment 20 are sold), 2 h more for the last buyers to finish a shift, 48 h of review
-  { id: '1h', seconds: HOUR, usd: 5, onSale: false, minTickets: 20, schedule: { saleHours: 24, playHours: 2, reviewHours: 48 } },
+  // one pool a day: 24 h on sale (rides count from the moment 20 are sold), then 3 h for the shifts on the road to finish (no sales, no new rides – Pool.startBy), 48 h of review
+  { id: '1h', seconds: HOUR, usd: 5, onSale: false, minTickets: 20, schedule: { saleHours: 24, playHours: 3, reviewHours: 48 } },
   { id: '4h', seconds: 4 * HOUR, usd: 15, onSale: false, minTickets: null, schedule: null },
   { id: '8h', seconds: 8 * HOUR, usd: 50, onSale: false, minTickets: null, schedule: null },
 ];

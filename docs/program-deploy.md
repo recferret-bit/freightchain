@@ -22,7 +22,7 @@ v2 grew `Config` (+ `payout_authority`) and `Pool` (+ `payout_at`) and added the
 ```sh
 # 8a. name the payout key (the server signs prizes with it; it can do nothing else)
 solana-keygen new --no-bip39-passphrase -o $K/payout.json && bash $D admin set-payout-authority -k $PWD/$K/admin.json --payout "$(solana-keygen pubkey $K/payout.json)"
-# 8b. the 1 h series: one pool a day, 24 h on sale, rides count 2 h more, 48 h review (defaults from ride-tier.ts); price in lamports, first slot e.g. next 00:00 UTC
+# 8b. the 1 h series: one pool a day, 24 h on sale (new rides start only then), 3 h for the shifts on the road to finish, 48 h review (defaults from ride-tier.ts); price in lamports, first slot e.g. next 00:00 UTC
 bash $D admin set-series -k $PWD/$K/admin.json --tier 1h --price 2000000 --per-wallet 3 --start <unix of the first slot> \
   --fee-treasury "$(solana-keygen pubkey $K/fee.json)" --seed-treasury "$(solana-keygen pubkey $K/seed.json)"
 # 8c. the server: PAYOUT_SECRET (the payout.json array) + CRANK_SECRET in server/.env.devnet; the crank opens the pool on its slot, the payout job pays

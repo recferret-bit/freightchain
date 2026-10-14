@@ -112,7 +112,7 @@ export function sharedRoadScenarios(h: () => Harness): void {
       return r.id;
     };
 
-    it('every rider of a pool, from the window opening to an hour before the play deadline (and across a re-sync), drives the same road; the seed is never served with the pool', async () => {
+    it('every rider of a pool, from the window opening to the last second of the sale (and across a re-sync), drives the same road; the seed is never served with the pool', async () => {
       const state = await livePool(1);
       const [early, late] = [await login(), await login()];
       await early.agent.post('/api/promo/redeem').send({ code: 'POOL1' }).expect(200);
@@ -121,7 +121,7 @@ export function sharedRoadScenarios(h: () => Harness): void {
       const a = await ride(early);
       h().poolChain.pools.set(1, { ...state, ticketsSold: 14, buyers: 12 }); // the chain moved on; the mirror re-syncs
       await bus().execute(new RegisterPoolFromChainCommand(1));
-      sec((state.playDeadline.getTime() - now()) / 1000 - 3600); // one hour before rides stop counting
+      sec((state.prepDeadline.getTime() - now()) / 1000 - 1); // the last second a ride may start (no new rides after the sale end)
       const b = await ride(await login({ address: late.address, kp: late.kp })); // the same wallet signs in again (its session cookie expired over the days), its ticket waited
       expect(a.holes.length).toBeGreaterThan(0);
       expect(b).toEqual(a);

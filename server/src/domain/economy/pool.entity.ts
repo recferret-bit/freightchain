@@ -86,10 +86,12 @@ export class Pool {
   get shiftSeconds(): number { return rideTier(this.p.tier, 0).seconds; }
   /** A pool's results count only the rides that ENDED by its play deadline (pentest H6: a ride started days after it still ranked and was paid). */
   rideWindow(): { endBy: Date } { return { endBy: this.p.playDeadline }; }
-  /** The last moment a shift of `minSeconds` can start and still finish by the play deadline. */
-  startBy(minSeconds: number = this.shiftSeconds): Date { return new Date(this.p.playDeadline.getTime() - minSeconds * 1000); }
-  /** A ticket of this pool can be ridden now: the pool is live and a shift of `minSeconds` (default the tier's) started now ends by the play deadline
-      (POST /api/rides spends one only then, POST /start starts it only then). The governor finishes a shift in K × minSeconds, so this is a 2× margin. */
+  /** The last moment a ticket of this pool can be spent on a ride: the sale end – no new sales and no new rides after it (the user's rule, Oct 2026: the
+      play window after the sale – 3 h on the 1 h series – only lets shifts already on the road finish) – and never later than a shift of `minSeconds` can
+      still end by the play deadline (a pool whose window is shorter than a shift: the 4 h / 8 h tiers, a demo pool). */
+  startBy(minSeconds: number = this.shiftSeconds): Date { return new Date(Math.min(this.p.prepDeadline.getTime(), this.p.playDeadline.getTime() - minSeconds * 1000)); }
+  /** A ticket of this pool can be ridden now: the pool is live and it is not past `startBy` (POST /api/rides spends one only then; POST /start then allows
+      the lobby → START gap, `canFinishBy`). */
   isRidable(now: Date, minSeconds: number = this.shiftSeconds): boolean { return this.isActive && now.getTime() <= this.startBy(minSeconds).getTime(); }
   /** A ride ORDERED in time may still start while it can reach its finish line by the deadline at the governor (`seconds` = completeDist ÷ MAX_SPEED – half
       its shift): the lobby → game → START gap must not cost a ticket that was spent in time (WP2 review). */
@@ -131,7 +133,7 @@ export class Pool {
 
   /**
    * Where the pool is in its day, by the clock (the program's own rules; the client draws the same from the DTO's timestamps):
-   * selling – tickets on sale (an active pool's rides already count) · riding – sales closed, rides still count · review – rides closed, the review window runs ·
+   * selling – tickets on sale (an active pool's rides already count) · riding – sales AND new rides closed, shifts already on the road finish and count · review – rides closed, the review window runs ·
    * payout – the window is over, prizes may be paid · failed – the sale ended under the minimum (refunds) · closed – settled or cancelled.
    */
   phase(now: Date): 'selling' | 'riding' | 'review' | 'payout' | 'failed' | 'closed' {

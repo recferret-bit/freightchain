@@ -25,7 +25,7 @@ describe('GetTiersHandler', () => {
           { level: 3, trip: 'free-3b', name: 'HARD', seconds: 50, completeDist: 0.4 * 28 * 50, tutorial: false, assist: false },
         ],
       },
-      { id: '1h', usd: 5, seconds: 3600, completeDist: 50_400, lamports: null, available: false, onSale: false, schedule: { saleHours: 24, playHours: 2, reviewHours: 48 }, pool: null },
+      { id: '1h', usd: 5, seconds: 3600, completeDist: 50_400, lamports: null, available: false, onSale: false, schedule: { saleHours: 24, playHours: 3, reviewHours: 48 }, pool: null },
       { id: '4h', usd: 15, seconds: 14_400, completeDist: 201_600, lamports: null, available: false, onSale: false, schedule: null, pool: null },
       { id: '8h', usd: 50, seconds: 28_800, completeDist: 403_200, lamports: null, available: false, onSale: false, schedule: null, pool: null },
     ]);

@@ -37,32 +37,33 @@ test('progress line: "sold / min committed" + what it means', () => {
 
 test('deadline: prep while open, play while active, none once it passed', () => {
   assert.deepEqual(deadline(pool(), NOW), { label: 'goes live if 10 commit by 2026-10-14 · ', at: NOW + 6 * DAY });
-  assert.deepEqual(deadline(pool({ status: 'active' }), NOW), { label: 'rides count until 2026-10-21 · closes in ', at: NOW + 13 * DAY });
+  assert.deepEqual(deadline(pool({ status: 'active' }), NOW), { label: 'new rides until 2026-10-14 · closes in ', at: NOW + 6 * DAY }, 'no new ride after the sale end');
+  assert.deepEqual(deadline(pool({ status: 'active' }), NOW + 8 * DAY), { label: 'no new rides – shifts finish by 2026-10-21 · ', at: NOW + 13 * DAY });
   assert.equal(deadline(pool(), NOW + 7 * DAY).at, null);
   assert.equal(deadline(pool({ status: 'refunding' }), NOW).at, null);
 });
 
-/* the daily series: a 1h pool sells 24 h, rides count 2 h more, 48 h review, then the payout job pays */
-const H = 3_600_000, series = (o = {}) => pool({ tier: '1h', status: 'active', toGo: 0, prepDeadline: NOW + 14 * H, playDeadline: NOW + 16 * H, payoutAt: NOW + 64 * H, ...o });
+/* the daily series: a 1h pool sells 24 h (new rides start only then), 3 h to finish, 48 h review, then the payout job pays */
+const H = 3_600_000, series = (o = {}) => pool({ tier: '1h', status: 'active', toGo: 0, prepDeadline: NOW + 14 * H, playDeadline: NOW + 17 * H, payoutAt: NOW + 65 * H, ...o });
 
 test('phase mirrors Pool.phase: selling (open OR active inside the sale) → riding → review → payout; failed; closed', () => {
   assert.equal(poolPhase(series(), NOW), 'selling', 'an ACTIVE pool still inside its sale window is selling');
   assert.equal(poolPhase(pool(), NOW), 'selling');
   assert.equal(poolPhase(pool(), NOW + 7 * DAY), 'failed', 'an OPEN pool past its sale end missed its goal');
   assert.equal(poolPhase(series(), NOW + 15 * H), 'riding');
-  assert.equal(poolPhase(series(), NOW + 16 * H), 'review');
-  assert.equal(poolPhase(series(), NOW + 64 * H), 'payout');
+  assert.equal(poolPhase(series(), NOW + 17 * H), 'review');
+  assert.equal(poolPhase(series(), NOW + 65 * H), 'payout');
   assert.equal(poolPhase(series({ status: 'refunding' }), NOW), 'failed', 'refunding wins over the clock');
   assert.equal(poolPhase(series({ status: 'settled' }), NOW), 'closed');
   assert.equal(poolPhase(series({ status: 'cancelled' }), NOW + 15 * H), 'closed');
 });
 
-test('phase line: ON SALE / RIDES COUNT / IN REVIEW with a coarse countdown, then what the payout job did', () => {
+test('phase line: ON SALE / FINISHING / IN REVIEW with a coarse countdown, then what the payout job did', () => {
   assert.deepEqual([span(14 * H), span(80 * 60_000), span(31 * H), span(3 * DAY + H), span(7 * 60_000), span(2 * H), span(0)], ['14 h', '1 h 20 m', '31 h', '3 d', '7 m', '2 h', '1 m']);
   assert.equal(phaseLine(series(), NOW).text, 'ON SALE · 14 h left');
   assert.deepEqual((({ head, at, pre, post, cls }) => ({ head, at, pre, post, cls }))(phaseLine(series(), NOW)), { head: 'ON SALE', at: NOW + 14 * H, pre: '', post: ' left', cls: 'open' });
-  assert.equal(phaseLine(series(), NOW + 14 * H + 40 * 60_000).text, 'RIDES COUNT · 1 h 20 m left');
-  assert.equal(phaseLine(series(), NOW + 33 * H).text, 'IN REVIEW · winners paid in 31 h');
+  assert.equal(phaseLine(series(), NOW + 15 * H + 40 * 60_000).text, 'FINISHING · no new rides · 1 h 20 m left');
+  assert.equal(phaseLine(series(), NOW + 33 * H).text, 'IN REVIEW · winners paid in 32 h');
   const paying = st => phaseLine(series({ payout: { state: st, note: null, held: false } }), NOW + 70 * H).text;
   assert.deepEqual(['pending', 'paying', 'paid', 'waiting_review', 'no_winners', 'error'].map(paying), ['PAYING WINNERS', 'PAYING WINNERS', 'PAID', 'PAYOUT WAITS FOR REVIEW', 'NO WINNERS', 'PAYOUT DELAYED']);
   assert.equal(phaseLine(series({ payout: { state: 'pending', note: 'x', held: true } }), NOW + 70 * H).text, 'PAYOUT ON HOLD', 'a hold wins over the job state');
@@ -92,10 +93,10 @@ test('payout line: hold, rides under review, no winners, delayed; nothing while 
 });
 
 test('series rule: from the tier schedule, else from the pool timestamps (no sale length there)', () => {
-  assert.equal(scheduleText({ saleHours: 24, playHours: 2, reviewHours: 48 }), 'a new pool every 24 h · sales close after 24 h · rides count 2 h more · 48 h review before prizes');
-  assert.deepEqual(poolSchedule(series()), { saleHours: null, playHours: 2, reviewHours: 48 });
-  assert.equal(scheduleText(poolSchedule(series())), 'rides count 2 h more · 48 h review before prizes');
-  assert.equal(scheduleText(poolSchedule(pool({ payoutAt: NOW + 13 * DAY }))), 'rides count 168 h more', 'no review window = no review words');
+  assert.equal(scheduleText({ saleHours: 24, playHours: 3, reviewHours: 48 }), 'a new pool every 24 h · sales and new rides close after 24 h · 3 h to finish · 48 h review before prizes');
+  assert.deepEqual(poolSchedule(series()), { saleHours: null, playHours: 3, reviewHours: 48 });
+  assert.equal(scheduleText(poolSchedule(series())), '3 h to finish · 48 h review before prizes');
+  assert.equal(scheduleText(poolSchedule(pool({ payoutAt: NOW + 13 * DAY }))), '168 h to finish', 'no review window = no review words');
 });
 
 test('a winners list exists once rides count, never while selling or for a failed / cancelled pool', () => {

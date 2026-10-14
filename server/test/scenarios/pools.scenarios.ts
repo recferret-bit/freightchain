@@ -137,7 +137,21 @@ export function poolScenarios(h: () => Harness): void {
       expect((await w.agent.get('/api/me')).body.tickets[0]).toMatchObject({ balance: 1, ridable: true, rideBy: rideBy.getTime() });
       sec(61);   // a second past the last start
       expect((await w.agent.get('/api/me')).body.tickets[0]).toMatchObject({ balance: 1, ridable: false });
-      expect((await ride(w, '1h').expect(409)).body).toMatchObject({ code: 'rides_closed', detail: `rides for pool #1 closed at ${deadline.toISOString()}` });
+      expect((await ride(w, '1h').expect(409)).body).toMatchObject({ code: 'rides_closed', detail: `rides for pool #1 closed at ${rideBy.toISOString()}` });
+    });
+
+    it('no new ride after the sale end: a live pool with 3 h of its play window left spends nothing – /api/me says rideBy = the sale end, POST /api/rides is 409 rides_closed', async () => {
+      const sale = new Date(now() + 60_000), deadline = new Date(sale.getTime() + 3 * 3600_000);
+      await seedPool({ id: 1, status: 'active', prepDeadline: sale, playDeadline: deadline, payoutAt: new Date(deadline.getTime() + 60_000) });
+      await seedPromo('ONE', { effect: ticketEffect({ credits: 2 }) });
+      const w = await login();
+      await redeem(w, 'ONE').expect(200);
+      expect((await w.agent.get('/api/me')).body.tickets[0]).toMatchObject({ balance: 2, ridable: true, rideBy: sale.getTime() });
+      sec(60); const last = (await ride(w, '1h').expect(200)).body;   // the last second of the sale: still spent
+      await w.agent.post(`/api/rides/${last.id}/start`).expect(200);   // ordered in time: it starts and drives on into the finishing window
+      sec(1); await w.agent.post(`/api/rides/${last.id}/end`).send({ outcome: 'failed', s: 0, t: 1 }).expect(200);
+      expect((await w.agent.get('/api/me')).body.tickets[0]).toMatchObject({ balance: 1, ridable: false, rideBy: sale.getTime() });
+      expect((await ride(w, '1h').expect(409)).body).toMatchObject({ code: 'rides_closed', detail: `rides for pool #1 closed at ${sale.toISOString()}` });
     });
 
     it('one pool, one road: every rider of the pool (and every ticket of one rider) gets the pool\'s seed, route, start hour and the same holes', async () => {

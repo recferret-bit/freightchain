@@ -55,7 +55,7 @@ export class PoolTicketsService {
     for (const pool of pools) {
       const ticket = await this.tickets.find(wallet, pool.id, tx);
       if (!ticket || ticket.balance <= 0) continue;
-      if (pool.isRidable(now, minSeconds)) {   // a shift of minSeconds started now must end by the play deadline (H6)
+      if (pool.isRidable(now, minSeconds)) {   // not past the sale end, and a shift of minSeconds started now ends by the play deadline (H6)
         ticket.spend();
         await this.tickets.save(ticket, tx);
         await this.tickets.appendGrant({ wallet, poolId: pool.id, delta: -1, source: 'spend', ref: rideId, at: now }, tx);
@@ -68,7 +68,7 @@ export class PoolTicketsService {
       const n = waiting.ticketsToGo;
       throw new ConflictError(`pool not live yet – ${n} more ticket${n === 1 ? '' : 's'} needed`, 'pool_not_live');
     }
-    if (closed) throw new ConflictError(`rides for pool #${closed.id} closed at ${closed.playDeadline.toISOString()}`, 'rides_closed');
+    if (closed) throw new ConflictError(`rides for pool #${closed.id} closed at ${closed.startBy(minSeconds).toISOString()}`, 'rides_closed');   // the last start, not the play deadline
     throw new ConflictError(`no ${tier} tickets left`, 'no_tickets');
   }
 

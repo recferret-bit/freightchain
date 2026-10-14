@@ -29,7 +29,7 @@ export const hhmm = ms => `${new Date(ms).toISOString().slice(11, 16)} UTC`;
 
 export const STATUS_CLS = { active: 'live', open: 'open', refunding: 'fail', settled: 'done', cancelled: 'done' };
 
-/* ── the daily series: SALE (until prepDeadline) → rides count (until playDeadline) → REVIEW (until payoutAt) → the payout job pays the verified top 20 ── */
+/* ── the daily series: SALE + new rides (until prepDeadline) → shifts on the road finish (until playDeadline) → REVIEW (until payoutAt) → the payout job pays the verified top 20 ── */
 /** The pool's phase – mirrors Pool.phase (server/src/domain/economy/pool.entity.ts), in the same order. */
 export function poolPhase(p, now) {
   if (p.status === 'settled' || p.status === 'cancelled') return 'closed';
@@ -46,7 +46,7 @@ const PAYOUT_HEAD = { paid: 'PAID', paying: 'PAYING WINNERS', held: 'PAYOUT ON H
 export function phaseLine(p, now) {
   const ph = poolPhase(p, now), st = p.payout?.held ? 'held' : p.payout?.state;
   const r = ph === 'selling' ? { cls: 'open', head: 'ON SALE', at: p.prepDeadline, pre: '', post: ' left' }
-    : ph === 'riding' ? { cls: 'live', head: 'RIDES COUNT', at: p.playDeadline, pre: '', post: ' left' }
+    : ph === 'riding' ? { cls: 'live', head: 'FINISHING', at: p.playDeadline, pre: 'no new rides · ', post: ' left' }
       : ph === 'review' ? { cls: 'open', head: 'IN REVIEW', at: p.payoutAt, pre: 'winners paid in ', post: '' }
         : ph === 'payout' ? { cls: st === 'paid' ? 'done' : st === 'error' || st === 'held' ? 'fail' : 'live', head: PAYOUT_HEAD[st] ?? 'PAYING WINNERS' }
           : ph === 'failed' ? { cls: 'fail', head: p.status === 'refunding' ? 'REFUNDING' : 'MISSED ITS GOAL' }
@@ -66,7 +66,7 @@ export function payoutText(payout, underReview) {
 }
 /** The series rule: from the tier's schedule (GET /api/tiers) – or, without it, what the pool's own timestamps say (no sale length there). */
 export const poolSchedule = p => ({ saleHours: null, playHours: Math.round((p.playDeadline - p.prepDeadline) / 36e5), reviewHours: Math.round(((p.payoutAt ?? p.playDeadline) - p.playDeadline) / 36e5) });
-export const scheduleText = s => [s.saleHours && `a new pool every ${s.saleHours} h · sales close after ${s.saleHours} h`, s.playHours && `rides count ${s.playHours} h more`, s.reviewHours && `${s.reviewHours} h review before prizes`].filter(Boolean).join(' · ');
+export const scheduleText = s => [s.saleHours && `a new pool every ${s.saleHours} h · sales and new rides close after ${s.saleHours} h`, s.playHours && `${s.playHours} h to finish`, s.reviewHours && `${s.reviewHours} h review before prizes`].filter(Boolean).join(' · ');
 /** Whether a pool has a winners list worth showing: rides counting or over, or a settled pool (not while selling, not a failed / cancelled one). */
 export const hasStandings = (p, now) => { const ph = poolPhase(p, now); return ph === 'riding' || ph === 'review' || ph === 'payout' || (ph === 'closed' && p.status === 'settled'); };
 /** Status chip: { text, cls } – cls is one of live / open / fail / done. `now` = server-corrected epoch ms. */
@@ -90,7 +90,8 @@ export function progressText(p, now) {
 /** The deadline that matters now: { label, at } (at = epoch ms, null = none). */
 export function deadline(p, now) {
   if (p.status === 'open') return now >= p.prepDeadline ? { label: 'goal deadline passed', at: null } : { label: `goes live if ${p.minTickets} commit by ${day(p.prepDeadline)} · `, at: p.prepDeadline };
-  if (p.status === 'active') return now >= p.playDeadline ? { label: 'play window closed – settling', at: null } : { label: `rides count until ${day(p.playDeadline)} · closes in `, at: p.playDeadline };
+  if (p.status === 'active') return now >= p.playDeadline ? { label: 'play window closed – settling', at: null }
+    : now < p.prepDeadline ? { label: `new rides until ${day(p.prepDeadline)} · closes in `, at: p.prepDeadline } : { label: `no new rides – shifts finish by ${day(p.playDeadline)} · `, at: p.playDeadline };
   return { label: '', at: null };
 }
 
@@ -104,7 +105,7 @@ export const splitParts = p => [
 /** The rules copy on a pool card (§2.8). */
 export const rulesText = p => `Your entry sits in the pool’s vault on chain – not with us. If fewer than ${p.minTickets} riders commit by ${day(p.prepDeadline)}, every ticket is refunded in full. Live pool: ${pct(p.split.prizeBps)} prizes, ${pct(p.split.seedBps)} seeds the next pool, ${pct(p.split.feeBps)} fees.`;
 
-/** An unused ticket POST /api/rides can spend now: a live pool before its last start – a shift must END by the play deadline (`rideBy`, checked against this clock too – the list may be minutes old). */
+/** An unused ticket POST /api/rides can spend now: a live pool before its last start (`rideBy` – the sale end: no new rides after it; checked against this clock too – the list may be minutes old). */
 export const canRide = (t, now) => t.status === 'active' && t.ridable !== false && !(t.rideBy <= now);
 
 /** What a wallet holds for one tier, across every pool of it (pools overlap). `ridable` = unused tickets that can be ridden now, `rideBy` = the soonest of their
