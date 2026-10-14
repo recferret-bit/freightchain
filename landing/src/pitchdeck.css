@@ -312,7 +312,7 @@ canvas.glyph{height:auto;aspect-ratio:240/124;background:none}
   transition:transform .65s cubic-bezier(.45,0,.15,1),opacity .65s ease,filter .65s ease;filter:grayscale(.6) brightness(.8)}
 .ci[data-o="0"]{--s:1;--op:1;filter:drop-shadow(0 0 14px color-mix(in srgb,var(--c) 50%,transparent))}
 .ci[data-o="-1"],.ci[data-o="1"]{--s:.52;--op:.42}
-.ach-ring{position:absolute;left:50%;top:4px;width:120px;height:120px;margin-left:-60px;border-radius:50%;border:3px solid var(--c);opacity:0;pointer-events:none}
+.ach-ring{z-index:3;position:absolute;left:50%;top:4px;width:120px;height:120px;margin-left:-60px;border-radius:50%;border:3px solid var(--c);opacity:0;pointer-events:none}
 .ach-ring.go{animation:achring .95s ease-out both}
 .ach-ring.go:nth-of-type(2){animation-delay:.16s}
 @keyframes achring{0%{transform:scale(.55);opacity:.85}100%{transform:scale(1.5);opacity:0}}
