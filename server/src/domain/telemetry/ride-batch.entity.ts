@@ -29,6 +29,8 @@ export interface RideBatchProps {
   hash: string | null;
   /** the server recomputed the client's hash and it matched */
   hashOk: boolean;
+  /** the server's own SHA-256 of the canonical text (null: a row stored before it was kept) – the attestation's leaf of a batch the client could not hash */
+  serverHash: string | null;
   t0: number;
   t1: number;
   samples: number;
@@ -47,6 +49,8 @@ export interface BatchFacts {
   prevHash: string;
   hash: string | null;
   hashOk: boolean;
+  /** absent / null on rows stored before it was kept */
+  serverHash?: string | null;
   t0: number;
   t1: number;
   summary: BatchSummary;
@@ -75,15 +79,15 @@ export class RideBatch {
     if (allowance && storedBytes + bytes > allowance.maxBytes) throw new BadRequestError('the recording is larger than the time since the start allows', 'bad_batch');
     if (body.traffic && (body.traffic.length > TRAFFIC_MAX_FRAMES || JSON.stringify(body.traffic).length > TRAFFIC_MAX_BYTES)) body = { ...body, traffic: undefined };   // dropped, never refused
     return new RideBatch({
-      rideId, seq: body.seq, prevHash: body.prevHash, hash: body.hash, hashOk: body.hash !== null && body.hash === serverHash,
+      rideId, seq: body.seq, prevHash: body.prevHash, hash: body.hash, hashOk: body.hash !== null && body.hash === serverHash, serverHash,
       t0: body.t0, t1: body.t1, samples: body.samples.length, inputs: body.inputs.length, bytes, body, summary: summariseBatch(body.seq, body.t0, body.t1, body.samples, body.inputs, plan, prefix), receivedAt: now,
     });
   }
 
   /** `summary` may be missing on a row stored before summaries existed (or of an older version): it is measured again from the body. */
-  static restore(props: Omit<RideBatchProps, 'summary'> & { summary?: BatchSummary | null }): RideBatch {
+  static restore(props: Omit<RideBatchProps, 'summary' | 'serverHash'> & { summary?: BatchSummary | null; serverHash?: string | null }): RideBatch {
     const summary = props.summary ?? summariseBatch(props.seq, props.t0, props.t1, props.body.samples, props.body.inputs);
-    return new RideBatch({ ...props, summary });
+    return new RideBatch({ ...props, serverHash: props.serverHash ?? null, summary });
   }
 
   get rideId(): string { return this.p.rideId; }
@@ -91,6 +95,7 @@ export class RideBatch {
   get prevHash(): string { return this.p.prevHash; }
   get hash(): string | null { return this.p.hash; }
   get hashOk(): boolean { return this.p.hashOk; }
+  get serverHash(): string | null { return this.p.serverHash; }
   get t0(): number { return this.p.t0; }
   get t1(): number { return this.p.t1; }
   get body(): BatchBody { return this.p.body; }

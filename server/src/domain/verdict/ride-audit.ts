@@ -40,7 +40,7 @@ export function auditRide(ride: Ride, batches: readonly RideBatch[], now: Date, 
   const plan = roadPlanFor(ride.seed, ride.trip), ordered = [...batches].sort((a, b) => a.seq - b.seq);
   const facts: BatchFacts[] = ordered.map((b, i) => {
     const prev = ordered[i - 1], prefix = prev && prev.seq === b.seq - 1 ? prev.body.samples : []; // as on upload: the tail of the batch before is measured with it
-    return { seq: b.seq, prevHash: b.prevHash, hash: b.hash, hashOk: b.hashOk, t0: b.t0, t1: b.t1, summary: summariseBatch(b.seq, b.t0, b.t1, b.body.samples, b.body.inputs, plan, prefix) };
+    return { seq: b.seq, prevHash: b.prevHash, hash: b.hash, hashOk: b.hashOk, serverHash: b.serverHash, t0: b.t0, t1: b.t1, summary: summariseBatch(b.seq, b.t0, b.t1, b.body.samples, b.body.inputs, plan, prefix) };
   });
   const verdict = RideVerdict.judge(ride, facts, now).toDto();
   const rows = ordered.flatMap((b) => b.body.samples), inputs = ordered.flatMap((b) => b.body.inputs), driving = inputs.filter((e) => !isPhoneInput(e)); // the phone's events are listed apart: not driving

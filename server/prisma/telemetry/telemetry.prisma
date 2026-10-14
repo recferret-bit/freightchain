@@ -7,6 +7,7 @@ model RideBatch {
   prevHash   String // the previous batch's hash; the ride id for seq 0
   hash       String? // the client's SHA-256 of the canonical body; null = the client could not hash (no WebCrypto)
   hashOk     Boolean // the server recomputed the same hash
+  serverHash String? // the server's own SHA-256 of the canonical body (the telemetry_root's leaf of a batch the client could not hash); null on rows stored before it existed
   t0         Float // game clock (driven seconds) at the first sample
   t1         Float
   samples    Int

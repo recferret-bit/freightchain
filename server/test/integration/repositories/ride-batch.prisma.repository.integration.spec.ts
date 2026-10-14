@@ -69,11 +69,22 @@ describe('RideBatchPrismaRepository (PostgreSQL)', () => {
     await prisma.rideBatch.update({ where: { rideId_seq: { rideId: ride.id, seq: 1 } }, data: { summary: Prisma.DbNull } }); // an old row
     const facts = await repo.listFactsByRide(ride.id);
     expect(facts.map((f) => f.seq)).toEqual([0, 1]);
-    expect(facts[0]).toEqual({ seq: 0, prevHash: ride.id, hash: bodies[0]!.hash, hashOk: true, t0: 0, t1: 15, summary: accepted[0]!.summary });
+    expect(facts[0]).toEqual({ seq: 0, prevHash: ride.id, hash: bodies[0]!.hash, hashOk: true, serverHash: hashBatch(bodies[0]!), t0: 0, t1: 15, summary: accepted[0]!.summary });
     expect(facts[1]!.summary).toEqual(accepted[1]!.summary); // measured again from the payload, the same numbers
     expect(facts[1]!.summary.inputs.length).toBeGreaterThan(0);
     expect(await repo.totalBytes(ride.id)).toBe(accepted.reduce((n, b) => n + b.snapshot().bytes, 0));
     expect(await repo.totalBytes('00000000-0000-4000-8000-ffffffffffff')).toBe(0);
+  });
+
+  it('the server\'s own hash is stored for every batch – also one the client could not hash (the telemetry_root\'s leaf for it); a row from before has none', async () => {
+    const ride = await started();
+    const [b0, b1] = recording(ride.id, { seconds: 30 });
+    await repo.insert(RideBatch.accept(ride.id, { ...b0!, hash: null }, hashBatch(b0!), at(0)));
+    await repo.insert(RideBatch.accept(ride.id, b1!, hashBatch(b1!), at(1)));
+    await prisma.rideBatch.update({ where: { rideId_seq: { rideId: ride.id, seq: 1 } }, data: { serverHash: null } }); // stored before the column existed
+    const facts = await repo.listFactsByRide(ride.id);
+    expect(facts.map((f) => [f.hash, f.serverHash])).toEqual([[null, hashBatch(b0!)], [b1!.hash, null]]);
+    expect((await repo.listByRide(ride.id))[0]!.serverHash).toBe(hashBatch(b0!));
   });
 
   it('listFrom pages the replay by seq; extent is the last seq and the latest game time without inflating', async () => {

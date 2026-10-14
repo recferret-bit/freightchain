@@ -7,11 +7,18 @@ export type DigestFn = (data: Uint8Array | Buffer) => Buffer;
 
 export interface TelemetryLeafInput {
   hash?: string | null;
+  /** the server's own hash of the batch – the leaf of a batch the client could not hash */
+  serverHash?: string | null;
   body?: unknown;
 }
 
+/** the leaf tag of a batch the client could not hash, bound by the SERVER's hash of its content (pentest 2026-10, fix-plan M13: every such leaf used to be
+    SHA-256(0x00), whatever the batch held). Its own tag keeps every root of a recording without such batches what it was – no root version is needed. */
+export const SERVER_HASHED_LEAF = 0x02;
+
 /**
- * Domain-separated RFC 6962 leaf digest: SHA-256(0x00 || leaf_data)
+ * Domain-separated RFC 6962 leaf digest: SHA-256(0x00 || leaf_data) – SHA-256(0x02 || server hash) for a batch the client did not hash. A row stored
+ * before the server hash was kept (no hash, no serverHash) keeps the old empty leaf.
  */
 export function computeBatchLeaf(item: TelemetryLeafInput | string | Uint8Array | Buffer, digest: DigestFn): Buffer {
   let raw: Uint8Array | Buffer;
@@ -21,6 +28,8 @@ export function computeBatchLeaf(item: TelemetryLeafInput | string | Uint8Array 
     raw = item;
   } else if (item.hash) {
     raw = Buffer.from(item.hash, 'hex');
+  } else if (item.serverHash) {
+    return digest(Buffer.concat([Buffer.from([SERVER_HASHED_LEAF]), Buffer.from(item.serverHash, 'hex')]));
   } else if (item.body) {
     raw = Buffer.from(JSON.stringify(item.body), 'utf8');
   } else {

@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto';
-import { computeBatchLeaf, computeTelemetryMerkleRoot, type DigestFn } from '../../../../src/domain/telemetry/telemetry-merkle.js';
+import { SERVER_HASHED_LEAF, computeBatchLeaf, computeTelemetryMerkleRoot, type DigestFn } from '../../../../src/domain/telemetry/telemetry-merkle.js';
+import { RideBatch } from '../../../../src/domain/telemetry/ride-batch.entity.js';
+import { hashBatch, recording } from '../../../support/recording.js';
 
 const sha256: DigestFn = (data) => createHash('sha256').update(data).digest();
 
@@ -63,5 +65,22 @@ describe('telemetry-merkle', () => {
     const root = computeTelemetryMerkleRoot([hex, uint8, objHash, objBody], sha256);
     expect(root).toBeInstanceOf(Buffer);
     expect(root.length).toBe(32);
+  });
+
+  it('an UNHASHED batch is bound by the server\'s hash of its content: two of them with different content never share a leaf (pentest M13)', () => {
+    const [a, b] = recording('ride-m', { seconds: 30 }).map((x) => ({ ...x, hash: null }));
+    const ra = RideBatch.accept('ride-m', a!, hashBatch(a!), new Date(0)), rb = RideBatch.accept('ride-m', b!, hashBatch(b!), new Date(0));
+    expect(ra.serverHash).toBe(hashBatch(a!));
+    const la = computeBatchLeaf({ hash: null, serverHash: ra.serverHash }, sha256), lb = computeBatchLeaf({ hash: null, serverHash: rb.serverHash }, sha256);
+    expect(la.equals(lb)).toBe(false);
+    expect(la.equals(sha256(Buffer.concat([Buffer.from([SERVER_HASHED_LEAF]), Buffer.from(ra.serverHash!, 'hex')])))).toBe(true);
+    expect(computeTelemetryMerkleRoot([{ hash: null, serverHash: ra.serverHash }, { hash: null, serverHash: rb.serverHash }], sha256)
+      .equals(computeTelemetryMerkleRoot([{ hash: null }, { hash: null }], sha256))).toBe(false);
+  });
+
+  it('a hashed batch keeps its leaf (roots already attested stay valid); a row from before the server hash was kept keeps the old empty leaf', () => {
+    const h = 'ab'.repeat(32);
+    expect(computeBatchLeaf({ hash: h, serverHash: 'cd'.repeat(32) }, sha256).equals(computeBatchLeaf({ hash: h }, sha256))).toBe(true);
+    expect(computeBatchLeaf({ hash: null, serverHash: null }, sha256).equals(sha256(Buffer.from([0x00])))).toBe(true);
   });
 });
