@@ -116,10 +116,38 @@ This is not a third-party audit. The program stays "not audited" until one is do
 
 `./pentest/bin/pentest pocs` runs every proof of concept. A fixed one that comes back fails the run. Read: [the report](pentest/reports/2026-10-13/index.md) ([HTML](pentest/reports/2026-10-13/report.html)), [the fix plan with every decision](docs/reviews/pentest-2026-10/fix-plan.md), [PoC status](pentest/pocs/status.json), and [whitepaper chapter 08](https://whitepaper.freightchain.fun/#audit). The suite itself is the `pentest-audit` skill.
 
+## Post-Colosseum hackathon updates
+
+The submission went in on 12 Oct 2026. Below is what changed after it. **State** says where a change runs: production is release `20261013-085127-7a9d5e68` (13 Oct). "Next deploy" means it is in `main` and not on the public site yet.
+
+### Pentest v1, in short
+
+On 13 Oct twelve AI auditors from four vendors attacked six surfaces in pairs, blind to each other. A quorum adjudicated their findings: 69 raw findings became 7 high and 13 medium, and 4 claims were refuted. Each fix turned its proof of concept into a regression test. The fixes for all 7 highs and 9 of the 13 mediums are in `main`; the program part waits for the devnet upgrade. It is not a third-party audit. Read the [Pentest v1 report](pentest/reports/2026-10-13/index.md) ([HTML](pentest/reports/2026-10-13/report.html)), and see [Penetration test and contracts audit](#penetration-test-and-contracts-audit) for the state of each finding.
+
+### Changes
+
+| Date | Change | Product effect | State |
+| --- | --- | --- | --- |
+| 13 Oct | Wallets: Wallet Standard discovery, a wallet picker, one-prompt sign-in with the chain id, phone-pay fixes | Any Wallet Standard wallet signs in with one prompt. Paying from a phone works | Live |
+| 13 Oct | Landing and README copy: repeated and untrue lines cut; the README names the live program | The site claims only what runs | Live |
+| 13 Oct | Pentest v1 and its fix plan: three planning iterations, every item decided by the owner | Every known hole is named, with a proof of concept and a definition of done | [Report](pentest/reports/2026-10-13/index.md) · [plan](docs/reviews/pentest-2026-10/fix-plan.md) |
+| 13 Oct | Mobile: driving is desktop-only; a phone gets a toast that points to streams and replays | A phone visitor lands on something that works | Next deploy |
+| 13 Oct | Landing hero: stills of the current cab, with the CB and the on-chain strip | The first screen shows the game as it is | Next deploy |
+| 14 Oct | Anti-cheat rules v4 (H1, H3, M10, M13), copied recordings flagged (H2) | An empty or sped-up recording, or another rider's drive, no longer passes as verified | Next deploy |
+| 14 Oct | Pools: a ride counts only if it ended by the play deadline; a revoked verdict never pays; no new sales or rides after the sale end (H6, M7) | The board a buyer sees is the board that pays. Every rider who starts has time to finish | Next deploy |
+| 14 Oct | Sessions: host-only cookie, an origin guard, the exact sign-in text, logout that clears (H7, M2, M3, M4, M9) | Another site or subdomain cannot act as a player. Players are signed out once at the deploy | Next deploy |
+| 14 Oct | Escrow program v4: a winners root public through the review before any prize is paid, with an admin veto; per-ride pledge attestations; sponsor refunds; the road sealed from a later slot (H4, H5, M6, M8, L4) | A stolen payout key cannot pay itself. A pledge pays only on the ride it backed. A failed pool returns sponsorships. Nobody picks the road | Built: 154 program tests, localnet e2e green. Not on devnet yet |
+| 14 Oct | Devnet 1h series: 3 hours to finish after the sale ends | Matches the last-call rule above | Devnet |
+| 14 Oct | Verified play: a shared physics library and a 10 Hz server replay of traffic, holes and paid obstacles; admin replay list and worker | A client that ignores traffic or a donated pothole is caught | Next deploy |
+| 14 Oct | Watch: one X post after a locked pledge | A sponsor can share who they backed | Next deploy |
+| 14 Oct | Sound: WAV and mp3 checks pinned; a late sample stays audible | No silent effect after a long ride | Next deploy |
+| 14 Oct | Traction: this README's scoreboard refreshed from live social and PostHog reads | Reviewers see current numbers | README |
+
 ## Contents
 
 - [Traction](#traction)
 - [Penetration test and contracts audit](#penetration-test-and-contracts-audit)
+- [Post-Colosseum hackathon updates](#post-colosseum-hackathon-updates)
 - [Open the site](#open-the-site)
 - [Ten minutes](#ten-minutes)
 - [What is on chain](#what-is-on-chain)
