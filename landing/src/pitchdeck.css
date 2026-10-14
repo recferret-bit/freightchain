@@ -315,7 +315,9 @@ canvas.glyph{height:auto;aspect-ratio:240/124;background:none}
 .ach-ring{z-index:3;position:absolute;left:50%;top:4px;width:120px;height:120px;margin-left:-60px;border-radius:50%;border:3px solid var(--c);opacity:0;pointer-events:none}
 .ach-ring.go{animation:achring .95s ease-out both}
 .ach-ring.go:nth-of-type(2){animation-delay:.16s}
-@keyframes achring{0%{transform:scale(.55);opacity:.85}100%{transform:scale(1.5);opacity:0}}
+@keyframes achring{0%{transform:scale(.2);opacity:.95}70%{opacity:.5}100%{transform:scale(1.6);opacity:0}}
+.ci.pop{animation:achpop .55s ease-out}
+@keyframes achpop{0%{scale:1}35%{scale:1.07}100%{scale:1}}
 .ach-cap{display:grid;gap:3px;min-height:72px;align-content:start}
 .ach-cap em{font:700 12px/1 var(--body);letter-spacing:3px;font-style:normal;color:var(--c)}
 .ach-cap b{font:400 26px/1 var(--head);text-transform:uppercase;color:#fff}

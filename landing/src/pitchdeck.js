@@ -226,7 +226,10 @@ if (ach) {
     k = (k + 1) % N;
     slots.forEach(sl => { sl.o -= 1; });
     place();
-    rings.forEach(r => { r.classList.remove('go'); void r.offsetWidth; r.classList.add('go'); });   // two purple rings ripple out, the second a beat behind
+    setTimeout(() => {   // the new badge has all but reached the middle: two purple rings grow out of its centre, the second a beat behind, and it gives a small pop
+      rings.forEach(r => { r.classList.remove('go'); void r.offsetWidth; r.classList.add('go'); });
+      const mid = slots.find(sl => sl.o === 0)?.im; if (mid) { mid.classList.remove('pop'); void mid.offsetWidth; mid.classList.add('pop'); }
+    }, 480);
     cap.classList.remove('swap'); void cap.offsetWidth; cap.classList.add('swap');   // the caption slides in with the new middle badge
     setTimeout(caption, 180);
     setTimeout(() => {   // the badge that left on the left re-enters on the right, hidden
