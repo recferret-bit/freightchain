@@ -26,6 +26,7 @@ Related: [deploy + operate](program-deploy.md) · [escrow detail](agents/escrow.
 - the localnet suites have not run on v4 yet (WP5 D).
 - design notes, not bugs (red-team NITs): a single cranker could withhold a seal and re-roll a road about once per 512 slots (~3 min) – sealing from `buy_ticket` / `sponsor` too would close it; a ride attestation's driver can never change (a wrong first record makes that ride's pledges refund-only); pausing across the grace leaves unpaid winners no window before the permissionless close; `close_attestation` (v3) sends the rent to the CURRENT payout key, not necessarily the one that paid it; a committed rank whose wallet stays below the rent minimum cannot be paid, and once another rank is paid the root cannot be vetoed – that pool waits for the grace.
 - the admin page shows no committed root / pay-from countdown / sponsor refunds yet (WP7).
+- a pledge whose pool row is missing from the mirror waits forever (SyncPledges refunds only a pool it knows) – register the pool (`pool:register`).
 
 **Deploy and keys**
 - The program is not on devnet yet. The keys exist (`deploy/secrets/devnet/`) and the code carries the devnet id `9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx`; the wallets are unfunded, so nothing is deployed (`program-deploy.md` devnet runbook).

@@ -5,8 +5,8 @@ import { explorerTx, explorerUrl, phaseLine, payoutText, poolSchedule, scheduleT
    HOLD / RELEASE = ctx.signAt('pools/<id>/hold/challenge') → the wallet signs the server's text → POST pools/<id>/hold with the signature; audited (pool.hold / pool.release).
    Server text (labels, notes, wallets) goes in with textContent only – ctx.el never touches innerHTML. */
 
-const PAYOUT_STATE = { pending: 'PENDING', waiting_review: 'WAITING FOR REVIEW', held: 'HELD', paying: 'PAYING', paid: 'PAID', no_winners: 'NO WINNERS', error: 'ERROR' };
-const STATE_CLASS = { paid: 'verified', paying: 'verified', no_winners: 'none', pending: 'none', waiting_review: 'flagged', held: 'flagged', error: 'rejected' };
+const PAYOUT_STATE = { pending: 'PENDING', waiting_review: 'WAITING FOR REVIEW', held: 'HELD', committed: 'WINNERS COMMITTED (REVIEW LOCK)', paying: 'PAYING', paid: 'PAID', no_winners: 'NO WINNERS', error: 'ERROR' };
+const STATE_CLASS = { paid: 'verified', paying: 'verified', committed: 'verified', no_winners: 'none', pending: 'none', waiting_review: 'flagged', held: 'flagged', error: 'rejected' };
 const sol = l => `${(l / 1e9).toFixed(4)} SOL`;
 
 export async function payoutsTab(ctx) {
