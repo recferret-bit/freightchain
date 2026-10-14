@@ -42,7 +42,7 @@ export class PoolPayoutPrismaRepository extends PoolPayoutRepositoryPort {
   async claimSentUnlessHeld(poolId: number, rank: number, signature: string, lastValidBlockHeight: number, now: Date): Promise<'claimed' | 'held' | 'lost'> {
     const n = await this.prisma.$executeRaw`
       UPDATE "economy"."PoolPayout" SET status = 'sent', signature = ${signature}, "lastValidBlockHeight" = ${lastValidBlockHeight}, attempts = attempts + 1, error = NULL, "updatedAt" = ${now}
-      WHERE "poolId" = ${poolId} AND rank = ${rank} AND status = 'planned' AND EXISTS (SELECT 1 FROM "economy"."Pool" p WHERE p.id = ${poolId} AND p."holdBy" IS NULL)`;
+      WHERE "poolId" = ${poolId} AND rank = ${rank} AND status = 'planned' AND EXISTS (SELECT 1 FROM "economy"."Pool" p WHERE p.id = ${poolId} AND p."holdBy" IS NULL FOR SHARE)`;   // FOR SHARE: waits for a HOLD in flight (it locks the row FOR UPDATE)
     if (n === 1) return 'claimed';
     const pool = await this.prisma.pool.findUnique({ where: { id: poolId }, select: { holdBy: true } });
     return pool?.holdBy ? 'held' : 'lost';

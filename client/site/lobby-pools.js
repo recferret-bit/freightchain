@@ -41,7 +41,7 @@ export function poolCard(t, info, ctx) {
     phase(p, now),
     el('span', { class: 'mine' }, 'your tickets: ', el('b', {}, mine), other > 0 ? ` (+${other} in another live ${info.name} pool)` : '', ` · max ${p.maxPerWallet}`),
     tt.rideBy ? el('span', { class: 'sub ride-by' }, `start by ${hhmm(tt.rideBy)} · `, countdown(tt.rideBy)) : '',   // the ticket is spent when the ride is ordered: order it before this
-    ...tt.closed.map(c => el('span', { class: 'sub closed' }, `${plural(c.balance, 'unused ticket')} of pool #${c.poolId} expired – its rides closed at ${hhmm(c.rideBy)}; a ticket counts only in its own pool`)),
+    ...tt.closed.map(c => el('span', { class: 'sub closed' }, `${plural(c.balance, 'unused ticket')} of pool #${c.poolId} expired – the last start was ${hhmm(c.rideBy)}; a ticket counts only in its own pool`)),
     primary, buyRow,
     note ? el('span', { class: 'dim fee' }, note) : '',
     ctx.winners ? winners(ctx.winners, ctx.me.wallet, now) : '',

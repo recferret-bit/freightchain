@@ -138,7 +138,8 @@ export async function startRide() {   // only an online ride awaits the server
     try { await beginOnline(); } catch (e) {
       online.error = e.message;
       track('ride_start_failed', { ride_id: online.ride.id, http_status: typeof e.status === 'number' ? e.status : null, code: typeof e.code === 'string' ? e.code : null });
-      showMenu('RIDE REFUSED', 'The server did not accept this ride.');
+      if (e.code === 'rides_closed') { online.done = true; showMenu('RIDES CLOSED', 'This pool counts only shifts that end by its play deadline – one started now could not reach the line in time. Your ticket stays in the pool.'); }   // the server closed the ride: nothing to end
+      else showMenu('RIDE REFUSED', 'The server did not accept this ride.');
       return;
     }
     if (online.ride.tier !== 'free') startLiveFeed();   // spectators' chat + effects (live streams) – paid shifts only

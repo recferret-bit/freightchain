@@ -377,7 +377,9 @@ export class MemoryRideBatchRepository extends RideBatchRepositoryPort {
     for (const [key, b] of this.db.batches) {
       const ride = this.db.rides.get(b.rideId)?.props;
       const verdict = this.db.verdicts.get(b.rideId);
+      const pool = ride?.poolId == null ? undefined : this.db.pools.get(ride.poolId);
       if (!ride?.endedAt || ride.endedAt.getTime() >= cutoff.getTime() || verdict?.status === VerdictStatus.Flagged || (!verdict && ride.status === RideStatus.Completed)) continue;
+      if (pool && (pool.status === 'open' || pool.status === 'active')) continue;   // a live pool's attestations need the recording
       this.db.batches.delete(key);
       deleted++;
     }

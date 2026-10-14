@@ -35,6 +35,8 @@ export class GetPayoutTransactionsHandler implements IQueryHandler<GetPayoutTran
     if (!pool) throw new NotFoundError('no such pool');
     if (!pool.isActive) throw new ConflictError(`this pool is ${pool.status} – only a live pool pays prizes`, 'not_payable');
     if (this.clock.now().getTime() < pool.payoutAt.getTime()) throw new ConflictError('prizes are paid after the review window', 'too_early');
+    if (pool.hold) throw new ConflictError(`the payout of this pool is on hold (${pool.hold.note ?? pool.hold.by})`, 'held');   // the same gates as the payout job (WP2 review)
+    if ((await this.rides.poolUnreviewed(poolId, 1)).length) throw new ConflictError('a ride of this pool waits for an admin\'s decision', 'waiting_review');
     const s = pool.snapshot();
     const prizeLamports = prizeBound({ priceLamports: s.priceLamports, ticketsSold: s.ticketsSold, sponsored: s.sponsored, prizeBps: s.prizeBps, seedBps: s.seedBps });
     const ranking = await this.rides.poolRanking(poolId, TOP20_SIZE, true); // verified recordings only – money never follows shadow mode

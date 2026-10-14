@@ -6,6 +6,8 @@ import type { PaidTierId } from '../../domain/rides/ride-tier.js';
 import { ConflictError } from '../../domain/shared/errors.js';
 import { PoolRepositoryPort } from '../ports/economy/pool.repository.port.js';
 import { RideTicketRepositoryPort } from '../ports/players/ride-ticket.repository.port.js';
+import { RulesConfigPort } from '../ports/config/rules-config.port.js';
+import { demoScaleOf, isDemoWallet } from './demo.js';
 import type { TransactionHandle } from '../ports/shared/transaction.port.js';
 
 /**
@@ -17,6 +19,7 @@ export class PoolTicketsService {
   constructor(
     private readonly pools: PoolRepositoryPort,
     private readonly tickets: RideTicketRepositoryPort,
+    private readonly rules: RulesConfigPort,
   ) {}
 
   /** What /api/me and /api/profile list: pools the wallet holds tickets in, live pools it has a row in, and failed pools it paid into (refundable – also an open
@@ -27,7 +30,8 @@ export class PoolTicketsService {
     return rows.flatMap((t) => {
       const pool = pools.get(t.poolId);
       if (!pool) return [];
-      const dto = toTicketBalanceDto(t, pool, now);
+      const rules = this.rules.get(), scale = isDemoWallet(rules, wallet) ? demoScaleOf(rules) : 1;
+      const dto = toTicketBalanceDto(t, pool, now, pool.shiftSeconds / scale);   // a demo wallet's shift is scaled – its "start by" too, as the spend sees it
       return t.balance > 0 || dto.refundable || pool.status === 'open' || pool.status === 'active' ? [dto] : [];
     });
   }

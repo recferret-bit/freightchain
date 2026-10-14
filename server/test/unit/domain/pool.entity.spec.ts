@@ -65,11 +65,10 @@ describe('Pool – the ride window (pentest H6: a ride counts only when it ENDED
     expect(p.isRidable(new Date(last + 1), 60)).toBe(true);
     expect(pool({ status: 'open', playDeadline: PLAY }).isRidable(new Date(last - 1))).toBe(false);   // not live yet
   });
-  it('no ticket is sold that could not be ridden: the sale stops when a shift bought now could no longer finish', () => {
-    const deadline = new Date(T0.getTime() + 3600_000 - 1);   // a pool whose play window is shorter than a shift (the program allows play == prep)
-    const p = pool({ status: 'active', prepDeadline: new Date(T0.getTime() + 60_000), playDeadline: deadline });
-    expect(p.whyNotSellable(T0, 1, 0)).toBe('rides for this pool close before a shift bought now could finish');
-    expect(live(new Date(T0.getTime() + 3 * 3600_000)).whyNotSellable(T0, 1, 0)).toBeNull();
+  it('a ride ordered in time may START while it can still reach its finish line by the deadline (half its shift at the governor)', () => {
+    const p = live(PLAY), half = 1800;
+    expect(p.canFinishBy(new Date(PLAY.getTime() - half * 1000), half)).toBe(true);
+    expect(p.canFinishBy(new Date(PLAY.getTime() - half * 1000 + 1), half)).toBe(false);
   });
 });
 

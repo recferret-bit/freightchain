@@ -61,6 +61,24 @@ describe('RideBatchPrismaRepository (PostgreSQL)', () => {
     expect([await left(old), await left(oldUnjudged), await left(oldFlagged), await left(recent), await left(running), await left(oldCompletedUnjudged)]).toEqual([0, 0, 2, 2, 2, 2]);
   });
 
+  it('retention keeps every recording of a pool that is still live (its attestations are computed from them until it settles) – a settled pool\'s go', async () => {
+    const { PoolPrismaRepository } = await import('../../../src/infrastructure/prisma/repositories/pool.prisma.repository.js');
+    const { aPool } = await import('../../support/pools.js');
+    const pools = new PoolPrismaRepository(prisma);
+    await pools.upsert(aPool({ id: 1, status: 'active' }, T0)); await pools.upsert(aPool({ id: 2, status: 'settled' }, T0));
+    const inPool = async (poolId: number) => {
+      const r = freeRideAt('w'); r.start(T0); r.finish('failed', 'x', at(10));
+      await rides.insert(r);
+      await prisma.ride.update({ where: { id: r.id }, data: { poolId } });
+      for (const b of recording(r.id, { seconds: 20 })) await repo.insert(RideBatch.accept(r.id, b, hashBatch(b), T0));
+      await prisma.rideVerdict.create({ data: { rideId: r.id, status: 'verified', reasons: [], scores: {}, rulesVersion: 1, judgedAt: T0 } });
+      return r.id;
+    };
+    const live = await inPool(1), done = await inPool(2);
+    expect(await repo.deleteForRidesEndedBefore(at(100))).toBe(2);
+    expect([(await repo.listByRide(live)).length, (await repo.listByRide(done)).length]).toEqual([2, 0]);
+  });
+
   it('listFactsByRide reads the chain columns + the summary without the payload; a row stored WITHOUT a summary (before it existed) is summarised from its payload; totalBytes sums the ride', async () => {
     const ride = await started();
     const bodies = recording(ride.id, { seconds: 30, distance: 420 });

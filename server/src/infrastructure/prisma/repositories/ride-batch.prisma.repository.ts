@@ -20,8 +20,13 @@ export class RideBatchPrismaRepository extends RideBatchRepositoryPort {
 
   async deleteForRidesEndedBefore(cutoff: Date): Promise<number> {
     const { count } = await this.prisma.rideBatch.deleteMany({
-      // kept: flagged rides (until reviewed) and completed shifts that were never judged (JUDGE NOW still needs their recording)
-      where: { ride: { endedAt: { lt: cutoff }, OR: [{ verdict: { is: { status: { not: 'flagged' } } } }, { verdict: { is: null }, status: { not: 'completed' } }] } },
+      // kept: flagged rides (until reviewed), completed shifts that were never judged (JUDGE NOW still needs their recording), and every ride of a pool that
+      // is still live – its attestation is computed from the recording until the pool is settled (a pool on hold past the retention window)
+      where: { ride: {
+        endedAt: { lt: cutoff },
+        OR: [{ verdict: { is: { status: { not: 'flagged' } } } }, { verdict: { is: null }, status: { not: 'completed' } }],
+        AND: [{ OR: [{ poolId: null }, { pool: { is: { status: { notIn: ['open', 'active'] } } } }] }],
+      } },
     });
     return count;
   }

@@ -114,7 +114,7 @@ describe('concurrency (PostgreSQL)', () => {
     expect(inTime.filter((r) => r.status === 200)).toHaveLength(1);
     await a.agent.post(`/api/rides/${first}/end`).send({ outcome: 'failed', s: 0, t: 1, hull: 0, reason: 'test' }).expect(200);
     const second = await order();   // ordered (its ticket spent) while a shift still fits
-    sec(31);   // a second past the last start of a 1 h shift
+    sec(1831);   // a second past the last START: a 1 h shift ordered in time may start while its line (half the shift at the governor) is reachable
     const late = await parallel(PARALLEL, () => a.agent.post(`/api/rides/${second}/start`));
     expect(late.every((r) => r.status === 409)).toBe(true);
     expect(late.filter((r) => r.body.code === 'rides_closed')).toHaveLength(1);   // the first closes it; the rest find it cancelled
@@ -352,9 +352,13 @@ describe('concurrency (PostgreSQL)', () => {
     });
 
     it('N pledge-job passes racing to end one pledge: settle_pledge lands ONCE on chain, the row is settled once with the program\'s numbers', async () => {
-      const { driver, sponsor, pledge, sig } = await pledged();
+      const { driver, sponsor, ride, pledge, sig } = await pledged();
       await sponsor.agent.post(`/api/pledges/${pledge.id}/confirm`).send({ signature: sig }).expect(200);
       harness.payoutChain.payoutAddress = 'Payout11111111111111111111111111111111111111';
+      // the ride the attestation rests on: completed, recorded, VERIFIED, 4.3 km (the pledge job reads the rides again before it settles – pentest M7)
+      await prisma.ride.update({ where: { id: ride.id }, data: { status: 'completed', lastS: 4_300, endedAt: harness.clock.now() } });
+      for (const b of recording(ride.id, { seconds: 20, distance: 4_300 })) await driver.agent.post(`/api/rides/${ride.id}/batches`).send(b);
+      await prisma.rideVerdict.upsert({ where: { rideId: ride.id }, update: { status: 'verified', reasons: [] }, create: { rideId: ride.id, status: 'verified', reasons: [], scores: {}, rulesVersion: 4, judgedAt: harness.clock.now() } });
       harness.payoutChain.attestations.set(`1:${driver.address}`, { telemetryRoot: new Uint8Array(32), verifiedKm: 4, status: 1 });
       const bus = harness.app.get(CommandBus);
       await parallel(PARALLEL, () => bus.execute(new SyncPledgesCommand()));

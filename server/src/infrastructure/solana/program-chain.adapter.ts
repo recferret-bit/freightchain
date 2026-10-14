@@ -149,7 +149,7 @@ export class ProgramChainAdapter extends PoolChainPort {
     if (i.attest) {
       const info = await this.rpc.read((x) => x.getAccountInfo(attestation, this.commitment));
       const a = info?.owner.equals(c.programId) ? c.decodeAccount('Attestation', info.data) : null;
-      if (!a || a['status'] !== 1 || !((a['verifiedKm'] as number) > 0)) {
+      if (!a || a['status'] !== 1 || a['verifiedKm'] !== i.attest.verifiedKm) {   // written again when the rides say other km now (M7)
         ixs.push(c.instruction('record_attestation', { authority: i.authority, config: c.configPda(), pool: c.poolPda(i.poolId), driver_account: i.to, attestation },
           { pool_id: i.poolId, driver: i.to, telemetry_root: i.attest.telemetryRoot, verified_km: i.attest.verifiedKm, status: 1 }));
       }

@@ -91,6 +91,9 @@ export class Pool {
   /** A ticket of this pool can be ridden now: the pool is live and a shift of `minSeconds` (default the tier's) started now ends by the play deadline
       (POST /api/rides spends one only then, POST /start starts it only then). The governor finishes a shift in K × minSeconds, so this is a 2× margin. */
   isRidable(now: Date, minSeconds: number = this.shiftSeconds): boolean { return this.isActive && now.getTime() <= this.startBy(minSeconds).getTime(); }
+  /** A ride ORDERED in time may still start while it can reach its finish line by the deadline at the governor (`seconds` = completeDist ÷ MAX_SPEED – half
+      its shift): the lobby → game → START gap must not cost a ticket that was spent in time (WP2 review). */
+  canFinishBy(now: Date, seconds: number): boolean { return this.isActive && now.getTime() + seconds * 1000 <= this.p.playDeadline.getTime(); }
   get isRefunding(): boolean { return this.p.status === 'refunding'; }
 
   /** Tickets still missing before the pool goes live (0 once it is active). */
@@ -116,7 +119,6 @@ export class Pool {
     if (!Number.isInteger(qty) || qty < 1) return 'quantity must be a whole number of at least 1';
     if (this.p.status !== 'open' && this.p.status !== 'active') return `this pool is ${this.p.status}`;
     if (now.getTime() >= this.p.prepDeadline.getTime()) return 'ticket sales for this pool are closed';
-    if (now.getTime() > this.startBy().getTime()) return 'rides for this pool close before a shift bought now could finish';   // a ticket nobody can ride (H6)
     if (this.p.maxTickets > 0 && this.p.ticketsSold + qty > this.p.maxTickets) return 'this pool is sold out';
     if (walletBought + qty > this.p.maxPerWallet) return `at most ${this.p.maxPerWallet} tickets per wallet in this pool`;
     return null;

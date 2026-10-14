@@ -73,11 +73,11 @@ export interface TicketBalanceDto {
 }
 
 /** `refundable` = money is owed back: the pool failed, or it missed its goal and nobody has failed it yet (the refund transaction then fails it first). */
-export const toTicketBalanceDto = (ticket: RideTicket, pool: Pool, now: Date): TicketBalanceDto => {
+export const toTicketBalanceDto = (ticket: RideTicket, pool: Pool, now: Date, shiftSeconds: number = pool.shiftSeconds): TicketBalanceDto => {
   const s = pool.snapshot();
   return {
     poolId: s.id, tier: s.tier, label: s.label, status: s.status, balance: ticket.balance, bought: ticket.bought, cap: s.maxPerWallet,
-    refundable: (s.status === 'refunding' || pool.isPastDeadlineUnderMinimum(now)) && ticket.bought > 0, ridable: ticket.balance > 0 && pool.isRidable(now), rideBy: pool.startBy().getTime(),
+    refundable: (s.status === 'refunding' || pool.isPastDeadlineUnderMinimum(now)) && ticket.bought > 0, ridable: ticket.balance > 0 && pool.isRidable(now, shiftSeconds), rideBy: pool.startBy(shiftSeconds).getTime(),
   };
 };
 

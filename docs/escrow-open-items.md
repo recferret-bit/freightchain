@@ -19,6 +19,8 @@ Related: [deploy + operate](program-deploy.md) · [escrow detail](agents/escrow.
 
 ## Not done
 
+**Pentest Oct 2026 (server, WP2)**: a pool whose verified ranking changed after its payout plan stops in `error` (M7) – there is no admin action yet to acknowledge / re-plan the unpaid ranks (only the manual Phantom payout, or the 14-day grace). A ticket ride that runs past its pool's play deadline counts for nothing and nothing in the cab warns the driver yet. Until program v4 (WP5), `settle_pledge` stays permissionless with no time gate: the server waits on held / undecided pools, anyone else may still settle on an attestation that is on chain.
+
 **Pentest Oct 2026 (program findings H4, H5, M6, M8, L4–L8)**: planned as ONE settle-first program v4 upgrade (H5 = a committed winners root grows `Pool`; with it H4, M6, M8, L4 `seal_road`, L5–L8) – WP5 in [the fix plan](reviews/pentest-2026-10/fix-plan.md). Not started.
 
 **Deploy and keys**

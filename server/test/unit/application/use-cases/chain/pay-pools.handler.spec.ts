@@ -151,7 +151,7 @@ describe('PayPoolsHandler – the payout job', () => {
       if (i.rank === 1) { const p = await mirror(); p.putOnHold('Admin', 'stop after rank 1', ctx.now()); await ctx.pools.saveHold(1, p.hold); }
       return r;
     };
-    expect((await run()).pools[0]).toMatchObject({ state: 'held', note: 'held before rank 2 was paid' });
+    expect((await run()).pools[0]).toMatchObject({ state: 'held', note: 'stop after rank 1' });   // stopped before rank 2's attestation even
     expect(payout.prizes.map((p) => p.to)).toEqual(['alice']);
     expect(payout.closed).toEqual([]);
     expect((await ctx.poolPayouts.listByPool(1)).filter((r) => r.status === 'sent')).toEqual([]);   // no prize claimed after the HOLD

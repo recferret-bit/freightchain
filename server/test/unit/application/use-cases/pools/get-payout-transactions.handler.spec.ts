@@ -7,6 +7,7 @@ import { aPool } from '../../../../support/pools.js';
 import { poolRide } from '../../../../support/pool-rides.js';
 import { AttestationService } from '../../../../../src/application/services/attestation.service.js';
 import { FakePoolPayoutChain } from '../../../../support/fake-pool-payout-chain.js';
+import { VerdictStatus } from '../../../../../src/domain/verdict/verdict.dto.js';
 
 const ADMIN = TREASURY; // unitRules' treasury = the pool authority
 
@@ -24,8 +25,11 @@ describe('GetPayoutTransactionsHandler', () => {
   it('after the play deadline: ranked payouts as pay_prize transactions for the admin to sign; no close until every rank is paid', async () => {
     const { ctx, completed, payout } = await setup();
     await completed('alice', 900); await completed('bob', 500); await completed('bob', 500); await completed('carol', 100, 2);
-    await poolRide(ctx, 'dave', 5_000, 'flagged'); // not verified: never paid, whatever VERDICT_ENFORCE says
+    const flagged = await poolRide(ctx, 'dave', 5_000, 'flagged');
     ctx.clock.advance(15 * 86_400);
+    await expect(payout()).rejects.toMatchObject({ errorCode: 'waiting_review' });   // an undecided ride holds the manual payout too (the payout job's gate)
+    const { RideVerdict } = await import('../../../../../src/domain/verdict/ride-verdict.entity.js');
+    await ctx.verdictRepo.save(RideVerdict.restore({ ...(await ctx.verdictRepo.findByRide(flagged))!.snapshot(), status: VerdictStatus.Rejected, overriddenBy: 'Admin', overriddenAt: ctx.now(), note: null }));   // decided: never paid, whatever VERDICT_ENFORCE says
     const dto = await payout();
     expect(dto.prizeLamports).toBe(350_000_000);
     expect(dto.ranks).toEqual([

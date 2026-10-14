@@ -2,6 +2,7 @@ import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { toRideDto, type RideDto } from '../../../../domain/rides/ride.dto.js';
 import type { RideProps } from '../../../../domain/rides/ride.entity.js';
 import { RideStatus } from '../../../../domain/rides/ride-status.js';
+import { MAX_SPEED } from '../../../../domain/rides/ride-rules.js';
 import { tripOrClassic } from '../../../../domain/rides/ride-trip.js';
 import { ConflictError, NotFoundError } from '../../../../domain/shared/errors.js';
 import { AnalyticsPort } from '../../../ports/analytics/analytics.port.js';
@@ -70,11 +71,11 @@ export class StartRideHandler implements ICommandHandler<StartRideCommand, RideD
       if (!ride.isFree) player.requirePaidPlay(); // a free start stays open; SOL already sent is confirmed by a different command
       if (ride.poolId !== null) {   // a ticket ride starts only while a shift started now ends by its pool's play deadline (H6) – the pool row is read, not locked: its deadline comes from chain and never changes
         const pool = await this.pools.findById(ride.poolId, tx);
-        if (pool && !pool.isRidable(now, ride.minSeconds)) {
+        if (pool && !pool.canFinishBy(now, ride.completeDist / MAX_SPEED)) {   // ordered in time (the spend checked the whole shift): it starts while its finish line is still reachable
           ride.closeRidesClosed(now, pool.playDeadline);
           await this.rides.save(ride, tx);
           await this.stats.recordRide(ride.snapshot(), tx);   // every path that ends a ride (a ride that never started adds nothing)
-          return { closed: pool.playDeadline } as const;
+          return { closed: pool.playDeadline, failed } as const;
         }
       }
       const wardrobe = toWardrobeDto(await this.cosmetics.listUnlocked(wallet, tx), await this.cosmetics.listEquipped(wallet, tx));
@@ -83,7 +84,10 @@ export class StartRideHandler implements ICommandHandler<StartRideCommand, RideD
       if (ride.tutorial && player.markTutorialPassed(now)) await this.players.save(player, tx);   // starting a ride with the tutorial on = it was done: the lobby leaves it off from now on
       return { dto: toRideDto(saved), started: saved.snapshot(), failed } satisfies StartFacts;
     });
-    if ('closed' in facts && facts.closed) throw new ConflictError(`rides for this ride's pool closed: a shift started now would end after its play deadline (${facts.closed.toISOString()}) – the ride is closed, its ticket stays in the pot`, 'rides_closed');   // after the commit: the closed ride stays closed
+    if ('closed' in facts && facts.closed) {
+      if (facts.failed) { await this.stats.invalidate(wallet); const failedRide = facts.failed; emitAnalytics(this.analytics, () => rideFailed(failedRide, isDemoWallet(this.rules.get(), wallet), 'stale_on_start')); }
+      throw new ConflictError(`rides for this ride's pool closed: a shift started now would end after its play deadline (${facts.closed.toISOString()}) – the ride is closed, its ticket stays in the pot`, 'rides_closed');   // after the commit: the closed ride stays closed
+    }
     const demo = (): boolean => isDemoWallet(this.rules.get(), wallet);
     if (facts.failed) await this.stats.invalidate(wallet);
     if (facts.failed) { const failed = facts.failed; emitAnalytics(this.analytics, () => rideFailed(failed, demo(), 'stale_on_start')); }

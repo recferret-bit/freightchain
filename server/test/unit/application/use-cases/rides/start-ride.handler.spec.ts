@@ -75,7 +75,7 @@ describe('StartRideHandler', () => {
     expect((await ctx.reload(ride.id)).loadout?.wheel).toBe('classic');
   });
 
-  it('a ticket ride starts only while a shift started now ends by its pool\'s play deadline – else 409 rides_closed, the ride is closed and the ticket stays in the pot (H6)', async () => {
+  it('a ticket ride ordered in time starts while it can still reach its finish line by the pool\'s play deadline – else 409 rides_closed, the ride is closed and the ticket stays in the pot (H6)', async () => {
     const { ctx, start } = setup();
     const ticketRide = async (playIn: number) => {
       const t = ctx.now().getTime(), id = ctx.entropy.uuid();
@@ -85,11 +85,11 @@ describe('StartRideHandler', () => {
       await ctx.rides.insert(ride);
       return id;
     };
-    const late = await ticketRide(3599);   // a 1 h shift started now would end a second after the deadline
+    const late = await ticketRide(1799);   // a 1 h shift's finish line (0.5 × 28 m/s × 3600 s) is 1800 s away at the governor: a second too late
     await expect(start(late)).rejects.toMatchObject({ errorCode: 'rides_closed' });
     expect(await ctx.reload(late)).toMatchObject({ status: RideStatus.Cancelled });
     await expect(start(late)).rejects.toThrow(/ride is cancelled/);
-    const inTime = await ticketRide(3600);   // exactly in time: it may end AT the deadline
+    const inTime = await ticketRide(1800);   // exactly in time: it may reach its line AT the deadline
     expect((await start(inTime)).status).toBe('running');
   });
 

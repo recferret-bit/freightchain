@@ -209,6 +209,8 @@ export class PayPoolsHandler implements ICommandHandler<PayPoolsCommand, PayoutP
       await this.payouts.markPaidElsewhere(pool.id, row.rank, this.clock.now());
       return ok;
     }
+    const held = await this.heldNow(pool.id);   // a HOLD stops the attestation too: it alone lets pledges settle (WP2 review)
+    if (held) return { outcome: 'held', note: held };
     try {
       await this.attestation.ensureAttestation(pool.id, row.wallet);
     } catch (attestError) {

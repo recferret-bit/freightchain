@@ -11,6 +11,7 @@ import { PlayerRepositoryPort } from '../../../ports/players/player.repository.p
 import { ClockPort } from '../../../ports/shared/clock.port.js';
 import { TransactionPort } from '../../../ports/shared/transaction.port.js';
 import { SyncPledgesCommand, type PledgeSyncDto } from './sync-pledges.command.js';
+import { AttestationService } from '../../../services/attestation.service.js';
 
 /** a create_pledge never signed: give up on the row after this long with no account on chain (the built transaction expired long before) */
 const ABANDON_AFTER_MS = 60 * 60_000;
@@ -34,6 +35,7 @@ export class SyncPledgesHandler implements ICommandHandler<SyncPledgesCommand, P
     private readonly players: PlayerRepositoryPort,
     private readonly transactions: TransactionPort,
     private readonly clock: ClockPort,
+    private readonly attestation: AttestationService,
   ) {}
 
   async execute(): Promise<PledgeSyncDto> {
@@ -73,8 +75,14 @@ export class SyncPledgesHandler implements ICommandHandler<SyncPledgesCommand, P
   /** settle when the driver is attested, refund when the pool is over without one, else wait */
   private async end(p: Pledge): Promise<Pledge> {
     const keys = { poolId: p.poolId, rideId: p.rideId, sponsor: p.sponsor, driver: p.driver };
-    const att = await this.payout.attestationOf(p.poolId, p.driver);
-    const decided = att !== null && ((att.status === ATTESTATION_VERIFIED && att.verifiedKm > 0) || att.status === ATTESTATION_FLAGGED);
+    const live = await this.pools.findById(p.poolId);
+    // money the admin has not released waits (WP2 review): a held pool, one with rides under review, one stopped in error
+    if (live?.isActive && (live.hold || ['held', 'waiting_review', 'error'].includes(live.payoutState))) return p;
+    // the attestation is read against the rides AGAIN while it can still be rewritten (pentest M7: a verdict revoked after it was written)
+    const isDecided = (a: { status: number; verifiedKm: number } | null) => a !== null && ((a.status === ATTESTATION_VERIFIED && a.verifiedKm > 0) || a.status === ATTESTATION_FLAGGED);
+    let att = await this.payout.attestationOf(p.poolId, p.driver);
+    if (live?.isActive && isDecided(att)) { await this.attestation.attestForPledges(p.poolId, p.driver); att = await this.payout.attestationOf(p.poolId, p.driver); }   // only one it would settle on
+    const decided = isDecided(att);
     let signature: string;
     if (decided) {
       signature = (await this.payout.settlePledge(keys)).signature;
