@@ -334,6 +334,21 @@ if (split) {
   });
 }
 
+/* everything interactive (the cards, slide 0's tags, the LIVE badge, the Merkle canvas, the 70 / 20 / 10 blocks) gives a tiny, tweened shake at random intervals while its slide is showing – a quiet "touch me". It animates the individual `rotate` property, so it never fights the float / lean / zoom transforms. */
+const nudgeables = [...deck.querySelectorAll('.fx .shot, .fx .badge, .fx canvas.glyph, .L-wall .tags span, .split > div')];
+const canShake = el => !tkReduced && document.visibilityState === 'visible' && !!el.closest('.slide.on') && !el.matches(':hover,.hot,.drag')
+  && ![...(el.closest('.split')?.classList ?? [])].some(c => c.startsWith('s-'));   // not while it is being used
+function shakeLater(el) {
+  setTimeout(() => {
+    if (canShake(el) && el.animate) {
+      const a = (0.9 + Math.random() * 0.9) * (Math.random() < .5 ? -1 : 1);   // 0.9–1.8°, either way
+      el.animate({ rotate: ['0deg', `${a}deg`, `${-a * .75}deg`, `${a * .5}deg`, `${-a * .25}deg`, '0deg'] }, { duration: 520 + Math.random() * 200, easing: 'ease-out' });
+    }
+    shakeLater(el);
+  }, 2200 + Math.random() * 5800);   // every element on its own random clock, 2.2–8 s
+}
+nudgeables.forEach(shakeLater);
+
 /* the tip flashes once per ← / → / space key press (not for a click, a tap or a hash change); the arrow in the pressed direction flashes too, space leaves both arrows alone */
 function flashTip(dir) {
   const help = document.getElementById('help');
