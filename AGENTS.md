@@ -67,7 +67,7 @@ Achievements: ids are FROZEN (add a tier, never retune one); unlock rows are app
 Analytics: capture is opt-in (`POSTHOG_ENABLED=1`); never print `POSTHOG_KEY`; don't flip `$create_alias`.
 
 Secrets: read env files by key name only, never print values; never commit `deploy/.env` / `deploy/secrets/`; example files hold dummies.
-Pentest: native adapters blocked; `review-local` is data-only terminal handoff, never host exec/credential import; results/tests do not attest inference; live-model workflow: `pentest/docs/live-model.md`.
+Pentest: legacy adapters blocked; `connect-terminal` permits only the fixed tool-free Claude subscription profile, never generic exec/credential import; unknown providers/auth fail closed; guide: `pentest/docs/live-model.md`.
 
 **Deploy: nothing reaches production unless the user asks for a deploy in their current message** – not after "commit", "merge", "fix it" or a finished feature. Read-only is always fine (`npm run deploy -- --dry-run`, `deploy:status`, `npm run ops`, the `prod-*` skills). Steps: `docs/agents/deploy.md`.
 

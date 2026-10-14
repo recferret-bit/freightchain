@@ -3,7 +3,7 @@
 # Notes for Claude Code
 
 - Before changing an area, read its `docs/agents/<topic>.md` (table in AGENTS.md) and use the matching skill from `README.md` → "Skills" (e.g. `gameplay-balance` for tuning, `3d-assets` for 3D objects, `run-tests` for the full suite).
-- Pentest changes follow `pentest/README.md` and `pentest/docs/live-model.md`: no host fallback, exec RPC or credential import. Native adapters stay blocked; terminal results remain unverified. Test using inert responders and keep both skills identical.
+- Pentest changes follow `pentest/docs/live-model.md`: no generic host fallback/exec RPC/credential import; the explicit Claude connector needs its fixed tool-free profile and subscription preflight. Legacy adapters stay blocked. Tests use fake CLIs; keep both skills identical.
 - After visual / gameplay changes run `node tools/e2e-chrome.mjs` (in `client/`) and read the screenshots with the Read tool. Say plainly what was and wasn't verified – it can't judge "feel" (shake, smoke…), so tell the user what to eyeball.
 
 ## Workflow
