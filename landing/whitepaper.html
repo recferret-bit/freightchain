@@ -51,7 +51,8 @@
   <a href="#onchain"><i>05</i> On-chain</a>
   <a href="#verify"><i>06</i> Validation</a>
   <a href="#stream"><i>07</i> Streaming</a>
-  <a href="#risks"><i>08</i> Limits &amp; risks</a>
+  <a href="#audit"><i>08</i> Audit</a>
+  <a href="#risks"><i>09</i> Limits &amp; risks</a>
 </nav>
 
 <main class="doc">
@@ -81,7 +82,8 @@
       <tr><td>Blinks (Solana Actions): buy a ticket or open a ride from a shared link</td><td><span class="pill ok">LIVE · DEVNET</span> <span class="pill plan">ON 𝕏 AFTER THE HACKATHON</span></td><td><a href="#onchain">05</a></td></tr>
       <tr><td>Achievement badges as soulbound compressed NFTs</td><td><span class="pill ok">LIVE · DEVNET</span></td><td><a href="#rewards">04</a></td></tr>
       <tr><td>Garage colours</td><td><span class="pill ok">LIVE</span></td><td><a href="#rewards">04</a></td></tr>
-      <tr><td>Prize payouts, mainnet</td><td><span class="pill plan">PLANNED</span></td><td><a href="#rewards">04</a>, <a href="#risks">08</a></td></tr>
+      <tr><td>Penetration test &amp; contracts audit by twelve AI auditors (not a third-party audit)</td><td><span class="pill ok">DONE OCT 13</span> <span class="pill wip">FIXES NEXT DEPLOY</span></td><td><a href="#audit">08</a></td></tr>
+      <tr><td>Prize payouts, mainnet</td><td><span class="pill plan">PLANNED</span></td><td><a href="#rewards">04</a>, <a href="#risks">09</a></td></tr>
     </tbody>
   </table></div>
   <p class="dim note">There is no Freight Chain token and none is planned in this document. Nothing here is an offer to sell anything, or financial advice. Read <a href="#risks">section 08</a> before you put anything in.</p>
@@ -247,7 +249,7 @@
     <li><b>Keep the tab visible.</b> Time with the tab hidden is not driven time. Slow computers are not penalised: times come from the browser's event clock, and if the game runs below real time it simply takes longer.</li>
     <li><b>Spectators may talk and tip.</b> An online ride can be streamed live and replayed by anyone for 90 days – the road, your truck's state and the traffic around you; your key presses are never shown (<a href="#stream">07</a>). You may mute any chat wallet.</li>
     <li><b>Rankings are provisional while the rules are tuned.</b> Verdict rules v4 run in <em>shadow mode</em>: verdicts are stored and shown, but boards do not yet depend on them. A person reviews flagged rides and every decision is signed and logged.</li>
-    <li><b>It is a devnet build.</b> Nothing here is real money. Before any mainnet version exists, whether a prize game is lawful where you live is a question you and the operator both have to answer (<a href="#risks">08</a>).</li>
+    <li><b>It is a devnet build.</b> Nothing here is real money. Before any mainnet version exists, whether a prize game is lawful where you live is a question you and the operator both have to answer (<a href="#risks">09</a>).</li>
     <li><b>A paid shift needs both boxes.</b> Tick that you are 18 or older, and that SOL spent on a shift can be lost. A prize is not guaranteed. This is not a deposit or an investment. Free rides stay open.</li>
   </ol>
 </section>
@@ -715,7 +717,7 @@
   <ul class="honest">
     <li><b>The road check is consistency, not proof.</b> A game that drives over the holes and fakes the matching hull loss has, in effect, taken the hit. Traffic is simulated in the browser and only recorded for replays; holes spectators paid for are placed by the driver's game. Neither is judged.</li>
     <li><b>No re-simulation.</b> The game runs on your computer; its physics use floats, a variable time step and some randomness, so the server cannot re-run it. A careful bot playing the real game with human-like timing <em>and</em> reading the prompts could pass the automatic checks. That is why flagged shifts go to a person and why the checks keep tightening.</li>
-    <li><b>A captcha before a paid shift starts and before a prize is claimed</b> is on the roadmap (<a href="#risks">08</a>). A wallet farm can still take free rides; the daily cap and the rate limits are the brake until then.</li>
+    <li><b>A captcha before a paid shift starts and before a prize is claimed</b> is on the roadmap (<a href="#risks">09</a>). A wallet farm can still take free rides; the daily cap and the rate limits are the brake until then.</li>
     <li><b>The target is a fixed-tick, fixed-point replay core</b> that re-simulates a paid finish from its input log. It is on the roadmap, not in the build.</li>
     <li><b>Verdicts decide ranking only.</b> Whether you can win money is decided by the pool's rules, not by this section.</li>
     <li><b>Retention.</b> Recordings are deleted 90 days after the ride (flagged ones are kept until reviewed); the sign-in log after 180 days. Chat and donations are kept with the ride.</li>
@@ -778,15 +780,32 @@
 </section>
 
 <!-- ───────── 08 · LIMITS & RISKS ───────── -->
+<section id="audit" class="ch">
+  <header class="ch-h"><i>08</i><h2>Penetration test &amp; contracts audit</h2><p>Twelve AI auditors attacked the code on Oct 13. What they found, and what is fixed.</p></header>
+  <p>Six attack surfaces – the escrow program, the money paths, identity and admin, the anti-cheat, the client, the infrastructure – were each attacked by two agents from different vendors (Claude, GPT, Gemini, Grok) who could not see each other's work. A finding counts only if two of them raised it, or one raised it with a test that reproduces it; disputed claims went to a third vendor. 69 raw findings became <b>7 high</b> and <b>13 medium</b>; 4 claims were corrected or refuted. It is <b>not a third-party audit</b>: the program stays unaudited until one is done (<a href="#risks">09</a>).</p>
+  <div class="tblwrap"><table class="tbl">
+    <thead><tr><th>Finding</th><th>State</th></tr></thead>
+    <tbody>
+      <tr><td>Anti-cheat bypasses: an empty recording judged verified, ~1.9× the speed governor, hidden hole passes (H1, H3, M10, M13)</td><td><span class="pill wip">FIXED · NEXT DEPLOY</span></td></tr>
+      <tr><td>Another rider's recording replayed as your own (H2)</td><td><span class="pill wip">FIXED · NEXT DEPLOY</span></td></tr>
+      <tr><td>Rides after the play deadline still ranked; a revoked verdict still paid (H6, M7)</td><td><span class="pill wip">FIXED · NEXT DEPLOY</span></td></tr>
+      <tr><td>Session cookie scope, login CSRF, logout, admin CORS, sign-in text, rate limits (H7, M2, M3, M4, M9)</td><td><span class="pill wip">FIXED · NEXT DEPLOY</span></td></tr>
+      <tr><td>Program: the payout key was the whole prize gate, pledges not bound to their ride, sponsorships kept by a failed pool (H5, H4, M6, M8)</td><td><span class="pill wip">PROGRAM V4 BUILT · NOT ON DEVNET YET</span></td></tr>
+      <tr><td>Blink page relays any action, no CSP / HSTS, no subresource integrity, verdict codes on public rides, the lows (M1, M11, M12, M5)</td><td><span class="pill plan">OPEN</span></td></tr>
+    </tbody>
+  </table></div>
+  <p class="dim">Every finding ships a proof of concept; <code>./pentest/bin/pentest pocs</code> fails when a fixed one comes back. <a href="https://github.com/recferret-bit/freightchain/blob/main/pentest/reports/2026-10-13/index.md">Report</a> · <a href="https://github.com/recferret-bit/freightchain/blob/main/docs/reviews/pentest-2026-10/fix-plan.md">fix plan</a> · <a href="https://github.com/recferret-bit/freightchain/blob/main/pentest/pocs/status.json">PoC status</a>.</p>
+</section>
+
 <section id="risks" class="ch">
-  <header class="ch-h"><i>08</i><h2>Limits, risks &amp; roadmap</h2><p>The honest list. If a limit matters to you, it matters here.</p></header>
+  <header class="ch-h"><i>09</i><h2>Limits, risks &amp; roadmap</h2><p>The honest list. If a limit matters to you, it matters here.</p></header>
 
   <h3 class="sub">RISKS</h3>
   <div class="tblwrap"><table class="tbl">
     <thead><tr><th>Risk</th><th>What it means</th><th>Mitigation today</th></tr></thead>
     <tbody>
       <tr><td><b>Smart-contract</b></td><td>Bugs in an unaudited program can lose funds.</td><td>Devnet only; reproducible build; 154 tests; refund paths that need no key. An independent audit is a precondition for mainnet.</td></tr>
-      <tr><td><b>Cheating</b></td><td>A modified or scripted client could still pass inside the checks.</td><td>Chain, physics and the server's road; challenge channel (kinds table empty); human review of flags; a captcha on the roadmap (<a href="#risks">08</a>); replay core planned (<a href="#verify">06</a>).</td></tr>
+      <tr><td><b>Cheating</b></td><td>A modified or scripted client could still pass inside the checks.</td><td>Chain, physics and the server's road; challenge channel (kinds table empty); human review of flags; a captcha on the roadmap (<a href="#risks">09</a>); replay core planned (<a href="#verify">06</a>).</td></tr>
       <tr><td><b>Operator trust</b></td><td>A payout key names the winners within the cap; the admin holds the treasuries.</td><td>Signed, audited decisions; the winners list public on chain through the review, with an admin veto; payouts capped on chain; all of it readable on chain.</td></tr>
       <tr><td><b>Availability</b></td><td>A long shift can be lost if your tab or connection dies for more than 150 s.</td><td>Resume of an open ride; honest pauses cost nothing; final upload retries.</td></tr>
       <tr><td><b>Regulation</b></td><td>Paid prize games are regulated differently around the world.</td><td>Devnet, no value. The mainnet question is answered per region before any mainnet launch.</td></tr>

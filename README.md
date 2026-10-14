@@ -97,9 +97,29 @@ The live site is [freightchain.fun](https://freightchain.fun). The program in th
 
 The entire project was built in two weeks during the hackathon, entering in the final 6 days of the submission window—the truck simulation and cockpit, the five routes, traffic, climate, the server, the lobby, the landing, the whitepaper, verified play, live watch, the admin page, the garage, promo codes, and the escrow program. Coding agents also read [`AGENTS.md`](AGENTS.md).
 
+## Penetration test and contracts audit
+
+On 13 Oct 2026 twelve AI auditors attacked this repository: Claude Opus 5.5, GPT-6.1 Sol, Gemini 3.1 Pro and Grok 4.7. Six surfaces: the escrow program, the server money paths, identity and admin, the anti-cheat, the client, and the infrastructure. Each surface had two auditors from different vendors who could not see each other's work. A finding counts only if both raised it, or one raised it with a test that reproduces it. Disputed claims went to a third vendor. Local checkout and LiteSVM only: no production, no chain writes.
+
+This is not a third-party audit. The program stays "not audited" until one is done.
+
+69 raw findings became 7 high and 13 medium; the rest are low or info. 4 claims were corrected or refuted. Every fix was planned with a definition of done, red-teamed, and decided one by one. Then it was built with its proof of concept turned into a regression test.
+
+| Finding | State |
+| --- | --- |
+| H1, H3, M10, M13 · anti-cheat: an empty recording judged verified, about 1.9× the speed governor, hidden hole passes | Fixed in code (verdict rules v4). Not in production until the next deploy |
+| H2 · another rider's recording replayed as your own | Fixed in code: a copied recording is flagged for review. Next deploy |
+| H6, M7 · rides after the play deadline still ranked; a revoked verdict still paid | Fixed in code. Sales and new rides also stop at the sale end. Next deploy |
+| H7, M2, M3, M4, M9 · session cookie scope, login CSRF, logout, admin CORS, the sign-in text, rate limits | Fixed in code. Production players are signed out once. Next deploy |
+| H5, H4, M6, M8, L4 · program: the payout key was the whole prize gate, pledges not bound to their ride, a review window that committed nothing, sponsorships kept by a failed pool, a road seed the opener could pick | Program v4: a winners root public for the review before any prize is paid, per-ride attestations, sponsor refunds, `seal_road`. 154 LiteSVM tests plus the localnet suites. **Not on devnet yet.** Devnet still runs v3, where these findings are open |
+| M1, M11, M12, M5, most lows · the blink page relays any action, no CSP / HSTS, no subresource integrity, verdict codes on public rides | Open (fix plan WP6 to WP8) |
+
+`./pentest/bin/pentest pocs` runs every proof of concept. A fixed one that comes back fails the run. Read: [the report](pentest/reports/2026-10-13/index.md) ([HTML](pentest/reports/2026-10-13/report.html)), [the fix plan with every decision](docs/reviews/pentest-2026-10/fix-plan.md), [PoC status](pentest/pocs/status.json), and [whitepaper chapter 08](https://whitepaper.freightchain.fun/#audit). The suite itself is the `pentest-audit` skill.
+
 ## Contents
 
 - [Traction](#traction)
+- [Penetration test and contracts audit](#penetration-test-and-contracts-audit)
 - [Open the site](#open-the-site)
 - [Ten minutes](#ten-minutes)
 - [What is on chain](#what-is-on-chain)
@@ -143,6 +163,7 @@ One minute: open the [landing](https://freightchain.fun) and press PLAY FREE RID
 5. Watch someone from LIVE, or open REPLAYS. The watch page draws the truck from the recording, about 25 seconds behind, on a road rebuilt from the ride seed.
 6. Open the [program](https://explorer.solana.com/address/8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p?cluster=devnet) and the [contract spec](docs/pool-program/index.html). When a pool is on sale, the lobby sells a ticket into it (`PAYMENT_MODE=program`) and shows a Solana Pay code for the same transaction on a phone. If the lobby says SOON, there is nothing to buy.
 7. From this repo, `npm run test:localnet` runs the program on a local validator and checks the lamports. Walkthrough: [`docs/localnet-e2e/index.html`](docs/localnet-e2e/index.html).
+8. Read [Penetration test and contracts audit](#penetration-test-and-contracts-audit): what twelve AI auditors found, what is fixed, and what is still open. `./pentest/bin/pentest pocs` reruns every proof of concept.
 
 A wallet listed in `DEMO_WALLETS` drives a paid shift `DEMO_SCALE` times shorter (default 60). The speed governor stays 28 m/s.
 
@@ -207,9 +228,9 @@ Who can move money:
 | `close_pool` before the 14-day grace | Admin or the payout key, after `payout_at` | Can close without paying prizes. The prize share then goes to the seed treasury. This protects against a lost key. It does not protect against a dishonest admin |
 | Crank key | The server, for `open_next_pool`, `fail_pool`, `expire_pool`, `refund`, `close_pool` | It cannot send `pay_prize` |
 
-The program has 21 instructions, 18 events, and 32 errors. The shared lamport table is [`vault-split.ts`](server/src/domain/economy/vault-split.ts), with the same cases in [`vault-split-cases.json`](server/test/fixtures/chain/vault-split-cases.json). Spec: [`programs/freightchain-pools/README.md`](programs/freightchain-pools/README.md) and [`docs/pool-program/index.html`](docs/pool-program/index.html). Trust the id in `declare_id!`. The program README's first paragraph can lag it.
+The program on devnet (v3) has 21 instructions, 18 events, and 32 errors. The source here is v4 (29, 27, 48), not deployed yet. The shared lamport table is [`vault-split.ts`](server/src/domain/economy/vault-split.ts), with the same cases in [`vault-split-cases.json`](server/test/fixtures/chain/vault-split-cases.json). Spec: [`programs/freightchain-pools/README.md`](programs/freightchain-pools/README.md) and [`docs/pool-program/index.html`](docs/pool-program/index.html). Trust the id in `declare_id!`. The program README's first paragraph can lag it.
 
-`npm run program:verify` rebuilds in the Solana Foundation image and compares the hash to [`programs/freightchain-pools/verifiable-build.hash`](programs/freightchain-pools/verifiable-build.hash) (`47a630e8…`, Solana 4.1.2). The explorer "verified" badge is not submitted yet. `deploy` refuses an RPC whose genesis is not devnet.
+`npm run program:verify` rebuilds in the Solana Foundation image and compares the hash to [`programs/freightchain-pools/verifiable-build.hash`](programs/freightchain-pools/verifiable-build.hash) (`f1c45eff…` for the v4 source, Solana 4.1.2; devnet still runs v3, `47a630e8…`). The explorer "verified" badge is not submitted yet. `deploy` refuses an RPC whose genesis is not devnet.
 
 Badges: 31 soulbound compressed NFTs, 8 ladders, Metaplex Bubblegum v2, minted by a key that can mint and nothing else. An hour after the unlock, and after a second check that skips a rejected ride. Transfer is refused on chain. Collection [`56ijQ5t2RFpXezbPtEuqECo5gCQiGSek2LBsp7cfMoXC`](https://explorer.solana.com/address/56ijQ5t2RFpXezbPtEuqECo5gCQiGSek2LBsp7cfMoXC?cluster=devnet), tree [`45NKrZA9rGFcKr62VY5NvM89yarFuBqtBseRK7ZSM336`](https://explorer.solana.com/address/45NKrZA9rGFcKr62VY5NvM89yarFuBqtBseRK7ZSM336?cluster=devnet). A wallet that does not speak DAS still has the mint transaction on the badge card. Detail: [`docs/agents/achievements.md`](docs/agents/achievements.md).
 
@@ -218,17 +239,17 @@ Badges: 31 soulbound compressed NFTs, 8 ladders, Metaplex Bubblegum v2, minted b
 | Piece | In this repository | On the public site |
 | --- | --- | --- |
 | Driving game, five routes, three free levels, paid tiers | Yes | Free rides are live. A paid tier shows SOON until a pool of that tier is open. 4 h and 8 h have no series |
-| Server-timed shifts, hash-chained recordings, verdicts | Yes. Rules version 3 | Live, shadow mode. The verdict is stored and shown. Paid boards still rank without it |
-| Server-rebuilt road and hole checks | Yes | Live in the judge. [`docs/verified-play/index.html`](docs/verified-play/index.html) still prints rules v4 |
+| Server-timed shifts, hash-chained recordings, verdicts | Yes. Rules version 4 | Live, shadow mode. The verdict is stored and shown. Paid boards still rank without it |
+| Server-rebuilt road and hole checks | Yes | Live in the judge |
 | Live watch, replays, CB chat, devnet tips | Yes | Paid rides can be watched, with chat. A running free ride cannot. Replays work after it ends. Tips are devnet transfers to the driver. Game effects are off on the public site |
 | Garage, promo codes | Yes | Garage is a lobby tab: wheel, paint, gearbox, dice, needles. Nothing there changes the handling. Promo codes sit on the profile |
 | Public ride receipts, X card, in-game share | Yes | Live. The driver posts from their own account |
 | Sign-in with `solana:signIn`, .sol names | Yes | Live |
-| Escrow, per-km pledges, attestation-gated `pay_prize` | Yes. This is program v3, not Anchor 3. The crate is Anchor 1.2 | Server is in program mode since 11 Oct 2026, still devnet. A buy exists only while a pool is open. The job can pay a verified top 20 after review. The FAQ says no prize has been paid out |
+| Escrow, per-km pledges, attestation-gated `pay_prize` | Yes. Devnet runs program v3; this source is v4, not deployed yet (see [the audit](#penetration-test-and-contracts-audit)). Not Anchor 3: the crate is Anchor 1.2 | Server is in program mode since 11 Oct 2026, still devnet. A buy exists only while a pool is open. The job can pay a verified top 20 after review. The FAQ says no prize has been paid out |
 | Staking yield | No. A draft that named JitoSOL was removed before deploy. Nothing is staked | No |
 | Solana Pay, Actions | Yes | Devnet. Dialect listing is not done |
 | Badge cNFTs | Yes | Devnet. Mainnet waits on the same gates as the program |
-| Token, mainnet, audit, captcha | No | No |
+| Token, mainnet, third-party audit, captcha | No. An AI penetration test is [done](#penetration-test-and-contracts-audit) | No |
 
 Rollback for checkout is `PAYMENT_MODE=transfer` plus a redeploy. Mainnet waits on an audit, the devnet exit list, and an explicit deploy. Trust the program id in [`lib.rs`](programs/freightchain-pools/programs/freightchain_pools/src/lib.rs) and on the explorer.
 
@@ -244,7 +265,6 @@ Rollback for checkout is `PAYMENT_MODE=transfer` plus a redeploy. Mainnet waits 
 - The seed treasury is not rolled into the next pool by a job.
 - The pinned build hash is not the explorer's verified badge. That badge is not submitted. A matching hash is not an audit.
 - [`docs/escrow-open-items.md`](docs/escrow-open-items.md) still opens with a "not deployed" paragraph. Ignore that paragraph.
-- [`docs/verified-play/index.html`](docs/verified-play/index.html) still says rules v4. The code is version 3.
 - Physics are floats and a variable frame step. The server checks the recording. It does not re-play it.
 - Float32 road vertices jitter past about 100 km.
 - Session keys are not built. Staking is not built.
@@ -258,6 +278,7 @@ Rollback for checkout is `PAYMENT_MODE=transfer` plus a redeploy. Mainnet waits 
 | What the server checks | [Anti-cheat](docs/anti-cheat/index.html) · [player page](docs/verified-play/index.html) |
 | What a spectator sees | [Replays and donations](docs/replay-and-donations/index.html) |
 | Whether the money tests pass | [Localnet walkthrough](docs/localnet-e2e/index.html) |
+| What the penetration test found, and what is fixed | [Penetration test and contracts audit](#penetration-test-and-contracts-audit) · [whitepaper 08](https://whitepaper.freightchain.fun/#audit) · [report](pentest/reports/2026-10-13/index.md) |
 | How the server is put together | [backend-architecture.md](docs/backend-architecture.md) |
 
 ## The truck

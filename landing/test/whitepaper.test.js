@@ -20,13 +20,13 @@ test('contents shortcuts scroll through anchor.js', () => {
   assert.match(js, /bindAnchors\(\)/);
 });
 
-test('the contents list and the sections match, one h1 and one h2 per chapter 01–08', () => {
+test('the contents list and the sections match, one h1 and one h2 per chapter 01–09', () => {
   const toc = [...html.match(/<nav class="toc"[\s\S]*?<\/nav>/)[0].matchAll(/href="#([\w-]+)"/g)].map(m => m[1]);
   const sections = [...html.matchAll(/<section[^>]*\bid="([\w-]+)"/g)].map(m => m[1]);
   assert.deepEqual(toc, sections);
   assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
-  assert.equal((html.match(/<h2[\s>]/g) ?? []).length, 8);
-  for (const s of ['thesis', 'drive', 'rides', 'rewards', 'onchain', 'verify', 'stream', 'risks']) assert.ok(sections.includes(s), s);
+  assert.equal((html.match(/<h2[\s>]/g) ?? []).length, 9);
+  for (const s of ['thesis', 'drive', 'rides', 'rewards', 'onchain', 'verify', 'stream', 'audit', 'risks']) assert.ok(sections.includes(s), s);
 });
 
 test('the smoke test marker is on the page', () => { assert.match(html, /FREIGHT CHAIN · WHITEPAPER/); });
