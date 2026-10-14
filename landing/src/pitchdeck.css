@@ -297,13 +297,13 @@ canvas.glyph{height:auto;aspect-ratio:240/124;background:none}
 @media (prefers-reduced-motion:reduce){.vblock,.fx canvas.glyph{transition:none}}
 
 /* the 70 / 20 / 10 bar: the 10 % block keeps a width its figure fits in (the % no longer touches the edge); hover / tap plays a chained tween – others fade out in turn (.s-out), the picked block slides left and grows (.s-grow), its % gives way to a description (.s-text) */
-.split div{position:relative;min-width:0;transition:opacity .6s cubic-bezier(.4,0,.2,1),transform .7s cubic-bezier(.4,0,.2,1),filter .6s cubic-bezier(.4,0,.2,1),flex-grow .7s cubic-bezier(.65,0,.2,1),min-width .7s cubic-bezier(.65,0,.2,1),padding .7s cubic-bezier(.65,0,.2,1),box-shadow .5s;cursor:pointer}   /* no overshoot easing: a block fades, softens and settles away */
+.split div{position:relative;min-width:0;transition:opacity .35s cubic-bezier(.4,0,.2,1),transform .4s cubic-bezier(.4,0,.2,1),filter .35s cubic-bezier(.4,0,.2,1),flex-grow .7s cubic-bezier(.65,0,.2,1),min-width .7s cubic-bezier(.65,0,.2,1),padding .7s cubic-bezier(.65,0,.2,1),box-shadow .5s;cursor:pointer}   /* no overshoot easing: a block fades, softens and settles away */
 .split div:nth-child(2){min-width:132px}
 .split div:nth-child(3){min-width:124px}
 .split{transition:gap .7s cubic-bezier(.65,0,.2,1)}
 .split .desc{position:absolute;left:16px;right:16px;top:14px;font:400 32px/1.08 var(--head);font-style:normal;text-transform:uppercase;opacity:0;transform:translateY(16px);filter:blur(6px);letter-spacing:5px;pointer-events:none;transition:opacity .45s ease,transform .6s cubic-bezier(.2,.9,.3,1),filter .45s ease,letter-spacing .7s cubic-bezier(.2,.9,.3,1)}
 .split b{transition:opacity .3s ease,transform .45s ease}
-.split.s-out div:not(.pick){opacity:0;transform:scale(.82) translateY(10px);filter:blur(5px);transition-delay:calc(var(--o,0)*.24s),calc(var(--o,0)*.24s),calc(var(--o,0)*.24s),0s,0s,0s,0s;pointer-events:none}
+.split.s-out div:not(.pick){opacity:0;transform:scale(.95);filter:blur(3px);transition-delay:calc(var(--o,0)*.12s),calc(var(--o,0)*.12s),calc(var(--o,0)*.12s),0s,0s,0s,0s;pointer-events:none}   /* fades and softens where it stands – nothing falls or flies */
 .split.s-out .pick{box-shadow:0 0 0 3px #ffffff33}
 .split.s-grow{gap:0}
 .split.s-grow div:not(.pick){flex-grow:0;min-width:0;padding-left:0;padding-right:0}

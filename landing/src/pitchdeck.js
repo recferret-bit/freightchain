@@ -304,16 +304,16 @@ if (split) {
     blocks.forEach((b, k) => { b.classList.toggle('pick', k === i); b.style.setProperty('--o', Math.max(0, others.indexOf(k))); });
     if (tkReduced) { split.classList.add('s-out', 's-grow', 's-text'); return; }
     split.classList.add('s-out');
-    later(960, () => split.classList.add('s-grow'));
-    later(1700, () => split.classList.add('s-text'));
+    later(520, () => split.classList.add('s-grow'));
+    later(1200, () => split.classList.add('s-text'));
   };
   const collapse = () => {
     timers.forEach(clearTimeout); timers = []; open = -1;
     if (tkReduced) { split.classList.remove('s-text', 's-grow', 's-out'); blocks.forEach(b => b.classList.remove('pick')); return; }
     split.classList.remove('s-text');
-    later(420, () => split.classList.remove('s-grow'));
-    later(1180, () => split.classList.remove('s-out'));
-    later(2200, () => blocks.forEach(b => b.classList.remove('pick')));
+    later(300, () => split.classList.remove('s-grow'));
+    later(1000, () => split.classList.remove('s-out'));
+    later(1500, () => blocks.forEach(b => b.classList.remove('pick')));
   };
   blocks.forEach((b, i) => b.addEventListener('pointerenter', e => {
     if (e.pointerType !== 'mouse' || open >= 0) return;
