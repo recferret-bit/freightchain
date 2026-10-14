@@ -22,7 +22,7 @@ livery {body, stripe, accent, text, sub} (trailer), curv(s) (curvature, + = righ
 - `createTerrain()` → `{ mesh, update(px, pz) }` (use `_shared/ground.js`), `createMountains()` → Group (use `_shared/mountains.js` `createRings([{ ridge }, { count, peak }…])`: layers far → near at different distances so the fog hazes them differently; every layer is one merged, vertex-coloured mesh; moved with the camera).
 - `createProps()` → `{ slots, density, near, span, pick(r, r2) }`; `pick` returns a Group whose `userData = { kind, size, debris }` (use `_shared/props-basic.js`). `kind` must exist in `KINDS` (world/props.js); `debris` = material(s) of the smash particles.
 - `createFurniture()` (built by `defineTheme` from the `furniture` options) → `{ build({ ci, s0, place, reg, destroyed }), lampAt(ci) }` (use `_shared/furniture.js`: delineator posts, poles, guardrails, lamp posts – all destructible). Also `daylight: {rise,set,tw,peak,warm,stars}` on the theme (see Day / night).
-- **Add a route**: copy a folder, edit, add it to `THEMES` in `themes/index.js`. **Add a prop kind**: builder in `props-basic.js` + an entry in `KINDS`. Reviewing, fixing, or adding any 3D object is the `storybook-models` skill (see "Model viewer").
+- **Add a route**: copy a folder, edit, add it to `THEMES` in `themes/index.js`. **Add a prop kind**: builder in `props-basic.js` + an entry in `KINDS`. Reviewing, fixing, or adding any 3D object is the `3d-assets` skill (see "Model viewer").
 
 ## Road network (`js/net/`)
 
@@ -58,7 +58,7 @@ Theme caveats:
 
 ## Model viewer (storybook)
 
-`client/viewer.html` is the model viewer (production host `storybook.<apex>`, nginx maps `/` to it). It builds every traffic vehicle, roadside prop, furniture piece, landmark and finish gantry by calling the same builders as the game (`client/js/viewer.js`). To review a visual bug, change one of those meshes, or add a 3D object — a road hole, the depot and the trailer are not in the catalogue — use the `storybook-models` skill (`.claude/skills/storybook-models/SKILL.md`, `/storybook-models`). The procedure and the screenshot script live there.
+`client/viewer.html` is the model viewer (production host `storybook.<apex>`, nginx maps `/` to it). It builds every traffic vehicle, roadside prop, furniture piece, landmark and finish gantry by calling the same builders as the game (`client/js/viewer.js`). To review a visual bug, change one of those meshes, or add a 3D object — a road hole, the depot and the trailer are not in the catalogue — use the `3d-assets` skill (`.claude/skills/3d-assets/SKILL.md`, `/3d-assets`). The procedure and the screenshot script live there.
 
 ## Climate (cold, snow, engine temperature, heater, cooler)
 Each theme has `weather: { ambient °C (day), snow 0..1 }` (route66 26/0, stuart 34/0, siberia −22/1, brenner 3/.25, panamerican 12/0); `selectTheme()` copies it into the `weather` object in `state.js` (so `sim/` never imports the scene; debug: `__game.weather`). Night = `CFG.NIGHT_CHILL` colder (`ambientC()`).
