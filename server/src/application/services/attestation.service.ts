@@ -32,11 +32,9 @@ export class AttestationService {
 
   /** A prize winner: VERIFIED with the km of the driver's best verified ride, or a ConflictError (no verified ride, purged recording, under 1 km). */
   async ensureAttestation(poolId: number, driver: string): Promise<AttestationResult> {
-    return this.once(`${poolId}:${driver}`, async () => {
-      const r = await this.attest(poolId, driver);
-      if (r.status !== 'verified') throw new ConflictError(`driver ${driver} has no verified ride of at least 1 km in pool ${poolId}`, 'driver_not_verified');
-      return r;
-    });
+    const r = await this.once(`${poolId}:${driver}`, () => this.attest(poolId, driver));   // checked here, not inside: a pledge call in flight returns 'flagged' without throwing
+    if (r.status !== 'verified') throw new ConflictError(`driver ${driver} has no verified ride of at least 1 km in pool ${poolId}`, 'driver_not_verified');
+    return r;
   }
 
   /** A pledged driver, once every ride of the pool is decided: VERIFIED as above, FLAGGED when every finished ride was rejected (the sponsor gets it all back),

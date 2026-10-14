@@ -141,6 +141,14 @@ describe('AttestationService', () => {
       expect(all.map((r) => r.signature)).toEqual(['sig1', 'sig1', 'sig1']);
     });
 
+    it('a winner call that joins a pledge call for a revoked driver still throws (the pledge call gets FLAGGED, the prize pass never does)', async () => {
+      const { service, sent } = setup({ best: null, completed: true, delayMs: 20 });
+      const [pledge, winner] = await Promise.allSettled([service.attestForPledges(4, DRIVER), service.ensureAttestation(4, DRIVER)]);
+      expect(pledge).toMatchObject({ status: 'fulfilled', value: { status: 'flagged' } });
+      expect(winner).toMatchObject({ status: 'rejected', reason: expect.any(ConflictError) });
+      expect(sent).toHaveLength(1);
+    });
+
     it('other drivers are not coalesced with each other', async () => {
       const { service, sent } = setup({ delayMs: 10 });
       await Promise.all([service.ensureAttestation(4, DRIVER), service.ensureAttestation(4, OTHER), service.ensureAttestation(5, DRIVER)]);

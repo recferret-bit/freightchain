@@ -366,7 +366,7 @@ document.querySelector('a[href="/blink.html"]')?.addEventListener('click', () =>
 
 /* ───── sign-in / CTA ─────
    CONNECT asks the injected wallet (Phantom / Solflare) to sign the server's challenge; the server verifies the ed25519 signature and sets the httpOnly session cookie
-   (Domain = the apex in production, so the lobby, the game and the API share it). The landing never sees the token: it only asks /api/me who is signed in. */
+   (production: `__Host-fc_session`, host-only on api.<apex> – every page calls the API there). The landing never sees the token: it only asks /api/me who is signed in. */
 const btn = $('connect'), msg = $('msg'), playTop = $('play-top'), chip = $('chip-wallet'), chipRides = $('chip-rides');
 /* The invite block: a code typed here (or arriving as /?promo=CODE – a shareable invite link) rides along to the lobby profile (#promo, the old tab), where it only pre-fills the field. */
 const inviteIn = $('invite-code'), inviteMsg = $('invite-msg');

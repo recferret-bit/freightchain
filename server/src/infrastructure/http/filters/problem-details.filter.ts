@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 import { TooManyRequestsError } from '../../../domain/shared/errors.js';
 import { getRequestId } from '../types/http-request.js';
 import { toProblem } from './problem-mapping.js';
+import { apiPath } from '../api-path.js';
 
 /** THE error renderer: every error of the API leaves as application/problem+json (RFC 9457), with the request id. */
 @Catch()
@@ -27,7 +28,7 @@ export class ProblemDetailsFilter implements ExceptionFilter {
     if (exception instanceof TooManyRequestsError && exception.retryAfterSeconds !== undefined) response.setHeader('Retry-After', String(Math.max(1, Math.ceil(exception.retryAfterSeconds))));
     const path = request.path || request.originalUrl || '';
     // Solana Pay wallets display `message`. Every other route stays the problem object alone.
-    const body = path.startsWith('/api/solana-pay') ? { ...problem, message: problem.detail ?? problem.title } : problem;
+    const body = apiPath(path).startsWith('/api/solana-pay') ? { ...problem, message: problem.detail ?? problem.title } : problem;
     response.status(problem.status).send(JSON.stringify(body));
   }
 }
