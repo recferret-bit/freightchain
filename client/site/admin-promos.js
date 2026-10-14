@@ -1,6 +1,3 @@
-import { COSMETICS } from '../js/cosmetics.js';
-import { SLOT_NAME, itemName } from './lobby-promo.js';
-
 /* The admin page's PROMOCODES tab: the codes (active now by default), a form for a new one, and the log of who used what.
    Creating and disabling are signed by the admin's wallet for exactly that change (ctx.signAt → the server's text → the wallet) and audited.
    Server text (codes, descriptions, notes, wallets) goes in with textContent only – ctx.el never touches innerHTML. */
@@ -15,14 +12,12 @@ export const localToMs = v => { if (!v) return null; const t = new Date(v).getTi
 export function promoFromForm(f) {
   const code = f.code.trim();
   if (!code) throw new Error('Give the code a name (3–32 letters, digits, - or _).');
+  if (f.kind === 'cosmetic') throw new Error('Cab parts are minted by burning HONK in the garage, not by a promo code.');
   let effect;
   if (f.kind === 'free_rides') {
     const count = num(f.rides);
     if (!Number.isInteger(count) || count < 1) throw new Error('Free rides: a whole number from 1 up.');
     effect = { kind: 'free_rides', count };
-  } else if (f.kind === 'cosmetic') {
-    if (!COSMETICS[f.slot]?.includes(f.item) || f.item === COSMETICS[f.slot][0]) throw new Error('Pick an item to unlock (the first of each slot is the default everybody has).');
-    effect = { kind: 'cosmetic', slot: f.slot, item: f.item };
   } else {
     const credits = num(f.credits), poolId = num(f.poolId);
     if (!PAID.includes(f.tier)) throw new Error('Pick a ride length for the tickets.');
@@ -89,14 +84,11 @@ function form(ctx, { say, reload }) {
   const inp = (id, attrs = {}) => el('input', { id, ...attrs });
   const sel = (id, opts, attrs = {}) => el('select', { id, ...attrs }, opts.map(([v, l]) => el('option', { value: v }, l)));
   const code = inp('pf-code', { maxlength: 32, placeholder: 'e.g. WELCOME', autocapitalize: 'characters', spellcheck: 'false', autocomplete: 'off' });
-  const kind = sel('pf-kind', [['free_rides', 'Free rides'], ['tickets', 'Free paid-ride tickets'], ['cosmetic', 'Cockpit part (wheel / paint / shifter / dice / needles)']]);
+  const kind = sel('pf-kind', [['free_rides', 'Free rides'], ['tickets', 'Free paid-ride tickets']]);   // cab colours are HONK burns now – a listed cosmetic code still shows, a new one is not offered
   const rides = inp('pf-rides', { type: 'number', min: 1, max: 20, value: 1 });
   const presets = el('div', { class: 'presets' }, el('span', {}, 'Quick set'), el('div', {}, [1, 3].map(n => el('button', { type: 'button', class: 'ghost', onclick: () => { rides.value = n; } }, `${n} free ride${n === 1 ? '' : 's'}`))));
   const tier = sel('pf-tier', PAID.map(t => [t, { '1h': '1 hour', '4h': '4 hours', '8h': '8 hours' }[t]])), credits = inp('pf-credits', { type: 'number', min: 1, max: 100, value: 1 }), poolId = inp('pf-pool', { type: 'number', min: 0, placeholder: 'live pool of the tier' });
-  const slot = sel('pf-slot', Object.keys(COSMETICS).map(s => [s, SLOT_NAME[s] ?? s])), item = sel('pf-item', []);
-  const fillItems = () => item.replaceChildren(...COSMETICS[slot.value].slice(1).map(i => el('option', { value: i }, itemName(i))));
-  slot.onchange = fillItems; fillItems();
-  const groups = { free_rides: el('div', { class: 'grp g3' }, field('Rides per redemption', rides, '1–20; may go above the daily 5'), presets), tickets: el('div', { class: 'grp g3' }, field('Ride length', tier), field('Tickets per redemption', credits), field('Pin to pool #', poolId, 'empty = the live pool of that length')), cosmetic: el('div', { class: 'grp g3' }, field('Slot', slot), field('Item', item)) };
+  const groups = { free_rides: el('div', { class: 'grp g3' }, field('Rides per redemption', rides, '1–20; may go above the daily 5'), presets), tickets: el('div', { class: 'grp g3' }, field('Ride length', tier), field('Tickets per redemption', credits), field('Pin to pool #', poolId, 'empty = the live pool of that length')) };
   const showKind = () => { for (const [k, g] of Object.entries(groups)) g.hidden = k !== kind.value; };
   kind.onchange = showKind; showKind();
   const description = inp('pf-desc', { maxlength: 200, placeholder: 'shown to players, e.g. "Welcome gift"' }), start = inp('pf-start', { type: 'datetime-local' }), end = inp('pf-end', { type: 'datetime-local' });
@@ -106,7 +98,7 @@ function form(ctx, { say, reload }) {
     e.preventDefault();
     let promo;
     try {
-      promo = promoFromForm({ code: code.value, kind: kind.value, rides: rides.value, tier: tier.value, credits: credits.value, poolId: poolId.value, slot: slot.value, item: item.value, description: description.value, start: start.value, end: end.value, max: max.value, perWallet: perWallet.value, note: note.value });
+      promo = promoFromForm({ code: code.value, kind: kind.value, rides: rides.value, tier: tier.value, credits: credits.value, poolId: poolId.value, description: description.value, start: start.value, end: end.value, max: max.value, perWallet: perWallet.value, note: note.value });
     } catch (err) { say(err.message, true); return; }
     go.disabled = true;
     try {

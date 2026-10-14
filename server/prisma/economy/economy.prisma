@@ -257,4 +257,75 @@ model Pledge {
   @@schema("economy")
 }
 
+// HONK ledger (docs/honk/SPEC.md). Base units, 6 decimals. The emission counter is the ride mint, not the 2% genesis.
+model HonkAccount {
+  wallet    String   @id
+  balance   BigInt   @default(0)
+  minted    BigInt   @default(0)
+  burned    BigInt   @default(0)
+  updatedAt DateTime
+
+  @@schema("economy")
+}
+
+model HonkMint {
+  rideId    String   @id
+  wallet    String
+  tier      String
+  amount    BigInt
+  band20    Boolean
+  band50    Boolean
+  band100   Boolean
+  createdAt DateTime
+
+  @@index([wallet])
+  @@schema("economy")
+}
+
+model HonkBurn {
+  id        String   @id
+  wallet    String
+  amount    BigInt
+  kind      String
+  ref       String
+  createdAt DateTime
+
+  @@index([wallet, createdAt])
+  @@schema("economy")
+}
+
+model HonkVisual {
+  id             String   @id
+  wallet         String
+  slot           String
+  item           String
+  amount         BigInt
+  createdAt      DateTime
+  chainMint      String?
+  chainSignature String?
+
+  @@unique([wallet, slot, item])
+  @@schema("economy")
+}
+
+model HonkSupply {
+  id     Int    @id @default(1)
+  minted BigInt @default(0)
+
+  @@schema("economy")
+}
+
+// Cab parts. price null is the slot default (not for sale). A visual burn charges this row, in base units.
+model HonkPart {
+  slot        String
+  item        String
+  name        String
+  description String
+  price       BigInt?
+  sort        Int
+
+  @@id([slot, item])
+  @@schema("economy")
+}
+
 

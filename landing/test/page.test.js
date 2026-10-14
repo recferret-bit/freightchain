@@ -161,7 +161,7 @@ test('faq: ten questions in the html, every card starts closed, the chevron is n
   assert.doesNotMatch(block, /<details|<summary/);
   assert.match(main, /faq_item_opened/);
   assert.match(main, /closest\('a, \.chev'\)/);
-  assert.match(block, /There is no token/); assert.match(block, /nothing on it is real money/); assert.match(block, /about 100 km\/h/);
+  assert.match(block, /HONK is a separate capped coin minted by verified paid checkpoints/); assert.match(block, /nothing on it is real money/); assert.match(block, /about 100 km\/h/);
 });
 
 test('pools: the live board + the escrow block exist, the explainer is the whitepaper chapter, the pool wording is the lobby\'s', () => {

@@ -1,0 +1,42 @@
+-- Cab part catalog. A visual burn charges this row (base units). NULL is the slot default, not for sale.
+CREATE TABLE "economy"."HonkPart" (
+    "slot" TEXT NOT NULL,
+    "item" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT NOT NULL,
+    "price" BIGINT,
+    "sort" INTEGER NOT NULL,
+    CONSTRAINT "HonkPart_pkey" PRIMARY KEY ("slot","item")
+);
+
+INSERT INTO "economy"."HonkPart" ("slot", "item", "name", "description", "price", "sort") VALUES
+('wheel', 'classic', 'Wheel · Classic', 'The stock wheel: a black rim, a dark hub, and the amber mark.', NULL, 0),
+('wheel', 'crimson', 'Wheel · Crimson', 'A dark rim with a red sheen ring and a pale mark.', 65000000, 1),
+('wheel', 'ocean', 'Wheel · Ocean', 'A dark rim with a blue sheen ring and a pale blue mark.', 65000000, 2),
+('wheel', 'moss', 'Wheel · Moss', 'A dark rim with a green sheen ring and a pale green mark.', 65000000, 3),
+('wheel', 'gold', 'Wheel · Gold', 'A gold sheen ring, gold spokes, and a gold hub.', 260000000, 4),
+('wheel', 'ivory', 'Wheel · Ivory', 'A pale rim and hub with a dark mark.', 65000000, 5),
+('truck_color', 'red', 'Paint · Red', 'The stock cab: a red hood and fenders.', NULL, 6),
+('truck_color', 'blue', 'Paint · Blue', 'A blue hood, fenders, and dash edge.', 65000000, 7),
+('truck_color', 'green', 'Paint · Green', 'A green hood, fenders, and dash edge.', 65000000, 8),
+('truck_color', 'black', 'Paint · Black', 'A black hood and fenders with a gold dash edge.', 65000000, 9),
+('truck_color', 'yellow', 'Paint · Yellow', 'A yellow hood and fenders.', 65000000, 10),
+('truck_color', 'white', 'Paint · White', 'A white hood and pale fenders.', 65000000, 11),
+('gearbox', 'stick', 'Shifter · Stock', 'The stock shifter: a black knob and boot.', NULL, 12),
+('gearbox', 'chrome', 'Shifter · Chrome', 'A bright metal knob and a light rim.', 65000000, 13),
+('gearbox', 'wood', 'Shifter · Wood', 'A wooden knob and a brown boot.', 65000000, 14),
+('gearbox', 'racing', 'Shifter · Racing', 'A red knob and a metal lever.', 65000000, 15),
+('gearbox', 'gold', 'Shifter · Gold', 'A gold knob and a black boot.', 260000000, 16),
+('gearbox', 'carbon', 'Shifter · Carbon', 'A dark knob with a metal rim and lever.', 65000000, 17),
+('dice', 'white', 'Dice · White', 'The stock dice: a white body and red pips.', NULL, 18),
+('dice', 'red', 'Dice · Red', 'Red dice with white pips.', 65000000, 19),
+('dice', 'blue', 'Dice · Blue', 'Blue dice with white pips.', 65000000, 20),
+('dice', 'gold', 'Dice · Gold', 'Gold dice with dark pips.', 260000000, 21),
+('dice', 'pink', 'Dice · Pink', 'Pink dice with white pips.', 65000000, 22),
+('dice', 'black', 'Dice · Black', 'Black dice with pale pips.', 65000000, 23),
+('needle', 'orange', 'Needles · Orange', 'The stock needles: orange.', NULL, 24),
+('needle', 'red', 'Needles · Red', 'Red needles on both big gauges.', 65000000, 25),
+('needle', 'lime', 'Needles · Lime', 'Lime needles on both big gauges.', 65000000, 26),
+('needle', 'cyan', 'Needles · Cyan', 'Cyan needles on both big gauges.', 65000000, 27),
+('needle', 'white', 'Needles · White', 'White needles on both big gauges.', 65000000, 28),
+('needle', 'gold', 'Needles · Gold', 'Gold needles on both big gauges.', 260000000, 29);

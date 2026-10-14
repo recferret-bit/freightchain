@@ -39,7 +39,7 @@ export function verdictScenarios(h: () => Harness): void {
   it('a human-timed recording → /end answers VERIFIED and the shift ranks on the paid boards', async () => {
     const d = await login(VERDICT_DEMO);
     const end = await paidShift(d, {});
-    expect(end).toMatchObject({ status: 'completed', verdict: { status: 'verified', reasons: [] }, review: 'accepted' });   // a clean paid ride is ACCEPTED on its own
+    expect(end).toMatchObject({ status: 'completed', verdict: { status: 'verified', reasons: [] }, review: 'accepted', honk: { state: 'minted', pays: '100', quote: '100' } });   // a clean paid ride is ACCEPTED on its own, and the finish band mints
     expect((await d.agent.get(`/api/rides/${end.id}`).expect(200)).body).toMatchObject({ verdict: { status: 'verified' }, review: 'accepted' });
     for (const board of ['round', 'all']) expect((await anon().get(`/api/leaderboard?board=${board}`).expect(200)).body.rows[0]).toMatchObject({ wallet: d.address, distance: 910 });
     expect((await d.agent.get('/api/profile').expect(200)).body.recent[0]).toMatchObject({ status: 'completed', verdict: 'verified', review: 'accepted' });
@@ -62,7 +62,7 @@ export function verdictScenarios(h: () => Harness): void {
   it('no recording → REJECTED, still COMPLETED, but not on the paid boards', async () => {
     const d = await login(VERDICT_DEMO);
     const end = await paidShift(d, null);
-    expect(end).toMatchObject({ status: 'completed', verdict: { status: 'rejected', reasons: [{ code: 'no-recording', severity: 'reject' }] }, review: 'under_review' });   // a machine reject is not final: an admin looks
+    expect(end).toMatchObject({ status: 'completed', verdict: { status: 'rejected', reasons: [{ code: 'no-recording', severity: 'reject' }] }, review: 'under_review', honk: { state: 'withheld', pays: '0', quote: '100' } });   // a machine reject is not final: an admin looks. It mints nothing.
     expect((await d.agent.get('/api/profile').expect(200)).body.recent[0]).toMatchObject({ verdict: 'rejected', review: 'under_review' });
     expect((await anon().get('/api/leaderboard').expect(200)).body.rows).toEqual([]);
     expect((await anon().get('/api/leaderboard?board=all').expect(200)).body.rows).toEqual([]);

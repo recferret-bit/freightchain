@@ -38,6 +38,7 @@ const FAMILY = {
   siberia: { a: ['#e6f6ff', BLUE], glow: BLUE, flavour: 'Ice on the road, frost on the glass, a thousand empty kilometres of white.' },
   solo: { a: ['#ff9a8a', '#e23a2e'], glow: '#ff5a4a', flavour: 'No assist, no net. Just a driver, a wheel and the truth about their reflexes.' },
   licence: { a: [AMBER, GEAR], glow: AMBER, flavour: 'Every free run is a licence of its own. This one is stamped and framed.' },
+  honk: { a: [AMBER, NEEDLE], glow: AMBER, flavour: 'The road paid this one in HONK. A verified checkpoint, then the mint.' },
 };
 
 /** the metal of each tier: rim stops, glow and the sheen strength */
@@ -160,6 +161,15 @@ const GLYPHS = {
       <path d="M-24 -64V20H34" fill="none" stroke="${c.d}" stroke-width="26" stroke-linejoin="miter" stroke-linecap="butt"/>
       ${[0, 1, 2].map((i) => `<circle cx="${(i - 1) * 40}" cy="92" r="13" fill="${i < level ? c.p : 'none'}" stroke="${c.p}" stroke-width="5"/>`).join('')}
       ${[0, 1, 2].map((i) => `<circle cx="${(i - 1) * 40}" cy="92" r="${i < level ? 5 : 0}" fill="${c.s}"/>`).join('')}
+    </g>`;
+  },
+  honk(c) { // a cab horn: the mint you burn, and the mint a verified checkpoint pays
+    return `<g>
+      <rect x="-96" y="-6" width="28" height="40" rx="8" fill="${c.s}"/>
+      <path d="M-72 14h40l78-78v156L-32 22h-40z" fill="${c.p}"/>
+      <path d="M-20 -18h34l48-48v108L-20 28z" fill="${c.d}" opacity=".28"/>
+      <path d="M62 -62c30 10 46 34 46 62" fill="none" stroke="${c.s}" stroke-width="8" stroke-linecap="round"/>
+      <path d="M78 -46c20 8 30 22 30 40" fill="none" stroke="${c.s}" stroke-width="6" stroke-linecap="round" opacity=".65"/>
     </g>`;
   },
 };

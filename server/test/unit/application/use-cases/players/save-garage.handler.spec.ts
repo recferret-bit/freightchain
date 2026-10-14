@@ -6,7 +6,7 @@ const setup = async () => {
   const ctx = unitContext();
   await ctx.player('w'); await ctx.player('thief');
   for (const [slot, item] of [['wheel', 'gold'], ['dice', 'pink'], ['needle', 'lime']] as const) await ctx.cosmetics.unlock({ wallet: 'w', slot, item, code: item.toUpperCase(), at: ctx.now() });
-  const handler = new SaveGarageHandler(ctx.cosmetics, ctx.players, ctx.transactions, ctx.clock, ctx.analytics);
+  const handler = new SaveGarageHandler(ctx.cosmetics, ctx.players, ctx.transactions, ctx.clock, ctx.analytics, ctx.honkRepo);
   return { ctx, save: (parts: ConstructorParameters<typeof SaveGarageCommand>[1], wallet = 'w') => handler.execute(new SaveGarageCommand(wallet, parts)) };
 };
 
@@ -16,6 +16,9 @@ describe('SaveGarageHandler', () => {
     await ctx.cosmetics.equip('w', 'needle', 'lime');
     const g = await save({ wheel: 'gold', dice: 'pink' });
     expect(g.equipped).toEqual({ wheel: 'gold', truck_color: 'red', gearbox: 'stick', dice: 'pink', needle: 'lime' });
+    expect(g.slots[0]?.parts.find((p) => p.id === 'gold')).toMatchObject({ name: 'Wheel · Gold', description: 'A gold sheen ring, gold spokes, and a gold hub.', price: '260' });
+    expect(g.slots[0]?.parts.find((p) => p.id === 'classic')).toMatchObject({ name: 'Wheel · Classic', description: 'The stock wheel: a black rim, a dark hub, and the amber mark.', price: null });
+    expect(g.slots[3]?.parts.find((p) => p.id === 'pink')).toMatchObject({ name: 'Dice · Pink', description: 'Pink dice with white pips.', price: '65' });
     expect(await ctx.cosmetics.listEquipped('w')).toEqual({ wheel: 'gold', dice: 'pink', needle: 'lime' });
     expect(g.progress.collected).toBe(3);
   });

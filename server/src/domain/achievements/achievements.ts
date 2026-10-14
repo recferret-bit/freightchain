@@ -10,9 +10,11 @@ export interface Facts {
   siberiaShifts: number; // completed shifts on the Trans-Siberian route
   freeUnassisted: number; // FREE rides judged complete that were driven without ASSIST (the tutorial does not matter – it changes nothing in the truck)
   completedFreeLevels: number[]; // the free LEVELS (1 EASY · 2 MEDIUM · 3 HARD – ride-trip.ts FREE_LEVELS, from Ride.trip) with a ride judged complete
+  honkMints: number; // verified paid rides that minted HONK (any checkpoint)
+  honkFinishes: number; // of those, the ones that reached the finish band
 }
 
-export type AchievementFamily = 'road' | 'shift' | 'night' | 'distance' | 'clean' | 'siberia' | 'solo' | 'licence' | 'podium';
+export type AchievementFamily = 'road' | 'shift' | 'night' | 'distance' | 'clean' | 'siberia' | 'solo' | 'licence' | 'honk' | 'podium';
 
 export interface Achievement {
   id: string;
@@ -30,7 +32,7 @@ export interface Achievement {
 
 export const TIER_NAMES = ['Bronze', 'Silver', 'Gold', 'Platinum'] as const;
 export const FAMILY_NAMES: Record<AchievementFamily, string> = {
-  road: 'Road', shift: 'Shifts', night: 'Night', distance: 'Distance', clean: 'Clean', siberia: 'Siberia', solo: 'Solo', licence: 'Licence', podium: 'Podium',
+  road: 'Road', shift: 'Shifts', night: 'Night', distance: 'Distance', clean: 'Clean', siberia: 'Siberia', solo: 'Solo', licence: 'Licence', honk: 'HONK', podium: 'Podium',
 };
 
 const km = (f: Facts) => f.totalMetres / 1000;
@@ -75,6 +77,10 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   { id: 'free-easy', family: 'licence', tier: 1, name: 'Learner’s Permit', desc: 'Clear the EASY free run.', icon: '①', measure: level(1), target: 1 },
   { id: 'free-crossroads', family: 'licence', tier: 2, name: 'Crossroads', desc: 'Clear the MEDIUM free run.', icon: '②', measure: level(2), target: 1 },
   { id: 'free-hard', family: 'licence', tier: 3, name: 'Long Haul', desc: 'Clear the HARD free run – fifteen minutes, no assist.', icon: '③', measure: level(3), target: 1 },
+
+  { id: 'honk-haul', family: 'honk', tier: 1, name: 'First Mint', desc: 'A verified paid ride mints HONK.', icon: '📣', measure: (f) => f.honkMints, target: 1 },
+  { id: 'honk-haul-2', family: 'honk', tier: 2, name: 'Checkpoint Hauler', desc: 'Five verified paid rides mint the finish band.', icon: '📣', measure: (f) => f.honkFinishes, target: 5 },
+  { id: 'honk-haul-3', family: 'honk', tier: 3, name: 'Long Haul Mint', desc: 'Twenty-five verified paid rides mint the finish band.', icon: '📣', measure: (f) => f.honkFinishes, target: 25 },
 
   // awarded at round / pool close – settlement is not built for badges yet; never minted, never counted
   { id: 'top-20', family: 'podium', tier: 1, name: 'Top 20', desc: 'Be in the top 20 when the weekly round closes.', icon: '★', measure: null, target: 1 },

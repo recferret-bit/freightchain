@@ -33,4 +33,10 @@ export class CosmeticPrismaRepository extends CosmeticRepositoryPort {
     const rows = await clientFor(this.prisma, tx).cosmeticEquip.findMany({ where: { wallet } });
     return Object.fromEntries(rows.filter((r) => isCosmeticSlot(r.slot) && isCosmeticItem(r.slot, r.item)).map((r) => [r.slot, r.item]));
   }
+
+  async remove(wallet: string, slot: CosmeticSlot, item: string, tx?: TransactionHandle): Promise<void> {
+    const db = clientFor(this.prisma, tx);
+    await db.cosmeticUnlock.deleteMany({ where: { wallet, slot, item } });
+    await db.cosmeticEquip.deleteMany({ where: { wallet, slot, item } });
+  }
 }

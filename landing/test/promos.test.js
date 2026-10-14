@@ -15,7 +15,6 @@ test('the form → a promo body: trimmed text, blank = none, per wallet defaults
   assert.deepEqual(promoFromForm(base), { code: 'welcome', effect: { kind: 'free_rides', count: 3 }, description: 'Hi', maxRedemptions: null, perWallet: 1, startsAt: null, expiresAt: null, note: null });
   assert.deepEqual(promoFromForm({ ...base, kind: 'tickets', tier: '4h', credits: '2', poolId: '7', max: '50', perWallet: '2', note: ' vip ' }),
     { code: 'welcome', effect: { kind: 'tickets', tier: '4h', poolId: 7, credits: 2 }, description: 'Hi', maxRedemptions: 50, perWallet: 2, startsAt: null, expiresAt: null, note: 'vip' });
-  assert.deepEqual(promoFromForm({ ...base, kind: 'cosmetic', slot: 'truck_color', item: 'blue' }).effect, { kind: 'cosmetic', slot: 'truck_color', item: 'blue' });
 });
 
 test('1 and 3 free rides are the presets – any whole number up works, nonsense is a sentence, not a signature request', () => {
@@ -28,8 +27,9 @@ test('1 and 3 free rides are the presets – any whole number up works, nonsense
   assert.throws(() => promoFromForm({ ...base, perWallet: '0' }), /Per wallet/);
 });
 
-test('cosmetics: only an item of the slot that is not its default can be given', () => {
-  for (const item of [COSMETICS.wheel[0], 'racing', '']) assert.throws(() => promoFromForm({ ...base, kind: 'cosmetic', slot: 'wheel', item }), /Pick an item/, item);
+test('a truck part is not a promo effect – the form cannot build one', () => {
+  assert.throws(() => promoFromForm({ ...base, kind: 'cosmetic', slot: 'truck_color', item: 'blue' }), /burning HONK/);
+  for (const item of [COSMETICS.wheel[0], 'gold', 'racing', '']) assert.throws(() => promoFromForm({ ...base, kind: 'cosmetic', slot: 'wheel', item }), /burning HONK/, item);
 });
 
 test('times: a datetime-local value is the admin\'s own time; the end must come after the start', () => {
@@ -42,8 +42,8 @@ test('times: a datetime-local value is the admin\'s own time; the end must come 
   assert.throws(() => promoFromForm({ ...base, start: 'later' }), /not a valid date/);
 });
 
-test('the client catalog: three slots, every item has a palette with the same keys as its slot\'s default and a name, the default is the first', () => {
-  assert.deepEqual(SLOTS, ['wheel', 'truck_color', 'gearbox', 'dice', 'needle']);
+test('the client catalog: nine slots, every item has a palette with the same keys as its slot\'s default and a name, the default is the first', () => {
+  assert.deepEqual(SLOTS, ['wheel', 'truck_color', 'gearbox', 'dice', 'needle', 'ornament', 'dash', 'indicator', 'phone']);
   const shape = o => Object.keys(o).join(',');
   for (const slot of SLOTS) {
     assert.ok(SLOT_NAME[slot], slot);
@@ -56,15 +56,15 @@ test('the client catalog: three slots, every item has a palette with the same ke
     const looks = COSMETICS[slot].map(i => JSON.stringify(LOOKS[slot][i]));
     assert.equal(new Set(looks).size, looks.length, `${slot}: no two items look the same`);
   }
-  assert.deepEqual(defaultLoadout(), { wheel: 'classic', truck_color: 'red', gearbox: 'stick', dice: 'white', needle: 'orange' });
+  assert.deepEqual(defaultLoadout(), { wheel: 'classic', truck_color: 'red', gearbox: 'stick', dice: 'white', needle: 'orange', ornament: 'spear', dash: 'stock', indicator: 'amber', phone: 'black' });
 });
 
 test('setLoadout keeps what is known and falls back to the default of a slot for junk (a hostile or stale server value cannot break the cockpit)', () => {
   setLoadout({ wheel: 'gold', truck_color: '<script>', gearbox: 7, seat: 'x' });
-  assert.deepEqual({ ...loadout }, { wheel: 'gold', truck_color: 'red', gearbox: 'stick', dice: 'white', needle: 'orange' });
+  assert.deepEqual({ ...loadout }, { wheel: 'gold', truck_color: 'red', gearbox: 'stick', dice: 'white', needle: 'orange', ornament: 'spear', dash: 'stock', indicator: 'amber', phone: 'black' });
   assert.equal(look('wheel').rim, LOOKS.wheel.gold.rim);
   setLoadout({ gearbox: 'gold', wheel: 'racing' });   // 'racing' is a shifter, not a wheel
-  assert.deepEqual({ ...loadout }, { wheel: 'classic', truck_color: 'red', gearbox: 'gold', dice: 'white', needle: 'orange' });
+  assert.deepEqual({ ...loadout }, { wheel: 'classic', truck_color: 'red', gearbox: 'gold', dice: 'white', needle: 'orange', ornament: 'spear', dash: 'stock', indicator: 'amber', phone: 'black' });
   setLoadout(null);
   assert.deepEqual({ ...loadout }, defaultLoadout());
 });

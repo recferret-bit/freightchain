@@ -1,0 +1,22 @@
+{
+  "name": "Shifter · wood",
+  "description": "A Freight Chain cab visual. Soulbound to the wallet that burned 65 HONK for it. An entitlement in the game, not an SPL mint and not a broadcast cNFT.",
+  "attributes": [
+    {
+      "trait_type": "Slot",
+      "value": "gearbox"
+    },
+    {
+      "trait_type": "Item",
+      "value": "wood"
+    },
+    {
+      "trait_type": "Price HONK",
+      "value": "65"
+    },
+    {
+      "trait_type": "Soulbound",
+      "value": "Yes"
+    }
+  ]
+}

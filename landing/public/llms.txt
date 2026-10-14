@@ -1,6 +1,6 @@
 # Freight Chain
 
-> Freight Chain is a browser truck-driving game in the spirit of Desert Bus, with server-timed shifts and escrowed prize pools on Solana. It is a devnet build: nothing on it is real money, and there is no token.
+> Freight Chain is a browser truck-driving game in the spirit of Desert Bus, with server-timed shifts and escrowed prize pools on Solana. It is a devnet build: nothing on it is real money. SOL is the ticket and the prize. HONK is a separate capped coin minted by verified paid checkpoints.
 
 You drive a long-hood semi with a manual gearbox, a cold engine, traffic and nights down a road that never ends. A shift takes real time and cannot be skipped or sped up. The server keeps the clock, records the drive and judges the finish. Free rides need only a wallet sign-in (a signed message, not a transaction); paid shifts are tickets into an escrowed prize pool. Anyone can watch a ride live, about 25 seconds behind, or replay a finished one.
 

@@ -1,4 +1,5 @@
 import { PromoRepositoryPort } from '../../src/application/ports/economy/promo.repository.port.js';
+import { HonkRepositoryPort } from '../../src/application/ports/honk/honk.repository.port.js';
 import type { PromoCreateInput } from '../../src/domain/economy/promo.types.js';
 import { bindClient, sign, type Rider } from '../support/client.js';
 import type { Harness } from '../support/harness.js';
@@ -15,6 +16,12 @@ export function promoAbuseScenarios(h: () => Harness): void {
   const promos = () => h().app.get(PromoRepositoryPort, { strict: false });
   const seedPromo = (code: string, over: Partial<PromoCreateInput> = {}) => promos().insert(aPromo(new Date(now()), { code, maxRedemptions: null, ...over }));
   const redeem = (w: Rider, code: unknown) => w.agent.post('/api/promo/redeem').send({ code });
+  const UNIT = 1_000_000n;
+  const price = (item: string) => (item === 'gold' ? 260n : 65n) * UNIT;
+  const mintVisual = async (w: Rider, slot: string, item: string) => {
+    await h().app.get(HonkRepositoryPort, { strict: false }).credit(w.address, price(item), new Date(now()));
+    return w.agent.post('/api/honk/visuals').send({ slot, item }).expect(200);
+  };
   const freeRides = async (w: Rider): Promise<number> => (await w.agent.get('/api/me').expect(200)).body.freeRides;
   const used = async (code: string): Promise<number> => (await promos().findByCode(code))?.snapshot().redeemed ?? -1;
   const asAdmin = async () => loginAdmin(PROMOS_ADMIN, (await login(PROMOS_ADMIN)).agent);
@@ -39,7 +46,7 @@ export function promoAbuseScenarios(h: () => Harness): void {
     });
 
     it('an expired code stays ended for every kind of wallet: one that never tried, one that redeemed it, and a second try by the first one', async () => {
-      await seedPromo('GONE', { effect: { kind: 'cosmetic', slot: 'dice', item: 'gold' }, expiresAt: new Date(now() + 60_000), perWallet: 2 });
+      await seedPromo('GONE', { effect: { kind: 'free_rides', count: 1 }, expiresAt: new Date(now() + 60_000), perWallet: 2 });
       const a = await login(), b = await login();
       await redeem(a, 'GONE').expect(200);
       sec(61);
@@ -47,25 +54,26 @@ export function promoAbuseScenarios(h: () => Harness): void {
       expect(await used('GONE')).toBe(1);
     });
 
-    it('what a code gave is kept after it ended: free rides, an owned + worn cosmetic that can be swapped away and back, the log, the admin\'s ENDED list', async () => {
+    it('what a code gave is kept after it ended: free rides, an owned + worn wheel that can be swapped away and back, the log, the admin\'s ENDED list', async () => {
       await seedPromo('RIDES', { effect: { kind: 'free_rides', count: 2 }, expiresAt: new Date(now() + 3_600_000) });
-      await seedPromo('WHEEL', { effect: { kind: 'cosmetic', slot: 'wheel', item: 'gold' }, expiresAt: new Date(now() + 3_600_000) });
+      await seedPromo('EXTRA', { effect: { kind: 'free_rides', count: 1 }, expiresAt: new Date(now() + 3_600_000) });
       const w = await login(), admin = await asAdmin();
-      await redeem(w, 'RIDES').expect(200); await redeem(w, 'WHEEL').expect(200);
+      await redeem(w, 'RIDES').expect(200); await redeem(w, 'EXTRA').expect(200);
+      const { body: { nft } } = await mintVisual(w, 'wheel', 'gold'); // cab visuals are HONK, not a code
       sec(3_600);
-      expect(await freeRides(w)).toBe(12); // 10 at signup + 2
+      expect(await freeRides(w)).toBe(13); // 10 at signup + 2 + 1
       const garage = (await w.agent.get('/api/garage').expect(200)).body;
       expect(garage.equipped.wheel).toBe('gold');
-      expect(garage.slots.find((s: { slot: string }) => s.slot === 'wheel').parts.find((p: { id: string }) => p.id === 'gold')).toMatchObject({ owned: true, code: 'WHEEL' });
+      expect(garage.slots.find((s: { slot: string }) => s.slot === 'wheel').parts.find((p: { id: string }) => p.id === 'gold')).toMatchObject({ owned: true, code: `honk:${nft.id}` });
       await w.agent.post('/api/garage/loadout').send({ loadout: { wheel: 'classic' } }).expect(200);
-      await w.agent.post('/api/garage/loadout').send({ loadout: { wheel: 'gold' } }).expect(200); // still owned, the code is not needed any more
+      await w.agent.post('/api/garage/loadout').send({ loadout: { wheel: 'gold' } }).expect(200); // still owned after the codes ended
       expect((await w.agent.get('/api/promo/mine').expect(200)).body.redemptions).toHaveLength(2);
-      expect((await admin.agent.get('/api/admin/promos?state=ended').expect(200)).body.promos.map((p: { code: string }) => p.code).sort()).toEqual(['RIDES', 'WHEEL']);
+      expect((await admin.agent.get('/api/admin/promos?state=ended').expect(200)).body.promos.map((p: { code: string }) => p.code).sort()).toEqual(['EXTRA', 'RIDES']);
       expect((await admin.agent.get(`/api/admin/promos/redemptions?wallet=${w.address}`).expect(200)).body.rows).toHaveLength(2);
     });
 
     it('a scheduled code is refused for every kind until the second it opens, and exactly then works (and a code that ended before it started cannot even be made)', async () => {
-      await seedPromo('OPENS', { effect: { kind: 'cosmetic', slot: 'needle', item: 'cyan' }, startsAt: new Date(now() + 30_000), maxRedemptions: 1 });
+      await seedPromo('OPENS', { effect: { kind: 'free_rides', count: 1 }, startsAt: new Date(now() + 30_000), maxRedemptions: 1 });
       const a = await login(), b = await login();
       sec(29);
       expect((await redeem(a, 'OPENS').expect(409)).body.detail).toBe('this promo code is not active yet');
@@ -106,7 +114,7 @@ export function promoAbuseScenarios(h: () => Harness): void {
     });
 
     it('spelling it differently is not a second code: case, spaces, tabs, newlines and look-alike letters all hit the one counter – or nothing at all', async () => {
-      await seedPromo('GOLDWHEEL', { effect: { kind: 'cosmetic', slot: 'wheel', item: 'gold' } });
+      await seedPromo('GOLDWHEEL', { effect: { kind: 'free_rides', count: 1 } });
       const w = await login();
       await redeem(w, '  gold wheel ').expect(200);
       for (const again of ['GOLDWHEEL', 'goldwheel', 'GoLd\tWhEeL', 'gold\nwheel', 'G O L D W H E E L']) expect((await redeem(w, again).expect(409)).body.detail).toBe('you have already redeemed this promo code');

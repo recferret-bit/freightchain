@@ -19,6 +19,7 @@ import type { AdminActionRecord } from '../../../src/domain/admin/admin.dto.js';
 import type { RideEventProps } from '../../../src/domain/live/ride-event.entity.js';
 import type { StatsRow } from '../../../src/application/ports/stats/stats.repository.port.js';
 import type { DonationOrderProps } from '../../../src/domain/live/donation-order.entity.js';
+import type { HonkAccountRow, HonkBurnRow, HonkMintRow, HonkVisualRow } from '../../../src/application/ports/honk/honk.repository.port.js';
 
 /** The whole "database" of the in-memory suite: plain maps of snapshots (repositories hand out fresh entities, like real rows). */
 export class MemoryDb {
@@ -65,6 +66,11 @@ export class MemoryDb {
   /** `${tier}|${day}` → the day's road seed of a paid tier (ride.DailySeed) */
   dailySeeds = new Map<string, number>();
   pledges = new Map<string, import('../../../src/domain/economy/pledge.types.js').PledgeProps>();
+  honkMints = new Map<string, HonkMintRow>();
+  honkAccounts = new Map<string, HonkAccountRow & { updatedAt: Date }>();
+  honkBurns = new Map<string, HonkBurnRow>();
+  honkVisuals = new Map<string, HonkVisualRow>();
+  honkEmission = 0n;
   private seq = 0;
   private roundSeq = 0;
 
@@ -79,5 +85,6 @@ export class MemoryDb {
     this.chainEvents = []; this.chainCursors.clear();
     this.rideEvents = []; this.rideMutes.clear(); this.donationOrders.clear(); this.playerStats.clear(); this.globalStats = null; this.dailyStats.clear();
     this.settings.clear(); this.dailySeeds.clear(); this.pledges.clear();
+    this.honkMints.clear(); this.honkAccounts.clear(); this.honkBurns.clear(); this.honkVisuals.clear(); this.honkEmission = 0n;
   }
 }

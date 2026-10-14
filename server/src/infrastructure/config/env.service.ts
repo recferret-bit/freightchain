@@ -83,6 +83,7 @@ export class EnvService {
   get payoutSecret(): string | undefined { return this.env.PAYOUT_SECRET; }
   get payoutIntervalMs(): number { return this.env.PAYOUT_INTERVAL_MS; }
   get achievementMintSecret(): string | undefined { return this.env.ACHIEVEMENT_MINT_SECRET; }
+  get honkProgramId(): string | undefined { return this.env.HONK_PROGRAM_ID; }
   get achievementTree(): string | undefined { return this.env.ACHIEVEMENT_TREE; }
   get achievementCollection(): string | undefined { return this.env.ACHIEVEMENT_COLLECTION; }
   get achievementMintIntervalMs(): number { return this.env.ACHIEVEMENT_MINT_INTERVAL_MS; }

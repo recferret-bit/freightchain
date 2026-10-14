@@ -3,7 +3,7 @@ import {
   APPLIED_MAX_LAT, APPLIED_MAX_S, EFFECTS, EFFECT_WINDOW_MS, LINE_WINDOW_MS, MESSAGE_MAX_LENGTH, NOTE_MAX_LENGTH, type EffectId,
 } from './live-rules.js';
 
-export type RideEventKind = 'message' | 'donation';
+export type RideEventKind = 'message' | 'donation' | 'honk';
 
 /** Where and when the driver's game applied an effect: game time (driven seconds), road position s, and across the road (obstacles).
     An obstacle stamped with lat null was MISSED: the driver's game found no room for it (junctions / lane changes ahead) – it is not on the road. */
@@ -21,14 +21,14 @@ export interface RideEventProps {
   wallet: string;
   kind: RideEventKind;
   text: string | null;
-  effect: EffectId | null;
+  effect: EffectId | 'snow' | 'clear' | null;
   lamports: number;
   /** the rate-limit window this line took: unique per (rideId, slotKey, slot) */
   slotKey: string;
   slot: number;
   createdAt: Date;
   applied: EffectApplied | null;
-  /** a PAID donation's transfer (LIVE_FREE_DONATIONS=off); null = a mock donation or a chat line */
+  /** a PAID donation's transfer (LIVE_FREE_DONATIONS=off); null = a mock donation, a chat line, or a honk time change */
   signature: string | null;
 }
 
@@ -73,6 +73,22 @@ export class RideEvent {
     });
   }
 
+  /** A burned day or night change. Lamports stay 0 so it is not a donation and the stats path does not count it. Night and day are game effects, so the driver can stamp it. */
+  static honkPhase(i: { rideId: string; wallet: string; phase: 'day' | 'night'; text: string; now: Date }): RideEvent {
+    return new RideEvent({
+      id: null, rideId: i.rideId, wallet: i.wallet, kind: 'honk', text: i.text, effect: i.phase, lamports: 0,
+      slotKey: 'fx', slot: windowOf(i.now, EFFECT_WINDOW_MS), createdAt: i.now, applied: null, signature: null,
+    });
+  }
+
+  /** A burned snow or clear change. Lamports stay 0 so it is not a donation. Snow and clear are not donation effects; they still take the effect window so the driver can stamp them. */
+  static honkWeather(i: { rideId: string; wallet: string; weather: 'snow' | 'clear'; text: string; now: Date }): RideEvent {
+    return new RideEvent({
+      id: null, rideId: i.rideId, wallet: i.wallet, kind: 'honk', text: i.text, effect: i.weather, lamports: 0,
+      slotKey: 'fx', slot: windowOf(i.now, EFFECT_WINDOW_MS), createdAt: i.now, applied: null, signature: null,
+    });
+  }
+
   static restore(props: RideEventProps): RideEvent {
     return new RideEvent({ ...props, applied: props.applied ? { ...props.applied } : null });
   }
@@ -87,15 +103,23 @@ export class RideEvent {
   get rideId(): string { return this.p.rideId; }
   get wallet(): string { return this.p.wallet; }
   get kind(): RideEventKind { return this.p.kind; }
-  get effect(): EffectId | null { return this.p.effect; }
+  get effect(): EffectId | 'snow' | 'clear' | null { return this.p.effect; }
   get slotKey(): string { return this.p.slotKey; }
   get applied(): EffectApplied | null { return this.p.applied; }
   get signature(): string | null { return this.p.signature; }
-  /** something the driver's game has to do */
-  get needsGame(): boolean { return this.p.effect !== null && EFFECTS[this.p.effect].game; }
+  /** something the driver's game has to do. Snow and clear are not donation ids; they still move the cab. */
+  get needsGame(): boolean {
+    const effect = this.p.effect;
+    if (effect === 'snow' || effect === 'clear') return true;
+    return effect !== null && EFFECTS[effect].game;
+  }
 
-  /** an obstacle the driver's game could not place (stamped as missed) */
-  get missed(): boolean { return this.p.applied !== null && this.p.effect !== null && EFFECTS[this.p.effect].obstacle && this.p.applied.lat === null; }
+  /** an obstacle the driver's game could not place (stamped as missed). Snow and clear are not obstacles. */
+  get missed(): boolean {
+    const effect = this.p.effect;
+    if (effect === 'snow' || effect === 'clear') return false;
+    return this.p.applied !== null && effect !== null && EFFECTS[effect].obstacle && this.p.applied.lat === null;
+  }
 
   /** The driver's game applied it (or, `missed`, could not). First stamp wins (a re-sent ack changes nothing → false); only game effects take one;
       a placed obstacle needs its position across the road. */
@@ -104,7 +128,8 @@ export class RideEvent {
     if (this.p.applied) return false;
     const { t, s } = report, lat = report.lat ?? null;
     if (!Number.isFinite(t) || t < 0 || !Number.isFinite(s) || s < 0 || s > APPLIED_MAX_S) throw new BadRequestError('applied at an impossible time or place', 'bad_applied');
-    const obstacle = EFFECTS[this.p.effect as EffectId].obstacle;
+    const effect = this.p.effect;
+    const obstacle = effect !== null && effect !== 'snow' && effect !== 'clear' && EFFECTS[effect].obstacle;
     const missed = obstacle && report.missed === true;
     if (obstacle && !missed && (lat === null || !Number.isFinite(lat) || Math.abs(lat) > APPLIED_MAX_LAT)) throw new BadRequestError('an obstacle needs its place across the road', 'bad_applied');
     this.p.applied = { at: now, t, s, lat: obstacle && !missed ? lat : null };

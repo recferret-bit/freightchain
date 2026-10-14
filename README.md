@@ -2,7 +2,7 @@
 
 A truck game in the browser. You sit in the cab and drive. The road does not end. The shift does, at a finish line the server set. One mistake can end it sooner.
 
-Paid entries are SOL on Solana devnet. The program holds the money. There is no token, and this build is not mainnet.
+Paid entries are SOL on Solana devnet. The program holds the money. SOL is the ticket and the prize. HONK is a separate capped coin minted by verified paid checkpoints. This build is not mainnet.
 
 <img src="landing/public/media/day.webp" alt="Freight Chain cab in sixth gear on a desert highway, live CB up and the on-chain pool strip showing the road seal" width="780">
 
@@ -124,7 +124,7 @@ The program has 21 instructions, 18 events, and 32 errors. The shared lamport ta
 
 `npm run program:verify` rebuilds in the Solana Foundation image and compares the hash to [`programs/freightchain-pools/verifiable-build.hash`](programs/freightchain-pools/verifiable-build.hash) (`47a630e8…`, Solana 4.1.2). The explorer "verified" badge is not submitted yet. `deploy` refuses an RPC whose genesis is not devnet.
 
-Badges: 31 soulbound compressed NFTs, 8 ladders, Metaplex Bubblegum v2, minted by a key that can mint and nothing else. An hour after the unlock, and after a second check that skips a rejected ride. Transfer is refused on chain. Collection [`56ijQ5t2RFpXezbPtEuqECo5gCQiGSek2LBsp7cfMoXC`](https://explorer.solana.com/address/56ijQ5t2RFpXezbPtEuqECo5gCQiGSek2LBsp7cfMoXC?cluster=devnet), tree [`45NKrZA9rGFcKr62VY5NvM89yarFuBqtBseRK7ZSM336`](https://explorer.solana.com/address/45NKrZA9rGFcKr62VY5NvM89yarFuBqtBseRK7ZSM336?cluster=devnet). A wallet that does not speak DAS still has the mint transaction on the badge card. Detail: [`docs/agents/achievements.md`](docs/agents/achievements.md).
+Badges: 34 soulbound compressed NFTs, 9 ladders, Metaplex Bubblegum v2, minted by a key that can mint and nothing else. An hour after the unlock, and after a second check that skips a rejected ride. Transfer is refused on chain. Collection [`56ijQ5t2RFpXezbPtEuqECo5gCQiGSek2LBsp7cfMoXC`](https://explorer.solana.com/address/56ijQ5t2RFpXezbPtEuqECo5gCQiGSek2LBsp7cfMoXC?cluster=devnet), tree [`45NKrZA9rGFcKr62VY5NvM89yarFuBqtBseRK7ZSM336`](https://explorer.solana.com/address/45NKrZA9rGFcKr62VY5NvM89yarFuBqtBseRK7ZSM336?cluster=devnet). A wallet that does not speak DAS still has the mint transaction on the badge card. Detail: [`docs/agents/achievements.md`](docs/agents/achievements.md).
 
 ## Status
 
@@ -350,6 +350,7 @@ Skills live in `.claude/skills/<name>/`. A coding agent reads that folder's `SKI
 | `gameplay-video` | A promo mp4 (≤ 15 s) and gif (≤ 20 MB) from real gameplay, with landing-styled captions | `npm run media -- media/specs/<name>.json` |
 | `live-board-test` | Who is online, which rides are on the road, a closed tab leaving at once, and the replay history | `bash .claude/skills/live-board-test/run.sh` |
 | `localnet-e2e` | Real ticket buys, refunds, payouts, and the pool crank on a local Solana validator; ten riders paid by the program; the autonomous pool day (the crank opens the series' pools, the payout key pays after the review window); a 100 % program coverage gate | `npm run test:localnet` |
+| `honk-localnet` | The local HONK mint, transfer, burn, soulbound part NFT, and paid-ride session. The ledger stays the game balance | `bash .claude/skills/honk-localnet/run.sh` |
 | `analytics-review` | Three passes over the landing, whitepaper, lobby, and the online ride: new controls get events, removed ones lose them, and the explainer stays in step. Each pass writes `docs/analytics/updates/<n>.html`. Does not call PostHog | `node .claude/skills/analytics-review/inventory.mjs` |
 | `whitepaper-update` | Three passes on the whitepaper: claims against the code, cut duplication and AI-sounding prose, add charts and real cab frames inside the gzip budget. Does not deploy | `npm --prefix landing test` · `npm run landing:build` |
 | `posthog-prod` | Product analytics on production: the boot line, one public probe, the flush log. Read-only | `bash .claude/skills/posthog-prod/check.sh` |

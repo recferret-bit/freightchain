@@ -12,7 +12,7 @@ describe('RedeemPromoHandler', () => {
   const setup = async (promo: Partial<PromoCreateInput> = {}) => {
     const ctx = unitContext();
     await ctx.promos.insert(aPromo(ctx.now(), promo));
-    const handler = new RedeemPromoHandler(ctx.players, ctx.promos, ctx.pools, ctx.tickets, ctx.cosmetics, ctx.poolTickets, ctx.sessions, ctx.transactions, ctx.clock, ctx.rules, ctx.analytics);
+    const handler = new RedeemPromoHandler(ctx.players, ctx.promos, ctx.pools, ctx.tickets, ctx.poolTickets, ctx.sessions, ctx.transactions, ctx.clock, ctx.rules, ctx.analytics);
     const redeem = (code = 'HELLO', wallet = 'w') => handler.execute(new RedeemPromoCommand(wallet, code));
     return { ctx, redeem };
   };
@@ -77,43 +77,23 @@ describe('RedeemPromoHandler', () => {
   describe('cosmetics', () => {
     const wheel = { kind: 'cosmetic', slot: 'wheel', item: 'gold' } as const;
 
-    it('unlocks the item and puts it on', async () => {
-      const { ctx, redeem } = await setup({ effect: wheel });
-      expect(await redeem()).toEqual({ kind: 'cosmetic', code: 'HELLO', label: 'wheel: gold', slot: 'wheel', item: 'gold' });
-      expect(await ctx.cosmetics.has('w', 'wheel', 'gold')).toBe(true);
-      expect(await ctx.cosmetics.listEquipped('w')).toEqual({ wheel: 'gold' });
-      expect((await ctx.cosmetics.listUnlocked('w'))[0]).toMatchObject({ code: 'HELLO', at: ctx.now() });
-    });
-
-    it('a wallet that already owns it is refused BEFORE a redemption is taken – another code for the same item', async () => {
+    it('a stored cab-visual code is refused before a redemption is taken, and nothing is unlocked', async () => {
       const { ctx, redeem } = await setup({ effect: wheel, maxRedemptions: 5 });
-      await ctx.promos.insert(aPromo(ctx.now(), { code: 'AGAIN', effect: wheel, maxRedemptions: 5 }));
-      await redeem();
-      await expect(redeem('AGAIN')).rejects.toMatchObject({ errorCode: 'already_owned', message: 'you already own this item' });
-      expect((await ctx.promos.findByCode('AGAIN'))?.snapshot().redeemed).toBe(0);
-    });
-
-    it('codes for the three slots add up: each slot wears what it unlocked last, the rest stays owned', async () => {
-      const { ctx, redeem } = await setup({ effect: wheel });
-      await ctx.promos.insert(aPromo(ctx.now(), { code: 'PAINT', effect: { kind: 'cosmetic', slot: 'truck_color', item: 'blue' } }));
-      await ctx.promos.insert(aPromo(ctx.now(), { code: 'BOX', effect: { kind: 'cosmetic', slot: 'gearbox', item: 'chrome' } }));
-      await ctx.promos.insert(aPromo(ctx.now(), { code: 'RING', effect: { kind: 'cosmetic', slot: 'wheel', item: 'ivory' } }));
-      await redeem(); await redeem('PAINT'); await redeem('BOX'); await redeem('RING');
-      expect(await ctx.cosmetics.listEquipped('w')).toEqual({ wheel: 'ivory', truck_color: 'blue', gearbox: 'chrome' });
-      expect(await ctx.cosmetics.has('w', 'wheel', 'gold')).toBe(true);
+      await expect(redeem()).rejects.toMatchObject({ errorCode: 'visuals_are_honk', message: 'cab visuals are minted by burning HONK' });
+      expect(await ctx.cosmetics.has('w', 'wheel', 'gold')).toBe(false);
+      expect(await ctx.cosmetics.listEquipped('w')).toEqual({});
+      expect((await ctx.promos.findByCode('HELLO'))?.snapshot().redeemed).toBe(0);
     });
   });
 
   describe('PostHog', () => {
     it('a redeemed code is one promo_redeemed per kind, after the commit, with what it gave – and the person is updated', async () => {
       const { ctx, redeem } = await setup({ effect: { kind: 'free_rides', count: 3 } });
-      await ctx.promos.insert(aPromo(ctx.now(), { code: 'CAB', effect: { kind: 'cosmetic', slot: 'truck_color', item: 'black' } }));
       await ctx.promos.insert(aPromo(ctx.now(), { code: 'TIX', effect: ticketEffect({ credits: 2 }) }));
       await ctx.pools.upsert(aPool({ id: 1, status: 'active' }));
-      await redeem(); await redeem('CAB'); await redeem('TIX');
-      const [rides, cabin, tickets] = ctx.analytics.named('promo_redeemed');
+      await redeem(); await redeem('TIX');
+      const [rides, tickets] = ctx.analytics.named('promo_redeemed');
       expect(rides).toMatchObject({ distinctId: 'w', dedupeKey: 'promo:HELLO:w:1', timestamp: ctx.now(), set: { free_rides: 13 }, properties: { code: 'HELLO', kind: 'free_rides', redemption_n: 1, rides_added: 3, free_rides: 13, is_demo: false, source: 'server' } });
-      expect(cabin).toMatchObject({ dedupeKey: 'promo:CAB:w:1', set: { truck_color: 'black' }, properties: { kind: 'cosmetic', slot: 'truck_color', item: 'black' } });
       expect(tickets).toMatchObject({ properties: { kind: 'tickets', tier_id: '1h', pool_id: 1, tickets_added: 2, ticket_balance: 2 } });
       expect(tickets?.set).toBeUndefined();
     });

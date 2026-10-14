@@ -12,6 +12,7 @@ import { ClockPort } from '../ports/shared/clock.port.js';
 import { TransactionPort, type TransactionHandle } from '../ports/shared/transaction.port.js';
 import { RideBatchRepositoryPort } from '../ports/telemetry/ride-batch.repository.port.js';
 import { RideVerdictRepositoryPort } from '../ports/verdict/ride-verdict.repository.port.js';
+import { HonkMintService } from './honk-mint.service.js';
 
 /**
  * Judges a completed ride from its stored recording (RideVerdict.judge) and saves the verdict. Called right after /end and again when a batch lands
@@ -39,6 +40,7 @@ export class VerdictService {
     private readonly audit: AdminActionRepositoryPort,
     private readonly transactions: TransactionPort,
     private readonly clock: ClockPort,
+    private readonly honk: HonkMintService,
   ) {}
 
   /** null = nothing to judge (only completed shifts can rank, so only they are judged). A verdict an admin decided is returned as is. */
@@ -87,6 +89,8 @@ export class VerdictService {
     // cannot recompute them, so they are carried over (also when an admin re-judges: clearing a mark is an admin DECISION – the override –, not a re-run)
     verdict.addReasons(existing?.reasons.filter((r) => isPoolMark(r.code)) ?? []);
     await this.verdicts.save(verdict, tx);
+    // HONK is credited in this same transaction. A flagged or rejected ride mints nothing, and a second pass of a verified ride does not mint again.
+    if (verdict.status === 'verified') await this.honk.credit({ rideId, wallet: ride.wallet, tier: ride.tier, distance: ride.distance, completeDist: ride.completeDist }, tx);
     this.logger.log({ event: 'verdict', msg: `ride ${rideId}: ${verdict.status}`, rideId, wallet: ride.wallet, status: verdict.status, reasons: verdict.reasons.map((r) => r.code) });
     return { verdict, before: existing?.status ?? null };
   }

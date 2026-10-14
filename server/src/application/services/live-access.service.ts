@@ -18,7 +18,7 @@ export class LiveAccessService {
   ) {}
 
   /** A started ride of someone else, on the air, with the feature on (LIVE_* flags for this ride), and the wallet not muted by its driver. */
-  async requirePostable(rideId: string, wallet: string, input: { kind: 'message' } | { kind: 'donation'; effect: EffectId }, now: Date): Promise<{ ride: Ride; features: LiveFeaturesDto }> {
+  async requirePostable(rideId: string, wallet: string, input: { kind: 'message' } | { kind: 'donation'; effect: EffectId } | { kind: 'honk-time' } | { kind: 'honk-weather' }, now: Date): Promise<{ ride: Ride; features: LiveFeaturesDto }> {
     const ride = await this.rides.findById(rideId);
     if (!ride || !ride.startedAt) throw new NotFoundError('ride not found');
     if (ride.isFree) throw new ForbiddenError('stream watching and interactions are not available on free rides', 'free_ride_no_stream');

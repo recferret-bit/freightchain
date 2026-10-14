@@ -134,13 +134,13 @@ describe('concurrency (PostgreSQL)', () => {
       expect(await prisma.promoCode.findUnique({ where: { code: 'OPENING' } })).toMatchObject({ redeemed: 1 });
     });
 
-    it('a cosmetic code redeemed N times at once by one wallet unlocks it once and uses ONE redemption', async () => {
+    it('a cosmetic code redeemed N times at once by one wallet is refused and nothing is unlocked', async () => {
       await promos().insert(aPromo(harness.clock.now(), { code: 'WHEEL', effect: { kind: 'cosmetic', slot: 'wheel', item: 'gold' }, maxRedemptions: null, perWallet: 3 }));
       const a = await login();
       const results = await parallel(PARALLEL, () => a.agent.post('/api/promo/redeem').send({ code: 'WHEEL' }));
-      expect(results.filter((r) => r.status === 200)).toHaveLength(1);
-      expect(await prisma.cosmeticUnlock.count({ where: { wallet: a.address } })).toBe(1);
-      expect(await prisma.promoCode.findUnique({ where: { code: 'WHEEL' } })).toMatchObject({ redeemed: 1 });
+      expect(results.every((r) => r.status === 409 && r.body.code === 'visuals_are_honk')).toBe(true);
+      expect(await prisma.cosmeticUnlock.count({ where: { wallet: a.address } })).toBe(0);
+      expect(await prisma.promoCode.findUnique({ where: { code: 'WHEEL' } })).toMatchObject({ redeemed: 0 });
     });
   });
 

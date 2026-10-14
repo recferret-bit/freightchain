@@ -64,6 +64,7 @@ export const envSchema = z
     PAYOUT_SECRET: optional(z.string().min(32)), // base58 keypair named on chain as Config.payout_authority: pays prizes + closes a pool after its review window, nothing else
     PAYOUT_INTERVAL_MS: z.coerce.number().int().min(0).default(300_000), // the payout job's schedule (needs PAYOUT_SECRET); 0 = only `pool:payout` from the CLI
     ACHIEVEMENT_MINT_SECRET: optional(z.string().min(32)), // base58 keypair = tree creator + collection authority of the badge cNFTs (docs/agents/achievements.md); a mint-only key, never the crank or payout key
+    HONK_PROGRAM_ID: optional(z.string()), // freightchain_honk program id. Unset = ledger burns only, no signature. Local validator: GctCYSHbCnHN8sE1LjUL9cmSpFd5mcVdfaumRcaVWZZx
     ACHIEVEMENT_TREE: optional(z.string().min(32).max(44)), // the Bubblegum v2 Merkle tree (scripts/achievements/setup-tree.mjs prints it)
     ACHIEVEMENT_COLLECTION: optional(z.string().min(32).max(44)), // the MPL-Core collection (PermanentFreezeDelegate = soulbound, BubblegumV2)
     ACHIEVEMENT_MINT_INTERVAL_MS: z.coerce.number().int().min(0).default(120_000), // the mint job's schedule (needs the three keys above); 0 = only `achievement:mint` from the CLI
@@ -101,7 +102,7 @@ export const envSchema = z
     if (env.TREASURY_PUBKEY !== undefined && !isWalletAddress(env.TREASURY_PUBKEY)) {
       ctx.addIssue({ code: 'custom', path: ['TREASURY_PUBKEY'], message: 'TREASURY_PUBKEY must be a base58 Solana address' });
     }
-    for (const key of ['TICKET_PROGRAM_ID', 'FEE_TREASURY', 'SEED_TREASURY'] as const) {
+    for (const key of ['TICKET_PROGRAM_ID', 'FEE_TREASURY', 'SEED_TREASURY', 'HONK_PROGRAM_ID'] as const) {
       const value = env[key];
       if (value !== undefined && !isWalletAddress(value)) ctx.addIssue({ code: 'custom', path: [key], message: `${key} must be a base58 Solana address` });
     }

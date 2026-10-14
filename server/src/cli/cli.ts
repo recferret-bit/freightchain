@@ -17,7 +17,7 @@ Commands:
   db:reset     Truncate every table (refused in production)
   promo:create CODE <effect> [--desc TEXT] [--start DATE] [--expires DATE] [--max N] [--per-wallet N] [--note TEXT]
                A promo code with ONE effect: --tier 1h|4h|8h --credits N [--pool ID] (free tickets into the tier's live pool, or the pinned pool)
-               · --free-rides N (extra free rides) · --cosmetic wheel|truck_color|gearbox|dice|needle:ITEM (unlocks a colour for that part of the cockpit)
+               · --free-rides N (extra free rides). Cab parts are minted by burning HONK, not by a promo code.
   promo:list   Every promo code with its usage
   promo:disable CODE
                Stop a code (tickets already granted stay)

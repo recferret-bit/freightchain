@@ -1,0 +1,22 @@
+{
+  "name": "Needles · lime",
+  "description": "A Freight Chain cab visual. Soulbound to the wallet that burned 65 HONK for it. An entitlement in the game, not an SPL mint and not a broadcast cNFT.",
+  "attributes": [
+    {
+      "trait_type": "Slot",
+      "value": "needle"
+    },
+    {
+      "trait_type": "Item",
+      "value": "lime"
+    },
+    {
+      "trait_type": "Price HONK",
+      "value": "65"
+    },
+    {
+      "trait_type": "Soulbound",
+      "value": "Yes"
+    }
+  ]
+}

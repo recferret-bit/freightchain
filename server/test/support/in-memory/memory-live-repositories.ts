@@ -58,7 +58,7 @@ export class MemoryRideEventRepository extends RideEventRepositoryPort {
 
   async totals(rideId: string): Promise<LiveTotalsByRide> {
     const mine = this.db.rideEvents.filter((e) => e.rideId === rideId), gifts = mine.filter((e) => e.kind === 'donation');
-    return { messages: mine.length - gifts.length, donations: gifts.length, lamports: gifts.reduce((a, e) => a + e.lamports, 0) };
+    return { messages: mine.filter((e) => e.kind === 'message').length, donations: gifts.length, lamports: gifts.reduce((a, e) => a + e.lamports, 0) };
   }
 }
 

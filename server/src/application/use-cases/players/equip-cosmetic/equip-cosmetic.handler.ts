@@ -25,7 +25,7 @@ export class EquipCosmeticHandler implements ICommandHandler<EquipCosmeticComman
     if (!isCosmeticItem(slot, item)) throw new BadRequestError(`no such ${slot}: ${item}`, 'bad_cosmetic');
     const dto = await this.transactions.run(async (tx) => {   // under the player row lock like every wallet change: a racing redemption (which also wears its item) cannot be silently undone
       if (!(await this.players.findByWalletForUpdate(wallet, tx))) throw new NotFoundError('player not found');
-      if (item !== defaultCosmetic(slot) && !(await this.cosmetics.has(wallet, slot, item, tx))) throw new ConflictError('you do not own this item – redeem a promo code for it', 'not_owned');
+      if (item !== defaultCosmetic(slot) && !(await this.cosmetics.has(wallet, slot, item, tx))) throw new ConflictError('you do not own this item – burn HONK in the garage to mint it', 'not_owned');
       await this.cosmetics.equip(wallet, slot, item, tx);
       return toWardrobeDto(await this.cosmetics.listUnlocked(wallet, tx), await this.cosmetics.listEquipped(wallet, tx));
     });

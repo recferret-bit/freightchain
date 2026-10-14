@@ -23,7 +23,8 @@ describe('RequestActionChallengeHandler', () => {
     const ask = (over = {}) => h.execute(new RequestActionChallengeCommand(ADMIN_UNIT_WALLET, { action: 'promo_create', promo: { ...promo, ...over } }));
     await expect(ask({ description: 'x'.repeat(201) })).rejects.toMatchObject({ errorCode: 'bad_promo_code' });
     await expect(ask({ expiresAt: new Date(ctx.clock.ms - 1) })).rejects.toMatchObject({ errorCode: 'bad_promo_code' });
-    await expect(ask({ effect: { kind: 'cosmetic', slot: 'wheel', item: 'classic' } })).rejects.toMatchObject({ errorCode: 'bad_promo_code' });
+    await expect(ask({ effect: { kind: 'cosmetic', slot: 'wheel', item: 'classic' } })).rejects.toMatchObject({ errorCode: 'visuals_are_honk' });
+    await expect(ask({ effect: { kind: 'cosmetic', slot: 'wheel', item: 'gold' } })).rejects.toMatchObject({ errorCode: 'visuals_are_honk' });
     expect(ctx.db.challenges.get(`action:${ADMIN_UNIT_WALLET}`)).toBeUndefined();
     expect((await ask()).message).toContain('Action: CREATE promo code HELLO');
   });

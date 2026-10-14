@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HONK — Freight Chain</title>
+<meta name="description" content="HONK is a capped meme coin. SOL still buys the ticket and pays the pool. HONK is minted only when a paid ride is verified, at distance checkpoints.">
+<link rel="stylesheet" href="honk.css">
+</head>
+<body>
+<div class="shell">
+<nav class="rail" aria-label="Contents">
+  <a class="brand" href="#what">HONK<small>FREIGHT CHAIN · CAB</small></a>
+  <ol>
+    <li><a href="#what">What it is</a></li>
+    <li><a href="#supply">Supply</a></li>
+    <li><a href="#checkpoints">Checkpoints</a></li>
+    <li><a href="#cap">Rides to the cap</a></li>
+    <li><a href="#verification">Verification</a></li>
+    <li><a href="#burn">Stream burn</a></li>
+    <li><a href="#visuals">Cab visuals</a></li>
+    <li><a href="#prices">Upgrade prices</a></li>
+    <li><a href="#badges">Badges</a></li>
+    <li><a href="#marketing">Who it is for</a></li>
+    <li><a href="#pool">Liquidity pool</a></li>
+  </ol>
+</nav>
+
+<main>
+<header class="dash">
+  <p class="kicker">TRIP SHEET · NUMBERS LOCKED</p>
+  <h1>HONK</h1>
+  <p class="lede">A capped meme coin. SOL still buys the ticket and pays the pool. HONK is minted only when a paid ride's verdict is verified, and only for the distance checkpoints that ride reached. The numbers below are the locked spec. This page is not an offer, a listing, or an audit.</p>
+  <ul class="lamps">
+    <li><i></i>DEVNET SOL HAS NO VALUE</li>
+    <li><i></i>LEDGER IN THE GAME · NOT A CHAIN MINT</li>
+    <li><i></i>NOT A PRIZE</li>
+  </ul>
+</header>
+
+<section id="what">
+  <h2><span>01</span>What HONK is</h2>
+  <p>HONK is a meme coin with a hard cap. It is not the ticket and it is not the prize.</p>
+  <p>SOL buys the ticket. SOL pays the pool. A pool's prize maths do not change because HONK exists.</p>
+  <p>Starting a ride mints nothing. A crash that never reached a checkpoint mints nothing. A free ride mints nothing. A flagged ride mints nothing. A rejected ride mints nothing.</p>
+  <p>In this change the source of truth is the PostgreSQL ledger. There is no on-chain SPL mint and no new cNFT collection. The coin is not live on devnet. The locked numbers are in <a href="SPEC.md">SPEC.md</a> beside this page.</p>
+</section>
+
+<section id="supply">
+  <h2><span>02</span>Supply</h2>
+  <p>Symbol HONK. Six decimals. No further mint after the emission cap. A burn does not raise the cap and is not reminted. If a ride mint does not fit what is left, it mints the remainder in integer base units, and then the cap is closed.</p>
+  <div class="readout" aria-label="Supply split">
+    <div><span class="l">GENESIS · POOL ONLY</span><span class="n">2,000,000</span></div>
+    <div><span class="l">RIDE EMISSION CAP</span><span class="n">98,000,000</span></div>
+  </div>
+  <div class="scroll">
+  <table class="wide">
+    <caption>Max supply is 100,000,000 HONK. Genesis is 2%. It is reserved, not ride-minted.</caption>
+    <thead><tr><th>Bucket</th><th class="num">HONK</th><th>Base units (6 decimals)</th></tr></thead>
+    <tbody>
+      <tr><td>Max supply</td><td class="num">100,000,000</td><td>100,000,000 × 10^6</td></tr>
+      <tr><td>Genesis, liquidity pool only</td><td class="num">2,000,000 (2%)</td><td>reserved, not ride-minted</td></tr>
+      <tr><td>Ride emission cap</td><td class="num">98,000,000</td><td>the counter stops here</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section id="checkpoints">
+  <h2><span>03</span>Checkpoints</h2>
+  <p>Three bands of that ride's <code>completeDist</code>: 20%, 50%, 100%. A band is reached when <code>distance + 1 &gt;= completeDist × pct / 100</code>. The extra metre keeps a finish the game calls complete on the 100% band.</p>
+  <p>Each band pays its own share of that tier's full mint. The shares are not cumulative weights. They sum to 100%.</p>
+  <div class="scroll">
+  <table>
+    <caption>Share of the tier's full mint, paid for each band reached.</caption>
+    <thead><tr><th>Band</th><th class="num">Share</th></tr></thead>
+    <tbody>
+      <tr><td>20%</td><td class="num">15%</td></tr>
+      <tr><td>50%</td><td class="num">25%</td></tr>
+      <tr><td>100%</td><td class="num">60%</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>A one-hour ride that reaches every band mints 100 HONK. A longer shift pays more than its hours. The multiplier is ×1, ×5, ×20.</p>
+  <div class="scroll">
+  <table class="wide">
+    <caption>Checkpoint mint after a verified pass. The ticket column is the face price of that shift. 4h per dollar is 500 ÷ 15.</caption>
+    <thead><tr><th>Tier</th><th class="num">Ticket</th><th class="num">Multiplier</th><th class="num">20%</th><th class="num">Through 50%</th><th class="num">Finish</th><th class="num">HONK / $</th></tr></thead>
+    <tbody>
+      <tr><td>1h</td><td class="num">$5</td><td class="num">×1</td><td class="num">15</td><td class="num">40</td><td class="num">100</td><td class="num">20</td></tr>
+      <tr><td>4h</td><td class="num">$15</td><td class="num">×5</td><td class="num">75</td><td class="num">200</td><td class="num">500</td><td class="num">33.3</td></tr>
+      <tr><td>8h</td><td class="num">$50</td><td class="num">×20</td><td class="num">300</td><td class="num">800</td><td class="num">2,000</td><td class="num">40</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>The same hours paid in proportion would finish at 100, 400, and 800. The cream tick is that line. The amber bar is this curve, scaled to an 8h finish.</p>
+  <p class="legend"><span><i></i>This curve</span><span><i class="hour"></i>Hour proportion, ×1 / ×4 / ×8</span></p>
+  <div class="bars" aria-label="Finish mint against an hour-proportion line">
+    <div class="bar"><span class="name">1h finish</span><span class="track" aria-hidden="true"><span class="fill" style="--w:5%"></span><span class="tick" style="--tick:5%"></span></span><span class="val">100</span></div>
+    <div class="bar"><span class="name">4h finish</span><span class="track" aria-hidden="true"><span class="fill" style="--w:25%"></span><span class="tick" style="--tick:20%"></span></span><span class="val">500</span></div>
+    <div class="bar"><span class="name">8h finish</span><span class="track" aria-hidden="true"><span class="fill" style="--w:100%"></span><span class="tick" style="--tick:40%"></span></span><span class="val">2,000</span></div>
+  </div>
+  <div class="trip" aria-label="Worked mint examples">
+    <div><span class="l">1h · 20%</span><span class="n">15</span></div>
+    <div><span class="l">1h · THROUGH 50%</span><span class="n">40</span></div>
+    <div><span class="l">1h · FINISH</span><span class="n">100</span></div>
+    <div><span class="l">4h · THROUGH 50%</span><span class="n">200</span></div>
+    <div><span class="l">4h · FINISH</span><span class="n">500</span></div>
+    <div><span class="l">8h · THROUGH 50%</span><span class="n">800</span></div>
+    <div><span class="l">8h · FINISH</span><span class="n">2,000</span></div>
+    <div><span class="l">8 × 1h FINISH</span><span class="n">800</span></div>
+  </div>
+  <p>Eight verified 1h finishes mint 800. One verified 8h finish mints 2,000. Two verified 4h finishes mint 1,000. On a verified finish, a longer ticket mints more HONK per dollar: 20, then 33.3, then 40.</p>
+  <p>800 is an 8h ride through the 50% band, and it is also eight finished 1h rides. It is no longer an 8h finish. Free, an unknown tier, or <code>completeDist &lt;= 0</code> mints 0.</p>
+</section>
+
+<section id="cap">
+  <h2><span>04</span>Rides to mint the cap</h2>
+  <p>The ride emission is 98,000,000 HONK. These counts assume every ride verifies and reaches the band named. A crash short of a band, a free ride, a flag, or a reject adds nothing. A burn does not put any of it back.</p>
+  <div class="scroll">
+  <table class="wide">
+    <caption>Face price of the tickets, if every ride is bought and verifies. That spend is the ticket. It is not a market price for HONK.</caption>
+    <thead><tr><th>If every ride is</th><th class="num">HONK</th><th class="num">Rides</th><th class="num">Tickets, face</th></tr></thead>
+    <tbody>
+      <tr><td>a 1h finish</td><td class="num">100</td><td class="num">980,000</td><td class="num">$4,900,000</td></tr>
+      <tr><td>a 4h finish</td><td class="num">500</td><td class="num">196,000</td><td class="num">$2,940,000</td></tr>
+      <tr><td>an 8h finish</td><td class="num">2,000</td><td class="num">49,000</td><td class="num">$2,450,000</td></tr>
+      <tr><td>a 1h ride that stops at 50%</td><td class="num">40</td><td class="num">2,450,000</td><td class="num">$12,250,000</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>Bar length is how many verified finishes it takes. An 8h finish is one twentieth of the ride count of a 1h finish.</p>
+  <div class="bars" aria-label="Verified finishes that emit the ride cap">
+    <div class="bar"><span class="name">1h finishes</span><span class="track" aria-hidden="true"><span class="fill" style="--w:100%"></span></span><span class="val">980,000</span></div>
+    <div class="bar"><span class="name">4h finishes</span><span class="track" aria-hidden="true"><span class="fill" style="--w:20%"></span></span><span class="val">196,000</span></div>
+    <div class="bar"><span class="name">8h finishes</span><span class="track" aria-hidden="true"><span class="fill" style="--w:5%"></span></span><span class="val">49,000</span></div>
+  </div>
+  <p>1,000 wallets, each with 49 verified 8h finishes, is the same 49,000 rides and the whole ride emission.</p>
+  <p>One mix that also lands on 98,000,000: 10,000 verified 8h finishes (20,000,000), 100,000 verified 4h finishes (50,000,000), and 280,000 verified 1h finishes (28,000,000). That is 390,000 rides.</p>
+</section>
+
+<section id="verification">
+  <h2><span>05</span>Verification</h2>
+  <p>HONK is minted only when the verdict is <code>verified</code>. Flagged pays 0. Rejected pays 0. Flagged is not a pass. Rejected is not a pass.</p>
+  <p>The mint runs inside the verdict transaction, under the player row lock, after the verdict is saved. One row per ride. A second pass that is still verified does not mint again. Any other status inserts nothing.</p>
+  <p class="note"><b>No clawback.</b> If an admin later rejects a ride that already minted, the coins stay. Spent coins cannot be pulled back.</p>
+  <p>The rider sees the quote before the verdict, and the mint after a pass. Before the verdict, a paid ride is a preview: the amount credited is 0, and the quote is the sum of the checkpoints already reached. After a verified pass with a quote above 0, the ride is minted and the credited amount is what was minted. If the cap clipped it, that amount is the remainder. Flagged or rejected is withheld: credited 0, and the quote still shows what a pass would have paid. A free ride, or any ride that is not paid, is none: zeros, and no bands.</p>
+  <p>Free rides mint nothing.</p>
+</section>
+
+<section id="burn">
+  <h2><span>06</span>Stream burn</h2>
+  <p>On a running paid ride that can be watched, a signed-in wallet may burn 1 HONK. The chat line is the word HONK. The truck does not change. No hole, no night, no hull change.</p>
+  <p>Once per wallet, per ride, per 10 seconds. A free ride is refused. If the chat window refuses the line, the burn does not land. Not enough HONK is an error, not a server failure. The answer is the new balance and a pay of 1.</p>
+  <p>The gap caps one wallet at 6 burns a minute and 360 an hour. A verified finish funds that many honks, and that many seconds of mashing at the cap.</p>
+  <div class="scroll">
+  <table class="wide">
+    <caption>Time at the cap is how long that mint lasts at one burn every 10 seconds.</caption>
+    <thead><tr><th>What was minted</th><th class="num">HONK</th><th class="num">Honks it funds</th><th class="num">Time at the 10s cap</th></tr></thead>
+    <tbody>
+      <tr><td>1h finish</td><td class="num">100</td><td class="num">100</td><td class="num">16 min 40 s</td></tr>
+      <tr><td>4h finish</td><td class="num">500</td><td class="num">500</td><td class="num">1 h 23 min 20 s</td></tr>
+      <tr><td>8h finish</td><td class="num">2,000</td><td class="num">2,000</td><td class="num">5 h 33 min 20 s</td></tr>
+      <tr><td>one ordinary part</td><td class="num">65</td><td class="num">65</td><td class="num">10 min 50 s</td></tr>
+      <tr><td>one gold part</td><td class="num">260</td><td class="num">260</td><td class="num">43 min 20 s</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>Over a ride that lasts its nominal shift, one wallet can burn 360 on a 1h, 1,440 on a 4h, and 2,880 on an 8h. The amber share is what a verified finish of that shift minted. The rest of the track is burns that have to come from other rides.</p>
+  <p class="legend"><span><i></i>Minted by a verified finish</span><span><i class="room"></i>Room for one wallet over the nominal shift</span></p>
+  <div class="bars" aria-label="Finish mint against one wallet burning for the whole nominal shift">
+    <div class="bar"><span class="name">1h · 100 / 360</span><span class="track burn" aria-hidden="true"><span class="fill" style="--w:27.8%"></span></span><span class="val">27.8%</span></div>
+    <div class="bar"><span class="name">4h · 500 / 1,440</span><span class="track burn" aria-hidden="true"><span class="fill" style="--w:34.7%"></span></span><span class="val">34.7%</span></div>
+    <div class="bar"><span class="name">8h · 2,000 / 2,880</span><span class="track burn" aria-hidden="true"><span class="fill" style="--w:69.4%"></span></span><span class="val">69.4%</span></div>
+  </div>
+  <p>The 1 HONK line is still chat only. It does not move the truck. Burning 10 HONK is separate: it posts a day or night change on the same effect window as a night or day donation, 20 seconds, one game effect at a time. It is not a donation and it does not pay the driver. The driver's game moves the clock, and the replay shows that about 25 seconds later. The switch that turns donation obstacles off does not turn this off.</p>
+  <div class="scroll">
+  <table>
+    <caption>Day or night on a live ride. Not the 1 HONK chat line.</caption>
+    <thead><tr><th>What it does</th><th class="num">HONK</th><th>How often</th></tr></thead>
+    <tbody>
+      <tr><td>day or night</td><td class="num">10</td><td>one per effect window (20s)</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section id="visuals">
+  <h2><span>07</span>Cab visuals</h2>
+  <p>Burn 65 HONK to mint a soulbound cab visual. If the item is gold, the burn is 260 HONK. This replaces promo-code colours. Tickets and extra free rides can still be promo codes. A promo that tries to grant a colour is refused.</p>
+  <p>The garage equips what the burn unlocked. Already owned burns nothing. Defaults stay free: the classic wheel, the red truck, the stick shifter, the white die, the orange needle, the hood spear, the stock dash, the amber lamps, and the black phone. Everybody owns them. An old promo unlock still fits. There is no transfer.</p>
+  <p>Four more slots use the same count: a hood ornament, the dash fascia, the warning-lamp bezels, and the phone frame. Six each. The shifter was already a slot. Its stick changes with the knob.</p>
+  <p class="note"><b>The game ledger is the cab.</b> A burn in the garage writes the entitlement in the game. A local program can also mint one frozen token for that part, supply 1, with no thaw. That program is not deployed, and the part is not live on devnet. It is not a cNFT.</p>
+</section>
+
+<section id="prices">
+  <h2><span>08</span>Upgrade prices</h2>
+  <p>The first five slots put 25 parts on sale. Twenty-one burn 65. Four golds burn 260: the wheel, the gearbox, the die, and the needle. That set burns 2,405, which is 30% above the first total of 1,850. The truck has no gold.</p>
+  <p>The ornament, the dash, the indicators, and the phone add 20 parts. Sixteen burn 65 and four golds burn 260, which is 2,080. The garage is then 45 parts and 4,485. Eight golds in all.</p>
+  <p class="legend"><span><i></i>Ordinary, 2,405</span><span><i class="gld"></i>Gold, 2,080</span></p>
+  <div class="stack" role="img" aria-label="Garage burn split, 2,405 ordinary and 2,080 gold, 4,485 in all"><span class="ord"></span><span class="gld"></span></div>
+  <div class="scroll">
+  <table class="wide">
+    <caption>Slot totals at 65 HONK, or 260 when the part is gold. Defaults are absent.</caption>
+    <thead><tr><th>Slot</th><th>For sale</th><th class="num">Ordinary</th><th class="num">Gold</th><th class="num">Slot</th></tr></thead>
+    <tbody>
+      <tr><td>Wheel</td><td>crimson, ocean, moss, ivory, gold</td><td class="num">4 × 65</td><td class="num">260</td><td class="num">520</td></tr>
+      <tr><td>Truck colour</td><td>blue, green, black, yellow, white</td><td class="num">5 × 65</td><td class="num">—</td><td class="num">325</td></tr>
+      <tr><td>Gearbox</td><td>chrome, wood, racing, carbon, gold</td><td class="num">4 × 65</td><td class="num">260</td><td class="num">520</td></tr>
+      <tr><td>Dice</td><td>red, blue, pink, black, gold</td><td class="num">4 × 65</td><td class="num">260</td><td class="num">520</td></tr>
+      <tr><td>Needle</td><td>red, lime, cyan, white, gold</td><td class="num">4 × 65</td><td class="num">260</td><td class="num">520</td></tr>
+      <tr><td>Ornament</td><td>ball, star, bird, flag, gold</td><td class="num">4 × 65</td><td class="num">260</td><td class="num">520</td></tr>
+      <tr><td>Dash</td><td>wood, carbon, red, ivory, gold</td><td class="num">4 × 65</td><td class="num">260</td><td class="num">520</td></tr>
+      <tr><td>Indicators</td><td>red, green, ice, white, gold</td><td class="num">4 × 65</td><td class="num">260</td><td class="num">520</td></tr>
+      <tr><td>Phone</td><td>silver, red, blue, clear, gold</td><td class="num">4 × 65</td><td class="num">260</td><td class="num">520</td></tr>
+      <tr><td>Garage</td><td>45 parts</td><td class="num">2,405</td><td class="num">2,080</td><td class="num">4,485</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>Bar length is the slot burn, scaled to a gold slot at 520.</p>
+  <div class="bars" aria-label="Slot burn compared with a 520 HONK gold slot">
+    <div class="bar"><span class="name">Wheel</span><span class="track" aria-hidden="true"><span class="fill" style="--w:100%"></span></span><span class="val">520</span></div>
+    <div class="bar"><span class="name">Truck colour</span><span class="track" aria-hidden="true"><span class="fill" style="--w:62.5%"></span></span><span class="val">325</span></div>
+    <div class="bar"><span class="name">Gearbox</span><span class="track" aria-hidden="true"><span class="fill" style="--w:100%"></span></span><span class="val">520</span></div>
+    <div class="bar"><span class="name">Dice</span><span class="track" aria-hidden="true"><span class="fill" style="--w:100%"></span></span><span class="val">520</span></div>
+    <div class="bar"><span class="name">Needle</span><span class="track" aria-hidden="true"><span class="fill" style="--w:100%"></span></span><span class="val">520</span></div>
+    <div class="bar"><span class="name">Ornament</span><span class="track" aria-hidden="true"><span class="fill" style="--w:100%"></span></span><span class="val">520</span></div>
+    <div class="bar"><span class="name">Dash</span><span class="track" aria-hidden="true"><span class="fill" style="--w:100%"></span></span><span class="val">520</span></div>
+    <div class="bar"><span class="name">Indicators</span><span class="track" aria-hidden="true"><span class="fill" style="--w:100%"></span></span><span class="val">520</span></div>
+    <div class="bar"><span class="name">Phone</span><span class="track" aria-hidden="true"><span class="fill" style="--w:100%"></span></span><span class="val">520</span></div>
+  </div>
+  <p>The HONK column is the burn. The ride column is what covers it after verification. The ticket column is the face price of those rides. A ride that misses the band mints less, so the ticket figure is the cover when the named band is reached. It is not a market price for HONK.</p>
+  <div class="scroll">
+  <table>
+    <caption>The first five slots are 2,405. The full garage is 4,485. One 8h finish mints 2,000. Two 8h finishes plus one 4h finish mint 4,500, which is 15 above the garage.</caption>
+    <thead><tr><th>Upgrade</th><th class="num">Burn</th><th>Verified rides that cover it</th><th>Tickets, face</th></tr></thead>
+    <tbody>
+      <tr><td>Ordinary part</td><td class="num">65</td><td>One 1h finish mints 100. A 4h ride at 20% mints 75.</td><td>One 1h ticket, $5.</td></tr>
+      <tr><td>Gold part</td><td class="num">260</td><td>Three 1h finishes mint 300. One 4h finish mints 500.</td><td>$15 in 1h tickets, or one $15 4h ticket.</td></tr>
+      <tr><td>One gold slot</td><td class="num">520</td><td>Six 1h finishes mint 600. A 4h finish plus a 1h ride through 50% mints 540.</td><td>$30 in 1h tickets, or $20 for that mix.</td></tr>
+      <tr><td>Truck colour</td><td class="num">325</td><td>Four 1h finishes mint 400. One 4h finish mints 500.</td><td>$20 in 1h tickets, or one $15 4h ticket.</td></tr>
+      <tr><td>Four gold parts</td><td class="num">1,040</td><td>Two 4h finishes plus a 1h ride through 50% mint 1,040. Eleven 1h finishes mint 1,100.</td><td>$35, or $55 in 1h tickets.</td></tr>
+      <tr><td>21 ordinary parts</td><td class="num">1,365</td><td>Fourteen 1h finishes mint 1,400. Three 4h finishes mint 1,500.</td><td>$70, or $45.</td></tr>
+      <tr><td>First five slots</td><td class="num">2,405</td><td>One 8h finish plus one 4h finish mints 2,500. Five 4h finishes mint 2,500. Twenty-five 1h finishes mint 2,500.</td><td>$65, $75, or $125.</td></tr>
+      <tr><td>Whole garage</td><td class="num">4,485</td><td>Two 8h finishes plus one 4h finish mint 4,500. Nine 4h finishes mint 4,500. Forty-five 1h finishes mint 4,500.</td><td>$115, $135, or $225.</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section id="badges">
+  <h2><span>09</span>Badges</h2>
+  <p>Three new badges, family <code>honk</code>, name HONK. Existing badge ids are not retuned. A rejected ride never has a mint row, so it cannot earn these.</p>
+  <div class="scroll">
+  <table>
+    <caption>New achievement ids. The description is the condition.</caption>
+    <thead><tr><th>Id</th><th>Name</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>honk-haul</code></td><td>First Mint</td><td>A verified paid ride mints HONK.</td></tr>
+      <tr><td><code>honk-haul-2</code></td><td>Checkpoint Hauler</td><td>Five verified paid rides mint the finish band.</td></tr>
+      <tr><td><code>honk-haul-3</code></td><td>Long Haul Mint</td><td>Twenty-five verified paid rides mint the finish band.</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section id="marketing">
+  <h2><span>10</span>Who it is for</h2>
+  <p>Two people already in the game. Someone watching a paid ride, who can spend 1 HONK to put HONK on the chat line. Someone who wants a cab colour, who burns HONK in the garage instead of redeeming a colour code.</p>
+  <p>Say what the cab does. SOL is the ticket and the prize. HONK is minted by verified paid checkpoints, up to a cap, and a missed checkpoint mints nothing. A honk on a stream burns 1 HONK and prints the word. The truck does not move. A colour is a burn recorded in the garage. The quote is on the ride before the verdict. The mint is on the ride after a pass. Flagged and rejected pay 0.</p>
+  <p>Do not say it is a prize. Do not say it yields. Do not say "buy HONK to earn". Do not call it an ICO. Devnet SOL has no value. The coin is not launched on a DEX in this change. Do not claim an audit. Do not claim the coin or the cab visual is live on devnet.</p>
+  <p>The channels are the ones the game already has. The watch page, where the burn is a chat line. The garage, where the price is in HONK and the part equips. The end-of-ride line, where the quote and then the mint are stated. One clip of a honk on a stream is enough to show that the truck does not react.</p>
+  <p>Do not send people to a market. The local pool is not a listing. Until a paid ride has minted on the ledger, the HONK a player can point at in the game is a number in that ledger.</p>
+</section>
+
+<section id="pool">
+  <h2><span>11</span>Liquidity pool</h2>
+  <p>A local program pairs the whole genesis, 2,000,000 HONK, with 10 SOL. The out is the constant product. The fee is zero. 10 SOL is the opening deposit, not a dollar price for HONK. The LP tokens sit in the program locker for 365 days.</p>
+  <p>No team allocation. No second mint. No market-making promise. No buyback. The ride emission, the other 98,000,000, stays on the game ledger and is not deposited into the pool.</p>
+  <p>That program is not deployed. There is no DEX listing, and no transaction is sent to Raydium. A ride still mints on the ledger.</p>
+</section>
+
+<footer class="foot">
+  <p>SOL remains the prize. HONK is not a prize and not an offer. Devnet SOL has no value. The local program has not been audited and is not deployed.</p>
+  <p>Locked spec: <a href="SPEC.md">docs/honk/SPEC.md</a>.</p>
+</footer>
+</main>
+</div>
+</body>
+</html>

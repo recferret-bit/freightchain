@@ -2,3 +2,4 @@
 target
 test-ledger
 node_modules
+programs/freightchain_honk/program-keypair.json

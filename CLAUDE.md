@@ -4,6 +4,7 @@
 
 - Before changing an area, read its `docs/agents/<topic>.md` (table in AGENTS.md) and use the matching skill from `README.md` → "Skills" (e.g. `gameplay-balance` for tuning, `storybook-models` for 3D objects, `run-tests` for the full suite).
 - After visual / gameplay changes run `node tools/e2e-chrome.mjs` (in `client/`) and read the screenshots with the Read tool. Say plainly what was and wasn't verified – it can't judge "feel" (shake, smoke…), so tell the user what to eyeball.
+- HONK on a local validator: `bash .claude/skills/honk-localnet/run.sh` (`SCENARIO=chain` is the token half).
 
 ## Workflow
 

@@ -1,6 +1,6 @@
 import { PromoCode } from '../../../src/domain/economy/promo-code.entity.js';
 import type { PromoCodeProps } from '../../../src/domain/economy/promo.types.js';
-import { BadRequestError } from '../../../src/domain/shared/errors.js';
+import { BadRequestError, ConflictError } from '../../../src/domain/shared/errors.js';
 import { promoInput, ticketEffect } from '../../support/promos.js';
 
 const NOW = new Date('2026-10-09T12:00:00.000Z');
@@ -54,12 +54,19 @@ describe('PromoCode – the effect', () => {
     expect(make({ kind: 'free_rides', count: 3 })().effect).toEqual({ kind: 'free_rides', count: 3 });
     for (const count of [0, 21, 1.5, -1]) expect(make({ kind: 'free_rides', count }), String(count)).toThrow(/free rides: 1–20/);
   });
-  it('cosmetic: a known slot and an item of that slot that is not its default', () => {
-    expect(make({ kind: 'cosmetic', slot: 'wheel', item: 'gold' })().effect).toEqual({ kind: 'cosmetic', slot: 'wheel', item: 'gold' });
-    expect(make({ kind: 'cosmetic', slot: 'gearbox', item: 'racing' })().effect).toMatchObject({ slot: 'gearbox' });
-    expect(make({ kind: 'cosmetic', slot: 'wheel', item: 'classic' })).toThrow(/not an unlockable wheel/); // the default is everybody's
-    expect(make({ kind: 'cosmetic', slot: 'wheel', item: 'racing' })).toThrow(/not an unlockable wheel/); // another slot's item
-    expect(make({ kind: 'cosmetic', slot: 'seat', item: 'x' })).toThrow(/cosmetic slot/);
+  it('a cosmetic is not created any more – cab visuals are minted by burning HONK', () => {
+    for (const effect of [
+      { kind: 'cosmetic', slot: 'wheel', item: 'gold' },
+      { kind: 'cosmetic', slot: 'wheel', item: 'classic' },
+      { kind: 'cosmetic', slot: 'seat', item: 'x' },
+    ]) expect(make(effect)).toThrow(ConflictError);
+    try { make({ kind: 'cosmetic', slot: 'wheel', item: 'gold' })(); } catch (error) { expect(error).toMatchObject({ errorCode: 'visuals_are_honk' }); }
+  });
+  it('a stored cosmetic row still has a shape: assertEffect knows the catalog', () => {
+    expect(() => PromoCode.assertEffect({ kind: 'cosmetic', slot: 'wheel', item: 'gold' })).not.toThrow();
+    expect(() => PromoCode.assertEffect({ kind: 'cosmetic', slot: 'wheel', item: 'classic' })).toThrow(/not an unlockable wheel/);
+    expect(() => PromoCode.assertEffect({ kind: 'cosmetic', slot: 'wheel', item: 'racing' })).toThrow(/not an unlockable wheel/);
+    expect(() => PromoCode.assertEffect({ kind: 'cosmetic', slot: 'seat', item: 'x' } as never)).toThrow(/cosmetic slot/);
   });
   it('an unknown kind is refused', () => {
     expect(make({ kind: 'cash', usd: 5 })).toThrow(/unknown promo effect/);

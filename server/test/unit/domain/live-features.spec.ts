@@ -20,12 +20,15 @@ describe('live features (LIVE_* flags resolved per ride)', () => {
     expect(refusalFor(f, { kind: 'donation', effect: 'sinkhole' })).toMatch(/effects are off/);
     expect(refusalFor(f, { kind: 'donation', effect: 'tip' })).toBeNull();
     expect(refusalFor(liveFeatures(flags({ donations: false }), paid), { kind: 'donation', effect: 'tip' })).toBe('donations are off');
+    expect(refusalFor(f, { kind: 'honk-weather' })).toBeNull();
+    expect(refusalFor(liveFeatures(flags({ donations: false, effects: 'off' }), paid), { kind: 'honk-weather' })).toBeNull();
   });
 
   it('withoutMuted: a muted wallet\'s lines vanish and its notes blank; everyone else is untouched', () => {
-    const e = (id: number, kind: 'message' | 'donation', wallet: string, text: string | null): RideEventDto => ({ id, kind, wallet, text, effect: kind === 'donation' ? 'sinkhole' : null, lamports: 0, at: 0, applied: null, signature: null });
-    const feed = [e(1, 'message', 'troll', 'boo'), e(2, 'donation', 'troll', 'note'), e(3, 'message', 'fan', 'hi')];
+    const e = (id: number, kind: 'message' | 'donation' | 'honk', wallet: string, text: string | null): RideEventDto => ({ id, kind, wallet, text, effect: kind === 'message' ? null : kind === 'honk' ? 'night' : 'sinkhole', lamports: 0, at: 0, applied: null, signature: null });
+    const weather = { ...e(5, 'honk', 'troll', 'Burned 25 HONK'), effect: 'snow' as const };
+    const feed = [e(1, 'message', 'troll', 'boo'), e(2, 'donation', 'troll', 'note'), e(3, 'message', 'fan', 'hi'), e(4, 'honk', 'troll', 'Burned 10 HONK'), weather];
     expect(withoutMuted(feed, new Set())).toBe(feed);
-    expect(withoutMuted(feed, new Set(['troll'])).map((x) => [x.id, x.text])).toEqual([[2, null], [3, 'hi']]);
+    expect(withoutMuted(feed, new Set(['troll'])).map((x) => [x.id, x.text])).toEqual([[2, null], [3, 'hi'], [4, 'Burned 10 HONK'], [5, 'Burned 25 HONK']]);
   });
 });

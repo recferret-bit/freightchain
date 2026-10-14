@@ -13,6 +13,8 @@ import { PoolRegistryService } from '../../src/application/services/pool-registr
 import { RideLookupService } from '../../src/application/services/ride-lookup.service.js';
 import { RoundService } from '../../src/application/services/round.service.js';
 import { VerdictService } from '../../src/application/services/verdict.service.js';
+import { HonkMintService } from '../../src/application/services/honk-mint.service.js';
+import { MemoryHonkRepository } from './in-memory/memory-honk.repository.js';
 import { AdminProofService } from '../../src/application/services/admin-proof.service.js';
 import { NaclSignatureVerifier } from '../../src/infrastructure/auth/nacl.signature-verifier.js';
 import { Player } from '../../src/domain/players/player.entity.js';
@@ -130,7 +132,9 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const achievements = new AchievementService(unlocks, mints, rideQuery, clock, rulesPort);
   const ticketSettlement = new TicketSettlementService(players, pools, tickets, orders, sessions, rounds, transactions, clock, entropy);
   const registry = new PoolRegistryService(poolChain, pools, clock, entropy);
-  const verdicts = new VerdictService(rides, players, batches, verdictRepo, adminActions, transactions, clock);
+  const honkRepo = new MemoryHonkRepository(db);
+  const honkMint = new HonkMintService(honkRepo, clock);
+  const verdicts = new VerdictService(rides, players, batches, verdictRepo, adminActions, transactions, clock, honkMint);
   const proofs = new AdminProofService(challenges, new NaclSignatureVerifier(), rulesPort, clock, entropy);
   const settlement = new PaymentSettlementService(rounds, roundRepo, payments, rides, players, lookup, transactions, clock);
 
@@ -172,7 +176,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
 
   return {
     db, clock, chain, entropy, dailySeeds, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, mints, mintChain, batches, hasher, verdictRepo, verdicts, proofs, signIns, adminActions, adminQuery, adminDirectory, health, analytics,
-    pools, poolPayouts, pledges, tickets, promos, cosmetics, promoCreation, orders, poolTickets, ticketSettlement,
+    pools, poolPayouts, pledges, tickets, promos, cosmetics, promoCreation, orders, poolTickets, ticketSettlement, honkRepo, honkMint,
     sessions, meProfile, settings, settingsRepo, lookup, rounds, achievements, settlement, now, player, accept, freeRide, paidOrder, paidRide, reload, storedPlayer,
     poolChain, chainEvents, chainCursors, registry, rideEvents, viewers, sitePresence, rideMutes, donationOrders, liveAccess, statsRepo, cache, stats, nameService,
   };

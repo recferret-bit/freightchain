@@ -1,4 +1,4 @@
-import { BadRequestError } from '../shared/errors.js';
+import { BadRequestError, ConflictError } from '../shared/errors.js';
 import { isPaidTierId } from '../rides/ride-tier.js';
 import { COSMETIC_SLOTS, isCosmeticSlot, isUnlockableCosmetic } from './cosmetics.js';
 import type { PromoCodeProps, PromoEffect, PromoState } from './promo.types.js';
@@ -40,6 +40,7 @@ export class PromoCode {
   }
 
   static create(input: Omit<PromoCodeProps, 'redeemed' | 'disabledAt' | 'createdAt' | 'startsAt'> & { startsAt: Date | null; now: Date }): PromoCode {
+    if (input.effect.kind === 'cosmetic') throw new ConflictError('cab visuals are minted by burning HONK', 'visuals_are_honk');
     const code = PromoCode.normalize(input.code);
     if (!CODE_RE.test(code)) throw new BadRequestError('a promo code is 3–32 letters, digits, "-" or "_"', 'bad_promo_code');
     PromoCode.assertEffect(input.effect);
