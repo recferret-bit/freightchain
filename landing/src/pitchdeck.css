@@ -276,3 +276,5 @@ h1 small{font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;c
 .fx .badge:is(:hover,.hot){background:#fff;color:#ff3b2f;scale:1.08;box-shadow:0 0 28px 4px #ff3b2f88}
 .fx .badge.pop{animation:float 5s ease-in-out -1.5s infinite,badgepop .5s ease-out 1}
 @keyframes badgepop{0%{scale:1}40%{scale:1.24}100%{scale:1.08}}
+
+.fx .v-sub{--r:2deg;--k:-40;--dl:-3.5s}   /* slide 3 (Play): the small receipt next to the free-run screen */
