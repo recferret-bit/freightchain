@@ -452,10 +452,11 @@ The intro clip is real gameplay, 14.8 seconds, with the in-game synth: [`media/o
 - [`.claude/`](.claude) — project skills. The index is [Skills](#skills).
 - [`client/`](client) — the game, the lobby, admin, the receipt page, the model viewer, and [`client/shared/`](client/shared) (pure ES modules shared with the server). Vanilla ES modules and three.js r160. No bundler, no React.
 - [`shared/`](shared) — workspace package (`@freightchain/shared`) re-exporting [`client/shared/`](client/shared) (`prng.js`, `road.js`, `traffic.js`, `physics.js`) for both browser client and backend `ReplayEngine`.
-- [`deploy/`](deploy/README.md) — Docker, nginx, certbot (`app`, `worker`, `postgres`, `redis`). `npm run deploy` ships `git archive HEAD`.
+- [`deploy/`](deploy/README.md) — Docker, nginx, certbot (`app`, `worker`, `postgres`, `redis`, `mcp`). `npm run deploy` ships `git archive HEAD`.
 - [`design/`](design) — icons, banners, badge art.
 - [`docs/`](docs) — explainers. [`docs/agents/`](docs/agents) is the detail [`AGENTS.md`](AGENTS.md) points at.
 - [`landing/`](landing) — the `/` page and the whitepaper. Vite.
+- [`mcp/`](mcp) — the entity MCP server: the `3d-assets` skill as tools for the AI model editor (Streamable HTTP for the server's bridge, stdio for Claude Code).
 - [`media/`](media) — promo clips and the chiptune synth.
 - [`pentest/`](pentest) — multi-agent penetration testing and quorum security review suite (Claude, Grok, Agy CLIs).
 - [`programs/`](programs/freightchain-pools) — the Anchor program. Anchor 1.2.
@@ -496,7 +497,7 @@ Skills live in `.claude/skills/<name>/`. A coding agent reads that folder's `SKI
 | `level-check` | Each free level (EASY / MEDIUM / HARD) is what it promises and passable by a human: the road each level's shift covers (junctions, forks, lanes, bends, sinkhole traps), then a human-paced driver on the real truck with ASSIST off on many seeds × all routes – finish rate, hull, vehicles hit, against the level's limits | `node .claude/skills/level-check/check.mjs` |
 | `trip-design` | The road per ride tier – the free run and the 1 h / 4 h / 8 h shifts: bends, traffic, roadside, whether it ends by itself at the line, its length and finish distance – measured with the real game modules and looked at in Chrome | `node .claude/skills/trip-design/measure.mjs` · `node .claude/skills/trip-design/shots.mjs` |
 | `verified-play-test` | The anti-bot / anti-cheat end to end, positive and negative: a person and a bot in Chrome (dispatch prompts answered / ignored), API-level bots with hand-built recordings (every verdict code), the upload protocol, the admin's signed decisions, the profile in Chrome, retention + the CLI's bulk re-judge | `bash .claude/skills/verified-play-test/run.sh` |
-| `3d-assets` | Review and fix a mesh in the model viewer (`client/viewer.html`), or add, update, or generate a car, tree, or building. `validate.mjs` rejects an impossible spec before any mesh or generated model | `node .claude/skills/3d-assets/validate.mjs --self-test` · `node .claude/skills/3d-assets/validate.mjs "<spec>"` · `node .claude/skills/3d-assets/shot.mjs` · `node .claude/skills/3d-assets/shot.mjs <id>` |
+| `3d-assets` | Review and fix a model in the model viewer (`client/viewer.html`) – every 3D model is a data-only entity (`client/shared/entity/seed/`) – or add, update, or generate a car, tree, or building. The same procedure is the AI editor's MCP (`mcp/`). `validate.mjs` rejects an impossible spec before any mesh or generated model | `node .claude/skills/3d-assets/validate.mjs --self-test` · `node .claude/skills/3d-assets/validate.mjs "<spec>"` · `node .claude/skills/3d-assets/shot.mjs` · `node .claude/skills/3d-assets/shot.mjs <id>` |
 | `pentest-audit` | Adversarial penetration review across on-chain escrow, server money, anti-cheat, identity, client, and infra; multi-agent quorum review | `./pentest/bin/pentest run --surface all` · `./pentest/bin/pentest report` |
 
 A new, renamed, or removed skill updates this table in the same change. The rule is [`AGENTS.md`](AGENTS.md) → "Maps stay current".
@@ -507,7 +508,9 @@ A new, renamed, or removed skill updates this table in the same change. The rule
 npm run db:up && npm run db:migrate && npm run server:dev   # API and pages on :3000
 npm run landing:dev                                         # Vite on :5173, proxies /api to :3000
 npm run client:serve                                        # the game alone
-npm run check                                               # client, landing, server unit tests, media
+npm run check                                               # client, landing, server unit tests, mcp, media
+npm run editor:mcp                                          # the entity MCP for the AI model editor on :3100 (EDITOR_MCP_TOKEN from server/.env)
+npm run mcp:check                                           # the MCP's own tests
 npm run server:integration                                  # PostgreSQL, its own freightchain_test database
 npm run program:test                                        # LiteSVM, no network
 npm run program:verify                                      # reproducible build against the pinned hash

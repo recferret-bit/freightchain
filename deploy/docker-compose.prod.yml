@@ -66,7 +66,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_started   # the app answers from PostgreSQL when the cache is down, so it never waits for it
-    networks: [default, cache]
+    networks: [default, cache, editor]   # editor: the mcp service calls back /api/editor/mcp/* (no nginx in between)
     environment:
       NODE_ENV: production
       PORT: "3000"
@@ -138,6 +138,21 @@ services:
       EDITOR_JWT_SECRET: ${EDITOR_JWT_SECRET:-}   # empty = derived from JWT_SECRET
       EDITOR_SESSION_TTL_MINUTES: ${EDITOR_SESSION_TTL_MINUTES:-240}
       EDITOR_IP_ALLOWLIST: ${EDITOR_IP_ALLOWLIST:-}
+      # the AI model editor (docs/agents/editor.md): a provider is offered when its key is set – SECRETS, never logged
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      ZAI_API_KEY: ${ZAI_API_KEY:-}
+      ZAI_BASE_URL: ${ZAI_BASE_URL:-https://api.z.ai/api/anthropic}
+      EDITOR_DEFAULT_PROVIDER: ${EDITOR_DEFAULT_PROVIDER:-}
+      EDITOR_MODEL_ANTHROPIC: ${EDITOR_MODEL_ANTHROPIC:-}
+      EDITOR_MODEL_OPENAI: ${EDITOR_MODEL_OPENAI:-}
+      EDITOR_MODEL_GEMINI: ${EDITOR_MODEL_GEMINI:-}
+      EDITOR_MODEL_ZAI: ${EDITOR_MODEL_ZAI:-}
+      EDITOR_MCP_URL: http://mcp:3100   # the mcp service below, on the internal `editor` network
+      EDITOR_MCP_TOKEN: ${EDITOR_MCP_TOKEN:-}   # shared with the mcp service; empty = no AI editor
+      EDITOR_JOB_TIMEOUT_MS: ${EDITOR_JOB_TIMEOUT_MS:-600000}
+      EDITOR_FAKE_LLM: "0"   # test switch – the server refuses 1 in production
       # PostHog (docs/analytics/index.html). Production deploy/.env sets POSTHOG_ENABLED=1.
       # Empty or 0 stays off; POSTHOG_DISABLED=1 still wins. Local compose and server/.env pin 0.
       # main's schema strips these keys, so a deploy of main does not send. Listing them keeps a later merge from dropping the token.
@@ -194,9 +209,28 @@ services:
       POSTHOG_ENABLED: "0"
       POSTHOG_DISABLED: "1"
 
+  # The entity MCP (mcp/, docs/agents/editor.md): the 3d-assets skill as tools for the AI model editor. Internal network only, no published port,
+  # no AI or wallet key – only the shared EDITOR_MCP_TOKEN. Started by release.sh only when EDITOR_MCP_TOKEN is set (without it the process refuses to run).
+  mcp:
+    image: freightchain-mcp:${RELEASE:-latest}
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.mcp
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: { max-size: "20m", max-file: "3" }
+    networks: [editor]
+    environment:
+      EDITOR_MCP_TOKEN: ${EDITOR_MCP_TOKEN:-}
+      FC_APP_URL: http://app:3000
+      EDITOR_MCP_PORT: "3100"
+
 networks:
   cache:
     internal: true   # no route to the internet, in or out
+  editor:
+    internal: true   # the app ⇄ the entity MCP only; the MCP has no other network
 
 volumes:
   pgdata:

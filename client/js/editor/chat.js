@@ -60,10 +60,13 @@ export function mountChat(st) {
   }
   function finish(status) { job = null; cancel.hidden = true; send.disabled = false; line(status === 'done' ? 'ok' : 'err', status === 'done' ? 'done – the result is a DRAFT: check it, then publish it from HISTORY' : status); loadPast(); }
 
+  let gen = 0;
   async function loadPast() {
-    past.textContent = ''; if (!st.me || !st.entityId) return;
+    const my = ++gen; if (!st.me || !st.entityId) { past.textContent = ''; return; }
     try {
       const jobs = await get(`jobs?entityId=${encodeURIComponent(st.entityId)}`);
+      if (my !== gen) return;
+      past.textContent = '';
       for (const j of jobs.slice(0, 20)) past.append(el('div', { class: 'ed-item', title: j.prompt, onclick: () => replayJob(j) }, el('span', { class: `ed-badge ed-${j.status}`, text: j.status }), ' ', j.prompt.slice(0, 80), el('span', { class: 'ed-dim', text: ` · ${when(j.createdAt)}` })));
     } catch { /* the bridge may not be there yet */ }
   }

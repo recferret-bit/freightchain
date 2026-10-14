@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Real-Chrome end-to-end runs against a freshly built server on a THROWAWAY database (dropped at the end, also on failure).
-#   bash .claude/skills/run-tests/e2e.sh [browser|lobby|admin|promo|watch|replay|flags|wallet|wallet-split|board|close|close-split|verified|verified-deep|road|stats|blinks ...]   (default: all seventeen)
+#   bash .claude/skills/run-tests/e2e.sh [browser|lobby|admin|promo|watch|replay|flags|wallet|wallet-split|board|close|close-split|verified|verified-deep|road|stats|blinks|editor ...]   (default: all eighteen)
 # Needs: the compose PostgreSQL (npm run db:up), server/ and landing/ dependencies installed, Chrome.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 SERVER="$ROOT/server"
-SUITES=("$@"); [ ${#SUITES[@]} -gt 0 ] || SUITES=(browser lobby admin promo watch replay flags wallet wallet-split board close close-split verified verified-deep road stats blinks)
+SUITES=("$@"); [ ${#SUITES[@]} -gt 0 ] || SUITES=(browser lobby admin promo watch replay flags wallet wallet-split board close close-split verified verified-deep road stats blinks editor)
 DB="freightchain_e2e_$$"
 URL="postgresql://freight:freight_dev_password@localhost:15433/$DB"
 TREASURY=GseaEsNWMLScZ5RH8yQ4xmoCP97H86HjLSA9xkyFCqbn   # any valid address: paid clicks never reach the chain here
@@ -86,7 +86,14 @@ for suite in "${SUITES[@]}"; do
       (cd "$SERVER" && env $BLINK_ENV DATABASE_URL="$URL" TREASURY_PUBKEY="$TREASURY" node "$BUILD/cli/index.js" pool:seed --id 1 --tier 1h --status active --min 2 >/dev/null 2>&1) || true   # already seeded by an earlier run of this suite: fine
       FIXED_PORT="$(free_port)"; EXTRA_ENV="$BLINK_ENV APP_ORIGIN=http://localhost:$FIXED_PORT APP_DOMAIN=localhost:$FIXED_PORT" start 3   # the cards' icon + links are absolute on APP_ORIGIN
       (cd "$SERVER" && BASE="http://localhost:$PORT" node scripts/e2e-blinks.mjs) || fails=$((fails + 1)); EXTRA_ENV=""; FIXED_PORT="" ;;
-    *) echo "unknown suite $suite (browser | lobby | admin | promo | watch | replay | flags | wallet | wallet-split | board | close | close-split | verified | verified-deep | road | stats | blinks)"; fails=$((fails + 1)) ;;
+    editor)  # the model editor (storybook viewer): the REAL entity MCP (mcp/src/http.js) + the server's scripted model (EDITOR_FAKE_LLM=1) – no AI key needed
+      wallet="$(cd "$SERVER" && node -e 'const n=require("tweetnacl"),b=require("bs58").default??require("bs58"),k=n.sign.keyPair();require("fs").writeFileSync(process.argv[1],JSON.stringify([...k.secretKey]));console.log(b.encode(k.publicKey))' "$ADMIN_KP")"
+      FIXED_PORT="$(free_port)"; MCP_PORT="$(free_port)"; MCP_TOKEN="e2e-mcp-$$-$(node -e 'console.log(require("crypto").randomBytes(16).toString("hex"))')"
+      (cd "$ROOT/mcp" && EDITOR_MCP_PORT="$MCP_PORT" EDITOR_MCP_TOKEN="$MCP_TOKEN" FC_APP_URL="http://localhost:$FIXED_PORT" exec node src/http.js > "/tmp/fc-e2e-mcp-$DB.log" 2>&1) & MCP_PID=$!
+      EXTRA_ENV="EDITOR_WALLETS=$wallet EDITOR_FAKE_LLM=1 EDITOR_MCP_URL=http://127.0.0.1:$MCP_PORT EDITOR_MCP_TOKEN=$MCP_TOKEN" start 3
+      (cd "$SERVER" && BASE="http://localhost:$PORT" EDITOR_KEYPAIR="$ADMIN_KP" CHROME_PORT="$(free_port)" node scripts/e2e-editor.mjs) || { fails=$((fails + 1)); tail -20 "/tmp/fc-e2e-mcp-$DB.log"; }
+      stop; kill "$MCP_PID" 2>/dev/null || true; wait "$MCP_PID" 2>/dev/null || true; FIXED_PORT=""; EXTRA_ENV="" ;;
+    *) echo "unknown suite $suite (browser | lobby | admin | promo | watch | replay | flags | wallet | wallet-split | board | close | close-split | verified | verified-deep | road | stats | blinks | editor)"; fails=$((fails + 1)) ;;
   esac
   stop
 done

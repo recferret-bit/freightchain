@@ -118,6 +118,15 @@ import { EntityPrismaRepository } from './prisma/repositories/entity.prisma.repo
 import { EditorTokenPort } from '../application/ports/editor/editor-token.port.js';
 import { JoseEditorTokenSigner } from './auth/jose.editor-token-signer.js';
 import { EditorGuard } from './http/guards/editor.guard.js';
+import { LlmProviderPort } from '../application/ports/editor/llm-provider.port.js';
+import { LlmRegistryAdapter } from './llm/llm-registry.adapter.js';
+import { McpClientPort } from '../application/ports/editor/mcp-client.port.js';
+import { McpSdkClientAdapter } from './mcp/mcp-sdk.client.adapter.js';
+import { JobTokenPort } from '../application/ports/editor/job-token.port.js';
+import { JoseJobTokenSigner } from './auth/jose.job-token-signer.js';
+import { EditorJobRepositoryPort } from '../application/ports/editor/editor-job.repository.port.js';
+import { EditorJobPrismaRepository } from './prisma/repositories/editor-job.prisma.repository.js';
+import { McpJobGuard } from './http/guards/mcp-job.guard.js';
 import { ClearEditorCookieInterceptor, SetEditorCookieInterceptor } from './http/interceptors/editor-cookie.interceptor.js';
 
 /** Every port the application layer declares is bound to its adapter here – the only place that knows which implementation runs. */
@@ -144,6 +153,10 @@ const ports: Provider[] = [
   { provide: AdminTokenPort, useClass: JoseAdminTokenSigner },
   { provide: EditorTokenPort, useClass: JoseEditorTokenSigner },
   { provide: EntityRepositoryPort, useClass: EntityPrismaRepository },
+  { provide: LlmProviderPort, useClass: LlmRegistryAdapter },
+  { provide: McpClientPort, useClass: McpSdkClientAdapter },
+  { provide: JobTokenPort, useClass: JoseJobTokenSigner },
+  { provide: EditorJobRepositoryPort, useClass: EditorJobPrismaRepository },
   { provide: RideRepositoryPort, useClass: RidePrismaRepository },
   { provide: DailySeedRepositoryPort, useClass: DailySeedPrismaRepository },
   { provide: RideQueryPort, useClass: RideQueryPrismaRepository },
@@ -181,7 +194,7 @@ const ports: Provider[] = [
 const portTokens = ports.map((p) => (p as { provide: unknown }).provide as typeof ClockPort);
 
 @Module({
-  providers: [PrismaService, PlayerAuthGuard, AdminGuard, OptionalSessionGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, SetAdminCookieInterceptor, ClearAdminCookieInterceptor, EditorGuard, SetEditorCookieInterceptor, ClearEditorCookieInterceptor, { provide: LogRing, useValue: new LogRing() }, JsonLogger, ...ports],
-  exports: [PrismaService, PlayerAuthGuard, AdminGuard, OptionalSessionGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, SetAdminCookieInterceptor, ClearAdminCookieInterceptor, EditorGuard, SetEditorCookieInterceptor, ClearEditorCookieInterceptor, LogRing, JsonLogger, ...portTokens],
+  providers: [PrismaService, PlayerAuthGuard, AdminGuard, OptionalSessionGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, SetAdminCookieInterceptor, ClearAdminCookieInterceptor, EditorGuard, McpJobGuard, SetEditorCookieInterceptor, ClearEditorCookieInterceptor, { provide: LogRing, useValue: new LogRing() }, JsonLogger, ...ports],
+  exports: [PrismaService, PlayerAuthGuard, AdminGuard, OptionalSessionGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, SetAdminCookieInterceptor, ClearAdminCookieInterceptor, EditorGuard, McpJobGuard, SetEditorCookieInterceptor, ClearEditorCookieInterceptor, LogRing, JsonLogger, ...portTokens],
 })
 export class InfrastructureModule {}

@@ -52,8 +52,9 @@ and `server/scripts/e2e-blinks.mjs` (`blinks`: the Solana Actions through Dialec
 then stops the server and drops the database – also on failure.
 
 ```sh
-bash .claude/skills/run-tests/e2e.sh            # all eleven
-bash .claude/skills/run-tests/e2e.sh browser    # one of: browser | lobby | admin | promo | watch | replay | flags | wallet | wallet-split | board | close | close-split | verified | verified-deep | road | stats | blinks
+bash .claude/skills/run-tests/e2e.sh            # all eighteen
+bash .claude/skills/run-tests/e2e.sh editor     # the model editor on storybook: the REAL entity MCP + the server's scripted model (EDITOR_FAKE_LLM=1) – sign-in, hand edit, history, signed publish, a chat job, the spec gate
+bash .claude/skills/run-tests/e2e.sh browser    # one of: browser | lobby | admin | promo | watch | replay | flags | wallet | wallet-split | board | close | close-split | verified | verified-deep | road | stats | blinks | editor
 ```
 
 Then **look at the screenshots** it prints (`fc-online-shots`, `fc-lobby-shots`, `fc-admin-shots`, `fc-watch-shots`, `fc-replay-shots`, `fc-flags-shots`, `fc-board-shots`, `fc-close-shots` in the OS temp dir) with the Read tool – the scripts

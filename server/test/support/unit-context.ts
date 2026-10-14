@@ -54,7 +54,7 @@ export const unitRules = (over: Partial<RulesConfig> = {}): RulesConfig => ({
   demoWallets: new Set([DEMO_UNIT_WALLET]), demoScale: 60, initialSeedLamports: 0, treasury: TREASURY, appDomain: 'freight.test', appOrigin: 'https://freight.test', gameDomain: null, gameOrigin: null,
   paymentMode: 'transfer', programId: '', feeTreasury: '', seedTreasury: '', watchIntervalMs: 0, orderTtlMs: 3_600_000, commitment: 'confirmed', crankEnabled: false,
   priorityFee: { percentile: 75, minMicrolamports: 0, maxMicrolamports: 50_000 }, sessionTtlHours: 24,
-  verdictEnforce: true, telemetryRetentionDays: 90, signInRetentionDays: 180, challengeIntervalSeconds: 240, challengeFreeRides: true, live: { chat: 'all', donations: true, freeDonations: true, effects: 'all' }, adminWallets: new Set([ADMIN_UNIT_WALLET]), adminDomain: 'freight.test', adminOrigin: 'https://freight.test', editorWallets: new Set([EDITOR_UNIT_WALLET]), editorDomain: 'freight.test', editorOrigin: 'https://freight.test',
+  verdictEnforce: true, telemetryRetentionDays: 90, signInRetentionDays: 180, challengeIntervalSeconds: 240, challengeFreeRides: true, live: { chat: 'all', donations: true, freeDonations: true, effects: 'all' }, adminWallets: new Set([ADMIN_UNIT_WALLET]), adminDomain: 'freight.test', adminOrigin: 'https://freight.test', editorWallets: new Set([EDITOR_UNIT_WALLET]), editorDomain: 'freight.test', editorOrigin: 'https://freight.test', editorJobTimeoutMs: 600_000,
   ...over,
 });
 

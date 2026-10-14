@@ -7,23 +7,28 @@ import { diffLines } from './diff.js';
 export function mountHistory(st) {
   const list = el('div', { class: 'ed-revs' }), diff = el('pre', { class: 'ed-diff', hidden: true });
   const node = el('div', { class: 'ed-history' }, list, diff);
-  let picked = null;
+  let picked = null, gen = 0;
   async function load() {
-    list.textContent = ''; diff.hidden = true; if (!st.me || !st.entityId) return;
+    const my = ++gen; diff.hidden = true; if (!st.me || !st.entityId) { list.textContent = ''; return; }
     let revs = [];
-    try { revs = await get(`entities/${encodeURIComponent(st.entityId)}/revisions`); } catch (e) { list.append(el('div', { class: 'ed-dim', text: e.message })); return; }
+    try { revs = await get(`entities/${encodeURIComponent(st.entityId)}/revisions`); } catch (e) { if (my === gen) { list.textContent = ''; list.append(el('div', { class: 'ed-dim', text: e.message })); } return; }
+    if (my !== gen) return;   // a newer load (another entity, a publish) answered first
+    list.textContent = '';
     if (!revs.length) list.append(el('div', { class: 'ed-dim', text: 'No revisions yet: this entity is still the code\'s seed. Save a draft (SOURCE or CHAT) to start its history.' }));
     for (const r of revs) {
       const row = el('div', { class: 'ed-item' + (r.id === picked ? ' on' : ''), onclick: () => pick(r, row) },
-        el('b', { text: `#${r.seq}` }), r.head ? el('span', { class: 'ed-badge ed-head', text: 'HEAD' }) : '', r.published ? el('span', { class: 'ed-badge ed-live', text: 'LIVE' }) : '',
+        el('b', { text: `#${r.seq}` }), r.head ? el('span', { class: 'ed-badge ed-b-head', text: 'HEAD' }) : '', r.published ? el('span', { class: 'ed-badge ed-live', text: 'LIVE' }) : '',
         ' ', (r.prompt ?? r.message ?? '').slice(0, 90), el('div', { class: 'ed-dim', text: `${r.authorWallet === 'seed' ? 'seed' : short(r.authorWallet)} · ${when(r.createdAt)}${r.jobId ? ' · AI' : ''}` }));
       list.append(row);
+      if (r.id === picked) pick(r, row, false);   // a reload (a publish, the head moving) keeps the picked revision's actions
     }
   }
-  async function pick(r, row) {
+  async function pick(r, row, preview = true) {
     picked = r.id; for (const x of list.children) x.classList.remove('on'); row.classList.add('on');
     try {
-      const full = await get(`revisions/${r.id}`); st.preview(full.config); st.status(`previewing #${r.seq}`);
+      const full = await get(`revisions/${r.id}`);
+      if (preview) { st.preview(full.config); st.status(`previewing #${r.seq}`); }
+      if (!row.isConnected) return;
       const acts = el('div', { class: 'ed-row' },
         el('button', { class: 'ed-btn', disabled: r.head, onclick: () => post(`entities/${encodeURIComponent(st.entityId)}/restore`, { revisionId: r.id, baseRevisionId: st.head?.row?.headRevisionId ?? null }).then(() => { st.status(`#${r.seq} restored as the head`); return st.loadHead(); }).catch(e => st.status(e.message, true)) }, 'RESTORE'),
         el('button', { class: 'ed-btn ed-pub', disabled: r.published, onclick: () => confirmPublish(r) }, 'PUBLISH'),

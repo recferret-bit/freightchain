@@ -91,6 +91,21 @@ export const envSchema = z
     EDITOR_SESSION_TTL_MINUTES: z.coerce.number().int().positive().max(1440).default(240),
     /** optional: only these client IPs / CIDRs reach the editor (comma-separated, IPv4 or IPv6); empty = any IP */
     EDITOR_IP_ALLOWLIST: z.string().default(''),
+    /** the AI model editor (docs/agents/editor.md): SECRETS, read by the infrastructure only – a provider is offered when its key is set */
+    ANTHROPIC_API_KEY: optional(z.string().min(8)),
+    OPENAI_API_KEY: optional(z.string().min(8)),
+    GEMINI_API_KEY: optional(z.string().min(8)),
+    ZAI_API_KEY: optional(z.string().min(8)),
+    ZAI_BASE_URL: z.string().url().default('https://api.z.ai/api/anthropic'), // z.ai's Anthropic-compatible endpoint
+    EDITOR_DEFAULT_PROVIDER: optional(z.enum(['anthropic', 'openai', 'gemini', 'zai', 'fake'])), // unset / not enabled = the first enabled one
+    EDITOR_MODEL_ANTHROPIC: optional(z.string().min(1).max(100)), // default claude-opus-5-5
+    EDITOR_MODEL_OPENAI: optional(z.string().min(1).max(100)), // default gpt-6
+    EDITOR_MODEL_GEMINI: optional(z.string().min(1).max(100)), // default gemini-3.1-pro-preview
+    EDITOR_MODEL_ZAI: optional(z.string().min(1).max(100)), // default glm-5.2
+    EDITOR_MCP_URL: z.string().url().default('http://127.0.0.1:3100'), // the entity MCP (mcp/; prod compose: http://mcp:3100)
+    EDITOR_MCP_TOKEN: optional(z.string().min(24, 'EDITOR_MCP_TOKEN must be at least 24 characters')), // shared with the mcp service; unset = no AI editor
+    EDITOR_JOB_TIMEOUT_MS: z.coerce.number().int().min(10_000).max(3_600_000).default(600_000), // a job longer than this is aborted (and one left running past it by a restart is failed)
+    EDITOR_FAKE_LLM: z.enum(['0', '1']).default('0'), // TEST ONLY: offer the scripted fake provider (refused in production)
     /** verified play: 'true' = the paid boards rank verified shifts only; 'false' = SHADOW mode – every ride is still judged and the verdict shown, but ranking ignores it */
     VERDICT_ENFORCE: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
     /** days a ride's recording is kept after the ride ended (flagged rides are kept until reviewed); 0 = keep forever */
@@ -123,6 +138,7 @@ export const envSchema = z
     if (env.PRIORITY_FEE_MIN_MICROLAMPORTS > env.PRIORITY_FEE_MAX_MICROLAMPORTS) ctx.addIssue({ code: 'custom', path: ['PRIORITY_FEE_MIN_MICROLAMPORTS'], message: 'PRIORITY_FEE_MIN_MICROLAMPORTS must not exceed PRIORITY_FEE_MAX_MICROLAMPORTS' });
     if (env.PAYMENT_MODE === 'program' && !env.TICKET_PROGRAM_ID) ctx.addIssue({ code: 'custom', path: ['TICKET_PROGRAM_ID'], message: 'TICKET_PROGRAM_ID must be set when PAYMENT_MODE=program' });
     if (env.NODE_ENV === 'production') {
+      if (env.EDITOR_FAKE_LLM === '1') ctx.addIssue({ code: 'custom', path: ['EDITOR_FAKE_LLM'], message: 'EDITOR_FAKE_LLM is a test switch – never in production' });
       if (!env.JWT_SECRET) ctx.addIssue({ code: 'custom', path: ['JWT_SECRET'], message: 'JWT_SECRET must be set in production' });
       if (!env.TREASURY_PUBKEY) ctx.addIssue({ code: 'custom', path: ['TREASURY_PUBKEY'], message: 'TREASURY_PUBKEY must be set in production' });
       // behind a reverse proxy req.ip is the proxy's: rate limits per IP would put every rider in one bucket. Make the deploy say how many hops to trust (0 = none).

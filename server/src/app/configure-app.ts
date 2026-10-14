@@ -1,6 +1,6 @@
 import type { INestApplication } from '@nestjs/common';
 import compression from 'compression';
-import type { Express, NextFunction, Request, Response } from 'express';
+import { json, type Express, type NextFunction, type Request, type Response } from 'express';
 import { EnvService } from '../infrastructure/config/env.service.js';
 import { ProblemDetailsFilter } from '../infrastructure/http/filters/problem-details.filter.js';
 import { requestIdMiddleware } from '../infrastructure/http/middleware/request-id.middleware.js';
@@ -13,6 +13,8 @@ import { actionHeadersMiddleware, isActionRequest } from '../infrastructure/http
 import { ridePageMiddleware } from '../infrastructure/http/middleware/ride-page.middleware.js';
 import { PrismaService } from '../infrastructure/prisma/prisma.service.js';
 import { JsonLogger } from '../infrastructure/logging/json-logger.js';
+
+export const EDITOR_BODY_LIMIT = '256kb';
 
 /** What every running app needs besides its modules – shared by main.ts and the tests so they boot identically. */
 export function configureApp(app: INestApplication): void {
@@ -33,6 +35,10 @@ export function configureApp(app: INestApplication): void {
   app.use(legacySessionMiddleware(env));   // production: expire the apex-wide session cookie of before H7-B
   app.use(jsonOnlyMiddleware);   // a form / text/plain POST is a 415 (no CORS preflight – the login-CSRF shape), but for the beacon routes
   app.use(beaconBodyMiddleware);   // a closing game tab's /end beacon (text/plain JSON) – before Nest's own JSON parser
+  // the model editor sends whole entity files (≤ 64 KB of source, JSON-escaped, plus the message): 256 KB there only – Nest's own parser keeps its 100 KB default elsewhere
+  // (wrapped: Nest skips its own global JSON parser when it finds a middleware NAMED jsonParser – the bare body-parser function would switch it off everywhere)
+  const editorJson = json({ limit: EDITOR_BODY_LIMIT });
+  app.use('/api/editor', function editorBodyParser(req: Request, res: Response, next: NextFunction) { editorJson(req, res, next); });
   app.use(ridePageMiddleware(prisma, env));   // public ride page (/r/:id) with dynamic Twitter Cards & OpenGraph tags
   app.useGlobalFilters(new ProblemDetailsFilter());
   app.enableShutdownHooks();

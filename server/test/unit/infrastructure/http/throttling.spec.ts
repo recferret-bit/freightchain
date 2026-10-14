@@ -1,4 +1,5 @@
 import type { ExecutionContext } from '@nestjs/common';
+import { SignJWT } from 'jose';
 import { throttlerOptions, THROTTLE_WINDOW_MS } from '../../../../src/infrastructure/http/throttling.js';
 import { TokenSignerPort } from '../../../../src/application/ports/auth/token-signer.port.js';
 import type { EnvService } from '../../../../src/infrastructure/config/env.service.js';
@@ -41,5 +42,14 @@ describe('throttlerOptions', () => {
     expect([ed?.skipIf(at('/api/editor/entities')), ed?.skipIf(at('/api/rides')), au?.skipIf(at('/api/editor/auth/nonce')), au?.skipIf(at('/api/editor/me'))]).toEqual([false, true, false, true]);
     expect(await ed?.getTracker?.({ headers: { cookie: 'fc_editor=ed' }, ip: '10.0.0.7' }, at('/api/editor/me'))).toBe('editor:ED');
     expect(await ed?.getTracker?.({ headers: { cookie: 'fc_editor=x' }, ip: '10.0.0.7' }, at('/api/editor/me'))).toBe('ip:10.0.0.7');
+  });
+
+  it("'mcp' covers only the MCP's callbacks, per JOB (the id in its token); the editor and default buckets skip them", async () => {
+    const all = throttlerOptions({ throttleLimit: 600, throttleAuthLimit: 30, throttleEntitiesLimit: 120, throttleEditorLimit: 240 } as EnvService, new Tokens()) as unknown as Throttler[];
+    const def = all.find((t) => t.name === 'default')!, ed = all.find((t) => t.name === 'editor')!, mcp = all.find((t) => t.name === 'mcp')!;
+    expect([def.skipIf(at('/api/editor/mcp/configs')), ed.skipIf(at('/api/editor/mcp/configs')), mcp.skipIf(at('/api/editor/mcp/configs')), mcp.skipIf(at('/api/editor/me'))]).toEqual([true, true, false, true]);
+    const token = new SignJWT({}).setProtectedHeader({ alg: 'HS256' }).setSubject('JOB-1').sign(new TextEncoder().encode('k'.repeat(32)));
+    expect(await mcp.getTracker?.({ headers: { 'x-fc-job': await token }, ip: '10.0.0.7' }, at('/api/editor/mcp/configs'))).toBe('job:JOB-1');
+    expect(await mcp.getTracker?.({ headers: { 'x-fc-job': 'junk' }, ip: '10.0.0.7' }, at('/api/editor/mcp/configs'))).toBe('job:none');
   });
 });

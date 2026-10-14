@@ -13,13 +13,13 @@ describe('configureApp', () => {
       get: (token: unknown) => (token === EnvService ? ({ trustProxy: 0, corsOrigins: [], isProduction: false } as unknown as EnvService) : logger),
       useLogger: (l: unknown) => { installed = l; },
       getHttpAdapter: () => ({ getInstance: () => ({ set: () => undefined }) }),
-      use: (fn: { name: string }) => { used.push(fn.name); },
+      use: (...args: unknown[]) => { used.push(typeof args[0] === 'string' ? `${args[0]} ${(args[1] as { name: string }).name}` : (args[0] as { name: string }).name); },
       useGlobalFilters: () => undefined,
       enableCors: () => undefined,
       enableShutdownHooks: () => undefined,
     } as unknown as INestApplication;
     configureApp(app);
-    expect(used).toEqual(['solanaPayCors', 'actionHeadersMiddleware', 'compression', 'requestIdMiddleware', 'requestLog', 'legacySession', 'jsonOnlyMiddleware', 'beaconBodyMiddleware', 'ridePageMiddleware']);
+    expect(used).toEqual(['solanaPayCors', 'actionHeadersMiddleware', 'compression', 'requestIdMiddleware', 'requestLog', 'legacySession', 'jsonOnlyMiddleware', 'beaconBodyMiddleware', '/api/editor editorBodyParser', 'ridePageMiddleware']);
     expect(installed).toBe(logger);
   });
 });

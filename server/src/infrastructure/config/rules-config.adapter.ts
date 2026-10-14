@@ -28,7 +28,7 @@ export class EnvRulesConfigAdapter extends RulesConfigPort {
       adminWallets: env.adminWallets, adminDomain: env.adminHost ?? env.appDomain,
       adminOrigin: env.adminHost ? `${new URL(env.appOrigin).protocol}//${env.adminHost}` : env.appOrigin,
       editorWallets: env.editorWallets, editorDomain: env.editorHost ?? env.appDomain,
-      editorOrigin: env.editorHost ? `${new URL(env.appOrigin).protocol}//${env.editorHost}` : env.appOrigin,
+      editorOrigin: env.editorHost ? `${new URL(env.appOrigin).protocol}//${env.editorHost}` : env.appOrigin, editorJobTimeoutMs: env.editorJobTimeoutMs,
     };
   }
 

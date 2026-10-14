@@ -4,6 +4,7 @@ import { BadRequestError } from '../../../src/domain/shared/errors.js';
 const defaults = {
   freeOnSignup: SETTING_DEFAULTS.free_on_signup,
   freeRidesDailyMax: SETTING_DEFAULTS.free_rides_daily_max,
+  editorJobsPerDay: 40, editorMaxSteps: 24, editorMaxOutputTokens: 32_000, editorJobsParallel: 2,
 };
 
 describe('game settings', () => {
@@ -17,6 +18,10 @@ describe('game settings', () => {
       { key: 'not_a_setting', value: 1 },
       { key: 'free_rides_daily_max', value: -1 },
     ])).toEqual({ ...defaults, freeOnSignup: 7 });
+  });
+
+  it('the AI editor knobs: jobs per day, model turns, output tokens, jobs at once (0 pauses the AI editor)', () => {
+    expect(resolveSettings([{ key: 'editor_jobs_per_day', value: 5 }, { key: 'editor_jobs_parallel', value: 0 }])).toMatchObject({ editorJobsPerDay: 5, editorJobsParallel: 0, editorMaxSteps: 24 });
   });
 
   it('zero is allowed; anything else the domain refuses is bad_setting', () => {

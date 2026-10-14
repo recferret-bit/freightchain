@@ -65,6 +65,8 @@ export interface RulesConfig {
   /** where the editor lives – named in its sign-in and publish messages (storybook.<apex>; the app's own domain on a single origin) */
   editorDomain: string;
   editorOrigin: string;
+  /** an AI editor job running longer is aborted (EDITOR_JOB_TIMEOUT_MS) */
+  editorJobTimeoutMs: number;
 }
 
 /** Game and economy tunables (environment-backed in production). */

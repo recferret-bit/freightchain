@@ -21,6 +21,8 @@ say "release $RELEASE (currently serving: ${PREVIOUS:-nothing})"
 
 say "building the image (the running version keeps serving)"
 cc "$RELEASE" build --quiet app >/dev/null   # errors still print; the build log is noise
+# the entity MCP for the AI model editor – only when it is switched on (EDITOR_MCP_TOKEN in .env, 24+ chars)
+MCP=""; if grep -Eq '^EDITOR_MCP_TOKEN=.{24,}' "$ENVF"; then MCP=mcp; say "building the entity MCP image"; cc "$RELEASE" build --quiet mcp >/dev/null; fi
 
 say "database"
 if cc "$RELEASE" ps --status running --services 2>/dev/null | grep -qx postgres; then
@@ -37,8 +39,8 @@ cc "$RELEASE" up -d --wait postgres redis
 say "migrating (new image, one-off)"
 cc "$RELEASE" run --rm --no-deps app node dist/cli/index.js migrate || { echo "migration FAILED – the previous version is still serving, nothing swapped" >&2; exit 1; }
 
-say "swapping the app and worker containers"
-cc "$RELEASE" up -d --no-build app worker
+say "swapping the app and worker containers${MCP:+ (and the entity MCP)}"
+cc "$RELEASE" up -d --no-build app worker $MCP
 if ! wait_healthy; then
   echo "release $RELEASE is NOT healthy – last logs:" >&2
   cc "$RELEASE" logs --tail 40 app >&2 || true
@@ -47,7 +49,7 @@ if ! wait_healthy; then
     cc "$PREVIOUS" up -d --no-build app worker
     if wait_healthy; then
       echo "rolled back: $PREVIOUS is serving again (the database stays migrated – migrations are forward-only)" >&2
-      rm -rf "$ROOT/releases/$RELEASE"; docker rmi "freightchain-server:$RELEASE" >/dev/null 2>&1 || true   # a failed release must not take a slot
+      rm -rf "$ROOT/releases/$RELEASE"; docker rmi "freightchain-server:$RELEASE" "freightchain-mcp:$RELEASE" >/dev/null 2>&1 || true   # a failed release must not take a slot
     else
       echo "ROLLBACK FAILED too – check: docker compose logs" >&2
     fi

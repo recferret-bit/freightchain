@@ -91,4 +91,14 @@ describe('validateEnv – paid tickets (all optional until the workstreams need 
     expect(() => validateEnv({ ...base, EDITOR_IP_ALLOWLIST: '10.0.0.0/8, nonsense' })).toThrow(/EDITOR_IP_ALLOWLIST.*nonsense/);
     expect(validateEnv({ ...base, EDITOR_IP_ALLOWLIST: '10.0.0.0/8, ::1' }).EDITOR_IP_ALLOWLIST).toBe('10.0.0.0/8, ::1');
   });
+
+  it('the AI editor: keys are optional, the MCP token ≥ 24 chars, a known default provider, the job timeout bounded, the fake never in production', () => {
+    const base = { DATABASE_URL: 'postgresql://x/y' };
+    expect(validateEnv(base)).toMatchObject({ EDITOR_MCP_URL: 'http://127.0.0.1:3100', EDITOR_JOB_TIMEOUT_MS: 600_000, ZAI_BASE_URL: 'https://api.z.ai/api/anthropic', EDITOR_FAKE_LLM: '0' });
+    expect(validateEnv({ ...base, ANTHROPIC_API_KEY: '' }).ANTHROPIC_API_KEY).toBeUndefined();
+    expect(() => validateEnv({ ...base, EDITOR_MCP_TOKEN: 'short' })).toThrow(/EDITOR_MCP_TOKEN/);
+    expect(() => validateEnv({ ...base, EDITOR_DEFAULT_PROVIDER: 'mistral' })).toThrow(/EDITOR_DEFAULT_PROVIDER/);
+    expect(() => validateEnv({ ...base, EDITOR_JOB_TIMEOUT_MS: '500' })).toThrow(/EDITOR_JOB_TIMEOUT_MS/);
+    expect(validateEnv({ ...base, EDITOR_FAKE_LLM: '1' }).EDITOR_FAKE_LLM).toBe('1');
+  });
 });

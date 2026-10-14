@@ -5,6 +5,10 @@
 const KNOBS = [
   ['free_on_signup', 'freeOnSignup', 'Free rides on sign-up', 'what a NEW wallet starts with; existing wallets are not topped up'],
   ['free_rides_daily_max', 'freeRidesDailyMax', 'Daily refill cap', 'the +1 at 00:00 UTC stops here and never takes a surplus away'],
+  ['editor_jobs_per_day', 'editorJobsPerDay', 'AI editor: jobs per day', 'model-editor requests per editor wallet per UTC day (storybook)'],
+  ['editor_max_steps', 'editorMaxSteps', 'AI editor: steps per job', 'model turns one request may take (each may call the MCP tools)'],
+  ['editor_max_output_tokens', 'editorMaxOutputTokens', 'AI editor: output tokens', 'per model turn'],
+  ['editor_jobs_parallel', 'editorJobsParallel', 'AI editor: parallel jobs', 'jobs running at once on the server; 0 pauses the AI editor'],
 ];
 const MAX = 100_000;
 

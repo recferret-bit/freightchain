@@ -28,8 +28,10 @@ import { PledgesHttpController } from './economy/pledges.http.controller.js';
 import { EntitiesHttpController } from './entities/entities.http.controller.js';
 import { EditorAuthHttpController } from './editor/editor-auth.http.controller.js';
 import { EditorEntitiesHttpController } from './editor/editor-entities.http.controller.js';
+import { EditorJobsHttpController } from './editor/editor-jobs.http.controller.js';
+import { EditorMcpHttpController } from './editor/editor-mcp.http.controller.js';
 @Module({
   imports: [ApplicationModule],
-  controllers: [HealthHttpController, AuthHttpController, RidesHttpController, PublicRidesHttpController, EconomyHttpController, PoolsHttpController, TicketsHttpController, LobbyHttpController, StatsHttpController, ChainHttpController, ChainWebhookHttpController, AdminHttpController, AdminPromosHttpController, AdminSettingsHttpController, AdminDirectoryHttpController, PromosHttpController, GarageHttpController, LiveHttpController, TelemetryHttpController, AdminPoolsHttpController, SolanaPayHttpController, ActionsHttpController, PledgesHttpController, SnsHttpController, EntitiesHttpController, EditorAuthHttpController, EditorEntitiesHttpController],
+  controllers: [HealthHttpController, AuthHttpController, RidesHttpController, PublicRidesHttpController, EconomyHttpController, PoolsHttpController, TicketsHttpController, LobbyHttpController, StatsHttpController, ChainHttpController, ChainWebhookHttpController, AdminHttpController, AdminPromosHttpController, AdminSettingsHttpController, AdminDirectoryHttpController, PromosHttpController, GarageHttpController, LiveHttpController, TelemetryHttpController, AdminPoolsHttpController, SolanaPayHttpController, ActionsHttpController, PledgesHttpController, SnsHttpController, EntitiesHttpController, EditorAuthHttpController, EditorEntitiesHttpController, EditorJobsHttpController, EditorMcpHttpController],
 })
 export class PresentationModule {}

@@ -78,6 +78,8 @@ export class MemoryDb {
   entityRevisions: import('../../../src/domain/entities/entity.js').RevisionRecord[] = [];
   /** asset.EditorJob prompts by job id (the revision list shows them) */
   editorJobPrompts = new Map<string, string>();
+  editorJobs = new Map<string, import('../../../src/domain/editor/editor-job.js').EditorJobRecord>();
+  editorJobEvents = new Map<string, import('../../../src/domain/editor/editor-job.js').JobEventRecord[]>();
 
   reset(): void {
     this.players.clear(); this.challenges.clear(); this.rides.clear(); this.batches.clear(); this.verdicts.clear(); this.replays.clear();
@@ -87,6 +89,6 @@ export class MemoryDb {
     this.chainEvents = []; this.chainCursors.clear();
     this.rideEvents = []; this.rideMutes.clear(); this.donationOrders.clear(); this.playerStats.clear(); this.globalStats = null; this.dailyStats.clear();
     this.settings.clear(); this.dailySeeds.clear(); this.pledges.clear();
-    this.entities.clear(); this.entityRevisions = []; this.editorJobPrompts.clear();
+    this.entities.clear(); this.entityRevisions = []; this.editorJobPrompts.clear(); this.editorJobs.clear(); this.editorJobEvents.clear();
   }
 }

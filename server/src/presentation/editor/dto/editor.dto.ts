@@ -22,3 +22,27 @@ export type PublishChallengeBody = z.infer<typeof publishChallengeBodySchema>;
 
 export const publishBodySchema = z.object({ revisionId, signature });
 export type PublishBody = z.infer<typeof publishBodySchema>;
+
+const jobId = z.string().uuid();
+export const jobIdParamsSchema = z.object({ id: jobId });
+export type JobIdParams = z.infer<typeof jobIdParamsSchema>;
+
+/** POST /api/editor/jobs – baseRevisionId: omitted = not checked, null = "the seed / nothing saved yet" */
+export const createJobBodySchema = z.object({
+  prompt: z.string().trim().min(1).max(4000),
+  entityId: entityId.nullish(),
+  baseRevisionId: revisionId.nullable().optional(),
+  provider: z.string().min(1).max(32).optional(),
+  model: z.string().min(1).max(100).optional(),
+});
+export type CreateJobBody = z.infer<typeof createJobBodySchema>;
+
+export const jobsQuerySchema = z.object({ entityId: entityId.optional() });
+export type JobsQuery = z.infer<typeof jobsQuerySchema>;
+
+export const jobEventsQuerySchema = z.object({ after: z.coerce.number().int().min(0).default(0) });
+export type JobEventsQuery = z.infer<typeof jobEventsQuerySchema>;
+
+/** the MCP's save_draft: based on the head as it is, so no base here */
+export const mcpDraftBodySchema = z.object({ source: z.string().min(1).max(64 * 1024), message: z.string().max(500).default('') });
+export type McpDraftBody = z.infer<typeof mcpDraftBodySchema>;

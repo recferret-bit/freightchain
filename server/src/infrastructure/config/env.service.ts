@@ -59,6 +59,21 @@ export class EnvService {
   get throttleLimit(): number { return this.env.THROTTLE_LIMIT; }
   get throttleAuthLimit(): number { return this.env.THROTTLE_AUTH_LIMIT; }
   get throttlePromoLimit(): number { return this.env.THROTTLE_PROMO_LIMIT; }
+  /** the AI model editor – SECRETS: only the LLM adapters read the keys; nothing logs or returns them */
+  get llmKeys(): { anthropic?: string; openai?: string; gemini?: string; zai?: string } {
+    return { anthropic: this.env.ANTHROPIC_API_KEY, openai: this.env.OPENAI_API_KEY, gemini: this.env.GEMINI_API_KEY, zai: this.env.ZAI_API_KEY };
+  }
+  get zaiBaseUrl(): string { return this.env.ZAI_BASE_URL; }
+  get editorDefaultProvider(): string | null { return this.env.EDITOR_DEFAULT_PROVIDER ?? null; }
+  get editorModels(): { anthropic?: string; openai?: string; gemini?: string; zai?: string } {
+    return { anthropic: this.env.EDITOR_MODEL_ANTHROPIC, openai: this.env.EDITOR_MODEL_OPENAI, gemini: this.env.EDITOR_MODEL_GEMINI, zai: this.env.EDITOR_MODEL_ZAI };
+  }
+  get editorMcpUrl(): string { return this.env.EDITOR_MCP_URL.replace(/\/$/, ''); }
+  /** SECRET shared with the mcp service; undefined = the AI editor is off */
+  get editorMcpToken(): string | undefined { return this.env.EDITOR_MCP_TOKEN; }
+  get editorJobTimeoutMs(): number { return this.env.EDITOR_JOB_TIMEOUT_MS; }
+  /** test only: the scripted fake provider (the schema refuses it in production) */
+  get editorFakeLlm(): boolean { return this.env.EDITOR_FAKE_LLM === '1' && !this.isProduction; }
   get throttleEntitiesLimit(): number { return this.env.THROTTLE_ENTITIES_LIMIT; }
   get throttleEditorLimit(): number { return this.env.THROTTLE_EDITOR_LIMIT; }
   get freeRideSeconds(): number { return this.env.FREE_RIDE_SECONDS; }

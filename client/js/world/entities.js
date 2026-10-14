@@ -29,11 +29,11 @@ const local = h => /^(localhost|127\.\d+\.\d+\.\d+|\[?::1\]?|[\w-]+\.localhost)$
 export const bakedOnly = () => isNode || !page || page.protocol === 'file:' || new URLSearchParams(page.search).get('entities') === 'baked';
 const baked = async () => (await import('../../shared/entity/seed/index.js')).default;
 
-async function fetchBundle(tries) {
+async function fetchBundle(tries, fresh = false) {
   let last;
   for (let i = 0; i < tries; i++) {
     try {
-      const r = await fetch(`${ENTITIES_BASE}/api/entities/bundle`, { credentials: 'include', headers: { accept: 'application/json' } });
+      const r = await fetch(`${ENTITIES_BASE}/api/entities/bundle`, { credentials: 'include', headers: { accept: 'application/json' }, cache: fresh ? 'no-cache' : 'default' });   // no-cache = revalidate (ETag): right after a publish
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const b = await r.json();
       if (!Array.isArray(b?.entities) || !b.entities.length) throw new Error('empty bundle');
@@ -44,12 +44,13 @@ async function fetchBundle(tries) {
 }
 let loading = null;
 /* fetch the bundle again (the viewer after a publish, or to drop previews) */
-export function reloadEntities() { loading = null; return loadEntities(); }
+export function reloadEntities() { loading = null; fresh = true; return loadEntities(); }
+let fresh = false;
 /* resolves to the bundle's rev once every model is known; on a real domain a bundle that cannot be fetched ends in an error screen (a retry button reloads) */
 export function loadEntities() {
   return (loading ??= (async () => {
     if (bakedOnly()) { setEntities(await baked(), 'seed'); return rev; }
-    try { const b = await fetchBundle(local(page.hostname) ? 1 : 4); setEntities(b.entities, b.rev); }
+    try { const b = await fetchBundle(local(page.hostname) ? 1 : 4, fresh); setEntities(b.entities, b.rev); }
     catch (e) {
       if (!local(page.hostname)) { modelsUnavailable(e); throw e; }
       console.info(`[entities] no bundle from the API (${e.message}) – drawing the seed models (client/shared/entity/seed/)`);
