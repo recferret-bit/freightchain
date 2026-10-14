@@ -34,7 +34,7 @@ describe('PayPoolsHandler – the payout job', () => {
     await ctx.registry.syncFromChain(1);
     const settle = new SettleChainSignatureHandler(ctx.poolChain, ctx.chainEvents, ctx.ticketSettlement, ctx.registry, ctx.clock);
     const bus = { execute: async (c: object) => { if (!(c instanceof SettleChainSignatureCommand)) throw new Error('unexpected command'); return settle.execute(c); } };
-    const attention = new PoolAttentionService(ctx.adminQuery, ctx.signIns, ctx.players, ctx.verdicts);
+    const attention = new PoolAttentionService(ctx.adminQuery, ctx.signIns, ctx.players, ctx.verdicts, ctx.batches);
     const attestation = new AttestationService(payout, ctx.rides, ctx.batches, ctx.hasher);
     const handler = new PayPoolsHandler(payout, ctx.poolChain, ctx.pools, ctx.poolPayouts, ctx.rideQuery, ctx.chainEvents, ctx.registry, attention, bus as unknown as CommandBus, ctx.clock, attestation, ctx.pledges);
     const mirror = async () => (await ctx.pools.findById(1))!;

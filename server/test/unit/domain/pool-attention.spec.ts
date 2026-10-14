@@ -1,4 +1,5 @@
-import { NEW_WALLET_HOURS, OUTLIER_K, POOL_TOP, isPoolMark, poolAttention, poolStandings, walletMarks, type PoolRideFacts, type WalletSignIns } from '../../../src/domain/verdict/pool-attention.js';
+import { DUPLICATE_MIN_COMMON, NEW_WALLET_HOURS, OUTLIER_K, POOL_TOP, duplicateRecordings, isPoolMark, poolAttention, poolStandings, printMatch, walletMarks, type PoolRideFacts, type RidePrint, type WalletSignIns } from '../../../src/domain/verdict/pool-attention.js';
+import { prng } from '../../support/recording.js';
 import { RideVerdict, type RideVerdictProps } from '../../../src/domain/verdict/ride-verdict.entity.js';
 import { VerdictStatus, type VerdictReason } from '../../../src/domain/verdict/verdict.dto.js';
 
@@ -88,5 +89,37 @@ describe('RideVerdict.addReasons', () => {
     const decided = RideVerdict.restore(props(VerdictStatus.Verified, [], 'ADMIN'));
     expect(decided.addReasons([mark])).toBe(false);
     expect([decided.status, decided.reasons]).toEqual([VerdictStatus.Verified, []]);
+  });
+});
+
+describe('pool-duplicate-recording (pentest H2)', () => {
+  /** a line across the road along `n` road steps: the lane (2.4 m) and a person's wobble, from its own seed */
+  const line = (seed: number, n = 200): Map<number, number> => { const r = prng(seed); let d = 2.4; const m = new Map<number, number>(); for (let k = 0; k < n; k++) { d += (r() - 0.5) * 0.12; d = Math.max(1.4, Math.min(3.4, d)); m.set(k, Math.round(d * 100) / 100); } return m; };
+  const print = (rideId: string, wallet: string, firstAt: number, p: Map<number, number>): RidePrint => ({ rideId, wallet, firstAt, print: p });
+
+  it('a copy of another rider\'s recording (the same line, even with a few cm of noise) is marked on the LATER ride only; the original is not', () => {
+    const victim = line(1), noisy = new Map([...victim].map(([k, d]) => [k, Math.round((d + ((k * 7919) % 11 - 5) / 100) * 100) / 100]));   // ±5 cm
+    expect(printMatch(victim, noisy).share).toBeGreaterThan(0.9);
+    const marks = duplicateRecordings(1, [print('orig', 'honest', 1000, victim), print('copy', 'thief', 2000, noisy)]);
+    expect(marks).toEqual([expect.objectContaining({ rideId: 'copy', wallet: 'thief', reasons: [expect.objectContaining({ code: 'pool-duplicate-recording', severity: 'flag' })] })]);
+  });
+
+  it('two honest drivers of the same road do not match; nor does one wallet with itself, or a pair sharing under 1 km of road', () => {
+    const honest = Array.from({ length: 8 }, (_, i) => print(`r${i}`, `w${i}`, i, line(100 + i)));
+    expect(duplicateRecordings(1, honest)).toEqual([]);
+    for (let i = 1; i < honest.length; i++) expect(printMatch(honest[0]!.print, honest[i]!.print).share).toBeLessThan(0.5);
+    const same = line(7);
+    expect(duplicateRecordings(1, [print('a', 'w', 1, same), print('b', 'w', 2, same)])).toEqual([]);   // the same wallet driving the same line twice is no theft
+    const short = new Map([...same].slice(0, DUPLICATE_MIN_COMMON - 1));
+    expect(duplicateRecordings(1, [print('a', 'w1', 1, short), print('b', 'w2', 2, short)])).toEqual([]);
+  });
+
+  it('poolAttention appends the duplicate mark to the copy\'s other marks; a copy an admin rejected is out already', () => {
+    const p = line(3);
+    const rides = [ride('honest', 10, 100, { rideId: 'orig' }), ride('thief', 10, 101, { rideId: 'copy' })];
+    const marks = poolAttention(1, rides, [old('honest'), old('thief')], [print('orig', 'honest', 1, p), print('copy', 'thief', 2, p)]);
+    expect(marks.map((m) => [m.rideId, m.reasons.map((r) => r.code)])).toEqual([['copy', ['pool-duplicate-recording']]]);
+    const decided = [rides[0]!, ride('thief', 10, 101, { rideId: 'copy', verdict: 'rejected', overridden: true })];
+    expect(poolAttention(1, decided, [old('honest'), old('thief')], [print('orig', 'honest', 1, p), print('copy', 'thief', 2, p)])).toEqual([]);
   });
 });

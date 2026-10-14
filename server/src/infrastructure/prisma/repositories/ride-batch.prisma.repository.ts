@@ -28,11 +28,11 @@ export class RideBatchPrismaRepository extends RideBatchRepositoryPort {
 
   /** Rows stored before summaries existed (summary null, or an older format) are inflated and summarised here – once judged they are not rewritten. */
   async listFactsByRide(rideId: string, tx?: TransactionHandle): Promise<BatchFacts[]> {
-    const rows = await clientFor(this.prisma, tx).rideBatch.findMany({ where: { rideId }, orderBy: { seq: 'asc' }, select: { rideId: true, seq: true, prevHash: true, hash: true, hashOk: true, serverHash: true, t0: true, t1: true, summary: true } });
+    const rows = await clientFor(this.prisma, tx).rideBatch.findMany({ where: { rideId }, orderBy: { seq: 'asc' }, select: { rideId: true, seq: true, prevHash: true, hash: true, hashOk: true, serverHash: true, t0: true, t1: true, summary: true, receivedAt: true } });
     const out: BatchFacts[] = [];
     for (const r of rows) {
       const summary = RideBatchMapper.summaryOf(r.summary) ?? (await this.summarise(rideId, r.seq, tx));
-      out.push({ seq: r.seq, prevHash: r.prevHash, hash: r.hash, hashOk: r.hashOk, serverHash: r.serverHash, t0: r.t0, t1: r.t1, summary });
+      out.push({ seq: r.seq, prevHash: r.prevHash, hash: r.hash, hashOk: r.hashOk, serverHash: r.serverHash, t0: r.t0, t1: r.t1, summary, receivedAt: r.receivedAt });
     }
     return out;
   }

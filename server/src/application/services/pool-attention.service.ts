@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { POOL_TOP, poolAttention, poolStandings, type WalletSignIns } from '../../domain/verdict/pool-attention.js';
+import { POOL_TOP, poolAttention, poolStandings, type PoolRideFacts, type RidePrint, type WalletSignIns } from '../../domain/verdict/pool-attention.js';
+import { RideBatchRepositoryPort } from '../ports/telemetry/ride-batch.repository.port.js';
 import type { VerdictReason } from '../../domain/verdict/verdict.dto.js';
 import { AdminQueryPort } from '../ports/admin/admin-query.port.js';
 import { SignInRepositoryPort } from '../ports/auth/sign-in.repository.port.js';
@@ -36,12 +37,14 @@ export class PoolAttentionService {
     private readonly signIns: SignInRepositoryPort,
     private readonly players: PlayerRepositoryPort,
     private readonly verdicts: VerdictService,
+    private readonly batches: RideBatchRepositoryPort,
   ) {}
 
   async markPool(poolId: number): Promise<PoolAttentionResult> {
     const rides = await this.admin.poolRides(poolId);
     const standings = poolStandings(rides);
-    const marks = poolAttention(poolId, rides, await this.signInFacts(standings.slice(0, POOL_TOP).map((s) => s.wallet)));
+    const top = standings.slice(0, POOL_TOP).map((s) => s.wallet);
+    const marks = poolAttention(poolId, rides, await this.signInFacts(top), await this.prints(rides));
     const byWallet = new Map<string, { rideId: string; reasons: VerdictReason[] }[]>();
     for (const m of marks) byWallet.set(m.wallet, [...(byWallet.get(m.wallet) ?? []), { rideId: m.rideId, reasons: m.reasons }]);
 
@@ -57,6 +60,17 @@ export class PoolAttentionService {
     }
     this.logger.log({ event: 'pool-attention', msg: `pool ${poolId}: ${rides.length} rides, ${result.marked.length} marked, ${result.unchanged} unchanged, ${result.overridden} decided by an admin`, poolId, rides: rides.length, marked: result.marked.length, unchanged: result.unchanged, overridden: result.overridden });
     return result;
+  }
+
+  /** the fingerprints of every ride of the pool (a copy may come from any rider, a top-20 wallet or not – the copier of it ranks) */
+  private async prints(rides: readonly PoolRideFacts[]): Promise<RidePrint[]> {
+    return Promise.all(rides.map(async (r) => {
+      const facts = await this.batches.listFactsByRide(r.rideId);
+      const print = new Map<number, number>();
+      for (const f of facts) for (const [k, d] of f.summary.print ?? []) if (!print.has(k)) print.set(k, d);
+      const firstAt = Math.min(...facts.map((f) => f.receivedAt?.getTime() ?? Number.POSITIVE_INFINITY));
+      return { rideId: r.rideId, wallet: r.wallet, firstAt: Number.isFinite(firstAt) ? firstAt : (r.endedAt?.getTime() ?? 0), print };
+    }));
   }
 
   /** first seen = the earlier of the player row's creation (the first sign-in made it) and the oldest KEPT sign-in (pruned after SIGNIN_RETENTION_DAYS) */

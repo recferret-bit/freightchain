@@ -15,6 +15,10 @@ import type { VerdictReason } from './verdict.dto.js';
  *                          several wallets, or a shared network (a family, a café, a mobile carrier's NAT): the admin decides which.
  *   pool-new-wallet-top3   a top-3 wallet first seen (the earliest of Player.createdAt and its first kept sign-in) less than NEW_WALLET_HOURS (24) h
  *                          before its first ride in this pool.
+ *   pool-duplicate-recording  (on the LATER ride of a pair only) two rides of the pool whose recordings hold the same line across the road – within
+ *                          DUPLICATE_D_METRES on DUPLICATE_SHARE of at least DUPLICATE_MIN_COMMON shared PRINT_METRES steps (batch-summary.ts `print`): every
+ *                          rider of a pool drives the same road, and the public replay (GET /api/watch/:id) hands out every sample – a copy re-hashed under
+ *                          another ride id passes every per-recording check (pentest H2). The earlier upload is the original.
  * Marks are APPEND-ONLY: a later run whose median moved does not take an earlier mark back – the admin's decision does. The details are shown to the
  * rider (GET /api/rides/:id carries the reasons), so they never name an IP address, another wallet or a sign-in time.
  */
@@ -24,6 +28,9 @@ export const OUTLIER_K = 1.5;
 export const OUTLIER_MIN_WALLETS = 4;
 export const NEW_WALLET_TOP = 3;
 export const NEW_WALLET_HOURS = 24;
+export const DUPLICATE_D_METRES = 0.1;
+export const DUPLICATE_SHARE = 0.9;
+export const DUPLICATE_MIN_COMMON = 40;   // × PRINT_METRES (25 m) = 1 km of shared road
 
 export const isPoolMark = (code: string): boolean => code.startsWith(POOL_MARK_PREFIX);
 
@@ -116,10 +123,50 @@ export function walletMarks(poolId: number, rides: readonly PoolRideFacts[], sig
   return marks;
 }
 
+/** a ride's fingerprint (batch-summary.ts `print`, every batch's merged) and when its first batch arrived */
+export interface RidePrint {
+  rideId: string;
+  wallet: string;
+  /** ms */
+  firstAt: number;
+  /** s ÷ PRINT_METRES → d */
+  print: ReadonlyMap<number, number>;
+}
+
+/** How alike two fingerprints are: the shared road steps and the share of them where the two lines lie within DUPLICATE_D_METRES. */
+export function printMatch(a: ReadonlyMap<number, number>, b: ReadonlyMap<number, number>): { common: number; share: number } {
+  let common = 0, same = 0;
+  for (const [k, d] of a) { const e = b.get(k); if (e === undefined) continue; common++; if (Math.abs(d - e) <= DUPLICATE_D_METRES) same++; }
+  return { common, share: common ? same / common : 0 };
+}
+
+/** Copied recordings among the rides of DIFFERENT wallets: for each pair that matches, the later one (by its first batch) – the earlier is the original. Pure. */
+export function duplicateRecordings(poolId: number, prints: readonly RidePrint[]): PoolAttentionMark[] {
+  const out = new Map<string, PoolAttentionMark>();
+  for (let i = 0; i < prints.length; i++) {
+    for (let j = i + 1; j < prints.length; j++) {
+      const a = prints[i] as RidePrint, b = prints[j] as RidePrint;
+      if (a.wallet === b.wallet) continue;
+      const m = printMatch(a.print, b.print);
+      if (m.common < DUPLICATE_MIN_COMMON || m.share < DUPLICATE_SHARE) continue;
+      const copy = a.firstAt <= b.firstAt ? b : a;
+      out.set(copy.rideId, { rideId: copy.rideId, wallet: copy.wallet, reasons: [{ code: `${POOL_MARK_PREFIX}duplicate-recording`, severity: 'flag',
+        detail: `its recording holds the same line as an earlier ride of pool ${poolId} on ${Math.round(m.share * 100)} % of ${(m.common * 25 / 1000).toFixed(1)} km – a copied recording?` }] });
+    }
+  }
+  return [...out.values()];
+}
+
 /** The marks per RIDE: every completed ride of a marked wallet in the pool except one an admin REJECTED (out of the ranking already). A ride an admin
     ACCEPTED is listed too – whoever writes the marks skips it under the rider's lock (VerdictService.addAttention), which is where an admin's decision
     is authoritative (it may land between this read and that lock). Pure. */
-export function poolAttention(poolId: number, rides: readonly PoolRideFacts[], signIns: readonly WalletSignIns[]): PoolAttentionMark[] {
+export function poolAttention(poolId: number, rides: readonly PoolRideFacts[], signIns: readonly WalletSignIns[], prints: readonly RidePrint[] = []): PoolAttentionMark[] {
   const byWallet = walletMarks(poolId, rides, signIns);
-  return rides.filter((r) => !decidedOut(r) && byWallet.has(r.wallet)).map((r) => ({ rideId: r.rideId, wallet: r.wallet, reasons: byWallet.get(r.wallet) ?? [] }));
+  const marks = rides.filter((r) => !decidedOut(r) && byWallet.has(r.wallet)).map((r) => ({ rideId: r.rideId, wallet: r.wallet, reasons: byWallet.get(r.wallet) ?? [] }));
+  const live = new Set(rides.filter((r) => !decidedOut(r)).map((r) => r.rideId));
+  for (const d of duplicateRecordings(poolId, prints.filter((p) => live.has(p.rideId)))) {
+    const at = marks.find((m) => m.rideId === d.rideId);
+    if (at) at.reasons = [...at.reasons, ...d.reasons]; else marks.push(d);
+  }
+  return marks;
 }

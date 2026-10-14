@@ -389,7 +389,7 @@ export class MemoryRideBatchRepository extends RideBatchRepositoryPort {
   }
 
   async listFactsByRide(rideId: string): Promise<BatchFacts[]> {
-    return (await this.listByRide(rideId)).map((b) => ({ seq: b.seq, prevHash: b.prevHash, hash: b.hash, hashOk: b.hashOk, serverHash: b.serverHash, t0: b.t0, t1: b.t1, summary: b.summary }));
+    return (await this.listByRide(rideId)).map((b) => ({ seq: b.seq, prevHash: b.prevHash, hash: b.hash, hashOk: b.hashOk, serverHash: b.serverHash, t0: b.t0, t1: b.t1, summary: b.summary, receivedAt: b.receivedAt }));
   }
 
   async totalBytes(rideId: string): Promise<number> {

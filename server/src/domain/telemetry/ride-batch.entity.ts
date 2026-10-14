@@ -54,6 +54,8 @@ export interface BatchFacts {
   t0: number;
   t1: number;
   summary: BatchSummary;
+  /** when the server took it (absent where the reader did not ask) */
+  receivedAt?: Date;
 }
 
 /** A stored recording batch. The chain (seq continuity, prevHash links) is judged over the whole ride by the verdict; here only the batch itself is checked. */

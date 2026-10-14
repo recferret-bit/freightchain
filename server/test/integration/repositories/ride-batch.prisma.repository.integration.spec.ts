@@ -69,7 +69,7 @@ describe('RideBatchPrismaRepository (PostgreSQL)', () => {
     await prisma.rideBatch.update({ where: { rideId_seq: { rideId: ride.id, seq: 1 } }, data: { summary: Prisma.DbNull } }); // an old row
     const facts = await repo.listFactsByRide(ride.id);
     expect(facts.map((f) => f.seq)).toEqual([0, 1]);
-    expect(facts[0]).toEqual({ seq: 0, prevHash: ride.id, hash: bodies[0]!.hash, hashOk: true, serverHash: hashBatch(bodies[0]!), t0: 0, t1: 15, summary: accepted[0]!.summary });
+    expect(facts[0]).toEqual({ seq: 0, prevHash: ride.id, hash: bodies[0]!.hash, hashOk: true, serverHash: hashBatch(bodies[0]!), t0: 0, t1: 15, summary: accepted[0]!.summary, receivedAt: at(0) });
     expect(facts[1]!.summary).toEqual(accepted[1]!.summary); // measured again from the payload, the same numbers
     expect(facts[1]!.summary.inputs.length).toBeGreaterThan(0);
     expect(await repo.totalBytes(ride.id)).toBe(accepted.reduce((n, b) => n + b.snapshot().bytes, 0));

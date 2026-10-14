@@ -29,6 +29,8 @@ export interface RideAuditReport {
   offroadPeakSeconds: number;
   gasless: [number, number][];
   verdict: { status: VerdictStatus; reasons: VerdictReason[]; rulesVersion: number; scores: VerdictScores };
+  /** the recording's fingerprint (batch-summary.ts `print`, merged): [road step, d] – to compare two recordings for a copy (pool-attention.ts printMatch) */
+  print: [number, number][];
   stored: StoredVerdict | null;
   /** the fresh verdict says the same as the one on record (status + reason codes) */
   agrees: boolean | null;
@@ -66,6 +68,7 @@ export function auditRide(ride: Ride, batches: readonly RideBatch[], now: Date, 
     offroadPeakSeconds: Math.round(offroadPeak(facts.flatMap((f) => f.summary.world?.offroad ?? [])) * 10) / 10,
     gasless: facts.flatMap((f) => f.summary.world?.gasless ?? []),
     verdict: { status: verdict.status, reasons: verdict.reasons, rulesVersion: RULES_VERSION, scores: judged.snapshot().scores },
+    print: [...new Map(facts.flatMap((f) => f.summary.print ?? []).reverse()).entries()].sort((a, b) => a[0] - b[0]),
     stored,
     agrees: stored ? stored.status === verdict.status && codes(stored.reasons) === codes(verdict.reasons) : null,
     ok: verdict.status === 'verified',

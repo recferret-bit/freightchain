@@ -41,6 +41,10 @@ export interface BatchSummary {
   motion?: { ds: number; vdt: number };
   /** rising edges of the gas bit in the input column (SAMPLE_INPUT_COL); null = the batch has no input column */
   gasEdges?: number | null;
+  /** the recording's fingerprint: [s ÷ PRINT_METRES, d] – where across the road the truck was each time it entered the next PRINT_METRES of road. Keyed by
+      the ROAD, not the clock (a copy shifted in time still matches); two drivers rarely hold the same line to a few cm over a kilometre – a recording copied
+      from another rider of the same pool does (pentest H2, verdict/pool-attention.ts duplicateRecordings) */
+  print?: [number, number][];
   /** the samples against the server's road (world-facts.ts): hole passes, off-road spells, speed gained without gas. Measured when the batch was accepted;
       null = not measured (a batch stored before the server rebuilt the road, re-summarised from its payload without the ride's seed) */
   world: WorldFacts | null;
@@ -57,6 +61,8 @@ const saneRow = (r: readonly number[]): boolean => {
 };
 /** two samples of one game instant may differ by this much in s (rounding to 0.1 m) – more is a forged row */
 export const ZERO_DT_METRES = 0.2;
+/** the fingerprint's step along the road (m) */
+export const PRINT_METRES = 25;
 /** the gas pedal's bit in the input column (client/js/input-bits.js) */
 const GAS_BIT = 1;
 
@@ -68,7 +74,8 @@ export function summariseBatch(seq: number, t0: number, t1: number, samples: rea
   const insane = samples.findIndex((r) => !saneRow(r));   // checked BEFORE anything is measured: an absurd s would loop the road plan for hours (pentest WP1 review)
   const out: BatchSummary = { v: SUMMARY_VERSION, samples: samples.length, first: null, last: null, maxSpeed: 0, worstStep: null, fault: null, inputs: inputs.map((e) => [e[0], e[1], e[2]]), world: plan && insane < 0 ? measureWorld(samples, plan, prefix.filter(saneRow)) : null };
   if (insane >= 0) { const n = samples[insane]?.length ?? 0; out.fault = { code: 'bad-sample', detail: n < SAMPLE_WIDTH ? `a sample in batch ${seq} has ${n} values` : `sample ${insane} of batch ${seq} holds a value out of range` }; return out; }
-  let prev: readonly number[] | null = null, gap = 0, ds = 0, vdt = 0, firstV = 0, gasEdges: number | null = 0, gasWas = false, dupT = 0;
+  let prev: readonly number[] | null = null, gap = 0, ds = 0, vdt = 0, firstV = 0, gasEdges: number | null = 0, gasWas = false, dupT = 0, bucket = Number.NaN;
+  const print: [number, number][] = [];
   for (const row of samples) {
     const [t = NaN, s = NaN, , , v = NaN] = row;
     if (row.length < SAMPLE_WIDTH) { out.fault ??= { code: 'bad-sample', detail: `a sample in batch ${seq} has ${row.length} values` }; break; }
@@ -83,6 +90,8 @@ export function summariseBatch(seq: number, t0: number, t1: number, samples: rea
     out.first ??= [round(t, 1000), round(s, 1000)]; // 3 decimals: the client rounds its rows already; a stored JSON number must read back equal
     out.last = [round(t, 1000), round(s, 1000)];
     out.maxSpeed = Math.max(out.maxSpeed, v);
+    const b = Math.floor(s / PRINT_METRES);
+    if (b !== bucket) { bucket = b; print.push([b, round(row[2] ?? 0)]); }
     if (prev) {
       step(out, prev, row, plan?.layout ?? null);
       const dt = Math.max(0, t - (prev[0] ?? 0));
@@ -101,6 +110,7 @@ export function summariseBatch(seq: number, t0: number, t1: number, samples: rea
     out.motion = { ds: round(ds, 1000), vdt: round(vdt, 1000) };
     out.gasEdges = gasEdges;
     out.dupT = dupT;
+    out.print = print;
     if (samples.length > 1) out.gap = round(gap, 1000);
   }
   return out;
@@ -125,7 +135,7 @@ export function parseSummary(raw: unknown): BatchSummary | null {
   const motion = s.motion && num(s.motion.ds) && num(s.motion.vdt) ? { motion: { ds: s.motion.ds, vdt: s.motion.vdt } } : {};
   return {
     v: SUMMARY_VERSION, samples: s.samples, first: s.first ?? null, last: s.last ?? null, maxSpeed: s.maxSpeed, worstStep: s.worstStep ?? null, ...(s.forkStep ? { forkStep: s.forkStep } : {}), fault: s.fault ?? null, inputs: s.inputs as InputEvent[],
-    ...(num(s.gap) ? { gap: s.gap } : {}), ...(num(s.dupT) ? { dupT: s.dupT } : {}), ...(pair(s.edgeV) ? { edgeV: s.edgeV } : {}), ...motion, ...(s.gasEdges === null || num(s.gasEdges) ? { gasEdges: s.gasEdges } : {}),
+    ...(num(s.gap) ? { gap: s.gap } : {}), ...(num(s.dupT) ? { dupT: s.dupT } : {}), ...(Array.isArray(s.print) && s.print.every(pair) ? { print: s.print } : {}), ...(pair(s.edgeV) ? { edgeV: s.edgeV } : {}), ...motion, ...(s.gasEdges === null || num(s.gasEdges) ? { gasEdges: s.gasEdges } : {}),
     world: parseWorldFacts(s.world),
   };
 }

@@ -4,6 +4,8 @@ import { RideStatus } from '../../../../src/domain/rides/ride-status.js';
 import { RideVerdict } from '../../../../src/domain/verdict/ride-verdict.entity.js';
 import { VerdictStatus } from '../../../../src/domain/verdict/verdict.dto.js';
 import { unitContext, type UnitContext } from '../../../support/unit-context.js';
+import { RideBatch, type BatchBody } from '../../../../src/domain/telemetry/ride-batch.entity.js';
+import { hashBatch, recording } from '../../../support/recording.js';
 
 describe('PoolAttentionService', () => {
   /** a completed ride of `wallet` paid with a ticket of pool 7, `km` long; `verdict` null = never judged */
@@ -18,11 +20,30 @@ describe('PoolAttentionService', () => {
   }
   const setup = () => {
     const ctx = unitContext();
-    return { ctx, service: new PoolAttentionService(ctx.adminQuery, ctx.signIns, ctx.players, ctx.verdicts) };
+    return { ctx, service: new PoolAttentionService(ctx.adminQuery, ctx.signIns, ctx.players, ctx.verdicts, ctx.batches) };
   };
   /** a, b and c signed up two days before the pool's rides – only 'big' is new */
   const veterans = async (ctx: UnitContext) => { for (const w of ['a', 'b', 'c']) await ctx.player(w); ctx.clock.advance(2 * 86_400); };
   const codes = async (ctx: UnitContext, id: string) => (await ctx.verdictRepo.findByRide(id))?.reasons.map((r) => r.code);
+
+  it('a recording copied from another rider of the pool (re-hashed under the thief\'s ride id) is marked pool-duplicate-recording on the copy only (pentest H2)', async () => {
+    const { ctx, service } = setup();
+    await veterans(ctx);
+    const store = async (rideId: string, bodies: BatchBody[]) => {
+      let prevHash = rideId;
+      for (const b of bodies) { const body = { ...b, prevHash }; const hash = hashBatch(body); prevHash = hash; await ctx.batches.insert(RideBatch.accept(rideId, { ...body, hash }, hash, ctx.now())); }
+    };
+    const honest = await poolRide(ctx, 'a', 2), other = await poolRide(ctx, 'b', 2), thief = await poolRide(ctx, 'c', 2);
+    const victim = recording(honest, { seconds: 180, distance: 2520, seed: 11 });
+    await store(honest, victim);
+    await store(other, recording(other, { seconds: 180, distance: 2520, seed: 12 }));   // another honest rider of the same road
+    ctx.clock.advance(60);
+    await store(thief, victim.map((b) => ({ ...b, inputs: b.seq === 0 ? [[500, 'KeyW', 1]] : [] })));   // the public samples, re-chained later under the thief's ride
+    const result = await service.markPool(7);
+    expect(result.marked.map((m) => [m.wallet, m.added])).toEqual([['c', ['pool-duplicate-recording']]]);
+    expect(await codes(ctx, honest)).toEqual([]);
+    expect(await codes(ctx, other)).toEqual([]);
+  });
 
   it('marks the rides of strange wallets flagged with pool-* reasons; a second run changes nothing (idempotent)', async () => {
     const { ctx, service } = setup();
