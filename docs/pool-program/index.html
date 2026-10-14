@@ -34,36 +34,41 @@
   <header class="hero">
     <span class="eyebrow">Freight Chain · Solana program reference</span>
     <h1>freightchain_pools</h1>
-    <p class="lede col">One Anchor program that runs many prize pools. Each pool owns a vault that holds the ticket money, and its rules are fixed when the pool is created. A pool that misses its minimum refunds every buyer, and anyone can trigger that. A live pool pays capped prizes, then splits what is left to the treasuries it declared. This page is the contract's spec sheet. For the plain-language version, see <a href="../../landing/whitepaper.html#onchain">the whitepaper, chapter 05</a>.</p>
+    <p class="lede col">One Anchor program that runs many prize pools. Each pool owns a vault that holds the ticket money, and its rules are fixed when the pool is created. A pool that misses its minimum refunds every buyer, and anyone can trigger that. A live pool pays the winners on a list that was public on chain through its review – capped, each once – then splits what is left to the treasuries it declared. This page is the contract's spec sheet. For the plain-language version, see <a href="../../landing/whitepaper.html#onchain">the whitepaper, chapter 05</a>.</p>
     <div class="status" aria-label="Build status">
-      <span class="chip"><i class="ok"></i>51 tests pass on the verified binary</span>
+      <span class="chip"><i class="ok"></i>154 tests pass (v4)</span>
       <span class="chip"><i class="ok"></i>Reproducible build · solana-verify</span>
-      <span class="chip"><i class="next"></i>Devnet deploy next</span>
+      <span class="chip"><i class="next"></i>v3 on devnet · v4 upgrade next</span>
       <span class="chip"><i class="no"></i>Not audited · not on mainnet</span>
     </div>
     <dl class="spec">
-      <div><dt>Program id</dt><dd>9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx <span class="muted">(devnet)</span></dd></div>
+      <div><dt>Program id</dt><dd>8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p <span class="muted">(devnet)</span></dd></div>
       <div><dt>Framework</dt><dd>Anchor 1.2.1 · Rust 1.89</dd></div>
       <div><dt>Target</dt><dd>SBPF v0 · Solana 4.1.2 toolchain</dd></div>
-      <div><dt>Surface</dt><dd>17 instructions · 14 events · 25 errors (v2)</dd></div>
-      <div><dt>Binary</dt><dd>v2 hash 3b7722da… (not deployed; v1 27c0cb40… is on devnet)</dd></div>
+      <div><dt>Surface</dt><dd>29 instructions · 27 events · 48 errors (v4)</dd></div>
+      <div><dt>Binary</dt><dd>v3 pin 47a630e8…; v4 is pinned before its deploy</dd></div>
       <div><dt>Source</dt><dd>programs/freightchain-pools</dd></div>
     </dl>
   </header>
 
   <section class="section" id="accounts">
     <span class="eyebrow">01 · Accounts</span>
-    <h2>Four account types and a vault</h2>
+    <h2>Eight account types and a vault</h2>
     <p class="col"><b>v2 – the pool day.</b> Each pool has a sale window (to <code>prep_deadline</code>, closed for Open and Active pools alike), a play window (to <code>play_deadline</code>) and a review window (to <code>payout_at</code>): no prize is paid and no Active pool closed before <code>payout_at</code>, by anyone. The admin writes one <code>Series</code> per tier and anyone opens the next pool from it on a fixed grid – the 1 h tier opens one a day (24 h sale, 2 h more rides, 48 h review). A payout key named by the admin may only <code>pay_prize</code> and <code>close_pool</code>. v2 accounts are larger, so v2 deploys under a fresh program id.</p>
+    <p class="col"><b>v3 and v4.</b> v3 added per-km pledges and the road seed on chain (in-place upgrade). v4, the security review's fixes (in place again, settle-first), replaces "the payout key pays" with a <b>winners list</b>: the payout key or the admin commits a Merkle root of (rank, wallet, lamports) at or after the play deadline (<code>commit_winners</code>); it is public for the review lock, <code>pay_from = max(payout_at, committed_at + max(payout_at − play_deadline, min_review_secs))</code>; the admin can <code>veto_winners</code> before any rank is paid; then <b>anyone</b> pays each rank once with its proof. A pledge settles on the attestation of its own ride; a failed pool refunds every sponsor; the road seed is sealed from a slot after the pool opened (<code>seal_road</code>); <code>Config</code> carries two floors, <code>min_review_secs</code> (1 h) and <code>min_finish_secs</code> (3 h), which <code>create_pool</code> / <code>set_series</code> enforce and each pool snapshots with the platform fee. After the upgrade <code>migrate_config_v4</code> grows the Config once.</p>
     <p class="col">Every account is a PDA of this program, so its address follows from its seeds and nobody holds a private key for it. Pool fields other than <code>status</code> and the counters never change after <code>create_pool</code>. The vault's address is never stored; clients derive it.</p>
     <div class="tablewrap wide">
       <table>
         <thead><tr><th>Account</th><th>Seeds</th><th class="num">Size</th><th>Holds</th></tr></thead>
         <tbody>
-          <tr><th scope="row">Config</th><td><code>["config"]</code></td><td class="num">8 + 138</td><td><code>authority</code>, <code>platform_treasury</code>, <code>platform_fee_bps</code> u16, <code>pool_count</code> u32, <code>paused</code>, <code>bump</code>, <code>pending_authority</code> Option&lt;Pubkey&gt;, <code>payout_authority</code> Option&lt;Pubkey&gt; (the payout key)</td></tr>
+          <tr><th scope="row">Config</th><td><code>["config"]</code></td><td class="num">8 + 154</td><td><code>authority</code>, <code>platform_treasury</code>, <code>platform_fee_bps</code> u16, <code>pool_count</code> u32, <code>paused</code>, <code>bump</code>, <code>pending_authority</code> Option&lt;Pubkey&gt;, <code>payout_authority</code> Option&lt;Pubkey&gt; (the payout key), <code>min_review_secs</code> i64, <code>min_finish_secs</code> i64 (the floors, v4)</td></tr>
           <tr><th scope="row">Series</th><td><code>["series", tier u8]</code></td><td class="num">8 + 132</td><td>One per tier: the rules every pool <code>open_next_pool</code> creates takes (<code>price_lamports</code>, min / max, <code>max_per_wallet</code>, the split, the treasuries), <code>sale_secs</code> (= cadence), <code>play_secs</code>, <code>verify_secs</code>, <code>enabled</code>, <code>next_open_at</code>, <code>pools_opened</code>, <code>last_pool_id</code>.</td></tr>
-          <tr><th scope="row">Pool</th><td><code>["pool", pool_id u32 LE]</code></td><td class="num">8 + 192</td><td>Rules: <code>tier</code>, <code>price_lamports</code>, <code>min_tickets</code>, <code>max_tickets</code> (0 = no cap), <code>max_per_wallet</code>, <code>prep_deadline</code>, <code>play_deadline</code>, <code>payout_at</code>, <code>prize_bps</code> / <code>seed_bps</code> / <code>fee_bps</code>, <code>fee_treasury</code>, <code>seed_treasury</code>, <code>authority</code> (creator record). Counters: <code>status</code>, <code>tickets_sold</code>, <code>buyers</code>, <code>sponsored</code>, <code>prizes_paid</code>, <code>refunded</code>. Plus <code>created_at</code>, <code>bump</code>, <code>vault_bump</code>.</td></tr>
+          <tr><th scope="row">Pool</th><td><code>["pool", pool_id u32 LE]</code></td><td class="num">8 + 359</td><td>Rules: <code>tier</code>, <code>price_lamports</code>, <code>min_tickets</code>, <code>max_tickets</code> (0 = no cap), <code>max_per_wallet</code>, <code>prep_deadline</code>, <code>play_deadline</code>, <code>payout_at</code>, <code>prize_bps</code> / <code>seed_bps</code> / <code>fee_bps</code>, <code>fee_treasury</code>, <code>seed_treasury</code>, <code>authority</code> (creator record). Counters: <code>status</code>, <code>tickets_sold</code>, <code>buyers</code>, <code>sponsored</code>, <code>prizes_paid</code>, <code>refunded</code>. Plus <code>created_at</code>, <code>bump</code>, <code>vault_bump</code>. v3: <code>seed_commitment</code>, <code>seed_slot</code>, <code>seed_slot_hash</code>. v4: <code>seal_slot</code>, snapshots <code>platform_fee_bps</code> / <code>min_review_secs</code>, the winners (<code>winners_root</code>, <code>winners_total</code>, <code>winners_count</code>, <code>committed_at</code>, <code>pay_from</code>, <code>paid_mask</code>), <code>sponsor_refunded</code>, <code>open_pledges</code>.</td></tr>
           <tr><th scope="row">Ticket</th><td><code>["ticket", pool, buyer]</code></td><td class="num">8 + 79</td><td><code>buyer</code>, <code>rent_payer</code>, <code>pool_id</code>, <code>qty</code> u16, <code>lamports</code> u64, <code>bump</code>. One per wallet per pool. A refunded ticket is a closed account, so there is no refunded flag.</td></tr>
+          <tr><th scope="row">Pledge</th><td><code>["pledge", ride_id, sponsor]</code></td><td class="num">8 + 174</td><td>A spectator's per-km offer for one ticket ride: <code>ride_id</code>, <code>sponsor</code>, <code>driver</code>, <code>pool</code>, <code>max_lamports</code>, <code>lamports_per_km</code>, <code>target_km</code>, <code>settled</code>, <code>earned_lamports</code>, <code>refunded_lamports</code>, <code>created_at</code>, <code>bump</code>. The cap sits in the account itself.</td></tr>
+          <tr><th scope="row">RideAttestation</th><td><code>["ride_attestation", pool, ride_id]</code></td><td class="num">8 + 186</td><td>v4: the server's verdict on one ride, for the pledges on it: <code>driver</code>, <code>telemetry_root</code>, <code>verified_km</code>, <code>status</code> (0 unverified · 1 verified · 2 flagged), <code>recorded_at</code>, <code>settle_from</code>, <code>settled_pledges</code>, <code>rent_payer</code>. Final once a pledge settled on it.</td></tr>
+          <tr><th scope="row">SponsorReceipt</th><td><code>["sponsor_receipt", pool, sponsor]</code></td><td class="num">8 + 73</td><td>v4: what one sponsor put into one pool (<code>lamports</code>), refunded if the pool fails.</td></tr>
+          <tr><th scope="row">Attestation</th><td><code>["attestation", pool, driver]</code></td><td class="num">8 + 110</td><td>v3 only: no longer written or read by a payment; <code>close_attestation</code> returns old accounts' rent.</td></tr>
           <tr><th scope="row">vault</th><td><code>["vault", pool_id u32 LE]</code></td><td class="num">0</td><td>A system-owned account with no data that holds the escrow in lamports. Only the program can sign for it, with the pool's stored <code>vault_bump</code>.</td></tr>
         </tbody>
       </table>
@@ -76,7 +81,7 @@
     <p class="col"><code>Pool.status</code> moves only forward. Every path ends in Settled, where the pot is split, or in Cancelled, where every buyer has been paid back. Once the settle grace has passed, no path needs the admin.</p>
     <figure>
       <div class="plate">
-        <svg viewBox="0 0 960 330" role="img" aria-label="State machine. Open (0) becomes Active (1) automatically when buy_ticket reaches min_tickets. Active becomes Settled (3) through close_pool. Open becomes Refunding (2) through fail_pool, which anyone may call past prep_deadline below the minimum, or cancel_pool by the admin. Active becomes Refunding through expire_pool, which anyone may call 14 days after play_deadline when no prize was paid. Refunding allows refund by anyone, then close_pool by anyone once every ticket is refunded, which ends in Cancelled (4).">
+        <svg viewBox="0 0 960 330" role="img" aria-label="State machine. Open (0) becomes Active (1) automatically when buy_ticket reaches min_tickets. Active becomes Settled (3) through close_pool. Open becomes Refunding (2) through fail_pool, which anyone may call past prep_deadline below the minimum, or cancel_pool by the admin. Active becomes Refunding through expire_pool, which anyone may call 14 days after payout_at when no prize was paid. Refunding allows refund and refund_sponsor by anyone, then close_pool by anyone once every ticket and every sponsor is refunded, which ends in Cancelled (4).">
           <defs>
             <marker id="a-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="m-teal"/></marker>
             <marker id="a-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="m-ink"/></marker>
@@ -116,7 +121,7 @@
           <!-- Active -> Settled -->
           <line x1="575" y1="90" x2="734" y2="90" class="e-admin" marker-end="url(#a-ink)"/>
           <text x="655" y="78" text-anchor="middle" class="d-call t-ink">close_pool</text>
-          <text x="655" y="112" text-anchor="middle" class="d-note">after payout_at</text>
+          <text x="655" y="112" text-anchor="middle" class="d-note">winners list paid</text>
 
           <!-- Open -> Refunding -->
           <polyline points="125,130 125,250 379,250" class="e-teal" marker-end="url(#a-teal)"/>
@@ -133,7 +138,7 @@
           <!-- Refunding -> Cancelled -->
           <line x1="575" y1="260" x2="734" y2="260" class="e-teal" marker-end="url(#a-teal)"/>
           <text x="655" y="248" text-anchor="middle" class="d-call t-teal">close_pool</text>
-          <text x="655" y="282" text-anchor="middle" class="d-note">every ticket refunded</text>
+          <text x="655" y="282" text-anchor="middle" class="d-note">tickets + sponsors refunded</text>
         </svg>
       </div>
       <div class="legend" aria-hidden="true">
@@ -147,32 +152,42 @@
 
   <section class="section" id="instructions">
     <span class="eyebrow">03 · Instructions</span>
-    <h2>Seventeen instructions, by who signs</h2>
-    <p class="col">Admin rights come only from <code>config.authority</code>; the payout key (<code>config.payout_authority</code>) may sign <code>pay_prize</code> and <code>close_pool</code> and nothing else. <code>pool.authority</code> just records who created the pool, and it gets the vault's rent minimum back at close. Pausing blocks money coming in (<code>create_pool</code>, <code>open_next_pool</code>, <code>buy_ticket</code>, <code>sponsor</code>). It never blocks refunds, prizes or closing.</p>
+    <h2>Twenty-nine instructions, by who signs</h2>
+    <p class="col">Admin rights come only from <code>config.authority</code>; the payout key (<code>config.payout_authority</code>) may sign <code>commit_winners</code>, <code>record_ride_attestation</code> and the pre-grace <code>close_pool</code> and nothing else – not <code>veto_winners</code>, and since <code>pay_prize</code> is permissionless it cannot pay itself without its list being public through the lock first. <code>pool.authority</code> just records who created the pool, and it gets the vault's rent minimum back at close. Pausing blocks money coming in (<code>create_pool</code>, <code>open_next_pool</code>, <code>buy_ticket</code>, <code>sponsor</code>, <code>create_pledge</code>) and the pre-grace close; it blocks <code>commit_winners</code>, <code>pay_prize</code>, <code>record_ride_attestation</code> and <code>settle_pledge</code> only until <code>payout_at + 14 d</code>. It never blocks refunds, the veto, <code>seal_road</code> or the permissionless closes.</p>
     <div class="tablewrap wide">
       <table>
         <thead><tr><th>Instruction</th><th>Signer</th><th>Allowed when</th><th>Effect</th></tr></thead>
         <tbody>
           <tr class="group"><td colspan="4">Money in</td></tr>
           <tr><th scope="row">buy_ticket<span class="args">(pool_id, qty, order_id[16])</span></th><td><span class="tag ply">buyer</span> + fee_payer</td><td>Not paused; Open or Active, before <code>prep_deadline</code> (the sale window); within <code>max_tickets</code> and <code>max_per_wallet</code></td><td>Buyer pays <code>price × qty</code> into the vault. Fee payer pays the Ticket rent, recorded as <code>rent_payer</code> on the first buy only. Reaching <code>min_tickets</code> makes the pool Active.</td></tr>
-          <tr><th scope="row">sponsor<span class="args">(pool_id, lamports)</span></th><td><span class="tag any">anyone</span></td><td>Same windows as buying; <code>lamports &gt; 0</code></td><td>Adds to <code>sponsored</code>, which is split like ticket money.</td></tr>
+          <tr><th scope="row">sponsor<span class="args">(pool_id, lamports)</span></th><td><span class="tag any">anyone</span></td><td>Same windows as buying; <code>lamports &gt; 0</code></td><td>Adds to <code>sponsored</code>, which is split like ticket money, and to the sponsor's <code>SponsorReceipt</code> (the sponsor pays its rent).</td></tr>
+          <tr><th scope="row">create_pledge<span class="args">(ride_id, driver, max, per_km, target_km)</span></th><td><span class="tag ply">sponsor</span></td><td>Not paused; Open or Active, before <code>play_deadline</code>; sponsor ≠ driver; <code>max = per_km × target_km</code></td><td>Locks the cap in a <code>Pledge</code> account; <code>open_pledges + 1</code>.</td></tr>
           <tr class="group"><td colspan="4">Cranks: anyone, rules fixed – the server's crank (<code>CRANK_SECRET</code>, <code>pool:crank</code>) sends these by the chain clock</td></tr>
           <tr><th scope="row">fail_pool<span class="args">(pool_id)</span></th><td><span class="tag any">anyone</span></td><td>Open, <code>now ≥ prep_deadline</code>, <code>tickets_sold &lt; min_tickets</code></td><td>Open → Refunding.</td></tr>
           <tr><th scope="row">expire_pool<span class="args">(pool_id)</span></th><td><span class="tag any">anyone</span></td><td>Active, <code>now ≥ payout_at + 14 d</code>, <code>prizes_paid == 0</code></td><td>Active → Refunding; every ticket comes back in full.</td></tr>
           <tr><th scope="row">refund<span class="args">(pool_id)</span></th><td><span class="tag any">anyone</span></td><td>Refunding; the ticket still exists</td><td>The price goes to <code>ticket.buyer</code>, the rent to <code>ticket.rent_payer</code>, and the Ticket is closed. Both receivers are checked against the ticket. Eight fit in one transaction.</td></tr>
-          <tr><th scope="row">open_next_pool<span class="args">(tier)</span></th><td><span class="tag any">anyone</span></td><td>Not paused; the series enabled; <code>now ≥ next_open_at</code></td><td>Opens the pool of the current slot on the grid <code>next_open_at + k × sale_secs</code> from the series' rules (a missed slot is skipped, never shifted). The caller pays the rents and becomes the creator record. <code>next_open_at</code> moves to this pool's sale end.</td></tr>
-          <tr><th scope="row">close_ticket<span class="args">(pool_id)</span></th><td><span class="tag any">anyone</span></td><td>Pool Settled</td><td>Ticket rent goes back to <code>rent_payer</code>.</td></tr>
-          <tr><th scope="row">close_pool<span class="args">(pool_id)</span></th><td><span class="tag adm">admin</span> payout key <span class="tag any">anyone</span></td><td>Active: admin or payout key after <code>payout_at</code>; anyone after +14 d if <code>prizes_paid &gt; 0</code>. Refunding: anyone, once <code>refunded == price × tickets_sold</code></td><td>Sweeps the vault to exactly 0 across the declared treasuries and the creator. The pool becomes Settled, or Cancelled if it was refunding.</td></tr>
+          <tr><th scope="row">refund_sponsor<span class="args">(pool_id)</span></th><td><span class="tag any">anyone</span></td><td>Refunding; the receipt still exists</td><td>The sponsorship and the receipt's rent go back to the sponsor; the receipt is closed.</td></tr>
+          <tr><th scope="row">open_next_pool<span class="args">(tier)</span></th><td><span class="tag any">anyone</span></td><td>Not paused; the series enabled; <code>now ≥ next_open_at</code></td><td>Opens the pool of the current slot on the grid <code>next_open_at + k × sale_secs</code> from the series' rules (a missed slot is skipped, never shifted). The caller pays the rents and becomes the creator record. <code>next_open_at</code> moves to this pool's sale end. Arms <code>seal_slot</code> = this slot + 8.</td></tr>
+          <tr><th scope="row">seal_road<span class="args">(pool_id)</span></th><td><span class="tag any">anyone</span></td><td>Open or Active, not sealed, past <code>seal_slot</code></td><td>Takes the SlotHashes entry of the first slot ≥ <code>seal_slot</code> (the same entry whenever it is called) and writes <code>seed_commitment = SHA-256(pool_id ‖ hash ‖ slot)</code>. Re-armed only if the target left the 512-slot window. The server serves no ride of an unsealed pool.</td></tr>
+          <tr><th scope="row">pay_prize<span class="args">(pool_id, rank, lamports, proof)</span></th><td><span class="tag any">anyone</span></td><td>Active; a list committed; <code>now ≥ pay_from</code>; the rank not paid yet; the proof leads to the root; within <code>winners_total</code> and <code>prize_share</code>; the receiver ends rent-exempt</td><td>Vault → the wallet in the proven leaf, exactly its amount, once (<code>paid_mask</code>).</td></tr>
+          <tr><th scope="row">settle_pledge · refund_pledge<span class="args">(ride_id)</span></th><td><span class="tag any">anyone</span></td><td>Settle: the ride's attestation decided, <code>now ≥ settle_from</code> and <code>≥ payout_at</code>. Refund: the pool is over and this ride has no decided attestation of the pledge's driver</td><td>Settle pays <code>max × min(km, target) / target</code> to the driver (0 if flagged; a driver wallet under the rent minimum waits until the grace, then the sponsor gets it all), the rest and the rent to the sponsor. Refund returns everything.</td></tr>
+          <tr><th scope="row">close_ticket<span class="args">(pool_id)</span></th><td><span class="tag any">anyone</span></td><td>Pool Settled (a v3 pool's status read raw)</td><td>Ticket rent goes back to <code>rent_payer</code>.</td></tr>
+          <tr><th scope="row">close_ride_attestation · close_attestation · close_sponsor_receipt</th><td><span class="tag any">anyone</span></td><td>Pool Settled or Cancelled (attestations: no open pledge; receipts: Settled)</td><td>The account's rent goes back to whoever paid it.</td></tr>
+          <tr><th scope="row">close_pool<span class="args">(pool_id)</span></th><td><span class="tag adm">admin</span> payout key <span class="tag any">anyone</span></td><td>Active: admin or payout key, not paused, once the list is out of its lock and every listed rank is paid; anyone after +14 d if <code>prizes_paid &gt; 0</code>. Refunding: anyone, once every ticket and every sponsor is refunded</td><td>Sweeps the vault to exactly 0 across the declared treasuries and the creator. The pool becomes Settled, or Cancelled if it was refunding.</td></tr>
+          <tr class="group"><td colspan="4">Payout key or admin</td></tr>
+          <tr><th scope="row">commit_winners<span class="args">(pool_id, root, total, count)</span></th><td><span class="tag adm">admin</span> payout key</td><td>Active; <code>now ≥ play_deadline</code>; no list yet; <code>count ≤ 64</code>; <code>total ≤ prize_share</code>; its lock ends at least a day before <code>payout_at + 14 d</code></td><td>Writes the winners root and <code>pay_from</code>. <code>count = 0</code> = no winner: the pool may close after the lock, the prize share to the seed treasury.</td></tr>
+          <tr><th scope="row">record_ride_attestation<span class="args">(pool_id, ride_id, driver, root, km, status)</span></th><td><span class="tag adm">admin</span> payout key</td><td>Active; its lock ends at least a day before the grace; not yet settled on</td><td>The verdict on one pledged ride; rewritable (the lock restarts) until a pledge settled on it.</td></tr>
           <tr class="group"><td colspan="4">Admin</td></tr>
-          <tr><th scope="row">create_pool<span class="args">(params)</span></th><td><span class="tag adm">admin</span></td><td>Not paused; <code>price ≥ rent_min</code>; <code>min ≥ 1</code>; <code>max_per_wallet ≥ 1</code>; <code>max == 0</code> or <code>max ≥ min</code>; <code>prep_deadline &gt; now</code>; <code>play_deadline ≥ prep_deadline</code>; <code>payout_at ≥ play_deadline</code> and at most 365 days out (<code>MAX_POOL_SECS</code>); the three bps values sum to 10 000; treasuries rent-exempt</td><td>New Pool with id <code>config.pool_count</code>. The admin funds the vault with exactly <code>rent_min</code>.</td></tr>
-          <tr><th scope="row">set_series<span class="args">(params)</span></th><td><span class="tag adm">admin</span></td><td>The <code>create_pool</code> money rules; 1 h ≤ <code>sale_secs</code> ≤ 30 d; play / verify ≥ 0; the whole span ≤ 365 d; <code>start_at</code> for a new series</td><td>Writes (or rewrites) a tier's schedule. Pools already open keep their rules.</td></tr>
+          <tr><th scope="row">create_pool<span class="args">(params)</span></th><td><span class="tag adm">admin</span></td><td>Not paused; <code>price ≥ rent_min</code>; <code>min ≥ 1</code>; <code>max_per_wallet ≥ 1</code>; <code>max == 0</code> or <code>max ≥ min</code>; <code>prep_deadline &gt; now</code>; <code>play_deadline ≥ prep_deadline</code>; <code>payout_at ≥ play_deadline</code> and at most 365 days out (<code>MAX_POOL_SECS</code>); play window ≥ <code>min_finish_secs</code>, review ≥ <code>min_review_secs</code>; the three bps values sum to 10 000; treasuries rent-exempt</td><td>New Pool with id <code>config.pool_count</code>. The admin funds the vault with exactly <code>rent_min</code>. Arms <code>seal_slot</code>.</td></tr>
+          <tr><th scope="row">set_series<span class="args">(params)</span></th><td><span class="tag adm">admin</span></td><td>The <code>create_pool</code> money rules; 1 h ≤ <code>sale_secs</code> ≤ 30 d; play ≥ <code>min_finish_secs</code>, verify ≥ <code>min_review_secs</code>; the whole span ≤ 365 d; <code>start_at</code> for a new series</td><td>Writes (or rewrites) a tier's schedule. Pools already open keep their rules.</td></tr>
           <tr><th scope="row">set_payout_authority<span class="args">(key?)</span></th><td><span class="tag adm">admin</span></td><td>Not the default key</td><td>Names or clears the payout key.</td></tr>
-          <tr><th scope="row">pay_prize<span class="args">(pool_id, lamports, rank)</span></th><td><span class="tag adm">admin</span> payout key</td><td>Active, <code>now ≥ payout_at</code>, <code>prizes_paid + lamports ≤ prize_share</code>, the receiver ends rent-exempt</td><td>Vault → winner. The cap holds on chain; who the winner is comes from the server's ranking.</td></tr>
+          <tr><th scope="row">veto_winners<span class="args">(pool_id)</span></th><td><span class="tag adm">admin</span></td><td>Active; a list committed and no rank paid; works while paused</td><td>Clears the list; the payout key commits again and the lock starts over.</td></tr>
           <tr><th scope="row">cancel_pool<span class="args">(pool_id)</span></th><td><span class="tag adm">admin</span></td><td>Open only</td><td>Open → Refunding.</td></tr>
-          <tr><th scope="row">set_config<span class="args">(paused?, platform_treasury?, platform_fee_bps?)</span></th><td><span class="tag adm">admin</span></td><td>Any time; a new treasury must be rent-exempt</td><td>Pause switch, platform treasury and cut.</td></tr>
+          <tr><th scope="row">set_config<span class="args">(paused?, platform_treasury?, platform_fee_bps?, min_review_secs?, min_finish_secs?)</span></th><td><span class="tag adm">admin</span></td><td>Any time; a new treasury must be rent-exempt; floors need a migrated Config</td><td>Pause switch, platform treasury and cut, the floors (new pools and series only).</td></tr>
           <tr><th scope="row">propose_authority<span class="args">(new)</span></th><td><span class="tag adm">admin</span></td><td>New key not the default key</td><td>Sets <code>pending_authority</code>.</td></tr>
-          <tr><th scope="row">accept_authority<span class="args">()</span></th><td>the proposed key</td><td><code>pending_authority</code> set and equal to the signer</td><td>Becomes <code>config.authority</code> and takes over every existing pool at once.</td></tr>
+          <tr><th scope="row">accept_authority<span class="args">()</span></th><td>the proposed key</td><td><code>pending_authority</code> set and equal to the signer</td><td>Becomes <code>config.authority</code> and takes over every existing pool at once. The payout key is cleared: the new admin names its own.</td></tr>
           <tr><th scope="row">initialize<span class="args">(authority, platform_treasury, platform_fee_bps)</span></th><td>upgrade authority</td><td>Once (the Config PDA is created); the signer is the program's upgrade authority (checked against <code>ProgramData</code>); <code>platform_fee_bps ≤ 10 000</code></td><td>Names the admin: <code>authority</code> becomes <code>config.authority</code>, so the deploy key can hand the pools to a Phantom wallet in the same transaction. Nobody can front-run it after a deploy.</td></tr>
+          <tr><th scope="row">migrate_config_v4<span class="args">()</span></th><td><span class="tag adm">admin</span></td><td>Once, right after the v4 upgrade; the v3 Config's authority signs</td><td>Grows the Config to v4 with the floors at their defaults. Until then every step that needs a floor is refused (<code>ConfigNotMigrated</code>).</td></tr>
         </tbody>
       </table>
     </div>
@@ -181,14 +196,14 @@
   <section class="section" id="windows">
     <span class="eyebrow">04 · Deadlines</span>
     <h2>What each stretch of a pool's life allows</h2>
-    <p class="col">A pool has three deadlines fixed at creation (sale end, play deadline, payout time), plus the 14-day <code>SETTLE_GRACE_SECS</code> written into the program. An Open pool past its prep deadline is below its minimum by definition, so the only thing left for it is to fail.</p>
+    <p class="col">A pool has three deadlines fixed at creation (sale end, play deadline, payout time), plus the 14-day <code>SETTLE_GRACE_SECS</code> written into the program. Prizes also wait for the winners list's own lock (<code>pay_from</code>), which never ends before <code>payout_at</code>. An Open pool past its prep deadline is below its minimum by definition, so the only thing left for it is to fail.</p>
     <div class="tablewrap wide windows">
       <table>
         <thead><tr><th>Pool is</th><th>until prep_deadline</th><th>prep → payout_at</th><th>payout_at → +14 d</th><th>after +14 d</th></tr></thead>
         <tbody>
           <tr><th scope="row">Open</th><td>buy · sponsor · cancel</td><td>fail_pool · cancel</td><td>fail_pool · cancel</td><td>fail_pool · cancel</td></tr>
-          <tr><th scope="row">Active</th><td>buy · sponsor</td><td>rides count to play_deadline, then review – nothing moves</td><td>pay_prize · close_pool <span class="no">(admin, payout key)</span></td><td>admin as before · anyone: <code>close_pool</code> if a prize was paid, else <code>expire_pool</code></td></tr>
-          <tr><th scope="row">Refunding</th><td colspan="4">refund (anyone, any time) → close_pool (anyone, once all refunded)</td></tr>
+          <tr><th scope="row">Active</th><td>buy · sponsor</td><td>rides count to play_deadline; then <code>commit_winners</code> <span class="no">(admin, payout key)</span> – the list is public, <code>veto_winners</code> possible; no money moves</td><td>pay_prize <span class="no">(anyone, from pay_from)</span> · close_pool <span class="no">(admin, payout key, once the list is paid)</span></td><td>admin as before · anyone: <code>close_pool</code> if a prize was paid, else <code>expire_pool</code></td></tr>
+          <tr><th scope="row">Refunding</th><td colspan="4">refund · refund_sponsor (anyone, any time) → close_pool (anyone, once all refunded)</td></tr>
         </tbody>
       </table>
     </div>
@@ -203,7 +218,7 @@
 prize_share = ⌊pot × prize_bps / 10 000⌋
 seed_share  = ⌊pot × seed_bps  / 10 000⌋
 fee_share   = pot − prize_share − seed_share
-platform    = ⌊fee_share × config.platform_fee_bps / 10 000⌋
+platform    = ⌊fee_share × pool.platform_fee_bps / 10 000⌋
 fee_out     = fee_share − platform
 
 close_pool (Active) pays, vault ends at 0:
@@ -233,8 +248,8 @@ close_pool (Active) pays, vault ends at 0:
     </div>
     <ul class="col">
       <li>The prize cap is recomputed from the current pot. More sponsorship raises it, and it can never exceed what the pool took in.</li>
-      <li>The platform cut is a share of the fee share, read from <code>Config</code> when the pool closes. It is 0 for the hackathon.</li>
-      <li>When a refunded pool closes, fee and platform get nothing. What is left (sponsorship and stray lamports) goes to the seed treasury.</li>
+      <li>The platform cut is a share of the fee share, the value the pool opened with (copied from <code>Config</code> at creation, so the cut is the one the buyers were shown). It is 0 for the hackathon.</li>
+      <li>A refunded pool gives every sponsor its sponsorship back (<code>refund_sponsor</code>) before it can close. At the close fee and platform get nothing; what is left (stray lamports) goes to the seed treasury.</li>
       <li>Amounts are in lamports. The example uses the proposed 70 / 20 / 10 split; each pool fixes its own.</li>
     </ul>
   </section>
@@ -253,6 +268,7 @@ close_pool (Active) pays, vault ends at 0:
           <tr><td>The prize receiver ends rent-exempt</td><td>A transfer that leaves a near-empty account below the minimum fails</td><td class="mono">BelowRentMin</td></tr>
           <tr><td>Fee, seed and platform treasuries already hold <code>≥ rent_min</code></td><td>The close sweep must not fail on a fresh, empty address</td><td class="mono">TreasuryNotRentExempt</td></tr>
           <tr><td>Ticket rent (1 496 400 lamports, ~0.0015 SOL) is paid by <code>fee_payer</code> and returned to it</td><td>So a gas sponsor can cover it. The buyer's net cost is the price.</td><td class="mono">—</td></tr>
+          <tr><td>A <code>RideAttestation</code>'s rent is paid by the key that recorded it, a <code>SponsorReceipt</code>'s by the sponsor; both come back when the account closes</td><td>Nothing is left behind once a pool is finished</td><td class="mono">—</td></tr>
         </tbody>
       </table>
     </div>
@@ -261,12 +277,12 @@ close_pool (Active) pays, vault ends at 0:
   <section class="section" id="events">
     <span class="eyebrow">07 · Events</span>
     <h2>What the server reads</h2>
-    <p class="col">The server mirrors pools and credits tickets only from these events (<code>emit!</code>: <code>Program data:</code> + 8-byte IDL discriminator + borsh). Fields are listed in borsh order. The tests decode them from raw logs and check all twelve discriminators against the committed IDL.</p>
+    <p class="col">The server mirrors pools and credits tickets only from these events (<code>emit!</code>: <code>Program data:</code> + 8-byte IDL discriminator + borsh). Fields are listed in borsh order. The tests decode them from raw logs and check every discriminator against the committed IDL.</p>
     <div class="tablewrap wide">
       <table>
         <thead><tr><th>Event</th><th>Fields</th></tr></thead>
         <tbody>
-          <tr><th scope="row">PoolCreated</th><td class="mono">pool_id, pool, vault, authority, tier, price_lamports, min_tickets, max_tickets, max_per_wallet, prep_deadline, play_deadline, payout_at, prize_bps, seed_bps, fee_bps, fee_treasury, seed_treasury, from_series</td></tr>
+          <tr><th scope="row">PoolCreated</th><td class="mono">pool_id, pool, vault, authority, tier, price_lamports, min_tickets, max_tickets, max_per_wallet, prep_deadline, play_deadline, payout_at, prize_bps, seed_bps, fee_bps, fee_treasury, seed_treasury, from_series, seed_commitment, seed_slot, seed_slot_hash (v4: all zero / the seal target – RoadSealed has the seed)</td></tr>
           <tr><th scope="row">TicketBought</th><td class="mono">pool_id, buyer, qty, lamports, order_id[16], tickets_sold, activated</td></tr>
           <tr><th scope="row">PoolActivated</th><td class="mono">pool_id, tickets_sold, at</td></tr>
           <tr><th scope="row">Sponsored</th><td class="mono">pool_id, sponsor, lamports, sponsored_total</td></tr>
@@ -278,6 +294,18 @@ close_pool (Active) pays, vault ends at 0:
           <tr><th scope="row">AuthorityChanged</th><td class="mono">old_authority, new_authority</td></tr>
           <tr><th scope="row">SeriesSet</th><td class="mono">tier, enabled, price_lamports, min_tickets, max_tickets, max_per_wallet, sale_secs, play_secs, verify_secs, prize_bps, seed_bps, fee_bps, fee_treasury, seed_treasury, next_open_at</td></tr>
           <tr><th scope="row">PayoutAuthoritySet</th><td class="mono">authority, payout_authority (Option)</td></tr>
+          <tr><th scope="row">RoadSealed</th><td class="mono">pool_id, seed_slot, seed_slot_hash, seed_commitment</td></tr>
+          <tr><th scope="row">SealRearmed</th><td class="mono">pool_id, seal_slot</td></tr>
+          <tr><th scope="row">WinnersCommitted</th><td class="mono">pool_id, root, total, count, committed_at, pay_from, by</td></tr>
+          <tr><th scope="row">WinnersVetoed</th><td class="mono">pool_id, root</td></tr>
+          <tr><th scope="row">SponsorRefunded</th><td class="mono">pool_id, sponsor, lamports, sponsor_refunded_total</td></tr>
+          <tr><th scope="row">PledgeCreated</th><td class="mono">ride_id, sponsor, driver, pool, max_lamports, lamports_per_km, target_km, created_at</td></tr>
+          <tr><th scope="row">PledgeSettled</th><td class="mono">ride_id, sponsor, driver, pool, verified_km, target_km, earned_lamports, refunded_lamports</td></tr>
+          <tr><th scope="row">PledgeRefunded</th><td class="mono">ride_id, sponsor, driver, pool, refunded_lamports</td></tr>
+          <tr><th scope="row">RideAttestationRecorded</th><td class="mono">pool_id, pool, ride_id, driver, telemetry_root, verified_km, status, recorded_at, settle_from</td></tr>
+          <tr><th scope="row">AttestationRecorded</th><td class="mono">pool_id, pool, driver, telemetry_root, verified_km, status, recorded_at (v3; no longer emitted)</td></tr>
+          <tr><th scope="row">AttestationClosed</th><td class="mono">account, rent_to, lamports</td></tr>
+          <tr><th scope="row">FloorsSet · ConfigMigrated</th><td class="mono">min_review_secs, min_finish_secs</td></tr>
         </tbody>
       </table>
     </div>
@@ -294,6 +322,12 @@ close_pool (Active) pays, vault ends at 0:
       <div><b>6012</b><span>NotRefunding</span></div><div><b>6013</b><span>AlreadyRefunded</span></div><div><b>6014</b><span>PoolNotActive</span></div><div><b>6015</b><span>NotSettled</span></div>
       <div><b>6016</b><span>PrizeExceedsShare</span></div><div><b>6017</b><span>BelowRentMin</span></div><div><b>6018</b><span>RefundsPending</span></div><div><b>6019</b><span>AccountMismatch</span></div>
       <div><b>6020</b><span>MathOverflow</span></div><div><b>6021</b><span>PrizesAlreadyPaid</span></div><div><b>6022</b><span>NoPendingAuthority</span></div><div><b>6023</b><span>MustExpire</span></div><div><b>6024</b><span>SeriesDisabled</span></div>
+      <div><b>6025</b><span>UnverifiedAttestation</span></div><div><b>6026</b><span>AttestationMismatch</span></div><div><b>6027</b><span>InvalidAttestationStatus</span></div><div><b>6028</b><span>ZeroVerifiedKm</span></div>
+      <div><b>6029</b><span>AlreadySettled</span></div><div><b>6030</b><span>PledgeNotRefundable</span></div><div><b>6031</b><span>AttestationExists</span></div><div><b>6032</b><span>WindowTooShort</span></div>
+      <div><b>6033</b><span>WinnersCommitted</span></div><div><b>6034</b><span>WinnersNotCommitted</span></div><div><b>6035</b><span>TooManyWinners</span></div><div><b>6036</b><span>CommitTooLate</span></div>
+      <div><b>6037</b><span>InvalidProof</span></div><div><b>6038</b><span>RankAlreadyPaid</span></div><div><b>6039</b><span>WinnersPartlyPaid</span></div><div><b>6040</b><span>PrizesUnpaid</span></div>
+      <div><b>6041</b><span>DriverBelowRentMin</span></div><div><b>6042</b><span>AttestationFinal</span></div><div><b>6043</b><span>PledgesOpen</span></div><div><b>6044</b><span>SponsorRefundsPending</span></div>
+      <div><b>6045</b><span>RoadAlreadySealed</span></div><div><b>6046</b><span>AlreadyMigrated</span></div><div><b>6047</b><span>ConfigNotMigrated</span></div>
     </div>
     <div class="tablewrap mid">
       <table>
@@ -302,7 +336,11 @@ close_pool (Active) pays, vault ends at 0:
           <tr><td>buy_ticket, first buy (creates the Ticket)</td><td class="num">≈ 19 100</td></tr>
           <tr><td>buy_ticket, repeat buy</td><td class="num">≈ 16 700</td></tr>
           <tr><td>refund</td><td class="num">≈ 13 400</td></tr>
-          <tr><td>pay_prize</td><td class="num">≈ 12 800</td></tr>
+          <tr><td>sponsor, creating the receipt</td><td class="num">≈ 18 100</td></tr>
+          <tr><td>refund_sponsor</td><td class="num">≈ 13 500</td></tr>
+          <tr><td>commit_winners</td><td class="num">≈ 8 800</td></tr>
+          <tr><td>pay_prize, 20-winner proof</td><td class="num">≈ 15 200</td></tr>
+          <tr><td>pay_prize, 64-winner proof</td><td class="num">≈ 15 500</td></tr>
           <tr><td>close_pool</td><td class="num">≈ 16 700</td></tr>
         </tbody>
       </table>
@@ -313,12 +351,12 @@ close_pool (Active) pays, vault ends at 0:
     <span class="eyebrow">09 · Verifiable build</span>
     <h2>The bytes come from this source</h2>
     <p class="col">The binary is built with <a href="https://github.com/solana-foundation/solana-verifiable-build">solana-verify</a> 0.5.2 inside the Solana Foundation's pinned Docker image for Solana 4.1.2. The image is chosen from <code>[workspace.metadata.cli]</code> in the program's <code>Cargo.toml</code>. Its <b>executable hash</b> (solana-verify's: sha256 of the <code>.so</code> without its trailing zero padding, so not what <code>sha256sum</code> prints) is committed as <code>programs/freightchain-pools/verifiable-build.hash</code>:</p>
-    <div class="hash">27c0cb40f5052c0922cc16bf7b726c6be0d9516bdb68b316fd7987475ba3b65b</div>
+    <div class="hash">47a630e81fbad16c54c09ffb552d94f7cabff8ab66df46815273a14424ae0100</div>
     <ul class="checks col">
-      <li class="y"><span>A clean rebuild from source reproduces this hash (checked 2026-10-08, two builds from an empty SBF target).</span></li>
-      <li class="y"><span>The 51 tests (49 LiteSVM + 2 unit) load exactly this file (<code>target/deploy/freightchain_pools.so</code>), so the tested bytes and the bytes to deploy are the same.</span></li>
+      <li class="y"><span>That is the pinned v3 build (v3 is on devnet). A clean rebuild from source reproduces the pinned hash (first checked 2026-10-08, two builds from an empty SBF target). v4 changes the bytes, so its pin is renewed (<code>UPDATE_PIN=1</code>) before its deploy.</span></li>
+      <li class="y"><span>The 154 tests (151 LiteSVM + 3 unit) load exactly this file (<code>target/deploy/freightchain_pools.so</code>), so the tested bytes and the bytes to deploy are the same.</span></li>
       <li class="y"><span><code>cargo clippy -D warnings</code> is clean on the program. <code>cargo audit</code> finds no RustSec vulnerabilities, only six unmaintained or unsound warnings in transitive Solana and Anchor dependencies.</span></li>
-      <li class="n"><span>On-chain match: not possible yet, because nothing is deployed. After the deploy, <code>solana-verify get-program-hash</code> must print the same hash.</span></li>
+      <li class="n"><span>On-chain match: after each deploy, <code>solana-verify get-program-hash</code> must print the pinned hash (<code>check.sh onchain</code>).</span></li>
       <li class="n"><span>Public "verified" status (OtterSec API): needs the repository public and an upload signed by the upgrade authority. That is the owner's call.</span></li>
     </ul>
 <pre><code>bash .claude/skills/program-check/check.sh          # build in Docker, compare with the pin, tests, clippy, audit
@@ -330,9 +368,9 @@ PROGRAM_ID=&lt;id&gt; bash .claude/skills/program-check/check.sh onchain   # rea
     <span class="eyebrow">10 · Limits</span>
     <h2>What this program does not do yet</h2>
     <ul class="col">
-      <li><b>Not audited</b>, not deployed, devnet only. The id in <code>declare_id!</code> is the devnet one; nothing is deployed yet.</li>
-      <li>The program caps prize payouts but cannot tell a rightful winner from any other wallet. The admin signs each <code>pay_prize</code>, and may close a pool after its play deadline without paying prizes (the prize share then goes to the seed treasury). The escape hatches protect against an absent admin, not a dishonest one.</li>
-      <li>There is no <code>refund_sponsor</code>. Sponsorship of a failed pool goes to the seed treasury at close.</li>
+      <li><b>Not audited</b>, devnet only: v3 runs there, v4 is built and tested but not deployed. The id in <code>declare_id!</code> is the devnet one.</li>
+      <li>The program pays exactly the committed winners list, capped, after it was public for the review lock – it cannot tell a rightful winner from any other wallet. The admin or the payout key decides the list, and a list with no winner lets the pool close with the prize share going to the seed treasury. A stolen payout key is contained by the public lock and the admin's veto; a dishonest admin is not. The escape hatches protect against an absent admin.</li>
+      <li>An attestation is the server's verdict that the payout key signs; the program checks the signer, not the drive.</li>
       <li>The Pool account is never closed, so explorers and the server can still read it after settlement.</li>
       <li>Session keys, deposits and <code>buy_ticket_with_session</code> (phase 2) are not built.</li>
       <li>The binary is SBPF v0, because LiteSVM 0.10 cannot load v3. A v3 deploy would need its own verifiable build and its own pin.</li>

@@ -220,8 +220,8 @@
       <div class="fr"><div class="stage"><img src="/media/chain/proof.svg" width="240" height="124" loading="lazy" decoding="async" alt="Four 15-second batches hash up into one verified Merkle root"><i class="stk p tl">RFC 6962</i><i class="stk tr">PDA ✓</i><i class="stk a br">blockhash</i></div>
         <footer><b>PROVEN DRIVE</b><span>Nobody picks the road. A prize needs proof.</span></footer></div>
       <div class="bk"><div class="rcpt"><b class="t">ATTESTATION · EXAMPLE</b><p><span>seed</span><b>SHA-256(pool · slot hash · slot)</b></p><p><span>batches</span><b>164 × 15 s</b></p><p><span>root</span><b>9f3a…c21</b></p><p><span>status</span><b class="ok">VERIFIED</b></p></div>
-        <p>The program sets the road seed. No attestation, no prize.</p>
-        <ul><li>The program hashes the newest Solana slot hash into the pool’s road seed when the pool opens – nobody passes a seed in.</li><li>Every 15 s of driving is a hashed batch; a ride’s batches roll up into one Merkle root.</li><li>The program pays a prize only to a wallet the payout key attested as VERIFIED – the server’s verdict, on chain.</li></ul>
+        <p>The program sets the road seed. The winners are public before a prize moves.</p>
+        <ul><li>The program seals the pool’s road from the hash of a Solana slot after the pool opened – nobody passes a seed in, nobody picks the moment.</li><li>Every 15 s of driving is a hashed batch; a ride’s batches roll up into one Merkle root.</li><li>The winners are written on chain as one root, public through the review – then each rank is paid once, exactly what the root says.</li></ul>
         <nav><a href="/whitepaper.html#onchain">Whitepaper →</a><a href="/whitepaper.html#verify">Anti-cheat →</a></nav></div></div></article>
     <article data-card="pledge" class="oc"><div class="oc-in">
       <div class="fr"><div class="stage"><img src="/media/chain/pledge.svg" width="240" height="124" loading="lazy" decoding="async" alt="412 km of a 0.5 SOL pledge: 0.412 SOL to the driver, 0.088 SOL back"><i class="stk p tl">Pledge PDA</i></div>
