@@ -1,6 +1,7 @@
 import { bindClient, newWallet, type Rider } from '../support/client.js';
 import type { Harness } from '../support/harness.js';
-import { answersFor, ownLaneHoles, recording, upload, type RecordingOptions } from '../support/recording.js';
+import { answersFor, hashBatch, ownLaneHoles, recording, upload, type RecordingOptions } from '../support/recording.js';
+import type { BatchBody } from '../../src/domain/telemetry/ride-batch.entity.js';
 import type { ChallengeDto } from '../../src/domain/rides/ride-challenge.js';
 import { RECORDING_BYTES_SLACK } from '../../src/domain/telemetry/telemetry-rules.js';
 import { setTierOnSaleForTest } from '../../src/domain/rides/ride-tier.js';
@@ -9,6 +10,13 @@ import { setTierOnSaleForTest } from '../../src/domain/rides/ride-tier.js';
    the verdict validates the recording and measures how human the input timing looks. Same scenarios on in-memory and PostgreSQL. */
 export const VERDICT_DEMO = newWallet();
 export const VERDICT_ENV = { FREE_RIDE_SECONDS: '10', DEMO_WALLETS: VERDICT_DEMO.address, CHALLENGE_INTERVAL_SECONDS: '8' }; // a prompt about every other heartbeat of the 60 s demo shift
+
+/** the hash of batch `i` once every batch before it was re-chained from `rideId` (an edited recording, chained again like the game would) */
+function rehash(all: readonly BatchBody[], i: number, rideId: string): string {
+  let prev = rideId, hash = '';
+  for (let k = 0; k <= i; k++) { const b = all[k]!; hash = hashBatch({ seq: b.seq, prevHash: prev, t0: b.t0, t1: b.t1, samples: b.samples, inputs: b.inputs }); prev = hash; }
+  return hash;
+}
 
 export function verdictScenarios(h: () => Harness): void {
   const { anon, login, sec } = bindClient(h);
@@ -43,6 +51,29 @@ export function verdictScenarios(h: () => Harness): void {
     expect((await d.agent.get(`/api/rides/${end.id}`).expect(200)).body).toMatchObject({ verdict: { status: 'verified' }, review: 'accepted' });
     for (const board of ['round', 'all']) expect((await anon().get(`/api/leaderboard?board=${board}`).expect(200)).body.rows[0]).toMatchObject({ wallet: d.address, distance: 910 });
     expect((await d.agent.get('/api/profile').expect(200)).body.recent[0]).toMatchObject({ status: 'completed', verdict: 'verified', review: 'accepted' });
+  });
+
+  it('rules v4 over HTTP (pentest 2026-10): batches wait their turn (429 + Retry-After); empty batches, and a position outrunning its speedometer, reject at /end', async () => {
+    const d = await login(VERDICT_DEMO);
+    const first = await driven(d);
+    const rec = recording(first.id, { seconds: 70, distance: 910, answers: answersFor(first.prompts), road: first.road });
+    const early = await d.agent.post(`/api/rides/${first.id}/batches`).send(rec[1]).expect(429);
+    expect(early.body.code).toBe('batch_out_of_order');
+    expect(early.headers['retry-after']).toBe('2');
+    await upload(d.agent, first.id, rec);   // in order: all taken
+    expect((await d.agent.post(`/api/rides/${first.id}/end`).send({ outcome: 'shift', s: 910, t: 70, hull: 100 }).expect(200)).body.verdict).toMatchObject({ status: 'verified' });
+
+    const empty = await driven(d);
+    const hollow = recording(empty.id, { seconds: 70, distance: 910, road: empty.road }).map((b, i) => (i % 2 ? { ...b, samples: [] } : b));   // every other batch empty (never two in a row)
+    await upload(d.agent, empty.id, hollow.map((b, i, all) => ({ ...b, prevHash: i === 0 ? empty.id : rehash(all, i - 1, empty.id), hash: rehash(all, i, empty.id) })));
+    const e = (await d.agent.post(`/api/rides/${empty.id}/end`).send({ outcome: 'shift', s: 910, t: 70, hull: 100 }).expect(200)).body.verdict;
+    expect(e.status).toBe('rejected');
+    expect(e.reasons.map((x: { code: string }) => x.code)).toEqual(['recording-gaps', 'sample-gap']);   // half the time recorded (flag); the holes the empty batches left reject
+
+    const fast = await driven(d);
+    const slowNeedle = recording(fast.id, { seconds: 70, distance: 910, answers: answersFor(fast.prompts), road: fast.road }).map((b) => ({ ...b, samples: b.samples.map((r) => [...r.slice(0, 4), (r[4] ?? 0) / 2, ...r.slice(5)]) }));
+    await upload(d.agent, fast.id, slowNeedle.map((b, i, all) => ({ ...b, prevHash: i === 0 ? fast.id : rehash(all, i - 1, fast.id), hash: rehash(all, i, fast.id) })));
+    expect((await d.agent.post(`/api/rides/${fast.id}/end`).send({ outcome: 'shift', s: 910, t: 70, hull: 100 }).expect(200)).body.verdict.reasons.map((x: { code: string }) => x.code)).toContain('speed-mismatch');
   });
 
   it('a complete shift whose tab CLOSES: the /end beacon (text/plain) completes it; the last batch that never left only costs coverage', async () => {
