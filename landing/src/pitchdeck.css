@@ -166,8 +166,13 @@ h1 small{font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;c
 .brand{color:#fff}
 
 /* tip: always on, a slow pulse */
-#help{position:fixed;left:50%;bottom:14px;translate:-50%;z-index:30;padding:9px 18px;border-radius:999px;border:1px solid #9945ff99;background:#000a;font:700 13px var(--body);letter-spacing:2.5px;text-transform:uppercase;color:#fffc;pointer-events:none;animation:tip 2.4s ease-in-out infinite}
-#help b{color:var(--good)}
+#help{position:fixed;left:50%;bottom:14px;translate:-50%;z-index:30;padding:9px 18px;border-radius:999px;border:1px solid #9945ff99;background:#000a;font:700 13px var(--body);letter-spacing:2.5px;text-transform:uppercase;color:#fffc;pointer-events:none;animation:tip 2.4s ease-in-out infinite,tipwave 3.6s ease-in-out infinite}
+#help b{color:var(--good);display:inline-block}
+#help b:first-of-type{animation:nudge-l 1.8s ease-in-out infinite}
+#help b:last-of-type{animation:nudge-r 1.8s ease-in-out infinite}
+@keyframes tipwave{0%,100%{transform:translateY(0) rotate(-.6deg) scale(1)}25%{transform:translateY(-5px) rotate(0) scale(1.04)}50%{transform:translateY(0) rotate(.6deg) scale(1.08)}75%{transform:translateY(-5px) rotate(0) scale(1.04)}}
+@keyframes nudge-l{0%,100%{transform:translateX(0)}50%{transform:translateX(-6px)}}
+@keyframes nudge-r{0%,100%{transform:translateX(0)}50%{transform:translateX(6px)}}
 @keyframes tip{0%,100%{box-shadow:0 0 0 0 #9945ff00;opacity:.72}50%{box-shadow:0 0 18px 2px #9945ff88,0 0 28px 4px #14f19533;opacity:1}}
 
 /* slide 1: the screens hang in the air, lean away from the mouse, lift on hover / tap; the border is a flowing Solana glow */
@@ -205,7 +210,7 @@ h1 small{font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;c
 .L-wall .vis:has(.tags span:nth-child(4):is(:hover,.hot)) .w3,
 .L-wall .vis:has(.tags span:nth-child(3):is(:hover,.hot)) .w4{--s:1.09;z-index:6;filter:drop-shadow(0 0 20px #14f195aa) drop-shadow(0 0 34px #9945ff88)}
 @keyframes tagglow{0%,100%{box-shadow:0 0 10px 0 #14f19522}50%{box-shadow:0 0 20px 2px #9945ff66}}
-@media (prefers-reduced-motion:reduce){.L-wall .shot,.L-wall .tags span,#help{animation:none}}
+@media (prefers-reduced-motion:reduce){.L-wall .shot,.L-wall .tags span,#help,#help b{animation:none}}
 
 .L-wall .tags{z-index:8}   /* above a lifted screen (z 6), so no tag is ever covered */
 
