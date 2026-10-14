@@ -40,7 +40,7 @@ const SLIDES = [
       <div class="copy">
         <div class="lbl">02 · The insight</div>
         <h1>The game<br>is the door.</h1>
-        ${pts(['Native streams and replays', 'Donations and chat', 'Web2 friendly', "I'm chasing Web3 adoption a lot", '<b>The stream is the ad</b>'])}
+        ${pts(['<b>Streams</b> · live watch, replays', '<b>Donations</b> · chat, night, holes', '<b>Web2</b> · no wallet to watch', '<b>Goal</b> · Web3 adoption', '<b>Reach</b> · the stream is the ad'])}
       </div>
       <div class="vis">
         ${clip('promo-clip.mp4', 'v-main')}
