@@ -6,7 +6,7 @@
   --head:ui-monospace,"SF Mono",Menlo,monospace;--body:ui-monospace,"SF Mono",Menlo,monospace;--radius:10px}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;overflow:hidden;background:#000;color:var(--ink)}
-#stage{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:50% 50%;background:var(--bg);overflow:hidden;font-family:var(--body)}
+#stage{position:absolute;left:50%;top:0;width:1920px;height:1080px;transform-origin:50% 0;background:var(--bg);overflow:hidden;font-family:var(--body)}
 #deck{position:absolute;inset:0}
 .slide{position:absolute;inset:0;padding:96px 112px;display:grid;gap:64px;opacity:0;visibility:hidden;transition:opacity .5s,visibility 0s .5s}
 .slide.on{opacity:1;visibility:visible;transition:opacity .5s}
@@ -250,8 +250,8 @@ h1 small{font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;c
 #turn button{font:600 13px var(--body);letter-spacing:2px;text-transform:uppercase;color:#fff9;background:none;border:1px solid #fff4;border-radius:999px;padding:10px 18px}
 @media (prefers-reduced-motion:reduce){#turn .phone{animation:none}}
 
-/* header ticker – the landing's running text (LCD green, ◆ between facts) on black, over every slide; .code = a real line from the repo */
-#ticker{position:absolute;left:0;right:0;top:0;height:38px;overflow:hidden;z-index:15;contain:paint;background:#030803;border-top:2px solid #1e4a22;border-bottom:2px solid #1e4a22;color:#7cff7c;font:700 16px/36px var(--body);letter-spacing:1.5px;text-transform:uppercase;text-shadow:0 0 8px #7cff7c55}   /* a rule above AND below, so the gap from the caps to each is the same (measured at 4×) */
+/* header ticker (pinned to the very top of the window, outside the letterboxed stage; fit() scales it) – the landing's running text (LCD green, ◆ between facts) on black, over every slide; .code = a real line from the repo */
+#ticker{position:fixed;left:0;top:0;width:1920px;transform-origin:0 0;height:38px;overflow:hidden;z-index:20;contain:paint;background:#030803;border-top:2px solid #1e4a22;border-bottom:2px solid #1e4a22;color:#7cff7c;font:700 16px/36px var(--body);letter-spacing:1.5px;text-transform:uppercase;text-shadow:0 0 8px #7cff7c55}   /* a rule above AND below, so the gap from the caps to each is the same (measured at 4×) */
 #ticker .tk{position:absolute;left:0;top:0;display:inline-flex;white-space:nowrap;will-change:transform}   /* moved by script (tkTick) */
 #ticker span{position:relative;padding:0 38px}
 #ticker span::after{content:"◆";position:absolute;right:-6px;top:calc(50% - 1.5px);translate:0 -50%;line-height:1;opacity:.5;font-size:11px}

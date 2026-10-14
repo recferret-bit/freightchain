@@ -228,7 +228,11 @@ deck.querySelectorAll('[data-chart=daily]').forEach(daily);
 const slides = [...deck.children];
 const stage = document.getElementById('stage');
 let scale = 1;   // stage px → screen px
-const fit = () => { const k = scale = Math.min(innerWidth / 1920, innerHeight / 1080); stage.style.transform = `translate(-50%,-50%) scale(${k})`; };
+const fit = () => {
+  const k = scale = Math.min(innerWidth / 1920, innerHeight / 1080);
+  stage.style.transform = `translate(-50%,0) scale(${k})`;
+  tkEl.style.transform = `scale(${k})`; tkEl.style.width = `${innerWidth / k}px`;   // the header hugs the top edge of the window, full width, whatever the letterboxing
+};
 addEventListener('resize', fit); fit();
 
 let cur = -1;
