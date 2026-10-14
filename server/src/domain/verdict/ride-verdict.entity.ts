@@ -4,7 +4,7 @@ import type { BatchFacts } from '../telemetry/ride-batch.entity.js';
 import { isPhoneInput } from '../telemetry/telemetry-rules.js';
 import { checkChallenges, type ChallengeScores } from './challenge-checks.js';
 import { checkHumanTiming, type HumanScores } from './human-checks.js';
-import { checkAgreement, checkChain, checkInputsPresent, checkSamples, recordingScores, type RecordingScores } from './recording-checks.js';
+import { checkAgreement, checkChain, checkInputsAgree, checkInputsPresent, checkMotion, checkSamples, recordingScores, type RecordingScores } from './recording-checks.js';
 import { RULES_VERSION } from './verdict-rules.js';
 import { checkWorld, type WorldScores } from './world-checks.js';
 import { ConflictError } from '../shared/errors.js';
@@ -47,16 +47,21 @@ export class RideVerdict {
     const road = { forkSwitch: (s0: number, s1: number) => roadPlanFor(ride.seed, ride.trip).layout.forkSwitch(s0, s1) }; // built lazily: only a boundary step over the governor asks
     const samples = checkSamples(ordered, road); // the ride's road: a step across a batch boundary may be a fork's road switch
     const agreement = checkAgreement(facts, ordered);
+    const motion = checkMotion(facts, ordered, road);
+    const agree = checkInputsAgree(ordered);
     const inputs = ordered.flatMap((b) => b.summary.inputs).filter((e) => !isPhoneInput(e)); // the phone's events are not driving
     const human = checkHumanTiming(inputs);
     const endMs = ride.endedAt && ride.startedAt ? ride.endedAt.getTime() - ride.startedAt.getTime() : Number.POSITIVE_INFINITY;
     const challenges = checkChallenges(ride.challenges, inputs, endMs);
     const world = checkWorld(ordered);
-    const reasons = ordered.length === 0 ? chain : [...chain, ...samples.reasons, ...agreement.reasons, ...checkInputsPresent(facts, ordered), ...human.reasons, ...challenges.reasons, ...world.reasons];
+    const reasons = ordered.length === 0 ? chain : [...chain, ...samples.reasons, ...agreement.reasons, ...motion.reasons, ...checkInputsPresent(facts, ordered), ...agree.reasons, ...human.reasons, ...challenges.reasons, ...world.reasons];
     const status = reasons.some((r) => r.severity === 'reject') ? VerdictStatus.Rejected : reasons.length ? VerdictStatus.Flagged : VerdictStatus.Verified;
     return new RideVerdict({
       rideId: ride.id, status, reasons, rulesVersion: RULES_VERSION, judgedAt: now, version: 1, overriddenBy: null, overriddenAt: null, note: null,
-      scores: { recording: recordingScores(ordered, agreement.recordedSeconds, agreement.coverage, samples.maxSpeed), human: human.scores, challenges: challenges.scores, world: world.scores },
+      scores: { recording: recordingScores(ordered, agreement.recordedSeconds, agreement.coverage, samples.maxSpeed, {
+        ...(motion.maxGap !== undefined ? { maxGap: motion.maxGap } : {}), ...(motion.speedExcess !== undefined ? { speedExcess: motion.speedExcess } : {}),
+        ...(agree.gasEdges !== undefined ? { gasEdges: agree.gasEdges, gasPresses: agree.gasPresses } : {}),
+      }), human: human.scores, challenges: challenges.scores, world: world.scores },
     });
   }
 

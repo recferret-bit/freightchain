@@ -1,6 +1,6 @@
 import type { InputEvent } from '../telemetry/ride-batch.entity.js';
 import {
-  COARSE_TIMER_MS, HOLD_CV_MIN, HOLD_MIN_PER_KEY, HUMAN_MIN_PRESSES, INSTANT_HOLD_MS, INSTANT_SHARE_MAX, REPEAT_SHARE_MAX, REPEAT_TOP_N, TIMER_ALIGN_SHARE, TIMER_STEPS_MS,
+  COARSE_TIMER_MS, HOLD_CV_MIN, HOLD_MIN_PER_KEY, HUMAN_MIN_PRESSES, INSTANT_HOLD_MS, INSTANT_SHARE_MAX, INSTANT_SHARE_MAX_COARSE, REPEAT_SHARE_MAX, REPEAT_TOP_N, TIMER_ALIGN_SHARE, TIMER_STEPS_MS,
 } from './verdict-rules.js';
 import type { VerdictReason } from './verdict.dto.js';
 
@@ -11,11 +11,11 @@ export interface HumanScores {
   presses: number;
   /** the lowest per-key coefficient of variation of hold durations (null = no key had enough holds) */
   minHoldCv: number | null;
-  /** share of press-to-press intervals covered by the REPEAT_TOP_N most common ones (1 ms buckets) */
+  /** share of press-to-press intervals covered by the REPEAT_TOP_N most common ones (1 ms buckets – the timer's step on a coarse clock) */
   repeatShare: number | null;
   /** share of presses released within INSTANT_HOLD_MS */
   instantShare: number | null;
-  /** the browser's timer step when it is coarse (0 = fine-grained); ≥ COARSE_TIMER_MS skips the two checks a coarse clock breaks */
+  /** the browser's timer step when it is coarse (0 = fine-grained): the timing checks judge on its grid */
   timerStepMs: number;
 }
 
@@ -60,7 +60,7 @@ export function checkHumanTiming(events: readonly InputEvent[]): { reasons: Verd
   const step = timerStepMs(events.map((e) => e[0]));
   const scores: HumanScores = { presses: all.length, minHoldCv: null, repeatShare: null, instantShare: null, timerStepMs: step };
   if (all.length < HUMAN_MIN_PRESSES) return { reasons: [], scores };
-  const coarse = step >= COARSE_TIMER_MS;
+  const coarse = step >= COARSE_TIMER_MS, bucket = Math.max(1, step);
   const out: VerdictReason[] = [];
 
   const perKey = [...holds.entries()].filter(([, h]) => h.length >= HOLD_MIN_PER_KEY).map(([code, h]) => ({ code, cv: cv(h) }));
@@ -71,17 +71,18 @@ export function checkHumanTiming(events: readonly InputEvent[]): { reasons: Verd
   }
 
   const downs = events.filter((e) => e[2] === 1).map((e) => e[0]).sort((a, b) => a - b);
-  const gaps = downs.slice(1).map((t, i) => Math.round(t - (downs[i] ?? 0)));
-  if (gaps.length && !coarse) {
+  const gaps = downs.slice(1).map((t, i) => Math.round((t - (downs[i] ?? 0)) / bucket));
+  if (gaps.length) {
     const counts = new Map<number, number>();
     for (const g of gaps) counts.set(g, (counts.get(g) ?? 0) + 1);
     const top = [...counts.values()].sort((a, b) => b - a).slice(0, REPEAT_TOP_N).reduce((a, b) => a + b, 0) / gaps.length;
     scores.repeatShare = round(top);
-    if (top > REPEAT_SHARE_MAX) out.push(flag('repeated-timings', `${Math.round(top * 100)} % of the presses come at one of ${REPEAT_TOP_N} exact intervals`));
+    if (top > REPEAT_SHARE_MAX) out.push(flag('repeated-timings', `${Math.round(top * 100)} % of the presses come at one of ${REPEAT_TOP_N} exact intervals${step ? ` (on a ${step} ms clock)` : ''}`));
   }
 
-  const instant = all.filter((h) => h < INSTANT_HOLD_MS).length / all.length;
+  const under = coarse ? 1 : Math.max(INSTANT_HOLD_MS, step), limit = coarse ? INSTANT_SHARE_MAX_COARSE : INSTANT_SHARE_MAX;
+  const instant = all.filter((h) => h < under).length / all.length;
   scores.instantShare = round(instant);
-  if (instant > INSTANT_SHARE_MAX && !coarse) out.push(flag('instant-presses', `${Math.round(instant * 100)} % of the presses are released within ${INSTANT_HOLD_MS} ms`));
+  if (instant > limit) out.push(flag('instant-presses', coarse ? `${Math.round(instant * 100)} % of the presses read 0 ms on a ${step} ms clock` : `${Math.round(instant * 100)} % of the presses are released within ${under} ms`));
   return { reasons: out, scores };
 }

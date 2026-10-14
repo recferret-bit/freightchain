@@ -117,7 +117,7 @@ test('numbers: verdict thresholds equal verdict-rules.ts', () => {
   assert.equal(num('HOLD_CV_MIN'), 0.08); assert.equal(num('HOLD_MIN_PER_KEY'), 6); assert.match(text, /under 8 %, over 6\+ holds/);
   assert.equal(num('REPEAT_TOP_N'), 3); assert.equal(num('REPEAT_SHARE_MAX'), 0.6); assert.match(text, /3 most common gaps[^.]*more than 60 %/);
   assert.equal(num('INSTANT_HOLD_MS'), 10); assert.equal(num('INSTANT_SHARE_MAX'), 0.3); assert.match(text, /More than 30 % of presses released within 10 ms/);
-  assert.equal(num('RULES_VERSION'), 3); assert.match(text, /rules v3 run in/i); assert.match(text, /Anti-cheat v3/);
+  assert.equal(num('RULES_VERSION'), 4); assert.match(text, /rules v4 run in/i); assert.match(text, /Anti-cheat v3/);
   // dispatch prompts: the window and the default interval live with the ride, the thresholds with the verdict
   assert.equal(num('CHALLENGE_MIN_REACTION_MS'), 80); assert.match(text, /under 80 ms after the server issued the prompt/);
   assert.equal(num('CHALLENGE_IGNORED_MIN_ISSUED'), 3); assert.equal(num('CHALLENGE_IGNORED_SHARE'), 0.5); assert.match(text, /Half or more of 3\+ prompts ignored rejects/);

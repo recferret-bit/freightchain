@@ -1,6 +1,6 @@
 ---
 name: verified-play-test
-description: Test Freight Chain's anti-bot / anti-cheat (verified play) end to end, positive AND negative – a person and a metronome bot driving in real headless Chrome (dispatch prompts answered / ignored), API-level bots with hand-built recordings for EVERY verdict code (no inputs, instant prompt answers, a teleport, a speed over the governor, a batch edited after hashing, an unhashed batch, a broken chain link, a hole in the seqs, a recording that does not match / cover the ride, steering without gas, malformed samples, scripted timing, a coarse timer, batches sent after /end), the SERVER's road (an honest driver and one with the holes taken out of its game, in Chrome, a spectator's replay of both, the ride-audit tool), the upload protocol (401 / 404 / 409 / 400), who may see a verdict, the admin's signed decisions on a flagged ride, the lobby profile in Chrome, and the retention sweep + the CLI's bulk re-judge on the database – against a freshly built server on a throwaway database. Use after touching client/js/telemetry.js, prompt.js, online.js, the server's verdict / telemetry / rides domain, the heartbeat, the batch upload, verdict-rules.ts, the retention sweeps, or when asked to "test the anti-cheat", "test verified play", "test the prompts", or /verified-play-test.
+description: Test Freight Chain's anti-bot / anti-cheat (verified play) end to end, positive AND negative – a person and a metronome bot driving in real headless Chrome (dispatch prompts answered / ignored), API-level bots with hand-built recordings for EVERY verdict code (no inputs, instant prompt answers, a teleport, a speed over the governor, a batch edited after hashing, an unhashed batch, a broken chain link, a hole in the seqs, a recording that does not match / cover the ride, empty or sparse batches, a position outrunning its speedometer, a gas bit no key pressed, steering without gas, malformed samples, scripted timing, a coarse timer, batches sent after /end), the SERVER's road (an honest driver and one with the holes taken out of its game, in Chrome, a spectator's replay of both, the ride-audit tool), the upload protocol (401 / 404 / 409 / 400 / 429), who may see a verdict, the admin's signed decisions on a flagged ride, the lobby profile in Chrome, and the retention sweep + the CLI's bulk re-judge on the database – against a freshly built server on a throwaway database. Use after touching client/js/telemetry.js, prompt.js, online.js, the server's verdict / telemetry / rides domain, the heartbeat, the batch upload, verdict-rules.ts, the retention sweeps, or when asked to "test the anti-cheat", "test verified play", "test the prompts", or /verified-play-test.
 ---
 
 # Verified play – the anti-cheat, positive and negative
@@ -40,12 +40,14 @@ Server: `FREE_RIDE_SECONDS=30 CHALLENGE_INTERVAL_SECONDS=0 ADMIN_WALLETS=<a gene
 | clean · clean + a garbage traffic track (dropped, never refused) · batches sent only after `/end` (re-judged on arrival) | verified | – |
 | a coarse 100 ms timer (the two checks it would break are skipped; `timerStepMs` 100) · five presses (below `HUMAN_MIN_PRESSES`) | verified | – |
 | no recording at all | rejected | `no-recording` |
-| a hole in the seqs | rejected | `missing-batches` |
+| a hole in the seqs (the later batches wait: 429) | rejected | `recording-incomplete` |
+| empty batches · two samples a batch | rejected | `recording-empty` + `recording-incomplete` · `recording-incomplete` + `sample-gap` |
+| a clock 25 % slow while s keeps pace · s outruns the speedometer | rejected | `recording-gaps` + `speed-mismatch` · `speed-mismatch` |
+| a gas bit no key pressed (five presses) | flagged | `inputs-mismatch` |
 | recording ends 400 m from the ride | rejected | `recording-mismatch` |
 | recording covers 45 % of the time | rejected | `recording-incomplete` |
 | steering only, no gas | rejected | `no-throttle-input` |
 | a sample row with 5 values · a sample outside its batch | rejected | `bad-sample` · `sample-out-of-order` |
-| recording covers 75 % (a slow clock) | flagged | `recording-gaps` |
 | metronome holds · three fixed gaps · down+up in one tick | flagged | `uniform-holds` · `repeated-timings` · `instant-presses` |
 
   (the teleport / over-governor / tampered / unhashed / wrong-link cases live in `verified`).

@@ -68,7 +68,18 @@ describe('UploadBatchHandler', () => {
     await expect(up('w', ride.id, far[3]!)).rejects.toThrow(/more driving than time has passed/); // t1 = 60 s after 0 s of wall time
     await expect(up('w', ride.id, { ...b0!, seq: 11, prevHash: 'x' })).rejects.toThrow(/too many batches/); // seq 11 > 0 / 5 + 10
     ctx.clock.advance(60);
-    expect(await up('w', ride.id, far[3]!)).toMatchObject({ stored: true });
+    for (const b of far.slice(1, 4)) expect(await up('w', ride.id, b)).toMatchObject({ stored: true });
+  });
+
+  it('takes the batches in order: batch n+1 waits (429, the game retries) until batch n is stored – a pass on the cut is always measured (pentest M10)', async () => {
+    const { ctx, up } = setup();
+    const ride = await ctx.freeRide('w', true);
+    ctx.clock.advance(60);
+    const batches = recording(ride.id, { seconds: 45 });
+    await expect(up('w', ride.id, batches[1]!)).rejects.toMatchObject({ statusCode: 429, errorCode: 'batch_out_of_order' });
+    expect(await up('w', ride.id, batches[0]!)).toMatchObject({ stored: true });
+    expect(await up('w', ride.id, batches[1]!)).toMatchObject({ stored: true });
+    expect(await up('w', ride.id, batches[0]!)).toMatchObject({ stored: false });   // a re-send is still harmless
   });
 
   it('a batch for a ride that already ended re-judges it (the final flush after /end)', async () => {

@@ -385,12 +385,13 @@ describe('concurrency (PostgreSQL)', () => {
     await a.agent.post(`/api/rides/${ride.id}/end`).send({ outcome: 'shift', s: 560, t: 40 }).expect(200);
     const verdicts = harness.app.get(VerdictService, { strict: false });
     const mark = { code: 'pool-shared-ip', detail: 'race', severity: 'flag' as const };
+    const inOrder = async () => { const out: number[] = []; for (const b of batches.slice(-3)) out.push((await a.agent.post(`/api/rides/${ride.id}/batches`).send(b)).status); return out; };   // the game's queue: one batch after the other (a batch ahead of its predecessor waits – 429)
     const results = await Promise.all([
-      verdicts.addAttention(a.address, [{ rideId: ride.id, reasons: [mark] }]).then(() => 200),
-      ...batches.slice(-3).map((b) => a.agent.post(`/api/rides/${ride.id}/batches`).send(b).then((r) => r.status)),
-      verdicts.addAttention(a.address, [{ rideId: ride.id, reasons: [mark] }]).then(() => 200),
+      verdicts.addAttention(a.address, [{ rideId: ride.id, reasons: [mark] }]).then(() => [200]),
+      inOrder(),
+      verdicts.addAttention(a.address, [{ rideId: ride.id, reasons: [mark] }]).then(() => [200]),
     ]);
-    expect(results.every((s) => s === 200)).toBe(true);
+    expect(results.flat().every((s) => s === 200)).toBe(true);
     expect((await a.agent.get(`/api/rides/${ride.id}`).expect(200)).body.verdict).toMatchObject({ status: 'flagged', reasons: [mark] });   // the whole recording is clean; only the mark remains
   });
 
@@ -407,11 +408,12 @@ describe('concurrency (PostgreSQL)', () => {
       c.sec(10);
       await a.agent.post(`/api/rides/${ride.id}/end`).send({ outcome: 'shift', s: 140, t: 10 }).expect(200);
       const text = (await boss.agent.post(`/api/admin/rides/${ride.id}/challenge`).set('x-fc-admin', '1').send({ action: 'override', decision: 'rejected', note: 'race' }).expect(200)).body.message;
+      const inOrder = async () => { const out: number[] = []; for (const b of batches.slice(3)) out.push((await a.agent.post(`/api/rides/${ride.id}/batches`).send(b)).status); return out; };   // the game's queue: in order
       const results = await Promise.all([
-        boss.agent.post(`/api/admin/rides/${ride.id}/verdict`).set('x-fc-admin', '1').send({ decision: 'rejected', note: 'race', signature: sign(admin.kp, text) }),
-        ...batches.slice(3).map((b) => a.agent.post(`/api/rides/${ride.id}/batches`).send(b)),
+        boss.agent.post(`/api/admin/rides/${ride.id}/verdict`).set('x-fc-admin', '1').send({ decision: 'rejected', note: 'race', signature: sign(admin.kp, text) }).then((r) => [r.status]),
+        inOrder(),
       ]);
-      expect(results.map((r) => r.status)).toEqual(results.map(() => 200));
+      expect(results.flat()).toEqual(results.flat().map(() => 200));
       expect((await a.agent.get(`/api/rides/${ride.id}`).expect(200)).body.verdict).toMatchObject({ status: 'rejected', override: { by: admin.address, note: 'race' } });
       const p2 = h2.app.get(PrismaService, { strict: false });
       expect(await p2.adminAction.count({ where: { action: 'verdict.override' } })).toBe(1);

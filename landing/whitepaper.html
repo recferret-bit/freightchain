@@ -245,7 +245,7 @@
     <li><b>Drive by hand, in the real game.</b> The browser records your key presses and the truck's state; timing that looks scripted is <em>flagged</em> for a person to review, and recordings that are impossible are <em>rejected</em>. Using bots, macros or a modified client is against the rules and is the thing the validation is built to catch (<a href="#verify">06</a>).</li>
     <li><b>Keep the tab visible.</b> Time with the tab hidden is not driven time. Slow computers are not penalised: times come from the browser's event clock, and if the game runs below real time it simply takes longer.</li>
     <li><b>Spectators may talk and tip.</b> An online ride can be streamed live and replayed by anyone for 90 days – the road, your truck's state and the traffic around you; your key presses are never shown (<a href="#stream">07</a>). You may mute any chat wallet.</li>
-    <li><b>Rankings are provisional while the rules are tuned.</b> Verdict rules v3 run in <em>shadow mode</em>: verdicts are stored and shown, but boards do not yet depend on them. A person reviews flagged rides and every decision is signed and logged.</li>
+    <li><b>Rankings are provisional while the rules are tuned.</b> Verdict rules v4 run in <em>shadow mode</em>: verdicts are stored and shown, but boards do not yet depend on them. A person reviews flagged rides and every decision is signed and logged.</li>
     <li><b>It is a devnet build.</b> Nothing here is real money. Before any mainnet version exists, whether a prize game is lawful where you live is a question you and the operator both have to answer (<a href="#risks">08</a>).</li>
     <li><b>A paid shift needs both boxes.</b> Tick that you are 18 or older, and that SOL spent on a shift can be lost. A prize is not guaranteed. This is not a deposit or an investment. Free rides stay open.</li>
   </ol>
@@ -612,7 +612,7 @@
 <!-- ───────── 06 · VALIDATION ───────── -->
 <section id="verify" class="ch">
   <header class="ch-h"><i>06</i><h2>Telemetry, validation &amp; anti-cheat</h2><p>The server does not replay your drive. It times the shift itself, checks that the recording is complete, physically possible and matches the ride, measures how human the hands look, and asks for things only someone watching the screen can answer.</p></header>
-  <p class="note"><b>Mode.</b> Rules v3 run in <b>shadow mode</b> in production: every completed shift is judged and the verdict is shown, but the boards do not depend on it yet. The thresholds are first estimates and will be tuned on real rides. Bump the rules version and the verdict stores which one it used. The long form, with every code and knob: <code>docs/anti-cheat/</code> in the repository.</p>
+  <p class="note"><b>Mode.</b> Rules v4 run in <b>shadow mode</b> in production: every completed shift is judged and the verdict is shown, but the boards do not depend on it yet. The thresholds are first estimates and will be tuned on real rides. Bump the rules version and the verdict stores which one it used. The long form, with every code and knob: <code>docs/anti-cheat/</code> in the repository.</p>
 
   <h3 class="sub">NINE LAYERS, FROM CHEAPEST TO STRONGEST</h3>
   <ol class="flow">
@@ -683,7 +683,7 @@
       <tr><td>Presses take time</td><td>More than 30 % of presses released within 10 ms were sent, not pressed.</td><td class="warnc">flag · <code>instant-presses</code></td></tr>
     </tbody>
   </table></div>
-  <p class="dim">Fair to real people: with fewer than 8 presses the timing checks have no opinion. Browsers that round their clock (Firefox privacy mode, Tor) are detected and the two checks a coarse clock would break are skipped.</p>
+  <p class="dim">Fair to real people: with fewer than 8 presses the timing checks have no opinion. Browsers that round their clock (Firefox privacy mode, Tor) are detected and the timing checks judge on that clock's own grid.</p>
   <div class="grid3">
     <article class="card"><h3 class="ok">VERIFIED</h3><p>Nothing found. The shift ranks on the paid board.</p></article>
     <article class="card"><h3 class="warnc">FLAGGED</h3><p>Something looked off but proves nothing. It waits in a review queue and does not rank until an admin accepts it.</p></article>

@@ -4,7 +4,7 @@ import { checkHumanTiming, holdsByCode, timerStepMs } from '../../../src/domain/
 import { RideVerdict } from '../../../src/domain/verdict/ride-verdict.entity.js';
 import { HOLD_CV_MIN, REPEAT_SHARE_MAX, RULES_VERSION } from '../../../src/domain/verdict/verdict-rules.js';
 import { VerdictStatus } from '../../../src/domain/verdict/verdict.dto.js';
-import { hashBatch, recording, type RecordingOptions } from '../../support/recording.js';
+import { hashBatch, prng, recording, type RecordingOptions } from '../../support/recording.js';
 import { checkChallenges } from '../../../src/domain/verdict/challenge-checks.js';
 import { expectedLink } from '../../../src/domain/verdict/recording-checks.js';
 import type { RideChallenge } from '../../../src/domain/rides/ride-challenge.js';
@@ -143,9 +143,11 @@ describe('RideVerdict.judge', () => {
     });
 
     it('a coarse browser clock (Firefox resistFingerprinting / Tor) is detected and does not make a person look scripted', () => {
-      const rnd = (i: number) => ((i * 7919) % 97) / 97; // deterministic spread
+      const rnd = prng(11); // a person's gaps spread over seconds (an LCG on i made only two distinct ones – a metronome the step-sized buckets rightly flag)
+      let at = 0;
       const human: InputEvent[] = Array.from({ length: 30 }, (_, i) => {
-        const down = Math.round((i * 1300 + rnd(i) * 900) / 100) * 100, hold = Math.round((40 + rnd(i + 3) * 300) / 100) * 100; // everything on a 100 ms grid
+        at += 600 + rnd() * 2000;
+        const down = Math.round(at / 100) * 100, hold = Math.round((40 + rnd() * 300) / 100) * 100; // everything on a 100 ms grid
         return [[down, i % 2 ? 'KeyA' : 'KeyW', 1], [down + hold, i % 2 ? 'KeyA' : 'KeyW', 0]] as InputEvent[];
       }).flat();
       const { reasons, scores } = checkHumanTiming(human);
@@ -154,6 +156,14 @@ describe('RideVerdict.judge', () => {
       expect(reasons.map((r) => r.code)).not.toContain('repeated-timings');
       expect(timerStepMs(recording('ride-1', { seconds: 120, seed: 5 }).flatMap((b) => b.inputs.map((e) => e[0])))).toBe(0); // a fine-grained clock
       expect(timerStepMs([1000 / 60, 2000 / 60, 50, 100, 1000 / 6, 200, 250, 300].map((t) => Math.round(t * 10) / 10))).toBeGreaterThanOrEqual(10);
+    });
+
+    it('a script does not hide behind a coarse clock: metronome gaps and 0 ms holds on a 100 ms grid are still flagged (pentest L1)', () => {
+      const events = Array.from({ length: 12 }, (_, i) => [[i * 1000, 'KeyW', 1], [i * 1000, 'KeyW', 0]] as InputEvent[]).flat();
+      const { reasons, scores } = checkHumanTiming(events);
+      expect(scores.timerStepMs).toBe(100);
+      expect(reasons.map((r) => r.code)).toEqual(expect.arrayContaining(['repeated-timings', 'instant-presses']));
+      expect(timerStepMs(Array.from({ length: 20 }, (_, i) => i * 10))).toBe(0);   // a 10 ms grid is no browser's coarse clock any more
     });
 
     it('has no opinion below 8 presses (a 60 s demo ride must not flag itself)', () => {

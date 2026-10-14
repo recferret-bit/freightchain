@@ -2,10 +2,11 @@
 // flagged ride, the profile in a real browser, the retention sweep and the bulk re-judge. The sibling e2e-verified-play.mjs covers the dispatch prompts (a person
 // and a bot in Chrome, instant answers); THIS one runs with the prompts OFF (CHALLENGE_INTERVAL_SECONDS=0) so each recording check is judged on its own.
 //   A. one driven shift per case, all at once, over the API (the game's own batch shape + hash chain, like scripts/sim-rides.mjs) → the exact reason codes:
-//        recording: clean · no recording at all · a hole in the seqs · the recording ends far from the ride's end · covers 45 % of the time · covers 75 % ·
-//                   steering only (no gas) · a short sample row · a sample outside its batch · batches sent only AFTER /end (re-judged on arrival) · garbage traffic track
+//        recording: clean · no recording at all · a hole in the seqs (the later batches wait – 429) · the recording ends far from the ride's end · covers 45 % of the time ·
+//                   a clock 25 % slow while s keeps pace · steering only (no gas) · a short sample row · a sample outside its batch · batches sent only AFTER /end
+//                   (re-judged on arrival) · garbage traffic track · empty batches · two samples a batch · s outrunning the speedometer · a gas bit no key pressed
 //        timing:    metronome holds · three fixed gaps · down+up in one tick · a coarse (100 ms) timer · too few presses to judge
-//   B. the upload protocol: 401 / 404 / 409 / 400 for every wrong way to send a batch, a stored one, a wrong hash, a duplicate seq
+//   B. the upload protocol: 401 / 404 / 409 / 400 / 429 for every wrong way to send a batch, a stored one, a wrong hash, a duplicate seq, a batch ahead of its predecessor
 //   C. who sees a verdict: the owner yes, another wallet no, the public watch payload never (no reasons, no input events); the free board ranks completed free rides
 //   D. the admin (a wallet signs every change): the review queue lists the flagged rides, ACCEPT sets verified + the override, RE-JUDGE replaces it, REJECT
 //   E. the lobby's profile in real headless Chrome shows each verdict; screenshot profile-verdicts.png
@@ -48,10 +49,12 @@ const uniform = ms => { const out = []; for (let t = 700.3; t < ms; t += rnd(110
 const repeated = ms => { const out = [], gaps = [837, 1291, 2113]; let t = 700.3, i = 0; while (t < ms) { pair(out, t, 'KeyW', rnd(150, 500)); t += gaps[i++ % 3]; } return out; };
 /** a script's down+up in one tick: 6 of 11 presses released within 5 ms (the rest like a person) */
 const instant = ms => { const out = []; let t = 700.3, i = 0; while (t < ms) { pair(out, t, 'KeyW', i++ % 2 ? 5 : rnd(250, 700)); t += rnd(900, 2400); } return out; };
-/** every event on a 100 ms tick: Firefox with resistFingerprinting / Tor. Taps read as 0 ms and gaps fall in three buckets – nothing a real person did on such a clock may flag */
-const coarse = ms => { const out = [], gaps = [800, 1300, 2100], holds = [0, 100, 300, 200, 400, 0, 200]; let t = 700, i = 0; while (t < ms) { out.push([t, 'KeyW', 1], [t + holds[i % 7], 'KeyW', 0]); t += gaps[i++ % 3]; } return out; };
+/** every event on a 100 ms tick: Firefox with resistFingerprinting / Tor. Quick taps read as 0 ms, a person's gaps spread over seconds – nothing a real person did on such a clock may flag */
+const coarse = ms => { const out = [], tick = v => Math.round(v / 100) * 100, holds = [0, 100, 300, 200, 400, 0, 200]; let t = 700, i = 0; while (t < ms) { out.push([t, 'KeyW', 1], [t + holds[i++ % 7], 'KeyW', 0]); t += tick(rnd(600, 2600)); } return out; };
 /** five presses in the whole ride (below HUMAN_MIN_PRESSES = 8): the timing checks have no opinion */
 const few = ms => { const out = []; pair(out, 800.4, 'KeyW', 9000.7); pair(out, 10400.2, 'KeyW', 6100.5); pair(out, 17000.9, 'KeyA', 310.3); pair(out, 18500.1, 'KeyD', 290.8); pair(out, 20500.6, 'KeyW', Math.max(1000, ms - 21000)); return out; };
+/** the gas bit of the input column switched on and off every second – the samples show presses the events never made (five presses in the ride) */
+const gasFlicker = b => ({ ...b, samples: b.samples.map((row, i) => [...row.slice(0, 13), Math.floor(i / 10) % 2 ? 2 | 8 : 1 | 2 | 8]) });
 /** steering only: the truck "moved" with no gas press in the whole recording */
 const steerOnly = ms => { const out = []; for (let t = 800; t < ms; t += rnd(900, 2000)) pair(out, t, Math.random() < .5 ? 'KeyA' : 'KeyD', rnd(120, 500)); return out; };
 
@@ -110,10 +113,14 @@ const SCENARIOS = [
   ['clean', {}, 'verified', []],
   ['clean + garbage traffic track', { traffic: [[1, 2, 3], 'not a frame', null] }, 'verified', []],
   ['no recording at all', { noBatches: true }, 'rejected', ['no-recording']],
-  ['a hole in the seqs', { mutate: b => (b.seq === 1 ? { ...b, seq: 2 } : b.seq > 1 ? { ...b, seq: b.seq + 1 } : null) }, 'rejected', ['missing-batches']],
+  ['a hole in the seqs', { mutate: b => (b.seq === 1 ? { ...b, seq: 2 } : b.seq > 1 ? { ...b, seq: b.seq + 1 } : null) }, 'rejected', ['recording-incomplete']],   // the batch after the hole waits (429) for one that never comes
   ['recording ends 400 m from the ride', { sampleS: s => s - 400 }, 'rejected', ['recording-mismatch']],
   ['recording covers 45 % of the time', { stopBatchesAfter: 1 }, 'rejected', ['recording-incomplete']],
-  ['recording covers 75 % of the time (a slow clock)', { sampleT: t => t * 0.75 }, 'flagged', ['recording-gaps']],
+  ['a clock 25 % slow while s keeps pace', { sampleT: t => t * 0.75 }, 'rejected', ['recording-gaps', 'speed-mismatch']],   // s runs ⅓ ahead of what v × t allows
+  ['empty batches (no samples)', { mutate: b => ({ ...b, samples: [] }) }, 'rejected', ['recording-empty', 'recording-incomplete']],
+  ['two samples a batch', { mutate: b => (b.samples.length > 2 ? { ...b, samples: [b.samples[0], b.samples.at(-1)] } : null) }, 'rejected', ['recording-incomplete', 'sample-gap']],
+  ['s outruns the speedometer (v halved)', { mutate: b => ({ ...b, samples: b.samples.map(row => [...row.slice(0, 4), r(row[4] / 2, 2), ...row.slice(5)]) }) }, 'rejected', ['speed-mismatch']],
+  ['a gas bit no key pressed', { script: few, mutate: gasFlicker }, 'flagged', ['inputs-mismatch']],
   ['steering only, no gas', { script: steerOnly }, 'rejected', ['no-throttle-input']],
   ['a sample row with 5 values', { mutate: b => (b.seq === 1 ? { ...b, samples: b.samples.map((row, i) => (i === 3 ? row.slice(0, 5) : row)) } : null) }, 'rejected', ['bad-sample']],
   ['a sample outside its batch', { mutate: b => (b.seq === 1 ? { ...b, samples: b.samples.map((row, i) => (i === 3 ? [row[0] + 60, ...row.slice(1)] : row)) } : null) }, 'rejected', ['sample-out-of-order']],
@@ -150,6 +157,7 @@ async function protocol() {
   out.wrongHash = (await post(a, ride.id, bad)).j;                           // stored, but flagged hashOk:false (the verdict rejects it later)
   const traffic = await post(a, ride.id, { ...mk(2, { prevHash: 'z' }), traffic: 'garbage' });
   out.garbageTraffic = traffic.status;
+  out.outOfOrder = (await post(a, ride.id, mk(5, { prevHash: 'y' }))).status;   // 3 and 4 never sent: it waits
   return out;
 }
 
@@ -195,6 +203,7 @@ check('B a good batch is stored with hashOk', proto.stored.stored === true && pr
 check('B the same seq again is a harmless re-send (stored:false)', proto.duplicate.stored === false && proto.duplicate.seq === 0, JSON.stringify(proto.duplicate));
 check('B a hash that does not match the content is stored but hashOk:false (the verdict rejects it)', proto.wrongHash.stored === true && proto.wrongHash.hashOk === false, JSON.stringify(proto.wrongHash));
 check('B a garbage traffic track is dropped, never refused', proto.garbageTraffic === 200, String(proto.garbageTraffic));
+check('B a batch ahead of its predecessor waits: 429 (the game retries it; a pass on the cut is always measured)', proto.outOfOrder === 429, String(proto.outOfOrder));
 
 // C. who sees a verdict
 const flaggedRun = by['metronome holds (300 ms every time)'], rejectedRun = by['recording ends 400 m from the ride'], verifiedRun = by.clean;

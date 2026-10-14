@@ -11,7 +11,7 @@ import type { VerdictReason } from './verdict.dto.js';
    - a planned hole the truck's wheels ran through at speed must show in the hull – the game takes damage ∝ v² per axle. A game with the holes taken out
      drives straight through them undamaged: 'obstacle-ignored' (≥ OBSTACLE_IGNORED_REJECT holes) rejects, one such hole flags ('obstacle-no-impact').
      Where the client cuts its batches does not matter: each batch is measured with the tail of the one before; a pass that still could not be measured
-     (batches uploaded out of order) counts, and OBSTACLE_UNMEASURED_FLAG such holes flag ('obstacle-unmeasured');
+     (batches stored out of order – before 2026-10 the server took them so; it refuses that now) counts, and OBSTACLE_UNMEASURED_FLAG such holes flag ('obstacle-unmeasured');
    - the game ends a ride after OFFROAD_FAIL_SECONDS off the tarmac: a recording that stays off much longer ignored that ('offroad-ignored', reject);
    - the road is flat, so only the engine can speed the truck up: speed gained with the gas pedal up and no gas key pressed is impossible
      ('accel-without-gas': GASLESS_REJECT_GAIN m/s or GASLESS_REJECT_STEPS steps reject, fewer flag).
@@ -83,7 +83,7 @@ export function checkWorld(batches: readonly Pick<BatchFacts, 'summary'>[]): { r
   const where = ignored.slice(0, 3).map((h) => `${h.type} at ${Math.round(h.s)} m (t ${Math.round(h.t)} s: ${h.got} % hull lost, the game takes ${h.expected} %)`).join('; ');
   if (ignored.length >= OBSTACLE_IGNORED_REJECT) reasons.push(reject('obstacle-ignored', `drove through ${ignored.length} of the ${holes.length} planned holes it reached without a scratch – ${where}`));
   else if (ignored.length) reasons.push(flag('obstacle-no-impact', `drove through a planned hole without a scratch – ${where}`));
-  if (unmeasured.length >= OBSTACLE_UNMEASURED_FLAG) reasons.push(flag('obstacle-unmeasured', `${unmeasured.length} planned holes driven through could not be measured (their batches arrived out of order) – a person should look`));
+  if (unmeasured.length >= OBSTACLE_UNMEASURED_FLAG) reasons.push(flag('obstacle-unmeasured', `${unmeasured.length} planned holes driven through could not be measured (their batches were stored out of order) – a person should look`));
   const offLimit = OFFROAD_FAIL_SECONDS * OFFROAD_FACTOR + OFFROAD_SLACK_SECONDS;
   if (offroadSeconds > offLimit) reasons.push(reject('offroad-ignored', `${round(offroadSeconds)} s off the road – the game ends the ride after ${OFFROAD_FAIL_SECONDS} s`));
   if (gain >= GASLESS_REJECT_GAIN || gasless.length >= GASLESS_REJECT_STEPS) reasons.push(reject('accel-without-gas', `the truck gained ${gain} m/s in ${gasless.length} steps with the gas pedal up – on a flat road only the engine can do that`));

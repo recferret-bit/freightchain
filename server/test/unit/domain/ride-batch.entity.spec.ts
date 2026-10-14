@@ -45,7 +45,7 @@ describe('RideBatch', () => {
     expect(RideBatch.accept('ride-x', { ...b0!, traffic: huge }, hashBatch(b0!), NOW).body.traffic).toBeUndefined();
   });
 
-  it('the replay columns (clock, switches, inputs) are INSIDE the hashed text – tamper-evident like the rest – and change nothing the verdict measures', () => {
+  it('the replay columns (clock, switches, inputs) are INSIDE the hashed text – tamper-evident like the rest – and change nothing the verdict measures but the gas edges', () => {
     const [plain] = recording('ride-r', { seconds: 15 }), [replay] = recording('ride-r', { seconds: 15, replay: true });
     expect(replay!.samples.every((r) => r.length === SAMPLE_INPUT_COL + 1)).toBe(true);
     expect(replay!.samples.some((r) => (r[SAMPLE_INPUT_COL]! & INPUT_BIT.gas) !== 0)).toBe(true); // the gas held in long stretches
@@ -54,7 +54,10 @@ describe('RideBatch', () => {
     const edited = { ...replay!, samples: replay!.samples.map((r, i) => (i === 3 ? [...r.slice(0, -1), INPUT_BIT.head | INPUT_BIT.mouse] : r)) };
     expect(RideBatch.accept('ride-r', edited, hashBatch(edited), NOW).hashOk).toBe(false); // a click added after the hash was sealed: the server's hash no longer matches
     const a = RideBatch.accept('ride-r', plain!, hashBatch(plain!), NOW), b = RideBatch.accept('ride-r', replay!, hashBatch(replay!), NOW);
-    expect(b.summary).toEqual(a.summary);
+    const { gasEdges: plainEdges, ...plainRest } = a.summary, { gasEdges: replayEdges, ...replayRest } = b.summary;
+    expect(replayRest).toEqual(plainRest);
+    expect(plainEdges).toBeNull();                 // no input column: no opinion
+    expect(replayEdges).toBeGreaterThan(0);        // the input column's gas bit (checkInputsAgree holds it against the events)
     expect(b.snapshot().bytes - a.snapshot().bytes).toBeLessThan(150 * 12); // ≈ 10 bytes a sample for the three columns: ~1.5 kB per 15 s batch before gzip
   });
 
