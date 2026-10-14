@@ -58,6 +58,8 @@ const PLAN = [
     more: 'An SPL mint: 100M cap, 2M to the pool, 98M earned by rides.' },
   { k: 'PAID EVENTS', sub: 'backed by us', c: '#ff5a4d', from: 2, to: 4, t: 'Funded prize pools · streamer cups', n: 'we seed the pool',
     more: 'We fund the prizes: marketing rides and streamer cups, so a pool never opens empty and the stream has a reason to exist.' },
+  { k: 'COMMUNITY CONTENT', sub: 'made by players', c: '#ff9ad5', from: 3, to: 4, t: 'AI-built mods via MCP · storybook', n: 'vehicles, props, landmarks',
+    more: 'Players describe a vehicle, prop or landmark to an AI; an MCP server builds it in the storybook.' },
   { k: 'NEW GAME MODES', sub: 'then modding', c: '#6fb0ff', from: 3, to: 4, t: 'New modes, same rails', n: 'same road, same verification',
     more: 'New ways to drive on the same seeded road and the same verification stack. Modding comes after the modes.' },
 ];
@@ -153,6 +155,10 @@ const SLIDES = [
       <div class="copy">
         <div class="lbl">06 · The plan</div>
         <h1>The next <em>4 months.</em></h1>
+      </div>
+      <div class="vis peek">
+        ${shot('storybook.webp', 'peek-card', 'Sneak peek: the storybook model viewer, a car on its grid')}
+        <div class="badge live peekb"><i class="dot"></i>SNEAK PEEK · STORYBOOK · AI + MCP</div>
       </div>
       <div class="plan">
         <div class="pr today"><span class="pin"><i></i>TODAY · OCT 15</span></div>
@@ -374,7 +380,7 @@ addEventListener('keydown', e => {
   else if (e.key === 'f' || e.key === 'F') document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
 });
 /* the cards of slides 0–4 (.fx) and slide 0's tags: the mouse nudges them (parallax), a tap / click lifts one (.hot) instead of turning the page */
-['product', 'game', 'insight', 'play', 'money'].forEach(id => document.getElementById(`s-${id}`)?.classList.add('fx'));
+['product', 'game', 'insight', 'play', 'money', 'plan'].forEach(id => document.getElementById(`s-${id}`)?.classList.add('fx'));
 const fxVis = [...deck.querySelectorAll('.fx .vis')];
 const setTilt = (v, px, py) => { v.style.setProperty('--px', px); v.style.setProperty('--py', py); };
 fxVis.forEach(v => {
