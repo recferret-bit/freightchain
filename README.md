@@ -10,10 +10,10 @@ Paid entries are SOL on Solana devnet. The program holds the money. There is no 
 
 <!-- traction:start -->
 
-Public numbers for a reviewer, read 2026-10-14 09:29 UTC. Each headline was fetched three times. A partial page, a deleted post, a repost, a premiere, or a count the second source did not support is not in a headline. Links go to the page the number was read from.
+Public numbers for a reviewer, read 2026-10-14 09:40 UTC. Each headline was fetched three times. A partial page, a deleted post, a repost, a premiere, or a count the second source did not support is not in a headline. Links go to the page the number was read from.
 
 <table><tr>
-<td align="center" width="20%"><h2>2,467</h2><b>YouTube views</b><br>6 videos · 9 subscribers<br><a href="https://www.youtube.com/@FreightChainGame">@FreightChainGame</a></td>
+<td align="center" width="20%"><h2>2,468</h2><b>YouTube views</b><br>6 videos · 9 subscribers<br><a href="https://www.youtube.com/@FreightChainGame">@FreightChainGame</a></td>
 <td align="center" width="20%"><h2>21</h2><b>X posts</b><br><a href="https://x.com/FreightChainSol">@FreightChainSol</a><br>6 followers</td>
 <td align="center" width="20%"><h2>530</h2><b>X views on public posts</b><br>5 of 21 posts have a public view count</td>
 <td align="center" width="20%"><h2>32</h2><b>shifts started</b><br>6 finished · <a href="https://freightchain.fun/api/stats">api/stats</a></td>
@@ -39,12 +39,12 @@ Watch-page `viewCount` for every video on the Videos and Shorts tabs. The grid c
 | Video | Views |
 | --- | ---: |
 | [Rating every NPC driver 1–10 (this one got 0)](https://www.youtube.com/watch?v=oJ6UpOxY-l8) | 960 |
-| [3 ways to fail the free level 💀](https://www.youtube.com/watch?v=hgXhGdLwSvE) | 951 |
+| [3 ways to fail the free level 💀](https://www.youtube.com/watch?v=hgXhGdLwSvE) | 952 |
 | [Rating every road 1–10](https://www.youtube.com/watch?v=3xCB4uJ_SAw) | 394 |
 | [Boss levels: 3 min, 5 min, 15 min, 1 hour](https://www.youtube.com/watch?v=2usi9vHQ-Z0) | 121 |
 | [FreightChain: The Road Never Ends. Your Shift Does.](https://www.youtube.com/watch?v=cFyQ9XlN5nQ) | 32 |
 | [Freight Chain: What We Built for Colosseum (in 59 seconds)](https://www.youtube.com/watch?v=QiH7NEoWH48) | 9 |
-| **Sum** | **2,467** |
+| **Sum** | **2,468** |
 
 ### X
 
