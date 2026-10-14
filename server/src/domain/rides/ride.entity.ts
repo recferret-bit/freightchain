@@ -9,7 +9,8 @@ import {
 } from './ride-challenge.js';
 import { BATCH_SEQ_SLACK, GAME_TIME_FACTOR, GAME_TIME_SLACK_SECONDS, MIN_BATCH_SECONDS, RECORDING_BYTES_PER_SECOND, RECORDING_BYTES_SLACK, type RecordingAllowance } from '../telemetry/telemetry-rules.js';
 import {
-  DRIVE_CREDIT_SLACK, DRIVE_CREDIT_SLACK_SECONDS, MAX_SPEED, REASON_MAX_LENGTH, SLACK_METRES, SPEED_SLACK,
+  DRIVE_CREDIT_SLACK, DRIVE_CREDIT_SLACK_SECONDS, GAME_SLACK_METRES, GAME_SPEED_SLACK, MAX_SPEED, REASON_MAX_LENGTH, RIDE_SLACK_METRES, RIDE_SPEED_SLACK,
+  SLACK_METRES, SPEED_SLACK,
   completeDist, completeDistK, crashCap, worldFor, type RideTimingRules,
 } from './ride-rules.js';
 import { DEFAULT_FREE_LEVEL, FREE_LEVELS, assertAssistAllowed, assertTutorialAllowed, levelOfTrip, tripOf, type FreeLevel } from './ride-trip.js';
@@ -269,14 +270,16 @@ export class Ride {
       this.close(RideStatus.Failed, 'heartbeat lost', now);
       return false;
     }
-    if (Math.abs(s - this.p.lastS) > MAX_SPEED * dt * SPEED_SLACK + SLACK_METRES) {
-      this.close(RideStatus.Failed, `implausible progress (${Math.round(s - this.p.lastS)} m in ${dt.toFixed(1)} s)`, now);
-      return false;
-    }
+    const implausible = (why: string) => { this.close(RideStatus.Failed, `implausible progress (${why})`, now); return false; };
+    if (Math.abs(s - this.p.lastS) > MAX_SPEED * dt * SPEED_SLACK + SLACK_METRES) return implausible(`${Math.round(s - this.p.lastS)} m in ${dt.toFixed(1)} s`);
+    const wall = this.p.startedAt ? (now.getTime() - this.p.startedAt.getTime()) / 1000 : dt;
+    if (s > MAX_SPEED * RIDE_SPEED_SLACK * wall + RIDE_SLACK_METRES) return implausible(`${Math.round(s)} m in ${Math.round(wall)} s since the start`);
     // Drive time = how far the game's own clock moved since the last report, capped by the wall time that passed: a pause mid-window and the
     // stretch after the last beat are credited correctly, and the clock can't outrun the server's. No usable t (old client): trust the paused flag.
     const hasT = report.t !== null && report.t >= this.p.lastT;
-    const credit = hasT ? Math.min((report.t ?? 0) - this.p.lastT, dt * DRIVE_CREDIT_SLACK + DRIVE_CREDIT_SLACK_SECONDS) : report.paused ? 0 : dt;
+    const gameDt = hasT ? (report.t ?? 0) - this.p.lastT : report.paused ? 0 : dt;   // a reload never resumes a ride, so t only runs backwards in a forged report
+    if (report.t !== null && s - this.p.lastS > MAX_SPEED * GAME_SPEED_SLACK * gameDt + GAME_SLACK_METRES) return implausible(`${Math.round(s - this.p.lastS)} m in ${gameDt.toFixed(1)} s of driving`);   // no t at all (an old client): only the wall-clock bounds above; the verdict's coverage floor does the rest
+    const credit = hasT ? Math.min(gameDt, dt * DRIVE_CREDIT_SLACK + DRIVE_CREDIT_SLACK_SECONDS) : gameDt;
     this.p.lastS = s;
     this.p.lastT = hasT ? (report.t ?? this.p.lastT) : this.p.lastT;
     this.p.hull = hull;

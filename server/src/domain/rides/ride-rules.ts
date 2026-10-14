@@ -17,8 +17,16 @@ export const worldFor = (seed: number): { route: RouteId; startHour: number } =>
 });
 export const isRouteId = (v: unknown): v is RouteId => typeof v === 'string' && (ROUTE_IDS as readonly string[]).includes(v);
 
-export const SPEED_SLACK = 1.2; // Δs may be up to MAX_SPEED·Δt·SPEED_SLACK + SLACK_METRES
+export const SPEED_SLACK = 1.2; // Δs may be up to MAX_SPEED·Δt·SPEED_SLACK + SLACK_METRES (per beat: the slack absorbs network jitter between two beats' arrivals)
 export const SLACK_METRES = 20;
+/** …and the whole ride, so beats 1 s apart cannot each add the slack (pentest H3: 1.9× the governor): s ≤ MAX_SPEED × RIDE_SPEED_SLACK × wall seconds since the start + RIDE_SLACK_METRES (pauses only loosen it) */
+export const RIDE_SPEED_SLACK = 1.05;
+export const RIDE_SLACK_METRES = 50;
+/** per beat against the game's own clock: Δs ≤ MAX_SPEED × GAME_SPEED_SLACK × Δt(game) + GAME_SLACK_METRES – a clock that stands still while s moves
+    (pentest S4-10) fails. The game integrates s from v over the same clock; the slack covers the inside of a curve (ds = v·cosψ / (1 − k·d)), a fork's road
+    switch and a car pushing the truck */
+export const GAME_SPEED_SLACK = 1.1;
+export const GAME_SLACK_METRES = 10;
 export const MAX_REPORTED_DISTANCE = 1e7; // metres – anything beyond is garbage
 export const DRIVE_CREDIT_SLACK = 1.05; // the game clock may run ≤ 5 % (+ 1 s) ahead of the server's wall clock between two reports
 export const DRIVE_CREDIT_SLACK_SECONDS = 1;

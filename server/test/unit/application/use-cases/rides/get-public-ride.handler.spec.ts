@@ -57,9 +57,9 @@ describe('GetPublicRideHandler', () => {
     const wallet = 'GseaEsNWMLScZ5RH8yQ4xmoCP97H86HjLSA9xkyFCqbn';
     const ride = await ctx.freeRide(wallet, true);
 
-    // Advance within plausible truck speed (12345m in 500s = ~24.7 m/s < 28 m/s MAX_SPEED)
+    // Advance within plausible truck speed (12345 m in 467.89 s of driving and 500 s of wall time: ~26 m/s < 28 m/s MAX_SPEED)
     const reportTime = new Date(ctx.now().getTime() + 500_000);
-    ride.applyReport({ s: 12345, t: 67.89, hull: 100, paused: false, night: false, crashesVehicle: 0, crashesBuilding: 0 }, reportTime, {
+    ride.applyReport({ s: 12345, t: 467.89, hull: 100, paused: false, night: false, crashesVehicle: 0, crashesBuilding: 0 }, reportTime, {
       hbMinIntervalMs: 0,
       hbTimeoutMs: 600_000,
     });
@@ -67,7 +67,7 @@ describe('GetPublicRideHandler', () => {
 
     const dto = await handler.execute(new GetPublicRideQuery(ride.id));
     expect(dto.km).toBe(12.35);
-    expect(dto.driveSeconds).toBe(67.9);
+    expect(dto.driveSeconds).toBe(467.9);
   });
 
   it('includes verdict from verdict repository when available', async () => {
