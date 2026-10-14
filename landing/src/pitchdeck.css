@@ -406,9 +406,9 @@ canvas.glyph{height:auto;aspect-ratio:240/124;background:none}
 .L-plan .peek-card .pk-imgs{position:absolute;inset:0;display:block}
 .L-plan .peek-card .pk-imgs img{position:absolute;inset:0;opacity:0;transition:none!important;filter:none!important}   /* no crossfade, no blur: a hard swap under a flash, so no seam of two half-faded frames shows */
 .L-plan .peek-card .pk-imgs img.on{opacity:1}
-.L-plan .peek-card .pk-flash{position:absolute;inset:0;z-index:1;background:#fff;opacity:0;pointer-events:none}
+.L-plan .peek-card .pk-flash{position:absolute;inset:0;z-index:1;background:linear-gradient(115deg,#9945ff,#14f195);mix-blend-mode:screen;opacity:0;pointer-events:none}   /* the Solana gradient */
 .L-plan .peek-card .pk-flash.go{animation:pkflash .38s ease-out}
-@keyframes pkflash{0%{opacity:.9}100%{opacity:0}}
+@keyframes pkflash{0%{opacity:.95}100%{opacity:0}}
 .L-plan .peek-card .pk-name{position:absolute;right:14px;bottom:12px;z-index:2;font:700 14px/1 var(--body);font-style:normal;letter-spacing:2px;text-transform:uppercase;padding:7px 12px;border-radius:999px;background:#000b;color:#14f195;border:1px solid #14f19566}
 .L-plan .peek-card .pk-name.flip{animation:pkname .5s ease-out}
 @keyframes pkname{from{opacity:0;translate:0 10px}to{opacity:1;translate:0 0}}
