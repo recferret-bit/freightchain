@@ -8,6 +8,27 @@ export function comma(n) {
   return n.toLocaleString('en-US');
 }
 
+const BANNER = '<img src="landing/public/media/day.webp"';
+
+/** The Traction heading sits on the line after the game banner. */
+export function placeTraction(readme) {
+  const heading = '## Traction\n';
+  const endMark = '<!-- traction:end -->';
+  const start = readme.indexOf(heading);
+  const end = readme.indexOf(endMark);
+  const img = readme.indexOf(BANNER);
+  if (start < 0 || end < start || img < 0) return readme;
+  const block = readme.slice(start, end + endMark.length).trim();
+  const lineEnd = readme.indexOf('\n', img);
+  if (lineEnd < 0) return readme;
+  if (readme.slice(lineEnd).replace(/^\n+/, '').startsWith(heading) && start < lineEnd + 40) return readme;
+  const without = `${readme.slice(0, start)}${readme.slice(end + endMark.length)}`.replace(/\n{3,}/g, '\n\n');
+  const img2 = without.indexOf(BANNER);
+  const line2 = without.indexOf('\n', img2);
+  if (img2 < 0 || line2 < 0) return readme;
+  return `${without.slice(0, line2 + 1)}\n${block}\n\n${without.slice(line2 + 1).replace(/^\n+/, '')}`;
+}
+
 export function spliceTraction(readme, block) {
   if (readme.includes(START) && readme.includes(END)) {
     const next = readme.replace(
@@ -25,6 +46,11 @@ export function spliceTraction(readme, block) {
   const to = readme.indexOf('\n## The truck\n');
   if (at < 0 || to < at) throw new Error('no Traction section before The truck');
   return `${readme.slice(0, at + heading.length)}\n${START}\n\n${block.trim()}\n\n${END}\n${readme.slice(to)}`;
+}
+
+function posthogWindow(insights) {
+  const windows = insights?.windows ?? [];
+  return windows.find((window) => window.label?.includes('through')) ?? windows[0] ?? null;
 }
 
 function shownTotal(complete, total, covered) {
@@ -77,7 +103,39 @@ export function renderTraction({ fetchedAt, social, stats, insights }) {
     'driven',
     stats ? `${comma(stats.drivers)} drivers · ${comma(stats.crashes)} crashes` : '',
   ));
+  lines.push('</tr>');
+  const open = posthogWindow(insights);
+  lines.push('<tr>');
+  lines.push(cell(
+    open ? comma(open.landingPeople) : null,
+    'landing people',
+    open ? `PostHog · ${open.label}` : 'PostHog unread',
+  ));
+  lines.push(cell(
+    open ? comma(open.whitepaperPeople) : null,
+    'whitepaper readers',
+    'PostHog · same window',
+  ));
+  lines.push(cell(
+    open ? comma(open.signinsReal) : null,
+    'wallet sign-ins',
+    'real wallets · demo excluded',
+  ));
+  lines.push(cell(
+    open ? comma(open.startsReal) : null,
+    'real shifts started',
+    open && Number.isSafeInteger(open.startsDemo) ? `${comma(open.startsDemo)} demo starts` : 'server events',
+  ));
+  lines.push(cell(
+    open && Number.isSafeInteger(open.completesReal) && Number.isSafeInteger(open.completesDemo)
+      ? comma(open.completesReal + open.completesDemo)
+      : null,
+    'shifts finished',
+    open ? `${comma(open.completesDemo)} demo · ${comma(open.completesReal)} real` : 'PostHog unread',
+  ));
   lines.push('</tr></table>');
+  lines.push('');
+  lines.push('The second row is PostHog Cloud EU, project 297915. Probe events (`surface=prod-check`) are out. Ride counts are `source=server`. Demo wallets are separate from real ones. Client `ride_completed` is not counted.');
   lines.push('');
   if (yt.aboutNote) lines.push(`YouTube channel About says ${yt.aboutViews == null ? 'no total' : `${comma(yt.aboutViews)} views`}. ${yt.aboutNote}. The headline is the sum of the videos below.`);
   if (x.note) lines.push(x.note);
@@ -124,7 +182,6 @@ export function renderTraction({ fetchedAt, social, stats, insights }) {
   lines.push('');
   lines.push('These are [`https://freightchain.fun/api/stats`](https://freightchain.fun/api/stats), read twice. Free and paid are the split of shifts started. The site and this table use this response, not a PostHog chart.');
   lines.push('');
-  const open = insights?.windows?.find((window) => window.label?.includes('through'));
   if (stats && open && Number.isSafeInteger(open.completesReal) && Number.isSafeInteger(open.completesDemo)
     && open.completesReal + open.completesDemo === stats.ridesCompleted) {
     lines.push(`PostHog counts those ${comma(stats.ridesCompleted)} finished shifts as ${comma(open.completesDemo)} demo-wallet finishes and ${comma(open.completesReal)} others. A demo wallet runs the paid clock at 1/60.`);
@@ -211,6 +268,16 @@ export function selfTest() {
     insights: { error: 'skipped' },
   });
   check('no-fake-total', !block.includes('all views') && block.includes('1 of 21'));
+  const withHog = renderTraction({
+    fetchedAt: '2026-10-14T09:00:00.000Z',
+    social: { youtube: { complete: true, views: 10, coveredViews: 10, videos: 1, items: [] }, x: { posts: 1, complete: true, views: 2, coveredViews: 2, listed: 1, items: [] } },
+    stats: null,
+    insights: { windows: [{ label: '8 Oct 2026 through 2026-10-14 UTC', landingPeople: 131, whitepaperPeople: 12, signinsReal: 59, startsReal: 3, startsDemo: 29, completesReal: 0, completesDemo: 6 }] },
+  });
+  check('posthog-headline', withHog.includes('landing people') && withHog.includes('131') && withHog.includes('6 demo · 0 real'));
+  const parked = `# T\n\n<img src="landing/public/media/day.webp" alt="cab" width="780">\n\nThe live site.\n\n## Traction\n\n<!-- traction:start -->\n\nOLD\n\n<!-- traction:end -->\n\n## The truck\n`;
+  const moved = placeTraction(parked);
+  check('under-banner', moved.indexOf('## Traction') < moved.indexOf('The live site') && moved.includes('## The truck'));
   if (failures.length) {
     console.error(failures.join('\n'));
     process.exit(1);

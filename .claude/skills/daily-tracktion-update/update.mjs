@@ -7,7 +7,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { api, redact, root } from '../posthog-audit/api.mjs';
-import { acceptStats, renderTraction, selfTest, spliceTraction } from './render.mjs';
+import { acceptStats, placeTraction, renderTraction, selfTest, spliceTraction } from './render.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const readmePath = join(root, 'README.md');
@@ -168,7 +168,7 @@ const social = {
 };
 const block = renderTraction({ fetchedAt, social, stats: statsBody, insights });
 const readme = readFileSync(readmePath, 'utf8');
-writeFileSync(readmePath, spliceTraction(readme, block));
+writeFileSync(readmePath, placeTraction(spliceTraction(readme, block)));
 mkdirSync(dirname(outPath), { recursive: true });
 writeFileSync(outPath, JSON.stringify({ fetchedAt, social, stats: statsBody, insights }, null, 2));
 const yt = social.youtube?.views ?? social.youtube?.coveredViews;

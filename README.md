@@ -6,18 +6,105 @@ Paid entries are SOL on Solana devnet. The program holds the money. There is no 
 
 <img src="landing/public/media/day.webp" alt="Freight Chain cab in sixth gear on a desert highway, live CB up and the on-chain pool strip showing the road seal" width="780">
 
+## Traction
+
+<!-- traction:start -->
+
+Public numbers for a reviewer, read 2026-10-14 09:29 UTC. Each headline was fetched three times. A partial page, a deleted post, a repost, a premiere, or a count the second source did not support is not in a headline. Links go to the page the number was read from.
+
+<table><tr>
+<td align="center" width="20%"><h2>2,467</h2><b>YouTube views</b><br>6 videos · 9 subscribers<br><a href="https://www.youtube.com/@FreightChainGame">@FreightChainGame</a></td>
+<td align="center" width="20%"><h2>21</h2><b>X posts</b><br><a href="https://x.com/FreightChainSol">@FreightChainSol</a><br>6 followers</td>
+<td align="center" width="20%"><h2>530</h2><b>X views on public posts</b><br>5 of 21 posts have a public view count</td>
+<td align="center" width="20%"><h2>32</h2><b>shifts started</b><br>6 finished · <a href="https://freightchain.fun/api/stats">api/stats</a></td>
+<td align="center" width="20%"><h2>27.9 km</h2><b>driven</b><br>2 drivers · 5 crashes</td>
+</tr>
+<tr>
+<td align="center" width="20%"><h2>131</h2><b>landing people</b><br>PostHog · 8 Oct 2026 through 2026-10-14 UTC</td>
+<td align="center" width="20%"><h2>12</h2><b>whitepaper readers</b><br>PostHog · same window</td>
+<td align="center" width="20%"><h2>59</h2><b>wallet sign-ins</b><br>real wallets · demo excluded</td>
+<td align="center" width="20%"><h2>3</h2><b>real shifts started</b><br>29 demo starts</td>
+<td align="center" width="20%"><h2>6</h2><b>shifts finished</b><br>6 demo · 0 real</td>
+</tr></table>
+
+The second row is PostHog Cloud EU, project 297915. Probe events (`surface=prod-check`) are out. Ride counts are `source=server`. Demo wallets are separate from real ones. Client `ride_completed` is not counted.
+
+YouTube channel About says 443 views. That figure lags the videos and was not used. The headline is the sum of the videos below.
+Profile counts 21 posts. 5 are on the public posts tab with a view count checked twice. Logged-out X does not serve the replies tab, so those views are not guessed.
+
+### YouTube
+
+Watch-page `viewCount` for every video on the Videos and Shorts tabs. The grid count had to land within 5%.
+
+| Video | Views |
+| --- | ---: |
+| [Rating every NPC driver 1–10 (this one got 0)](https://www.youtube.com/watch?v=oJ6UpOxY-l8) | 960 |
+| [3 ways to fail the free level 💀](https://www.youtube.com/watch?v=hgXhGdLwSvE) | 951 |
+| [Rating every road 1–10](https://www.youtube.com/watch?v=3xCB4uJ_SAw) | 394 |
+| [Boss levels: 3 min, 5 min, 15 min, 1 hour](https://www.youtube.com/watch?v=2usi9vHQ-Z0) | 121 |
+| [FreightChain: The Road Never Ends. Your Shift Does.](https://www.youtube.com/watch?v=cFyQ9XlN5nQ) | 32 |
+| [Freight Chain: What We Built for Colosseum (in 59 seconds)](https://www.youtube.com/watch?v=QiH7NEoWH48) | 9 |
+| **Sum** | **2,467** |
+
+### X
+
+Profile post count is the number both public mirrors returned. View counts are the posts tab, checked against the status endpoint.
+
+| Post | Views |
+| --- | ---: |
+| [FreightChain is a long-haul truck game in the browser. You drive the cab yourself. The road never ends. Your shift does. One mistake ends th](https://x.com/FreightChainSol/status/2109242074876739715) | 139 |
+| [Looking for 20 people to sit in a truck cab for 3 minutes and tell me where it hurts. Free, no download. https://t.co/bqJQEIE96a #FreightCha](https://x.com/FreightChainSol/status/2109385632560591255) | 125 |
+| [In 1995, Desert Bus made you drive 8 real-time hours from Tucson to Las Vegas for 1 point. We kept the 8 hours and replaced the point with a](https://x.com/FreightChainSol/status/2109921865888071894) | 113 |
+| [A week ago i remembered 'Desert Bus' game. I thought, how to make it modern and kind a hyped ? Week ago, i have it.. #indiegame #desertbus #](https://x.com/FreightChainSol/status/2109769147496145392) | 99 |
+| [Just did multi-agent penetration and Solana program audit using Warp, my fav tool @warpdotdev Im not using any IDE for a long time, and i al](https://x.com/FreightChainSol/status/2109986407875760450) | 54 |
+| **Sum of these posts** | **530** |
+
+### The product
+
+These are [`https://freightchain.fun/api/stats`](https://freightchain.fun/api/stats), read twice. Free and paid are the split of shifts started. The site and this table use this response, not a PostHog chart.
+
+PostHog counts those 6 finished shifts as 6 demo-wallet finishes and 0 others. A demo wallet runs the paid clock at 1/60.
+
+| | |
+| --- | ---: |
+| Shifts started | 32 |
+| Free | 29 |
+| Paid | 3 |
+| Finished | 6 |
+| Driven | 27.9 km |
+| Time | 1 h 7 min |
+| Crashes | 5 |
+| Drivers | 2 |
+| Stream donations | 0 |
+
+### Analytics
+
+Insight definitions are checked by `posthog-audit` (EU project 297915, dashboard 1006663). That skill does not change PostHog from here. Probe events (`surface=prod-check`) are not in the counts. A server ride event is `source=server`. Demo wallets are separate. Client `ride_completed` is not a metric.
+
+Audit: 2 fixes waiting, 37 insights match the spec, 8 left off the judge board. Exit 1 means a fix is waiting. It was not applied.
+Waiting: FC · Promo from an invite view; FC · Promo from a submitted code.
+
+| Window | Landing people | Real finishes | Demo finishes | Real sign-ins |
+| --- | ---: | ---: | ---: | ---: |
+| 8–12 Oct 2026 (judge board) | 106 | 0 | 6 | 54 |
+| 8 Oct 2026 through 2026-10-14 UTC | 131 | 0 | 6 | 59 |
+
+Refresh with `node .claude/skills/daily-tracktion-update/update.mjs`. The raw read is `docs/traction/latest.json`.
+
+<!-- traction:end -->
+
 The live site is [freightchain.fun](https://freightchain.fun). The program in this repo is [`8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p`](https://explorer.solana.com/address/8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p?cluster=devnet) on devnet (v3, upgraded in place on 12 Oct 2026). Its config account is [`9zRUyontAnwj65WHpEazpmW1eyHb8oYfPDvxcpMrSw7F`](https://explorer.solana.com/address/9zRUyontAnwj65WHpEazpmW1eyHb8oYfPDvxcpMrSw7F?cluster=devnet), 146 bytes, read from the public devnet RPC on 13 Oct 2026. An older program, `9e7phdJz…BSvx`, is still on devnet with its pools finished. The site does not sell into it.
 
 The entire project was built in two weeks during the hackathon, entering in the final 6 days of the submission window—the truck simulation and cockpit, the five routes, traffic, climate, the server, the lobby, the landing, the whitepaper, verified play, live watch, the admin page, the garage, promo codes, and the escrow program. Coding agents also read [`AGENTS.md`](AGENTS.md).
 
 ## Contents
 
+- [Traction](#traction)
 - [Open the site](#open-the-site)
 - [Ten minutes](#ten-minutes)
 - [What is on chain](#what-is-on-chain)
 - [Status](#status)
 - [Limits](#limits)
-- [Traction](#traction)
 - [The truck](#the-truck)
 - [Shifts](#shifts)
 - [How a finish is checked](#how-a-finish-is-checked)
@@ -172,84 +259,6 @@ Rollback for checkout is `PAYMENT_MODE=transfer` plus a redeploy. Mainnet waits 
 | What a spectator sees | [Replays and donations](docs/replay-and-donations/index.html) |
 | Whether the money tests pass | [Localnet walkthrough](docs/localnet-e2e/index.html) |
 | How the server is put together | [backend-architecture.md](docs/backend-architecture.md) |
-
-## Traction
-
-<!-- traction:start -->
-
-Public numbers for a reviewer, read 2026-10-14 09:29 UTC. Each headline was fetched three times. A partial page, a deleted post, a repost, a premiere, or a count the second source did not support is not in a headline. Links go to the page the number was read from.
-
-<table><tr>
-<td align="center" width="20%"><h2>2,467</h2><b>YouTube views</b><br>6 videos · 9 subscribers<br><a href="https://www.youtube.com/@FreightChainGame">@FreightChainGame</a></td>
-<td align="center" width="20%"><h2>21</h2><b>X posts</b><br><a href="https://x.com/FreightChainSol">@FreightChainSol</a><br>6 followers</td>
-<td align="center" width="20%"><h2>530</h2><b>X views on public posts</b><br>5 of 21 posts have a public view count</td>
-<td align="center" width="20%"><h2>32</h2><b>shifts started</b><br>6 finished · <a href="https://freightchain.fun/api/stats">api/stats</a></td>
-<td align="center" width="20%"><h2>27.9 km</h2><b>driven</b><br>2 drivers · 5 crashes</td>
-</tr></table>
-
-YouTube channel About says 443 views. That figure lags the videos and was not used. The headline is the sum of the videos below.
-Profile counts 21 posts. 5 are on the public posts tab with a view count checked twice. Logged-out X does not serve the replies tab, so those views are not guessed.
-
-### YouTube
-
-Watch-page `viewCount` for every video on the Videos and Shorts tabs. The grid count had to land within 5%.
-
-| Video | Views |
-| --- | ---: |
-| [Rating every NPC driver 1–10 (this one got 0)](https://www.youtube.com/watch?v=oJ6UpOxY-l8) | 960 |
-| [3 ways to fail the free level 💀](https://www.youtube.com/watch?v=hgXhGdLwSvE) | 951 |
-| [Rating every road 1–10](https://www.youtube.com/watch?v=3xCB4uJ_SAw) | 394 |
-| [Boss levels: 3 min, 5 min, 15 min, 1 hour](https://www.youtube.com/watch?v=2usi9vHQ-Z0) | 121 |
-| [FreightChain: The Road Never Ends. Your Shift Does.](https://www.youtube.com/watch?v=cFyQ9XlN5nQ) | 32 |
-| [Freight Chain: What We Built for Colosseum (in 59 seconds)](https://www.youtube.com/watch?v=QiH7NEoWH48) | 9 |
-| **Sum** | **2,467** |
-
-### X
-
-Profile post count is the number both public mirrors returned. View counts are the posts tab, checked against the status endpoint.
-
-| Post | Views |
-| --- | ---: |
-| [FreightChain is a long-haul truck game in the browser. You drive the cab yourself. The road never ends. Your shift does. One mistake ends th](https://x.com/FreightChainSol/status/2109242074876739715) | 139 |
-| [Looking for 20 people to sit in a truck cab for 3 minutes and tell me where it hurts. Free, no download. https://t.co/bqJQEIE96a #FreightCha](https://x.com/FreightChainSol/status/2109385632560591255) | 125 |
-| [In 1995, Desert Bus made you drive 8 real-time hours from Tucson to Las Vegas for 1 point. We kept the 8 hours and replaced the point with a](https://x.com/FreightChainSol/status/2109921865888071894) | 113 |
-| [A week ago i remembered 'Desert Bus' game. I thought, how to make it modern and kind a hyped ? Week ago, i have it.. #indiegame #desertbus #](https://x.com/FreightChainSol/status/2109769147496145392) | 99 |
-| [Just did multi-agent penetration and Solana program audit using Warp, my fav tool @warpdotdev Im not using any IDE for a long time, and i al](https://x.com/FreightChainSol/status/2109986407875760450) | 54 |
-| **Sum of these posts** | **530** |
-
-### The product
-
-These are [`https://freightchain.fun/api/stats`](https://freightchain.fun/api/stats), read twice. Free and paid are the split of shifts started. The site and this table use this response, not a PostHog chart.
-
-PostHog counts those 6 finished shifts as 6 demo-wallet finishes and 0 others. A demo wallet runs the paid clock at 1/60.
-
-| | |
-| --- | ---: |
-| Shifts started | 32 |
-| Free | 29 |
-| Paid | 3 |
-| Finished | 6 |
-| Driven | 27.9 km |
-| Time | 1 h 7 min |
-| Crashes | 5 |
-| Drivers | 2 |
-| Stream donations | 0 |
-
-### Analytics
-
-Insight definitions are checked by `posthog-audit` (EU project 297915, dashboard 1006663). That skill does not change PostHog from here. Probe events (`surface=prod-check`) are not in the counts. A server ride event is `source=server`. Demo wallets are separate. Client `ride_completed` is not a metric.
-
-Audit: 2 fixes waiting, 37 insights match the spec, 8 left off the judge board. Exit 1 means a fix is waiting. It was not applied.
-Waiting: FC · Promo from an invite view; FC · Promo from a submitted code.
-
-| Window | Landing people | Real finishes | Demo finishes | Real sign-ins |
-| --- | ---: | ---: | ---: | ---: |
-| 8–12 Oct 2026 (judge board) | 106 | 0 | 6 | 54 |
-| 8 Oct 2026 through 2026-10-14 UTC | 131 | 0 | 6 | 59 |
-
-Refresh with `node .claude/skills/daily-tracktion-update/update.mjs`. The raw read is `docs/traction/latest.json`.
-
-<!-- traction:end -->
 
 ## The truck
 
@@ -434,7 +443,6 @@ Skills live in `.claude/skills/<name>/`. A coding agent reads that folder's `SKI
 | `pentest-audit` | Adversarial penetration review across on-chain escrow, server money, anti-cheat, identity, client, and infra; multi-agent quorum review | `./pentest/bin/pentest run --surface all` · `./pentest/bin/pentest report` |
 
 A new, renamed, or removed skill updates this table in the same change. The rule is [`AGENTS.md`](AGENTS.md) → "Maps stay current".
-
 
 ## Run it
 

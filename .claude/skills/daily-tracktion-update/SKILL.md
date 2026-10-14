@@ -17,7 +17,7 @@ node .claude/skills/daily-tracktion-update/update.mjs
 node .claude/skills/daily-tracktion-update/update.mjs --self-test
 ```
 
-The command rewrites the block between `<!-- traction:start -->` and `<!-- traction:end -->` in `README.md`, and writes `docs/traction/latest.json`. It does not touch the rest of the README.
+The command rewrites the block between `<!-- traction:start -->` and `<!-- traction:end -->` in `README.md`, and writes `docs/traction/latest.json`. The `## Traction` heading is placed on the line after the game banner (`landing/public/media/day.webp`). The headline has two rows: social and the public stats, then PostHog (landing people, whitepaper readers, real sign-ins, real starts, finishes split demo and real). The judge window and the through-today window both stay in the table under Analytics.
 
 Sources, in this order of what a headline is allowed to claim:
 
