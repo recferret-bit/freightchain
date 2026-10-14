@@ -288,8 +288,8 @@ addEventListener('keydown', e => {
   else if (e.key === 'End') show(slides.length - 1);
   else if (e.key === 'f' || e.key === 'F') document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
 });
-/* the cards of slides 0–3 (.fx) and slide 0's tags: the mouse nudges them (parallax), a tap / click lifts one (.hot) instead of turning the page */
-['product', 'game', 'insight', 'play'].forEach(id => document.getElementById(`s-${id}`)?.classList.add('fx'));
+/* the cards of slides 0–4 (.fx) and slide 0's tags: the mouse nudges them (parallax), a tap / click lifts one (.hot) instead of turning the page */
+['product', 'game', 'insight', 'play', 'money'].forEach(id => document.getElementById(`s-${id}`)?.classList.add('fx'));
 const fxVis = [...deck.querySelectorAll('.fx .vis')];
 const setTilt = (v, px, py) => { v.style.setProperty('--px', px); v.style.setProperty('--py', py); };
 fxVis.forEach(v => {

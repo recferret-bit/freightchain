@@ -278,3 +278,5 @@ h1 small{font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;c
 @keyframes badgepop{0%{scale:1}40%{scale:1.24}100%{scale:1.08}}
 
 .fx .v-sub{--r:2deg;--k:-40;--dl:-3.5s}   /* slide 3 (Play): the small receipt next to the free-run screen */
+
+.L-money .v-main{transform-origin:0 50%}   /* money slide: the diagram grows rightwards, not over the headline's last letter */
