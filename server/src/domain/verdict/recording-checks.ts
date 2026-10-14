@@ -87,7 +87,7 @@ export function checkSamples(batches: readonly BatchFacts[], layout: Pick<RoadLa
 export const recordedSecondsOf = (b: BatchFacts): number => {
   const s = b.summary, span = s.first && s.last ? s.last[0] - s.first[0] + 1 / SAMPLE_HZ : 0;
   if (s.fault) return Math.max(0, b.t1 - b.t0);   // its samples stop at the fault, which rejects on its own – no coverage noise beside it
-  return Math.max(0, Math.min(b.t1 - b.t0, s.samples / SAMPLE_HZ, span));
+  return Math.max(0, Math.min(b.t1 - b.t0, (s.samples - (s.dupT ?? 0)) / SAMPLE_HZ, span));   // rows of one instant record no time
 };
 
 /** The recording must end where the ride said it ended, and cover the time the server credited – or, if the server credited less than the distance needs
@@ -114,15 +114,16 @@ export function checkAgreement(ride: RideFacts, batches: readonly BatchFacts[]):
     a batch from before (no `gap` / `motion` in its summary) gets no opinion on that part. `layout` = the ride's road: a fork's road switch at a batch
     boundary is left out as inside a batch. */
 export function checkMotion(ride: RideFacts, batches: readonly BatchFacts[], layout: Pick<RoadLayout, 'forkSwitch'> | null = null): { reasons: VerdictReason[]; maxGap?: number; speedExcess?: number } {
-  const withSamples = batches.filter((b) => b.summary.first && b.summary.last);
+  const withSamples = batches.filter((b) => (b.summary.first && b.summary.last) || b.summary.fault);   // a faulted batch stays in: it breaks the steps (an EMPTY one does not)
   if (withSamples.length === 0) return { reasons: [] };
   let maxGap = 0, gapsKnown = true, excess = 0, motionKnown = true;
   withSamples.forEach((b, i) => {
     const s = b.summary;
+    if (s.fault) return;   // a batch with a fault rejects on its own; its cut-short samples say nothing here – nor the steps beside it (below)
     if (s.samples > 1) { if (s.gap === undefined) gapsKnown = false; else maxGap = Math.max(maxGap, s.gap); }
     if (!s.motion || !s.edgeV) motionKnown = false; else excess += s.motion.ds - s.motion.vdt;
     const before = withSamples[i - 1]?.summary;
-    if (!before?.last || !s.first || withSamples[i - 1]?.seq !== b.seq - 1) return;   // a missing batch is the chain's business (missing-batches)
+    if (!before || before.fault || !before.last || !s.first) return;   // across an EMPTY batch too (it is not in withSamples; the chain rejects a missing one): an empty batch at a pit must not hide the step
     const dt = Math.max(0, s.first[0] - before.last[0]), ds = s.first[1] - before.last[1];
     maxGap = Math.max(maxGap, dt);
     const over = before.edgeV && s.edgeV ? ds - Math.max(before.edgeV[1], s.edgeV[0]) * dt : 0;

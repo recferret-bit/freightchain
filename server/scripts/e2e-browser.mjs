@@ -2,7 +2,7 @@
 // handed to Chrome): sign in → create a free ride → play.html?ride=… takes the server's seed + shift length → START → heartbeats → pause → END SHIFT → server verdict.
 // Usage: FREE_RIDE_SECONDS=3 SOL_USD=118 TREASURY_PUBKEY=<any address> PORT=3111 node dist/main.js  (other terminal; PostgreSQL up + migrated: npm run db:up && npm run prisma:deploy)   then   BASE=http://localhost:3111 node scripts/e2e-browser.mjs
 import nacl from 'tweetnacl'; import bs58 from 'bs58';
-import { launch, sleep, answerPrompts } from '../../client/tools/cdp.mjs';
+import { launch, sleep, answerPrompts, driveHook } from '../../client/tools/cdp.mjs';
 const BASE = process.env.BASE || 'http://localhost:3111', MIN = +(process.env.FREE_RIDE_SECONDS || 3);
 const fails = []; const check = (name, ok, extra = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${extra ? ' – ' + extra : ''}`); if (!ok) fails.push(name); };
 const post = async (path, body, cookie) => { const r = await fetch(`${BASE}/api/${path}`, { method: 'POST', headers: { 'content-type': 'application/json', ...(cookie && { cookie }) }, body: JSON.stringify(body) }); return { r, j: await r.json() }; };
@@ -26,7 +26,7 @@ check('road seed = the server seed', (await ev('__game.roads.seed')) === ride.se
 await shot('online-drive');
 check('the ride is being recorded', await ev('__game.telemetry.on === true && __game.telemetry.rideId === ' + JSON.stringify(ride.id)));
 // headless can't really drive: grow the distance with the GAME clock at 20 m/s (under the governor, so neither the heartbeat check nor the recording's teleport check trips)
-await ev('(() => { let last = __game.st.t; setInterval(() => { const g = __game.st; if (g.mode === "drive") g.s += 20 * Math.max(0, g.t - last); last = g.t; }, 50); })()');
+await ev(driveHook(20));
 // …and press keys the way a person does (real CDP key events through the game's own listeners, jittered holds and gaps) – the verdict reads their timing
 const press = async (code, key, hold) => { await send('Input.dispatchKeyEvent', { type: 'keyDown', code, key }); await sleep(hold); await send('Input.dispatchKeyEvent', { type: 'keyUp', code, key }); };
 const KEYS = [['KeyW', 'w'], ['KeyA', 'a'], ['KeyD', 'd'], ['KeyW', 'w'], ['ArrowUp', 'ArrowUp']];

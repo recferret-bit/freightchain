@@ -61,7 +61,7 @@ export async function simulate({ base = 'http://localhost:3000', drive = 2, aban
     let wall = Date.now(), tick = 0;
     while (running) {
       await sleep(100);
-      const now = Date.now(), dt = (now - wall) / 1000; wall = now; tick++;
+      const now = Date.now(), dt = Math.min(0.1, (now - wall) / 1000); wall = now;   // the GAME clock: frames are clamped, one sample a 0.1 s – a stalled loop (an upload, a busy machine) is no gap in game time tick++;
       for (const d of drivers) {
         if (d.done) continue;
         if (d.role === 'abandon' && now - d.t0 > abandonAfter * 1000) { d.done = true; log({ event: 'abandoned', ride: d.id }); continue; }   // the tab "closes": nothing more is sent

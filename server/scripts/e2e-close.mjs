@@ -11,7 +11,7 @@
 //   comes from the back/forward cache and reloads instead of driving on (navigation type 'reload'); a COMPLETE shift whose tab closes is COMPLETED and
 //   its recording still VERIFIED (closed right after a batch went up – a lost tail only costs coverage, verdict.scenarios.ts covers a whole lost batch).
 import nacl from 'tweetnacl'; import bs58 from 'bs58';
-import { launch, sleep, answerPrompts } from '../../client/tools/cdp.mjs';
+import { launch, sleep, answerPrompts, driveHook } from '../../client/tools/cdp.mjs';
 const BASE = process.env.BASE || 'http://localhost:3111';   // where Chrome opens the landing + lobby
 const SERVER = process.env.SERVER || BASE;                   // where this script talks to the API (Node can't resolve *.localhost)
 const split = BASE !== SERVER, apex = new URL(BASE).hostname;
@@ -85,7 +85,7 @@ await B.send('Page.navigate', { url: `${GAME}/play.html?ride=${done.id}` }); awa
 await B.ev(`document.getElementById('go').click()`); await sleep(800);
 // headless can't drive: grow s with the GAME clock at 20 m/s (under the governor) and press keys like a person (as in e2e-browser.mjs – the verdict reads them)
 await B.ev('__game.trip.finish = false');   // the free run ends itself at the line (client/js/trips.js); this check is about the tab closing on a complete shift that drives on
-await B.ev('(() => { let last = __game.st.t; setInterval(() => { const g = __game.st; if (g.mode === "drive") g.s += 20 * Math.max(0, g.t - last); last = g.t; }, 50); })()');
+await B.ev(driveHook(20));
 const press = async (code, key, hold) => { await B.send('Input.dispatchKeyEvent', { type: 'keyDown', code, key }); await sleep(hold); await B.send('Input.dispatchKeyEvent', { type: 'keyUp', code, key }); };
 const KEYS = [['KeyW', 'w'], ['KeyA', 'a'], ['KeyD', 'd'], ['KeyW', 'w'], ['ArrowUp', 'ArrowUp']];
 const stopPrompts = answerPrompts({ ev: B.ev, send: B.send });   // dispatch prompts arrive with the heartbeats of a 20 s shift – answered like a person, so the verdict stays VERIFIED

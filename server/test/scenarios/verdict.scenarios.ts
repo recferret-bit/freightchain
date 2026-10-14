@@ -188,7 +188,7 @@ export function verdictScenarios(h: () => Harness): void {
       await d.agent.post(`/api/rides/${r.id}/start`).expect(200);
       sec(2);
       // 2 s in: the budget is 2 × 4 kB + the slack; a batch of 2000 input events is ≈ 40 kB, so the slack runs out after a few of them
-      const fat = (seq: number, prevHash: string) => ({ seq, prevHash, t0: 0, t1: 1, samples: [], inputs: Array.from({ length: 2000 }, (_, i) => [i, 'KeyW', (i % 2) as 0 | 1]) as [number, string, 0 | 1][], hash: null });
+      const fat = (seq: number, prevHash: string) => ({ seq, prevHash, t0: 0, t1: 1, samples: [[0.5, 0, 2.4, 0, 0, 900, 1, 100, 0, 0, 0, 0]], inputs: Array.from({ length: 2000 }, (_, i) => [i, 'KeyW', (i % 2) as 0 | 1]) as [number, string, 0 | 1][], hash: null });
       let prev = r.id, bytes = 0, refused: unknown = null;
       for (let seq = 0; seq < 20 && !refused; seq++) {
         const body = fat(seq, prev);

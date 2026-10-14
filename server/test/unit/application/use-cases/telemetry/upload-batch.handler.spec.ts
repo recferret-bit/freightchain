@@ -71,6 +71,22 @@ describe('UploadBatchHandler', () => {
     for (const b of far.slice(1, 4)) expect(await up('w', ride.id, b)).toMatchObject({ stored: true });
   });
 
+  it('an empty batch (the flush right after a cut) never cuts the tail the next batch is measured with; two empty batches in a row are refused', async () => {
+    const { ctx, up } = setup();
+    const ride = await ctx.freeRide('w', true);
+    ctx.clock.advance(120);
+    const [b0, b1, b2] = recording(ride.id, { seconds: 45 });
+    const empty = { ...b1!, samples: [], t1: b1!.t0 };
+    await up('w', ride.id, b0!);
+    expect(await up('w', ride.id, empty)).toMatchObject({ stored: true });
+    await expect(up('w', ride.id, { ...b2!, seq: 2, samples: [] })).rejects.toThrow(/two empty batches in a row/);
+    expect(await up('w', ride.id, { ...b2!, seq: 2 })).toMatchObject({ stored: true });
+    const stored = await ctx.batches.listByRide(ride.id);
+    const { summariseBatch } = await import('../../../../../src/domain/telemetry/batch-summary.js');
+    const { roadPlanFor } = await import('../../../../../src/domain/road/road-plan.js');
+    expect(stored[2]!.summary.world).toEqual(summariseBatch(2, b2!.t0, b2!.t1, b2!.samples, b2!.inputs, roadPlanFor(ride.seed, ride.trip), b0!.samples).world);   // measured with batch 0's tail
+  });
+
   it('takes the batches in order: batch n+1 waits (429, the game retries) until batch n is stored – a pass on the cut is always measured (pentest M10)', async () => {
     const { ctx, up } = setup();
     const ride = await ctx.freeRide('w', true);
@@ -108,7 +124,7 @@ describe('UploadBatchHandler', () => {
     const { ctx, up } = setup();
     const ride = await ctx.freeRide('w', true);
     ctx.clock.advance(1);
-    const fat = (seq: number): Parameters<typeof up>[2] => ({ seq, prevHash: seq === 0 ? ride.id : `unhashed-${seq - 1}`, t0: 0, t1: 1, samples: [], inputs: Array.from({ length: 2000 }, (_, i) => [i, 'KeyW', (i % 2) as 0 | 1]), hash: null });
+    const fat = (seq: number): Parameters<typeof up>[2] => ({ seq, prevHash: seq === 0 ? ride.id : `unhashed-${seq - 1}`, t0: 0, t1: 1, samples: [[0.5, 0, 2.4, 0, 0, 900, 1, 100, 0, 0, 0, 0]], inputs: Array.from({ length: 2000 }, (_, i) => [i, 'KeyW', (i % 2) as 0 | 1]), hash: null });   // one sample: two EMPTY batches in a row are refused before the budget
     let refused: unknown = null, stored = 0;
     for (let seq = 0; seq < 20 && !refused; seq++) await up('w', ride.id, fat(seq)).then(() => stored++, (e: unknown) => { refused = e; });
     expect(refused).toBeInstanceOf(BadRequestError);

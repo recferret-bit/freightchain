@@ -9,7 +9,7 @@
 // Deadlines run on the validator's clock (no warp): the run is paced by them (PREP_A / PLAY_A / PREP_B / PREP_C seconds, defaults below).
 import nacl from 'tweetnacl'; import bs58 from 'bs58'; import { readFileSync, writeFileSync } from 'node:fs'; import { execFileSync } from 'node:child_process';
 import { Connection, Keypair, PublicKey, SYSVAR_CLOCK_PUBKEY, SystemProgram, Transaction, sendAndConfirmTransaction } from '@solana/web3.js';
-import { launch, sleep } from '../../client/tools/cdp.mjs';
+import { launch, sleep, driveHook } from '../../client/tools/cdp.mjs';
 import { PoolProgramCodec } from '../dist/infrastructure/solana/pool-program.codec.js';
 import { POOL_PROGRAM_IDL } from '../dist/infrastructure/solana/pool-program.idl.js';
 import { closeSplit, prizeBound } from '../dist/domain/economy/vault-split.js';
@@ -109,7 +109,7 @@ async function ride(h, p, tier) {
   await h.send('Page.navigate', { url: `${BASE}/play.html?ride=${r.j.id}` });
   await until(() => h.ev('!!window.__game'), 30000, 200);
   await h.ev('document.getElementById("go").click()'); await sleep(800);
-  await h.ev('(() => { let last = __game.st.t; setInterval(() => { const g = __game.st; if (g.mode === "drive") g.s += 20 * Math.max(0, g.t - last); last = g.t; }, 50); })()');
+  await h.ev(driveHook(20));
   const KEYS_ = [['KeyW', 'w'], ['KeyA', 'a'], ['KeyD', 'd'], ['KeyW', 'w'], ['ArrowUp', 'ArrowUp']];
   const t0 = Date.now();
   for (let i = 0; (i < 12 || !(await h.ev('__game.st.complete'))) && Date.now() - t0 < 60000; i++) {

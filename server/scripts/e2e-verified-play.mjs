@@ -10,7 +10,7 @@
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import nacl from 'tweetnacl'; import bs58 from 'bs58';
-import { launch, sleep, answerPrompts } from '../../client/tools/cdp.mjs';
+import { launch, sleep, answerPrompts, driveHook } from '../../client/tools/cdp.mjs';
 import { honestRoad } from './road-damage.mjs';
 
 const BASE = process.env.BASE || 'http://localhost:3111', MIN = +(process.env.FREE_RIDE_SECONDS || 40), PORT = +process.env.CHROME_PORT || 9340, PORT2 = +process.env.CHROME_PORT2 || PORT + 1;
@@ -62,7 +62,7 @@ async function apiDrive({ name, inputs = 'human', answer = 'human', mutate = () 
   let wall = Date.now(), lastBeat = wall, gasDown = false, nextKey = 600;
   while (true) {
     await sleep(100);
-    const now = Date.now(), dt = (now - wall) / 1000; wall = now;
+    const now = Date.now(), dt = Math.min(0.1, (now - wall) / 1000); wall = now;   // the GAME clock: frames are clamped, one sample a 0.1 s – a stalled loop (an upload, a busy machine) is no gap in game time
     d.t += dt; d.s += speed * dt;
     d.samples.push(row(d.t, d.s, speed));
     const ms = now - d.t0;
@@ -104,7 +104,7 @@ async function byteBudget() {
   await sleep(1500);
   let prev = ride.id, stored = 0, refused = null;
   for (let seq = 0; seq < 30 && !refused; seq++) {
-    const body = { seq, prevHash: prev, t0: 0, t1: 1, samples: [], inputs: Array.from({ length: 2000 }, (_, i) => [i, 'KeyW', i % 2]), hash: null };
+    const body = { seq, prevHash: prev, t0: 0, t1: 1, samples: [[0.5, 0, 2.4, 0, 0, 900, 1, 100, 0, 0, 0, 0]], inputs: Array.from({ length: 2000 }, (_, i) => [i, 'KeyW', i % 2]), hash: null };   // one sample each: two empty batches in a row are refused first
     const res = await call('POST', `rides/${ride.id}/batches`, { body, ...who });
     if (res.status === 400) refused = res.j; else { stored++; prev = `unhashed-${seq}`; }
   }
@@ -123,7 +123,7 @@ async function chromeDrive({ port, shotsDir, mode }) {
   const booted = await tab.ev('!!window.__game');
   await tab.ev('document.getElementById("go").click()'); await sleep(800);
   // headless can't really drive: grow the distance with the GAME clock at 20 m/s (under the governor)
-  await tab.ev('(() => { let last = __game.st.t; setInterval(() => { const g = __game.st; if (g.mode === "drive") g.s += 20 * Math.max(0, g.t - last); last = g.t; }, 50); })()');
+  await tab.ev(driveHook(20));
   const press = async (code, key, hold) => { await tab.send('Input.dispatchKeyEvent', { type: 'keyDown', code, key }); await sleep(hold); await tab.send('Input.dispatchKeyEvent', { type: 'keyUp', code, key }); };
   const KEYS = [['KeyW', 'w'], ['KeyA', 'a'], ['KeyD', 'd'], ['KeyW', 'w'], ['ArrowUp', 'ArrowUp']];
   const answered = [];

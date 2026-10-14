@@ -277,7 +277,7 @@ export class MemoryRideQuery extends RideQueryPort {
 
   async forRejudge(f: RejudgeFilter): Promise<{ id: string; verdict: string | null }[]> {
     return [...this.db.rides.values()]
-      .filter(({ props: r }) => r.status === RideStatus.Completed && (!f.since || (r.endedAt?.getTime() ?? 0) >= f.since.getTime()))
+      .filter(({ props: r }) => r.status === RideStatus.Completed && (!f.since || (r.endedAt?.getTime() ?? 0) >= f.since.getTime()) && !(r.poolId !== null && [...this.db.poolPayouts.values()].some((p) => p.poolId === r.poolId)))
       .map(({ props: r, seq }) => ({ id: r.id, verdict: this.db.verdicts.get(r.id)?.status ?? null, endedAt: r.endedAt?.getTime() ?? 0, seq }))
       .filter((r) => f.verdict === 'all' || (f.verdict === 'unjudged' ? r.verdict === null : r.verdict === f.verdict))
       .sort((a, b) => a.endedAt - b.endedAt || a.seq - b.seq).slice(0, f.limit).map(({ id, verdict }) => ({ id, verdict }));

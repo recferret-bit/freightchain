@@ -136,8 +136,10 @@ export class RideQueryPrismaRepository extends RideQueryPort {
 
   async forRejudge(f: RejudgeFilter): Promise<{ id: string; verdict: string | null }[]> {
     const byVerdict: Prisma.RideWhereInput = f.verdict === 'all' ? {} : f.verdict === 'unjudged' ? { verdict: { is: null } } : { verdict: { is: { status: f.verdict } } };
+    // a pool whose payout plan exists is decided: its rides are never judged again (a new rule must not move money already planned or paid)
+    const planned = (await this.prisma.poolPayout.findMany({ distinct: ['poolId'], select: { poolId: true } })).map((p) => p.poolId);
     const rows = await this.prisma.ride.findMany({
-      where: { status: 'completed', ...byVerdict, ...(f.since ? { endedAt: { gte: f.since } } : {}) },
+      where: { status: 'completed', ...byVerdict, ...(f.since ? { endedAt: { gte: f.since } } : {}), ...(planned.length ? { OR: [{ poolId: null }, { poolId: { notIn: planned } }] } : {}) },
       orderBy: [{ endedAt: 'asc' }, { seq: 'asc' }], take: f.limit, include: { verdict: { select: { status: true } } },
     });
     return rows.map((r) => ({ id: r.id, verdict: r.verdict?.status ?? null }));

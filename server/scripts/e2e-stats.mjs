@@ -7,7 +7,7 @@
 // Or: bash .claude/skills/run-tests/e2e.sh stats. Needs DATABASE_URL + CLI (the built cli/index.js) for the reconcile step.
 import { spawnSync } from 'node:child_process';
 import nacl from 'tweetnacl'; import bs58 from 'bs58';
-import { launch, sleep } from '../../client/tools/cdp.mjs';
+import { launch, sleep, driveHook } from '../../client/tools/cdp.mjs';
 const BASE = process.env.BASE || 'http://localhost:3111';
 const CLI = process.env.CLI || 'dist/cli/index.js';
 const fails = []; const check = (name, ok, extra = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${extra ? ' – ' + extra : ''}`); if (!ok) fails.push(name); };
@@ -62,8 +62,8 @@ await B.send('Page.navigate', { url: `${BASE}/play.html?ride=${first.id}` });
 await until(() => B.ev(`!!document.getElementById('go') && !!window.__game`), 30_000);
 await B.ev(`document.getElementById('go').click()`);
 await sleep(800);
-// headless can't drive: the clock moves the truck along the road at 14 m/s (under the governor), the first car ahead is a parked sedan the truck rams
-await B.ev(`(() => { const g = __game, st = g.st; st.park = false; st.keyOn = true; st.engineOn = true; let last = st.t; window.__rammer = setInterval(() => { if (st.mode !== 'drive') return; st.s += 14 * Math.max(0, st.t - last); last = st.t; st.v = Math.max(st.v, 12); if (st.s > g.net.Sm + 10) { st.d = 2.4; st.psi = 0; } }, 40); })()`);
+// headless can't drive: driveHook holds the truck at 14 m/s (under the governor) and the game moves it; the first car ahead is a parked sedan the truck rams
+await B.ev(driveHook(14, 'st.park = false; st.keyOn = true; st.engineOn = true;', 2.4));   // the right lane on the main road: the parked sedan is in it
 check('game: the ride is on the road', await until(async () => (await api('live')).rides.some(r => r.id === first.id), 15_000));
 const reached = await until(() => B.ev(`__game.st.s > __game.net.Sm + 30`), 60_000, 500);
 check('game: the truck is out on the main road', reached, `s=${await B.ev('__game.st.s.toFixed(0)')}`);
@@ -73,7 +73,7 @@ await until(async () => (await api(`rides/${first.id}`, me.cookie)).status === '
 check('game: the real client counted the contact with a vehicle', (await B.ev('__game.st.crashV')) >= 1, `crashV=${await B.ev('__game.st.crashV')}`);
 const ended = await until(async () => (await api(`rides/${first.id}`, me.cookie)).status === 'failed', 30_000);
 check('game: the ride ended (a crash fails it)', ended, (await api(`rides/${first.id}`, me.cookie)).reason);
-await B.ev('clearInterval(window.__rammer)');
+await B.ev('clearInterval(window.__drive)');
 const afterCrash = await career(me), global1 = await stats();
 check('server: the rider\'s record counted the failed ride – distance, time, the vehicle crash, no finished shift', afterCrash.rides === 1 && afterCrash.ridesFree === 1 && afterCrash.ridesPaid === 0 && afterCrash.ridesCompleted === 0 && afterCrash.metres > 50 && afterCrash.seconds > 0 && afterCrash.crashesVehicle >= 1 && afterCrash.crashesBuilding === 0, JSON.stringify(afterCrash));
 check('server: GET /api/stats = the same numbers (the game\'s totals are this rider\'s so far)', global1.rides === 1 && global1.metres === afterCrash.metres && global1.crashesVehicle === afterCrash.crashesVehicle && global1.drivers === 1, JSON.stringify(global1));

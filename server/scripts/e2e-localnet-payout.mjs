@@ -121,7 +121,7 @@ async function apiRide(p, { seconds = 20, speed = 15, extra = 60, mutate = () =>
   let wall = Date.now(), lastBeat = 0, gasDown = false, nextKey = 600;
   for (;;) {
     await sleep(100);
-    const now = Date.now(), dt = (now - wall) / 1000; wall = now;
+    const now = Date.now(), dt = Math.min(0.1, (now - wall) / 1000); wall = now;   // the GAME clock: frames are clamped, one sample a 0.1 s – a stalled loop (an upload, a busy machine) is no gap in game time
     d.t += dt; d.s += speed * dt;
     d.samples.push(row(d.t, d.s, speed));
     const ms = now - d.t0;

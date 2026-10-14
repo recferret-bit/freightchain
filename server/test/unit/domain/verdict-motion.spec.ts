@@ -3,6 +3,8 @@ import { MAX_SPEED } from '../../../src/domain/rides/ride-rules.js';
 import { RideBatch, type BatchBody, type BatchFacts, type InputEvent } from '../../../src/domain/telemetry/ride-batch.entity.js';
 import { RideVerdict } from '../../../src/domain/verdict/ride-verdict.entity.js';
 import { checkMotion, recordedSecondsOf } from '../../../src/domain/verdict/recording-checks.js';
+import { summariseBatch, parseSummary } from '../../../src/domain/telemetry/batch-summary.js';
+import { roadPlanFor } from '../../../src/domain/road/road-plan.js';
 import { MISMATCH_METRES, SAMPLE_GAP_REJECT } from '../../../src/domain/verdict/verdict-rules.js';
 import { VerdictStatus } from '../../../src/domain/verdict/verdict.dto.js';
 import { hashBatch, recording } from '../../support/recording.js';
@@ -108,6 +110,52 @@ describe('the recording against itself', () => {
     expect(v.status, JSON.stringify(v.reasons)).toBe(VerdictStatus.Verified);
     expect(v.snapshot().scores.recording.maxGap).toBeUndefined();
     expect(v.snapshot().scores.recording.speedExcess).toBeUndefined();
+  });
+
+  it('review M1: an EMPTY batch between two batches does not hide the step across it (sample-gap / speed excess are measured across)', () => {
+    const a = Array.from({ length: 150 }, (_, i) => row(i * 0.1, i * 2.8, MAX_SPEED));
+    const c = Array.from({ length: 150 }, (_, i) => row(20 + i * 0.1, 2000 + i * 2.8, MAX_SPEED));   // 5 s and 1.6 km later
+    const facts = chained([{ seq: 0, t0: 0, t1: 15, samples: a, inputs: [] }, { seq: 1, t0: 15, t1: 15, samples: [], inputs: [] }, { seq: 2, t0: 15, t1: 35, samples: c, inputs: [] }]);
+    expect(checkMotion({ rideId: 'r', driveSeconds: 35, distance: 2417 }, facts).reasons.map((r) => r.code)).toEqual(expect.arrayContaining(['sample-gap', 'speed-mismatch']));
+  });
+
+  it('review M2 / M3: absurd values are a bad sample, refused before anything is measured – no hours-long road plan, no Infinity in the summary', () => {
+    const plan = roadPlanFor(7, '1h');
+    const t = Date.now();
+    const huge = summariseBatch(0, 0, 15, [row(0, 0, 10), row(0.1, 1e12, 10)], [], plan);
+    expect(Date.now() - t).toBeLessThan(500);
+    expect(huge.fault?.code).toBe('bad-sample');
+    expect(huge.world).toBeNull();
+    const negative = summariseBatch(0, 0, 15, [row(0, 0, -1e307), row(0.1, 1, 10)], []);
+    expect(negative.fault?.code).toBe('bad-sample');
+    expect(JSON.stringify(negative)).not.toMatch(/null,null|Infinity/);
+    const fine = summariseBatch(0, 0, 15, Array.from({ length: 150 }, (_, i) => row(i * 0.1, i * 2, 20)), []);
+    expect(parseSummary(JSON.parse(JSON.stringify(fine)))).toEqual(fine);   // what is stored reads back whole – motion, edgeV, gap included
+  });
+
+  it('review M4: a speedometer read above the governor buys no distance – the game clamps v at exactly 28 m/s', () => {
+    const rows = Array.from({ length: 600 }, (_, i) => row(i * 0.1, i * 2.94, 29.4));   // 1.05× the governor, the speedometer agreeing
+    const bodies = [0, 1, 2, 3].map((seq) => ({ seq, t0: seq * 15, t1: seq * 15 + 15, samples: rows.slice(seq * 150, seq * 150 + 150), inputs: [] }));
+    expect(checkMotion({ rideId: 'r', driveSeconds: 60, distance: 1764 }, chained(bodies)).reasons.map((r) => r.code)).toEqual(['speed-mismatch']);   // 88 m over 1.76 km: past 50 m + 1 %
+    const long = Array.from({ length: 36000 }, (_, i) => row(i * 0.1, i * 2.94, 29.4));
+    const many = Array.from({ length: 240 }, (_, seq) => ({ seq, t0: seq * 15, t1: seq * 15 + 15, samples: long.slice(seq * 150, seq * 150 + 150), inputs: [] }));
+    expect(checkMotion({ rideId: 'r', driveSeconds: 3600, distance: 105_840 }, chained(many)).reasons.map((r) => r.code)).toEqual(['speed-mismatch']);
+  });
+
+  it('review B2 / B3: rows repeating one instant record no time; a game clock that steps back at all is a fault', () => {
+    const repeated = Array.from({ length: 150 }, (_, i) => row(Math.floor(i / 10), Math.floor(i / 10) * 28, MAX_SPEED));   // one real row a second, ten times each
+    expect(recordedSecondsOf(chained([{ seq: 0, t0: 0, t1: 15, samples: repeated, inputs: [] }])[0]!)).toBeCloseTo(1.5);
+    const back = [row(0, 0, 20), row(0.2, 4, 20), row(0.16, 4, 20), row(0.36, 8, 20)];
+    expect(summariseBatch(0, 0, 15, back, []).fault?.code).toBe('sample-out-of-order');
+  });
+
+  it('a batch with a fault (it rejects on its own) is no gap: the steps beside it are not measured, whether its rows stopped early or were refused whole', () => {
+    const rows = (t0: number) => Array.from({ length: 150 }, (_, i) => row(t0 + i * 0.1, (t0 + i * 0.1) * 20, 20));
+    for (const bad of [[...rows(15).slice(0, 3), [16, 300, 2.4, 0, 20]], rows(15).map((r, i) => (i === 3 ? [r[0]! + 60, ...r.slice(1)] : r))]) {
+      const facts = chained([{ seq: 0, t0: 0, t1: 15, samples: rows(0), inputs: [] }, { seq: 1, t0: 15, t1: 30, samples: bad, inputs: [] }, { seq: 2, t0: 30, t1: 45, samples: rows(30), inputs: [] }]);
+      expect(facts[1]!.summary.fault).not.toBeNull();
+      expect(checkMotion({ rideId: 'r', driveSeconds: 45, distance: 900 }, facts).reasons).toEqual([]);
+    }
   });
 
   it('checkMotion: thresholds at their edges', () => {

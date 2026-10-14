@@ -170,6 +170,19 @@ describe('RideQueryPrismaRepository (PostgreSQL)', () => {
     expect(await ids({ verdict: 'all', since: null, limit: 2 })).toEqual([[a.id, 'verified'], [b.id, 'flagged']]);
   });
 
+  it('forRejudge never returns a ride of a pool whose payout plan exists – decided money is not judged again', async () => {
+    const { PoolPrismaRepository } = await import('../../../src/infrastructure/prisma/repositories/pool.prisma.repository.js');
+    const { aPool } = await import('../../support/pools.js');
+    const pools = new PoolPrismaRepository(prisma);
+    for (const id of [1, 2]) await pools.upsert(aPool({ id }, at(0)));
+    const inPool = async (poolId: number, wallet: string) => { const r = await ride(wallet, { paid: true, metres: 300, outcome: 'shift', verdict: 'verified' }); await prisma.ride.update({ where: { id: r.id }, data: { poolId } }); return r.id; };
+    const planned = await inPool(1, 'alice'), open = await inPool(2, 'bob'), free = (await ride('carol', { metres: 140, outcome: 'shift', verdict: 'verified' })).id;
+    await prisma.poolPayout.create({ data: { poolId: 1, rank: 1, wallet: 'alice', lamports: 1n, status: 'planned', createdAt: at(0), updatedAt: at(0) } });
+    const ids = (await query.forRejudge({ verdict: 'all', since: null, limit: 10 })).map((r) => r.id);
+    expect(ids).not.toContain(planned);
+    expect(ids).toEqual(expect.arrayContaining([open, free]));
+  });
+
   it('leaderboard: completed only, total distance, ties → more rides → earlier first finish → wallet; boards separate paid / free / round', async () => {
     await ride('alice', { paid: true, metres: 500, outcome: 'shift', start: 10 });
     await ride('bob', { paid: true, metres: 300, outcome: 'shift', start: 0 });

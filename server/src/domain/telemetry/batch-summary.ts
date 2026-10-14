@@ -1,8 +1,8 @@
-import { MAX_SPEED } from '../rides/ride-rules.js';
+import { MAX_REPORTED_DISTANCE, MAX_SPEED } from '../rides/ride-rules.js';
 import type { InputEvent } from './ride-batch.entity.js';
 import type { RoadLayout } from '../road/road-layout.js';
 import type { RoadPlan } from '../road/road-plan.js';
-import { SAMPLE_INPUT_COL, SAMPLE_TIME_SLACK, SAMPLE_WIDTH } from './telemetry-rules.js';
+import { MAX_GAME_SECONDS, SAMPLE_INPUT_COL, SAMPLE_TIME_SLACK, SAMPLE_WIDTH } from './telemetry-rules.js';
 import { measureWorld, parseWorldFacts, type WorldFacts } from './world-facts.js';
 
 /* What the verdict needs from a batch, measured ONCE when the batch is accepted and stored beside it (telemetry.RideBatch.summary) – so judging a ride
@@ -33,7 +33,10 @@ export interface BatchSummary {
   gap?: number;
   /** speed of the first and the last sample (the boundary step's allowance across batches) */
   edgeV?: [number, number];
-  /** Σ Δs and Σ max(v of the two samples) × Δt over the batch's steps – a fork's road switch left out of both. Their difference is how far s ran ahead
+  /** rows that repeat the previous row's game time (the game samples on its own clock: never – a forger repeating rows to fill a batch) */
+  dupT?: number;
+  /** Σ Δs and Σ min(max(v of the two samples), MAX_SPEED) × Δt over the batch's steps – a fork's road switch left out of both (v capped: the game clamps
+    it at the governor exactly, so a speedometer read above it buys no distance). Their difference is how far s ran ahead
       of the recorded speed: the game integrates s from v (ds = v·cosψ / (1 − k·d)), so only curves, a push and rounding add to it */
   motion?: { ds: number; vdt: number };
   /** rising edges of the gas bit in the input column (SAMPLE_INPUT_COL); null = the batch has no input column */
@@ -46,6 +49,12 @@ export interface BatchSummary {
 export interface Step { ds: number; dt: number; t: number; over: number }
 
 export const SUMMARY_VERSION = 1;
+/** a judged column out of these bounds is no sample the game wrote (it is refused as a bad sample before anything is measured) */
+const saneRow = (r: readonly number[]): boolean => {
+  const [t = NaN, s = NaN, d = NaN, , v = NaN, , , hull = NaN] = r;
+  return Number.isFinite(t) && t >= 0 && t <= MAX_GAME_SECONDS && Number.isFinite(s) && Math.abs(s) <= MAX_REPORTED_DISTANCE && Number.isFinite(d) && Math.abs(d) <= 1e4
+    && Number.isFinite(v) && v >= 0 && v <= 1000 && Number.isFinite(hull) && Math.abs(hull) <= 1e4;
+};
 /** two samples of one game instant may differ by this much in s (rounding to 0.1 m) – more is a forged row */
 export const ZERO_DT_METRES = 0.2;
 /** the gas pedal's bit in the input column (client/js/input-bits.js) */
@@ -56,12 +65,14 @@ const round = (v: number, p = 100) => Math.round(v * p) / p;
 /** Measure one batch; `plan` = the ride's road rebuilt from its seed (null: the world facts are not measured), `prefix` = the previous batch's samples
     (its tail is measured with this batch, so a pass across the cut is measured – world-facts.ts). */
 export function summariseBatch(seq: number, t0: number, t1: number, samples: readonly (readonly number[])[], inputs: readonly InputEvent[], plan: RoadPlan | null = null, prefix: readonly (readonly number[])[] = []): BatchSummary {
-  const out: BatchSummary = { v: SUMMARY_VERSION, samples: samples.length, first: null, last: null, maxSpeed: 0, worstStep: null, fault: null, inputs: inputs.map((e) => [e[0], e[1], e[2]]), world: plan ? measureWorld(samples, plan, prefix) : null };
-  let prev: readonly number[] | null = null, gap = 0, ds = 0, vdt = 0, firstV = 0, gasEdges: number | null = 0, gasWas = false;
+  const insane = samples.findIndex((r) => !saneRow(r));   // checked BEFORE anything is measured: an absurd s would loop the road plan for hours (pentest WP1 review)
+  const out: BatchSummary = { v: SUMMARY_VERSION, samples: samples.length, first: null, last: null, maxSpeed: 0, worstStep: null, fault: null, inputs: inputs.map((e) => [e[0], e[1], e[2]]), world: plan && insane < 0 ? measureWorld(samples, plan, prefix.filter(saneRow)) : null };
+  if (insane >= 0) { const n = samples[insane]?.length ?? 0; out.fault = { code: 'bad-sample', detail: n < SAMPLE_WIDTH ? `a sample in batch ${seq} has ${n} values` : `sample ${insane} of batch ${seq} holds a value out of range` }; return out; }
+  let prev: readonly number[] | null = null, gap = 0, ds = 0, vdt = 0, firstV = 0, gasEdges: number | null = 0, gasWas = false, dupT = 0;
   for (const row of samples) {
     const [t = NaN, s = NaN, , , v = NaN] = row;
     if (row.length < SAMPLE_WIDTH) { out.fault ??= { code: 'bad-sample', detail: `a sample in batch ${seq} has ${row.length} values` }; break; }
-    if (t < t0 - SAMPLE_TIME_SLACK || t > t1 + SAMPLE_TIME_SLACK || (prev && t < (prev[0] ?? 0) - SAMPLE_TIME_SLACK)) {
+    if (t < t0 - SAMPLE_TIME_SLACK || t > t1 + SAMPLE_TIME_SLACK || (prev && t < (prev[0] ?? 0))) {   // the game's clock never runs backwards (st.t only grows)
       out.fault ??= { code: 'sample-out-of-order', detail: `sample at t=${t} s is outside batch ${seq} or out of order` };
       break;
     }
@@ -76,7 +87,8 @@ export function summariseBatch(seq: number, t0: number, t1: number, samples: rea
       step(out, prev, row, plan?.layout ?? null);
       const dt = Math.max(0, t - (prev[0] ?? 0));
       gap = Math.max(gap, dt);
-      if (!plan?.layout.forkSwitch(prev[1] ?? 0, s)) { ds += s - (prev[1] ?? 0); vdt += Math.max(v, prev[4] ?? 0) * dt; }
+      if (dt === 0) dupT++;
+      if (!plan?.layout.forkSwitch(prev[1] ?? 0, s)) { ds += s - (prev[1] ?? 0); vdt += Math.min(MAX_SPEED, Math.max(v, prev[4] ?? 0)) * dt; }
     } else firstV = v;
     const bits = row[SAMPLE_INPUT_COL];
     if (bits === undefined || gasEdges === null) gasEdges = null;
@@ -88,6 +100,7 @@ export function summariseBatch(seq: number, t0: number, t1: number, samples: rea
     out.edgeV = [round(firstV), round(prev[4] ?? 0)];
     out.motion = { ds: round(ds, 1000), vdt: round(vdt, 1000) };
     out.gasEdges = gasEdges;
+    out.dupT = dupT;
     if (samples.length > 1) out.gap = round(gap, 1000);
   }
   return out;
@@ -112,7 +125,7 @@ export function parseSummary(raw: unknown): BatchSummary | null {
   const motion = s.motion && num(s.motion.ds) && num(s.motion.vdt) ? { motion: { ds: s.motion.ds, vdt: s.motion.vdt } } : {};
   return {
     v: SUMMARY_VERSION, samples: s.samples, first: s.first ?? null, last: s.last ?? null, maxSpeed: s.maxSpeed, worstStep: s.worstStep ?? null, ...(s.forkStep ? { forkStep: s.forkStep } : {}), fault: s.fault ?? null, inputs: s.inputs as InputEvent[],
-    ...(num(s.gap) ? { gap: s.gap } : {}), ...(pair(s.edgeV) ? { edgeV: s.edgeV } : {}), ...motion, ...(s.gasEdges === null || num(s.gasEdges) ? { gasEdges: s.gasEdges } : {}),
+    ...(num(s.gap) ? { gap: s.gap } : {}), ...(num(s.dupT) ? { dupT: s.dupT } : {}), ...(pair(s.edgeV) ? { edgeV: s.edgeV } : {}), ...motion, ...(s.gasEdges === null || num(s.gasEdges) ? { gasEdges: s.gasEdges } : {}),
     world: parseWorldFacts(s.world),
   };
 }

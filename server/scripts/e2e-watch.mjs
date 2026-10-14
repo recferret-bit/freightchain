@@ -4,7 +4,7 @@
 // Usage: FREE_RIDE_SECONDS=120 SOL_USD=118 TREASURY_PUBKEY=<any address> PORT=3111 node dist/main.js   then   BASE=http://localhost:3111 node scripts/e2e-watch.mjs
 //   (or: bash .claude/skills/run-tests/e2e.sh watch). CHROME_PORT = the first of two DevTools ports.
 import nacl from 'tweetnacl'; import bs58 from 'bs58';
-import { launch, sleep } from '../../client/tools/cdp.mjs';
+import { launch, sleep, driveHook } from '../../client/tools/cdp.mjs';
 const BASE = process.env.BASE || 'http://localhost:3111', CP = +process.env.CHROME_PORT || 9341;
 const fails = []; const check = (name, ok, extra = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${extra ? ' – ' + extra : ''}`); if (!ok) fails.push(name); };
 const post = async (path, body, cookie) => { const r = await fetch(`${BASE}/api/${path}`, { method: 'POST', headers: { 'content-type': 'application/json', ...(cookie && { cookie }) }, body: JSON.stringify(body) }); return { r, j: await r.json() }; };
@@ -28,7 +28,7 @@ await D.send('Page.navigate', { url: `${BASE}/play.html?ride=${ride.id}` }); awa
 await D.ev('document.getElementById("go").click()'); await sleep(800);
 check('driver: ride running', (await (await fetch(`${BASE}/api/watch/${ride.id}`)).json()).ride?.status === 'running');
 // headless can't drive: grow s with the GAME clock at 20 m/s (under the governor) and press keys like a person (see e2e-browser.mjs)
-await D.ev('(() => { let last = __game.st.t; setInterval(() => { const g = __game.st; if (g.mode === "drive") g.s += 20 * Math.max(0, g.t - last); last = g.t; }, 50); })()');
+await D.ev(driveHook(20));
 let driving = true;
 (async () => { const K = [['KeyW', 'w'], ['KeyA', 'a'], ['KeyD', 'd']]; for (let i = 0; driving; i++) { const [code, key] = K[i % 3]; await D.send('Input.dispatchKeyEvent', { type: 'keyDown', code, key }); await sleep(80 + Math.random() * 300); await D.send('Input.dispatchKeyEvent', { type: 'keyUp', code, key }); await sleep(100 + Math.random() * 400); } })();
 check('driver: the first recording batch is uploaded', await until(() => D.ev('__game.telemetry.seq >= 1 && __game.telemetry.queue.length === 0'), 90_000), `seq ${await D.ev('__game.telemetry.seq')}`);

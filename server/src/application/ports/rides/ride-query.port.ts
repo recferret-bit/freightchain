@@ -149,5 +149,6 @@ export abstract class RideQueryPort {
       pending) and no admin override. While any is left, the payout job pays nothing from the pool – every such ride gets a human look first. */
   abstract poolUnreviewed(poolId: number, limit: number): Promise<{ id: string; wallet: string; verdict: string | null }[]>;
   /** Completed shifts for the bulk re-judge, oldest end first, with the status of their verdict (null = never judged). */
+  /** completed rides to judge again – never one of a pool whose payout plan exists (decided money) */
   abstract forRejudge(filter: RejudgeFilter): Promise<{ id: string; verdict: string | null }[]>;
 }

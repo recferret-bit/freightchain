@@ -54,7 +54,7 @@ const coarse = ms => { const out = [], tick = v => Math.round(v / 100) * 100, ho
 /** five presses in the whole ride (below HUMAN_MIN_PRESSES = 8): the timing checks have no opinion */
 const few = ms => { const out = []; pair(out, 800.4, 'KeyW', 9000.7); pair(out, 10400.2, 'KeyW', 6100.5); pair(out, 17000.9, 'KeyA', 310.3); pair(out, 18500.1, 'KeyD', 290.8); pair(out, 20500.6, 'KeyW', Math.max(1000, ms - 21000)); return out; };
 /** the gas bit of the input column switched on and off every second – the samples show presses the events never made (five presses in the ride) */
-const gasFlicker = b => ({ ...b, samples: b.samples.map((row, i) => [...row.slice(0, 13), Math.floor(i / 10) % 2 ? 2 | 8 : 1 | 2 | 8]) });
+const gasFlicker = b => ({ ...b, samples: b.samples.map((row, i) => [...row.slice(0, 14), Math.floor(i / 10) % 2 ? 2 | 8 : 1 | 2 | 8]) });   // the input column (14) after clock and switches
 /** steering only: the truck "moved" with no gas press in the whole recording */
 const steerOnly = ms => { const out = []; for (let t = 800; t < ms; t += rnd(900, 2000)) pair(out, t, Math.random() < .5 ? 'KeyA' : 'KeyD', rnd(120, 500)); return out; };
 
@@ -89,7 +89,7 @@ async function drive({ name, script = human, mutate = () => null, hashOf = (_b, 
   let wall = Date.now(), lastBeat = wall, e = 0;
   while (true) {
     await sleep(100);
-    const now = Date.now(), dt = (now - wall) / 1000; wall = now;
+    const now = Date.now(), dt = Math.min(0.1, (now - wall) / 1000); wall = now;   // the GAME clock: frames are clamped, one sample a 0.1 s – a stalled loop (an upload, a busy machine) is no gap in game time
     d.t += dt; d.s += speed * dt;
     d.samples.push(row(d.t, d.s, speed));
     const ms = now - d.t0;
@@ -136,7 +136,8 @@ const SCENARIOS = [
 async function protocol() {
   const a = await signIn(), b = await signIn();
   const { j: ride } = await call('POST', 'rides', { body: { tier: 'free' }, ...a });
-  const mk = (seq, extra = {}) => { const body = { seq, prevHash: seq === 0 ? ride.id : 'x', t0: 0, t1: 5, samples: [], inputs: [[1000, 'KeyW', 1], [2000, 'KeyW', 0]], ...extra }; const text = JSON.stringify({ seq: body.seq, prevHash: body.prevHash, t0: body.t0, t1: body.t1, samples: body.samples, inputs: body.inputs }); return { ...body, hash: sha256(text), _text: text }; };
+  // each probe batch carries one sample: two EMPTY batches in a row are refused
+  const mk = (seq, extra = {}) => { const body = { seq, prevHash: seq === 0 ? ride.id : 'x', t0: 0, t1: 5, samples: [[1, 0, 2.4, 0, 0, 900, 1, 100, 0, 0, 0, 0]], inputs: [[1000, 'KeyW', 1], [2000, 'KeyW', 0]], ...extra }; const text = JSON.stringify({ seq: body.seq, prevHash: body.prevHash, t0: body.t0, t1: body.t1, samples: body.samples, inputs: body.inputs }); return { ...body, hash: sha256(text), _text: text }; };
   const post = (who, id, body) => call('POST', `rides/${id}/batches`, { body: body && (({ _text, ...rest }) => rest)(body), ...who });
   const out = {};
   out.beforeStart = (await post(a, ride.id, mk(0))).status;               // created, not started
@@ -213,7 +214,7 @@ check('C another wallet cannot read the ride (404)', (await call('GET', `rides/$
 const pub = await fetch(`${BASE}/api/watch/${flaggedRun.id}`).then(async res => ({ status: res.status, text: await res.text() }));
 check('C the PUBLIC watch payload is open but carries no verdict, no reasons and no input events', pub.status === 200 && !/verdict|uniform-holds|reasons|"KeyW"|"KeyA"/.test(pub.text), `${pub.status}, ${pub.text.length} bytes`);
 const board = (await call('GET', 'leaderboard?board=free&level=1')).j;   // the runs above are ordered with no level = EASY (no level on the board = HARD)
-const rows = JSON.stringify(board);
+const rows = JSON.stringify([board, (await call('GET', 'leaderboard?board=free&level=1&page=2')).j]);   // 25 a page: more shifts than one page here
 check('C the free board ranks completed free rides whatever their verdict (a rejected one too)', rows.includes(flaggedRun.wallet.slice(0, 4)) && rows.includes(rejectedRun.wallet.slice(0, 4)) && rows.includes(verifiedRun.wallet.slice(0, 4)), `verifiedOnly ${board.verifiedOnly}, ${(board.rows ?? board.entries ?? []).length} rows`);
 
 // D. the admin
@@ -223,15 +224,16 @@ if (process.env.ADMIN_KEYPAIR) {
   check('D the admin signed in (its own session)', !!A.cookie);
   const queue = (await A.adm('GET', 'rides?verdict=flagged&limit=100')).j;
   const ids = (queue.rows ?? queue.items ?? []).map(x => x.id);
-  check('D the review queue lists the flagged rides (metronome · fixed gaps · down+up · slow clock) and none of the clean or rejected ones', [by['metronome holds (300 ms every time)'], by['three fixed gaps'], by['down+up in one tick'], by['recording covers 75 % of the time (a slow clock)']].every(x => ids.includes(x.id)) && !ids.includes(verifiedRun.id) && !ids.includes(rejectedRun.id), `${ids.length} flagged`);
+  check('D the review queue lists the flagged rides (metronome · fixed gaps · down+up · a gas bit no key pressed) and none of the clean or rejected ones', [by['metronome holds (300 ms every time)'], by['three fixed gaps'], by['down+up in one tick'], by['a gas bit no key pressed']].every(x => ids.includes(x.id)) && !ids.includes(verifiedRun.id) && !ids.includes(rejectedRun.id), `${ids.length} flagged`);
   const detail = (await A.adm('GET', `rides/${flaggedRun.id}`)).j;
   check('D the ride detail shows the scores (human timing, recording) and the batches', !!detail.verdict?.scores?.human && !!detail.verdict?.scores?.recording && (detail.batches ?? []).length >= 2, JSON.stringify(detail.verdict?.scores?.human));
   const sc = async n => (await A.adm('GET', `rides/${by[n].id}`)).j.verdict?.scores;
-  const clean = await sc('clean'), coarseS = await sc('a coarse 100 ms timer'), fewS = await sc('five presses (too few to judge)'), slow = await sc('recording covers 75 % of the time (a slow clock)');
+  const clean = await sc('clean'), coarseS = await sc('a coarse 100 ms timer'), fewS = await sc('five presses (too few to judge)'), slow = await sc('a clock 25 % slow while s keeps pace'), ahead = await sc('s outruns the speedometer (v halved)');
   check('D clean: the recording scores – ≥ 3 batches, coverage ≥ 0.9, nothing unhashed, under the governor', clean?.recording.batches >= 3 && clean.recording.coverage >= 0.9 && clean.recording.unhashed === 0 && clean.recording.maxSpeed <= 28 * 1.05, JSON.stringify(clean?.recording));
-  check('D a coarse timer is DETECTED (timerStepMs 100) – the two checks it would break are skipped, so no flag', coarseS?.human.timerStepMs === 100, JSON.stringify(coarseS?.human));
+  check('D a coarse timer is DETECTED (timerStepMs 100) – the checks judge on its grid, a person on it is not flagged', coarseS?.human.timerStepMs === 100, JSON.stringify(coarseS?.human));
   check('D five presses: the timing checks have no opinion (presses < 8, nothing measured)', fewS?.human.presses === 5, JSON.stringify(fewS?.human));
   check('D the slow-clock ride scores coverage ≈ 0.75', slow?.recording.coverage > 0.65 && slow.recording.coverage < 0.85, JSON.stringify(slow?.recording));
+  check('D the speed excess is scored: ≈ 0 for the clean ride, ≈ half the distance with v halved', Math.abs(clean?.recording.speedExcess ?? 1e9) < 10 && ahead?.recording.speedExcess > 200, `${clean?.recording.speedExcess} / ${ahead?.recording.speedExcess}`);
   const bad = await A.adm('POST', `rides/${flaggedRun.id}/verdict`, { decision: 'verified', note: 'no signature', signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode('some other text'), kp.secretKey)) });
   check('D a decision signed over the wrong text is refused (401), the verdict does not change', bad.status === 401 && (await call('GET', `rides/${flaggedRun.id}`, flaggedRun)).j.verdict?.status === 'flagged', String(bad.status));
   const acc = await A.override(flaggedRun.id, 'verified', 'deep e2e: looked at it');
