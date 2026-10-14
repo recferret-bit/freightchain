@@ -95,9 +95,8 @@ const SLIDES = [
       </div>
       <div class="vis">
         ${shot('wp-diagram.webp', 'v-main diagram', 'Where the money goes')}
-        <figure class="shot scene v-sub"><div class="sc"><canvas data-scene="pledge" role="img" aria-label="A 0.5 SOL pledge fills kilometre by kilometre: verified kilometres pay the driver, the unspent rest goes back to the sponsor"></canvas>
-          <footer><b>Escrow</b><span>Pays verified kilometres only. The unspent rest goes back.</span></footer></div></figure>
-        <img class="glyph g1" src="${A}proof.svg" alt="Four 15-second batches hash up into one Merkle root">
+        ${shot('escrow-flow.webp', 'v-sub', 'How the escrow works')}
+        <canvas class="glyph g1" data-scene="proof" role="img" aria-label="Four 15-second batches hash up into one Merkle root, which turns verified"></canvas>
       </div>` },
 
   { layout: 'chart', id: 'traction',
@@ -228,7 +227,7 @@ deck.querySelectorAll('[data-chart=daily]').forEach(daily);
 
 const slides = [...deck.children];
 
-/* live canvas scenes lifted from the landing's UNDER THE HOOD cards (src/chain-scenes.js – a lazy chunk the landing shares): drawn only while their slide is showing */
+/* live canvas scenes lifted from the landing's UNDER THE HOOD cards (src/chain-scenes.js – a lazy chunk the landing shares), drawn straight onto the slide with no card around them, only while their slide is showing */
 const scenes = [...deck.querySelectorAll('canvas[data-scene]')].map(cv => ({ cv, ctx: cv.getContext('2d'), slide: cv.closest('.slide'), name: cv.dataset.scene, draw: null }));
 let sceneLib = null;
 (window.requestIdleCallback ?? (f => setTimeout(f, 800)))(() => import('./chain-scenes.js').then(m => {

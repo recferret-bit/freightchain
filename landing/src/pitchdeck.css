@@ -281,12 +281,7 @@ h1 small{font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;c
 
 .L-money .v-main{transform-origin:0 50%}   /* money slide: the diagram grows rightwards, not over the headline's last letter */
 
-/* money slide: the escrow card is a live canvas scene from the landing (the pledge: deposit → verified km pay the driver → the rest goes back) */
-.L-money .v-sub.scene{width:390px;height:320px;left:0;bottom:10px}   /* narrow enough to stay clear of the Merkle drawing on the right */
-.sc{display:flex;flex-direction:column;height:100%;background:#0b0a09;border-radius:calc(var(--radius) - 6px);overflow:hidden;transform:scale(1.06);transition:transform .55s cubic-bezier(.2,.8,.2,1)}
-.sc canvas{display:block;width:100%;aspect-ratio:240/124;flex:none;background:#0b0a09}
-.sc footer{padding:14px 18px 16px;display:grid;gap:6px;border-top:1px solid #2a2a2a}
-.sc footer b{font:700 18px var(--body);letter-spacing:4px;text-transform:uppercase;color:var(--accent)}
-.sc footer span{font:500 17px/1.35 var(--body);color:var(--ink)}
-.fx .shot:is(:hover,.hot) .sc,.fx .shot.drag .sc{transform:scale(1)}   /* like the pictures: starts cropped in, opens out when selected */
-@media (prefers-reduced-motion:reduce){.sc{transition:none}}
+/* money slide: the Merkle-root drawing is the landing's live `proof` canvas scene, drawn straight on the slide (no card, a transparent background); it floats and leans like the cards */
+canvas.glyph{height:auto;aspect-ratio:240/124;background:none}
+.fx canvas.glyph{--k:34;transform:translate(calc(var(--px,0)*var(--k)*1px),calc(var(--py,0)*var(--k)*1px));animation:float 6s ease-in-out -2s infinite}
+@media (prefers-reduced-motion:reduce){.fx canvas.glyph{animation:none}}
