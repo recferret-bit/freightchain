@@ -4,11 +4,13 @@ import { spawn } from 'node:child_process'; import fs from 'node:fs'; import os 
 
 export const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-/** Headless Chrome cannot really drive: this page snippet keeps the truck at `speed` m/s in its lane (no pedal held: with the engine on that would blow it at max revs), and lets the GAME's physics move it –
+/** Headless Chrome cannot really drive: this page snippet holds the truck at `speed` m/s in its lane (no pedal held: with the engine on that would blow it at max revs), and lets the GAME's physics move it –
     so s grows with v × the game clock, as in a real drive (verdict rules v4 reject a position that outruns the recorded speed: the old hook pushed st.s with
-    v at 0, a generator's recording). `extra` = statements run on every tick before (e.g. 'st.park = false; st.engineOn = true;'); `lane` = the d to hold once
-    out on the main road – the depot turn before it is left to the game (default: hold where the truck started, all the way). The interval is window.__drive (clearInterval it to let go). */
-export const driveHook = (speed = 20, extra = '', lane = null) => `(() => { const g = __game, st = g.st, d0 = st.d; window.__drive = setInterval(() => { if (st.mode !== 'drive') return; ${extra} st.v = st.vel = ${speed}; ${lane === null ? 'st.d = d0; st.psi = 0;' : `if (st.s > g.net.Sm + 10) { st.d = ${lane}; st.psi = 0; }`} }, 40); })()`;
+    v at 0, a generator's recording). The speed is PINNED (st.v / st.vel read `speed` while driving, the physics' writes are kept aside): a speed re-set on a
+    timer showed as a rise with the gas pedal up after each frame of drag – the verdict's 'accel-without-gas'. `extra` = statements run on every tick before
+    (e.g. 'st.park = false; st.engineOn = true;'); `lane` = the d to hold once out on the main road – the depot turn before it is left to the game (default: hold
+    where the truck started, all the way). window.__undrive() lets go (the physics' own speed again). */
+export const driveHook = (speed = 20, extra = '', lane = null) => `(() => { const g = __game, st = g.st, d0 = st.d, own = { v: st.v, vel: st.vel }; for (const k of ['v', 'vel']) Object.defineProperty(st, k, { configurable: true, enumerable: true, get: () => (st.mode === 'drive' ? ${speed} : own[k]), set: (x) => { own[k] = x; } }); window.__drive = setInterval(() => { if (st.mode !== 'drive') return; ${extra} ${lane === null ? 'st.d = d0; st.psi = 0;' : `if (st.s > g.net.Sm + 10) { st.d = ${lane}; st.psi = 0; }`} }, 40); window.__undrive = () => { clearInterval(window.__drive); for (const k of ['v', 'vel']) { const x = own[k]; delete st[k]; st[k] = x; } }; })()`;
 
 export async function launch({ port, shotsDir, args = [], evalProblems = false }) {
   const CH = process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';

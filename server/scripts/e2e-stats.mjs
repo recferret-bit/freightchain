@@ -73,7 +73,7 @@ await until(async () => (await api(`rides/${first.id}`, me.cookie)).status === '
 check('game: the real client counted the contact with a vehicle', (await B.ev('__game.st.crashV')) >= 1, `crashV=${await B.ev('__game.st.crashV')}`);
 const ended = await until(async () => (await api(`rides/${first.id}`, me.cookie)).status === 'failed', 30_000);
 check('game: the ride ended (a crash fails it)', ended, (await api(`rides/${first.id}`, me.cookie)).reason);
-await B.ev('clearInterval(window.__drive)');
+await B.ev('window.__undrive()');
 const afterCrash = await career(me), global1 = await stats();
 check('server: the rider\'s record counted the failed ride – distance, time, the vehicle crash, no finished shift', afterCrash.rides === 1 && afterCrash.ridesFree === 1 && afterCrash.ridesPaid === 0 && afterCrash.ridesCompleted === 0 && afterCrash.metres > 50 && afterCrash.seconds > 0 && afterCrash.crashesVehicle >= 1 && afterCrash.crashesBuilding === 0, JSON.stringify(afterCrash));
 check('server: GET /api/stats = the same numbers (the game\'s totals are this rider\'s so far)', global1.rides === 1 && global1.metres === afterCrash.metres && global1.crashesVehicle === afterCrash.crashesVehicle && global1.drivers === 1, JSON.stringify(global1));
