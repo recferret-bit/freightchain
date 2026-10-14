@@ -46,7 +46,7 @@ const SLIDES = [
       <div class="copy">
         <div class="lbl">01 · The game</div>
         <h1>The road never ends.<br><em>Your shift does.</em></h1>
-        ${pts(['Truck sim', 'Attention to details', 'Gamedev best practices', 'Hybrid anti-cheat', 'Soulbound NFT achievements'])}
+        ${pts(['<b>Gearbox</b> · manual, clutch, stalls', '<b>Engine</b> · cold starts, heat, battery', '<b>Road</b> · endless, day and night', '<b>Traffic</b> · forks, bends, sinkholes', '<b>Speed</b> · capped near 100 km/h'])}
       </div>
       <div class="vis">${shot('01-one-mistake.webp', 'poster', 'One mistake ends the shift')}</div>` },
 
