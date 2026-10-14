@@ -27,7 +27,7 @@ describe('SyncPledgesHandler – the pledge job', () => {
     const payout = new FakePoolPayoutChain(ctx.poolChain);
     payout.payoutAddress = KEY;
     const handler = new SyncPledgesHandler(ctx.pledges, ctx.poolChain, payout, ctx.pools, ctx.players, ctx.transactions, ctx.clock,
-      new AttestationService(payout, ctx.rides, ctx.verdictRepo, ctx.batches, ctx.pools, ctx.hasher));
+      new AttestationService(payout, ctx.rides, ctx.verdictRepo, ctx.batches, ctx.pools, ctx.hasher, ctx.clock));
     const row = async (id: string) => (await ctx.pledges.findById(id))!;
     /** an active pledge: on chain and mirrored (its ride is not driven yet: nothing to end) */
     const active = async (o: { sponsor?: string; lamportsPerKm?: bigint; targetKm?: number } = {}) => {

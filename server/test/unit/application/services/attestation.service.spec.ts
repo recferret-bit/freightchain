@@ -22,7 +22,7 @@ async function setup() {
   await ctx.pools.upsert(aPool({ id: 2, status: 'active' }, ctx.now()));
   const payout = new FakePoolPayoutChain(ctx.poolChain);
   payout.payoutAddress = 'Payout11111111111111111111111111111111111111';
-  const service = new AttestationService(payout, ctx.rides, ctx.verdictRepo, ctx.batches, ctx.pools, ctx.hasher);
+  const service = new AttestationService(payout, ctx.rides, ctx.verdictRepo, ctx.batches, ctx.pools, ctx.hasher, ctx.clock);
   /** a completed ride of pool 1 by `driver`, then its stored props overwritten (endedAt, status, completeDist…) */
   const ride = async (metres: number, verdict: PoolRideVerdict = 'verified', over: Partial<RideProps> = {}, by = driver) => {
     const id = await poolRide(ctx, by, metres, verdict);
@@ -83,6 +83,15 @@ describe('AttestationService', () => {
       expect(await service.factsOf(1, await ride(9_000, 'verified', { status: RideStatus.Running, endedAt: null }))).toEqual({ status: 'undecided' });
       expect(await service.factsOf(1, await ride(9_000, 'none'))).toEqual({ status: 'undecided' });
       expect(await service.factsOf(1, await ride(9_000, 'flagged'))).toEqual({ status: 'undecided' });
+    });
+
+    it('a ride created but never started: undecided until the play deadline, then none – it can no longer start, and nothing else would end it (the payout would stall to expiry)', async () => {
+      const { ctx, service, ride } = await setup();
+      const id = await ride(0, 'none', { status: RideStatus.Created, startedAt: null, endedAt: null });
+      expect(await service.factsOf(1, id)).toEqual({ status: 'undecided' });
+      ctx.clock.advance((((await ctx.pools.findById(1))!.rideWindow().endBy.getTime() - ctx.now().getTime()) / 1000) + 1);
+      expect(await service.factsOf(1, id)).toEqual({ status: 'none' });
+      expect(await service.factsOf(1, await ride(9_000, 'verified', { status: RideStatus.Running, startedAt: ctx.now(), endedAt: null }))).toEqual({ status: 'undecided' });   // a started one waits for the sweeper
     });
 
     it('a verified ride whose recording was purged → ConflictError recording_purged', async () => {

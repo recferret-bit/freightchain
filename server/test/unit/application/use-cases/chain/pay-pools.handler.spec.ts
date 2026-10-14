@@ -58,7 +58,7 @@ describe('PayPoolsHandler – the payout job (program v4: commit the winners, pa
     const settle = new SettleChainSignatureHandler(ctx.poolChain, ctx.chainEvents, ctx.ticketSettlement, ctx.registry, ctx.clock);
     const bus = { execute: async (c: object) => { if (!(c instanceof SettleChainSignatureCommand)) throw new Error('unexpected command'); return settle.execute(c); } };
     const attention = new PoolAttentionService(ctx.adminQuery, ctx.signIns, ctx.players, ctx.verdicts, ctx.batches);
-    const attestation = new AttestationService(payout, ctx.rides, ctx.verdictRepo, ctx.batches, ctx.pools, ctx.hasher);
+    const attestation = new AttestationService(payout, ctx.rides, ctx.verdictRepo, ctx.batches, ctx.pools, ctx.hasher, ctx.clock);
     const handler = new PayPoolsHandler(payout, ctx.poolChain, ctx.pools, ctx.poolPayouts, ctx.rideQuery, ctx.registry, attention, bus as unknown as CommandBus, ctx.clock, attestation, ctx.pledges, ctx.hasher);
     const run = (poolId: number | null = null) => handler.execute(new PayPoolsCommand(poolId));
     const mirror = async () => (await ctx.pools.findById(1))!;
@@ -465,10 +465,21 @@ describe('PayPoolsHandler – the payout job (program v4: commit the winners, pa
       const { ctx, payout, run } = await setup();
       await poolRide(ctx, W.alice, 9_000);
       const r = Ride.createFromTicket({ id: ctx.entropy.uuid(), wallet: W.carol, tier: '1h', seed: 1, minSeconds: 3600, timeScale: 1, poolId: 1, roundId: 1, now: ctx.now() });
+      r.start(ctx.now());
       await ctx.rides.insert(r);
       await pledgeOn(ctx, W.carol, r.id);
       expect((await run()).pools[0]).toMatchObject({ state: 'waiting_review', note: expect.stringMatching(new RegExp(`pledged ride ${r.id} is not decided yet`)) });
       expect(payout.calls).toEqual([]);
+    });
+
+    it('a pledged ride created but never started does NOT hold the commit once the play deadline passed: it can no longer start (localnet e2e found the stall)', async () => {
+      const { ctx, payout, run } = await setup();
+      await poolRide(ctx, W.alice, 9_000);
+      const r = Ride.createFromTicket({ id: ctx.entropy.uuid(), wallet: W.carol, tier: '1h', seed: 1, minSeconds: 3600, timeScale: 1, poolId: 1, roundId: 1, now: ctx.now() });
+      await ctx.rides.insert(r);
+      await pledgeOn(ctx, W.carol, r.id);
+      expect((await run()).pools[0]).toMatchObject({ state: 'committed' });
+      expect(payout.calls.some((c) => c.startsWith('commit'))).toBe(true);
     });
 
     it('a failed attestation does NOT close the pool (after the close no attestation is possible); the next pass finishes', async () => {

@@ -8,6 +8,7 @@ import { PoolRepositoryPort } from '../ports/economy/pool.repository.port.js';
 import { RideRepositoryPort } from '../ports/rides/ride.repository.port.js';
 import { RideBatchRepositoryPort } from '../ports/telemetry/ride-batch.repository.port.js';
 import { RideVerdictRepositoryPort } from '../ports/verdict/ride-verdict.repository.port.js';
+import { ClockPort } from '../ports/shared/clock.port.js';
 import { HasherPort } from '../ports/shared/hasher.port.js';
 
 /** What the chain should say about one pledged ride (program v4 RideAttestation – pentest H4: a pledge settles on ITS ride, never on the driver's best one). */
@@ -44,15 +45,17 @@ export class AttestationService {
     private readonly batches: RideBatchRepositoryPort,
     private readonly pools: PoolRepositoryPort,
     private readonly hasher: HasherPort,
+    private readonly clock: ClockPort,
   ) {}
 
   /** The verdict of `rideId` as an attestation of pool `poolId`, read afresh every time (pentest M7: a verdict revoked after an attestation was written). */
   async factsOf(poolId: number, rideId: string): Promise<RideFacts> {
     const ride = await this.rides.findById(rideId);
     if (!ride || ride.poolId !== poolId) return { status: 'none' };
-    if (!ride.endedAt) return { status: 'undecided' };   // still on the road: the sweeper ends a silent one
-    if (ride.status !== RideStatus.Completed) return { status: 'none' };
     const pool = await this.pools.findById(poolId);
+    // a ride never started can't start past the pool's play deadline (409 rides_closed) and the sweeper ends only running ones – waiting on it would stall the payout until expiry
+    if (!ride.endedAt) return !ride.startedAt && pool && this.clock.now().getTime() > pool.rideWindow().endBy.getTime() ? { status: 'none' } : { status: 'undecided' };
+    if (ride.status !== RideStatus.Completed) return { status: 'none' };
     if (pool && ride.endedAt.getTime() > pool.rideWindow().endBy.getTime()) return { status: 'none' };
     const verdict = await this.verdicts.findByRide(rideId);
     if (!verdict) return { status: 'undecided' };
