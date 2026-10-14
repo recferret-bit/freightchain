@@ -160,7 +160,7 @@ const SLIDES = [
         <h1>The next <em>4 months.</em></h1>
       </div>
       <div class="vis peek">
-        <figure class="shot peek-card"><span class="pk-imgs">${STORY.map(([f, n], i) => `<img class="${i ? '' : 'on'}" src="${A}${f}" alt="Storybook sneak peek: ${n}" loading="eager">`).join('')}</span><em class="pk-name">${STORY[0][1]}</em></figure>
+        <figure class="shot peek-card"><span class="pk-imgs">${STORY.map(([f, n], i) => `<img class="${i ? '' : 'on'}" src="${A}${f}" alt="Storybook sneak peek: ${n}" loading="eager">`).join('')}</span><i class="pk-flash"></i><em class="pk-name">${STORY[0][1]}</em></figure>
         <div class="badge live peekb"><i class="dot"></i>SNEAK PEEK · STORYBOOK · AI + MCP</div>
       </div>
       <div class="plan">
@@ -231,11 +231,11 @@ deck.innerHTML = SLIDES.map((s, i) => `<section class="slide L-${s.layout.split(
 
 const slides = [...deck.children];
 
-/* the AI + MCP sneak-peek card: while it is hovered or tapped open, it steps through the storybook objects every 1.5 s (a crossfade with a slow zoom and a blur), the name tag swaps with them; a click steps once more */
+/* the AI + MCP sneak-peek card: while it is hovered or tapped open, it steps through the storybook objects every 1.5 s (a hard swap under a white flash), the name tag swaps with them; a click steps once more */
 const pk = deck.querySelector('.peek-card');
 if (pk) {
-  const imgs = [...pk.querySelectorAll('img')], nm = pk.querySelector('.pk-name'); let n = 0, timer = 0;
-  const step = () => { imgs[n].classList.remove('on'); n = (n + 1) % imgs.length; imgs[n].classList.add('on'); nm.textContent = STORY[n][1]; nm.classList.remove('flip'); void nm.offsetWidth; nm.classList.add('flip'); };
+  const imgs = [...pk.querySelectorAll('img')], nm = pk.querySelector('.pk-name'), fl = pk.querySelector('.pk-flash'); let n = 0, timer = 0;
+  const step = () => { imgs[n].classList.remove('on'); n = (n + 1) % imgs.length; imgs[n].classList.add('on'); nm.textContent = STORY[n][1]; nm.classList.remove('flip'); void nm.offsetWidth; nm.classList.add('flip'); fl.classList.remove('go'); void fl.offsetWidth; fl.classList.add('go'); };
   const run = () => { if (!timer && !tkReduced) { step(); timer = setInterval(step, 1500); } };
   const stop = () => { clearInterval(timer); timer = 0; };
   pk.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') run(); });
