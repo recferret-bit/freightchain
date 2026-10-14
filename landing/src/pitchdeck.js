@@ -85,10 +85,10 @@ const SLIDES = [
       <div class="copy">
         <div class="lbl">04 · The money</div>
         <h1>The program<br>holds the money.</h1>
-        <div class="split" role="img" aria-label="70 percent to finishers, 20 percent to the next pool, 10 percent fee">
-          <div style="--w:70"><b>70%</b><span>finishers · by distance</span></div>
-          <div style="--w:20"><b>20%</b><span>next pool</span></div>
-          <div style="--w:10"><b>10%</b><span>fee</span></div>
+        <div class="split" role="group" aria-label="70 percent to finishers, 20 percent to the next pool, 10 percent fee">
+          <div style="--w:70"><b>70%</b><i class="desc">Of every pool: paid to finishers, ranked by distance</i><span>finishers · by distance</span></div>
+          <div style="--w:20"><b>20%</b><i class="desc">Of every pool: seeds the next pool</i><span>next pool</span></div>
+          <div style="--w:10"><b>10%</b><i class="desc">Of every pool: the platform fee</i><span>fee</span></div>
         </div>
         ${pts(['Too few tickets · refund, without me', 'Road seed committed on chain', 'Pays only attested rides'])}
         <div class="fine">DEVNET · NOT AUDITED · NO TOKEN</div>
@@ -292,6 +292,40 @@ function show(i) {
 }
 const start = v => v.play().catch(() => {});
 
+/* the 70 / 20 / 10 bar – hover (or tap) a block: the others fade out one after another (nearest first), the block slides to the left edge and grows to the full width, then its % is swapped for what it means; moving the pointer away (or tapping again) plays it backwards */
+const split = deck.querySelector('.split');
+if (split) {
+  const blocks = [...split.children];
+  let open = -1, timers = [], intent = 0;
+  const later = (ms, f) => timers.push(setTimeout(f, ms));
+  const expand = i => {
+    timers.forEach(clearTimeout); timers = []; open = i;
+    const others = blocks.map((_, k) => k).filter(k => k !== i).sort((a, b) => Math.abs(a - i) - Math.abs(b - i));   // nearest to the picked one goes first
+    blocks.forEach((b, k) => { b.classList.toggle('pick', k === i); b.style.setProperty('--o', Math.max(0, others.indexOf(k))); });
+    if (tkReduced) { split.classList.add('s-out', 's-grow', 's-text'); return; }
+    split.classList.add('s-out');
+    later(600, () => split.classList.add('s-grow'));
+    later(1300, () => split.classList.add('s-text'));
+  };
+  const collapse = () => {
+    timers.forEach(clearTimeout); timers = []; open = -1;
+    if (tkReduced) { split.classList.remove('s-text', 's-grow', 's-out'); blocks.forEach(b => b.classList.remove('pick')); return; }
+    split.classList.remove('s-text');
+    later(400, () => split.classList.remove('s-grow'));
+    later(1100, () => split.classList.remove('s-out'));
+    later(1800, () => blocks.forEach(b => b.classList.remove('pick')));
+  };
+  blocks.forEach((b, i) => b.addEventListener('pointerenter', e => {
+    if (e.pointerType !== 'mouse' || open >= 0) return;
+    clearTimeout(intent); intent = setTimeout(() => expand(i), 140);   // a short intent delay: sweeping the pointer across the bar does not fire it
+  }));
+  split.addEventListener('pointerleave', e => { clearTimeout(intent); if (e.pointerType === 'mouse' && open >= 0) collapse(); });
+  split.addEventListener('click', e => {   // a tap: open the block, or close again (a mouse is already driven by hover)
+    const i = blocks.indexOf(e.target.closest('.split > div'));
+    if (open >= 0) { if (e.pointerType !== 'mouse') collapse(); } else if (i >= 0) expand(i);
+  });
+}
+
 /* the tip flashes once per ← / → / space key press (not for a click, a tap or a hash change); the arrow in the pressed direction flashes too, space leaves both arrows alone */
 function flashTip(dir) {
   const help = document.getElementById('help');
@@ -365,6 +399,7 @@ if (badge) requestAnimationFrame(badgeTick);
 
 addEventListener('pointerdown', e => { if (!e.target.closest('.fx .shot')) moved = false; }, true);   // a drag that ended off a card must not swallow the next click
 addEventListener('click', e => {
+  if (e.target.closest('.split')) return;   // the bar's own click handler (a tap opens / closes a block)
   if (e.target.closest('#ticker')) { tkHold = performance.now() + 1400; return; }   // a click on the header slows it for a moment instead of turning the page
   const card = e.target.closest('.fx .shot, .fx .badge, .fx canvas.glyph, .L-wall .tags span');
   if (card) {

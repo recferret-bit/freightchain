@@ -144,11 +144,11 @@ h1 small{font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;c
 .L-end h1{font-size:112px}
 .L-end h1::after{margin-top:24px}
 .L-money h1{font-size:112px}
-.split div{border-radius:12px}
+.split div{border-radius:12px;padding:14px 16px}
 .split div:nth-child(1){background:var(--accent)}
 .split div:nth-child(2){background:var(--accent2);color:#fff}
 .split div:nth-child(3){background:#fff}
-.split b{font:400 46px/1 var(--head)}
+.split b{font:400 44px/1 var(--head);white-space:nowrap}
 .fine{color:var(--good)}
 .L-chart h1{font-size:120px}
 .L-chart h1::after{display:none}
@@ -295,3 +295,19 @@ canvas.glyph{height:auto;aspect-ratio:240/124;background:none}
 .vblock small{display:block;margin-top:3px;font:500 12px var(--body);letter-spacing:1px;text-transform:none;color:#9a9a9a}
 .L-money .vis:has(canvas.glyph:is(:hover,.hot)) .vblock{opacity:1;translate:0 0;scale:1}
 @media (prefers-reduced-motion:reduce){.vblock,.fx canvas.glyph{transition:none}}
+
+/* the 70 / 20 / 10 bar: the 10 % block keeps a width its figure fits in (the % no longer touches the edge); hover / tap plays a chained tween – others fade out in turn (.s-out), the picked block slides left and grows (.s-grow), its % gives way to a description (.s-text) */
+.split div{position:relative;min-width:0;transition:opacity .4s ease,transform .45s cubic-bezier(.3,1.5,.5,1),flex-grow .7s cubic-bezier(.65,0,.2,1),min-width .7s cubic-bezier(.65,0,.2,1),padding .7s cubic-bezier(.65,0,.2,1),box-shadow .5s;cursor:pointer}
+.split div:nth-child(2){min-width:132px}
+.split div:nth-child(3){min-width:124px}
+.split{transition:gap .7s cubic-bezier(.65,0,.2,1)}
+.split .desc{position:absolute;left:16px;right:16px;top:14px;font:400 32px/1.08 var(--head);font-style:normal;text-transform:uppercase;opacity:0;transform:translateY(16px);filter:blur(6px);letter-spacing:5px;pointer-events:none;transition:opacity .45s ease,transform .6s cubic-bezier(.2,.9,.3,1),filter .45s ease,letter-spacing .7s cubic-bezier(.2,.9,.3,1)}
+.split b{transition:opacity .3s ease,transform .45s ease}
+.split.s-out div:not(.pick){opacity:0;transform:scale(.55) translateY(14px);transition-delay:calc(var(--o,0)*.18s),calc(var(--o,0)*.18s),0s,0s,0s,0s;pointer-events:none}
+.split.s-out .pick{box-shadow:0 0 0 3px #ffffff33}
+.split.s-grow{gap:0}
+.split.s-grow div:not(.pick){flex-grow:0;min-width:0;padding-left:0;padding-right:0}
+.split.s-grow .pick{flex-grow:100;box-shadow:0 0 36px 2px #ffcf5a44}
+.split.s-text .pick b{opacity:0;transform:translateY(-18px)}
+.split.s-text .pick .desc{opacity:1;transform:none;filter:none;letter-spacing:0}
+@media (prefers-reduced-motion:reduce){.split div,.split .desc,.split b,.split{transition:none!important}}
