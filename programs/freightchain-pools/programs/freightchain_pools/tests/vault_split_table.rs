@@ -1,7 +1,8 @@
 //! The money maths pinned in ONE table shared with the server: `server/test/fixtures/chain/vault-split-cases.json`.
 //! The server's `domain/economy/vault-split.ts` spec reads the same file, so the two suites cannot drift apart.
 //! Each row is checked twice here: against the program's own functions (`Pool::pot`, `split`, `bps_of`), and – where the amounts are
-//! reachable – end to end through LiteSVM (create, buy, sponsor, pay_prize, stray lamports, close_pool), comparing the `PoolClosed` event.
+//! reachable – end to end through LiteSVM (create, buy, sponsor, commit_winners + pay_prize, stray lamports, close_pool), comparing the `PoolClosed`
+//! event. v4: the platform cut is the pool's own `platform_fee_bps` (snapshotted at creation, L8), and a refunded pool gives its sponsorship back (M8).
 #[macro_use]
 mod common;
 
@@ -57,6 +58,16 @@ fn pool_of(r: &Value) -> Pool {
         seed_commitment: [0u8; 32],
         seed_slot: 0,
         seed_slot_hash: [0u8; 32],
+        seal_slot: 0,
+        platform_fee_bps: n(r, "platformFeeBps") as u16,
+        winners_root: [0u8; 32],
+        winners_total: 0,
+        winners_count: 0,
+        committed_at: 0,
+        pay_from: 0,
+        paid_mask: 0,
+        sponsor_refunded: 0,
+        open_pledges: 0,
     }
 }
 
@@ -76,7 +87,7 @@ fn shared_table_matches_the_program_functions() {
         let (prize, seed, fee) = split(pot, p.prize_bps, p.seed_bps).unwrap();
         assert_eq!((prize, seed, fee), (u(r, "prize"), u(r, "seed"), u(r, "fee")), "{name}: split");
         assert_eq!(p.prize_share().unwrap(), prize, "{name}: pay_prize bound");
-        let platform = bps_of(fee, n(r, "platformFeeBps") as u16).unwrap();
+        let platform = bps_of(fee, p.platform_fee_bps).unwrap();
         assert_eq!(platform, u(r, "platform"), "{name}: platform cut");
         let Some(c) = r["close"].as_object() else { continue };
         // close_pool's formula (handle_close_pool): everything but fee, platform cut and the rent minimum goes to the seed treasury
@@ -105,7 +116,8 @@ fn shared_table_matches_close_pool_on_chain() {
         let mut e = Env::new();
         assert_eq!(e.rent_min(), u(&c, "rentReturned"), "{name}: rent minimum");
         let auth = e.authority_kp();
-        e.set_config(&auth, None, None, Some(n(&r, "platformFeeBps") as u16)).unwrap();
+        let plat_bps = n(&r, "platformFeeBps") as u16;
+        e.set_config(&auth, None, None, Some(plat_bps)).unwrap();
         let price = u(&r, "price");
         let params = CreatePoolParams {
             tier: 1,
@@ -121,25 +133,37 @@ fn shared_table_matches_close_pool_on_chain() {
             fee_bps: n(&r, "feeBps") as u16,
         };
         let id = e.create_pool(params);
+        // L8: the cut is fixed when the pool opens – changing the config afterwards does not move this pool's close
+        e.set_config(&auth, None, None, Some(10_000 - plat_bps)).unwrap();
+        assert_eq!(e.pool(id).platform_fee_bps, plat_bps, "{name}: snapshot");
         let buyer = funded(&mut e.svm, price * sold as u64 + 10 * SOL);
         e.buy(id, &buyer, sold).unwrap();
         let sponsored = u(&r, "sponsored");
+        let sp = funded(&mut e.svm, sponsored + SOL);
         if sponsored > 0 {
-            let sp = funded(&mut e.svm, sponsored + SOL);
             let i = e.sponsor_ix(id, &sp.pubkey(), sponsored);
             e.send(&[i], &sp, &[]).unwrap();
         }
+        let (mut want_vault, mut want_seed) = (u(&c, "vault"), u(&c, "seed"));
         if cancelled {
             e.warp(PREP);
             e.fail(id).unwrap();
             e.refund(id, &buyer.pubkey(), &buyer.pubkey()).unwrap();
+            if sponsored > 0 {
+                // v4 (M8): the sponsor is refunded before the close – the table's v3 row sends the sponsorship to the seed treasury
+                e.refund_sponsor(id, &sp.pubkey()).unwrap();
+                want_vault -= sponsored;
+                want_seed -= sponsored;
+            }
         } else {
             e.warp(PLAY);
             let paid = u(&r, "prizesPaid");
+            // the close before the grace needs a committed root: one winner, or none
             if paid > 0 {
                 let winner = funded(&mut e.svm, SOL);
-                e.record_verified_attestation(id, &auth, &winner.pubkey(), 100).unwrap();
-                e.pay_prize(id, &auth, &winner.pubkey(), paid, 1).unwrap();
+                e.commit_and_pay(id, &auth, &[(winner.pubkey(), paid)]);
+            } else {
+                e.commit_winners(id, &auth, &[]).unwrap();
             }
         }
         let stray = u(&r, "stray");
@@ -148,16 +172,38 @@ fn shared_table_matches_close_pool_on_chain() {
             let i = anchor_lang::solana_program::system_instruction::transfer(&donor.pubkey(), &vault_pda(id), stray);
             e.send(&[i], &donor, &[]).unwrap();
         }
-        assert_eq!(e.vault(id), u(&c, "vault"), "{name}: vault before close");
+        assert_eq!(e.vault(id), want_vault, "{name}: vault before close");
         let res = e.close_pool(id, &auth).unwrap();
         let ev = &events::<PoolClosed>(&res.logs)[0];
         assert_eq!(
             (ev.seed, ev.fee, ev.platform_fee, ev.unclaimed, ev.rent_returned, ev.cancelled),
-            (u(&c, "seed"), u(&c, "fee"), u(&c, "platformFee"), u(&c, "unclaimed"), u(&c, "rentReturned"), cancelled),
+            (want_seed, u(&c, "fee"), u(&c, "platformFee"), u(&c, "unclaimed"), u(&c, "rentReturned"), cancelled),
             "{name}: PoolClosed"
         );
         assert_eq!(e.vault(id), 0, "{name}: vault ends at 0");
         ran += 1;
     }
     assert!(ran >= 7, "only {ran} rows ran on chain");
+}
+
+/// pentest L8: the platform cut at close is the one the buyers were shown when the pool opened, not whatever the config says at close.
+#[test]
+fn platform_cut_is_the_one_the_pool_opened_with() {
+    let mut e = Env::with_platform_fee(1_000);
+    let auth = e.authority_kp();
+    let id = e.create_pool(CreatePoolParams { min_tickets: 2, max_tickets: 0, ..default_params() });
+    assert_eq!(e.pool(id).platform_fee_bps, 1_000);
+    let b = funded(&mut e.svm, 10 * SOL);
+    e.buy(id, &b, 4).unwrap(); // pot 0.4 SOL: prize 0.24, seed 0.1, fee 0.06
+    // the admin raises the cut to 90 % after the sale
+    e.set_config(&auth, None, None, Some(9_000)).unwrap();
+    let later_pool = e.create_pool(later(&e, default_params()));
+    assert_eq!(e.pool(later_pool).platform_fee_bps, 9_000, "only new pools take the new cut");
+    e.warp(PLAY);
+    e.commit_winners(id, &auth, &[]).unwrap();
+    let (p0, f0) = (e.bal(&e.plat_t.pubkey()), e.bal(&e.fee_t.pubkey()));
+    let ev = &events::<PoolClosed>(&e.close_pool(id, &auth).unwrap().logs)[0];
+    let fee = 60_000_000;
+    assert_eq!((ev.platform_fee, ev.fee), (bps_of(fee, 1_000).unwrap(), fee - bps_of(fee, 1_000).unwrap()));
+    assert_eq!((e.bal(&e.plat_t.pubkey()) - p0, e.bal(&e.fee_t.pubkey()) - f0), (6_000_000, 54_000_000));
 }

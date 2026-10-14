@@ -70,7 +70,8 @@ pub fn check_money_rules(price_lamports: u64, min_tickets: u32, max_tickets: u32
 
 /// v4: the windows every new pool keeps (Config floors): `finish` after the sale (the last call: no sale, no new ride – the shifts on the road
 /// finish), `review` after the play deadline (pentest H5).
-pub fn check_windows(config: &Config, finish: i64, review: i64) -> Result<()> {
+pub fn check_windows(config: &Account<Config>, finish: i64, review: i64) -> Result<()> {
+    crate::state::require_migrated(config)?;
     require!(finish >= config.min_finish_secs && review >= config.min_review_secs, PoolError::WindowTooShort);
     Ok(())
 }

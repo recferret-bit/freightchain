@@ -279,7 +279,10 @@ pub fn handle_refund_pledge(ctx: Context<RefundPledge>, ride_id: [u8; 32]) -> Re
     if att.owner == &crate::ID && !att.data_is_empty() {
         let data = att.try_borrow_data()?;
         let a = RideAttestation::try_deserialize(&mut &data[..])?;
-        require!(a.status == ATTESTATION_STATUS_UNVERIFIED, PoolError::AttestationExists);
+        // a decided attestation blocks the refund only when it is about THIS pledge's driver: a pledge naming another driver than the one who drove
+        // the ride can never settle (AttestationMismatch) – without this it could never be refunded either, and its open count would keep every
+        // attestation of the pool from closing (a 1-lamport grief)
+        require!(a.driver != ctx.accounts.pledge.driver || a.status == ATTESTATION_STATUS_UNVERIFIED, PoolError::AttestationExists);
     }
 
     let pool = &mut ctx.accounts.pool;

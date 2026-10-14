@@ -43,6 +43,7 @@ pub fn handle_record_ride_attestation(
     let now = Clock::get()?.unix_timestamp;
     let a = &mut ctx.accounts;
     require!(a.config.may_settle(&a.authority.key()), PoolError::Unauthorized);
+    crate::state::require_migrated(&a.config)?;
     require!(!a.config.paused_before_grace(&a.pool, now)?, PoolError::Paused);
     require!(a.pool.status == STATUS_ACTIVE, PoolError::PoolNotActive);
     require!(

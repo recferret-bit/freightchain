@@ -196,6 +196,13 @@ pub fn split(total: u64, prize_bps: u16, seed_bps: u16) -> Result<(u64, u64, u64
     Ok((prize, seed, fee))
 }
 
+/// v4: a v3 Config with a key unset still DEcodes (borsh reads the floors from its zero padding as 0) – so every step that relies on a floor refuses
+/// it until `migrate_config_v4` has run, instead of working without the floors.
+pub fn require_migrated(config: &Account<Config>) -> Result<()> {
+    require!(config.to_account_info().data_len() >= 8 + Config::INIT_SPACE, PoolError::ConfigNotMigrated);
+    Ok(())
+}
+
 impl Config {
     /// The keys that may commit winners, record ride attestations and close an Active pool: the admin and, when set, the payout key.
     pub fn may_settle(&self, key: &Pubkey) -> bool {

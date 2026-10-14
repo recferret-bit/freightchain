@@ -4,7 +4,7 @@ mod common;
 use common::*;
 use freightchain_pools::{
     error::PoolError,
-    events::{PoolCancelled, PoolClosed, PoolFailed, Refunded, Sponsored},
+    events::{PoolCancelled, PoolClosed, PoolFailed, Refunded, SponsorRefunded, Sponsored},
 };
 use solana_keypair::Keypair;
 use solana_signer::Signer;
@@ -186,8 +186,9 @@ fn resent_batch_after_partial_progress_is_rebuilt_from_remaining() {
     assert_eq!(e.pool(id).refunded, 2 * PRICE);
 }
 
+/// pentest s1-claude poc_05 (M8): the sponsorship of a failed pool goes back to its sponsor, not to the seed treasury.
 #[test]
-fn close_pool_after_refunds_sweeps_sponsorship_and_rent() {
+fn close_pool_after_refunds_returns_sponsorship_and_sweeps_rent() {
     let mut e = Env::new();
     let (id, buyers) = failing_pool(&mut e);
     let sp = funded(&mut e.svm, 10 * SOL);
@@ -206,16 +207,184 @@ fn close_pool_after_refunds_sweeps_sponsorship_and_rent() {
     assert_err!(e.close_pool(id, &auth), PoolError::RefundsPending);
     e.refund(id, &buyers[1].0.pubkey(), &buyers[1].1.pubkey()).unwrap();
     assert_eq!(e.vault(id), e.rent_min() + 777_777);
+    // every ticket is back, the sponsorship is not
+    assert_err!(e.close_pool(id, &auth), PoolError::SponsorRefundsPending);
+    let (s0, rent) = (e.bal(&sp.pubkey()), e.bal(&receipt_pda(id, &sp.pubkey())));
+    e.refund_sponsor(id, &sp.pubkey()).unwrap();
+    assert_eq!(e.bal(&sp.pubkey()), s0 + 777_777 + rent, "sponsorship + receipt rent back");
 
     let (seed0, auth0) = (e.bal(&e.seed_t.pubkey()), e.bal(&auth.pubkey()));
     let r = e.close_pool(id, &auth).unwrap();
     assert_eq!(e.vault(id), 0, "vault ends empty");
-    assert_eq!(e.bal(&e.seed_t.pubkey()), seed0 + 777_777, "sponsorship of a failed pool goes to the seed treasury");
+    assert_eq!(e.bal(&e.seed_t.pubkey()), seed0, "the seed treasury gets nothing of a failed pool");
     assert_eq!(e.bal(&auth.pubkey()), auth0 + e.rent_min(), "vault rent returned to the authority");
     assert_eq!(e.pool(id).status, 4);
     let ev = events::<PoolClosed>(&r.logs);
     assert!(ev[0].cancelled);
-    assert_eq!((ev[0].seed, ev[0].fee, ev[0].rent_returned), (777_777, 0, e.rent_min()));
+    assert_eq!((ev[0].seed, ev[0].fee, ev[0].rent_returned), (0, 0, e.rent_min()));
+}
+
+/// pentest s1-claude poc_05 (M8): two sponsors (one sponsoring twice = one receipt with the sum); a stranger cranks every refund.
+#[test]
+fn failed_pool_refunds_every_sponsor_before_it_closes() {
+    let mut e = Env::new();
+    let (id, buyers) = failing_pool(&mut e);
+    let a = funded(&mut e.svm, 10 * SOL);
+    let b = funded(&mut e.svm, 10 * SOL);
+    for (s, l) in [(&a, 2 * SOL), (&b, 300_000_000), (&a, 5)] {
+        let i = e.sponsor_ix(id, &s.pubkey(), l);
+        e.send(&[i], s, &[]).unwrap();
+    }
+    let ra = e.receipt(id, &a.pubkey()).unwrap();
+    assert_eq!((ra.pool, ra.sponsor, ra.lamports), (pool_pda(id), a.pubkey(), 2 * SOL + 5));
+    assert_eq!(e.receipt(id, &b.pubkey()).unwrap().lamports, 300_000_000);
+    assert_eq!(e.pool(id).sponsored, 2 * SOL + 5 + 300_000_000);
+    // not before the pool fails
+    assert_err!(e.refund_sponsor(id, &a.pubkey()), PoolError::NotRefunding);
+    e.warp(PREP);
+    e.fail(id).unwrap();
+    let stranger = funded(&mut e.svm, SOL);
+
+    // the sponsors first: the ticket money stays for the buyers
+    let rent = e.bal(&receipt_pda(id, &a.pubkey()));
+    let (a0, b0, v0) = (e.bal(&a.pubkey()), e.bal(&b.pubkey()), e.vault(id));
+    let r = e.refund_sponsor(id, &a.pubkey()).unwrap();
+    let ev = events::<SponsorRefunded>(&r.logs);
+    assert_eq!((ev[0].pool_id, ev[0].sponsor, ev[0].lamports, ev[0].sponsor_refunded_total), (id, a.pubkey(), 2 * SOL + 5, 2 * SOL + 5));
+    assert_eq!(e.bal(&a.pubkey()), a0 + 2 * SOL + 5 + rent);
+    assert!(e.receipt(id, &a.pubkey()).is_none(), "the receipt is closed");
+    // a second refund finds no receipt and moves nothing
+    assert!(e.refund_sponsor(id, &a.pubkey()).is_err());
+    assert_eq!(e.bal(&a.pubkey()), a0 + 2 * SOL + 5 + rent);
+    assert_eq!(e.vault(id), v0 - 2 * SOL - 5);
+    for (buyer, payer) in &buyers {
+        e.refund(id, &buyer.pubkey(), &payer.pubkey()).unwrap();
+    }
+    assert_err!(e.close_pool(id, &stranger), PoolError::SponsorRefundsPending);
+    e.refund_sponsor(id, &b.pubkey()).unwrap();
+    assert_eq!(e.bal(&b.pubkey()), b0 + 300_000_000 + rent);
+    let p = e.pool(id);
+    assert_eq!((p.sponsor_refunded, p.refunded), (p.sponsored, 2 * PRICE));
+    assert_eq!(e.vault(id), e.rent_min());
+    let seed0 = e.bal(&e.seed_t.pubkey());
+    e.close_pool(id, &stranger).unwrap();
+    assert_eq!((e.vault(id), e.pool(id).status, e.bal(&e.seed_t.pubkey())), (0, 4, seed0));
+}
+
+/// The receipt is bound to its sponsor: the money cannot be redirected, and an admin-cancelled pool refunds sponsors too.
+#[test]
+fn refund_sponsor_pays_only_the_receipts_sponsor() {
+    let mut e = Env::new();
+    let id = e.create_pool(default_params());
+    let sp = funded(&mut e.svm, 10 * SOL);
+    let i = e.sponsor_ix(id, &sp.pubkey(), SOL);
+    e.send(&[i], &sp, &[]).unwrap();
+    let auth = e.authority_kp();
+    e.cancel(id, &auth).unwrap();
+    let thief = funded(&mut e.svm, SOL);
+    let c = clone_kp(&e.cranker);
+    // the sponsor's receipt presented with the thief as the payee: the receipt PDA does not match
+    let bad = ix(
+        freightchain_pools::instruction::RefundSponsor { pool_id: id },
+        freightchain_pools::accounts::RefundSponsor {
+            caller: c.pubkey(),
+            pool: pool_pda(id),
+            vault: vault_pda(id),
+            receipt: receipt_pda(id, &sp.pubkey()),
+            sponsor: thief.pubkey(),
+            system_program: anchor_lang::solana_program::system_program::ID,
+        },
+    );
+    let v0 = e.vault(id);
+    assert!(e.send(&[bad], &c, &[]).is_err());
+    // the thief has no receipt of its own
+    assert!(e.refund_sponsor(id, &thief.pubkey()).is_err());
+    assert_eq!((e.vault(id), e.bal(&thief.pubkey())), (v0, SOL));
+    let s0 = e.bal(&sp.pubkey());
+    e.refund_sponsor(id, &sp.pubkey()).unwrap();
+    assert!(e.bal(&sp.pubkey()) > s0 + SOL);
+    assert_eq!(e.vault(id), e.rent_min());
+}
+
+#[test]
+fn refund_sponsor_only_from_a_refunding_pool() {
+    let mut e = Env::new();
+    let id = e.create_pool(default_params().with(|x| x.max_tickets = 0));
+    let sp = funded(&mut e.svm, 10 * SOL);
+    let i = e.sponsor_ix(id, &sp.pubkey(), SOL);
+    e.send(&[i], &sp, &[]).unwrap();
+    assert_err!(e.refund_sponsor(id, &sp.pubkey()), PoolError::NotRefunding); // Open
+    let a = funded(&mut e.svm, 10 * SOL);
+    e.buy(id, &a, 3).unwrap();
+    assert_err!(e.refund_sponsor(id, &sp.pubkey()), PoolError::NotRefunding); // Active
+    e.warp(PLAY);
+    let auth = e.authority_kp();
+    e.commit_winners(id, &auth, &[(a.pubkey(), 10_000_000)]).unwrap();
+    e.pay_rank(id, 0).unwrap();
+    assert_err!(e.refund_sponsor(id, &sp.pubkey()), PoolError::NotRefunding);
+    // the receipt of a pool that paid out stays until Settled
+    assert_err!(e.close_sponsor_receipt(id, &sp.pubkey()), PoolError::NotSettled);
+    e.close_pool(id, &auth).unwrap();
+    assert_err!(e.refund_sponsor(id, &sp.pubkey()), PoolError::NotRefunding); // Settled: the sponsorship was in the split
+}
+
+#[test]
+fn close_sponsor_receipt_only_after_settled_returns_the_rent() {
+    let mut e = Env::new();
+    let id = e.create_pool(default_params().with(|x| x.max_tickets = 0));
+    let sp = funded(&mut e.svm, 10 * SOL);
+    let i = e.sponsor_ix(id, &sp.pubkey(), SOL);
+    e.send(&[i], &sp, &[]).unwrap();
+    assert_err!(e.close_sponsor_receipt(id, &sp.pubkey()), PoolError::NotSettled); // Open
+    let a = funded(&mut e.svm, 10 * SOL);
+    e.buy(id, &a, 3).unwrap();
+    assert_err!(e.close_sponsor_receipt(id, &sp.pubkey()), PoolError::NotSettled); // Active
+    e.warp(PLAY);
+    let auth = e.authority_kp();
+    e.commit_winners(id, &auth, &[]).unwrap();
+    e.close_pool(id, &auth).unwrap();
+    assert_eq!(e.pool(id).status, 3);
+    let (s0, rent) = (e.bal(&sp.pubkey()), e.bal(&receipt_pda(id, &sp.pubkey())));
+    assert!(rent > 0);
+    e.close_sponsor_receipt(id, &sp.pubkey()).unwrap();
+    assert_eq!(e.bal(&sp.pubkey()), s0 + rent, "only the rent: the sponsorship was in the split");
+    assert!(e.receipt(id, &sp.pubkey()).is_none());
+    assert!(e.close_sponsor_receipt(id, &sp.pubkey()).is_err(), "closed once");
+
+    // a Refunding / Cancelled pool's receipt goes through refund_sponsor, never close_sponsor_receipt
+    let id2 = e.create_pool(later(&e, default_params()));
+    let i = e.sponsor_ix(id2, &sp.pubkey(), SOL);
+    e.send(&[i], &sp, &[]).unwrap();
+    e.cancel(id2, &auth).unwrap();
+    assert_err!(e.close_sponsor_receipt(id2, &sp.pubkey()), PoolError::NotSettled);
+}
+
+/// pentest s1-claude poc_05b (M8): an ABSENT operator's expired pool gives the sponsorship back too.
+#[test]
+fn expired_pool_returns_the_sponsorship() {
+    let mut e = Env::new();
+    let id = e.create_pool(default_params().with(|x| {
+        x.min_tickets = 2;
+        x.max_tickets = 0;
+    }));
+    let sponsor = funded(&mut e.svm, 10 * SOL);
+    let i = e.sponsor_ix(id, &sponsor.pubkey(), 2 * SOL);
+    e.send(&[i], &sponsor, &[]).unwrap();
+    let buyer = funded(&mut e.svm, SOL);
+    e.buy(id, &buyer, 2).unwrap();
+    assert_eq!(e.pool(id).status, 1);
+    // the operator never settles: the escape hatch
+    e.warp(PAYOUT + freightchain_pools::SETTLE_GRACE_SECS);
+    let anyone = funded(&mut e.svm, SOL);
+    e.expire(id, &anyone).unwrap();
+    e.refund(id, &buyer.pubkey(), &buyer.pubkey()).unwrap();
+    assert_err!(e.close_pool(id, &anyone), PoolError::SponsorRefundsPending);
+    let (s0, seed0) = (e.bal(&sponsor.pubkey()), e.bal(&e.seed_t.pubkey()));
+    e.refund_sponsor(id, &sponsor.pubkey()).unwrap();
+    e.close_pool(id, &anyone).unwrap();
+    assert!(e.bal(&sponsor.pubkey()) - s0 >= 2 * SOL, "the sponsor got the 2 SOL back");
+    assert_eq!(e.bal(&e.seed_t.pubkey()), seed0, "the seed treasury got nothing");
+    assert_eq!((e.vault(id), e.pool(id).status), (0, 4));
 }
 
 #[test]
@@ -250,6 +419,7 @@ fn sponsor_counted_and_state_checked() {
     let i = e.sponsor_ix(id, &sp.pubkey(), 5);
     e.send(&[i], &sp, &[]).unwrap();
     assert_eq!(e.pool(id).sponsored, SOL + 5);
+    assert_eq!(e.receipt(id, &sp.pubkey()).unwrap().lamports, SOL + 5, "one receipt per sponsor and pool");
     assert_eq!(e.vault(id), v0 + SOL + 5);
     assert_eq!(e.pool(id).tickets_sold, 0, "sponsorship is not a ticket");
     let i = e.sponsor_ix(id, &sp.pubkey(), 0);

@@ -72,6 +72,9 @@ pub fn handle_set_config(
     min_review_secs: Option<i64>,
     min_finish_secs: Option<i64>,
 ) -> Result<()> {
+    if min_review_secs.is_some() || min_finish_secs.is_some() {
+        crate::state::require_migrated(&ctx.accounts.config)?;
+    }
     let c = &mut ctx.accounts.config;
     if min_review_secs.is_some() || min_finish_secs.is_some() {
         // the floors only bind NEW pools / series (set_series, create_pool); a pool already open keeps its windows

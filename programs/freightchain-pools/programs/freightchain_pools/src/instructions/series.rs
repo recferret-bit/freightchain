@@ -158,6 +158,7 @@ pub struct OpenNextPool<'info> {
 pub fn handle_open_next_pool(ctx: Context<OpenNextPool>, tier: u8) -> Result<()> {
     let a = &ctx.accounts;
     require!(!a.config.paused, PoolError::Paused);
+    crate::state::require_migrated(&a.config)?;
     require!(a.series.enabled, PoolError::SeriesDisabled);
     let now = Clock::get()?.unix_timestamp;
     let s = &a.series;

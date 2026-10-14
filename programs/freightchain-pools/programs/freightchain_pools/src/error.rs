@@ -97,4 +97,6 @@ pub enum PoolError {
     RoadAlreadySealed,
     #[msg("The Config account is already in the current layout")]
     AlreadyMigrated,
+    #[msg("The Config account is still in the v3 layout: run migrate_config_v4 first")]
+    ConfigNotMigrated,
 }

@@ -1,6 +1,7 @@
-//! Real transactions for the server's decoder / encoder specs: one LiteSVM run of every pool instruction (create, sponsored + self-paid buys with
-//! activation, sponsor, a failed buy, pay_prize, close_pool, close_ticket, fail_pool + refund, the refunded close, cancel, expire, the authority
-//! handover), written as JSON: per transaction the exact instructions (data + account metas, built by Anchor's own `InstructionData` /
+//! Real transactions for the server's decoder / encoder specs: one LiteSVM run of every pool instruction (create, seal_road, sponsored + self-paid
+//! buys with activation, sponsor, a failed buy, commit_winners, veto_winners, pay_prize with a proof, close_pool, close_ticket, close_sponsor_receipt,
+//! fail_pool + refund, refund_sponsor, the refunded close, cancel, expire, ride attestations + pledges, the floors, the authority handover), plus
+//! winners roots and proofs for 1 / 2 / 3 / 20 winners (`winners`), written as JSON: per transaction the exact instructions (data + account metas, built by Anchor's own `InstructionData` /
 //! `ToAccountMetas`), the logs, compute units and the events decoded by the program's own types; plus raw account bytes with their decoded fields.
 //! The server's specs (test/unit/infrastructure/solana/*.spec.ts) decode those logs / accounts and rebuild those instructions, so TS and Rust must agree byte for byte.
 //!
@@ -16,7 +17,7 @@ use anchor_lang::{
 };
 use base64::Engine;
 use common::*;
-use freightchain_pools::{accounts, events::*, instruction, Attestation, Config, CreatePoolParams, Pledge, Pool, Series, Ticket};
+use freightchain_pools::{accounts, events::*, instruction, Attestation, Config, CreatePoolParams, Pledge, Pool, RideAttestation, Series, SponsorReceipt, Ticket};
 use serde_json::{json, Value};
 use solana_keypair::Keypair;
 use solana_signer::Signer;
@@ -73,6 +74,15 @@ fn decoded_events(logs: &[String]) -> Vec<Value> {
             try_ev!(d, PledgeCreated, |e: PledgeCreated| json!({"kind": "PledgeCreated", "rideId": b64(&e.ride_id), "sponsor": e.sponsor.to_string(), "driver": e.driver.to_string(), "pool": e.pool.to_string(), "maxLamports": s(e.max_lamports), "lamportsPerKm": s(e.lamports_per_km), "targetKm": e.target_km, "createdAt": e.created_at}));
             try_ev!(d, PledgeSettled, |e: PledgeSettled| json!({"kind": "PledgeSettled", "rideId": b64(&e.ride_id), "sponsor": e.sponsor.to_string(), "driver": e.driver.to_string(), "pool": e.pool.to_string(), "verifiedKm": e.verified_km, "targetKm": e.target_km, "earnedLamports": s(e.earned_lamports), "refundedLamports": s(e.refunded_lamports)}));
             try_ev!(d, PledgeRefunded, |e: PledgeRefunded| json!({"kind": "PledgeRefunded", "rideId": b64(&e.ride_id), "sponsor": e.sponsor.to_string(), "driver": e.driver.to_string(), "pool": e.pool.to_string(), "refundedLamports": s(e.refunded_lamports)}));
+            try_ev!(d, ConfigMigrated, |e: ConfigMigrated| json!({"kind": "ConfigMigrated", "minReviewSecs": e.min_review_secs, "minFinishSecs": e.min_finish_secs}));
+            try_ev!(d, FloorsSet, |e: FloorsSet| json!({"kind": "FloorsSet", "minReviewSecs": e.min_review_secs, "minFinishSecs": e.min_finish_secs}));
+            try_ev!(d, RoadSealed, |e: RoadSealed| json!({"kind": "RoadSealed", "poolId": e.pool_id, "seedSlot": s(e.seed_slot), "seedSlotHash": b64(&e.seed_slot_hash), "seedCommitment": b64(&e.seed_commitment)}));
+            try_ev!(d, SealRearmed, |e: SealRearmed| json!({"kind": "SealRearmed", "poolId": e.pool_id, "sealSlot": s(e.seal_slot)}));
+            try_ev!(d, WinnersCommitted, |e: WinnersCommitted| json!({"kind": "WinnersCommitted", "poolId": e.pool_id, "root": b64(&e.root), "total": s(e.total), "count": e.count, "committedAt": e.committed_at, "payFrom": e.pay_from, "by": e.by.to_string()}));
+            try_ev!(d, WinnersVetoed, |e: WinnersVetoed| json!({"kind": "WinnersVetoed", "poolId": e.pool_id, "root": b64(&e.root)}));
+            try_ev!(d, RideAttestationRecorded, |e: RideAttestationRecorded| json!({"kind": "RideAttestationRecorded", "poolId": e.pool_id, "pool": e.pool.to_string(), "rideId": b64(&e.ride_id), "driver": e.driver.to_string(), "telemetryRoot": b64(&e.telemetry_root), "verifiedKm": e.verified_km, "status": e.status, "recordedAt": e.recorded_at, "settleFrom": e.settle_from}));
+            try_ev!(d, SponsorRefunded, |e: SponsorRefunded| json!({"kind": "SponsorRefunded", "poolId": e.pool_id, "sponsor": e.sponsor.to_string(), "lamports": s(e.lamports), "sponsorRefundedTotal": s(e.sponsor_refunded_total)}));
+            try_ev!(d, AttestationClosed, |e: AttestationClosed| json!({"kind": "AttestationClosed", "account": e.account.to_string(), "rentTo": e.rent_to.to_string(), "lamports": s(e.lamports)}));
             panic!("unknown event discriminator {:?}", &d[..8]);
         })
         .collect()
@@ -127,7 +137,10 @@ impl Rec {
                 "payoutAt": p.payout_at, "prizeBps": p.prize_bps, "seedBps": p.seed_bps, "feeBps": p.fee_bps, "feeTreasury": p.fee_treasury.to_string(), "seedTreasury": p.seed_treasury.to_string(),
                 "status": p.status, "ticketsSold": p.tickets_sold, "buyers": p.buyers, "sponsored": s(p.sponsored), "prizesPaid": s(p.prizes_paid),
                 "refunded": s(p.refunded), "createdAt": p.created_at, "bump": p.bump, "vaultBump": p.vault_bump,
-                "seedCommitment": b64(&p.seed_commitment), "seedSlot": s(p.seed_slot), "seedSlotHash": b64(&p.seed_slot_hash)})
+                "seedCommitment": b64(&p.seed_commitment), "seedSlot": s(p.seed_slot), "seedSlotHash": b64(&p.seed_slot_hash),
+                "sealSlot": s(p.seal_slot), "platformFeeBps": p.platform_fee_bps, "winnersRoot": b64(&p.winners_root), "winnersTotal": s(p.winners_total),
+                "winnersCount": p.winners_count, "committedAt": p.committed_at, "payFrom": p.pay_from, "paidMask": s(p.paid_mask),
+                "sponsorRefunded": s(p.sponsor_refunded), "openPledges": p.open_pledges})
         } else if a.data.len() >= 8 && a.data[..8] == *Ticket::DISCRIMINATOR {
             let t = Ticket::try_deserialize(&mut &a.data[..]).unwrap();
             json!({"type": "Ticket", "buyer": t.buyer.to_string(), "rentPayer": t.rent_payer.to_string(), "poolId": t.pool_id, "qty": t.qty, "lamports": s(t.lamports), "bump": t.bump})
@@ -135,6 +148,14 @@ impl Rec {
             let x = Attestation::try_deserialize(&mut &a.data[..]).unwrap();
             json!({"type": "Attestation", "pool": x.pool.to_string(), "driver": x.driver.to_string(), "telemetryRoot": b64(&x.telemetry_root),
                 "verifiedKm": x.verified_km, "status": x.status, "recordedAt": x.recorded_at, "bump": x.bump})
+        } else if a.data.len() >= 8 && a.data[..8] == *RideAttestation::DISCRIMINATOR {
+            let x = RideAttestation::try_deserialize(&mut &a.data[..]).unwrap();
+            json!({"type": "RideAttestation", "pool": x.pool.to_string(), "rideId": b64(&x.ride_id), "driver": x.driver.to_string(), "telemetryRoot": b64(&x.telemetry_root),
+                "verifiedKm": x.verified_km, "status": x.status, "recordedAt": x.recorded_at, "settleFrom": x.settle_from, "settledPledges": x.settled_pledges,
+                "rentPayer": x.rent_payer.to_string(), "bump": x.bump})
+        } else if a.data.len() >= 8 && a.data[..8] == *SponsorReceipt::DISCRIMINATOR {
+            let x = SponsorReceipt::try_deserialize(&mut &a.data[..]).unwrap();
+            json!({"type": "SponsorReceipt", "pool": x.pool.to_string(), "sponsor": x.sponsor.to_string(), "lamports": s(x.lamports), "bump": x.bump})
         } else if a.data.len() >= 8 && a.data[..8] == *Pledge::DISCRIMINATOR {
             let x = Pledge::try_deserialize(&mut &a.data[..]).unwrap();
             json!({"type": "Pledge", "rideId": b64(&x.ride_id), "sponsor": x.sponsor.to_string(), "driver": x.driver.to_string(), "pool": x.pool.to_string(),
@@ -150,7 +171,7 @@ impl Rec {
             let c = Config::try_deserialize(&mut &a.data[..]).unwrap();
             json!({"type": "Config", "authority": c.authority.to_string(), "platformTreasury": c.platform_treasury.to_string(), "platformFeeBps": c.platform_fee_bps,
                 "poolCount": c.pool_count, "paused": c.paused, "bump": c.bump, "pendingAuthority": c.pending_authority.map(|k| k.to_string()),
-                "payoutAuthority": c.payout_authority.map(|k| k.to_string())})
+                "payoutAuthority": c.payout_authority.map(|k| k.to_string()), "minReviewSecs": c.min_review_secs, "minFinishSecs": c.min_finish_secs})
         };
         self.accounts.push(json!({"name": name, "address": key.to_string(), "owner": a.owner.to_string(), "lamports": s(a.lamports), "data": b64(&a.data), "decoded": decoded}));
     }
@@ -177,12 +198,27 @@ fn close_pool_ix(e: &Env, id: u32, caller: &Pubkey) -> (Instruction, &'static st
     );
     (i, "close_pool", json!({"poolId": id, "caller": caller.to_string()}))
 }
-fn pay_prize_ix(id: u32, authority: &Pubkey, to: &Pubkey, lamports: u64, rank: u8) -> (Instruction, &'static str, Value) {
+fn pay_prize_ix(e: &Env, id: u32, caller: &Pubkey, w: &Winners, rank: u8) -> (Instruction, &'static str, Value) {
+    let (to, lamports) = w.list[rank as usize];
+    let proof = w.proofs[rank as usize].clone();
+    let args = json!({"poolId": id, "caller": caller.to_string(), "to": to.to_string(), "lamports": s(lamports), "rank": rank, "proof": proof.iter().map(|p| b64(p)).collect::<Vec<_>>()});
+    (e.pay_prize_ix(id, caller, rank, &to, lamports, proof), "pay_prize", args)
+}
+fn commit_ix(id: u32, authority: &Pubkey, w: &Winners) -> (Instruction, &'static str, Value) {
+    let count = w.list.len() as u8;
     let i = ix(
-        instruction::PayPrize { pool_id: id, lamports, rank },
-        accounts::PayPrize { authority: *authority, config: config_pda(), pool: pool_pda(id), vault: vault_pda(id), to: *to, attestation: attestation_pda(id, to), system_program: anchor_lang::solana_program::system_program::ID },
+        instruction::CommitWinners { pool_id: id, root: w.root, total: w.total, count },
+        accounts::CommitWinners { authority: *authority, config: config_pda(), pool: pool_pda(id) },
     );
-    (i, "pay_prize", json!({"poolId": id, "authority": authority.to_string(), "to": to.to_string(), "lamports": s(lamports), "rank": rank}))
+    (i, "commit_winners", json!({"poolId": id, "authority": authority.to_string(), "root": b64(&w.root), "total": s(w.total), "count": count}))
+}
+fn seal(e: &mut Env, rec: &mut Rec, id: u32, payer: &Keypair) {
+    let target = e.pool(id).seal_slot;
+    e.set_slot(target + 3);
+    let h = [0x40u8 + id as u8; 32];
+    e.set_slot_hashes(&[(target + 2, [0x7e; 32]), (target, h), (target - 1, [0x01; 32])]);
+    let i = (e.seal_road_ix(id, &payer.pubkey()), "seal_road", json!({"poolId": id}));
+    rec.send(e, &format!("seal_road {id}"), vec![i], payer, &[], true).unwrap();
 }
 fn create(e: &mut Env, rec: &mut Rec, p: CreatePoolParams) -> u32 {
     let id = e.next_pool;
@@ -207,8 +243,19 @@ fn export_pool_program_fixtures() {
         e.svm.airdrop(&k.pubkey(), 10 * SOL).unwrap();
     }
 
-    // ---- pool 0: the happy path, with a gas sponsor, activation, a brand sponsorship, a refused buy, a prize and the split
+    // ---- the floors (FloorsSet), and the migration's instruction bytes (refused: this Config is already v4)
+    let i = ix(
+        instruction::SetConfig { paused: None, platform_treasury: None, platform_fee_bps: None, min_review_secs: Some(0), min_finish_secs: Some(0) },
+        accounts::SetConfig { authority: auth.pubkey(), config: config_pda(), new_platform_treasury: e.plat_t.pubkey() },
+    );
+    rec.send(&mut e, "set_config floors", vec![(i, "set_config", json!({"minReviewSecs": 0, "minFinishSecs": 0}))], &cranker, &[&auth], true).unwrap();
+    let i = ix(instruction::MigrateConfigV4 {}, accounts::MigrateConfigV4 { authority: auth.pubkey(), config: config_pda(), system_program: anchor_lang::solana_program::system_program::ID });
+    rec.send(&mut e, "migrate_config_v4 on a v4 Config (fails)", vec![(i, "migrate_config_v4", json!({}))], &cranker, &[&auth], false).unwrap_err();
+
+    // ---- pool 0: the happy path, with a gas sponsor, activation, a brand sponsorship, a refused buy, a vetoed root, a prize and the split
+    e.set_slot(1_000);
     let p0 = create(&mut e, &mut rec, default_params());
+    seal(&mut e, &mut rec, p0, &cranker);
     let i = buy(&e, p0, &a.pubkey(), &gas.pubkey(), 2, ORDER_A);
     rec.send(&mut e, "buy_ticket sponsored (A x2, gas pays fee + rent)", vec![i], &gas, &[&a], true).unwrap();
     let i = buy(&e, p0, &b.pubkey(), &b.pubkey(), 1, ORDER_B);
@@ -220,12 +267,29 @@ fn export_pool_program_fixtures() {
     rec.account(&e, "config", &config_pda());
     rec.account(&e, "pool 0 active", &pool_pda(p0));
     rec.account(&e, "ticket pool 0 A", &ticket_pda(p0, &a.pubkey()));
+    rec.account(&e, "sponsor receipt pool 0 brand", &receipt_pda(p0, &brand.pubkey()));
     e.warp(PLAY);
-    e.record_verified_attestation(p0, &auth, &winner.pubkey(), 100).unwrap();
-    rec.send(&mut e, "pay_prize", vec![pay_prize_ix(p0, &auth.pubkey(), &winner.pubkey(), 100_000_000, 1)], &cranker, &[&auth], true).unwrap();
+    let wrong = winners_of(p0, &[(a.pubkey(), 100_000_000)]);
+    rec.send(&mut e, "commit_winners (a wrong root)", vec![commit_ix(p0, &auth.pubkey(), &wrong)], &cranker, &[&auth], true).unwrap();
+    let i = ix(instruction::VetoWinners { pool_id: p0 }, accounts::VetoWinners { authority: auth.pubkey(), config: config_pda(), pool: pool_pda(p0) });
+    rec.send(&mut e, "veto_winners", vec![(i, "veto_winners", json!({"poolId": p0}))], &cranker, &[&auth], true).unwrap();
+    let w0 = winners_of(p0, &[(winner.pubkey(), 100_000_000), (b.pubkey(), 20_000_000)]);
+    rec.send(&mut e, "commit_winners", vec![commit_ix(p0, &auth.pubkey(), &w0)], &cranker, &[&auth], true).unwrap();
+    rec.account(&e, "pool 0 committed", &pool_pda(p0));
+    for r in 0..2 {
+        let i = pay_prize_ix(&e, p0, &d.pubkey(), &w0, r);
+        rec.send(&mut e, &format!("pay_prize rank {r} (anyone)"), vec![i], &d, &[], true).unwrap();
+    }
+    let i = pay_prize_ix(&e, p0, &d.pubkey(), &w0, 0);
+    rec.send(&mut e, "pay_prize rank 0 again (fails)", vec![i], &d, &[], false).unwrap_err();
     let i = close_pool_ix(&e, p0, &auth.pubkey());
     rec.send(&mut e, "close_pool settled", vec![i], &cranker, &[&auth], true).unwrap();
     rec.account(&e, "pool 0 settled", &pool_pda(p0));
+    let i = ix(
+        instruction::CloseSponsorReceipt { pool_id: p0 },
+        accounts::CloseSponsorReceipt { caller: cranker.pubkey(), pool: pool_pda(p0), receipt: receipt_pda(p0, &brand.pubkey()), sponsor: brand.pubkey() },
+    );
+    rec.send(&mut e, "close_sponsor_receipt", vec![(i, "close_sponsor_receipt", json!({"poolId": p0, "sponsor": brand.pubkey().to_string()}))], &cranker, &[], true).unwrap();
     let i = ix(
         instruction::CloseTicket { pool_id: p0 },
         accounts::CloseTicket { caller: cranker.pubkey(), pool: pool_pda(p0), ticket: ticket_pda(p0, &a.pubkey()), rent_payer: gas.pubkey() },
@@ -238,17 +302,36 @@ fn export_pool_program_fixtures() {
     let i = buy(&e, p1, &c.pubkey(), &c.pubkey(), 1, [3u8; 16]);
     rec.send(&mut e, "buy_ticket into pool 1", vec![i], &c, &[], true).unwrap();
     rec.account(&e, "ticket pool 1 C", &ticket_pda(p1, &c.pubkey()));
+    let i = (e.sponsor_ix(p1, &brand.pubkey(), 30_000_000), "sponsor", json!({"poolId": p1, "sponsor": brand.pubkey().to_string(), "lamports": s(30_000_000)}));
+    rec.send(&mut e, "sponsor pool 1", vec![i], &brand, &[], true).unwrap();
     e.warp(e.pool(p1).prep_deadline);
     let fail = (e.fail_ix(p1, &d.pubkey()), "fail_pool", json!({"poolId": p1, "caller": d.pubkey().to_string()}));
     let refund = (e.refund_ix(p1, &d.pubkey(), &c.pubkey(), &c.pubkey()), "refund", json!({"poolId": p1, "caller": d.pubkey().to_string(), "buyer": c.pubkey().to_string(), "rentPayer": c.pubkey().to_string()}));
     rec.send(&mut e, "fail_pool + refund", vec![fail, refund], &gas, &[&d], true).unwrap();
     rec.account(&e, "pool 1 refunding", &pool_pda(p1));
+    let i = ix(
+        instruction::RefundSponsor { pool_id: p1 },
+        accounts::RefundSponsor {
+            caller: d.pubkey(),
+            pool: pool_pda(p1),
+            vault: vault_pda(p1),
+            receipt: receipt_pda(p1, &brand.pubkey()),
+            sponsor: brand.pubkey(),
+            system_program: anchor_lang::solana_program::system_program::ID,
+        },
+    );
+    rec.send(&mut e, "refund_sponsor", vec![(i, "refund_sponsor", json!({"poolId": p1, "sponsor": brand.pubkey().to_string()}))], &d, &[], true).unwrap();
     let i = close_pool_ix(&e, p1, &d.pubkey());
     rec.send(&mut e, "close_pool cancelled (refunded pool, anyone)", vec![i], &d, &[], true).unwrap();
 
-    // ---- pool 2: cancelled by the admin while open
+    // ---- pool 2: nobody sealed in time (the target left the SlotHashes window: re-armed), then cancelled by the admin while open
     let lp = later(&e, default_params());
     let p2 = create(&mut e, &mut rec, lp);
+    let target = e.pool(p2).seal_slot;
+    e.set_slot(target + 900);
+    e.set_slot_hashes(&[(target + 899, [0x31; 32]), (target + 388, [0x32; 32])]);
+    let i = (e.seal_road_ix(p2, &cranker.pubkey()), "seal_road", json!({"poolId": p2}));
+    rec.send(&mut e, "seal_road re-armed", vec![i], &cranker, &[], true).unwrap();
     let i = ix(instruction::CancelPool { pool_id: p2 }, accounts::CancelPool { authority: auth.pubkey(), config: config_pda(), pool: pool_pda(p2) });
     rec.send(&mut e, "cancel_pool", vec![(i, "cancel_pool", json!({"poolId": p2}))], &cranker, &[&auth], true).unwrap();
 
@@ -318,33 +401,41 @@ fn export_pool_program_fixtures() {
         rec.send(&mut e, name, vec![(i, "create_pledge", args)], &brand, &[], true).unwrap();
     }
     rec.account(&e, "pledge on the winner's ride", &pledge_pda(&ride_w, &brand.pubkey()));
-    e.warp(e.pool(p4).payout_at);
+    //      at the play deadline the payout key records the winner's RIDE attestation (60 km) and commits the winners; nobody pays before the lock
+    e.warp(e.pool(p4).play_deadline);
+    seal(&mut e, &mut rec, p4, &cranker);
     let i = ix(
-        instruction::RecordAttestation { pool_id: p4, driver: winner.pubkey(), telemetry_root: [7u8; 32], verified_km: 60, status: freightchain_pools::ATTESTATION_STATUS_VERIFIED },
-        accounts::RecordAttestation {
+        instruction::RecordRideAttestation { pool_id: p4, ride_id: ride_w, driver: winner.pubkey(), telemetry_root: [7u8; 32], verified_km: 60, status: freightchain_pools::ATTESTATION_STATUS_VERIFIED },
+        accounts::RecordRideAttestation {
             authority: payout.pubkey(),
             config: config_pda(),
             pool: pool_pda(p4),
-            driver_account: winner.pubkey(),
-            attestation: attestation_pda(p4, &winner.pubkey()),
+            ride_attestation: ride_attestation_pda(p4, &ride_w),
             system_program: anchor_lang::solana_program::system_program::ID,
         },
     );
-    let args = json!({"poolId": p4, "driver": winner.pubkey().to_string(), "telemetryRoot": b64(&[7u8; 32]), "verifiedKm": 60, "status": 1});
-    rec.send(&mut e, "record_attestation by the payout key", vec![(i, "record_attestation", args)], &cranker, &[&payout], true).unwrap();
-    rec.account(&e, "attestation pool 4 winner", &attestation_pda(p4, &winner.pubkey()));
-    rec.send(&mut e, "pay_prize by the payout key", vec![pay_prize_ix(p4, &payout.pubkey(), &winner.pubkey(), PRICE, 1)], &cranker, &[&payout], true).unwrap();
+    let args = json!({"poolId": p4, "rideId": b64(&ride_w), "driver": winner.pubkey().to_string(), "telemetryRoot": b64(&[7u8; 32]), "verifiedKm": 60, "status": 1});
+    rec.send(&mut e, "record_ride_attestation by the payout key", vec![(i, "record_ride_attestation", args)], &cranker, &[&payout], true).unwrap();
+    rec.account(&e, "ride attestation pool 4 winner", &ride_attestation_pda(p4, &ride_w));
+    let w4 = winners_of(p4, &[(winner.pubkey(), PRICE)]);
+    rec.send(&mut e, "commit_winners by the payout key", vec![commit_ix(p4, &payout.pubkey(), &w4)], &cranker, &[&payout], true).unwrap();
+    let i = pay_prize_ix(&e, p4, &cranker.pubkey(), &w4, 0);
+    rec.send(&mut e, "pay_prize inside the lock (fails)", vec![i], &cranker, &[], false).unwrap_err();
+    e.warp(e.pool(p4).pay_from);
+    let i = pay_prize_ix(&e, p4, &cranker.pubkey(), &w4, 0);
+    rec.send(&mut e, "pay_prize after the lock (anyone)", vec![i], &cranker, &[], true).unwrap();
     let i = close_pool_ix(&e, p4, &payout.pubkey());
     rec.send(&mut e, "close_pool by the payout key", vec![i], &cranker, &[&payout], true).unwrap();
-    //      after the close: anyone settles the winner's pledge (60 of 100 km) and refunds C's (no attestation)
+    //      after the close: anyone settles the winner's pledge (60 of 100 km) and refunds C's (its ride has no attestation); then the attestation's rent goes back
     let i = ix(
         instruction::SettlePledge { ride_id: ride_w },
         accounts::SettlePledge {
             caller: cranker.pubkey(),
             driver: winner.pubkey(),
             sponsor: brand.pubkey(),
+            config: config_pda(),
             pool: pool_pda(p4),
-            attestation: attestation_pda(p4, &winner.pubkey()),
+            ride_attestation: ride_attestation_pda(p4, &ride_w),
             pledge: pledge_pda(&ride_w, &brand.pubkey()),
             system_program: anchor_lang::solana_program::system_program::ID,
         },
@@ -356,11 +447,17 @@ fn export_pool_program_fixtures() {
             caller: cranker.pubkey(),
             sponsor: brand.pubkey(),
             pool: pool_pda(p4),
-            attestation: attestation_pda(p4, &c.pubkey()),
+            ride_attestation: ride_attestation_pda(p4, &ride_c),
             pledge: pledge_pda(&ride_c, &brand.pubkey()),
         },
     );
     rec.send(&mut e, "refund_pledge", vec![(i, "refund_pledge", json!({"rideId": b64(&ride_c)}))], &cranker, &[], true).unwrap();
+    rec.account(&e, "pool 4 settled", &pool_pda(p4));
+    let i = ix(
+        instruction::CloseRideAttestation { pool_id: p4, ride_id: ride_w },
+        accounts::CloseRideAttestation { caller: cranker.pubkey(), pool: pool_pda(p4), ride_attestation: ride_attestation_pda(p4, &ride_w), rent_payer: payout.pubkey() },
+    );
+    rec.send(&mut e, "close_ride_attestation", vec![(i, "close_ride_attestation", json!({"poolId": p4, "rideId": b64(&ride_w)}))], &cranker, &[], true).unwrap();
     rec.account(&e, "config with payout key", &config_pda());
 
     // ---- the authority handover (program events that are NOT pool events)
@@ -370,7 +467,9 @@ fn export_pool_program_fixtures() {
     rec.send(&mut e, "accept_authority", vec![(i, "accept_authority", json!({}))], &cranker, &[&next_admin], true).unwrap();
 
     let kinds: Vec<String> = rec.txs.iter().flat_map(|t| t["events"].as_array().unwrap().iter().map(|e| e["kind"].as_str().unwrap().to_string())).collect();
-    for k in ["PoolCreated", "TicketBought", "PoolActivated", "Sponsored", "PoolFailed", "PoolCancelled", "PoolExpired", "Refunded", "PrizePaid", "PoolClosed", "AuthorityProposed", "AuthorityChanged", "SeriesSet", "PayoutAuthoritySet", "AttestationRecorded", "PledgeCreated", "PledgeSettled", "PledgeRefunded"] {
+    for k in ["PoolCreated", "TicketBought", "PoolActivated", "Sponsored", "PoolFailed", "PoolCancelled", "PoolExpired", "Refunded", "PrizePaid", "PoolClosed", "AuthorityProposed",
+        "AuthorityChanged", "SeriesSet", "PayoutAuthoritySet", "PledgeCreated", "PledgeSettled", "PledgeRefunded", "FloorsSet", "RoadSealed", "SealRearmed", "WinnersCommitted",
+        "WinnersVetoed", "RideAttestationRecorded", "SponsorRefunded", "AttestationClosed"] {
         assert!(kinds.iter().any(|x| x == k), "no {k} recorded");
     }
     let out = json!({
@@ -382,10 +481,28 @@ fn export_pool_program_fixtures() {
             "nextAdmin": next_admin.pubkey().to_string(), "payout": payout.pubkey().to_string(), "feeTreasury": e.fee_t.pubkey().to_string(), "seedTreasury": e.seed_t.pubkey().to_string(), "platformTreasury": e.plat_t.pubkey().to_string()},
         "transactions": rec.txs,
         "accounts": rec.accounts,
+        "winners": winner_vectors(),
     });
     if let Ok(dir) = std::env::var("FC_FIXTURES_OUT") {
         let path = std::path::Path::new(&dir).join("pool-program.json");
         std::fs::write(&path, serde_json::to_string_pretty(&out).unwrap() + "\n").unwrap();
         println!("wrote {}", path.display());
     }
+}
+
+/// Roots and proofs the server must reproduce byte for byte (server/src/domain/economy/winners-merkle.ts): 1, 2, 3 and 20 winners of pool 7.
+fn winner_vectors() -> Vec<Value> {
+    [1usize, 2, 3, 20]
+        .iter()
+        .map(|&n| {
+            let list: Vec<(Pubkey, u64)> = (0..n).map(|i| (Pubkey::new_from_array([0x80 + i as u8; 32]), 1_000_000 * (n - i) as u64 + 7)).collect();
+            let w = winners_of(7, &list);
+            for (r, p) in w.proofs.iter().enumerate() {
+                let leaf = freightchain_pools::state::winner_leaf(7, r as u8, &list[r].0, list[r].1);
+                assert_eq!(freightchain_pools::state::merkle_root_from(leaf, r as u32, n as u32, p), Some(w.root), "{n} winners, rank {r}");
+            }
+            json!({"poolId": 7, "list": list.iter().map(|(k, l)| json!({"wallet": k.to_string(), "lamports": s(*l)})).collect::<Vec<_>>(),
+                "root": b64(&w.root), "total": s(w.total), "proofs": w.proofs.iter().map(|p| p.iter().map(|x| b64(x)).collect::<Vec<_>>()).collect::<Vec<_>>()})
+        })
+        .collect()
 }
