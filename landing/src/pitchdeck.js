@@ -345,7 +345,7 @@ deck.querySelectorAll('.fx .shot').forEach(c => {
   c.addEventListener('pointerup', end); c.addEventListener('pointercancel', end);
 });
 
-/* the LIVE badge runs from the mouse: up to ~220 stage px within ~620 px of it; rightwards capped at 40 (the stage edge), the rest slides it up / down */
+/* the LIVE badge runs from the mouse: up to ~100 stage px within ~440 px of it, rightwards capped at 40 (the stage edge) */
 const badge = document.querySelector('.fx .badge'), bd = { x: 0, y: 0 };
 let mouse = null;
 addEventListener('pointermove', e => { mouse = e.pointerType === 'touch' ? null : [e.clientX, e.clientY]; });
@@ -353,15 +353,11 @@ document.documentElement.addEventListener('pointerleave', () => { mouse = null; 
 function badgeTick() {
   let tx = 0, ty = 0;
   if (badge && mouse && badge.closest('.slide.on')) {
-    const r = badge.getBoundingClientRect(), R = 620 * scale;
+    const r = badge.getBoundingClientRect(), R = 440 * scale;
     const dx = r.left + r.width / 2 - bd.x * scale - mouse[0], dy = r.top + r.height / 2 - bd.y * scale - mouse[1], dist = Math.hypot(dx, dy) || 1;   // from the resting centre
-    if (dist < R) {
-      const push = 220 * (1 - dist / R) ** 1.1; tx = dx / dist * push; ty = dy / dist * push;
-      if (tx > 40) { ty += (ty >= 0 ? 1 : -1) * (tx - 40) * 1.5; tx = 40; }   // the stage edge is just to the right: what cannot go sideways slides up / down instead
-      ty = Math.max(-140, Math.min(320, ty));   // and it stays on the slide
-    }
+    if (dist < R) { const push = 100 * (1 - dist / R) ** 1.2; tx = Math.min(40, dx / dist * push); ty = dy / dist * push; }   // rightwards is capped: the stage edge is just there
   }
-  bd.x += (tx - bd.x) * .2; bd.y += (ty - bd.y) * .2;
+  bd.x += (tx - bd.x) * .14; bd.y += (ty - bd.y) * .14;
   badge?.style.setProperty('--bx', `${bd.x.toFixed(1)}px`); badge?.style.setProperty('--by', `${bd.y.toFixed(1)}px`);
   requestAnimationFrame(badgeTick);
 }
