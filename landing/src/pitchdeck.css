@@ -111,17 +111,11 @@ h1 em{font-style:normal;color:var(--ink)}
 .badges img{width:120px;height:120px}
 
 
-/* chrome: progress, notes (N), clock (P), tooltip */
+/* chrome: progress, tooltip */
 #bar{position:absolute;left:0;bottom:0;height:5px;background:var(--accent);transition:width .4s;z-index:20}
-#notes{position:fixed;left:0;right:0;bottom:0;z-index:30;padding:18px 28px 22px;background:#000e;color:#fff;font:500 20px/1.45 -apple-system,system-ui,sans-serif;display:none}
-.notes #notes{display:block}
-#clock{float:right;margin-left:24px;font:700 20px ui-monospace,monospace;color:#7cff7c}
-.playing #clock{display:inline}
 #tip{position:fixed;z-index:40;pointer-events:none;padding:8px 12px;border-radius:6px;background:#000;color:#fff;font:500 14px system-ui,sans-serif;border:1px solid #fff3}
-#help{position:fixed;left:14px;bottom:12px;transition:opacity 1s;z-index:30;font:500 12px system-ui,sans-serif;color:#fff8;pointer-events:none}
-#help.gone{opacity:0}
 .L-wall .pts li{font-size:28px}
-@media print{#notes,#help,#bar{display:none}}
+@media print{#help,#bar{display:none}}
 
 /* Option B · POSTER – the TikTok cards: black, condensed caps, red / yellow / white, the Solana purple→green bar. */
 :root{--bg:#050505;--panel:#111;--ink:#fff;--muted:#9a9a9a;--accent:#ffcf5a;--accent2:#ff3b2f;--good:#14f195;--line:#2a2a2a;
@@ -170,3 +164,24 @@ h1 small{font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;c
 .ladder li.on b{color:var(--good)}
 #bar{background:var(--sol)}
 .brand{color:#fff}
+
+/* tip: always on, a slow pulse */
+#help{position:fixed;left:50%;bottom:14px;translate:-50%;z-index:30;padding:9px 18px;border-radius:999px;border:1px solid #9945ff99;background:#000a;font:700 13px var(--body);letter-spacing:2.5px;text-transform:uppercase;color:#fffc;pointer-events:none;animation:tip 2.4s ease-in-out infinite}
+#help b{color:var(--good)}
+@keyframes tip{0%,100%{box-shadow:0 0 0 0 #9945ff00;opacity:.72}50%{box-shadow:0 0 18px 2px #9945ff88,0 0 28px 4px #14f19533;opacity:1}}
+
+/* slide 1: the screens hang in the air, lean away from the mouse, lift on hover / tap; the border is a flowing Solana glow */
+.L-wall .shot{--r:0deg;--k:0;--s:1;--dl:0s;transform:rotate(var(--r)) translate(calc(var(--px,0)*var(--k)*1px),calc(var(--py,0)*var(--k)*1px)) scale(var(--s));
+  transition:transform .35s cubic-bezier(.2,.8,.2,1);cursor:pointer;animation:float 6s ease-in-out var(--dl) infinite,glow 4s ease-in-out var(--dl) infinite,flow 7s linear infinite;
+  background:linear-gradient(110deg,#9945ff,#14f195,#9945ff,#14f195) 0 0/300% 100%}
+.L-wall .shot:hover,.L-wall .shot.hot{--s:1.045;z-index:6;animation-play-state:running}
+.L-wall .w1{--r:-3deg;--k:-26;--dl:-1s}
+.L-wall .w2{--r:2.5deg;--k:34;--dl:-2.5s}
+.L-wall .w3{--r:1.5deg;--k:-40;--dl:-4s}
+.L-wall .w4{--r:-2deg;--k:50;--dl:-5s}
+.L-wall .w1,.L-wall .w2,.L-wall .w3,.L-wall .w4{transform:rotate(var(--r)) translate(calc(var(--px,0)*var(--k)*1px),calc(var(--py,0)*var(--k)*1px)) scale(var(--s))}
+@keyframes float{0%,100%{translate:0 0}50%{translate:0 -16px}}
+@keyframes flow{to{background-position:300% 0}}
+@keyframes glow{0%,100%{box-shadow:0 0 0 4px #050505,0 0 22px 2px #9945ffaa,0 40px 90px #000}50%{box-shadow:0 0 0 4px #050505,0 0 34px 6px #14f19577,0 40px 90px #000}}
+.L-wall .shot.hot{box-shadow:0 0 0 4px #050505,0 0 48px 10px #9945ffcc,0 0 70px 12px #14f19555}
+@media (prefers-reduced-motion:reduce){.L-wall .shot,#help{animation:none}}

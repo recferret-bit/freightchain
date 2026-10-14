@@ -1,6 +1,6 @@
 /* Freight Chain pitch deck (pitchdeck.<apex>, landing/pitchdeck.html – the "Poster" theme, src/pitchdeck.css). Makes NO request of its own: every file is the landing build's.
    The slides are author-written constants, so they go in with innerHTML (the landing's no-innerHTML rule is for server text; this file takes none).
-   Keys: → / space next · ← back · F fullscreen · N script notes · P play to the script clock · Home / End.
+   Keys: → / space next · ← back · F fullscreen · Home / End.
    Every number on the traction slide is PostHog EU, Oct 8–12 2026, distinct people (see DATA). */
 
 const A = '/media/pitchdeck/', BADGES = '/badges/';   // absolute: on pitchdeck.<apex> a relative path would resolve against the host's /
@@ -23,8 +23,7 @@ const DATA = {
 };
 
 const SLIDES = [
-  { t: 0, layout: 'wall', id: 'driver',
-    notes: "I'm Andrei. I build alone, in Belgrade. I was a tech lead at Latoken, on chain integrations, and I won the Moralis and Cronos GameFi hackathon. The truck was already driving. These two weeks I put a real product around it. A site. Streams. Analytics. Solana escrow.",
+  { layout: 'wall', id: 'driver',
     html: `
       <div class="copy">
         <div class="brand"><img src="/icons/icon-192.png" alt=""><span>FREIGHT CHAIN</span></div>
@@ -40,8 +39,7 @@ const SLIDES = [
         <div class="tags"><span>SITE</span><span>STREAMS</span><span>ANALYTICS</span><span>SOLANA ESCROW</span></div>
       </div>` },
 
-  { t: 22, layout: 'bleed', id: 'game',
-    notes: 'Freight Chain. A truck cab. A road that never ends. Your shift does. One mistake ends it. Manual gearbox. A cold engine. Night. Traffic. Speed stays near one hundred. You cannot skip the clock.',
+  { layout: 'bleed', id: 'game',
     html: `
       <video class="bg" src="/media/hero-preview.mp4" poster="/media/hero-poster.webp" muted playsinline loop preload="auto"></video>
       <div class="shade"></div>
@@ -52,8 +50,7 @@ const SLIDES = [
       </div>
       <div class="vis">${shot('01-one-mistake.webp', 'poster', 'One mistake ends the shift')}</div>` },
 
-  { t: 40, layout: 'split', id: 'insight',
-    notes: 'People will not come to Solana for another pool. They already watch long, tense streams. So the game is the door. They come for the cab. The wallet shows up when they want a seat. The stream is the ad.',
+  { layout: 'split', id: 'insight',
     html: `
       <div class="copy">
         <div class="lbl">02 · The insight</div>
@@ -65,8 +62,7 @@ const SLIDES = [
         <div class="badge live">● LIVE · NO WALLET TO WATCH</div>
       </div>` },
 
-  { t: 60, layout: 'split flip', id: 'play',
-    notes: 'Play it free tonight. Ten free rides. No download. Watch a live haul, or a replay, with no wallet. A paid seat is a one-hour shift, a few dollars in SOL, one signature. Four hours and eight hours come after that. The one-hour pool is on devnet. The site still says the paid shifts are soon.',
+  { layout: 'split flip', id: 'play',
     html: `
       <div class="copy">
         <div class="lbl">03 · Play</div>
@@ -84,8 +80,7 @@ const SLIDES = [
         ${shot('receipt-card.webp', 'v-sub receipt', 'Ride receipt')}
       </div>` },
 
-  { t: 82, layout: 'money', id: 'money',
-    notes: 'Seventy percent of every pool goes to the drivers who finish, ranked by distance. Twenty percent starts the next pool. Ten percent is the fee. The program holds the money. If too few tickets sell, it can be sent back without me. The chain commits the road, so I cannot pick an easy one. The vault pays only a ride that has been attested. Devnet. Not audited. No token.',
+  { layout: 'money', id: 'money',
     html: `
       <div class="copy">
         <div class="lbl">04 · The money</div>
@@ -104,8 +99,7 @@ const SLIDES = [
         <img class="glyph g1" src="${A}proof.svg" alt="Four 15-second batches hash up into one Merkle root">
       </div>` },
 
-  { t: 108, layout: 'chart', id: 'traction',
-    notes: 'One hundred seventy-seven people in eight days. About half of them watched the film. The first players are finishing rides. Wallets are still rare. That is the number I work on next.',
+  { layout: 'chart', id: 'traction',
     html: `
       <div class="copy">
         <div class="lbl">05 · Traction</div>
@@ -122,8 +116,7 @@ const SLIDES = [
       </div>
       <div class="src">${DATA.source}</div>` },
 
-  { t: 125, layout: 'end', id: 'next',
-    notes: 'Solana Ecosystem track. Next is a real payout on devnet, then an audit, then mainnet, then more games on the same rails.',
+  { layout: 'end', id: 'next',
     html: `
       <div class="copy">
         <div class="lbl">06 · Next</div>
@@ -140,8 +133,7 @@ const SLIDES = [
         <div class="badges">${['shift-complete-4', 'night-owl-4', 'century-4', 'clean-run-4', 'cold-start-4', 'first-mile-4'].map(b => `<img src="${BADGES}${b}.svg" alt="">`).join('')}</div>
       </div>` },
 
-  { t: 140, layout: 'end gtm', id: 'market',
-    notes: '(No script line for this slide yet.)',
+  { layout: 'end gtm', id: 'market',
     html: `
       <div class="copy">
         <div class="lbl">07 · Go to market</div>
@@ -158,7 +150,6 @@ const SLIDES = [
         ${shot('landing-market.webp', 'v-main', 'Go to market load board')}
       </div>` },
 ];
-const END = 155;   // seconds – the script's last line, read at speaking pace
 
 /* ── charts (SVG, single hue per chart: magnitude, not identity) ── */
 const svgEl = (tag, attrs, text) => { const e = document.createElementNS('http://www.w3.org/2000/svg', tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; return e; };
@@ -210,25 +201,9 @@ function show(i) {
   slides.forEach((s, j) => s.querySelectorAll('video').forEach(v => { if (j === i) start(v); else v.pause(); }));
   cur = i;
   history.replaceState(null, '', '#' + (i + 1));
-  document.getElementById('notes-text').textContent = SLIDES[i].notes;
   document.getElementById('bar').style.width = `${100 * (i + 1) / slides.length}%`;
 }
 const start = v => v.play().catch(() => {});
-
-/* P: advance on the script's timestamps – read along and record */
-let clock = null, t0 = 0;
-function playClock() {
-  if (clock) { clearInterval(clock); clock = null; document.body.classList.remove('playing'); return; }
-  t0 = performance.now() - SLIDES[Math.max(cur, 0)].t * 1000;
-  document.body.classList.add('playing', 'notes');
-  clock = setInterval(() => {
-    const t = (performance.now() - t0) / 1000;
-    let i = 0; SLIDES.forEach((s, j) => { if (t >= s.t) i = j; });
-    show(i);
-    document.getElementById('clock').textContent = `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')} / ${Math.floor(END / 60)}:${String(END % 60).padStart(2, '0')}`;
-    if (t > END) playClock();
-  }, 100);
-}
 
 addEventListener('keydown', e => {
   if (['ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); show(cur + 1); }
@@ -236,10 +211,16 @@ addEventListener('keydown', e => {
   else if (e.key === 'Home') show(0);
   else if (e.key === 'End') show(slides.length - 1);
   else if (e.key === 'f' || e.key === 'F') document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
-  else if (e.key === 'n' || e.key === 'N') document.body.classList.toggle('notes');
-  else if (e.key === 'p' || e.key === 'P') playClock();
 });
-addEventListener('click', e => { if (e.target.closest('a,button')) return; show(cur + (e.clientX > innerWidth / 3 ? 1 : -1)); });
+/* slide 1's cards: the mouse nudges them (parallax), a tap / click lifts one (.hot) instead of turning the page */
+const wall = document.querySelector('.L-wall .vis');
+wall?.parentElement.addEventListener('pointermove', e => { wall.style.setProperty('--px', (e.clientX / innerWidth - .5).toFixed(3)); wall.style.setProperty('--py', (e.clientY / innerHeight - .5).toFixed(3)); });
+wall?.parentElement.addEventListener('pointerleave', () => { wall.style.setProperty('--px', 0); wall.style.setProperty('--py', 0); });
+addEventListener('click', e => {
+  const card = e.target.closest('.L-wall .shot');
+  if (card) { const on = card.classList.toggle('hot'); wall.querySelectorAll('.shot.hot').forEach(c => { if (c !== card && on) c.classList.remove('hot'); }); return; }
+  if (e.target.closest('a,button')) return; show(cur + (e.clientX > innerWidth / 3 ? 1 : -1));
+});
 
 const tip = document.getElementById('tip');
 addEventListener('mousemove', e => {
@@ -251,4 +232,3 @@ addEventListener('mousemove', e => {
 const fromHash = () => show((parseInt(location.hash.slice(1), 10) || 1) - 1);
 addEventListener('hashchange', fromHash);
 fromHash();
-setTimeout(() => document.getElementById('help').classList.add('gone'), 5000);
