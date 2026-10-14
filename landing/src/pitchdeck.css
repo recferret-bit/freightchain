@@ -383,3 +383,30 @@ canvas.glyph{height:auto;aspect-ratio:240/124;background:none}
 .L-plan .peek-card img{object-position:50% 50%}
 .L-plan .peekb{position:absolute;left:-44px;bottom:-14px;font-size:13px;letter-spacing:2px;padding:9px 16px;background:#9945ff;color:#fff}
 .L-plan .peekb .dot{background:#fff}
+
+/* slide 4: the tiers are buttons; a click hangs a second row of SECRET tiers under them – each drops in on its own chain link, one after another (--i), and goes back up last first */
+.ladders{position:relative}
+.ladder li{position:relative;cursor:pointer;user-select:none;-webkit-user-select:none;transition:translate .3s cubic-bezier(.2,.8,.2,1),border-color .3s,box-shadow .3s}
+.ladder li:hover{translate:0 -4px;box-shadow:0 0 22px #14f19544}
+.ladder.secret{position:absolute;left:0;right:0;top:100%;margin:16px 0 0;pointer-events:none}
+.ladder.secret li{border:2px dashed #9945ff;background:repeating-linear-gradient(135deg,#9945ff1c 0 10px,#0000 10px 20px);color:#c9a6ff;opacity:0;transform:translateY(-34px) rotateX(85deg) scale(.8);transform-origin:50% 0;
+  transition:opacity .25s ease calc((3 - var(--i)) * .1s),transform .4s cubic-bezier(.5,0,.75,0) calc((3 - var(--i)) * .1s),translate .3s cubic-bezier(.2,.8,.2,1),box-shadow .3s}   /* going back up: the last one first */
+.ladder.secret li b{color:#b98cff;font-variant-numeric:tabular-nums}
+.ladder.secret li::before{content:"";position:absolute;left:50%;top:-18px;width:6px;height:14px;margin-left:-3px;border:2px solid #9945ff;border-radius:4px;opacity:.85}   /* the chain link it hangs from */
+.ladder.secret li:hover{box-shadow:0 0 22px #9945ff66}
+.ladders.open .ladder.secret{pointer-events:auto}
+.ladders.open .ladder.secret li{opacity:1;transform:none;transition:opacity .25s ease calc(var(--i) * .16s),transform .6s cubic-bezier(.2,1.6,.4,1) calc(var(--i) * .16s),translate .3s cubic-bezier(.2,.8,.2,1),box-shadow .3s}   /* coming down: left to right, with an overshoot */
+@media (prefers-reduced-motion:reduce){.ladder li,.ladder.secret li{transition:none!important}}
+/* the open secret row needs room under the ladder: the copy glides up while it is open, and back down only once the tiles have gone back up */
+#s-play .copy{transition:translate .6s cubic-bezier(.2,.8,.2,1) .35s}
+#s-play .copy:has(.ladders.open){translate:0 -70px;transition-delay:0s}
+@media (prefers-reduced-motion:reduce){#s-play .copy{transition:none}}
+
+/* the sneak peek steps through its screenshots: stacked, one visible, a crossfade + slow settle */
+.L-plan .peek-card .pk-imgs{position:absolute;inset:0;display:block}
+.L-plan .peek-card .pk-imgs img{position:absolute;inset:0;opacity:0;filter:blur(8px);transition:opacity .6s ease,filter .6s ease}
+.L-plan .peek-card .pk-imgs img.on{opacity:1;filter:none}
+.L-plan .peek-card .pk-name{position:absolute;right:14px;bottom:12px;z-index:2;font:700 14px/1 var(--body);font-style:normal;letter-spacing:2px;text-transform:uppercase;padding:7px 12px;border-radius:999px;background:#000b;color:#14f195;border:1px solid #14f19566}
+.L-plan .peek-card .pk-name.flip{animation:pkname .5s ease-out}
+@keyframes pkname{from{opacity:0;translate:0 10px}to{opacity:1;translate:0 0}}
+@media (prefers-reduced-motion:reduce){.L-plan .peek-card .pk-imgs img{transition:none}}

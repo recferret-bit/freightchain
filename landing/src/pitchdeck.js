@@ -64,6 +64,9 @@ const PLAN = [
     more: 'New ways to drive on the same seeded road and the same verification stack. Modding comes after the modes.' },
 ];
 
+/* the storybook sneak peek: real screenshots of the model viewer (client/viewer.html#<id>) – shown one after another while the card is hovered / tapped */
+const STORY = [['storybook.webp', 'car'], ['storybook-truck.webp', 'truck'], ['storybook-police.webp', 'police car'], ['storybook-fire.webp', 'fire truck'], ['storybook-diner.webp', 'roadside diner'], ['storybook-truckstop.webp', 'truck stop'], ['storybook-cactus.webp', 'desert cactus']];
+
 const SLIDES = [
   { layout: 'wall', id: 'product',
     html: `
@@ -109,13 +112,13 @@ const SLIDES = [
       <div class="copy">
         <div class="lbl">03 · Play</div>
         <h1>Free<br>tonight.</h1>
-        ${pts(['10 free rides · no download', 'Watch live or replay · no wallet', 'Paid: 1 h seat · a few $ in SOL', 'One signature'])}
-        <ol class="ladder">
+        ${pts(['10 free rides · no download', 'Offline · no wallet, no limits', 'Watch live or replay · no wallet', 'Paid: 1 h seat · a few $ in SOL', 'One signature'])}
+        <div class="ladders"><ol class="ladder">
           <li class="on"><b>FREE</b><span>3 min</span></li>
           <li class="on"><b>1 H</b><span>devnet pool</span></li>
           <li><b>4 H</b><span>next</span></li>
           <li><b>8 H</b><span>next</span></li>
-        </ol>
+        </ol><ol class="ladder secret" aria-hidden="true">${[0, 1, 2, 3].map(i => `<li style="--i:${i}"><b>???</b><span>secret</span></li>`).join('')}</ol></div>
       </div>
       <div class="vis">
         ${shot('game-guest.webp', 'v-main', 'Free run in the cab')}
@@ -157,7 +160,7 @@ const SLIDES = [
         <h1>The next <em>4 months.</em></h1>
       </div>
       <div class="vis peek">
-        ${shot('storybook.webp', 'peek-card', 'Sneak peek: the storybook model viewer, a car on its grid')}
+        <figure class="shot peek-card"><span class="pk-imgs">${STORY.map(([f, n], i) => `<img class="${i ? '' : 'on'}" src="${A}${f}" alt="Storybook sneak peek: ${n}" loading="eager">`).join('')}</span><em class="pk-name">${STORY[0][1]}</em></figure>
         <div class="badge live peekb"><i class="dot"></i>SNEAK PEEK · STORYBOOK · AI + MCP</div>
       </div>
       <div class="plan">
@@ -227,6 +230,18 @@ const deck = document.getElementById('deck');
 deck.innerHTML = SLIDES.map((s, i) => `<section class="slide L-${s.layout.split(' ').join(' L-')}" id="s-${s.id}" data-i="${i}">${s.html}</section>`).join('');
 
 const slides = [...deck.children];
+
+/* the AI + MCP sneak-peek card: while it is hovered or tapped open, it steps through the storybook objects every 1.5 s (a crossfade with a slow zoom and a blur), the name tag swaps with them; a click steps once more */
+const pk = deck.querySelector('.peek-card');
+if (pk) {
+  const imgs = [...pk.querySelectorAll('img')], nm = pk.querySelector('.pk-name'); let n = 0, timer = 0;
+  const step = () => { imgs[n].classList.remove('on'); n = (n + 1) % imgs.length; imgs[n].classList.add('on'); nm.textContent = STORY[n][1]; nm.classList.remove('flip'); void nm.offsetWidth; nm.classList.add('flip'); };
+  const run = () => { if (!timer && !tkReduced) { step(); timer = setInterval(step, 1500); } };
+  const stop = () => { clearInterval(timer); timer = 0; };
+  pk.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') run(); });
+  pk.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') stop(); });
+  pk.addEventListener('click', () => { if (pk.classList.contains('hot')) run(); else stop(); });   // runs after the generic toggle: a tap opens (and runs) or closes it
+}
 
 /* the soulbound-NFT card: a carousel of the 31 badges – the middle one big, its neighbours small and dim, peeking in from the sides; every step the whole row slides one place left (the middle ones scale up / down on the way) and the caption follows. Five slots (o = −2…2): the one that slid out on the left jumps to the far right, unseen. */
 const ach = deck.querySelector('.ach');
@@ -560,6 +575,24 @@ function suckStep(t) {
   }
   if (!coins.length && !sucking.length) { suckOn = false; toast(`+$${suckUsd.toFixed(2)}`, `${suckN} SOL · WEB3 ADOPTED`); }
 }
+/* slide 4's FREE / 1 H / 4 H / 8 H are buttons: a click hangs a second row of secret tiers under them, one by one on a chain (CSS delays by --i), each tile's text scrambling
+   before it settles on ??? – another click takes them back up, last first; a click on a secret tile scrambles it again */
+const SCRAMBLE = '#%&@$?<>/\\█▓▒░';
+function scramble(el, final, ms) {
+  const t0 = performance.now(), step = t => {
+    const p = (t - t0) / ms;
+    el.textContent = p >= 1 ? final : [...final].map((ch, i) => (p > (i + 1) / (final.length + 1) ? ch : SCRAMBLE[Math.floor(Math.random() * SCRAMBLE.length)])).join('');   // letters lock in left to right
+    if (p < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+const scrambleTile = li => { scramble(li.querySelector('b'), '???', 700); scramble(li.querySelector('span'), 'secret', 900); };
+function ladderClick(li) {
+  li.animate({ scale: [1, .92, 1.06, 1] }, { duration: 300, easing: 'ease-out' });
+  if (li.closest('.secret')) { if (!tkReduced) scrambleTile(li); return; }
+  const box = li.closest('.ladders'), open = box.classList.toggle('open');
+  if (open && !tkReduced) box.querySelectorAll('.secret li').forEach((s, i) => setTimeout(() => scrambleTile(s), 120 + i * 160));   // in step with the drop-in delays
+}
 function payOut(x, y, li) {   // one coin in: "+$", a bill thrown up and out, the bullet gulps
   const usd = 1 + Math.random() * 8; suckUsd += usd; suckN++;
   const a = pop('usd', `+$${usd.toFixed(2)}`, x + (Math.random() - .5) * 60, y - 10);
@@ -623,6 +656,7 @@ addEventListener('click', e => {
   if (e.target.closest('#ticker')) { tkHold = performance.now() + 1400; return; }   // a click on the header slows it for a moment instead of turning the page
   if (e.target.closest('.pts li.don')) { donate(); return; }   // slide 3: a mock donation, not a page turn
   if (e.target.closest('.pts li.adopt')) { adopt(); return; }   // slide 3: the coins go into Web3 adoption
+  if (e.target.closest('.ladder li')) { ladderClick(e.target.closest('.ladder li')); return; }   // slide 4: the tiers are buttons
   const card = e.target.closest('.fx .shot, .fx .badge, .fx canvas.glyph, .L-wall .tags span, .cards5 .cc, .plan .bar');
   if (card) {
     if (moved) { moved = false; return; }   // the end of a drag is not a tap
