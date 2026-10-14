@@ -189,7 +189,7 @@ h1 small{font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;c
 
 /* slide 1: the screens hang in the air, lean away from the mouse, lift on hover / tap; the border is a flowing Solana glow */
 .fx .shot{--r:0deg;--k:0;--s:1;--dl:0s;transform:translate(var(--dx,0px),var(--dy,0px)) rotate(var(--r)) translate(calc(var(--px,0)*var(--k)*1px),calc(var(--py,0)*var(--k)*1px)) scale(var(--s));
-  transition:transform .35s cubic-bezier(.2,.8,.2,1),filter .35s;cursor:pointer;animation:float 6s ease-in-out var(--dl) infinite,glow 4s ease-in-out var(--dl) infinite,flow 7s linear infinite;
+  transition:transform .35s cubic-bezier(.2,.8,.2,1),filter .35s,scale .35s cubic-bezier(.2,.8,.2,1);cursor:pointer;animation:float 6s ease-in-out var(--dl) infinite,glow 4s ease-in-out var(--dl) infinite,flow 7s linear infinite;
   background:linear-gradient(110deg,#9945ff,#14f195,#9945ff,#14f195) 0 0/300% 100%}
 .fx .shot:hover,.fx .shot.hot{--s:1.045;z-index:6;animation-play-state:running}
 .L-wall .w1{--r:-3deg;--k:-26;--dl:-1s}
@@ -285,3 +285,13 @@ h1 small{font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;c
 canvas.glyph{height:auto;aspect-ratio:240/124;background:none}
 .fx canvas.glyph{--k:34;transform:translate(calc(var(--px,0)*var(--k)*1px),calc(var(--py,0)*var(--k)*1px));animation:float 6s ease-in-out -2s infinite}
 @media (prefers-reduced-motion:reduce){.fx canvas.glyph{animation:none}}
+
+/* money slide, the Merkle-root canvas has a covered state: it swells 1.05, the other two cards shrink the same (scale .95), and one more verification block tweens in above the tree */
+.fx canvas.glyph{cursor:pointer;transition:scale .35s cubic-bezier(.2,.8,.2,1)}
+.fx canvas.glyph:is(:hover,.hot){scale:1.05}
+.L-money .vis:has(canvas.glyph:is(:hover,.hot)) .shot{scale:.95}
+.vblock{position:absolute;right:110px;bottom:278px;z-index:4;padding:9px 16px;border-radius:9px;background:#0b0a09;border:1.5px solid #14f195;box-shadow:0 0 22px #14f19544;color:#14f195;font:700 16px/1.2 var(--body);letter-spacing:2px;text-transform:uppercase;white-space:nowrap;pointer-events:none;
+  opacity:0;translate:0 16px;scale:.75;transition:opacity .3s,translate .55s cubic-bezier(.2,1.5,.4,1),scale .55s cubic-bezier(.2,1.5,.4,1)}
+.vblock small{display:block;margin-top:3px;font:500 12px var(--body);letter-spacing:1px;text-transform:none;color:#9a9a9a}
+.L-money .vis:has(canvas.glyph:is(:hover,.hot)) .vblock{opacity:1;translate:0 0;scale:1}
+@media (prefers-reduced-motion:reduce){.vblock,.fx canvas.glyph{transition:none}}

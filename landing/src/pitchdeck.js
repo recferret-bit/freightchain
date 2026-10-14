@@ -97,6 +97,7 @@ const SLIDES = [
         ${shot('wp-diagram.webp', 'v-main diagram', 'Where the money goes')}
         ${shot('escrow-flow.webp', 'v-sub', 'How the escrow works')}
         <canvas class="glyph g1" data-scene="proof" role="img" aria-label="Four 15-second batches hash up into one Merkle root, which turns verified"></canvas>
+        <div class="vblock" aria-hidden="true">✓ Attestation<small>PDA gated · pays only verified rides</small></div>
       </div>` },
 
   { layout: 'chart', id: 'traction',
@@ -365,7 +366,7 @@ if (badge) requestAnimationFrame(badgeTick);
 addEventListener('pointerdown', e => { if (!e.target.closest('.fx .shot')) moved = false; }, true);   // a drag that ended off a card must not swallow the next click
 addEventListener('click', e => {
   if (e.target.closest('#ticker')) { tkHold = performance.now() + 1400; return; }   // a click on the header slows it for a moment instead of turning the page
-  const card = e.target.closest('.fx .shot, .fx .badge, .L-wall .tags span');
+  const card = e.target.closest('.fx .shot, .fx .badge, .fx canvas.glyph, .L-wall .tags span');
   if (card) {
     if (moved) { moved = false; return; }   // the end of a drag is not a tap
     if (card.classList.contains('badge')) { card.classList.remove('pop'); void card.offsetWidth; card.classList.add('pop'); }   // a tween bump on every click
