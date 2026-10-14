@@ -182,12 +182,29 @@ function daily(el) {
   el.append(s);
 }
 
-/* ── header ticker: the landing's running text (LCD green on black), project facts ── */
-const FACTS = ['One endless road · one shift', 'Manual gearbox · clutch · stalls', 'Cold engine · heat · battery', 'Traffic · forks · sinkholes', 'Day and night', 'Speed capped near 100 km/h',
+/* ── header ticker: the landing's running text (LCD green on black) – project facts, and real lines from the code (client/shared/physics.js, road.js, prng.js, js/config.js, the Anchor program) ── */
+const FACTS = [
+  'One endless road · one shift', 'Browser game after Desert Bus', 'Manual 7-speed gearbox · clutch · stalls', 'Cold engine · heat · battery', 'Traffic · forks · sinkholes', 'Day and night',
+  'Speed capped near 100 km/h', 'Parking brake · handbrake starts', 'Wipers · windscreen dust · wash', 'CB radio · eleven stations', 'Dice on the mirror',
+  'Gauges: oil · air · fuel · volts · H2O · temp', 'Lamps: STALL · COLD · OFF ROAD · STRAIN · OVER-REV · GRIND', 'Headlights · cab lamp · heat', 'Engine off at the start: turn the key',
   '10 free rides · no download · in your browser', 'Three free levels: easy · medium · hard', 'Five routes', 'Live watch and replays · no wallet to watch', '31 achievement badges',
-  'Prize pool split 70 / 20 / 10', 'Solana devnet · no token', 'Built solo in Belgrade'];
+  ['code', 'GEAR_RATIOS = [0, 6.15, 4.33, 3.05, 2.15, 1.51, 1.065, 0.75]'],
+  ['code', 'thrust = (TRUCK_POWER / TRUCK_MASS) * ratio ** TRUCK_GEAR_EXP * gas'],
+  ['code', 'drag = ROLL_RES + (DRAG / MASS) * v * v + offroad * 1.2 + brake * 5.5'],
+  ['code', 'v = max(0, min(HOLE_REF_SPEED, v + (thrust - drag) * h))'],
+  'Physics at 10 Hz · 2 substeps · the server re-runs every ride',
+  ['code', 'TRUCK_MASS = 2.5 · TRUCK_POWER = 2.4 · TRUCK_BRAKE = 5.5'],
+  ['code', 'TORQUE_PEAK = 2000 rpm · SHIFT_TIME = 0.4 s'],
+  ['code', 'HOLE_CHANCE = 0.045 · HOLE_FIRST = 150 · OFFROAD_FAIL_SECONDS = 20'],
+  ['code', 's = (s + 0x6D2B79F5) | 0   // mulberry32: the same road in your browser and on the server'],
+  'Vanilla ES modules · three.js r160 · no build step · no framework', 'NestJS · Prisma · PostgreSQL', 'Prize pool split 70 / 20 / 10',
+  'Solana devnet · no token · not audited', ['code', 'program id 8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p'], 'Anchor program · 14 instructions · 12 events · 24 errors',
+  'Built solo in Belgrade'];
 const tk = document.querySelector('#ticker .tk');
-tk.append(...FACTS.map(t => { const e = document.createElement('span'); e.textContent = t; return e; }), ...FACTS.map(t => { const e = document.createElement('span'); e.textContent = t; return e; }));   // doubled: the -50% translate loops seamlessly
+const tkItems = () => FACTS.map(f => { const e = document.createElement('span'), [kind, text] = Array.isArray(f) ? f : ['', f]; e.textContent = text; if (kind) e.className = kind; return e; });
+tk.append(...tkItems(), ...tkItems());   // doubled: the -50% translate loops seamlessly
+const tkSpeed = () => { tk.style.animationDuration = `${Math.round(tk.scrollWidth / 2 / 190)}s`; };   // a steady ~190 px/s (stage px), however long the list is
+tkSpeed(); document.fonts?.ready.then(tkSpeed);
 
 /* ── engine ── */
 const deck = document.getElementById('deck');
