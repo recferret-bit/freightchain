@@ -300,12 +300,20 @@ if (split) {
   const later = (ms, f) => timers.push(setTimeout(f, ms));
   const expand = i => {
     timers.forEach(clearTimeout); timers = []; open = i;
-    const others = blocks.map((_, k) => k).filter(k => k !== i).sort((a, b) => Math.abs(a - i) - Math.abs(b - i));   // nearest to the picked one goes first
-    blocks.forEach((b, k) => { b.classList.toggle('pick', k === i); b.style.setProperty('--o', Math.max(0, others.indexOf(k))); });
+    // every other block runs to the bar's border on ITS side of the picked one (left of it → the left border, right of it → the right one) and squeezes into it;
+    // the farthest from the picked block goes first, equally far ones (hover 20: 70 and 10) go together; coming back it is nearest first
+    const bar = split.offsetLeft, far = Math.max(...blocks.map((_, k) => Math.abs(k - i)));
+    blocks.forEach((b, k) => {
+      const d = Math.abs(k - i), left = b.offsetLeft - bar;
+      b.classList.toggle('pick', k === i);
+      b.style.setProperty('--o', d ? far - d : 0); b.style.setProperty('--r', d ? d - 1 : 0);
+      b.style.setProperty('--ox', k < i ? '0%' : '100%');   // it squeezes towards the border it runs to
+      b.style.setProperty('--tx', `${k < i ? -left : split.offsetWidth - left - b.offsetWidth}px`);
+    });
     if (tkReduced) { split.classList.add('s-out', 's-grow', 's-text'); return; }
     split.classList.add('s-out');
-    later(520, () => split.classList.add('s-grow'));
-    later(1200, () => split.classList.add('s-text'));
+    later(660, () => split.classList.add('s-grow'));
+    later(1330, () => split.classList.add('s-text'));
   };
   const collapse = () => {
     timers.forEach(clearTimeout); timers = []; open = -1;
@@ -313,7 +321,7 @@ if (split) {
     split.classList.remove('s-text');
     later(300, () => split.classList.remove('s-grow'));
     later(1000, () => split.classList.remove('s-out'));
-    later(1500, () => blocks.forEach(b => b.classList.remove('pick')));
+    later(1800, () => blocks.forEach(b => b.classList.remove('pick')));
   };
   blocks.forEach((b, i) => b.addEventListener('pointerenter', e => {
     if (e.pointerType !== 'mouse' || open >= 0) return;
