@@ -144,6 +144,50 @@ services:
     ports:
       - "127.0.0.1:${APP_PORT:-3000}:3000"
 
+  # Dedicated 10 Hz replay verification worker: pulls pending ride replays from Redis (`fc:replay-queue:*`) and `verdict.RideReplay` and runs `ReplayEngine` off the HTTP event loop.
+  worker:
+    image: freightchain-server:${RELEASE:-latest}
+    restart: unless-stopped
+    command: ["node", "dist/cli/index.js", "replay:worker"]
+    logging:
+      driver: json-file
+      options: { max-size: "50m", max-file: "5" }
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks: [default, cache]
+    healthcheck:
+      test: ["CMD-SHELL", "kill -0 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is empty - add REDIS_PASSWORD=<hex> to deploy/.env}@redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      APP_DOMAIN: ${APP_DOMAIN}
+      APP_ORIGIN: ${APP_ORIGIN}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      FREE_RIDE_SECONDS: ${FREE_RIDE_SECONDS:-180}
+      TREASURY_PUBKEY: ${TREASURY_PUBKEY}
+      SOLANA_RPC: ${SOLANA_RPC:-https://api.devnet.solana.com}
+      PAYMENT_MODE: ${PAYMENT_MODE:-}
+      TICKET_PROGRAM_ID: ${TICKET_PROGRAM_ID:-}
+      FEE_TREASURY: ${FEE_TREASURY:-}
+      SEED_TREASURY: ${SEED_TREASURY:-}
+      VERDICT_ENFORCE: ${VERDICT_ENFORCE:-false}
+      TELEMETRY_RETENTION_DAYS: ${TELEMETRY_RETENTION_DAYS:-90}
+      SIGNIN_RETENTION_DAYS: ${SIGNIN_RETENTION_DAYS:-180}
+      CHALLENGE_INTERVAL_SECONDS: ${CHALLENGE_INTERVAL_SECONDS:-240}
+      CHALLENGE_FREE_RIDES: ${CHALLENGE_FREE_RIDES:-off}
+      ADMIN_WALLETS: ${ADMIN_WALLETS:-}
+      POSTHOG_ENABLED: "0"
+      POSTHOG_DISABLED: "1"
+
 networks:
   cache:
     internal: true   # no route to the internet, in or out

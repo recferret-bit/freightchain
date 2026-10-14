@@ -240,7 +240,7 @@ Badges: 31 soulbound compressed NFTs, 8 ladders, Metaplex Bubblegum v2, minted b
 | --- | --- | --- |
 | Driving game, five routes, three free levels, paid tiers | Yes | Free rides are live. A paid tier shows SOON until a pool of that tier is open. 4 h and 8 h have no series |
 | Server-timed shifts, hash-chained recordings, verdicts | Yes. Rules version 4 | Live, shadow mode. The verdict is stored and shown. Paid boards still rank without it |
-| Server-rebuilt road and hole checks | Yes | Live in the judge |
+| Server-rebuilt road, 10 Hz replay verification (`@freightchain/shared`), and hole / traffic / live-event checks | Yes | Live in the judge and replay worker (`verdict.RideReplay` + `verdict.RideReplayFlag`) |
 | Live watch, replays, CB chat, devnet tips | Yes | Paid rides can be watched, with chat. A running free ride cannot. Replays work after it ends. Tips are devnet transfers to the driver. Game effects are off on the public site |
 | Garage, promo codes | Yes | Garage is a lobby tab: wheel, paint, gearbox, dice, needles. Nothing there changes the handling. Promo codes sit on the profile |
 | Public ride receipts, X card, in-game share | Yes | Live. The driver posts from their own account |
@@ -257,7 +257,7 @@ Rollback for checkout is `PAYMENT_MODE=transfer` plus a redeploy. Mainnet waits 
 
 - Devnet only. Not audited. No token. No mainnet in this build. No prize payout is claimed.
 - The landing says the paid shifts are soon. Believe the lobby: SOON means no pool of that tier is open.
-- The attestation is signed by the admin or the payout key. The program checks that signature, a VERIFIED status, and the prize cap. It does not check the drive.
+- The attestation is signed by the admin or the payout key. The program checks that signature, a VERIFIED status, and the prize cap. It does not check the drive on chain; the off-chain judge and 10 Hz replay verification engine check the drive before signing the attestation.
 - Verdict thresholds are first guesses. Production boards ignore the verdict until they are tuned on real rides. A prize, if one is paid, still requires a verified verdict.
 - The challenge table is empty. No captcha.
 - A dishonest admin, or a stolen payout key, can close a pool after `payout_at` and send the prize share to the seed treasury. The 14-day grace is about a lost key, not a hostile one.
@@ -265,7 +265,7 @@ Rollback for checkout is `PAYMENT_MODE=transfer` plus a redeploy. Mainnet waits 
 - The seed treasury is not rolled into the next pool by a job.
 - The pinned build hash is not the explorer's verified badge. That badge is not submitted. A matching hash is not an audit.
 - [`docs/escrow-open-items.md`](docs/escrow-open-items.md) still opens with a "not deployed" paragraph. Ignore that paragraph.
-- Physics are floats and a variable frame step. The server checks the recording. It does not re-play it.
+- Browser frames use IEEE-754 floats and variable `dt`, while the backend `ReplayEngine` steps the shared physics (`@freightchain/shared`) at fixed `0.05 s` substeps across the 10 Hz sample trace, allowing a small speed tolerance (`3.5 m/s` over sustained mismatches) before raising `physics-speed-mismatch`.
 - Float32 road vertices jitter past about 100 km.
 - Session keys are not built. Staking is not built.
 
@@ -323,30 +323,35 @@ Read: [`client/js/trips.js`](client/js/trips.js) · [`ride-tier.ts`](server/src/
 
 ## How a finish is checked
 
-Online rides upload every key and dash event, plus a 10 Hz sample of the truck, in SHA-256 hash-chained batches of 15 seconds. A completed shift is marked `verified`, `flagged`, or `rejected`. The server does not re-simulate the physics. Paid boards rank verified shifts only when `VERDICT_ENFORCE` is on. Production leaves it off, so the boards ignore the verdict. A prize, if the job pays one, still requires a verified verdict.
+Online rides upload every key and dash event, plus a 10 Hz sample of the truck, in SHA-256 hash-chained batches of 15 seconds. Every completed shift passes through **two verification tiers** before it is marked `verified`, `flagged`, or `rejected`:
+
+1. **Fast batch-summary & road checks (`RideVerdict.judge`)** — runs synchronously over the per-batch summaries, RFC 6962 Merkle chain, server road layout, natural sinkholes, off-road timer, human input-timing statistics, and dispatch challenges.
+2. **10 Hz backend replay verification (`ReplayEngine` + `@freightchain/shared`)** — re-simulates the drive tick-by-tick at 10 Hz (`0.05 s` physics substeps) using the exact ES modules shared with the browser client (`@freightchain/shared`: `prng.js`, `road.js`, `traffic.js`, `physics.js`). It runs synchronously inside `VerdictService` and asynchronously in the dedicated `worker` service (`node dist/cli/index.js replay:worker` + Redis `ReplayQueuePort`), persisting `verdict.RideReplay` and structured `verdict.RideReplayFlag` records inspectable on the admin page (`#replays` and `#ride/<id>`).
+
+Paid boards rank verified shifts only when `VERDICT_ENFORCE` is on. Production leaves it off, so the boards ignore the verdict. A prize, if the job pays one, still requires a verified verdict and an on-chain `Attestation` PDA (`[b"attestation", pool, driver]`).
 
 ```mermaid
 flowchart LR
-  batches[Hash-chained batches] --> bounds[Chain, governor, no teleport]
-  bounds --> agree[Ends where the ride ended]
-  agree --> road[Server road: holes, off-road, gas]
-  road --> human[Input timing, flag only]
-  human --> person[Signed admin decision]
+  batches["Hash-chained 15 s batches<br/>+ RFC 6962 Merkle root"] --> bounds["Fast judge:<br/>chain, governor, road & human timing"]
+  batches --> replay["10 Hz ReplayEngine worker<br/>(@freightchain/shared)"]
+  replay --> corr["Seeded PRNG traffic (4-substep CCD)<br/>+ spectator donation events"]
+  bounds --> verdict["RideVerdict + RideReplayFlag<br/>(verified / flagged / rejected)"]
+  corr --> verdict
+  verdict --> person["Signed admin review<br/>+ On-chain Attestation PDA"]
 ```
 
-- Heartbeats carry the clock. Distance may grow at most 28 m/s × 1.2 × the gap, plus 20 m. No heartbeat for 150 seconds ends the ride.
-- The server recomputes every SHA-256 on arrival. A wrong hash rejects the shift. An unhashed batch, where the browser digest failed, only flags.
-- Over the governor, a step the truck cannot make, or a sample out of order: reject.
-- The recording has to end near the reported distance, cover the driven time, and show gas if the truck moved.
-- The holes are the server's. A wheel deep in a planned pit at speed has to cost hull. Two ignored holes reject. Long off-road rejects. Speed gained while the gas pedal is released rejects.
-- Bytes, batches, and game seconds are capped by wall time.
-- Hold lengths, repeated gaps, and instant releases flag the shift, and only with at least 8 presses. A coarse browser clock skips the two checks it would break.
-- The heartbeat can name a prompt with a 20 second window. `CHALLENGE_KINDS` is empty, so nothing is issued.
-- Every completed paid ride stays under review until the checks accept it or an admin signs ACCEPTED or REJECTED. A late upload does not overturn a signed decision.
+- **Server-timed clock & hash chain:** Heartbeats carry the clock. Distance may grow at most 28 m/s × 1.2 × the gap, plus 20 m. No heartbeat for 150 seconds ends the ride. The server recomputes every SHA-256 on arrival and folds batch hashes into an RFC 6962 Merkle root (`telemetry_root`). A wrong hash rejects the shift; an unhashed batch only flags.
+- **Physics bounds & agreement:** Over the governor, a step the truck cannot make, or a sample out of order: reject. The recording has to end near the reported distance, cover the driven time, and show gas if the truck moved.
+- **The server's road & sinkholes:** The holes are the server's, derived from the pool's on-chain `SlotHashes` seed commitment. A wheel deep in a planned pit at speed has to cost hull (`dmg × (v/28)²`, rear axles × 0.6). Two ignored holes reject (`obstacle-ignored`). Long off-road (> 27 s) rejects (`offroad-ignored`). Speed gained while the gas pedal is released rejects (`accel-without-gas`).
+- **10 Hz physics & drivetrain replay (`@freightchain/shared`):** `ReplayEngine` steps `stepLongitudinalPhysics` across every sample pair (`0.05 s` substeps) using the recorded pedal, gear, clutch, and switch state. Speed gain exceeding `1.8×` the maximum drivetrain acceleration across `≥ 3` steps raises `physics-speed-mismatch` (`reject`).
+- **Deterministic PRNG traffic & 4-substep swept CCD:** Using `createTrafficSim` from `@freightchain/shared` seeded with `(ride.seed ^ 0x9e3779b9) >>> 0`, the backend spawns and steps the exact same lane and cross-traffic vehicles at 10 Hz (`0.1 s`) and runs 4-substep swept cab + trailer contact detection (`checkTruckTrafficSwept`, `±1.25 m` cab / `±1.3 m` trailer half-width, `+3.3 m` / `-14.7 m` longitudinal extents). A direct hit (`closingSpeed ≥ 7 m/s`, `overlap ≥ 40 %`) that did not end the shift rejects (`traffic-collision-ignored`); 2+ scrape impacts without hull loss reject (`traffic-damage-ignored`, 1 flags).
+- **Spectator donation & live event correlation:** Paid spectator effects (`live.RideEvent`: `potholes`, `trench`, `sinkhole`, `night`, `day`) are correlated against the 10 Hz sample trace. Unstamped effects past the horizon flag (`event-unapplied`), ignored donated obstacles reject (`donated-obstacle-ignored`), and tampered day/night clock shifts after a `night`/`day` donation flag (`event-clock-mismatch`).
+- **Human timing & challenge channel:** Hold lengths, repeated gaps, and instant releases flag the shift (≥ 8 presses; coarse clocks skip the two checks they break). The heartbeat can name a prompt with a 20 s window (`CHALLENGE_KINDS` is empty today).
+- **Signed admin review:** Every completed paid ride stays under review until the checks accept it or an admin signs ACCEPTED or REJECTED. Replays and red flags can be inspected or re-verified on `admin.<apex>#replays`. A late upload does not overturn a signed decision.
 
-What this does not do: it does not re-play the drive. A careful bot that plays the real game, with human-like timing, passes the automatic checks. A modified client that drives through the holes and writes the matching hull loss looks like a hit. Traffic is recorded for replays and is not judged. Spectator holes are not judged. Thresholds are first guesses. A captcha before a paid start and before a prize claim is not built. Recordings are kept 90 days. A flagged one stays while the verdict is flagged. A completed shift that was never judged is kept too.
+What this does not do: browser frames still run at variable `dt` in IEEE-754 floats, so `ReplayEngine` allows a `1.8×` per-step acceleration ratio margin (with a `0.25 m/s` floor) before raising `physics-speed-mismatch`. A careful bot that plays the real game with human-like timing can still pass automatic checks unless caught by prompts or review. Thresholds are first guesses. A captcha before a paid start and before a prize claim is not built. Recordings are kept 90 days (flagged and unjudged ones are kept until reviewed).
 
-Codes and thresholds: [`docs/anti-cheat/index.html`](docs/anti-cheat/index.html) · [`verdict-rules.ts`](server/src/domain/verdict/verdict-rules.ts).
+Codes and thresholds: [`docs/anti-cheat/index.html`](docs/anti-cheat/index.html) · [`verdict-rules.ts`](server/src/domain/verdict/verdict-rules.ts) · [`replay-engine.ts`](server/src/domain/verdict/replay-engine.ts).
 
 Live watch uses the same batches, so a paid ride sits about 25 seconds behind. There are no WebSockets. A running free ride cannot be watched, chatted on, or tipped. A finished one can be replayed at 1×, 4×, and 16× while the recording is kept. A tip on a paid ride is a devnet SOL transfer from the spectator to the driver. The platform does not hold it. Game effects are off on the public site. A free ride has them forced off, and a paid ride only gets them when `LIVE_EFFECTS` is `all`. Production sets it to `free`. [`docs/replay-and-donations/index.html`](docs/replay-and-donations/index.html)
 
@@ -356,17 +361,17 @@ Every online shift has a public page at `/r/:id`. The composed X post links that
 
 The drivable world is one centre-line. Distance along it is `s`. Offset across it is `d`. Lanes, junctions, and side roads are features of that line.
 
-A ride seed feeds `mulberry32`. Segments and junctions append in one RNG order, so the layout is a function of the seed and the trip. Curvature integrates into Float64 tables, one metre a step. The tables grow as the truck approaches. There is no finish line in the geometry.
+A ride seed feeds `mulberry32` in [`@freightchain/shared`](client/shared/index.js). Segments and junctions append in one RNG order, so the layout is a function of the seed and the trip. Curvature integrates into Float64 tables, one metre a step. The tables grow as the truck approaches. There is no finish line in the geometry.
 
 Patterns are `country`, `highway`, `arterial`, and `town`. A lane change is a 120 m taper. The player cannot turn into a side road. On MEDIUM and HARD the road forks: two roads meet again 1200 m on, mirror images, same length, same lanes, same holes. In `s` and `d` they are one road, so the server does not need to know which one was taken. The driver commits 205 m after the split. Sample column 15 records the choice.
 
-`rollHole(chunk)` places at most one natural hole, and the only natural type is the sinkhole. Pothole, deep, cluster, and trench are holes a spectator can pay for. They are not judged. An online ride installs the server plan from `GET /api/watch/:id/road`. The local roll is the offline fallback.
+`rollHole(chunk)` places at most one natural hole, and the only natural type is the sinkhole. Pothole, deep, cluster, and trench are holes a spectator can pay for; when stamped on a ride, the 10 Hz `ReplayEngine` checks them too. An online ride installs the server plan from `GET /api/watch/:id/road`. The local roll is the offline fallback.
 
 [`road-drift.spec.ts`](server/test/unit/domain/road/road-drift.spec.ts) runs the game's modules beside the server port: 40 seeds, segments, junctions, and every natural hole out to 60 km. Curvature is not in that compare. The judge works in `s` and `d`.
 
-`update(dt)` in [`physics.js`](client/js/sim/physics.js) steps the clutch, gears, stall, and steering. The engine stalls in gear with the clutch out and rpm under 450. Speed clamps at 28 m/s forward and 6 m/s in reverse. Frame `dt` is clamped to 0.05 s. A watch replay does not run this function. The verdict does not either. Float32 road vertices start to jitter past about 100 km.
+`update(dt)` in [`physics.js`](client/js/sim/physics.js) steps the clutch, gears, stall, and steering, delegating longitudinal engine/gearbox/brake physics and axle hole damage to [`client/shared/physics.js`](client/shared/physics.js). The engine stalls in gear with the clutch out and rpm under 450. Speed clamps at 28 m/s forward and 6 m/s in reverse. Frame `dt` is clamped to 0.05 s. The backend `ReplayEngine` runs the same shared longitudinal physics and swept traffic collision functions at 10 Hz (`0.05 s` substeps). Float32 road vertices start to jitter past about 100 km.
 
-Read: [`network.js`](client/js/net/network.js) · [`patterns.js`](client/js/net/patterns.js) · [`obstacles.js`](client/js/net/obstacles.js) · [`road-plan.ts`](server/src/domain/road/road-plan.ts)
+Read: [`client/shared/`](client/shared) · [`network.js`](client/js/net/network.js) · [`patterns.js`](client/js/net/patterns.js) · [`obstacles.js`](client/js/net/obstacles.js) · [`road-plan.ts`](server/src/domain/road/road-plan.ts) · [`replay-engine.ts`](server/src/domain/verdict/replay-engine.ts)
 
 ## Money
 
@@ -394,7 +399,9 @@ flowchart LR
   admin["admin.freightchain.fun<br/>page and /api/admin"] --> api
   story["storybook.freightchain.fun<br/>meshes only"]
   api --> pg[(PostgreSQL)]
-  api --> redis[(Redis, stats cache)]
+  api --> redis[(Redis, stats & replay queue)]
+  worker["worker container<br/>replay:worker"] --> pg
+  worker --> redis
   api --> chain["Solana devnet"]
 ```
 
@@ -405,7 +412,7 @@ Layers point inward. Domain code does not read the clock or the environment. Tim
 - **Game.** [`client/play.html`](client/play.html). `?ride=` is an online shift. `?watch=` is a spectator. Anything else is an uncounted guest run. `file://` cannot load the modules.
 - **Receipt.** [`client/r.html`](client/r.html). Server middleware injects the Open Graph and Twitter Card tags.
 - **Whitepaper.** [`landing/whitepaper.html`](landing/whitepaper.html). Its numbers are asserted against the code by [`landing/test/whitepaper.test.js`](landing/test/whitepaper.test.js).
-- **Admin.** Nginx basic auth, then `ADMIN_WALLETS`. On a split deploy, `/api/admin` answers only when `Host` is `admin.<apex>`.
+- **Admin.** Nginx basic auth, then `ADMIN_WALLETS`. On a split deploy, `/api/admin` answers only when `Host` is `admin.<apex>`. Includes `#replays` for 10 Hz replay verification sessions and red flags.
 - **Search.** Landing, whitepaper, and the game page are static HTML. Lobby, viewer, and admin are `noindex`. [`docs/agents/landing.md`](docs/agents/landing.md).
 
 Running totals (rides, time, kilometres, crashes, donations) count every started ride that ended. Free and paid are counted apart. Reads are cached for 15 seconds. [`docs/statistics.md`](docs/statistics.md)
@@ -415,17 +422,18 @@ The intro clip is real gameplay, 14.8 seconds, with the in-game synth: [`media/o
 ## Repository
 
 - [`.claude/`](.claude) — project skills. The index is [Skills](#skills).
-- [`client/`](client) — the game, the lobby, admin, the receipt page, the model viewer. Vanilla ES modules and three.js r160. No bundler, no React.
-- [`deploy/`](deploy/README.md) — Docker, nginx, certbot. `npm run deploy` ships `git archive HEAD`.
+- [`client/`](client) — the game, the lobby, admin, the receipt page, the model viewer, and [`client/shared/`](client/shared) (pure ES modules shared with the server). Vanilla ES modules and three.js r160. No bundler, no React.
+- [`shared/`](shared) — workspace package (`@freightchain/shared`) re-exporting [`client/shared/`](client/shared) (`prng.js`, `road.js`, `traffic.js`, `physics.js`) for both browser client and backend `ReplayEngine`.
+- [`deploy/`](deploy/README.md) — Docker, nginx, certbot (`app`, `worker`, `postgres`, `redis`). `npm run deploy` ships `git archive HEAD`.
 - [`design/`](design) — icons, banners, badge art.
 - [`docs/`](docs) — explainers. [`docs/agents/`](docs/agents) is the detail [`AGENTS.md`](AGENTS.md) points at.
 - [`landing/`](landing) — the `/` page and the whitepaper. Vite.
 - [`media/`](media) — promo clips and the chiptune synth.
 - [`pentest/`](pentest) — multi-agent penetration testing and quorum security review suite (Claude, Grok, Agy CLIs).
 - [`programs/`](programs/freightchain-pools) — the Anchor program. Anchor 1.2.
-- [`server/`](server) — NestJS 12, Prisma, PostgreSQL.
+- [`server/`](server) — NestJS 12, Prisma, PostgreSQL, and `replay:worker`.
 
-Also at the root: `package.json`, `docker-compose.yml` (PostgreSQL on `127.0.0.1:15433`, Redis optional), [`AGENTS.md`](AGENTS.md), [`CLAUDE.md`](CLAUDE.md).
+Also at the root: `package.json`, `docker-compose.yml` (PostgreSQL on `127.0.0.1:15433`, Redis and `worker` optional under profiles), [`AGENTS.md`](AGENTS.md), [`CLAUDE.md`](CLAUDE.md).
 
 ## Skills
 

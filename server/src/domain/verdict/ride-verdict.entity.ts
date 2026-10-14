@@ -40,7 +40,7 @@ export class RideVerdict {
 
   /** Judge the ride from what is stored – always the whole recording (its batches' facts: chain columns + summaries), so judging again (a late batch)
       gives the up-to-date answer. The dispatch prompts the ride issued are judged against the recording's input events. */
-  static judge(ride: Ride, batches: readonly BatchFacts[], now: Date): RideVerdict {
+  static judge(ride: Ride, batches: readonly BatchFacts[], now: Date, replayReasons: readonly VerdictReason[] = []): RideVerdict {
     const facts = { rideId: ride.id, driveSeconds: ride.driveSeconds, distance: ride.distance };
     const ordered = [...batches].sort((a, b) => a.seq - b.seq);
     const chain = checkChain(facts, ordered);
@@ -54,7 +54,9 @@ export class RideVerdict {
     const endMs = ride.endedAt && ride.startedAt ? ride.endedAt.getTime() - ride.startedAt.getTime() : Number.POSITIVE_INFINITY;
     const challenges = checkChallenges(ride.challenges, inputs, endMs);
     const world = checkWorld(ordered);
-    const reasons = ordered.length === 0 ? chain : [...chain, ...samples.reasons, ...agreement.reasons, ...motion.reasons, ...checkInputsPresent(facts, ordered), ...agree.reasons, ...human.reasons, ...challenges.reasons, ...world.reasons];
+    const baseReasons = ordered.length === 0 ? chain : [...chain, ...samples.reasons, ...agreement.reasons, ...motion.reasons, ...checkInputsPresent(facts, ordered), ...agree.reasons, ...human.reasons, ...challenges.reasons, ...world.reasons];
+    const extra = ordered.length === 0 ? [] : replayReasons.filter((r, i) => !baseReasons.some((x) => x.code === r.code) && replayReasons.findIndex((x) => x.code === r.code) === i);
+    const reasons = [...baseReasons, ...extra];
     const status = reasons.some((r) => r.severity === 'reject') ? VerdictStatus.Rejected : reasons.length ? VerdictStatus.Flagged : VerdictStatus.Verified;
     return new RideVerdict({
       rideId: ride.id, status, reasons, rulesVersion: RULES_VERSION, judgedAt: now, version: 1, overriddenBy: null, overriddenAt: null, note: null,

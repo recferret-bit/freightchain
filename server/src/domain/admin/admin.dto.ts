@@ -1,5 +1,6 @@
 import type { DailyStatsDto, StatsDto } from '../stats/stats.js';
 import type { LogEntry } from '../ops/log-entry.js';
+import type { RideReplayDto } from '../verdict/ride-replay.entity.js';
 import type { RideReview } from '../verdict/ride-review.js';
 import type { VerdictDto } from '../verdict/verdict.dto.js';
 
@@ -79,8 +80,20 @@ export interface AdminBatchDto {
 export interface AdminRideDetailDto {
   ride: AdminRideRowDto & { seed: number; minSeconds: number; completeDist: number; hull: number | null; lastHbAt: number | null; lamports: number; roundId: number | null };
   verdict: (VerdictDto & { scores: unknown; rulesVersion: number }) | null;
+  replays?: RideReplayDto[];
   batches: AdminBatchDto[];
   payment: { signature: string; lamports: number; at: number } | null;
+}
+
+export interface AdminReplayFilter {
+  status?: 'pending' | 'verified' | 'flagged' | 'rejected';
+  isPaid?: boolean;
+  limit: number;
+}
+
+export interface AdminReplaysDto {
+  queue: { kind: 'redis' | 'memory'; depth: number };
+  rows: RideReplayDto[];
 }
 
 export interface SignInRowDto {

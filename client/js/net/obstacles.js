@@ -1,26 +1,19 @@
 import { CFG } from '../config.js';
-import { rnd } from '../util.js';
-import { net, laneLat } from './network.js';
+import { net } from './network.js';
 import { trip } from '../trips.js';
+import { HOLES, rollChunkHole } from '../../shared/road.js';
+export { HOLES };
 
 /* Road holes as DATA (no three.js – world/holes.js draws them, sim/damage.js drives over them, sim/traffic.js steers round them).
    WHERE the natural holes are is the server's call: a pure function of the ride's seed, which the server rebuilds on its own
    (server/src/domain/road/road-plan.ts) and hands out as the ride's OBSTACLE PLAN (GET /api/watch/:id/road, js/road-plan.js). An online ride and a replay
-   use that plan; the local roll below is the same function, used offline and as a fallback for a stretch whose plan has not arrived yet (it never
-   differs – `plan.mismatches` counts it if it ever did, and server/test/unit/domain/road/road-drift.spec.ts runs this file next to the server's port).
+   use that plan; the local roll below is the same shared function (shared/road.js rollChunkHole), used offline and as a fallback for a stretch whose plan
+   has not arrived yet (it never differs – `plan.mismatches` counts it if it ever did, and server/test/unit/domain/road/road-drift.spec.ts runs this file).
    The server judges the recording against ITS plan (verdict/world-checks.ts): a game that leaves a hole out still drove over the server's hole.
    Footprint: ells = ellipses { ds (along road, + = forward), dl (across, + = right), a (half length), b (half width) } relative to the hole's centre (s, lat).
    dmg = hull % per wheel-axle entry at 28 m/s (× (v/28)², rear axles ×.6), slow = speed fraction lost, jolt = cab shake, kick = steering pull, crawl = m/s the AI drops to when it can't get around.
-   Only types with `cones` are rolled onto the road; the others are what spectators can pay for. Keep in step with server/src/domain/road/road-rules.ts. */
+   Shared table in shared/road.js (e.g. sinkhole: { name: 'SINKHOLE', ells: [{ ds: 0, dl: 0, a: 2, b: 2 }], dmg: 14, slow: .35, jolt: 1, kick: .1, crawl: 3, lane: true, cones: true }). */
 const CH = CFG.CHUNK_LEN;
-export const HOLES = {
-  pothole: { name: 'POTHOLE',  ells: [{ ds: 0, dl: 0, a: .6, b: .5 }], dmg: 2.5, slow: .04, jolt: .5, kick: .03, crawl: 7 },   // fits between the wheel tracks if you straddle it
-  deep:    { name: 'DEEP HOLE', ells: [{ ds: 0, dl: 0, a: .85, b: .8 }], dmg: 7, slow: .12, jolt: .9, kick: .07, crawl: 5 },
-  cluster: { name: 'HOLES',    ells: [{ ds: -3, dl: -.9, a: .5, b: .45 }, { ds: 0, dl: .8, a: .6, b: .5 }, { ds: 3, dl: -.3, a: .5, b: .45 }], dmg: 1.8, slow: .03, jolt: .45, kick: .03, crawl: 7 },   // each pit hits separately
-  trench:  { name: 'TRENCH',   ells: [{ ds: 0, dl: 0, a: .45, b: 2.3 }], dmg: 6, slow: .15, jolt: 1, kick: .02, crawl: 4, lane: true },   // lane-wide: change lanes or slow down
-  sinkhole: { name: 'SINKHOLE', ells: [{ ds: 0, dl: 0, a: 2, b: 2 }], dmg: 14, slow: .35, jolt: 1, kick: .1, crawl: 3, lane: true, cones: true },
-};
-const IDS = Object.keys(HOLES).filter(k => HOLES[k].cones);
 
 /* the server's plan for the ride being driven / watched: chunk index → hole | null, per seed; `windows` = the [from, to) stretches it covers */
 export const plan = { seed: null, holes: new Map(), windows: [], fallback: new Set(), mismatches: [] };   // fallback: chunks the local roll had to answer for (no plan there yet)
@@ -28,15 +21,11 @@ const cache = new Map(), placed = new Map();   // cache: the local roll · place
 
 const shape = (id, ci, type, s, lat) => { const T = HOLES[type]; return { id, ci, type, s, lat, ells: T.ells, l0: lat + Math.min(...T.ells.map(e => e.dl - e.b)), l1: lat + Math.max(...T.ells.map(e => e.dl + e.b)), ext: Math.max(...T.ells.map(e => Math.abs(e.ds) + e.a)) }; };
 
-/** the game's own roll for chunk ci – pure: the seed's layout (net) + a hash of the chunk index. The server's road-plan.ts is the same function. */
+/** the game's own roll for chunk ci – shared/road.js rollChunkHole */
 export function rollHole(ci) {
   if (cache.has(ci)) return cache.get(ci);
-  let h = null; const q = k => rnd(ci * 97.13 + k * 3.71), s = ci * CH + 4 + q(1) * 24;   // (rnd on ci*13+k clusters badly: sin hash)
-  if (CFG.HOLES && ci >= 0 && q(2) < CFG.HOLE_CHANCE * (trip.road?.holeChance ?? 1) && s >= net.Sm + (trip.holesFrom ?? CFG.HOLE_FIRST) && net.plain(s, 70)) {   // never on the depot road (nor, on the free run, within its reach – trips.js holesFrom), at a junction or in a lane taper
-    const type = IDS[Math.floor(q(3) * IDS.length)], T = HOLES[type], r = q(4), j = q(5) - .5, dir = T.lane ? (r < .7 ? 1 : -1) : r < .6 ? 1 : -1, lane = laneLat(dir, Math.floor(q(6) * net.lanes(s, dir)));
-    const lat = T.lane ? lane : r < .85 ? lane + j * 1.6 : j * 1.2;   // lane-wide: own side 70 %; small: own side 60 %, oncoming 25 %, centre line 15 %
-    h = shape('h' + ci, ci, type, s, lat);
-  }
+  const raw = CFG.HOLES ? rollChunkHole(ci, net, CFG.HOLE_CHANCE * (trip.road?.holeChance ?? 1), trip.holesFrom ?? CFG.HOLE_FIRST) : null;
+  const h = raw ? shape(raw.id, raw.ci, raw.type, raw.s, raw.lat) : null;
   cache.set(ci, h); return h;
 }
 /** the natural hole of chunk ci: the server's plan where it has arrived, else the local roll */

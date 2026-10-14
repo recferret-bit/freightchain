@@ -1,4 +1,4 @@
-import { parsePoolAttention, parsePoolRegister, parsePoolSeed, parsePromoCreate, parseStatsReconcile, parseTicketsGrant, parseVerdictRejudge } from '../../../src/cli/admin-args.js';
+import { parsePoolAttention, parsePoolRegister, parsePoolSeed, parsePromoCreate, parseReplayVerify, parseReplayWorker, parseStatsReconcile, parseTicketsGrant, parseVerdictRejudge } from '../../../src/cli/admin-args.js';
 
 describe('admin CLI arguments', () => {
   it('promo:create – tickets: defaults, every option, UTC-midnight dates', () => {
@@ -87,5 +87,14 @@ describe('admin CLI arguments', () => {
     expect(parsePoolAttention(['--pool', '-1'])).toMatch(/--pool/);
     expect(parsePoolAttention(['--pool', '4294967296'])).toMatch(/4294967295/);
     expect(parsePoolAttention(['--pool', '1', '--bogus'])).toMatch(/Unknown option/);
+  });
+
+  it('replay:verify and replay:worker', () => {
+    expect(parseReplayVerify([])).toEqual({ rideId: null, limit: 32, concurrency: 4 });
+    expect(parseReplayVerify(['--ride', 'r1', '--limit', '8', '--concurrency', '2'])).toEqual({ rideId: 'r1', limit: 8, concurrency: 2 });
+    expect(parseReplayVerify(['--limit', '0'])).toBe('--limit must be a whole number ≥ 1');
+    expect(parseReplayWorker([])).toEqual({ limit: 16, concurrency: 4, intervalMs: 2000 });
+    expect(parseReplayWorker(['--limit', '8', '--concurrency', '2', '--interval-ms', '500'])).toEqual({ limit: 8, concurrency: 2, intervalMs: 500 });
+    expect(parseReplayWorker(['--interval-ms', '10'])).toBe('--interval-ms must be a whole number ≥ 100');
   });
 });

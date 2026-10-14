@@ -1,0 +1,41 @@
+import { GetRideReplaysHandler } from '../../../../../src/application/use-cases/verdict/get-ride-replays/get-ride-replays.handler.js';
+import { GetRideReplaysQuery } from '../../../../../src/application/use-cases/verdict/get-ride-replays/get-ride-replays.query.js';
+import { Ride } from '../../../../../src/domain/rides/ride.entity.js';
+import { RideStatus } from '../../../../../src/domain/rides/ride-status.js';
+import { ForbiddenError, NotFoundError } from '../../../../../src/domain/shared/errors.js';
+import { unitContext } from '../../../../support/unit-context.js';
+
+describe('GetRideReplaysHandler', () => {
+  it('returns stored replay verification sessions for the ride owner or admin (wallet = null)', async () => {
+    const ctx = unitContext();
+    const base = await ctx.freeRide('W1', true);
+    const r = Ride.restore({
+      ...base.snapshot(),
+      status: RideStatus.Completed,
+      lastS: 150,
+      lastT: 10,
+      driveSeconds: 10,
+      endedAt: ctx.now(),
+    });
+    await ctx.rides.save(r);
+    await ctx.verdicts.judge(r.id);
+
+    const handler = new GetRideReplaysHandler(ctx.rides, ctx.replayRepo);
+    const res = await handler.execute(new GetRideReplaysQuery('W1', r.id));
+    expect(res.rideId).toBe(r.id);
+    expect(res.replays).toHaveLength(1);
+    expect(res.replays[0]?.simHz).toBe(10);
+
+    const adminRes = await handler.execute(new GetRideReplaysQuery(null, r.id));
+    expect(adminRes.replays).toHaveLength(1);
+  });
+
+  it('rejects a non-owner wallet with ForbiddenError and unknown rides with NotFoundError', async () => {
+    const ctx = unitContext();
+    const r = await ctx.freeRide('W1', true);
+    const handler = new GetRideReplaysHandler(ctx.rides, ctx.replayRepo);
+
+    await expect(handler.execute(new GetRideReplaysQuery('W2', r.id))).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(handler.execute(new GetRideReplaysQuery('W1', 'missing'))).rejects.toBeInstanceOf(NotFoundError);
+  });
+});

@@ -7,6 +7,7 @@ import { RideBatch } from '../../src/domain/telemetry/ride-batch.entity.js';
 import type { BatchReceiptDto } from '../../src/domain/telemetry/telemetry.dto.js';
 import { RoadPlan } from '../../src/domain/road/road-plan.js';
 import { AXLES, HOLE_TYPES, WHEEL, holeDamage } from '../../src/domain/road/road-rules.js';
+import { TrafficSimulator } from '../../src/domain/verdict/traffic-sim.js';
 
 /* Synthetic ride recordings for the tests: the same batch shape and hash chain the game client produces (client/js/telemetry.js), so the server's
    chain and human-likeness checks can be exercised without a browser. `humanRecording` jitters every hold and pause the way a person does;
@@ -54,6 +55,8 @@ export interface RecordingOptions {
   road?: number;
   /** the ride's trip (Ride.trip – where its holes may start: the free run has none within its reach); default null = HOLE_FIRST */
   trip?: string | null;
+  /** when true with `replay: true`, the synthetic truck does NOT dodge seeded traffic cars (simulates a client with traffic deleted) */
+  ignoreTraffic?: boolean;
 }
 
 /** client/js/input-bits.js, the bits these recordings use (the drift spec test/unit/domain/replay-inputs.spec.ts holds them to the client's table) */
@@ -120,7 +123,9 @@ export function recording(rideId: string, opts: RecordingOptions): BatchBody[] {
     const inputs = events.filter((e) => e[0] >= t0 * 1000 && e[0] < t1 * 1000);
     bodies.push({ seq, t0, t1, samples: sampleRows(t0, t1, opts.seconds, opts.distance ?? 14 * opts.seconds, rnd, opts.replay ? (t) => [12.5, 3, inputMaskAt(events, t)] : undefined), inputs });
   }
-  if (opts.road !== undefined) takeHoles(bodies.flatMap((b) => b.samples), opts.road, opts.trip ?? null);
+  const allSamples = bodies.flatMap((b) => b.samples);
+  if (opts.road !== undefined && !opts.ignoreTraffic) dodgeTraffic(allSamples, opts.road, opts.trip ?? null);
+  if (opts.road !== undefined) takeHoles(allSamples, opts.road, opts.trip ?? null);
   const batches: BatchBody[] = [];
   let prevHash = rideId;
   for (const b of bodies) {
@@ -130,6 +135,22 @@ export function recording(rideId: string, opts: RecordingOptions): BatchBody[] {
     prevHash = hash;
   }
   return batches;
+}
+
+/** Steers a synthetic honest recording around backend-simulated traffic cars on the ride's seed. */
+export function dodgeTraffic(rows: number[][], seed: number, trip: string | null = null): void {
+  const plan = RoadPlan.forSeed(seed, trip);
+  const sim = new TrafficSimulator(seed, trip, plan);
+  let curD = rows[0]?.[2] ?? 2.4;
+  for (let i = 0; i < rows.length; i++) {
+    const p = rows[i - 1], q = rows[i]!;
+    const blocked = sim.cars.some((c) => c.s - q[1]! >= -18 && c.s - q[1]! <= 22 && Math.abs(c.lat - 2.4) < 1.5);
+    const targetD = blocked ? 4.8 : 2.4;
+    const diff = targetD - curD;
+    curD = round(curD + Math.sign(diff) * Math.min(0.4, Math.abs(diff)), 0.01);
+    q[2] = curD;
+    if (p) sim.stepSamplePair(p, q);
+  }
 }
 
 /** What the game does to the truck at the holes of the server's plan (client/js/sim/damage.js hitHoles): an axle whose wheel enters a pit costs the hull
@@ -143,9 +164,13 @@ export function takeHoles(rows: number[][], seed: number, trip: string | null = 
       const a0 = p[1]! + ax, a1 = q[1]! + ax;
       if (a1 <= a0) return;
       for (const h of plan.holesNear(a0 - 4, a1 + 4)) HOLE_TYPES[h.type]!.ells.forEach((e, pit) => {
-        const key = `${h.id}:${pit}:${axle}`, entry = h.s + e.ds - e.a, cl = h.lat + e.dl;
-        if (hit.has(key) || !(entry > a0 && entry <= a1)) return;
-        if (Math.min(Math.abs(q[2]! - WHEEL - cl), Math.abs(q[2]! + WHEEL - cl)) >= e.b) return;
+        const key = `${h.id}:${pit}:${axle}`, entry = h.s + e.ds - e.a, cs = h.s + e.ds, cl = h.lat + e.dl;
+        if (hit.has(key)) return;
+        const cross = entry > a0 && entry <= a1 ? entry : (cs > a0 && cs <= a1 ? cs : null);
+        if (cross === null) return;
+        const alpha = (cross - a0) / (a1 - a0);
+        const d = p[2]! + (q[2]! - p[2]!) * alpha;
+        if (Math.min(Math.abs(d - WHEEL - cl), Math.abs(d + WHEEL - cl)) >= e.b) return;
         hit.add(key);
         lost += holeDamage(HOLE_TYPES[h.type]!, p[4]!, axle);
       });

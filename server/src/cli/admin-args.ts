@@ -195,3 +195,41 @@ export function parseStatsReconcile(args: readonly string[]): StatsReconcileArgs
   if (wallet !== null && !/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(wallet)) return '--wallet must be a base58 address';
   return { wallet, fix: parsed.values.fix === true };
 }
+
+export interface ReplayVerifyArgs { rideId: string | null; limit: number; concurrency: number }
+export interface ReplayWorkerArgs { limit: number; concurrency: number; intervalMs: number }
+
+/** `replay:verify [--ride ID] [--limit N] [--concurrency C]` – runs async replay verification over a single ride or the pending queue */
+export function parseReplayVerify(args: readonly string[]): ReplayVerifyArgs | string {
+  let parsed;
+  try {
+    parsed = parseArgs({ args: [...args], options: { ride: { type: 'string' }, limit: { type: 'string' }, concurrency: { type: 'string' } } });
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+  const v = parsed.values;
+  const rideId = v.ride?.trim() || null;
+  const limit = int('limit', v.limit ?? '32', 1);
+  const concurrency = int('concurrency', v.concurrency ?? '4', 1);
+  if (typeof limit === 'string') return limit;
+  if (typeof concurrency === 'string') return concurrency;
+  return { rideId, limit, concurrency };
+}
+
+/** `replay:worker [--limit N] [--concurrency C] [--interval-ms MS]` – daemon loop processing the replay verification queue */
+export function parseReplayWorker(args: readonly string[]): ReplayWorkerArgs | string {
+  let parsed;
+  try {
+    parsed = parseArgs({ args: [...args], options: { limit: { type: 'string' }, concurrency: { type: 'string' }, 'interval-ms': { type: 'string' } } });
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+  const v = parsed.values;
+  const limit = int('limit', v.limit ?? '16', 1);
+  const concurrency = int('concurrency', v.concurrency ?? '4', 1);
+  const intervalMs = int('interval-ms', v['interval-ms'] ?? '2000', 100);
+  if (typeof limit === 'string') return limit;
+  if (typeof concurrency === 'string') return concurrency;
+  if (typeof intervalMs === 'string') return intervalMs;
+  return { limit, concurrency, intervalMs };
+}

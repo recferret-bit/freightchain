@@ -24,8 +24,9 @@ import { FakeClock } from './fake-clock.js';
 import { MemoryDb } from './in-memory/memory-db.js';
 import {
   MemoryAchievementRepository, MemoryAchievementMintRepository, MemoryChallengeRepository, MemoryHealthProbe, MemoryPaymentRepository, MemoryPlayerRepository,
-  MemoryRideBatchRepository, MemoryRideQuery, MemoryRideVerdictRepository, MemorySignInRepository, MemoryAdminActionRepository, MemoryAdminQuery, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
+  MemoryRideBatchRepository, MemoryRideQuery, MemoryRideVerdictRepository, MemoryRideReplayRepository, MemorySignInRepository, MemoryAdminActionRepository, MemoryAdminQuery, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
 } from './in-memory/memory-repositories.js';
+import { MemoryReplayQueueAdapter } from '../../src/infrastructure/verdict/memory-replay-queue.adapter.js';
 import { MemoryAdminDirectory } from './in-memory/memory-admin-directory.js';
 import { MemoryCosmeticRepository, MemoryPoolPayoutRepository, MemoryPoolRepository, MemoryPledgeRepository, MemoryPromoRepository, MemoryRideTicketRepository, MemoryTicketOrderRepository } from './in-memory/memory-ledger-repositories.js';
 import { MemoryChainCursorRepository, MemoryChainEventRepository } from './in-memory/memory-repositories.js';
@@ -90,6 +91,8 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const batches = new MemoryRideBatchRepository(db);
   const hasher = new TestHasher();
   const verdictRepo = new MemoryRideVerdictRepository(db);
+  const replayRepo = new MemoryRideReplayRepository(db);
+  const replayQueue = new MemoryReplayQueueAdapter();
   const signIns = new MemorySignInRepository(db);
   const adminActions = new MemoryAdminActionRepository(db);
   const adminQuery = new MemoryAdminQuery(db);
@@ -130,7 +133,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const achievements = new AchievementService(unlocks, mints, rideQuery, clock, rulesPort);
   const ticketSettlement = new TicketSettlementService(players, pools, tickets, orders, sessions, rounds, transactions, clock, entropy);
   const registry = new PoolRegistryService(poolChain, pools, clock, entropy);
-  const verdicts = new VerdictService(rides, players, batches, verdictRepo, adminActions, transactions, clock);
+  const verdicts = new VerdictService(rides, players, batches, verdictRepo, adminActions, transactions, clock, replayRepo, rideEvents, replayQueue, entropy);
   const proofs = new AdminProofService(challenges, new NaclSignatureVerifier(), rulesPort, clock, entropy);
   const settlement = new PaymentSettlementService(rounds, roundRepo, payments, rides, players, lookup, transactions, clock);
 
@@ -171,7 +174,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const storedPlayer = async (wallet: string) => (await players.findByWallet(wallet)) as Player;
 
   return {
-    db, clock, chain, entropy, dailySeeds, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, mints, mintChain, batches, hasher, verdictRepo, verdicts, proofs, signIns, adminActions, adminQuery, adminDirectory, health, analytics,
+    db, clock, chain, entropy, dailySeeds, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, mints, mintChain, batches, hasher, verdictRepo, replayRepo, replayQueue, verdicts, proofs, signIns, adminActions, adminQuery, adminDirectory, health, analytics,
     pools, poolPayouts, pledges, tickets, promos, cosmetics, promoCreation, orders, poolTickets, ticketSettlement,
     sessions, meProfile, settings, settingsRepo, lookup, rounds, achievements, settlement, now, player, accept, freeRide, paidOrder, paidRide, reload, storedPlayer,
     poolChain, chainEvents, chainCursors, registry, rideEvents, viewers, sitePresence, rideMutes, donationOrders, liveAccess, statsRepo, cache, stats, nameService,

@@ -24,3 +24,63 @@ model RideVerdict {
   @@index([status, judgedAt])
   @@schema("verdict")
 }
+
+// Each replay verification run of a ride (1-to-many per ride): stores 10 Hz backend simulation results, event correlation, and structured red flags.
+model RideReplay {
+  id                       String           @id @default(uuid())
+  rideId                   String
+  ride                     Ride             @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  seq                      Int
+  isPaid                   Boolean          @default(false)
+  status                   VerdictStatus
+  simHz                    Int              @default(10)
+  rulesVersion             Int
+  seed                     Int
+  trip                     String?
+  batchesCount             Int              @default(0)
+  samplesCount             Int              @default(0)
+  recordedSeconds          Float            @default(0)
+  simulatedSeconds         Float            @default(0)
+  recordedDistance         Float            @default(0)
+  simulatedDistance        Float            @default(0)
+  recordedHull             Float            @default(100)
+  simulatedHull            Float            @default(100)
+  simulatedCrashesVehicle  Int              @default(0)
+  simulatedCrashesBuilding Int              @default(0)
+  eventsExpected           Int              @default(0)
+  eventsCorrelated         Int              @default(0)
+  redFlags                 Json
+  scores                   Json
+  queuedAt                 DateTime
+  startedAt                DateTime?
+  completedAt              DateTime?
+  error                    String?
+  flags                    RideReplayFlag[]
+
+  @@unique([rideId, seq])
+  @@index([rideId, queuedAt(sort: Desc)])
+  @@index([status, queuedAt])
+  @@schema("verdict")
+}
+
+// Normalized anti-fraud red flags per replay verification run.
+model RideReplayFlag {
+  id        Int        @id @default(autoincrement())
+  replayId  String
+  replay    RideReplay @relation(fields: [replayId], references: [id], onDelete: Cascade)
+  rideId    String
+  code      String
+  category  String
+  severity  String
+  detail    String
+  atSecond  Float?
+  atMetre   Float?
+  evidence  Json?
+  createdAt DateTime
+
+  @@index([replayId])
+  @@index([rideId, severity])
+  @@index([code])
+  @@schema("verdict")
+}
+

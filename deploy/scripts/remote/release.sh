@@ -37,14 +37,14 @@ cc "$RELEASE" up -d --wait postgres redis
 say "migrating (new image, one-off)"
 cc "$RELEASE" run --rm --no-deps app node dist/cli/index.js migrate || { echo "migration FAILED – the previous version is still serving, nothing swapped" >&2; exit 1; }
 
-say "swapping the app container"
-cc "$RELEASE" up -d --no-build app
+say "swapping the app and worker containers"
+cc "$RELEASE" up -d --no-build app worker
 if ! wait_healthy; then
   echo "release $RELEASE is NOT healthy – last logs:" >&2
   cc "$RELEASE" logs --tail 40 app >&2 || true
   if [ -n "$PREVIOUS" ] && [ -f "$ROOT/releases/$PREVIOUS/deploy/docker-compose.prod.yml" ]; then
     echo "rolling back to $PREVIOUS" >&2
-    cc "$PREVIOUS" up -d --no-build app
+    cc "$PREVIOUS" up -d --no-build app worker
     if wait_healthy; then
       echo "rolled back: $PREVIOUS is serving again (the database stays migrated – migrations are forward-only)" >&2
       rm -rf "$ROOT/releases/$RELEASE"; docker rmi "freightchain-server:$RELEASE" >/dev/null 2>&1 || true   # a failed release must not take a slot

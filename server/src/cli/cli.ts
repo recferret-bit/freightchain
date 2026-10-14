@@ -34,6 +34,10 @@ Commands:
   achievement:mint [--retry]  One badge-mint pass now (ACHIEVEMENT_MINT_SECRET + ACHIEVEMENT_TREE + ACHIEVEMENT_COLLECTION): queue old-enough unlocks, resolve transactions in flight, mint soulbound cNFTs; --retry puts failed rows back first
   verdict:rejudge [--status unjudged|verified|flagged|rejected|all] [--since DATE] [--limit N] [--dry-run]
                Judge completed shifts again at the CURRENT verdict rules (after a threshold change) – an admin's decision is kept, a swept recording skipped; audited
+  replay:verify [--ride ID] [--limit N] [--concurrency C]
+               Run one replay verification pass over a ride or the pending queue (10 Hz ReplayEngine + @freightchain/shared)
+  replay:worker [--limit N] [--concurrency C] [--interval-ms MS]
+               Run the continuous replay verification worker daemon (polls ReplayQueuePort and verdict.RideReplay pending rows)
   pool:attention --pool N
                The pool-level attention checks (distance outlier, shared sign-in IP, a new wallet in the top 3): marks those rides' verdicts flagged
                with pool-* reasons so they stay UNDER REVIEW – an admin's decision is never touched; idempotent; logged (event pool-attention)

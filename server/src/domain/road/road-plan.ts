@@ -1,12 +1,9 @@
-import { RoadLayout, laneLat, rnd } from './road-layout.js';
+import { rollChunkHole } from '../shared/index.js';
+import { RoadLayout } from './road-layout.js';
 import { CHUNK_LEN, HOLE_CHANCE, HOLE_TYPES, HOLES_ON, ROAD_PLAN_MAX_S, holeFirstOf, tripRoadOf, type HoleType } from './road-rules.js';
 
-/* The ride's OBSTACLE PLAN – the server's answer to "where were the holes on this ride's road?". A pure function of the seed (and of the ride's trip,
-   which only moves where the holes may start – road-rules.ts TRIP_HOLE_FIRST): the layout (road-layout.ts)
-   plus the game's per-chunk roll (client/js/net/obstacles.js `naturalHole`), ported line for line. It is what the server
-   - hands the driver's game (GET /api/watch/:id/road – the game draws and drives over THESE holes, its own roll is only the offline fallback),
-   - hands spectators (the same route: a replay shows the server's holes, not anything the driver's game reported),
-   - judges the recording against (telemetry/world-facts.ts measures every pass at upload time, verdict/world-checks.ts decides). */
+/* The ride's OBSTACLE PLAN – the server's answer to "where were the holes on this ride's road?". Built with the shared rollChunkHole function
+   (@freightchain/shared via ../shared/index.js) consumed directly by both client/js/net/obstacles.js and server/. */
 
 export interface PlannedHole {
   /** 'h' + chunk index – the same id the game uses */
@@ -33,8 +30,6 @@ export interface RoadPlanDto {
 
 export const ROAD_PLAN_VERSION = 1;
 
-const TYPE_IDS = Object.keys(HOLE_TYPES).filter((k) => HOLE_TYPES[k]!.cones); // only these are rolled onto the road
-
 export class RoadPlan {
   private readonly cache = new Map<number, PlannedHole | null>();
 
@@ -47,18 +42,11 @@ export class RoadPlan {
 
   get seed(): number { return this.layout.seed; }
 
-  /** the natural hole of chunk ci, or null – client/js/net/obstacles.js naturalHole */
+  /** the natural hole of chunk ci, or null – shared/road.js rollChunkHole */
   holeAt(ci: number): PlannedHole | null {
     const known = this.cache.get(ci);
     if (known !== undefined) return known;
-    const net = this.layout, q = (k: number) => rnd(ci * 97.13 + k * 3.71), s = ci * CHUNK_LEN + 4 + q(1) * 24;
-    let h: PlannedHole | null = null;
-    if (HOLES_ON && ci >= 0 && s < ROAD_PLAN_MAX_S && q(2) < this.holeChance && s >= net.Sm + this.holeFirst && net.plain(s, 70)) {
-      const type = TYPE_IDS[Math.floor(q(3) * TYPE_IDS.length)]!, T = HOLE_TYPES[type]!, r = q(4), j = q(5) - 0.5;
-      const dir = T.lane ? (r < 0.7 ? 1 : -1) : r < 0.6 ? 1 : -1, lane = laneLat(dir, Math.floor(q(6) * net.lanes(s, dir)));
-      const lat = T.lane ? lane : r < 0.85 ? lane + j * 1.6 : j * 1.2;
-      h = { id: 'h' + ci, ci, type, s, lat };
-    }
+    const h = HOLES_ON ? rollChunkHole(ci, this.layout, this.holeChance, this.holeFirst, ROAD_PLAN_MAX_S) : null;
     this.cache.set(ci, h);
     return h;
   }

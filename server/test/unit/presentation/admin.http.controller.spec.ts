@@ -3,11 +3,12 @@ import { GetAdminLogsQuery } from '../../../src/application/use-cases/admin/get-
 import { GetAdminOverviewQuery } from '../../../src/application/use-cases/admin/get-admin-overview/get-admin-overview.query.js';
 import { GetAdminRideQuery } from '../../../src/application/use-cases/admin/get-admin-ride/get-admin-ride.query.js';
 import { ListAdminActionsQuery } from '../../../src/application/use-cases/admin/list-admin-actions/list-admin-actions.query.js';
+import { ListAdminReplaysQuery } from '../../../src/application/use-cases/admin/list-admin-replays/list-admin-replays.query.js';
 import { ListAdminRidesQuery } from '../../../src/application/use-cases/admin/list-admin-rides/list-admin-rides.query.js';
 import { ListSignInsQuery } from '../../../src/application/use-cases/admin/list-sign-ins/list-sign-ins.query.js';
 import { OverrideVerdictCommand } from '../../../src/application/use-cases/admin/override-verdict/override-verdict.command.js';
 import { RejudgeRideCommand } from '../../../src/application/use-cases/admin/rejudge-ride/rejudge-ride.command.js';
-import { actionChallengeBodySchema, actionsQuerySchema, adminRidesQuerySchema, logsQuerySchema, overrideBodySchema, rejudgeBodySchema, signInsQuerySchema } from '../../../src/presentation/admin/dto/admin.dto.js';
+import { actionChallengeBodySchema, actionsQuerySchema, adminReplaysQuerySchema, adminRidesQuerySchema, logsQuerySchema, overrideBodySchema, rejudgeBodySchema, signInsQuerySchema } from '../../../src/presentation/admin/dto/admin.dto.js';
 import { RequestActionChallengeCommand } from '../../../src/application/use-cases/admin/request-action-challenge/request-action-challenge.command.js';
 import { RequestAdminChallengeCommand } from '../../../src/application/use-cases/admin/request-admin-challenge/request-admin-challenge.command.js';
 import { VerifyAdminSignInCommand } from '../../../src/application/use-cases/admin/verify-admin-signin/verify-admin-signin.command.js';
@@ -26,6 +27,8 @@ describe('AdminHttpController', () => {
     await c.overview(); expect(queries.last()).toEqual(new GetAdminOverviewQuery());
     const filter = adminRidesQuerySchema.parse({ verdict: 'flagged' });
     await c.rides(filter); expect(queries.last()).toEqual(new ListAdminRidesQuery({ limit: 50, verdict: 'flagged' }));
+    const replayFilter = adminReplaysQuerySchema.parse({ status: 'flagged', paid: 'true' });
+    await c.replays(replayFilter); expect(queries.last()).toEqual(new ListAdminReplaysQuery({ limit: 50, status: 'flagged', isPaid: true }));
     await c.ride({ id: 'r1' }); expect(queries.last()).toEqual(new GetAdminRideQuery('r1'));
     await c.signIns({ limit: 10, wallet: W }); expect(queries.last()).toEqual(new ListSignInsQuery(10, W));
     await c.actions({ limit: 5 }); expect(queries.last()).toEqual(new ListAdminActionsQuery(5));
@@ -46,7 +49,10 @@ describe('AdminHttpController', () => {
       expect(adminRidesQuerySchema.parse({ wallet: W, status: 'completed', verdict: 'none' })).toEqual({ limit: 50, wallet: W, status: 'completed', verdict: 'none' });
       for (const bad of [{ wallet: 'nope' }, { status: 'won' }, { verdict: 'maybe' }, { limit: '0' }, { limit: '201' }]) expect(adminRidesQuerySchema.safeParse(bad).success, JSON.stringify(bad)).toBe(false);
     });
-    it('sign-ins / actions / logs', () => {
+    it('replays / sign-ins / actions / logs', () => {
+      expect(adminReplaysQuerySchema.parse({ status: '', paid: '' })).toEqual({ limit: 50 });
+      expect(adminReplaysQuerySchema.parse({ status: 'rejected', paid: 'false', limit: '10' })).toEqual({ limit: 10, status: 'rejected', isPaid: false });
+      expect(adminReplaysQuerySchema.safeParse({ status: 'unknown' }).success).toBe(false);
       expect(signInsQuerySchema.parse({})).toEqual({ limit: 100 });
       expect(actionsQuerySchema.parse({ limit: '3' })).toEqual({ limit: 3 });
       expect(logsQuerySchema.parse({ level: '', q: '' })).toEqual({ limit: 200 });

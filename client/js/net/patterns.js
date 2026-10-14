@@ -19,18 +19,4 @@
    roads are ≈ 207 m apart at the middle, ≈ 14 m apart COMMIT m after the split (CORRIDOR keeps a metre in hand). Crossing f0 + COMMIT the truck is on the road it is nearer to
    (net/orchestrator.js), its (s, d) re-measured on that road. CORRIDOR: before COMMIT (and the last COMMIT m before the merge) the tarmac of both roads
    is one apron – the server counts ±CORRIDOR m beyond the edges as road there (its bound for the gap between the roads at COMMIT). */
-export const FORK_LEN = 1200, FORK = { len: FORK_LEN, bulge: .55, commit: 205, corridor: 15, reach: 1.5 };
-/* reach: the frame the truck crosses the commit point is sampled (telemetry) BEFORE orchestrator.forkCommit moves it onto the road it took – so the apron
-   counts as road `reach` m past the commit point in onRoad (≥ one frame at the governor: 28 m/s × 0.05 s; server road-rules.ts FORK_SWITCH_REACH) */
-export const PATTERNS = {
-  country:  { name: 'COUNTRY ROAD', lanes: [[1, 1, 1]], seg: [700, 1600], len: [900, 2400], bends: 1, centre: null, junction: { gap: [420, 950], cross: .5, signal: .35, side: [1, 1, 2] } },
-  highway:  { name: 'HIGHWAY', lanes: [[2, 2, 3], [3, 3, 1], [3, 2, 1], [2, 3, 1]], seg: [500, 1100], len: [1600, 3600], bends: .55, centre: 'double', junction: null },
-  arterial: { name: 'ARTERIAL', lanes: [[2, 2, 3], [2, 1, 1], [1, 2, 1], [3, 3, 1]], seg: [400, 900], len: [800, 1700], bends: .35, centre: 'double', junction: { gap: [260, 520], cross: .85, signal: .9, side: [1, 2] } },
-  town:     { name: 'TOWN', lanes: [[1, 1, 2], [2, 2, 1]], seg: [300, 700], len: [500, 1100], bends: .15, centre: null, junction: { gap: [170, 320], cross: .7, signal: .75, side: [1] } },
-  dual:     { name: 'DUAL ROAD', lanes: [[2, 2, 1]], seg: [700, 1500], len: [1500, 3200], bends: .6, centre: 'double', junction: null },   // the easy free run: four lanes, no junctions
-  fork:     { name: 'COUNTRY ROAD', lanes: [[1, 1, 1]], seg: [FORK_LEN, FORK_LEN], len: [FORK_LEN, FORK_LEN], bends: 0, centre: null, junction: null, fork: true },   // the road splits in two and meets again (FORK below)
-  open:     { name: 'COUNTRY ROAD', lanes: [[1, 1, 1]], seg: [500, 500], len: [500, 500], bends: 1, centre: null, junction: null },   // a calm 1+1 stretch, no junction
-  xroad:    { name: 'COUNTRY ROAD', lanes: [[1, 1, 1]], seg: [500, 500], len: [500, 500], bends: 1, centre: null, junction: { gap: [380, 500], cross: 1, signal: .5, side: [1, 1, 2] } },   // 1+1 with exactly one crossroads
-  xroad4:   { name: 'DUAL ROAD', lanes: [[2, 2, 1]], seg: [500, 500], len: [500, 500], bends: .6, centre: 'double', junction: { gap: [380, 500], cross: 1, signal: .5, side: [1, 1, 2] } },   // 2+2 with exactly one crossroads (the easy free run)
-};
-export const DEFAULT_WEIGHTS = { country: 3, highway: 1, arterial: 1, town: 1 };
+export { FORK_LEN, FORK, PATTERNS, DEFAULT_WEIGHTS } from '../../shared/road.js';

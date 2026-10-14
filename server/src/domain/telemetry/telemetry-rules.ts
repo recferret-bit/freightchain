@@ -6,6 +6,19 @@ export const BATCH_MAX_SAMPLES = 400; // ≈ 40 s at 10 Hz – a 15 s batch is 1
 export const BATCH_MAX_INPUTS = 2000;
 export const SAMPLE_MAX_WIDTH = 16; // numbers per sample row
 export const SAMPLE_WIDTH = 12; // the columns the verdict reads: [t, s, d, psi, v, rpm, gear, hull, gas, brake, steer, clutch] (replay columns are appended after)
+export const SAMPLE_MIN_COLS = SAMPLE_WIDTH;
+export const SAMPLE_T_COL = 0;
+export const SAMPLE_S_COL = 1;
+export const SAMPLE_D_COL = 2;
+export const SAMPLE_PSI_COL = 3;
+export const SAMPLE_V_COL = 4;
+export const SAMPLE_RPM_COL = 5;
+export const SAMPLE_GEAR_COL = 6;
+export const SAMPLE_HULL_COL = 7;
+export const SAMPLE_GAS_COL = 8;
+export const SAMPLE_BRAKE_COL = 9;
+export const SAMPLE_STEER_COL = 10;
+export const SAMPLE_CLUTCH_COL = 11;
 /* The replay columns – appended for spectators (client/js/watch.js), inside the hashed text like the rest; the verdict reads SAMPLE_WIDTH, and of these only
    the input column's gas bit (counted against the gas presses – recording-checks.ts checkInputsAgree, flag only). Older recordings stop earlier. Append, never insert. */
 export const SAMPLE_CLOCK_COL = 12; // the hour of the day (0..24)

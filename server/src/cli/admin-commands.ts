@@ -18,10 +18,12 @@ import { CrankPoolsCommand } from '../application/use-cases/chain/crank-pools/cr
 import { MintAchievementsCommand } from '../application/use-cases/achievements/mint-achievements/mint-achievements.command.js';
 import { PayPoolsCommand } from '../application/use-cases/chain/pay-pools/pay-pools.command.js';
 import { SyncPledgesCommand } from '../application/use-cases/pledges/sync-pledges/sync-pledges.command.js';
-import { parsePoolPayout, parsePoolRegister, parsePoolSeed, parsePromoCreate, parseTicketsGrant, parseStatsReconcile, parseVerdictRejudge, type PoolSeedArgs } from './admin-args.js';
+import { parsePoolPayout, parsePoolRegister, parsePoolSeed, parsePromoCreate, parseReplayVerify, parseReplayWorker, parseTicketsGrant, parseStatsReconcile, parseVerdictRejudge, type PoolSeedArgs, type ReplayWorkerArgs } from './admin-args.js';
 import { parsePoolAttention } from './admin-args.js';
 import { PoolAttentionService } from '../application/services/pool-attention.service.js';
 import { RejudgeRidesCommand } from '../application/use-cases/admin/rejudge-rides/rejudge-rides.command.js';
+import { RejudgeRideCommand } from '../application/use-cases/admin/rejudge-ride/rejudge-ride.command.js';
+import { ProcessReplayQueueCommand } from '../application/use-cases/verdict/process-replay-queue/process-replay-queue.command.js';
 import { ReconcileStatsCommand } from '../application/use-cases/stats/reconcile-stats/reconcile-stats.command.js';
 import { SweepTelemetryCommand } from '../application/use-cases/telemetry/sweep-telemetry/sweep-telemetry.command.js';
 import { SweepSignInsCommand } from '../application/use-cases/auth/sweep-sign-ins/sweep-sign-ins.command.js';
@@ -41,6 +43,39 @@ async function withBuses<T>(fn: (buses: { commands: CommandBus; queries: QueryBu
     console.error(`[cli] ${error instanceof DomainError ? `${error.errorCode}: ${error.message}` : error instanceof Error ? error.message : String(error)}`);
     return 1;
   } finally {
+    await app?.close();
+  }
+}
+
+async function runReplayWorker(cfg: ReplayWorkerArgs): Promise<number> {
+  let app: INestApplicationContext | null = null;
+  let stopping = false;
+  const stop = () => { stopping = true; };
+  process.once('SIGINT', stop);
+  process.once('SIGTERM', stop);
+  try {
+    app = await NestFactory.createApplicationContext(CliModule, { logger: ['error', 'warn', 'log'] });
+    const commands = app.get(CommandBus);
+    console.log(JSON.stringify({ event: 'replay-worker.start', limit: cfg.limit, concurrency: cfg.concurrency, intervalMs: cfg.intervalMs }));
+    while (!stopping) {
+      const res = await commands.execute(new ProcessReplayQueueCommand(cfg.limit, cfg.concurrency, null));
+      if (res.processed > 0 || res.failed > 0) {
+        console.log(JSON.stringify({ event: 'replay-worker.batch', ...res }));
+      }
+      if (stopping) break;
+      const waitMs = res.processed > 0 ? 50 : cfg.intervalMs;
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(resolve, waitMs);
+        if (stopping) { clearTimeout(timer); resolve(); }
+      });
+    }
+    return 0;
+  } catch (error) {
+    console.error(`[cli] ${error instanceof Error ? error.message : String(error)}`);
+    return 1;
+  } finally {
+    process.removeListener('SIGINT', stop);
+    process.removeListener('SIGTERM', stop);
     await app?.close();
   }
 }
@@ -91,6 +126,14 @@ export async function runAdmin(command: string, args: readonly string[]): Promis
     case 'verdict:rejudge': {
       const r = parseVerdictRejudge(args);
       return typeof r === 'string' ? usage(r) : withBuses(({ commands }) => commands.execute(new RejudgeRidesCommand({ verdict: r.verdict, since: r.since, limit: r.limit }, r.dryRun, 'cli')));
+    }
+    case 'replay:verify': {
+      const r = parseReplayVerify(args);
+      return typeof r === 'string' ? usage(r) : withBuses(({ commands }) => commands.execute(new ProcessReplayQueueCommand(r.limit, r.concurrency, r.rideId)));
+    }
+    case 'replay:worker': {
+      const r = parseReplayWorker(args);
+      return typeof r === 'string' ? usage(r) : runReplayWorker(r);
     }
     case 'pool:attention': {
       const r = parsePoolAttention(args);

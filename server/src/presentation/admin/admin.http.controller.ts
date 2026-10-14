@@ -9,12 +9,13 @@ import { AdminPublic } from '../../infrastructure/http/guards/admin.guard.js';
 import { ClearAdminCookieInterceptor, SetAdminCookieInterceptor } from '../../infrastructure/http/interceptors/admin-cookie.interceptor.js';
 import { challengeBodySchema, verifyBodySchema, type ChallengeBody, type VerifyBody } from '../auth/dto/auth.dto.js';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
-import type { AdminActionDto, AdminListDto, AdminLogsDto, AdminOverviewDto, AdminRideDetailDto, AdminRideRowDto, SignInRowDto } from '../../domain/admin/admin.dto.js';
+import type { AdminActionDto, AdminListDto, AdminLogsDto, AdminOverviewDto, AdminReplaysDto, AdminRideDetailDto, AdminRideRowDto, SignInRowDto } from '../../domain/admin/admin.dto.js';
 import type { VerdictDto } from '../../domain/verdict/verdict.dto.js';
 import { GetAdminLogsQuery } from '../../application/use-cases/admin/get-admin-logs/get-admin-logs.query.js';
 import { GetAdminOverviewQuery } from '../../application/use-cases/admin/get-admin-overview/get-admin-overview.query.js';
 import { GetAdminRideQuery } from '../../application/use-cases/admin/get-admin-ride/get-admin-ride.query.js';
 import { ListAdminActionsQuery } from '../../application/use-cases/admin/list-admin-actions/list-admin-actions.query.js';
+import { ListAdminReplaysQuery } from '../../application/use-cases/admin/list-admin-replays/list-admin-replays.query.js';
 import { ListAdminRidesQuery } from '../../application/use-cases/admin/list-admin-rides/list-admin-rides.query.js';
 import { ListSignInsQuery } from '../../application/use-cases/admin/list-sign-ins/list-sign-ins.query.js';
 import { OverrideVerdictCommand } from '../../application/use-cases/admin/override-verdict/override-verdict.command.js';
@@ -27,8 +28,8 @@ import { AdminGuard } from '../../infrastructure/http/guards/admin.guard.js';
 import type { PlayerIdentity } from '../../infrastructure/http/types/http-request.js';
 import { rideIdParamsSchema, type RideIdParams } from '../common/dto/common.dto.js';
 import {
-  actionChallengeBodySchema, actionsQuerySchema, adminRidesQuerySchema, logsQuerySchema, overrideBodySchema, rejudgeBodySchema, signInsQuerySchema,
-  type ActionChallengeBody, type ActionsQuery, type AdminRidesQuery, type LogsQuery, type OverrideBody, type RejudgeBody, type SignInsQuery,
+  actionChallengeBodySchema, actionsQuerySchema, adminReplaysQuerySchema, adminRidesQuerySchema, logsQuerySchema, overrideBodySchema, rejudgeBodySchema, signInsQuerySchema,
+  type ActionChallengeBody, type ActionsQuery, type AdminReplaysQuery, type AdminRidesQuery, type LogsQuery, type OverrideBody, type RejudgeBody, type SignInsQuery,
 } from './dto/admin.dto.js';
 
 /** The admin page's API (admin.<apex>). An admin session (the admin sign-in below) of a wallet in ADMIN_WALLETS – to anybody else every route is a 404. Changes need the X-FC-Admin header and are audited. */
@@ -67,6 +68,11 @@ export class AdminHttpController {
   @Get('rides')
   rides(@ZodQuery(adminRidesQuerySchema) query: AdminRidesQuery): Promise<AdminListDto<AdminRideRowDto>> {
     return this.queryBus.execute<ListAdminRidesQuery, AdminListDto<AdminRideRowDto>>(new ListAdminRidesQuery(query));
+  }
+
+  @Get('replays')
+  replays(@ZodQuery(adminReplaysQuerySchema) query: AdminReplaysQuery): Promise<AdminReplaysDto> {
+    return this.queryBus.execute<ListAdminReplaysQuery, AdminReplaysDto>(new ListAdminReplaysQuery(query));
   }
 
   @Get('rides/:id')
