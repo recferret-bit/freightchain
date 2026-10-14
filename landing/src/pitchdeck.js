@@ -165,7 +165,7 @@ const SLIDES = [
       </div>
       <div class="plan">
         <div class="pr today"><span class="pin"><i></i>TODAY · OCT 15</span></div>
-        ${MONTHS.map(m => `<div class="pr mo"><b>${m[0]}</b><small>${m[1]}</small></div>`).join('')}
+        ${MONTHS.map((m, i) => `<div class="pr mo" style="--m:${i + 1}"><b>${m[0]}</b><small>${m[1]}</small></div>`).join('')}
         ${PLAN.map((l, i) => `<div class="pl" style="--c:${l.c};--i:${i};grid-row:${i + 2}"><b>${l.k}</b><small>${l.sub}</small></div>
         <div class="bar" style="--c:${l.c};--i:${i};grid-row:${i + 2};grid-column:${l.from + 1} / ${l.to + 2}"><b>${l.t}</b><small>${l.n}</small><p>${l.more}</p></div>`).join('')}
       </div>` },
