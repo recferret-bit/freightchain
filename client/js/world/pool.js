@@ -27,7 +27,7 @@ export const groupPool = new ObjectPool('group', () => new THREE.Group(), g => {
 export function mesh(geo, mat) { const m = meshPool.acquire(); m.geometry = geo; m.material = mat; return m; }
 export const group = () => groupPool.acquire();
 
-/* Return a built object tree to the pools (children first; anything not made by a pool – landmark signs, the gantry banner – is just detached).
+/* Return a built object tree to the pools (children first; anything not made by a pool – a vehicle or landmark root, a role group, the gantry banner – is just detached).
    Snapshot before mutating: never release while traversing. `onNode` lets the owner clean up per-object state (damage.js toppling props). */
 export function releaseTree(root, onNode) {
   const nodes = []; root.traverse(o => nodes.push(o));

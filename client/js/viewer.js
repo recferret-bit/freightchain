@@ -1,14 +1,12 @@
 import * as THREE from 'three';
 import { renderer } from './world/scene.js';
-import { VEHICLES, buildVehicle } from './world/vehicles.js';
-import { KINDS } from './world/props.js';
-import { buildGantry } from './world/gantry.js';
-import { THEMES } from './themes/index.js';
-import { TYPES } from './themes/_shared/landmarks/index.js';
+import { buildCatalogue } from './catalogue.js';
+import { loadEntities } from './world/entities.js';
 import { setFormShade } from './world/nightlight.js';   // installs the form-shade patch; this page has no day/night loop, so the sun stays the default and F8 is instant
 
 /* Model viewer (viewer.html): a separate scene with every 3D object of the game except the player's own freighter/trailer –
-   traffic vehicles, and per route the scenery props, roadside furniture and finish gantry – built by the SAME code the game uses.
+   traffic vehicles, and per route the scenery props, roadside furniture, landmarks and finish gantry – each an entity (client/shared/entity/),
+   built by the SAME code the game uses.
    Orbit / zoom / pan are hand-rolled (no extra imports). Selection lives in location.hash so a view can be linked. */
 
 const $ = id => document.getElementById(id);
@@ -17,36 +15,10 @@ const camera = new THREE.PerspectiveCamera(45, 1, .05, 600);
 const grid = new THREE.GridHelper(60, 60, 0x6a7078, 0x3a3f45); grid.position.y = -.002; scene.add(grid);
 const stage = new THREE.Group(); scene.add(stage);
 
-/* ---------- catalogue: { group, label, make() → Object3D, info() → [[k, v]…] } ---------- */
-const items = [];
-const add = (group, id, label, make, info) => items.push({ group, id, label, make, info });
+/* ---------- catalogue: { group, id, entity, label, make() → Object3D, info() → [[k, v]…] } (js/catalogue.js) ---------- */
+await loadEntities();
+const items = buildCatalogue();
 const f = (n, d = 2) => +n.toFixed(d);
-
-for (const [type, d] of Object.entries(VEHICLES)) {
-  const picks = type === 'sedan' ? [0, 1, 2, 3, 4, 5, 6] : [0];   // sedans come in 7 paint colours
-  for (const p of picks) add('Vehicles', `veh-${type}-${p}`, picks.length > 1 ? `${d.name} · colour ${p + 1}` : d.name, () => buildVehicle(d, p),
-    () => [['type', type], ['length × width × height', `${d.len} × ${d.w} × ${d.h} m`], ['mass (hull dmg ×)', d.mass], ['cruise speed', `${d.v[0]}–${d.v[1]} m/s`], ['AI presets', Object.keys(d.presets).join(', ')]]);
-}
-const FURN = { post: 'delineator post', pole: 'utility pole', guard: 'guardrail segment' };
-const collider = o => { const u = o.userData, k = KINDS[u.kind]?.(u.size); return k ? [['kind', u.kind], ['size param', f(u.size)], ['collision r', k.rf ? `${k.rf} × ${k.rl} m` : `${f(k.r)} m`], ['hp (speed² budget)', f(k.hp, 0)], ['hull dmg @28 m/s', `${f(k.dmg, 1)} %`], ['slowdown on break', `${f(k.slow * 100, 0)} %`]] : []; };
-const sig = o => { const m = []; o.traverse(c => c.isMesh && m.push(c.material.uuid)); return `${o.userData.kind}|${m.length}|${m.join()}`; };
-for (const t of THEMES) {
-  const G = `Route · ${t.name}`, pr = t.createProps(), seen = new Map();
-  // the picker maps (r, r2) → prop; sweep both to find every distinct variant (kind × part count × materials)
-  for (let i = 0; i < 100; i++) for (const r2 of [.1, .5, .9]) { const o = pr.pick((i + .5) / 100, r2), s = sig(o); if (!seen.has(s)) seen.set(s, { r: (i + .5) / 100, r2, name: o.name || o.userData.kind }); }
-  const count = {}; for (const v of seen.values()) count[v.name] = (count[v.name] || 0) + 1;
-  const idx = {};
-  for (const v of seen.values()) {
-    const n = count[v.name] > 1 ? ` ${(idx[v.name] = (idx[v.name] || 0) + 1)}` : '';
-    add(G, `${t.id}-${v.name.replace(/\W+/g, '_')}${n.trim()}`, v.name + n, () => t.createProps().pick(v.r, v.r2), function () { return collider(this.obj); });   // fresh createProps: same materials are shared per call
-  }
-  const caught = new Map();
-  t.createFurniture().build({ ci: 0, s0: 0, place: o => { if (!caught.has(o.userData.kind)) caught.set(o.userData.kind, o); }, reg() {}, destroyed: new Set() });
-  for (const [k, o] of caught) add(G, `${t.id}-${k}`, FURN[k] || k, () => o, function () { return collider(this.obj); });
-  if (t.createLandmarks) for (const [type, impls] of Object.entries(TYPES)) impls.forEach((v, i) => add(`Landmarks · ${t.name}`, `${t.id}-lm-${v.id}`, `${type} · ${v.id.replace(/^[a-z]+-/, '')}`, () => t.createLandmarks().preview(type, i),
-    () => [['type', type], ['implementation', v.id], ['footprint', `${v.hl * 2} × ${v.hd * 2} m`], ['collider', 'building: hp 3000, 40 % hull @28 m/s']]));
-  add(G, `${t.id}-gantry`, 'finish gantry', () => buildGantry(t.finishText), () => [['kind', 'gantry'], ['banner text', t.finishText], ['span', '14.4 m between posts, 7 m high'], ['hp / hull dmg', '500 / 35 % per post']]);
-}
 
 /* ---------- selection ---------- */
 let cur = null, obj = null, bounds = new THREE.Box3();
