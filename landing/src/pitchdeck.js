@@ -221,11 +221,36 @@ requestAnimationFrame(tkTick);
 
 /* ── engine ── */
 const deck = document.getElementById('deck');
-deck.innerHTML = SLIDES.map((s, i) => `<section class="slide L-${s.layout.split(' ').join(' L-')}" id="s-${s.id}" data-i="${i}">${s.html}<div class="num">${String(i + 1).padStart(2, '0')} / ${String(SLIDES.length).padStart(2, '0')}</div></section>`).join('');
+deck.innerHTML = SLIDES.map((s, i) => `<section class="slide L-${s.layout.split(' ').join(' L-')}" id="s-${s.id}" data-i="${i}">${s.html}</section>`).join('');
 deck.querySelectorAll('[data-chart=funnel]').forEach(funnel);
 deck.querySelectorAll('[data-chart=daily]').forEach(daily);
 
 const slides = [...deck.children];
+
+/* page counter: an old mechanical-watch roll – the digit that changes rolls out and the new one rolls in (up going forward, down going back) while the counter swells 1.05 for a beat */
+const pager = document.getElementById('pager');
+const mkDigit = () => { const dg = document.createElement('span'), col = document.createElement('span'); dg.className = 'dg'; col.className = 'col'; dg.append(col); return dg; };
+const dgs = [mkDigit(), mkDigit()], of = document.createElement('span');
+of.className = 'of'; of.textContent = ` / ${String(slides.length).padStart(2, '0')}`;
+pager.append(...dgs, of);
+const cell = ch => { const e = document.createElement('span'); e.textContent = ch; return e; };
+function setPager(i, from) {   // from = the previous slide, -1 on load
+  const txt = String(i + 1).padStart(2, '0');
+  dgs.forEach((dg, k) => {
+    const col = dg.firstElementChild, old = col.dataset.v;
+    if (old === txt[k]) return;
+    col.dataset.v = txt[k];
+    if (from < 0 || tkReduced || old == null) { col.replaceChildren(cell(txt[k])); col.style.transform = ''; return; }
+    const fwd = i > from;
+    col.style.transition = 'none';
+    col.replaceChildren(...(fwd ? [cell(old), cell(txt[k])] : [cell(txt[k]), cell(old)]));
+    col.style.transform = fwd ? 'translateY(0)' : 'translateY(-50%)';
+    void col.offsetWidth;
+    col.style.transition = 'transform .55s cubic-bezier(.2,.8,.2,1)';
+    col.style.transform = fwd ? 'translateY(-50%)' : 'translateY(0)';
+  });
+  if (from >= 0 && !tkReduced) { pager.classList.remove('tick'); void pager.offsetWidth; pager.classList.add('tick'); }
+}
 const stage = document.getElementById('stage');
 let scale = 1;   // stage px → screen px
 const fit = () => {
@@ -241,6 +266,7 @@ function show(i) {
   if (i === cur) return;
   slides.forEach((s, j) => s.classList.toggle('on', j === i));
   slides.forEach((s, j) => s.querySelectorAll('video').forEach(v => { if (j === i) start(v); else v.pause(); }));
+  setPager(i, cur);
   cur = i;
   history.replaceState(null, '', '#' + (i + 1));
   document.getElementById('bar').style.width = `${100 * (i + 1) / slides.length}%`;

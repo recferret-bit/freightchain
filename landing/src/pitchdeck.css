@@ -24,7 +24,13 @@ h1 em{font-style:normal;color:var(--ink)}
 .pts li{position:relative;padding-left:44px;font:500 32px/1.25 var(--body);color:var(--ink)}
 .pts li::before{content:"";position:absolute;left:0;top:.42em;width:22px;height:6px;background:var(--accent2);border-radius:3px}
 .pts b{color:var(--accent)}
-.num{position:absolute;right:112px;bottom:44px;font:500 18px var(--body);letter-spacing:3px;color:var(--muted)}
+#pager{position:absolute;right:112px;bottom:44px;z-index:10;display:flex;font:500 18px/26px var(--body);letter-spacing:3px;color:var(--muted);transform-origin:100% 100%}
+#pager .dg{display:inline-block;height:26px;overflow:hidden;width:calc(1ch + 3px)}   /* one digit tall: the column rolls behind this window */
+#pager .col{display:flex;flex-direction:column}
+#pager .col>span{height:26px;line-height:26px}
+#pager .of{white-space:pre}
+#pager.tick{animation:pagertick .6s ease-out 1}
+@keyframes pagertick{0%{transform:scale(1)}35%{transform:scale(1.05);color:var(--ink)}100%{transform:scale(1)}}
 
 /* 00 wall: four screens of what got built */
 .L-wall{grid-template-columns:720px 1fr}
