@@ -302,7 +302,7 @@
       "error": "MathOverflow"
     },
     {
-      "name": "refunded pool closed: sponsorship + stray lamports to the seed",
+      "name": "refunded pool closed: the sponsor refunded first (v4, M8), stray lamports to the seed",
       "price": "100000000",
       "sold": 3,
       "sponsored": "50000000",
@@ -319,8 +319,8 @@
       "fee": "52500000",
       "platform": "1575000",
       "close": {
-        "vault": "50890889",
-        "seed": "50000009",
+        "vault": "890889",
+        "seed": "9",
         "fee": "0",
         "platformFee": "0",
         "unclaimed": "0",

@@ -53,3 +53,19 @@ export function winnersTree(poolId: number, list: readonly WinnerLeaf[], digest:
   });
   return { root: levels[levels.length - 1]![0]!, total, proofs };
 }
+
+/** The root a proof leads to from leaf `index` of a `count`-leaf tree – state.rs `merkle_root_from` (null = an unusable proof: wrong length, index out of range). */
+export function rootFromProof(leaf: Buffer, index: number, count: number, proof: readonly Uint8Array[], digest: DigestFn): Buffer | null {
+  if (count === 0 || index >= count) return null;
+  let [node, idx, width, used] = [leaf, index, count, 0];
+  while (width > 1) {
+    if (!(idx === width - 1 && width % 2 === 1)) {
+      const sib = proof[used++];
+      if (!sib) return null;
+      node = digest(Buffer.concat([Buffer.from([0x01]), idx % 2 === 0 ? node : Buffer.from(sib), idx % 2 === 0 ? Buffer.from(sib) : node]));
+    }
+    idx >>= 1;
+    width = Math.ceil(width / 2);
+  }
+  return used === proof.length ? node : null;
+}

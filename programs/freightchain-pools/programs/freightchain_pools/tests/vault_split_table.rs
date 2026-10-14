@@ -145,16 +145,14 @@ fn shared_table_matches_close_pool_on_chain() {
             let i = e.sponsor_ix(id, &sp.pubkey(), sponsored);
             e.send(&[i], &sp, &[]).unwrap();
         }
-        let (mut want_vault, mut want_seed) = (u(&c, "vault"), u(&c, "seed"));
+        let (want_vault, want_seed) = (u(&c, "vault"), u(&c, "seed"));
         if cancelled {
             e.warp(PREP);
             e.fail(id).unwrap();
             e.refund(id, &buyer.pubkey(), &buyer.pubkey()).unwrap();
             if sponsored > 0 {
-                // v4 (M8): the sponsor is refunded before the close – the table's v3 row sends the sponsorship to the seed treasury
+                // v4 (M8): the sponsor is refunded before the close (the table's close row is the vault after that)
                 e.refund_sponsor(id, &sp.pubkey()).unwrap();
-                want_vault -= sponsored;
-                want_seed -= sponsored;
             }
         } else {
             e.warp(PLAY);

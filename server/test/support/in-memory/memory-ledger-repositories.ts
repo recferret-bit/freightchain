@@ -62,14 +62,15 @@ export class MemoryPoolRepository extends PoolRepositoryPort {
   }
 
   async listPayable(now: Date): Promise<Pool[]> {
-    return [...this.db.pools.values()].filter((p) => p.status === 'active' && p.payoutAt.getTime() <= now.getTime())
-      .sort((a, b) => a.payoutAt.getTime() - b.payoutAt.getTime() || a.id - b.id).map((p) => Pool.restore(p));
+    return [...this.db.pools.values()].filter((p) => p.status === 'active' && p.playDeadline.getTime() <= now.getTime())
+      .sort((a, b) => a.playDeadline.getTime() - b.playDeadline.getTime() || a.id - b.id).map((p) => Pool.restore(p));
   }
 
   /** like the Prisma upsert: the ride seed is set once, the payout state and the hold only on insert (they change through savePayout / saveHold) */
   async upsert(pool: Pool): Promise<void> {
-    const had = this.db.pools.get(pool.id);
-    this.db.pools.set(pool.id, { ...pool.snapshot(), ...(had ? { rideSeed: had.rideSeed, payoutState: had.payoutState, payoutNote: had.payoutNote, hold: had.hold } : {}) });
+    const had = this.db.pools.get(pool.id), s = pool.snapshot();
+    const seed = had && (had.seedCommitment || !s.seedCommitment) ? had.rideSeed : s.rideSeed;   // set once – or when the road is first sealed (program v4)
+    this.db.pools.set(pool.id, { ...s, ...(had ? { rideSeed: seed, payoutState: had.payoutState, payoutNote: had.payoutNote, hold: had.hold } : {}) });
   }
 
   async savePayout(poolId: number, state: PayoutState, note: string | null): Promise<void> {
@@ -300,6 +301,13 @@ export class MemoryPoolPayoutRepository extends PoolPayoutRepositoryPort {
 
   async markPaidElsewhere(poolId: number, rank: number, now: Date): Promise<boolean> {
     return this.move(poolId, rank, (p) => p.status === 'planned', { status: 'paid', error: 'paid outside the payout job', updatedAt: now });
+  }
+
+  async discardPlan(poolId: number): Promise<boolean> {
+    const rows = [...this.db.poolPayouts.entries()].filter(([, p]) => p.poolId === poolId);
+    if (rows.some(([, p]) => p.status !== 'planned')) return false;
+    for (const [k] of rows) this.db.poolPayouts.delete(k);
+    return true;
   }
 
   async noteError(poolId: number, rank: number, error: string, now: Date): Promise<void> {

@@ -90,6 +90,16 @@ describe('PoolTicketsService', () => {
       expect((await ctx.tickets.find('w', 1))?.balance).toBe(1);
     });
 
+    it('program v4 (pentest L4): a pool whose road is not sealed yet spends nothing – 409 road_not_sealed, the ticket kept; once sealed it rides', async () => {
+      const { ctx, svc, give } = await setup();
+      await ctx.pools.upsert(aPool({ id: 1, status: 'active', sealSlot: 900 }));
+      await give(1, 1);
+      await expect(svc.spendForRide('w', '1h', 'r', ctx.now(), tx, 60)).rejects.toMatchObject({ errorCode: 'road_not_sealed' });
+      expect((await ctx.tickets.find('w', 1))?.balance).toBe(1);
+      await ctx.pools.upsert(aPool({ id: 1, status: 'active', sealSlot: 0, seedCommitment: Buffer.alloc(32, 5).toString('base64') }));
+      expect((await svc.spendForRide('w', '1h', 'r', ctx.now(), tx, 60)).id).toBe(1);
+    });
+
     it('no new ride after the sale end: a live pool past its prep deadline spends nothing, however long its play window still runs (3 h to finish)', async () => {
       const { ctx, svc, give } = await setup();
       const sale = new Date(ctx.now().getTime() - 1_000);

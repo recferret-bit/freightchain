@@ -16,6 +16,9 @@ export abstract class PoolPayoutRepositoryPort {
   abstract release(poolId: number, rank: number, signature: string, error: string, now: Date, tx?: TransactionHandle): Promise<boolean>;
   /** planned → paid without a transaction of ours: the chain already shows a PrizePaid to this wallet (the admin paid it by hand). */
   abstract markPaidElsewhere(poolId: number, rank: number, now: Date, tx?: TransactionHandle): Promise<boolean>;
+  /** Drops the pool's plan, only while EVERY row is still planned (none sent or paid) – in one statement: false = something was sent or paid, nothing dropped.
+      Program v4: the one case the job plans again is a winners root the admin vetoed (or one that never landed). */
+  abstract discardPlan(poolId: number, tx?: TransactionHandle): Promise<boolean>;
   /** The last error on a row (it stays in its status). */
   abstract noteError(poolId: number, rank: number, error: string, now: Date, tx?: TransactionHandle): Promise<void>;
 }

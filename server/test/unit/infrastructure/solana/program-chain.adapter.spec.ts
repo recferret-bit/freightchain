@@ -92,13 +92,43 @@ describe('ProgramChainAdapter – builds what the program accepted', () => {
     await expect(none.buildRefundTransaction({ caller: fx.keys.d, poolId: 1, buyer: fx.keys.c, needsFail: false })).rejects.toMatchObject({ statusCode: 409, errorCode: 'no_ticket' });
   });
 
-  it('pay_prize and close_pool are the admin\'s own transactions (it signs and pays in Phantom)', async () => {
+  it('commit_winners / veto_winners: the admin\'s own transactions (it signs and pays in Phantom) – byte for byte the fixture\'s', async () => {
+    const { adapter } = adapterWith();
+    const want = fx.transactions.find((t) => t.name === 'commit_winners')!;   // not 'commit_winners (a wrong root)', vetoed before it
+    const a = want.instructions[0]!.args as { root: string; total: string; count: number };
+    const commit = await adapter.buildCommitWinnersTransaction({ authority: fx.keys.authority, poolId: 0, root: Buffer.from(a.root, 'base64'), total: Number(a.total), count: a.count });
+    expectIxs(commit, want.instructions);
+    expect(commit).toMatchObject({ feePayer: fx.keys.authority, computeUnits: CU_LIMITS.commit_winners });
+    expect(Buffer.from(a.root, 'base64').toString('base64')).toBe(fixtureAccount('pool 0 committed').decoded['winnersRoot']); // the root the pool then holds
+    const veto = await adapter.buildVetoWinnersTransaction({ authority: fx.keys.authority, poolId: 0 });
+    expectIxs(veto, fixtureTx('veto_winners').instructions);
+    expect(veto).toMatchObject({ feePayer: fx.keys.authority, computeUnits: CU_LIMITS.veto_winners });
+    expect(programIxs(veto.transaction).tx.signatures.map((x) => x.publicKey.toBase58())).toEqual([fx.keys.authority]);
+  });
+
+  it('pay_prize: server rank 1 is the program\'s leaf 0, rank 2 leaf 1 – each with its proof, paid by whoever sends it', async () => {
+    const { adapter } = adapterWith();
+    const args = (name: string) => {
+      const a = fixtureTx(name).instructions[0]!.args as { to: string; lamports: string; proof: string[]; rank: number };
+      return { to: a.to, lamports: Number(a.lamports), proof: a.proof.map((p) => Buffer.from(p, 'base64')), leaf: a.rank };
+    };
+    const first = args('pay_prize rank 0 (anyone)'), second = args('pay_prize rank 1 (anyone)'), single = args('pay_prize after the lock (anyone)');
+    expect([first.leaf, second.leaf, single.leaf]).toEqual([0, 1, 0]);
+    const p1 = await adapter.buildPayPrizeTransaction({ payer: fx.keys.d, poolId: 0, rank: 1, to: first.to, lamports: first.lamports, proof: first.proof });
+    expectIxs(p1, fixtureTx('pay_prize rank 0 (anyone)').instructions);
+    expect(p1).toMatchObject({ feePayer: fx.keys.d, computeUnits: CU_LIMITS.pay_prize });
+    const p2 = await adapter.buildPayPrizeTransaction({ payer: fx.keys.d, poolId: 0, rank: 2, to: second.to, lamports: second.lamports, proof: second.proof });
+    expectIxs(p2, fixtureTx('pay_prize rank 1 (anyone)').instructions);
+    const p4 = await adapter.buildPayPrizeTransaction({ payer: fx.keys.cranker, poolId: 4, rank: 1, to: single.to, lamports: single.lamports, proof: [] }); // one winner: no proof
+    expectIxs(p4, fixtureTx('pay_prize after the lock (anyone)').instructions);
+    await expect(adapter.buildPayPrizeTransaction({ payer: fx.keys.d, poolId: 0, rank: 0, to: first.to, lamports: first.lamports, proof: first.proof })).rejects.toBeInstanceOf(RangeError);
+  });
+
+  it('close_pool: the admin\'s own transaction; treasuries and the creator from the Pool + Config accounts', async () => {
     const { adapter } = adapterWith({ getMultipleAccountsInfo: async () => [accountInfo('pool 0 active'), accountInfo('config')] });
-    const prize = await adapter.buildPayPrizeTransaction({ authority: fx.keys.authority, poolId: 0, to: fx.keys.winner, lamports: 100_000_000, rank: 1 });
-    expectIxs(prize, fixtureTx('pay_prize').instructions);
-    expect(prize.feePayer).toBe(fx.keys.authority);
     const close = await adapter.buildClosePoolTransaction({ authority: fx.keys.authority, poolId: 0 });
     expectIxs(close, fixtureTx('close_pool settled').instructions);
+    expect(close).toMatchObject({ feePayer: fx.keys.authority, computeUnits: CU_LIMITS.close_pool });
     const missing = adapterWith({ getMultipleAccountsInfo: async () => [null, accountInfo('config')] }).adapter;
     await expect(missing.buildClosePoolTransaction({ authority: fx.keys.authority, poolId: 9 })).rejects.toBeInstanceOf(NotFoundError);
   });
@@ -110,6 +140,7 @@ describe('ProgramChainAdapter – builds what the program accepted', () => {
     expect(CU_LIMITS.close_pool).toBeGreaterThanOrEqual(measured('close_pool') * 1.25);
     expect(CU_LIMITS.refund + CU_LIMITS.fail_pool).toBeGreaterThanOrEqual(fixtureTx('fail_pool + refund').computeUnits * 1.25);
     expect(CU_LIMITS.open_next_pool).toBeGreaterThanOrEqual(measured('open_next_pool') * 1.25); // two PDA inits (pool + vault funding)
+    for (const k of ['commit_winners', 'veto_winners', 'record_ride_attestation', 'settle_pledge', 'refund_pledge', 'seal_road', 'refund_sponsor'] as const) expect(CU_LIMITS[k], k).toBeGreaterThanOrEqual(measured(k) * 1.25);
   });
 });
 
@@ -160,21 +191,6 @@ describe('ProgramChainAdapter – pledges and attestations', () => {
     expect(tx.signatures.map((s) => s.publicKey.toBase58())).toEqual([fx.keys.a]);
   });
 
-  it('pay_prize with `attest`: a record_attestation (the same admin) goes first unless the winner already has one; the fixture\'s data and accounts', async () => {
-    const att = fixtureTx('record_attestation by the payout key').instructions[0]!;
-    const facts = { telemetryRoot: Buffer.alloc(32, 7), verifiedKm: 60 };
-    const none = adapterWith({ getAccountInfo: async () => null }).adapter;
-    const built = await none.buildPayPrizeTransaction({ authority: fx.keys.payout, poolId: 4, to: fx.keys.winner, lamports: 100_000, rank: 1, attest: facts });
-    const { ixs } = programIxs(built.transaction);
-    expect(ixs).toHaveLength(2);
-    expect(ixs[0]!.data).toBe(att.data); // the program's own bytes (flags differ only by the message's per-account union with pay_prize)
-    expect(ixs[0]!.accounts.map((a) => a.pubkey)).toEqual(att.accounts.map((a) => a.pubkey));
-    expect(built.computeUnits).toBe(CU_LIMITS.pay_prize + CU_LIMITS.record_attestation);
-    const attested = adapterWith({ getAccountInfo: async () => accountInfo('attestation pool 4 winner') }).adapter;
-    const plain = await attested.buildPayPrizeTransaction({ authority: fx.keys.payout, poolId: 4, to: fx.keys.winner, lamports: 100_000, rank: 1, attest: facts });
-    expect(programIxs(plain.transaction).ixs).toHaveLength(1);
-  });
-
   it('pledgeSignatures: the account\'s successful transactions, newest first', async () => {
     const { adapter } = adapterWith({ getSignaturesForAddress: async () => [{ signature: 'new', err: null }, { signature: 'failed', err: { x: 1 } }, { signature: 'old', err: null }] });
     expect(await adapter.pledgeSignatures(fx.keys.a)).toEqual(['new', 'old']);
@@ -204,9 +220,11 @@ describe('ProgramChainAdapter – reads', () => {
       vault: fixtureTx('buy_ticket self-paid').instructions[0]!.accounts[4]!.pubkey, authority: fx.keys.authority, tier: 1, priceLamports: 100_000_000, minTickets: 3, maxTickets: 10, maxPerWallet: 4,
       prepDeadline: new Date(Number(d['prepDeadline']) * 1000), playDeadline: new Date(Number(d['playDeadline']) * 1000), payoutAt: new Date(Number(d['payoutAt']) * 1000), prizeBps: 6000, seedBps: 2500, feeBps: 1500,
       feeTreasury: fx.keys.feeTreasury, seedTreasury: fx.keys.seedTreasury, createdAt: new Date(Number(d['createdAt']) * 1000),
-      seedCommitment: (d['seedCommitment'] as string | undefined) ?? 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
-      seedSlot: Number(d['seedSlot']), seedSlotHash: bs58.encode(Buffer.from(String(d['seedSlotHash']), 'base64')),
+      seedCommitment: String(d['seedCommitment']), seedSlot: 1008, seedSlotHash: bs58.encode(Buffer.from(String(d['seedSlotHash']), 'base64')),
+      // program v4: sealed (sealSlot 0), nothing committed yet – no root, no lock, no rank paid
+      sealSlot: 0, platformFeeBps: 250, winnersRoot: null, winnersTotal: 0, winnersCount: 0, committedAt: null, payFrom: null, paidMask: 0n, sponsorRefunded: 0, openPledges: 0,
     });
+    expect(Buffer.from(String(d['seedCommitment']), 'base64').some((b) => b !== 0)).toBe(true);
     // the rent minimum is the cluster's own (read once): devnet's is lower than mainnet's, so the escrow there is vault − 650 240
     let rentReads = 0;
     const devnet = adapterWith({ getMinimumBalanceForRentExemption: async () => { rentReads++; return 650_240; }, getMultipleAccountsInfo: async () => [accountInfo('pool 0 active'), { lamports: 650_240 + 350_000_000 }] }).adapter;
@@ -215,6 +233,27 @@ describe('ProgramChainAdapter – reads', () => {
     expect(rentReads).toBe(1);
     expect(await adapterWith({ getMultipleAccountsInfo: async () => [null, null] }).adapter.readPool(5)).toBeNull();
     expect(await adapterWith({ getMultipleAccountsInfo: async () => [{ ...accountInfo('pool 0 active'), owner: PublicKey.default }, null] }).adapter.readPool(0)).toBeNull();
+  });
+
+  it('readPool (v4): the committed winners root, its lock (payFrom) and the paid ranks as an exact bigint bitfield', async () => {
+    const read = (name: string) => adapterWith({ getMultipleAccountsInfo: async () => [accountInfo(name), { lamports: 890_880 }] }).adapter.readPool(name.startsWith('pool 4') ? 4 : 0);
+    const committed = await read('pool 0 committed');
+    const root = fx.transactions.find((t) => t.name === 'commit_winners')!.instructions[0]!.args['root'];
+    expect(committed).toMatchObject({ winnersRoot: root, winnersTotal: 120_000_000, winnersCount: 2, committedAt: new Date(1_005_000_000), payFrom: new Date(1_005_000_000), paidMask: 0n });
+    const settled = await read('pool 0 settled');
+    expect(settled).toMatchObject({ status: 'settled', winnersRoot: root, paidMask: 3n, prizesPaid: 120_000_000 });   // both ranks paid: bits 0 and 1
+    expect(typeof settled?.paidMask).toBe('bigint');
+    expect(await read('pool 4 settled')).toMatchObject({ paidMask: 1n, winnersCount: 1, payFrom: new Date(2_487_060_000) });
+  });
+
+  it('readPool (v4): a pool opened by the series is not sealed yet – its all-zero seed commitment is NO commitment (never a road seed)', async () => {
+    const pool = fixtureAccount('pool 4 open (series)');
+    expect(Buffer.from(String(pool.decoded['seedCommitment']), 'base64').every((b) => b === 0)).toBe(true);
+    const state = await adapterWith({ getMultipleAccountsInfo: async () => [accountInfo('pool 4 open (series)'), { lamports: 890_880 }] }).adapter.readPool(4);
+    expect(state).toMatchObject({ poolId: 4, address: pool.address, status: 'open', authority: fx.keys.cranker, sealSlot: 1927, winnersRoot: null, payFrom: null, paidMask: 0n, escrowLamports: 0 });
+    expect(state?.seedCommitment).toBeUndefined();
+    expect(state?.seedSlot).toBeUndefined();
+    expect(state?.seedSlotHash).toBeUndefined();
   });
 
   it('recentProgramSignatures walks back to the cursor and hands out the OLDEST first (failed ones too)', async () => {

@@ -28,6 +28,17 @@ describe('PoolPrismaRepository (PostgreSQL)', () => {
     expect((await repo.findById(3))?.snapshot()).toMatchObject({ rideSeed: 2_147_483_647, status: 'active' });
   });
 
+  it('program v4: a pool registered before its road was sealed takes the road once, when the commitment first appears – never again; the v4 fields round-trip', async () => {
+    const C1 = Buffer.alloc(32, 9).toString('base64'), C2 = Buffer.alloc(32, 8).toString('base64');
+    await repo.upsert(aPool({ id: 4, rideSeed: 5, sealSlot: 900 }, T0));
+    expect((await repo.findById(4))!.awaitsSeal).toBe(true);
+    await repo.upsert(aPool({ id: 4, rideSeed: 77, seedCommitment: C1, blockhash: 'bh', slot: 901, sealSlot: 0, winnersRoot: C2, committedAt: at(5), payFrom: at(9) }, T0));
+    expect((await repo.findById(4))!.snapshot()).toMatchObject({ rideSeed: 77, seedCommitment: C1, slot: 901n, sealSlot: 0, winnersRoot: C2, committedAt: at(5), payFrom: at(9) });
+    await repo.upsert(aPool({ id: 4, rideSeed: 99, seedCommitment: C2, sealSlot: 0 }, T0));   // a later sync (or a racing one): the road stays
+    expect((await repo.findById(4))!.snapshot()).toMatchObject({ rideSeed: 77, seedCommitment: C2 });
+    expect((await repo.findById(4))!.awaitsSeal).toBe(false);
+  });
+
   it('listLive / listLiveOfTier: only open + active, soonest play deadline first; findMany by id', async () => {
     await repo.upsert(aPool({ id: 1, status: 'active', playDeadline: at(10 * DAY) }, T0));
     await repo.upsert(aPool({ id: 2, status: 'open', playDeadline: at(5 * DAY) }, T0));
@@ -74,10 +85,10 @@ describe('PoolPrismaRepository (PostgreSQL)', () => {
     expect((await repo.findById(4))?.hold).toBeNull();
   });
 
-  it('listPayable: active pools whose payout time has come, oldest first; listSettled: the newest settled first', async () => {
-    await repo.upsert(aPool({ id: 1, status: 'active', playDeadline: at(1 * DAY), payoutAt: at(3 * DAY) }, T0));
+  it('listPayable: active pools whose rides are over (program v4 commits at the play deadline), oldest first; listSettled: the newest settled first', async () => {
+    await repo.upsert(aPool({ id: 1, status: 'active', playDeadline: at(2 * DAY), payoutAt: at(3 * DAY) }, T0));
     await repo.upsert(aPool({ id: 2, status: 'active', playDeadline: at(1 * DAY), payoutAt: at(2 * DAY) }, T0));
-    await repo.upsert(aPool({ id: 3, status: 'active', playDeadline: at(1 * DAY), payoutAt: at(9 * DAY) }, T0));
+    await repo.upsert(aPool({ id: 3, status: 'active', playDeadline: at(4 * DAY), payoutAt: at(9 * DAY) }, T0));
     await repo.upsert(aPool({ id: 4, status: 'open', playDeadline: at(1 * DAY), payoutAt: at(1 * DAY) }, T0));
     await repo.upsert(aPool({ id: 5, status: 'settled', playDeadline: at(1 * DAY), payoutAt: at(1 * DAY) }, T0));
     await repo.upsert(aPool({ id: 6, status: 'settled', playDeadline: at(1 * DAY), payoutAt: at(2 * DAY) }, T0));

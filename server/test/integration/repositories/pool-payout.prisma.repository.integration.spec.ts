@@ -24,6 +24,17 @@ describe('PoolPayoutPrismaRepository (PostgreSQL)', () => {
     expect(await repo.listByPool(2)).toEqual([]);
   });
 
+  it('discardPlan drops the plan only while every row is still planned (program v4: a vetoed root is planned again) – in one statement', async () => {
+    await repo.plan([{ poolId: 1, rank: 1, wallet: 'alice', lamports: 5, status: 'planned' }, { poolId: 1, rank: 2, wallet: 'bob', lamports: 3, status: 'planned' }], at(0));
+    await repo.claimSent(1, 2, 'SigA', 500, at(1));
+    expect(await repo.discardPlan(1)).toBe(false);
+    expect(await repo.listByPool(1)).toHaveLength(2);
+    await repo.release(1, 2, 'SigA', 'expired', at(2));
+    expect(await repo.discardPlan(1)).toBe(true);
+    expect(await repo.listByPool(1)).toEqual([]);
+    expect(await repo.discardPlan(1)).toBe(true);   // nothing to drop: nothing stands in the way of a new plan
+  });
+
   it('planned → sent (claimed once) → paid; a second claim and a paid with another signature lose', async () => {
     await plan();
     expect(await repo.claimSent(1, 1, 'SigA', 500, at(1))).toBe(true);

@@ -79,11 +79,11 @@ model Pool {
   vaultLamports BigInt        @default(0) // the escrow: vault lamports above its rent-exempt minimum, sponsorships included
   sponsored     BigInt        @default(0)
   roundId       Int? // the weekly round it ranks in (set when it goes active)
-  rideSeed      Int // the road seed EVERY ride of this pool is driven on (31-bit, the server's own: drawn when the pool enters the mirror, never updated)
+  rideSeed      Int // the road seed EVERY ride of this pool is driven on (31-bit: from the chain's seed commitment; set once – a v4 pool registered before its road was sealed gets it at the seal)
   round         Round?        @relation(fields: [roundId], references: [id])
   createdAt     DateTime
   syncedAt      DateTime?
-  payoutState   String        @default("pending") // the payout job: pending | waiting_review | held | paying | paid | no_winners | error
+  payoutState   String        @default("pending") // the payout job: pending | waiting_review | held | committed | paying | paid | no_winners | error
   payoutNote    String?
   holdBy        String? // an admin's signed hold on the payout (wallet), null = none
   holdAt        DateTime?
@@ -91,6 +91,10 @@ model Pool {
   seedCommitment String?
   blockhash      String?
   slot           BigInt?
+  sealSlot       BigInt? // program v4: the slot whose hash seals the road; > 0 with no seedCommitment = not sealed, no ride served
+  winnersRoot    String? // program v4: the committed winners root (base64) – public until payFrom
+  committedAt    DateTime?
+  payFrom        DateTime?
   payouts       PoolPayout[]
   tickets       RideTicket[]
   orders        TicketOrder[]

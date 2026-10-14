@@ -3,9 +3,10 @@
      prize_share = floor(pot × prize_bps / 10 000)                  – also the bound of every pay_prize together
      seed_share  = floor(pot × seed_bps  / 10 000)
      fee_share   = pot − prize_share − seed_share                   (the floor remainders land here; fee_bps is never multiplied)
-     platform    = floor(fee_share × platform_fee_bps / 10 000)     (Config's value at close_pool time)
+     platform    = floor(fee_share × platform_fee_bps / 10 000)     (program v4: the pool's own snapshot, taken when it opened – L8)
    close_pool sends fee_share − platform to the fee treasury, platform to the platform treasury, the vault's rent minimum back to the pool's creator and EVERYTHING else
-   (seed share + unclaimed prize + stray lamports) to the seed treasury; a refunded pool sends all but the rent minimum to the seed treasury.
+   (seed share + unclaimed prize + stray lamports) to the seed treasury; a refunded pool sends all but the rent minimum to the seed treasury (program v4: its
+   tickets AND its sponsors are refunded first – M8 – so that is only stray lamports).
    The program works in u128; pot × bps passes 2^53 at ~1 300 SOL, so this file computes in BigInt and hands out numbers only when they are exact.
    One table pins both implementations: server/test/fixtures/chain/vault-split-cases.json (read by this file's spec AND by the program's tests/vault_split_table.rs). */
 

@@ -12,7 +12,8 @@ export type PoolStatus = (typeof POOL_STATUSES)[number];
 /** Where the server's payout job stands with an active pool (the server's own, not on chain – the chain records only what was paid):
  *  pending = not due yet · waiting_review = rides of the pool still wait for an admin's decision · held = an admin put it on hold ·
  *  paying = prizes are being sent · paid = every prize sent and the pool closed · no_winners = no verified ride ranks, the admin decides · error = the last pass failed (note says why) */
-export const PAYOUT_STATES = ['pending', 'waiting_review', 'held', 'paying', 'paid', 'no_winners', 'error'] as const;
+/** `committed` (program v4): the winners root is on chain and public until its lock ends (`payFrom`) – nobody is paid before */
+export const PAYOUT_STATES = ['pending', 'waiting_review', 'held', 'committed', 'paying', 'paid', 'no_winners', 'error'] as const;
 export type PayoutState = (typeof PAYOUT_STATES)[number];
 
 /** An admin's hold on a pool's payout (signed + audited); the payout job pays nothing while it is set. */
@@ -70,4 +71,11 @@ export interface PoolProps {
   /** the SlotHashes entry behind it: the bank hash (base58 – the column is named blockhash) and its slot */
   blockhash?: string | null;
   slot?: bigint | number | null;
+  // ---- program v4 (pentest WP5), mirrored from the Pool account
+  /** the slot whose hash seals the road; > 0 with no seedCommitment = not sealed yet: no ride is served (L4); null = an account without it */
+  sealSlot?: number | null;
+  /** the committed winners root (base64), when, and the first moment it pays (H5-B); null = none on chain */
+  winnersRoot?: string | null;
+  committedAt?: Date | null;
+  payFrom?: Date | null;
 }

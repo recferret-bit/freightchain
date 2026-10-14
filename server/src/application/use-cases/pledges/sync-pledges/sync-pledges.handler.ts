@@ -5,7 +5,7 @@ import type { Pledge } from '../../../../domain/economy/pledge.entity.js';
 import type { PledgeChainEvent } from '../../../../domain/economy/pledge.types.js';
 import { PledgeRepositoryPort } from '../../../ports/economy/pledge.repository.port.js';
 import { PoolChainPort } from '../../../ports/economy/pool-chain.port.js';
-import { ATTESTATION_FLAGGED, ATTESTATION_VERIFIED, PoolPayoutChainPort } from '../../../ports/economy/pool-payout-chain.port.js';
+import { ATTESTATION_FLAGGED, ATTESTATION_VERIFIED, PoolPayoutChainPort, type RideAttestationState } from '../../../ports/economy/pool-payout-chain.port.js';
 import { PoolRepositoryPort } from '../../../ports/economy/pool.repository.port.js';
 import { PlayerRepositoryPort } from '../../../ports/players/player.repository.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
@@ -19,8 +19,9 @@ const ABANDON_AFTER_MS = 60 * 60_000;
 /**
  * The pledge job (after every payout pass): the rows follow the chain, and the payout key ends what can be ended.
  *   1. every pending / active pledge is read back from its account's own transactions (create, and a settle / refund anyone may have sent) – the chain is the truth;
- *   2. an active pledge whose driver has a decided attestation (the payout job records one for every pledged driver before it closes the pool) → settle_pledge;
- *   3. an active pledge of a pool that is over (failed, cancelled, closed, or past its settle grace) with no decided attestation → refund_pledge.
+ *   2. an active pledge whose RIDE has a decided attestation of its driver (program v4, pentest H4 – the payout job records one per pledged ride before it closes
+ *      the pool) → settle_pledge, once the chain clock is past its `settleFrom` (the review lock, L5);
+ *   3. an active pledge of a pool that is over (failed, cancelled, closed, or past its settle grace) whose ride has no decided attestation → refund_pledge.
  * Both are permissionless on chain; the payout key only pays the fee. A failure is noted and retried next pass.
  */
 @CommandHandler(SyncPledgesCommand)
@@ -72,24 +73,22 @@ export class SyncPledgesHandler implements ICommandHandler<SyncPledgesCommand, P
     return events.length || abandon ? this.save(p.id, (row) => abandon ? (row.abandon(), true) : events.reduce((ch, e) => row.apply(e, this.clock.now()) || ch, false)) : p;
   }
 
-  /** settle when the driver is attested, refund when the pool is over without one, else wait */
+  /** settle when the ride is attested and its lock is over, refund when the pool is over without one, else wait */
   private async end(p: Pledge): Promise<Pledge> {
     const keys = { poolId: p.poolId, rideId: p.rideId, sponsor: p.sponsor, driver: p.driver };
     const live = await this.pools.findById(p.poolId);
     // money the admin has not released waits (WP2 review): a held pool, one with rides under review, one stopped in error
     if (live?.isActive && (live.hold || ['held', 'waiting_review', 'error'].includes(live.payoutState))) return p;
-    // the attestation is read against the rides AGAIN while it can still be rewritten (pentest M7: a verdict revoked after it was written)
-    const isDecided = (a: { status: number; verifiedKm: number } | null) => a !== null && ((a.status === ATTESTATION_VERIFIED && a.verifiedKm > 0) || a.status === ATTESTATION_FLAGGED);
-    let att = await this.payout.attestationOf(p.poolId, p.driver);
-    if (live?.isActive && isDecided(att)) { await this.attestation.attestForPledges(p.poolId, p.driver); att = await this.payout.attestationOf(p.poolId, p.driver); }   // only one it would settle on
-    const decided = isDecided(att);
+    // the attestation is made to say what the verdicts say NOW while it can still be rewritten (pentest M7)
+    if (live?.isActive) await this.attestation.attestRide(p.poolId, p.rideId);
+    const att = await this.payout.rideAttestationOf(p.poolId, p.rideId);
+    const now = await this.payout.chainNow();
     let signature: string;
-    if (decided) {
+    if (decidedFor(att, p.driver)) {
+      if (now.getTime() < att.settleFrom.getTime()) return p;   // the program refuses it until then
       signature = (await this.payout.settlePledge(keys)).signature;
     } else {
-      const pool = await this.pools.findById(p.poolId);
-      const now = this.clock.now().getTime();
-      const over = pool !== null && (['refunding', 'cancelled', 'settled'].includes(pool.status) || (pool.isActive && now >= pool.payoutAt.getTime() + SETTLE_GRACE_MS));
+      const over = live !== null && (['refunding', 'cancelled', 'settled'].includes(live.status) || (live.isActive && now.getTime() >= live.payoutAt.getTime() + SETTLE_GRACE_MS));
       if (!over) return p;
       signature = (await this.payout.refundPledge(keys)).signature;
     }
@@ -110,3 +109,7 @@ export class SyncPledgesHandler implements ICommandHandler<SyncPledgesCommand, P
     });
   }
 }
+
+/** the program settles a pledge only on a VERIFIED (km > 0) or FLAGGED attestation of the pledge's own driver; anything else is refunded once the pool is over */
+const decidedFor = (a: RideAttestationState | null, driver: string): a is RideAttestationState =>
+  a !== null && a.driver === driver && ((a.status === ATTESTATION_VERIFIED && a.verifiedKm > 0) || a.status === ATTESTATION_FLAGGED);

@@ -9,8 +9,8 @@ import { POOL_PROGRAM } from '../site/pools.js';
 const V = [
   { poolId: 7, blockhash: 'BYM7KyebFXLLm82B3btLPZQ15mpQ4v6vAeyN6HzTYyKH', slot: 412345678, seedCommitment: 'YlFSe+I2X5qqNFO4P/GN4qEXuZeQfdGiFsDj15glG2I=', seed: 2068992354 },
   { poolId: 123, blockhash: '11L7PL6t3F69FvmnLauzEArngESMNUYDNc824z3aRHx', slot: 9007199254740, seedCommitment: 't9sJj1eea8bRsclgjq3bCtcfZs7gD7eNIHXQFH0Aoo8=', seed: 252304311 },
-  /* written by the PROGRAM itself (LiteSVM, slot 0): pool 1 of server/test/fixtures/chain/pool-program.json */
-  { poolId: 1, blockhash: 'CmpNeggWJ4JaWJeJ8YKN1Zypmk7uvQq3PECGUCAEMbky', slot: 0, seedCommitment: 'NOyTQ+7ZT8uWFngsdBkXOgdNGjb2kUi0FnD9IkgumNE=', seed: 1133767732 },
+  /* written by the PROGRAM itself (LiteSVM; v4 seal_road at slot 1008): pool 0 of server/test/fixtures/chain/pool-program.json */
+  { poolId: 0, blockhash: '5KovAGoer61Vvo1Uv7sod2PpdATt74wUm7ezjKsLpKeF', slot: 1008, seedCommitment: 'Ww4yfKeEqTMncAfIND0qsNIlR9WIfo6G4g1lPjO4dEU=', seed: 2083655259 },
 ];
 /* the recorded Pool accounts (bytes as the RPC returns them) – the offsets poolAccountSeal reads */
 const FIX = JSON.parse(fs.readFileSync(new URL('../../server/test/fixtures/chain/pool-program.json', import.meta.url), 'utf8'));
@@ -61,7 +61,7 @@ test('the Pool account bytes carry the seal the codec decodes', () => {
   assert.equal(poolAccountSeal(pools[0].data.subarray(0, 100)), null);
 });
 test('the chain comparison: the right account passes, anything else says why', () => {
-  const acc = pools.find(p => p.d.poolId === 1).data, ride = V[2];
+  const acc = pools.find(p => p.d.poolId === 0).data, ride = V[2];
   assert.equal(chainSealMismatch(ride, POOL_PROGRAM, POOL_PROGRAM, acc), '');
   assert.match(chainSealMismatch(ride, '11111111111111111111111111111111', POOL_PROGRAM, acc), /not the escrow program/);
   assert.match(chainSealMismatch({ ...ride, poolId: 4 }, POOL_PROGRAM, POOL_PROGRAM, acc), /another pool/);

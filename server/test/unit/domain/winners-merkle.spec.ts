@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { MAX_WINNERS, winnersTree } from '../../../src/domain/economy/winners-merkle.js';
+import { MAX_WINNERS, rootFromProof, winnerLeaf, winnersTree } from '../../../src/domain/economy/winners-merkle.js';
 import { poolProgramFixture } from '../../support/chain-fixtures.js';
 
 const sha = (d: Uint8Array | Buffer) => createHash('sha256').update(d).digest();
@@ -15,6 +15,11 @@ describe('winners root (program v4 commit_winners / pay_prize proofs)', () => {
       expect(b64(t.root)).toBe(v.root);
       expect(String(t.total)).toBe(v.total);
       expect(t.proofs.map((p) => p.map(b64))).toEqual(v.proofs);
+      v.list.forEach((w, i) => {   // and every proof leads back to the root, as the program checks it (merkle_root_from)
+        const leaf = winnerLeaf(v.poolId, i, { wallet: w.wallet, lamports: Number(w.lamports) }, sha);
+        expect(rootFromProof(leaf, i, v.list.length, t.proofs[i]!, sha)).toEqual(t.root);
+        expect(rootFromProof(leaf, i, v.list.length, [...t.proofs[i]!, Buffer.alloc(32)], sha)).toBeNull();
+      });
     }
   });
 

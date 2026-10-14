@@ -3,7 +3,7 @@ import type { ChainEventRecord, PoolChainState } from '../../../domain/economy/c
 import type { PledgeChainEvent } from '../../../domain/economy/pledge.types.js';
 
 /** The transactions the server builds – each has its own compute-unit budget (programs/freightchain-pools/README.md "Compute units"). */
-export type ChainTxKind = 'buy' | 'refund' | 'pay_prize' | 'close_pool';
+export type ChainTxKind = 'buy' | 'refund' | 'pay_prize' | 'close_pool' | 'commit_winners';
 
 /** What a built transaction costs on the network (docs/agents/escrow.md). */
 export interface FeeQuote {
@@ -45,9 +45,12 @@ export abstract class PoolChainPort {
   /** Unsigned `fail_pool` (when `needsFail`) + `refund` for `buyer`, signed by `caller` (anyone); the price goes to the buyer, the rent to the ticket's rent payer.
       ConflictError when the buyer holds no Ticket account (never bought, or refunded already). */
   abstract buildRefundTransaction(input: { caller: string; poolId: number; buyer: string; needsFail: boolean }): Promise<BuiltTransaction>;
-  /** Unsigned `pay_prize` for the admin to sign AND send in Phantom (the admin pays its own fee). `attest`: when the winner has no VERIFIED attestation on chain
-      yet, a `record_attestation` with these facts (signed by the same admin) goes first in the same transaction – the program pays no prize without one. */
-  abstract buildPayPrizeTransaction(input: { authority: string; poolId: number; to: string; lamports: number; rank: number; attest?: { telemetryRoot: Uint8Array; verifiedKm: number } }): Promise<BuiltTransaction>;
+  /** Unsigned `commit_winners` for the admin to sign AND send in Phantom (program v4, pentest H5-B): the pool's winners root – nobody is paid before its lock. */
+  abstract buildCommitWinnersTransaction(input: { authority: string; poolId: number; root: Uint8Array; total: number; count: number }): Promise<BuiltTransaction>;
+  /** Unsigned `veto_winners` (the cold admin only, while no committed rank is paid): strikes the root, the payout job commits again (M7: the admin's lever). */
+  abstract buildVetoWinnersTransaction(input: { authority: string; poolId: number }): Promise<BuiltTransaction>;
+  /** Unsigned `pay_prize` (permissionless since v4: the committed root decides): `rank` 1-based as everywhere on the server – the program's leaf index is rank − 1. */
+  abstract buildPayPrizeTransaction(input: { payer: string; poolId: number; rank: number; to: string; lamports: number; proof: Uint8Array[] }): Promise<BuiltTransaction>;
   /** Unsigned `close_pool` (treasuries read from the Pool and Config accounts), signed and paid by `authority`. NotFoundError when the pool does not exist. */
   abstract buildClosePoolTransaction(input: { authority: string; poolId: number }): Promise<BuiltTransaction>;
 

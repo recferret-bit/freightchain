@@ -75,6 +75,12 @@ export class CrankPoolsHandler implements ICommandHandler<CrankPoolsCommand, Cra
           let ok = true;
           for (let i = 0; ok && i < tickets.length; i += REFUND_BATCH) ok = await this.act(pool.poolId, step, actions, tickets.slice(i, i + REFUND_BATCH));
           if (!ok) break;
+        } else if (step === 'refund_sponsor') {
+          const sponsors = await this.crank.listSponsors(pool.poolId);
+          if (!sponsors.length) { actions.push(failed(pool.poolId, step, 'the pool owes sponsorship back but no SponsorReceipt is left – check the pool by hand')); break; }
+          let ok = true;
+          for (let i = 0; ok && i < sponsors.length; i += REFUND_BATCH) ok = await this.act(pool.poolId, step, actions, [], sponsors.slice(i, i + REFUND_BATCH));
+          if (!ok) break;
         } else if (!(await this.act(pool.poolId, step, actions))) break;
         pool = await this.chain.readPool(pool.poolId);
       }
@@ -86,9 +92,9 @@ export class CrankPoolsHandler implements ICommandHandler<CrankPoolsCommand, Cra
   }
 
   /** send one step and settle it; false = stop this pool for this pass */
-  private async act(poolId: number, step: CrankStep, actions: CrankActionDto[], tickets: ChainTicket[] = []): Promise<boolean> {
+  private async act(poolId: number, step: CrankStep, actions: CrankActionDto[], tickets: ChainTicket[] = [], sponsors: string[] = []): Promise<boolean> {
     try {
-      const { signature } = await this.crank.send({ step, poolId, tickets });
+      const { signature } = await this.crank.send({ step, poolId, tickets, sponsors });
       const settled = await this.commands.execute<SettleChainSignatureCommand, SettledSignatureDto>(new SettleChainSignatureCommand(signature));
       actions.push({ poolId, step, signature, tickets: tickets.length, settled: settled.status, error: null });
       return true;

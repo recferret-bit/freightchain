@@ -23,7 +23,7 @@ export abstract class PoolRepositoryPort {
   abstract listOpenPastDeadline(now: Date, tx?: TransactionHandle): Promise<Pool[]>;
   /** The newest settled pools (newest payout time first). */
   abstract listSettled(limit: number, tx?: TransactionHandle): Promise<Pool[]>;
-  /** Active pools whose review window is over (`payoutAt <= now`) – the payout job's work list, oldest payout time first. */
+  /** Active pools whose rides are over (`playDeadline <= now` – program v4 commits the winners there) – the payout job's work list, oldest first. */
   abstract listPayable(now: Date, tx?: TransactionHandle): Promise<Pool[]>;
   /** Insert or overwrite by id (registering a pool, a sync, an applied event). The server-owned payout state and hold are written on insert only – a sync that
       read the row before an admin's hold must never erase it: they change through `savePayout` / `saveHold`. */

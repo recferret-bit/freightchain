@@ -41,7 +41,7 @@ export function poolPhase(p, now) {
 }
 /** A coarse "time left": 3 d · 31 h · 1 h 20 m · 7 m (the phase lines; the exact HH:MM:SS countdown is `left`). */
 export const span = ms => { const m = Math.max(1, Math.ceil(ms / 60000)), h = Math.floor(m / 60); return h >= 48 ? `${Math.floor(h / 24)} d` : h >= 10 ? `${h} h` : h ? `${h} h${m % 60 ? ` ${m % 60} m` : ''}` : `${m} m`; };
-const PAYOUT_HEAD = { paid: 'PAID', paying: 'PAYING WINNERS', held: 'PAYOUT ON HOLD', waiting_review: 'PAYOUT WAITS FOR REVIEW', no_winners: 'NO WINNERS', error: 'PAYOUT DELAYED' };
+const PAYOUT_HEAD = { paid: 'PAID', paying: 'PAYING WINNERS', committed: 'WINNERS FIXED · PAID SOON', held: 'PAYOUT ON HOLD', waiting_review: 'PAYOUT WAITS FOR REVIEW', no_winners: 'NO WINNERS', error: 'PAYOUT DELAYED' };
 /** The phase as one line: { phase, cls, head, at, pre, post } – the page writes `head · pre<countdown to at>post`; `text` is the same line now (tests, the landing). cls = live / open / fail / done. */
 export function phaseLine(p, now) {
   const ph = poolPhase(p, now), st = p.payout?.held ? 'held' : p.payout?.state;
@@ -60,6 +60,7 @@ export function payoutText(payout, underReview) {
   if (payout.state === 'waiting_review') return underReview ? `${plural(underReview, 'ride')} still under review – the payout waits for every one` : 'waiting for rides under review';
   if (payout.state === 'no_winners') return 'no verified finisher – nothing to pay; the prize share goes back with the close';
   if (payout.state === 'error') return 'payout delayed – it is retried automatically';
+  if (payout.state === 'committed') return 'the winners are fixed on chain – public for the review, then paid';
   if (payout.state === 'paying') return 'paying the winners now';
   if (payout.state === 'paid') return 'every winner paid';
   return '';

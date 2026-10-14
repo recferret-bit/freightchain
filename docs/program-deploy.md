@@ -56,6 +56,28 @@ PROGRAM_ID=8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p RPC_URL=$RPC bash .claud
 bash $D admin set-series -k $PWD/$K/admin.json --tier 1h … --enabled true
 ```
 
+## v4 (pentest fixes: winners root, ride attestations, sponsor receipts, seal_road, floors) – an in-place upgrade
+
+v4 grows `Pool` (a v3 pool no longer deserializes – settle-first, like v3) AND `Config` (+ the two floors): right after the deploy the admin runs
+`migrate_config_v4` once; until then every step that relies on a floor refuses with `ConfigNotMigrated` (pause / treasury changes still work). v3 tickets
+and attestations stay closable (`close_ticket` / `close_attestation` read a v3 pool's status raw). The devnet crank is the **production** server: the
+v4 server must be released there before the series goes back on (that is a deploy – only on request).
+
+```sh
+# 0. pinned v4 build in this checkout (UPDATE_PIN=1 npm run program:verify with the change); the deploy wallet funded; read-only checks first:
+bash $D admin show                                           # every pool terminal except the open one; no open Pledge (getProgramAccounts) – v3 pledges cannot settle on v4
+# 1. stop new v3 pools: the series off (admin key), then the open pool: cancel-pool → refund (nothing sold) → close-pool; close_ticket any Settled pool's tickets
+bash $D admin set-series -k $PWD/$K/admin.json --tier 1h … --enabled false
+# 2. the upgrade: extend the program data by the size difference, deploy the pinned .so (public RPC), check the hash
+solana program extend 8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p <bytes> --url https://api.devnet.solana.com --keypair $K/deploy.json
+solana program deploy $SO --program-id 8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p --upgrade-authority $K/deploy.json --keypair $K/deploy.json --url https://api.devnet.solana.com
+PROGRAM_ID=8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p RPC_URL=$RPC bash .claude/skills/program-check/check.sh onchain
+# 3. migrate the Config (the admin signs and pays the extra rent); the floors default to 3600 / 10800 – the 1 h series' 1 h review / 3 h play fit them
+bash $D admin migrate-config -k $PWD/$K/admin.json
+# 4. the v4 server (production: a deploy request), then the series back on; the crank opens the next pool and seals its road a few seconds later
+bash $D admin set-series -k $PWD/$K/admin.json --tier 1h … --enabled true
+```
+
 ## Devnet first (the program on devnet, the server on your machine)
 
 Run it in the **main checkout** (keys live in its gitignored `deploy/secrets/devnet/`; a worktree's `target/` goes away with it). Everything goes through

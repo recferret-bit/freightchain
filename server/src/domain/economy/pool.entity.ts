@@ -1,3 +1,4 @@
+import bs58 from 'bs58';
 import { BadRequestError, ConflictError } from '../shared/errors.js';
 import { projectRoadSeed } from '../road/provable-seed.js';
 import { rideTier } from '../rides/ride-tier.js';
@@ -31,7 +32,8 @@ export class Pool {
     const tier = tierFromChainCode(state.tier);
     if (!tier) throw new BadRequestError(`pool ${state.poolId}: unknown tier code ${state.tier}`, 'bad_pool');
     let resolvedRideSeed = existing?.p.rideSeed ?? rideSeed;
-    if (state.seedCommitment && !existing) {
+    // the road comes from the chain's commitment the first time the mirror sees one – also on a row registered before it was sealed (program v4, L4)
+    if (state.seedCommitment && !existing?.p.seedCommitment) {
       resolvedRideSeed = projectRoadSeed(Buffer.from(state.seedCommitment, 'base64'));
     }
     return Pool.register({
@@ -44,6 +46,10 @@ export class Pool {
       seedCommitment: state.seedCommitment ?? existing?.p.seedCommitment ?? null,
       blockhash: state.seedSlotHash ?? existing?.p.blockhash ?? null,
       slot: state.seedSlot ?? existing?.p.slot ?? null,
+      sealSlot: state.sealSlot ?? existing?.p.sealSlot ?? null,
+      winnersRoot: state.sealSlot === undefined ? (existing?.p.winnersRoot ?? null) : (state.winnersRoot ?? null),
+      committedAt: state.sealSlot === undefined ? (existing?.p.committedAt ?? null) : (state.committedAt ?? null),
+      payFrom: state.sealSlot === undefined ? (existing?.p.payFrom ?? null) : (state.payFrom ?? null),
     });
   }
 
@@ -79,6 +85,10 @@ export class Pool {
   /** the road every ride of this pool is driven on – one seed for the whole pool, so all its riders compete on the same ride */
   get rideSeed(): number { return this.p.rideSeed; }
   get seedCommitment(): string | null { return this.p.seedCommitment ?? null; }
+  /** program v4 (pentest L4): the road is not sealed yet – no ride may be served (its seed is not known) */
+  get awaitsSeal(): boolean { return (this.p.sealSlot ?? 0) > 0 && !this.p.seedCommitment; }
+  get winnersRoot(): string | null { return this.p.winnersRoot ?? null; }
+  get payFrom(): Date | null { return this.p.payFrom ?? null; }
   get blockhash(): string | null { return this.p.blockhash ?? null; }
   get slot(): bigint | number | null { return this.p.slot ?? null; }
   get isActive(): boolean { return this.p.status === 'active'; }
@@ -227,8 +237,22 @@ export class Pool {
         this.mustBe('refunding');
         this.p.vaultLamports = Math.max(0, this.p.vaultLamports - e.lamports);
         return;
-      case 'RoadSealed': case 'WinnersCommitted': case 'WinnersVetoed': case 'RideAttestationRecorded':
-        return; // no balance moves: the payout job and the crank read these from the Pool account
+      case 'RoadSealed': // program v4 (L4): whoever sealed it, the mirror learns the road here (the next sync from the account confirms it)
+        if (this.p.seedCommitment) return;
+        this.p.seedCommitment = e.seedCommitment;
+        this.p.blockhash = bs58.encode(Buffer.from(e.seedSlotHash, 'base64'));
+        this.p.slot = e.seedSlot;
+        this.p.sealSlot = 0;
+        this.p.rideSeed = projectRoadSeed(Buffer.from(e.seedCommitment, 'base64'));
+        return;
+      case 'WinnersCommitted':
+        this.p.winnersRoot = e.root; this.p.committedAt = e.committedAt; this.p.payFrom = e.payFrom;
+        return;
+      case 'WinnersVetoed':
+        this.p.winnersRoot = null; this.p.committedAt = null; this.p.payFrom = null;
+        return;
+      case 'RideAttestationRecorded':
+        return; // no balance moves: the pledge job reads it from the account
     }
   }
 

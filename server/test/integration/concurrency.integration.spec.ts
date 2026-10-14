@@ -359,7 +359,7 @@ describe('concurrency (PostgreSQL)', () => {
       await prisma.ride.update({ where: { id: ride.id }, data: { status: 'completed', lastS: 4_300, endedAt: harness.clock.now() } });
       for (const b of recording(ride.id, { seconds: 20, distance: 4_300 })) await driver.agent.post(`/api/rides/${ride.id}/batches`).send(b);
       await prisma.rideVerdict.upsert({ where: { rideId: ride.id }, update: { status: 'verified', reasons: [] }, create: { rideId: ride.id, status: 'verified', reasons: [], scores: {}, rulesVersion: 4, judgedAt: harness.clock.now() } });
-      harness.payoutChain.attestations.set(`1:${driver.address}`, { telemetryRoot: new Uint8Array(32), verifiedKm: 4, status: 1 });
+      harness.payoutChain.attestations.set(`1:${ride.id}`, { driver: driver.address, telemetryRoot: new Uint8Array(32), verifiedKm: 4, status: 1, settleFrom: new Date(0), settledPledges: 0 });   // v4: per RIDE
       const bus = harness.app.get(CommandBus);
       await parallel(PARALLEL, () => bus.execute(new SyncPledgesCommand()));
       expect(harness.payoutChain.calls.filter((c) => c.startsWith('settle'))).toHaveLength(1); // the others found the account closed (would fail) – nothing paid twice

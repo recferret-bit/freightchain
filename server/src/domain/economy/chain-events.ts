@@ -140,10 +140,27 @@ export interface PoolChainState {
   feeTreasury: string;
   seedTreasury: string;
   createdAt: Date;
+  /** base64; undefined until the road is sealed (v4: a new pool's commitment is all zero until `seal_road`) */
   seedCommitment?: string;
   seedSlot?: number;
   /** base58 */
   seedSlotHash?: string;
+  // ---- program v4 (pentest WP5); undefined on an account without them
+  /** the slot whose hash will seal the road; 0 once sealed */
+  sealSlot?: number;
+  /** the platform cut snapshotted when the pool opened */
+  platformFeeBps?: number;
+  /** the committed winners (base64 root; null = none committed / vetoed) */
+  winnersRoot?: string | null;
+  winnersTotal?: number;
+  winnersCount?: number;
+  committedAt?: Date | null;
+  /** the first moment a committed root pays (the review lock) */
+  payFrom?: Date | null;
+  /** bit r = leaf r paid (a u64 bitfield, kept exact) */
+  paidMask?: bigint;
+  sponsorRefunded?: number;
+  openPledges?: number;
 }
 
 /** A tier's schedule as read from chain (the program's Series account, written by the admin's `set_series`). Pools tile time: the next one may be opened by

@@ -12,7 +12,7 @@ export const newPoolSignature = (): string => bs58.encode(randomBytes(64));
 export const FAKE_PROGRAM_ID = new PublicKey(new Uint8Array(32).fill(9)).toBase58();
 
 type EventFields<K extends ChainEventKind> = Omit<Extract<ChainEventRecord, { kind: K }>, 'kind' | 'signature' | 'index' | 'slot'>;
-export type BuiltKind = ChainTxKind | 'create_pledge';
+export type BuiltKind = ChainTxKind | 'create_pledge' | 'veto_winners';
 export interface BuiltRecord { kind: BuiltKind; input: Record<string, unknown>; tx: BuiltTransaction }
 export type ReadPledgeEventsAnswer = PledgeChainEvent[] | 'pending' | { invalid: string };
 /** a pledge event as a test scripts it: the fake adds the signature and the slot */
@@ -99,8 +99,14 @@ export class FakePoolChain extends PoolChainPort {
   async buildRefundTransaction(input: { caller: string; poolId: number; buyer: string; needsFail: boolean }): Promise<BuiltTransaction> {
     return this.build('refund', input, input.caller, [input.caller]);
   }
-  async buildPayPrizeTransaction(input: { authority: string; poolId: number; to: string; lamports: number; rank: number }): Promise<BuiltTransaction> {
-    return this.build('pay_prize', input, input.authority, [input.authority]);
+  async buildCommitWinnersTransaction(input: { authority: string; poolId: number; root: Uint8Array; total: number; count: number }): Promise<BuiltTransaction> {
+    return this.build('commit_winners', { ...input, root: Buffer.from(input.root).toString('base64') }, input.authority, [input.authority]);
+  }
+  async buildVetoWinnersTransaction(input: { authority: string; poolId: number }): Promise<BuiltTransaction> {
+    return this.build('veto_winners', input, input.authority, [input.authority]);
+  }
+  async buildPayPrizeTransaction(input: { payer: string; poolId: number; rank: number; to: string; lamports: number; proof: Uint8Array[] }): Promise<BuiltTransaction> {
+    return this.build('pay_prize', { ...input, proof: input.proof.map((p) => Buffer.from(p).toString('base64')) }, input.payer, [input.payer]);
   }
   async buildClosePoolTransaction(input: { authority: string; poolId: number }): Promise<BuiltTransaction> {
     return this.build('close_pool', input, input.authority, [input.authority]);

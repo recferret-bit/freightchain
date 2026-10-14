@@ -18,7 +18,7 @@ import { aPromo, ticketEffect } from '../support/promos.js';
 import { hashBatch } from '../support/recording.js';
 
 /* A spectator pledges per km to a ticket ride over HTTP. The money only moves on chain (the fake pool program here): the sponsor's wallet sends create_pledge,
-   POST /confirm reads that transaction's events, the payout pass attests the driver before it closes the pool, and the pledge job settles it with the payout key. */
+   POST /confirm reads that transaction's events, the pledge job attests THE RIDE (program v4 – public for the review lock) and settles it with the payout key once the lock is over. */
 export const PLEDGES_ENV = { FREE_RIDE_SECONDS: '10' };
 const KEY = 'Payout11111111111111111111111111111111111111';
 const DAY = 86_400;
@@ -62,22 +62,23 @@ export function pledgeScenarios(h: () => Harness): void {
     await get(RideBatchRepositoryPort).insert(RideBatch.accept(ride.id, { ...raw, hash: hashBatch(raw) }, hashBatch(raw), new Date(now())));
     await get(RideVerdictRepositoryPort).save(RideVerdict.restore({ rideId: ride.id, status: VerdictStatus.Verified, reasons: [], scores: {} as never, rulesVersion: 4, judgedAt: new Date(now()), version: 1 }));
 
-    // still in review: nothing ends the pledge
+    // still in the play window: the pledge job attests the RIDE at once (program v4: rewritable until a pledge settles on it) – but nothing pays or ends the pledge
     h().payoutChain.payoutAddress = KEY;
     h().payoutChain.now = new Date(now());
     await bus().execute(new PayPoolsCommand());
     expect(await bus().execute(new SyncPledgesCommand())).toMatchObject({ settled: 0, refunded: 0 });
-    expect(h().payoutChain.calls).toEqual([]);
+    expect(h().payoutChain.calls).toEqual([`attest 1 ${ride.id} 1`]);
+    expect(h().payoutChain.attestations.get(`1:${ride.id}`)?.settleFrom).toEqual(payoutAt); // its pledges settle only after the review lock
 
     // the review window is over: the payout pass pays the winner, attests the pledged driver, closes; the pledge job settles
     sec(2 * 3_600);
     h().payoutChain.now = new Date(now());
     const pass = await bus().execute(new PayPoolsCommand());
     expect(pass.pools[0]).toMatchObject({ poolId: 1, state: 'paid' });
-    expect(h().payoutChain.calls).toEqual([`attest 1 ${driver.address} 1`, 'prize 1 1', 'close 1']); // the winner's attestation also serves the pledge
+    expect(h().payoutChain.calls).toEqual([`attest 1 ${ride.id} 1`, 'commit 1 1', 'prize 1 1', 'close 1']); // the ride's attestation stands (same facts): commit → pay → close
     const sync = (await bus().execute(new SyncPledgesCommand())) as PledgeSyncDto;
     expect(sync).toMatchObject({ sending: true, settled: 1, errors: [] });
-    expect(h().payoutChain.attestations.get(`1:${driver.address}`)).toMatchObject({ status: 1, verifiedKm: 7 });
+    expect(h().payoutChain.attestations.get(`1:${ride.id}`)).toMatchObject({ status: 1, verifiedKm: 7 });
     expect((await anon().get(`/api/pledges/${created.pledge.id}`).expect(200)).body).toMatchObject({
       status: 'settled', settled: true, earnedLamports: '7000000', refundedLamports: '3000000', signature: expect.any(String),
     });

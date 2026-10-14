@@ -52,9 +52,11 @@ export class PoolTicketsService {
     const pools = await this.pools.listLiveOfTier(tier, tx);
     let waiting: Pool | null = null;
     let closed: Pool | null = null;
+    let sealing: Pool | null = null;
     for (const pool of pools) {
       const ticket = await this.tickets.find(wallet, pool.id, tx);
       if (!ticket || ticket.balance <= 0) continue;
+      if (pool.awaitsSeal) { sealing ??= pool; continue; }   // program v4 (pentest L4): its road is not known yet – a ticket waits a few seconds, never spent on a guess
       if (pool.isRidable(now, minSeconds)) {   // not past the sale end, and a shift of minSeconds started now ends by the play deadline (H6)
         ticket.spend();
         await this.tickets.save(ticket, tx);
@@ -68,6 +70,7 @@ export class PoolTicketsService {
       const n = waiting.ticketsToGo;
       throw new ConflictError(`pool not live yet – ${n} more ticket${n === 1 ? '' : 's'} needed`, 'pool_not_live');
     }
+    if (sealing) throw new ConflictError(`the road of pool #${sealing.id} is being sealed on chain – try again in a few seconds`, 'road_not_sealed');
     if (closed) throw new ConflictError(`rides for pool #${closed.id} closed at ${closed.startBy(minSeconds).toISOString()}`, 'rides_closed');   // the last start, not the play deadline
     throw new ConflictError(`no ${tier} tickets left`, 'no_tickets');
   }

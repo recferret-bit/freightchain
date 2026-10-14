@@ -61,7 +61,8 @@ export class PoolPrismaRepository extends PoolRepositoryPort {
   }
 
   async listPayable(now: Date, tx?: TransactionHandle): Promise<Pool[]> {
-    const rows = await clientFor(this.prisma, tx).pool.findMany({ where: { status: 'active', payoutAt: { lte: now } }, orderBy: [{ payoutAt: 'asc' }, { id: 'asc' }] });
+    // program v4: the winners are committed at the PLAY deadline (public for the review lock, then paid) – the job takes a pool from there
+    const rows = await clientFor(this.prisma, tx).pool.findMany({ where: { status: 'active', playDeadline: { lte: now } }, orderBy: [{ playDeadline: 'asc' }, { id: 'asc' }] });
     return rows.map(PoolMapper.toDomain);
   }
 
@@ -70,6 +71,11 @@ export class PoolPrismaRepository extends PoolRepositoryPort {
     // the ride seed is written with the row and never again: two first syncs racing must not leave the pool's riders on two roads; the payout state and the
     // admin's hold are the server's own and change only through savePayout / saveHold (a sync holding a stale copy must not erase a hold)
     const { id, rideSeed: _set_once, payoutState: _p, payoutNote: _n, holdBy: _hb, holdAt: _ha, holdNote: _hn, ...update } = data;
+    // …except once: a pool registered before its road was sealed (program v4, L4) takes the road from the commitment when it first appears – conditional on
+    // the row having none, in one statement, so racing syncs (they derive the same seed from the same commitment) never move it twice
+    if (data.seedCommitment) {
+      await clientFor(this.prisma, tx).pool.updateMany({ where: { id, seedCommitment: null }, data: { rideSeed: data.rideSeed, seedCommitment: data.seedCommitment, blockhash: data.blockhash, slot: data.slot } });
+    }
     await clientFor(this.prisma, tx).pool.upsert({ where: { id }, create: data, update });
   }
 

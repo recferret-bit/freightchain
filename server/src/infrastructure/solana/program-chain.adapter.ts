@@ -20,7 +20,10 @@ import { SolanaRpc, sleep } from './solana-rpc.js';
     (a wallet needing k extra tries has probability 2^-k). With 30k / 18k an unlucky wallet (~1 in 128 for buys, ~1 in 8 for refunds) could NEVER buy / be refunded
     by a server-built transaction – found by the devnet rehearsal ("exceeded CUs meter"). 60k / 45k leave ≥ 20 extra tries (2^-20). The limit is a cap, not a charge
     (the fee is priority price × limit, ~0 on devnet). */
-export const CU_LIMITS = { buy: 60_000, refund: 45_000, fail_pool: 6_000, expire_pool: 6_000, pay_prize: 22_000, record_attestation: 25_000, close_pool: 30_000, open_next_pool: 40_000, create_pledge: 30_000, settle_pledge: 25_000, refund_pledge: 25_000 } as const;
+export const CU_LIMITS = { buy: 60_000, refund: 45_000, fail_pool: 6_000, expire_pool: 6_000, pay_prize: 22_000, close_pool: 30_000, open_next_pool: 40_000, create_pledge: 30_000,
+  settle_pledge: 25_000, refund_pledge: 25_000,
+  // program v4 (LiteSVM: commit 8.8k, a 64-winner pay 15.5k, refund_sponsor 13.5k, sponsor with a new receipt 18.1k)
+  commit_winners: 15_000, veto_winners: 11_000, record_ride_attestation: 30_000, seal_road: 40_000, refund_sponsor: 25_000 } as const;
 const MAX_SIGNATURE_PAGES = 10;
 const STATUS = ['open', 'active', 'refunding', 'settled', 'cancelled'] as const;
 
@@ -34,7 +37,8 @@ export function poolStateOf(c: PoolProgramCodec, poolId: number, info: AccountIn
   if (!status) throw new Error(`pool ${poolId} has an unknown status ${String(p['status'])}`);
   const vaultLamports = vaultInfo?.lamports ?? 0;
   const rawSeed = p['seedCommitment'];
-  const seedCommitment = rawSeed instanceof Uint8Array ? Buffer.from(rawSeed).toString('base64') : (typeof rawSeed === 'string' ? rawSeed : undefined);
+  const seedCommitment = nonZero(rawSeed instanceof Uint8Array ? Buffer.from(rawSeed).toString('base64') : (typeof rawSeed === 'string' ? rawSeed : undefined));
+  const date = (k: string) => { const d = p[k] as Date | undefined; return d && d.getTime() > 0 ? d : null; };
   return {
     poolId: p['poolId'] as number, address: c.poolPda(poolId).toBase58(), status, ticketsSold: p['ticketsSold'] as number, buyers: p['buyers'] as number,
     sponsored: p['sponsored'] as number, prizesPaid: p['prizesPaid'] as number, refunded: p['refunded'] as number,
@@ -42,9 +46,30 @@ export function poolStateOf(c: PoolProgramCodec, poolId: number, info: AccountIn
     priceLamports: p['priceLamports'] as number, minTickets: p['minTickets'] as number, maxTickets: p['maxTickets'] as number, maxPerWallet: p['maxPerWallet'] as number,
     prepDeadline: p['prepDeadline'] as Date, playDeadline: p['playDeadline'] as Date, payoutAt: p['payoutAt'] as Date, prizeBps: p['prizeBps'] as number, seedBps: p['seedBps'] as number,
     feeBps: p['feeBps'] as number, feeTreasury: p['feeTreasury'] as string, seedTreasury: p['seedTreasury'] as string, createdAt: p['createdAt'] as Date,
-    seedCommitment, seedSlot: p['seedSlot'] as number | undefined, seedSlotHash: p['seedSlotHash'] ? bs58.encode(Buffer.from(String(p['seedSlotHash']), 'base64')) : undefined,
+    seedCommitment, seedSlot: seedCommitment ? (p['seedSlot'] as number | undefined) : undefined,
+    seedSlotHash: seedCommitment && p['seedSlotHash'] ? bs58.encode(Buffer.from(String(p['seedSlotHash']), 'base64')) : undefined,
+    ...('sealSlot' in p ? {
+      sealSlot: p['sealSlot'] as number, platformFeeBps: p['platformFeeBps'] as number, winnersRoot: date('committedAt') ? String(p['winnersRoot']) : null,
+      winnersTotal: p['winnersTotal'] as number, winnersCount: p['winnersCount'] as number, committedAt: date('committedAt'), payFrom: date('payFrom'),
+      paidMask: BigInt(p['paidMask'] as bigint), sponsorRefunded: p['sponsorRefunded'] as number, openPledges: p['openPledges'] as number,
+    } : {}),
   };
 }
+
+/** `commit_winners` signed by `authority` (the admin or the payout key) – shared with the payout adapter */
+export function commitWinnersIx(c: PoolProgramCodec, authority: string | PublicKey, i: { poolId: number; root: Uint8Array; total: number; count: number }): TransactionInstruction {
+  return c.instruction('commit_winners', { authority, config: c.configPda(), pool: c.poolPda(i.poolId) }, { pool_id: i.poolId, root: Uint8Array.from(i.root), total: i.total, count: i.count });
+}
+
+/** `pay_prize` of `rank` (1-based on the server; the program's leaf index is rank − 1) with its proof; `caller` is anyone – it pays only the fee */
+export function payPrizeIx(c: PoolProgramCodec, caller: string | PublicKey, i: { poolId: number; rank: number; to: string; lamports: number; proof: Uint8Array[] }): TransactionInstruction {
+  if (!Number.isInteger(i.rank) || i.rank < 1) throw new RangeError(`rank ${i.rank}: ranks start at 1`);
+  return c.instruction('pay_prize', { caller, config: c.configPda(), pool: c.poolPda(i.poolId), vault: c.vaultPda(i.poolId), to: i.to },
+    { pool_id: i.poolId, rank: i.rank - 1, lamports: i.lamports, proof: i.proof.map((p) => Uint8Array.from(p)) });
+}
+
+/** base64 of 32 zero bytes = not sealed yet (v4) – never a road seed (pentest WP5: a road derived from zeros would be the same for every pool) */
+const nonZero = (b64: string | undefined): string | undefined => (b64 && Buffer.from(b64, 'base64').some((x) => x !== 0) ? b64 : undefined);
 
 /** A Series account (one per tier, `set_series`) as the domain's SeriesChainState; null = not this program's series. */
 export function seriesStateOf(c: PoolProgramCodec, info: AccountInfo<Buffer> | null, address: string): SeriesChainState | null {
@@ -143,21 +168,18 @@ export class ProgramChainAdapter extends PoolChainPort {
     return this.build(ixs, i.caller, i.poolId, CU_LIMITS.refund + (i.needsFail ? CU_LIMITS.fail_pool : 0));
   }
 
-  async buildPayPrizeTransaction(i: { authority: string; poolId: number; to: string; lamports: number; rank: number; attest?: { telemetryRoot: Uint8Array; verifiedKm: number } }): Promise<BuiltTransaction> {
-    const c = this.codec, attestation = c.attestationPda(i.poolId, i.to);
-    const ixs: TransactionInstruction[] = [];
-    if (i.attest) {
-      const info = await this.rpc.read((x) => x.getAccountInfo(attestation, this.commitment));
-      const a = info?.owner.equals(c.programId) ? c.decodeAccount('Attestation', info.data) : null;
-      if (!a || a['status'] !== 1 || a['verifiedKm'] !== i.attest.verifiedKm) {   // written again when the rides say other km now (M7)
-        ixs.push(c.instruction('record_attestation', { authority: i.authority, config: c.configPda(), pool: c.poolPda(i.poolId), driver_account: i.to, attestation },
-          { pool_id: i.poolId, driver: i.to, telemetry_root: i.attest.telemetryRoot, verified_km: i.attest.verifiedKm, status: 1 }));
-      }
-    }
-    ixs.push(c.instruction('pay_prize', {
-      authority: i.authority, config: c.configPda(), pool: c.poolPda(i.poolId), vault: c.vaultPda(i.poolId), to: i.to, attestation,
-    }, { pool_id: i.poolId, lamports: i.lamports, rank: i.rank }));
-    return this.build(ixs, i.authority, i.poolId, CU_LIMITS.pay_prize + (ixs.length > 1 ? CU_LIMITS.record_attestation : 0));
+  async buildCommitWinnersTransaction(i: { authority: string; poolId: number; root: Uint8Array; total: number; count: number }): Promise<BuiltTransaction> {
+    return this.build([commitWinnersIx(this.codec, i.authority, i)], i.authority, i.poolId, CU_LIMITS.commit_winners);
+  }
+
+  async buildVetoWinnersTransaction(i: { authority: string; poolId: number }): Promise<BuiltTransaction> {
+    const c = this.codec;
+    const ix = c.instruction('veto_winners', { authority: i.authority, config: c.configPda(), pool: c.poolPda(i.poolId) }, { pool_id: i.poolId });
+    return this.build([ix], i.authority, i.poolId, CU_LIMITS.veto_winners);
+  }
+
+  async buildPayPrizeTransaction(i: { payer: string; poolId: number; rank: number; to: string; lamports: number; proof: Uint8Array[] }): Promise<BuiltTransaction> {
+    return this.build([payPrizeIx(this.codec, i.payer, i)], i.payer, i.poolId, CU_LIMITS.pay_prize);
   }
 
   async buildClosePoolTransaction(i: { authority: string; poolId: number }): Promise<BuiltTransaction> {

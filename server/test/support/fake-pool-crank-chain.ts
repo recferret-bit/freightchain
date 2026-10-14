@@ -19,6 +19,8 @@ export class FakePoolCrankChain extends PoolCrankChainPort {
   readonly unreadable = new Set<number>();
   /** the tier schedules on "chain" (set_series) */
   readonly series = new Map<number, SeriesChainState>();
+  /** program v4 sponsor receipts still open, per pool: sponsor → lamports */
+  readonly sponsors = new Map<number, Map<string, number>>();
 
   constructor(private readonly chain: FakePoolChain) { super(); }
 
@@ -30,6 +32,7 @@ export class FakePoolCrankChain extends PoolCrankChainPort {
     if (this.unreadable.has(poolId)) throw new ServiceUnavailableError('Solana RPC unavailable');
     return [...(this.tickets.get(poolId) ?? [])];
   }
+  async listSponsors(poolId: number): Promise<string[]> { return [...(this.sponsors.get(poolId)?.keys() ?? [])]; }
 
   async send(i: CrankInstruction): Promise<{ signature: string }> {
     this.sent.push(i);
@@ -48,6 +51,21 @@ export class FakePoolCrankChain extends PoolCrankChainPort {
         const events = batch.map((t) => ({ kind: 'Refunded' as const, poolId: i.poolId, buyer: t.buyer, rentPayer: t.rentPayer, qty: 1, lamports: t.lamports, refundedTotal: (refunded += t.lamports) }));
         this.tickets.set(i.poolId, (this.tickets.get(i.poolId) ?? []).filter((t) => !batch.some((b) => b.buyer === t.buyer)));
         set({ refunded, vaultLamports: pool.vaultLamports - (refunded - pool.refunded), escrowLamports: pool.escrowLamports - (refunded - pool.refunded) });
+        return { signature: this.chain.addTransaction(events) };
+      }
+      case 'seal_road': {   // program v4 (L4): the road from a slot after the pool opened
+        const seedCommitment = Buffer.alloc(32, (i.poolId % 250) + 1).toString('base64'), seedSlotHash = Buffer.alloc(32, 7).toString('base64');
+        set({ sealSlot: 0, seedCommitment, seedSlot: 1_000 + i.poolId, seedSlotHash: 'BbVtYmAhTKUFF2B8F6R3ZG8Mxqq5KGpEbbhkU5UWNFKR' });
+        return { signature: this.chain.addTransaction([{ kind: 'RoadSealed', poolId: i.poolId, seedSlot: 1_000 + i.poolId, seedSlotHash, seedCommitment }]) };
+      }
+      case 'refund_sponsor': {   // program v4 (M8)
+        const receipts = this.sponsors.get(i.poolId) ?? new Map<string, number>();
+        let total = pool.sponsorRefunded ?? 0;
+        const events = (i.sponsors ?? []).filter((s) => receipts.has(s)).map((s) => {
+          const lamports = receipts.get(s)!; receipts.delete(s); total += lamports;
+          return { kind: 'SponsorRefunded' as const, poolId: i.poolId, sponsor: s, lamports, sponsorRefundedTotal: total };
+        });
+        set({ sponsorRefunded: total, vaultLamports: pool.vaultLamports - (total - (pool.sponsorRefunded ?? 0)), escrowLamports: pool.escrowLamports - (total - (pool.sponsorRefunded ?? 0)) });
         return { signature: this.chain.addTransaction(events) };
       }
       case 'close_pool': {

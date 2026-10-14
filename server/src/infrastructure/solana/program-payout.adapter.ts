@@ -3,16 +3,17 @@ import { Connection, Keypair, SYSVAR_CLOCK_PUBKEY, type Commitment, type Transac
 import { rideIdToBytes } from '../../domain/economy/pledge.types.js';
 import { NotFoundError, ServiceUnavailableError } from '../../domain/shared/errors.js';
 import { PoolChainPort } from '../../application/ports/economy/pool-chain.port.js';
-import { PoolPayoutChainPort, type PledgeKeys, type SignedPayout } from '../../application/ports/economy/pool-payout-chain.port.js';
+import { PoolPayoutChainPort, type PledgeKeys, type RideAttestationState, type SignedPayout } from '../../application/ports/economy/pool-payout-chain.port.js';
 import { EnvService } from '../config/env.service.js';
 import { PoolProgramCodec } from './pool-program.codec.js';
-import { CU_LIMITS, parseKeypair } from './program-chain.adapter.js';
+import { commitWinnersIx, CU_LIMITS, parseKeypair, payPrizeIx } from './program-chain.adapter.js';
 import { broadcastUntilConfirmed, signWith, simulateSigned } from './signed-sender.js';
 import { SolanaRpc, sleep } from './solana-rpc.js';
 
 /**
- * The payout key on chain (PoolPayoutChainPort): signs AND pays `pay_prize` / `close_pool` with PAYOUT_SECRET – the program accepts it only as
- * Config.payout_authority and only after a pool's payout_at. Same RPC, commitment and send loop as the crank (signed-sender.ts).
+ * The payout key on chain (PoolPayoutChainPort): signs AND pays `commit_winners` / `record_ride_attestation` / `close_pool` with PAYOUT_SECRET (the program accepts
+ * them only from Config.payout_authority or the admin) and sends the permissionless `pay_prize` / `settle_pledge` / `refund_pledge`. Same RPC, commitment and send
+ * loop as the crank (signed-sender.ts).
  */
 @Injectable()
 export class ProgramPayoutAdapter extends PoolPayoutChainPort {
@@ -56,12 +57,13 @@ export class ProgramPayoutAdapter extends PoolPayoutChainPort {
     return cfg ? ((cfg['payoutAuthority'] as string | null) ?? null) : null;
   }
 
-  async payPrize(i: { poolId: number; to: string; lamports: number; rank: number }, onSigned: (tx: SignedPayout) => Promise<void>): Promise<{ signature: string }> {
+  async commitWinners(i: { poolId: number; root: Uint8Array; total: number; count: number }): Promise<{ signature: string }> {
+    return this.send(i.poolId, commitWinnersIx(this.codec, this.signer.publicKey, i), CU_LIMITS.commit_winners, `commit_winners pool ${i.poolId} (${i.count} rank(s))`);
+  }
+
+  async payPrize(i: { poolId: number; rank: number; to: string; lamports: number; proof: Uint8Array[] }, onSigned: (tx: SignedPayout) => Promise<void>): Promise<{ signature: string }> {
     const c = this.codec, key = this.signer;
-    const ix = c.instruction('pay_prize', {
-      authority: key.publicKey, config: c.configPda(), pool: c.poolPda(i.poolId), vault: c.vaultPda(i.poolId), to: i.to,
-      attestation: c.attestationPda(i.poolId, i.to),
-    }, { pool_id: i.poolId, lamports: i.lamports, rank: i.rank });
+    const ix = payPrizeIx(c, key.publicKey, i);
     const quote = await this.chain.feeQuote({ poolId: i.poolId, kind: 'pay_prize' });
     const tx = await signWith(this.rpc, this.commitment, key, [ix], CU_LIMITS.pay_prize, quote.priorityMicrolamports);
     const label = `pay_prize #${i.rank} of pool ${i.poolId}`;
@@ -89,42 +91,26 @@ export class ProgramPayoutAdapter extends PoolPayoutChainPort {
     return { signature: tx.signature };
   }
 
-  async attestationOf(poolId: number, driver: string): Promise<{ status: number; verifiedKm: number } | null> {
+  async rideAttestationOf(poolId: number, rideId: string): Promise<RideAttestationState | null> {
     const c = this.codec;
-    const info = await this.rpc.read((x) => x.getAccountInfo(c.attestationPda(poolId, driver), this.commitment));
-    const acc = info?.owner.equals(c.programId) ? c.decodeAccount('Attestation', info.data) : null;
-    return acc ? { status: acc['status'] as number, verifiedKm: acc['verifiedKm'] as number } : null;
+    const info = await this.rpc.read((x) => x.getAccountInfo(c.rideAttestationPda(poolId, rideIdToBytes(rideId)), this.commitment));
+    const a = info?.owner.equals(c.programId) ? c.decodeAccount('RideAttestation', info.data) : null;
+    return a ? { driver: String(a['driver']), status: a['status'] as number, verifiedKm: a['verifiedKm'] as number, settleFrom: a['settleFrom'] as Date, settledPledges: a['settledPledges'] as number } : null;
   }
 
-  async recordAttestation(i: {
-    poolId: number;
-    driver: string;
-    telemetryRoot: Uint8Array | Buffer;
-    verifiedKm: number;
-    status: number;
-  }): Promise<{ signature: string }> {
-    const c = this.codec, key = this.signer;
-    const ix = c.instruction('record_attestation', {
-      authority: key.publicKey,
-      config: c.configPda(),
-      pool: c.poolPda(i.poolId),
-      driver_account: i.driver,
-      attestation: c.attestationPda(i.poolId, i.driver),
-    }, {
-      pool_id: i.poolId,
-      driver: i.driver,
-      telemetry_root: i.telemetryRoot,
-      verified_km: i.verifiedKm,
-      status: i.status,
-    });
-    return this.send(i.poolId, ix, CU_LIMITS.record_attestation, `record_attestation pool ${i.poolId} driver ${i.driver}`);
+  async recordRideAttestation(i: { poolId: number; rideId: string; driver: string; telemetryRoot: Uint8Array | Buffer; verifiedKm: number; status: number }): Promise<{ signature: string }> {
+    const c = this.codec, key = this.signer, rideId = rideIdToBytes(i.rideId);
+    const ix = c.instruction('record_ride_attestation', {
+      authority: key.publicKey, config: c.configPda(), pool: c.poolPda(i.poolId), ride_attestation: c.rideAttestationPda(i.poolId, rideId),
+    }, { pool_id: i.poolId, ride_id: rideId, driver: i.driver, telemetry_root: Uint8Array.from(i.telemetryRoot), verified_km: i.verifiedKm, status: i.status });
+    return this.send(i.poolId, ix, CU_LIMITS.record_ride_attestation, `record_ride_attestation pool ${i.poolId} ride ${i.rideId}`);
   }
 
   async settlePledge(k: PledgeKeys): Promise<{ signature: string }> {
     const c = this.codec, key = this.signer, rideId = rideIdToBytes(k.rideId);
     const ix = c.instruction('settle_pledge', {
-      caller: key.publicKey, driver: k.driver, sponsor: k.sponsor, pool: c.poolPda(k.poolId), attestation: c.attestationPda(k.poolId, k.driver),
-      pledge: c.pledgePda(rideId, k.sponsor),
+      caller: key.publicKey, driver: k.driver, sponsor: k.sponsor, config: c.configPda(), pool: c.poolPda(k.poolId),
+      ride_attestation: c.rideAttestationPda(k.poolId, rideId), pledge: c.pledgePda(rideId, k.sponsor),
     }, { ride_id: rideId });
     return this.send(k.poolId, ix, CU_LIMITS.settle_pledge, `settle_pledge ride ${k.rideId} sponsor ${k.sponsor}`);
   }
@@ -132,7 +118,7 @@ export class ProgramPayoutAdapter extends PoolPayoutChainPort {
   async refundPledge(k: PledgeKeys): Promise<{ signature: string }> {
     const c = this.codec, key = this.signer, rideId = rideIdToBytes(k.rideId);
     const ix = c.instruction('refund_pledge', {
-      caller: key.publicKey, sponsor: k.sponsor, pool: c.poolPda(k.poolId), attestation: c.attestationPda(k.poolId, k.driver), pledge: c.pledgePda(rideId, k.sponsor),
+      caller: key.publicKey, sponsor: k.sponsor, pool: c.poolPda(k.poolId), ride_attestation: c.rideAttestationPda(k.poolId, rideId), pledge: c.pledgePda(rideId, k.sponsor),
     }, { ride_id: rideId });
     return this.send(k.poolId, ix, CU_LIMITS.refund_pledge, `refund_pledge ride ${k.rideId} sponsor ${k.sponsor}`);
   }

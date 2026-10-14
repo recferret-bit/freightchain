@@ -1,23 +1,37 @@
 import { Injectable } from '@nestjs/common';
+import { RideStatus } from '../../domain/rides/ride-status.js';
 import { ConflictError } from '../../domain/shared/errors.js';
 import { computeTelemetryMerkleRoot } from '../../domain/telemetry/telemetry-merkle.js';
-import { ATTESTATION_FLAGGED, ATTESTATION_VERIFIED, PoolPayoutChainPort } from '../ports/economy/pool-payout-chain.port.js';
+import { VerdictStatus } from '../../domain/verdict/verdict.dto.js';
+import { ATTESTATION_FLAGGED, ATTESTATION_UNVERIFIED, ATTESTATION_VERIFIED, PoolPayoutChainPort, type RideAttestationState } from '../ports/economy/pool-payout-chain.port.js';
+import { PoolRepositoryPort } from '../ports/economy/pool.repository.port.js';
 import { RideRepositoryPort } from '../ports/rides/ride.repository.port.js';
 import { RideBatchRepositoryPort } from '../ports/telemetry/ride-batch.repository.port.js';
+import { RideVerdictRepositoryPort } from '../ports/verdict/ride-verdict.repository.port.js';
 import { HasherPort } from '../ports/shared/hasher.port.js';
 
+/** What the chain should say about one pledged ride (program v4 RideAttestation – pentest H4: a pledge settles on ITS ride, never on the driver's best one). */
+export type RideFacts =
+  | { status: 'verified'; telemetryRoot: Uint8Array; verifiedKm: number }
+  /** rejected: its sponsors get everything back */
+  | { status: 'flagged' }
+  /** nothing to attest: not finished, ended after the pool's play deadline (it counts for nothing, H6), or under 1 km – its pledges are refunded once the pool is over */
+  | { status: 'none' }
+  /** not judged yet, or under review: wait */
+  | { status: 'undecided' };
+
 export interface AttestationResult {
-  /** what the chain holds for (pool, driver) now: 'verified' / 'flagged', or 'none' (nothing to attest – the driver finished no ride) */
-  status: 'verified' | 'flagged' | 'none';
-  /** the record_attestation this call sent; null = it was there already, or nothing was sent */
+  /** what the chain holds for the ride now (after this call) */
+  status: RideFacts['status'];
+  /** the record_ride_attestation this call sent; null = nothing was sent */
   signature: string | null;
 }
 
 /**
- * The payout key's Attestation per (pool, driver) – the server's verdict written on chain, with the RFC 6962 Merkle root of the ride's recording batches (anyone
- * holding the recording can recompute it): `pay_prize` refuses a wallet without a VERIFIED one, `settle_pledge` pays a pledge by its `verified_km`. It is the
- * server's word, not a proof – the program only checks that the payout key signed it. Recorded while the pool is ACTIVE (the program refuses it after close).
- * Concurrent calls for the same (pool, driver) share one transaction.
+ * The payout key's RideAttestation per pledged ride – the server's verdict written on chain, with the RFC 6962 Merkle root of the ride's recording batches (anyone
+ * holding the recording can recompute it): `settle_pledge` pays the pledge by its `verified_km`, from the attestation's `settle_from` (the review lock – every record
+ * is public that long first). It is the server's word, not a proof. Rewritten while the verdicts move, until a pledge was settled on it (then the program keeps it).
+ * Concurrent calls for the same ride share one transaction.
  */
 @Injectable()
 export class AttestationService {
@@ -26,61 +40,58 @@ export class AttestationService {
   constructor(
     private readonly payout: PoolPayoutChainPort,
     private readonly rides: RideRepositoryPort,
+    private readonly verdicts: RideVerdictRepositoryPort,
     private readonly batches: RideBatchRepositoryPort,
+    private readonly pools: PoolRepositoryPort,
     private readonly hasher: HasherPort,
   ) {}
 
-  /** A prize winner: VERIFIED with the km of the driver's best verified ride, or a ConflictError (no verified ride, purged recording, under 1 km). */
-  async ensureAttestation(poolId: number, driver: string): Promise<AttestationResult> {
-    const r = await this.once(`${poolId}:${driver}`, () => this.attest(poolId, driver));   // checked here, not inside: a pledge call in flight returns 'flagged' without throwing
-    if (r.status !== 'verified') throw new ConflictError(`driver ${driver} has no verified ride of at least 1 km in pool ${poolId}`, 'driver_not_verified');
-    return r;
+  /** The verdict of `rideId` as an attestation of pool `poolId`, read afresh every time (pentest M7: a verdict revoked after an attestation was written). */
+  async factsOf(poolId: number, rideId: string): Promise<RideFacts> {
+    const ride = await this.rides.findById(rideId);
+    if (!ride || ride.poolId !== poolId) return { status: 'none' };
+    if (!ride.endedAt) return { status: 'undecided' };   // still on the road: the sweeper ends a silent one
+    if (ride.status !== RideStatus.Completed) return { status: 'none' };
+    const pool = await this.pools.findById(poolId);
+    if (pool && ride.endedAt.getTime() > pool.rideWindow().endBy.getTime()) return { status: 'none' };
+    const verdict = await this.verdicts.findByRide(rideId);
+    if (!verdict) return { status: 'undecided' };
+    if (verdict.status === VerdictStatus.Rejected) return { status: 'flagged' };
+    if (verdict.status !== VerdictStatus.Verified) return { status: 'undecided' };
+    const verifiedKm = Math.floor((ride.distance || ride.completeDist) / 1000);   // whole km, never rounded up
+    if (verifiedKm < 1) return { status: 'none' };
+    const facts = await this.batches.listFactsByRide(rideId);
+    const telemetryRoot = computeTelemetryMerkleRoot(facts, (d) => this.hasher.sha256(d));
+    if (facts.length === 0 || telemetryRoot.every((b) => b === 0)) throw new ConflictError(`the recording of ride ${rideId} has no batches (purged?)`, 'recording_purged');
+    return { status: 'verified', telemetryRoot, verifiedKm };
   }
 
-  /** A pledged driver, once every ride of the pool is decided: VERIFIED as above, FLAGGED when every finished ride was rejected (the sponsor gets it all back),
-      nothing when the driver finished no ride or under 1 km (the pledge is refunded once the pool is over). Never throws for a driver without a verified ride. */
-  async attestForPledges(poolId: number, driver: string): Promise<AttestationResult> {
-    return this.once(`${poolId}:${driver}`, () => this.attest(poolId, driver));
-  }
-
-  private async once(key: string, run: () => Promise<AttestationResult>): Promise<AttestationResult> {
+  /** Make the chain say what the ride's verdict says (only while a rewrite is still allowed); 'undecided' sends nothing. */
+  async attestRide(poolId: number, rideId: string): Promise<AttestationResult> {
+    const key = `${poolId}:${rideId}`;
     const pending = this.inFlight.get(key);
     if (pending) return pending;
-    const promise = run();
+    const promise = this.attest(poolId, rideId);
     this.inFlight.set(key, promise);
     try { return await promise; } finally { this.inFlight.delete(key); }
   }
 
-  /** What a VERIFIED attestation of (pool, driver) says – the best verified ride's whole km and its recording's Merkle root; null = no verified ride, or one under
-      1 km (a paid shift is far longer: a short ride is never rounded up into a prize or a pledge payment). Read only: the admin's manual payout signs it itself. */
-  async verifiedFacts(poolId: number, driver: string): Promise<{ telemetryRoot: Uint8Array; verifiedKm: number } | null> {
-    const ride = await this.rides.findBestVerifiedByPoolAndWallet(poolId, driver);
-    if (!ride) return null;
-    const verifiedKm = Math.floor((ride.distance || ride.completeDist) / 1000);
-    if (verifiedKm < 1) return null;
-    const facts = await this.batches.listFactsByRide(ride.id);
-    const telemetryRoot = computeTelemetryMerkleRoot(facts, (d) => this.hasher.sha256(d));
-    if (facts.length === 0 || telemetryRoot.every((b) => b === 0)) throw new ConflictError(`the recording of ride ${ride.id} has no batches (purged?)`, 'recording_purged');
-    return { telemetryRoot, verifiedKm };
-  }
-
-  /** The verdicts are read AGAIN every time (pentest M7: an attestation already on chain used to be trusted, so a verdict revoked after it was still paid):
-      what the chain holds is rewritten when it no longer says what the rides say now – VERIFIED with other km, VERIFIED for a driver whose verified ride is
-      gone (→ FLAGGED: no prize, the sponsors get their pledges back), FLAGGED for one an admin has since accepted. The program allows the rewrite while the
-      pool is active. A pledge already settled on an earlier attestation stays settled – an attestation is final once it was paid on. */
-  private async attest(poolId: number, driver: string): Promise<AttestationResult> {
-    const onChain = await this.payout.attestationOf(poolId, driver);
-    const verified = await this.verifiedFacts(poolId, driver);
-    if (verified) {
-      if (onChain?.status === ATTESTATION_VERIFIED && onChain.verifiedKm === verified.verifiedKm) return { status: 'verified', signature: null };
-      const { signature } = await this.payout.recordAttestation({ poolId, driver, ...verified, status: ATTESTATION_VERIFIED });
-      return { status: 'verified', signature };
-    }
-    const shortVerified = (await this.rides.findBestVerifiedByPoolAndWallet(poolId, driver)) !== null;   // verified but under 1 km
-    if (!shortVerified && !(await this.rides.hasCompletedInPool(poolId, driver)) && onChain?.status !== ATTESTATION_VERIFIED) return { status: 'none', signature: null };
-    if (onChain?.status === ATTESTATION_FLAGGED) return { status: 'flagged', signature: null };
-    if (shortVerified && onChain?.status !== ATTESTATION_VERIFIED) return { status: 'none', signature: null };
-    const { signature } = await this.payout.recordAttestation({ poolId, driver, telemetryRoot: new Uint8Array(32), verifiedKm: 0, status: ATTESTATION_FLAGGED });
-    return { status: 'flagged', signature };
+  private async attest(poolId: number, rideId: string): Promise<AttestationResult> {
+    const facts = await this.factsOf(poolId, rideId);
+    if (facts.status === 'undecided') return { status: 'undecided', signature: null };
+    const onChain = await this.payout.rideAttestationOf(poolId, rideId);
+    if (onChain && onChain.settledPledges > 0) return { status: chainStatus(onChain), signature: null };   // final: a pledge was settled on it
+    const want = facts.status === 'verified' ? ATTESTATION_VERIFIED : facts.status === 'flagged' ? ATTESTATION_FLAGGED : ATTESTATION_UNVERIFIED;
+    if (!onChain && want === ATTESTATION_UNVERIFIED) return { status: 'none', signature: null };   // nothing to say: its pledges are refunded once the pool is over
+    const km = facts.status === 'verified' ? facts.verifiedKm : 0;
+    if (onChain && onChain.status === want && (want !== ATTESTATION_VERIFIED || onChain.verifiedKm === km)) return { status: facts.status, signature: null };
+    const ride = await this.rides.findById(rideId);
+    const { signature } = await this.payout.recordRideAttestation({
+      poolId, rideId, driver: ride!.wallet, telemetryRoot: facts.status === 'verified' ? facts.telemetryRoot : new Uint8Array(32), verifiedKm: km, status: want,
+    });
+    return { status: facts.status, signature };
   }
 }
+
+const chainStatus = (a: RideAttestationState): RideFacts['status'] =>
+  a.status === ATTESTATION_VERIFIED ? 'verified' : a.status === ATTESTATION_FLAGGED ? 'flagged' : 'none';

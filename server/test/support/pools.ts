@@ -11,7 +11,7 @@ export const poolProps = (over: Partial<PoolProps> = {}, now = new Date(Date.UTC
   prizeBps: 7000, seedBps: 2000, feeBps: 1000, feeTreasury: 'FeeTreasury11111111111111111111111111111111', seedTreasury: 'SeedTreasury1111111111111111111111111111111',
   status: 'open', ticketsSold: 0, buyers: 0, vaultLamports: 0, sponsored: 0, roundId: null, rideSeed: 4242, createdAt: now, syncedAt: null,
   payoutAt: over.playDeadline ?? new Date(now.getTime() + 14 * DAY), payoutState: 'pending', payoutNote: null, hold: null, // no review window unless a test sets one
-  seedCommitment: null, blockhash: null, slot: null,
+  seedCommitment: null, blockhash: null, slot: null, sealSlot: null, winnersRoot: null, committedAt: null, payFrom: null,
   ...over,
 });
 

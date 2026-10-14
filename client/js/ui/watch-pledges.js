@@ -4,9 +4,9 @@ import { signAndSend } from '../../site/pay.js';
 import { explorerTx } from '../../site/pools.js';
 import { formatDriver } from '../../site/sns.js';
 
-/* PLEDGES on a ticket ride (program v3 create_pledge / settle_pledge / refund_pledge): a spectator locks SOL per km for the driver in a Pledge account of the
-   pool program; once the pool's review is over the server's payout key attests the driver's verified km and settles – the driver gets rate × km (up to the cap),
-   the rest and the account's rent go back to the sponsor. No finished, judged ride = everything back. The server never holds the money; it builds the
+/* PLEDGES on a ticket ride (program create_pledge / settle_pledge / refund_pledge): a spectator locks SOL per km for the driver in a Pledge account of the
+   pool program; the server's payout key attests THIS ride's verified km (v4: the ride's own attestation, public for the review lock) and, once the pool's review is
+   over, settles – the driver gets rate × km (up to the cap), the rest and the account's rent go back to the sponsor. No finished, judged ride = everything back. The server never holds the money; it builds the
    transaction, the sponsor's wallet signs AND sends it, and the server reads it back (POST /api/pledges/:id/confirm). */
 const STATE = { pending: 'waiting for the chain', active: 'locked on chain', settled: 'settled', refunded: 'refunded', abandoned: 'not signed' };
 const sol = l => `${(Number(l) / 1e9).toFixed(Number(l) % 1e6 ? 6 : 3).replace(/0+$/, '').replace(/\.$/, '')} SOL`;

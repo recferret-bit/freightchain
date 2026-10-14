@@ -65,6 +65,13 @@ export class PoolPayoutPrismaRepository extends PoolPayoutRepositoryPort {
     return r.count === 1;
   }
 
+  async discardPlan(poolId: number, tx?: TransactionHandle): Promise<boolean> {
+    const n = await clientFor(this.prisma, tx).$executeRaw`
+      DELETE FROM "economy"."PoolPayout" WHERE "poolId" = ${poolId}
+        AND NOT EXISTS (SELECT 1 FROM "economy"."PoolPayout" WHERE "poolId" = ${poolId} AND status <> 'planned')`;
+    return n > 0 || (await clientFor(this.prisma, tx).poolPayout.count({ where: { poolId } })) === 0;
+  }
+
   async noteError(poolId: number, rank: number, error: string, now: Date, tx?: TransactionHandle): Promise<void> {
     await clientFor(this.prisma, tx).poolPayout.updateMany({ where: { poolId, rank }, data: { error: error.slice(0, 500), updatedAt: now } });
   }

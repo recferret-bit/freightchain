@@ -116,7 +116,7 @@ function paint() {
   else {
     const rate = active.reduce((a, x) => a + Number(x.lamportsPerKm), 0);
     pl.textContent = `PLEDGES ${active.length} · ${pledgeSol(rate)}/km · ≈ ${pledgeSol(pledgeEstimate(active, st.s))} so far if verified`;
-    pl.title = 'Paid after the pool\'s review, on your best verified ride of this pool (whole km, up to each pledge\'s target); a flagged ride earns nothing and the sponsor gets it back.';
+    pl.title = 'Paid after the pool\'s review, on THIS ride\'s verified km (whole km, up to each pledge\'s target); a flagged or unfinished ride earns nothing and the sponsor gets it back.';
     const last = active.findLast(x => x.createSignature);   // the list is oldest first
     if (last) pl.append(' ', link(explorerTx(last.createSignature), '↗', 'the newest pledge\'s lock transaction', 'pledge'));
   }

@@ -17,6 +17,8 @@ const POOLS_PER_READ = 50;
 /** Ticket: discriminator 8 | buyer 32 | rent_payer 32 | pool_id u32 (offset 72) | qty u16 | lamports u64 | bump u8 */
 const TICKET_SIZE = 87;
 const TICKET_POOL_ID_OFFSET = 72;
+/** program v4 SponsorReceipt: discriminator, pool, sponsor, lamports u64, bump */
+const SPONSOR_RECEIPT_SIZE = 8 + 32 + 32 + 8 + 1;
 
 /**
  * The pool crank on chain (PoolCrankChainPort): reads every pool from Config.pool_count, the tickets still open with getProgramAccounts, the chain clock,
@@ -89,6 +91,20 @@ export class ProgramCrankAdapter extends PoolCrankChainPort {
     });
   }
 
+  async listSponsors(poolId: number): Promise<string[]> {
+    const c = this.codec;
+    const disc = POOL_PROGRAM_IDL.accounts.find((a) => a.name === 'SponsorReceipt')!.discriminator;
+    const accounts = await this.rpc.read((x) => x.getProgramAccounts(c.programId, {
+      commitment: this.commitment,
+      filters: [{ dataSize: SPONSOR_RECEIPT_SIZE }, { memcmp: { offset: 0, bytes: bs58.encode(Uint8Array.from(disc)) } }, { memcmp: { offset: 8, bytes: c.poolPda(poolId).toBase58() } }],
+    }));
+    const pool = c.poolPda(poolId).toBase58();
+    return accounts.flatMap(({ account }) => {
+      const r = c.decodeAccount('SponsorReceipt', account.data);
+      return r && r['pool'] === pool ? [String(r['sponsor'])] : [];
+    });
+  }
+
   async send(i: CrankInstruction): Promise<{ signature: string }> {
     const crank = this.crank;
     if (!crank) throw new ServiceUnavailableError('no crank key is configured (CRANK_SECRET)');
@@ -116,6 +132,14 @@ export class ProgramCrankAdapter extends PoolCrankChainPort {
         return [tickets.map((t) => c.instruction('refund', { caller, pool, vault, ticket: c.ticketPda(i.poolId, t.buyer), buyer: t.buyer, rent_payer: t.rentPayer }, { pool_id: i.poolId })),
           CU_LIMITS.refund * tickets.length];
       }
+      case 'seal_road':
+        return [[c.instruction('seal_road', { caller, pool }, { pool_id: i.poolId })], CU_LIMITS.seal_road];
+      case 'refund_sponsor': {
+        const sponsors = (i.sponsors ?? []).slice(0, REFUND_BATCH);
+        if (!sponsors.length) throw new ConflictError(`no sponsors to refund in pool ${i.poolId}`, 'nothing_to_refund');
+        return [sponsors.map((s) => c.instruction('refund_sponsor', { caller, pool, vault, receipt: c.sponsorReceiptPda(i.poolId, s), sponsor: s }, { pool_id: i.poolId })),
+          CU_LIMITS.refund_sponsor * sponsors.length];
+      }
       case 'close_pool': {
         const [poolInfo, configInfo] = await this.rpc.read((x) => x.getMultipleAccountsInfo([pool, c.configPda()], this.commitment));
         const p = poolInfo?.owner.equals(c.programId) ? c.decodeAccount('Pool', poolInfo.data) : null;
@@ -142,7 +166,7 @@ export class ProgramCrankAdapter extends PoolCrankChainPort {
 
     return [[c.instruction('open_next_pool', {
       caller, config: c.configPda(), series, pool: c.poolPda(next), vault: c.vaultPda(next), fee_treasury: s.feeTreasury, seed_treasury: s.seedTreasury,
-      platform_treasury: String(config['platformTreasury']), // slot_hashes: the sysvar's fixed address comes from the IDL – the program commits the road seed itself
+      platform_treasury: String(config['platformTreasury']), // v4: no SlotHashes here – the road is sealed later from a slot nobody could pick (seal_road)
     }, { tier })], CU_LIMITS.open_next_pool];
   }
 }

@@ -1,6 +1,7 @@
 /* On-chain proofs a TICKET ride can check in the browser – pure, no DOM (ui/cab-chain.js shows them; test/seal.test.mjs).
-   The road seal: program v3 commits SHA-256(poolId u32 LE ‖ slot hash ‖ slot u64 LE) when the pool opens and keeps the slot and its hash beside it; the
-   road seed is the commitment's first 4 bytes LE & 0x7fffffff (server/src/domain/road/provable-seed.ts, create_pool.rs seed_commitment_of). A ride
+   The road seal: the program commits SHA-256(poolId u32 LE ‖ slot hash ‖ slot u64 LE) and keeps the slot and its hash beside it – v4 (pentest L4) from the hash
+   of a slot AFTER the pool opened (`seal_road`), so not even the opener could pick it; the road seed is the commitment's first 4 bytes LE & 0x7fffffff
+   (server/src/domain/road/provable-seed.ts, create_pool.rs seed_commitment). A ride
    carries all four (seedCommitment base64, blockhash base58, slot, seed), so the browser re-hashes the preimage and checks both. */
 const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 export function b58decode(s) {
@@ -51,8 +52,8 @@ export function chainSealMismatch(ride, owner, program, data) {
 export const b64bytes = b64;
 
 /** what a ride's pledges would pay at `metres` driven: rate × WHOLE km (the payout key attests whole km), each capped at its target km and its locked
-    max. Active pledges only; the lamport fields are strings on the wire. An estimate: settle_pledge pays on the driver's BEST verified ride of the pool
-    (one attestation per pool and driver – it can be another, longer ride), a FLAGGED one pays nothing, and only after the pool's review. */
+    max. Active pledges only; the lamport fields are strings on the wire. An estimate: settle_pledge pays on THIS ride's attestation (program v4 – pentest H4: never
+    on another ride of the driver), a FLAGGED one pays nothing, an unfinished one is refunded, and only after the pool's review. */
 export const pledgeEstimate = (pledges, metres) => pledges.filter(p => p.status === 'active')
   .reduce((a, p) => a + Math.min(Number(p.lamportsPerKm) * Math.min(Math.floor(metres / 1000), p.targetKm), Number(p.maxLamports)), 0);
 

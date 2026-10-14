@@ -1,3 +1,4 @@
+import { projectRoadSeed } from '../../src/domain/road/provable-seed.js';
 import { PoolRepositoryPort } from '../../src/application/ports/economy/pool.repository.port.js';
 import { PromoRepositoryPort } from '../../src/application/ports/economy/promo.repository.port.js';
 import { RideTicketRepositoryPort } from '../../src/application/ports/players/ride-ticket.repository.port.js';
@@ -138,6 +139,18 @@ export function poolScenarios(h: () => Harness): void {
       sec(61);   // a second past the last start
       expect((await w.agent.get('/api/me')).body.tickets[0]).toMatchObject({ balance: 1, ridable: false });
       expect((await ride(w, '1h').expect(409)).body).toMatchObject({ code: 'rides_closed', detail: `rides for pool #1 closed at ${rideBy.toISOString()}` });
+    });
+
+    it('program v4 (pentest L4): no ride on a pool whose road is not sealed – 409 road_not_sealed; the RoadSealed event lets it ride, on the sealed road', async () => {
+      await seedPool({ id: 1, status: 'active', sealSlot: 900 });
+      await seedPromo('ONE', { effect: ticketEffect({ credits: 1 }) });
+      const w = await login();
+      await redeem(w, 'ONE').expect(200);
+      expect((await ride(w, '1h').expect(409)).body).toMatchObject({ code: 'road_not_sealed' });
+      const commitment = Buffer.alloc(32, 9).toString('base64');
+      await seedPool({ id: 1, status: 'active', sealSlot: 0, seedCommitment: commitment, rideSeed: projectRoadSeed(Buffer.from(commitment, 'base64')) });
+      const r = (await ride(w, '1h').expect(200)).body;
+      expect(r.seed).toBe(projectRoadSeed(Buffer.from(commitment, 'base64')));
     });
 
     it('no new ride after the sale end: a live pool with 3 h of its play window left spends nothing – /api/me says rideBy = the sale end, POST /api/rides is 409 rides_closed', async () => {

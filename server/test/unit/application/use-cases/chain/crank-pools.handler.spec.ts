@@ -2,7 +2,7 @@ import type { CommandBus } from '@nestjs/cqrs';
 import { CrankPoolsHandler } from '../../../../../src/application/use-cases/chain/crank-pools/crank-pools.handler.js';
 import { SettleChainSignatureCommand } from '../../../../../src/application/use-cases/chain/settle-chain-signature/settle-chain-signature.command.js';
 import { SettleChainSignatureHandler } from '../../../../../src/application/use-cases/chain/settle-chain-signature/settle-chain-signature.handler.js';
-import { SETTLE_GRACE_MS } from '../../../../../src/domain/economy/pool-crank.js';
+import { SEAL_WAIT_MS, SETTLE_GRACE_MS } from '../../../../../src/domain/economy/pool-crank.js';
 import { FakePoolCrankChain } from '../../../../support/fake-pool-crank-chain.js';
 import { chainPool } from '../../../../support/pools.js';
 import type { SeriesChainState } from '../../../../../src/domain/economy/chain-events.js';
@@ -127,6 +127,42 @@ describe('CrankPoolsHandler', () => {
       crank.tickets.set(5, tickets(1, 50_000_000));
       const pass = await run();
       expect(pass.actions.map((a) => [a.step, a.poolId, a.error === null])).toEqual([['open_next_pool', -1, false], ['refund', 5, true], ['close_pool', 5, true]]);
+    });
+  });
+
+  describe('program v4 (pentest WP5)', () => {
+    it('a new pool\'s road is sealed once its target slot can have passed (L4) – and the mirror takes the road from the RoadSealed event', async () => {
+      const { ctx, crank, run } = setup();
+      const t = ctx.now().getTime();
+      ctx.poolChain.pools.set(1, chainPool(ctx.now(), { poolId: 1, status: 'open', createdAt: new Date(t - SEAL_WAIT_MS + 1), sealSlot: 512, prepDeadline: new Date(t + 3_600_000) }));
+      await ctx.registry.syncFromChain(1);
+      expect((await run()).actions).toEqual([]);   // too soon: the program would refuse it (TooEarly)
+      expect((await ctx.pools.findById(1))!.awaitsSeal).toBe(true);
+      crank.now = new Date(t + 1);
+      const pass = await run();
+      expect(pass.actions.map((a) => [a.step, a.poolId, a.error])).toEqual([['seal_road', 1, null]]);
+      const pool = (await ctx.pools.findById(1))!;
+      expect([pool.awaitsSeal, pool.seedCommitment]).toEqual([false, ctx.poolChain.pools.get(1)!.seedCommitment]);
+      expect((await run()).actions).toEqual([]);   // sealed: nothing more
+    });
+
+    it('a failed pool refunds its tickets, then every sponsor (M8), then closes – never closes owing a sponsor', async () => {
+      const { ctx, crank, run, tickets } = setup();
+      ctx.poolChain.pools.set(2, chainPool(ctx.now(), { poolId: 2, status: 'refunding', ticketsSold: 2, priceLamports: 50_000_000, refunded: 0, sponsored: 30_000_000, sponsorRefunded: 0 }));
+      crank.tickets.set(2, tickets(2, 50_000_000));
+      crank.sponsors.set(2, new Map(Array.from({ length: 9 }, (_, i) => [`Sponsor${i}`, i === 8 ? 6_000_000 : 3_000_000])));
+      const pass = await run();
+      expect(pass.actions.map((a) => [a.step, a.error])).toEqual([['refund', null], ['refund_sponsor', null], ['refund_sponsor', null], ['close_pool', null]]);
+      expect(crank.sent.filter((i) => i.step === 'refund_sponsor').map((i) => i.sponsors!.length)).toEqual([8, 1]);
+      expect(ctx.poolChain.pools.get(2)).toMatchObject({ status: 'cancelled', sponsorRefunded: 30_000_000 });
+    });
+
+    it('a refunding pool owing sponsorship with no receipt left is reported, not closed; a v3 pool (no sponsorRefunded) closes as before', async () => {
+      const { ctx, run } = setup();
+      ctx.poolChain.pools.set(3, chainPool(ctx.now(), { poolId: 3, status: 'refunding', ticketsSold: 0, refunded: 0, sponsored: 5_000_000, sponsorRefunded: 0 }));
+      ctx.poolChain.pools.set(4, chainPool(ctx.now(), { poolId: 4, status: 'refunding', ticketsSold: 0, refunded: 0, sponsored: 5_000_000 }));
+      const pass = await run();
+      expect(pass.actions.map((a) => [a.step, a.poolId, a.error !== null])).toEqual([['refund_sponsor', 3, true], ['close_pool', 4, false]]);
     });
   });
 });
