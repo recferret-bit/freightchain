@@ -32,7 +32,7 @@ test('media: no single image over 120 kB, all images together ≤ 600 kB; the la
 
 test('the pitch deck (pitchdeck.<apex>): each image ≤ 120 kB, all of them ≤ 600 kB, its clip ≤ 1.5 MB, its CSS ≤ 7.5 kB gz and JS ≤ 14 kB gz, no network of its own', { skip: !has }, () => {   // Oct 14: own line, the deck's ten screenshots would blow the landing's 600 kB
   const imgs = files.filter(f => f.includes('/media/pitchdeck/') && !f.endsWith('.mp4'));
-  assert.ok(imgs.length >= 10);
+  assert.ok(imgs.length >= 8);   // the deck's screenshots (9 after the roadmap shot left with the old Next slide)
   for (const f of imgs) assert.ok(statSync(f).size <= 120 * KB, `${f} ${statSync(f).size} B`);
   assert.ok(imgs.reduce((a, f) => a + statSync(f).size, 0) <= 600 * KB);
   for (const f of files.filter(f => f.includes('/media/pitchdeck/') && f.endsWith('.mp4'))) assert.ok(statSync(f).size <= 1.5 * 1024 * KB, `${f} ${statSync(f).size} B`);

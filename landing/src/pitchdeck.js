@@ -399,7 +399,8 @@ nudgeables.forEach(shakeLater);
 /* slide 3's DONATIONS bullet: a click is a mock donation – a toast with a real effect price (client/js/live-effects.js) and a handful of SOL coins from above the stage.
    The coins stay: discs under gravity that bounce, roll and pile up on the stage floor between its walls, over every slide (at most COIN_MAX, the oldest go first). */
 const DONATE = [['TIP', 0.01], ['NIGHT', 0.02], ['DAY', 0.02], ['POTHOLES', 0.02], ['TRENCH', 0.03], ['SINKHOLE', 0.05]];
-const COIN_MAX = 120, G = 2600, FLOOR = 1075, E_FLOOR = .45, E_COIN = .3;   // G in stage px/s²; the floor sits on the progress bar
+const COIN_MAX = 120, G = 2600, FLOOR = 1075, CEIL = 40, E_FLOOR = .45, E_COIN = .3;   // G in stage px/s²; the floor sits on the progress bar, the ceiling under the ticker
+const CARD_SEL = '.slide.on :is(.shot, .badge, .cc, .ladder li, .split > div, .tags span)';   // what the coins bounce off on the showing slide
 const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz', b58 = n => Array.from({ length: n }, () => B58[Math.floor(Math.random() * 58)]).join('');
 const coinCv = document.createElement('canvas'), cctx = coinCv.getContext('2d'), coins = [];
 coinCv.id = 'coins'; coinCv.setAttribute('aria-hidden', 'true'); stage.insertBefore(coinCv, pager);
@@ -431,20 +432,47 @@ function collide(p, q) {   // two discs, mass ∝ area (a held one is immovable)
   if (vn < 0) { const j = -(1 + E_COIN) * vn / (ip + iq); p.vx -= j * nx * ip; p.vy -= j * ny * ip; q.vx += j * nx * iq; q.vy += j * ny * iq; }
   p.touch = q.touch = true;
 }
+/* the showing slide's cards as boxes in stage px, read once a frame (they float, lean, lift and get dragged): centre, half size and tilt from the element's own transform, its corner radius */
+let boxes = [], boxTouch = false;
+function readBoxes() {
+  const s = stage.getBoundingClientRect();
+  boxes = [...deck.querySelectorAll(CARD_SEL)].map(el => {
+    const r = el.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight, cs = window.getComputedStyle(el);
+    if (!w || !h || !r.width) return null;
+    const m = cs.transform === 'none' ? null : new window.DOMMatrixReadOnly(cs.transform), th = m ? Math.atan2(m.b, m.a) : 0, co = Math.cos(th), si = Math.sin(th);
+    const k = r.width / scale / (w * Math.abs(co) + h * Math.abs(si));   // its own scale (a lifted card is bigger)
+    return { x: (r.left + r.width / 2 - s.left) / scale, y: (r.top + r.height / 2 - s.top) / scale, hw: w * k / 2, hh: h * k / 2, co, si, rad: Math.min(parseFloat(cs.borderTopLeftRadius) || 0, w / 2, h / 2) * k };
+  }).filter(Boolean);
+}
+function hitBox(c, b) {   // a disc against a tilted rounded box: into the box's frame, the closest point on the inner box, out along the normal, bounce
+  const dx = c.x - b.x, dy = c.y - b.y, lx = dx * b.co + dy * b.si, ly = -dx * b.si + dy * b.co, ix = b.hw - b.rad, iy = b.hh - b.rad, R = c.r + b.rad;
+  if (Math.abs(lx) > ix + R || Math.abs(ly) > iy + R) return;
+  const qx = Math.max(-ix, Math.min(ix, lx)), qy = Math.max(-iy, Math.min(iy, ly)), d = Math.hypot(lx - qx, ly - qy);
+  let nx, ny, pen;
+  if (d > 1e-6) { if (d >= R) return; nx = (lx - qx) / d; ny = (ly - qy) / d; pen = R - d; }
+  else { const px = ix - Math.abs(lx), py = iy - Math.abs(ly); if (px < py) { nx = Math.sign(lx) || 1; ny = 0; pen = px + R; } else { nx = 0; ny = Math.sign(ly) || 1; pen = py + R; } }   // centre inside: out through the nearest side
+  const wx = nx * b.co - ny * b.si, wy = nx * b.si + ny * b.co, vn = c.vx * wx + c.vy * wy;   // the normal back in stage axes
+  c.x += wx * pen; c.y += wy * pen;
+  if (vn < 0) { const e = vn < -90 ? E_FLOOR : 0; c.vx -= (1 + e) * vn * wx; c.vy -= (1 + e) * vn * wy; }
+  c.touch = true; boxTouch = true;
+}
 function bounds(c, h) {
+  if (c.y - c.r >= CEIL) c.in = true;   // the ceiling only once a coin has dropped in: they are born above it
+  if (c.in && c.y - c.r < CEIL) { c.y = CEIL + c.r; if (c.vy < 0) c.vy = -c.vy * E_FLOOR; }
   if (c.y + c.r > FLOOR) { c.y = FLOOR - c.r; if (c.vy > 0) c.vy = c.vy > 90 ? -c.vy * E_FLOOR : 0; c.touch = true; }   // a slow landing stops dead: no endless micro-bounce
   if (c.x - c.r < 0) { c.x = c.r; if (c.vx < 0) c.vx = -c.vx * E_FLOOR; } else if (c.x + c.r > 1920) { c.x = 1920 - c.r; if (c.vx > 0) c.vx = -c.vx * E_FLOOR; }
   if (c.touch) { c.vx *= 1 - .5 * h; c.w += (c.vx / c.r - c.w) * Math.min(1, 10 * h); } else c.w *= 1 - .3 * h;   // touching something it rolls (spin = v / r) and slowly loses speed; in the air it keeps its spin
 }
 function coinTick(t) {
   const dt = Math.min(1 / 30, (t - coinT) / 1000 || 1 / 60), h = dt / 4; coinT = t;
+  readBoxes(); boxTouch = false;
   for (let s = 0; s < 4; s++) {   // 4 substeps a frame, 4 collision passes each: enough for a stable pile of ~120
     for (const c of coins) { if (c === held) { c.vx = Math.max(-4000, Math.min(4000, (hx - c.x) * 20)); c.vy = Math.max(-4000, Math.min(4000, (hy - c.y) * 20)); } else c.vy += G * h; c.x += c.vx * h; c.y += c.vy * h; c.a += c.w * h; c.touch = false; }
     for (let it = 0; it < 4; it++) for (let i = 0; i < coins.length; i++) for (let j = i + 1; j < coins.length; j++) collide(coins[i], coins[j]);
-    for (const c of coins) bounds(c, h);
+    for (const c of coins) { for (const b of boxes) hitBox(c, b); bounds(c, h); }
   }
   let vmax = 0; for (const c of coins) vmax = Math.max(vmax, Math.abs(c.vx), Math.abs(c.vy), Math.abs(c.w * c.r));
-  coinStill = vmax < 20 && !held ? coinStill + 1 : 0;
+  coinStill = vmax < 20 && !held && !boxTouch ? coinStill + 1 : 0;   // coins on a card never sleep: the card floats under them
   drawCoins();
   coinRaf = coinStill > 60 ? 0 : requestAnimationFrame(coinTick);   // a settled pile sleeps until the next donation
 }
@@ -465,7 +493,9 @@ addEventListener('pointermove', e => {
   if (!coins.length) return;
   const [x, y] = toStage(e);
   if (held) { hx = x; hy = y; } else stage.classList.toggle('coin-over', !!coinAt(x, y));
+  coinStill = 0; coinRaf ||= requestAnimationFrame(coinTick);   // a hovered or dragged card may shove the pile
 });
+new window.MutationObserver(() => { if (coins.length) { coinStill = 0; coinRaf ||= requestAnimationFrame(coinTick); } }).observe(deck, { subtree: true, attributeFilter: ['class'] });   // another slide, other cards: wake the pile
 const letGo = () => { if (held) { held = null; stage.classList.remove('coin-drag'); } };
 addEventListener('pointerup', letGo); addEventListener('pointercancel', letGo);
 addEventListener('click', e => { if (eatClick) { eatClick = false; e.stopPropagation(); } }, true);
