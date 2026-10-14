@@ -410,3 +410,7 @@ canvas.glyph{height:auto;aspect-ratio:240/124;background:none}
 .L-plan .peek-card .pk-name.flip{animation:pkname .5s ease-out}
 @keyframes pkname{from{opacity:0;translate:0 10px}to{opacity:1;translate:0 0}}
 @media (prefers-reduced-motion:reduce){.L-plan .peek-card .pk-imgs img{transition:none}}
+
+/* the sneak-peek badge inverts purple ↔ white, never red (the LIVE badge's red swap is only for LIVE) */
+.fx .peekb:is(:hover,.hot){background:#fff;color:#9945ff;box-shadow:0 0 28px 4px #9945ff88}
+.fx .peekb.pop{animation:float 5s ease-in-out -1.5s infinite,badgepop .5s ease-out 1}
