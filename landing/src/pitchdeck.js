@@ -207,13 +207,13 @@ function show(i) {
 const start = v => v.play().catch(() => {});
 
 /* the tip waves once per ← / → key press (not for a click, a tap, space or a hash change), its arrow in that direction nudges */
-function waveTip(dir) {
+function flashTip(dir) {
   const help = document.getElementById('help');
-  help.classList.remove('wave', 'go-l', 'go-r'); void help.offsetWidth;
-  help.classList.add('wave', dir);
+  help.classList.remove('flash', 'go-l', 'go-r'); void help.offsetWidth;
+  help.classList.add('flash', dir);
 }
 addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight') waveTip('go-r'); else if (e.key === 'ArrowLeft') waveTip('go-l');
+  if (e.key === 'ArrowRight') flashTip('go-r'); else if (e.key === 'ArrowLeft') flashTip('go-l');
   if (['ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); show(cur + 1); }
   else if (['ArrowLeft', 'PageUp'].includes(e.key)) show(cur - 1);
   else if (e.key === 'Home') show(0);
