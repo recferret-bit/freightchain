@@ -74,7 +74,7 @@
     <tbody>
       <tr><td>The driving game, five routes, free rides</td><td><span class="pill ok">LIVE</span></td><td><a href="#drive">02</a>, <a href="#rides">03</a></td></tr>
       <tr><td>Server-timed shifts, recording, verdicts (shadow mode)</td><td><span class="pill ok">LIVE</span></td><td><a href="#verify">06</a></td></tr>
-      <tr><td>Anti-cheat v3: challenge channel (kinds table empty), the server's road, budgets, bulk re-judge</td><td><span class="pill wip">BUILT · NEXT DEPLOY</span></td><td><a href="#verify">06</a></td></tr>
+      <tr><td>Anti-cheat v3: challenge channel (kinds table empty), the server's road, 10 Hz replay worker, budgets, bulk re-judge</td><td><span class="pill ok">LIVE</span></td><td><a href="#verify">06</a></td></tr>
       <tr><td>Live streams, replays, chat, paid donations to the driver</td><td><span class="pill ok">LIVE · DEVNET SOL</span></td><td><a href="#stream">07</a></td></tr>
       <tr><td>Escrowed prize pools (Anchor program)</td><td><span class="pill ok">ON DEVNET · NOT AUDITED</span></td><td><a href="#onchain">05</a></td></tr>
       <tr><td>Blinks (Solana Actions): buy a ticket or open a ride from a shared link</td><td><span class="pill ok">LIVE · DEVNET</span> <span class="pill plan">ON 𝕏 AFTER THE HACKATHON</span></td><td><a href="#onchain">05</a></td></tr>
@@ -93,7 +93,7 @@
   <p>Freight Chain keeps that and adds the two things that were missing: a <b>finish decided by a server</b> instead of a promise, and <b>a pot that is held by a program</b> instead of a company. The design follows from four rules:</p>
   <ol class="rules">
     <li><b>Time is the price.</b> A shift is complete only after its minimum real time <em>and</em> a minimum distance. The truck is governed at 28 m/s, so distance cannot be banked by idling, and a hidden tab earns nothing.</li>
-    <li><b>The finish is not self-reported.</b> The browser records the drive; the server checks the recording. It does not trust a score. It also does not pretend to re-play the physics (see <a href="#verify">06</a> for the limit).</li>
+    <li><b>The finish is not self-reported.</b> The browser records the drive; the server checks the recording and runs a 10 Hz replay verification pass over the shared road, drivetrain physics, seeded traffic and live events (<a href="#verify">06</a>).</li>
     <li><b>Money is held by rules, not by us.</b> Paid tickets go into a program-owned vault with fixed, public rules and a refund path nobody needs permission for (<a href="#onchain">05</a>).</li>
     <li><b>Everything is watchable.</b> Any ride can be streamed live or replayed from the same recording the verdict is made from. Spectators can talk to the driver and, on devnet, tip them (<a href="#stream">07</a>).</li>
   </ol>
@@ -604,14 +604,14 @@
   <p class="dim">Not built; ordered roughly by fit, from the Solana feature plan.</p>
   <ul class="ideas">
     <li><b>Convoys.</b> Three to five wallets ride the same round and share a side pot by combined distance.</li>
-    <li><b>Deterministic replay core.</b> Fixed-tick, fixed-point re-simulation of paid shifts.</li>
+    <li><b>Fixed-point replay core.</b> Integer fixed-point re-simulation from raw inputs alone, tightening the 10 Hz float replay worker (<a href="#verify">06</a>).</li>
     <li><b>Badges on mainnet.</b> A mainnet collection and tree, with the art re-uploaded, once the pool program is there.</li>
   </ul>
 </section>
 
 <!-- ───────── 06 · VALIDATION ───────── -->
 <section id="verify" class="ch">
-  <header class="ch-h"><i>06</i><h2>Telemetry, validation &amp; anti-cheat</h2><p>The server does not replay your drive. It times the shift itself, checks that the recording is complete, physically possible and matches the ride, measures how human the hands look, and asks for things only someone watching the screen can answer.</p></header>
+  <header class="ch-h"><i>06</i><h2>Telemetry, validation &amp; anti-cheat</h2><p>The server times the shift itself, checks that the recording is complete, physically possible and matches the ride, re-simulates the 10 Hz trace against the shared road, drivetrain physics, seeded traffic and spectator donations, measures how human the hands look, and asks for things only someone watching the screen can answer.</p></header>
   <p class="note"><b>Mode.</b> Rules v3 run in <b>shadow mode</b> in production: every completed shift is judged and the verdict is shown, but the boards do not depend on it yet. The thresholds are first estimates and will be tuned on real rides. Bump the rules version and the verdict stores which one it used. The long form, with every code and knob: <code>docs/anti-cheat/</code> in the repository.</p>
 
   <h3 class="sub">NINE LAYERS, FROM CHEAPEST TO STRONGEST</h3>
@@ -620,7 +620,7 @@
     <li><i>2</i><b>A CHECKABLE RECORDING</b><span>Every key and a 10 Hz sample of the truck, sealed every 15 s into SHA-256 hash-chained batches. The server re-hashes on arrival and computes an RFC 6962 Merkle tree root.</span></li>
     <li><i>3</i><b>PHYSICS BOUNDS</b><span>Under the governor, no step the truck cannot make, samples in order. Speed hacks and teleports reject.</span></li>
     <li><i>4</i><b>AGREEMENT WITH THE RIDE</b><span>The recording ends where the ride ended and covers the driven time; a moving truck has hands on it.</span></li>
-    <li><i>5</i><b>THE SERVER'S ROAD &amp; SEED</b><span>Holes come from the pool's seed, which the program commits from the SlotHashes sysvar. A truck driving through at speed must lose hull; holes removed rejects.</span></li>
+    <li><i>5</i><b>THE SERVER'S ROAD, 10 HZ REPLAY &amp; SEED</b><span>Holes and traffic come from the pool's seed (committed from the SlotHashes sysvar) via <code>@freightchain/shared</code>. A 10 Hz worker replays physics, 4-substep swept traffic collisions and spectator donations; ignored holes or crashes reject.</span></li>
     <li><i>6</i><b>BUDGETS</b><span>Time, batches and bytes per ride, size per batch, rate limits. Uploading faster than real time is refused.</span></li>
     <li><i>7</i><b>HOW HUMAN THE HANDS LOOK</b><span>Hold lengths, rhythms, press durations – statistics that only flag.</span></li>
     <li><i>8</i><b>CHALLENGE CHANNEL</b><span>The heartbeat can ask for a challenge; the cab handler shows whatever the DTO names. Kinds are a table, empty today so none are issued. When a kind is live: no answer is a bot that cannot see; an instant one is a script reading the heartbeat.</span></li>
@@ -629,7 +629,7 @@
 
   <h3 class="sub">WHAT IS RECORDED – AND WHAT IS NOT</h3>
   <div class="split2 wide">
-    <article class="card"><h3>TRUCK SAMPLE · 10 PER SECOND</h3><p class="mono">t · road distance · lane offset · heading · speed · rpm · gear · hull · gas · brake · steer · clutch · clock hour · switches · controls · fork road</p><p class="dim">16 numbers. The first twelve are judged. The last four (hour of day, the cab's switches, the controls used in that tenth of a second, which road of a fork) are only for the replay. The switches include the headlights, the heater and cooling, so a spectator sees HEAT and COLD as you left them and the glass follows. The judge never reads those four. At most 400 per batch. On arrival each batch is measured once – counts, first and last sample, top speed, the worst step – and the judge reads those summaries, never the samples again.</p></article>
+    <article class="card"><h3>TRUCK SAMPLE · 10 PER SECOND</h3><p class="mono">t · road distance · lane offset · heading · speed · rpm · gear · hull · gas · brake · steer · clutch · clock hour · switches · controls · fork road</p><p class="dim">16 numbers. The first twelve are judged by the batch summaries, and all sixteen feed the 10 Hz replay worker (<code>ReplayEngine</code>) and spectator replays. The switches include the headlights, the heater and cooling, so a spectator sees HEAT and COLD as you left them and the glass follows. At most 400 per batch. On arrival each batch is measured once – counts, first and last sample, top speed, the worst step – for fast summary checks, and the 10 Hz worker steps the full sample stream against <code>@freightchain/shared</code>.</p></article>
     <article class="card"><h3>INPUT EVENT</h3><p class="mono">time since start · key or button · down / up</p><p class="dim">Times come from the browser's own event clock, so a slow frame cannot make a normal tap look like a 0 ms press. At most 2000 per batch.</p></article>
   </div>
   <p class="dim"><b>Never recorded:</b> mouse movement, your screen, other tabs or apps, microphone or camera, anything after the ride. The offline game records nothing.</p>
@@ -640,8 +640,8 @@
   <h3 class="sub">CHALLENGE CHANNEL</h3>
   <p>The heartbeat can carry a challenge about every 240 s of driving (none on the free run; at most four on a short shift, 0.6–1.4 intervals apart so the rhythm cannot be guessed). The cab handler shows whatever the DTO names as an amber banner with a 20 s bar. Kinds live in a table on the server; that table is empty today, so none are issued. When a kind is live, the judge looks for that key within 20 s of the moment the server issued the prompt. Half or more of 3+ prompts ignored rejects; one missed only flags; a median answer under 80 ms after the server issued it is faster than a person can read it and flags. A prompt still open when the ride ends is not judged.</p>
 
-  <h3 class="sub">THE SERVER'S ROAD &amp; SEED COMMITMENT</h3>
-  <p>The road and its sinkholes are a pure function of the ride's seed and trip. In program v3 the program itself commits it when the pool opens: <code>SHA-256(pool_id ‖ slot hash ‖ slot)</code> over the newest SlotHashes entry, projected into a 31-bit seed. No caller passes a seed, so neither a driver nor the operator picks the road, and anyone can recompute the commitment from the pool account. The server rebuilds them itself and hands the game the ride's <b>obstacle plan</b> (<code>GET /api/watch/:id/road</code>); the game drives over those holes, and every batch is measured against the same plan when it arrives. Each axle entering a pit costs the hull <code>dmg × (v/28)²</code> – 14 % for the front axle in a sinkhole at 28 m/s, rear axles × 0.6. A wheel that runs through a planned hole at speed must show at least a quarter of that loss. Two or more holes driven through untouched reject; one flags.</p>
+  <h3 class="sub">THE SERVER'S ROAD, 10 HZ REPLAY &amp; SEED COMMITMENT</h3>
+  <p>The road, its sinkholes and its traffic are a pure function of the ride's seed and trip, shared between browser and backend in <code>@freightchain/shared</code> (<code>prng.js</code>, <code>road.js</code>, <code>traffic.js</code>, <code>physics.js</code>). In program v3 the program itself commits it when the pool opens: <code>SHA-256(pool_id ‖ slot hash ‖ slot)</code> over the newest SlotHashes entry, projected into a 31-bit seed. No caller passes a seed, so neither a driver nor the operator picks the road, and anyone can recompute the commitment from the pool account. The server rebuilds them itself and hands the game the ride's <b>obstacle plan</b> (<code>GET /api/watch/:id/road</code>); the game drives over those holes, and every batch is measured against the same plan when it arrives. Each axle entering a pit costs the hull <code>dmg × (v/28)²</code> – 14 % for the front axle in a sinkhole at 28 m/s, rear axles × 0.6. A wheel that runs through a planned hole at speed must show at least a quarter of that loss. Two or more holes driven through untouched reject; one flags.</p>
   <figure class="diagram">
     <svg viewBox="0 0 920 250" role="img" aria-labelledby="d4t d4d">
       <title id="d4t">The server's road</title><desc id="d4d">The ride's seed gives the server's obstacle plan. The game drives over it and a replay draws it. The recording is measured against the same plan: a hit shows a hull drop at the hole, a game without the hole shows none and is rejected.</desc>
@@ -659,7 +659,7 @@
     </svg>
     <figcaption>Above: one plan, three readers. Below: the hull line of two trucks over the same hole – the game took the hit, or the game never had the hole.</figcaption>
   </figure>
-  <p>The same samples answer two more questions. Off the tarmac for more than 27 s rejects – the game ends a ride at 20 s. The road is flat, so speed gained with the gas pedal up and no gas key pressed is impossible: 2 m/s of it, or 5 such steps, rejects; less flags.</p>
+  <p>The same samples answer two more questions. Off the tarmac for more than 27 s rejects – the game ends a ride at 20 s. The road is flat, so speed gained with the gas pedal up and no gas key pressed is impossible: 2 m/s of it, or 5 such steps, rejects; less flags. In addition, the <b>10 Hz replay verification worker</b> (<code>ReplayEngine</code>, running in-process and on a dedicated <code>worker</code> container backed by Redis) steps longitudinal physics at <code>0.05 s</code> substeps, spawns deterministic PRNG traffic (<code>mulberry32</code>) with 4-substep swept OBB collision detection, and correlates spectator donations (<code>pothole</code>, <code>trench</code>, <code>sinkhole</code>, <code>night</code>, <code>day</code>), persisting every session and red flag in <code>verdict.RideReplay</code>.</p>
 
   <h3 class="sub">THE CHECKS AND THEIR POWERS</h3>
   <p>Checks on the recording itself can <b>reject</b>, because a broken or impossible recording proves something is wrong. Checks on how human your timing looks can only <b>flag</b>, because statistics can be wrong about a real driver.</p>
@@ -674,7 +674,8 @@
       <tr><td>Covers the drive</td><td>Under 50 % of the driven time recorded rejects; under 90 % only flags.</td><td>reject · <code>recording-incomplete</code> / flag · <code>recording-gaps</code></td></tr>
       <tr><td>The server's holes</td><td>Two or more planned holes driven through at speed without a quarter of the game's damage; one flags.</td><td>reject · <code>obstacle-ignored</code> / flag · <code>obstacle-no-impact</code></td></tr>
       <tr><td>Stays on the road</td><td>Off the tarmac longer than the game allows (20 s, ×1.25 + 2 s).</td><td class="bad">reject · <code>offroad-ignored</code></td></tr>
-      <tr><td>Only the engine speeds up</td><td>Speed gained with the gas pedal up: 2 m/s or 5 steps reject, fewer flag.</td><td>reject / flag · <code>accel-without-gas</code></td></tr>
+      <tr><td>Only the engine speeds up</td><td>Speed gained with the gas pedal up: 2 m/s or 5 steps reject, fewer flag; 3+ steps over 1.8× the 10 Hz drivetrain acceleration limit reject.</td><td>reject / flag · <code>accel-without-gas</code> <code>physics-speed-mismatch</code></td></tr>
+      <tr><td>Seeded traffic &amp; donations</td><td>10 Hz swept OBB traffic collisions and stamped spectator holes / day-night shifts checked against hull and clock.</td><td>reject / flag · <code>traffic-collision-ignored</code> <code>traffic-damage-ignored</code> <code>donated-obstacle-ignored</code> <code>event-unapplied</code> <code>event-clock-mismatch</code></td></tr>
       <tr><td>Someone drove</td><td>A truck that moved more than 50 m needs key presses, and gas among them.</td><td class="bad">reject · <code>no-inputs</code> <code>no-throttle-input</code></td></tr>
       <tr><td>Prompts answered</td><td>Half or more of 3+ prompts ignored rejects; fewer missed only flag.</td><td>reject · <code>challenges-ignored</code> / flag · <code>challenge-missed</code></td></tr>
       <tr><td>Prompts were read</td><td>Answers with a median under 80 ms after the server issued the prompt – a script watching the heartbeat.</td><td class="warnc">flag · <code>challenge-reflex</code></td></tr>
@@ -711,10 +712,10 @@
 
   <h3 class="sub">LIMITS, SAID PLAINLY</h3>
   <ul class="honest">
-    <li><b>The road check is consistency, not proof.</b> A game that drives over the holes and fakes the matching hull loss has, in effect, taken the hit. Traffic is simulated in the browser and only recorded for replays; holes spectators paid for are placed by the driver's game. Neither is judged.</li>
-    <li><b>No re-simulation.</b> The game runs on your computer; its physics use floats, a variable time step and some randomness, so the server cannot re-run it. A careful bot playing the real game with human-like timing <em>and</em> reading the prompts could pass the automatic checks. That is why flagged shifts go to a person and why the checks keep tightening.</li>
+    <li><b>Consistency across samples, road, traffic and events.</b> The 10 Hz <code>ReplayEngine</code> shares <code>@freightchain/shared</code> with the browser to verify natural holes, seeded PRNG traffic (4-substep swept OBB collisions) and stamped spectator donations. A modified client that simulates the exact same road and writes matching hull losses and trajectories has, in effect, taken the hits.</li>
+    <li><b>Float tolerance vs fixed-point.</b> Browser frames use IEEE-754 floats and a variable time step, while the backend replays <code>0.05 s</code> substeps over the 10 Hz trace with a 3.5 m/s tolerance band. A careful bot playing the real game with human-like timing <em>and</em> reading the prompts could pass the automatic checks. That is why flagged shifts go to a person and why the checks keep tightening.</li>
     <li><b>A captcha before a paid shift starts and before a prize is claimed</b> is on the roadmap (<a href="#risks">08</a>). A wallet farm can still take free rides; the daily cap and the rate limits are the brake until then.</li>
-    <li><b>The target is a fixed-tick, fixed-point replay core</b> that re-simulates a paid finish from its input log. It is on the roadmap, not in the build.</li>
+    <li><b>Long-haul target: an input-only fixed-point core</b> that re-simulates a paid finish from raw key events alone without float tolerance.</li>
     <li><b>Verdicts decide ranking only.</b> Whether you can win money is decided by the pool's rules, not by this section.</li>
     <li><b>Retention.</b> Recordings are deleted 90 days after the ride (flagged ones are kept until reviewed); the sign-in log after 180 days. Chat and donations are kept with the ride.</li>
   </ul>
@@ -784,7 +785,7 @@
     <thead><tr><th>Risk</th><th>What it means</th><th>Mitigation today</th></tr></thead>
     <tbody>
       <tr><td><b>Smart-contract</b></td><td>Bugs in an unaudited program can lose funds.</td><td>Devnet only; reproducible build; 51 tests; refund paths that need no key. An independent audit is a precondition for mainnet.</td></tr>
-      <tr><td><b>Cheating</b></td><td>A modified or scripted client could still pass inside the checks.</td><td>Chain, physics and the server's road; challenge channel (kinds table empty); human review of flags; a captcha on the roadmap (<a href="#risks">08</a>); replay core planned (<a href="#verify">06</a>).</td></tr>
+      <tr><td><b>Cheating</b></td><td>A modified or scripted client could still pass inside the checks.</td><td>Chain, physics, the server's road and 10 Hz replay worker (<code>@freightchain/shared</code>); challenge channel (kinds table empty); human review of flags; a captcha on the roadmap (<a href="#risks">08</a>).</td></tr>
       <tr><td><b>Operator trust</b></td><td>A payout key pays verified winners within the cap; the admin holds the treasuries.</td><td>Signed, audited decisions; payouts capped on chain; all of it readable on chain.</td></tr>
       <tr><td><b>Availability</b></td><td>A long shift can be lost if your tab or connection dies for more than 150 s.</td><td>Resume of an open ride; honest pauses cost nothing; final upload retries.</td></tr>
       <tr><td><b>Regulation</b></td><td>Paid prize games are regulated differently around the world.</td><td>Devnet, no value. The mainnet question is answered per region before any mainnet launch.</td></tr>
@@ -795,10 +796,10 @@
 
   <h3 class="sub">ROADMAP</h3>
   <ol class="legs">
-    <li class="done"><b>Built</b> (mid-Sep – Oct 2026) The driving sim; sign-in with Solana; server-timed rides; verified-play recording and verdicts (shadow); signed admin review; live streams, replays, chat, paid donations; the escrow program and its server mirror, written and tested; garage, promo codes, cosmetics; analytics half wired.</li>
+    <li class="done"><b>Built</b> (mid-Sep – Oct 2026) The driving sim; sign-in with Solana; server-timed rides; verified-play recording, 10 Hz replay worker (<code>@freightchain/shared</code>) and verdicts (shadow); signed admin review; live streams, replays, chat, paid donations; the escrow program and its server mirror, written and tested; garage, promo codes, cosmetics; analytics half wired.</li>
     <li class="now"><b>Devnet release</b> (Oct 13 – Nov 30) The verified program build on devnet; the first real pools – tickets bought, a missed goal refunded, prizes paid; verdict thresholds (prompts included) tuned on real rides, then enforced; analytics finished; twenty outside drivers; a heavy load test; a small crew of four – a CPO / COO hybrid, QA, community and support, a content creator.</li>
     <li><b>Mainnet</b> (Dec 2026) Legals (the skill prizes, terms, privacy, regions blocked where needed); an outside penetration test of the API, sessions and admin zone; a program review on the published build; the load test repeated on the release candidate; mainnet pools with published rules; a public Dune board of the program.</li>
-    <li><b>Long haul</b> (2027) Garage parts and promo cosmetics as NFTs; sponsors, per-km pledges and convoys on top of tips; a storybook workshop where SOL buys attempts at a new prop, vehicle or landmark and drivers vote what ships; a deterministic replay core that re-simulates a paid finish.</li>
+    <li><b>Long haul</b> (2027) Garage parts and promo cosmetics as NFTs; sponsors, per-km pledges and convoys on top of tips; a storybook workshop where SOL buys attempts at a new prop, vehicle or landmark and drivers vote what ships; an input-only fixed-point replay core.</li>
   </ol>
   <p class="dim">Cut on purpose: a token, pay-to-win parts, mobile and Telegram, paid ads before someone owns growth, a big team, an eight-hour mandatory ride with forced stops, a second chain.</p>
 
@@ -806,7 +807,7 @@
   <p class="legal">This document is informational. Freight Chain runs on Solana <b>devnet</b>; devnet SOL has no monetary value. There is no Freight Chain token, and nothing in this paper is an offer or solicitation to buy or sell any asset, an investment contract, or financial, legal or tax advice. Statements about the future describe intentions, not commitments, and may change. Smart contracts, wallets and browsers can fail; the program has not been audited. Prices, splits and deadlines shown are proposed defaults, and each pool fixes its own. You are responsible for complying with the laws that apply to you. The source of truth for every number is the code; where this paper and the code disagree, the code wins.</p>
 
   <h3 class="sub">SOURCES</h3>
-  <p class="dim">The rules quoted here are mirrored from the source: <code>server/src/domain/rides/ride-tier.ts</code> (tiers), <code>…/verdict/verdict-rules.ts</code> (validation thresholds), <code>…/live/live-rules.ts</code> (streaming), <code>programs/freightchain-pools</code> (the escrow program), <code>client/js/config.js</code> (the game).</p>
+  <p class="dim">The rules quoted here are mirrored from the source: <code>client/shared/</code> (<code>@freightchain/shared</code>), <code>server/src/domain/rides/ride-tier.ts</code> (tiers), <code>…/verdict/verdict-rules.ts</code> &amp; <code>…/verdict/replay-engine.ts</code> (validation &amp; 10 Hz replay), <code>…/live/live-rules.ts</code> (streaming), <code>programs/freightchain-pools</code> (the escrow program), <code>client/js/config.js</code> (the game).</p>
   <p><a id="lobby-link" data-to="site" data-path="/lobby.html" href="/lobby.html">lobby</a> · <a id="storybook-link" data-to="storybook" data-path="/viewer.html" href="/viewer.html">model viewer</a></p>
 </section>
 

@@ -18,24 +18,13 @@ import { trip } from '../trips.js';
    The truck is an obstacle for every road: the axis-aligned box of its cab + trailer corners in that road's coordinates (so a truck turning across the main
    road or standing in a crossroads box blocks the lanes it covers). Not deterministic/replayable: floats + variable dt (the PRNG itself is seeded per ride). */
 
-const TRUCK_FRONT = 3.3, CAB_BACK = 1.6, HITCH = 1.2, TRAILER_BACK = 14.7, HORIZON = 10;   // metres from the driver's eye; s lookahead for lane changes
-/* behaviour presets: speed = × the type's cruise speed, T = desired time headway (s), over = may change lanes to pass slower traffic, weave = lateral wobble amplitude (m), siren = flashing lights */
-const PRESETS = {
-  cruise:    { speed: 1,    T: 1.6 },
-  slow:      { speed: .6,   T: 1.8 },
-  tailgate:  { speed: 1.15, T: .3 },
-  overtake:  { speed: 1.1,  T: 1.2, over: true },
-  weave:     { speed: .95,  T: 1.5, weave: 1.7 },
-  emergency: { speed: 1.05, T: .8,  over: true, siren: true },
-};
-const BEHIND_OK = ['tailgate', 'overtake', 'emergency'], CROSS_OK = ['cruise', 'slow', 'tailgate'];   // presets for vehicles spawning behind the truck / on side roads
-const CALM_OK = ['cruise', 'slow'];   // a calm trip (trips.js `calm`) spawns only these
+import { TRUCK_FRONT, CAB_BACK, HITCH, TRAILER_BACK, HORIZON, PRESETS, BEHIND_OK, CROSS_OK, CALM_OK, bumpDmg as sharedBumpDmg } from '../../shared/traffic.js';
 export const cars = [];   // live vehicles (debug handle: window.__game.traffic)
 export const MAIN = { main: true, at: m => net.mainAt(m), coords: (x, z, hint) => net.mainCoords(x, z, hint) };
 const T = { rng: Math.random, seed: 0, spawnT: 0, cross: new Map(), ids: 0 };   // ids: a stable number per vehicle for the recording (no rng draw)
 const TK = { pts: [], x: 0, z: 0, vx: 0, vz: 0, th: 0, m: 0 };   // the truck this step: world corners, eye, velocity, heading, main-road coordinate
 
-const bumpDmg = (def, closing) => Math.min(25, 4 * def.mass * (closing / CFG.CRASH_CLOSING) ** 2 + .5);   // hull % lost in a bump: ∝ mass · closing speed²
+const bumpDmg = (def, closing) => sharedBumpDmg(def, closing, CFG.CRASH_CLOSING);   // hull % lost in a bump: ∝ mass · closing speed²
 function pick(weights, filter = () => true) {
   const ks = Object.keys(weights).filter(filter), sum = ks.reduce((a, k) => a + weights[k], 0); if (!ks.length) return null;
   let r = T.rng() * sum; for (const k of ks) if ((r -= weights[k]) <= 0) return k; return ks[ks.length - 1];

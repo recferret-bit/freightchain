@@ -4,6 +4,7 @@ import { summariseBatch } from '../telemetry/batch-summary.js';
 import type { BatchFacts, RideBatch } from '../telemetry/ride-batch.entity.js';
 import type { HolePass } from '../telemetry/world-facts.js';
 import { RideVerdict } from './ride-verdict.entity.js';
+import { ReplayEngine } from './replay-engine.js';
 import { isPhoneInput } from '../telemetry/telemetry-rules.js';
 import { RULES_VERSION } from './verdict-rules.js';
 import type { VerdictReason, VerdictStatus } from './verdict.dto.js';
@@ -42,7 +43,9 @@ export function auditRide(ride: Ride, batches: readonly RideBatch[], now: Date, 
     const prev = ordered[i - 1], prefix = prev && prev.seq === b.seq - 1 ? prev.body.samples : []; // as on upload: the tail of the batch before is measured with it
     return { seq: b.seq, prevHash: b.prevHash, hash: b.hash, hashOk: b.hashOk, t0: b.t0, t1: b.t1, summary: summariseBatch(b.seq, b.t0, b.t1, b.body.samples, b.body.inputs, plan, prefix) };
   });
-  const verdict = RideVerdict.judge(ride, facts, now).toDto();
+  const replay = ReplayEngine.verify(ride, ordered, []);
+  const replayReasons: VerdictReason[] = replay.redFlags.map((f) => ({ code: f.code, detail: f.detail, severity: f.severity }));
+  const verdict = RideVerdict.judge(ride, facts, now, replayReasons).toDto();
   const rows = ordered.flatMap((b) => b.body.samples), inputs = ordered.flatMap((b) => b.body.inputs), driving = inputs.filter((e) => !isPhoneInput(e)); // the phone's events are listed apart: not driving
   const sValues = rows.map((r) => r[1] ?? 0).filter(Number.isFinite), fromS = sValues.length ? Math.min(...sValues) : 0, toS = sValues.length ? Math.max(...sValues) : 0;
   const passes = firstPasses(facts), outcomes = holeOutcomes(passes.filter((p) => p.dir > 0));

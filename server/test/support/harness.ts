@@ -4,6 +4,10 @@ import type { Server } from 'node:http';
 import { configureApp } from '../../src/app/configure-app.js';
 import { AppModule } from '../../src/app/app.module.js';
 import { StaleRideScheduler } from '../../src/infrastructure/scheduling/stale-ride.scheduler.js';
+import { ReplayVerificationScheduler } from '../../src/infrastructure/scheduling/replay-verification.scheduler.js';
+import { RideReplayRepositoryPort } from '../../src/application/ports/verdict/ride-replay.repository.port.js';
+import { ReplayQueuePort } from '../../src/application/ports/verdict/replay-queue.port.js';
+import { MemoryReplayQueueAdapter } from '../../src/infrastructure/verdict/memory-replay-queue.adapter.js';
 import { AchievementMintRepositoryPort } from '../../src/application/ports/achievements/achievement-mint.repository.port.js';
 import { AchievementMintChainPort } from '../../src/application/ports/achievements/achievement-mint-chain.port.js';
 import { FakeMintChain } from './fake-mint-chain.js';
@@ -44,7 +48,7 @@ import { MemoryDailySeedRepository } from './in-memory/memory-daily-seeds.js';
 import { SettingsRepositoryPort } from '../../src/application/ports/settings/settings.repository.port.js';
 import {
   MemoryAchievementRepository, MemoryAchievementMintRepository, MemoryChallengeRepository, MemoryHealthProbe, MemoryPaymentRepository, MemoryPlayerRepository,
-  MemoryRideBatchRepository, MemoryRideQuery, MemoryRideVerdictRepository, MemorySignInRepository, MemoryAdminActionRepository, MemoryAdminQuery, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
+  MemoryRideBatchRepository, MemoryRideQuery, MemoryRideVerdictRepository, MemoryRideReplayRepository, MemorySignInRepository, MemoryAdminActionRepository, MemoryAdminQuery, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
 } from './in-memory/memory-repositories.js';
 import { MemoryCosmeticRepository, MemoryPledgeRepository, MemoryPoolPayoutRepository, MemoryPoolRepository, MemoryPromoRepository, MemoryRideTicketRepository, MemoryTicketOrderRepository } from './in-memory/memory-ledger-repositories.js';
 import { PledgeRepositoryPort } from '../../src/application/ports/economy/pledge.repository.port.js';
@@ -121,9 +125,10 @@ export async function createHarness(persistence: Persistence, env: Record<string
   const payoutChain = new FakePoolPayoutChain(poolChain);
   const memory = new MemoryDb();
   const nameService = new StubNameServiceAdapter();
+  const replayQueue = new MemoryReplayQueueAdapter();
 
-  // the stale-ride sweep runs on a REAL timer – it would race the fake clock; scenarios run SweepStaleRidesCommand themselves
-  let builder = Test.createTestingModule({ imports: [AppModule] }).overrideProvider(EntropyPort).useValue(entropy).overrideProvider(StaleRideScheduler).useValue({}).overrideProvider(ClockPort).useValue(clock).overrideProvider(ChainPort).useValue(chain).overrideProvider(PoolChainPort).useValue(poolChain).overrideProvider(PoolPayoutChainPort).useValue(payoutChain).overrideProvider(NameServicePort).useValue(nameService);
+  // the stale-ride sweep and replay-verification scheduler run on REAL timers – they would race the fake clock; scenarios run commands themselves
+  let builder = Test.createTestingModule({ imports: [AppModule] }).overrideProvider(EntropyPort).useValue(entropy).overrideProvider(StaleRideScheduler).useValue({}).overrideProvider(ReplayVerificationScheduler).useValue({}).overrideProvider(ReplayQueuePort).useValue(replayQueue).overrideProvider(ClockPort).useValue(clock).overrideProvider(ChainPort).useValue(chain).overrideProvider(PoolChainPort).useValue(poolChain).overrideProvider(PoolPayoutChainPort).useValue(payoutChain).overrideProvider(NameServicePort).useValue(nameService);
   if (persistence === 'memory') {
     builder = builder
       .overrideProvider(PrismaService).useValue({ $connect: async () => undefined, $disconnect: async () => undefined })
@@ -146,6 +151,7 @@ export async function createHarness(persistence: Persistence, env: Record<string
       .overrideProvider(TicketOrderRepositoryPort).useValue(new MemoryTicketOrderRepository(memory))
       .overrideProvider(RideBatchRepositoryPort).useValue(new MemoryRideBatchRepository(memory))
       .overrideProvider(RideVerdictRepositoryPort).useValue(new MemoryRideVerdictRepository(memory))
+      .overrideProvider(RideReplayRepositoryPort).useValue(new MemoryRideReplayRepository(memory))
       .overrideProvider(SignInRepositoryPort).useValue(new MemorySignInRepository(memory))
       .overrideProvider(AdminActionRepositoryPort).useValue(new MemoryAdminActionRepository(memory))
       .overrideProvider(AdminQueryPort).useValue(new MemoryAdminQuery(memory))
@@ -175,6 +181,7 @@ export async function createHarness(persistence: Persistence, env: Record<string
       poolChain.reset();
       payoutChain.reset();
       memory.reset();
+      replayQueue.clear();
       nameService.reset();
       if (prisma) await truncateAllTables(prisma);
       const cache = app.get(CachePort);   // the cached statistics describe the database that was just wiped

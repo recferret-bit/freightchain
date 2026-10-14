@@ -14,6 +14,7 @@ import type { ChainEventRow } from '../../../src/domain/economy/chain-events.js'
 import type { ChainCursorRow } from '../../../src/application/ports/economy/chain-event.repository.port.js';
 import type { RideBatchProps } from '../../../src/domain/telemetry/ride-batch.entity.js';
 import type { RideVerdictProps } from '../../../src/domain/verdict/ride-verdict.entity.js';
+import type { RideReplayProps } from '../../../src/domain/verdict/ride-replay.entity.js';
 import type { SignInRecord } from '../../../src/domain/auth/sign-in.js';
 import type { AdminActionRecord } from '../../../src/domain/admin/admin.dto.js';
 import type { RideEventProps } from '../../../src/domain/live/ride-event.entity.js';
@@ -48,6 +49,7 @@ export class MemoryDb {
   /** key = `${rideId}:${seq}` */
   batches = new Map<string, RideBatchProps>();
   verdicts = new Map<string, RideVerdictProps>();
+  replays = new Map<string, RideReplayProps>();
   signIns: SignInRecord[] = [];
   adminActions: AdminActionRecord[] = [];
   /** live feed, in id order */
@@ -72,7 +74,7 @@ export class MemoryDb {
   nextRoundId(): number { return ++this.roundSeq; }
 
   reset(): void {
-    this.players.clear(); this.challenges.clear(); this.rides.clear(); this.batches.clear(); this.verdicts.clear();
+    this.players.clear(); this.challenges.clear(); this.rides.clear(); this.batches.clear(); this.verdicts.clear(); this.replays.clear();
     this.rounds = []; this.payments = []; this.unlocks = []; this.mints = []; this.signIns = []; this.adminActions = [];
     this.seq = 0; this.roundSeq = 0;
     this.pools.clear(); this.tickets.clear(); this.grants = []; this.promos.clear(); this.redemptions.clear(); this.orders.clear(); this.cosmeticUnlocks.clear(); this.cosmeticEquipped.clear();

@@ -8,12 +8,12 @@ import { payoutsTab } from './admin-pools.js';
 import { devWanted, installDevWallet, isLocal, DEV_ADMIN_WALLET } from './dev-wallet.js';
 if (devWanted()) installDevWallet();   // localhost only: a dev wallet chosen earlier in this tab stays in place after a reload
 
-/* The admin page: OVERVIEW · REVIEW QUEUE · RIDES · PLAYERS · POOLS · PAYOUTS · STATS · SESSIONS · PROMO CODES · SETTINGS · SIGN-INS · LOGS · AUDIT (+ #ride/<id>). Vanilla DOM, no framework.
+/* The admin page: OVERVIEW · REVIEW QUEUE · RIDES · REPLAYS · PLAYERS · POOLS · PAYOUTS · STATS · SESSIONS · PROMO CODES · SETTINGS · SIGN-INS · LOGS · AUDIT (+ #ride/<id>). Vanilla DOM, no framework.
    Only wallets in the server's ADMIN_WALLETS get answers – to everyone else /api/admin/* is a 404 and this page says so.
    Everything from the server goes in with textContent (wallets, reasons, log lines are other people's data) – never innerHTML. */
 const $ = id => document.getElementById(id);
 const view = $('view');
-const TABS = ['overview', 'queue', 'rides', 'players', 'pools', 'payouts', 'stats', 'sessions', 'promos', 'settings', 'signins', 'logs', 'audit'];
+const TABS = ['overview', 'queue', 'rides', 'replays', 'players', 'pools', 'payouts', 'stats', 'sessions', 'promos', 'settings', 'signins', 'logs', 'audit'];
 
 /* ───────── helpers ───────── */
 function el(tag, attrs = {}, ...kids) {
@@ -68,7 +68,7 @@ async function go({ dedupe = false } = {}) {
   // the tabs paint through `gv`: a load that a newer go() superseded (another tab clicked meanwhile) must not draw over it
   const gv = { replaceChildren: (...kids) => { if (current()) view.replaceChildren(...kids); }, dataset: view.dataset };
   const ctx = { api, el, view: gv, signAt, time, ago, wallet, go };
-  try { await ({ overview: () => overview(gv), queue: () => queue(gv), rides: () => rides(gv), promos: () => promosTab(ctx), settings: () => settingsTab(ctx, arg), players: () => playersTab(ctx, arg), pools: () => poolsTab(ctx, arg), payouts: () => payoutsTab(ctx), stats: () => statsTab(ctx), sessions: () => sessionsTab(ctx), signins: () => signins(gv), logs: () => logs(gv), audit: () => audit(gv), ride: () => ride(arg, gv) })[tab](); if (current()) view.dataset.tab = arg ? '' : tab; } catch (e) { if (current()) fail(e); } finally { clearTimeout(wait); if (current()) loading = null; }
+  try { await ({ overview: () => overview(gv), queue: () => queue(gv), rides: () => rides(gv), replays: () => replays(gv), promos: () => promosTab(ctx), settings: () => settingsTab(ctx, arg), players: () => playersTab(ctx, arg), pools: () => poolsTab(ctx, arg), payouts: () => payoutsTab(ctx), stats: () => statsTab(ctx), sessions: () => sessionsTab(ctx), signins: () => signins(gv), logs: () => logs(gv), audit: () => audit(gv), ride: () => ride(arg, gv) })[tab](); if (current()) view.dataset.tab = arg ? '' : tab; } catch (e) { if (current()) fail(e); } finally { clearTimeout(wait); if (current()) loading = null; }
 }
 addEventListener('hashchange', () => go());
 $('refresh').onclick = () => go({ dedupe: true });
@@ -97,7 +97,7 @@ async function overview(view) {
 }
 function paintMode(cfg) { $('chip-mode').textContent = cfg.verdictEnforce ? 'VERDICTS ENFORCED' : 'SHADOW MODE'; $('chip-mode').className = `chip${cfg.verdictEnforce ? '' : ' demo'}`; }
 
-/* ───────── RIDES / QUEUE ───────── */
+/* ───────── RIDES / QUEUE / REPLAYS ───────── */
 function rideTable(rows) {
   if (!rows.length) return el('div', { class: 'card empty' }, 'Nothing here.');
   return el('div', { class: 'card', style: 'padding:6px 8px;overflow-x:auto' }, el('table', { class: 'dense' },
@@ -106,10 +106,9 @@ function rideTable(rows) {
       el('td', {}, ago(r.createdAt)), el('td', {}, wallet(r.wallet)), el('td', {}, r.tier + (r.timeScale > 1 ? ` ×${r.timeScale}` : '')), el('td', { class: 'mono' }, r.poolId ?? '–'), el('td', {}, r.status),
       el('td', { class: 'r' }, km(r.distance)), el('td', { class: 'r' }, `${Math.round(r.driveSeconds)} s`), el('td', {}, r.status === 'completed' ? badge(r.verdict, r.overridden) : ''), el('td', {}, reviewBadge(r.review)), el('td', { class: 'dim' }, r.reason ?? ''))))));
 }
-const QUEUE = 'rides?review=under_review&limit=200';   // the review queue: every paid ride UNDER REVIEW (flagged, machine-rejected, unjudged), then the flagged free rides
 async function queue(view) {
   const pool = new URLSearchParams(location.search).get('pool') ?? '';
-  const { rows } = await api(`${QUEUE}${/^\d+$/.test(pool) ? `&pool=${pool}` : ''}`);
+  const { rows } = await api(`rides?review=under_review&limit=200${/^\d+$/.test(pool) ? `&pool=${pool}` : ''}`);
   if (!pool) $('tab-queue-n').textContent = rows.length || '';
   const input = el('input', { placeholder: 'pool id (all pools when empty)', value: pool, inputmode: 'numeric', 'aria-label': 'pool' });
   const apply = () => { const v = input.value.trim(); history.replaceState(null, '', `${location.pathname}${/^\d+$/.test(v) ? `?pool=${v}` : ''}#queue`); go(); };
@@ -132,11 +131,33 @@ async function rides(view) {
   view.replaceChildren(el('h2', {}, 'RIDES'), el('div', { class: 'filters' }, input, status, verdict, el('button', { onclick: apply }, 'FILTER')), rideTable(rows));
   input.addEventListener('keydown', e => { if (e.key === 'Enter') apply(); });
 }
+async function replays(view) {
+  const q = new URLSearchParams(location.search);
+  const f = { status: q.get('status') ?? '', paid: q.get('paid') ?? '' };
+  const select = (name, label, opts) => el('select', { 'aria-label': name }, el('option', { value: '' }, label), ...opts.map(([v, l]) => el('option', { value: v, selected: f[name] === v }, l)));
+  const status = select('status', 'any status', [['pending', 'pending'], ['verified', 'verified'], ['flagged', 'flagged'], ['rejected', 'rejected']]);
+  const paid = select('paid', 'paid + free', [['true', 'paid only'], ['false', 'free only']]);
+  const apply = () => { const p = new URLSearchParams(); if (status.value) p.set('status', status.value); if (paid.value) p.set('paid', paid.value); history.replaceState(null, '', `${location.pathname}${p.size ? `?${p}` : ''}#replays`); go(); };
+  const params = new URLSearchParams({ limit: '100' }); for (const [k, v] of Object.entries(f)) if (v) params.set(k, v);
+  const { queue: qInfo, rows } = await api(`replays?${params}`);
+  view.replaceChildren(
+    el('h2', {}, `REPLAY VERIFICATION · QUEUE (${qInfo.kind.toUpperCase()}: ${qInfo.depth} PENDING)`),
+    el('p', { class: 'dim' }, 'Each completed shift is re-simulated on the backend at 10 Hz against the seeded road, PRNG traffic and spectator donation events (verdict.RideReplay + verdict.RideReplayFlag). Open a ride to inspect its red flags or click RE-JUDGE to run a new verification session.'),
+    el('div', { class: 'filters' }, status, paid, el('button', { onclick: apply }, 'FILTER')),
+    rows.length ? el('div', { class: 'card', style: 'padding:6px 8px;overflow-x:auto' }, el('table', { class: 'dense', id: 'replay-table' },
+      el('thead', {}, el('tr', {}, ...['queued', 'ride', 'seq', 'tier', 'status', 'rec / sim km', 'rec / sim hull', 'crashes', 'events', 'red flags'].map(h => el('th', {}, h)))),
+      el('tbody', {}, rows.map(r => el('tr', { class: 'click', onclick: () => { location.hash = `#ride/${r.rideId}`; } },
+        el('td', { title: time(r.queuedAt) }, ago(r.queuedAt)), el('td', { class: 'mono' }, r.rideId.slice(0, 8)), el('td', {}, `#${r.seq}`), el('td', {}, r.isPaid ? 'paid' : 'free'),
+        el('td', {}, badge(r.status, false)), el('td', {}, `${km(r.recordedDistance)} / ${km(r.simulatedDistance)}`), el('td', {}, `${Math.round(r.recordedHull)} / ${Math.round(r.simulatedHull)} %`),
+        el('td', {}, `${r.simulatedCrashesVehicle}v · ${r.simulatedCrashesBuilding}b`), el('td', {}, `${r.eventsCorrelated}/${r.eventsExpected}`),
+        el('td', { class: r.redFlags.length ? 'bad' : 'dim' }, r.redFlags.length ? r.redFlags.map(x => x.code).join(', ') : '–'))))))
+      : el('div', { class: 'card empty' }, 'No replay verification sessions yet.'));
+}
 
 /* ───────── ONE RIDE ───────── */
 async function ride(id, view) {
   const d = await api(`rides/${encodeURIComponent(id)}`);
-  const r = d.ride, v = d.verdict;
+  const r = d.ride, v = d.verdict, reps = d.replays ?? [];
   const kv = (...pairs) => el('dl', { class: 'kv' }, pairs.flatMap(([k, val]) => [el('dt', {}, k), el('dd', {}, val)]));
   const lock = on => document.querySelectorAll('.actions button').forEach(b => { b.disabled = on; });   // one click = one wallet prompt = one signed change
   const decide = async decision => {
@@ -160,7 +181,7 @@ async function ride(id, view) {
     } catch (e) { msg.textContent = e.message; msg.className = 'bad'; lock(false); }
   };
   view.replaceChildren(
-    el('p', {}, el('a', { href: '#queue' }, '← review queue'), ' · ', el('a', { href: `?wallet=${r.wallet}#rides` }, 'this rider\'s rides'), ' · ', el('a', { href: `#players/${r.wallet}` }, 'player'), ' · ', el('a', { href: `#signins/${r.wallet}` }, 'sign-ins'), ' · ', el('a', { href: `#settings/${r.wallet}` }, 'free rides'), ' · ', el('a', { href: `#logs/${r.id}` }, 'log lines')),
+    el('p', {}, el('a', { href: '#queue' }, '← review queue'), ' · ', el('a', { href: '?#replays' }, 'replays'), ' · ', el('a', { href: `?wallet=${r.wallet}#rides` }, 'this rider\'s rides'), ' · ', el('a', { href: `#players/${r.wallet}` }, 'player'), ' · ', el('a', { href: `#signins/${r.wallet}` }, 'sign-ins'), ' · ', el('a', { href: `#settings/${r.wallet}` }, 'free rides'), ' · ', el('a', { href: `#logs/${r.id}` }, 'log lines')),
     el('h2', {}, 'RIDE'),
     el('div', { class: 'card' }, kv(['id', el('span', { class: 'mono' }, r.id)], ['rider', el('span', { class: 'mono' }, r.wallet)], ['tier / status', `${r.tier} · ${r.status}${r.reason ? ` – ${r.reason}` : ''}`],
       ['driven', `${km(r.distance)} km in ${Math.round(r.driveSeconds)} s (shift ${r.minSeconds} s / ${km(r.completeDist)} km${r.timeScale > 1 ? `, demo ×${r.timeScale}` : ''})`],
@@ -179,6 +200,14 @@ async function ride(id, view) {
       : r.status === 'completed'
         ? el('div', { class: 'card' }, el('p', { class: 'bad' }, 'Completed but not judged (judging failed after the ride ended).'), el('div', { class: 'actions' }, el('button', { onclick: rejudge }, 'JUDGE NOW')), el('p', { id: 'judge-msg', class: 'dim' }))
         : el('div', { class: 'card dim' }, 'Not judged – only completed shifts are.'),
+    el('h2', {}, `REPLAY VERIFICATION · ${reps.length} SESSION(S)`),
+    reps.length ? el('div', { class: 'card', id: 'ride-replays' }, ...reps.map(rep => el('div', { class: 'replay-session' },
+      el('p', {}, badge(rep.status, false), ` session #${rep.seq} · ${rep.simHz} Hz · rules v${rep.rulesVersion} · completed ${time(rep.completedAt ?? rep.queuedAt)}`),
+      kv(['recorded vs simulated', `${km(rep.recordedDistance)} km / ${km(rep.simulatedDistance)} km · hull ${Math.round(rep.recordedHull)} % / ${Math.round(rep.simulatedHull)} %`],
+        ['simulated crashes · events', `${rep.simulatedCrashesVehicle} vehicle, ${rep.simulatedCrashesBuilding} building · ${rep.eventsCorrelated}/${rep.eventsExpected} live events correlated`]),
+      rep.redFlags.length ? el('div', { class: 'reasons' }, rep.redFlags.map(f => el('div', { class: `reason ${f.severity}` }, el('b', {}, `${f.code} `), el('span', { class: 'dim' }, `[${f.category} · ${f.severity}${f.atSecond != null ? ` @ ${f.atSecond.toFixed(1)}s` : ''}] `), f.detail))) : el('p', { class: 'good' }, '0 replay red flags.'),
+      el('details', {}, el('summary', { class: 'dim' }, `session #${rep.seq} scores`), el('pre', { class: 'json' }, JSON.stringify(rep.scores, null, 2))))))
+      : el('div', { class: 'card dim' }, 'No replay verification sessions recorded.'),
     el('h2', {}, `RECORDING · ${d.batches.length} BATCHES`),
     d.batches.length ? el('div', { class: 'card', style: 'padding:6px 8px;overflow-x:auto' }, el('table', { class: 'dense' },
       el('thead', {}, el('tr', {}, ...['seq', 'game s', 'samples', 'inputs', 'size', 'hash', 'received'].map(h => el('th', { class: ['samples', 'inputs', 'size'].includes(h) ? 'r' : null }, h)))),

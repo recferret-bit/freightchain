@@ -1,9 +1,12 @@
+import { CommandBus } from '@nestjs/cqrs';
 import { bindClient, newWallet, type Rider } from '../support/client.js';
 import type { Harness } from '../support/harness.js';
 import { answersFor, ownLaneHoles, recording, upload, type RecordingOptions } from '../support/recording.js';
 import type { ChallengeDto } from '../../src/domain/rides/ride-challenge.js';
 import { RECORDING_BYTES_SLACK } from '../../src/domain/telemetry/telemetry-rules.js';
 import { setTierOnSaleForTest } from '../../src/domain/rides/ride-tier.js';
+import { ProcessReplayQueueCommand } from '../../src/application/use-cases/verdict/process-replay-queue/process-replay-queue.command.js';
+import { VerdictService } from '../../src/application/services/verdict.service.js';
 
 /* Verified play end to end: the game uploads its recording, /end judges it, only verified paid shifts rank. Nothing is simulated on the server –
    the verdict validates the recording and measures how human the input timing looks. Same scenarios on in-memory and PostgreSQL. */
@@ -211,5 +214,45 @@ export function verdictScenarios(h: () => Harness): void {
     sec(10);
     expect((await w.agent.post(`/api/rides/${free.id}/end`).send({ outcome: 'shift', s: 150, t: 10 }).expect(200)).body).toMatchObject({ verdict: { status: 'rejected' }, review: null });   // free rides have no review
     expect((await anon().get('/api/leaderboard?board=free&level=1').expect(200)).body.rows[0]).toMatchObject({ wallet: w.address, distance: 150 });
+  });
+
+  describe('backend replay engine & anti-fraud red flags (10 Hz simulation)', () => {
+    it('stores a 10 Hz RideReplay record on /end and exposes it at GET /api/rides/:id/replays', async () => {
+      const d = await login(VERDICT_DEMO);
+      const end = await paidShift(d, { replay: true });
+      expect(end.verdict.status).toBe('verified');
+      const replaysRes = (await d.agent.get(`/api/rides/${end.id}/replays`).expect(200)).body;
+      expect(replaysRes.rideId).toBe(end.id);
+      expect(replaysRes.replays).toHaveLength(1);
+      expect(replaysRes.replays[0]).toMatchObject({
+        rideId: end.id,
+        simHz: 10,
+        seq: 1,
+        status: 'verified',
+        redFlags: [],
+      });
+    });
+
+    it('rejects a client that deleted traffic cars on the frontend and drove straight through them (traffic-collision-ignored)', async () => {
+      const d = await login(VERDICT_DEMO);
+      const end = await paidShift(d, { replay: true, ignoreTraffic: true });
+      expect(end.verdict.status).toBe('rejected');
+      expect(end.verdict.reasons.map((r: { code: string }) => r.code)).toContain('traffic-collision-ignored');
+      const replaysRes = (await d.agent.get(`/api/rides/${end.id}/replays`).expect(200)).body;
+      expect(replaysRes.replays[0].status).toBe('rejected');
+      expect(replaysRes.replays[0].redFlags.some((f: { code: string }) => f.code === 'traffic-collision-ignored')).toBe(true);
+    });
+
+    it('processes multiple queued ride sessions concurrently via ProcessReplayQueueCommand', async () => {
+      const d = await login(VERDICT_DEMO);
+      const end = await paidShift(d, { replay: true });
+      const verdicts = h().app.get(VerdictService);
+      const bus = h().app.get(CommandBus);
+      await verdicts.enqueueVerification(end.id);
+      const queueRes = await bus.execute(new ProcessReplayQueueCommand(16, 4));
+      expect(queueRes.processed).toBe(1);
+      const replaysRes = (await d.agent.get(`/api/rides/${end.id}/replays`).expect(200)).body;
+      expect(replaysRes.replays.length).toBeGreaterThanOrEqual(2);
+    });
   });
 }

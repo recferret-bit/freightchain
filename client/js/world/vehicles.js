@@ -15,7 +15,8 @@ const lampCache = new Map();
 const lampMat = hex => { let m = lampCache.get(hex); if (!m) { m = new THREE.MeshBasicMaterial({ color: hex, toneMapped: false }); lampCache.set(hex, m); vehicleMats.push(m); } return m; };
 const AMBER = 0xff9a10;
 const GLASS = 0x1d2a36, TYRE = 0x151515, RIM = 0xc4c8ce, TAIL = 0x8a1410, BRAKE = 0xff3020, HEAD = 0xfff2c0, RED = 0xe02020, BLUE = 0x2a5cff, WHITE = 0xf0f0ea;
-const CAR_COLORS = [0xb8bcc2, 0x2f4a7a, 0x9a2b2b, 0xe0d8c0, 0x3d5a3a, 0x1e1e22, 0xc9a227];
+import { CAR_COLORS, VEHICLES } from '../../shared/traffic.js';
+export { VEHICLES };
 
 /* body styles: each adds its meshes to g and may register `flash` (siren) meshes, returning nothing */
 const WHEEL = new THREE.CylinderGeometry(1, 1, 1, 20);   // round (GEO.cyl has 7 sides), axis = y, rotated onto x below
@@ -85,17 +86,6 @@ const STYLES = {
     wheels(g, w, [-len / 2 + 1.6, len / 2 - 1.2, len / 2 - 2.5], .42, 0x20406a); lights(g, w, len, 1.1, 1.3);
   },
 };
-/* types: size (m), mass = hull-damage multiplier, v = cruise speed range m/s (truck governor is 28), presets = weighted AI behaviours, rare = spawn weight */
-export const VEHICLES = {
-  sedan:     { name: 'car', len: 4.6, w: 1.85, h: 1.7, mass: 1,   v: [16, 26], rare: 10, presets: { cruise: 5, slow: 2, tailgate: 2, overtake: 3, weave: 1 } },
-  truck:     { name: 'truck', len: 7.5, w: 2.4,  h: 3.4, mass: 1.8, v: [13, 21], rare: 4,  presets: { cruise: 5, slow: 3, tailgate: 1 } },
-  bus:       { name: 'bus', len: 12,  w: 2.55, h: 3.3, mass: 2.2, v: [14, 20], rare: 3,  presets: { cruise: 5, slow: 2 } },
-  freighter: { name: 'freighter', len: 17,  w: 2.5,  h: 4.0, mass: 3,   v: [13, 20], rare: 4,  presets: { cruise: 6, slow: 3 } },
-  police:    { name: 'police car', len: 4.8,  w: 1.9,  h: 1.8, mass: 1.1, v: [22, 30], rare: 2,  presets: { cruise: 2, emergency: 3, tailgate: 1 } },
-  medic:     { name: 'ambulance', len: 6.2,  w: 2.2,  h: 3.0, mass: 1.5, v: [24, 32], rare: 1.2, presets: { emergency: 1 } },
-  fire:      { name: 'fire truck', len: 9,    w: 2.5,  h: 3.3, mass: 2.5, v: [22, 30], rare: 1,  presets: { emergency: 1 } },
-};
-for (const [k, d] of Object.entries(VEHICLES)) { d.type = k; }
 // create every material up front so FLIP_MATS (snapshotted by render.js at load) is complete
 for (const c of [HEAD, TAIL, BRAKE, RED, BLUE, AMBER]) lampMat(c);
 for (const c of [GLASS, TYRE, RIM, 0x6a7078, 0x8a5a14, RED, WHITE, 0x15191f, 0x4a5a6a, 0xd8d4c8, 0xc8c8c0, 0xe8c020, 0xd89a20, 0x20406a, 0xe3e1d9, 0x1d3a5c, ...CAR_COLORS]) mat(c);

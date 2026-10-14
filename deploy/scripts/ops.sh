@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # READ-ONLY look at production (logs, nginx, database, containers). Changes nothing on the server – never deploys, never writes to the database.
-#   npm run ops -- logs  [--service app|postgres] [--lines N] [--since 30m] [--grep REGEX] [--errors]
+#   npm run ops -- logs  [--service app|worker|postgres|redis] [--lines N] [--since 30m] [--grep REGEX] [--errors]
 #   npm run ops -- nginx [--error] [--lines N] [--grep REGEX]
 #   npm run ops -- sql   "SELECT …"            (or SQL on stdin; runs in a read-only transaction, 15 s statement timeout)
 #   npm run ops -- query <name> [arg]          (canned queries, see deploy/scripts/ops-queries.sql: `npm run ops -- query list`)

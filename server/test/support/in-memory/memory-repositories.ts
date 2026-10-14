@@ -26,6 +26,8 @@ import { RideBatchRepositoryPort } from '../../../src/application/ports/telemetr
 import { RideBatch, type BatchFacts } from '../../../src/domain/telemetry/ride-batch.entity.js';
 import { RideVerdictRepositoryPort } from '../../../src/application/ports/verdict/ride-verdict.repository.port.js';
 import { RideVerdict } from '../../../src/domain/verdict/ride-verdict.entity.js';
+import { RideReplayRepositoryPort } from '../../../src/application/ports/verdict/ride-replay.repository.port.js';
+import { RideReplay } from '../../../src/domain/verdict/ride-replay.entity.js';
 import { VerdictStatus } from '../../../src/domain/verdict/verdict.dto.js';
 import { badgeRejected } from '../../../src/domain/achievements/achievements.js';
 import { SignInRepositoryPort, type SignInSummary } from '../../../src/application/ports/auth/sign-in.repository.port.js';
@@ -412,6 +414,54 @@ export class MemoryRideVerdictRepository extends RideVerdictRepositoryPort {
   async findByRide(rideId: string): Promise<RideVerdict | null> {
     const v = this.db.verdicts.get(rideId);
     return v ? RideVerdict.restore(v) : null;
+  }
+}
+
+@Injectable()
+export class MemoryRideReplayRepository extends RideReplayRepositoryPort {
+  constructor(private readonly db: MemoryDb) { super(); }
+
+  async save(replay: RideReplay): Promise<RideReplay> {
+    const snap = replay.snapshot();
+    this.db.replays.set(replay.id, snap);
+    return RideReplay.restore(snap);
+  }
+
+  async findById(id: string): Promise<RideReplay | null> {
+    const r = this.db.replays.get(id);
+    return r ? RideReplay.restore(r) : null;
+  }
+
+  async listByRide(rideId: string): Promise<RideReplay[]> {
+    return [...this.db.replays.values()]
+      .filter((r) => r.rideId === rideId)
+      .sort((a, b) => b.seq - a.seq || b.queuedAt.getTime() - a.queuedAt.getTime())
+      .map((r) => RideReplay.restore(r));
+  }
+
+  async findLatestByRide(rideId: string): Promise<RideReplay | null> {
+    return (await this.listByRide(rideId))[0] ?? null;
+  }
+
+  async listPending(limit: number): Promise<RideReplay[]> {
+    return [...this.db.replays.values()]
+      .filter((r) => r.status === VerdictStatus.Pending)
+      .sort((a, b) => Number(b.isPaid) - Number(a.isPaid) || a.queuedAt.getTime() - b.queuedAt.getTime())
+      .slice(0, limit)
+      .map((r) => RideReplay.restore(r));
+  }
+
+  async listRecent(filter: { status?: string; isPaid?: boolean; limit: number }): Promise<RideReplay[]> {
+    return [...this.db.replays.values()]
+      .filter((r) => (!filter.status || r.status === filter.status) && (filter.isPaid === undefined || r.isPaid === filter.isPaid))
+      .sort((a, b) => b.queuedAt.getTime() - a.queuedAt.getTime() || b.seq - a.seq)
+      .slice(0, filter.limit)
+      .map((r) => RideReplay.restore(r));
+  }
+
+  async nextSeq(rideId: string): Promise<number> {
+    const existing = [...this.db.replays.values()].filter((r) => r.rideId === rideId);
+    return existing.length ? Math.max(...existing.map((r) => r.seq)) + 1 : 1;
   }
 }
 

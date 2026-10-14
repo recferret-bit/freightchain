@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ADMIN_LIST_MAX, type AdminRideFilter } from '../../../domain/admin/admin.dto.js';
+import { ADMIN_LIST_MAX, type AdminReplayFilter, type AdminRideFilter } from '../../../domain/admin/admin.dto.js';
 import { LOG_LEVELS, type LogFilter } from '../../../domain/ops/log-entry.js';
 import { RideStatus } from '../../../domain/rides/ride-status.js';
 import { NOTE_MAX_LENGTH } from '../../../domain/verdict/ride-verdict.entity.js';
@@ -24,6 +24,19 @@ export const adminRidesQuerySchema = z
     ...(q.review ? { review: q.review } : {}), ...(q.pool !== undefined ? { poolId: q.pool } : {}),
   }));
 export type AdminRidesQuery = z.infer<typeof adminRidesQuerySchema>;
+
+export const adminReplaysQuerySchema = z
+  .object({
+    status: z.preprocess((v) => (v === '' ? undefined : v), z.enum(['pending', 'verified', 'flagged', 'rejected']).optional()),
+    paid: z.preprocess((v) => (v === '' ? undefined : v), z.enum(['true', 'false']).optional()),
+    limit: limit(50),
+  })
+  .transform((q): AdminReplayFilter => ({
+    limit: q.limit,
+    ...(q.status ? { status: q.status } : {}),
+    ...(q.paid !== undefined ? { isPaid: q.paid === 'true' } : {}),
+  }));
+export type AdminReplaysQuery = z.infer<typeof adminReplaysQuerySchema>;
 
 export const signInsQuerySchema = z.object({ wallet: z.preprocess((v) => (v === '' ? undefined : v), walletAddressSchema.optional()), limit: limit(100) });
 export type SignInsQuery = z.infer<typeof signInsQuerySchema>;

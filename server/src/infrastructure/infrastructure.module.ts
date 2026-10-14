@@ -108,6 +108,11 @@ import { SitePresencePort } from '../application/ports/live/site-presence.port.j
 import { MemorySitePresenceAdapter } from './live/site-presence.memory.adapter.js';
 import { NameServicePort } from '../application/ports/sns/name-service.port.js';
 import { SnsNameServiceAdapter } from './sns/sns-name-service.adapter.js';
+import { RideReplayRepositoryPort } from '../application/ports/verdict/ride-replay.repository.port.js';
+import { RideReplayPrismaRepository } from './prisma/repositories/ride-replay.prisma.repository.js';
+import { ReplayQueuePort } from '../application/ports/verdict/replay-queue.port.js';
+import { MemoryReplayQueueAdapter } from './verdict/memory-replay-queue.adapter.js';
+import { RedisReplayQueueAdapter } from './verdict/redis-replay-queue.adapter.js';
 
 /** Every port the application layer declares is bound to its adapter here – the only place that knows which implementation runs. */
 const ports: Provider[] = [
@@ -117,6 +122,8 @@ const ports: Provider[] = [
   { provide: LogBufferPort, useClass: RingLogBufferAdapter },
   { provide: RideBatchRepositoryPort, useClass: RideBatchPrismaRepository },
   { provide: RideVerdictRepositoryPort, useClass: RideVerdictPrismaRepository },
+  { provide: RideReplayRepositoryPort, useClass: RideReplayPrismaRepository },
+  { provide: ReplayQueuePort, inject: [EnvService, ClockPort], useFactory: (env: EnvService, clock: ClockPort): ReplayQueuePort => (env.redisUrl ? new RedisReplayQueueAdapter(env.redisUrl, clock) : new MemoryReplayQueueAdapter()) },
   { provide: SignInRepositoryPort, useClass: SignInPrismaRepository },
   { provide: AdminActionRepositoryPort, useClass: AdminActionPrismaRepository },
   { provide: AdminQueryPort, useClass: AdminQueryPrismaRepository },

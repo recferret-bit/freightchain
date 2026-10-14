@@ -176,7 +176,7 @@ if (holdable) {
 // ── SETTINGS: a knob (signed), one wallet's free rides (signed, +/-), a form mistake signs nothing
 const setsBefore = await A.ev('window.__signed');
 await A.ev('location.hash = "#settings"');
-check('settings: the tab lists the knobs with their values', await until(async () => (await A.ev('document.querySelectorAll("#set-table input").length')) === 4 && (await A.ev('document.querySelector("#set-table input[data-key=free_rides_daily_max]")?.value')) === '5'));
+check('settings: the tab lists the knobs with their values', await until(async () => (await A.ev('document.querySelectorAll("#set-table input").length')) === 2 && (await A.ev('document.querySelector("#set-table input[data-key=free_rides_daily_max]")?.value')) === '5'));
 await A.shot('settings-desktop');
 await A.ev('(() => { const i = document.querySelector("#set-table input[data-key=free_rides_daily_max]"); i.value = "7"; })()');
 await A.ev('document.querySelector("#set-table button[data-key=free_rides_daily_max]").click()');
@@ -222,6 +222,8 @@ check('logs: lines for the ride id (requests + the verdict and admin events)', a
 await A.shot('logs-desktop');
 await A.ev('location.hash = "#rides"');
 check('rides: the table lists the ride', await until(async () => (await A.ev('document.querySelector("tbody")?.textContent || ""')).includes(rider.short)));
+await A.ev('location.hash = "#replays"');
+check('replays: the replay verification queue and sessions render', await until(async () => /REPLAY VERIFICATION · QUEUE/.test(await A.ev('document.querySelector("#view h2")?.textContent || ""')) && (await A.ev('document.getElementById("replay-table")?.textContent || ""')).includes(ride.id.slice(0, 8))));
 await size(A, 390, 844, true); await sleep(300); await A.shot('rides-phone');
 await A.ev(`location.hash = "#ride/${ride.id}"`); await sleep(800); await A.shot('ride-phone');
 

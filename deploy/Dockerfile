@@ -8,6 +8,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-cert
 WORKDIR /app/server
 COPY server/package.json server/package-lock.json ./
 RUN npm ci --ignore-scripts            # postinstall's `prisma generate` needs the schema, which is copied next
+COPY client/shared/ /app/client/shared/
+COPY shared/ /app/shared/
 COPY server/ ./
 RUN npx prisma generate && npm run build
 
@@ -17,6 +19,7 @@ RUN npx prisma generate && npm run build
 FROM node:24-bookworm-slim AS landing
 WORKDIR /app
 COPY client/ ./client/
+COPY shared/ ./shared/
 COPY server/src/domain/rides/ride-tier.ts server/src/domain/rides/ride-rules.ts server/src/domain/rides/ride-challenge.ts ./server/src/domain/rides/
 COPY server/src/domain/verdict/verdict-rules.ts ./server/src/domain/verdict/
 COPY server/src/domain/telemetry/telemetry-rules.ts ./server/src/domain/telemetry/
@@ -43,6 +46,7 @@ COPY --from=build --chown=node:node /app/server/dist ./dist
 COPY --from=build --chown=node:node /app/server/prisma ./prisma
 COPY --from=build --chown=node:node /app/server/package.json ./package.json
 COPY --chown=node:node client/ /app/client/
+COPY --chown=node:node shared/ /app/shared/
 COPY --from=landing --chown=node:node /app/landing/dist /app/landing/dist
 USER node
 EXPOSE 3000

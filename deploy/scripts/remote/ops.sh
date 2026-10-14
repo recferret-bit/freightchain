@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Runs ON THE SERVER: READ-ONLY observation (piped over ssh by deploy/scripts/ops.sh). Nothing here changes the server.
 #   $1 = logs | nginx | sql | ps
-#   logs   SERVICE=app|postgres LINES=200 SINCE=<docker --since, e.g. 30m / 2026-10-08T10:00:00> GREP=<extended regex> ERRORS=1 (level warn/error only)
+#   logs   SERVICE=app|worker|postgres|redis LINES=200 SINCE=<docker --since, e.g. 30m / 2026-10-08T10:00:00> GREP=<extended regex> ERRORS=1 (level warn/error only)
 #   nginx  WHICH=access|error LINES=200 GREP=<regex>
 #   sql    SQL_B64=<base64 SQL>  – runs in a READ-ONLY transaction (default_transaction_read_only=on): a write fails, nothing is committed
 #   ps     the stack's containers, their health, restarts and the volume / disk use
@@ -33,7 +33,7 @@ case "$CMD" in
     ;;
   ps)
     docker ps -a -f "label=com.docker.compose.project=$PROJECT" --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}\t{{.RunningFor}}'
-    for s in app postgres redis; do id="$(cid "$s")"; [ -n "$id" ] && echo "$s restarts: $(docker inspect -f '{{.RestartCount}}' "$id")"; done
+    for s in app worker postgres redis; do id="$(cid "$s")"; [ -n "$id" ] && echo "$s restarts: $(docker inspect -f '{{.RestartCount}}' "$id")"; done
     docker system df --format 'table {{.Type}}\t{{.Size}}\t{{.Reclaimable}}' 2>/dev/null || true
     df -h / | awk 'NR==2{print "disk /: "$4" free ("$5" used)"}'
     ;;

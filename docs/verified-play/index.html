@@ -16,7 +16,7 @@
 <header>
   <span class="eyebrow">Freight Chain · how a shift is checked</span>
   <h1>Verified Play</h1>
-  <p class="lede">Every online shift is recorded while you drive. When it completes, the server checks the recording before the shift can rank on a paid leaderboard. It doesn't replay your drive. It checks that the recording is complete, physically possible, matches the ride – and the road: the holes are the server's, and your truck has to have felt them – and was driven by a person.</p>
+  <p class="lede">Every online shift is recorded while you drive. When it completes, the server checks the recording before the shift can rank on a paid leaderboard. It checks that the recording is complete, physically possible, matches the ride – and re-simulates the 10 Hz trace against the server's road, drivetrain physics, seeded traffic and spectator donations (<code>@freightchain/shared</code>) – and was driven by a person.</p>
   <div class="status">
     <span class="pill">rules <b>v4</b></span>
     <span class="pill">mode <b>shadow</b> · verdicts shown, boards not affected yet</span>
@@ -38,7 +38,7 @@
     <div class="step"><span class="n">1</span><span class="where">In your browser</span><h3>Record</h3><p>Every key press and release, and the truck's state 10 times a second, while an online ride is on the road.</p></div>
     <div class="step"><span class="n">2</span><span class="where">Every 15 s</span><h3>Seal</h3><p>The game packs the last 15 seconds into a batch, fingerprints it with SHA-256 and links it to the batch before.</p></div>
     <div class="step"><span class="n">3</span><span class="where">On the server</span><h3>Store</h3><p>The server recomputes the fingerprint, checks the batch's shape and limits, measures what the judge will need, and stores it. Stored batches never change.</p></div>
-    <div class="step"><span class="n">4</span><span class="where">When the shift completes</span><h3>Judge</h3><p>All batches are checked together: the chain, the physics, the distance, the coverage, the server's road, the timing of your hands, and whether you answered the dispatch prompts.</p></div>
+    <div class="step"><span class="n">4</span><span class="where">When the shift completes</span><h3>Judge</h3><p>All batches are checked together: the chain, the physics, the distance, the coverage, the server's road, the 10 Hz replay worker (traffic, physics &amp; donations), the timing of your hands, and whether you answered the dispatch prompts.</p></div>
     <div class="step"><span class="n">5</span><span class="where">Result</span><h3>Rank</h3><p><span class="chip ok">verified</span> shifts rank. Flagged ones wait for a person. Rejected ones don't rank.</p></div>
   </div>
 </section>
@@ -68,7 +68,7 @@
         <div class="cell"><span class="v">21.5</span><span class="k">clock · h</span></div>
         <div class="cell"><span class="v">11</span><span class="k">switches</span></div>
       </div>
-      <p class="soft" style="font-size:13px;margin:8px 0 0">The last two – the hour of the day and the cab's switches (engine, lights, wipers, parking brake) – are not judged: they let spectators replay the ride as you saw it (live streams). For the same reason each batch also carries the nearby traffic, twice a second – <i>beside</i> the batch, outside its fingerprint, never judged.</p>
+      <p class="soft" style="font-size:13px;margin:8px 0 0">The hour of the day and the cab's switches (engine, lights, wipers, parking brake) also feed the 10 Hz replay worker and let spectators replay the ride as you saw it (live streams). Each batch also carries the nearby traffic snapshots twice a second beside the batch, while the backend independently re-simulates deterministic PRNG traffic from the ride seed.</p>
     </div>
     <div class="spec">
       <div class="top" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><h3>Input event</h3><span class="chip pen">≤ 2000 per batch</span></div>
@@ -117,7 +117,7 @@
         <li><b>Ends where the ride ended</b><span class="soft">The last recorded distance matches the distance the ride reported, within 30 m + 1 %, allowing for seconds whose final upload never arrived.</span><span class="c">recording-mismatch</span></li>
         <li><b>Covers the drive</b><span class="soft">Under 50 % of the driven time recorded rejects. Under 90 % only flags.</span><span class="c">recording-incomplete · recording-gaps (flag)</span></li>
         <li><b>Someone drove</b><span class="soft">A truck that moved more than 50 m needs key presses, and gas among them.</span><span class="c">no-inputs · no-throttle-input</span></li>
-        <li><b>Matches the server's road</b><span class="soft">The holes are the server's: driving through two of them at speed with no damage rejects (one flags). More than 27 s off the road rejects – the game itself ends a ride after 20 s. Gaining speed with the gas pedal up is impossible on a flat road: 2 m/s of it, or 5 such moments, reject; fewer flag.</span><span class="c">obstacle-ignored · obstacle-no-impact (flag) · offroad-ignored · accel-without-gas</span></li>
+        <li><b>Matches the server's road, traffic &amp; 10 Hz replay</b><span class="soft">The holes and traffic come from the seed via <code>@freightchain/shared</code>: driving through two planned or donated holes at speed with no damage, or ignoring a direct traffic crash, rejects. More than 27 s off the road rejects – the game itself ends a ride after 20 s. Gaining speed with the gas pedal up or diverging from the 10 Hz drivetrain replay rejects or flags.</span><span class="c">obstacle-ignored · offroad-ignored · accel-without-gas · traffic-collision-ignored · traffic-damage-ignored · donated-obstacle-ignored · physics-speed-mismatch</span></li>
         <li><b>Challenge channel</b><span class="soft">The heartbeat can carry a challenge and the cab handler will show it. Kinds live in a table that is empty today, so nothing is issued. When a kind is live: 20 s countdown, the recording must show that key. Ignore half or more of 3+ prompts and the shift rejects; one missed only flags.</span><span class="c">challenges-ignored · challenge-missed (flag)</span></li>
       </ul>
     </div>
@@ -289,7 +289,7 @@
     <h2 id="s-limits">What this does not do</h2>
   </div>
   <ul class="limits">
-    <li><b>The server doesn't replay your drive.</b><span>The game runs on your computer and its physics can't be re-run on the server. It checks that the recording agrees with the server's road – a game modified to fake the exact hull loss at every hole would pass that check. A careful bot playing the real game with human-like timing could pass the automatic checks. That is why flagged shifts go to a person, and why the checks keep being tightened.</span></li>
+    <li><b>10 Hz float replay vs fixed-point.</b><span>The server's 10 Hz <code>ReplayEngine</code> shares <code>@freightchain/shared</code> with the browser to verify road holes, <code>0.05 s</code> longitudinal physics substeps, 4-substep swept cab + trailer traffic collisions and spectator donations. Because browser frames run in IEEE-754 floats at variable <code>dt</code>, a 1.8× per-step acceleration ratio margin applies, and a careful bot playing the real game with human-like timing could still pass automatic checks. That is why flagged shifts go to a person, and why the checks keep being tightened.</span></li>
     <li><b>The thresholds are first estimates.</b><span>Rules v3 (the prompt and road rules included) have not been tuned on real rides yet. Until they are, the leaderboards ignore verdicts (shadow mode). After a change, old rides are judged again at the new rules from the command line.</span></li>
     <li><b>Verdicts decide ranking only.</b><span>An entry fee goes into the weekly pool whatever the outcome of the ride. Prize payouts are not built yet.</span></li>
     <li><b>A refused batch ends the recording.</b><span>If the server refuses a malformed batch, the game stops recording for that ride and the reason is logged, so an admin can see why the verdict came out as it did.</span></li>

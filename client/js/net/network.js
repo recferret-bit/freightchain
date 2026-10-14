@@ -17,10 +17,8 @@ import { trip } from '../trips.js';
      the other is its mirror image about the chord (`altAt`), drawn beside it. Same length, same lanes, same holes: in (s, d) they are one road, so a
      switch (`setChoice`, at the commit point – net/orchestrator.js) only re-integrates the spine's geometry inside the fork.
    Lanes: lane i of a direction is centred at dir·(LANE0 + i·LW) – the inner lane stays at ±2.4 as on the old two-lane road, extra lanes are added outward. */
-const LANE0 = 2.4;
-export const LW = 4.2, TAPER = 120, SHOULDER = 1.2, SIDE_LEN = 450;
-export const edgeOf = n => 4.5 + (n - 1) * LW;            // edge-line distance from the centre for n lanes (fractional during a taper)
-export const laneLat = (dir, i) => dir * (LANE0 + i * LW);
+import { LW, TAPER, SHOULDER, SIDE_LEN, edgeOf, laneLat } from '../../shared/road.js';
+export { LW, TAPER, SHOULDER, SIDE_LEN, edgeOf, laneLat };
 const ACCESS = { nR: 1, nL: 1, centre: 'none', edge: false, pat: 'access' };   // depot road: plain two-lane width, unmarked
 
 const smooth = x => x * x * (3 - 2 * x);

@@ -140,6 +140,10 @@ test('numbers: the server\'s road – verdict-rules.ts, and the game\'s own cons
   assert.match(cfg, /MAX_SPEED: 28,/); assert.match(holes, /sinkhole: \{[^\n]*\], dmg: 14, slow: \.35,/); assert.match(damage, /clamp\(st\.v \/ 28, 0, 1\.2\) \*\* 2 \* \(axle \? \.6 : 1\)/);
   assert.match(text, /dmg × \(v\/28\)²\s+– 14 % for the front axle in a sinkhole at 28 m\/s, rear axles × 0\.6/);
   assert.match(text, /stamps NO IMPACT/);
+  assert.match(text, /@freightchain\/shared/);
+  for (const code of ['traffic-collision-ignored', 'traffic-damage-ignored', 'donated-obstacle-ignored', 'event-unapplied', 'event-clock-mismatch', 'physics-speed-mismatch']) {
+    assert.ok(html.includes(code), `whitepaper missing replay flag code ${code}`);
+  }
 });
 
 test('numbers: live-stream prices and limits equal live-rules.ts', () => {

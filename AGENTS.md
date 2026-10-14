@@ -6,7 +6,7 @@ This file is the map and the hard rules only. The detail lives in **`docs/agents
 
 ## Repo
 
-`client/` the game (`play.html`, `js/`) + site pages (lobby, admin, viewer, `r.html`, `blink.html`, `site/`) · `landing/` the `/` page + whitepaper (Vite) · `server/` the API (Clean Architecture, `prisma/`, `test/`) · `programs/freightchain-pools` the escrow program · `media/` promo clips + sound · `pentest/` multi-agent penetration testing suite · `deploy/` production deploy · `design/` icons, banners · `docs/` architecture + explainers · `.claude/skills/` project skills · `docker-compose.yml` local PostgreSQL (:15433) + optional Redis.
+`client/` the game (`play.html`, `js/`, `shared/`) + site pages (lobby, admin, viewer, `r.html`, `blink.html`, `site/`) · `shared/` workspace package (`@freightchain/shared`) re-exporting `client/shared/` · `landing/` the `/` page + whitepaper (Vite) · `server/` the API + `replay:worker` (Clean Architecture, `prisma/`, `test/`) · `programs/freightchain-pools` the escrow program · `media/` promo clips + sound · `pentest/` multi-agent penetration testing suite · `deploy/` production deploy · `design/` icons, banners · `docs/` architecture + explainers · `.claude/skills/` project skills · `docker-compose.yml` local PostgreSQL (:15433) + optional Redis & worker.
 
 ## Where the detail is (`docs/agents/`)
 
@@ -17,7 +17,7 @@ This file is the map and the hard rules only. The detail lives in **`docs/agents
 | routes / themes, road network + forks, landmarks, model viewer, climate, day / night | `world.md` |
 | controls, gameplay systems (holes, traffic, gearbox, battery, engine, damage…) | `gameplay.md` |
 | server rules, server checks, configuration | `server.md` |
-| verified play (telemetry, verdict, the server's road) | `verified-play.md` |
+| verified play (telemetry, verdict, the server's road, 10 Hz replay verification) | `verified-play.md` |
 | statistics | `statistics.md` |
 | live board, live streams, replays, donations | `live.md` |
 | admin page, observing production | `admin-ops.md` |
@@ -48,10 +48,10 @@ Server (`docs/backend-architecture.md`, enforced by `server/test/architecture`):
 - Solana Actions (`/actions.json`, `/api/actions/*`) are public devnet blinks: CORS `*` on those paths only, `{message}` errors, one program-mode ticket, both profile stamps still required. Detail in `docs/agents/server.md`.
 
 Game ⇄ server:
-- The server rebuilds the road and judges on it (`server/src/domain/road` ports `js/net/network.js` + `js/net/obstacles.js`). Changing the generator, `PATTERNS`, a trip's `road` / `holesFrom`, `FORK`, `HOLES`, the hole roll, the damage rule in `sim/damage.js` or the off-road rule = change the port in the same commit (`road-drift.spec.ts`).
+- The server rebuilds the road and judges on it (`server/src/domain/road` ports `js/net/network.js` + `js/net/obstacles.js`) and runs a 10 Hz `ReplayEngine` using `@freightchain/shared` (`client/shared/` → `prng.js`, `road.js`, `traffic.js`, `physics.js`). Changing the generator, `PATTERNS`, a trip's `road` / `holesFrom`, `FORK`, `HOLES`, the hole roll, the damage rule in `sim/damage.js`, traffic simulation in `client/shared/traffic.js`, physics in `client/shared/physics.js` or the off-road rule = change the port / shared module in the same commit (`road-drift.spec.ts`, `replay-engine.spec.ts`).
 - Trip ids are FROZEN once rides carry them – retune with a new id. The route and start hour of a ride are the server's.
 - Recorded sample columns are append-only; input bits are frozen.
-- `RIDE_MIN_SECONDS` 300 is a test value (production 1800); it is only the NOMINAL shift length now (it sets the finish line, `completeDist`) – a shift completes the moment the line is reached, no minimum time. Client-side checks are not security. The sim is not deterministic (floats, variable `dt`, `Math.random`) – don't add `Math.random()` to gameplay logic without noting it.
+- `RIDE_MIN_SECONDS` 300 is a test value (production 1800); it is only the NOMINAL shift length now (it sets the finish line, `completeDist`) – a shift completes the moment the line is reached, no minimum time. Client-side checks are not security. Don't add `Math.random()` to gameplay logic – use the seeded PRNG (`mulberry32`) in `@freightchain/shared`.
 
 Client:
 - Reach the API and other hosts only through `client/js/hosts.js` with `credentials: 'include'` – never a bare `/api/…` or `/play.html` (landing included). A new subdomain = its own nginx template + `deploy/scripts/remote/setup.sh` + smoke check, and `hosts.js` must strip the prefix.
@@ -67,6 +67,8 @@ Achievements: ids are FROZEN (add a tier, never retune one); unlock rows are app
 Analytics: capture is opt-in (`POSTHOG_ENABLED=1`); never print `POSTHOG_KEY`; don't flip `$create_alias`.
 
 Secrets: read env files by key name only, never print values; never commit `deploy/.env` / `deploy/secrets/`; example files hold dummies.
+
+AGY: use Argon (Pro) for heavy reasoning and planning (via `/boost` or subagents); use Gemini Flash 3.8 for implementation and routine code changes.
 
 **Deploy: nothing reaches production unless the user asks for a deploy in their current message** – not after "commit", "merge", "fix it" or a finished feature. Read-only is always fine (`npm run deploy -- --dry-run`, `deploy:status`, `npm run ops`, the `prod-*` skills). Steps: `docs/agents/deploy.md`.
 

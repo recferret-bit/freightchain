@@ -36,7 +36,7 @@ export function adminScenarios(h: () => Harness): void {
 
   it('does not exist for anyone but an admin: signed out, a rider, even with the header → 404 on every route', async () => {
     const rider = await login();
-    for (const path of ['overview', 'rides', 'rides/x', 'signins', 'actions', 'logs', 'settings', 'queue/count', 'players', `players/${rider.address}`, 'pools', 'pools/1', 'pool-payouts', 'stats', 'sessions']) {
+    for (const path of ['overview', 'rides', 'replays', 'rides/x', 'signins', 'actions', 'logs', 'settings', 'queue/count', 'players', `players/${rider.address}`, 'pools', 'pools/1', 'pool-payouts', 'stats', 'sessions']) {
       await anon().get(`/api/admin/${path}`).expect(404);
       await rider.agent.get(`/api/admin/${path}`).set('x-fc-admin', '1').expect(404);
     }
@@ -100,6 +100,10 @@ export function adminScenarios(h: () => Harness): void {
     expect(queue).toEqual([expect.objectContaining({ id, wallet: rider.address, status: 'completed', verdict: 'flagged', overridden: false })]);
     const detail = (await admin.agent.get(`/api/admin/rides/${id}`).expect(200)).body;
     expect(detail.verdict.reasons[0].code).toBe('recording-gaps');
+    expect(detail.replays).toHaveLength(1);
+    expect(detail.replays[0]).toMatchObject({ rideId: id, seq: 1, simHz: 10 });
+    const replaysList = (await admin.agent.get('/api/admin/replays').expect(200)).body;
+    expect(replaysList.rows[0]).toMatchObject({ rideId: id, seq: 1 });
     expect(detail.batches.map((b: { seq: number }) => b.seq)).toEqual([0, 1]);
 
     const refused = await admin.agent.post(`/api/admin/rides/${id}/verdict`).send({ decision: 'verified' }).expect(403);

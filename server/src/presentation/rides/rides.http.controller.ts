@@ -11,6 +11,8 @@ import { HeartbeatRideCommand } from '../../application/use-cases/rides/heartbea
 import { ReconcilePaymentCommand, type ReconcilePaymentResultDto } from '../../application/use-cases/rides/reconcile-payment/reconcile-payment.command.js';
 import { StartRideCommand } from '../../application/use-cases/rides/start-ride/start-ride.command.js';
 import { UploadBatchCommand } from '../../application/use-cases/telemetry/upload-batch/upload-batch.command.js';
+import { GetRideReplaysQuery } from '../../application/use-cases/verdict/get-ride-replays/get-ride-replays.query.js';
+import type { RideReplaysDto } from '../../domain/verdict/ride-replay.entity.js';
 import type { BatchBody } from '../../domain/telemetry/ride-batch.entity.js';
 import type { BatchReceiptDto } from '../../domain/telemetry/telemetry.dto.js';
 import { CurrentPlayer } from '../../infrastructure/http/decorators/current-player.js';
@@ -46,6 +48,11 @@ export class RidesHttpController {
   @Get(':id')
   get(@CurrentPlayer() player: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams): Promise<RideDto> {
     return this.queryBus.execute<GetRideQuery, RideDto>(new GetRideQuery(player.wallet, params.id));
+  }
+
+  @Get(':id/replays')
+  replays(@CurrentPlayer() player: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams): Promise<RideReplaysDto> {
+    return this.queryBus.execute<GetRideReplaysQuery, RideReplaysDto>(new GetRideReplaysQuery(player.wallet, params.id));
   }
 
   @Get(':id/payment')

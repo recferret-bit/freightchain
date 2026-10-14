@@ -26,7 +26,7 @@ services:
       retries: 20
       start_period: 3s
 
-  # cache for the public statistics, optional (without REDIS_URL the server caches in process). Loopback only + a password, like everything here:
+  # cache for the public statistics and the replay verification queue (`fc:replay-queue:*`), optional (without REDIS_URL the server uses in-memory equivalents). Loopback only + a password, like everything here:
   #   REDIS_URL=redis://:freight_dev_redis@127.0.0.1:16380 in server/.env
   redis:
     image: redis:7-alpine
@@ -43,6 +43,25 @@ services:
       interval: 3s
       timeout: 3s
       retries: 20
+
+  # dedicated 10 Hz replay verification worker (optional locally via `docker compose --profile worker up -d`):
+  worker:
+    profiles: ["worker"]
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+    container_name: freightchain-worker
+    restart: unless-stopped
+    command: ["node", "dist/cli/index.js", "replay:worker"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${FREIGHT_POSTGRES_USER:-freight}:${FREIGHT_POSTGRES_PASSWORD:-freight_dev_password}@postgres:5432/${FREIGHT_POSTGRES_DB:-freightchain}
+      REDIS_URL: redis://:${FREIGHT_REDIS_PASSWORD:-freight_dev_redis}@redis:6379
 
 volumes:
   freightchain_pg_data:

@@ -9,6 +9,7 @@ import { StartRideCommand } from '../../../src/application/use-cases/rides/start
 import { HeartbeatRideCommand } from '../../../src/application/use-cases/rides/heartbeat-ride/heartbeat-ride.command.js';
 import { EndRideCommand } from '../../../src/application/use-cases/rides/end-ride/end-ride.command.js';
 import { UploadBatchCommand } from '../../../src/application/use-cases/telemetry/upload-batch/upload-batch.command.js';
+import { GetRideReplaysQuery } from '../../../src/application/use-cases/verdict/get-ride-replays/get-ride-replays.query.js';
 import { batchBodySchema, endRideBodySchema, heartbeatBodySchema, createRideBodySchema, confirmPaymentBodySchema, startRideBodySchema } from '../../../src/presentation/rides/dto/rides.dto.js';
 import { rideIdParamsSchema } from '../../../src/presentation/common/dto/common.dto.js';
 import { busMock } from '../../support/bus.js';
@@ -27,6 +28,7 @@ describe('RidesHttpController', () => {
     await c.create(me, { tier: 'free', level: 3 }); expect(commands.last()).toEqual(new CreateRideCommand('W', 'free', false, false, 3));
     await c.pending(me); expect(queries.last()).toEqual(new GetPendingRideQuery('W'));
     await c.get(me, params); expect(queries.last()).toEqual(new GetRideQuery('W', 'ride-1'));
+    await c.replays(me, params); expect(queries.last()).toEqual(new GetRideReplaysQuery('W', 'ride-1'));
     await c.payment(me, params); expect(queries.last()).toEqual(new GetPaymentInstructionsQuery('W', 'ride-1'));
     await c.confirm(me, params, { signature: 'S' }); expect(commands.last()).toEqual(new ConfirmPaymentCommand('W', 'ride-1', 'S'));
     await c.reconcile(me, params); expect(commands.last()).toEqual(new ReconcilePaymentCommand('W', 'ride-1'));
@@ -39,7 +41,7 @@ describe('RidesHttpController', () => {
     const batch = batchBodySchema.parse(recording('ride-1', { seconds: 10 })[0]);
     await c.batch(me, params, batch); expect(commands.last()).toEqual(new UploadBatchCommand('W', 'ride-1', batch));
     expect(commands.sent).toHaveLength(10);
-    expect(queries.sent).toHaveLength(3);
+    expect(queries.sent).toHaveLength(4);
   });
 
   it('returns what the handler returned, untouched', async () => {

@@ -1,30 +1,10 @@
-import { CHUNK_LEN, FORK, FORK_SWITCH_REACH, LANE0, LW, PATTERNS, SHOULDER, SIDE_LEN, SIGNAL_CROSS, SIGNAL_GREEN, START_ACCESS, START_TURN_R, TAPER, tripRoadOf, type JunctionPattern, type RoadPattern } from './road-rules.js';
+import { clamp, edgeOf, laneLat, mulberry32, rnd } from '../shared/index.js';
+import { CHUNK_LEN, FORK, FORK_SWITCH_REACH, PATTERNS, SHOULDER, SIDE_LEN, SIGNAL_CROSS, SIGNAL_GREEN, START_ACCESS, START_TURN_R, TAPER, tripRoadOf, type JunctionPattern, type RoadPattern } from './road-rules.js';
 
-/* The ride's road LAYOUT, rebuilt on the server from the seed: a line-for-line port of the generation half of client/js/net/network.js (segments, lane
-   layouts, junctions) – no curvature, no world coordinates, no floats beyond + − × ÷: everything the judge needs lives in road coordinates (s along the
-   centre line, d across it, + = right). The random stream is the game's own mulberry32, drawn in the same order, so the same seed gives the same road.
+/* The ride's road LAYOUT, rebuilt on the server from the seed using the shared PRNG and lane geometry (@freightchain/shared via ../shared/index.js).
    road-drift.spec.ts runs client/js/net/network.js beside this class and compares them. */
 
-/** mulberry32 – the game's seeded PRNG (client/js/util.js) */
-export function mulberry32(seed: number): () => number {
-  let a = seed | 0;
-  return () => {
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-/** client/js/util.js rnd – the sin hash the game places holes with (V8 in Node and in Chrome compute Math.sin bit for bit alike) */
-export function rnd(n: number): number {
-  const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
-  return x - Math.floor(x);
-}
-
-const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
-export const edgeOf = (n: number): number => 4.5 + (n - 1) * LW; // edge-line distance from the centre for n lanes (fractional in a taper)
-export const laneLat = (dir: number, i: number): number => dir * (LANE0 + i * LW);
+export { edgeOf, laneLat, mulberry32, rnd };
 
 export interface Segment { s0: number; s1: number; nR: number; nL: number; pat: string; prev: Segment; fork?: boolean }
 export interface Junction {

@@ -34,7 +34,7 @@ case "$CMD" in
     [ -n "$PREVIOUS" ] || { echo "no previous release to roll back to" >&2; exit 1; }
     [ -f "$ROOT/releases/$PREVIOUS/deploy/docker-compose.prod.yml" ] || { echo "release $PREVIOUS is gone (pruned)" >&2; exit 1; }
     echo "rolling back $CURRENT → $PREVIOUS"
-    cc "$PREVIOUS" up -d --no-build app
+    cc "$PREVIOUS" up -d --no-build app worker
     for i in $(seq 1 30); do healthy && break; sleep 2; done
     if healthy; then
       echo "$CURRENT" > "$STATE/previous"; echo "$PREVIOUS" > "$STATE/current"; ln -sfn "$ROOT/releases/$PREVIOUS" "$ROOT/current"
@@ -42,7 +42,7 @@ case "$CMD" in
       echo "now serving $PREVIOUS (the database keeps any newer migrations – they are forward-only)"
     else
       echo "ROLLBACK FAILED – $PREVIOUS is not healthy; putting $CURRENT back" >&2
-      cc "$CURRENT" up -d --no-build app; exit 1
+      cc "$CURRENT" up -d --no-build app worker; exit 1
     fi
     ;;
   stats)   # statistics reconcile through the running app container's CLI: a report (read-only), or FIX=1 = rewrite the rows. WALLET=<address> = one rider

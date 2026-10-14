@@ -1,9 +1,10 @@
 import { CFG } from './config.js';
 import { clamp } from './util.js';
+import { RATIOS } from '../shared/physics.js';
 
 /* Single mutable truck/ride state `st`, raw key state `input`, and sprung gauge display values `disp`. */
 
-export const RATIOS = [0, 6.15, 4.33, 3.05, 2.15, 1.51, 1.065, 0.75];   // 7 forward gears, geometric ×1.42 (spread 8.2:1; was 3:1, so 5th could pull from a crawl). An upshift at 2500 rpm lands ≈ 1750 (peak torque); top gear unchanged = same top speed.
+export { RATIOS };   // 7 forward gears, geometric ×1.42 (spread 8.2:1; was 3:1, so 5th could pull from a crawl). An upshift at 2500 rpm lands ≈ 1750 (peak torque); top gear unchanged = same top speed.
                                                                        // Each gear's useful range (km/h, 1000–2500 rpm): 1st 5–14 · 2nd 7–20 · 3rd 10–28 · 4th 14–40 · 5th 20–57 · 6th 28–80 · 7th 40–100
 export const MAX_GEAR = RATIOS.length - 1;
 export const REV_RATIO = 3.8;                // gear -1 (R)
