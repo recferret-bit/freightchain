@@ -176,6 +176,23 @@ describe('concurrency (PostgreSQL)', () => {
       expect(row).toMatchObject({ status: 'sent', attempts: 1, signature: `Sig${won.indexOf(true)}` });
     });
 
+    it('an admin HOLD racing prize claims (L11): no claim after the HOLD committed; held claims write nothing; no deadlock', async () => {
+      const now = harness.clock.now();
+      const pools = harness.app.get(PoolRepositoryPort, { strict: false }), ledger = harness.app.get(PoolPayoutRepositoryPort, { strict: false });
+      await pools.upsert(aPool({ id: 3, status: 'active' }, now));
+      await ledger.plan(Array.from({ length: PARALLEL }, (_, i) => ({ poolId: 3, rank: i + 1, wallet: `w${i}`, lamports: 1_000, status: 'planned' as const })), now);
+      const results = await Promise.all([
+        pools.saveHold(3, { by: 'Admin', at: now, note: 'stop' }).then(() => 'hold' as const),
+        ...Array.from({ length: PARALLEL }, (_, i) => ledger.claimSentUnlessHeld(3, i + 1, `Hold${i}`, 100, now).then((r) => ({ r }))),
+      ]);
+      const claims = results.slice(1) as { r: 'claimed' | 'held' | 'lost' }[];
+      const sent = (await ledger.listByPool(3)).filter((r) => r.status === 'sent');
+      expect(sent).toHaveLength(claims.filter((c) => c.r === 'claimed').length);
+      expect(claims.every((c) => c.r !== 'lost')).toBe(true);
+      expect(await ledger.claimSentUnlessHeld(3, 1, 'Late', 100, now)).toBe('held');   // once acknowledged, nothing more is claimed
+      expect((await ledger.listByPool(3)).filter((r) => r.status === 'sent')).toHaveLength(sent.length);
+    });
+
     it('an admin hold racing chain syncs of the same pool: the hold always survives', async () => {
       const now = harness.clock.now();
       const pools = harness.app.get(PoolRepositoryPort, { strict: false });

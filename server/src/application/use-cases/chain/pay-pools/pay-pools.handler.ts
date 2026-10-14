@@ -100,10 +100,14 @@ export class PayPoolsHandler implements ICommandHandler<PayPoolsCommand, PayoutP
 
       let rows = await this.payouts.listByPool(pool.id);
       if (!rows.length) await this.attention.markPool(pool.id); // before the plan only: once written, the plan is what gets paid
-      const unreviewed = rows.length ? [] : await this.rides.poolUnreviewed(pool.id, UNREVIEWED_LIMIT);
+      const unreviewed = await this.rides.poolUnreviewed(pool.id, UNREVIEWED_LIMIT);   // EVERY pass, plan or not (pentest M7): a ride put under review after the plan stops the money too
       if (unreviewed.length) {
         const n = unreviewed.length >= UNREVIEWED_LIMIT ? `${UNREVIEWED_LIMIT}+` : String(unreviewed.length);
         return await done(pool, 'waiting_review', `${n} ride(s) of this pool wait for an admin's decision`);
+      }
+      if (rows.some((r) => r.status !== 'paid')) {
+        const drift = await this.planDrift(pool, rows);
+        if (drift) return await done(pool, 'error', drift);   // decided 2026-10-14: stop for the admin, never re-plan by itself (the paid ranks fix how the share splits)
       }
 
       if (!rows.length) {
@@ -118,10 +122,14 @@ export class PayPoolsHandler implements ICommandHandler<PayPoolsCommand, PayoutP
       for (const row of rows) {
         if (row.status === 'paid') continue;
         const { outcome, note } = await this.payRow(pool, row, paidOnChain, paid);
-        if (outcome !== 'paid') return await done(pool, outcome === 'error' ? 'error' : 'paying', note);
+        if (outcome !== 'paid') return await done(pool, outcome === 'error' ? 'error' : outcome === 'held' ? 'held' : 'paying', note);
       }
+      const holdBefore = await this.heldNow(pool.id);
+      if (holdBefore) return await done(pool, 'held', holdBefore);   // a HOLD stops the attestations and the close too (L11)
       const attested = await this.attestPledged(pool);
       if (attested) return await done(pool, 'error', attested);
+      const holdAtClose = await this.heldNow(pool.id);   // read again right before the close: a HOLD acknowledged before this point stops it
+      if (holdAtClose) return await done(pool, 'held', holdAtClose);
       const { signature } = await this.payout.closePool(pool.id);
       await this.settle(signature);
       return await done(pool, 'paid', null, signature);
@@ -143,6 +151,23 @@ export class PayPoolsHandler implements ICommandHandler<PayPoolsCommand, PayoutP
     return null;
   }
 
+  /** The admin's HOLD as stored NOW (pentest L11: the job read it once per pass, so a HOLD acknowledged mid-pass did not stop the prizes after it). null = not held. */
+  private async heldNow(poolId: number): Promise<string | null> {
+    const p = await this.pools.findById(poolId);
+    return p?.hold ? (p.hold.note ?? `held by ${p.hold.by}`) : null;
+  }
+
+  /** The unpaid plan against the verified ranking NOW (pentest M7): a verdict decided after the plan (a ride rejected, another accepted) changes who should be
+      paid – stop, with what moved, for the admin. null = the plan still is the ranking. */
+  private async planDrift(pool: Pool, rows: readonly PoolPayoutRecord[]): Promise<string | null> {
+    const now = (await this.rides.poolRanking(pool.id, TOP20_SIZE, true)).map((r) => r.wallet);
+    const planned = [...rows].sort((a, b) => a.rank - b.rank).map((r) => r.wallet);
+    if (now.length === planned.length && now.every((w, i) => w === planned[i])) return null;
+    const first = planned.findIndex((w, i) => now[i] !== w);
+    const at = first >= 0 ? first : planned.length;
+    return `the verified ranking changed after the payout plan was written (rank ${at + 1}: planned ${planned[at] ?? '–'}, now ${now[at] ?? '–'}) – an admin decides; nothing more is paid until then`;
+  }
+
   /** the plan from the verified ranking; written once (rows that exist are kept) */
   private async plan(pool: Pool): Promise<PoolPayoutRecord[]> {
     const ranking = await this.rides.poolRanking(pool.id, TOP20_SIZE, true);
@@ -161,7 +186,7 @@ export class PayPoolsHandler implements ICommandHandler<PayPoolsCommand, PayoutP
   }
 
   /** one prize: 'paid' = go on to the next; 'wait' = a transaction is in flight (or another pass has it); 'error' = stop and say why */
-  private async payRow(pool: Pool, row: PoolPayoutRecord, paidOnChain: Set<string>, paid: PaidPrizeDto[]): Promise<{ outcome: 'paid' | 'wait' | 'error'; note: string | null }> {
+  private async payRow(pool: Pool, row: PoolPayoutRecord, paidOnChain: Set<string>, paid: PaidPrizeDto[]): Promise<{ outcome: 'paid' | 'wait' | 'error' | 'held'; note: string | null }> {
     const ok = { outcome: 'paid' as const, note: null };
     if (row.status === 'sent' && row.signature) {
       // a confirmed STATUS is not enough: a transaction that landed but FAILED is confirmed too. Paid = the transaction's own events show this prize.
@@ -193,7 +218,10 @@ export class PayPoolsHandler implements ICommandHandler<PayPoolsCommand, PayoutP
     let claimed: string | null = null;
     try {
       const { signature } = await this.payout.payPrize({ poolId: pool.id, to: row.wallet, lamports: row.lamports, rank: row.rank }, async (tx) => {
-        if (!(await this.payouts.claimSent(pool.id, row.rank, tx.signature, tx.lastValidBlockHeight, this.clock.now()))) throw new ClaimLost();
+        // conditional on "not held" in the same statement: a HOLD acknowledged before this claim stops it (nothing is broadcast), one after it lets this prize go
+        const claim = await this.payouts.claimSentUnlessHeld(pool.id, row.rank, tx.signature, tx.lastValidBlockHeight, this.clock.now());
+        if (claim === 'held') throw new HeldAtClaim();
+        if (claim === 'lost') throw new ClaimLost();
         claimed = tx.signature;
       });
       await this.payouts.markPaid(pool.id, row.rank, signature, this.clock.now());
@@ -202,6 +230,7 @@ export class PayPoolsHandler implements ICommandHandler<PayPoolsCommand, PayoutP
       return ok;
     } catch (error) {
       if (error instanceof ClaimLost) return { outcome: 'wait', note: `another payout pass is paying rank ${row.rank}` };
+      if (error instanceof HeldAtClaim) return { outcome: 'held', note: `held before rank ${row.rank} was paid` };
       const message = error instanceof Error ? error.message : String(error);
       const code = error instanceof DomainError ? error.errorCode : null;
       if (claimed && (code === 'transaction_dropped' || code === 'transaction_failed')) { // never landed / failed on chain (atomic: nothing moved) – back to planned, the next pass signs a new one
@@ -228,3 +257,5 @@ export class PayPoolsHandler implements ICommandHandler<PayPoolsCommand, PayoutP
 
 /** the conditional claim of a prize lost to another pass: nothing was broadcast */
 class ClaimLost extends Error {}
+/** an admin's HOLD came first: the claim was not made, nothing was broadcast */
+class HeldAtClaim extends Error {}

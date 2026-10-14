@@ -37,6 +37,17 @@ export class PoolPayoutPrismaRepository extends PoolPayoutRepositoryPort {
     return r.count === 1;
   }
 
+  /** One UPDATE that also requires the pool to be off HOLD: a claim that starts after a HOLD committed sees it (READ COMMITTED takes a fresh snapshot per
+      statement), so an acknowledged HOLD is never followed by a new 'sent' row. */
+  async claimSentUnlessHeld(poolId: number, rank: number, signature: string, lastValidBlockHeight: number, now: Date): Promise<'claimed' | 'held' | 'lost'> {
+    const n = await this.prisma.$executeRaw`
+      UPDATE "economy"."PoolPayout" SET status = 'sent', signature = ${signature}, "lastValidBlockHeight" = ${lastValidBlockHeight}, attempts = attempts + 1, error = NULL, "updatedAt" = ${now}
+      WHERE "poolId" = ${poolId} AND rank = ${rank} AND status = 'planned' AND EXISTS (SELECT 1 FROM "economy"."Pool" p WHERE p.id = ${poolId} AND p."holdBy" IS NULL)`;
+    if (n === 1) return 'claimed';
+    const pool = await this.prisma.pool.findUnique({ where: { id: poolId }, select: { holdBy: true } });
+    return pool?.holdBy ? 'held' : 'lost';
+  }
+
   async markPaid(poolId: number, rank: number, signature: string, now: Date, tx?: TransactionHandle): Promise<boolean> {
     const r = await clientFor(this.prisma, tx).poolPayout.updateMany({ where: { poolId, rank, status: 'sent', signature }, data: { status: 'paid', error: null, updatedAt: now } });
     return r.count === 1;

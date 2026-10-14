@@ -285,6 +285,11 @@ export class MemoryPoolPayoutRepository extends PoolPayoutRepositoryPort {
       attempts: (this.db.poolPayouts.get(`${poolId}|${rank}`)?.attempts ?? 0) + 1 });
   }
 
+  async claimSentUnlessHeld(poolId: number, rank: number, signature: string, lastValidBlockHeight: number, now: Date): Promise<'claimed' | 'held' | 'lost'> {
+    if (this.db.pools.get(poolId)?.hold) return 'held';
+    return (await this.claimSent(poolId, rank, signature, lastValidBlockHeight, now)) ? 'claimed' : 'lost';
+  }
+
   async markPaid(poolId: number, rank: number, signature: string, now: Date): Promise<boolean> {
     return this.move(poolId, rank, (p) => p.status === 'sent' && p.signature === signature, { status: 'paid', error: null, updatedAt: now });
   }

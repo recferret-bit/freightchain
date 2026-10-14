@@ -8,6 +8,8 @@ export abstract class PoolPayoutRepositoryPort {
   abstract plan(rows: PlannedPayout[], now: Date, tx?: TransactionHandle): Promise<void>;
   /** planned → sent with the signature (attempts + 1). false = another pass claimed it first – do NOT broadcast. */
   abstract claimSent(poolId: number, rank: number, signature: string, lastValidBlockHeight: number, now: Date, tx?: TransactionHandle): Promise<boolean>;
+  /** claimSent, in ONE statement, only while the pool is not on an admin's HOLD (pentest L11): 'held' = the HOLD came first, nothing was claimed; 'lost' = another pass has it */
+  abstract claimSentUnlessHeld(poolId: number, rank: number, signature: string, lastValidBlockHeight: number, now: Date): Promise<'claimed' | 'held' | 'lost'>;
   /** sent (with this signature) → paid. */
   abstract markPaid(poolId: number, rank: number, signature: string, now: Date, tx?: TransactionHandle): Promise<boolean>;
   /** sent (with this signature) → planned again: the transaction expired without landing. */

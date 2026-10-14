@@ -52,4 +52,14 @@ describe('PoolPayoutPrismaRepository (PostgreSQL)', () => {
     await repo.claimSent(1, 1, 'Same', 1, at(1));
     await expect(repo.claimSent(1, 3, 'Same', 1, at(1))).rejects.toThrow();
   });
+
+  it('claimSentUnlessHeld (L11): claims a planned row while the pool is not held; on HOLD nothing is claimed ("held"); a row already claimed is "lost"', async () => {
+    await plan();
+    expect(await repo.claimSentUnlessHeld(1, 1, 'S1', 7, at(1))).toBe('claimed');
+    expect(await repo.claimSentUnlessHeld(1, 1, 'S2', 7, at(1))).toBe('lost');
+    await repo.plan([{ poolId: 1, rank: 3, wallet: 'carol', lamports: 1, status: 'planned' }], at(2));
+    await new PoolPrismaRepository(prisma).saveHold(1, { by: 'Admin', at: at(3), note: 'stop' });
+    expect(await repo.claimSentUnlessHeld(1, 3, 'S3', 7, at(4))).toBe('held');
+    expect((await repo.listByPool(1)).find((r) => r.rank === 3)).toMatchObject({ status: 'planned', signature: null });
+  });
 });

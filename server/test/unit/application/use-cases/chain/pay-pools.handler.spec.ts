@@ -10,6 +10,7 @@ import { poolRide } from '../../../../support/pool-rides.js';
 import { chainPool } from '../../../../support/pools.js';
 import { unitContext } from '../../../../support/unit-context.js';
 import { VerdictStatus } from '../../../../../src/domain/verdict/verdict.dto.js';
+import { RideVerdict } from '../../../../../src/domain/verdict/ride-verdict.entity.js';
 import { Pledge } from '../../../../../src/domain/economy/pledge.entity.js';
 
 const KEY = 'Payout11111111111111111111111111111111111111';
@@ -100,6 +101,60 @@ describe('PayPoolsHandler – the payout job', () => {
     expect(payout.prizes).toEqual([]);
     await ctx.pools.saveHold(1, null);
     expect((await run()).pools[0]?.state).toBe('paid');
+  });
+
+  describe('a verdict decided AFTER the plan (pentest M7)', () => {
+    const verdict = (ctx: Awaited<ReturnType<typeof setup>>['ctx'], rideId: string, status: VerdictStatus, by: string | null = null) => ctx.verdictRepo.save(RideVerdict.restore({
+      rideId, status, reasons: status === VerdictStatus.Verified ? [] : [{ code: 'test', detail: 'test', severity: status === VerdictStatus.Rejected ? 'reject' : 'flag' }],
+      scores: {} as never, rulesVersion: 4, judgedAt: ctx.now(), version: 2, ...(by ? { overriddenBy: by, overriddenAt: ctx.now(), note: null } : {}),
+    }));
+
+    it('a ride put under review after the plan stops the money (waiting_review, plan kept); rejected by the admin it changes the ranking – error, nothing more is paid', async () => {
+      const { ctx, payout, run } = await setup();
+      await poolRide(ctx, 'alice', 9_000);
+      const bob = await poolRide(ctx, 'bob', 5_000);
+      payout.failing.add('2');
+      expect((await run()).pools[0]).toMatchObject({ state: 'error' });   // the plan exists, alice paid, bob's prize refused once
+      expect(payout.prizes.map((p) => p.to)).toEqual(['alice']);
+      payout.failing.clear();
+      await verdict(ctx, bob, VerdictStatus.Flagged);
+      expect((await run()).pools[0]).toMatchObject({ state: 'waiting_review' });
+      await verdict(ctx, bob, VerdictStatus.Rejected, 'Admin');
+      const pass = (await run()).pools[0];
+      expect(pass).toMatchObject({ state: 'error', note: expect.stringMatching(/ranking changed after the payout plan/) });
+      expect(payout.prizes.map((p) => p.to)).toEqual(['alice']);
+      expect(payout.closed).toEqual([]);
+    });
+
+    it('a winner whose attestation is already on chain is checked again before the prize: the ride it rests on revoked, the ranking unchanged → re-written with the km left, then paid', async () => {
+      const { ctx, payout, run } = await setup();
+      await poolRide(ctx, 'alice', 9_000);
+      const bob = await poolRide(ctx, 'bob', 5_000);
+      await poolRide(ctx, 'bob', 2_000, 'accepted');   // bob's other verified ride
+      payout.failing.add('2');
+      await run();   // bob's VERIFIED attestation (5 km, his best ride) is on chain, his prize refused once
+      expect(payout.attestations.get('1:bob')).toMatchObject({ status: 1, verifiedKm: 5 });
+      payout.failing.clear();
+      await verdict(ctx, bob, VerdictStatus.Rejected, 'Admin');   // the ride the attestation rests on: rejected – bob still ranks 2nd on his other ride
+      expect((await run()).pools[0]).toMatchObject({ state: 'paid' });
+      expect(payout.attestations.get('1:bob')).toMatchObject({ status: 1, verifiedKm: 2 });   // written again before the prize, never paid on the stale 5 km
+      expect(payout.prizes.map((p) => p.to)).toEqual(['alice', 'bob']);
+    });
+  });
+
+  it('an admin HOLD acknowledged while a pass is paying stops the prizes after it and the close (the claim and the HOLD serialise on the pool row – L11)', async () => {
+    const { ctx, payout, run, mirror } = await setup();
+    await poolRide(ctx, 'alice', 9_000); await poolRide(ctx, 'bob', 5_000); await poolRide(ctx, 'carol', 3_000);
+    const pay = payout.payPrize.bind(payout);
+    payout.payPrize = async (i, onSigned) => {
+      const r = await pay(i, onSigned);
+      if (i.rank === 1) { const p = await mirror(); p.putOnHold('Admin', 'stop after rank 1', ctx.now()); await ctx.pools.saveHold(1, p.hold); }
+      return r;
+    };
+    expect((await run()).pools[0]).toMatchObject({ state: 'held', note: 'held before rank 2 was paid' });
+    expect(payout.prizes.map((p) => p.to)).toEqual(['alice']);
+    expect(payout.closed).toEqual([]);
+    expect((await ctx.poolPayouts.listByPool(1)).filter((r) => r.status === 'sent')).toEqual([]);   // no prize claimed after the HOLD
   });
 
   it('a sync never erases a hold (the server-owned columns change only through saveHold)', async () => {

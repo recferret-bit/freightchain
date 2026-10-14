@@ -66,18 +66,22 @@ export class AttestationService {
     return { telemetryRoot, verifiedKm };
   }
 
+  /** The verdicts are read AGAIN every time (pentest M7: an attestation already on chain used to be trusted, so a verdict revoked after it was still paid):
+      what the chain holds is rewritten when it no longer says what the rides say now – VERIFIED with other km, VERIFIED for a driver whose verified ride is
+      gone (→ FLAGGED: no prize, the sponsors get their pledges back), FLAGGED for one an admin has since accepted. The program allows the rewrite while the
+      pool is active. A pledge already settled on an earlier attestation stays settled – an attestation is final once it was paid on. */
   private async attest(poolId: number, driver: string): Promise<AttestationResult> {
     const onChain = await this.payout.attestationOf(poolId, driver);
-    if (onChain?.status === ATTESTATION_VERIFIED && onChain.verifiedKm > 0) return { status: 'verified', signature: null };
-    if (onChain?.status === ATTESTATION_FLAGGED) return { status: 'flagged', signature: null };
-
     const verified = await this.verifiedFacts(poolId, driver);
     if (verified) {
+      if (onChain?.status === ATTESTATION_VERIFIED && onChain.verifiedKm === verified.verifiedKm) return { status: 'verified', signature: null };
       const { signature } = await this.payout.recordAttestation({ poolId, driver, ...verified, status: ATTESTATION_VERIFIED });
       return { status: 'verified', signature };
     }
-    if (await this.rides.findBestVerifiedByPoolAndWallet(poolId, driver)) return { status: 'none', signature: null }; // verified but under 1 km
-    if (!(await this.rides.hasCompletedInPool(poolId, driver))) return { status: 'none', signature: null };
+    const shortVerified = (await this.rides.findBestVerifiedByPoolAndWallet(poolId, driver)) !== null;   // verified but under 1 km
+    if (!shortVerified && !(await this.rides.hasCompletedInPool(poolId, driver)) && onChain?.status !== ATTESTATION_VERIFIED) return { status: 'none', signature: null };
+    if (onChain?.status === ATTESTATION_FLAGGED) return { status: 'flagged', signature: null };
+    if (shortVerified && onChain?.status !== ATTESTATION_VERIFIED) return { status: 'none', signature: null };
     const { signature } = await this.payout.recordAttestation({ poolId, driver, telemetryRoot: new Uint8Array(32), verifiedKm: 0, status: ATTESTATION_FLAGGED });
     return { status: 'flagged', signature };
   }

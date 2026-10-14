@@ -105,12 +105,25 @@ describe('AttestationService', () => {
       expect([...none.sent, ...short.sent]).toHaveLength(0);
     });
 
-    it('already decided on chain (VERIFIED or FLAGGED): nothing sent', async () => {
-      const v = setup({ onChain: { status: ATTESTATION_VERIFIED, verifiedKm: 3 } });
+    it('on chain and still what the rides say (VERIFIED with the same km, FLAGGED with no verified ride): nothing sent', async () => {
+      const v = setup({ onChain: { status: ATTESTATION_VERIFIED, verifiedKm: 25 } });
       expect(await v.service.attestForPledges(4, DRIVER)).toEqual({ status: 'verified', signature: null });
-      const f = setup({ onChain: { status: ATTESTATION_FLAGGED, verifiedKm: 0 } });
+      const f = setup({ onChain: { status: ATTESTATION_FLAGGED, verifiedKm: 0 }, best: null });
       expect(await f.service.attestForPledges(4, DRIVER)).toEqual({ status: 'flagged', signature: null });
       expect([...v.sent, ...f.sent]).toHaveLength(0);
+    });
+
+    it('on chain but no longer what the rides say is WRITTEN AGAIN (pentest M7): other km → VERIFIED anew; the verified ride revoked → FLAGGED, and no prize', async () => {
+      const km = setup({ onChain: { status: ATTESTATION_VERIFIED, verifiedKm: 3 } });
+      expect(await km.service.attestForPledges(4, DRIVER)).toEqual({ status: 'verified', signature: 'sig1' });
+      expect(km.sent[0]).toMatchObject({ status: ATTESTATION_VERIFIED, verifiedKm: 25 });
+      const revoked = setup({ onChain: { status: ATTESTATION_VERIFIED, verifiedKm: 25 }, best: null });
+      expect(await revoked.service.attestForPledges(4, DRIVER)).toEqual({ status: 'flagged', signature: 'sig1' });
+      const prize = setup({ onChain: { status: ATTESTATION_VERIFIED, verifiedKm: 25 }, best: null });
+      await expect(prize.service.ensureAttestation(4, DRIVER)).rejects.toMatchObject({ errorCode: 'driver_not_verified' });
+      expect(prize.sent).toMatchObject([{ status: ATTESTATION_FLAGGED, verifiedKm: 0 }]);
+      const accepted = setup({ onChain: { status: ATTESTATION_FLAGGED, verifiedKm: 0 } });   // an admin accepted the ride since
+      expect(await accepted.service.attestForPledges(4, DRIVER)).toEqual({ status: 'verified', signature: 'sig1' });
     });
 
     it('an UNVERIFIED attestation on chain is decided again', async () => {
