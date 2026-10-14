@@ -313,7 +313,7 @@ if (split) {
     if (tkReduced) { split.classList.add('s-out', 's-grow', 's-text'); return; }
     split.classList.add('s-out');
     later(660, () => split.classList.add('s-grow'));
-    later(1330, () => split.classList.add('s-text'));
+    later(1420, () => split.classList.add('s-text'));   // the grow (from 660 ms, 0.7 s) has finished: the text never re-wraps while the block is still widening
   };
   const collapse = () => {
     timers.forEach(clearTimeout); timers = []; open = -1;

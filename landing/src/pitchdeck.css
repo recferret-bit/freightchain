@@ -301,13 +301,13 @@ canvas.glyph{height:auto;aspect-ratio:240/124;background:none}
 .split div:nth-child(2){min-width:132px}
 .split div:nth-child(3){min-width:124px}
 .split{transition:gap .7s cubic-bezier(.65,0,.2,1)}
-.split .desc{position:absolute;left:16px;right:16px;top:14px;font:400 32px/1.08 var(--head);font-style:normal;text-transform:uppercase;opacity:0;transform:translateY(16px);filter:blur(6px);letter-spacing:5px;pointer-events:none;transition:opacity .45s ease,transform .6s cubic-bezier(.2,.9,.3,1),filter .45s ease,letter-spacing .7s cubic-bezier(.2,.9,.3,1)}
-.split b{transition:opacity .3s ease,transform .45s ease}
+.split .desc{position:absolute;left:16px;right:16px;top:14px;font:400 32px/1.08 var(--head);font-style:normal;text-transform:uppercase;white-space:nowrap;overflow:hidden;opacity:0;transform:translateY(10px);filter:blur(4px);pointer-events:none;transition:opacity .22s ease,transform .3s ease,filter .22s ease}   /* one line, no letter-spacing tween: nothing re-wraps while it appears */
+.split b{transition:opacity .22s ease .22s,transform .3s ease .22s}   /* coming back: only after the description has gone, so the two never overlap */
 .split.s-out div:not(.pick){opacity:0;transform:translateX(var(--tx,0px)) scaleX(.1);transition:opacity .22s ease-in calc(var(--o,0)*.2s + .14s),transform .4s cubic-bezier(.55,0,.25,1) calc(var(--o,0)*.2s),flex-grow .7s cubic-bezier(.65,0,.2,1),min-width .7s cubic-bezier(.65,0,.2,1),padding .7s cubic-bezier(.65,0,.2,1),box-shadow .5s;pointer-events:none}   /* each block runs to the bar's border on its own side (--tx), squeezing into it as it fades; the farthest from the picked one goes first */
 .split.s-out .pick{box-shadow:0 0 0 3px #ffffff33}
 .split.s-grow{gap:0}
 .split.s-grow div:not(.pick){flex-grow:0;min-width:0;padding-left:0;padding-right:0}
 .split.s-grow .pick{flex-grow:100;box-shadow:0 0 36px 2px #ffcf5a44}
-.split.s-text .pick b{opacity:0;transform:translateY(-18px)}
-.split.s-text .pick .desc{opacity:1;transform:none;filter:none;letter-spacing:0}
+.split.s-text .pick b{opacity:0;transform:translateY(-10px);transition-delay:0s}
+.split.s-text .pick .desc{opacity:1;transform:none;filter:none;transition:opacity .3s ease .24s,transform .4s cubic-bezier(.2,.9,.3,1) .24s,filter .3s ease .24s}   /* in after the % has left */
 @media (prefers-reduced-motion:reduce){.split div,.split .desc,.split b,.split{transition:none!important}}
