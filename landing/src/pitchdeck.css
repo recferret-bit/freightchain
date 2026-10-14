@@ -304,24 +304,30 @@ canvas.glyph{height:auto;aspect-ratio:240/124;background:none}
 .cc .more h4{margin:10px 0 0;font:700 13px/1 var(--body);letter-spacing:3px;text-transform:uppercase;color:var(--c)}
 .cc .more p{margin:0;font:500 17px/1.4 var(--body);color:#eee}
 .cc:is(:hover,.hot) .more{opacity:1;translate:0 0;transition-delay:.08s}
-/* the soulbound badges, one at a time */
+/* the soulbound badges: a carousel – the middle one big, its neighbours small and dim; each step the row slides one place */
 .ach{margin-top:auto;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
-.ach-stage{position:relative;width:132px;height:132px;perspective:700px}
-.ach-stage img{display:block;width:100%;height:100%;filter:drop-shadow(0 0 14px color-mix(in srgb,var(--c) 55%,transparent))}
-.ach-stage::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 38%,#ffffff88 50%,transparent 62%);transform:translateX(-130%);mix-blend-mode:overlay;pointer-events:none}
-.ach-ring{position:absolute;inset:-4px;border-radius:50%;border:3px solid var(--c);opacity:0;pointer-events:none}
-.ach.out img{transition:transform .32s cubic-bezier(.5,0,.9,.4),opacity .3s ease,filter .3s ease;transform:rotateY(90deg) scale(.6);opacity:0;filter:blur(6px)}
-.ach.in img{animation:achin .85s cubic-bezier(.2,.9,.3,1.1) both}
-.ach.in .ach-ring{animation:achring .95s ease-out both}
-.ach.in .ach-stage::after{animation:achshine .9s .4s ease-out both}
+.ach-stage{position:relative;width:calc(100% + 40px);margin:0 -20px;height:128px;overflow:hidden}
+.ci{position:absolute;left:50%;top:4px;width:120px;height:120px;margin-left:-60px;--s:.3;--op:0;
+  transform:translateX(calc(var(--o,0)*98px)) scale(var(--s));opacity:var(--op);
+  transition:transform .65s cubic-bezier(.45,0,.15,1),opacity .65s ease,filter .65s ease;filter:grayscale(.6) brightness(.8)}
+.ci[data-o="0"]{--s:1;--op:1;filter:drop-shadow(0 0 14px color-mix(in srgb,var(--c) 50%,transparent))}
+.ci[data-o="-1"],.ci[data-o="1"]{--s:.52;--op:.42}
 .ach-cap{display:grid;gap:3px;min-height:72px;align-content:start}
 .ach-cap em{font:700 12px/1 var(--body);letter-spacing:3px;font-style:normal;color:var(--c)}
 .ach-cap b{font:400 26px/1 var(--head);text-transform:uppercase;color:#fff}
 .ach-cap span{font:500 14px/1.25 var(--body);color:var(--muted)}
-.ach.out .ach-cap{opacity:0;transition:opacity .2s ease}
-.ach.in .ach-cap{animation:achcap .6s .25s ease-out both}
-@keyframes achin{0%{transform:rotateY(-110deg) scale(.45);opacity:0;filter:blur(6px)}55%{transform:rotateY(14deg) scale(1.14);opacity:1;filter:none}78%{transform:rotateY(-5deg) scale(.97)}100%{transform:none}}
-@keyframes achring{0%{transform:scale(.55);opacity:.9}100%{transform:scale(1.45);opacity:0}}
-@keyframes achshine{to{transform:translateX(130%)}}
-@keyframes achcap{from{opacity:0;translate:0 12px}to{opacity:1;translate:0 0}}
-@media (prefers-reduced-motion:reduce){.cc,.cc .more,.ach *{transition:none!important;animation:none!important}}
+.ach-cap.swap{animation:achcap .55s ease-out both}
+@keyframes achcap{0%{opacity:0;translate:26px 0}100%{opacity:1;translate:0 0}}
+@media (prefers-reduced-motion:reduce){.cc,.cc .more,.ci,.ach-cap{transition:none!important;animation:none!important}}
+
+/* slide 3's DONATIONS bullet is a button: it shakes now and then like the cards; a click drops SOL coins onto the stage (#coins, script) and pops a donation toast */
+.pts li.don{width:fit-content;cursor:pointer;transform-origin:30% 50%;transition:scale .3s cubic-bezier(.2,.8,.2,1),text-shadow .3s}
+.pts li.don:hover{scale:1.05;text-shadow:0 0 18px #14f19566}
+.pts li.don:active{scale:.97}
+#coins{position:absolute;left:0;top:0;width:1920px;height:1080px;z-index:9;pointer-events:none}   /* over the slides, under the page counter and the bar */
+.sol-toast{position:absolute;z-index:11;translate:-50% -50%;display:grid;gap:6px;justify-items:center;padding:16px 26px;border-radius:16px;background:#050505e6;border:2px solid #14f195;
+  box-shadow:0 0 34px #14f19555,0 0 60px #9945ff44;pointer-events:none;animation:soltoast 2.4s cubic-bezier(.2,.8,.2,1) both}
+.sol-toast b{font:400 54px/1 var(--head);background:var(--sol);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sol-toast span{font:700 15px/1 var(--body);letter-spacing:3px;color:#fff}
+@keyframes soltoast{0%{opacity:0;transform:translateY(24px) scale(.5)}14%{opacity:1;transform:translateY(0) scale(1.12)}24%{transform:scale(1)}75%{opacity:1;transform:translateY(-34px)}100%{opacity:0;transform:translateY(-70px)}}
+@media (prefers-reduced-motion:reduce){.sol-toast{animation:none}.pts li.don{transition:none}}

@@ -5,10 +5,10 @@
 const A = '/media/pitchdeck/', BADGES = '/badges/';   // absolute: on pitchdeck.<apex> a relative path would resolve against the host's /
 const shot = (src, cls = '', alt = '') => `<figure class="shot ${cls}"><img src="${A}${src}" alt="${alt}" loading="eager"></figure>`;
 const clip = (src, cls = '') => `<figure class="shot clip ${cls}"><video src="${A}${src}" muted playsinline loop preload="auto"></video></figure>`;   // promo-clip.mp4 = the promo's 16–24 s, cut once
-const pts = items => `<ul class="pts">${items.map(i => `<li>${i}</li>`).join('')}</ul>`;
+const pts = items => `<ul class="pts">${items.map(i => Array.isArray(i) ? `<li class="${i[1]}">${i[0]}</li>` : `<li>${i}</li>`).join('')}</ul>`;   // [html, class] for a bullet that does something
 
 /* slide 5 – the on-chain systems. `why` / `fit` show when a card is hovered or tapped; the statuses are honest (HONK is a spec, the pool is devnet). */
-const ACH_ICON = `<div class="ach"><div class="ach-stage"><img src="" alt="" width="132" height="132"><i class="ach-ring"></i></div><div class="ach-cap"><em class="at"></em><b class="an"></b><span class="ad"></span></div></div>`;
+const ACH_ICON = `<div class="ach"><div class="ach-stage"></div><div class="ach-cap"><em class="at"></em><b class="an"></b><span class="ad"></span></div></div>`;
 const CHAIN = [
   { c: '#14f195', st: 'LIVE LOOKUP', h: 'SNS', big: 'YOU.SOL', p: 'Your Solana Name Service name, when you have one, shows on your profile instead of a wallet string.', small: 'Chain read · 24 h cache',
     why: 'A 44-character address means nothing to a rider. A .sol name is a handle people remember and share.',
@@ -78,7 +78,7 @@ const SLIDES = [
       <div class="copy">
         <div class="lbl">02 · The insight</div>
         <h1>The game<br>is the door.</h1>
-        ${pts(['<b>Streams</b> · live watch, replays', '<b>Donations</b> · chat, night, holes', '<b>Web2</b> · no wallet to watch', '<b>Goal</b> · Web3 adoption', '<b>Reach</b> · the stream is the ad'])}
+        ${pts(['<b>Streams</b> · live watch, replays', ['<b>Donations</b> · chat, night, holes', 'don'], '<b>Web2</b> · no wallet to watch', '<b>Goal</b> · Web3 adoption', '<b>Reach</b> · the stream is the ad'])}
       </div>
       <div class="vis">
         ${clip('promo-clip.mp4', 'v-main')}
@@ -209,21 +209,29 @@ deck.innerHTML = SLIDES.map((s, i) => `<section class="slide L-${s.layout.split(
 
 const slides = [...deck.children];
 
-/* the soulbound-NFT card: one big badge at a time – the current one flips edge-on and fades, the next flips in with an overshoot, a ring pulses and a shine sweeps across; all 31, in catalogue order */
+/* the soulbound-NFT card: a carousel of the 31 badges – the middle one big, its neighbours small and dim, peeking in from the sides; every step the whole row slides one place left (the middle ones scale up / down on the way) and the caption follows. Five slots (o = −2…2): the one that slid out on the left jumps to the far right, unseen. */
 const ach = deck.querySelector('.ach');
 if (ach) {
-  const img = ach.querySelector('img'), put = i => {
-    const [id, name, desc] = ACH[i];
-    img.src = `${BADGES}${id}.svg`; img.alt = name;
-    ach.querySelector('.at').textContent = achTier(id); ach.querySelector('.an').textContent = name; ach.querySelector('.ad').textContent = desc;
-  };
-  let k = 0; put(0); ach.classList.add('in');
+  const stage = ach.querySelector('.ach-stage'), cap = ach.querySelector('.ach-cap'), N = ACH.length;
+  let k = 0;
+  const badge = i => ACH[((i % N) + N) % N];
+  const slots = [-2, -1, 0, 1, 2].map(o => { const im = document.createElement('img'); im.className = 'ci'; im.width = im.height = 120; im.alt = ''; stage.append(im); return { im, o }; });
+  const place = () => slots.forEach(sl => { sl.im.dataset.o = Math.abs(sl.o) > 2 ? 'x' : sl.o; sl.im.style.setProperty('--o', sl.o); });
+  const fill = sl => { const [id, name] = badge(k + sl.o); sl.im.src = `${BADGES}${id}.svg`; sl.im.alt = name; };
+  const caption = () => { const [id, name, desc] = badge(k); cap.querySelector('.at').textContent = achTier(id); cap.querySelector('.an').textContent = name; cap.querySelector('.ad').textContent = desc; };
+  slots.forEach(fill); place(); caption();
   if (!tkReduced) setInterval(() => {
     if (!ach.closest('.slide.on')) return;   // only while its slide is showing
-    const n = (k + 1) % ACH.length; new Image().src = `${BADGES}${ACH[n][0]}.svg`;   // warm the next one
-    ach.classList.remove('in'); ach.classList.add('out');
-    setTimeout(() => { k = n; put(k); ach.classList.remove('out'); void ach.offsetWidth; ach.classList.add('in'); }, 340);
-  }, 2800);
+    k = (k + 1) % N;
+    slots.forEach(sl => { sl.o -= 1; });
+    place();
+    cap.classList.remove('swap'); void cap.offsetWidth; cap.classList.add('swap');   // the caption slides in with the new middle badge
+    setTimeout(caption, 180);
+    setTimeout(() => {   // the badge that left on the left re-enters on the right, hidden
+      const gone = slots.find(sl => sl.o < -2);
+      gone.im.style.transition = 'none'; gone.o = 2; fill(gone); place(); void gone.im.offsetWidth; gone.im.style.transition = '';
+    }, 720);
+  }, 2600);
 }
 
 /* live canvas scenes lifted from the landing's UNDER THE HOOD cards (src/chain-scenes.js – a lazy chunk the landing shares), drawn straight onto the slide with no card around them, only while their slide is showing */
@@ -356,7 +364,7 @@ fxVis.forEach(v => {
   v.parentElement.addEventListener('pointerleave', () => setTilt(v, 0, 0));
 });
 /* everything interactive (the cards, slide 0's tags, the LIVE badge, the Merkle canvas, the 70 / 20 / 10 blocks, the FREE / 1 H / 4 H / 8 H ladder) gives a tiny, tweened shake at random intervals while its slide is showing – a quiet "touch me". It animates the individual `rotate` property, so it never fights the float / lean / zoom transforms. */
-const nudgeables = [...deck.querySelectorAll('.fx .shot, .fx .badge, .fx canvas.glyph, .L-wall .tags span, .split > div, .ladder li, .cards5 .cc')];
+const nudgeables = [...deck.querySelectorAll('.fx .shot, .fx .badge, .fx canvas.glyph, .L-wall .tags span, .split > div, .ladder li, .cards5 .cc, .pts li.don')];
 const canShake = el => !tkReduced && document.visibilityState === 'visible' && !!el.closest('.slide.on') && !el.matches(':hover,.hot,.drag')
   && ![...(el.closest('.split')?.classList ?? [])].some(c => c.startsWith('s-'));   // not while it is being used
 function shakeLater(el) {
@@ -369,6 +377,70 @@ function shakeLater(el) {
   }, 2200 + Math.random() * 5800);   // every element on its own random clock, 2.2–8 s
 }
 nudgeables.forEach(shakeLater);
+
+/* slide 3's DONATIONS bullet: a click is a mock donation – a toast with a real effect price (client/js/live-effects.js) and a handful of SOL coins from above the stage.
+   The coins stay: discs under gravity that bounce, roll and pile up on the stage floor between its walls, over every slide (at most COIN_MAX, the oldest go first). */
+const DONATE = [['TIP', 0.01], ['NIGHT', 0.02], ['DAY', 0.02], ['POTHOLES', 0.02], ['TRENCH', 0.03], ['SINKHOLE', 0.05]];
+const COIN_MAX = 120, G = 2600, FLOOR = 1075, E_FLOOR = .45, E_COIN = .3;   // G in stage px/s²; the floor sits on the progress bar
+const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz', b58 = n => Array.from({ length: n }, () => B58[Math.floor(Math.random() * 58)]).join('');
+const coinCv = document.createElement('canvas'), cctx = coinCv.getContext('2d'), coins = [];
+coinCv.id = 'coins'; coinCv.setAttribute('aria-hidden', 'true'); stage.insertBefore(coinCv, pager);
+const coinImg = (() => {   // one 128 px sprite: the Solana mark on a dark face inside a purple→green rim, a soft highlight on top
+  const S = 128, c = document.createElement('canvas'), g = c.getContext('2d'); c.width = c.height = S;
+  const sol = g.createLinearGradient(0, S, S, 0); sol.addColorStop(0, '#9945ff'); sol.addColorStop(1, '#14f195');
+  const disc = (r, fill) => { g.beginPath(); g.arc(S / 2, S / 2, r, 0, 7); g.fillStyle = fill; g.fill(); };
+  disc(S / 2 - 1, sol); disc(S / 2 - 9, '#0b0a12');
+  g.fillStyle = sol;
+  const bar = (y, back) => { const x0 = 34, x1 = 94, h = 13, k = 12; g.beginPath(); if (back) { g.moveTo(x0, y); g.lineTo(x1 - k, y); g.lineTo(x1, y + h); g.lineTo(x0 + k, y + h); } else { g.moveTo(x0 + k, y); g.lineTo(x1, y); g.lineTo(x1 - k, y + h); g.lineTo(x0, y + h); } g.fill(); };
+  bar(37, false); bar(57.5, true); bar(78, false);
+  const hi = g.createRadialGradient(S * .35, S * .3, 2, S * .35, S * .3, S * .6); hi.addColorStop(0, '#ffffff40'); hi.addColorStop(1, '#fff0');
+  disc(S / 2 - 1, hi);
+  return c;
+})();
+let coinK = 1, coinRaf = 0, coinStill = 0, coinT = 0;
+function drawCoins() {
+  cctx.setTransform(1, 0, 0, 1, 0, 0); cctx.clearRect(0, 0, coinCv.width, coinCv.height);
+  for (const c of coins) { const k = coinK, cs = Math.cos(c.a) * k, sn = Math.sin(c.a) * k; cctx.setTransform(cs, sn, -sn, cs, c.x * k, c.y * k); cctx.drawImage(coinImg, -c.r, -c.r, c.r * 2, c.r * 2); }
+}
+const coinFit = () => { coinK = Math.min(2, devicePixelRatio * scale); coinCv.width = Math.round(1920 * coinK); coinCv.height = Math.round(1080 * coinK); drawCoins(); };   // backing store at screen resolution, drawn in stage px
+addEventListener('resize', coinFit); coinFit();
+function collide(p, q) {   // two discs, mass ∝ area: push apart, then a restitution impulse along the normal
+  const dx = q.x - p.x, dy = q.y - p.y, rr = p.r + q.r, d2 = dx * dx + dy * dy;
+  if (d2 >= rr * rr || d2 === 0) return;
+  const d = Math.sqrt(d2), nx = dx / d, ny = dy / d, ip = 1 / (p.r * p.r), iq = 1 / (q.r * q.r), push = (rr - d) * .8 / (ip + iq);
+  p.x -= nx * push * ip; p.y -= ny * push * ip; q.x += nx * push * iq; q.y += ny * push * iq;
+  const vn = (q.vx - p.vx) * nx + (q.vy - p.vy) * ny;
+  if (vn < 0) { const j = -(1 + E_COIN) * vn / (ip + iq); p.vx -= j * nx * ip; p.vy -= j * ny * ip; q.vx += j * nx * iq; q.vy += j * ny * iq; }
+  p.touch = q.touch = true;
+}
+function bounds(c, h) {
+  if (c.y + c.r > FLOOR) { c.y = FLOOR - c.r; if (c.vy > 0) c.vy = c.vy > 90 ? -c.vy * E_FLOOR : 0; c.touch = true; }   // a slow landing stops dead: no endless micro-bounce
+  if (c.x - c.r < 0) { c.x = c.r; if (c.vx < 0) c.vx = -c.vx * E_FLOOR; } else if (c.x + c.r > 1920) { c.x = 1920 - c.r; if (c.vx > 0) c.vx = -c.vx * E_FLOOR; }
+  if (c.touch) { c.vx *= 1 - 1.5 * h; c.w += (c.vx / c.r - c.w) * Math.min(1, 10 * h); } else c.w *= 1 - .3 * h;   // touching something it rolls (spin = v / r) and slowly loses speed; in the air it keeps its spin
+}
+function coinTick(t) {
+  const dt = Math.min(1 / 30, (t - coinT) / 1000 || 1 / 60), h = dt / 4; coinT = t;
+  for (let s = 0; s < 4; s++) {   // 4 substeps a frame, 2 collision passes each: enough for a stable pile of ~120
+    for (const c of coins) { c.vy += G * h; c.x += c.vx * h; c.y += c.vy * h; c.a += c.w * h; c.touch = false; }
+    for (let it = 0; it < 2; it++) for (let i = 0; i < coins.length; i++) for (let j = i + 1; j < coins.length; j++) collide(coins[i], coins[j]);
+    for (const c of coins) bounds(c, h);
+  }
+  let vmax = 0; for (const c of coins) vmax = Math.max(vmax, Math.abs(c.vx), Math.abs(c.vy), Math.abs(c.w * c.r));
+  coinStill = vmax < 20 ? coinStill + 1 : 0;
+  drawCoins();
+  coinRaf = coinStill > 60 ? 0 : requestAnimationFrame(coinTick);   // a settled pile sleeps until the next donation
+}
+function donate() {
+  const [what, sol] = DONATE[Math.floor(Math.random() * DONATE.length)], toast = document.createElement('div');
+  toast.className = 'sol-toast';
+  toast.innerHTML = `<b>+${sol.toFixed(2)} SOL</b><span>${what} · ${b58(4)}…${b58(4)}</span>`;   // author-made text only
+  toast.style.left = `${760 + Math.random() * 820}px`; toast.style.top = `${150 + Math.random() * 520}px`;
+  toast.addEventListener('animationend', () => toast.remove()); stage.append(toast);
+  if (tkReduced) { setTimeout(() => toast.remove(), 2400); return; }
+  for (let i = 5 + Math.floor(Math.random() * 5); i > 0; i--) coins.push({ x: 120 + Math.random() * 1680, y: -60 - Math.random() * 520, vx: (Math.random() - .5) * 260, vy: Math.random() * 200, r: 18 + Math.random() * 12, a: Math.random() * 6.3, w: (Math.random() - .5) * 8 });
+  coins.splice(0, Math.max(0, coins.length - COIN_MAX));
+  coinStill = 0; coinRaf ||= requestAnimationFrame(coinTick);
+}
 
 /* dragging a screen: it follows the pointer at about half the distance, trailing behind (a slow lerp), and eases home when let go */
 const drags = new Map(); let raf = 0, moved = false;
@@ -422,6 +494,7 @@ addEventListener('pointerdown', e => { if (!e.target.closest('.fx .shot')) moved
 addEventListener('click', e => {
   if (e.target.closest('.split')) return;   // the bar's own click handler (a tap opens / closes a block)
   if (e.target.closest('#ticker')) { tkHold = performance.now() + 1400; return; }   // a click on the header slows it for a moment instead of turning the page
+  if (e.target.closest('.pts li.don')) { donate(); return; }   // slide 3: a mock donation, not a page turn
   const card = e.target.closest('.fx .shot, .fx .badge, .fx canvas.glyph, .L-wall .tags span, .cards5 .cc');
   if (card) {
     if (moved) { moved = false; return; }   // the end of a drag is not a tap
