@@ -175,24 +175,81 @@ Rollback for checkout is `PAYMENT_MODE=transfer` plus a redeploy. Mainnet waits 
 
 ## Traction
 
-PostHog Cloud EU, project 297915, HogQL, 8 Oct through 13 Oct 2026 06:15 UTC. Small on purpose: public devnet, no paid marketing. Ride events come from a handful of test accounts. Read this as "the pipeline runs", not as a user base. If PostHog and SQL ever disagree, SQL is the truth ([`docs/agents/analytics.md`](docs/agents/analytics.md)).
+<!-- traction:start -->
 
-| Signal | Number |
-| --- | --- |
-| Events, 8–13 Oct | 3,819 (3,602 browser, 217 server-side after the database commit), 189 distinct ids |
-| Landing visitors | 113 unique over 6 days, about 20–27 a day |
-| Played the hero video | 56 of 115 landing views |
-| Whitepaper readers | 11 unique |
-| Shifts | 32 started, 6 completed, 7 failed, 19 abandoned |
-| Wallet sign-ins | 60 `player_signed_in` events, 52 wallets. Server events are keyed by wallet, so this is not the landing's id space |
-| Badges unlocked | 10 |
-| Connect-wallet clicks | 4 people, 18 clicks |
+Public numbers for a reviewer, read 2026-10-14 09:29 UTC. Each headline was fetched three times. A partial page, a deleted post, a repost, a premiere, or a count the second source did not support is not in a headline. Links go to the page the number was read from.
 
-Page speed on the same window: of the samples Google rates good, TTFB 89% (359), FCP 88% (330), LCP 92% (285, good samples average 0.88 s), CLS 90% (285), INP 99% (163). `hero_video_failed` fired for 17 ids and `api_request_failed` for 12. The slow tail is small and not chased yet.
+<table><tr>
+<td align="center" width="20%"><h2>2,467</h2><b>YouTube views</b><br>6 videos · 9 subscribers<br><a href="https://www.youtube.com/@FreightChainGame">@FreightChainGame</a></td>
+<td align="center" width="20%"><h2>21</h2><b>X posts</b><br><a href="https://x.com/FreightChainSol">@FreightChainSol</a><br>6 followers</td>
+<td align="center" width="20%"><h2>530</h2><b>X views on public posts</b><br>5 of 21 posts have a public view count</td>
+<td align="center" width="20%"><h2>32</h2><b>shifts started</b><br>6 finished · <a href="https://freightchain.fun/api/stats">api/stats</a></td>
+<td align="center" width="20%"><h2>27.9 km</h2><b>driven</b><br>2 drivers · 5 crashes</td>
+</tr></table>
 
-<a href="docs/analytics/img/posthog-dashboard.png"><img src="docs/analytics/img/posthog-dashboard.png" alt="PostHog board: free, paid, and payment funnels, 11 Oct 2026" width="480"></a>
+YouTube channel About says 443 views. That figure lags the videos and was not used. The headline is the sum of the videos below.
+Profile counts 21 posts. 5 are on the public posts tab with a view count checked twice. Logged-out X does not serve the replies tab, so those views are not guessed.
 
-The other two shots, the acquisition funnel and the insight list, are in [`docs/analytics/img/`](docs/analytics/img). Event list and identity rules: [`docs/analytics/index.html`](docs/analytics/index.html). The board screenshot is 11 Oct 2026. Demo-wallet funnels run on the ×60 clock.
+### YouTube
+
+Watch-page `viewCount` for every video on the Videos and Shorts tabs. The grid count had to land within 5%.
+
+| Video | Views |
+| --- | ---: |
+| [Rating every NPC driver 1–10 (this one got 0)](https://www.youtube.com/watch?v=oJ6UpOxY-l8) | 960 |
+| [3 ways to fail the free level 💀](https://www.youtube.com/watch?v=hgXhGdLwSvE) | 951 |
+| [Rating every road 1–10](https://www.youtube.com/watch?v=3xCB4uJ_SAw) | 394 |
+| [Boss levels: 3 min, 5 min, 15 min, 1 hour](https://www.youtube.com/watch?v=2usi9vHQ-Z0) | 121 |
+| [FreightChain: The Road Never Ends. Your Shift Does.](https://www.youtube.com/watch?v=cFyQ9XlN5nQ) | 32 |
+| [Freight Chain: What We Built for Colosseum (in 59 seconds)](https://www.youtube.com/watch?v=QiH7NEoWH48) | 9 |
+| **Sum** | **2,467** |
+
+### X
+
+Profile post count is the number both public mirrors returned. View counts are the posts tab, checked against the status endpoint.
+
+| Post | Views |
+| --- | ---: |
+| [FreightChain is a long-haul truck game in the browser. You drive the cab yourself. The road never ends. Your shift does. One mistake ends th](https://x.com/FreightChainSol/status/2109242074876739715) | 139 |
+| [Looking for 20 people to sit in a truck cab for 3 minutes and tell me where it hurts. Free, no download. https://t.co/bqJQEIE96a #FreightCha](https://x.com/FreightChainSol/status/2109385632560591255) | 125 |
+| [In 1995, Desert Bus made you drive 8 real-time hours from Tucson to Las Vegas for 1 point. We kept the 8 hours and replaced the point with a](https://x.com/FreightChainSol/status/2109921865888071894) | 113 |
+| [A week ago i remembered 'Desert Bus' game. I thought, how to make it modern and kind a hyped ? Week ago, i have it.. #indiegame #desertbus #](https://x.com/FreightChainSol/status/2109769147496145392) | 99 |
+| [Just did multi-agent penetration and Solana program audit using Warp, my fav tool @warpdotdev Im not using any IDE for a long time, and i al](https://x.com/FreightChainSol/status/2109986407875760450) | 54 |
+| **Sum of these posts** | **530** |
+
+### The product
+
+These are [`https://freightchain.fun/api/stats`](https://freightchain.fun/api/stats), read twice. Free and paid are the split of shifts started. The site and this table use this response, not a PostHog chart.
+
+PostHog counts those 6 finished shifts as 6 demo-wallet finishes and 0 others. A demo wallet runs the paid clock at 1/60.
+
+| | |
+| --- | ---: |
+| Shifts started | 32 |
+| Free | 29 |
+| Paid | 3 |
+| Finished | 6 |
+| Driven | 27.9 km |
+| Time | 1 h 7 min |
+| Crashes | 5 |
+| Drivers | 2 |
+| Stream donations | 0 |
+
+### Analytics
+
+Insight definitions are checked by `posthog-audit` (EU project 297915, dashboard 1006663). That skill does not change PostHog from here. Probe events (`surface=prod-check`) are not in the counts. A server ride event is `source=server`. Demo wallets are separate. Client `ride_completed` is not a metric.
+
+Audit: 2 fixes waiting, 37 insights match the spec, 8 left off the judge board. Exit 1 means a fix is waiting. It was not applied.
+Waiting: FC · Promo from an invite view; FC · Promo from a submitted code.
+
+| Window | Landing people | Real finishes | Demo finishes | Real sign-ins |
+| --- | ---: | ---: | ---: | ---: |
+| 8–12 Oct 2026 (judge board) | 106 | 0 | 6 | 54 |
+| 8 Oct 2026 through 2026-10-14 UTC | 131 | 0 | 6 | 59 |
+
+Refresh with `node .claude/skills/daily-tracktion-update/update.mjs`. The raw read is `docs/traction/latest.json`.
+
+<!-- traction:end -->
 
 ## The truck
 
@@ -357,6 +414,8 @@ Skills live in `.claude/skills/<name>/`. A coding agent reads that folder's `SKI
 | `posthog-test` | Local analytics smoke: the relay, and one batch accepted by the EU ingest | `bash .claude/skills/posthog-test/smoke.sh` |
 | `posthog-map` | Landing, whitepaper, lobby, and game checks, then a visual map of every event | `bash .claude/skills/posthog-map/run.sh` |
 | `posthog-audit` | Compare the EU insights to the spec and list the fixes. Does not write unless you say to apply | `node .claude/skills/posthog-audit/audit.mjs` |
+| `social-fetch` | X and YouTube post counts and views (@FreightChainSol, @FreightChainGame). Repeats the read and drops a partial page, a tombstone, a repost, or a count the second source does not support | `node .claude/skills/social-fetch/fetch.mjs` |
+| `daily-tracktion-update` | Rewrite the Traction block from social-fetch, the PostHog insight audit, and the public stats API. Does not deploy and does not apply insight fixes | `node .claude/skills/daily-tracktion-update/update.mjs` |
 | `prod-db` | Production PostgreSQL, read-only: players, rides, verdicts, payments, the review queue | `npm run ops -- query list` · `npm run ops -- query wallet <address>` · `npm run ops -- sql "SELECT …"` |
 | `prod-logs` | Production logs, read-only: the app, Postgres, and nginx | `npm run ops -- logs --since 30m` · `npm run ops -- logs --errors` |
 | `program-check` | The escrow program: reproducible build against the pinned hash, tests on that `.so`, clippy, audit | `npm run program:verify` |

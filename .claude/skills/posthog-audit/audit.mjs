@@ -57,9 +57,20 @@ function issuesFor(item, live) {
     const display = source.trendsFilter?.display;
     if (item.display && display !== item.display) issues.push(`chart is ${display ?? 'unset'}. Expected ${item.display}`);
     if (item.formula && source.trendsFilter?.formula !== item.formula) issues.push(`formula is ${source.trendsFilter?.formula ?? 'unset'}. Expected ${item.formula}`);
-    if (item.math && source.series?.[0]?.math && source.series[0].math !== item.math && source.series[0].kind !== 'GroupNode') {
-      issues.push(`aggregation is ${source.series[0].math}. Expected ${item.math}`);
+    if (item.math && source.series?.[0]?.kind !== 'GroupNode') {
+      const got = source.series?.[0]?.math ?? 'total';
+      if (got !== item.math) issues.push(`aggregation is ${got}. Expected ${item.math}. An omitted math is total, so a daily-unique tile would be summed as events.`);
     }
+    if (item.math_property && source.series?.[0]?.math_property !== item.math_property) {
+      issues.push(`sum property is ${source.series?.[0]?.math_property ?? 'unset'}. Expected ${item.math_property}`);
+    }
+    (item.series ?? []).forEach((step, i) => {
+      const node = source.series?.[i];
+      if (!node || node.kind === 'GroupNode') return;
+      const have = normProps(node.properties);
+      const need = normProps(step.properties);
+      for (const prop of need) if (!have.includes(prop)) issues.push(`series ${i + 1} ${step.event} is missing filter ${prop}`);
+    });
     if (source.series?.[0]?.kind === 'GroupNode') issues.push('the series is an OR group. One web_vital series is the page-speed insight');
     const range = source.dateRange ?? {};
     if (range.date_from !== DATE_RANGE.date_from || range.date_to !== DATE_RANGE.date_to) {
@@ -149,6 +160,12 @@ for (const insight of extras) {
   else if (events.includes(null) || (insight.name ?? '').includes('7d') || (source?.dateRange?.date_from === '-7d' && events[0] === 'landing_viewed')) {
     stray.push({ name: insight.name, id: insight.id, note: 'A 7 day acquisition mixes yesterday’s landing into today’s click. Apply does not delete it. Leave it unpublished.' });
   }
+}
+
+for (const item of stray) {
+  const pinned = item.note.includes('is on dashboard') || item.note.includes('pinned to dashboard');
+  if (!pinned) continue;
+  fixes.push({ name: item.name, pin: true, where: `insight ${item.id}`, problems: [item.note] });
 }
 
 const ok = rows.filter((row) => row.problems.length === 0);

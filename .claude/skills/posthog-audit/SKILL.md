@@ -17,7 +17,7 @@ Reads the personal key from `deploy/secrets/posthog-personal.key` (gitignored, m
 
 It loads dashboard `1006663` and every saved insight on EU project 297915, and compares them to `.claude/skills/posthog-audit/spec.mjs`. The report is `docs/analytics/generated/audit.html`. Exit 1 means at least one fix is waiting.
 
-What it treats as wrong: a missing judge tile, a step whose event is empty ("All events"), a funnel with no conversion window, a 7 day acquisition, a chart range other than 8–12 Oct 2026, a judge insight not pinned to 1006663, a retention / paths / stickiness / lifecycle / acquisition insight pinned to that board, `$pageview` on the judge board, and the page-speed OR group. The `$pageview` template dashboard is reported and left alone. Apply does not delete it.
+What it treats as wrong: a missing judge tile, a step whose event is empty ("All events"), a funnel with no conversion window, a missing filter on a funnel or trend series, a math that is missing or wrong (an omitted math is total), a 7 day acquisition, a chart range other than 8–12 Oct 2026, a judge insight not pinned to 1006663, a retention / paths / stickiness / lifecycle / acquisition insight pinned to that board, `$pageview` on the judge board, any other insight pinned there that is not in the spec, and the page-speed OR group. The `$pageview` template dashboard is reported and left alone. Apply does not delete it.
 
 The event map is `posthog-map`. This skill does not run the browser suites and does not send an event.
 
