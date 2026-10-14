@@ -1,5 +1,5 @@
 ---
-name: storybook-models
+name: 3d-assets
 description: >
   Review and fix Freight Chain meshes in the storybook model viewer
   (client/viewer.html, production storybook.<apex>), and use the same
@@ -8,15 +8,35 @@ description: >
   reports a visual bug of a roadside object, pastes screenshots or a
   spreadsheet of models, mentions wheels, a sign, a floating part, a beacon,
   the storybook, the model viewer, or viewer.html, or asks to create, add,
-  change, or update a 3D object, mesh, vehicle, prop, or building in the game.
-  Use when the user runs /storybook-models.
+  change, update, or generate a 3D object, mesh, vehicle, car, tree, or
+  building. A car, tree, or building spec is checked with validate.mjs
+  before any mesh or generated model (a car with 2 wheels fails).
+  Use when the user runs /3d-assets.
 ---
 
-# Storybook models
+# 3D assets
 
 The viewer (`client/viewer.html`) builds its catalogue by calling the game's builders (`client/js/viewer.js`). Edit that builder. Do not add a mesh that only the viewer draws, and do not register a catalogue row by hand.
 
 Frames, materials, mirrors and pools stay in `docs/agents/world.md` ("Landmarks", "Themes (routes)") and `docs/agents/client.md` ("Rendering gotchas", "Object pools"). Before a mount, a yaw, a wheel axis, or a collider that must match a mesh, read the `threejs-frame-conventions` skill. Pin the sign with a number `shot.mjs` prints.
+
+## Kind
+
+Cars, trees, and buildings are different objects. Read one kind file. Counts live in `rules.json`, not in the kind file.
+
+| kind | read |
+|---|---|
+| car, truck, bus, freighter | `kinds/car.md` |
+| tree | `kinds/tree.md` |
+| building, landmark | `kinds/building.md` |
+
+Before generating a mesh, an image, or a `.glb` of one of these, run:
+
+```sh
+node .claude/skills/3d-assets/validate.mjs "the user's sentence"
+```
+
+Exit 1: stop. Quote `errors`. Do not edit a builder and do not call `image_gen` or `three_d.py`. Use `expect` from an exit-0 run as the spec. Exit 0 with `"skipped": true` is a rock, cactus, bush, or other prop: use the prop row below, not a kind file. A review of an existing catalogue id skips the validator unless the change states a count or a part (wheels, axles, trunk, canopy, roof, walls, storeys).
 
 ## Which job
 
@@ -57,8 +77,8 @@ A blinker, a collision, a spawn, or damage only exists while the sim runs. Say s
 From the repo root (the script finds the repo from its own path):
 
 ```sh
-node .claude/skills/storybook-models/shot.mjs
-node .claude/skills/storybook-models/shot.mjs veh-sedan-0 route66-cactus1
+node .claude/skills/3d-assets/shot.mjs
+node .claude/skills/3d-assets/shot.mjs veh-sedan-0 route66-cactus1
 ```
 
 No arguments prints the catalogue and exits. Each id argument is measured and saved as `right`, `front`, and `threeq` PNGs. `PORT` is the Chrome debug port (default `9336`; `9333` and `9334` are the other e2e scripts). `SHOTS` is the directory.

@@ -1,0 +1,78 @@
+{
+  "car": {
+    "ambiguous": ["vehicle", "vehicles"],
+    "forbid": ["trunk", "canopy", "foliage", "storey", "storeys"],
+    "subtypes": [
+      {
+        "id": "passenger",
+        "aliases": ["police car", "sedan", "car"],
+        "wheels": 4,
+        "axles": 2
+      },
+      {
+        "id": "truck",
+        "aliases": ["fire truck", "ambulance", "medic", "bus", "truck"],
+        "wheels": 4,
+        "axles": 2
+      },
+      {
+        "id": "freighter",
+        "aliases": ["freighter", "semi"],
+        "wheels": 6,
+        "axles": 3
+      }
+    ]
+  },
+  "tree": {
+    "trunks": 1,
+    "wheels": 0,
+    "forbid": ["axle", "axles", "door", "doors", "roof", "storey", "storeys"],
+    "styles": [
+      { "id": "birch", "aliases": ["birch"], "canopy": "forbidden" },
+      { "id": "gum", "aliases": ["gum tree", "gum"], "canopy": "required" },
+      { "id": "broadleaf", "aliases": ["broadleaf tree", "broadleaf", "oak"], "canopy": "required" },
+      { "id": "spruce", "aliases": ["spruce", "pine"], "canopy": "required" },
+      { "id": "tree", "aliases": ["tree"], "canopy": "required" }
+    ]
+  },
+  "building": {
+    "wheels": 0,
+    "minStoreys": 1,
+    "forbid": ["trunk", "foliage", "axle", "axles"],
+    "roofOptional": ["police speedtrap", "speed trap", "speedtrap"],
+    "wallsOptional": ["police speedtrap", "speed trap", "speedtrap"],
+    "aliases": [
+      "police speedtrap",
+      "speed trap",
+      "speedtrap",
+      "police station",
+      "police checkpoint",
+      "gas station",
+      "roadhouse",
+      "restaurant",
+      "landmark",
+      "building",
+      "motel",
+      "hotel",
+      "diner",
+      "garage",
+      "house"
+    ]
+  },
+  "other": {
+    "aliases": [
+      "saguaro cactus",
+      "saguaro",
+      "cactus",
+      "grass tuft",
+      "tuft",
+      "termite mound",
+      "termite",
+      "snow drift",
+      "drift",
+      "bush",
+      "cairn",
+      "rock"
+    ]
+  }
+}

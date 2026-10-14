@@ -108,6 +108,7 @@ export const GAME_SFX = {
   start:     { dur: .35, vol: .5, make: () => fade(make(.35, b => { tone(b, 0, .1, 'A4', { duty: .25 }); tone(b, .09, .2, 'E5', { duty: .25 }); }), .001, .06) },
   ui:        { dur: .06, vol: .45, make: () => fade(make(.06, b => tone(b, 0, .05, 'A5', { duty: .5, vol: .2, d: .02, s: .3, r: .02 })), .001, .01) },
 };
-for (const s of Object.values(GAME_SFX)) { const raw = s.make; s.make = () => { const b = raw(), p = peak(b); return p > .9 ? gain(b, .9 / p) : b; }; }
+// 0.8, not 0.9: lame at 40 kb/s overshoots, and 0.9 PCM decoded past full scale on the transients (smash, pothole).
+for (const s of Object.values(GAME_SFX)) { const raw = s.make; s.make = () => { const b = raw(), p = peak(b); return p > .8 ? gain(b, .8 / p) : b; }; }
 export const GAME_SFX_IDS = Object.keys(GAME_SFX);
 

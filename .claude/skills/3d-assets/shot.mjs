@@ -1,6 +1,6 @@
 // Screenshot and measure catalogue items in client/viewer.html.
-//   node .claude/skills/storybook-models/shot.mjs                 # print ids
-//   node .claude/skills/storybook-models/shot.mjs veh-medic-0 …   # measure + right/front/threeq PNGs
+//   node .claude/skills/3d-assets/shot.mjs                 # print ids
+//   node .claude/skills/3d-assets/shot.mjs veh-medic-0 …   # measure + right/front/threeq PNGs
 // Env: BASE (origin; default the first of :8765 and :3000 that serves /viewer.html),
 //      PORT (Chrome debug port, default 9336), SHOTS (output directory).
 import path from 'node:path';
@@ -114,7 +114,7 @@ async function origin() {
 
 const base = await origin();
 if (!base) {
-  console.error('viewer.html is not being served on 127.0.0.1:8765 or :3000. Serve client/ (see the storybook-models skill) or set BASE.');
+  console.error('viewer.html is not being served on 127.0.0.1:8765 or :3000. Serve client/ (see the 3d-assets skill) or set BASE.');
   process.exit(2);
 }
 

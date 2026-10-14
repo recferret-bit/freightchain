@@ -133,6 +133,7 @@ export async function startRide() {   // only an online ride awaits the server
     return;
   }
   if (online.error || online.done) return;
+  audio.start();   // inside this click, before the server round-trip: WebKit will not resume a context created after the await, and `start` has to begin decoding
   if (online.ride) {
     track('ride_start_clicked', { ride_id: online.ride.id, route_id: env.theme.id, phase: dn.phase });
     try { await beginOnline(); } catch (e) {
@@ -148,7 +149,7 @@ export async function startRide() {   // only an online ride awaits the server
     if (st.mode === 'drive' || st.mode === 'paused') return;
     if (!offlineRide.dev) setGuide({ tutorial: guestOpt.tutorial, assist: guestOpt.assist });   // the guest's two checkboxes (a tool's devRun picks its own)
   }
-  resetRide(); st.mode = 'drive'; audio.start(); audio.play('start'); overlay.classList.add('hide'); startGuide(); syncBail();
+  resetRide(); st.mode = 'drive'; audio.play('start'); overlay.classList.add('hide'); startGuide(); syncBail();
   if (!guide.tutorial && !guide.assist) toast(CFG.START_ENGINE_OFF ? 'Press I (engine) · B (release brake) · SHIFT+E (1st gear) · W (gas)' : 'Release parking brake (B) · SHIFT+E (1st gear) · W (gas)', 5000);
   armRoadHint();
 }

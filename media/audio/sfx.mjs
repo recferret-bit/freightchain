@@ -19,11 +19,11 @@ export const SFX = {
     }); return fade(b, .001, .05); } },
 
   // gear lever: clutch thump + dry clunk + a tiny rising blip (the "shift" tick of arcade racers)
-  shift: { dur: .22, make(o = {}) { const g = o.gain ?? 1; return fade(make(.22, b => {
-    voice(b, 0, .05, { wave: 'tri', f: t => 150 - 1200 * t, vol: .5 * g, a: .001, d: .045, s: 0, r: .01 });
-    voice(b, 0, .02, { wave: 'white', lp: 3000, vol: .4 * g, a: .0005, d: .015, s: 0, r: .006, seed: 7 });
-    voice(b, .045, .03, { wave: 'lfsr', f: 7000, short: true, vol: .13 * g, a: .0005, d: .02, s: 0, r: .006, seed: 8 });
-    voice(b, .07, .06, { wave: 'pulse', f: t => 520 + 700 * (t / .06), duty: .25, vol: .1 * g, a: .002, d: .05, s: 0, r: .01 });
+  shift: { dur: .22, make() { return fade(make(.22, b => {   // cue gain is applied once, in mix.mjs — not here
+    voice(b, 0, .05, { wave: 'tri', f: t => 150 - 1200 * t, vol: .5, a: .001, d: .045, s: 0, r: .01 });
+    voice(b, 0, .02, { wave: 'white', lp: 3000, vol: .4, a: .0005, d: .015, s: 0, r: .006, seed: 7 });
+    voice(b, .045, .03, { wave: 'lfsr', f: 7000, short: true, vol: .13, a: .0005, d: .02, s: 0, r: .006, seed: 8 });
+    voice(b, .07, .06, { wave: 'pulse', f: t => 520 + 700 * (t / .06), duty: .25, vol: .1, a: .002, d: .05, s: 0, r: .01 });
   }), .001, .03); } },
 
   // the crash: sub-drop + a long low-passed noise sweep + metal crunch (short-mode LFSR) + glass sparkle, crushed to 6 bit for the Mega-Drive grit

@@ -89,6 +89,9 @@ body:has(#chain:not([hidden])) #toast{top:calc(14% + 40px)}
 #watch .w-fx button{display:flex;flex-direction:column;align-items:center;gap:2px}#watch .w-fx small{font-weight:normal;opacity:.8}
 #watch .w-small{font-size:11px;margin:2px 0;min-height:1em}
 #watch .w-pledge .w-say{align-items:center}#watch .w-pledge input{flex:1 1 4em}#watch .w-pledges:empty{display:none}#watch .w-pledges .w-line{font-size:12px}
+#watch a.w-pl-x{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;background:#0a0908;color:#fff;border:1px solid #9945FF;font-weight:bold;font-size:11px;letter-spacing:.06em;text-decoration:none;white-space:nowrap}
+#watch a.w-pl-x:hover,#watch a.w-pl-x:focus-visible{border-color:#14F195;color:#fff}
+#watch .w-pl-share{margin:6px 0 0}#watch .x-logo{font-size:13px;font-weight:900;line-height:1}
 #watch .pay-qr svg{width:148px;height:148px;background:#fff;display:block}
 #watch .w-foot{display:flex;justify-content:space-between;gap:8px;font-size:11px}#watch a{color:#ffcf5a}
 #watch.folded{width:auto;bottom:auto}#watch.folded>*:not(.w-top):not(.w-leave){display:none}

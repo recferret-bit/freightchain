@@ -2,9 +2,11 @@
   "name": "freightchain-media",
   "private": true,
   "type": "module",
-  "description": "Media maker: gameplay video (real Chrome capture -> mp4 + gif) + chiptune audio (music, engine, sound effects, synthesised offline) + the sound store. See ../.claude/skills/gameplay-video/SKILL.md and ../.claude/skills/game-audio/SKILL.md",
+  "description": "Media maker: gameplay video (real Chrome capture -> mp4 + gif) + chiptune audio (music, engine, sound effects) + the sound store. WAV via wavefile, mp3 check via web-audio-api. See ../.claude/skills/gameplay-video/SKILL.md and ../.claude/skills/game-audio/SKILL.md",
   "dependencies": {
-    "ffmpeg-static": "5.3.0"
+    "ffmpeg-static": "5.3.0",
+    "wavefile": "11.0.0",
+    "web-audio-api": "1.6.0"
   },
   "scripts": {
     "make": "node make.mjs",

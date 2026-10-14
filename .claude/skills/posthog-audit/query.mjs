@@ -89,9 +89,9 @@ export function buildQuery(item) {
   return { kind: 'InsightVizNode', source };
 }
 
-export function eventsOf(series = []) {
+export function eventsOf(series) {
   const out = [];
-  for (const node of series) {
+  for (const node of series ?? []) {
     if (node?.kind === 'GroupNode') for (const child of node.nodes ?? []) out.push(child.event ?? null);
     else out.push(node?.event ?? null);
   }

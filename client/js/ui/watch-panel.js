@@ -80,6 +80,7 @@ const forgetDonation = rideId => { try { sessionStorage.removeItem(donationKey(r
 async function refreshMe() {
   try { P.me = await api('me'); } catch { P.me = null; }
   paintMe();
+  if (watch.ride && watch.ride.poolId !== null && watch.ride.poolId !== undefined) paintPledges($('w-pledges'), watch.ride, P.me);
   if (P.me) resumeDonation().catch(() => {});
 }
 /** A phone payment whose page reloaded before confirm: the order id is in this browser, the reference is on the server. */

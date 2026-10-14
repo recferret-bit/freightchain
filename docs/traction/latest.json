@@ -1,0 +1,164 @@
+{
+  "fetchedAt": "2026-10-14T09:40:56.583Z",
+  "social": {
+    "x": {
+      "handle": "FreightChainSol",
+      "url": "https://x.com/FreightChainSol",
+      "posts": 21,
+      "followers": 6,
+      "following": 29,
+      "listed": 5,
+      "views": null,
+      "coveredViews": 530,
+      "complete": false,
+      "excluded": [],
+      "items": [
+        {
+          "id": "2109986407875760450",
+          "views": 54,
+          "text": "Just did multi-agent penetration and Solana program audit using Warp, my fav tool @warpdotdev Im not using any IDE for a long time, and i al",
+          "url": "https://x.com/FreightChainSol/status/2109986407875760450"
+        },
+        {
+          "id": "2109921865888071894",
+          "views": 113,
+          "text": "In 1995, Desert Bus made you drive 8 real-time hours from Tucson to Las Vegas for 1 point. We kept the 8 hours and replaced the point with a",
+          "url": "https://x.com/FreightChainSol/status/2109921865888071894"
+        },
+        {
+          "id": "2109769147496145392",
+          "views": 99,
+          "text": "A week ago i remembered 'Desert Bus' game. I thought, how to make it modern and kind a hyped ? Week ago, i have it.. #indiegame #desertbus #",
+          "url": "https://x.com/FreightChainSol/status/2109769147496145392"
+        },
+        {
+          "id": "2109385632560591255",
+          "views": 125,
+          "text": "Looking for 20 people to sit in a truck cab for 3 minutes and tell me where it hurts. Free, no download. https://t.co/bqJQEIE96a #FreightCha",
+          "url": "https://x.com/FreightChainSol/status/2109385632560591255"
+        },
+        {
+          "id": "2109242074876739715",
+          "views": 139,
+          "text": "FreightChain is a long-haul truck game in the browser. You drive the cab yourself. The road never ends. Your shift does. One mistake ends th",
+          "url": "https://x.com/FreightChainSol/status/2109242074876739715"
+        }
+      ],
+      "note": "Profile counts 21 posts. 5 are on the public posts tab with a view count checked twice. Logged-out X does not serve the replies tab, so those views are not guessed.",
+      "passes": 3
+    },
+    "youtube": {
+      "handle": "@FreightChainGame",
+      "url": "https://www.youtube.com/@FreightChainGame",
+      "channelId": "UC11gGly1Nzw40_CgSxbNGlg",
+      "subscribers": 9,
+      "listedVideos": 6,
+      "videos": 6,
+      "views": 2468,
+      "coveredViews": 2468,
+      "complete": true,
+      "aboutViews": 443,
+      "aboutNote": "That figure lags the videos and was not used",
+      "excluded": [],
+      "items": [
+        {
+          "id": "QiH7NEoWH48",
+          "title": "Freight Chain: What We Built for Colosseum (in 59 seconds)",
+          "views": 9,
+          "url": "https://www.youtube.com/watch?v=QiH7NEoWH48",
+          "tab": "videos"
+        },
+        {
+          "id": "cFyQ9XlN5nQ",
+          "title": "FreightChain: The Road Never Ends. Your Shift Does.",
+          "views": 32,
+          "url": "https://www.youtube.com/watch?v=cFyQ9XlN5nQ",
+          "tab": "videos"
+        },
+        {
+          "id": "hgXhGdLwSvE",
+          "title": "3 ways to fail the free level 💀",
+          "views": 952,
+          "url": "https://www.youtube.com/watch?v=hgXhGdLwSvE",
+          "tab": "shorts"
+        },
+        {
+          "id": "oJ6UpOxY-l8",
+          "title": "Rating every NPC driver 1–10 (this one got 0)",
+          "views": 960,
+          "url": "https://www.youtube.com/watch?v=oJ6UpOxY-l8",
+          "tab": "shorts"
+        },
+        {
+          "id": "3xCB4uJ_SAw",
+          "title": "Rating every road 1–10",
+          "views": 394,
+          "url": "https://www.youtube.com/watch?v=3xCB4uJ_SAw",
+          "tab": "shorts"
+        },
+        {
+          "id": "2usi9vHQ-Z0",
+          "title": "Boss levels: 3 min, 5 min, 15 min, 1 hour",
+          "views": 121,
+          "url": "https://www.youtube.com/watch?v=2usi9vHQ-Z0",
+          "tab": "shorts"
+        }
+      ],
+      "passes": 3
+    }
+  },
+  "stats": {
+    "rides": 32,
+    "ridesFree": 29,
+    "ridesPaid": 3,
+    "ridesCompleted": 6,
+    "seconds": 4071,
+    "metres": 27875,
+    "crashes": 5,
+    "crashesVehicle": 5,
+    "crashesBuilding": 0,
+    "donations": 0,
+    "donationLamports": 0,
+    "drivers": 2,
+    "updatedAt": 1791854979327
+  },
+  "insights": {
+    "audit": {
+      "exitCode": 1,
+      "fixes": 2,
+      "fixNames": [
+        "FC · Promo from an invite view",
+        "FC · Promo from a submitted code"
+      ],
+      "matching": 37,
+      "leftAlone": 8,
+      "error": null
+    },
+    "windows": [
+      {
+        "label": "8–12 Oct 2026 (judge board)",
+        "landingPeople": 106,
+        "landingEvents": 226,
+        "whitepaperPeople": 9,
+        "startsReal": 1,
+        "completesReal": 0,
+        "startsDemo": 28,
+        "completesDemo": 6,
+        "signinsReal": 54
+      },
+      {
+        "label": "8 Oct 2026 through 2026-10-14 UTC",
+        "landingPeople": 131,
+        "landingEvents": 288,
+        "whitepaperPeople": 12,
+        "startsReal": 3,
+        "completesReal": 0,
+        "startsDemo": 29,
+        "completesDemo": 6,
+        "signinsReal": 59
+      }
+    ],
+    "error": null,
+    "disagreement": null
+  }
+}

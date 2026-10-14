@@ -1,7 +1,7 @@
 // Audio stage: synth determinism, recipes, spec validation, cue sheet, mix, and drift of the committed sound store. Pure node:test, no Chrome.
 import test from 'node:test'; import assert from 'node:assert/strict'; import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
-import { SR, peak } from '../audio/synth.mjs'; import { SFX, SFX_IDS } from '../audio/sfx.mjs'; import { SCORES } from '../audio/scores/index.mjs'; import { renderScore } from '../audio/music.mjs';
-import { writeWav, readWav } from '../audio/wav.mjs'; import { loadAudio, IGNITION } from '../audio/spec.mjs'; import { loadSpec } from '../video/spec.mjs'; import { buildCues } from '../audio/cues.mjs'; import { mixAudio } from '../audio/mix.mjs';
+import { SR, peak, dcBlock, make, voice } from '../audio/synth.mjs'; import { SFX, SFX_IDS } from '../audio/sfx.mjs'; import { SCORES } from '../audio/scores/index.mjs'; import { renderScore } from '../audio/music.mjs';
+import { writeWav, readWav } from '../audio/wav.mjs'; import { swapDir } from '../audio/publish.mjs'; import { decodeMp3 } from '../audio/decode.mjs'; import { loadAudio, IGNITION } from '../audio/spec.mjs'; import { loadSpec } from '../video/spec.mjs'; import { buildCues } from '../audio/cues.mjs'; import { mixAudio } from '../audio/mix.mjs';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'), intro = () => JSON.parse(fs.readFileSync(path.join(root, 'specs/intro.json'), 'utf8'));
 const clip = (raw = intro()) => { const s = loadSpec(raw); s.audio = loadAudio(raw.audio, s.total); return s; };
 const TL = { fps: 24, total: 14.8, events: [{ t: .54, type: 'shift', gear: 4 }, { t: 1, type: 'shift', gear: 5 }, { t: 3.84, type: 'crash' }], frames: Array.from({ length: 355 }, (_, i) => ({ t: i / 24, scene: 's', mode: i / 24 < 3.84 ? 'drive' : 'done', v: 20, gear: 5, rpm: 1800 })) };
@@ -9,6 +9,20 @@ const TL = { fps: 24, total: 14.8, events: [{ t: .54, type: 'shift', gear: 4 }, 
 test('wav: write / read round-trips (16 bit) and clips instead of wrapping', () => {
   const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'wav-')), 'a.wav'); writeWav(f, Float32Array.from([0, .5, -.5, 2, -2]), SR); const r = readWav(f);
   assert.equal(r.rate, SR); assert.equal(r.samples.length, 5); assert.ok(Math.abs(r.samples[1] - .5) < 1e-3); assert.equal(r.samples[3], 1); assert.equal(r.samples[4], -1);
+});
+test('wav: a truncated file and a stereo file are refused', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wav-')), bad = path.join(dir, 'no.wav'); fs.writeFileSync(bad, Buffer.from('RIFF'));
+  assert.throws(() => readWav(bad), /not a wav|need mono/);
+  const wavefile = (await import('wavefile')).default, { WaveFile } = wavefile, w = new WaveFile();
+  w.fromScratch(2, SR, '16', Int16Array.from([0, 0])); const st = path.join(dir, 'st.wav'); fs.writeFileSync(st, Buffer.from(w.toBuffer()));
+  assert.throws(() => readWav(st), /mono/);
+});
+test('dcBlock: a duty-cycle offset is pulled down, and the result stays finite', () => {
+  const b = new Float32Array(SR); for (let i = 0; i < b.length; i++) b[i] = (i % 8) < 1 ? .8 : -.2;
+  const before = b.reduce((s, x) => s + x, 0) / b.length; dcBlock(b);
+  const tail = b.subarray(SR / 2), after = tail.reduce((s, x) => s + x, 0) / tail.length;
+  assert.ok(Math.abs(before) > .05, 'fixture had no offset'); assert.ok(Math.abs(after) < Math.abs(before) * .25, `offset ${before} → ${after}`);
+  assert.ok(b.every(Number.isFinite)); assert.deepEqual(dcBlock(Float32Array.from(b)), dcBlock(Float32Array.from(b)));
 });
 test('every sound effect: deterministic, finite, audible, never clipping', () => {
   for (const id of SFX_IDS) { const a = SFX[id].make(), b = SFX[id].make(); assert.deepEqual(a, b, id + ' is not deterministic'); assert.ok(a.every(Number.isFinite), id); assert.ok(peak(a) > .02 && peak(a) <= .9001, `${id} peak ${peak(a)}`); }
@@ -34,6 +48,11 @@ test('audio spec: parts can be switched off, bad ids / times are refused', () =>
   assert.throws(() => loadAudio({ music: { id: 'nope' } }, 14), /music\.id/); assert.throws(() => loadAudio({ sfx: { mute: ['nope'] } }, 14), /mute/);
   assert.throws(() => loadAudio({ sfx: { extra: [{ t: 99, id: 'click' }] } }, 14), /extra/); assert.throws(() => loadAudio({ ignition: { at: 13.5, dur: .8 } }, 14), /inside the clip/);
   assert.throws(() => loadAudio({ music: { start: 13 } }, 14), /less than 2 s/);
+  assert.throws(() => loadAudio({ master: 'loud' }, 14), /master/);
+  assert.throws(() => loadAudio({ sfx: { mute: 'tick' } }, 14), /mute/);
+  assert.throws(() => loadAudio({ sfx: { extra: [{ t: 14, id: 'click' }] } }, 14), /extra/);
+  assert.throws(() => loadAudio({ music: { fadeOut: -1 } }, 14), /fadeOut/);
+  assert.throws(() => loadAudio({ music: { repeat: 1.5 } }, 14), /repeat/);
 });
 
 test('cues: ignition at 0, shifts + crash from the timeline, transitions on the cuts, all inside the clip and sorted', () => {
@@ -42,6 +61,27 @@ test('cues: ignition at 0, shifts + crash from the timeline, transitions on the 
   assert.equal(by('caption').length, s.scenes.reduce((n, sc) => n + sc.captions.length, 0)); assert.equal(by('card').length, 1);
   const cuts = s.scenes.slice(1).filter(sc => sc.transition.type !== 'cut').length; assert.equal(cues.filter(c => c.id.startsWith('tr-')).length, cuts);
   assert.ok(cues.every(c => c.t >= 0 && c.t < s.total)); assert.deepEqual(cues.map(c => c.t), cues.map(c => c.t).sort((x, y) => x - y));
+});
+test('a missing number cannot silence the mix, and the spec refuses the ones it can see', () => {
+  const b = make(.05, x => voice(x, 0, .05, { wave: 'tri', f: () => NaN, vol: .5 })); assert.ok(b.every(Number.isFinite));
+  assert.throws(() => loadSpec({ scenes: [{ dur: 2, transition: { type: 'dip', dur: 0 } }, { dur: 2 }] }), /transition dur/);
+  assert.throws(() => loadAudio({ ignition: { at: '0' } }, 14), /ignition\.at/);
+  assert.throws(() => loadAudio({ sfx: { extra: [{ t: 1, id: 'boom', duck: { depth: 'full', hold: .4 } }] } }, 14), /duck\.depth/);
+  assert.throws(() => loadSpec({ scenes: [{ dur: 2, captions: [{ at: '0', dur: 1, head: 'A', sub: 'b' }] }] }), /at and dur/);
+  const early = clip({ maxSeconds: 20, scenes: [{ dur: .1 }, { dur: 2, transition: { type: 'whip', dur: .4 } }], audio: { ignition: false, music: false, engine: false } });
+  assert.ok(buildCues(early, null).some(c => c.id === 'tr-whip' && c.t < 0), 'a transition that starts before 0 is dropped');
+  const words = clip({ crop: 'vertical', maxSeconds: 12, scenes: [{ dur: 3, captions: [{ at: 0, dur: 1, head: ' TWO THREE', fx: 'words' }] }], audio: {} });
+  assert.equal(buildCues(words, null).filter(c => c.id === 'click').length, 2);
+  const wash = clip({ maxSeconds: 20, scenes: [{ dur: 4, events: [{ t: 2, do: 'washer', on: false }, { t: .4, do: 'washer', on: true }] }], audio: { ignition: false, music: false, engine: false } });
+  assert.equal(buildCues(wash, null).find(c => c.id === 'washer').dur, 1.6);
+  const rev = clip({ maxSeconds: 20, scenes: [{ dur: 4, events: [{ t: 1, do: 'washer', on: true }, { t: .2, do: 'washer', on: false }] }], audio: { ignition: false, music: false, engine: false } });
+  assert.equal(buildCues(rev, null).find(c => c.id === 'washer').dur, .6);
+  const edge = clip({ maxSeconds: 20, scenes: [{ dur: 2, captions: [{ at: 1.9996, dur: .0001, head: 'GO', sub: 'now' }] }], audio: { ignition: false, music: false, engine: false } });
+  assert.ok(buildCues(edge, null).some(c => c.id === 'caption' && c.t < 2));
+  const bare = clip({ maxSeconds: 20, scenes: [{ dur: 4 }], audio: { ignition: false, music: false } });
+  const m = mixAudio(bare, { fps: 24, events: [{ t: 1, type: 'shift' }], frames: [{ mode: 'drive' }] });
+  for (const k of ['mix', 'sfx', 'engine']) assert.ok(m[k].every(Number.isFinite), k);
+  assert.ok(peak(m.sfx) > .01 && peak(m.engine) > .01, 'shift with no gear, or a frame with no rpm, silenced the mix');
 });
 test('cues: without a timeline there are no shift / crash cues; mute and extra work; big look slams', () => {
   const s = clip(); assert.ok(!buildCues(s, null).some(c => ['shift', 'crash', 'game-over'].includes(c.id)));
@@ -63,6 +103,10 @@ test('mix: the crash stops the engine and ducks the music; a cue gain is applied
   assert.ok(rms(a.music, 3.95, 4.4) < rms(a.music, 2.2, 2.65) * .6, 'music not ducked at the crash');
   const one = { ...s, scenes: [], audio: { ...s.audio, music: null, engine: null, ignition: null, sfx: { gain: 1, mute: [], extra: [{ t: 1, id: 'shift', gain: .5 }, { t: 3, id: 'shift', gain: 1 }] } } }, g = mixAudio(one, null);   // the master normalises, so compare two cues inside ONE mix
   const ratio = peak(g.sfx.subarray(SR, 2 * SR)) / peak(g.sfx.subarray(3 * SR, 4 * SR)); assert.ok(Math.abs(ratio - .5) < .02, 'cue gain applied twice? ratio ' + ratio);
+});
+test('mix: fadeOut 0 and a zero-length duck release stay finite', () => {
+  const s = clip(); s.audio.music.fadeOut = 0; s.audio.sfx.extra.push({ t: 2, id: 'crash', duck: { depth: 1, hold: .2, release: 0 } });
+  const m = mixAudio(s, TL); for (const k of ['mix', 'music', 'sfx', 'engine']) assert.ok(m[k].every(Number.isFinite), k);
 });
 test('mix: works without a timeline and for a spec with only audio (no scenes)', () => {
   assert.equal(mixAudio(clip(), null).mix.length, Math.round(14.8 * SR));
@@ -98,17 +142,19 @@ test('collage shots: validated (asset exists, fx, inside the scene); cues on lan
 test('the sound store is current: every recipe + score is on disk, byte for byte, and in the manifest', () => {
   const store = path.join(root, 'out/audio/_store'), man = JSON.parse(fs.readFileSync(path.join(store, 'manifest.json'), 'utf8')), ids = man.items.map(i => i.id).sort();
   assert.deepEqual(ids, [...SFX_IDS, ...Object.keys(SCORES)].sort(), 'manifest ids ≠ recipes + scores: run `npm run media:store`');
+  const onDisk = ['sfx', 'music'].flatMap(sub => fs.readdirSync(path.join(store, sub)).map(f => sub + '/' + f)).sort();
+  assert.deepEqual(onDisk, man.items.map(i => i.file).sort(), 'orphan wav in the store: run `npm run media:store`');
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'store-'));
   for (const it of man.items) { const b = it.kind === 'music' ? renderScore(SCORES[it.id]) : SFX[it.id].make(), f = writeWav(path.join(tmp, 'x.wav'), b, SR); assert.ok(fs.readFileSync(f).equals(fs.readFileSync(path.join(store, it.file))), `${it.id} differs from out/audio/_store/${it.file}: run \`npm run media:store\``); }
 });
 
 // ---- the game's own sound effects (client/audio/sfx, built by `npm run game-sfx`, played by client/js/sim/audio.js)
-import crypto from 'node:crypto'; import { GAME_SFX, GAME_SFX_IDS } from '../audio/game-sfx.mjs';
+import crypto from 'node:crypto'; import { spawnSync } from 'node:child_process'; import { GAME_SFX, GAME_SFX_IDS } from '../audio/game-sfx.mjs';
 const sfxDir = path.resolve(root, '../client/audio/sfx'), sfxMan = () => JSON.parse(fs.readFileSync(path.join(sfxDir, 'manifest.json'), 'utf8')).items;
 
 test('game sfx: every recipe is finite, audible, under the clip limit and deterministic', () => {
   for (const [id, s] of Object.entries(GAME_SFX)) {
-    const a = s.make(), b = s.make(); assert.ok(a.every(Number.isFinite), id); assert.ok(peak(a) > .2 && peak(a) <= .9 + 1e-6, `${id} peak ${peak(a)}`); assert.ok(a.length / SR <= 1.5, `${id} is longer than 1.5 s`);
+    const a = s.make(), b = s.make(); assert.ok(a.every(Number.isFinite), id); assert.ok(peak(a) > .2 && peak(a) <= .8 + 1e-6, `${id} peak ${peak(a)}`); assert.ok(a.length / SR <= 1.5, `${id} is longer than 1.5 s`);
     assert.deepEqual(a, b, `${id} is not deterministic`); assert.ok(s.vol > 0 && s.vol <= 1.2, id);
   }
 });
@@ -124,9 +170,31 @@ test('game sfx: the committed files match the recipes – hashed names, sizes, �
   assert.ok(total <= 120_000, `${total} bytes of game sounds`); assert.deepEqual(fs.readdirSync(sfxDir).filter(f => f !== 'manifest.json').sort(), Object.values(items).map(i => i.file).sort(), 'stray files in client/audio/sfx');
 });
 
+test('swapDir: the live directory becomes the stage, and files only the old dir had are gone', () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'swap-')), dest = path.join(d, 'live'), stage = path.join(d, 'stage');
+  fs.mkdirSync(dest); fs.writeFileSync(path.join(dest, 'old.txt'), 'old'); fs.mkdirSync(stage); fs.writeFileSync(path.join(stage, 'new.txt'), 'new');
+  swapDir(stage, dest); assert.equal(fs.readFileSync(path.join(dest, 'new.txt'), 'utf8'), 'new'); assert.ok(!fs.existsSync(path.join(dest, 'old.txt'))); assert.ok(!fs.existsSync(stage)); assert.ok(!fs.existsSync(dest + '.prev'));
+});
+test('game sfx: every mp3 decodes at 32 kHz, matches the recipe length, and stays under full scale', async () => {
+  for (const [id, it] of Object.entries(sfxMan())) {
+    const dec = await decodeMp3(path.join(sfxDir, it.file));
+    assert.equal(dec.rate, SR, id); assert.ok(dec.peak > 0.05 && dec.peak <= 1, `${id} decoded peak ${dec.peak}`);
+    assert.ok(Math.abs(dec.ms - it.ms) <= 50, `${id} decoded ${dec.ms} ms, recipe ${it.ms} ms`);
+  }
+});
 test('game sfx: every audio.play(id) in the client names a sound that exists', () => {
   const ids = new Set(Object.keys(sfxMan())), used = new Set(), walk = d => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) walk(p); else if (p.endsWith('.js')) for (const m of fs.readFileSync(p, 'utf8').matchAll(/audio\.play\('([\w-]+)'/g)) used.add(m[1]); else void 0; } };
   walk(path.resolve(root, '../client/js')); assert.ok(used.size >= 15, `only ${used.size} sounds are used`);
   for (const id of used) assert.ok(ids.has(id), `audio.play('${id}') has no sample`);
   const first = /const FIRST = \[([^\]]*)\]/.exec(fs.readFileSync(path.resolve(root, '../client/js/sim/audio.js'), 'utf8'))[1].match(/[\w-]+/g); for (const id of first) assert.ok(ids.has(id), `FIRST lists ${id}`);
+});
+test('wave game:<id> renders that recipe; an unknown id fails', () => {
+  const cli = path.join(root, 'audio/cli.mjs');
+  const bad = spawnSync(process.execPath, [cli, 'wave', 'game:nope'], { encoding: 'utf8' });
+  assert.equal(bad.status, 1); assert.match(bad.stderr, /no game sound/);
+  const ok = spawnSync(process.execPath, [cli, 'wave', 'game:ui'], { encoding: 'utf8' });
+  assert.equal(ok.status, 0, ok.stderr); assert.match(ok.stdout, /peak /);
+  const png = ok.stdout.trim().split('\n').pop();
+  assert.ok(png.endsWith('ui.png') && fs.existsSync(png));
+  fs.rmSync(path.dirname(png), { recursive: true, force: true });
 });

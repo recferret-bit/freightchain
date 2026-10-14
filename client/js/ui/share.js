@@ -10,6 +10,10 @@ export const ridePageUrl = (base, origin, id) => `${siteOrigin(base, origin)}/r/
 export const ticketShareText = ({ shift, tickets, amount, poolId }) =>
   `Ride paid 🚛 ${tickets} for a ${shift} shift in @FreightChainSol${amount ? ` – ${amount}` : ''} in pool #${poolId}’s escrow on @solana devnet. The link buys one ticket into a pool on sale (18+ and loss terms on the site).`;
 
+/** A spectator's locked pledge. `rate` is already words (`0.001 SOL`). The driver is a short name, not a full address. No prize, no verdict. */
+export const pledgeShareText = ({ driver, rate, km }) =>
+  `Locked ${rate}/km for ${driver || 'the driver'}, up to ${km} km, in @FreightChainSol. They are paid for the kilometres they finish. The rest comes back. Watch the ride. @solana devnet.`;
+
 /** Outcome is only COMPLETE, ABANDONED or FAILED – never the verdict line (that can say VERIFIED). */
 export const rideShareText = ({ phase, route, tier, km, time, outcome, free }) => {
   const road = route || 'the road';
