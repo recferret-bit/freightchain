@@ -27,6 +27,8 @@ export class EnvRulesConfigAdapter extends RulesConfigPort {
       gameDomain: env.gameHost, gameOrigin: env.gameHost ? `${new URL(env.appOrigin).protocol}//${env.gameHost}` : null,
       adminWallets: env.adminWallets, adminDomain: env.adminHost ?? env.appDomain,
       adminOrigin: env.adminHost ? `${new URL(env.appOrigin).protocol}//${env.adminHost}` : env.appOrigin,
+      editorWallets: env.editorWallets, editorDomain: env.editorHost ?? env.appDomain,
+      editorOrigin: env.editorHost ? `${new URL(env.appOrigin).protocol}//${env.editorHost}` : env.appOrigin,
     };
   }
 

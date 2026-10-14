@@ -28,6 +28,8 @@ const post = (path, body, cookie) => get(path, { method: 'POST', headers: { 'con
 
 const page = await at(base)('/');
 check('the site answers (GET /)', page.status === 200 && /html/.test(page.headers.get('content-type') ?? ''), `${page.status}`);
+{ const b = await get('/api/entities/bundle'), body = b.status === 200 ? await b.json() : null;   // the 3D models every page loads before it can draw
+  check('the 3D model bundle answers (GET /api/entities/bundle), cacheable', b.status === 200 && (body?.entities?.length ?? 0) >= 40 && /public/.test(b.headers.get('cache-control') ?? ''), `${b.status} · ${body?.entities?.length ?? 0} entities · rev ${body?.rev ?? '-'}`); }
 if (game) { const g = await at(game)('/play.html'); check('the game answers (ride.* /play.html)', g.status === 200 && /html/.test(g.headers.get('content-type') ?? ''), `${g.status}`); }
 if (game) {   // the game's sound effects: the manifest, a fingerprinted mp3 with an immutable cache header, and (behind nginx) the second request answered from nginx's cache
   const man = await at(game)('/audio/sfx/manifest.json'); const items = man.status === 200 ? (await man.json()).items ?? {} : {}; const first = Object.values(items)[0];
@@ -43,6 +45,9 @@ if (storybook) {
   const s = await at(storybook)('/'), sBody = await s.text();
   check('the model viewer answers (storybook.* /)', s.status === 200 && /MODEL VIEWER/.test(sBody), `${s.status}`);
   check('the model viewer host does not expose the API', (await at(storybook)('/api/health/live')).status === 404);
+  const sb = await at(storybook)('/api/entities/bundle'), sbBody = sb.status === 200 ? await sb.json() : null;
+  check('the model viewer host serves the 3D model bundle (storybook.* /api/entities/bundle)', sb.status === 200 && Array.isArray(sbBody?.entities) && sbBody.entities.length >= 40, `${sb.status} · ${sbBody?.entities?.length ?? 0} entities`);
+  check('the model editor is closed to a visitor (storybook.* /api/editor/me → 404)', (await at(storybook)('/api/editor/me')).status === 404);
 }
 if (whitepaper) {
   const w = await at(whitepaper)('/'), wBody = await w.text();

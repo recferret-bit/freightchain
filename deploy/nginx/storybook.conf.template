@@ -1,6 +1,9 @@
 # nginx site for storybook.__ROOT__ – the model viewer (client/viewer.html), one more name for the same app container. Installed as its OWN site file
 # (/etc/nginx/sites-available/freightchain-storybook) by deploy/scripts/remote/setup.sh when absent, so an already-installed main site (and certbot's edits to it) is never rewritten.
-# `/` shows viewer.html (the app would serve the landing there); static files come from the app; the API is not exposed on this name.
+# `/` shows viewer.html (the app would serve the landing there); static files come from the app. Of the API only the 3D model routes are proxied here:
+# /api/entities/ (the public bundle, rate-limited + microcached – the snippet written by remote/setup.sh) and /api/editor/ (the model editor, EDITOR_WALLETS
+# only, same-origin, rate-limited); every other /api/ path is a 404 (the app refuses them on this host too). Zones: deploy/nginx/fc-limits.conf.
+# NOTE: setup.sh installs this file only when it is ABSENT – an existing server needs the manual update in docs/agents/deploy.md.
 # No other PAGE is served here (pentest H7: a sibling subdomain is the same site as the API – the lobby, blink.html or a receipt on this name would act
 # with the shared session cookie): every other .html, /site/ (the lobby's scripts) and /r/ (receipts) is sent to the apex.
 server {
@@ -19,6 +22,18 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
+    include /etc/nginx/snippets/freightchain-entities.conf;   # location /api/entities/ – written by remote/setup.sh
+    location /api/editor/ {
+        limit_req zone=fc_editor burst=40 nodelay;
+        limit_conn fc_conn 20;
+        proxy_pass http://127.0.0.1:__PORT__;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+    }
     location /api/ { return 404; }
     location ~ ^/(site/|r/) { return 302 https://__ROOT__$request_uri; }
     location ~ \.html$ { if ($uri != /viewer.html) { return 302 https://__ROOT__$request_uri; } proxy_pass http://127.0.0.1:__PORT__; proxy_set_header Host $host; }

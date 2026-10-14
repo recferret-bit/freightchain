@@ -172,7 +172,7 @@ On 13 Oct twelve AI auditors from four vendors attacked six surfaces in pairs, b
 | Whitepaper | [whitepaper.freightchain.fun](https://whitepaper.freightchain.fun) | Rules, escrow, validation, streams, risks |
 | Game | [ride.freightchain.fun/play.html](https://ride.freightchain.fun/play.html) | The truck. A ride id comes from the lobby. Bare `play.html` is a guest run |
 | Ride receipt | `freightchain.fun/r/:id` | Live or finished ride, explorer link, X card. Open one from [REPLAYS](https://freightchain.fun/lobby.html#replays) |
-| Model viewer | [storybook.freightchain.fun](https://storybook.freightchain.fun) | The meshes, no API |
+| Model viewer | [storybook.freightchain.fun](https://storybook.freightchain.fun) | The meshes; the 3D model editor for listed wallets (`EDITOR_WALLETS`) |
 | API | [api.freightchain.fun/api/health](https://api.freightchain.fun/api/health) | JSON under `/api/`. Anything else on that host 404s |
 | Admin | [admin.freightchain.fun](https://admin.freightchain.fun) | HTTP basic auth, then a second wallet sign-in |
 | Program | [Explorer, devnet](https://explorer.solana.com/address/8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p?cluster=devnet) | Upgradeable. Initialized. Not audited |
@@ -425,7 +425,7 @@ flowchart LR
   ride["ride.freightchain.fun<br/>the game"] --> api
   paper["whitepaper.freightchain.fun"] --> api
   admin["admin.freightchain.fun<br/>page and /api/admin"] --> api
-  story["storybook.freightchain.fun<br/>meshes only"]
+  story["storybook.freightchain.fun<br/>meshes + model editor"]
   api --> pg[(PostgreSQL)]
   api --> redis[(Redis, stats & replay queue)]
   worker["worker container<br/>replay:worker"] --> pg

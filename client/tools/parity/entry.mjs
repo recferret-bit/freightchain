@@ -7,6 +7,9 @@ import { THEMES } from '../../js/themes/index.js';
 import { TYPES } from '../../js/themes/_shared/landmarks/index.js';
 import { buildGantry } from '../../js/world/gantry.js';
 import { meshPool, groupPool } from '../../js/world/pool.js';
+import { loadEntities } from '../../js/world/entities.js';   // (run.mjs gives a pre-entity base tree a no-op one)
+
+await loadEntities();
 
 const n = v => (Object.is(v, -0) ? '-0' : String(v));
 const hash = s => createHash('sha1').update(s).digest('hex').slice(0, 12);

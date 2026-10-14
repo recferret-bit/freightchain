@@ -29,6 +29,17 @@ export class BadRequestError extends DomainError {
   }
 }
 
+/** The request is well-formed but its content is refused, with every reason (an entity that does not validate: `errors` refuse it, `warnings` only inform). */
+export class UnprocessableEntityError extends DomainError {
+  readonly statusCode = 422;
+  readonly errorCode: string;
+
+  constructor(message: string, errorCode: string, readonly errors: readonly string[] = [], readonly warnings: readonly string[] = []) {
+    super(message);
+    this.errorCode = errorCode;
+  }
+}
+
 export class UnauthorizedError extends DomainError {
   readonly statusCode = 401;
   readonly errorCode = 'unauthorized';

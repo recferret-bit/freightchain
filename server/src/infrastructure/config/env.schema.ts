@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { isWalletAddress } from '../../domain/players/wallet-address.js';
+import { isIpRule } from './ip-rules.js';
 
 /** `KEY=` in a .env file arrives as an empty string – treat it as "not set". */
 const optional = <T extends z.ZodTypeAny>(schema: T) => z.preprocess((v) => (v === '' ? undefined : v), schema.optional());
@@ -22,6 +23,8 @@ export const envSchema = z
     THROTTLE_LIMIT: z.coerce.number().int().positive().default(600),
     THROTTLE_AUTH_LIMIT: z.coerce.number().int().positive().default(30),
     THROTTLE_PROMO_LIMIT: z.coerce.number().int().positive().default(30),
+    THROTTLE_ENTITIES_LIMIT: z.coerce.number().int().positive().default(120), // GET /api/entities/* per IP per minute (the game loads the bundle once per page)
+    THROTTLE_EDITOR_LIMIT: z.coerce.number().int().positive().default(240), // /api/editor/* per editor wallet (else per IP) per minute
     FREE_RIDE_SECONDS: z.coerce.number().positive().default(180),
     HB_MIN_INTERVAL_MS: z.coerce.number().int().min(0).default(1000),
     HB_TIMEOUT_MS: z.coerce.number().int().min(5000).default(150_000), // no heartbeat for this long = the tab is gone: off the live feed, its next heartbeat would fail it, the stale-ride sweeper ends it (failed · heartbeat lost)
@@ -80,6 +83,14 @@ export const envSchema = z
     ADMIN_JWT_SECRET: optional(z.string().min(32, 'ADMIN_JWT_SECRET must be at least 32 characters')),
     /** how long an admin sign-in lasts (minutes); there is no silent renewal – the wallet signs again */
     ADMIN_SESSION_TTL_MINUTES: z.coerce.number().int().positive().max(1440).default(120),
+    /** wallets that may use the 3D model editor on storybook.<apex> (/api/editor/*), comma-separated; empty = no editor (every editor route is a 404) */
+    EDITOR_WALLETS: z.string().default(''),
+    /** the editor session's own signing key; unset = derived from JWT_SECRET (never the player's or the admin's bytes) */
+    EDITOR_JWT_SECRET: optional(z.string().min(32, 'EDITOR_JWT_SECRET must be at least 32 characters')),
+    /** how long an editor sign-in lasts (minutes); the wallet signs again after it */
+    EDITOR_SESSION_TTL_MINUTES: z.coerce.number().int().positive().max(1440).default(240),
+    /** optional: only these client IPs / CIDRs reach the editor (comma-separated, IPv4 or IPv6); empty = any IP */
+    EDITOR_IP_ALLOWLIST: z.string().default(''),
     /** verified play: 'true' = the paid boards rank verified shifts only; 'false' = SHADOW mode – every ride is still judged and the verdict shown, but ranking ignores it */
     VERDICT_ENFORCE: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
     /** days a ride's recording is kept after the ride ended (flagged rides are kept until reviewed); 0 = keep forever */
@@ -98,6 +109,10 @@ export const envSchema = z
   .superRefine((env, ctx) => {
     const badAdmin = env.ADMIN_WALLETS.split(',').map((w) => w.trim()).filter((w) => w.length > 0 && !isWalletAddress(w));
     if (badAdmin.length) ctx.addIssue({ code: 'custom', path: ['ADMIN_WALLETS'], message: `ADMIN_WALLETS must be base58 Solana addresses (bad: ${badAdmin.join(', ')})` });
+    const badEditor = env.EDITOR_WALLETS.split(',').map((w) => w.trim()).filter((w) => w.length > 0 && !isWalletAddress(w));
+    if (badEditor.length) ctx.addIssue({ code: 'custom', path: ['EDITOR_WALLETS'], message: `EDITOR_WALLETS must be base58 Solana addresses (bad: ${badEditor.join(', ')})` });
+    const badIps = env.EDITOR_IP_ALLOWLIST.split(',').map((w) => w.trim()).filter((w) => w.length > 0 && !isIpRule(w));
+    if (badIps.length) ctx.addIssue({ code: 'custom', path: ['EDITOR_IP_ALLOWLIST'], message: `EDITOR_IP_ALLOWLIST must be IPs or CIDRs (bad: ${badIps.join(', ')})` });
     if (env.TREASURY_PUBKEY !== undefined && !isWalletAddress(env.TREASURY_PUBKEY)) {
       ctx.addIssue({ code: 'custom', path: ['TREASURY_PUBKEY'], message: 'TREASURY_PUBKEY must be a base58 Solana address' });
     }

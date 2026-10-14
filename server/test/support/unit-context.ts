@@ -47,12 +47,14 @@ import { StubNameServiceAdapter } from './stub-name-service.js';
 export const DEMO_UNIT_WALLET = 'DemoWa11et1111111111111111111111111111111111';
 /** the one wallet in the unit rules' ADMIN_WALLETS (a valid address; specs that sign use their own keypair and pass it in the rules) */
 export const ADMIN_UNIT_WALLET = 'GseaEsNWMLScZ5RH8yQ4xmoCP97H86HjLSA9xkyFCqbn';
+/** the one wallet in the unit rules' EDITOR_WALLETS */
+export const EDITOR_UNIT_WALLET = '9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin';
 export const unitRules = (over: Partial<RulesConfig> = {}): RulesConfig => ({
   freeOnSignup: 5, freeRidesMax: 5, freeRideSeconds: 10, hbMinIntervalMs: 1000, hbTimeoutMs: 150_000, quoteTtlMs: 600_000, nonceTtlMs: 300_000,
   demoWallets: new Set([DEMO_UNIT_WALLET]), demoScale: 60, initialSeedLamports: 0, treasury: TREASURY, appDomain: 'freight.test', appOrigin: 'https://freight.test', gameDomain: null, gameOrigin: null,
   paymentMode: 'transfer', programId: '', feeTreasury: '', seedTreasury: '', watchIntervalMs: 0, orderTtlMs: 3_600_000, commitment: 'confirmed', crankEnabled: false,
   priorityFee: { percentile: 75, minMicrolamports: 0, maxMicrolamports: 50_000 }, sessionTtlHours: 24,
-  verdictEnforce: true, telemetryRetentionDays: 90, signInRetentionDays: 180, challengeIntervalSeconds: 240, challengeFreeRides: true, live: { chat: 'all', donations: true, freeDonations: true, effects: 'all' }, adminWallets: new Set([ADMIN_UNIT_WALLET]), adminDomain: 'freight.test', adminOrigin: 'https://freight.test',
+  verdictEnforce: true, telemetryRetentionDays: 90, signInRetentionDays: 180, challengeIntervalSeconds: 240, challengeFreeRides: true, live: { chat: 'all', donations: true, freeDonations: true, effects: 'all' }, adminWallets: new Set([ADMIN_UNIT_WALLET]), adminDomain: 'freight.test', adminOrigin: 'https://freight.test', editorWallets: new Set([EDITOR_UNIT_WALLET]), editorDomain: 'freight.test', editorOrigin: 'https://freight.test',
   ...over,
 });
 

@@ -113,6 +113,12 @@ import { RideReplayPrismaRepository } from './prisma/repositories/ride-replay.pr
 import { ReplayQueuePort } from '../application/ports/verdict/replay-queue.port.js';
 import { MemoryReplayQueueAdapter } from './verdict/memory-replay-queue.adapter.js';
 import { RedisReplayQueueAdapter } from './verdict/redis-replay-queue.adapter.js';
+import { EntityRepositoryPort } from '../application/ports/entities/entity.repository.port.js';
+import { EntityPrismaRepository } from './prisma/repositories/entity.prisma.repository.js';
+import { EditorTokenPort } from '../application/ports/editor/editor-token.port.js';
+import { JoseEditorTokenSigner } from './auth/jose.editor-token-signer.js';
+import { EditorGuard } from './http/guards/editor.guard.js';
+import { ClearEditorCookieInterceptor, SetEditorCookieInterceptor } from './http/interceptors/editor-cookie.interceptor.js';
 
 /** Every port the application layer declares is bound to its adapter here – the only place that knows which implementation runs. */
 const ports: Provider[] = [
@@ -136,6 +142,8 @@ const ports: Provider[] = [
   { provide: SignatureVerifierPort, useClass: NaclSignatureVerifier },
   { provide: TokenSignerPort, useClass: JoseTokenSigner },
   { provide: AdminTokenPort, useClass: JoseAdminTokenSigner },
+  { provide: EditorTokenPort, useClass: JoseEditorTokenSigner },
+  { provide: EntityRepositoryPort, useClass: EntityPrismaRepository },
   { provide: RideRepositoryPort, useClass: RidePrismaRepository },
   { provide: DailySeedRepositoryPort, useClass: DailySeedPrismaRepository },
   { provide: RideQueryPort, useClass: RideQueryPrismaRepository },
@@ -173,7 +181,7 @@ const ports: Provider[] = [
 const portTokens = ports.map((p) => (p as { provide: unknown }).provide as typeof ClockPort);
 
 @Module({
-  providers: [PrismaService, PlayerAuthGuard, AdminGuard, OptionalSessionGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, SetAdminCookieInterceptor, ClearAdminCookieInterceptor, { provide: LogRing, useValue: new LogRing() }, JsonLogger, ...ports],
-  exports: [PrismaService, PlayerAuthGuard, AdminGuard, OptionalSessionGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, SetAdminCookieInterceptor, ClearAdminCookieInterceptor, LogRing, JsonLogger, ...portTokens],
+  providers: [PrismaService, PlayerAuthGuard, AdminGuard, OptionalSessionGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, SetAdminCookieInterceptor, ClearAdminCookieInterceptor, EditorGuard, SetEditorCookieInterceptor, ClearEditorCookieInterceptor, { provide: LogRing, useValue: new LogRing() }, JsonLogger, ...ports],
+  exports: [PrismaService, PlayerAuthGuard, AdminGuard, OptionalSessionGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, SetAdminCookieInterceptor, ClearAdminCookieInterceptor, EditorGuard, SetEditorCookieInterceptor, ClearEditorCookieInterceptor, LogRing, JsonLogger, ...portTokens],
 })
 export class InfrastructureModule {}

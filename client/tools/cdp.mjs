@@ -3,6 +3,12 @@
 import { spawn } from 'node:child_process'; import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path';
 
 export const sleep = ms => new Promise(r => setTimeout(r, ms));
+/* A page served WITHOUT the API (client/serve.sh, a plain static server) has no entity bundle: ask for the code's seed models (?entities=baked)
+   and keep the viewer's editor off, so the run does not log 404s. Behind the real server (:3000, e2e.sh) the URL is left as it is. */
+export async function withEntities(url) {
+  try { if ((await fetch(new URL('/api/entities/bundle', url), { signal: AbortSignal.timeout(1500) })).ok) return url; } catch { /* no API */ }
+  const u = new URL(url); u.searchParams.set('entities', 'baked'); if (u.pathname.endsWith('viewer.html')) u.searchParams.set('editor', 'off'); return u.href;
+}
 
 /** Headless Chrome cannot really drive: this page snippet holds the truck at `speed` m/s in its lane (no pedal held: with the engine on that would blow it at max revs), and lets the GAME's physics move it –
     so s grows with v × the game clock, as in a real drive (verdict rules v4 reject a position that outruns the recorded speed: the old hook pushed st.s with

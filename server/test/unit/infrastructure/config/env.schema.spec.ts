@@ -83,4 +83,12 @@ describe('validateEnv – paid tickets (all optional until the workstreams need 
     // the gas sponsor is gone: a FEE_PAYER_SECRET left in an old env file is ignored, it neither refuses the boot nor is it read
     expect(() => validateEnv({ ...base, FEE_PAYER_SECRET: 'short' })).not.toThrow();
   });
+
+  it('EDITOR_WALLETS are base58 addresses and EDITOR_IP_ALLOWLIST IPs / CIDRs; both default to empty', () => {
+    const base = { DATABASE_URL: 'postgresql://x/y' };
+    expect(validateEnv(base)).toMatchObject({ EDITOR_WALLETS: '', EDITOR_IP_ALLOWLIST: '', EDITOR_SESSION_TTL_MINUTES: 240, THROTTLE_ENTITIES_LIMIT: 120, THROTTLE_EDITOR_LIMIT: 240 });
+    expect(() => validateEnv({ ...base, EDITOR_WALLETS: 'not-a-wallet' })).toThrow(/EDITOR_WALLETS/);
+    expect(() => validateEnv({ ...base, EDITOR_IP_ALLOWLIST: '10.0.0.0/8, nonsense' })).toThrow(/EDITOR_IP_ALLOWLIST.*nonsense/);
+    expect(validateEnv({ ...base, EDITOR_IP_ALLOWLIST: '10.0.0.0/8, ::1' }).EDITOR_IP_ALLOWLIST).toBe('10.0.0.0/8, ::1');
+  });
 });

@@ -34,6 +34,17 @@ export class EnvService {
   /** the admin session's key: ADMIN_JWT_SECRET, else derived from the player secret (never the same bytes – a player token is not an admin token even before the audience check) */
   get adminJwtSecret(): string { return this.env.ADMIN_JWT_SECRET ?? createHash('sha256').update(`${this.jwtSecret}:admin-session`).digest('hex'); }
   get adminSessionTtlMinutes(): number { return this.env.ADMIN_SESSION_TTL_MINUTES; }
+  /** the entity editor's session key: EDITOR_JWT_SECRET, else derived from the player secret (neither the player's nor the admin's bytes) */
+  get editorJwtSecret(): string { return this.env.EDITOR_JWT_SECRET ?? createHash('sha256').update(`${this.jwtSecret}:editor-session`).digest('hex'); }
+  get editorSessionTtlMinutes(): number { return this.env.EDITOR_SESSION_TTL_MINUTES; }
+  /** who may use the 3D model editor (empty = nobody: every editor route is a 404) */
+  get editorWallets(): ReadonlySet<string> {
+    return new Set(this.env.EDITOR_WALLETS.split(',').map((w) => w.trim()).filter((w) => w.length > 0));
+  }
+  /** EDITOR_IP_ALLOWLIST as written ('' = any IP); infrastructure/config/ip-rules.ts matches it */
+  get editorIpAllowlist(): string { return this.env.EDITOR_IP_ALLOWLIST; }
+  /** split deployment: the only host the editor API answers on (storybook.<COOKIE_DOMAIN>, nginx proxies /api/editor/ there); null = single origin, any host */
+  get editorHost(): string | null { return this.env.COOKIE_DOMAIN ? `storybook.${this.env.COOKIE_DOMAIN.replace(/^\./, '')}`.toLowerCase() : null; }
   get appDomain(): string { return this.env.APP_DOMAIN; }
   get appOrigin(): string { return this.env.APP_ORIGIN; }
   /** the site folder (default: ../client, resolved from this module so it works from src/ and from dist/) */
@@ -48,6 +59,8 @@ export class EnvService {
   get throttleLimit(): number { return this.env.THROTTLE_LIMIT; }
   get throttleAuthLimit(): number { return this.env.THROTTLE_AUTH_LIMIT; }
   get throttlePromoLimit(): number { return this.env.THROTTLE_PROMO_LIMIT; }
+  get throttleEntitiesLimit(): number { return this.env.THROTTLE_ENTITIES_LIMIT; }
+  get throttleEditorLimit(): number { return this.env.THROTTLE_EDITOR_LIMIT; }
   get freeRideSeconds(): number { return this.env.FREE_RIDE_SECONDS; }
   get hbMinIntervalMs(): number { return this.env.HB_MIN_INTERVAL_MS; }
   get hbTimeoutMs(): number { return this.env.HB_TIMEOUT_MS; }

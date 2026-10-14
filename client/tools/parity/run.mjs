@@ -2,7 +2,7 @@
 // with a recording three.js (three-rec.mjs) and a recording canvas (scene-shim.mjs), and compares every object tree bit for bit.
 //   node tools/parity/run.mjs [base-commit]      (default: tools/parity/BASE)      exit 1 on any difference
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, cpSync, readFileSync, writeFileSync, copyFileSync, readdirSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, cpSync, readFileSync, writeFileSync, copyFileSync, readdirSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,6 +15,8 @@ function tree(name, fill) {
   const par = join(root, 'client', 'tools', 'parity'); mkdirSync(par, { recursive: true });
   for (const f of readdirSync(here)) if (f.endsWith('.mjs')) copyFileSync(join(here, f), join(par, f));
   copyFileSync(join(here, 'scene-shim.mjs'), join(root, 'client', 'js', 'world', 'scene.js'));
+  const ents = join(root, 'client', 'js', 'world', 'entities.js');
+  if (!existsSync(ents)) writeFileSync(ents, 'export async function loadEntities() {}\n');   // a base from before the entities
   const out = join(tmp, name + '.mjs');
   execFileSync('npx', ['esbuild', join(par, 'entry.mjs'), '--bundle', '--format=esm', '--platform=node', `--alias:three=${join(par, 'three-rec.mjs')}`, `--outfile=${out}`, '--log-level=error'], { cwd: client, stdio: 'inherit' });
   return execFileSync('node', [out], { maxBuffer: 1 << 30 }).toString().trimEnd().split('\n');

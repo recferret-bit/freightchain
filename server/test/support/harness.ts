@@ -46,6 +46,9 @@ import { MemorySettingsRepository } from './in-memory/memory-settings.js';
 import { DailySeedRepositoryPort } from '../../src/application/ports/rides/daily-seed.repository.port.js';
 import { MemoryDailySeedRepository } from './in-memory/memory-daily-seeds.js';
 import { SettingsRepositoryPort } from '../../src/application/ports/settings/settings.repository.port.js';
+import { EntityRepositoryPort } from '../../src/application/ports/entities/entity.repository.port.js';
+import { MemoryEntityRepository } from './in-memory/memory-entities.js';
+import { EntityCatalogService } from '../../src/application/services/entity-catalog.service.js';
 import {
   MemoryAchievementRepository, MemoryAchievementMintRepository, MemoryChallengeRepository, MemoryHealthProbe, MemoryPaymentRepository, MemoryPlayerRepository,
   MemoryRideBatchRepository, MemoryRideQuery, MemoryRideVerdictRepository, MemoryRideReplayRepository, MemorySignInRepository, MemoryAdminActionRepository, MemoryAdminQuery, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
@@ -101,7 +104,7 @@ export interface Harness {
 }
 
 /** Everything the app reads from the environment that a test may change – cleared before each harness so files can't leak into each other. */
-const TUNABLES = ['THROTTLE_LIMIT', 'THROTTLE_AUTH_LIMIT', 'THROTTLE_PROMO_LIMIT', 'HB_TIMEOUT_MS', 'FREE_RIDE_SECONDS', 'DEMO_WALLETS', 'DEMO_SCALE', 'INITIAL_SEED_SOL', 'HB_MIN_INTERVAL_MS', 'TRUST_PROXY', 'SOL_USD', 'TREASURY_PUBKEY', 'JWT_SECRET', 'CLIENT_DIR', 'COOKIE_DOMAIN', 'CORS_ORIGINS', 'ADMIN_WALLETS', 'ADMIN_JWT_SECRET', 'ADMIN_SESSION_TTL_MINUTES', 'VERDICT_ENFORCE', 'TELEMETRY_RETENTION_DAYS', 'SIGNIN_RETENTION_DAYS', 'CHALLENGE_INTERVAL_SECONDS',
+const TUNABLES = ['THROTTLE_LIMIT', 'THROTTLE_AUTH_LIMIT', 'THROTTLE_PROMO_LIMIT', 'THROTTLE_ENTITIES_LIMIT', 'THROTTLE_EDITOR_LIMIT', 'EDITOR_WALLETS', 'EDITOR_IP_ALLOWLIST', 'EDITOR_JWT_SECRET', 'EDITOR_SESSION_TTL_MINUTES', 'HB_TIMEOUT_MS', 'FREE_RIDE_SECONDS', 'DEMO_WALLETS', 'DEMO_SCALE', 'INITIAL_SEED_SOL', 'HB_MIN_INTERVAL_MS', 'TRUST_PROXY', 'SOL_USD', 'TREASURY_PUBKEY', 'JWT_SECRET', 'CLIENT_DIR', 'COOKIE_DOMAIN', 'CORS_ORIGINS', 'ADMIN_WALLETS', 'ADMIN_JWT_SECRET', 'ADMIN_SESSION_TTL_MINUTES', 'VERDICT_ENFORCE', 'TELEMETRY_RETENTION_DAYS', 'SIGNIN_RETENTION_DAYS', 'CHALLENGE_INTERVAL_SECONDS',
   'CHALLENGE_FREE_RIDES', 'LIVE_CHAT', 'LIVE_DONATIONS', 'LIVE_FREE_DONATIONS', 'LIVE_EFFECTS', 'PAYMENT_MODE', 'TICKET_PROGRAM_ID', 'FEE_TREASURY', 'SEED_TREASURY', 'ORDER_TTL_MINUTES', 'WATCH_INTERVAL_MS', 'WEBHOOK_SECRET', 'CRANK_SECRET', 'CRANK_INTERVAL_MS', 'FEE_PAYER_SECRET', 'SOLANA_COMMITMENT',
   'POSTHOG_KEY', 'POSTHOG_HOST', 'POSTHOG_ENABLED', 'POSTHOG_DISABLED', 'POSTHOG_PROJECT_ID'];
 
@@ -112,7 +115,7 @@ const TUNABLES = ['THROTTLE_LIMIT', 'THROTTLE_AUTH_LIMIT', 'THROTTLE_PROMO_LIMIT
 export async function createHarness(persistence: Persistence, env: Record<string, string> = {}): Promise<Harness> {
   for (const key of TUNABLES) delete process.env[key];
   Object.assign(process.env, {
-    NODE_ENV: 'test', JWT_SECRET: 'test-secret-'.padEnd(48, 'x'), SOL_USD: '100', TREASURY_PUBKEY: TREASURY, THROTTLE_LIMIT: '1000000', THROTTLE_AUTH_LIMIT: '1000000', THROTTLE_PROMO_LIMIT: '1000000',
+    NODE_ENV: 'test', JWT_SECRET: 'test-secret-'.padEnd(48, 'x'), SOL_USD: '100', TREASURY_PUBKEY: TREASURY, THROTTLE_LIMIT: '1000000', THROTTLE_AUTH_LIMIT: '1000000', THROTTLE_PROMO_LIMIT: '1000000', THROTTLE_ENTITIES_LIMIT: '1000000', THROTTLE_EDITOR_LIMIT: '1000000',
     ACHIEVEMENT_MINT_SECRET: '', ACHIEVEMENT_TREE: '', ACHIEVEMENT_COLLECTION: '', // never the developer's .env: scenarios must not mint (or show a tree)
     WATCH_INTERVAL_MS: '0', // the program watcher off: scenarios settle through the webhook / their own calls
     DATABASE_URL: persistence === 'postgres' ? testDatabaseUrl() : 'postgresql://unused:unused@127.0.0.1:1/unused_test',   // NEVER the shell's DATABASE_URL
@@ -164,7 +167,8 @@ export async function createHarness(persistence: Persistence, env: Record<string
       .overrideProvider(RideMuteRepositoryPort).useValue(new MemoryRideMuteRepository(memory))
       .overrideProvider(DonationOrderRepositoryPort).useValue(new MemoryDonationOrderRepository(memory))
       .overrideProvider(StatsRepositoryPort).useValue(new MemoryStatsRepository(memory))
-      .overrideProvider(SettingsRepositoryPort).useValue(new MemorySettingsRepository(memory));
+      .overrideProvider(SettingsRepositoryPort).useValue(new MemorySettingsRepository(memory))
+      .overrideProvider(EntityRepositoryPort).useValue(new MemoryEntityRepository(memory));
   }
   const moduleRef = await builder.compile();
   const app = moduleRef.createNestApplication();
@@ -184,6 +188,7 @@ export async function createHarness(persistence: Persistence, env: Record<string
       replayQueue.clear();
       nameService.reset();
       if (prisma) await truncateAllTables(prisma);
+      app.get(EntityCatalogService, { strict: false }).invalidate();   // the bundle in memory describes the database that was just wiped
       const cache = app.get(CachePort);   // the cached statistics describe the database that was just wiped
       if (cache instanceof MemoryCacheAdapter) cache.clear();
     },

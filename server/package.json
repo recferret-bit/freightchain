@@ -31,6 +31,7 @@
     "cli": "node dist/cli/index.js",
     "cli:migrate": "node dist/cli/index.js migrate",
     "db:reset": "node dist/cli/index.js db:reset",
+    "entities:export": "node dist/cli/index.js entities:export",
     "treasury:init": "node scripts/treasury-init.mjs"
   },
   "dependencies": {

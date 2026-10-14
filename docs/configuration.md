@@ -73,7 +73,8 @@ Change one with the signed admin API (`GET /api/admin/settings`, then the challe
 | `COOKIE_DOMAIN` | unset (host-only cookie) | Split hosts only: the apex, so all subdomains share the session. Bare host, no scheme/port |
 | `CORS_ORIGINS` | empty (CORS off) | Split hosts only: comma-separated origins allowed to call the API with the cookie. Derived as `https://<apex>,https://ride.<apex>,https://whitepaper.<apex>` (`deploy/scripts/lib.sh`). The whitepaper origin is for web vitals. |
 | `TRUST_PROXY` | – (**required in prod**) | Reverse-proxy hops. Production nginx = `1` (the deploy check insists). Wrong value = per-IP rate limits wrong |
-| `THROTTLE_LIMIT` / `THROTTLE_AUTH_LIMIT` / `THROTTLE_PROMO_LIMIT` | `600` / `30` / `30` | Requests per minute per wallet-or-IP; the second applies to `/api/auth/*` (per IP), the third to `POST /api/promo/redeem` (per IP – code guessing; wallets are free to make) |
+| `THROTTLE_LIMIT` / `THROTTLE_AUTH_LIMIT` / `THROTTLE_PROMO_LIMIT` | `600` / `30` / `30` | Requests per minute per wallet-or-IP; the second applies to `/api/auth/*` and `/api/editor/auth/*` (per IP), the third to `POST /api/promo/redeem` (per IP – code guessing; wallets are free to make) |
+| `THROTTLE_ENTITIES_LIMIT` / `THROTTLE_EDITOR_LIMIT` | `120` / `240` | Per minute: `/api/entities/*` (the 3D model bundle) per IP; `/api/editor/*` per editor wallet, else per IP. `THROTTLE_LIMIT` skips both paths |
 
 ### Game rules & economy
 
@@ -135,6 +136,17 @@ Enforced by the server (a refused post is `403 live_feature_off`) and sent to th
 | `ADMIN_SESSION_TTL_MINUTES` | `120` | max 1440; no silent renewal. |
 
 The admin API additionally requires: host = `admin.<apex>` (nginx basic auth, `DEPLOY_ADMIN_USER` / `DEPLOY_ADMIN_PASSWORD` ≥ 16 chars), a wallet sign-in, and a wallet signature for every change.
+
+### 3D model editor (docs/agents/editor.md)
+
+| Key | Default | Notes |
+|---|---|---|
+| `EDITOR_WALLETS` | empty | Comma-separated base58 wallets that may edit and publish the game's 3D models on `storybook.<apex>`. **Empty = no editor** (every `/api/editor` route 404s; the viewer stays read-only) |
+| `EDITOR_JWT_SECRET` | derived from `JWT_SECRET` | ≥ 32 chars. Rotating it signs all editors out |
+| `EDITOR_SESSION_TTL_MINUTES` | `240` | max 1440 |
+| `EDITOR_IP_ALLOWLIST` | empty | Optional comma-separated IPs / CIDRs (IPv4 / IPv6); empty = any IP. Needs `TRUST_PROXY` right behind nginx |
+
+The editor API additionally requires: host = `storybook.<apex>` (nginx proxies only `/api/entities/` and `/api/editor/` there), the `X-FC-Editor: 1` header on changes, and a wallet signature for every publish.
 
 ### Product analytics
 

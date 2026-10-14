@@ -31,4 +31,15 @@ describe('throttlerOptions', () => {
     expect(await track('fc_session=forged')).toBe('ip:10.0.0.7');
     expect(await track()).toBe('ip:10.0.0.7');
   });
+
+  it("'entities' (per IP) and 'editor' (per editor session, else per IP) cover only their paths; 'default' skips both; the editor sign-in also counts in 'auth'", async () => {
+    const editorTokens = { verify: async (t: string) => (t === 'ed' ? 'ED' : null) } as never;
+    const all = throttlerOptions({ throttleLimit: 600, throttleAuthLimit: 30, throttleEntitiesLimit: 120, throttleEditorLimit: 240 } as EnvService, new Tokens(), editorTokens) as unknown as Throttler[];
+    const [def, au, ent, ed] = all;
+    expect([ent?.name, ent?.limit, ed?.name, ed?.limit]).toEqual(['entities', 120, 'editor', 240]);
+    expect([def?.skipIf(at('/api/entities/bundle')), def?.skipIf(at('/api/editor/me')), ent?.skipIf(at('/api/entities/bundle')), ent?.skipIf(at('/api/rides'))]).toEqual([true, true, false, true]);
+    expect([ed?.skipIf(at('/api/editor/entities')), ed?.skipIf(at('/api/rides')), au?.skipIf(at('/api/editor/auth/nonce')), au?.skipIf(at('/api/editor/me'))]).toEqual([false, true, false, true]);
+    expect(await ed?.getTracker?.({ headers: { cookie: 'fc_editor=ed' }, ip: '10.0.0.7' }, at('/api/editor/me'))).toBe('editor:ED');
+    expect(await ed?.getTracker?.({ headers: { cookie: 'fc_editor=x' }, ip: '10.0.0.7' }, at('/api/editor/me'))).toBe('ip:10.0.0.7');
+  });
 });

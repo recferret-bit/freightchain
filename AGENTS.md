@@ -21,6 +21,7 @@ This file is the map and the hard rules only. The detail lives in **`docs/agents
 | statistics | `statistics.md` |
 | live board, live streams, replays, donations | `live.md` |
 | admin page, observing production | `admin-ops.md` |
+| 3D model editor: entity storage + revisions, the bundle API, editor sign-in, signed publish | `editor.md` |
 | free levels, tutorial + assist, free rides, trips | `free-rides.md` |
 | garage, promo codes | `garage-promo.md` |
 | money, escrowed pools, the program toolchain | `escrow.md` |

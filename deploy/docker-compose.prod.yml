@@ -82,6 +82,8 @@ services:
       THROTTLE_LIMIT: ${THROTTLE_LIMIT:-600}
       THROTTLE_AUTH_LIMIT: ${THROTTLE_AUTH_LIMIT:-30}
       THROTTLE_PROMO_LIMIT: ${THROTTLE_PROMO_LIMIT:-30}
+      THROTTLE_ENTITIES_LIMIT: ${THROTTLE_ENTITIES_LIMIT:-120}
+      THROTTLE_EDITOR_LIMIT: ${THROTTLE_EDITOR_LIMIT:-240}
       FREE_RIDE_SECONDS: ${FREE_RIDE_SECONDS:-180}
       TREASURY_PUBKEY: ${TREASURY_PUBKEY}
       SOLANA_RPC: ${SOLANA_RPC:-https://api.devnet.solana.com}
@@ -132,6 +134,10 @@ services:
       ADMIN_WALLETS: ${ADMIN_WALLETS:-}
       ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET:-}   # empty = derived from JWT_SECRET
       ADMIN_SESSION_TTL_MINUTES: ${ADMIN_SESSION_TTL_MINUTES:-120}
+      EDITOR_WALLETS: ${EDITOR_WALLETS:-}
+      EDITOR_JWT_SECRET: ${EDITOR_JWT_SECRET:-}   # empty = derived from JWT_SECRET
+      EDITOR_SESSION_TTL_MINUTES: ${EDITOR_SESSION_TTL_MINUTES:-240}
+      EDITOR_IP_ALLOWLIST: ${EDITOR_IP_ALLOWLIST:-}
       # PostHog (docs/analytics/index.html). Production deploy/.env sets POSTHOG_ENABLED=1.
       # Empty or 0 stays off; POSTHOG_DISABLED=1 still wins. Local compose and server/.env pin 0.
       # main's schema strips these keys, so a deploy of main does not send. Listing them keeps a later merge from dropping the token.

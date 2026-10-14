@@ -66,6 +66,38 @@ else
   nginx -t || true; fail "nginx rejected the media snippet – restored the old one; nothing changed"
 fi
 
+# The 3D model API (docs/agents/editor.md): http-level zones (rate limits, a connection cap, the bundle's microcache) + the /api/entities/ location snippet,
+# included by api.<apex> and storybook.<apex>. Both managed files are rewritten on every setup; undone if nginx -t fails.
+mkdir -p /var/cache/nginx/freightchain_entities
+[ -f "$DEPLOY_PATH/state/fc-limits.conf" ] || fail "the nginx limits file (deploy/nginx/fc-limits.conf) was not uploaded"
+for f in /etc/nginx/conf.d/freightchain-limits.conf /etc/nginx/snippets/freightchain-entities.conf; do [ -f "$f" ] && cp "$f" "$f.bak"; done
+cp "$DEPLOY_PATH/state/fc-limits.conf" /etc/nginx/conf.d/freightchain-limits.conf
+cat > /etc/nginx/snippets/freightchain-entities.conf <<CONF
+# fc-entities: GET /api/entities/bundle – the 3D models every page loads (public, Cache-Control from the app): per-IP limits + a 30 s microcache
+location /api/entities/ {
+    limit_req zone=fc_entities burst=20 nodelay;
+    limit_conn fc_conn 20;
+    proxy_pass http://127.0.0.1:$APP_PORT;
+    proxy_http_version 1.1;
+    proxy_set_header Host \$host;
+    proxy_set_header X-Real-IP \$remote_addr;
+    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto \$scheme;
+    proxy_cache fc_entities_cache;
+    proxy_cache_valid 200 30s;
+    proxy_cache_lock on;
+    proxy_cache_use_stale updating error timeout http_500 http_502 http_503 http_504;
+    proxy_cache_methods GET HEAD;
+    add_header X-Cache \$upstream_cache_status;
+    proxy_read_timeout 30s;
+}
+CONF
+if nginx -t 2>/dev/null; then systemctl reload nginx; rm -f /etc/nginx/conf.d/freightchain-limits.conf.bak /etc/nginx/snippets/freightchain-entities.conf.bak; say "3D model API limits + bundle cache written, nginx reloaded"
+else
+  for f in /etc/nginx/conf.d/freightchain-limits.conf /etc/nginx/snippets/freightchain-entities.conf; do if [ -f "$f.bak" ]; then mv "$f.bak" "$f"; else rm -f "$f"; fi; done
+  nginx -t || true; fail "nginx rejected the 3D model API limits – restored the old files; nothing changed"
+fi
+
 SITE=/etc/nginx/sites-available/freightchain
 if [ -f "$SITE" ]; then
   say "nginx site $SITE exists – left as it is (certbot's TLS block lives in it)"
@@ -86,6 +118,17 @@ if [ -f "$SITE" ] && ! grep -q 'snippets/freightchain-media.conf' "$SITE"; then
     systemctl reload nginx; rm -f "$SITE.bak-media"; say "media cache include added to $SITE and nginx reloaded"
   else
     mv "$SITE.bak-media" "$SITE"; nginx -t || true; fail "could not add the media include to $SITE – restored it; nothing changed"
+  fi
+fi
+
+# An existing site predates the /api/entities/ snippet: add it after every `server_name api.<apex>;` (the :80 block and certbot's :443 copy).
+if [ -f "$SITE" ] && ! grep -q 'snippets/freightchain-entities.conf' "$SITE"; then
+  cp "$SITE" "$SITE.bak-entities"
+  awk -v pat="^[[:space:]]*server_name api\\.$DOMAIN;" '{ print } $0 ~ pat { print "    include /etc/nginx/snippets/freightchain-entities.conf;" }' "$SITE.bak-entities" > "$SITE"
+  if grep -q 'snippets/freightchain-entities.conf' "$SITE" && nginx -t 2>/dev/null; then
+    systemctl reload nginx; rm -f "$SITE.bak-entities"; say "3D model API include added to $SITE and nginx reloaded"
+  else
+    mv "$SITE.bak-entities" "$SITE"; nginx -t || true; fail "could not add the 3D model API include to $SITE – restored it; nothing changed"
   fi
 fi
 

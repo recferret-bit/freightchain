@@ -1,7 +1,7 @@
 // Real-Chrome check of viewer.html: loads every catalogue item, fails on any exception, drives orbit/zoom/pan with synthetic input, saves screenshots.
 //   node tools/e2e-viewer.mjs [url]      default http://localhost:8765/viewer.html (run ./serve.sh first); env: CHROME, SHOTS (default <tmp>/fc-viewer-shots)
-import { launch, sleep } from './cdp.mjs';
-const PORT=+process.env.PORT||9334, URL=process.argv[2]||'http://localhost:8765/viewer.html';
+import { launch, sleep, withEntities } from './cdp.mjs';
+const PORT=+process.env.PORT||9334, URL=await withEntities(process.argv[2]||'http://localhost:8765/viewer.html');
 const { send, ev, shot, problems, SHOTS, finish } = await launch({ port: PORT, shotsDir: 'fc-viewer-shots' });
 const mouse=(type,x,y,extra={})=>send('Input.dispatchMouseEvent',{type,x,y,button:'left',buttons:type==='mouseReleased'?0:1,clickCount:1,...extra});
 const rmouse=(type,x,y,extra={})=>send('Input.dispatchMouseEvent',{type,x,y,button:'right',buttons:type==='mouseReleased'?0:2,clickCount:1,...extra});

@@ -11,6 +11,7 @@ rsh "cat > '$DEPLOY_PATH/state/storybook.conf.template'" < "$DEPLOY_DIR/nginx/st
 rsh "cat > '$DEPLOY_PATH/state/whitepaper.conf.template'" < "$DEPLOY_DIR/nginx/whitepaper.conf.template"
 rsh "cat > '$DEPLOY_PATH/state/admin.conf.template'" < "$DEPLOY_DIR/nginx/admin.conf.template"
 rsh "cat > '$DEPLOY_PATH/state/www.conf.template'" < "$DEPLOY_DIR/nginx/www.conf.template"
+rsh "cat > '$DEPLOY_PATH/state/fc-limits.conf'" < "$DEPLOY_DIR/nginx/fc-limits.conf"
 info "writing the admin page's basic-auth password file"; push_admin_auth
 info "setting up the server"
 rscript "$DEPLOY_DIR/scripts/remote/setup.sh" "DEPLOY_PATH=$DEPLOY_PATH" "DOMAIN=$DEPLOY_DOMAIN" "APP_PORT=$DEPLOY_APP_PORT" "EMAIL=$DEPLOY_LETSENCRYPT_EMAIL" "HOST_IP=$DEPLOY_HOST" \
