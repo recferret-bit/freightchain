@@ -37,6 +37,17 @@ are the Trail of Bits scanner's job; these are the ones only someone who knows t
 - [ ] After `play_deadline + SETTLE_GRACE_SECS` (14 days) a lost admin cannot lock money: no prize paid → `expire_pool` → full refunds; prizes paid → anyone may `close_pool`, and money still goes only to the declared treasuries. A permissionless close with `prizes_paid == 0` must fail (`MustExpire`), otherwise the prize share would be swept to the operator's seed treasury.
 - [ ] No instruction lets the caller choose where money goes except `pay_prize`'s `to` (admin-signed, capped) and `refund`'s `buyer` (bound to the ticket PDA).
 
+## Sealevel classes outside the Trail of Bits six
+
+`coral-xyz/sealevel-attacks` (Anchor's security page points at this set). The scanner's six are signer, owner, arbitrary CPI, bump canonicalisation, sysvar address, and instruction introspection. These six still need a source read. A grep hit is a lead.
+
+- [ ] Account-data matching: a stored key matches the account passed (`has_one` / `constraint`), not only the right type.
+- [ ] Type cosplay: account types are separated by discriminator. No shared layout lets one account deserialise as another.
+- [ ] Re-initialisation: `init_if_needed` rejects an already-live account, or the instruction cannot reset authority.
+- [ ] Duplicate mutable accounts: two `mut` accounts of the same type cannot be the same key (`constraint = a.key() != b.key()`).
+- [ ] PDA sharing: seeds include every key that must not share the account. A single global seed is a shared account.
+- [ ] Closing accounts: `close` pays a constrained destination, wipes the data, and the same instruction cannot revive it.
+
 ## Build provenance
 - [ ] `verifiable-build.hash` matches a fresh `solana-verify build` (check.sh stage 1); the deployed program hash (once deployed) matches it (`check.sh onchain`).
 - [ ] `declare_id!`, `Anchor.toml` and `idl/freightchain_pools.json` `address` agree; the placeholder id is replaced before a real deploy (`anchor keys sync`) – which changes the pin.

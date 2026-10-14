@@ -6,7 +6,7 @@ This file is the map and the hard rules only. The detail lives in **`docs/agents
 
 ## Repo
 
-`client/` the game (`play.html`, `js/`) + site pages (lobby, admin, viewer, `r.html`, `blink.html`, `site/`) · `landing/` the `/` page + whitepaper (Vite) · `server/` the API (Clean Architecture, `prisma/`, `test/`) · `programs/freightchain-pools` the escrow program · `media/` promo clips + sound · `pentest/` multi-agent penetration testing suite · `deploy/` production deploy · `design/` icons, banners · `docs/` architecture + explainers · `.claude/skills/` project skills · `docker-compose.yml` local PostgreSQL (:15433) + optional Redis.
+`client/` the game (`play.html`, `js/`) + site pages (lobby, admin, viewer, `r.html`, `blink.html`, `site/`) · `landing/` the `/` page + whitepaper (Vite) · `server/` the API (Clean Architecture, `prisma/`, `test/`) · `programs/freightchain-pools` the escrow program · `media/` promo clips + sound · `pentest/` multi-agent penetration testing suite for any repo (`--repo <path>` or `--github <url>`) · `deploy/` production deploy · `design/` icons, banners · `docs/` architecture + explainers · `.claude/skills/` project skills · `docker-compose.yml` local PostgreSQL (:15433) + optional Redis.
 
 ## Where the detail is (`docs/agents/`)
 

@@ -400,7 +400,7 @@ The intro clip is real gameplay, 14.8 seconds, with the in-game synth: [`media/o
 - [`docs/`](docs) — explainers. [`docs/agents/`](docs/agents) is the detail [`AGENTS.md`](AGENTS.md) points at.
 - [`landing/`](landing) — the `/` page and the whitepaper. Vite.
 - [`media/`](media) — promo clips and the chiptune synth.
-- [`pentest/`](pentest) — multi-agent penetration testing and quorum security review suite (Claude, Grok, Agy CLIs).
+- [`pentest/`](pentest) — multi-agent penetration testing and quorum security review suite (Claude opus, Grok 4.7, Agy on Gemini 4 Argon) for any repo: a local path (`--repo`) or a GitHub URL cloned into `/tmp` (`--github`). A read-only lead harness runs before the agents.
 - [`programs/`](programs/freightchain-pools) — the Anchor program. Anchor 1.2.
 - [`server/`](server) — NestJS 12, Prisma, PostgreSQL.
 
@@ -440,7 +440,7 @@ Skills live in `.claude/skills/<name>/`. A coding agent reads that folder's `SKI
 | `trip-design` | The road per ride tier – the free run and the 1 h / 4 h / 8 h shifts: bends, traffic, roadside, whether it ends by itself at the line, its length and finish distance – measured with the real game modules and looked at in Chrome | `node .claude/skills/trip-design/measure.mjs` · `node .claude/skills/trip-design/shots.mjs` |
 | `verified-play-test` | The anti-bot / anti-cheat end to end, positive and negative: a person and a bot in Chrome (dispatch prompts answered / ignored), API-level bots with hand-built recordings (every verdict code), the upload protocol, the admin's signed decisions, the profile in Chrome, retention + the CLI's bulk re-judge | `bash .claude/skills/verified-play-test/run.sh` |
 | `3d-assets` | Review and fix a mesh in the model viewer (`client/viewer.html`), or add, update, or generate a car, tree, or building. `validate.mjs` rejects an impossible spec before any mesh or generated model | `node .claude/skills/3d-assets/validate.mjs --self-test` · `node .claude/skills/3d-assets/validate.mjs "<spec>"` · `node .claude/skills/3d-assets/shot.mjs` · `node .claude/skills/3d-assets/shot.mjs <id>` |
-| `pentest-audit` | Adversarial penetration review across on-chain escrow, server money, anti-cheat, identity, client, and infra; multi-agent quorum review | `./pentest/bin/pentest run --surface all` · `./pentest/bin/pentest report` |
+| `pentest-audit` | Adversarial multi-agent quorum penetration review of any repo over six generic surfaces (auth, input, logic, config, deps, client), after a read-only lead harness; local or GitHub target. Agy runs Gemini 4 Argon | `./pentest/bin/pentest run --repo <path>` · `./pentest/bin/pentest run --github <url> [--ref <ref>] [--clean]` · `./pentest/bin/pentest report` |
 
 A new, renamed, or removed skill updates this table in the same change. The rule is [`AGENTS.md`](AGENTS.md) → "Maps stay current".
 
