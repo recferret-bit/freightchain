@@ -185,3 +185,82 @@ pub struct PledgeRefunded {
     pub pool: Pubkey,
     pub refunded_lamports: u64,
 }
+
+// ── v4 ──
+
+#[event]
+pub struct ConfigMigrated {
+    pub min_review_secs: i64,
+    pub min_finish_secs: i64,
+}
+
+#[event]
+pub struct FloorsSet {
+    pub min_review_secs: i64,
+    pub min_finish_secs: i64,
+}
+
+/// v4 (L4): the pool's road seed, fixed from the hash of `seed_slot` – a slot after the pool opened, so nobody could pick it
+#[event]
+pub struct RoadSealed {
+    pub pool_id: u32,
+    pub seed_slot: u64,
+    pub seed_slot_hash: [u8; 32],
+    pub seed_commitment: [u8; 32],
+}
+
+/// the target slot had left the SlotHashes window before anyone sealed: a new target
+#[event]
+pub struct SealRearmed {
+    pub pool_id: u32,
+    pub seal_slot: u64,
+}
+
+/// v4 (H5-B): the pool's winners, public for the whole review lock before any of them is paid
+#[event]
+pub struct WinnersCommitted {
+    pub pool_id: u32,
+    pub root: [u8; 32],
+    pub total: u64,
+    pub count: u8,
+    pub committed_at: i64,
+    pub pay_from: i64,
+    pub by: Pubkey,
+}
+
+#[event]
+pub struct WinnersVetoed {
+    pub pool_id: u32,
+    pub root: [u8; 32],
+}
+
+/// v4 (H4): the server's verdict on one ride, for the pledges on it
+#[event]
+pub struct RideAttestationRecorded {
+    pub pool_id: u32,
+    pub pool: Pubkey,
+    pub ride_id: [u8; 32],
+    pub driver: Pubkey,
+    pub telemetry_root: [u8; 32],
+    pub verified_km: u32,
+    pub status: u8,
+    pub recorded_at: i64,
+    pub settle_from: i64,
+}
+
+/// v4 (M8)
+#[event]
+pub struct SponsorRefunded {
+    pub pool_id: u32,
+    pub sponsor: Pubkey,
+    pub lamports: u64,
+    pub sponsor_refunded_total: u64,
+}
+
+/// v4 (L7): an attestation of a finished pool closed, its rent back to whoever paid it
+#[event]
+pub struct AttestationClosed {
+    pub account: Pubkey,
+    pub rent_to: Pubkey,
+    pub lamports: u64,
+}

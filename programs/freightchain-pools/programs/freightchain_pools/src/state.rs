@@ -14,8 +14,14 @@ pub struct Config {
     pub bump: u8,
     /// Two-step authority handover: set by `propose_authority`, consumed by `accept_authority`.
     pub pending_authority: Option<Pubkey>,
-    /// May pay prizes and close a pool once its `payout_at` has come (the server's payout key) – nothing else. None = only `authority`.
+    /// Commits a pool's winners root, records ride attestations and closes a pool once its prizes are paid (the server's payout key) – nothing
+    /// else; a root it commits is public for the whole review lock and the cold admin can veto it. None = only `authority`.
     pub payout_authority: Option<Pubkey>,
+    /// v4: the review window every new pool keeps after its play deadline, and the lock between a winners root's commit (or a ride attestation)
+    /// and the first payment on it (DEFAULT_MIN_REVIEW_SECS; set by the cold admin only).
+    pub min_review_secs: i64,
+    /// v4: the play window every new pool keeps after its sale (no sale, no new ride after it – the shifts on the road finish) (DEFAULT_MIN_FINISH_SECS).
+    pub min_finish_secs: i64,
 }
 
 /// One schedule per tier, written by the admin (`set_series`): every pool `open_next_pool` creates takes these rules. Pools tile time:
@@ -84,6 +90,22 @@ pub struct Pool {
     /// the SlotHashes entry the commitment was made from (create_pool.rs seed_commitment_of)
     pub seed_slot: u64,
     pub seed_slot_hash: [u8; 32],
+    /// v4 (L4): the slot whose hash seals the road (`seal_road`); 0 once sealed – until then `seed_commitment` is all zero and no ride is served
+    pub seal_slot: u64,
+    /// v4 (L8): `Config.platform_fee_bps` when the pool opened – the cut at close is the one the buyers were shown
+    pub platform_fee_bps: u16,
+    /// v4 (H5-B): the committed winners – a Merkle root over (rank, wallet, lamports), the sum, the count, when, and the first moment it pays
+    pub winners_root: [u8; 32],
+    pub winners_total: u64,
+    pub winners_count: u8,
+    pub committed_at: i64,
+    pub pay_from: i64,
+    /// bit r = rank r paid
+    pub paid_mask: u64,
+    /// v4 (M8): sponsorship refunded to sponsors after a failure
+    pub sponsor_refunded: u64,
+    /// v4 (L7): pledges on this pool not yet settled or refunded – attestations close only at 0
+    pub open_pledges: u32,
 }
 
 #[account]
@@ -109,10 +131,32 @@ pub struct Attestation {
     pub bump: u8,
 }
 
-impl Attestation {
-    pub fn is_verified(&self) -> bool {
-        self.status == ATTESTATION_STATUS_VERIFIED
-    }
+/// v4 (pentest H4): the server's verdict on ONE ride, written by the payout key – a pledge on that ride settles on it (`verified_km`), and only from
+/// `settle_from` (the review lock: every RideAttestationRecorded is public that long first). Final once a pledge was settled on it.
+#[account]
+#[derive(InitSpace)]
+pub struct RideAttestation {
+    pub pool: Pubkey,
+    pub ride_id: [u8; 32],
+    pub driver: Pubkey,
+    pub telemetry_root: [u8; 32],
+    pub verified_km: u32,
+    pub status: u8,
+    pub recorded_at: i64,
+    pub settle_from: i64,
+    pub settled_pledges: u32,
+    pub rent_payer: Pubkey,
+    pub bump: u8,
+}
+
+/// v4 (pentest M8): what `sponsor` put into a pool – `refund_sponsor` pays it back if the pool fails.
+#[account]
+#[derive(InitSpace)]
+pub struct SponsorReceipt {
+    pub pool: Pubkey,
+    pub sponsor: Pubkey,
+    pub lamports: u64,
+    pub bump: u8,
 }
 
 #[account]
@@ -153,9 +197,21 @@ pub fn split(total: u64, prize_bps: u16, seed_bps: u16) -> Result<(u64, u64, u64
 }
 
 impl Config {
-    /// The keys that may pay prizes and close an Active pool after its `payout_at`: the admin and, when set, the payout key.
+    /// The keys that may commit winners, record ride attestations and close an Active pool: the admin and, when set, the payout key.
     pub fn may_settle(&self, key: &Pubkey) -> bool {
         *key == self.authority || self.payout_authority.as_ref() == Some(key)
+    }
+
+    /// `paused` stops a pool's settlement steps only before its settle grace ends: afterwards no admin is needed, so no admin can freeze it (pentest H5 d).
+    pub fn paused_before_grace(&self, pool: &Pool, now: i64) -> Result<bool> {
+        Ok(self.paused && now < pool.grace_end()?)
+    }
+
+    /// When a root committed (or a ride attestation recorded) at `at` first pays: never before `payout_at`, and never before the review lock.
+    pub fn pay_from(&self, pool: &Pool, at: i64) -> Result<i64> {
+        let window = pool.payout_at.checked_sub(pool.play_deadline).ok_or(PoolError::MathOverflow)?;
+        let lock = window.max(self.min_review_secs);
+        Ok(at.checked_add(lock).ok_or(PoolError::MathOverflow)?.max(pool.payout_at))
     }
 }
 
@@ -178,6 +234,51 @@ impl Pool {
     pub fn prize_share(&self) -> Result<u64> {
         Ok(split(self.pot()?, self.prize_bps, self.seed_bps)?.0)
     }
+
+    /// After this anyone may close (prizes paid) or expire (none paid) an Active pool.
+    pub fn grace_end(&self) -> Result<i64> {
+        self.payout_at.checked_add(SETTLE_GRACE_SECS).ok_or_else(|| PoolError::MathOverflow.into())
+    }
+
+    pub fn has_winners(&self) -> bool {
+        self.committed_at > 0
+    }
+
+    /// every committed rank paid
+    pub fn all_winners_paid(&self) -> bool {
+        let n = self.winners_count as u32;
+        let full = if n >= 64 { u64::MAX } else { (1u64 << n) - 1 };
+        self.paid_mask & full == full
+    }
+}
+
+/// The leaf of a winners root (WINNER_LEAF_TAG, constants.rs) – the server builds the same (server/src/domain/economy/winners-merkle.ts).
+pub fn winner_leaf(pool_id: u32, rank: u8, wallet: &Pubkey, lamports: u64) -> [u8; 32] {
+    solana_sha256_hasher::hashv(&[&[0x00], WINNER_LEAF_TAG, &pool_id.to_le_bytes(), &[rank], wallet.as_ref(), &lamports.to_le_bytes()]).to_bytes()
+}
+
+/// Recomputes the root from leaf `index` of a `count`-leaf tree (RFC 6962 node tag 0x01; an odd last node is promoted, not duplicated – the
+/// server's telemetry-merkle.ts shape), consuming `proof` bottom-up. True only when every proof element was used.
+pub fn merkle_root_from(leaf: [u8; 32], index: u32, count: u32, proof: &[[u8; 32]]) -> Option<[u8; 32]> {
+    if count == 0 || index >= count {
+        return None;
+    }
+    let (mut node, mut idx, mut width, mut used) = (leaf, index, count, 0usize);
+    while width > 1 {
+        let promoted = idx == width - 1 && width % 2 == 1;
+        if !promoted {
+            let sib = proof.get(used)?;
+            used += 1;
+            node = if idx % 2 == 0 {
+                solana_sha256_hasher::hashv(&[&[0x01], &node, sib]).to_bytes()
+            } else {
+                solana_sha256_hasher::hashv(&[&[0x01], sib, &node]).to_bytes()
+            };
+        }
+        idx /= 2;
+        width = width.div_ceil(2);
+    }
+    if used == proof.len() { Some(node) } else { None }
 }
 
 #[cfg(test)]
@@ -195,6 +296,38 @@ mod tests {
             let (p, s, f) = split(total, 6000, 2500).unwrap();
             assert_eq!(p + s + f, total);
             assert!(f <= total / 10_000 * 1500 + 2 * 10_000);
+        }
+    }
+
+    fn tree(leaves: &[[u8; 32]]) -> Vec<Vec<[u8; 32]>> {
+        let mut levels = vec![leaves.to_vec()];
+        while levels.last().unwrap().len() > 1 {
+            let l = levels.last().unwrap();
+            let next = l.chunks(2).map(|c| if c.len() == 2 { solana_sha256_hasher::hashv(&[&[0x01], &c[0], &c[1]]).to_bytes() } else { c[0] }).collect();
+            levels.push(next);
+        }
+        levels
+    }
+
+    #[test]
+    fn every_leaf_proves_its_root_for_every_tree_size() {
+        for n in 1..=21u32 {
+            let leaves: Vec<[u8; 32]> = (0..n).map(|i| winner_leaf(7, i as u8, &Pubkey::new_from_array([i as u8 + 1; 32]), 1_000 + i as u64)).collect();
+            let levels = tree(&leaves);
+            let root = levels.last().unwrap()[0];
+            for i in 0..n {
+                let mut proof = vec![];
+                let mut idx = i as usize;
+                for l in &levels[..levels.len() - 1] {
+                    let sib = idx ^ 1;
+                    if sib < l.len() { proof.push(l[sib]); }
+                    idx /= 2;
+                }
+                assert_eq!(merkle_root_from(leaves[i as usize], i, n, &proof), Some(root), "n {n} i {i}");
+                assert_ne!(merkle_root_from(leaves[i as usize], (i + 1) % n.max(2), n.max(2), &proof), Some(root));
+                let mut longer = proof.clone(); longer.push([9; 32]);
+                assert_eq!(merkle_root_from(leaves[i as usize], i, n, &longer), None, "an unused proof element is refused");
+            }
         }
     }
 

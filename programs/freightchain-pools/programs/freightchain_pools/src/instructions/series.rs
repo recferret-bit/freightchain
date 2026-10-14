@@ -4,7 +4,7 @@ use crate::{
     constants::*,
     error::PoolError,
     events::SeriesSet,
-    instructions::create_pool::{check_money_rules, check_treasuries, init_pool, PoolRules},
+    instructions::create_pool::{check_money_rules, check_treasuries, check_windows, init_pool, PoolRules},
     state::{Config, Pool, Series},
 };
 
@@ -61,6 +61,8 @@ pub fn handle_set_series(ctx: Context<SetSeries>, p: SeriesParams) -> Result<()>
     check_money_rules(p.price_lamports, p.min_tickets, p.max_tickets, p.max_per_wallet, [p.prize_bps, p.seed_bps, p.fee_bps])?;
     require!((MIN_SALE_SECS..=MAX_SALE_SECS).contains(&p.sale_secs), PoolError::InvalidParams);
     require!(p.play_secs >= 0 && p.verify_secs >= 0, PoolError::InvalidParams);
+    // the floors are checked here, not at every open: raising one later does not stop a running series
+    check_windows(&a.config, p.play_secs, p.verify_secs)?;
     let span = p.sale_secs.checked_add(p.play_secs).and_then(|v| v.checked_add(p.verify_secs)).ok_or(PoolError::MathOverflow)?;
     require!(span <= MAX_POOL_SECS, PoolError::InvalidParams);
     check_treasuries([&a.fee_treasury.to_account_info(), &a.seed_treasury.to_account_info(), &a.platform_treasury.to_account_info()])?;
@@ -147,9 +149,6 @@ pub struct OpenNextPool<'info> {
     /// CHECK: config.platform_treasury
     #[account(address = config.platform_treasury @ PoolError::AccountMismatch)]
     pub platform_treasury: UncheckedAccount<'info>,
-    /// CHECK: the SlotHashes sysvar – the pool's road seed is committed from its newest entry
-    #[account(address = SLOT_HASHES_ID @ PoolError::AccountMismatch)]
-    pub slot_hashes: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
 }
 
@@ -190,7 +189,7 @@ pub fn handle_open_next_pool(ctx: Context<OpenNextPool>, tier: u8) -> Result<()>
     let creator = a.caller.to_account_info();
     let (pool_bump, vault_bump) = (ctx.bumps.pool, ctx.bumps.vault);
     let a = ctx.accounts;
-    let pool_id = init_pool(&mut a.config, &mut a.pool, &a.vault.to_account_info(), &creator, &a.system_program, &a.slot_hashes.to_account_info(), rules, now, pool_bump, vault_bump, true)?;
+    let pool_id = init_pool(&mut a.config, &mut a.pool, &a.vault.to_account_info(), &creator, &a.system_program, rules, now, pool_bump, vault_bump, true)?;
     let s = &mut a.series;
     s.next_open_at = sale_end;
     s.pools_opened = s.pools_opened.checked_add(1).ok_or(PoolError::MathOverflow)?;

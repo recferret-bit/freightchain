@@ -66,4 +66,35 @@ pub enum PoolError {
     PledgeNotRefundable,
     #[msg("The driver has an attestation for this pool: settle the pledge instead")]
     AttestationExists,
+    // ── v4 (appended: earlier codes keep their numbers) ──
+    #[msg("A window is shorter than the program's floor (min_finish_secs / min_review_secs)")]
+    WindowTooShort,
+    #[msg("This pool already has a winners root")]
+    WinnersCommitted,
+    #[msg("This pool has no winners root")]
+    WinnersNotCommitted,
+    #[msg("Too many winners for one root")]
+    TooManyWinners,
+    #[msg("The winners root was committed too late to be paid before the settle grace")]
+    CommitTooLate,
+    #[msg("The Merkle proof does not match the pool's winners root")]
+    InvalidProof,
+    #[msg("This rank was already paid")]
+    RankAlreadyPaid,
+    #[msg("A prize was already paid: the winners root can no longer be vetoed")]
+    WinnersPartlyPaid,
+    #[msg("Some committed ranks are still unpaid")]
+    PrizesUnpaid,
+    #[msg("The driver's wallet would stay below the rent-exempt minimum")]
+    DriverBelowRentMin,
+    #[msg("A pledge was already settled on this attestation: it is final")]
+    AttestationFinal,
+    #[msg("Pledges of this pool are still open")]
+    PledgesOpen,
+    #[msg("Sponsors are still to be refunded")]
+    SponsorRefundsPending,
+    #[msg("The pool's road is already sealed")]
+    RoadAlreadySealed,
+    #[msg("The Config account is already in the current layout")]
+    AlreadyMigrated,
 }

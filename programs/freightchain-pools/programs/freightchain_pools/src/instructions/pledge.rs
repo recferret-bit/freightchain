@@ -7,7 +7,7 @@ use crate::{
     constants::*,
     error::PoolError,
     events::{PledgeCreated, PledgeRefunded, PledgeSettled},
-    state::{Attestation, Config, Pool, Pledge},
+    state::{Config, Pledge, Pool, RideAttestation},
     vault::rent_min,
 };
 
@@ -23,7 +23,7 @@ pub struct CreatePledge<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump)]
     pub config: Account<'info, Config>,
 
-    #[account(seeds = [POOL_SEED, &pool.pool_id.to_le_bytes()], bump = pool.bump)]
+    #[account(mut, seeds = [POOL_SEED, &pool.pool_id.to_le_bytes()], bump = pool.bump)]
     pub pool: Account<'info, Pool>,
 
     #[account(
@@ -81,12 +81,15 @@ pub fn handle_create_pledge(
         max_lamports,
     )?;
 
+    let pool = &mut ctx.accounts.pool;
+    pool.open_pledges = pool.open_pledges.checked_add(1).ok_or(PoolError::MathOverflow)?;
+    let pool_key = pool.key();
     let clock = Clock::get()?;
     let pledge = &mut ctx.accounts.pledge;
     pledge.ride_id = ride_id;
     pledge.sponsor = ctx.accounts.sponsor.key();
     pledge.driver = driver;
-    pledge.pool = pool.key();
+    pledge.pool = pool_key;
     pledge.max_lamports = max_lamports;
     pledge.lamports_per_km = lamports_per_km;
     pledge.target_km = target_km;
@@ -124,16 +127,21 @@ pub struct SettlePledge<'info> {
     #[account(mut, address = pledge.sponsor @ PoolError::AccountMismatch)]
     pub sponsor: UncheckedAccount<'info>,
 
-    #[account(seeds = [POOL_SEED, &pool.pool_id.to_le_bytes()], bump = pool.bump)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
+    pub config: Account<'info, Config>,
+
+    #[account(mut, seeds = [POOL_SEED, &pool.pool_id.to_le_bytes()], bump = pool.bump)]
     pub pool: Account<'info, Pool>,
 
+    /// v4 (H4): THIS ride's attestation – not the driver's best ride in the pool
     #[account(
-        seeds = [ATTESTATION_SEED, pool.key().as_ref(), driver.key().as_ref()],
-        bump = attestation.bump,
-        constraint = attestation.pool == pool.key() @ PoolError::AccountMismatch,
-        constraint = attestation.driver == driver.key() @ PoolError::AccountMismatch,
+        mut,
+        seeds = [RIDE_ATTESTATION_SEED, pool.key().as_ref(), &ride_id],
+        bump = ride_attestation.bump,
+        constraint = ride_attestation.pool == pool.key() @ PoolError::AccountMismatch,
+        constraint = ride_attestation.driver == driver.key() @ PoolError::AttestationMismatch,
     )]
-    pub attestation: Account<'info, Attestation>,
+    pub ride_attestation: Account<'info, RideAttestation>,
 
     #[account(
         mut,
@@ -150,13 +158,17 @@ pub struct SettlePledge<'info> {
 }
 
 /// Pays the driver `max * min(verified_km, target_km) / target_km` and closes the pledge: the rest of the cap and the
-/// account's rent go back to the sponsor. A FLAGGED attestation earns nothing (full refund). The attestation is per pool
-/// and driver (the driver's best verified ride in the pool), so a pledge settles on that ride.
+/// account's rent go back to the sponsor. A FLAGGED attestation earns nothing (full refund). v4: the attestation is the pledged RIDE's (H4), and it
+/// pays only from its `settle_from` – after the pool's payout time and the review lock (L5); the attestation is final from here on.
 pub fn handle_settle_pledge(ctx: Context<SettlePledge>, ride_id: [u8; 32]) -> Result<()> {
     require!(!ctx.accounts.pledge.settled, PoolError::AlreadySettled);
     require!(ctx.accounts.pledge.ride_id == ride_id, PoolError::AccountMismatch);
+    let now = Clock::get()?.unix_timestamp;
+    require!(!ctx.accounts.config.paused_before_grace(&ctx.accounts.pool, now)?, PoolError::Paused);
+    let grace_over = now >= ctx.accounts.pool.grace_end()?;
 
-    let attestation = &ctx.accounts.attestation;
+    let attestation = &ctx.accounts.ride_attestation;
+    require!(now >= attestation.settle_from && now >= ctx.accounts.pool.payout_at, PoolError::TooEarly);
     require!(
         attestation.status == ATTESTATION_STATUS_VERIFIED || attestation.status == ATTESTATION_STATUS_FLAGGED,
         PoolError::UnverifiedAttestation
@@ -176,9 +188,10 @@ pub fn handle_settle_pledge(ctx: Context<SettlePledge>, ride_id: [u8; 32]) -> Re
             / (target_km as u128)) as u64;
         (e, v_km)
     };
-    // A driver account that would stay below the rent minimum cannot take lamports (the runtime refuses it); rather than
-    // lock the pledge forever, the sponsor gets it all back.
+    // A driver account that would stay below the rent minimum cannot take lamports (the runtime refuses it). v4 (L6): until the grace the
+    // settle waits (the driver can top the wallet up); only after it does the sponsor get it all back – nobody can zero a small earning on purpose.
     if earned > 0 && driver_info.lamports().checked_add(earned).ok_or(PoolError::MathOverflow)? < rent_min()? {
+        require!(grace_over, PoolError::DriverBelowRentMin);
         earned = 0;
     }
     let refund = total_lamports.checked_sub(earned).ok_or(PoolError::MathOverflow)?;
@@ -195,6 +208,10 @@ pub fn handle_settle_pledge(ctx: Context<SettlePledge>, ride_id: [u8; 32]) -> Re
             .ok_or(PoolError::MathOverflow)?;
     }
 
+    let r = &mut ctx.accounts.ride_attestation;
+    r.settled_pledges = r.settled_pledges.checked_add(1).ok_or(PoolError::MathOverflow)?;
+    let pool = &mut ctx.accounts.pool;
+    pool.open_pledges = pool.open_pledges.saturating_sub(1);
     let pledge = &mut ctx.accounts.pledge;
     pledge.settled = true;
     pledge.earned_lamports = earned;
@@ -224,12 +241,12 @@ pub struct RefundPledge<'info> {
     #[account(mut, address = pledge.sponsor @ PoolError::AccountMismatch)]
     pub sponsor: UncheckedAccount<'info>,
 
-    #[account(seeds = [POOL_SEED, &pool.pool_id.to_le_bytes()], bump = pool.bump)]
+    #[account(mut, seeds = [POOL_SEED, &pool.pool_id.to_le_bytes()], bump = pool.bump)]
     pub pool: Account<'info, Pool>,
 
-    /// CHECK: the driver's attestation PDA for this pool; it must not hold a decided (verified / flagged) attestation
-    #[account(seeds = [ATTESTATION_SEED, pool.key().as_ref(), pledge.driver.as_ref()], bump)]
-    pub attestation: UncheckedAccount<'info>,
+    /// CHECK: the pledged ride's attestation PDA; it must not hold a decided (verified / flagged) attestation
+    #[account(seeds = [RIDE_ATTESTATION_SEED, pool.key().as_ref(), &ride_id], bump)]
+    pub ride_attestation: UncheckedAccount<'info>,
 
     #[account(
         mut,
@@ -243,7 +260,8 @@ pub struct RefundPledge<'info> {
 }
 
 /// The way out for a pledge nobody can settle: the pool failed / was cancelled, or it is over (settled, or active past its
-/// settle grace) and the driver has no decided attestation – no finished, judged ride. Everything goes back to the sponsor.
+/// settle grace) and the pledged ride has no decided attestation – it never finished, or was never judged. Everything goes back to the sponsor.
+/// Permissionless and never paused.
 pub fn handle_refund_pledge(ctx: Context<RefundPledge>, ride_id: [u8; 32]) -> Result<()> {
     require!(!ctx.accounts.pledge.settled, PoolError::AlreadySettled);
     require!(ctx.accounts.pledge.ride_id == ride_id, PoolError::AccountMismatch);
@@ -252,18 +270,20 @@ pub fn handle_refund_pledge(ctx: Context<RefundPledge>, ride_id: [u8; 32]) -> Re
     let now = Clock::get()?.unix_timestamp;
     let over = match pool.status {
         STATUS_REFUNDING | STATUS_CANCELLED | STATUS_SETTLED => true,
-        STATUS_ACTIVE => now >= pool.payout_at.checked_add(SETTLE_GRACE_SECS).ok_or(PoolError::MathOverflow)?,
+        STATUS_ACTIVE => now >= pool.grace_end()?,
         _ => false,
     };
     require!(over, PoolError::PledgeNotRefundable);
 
-    let att = ctx.accounts.attestation.to_account_info();
+    let att = ctx.accounts.ride_attestation.to_account_info();
     if att.owner == &crate::ID && !att.data_is_empty() {
         let data = att.try_borrow_data()?;
-        let a = Attestation::try_deserialize(&mut &data[..])?;
+        let a = RideAttestation::try_deserialize(&mut &data[..])?;
         require!(a.status == ATTESTATION_STATUS_UNVERIFIED, PoolError::AttestationExists);
     }
 
+    let pool = &mut ctx.accounts.pool;
+    pool.open_pledges = pool.open_pledges.saturating_sub(1);
     let pledge = &mut ctx.accounts.pledge;
     let refunded = pledge.max_lamports;
     pledge.settled = true;

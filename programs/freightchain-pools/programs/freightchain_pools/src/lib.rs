@@ -26,8 +26,15 @@ pub mod freightchain_pools {
         paused: Option<bool>,
         platform_treasury: Option<Pubkey>,
         platform_fee_bps: Option<u16>,
+        min_review_secs: Option<i64>,
+        min_finish_secs: Option<i64>,
     ) -> Result<()> {
-        instructions::admin::handle_set_config(ctx, paused, platform_treasury, platform_fee_bps)
+        instructions::admin::handle_set_config(ctx, paused, platform_treasury, platform_fee_bps, min_review_secs, min_finish_secs)
+    }
+
+    /// v4: once, right after the upgrade – the v3 Config grows to the v4 layout (the floors at their defaults)
+    pub fn migrate_config_v4(ctx: Context<MigrateConfigV4>) -> Result<()> {
+        instructions::admin::handle_migrate_config_v4(ctx)
     }
 
     pub fn propose_authority(ctx: Context<ProposeAuthority>, new_authority: Pubkey) -> Result<()> {
@@ -54,15 +61,28 @@ pub mod freightchain_pools {
         instructions::create_pool::handle_create_pool(ctx, params)
     }
 
-    pub fn record_attestation(
-        ctx: Context<RecordAttestation>,
+    pub fn seal_road(ctx: Context<SealRoad>, pool_id: u32) -> Result<()> {
+        instructions::road::handle_seal_road(ctx, pool_id)
+    }
+
+    pub fn record_ride_attestation(
+        ctx: Context<RecordRideAttestation>,
         pool_id: u32,
+        ride_id: [u8; 32],
         driver: Pubkey,
         telemetry_root: [u8; 32],
         verified_km: u32,
         status: u8,
     ) -> Result<()> {
-        instructions::attestation::handle_record_attestation(ctx, pool_id, driver, telemetry_root, verified_km, status)
+        instructions::attestation::handle_record_ride_attestation(ctx, pool_id, ride_id, driver, telemetry_root, verified_km, status)
+    }
+
+    pub fn close_ride_attestation(ctx: Context<CloseRideAttestation>, pool_id: u32, ride_id: [u8; 32]) -> Result<()> {
+        instructions::attestation::handle_close_ride_attestation(ctx, pool_id, ride_id)
+    }
+
+    pub fn close_attestation(ctx: Context<CloseAttestation>, pool_id: u32, driver: Pubkey) -> Result<()> {
+        instructions::attestation::handle_close_attestation(ctx, pool_id, driver)
     }
 
     pub fn create_pledge(
@@ -92,6 +112,14 @@ pub mod freightchain_pools {
         instructions::sponsor::handle_sponsor(ctx, pool_id, lamports)
     }
 
+    pub fn refund_sponsor(ctx: Context<RefundSponsor>, pool_id: u32) -> Result<()> {
+        instructions::sponsor::handle_refund_sponsor(ctx, pool_id)
+    }
+
+    pub fn close_sponsor_receipt(ctx: Context<CloseSponsorReceipt>, pool_id: u32) -> Result<()> {
+        instructions::sponsor::handle_close_sponsor_receipt(ctx, pool_id)
+    }
+
     pub fn fail_pool(ctx: Context<FailPool>, pool_id: u32) -> Result<()> {
         instructions::lifecycle::handle_fail_pool(ctx, pool_id)
     }
@@ -112,8 +140,16 @@ pub mod freightchain_pools {
         instructions::refund::handle_close_ticket(ctx, pool_id)
     }
 
-    pub fn pay_prize(ctx: Context<PayPrize>, pool_id: u32, lamports: u64, rank: u8) -> Result<()> {
-        instructions::settle::handle_pay_prize(ctx, pool_id, lamports, rank)
+    pub fn commit_winners(ctx: Context<CommitWinners>, pool_id: u32, root: [u8; 32], total: u64, count: u8) -> Result<()> {
+        instructions::settle::handle_commit_winners(ctx, pool_id, root, total, count)
+    }
+
+    pub fn veto_winners(ctx: Context<VetoWinners>, pool_id: u32) -> Result<()> {
+        instructions::settle::handle_veto_winners(ctx, pool_id)
+    }
+
+    pub fn pay_prize(ctx: Context<PayPrize>, pool_id: u32, rank: u8, lamports: u64, proof: Vec<[u8; 32]>) -> Result<()> {
+        instructions::settle::handle_pay_prize(ctx, pool_id, rank, lamports, proof)
     }
 
     pub fn close_pool(ctx: Context<ClosePool>, pool_id: u32) -> Result<()> {

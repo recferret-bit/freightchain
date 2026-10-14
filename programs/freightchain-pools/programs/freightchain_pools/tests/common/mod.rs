@@ -8,7 +8,11 @@ use {
         AccountDeserialize, AnchorDeserialize, Discriminator, Event, InstructionData, ToAccountMetas,
     },
     base64::Engine,
-    freightchain_pools::{accounts, constants::SLOT_HASHES_ID, instruction, Attestation, Config, CreatePoolParams, Pledge, Pool, Series, SeriesParams, Ticket},
+    freightchain_pools::{
+        accounts, constants::SLOT_HASHES_ID, instruction, state::winner_leaf, Attestation, Config, CreatePoolParams, Pledge, Pool, RideAttestation, Series,
+        SeriesParams, SponsorReceipt, Ticket,
+    },
+    std::collections::HashMap,
     litesvm::{
         types::{FailedTransactionMetadata, TransactionMetadata},
         LiteSVM,
@@ -55,6 +59,42 @@ macro_rules! assert_err {
     }};
 }
 
+/// A pool's winners as the server commits them: the list, its root and one proof per rank (the program's tree shape: RFC 6962 tags, an odd node promoted).
+#[derive(Clone)]
+pub struct Winners {
+    pub list: Vec<(Pubkey, u64)>,
+    pub root: [u8; 32],
+    pub total: u64,
+    pub proofs: Vec<Vec<[u8; 32]>>,
+}
+
+pub fn winners_of(pool_id: u32, list: &[(Pubkey, u64)]) -> Winners {
+    let total = list.iter().map(|w| w.1).sum();
+    if list.is_empty() {
+        return Winners { list: vec![], root: [0; 32], total: 0, proofs: vec![] };
+    }
+    let leaves: Vec<[u8; 32]> = list.iter().enumerate().map(|(i, (w, l))| winner_leaf(pool_id, i as u8, w, *l)).collect();
+    let mut levels = vec![leaves];
+    while levels.last().unwrap().len() > 1 {
+        let l = levels.last().unwrap();
+        let next = l.chunks(2).map(|c| if c.len() == 2 { solana_sha256_hasher::hashv(&[&[0x01], &c[0], &c[1]]).to_bytes() } else { c[0] }).collect();
+        levels.push(next);
+    }
+    let proofs = (0..list.len())
+        .map(|i| {
+            let (mut idx, mut proof) = (i, vec![]);
+            for l in &levels[..levels.len() - 1] {
+                if (idx ^ 1) < l.len() {
+                    proof.push(l[idx ^ 1]);
+                }
+                idx /= 2;
+            }
+            proof
+        })
+        .collect();
+    Winners { list: list.to_vec(), root: levels.last().unwrap()[0], total, proofs }
+}
+
 pub struct Env {
     pub svm: LiteSVM,
     pub authority: Keypair,
@@ -65,6 +105,8 @@ pub struct Env {
     pub next_pool: u32,
     pub platform_fee_bps: u16,
     pub plat_t_start: u64,
+    /// the winners each pool committed (for pay_rank)
+    pub winners: HashMap<u32, Winners>,
 }
 
 pub fn pid() -> Pubkey {
@@ -101,6 +143,12 @@ pub fn series_pda(tier: u8) -> Pubkey {
 pub fn attestation_pda(pool_id: u32, driver: &Pubkey) -> Pubkey {
     let pool = pool_pda(pool_id);
     Pubkey::find_program_address(&[b"attestation", pool.as_ref(), driver.as_ref()], &pid()).0
+}
+pub fn ride_attestation_pda(pool_id: u32, ride_id: &[u8; 32]) -> Pubkey {
+    Pubkey::find_program_address(&[b"ride_attestation", pool_pda(pool_id).as_ref(), ride_id], &pid()).0
+}
+pub fn receipt_pda(pool_id: u32, sponsor: &Pubkey) -> Pubkey {
+    Pubkey::find_program_address(&[b"sponsor_receipt", pool_pda(pool_id).as_ref(), sponsor.as_ref()], &pid()).0
 }
 pub fn pledge_pda(ride_id: &[u8; 32], sponsor: &Pubkey) -> Pubkey {
     Pubkey::find_program_address(&[b"pledge", ride_id, sponsor.as_ref()], &pid()).0
@@ -168,6 +216,17 @@ impl Env {
         let upgrader = clone_kp(&e.authority);
         let admin = e.authority.pubkey();
         e.initialize(&upgrader, admin).unwrap();
+        // most tests use short windows (no review: payout_at = play_deadline); the floors have their own tests (Env::with_floors)
+        e.set_floors(&upgrader, Some(0), Some(0)).unwrap();
+        e
+    }
+
+    /// initialized with the production floors (DEFAULT_MIN_REVIEW_SECS / DEFAULT_MIN_FINISH_SECS)
+    pub fn with_floors() -> Env {
+        let mut e = Env::uninitialized(0);
+        let upgrader = clone_kp(&e.authority);
+        let admin = e.authority.pubkey();
+        e.initialize(&upgrader, admin).unwrap();
         e
     }
 
@@ -189,7 +248,7 @@ impl Env {
         let seed_t = funded(&mut svm, SOL);
         let fee_t = funded(&mut svm, SOL);
         let plat_t = funded(&mut svm, SOL);
-        Env { svm, authority, cranker, seed_t, fee_t, plat_t, next_pool: 0, platform_fee_bps, plat_t_start: SOL }
+        Env { svm, authority, cranker, seed_t, fee_t, plat_t, next_pool: 0, platform_fee_bps, plat_t_start: SOL, winners: HashMap::new() }
     }
 
     /// `initialize` signed by `upgrader` (must be the program's upgrade authority), naming `admin` as `config.authority`.
@@ -271,7 +330,6 @@ impl Env {
                 fee_treasury: fee_t,
                 seed_treasury: seed_t,
                 platform_treasury: self.plat_t.pubkey(),
-                slot_hashes: SLOT_HASHES_ID,
                 system_program: system_program::ID,
             },
         )
@@ -332,6 +390,7 @@ impl Env {
                 config: config_pda(),
                 pool: pool_pda(id),
                 vault: vault_pda(id),
+                receipt: receipt_pda(id, sponsor),
                 system_program: system_program::ID,
             },
         )
@@ -391,25 +450,65 @@ impl Env {
         self.send(&[i], &c, &[])
     }
 
-    pub fn pay_prize(&mut self, id: u32, who: &Keypair, to: &Pubkey, lamports: u64, rank: u8) -> Res {
-        self.pay_prize_with_attestation(id, who, to, attestation_pda(id, to), lamports, rank)
+    /// `commit_winners` of `list` (rank = index) signed by `who`; the proofs are kept for `pay_rank`.
+    pub fn commit_winners(&mut self, id: u32, who: &Keypair, list: &[(Pubkey, u64)]) -> Res {
+        let w = winners_of(id, list);
+        let r = self.commit_root(id, who, w.root, w.total, list.len() as u8);
+        if r.is_ok() {
+            self.winners.insert(id, w);
+        }
+        r
     }
 
-    pub fn pay_prize_with_attestation(&mut self, id: u32, who: &Keypair, to: &Pubkey, attestation: Pubkey, lamports: u64, rank: u8) -> Res {
+    pub fn commit_root(&mut self, id: u32, who: &Keypair, root: [u8; 32], total: u64, count: u8) -> Res {
         let c = clone_kp(&self.cranker);
         let i = ix(
-            instruction::PayPrize { pool_id: id, lamports, rank },
-            accounts::PayPrize {
-                authority: who.pubkey(),
-                config: config_pda(),
-                pool: pool_pda(id),
-                vault: vault_pda(id),
-                to: *to,
-                attestation,
-                system_program: system_program::ID,
-            },
+            instruction::CommitWinners { pool_id: id, root, total, count },
+            accounts::CommitWinners { authority: who.pubkey(), config: config_pda(), pool: pool_pda(id) },
         );
         self.send(&[i], &c, &[who])
+    }
+
+    pub fn veto_winners(&mut self, id: u32, who: &Keypair) -> Res {
+        let c = clone_kp(&self.cranker);
+        let i = ix(instruction::VetoWinners { pool_id: id }, accounts::VetoWinners { authority: who.pubkey(), config: config_pda(), pool: pool_pda(id) });
+        let r = self.send(&[i], &c, &[who]);
+        if r.is_ok() {
+            self.winners.remove(&id);
+        }
+        r
+    }
+
+    pub fn pay_prize_ix(&self, id: u32, caller: &Pubkey, rank: u8, to: &Pubkey, lamports: u64, proof: Vec<[u8; 32]>) -> Instruction {
+        ix(
+            instruction::PayPrize { pool_id: id, rank, lamports, proof },
+            accounts::PayPrize { caller: *caller, config: config_pda(), pool: pool_pda(id), vault: vault_pda(id), to: *to, system_program: system_program::ID },
+        )
+    }
+
+    /// pays rank `rank` of the committed winners (anyone may – the cranker sends it)
+    pub fn pay_rank(&mut self, id: u32, rank: u8) -> Res {
+        let w = self.winners.get(&id).expect("winners committed").clone();
+        let (to, lamports) = w.list[rank as usize];
+        self.pay_raw(id, rank, &to, lamports, w.proofs[rank as usize].clone())
+    }
+
+    pub fn pay_raw(&mut self, id: u32, rank: u8, to: &Pubkey, lamports: u64, proof: Vec<[u8; 32]>) -> Res {
+        let c = clone_kp(&self.cranker);
+        let i = self.pay_prize_ix(id, &c.pubkey(), rank, to, lamports, proof);
+        self.send(&[i], &c, &[])
+    }
+
+    /// commit `list`, wait out the lock (`pool.pay_from`), pay every rank
+    pub fn commit_and_pay(&mut self, id: u32, who: &Keypair, list: &[(Pubkey, u64)]) {
+        self.commit_winners(id, who, list).unwrap();
+        let from = self.pool(id).pay_from;
+        if self.now() < from {
+            self.warp(from);
+        }
+        for r in 0..list.len() as u8 {
+            self.pay_rank(id, r).unwrap();
+        }
     }
 
     pub fn close_pool(&mut self, id: u32, who: &Keypair) -> Res {
@@ -457,10 +556,26 @@ impl Env {
     }
 
     pub fn set_config(&mut self, who: &Keypair, paused: Option<bool>, treasury: Option<Pubkey>, bps: Option<u16>) -> Res {
+        self.set_config_full(who, paused, treasury, bps, None, None)
+    }
+
+    pub fn set_floors(&mut self, who: &Keypair, min_review_secs: Option<i64>, min_finish_secs: Option<i64>) -> Res {
+        self.set_config_full(who, None, None, None, min_review_secs, min_finish_secs)
+    }
+
+    pub fn set_config_full(
+        &mut self,
+        who: &Keypair,
+        paused: Option<bool>,
+        treasury: Option<Pubkey>,
+        bps: Option<u16>,
+        min_review_secs: Option<i64>,
+        min_finish_secs: Option<i64>,
+    ) -> Res {
         let c = clone_kp(&self.cranker);
         let new_t = treasury.unwrap_or(self.plat_t.pubkey());
         let i = ix(
-            instruction::SetConfig { paused, platform_treasury: treasury, platform_fee_bps: bps },
+            instruction::SetConfig { paused, platform_treasury: treasury, platform_fee_bps: bps, min_review_secs, min_finish_secs },
             accounts::SetConfig { authority: who.pubkey(), config: config_pda(), new_platform_treasury: new_t },
         );
         self.send(&[i], &c, &[who])
@@ -506,7 +621,6 @@ impl Env {
                 fee_treasury: fee_t,
                 seed_treasury: seed_t,
                 platform_treasury: self.plat_t.pubkey(),
-                slot_hashes: SLOT_HASHES_ID,
                 system_program: system_program::ID,
             },
         )
@@ -535,10 +649,12 @@ impl Env {
         clone_kp(&self.authority)
     }
 
-    pub fn record_attestation(
+    #[allow(clippy::too_many_arguments)]
+    pub fn record_ride_attestation(
         &mut self,
         id: u32,
         who: &Keypair,
+        ride_id: [u8; 32],
         driver: &Pubkey,
         telemetry_root: [u8; 32],
         verified_km: u32,
@@ -546,34 +662,20 @@ impl Env {
     ) -> Res {
         let c = clone_kp(&self.cranker);
         let i = ix(
-            instruction::RecordAttestation {
-                pool_id: id,
-                driver: *driver,
-                telemetry_root,
-                verified_km,
-                status,
-            },
-            accounts::RecordAttestation {
+            instruction::RecordRideAttestation { pool_id: id, ride_id, driver: *driver, telemetry_root, verified_km, status },
+            accounts::RecordRideAttestation {
                 authority: who.pubkey(),
                 config: config_pda(),
                 pool: pool_pda(id),
-                driver_account: *driver,
-                attestation: attestation_pda(id, driver),
+                ride_attestation: ride_attestation_pda(id, &ride_id),
                 system_program: system_program::ID,
             },
         );
         self.send(&[i], &c, &[who])
     }
 
-    pub fn record_verified_attestation(&mut self, id: u32, who: &Keypair, driver: &Pubkey, km: u32) -> Res {
-        self.record_attestation(
-            id,
-            who,
-            driver,
-            [1u8; 32],
-            km,
-            freightchain_pools::constants::ATTESTATION_STATUS_VERIFIED,
-        )
+    pub fn record_verified_ride(&mut self, id: u32, who: &Keypair, ride_id: [u8; 32], driver: &Pubkey, km: u32) -> Res {
+        self.record_ride_attestation(id, who, ride_id, driver, [1u8; 32], km, freightchain_pools::constants::ATTESTATION_STATUS_VERIFIED)
     }
 
     pub fn create_pledge(
@@ -620,8 +722,9 @@ impl Env {
                 caller: caller.pubkey(),
                 driver: *driver,
                 sponsor: *sponsor,
+                config: config_pda(),
                 pool: pool_pda(pool_id),
-                attestation: attestation_pda(pool_id, driver),
+                ride_attestation: ride_attestation_pda(pool_id, &ride_id),
                 pledge: pledge_pda(&ride_id, sponsor),
                 system_program: system_program::ID,
             },
@@ -634,7 +737,7 @@ impl Env {
         pool_id: u32,
         ride_id: [u8; 32],
         caller: &Keypair,
-        driver: &Pubkey,
+        _driver: &Pubkey,
         sponsor: &Pubkey,
     ) -> Res {
         let i = ix(
@@ -643,7 +746,7 @@ impl Env {
                 caller: caller.pubkey(),
                 sponsor: *sponsor,
                 pool: pool_pda(pool_id),
-                attestation: attestation_pda(pool_id, driver),
+                ride_attestation: ride_attestation_pda(pool_id, &ride_id),
                 pledge: pledge_pda(&ride_id, sponsor),
             },
         );
@@ -666,7 +769,24 @@ impl Env {
         Some(Pledge::try_deserialize(&mut &a.data[..]).unwrap())
     }
 
-    pub fn set_attestation(&mut self, pool_id: u32, driver: &Pubkey, verified_km: u32, status: u8) {
+    pub fn ride_attestation(&self, pool_id: u32, ride_id: &[u8; 32]) -> Option<RideAttestation> {
+        let a = self.svm.get_account(&ride_attestation_pda(pool_id, ride_id))?;
+        if a.data.is_empty() {
+            return None;
+        }
+        Some(RideAttestation::try_deserialize(&mut &a.data[..]).unwrap())
+    }
+
+    pub fn receipt(&self, pool_id: u32, sponsor: &Pubkey) -> Option<SponsorReceipt> {
+        let a = self.svm.get_account(&receipt_pda(pool_id, sponsor))?;
+        if a.data.is_empty() {
+            return None;
+        }
+        Some(SponsorReceipt::try_deserialize(&mut &a.data[..]).unwrap())
+    }
+
+    /// a v3 per-driver Attestation written straight into the account (v4 cannot record one any more) – for `close_attestation`
+    pub fn set_legacy_attestation(&mut self, pool_id: u32, driver: &Pubkey, verified_km: u32, status: u8) {
         let pda = attestation_pda(pool_id, driver);
         self.svm.airdrop(&pda, 10_000_000).unwrap();
         let mut acc = self.svm.get_account(&pda).unwrap();
@@ -684,6 +804,91 @@ impl Env {
         acc.data = data;
         acc.owner = pid();
         self.svm.set_account(pda, acc).unwrap();
+    }
+
+    pub fn close_attestation(&mut self, pool_id: u32, driver: &Pubkey, rent_to: &Pubkey) -> Res {
+        let c = clone_kp(&self.cranker);
+        let i = ix(
+            instruction::CloseAttestation { pool_id, driver: *driver },
+            accounts::CloseAttestation { caller: c.pubkey(), config: config_pda(), pool: pool_pda(pool_id), attestation: attestation_pda(pool_id, driver), rent_to: *rent_to },
+        );
+        self.send(&[i], &c, &[])
+    }
+
+    pub fn close_ride_attestation(&mut self, pool_id: u32, ride_id: [u8; 32], rent_payer: &Pubkey) -> Res {
+        let c = clone_kp(&self.cranker);
+        let i = ix(
+            instruction::CloseRideAttestation { pool_id, ride_id },
+            accounts::CloseRideAttestation {
+                caller: c.pubkey(),
+                pool: pool_pda(pool_id),
+                ride_attestation: ride_attestation_pda(pool_id, &ride_id),
+                rent_payer: *rent_payer,
+            },
+        );
+        self.send(&[i], &c, &[])
+    }
+
+    pub fn refund_sponsor(&mut self, pool_id: u32, sponsor: &Pubkey) -> Res {
+        let c = clone_kp(&self.cranker);
+        let i = ix(
+            instruction::RefundSponsor { pool_id },
+            accounts::RefundSponsor {
+                caller: c.pubkey(),
+                pool: pool_pda(pool_id),
+                vault: vault_pda(pool_id),
+                receipt: receipt_pda(pool_id, sponsor),
+                sponsor: *sponsor,
+                system_program: system_program::ID,
+            },
+        );
+        self.send(&[i], &c, &[])
+    }
+
+    pub fn close_sponsor_receipt(&mut self, pool_id: u32, sponsor: &Pubkey) -> Res {
+        let c = clone_kp(&self.cranker);
+        let i = ix(
+            instruction::CloseSponsorReceipt { pool_id },
+            accounts::CloseSponsorReceipt { caller: c.pubkey(), pool: pool_pda(pool_id), receipt: receipt_pda(pool_id, sponsor), sponsor: *sponsor },
+        );
+        self.send(&[i], &c, &[])
+    }
+
+    /// the clock's slot (unix time unchanged)
+    pub fn set_slot(&mut self, slot: u64) {
+        let mut c = self.svm.get_sysvar::<Clock>();
+        c.slot = slot;
+        self.svm.set_sysvar(&c);
+    }
+
+    /// the SlotHashes sysvar's entries, newest first, written raw (u64 count, then (u64 slot, [u8; 32] hash))
+    pub fn set_slot_hashes(&mut self, entries: &[(u64, [u8; 32])]) {
+        let mut data = (entries.len() as u64).to_le_bytes().to_vec();
+        for (slot, hash) in entries {
+            data.extend_from_slice(&slot.to_le_bytes());
+            data.extend_from_slice(hash);
+        }
+        let mut acc = self.svm.get_account(&SLOT_HASHES_ID).unwrap_or_default();
+        acc.data = data;
+        acc.owner = Pubkey::from_str_const("Sysvar1111111111111111111111111111111111111");
+        acc.lamports = acc.lamports.max(1_000_000_000);
+        self.svm.set_account(SLOT_HASHES_ID, acc).unwrap();
+    }
+
+    pub fn seal_road_ix(&self, id: u32, caller: &Pubkey) -> Instruction {
+        ix(instruction::SealRoad { pool_id: id }, accounts::SealRoad { caller: *caller, pool: pool_pda(id), slot_hashes: SLOT_HASHES_ID })
+    }
+
+    pub fn seal_road(&mut self, id: u32) -> Res {
+        let c = clone_kp(&self.cranker);
+        let i = self.seal_road_ix(id, &c.pubkey());
+        self.send(&[i], &c, &[])
+    }
+
+    pub fn migrate_config(&mut self, who: &Keypair) -> Res {
+        let c = clone_kp(&self.cranker);
+        let i = ix(instruction::MigrateConfigV4 {}, accounts::MigrateConfigV4 { authority: who.pubkey(), config: config_pda(), system_program: system_program::ID });
+        self.send(&[i], &c, &[who])
     }
 }
 

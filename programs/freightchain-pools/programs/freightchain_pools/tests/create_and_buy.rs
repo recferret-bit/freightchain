@@ -4,8 +4,8 @@ mod common;
 use common::*;
 use freightchain_pools::{
     error::PoolError,
-    events::{PoolActivated, PoolCreated, TicketBought},
-    CreatePoolParams, MAX_POOL_SECS,
+    events::{PoolActivated, PoolCreated, RoadSealed, SealRearmed, TicketBought},
+    CreatePoolParams, MAX_POOL_SECS, SEAL_DELAY_SLOTS,
 };
 use solana_keypair::Keypair;
 use solana_signer::Signer;
@@ -220,29 +220,74 @@ fn buy_wrong_state_and_zero_qty() {
 }
 
 #[test]
-fn the_road_seed_is_committed_from_the_slot_hashes_sysvar() {
+fn a_new_pool_has_no_road_yet_only_a_target_slot_a_few_slots_ahead() {
     let mut e = Env::new();
+    e.set_slot(500);
     let id = e.next_pool;
     let i = e.create_pool_ix(default_params(), e.fee_t.pubkey(), e.seed_t.pubkey());
     let (a, c) = (e.authority_kp(), clone_kp(&e.cranker));
     let r = e.send(&[i], &c, &[&a]).unwrap();
     e.next_pool += 1;
     let pool = e.pool(id);
-    // recomputable by anyone from what the pool keeps: SHA-256(pool_id LE u32 || slot hash || slot LE u64)
-    let want = solana_sha256_hasher::hashv(&[&id.to_le_bytes(), &pool.seed_slot_hash, &pool.seed_slot.to_le_bytes()]).to_bytes();
-    assert_eq!(pool.seed_commitment, want);
-    assert_ne!(pool.seed_commitment, [0u8; 32]);
+    // pentest L4: the opener could pick the moment it opens – so the road is not taken from that moment's slot hash
+    assert_eq!((pool.seed_commitment, pool.seed_slot, pool.seal_slot), ([0u8; 32], 0, 500 + SEAL_DELAY_SLOTS));
     let ev = events::<PoolCreated>(&r.logs);
-    assert_eq!((ev[0].seed_commitment, ev[0].seed_slot, ev[0].seed_slot_hash), (pool.seed_commitment, pool.seed_slot, pool.seed_slot_hash));
+    assert_eq!((ev[0].seed_commitment, ev[0].seed_slot), ([0u8; 32], 500 + SEAL_DELAY_SLOTS), "the event names the target slot");
+}
+
+#[test]
+fn seal_road_takes_the_first_slot_at_or_after_the_target_whenever_it_is_called() {
+    let mut e = Env::new();
+    e.set_slot(500);
+    let id = e.create_pool(default_params());
+    let target = e.pool(id).seal_slot;
+    assert_err!(e.seal_road(id), PoolError::TooEarly);   // the target slot is not even past
+    // the target slot itself was skipped (no block): the first one after it counts; the caller's moment does not
+    let (h1, h2, h3) = ([11u8; 32], [22u8; 32], [33u8; 32]);
+    e.set_slot(target + 40);
+    e.set_slot_hashes(&[(target + 39, h3), (target + 2, h2), (target + 1, h1), (target - 1, [1; 32])]);
+    let r = e.seal_road(id).unwrap();
+    let pool = e.pool(id);
+    let want = solana_sha256_hasher::hashv(&[&id.to_le_bytes(), &h1, &(target + 1).to_le_bytes()]).to_bytes();
+    assert_eq!((pool.seed_slot, pool.seed_slot_hash, pool.seed_commitment, pool.seal_slot), (target + 1, h1, want, 0));
+    let ev = events::<RoadSealed>(&r.logs);
+    assert_eq!((ev[0].pool_id, ev[0].seed_commitment), (id, want));
+    assert_err!(e.seal_road(id), PoolError::RoadAlreadySealed);
+}
+
+#[test]
+fn a_target_that_left_the_slot_hashes_window_is_re_armed_never_guessed() {
+    let mut e = Env::new();
+    e.set_slot(500);
+    let id = e.create_pool(default_params());
+    let target = e.pool(id).seal_slot;
+    // nobody sealed for a while: the oldest entry kept is already past the target – which hash was first after it is unknown
+    e.set_slot(target + 900);
+    e.set_slot_hashes(&[(target + 899, [5; 32]), (target + 400, [6; 32])]);
+    let r = e.seal_road(id).unwrap();
+    assert_eq!(e.pool(id).seal_slot, target + 900 + SEAL_DELAY_SLOTS);
+    assert_eq!(e.pool(id).seed_commitment, [0u8; 32]);
+    assert_eq!(events::<SealRearmed>(&r.logs)[0].seal_slot, target + 900 + SEAL_DELAY_SLOTS);
 }
 
 #[test]
 fn a_forged_slot_hashes_account_is_refused() {
     let mut e = Env::new();
+    e.set_slot(500);
+    let id = e.create_pool(default_params());
     let fake = funded(&mut e.svm, SOL);
-    let mut i = e.create_pool_ix(default_params(), e.fee_t.pubkey(), e.seed_t.pubkey());
-    let at = i.accounts.iter().position(|m| m.pubkey == freightchain_pools::constants::SLOT_HASHES_ID).unwrap();
-    i.accounts[at].pubkey = fake.pubkey(); // a caller that would like to pick the road
-    let (a, c) = (e.authority_kp(), clone_kp(&e.cranker));
-    assert_err!(e.send(&[i], &c, &[&a]), PoolError::AccountMismatch);
+    e.set_slot(600);
+    let c = clone_kp(&e.cranker);
+    let mut i = e.seal_road_ix(id, &c.pubkey());
+    i.accounts[2].pubkey = fake.pubkey(); // a caller that would like to pick the road
+    assert_err!(e.send(&[i], &c, &[]), PoolError::AccountMismatch);
+}
+
+#[test]
+fn the_platform_cut_is_snapshotted_when_the_pool_opens() {
+    let mut e = Env::with_platform_fee(500);
+    let id = e.create_pool(default_params());
+    let auth = e.authority_kp();
+    e.set_config(&auth, None, None, Some(2_000)).unwrap();
+    assert_eq!(e.pool(id).platform_fee_bps, 500, "pentest L8: the buyers saw 5 %; a later change does not reach this pool");
 }
