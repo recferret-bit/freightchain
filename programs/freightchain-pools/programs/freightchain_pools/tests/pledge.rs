@@ -1435,13 +1435,35 @@ fn refund_then_a_late_attestation_cannot_pay_twice() {
     let (d0, s0) = (e.bal(&driver.pubkey()), e.bal(&sponsor.pubkey()));
     let pledge_balance = e.bal(&pledge_pda(&r, &sponsor.pubkey()));
     e.refund_pledge(id, r, &caller, &driver.pubkey(), &sponsor.pubkey()).unwrap();
-    e.record_verified_ride(id, &payout, r, &driver.pubkey(), 25).unwrap();
-    e.warp(e.ride_attestation(id, &r).unwrap().settle_from);
+    // red-team v4 M2: no record whose lock would end past the grace margin – the refund cannot be front-run or a pledge locked again
+    assert_err!(e.record_verified_ride(id, &payout, r, &driver.pubkey(), 25), PoolError::CommitTooLate);
     assert!(e.settle_pledge(id, r, &caller, &driver.pubkey(), &sponsor.pubkey()).is_err());
     assert!(e.refund_pledge(id, r, &caller, &driver.pubkey(), &sponsor.pubkey()).is_err());
     assert_eq!(e.bal(&driver.pubkey()), d0);
     assert_eq!(e.bal(&sponsor.pubkey()), s0 + pledge_balance);
     assert_eq!(e.pool(id).open_pledges, 0);
+}
+
+/// red-team v4 M2: after the grace a stolen payout key could record VERIFIED for a pledged ride (blocking the sponsor's refund) and keep re-recording to push
+/// `settle_from` forward – a record whose lock ends later than the grace minus the margin is refused, so after the grace the sponsor refunds without anyone's key.
+#[test]
+fn a_record_whose_lock_ends_too_close_to_the_grace_is_refused() {
+    let mut e = Env::new();
+    let payout = payout_key(&mut e);
+    let id = active_pool(&mut e);
+    let driver = funded(&mut e.svm, 10 * SOL);
+    let sponsor = funded(&mut e.svm, 5 * SOL);
+    let r = ride(0x3333);
+    e.create_pledge(id, r, &driver.pubkey(), &sponsor, 250_000_000, 10_000_000, 25).unwrap();
+    let last = e.pool(id).grace_end().unwrap() - COMMIT_GRACE_MARGIN_SECS;   // floors 0, no review window: settle_from = now
+    e.warp(last);
+    e.record_verified_ride(id, &payout, r, &driver.pubkey(), 1).unwrap();   // the last moment it may
+    e.warp(last + 1);
+    assert_err!(e.record_ride_attestation(id, &payout, r, &driver.pubkey(), [0; 32], 0, ATTESTATION_STATUS_FLAGGED), PoolError::CommitTooLate);
+    assert_eq!(e.ride_attestation(id, &r).unwrap().settle_from, last, "the lock was not pushed");
+    e.warp(e.pool(id).grace_end().unwrap());
+    let caller = funded(&mut e.svm, SOL);
+    e.settle_pledge(id, r, &caller, &driver.pubkey(), &sponsor.pubkey()).unwrap();
 }
 
 /// S1-GPT probe_pledges_cannot_be_settled_or_refunded_across_pools / s1-claude safe_pledge_…_wrong_pool: one ride id attested in pool B does not

@@ -140,7 +140,7 @@ impl Rec {
                 "seedCommitment": b64(&p.seed_commitment), "seedSlot": s(p.seed_slot), "seedSlotHash": b64(&p.seed_slot_hash),
                 "sealSlot": s(p.seal_slot), "platformFeeBps": p.platform_fee_bps, "winnersRoot": b64(&p.winners_root), "winnersTotal": s(p.winners_total),
                 "winnersCount": p.winners_count, "committedAt": p.committed_at, "payFrom": p.pay_from, "paidMask": s(p.paid_mask),
-                "sponsorRefunded": s(p.sponsor_refunded), "openPledges": p.open_pledges})
+                "sponsorRefunded": s(p.sponsor_refunded), "openPledges": p.open_pledges, "minReviewSecs": p.min_review_secs})
         } else if a.data.len() >= 8 && a.data[..8] == *Ticket::DISCRIMINATOR {
             let t = Ticket::try_deserialize(&mut &a.data[..]).unwrap();
             json!({"type": "Ticket", "buyer": t.buyer.to_string(), "rentPayer": t.rent_payer.to_string(), "poolId": t.pool_id, "qty": t.qty, "lamports": s(t.lamports), "bump": t.bump})

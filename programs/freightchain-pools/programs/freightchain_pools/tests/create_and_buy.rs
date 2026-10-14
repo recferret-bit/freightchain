@@ -291,3 +291,17 @@ fn the_platform_cut_is_snapshotted_when_the_pool_opens() {
     e.set_config(&auth, None, None, Some(2_000)).unwrap();
     assert_eq!(e.pool(id).platform_fee_bps, 500, "pentest L8: the buyers saw 5 %; a later change does not reach this pool");
 }
+
+/// red-team v4 S3: the target slot (and the ones after it) were skipped – nothing at or after it is in SlotHashes YET: wait, never re-arm (re-arming here would
+/// let a caller re-roll the road by timing).
+#[test]
+fn a_skipped_target_still_inside_the_window_waits_instead_of_re_arming() {
+    let mut e = Env::new();
+    e.set_slot(500);
+    let id = e.create_pool(default_params());
+    let target = e.pool(id).seal_slot;
+    e.set_slot(target + 5);
+    e.set_slot_hashes(&[(target - 1, [3; 32]), (target - 2, [4; 32])]);
+    assert_err!(e.seal_road(id), PoolError::TooEarly);
+    assert_eq!(e.pool(id).seal_slot, target, "not re-armed");
+}

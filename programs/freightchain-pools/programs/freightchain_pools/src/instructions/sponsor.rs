@@ -101,10 +101,9 @@ pub fn handle_refund_sponsor(mut ctx: Context<RefundSponsor>, pool_id: u32) -> R
     let a = &mut ctx.accounts;
     require!(a.pool.status == STATUS_REFUNDING, PoolError::NotRefunding);
     let lamports = a.receipt.lamports;
-    require!(
-        a.sponsor.lamports().checked_add(lamports).ok_or(PoolError::MathOverflow)? >= rent_min()?,
-        PoolError::BelowRentMin
-    );
+    // the receipt's own rent reaches the sponsor in this instruction too (`close = sponsor`): a tiny sponsorship to an emptied wallet must not stall the close
+    let ends_with = a.sponsor.lamports().checked_add(lamports).and_then(|v| v.checked_add(a.receipt.to_account_info().lamports())).ok_or(PoolError::MathOverflow)?;
+    require!(ends_with >= rent_min()?, PoolError::BelowRentMin);
     pay_from_vault(&a.vault.to_account_info(), &a.sponsor.to_account_info(), &a.system_program.to_account_info(), pool_id, a.pool.vault_bump, lamports)?;
     a.pool.sponsor_refunded = a.pool.sponsor_refunded.checked_add(lamports).ok_or(PoolError::MathOverflow)?;
     emit!(SponsorRefunded { pool_id, sponsor: a.sponsor.key(), lamports, sponsor_refunded_total: a.pool.sponsor_refunded });

@@ -60,6 +60,8 @@ pub fn handle_seal_road(ctx: Context<SealRoad>, pool_id: u32) -> Result<()> {
             pool.seal_slot = 0;
             emit!(RoadSealed { pool_id, seed_slot: slot, seed_slot_hash: hash, seed_commitment: pool.seed_commitment });
         }
+        // no entry at or after the target yet (it and the slots after it were skipped): wait – re-arm only when it has left the window (red-team v4 S3)
+        None if oldest <= pool.seal_slot => return err!(PoolError::TooEarly),
         None => {
             pool.seal_slot = now_slot.checked_add(SEAL_DELAY_SLOTS).ok_or(PoolError::MathOverflow)?;
             emit!(SealRearmed { pool_id, seal_slot: pool.seal_slot });

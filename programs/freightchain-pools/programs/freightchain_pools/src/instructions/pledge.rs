@@ -211,7 +211,7 @@ pub fn handle_settle_pledge(ctx: Context<SettlePledge>, ride_id: [u8; 32]) -> Re
     let r = &mut ctx.accounts.ride_attestation;
     r.settled_pledges = r.settled_pledges.checked_add(1).ok_or(PoolError::MathOverflow)?;
     let pool = &mut ctx.accounts.pool;
-    pool.open_pledges = pool.open_pledges.saturating_sub(1);
+    pool.open_pledges = pool.open_pledges.checked_sub(1).ok_or(PoolError::MathOverflow)?;
     let pledge = &mut ctx.accounts.pledge;
     pledge.settled = true;
     pledge.earned_lamports = earned;
@@ -286,7 +286,7 @@ pub fn handle_refund_pledge(ctx: Context<RefundPledge>, ride_id: [u8; 32]) -> Re
     }
 
     let pool = &mut ctx.accounts.pool;
-    pool.open_pledges = pool.open_pledges.saturating_sub(1);
+    pool.open_pledges = pool.open_pledges.checked_sub(1).ok_or(PoolError::MathOverflow)?;
     let pledge = &mut ctx.accounts.pledge;
     let refunded = pledge.max_lamports;
     pledge.settled = true;

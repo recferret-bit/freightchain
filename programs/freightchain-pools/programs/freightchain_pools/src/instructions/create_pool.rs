@@ -204,6 +204,7 @@ pub fn init_pool<'info>(
     pool.paid_mask = 0;
     pool.sponsor_refunded = 0;
     pool.open_pledges = 0;
+    pool.min_review_secs = config.min_review_secs;
 
     emit!(PoolCreated {
         pool_id,

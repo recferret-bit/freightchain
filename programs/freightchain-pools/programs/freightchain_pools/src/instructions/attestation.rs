@@ -55,6 +55,9 @@ pub fn handle_record_ride_attestation(
         require!(verified_km > 0, PoolError::ZeroVerifiedKm);
     }
     let settle_from = a.config.pay_from(&a.pool, now)?;
+    // like a commit (rule f, red-team v4 M2): after the grace the sponsors must be able to refund without anyone's key – a record (or a rewrite that moves
+    // `settle_from` again) whose lock would end that late is refused, so a stolen payout key cannot keep a pledge locked or front-run its refund
+    require!(settle_from <= a.pool.grace_end()?.checked_sub(COMMIT_GRACE_MARGIN_SECS).ok_or(PoolError::MathOverflow)?, PoolError::CommitTooLate);
     let r = &mut a.ride_attestation;
     let fresh = r.recorded_at == 0;
     if !fresh {
@@ -119,9 +122,6 @@ pub fn handle_close_ride_attestation(ctx: Context<CloseRideAttestation>, _pool_i
     Ok(())
 }
 
-/// The byte offset of `Pool.status` – the same in v3 and v4 (every field before it is fixed-size): a v3 pool no longer deserializes as a v4 `Pool`.
-const POOL_STATUS_OFFSET: usize = 8 + 4 + 32 + 1 + 8 + 4 + 4 + 2 + 8 + 8 + 8 + 2 + 2 + 2 + 32 + 32;
-
 #[derive(Accounts)]
 #[instruction(pool_id: u32, driver: Pubkey)]
 pub struct CloseAttestation<'info> {
@@ -146,11 +146,7 @@ pub struct CloseAttestation<'info> {
 /// v4 (pentest L7): permissionless – a v3 per-driver attestation of a finished pool gives its rent back (v4 pays prizes from the winners root and
 /// pledges from ride attestations; v3 pledges were all resolved before the upgrade).
 pub fn handle_close_attestation(ctx: Context<CloseAttestation>, _pool_id: u32, _driver: Pubkey) -> Result<()> {
-    let info = ctx.accounts.pool.to_account_info();
-    require_keys_eq!(*info.owner, crate::ID, PoolError::AccountMismatch);
-    let data = info.try_borrow_data()?;
-    require!(data.len() > POOL_STATUS_OFFSET && data[..8] == *Pool::DISCRIMINATOR, PoolError::AccountMismatch);
-    let status = data[POOL_STATUS_OFFSET];
+    let status = crate::state::pool_status_raw(&ctx.accounts.pool.to_account_info())?;
     require!(status == STATUS_SETTLED || status == STATUS_CANCELLED, PoolError::NotSettled);
     emit!(AttestationClosed {
         account: ctx.accounts.attestation.key(),

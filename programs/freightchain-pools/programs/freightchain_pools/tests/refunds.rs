@@ -435,3 +435,54 @@ fn sponsor_counted_and_state_checked() {
     let i = e.sponsor_ix(id2, &sp.pubkey(), 1);
     assert_err!(e.send(&[i], &sp, &[]), PoolError::TooLate);
 }
+
+/// red-team v4 S1: a 1-lamport sponsorship from a wallet emptied since – the receipt's own rent reaches the sponsor in the same instruction, so the refund (and the
+/// pool's close) must not stall on the sponsor's balance.
+#[test]
+fn refund_sponsor_counts_the_receipts_rent_toward_the_sponsors_minimum() {
+    let mut e = Env::new();
+    let (id, buyers) = failing_pool(&mut e);
+    let sponsor = funded(&mut e.svm, SOL);
+    let i = e.sponsor_ix(id, &sponsor.pubkey(), 1);
+    e.send(&[i], &sponsor, &[]).unwrap();
+    let mut acc = e.svm.get_account(&sponsor.pubkey()).unwrap();
+    acc.lamports = 0;
+    e.svm.set_account(sponsor.pubkey(), acc).unwrap();
+    e.warp(PREP);
+    e.fail(id).unwrap();
+    for (b, rp) in &buyers {
+        e.refund(id, &b.pubkey(), &rp.pubkey()).unwrap();
+    }
+    let receipt_rent = e.bal(&receipt_pda(id, &sponsor.pubkey()));
+    e.refund_sponsor(id, &sponsor.pubkey()).unwrap();
+    assert_eq!(e.bal(&sponsor.pubkey()), 1 + receipt_rent);
+    let auth = e.authority_kp();
+    e.close_pool(id, &auth).unwrap();
+}
+
+/// red-team v4 M1: a Settled v3 pool no longer deserializes as a v4 Pool – its buyers' Ticket rent must still come back (close_ticket reads the pool's status raw).
+#[test]
+fn tickets_of_a_settled_v3_pool_still_close_after_the_upgrade() {
+    let mut e = Env::new();
+    let id = e.create_pool(default_params());
+    let (buyers, mut payers) = (vec![funded(&mut e.svm, 10 * SOL), funded(&mut e.svm, 10 * SOL), funded(&mut e.svm, 10 * SOL)], vec![]);
+    for b in &buyers {
+        e.buy(id, b, 1).unwrap();
+        payers.push(b.pubkey());
+    }
+    e.warp(PLAY);
+    let auth = e.authority_kp();
+    e.commit_and_pay(id, &auth, &[]);
+    e.close_pool(id, &auth).unwrap();
+    // cut the account back to the v3 layout (the v4 fields are appended after `seed_slot_hash`)
+    let v4_extra = 8 + 2 + 32 + 8 + 1 + 8 + 8 + 8 + 8 + 4 + 8;
+    let mut acc = e.svm.get_account(&pool_pda(id)).unwrap();
+    let v3_len = acc.data.len() - v4_extra;
+    acc.data.truncate(v3_len);
+    e.svm.set_account(pool_pda(id), acc).unwrap();
+    assert!(e.svm.get_account(&pool_pda(id)).unwrap().data.len() == v3_len);
+    let rent = e.bal(&ticket_pda(id, &buyers[0].pubkey()));
+    let before = e.bal(&payers[0]);
+    e.close_ticket(id, &buyers[0].pubkey(), &payers[0]).unwrap();
+    assert_eq!(e.bal(&payers[0]), before + rent);
+}

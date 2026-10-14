@@ -80,8 +80,9 @@ pub fn handle_refund(ctx: Context<Refund>, pool_id: u32) -> Result<()> {
 pub struct CloseTicket<'info> {
     /// Anyone.
     pub caller: Signer<'info>,
-    #[account(seeds = [POOL_SEED, &pool_id.to_le_bytes()], bump = pool.bump)]
-    pub pool: Account<'info, Pool>,
+    /// CHECK: the pool – read raw (`pool_status_raw`): a v3 pool's tickets must still close after the v4 upgrade
+    #[account(seeds = [POOL_SEED, &pool_id.to_le_bytes()], bump)]
+    pub pool: UncheckedAccount<'info>,
     #[account(
         mut,
         seeds = [TICKET_SEED, pool.key().as_ref(), ticket.buyer.as_ref()],
@@ -96,6 +97,6 @@ pub struct CloseTicket<'info> {
 }
 
 pub fn handle_close_ticket(ctx: Context<CloseTicket>, _pool_id: u32) -> Result<()> {
-    require!(ctx.accounts.pool.status == STATUS_SETTLED, PoolError::NotSettled);
+    require!(crate::state::pool_status_raw(&ctx.accounts.pool.to_account_info())? == STATUS_SETTLED, PoolError::NotSettled);
     Ok(())
 }

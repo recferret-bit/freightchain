@@ -424,7 +424,7 @@ fn the_lock_is_the_longer_of_the_review_window_and_min_review_secs() {
     let mk = |review: i64| freightchain_pools::CreatePoolParams { min_tickets: 1, prep_deadline: prep, play_deadline: play, payout_at: play + review, ..default_params() };
     let wide = e.create_pool(mk(2 * HOUR)); // window 2 h > floor 1 h
     let tight = e.create_pool(mk(HOUR)); // window = floor
-    let raised = e.create_pool(mk(HOUR)); // the floor is raised to 3 h after it opened
+    let raised = e.create_pool(mk(HOUR)); // the floor is raised to 3 h after it opened – its lock stays its own (red-team v4 S2)
     for id in [wide, tight, raised] {
         let b = funded(&mut e.svm, 10 * SOL);
         e.buy(id, &b, 1).unwrap();
@@ -439,23 +439,21 @@ fn the_lock_is_the_longer_of_the_review_window_and_min_review_secs() {
     e.warp(play + HOUR / 2);
     e.commit_winners(wide, &a, &[(w, PRICE / 2)]).unwrap();
     assert_eq!(e.pool(wide).pay_from, play + HOUR / 2 + 2 * HOUR);
-    // the floor dominates: raised to 3 h after the pool opened (its window is 1 h), the commit pays 3 h after it
+    // a floor raised to 3 h after the pool opened does not reach it: its lock is the snapshot it opened with (1 h)
     e.set_floors(&a, Some(3 * HOUR), None).unwrap();
     e.commit_winners(raised, &a, &[(w, PRICE / 2)]).unwrap();
-    assert_eq!(e.pool(raised).pay_from, play + HOUR / 2 + 3 * HOUR);
+    assert_eq!((e.pool(raised).min_review_secs, e.pool(raised).pay_from), (HOUR, play + HOUR / 2 + HOUR));
     e.warp(play + HOUR - 1);
     assert_err!(e.pay_rank(tight, 0), PoolError::TooEarly);
     e.warp(play + HOUR);
     e.pay_rank(tight, 0).unwrap();
     assert_err!(e.pay_rank(raised, 0), PoolError::TooEarly);
+    e.warp(play + HOUR / 2 + HOUR);
+    e.pay_rank(raised, 0).unwrap();
     e.warp(play + HOUR / 2 + 2 * HOUR - 1);
     assert_err!(e.pay_rank(wide, 0), PoolError::TooEarly);
     e.warp(play + HOUR / 2 + 2 * HOUR);
     e.pay_rank(wide, 0).unwrap();
-    e.warp(play + HOUR / 2 + 3 * HOUR - 1);
-    assert_err!(e.pay_rank(raised, 0), PoolError::TooEarly);
-    e.warp(play + HOUR / 2 + 3 * HOUR);
-    e.pay_rank(raised, 0).unwrap();
 }
 
 // ---- pentest regressions (2026-10, H5 / M6): the v4 form of every PoC about pay_prize, the attestation as a prize gate and the review window -------

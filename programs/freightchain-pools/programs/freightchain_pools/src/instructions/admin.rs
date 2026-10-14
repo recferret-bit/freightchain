@@ -77,7 +77,7 @@ pub fn handle_set_config(
     }
     let c = &mut ctx.accounts.config;
     if min_review_secs.is_some() || min_finish_secs.is_some() {
-        // the floors only bind NEW pools / series (set_series, create_pool); a pool already open keeps its windows
+        // the floors only bind NEW pools / series (set_series, create_pool); a pool already open keeps its windows and its review lock (Pool.min_review_secs)
         for v in [min_review_secs, min_finish_secs].into_iter().flatten() {
             require!((0..=MAX_POOL_SECS).contains(&v), PoolError::InvalidParams);
         }

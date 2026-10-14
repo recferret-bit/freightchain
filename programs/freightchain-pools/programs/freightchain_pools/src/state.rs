@@ -106,6 +106,8 @@ pub struct Pool {
     pub sponsor_refunded: u64,
     /// v4 (L7): pledges on this pool not yet settled or refunded – attestations close only at 0
     pub open_pledges: u32,
+    /// v4: `Config.min_review_secs` when the pool opened – its review lock (a later change of the floor does not reach a running pool)
+    pub min_review_secs: i64,
 }
 
 #[account]
@@ -196,6 +198,18 @@ pub fn split(total: u64, prize_bps: u16, seed_bps: u16) -> Result<(u64, u64, u64
     Ok((prize, seed, fee))
 }
 
+/// The byte offset of `Pool.status` – the same in v3 and v4 (every field before it is fixed-size; the layout only grew at the end).
+pub const POOL_STATUS_OFFSET: usize = 8 + 4 + 32 + 1 + 8 + 4 + 4 + 2 + 8 + 8 + 8 + 2 + 2 + 2 + 32 + 32;
+
+/// A pool's status read from its raw bytes (owner and discriminator checked): a v3 pool no longer deserializes as a v4 `Pool`, but its buyers must still get
+/// their Ticket rent back and its attestations closed after the upgrade (red-team v4 M1).
+pub fn pool_status_raw(pool: &AccountInfo) -> Result<u8> {
+    require_keys_eq!(*pool.owner, crate::ID, PoolError::AccountMismatch);
+    let data = pool.try_borrow_data()?;
+    require!(data.len() > POOL_STATUS_OFFSET && data[..8] == *Pool::DISCRIMINATOR, PoolError::AccountMismatch);
+    Ok(data[POOL_STATUS_OFFSET])
+}
+
 /// v4: a v3 Config with a key unset still DEcodes (borsh reads the floors from its zero padding as 0) – so every step that relies on a floor refuses
 /// it until `migrate_config_v4` has run, instead of working without the floors.
 pub fn require_migrated(config: &Account<Config>) -> Result<()> {
@@ -214,10 +228,10 @@ impl Config {
         Ok(self.paused && now < pool.grace_end()?)
     }
 
-    /// When a root committed (or a ride attestation recorded) at `at` first pays: never before `payout_at`, and never before the review lock.
+    /// When a root committed (or a ride attestation recorded) at `at` first pays (`self` only for symmetry with the other settle rules): never before `payout_at`, and never before the review lock.
     pub fn pay_from(&self, pool: &Pool, at: i64) -> Result<i64> {
         let window = pool.payout_at.checked_sub(pool.play_deadline).ok_or(PoolError::MathOverflow)?;
-        let lock = window.max(self.min_review_secs);
+        let lock = window.max(pool.min_review_secs);   // the pool's own snapshot, not the live floor (red-team v4 S2)
         Ok(at.checked_add(lock).ok_or(PoolError::MathOverflow)?.max(pool.payout_at))
     }
 }

@@ -68,6 +68,7 @@ fn pool_of(r: &Value) -> Pool {
         paid_mask: 0,
         sponsor_refunded: 0,
         open_pledges: 0,
+        min_review_secs: 0,
     }
 }
 

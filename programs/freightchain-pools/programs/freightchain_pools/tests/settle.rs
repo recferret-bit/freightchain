@@ -151,14 +151,12 @@ fn commit_winners_refused_when_its_lock_ends_too_close_to_the_grace() {
     e.warp(last);
     e.commit_winners(id, &a, &[(w[0], PRICE)]).unwrap();
     assert_eq!(e.pool(id).pay_from, p.payout_at + SETTLE_GRACE_SECS - COMMIT_GRACE_MARGIN_SECS);
-    // a raised review floor lengthens the lock, so the last moment moves earlier
+    // a raised review floor no longer moves this limit for a running pool (red-team v4 S2): the lock is the pool's own snapshot
     let lp = later(&e, default_params().with_open()).reviewed();
     let (id2, _) = active_pool_with(&mut e, 2, 5, lp);
     e.set_floors(&a, Some(3 * DAY), None).unwrap();
     let p2 = e.pool(id2);
-    e.warp(p2.payout_at + SETTLE_GRACE_SECS - COMMIT_GRACE_MARGIN_SECS - 3 * DAY + 1);
-    assert_err!(e.commit_winners(id2, &a, &[(w[0], PRICE)]), PoolError::CommitTooLate);
-    e.warp(p2.payout_at + SETTLE_GRACE_SECS - COMMIT_GRACE_MARGIN_SECS - 3 * DAY);
+    e.warp(p2.payout_at + SETTLE_GRACE_SECS - COMMIT_GRACE_MARGIN_SECS - REVIEW);
     e.commit_winners(id2, &a, &[(w[0], PRICE)]).unwrap();
 }
 
@@ -774,4 +772,24 @@ fn checked_maths_refuse_overflow_instead_of_wrapping() {
     assert_err!(e.close_pool(id, &stranger), PoolError::MathOverflow);
     // nothing moved past rank 0, the pool is still live
     assert_eq!((e.vault(id), e.pool(id).status, e.pool(id).prizes_paid), (vault - 1_000_000, 1, 1_000_000));
+}
+
+/// red-team v4 S2: the review lock is the pool's own (Pool.min_review_secs, snapshotted at creation) – a later change of the floor does not reach a running pool.
+#[test]
+fn the_review_lock_is_snapshotted_when_the_pool_opens() {
+    let mut e = Env::new();
+    let id = e.create_pool(default_params());   // floors 0
+    let auth = e.authority_kp();
+    e.set_floors(&auth, Some(14 * DAY), None).unwrap();
+    assert_eq!(e.pool(id).min_review_secs, 0);
+    let b = funded(&mut e.svm, 10 * SOL);
+    e.buy(id, &b, 3).unwrap();
+    e.warp(PLAY);
+    let w = funded(&mut e.svm, SOL).pubkey();
+    e.commit_winners(id, &auth, &[(w, PRICE)]).unwrap();   // with the live floor this would be CommitTooLate (a 14-day lock)
+    assert_eq!(e.pool(id).pay_from, PLAY);
+    let mut p = later(&e, default_params());
+    p.payout_at = p.play_deadline + 14 * DAY;
+    let id2 = e.create_pool(p);
+    assert_eq!(e.pool(id2).min_review_secs, 14 * DAY);
 }

@@ -4052,6 +4052,13 @@
               "v4 (L7): pledges on this pool not yet settled or refunded – attestations close only at 0"
             ],
             "type": "u32"
+          },
+          {
+            "name": "min_review_secs",
+            "docs": [
+              "v4: `Config.min_review_secs` when the pool opened – its review lock (a later change of the floor does not reach a running pool)"
+            ],
+            "type": "i64"
           }
         ]
       }

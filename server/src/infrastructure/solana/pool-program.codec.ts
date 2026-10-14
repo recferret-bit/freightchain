@@ -21,9 +21,11 @@ export class UnrepresentableValueError extends Error {}
 /** IDL value → domain value: u64 → exact number, i64 → Date (unix seconds), [u8; 16] → uuid, keys stay base58, nested structs recurse. Field names → camelCase. */
 function toDomain(fields: IdlField[], raw: BorshStruct, where: string): Record<string, unknown> {
   const out: Record<string, unknown> = {};
-  for (const f of fields) out[camel(f.name)] = convert(f.type, raw[f.name] ?? null, `${where}.${f.name}`);
+  for (const f of fields) out[camel(f.name)] = BITFIELDS.has(f.name) ? raw[f.name] : convert(f.type, raw[f.name] ?? null, `${where}.${f.name}`);
   return out;
 }
+/** u64 bitfields stay bigint: a mask with a high bit is not an amount, and narrowing it would make the whole account undecodable (v4 Pool.paid_mask) */
+const BITFIELDS: ReadonlySet<string> = new Set(['paid_mask']);
 function convert(type: IdlType, v: BorshValue, where: string): unknown {
   if (type === 'u64') {
     const n = v as bigint;
