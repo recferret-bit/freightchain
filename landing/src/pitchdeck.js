@@ -95,7 +95,8 @@ const SLIDES = [
       </div>
       <div class="vis">
         ${shot('wp-diagram.webp', 'v-main diagram', 'Where the money goes')}
-        ${shot('escrow-flow.webp', 'v-sub', 'How the escrow works')}
+        <figure class="shot scene v-sub"><div class="sc"><canvas data-scene="pledge" role="img" aria-label="A 0.5 SOL pledge fills kilometre by kilometre: verified kilometres pay the driver, the unspent rest goes back to the sponsor"></canvas>
+          <footer><b>Escrow</b><span>Pays verified kilometres only. The unspent rest goes back.</span></footer></div></figure>
         <img class="glyph g1" src="${A}proof.svg" alt="Four 15-second batches hash up into one Merkle root">
       </div>` },
 
@@ -226,6 +227,24 @@ deck.querySelectorAll('[data-chart=funnel]').forEach(funnel);
 deck.querySelectorAll('[data-chart=daily]').forEach(daily);
 
 const slides = [...deck.children];
+
+/* live canvas scenes lifted from the landing's UNDER THE HOOD cards (src/chain-scenes.js – a lazy chunk the landing shares): drawn only while their slide is showing */
+const scenes = [...deck.querySelectorAll('canvas[data-scene]')].map(cv => ({ cv, ctx: cv.getContext('2d'), slide: cv.closest('.slide'), name: cv.dataset.scene, draw: null }));
+let sceneLib = null;
+(window.requestIdleCallback ?? (f => setTimeout(f, 800)))(() => import('./chain-scenes.js').then(m => {
+  sceneLib = m;
+  scenes.forEach(sc => { if (sc.ctx?.roundRect) sc.draw = m.SCENES[sc.name]?.(); });   // no roundRect (an old browser): the card keeps its caption and an empty frame
+}).catch(() => {}));
+function sceneFrame(ms) {
+  if (sceneLib) for (const sc of scenes) {
+    if (!sc.draw || !sc.slide.classList.contains('on')) continue;
+    const w = Math.round(sc.cv.clientWidth * 2);   // 2× the layout width, so the stage's scaling stays sharp
+    if (w && sc.cv.width !== w) { sc.cv.width = w; sc.cv.height = Math.round(w * 124 / 240); }
+    sceneLib.drawScene(sc.ctx, sc.draw, tkReduced ? 3.2 : ms / 1000, sc.cv.width / 240);
+  }
+  requestAnimationFrame(sceneFrame);
+}
+requestAnimationFrame(sceneFrame);
 
 /* page counter: an old mechanical-watch roll – the digit that changes rolls out and the new one rolls in (up going forward, down going back) while the counter swells 1.05 for a beat */
 const pager = document.getElementById('pager');
