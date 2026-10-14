@@ -215,6 +215,7 @@ if (ach) {
   const stage = ach.querySelector('.ach-stage'), cap = ach.querySelector('.ach-cap'), N = ACH.length;
   let k = 0;
   const badge = i => ACH[((i % N) + N) % N];
+  const rings = [0, 1].map(() => { const r = document.createElement('i'); r.className = 'ach-ring'; stage.append(r); return r; });   // the ripple behind the middle badge
   const slots = [-2, -1, 0, 1, 2].map(o => { const im = document.createElement('img'); im.className = 'ci'; im.width = im.height = 120; im.alt = ''; stage.append(im); return { im, o }; });
   const place = () => slots.forEach(sl => { sl.im.dataset.o = Math.abs(sl.o) > 2 ? 'x' : sl.o; sl.im.style.setProperty('--o', sl.o); });
   const fill = sl => { const [id, name] = badge(k + sl.o); sl.im.src = `${BADGES}${id}.svg`; sl.im.alt = name; };
@@ -225,6 +226,7 @@ if (ach) {
     k = (k + 1) % N;
     slots.forEach(sl => { sl.o -= 1; });
     place();
+    rings.forEach(r => { r.classList.remove('go'); void r.offsetWidth; r.classList.add('go'); });   // two purple rings ripple out, the second a beat behind
     cap.classList.remove('swap'); void cap.offsetWidth; cap.classList.add('swap');   // the caption slides in with the new middle badge
     setTimeout(caption, 180);
     setTimeout(() => {   // the badge that left on the left re-enters on the right, hidden
@@ -407,7 +409,7 @@ addEventListener('resize', coinFit); coinFit();
 function collide(p, q) {   // two discs, mass ∝ area: push apart, then a restitution impulse along the normal
   const dx = q.x - p.x, dy = q.y - p.y, rr = p.r + q.r, d2 = dx * dx + dy * dy;
   if (d2 >= rr * rr || d2 === 0) return;
-  const d = Math.sqrt(d2), nx = dx / d, ny = dy / d, ip = 1 / (p.r * p.r), iq = 1 / (q.r * q.r), push = (rr - d) * .8 / (ip + iq);
+  const d = Math.sqrt(d2), nx = dx / d, ny = dy / d, ip = 1 / (p.r * p.r), iq = 1 / (q.r * q.r), push = (rr - d) * .9 / (ip + iq);
   p.x -= nx * push * ip; p.y -= ny * push * ip; q.x += nx * push * iq; q.y += ny * push * iq;
   const vn = (q.vx - p.vx) * nx + (q.vy - p.vy) * ny;
   if (vn < 0) { const j = -(1 + E_COIN) * vn / (ip + iq); p.vx -= j * nx * ip; p.vy -= j * ny * ip; q.vx += j * nx * iq; q.vy += j * ny * iq; }
@@ -416,13 +418,13 @@ function collide(p, q) {   // two discs, mass ∝ area: push apart, then a resti
 function bounds(c, h) {
   if (c.y + c.r > FLOOR) { c.y = FLOOR - c.r; if (c.vy > 0) c.vy = c.vy > 90 ? -c.vy * E_FLOOR : 0; c.touch = true; }   // a slow landing stops dead: no endless micro-bounce
   if (c.x - c.r < 0) { c.x = c.r; if (c.vx < 0) c.vx = -c.vx * E_FLOOR; } else if (c.x + c.r > 1920) { c.x = 1920 - c.r; if (c.vx > 0) c.vx = -c.vx * E_FLOOR; }
-  if (c.touch) { c.vx *= 1 - 1.5 * h; c.w += (c.vx / c.r - c.w) * Math.min(1, 10 * h); } else c.w *= 1 - .3 * h;   // touching something it rolls (spin = v / r) and slowly loses speed; in the air it keeps its spin
+  if (c.touch) { c.vx *= 1 - .5 * h; c.w += (c.vx / c.r - c.w) * Math.min(1, 10 * h); } else c.w *= 1 - .3 * h;   // touching something it rolls (spin = v / r) and slowly loses speed; in the air it keeps its spin
 }
 function coinTick(t) {
   const dt = Math.min(1 / 30, (t - coinT) / 1000 || 1 / 60), h = dt / 4; coinT = t;
-  for (let s = 0; s < 4; s++) {   // 4 substeps a frame, 2 collision passes each: enough for a stable pile of ~120
+  for (let s = 0; s < 4; s++) {   // 4 substeps a frame, 4 collision passes each: enough for a stable pile of ~120
     for (const c of coins) { c.vy += G * h; c.x += c.vx * h; c.y += c.vy * h; c.a += c.w * h; c.touch = false; }
-    for (let it = 0; it < 2; it++) for (let i = 0; i < coins.length; i++) for (let j = i + 1; j < coins.length; j++) collide(coins[i], coins[j]);
+    for (let it = 0; it < 4; it++) for (let i = 0; i < coins.length; i++) for (let j = i + 1; j < coins.length; j++) collide(coins[i], coins[j]);
     for (const c of coins) bounds(c, h);
   }
   let vmax = 0; for (const c of coins) vmax = Math.max(vmax, Math.abs(c.vx), Math.abs(c.vy), Math.abs(c.w * c.r));

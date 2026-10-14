@@ -306,19 +306,23 @@ canvas.glyph{height:auto;aspect-ratio:240/124;background:none}
 .cc:is(:hover,.hot) .more{opacity:1;translate:0 0;transition-delay:.08s}
 /* the soulbound badges: a carousel – the middle one big, its neighbours small and dim; each step the row slides one place */
 .ach{margin-top:auto;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
-.ach-stage{position:relative;width:calc(100% + 40px);margin:0 -20px;height:128px;overflow:hidden}
+.ach-stage{position:relative;width:calc(100% + 40px);margin:0 -20px;height:128px}
 .ci{position:absolute;left:50%;top:4px;width:120px;height:120px;margin-left:-60px;--s:.3;--op:0;
   transform:translateX(calc(var(--o,0)*98px)) scale(var(--s));opacity:var(--op);
   transition:transform .65s cubic-bezier(.45,0,.15,1),opacity .65s ease,filter .65s ease;filter:grayscale(.6) brightness(.8)}
 .ci[data-o="0"]{--s:1;--op:1;filter:drop-shadow(0 0 14px color-mix(in srgb,var(--c) 50%,transparent))}
 .ci[data-o="-1"],.ci[data-o="1"]{--s:.52;--op:.42}
+.ach-ring{position:absolute;left:50%;top:4px;width:120px;height:120px;margin-left:-60px;border-radius:50%;border:3px solid var(--c);opacity:0;pointer-events:none}
+.ach-ring.go{animation:achring .95s ease-out both}
+.ach-ring.go:nth-of-type(2){animation-delay:.16s}
+@keyframes achring{0%{transform:scale(.55);opacity:.85}100%{transform:scale(1.5);opacity:0}}
 .ach-cap{display:grid;gap:3px;min-height:72px;align-content:start}
 .ach-cap em{font:700 12px/1 var(--body);letter-spacing:3px;font-style:normal;color:var(--c)}
 .ach-cap b{font:400 26px/1 var(--head);text-transform:uppercase;color:#fff}
 .ach-cap span{font:500 14px/1.25 var(--body);color:var(--muted)}
 .ach-cap.swap{animation:achcap .55s ease-out both}
 @keyframes achcap{0%{opacity:0;translate:26px 0}100%{opacity:1;translate:0 0}}
-@media (prefers-reduced-motion:reduce){.cc,.cc .more,.ci,.ach-cap{transition:none!important;animation:none!important}}
+@media (prefers-reduced-motion:reduce){.cc,.cc .more,.ci,.ach-cap,.ach-ring{transition:none!important;animation:none!important}}
 
 /* slide 3's DONATIONS bullet is a button: it shakes now and then like the cards; a click drops SOL coins onto the stage (#coins, script) and pops a donation toast */
 .pts li.don{width:fit-content;cursor:pointer;transform-origin:30% 50%;transition:scale .3s cubic-bezier(.2,.8,.2,1),text-shadow .3s}
