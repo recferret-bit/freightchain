@@ -131,7 +131,7 @@ h1 small{font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;c
 .shot{border-radius:var(--radius);box-shadow:0 0 0 4px #050505,0 0 0 8px transparent,0 40px 90px #000;outline:4px solid transparent;
   background:var(--sol);padding:6px}
 .shot img,.shot video{border-radius:calc(var(--radius) - 6px)}
-.L-wall h1{font-size:180px}
+.L-wall h1{font-size:128px}
 .L-bleed h1{font-size:140px}
 .L-bleed .shade{background:linear-gradient(90deg,#000e 0%,#000a 50%,#0000 80%),linear-gradient(0deg,#000 0%,#0000 55%)}
 .L-split h1,.L-money h1{font-size:130px}

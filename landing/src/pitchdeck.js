@@ -23,13 +23,13 @@ const DATA = {
 };
 
 const SLIDES = [
-  { layout: 'wall', id: 'driver',
+  { layout: 'wall', id: 'product',
     html: `
       <div class="copy">
         <div class="brand"><img src="/icons/icon-192.png" alt=""><span>FREIGHT CHAIN</span></div>
-        <div class="lbl">00 · The driver</div>
-        <h1>Andrei<small>solo founder · Belgrade</small></h1>
-        ${pts(['Ex-tech lead · Latoken · chain integrations', 'Winner · Moralis × Cronos GameFi', 'Fully featured product, not a game prototype', 'Site · streams · analytics · Solana escrow', 'I ship really fast', '<b>Co-founder wanted</b>'])}
+        <div class="lbl">00 · The product</div>
+        <h1>Freight Chain<small>Competitive · GameFi</small></h1>
+        ${pts(['<b>Site</b> · landing, lobby, whitepaper', '<b>Streams</b> · live watch + replays', '<b>Analytics</b> · PostHog funnels', '<b>Solana</b> · devnet escrow, no token', '<b>Details</b> · gearbox, cold engine, night', '<b>Passion</b> · built solo, shipped fast'])}
       </div>
       <div class="vis">
         ${shot('landing-hero.webp', 'w1', 'The landing')}
