@@ -190,7 +190,8 @@ deck.querySelectorAll('[data-chart=daily]').forEach(daily);
 
 const slides = [...deck.children];
 const stage = document.getElementById('stage');
-const fit = () => { const k = Math.min(innerWidth / 1920, innerHeight / 1080); stage.style.transform = `translate(-50%,-50%) scale(${k})`; };
+let scale = 1;   // stage px → screen px
+const fit = () => { const k = scale = Math.min(innerWidth / 1920, innerHeight / 1080); stage.style.transform = `translate(-50%,-50%) scale(${k})`; };
 addEventListener('resize', fit); fit();
 
 let cur = -1;
@@ -216,10 +217,43 @@ addEventListener('keydown', e => {
 const wall = document.querySelector('.L-wall .vis');
 wall?.parentElement.addEventListener('pointermove', e => { wall.style.setProperty('--px', (e.clientX / innerWidth - .5).toFixed(3)); wall.style.setProperty('--py', (e.clientY / innerHeight - .5).toFixed(3)); });
 wall?.parentElement.addEventListener('pointerleave', () => { wall.style.setProperty('--px', 0); wall.style.setProperty('--py', 0); });
+/* dragging a screen: it follows the pointer at about half the distance, trailing behind (a slow lerp), and eases home when let go */
+const drags = new Map(); let raf = 0, moved = false;
+function trail() {
+  let busy = false;
+  drags.forEach((d, c) => {
+    d.x += (d.tx - d.x) * .06; d.y += (d.ty - d.y) * .06;
+    c.style.setProperty('--dx', `${d.x.toFixed(1)}px`); c.style.setProperty('--dy', `${d.y.toFixed(1)}px`);
+    if (!d.down && Math.abs(d.x) < .3 && Math.abs(d.y) < .3) { c.classList.remove('drag'); c.style.removeProperty('--dx'); c.style.removeProperty('--dy'); drags.delete(c); } else busy = true;
+  });
+  raf = busy ? requestAnimationFrame(trail) : 0;
+}
+wall?.querySelectorAll('.shot').forEach(c => {
+  c.addEventListener('pointerdown', e => {
+    if (e.button) return;
+    try { c.setPointerCapture(e.pointerId); } catch { /* a synthetic pointer */ }
+    moved = false; c.classList.add('drag');
+    drags.set(c, { x0: e.clientX, y0: e.clientY, x: drags.get(c)?.x ?? 0, y: drags.get(c)?.y ?? 0, tx: 0, ty: 0, down: true });
+    raf ||= requestAnimationFrame(trail);
+  });
+  c.addEventListener('pointermove', e => {
+    const d = drags.get(c); if (!d?.down) return;
+    if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) > 6) moved = true;
+    d.tx = Math.max(-150, Math.min(150, (e.clientX - d.x0) / scale * .5)); d.ty = Math.max(-110, Math.min(110, (e.clientY - d.y0) / scale * .5));
+  });
+  const end = () => { const d = drags.get(c); if (d) { d.down = false; d.tx = d.ty = 0; raf ||= requestAnimationFrame(trail); } };
+  c.addEventListener('pointerup', end); c.addEventListener('pointercancel', end);
+});
+
 addEventListener('click', e => {
   const card = e.target.closest('.L-wall .shot, .L-wall .tags span');
-  if (card) { const on = card.classList.toggle('hot'); wall.querySelectorAll('.hot').forEach(c => { if (c !== card && on) c.classList.remove('hot'); }); return; }
-  if (e.target.closest('a,button')) return; show(cur + (e.clientX > innerWidth / 3 ? 1 : -1));
+  if (card) {
+    if (moved) { moved = false; return; }   // the end of a drag is not a tap
+    const on = card.classList.toggle('hot'); wall.querySelectorAll('.hot').forEach(c => { if (c !== card && on) c.classList.remove('hot'); });
+    return;
+  }
+  if (e.target.closest('a,button')) return;
+  show(cur + (e.clientX > innerWidth / 3 ? 1 : -1));
 });
 
 const tip = document.getElementById('tip');

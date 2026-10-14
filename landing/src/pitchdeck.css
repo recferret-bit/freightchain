@@ -171,7 +171,7 @@ h1 small{font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;c
 @keyframes tip{0%,100%{box-shadow:0 0 0 0 #9945ff00;opacity:.72}50%{box-shadow:0 0 18px 2px #9945ff88,0 0 28px 4px #14f19533;opacity:1}}
 
 /* slide 1: the screens hang in the air, lean away from the mouse, lift on hover / tap; the border is a flowing Solana glow */
-.L-wall .shot{--r:0deg;--k:0;--s:1;--dl:0s;transform:rotate(var(--r)) translate(calc(var(--px,0)*var(--k)*1px),calc(var(--py,0)*var(--k)*1px)) scale(var(--s));
+.L-wall .shot{--r:0deg;--k:0;--s:1;--dl:0s;transform:translate(var(--dx,0px),var(--dy,0px)) rotate(var(--r)) translate(calc(var(--px,0)*var(--k)*1px),calc(var(--py,0)*var(--k)*1px)) scale(var(--s));
   transition:transform .35s cubic-bezier(.2,.8,.2,1),filter .35s;cursor:pointer;animation:float 6s ease-in-out var(--dl) infinite,glow 4s ease-in-out var(--dl) infinite,flow 7s linear infinite;
   background:linear-gradient(110deg,#9945ff,#14f195,#9945ff,#14f195) 0 0/300% 100%}
 .L-wall .shot:hover,.L-wall .shot.hot{--s:1.045;z-index:6;animation-play-state:running}
@@ -179,7 +179,7 @@ h1 small{font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;c
 .L-wall .w2{--r:2.5deg;--k:34;--dl:-2.5s}
 .L-wall .w3{--r:1.5deg;--k:-40;--dl:-4s}
 .L-wall .w4{--r:-2deg;--k:50;--dl:-5s}
-.L-wall .w1,.L-wall .w2,.L-wall .w3,.L-wall .w4{transform:rotate(var(--r)) translate(calc(var(--px,0)*var(--k)*1px),calc(var(--py,0)*var(--k)*1px)) scale(var(--s))}
+.L-wall .w1,.L-wall .w2,.L-wall .w3,.L-wall .w4{transform:translate(var(--dx,0px),var(--dy,0px)) rotate(var(--r)) translate(calc(var(--px,0)*var(--k)*1px),calc(var(--py,0)*var(--k)*1px)) scale(var(--s))}
 @keyframes float{0%,100%{translate:0 0}50%{translate:0 -16px}}
 @keyframes flow{to{background-position:300% 0}}
 @keyframes glow{0%,100%{box-shadow:0 0 0 4px #050505,0 0 22px 2px #9945ffaa,0 40px 90px #000}50%{box-shadow:0 0 0 4px #050505,0 0 34px 6px #14f19577,0 40px 90px #000}}
@@ -217,3 +217,9 @@ h1 small{font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;c
 .L-wall .vis:has(.tags span:nth-child(4):is(:hover,.hot)) .w3 img,
 .L-wall .vis:has(.tags span:nth-child(3):is(:hover,.hot)) .w4 img{transform:scale(1)}
 @media (prefers-reduced-motion:reduce){.L-wall .shot img{transition:none}}
+
+/* dragged: lifted like a selected screen, no CSS transition on the move (the script's lerp is the lag), nothing selects or scrolls */
+.L-wall .shot{touch-action:none;user-select:none;-webkit-user-select:none}
+.L-wall .shot img{pointer-events:none;-webkit-user-drag:none}
+.L-wall .shot.drag{--s:1.09;z-index:6;cursor:grabbing;transition:filter .35s;filter:drop-shadow(0 0 20px #14f195aa) drop-shadow(0 0 34px #9945ff88)}
+.L-wall .shot.drag img{transform:scale(1)}
