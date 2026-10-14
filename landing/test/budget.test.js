@@ -30,7 +30,7 @@ test('media: no single image over 120 kB, all images together ≤ 600 kB; the la
   assert.ok(media.reduce((a, f) => a + statSync(f).size, 0) <= 600 * KB);
 });
 
-test('the pitch deck (pitchdeck.<apex>): each image ≤ 120 kB, all of them ≤ 600 kB, its clip ≤ 1.5 MB, its CSS ≤ 7.5 kB gz and JS ≤ 11 kB gz, no network of its own', { skip: !has }, () => {   // Oct 14: own line, the deck's ten screenshots would blow the landing's 600 kB
+test('the pitch deck (pitchdeck.<apex>): each image ≤ 120 kB, all of them ≤ 600 kB, its clip ≤ 1.5 MB, its CSS ≤ 7.5 kB gz and JS ≤ 14 kB gz, no network of its own', { skip: !has }, () => {   // Oct 14: own line, the deck's ten screenshots would blow the landing's 600 kB
   const imgs = files.filter(f => f.includes('/media/pitchdeck/') && !f.endsWith('.mp4'));
   assert.ok(imgs.length >= 10);
   for (const f of imgs) assert.ok(statSync(f).size <= 120 * KB, `${f} ${statSync(f).size} B`);
@@ -39,7 +39,7 @@ test('the pitch deck (pitchdeck.<apex>): each image ≤ 120 kB, all of them ≤ 
   const html = readFileSync(join(dist, 'pitchdeck.html'), 'utf8'), css = html.match(/href="(\/assets\/pitchdeck-[\w-]+\.css)"/)?.[1], js = html.match(/src="(\/assets\/pitchdeck-[\w-]+\.js)"/)?.[1];
   assert.ok(css && js, 'the deck links its own hashed css + js');
   assert.ok(gz(join(dist, css)) <= 7.5 * KB, `deck CSS ${gz(join(dist, css))} B gz`);
-  assert.ok(gz(join(dist, js)) <= 11 * KB, `deck JS ${gz(join(dist, js))} B gz`);   // Oct 15: 8 → 11 kB (floating cards, ticker, odometer, the 70/20/10 chain, the chain slide's six cards + 31 badge names); CSS 6 → 7.5 kB
+  assert.ok(gz(join(dist, js)) <= 14 * KB, `deck JS ${gz(join(dist, js))} B gz`);   // Oct 15: 8 → 11 → 14 kB (the plan slide's lanes + the chain slide's copy)  ·  8 → 11 kB (floating cards, ticker, odometer, the 70/20/10 chain, the chain slide's six cards + 31 badge names); CSS 6 → 7.5 kB
   assert.doesNotMatch(readFileSync(join(dist, js), 'utf8'), /fetch\(|XMLHttpRequest|sendBeacon|WebSocket/, 'the deck makes no request of its own');
   assert.doesNotMatch(html, /https?:\/\/(?!freightchain\.fun)/, 'no third-party host in the page');
 });

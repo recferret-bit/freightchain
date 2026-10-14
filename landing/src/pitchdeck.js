@@ -45,6 +45,23 @@ const ACH = [
 const TIER = ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM'];
 const achTier = id => id.startsWith('free-') ? 'LICENCE' : TIER[(id.match(/-(\d)$/)?.[1] ?? 1) - 1];
 
+/* slide 6 – the plan: four months (Nov–Feb), one lane each; a bar spans the months it runs. `more` shows on hover / tap. It is a plan, not a promise: the audit gates the mainnet, the mainnet gates the token. */
+const MONTHS = [['NOV', 'M1 · 2026'], ['DEC', 'M2'], ['JAN', 'M3 · 2027'], ['FEB', 'M4']];
+const PLAN = [
+  { k: 'MAINNET', sub: 'after the audit', c: '#14f195', from: 3, to: 3, t: 'Beta launch', n: 'capped pools first',
+    more: 'Real SOL pools, capped at first. The same program and proofs: only the cluster changes.' },
+  { k: 'LOAD · PENTEST · AUDIT', sub: 'break it, then prove it', c: '#ffcf5a', from: 1, to: 2, t: 'Load test → pentest fixes → audit', n: 'server + escrow program',
+    more: 'Load-test the API and the replay worker, close every pentest finding, then a third-party audit of the escrow program.' },
+  { k: 'COMMUNITY', sub: 'players and streamers', c: '#b98cff', from: 1, to: 4, t: 'Streamers · Discord · weekly challenges', n: 'build in public, every week',
+    more: 'People before money: streamer partnerships, a Discord and weekly challenges, so the first pools already have an audience.' },
+  { k: 'TOKEN LAUNCH', sub: 'HONK', c: '#ffffff', from: 4, to: 4, t: 'HONK on chain', n: 'genesis → pool',
+    more: 'HONK leaves the game ledger for an SPL mint: 100M cap, 2M genesis for the pool, 98M earned by verified rides.' },
+  { k: 'PAID EVENTS', sub: 'backed by us', c: '#ff5a4d', from: 2, to: 4, t: 'Funded prize pools · streamer cups', n: 'we seed the pool',
+    more: 'We fund the prizes: marketing rides and streamer cups, so a pool never opens empty and the stream has a reason to exist.' },
+  { k: 'NEW GAME MODES', sub: 'then modding', c: '#6fb0ff', from: 3, to: 4, t: 'New modes, same rails', n: 'same road, same verification',
+    more: 'New ways to drive on the same seeded road and the same verification stack. Modding comes after the modes.' },
+];
+
 const SLIDES = [
   { layout: 'wall', id: 'product',
     html: `
@@ -131,21 +148,17 @@ const SLIDES = [
       </div>
       <div class="cards5">${CHAIN.map(chainCard).join('')}</div>` },
 
-  { layout: 'end', id: 'next',
+  { layout: 'plan', id: 'plan',
     html: `
       <div class="copy">
-        <div class="lbl">06 · Next</div>
-        <h1>Solana<br>Ecosystem track</h1>
-        <ol class="road">
-          <li><b>01</b>Community and polishing</li>
-          <li><b>02</b>Audit</li>
-          <li><b>03</b>Mainnet</li>
-          <li><b>04</b>Game modes and modding</li>
-        </ol>
+        <div class="lbl">06 · The plan</div>
+        <h1>The next <em>4 months.</em></h1>
       </div>
-      <div class="vis">
-        ${shot('landing-roadmap.webp', 'v-main', 'Roadmap trip sheet')}
-        <div class="badges">${['shift-complete-4', 'night-owl-4', 'century-4', 'clean-run-4', 'cold-start-4', 'first-mile-4'].map(b => `<img src="${BADGES}${b}.svg" alt="">`).join('')}</div>
+      <div class="plan">
+        <div class="pr today"><span class="pin"><i></i>TODAY · OCT 15</span></div>
+        ${MONTHS.map(m => `<div class="pr mo"><b>${m[0]}</b><small>${m[1]}</small></div>`).join('')}
+        ${PLAN.map((l, i) => `<div class="pl" style="--c:${l.c};--i:${i};grid-row:${i + 2}"><b>${l.k}</b><small>${l.sub}</small></div>
+        <div class="bar" style="--c:${l.c};--i:${i};grid-row:${i + 2};grid-column:${l.from + 1} / ${l.to + 2}"><b>${l.t}</b><small>${l.n}</small><p>${l.more}</p></div>`).join('')}
       </div>` },
 
   { layout: 'end gtm', id: 'market',
@@ -409,10 +422,10 @@ function drawCoins() {
 }
 const coinFit = () => { coinK = Math.min(2, devicePixelRatio * scale); coinCv.width = Math.round(1920 * coinK); coinCv.height = Math.round(1080 * coinK); drawCoins(); };   // backing store at screen resolution, drawn in stage px
 addEventListener('resize', coinFit); coinFit();
-function collide(p, q) {   // two discs, mass ∝ area: push apart, then a restitution impulse along the normal
+function collide(p, q) {   // two discs, mass ∝ area (a held one is immovable): push apart, then a restitution impulse along the normal
   const dx = q.x - p.x, dy = q.y - p.y, rr = p.r + q.r, d2 = dx * dx + dy * dy;
   if (d2 >= rr * rr || d2 === 0) return;
-  const d = Math.sqrt(d2), nx = dx / d, ny = dy / d, ip = 1 / (p.r * p.r), iq = 1 / (q.r * q.r), push = (rr - d) * .9 / (ip + iq);
+  const d = Math.sqrt(d2), nx = dx / d, ny = dy / d, ip = p === held ? 0 : 1 / (p.r * p.r), iq = q === held ? 0 : 1 / (q.r * q.r), push = (rr - d) * .9 / (ip + iq);
   p.x -= nx * push * ip; p.y -= ny * push * ip; q.x += nx * push * iq; q.y += ny * push * iq;
   const vn = (q.vx - p.vx) * nx + (q.vy - p.vy) * ny;
   if (vn < 0) { const j = -(1 + E_COIN) * vn / (ip + iq); p.vx -= j * nx * ip; p.vy -= j * ny * ip; q.vx += j * nx * iq; q.vy += j * ny * iq; }
@@ -426,15 +439,38 @@ function bounds(c, h) {
 function coinTick(t) {
   const dt = Math.min(1 / 30, (t - coinT) / 1000 || 1 / 60), h = dt / 4; coinT = t;
   for (let s = 0; s < 4; s++) {   // 4 substeps a frame, 4 collision passes each: enough for a stable pile of ~120
-    for (const c of coins) { c.vy += G * h; c.x += c.vx * h; c.y += c.vy * h; c.a += c.w * h; c.touch = false; }
+    for (const c of coins) { if (c === held) { c.vx = Math.max(-4000, Math.min(4000, (hx - c.x) * 20)); c.vy = Math.max(-4000, Math.min(4000, (hy - c.y) * 20)); } else c.vy += G * h; c.x += c.vx * h; c.y += c.vy * h; c.a += c.w * h; c.touch = false; }
     for (let it = 0; it < 4; it++) for (let i = 0; i < coins.length; i++) for (let j = i + 1; j < coins.length; j++) collide(coins[i], coins[j]);
     for (const c of coins) bounds(c, h);
   }
   let vmax = 0; for (const c of coins) vmax = Math.max(vmax, Math.abs(c.vx), Math.abs(c.vy), Math.abs(c.w * c.r));
-  coinStill = vmax < 20 ? coinStill + 1 : 0;
+  coinStill = vmax < 20 && !held ? coinStill + 1 : 0;
   drawCoins();
   coinRaf = coinStill > 60 ? 0 : requestAnimationFrame(coinTick);   // a settled pile sleeps until the next donation
 }
+/* every coin can be grabbed: a press on one (the topmost) holds it – it chases the pointer, shoves the others aside and is thrown with its last velocity on release.
+   A grab is never a page turn, a swipe or a card drag: the press, its click and its touches stop at the window (capture). */
+let held = null, hx = 0, hy = 0, eatClick = false, touchCoin = false;
+const toStage = e => { const r = stage.getBoundingClientRect(); return [(e.clientX - r.left) / scale, (e.clientY - r.top) / scale]; };
+const coinAt = (x, y) => { for (let i = coins.length - 1; i >= 0; i--) { const c = coins[i]; if ((c.x - x) ** 2 + (c.y - y) ** 2 < c.r * c.r) return c; } return null; };
+addEventListener('pointerdown', e => {
+  const [x, y] = toStage(e), c = !e.button && coinAt(x, y);
+  eatClick = !!c; if (!c) return;
+  e.stopPropagation(); e.preventDefault();
+  held = c; hx = x; hy = y; touchCoin = e.pointerType === 'touch';
+  coins.splice(coins.indexOf(c), 1); coins.push(c);   // drawn on top
+  stage.classList.add('coin-drag'); coinStill = 0; coinRaf ||= requestAnimationFrame(coinTick);
+}, true);
+addEventListener('pointermove', e => {
+  if (!coins.length) return;
+  const [x, y] = toStage(e);
+  if (held) { hx = x; hy = y; } else stage.classList.toggle('coin-over', !!coinAt(x, y));
+});
+const letGo = () => { if (held) { held = null; stage.classList.remove('coin-drag'); } };
+addEventListener('pointerup', letGo); addEventListener('pointercancel', letGo);
+addEventListener('click', e => { if (eatClick) { eatClick = false; e.stopPropagation(); } }, true);
+addEventListener('touchstart', e => { if (touchCoin) e.stopPropagation(); }, { capture: true, passive: true });
+addEventListener('touchend', e => { if (touchCoin) { touchCoin = false; e.stopPropagation(); } }, { capture: true, passive: true });
 function donate() {
   const [what, sol] = DONATE[Math.floor(Math.random() * DONATE.length)], toast = document.createElement('div');
   toast.className = 'sol-toast';
@@ -500,7 +536,7 @@ addEventListener('click', e => {
   if (e.target.closest('.split')) return;   // the bar's own click handler (a tap opens / closes a block)
   if (e.target.closest('#ticker')) { tkHold = performance.now() + 1400; return; }   // a click on the header slows it for a moment instead of turning the page
   if (e.target.closest('.pts li.don')) { donate(); return; }   // slide 3: a mock donation, not a page turn
-  const card = e.target.closest('.fx .shot, .fx .badge, .fx canvas.glyph, .L-wall .tags span, .cards5 .cc');
+  const card = e.target.closest('.fx .shot, .fx .badge, .fx canvas.glyph, .L-wall .tags span, .cards5 .cc, .plan .bar');
   if (card) {
     if (moved) { moved = false; return; }   // the end of a drag is not a tap
     if (card.classList.contains('badge')) { card.classList.remove('pop'); void card.offsetWidth; card.classList.add('pop'); }   // a tween bump on every click

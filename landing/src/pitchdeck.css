@@ -337,3 +337,37 @@ canvas.glyph{height:auto;aspect-ratio:240/124;background:none}
 .sol-toast span{font:700 15px/1 var(--body);letter-spacing:3px;color:#fff}
 @keyframes soltoast{0%{opacity:0;transform:translateY(24px) scale(.5)}14%{opacity:1;transform:translateY(0) scale(1.12)}24%{transform:scale(1)}75%{opacity:1;transform:translateY(-34px)}100%{opacity:0;transform:translateY(-70px)}}
 @media (prefers-reduced-motion:reduce){.sol-toast{animation:none}.pts li.don{transition:none}}
+/* a coin under the pointer can be grabbed (script toggles these on the stage) */
+#stage.coin-over,#stage.coin-over *{cursor:grab!important}
+#stage.coin-drag,#stage.coin-drag *{cursor:grabbing!important;user-select:none;-webkit-user-select:none}
+
+/* 06 · the plan: a four-month Gantt – month ruler, one lane per workstream, bars that draw in left to right when the slide shows; hover / tap swaps a bar's label for what it means */
+.L-plan{grid-template-rows:auto 1fr;gap:26px}
+.L-plan h1{margin:0;font-size:104px}
+.L-plan h1::after{display:none}
+.plan{position:relative;display:grid;grid-template-columns:270px repeat(4,1fr);grid-auto-rows:minmax(0,1fr);row-gap:10px;min-height:0}
+.plan::before{content:"";position:absolute;left:270px;right:0;top:0;bottom:0;pointer-events:none;background:repeating-linear-gradient(90deg,#ffffff1c 0 2px,transparent 2px 25%)}
+.plan .pr{grid-row:1;display:flex;align-items:flex-end;justify-content:center;gap:12px;padding-bottom:8px;border-bottom:2px solid #2a2a2a}
+.plan .pr.mo b{font:400 44px/1 var(--head);color:var(--ink);letter-spacing:2px}
+.plan .pr.mo small{font:600 15px var(--body);letter-spacing:2px;color:var(--muted);padding-bottom:5px}
+.plan .pr.today{grid-column:1;justify-content:flex-start}
+.plan .pin{display:inline-flex;align-items:center;gap:12px;font:700 15px var(--body);letter-spacing:3px;color:var(--good)}
+.plan .pin i{position:relative;width:12px;height:12px;border-radius:50%;background:var(--good)}
+.plan .pin i::after{content:"";position:absolute;inset:-6px;border-radius:50%;border:2px solid var(--good);animation:pinpulse 2s ease-out infinite}
+@keyframes pinpulse{0%{transform:scale(.5);opacity:.9}100%{transform:scale(1.8);opacity:0}}
+.plan .pl{grid-column:1;display:flex;flex-direction:column;justify-content:center;gap:4px;padding-right:18px}
+.plan .pl b{font:400 31px/1 var(--head);text-transform:uppercase;color:var(--c);letter-spacing:.5px}
+.plan .pl small{font:500 16px var(--body);color:var(--muted)}
+.plan .bar{position:relative;z-index:1;display:flex;flex-direction:column;justify-content:center;gap:3px;padding:0 24px 0 26px;margin:5px 0;border-radius:14px;overflow:hidden;cursor:pointer;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--c) 34%,#0b0b0b),color-mix(in srgb,var(--c) 14%,#0b0b0b));border:2px solid color-mix(in srgb,var(--c) 70%,#0b0b0b);border-left:8px solid var(--c);
+  clip-path:inset(-30px 100% -30px -30px);transition:clip-path .9s cubic-bezier(.2,.8,.2,1) calc(var(--i)*.11s + .25s),scale .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s}
+.plan .bar::after{content:"◆";position:absolute;right:16px;top:50%;translate:0 -50%;font-size:22px;color:var(--c)}
+.slide.on .plan .bar{clip-path:inset(-30px -30px -30px -30px)}
+.plan .bar:is(:hover,.hot){scale:1.025;box-shadow:0 0 34px color-mix(in srgb,var(--c) 40%,transparent)}
+.plan .bar b{font:700 21px/1.15 var(--body);color:#fff;letter-spacing:.5px;text-transform:uppercase;padding-right:36px}
+.plan .bar small{font:500 16px/1.2 var(--body);color:color-mix(in srgb,var(--c) 75%,#fff)}
+.plan .bar p{position:absolute;left:26px;right:48px;top:50%;translate:0 -42%;margin:0;font:500 17px/1.3 var(--body);color:#fff;opacity:0;transition:opacity .25s ease,translate .4s cubic-bezier(.2,.9,.3,1)}
+.plan .bar b,.plan .bar small{transition:opacity .25s ease}
+.plan .bar:is(:hover,.hot) b,.plan .bar:is(:hover,.hot) small{opacity:0}
+.plan .bar:is(:hover,.hot) p{opacity:1;translate:0 -50%;transition-delay:.1s}
+@media (prefers-reduced-motion:reduce){.plan .bar,.plan .bar p,.plan .bar b,.plan .bar small,.plan .pin i::after{transition:none!important;animation:none!important}.plan .bar{clip-path:none}}
