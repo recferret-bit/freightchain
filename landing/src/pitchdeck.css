@@ -175,7 +175,7 @@ h1 small{font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;c
 #help.flash.go-l b:first-of-type{animation:nudge-l 1.8s ease-in-out infinite,arrowflash .5s ease-out 1}
 #help.flash.go-r b:last-of-type{animation:nudge-r 1.8s ease-in-out infinite,arrowflash .5s ease-out 1}
 @keyframes tipflash{0%{background:#fff;color:#050505;border-color:#fff;box-shadow:0 0 46px 14px #14f195cc,0 0 90px 24px #9945ffaa}100%{background:#000a;color:#fffc;border-color:#9945ff99}}
-@keyframes arrowflash{0%{color:#050505;text-shadow:0 0 12px #14f195}100%{color:var(--good);text-shadow:none}}
+@keyframes arrowflash{0%{color:#050505;text-shadow:0 0 12px #14f195;scale:1.9}100%{color:var(--good);text-shadow:none;scale:1}}   /* `scale`, not transform: the arrow's own nudge owns transform */
 @keyframes tipwave{0%,100%{transform:translateY(0) rotate(-.6deg) scale(1)}25%{transform:translateY(-5px) rotate(0) scale(1.04)}50%{transform:translateY(0) rotate(.6deg) scale(1.08)}75%{transform:translateY(-5px) rotate(0) scale(1.04)}}
 @keyframes nudge-l{0%,100%{transform:translateX(0)}50%{transform:translateX(-6px)}}
 @keyframes nudge-r{0%,100%{transform:translateX(0)}50%{transform:translateX(6px)}}
