@@ -263,6 +263,39 @@ addEventListener('click', e => {
   show(cur + (e.clientX > innerWidth / 3 ? 1 : -1));
 });
 
+/* phones: a swipe turns the page, the tip says "swipe", a portrait screen is asked to turn sideways, and the gyro tilts slide 1's screens */
+const touch = matchMedia('(hover: none) and (pointer: coarse)').matches;
+document.body.classList.toggle('touch', touch);
+let sx = 0, sy = 0, swipe = false;
+addEventListener('touchstart', e => { swipe = !e.target.closest('.L-wall .shot'); sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+addEventListener('touchend', e => {
+  if (!swipe) return;
+  const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+  if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) { flashTip(dx < 0 ? 'go-r' : 'go-l'); show(cur + (dx < 0 ? 1 : -1)); }
+}, { passive: true });
+
+const turn = document.getElementById('turn'), portrait = matchMedia('(orientation: portrait) and (max-width: 900px)');
+let skipTurn = false;
+const askTurn = () => { turn.hidden = !(portrait.matches && !skipTurn); };
+portrait.addEventListener('change', askTurn); document.getElementById('turn-skip').addEventListener('click', () => { skipTurn = true; askTurn(); }); askTurn();
+
+/* tilt: the phone's gyro drives the same --px / --py as the mouse (zeroed on the first reading and whenever the screen turns); iOS asks for permission on the first tap */
+let base = null;
+const onTilt = e => {
+  if (e.gamma == null || e.beta == null || !wall) return;
+  const a = ((window.screen.orientation?.angle ?? 0) + 360) % 360;
+  const [x, y] = a === 90 ? [e.beta, -e.gamma] : a === 270 ? [-e.beta, e.gamma] : a === 180 ? [-e.gamma, -e.beta] : [e.gamma, e.beta];
+  base ??= [x, y];
+  const f = v => Math.max(-.5, Math.min(.5, v / 40)).toFixed(3);
+  wall.style.setProperty('--px', f(x - base[0])); wall.style.setProperty('--py', f(y - base[1]));
+};
+const listenTilt = () => { addEventListener('deviceorientation', onTilt); window.screen.orientation?.addEventListener('change', () => { base = null; }); };
+if (touch && window.DeviceOrientationEvent) {
+  if (typeof window.DeviceOrientationEvent.requestPermission === 'function') {
+    addEventListener('click', () => window.DeviceOrientationEvent.requestPermission().then(r => { if (r === 'granted') listenTilt(); }).catch(() => {}), { once: true });
+  } else listenTilt();
+}
+
 const tip = document.getElementById('tip');
 addEventListener('mousemove', e => {
   const t = e.target.closest?.('[data-tip]');
