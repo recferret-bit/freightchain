@@ -28,6 +28,12 @@ import { RideVerdictRepositoryPort } from '../../../src/application/ports/verdic
 import { RideVerdict } from '../../../src/domain/verdict/ride-verdict.entity.js';
 import { VerdictStatus } from '../../../src/domain/verdict/verdict.dto.js';
 import { badgeRejected } from '../../../src/domain/achievements/achievements.js';
+
+/** a pool's results count only the rides that ended by its play deadline (the Prisma repositories' H6 rule) */
+const inWindow = (db: MemoryDb, r: { poolId: number | null; endedAt: Date | null }): boolean => {
+  const pool = r.poolId === null ? undefined : db.pools.get(r.poolId);
+  return !pool || (r.endedAt !== null && r.endedAt.getTime() <= pool.playDeadline.getTime());
+};
 import { SignInRepositoryPort, type SignInSummary } from '../../../src/application/ports/auth/sign-in.repository.port.js';
 import type { PoolRideFacts } from '../../../src/domain/verdict/pool-attention.js';
 import { AdminActionRepositoryPort } from '../../../src/application/ports/admin/admin-action.repository.port.js';
@@ -151,7 +157,7 @@ export class MemoryRideRepository extends RideRepositoryPort {
 
   async findBestVerifiedByPoolAndWallet(poolId: number, wallet: string): Promise<Ride | null> {
     const verified = [...this.db.rides.values()]
-      .filter((r) => r.props.wallet === wallet && r.props.poolId === poolId && r.props.status === RideStatus.Completed)
+      .filter((r) => r.props.wallet === wallet && r.props.poolId === poolId && r.props.status === RideStatus.Completed && inWindow(this.db, r.props))
       .filter((r) => {
         const v = this.db.verdicts.get(r.props.id);
         return v ? v.status === 'verified' : false;
@@ -161,7 +167,7 @@ export class MemoryRideRepository extends RideRepositoryPort {
   }
 
   async hasCompletedInPool(poolId: number, wallet: string): Promise<boolean> {
-    return [...this.db.rides.values()].some((r) => r.props.wallet === wallet && r.props.poolId === poolId && r.props.status === RideStatus.Completed);
+    return [...this.db.rides.values()].some((r) => r.props.wallet === wallet && r.props.poolId === poolId && r.props.status === RideStatus.Completed && inWindow(this.db, r.props));
   }
 }
 
@@ -259,7 +265,7 @@ export class MemoryRideQuery extends RideQueryPort {
   }
 
   async poolRanking(poolId: number, limit: number, verifiedOnly: boolean): Promise<LeaderboardRow[]> {
-    const page = this.ranked((r) => r.poolId === poolId && (!verifiedOnly || this.verified(r)), 'distance', 0, limit, limit);
+    const page = this.ranked((r) => r.poolId === poolId && inWindow(this.db, r) && (!verifiedOnly || this.verified(r)), 'distance', 0, limit, limit);
     return page.rows.map(({ wallet, distance, seconds, hull, rides }) => ({ wallet, distance, seconds, hull, rides }));
   }
 
@@ -267,7 +273,7 @@ export class MemoryRideQuery extends RideQueryPort {
     return [...this.db.rides.values()]
       .filter(({ props: r }) => {
         const v = this.db.verdicts.get(r.id);
-        return r.poolId === poolId && r.status === RideStatus.Completed && (!v || (v.status !== VerdictStatus.Verified && v.overriddenBy === null));
+        return r.poolId === poolId && r.status === RideStatus.Completed && inWindow(this.db, r) && (!v || (v.status !== VerdictStatus.Verified && v.overriddenBy === null));
       })
       .sort((a, b) => (a.props.endedAt?.getTime() ?? 0) - (b.props.endedAt?.getTime() ?? 0) || a.seq - b.seq)
       .slice(0, limit).map(({ props: r }) => ({ id: r.id, wallet: r.wallet, verdict: this.db.verdicts.get(r.id)?.status ?? null }));
@@ -562,7 +568,7 @@ export class MemoryAdminQuery extends AdminQueryPort {
   }
 
   async poolRides(poolId: number): Promise<PoolRideFacts[]> {
-    return [...this.db.rides.values()].filter(({ props: p }) => p.poolId === poolId && p.status === RideStatus.Completed)
+    return [...this.db.rides.values()].filter(({ props: p }) => p.poolId === poolId && p.status === RideStatus.Completed && inWindow(this.db, p))
       .sort((a, b) => (a.props.endedAt?.getTime() ?? 0) - (b.props.endedAt?.getTime() ?? 0) || a.seq - b.seq)
       .map(({ props: p }) => {
         const v = this.db.verdicts.get(p.id);

@@ -101,6 +101,26 @@ describe('concurrency (PostgreSQL)', () => {
     expect(await prisma.ride.count({ where: { wallet: a.address, status: 'awaiting_payment' } })).toBe(1);
   });
 
+  it('N parallel starts of one ticket ride at the play-window boundary (H6): in time exactly one starts; past the last start all are 409 rides_closed, the ride is closed once, no deadlock', async () => {
+    const pools = () => harness.app.get(PoolRepositoryPort, { strict: false }), promos = () => harness.app.get(PromoRepositoryPort, { strict: false });
+    const t = harness.clock.now().getTime();
+    await pools().upsert(aPool({ id: 1, status: 'active', prepDeadline: new Date(t + 60_000), playDeadline: new Date(t + 3600_000 + 30_000), payoutAt: new Date(t + 7200_000) }, harness.clock.now()));
+    await promos().insert(aPromo(harness.clock.now(), { code: 'TIX', effect: ticketEffect({ credits: 2 }), maxRedemptions: null }));
+    const a = await login();
+    await a.agent.post('/api/promo/redeem').send({ code: 'TIX' }).expect(200);
+    const order = async () => (await a.agent.post('/api/rides').send({ tier: '1h' }).expect(200)).body.id as string;
+    const first = await order();
+    const inTime = await parallel(PARALLEL, () => a.agent.post(`/api/rides/${first}/start`));
+    expect(inTime.filter((r) => r.status === 200)).toHaveLength(1);
+    await a.agent.post(`/api/rides/${first}/end`).send({ outcome: 'failed', s: 0, t: 1, hull: 0, reason: 'test' }).expect(200);
+    const second = await order();   // ordered (its ticket spent) while a shift still fits
+    sec(31);   // a second past the last start of a 1 h shift
+    const late = await parallel(PARALLEL, () => a.agent.post(`/api/rides/${second}/start`));
+    expect(late.every((r) => r.status === 409)).toBe(true);
+    expect(late.filter((r) => r.body.code === 'rides_closed')).toHaveLength(1);   // the first closes it; the rest find it cancelled
+    expect(await prisma.ride.findUniqueOrThrow({ where: { id: second } })).toMatchObject({ status: 'cancelled' });
+  });
+
   describe('promo codes beyond tickets', () => {
     const promos = () => harness.app.get(PromoRepositoryPort, { strict: false });
 

@@ -5,11 +5,12 @@ import { RideStatus } from '../../../../../src/domain/rides/ride-status.js';
 import { ConflictError, NotFoundError } from '../../../../../src/domain/shared/errors.js';
 import { unitContext } from '../../../../support/unit-context.js';
 import { RecordingAnalytics } from '../../../../support/recording-analytics.js';
+import { aPool } from '../../../../support/pools.js';
 
 const setup = () => {
   const ctx = unitContext();
   const analytics = new RecordingAnalytics();
-  const handler = new StartRideHandler(ctx.lookup, ctx.rides, ctx.players, ctx.cosmetics, ctx.rules, ctx.transactions, ctx.clock, analytics, ctx.stats);
+  const handler = new StartRideHandler(ctx.lookup, ctx.rides, ctx.players, ctx.cosmetics, ctx.rules, ctx.transactions, ctx.clock, analytics, ctx.stats, ctx.pools);
   return { ctx, analytics, start: (id: string, wallet = 'w', trip: string | null = null) => handler.execute(new StartRideCommand(wallet, id, trip)) };
 };
 
@@ -72,6 +73,24 @@ describe('StartRideHandler', () => {
     await ctx.cosmetics.unlock({ wallet: 'w', slot: 'wheel', item: 'moss', code: 'X', at: ctx.now() });
     await ctx.cosmetics.equip('w', 'wheel', 'moss');
     expect((await ctx.reload(ride.id)).loadout?.wheel).toBe('classic');
+  });
+
+  it('a ticket ride starts only while a shift started now ends by its pool\'s play deadline – else 409 rides_closed, the ride is closed and the ticket stays in the pot (H6)', async () => {
+    const { ctx, start } = setup();
+    const ticketRide = async (playIn: number) => {
+      const t = ctx.now().getTime(), id = ctx.entropy.uuid();
+      await ctx.pools.upsert(aPool({ id: playIn, status: 'active', prepDeadline: new Date(t - 60_000), playDeadline: new Date(t + playIn * 1000), payoutAt: new Date(t + playIn * 1000) }, ctx.now()));
+      await ctx.paidOrder('w');
+      const ride = Ride.createFromTicket({ id, wallet: 'w', tier: '1h', seed: 1, minSeconds: 3600, timeScale: 1, poolId: playIn, roundId: 1, now: ctx.now() });
+      await ctx.rides.insert(ride);
+      return id;
+    };
+    const late = await ticketRide(3599);   // a 1 h shift started now would end a second after the deadline
+    await expect(start(late)).rejects.toMatchObject({ errorCode: 'rides_closed' });
+    expect(await ctx.reload(late)).toMatchObject({ status: RideStatus.Cancelled });
+    await expect(start(late)).rejects.toThrow(/ride is cancelled/);
+    const inTime = await ticketRide(3600);   // exactly in time: it may end AT the deadline
+    expect((await start(inTime)).status).toBe('running');
   });
 
   it('only a "created" ride starts: twice, unpaid or someone else\'s is refused', async () => {

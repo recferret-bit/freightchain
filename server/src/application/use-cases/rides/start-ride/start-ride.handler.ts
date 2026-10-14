@@ -10,6 +10,7 @@ import { toWardrobeDto } from '../../../../domain/economy/wardrobe.dto.js';
 import { CosmeticRepositoryPort } from '../../../ports/players/cosmetic.repository.port.js';
 import { PlayerRepositoryPort } from '../../../ports/players/player.repository.port.js';
 import { RideRepositoryPort } from '../../../ports/rides/ride.repository.port.js';
+import { PoolRepositoryPort } from '../../../ports/economy/pool.repository.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
 import { TransactionPort } from '../../../ports/shared/transaction.port.js';
 import { StatsService } from '../../../services/stats.service.js';
@@ -45,6 +46,7 @@ export class StartRideHandler implements ICommandHandler<StartRideCommand, RideD
     private readonly clock: ClockPort,
     private readonly analytics: AnalyticsPort,
     private readonly stats: StatsService,
+    private readonly pools: PoolRepositoryPort,
   ) {}
 
   async execute({ wallet, rideId, trip }: StartRideCommand): Promise<RideDto> {
@@ -66,12 +68,22 @@ export class StartRideHandler implements ICommandHandler<StartRideCommand, RideD
         throw new ConflictError('another ride is in progress');
       }
       if (!ride.isFree) player.requirePaidPlay(); // a free start stays open; SOL already sent is confirmed by a different command
+      if (ride.poolId !== null) {   // a ticket ride starts only while a shift started now ends by its pool's play deadline (H6) – the pool row is read, not locked: its deadline comes from chain and never changes
+        const pool = await this.pools.findById(ride.poolId, tx);
+        if (pool && !pool.isRidable(now, ride.minSeconds)) {
+          ride.closeRidesClosed(now, pool.playDeadline);
+          await this.rides.save(ride, tx);
+          await this.stats.recordRide(ride.snapshot(), tx);   // every path that ends a ride (a ride that never started adds nothing)
+          return { closed: pool.playDeadline } as const;
+        }
+      }
       const wardrobe = toWardrobeDto(await this.cosmetics.listUnlocked(wallet, tx), await this.cosmetics.listEquipped(wallet, tx));
       ride.start(now, wardrobe.equipped);   // what is worn right now (owned items only) goes with the ride: live streams and replays draw it
       const saved = await this.rides.save(ride, tx);
       if (ride.tutorial && player.markTutorialPassed(now)) await this.players.save(player, tx);   // starting a ride with the tutorial on = it was done: the lobby leaves it off from now on
       return { dto: toRideDto(saved), started: saved.snapshot(), failed } satisfies StartFacts;
     });
+    if ('closed' in facts && facts.closed) throw new ConflictError(`rides for this ride's pool closed: a shift started now would end after its play deadline (${facts.closed.toISOString()}) – the ride is closed, its ticket stays in the pot`, 'rides_closed');   // after the commit: the closed ride stays closed
     const demo = (): boolean => isDemoWallet(this.rules.get(), wallet);
     if (facts.failed) await this.stats.invalidate(wallet);
     if (facts.failed) { const failed = facts.failed; emitAnalytics(this.analytics, () => rideFailed(failed, demo(), 'stale_on_start')); }

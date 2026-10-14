@@ -40,7 +40,7 @@ export function poolCard(t, info, ctx) {
     el('span', { class: 'sub ptext' }, progress, ' · in escrow ', el('b', { class: 'esc' }, sol(p.vaultLamports))),
     phase(p, now),
     el('span', { class: 'mine' }, 'your tickets: ', el('b', {}, mine), other > 0 ? ` (+${other} in another live ${info.name} pool)` : '', ` · max ${p.maxPerWallet}`),
-    tt.rideBy ? el('span', { class: 'sub ride-by' }, `ride by ${hhmm(tt.rideBy)} · `, countdown(tt.rideBy)) : '',   // the ticket is spent when the ride is ordered: order it before this
+    tt.rideBy ? el('span', { class: 'sub ride-by' }, `start by ${hhmm(tt.rideBy)} · `, countdown(tt.rideBy)) : '',   // the ticket is spent when the ride is ordered: order it before this
     ...tt.closed.map(c => el('span', { class: 'sub closed' }, `${plural(c.balance, 'unused ticket')} of pool #${c.poolId} expired – its rides closed at ${hhmm(c.rideBy)}; a ticket counts only in its own pool`)),
     primary, buyRow,
     note ? el('span', { class: 'dim fee' }, note) : '',

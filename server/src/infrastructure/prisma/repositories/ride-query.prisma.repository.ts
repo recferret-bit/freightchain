@@ -121,14 +121,18 @@ export class RideQueryPrismaRepository extends RideQueryPort {
     return rows[0] ? toEntry(rows[0]) : null;
   }
 
+  /** A pool's results count only the rides that ENDED by its play deadline (Pool.rideWindow – pentest H6: a ride started days later still ranked and was paid). */
   async poolRanking(poolId: number, limit: number, verifiedOnly: boolean): Promise<LeaderboardRow[]> {
-    const page = await this.ranked(this.paidWhere(Prisma.sql`r."poolId" = ${poolId}`, verifiedOnly), 'distance', 0, limit, limit);
+    const inWindow = Prisma.sql`r."poolId" = ${poolId} AND r."endedAt" <= (SELECT p."playDeadline" FROM "economy"."Pool" p WHERE p.id = ${poolId})`;
+    const page = await this.ranked(this.paidWhere(inWindow, verifiedOnly), 'distance', 0, limit, limit);
     return page.rows.map(({ wallet, distance, seconds, hull, rides }) => ({ wallet, distance, seconds, hull, rides }));
   }
 
+  /** (a ride that ended after the play deadline counts for nothing, so it never holds the payout up) */
   async poolUnreviewed(poolId: number, limit: number): Promise<{ id: string; wallet: string; verdict: string | null }[]> {
+    const endBy = (await this.prisma.pool.findUnique({ where: { id: poolId }, select: { playDeadline: true } }))?.playDeadline;
     const rows = await this.prisma.ride.findMany({
-      where: { poolId, status: 'completed', OR: [{ verdict: { is: null } }, { verdict: { is: { status: { not: 'verified' }, overriddenBy: null } } }] },
+      where: { poolId, status: 'completed', ...(endBy ? { endedAt: { lte: endBy } } : {}), OR: [{ verdict: { is: null } }, { verdict: { is: { status: { not: 'verified' }, overriddenBy: null } } }] },
       orderBy: [{ endedAt: 'asc' }, { seq: 'asc' }], take: limit, include: { verdict: { select: { status: true } } },
     });
     return rows.map((r) => ({ id: r.id, wallet: r.wallet, verdict: r.verdict?.status ?? null }));

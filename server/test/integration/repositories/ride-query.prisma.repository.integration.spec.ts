@@ -170,6 +170,31 @@ describe('RideQueryPrismaRepository (PostgreSQL)', () => {
     expect(await ids({ verdict: 'all', since: null, limit: 2 })).toEqual([[a.id, 'verified'], [b.id, 'flagged']]);
   });
 
+  it('the play window (H6): every reader of a pool counts a ride that ended 1 ms before or exactly AT the play deadline, never one that ended 1 ms after', async () => {
+    const { PoolPrismaRepository } = await import('../../../src/infrastructure/prisma/repositories/pool.prisma.repository.js');
+    const { AdminQueryPrismaRepository } = await import('../../../src/infrastructure/prisma/repositories/admin-query.prisma.repository.js');
+    const { aPool } = await import('../../support/pools.js');
+    const deadline = at(1000);
+    await seedPlayer(prisma, 'dave');
+    await new PoolPrismaRepository(prisma).upsert(aPool({ id: 1, playDeadline: deadline, payoutAt: at(5000) }, at(0)));
+    const inPool = async (wallet: string, metres: number, endedAt: Date, verdict: 'verified' | 'flagged') => {
+      const r = await ride(wallet, { paid: true, metres, outcome: 'shift', verdict });
+      await prisma.ride.update({ where: { id: r.id }, data: { poolId: 1, endedAt } });
+      return r.id;
+    };
+    const before = await inPool('alice', 300, new Date(deadline.getTime() - 1), 'verified');
+    const atDeadline = await inPool('bob', 200, deadline, 'verified');
+    await inPool('carol', 900, new Date(deadline.getTime() + 1), 'verified');                 // the longest ride – ended too late
+    await inPool('alice', 5000, new Date(deadline.getTime() + 1), 'verified');                // alice's best ride is the late one: not counted
+    await inPool('dave', 100, new Date(deadline.getTime() + 1), 'flagged');                   // late and undecided: it holds nothing up
+    expect((await query.poolRanking(1, 20, true)).map((r) => [r.wallet, r.distance])).toEqual([['alice', 300], ['bob', 200]]);
+    expect(await query.poolUnreviewed(1, 20)).toEqual([]);
+    expect((await rides.findBestVerifiedByPoolAndWallet(1, 'alice'))?.id).toBe(before);
+    expect((await rides.findBestVerifiedByPoolAndWallet(1, 'bob'))?.id).toBe(atDeadline);
+    expect([await rides.hasCompletedInPool(1, 'bob'), await rides.hasCompletedInPool(1, 'carol')]).toEqual([true, false]);
+    expect((await new AdminQueryPrismaRepository(prisma).poolRides(1)).map((r) => r.rideId).sort()).toEqual([before, atDeadline].sort());
+  });
+
   it('forRejudge never returns a ride of a pool whose payout plan exists – decided money is not judged again', async () => {
     const { PoolPrismaRepository } = await import('../../../src/infrastructure/prisma/repositories/pool.prisma.repository.js');
     const { aPool } = await import('../../support/pools.js');

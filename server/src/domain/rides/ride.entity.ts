@@ -255,6 +255,14 @@ export class Ride {
     this.close(RideStatus.Cancelled, 'replaced by a paid ride', now);
   }
 
+  /** A ready TICKET ride whose pool closed for rides before it started (a shift started now would end after the play deadline – pentest H6): it can never
+      count, so it is closed. Its ticket was spent at the order and is not given back – the money stays in the pool's pot (the decision of 2026-10-14). */
+  closeRidesClosed(now: Date, deadline: Date): void {
+    this.mustBe(RideStatus.Created);
+    if (this.p.poolId === null) throw new ConflictError('only a ticket ride belongs to a pool');
+    this.close(RideStatus.Cancelled, `rides for its pool closed – a shift started now would end after ${deadline.toISOString()}`.slice(0, REASON_MAX_LENGTH), now);
+  }
+
   failHeartbeatLost(now: Date): void {
     this.mustBe(RideStatus.Running);
     this.close(RideStatus.Failed, 'heartbeat lost', now);

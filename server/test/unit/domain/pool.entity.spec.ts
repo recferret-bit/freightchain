@@ -55,6 +55,24 @@ describe('Pool – what can be bought', () => {
   });
 });
 
+describe('Pool – the ride window (pentest H6: a ride counts only when it ENDED by the play deadline)', () => {
+  const live = (playDeadline: Date) => pool({ status: 'active', prepDeadline: new Date(playDeadline.getTime() - 2 * 3600_000), playDeadline });
+  it('a shift may start until the play deadline minus its length (1 h for the tier by default, the ride\'s own for a demo shift)', () => {
+    const p = live(PLAY), last = PLAY.getTime() - 3600_000;
+    expect(p.rideWindow()).toEqual({ endBy: PLAY });
+    expect(p.startBy().getTime()).toBe(last);
+    expect([p.isRidable(new Date(last)), p.isRidable(new Date(last + 1))]).toEqual([true, false]);
+    expect(p.isRidable(new Date(last + 1), 60)).toBe(true);
+    expect(pool({ status: 'open', playDeadline: PLAY }).isRidable(new Date(last - 1))).toBe(false);   // not live yet
+  });
+  it('no ticket is sold that could not be ridden: the sale stops when a shift bought now could no longer finish', () => {
+    const deadline = new Date(T0.getTime() + 3600_000 - 1);   // a pool whose play window is shorter than a shift (the program allows play == prep)
+    const p = pool({ status: 'active', prepDeadline: new Date(T0.getTime() + 60_000), playDeadline: deadline });
+    expect(p.whyNotSellable(T0, 1, 0)).toBe('rides for this pool close before a shift bought now could finish');
+    expect(live(new Date(T0.getTime() + 3 * 3600_000)).whyNotSellable(T0, 1, 0)).toBeNull();
+  });
+});
+
 describe('Pool – progress, pot and the deadline', () => {
   it('reports the commitment goal and what is missing; an active pool misses nothing', () => {
     expect(pool({ ticketsSold: 7 }).progress).toEqual({ sold: 7, min: 10, pct: 70 });

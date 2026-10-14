@@ -55,12 +55,15 @@ export class RidePrismaRepository extends RideRepositoryPort {
     return RideEntity.restore({ ...p, version: p.version + 1 });
   }
 
+  /** only rides that ended by the pool's play deadline (Pool.rideWindow) */
   async findBestVerifiedByPoolAndWallet(poolId: number, wallet: string, tx?: TransactionHandle): Promise<Ride | null> {
+    const endBy = await this.endBy(poolId, tx);
     const rows = await clientFor(this.prisma, tx).ride.findMany({
       where: {
         poolId,
         wallet,
         status: 'completed',
+        ...(endBy ? { endedAt: { lte: endBy } } : {}),
         verdict: {
           is: {
             status: 'verified',
@@ -73,6 +76,12 @@ export class RidePrismaRepository extends RideRepositoryPort {
   }
 
   async hasCompletedInPool(poolId: number, wallet: string, tx?: TransactionHandle): Promise<boolean> {
-    return (await clientFor(this.prisma, tx).ride.count({ where: { poolId, wallet, status: 'completed' } })) > 0;
+    const endBy = await this.endBy(poolId, tx);
+    return (await clientFor(this.prisma, tx).ride.count({ where: { poolId, wallet, status: 'completed', ...(endBy ? { endedAt: { lte: endBy } } : {}) } })) > 0;
+  }
+
+  /** the pool's play deadline: its rides count only when they ended by then (H6) */
+  private async endBy(poolId: number, tx?: TransactionHandle): Promise<Date | null> {
+    return (await clientFor(this.prisma, tx).pool.findUnique({ where: { id: poolId }, select: { playDeadline: true } }))?.playDeadline ?? null;
   }
 }

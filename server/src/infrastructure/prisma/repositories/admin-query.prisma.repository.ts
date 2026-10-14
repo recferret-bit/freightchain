@@ -65,9 +65,11 @@ export class AdminQueryPrismaRepository extends AdminQueryPort {
     }));
   }
 
+  /** the pool's completed rides that ended by its play deadline – the ones its ranking counts (H6) */
   async poolRides(poolId: number): Promise<PoolRideFacts[]> {
+    const endBy = (await this.prisma.pool.findUnique({ where: { id: poolId }, select: { playDeadline: true } }))?.playDeadline;
     const rows = await this.prisma.ride.findMany({
-      where: { poolId, status: 'completed' }, orderBy: [{ endedAt: 'asc' }, { seq: 'asc' }], include: { verdict: { select: { status: true, overriddenBy: true } } },
+      where: { poolId, status: 'completed', ...(endBy ? { endedAt: { lte: endBy } } : {}) }, orderBy: [{ endedAt: 'asc' }, { seq: 'asc' }], include: { verdict: { select: { status: true, overriddenBy: true } } },
     });
     return rows.map((r) => ({
       rideId: r.id, wallet: r.wallet, distance: r.lastS, driveSeconds: r.driveSeconds, startedAt: r.startedAt, endedAt: r.endedAt,

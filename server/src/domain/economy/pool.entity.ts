@@ -1,5 +1,6 @@
 import { BadRequestError, ConflictError } from '../shared/errors.js';
 import { projectRoadSeed } from '../road/provable-seed.js';
+import { rideTier } from '../rides/ride-tier.js';
 import { tierFromChainCode, type ChainEventRecord, type PoolChainState } from './chain-events.js';
 import type { PayoutState, PoolHold, PoolProps, PoolStatus } from './pool.types.js';
 
@@ -81,8 +82,15 @@ export class Pool {
   get blockhash(): string | null { return this.p.blockhash ?? null; }
   get slot(): bigint | number | null { return this.p.slot ?? null; }
   get isActive(): boolean { return this.p.status === 'active'; }
-  /** A ticket of this pool can be ridden now: the pool is live and its play deadline has not passed (POST /api/rides spends one only then). */
-  isRidable(now: Date): boolean { return this.isActive && now.getTime() < this.p.playDeadline.getTime(); }
+  /** the nominal shift of this pool's tier (s) */
+  get shiftSeconds(): number { return rideTier(this.p.tier, 0).seconds; }
+  /** A pool's results count only the rides that ENDED by its play deadline (pentest H6: a ride started days after it still ranked and was paid). */
+  rideWindow(): { endBy: Date } { return { endBy: this.p.playDeadline }; }
+  /** The last moment a shift of `minSeconds` can start and still finish by the play deadline. */
+  startBy(minSeconds: number = this.shiftSeconds): Date { return new Date(this.p.playDeadline.getTime() - minSeconds * 1000); }
+  /** A ticket of this pool can be ridden now: the pool is live and a shift of `minSeconds` (default the tier's) started now ends by the play deadline
+      (POST /api/rides spends one only then, POST /start starts it only then). The governor finishes a shift in K × minSeconds, so this is a 2× margin. */
+  isRidable(now: Date, minSeconds: number = this.shiftSeconds): boolean { return this.isActive && now.getTime() <= this.startBy(minSeconds).getTime(); }
   get isRefunding(): boolean { return this.p.status === 'refunding'; }
 
   /** Tickets still missing before the pool goes live (0 once it is active). */
@@ -108,6 +116,7 @@ export class Pool {
     if (!Number.isInteger(qty) || qty < 1) return 'quantity must be a whole number of at least 1';
     if (this.p.status !== 'open' && this.p.status !== 'active') return `this pool is ${this.p.status}`;
     if (now.getTime() >= this.p.prepDeadline.getTime()) return 'ticket sales for this pool are closed';
+    if (now.getTime() > this.startBy().getTime()) return 'rides for this pool close before a shift bought now could finish';   // a ticket nobody can ride (H6)
     if (this.p.maxTickets > 0 && this.p.ticketsSold + qty > this.p.maxTickets) return 'this pool is sold out';
     if (walletBought + qty > this.p.maxPerWallet) return `at most ${this.p.maxPerWallet} tickets per wallet in this pool`;
     return null;

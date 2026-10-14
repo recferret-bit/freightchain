@@ -39,7 +39,7 @@ describe('GetMeHandler', () => {
     await ctx.pools.upsert(aPool({ id: 2, status: 'refunding' }));
     await ctx.pools.upsert(aPool({ id: 3, status: 'settled' }));
     for (const [id, n] of [[1, 2], [2, 0], [3, 1]] as const) { const t = await ctx.tickets.open('w', id); if (n) { t.recordPurchase(n); await ctx.tickets.save(t); } }
-    const rideBy = aPool().snapshot().playDeadline.getTime();
+    const rideBy = aPool().snapshot().playDeadline.getTime() - 3600_000;   // the last start of a 1 h shift that ends by the play deadline
     expect((await new GetMeHandler(ctx.sessions, ctx.clock, ctx.meProfile).execute(new GetMeQuery('w'))).tickets).toEqual([
       { poolId: 1, tier: '1h', label: 'L1', status: 'active', balance: 2, bought: 2, cap: 5, refundable: false, ridable: true, rideBy },
       { poolId: 3, tier: '1h', label: '1 HOUR · test', status: 'settled', balance: 1, bought: 1, cap: 5, refundable: false, ridable: false, rideBy },

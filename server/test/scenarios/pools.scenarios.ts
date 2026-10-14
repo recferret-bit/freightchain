@@ -128,16 +128,16 @@ export function poolScenarios(h: () => Harness): void {
       expect((await ride(w, '1h').expect(409)).body).toMatchObject({ code: 'no_tickets' });
     });
 
-    it('an unused ticket of a live pool past its play deadline is not ridable: /api/me says so with rideBy, POST /api/rides is 409 rides_closed', async () => {
-      const rideBy = new Date(now() + 60_000);
-      await seedPool({ id: 1, status: 'active', playDeadline: rideBy, payoutAt: new Date(now() + 120_000) });
+    it('an unused ticket of a live pool where a shift would no longer end by the play deadline is not ridable: /api/me says so with rideBy (the last start), POST /api/rides is 409 rides_closed', async () => {
+      const deadline = new Date(now() + 3660_000), rideBy = new Date(deadline.getTime() - 3600_000);
+      await seedPool({ id: 1, status: 'active', playDeadline: deadline, payoutAt: new Date(deadline.getTime() + 60_000) });
       await seedPromo('ONE', { effect: ticketEffect({ credits: 1 }) });
       const w = await login();
       await redeem(w, 'ONE').expect(200);
       expect((await w.agent.get('/api/me')).body.tickets[0]).toMatchObject({ balance: 1, ridable: true, rideBy: rideBy.getTime() });
-      sec(60);
+      sec(61);   // a second past the last start
       expect((await w.agent.get('/api/me')).body.tickets[0]).toMatchObject({ balance: 1, ridable: false });
-      expect((await ride(w, '1h').expect(409)).body).toMatchObject({ code: 'rides_closed', detail: `rides for pool #1 closed at ${rideBy.toISOString()}` });
+      expect((await ride(w, '1h').expect(409)).body).toMatchObject({ code: 'rides_closed', detail: `rides for pool #1 closed at ${deadline.toISOString()}` });
     });
 
     it('one pool, one road: every rider of the pool (and every ticket of one rider) gets the pool\'s seed, route, start hour and the same holes', async () => {

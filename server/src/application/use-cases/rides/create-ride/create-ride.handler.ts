@@ -148,10 +148,10 @@ export class CreateRideHandler implements ICommandHandler<CreateRideCommand, Rid
   private async ticketRide(wallet: string, tier: PaidTierId, round: Round, now: Date, tx: TransactionHandle): Promise<Ride> {
     const rules = this.rules.get();
     const id = this.entropy.uuid();
-    const pool = await this.poolTickets.spendForRide(wallet, tier, id, now, tx);
-    const seed = pool.rideSeed;
     const timeScale = isDemoWallet(rules, wallet) ? demoScaleOf(rules) : 1;
     const minSeconds = rideTier(tier, rules.freeRideSeconds).seconds / timeScale;
+    const pool = await this.poolTickets.spendForRide(wallet, tier, id, now, tx, minSeconds);   // only a pool where this shift, started now, ends by the play deadline
+    const seed = pool.rideSeed;
     return Ride.createFromTicket({
       id, wallet, tier, seed, minSeconds, timeScale, poolId: pool.id, roundId: pool.roundId ?? round.id, now,
       seedCommitment: pool.seedCommitment, blockhash: pool.blockhash, slot: pool.slot,

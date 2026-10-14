@@ -40,17 +40,18 @@ export class PoolTicketsService {
   /**
    * Spends one ticket of `tier` for the ride `rideId`: from the active pool (still before its play deadline) that ends soonest among those the wallet holds
    * tickets in – at a week boundary two pools of a tier overlap and the older tickets go first. 409 `pool_not_live` when the wallet's only tickets are in a
-   * pool that has not reached its minimum yet, 409 `rides_closed` when they are in a live pool whose play deadline has passed (the ticket is spent on nothing –
+   * pool that has not reached its minimum yet, 409 `rides_closed` when they are in a live pool where a shift of `minSeconds` (the ride's) started now would
+   * end after the play deadline (the ticket is not spent; once the deadline passes it is spent on nothing –
    * its money stays in that pool's pot), 409 `no_tickets` when it has none. Returns the pool the ride belongs to.
    */
-  async spendForRide(wallet: string, tier: PaidTierId, rideId: string, now: Date, tx: TransactionHandle): Promise<Pool> {
+  async spendForRide(wallet: string, tier: PaidTierId, rideId: string, now: Date, tx: TransactionHandle, minSeconds?: number): Promise<Pool> {
     const pools = await this.pools.listLiveOfTier(tier, tx);
     let waiting: Pool | null = null;
     let closed: Pool | null = null;
     for (const pool of pools) {
       const ticket = await this.tickets.find(wallet, pool.id, tx);
       if (!ticket || ticket.balance <= 0) continue;
-      if (pool.isRidable(now)) {
+      if (pool.isRidable(now, minSeconds)) {   // a shift of minSeconds started now must end by the play deadline (H6)
         ticket.spend();
         await this.tickets.save(ticket, tx);
         await this.tickets.appendGrant({ wallet, poolId: pool.id, delta: -1, source: 'spend', ref: rideId, at: now }, tx);

@@ -67,7 +67,8 @@ export interface TicketBalanceDto {
   refundable: boolean;
   /** an unused ticket here can be ridden NOW (live pool, before its play deadline) – what POST /api/rides spends */
   ridable: boolean;
-  /** the pool's play deadline (ms): the last moment a ride can be ordered with this ticket; unused tickets after it are spent on nothing */
+  /** the last moment a shift can START with this ticket (ms): the pool's play deadline minus the tier's shift – a ride counts only when it ENDED by the
+      deadline; unused tickets after it are spent on nothing */
   rideBy: number;
 }
 
@@ -76,7 +77,7 @@ export const toTicketBalanceDto = (ticket: RideTicket, pool: Pool, now: Date): T
   const s = pool.snapshot();
   return {
     poolId: s.id, tier: s.tier, label: s.label, status: s.status, balance: ticket.balance, bought: ticket.bought, cap: s.maxPerWallet,
-    refundable: (s.status === 'refunding' || pool.isPastDeadlineUnderMinimum(now)) && ticket.bought > 0, ridable: ticket.balance > 0 && pool.isRidable(now), rideBy: s.playDeadline.getTime(),
+    refundable: (s.status === 'refunding' || pool.isPastDeadlineUnderMinimum(now)) && ticket.bought > 0, ridable: ticket.balance > 0 && pool.isRidable(now), rideBy: pool.startBy().getTime(),
   };
 };
 

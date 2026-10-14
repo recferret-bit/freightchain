@@ -28,7 +28,7 @@ describe('PayPoolsHandler – the payout job', () => {
     const t = ctx.now().getTime();
     ctx.poolChain.pools.set(1, chainPool(ctx.now(), {
       poolId: 1, status: 'active', ticketsSold: 10, minTickets: 2, priceLamports: 50_000_000, vaultLamports: 890_880 + 500_000_000, escrowLamports: 500_000_000,
-      prepDeadline: new Date(t - 4 * DAY), playDeadline: new Date(t - 3 * DAY), payoutAt: new Date(t),
+      prepDeadline: new Date(t - 2 * DAY), playDeadline: new Date(t - DAY), payoutAt: new Date(t),   // the riders signed up 3 days ago; their rides end by the play deadline (H6)
     }));
     await ctx.registry.syncFromChain(1);
     const settle = new SettleChainSignatureHandler(ctx.poolChain, ctx.chainEvents, ctx.ticketSettlement, ctx.registry, ctx.clock);
