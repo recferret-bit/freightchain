@@ -130,7 +130,7 @@ export function promoAbuseScenarios(h: () => Harness): void {
       }
       expect(await used('REAL')).toBe(0);
       expect(await freeRides(w)).toBe(10);
-      await w.agent.post('/api/promo/redeem').set('content-type', 'text/plain').send('REAL').expect(400);
+      await w.agent.post('/api/promo/redeem').set('content-type', 'text/plain').send('REAL').expect(415);   // the API takes JSON (pentest H7)
     });
 
     it('a signature is for one change only: replayed, stale, or carried to another action it is refused – no code is made, none is disabled', async () => {

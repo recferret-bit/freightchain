@@ -6,6 +6,7 @@ import { ProblemDetailsFilter } from '../infrastructure/http/filters/problem-det
 import { requestIdMiddleware } from '../infrastructure/http/middleware/request-id.middleware.js';
 import { requestLogMiddleware } from '../infrastructure/http/middleware/request-log.middleware.js';
 import { beaconBodyMiddleware } from '../infrastructure/http/middleware/beacon-body.middleware.js';
+import { jsonOnlyMiddleware } from '../infrastructure/http/middleware/json-only.middleware.js';
 import { solanaPayCors } from '../infrastructure/http/middleware/solana-pay-cors.middleware.js';
 import { actionHeadersMiddleware, isActionRequest } from '../infrastructure/http/middleware/action-headers.middleware.js';
 import { ridePageMiddleware } from '../infrastructure/http/middleware/ride-page.middleware.js';
@@ -28,6 +29,7 @@ export function configureApp(app: INestApplication): void {
   app.use(compression());   // text (HTML, JS, CSS, JSON) over 1 kB is gzipped; images are already compressed and pass through untouched
   app.use(requestIdMiddleware);
   app.use(requestLogMiddleware(logger));   // after the request id: every API line carries it
+  app.use(jsonOnlyMiddleware);   // a form / text/plain POST is a 415 (no CORS preflight – the login-CSRF shape), but for the beacon routes
   app.use(beaconBodyMiddleware);   // a closing game tab's /end beacon (text/plain JSON) – before Nest's own JSON parser
   app.use(ridePageMiddleware(prisma, env));   // public ride page (/r/:id) with dynamic Twitter Cards & OpenGraph tags
   app.useGlobalFilters(new ProblemDetailsFilter());
@@ -36,9 +38,11 @@ export function configureApp(app: INestApplication): void {
 
 /** The credentialed allowlist, same answers the `cors` package gave Nest's enableCors. Action paths skip it: `*` plus credentials is illegal. */
 export function browserCors(env: EnvService) {
-  const allowed = new Set(env.corsOrigins);
+  const allowed = new Set(env.corsOrigins), adminHost = env.adminHost;
   return function browserCors(req: Request, res: Response, next: NextFunction): void {
     if (isActionRequest(req)) { next(); return; }
+    // the admin page is same-origin with its API: no other origin may READ an admin answer with the admin's cookie (pentest M4 – sign-ins with IPs)
+    if (adminHost && String(req.headers.host ?? '').replace(/:\d+$/, '').toLowerCase() === adminHost) { next(); return; }
     const origin = req.header('origin');
     if (!origin || !allowed.has(origin)) { next(); return; }
     res.setHeader('Access-Control-Allow-Origin', origin);

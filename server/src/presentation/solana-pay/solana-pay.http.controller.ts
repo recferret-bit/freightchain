@@ -3,8 +3,10 @@ import { QueryBus } from '@nestjs/cqrs';
 import { GetSolanaPayLinkQuery, GetSolanaPayTransactionQuery, type SolanaPayLinkDto, type SolanaPayTransactionDto } from '../../application/use-cases/solana-pay/solana-pay.query.js';
 import { ZodBody, ZodParams } from '../../infrastructure/http/decorators/zod.js';
 import { solanaPayAccountSchema, solanaPayIdParamsSchema, type SolanaPayAccount, type SolanaPayIdParams } from './solana-pay.dto.js';
+import { CrossOriginPublic } from '../../infrastructure/http/guards/origin.guard.js';
 
 /** Public Solana Pay transaction requests. No session: the phone wallet GETs the label, then POSTs the account that will sign. */
+@CrossOriginPublic()   // any site may POST here without a session (pentest H7: the Origin guard skips it)
 @Controller('api/solana-pay')
 export class SolanaPayHttpController {
   constructor(private readonly queryBus: QueryBus) {}

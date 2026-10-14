@@ -35,6 +35,46 @@ describe('HTTP · CORS + shared cookie domain', () => {
     expect(res.headers['access-control-allow-origin']).toBeUndefined();
   });
 
+  describe('pentest H7 / M4: a page that is not ours cannot change state, and no sibling reads the admin API', () => {
+    const API = 'api.freightchain.fun', STORYBOOK = 'https://storybook.freightchain.fun';
+    const signedIn = async () => {
+      const w = newWallet();
+      const { body } = await request(h.server()).post('/api/auth/nonce').send({ wallet: w.address }).expect(200);
+      const res = await request(h.server()).post('/api/auth/verify').send({ wallet: w.address, signature: sign(w.kp, body.message) }).expect(200);
+      return String(res.headers['set-cookie']).split(';')[0]!;
+    };
+
+    it('login CSRF: a cross-site form post to /api/auth/verify is 415; the same as JSON from another site is 403 bad_origin', async () => {
+      const w = newWallet();
+      const { body } = await request(h.server()).post('/api/auth/nonce').send({ wallet: w.address }).expect(200);
+      const form = await request(h.server()).post('/api/auth/verify').set('Host', API).set('Origin', 'https://evil.example').type('form').send({ wallet: w.address, signature: sign(w.kp, body.message) });
+      expect([form.status, form.headers['set-cookie']]).toEqual([415, undefined]);
+      const json = await request(h.server()).post('/api/auth/verify').set('Host', API).set('Origin', 'https://evil.example').send({ wallet: w.address, signature: sign(w.kp, body.message) });
+      expect([json.status, json.body.code, json.headers['set-cookie']]).toEqual([403, 'bad_origin', undefined]);
+    });
+
+    it('a sibling that is not allowlisted (storybook.*) cannot create a ride with the shared cookie – neither as a form nor as JSON; ride.* can', async () => {
+      const cookie = await signedIn();
+      expect((await request(h.server()).post('/api/rides').set('Host', API).set('Origin', STORYBOOK).set('Cookie', cookie).type('form').send({ tier: 'free' })).status).toBe(415);
+      expect((await request(h.server()).post('/api/rides').set('Host', API).set('Origin', STORYBOOK).set('Cookie', cookie).send({ tier: 'free' })).status).toBe(403);
+      expect((await request(h.server()).post('/api/rides').set('Host', API).set('Origin', GAME).set('Cookie', cookie).send({ tier: 'free' })).status).toBe(200);
+    });
+
+    it('a closing tab\'s /end beacon (text/plain, from ride.*) still ends the ride', async () => {
+      const cookie = await signedIn();
+      const r = (await request(h.server()).post('/api/rides').set('Host', API).set('Origin', GAME).set('Cookie', cookie).send({ tier: 'free' }).expect(200)).body;
+      await request(h.server()).post(`/api/rides/${r.id}/start`).set('Host', API).set('Origin', GAME).set('Cookie', cookie).expect(200);
+      const end = await request(h.server()).post(`/api/rides/${r.id}/end`).set('Host', API).set('Origin', GAME).set('Cookie', cookie).set('content-type', 'text/plain;charset=UTF-8').send(JSON.stringify({ outcome: 'shift', s: 1, t: 1, hull: 100 }));
+      expect(end.status).toBe(200);
+    });
+
+    it('M4: on the admin host no CORS headers for any other origin – an allowlisted sibling cannot read admin answers', async () => {
+      const res = await request(h.server()).get('/api/admin/signins').set('Host', 'admin.freightchain.fun').set('Origin', APEX);
+      expect(res.headers['access-control-allow-origin']).toBeUndefined();
+      expect(res.headers['access-control-allow-credentials']).toBeUndefined();
+    });
+  });
+
   it('the session cookie is issued for the parent domain', async () => {
     const w = newWallet();
     const { body } = await request(h.server()).post('/api/auth/nonce').send({ wallet: w.address }).expect(200);

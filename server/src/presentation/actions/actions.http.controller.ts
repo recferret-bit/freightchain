@@ -13,9 +13,11 @@ import { ZodBody, ZodParams, ZodQuery } from '../../infrastructure/http/decorato
 import { ActionErrorFilter } from '../../infrastructure/http/filters/action-error.filter.js';
 import { rideIdParamsSchema, type RideIdParams } from '../common/dto/common.dto.js';
 import { actionAccountBodySchema, actionSiteParamsSchema, actionTierParamsSchema, actionTierQuerySchema, type ActionAccountBody, type ActionSiteParams, type ActionTierParams, type ActionTierQuery } from './action.dto.js';
+import { CrossOriginPublic } from '../../infrastructure/http/guards/origin.guard.js';
 
 /** Public Solana Actions. No session. Errors are `{ message }` (ActionErrorFilter), not problem+json.
     Every link button is a POST route here: blink clients POST to an external-link href too and open the `externalLink` it answers. */
+@CrossOriginPublic()   // any site may POST here without a session (pentest H7: the Origin guard skips it)
 @Controller()
 @UseFilters(ActionErrorFilter)
 export class ActionsHttpController {

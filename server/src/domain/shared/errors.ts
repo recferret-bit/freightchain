@@ -78,6 +78,17 @@ export class ForbiddenError extends DomainError {
   }
 }
 
+/** The request's body is in a form this route does not take (a form post where JSON is expected – the login-CSRF shape, pentest H7). */
+export class UnsupportedMediaTypeError extends DomainError {
+  readonly statusCode = 415;
+  readonly errorCode: string;
+
+  constructor(message = 'Unsupported media type', errorCode = 'unsupported_media_type') {
+    super(message);
+    this.errorCode = errorCode;
+  }
+}
+
 /** A per-wallet quota (e.g. a ride effect's sliding gap) is used up – try again later or another way. */
 export class TooManyRequestsError extends DomainError {
   readonly statusCode = 429;

@@ -4,8 +4,10 @@ import { ReceiveChainWebhookCommand, type ChainWebhookResultDto } from '../../ap
 import { ZodBody } from '../../infrastructure/http/decorators/zod.js';
 import { WebhookSecretGuard } from '../../infrastructure/http/guards/webhook-secret.guard.js';
 import { chainWebhookBodySchema, type ChainWebhookBody } from './dto/chain.dto.js';
+import { CrossOriginPublic } from '../../infrastructure/http/guards/origin.guard.js';
 
 /** The chain pushing to us (QuickNode Streams filtered to the pool program, or a Helius webhook): 404 without WEBHOOK_SECRET, 401 with a wrong one. */
+@CrossOriginPublic()   // any site may POST here without a session (pentest H7: the Origin guard skips it)
 @Controller('api/chain')
 export class ChainWebhookHttpController {
   constructor(private readonly commandBus: CommandBus) {}
