@@ -243,14 +243,15 @@ function show(i) {
 }
 const start = v => v.play().catch(() => {});
 
-/* the tip waves once per ← / → key press (not for a click, a tap, space or a hash change), its arrow in that direction nudges */
+/* the tip flashes once per ← / → / space key press (not for a click, a tap or a hash change); the arrow in the pressed direction flashes too, space leaves both arrows alone */
 function flashTip(dir) {
   const help = document.getElementById('help');
   help.classList.remove('flash', 'go-l', 'go-r'); void help.offsetWidth;
-  help.classList.add('flash', dir);
+  help.classList.add('flash');
+  if (dir) help.classList.add(dir);   // space flashes the tip but leaves the arrows alone
 }
 addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight') flashTip('go-r'); else if (e.key === 'ArrowLeft') flashTip('go-l');
+  if (e.key === 'ArrowRight') flashTip('go-r'); else if (e.key === 'ArrowLeft') flashTip('go-l'); else if (e.key === ' ') flashTip('');
   if (['ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); show(cur + 1); }
   else if (['ArrowLeft', 'PageUp'].includes(e.key)) show(cur - 1);
   else if (e.key === 'Home') show(0);
