@@ -261,4 +261,12 @@ h1 small{font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;c
 /* slides 1–2 join slide 0's floating cards: their own tilt / phase, and the LIVE badge drifts above a lifted card */
 .fx .poster{--r:2deg;--k:-30;--dl:-.8s}
 .fx .v-main{--r:-1.5deg;--k:26;--dl:-2s}
-.fx .badge{z-index:8;animation:float 5s ease-in-out -1.5s infinite}
+/* the LIVE badge: a real dot (the ● glyph sat low), colours swap on hover / click with a tween, it leans from the mouse (--bx/--by, script) and follows its dragged card (--fx/--fy) */
+.badge.live{display:inline-flex;align-items:center;gap:14px;line-height:1}
+.badge.live .dot{width:13px;height:13px;border-radius:50%;background:currentColor;flex:none}
+.fx .badge{z-index:8;animation:float 5s ease-in-out -1.5s infinite;cursor:pointer;
+  transform:translate(calc(var(--bx,0px) + var(--fx,0px)),calc(var(--by,0px) + var(--fy,0px)));
+  transition:background-color .35s,color .35s,box-shadow .35s,scale .35s cubic-bezier(.2,.8,.2,1)}
+.fx .badge:is(:hover,.hot){background:#fff;color:#ff3b2f;scale:1.08;box-shadow:0 0 28px 4px #ff3b2f88}
+.fx .badge.pop{animation:float 5s ease-in-out -1.5s infinite,badgepop .5s ease-out 1}
+@keyframes badgepop{0%{scale:1}40%{scale:1.24}100%{scale:1.08}}

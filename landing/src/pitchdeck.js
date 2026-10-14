@@ -59,7 +59,7 @@ const SLIDES = [
       </div>
       <div class="vis">
         ${clip('promo-clip.mp4', 'v-main')}
-        <div class="badge live">● LIVE · NO WALLET TO WATCH</div>
+        <div class="badge live"><i class="dot"></i>LIVE · NO WALLET TO WATCH</div>
       </div>` },
 
   { layout: 'split flip', id: 'play',
@@ -277,7 +277,9 @@ function trail() {
   drags.forEach((d, c) => {
     d.x += (d.tx - d.x) * .06; d.y += (d.ty - d.y) * .06;
     c.style.setProperty('--dx', `${d.x.toFixed(1)}px`); c.style.setProperty('--dy', `${d.y.toFixed(1)}px`);
-    if (!d.down && Math.abs(d.x) < .3 && Math.abs(d.y) < .3) { c.classList.remove('drag'); c.style.removeProperty('--dx'); c.style.removeProperty('--dy'); drags.delete(c); } else busy = true;
+    const b = c.closest('.vis').querySelector('.badge');   // the LIVE badge tags along, a bit
+    if (b) { b.style.setProperty('--fx', `${(d.x * .6).toFixed(1)}px`); b.style.setProperty('--fy', `${(d.y * .6).toFixed(1)}px`); }
+    if (!d.down && Math.abs(d.x) < .3 && Math.abs(d.y) < .3) { c.classList.remove('drag'); c.style.removeProperty('--dx'); c.style.removeProperty('--dy'); const b = c.closest('.vis').querySelector('.badge'); b?.style.removeProperty('--fx'); b?.style.removeProperty('--fy'); drags.delete(c); } else busy = true;
   });
   raf = busy ? requestAnimationFrame(trail) : 0;
 }
@@ -298,11 +300,31 @@ deck.querySelectorAll('.fx .shot').forEach(c => {
   c.addEventListener('pointerup', end); c.addEventListener('pointercancel', end);
 });
 
+/* the LIVE badge leans away from the mouse (a little – it stays under a pointer that is on it) */
+const badge = document.querySelector('.fx .badge'), bd = { x: 0, y: 0 };
+let mouse = null;
+addEventListener('pointermove', e => { mouse = e.pointerType === 'touch' ? null : [e.clientX, e.clientY]; });
+document.documentElement.addEventListener('pointerleave', () => { mouse = null; });
+function badgeTick() {
+  let tx = 0, ty = 0;
+  if (badge && mouse && badge.closest('.slide.on')) {
+    const r = badge.getBoundingClientRect(), R = 300 * scale;
+    const dx = r.left + r.width / 2 - bd.x * scale - mouse[0], dy = r.top + r.height / 2 - bd.y * scale - mouse[1], dist = Math.hypot(dx, dy) || 1;   // from the resting centre
+    if (dist < R) { const push = 30 * (1 - dist / R) ** 1.5; tx = dx / dist * push; ty = dy / dist * push; }
+  }
+  bd.x += (tx - bd.x) * .1; bd.y += (ty - bd.y) * .1;
+  badge?.style.setProperty('--bx', `${bd.x.toFixed(1)}px`); badge?.style.setProperty('--by', `${bd.y.toFixed(1)}px`);
+  requestAnimationFrame(badgeTick);
+}
+if (badge) requestAnimationFrame(badgeTick);
+
+addEventListener('pointerdown', e => { if (!e.target.closest('.fx .shot')) moved = false; }, true);   // a drag that ended off a card must not swallow the next click
 addEventListener('click', e => {
   if (e.target.closest('#ticker')) { tkHold = performance.now() + 1400; return; }   // a click on the header slows it for a moment instead of turning the page
-  const card = e.target.closest('.fx .shot, .L-wall .tags span');
+  const card = e.target.closest('.fx .shot, .fx .badge, .L-wall .tags span');
   if (card) {
     if (moved) { moved = false; return; }   // the end of a drag is not a tap
+    if (card.classList.contains('badge')) { card.classList.remove('pop'); void card.offsetWidth; card.classList.add('pop'); }   // a tween bump on every click
     const on = card.classList.toggle('hot'); card.closest('.vis').querySelectorAll('.hot').forEach(c => { if (c !== card && on) c.classList.remove('hot'); });
     return;
   }
