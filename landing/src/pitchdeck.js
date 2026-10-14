@@ -212,13 +212,13 @@ addEventListener('keydown', e => {
   else if (e.key === 'End') show(slides.length - 1);
   else if (e.key === 'f' || e.key === 'F') document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
 });
-/* slide 1's cards: the mouse nudges them (parallax), a tap / click lifts one (.hot) instead of turning the page */
+/* slide 1's cards and tags: the mouse nudges them (parallax), a tap / click lifts one (.hot) instead of turning the page */
 const wall = document.querySelector('.L-wall .vis');
 wall?.parentElement.addEventListener('pointermove', e => { wall.style.setProperty('--px', (e.clientX / innerWidth - .5).toFixed(3)); wall.style.setProperty('--py', (e.clientY / innerHeight - .5).toFixed(3)); });
 wall?.parentElement.addEventListener('pointerleave', () => { wall.style.setProperty('--px', 0); wall.style.setProperty('--py', 0); });
 addEventListener('click', e => {
-  const card = e.target.closest('.L-wall .shot');
-  if (card) { const on = card.classList.toggle('hot'); wall.querySelectorAll('.shot.hot').forEach(c => { if (c !== card && on) c.classList.remove('hot'); }); return; }
+  const card = e.target.closest('.L-wall .shot, .L-wall .tags span');
+  if (card) { const on = card.classList.toggle('hot'); wall.querySelectorAll('.hot').forEach(c => { if (c !== card && on) c.classList.remove('hot'); }); return; }
   if (e.target.closest('a,button')) return; show(cur + (e.clientX > innerWidth / 3 ? 1 : -1));
 });
 

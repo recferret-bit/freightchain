@@ -184,4 +184,13 @@ h1 small{font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;c
 @keyframes flow{to{background-position:300% 0}}
 @keyframes glow{0%,100%{box-shadow:0 0 0 4px #050505,0 0 22px 2px #9945ffaa,0 40px 90px #000}50%{box-shadow:0 0 0 4px #050505,0 0 34px 6px #14f19577,0 40px 90px #000}}
 .L-wall .shot.hot{box-shadow:0 0 0 4px #050505,0 0 48px 10px #9945ffcc,0 0 70px 12px #14f19555}
-@media (prefers-reduced-motion:reduce){.L-wall .shot,#help{animation:none}}
+/* the four tags are part of the same floating set: same drift, lean and lift, their own phases */
+.L-wall .tags span{--r:0deg;--k:0;--s:1;--dl:0s;cursor:pointer;transform:rotate(var(--r)) translate(calc(var(--px,0)*var(--k)*1px),calc(var(--py,0)*var(--k)*1px)) scale(var(--s));
+  transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s;animation:float 5s ease-in-out var(--dl) infinite,tagglow 4s ease-in-out var(--dl) infinite}
+.L-wall .tags span:nth-child(1){--k:-60;--r:2deg;--dl:-.5s}
+.L-wall .tags span:nth-child(2){--k:44;--r:-1.5deg;--dl:-1.8s}
+.L-wall .tags span:nth-child(3){--k:-36;--r:1.5deg;--dl:-3s}
+.L-wall .tags span:nth-child(4){--k:56;--r:-2deg;--dl:-4.2s}
+.L-wall .tags span:hover,.L-wall .tags span.hot{--s:1.08;box-shadow:0 0 26px 4px #14f19577,0 0 40px 6px #9945ff66}
+@keyframes tagglow{0%,100%{box-shadow:0 0 10px 0 #14f19522}50%{box-shadow:0 0 20px 2px #9945ff66}}
+@media (prefers-reduced-motion:reduce){.L-wall .shot,.L-wall .tags span,#help{animation:none}}
