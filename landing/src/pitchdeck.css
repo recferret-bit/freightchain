@@ -203,8 +203,17 @@ h1 small{font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;c
 .L-wall .vis:has(.tags span:nth-child(1):is(:hover,.hot)) .w1,
 .L-wall .vis:has(.tags span:nth-child(2):is(:hover,.hot)) .w2,
 .L-wall .vis:has(.tags span:nth-child(4):is(:hover,.hot)) .w3,
-.L-wall .vis:has(.tags span:nth-child(3):is(:hover,.hot)) .w4{--s:1.045;z-index:6;filter:drop-shadow(0 0 20px #14f195aa) drop-shadow(0 0 34px #9945ff88)}
+.L-wall .vis:has(.tags span:nth-child(3):is(:hover,.hot)) .w4{--s:1.09;z-index:6;filter:drop-shadow(0 0 20px #14f195aa) drop-shadow(0 0 34px #9945ff88)}
 @keyframes tagglow{0%,100%{box-shadow:0 0 10px 0 #14f19522}50%{box-shadow:0 0 20px 2px #9945ff66}}
 @media (prefers-reduced-motion:reduce){.L-wall .shot,.L-wall .tags span,#help{animation:none}}
 
 .L-wall .tags{z-index:8}   /* above a lifted screen (z 6), so no tag is ever covered */
+
+/* a screen's picture starts cropped in (zoomed) and opens out to the whole shot when its screen is selected, while the screen itself grows */
+.L-wall .shot img{transform:scale(1.2);transition:transform .55s cubic-bezier(.2,.8,.2,1)}
+.L-wall .shot:is(:hover,.hot) img,
+.L-wall .vis:has(.tags span:nth-child(1):is(:hover,.hot)) .w1 img,
+.L-wall .vis:has(.tags span:nth-child(2):is(:hover,.hot)) .w2 img,
+.L-wall .vis:has(.tags span:nth-child(4):is(:hover,.hot)) .w3 img,
+.L-wall .vis:has(.tags span:nth-child(3):is(:hover,.hot)) .w4 img{transform:scale(1)}
+@media (prefers-reduced-motion:reduce){.L-wall .shot img{transition:none}}
