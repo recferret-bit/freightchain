@@ -4,10 +4,11 @@ import type { Request } from 'express';
 import { TokenSignerPort } from '../../application/ports/auth/token-signer.port.js';
 import { EnvService } from '../config/env.service.js';
 import { sessionWallet } from './session-cookie.js';
+import { apiPath } from './api-path.js';
 
 export const THROTTLE_WINDOW_MS = 60_000;
 
-const pathOf = (context: ExecutionContext): string => context.switchToHttp().getRequest<Request>().path;
+const pathOf = (context: ExecutionContext): string => apiPath(context.switchToHttp().getRequest<Request>().path);   // as Express routes it (M9)
 const isAuthRoute = (context: ExecutionContext): boolean => pathOf(context).startsWith('/api/auth/');
 const isPromoRedeem = (context: ExecutionContext): boolean => pathOf(context) === '/api/promo/redeem';
 const isHealthRoute = (context: ExecutionContext): boolean => pathOf(context).startsWith('/api/health/');

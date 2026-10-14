@@ -1,11 +1,12 @@
 import type { NextFunction, Request, Response } from 'express';
 import { ACTION_VERSION, DEVNET_BLOCKCHAIN_ID } from '../../../domain/actions/action-card.js';
+import { apiPath } from '../api-path.js';
 
 /** Discovery files and the action API. Query strings are ignored. */
 const ACTION_PATH = /^\/(?:actions\.json|\.well-known\/actions\.json|api\/actions(?:\/|$))/;
 
 export function isActionRequest(req: { originalUrl?: string; url?: string }): boolean {
-  return ACTION_PATH.test((req.originalUrl ?? req.url ?? '').split('?')[0] ?? '');
+  return ACTION_PATH.test(apiPath(req.originalUrl ?? req.url ?? ''));
 }
 
 /** Blink clients are arbitrary origins. No credentials, so `*` is legal. OPTIONS ends here, before the allowlist CORS.

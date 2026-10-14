@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import { UnsupportedMediaTypeError } from '../../../domain/shared/errors.js';
 import { BEACON_ROUTES } from './beacon-body.middleware.js';
+import { apiPath } from '../api-path.js';
 
 const UNSAFE = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
@@ -10,8 +11,8 @@ const UNSAFE = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
  * A request without a body (no content-type) passes: the Origin guard judges it.
  */
 export function jsonOnlyMiddleware(req: Request, _res: Response, next: NextFunction): void {
-  if (!UNSAFE.has(req.method) || !req.path.toLowerCase().startsWith('/api/') || !req.headers['content-type']) { next(); return; }
-  const beacon = req.is('text/plain') && BEACON_ROUTES.some((r) => r.test(req.path));
+  if (!UNSAFE.has(req.method) || !apiPath(req.path).startsWith('/api/') || !req.headers['content-type']) { next(); return; }
+  const beacon = req.is('text/plain') && BEACON_ROUTES.some((r) => r.test(apiPath(req.path)));
   if (!beacon && req.is(['application/x-www-form-urlencoded', 'multipart/form-data', 'text/plain'])) { next(new UnsupportedMediaTypeError('the API takes JSON', 'json_only')); return; }
   next();
 }

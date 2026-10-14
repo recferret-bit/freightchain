@@ -1,6 +1,7 @@
 import type { LoggerService } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
 import { getRequestId, type RequestWithPlayer } from '../types/http-request.js';
+import { apiPath } from '../api-path.js';
 
 /** Health probes run every few seconds (Docker, the deploy) – logging them would drown everything else. */
 const QUIET = /^\/api\/health\//;
@@ -12,7 +13,8 @@ const QUIET = /^\/api\/health\//;
  */
 export function requestLogMiddleware(logger: LoggerService) {
   return function requestLog(req: Request, res: Response, next: NextFunction): void {
-    if (!req.path.startsWith('/api/') || QUIET.test(req.path)) { next(); return; }
+    const path = apiPath(req.path);   // as Express routes it: /API/… is an API call too (M9)
+    if (!path.startsWith('/api/') || QUIET.test(path)) { next(); return; }
     const started = process.hrtime.bigint();
     res.on('finish', () => {
       const ms = Math.round(Number(process.hrtime.bigint() - started) / 1e5) / 10;
