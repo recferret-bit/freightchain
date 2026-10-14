@@ -7,6 +7,44 @@ const shot = (src, cls = '', alt = '') => `<figure class="shot ${cls}"><img src=
 const clip = (src, cls = '') => `<figure class="shot clip ${cls}"><video src="${A}${src}" muted playsinline loop preload="auto"></video></figure>`;   // promo-clip.mp4 = the promo's 16–24 s, cut once
 const pts = items => `<ul class="pts">${items.map(i => `<li>${i}</li>`).join('')}</ul>`;
 
+/* slide 5 – the on-chain systems. `why` / `fit` show when a card is hovered or tapped; the statuses are honest (HONK is a spec, the pool is devnet). */
+const ACH_ICON = `<div class="ach"><div class="ach-stage"><img src="" alt="" width="132" height="132"><i class="ach-ring"></i></div><div class="ach-cap"><em class="at"></em><b class="an"></b><span class="ad"></span></div></div>`;
+const CHAIN = [
+  { c: '#14f195', st: 'LIVE LOOKUP', h: 'SNS', big: 'YOU.SOL', p: 'Your Solana Name Service name, when you have one, shows on your profile instead of a wallet string.', small: 'Chain read · 24 h cache',
+    why: 'A 44-character address means nothing to a rider. A .sol name is a handle people remember and share.',
+    fit: 'Sign-in reads your favourite .sol name from chain, caches it for 24 h, and falls back to the wallet.' },
+  { c: '#ffcf5a', st: 'DEVNET · NOT AUDITED', h: 'Escrow', big: '70 / 20 / 10', p: 'An Anchor program holds every pool. Prizes go only to attested rides. A missed goal refunds everyone.', small: '14 instructions · 12 events',
+    why: 'A prize pool only works if nobody can run off with it, not even us. The money has to sit where we cannot touch it.',
+    fit: 'Tickets pay the program. The server can only attest rides. Winners are committed as a root, then paid by Merkle proof; a missed goal refunds.' },
+  { c: '#ff5a4d', st: 'MOCK OR DEVNET SOL', h: 'Donations', big: 'NIGHT · SINKHOLE', p: 'Spectators of a live ride can chat and donate to turn day to night or open a hole ahead. One effect per 20 s.', small: 'Applied by the driver\'s game',
+    why: 'Watching should be a way to play. A donation turns a quiet stream into an event, and the stream is our ad.',
+    fit: 'A donation reaches the driver\'s game in about 4 s; the replay shows it ~25 s behind. Chat and effects ride the same ride feed.' },
+  { c: '#b98cff', st: 'BUILT', h: 'Soulbound NFTs', big: '31 BADGES', p: 'Earned from verified rides. Compressed NFTs, frozen in your wallet.', extra: ACH_ICON,
+    why: 'Reputation you cannot buy. A badge proves what you actually drove, and it cannot be sold or lent.',
+    fit: 'Unlocks are append-only. A separate key mints them later, after a re-check that skips rejected rides. Frozen means nobody can thaw them.' },
+  { c: '#ffffff', st: 'SPEC · NOT LIVE', h: 'HONK', big: '100M CAP', p: 'A capped meme coin, minted only for the distance a verified paid ride reached: 20, 50 and 100 % checkpoints.', small: 'An in-game ledger for now · not a chain mint',
+    why: 'A reason to keep driving beyond the prize pool: a score that is yours, and a currency to spend on the cab.',
+    fit: 'Minted only on verified paid rides. Burn 1 in chat, 65 / 260 for cab visuals. SOL still buys tickets; the pool maths never change.' },
+  { c: '#6fb0ff', st: 'DEVNET · PUBLIC', h: 'Blinks', big: 'BUY IN A LINK', p: 'Solana Actions turn a link into a ticket purchase, in any client that can show a Blink.', small: '/actions.json · /api/actions',
+    why: 'Selling a ticket should take one tap from wherever people already are: a post, a chat, a link.',
+    fit: 'Solana Actions endpoints answer with one program-mode ticket to sign. 𝕏 unfurling waits for the Blinks registry listing.' },
+];
+const chainCard = c => `<article class="cc" style="--c:${c.c}"><span class="st">${c.st}</span><h3>${c.h}</h3><div class="big">${c.big}</div><p>${c.p}</p>${c.extra ?? `<small>${c.small}</small>`}<div class="more"><h4>Why</h4><p>${c.why}</p><h4>How it fits</h4><p>${c.fit}</p></div></article>`;
+
+/* the 31 soulbound badges (names and rules from server/src/domain/achievements/achievements.ts) – the NFT card shows them one at a time */
+const ACH = [
+  ['first-mile', 'First Mile', 'Start your first ride.'], ['first-mile-2', 'Regular Hauler', 'Start 10 rides.'], ['first-mile-3', 'Road Dog', 'Start 50 rides.'], ['first-mile-4', 'Asphalt Legend', 'Start 250 rides.'],
+  ['shift-complete', 'Shift Complete', 'Finish a paid shift.'], ['shift-complete-2', 'Shift Worker', 'Finish 5 paid shifts.'], ['shift-complete-3', 'Company Driver', 'Finish 25 paid shifts.'], ['shift-complete-4', 'Cargo Captain', 'Finish 100 paid shifts.'],
+  ['night-owl', 'Night Owl', 'Finish a shift driven mostly in the dark.'], ['night-owl-2', 'Moonlighter', 'Finish 5 night shifts.'], ['night-owl-3', 'Graveyard Shift', 'Finish 20 night shifts.'], ['night-owl-4', 'Lord of the Dark', 'Finish 50 night shifts.'],
+  ['century', 'Century', 'Drive 100 km in total.'], ['century-2', 'Five Hundred Club', 'Drive 500 km in total.'], ['century-3', 'Cross-Continental', 'Drive 2,000 km in total.'], ['century-4', 'Odometer Legend', 'Drive 10,000 km in total.'],
+  ['clean-run', 'Clean Run', 'Finish a shift without a scratch.'], ['clean-run-2', 'Spotless', 'Finish 5 shifts without a scratch.'], ['clean-run-3', 'Untouchable', 'Finish 20 shifts without a scratch.'], ['clean-run-4', 'Mirror Finish', 'Finish 50 shifts without a scratch.'],
+  ['cold-start', 'Cold Start', 'Finish a Trans-Siberian shift.'], ['cold-start-2', 'Permafrost Hauler', 'Finish 5 Siberian shifts.'], ['cold-start-3', 'Ice Road King', 'Finish 15 Siberian shifts.'], ['cold-start-4', 'Siberian Legend', 'Finish 40 Siberian shifts.'],
+  ['on-my-own', 'On My Own', 'Complete a free ride without assist.'], ['on-my-own-2', 'No Training Wheels', 'Complete 5 free rides without assist.'], ['on-my-own-3', 'Hands of Steel', 'Complete 20 free rides without assist.'], ['on-my-own-4', 'Pure Driver', 'Complete 50 free rides without assist.'],
+  ['free-easy', 'Learner\'s Permit', 'Clear the EASY free run.'], ['free-crossroads', 'Crossroads', 'Clear the MEDIUM free run.'], ['free-hard', 'Long Haul', 'Clear the HARD free run.'],
+];
+const TIER = ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM'];
+const achTier = id => id.startsWith('free-') ? 'LICENCE' : TIER[(id.match(/-(\d)$/)?.[1] ?? 1) - 1];
+
 const SLIDES = [
   { layout: 'wall', id: 'product',
     html: `
@@ -89,45 +127,9 @@ const SLIDES = [
     html: `
       <div class="copy">
         <div class="lbl">05 · The chain</div>
-        <h1>Five systems. <em>One wallet.</em></h1>
+        <h1>Six systems. <em>One wallet.</em></h1>
       </div>
-      <div class="cards5">
-        <article class="cc" style="--c:#14f195">
-          <span class="st">LIVE LOOKUP</span>
-          <h3>SNS</h3>
-          <div class="big">YOU.SOL</div>
-          <p>Sign in with a Solana wallet. Your Solana Name Service name, when you have one, shows on your profile instead of a wallet string.</p>
-          <small>Chain read · 24 h cache</small>
-        </article>
-        <article class="cc" style="--c:#ffcf5a">
-          <span class="st">DEVNET · NOT AUDITED</span>
-          <h3>Escrow</h3>
-          <div class="big">70 / 20 / 10</div>
-          <p>An Anchor program holds every pool. Prizes go only to attested rides. A missed goal refunds everyone, without us.</p>
-          <small>14 instructions · 12 events</small>
-        </article>
-        <article class="cc" style="--c:#ff5a4d">
-          <span class="st">MOCK OR DEVNET SOL</span>
-          <h3>Donations</h3>
-          <div class="big">NIGHT · SINKHOLE</div>
-          <p>Spectators of a live ride can chat and donate to turn day to night or open a hole in the road ahead. One effect per 20 seconds.</p>
-          <small>Applied by the driver's game</small>
-        </article>
-        <article class="cc" style="--c:#b98cff">
-          <span class="st">BUILT</span>
-          <h3>Soulbound NFTs</h3>
-          <div class="big">31 BADGES</div>
-          <p>Achievements mint as compressed NFTs, frozen in your wallet: nobody can sell or thaw them. Art on Arweave.</p>
-          <div class="bdg">${['shift-complete-4', 'night-owl-4', 'century-4', 'clean-run-4'].map(b => `<img src="${BADGES}${b}.svg" alt="" width="56" height="56">`).join('')}</div>
-        </article>
-        <article class="cc" style="--c:#ffffff">
-          <span class="st">SPEC · NOT LIVE</span>
-          <h3>HONK</h3>
-          <div class="big">100M CAP</div>
-          <p>A capped meme coin, minted only for the distance a verified paid ride reached: 20, 50 and 100 % checkpoints. Burn it in chat or for cab visuals.</p>
-          <small>An in-game ledger for now · not a chain mint</small>
-        </article>
-      </div>` },
+      <div class="cards5">${CHAIN.map(chainCard).join('')}</div>` },
 
   { layout: 'end', id: 'next',
     html: `
@@ -206,6 +208,23 @@ const deck = document.getElementById('deck');
 deck.innerHTML = SLIDES.map((s, i) => `<section class="slide L-${s.layout.split(' ').join(' L-')}" id="s-${s.id}" data-i="${i}">${s.html}</section>`).join('');
 
 const slides = [...deck.children];
+
+/* the soulbound-NFT card: one big badge at a time – the current one flips edge-on and fades, the next flips in with an overshoot, a ring pulses and a shine sweeps across; all 31, in catalogue order */
+const ach = deck.querySelector('.ach');
+if (ach) {
+  const img = ach.querySelector('img'), put = i => {
+    const [id, name, desc] = ACH[i];
+    img.src = `${BADGES}${id}.svg`; img.alt = name;
+    ach.querySelector('.at').textContent = achTier(id); ach.querySelector('.an').textContent = name; ach.querySelector('.ad').textContent = desc;
+  };
+  let k = 0; put(0); ach.classList.add('in');
+  if (!tkReduced) setInterval(() => {
+    if (!ach.closest('.slide.on')) return;   // only while its slide is showing
+    const n = (k + 1) % ACH.length; new Image().src = `${BADGES}${ACH[n][0]}.svg`;   // warm the next one
+    ach.classList.remove('in'); ach.classList.add('out');
+    setTimeout(() => { k = n; put(k); ach.classList.remove('out'); void ach.offsetWidth; ach.classList.add('in'); }, 340);
+  }, 2800);
+}
 
 /* live canvas scenes lifted from the landing's UNDER THE HOOD cards (src/chain-scenes.js – a lazy chunk the landing shares), drawn straight onto the slide with no card around them, only while their slide is showing */
 const scenes = [...deck.querySelectorAll('canvas[data-scene]')].map(cv => ({ cv, ctx: cv.getContext('2d'), slide: cv.closest('.slide'), name: cv.dataset.scene, draw: null }));
@@ -403,11 +422,11 @@ addEventListener('pointerdown', e => { if (!e.target.closest('.fx .shot')) moved
 addEventListener('click', e => {
   if (e.target.closest('.split')) return;   // the bar's own click handler (a tap opens / closes a block)
   if (e.target.closest('#ticker')) { tkHold = performance.now() + 1400; return; }   // a click on the header slows it for a moment instead of turning the page
-  const card = e.target.closest('.fx .shot, .fx .badge, .fx canvas.glyph, .L-wall .tags span');
+  const card = e.target.closest('.fx .shot, .fx .badge, .fx canvas.glyph, .L-wall .tags span, .cards5 .cc');
   if (card) {
     if (moved) { moved = false; return; }   // the end of a drag is not a tap
     if (card.classList.contains('badge')) { card.classList.remove('pop'); void card.offsetWidth; card.classList.add('pop'); }   // a tween bump on every click
-    const on = card.classList.toggle('hot'); card.closest('.vis').querySelectorAll('.hot').forEach(c => { if (c !== card && on) c.classList.remove('hot'); });
+    const on = card.classList.toggle('hot'); (card.closest('.vis') ?? card.parentElement).querySelectorAll('.hot').forEach(c => { if (c !== card && on) c.classList.remove('hot'); });
     return;
   }
   if (e.target.closest('a,button')) return;
