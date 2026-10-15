@@ -1,7 +1,11 @@
+import { CommandBus } from '@nestjs/cqrs';
 import request from 'supertest';
 import { EntityWriteService } from '../../src/application/services/entity-write.service.js';
 import { EntityRepositoryPort } from '../../src/application/ports/entities/entity.repository.port.js';
+import { EditorJobRepositoryPort } from '../../src/application/ports/editor/editor-job.repository.port.js';
+import { McpSaveDraftCommand } from '../../src/application/use-cases/editor/mcp-save-draft/mcp-save-draft.command.js';
 import { printSource, validateEntity, type EntityConfig } from '../../src/domain/shared/entity.js';
+import { aJob } from '../support/editor-job-fixtures.js';
 import { fatCactus, seedEntity } from '../support/entity-fixtures.js';
 import { newWallet, sign } from '../support/client.js';
 import { createHarness, type Harness } from '../support/harness.js';
@@ -12,8 +16,14 @@ const PARALLEL = 8;
 const ED = newWallet(), ED2 = newWallet();
 
 describe('entity drafts under concurrency (PostgreSQL)', () => {
-  let h: Harness, write: EntityWriteService, entities: EntityRepositoryPort;
-  beforeAll(async () => { h = await createHarness('postgres', { EDITOR_WALLETS: `${ED.address},${ED2.address}` }); write = h.app.get(EntityWriteService, { strict: false }); entities = h.app.get(EntityRepositoryPort, { strict: false }); });
+  let h: Harness, write: EntityWriteService, entities: EntityRepositoryPort, jobs: EditorJobRepositoryPort, bus: CommandBus;
+  beforeAll(async () => {
+    h = await createHarness('postgres', { EDITOR_WALLETS: `${ED.address},${ED2.address}` });
+    write = h.app.get(EntityWriteService, { strict: false });
+    entities = h.app.get(EntityRepositoryPort, { strict: false });
+    jobs = h.app.get(EditorJobRepositoryPort, { strict: false });
+    bus = h.app.get(CommandBus, { strict: false });
+  });
   afterAll(() => h.close());
   beforeEach(() => h.reset());
 
@@ -31,6 +41,14 @@ describe('entity drafts under concurrency (PostgreSQL)', () => {
     expect(same.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
     const seqs = (await entities.revisions('cactus')).map((r) => r.seq);
     expect(seqs).toEqual([3, 2, 1]);
+  });
+
+  it('parallel MCP save_draft calls on the same running job serialize under the job row lock without stale_base conflicts', async () => {
+    const job = aJob({ status: 'running', entityId: 'cactus', wallet: ED.address });
+    await jobs.insert(job);
+    const results = await Promise.all(Array.from({ length: 4 }, (_, i) => bus.execute(new McpSaveDraftCommand(job.id, 'cactus', fatCactus(0.35 + i / 100), `step ${i}`))));
+    expect(results.map((r: { seq: number }) => r.seq).sort()).toEqual([2, 3, 4, 5]);
+    expect((await entities.revisions('cactus')).map((r) => r.seq)).toEqual([5, 4, 3, 2, 1]);
   });
 
   it('two publishes that each fit the old catalogue cannot both commit when together they do not build', async () => {

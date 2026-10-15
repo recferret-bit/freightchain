@@ -5,6 +5,7 @@ import type { EntityBundleDto, EntityRowDto } from '../../domain/entities/entity
 import { EntityRepositoryPort } from '../ports/entities/entity.repository.port.js';
 import { ClockPort } from '../ports/shared/clock.port.js';
 import { HasherPort } from '../ports/shared/hasher.port.js';
+import type { TransactionHandle } from '../ports/shared/transaction.port.js';
 
 /** how long a built bundle is served before one cheap query asks whether anything was published elsewhere (another process) */
 export const BUNDLE_RECHECK_MS = 10_000;
@@ -52,8 +53,11 @@ export class EntityCatalogService {
   }
 
   /** 422 unless publishing this config keeps every published model buildable (`assertPublishable`) */
-  async assertPublishable(config: EntityConfig): Promise<void> {
-    assertPublishable(config, (await this.bundle()).entities);
+  async assertPublishable(config: EntityConfig, tx?: TransactionHandle): Promise<void> {
+    if (!tx) { assertPublishable(config, (await this.bundle()).entities); return; }
+    const merged = new Map<string, EntityConfig>(this.seed);
+    for (const r of await this.entities.published(tx)) merged.set(r.entityId, r.config);
+    assertPublishable(config, [...merged.values()]);
   }
 
   /** after a publish in this process: the next bundle() rebuilds at once */

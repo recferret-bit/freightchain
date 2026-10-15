@@ -41,10 +41,13 @@ describe('assertPublishable (the published set stays buildable)', () => {
     expect(refersTo(user().parts, 'job-crate')).toBe(true);
     expect(refersTo(seedEntity('birch').parts, 'job-crate')).toBe(false);
   });
-  it('a model using an unpublished part, or a part revision that breaks a published user, is refused; the good cases pass', () => {
+  it('a model using an unpublished part, or a part revision that breaks a published direct or transitive user, is refused; the good cases pass', () => {
     expect(() => assertPublishable(user(), [seedEntity('rock')])).toThrow(/publish the parts it uses first/);
     expect(() => assertPublishable(user(), [crate()])).not.toThrow();
     expect(() => assertPublishable(crate(), [user()])).not.toThrow();
     expect(() => assertPublishable(crate('trunk'), [crate(), user()])).toThrow(UnprocessableEntityError);   // the published birch would get a second trunk
+    const mid = { id: 'mid-part', kind: 'part', v: 1, slots: { m: {} }, parts: [{ use: 'job-crate', slots: { m: 'm' } }] } as never;
+    const indirect = () => { const c = seedEntity('birch'); (c.parts as unknown[]).push({ use: 'mid-part', slots: { m: 'trunk' } }); return c; };
+    expect(() => assertPublishable(crate('trunk'), [crate(), mid, indirect()])).toThrow(UnprocessableEntityError);   // 2-hop transitive user
   });
 });

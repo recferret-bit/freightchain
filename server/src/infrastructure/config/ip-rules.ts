@@ -15,10 +15,14 @@ const unmap = (ip: string): string => ip.replace(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/
 
 interface Rule { family: 4 | 6; base: bigint; bits: number }
 function parseRule(rule: string): Rule | null {
-  const [ip, len] = rule.trim().split('/');
+  const parts = rule.trim().split('/');
+  if (parts.length > 2) return null;
+  const [ip, len] = parts;
+  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.test(ip ?? '');
   const addr = unmap(ip ?? ''), family = isIP(addr);
   if (family !== 4 && family !== 6) return null;
-  const width = family === 4 ? 32 : 128, bits = len === undefined ? width : Number(len);
+  const width = family === 4 ? 32 : 128, rawBits = len === undefined ? width : Number(len);
+  const bits = mapped && len !== undefined && rawBits >= 96 && rawBits <= 128 ? rawBits - 96 : rawBits;
   if (!Number.isInteger(bits) || bits < 0 || bits > width || (len !== undefined && !/^\d+$/.test(len))) return null;
   return { family, base: family === 4 ? v4(addr) : v6(addr), bits };
 }

@@ -189,7 +189,7 @@ const ports: Provider[] = [
   { provide: AnalyticsPort, useClass: PostHogAnalyticsAdapter },
   { provide: StatsRepositoryPort, useClass: StatsPrismaRepository },
   { provide: CachePort, inject: [EnvService, ClockPort], useFactory: (env: EnvService, clock: ClockPort): CachePort => (env.redisUrl ? new RedisCacheAdapter(env.redisUrl, clock) : new MemoryCacheAdapter(clock)) },
-  { provide: RateLimitStorage, inject: [EnvService], useFactory: (env: EnvService): RedisThrottlerStorage | null => (env.redisUrl ? RedisThrottlerStorage.connect(env.redisUrl) : null) },
+  { provide: RateLimitStorage, inject: [EnvService, ClockPort], useFactory: (env: EnvService, clock: ClockPort): RedisThrottlerStorage | null => (env.redisUrl ? RedisThrottlerStorage.connect(env.redisUrl, clock) : null) },
   { provide: NameServicePort, useClass: SnsNameServiceAdapter },
 ];
 

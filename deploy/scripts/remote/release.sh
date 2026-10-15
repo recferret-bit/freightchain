@@ -46,7 +46,7 @@ if ! wait_healthy; then
   cc "$RELEASE" logs --tail 40 app >&2 || true
   if [ -n "$PREVIOUS" ] && [ -f "$ROOT/releases/$PREVIOUS/deploy/docker-compose.prod.yml" ]; then
     echo "rolling back to $PREVIOUS" >&2
-    cc "$PREVIOUS" up -d --no-build app worker
+    cc "$PREVIOUS" up -d --no-build app worker $MCP
     if wait_healthy; then
       echo "rolled back: $PREVIOUS is serving again (the database stays migrated – migrations are forward-only)" >&2
       rm -rf "$ROOT/releases/$RELEASE"; docker rmi "freightchain-server:$RELEASE" "freightchain-mcp:$RELEASE" >/dev/null 2>&1 || true   # a failed release must not take a slot
@@ -68,6 +68,8 @@ printf '%s  %s\n' "$(date -u +%FT%TZ)" "$RELEASE" >> "$STATE/releases.log"
 say "pruning: keeping the last $KEEP_RELEASES releases"
 KEEP="$(ls -1t "$ROOT/releases" | head -n "$KEEP_RELEASES" | tr '\n' ' ') $RELEASE $PREVIOUS $(cat "$STATE/previous" 2>/dev/null || true)"
 for dir in $(ls -1 "$ROOT/releases"); do case " $KEEP " in *" $dir "*) ;; *) rm -rf "$ROOT/releases/$dir"; say "removed release $dir" ;; esac; done
-for tag in $(docker images freightchain-server --format '{{.Tag}}'); do case " $KEEP " in *" $tag "*) ;; *) docker rmi "freightchain-server:$tag" >/dev/null 2>&1 && say "removed image $tag" || true ;; esac; done
+for img in freightchain-server freightchain-mcp; do
+  for tag in $(docker images "$img" --format '{{.Tag}}'); do case " $KEEP " in *" $tag "*) ;; *) docker rmi "$img:$tag" >/dev/null 2>&1 && say "removed image $img:$tag" || true ;; esac; done
+done
 docker image prune -f >/dev/null 2>&1 || true
 say "done"

@@ -52,6 +52,7 @@ export function validateEntity(entity, { lookup = () => null } = {}) {
   return { ok: errors.length === 0, errors, warnings, measures };
 }
 
+function isPlain(v) { return !!v && typeof v === 'object' && !Array.isArray(v); }
 function shape(e, err) {
   for (const k of Object.keys(e)) if (!TOP_KEYS.includes(k)) err(k, LOCKED_KEYS.has(k) ? 'is gameplay – it lives in code (roster.js / VEHICLES / KINDS), never in an entity' : 'unknown key');
   if (typeof e.id !== 'string' || !ID.test(e.id)) err('id', 'lower-case letters, digits and dashes, 2–48 characters, starting with a letter');
@@ -61,24 +62,32 @@ function shape(e, err) {
   if (e.note != null && (typeof e.note !== 'string' || e.note.length > 600)) err('note', 'text of at most 600 characters');
   if (e.anchor != null && !['center', 'base'].includes(e.anchor)) err('anchor', "'center' or 'base'");
   if (!Array.isArray(e.parts) || !e.parts.length) err('parts', 'a non-empty list');
+  for (const k of ['params', 'slots', 'consts', 'vars']) if (e[k] != null && !isPlain(e[k])) { err(k, 'must be an object'); return; }
   for (const [k, p] of Object.entries(e.params ?? {})) {
     const at = `params.${k}`;
     if (!IDENT.test(k)) err(at, 'bad name');
-    if (!p || typeof p !== 'object') { err(at, 'must be { default, … }'); continue; }
+    if (!isPlain(p)) { err(at, 'must be { default, … }'); continue; }
     for (const q of Object.keys(p)) if (!['type', 'default', 'min', 'max', 'enum', 'maxLen', 'from', 'note'].includes(q)) err(`${at}.${q}`, 'unknown key');
     const t = p.type ?? 'num';
     if (t === 'list') { if (!Array.isArray(p.default) || !p.default.every(Number.isFinite)) err(`${at}.default`, 'a list of numbers'); }
     else if (t === 'bool') { if (typeof p.default !== 'boolean') err(`${at}.default`, 'true or false'); }
     else if (!Number.isFinite(p.default)) err(`${at}.default`, 'a number');
+    if (p.min != null && !Number.isFinite(p.min)) err(`${at}.min`, 'a finite number');
+    if (p.max != null && !Number.isFinite(p.max)) err(`${at}.max`, 'a finite number');
     if (p.min != null && p.max != null && !(p.min <= p.max)) err(at, 'min must be ≤ max');
+    if (p.enum != null && (!Array.isArray(p.enum) || !p.enum.length || p.enum.length > 32 || !p.enum.every(Number.isFinite))) err(`${at}.enum`, 'a list of 1–32 numbers');
   }
-  if (Object.keys(e.params ?? {}).length > 32 || Object.keys(e.slots ?? {}).length > 32 || Object.keys(e.vars ?? {}).length > 32) err('params', 'at most 32 params, slots and vars each');
+  if (Object.keys(e.params ?? {}).length > 32 || Object.keys(e.slots ?? {}).length > 32 || Object.keys(e.consts ?? {}).length > 32 || Object.keys(e.vars ?? {}).length > 32) err('params', 'at most 32 params, slots, consts and vars each');
   for (const [k, s] of Object.entries(e.slots ?? {})) {
     if (!IDENT.test(k)) err(`slots.${k}`, 'bad name');
-    for (const q of Object.keys(s ?? {})) if (!['note', 'optional', 'default'].includes(q)) err(`slots.${k}.${q}`, 'unknown key');
+    if (!isPlain(s)) { err(`slots.${k}`, 'must be an object'); continue; }
+    for (const q of Object.keys(s)) if (!['note', 'optional', 'default'].includes(q)) err(`slots.${k}.${q}`, 'unknown key');
   }
-  for (const [k, v] of Object.entries(e.consts ?? {})) if (!(Number.isFinite(v) || (Array.isArray(v) && v.length <= 32 && v.every(Number.isFinite)))) err(`consts.${k}`, 'a number or a list of numbers');
-  for (const [k, v] of Object.entries(e.vars ?? {})) expr(v, `vars.${k}`, err);
+  for (const [k, v] of Object.entries(e.consts ?? {})) {
+    if (!IDENT.test(k)) err(`consts.${k}`, 'bad name');
+    if (!(Number.isFinite(v) || (Array.isArray(v) && v.length <= 32 && v.every(Number.isFinite)))) err(`consts.${k}`, 'a number or a list of numbers');
+  }
+  for (const [k, v] of Object.entries(e.vars ?? {})) { if (!IDENT.test(k)) err(`vars.${k}`, 'bad name'); expr(v, `vars.${k}`, err); }
   const slotNames = e.kind === 'landmark' ? LANDMARK_SLOTS : Object.keys(e.slots ?? {});
   for (const d of [e.debris ?? []].flat()) if (!slotNames.includes(d)) err('debris', `'${d}' is not a slot`);
   (e.parts ?? []).forEach((p, i) => part(p, `parts[${i}]`, err, e, 0));
@@ -127,7 +136,8 @@ function part(p, at, err, e, depth) {
   if (type === 'banner') { if (e.kind !== 'gantry') err(at, 'a banner is for the gantry'); for (const k of ['w', 'h']) expr(p.banner?.[k], `${at}.banner.${k}`, err); }
   if (type === 'group') { if (p.group?.role != null && !ROLES.includes(p.group.role)) err(`${at}.group.role`, `one of ${ROLES.join(', ')}`); }
   if (type === 'for') {
-    const names = [p.for].flat(); if (!names.every(n => typeof n === 'string' && IDENT.test(n))) err(`${at}.for`, 'a name or a list of names');
+    const names = [p.for].flat(); if (!names.length || !names.every(n => typeof n === 'string' && IDENT.test(n))) err(`${at}.for`, 'a name or a list of names');
+    if (('range' in p || 'from' in p) && Array.isArray(p.for)) err(`${at}.for`, 'range and from loops take a single variable name');
     const forms = ['in', 'range', 'from'].filter(k => k in p); if (forms.length !== 1) err(at, 'a loop needs exactly one of in, range or from/step/while');
     if ('from' in p) { expr(p.from, `${at}.from`, err); expr(p.step, `${at}.step`, err); expr(p.while, `${at}.while`, err); }
     if ('range' in p) { if (!Array.isArray(p.range) || p.range.length !== 2) err(`${at}.range`, 'needs [from, to)'); else p.range.forEach((x, i) => expr(x, `${at}.range[${i}]`, err)); }

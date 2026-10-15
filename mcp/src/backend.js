@@ -51,7 +51,7 @@ export class FileBackend {
     const path = resolve(this.dir, kindDir, `${id}.js`), root = resolve(this.dir) + sep;
     if (!path.startsWith(root)) throw new Error('bad path');
     const fresh = !existsSync(path);
-    writeFileSync(path, source.endsWith('\n') ? source : source + '\n');
+    writeFileSync(path, core.printSource(config));
     if (fresh && this.dir === SEED) execFileSync(process.execPath, [join(REPO, 'client', 'tools', 'entity-seed-index.mjs')], { stdio: 'ignore' });   // the repo's own seed list
     return { id: `file:${id}`, entityId: id, seq: null, message, path };
   }

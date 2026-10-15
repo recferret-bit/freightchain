@@ -97,13 +97,13 @@ export const clip = (text: string, max = MAX_EVENT_TEXT): string => (text.length
  */
 export function mayWrite(job: Pick<EditorJobRecord, 'id' | 'entityId'>, targetId: string, target: { exists: boolean; kind: string | null; headJobId: string | null }, created: readonly string[]): boolean {
   if (job.entityId && targetId === job.entityId) return true;
-  if (target.exists) return !job.entityId && target.headJobId === job.id;
+  if (target.exists) return target.headJobId === job.id && (!job.entityId || (target.kind === 'part' && created.includes(targetId)));
   if (job.entityId && target.kind !== 'part') return false;
   return created.length < MAX_NEW_ENTITIES_PER_JOB;
 }
 
-const FENCE_TAG = /[<\uFF1C]\s*(\/?)\s*(tool_output|user_request)/gi;
-const INVISIBLE = /[\u200B-\u200D\uFEFF]/g;
+const FENCE_TAG = /[<\uFF1C\uFE64\u27E8]\s*(\/?)\s*(tool_output|user_request|system|instructions)/gi;
+const INVISIBLE = /[\u00AD\u034F\u061C\u180E\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFE00-\uFE0F\uFEFF\u{E0000}-\u{E007F}]/gu;
 /** untrusted text must not close the fence or open a fake user request */
 export function defuseFences(text: string): string {
   return text.replace(INVISIBLE, '').replace(FENCE_TAG, '‹$1$2');

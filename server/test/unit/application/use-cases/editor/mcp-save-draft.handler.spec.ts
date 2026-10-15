@@ -26,12 +26,19 @@ describe('McpSaveDraftHandler', () => {
     await expect(h.execute(new McpSaveDraftCommand(job.id, 'rock', printSource(seedEntity('rock')), 'm'))).rejects.toBeInstanceOf(ForbiddenError);
     const part = printSource({ id: 'job-crate', kind: 'part', v: 1, slots: { m: {} }, parts: [{ geo: 'box', mat: 'm', s: [1, 1, 1], at: [0, 0.5, 0] }] });
     await expect(h.execute(new McpSaveDraftCommand(job.id, 'job-crate', part, 'crate'))).resolves.toMatchObject({ seq: 1 });
+    await expect(h.execute(new McpSaveDraftCommand(job.id, 'job-crate', part.replace('0.5', '0.6'), 'crate v2'))).resolves.toMatchObject({ seq: 2 });
     const free = await setup(null);
     await expect(free.h.execute(new McpSaveDraftCommand(free.job.id, 'rock', printSource({ ...seedEntity('rock'), note: 'x' }), 'm'))).rejects.toMatchObject({ errorCode: 'job_scope' });
     const mine = printSource({ ...seedEntity('rock'), id: 'job-rock', note: 'mine' });
     await expect(free.h.execute(new McpSaveDraftCommand(free.job.id, 'job-rock', mine, 'm'))).resolves.toMatchObject({ entityId: 'job-rock', seq: 1 });
     await expect(free.h.execute(new McpSaveDraftCommand(free.job.id, 'job-rock', mine.replace('mine', 'again'), 'm'))).resolves.toMatchObject({ entityId: 'job-rock', seq: 2 });
     await expect(h.execute(new McpSaveDraftCommand('00000000-0000-4000-8000-0000000000ff', 'cactus', fatCactus(), 'm'))).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it('refuses a draft when the job is no longer running (403 job_closed)', async () => {
+    const { h, job, jobs } = await setup();
+    await jobs.update(job.id, { status: 'cancelled' });
+    await expect(h.execute(new McpSaveDraftCommand(job.id, 'cactus', fatCactus(), 'late'))).rejects.toMatchObject({ errorCode: 'job_closed' });
   });
 
   it('the new-entity cap counts drafts past the first page of events', async () => {

@@ -85,8 +85,13 @@ export function refersTo(config: unknown, id: string): boolean {
  */
 export function assertPublishable(config: EntityConfig, published: readonly EntityConfig[]): void {
   const next = new Map(published.map((e) => [e.id, e])); next.set(config.id, config);
+  const touched = new Set<string>([config.id]);
+  for (let added = true; added; ) {
+    added = false;
+    for (const p of published) if (!touched.has(p.id) && [...touched].some((id) => refersTo(p.parts, id))) { touched.add(p.id); added = true; }
+  }
   const errors: string[] = [];
-  for (const e of [config, ...published.filter((p) => p.id !== config.id && refersTo(p.parts, config.id))]) {
+  for (const e of [config, ...published.filter((p) => p.id !== config.id && touched.has(p.id))]) {
     const r = validateEntity(e, { lookup: (x) => next.get(x) ?? null });
     if (!r.ok) errors.push(...r.errors.map((m) => (e.id === config.id ? m : `${e.id} (published, uses '${config.id}'): ${m}`)));
   }

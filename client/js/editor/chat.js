@@ -33,15 +33,19 @@ export function mountChat(st) {
       box.value = ''; follow(r.jobId);
     } catch (e) { line('err', e.message); for (const x of e.errors) line('err', '· ' + x); }
   }
-  function follow(id) {
-    job = id; after = 0; cancel.hidden = false; send.disabled = true; clearTimeout(timer);
+  function follow(id, from = 0) {
+    job = id; after = from; cancel.hidden = false; send.disabled = true; clearTimeout(timer);
     const tick = async () => {
+      if (job !== id) return;
+      let more = false;
       try {
         const r = await get(`jobs/${id}/events?after=${after}`);
-        for (const ev of r.events) { after = Math.max(after, ev.seq); await show(ev); }
-        if (['done', 'failed', 'cancelled'].includes(r.status)) { finish(r.status); return; }
-      } catch (e) { line('err', e.message); }
-      timer = setTimeout(tick, 1000);
+        if (job !== id) return;
+        more = r.events.length === 200;
+        for (const ev of r.events) { after = Math.max(after, ev.seq); await show(ev); if (job !== id) return; }
+        if (!more && ['done', 'failed', 'cancelled'].includes(r.status)) { finish(r.status); return; }
+      } catch (e) { if (job === id) line('err', e.message); }
+      if (job === id) timer = setTimeout(tick, more ? 50 : 1000);
     };
     tick();
   }
@@ -71,10 +75,12 @@ export function mountChat(st) {
     } catch { /* the bridge may not be there yet */ }
   }
   async function replayJob(j) {
+    clearTimeout(timer); job = null; cancel.hidden = true; send.disabled = !(st.me?.providers ?? []).length;
     log.textContent = ''; line('you', j.prompt);
-    try { const r = await get(`jobs/${j.id}/events?after=0`); for (const ev of r.events) await show(ev, true); } catch (e) { line('err', e.message); }
+    let last = 0;
+    try { const r = await get(`jobs/${j.id}/events?after=0`); for (const ev of r.events) { last = Math.max(last, ev.seq); await show(ev, true); } } catch (e) { line('err', e.message); }
     if (j.resultRevisionId) { try { st.preview((await get(`revisions/${j.resultRevisionId}`)).config); line('sys', 'previewing its result'); } catch (e) { line('err', e.message); } }
-    if (j.status === 'running' || j.status === 'queued') follow(j.id);
+    if (j.status === 'running' || j.status === 'queued') follow(j.id, last);
   }
   st.on(() => loadPast());
   return { node, shown: () => { fillProviders(); loadPast(); } };

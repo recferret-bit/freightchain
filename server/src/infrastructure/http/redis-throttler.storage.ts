@@ -1,12 +1,13 @@
 import { Logger, type OnModuleDestroy } from '@nestjs/common';
 import type { ThrottlerStorage } from '@nestjs/throttler';
 import { Redis } from 'ioredis';
+import type { ClockPort } from '../../application/ports/shared/clock.port.js';
 
 /** What the storage needs from Redis (a test passes a fake). `eval` returns `[hits, pttl ms]`. */
 export interface RedisEval {
   eval(script: string, numKeys: number, key: string, ttl: string): Promise<unknown>;
   quit(): Promise<unknown>;
-  on?(event: 'error', listener: (err: Error) => void): void;
+  on?(event: 'error' | 'ready', listener: (err: Error) => void): void;
 }
 
 const SCRIPT = `
@@ -28,25 +29,28 @@ export class RedisThrottlerStorage implements ThrottlerStorage, OnModuleDestroy 
   private readonly log = new Logger('RateLimit');
   private readonly local = new Map<string, { n: number; exp: number }>();
   private warned = false;
+  private downUntil = 0;
 
-  constructor(private readonly redis: RedisEval) {
+  constructor(private readonly redis: RedisEval, private readonly clock: ClockPort) {
     this.redis.on?.('error', (e) => this.note(e));
-    this.redis.on?.('ready', () => { this.warned = false; });
+    this.redis.on?.('ready', () => { this.warned = false; this.downUntil = 0; });
   }
 
-  static connect(url: string): RedisThrottlerStorage {
+  static connect(url: string, clock: ClockPort): RedisThrottlerStorage {
     const redis = new Redis(url, { maxRetriesPerRequest: 1, connectTimeout: 2000, commandTimeout: 300 });
-    return new RedisThrottlerStorage(redis);
+    return new RedisThrottlerStorage(redis, clock);
   }
 
   async increment(key: string, ttl: number, limit: number, _blockDuration: number, throttlerName: string): Promise<{ totalHits: number; timeToExpire: number; isBlocked: boolean; timeToBlockExpire: number }> {
-    try {
-      const raw = (await this.redis.eval(SCRIPT, 1, `fc:rl:${throttlerName}:${key}`, String(ttl))) as [number, number];
-      return record(Number(raw[0]), Number(raw[1]), limit);
-    } catch (e) {
-      this.note(e);
-      return this.localIncrement(`${throttlerName}:${key}`, ttl, limit);
+    if (this.clock.now().getTime() >= this.downUntil) {
+      try {
+        const raw = (await this.redis.eval(SCRIPT, 1, `fc:rl:${throttlerName}:${key}`, String(ttl))) as [number, number];
+        return record(Number(raw[0]), Number(raw[1]), limit);
+      } catch (e) {
+        this.note(e);
+      }
     }
+    return this.localIncrement(`${throttlerName}:${key}`, ttl, limit);
   }
 
   async onModuleDestroy(): Promise<void> {
@@ -54,7 +58,7 @@ export class RedisThrottlerStorage implements ThrottlerStorage, OnModuleDestroy 
   }
 
   private localIncrement(key: string, ttl: number, limit: number): { totalHits: number; timeToExpire: number; isBlocked: boolean; timeToBlockExpire: number } {
-    const now = Date.now();
+    const now = this.clock.now().getTime();
     let row = this.local.get(key);
     if (!row || row.exp <= now) row = { n: 0, exp: now + ttl };
     row.n += 1;
@@ -64,6 +68,7 @@ export class RedisThrottlerStorage implements ThrottlerStorage, OnModuleDestroy 
   }
 
   private note(e: unknown): void {
+    this.downUntil = this.clock.now().getTime() + 5000;
     if (this.warned) return;
     this.warned = true;
     this.log.warn(`redis rate limit unavailable, counting in this process: ${e instanceof Error ? e.message : String(e)}`);

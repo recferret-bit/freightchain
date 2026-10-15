@@ -19,8 +19,8 @@ export class EditorJobPrismaRepository extends EditorJobRepositoryPort {
     await this.prisma.editorJob.create({ data: j });
   }
 
-  async find(id: string): Promise<EditorJobRecord | null> {
-    const r = await this.prisma.editorJob.findUnique({ where: { id } });
+  async find(id: string, tx?: TransactionHandle): Promise<EditorJobRecord | null> {
+    const r = await clientFor(this.prisma, tx).editorJob.findUnique({ where: { id } });
     return r ? toJob(r) : null;
   }
 

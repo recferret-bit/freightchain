@@ -41,7 +41,7 @@ export function parseSource(text) {
   function string() {
     const q = text[i++]; let s = '';
     while (i < text.length && text[i] !== q) {
-      if (text[i] === '\n') fail('line break in a string');
+      if (text[i] === '\n' || text[i] === '\r') fail('line break in a string');
       if (text[i] === '\\') {
         const e = text[++i], map = { n: '\n', t: '\t', r: '\r', '\\': '\\', "'": "'", '"': '"', '0': '\0' };
         if (e === 'u') { const h = text.slice(i + 1, i + 5); if (!/^[0-9a-fA-F]{4}$/.test(h)) fail('bad \\u escape'); s += String.fromCharCode(parseInt(h, 16)); i += 5; continue; }
@@ -91,7 +91,7 @@ export function parseSource(text) {
 
 /* Deterministic printer. Integers ≥ 0x10000 print as 0x + 6 hex digits (colours); short objects / arrays stay on one line. */
 const num = n => (Number.isInteger(n) && n >= 0x10000 && n <= 0xffffff ? '0x' + n.toString(16).padStart(6, '0') : Object.is(n, -0) ? '-0' : String(n));
-const str = s => "'" + s.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n') + "'";
+const str = s => "'" + s.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t').replace(/[\x00-\x1f\u2028\u2029]/g, c => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0')) + "'";
 const keyOf = k => (/^[A-Za-z_$][\w$]*$/.test(k) ? k : str(k));
 const WIDTH = 140;
 function flat(v) {

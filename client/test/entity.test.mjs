@@ -36,9 +36,11 @@ test('expressions refuse code: unknown names and functions, member access, eval 
 });
 
 test('source: literal-only parser, never runs code; printer round-trips every seed file', () => {
-  for (const bad of ['export default foo;', 'export default { a: f() };', 'export default { ...x };', 'export default { [k]: 1 };', 'export default { __proto__: {} };', 'export default `x`;', 'export default { a: 1 }; alert(1)', 'module.exports = {}'])
+  for (const bad of ['export default foo;', 'export default { a: f() };', 'export default { ...x };', 'export default { [k]: 1 };', 'export default { __proto__: {} };', 'export default `x`;', 'export default { a: 1 }; alert(1)', 'module.exports = {}', "export default { a: 'x\ry' };"])
     assert.throws(() => parseSource(bad), SourceError, bad);
-  assert.deepEqual(parseSource("// c\nexport default { a: -0x10, 'b': [1, .5, -2e3,], c: \"q\\n\", d: true, e: null, /* x */ };"), { a: -16, b: [1, .5, -2000], c: 'q\n', d: true, e: null });
+  assert.deepEqual(parseSource("// c\nexport default { a: -0x10, 'b': [1, .5, -2e3,], c: \"q\\n\\r\\t\", d: true, e: null, /* x */ };"), { a: -16, b: [1, .5, -2000], c: 'q\n\r\t', d: true, e: null });
+  const ctrl = { s: 'a\rb\tc\x00\x1f' }, ctrlSrc = printSource(ctrl);
+  assert.deepEqual(parseSource(ctrlSrc), ctrl);
   for (const kind of readdirSync(seedDir).filter(d => !d.endsWith('.js'))) for (const f of readdirSync(join(seedDir, kind))) {
     const text = readFileSync(join(seedDir, kind, f), 'utf8'), v = parseSource(text);
     assert.deepEqual(v, byId.get(f.replace(/\.js$/, '')), `${kind}/${f} parses to what it exports`);
@@ -63,6 +65,9 @@ test('validation refuses gameplay keys, broken parts and out-of-contract edits',
   bad({ ...sedan, parts: [{ use: 'veh-box-body', with: { len: 'len * 2', w: 'w', h: 'h' } }] }, /leaves the/);
   bad({ ...sedan, parts: [{ geo: 'box', s: ['nope', 1, 1], mat: { color: 1 } }] }, /unknown name/);
   bad({ ...sedan, parts: [{ for: 'i', range: [0, 1000], do: [{ geo: 'box', s: [1, 1, 1], mat: { color: 1 } }] }] }, /iterations/);
+  bad({ ...sedan, parts: [{ for: ['i', 'j'], range: [0, 2], do: [{ geo: 'box', s: [1, 1, 1], mat: { color: 1 } }] }] }, /single variable name/);
+  bad({ id: 'bad-enum', kind: 'part', v: 1, params: { p: { default: 1, enum: 'not-an-array' } }, parts: [{ geo: 'box', s: [1, 1, 1], mat: { color: 1 } }] }, /1–32 numbers/);
+  bad({ id: 'bad-min', kind: 'part', v: 1, params: { p: { default: 1, min: 'low', max: 5 } }, parts: [{ geo: 'box', s: [1, 1, 1], mat: { color: 1 } }] }, /finite number/);
   bad({ ...structuredClone(byId.get('birch')), parts: [{ geo: 'cyl', tag: 'trunk', mat: 'trunk', s: [.1, 'h', .1] }, { geo: 'cyl', tag: 'trunk', mat: 'trunk', s: [.1, 'h', .1] }] }, /exactly one part tagged 'trunk'/);
   const cactus = structuredClone(byId.get('cactus'));
   bad({ ...cactus, params: { h: cactus.params.h }, parts: [cactus.parts[0]] }, /keep that param/);
@@ -83,13 +88,17 @@ test('a huge but finite model is refused, and two params are checked together', 
   bad({ id: 'blow-box', kind: 'part', v: 1, params: { s: { default: 1, min: 1, max: 6 }, h: { default: 1, min: 1, max: 6 } }, slots: { m: {} }, parts: [{ geo: 'box', mat: 'm', s: ['1 / (s + h - 12)', 1, 1], at: [0, 0.5, 0] }] }, /not a finite number/);
 });
 
-test('a published config the validator refuses falls back to the seed', async () => {
+test('a published config the validator refuses falls back to the seed without breaking dependents', async () => {
   const { guardBundle } = await import('../shared/entity/bundle.js');
-  const seed = [byId.get('rock')];
   const huge = { id: 'rock', kind: 'prop', v: 1, parts: [{ geo: 'box', mat: { color: 1 }, s: [1e16, 1, 1] }] };
-  const kept = guardBundle([huge, { id: 'not-a-seed', kind: 'part', v: 1, parts: [] }], seed);
-  assert.equal(kept.length, 1);
-  assert.equal(kept[0], seed[0]);
+  const brokenWheels = { id: 'veh-wheels', kind: 'part', v: 1, parts: [] };
+  const customSedan = { ...structuredClone(byId.get('sedan')), note: 'custom sedan' };
+  const kept = guardBundle([customSedan, brokenWheels, huge, { id: 'not-a-seed', kind: 'part', v: 1, parts: [] }], SEED);
+  const keptBy = new Map(kept.map(e => [e.id, e]));
+  assert.equal(keptBy.get('rock'), byId.get('rock'));
+  assert.equal(keptBy.get('veh-wheels'), byId.get('veh-wheels'));
+  assert.equal(keptBy.get('sedan').note, 'custom sedan');
+  assert.equal(keptBy.has('not-a-seed'), false);
 });
 
 test('a plan is the same part list on every run (no hidden state, no randomness)', () => {

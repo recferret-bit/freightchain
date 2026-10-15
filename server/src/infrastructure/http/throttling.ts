@@ -56,15 +56,15 @@ export function throttlerOptions(env: EnvService, tokens: TokenSignerPort, edito
   };
   const throttlers = [
     { name: 'default', ttl: THROTTLE_WINDOW_MS, limit: env.throttleLimit, getTracker: byWalletOrIp, skipIf: (context: ExecutionContext) => isHealthRoute(context) || isEntitiesRoute(context) || isEditorRoute(context) || isMcpRoute(context) },
-    { name: 'auth', ttl: THROTTLE_WINDOW_MS, limit: env.throttleAuthLimit, skipIf: (context: ExecutionContext) => !isAuthRoute(context) && !isEditorAuthRoute(context) },
+    { name: 'auth', ttl: THROTTLE_WINDOW_MS, limit: env.throttleAuthLimit, getTracker: byIp, skipIf: (context: ExecutionContext) => !isAuthRoute(context) && !isEditorAuthRoute(context) },
     { name: 'auth-rps', ttl: THROTTLE_RPS_WINDOW_MS, limit: env.throttleAuthRps ?? 5, getTracker: byIp, skipIf: (context: ExecutionContext) => !isAuthRoute(context) && !isEditorAuthRoute(context) },
-    { name: 'entities', ttl: THROTTLE_WINDOW_MS, limit: env.throttleEntitiesLimit, skipIf: (context: ExecutionContext) => !isEntitiesRoute(context) },
+    { name: 'entities', ttl: THROTTLE_WINDOW_MS, limit: env.throttleEntitiesLimit, getTracker: byIp, skipIf: (context: ExecutionContext) => !isEntitiesRoute(context) },
     { name: 'entities-rps', ttl: THROTTLE_RPS_WINDOW_MS, limit: env.throttleEntitiesRps ?? 5, getTracker: byIp, skipIf: (context: ExecutionContext) => !isEntitiesRoute(context) },
     { name: 'editor', ttl: THROTTLE_WINDOW_MS, limit: env.throttleEditorLimit, getTracker: byEditorOrIp, skipIf: (context: ExecutionContext) => !isEditorRoute(context) },
     { name: 'editor-rps', ttl: THROTTLE_RPS_WINDOW_MS, limit: env.throttleEditorRps ?? 10, getTracker: byIp, skipIf: (context: ExecutionContext) => !isEditorRoute(context) },
     { name: 'mcp', ttl: THROTTLE_WINDOW_MS, limit: env.throttleMcpLimit ?? 600, getTracker: byJob, skipIf: (context: ExecutionContext) => !isMcpRoute(context) },
     { name: 'mcp-rps', ttl: THROTTLE_RPS_WINDOW_MS, limit: env.throttleMcpRps ?? 20, getTracker: byJob, skipIf: (context: ExecutionContext) => !isMcpRoute(context) },
-    { name: 'promo', ttl: THROTTLE_WINDOW_MS, limit: env.throttlePromoLimit, skipIf: (context: ExecutionContext) => !isPromoRedeem(context) },
+    { name: 'promo', ttl: THROTTLE_WINDOW_MS, limit: env.throttlePromoLimit, getTracker: byIp, skipIf: (context: ExecutionContext) => !isPromoRedeem(context) },
   ];
   return storage ? { throttlers, storage } : throttlers;
 }

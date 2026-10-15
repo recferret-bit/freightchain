@@ -62,7 +62,7 @@ export class EditorAgentService {
           const refused = !offered.has(call.name) ? `no such tool: ${clip(call.name, 60)}` : i >= MAX_TOOL_CALLS_PER_TURN ? `at most ${MAX_TOOL_CALLS_PER_TURN} tool calls per turn – call it again in the next turn` : null;
           if (refused) { await this.event(job.id, 'tool_result', { name: clip(call.name, 60), summary: refused, ok: false }); results.push({ id: call.id, content: refused, isError: true }); continue; }
           const input = toolArgs(call.input);
-          const source = typeof input['source'] === 'string' ? input['source'] : null;
+          const source = typeof input['source'] === 'string' ? input['source'].trim() : null;
           const unchecked = call.name === 'save_draft' && source !== null && !checked.has(source);
           await this.event(job.id, 'tool_call', { name: call.name, summary: summarize(input), ok: true, ...(unchecked ? { unchecked: true } : {}) });
           const r = await session.callTool(call.name, input, signal);

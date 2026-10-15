@@ -61,13 +61,14 @@ function resolve(ctx, d) {
 export function buildInto(root, id, params, ctx) { const sink = new Sink(root, ctx, root); program(id).run(params, sink); return sink; }
 
 /* A placed prop / furniture piece: pooled root + the collision description the game reads (userData { kind, size, debris }, from roster.js). */
-const sizeFns = new Map();
+const sizeFns = new WeakMap();
 function sizeOf(id, lock, params) {
   if (typeof lock.size === 'number') return lock.size;
-  let f = sizeFns.get(id);
+  const p = program(id);
+  let f = sizeFns.get(p);
   if (!f) {
-    const p = program(id), s = new Scope(); for (const q of p.params) s.declare(q.name);
-    const e = compileExpr(lock.size, s); f = args => e(p.params.map(q => (args?.[q.name] === undefined ? q.def : args[q.name]))); sizeFns.set(id, f);
+    const s = new Scope(); for (const q of p.params) s.declare(q.name);
+    const e = compileExpr(lock.size, s); f = args => e(p.params.map(q => (args?.[q.name] === undefined ? q.def : args[q.name]))); sizeFns.set(p, f);
   }
   return f(params);
 }

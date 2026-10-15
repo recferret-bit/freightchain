@@ -7,13 +7,13 @@ import { ServiceUnavailableError } from '../../domain/shared/errors.js';
 import { EnvService } from '../config/env.service.js';
 
 const MCP_HOSTS = new Set(['mcp', '127.0.0.1', 'localhost']);
-const MCP_BLOCKED = new Set(['169.254.169.254', 'metadata.google.internal', '0.0.0.0']);
+const isMetadataHost = (h: string): boolean => h === '0.0.0.0' || h === '[::]' || h === 'metadata.google.internal' || h === '100.100.100.200' || h === '[fd00:ec2::254]' || h.startsWith('169.254.') || h.includes('a9fe:a9fe');
 
 /** the MCP origin the bridge may call. Production is the internal service only, so a job token cannot be sent to another host. */
 export function mcpBaseUrl(raw: string, production: boolean): URL {
   let u: URL;
   try { u = new URL(raw); } catch { throw new ServiceUnavailableError('EDITOR_MCP_URL is not a URL'); }
-  if ((u.protocol !== 'http:' && u.protocol !== 'https:') || u.username || u.password || MCP_BLOCKED.has(u.hostname) || (production && !MCP_HOSTS.has(u.hostname))) {
+  if ((u.protocol !== 'http:' && u.protocol !== 'https:') || u.username || u.password || isMetadataHost(u.hostname) || (production && !MCP_HOSTS.has(u.hostname))) {
     throw new ServiceUnavailableError('EDITOR_MCP_URL host is not allowed');
   }
   return new URL(u.origin);

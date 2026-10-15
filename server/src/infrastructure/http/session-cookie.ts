@@ -21,19 +21,23 @@ export function readCookie(header: string | undefined, name: string): string | u
   return cookieValues(header, name)[0];
 }
 
-/** every value of `name`, in header order – a planted cookie must not hide a later one that verifies */
+/** every value of `name`, in header order (capped at 16) – a planted cookie must not hide a later one that verifies */
 export function cookieValues(header: string | undefined, name: string): string[] {
   if (!header) return [];
   const out: string[] = [];
   for (const part of header.split(/;\s*/)) {
     const i = part.indexOf('=');
-    if (i > 0 && part.slice(0, i) === name) out.push(part.slice(i + 1));
+    if (i > 0 && part.slice(0, i) === name) {
+      out.push(part.slice(i + 1));
+      if (out.length >= 16) break;
+    }
   }
   return out;
 }
 
 const VERIFIED = Symbol('freight.sessionWallet');
-type WithSession = { headers: { cookie?: string }; [VERIFIED]?: Promise<string | null> };
+const EDITOR_VERIFIED = Symbol('freight.editorWallet');
+type WithSession = { headers: { cookie?: string }; [VERIFIED]?: Promise<string | null>; [EDITOR_VERIFIED]?: Promise<string | null> };
 
 /** The wallet of the request's session cookie (`name` = EnvService.sessionCookie), or null – verified ONCE per request and shared (the rate limiter and
     PlayerAuthGuard both need it). */
@@ -52,11 +56,15 @@ export function adminWallet(request: { headers: { cookie?: string } }, tokens: A
   return token ? tokens.verify(token) : Promise.resolve(null);
 }
 
-/** The wallet of the request's EDITOR cookie, or null. Every value of that name is tried, so a forged one listed first does not hide a real one. */
-export async function editorWallet(request: { headers: { cookie?: string } }, tokens: EditorTokenPort, name: string = EDITOR_COOKIE): Promise<string | null> {
-  for (const token of cookieValues(request.headers.cookie, name)) {
-    const wallet = await tokens.verify(token);
-    if (wallet) return wallet;
-  }
-  return null;
+/** The wallet of the request's EDITOR cookie, or null – verified ONCE per request. Every value of that name is tried, so a forged one listed first does not hide a real one. */
+export function editorWallet(request: { headers: { cookie?: string } }, tokens: EditorTokenPort, name: string = EDITOR_COOKIE): Promise<string | null> {
+  const r = request as WithSession;
+  r[EDITOR_VERIFIED] ??= (async () => {
+    for (const token of cookieValues(r.headers.cookie, name)) {
+      const wallet = await tokens.verify(token);
+      if (wallet) return wallet;
+    }
+    return null;
+  })();
+  return r[EDITOR_VERIFIED];
 }

@@ -36,4 +36,14 @@ describe('PublishRevisionHandler', () => {
     await expect(h.execute(new PublishRevisionCommand(W, 'cactus', d.id, sign(admin), null))).rejects.toBeInstanceOf(UnauthorizedError);
     expect((await entities.find('cactus'))!.publishedRevisionId).toBeNull();
   });
+
+  it('publishes an entity that uses seed parts (e.g. sedan using veh-wheels and veh-car-body)', async () => {
+    const { h, proofs, write, catalog } = await setup();
+    const { printSource } = await import('../../../../../src/domain/shared/entity.js');
+    const { seedEntity } = await import('../../../../support/entity-fixtures.js');
+    const sedanDraft = await write.saveDraft({ entityId: 'sedan', source: printSource({ ...seedEntity('sedan'), note: 'tuned sedan' }), message: 'tune', baseRevisionId: null, author: W });
+    const message = await proofs.issue(W, { action: 'entity_publish', entityId: 'sedan', revisionId: sedanDraft.id, seq: 2 }, 'editor');
+    await h.execute(new PublishRevisionCommand(W, 'sedan', sedanDraft.id, sign(message), 'req-2'));
+    expect((await catalog.bundle()).entities.find((e) => e.id === 'sedan')?.note).toBe('tuned sedan');
+  });
 });

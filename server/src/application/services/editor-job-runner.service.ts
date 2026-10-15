@@ -53,7 +53,8 @@ export class EditorJobRunnerService {
   private settle(jobId: string): void { this.done.get(jobId)?.resolve(); this.done.delete(jobId); }
 
   private async pump(): Promise<void> {
-    const parallel = (await this.settings.current()).editorJobsParallel;
+    let parallel = 0;
+    try { parallel = (await this.settings.current()).editorJobsParallel; } catch (e) { this.log.warn(`could not read editor_jobs_parallel: ${e instanceof Error ? e.message : String(e)}`); return; }
     while (this.running.size < parallel && this.queue.length) {
       const job = this.queue.shift()!;
       const c = new AbortController();

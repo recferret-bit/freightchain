@@ -1,14 +1,21 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 import { PrismaClient } from '@prisma/client';
+import { ID, KINDS } from '../domain/shared/entity.js';
 import type { EnvService } from '../infrastructure/config/env.service.js';
 
 export interface PublishedFile { entityId: string; kind: string; source: string; seq: number }
 
 /** Where each published revision goes in the code's seed: client/shared/entity/seed/<kind>/<id>.js (the file text as stored – canonical). */
 export function seedFiles(clientDir: string, published: readonly PublishedFile[]): { path: string; source: string; label: string }[] {
-  return published.map((p) => ({ path: join(clientDir, 'shared', 'entity', 'seed', p.kind, `${p.entityId}.js`), source: p.source, label: `${p.kind}/${p.entityId} #${p.seq}` }));
+  const root = resolve(clientDir, 'shared', 'entity', 'seed');
+  return published.map((p) => {
+    if (!ID.test(p.entityId) || !(KINDS as readonly string[]).includes(p.kind)) throw new Error(`bad seed path for '${p.kind}/${p.entityId}'`);
+    const path = join(clientDir, 'shared', 'entity', 'seed', p.kind, `${p.entityId}.js`);
+    if (!resolve(path).startsWith(root + sep)) throw new Error(`seed path outside ${root}`);
+    return { path, source: p.source, label: `${p.kind}/${p.entityId} #${p.seq}` };
+  });
 }
 
 /**

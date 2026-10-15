@@ -27,6 +27,10 @@ test('POST only, one message per request, bodies up to 512 KB of JSON', async ()
   assert.deepEqual([get.status, get.headers.get('allow')], [405, 'POST']);
   const batch = await post('/mcp', [{ jsonrpc: '2.0', id: 1, method: 'tools/list' }, { jsonrpc: '2.0', id: 2, method: 'tools/list' }]);
   assert.deepEqual([batch.status, (await batch.json()).error.code], [400, -32600]);
+  const empty = await post('/mcp', '');
+  assert.deepEqual([empty.status, (await empty.json()).error.code], [400, -32600]);
+  const prim = await post('/mcp', '123');
+  assert.deepEqual([prim.status, (await prim.json()).error.code], [400, -32600]);
   assert.equal((await post('/mcp', '{not json')).status, 400);
   assert.equal((await post('/mcp', JSON.stringify({ pad: 'x'.repeat(600 * 1024) })).catch(() => ({ status: 413 }))).status, 413);
 });
@@ -54,8 +58,10 @@ test('EDITOR_MCP_RPS limits a caller; a metadata FC_APP_URL refuses to start', a
   for (let i = 0; i < 3; i++) statuses.push((await one()).status);
   assert.deepEqual(statuses, [200, 200, 429]);
   child.kill();
-  const bad = spawnSync(process.execPath, [HTTP], { env: { ...process.env, EDITOR_MCP_TOKEN: TOKEN, FC_APP_URL: 'http://169.254.169.254/' }, encoding: 'utf8' });
-  assert.equal(bad.status, 2);
+  for (const url of ['http://169.254.169.254/', 'http://[fd00:ec2::254]/', 'http://[::ffff:169.254.169.254]/']) {
+    const bad = spawnSync(process.execPath, [HTTP], { env: { ...process.env, EDITOR_MCP_TOKEN: TOKEN, FC_APP_URL: url }, encoding: 'utf8' });
+    assert.equal(bad.status, 2, url);
+  }
 });
 
 test('a short EDITOR_MCP_TOKEN refuses to start', () => {

@@ -12,8 +12,8 @@ const PORT = +(process.env.EDITOR_MCP_PORT ?? 3100), TOKEN = process.env.EDITOR_
 function appOrigin(raw) {
   let u;
   try { u = new URL(raw); } catch { console.error('FC_APP_URL is not a URL'); process.exit(2); }
-  const host = u.hostname;
-  if ((u.protocol !== 'http:' && u.protocol !== 'https:') || u.username || u.password || host === '169.254.169.254' || host === 'metadata.google.internal' || host === '0.0.0.0') {
+  const h = u.hostname;
+  if ((u.protocol !== 'http:' && u.protocol !== 'https:') || u.username || u.password || h === '0.0.0.0' || h === '[::]' || h === 'metadata.google.internal' || h === '100.100.100.200' || h === '[fd00:ec2::254]' || h.startsWith('169.254.') || h.includes('a9fe:a9fe')) {
     console.error('FC_APP_URL must be http(s) with no credentials, and not a metadata address'); process.exit(2);
   }
   return u.origin;
@@ -51,6 +51,7 @@ const http = createServer(async (req, res) => {
     const msg = await body(req);
     // one JSON-RPC message per request: a batch of 100 check_entity calls would hold the event loop for half a minute
     if (Array.isArray(msg)) return send(res, 400, rpcError(-32600, 'batches are not accepted – one message per request'));
+    if (!msg || typeof msg !== 'object') return send(res, 400, rpcError(-32600, 'expected a JSON-RPC message object'));
     const server = buildServer(new HttpBackend(APP, String(req.headers['x-fc-job'] ?? ''))), transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
     res.on('close', () => { transport.close(); server.close(); });
     await server.connect(transport);
@@ -62,4 +63,5 @@ const http = createServer(async (req, res) => {
   }
 });
 http.requestTimeout = 30_000; http.headersTimeout = 10_000;   // a slow client never pins a socket for Node's 300 s default
+for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { http.close(() => process.exit(0)); setTimeout(() => process.exit(0), 2000).unref(); });
 http.listen(PORT, () => log('entity MCP listening', { port: PORT, app: APP }));

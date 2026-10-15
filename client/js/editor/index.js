@@ -24,11 +24,12 @@ export function mountEditor(viewer) {
   };
   st.preview = config => { try { viewer.preview(config); } catch (e) { status(`preview failed: ${e.message}`, true); } };
   st.publish = async revisionId => {
-    const { message } = await post(`entities/${encodeURIComponent(st.entityId)}/publish/challenge`, { revisionId });
+    const id = st.entityId;
+    const { message } = await post(`entities/${encodeURIComponent(id)}/publish/challenge`, { revisionId });
     // sign only a text that names THIS host, this entity and this revision (the wallet shows it too; a defence in depth against a swapped answer)
-    if ((onStorybook && !message.startsWith(`${location.host} `)) || !message.includes(`PUBLISH 3D model ${st.entityId} `) || !message.includes(`(${revisionId})`)) throw new Error('the publish text does not match what you clicked – not signed');
+    if ((onStorybook && !message.startsWith(`${location.host} `)) || !message.includes(`PUBLISH 3D model ${id} `) || !message.includes(`(${revisionId})`)) throw new Error('the publish text does not match what you clicked – not signed');
     const signature = await sign(message);
-    const r = await post(`entities/${encodeURIComponent(st.entityId)}/publish`, { revisionId, signature });
+    const r = await post(`entities/${encodeURIComponent(id)}/publish`, { revisionId, signature });
     await viewer.reload(); await st.loadHead(); status(`published – bundle ${r.rev}`);
   };
 

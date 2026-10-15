@@ -4,7 +4,7 @@ import type { TransactionHandle } from '../shared/transaction.port.js';
 /** `asset.EditorJob` + `asset.EditorJobEvent`: jobs and their append-only events (seq 1, 2, … per job). */
 export abstract class EditorJobRepositoryPort {
   abstract insert(job: EditorJobRecord): Promise<void>;
-  abstract find(id: string): Promise<EditorJobRecord | null>;
+  abstract find(id: string, tx?: TransactionHandle): Promise<EditorJobRecord | null>;
   /** newest first */
   abstract list(filter: { wallet?: string; entityId?: string; limit: number }): Promise<EditorJobRecord[]>;
   /** status / result fields; `from` = only when the job is still in one of these statuses (true when it moved) */

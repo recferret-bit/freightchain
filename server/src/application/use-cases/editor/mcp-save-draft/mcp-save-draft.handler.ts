@@ -26,13 +26,14 @@ export class McpSaveDraftHandler implements ICommandHandler<McpSaveDraftCommand,
   ) {}
 
   async execute({ jobId, entityId, source, message }: McpSaveDraftCommand): Promise<RevisionDto> {
-    const job = await this.jobs.find(jobId);
-    if (!job) throw new NotFoundError('no such job', 'job_not_found');
-    const head = (await this.catalog.heads()).get(entityId);
     let kind: string | null = null;
     try { const k = (parseSource(source) as { kind?: unknown }).kind; kind = typeof k === 'string' ? k : null; } catch { /* the write service refuses it with the reasons */ }
     return this.transactions.run(async (tx) => {
-      await this.jobs.lock(job.id, tx);
+      await this.jobs.lock(jobId, tx);
+      const job = await this.jobs.find(jobId, tx);
+      if (!job) throw new NotFoundError('no such job', 'job_not_found');
+      if (job.status !== 'running') throw new ForbiddenError('this job is no longer running', 'job_closed');
+      const head = (await this.catalog.heads()).get(entityId);
       const created = (await this.jobs.createdIds(job.id, tx)).filter((id) => id !== job.entityId);
       if (!mayWrite(job, entityId, { exists: !!head, kind, headJobId: head?.revision?.jobId ?? null }, created)) {
         throw new ForbiddenError(job.entityId ? `this request may change '${job.entityId}' (or add up to ${MAX_NEW_ENTITIES_PER_JOB} new parts), not '${entityId}'` : `this request may only create new entities (up to ${MAX_NEW_ENTITIES_PER_JOB}), not change '${entityId}'`, 'job_scope');

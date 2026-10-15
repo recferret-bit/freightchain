@@ -24,13 +24,15 @@ export function mountHistory(st) {
     }
   }
   async function pick(r, row, preview = true) {
-    picked = r.id; for (const x of list.children) x.classList.remove('on'); row.classList.add('on');
+    const id = st.entityId;
+    picked = r.id; for (const x of list.children) { x.classList.remove('on'); x.querySelector('.ed-row')?.remove(); } row.classList.add('on');
     try {
       const full = await get(`revisions/${r.id}`);
+      if (!row.isConnected || picked !== r.id || st.entityId !== id) return;
       if (preview) { st.preview(full.config); st.status(`previewing #${r.seq}`); }
-      if (!row.isConnected) return;
-      const acts = el('div', { class: 'ed-row' },
-        el('button', { class: 'ed-btn', disabled: r.head, onclick: () => post(`entities/${encodeURIComponent(st.entityId)}/restore`, { revisionId: r.id, baseRevisionId: st.head?.row?.headRevisionId ?? null }).then(() => { st.status(`#${r.seq} restored as the head`); return st.loadHead(); }).catch(e => st.status(e.message, true)) }, 'RESTORE'),
+      row.querySelector('.ed-row')?.remove();
+      const acts = el('div', { class: 'ed-row', onclick: e => e.stopPropagation() },
+        el('button', { class: 'ed-btn', disabled: r.head, onclick: () => post(`entities/${encodeURIComponent(id)}/restore`, { revisionId: r.id, baseRevisionId: st.head?.row?.headRevisionId ?? null }).then(() => { st.status(`#${r.seq} restored as the head`); return st.loadHead(); }).catch(e => st.status(e.message, true)) }, 'RESTORE'),
         el('button', { class: 'ed-btn ed-pub', disabled: r.published, onclick: () => confirmPublish(r) }, 'PUBLISH'),
         el('button', { class: 'ed-btn', onclick: () => showDiff(full) }, 'DIFF vs HEAD'));
       row.append(acts);
