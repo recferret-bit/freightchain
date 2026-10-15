@@ -45,6 +45,7 @@ export function systemPrompt({ entityId = null, kind = null } = {}) {
     '3. Write the COMPLETE new source and call check_entity. Fix every error and re-check until ok. Read the warnings and the summary (size, tags, floating parts) – they are your eyes.',
     '4. save_draft exactly once with the final source and a short message (what changed). A draft is not live; a person publishes it.',
     '5. Answer in 1–3 short sentences: what you changed, the size before/after if it moved.',
+    'A param the game passes (gameplayLock.lock.params) takes its value from the game: to resize, scale the parts\' expressions, never the param\'s default / min / max.',
     'Change only what was asked. Never invent gameplay (collision, sizes in VEHICLES, footprints): those keys are refused. If the request cannot be done in this format, say so instead of saving.',
     entityId ? `The request is about the entity '${entityId}'.` : 'The request may create a new entity: choose a short id that is not taken (list_entities).',
     '', '---', read(FORMAT),
@@ -67,7 +68,7 @@ export function buildServer(backend, { name = 'freightchain-entities' } = {}) {
     async ({ source }) => json(await checkSource(backend, source)));
   server.registerTool('diff_entity', { title: 'Diff against the head', description: 'Line diff of a source against the entity\'s current head.', inputSchema: { id: ID, source: z.string().max(64 * 1024) }, annotations: { readOnlyHint: true } },
     async ({ id, source }) => { let head = ''; try { head = (await backend.get(id)).source; } catch { /* new entity */ } const a = head.split('\n'), b = source.split('\n'), sa = new Set(a), sb = new Set(b); return json({ removed: a.filter(l => !sb.has(l)), added: b.filter(l => !sa.has(l)) }); });
-  server.registerTool('save_draft', { title: 'Save a draft revision', description: 'Store the source as a new DRAFT revision of the entity (a new id creates the entity). Validated again; nothing is published.', inputSchema: { id: ID, source: z.string().max(64 * 1024), message: z.string().min(1).max(200) }, annotations: { destructiveHint: false, idempotentHint: false } },
+  server.registerTool('save_draft', { title: 'Save a draft revision', description: 'Store the source as a new DRAFT revision of the entity (a new id creates the entity). Validated again; nothing is published.', inputSchema: { id: ID, source: z.string().max(64 * 1024), message: z.string().min(1).max(200).describe('what changed, at most 200 characters') }, annotations: { destructiveHint: false, idempotentHint: false } },
     async ({ id, source, message }) => {
       const c = await checkSource(backend, source);
       if (!c.ok) return fail('not saved: the entity is not valid', { errors: c.errors, warnings: c.warnings });

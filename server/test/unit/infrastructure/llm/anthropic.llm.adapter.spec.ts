@@ -14,7 +14,7 @@ function fakeClient(answers: unknown[]) {
 describe('AnthropicLlmSession', () => {
   it('the official API: beta stream with the refusal fallback, adaptive thinking, high effort, auto tools, cached system + last tool', async () => {
     const { calls, client } = fakeClient([msg([{ type: 'text', text: 'ok' }], 'end_turn')]);
-    const turn = await new AnthropicLlmSession(client, opts(), false).send('hello');
+    const turn = await new AnthropicLlmSession(client, opts()).send('hello');
     expect(turn).toEqual({ text: 'ok', toolCalls: [], stop: 'end', usage: { in: 13, out: 5 } });
     const p = calls[0]!.params;
     expect(calls[0]!.beta).toBe(true);
@@ -26,7 +26,7 @@ describe('AnthropicLlmSession', () => {
   it('history is append-only: the assistant content (thinking included) goes back unchanged; all tool results in ONE user message', async () => {
     const thinking = { type: 'thinking', thinking: 'hmm', signature: 'SIG' };
     const { calls, client } = fakeClient([msg([thinking, { type: 'tool_use', id: 't1', name: 'a', input: { x: 1 } }, { type: 'tool_use', id: 't2', name: 'b', input: {} }], 'tool_use'), msg([{ type: 'text', text: 'done' }], 'end_turn')]);
-    const s = new AnthropicLlmSession(client, opts(), false);
+    const s = new AnthropicLlmSession(client, opts());
     const t1 = await s.send('go');
     expect([t1.stop, t1.toolCalls]).toEqual(['tool', [{ id: 't1', name: 'a', input: { x: 1 } }, { id: 't2', name: 'b', input: {} }]]);
     await s.sendToolResults([{ id: 't1', content: 'r1', isError: false }, { id: 't2', content: 'bad', isError: true }]);
@@ -39,27 +39,20 @@ describe('AnthropicLlmSession', () => {
   it('pause_turn continues by itself; refusal and max_tokens run no tools', async () => {
     const { calls, client } = fakeClient([msg([{ type: 'text', text: 'a' }], 'pause_turn'), msg([{ type: 'text', text: 'b' }], 'end_turn'),
       msg([{ type: 'tool_use', id: 't', name: 'a', input: {} }], 'refusal', { stop_details: { category: 'cyber' } }), msg([{ type: 'tool_use', id: 't', name: 'a', input: {} }], 'max_tokens')]);
-    const s = new AnthropicLlmSession(client, opts(), false);
+    const s = new AnthropicLlmSession(client, opts());
     expect(await s.send('x')).toMatchObject({ text: 'ab', stop: 'end', usage: { in: 26, out: 10 } });
     expect(calls).toHaveLength(2);
     expect(await s.send('y')).toMatchObject({ stop: 'refusal', toolCalls: [], detail: 'the model declined (cyber)' });
     expect(await s.send('z')).toMatchObject({ stop: 'max_tokens', toolCalls: [] });
   });
 
-  it('z.ai (compat): the plain stream, no thinking / effort / fallbacks', async () => {
-    const { calls, client } = fakeClient([msg([], 'end_turn')]);
-    await new AnthropicLlmSession(client, opts({ provider: 'zai', model: 'glm-5.2' }), true).send('x');
-    expect(calls[0]!.beta).toBe(false);
-    for (const k of ['thinking', 'output_config', 'betas', 'fallbacks']) expect(calls[0]!.params).not.toHaveProperty(k);
-  });
-
   it('provider errors become a sentence by their SDK class; an abort is rethrown', async () => {
     const rate = new Anthropic.RateLimitError(429, { type: 'error' }, 'slow down', new Headers());
     const { client } = fakeClient([rate]);
-    expect(await new AnthropicLlmSession(client, opts(), false).send('x')).toMatchObject({ stop: 'error', detail: 'rate limited by the provider – try again in a minute' });
+    expect(await new AnthropicLlmSession(client, opts()).send('x')).toMatchObject({ stop: 'error', detail: 'rate limited by the provider – try again in a minute' });
     expect(anthropicErrorText(new Anthropic.AuthenticationError(401, {}, 'nope', new Headers()))).toBe('the provider refused the API key');
     const abort = new Anthropic.APIUserAbortError();
-    await expect(new AnthropicLlmSession(fakeClient([abort]).client, opts(), false).send('x')).rejects.toBe(abort);
+    await expect(new AnthropicLlmSession(fakeClient([abort]).client, opts()).send('x')).rejects.toBe(abort);
     expect(anthropicErrorText(new Error('bug'))).toBeNull();
   });
 });

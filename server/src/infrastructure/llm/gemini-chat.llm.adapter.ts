@@ -1,8 +1,8 @@
 import type { LlmOpenOptions, LlmSession, LlmToolResult, LlmTurn } from '../../application/ports/editor/llm-provider.port.js';
 import { openAiErrorText, parseArgs } from './openai-responses.llm.adapter.js';
 
-/* Gemini through its OpenAI-compatible Chat Completions endpoint (the openai SDK with Google's base URL). The assistant message goes back exactly as
-   it came – Gemini 3 puts each tool call's thought signature into it (extra_content), and needs it back. Tool results are role 'tool' messages. */
+/* Chat Completions through the openai SDK: Gemini (Google's OpenAI-compatible endpoint) and z.ai (GLM, ZAI_BASE_URL). The assistant message goes back exactly as
+   it came – Gemini 3 puts each tool call's thought signature into it (extra_content), GLM its reasoning_content – both want it back. Tool results are role 'tool' messages. */
 
 export const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/';
 type ChatMessage = { role: string; content: string | null; tool_calls?: { id: string; type: string; function: { name: string; arguments: string } }[]; refusal?: string | null };
@@ -11,7 +11,7 @@ export interface ChatClientLike {
   chat: { completions: { create(params: unknown, options: { signal: AbortSignal }): Promise<unknown> } };
 }
 
-export class GeminiChatSession implements LlmSession {
+export class ChatCompletionsSession implements LlmSession {
   private readonly messages: unknown[];
 
   constructor(private readonly client: ChatClientLike, private readonly o: LlmOpenOptions) {

@@ -143,7 +143,7 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       ZAI_API_KEY: ${ZAI_API_KEY:-}
-      ZAI_BASE_URL: ${ZAI_BASE_URL:-https://api.z.ai/api/anthropic}
+      ZAI_BASE_URL: ${ZAI_BASE_URL:-https://api.z.ai/api/paas/v4}
       EDITOR_DEFAULT_PROVIDER: ${EDITOR_DEFAULT_PROVIDER:-}
       EDITOR_MODEL_ANTHROPIC: ${EDITOR_MODEL_ANTHROPIC:-}
       EDITOR_MODEL_OPENAI: ${EDITOR_MODEL_OPENAI:-}

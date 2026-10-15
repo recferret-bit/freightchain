@@ -92,6 +92,7 @@ Any number may be a string expression: `'h * 0.45'`, `'-len / 2 + 1.4'`, `'hi ? 
 Gameplay lives in code. The validator refuses any change to it.
 
 - **Collision.** The collision kind and size of each placed prop and furniture piece, and the params and slots the game passes, are in the roster. Keep those params and slots.
+- **Params the game passes** (`gameplayLock.lock.params` from `get_entity`; for a vehicle `len`, `w`, `h`) get their values from the game, so their `default`, `min` and `max` change nothing in the game or in the viewer's route models. To make a placed model bigger, smaller, taller or thinner, scale the parts' expressions instead (`s: [0.32, 'h * 1.3', 0.32]`, `at: [0, 'h * 1.3 / 2', 0]`). The collider stays the roster's size.
 - **Landmarks.** Their footprints (`hl`, `hd`) and their order are fixed. Keep a building inside its footprint.
 - **Vehicles.**
   - A vehicle's size is the `VEHICLES` table, passed in as `len`, `w`, `h`. The body must stay inside that box, ±10 cm.

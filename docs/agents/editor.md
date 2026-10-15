@@ -103,9 +103,9 @@ Throttle bucket `editor` (`THROTTLE_EDITOR_LIMIT`) counts per editor wallet, els
 | provider | adapter | notes |
 |---|---|---|
 | `anthropic` | `anthropic.llm.adapter.ts` | `messages.stream(…).finalMessage()` per turn, adaptive thinking, effort high, `tool_choice` auto. Cached system block and last tool. Thinking blocks go back unchanged; tool results go back in one user message; `pause_turn` continues. On the official API, claude-opus-5-5 / claude-sonnet-5-5 / claude-fable-5-1 use the beta stream with `server-side-fallback-2026-07-01` and `fallbacks: 'default'`. Default `claude-opus-5-5` |
-| `zai` | the same class, `compat` | `ZAI_BASE_URL` (Anthropic-compatible); no thinking, effort, fallbacks or betas. Default `glm-5.2` |
 | `openai` | `openai-responses.llm.adapter.ts` | Responses API, function tools, `store: false` with encrypted reasoning; output items go back as input, results as `function_call_output`. Default `gpt-6` (an env default; verify against OpenAI's model list) |
-| `gemini` | `gemini-chat.llm.adapter.ts` | the openai SDK's Chat Completions against Google's OpenAI-compatible endpoint. The assistant message (thought signatures) goes back unchanged; results are role `tool`. Default `gemini-3.1-pro-preview` |
+| `gemini` | `gemini-chat.llm.adapter.ts` (`ChatCompletionsSession`) | the openai SDK's Chat Completions against Google's OpenAI-compatible endpoint. The assistant message (thought signatures) goes back unchanged; results are role `tool`. Default `gemini-3.1-pro-preview` |
+| `zai` | the same class | Chat Completions at `ZAI_BASE_URL` (default the pay-as-you-go `https://api.z.ai/api/paas/v4`; a GLM Coding Plan key: `https://api.z.ai/api/coding/paas/v4`). The assistant message (with GLM's `reasoning_content`) goes back unchanged. Default `glm-5.2` (checked against z.ai's model list 2026-10-15) |
 | `fake` | `fake.llm.adapter.ts` | TEST ONLY: `NODE_ENV=test`, or `EDITOR_FAKE_LLM=1` outside production (the schema refuses it in production). A scripted get_entity → check_entity (a `note: 'fake edit: …'` line) → save_draft → "done (fake)", so a browser e2e can drive a real job through the real MCP |
 
 Provider errors are mapped by the SDKs' error classes to a sentence; a key never appears in an event or a log.

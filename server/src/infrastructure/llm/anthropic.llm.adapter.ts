@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { LlmOpenOptions, LlmSession, LlmToolResult, LlmTurn } from '../../application/ports/editor/llm-provider.port.js';
 
-/* Claude through the Messages API (and z.ai's Anthropic-compatible endpoint with `compat`). A manual tool loop: every turn streams one message
+/* Claude through the Messages API. A manual tool loop: every turn streams one message
    (`messages.stream(…).finalMessage()` – no HTTP timeouts on long thinking), the assistant content is appended to the history UNCHANGED (adaptive
    thinking blocks must go back as they came), tool results go back as ONE user message. Prompt caching: the system prompt is one cached text block
    and the LAST tool definition carries cache_control (tools are sorted by the caller, so the prefix is stable). */
@@ -36,7 +36,7 @@ export function anthropicErrorText(e: unknown): string | null {
 export class AnthropicLlmSession implements LlmSession {
   private readonly messages: { role: 'user' | 'assistant'; content: unknown }[] = [];
 
-  constructor(private readonly client: AnthropicClientLike, private readonly o: LlmOpenOptions, private readonly compat: boolean) {}
+  constructor(private readonly client: AnthropicClientLike, private readonly o: LlmOpenOptions) {}
 
   send(text: string): Promise<LlmTurn> {
     this.messages.push({ role: 'user', content: text });
@@ -58,13 +58,13 @@ export class AnthropicLlmSession implements LlmSession {
       tool_choice: { type: 'auto' },   // a forced tool choice is a 400 with adaptive thinking
       messages: this.messages,
     };
-    if (!this.compat) { params['thinking'] = { type: 'adaptive' }; params['output_config'] = { effort: 'high' }; }
+    params['thinking'] = { type: 'adaptive' }; params['output_config'] = { effort: 'high' };
     return params;
   }
 
   private async call(): Promise<Message> {
     const options = { signal: this.o.signal };
-    if (!this.compat && FALLBACK_MODELS.has(this.o.model)) return (await this.client.beta.messages.stream({ ...this.params(), betas: [FALLBACK_BETA], fallbacks: 'default' }, options).finalMessage()) as Message;
+    if (FALLBACK_MODELS.has(this.o.model)) return (await this.client.beta.messages.stream({ ...this.params(), betas: [FALLBACK_BETA], fallbacks: 'default' }, options).finalMessage()) as Message;
     return (await this.client.messages.stream(this.params(), options).finalMessage()) as Message;
   }
 
@@ -92,6 +92,6 @@ export class AnthropicLlmSession implements LlmSession {
   }
 }
 
-export function anthropicClient(apiKey: string, baseURL?: string): AnthropicClientLike {
-  return new Anthropic({ apiKey, ...(baseURL ? { baseURL } : {}), maxRetries: 2 }) as unknown as AnthropicClientLike;
+export function anthropicClient(apiKey: string): AnthropicClientLike {
+  return new Anthropic({ apiKey, maxRetries: 2 }) as unknown as AnthropicClientLike;
 }

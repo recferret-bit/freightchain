@@ -96,7 +96,7 @@ export const envSchema = z
     OPENAI_API_KEY: optional(z.string().min(8)),
     GEMINI_API_KEY: optional(z.string().min(8)),
     ZAI_API_KEY: optional(z.string().min(8)),
-    ZAI_BASE_URL: z.string().url().default('https://api.z.ai/api/anthropic'), // z.ai's Anthropic-compatible endpoint
+    ZAI_BASE_URL: z.string().url().default('https://api.z.ai/api/paas/v4'), // z.ai's OpenAI-compatible endpoint (pay as you go); the GLM Coding Plan: https://api.z.ai/api/coding/paas/v4
     EDITOR_DEFAULT_PROVIDER: optional(z.enum(['anthropic', 'openai', 'gemini', 'zai', 'fake'])), // unset / not enabled = the first enabled one
     EDITOR_MODEL_ANTHROPIC: optional(z.string().min(1).max(100)), // default claude-opus-5-5
     EDITOR_MODEL_OPENAI: optional(z.string().min(1).max(100)), // default gpt-6

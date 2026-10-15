@@ -149,7 +149,7 @@ The admin API additionally requires: host = `admin.<apex>` (nginx basic auth, `D
 | `EDITOR_MCP_TOKEN` | empty | ≥ 24 chars, **secret**, shared with the `mcp` service (`npm run deploy:init` generates it). Empty = no AI editor (`/me` offers no provider, a job is a 503, release.sh does not start `mcp`) |
 | `EDITOR_MCP_URL` | `http://127.0.0.1:3100` | the entity MCP (prod compose: `http://mcp:3100`); `npm run editor:mcp` runs it locally |
 | `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GEMINI_API_KEY` / `ZAI_API_KEY` | empty | **Secrets.** A provider is offered when its key is set |
-| `ZAI_BASE_URL` | `https://api.z.ai/api/anthropic` | z.ai's Anthropic-compatible endpoint |
+| `ZAI_BASE_URL` | `https://api.z.ai/api/paas/v4` | z.ai's OpenAI-compatible endpoint (pay as you go); a GLM Coding Plan key uses `https://api.z.ai/api/coding/paas/v4` |
 | `EDITOR_DEFAULT_PROVIDER` | empty | `anthropic` / `openai` / `gemini` / `zai` / `fake`; empty or not enabled = the first enabled |
 | `EDITOR_MODEL_ANTHROPIC` / `_OPENAI` / `_GEMINI` / `_ZAI` | `claude-opus-5-5` / `gpt-6` / `gemini-3.1-pro-preview` / `glm-5.2` | model id defaults – check them when a provider renames a model |
 | `EDITOR_JOB_TIMEOUT_MS` | `600000` | 10 s – 1 h; a longer job is aborted, one left by a restart is failed |
