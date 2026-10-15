@@ -1,0 +1,82 @@
+{
+  "solanaLimits": {
+    "u64Max": "18446744073709551615",
+    "maxNameBytes": 32,
+    "minNameLength": 2,
+    "maxSymbolLength": 10,
+    "recommendedSymbolMin": 3,
+    "recommendedSymbolMax": 6,
+    "standardDecimals": [6, 9],
+    "maxAllowedDecimals": 9,
+    "minLiquidityToImcPct": 12,
+    "healthyTgeFloatMinPct": 10,
+    "healthyTgeFloatMaxPct": 45,
+    "maxInsiderAllocationPct": 30,
+    "minTeamCliffMonths": 12,
+    "minTeamVestingMonths": 24,
+    "maxMonthlyUnlockShockPctOfFloat": 12,
+    "targetSinkToFaucetRatio": 1.0
+  },
+  "dimensions": [
+    {
+      "id": "identity_tech",
+      "name": "1. Identity & On-Chain Technicals",
+      "weight": 10,
+      "focus": "Name (<=32B), Ticker (3-6 chars), Decimals (6 or 9), u64 supply*10^decimals bound, SPL/Token-2022 extensions, Mint/Freeze/Update authorities, Arweave/IPFS metadata URI"
+    },
+    {
+      "id": "project_fit",
+      "name": "2. Main Project & General Coin Fit",
+      "weight": 12,
+      "focus": "Organic integration with Freight Chain (SOL escrow preservation, 10 Hz anti-cheat & 28 m/s governor integrity, no pay-to-win, live spectator hazards, garage cosmetics, cNFT badges)"
+    },
+    {
+      "id": "utility",
+      "name": "3. Token Utility & Value Accrual",
+      "weight": 12,
+      "focus": "Intrinsic sinks vs forced friction: spectator road hazards, garage customization, seasonal pass/bonds, Blinks tipping, governance boundaries"
+    },
+    {
+      "id": "tokenomics",
+      "name": "4. Tokenomics, Allocations & Vesting",
+      "weight": 12,
+      "focus": "100% allocation sum, insider cap (<=30%), TGE float vs FDV (10-45%), 12m+ cliffs, 24-36m linear vesting on Streamflow/Anchor, LP lock/burn & depth"
+    },
+    {
+      "id": "supply",
+      "name": "5. Short-Term Supply & Launch Mechanics",
+      "weight": 8,
+      "focus": "TGE circulating supply composition, anti-snipe/bundle protection, Meteora DLMM / Raydium CPMM setup, step-unlock shock control"
+    },
+    {
+      "id": "demand",
+      "name": "6. Demand Drivers & Velocity Control",
+      "weight": 10,
+      "focus": "Multi-persona demand (drivers, spectators, sponsors, collectors), token velocity dampeners, sink stickiness vs hot-potato dumping"
+    },
+    {
+      "id": "mint_burn",
+      "name": "7. Minting & Burning Strategy",
+      "weight": 12,
+      "focus": "Pre-minted bounded vault vs live minting, skill-gated faucets, cryptographic SPL burn vs reward-pool recycle split, USD/SOL TWAP dynamic sink pricing"
+    },
+    {
+      "id": "hype",
+      "name": "8. Hype & Viral Narrative Engine",
+      "weight": 8,
+      "focus": "5-second CT hook, high-stakes spectator clip generation, Solana Blinks (/r/:id receipts), seasonal tournament catalysts"
+    },
+    {
+      "id": "marketing",
+      "name": "9. Marketing & Go-To-Market Strategy",
+      "weight": 8,
+      "focus": "Short-form video loop (YouTube Shorts/X/TikTok), streamer hazard gauntlets, free-ride-to-wallet funnel, anti-dump KOL vesting discipline"
+    },
+    {
+      "id": "long_term",
+      "name": "10. Long-Term Supply & Demand Equilibrium",
+      "weight": 8,
+      "focus": "36-month net issuance trajectory, Sink-to-Faucet coverage >=1.0x, 80% bear-market drawdown & 10x price-spike stress resilience"
+    }
+  ]
+}
