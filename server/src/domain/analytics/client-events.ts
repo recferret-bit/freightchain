@@ -94,8 +94,8 @@ const ALLOW: Record<ClientEventName, readonly string[]> = {
   leaderboard_filtered: ['board'],
   pending_ride_shown: ['ride_id', 'tier_id'],
   pending_ride_start_clicked: ['ride_id'],
-  ride_paused: ['source'],
-  ride_unpaused: ['source'],
+  ride_paused: ['via'],
+  ride_unpaused: ['via'],
   ride_end_requested: ['outcome', 'client_complete', 'fail_code'],
   cab_chain_link_clicked: ['link'],
   ride_share_clicked: ['surface', 'link', 'ride_id'],
@@ -112,10 +112,10 @@ const ALLOW: Record<ClientEventName, readonly string[]> = {
   garage_part_clicked: ['slot', 'item', 'owned'],
   /* value is ms, except CLS where it is the score × 1000 (0.1 → 100). The relay only accepts integers. */
   web_vital: ['surface', 'metric', 'value', 'rating', 'navigation'],
-  /* the pitch deck (pitchdeck.<apex>): the landing footer's link click; one open per load (source = landing / whitepaper / homescreen / direct / other, src = the link's own ?src= tag); the FIRST view of each slide per load (via = load / key / button / swipe / hash);
-     the visible time on a slide in ms (sent when the slide changes or the page is left); the first use of each toy per load (what = donate / adopt / tier / coin_drag / exit_sign / honk / lane / card / plan_bar / fullscreen / install_hint) */
+  /* the pitch deck (pitchdeck.<apex>): the landing footer's link click; one open per load (from = landing / whitepaper / homescreen / direct / other — `source` is the relay's client/server plane — src = the link's own ?src= tag); the FIRST view of each slide per load (via = load / key / button / swipe / hash);
+     the visible time on a slide in ms (sent when the slide changes or the page is left); the first use of each toy per load (what = donate / adopt / tier / coin_drag / split / exit_sign / honk / lane / card / plan_bar / fullscreen / install_hint) */
   pitchdeck_link_clicked: ['surface'],
-  pitchdeck_viewed: ['surface', 'source', 'src', 'touch', 'standalone'],
+  pitchdeck_viewed: ['surface', 'from', 'src', 'touch', 'standalone'],
   pitchdeck_slide_viewed: ['slide', 'index', 'via'],
   pitchdeck_slide_time: ['slide', 'index', 'ms'],
   pitchdeck_interaction: ['slide', 'what'],

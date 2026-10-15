@@ -10,14 +10,11 @@ Paid entries are SOL on Solana devnet. The program holds the money. There is no 
 
 <!-- traction:start -->
 
-Public numbers for a reviewer, read 2026-10-15 06:01 UTC. Each headline was fetched three times. A partial page, a deleted post, a repost, a premiere, or a count the second source did not support is not in a headline. Links go to the page the number was read from.
+Public numbers for a reviewer, read 2026-10-15 06:01 UTC. PostHog and the public stats endpoint were each read more than once. A count the second read did not support is not in a headline.
 
 <table><tr>
-<td align="center" width="20%"><h2>733</h2><b>YouTube views read</b><br>5 videos · 9 subscribers<br><a href="https://www.youtube.com/@FreightChainGame">@FreightChainGame</a></td>
-<td align="center" width="20%"><h2>—</h2><b>X posts</b><br><a href="https://x.com/FreightChainSol">@FreightChainSol</a></td>
-<td align="center" width="20%"><h2>—</h2><b>X views on public posts</b><br>0 of — posts have a public view count</td>
-<td align="center" width="20%"><h2>32</h2><b>shifts started</b><br>6 finished · <a href="https://freightchain.fun/api/stats">api/stats</a></td>
-<td align="center" width="20%"><h2>27.9 km</h2><b>driven</b><br>2 drivers · 5 crashes</td>
+<td align="center" width="50%"><h2>32</h2><b>shifts started</b><br>6 finished · <a href="https://freightchain.fun/api/stats">api/stats</a></td>
+<td align="center" width="50%"><h2>27.9 km</h2><b>driven</b><br>2 drivers · 5 crashes</td>
 </tr>
 <tr>
 <td align="center" width="20%"><h2>147</h2><b>landing people</b><br>PostHog · 8 Oct 2026 through 2026-10-15 UTC</td>
@@ -28,30 +25,6 @@ Public numbers for a reviewer, read 2026-10-15 06:01 UTC. Each headline was fetc
 </tr></table>
 
 The second row is PostHog Cloud EU, project 297915. Probe events (`surface=prod-check`) are out. Ride counts are `source=server`. Demo wallets are separate from real ones. Client `ride_completed` is not counted.
-
-YouTube channel About says 2,675 views. channel About count is higher than the videos that were listed. The headline is the sum of the videos below.
-X total withheld: mirrors-disagree.
-
-### YouTube
-
-Watch-page `viewCount` for every video on the Videos and Shorts tabs. The grid count had to land within 5%.
-
-| Video | Views |
-| --- | ---: |
-| [Rating every road 1–10](https://www.youtube.com/watch?v=3xCB4uJ_SAw) | 397 |
-| [The doom guys left 0x5f3759df in this truck](https://www.youtube.com/watch?v=WqdnKa8VjWQ) | 168 |
-| [Boss levels: 3 min, 5 min, 15 min, 1 hour](https://www.youtube.com/watch?v=2usi9vHQ-Z0) | 120 |
-| [FreightChain: The Road Never Ends. Your Shift Does.](https://www.youtube.com/watch?v=cFyQ9XlN5nQ) | 36 |
-| [Freight Chain: What We Built for Colosseum (in 59 seconds)](https://www.youtube.com/watch?v=QiH7NEoWH48) | 12 |
-| **Sum** | **733** |
-
-Left out: hgXhGdLwSvE (unavailable), oJ6UpOxY-l8 (unavailable).
-
-### X
-
-Profile post count is the number both public mirrors returned. View counts are the posts tab, checked against the status endpoint.
-
-No public post passed the checks.
 
 ### The product
 
@@ -136,7 +109,7 @@ On 13 Oct twelve AI auditors from four vendors attacked six surfaces in pairs, b
 | 14 Oct | Watch: one X post after a locked pledge | A sponsor can share who they backed | Next deploy |
 | 14 Oct | Sound: WAV and mp3 checks pinned; a late sample stays audible | No silent effect after a long ride | Next deploy |
 | 14 Oct | Traction: this README's scoreboard refreshed from live social and PostHog reads | Reviewers see current numbers | README |
-| 14–15 Oct | Pitch deck: eight slides on `pitchdeck.freightchain.fun`, a third page of the landing build whose only request is anonymous analytics (page views, slide attraction, toys: PostHog funnel 11); the landing footer links it. The slides are playable: donations drop SOL coins that roll and stack, Web3 adoption pulls them in and pays out fiat, the FREE / 1 H / 4 H / 8 H tiers unhang secret tiers, the 70 / 20 / 10 split opens on hover, six chain cards explain why and how, the plan is a four-month Gantt, and go-to-market is six highway exits (co-founder, advertising, tournaments we fund, streamer deals, paid community creations, HONK listing) with a truck that dodges obstacles, honks, speeds to light speed near the token exit and mines HONK on the way | One link shows the product, the money and the plan, and a viewer can poke the economy instead of reading it | Branch `pitchdeck-host`. Not deployed |
+| 14–15 Oct | Pitch deck: eight slides on `pitchdeck.freightchain.fun`, a third page of the landing build whose only request is anonymous analytics (page views, slide attraction, toys: explainer funnel 11, not a saved insight); the landing footer links it. The slides are playable: donations drop SOL coins that roll and stack, Web3 adoption pulls them in and pays out fiat, the FREE / 1 H / 4 H / 8 H tiers unhang secret tiers, the 70 / 20 / 10 split opens on hover, six chain cards explain why and how, the plan is a four-month Gantt, and go-to-market is six highway exits (co-founder, advertising, tournaments we fund, streamer deals, paid community creations, HONK listing) with a truck that dodges obstacles, honks, speeds to light speed near the token exit and mines HONK on the way | One link shows the product, the money and the plan, and a viewer can poke the economy instead of reading it | Live |
 
 ## Contents
 
@@ -477,8 +450,7 @@ Skills live in `.claude/skills/<name>/`. A coding agent reads that folder's `SKI
 | `posthog-test` | Local analytics smoke: the relay, and one batch accepted by the EU ingest | `bash .claude/skills/posthog-test/smoke.sh` |
 | `posthog-map` | Landing, whitepaper, lobby, and game checks, then a visual map of every event | `bash .claude/skills/posthog-map/run.sh` |
 | `posthog-audit` | Compare the EU insights to the spec and list the fixes. Does not write unless you say to apply | `node .claude/skills/posthog-audit/audit.mjs` |
-| `social-fetch` | X and YouTube post counts and views (@FreightChainSol, @FreightChainGame). Repeats the read and drops a partial page, a tombstone, a repost, or a count the second source does not support | `node .claude/skills/social-fetch/fetch.mjs` |
-| `daily-tracktion-update` | Rewrite the Traction block from social-fetch, the PostHog insight audit, and the public stats API. Does not deploy and does not apply insight fixes | `node .claude/skills/daily-tracktion-update/update.mjs` |
+| `daily-tracktion-update` | Rewrite the Traction block from the PostHog insight audit and the public stats API. Does not deploy and does not apply insight fixes | `node .claude/skills/daily-tracktion-update/update.mjs` |
 | `prod-db` | Production PostgreSQL, read-only: players, rides, verdicts, payments, the review queue | `npm run ops -- query list` · `npm run ops -- query wallet <address>` · `npm run ops -- sql "SELECT …"` |
 | `prod-logs` | Production logs, read-only: the app, Postgres, and nginx | `npm run ops -- logs --since 30m` · `npm run ops -- logs --errors` |
 | `program-check` | The escrow program: reproducible build against the pinned hash, tests on that `.so`, clippy, audit | `npm run program:verify` |

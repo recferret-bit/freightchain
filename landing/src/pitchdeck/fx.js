@@ -115,6 +115,8 @@ export function initPeek() {
 
 /* the 70 / 20 / 10 bar – hover (or tap) a block: every other block runs to the bar's border on ITS side of the picked one and squeezes into it (the farthest first, equally
    far ones together), the picked one slides to the left edge and grows to the full width, then its % gives way to what it means; leaving plays it backwards, nearest first */
+export let onSplit = () => {};   // pitchdeck.js sets it (analytics): hover and tap both open through expand()
+export const setOnSplit = f => { onSplit = f; };
 export function initSplit() {
   const split = deck.querySelector('.split'); if (!split) return;
   const blocks = [...split.children];
@@ -122,6 +124,7 @@ export function initSplit() {
   const later = (ms, f) => timers.push(setTimeout(f, ms));
   const clear = () => { timers.forEach(clearTimeout); timers = []; };
   const expand = i => {
+    onSplit();
     clear(); open = i;
     const bar = split.offsetLeft, far = Math.max(...blocks.map((_, k) => Math.abs(k - i)));
     blocks.forEach((b, k) => {

@@ -1,15 +1,13 @@
 #!/usr/bin/env node
-/** Refresh the README Traction block from social-fetch, posthog-audit, and the public stats API.
+/** Refresh the README Traction block from posthog-audit and the public stats API.
  *  Does not deploy. Does not apply PostHog fixes. Does not print a key. */
 
 import { spawn } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { api, redact, root } from '../posthog-audit/api.mjs';
 import { acceptStats, placeTraction, renderTraction, selfTest, spliceTraction } from './render.mjs';
 
-const here = dirname(fileURLToPath(import.meta.url));
 const readmePath = join(root, 'README.md');
 const outPath = join(root, 'docs/traction/latest.json');
 const JUDGE_FROM = '2026-10-08 00:00:00';
@@ -29,20 +27,6 @@ function runNode(script) {
     child.stderr.on('data', (chunk) => { stderr += chunk; });
     child.on('close', (status) => resolve({ status, stdout, stderr }));
   });
-}
-
-async function readSocial() {
-  const result = await runNode(join(here, '../social-fetch/fetch.mjs'));
-  const text = result.stdout ?? '';
-  const start = text.indexOf('{');
-  if (start < 0) {
-    return { x: { error: 'social-fetch printed no JSON', detail: redact(text).slice(0, 300) }, youtube: { error: 'social-fetch printed no JSON' } };
-  }
-  try {
-    return JSON.parse(text.slice(start));
-  } catch (error) {
-    return { x: { error: error.message }, youtube: { error: error.message } };
-  }
 }
 
 async function stats() {
@@ -136,8 +120,7 @@ const today = new Date();
 const through = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + 1));
 const throughStamp = `${through.toISOString().slice(0, 10)} 00:00:00`;
 
-const [socialReport, statsBody, judge, toDate, auditReport] = await Promise.all([
-  readSocial(),
+const [statsBody, judge, toDate, auditReport] = await Promise.all([
   stats(),
   oneWindow(JUDGE_FROM, JUDGE_TO).catch((error) => ({ error: redact(error.message).slice(0, 240) })),
   oneWindow(JUDGE_FROM, throughStamp).catch((error) => ({ error: redact(error.message).slice(0, 240) })),
@@ -162,15 +145,9 @@ const insights = {
 };
 
 const fetchedAt = new Date().toISOString();
-const social = {
-  x: socialReport.x ?? { error: 'missing' },
-  youtube: socialReport.youtube ?? { error: 'missing' },
-};
-const block = renderTraction({ fetchedAt, social, stats: statsBody, insights });
+const block = renderTraction({ fetchedAt, stats: statsBody, insights });
 const readme = readFileSync(readmePath, 'utf8');
 writeFileSync(readmePath, placeTraction(spliceTraction(readme, block)));
 mkdirSync(dirname(outPath), { recursive: true });
-writeFileSync(outPath, JSON.stringify({ fetchedAt, social, stats: statsBody, insights }, null, 2));
-const yt = social.youtube?.views ?? social.youtube?.coveredViews;
-const xViews = social.x?.views ?? social.x?.coveredViews;
-console.log(`traction ${fetchedAt} youtube=${yt ?? 'none'} xPosts=${social.x?.posts ?? 'none'} xViews=${xViews ?? 'none'} rides=${statsBody?.rides ?? 'none'} audit=${auditReport.fixes ?? 'unread'}`);
+writeFileSync(outPath, JSON.stringify({ fetchedAt, stats: statsBody, insights }, null, 2));
+console.log(`traction ${fetchedAt} rides=${statsBody?.rides ?? 'none'} audit=${auditReport.fixes ?? 'unread'}`);

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Analytics review · pass 2 of 3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../../verified-play/style.css">
+<link rel="stylesheet" href="../analytics.css">
+</head>
+<body>
+<div class="wrap">
+<header>
+  <span class="eyebrow">Freight Chain · analytics review</span>
+  <h1>Pass 2 of 3</h1>
+  <p class="lede">File 11 · 15 Oct 2026. Wiring. The plane marker <code>source</code> no longer eats the pitch-deck arrival or the pause reason.</p>
+  <p class="soft"><a href="../index.html">Product analytics</a> · <a href="10.html">Pass 1</a></p>
+</header>
+
+<section>
+  <h2>What changed</h2>
+  <p>The relay always sets <code>source=client</code>, and the adapter turns any other value into <code>server</code>. Events that reused <code>source</code> for their own meaning now use a different property. Funnel 11 still names the five pitch-deck events. No funnel names a removed event. Server emits were not moved.</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Surface</th><th>Found</th><th>Edited</th></tr></thead>
+      <tbody>
+        <tr><td>Landing</td><td>The footer click still sends <code>pitchdeck_link_clicked</code> with <code>surface=landing</code>. Its comment named <code>source=landing</code> on the following page view.</td><td>The comment now says <code>from=landing</code>.</td></tr>
+        <tr><td>Whitepaper</td><td>PLAY, the stream chapter, and the model viewer still match the allowlist. Contents anchors stay silent.</td><td>No change.</td></tr>
+        <tr><td>Lobby</td><td>Redeem is <code>surface=profile</code>. A free buy sends <code>level</code>. No property the relay would drop.</td><td>No change.</td></tr>
+        <tr><td>Gameplay</td><td><code>ride_paused</code> and <code>ride_unpaused</code> sent <code>source</code> as key, visibility, or bail. The relay replaced it with <code>client</code>.</td><td>The property is <code>via</code>. The allowlist drops a client-sent <code>source</code> on these events.</td></tr>
+        <tr><td>Pitch deck</td><td><code>pitchdeck_viewed</code> sent <code>source</code> as landing, whitepaper, homescreen, direct, or other. The same overwrite discarded it. <code>split</code> from pass 1 is not a new event name. Funnel 11's steps still exist.</td><td>The property is <code>from</code>. The explainer's <code>web_vital</code> property cell now includes <code>pitchdeck</code>.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>Events</h2>
+  <p><b>Added.</b> None.</p>
+  <p><b>Removed.</b> None. <code>source</code> is no longer an allowed property of <code>pitchdeck_viewed</code>, <code>ride_paused</code>, or <code>ride_unpaused</code>. The relay still stamps <code>source=client</code> after the allowlist.</p>
+  <p><b>Explainer.</b> Funnel 11, the pause row, the <code>web_vital</code> property cell, and the two pitch-deck rows. <code>docs/agents/analytics.md</code> names <code>from</code>. The README changelog calls funnel 11 the explainer's recipe, and the pitch deck's state is Live. Eyebrows stay 50 client and 27 server.</p>
+</section>
+
+<section>
+  <div class="callout">
+    <b>Production dashboards were not opened, edited, or sent a batch.</b>
+    <span><code>posthog-test</code> and <code>posthog-prod</code> were not run. No PostHog API call in this pass. Dashboard 1006663 was not touched. Rows already stored keep <code>source=client</code> and have no <code>from</code> or pause <code>via</code>. That history cannot be rebuilt.</span>
+  </div>
+</section>
+
+<section>
+  <h2>Next pass</h2>
+  <p>Run the inventory until it exits 0. Then the analytics unit specs, the landing tests, and eslint on the client and landing files this review touched.</p>
+</section>
+</div>
+</body>
+</html>

@@ -16,7 +16,9 @@ describe('the promo events of the browser plane', () => {
   it('keeps one web vital and drops a float value', () => {
     expect(CLIENT_EVENTS).toHaveLength(50);
     expect(allowClientProperties('pitchdeck_slide_time', { slide: 'money', index: 5, ms: 8200, wallet: 'x' })).toEqual({ slide: 'money', index: 5, ms: 8200 });
-    expect(allowClientProperties('pitchdeck_viewed', { surface: 'pitchdeck', source: 'landing', src: null, touch: true, standalone: false, anon_id: 'x' })).toEqual({ surface: 'pitchdeck', source: 'landing', src: null, touch: true, standalone: false });
+    expect(allowClientProperties('pitchdeck_viewed', { surface: 'pitchdeck', from: 'landing', source: 'landing', src: null, touch: true, standalone: false, anon_id: 'x' })).toEqual({ surface: 'pitchdeck', from: 'landing', src: null, touch: true, standalone: false });
+    expect(allowClientProperties('ride_paused', { via: 'bail', source: 'bail' })).toEqual({ via: 'bail' });
+    expect(allowClientProperties('ride_unpaused', { via: 'visibility', source: 'client' })).toEqual({ via: 'visibility' });
     expect(allowClientProperties('pitchdeck_interaction', { slide: 'insight', what: 'donate', wallet: 'x' })).toEqual({ slide: 'insight', what: 'donate' });
     expect(allowClientProperties('pitchdeck_slide_time', { slide: 'money', index: 5, ms: 8.5 })).toBeNull();   // a float drops the event
     expect(allowClientProperties('cab_chain_link_clicked', { link: 'seal', wallet: 'x' })).toEqual({ link: 'seal' });

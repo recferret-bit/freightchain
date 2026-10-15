@@ -258,7 +258,7 @@ function paintPause() {
 function holdShift() {   // the corner was clicked mid-drive: stop the clock before the question, without painting the pause screen over it
   if (st.mode !== 'drive' || st.watch) return;
   st.mode = 'paused'; overlay.classList.remove('hide');
-  if (online.ride) track('ride_paused', { source: 'bail' });
+  if (online.ride) track('ride_paused', { via: 'bail' });   // `source` is the relay's client/server plane
   syncBail();
 }
 function askLeave(kind) {
@@ -312,11 +312,11 @@ export function setPaused(p, source = 'key') {
   if (st.watch) return;   // a spectator has nothing to pause: the watch panel has its own play / pause
   if (p && st.mode === 'drive') {
     st.mode = 'paused'; paintPause();
-    if (online.ride) { track('ride_paused', { source }); if (source === 'visibility') flushSoon(); }   // transition only, not per frame
+    if (online.ride) { track('ride_paused', { via: source }); if (source === 'visibility') flushSoon(); }   // transition only, not per frame. `via` is key / visibility / bail; `source` is the plane
   }
   else if (!p && st.mode === 'paused') {
     st.mode = 'drive'; overlay.classList.add('hide'); clock.last = performance.now();
-    if (online.ride) track('ride_unpaused', { source });   // not ride_resumed: that name is the server event for an existing open ride, and the relay drops it
+    if (online.ride) track('ride_unpaused', { via: source });   // not ride_resumed: that name is the server event for an existing open ride, and the relay drops it
     syncBail();
   }
 }
