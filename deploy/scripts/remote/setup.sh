@@ -30,6 +30,8 @@ location ~* "^/audio/sfx/[\\w-]+\\.[0-9a-f]{8}\\.mp3\$" {   # quoted: nginx read
     proxy_pass http://127.0.0.1:$APP_PORT;
     proxy_http_version 1.1;
     proxy_set_header Host \$host;
+    proxy_set_header X-Real-IP \$remote_addr;   # every proxy to the app names the client (the app 404s its internal MCP callbacks when these are set)
+    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
     proxy_cache fc_media;
     proxy_cache_valid 200 30d;
     proxy_cache_lock on;
@@ -41,6 +43,8 @@ location ~* ^/media/[\\w.-]+\\.mp4\$ {
     proxy_pass http://127.0.0.1:$APP_PORT;
     proxy_http_version 1.1;
     proxy_set_header Host \$host;
+    proxy_set_header X-Real-IP \$remote_addr;   # every proxy to the app names the client (the app 404s its internal MCP callbacks when these are set)
+    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
     proxy_cache fc_media;
     proxy_cache_valid 200 1d;
     proxy_cache_lock on;
