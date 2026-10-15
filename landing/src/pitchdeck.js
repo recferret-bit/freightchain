@@ -46,7 +46,8 @@ function setPager(i, from) {   // from = the previous slide, -1 on load
 
 /* the stage hangs from the top edge (any letterbox goes below), the header ticker hugs the top of the window full width */
 const fit = () => {
-  const k = view.scale = Math.min(innerWidth / 1920, innerHeight / 1080);
+  const k = view.scale = Math.min(innerWidth / 1920, innerHeight / 1080), w = view.w = Math.max(1920, Math.round(innerWidth / k));   // a screen wider than 16:9 (a phone sideways) widens the stage instead of leaving black bars: the slides keep their 1920 centred
+  stage.style.width = `${w}px`; stage.style.setProperty('--ex', `${(w - 1920) / 2}px`)
   stage.style.transform = `translate(-50%,0) scale(${k})`;
   ticker.style.transform = `scale(${k})`; ticker.style.width = `${innerWidth / k}px`;
 };

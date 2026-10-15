@@ -37,7 +37,7 @@ function drawCoins() {
   for (const { c, sc, al } of sucking) { cctx.globalAlpha = al; draw(c, coinK * sc, c.x * coinK, c.y * coinK); }
   cctx.globalAlpha = 1;
 }
-const coinFit = () => { coinK = Math.min(2, devicePixelRatio * view.scale); coinCv.width = Math.round(1920 * coinK); coinCv.height = Math.round(1080 * coinK); drawCoins(); };   // backing store at screen resolution, drawn in stage px
+const coinFit = () => { coinK = Math.min(2, devicePixelRatio * view.scale); coinCv.width = Math.round(view.w * coinK); coinCv.height = Math.round(1080 * coinK); drawCoins(); };   // backing store at screen resolution, drawn in stage px
 
 function collide(p, q) {   // two discs, mass ∝ area (a held one is immovable): push apart, then a restitution impulse along the normal
   const dx = q.x - p.x, dy = q.y - p.y, rr = p.r + q.r, d2 = dx * dx + dy * dy;
@@ -78,7 +78,7 @@ function bounds(c, h) {
   if (c.y - c.r >= CEIL) c.in = true;   // the ceiling only once a coin has dropped in: they are born above it
   if (c.in && c.y - c.r < CEIL) { c.y = CEIL + c.r; if (c.vy < 0) c.vy = -c.vy * E_FLOOR; }
   if (c.y + c.r > FLOOR) { c.y = FLOOR - c.r; if (c.vy > 0) c.vy = c.vy > 90 ? -c.vy * E_FLOOR : 0; c.touch = true; }   // a slow landing stops dead: no endless micro-bounce
-  if (c.x - c.r < 0) { c.x = c.r; if (c.vx < 0) c.vx = -c.vx * E_FLOOR; } else if (c.x + c.r > 1920) { c.x = 1920 - c.r; if (c.vx > 0) c.vx = -c.vx * E_FLOOR; }
+  if (c.x - c.r < 0) { c.x = c.r; if (c.vx < 0) c.vx = -c.vx * E_FLOOR; } else if (c.x + c.r > view.w) { c.x = view.w - c.r; if (c.vx > 0) c.vx = -c.vx * E_FLOOR; }
   if (c.touch) { c.vx *= 1 - .5 * h; c.w += (c.vx / c.r - c.w) * Math.min(1, 10 * h); } else c.w *= 1 - .3 * h;   // touching something it rolls (spin = v / r) and slowly loses speed; in the air it keeps its spin
 }
 function coinTick(t) {
