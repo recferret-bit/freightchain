@@ -73,8 +73,9 @@ mkdir -p /var/cache/nginx/freightchain_entities
 for f in /etc/nginx/conf.d/freightchain-limits.conf /etc/nginx/snippets/freightchain-entities.conf; do [ -f "$f" ] && cp "$f" "$f.bak"; done
 cp "$DEPLOY_PATH/state/fc-limits.conf" /etc/nginx/conf.d/freightchain-limits.conf
 cat > /etc/nginx/snippets/freightchain-entities.conf <<CONF
-# fc-entities: GET /api/entities/bundle – the 3D models every page loads (public, Cache-Control from the app): per-IP limits + a 30 s microcache
-location /api/entities/ {
+# fc-entities: GET /api/entities/bundle – the 3D models every page loads (public): per-IP limits + a microcache (lifetime = the app's Cache-Control, 60 s).
+# ^~: no regex location (\.html\$, media) can take these paths over (nginx normalises %2E%2E before matching, then proxies the raw URI)
+location ^~ /api/entities/ {
     limit_req zone=fc_entities burst=20 nodelay;
     limit_conn fc_conn 20;
     proxy_pass http://127.0.0.1:$APP_PORT;
@@ -91,6 +92,8 @@ location /api/entities/ {
     add_header X-Cache \$upstream_cache_status;
     proxy_read_timeout 30s;
 }
+# the MCP's job callbacks are for the internal network only (mcp → app:3000) – never through nginx (McpJobGuard also 404s a proxied request)
+location ^~ /api/editor/mcp/ { return 404; }
 CONF
 if nginx -t 2>/dev/null; then systemctl reload nginx; rm -f /etc/nginx/conf.d/freightchain-limits.conf.bak /etc/nginx/snippets/freightchain-entities.conf.bak; say "3D model API limits + bundle cache written, nginx reloaded"
 else

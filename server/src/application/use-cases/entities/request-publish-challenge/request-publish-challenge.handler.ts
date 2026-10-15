@@ -3,6 +3,7 @@ import { NotFoundError } from '../../../../domain/shared/errors.js';
 import { EntityRepositoryPort } from '../../../ports/entities/entity.repository.port.js';
 import { RulesConfigPort } from '../../../ports/config/rules-config.port.js';
 import { AdminProofService } from '../../../services/admin-proof.service.js';
+import { EntityCatalogService } from '../../../services/entity-catalog.service.js';
 import type { ChallengeDto } from '../../auth/request-challenge/request-challenge.command.js';
 import { RequestPublishChallengeCommand } from './request-publish-challenge.command.js';
 
@@ -12,12 +13,14 @@ export class RequestPublishChallengeHandler implements ICommandHandler<RequestPu
     private readonly entities: EntityRepositoryPort,
     private readonly proofs: AdminProofService,
     private readonly rules: RulesConfigPort,
+    private readonly catalog: EntityCatalogService,
   ) {}
 
   async execute({ wallet, entityId, revisionId }: RequestPublishChallengeCommand): Promise<ChallengeDto> {
     if (!this.rules.get().editorWallets.has(wallet)) throw new NotFoundError('not found');
     const r = await this.entities.revision(revisionId);
     if (!r || r.entityId !== entityId) throw new NotFoundError('no such revision of this entity', 'revision_not_found');
+    await this.catalog.assertPublishable(r.config);   // never ask for a signature the publish would refuse
     return { message: await this.proofs.issue(wallet, { action: 'entity_publish', entityId, revisionId, seq: r.seq }, 'editor') };
   }
 }

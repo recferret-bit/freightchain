@@ -25,10 +25,10 @@ export class McpSdkClientAdapter extends McpClientPort {
     const transport = new StreamableHTTPClientTransport(new URL(`${this.env.editorMcpUrl}/mcp`), { requestInit: { headers: { authorization: `Bearer ${token}`, 'x-fc-job': jobToken } } });
     try { await client.connect(transport); } catch { throw new ServiceUnavailableError('the entity MCP is not reachable'); }
     return {
-      listTools: async (): Promise<LlmTool[]> => (await client.listTools()).tools.map((t) => ({ name: t.name, description: t.description ?? '', inputSchema: t.inputSchema as Record<string, unknown> })).sort((a, b) => (a.name < b.name ? -1 : 1)),
-      callTool: async (name, args): Promise<McpToolResult> => toolText((await client.callTool({ name, arguments: args })) as ToolResult),
-      getPrompt: async (args) => {
-        const r = await client.getPrompt({ name: 'entity-editor', arguments: Object.fromEntries(Object.entries(args).filter(([, v]) => v)) as Record<string, string> });
+      listTools: async (signal): Promise<LlmTool[]> => (await client.listTools(undefined, { signal })).tools.map((t) => ({ name: t.name, description: t.description ?? '', inputSchema: t.inputSchema as Record<string, unknown> })).sort((a, b) => (a.name < b.name ? -1 : 1)),
+      callTool: async (name, args, signal): Promise<McpToolResult> => toolText((await client.callTool({ name, arguments: args }, undefined, { signal })) as ToolResult),
+      getPrompt: async (args, signal) => {
+        const r = await client.getPrompt({ name: 'entity-editor', arguments: Object.fromEntries(Object.entries(args).filter(([, v]) => v)) as Record<string, string> }, { signal });
         return r.messages.map((m) => (m.content.type === 'text' ? m.content.text : '')).join('\n');
       },
       close: () => client.close(),

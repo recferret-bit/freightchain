@@ -70,3 +70,25 @@ export function assertSameKind(existing: EntityRecord | null, config: EntityConf
 }
 
 export const seedSource = (config: EntityConfig): string => printSource(config);
+
+/** does this config `use` / `ref` that entity anywhere in its parts? */
+export function refersTo(config: unknown, id: string): boolean {
+  if (Array.isArray(config)) return config.some((x) => refersTo(x, id));
+  if (!config || typeof config !== 'object') return false;
+  const o = config as Record<string, unknown>;
+  return o['use'] === id || o['ref'] === id || Object.values(o).some((v) => refersTo(v, id));
+}
+
+/**
+ * Publishing must leave a bundle the game can build: the revision is validated against the PUBLISHED set (a part it uses must be published first), and
+ * so is every published entity that uses / refs it (a part's new revision must not break them). 422 entity_invalid with the reasons.
+ */
+export function assertPublishable(config: EntityConfig, published: readonly EntityConfig[]): void {
+  const next = new Map(published.map((e) => [e.id, e])); next.set(config.id, config);
+  const errors: string[] = [];
+  for (const e of [config, ...published.filter((p) => p.id !== config.id && refersTo(p.parts, config.id))]) {
+    const r = validateEntity(e, { lookup: (x) => next.get(x) ?? null });
+    if (!r.ok) errors.push(...r.errors.map((m) => (e.id === config.id ? m : `${e.id} (published, uses '${config.id}'): ${m}`)));
+  }
+  if (errors.length) throw new UnprocessableEntityError(`publishing '${config.id}' would leave models the game cannot build – publish the parts it uses first`, 'entity_invalid', errors.slice(0, 20));
+}

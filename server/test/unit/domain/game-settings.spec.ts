@@ -4,7 +4,7 @@ import { BadRequestError } from '../../../src/domain/shared/errors.js';
 const defaults = {
   freeOnSignup: SETTING_DEFAULTS.free_on_signup,
   freeRidesDailyMax: SETTING_DEFAULTS.free_rides_daily_max,
-  editorJobsPerDay: 40, editorMaxSteps: 24, editorMaxOutputTokens: 32_000, editorJobsParallel: 2,
+  editorJobsPerDay: 40, editorMaxSteps: 24, editorMaxOutputTokens: 32_000, editorMaxInputKTokens: 500, editorJobsParallel: 2,
 };
 
 describe('game settings', () => {

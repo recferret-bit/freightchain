@@ -12,7 +12,7 @@ import { PublishRevisionCommand } from './publish-revision.command.js';
 
 /**
  * The only thing that changes what players draw. The wallet must still be in EDITOR_WALLETS and must have signed the text naming exactly this entity and
- * revision (AdminProofService, surface 'editor'); the pointer moves under the entity row lock together with the audit row (`entity.publish`, the signed
+ * revision (AdminProofService, surface 'editor'), and the published set must stay buildable (`assertPublishable`); the pointer moves under the entity row lock together with the audit row (`entity.publish`, the signed
  * text kept), then this process's bundle is rebuilt (other processes see it within BUNDLE_RECHECK_MS).
  */
 @CommandHandler(PublishRevisionCommand)
@@ -31,6 +31,7 @@ export class PublishRevisionHandler implements ICommandHandler<PublishRevisionCo
     if (!this.rules.get().editorWallets.has(wallet)) throw new NotFoundError('not found');
     const r = await this.entities.revision(revisionId);
     if (!r || r.entityId !== entityId) throw new NotFoundError('no such revision of this entity', 'revision_not_found');
+    await this.catalog.assertPublishable(r.config);
     const proof = await this.proofs.prove(wallet, { action: 'entity_publish', entityId, revisionId, seq: r.seq }, signature, 'editor');
     const now = this.clock.now();
     await this.transactions.run(async (tx) => {

@@ -33,12 +33,13 @@ export class ScriptedMcp extends McpClientPort {
   closed = 0;
   configured = true;
   verdict: SpecVerdict = { verdict: 'not_a_spec' };
+  tools = [{ name: 'save_draft', description: '', inputSchema: {} }, { name: 'check_entity', description: '', inputSchema: {} }];
   constructor(public results: Record<string, McpToolResult> = {}) { super(); }
   async spec(): Promise<SpecVerdict> { return this.verdict; }
   async connect(token: string): Promise<McpSession> {
     this.tokens.push(token);
     return {
-      listTools: async () => [{ name: 'save_draft', description: '', inputSchema: {} }, { name: 'check_entity', description: '', inputSchema: {} }],
+      listTools: async () => this.tools,
       getPrompt: async (a) => `SYSTEM ${a.entityId ?? '-'}`,
       callTool: async (name, args) => { this.calls.push({ name, args }); return this.results[name] ?? { text: '{}', isError: false }; },
       close: async () => { this.closed++; },

@@ -12,6 +12,12 @@ server {
     server_name storybook.__ROOT__;
 
     client_max_body_size 1m;
+    # the editor acts with a wallet: no framing (clickjacking), no MIME sniffing, no referrer to other sites. A location with its own add_header drops these
+    # (the /api/entities/ snippet's X-Cache) – only JSON there.
+    add_header Content-Security-Policy "frame-ancestors 'none'" always;
+    add_header X-Frame-Options DENY always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy same-origin always;
 
     location = / {
         proxy_pass http://127.0.0.1:__PORT__/viewer.html;
@@ -22,8 +28,10 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    include /etc/nginx/snippets/freightchain-entities.conf;   # location /api/entities/ – written by remote/setup.sh
-    location /api/editor/ {
+    include /etc/nginx/snippets/freightchain-entities.conf;   # ^~ /api/entities/ + a 404 for ^~ /api/editor/mcp/ – written by remote/setup.sh
+    # ^~ everywhere under /api/: a regex location (the \.html$ one below) must never take an API path over – nginx decodes %2E%2E and resolves it before
+    # matching, then proxies the RAW uri, so /api/editor/…%2F..%2Fviewer.html would otherwise skip these limits and headers
+    location ^~ /api/editor/ {
         limit_req zone=fc_editor burst=40 nodelay;
         limit_conn fc_conn 20;
         proxy_pass http://127.0.0.1:__PORT__;
@@ -34,9 +42,17 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_read_timeout 60s;
     }
-    location /api/ { return 404; }
+    location ^~ /api/ { return 404; }
+    location ~* ^/api/ { return 404; }   # /API/editor/… (nginx matches case-sensitively, the app does not)
     location ~ ^/(site/|r/) { return 302 https://__ROOT__$request_uri; }
-    location ~ \.html$ { if ($uri != /viewer.html) { return 302 https://__ROOT__$request_uri; } proxy_pass http://127.0.0.1:__PORT__; proxy_set_header Host $host; }
+    location ~ \.html$ {
+        if ($uri != /viewer.html) { return 302 https://__ROOT__$request_uri; }
+        proxy_pass http://127.0.0.1:__PORT__;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
 
     location / {
         proxy_pass http://127.0.0.1:__PORT__;

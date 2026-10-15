@@ -51,5 +51,6 @@ describe('throttlerOptions', () => {
     const token = new SignJWT({}).setProtectedHeader({ alg: 'HS256' }).setSubject('JOB-1').sign(new TextEncoder().encode('k'.repeat(32)));
     expect(await mcp.getTracker?.({ headers: { 'x-fc-job': await token }, ip: '10.0.0.7' }, at('/api/editor/mcp/configs'))).toBe('job:JOB-1');
     expect(await mcp.getTracker?.({ headers: { 'x-fc-job': 'junk' }, ip: '10.0.0.7' }, at('/api/editor/mcp/configs'))).toBe('job:none');
+    expect(await mcp.getTracker?.({ headers: { 'x-fc-job': await token, 'x-forwarded-for': '1.2.3.4' }, ip: '1.2.3.4' }, at('/api/editor/mcp/configs'))).toBe('ip:1.2.3.4');   // from the internet: per IP
   });
 });

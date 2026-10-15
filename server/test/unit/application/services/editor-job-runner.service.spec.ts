@@ -52,4 +52,18 @@ describe('EditorJobRunnerService', () => {
     const boot = jobContext(); const j = aJob({ createdAt: boot.clock.now() }); await boot.jobs.insert(j);
     expect(await boot.runner.sweep(true)).toBe(1);
   });
+
+  it('sweep drops a job queued HERE past the timeout (the editor paused); a long refusal is clipped to 300 characters', async () => {
+    const { runner, jobs, clock, settingsRepo } = jobContext();
+    await settingsRepo.upsert('editor_jobs_parallel', 0);
+    const q = aJob({ createdAt: clock.now() }); await jobs.insert(q); runner.enqueue(q);
+    expect(await runner.sweep(false)).toBe(0);
+    clock.advance(601);
+    expect(await runner.sweep(false)).toBe(1);
+    expect(await jobs.find(q.id)).toMatchObject({ status: 'failed', error: 'the job waited longer than the timeout (the AI editor is paused or busy)' });
+    await runner.settled(q.id);
+    const r = jobContext(undefined, new ScriptedLlm([turn({ stop: 'refusal', detail: 'no '.repeat(400) })]));
+    const j = aJob(); await r.jobs.insert(j); r.runner.enqueue(j); await r.runner.settled(j.id);
+    expect((await r.jobs.find(j.id))!.error!.length).toBe(300);
+  });
 });

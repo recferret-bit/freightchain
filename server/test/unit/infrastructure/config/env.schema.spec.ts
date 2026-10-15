@@ -101,4 +101,12 @@ describe('validateEnv – paid tickets (all optional until the workstreams need 
     expect(() => validateEnv({ ...base, EDITOR_JOB_TIMEOUT_MS: '500' })).toThrow(/EDITOR_JOB_TIMEOUT_MS/);
     expect(validateEnv({ ...base, EDITOR_FAKE_LLM: '1' }).EDITOR_FAKE_LLM).toBe('1');
   });
+
+  it('production with editor or admin wallets needs COOKIE_DOMAIN (the host walls); without wallets it may be unset', () => {
+    const w = Keypair.generate().publicKey.toBase58();
+    expect(() => validateEnv({ ...prod, EDITOR_WALLETS: w })).toThrow(/COOKIE_DOMAIN/);
+    expect(() => validateEnv({ ...prod, ADMIN_WALLETS: w })).toThrow(/COOKIE_DOMAIN/);
+    expect(validateEnv({ ...prod, EDITOR_WALLETS: w, COOKIE_DOMAIN: 'freightchain.fun' }).EDITOR_WALLETS).toBe(w);
+    expect(validateEnv(prod).NODE_ENV).toBe('production');
+  });
 });

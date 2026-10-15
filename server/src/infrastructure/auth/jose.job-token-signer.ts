@@ -32,7 +32,7 @@ export class JoseJobTokenSigner extends JobTokenPort {
 
   async verify(token: string): Promise<JobClaims | null> {
     try {
-      const { payload } = await jwtVerify(token, this.secret, { issuer: ISSUER, audience: AUDIENCE, currentDate: this.clock.now() });
+      const { payload } = await jwtVerify(token, this.secret, { issuer: ISSUER, audience: AUDIENCE, algorithms: ['HS256'], currentDate: this.clock.now() });
       const wallet = payload['wallet'], entityId = payload['entityId'];
       if (!UUID.test(payload.sub ?? '') || !isWalletAddress(wallet) || !(entityId === null || typeof entityId === 'string')) return null;
       return { jobId: payload.sub!, wallet, entityId };

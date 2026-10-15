@@ -49,7 +49,7 @@ for suite in "${SUITES[@]}"; do
     lobby)   start 3;  (cd "$SERVER" && BASE="http://localhost:$PORT" SEED=1 DATABASE_URL="$URL" node scripts/e2e-lobby.mjs) || fails=$((fails + 1)) ;;   # SEED=1: the dev pool seeds it expects (throwaway database)
     admin)
       wallet="$(cd "$SERVER" && node -e 'const n=require("tweetnacl"),b=require("bs58").default??require("bs58"),k=n.sign.keyPair();require("fs").writeFileSync(process.argv[1],JSON.stringify([...k.secretKey]));console.log(b.encode(k.publicKey))' "$ADMIN_KP")"
-      start 3 "$wallet"; (cd "$SERVER" && BASE="http://localhost:$PORT" ADMIN_KEYPAIR="$ADMIN_KP" CHROME_PORT="$(free_port)" node scripts/e2e-admin.mjs) || fails=$((fails + 1)) ;;
+      EXTRA_ENV="EDITOR_WALLETS=$wallet" start 3 "$wallet"; (cd "$SERVER" && BASE="http://localhost:$PORT" ADMIN_KEYPAIR="$ADMIN_KP" CHROME_PORT="$(free_port)" node scripts/e2e-admin.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;   # the admin wallet is an editor too (the owner's setup)
     promo)   # the whole promo loop: admin page (signs) → lobby + landing players → admin sees the uses; expiry, start, used up, disabled, abuse. Own limit: a hundred players behind one IP
       wallet="$(cd "$SERVER" && node -e 'const n=require("tweetnacl"),b=require("bs58").default??require("bs58"),k=n.sign.keyPair();require("fs").writeFileSync(process.argv[1],JSON.stringify([...k.secretKey]));console.log(b.encode(k.publicKey))' "$ADMIN_KP")"
       EXTRA_ENV="THROTTLE_PROMO_LIMIT=100000" start 3 "$wallet"; (cd "$SERVER" && BASE="http://localhost:$PORT" ADMIN_KEYPAIR="$ADMIN_KP" SEED=1 DATABASE_URL="$URL" CHROME_PORT="$(free_port)" node scripts/e2e-promo.mjs) || fails=$((fails + 1)) ;;
@@ -90,7 +90,7 @@ for suite in "${SUITES[@]}"; do
       wallet="$(cd "$SERVER" && node -e 'const n=require("tweetnacl"),b=require("bs58").default??require("bs58"),k=n.sign.keyPair();require("fs").writeFileSync(process.argv[1],JSON.stringify([...k.secretKey]));console.log(b.encode(k.publicKey))' "$ADMIN_KP")"
       FIXED_PORT="$(free_port)"; MCP_PORT="$(free_port)"; MCP_TOKEN="e2e-mcp-$$-$(node -e 'console.log(require("crypto").randomBytes(16).toString("hex"))')"
       (cd "$ROOT/mcp" && EDITOR_MCP_PORT="$MCP_PORT" EDITOR_MCP_TOKEN="$MCP_TOKEN" FC_APP_URL="http://localhost:$FIXED_PORT" exec node src/http.js > "/tmp/fc-e2e-mcp-$DB.log" 2>&1) & MCP_PID=$!
-      EXTRA_ENV="EDITOR_WALLETS=$wallet EDITOR_FAKE_LLM=1 EDITOR_MCP_URL=http://127.0.0.1:$MCP_PORT EDITOR_MCP_TOKEN=$MCP_TOKEN" start 3
+      EXTRA_ENV="EDITOR_WALLETS=$wallet EDITOR_FAKE_LLM=1 EDITOR_MCP_URL=http://127.0.0.1:$MCP_PORT EDITOR_MCP_TOKEN=$MCP_TOKEN" start 3 "$wallet"   # the editor is the ADMIN wallet too (the owner's setup)
       (cd "$SERVER" && BASE="http://localhost:$PORT" EDITOR_KEYPAIR="$ADMIN_KP" CHROME_PORT="$(free_port)" node scripts/e2e-editor.mjs) || { fails=$((fails + 1)); tail -20 "/tmp/fc-e2e-mcp-$DB.log"; }
       stop; kill "$MCP_PID" 2>/dev/null || true; wait "$MCP_PID" 2>/dev/null || true; FIXED_PORT=""; EXTRA_ENV="" ;;
     *) echo "unknown suite $suite (browser | lobby | admin | promo | watch | replay | flags | wallet | wallet-split | board | close | close-split | verified | verified-deep | road | stats | blinks | editor)"; fails=$((fails + 1)) ;;

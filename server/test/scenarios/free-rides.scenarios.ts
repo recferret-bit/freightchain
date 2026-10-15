@@ -33,7 +33,7 @@ export function freeRideScenarios(h: () => Harness): void {
     expect(await me(rider)).toMatchObject({ freeRides: 10, freeRidesMax: 5, nextFreeRideAt: null });
     const admin = await loginAdmin(FREE_RIDES_ADMIN);
     expect((await admin.agent.get('/api/admin/settings').expect(200)).body).toEqual({
-      freeOnSignup: 10, freeRidesDailyMax: 5, editorJobsPerDay: 40, editorMaxSteps: 24, editorMaxOutputTokens: 32000, editorJobsParallel: 2,
+      freeOnSignup: 10, freeRidesDailyMax: 5, editorJobsPerDay: 40, editorMaxSteps: 24, editorMaxOutputTokens: 32000, editorMaxInputKTokens: 500, editorJobsParallel: 2,
     });
   });
 

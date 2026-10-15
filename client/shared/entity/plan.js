@@ -26,7 +26,7 @@ export function compileEntity(entity, { lookup = () => null, cache = new Map(), 
   if (stack.length >= RUN_LIMITS.refDepth) throw new PlanError(`${[...stack, entity.id].join(' → ')}: references nested deeper than ${RUN_LIMITS.refDepth}`);
   const inner = [...stack, entity.id], scope = new Scope(), init = [];
   scope.anchor = entity.anchor ?? 'center';
-  const sub = id => { const e = lookup(id); if (!e) throw new PlanError(`unknown entity '${id}'`); return compileEntity(e, { lookup, cache, stack: inner }); };
+  const sub = id => { const e = lookup(id); if (!e || typeof e !== 'object' || e.id !== id) throw new PlanError(`unknown entity '${id}'`); return compileEntity(e, { lookup, cache, stack: inner }); };
   for (const [k, v] of Object.entries(entity.consts ?? {})) { const i = scope.declare(k); init.push(f => { f[i] = v; }); }
   const params = [];
   for (const [k, p] of Object.entries(entity.params ?? {})) { const i = scope.declare(k), def = p.default; params.push({ name: k, i, def }); }
@@ -144,7 +144,7 @@ function compileBare(p, scope, path, sub) {
       const vals = {}; for (const [k, e] of args) vals[k] = Array.isArray(e) ? e.map(x => x(f)) : e(f);
       // slots: explicit map in the caller's terms, else pass the caller's slots through by name
       let slotMap = st.slotMap;
-      if (smap) { slotMap = {}; for (const [k, m] of smap) slotMap[k] = m(f, st); }
+      if (smap) { slotMap = Object.create(null); for (const [k, m] of smap) slotMap[k] = m(f, st); }
       const tf = target.bind(vals);
       if (isRef) {
         node(st, path);
@@ -201,7 +201,7 @@ export function toParts(prog, args = {}, { slots = null } = {}) {
   const out = [], stack = [{ i: -1, at: [0, 0, 0], rot: null }];
   const parent = () => stack[stack.length - 1].i;
   const sink = {
-    hasSlot: n => (slots ? n in slots : true),
+    hasSlot: n => (slots ? Object.hasOwn(slots, n) : true),
     mesh(geo, mat, sx, sy, sz, x, y, z, rot, order, tag) { out.push({ t: 'mesh', parent: parent(), geo, mat, s: [sx, sy, sz], p: [x, y, z], r: rot, order, tag }); },
     glow(color, size, gain, x, y, z, role) { out.push({ t: 'glow', parent: parent(), color, size, gain, p: [x, y, z], role }); },
     beam(color, gain, w, l, z0, back) { out.push({ t: 'beam', parent: parent(), color, gain, w, l, z0, back }); },

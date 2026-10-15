@@ -21,13 +21,16 @@ describe('McpSaveDraftHandler', () => {
     expect((await jobs.events(job.id, 0, 10)).map((e) => e.payload)).toEqual([{ revisionId: r1.id, entityId: 'cactus', seq: 2 }, { revisionId: r2.id, entityId: 'cactus', seq: 3 }]);
   });
 
-  it('scope: another existing entity is a 403 job_scope; a new part is fine; a job without an entity may write any; unknown job 404', async () => {
+  it('scope: another existing entity is a 403 job_scope; a new part is fine; a job without an entity may only create; unknown job 404', async () => {
     const { h, job } = await setup();
     await expect(h.execute(new McpSaveDraftCommand(job.id, 'rock', printSource(seedEntity('rock')), 'm'))).rejects.toBeInstanceOf(ForbiddenError);
     const part = printSource({ id: 'job-crate', kind: 'part', v: 1, slots: { m: {} }, parts: [{ geo: 'box', mat: 'm', s: [1, 1, 1], at: [0, 0.5, 0] }] });
     await expect(h.execute(new McpSaveDraftCommand(job.id, 'job-crate', part, 'crate'))).resolves.toMatchObject({ seq: 1 });
     const free = await setup(null);
-    await expect(free.h.execute(new McpSaveDraftCommand(free.job.id, 'rock', printSource({ ...seedEntity('rock'), note: 'x' }), 'm'))).resolves.toMatchObject({ entityId: 'rock' });
+    await expect(free.h.execute(new McpSaveDraftCommand(free.job.id, 'rock', printSource({ ...seedEntity('rock'), note: 'x' }), 'm'))).rejects.toMatchObject({ errorCode: 'job_scope' });
+    const mine = printSource({ ...seedEntity('rock'), id: 'job-rock', note: 'mine' });
+    await expect(free.h.execute(new McpSaveDraftCommand(free.job.id, 'job-rock', mine, 'm'))).resolves.toMatchObject({ entityId: 'job-rock', seq: 1 });
+    await expect(free.h.execute(new McpSaveDraftCommand(free.job.id, 'job-rock', mine.replace('mine', 'again'), 'm'))).resolves.toMatchObject({ entityId: 'job-rock', seq: 2 });
     await expect(h.execute(new McpSaveDraftCommand('00000000-0000-4000-8000-0000000000ff', 'cactus', fatCactus(), 'm'))).rejects.toBeInstanceOf(NotFoundError);
   });
 });

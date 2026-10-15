@@ -18,10 +18,11 @@ const hostOf = (request: RequestWithPlayer): string => String(request.headers.ho
  * a sibling subdomain is the SAME site, so SameSite does not stop it and a form or text/plain POST is a CORS "simple" request the allowlist never sees.
  * So for POST / PUT / PATCH / DELETE: no Origin (a server, the CLI, a wallet app) passes; `Origin: null` (a sandboxed frame, a redirect chain – forceable)
  * never does; the request's own origin passes (the admin page, the apex's /api proxy, dev on localhost); otherwise only CORS_ORIGINS – and on the admin
- * host nothing but the admin host itself. Controllers marked @CrossOriginPublic() (blinks, Solana Pay, the webhook) are open to any origin by design.
+ * and storybook hosts nothing but the host itself. Controllers marked @CrossOriginPublic() (blinks, Solana Pay, the webhook) are open to any origin by design.
  * (GET stays open: the only GETs with an effect are the presence "leave" keepalives, by design.)
  * The storybook host (EnvService.editorHost, the model viewer) answers only the 3D model API – /api/entities/* and /api/editor/* – every other route is a
- * 404 there, whatever the method (nginx proxies nothing else; this is the second wall, pentest H7). Its editor POSTs are same-origin.
+ * 404 there, whatever the method (nginx proxies nothing else; this is the second wall, pentest H7). Its editor POSTs must be same-origin: a sibling
+ * (the apex, ride.*) is the same SITE, so the SameSite=Strict editor cookie would ride along.
  */
 @Injectable()
 export class OriginGuard implements CanActivate {
@@ -43,8 +44,7 @@ export class OriginGuard implements CanActivate {
     let from: string;
     try { from = new URL(origin).host.toLowerCase(); } catch { throw new ForbiddenError('a request from this page is not accepted here', 'bad_origin'); }   // 'null' and junk
     const host = hostOf(request), sameOrigin = from === String(request.headers.host ?? '').toLowerCase();   // host AND port: another localhost port is another origin
-    const adminHost = this.env.adminHost;
-    if (adminHost && host === adminHost) { if (sameOrigin) return true; }
+    if (host === this.env.adminHost || host === editorHost) { if (sameOrigin) return true; }
     else if (sameOrigin || this.allowed.has(origin.replace(/\/$/, ''))) return true;
     throw new ForbiddenError('a request from this page is not accepted here', 'bad_origin');
   }

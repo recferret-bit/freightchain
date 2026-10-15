@@ -17,6 +17,7 @@ Bodies are JSON. Errors are `application/problem+json` and carry `code`. A rejec
 - **Allowlist.** The wallet is re-checked against `EDITOR_WALLETS` on every request. An unknown wallet, a missing session or a wrong host gets **404**.
 - **IP.** When `EDITOR_IP_ALLOWLIST` (comma-separated CIDRs or IPs) is set, the client IP must match it, otherwise 404.
 - **CSRF.** Unsafe methods need the header `x-fc-editor: 1`, otherwise 403.
+- **Same origin only.** No CORS headers on storybook; a change whose `Origin` is not storybook itself is 403 `bad_origin` (siblings included).
 
 | route | body → answer |
 |---|---|
@@ -31,7 +32,7 @@ Bodies are JSON. Errors are `application/problem+json` and carry `code`. A rejec
 | `POST /api/editor/entities/:id/drafts` | `{ source, message, baseRevisionId: string \| null }` → `Revision` (the new head, with `source` / `config` and the validator's `warnings: string[]`). The stored `source` is the canonical text (`printSource` of the parsed file – comments are not kept; use `note` fields). 422 when invalid. 409 `stale_base` when `baseRevisionId` is not the head (null = "the seed, nothing in the DB yet"). A new id creates the entity (kind from the source). An entity with no DB row first gets revision 1 = the seed (author `seed`), then the draft as revision 2. |
 | `POST /api/editor/entities/:id/restore` | `{ revisionId, baseRevisionId }` → `Revision`: a NEW head copying that revision (append-only) |
 | `POST /api/editor/entities/:id/publish/challenge` | `{ revisionId }` → `{ message }` (AdminProof intent `entity_publish`) |
-| `POST /api/editor/entities/:id/publish` | `{ revisionId, signature }` → `{ rev }` (the new bundle rev). Audited as `entity.publish`. The only thing that changes what players see. |
+| `POST /api/editor/entities/:id/publish` | `{ revisionId, signature }` → `{ rev }` (the new bundle rev). Audited as `entity.publish`. The only thing that changes what players see. 422 `entity_invalid` (here and at the challenge, before any signature) when the published set would not build: the revision uses a part that is not published, or a published model that uses this part would break. |
 | `POST /api/editor/jobs` | `{ prompt (≤ 4000), entityId?, baseRevisionId?, provider?, model? }` → **202** `{ jobId }`. 503 when the AI editor is off (no `EDITOR_MCP_TOKEN`); 400 `bad_provider` for a provider / model not offered by `/me`; 409 `stale_base` when a given `baseRevisionId` is not the head (null = "the seed / nothing saved yet"; omitted = not checked); 429 `job_cap` (with `Retry-After`) at the daily cap; 409 `job_running` when one is open for this wallet or entity; 422 `spec_invalid` with `errors` when the skill's validator rejects the prompt (no job is stored, no model is called). An `entityId` that does not exist yet is allowed (the model may create it). |
 | `GET /api/editor/jobs?entityId=` | → `Job[]`, newest first, at most 50 |
 | `GET /api/editor/jobs/:id` | → `Job` |
@@ -41,7 +42,7 @@ Bodies are JSON. Errors are `application/problem+json` and carry `code`. A rejec
 ## MCP callbacks (`/api/editor/mcp/*`, `McpJobGuard`)
 
 - **Token.** Header `x-fc-job: <JWT>`, aud `mcp-job`, carrying `{ jobId, wallet, entityId }`. It is valid for about 10 minutes, and only while the job is `running` and the wallet is still listed.
-- **Not through nginx.** A request with `X-Forwarded-For` or `X-Real-IP` gets 404.
+- **Not through nginx.** nginx answers `/api/editor/mcp/` with 404 on api.* and storybook; and a request with `X-Forwarded-For` or `X-Real-IP` gets 404 from the app.
 - **Throttling.** Own bucket `mcp`, keyed by job id. The `default` bucket skips these routes.
 
 | route | answer |
@@ -49,7 +50,7 @@ Bodies are JSON. Errors are `application/problem+json` and carry `code`. A rejec
 | `GET /api/editor/mcp/entities` | `EntityRow[]` |
 | `GET /api/editor/mcp/entities/:id` | `{ row, source, config }` (head) |
 | `GET /api/editor/mcp/configs` | `{ [id]: EntityConfig }`: every head config, the lookup for `use` / `ref` |
-| `POST /api/editor/mcp/entities/:id/drafts` | `{ source, message }` → `Revision`. Based on the current head; records `jobId`; the server re-validates. When the job has an `entityId`, only that id or a new `part` entity may be written (403 `job_scope` otherwise). Appends the job's `draft` event and sets its `resultRevisionId`. |
+| `POST /api/editor/mcp/entities/:id/drafts` | `{ source, message }` → `Revision`. Based on the current head; records `jobId`; the server re-validates. A job with an `entityId` writes that id and at most 4 new `part` entities; a job without one only creates new entities (at most 4) and revises the ones it created (403 `job_scope` otherwise). Appends the job's `draft` event and sets its `resultRevisionId`. |
 
 ## Types
 

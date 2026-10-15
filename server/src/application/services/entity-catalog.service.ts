@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { SEED_ENTITIES, type EntityConfig } from '../../domain/shared/entity.js';
-import { seedSource, type EntityRecord, type RevisionRecord } from '../../domain/entities/entity.js';
+import { assertPublishable, seedSource, type EntityRecord, type RevisionRecord } from '../../domain/entities/entity.js';
 import type { EntityBundleDto, EntityRowDto } from '../../domain/entities/entity.dto.js';
 import { EntityRepositoryPort } from '../ports/entities/entity.repository.port.js';
 import { ClockPort } from '../ports/shared/clock.port.js';
@@ -49,6 +49,11 @@ export class EntityCatalogService {
     const dto = { rev, entities: ids.map((id) => merged.get(id)!.config) };
     this.cached = { dto, stamp, checkedAt: now };
     return dto;
+  }
+
+  /** 422 unless publishing this config keeps every published model buildable (`assertPublishable`) */
+  async assertPublishable(config: EntityConfig): Promise<void> {
+    assertPublishable(config, (await this.bundle()).entities);
   }
 
   /** after a publish in this process: the next bundle() rebuilds at once */

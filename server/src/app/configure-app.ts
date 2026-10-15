@@ -46,11 +46,11 @@ export function configureApp(app: INestApplication): void {
 
 /** The credentialed allowlist, same answers the `cors` package gave Nest's enableCors. Action paths skip it: `*` plus credentials is illegal. */
 export function browserCors(env: EnvService) {
-  const allowed = new Set(env.corsOrigins), adminHost = env.adminHost;
+  const allowed = new Set(env.corsOrigins), ownOrigin = new Set([env.adminHost, env.editorHost].filter((h): h is string => !!h));
   return function browserCors(req: Request, res: Response, next: NextFunction): void {
     if (isActionRequest(req)) { next(); return; }
-    // the admin page is same-origin with its API: no other origin may READ an admin answer with the admin's cookie (pentest M4 – sign-ins with IPs)
-    if (adminHost && String(req.headers.host ?? '').replace(/:\d+$/, '').toLowerCase() === adminHost) { next(); return; }
+    // the admin page and the model editor (storybook) are same-origin with their API: no other origin may READ an answer with their cookie (pentest M4)
+    if (ownOrigin.has(String(req.headers.host ?? '').replace(/:\d+$/, '').toLowerCase())) { next(); return; }
     const origin = req.header('origin');
     if (!origin || !allowed.has(origin)) { next(); return; }
     res.setHeader('Access-Control-Allow-Origin', origin);

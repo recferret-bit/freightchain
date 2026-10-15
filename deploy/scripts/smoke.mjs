@@ -48,6 +48,7 @@ if (storybook) {
   const sb = await at(storybook)('/api/entities/bundle'), sbBody = sb.status === 200 ? await sb.json() : null;
   check('the model viewer host serves the 3D model bundle (storybook.* /api/entities/bundle)', sb.status === 200 && Array.isArray(sbBody?.entities) && sbBody.entities.length >= 40, `${sb.status} · ${sbBody?.entities?.length ?? 0} entities`);
   check('the model editor is closed to a visitor (storybook.* /api/editor/me → 404)', (await at(storybook)('/api/editor/me')).status === 404);
+  check('the MCP callbacks are not reachable from the internet (storybook.* /api/editor/mcp/configs → 404)', (await at(storybook)('/api/editor/mcp/configs')).status === 404);
 }
 if (whitepaper) {
   const w = await at(whitepaper)('/'), wBody = await w.text();

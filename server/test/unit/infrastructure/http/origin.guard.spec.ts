@@ -51,6 +51,7 @@ describe('OriginGuard', () => {
     expect(g.canActivate(at('POST', '/api/editor/entities/cactus/drafts', 'https://storybook.freightchain.fun'))).toBe(true);
     expect(g.canActivate(at('GET', '/api/entities/bundle'))).toBe(true);
     expect(() => g.canActivate(at('POST', '/api/editor/auth/nonce', 'https://evil.example'))).toThrow(ForbiddenError);
+    expect(() => g.canActivate(at('POST', '/api/editor/jobs', 'https://freightchain.fun'))).toThrow(ForbiddenError);   // an allowlisted SIBLING neither (same site: the cookie rides along)
     expect(() => g.canActivate(at('GET', '/api/me'))).toThrow(NotFoundError);
     expect(() => g.canActivate(at('POST', '/API/rides', 'https://storybook.freightchain.fun'))).toThrow(NotFoundError);
   });

@@ -8,6 +8,7 @@ const KNOBS = [
   ['editor_jobs_per_day', 'editorJobsPerDay', 'AI editor: jobs per day', 'model-editor requests per editor wallet per UTC day (storybook)'],
   ['editor_max_steps', 'editorMaxSteps', 'AI editor: steps per job', 'model turns one request may take (each may call the MCP tools)'],
   ['editor_max_output_tokens', 'editorMaxOutputTokens', 'AI editor: output tokens', 'per model turn'],
+  ['editor_max_input_ktokens', 'editorMaxInputKTokens', 'AI editor: input tokens per job (thousands)', 'the cost cap: every model turn re-sends the history; a job past it fails'],
   ['editor_jobs_parallel', 'editorJobsParallel', 'AI editor: parallel jobs', 'jobs running at once on the server; 0 pauses the AI editor'],
 ];
 const MAX = 100_000;

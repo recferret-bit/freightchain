@@ -84,7 +84,7 @@ function expr(v, at, err) {
 const vec = (v, at, err) => (Array.isArray(v) && v.length === 3 ? v.forEach((x, i) => expr(x, `${at}[${i}]`, err)) : err(at, 'needs [x, y, z]'));
 function mat(m, at, err, e) {
   if (Array.isArray(m)) { if (m.length < 1 || m.length > 6) err(at, '1–6 materials'); return m.forEach((x, i) => mat(x, `${at}[${i}]`, err, e)); }
-  if (typeof m === 'string') { const ok = e.kind === 'landmark' ? LANDMARK_SLOTS.includes(m) : Object.hasOwn(e.slots ?? {}, m) || e.kind === 'part'; if (!ok) err(at, `'${m}' is not a slot of this entity`); return; }
+  if (typeof m === 'string') { const ok = e.kind === 'landmark' ? LANDMARK_SLOTS.includes(m) : Object.hasOwn(e.slots ?? {}, m) || (e.kind === 'part' && /^[a-z][a-zA-Z0-9]{0,23}$/.test(m) && !(m in Object.prototype)); if (!ok) err(at, `'${m}' is not a slot of this entity`); return; }
   if (!m || typeof m !== 'object') return err(at, 'a slot name or a material object');
   if ('color' in m) { expr(m.color, `${at}.color`, err); return; }
   if ('global' in m) { if (!GLOBAL_MATS.includes(m.global)) err(`${at}.global`, `one of ${GLOBAL_MATS.join(', ')}`); return; }
@@ -101,6 +101,8 @@ function part(p, at, err, e, depth) {
   for (const k of Object.keys(p)) if (!PART_KEYS[type].includes(k) && !COMMON.includes(k)) err(`${at}.${k}`, LOCKED_KEYS.has(k) ? 'is gameplay – it lives in code, never in an entity' : `not allowed on a ${type} part`);
   if (p.when != null) expr(p.when, `${at}.when`, err);
   if (p.tag != null && (typeof p.tag !== 'string' || p.tag.length > 24)) err(`${at}.tag`, 'a short word');
+  if (p.ifSlot != null && (typeof p.ifSlot !== 'string' || !/^[a-z][a-zA-Z0-9]{0,23}$/.test(p.ifSlot) || p.ifSlot in Object.prototype)) err(`${at}.ifSlot`, 'a slot name');
+  if (p.note != null && (typeof p.note !== 'string' || p.note.length > 200)) err(`${at}.note`, 'text of at most 200 characters');
   if (p.at != null) vec(p.at, `${at}.at`, err);
   if (p.rot != null) vec(p.rot, `${at}.rot`, err);
   if (p.order != null && !ORDERS.includes(p.order)) err(`${at}.order`, `one of ${ORDERS.join(', ')}`);

@@ -45,6 +45,8 @@ export function throttlerOptions(env: EnvService, tokens: TokenSignerPort, edito
   };
   const byJob = (req: Record<string, unknown>): Promise<string> => {
     const request = req as unknown as Request, raw = request.headers['x-fc-job'];
+    // through nginx (the internet): the client's IP – an unverified token must not pick a fresh bucket per request (McpJobGuard 404s these anyway)
+    if (request.headers['x-forwarded-for'] !== undefined || request.headers['x-real-ip'] !== undefined) return Promise.resolve(`ip:${request.ip ?? 'unknown'}`);
     let job = 'none';
     try { if (typeof raw === 'string' && raw) job = String(decodeJwt(raw).sub ?? 'none'); } catch { /* junk: one shared bucket – McpJobGuard 404s it anyway */ }
     return Promise.resolve(`job:${job}`);

@@ -38,7 +38,7 @@ export class JoseEditorTokenSigner extends EditorTokenPort {
 
   async verify(token: string): Promise<string | null> {
     try {
-      const { payload } = await jwtVerify(token, this.secret, { issuer: ISSUER, audience: AUDIENCE, currentDate: this.clock.now() });
+      const { payload } = await jwtVerify(token, this.secret, { issuer: ISSUER, audience: AUDIENCE, algorithms: ['HS256'], currentDate: this.clock.now() });
       return isWalletAddress(payload.sub) ? payload.sub : null;
     } catch {
       return null;

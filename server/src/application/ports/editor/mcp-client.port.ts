@@ -9,10 +9,10 @@ export interface McpToolResult {
 }
 
 export interface McpSession {
-  listTools(): Promise<LlmTool[]>;
-  callTool(name: string, args: Record<string, unknown>): Promise<McpToolResult>;
+  listTools(signal?: AbortSignal): Promise<LlmTool[]>;
+  callTool(name: string, args: Record<string, unknown>, signal?: AbortSignal): Promise<McpToolResult>;
   /** the `entity-editor` prompt: the system prompt for this job */
-  getPrompt(args: { entityId?: string; kind?: string }): Promise<string>;
+  getPrompt(args: { entityId?: string; kind?: string }, signal?: AbortSignal): Promise<string>;
   close(): Promise<void>;
 }
 

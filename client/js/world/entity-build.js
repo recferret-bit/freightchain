@@ -80,7 +80,8 @@ function propRoot(id, params, debris, label) {
 /* slots → ctx: a slot missing from `slots` falls back to the entity's declared default slot (rock's m2 = m1) */
 export function themeCtx(id, slots) {
   const decl = program(id).entity.slots ?? {};
-  return { slot: n => slots[n] ?? (decl[n]?.default ? slots[decl[n].default] : undefined) ?? null };
+  const own = (o, k) => (Object.hasOwn(o, k) ? o[k] : undefined);   // never a prototype member ('constructor')
+  return { slot: n => own(slots, n) ?? (own(decl, n)?.default ? own(slots, decl[n].default) : undefined) ?? null };
 }
 const builtFrom = new WeakMap();   // root → entity id (the model viewer's catalogue names variants by it)
 export const entityOf = o => builtFrom.get(o) ?? null;

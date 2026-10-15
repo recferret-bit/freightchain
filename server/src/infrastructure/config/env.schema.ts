@@ -139,6 +139,8 @@ export const envSchema = z
     if (env.PAYMENT_MODE === 'program' && !env.TICKET_PROGRAM_ID) ctx.addIssue({ code: 'custom', path: ['TICKET_PROGRAM_ID'], message: 'TICKET_PROGRAM_ID must be set when PAYMENT_MODE=program' });
     if (env.NODE_ENV === 'production') {
       if (env.EDITOR_FAKE_LLM === '1') ctx.addIssue({ code: 'custom', path: ['EDITOR_FAKE_LLM'], message: 'EDITOR_FAKE_LLM is a test switch – never in production' });
+      // without it the admin / storybook host walls switch off (they answer on any host, like localhost) – never with wallets that may sign in there
+      if (!env.COOKIE_DOMAIN && (env.EDITOR_WALLETS.trim() || env.ADMIN_WALLETS.trim())) ctx.addIssue({ code: 'custom', path: ['COOKIE_DOMAIN'], message: 'COOKIE_DOMAIN must be set in production when ADMIN_WALLETS or EDITOR_WALLETS is (the admin and storybook host checks need it)' });
       if (!env.JWT_SECRET) ctx.addIssue({ code: 'custom', path: ['JWT_SECRET'], message: 'JWT_SECRET must be set in production' });
       if (!env.TREASURY_PUBKEY) ctx.addIssue({ code: 'custom', path: ['TREASURY_PUBKEY'], message: 'TREASURY_PUBKEY must be set in production' });
       // behind a reverse proxy req.ip is the proxy's: rate limits per IP would put every rider in one bucket. Make the deploy say how many hops to trust (0 = none).

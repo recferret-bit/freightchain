@@ -31,6 +31,8 @@ test('expressions refuse code: unknown names and functions, member access, eval 
   for (const bad of ['constructor', 'x.constructor', 'alert(1)', 'Math.random()', 'globalThis', 'a = 1', '`x`', '"s"', 'f()()', '1 < 2 < 3', '(' .repeat(30) + '1' + ')'.repeat(30), 'x'.repeat(300)])
     assert.throws(() => compileExpr(bad, new Scope()), ExprError, bad);
   assert.throws(() => parseExpr('min(1)'), /2–4 argument/);
+  for (const proto of ['toString(1)', 'hasOwnProperty(1, 2)', 'valueOf', 'isPrototypeOf', '__defineGetter__(1, 2)'])   // Object.prototype names are not functions or constants
+    assert.throws(() => compileExpr(proto, new Scope()), ExprError, proto);
 });
 
 test('source: literal-only parser, never runs code; printer round-trips every seed file', () => {
@@ -65,6 +67,12 @@ test('validation refuses gameplay keys, broken parts and out-of-contract edits',
   const cactus = structuredClone(byId.get('cactus'));
   bad({ ...cactus, params: { h: cactus.params.h }, parts: [cactus.parts[0]] }, /keep that param/);
   bad({ ...structuredClone(byId.get('cactus')), kind: 'part' }, /kind cannot change/);
+  const rock = structuredClone(byId.get('rock'));   // prototype names: a validator that says ok must mean the game can build it
+  bad({ ...rock, parts: [...rock.parts, { use: 'constructor' }] }, /unknown entity 'constructor'/);
+  bad({ ...rock, parts: [{ ...rock.parts[0], ifSlot: 'constructor' }] }, /ifSlot/);
+  bad({ ...rock, parts: [{ ...rock.parts[0], rot: [0, 'r2 > 0.2 && r2 < 0.3 ? toString(1) : r2', 0] }] }, /unknown function 'toString'/);
+  bad({ id: 'proto-part', kind: 'part', v: 1, parts: [{ geo: 'box', mat: 'constructor', s: [1, 1, 1] }] }, /not a slot/);
+  bad({ ...rock, parts: [{ ...rock.parts[0], note: 'x'.repeat(201) }] }, /at most 200/);
   const loop = { id: 'loop-a', kind: 'part', v: 1, parts: [{ use: 'loop-a' }] };
   assert.throws(() => compileEntity(loop, { lookup: () => loop }), PlanError);
 });

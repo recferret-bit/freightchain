@@ -83,17 +83,27 @@ export class EditorJobRunnerService {
     }
   }
 
-  private async conclude(jobId: string, status: JobStatus, error: string | null): Promise<void> {
+  private async conclude(jobId: string, status: JobStatus, why: string | null): Promise<void> {
+    const error = why === null ? null : clip(why, 300);   // a refusal's detail is the model's own text
     if (!(await this.jobs.update(jobId, { status, error, finishedAt: this.clock.now() }, OPEN_STATUSES))) return;
     const at = this.clock.now();
     await this.jobs.appendEvent(jobId, 'status', { status }, at);
     await this.jobs.appendEvent(jobId, status === 'done' ? 'done' : 'error', status === 'done' ? { status } : { status, message: error ?? status }, at);
   }
 
-  /** fail open jobs nobody runs: past the timeout, or every one of them (`all`, on boot – a restart killed them) */
+  /** fail open jobs nobody runs: past the timeout, or every one of them (`all`, on boot – a restart killed them); jobs queued HERE past the timeout
+   *  (the editor paused with editor_jobs_parallel 0) are dropped too; then the queue is pumped again (a raised editor_jobs_parallel takes effect) */
   async sweep(all: boolean): Promise<number> {
-    const now = this.clock.now().getTime(), timeout = this.rules.get().editorJobTimeoutMs, mine = this.active();
+    const now = this.clock.now().getTime(), timeout = this.rules.get().editorJobTimeoutMs;
     let failed = 0;
+    for (const j of this.queue.filter((q) => now - q.createdAt.getTime() >= timeout)) {
+      this.queue.splice(this.queue.indexOf(j), 1);
+      await this.conclude(j.id, 'failed', 'the job waited longer than the timeout (the AI editor is paused or busy)');
+      this.settle(j.id);
+      failed++;
+    }
+    void this.pump();
+    const mine = this.active();
     for (const j of await this.jobs.open()) {
       if (mine.has(j.id)) continue;
       if (!all && now - (j.startedAt ?? j.createdAt).getTime() < timeout) continue;

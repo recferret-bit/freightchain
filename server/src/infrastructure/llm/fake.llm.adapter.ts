@@ -6,7 +6,8 @@ import type { LlmOpenOptions, LlmSession, LlmToolResult, LlmTurn } from '../../a
      turn 3: ok → save_draft({ id, source, message: 'fake: <prompt>' }); not ok → ends with the errors as text
      turn 4: ends with 'done (fake)' */
 
-const parse = (text: string): Record<string, unknown> => { try { const v = JSON.parse(text) as unknown; return v && typeof v === 'object' ? (v as Record<string, unknown>) : {}; } catch { return {}; } };
+/** a tool result as the bridge hands it over: fenced as data (`<tool_output tool="…">…</tool_output>`), JSON inside */
+const parse = (text: string): Record<string, unknown> => { try { const v = JSON.parse(text.replace(/^<tool_output[^>]*>\n?/, '').replace(/\n?<\/tool_output>$/, '')) as unknown; return v && typeof v === 'object' ? (v as Record<string, unknown>) : {}; } catch { return {}; } };
 const usage = { in: 0, out: 0 };
 
 /** the fake edit itself (exported for its spec) */

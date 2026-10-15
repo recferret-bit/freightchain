@@ -9,6 +9,8 @@ import { el, short } from './dom.js';
    CHAT (ask the AI to create / change an entity – the server's bridge runs it through the MCP), SOURCE (edit the entity file by hand) and
    HISTORY (every revision of the selected entity: preview it in place, diff it, restore it, publish it with a signature). Nothing here changes
    what players see except PUBLISH. Server texts and AI texts are untrusted: written with textContent only. */
+/* production (storybook.<apex>): the server's texts start with this host; locally the server names its own APP_DOMAIN */
+const onStorybook = location.hostname.startsWith('storybook.');
 
 export function mountEditor(viewer) {
   const st = { me: null, viewer, entityId: null, head: null, listeners: new Set() };
@@ -23,6 +25,8 @@ export function mountEditor(viewer) {
   st.preview = config => { try { viewer.preview(config); } catch (e) { status(`preview failed: ${e.message}`, true); } };
   st.publish = async revisionId => {
     const { message } = await post(`entities/${encodeURIComponent(st.entityId)}/publish/challenge`, { revisionId });
+    // sign only a text that names THIS host, this entity and this revision (the wallet shows it too; a defence in depth against a swapped answer)
+    if ((onStorybook && !message.startsWith(`${location.host} `)) || !message.includes(`PUBLISH 3D model ${st.entityId} `) || !message.includes(`(${revisionId})`)) throw new Error('the publish text does not match what you clicked – not signed');
     const signature = await sign(message);
     const r = await post(`entities/${encodeURIComponent(st.entityId)}/publish`, { revisionId, signature });
     await viewer.reload(); await st.loadHead(); status(`published – bundle ${r.rev}`);
@@ -57,6 +61,7 @@ export function mountEditor(viewer) {
   async function signIn() {
     const wallet = await connect(); status('sign the message in your wallet…');
     const { message } = await post('auth/nonce', { wallet });
+    if (onStorybook && !message.startsWith(`${location.host} wants you to sign in`)) throw new Error('the sign-in text names another site – not signed');
     await post('auth/verify', { wallet, signature: await sign(message) });
     status(''); await refreshMe();
   }

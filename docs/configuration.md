@@ -70,7 +70,7 @@ Change one with the signed admin API (`GET /api/admin/settings`, then the challe
 | `SESSION_TTL_DAYS` | `7` | Rider session cookie lifetime |
 | `APP_DOMAIN` / `APP_ORIGIN` | `localhost:3000` / `http://localhost:3000` | Shown in the wallet's sign-in message – must be the page the rider signs in on (derived in prod) |
 | `CLIENT_DIR` / `LANDING_DIR` | `../client` / `../landing/dist` | Static roots. No landing build = `/` serves the placeholder `client/index.html` |
-| `COOKIE_DOMAIN` | unset (host-only cookie) | Split hosts only: the apex, so all subdomains share the session. Bare host, no scheme/port |
+| `COOKIE_DOMAIN` | unset (host-only cookie) | Split hosts only: the apex, so all subdomains share the session. Bare host, no scheme/port. It also names the admin and storybook hosts: production refuses to boot without it while `ADMIN_WALLETS` or `EDITOR_WALLETS` is set |
 | `CORS_ORIGINS` | empty (CORS off) | Split hosts only: comma-separated origins allowed to call the API with the cookie. Derived as `https://<apex>,https://ride.<apex>,https://whitepaper.<apex>` (`deploy/scripts/lib.sh`). The whitepaper origin is for web vitals. |
 | `TRUST_PROXY` | – (**required in prod**) | Reverse-proxy hops. Production nginx = `1` (the deploy check insists). Wrong value = per-IP rate limits wrong |
 | `THROTTLE_LIMIT` / `THROTTLE_AUTH_LIMIT` / `THROTTLE_PROMO_LIMIT` | `600` / `30` / `30` | Requests per minute per wallet-or-IP; the second applies to `/api/auth/*` and `/api/editor/auth/*` (per IP), the third to `POST /api/promo/redeem` (per IP – code guessing; wallets are free to make) |
@@ -155,7 +155,7 @@ The admin API additionally requires: host = `admin.<apex>` (nginx basic auth, `D
 | `EDITOR_JOB_TIMEOUT_MS` | `600000` | 10 s – 1 h; a longer job is aborted, one left by a restart is failed |
 | `EDITOR_FAKE_LLM` | `0` | **Test only**: `1` offers the scripted fake model (browser e2e of the editor). Refused in production |
 
-Runtime knobs of the AI editor are `player.GameSetting` rows (signed admin settings API): `editor_jobs_per_day` (40), `editor_max_steps` (24), `editor_max_output_tokens` (32000), `editor_jobs_parallel` (2; 0 pauses the AI editor).
+Runtime knobs of the AI editor are `player.GameSetting` rows (signed admin settings API): `editor_jobs_per_day` (40), `editor_max_steps` (24), `editor_max_output_tokens` (32000), `editor_max_input_ktokens` (500: input tokens per job, thousands), `editor_jobs_parallel` (2; 0 pauses the AI editor).
 
 The editor API additionally requires: host = `storybook.<apex>` (nginx proxies only `/api/entities/` and `/api/editor/` there), the `X-FC-Editor: 1` header on changes, and a wallet signature for every publish.
 

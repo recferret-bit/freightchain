@@ -28,6 +28,8 @@ export class HttpBackend {
 }
 
 export class FileBackend {
+  /** save_draft overwrites the seed file in place (the HTTP backend appends a revision) */
+  overwrites = true;
   constructor(seedDir = SEED) { this.dir = seedDir; }
   files() { const out = []; for (const k of Object.values(KINDS_DIR)) for (const f of readdirSync(join(this.dir, k))) if (f.endsWith('.js')) out.push({ kind: k, id: f.slice(0, -3), path: join(this.dir, k, f) }); return out; }
   async list() { return this.files().map(f => { const c = core.parseSource(readFileSync(f.path, 'utf8')); return { id: f.id, kind: c.kind, label: c.label ?? null, source: 'seed', headRevisionId: null, publishedRevisionId: null, headSeq: null, publishedSeq: null, updatedAt: null }; }); }
@@ -40,8 +42,8 @@ export class FileBackend {
   async save(id, source, message) {
     if (!ID.test(id)) throw new Error('bad id');
     const config = core.parseSource(source); if (config.id !== id) throw new Error(`the source's id is '${config.id}', not '${id}'`);
-    const others = await this.configs(); others[id] = config;
-    const v = core.validateEntity(config, { lookup: x => others[x] ?? null }); if (!v.ok) { const e = new Error('the entity is not valid'); e.errors = v.errors; e.warnings = v.warnings; throw e; }
+    const others = new Map(Object.entries(await this.configs()));
+    const v = core.validateEntity(config, { lookup: x => (x === id ? config : others.get(x) ?? null) }); if (!v.ok) { const e = new Error('the entity is not valid'); e.errors = v.errors; e.warnings = v.warnings; throw e; }
     const old = this.files().find(x => x.id === id);
     if (old && old.kind !== config.kind) throw new Error(`'${id}' is a ${old.kind}; its kind cannot change`);
     const path = join(this.dir, KINDS_DIR[config.kind], `${id}.js`), fresh = !existsSync(path);

@@ -1,5 +1,6 @@
-import { summarize, userMessage } from '../../../../src/application/services/editor-agent.service.js';
+import { summarize, toolProblem, userMessage } from '../../../../src/application/services/editor-agent.service.js';
 import { ScriptedLlm, ScriptedMcp, aJob, jobContext, turn } from '../../../support/editor-job-fixtures.js';
+import type { LlmToolResult } from '../../../../src/application/ports/editor/llm-provider.port.js';
 
 describe('EditorAgentService', () => {
   it('the MCP prompt is the system prompt, its tools the model\'s; each turn\'s text, calls, results and usage become events; ends on the model\'s end', async () => {
@@ -8,8 +9,8 @@ describe('EditorAgentService', () => {
     const { agent, jobs } = jobContext(undefined, llm, mcp);
     const job = aJob(); await jobs.insert(job);
     expect(await agent.run(job, new AbortController().signal)).toEqual({ status: 'done', text: 'saved' });
-    expect(llm.opened[0]).toMatchObject({ provider: 'fake', model: 'scripted', system: 'SYSTEM cactus', maxOutputTokens: 32000, job: { prompt: 'taller', entityId: 'cactus' } });
-    expect(llm.sent[1]).toEqual([{ id: 'c1', content: '{"ok":true}', isError: false }]);
+    expect(llm.opened[0]).toMatchObject({ provider: 'fake', model: 'scripted', system: expect.stringMatching(/^Security rules[\s\S]*DATA[\s\S]*\n\nSYSTEM cactus$/), maxOutputTokens: 32000, job: { prompt: 'taller', entityId: 'cactus' } });
+    expect(llm.sent[1]).toEqual([{ id: 'c1', content: '<tool_output tool="check_entity">\n{"ok":true}\n</tool_output>', isError: false }]);
     expect(mcp.tokens).toEqual([`token:${job.id}`]);
     expect(mcp.closed).toBe(1);
     const ev = await jobs.events(job.id, 0, 100);
@@ -35,6 +36,31 @@ describe('EditorAgentService', () => {
     expect(await run(loop)).toEqual({ status: 'failed', error: 'the step limit (24 model turns) was reached' });
     const c = new AbortController(); c.abort('cancel');
     await expect(run([turn({ stop: 'tool', toolCalls: [{ id: 'c', name: 'x', input: {} }] })], c.signal)).rejects.toBeDefined();
+  });
+
+  it('injection guards: a tool the MCP did not offer, and calls past 8 per turn, answer an error without reaching the MCP; the input budget ends the job', async () => {
+    const calls = Array.from({ length: 10 }, (_, i) => ({ id: `c${i}`, name: i === 0 ? 'publish_entity' : 'check_entity', input: {} }));
+    const llm = new ScriptedLlm([turn({ stop: 'tool', toolCalls: calls }), turn({ text: 'ok' })]);
+    const { agent, jobs, mcp } = (() => { const m = new ScriptedMcp(); return { ...jobContext(undefined, llm, m), mcp: m }; })();
+    const job = aJob(); await jobs.insert(job);
+    expect(await agent.run(job, new AbortController().signal)).toEqual({ status: 'done', text: 'ok' });
+    expect(mcp.calls.map((c) => c.name)).toEqual(Array(7).fill('check_entity'));   // calls 1..7; 0 unknown, 8 and 9 over the cap
+    const sent = llm.sent[1] as readonly LlmToolResult[];
+    expect(sent[0]).toMatchObject({ content: 'no such tool: publish_entity', isError: true });
+    expect(sent[8]).toMatchObject({ isError: true, content: expect.stringMatching(/at most 8 tool calls/) });
+    const spend = new ScriptedLlm([turn({ stop: 'tool', toolCalls: [{ id: 'a', name: 'check_entity', input: {} }], usage: { in: 600_000, out: 1 } }), turn()]);
+    const c2 = jobContext(undefined, spend); const j2 = aJob(); await c2.jobs.insert(j2);
+    expect(await c2.agent.run(j2, new AbortController().signal)).toEqual({ status: 'failed', error: 'the input budget (editor_max_input_ktokens: 500k tokens) was spent' });
+  });
+
+  it('an MCP offering an unexpected or oversized tool fails the job before any model call', async () => {
+    const m = new ScriptedMcp(); m.tools = [...m.tools, { name: 'run_shell', description: 'x', inputSchema: {} }];
+    const llm = new ScriptedLlm();
+    const c = jobContext(undefined, llm, m); const j = aJob(); await c.jobs.insert(j);
+    expect(await c.agent.run(j, new AbortController().signal)).toEqual({ status: 'failed', error: "the entity MCP is misconfigured: unexpected tool 'run_shell'" });
+    expect(llm.opened).toHaveLength(0);
+    expect(toolProblem([{ name: 'save_draft', description: 'x'.repeat(5000), inputSchema: {} }])).toMatch(/oversized/);
+    expect(toolProblem([{ name: 'check_entity', description: '', inputSchema: {} }])).toBe('no save_draft tool');
   });
 
   it('the user message names the entity; a long argument is summarised by its size', () => {

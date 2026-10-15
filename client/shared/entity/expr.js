@@ -69,12 +69,12 @@ export function parseExpr(src) {
       if (t.v === 'true' || t.v === 'false') return { k: 'num', v: t.v === 'true' };
       if (BAD_IDENT.has(t.v) || t.v.length > LIMITS.ident) throw new ExprError(`'${t.v}' is not allowed`);
       if (isOp('(')) {
-        const f = FNS[t.v]; if (!f) throw new ExprError(`unknown function '${t.v}'`);
+        const f = Object.hasOwn(FNS, t.v) ? FNS[t.v] : null; if (!f) throw new ExprError(`unknown function '${t.v}'`);
         p++; const args = []; if (!isOp(')')) { args.push(cond()); while (isOp(',')) { p++; args.push(cond()); } } eat(')');
         if (args.length < f[1] || args.length > f[2]) throw new ExprError(`${t.v}() takes ${f[1] === f[2] ? f[1] : `${f[1]}–${f[2]}`} argument(s)`);
         return { k: 'call', f: t.v, args };
       }
-      if (t.v in CONSTS) return { k: 'num', v: CONSTS[t.v] };
+      if (Object.hasOwn(CONSTS, t.v)) return { k: 'num', v: CONSTS[t.v] };
       return { k: 'id', v: t.v };
     }
     throw new ExprError(`unexpected '${t.v}' at ${t.at}`);
@@ -91,7 +91,7 @@ export class Scope {
   find(name) { for (let s = this; s; s = s.parent) if (s.names.has(name)) return s.names.get(name); return -1; }
   declare(name) {
     if (!IDENT.test(name) || BAD_IDENT.has(name) || name.length > LIMITS.ident) throw new ExprError(`bad name '${name}'`);
-    if (name in CONSTS || name === 'true' || name === 'false') throw new ExprError(`'${name}' is a reserved name`);   // a function name is fine: len(x) is a call, len a value
+    if (Object.hasOwn(CONSTS, name) || name === 'true' || name === 'false') throw new ExprError(`'${name}' is a reserved name`);   // a function name is fine: len(x) is a call, len a value
     if (this.find(name) >= 0) throw new ExprError(`'${name}' is already defined`);
     const i = this.root.size++; this.names.set(name, i); return i;
   }
