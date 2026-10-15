@@ -12,7 +12,7 @@ const ctx = (method: string, host: string, origin?: string, cls: typeof Routes |
   const request = { method, headers: { host, ...(origin === undefined ? {} : { origin }) } };
   return { getType: () => 'http', switchToHttp: () => ({ getRequest: () => request }), getHandler: () => (cls === Blinks ? Blinks.prototype.post : Routes.prototype.player), getClass: () => cls } as unknown as ExecutionContext;
 };
-const prod = new OriginGuard(new Reflector(), env(['https://freightchain.fun', 'https://ride.freightchain.fun', 'https://whitepaper.freightchain.fun'], 'admin.freightchain.fun'));
+const prod = new OriginGuard(new Reflector(), env(['https://freightchain.fun', 'https://ride.freightchain.fun', 'https://whitepaper.freightchain.fun', 'https://pitchdeck.freightchain.fun'], 'admin.freightchain.fun'));
 const allows = (g: OriginGuard, c: ExecutionContext) => { try { return g.canActivate(c); } catch (e) { if (e instanceof ForbiddenError) return false; throw e; } };
 
 describe('OriginGuard', () => {
@@ -20,6 +20,7 @@ describe('OriginGuard', () => {
     expect(allows(prod, ctx('POST', 'api.freightchain.fun', 'https://ride.freightchain.fun'))).toBe(true);
     expect(allows(prod, ctx('POST', 'freightchain.fun', 'https://freightchain.fun'))).toBe(true);   // the apex's /api proxy
     expect(allows(prod, ctx('POST', 'api.freightchain.fun'))).toBe(true);
+    expect(allows(prod, ctx('POST', 'api.freightchain.fun', 'https://pitchdeck.freightchain.fun'))).toBe(true);   // the deck's page views (POST /api/telemetry)
   });
 
   it('a sibling subdomain that is not allowlisted, another site, and Origin: null are refused (403 bad_origin) – a form post or a beacon included', () => {

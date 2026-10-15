@@ -59,6 +59,8 @@ if (pitchdeck) {
   check('its stylesheet loads from the same host', !!css && (await at(pitchdeck)(css)).status === 200, css ?? 'no stylesheet link');
   const clip = await at(pitchdeck)('/media/pitchdeck/promo-clip.mp4');
   check('its media loads from the same host (the clip)', clip.status === 200, `${clip.status}`);
+  const man = await at(pitchdeck)('/media/pitchdeck/pitchdeck.webmanifest'), manBody = await man.json().catch(() => null);
+  check('its own manifest (the home-screen shortcut opens the deck, not the lobby)', man.status === 200 && manBody?.start_url?.startsWith('/') && !manBody.start_url.includes('lobby'), `${man.status} ${manBody?.start_url}`);
 }
 if (https) {   // search: robots + sitemap from the landing build; behind nginx (the fc-seo snippet) the game host's / and the apex's /whitepaper.html 301 to the page's one public URL
   const r = await at(base)('/robots.txt'), rBody = await r.text();
@@ -116,7 +118,7 @@ if (tiersBody.paymentMode === 'program') {
 if (!args.includes('--no-signin')) {
   const kp = nacl.sign.keyPair(), wallet = bs58.encode(kp.publicKey);
   if (split) {   // the browser's CORS preflight from the site (and from the game) must pass, with the cookie allowed
-    for (const from of [base, game].filter(Boolean)) {
+    for (const from of [base, game, pitchdeck].filter(Boolean)) {
       const pre = await get('/api/auth/nonce', { method: 'OPTIONS', headers: { origin: from, 'access-control-request-method': 'POST', 'access-control-request-headers': 'content-type' } });
       check(`CORS: ${new URL(from).host} may call the API with credentials`, pre.headers.get('access-control-allow-origin') === from && pre.headers.get('access-control-allow-credentials') === 'true', `${pre.status}`);
     }

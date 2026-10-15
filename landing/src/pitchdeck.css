@@ -393,6 +393,11 @@ canvas.glyph{height:auto;aspect-ratio:240/124;background:none}
 .exit.sol .f,.exit.sol .bk{background:linear-gradient(135deg,#9945ff,#14c98a)}
 .exit .bk{transform:rotateY(180deg);background:color-mix(in srgb,var(--g) 70%,#050505);justify-content:center}
 .exit.sol .bk{background:linear-gradient(135deg,#4a1f8f,#0d6e4f)}
+/* belt and braces for engines that ignore backface-visibility (software-rendered WebKit showed every sign mirrored): the faces also swap by opacity at the half-turn */
+.exit .f,.exit .bk{transition:opacity 0s .35s}
+.exit .bk{opacity:0}
+.exit:is(:hover,.hot) .bk{opacity:1}
+.exit:is(:hover,.hot) .f{opacity:0}
 .exit .tab{position:absolute;right:18px;top:-20px;padding:6px 12px;border-radius:7px 7px 0 0;background:var(--accent);color:#050505;font:700 14px/1 var(--body);letter-spacing:2px}
 .exit .f b{font:400 48px/.95 var(--head);text-transform:uppercase;color:#fff}
 .exit .f small{font:600 17px/1.4 var(--body);color:#dff5e8}
