@@ -394,8 +394,8 @@ canvas.glyph{height:auto;aspect-ratio:240/124;background:none}
 .exit.sol .f,.exit.sol .bk{background:linear-gradient(135deg,#9945ff,#14c98a)}
 .exit .bk{transform:rotateY(180deg);background:color-mix(in srgb,var(--g) 70%,#050505);justify-content:center}
 .exit.sol .bk{background:linear-gradient(135deg,#4a1f8f,#0d6e4f)}
-/* belt and braces for engines that ignore backface-visibility (software-rendered WebKit showed every sign mirrored): the faces also swap by opacity at the half-turn */
-.exit .f,.exit .bk{transition:opacity 0s .35s}
+/* belt and braces for engines that ignore backface-visibility (software-rendered WebKit showed every sign mirrored): the faces also swap by opacity at the half-turn (the .7s curve crosses 90° at ~90 ms; a later swap leaves the sign blank in between) */
+.exit .f,.exit .bk{transition:opacity 0s .09s}
 .exit .bk{opacity:0}
 .exit:is(:hover,.hot) .bk{opacity:1}
 .exit:is(:hover,.hot) .f{opacity:0}
