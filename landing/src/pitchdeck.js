@@ -6,7 +6,7 @@ import { SLIDES } from './pitchdeck/data.js';
 import { reduced, view, stage, deck, replay } from './pitchdeck/core.js';
 import { initTicker, holdTicker, ticker } from './pitchdeck/ticker.js';
 import { initCoins, donate, adopt } from './pitchdeck/coins.js';
-import { initTilt, setTilt, initDrag, drag, initShakes, initCarousel, initPeek, initSplit, initScenes, ladderClick } from './pitchdeck/fx.js';
+import { initTilt, fxVis, setTilt, initDrag, drag, initShakes, initCarousel, initPeek, initSplit, initScenes, ladderClick } from './pitchdeck/fx.js';
 import { initRoad } from './pitchdeck/road.js';
 
 deck.innerHTML = SLIDES.map((s, i) => `<section class="slide L-${s.layout.split(' ').join(' L-')}" id="s-${s.id}" data-i="${i}">${s.html}</section>`).join('');
@@ -127,7 +127,7 @@ const onTilt = e => {
   const [x, y] = a === 90 ? [e.beta, -e.gamma] : a === 270 ? [-e.beta, e.gamma] : a === 180 ? [-e.gamma, -e.beta] : [e.gamma, e.beta];
   base ??= [x, y];
   const f = v => Math.max(-.5, Math.min(.5, v / 40)).toFixed(3);
-  deck.querySelectorAll('.fx .vis').forEach(v => setTilt(v, f(x - base[0]), f(y - base[1])));
+  fxVis.forEach(v => setTilt(v, f(x - base[0]), f(y - base[1])));
 };
 const listenTilt = () => { addEventListener('deviceorientation', onTilt); window.screen.orientation?.addEventListener('change', () => { base = null; }); };
 if (touch && window.DeviceOrientationEvent) {

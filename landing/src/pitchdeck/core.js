@@ -15,7 +15,7 @@ export const slideOf = el => +(el?.closest('.slide')?.dataset.i ?? -1);
    On-demand loops (the coin pile, a dragged card) keep their own rAF and stop when they settle. A hidden tab gets no frames at all. */
 const loops = [];
 export const everyFrame = f => loops.push(f);
-const frame = t => { for (const f of loops) f(t); requestAnimationFrame(frame); };
+const frame = t => { requestAnimationFrame(frame); for (const f of loops) try { f(t); } catch (e) { console.error(e); } };   // one system failing never stops the others
 requestAnimationFrame(frame);
 
 /** a one-shot stage element (author-made text only) that removes itself when its animation ends */
