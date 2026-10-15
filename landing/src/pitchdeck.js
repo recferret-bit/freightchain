@@ -52,7 +52,8 @@ const fit = () => {
   const z = Math.min(1.1, 1 + (Math.max(1, innerWidth / innerHeight / (16 / 9)) - 1) * .5);
   const k = view.scale = Math.min(innerWidth / 1920, innerHeight / 1080) * z, w = view.w = Math.max(1920, Math.round(innerWidth / k)), h = view.h = Math.min(1080, Math.round(innerHeight / k));
   const sa = window.getComputedStyle(safe), ex = (w - 1920) / 2, ey = (1080 - h) / 2;   // the notch / home-bar insets, in screen px
-  const side = s => `${112 + ex * .25 - ey * .6 + parseFloat(s) / k * .6}px`;   // the island sits mid-height: the slide may reach a little into the inset, the corner buttons sit in it
+  const coarse = matchMedia('(hover: none) and (pointer: coarse)').matches;
+  const side = s => `${Math.max(112 + ex * .25 - ey * .6 + parseFloat(s) / k * .6, coarse ? 68 / k : 0)}px`;   // a phone: never under the corner buttons (8 px + 44 px + a gap)   // the island sits mid-height: the slide may reach a little into the inset, the corner buttons sit in it
   stage.style.width = `${w}px`; stage.style.height = `${h}px`;
   for (const [n, v] of [['--ex', `${ex}px`], ['--pl', side(sa.paddingLeft)], ['--pr', side(sa.paddingRight)], ['--pt', `${96 - ey * .7}px`], ['--pb', `${96 - ey * 1.3}px`]]) stage.style.setProperty(n, v);
   stage.style.transform = `translate(-50%,0) scale(${k})`;
