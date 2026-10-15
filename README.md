@@ -10,18 +10,18 @@ Paid entries are SOL on Solana devnet. The program holds the money. There is no 
 
 <!-- traction:start -->
 
-Public numbers for a reviewer, read 2026-10-14 09:40 UTC. Each headline was fetched three times. A partial page, a deleted post, a repost, a premiere, or a count the second source did not support is not in a headline. Links go to the page the number was read from.
+Public numbers for a reviewer, read 2026-10-15 06:01 UTC. Each headline was fetched three times. A partial page, a deleted post, a repost, a premiere, or a count the second source did not support is not in a headline. Links go to the page the number was read from.
 
 <table><tr>
-<td align="center" width="20%"><h2>2,468</h2><b>YouTube views</b><br>6 videos · 9 subscribers<br><a href="https://www.youtube.com/@FreightChainGame">@FreightChainGame</a></td>
-<td align="center" width="20%"><h2>21</h2><b>X posts</b><br><a href="https://x.com/FreightChainSol">@FreightChainSol</a><br>6 followers</td>
-<td align="center" width="20%"><h2>530</h2><b>X views on public posts</b><br>5 of 21 posts have a public view count</td>
+<td align="center" width="20%"><h2>733</h2><b>YouTube views read</b><br>5 videos · 9 subscribers<br><a href="https://www.youtube.com/@FreightChainGame">@FreightChainGame</a></td>
+<td align="center" width="20%"><h2>—</h2><b>X posts</b><br><a href="https://x.com/FreightChainSol">@FreightChainSol</a></td>
+<td align="center" width="20%"><h2>—</h2><b>X views on public posts</b><br>0 of — posts have a public view count</td>
 <td align="center" width="20%"><h2>32</h2><b>shifts started</b><br>6 finished · <a href="https://freightchain.fun/api/stats">api/stats</a></td>
 <td align="center" width="20%"><h2>27.9 km</h2><b>driven</b><br>2 drivers · 5 crashes</td>
 </tr>
 <tr>
-<td align="center" width="20%"><h2>131</h2><b>landing people</b><br>PostHog · 8 Oct 2026 through 2026-10-14 UTC</td>
-<td align="center" width="20%"><h2>12</h2><b>whitepaper readers</b><br>PostHog · same window</td>
+<td align="center" width="20%"><h2>147</h2><b>landing people</b><br>PostHog · 8 Oct 2026 through 2026-10-15 UTC</td>
+<td align="center" width="20%"><h2>13</h2><b>whitepaper readers</b><br>PostHog · same window</td>
 <td align="center" width="20%"><h2>59</h2><b>wallet sign-ins</b><br>real wallets · demo excluded</td>
 <td align="center" width="20%"><h2>3</h2><b>real shifts started</b><br>29 demo starts</td>
 <td align="center" width="20%"><h2>6</h2><b>shifts finished</b><br>6 demo · 0 real</td>
@@ -29,8 +29,8 @@ Public numbers for a reviewer, read 2026-10-14 09:40 UTC. Each headline was fetc
 
 The second row is PostHog Cloud EU, project 297915. Probe events (`surface=prod-check`) are out. Ride counts are `source=server`. Demo wallets are separate from real ones. Client `ride_completed` is not counted.
 
-YouTube channel About says 443 views. That figure lags the videos and was not used. The headline is the sum of the videos below.
-Profile counts 21 posts. 5 are on the public posts tab with a view count checked twice. Logged-out X does not serve the replies tab, so those views are not guessed.
+YouTube channel About says 2,675 views. channel About count is higher than the videos that were listed. The headline is the sum of the videos below.
+X total withheld: mirrors-disagree.
 
 ### YouTube
 
@@ -38,26 +38,20 @@ Watch-page `viewCount` for every video on the Videos and Shorts tabs. The grid c
 
 | Video | Views |
 | --- | ---: |
-| [Rating every NPC driver 1–10 (this one got 0)](https://www.youtube.com/watch?v=oJ6UpOxY-l8) | 960 |
-| [3 ways to fail the free level 💀](https://www.youtube.com/watch?v=hgXhGdLwSvE) | 952 |
-| [Rating every road 1–10](https://www.youtube.com/watch?v=3xCB4uJ_SAw) | 394 |
-| [Boss levels: 3 min, 5 min, 15 min, 1 hour](https://www.youtube.com/watch?v=2usi9vHQ-Z0) | 121 |
-| [FreightChain: The Road Never Ends. Your Shift Does.](https://www.youtube.com/watch?v=cFyQ9XlN5nQ) | 32 |
-| [Freight Chain: What We Built for Colosseum (in 59 seconds)](https://www.youtube.com/watch?v=QiH7NEoWH48) | 9 |
-| **Sum** | **2,468** |
+| [Rating every road 1–10](https://www.youtube.com/watch?v=3xCB4uJ_SAw) | 397 |
+| [The doom guys left 0x5f3759df in this truck](https://www.youtube.com/watch?v=WqdnKa8VjWQ) | 168 |
+| [Boss levels: 3 min, 5 min, 15 min, 1 hour](https://www.youtube.com/watch?v=2usi9vHQ-Z0) | 120 |
+| [FreightChain: The Road Never Ends. Your Shift Does.](https://www.youtube.com/watch?v=cFyQ9XlN5nQ) | 36 |
+| [Freight Chain: What We Built for Colosseum (in 59 seconds)](https://www.youtube.com/watch?v=QiH7NEoWH48) | 12 |
+| **Sum** | **733** |
+
+Left out: hgXhGdLwSvE (unavailable), oJ6UpOxY-l8 (unavailable).
 
 ### X
 
 Profile post count is the number both public mirrors returned. View counts are the posts tab, checked against the status endpoint.
 
-| Post | Views |
-| --- | ---: |
-| [FreightChain is a long-haul truck game in the browser. You drive the cab yourself. The road never ends. Your shift does. One mistake ends th](https://x.com/FreightChainSol/status/2109242074876739715) | 139 |
-| [Looking for 20 people to sit in a truck cab for 3 minutes and tell me where it hurts. Free, no download. https://t.co/bqJQEIE96a #FreightCha](https://x.com/FreightChainSol/status/2109385632560591255) | 125 |
-| [In 1995, Desert Bus made you drive 8 real-time hours from Tucson to Las Vegas for 1 point. We kept the 8 hours and replaced the point with a](https://x.com/FreightChainSol/status/2109921865888071894) | 113 |
-| [A week ago i remembered 'Desert Bus' game. I thought, how to make it modern and kind a hyped ? Week ago, i have it.. #indiegame #desertbus #](https://x.com/FreightChainSol/status/2109769147496145392) | 99 |
-| [Just did multi-agent penetration and Solana program audit using Warp, my fav tool @warpdotdev Im not using any IDE for a long time, and i al](https://x.com/FreightChainSol/status/2109986407875760450) | 54 |
-| **Sum of these posts** | **530** |
+No public post passed the checks.
 
 ### The product
 
@@ -87,7 +81,7 @@ Waiting: FC · Promo from an invite view; FC · Promo from a submitted code.
 | Window | Landing people | Real finishes | Demo finishes | Real sign-ins |
 | --- | ---: | ---: | ---: | ---: |
 | 8–12 Oct 2026 (judge board) | 106 | 0 | 6 | 54 |
-| 8 Oct 2026 through 2026-10-14 UTC | 131 | 0 | 6 | 59 |
+| 8 Oct 2026 through 2026-10-15 UTC | 147 | 0 | 6 | 59 |
 
 Refresh with `node .claude/skills/daily-tracktion-update/update.mjs`. The raw read is `docs/traction/latest.json`.
 
