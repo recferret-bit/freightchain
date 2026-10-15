@@ -111,6 +111,8 @@ const exits = deck.querySelector('.exits'); if (exits) initRoad(exits);
 initShakes('.fx .shot, .fx .badge, .fx canvas.glyph, .L-wall .tags span, .split > div, .ladder li, .cards5 .cc, .pts li.don, .pts li.adopt, .exits .exit');
 initCarousel(); initPeek(); initSplit(); initScenes();
 
+stage.addEventListener('click', () => {});   // iOS Safari fires no click on a non-button (a bullet, a card, a sign) unless it or an ancestor ELEMENT has a click listener – the window listener below does not count
+
 /* ONE click handler: a click or tap never turns the page – only the bottom bar's arrows (and the keys / a swipe) do; on a card it lifts it (.hot), on a button it does its thing */
 const CARDS = '.fx .shot, .fx .badge, .fx canvas.glyph, .L-wall .tags span, .cards5 .cc, .plan .bar, .exits .exit';
 addEventListener('click', e => {
