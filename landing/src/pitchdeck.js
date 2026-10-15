@@ -104,6 +104,8 @@ const SLIDES = [
       </div>
       <div class="vis">
         ${clip('promo-clip.mp4', 'v-main')}
+        <button type="button" class="donate" aria-label="Donate SOL to the driver"><span class="sol">◎</span> DONATE</button>
+        <div class="coins" aria-hidden="true">${'<i>◎</i>'.repeat(6)}</div>
         <div class="badge live"><i class="dot"></i>LIVE · NO WALLET TO WATCH</div>
       </div>` },
 
@@ -118,7 +120,7 @@ const SLIDES = [
           <li class="on"><b>1 H</b><span>devnet pool</span></li>
           <li><b>4 H</b><span>next</span></li>
           <li><b>8 H</b><span>next</span></li>
-        </ol><ol class="ladder secret" aria-hidden="true">${[0, 1, 2, 3].map(i => `<li style="--i:${i}"><b>???</b><span>secret</span></li>`).join('')}</ol></div>
+        </ol><ol class="ladder secret" aria-hidden="true">${'<li><b>???</b><span>secret</span></li>'.repeat(4)}</ol></div>
       </div>
       <div class="vis">
         ${shot('game-guest.webp', 'v-main', 'Free run in the cab')}
@@ -230,6 +232,15 @@ const deck = document.getElementById('deck');
 deck.innerHTML = SLIDES.map((s, i) => `<section class="slide L-${s.layout.split(' ').join(' L-')}" id="s-${s.id}" data-i="${i}">${s.html}</section>`).join('');
 
 const slides = [...deck.children];
+
+/* slide 2: the DONATE button – the live card feels the weight of SOL. Pressed (mouse: hovered), the card sinks slowly under it, coins drop in; released, it rises back slowly with a little give. */
+const dn = deck.querySelector('.donate'), dv = dn?.closest('.vis');
+if (dn) {
+  const weigh = on => dv.classList.toggle('weigh', on);
+  dn.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') weigh(true); });
+  dn.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') weigh(false); });
+  dn.addEventListener('click', e => { e.stopPropagation(); if (e.pointerType !== 'mouse') weigh(!dv.classList.contains('weigh')); });   // a tap toggles; the slide does not turn
+}
 
 /* the AI + MCP sneak-peek card: while it is hovered or tapped open, it steps through the storybook objects every 1.5 s (a hard swap under a white flash), the name tag swaps with them; a click steps once more */
 const pk = deck.querySelector('.peek-card');
@@ -575,8 +586,8 @@ function suckStep(t) {
   }
   if (!coins.length && !sucking.length) { suckOn = false; toast(`+$${suckUsd.toFixed(2)}`, `${suckN} SOL · WEB3 ADOPTED`); }
 }
-/* slide 4's FREE / 1 H / 4 H / 8 H are buttons: a click hangs a second row of secret tiers under them, one by one on a chain (CSS delays by --i), each tile's text scrambling
-   before it settles on ??? – another click takes them back up, last first; a click on a secret tile scrambles it again */
+/* slide 4's FREE / 1 H / 4 H / 8 H are buttons: a click hangs the secret tier under THAT tier on a chain link, its text scrambling before it settles on ???;
+   another click on the tier takes it back up; a click on a secret tile scrambles it again */
 const SCRAMBLE = '#%&@$?<>/\\█▓▒░';
 function scramble(el, final, ms) {
   const t0 = performance.now(), step = t => {
@@ -590,8 +601,8 @@ const scrambleTile = li => { scramble(li.querySelector('b'), '???', 700); scramb
 function ladderClick(li) {
   li.animate({ scale: [1, .92, 1.06, 1] }, { duration: 300, easing: 'ease-out' });
   if (li.closest('.secret')) { if (!tkReduced) scrambleTile(li); return; }
-  const box = li.closest('.ladders'), open = box.classList.toggle('open');
-  if (open && !tkReduced) box.querySelectorAll('.secret li').forEach((s, i) => setTimeout(() => scrambleTile(s), 120 + i * 160));   // in step with the drop-in delays
+  const row = li.closest('.ladder'), tile = li.closest('.ladders').querySelectorAll('.secret li')[[...row.children].indexOf(li)];   // the secret under the tier that was clicked
+  if (tile.classList.toggle('open') && !tkReduced) setTimeout(() => scrambleTile(tile), 120);
 }
 function payOut(x, y, li) {   // one coin in: "+$", a bill thrown up and out, the bullet gulps
   const usd = 1 + Math.random() * 8; suckUsd += usd; suckN++;
@@ -652,7 +663,7 @@ if (badge) requestAnimationFrame(badgeTick);
 
 addEventListener('pointerdown', e => { if (!e.target.closest('.fx .shot')) moved = false; }, true);   // a drag that ended off a card must not swallow the next click
 addEventListener('click', e => {
-  if (e.target.closest('.split')) return;   // the bar's own click handler (a tap opens / closes a block)
+  if (e.target.closest('.split, .donate')) return;   // the bar's own click handler (a tap opens / closes a block)
   if (e.target.closest('#ticker')) { tkHold = performance.now() + 1400; return; }   // a click on the header slows it for a moment instead of turning the page
   if (e.target.closest('.pts li.don')) { donate(); return; }   // slide 3: a mock donation, not a page turn
   if (e.target.closest('.pts li.adopt')) { adopt(); return; }   // slide 3: the coins go into Web3 adoption
