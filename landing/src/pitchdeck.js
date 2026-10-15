@@ -3,7 +3,7 @@
    This file is the engine: it renders the slides, turns pages (bottom-bar arrows, keys, a swipe – never a plain click), loads each slide's media only when it is near,
    scales the 1920×1080 stage, and wires the parts in pitchdeck/*.js. Keys: → / space next · ← back · F fullscreen · Home / End. */
 import { SLIDES } from './pitchdeck/data.js';
-import { reduced, view, stage, deck, replay } from './pitchdeck/core.js';
+import { reduced, view, stage, deck, replay, toStage, pop } from './pitchdeck/core.js';
 import { initTicker, holdTicker, ticker } from './pitchdeck/ticker.js';
 import { initCoins, donate, adopt } from './pitchdeck/coins.js';
 import { initTilt, initDrag, drag, initShakes, initCarousel, initPeek, initSplit, initScenes, ladderClick } from './pitchdeck/fx.js';
@@ -45,8 +45,16 @@ function setPager(i, from) {   // from = the previous slide, -1 on load
 }
 
 /* the stage hangs from the top edge (any letterbox goes below), the header ticker hugs the top of the window full width */
+const safe = document.getElementById('safe');
+/* a screen wider than 16:9 (a phone sideways) is not letterboxed: the stage zooms in up to 10 % (bigger cards and text) and gives the room it loses in height back from the
+   slides' top / bottom padding, then widens to the screen – the slides spread into it (side padding, gaps) and keep clear of the notch. 16:9 and taller: exactly 1920×1080. */
 const fit = () => {
-  const k = view.scale = Math.min(innerWidth / 1920, innerHeight / 1080);
+  const z = Math.min(1.1, 1 + (Math.max(1, innerWidth / innerHeight / (16 / 9)) - 1) * .5);
+  const k = view.scale = Math.min(innerWidth / 1920, innerHeight / 1080) * z, w = view.w = Math.max(1920, Math.round(innerWidth / k)), h = view.h = Math.min(1080, Math.round(innerHeight / k));
+  const sa = window.getComputedStyle(safe), ex = (w - 1920) / 2, ey = (1080 - h) / 2;   // the notch / home-bar insets, in screen px
+  const side = s => `${112 + ex * .25 - ey * .6 + parseFloat(s) / k * .6}px`;   // the island sits mid-height: the slide may reach a little into the inset, the corner buttons sit in it
+  stage.style.width = `${w}px`; stage.style.height = `${h}px`;
+  for (const [n, v] of [['--ex', `${ex}px`], ['--pl', side(sa.paddingLeft)], ['--pr', side(sa.paddingRight)], ['--pt', `${96 - ey * .7}px`], ['--pb', `${96 - ey * 1.3}px`]]) stage.style.setProperty(n, v);
   stage.style.transform = `translate(-50%,0) scale(${k})`;
   ticker.style.transform = `scale(${k})`; ticker.style.width = `${innerWidth / k}px`;
 };
@@ -59,6 +67,7 @@ function show(i) {
   idle(() => { hydrate(i + 1, true); hydrate(i - 1); });
   slides.forEach((s, j) => s.classList.toggle('on', j === i));
   for (const v of deck.querySelectorAll('video')) if (slides[i].contains(v)) v.play().catch(() => {}); else v.pause();
+  if (view.cur >= 0 && document.body.classList.contains('touch')) help.classList.add('quiet');
   setPager(i, view.cur);
   view.cur = i;
   history.replaceState(null, '', '#' + (i + 1));
@@ -73,12 +82,14 @@ function flashTip(dir) {
   for (const b of document.querySelectorAll('.pb')) b.classList.toggle('hit', +b.dataset.go === d);
   if (!reduced) replay(document.getElementById(d < 0 ? 'prev' : 'next'), 'flash');
 }
-/* full screen: the F key, and on a phone ONE button (top right: on / off) + the first tap turns it on (the browser only allows it from a gesture); iPhone Safari has no API – the button hides there */
+/* full screen: the F key, and on a phone ONE button (top right: on / off) + the first tap turns it on (the browser only allows it from a gesture); iPhone Safari has no API – there the button shows how to Add to Home Screen */
 const root = document.documentElement, fsBtn = document.getElementById('fs');
 const setFull = on => { if (!root.requestFullscreen) return; (on ? root.requestFullscreen() : document.fullscreenElement ? document.exitFullscreen() : Promise.resolve()).catch(() => {}); };
 const syncFull = () => { fsBtn.textContent = document.fullscreenElement ? '✕' : '⛶'; fsBtn.setAttribute('aria-label', document.fullscreenElement ? 'Exit full screen' : 'Full screen'); };
-fsBtn.hidden = !root.requestFullscreen;
-fsBtn.addEventListener('click', () => { replay(fsBtn, 'flash'); setFull(!document.fullscreenElement); });
+const installed = navigator.standalone || matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches, hint = document.getElementById('fs-hint');
+fsBtn.hidden = installed;   // opened from the home screen it already is full screen
+fsBtn.addEventListener('click', () => { replay(fsBtn, 'flash'); if (root.requestFullscreen) setFull(!document.fullscreenElement); else hint.hidden = !hint.hidden; });   // iPhone Safari: no API – the button explains Add to Home Screen
+hint.addEventListener('click', () => { hint.hidden = true; });
 document.addEventListener('fullscreenchange', syncFull); syncFull();
 addEventListener('keydown', e => {
   if (e.key === 'ArrowRight') flashTip('go-r'); else if (e.key === 'ArrowLeft') flashTip('go-l'); else if (e.key === ' ') flashTip('');
@@ -118,6 +129,10 @@ addEventListener('click', e => {
 /* phones: a swipe turns the page, the tip says "swipe", a portrait screen is asked to turn sideways, and the first tap goes full screen */
 const touch = matchMedia('(hover: none) and (pointer: coarse)').matches;
 document.body.classList.toggle('touch', touch);
+/* a tap on anything that answers it shows a soft Solana-gradient ring instead of the browser's blue highlight (-webkit-tap-highlight-color is off in the CSS) */
+const TAPS = `${CARDS}, .pts li.don, .pts li.adopt, .ladder li, .split > div, .exits .exit, [data-go], button`;
+if (touch && !reduced) addEventListener('pointerdown', e => { if (e.target.closest?.(TAPS)) { const [x, y] = toStage(e.clientX, e.clientY); pop('tap', '', x, y); } }, { passive: true });
+if (touch) setTimeout(() => help.classList.add('quiet'), 6000);   // a phone: the "swipe" tip fades after a while (or the first page turn) – the zoomed slides need the bottom edge
 if (touch) addEventListener('pointerup', function first(e) { if (e.target.closest('#fs')) return; removeEventListener('pointerup', first); setFull(true); });
 let sx = 0, sy = 0, swipe = false;
 addEventListener('touchstart', e => { swipe = !e.target.closest('.fx .shot'); sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
