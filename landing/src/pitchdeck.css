@@ -1,29 +1,36 @@
 /* The deck's two faces, self-hosted (latin subset of Google Fonts' Anton and JetBrains Mono) – the page makes no third-party request. */
 @font-face{font-family:"Anton";font-style:normal;font-weight:400;font-display:swap;src:url(./fonts/anton-latin.woff2) format("woff2")}
 @font-face{font-family:"JetBrains Mono";font-style:normal;font-weight:500 800;font-display:swap;src:url(./fonts/jetbrains-mono-latin.woff2) format("woff2")}
-/* Shared deck mechanics + slide geometry. A theme file sets the tokens and the look. Stage is 1920×1080, scaled to fit. */
-:root{--bg:#0b0a09;--panel:#17130f;--ink:#e8e2cf;--muted:#9d957f;--accent:#ffcf5a;--accent2:#ff7a2e;--good:#7cff7c;--line:#4a453b;
-  --head:ui-monospace,"SF Mono",Menlo,monospace;--body:ui-monospace,"SF Mono",Menlo,monospace;--radius:10px}
+/* The stage is 1920×1080, scaled to fit (pitchdeck.js fit()). It is position:fixed, so its unscaled 1920 px never widen a phone's layout viewport (an absolute stage did: the page loaded zoomed out). The "Poster" look: black, condensed caps, red / yellow / white, the Solana purple→green bar. */
+:root{--bg:#050505;--panel:#111;--ink:#fff;--muted:#9a9a9a;--accent:#ffcf5a;--accent2:#ff3b2f;--good:#14f195;--line:#2a2a2a;
+  --head:"Anton",Impact,"Arial Narrow Bold",sans-serif;--body:"JetBrains Mono",ui-monospace,monospace;--sol:linear-gradient(90deg,#9945ff,#14f195);--radius:16px}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;overflow:hidden;background:#000;color:var(--ink)}
-#stage{position:absolute;left:50%;top:0;width:1920px;height:1080px;transform-origin:50% 0;background:var(--bg);overflow:hidden;font-family:var(--body)}
+#stage{position:fixed;left:50%;top:0;width:1920px;height:1080px;transform-origin:50% 0;overflow:hidden;font-family:var(--body);
+  background:radial-gradient(circle at 85% 15%,#2a0f4a 0%,#0000 40%),radial-gradient(circle at 15% 95%,#0b3a26 0%,#0000 40%),#050505}
 #deck{position:absolute;inset:0}
 .slide{position:absolute;inset:0;padding:96px 112px;display:grid;gap:64px;opacity:0;visibility:hidden;transition:opacity .5s,visibility 0s .5s}
 .slide.on{opacity:1;visibility:visible;transition:opacity .5s}
 .slide>*{min-width:0}
 figure{margin:0}
-.shot{position:absolute;overflow:hidden;border-radius:var(--radius);background:#000}
-.shot img,.shot video{display:block;width:100%;height:100%;object-fit:cover}
+.shot{position:absolute;overflow:hidden;padding:6px;border-radius:var(--radius);background:var(--sol);box-shadow:0 0 0 4px #050505,0 0 0 8px transparent,0 40px 90px #000;outline:4px solid transparent}
+.shot img,.shot video{display:block;width:100%;height:100%;object-fit:cover;border-radius:calc(var(--radius) - 6px)}
 .vis{position:relative;height:100%}
 .copy{position:relative;z-index:2;align-self:center}
-.lbl{font:600 22px/1 var(--body);letter-spacing:5px;text-transform:uppercase;color:var(--accent2);margin-bottom:28px}
-h1{margin:0 0 44px;font:700 96px/1.02 var(--head);letter-spacing:-1px;color:var(--accent)}
-h1 small{display:block;margin-top:18px;font:500 30px/1.2 var(--body);letter-spacing:2px;color:var(--muted)}
-h1 em{font-style:normal;color:var(--ink)}
+/* the left copy block (label · title · points) sits at the same height on every slide that has one – the game slide (01) is the reference: its label's top is at 154 px */
+.L-wall>.copy,.L-bleed>.copy,.L-split>.copy,.L-money>.copy{align-self:start;margin-top:58px}
+.lbl{display:inline-block;margin-bottom:28px;padding:10px 20px;border-radius:999px;border:2px solid #9945ff;font:700 22px/1 var(--body);letter-spacing:4px;text-transform:uppercase;color:#fff}
+h1{margin:0 0 44px;font:400 150px/.92 var(--head);text-transform:uppercase;color:var(--ink)}
+h1::after{content:"";display:block;width:260px;height:12px;margin-top:34px;border-radius:6px;background:var(--sol)}
+h1 small{display:block;margin-top:22px;font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;color:var(--accent)}
+h1 em{font-style:normal;color:var(--accent)}
 .pts{list-style:none;margin:0;padding:0;display:grid;gap:20px}
-.pts li{position:relative;padding-left:44px;font:500 32px/1.25 var(--body);color:var(--ink)}
-.pts li::before{content:"";position:absolute;left:0;top:.42em;width:22px;height:6px;background:var(--accent2);border-radius:3px}
+.pts li{position:relative;padding-left:44px;font:700 30px/1.2 var(--body);text-transform:uppercase;letter-spacing:.5px;color:var(--ink)}
+.pts li::before{content:"";position:absolute;left:0;top:.3em;width:16px;height:16px;border-radius:50%;background:var(--accent2)}
 .pts b{color:var(--accent)}
+.fine{margin-top:36px;font:700 22px var(--body);letter-spacing:5px;color:var(--good)}
+#bar{position:absolute;left:0;bottom:0;height:5px;background:var(--sol);transition:width .4s;z-index:20}
+@media print{#help,#bar{display:none}}
 #pager{position:absolute;right:112px;bottom:44px;z-index:10;display:flex;font:500 18px/26px var(--body);letter-spacing:3px;color:var(--muted);transform-origin:100% 100%}
 #pager .dg{display:inline-block;height:26px;overflow:hidden;width:calc(1ch + 3px)}   /* one digit tall: the column rolls behind this window */
 #pager .col{display:flex;flex-direction:column}
@@ -34,113 +41,49 @@ h1 em{font-style:normal;color:var(--ink)}
 
 /* 00 wall: four screens of what got built */
 .L-wall{grid-template-columns:720px 1fr}
-.brand{display:flex;align-items:center;gap:18px;margin-bottom:56px;font:700 28px var(--body);letter-spacing:6px;color:var(--accent)}
-.brand img{width:64px;height:64px;border-radius:14px}
-.L-wall .w1{width:760px;height:428px;left:0;top:40px;transform:rotate(-3deg)}
-.L-wall .w2{width:700px;height:394px;left:330px;top:250px;transform:rotate(2.5deg);z-index:2}
-.L-wall .w3{width:600px;height:338px;left:20px;top:520px;transform:rotate(1.5deg)}
-.L-wall .w4{width:420px;height:236px;left:560px;top:640px;transform:rotate(-2deg);z-index:3}
-.L-wall .w4{width:360px;height:333px}
-.tags{position:absolute;right:0;top:0;display:flex;flex-direction:column;gap:12px;align-items:flex-end;z-index:4}
-.tags span{font:700 20px var(--body);letter-spacing:4px;padding:10px 18px;border-radius:999px;background:var(--panel);color:var(--accent);border:1px solid var(--line)}
+.L-wall h1{font-size:128px}
+.L-wall .pts li{font-size:28px}
+.L-wall .w1{width:760px;height:428px;left:0;top:40px}
+.L-wall .w2{width:700px;height:394px;left:330px;top:250px;z-index:2}
+.L-wall .w3{width:600px;height:338px;left:20px;top:520px}
+.L-wall .w4{width:360px;height:333px;left:560px;top:640px;z-index:3}
+.tags{position:absolute;right:0;top:0;display:flex;flex-direction:column;gap:12px;align-items:flex-end;z-index:8}   /* above a lifted screen (z 6), so no tag is ever covered */
+.tags span{font:700 20px var(--body);letter-spacing:4px;padding:10px 18px;border-radius:999px;background:#050505;color:#fff;border:2px solid #14f195}
 
 /* 01 bleed: gameplay full screen */
 .L-bleed{grid-template-columns:1fr 470px;align-items:end}
+.L-bleed h1{font-size:140px}
 .L-bleed .bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.L-bleed .shade{position:absolute;inset:0;background:linear-gradient(90deg,#000d 0%,#0009 45%,#0000 75%),linear-gradient(0deg,#000c 0%,#0000 50%)}
-.L-bleed .copy{align-self:end;padding-bottom:20px}
+.L-bleed .shade{position:absolute;inset:0;background:linear-gradient(90deg,#000e 0%,#000a 50%,#0000 80%),linear-gradient(0deg,#000 0%,#0000 55%)}
 .L-bleed .poster{position:relative;width:470px;height:836px;border-radius:var(--radius)}
 
 /* 02 / 03 split: a big screen and a small one */
 .L-split{grid-template-columns:640px 1fr}
+.L-split h1{font-size:130px}
 .L-split .v-main{width:1000px;height:563px;right:0;top:80px}
 .L-split .v-sub{width:520px;height:293px;left:-40px;bottom:60px;z-index:2}
 .L-split .badge{position:absolute;right:24px;top:100px;z-index:3}
 .L-flip .v-main{top:40px}
 .L-flip .v-sub{left:auto;right:-30px;top:auto;bottom:10px;width:420px;height:388px}
 .badge{font:700 20px var(--body);letter-spacing:3px;padding:10px 18px;border-radius:999px}
-.badge.live{background:#d22;color:#fff}
-
-.ladder{list-style:none;margin:44px 0 0;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-.ladder li{padding:16px 14px;border-radius:var(--radius);border:2px dashed var(--line);color:var(--muted)}
-.ladder li b{display:block;font:700 30px var(--head);color:var(--muted)}
-.ladder li span{font:500 16px var(--body);letter-spacing:1px;white-space:nowrap}
-.ladder li.on{border:2px solid var(--accent);color:var(--ink)}
-.ladder li.on b{color:var(--accent)}
-
+.badge.live{display:inline-flex;align-items:center;gap:14px;line-height:1;background:var(--accent2);color:#fff}
+.badge.live .dot{width:13px;height:13px;border-radius:50%;background:currentColor;flex:none}   /* a real dot: the ● glyph sat low */
 #s-insight .v-main{width:960px;height:540px;top:170px;right:-60px}
 #s-insight .badge{right:-36px;top:130px}
+.ladder{list-style:none;margin:44px 0 0;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.ladder li b{display:block;font:400 46px/1 var(--head);color:var(--muted)}
+.ladder li span{font:500 16px var(--body);letter-spacing:1px;white-space:nowrap}
+.ladder li.on{border:2px solid var(--good);color:var(--ink)}
+.ladder li.on b{color:var(--good)}
 
 /* 04 money */
 .L-money{grid-template-columns:780px 1fr}
-.split{display:flex;gap:6px;height:118px;margin:0 0 40px}
-.split div{flex:var(--w) 1 0;border-radius:8px;padding:16px 18px;display:flex;flex-direction:column;justify-content:space-between;background:var(--accent);color:#1b1408;overflow:hidden}
-.split div:nth-child(2){background:var(--accent2)}
-.split div:nth-child(3){background:var(--muted);color:#111}
-.split b{font:700 40px/1 var(--head)}
-.split span{font:600 16px/1.1 var(--body);letter-spacing:1px;white-space:nowrap}
-.fine{margin-top:36px;font:700 22px var(--body);letter-spacing:5px;color:var(--good)}
-.L-money .v-main{width:900px;height:362px;right:0;top:30px}
+.L-money h1{font-size:112px}
+.L-money .v-main{width:900px;height:362px;right:0;top:30px;transform-origin:0 50%}   /* the diagram grows rightwards, not over the headline's last letter */
 .L-money .v-sub{width:400px;height:440px;left:20px;bottom:10px;z-index:2}
 .glyph{position:absolute;width:400px;right:20px;bottom:60px;z-index:3}
-
-
-/* 06 end */
-.L-end{grid-template-columns:760px 1fr}
-.road{list-style:none;margin:0 0 48px;padding:0;display:grid;gap:16px}
-.road li{display:flex;gap:22px;align-items:baseline;font:600 34px var(--body);color:var(--ink)}
-.road b{font:700 22px var(--body);color:var(--accent2);letter-spacing:2px}
-.cta{display:inline-block;padding:22px 32px;border-radius:var(--radius);background:var(--accent);color:#1b1408;font:700 40px var(--head);letter-spacing:2px}
-.cta span{display:block;font:600 20px var(--body);letter-spacing:4px;text-transform:uppercase;opacity:.75;margin-top:4px}
-.L-end .v-main{width:960px;height:600px;right:0;top:40px}
-.L-end .v-main img{object-position:50% 70%}
-.badges{position:absolute;left:0;right:0;bottom:30px;display:flex;justify-content:flex-end;gap:16px;z-index:3}
-.badges img{width:120px;height:120px}
-
-
-/* chrome: progress, tooltip */
-#bar{position:absolute;left:0;bottom:0;height:5px;background:var(--accent);transition:width .4s;z-index:20}
-.L-wall .pts li{font-size:28px}
-@media print{#help,#bar{display:none}}
-
-/* Option B · POSTER – the TikTok cards: black, condensed caps, red / yellow / white, the Solana purple→green bar. */
-:root{--bg:#050505;--panel:#111;--ink:#fff;--muted:#9a9a9a;--accent:#ffcf5a;--accent2:#ff3b2f;--good:#14f195;--line:#2a2a2a;
-  --head:"Anton",Impact,"Arial Narrow Bold",sans-serif;--body:"JetBrains Mono",ui-monospace,monospace;--sol:linear-gradient(90deg,#9945ff,#14f195);--radius:16px}
-#stage{background:radial-gradient(circle at 85% 15%,#2a0f4a 0%,#0000 40%),radial-gradient(circle at 15% 95%,#0b3a26 0%,#0000 40%),#050505}
-h1{font:400 150px/.92 var(--head);letter-spacing:0;text-transform:uppercase;color:var(--ink)}
-h1::after{content:"";display:block;width:260px;height:12px;margin-top:34px;border-radius:6px;background:var(--sol)}
-h1 em{color:var(--accent)}
-h1 small{font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;color:var(--accent);margin-top:22px}
-.lbl{display:inline-block;padding:10px 20px;border-radius:999px;border:2px solid #9945ff;color:#fff;font-weight:700;letter-spacing:4px}
-.pts li{font:700 30px/1.2 var(--body);text-transform:uppercase;letter-spacing:.5px}
-.pts li::before{background:var(--accent2);width:16px;height:16px;border-radius:50%;top:.3em}
-.shot{border-radius:var(--radius);box-shadow:0 0 0 4px #050505,0 0 0 8px transparent,0 40px 90px #000;outline:4px solid transparent;
-  background:var(--sol);padding:6px}
-.shot img,.shot video{border-radius:calc(var(--radius) - 6px)}
-.L-wall h1{font-size:128px}
-.L-bleed h1{font-size:140px}
-.L-bleed .shade{background:linear-gradient(90deg,#000e 0%,#000a 50%,#0000 80%),linear-gradient(0deg,#000 0%,#0000 55%)}
-.L-split h1,.L-money h1{font-size:130px}
-.L-end h1{font-size:112px}
-.L-end h1::after{margin-top:24px}
-.L-money h1{font-size:112px}
-.split div{border-radius:12px;padding:14px 16px}
-.split div:nth-child(1){background:var(--accent)}
-.split div:nth-child(2){background:var(--accent2);color:#fff}
-.split div:nth-child(3){background:#fff}
-.split b{font:400 44px/1 var(--head);white-space:nowrap}
-.fine{color:var(--good)}
-.road li{font:400 54px/1 var(--head);text-transform:uppercase}
-.road b{font:700 22px var(--body)}
-.cta{background:var(--sol);color:#fff;font:400 64px/1 var(--head);padding:24px 36px}
-.cta span{font-family:var(--body)}
-.tags span{background:#050505;color:#fff;border:2px solid #14f195}
-.badge.live{background:var(--accent2);font-family:var(--body)}
-.ladder li.on{border-color:var(--good)}
-.ladder li b{font:400 46px/1 var(--head)}
-.ladder li.on b{color:var(--good)}
-#bar{background:var(--sol)}
-.brand{color:#fff}
+.split{display:flex;gap:6px;height:118px;margin:0 0 40px;transition:gap .7s cubic-bezier(.65,0,.2,1)}
+.split span{font:600 16px/1.1 var(--body);letter-spacing:1px;white-space:nowrap}
 
 /* tip: always on, a slow pulse */
 #help{position:fixed;left:50%;bottom:14px;translate:-50%;z-index:30;padding:9px 18px;border-radius:999px;border:1px solid #9945ff99;background:#000a;font:700 13px var(--body);letter-spacing:2.5px;text-transform:uppercase;color:#fffc;pointer-events:none;animation:tip 2.4s ease-in-out infinite,tipwave 3.6s ease-in-out infinite}
@@ -162,12 +105,10 @@ h1 small{font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;c
 .fx .shot{--r:0deg;--k:0;--s:1;--dl:0s;transform:translate(var(--dx,0px),var(--dy,0px)) rotate(var(--r)) translate(calc(var(--px,0)*var(--k)*1px),calc(var(--py,0)*var(--k)*1px)) scale(var(--s));
   transition:transform .35s cubic-bezier(.2,.8,.2,1),filter .35s,scale .35s cubic-bezier(.2,.8,.2,1);cursor:pointer;animation:float 6s ease-in-out var(--dl) infinite,glow 4s ease-in-out var(--dl) infinite,flow 7s linear infinite;
   background:linear-gradient(110deg,#9945ff,#14f195,#9945ff,#14f195) 0 0/300% 100%}
-.fx .shot:hover,.fx .shot.hot{--s:1.045;z-index:6;animation-play-state:running}
 .L-wall .w1{--r:-3deg;--k:-26;--dl:-1s}
 .L-wall .w2{--r:2.5deg;--k:34;--dl:-2.5s}
 .L-wall .w3{--r:1.5deg;--k:-40;--dl:-4s}
 .L-wall .w4{--r:-2deg;--k:50;--dl:-5s}
-.L-wall .w1,.L-wall .w2,.L-wall .w3,.L-wall .w4{transform:translate(var(--dx,0px),var(--dy,0px)) rotate(var(--r)) translate(calc(var(--px,0)*var(--k)*1px),calc(var(--py,0)*var(--k)*1px)) scale(var(--s))}
 @keyframes float{0%,100%{translate:0 0}50%{translate:0 -16px}}
 @keyframes flow{to{background-position:300% 0}}
 @keyframes glow{0%,100%{box-shadow:0 0 0 4px #050505,0 0 22px 2px #9945ffaa,0 40px 90px #000}50%{box-shadow:0 0 0 4px #050505,0 0 34px 6px #14f19577,0 40px 90px #000}}
@@ -195,7 +136,6 @@ h1 small{font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;c
 @keyframes tagglow{0%,100%{box-shadow:0 0 10px 0 #14f19522}50%{box-shadow:0 0 20px 2px #9945ff66}}
 @media (prefers-reduced-motion:reduce){#ticker span{transition:none}.fx .shot,.fx .badge,.L-wall .tags span,#help,#help b{animation:none!important}}
 
-.L-wall .tags{z-index:8}   /* above a lifted screen (z 6), so no tag is ever covered */
 
 /* a screen's picture starts cropped in (zoomed) and opens out to the whole shot when its screen is selected, while the screen itself grows */
 .fx .shot img,.fx .shot video{transform:scale(1.2);transition:transform .55s cubic-bezier(.2,.8,.2,1)}
@@ -238,9 +178,7 @@ h1 small{font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;c
 /* slides 1–2 join slide 0's floating cards: their own tilt / phase, and the LIVE badge drifts above a lifted card */
 .fx .poster{--r:2deg;--k:-30;--dl:-.8s}
 .fx .v-main{--r:-1.5deg;--k:26;--dl:-2s}
-/* the LIVE badge: a real dot (the ● glyph sat low), colours swap on hover / click with a tween, it leans from the mouse (--bx/--by, script) and follows its dragged card (--fx/--fy) */
-.badge.live{display:inline-flex;align-items:center;gap:14px;line-height:1}
-.badge.live .dot{width:13px;height:13px;border-radius:50%;background:currentColor;flex:none}
+/* the LIVE badge: colours swap on hover / click with a tween, it leans from the mouse (--bx/--by, script), sags under SOL and follows its dragged card (--fx/--fy) */
 .fx .badge{z-index:8;animation:float 5s ease-in-out -1.5s infinite;cursor:pointer;
   transform:translate(calc(var(--bx,0px) + var(--fx,0px)),calc(var(--by,0px) + var(--fy,0px)));
   transition:background-color .35s,color .35s,box-shadow .35s,scale .35s cubic-bezier(.2,.8,.2,1)}
@@ -250,7 +188,6 @@ h1 small{font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;c
 
 .fx .v-sub{--r:2deg;--k:-40;--dl:-3.5s}   /* slide 3 (Play): the small receipt next to the free-run screen */
 
-.L-money .v-main{transform-origin:0 50%}   /* money slide: the diagram grows rightwards, not over the headline's last letter */
 
 /* money slide: the Merkle-root drawing is the landing's live `proof` canvas scene, drawn straight on the slide (no card, a transparent background); it floats and leans like the cards */
 canvas.glyph{height:auto;aspect-ratio:240/124;background:none}
@@ -268,12 +205,11 @@ canvas.glyph{height:auto;aspect-ratio:240/124;background:none}
 @media (prefers-reduced-motion:reduce){.vblock,.fx canvas.glyph{transition:none}}
 
 /* the 70 / 20 / 10 bar: the 10 % block keeps a width its figure fits in (the % no longer touches the edge); hover / tap plays a chained tween – others fade out in turn (.s-out), the picked block slides left and grows (.s-grow), its % gives way to a description (.s-text) */
-.split div{position:relative;min-width:0;transform-origin:var(--ox,50%) 50%;transition:opacity .3s ease-out calc(var(--r,0)*.18s),transform .4s cubic-bezier(.3,0,.2,1) calc(var(--r,0)*.18s),flex-grow .7s cubic-bezier(.65,0,.2,1),min-width .7s cubic-bezier(.65,0,.2,1),padding .7s cubic-bezier(.65,0,.2,1),box-shadow .5s;cursor:pointer}   /* coming back: nearest first, out of the border */
-.split div:nth-child(2){min-width:132px}
-.split div:nth-child(3){min-width:124px}
-.split{transition:gap .7s cubic-bezier(.65,0,.2,1)}
+.split div{position:relative;flex:var(--w) 1 0;min-width:0;display:flex;flex-direction:column;justify-content:space-between;padding:14px 16px;border-radius:12px;background:var(--accent);color:#1b1408;overflow:hidden;transform-origin:var(--ox,50%) 50%;transition:opacity .3s ease-out calc(var(--r,0)*.18s),transform .4s cubic-bezier(.3,0,.2,1) calc(var(--r,0)*.18s),flex-grow .7s cubic-bezier(.65,0,.2,1),min-width .7s cubic-bezier(.65,0,.2,1),padding .7s cubic-bezier(.65,0,.2,1),box-shadow .5s;cursor:pointer}   /* coming back: nearest first, out of the border */
+.split div:nth-child(2){min-width:132px;background:var(--accent2);color:#fff}
+.split div:nth-child(3){min-width:124px;background:#fff;color:#111}
 .split .desc{position:absolute;left:16px;right:16px;top:14px;font:400 32px/1.08 var(--head);font-style:normal;text-transform:uppercase;white-space:nowrap;overflow:hidden;opacity:0;transform:translateY(10px);filter:blur(4px);pointer-events:none;transition:opacity .22s ease,transform .3s ease,filter .22s ease}   /* one line, no letter-spacing tween: nothing re-wraps while it appears */
-.split b{transition:opacity .22s ease .22s,transform .3s ease .22s}   /* coming back: only after the description has gone, so the two never overlap */
+.split b{font:400 44px/1 var(--head);white-space:nowrap;transition:opacity .22s ease .22s,transform .3s ease .22s}   /* coming back: only after the description has gone, so the two never overlap */
 .split.s-out div:not(.pick){opacity:0;transform:translateX(var(--tx,0px)) scaleX(.1);transition:opacity .22s ease-in calc(var(--o,0)*.2s + .14s),transform .4s cubic-bezier(.55,0,.25,1) calc(var(--o,0)*.2s),flex-grow .7s cubic-bezier(.65,0,.2,1),min-width .7s cubic-bezier(.65,0,.2,1),padding .7s cubic-bezier(.65,0,.2,1),box-shadow .5s;pointer-events:none}   /* each block runs to the bar's border on its own side (--tx), squeezing into it as it fades; the farthest from the picked one goes first */
 .split.s-out .pick{box-shadow:0 0 0 3px #ffffff33}
 .split.s-grow{gap:0}
@@ -367,6 +303,7 @@ canvas.glyph{height:auto;aspect-ratio:240/124;background:none}
 .plan .bar b{font:700 21px/1.15 var(--body);color:#fff;letter-spacing:.5px;text-transform:uppercase;padding-right:36px}
 .plan .bar small{font:500 16px/1.2 var(--body);color:color-mix(in srgb,var(--c) 75%,#fff)}
 .plan .bar p{position:absolute;left:26px;right:48px;top:50%;translate:0 -42%;margin:0;font:500 17px/1.3 var(--body);color:#fff;opacity:0;transition:opacity .25s ease,translate .4s cubic-bezier(.2,.9,.3,1)}
+.plan .bar.n1 p{font-size:15px;line-height:1.22}   /* a one-month bar is narrow: its three lines must fit the 7-lane height */
 .plan .bar b,.plan .bar small{transition:opacity .25s ease}
 .plan .bar:is(:hover,.hot) b,.plan .bar:is(:hover,.hot) small{opacity:0}
 .plan .bar:is(:hover,.hot) p{opacity:1;translate:0 -50%;transition-delay:.1s}
@@ -386,7 +323,7 @@ canvas.glyph{height:auto;aspect-ratio:240/124;background:none}
 
 /* slide 4: the tiers are buttons; a click hangs the SECRET tier under that one (.open) – it drops in on its own chain link with an overshoot and goes back up on the next click */
 .ladders{position:relative}
-.ladder li{position:relative;cursor:pointer;user-select:none;-webkit-user-select:none;transition:translate .3s cubic-bezier(.2,.8,.2,1),border-color .3s,box-shadow .3s}
+.ladder li{position:relative;padding:16px 14px;border-radius:var(--radius);border:2px dashed var(--line);color:var(--muted);cursor:pointer;user-select:none;-webkit-user-select:none;transition:translate .3s cubic-bezier(.2,.8,.2,1),border-color .3s,box-shadow .3s}
 .ladder li:hover{translate:0 -4px;box-shadow:0 0 22px #14f19544}
 .ladder.secret{position:absolute;left:0;right:0;top:100%;margin:16px 0 0;pointer-events:none}
 .ladder.secret li{border:2px dashed #9945ff;background:repeating-linear-gradient(135deg,#9945ff1c 0 10px,#0000 10px 20px);color:#c9a6ff;opacity:0;transform:translateY(-34px) rotateX(85deg) scale(.8);transform-origin:50% 0;
@@ -486,8 +423,6 @@ canvas.glyph{height:auto;aspect-ratio:240/124;background:none}
 #help b[data-go]{pointer-events:auto;cursor:pointer;padding:6px 10px;margin:-6px -2px}
 #help b[data-go]:hover{color:#fff;text-shadow:0 0 10px var(--good)}
 
-/* the left copy block (label · title · points) sits at the same height on every slide that has one – the game slide (01) is the reference: its label's top is at 154 px */
-.L-wall>.copy,.L-bleed>.copy,.L-split>.copy,.L-money>.copy{align-self:start;margin-top:58px;padding-bottom:0}
 /* the truck honks (hover / tap): a comic HONK!, three sound rings off the cab front, three exhaust puffs off the stack; a counter on the road */
 .honk{position:absolute;z-index:6;width:0;height:0;pointer-events:none}
 .honk b{position:absolute;left:0;bottom:24px;font:400 66px/1 var(--head);color:var(--accent);-webkit-text-stroke:3px #050505;paint-order:stroke fill;text-shadow:0 6px 0 #050505;white-space:nowrap;rotate:-8deg;animation:honkpop 1.15s cubic-bezier(.2,1.4,.3,1) both}

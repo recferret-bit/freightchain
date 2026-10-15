@@ -30,17 +30,21 @@ test('media: no single image over 120 kB, all images together ≤ 600 kB; the la
   assert.ok(media.reduce((a, f) => a + statSync(f).size, 0) <= 600 * KB);
 });
 
-test('the pitch deck (pitchdeck.<apex>): each image ≤ 120 kB, all of them ≤ 900 kB, its clip ≤ 1.5 MB, its CSS ≤ 10 kB gz and JS ≤ 19 kB gz, no network of its own', { skip: !has }, () => {   // Oct 14: own line, the deck's ten screenshots would blow the landing's 600 kB
+test('the pitch deck (pitchdeck.<apex>): each image ≤ 120 kB, all of them ≤ 600 kB, its clip ≤ 1.5 MB, its CSS ≤ 9.5 kB gz and JS ≤ 19 kB gz, no network of its own, media loaded lazily', { skip: !has }, () => {   // Oct 14: own line, the deck's ten screenshots would blow the landing's 600 kB
   const imgs = files.filter(f => f.includes('/media/pitchdeck/') && !f.endsWith('.mp4'));
   assert.ok(imgs.length >= 8);   // the deck's screenshots (9 after the roadmap shot left with the old Next slide)
   for (const f of imgs) assert.ok(statSync(f).size <= 120 * KB, `${f} ${statSync(f).size} B`);
-  assert.ok(imgs.reduce((a, f) => a + statSync(f).size, 0) <= 900 * KB);   // Oct 15: 600 → 900 kB (seven storybook sneak-peek shots)
+  assert.ok(imgs.reduce((a, f) => a + statSync(f).size, 0) <= 600 * KB);   // Oct 15: 600 → 900 kB for the seven storybook shots, back to 600 once they were cut to their display size (960 px)
   for (const f of files.filter(f => f.includes('/media/pitchdeck/') && f.endsWith('.mp4'))) assert.ok(statSync(f).size <= 1.5 * 1024 * KB, `${f} ${statSync(f).size} B`);
   const html = readFileSync(join(dist, 'pitchdeck.html'), 'utf8'), css = html.match(/href="(\/assets\/pitchdeck-[\w-]+\.css)"/)?.[1], js = html.match(/src="(\/assets\/pitchdeck-[\w-]+\.js)"/)?.[1];
   assert.ok(css && js, 'the deck links its own hashed css + js');
-  assert.ok(gz(join(dist, css)) <= 10 * KB, `deck CSS ${gz(join(dist, css))} B gz`);   // Oct 15: 9 → 10 kB (go to market: the truck's lanes, obstacles and ▲ ▼)
+  assert.ok(gz(join(dist, css)) <= 9.5 * KB,   // Oct 15: 10 → 9.5 kB after the theme / base merge and the dead rules went
+    `deck CSS ${gz(join(dist, css))} B gz`);   // Oct 15: 9 → 10 kB (go to market: the truck's lanes, obstacles and ▲ ▼)
   assert.ok(gz(join(dist, js)) <= 19 * KB, `deck JS ${gz(join(dist, js))} B gz`);   // Oct 15: 17 → 19 kB (the truck honks; obstacles + lane changes)  ·  15 → 17 kB (go to market as six exit signs + the truck, slide 3's coins and slide 4's secret tiers)  ·  8 → 11 → 14 kB (the plan slide's lanes + the chain slide's copy)  ·  8 → 11 kB (floating cards, ticker, odometer, the 70/20/10 chain, the chain slide's six cards + 31 badge names); CSS 6 → 7.5 kB
-  assert.doesNotMatch(readFileSync(join(dist, js), 'utf8'), /fetch\(|XMLHttpRequest|sendBeacon|WebSocket/, 'the deck makes no request of its own');
+  const code = readFileSync(join(dist, js), 'utf8');
+  assert.doesNotMatch(code, /fetch\(|XMLHttpRequest|sendBeacon|WebSocket/, 'the deck makes no request of its own');
+  assert.doesNotMatch(code, /<(img|video)\b[^>]*\ssrc=/, 'slide media are lazy: data-src in the markup, src only when a slide is near (hydrate)');
+  assert.match(code, /data-src=/, 'slide media are lazy');
   assert.doesNotMatch(html, /https?:\/\/(?!freightchain\.fun)/, 'no third-party host in the page');
 });
 

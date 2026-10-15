@@ -38,7 +38,7 @@ test('every local /media file the page names exists in public/', () => {
 });
 
 test('no orphan media: every file in public/media is used by the page or the scripts', () => {
-  const src = html + main + readFileSync(join(root, 'src/dash-scenes.js'), 'utf8') + readFileSync(join(root, 'whitepaper.html'), 'utf8') + readFileSync(join(root, 'pitchdeck.html'), 'utf8') + readFileSync(join(root, 'src/pitchdeck.js'), 'utf8');   // the whitepaper reuses the dash card shots; the pitch deck reuses the hero clip and names its own /media/pitchdeck files
+  const src = html + main + readFileSync(join(root, 'src/dash-scenes.js'), 'utf8') + readFileSync(join(root, 'whitepaper.html'), 'utf8') + readFileSync(join(root, 'pitchdeck.html'), 'utf8') + ['src/pitchdeck.js', ...readdirSync(join(root, 'src/pitchdeck')).map(f => `src/pitchdeck/${f}`)].map(f => readFileSync(join(root, f), 'utf8')).join('');   // the whitepaper reuses the dash card shots; the pitch deck reuses the hero clip and names its own /media/pitchdeck files
   const walk = d => readdirSync(d).flatMap(n => statSync(join(d, n)).isDirectory() ? walk(join(d, n)).map(x => `${n}/${x}`) : [n]);
   assert.deepEqual(walk(join(root, 'public/media')).filter(f => !src.includes(`/media/${f}`) && !(f.startsWith('pitchdeck/') && src.includes(f.slice('pitchdeck/'.length)))), []);   // the deck builds its paths from A = '/media/pitchdeck/'
 });
