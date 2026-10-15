@@ -5,7 +5,7 @@ import { DONATE, SOL_USD } from './data.js';
 import { reduced, view, stage, deck, toStage, slideOf, everyFrame, pop, toast, shakeScreen } from './core.js';
 
 const usd = v => `$${v.toFixed(2)}`;
-const COIN_MAX = 120, G = 2600, FLOOR = 1075, CEIL = 40, E_FLOOR = .45, E_COIN = .3;   // G in stage px/s²; the floor sits on the progress bar, the ceiling under the ticker
+const COIN_MAX = matchMedia('(pointer: coarse)').matches ? 60 : 120, G = 2600, FLOOR = 1075, CEIL = 40, E_FLOOR = .45, E_COIN = .3;   // a phone keeps half the pile; G in stage px/s²; the floor sits on the progress bar, the ceiling under the ticker
 const CARD_SEL = ':is(.shot, .badge, .cc, .ladder li, .split > div, .tags span, .exit .sign)';   // what the coins bounce off on the showing slide
 const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz', b58 = n => Array.from({ length: n }, () => B58[Math.floor(Math.random() * 58)]).join('');
 const coins = [], sucking = [];   // sucking = coins on their way into Web3 adoption
@@ -30,14 +30,23 @@ const weighed = [];   // the page-3 card and banner: spring bodies that sag unde
 /** wake the pile (it sleeps once settled) */
 export const wakeCoins = () => { coinStill = 0; coinRaf ||= requestAnimationFrame(coinTick); };
 
-function drawCoins() {
-  cctx.setTransform(1, 0, 0, 1, 0, 0); cctx.clearRect(0, 0, coinCv.width, coinCv.height);
-  const draw = (c, k, ox, oy) => { const cs = Math.cos(c.a) * k, sn = Math.sin(c.a) * k; cctx.setTransform(cs, sn, -sn, cs, ox, oy); cctx.drawImage(sprite, -c.r, -c.r, c.r * 2, c.r * 2); };
+/* only the box the coins covered last frame is cleared (a pile resting on the floor is a thin strip, not the whole stage): every coin is drawn inside this frame's box */
+let dirty = null;   // [x0, y0, x1, y1] in canvas px
+function drawCoins(all = false) {
+  cctx.setTransform(1, 0, 0, 1, 0, 0);
+  if (all) cctx.clearRect(0, 0, coinCv.width, coinCv.height); else if (dirty) cctx.clearRect(dirty[0], dirty[1], dirty[2] - dirty[0], dirty[3] - dirty[1]);
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  const draw = (c, k, ox, oy) => {
+    const cs = Math.cos(c.a) * k, sn = Math.sin(c.a) * k, e = c.r * k + 2; cctx.setTransform(cs, sn, -sn, cs, ox, oy); cctx.drawImage(sprite, -c.r, -c.r, c.r * 2, c.r * 2);
+    if (ox - e < x0) x0 = ox - e; if (oy - e < y0) y0 = oy - e; if (ox + e > x1) x1 = ox + e; if (oy + e > y1) y1 = oy + e;
+  };
   for (const c of coins) draw(c, coinK, c.x * coinK, c.y * coinK);
   for (const { c, sc, al } of sucking) { cctx.globalAlpha = al; draw(c, coinK * sc, c.x * coinK, c.y * coinK); }
   cctx.globalAlpha = 1;
+  dirty = x1 > x0 ? [Math.floor(x0), Math.floor(y0), Math.ceil(x1), Math.ceil(y1)] : null;
 }
-const coinFit = () => { coinK = Math.min(2, devicePixelRatio * view.scale); coinCv.width = Math.round(view.w * coinK); coinCv.height = Math.round(1080 * coinK); drawCoins(); };   // backing store at screen resolution, drawn in stage px
+const coinFit = () => { coinK = Math.min(2, Math.min(2, devicePixelRatio) * view.scale);   // at most 2 canvas px per screen px: a 3× phone would push 2.25× the pixels for no visible gain
+  coinCv.width = Math.round(view.w * coinK); coinCv.height = Math.round(1080 * coinK); drawCoins(true); };   // backing store at screen resolution, drawn in stage px
 
 function collide(p, q) {   // two discs, mass ∝ area (a held one is immovable): push apart, then a restitution impulse along the normal
   const dx = q.x - p.x, dy = q.y - p.y, rr = p.r + q.r, d2 = dx * dx + dy * dy;
@@ -87,7 +96,8 @@ function coinTick(t) {
   if (suckOn) suckStep(t);
   for (let s = 0; s < 4; s++) {   // 4 substeps a frame, 4 collision passes each: enough for a stable pile of ~120
     for (const c of coins) { if (c === held) { c.vx = Math.max(-4000, Math.min(4000, (hx - c.x) * 20)); c.vy = Math.max(-4000, Math.min(4000, (hy - c.y) * 20)); } else c.vy += G * h; c.x += c.vx * h; c.y += c.vy * h; c.a += c.w * h; c.touch = false; }
-    for (let it = 0; it < 4; it++) for (let i = 0; i < coins.length; i++) for (let j = i + 1; j < coins.length; j++) collide(coins[i], coins[j]);
+    const ord = coins.slice().sort((p, q) => p.x - q.x), n = ord.length;   // sweep along x: only neighbours closer than the widest pair (r ≤ 30) can touch – O(n·k), not n²
+    for (let it = 0; it < 4; it++) for (let i = 0; i < n; i++) { const p = ord[i], lim = p.x + p.r + 34; for (let j = i + 1; j < n && ord[j].x < lim; j++) collide(p, ord[j]); }
     for (const c of coins) { for (const b of boxes) hitBox(c, b); bounds(c, h); }
   }
   let vmax = 0; for (const c of coins) vmax = Math.max(vmax, Math.abs(c.vx), Math.abs(c.vy), Math.abs(c.w * c.r));
@@ -220,11 +230,14 @@ export function initCoins() {
     fleeFrom(e);
     if (!coins.length) return;
     const [x, y] = toStage(e.clientX, e.clientY);
-    if (held) { hx = x; hy = y; } else stage.classList.toggle('coin-over', !!coinAt(x, y));
-    wakeCoins();   // a hovered or dragged card may shove the pile
+    if (held) { hx = x; hy = y; wakeCoins(); return; }
+    stage.classList.toggle('coin-over', !!coinAt(x, y));
+    if (e.target.closest?.(CARD_SEL)) wakeCoins();   // a hovered or dragged card may shove the pile; a pointer elsewhere leaves a sleeping pile asleep
   });
   document.documentElement.addEventListener('pointerleave', () => { bd.tx = bd.ty = 0; });
-  new window.MutationObserver(() => { if (coins.length) wakeCoins(); }).observe(deck, { subtree: true, attributeFilter: ['class'] });   // another slide, other cards: wake the pile
+  new window.MutationObserver(ms => {   // another slide, other cards, a card lifted / dropped: wake the pile – not for every class flip elsewhere (the road's obstacles, the plan's bars)
+    if (coins.length && ms.some(m => m.target.classList.contains('slide') || m.target.matches(CARD_SEL))) wakeCoins();
+  }).observe(deck, { subtree: true, attributeFilter: ['class'] });
   const letGo = () => { if (held) { held = null; stage.classList.remove('coin-drag'); } };
   addEventListener('pointerup', letGo); addEventListener('pointercancel', letGo);
   addEventListener('click', e => { if (eatClick) { eatClick = false; e.stopPropagation(); } }, true);
