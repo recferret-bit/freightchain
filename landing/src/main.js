@@ -273,7 +273,8 @@ for (const a of document.querySelectorAll('a[href="/play.html"]')) {
 }
 $('storybook-link').href = STORYBOOK_BASE || '/viewer.html';   // the model viewer: storybook.<apex> in production, /viewer.html elsewhere
 $('whitepaper-link').href = $('whitepaper-cta').href = WHITEPAPER_BASE || '/whitepaper.html';   // the whitepaper: whitepaper.<apex> in production, /whitepaper.html elsewhere
-$('pitchdeck-link').href = PITCHDECK_BASE || '/pitchdeck.html';   // the pitch deck: pitchdeck.<apex> in production (the apex only 301s there), /pitchdeck.html elsewhere
+$('pitchdeck-link').href = PITCHDECK_BASE || '/pitchdeck.html';
+$('pitchdeck-link').addEventListener('click', () => { track('pitchdeck_link_clicked', { surface: 'landing' }); flushSoon(); });   // the deck's conversion: landing footer click → pitchdeck_viewed (source=landing)   // the pitch deck: pitchdeck.<apex> in production (the apex only 301s there), /pitchdeck.html elsewhere
 $('storybook-link').addEventListener('click', () => track('storybook_link_clicked'));
 $('escrow-link').href = escrowExplainer();   // whitepaper chapter 05 is the one public escrow explainer
 for (const a of document.querySelectorAll('a[href^="/whitepaper.html#"]')) if (WHITEPAPER_BASE) a.href = `${WHITEPAPER_BASE}/${a.hash}`;   // deep links straight to whitepaper.<apex> (the apex would only 301 there)

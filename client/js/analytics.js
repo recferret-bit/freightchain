@@ -12,6 +12,7 @@ const V4 = /^anon_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f
 /* Hard-deleted even if a caller spreads an error or a payment body. The give-up string embeds the signature. */
 const BANNED = new Set(['signature', 'nonce', 'message', 'token', 'seed', 'cookie', 'authorization', 'detail', 'secret', 'anon_id', 'transaction']);
 
+let credentials = 'include';   // the pitch deck sends without the session cookie (configure)
 let disabled = false;   // document lifetime, not localStorage: one probe, then silence
 let timer = 0;
 let inflight = 0;
@@ -25,6 +26,9 @@ function live() {
   if (location.protocol === 'file:') return false;
   return true;
 }
+
+/** `credentials: 'omit'` for a page that must not carry the player session (the pitch deck: its page views are anonymous) */
+export function configure(opts) { if (opts?.credentials === 'omit' || opts?.credentials === 'include') credentials = opts.credentials; }
 
 export function anonId() {
   const cur = store.get(ANON);
@@ -93,7 +97,7 @@ function pump(force) {
 
 async function finish(events, marking) {
   try {
-    const r = await fetch(`${API_BASE}/api/telemetry`, { credentials: 'include', keepalive: true, method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ anon_id: anonId(), events }) });
+    const r = await fetch(`${API_BASE}/api/telemetry`, { credentials, keepalive: true, method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ anon_id: anonId(), events }) });
     const j = await r.json().catch(() => null);
     if (r.ok && j && j.enabled === false) { disabled = true; queue.length = 0; return; }   // do not consume the alias flag
     if (r.ok && j && j.enabled === true && marking) store.set(ALIASED, marking);

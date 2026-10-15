@@ -46,6 +46,11 @@ export const CLIENT_EVENTS = [
   'promo_redeem_clicked',
   'garage_part_clicked',
   'web_vital',
+  'pitchdeck_link_clicked',
+  'pitchdeck_viewed',
+  'pitchdeck_slide_viewed',
+  'pitchdeck_slide_time',
+  'pitchdeck_interaction',
 ] as const;
 
 export type ClientEventName = (typeof CLIENT_EVENTS)[number];
@@ -107,6 +112,13 @@ const ALLOW: Record<ClientEventName, readonly string[]> = {
   garage_part_clicked: ['slot', 'item', 'owned'],
   /* value is ms, except CLS where it is the score × 1000 (0.1 → 100). The relay only accepts integers. */
   web_vital: ['surface', 'metric', 'value', 'rating', 'navigation'],
+  /* the pitch deck (pitchdeck.<apex>): the landing footer's link click; one open per load (source = landing / whitepaper / homescreen / direct / other, src = the link's own ?src= tag); the FIRST view of each slide per load (via = load / key / button / swipe / hash);
+     the visible time on a slide in ms (sent when the slide changes or the page is left); the first use of each toy per load (what = donate / adopt / tier / coin_drag / exit_sign / honk / lane / card / plan_bar / fullscreen / install_hint) */
+  pitchdeck_link_clicked: ['surface'],
+  pitchdeck_viewed: ['surface', 'source', 'src', 'touch', 'standalone'],
+  pitchdeck_slide_viewed: ['slide', 'index', 'via'],
+  pitchdeck_slide_time: ['slide', 'index', 'ms'],
+  pitchdeck_interaction: ['slide', 'what'],
 };
 
 const MAX_KEYS = 20;

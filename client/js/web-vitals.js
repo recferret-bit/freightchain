@@ -1,4 +1,4 @@
-/* Core Web Vitals for the landing, the whitepaper, and the lobby.
+/* Core Web Vitals for the landing, the whitepaper, the pitch deck, and the lobby.
    One `web_vital` per metric per document, through client/js/analytics.js (no posthog-js).
    `value` is whole milliseconds, except CLS: the score × 1000 (0.1 → 100) because the relay drops floats.
    The rating is judged on the raw score, before that rounding.
@@ -6,7 +6,7 @@
 
 import { track, flushSoon } from './analytics.js';
 
-const SURFACES = new Set(['landing', 'whitepaper', 'lobby']);
+const SURFACES = new Set(['landing', 'whitepaper', 'lobby', 'pitchdeck']);
 /* CrUX edges. A value on the edge is good (LCP 2500) or needs-improvement (LCP 4000). */
 const EDGES = { LCP: [2500, 4000], INP: [200, 500], CLS: [0.1, 0.25], FCP: [1800, 3000], TTFB: [800, 1800] };
 const NAV = new Set(['navigate', 'reload', 'back_forward', 'prerender']);

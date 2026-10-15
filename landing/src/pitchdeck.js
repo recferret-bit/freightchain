@@ -5,9 +5,10 @@
 import { SLIDES } from './pitchdeck/data.js';
 import { reduced, view, stage, deck, replay, toStage, pop } from './pitchdeck/core.js';
 import { initTicker, holdTicker, ticker } from './pitchdeck/ticker.js';
-import { initCoins, donate, adopt } from './pitchdeck/coins.js';
+import { initCoins, donate, adopt, setOnGrab } from './pitchdeck/coins.js';
 import { initTilt, initDrag, drag, initShakes, initCarousel, initPeek, initSplit, initScenes, ladderClick } from './pitchdeck/fx.js';
 import { initRoad } from './pitchdeck/road.js';
+import { initStats, slideShown, interact } from './pitchdeck/stats.js';
 
 deck.innerHTML = SLIDES.map((s, i) => `<section class="slide L-${s.layout.split(' ').join(' L-')}" id="s-${s.id}" data-i="${i}">${s.html}</section>`).join('');
 const slides = [...deck.children], help = document.getElementById('help');
@@ -61,7 +62,7 @@ const fit = () => {
 };
 addEventListener('resize', fit); fit();
 
-function show(i) {
+function show(i, via = 'hash') {   // via: how the visitor got here (analytics)
   i = Math.max(0, Math.min(slides.length - 1, i));
   if (i === view.cur) return;
   hydrate(i);
@@ -70,6 +71,7 @@ function show(i) {
   for (const v of deck.querySelectorAll('video')) if (slides[i].contains(v)) v.play().catch(() => {}); else v.pause();
   if (view.cur >= 0 && document.body.classList.contains('touch')) help.classList.add('quiet');
   setPager(i, view.cur);
+  slideShown(i, view.cur < 0 ? 'load' : via);
   view.cur = i;
   history.replaceState(null, '', '#' + (i + 1));
   document.getElementById('bar').style.width = `${100 * (i + 1) / slides.length}%`;
@@ -85,19 +87,19 @@ function flashTip(dir) {
 }
 /* full screen: the F key, and on a phone ONE button (top right: on / off) + the first tap turns it on (the browser only allows it from a gesture); iPhone Safari has no API – there the button shows how to Add to Home Screen */
 const root = document.documentElement, fsBtn = document.getElementById('fs');
-const setFull = on => { if (!root.requestFullscreen) return; (on ? root.requestFullscreen() : document.fullscreenElement ? document.exitFullscreen() : Promise.resolve()).catch(() => {}); };
+const setFull = on => { if (!root.requestFullscreen) return; if (on) interact('fullscreen'); (on ? root.requestFullscreen() : document.fullscreenElement ? document.exitFullscreen() : Promise.resolve()).catch(() => {}); };
 const syncFull = () => { fsBtn.textContent = document.fullscreenElement ? '✕' : '⛶'; fsBtn.setAttribute('aria-label', document.fullscreenElement ? 'Exit full screen' : 'Full screen'); };
 const installed = navigator.standalone || matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches, hint = document.getElementById('fs-hint');
 fsBtn.hidden = installed;   // opened from the home screen it already is full screen
-fsBtn.addEventListener('click', () => { replay(fsBtn, 'flash'); if (root.requestFullscreen) setFull(!document.fullscreenElement); else hint.hidden = !hint.hidden; });   // iPhone Safari: no API – the button explains Add to Home Screen
+fsBtn.addEventListener('click', () => { replay(fsBtn, 'flash'); if (root.requestFullscreen) setFull(!document.fullscreenElement); else { hint.hidden = !hint.hidden; interact('install_hint'); } });   // iPhone Safari: no API – the button explains Add to Home Screen
 hint.addEventListener('click', () => { hint.hidden = true; });
 document.addEventListener('fullscreenchange', syncFull); syncFull();
 addEventListener('keydown', e => {
   if (e.key === 'ArrowRight') flashTip('go-r'); else if (e.key === 'ArrowLeft') flashTip('go-l'); else if (e.key === ' ') flashTip('');
-  if (['ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); show(view.cur + 1); }
-  else if (['ArrowLeft', 'PageUp'].includes(e.key)) show(view.cur - 1);
-  else if (e.key === 'Home') show(0);
-  else if (e.key === 'End') show(slides.length - 1);
+  if (['ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); show(view.cur + 1, 'key'); }
+  else if (['ArrowLeft', 'PageUp'].includes(e.key)) show(view.cur - 1, 'key');
+  else if (e.key === 'Home') show(0, 'key');
+  else if (e.key === 'End') show(slides.length - 1, 'key');
   else if (e.key === 'f' || e.key === 'F') setFull(!document.fullscreenElement);
 });
 
@@ -113,7 +115,7 @@ initCarousel(); initPeek(); initSplit(); initScenes();
 const CARDS = '.fx .shot, .fx .badge, .fx canvas.glyph, .L-wall .tags span, .cards5 .cc, .plan .bar, .exits .exit';
 addEventListener('click', e => {
   const t = e.target, go = t.closest('[data-go]');
-  if (go) { flashTip(+go.dataset.go > 0 ? 'go-r' : 'go-l'); show(view.cur + +go.dataset.go); return; }
+  if (go) { flashTip(+go.dataset.go > 0 ? 'go-r' : 'go-l'); show(view.cur + +go.dataset.go, 'button'); return; }
   if (t.closest('.split')) return;   // the bar's own click handler (a tap opens / closes a block)
   if (t.closest('#ticker')) { holdTicker(); return; }   // a click on the header slows it for a moment
   if (t.closest('.pts li.don')) { donate(); return; }   // slide 3: a mock donation
@@ -140,7 +142,7 @@ addEventListener('touchstart', e => { swipe = !e.target.closest('.fx .shot'); sx
 addEventListener('touchend', e => {
   if (!swipe) return;
   const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
-  if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) { flashTip(dx < 0 ? 'go-r' : 'go-l'); show(view.cur + (dx < 0 ? 1 : -1)); }
+  if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) { flashTip(dx < 0 ? 'go-r' : 'go-l'); show(view.cur + (dx < 0 ? 1 : -1), 'swipe'); }
 }, { passive: true });
 
 const turn = document.getElementById('turn'), portrait = matchMedia('(orientation: portrait) and (max-width: 900px)');
@@ -148,6 +150,8 @@ let skipTurn = false;
 const askTurn = () => { turn.hidden = !(portrait.matches && !skipTurn); };
 portrait.addEventListener('change', askTurn); document.getElementById('turn-skip').addEventListener('click', () => { skipTurn = true; askTurn(); }); askTurn();
 
+initStats(SLIDES.map(s => s.id), touch);
+setOnGrab(() => interact('coin_drag'));
 const fromHash = () => show((parseInt(location.hash.slice(1), 10) || 1) - 1);
 addEventListener('hashchange', fromHash);
 fromHash();

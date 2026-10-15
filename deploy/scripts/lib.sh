@@ -39,10 +39,10 @@ refuse_placeholders() {
 # The environment the containers get (stdout): every key of deploy/.env except the local-only DEPLOY_* ones, plus the values derived from the domain.
 # DEPLOY_DOMAIN is the APEX (landing + lobby); the game is ride.<apex>, the API api.<apex>. Everything that has to agree with those names is DERIVED, never typed twice:
 # APP_DOMAIN / APP_ORIGIN (in the wallet's sign-in message = the page the rider signs in on), COOKIE_DOMAIN (the apex the admin host and the game host derive from; the PLAYER session cookie is host-only on api.* since pentest H7-B), CORS_ORIGINS (who may call the API).
-# whitepaper.<apex> is in that list for web vitals only. storybook., pitchdeck. and admin. are not: the model viewer and the pitch deck call nothing, and the admin page calls the API on its own host.
+# whitepaper.<apex> and pitchdeck.<apex> are in that list for analytics only (web vitals / page views to POST /api/telemetry; the deck sends them without credentials). storybook. and admin. are not: the model viewer calls nothing, and the admin page calls the API on its own host.
 app_env() {
   grep -E '^[A-Za-z_][A-Za-z0-9_]*=' "$ENV_FILE" | grep -v '^DEPLOY_' || true
-  printf 'APP_DOMAIN=%s\nAPP_ORIGIN=https://%s\nAPP_PORT=%s\nCOOKIE_DOMAIN=%s\nCORS_ORIGINS=https://%s,https://ride.%s,https://whitepaper.%s\n' "$DEPLOY_DOMAIN" "$DEPLOY_DOMAIN" "$DEPLOY_APP_PORT" "$DEPLOY_DOMAIN" "$DEPLOY_DOMAIN" "$DEPLOY_DOMAIN" "$DEPLOY_DOMAIN"
+  printf 'APP_DOMAIN=%s\nAPP_ORIGIN=https://%s\nAPP_PORT=%s\nCOOKIE_DOMAIN=%s\nCORS_ORIGINS=https://%s,https://ride.%s,https://whitepaper.%s,https://pitchdeck.%s\n' "$DEPLOY_DOMAIN" "$DEPLOY_DOMAIN" "$DEPLOY_APP_PORT" "$DEPLOY_DOMAIN" "$DEPLOY_DOMAIN" "$DEPLOY_DOMAIN" "$DEPLOY_DOMAIN" "$DEPLOY_DOMAIN"
 }
 
 # admin.<apex>'s basic auth: DEPLOY_ADMIN_USER / DEPLOY_ADMIN_PASSWORD (local only) → an apr1 hash in /etc/nginx/freightchain-admin.htpasswd on the server.

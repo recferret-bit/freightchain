@@ -24,6 +24,8 @@ const sprite = (() => {   // one 128 px sprite: the Solana mark on a dark face i
   return c;
 })();
 let coinK = 1, coinRaf = 0, coinStill = 0, coinT = 0;
+export let onGrab = () => {};   // pitchdeck.js sets it (analytics)
+export const setOnGrab = f => { onGrab = f; };
 let held = null, hx = 0, hy = 0, eatClick = false, touchCoin = false;
 let boxes = [], boxEls = [], boxSlide = -1, boxTouch = false;
 const weighed = [];   // the page-3 card and banner: spring bodies that sag under the SOL lying on them
@@ -223,7 +225,7 @@ export function initCoins() {
     const [x, y] = toStage(e.clientX, e.clientY), c = !e.button && coinAt(x, y);
     eatClick = !!c; if (!c) return;
     e.stopPropagation(); e.preventDefault();
-    held = c; hx = x; hy = y; touchCoin = e.pointerType === 'touch';
+    held = c; onGrab(); hx = x; hy = y; touchCoin = e.pointerType === 'touch';
     coins.splice(coins.indexOf(c), 1); coins.push(c);   // drawn on top
     stage.classList.add('coin-drag'); wakeCoins();
   }, true);
