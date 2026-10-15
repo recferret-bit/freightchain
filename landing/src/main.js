@@ -277,7 +277,7 @@ $('pitchdeck-link').href = PITCHDECK_BASE || '/pitchdeck.html';
 $('pitchdeck-link').addEventListener('click', () => { track('pitchdeck_link_clicked', { surface: 'landing' }); flushSoon(); });   // the deck's conversion: landing footer click → pitchdeck_viewed (source=landing)   // the pitch deck: pitchdeck.<apex> in production (the apex only 301s there), /pitchdeck.html elsewhere
 $('storybook-link').addEventListener('click', () => track('storybook_link_clicked'));
 $('escrow-link').href = escrowExplainer();   // whitepaper chapter 05 is the one public escrow explainer
-for (const a of document.querySelectorAll('a[href^="/whitepaper.html#"]')) if (WHITEPAPER_BASE) a.href = `${WHITEPAPER_BASE}/${a.hash}`;   // deep links straight to whitepaper.<apex> (the apex would only 301 there)
+for (const a of document.querySelectorAll('a[href^="https://whitepaper.freightchain.fun/#"]')) a.href = `${WHITEPAPER_BASE ? `${WHITEPAPER_BASE}/` : '/whitepaper.html'}${a.hash}`;   // the HTML names production's whitepaper (a crawler must not find the apex's /whitepaper.html – a 301); this host's own whitepaper here
 
 /* ───── UNDER THE HOOD cards: hover (CSS) or a tap (.flip) turns one over; the keyboard gets there by Tab onto a link on the back (:focus-within). A link stays a link.
    chain_card_flipped once per card per load: a tap, or a hover that lasts 0.6 s (a pointer passing over is not a read) ───── */

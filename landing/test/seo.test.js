@@ -76,6 +76,11 @@ test('sitemap.xml lists exactly the canonical URLs, llms.txt points at them', ()
   assert.ok(llms.includes(jsonLd(pages.landing)[0]['@graph'].find(n => n.name && n.description).description.replace(/\.$/, '')), 'the same one-line description as the JSON-LD');
 });
 
+test('the static HTML links no URL production redirects (search lists each as "page with redirect"); the scripts point them at this host when not split', () => {
+  assert.doesNotMatch(pages.landing, /href="\/(whitepaper|pitchdeck)\.html/, 'the apex 301s these to their own hosts');
+  for (const m of pages.whitepaper.matchAll(/<a [^>]*href="(\/[^"]*)"/g)) assert.fail(`whitepaper host: ${m[1]} is the wrong page there (the landing / game / lobby / viewer live on other hosts)`);
+});
+
 test('IndexNow key: 32 hex characters, nothing else in the file', () => {
   assert.match(read(join(root, 'public/indexnow-key.txt')), /^[0-9a-f]{32}$/);
 });

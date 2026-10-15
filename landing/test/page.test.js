@@ -169,7 +169,7 @@ test('pools: the live board + the escrow block exist, the explainer is the white
   assert.ok(ids.includes('pools') && ids.includes('escrow-link'));
   assert.match(main, /\$\('escrow-link'\)\.href = escrowExplainer\(\)/, 'the escrow link goes to the whitepaper chapter 05');
   assert.match(main, /from '\.\.\/\.\.\/client\/site\/pools\.js'/);
-  assert.match(html, /id="escrow-link" href="\/whitepaper\.html#onchain"/, "static fallback before the script runs");
+  assert.match(html, /id="escrow-link" href="https:\/\/whitepaper\.freightchain\.fun\/#onchain"/, "static fallback before the script runs");
   assert.equal(existsSync(join(root, '..', 'client', 'escrow')), false, 'no standalone /escrow/ page');
   assert.doesNotMatch(main, /class: `st /, 'the pool chip is .pst – .st is the roadmap\'s rubber stamp');
 });

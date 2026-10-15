@@ -174,7 +174,7 @@
       <li><b>MINTED</b>An hour later, after a second check, a Bubblegum v2 compressed NFT lands in your wallet.</li>
       <li><b>LOCKED</b>The collection carries a permanent freeze: the transfer is refused on chain, by Solana, not by us.</li>
     </ol>
-    <p class="ach-note">The lobby's ACHIEVEMENTS tab flips a card for the badge, Solscan, Orb, the mint transaction and a share to 𝕏. <a href="/whitepaper.html#achievements">How it works</a> · <a href="https://explorer.solana.com/address/56ijQ5t2RFpXezbPtEuqECo5gCQiGSek2LBsp7cfMoXC?cluster=devnet" target="_blank" rel="noopener">collection ↗</a> · <a href="https://explorer.solana.com/address/45NKrZA9rGFcKr62VY5NvM89yarFuBqtBseRK7ZSM336?cluster=devnet" target="_blank" rel="noopener">Merkle tree ↗</a></p>
+    <p class="ach-note">The lobby's ACHIEVEMENTS tab flips a card for the badge, Solscan, Orb, the mint transaction and a share to 𝕏. <a href="https://whitepaper.freightchain.fun/#achievements">How it works</a> · <a href="https://explorer.solana.com/address/56ijQ5t2RFpXezbPtEuqECo5gCQiGSek2LBsp7cfMoXC?cluster=devnet" target="_blank" rel="noopener">collection ↗</a> · <a href="https://explorer.solana.com/address/45NKrZA9rGFcKr62VY5NvM89yarFuBqtBseRK7ZSM336?cluster=devnet" target="_blank" rel="noopener">Merkle tree ↗</a></p>
     <div class="badges"><span>Road</span><span>Shifts · paid</span><span>Night</span><span>Distance</span><span>Clean</span><span>Siberia</span><span>Solo</span><span>Licence</span><span class="locked">Top 20 · after the first round closes</span></div>
   </div>
 </section>
@@ -208,7 +208,7 @@
         </li>
       </ol>
       <p class="dim" id="escrow-status">Program v3 is on devnet. It sets each pool's road seed from the latest slot hash, and it pays a prize only when the payout key has attested that ride.</p>
-      <a class="link" id="escrow-link" href="/whitepaper.html#onchain">The whole escrow, with diagrams, in the whitepaper →</a>
+      <a class="link" id="escrow-link" href="https://whitepaper.freightchain.fun/#onchain">The whole escrow, with diagrams, in the whitepaper →</a>
     </div>
   </div>
 
@@ -222,14 +222,14 @@
       <div class="bk"><div class="rcpt"><b class="t">ATTESTATION · EXAMPLE</b><p><span>seed</span><b>SHA-256(pool · slot hash · slot)</b></p><p><span>batches</span><b>164 × 15 s</b></p><p><span>root</span><b>9f3a…c21</b></p><p><span>status</span><b class="ok">VERIFIED</b></p></div>
         <p>The program sets the road seed. The winners are public before a prize moves.</p>
         <ul><li>The program seals the pool’s road from the hash of a Solana slot after the pool opened – nobody passes a seed in, nobody picks the moment.</li><li>Every 15 s of driving is a hashed batch; a ride’s batches roll up into one Merkle root.</li><li>The winners are written on chain as one root, public through the review – then each rank is paid once, exactly what the root says.</li></ul>
-        <nav><a href="/whitepaper.html#onchain">Whitepaper →</a><a href="/whitepaper.html#verify">Anti-cheat →</a></nav></div></div></article>
+        <nav><a href="https://whitepaper.freightchain.fun/#onchain">Whitepaper →</a><a href="https://whitepaper.freightchain.fun/#verify">Anti-cheat →</a></nav></div></div></article>
     <article data-card="pledge" class="oc"><div class="oc-in">
       <div class="fr"><div class="stage"><img src="/media/chain/pledge.svg" width="240" height="124" loading="lazy" decoding="async" alt="412 km of a 0.5 SOL pledge: 0.412 SOL to the driver, 0.088 SOL back"><i class="stk p tl">Pledge PDA</i></div>
         <footer><b>BACK A DRIVER</b><span>Pledge per kilometre of verified driving.</span></footer></div>
       <div class="bk"><div class="rcpt"><b class="t">PLEDGE · EXAMPLE</b><p><span>rate</span><b>0.001 SOL / km</b></p><p><span>deposit</span><b>0.500 SOL</b></p><p><span>verified</span><b>412 km</b></p><p><span>to driver</span><b class="ok">0.412 SOL</b></p><p><span>back to you</span><b>0.088 SOL</b></p></div>
         <p>Pays verified kilometres. Unspent SOL comes back.</p>
         <ul><li>Settles on verified kilometres only.</li><li>The rest returns to you; nothing stays in the account.</li></ul>
-        <nav><a href="/whitepaper.html#onchain">Whitepaper →</a></nav></div></div></article>
+        <nav><a href="https://whitepaper.freightchain.fun/#onchain">Whitepaper →</a></nav></div></div></article>
     <article data-card="sns" class="oc"><div class="oc-in">
       <div class="fr"><div class="stage"><img src="/media/chain/sns.svg" width="240" height="124" loading="lazy" decoding="async" alt="A leaderboard showing .sol names instead of wallet addresses"><i class="stk tr">SNS</i></div>
         <footer><b>YOUR .SOL NAME</b><span>Boards show driver.sol, not 7xKX…9fQd.</span></footer></div>
@@ -243,7 +243,7 @@
       <div class="bk"><div class="rcpt"><b class="t">BLINK · EXAMPLE</b><p><span>action</span><b>buy ticket · 1 h</b></p><p><span>where</span><b>a blink client</b></p><p><span>tip</span><b>Solana Pay QR on a stream</b></p><p><span>signed by</span><b class="ok">your wallet</b></p></div>
         <p>A shared link can buy a ticket or open the ride.</p>
         <ul><li>Solana Actions put BUY TICKET and WATCH buttons on a shared link – in a blink client today, on 𝕏 once Dialect lists us (after the hackathon).</li><li>On a live stream, a phone wallet tips the driver through a Solana Pay QR.</li></ul>
-        <nav><a href="/blink.html">Try the blink →</a><a href="#achievements">Badges →</a><a href="/whitepaper.html#onchain">Whitepaper →</a></nav></div></div></article>
+        <nav><a href="/blink.html">Try the blink →</a><a href="#achievements">Badges →</a><a href="https://whitepaper.freightchain.fun/#onchain">Whitepaper →</a></nav></div></div></article>
     <article data-card="siws" class="oc"><div class="oc-in">
       <div class="fr"><div class="stage"><img src="/media/chain/siws.svg" width="240" height="124" loading="lazy" decoding="async" alt="One wallet prompt: sign in to freightchain.fun with a one-time nonce"><i class="stk p tl">CAIP-122</i></div>
         <footer><b>ONE-TAP SIGN-IN</b><span>One prompt on Phantom and Solflare. Older wallets sign a message.</span></footer></div>
@@ -277,7 +277,7 @@
 
   <aside class="wp-invite rv" aria-labelledby="wp-h">
     <div><h3 id="wp-h">WHITEPAPER</h3><p>How a shift is timed, what the server checks, how the escrow pools work, and what is still planned.</p></div>
-    <a class="cta" id="whitepaper-cta" href="/whitepaper.html">READ THE WHITEPAPER →</a>
+    <a class="cta" id="whitepaper-cta" href="https://whitepaper.freightchain.fun/">READ THE WHITEPAPER →</a>
   </aside>
 </section>
 
@@ -395,7 +395,7 @@
     <article>
       <h3>WHO</h3>
       <p>One person built it. The cab, the routes and the weather came first. Sign-in, the lobby, live watch and the Anchor program were built around them for the Colosseum Crypto World's Fair.</p>
-      <p>Devnet only. There is no token, and no prize has been paid. The rules of a pool are in the <a href="/whitepaper.html#onchain">whitepaper</a>.</p>
+      <p>Devnet only. There is no token, and no prize has been paid. The rules of a pool are in the <a href="https://whitepaper.freightchain.fun/#onchain">whitepaper</a>.</p>
     </article>
     <div class="socials" id="socials">
       <span class="lbl">FIND US</span>
@@ -438,7 +438,7 @@
     <article class="fq" data-item="vault">
       <button type="button" aria-expanded="false">Who holds the entry fees, and what if a pool does not fill?</button>
       <i class="chev" aria-hidden="true"></i>
-      <div class="fq-a"><div><p>The vault is an account the program owns. It holds the fees until the pool pays or refunds. Miss the ticket goal and every entry comes back. <a href="/whitepaper.html#onchain">The escrow, in the whitepaper</a>.</p></div></div>
+      <div class="fq-a"><div><p>The vault is an account the program owns. It holds the fees until the pool pays or refunds. Miss the ticket goal and every entry comes back. <a href="https://whitepaper.freightchain.fun/#onchain">The escrow, in the whitepaper</a>.</p></div></div>
     </article>
     <article class="fq" data-item="shift">
       <button type="button" aria-expanded="false">How long is a shift, and what ends it?</button>
@@ -464,7 +464,7 @@
 </section>
 </main>
 
-<footer>Devnet build · nothing here is real money · <a href="/lobby.html">lobby</a> · <a href="/play.html">offline practice</a> · <a href="/viewer.html" id="storybook-link">storybook</a> · <a href="/whitepaper.html" id="whitepaper-link">whitepaper</a> · <a href="/pitchdeck.html" id="pitchdeck-link">pitch deck</a></footer>
+<footer>Devnet build · nothing here is real money · <a href="/lobby.html">lobby</a> · <a href="/play.html">offline practice</a> · <a href="/viewer.html" id="storybook-link">storybook</a> · <a href="https://whitepaper.freightchain.fun/" id="whitepaper-link">whitepaper</a> · <a href="https://pitchdeck.freightchain.fun/" id="pitchdeck-link">pitch deck</a></footer>
 
 <dialog id="demo" class="demo"><button class="x" id="demo-x" aria-label="close">✕</button><div id="demo-frame"></div><p class="dim" id="demo-note"></p></dialog>
 
