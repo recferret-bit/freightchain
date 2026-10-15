@@ -66,13 +66,19 @@ function show(i) {
 }
 
 /* the bottom bar's tip flashes on a ← / → / space press (the corner arrow in that direction too; space leaves the arrows alone) and on the arrows' own click */
-function flashTip(dir) { replay(help, 'flash'); if (dir) replay(document.getElementById(dir === 'go-l' ? 'prev' : 'next'), 'flash'); }
-/* full screen: on / off buttons in the bottom bar, F, and on a phone the first tap turns it on (the browser only allows it from a gesture); iPhone Safari has no API – the buttons hide there */
-const root = document.documentElement, fsOn = document.getElementById('fs-on'), fsOff = document.getElementById('fs-off');
+function flashTip(dir) {
+  replay(help, 'flash');
+  if (!dir) return;
+  const d = dir === 'go-l' ? -1 : 1;
+  for (const b of document.querySelectorAll('.pb')) b.classList.toggle('hit', +b.dataset.go === d);
+  if (!reduced) replay(document.getElementById(d < 0 ? 'prev' : 'next'), 'flash');
+}
+/* full screen: the F key, and on a phone ONE button (top right: on / off) + the first tap turns it on (the browser only allows it from a gesture); iPhone Safari has no API – the button hides there */
+const root = document.documentElement, fsBtn = document.getElementById('fs');
 const setFull = on => { if (!root.requestFullscreen) return; (on ? root.requestFullscreen() : document.fullscreenElement ? document.exitFullscreen() : Promise.resolve()).catch(() => {}); };
-const syncFull = () => { const on = !!document.fullscreenElement; fsOn.classList.toggle('act', on); fsOff.classList.toggle('act', !on); };
-document.querySelector('#help .fs').hidden = !root.requestFullscreen;
-fsOn.addEventListener('click', () => setFull(true)); fsOff.addEventListener('click', () => setFull(false));
+const syncFull = () => { fsBtn.textContent = document.fullscreenElement ? '✕' : '⛶'; fsBtn.setAttribute('aria-label', document.fullscreenElement ? 'Exit full screen' : 'Full screen'); };
+fsBtn.hidden = !root.requestFullscreen;
+fsBtn.addEventListener('click', () => { replay(fsBtn, 'flash'); setFull(!document.fullscreenElement); });
 document.addEventListener('fullscreenchange', syncFull); syncFull();
 addEventListener('keydown', e => {
   if (e.key === 'ArrowRight') flashTip('go-r'); else if (e.key === 'ArrowLeft') flashTip('go-l'); else if (e.key === ' ') flashTip('');
@@ -94,7 +100,7 @@ initCarousel(); initPeek(); initSplit(); initScenes();
 /* ONE click handler: a click or tap never turns the page – only the bottom bar's arrows (and the keys / a swipe) do; on a card it lifts it (.hot), on a button it does its thing */
 const CARDS = '.fx .shot, .fx .badge, .fx canvas.glyph, .L-wall .tags span, .cards5 .cc, .plan .bar, .exits .exit';
 addEventListener('click', e => {
-  const t = e.target, go = t.closest('.nav[data-go]');
+  const t = e.target, go = t.closest('[data-go]');
   if (go) { flashTip(+go.dataset.go > 0 ? 'go-r' : 'go-l'); show(view.cur + +go.dataset.go); return; }
   if (t.closest('.split')) return;   // the bar's own click handler (a tap opens / closes a block)
   if (t.closest('#ticker')) { holdTicker(); return; }   // a click on the header slows it for a moment
@@ -112,7 +118,7 @@ addEventListener('click', e => {
 /* phones: a swipe turns the page, the tip says "swipe", a portrait screen is asked to turn sideways, and the first tap goes full screen */
 const touch = matchMedia('(hover: none) and (pointer: coarse)').matches;
 document.body.classList.toggle('touch', touch);
-if (touch) addEventListener('pointerup', () => setFull(true), { once: true });
+if (touch) addEventListener('pointerup', function first(e) { if (e.target.closest('#fs')) return; removeEventListener('pointerup', first); setFull(true); });
 let sx = 0, sy = 0, swipe = false;
 addEventListener('touchstart', e => { swipe = !e.target.closest('.fx .shot'); sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
 addEventListener('touchend', e => {
