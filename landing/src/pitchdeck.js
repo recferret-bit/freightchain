@@ -6,7 +6,7 @@ import { SLIDES } from './pitchdeck/data.js';
 import { reduced, view, stage, deck, replay } from './pitchdeck/core.js';
 import { initTicker, holdTicker, ticker } from './pitchdeck/ticker.js';
 import { initCoins, donate, adopt } from './pitchdeck/coins.js';
-import { initTilt, fxVis, setTilt, initDrag, drag, initShakes, initCarousel, initPeek, initSplit, initScenes, ladderClick } from './pitchdeck/fx.js';
+import { initTilt, initDrag, drag, initShakes, initCarousel, initPeek, initSplit, initScenes, ladderClick } from './pitchdeck/fx.js';
 import { initRoad } from './pitchdeck/road.js';
 
 deck.innerHTML = SLIDES.map((s, i) => `<section class="slide L-${s.layout.split(' ').join(' L-')}" id="s-${s.id}" data-i="${i}">${s.html}</section>`).join('');
@@ -65,16 +65,22 @@ function show(i) {
   document.getElementById('bar').style.width = `${100 * (i + 1) / slides.length}%`;
 }
 
-/* the bottom bar's tip flashes on a ← / → / space press (the arrow in that direction too; space leaves the arrows alone) and on its own arrows */
-function flashTip(dir) { help.classList.remove('go-l', 'go-r'); replay(help, 'flash'); if (dir) help.classList.add(dir); }
+/* the bottom bar's tip flashes on a ← / → / space press (the corner arrow in that direction too; space leaves the arrows alone) and on the arrows' own click */
+function flashTip(dir) { replay(help, 'flash'); if (dir) replay(document.getElementById(dir === 'go-l' ? 'prev' : 'next'), 'flash'); }
+/* full screen: on / off buttons in the bottom bar, F, and on a phone the first tap turns it on (the browser only allows it from a gesture); iPhone Safari has no API – the buttons hide there */
+const root = document.documentElement, fsOn = document.getElementById('fs-on'), fsOff = document.getElementById('fs-off');
+const setFull = on => { if (!root.requestFullscreen) return; (on ? root.requestFullscreen() : document.fullscreenElement ? document.exitFullscreen() : Promise.resolve()).catch(() => {}); };
+const syncFull = () => { const on = !!document.fullscreenElement; fsOn.classList.toggle('act', on); fsOff.classList.toggle('act', !on); };
+document.querySelector('#help .fs').hidden = !root.requestFullscreen;
+fsOn.addEventListener('click', () => setFull(true)); fsOff.addEventListener('click', () => setFull(false));
+document.addEventListener('fullscreenchange', syncFull); syncFull();
 addEventListener('keydown', e => {
   if (e.key === 'ArrowRight') flashTip('go-r'); else if (e.key === 'ArrowLeft') flashTip('go-l'); else if (e.key === ' ') flashTip('');
   if (['ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); show(view.cur + 1); }
   else if (['ArrowLeft', 'PageUp'].includes(e.key)) show(view.cur - 1);
   else if (e.key === 'Home') show(0);
   else if (e.key === 'End') show(slides.length - 1);
-  else if (e.key === 'f' || e.key === 'F') document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
-  else if (e.key === 'Enter' && e.target.matches?.('#help [data-go]')) e.target.click();
+  else if (e.key === 'f' || e.key === 'F') setFull(!document.fullscreenElement);
 });
 
 initTicker();
@@ -88,7 +94,7 @@ initCarousel(); initPeek(); initSplit(); initScenes();
 /* ONE click handler: a click or tap never turns the page – only the bottom bar's arrows (and the keys / a swipe) do; on a card it lifts it (.hot), on a button it does its thing */
 const CARDS = '.fx .shot, .fx .badge, .fx canvas.glyph, .L-wall .tags span, .cards5 .cc, .plan .bar, .exits .exit';
 addEventListener('click', e => {
-  const t = e.target, go = t.closest('#help [data-go]');
+  const t = e.target, go = t.closest('.nav[data-go]');
   if (go) { flashTip(+go.dataset.go > 0 ? 'go-r' : 'go-l'); show(view.cur + +go.dataset.go); return; }
   if (t.closest('.split')) return;   // the bar's own click handler (a tap opens / closes a block)
   if (t.closest('#ticker')) { holdTicker(); return; }   // a click on the header slows it for a moment
@@ -103,9 +109,10 @@ addEventListener('click', e => {
   if (on) (card.closest('.vis') ?? card.parentElement).querySelectorAll('.hot').forEach(c => { if (c !== card) c.classList.remove('hot'); });
 });
 
-/* phones: a swipe turns the page, the tip says "swipe", a portrait screen is asked to turn sideways, and the gyro tilts the cards like the mouse does */
+/* phones: a swipe turns the page, the tip says "swipe", a portrait screen is asked to turn sideways, and the first tap goes full screen */
 const touch = matchMedia('(hover: none) and (pointer: coarse)').matches;
 document.body.classList.toggle('touch', touch);
+if (touch) addEventListener('pointerup', () => setFull(true), { once: true });
 let sx = 0, sy = 0, swipe = false;
 addEventListener('touchstart', e => { swipe = !e.target.closest('.fx .shot'); sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
 addEventListener('touchend', e => {
@@ -118,22 +125,6 @@ const turn = document.getElementById('turn'), portrait = matchMedia('(orientatio
 let skipTurn = false;
 const askTurn = () => { turn.hidden = !(portrait.matches && !skipTurn); };
 portrait.addEventListener('change', askTurn); document.getElementById('turn-skip').addEventListener('click', () => { skipTurn = true; askTurn(); }); askTurn();
-
-/* tilt: the phone's gyro drives the same --px / --py as the mouse (zeroed on the first reading and whenever the screen turns); iOS asks for permission on the first tap */
-let base = null;
-const onTilt = e => {
-  if (e.gamma == null || e.beta == null) return;
-  const a = ((window.screen.orientation?.angle ?? 0) + 360) % 360;
-  const [x, y] = a === 90 ? [e.beta, -e.gamma] : a === 270 ? [-e.beta, e.gamma] : a === 180 ? [-e.gamma, -e.beta] : [e.gamma, e.beta];
-  base ??= [x, y];
-  const f = v => Math.max(-.5, Math.min(.5, v / 40)).toFixed(3);
-  fxVis.forEach(v => setTilt(v, f(x - base[0]), f(y - base[1])));
-};
-const listenTilt = () => { addEventListener('deviceorientation', onTilt); window.screen.orientation?.addEventListener('change', () => { base = null; }); };
-if (touch && window.DeviceOrientationEvent) {
-  if (typeof window.DeviceOrientationEvent.requestPermission === 'function') addEventListener('click', () => window.DeviceOrientationEvent.requestPermission().then(r => { if (r === 'granted') listenTilt(); }).catch(() => {}), { once: true });
-  else listenTilt();
-}
 
 const fromHash = () => show((parseInt(location.hash.slice(1), 10) || 1) - 1);
 addEventListener('hashchange', fromHash);
