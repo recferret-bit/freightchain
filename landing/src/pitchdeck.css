@@ -431,6 +431,11 @@ canvas.glyph{height:auto;aspect-ratio:240/124;background:none}
 @keyframes navflash{0%{background:#14f195dd;color:#050505;border-color:#14f195;scale:.9;box-shadow:0 0 30px 6px #14f19599}100%{background:#0002;scale:1}}
 #fs{position:fixed;top:max(44px,env(safe-area-inset-top));right:max(14px,env(safe-area-inset-right));z-index:31;width:48px;height:48px;border-radius:50%;border:2px solid #9945ff77;background:#0002;color:#fffb;font:700 24px/1 var(--body);place-items:center;padding:0;-webkit-tap-highlight-color:transparent}
 #fs.flash{animation:navflash .45s ease-out 1}
+#fs-hint{position:fixed;top:max(104px,calc(env(safe-area-inset-top) + 60px));right:max(14px,env(safe-area-inset-right));z-index:40;max-width:300px;padding:14px 18px;border-radius:16px;border:1px solid #14f195aa;background:#000e;color:#fff;font:600 13px/1.5 var(--body);letter-spacing:.5px;text-align:center}
+#fs-hint[hidden]{display:none}
+#fs-hint p{margin:0 0 6px}
+#fs-hint b{color:var(--good)}
+#fs-hint small{color:#fff8;font-size:10px;letter-spacing:1.5px;text-transform:uppercase}
 
 /* the truck honks (hover / tap): a comic HONK!, three sound rings off the cab front, three exhaust puffs off the stack; a counter on the road */
 .honk{position:absolute;z-index:6;width:0;height:0;pointer-events:none}

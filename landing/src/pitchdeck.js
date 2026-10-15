@@ -73,12 +73,14 @@ function flashTip(dir) {
   for (const b of document.querySelectorAll('.pb')) b.classList.toggle('hit', +b.dataset.go === d);
   if (!reduced) replay(document.getElementById(d < 0 ? 'prev' : 'next'), 'flash');
 }
-/* full screen: the F key, and on a phone ONE button (top right: on / off) + the first tap turns it on (the browser only allows it from a gesture); iPhone Safari has no API – the button hides there */
+/* full screen: the F key, and on a phone ONE button (top right: on / off) + the first tap turns it on (the browser only allows it from a gesture); iPhone Safari has no API – there the button shows how to Add to Home Screen */
 const root = document.documentElement, fsBtn = document.getElementById('fs');
 const setFull = on => { if (!root.requestFullscreen) return; (on ? root.requestFullscreen() : document.fullscreenElement ? document.exitFullscreen() : Promise.resolve()).catch(() => {}); };
 const syncFull = () => { fsBtn.textContent = document.fullscreenElement ? '✕' : '⛶'; fsBtn.setAttribute('aria-label', document.fullscreenElement ? 'Exit full screen' : 'Full screen'); };
-fsBtn.hidden = !root.requestFullscreen;
-fsBtn.addEventListener('click', () => { replay(fsBtn, 'flash'); setFull(!document.fullscreenElement); });
+const installed = navigator.standalone || matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches, hint = document.getElementById('fs-hint');
+fsBtn.hidden = installed;   // opened from the home screen it already is full screen
+fsBtn.addEventListener('click', () => { replay(fsBtn, 'flash'); if (root.requestFullscreen) setFull(!document.fullscreenElement); else hint.hidden = !hint.hidden; });   // iPhone Safari: no API – the button explains Add to Home Screen
+hint.addEventListener('click', () => { hint.hidden = true; });
 document.addEventListener('fullscreenchange', syncFull); syncFull();
 addEventListener('keydown', e => {
   if (e.key === 'ArrowRight') flashTip('go-r'); else if (e.key === 'ArrowLeft') flashTip('go-l'); else if (e.key === ' ') flashTip('');
