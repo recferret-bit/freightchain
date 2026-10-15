@@ -3,7 +3,7 @@
    This file is the engine: it renders the slides, turns pages (bottom-bar arrows, keys, a swipe – never a plain click), loads each slide's media only when it is near,
    scales the 1920×1080 stage, and wires the parts in pitchdeck/*.js. Keys: → / space next · ← back · F fullscreen · Home / End. */
 import { SLIDES } from './pitchdeck/data.js';
-import { reduced, view, stage, deck, replay } from './pitchdeck/core.js';
+import { reduced, view, stage, deck, replay, toStage, pop } from './pitchdeck/core.js';
 import { initTicker, holdTicker, ticker } from './pitchdeck/ticker.js';
 import { initCoins, donate, adopt } from './pitchdeck/coins.js';
 import { initTilt, initDrag, drag, initShakes, initCarousel, initPeek, initSplit, initScenes, ladderClick } from './pitchdeck/fx.js';
@@ -45,9 +45,12 @@ function setPager(i, from) {   // from = the previous slide, -1 on load
 }
 
 /* the stage hangs from the top edge (any letterbox goes below), the header ticker hugs the top of the window full width */
+const safe = document.getElementById('safe');
 const fit = () => {
-  const k = view.scale = Math.min(innerWidth / 1920, innerHeight / 1080), w = view.w = Math.max(1920, Math.round(innerWidth / k));   // a screen wider than 16:9 (a phone sideways) widens the stage instead of leaving black bars: the slides keep their 1920 centred
-  stage.style.width = `${w}px`; stage.style.setProperty('--ex', `${(w - 1920) / 2}px`)
+  const k = view.scale = Math.min(innerWidth / 1920, innerHeight / 1080), w = view.w = Math.max(1920, Math.round(innerWidth / k));   // a screen wider than 16:9 (a phone sideways) widens the stage instead of leaving black bars
+  const sa = window.getComputedStyle(safe);   // the notch / home-bar insets (a phone sideways), in stage px: the slides keep clear of them and of the corner buttons
+  stage.style.width = `${w}px`; stage.style.setProperty('--ex', `${(w - 1920) / 2}px`);
+  stage.style.setProperty('--sl', `${parseFloat(sa.paddingLeft) / k}px`); stage.style.setProperty('--sr', `${parseFloat(sa.paddingRight) / k}px`);
   stage.style.transform = `translate(-50%,0) scale(${k})`;
   ticker.style.transform = `scale(${k})`; ticker.style.width = `${innerWidth / k}px`;
 };
@@ -121,6 +124,9 @@ addEventListener('click', e => {
 /* phones: a swipe turns the page, the tip says "swipe", a portrait screen is asked to turn sideways, and the first tap goes full screen */
 const touch = matchMedia('(hover: none) and (pointer: coarse)').matches;
 document.body.classList.toggle('touch', touch);
+/* a tap on anything that answers it shows a soft Solana-gradient ring instead of the browser's blue highlight (-webkit-tap-highlight-color is off in the CSS) */
+const TAPS = `${CARDS}, .pts li.don, .pts li.adopt, .ladder li, .split > div, .exits .exit, [data-go], button`;
+if (touch && !reduced) addEventListener('pointerdown', e => { if (e.target.closest?.(TAPS)) { const [x, y] = toStage(e.clientX, e.clientY); pop('tap', '', x, y); } }, { passive: true });
 if (touch) addEventListener('pointerup', function first(e) { if (e.target.closest('#fs')) return; removeEventListener('pointerup', first); setFull(true); });
 let sx = 0, sy = 0, swipe = false;
 addEventListener('touchstart', e => { swipe = !e.target.closest('.fx .shot'); sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
