@@ -31,18 +31,18 @@ export class EditorJobsHttpController {
   }
 
   @Get('jobs')
-  list(@ZodQuery(jobsQuerySchema) query: JobsQuery): Promise<EditorJobDto[]> {
-    return this.queryBus.execute<ListEditorJobsQuery, EditorJobDto[]>(new ListEditorJobsQuery(query.entityId ?? null));
+  list(@CurrentPlayer() editor: PlayerIdentity, @ZodQuery(jobsQuerySchema) query: JobsQuery): Promise<EditorJobDto[]> {
+    return this.queryBus.execute<ListEditorJobsQuery, EditorJobDto[]>(new ListEditorJobsQuery(editor.wallet, query.entityId ?? null));
   }
 
   @Get('jobs/:id')
-  job(@ZodParams(jobIdParamsSchema) params: JobIdParams): Promise<EditorJobDto> {
-    return this.queryBus.execute<GetEditorJobQuery, EditorJobDto>(new GetEditorJobQuery(params.id));
+  job(@CurrentPlayer() editor: PlayerIdentity, @ZodParams(jobIdParamsSchema) params: JobIdParams): Promise<EditorJobDto> {
+    return this.queryBus.execute<GetEditorJobQuery, EditorJobDto>(new GetEditorJobQuery(editor.wallet, params.id));
   }
 
   @Get('jobs/:id/events')
-  events(@ZodParams(jobIdParamsSchema) params: JobIdParams, @ZodQuery(jobEventsQuerySchema) query: JobEventsQuery): Promise<JobEventsDto> {
-    return this.queryBus.execute<GetEditorJobEventsQuery, JobEventsDto>(new GetEditorJobEventsQuery(params.id, query.after));
+  events(@CurrentPlayer() editor: PlayerIdentity, @ZodParams(jobIdParamsSchema) params: JobIdParams, @ZodQuery(jobEventsQuerySchema) query: JobEventsQuery): Promise<JobEventsDto> {
+    return this.queryBus.execute<GetEditorJobEventsQuery, JobEventsDto>(new GetEditorJobEventsQuery(editor.wallet, params.id, query.after));
   }
 
   @Post('jobs/:id/cancel') @HttpCode(200)

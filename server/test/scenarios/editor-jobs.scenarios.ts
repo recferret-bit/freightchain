@@ -4,6 +4,7 @@ import { printSource } from '../../src/domain/shared/entity.js';
 import { SettingsRepositoryPort } from '../../src/application/ports/settings/settings.repository.port.js';
 import { EditorJobRepositoryPort } from '../../src/application/ports/editor/editor-job.repository.port.js';
 import { JobTokenPort } from '../../src/application/ports/editor/job-token.port.js';
+import { aJob } from '../support/editor-job-fixtures.js';
 import { newWallet, sign } from '../support/client.js';
 import { seedEntity } from '../support/entity-fixtures.js';
 import type { Harness } from '../support/harness.js';
@@ -52,6 +53,11 @@ export function editorJobScenarios(h: () => Harness): void {
     expect(rev).toMatchObject({ authorWallet: JOB_EDITOR.address, jobId: body.jobId, prompt: 'make it a little taller', head: true, published: false });
     expect(rev.source).toContain("note: 'fake edit: make it a little taller',");
     expect((await a.get('/api/editor/jobs?entityId=cactus').expect(200)).body.map((j: { id: string }) => j.id)).toEqual([body.jobId]);
+    const other = aJob({ wallet: newWallet().address, prompt: 'secret plan', entityId: 'cactus' });
+    await h().app.get(EditorJobRepositoryPort, { strict: false }).insert(other);
+    await a.get(`/api/editor/jobs/${other.id}`).expect(404);
+    await a.get(`/api/editor/jobs/${other.id}/events?after=0`).expect(404);
+    expect((await a.get('/api/editor/jobs').expect(200)).body.map((j: { id: string }) => j.id)).toEqual([body.jobId]);
     expect(h().mcp.specCalls).toBe(1);
   });
 

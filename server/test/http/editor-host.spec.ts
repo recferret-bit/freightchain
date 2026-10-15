@@ -51,6 +51,15 @@ describe('HTTP · the bundle\'s own budget', () => {
       await request(h.server()).get('/api/health/live').expect(200);
     } finally { await h.close(); }
   });
+
+  it('per IP per second (THROTTLE_ENTITIES_RPS) → 429 even when the per-minute budget is not spent', async () => {
+    const h = await createHarness('memory', { THROTTLE_ENTITIES_RPS: '2' });
+    try {
+      const statuses: number[] = [];
+      for (let i = 0; i < 3; i++) statuses.push((await request(h.server()).get('/api/entities/bundle')).status);
+      expect(statuses).toEqual([200, 200, 429]);
+    } finally { await h.close(); }
+  });
 });
 
 describe('HTTP · EDITOR_IP_ALLOWLIST', () => {

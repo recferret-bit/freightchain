@@ -103,6 +103,7 @@ import { StatsRepositoryPort } from '../application/ports/stats/stats.repository
 import { StatsPrismaRepository } from './prisma/repositories/stats.prisma.repository.js';
 import { MemoryCacheAdapter } from './cache/memory-cache.adapter.js';
 import { RedisCacheAdapter } from './cache/redis-cache.adapter.js';
+import { RateLimitStorage, RedisThrottlerStorage } from './http/redis-throttler.storage.js';
 import { MemoryViewerPresenceAdapter } from './live/viewer-presence.memory.adapter.js';
 import { SitePresencePort } from '../application/ports/live/site-presence.port.js';
 import { MemorySitePresenceAdapter } from './live/site-presence.memory.adapter.js';
@@ -188,6 +189,7 @@ const ports: Provider[] = [
   { provide: AnalyticsPort, useClass: PostHogAnalyticsAdapter },
   { provide: StatsRepositoryPort, useClass: StatsPrismaRepository },
   { provide: CachePort, inject: [EnvService, ClockPort], useFactory: (env: EnvService, clock: ClockPort): CachePort => (env.redisUrl ? new RedisCacheAdapter(env.redisUrl, clock) : new MemoryCacheAdapter(clock)) },
+  { provide: RateLimitStorage, inject: [EnvService], useFactory: (env: EnvService): RedisThrottlerStorage | null => (env.redisUrl ? RedisThrottlerStorage.connect(env.redisUrl) : null) },
   { provide: NameServicePort, useClass: SnsNameServiceAdapter },
 ];
 
@@ -195,6 +197,6 @@ const portTokens = ports.map((p) => (p as { provide: unknown }).provide as typeo
 
 @Module({
   providers: [PrismaService, PlayerAuthGuard, AdminGuard, OptionalSessionGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, SetAdminCookieInterceptor, ClearAdminCookieInterceptor, EditorGuard, McpJobGuard, SetEditorCookieInterceptor, ClearEditorCookieInterceptor, { provide: LogRing, useValue: new LogRing() }, JsonLogger, ...ports],
-  exports: [PrismaService, PlayerAuthGuard, AdminGuard, OptionalSessionGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, SetAdminCookieInterceptor, ClearAdminCookieInterceptor, EditorGuard, McpJobGuard, SetEditorCookieInterceptor, ClearEditorCookieInterceptor, LogRing, JsonLogger, ...portTokens],
+  exports: [PrismaService, PlayerAuthGuard, AdminGuard, OptionalSessionGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, SetAdminCookieInterceptor, ClearAdminCookieInterceptor, EditorGuard, McpJobGuard, SetEditorCookieInterceptor, ClearEditorCookieInterceptor, LogRing, JsonLogger, RateLimitStorage, ...portTokens],
 })
 export class InfrastructureModule {}

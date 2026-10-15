@@ -77,6 +77,21 @@ test('validation refuses gameplay keys, broken parts and out-of-contract edits',
   assert.throws(() => compileEntity(loop, { lookup: () => loop }), PlanError);
 });
 
+test('a huge but finite model is refused, and two params are checked together', () => {
+  const bad = (e, re) => { const r = validateEntity(e, { lookup }); assert.ok(!r.ok && r.errors.some(x => re.test(x)), `${re}: ${r.errors.join('; ')}`); };
+  bad({ id: 'huge-box', kind: 'part', v: 1, slots: { m: {} }, parts: [{ geo: 'box', mat: 'm', s: [1e16, 1, 1], at: [0, 0.5, 0] }] }, /bigger than 80 m/);
+  bad({ id: 'blow-box', kind: 'part', v: 1, params: { s: { default: 1, min: 1, max: 6 }, h: { default: 1, min: 1, max: 6 } }, slots: { m: {} }, parts: [{ geo: 'box', mat: 'm', s: ['1 / (s + h - 12)', 1, 1], at: [0, 0.5, 0] }] }, /not a finite number/);
+});
+
+test('a published config the validator refuses falls back to the seed', async () => {
+  const { guardBundle } = await import('../shared/entity/bundle.js');
+  const seed = [byId.get('rock')];
+  const huge = { id: 'rock', kind: 'prop', v: 1, parts: [{ geo: 'box', mat: { color: 1 }, s: [1e16, 1, 1] }] };
+  const kept = guardBundle([huge, { id: 'not-a-seed', kind: 'part', v: 1, parts: [] }], seed);
+  assert.equal(kept.length, 1);
+  assert.equal(kept[0], seed[0]);
+});
+
 test('a plan is the same part list on every run (no hidden state, no randomness)', () => {
   for (const e of SEED.filter(x => x.kind !== 'part')) {
     const prog = compileEntity(e, { lookup, cache: new Map() }), args = e.kind === 'vehicle' ? { len: VEHICLES[e.id].len, w: VEHICLES[e.id].w, h: VEHICLES[e.id].h } : {};

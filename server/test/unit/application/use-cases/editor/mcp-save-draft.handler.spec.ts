@@ -8,7 +8,7 @@ import { fatCactus, seedEntity } from '../../../../support/entity-fixtures.js';
 describe('McpSaveDraftHandler', () => {
   const setup = async (entityId: string | null = 'cactus') => {
     const c = jobContext(), job = aJob({ status: 'running', entityId, wallet: 'ED' }); await c.jobs.insert(job);
-    return { ...c, job, h: new McpSaveDraftHandler(c.jobs, c.write, c.catalog, c.clock) };
+    return { ...c, job, h: new McpSaveDraftHandler(c.jobs, c.write, c.catalog, c.clock, c.transactions) };
   };
 
   it('a draft of the job\'s model on the head as it is now: authored by the job\'s wallet, with its id; a draft event and the job\'s result', async () => {
@@ -32,5 +32,13 @@ describe('McpSaveDraftHandler', () => {
     await expect(free.h.execute(new McpSaveDraftCommand(free.job.id, 'job-rock', mine, 'm'))).resolves.toMatchObject({ entityId: 'job-rock', seq: 1 });
     await expect(free.h.execute(new McpSaveDraftCommand(free.job.id, 'job-rock', mine.replace('mine', 'again'), 'm'))).resolves.toMatchObject({ entityId: 'job-rock', seq: 2 });
     await expect(h.execute(new McpSaveDraftCommand('00000000-0000-4000-8000-0000000000ff', 'cactus', fatCactus(), 'm'))).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it('the new-entity cap counts drafts past the first page of events', async () => {
+    const { h, job, jobs, clock } = await setup(null);
+    for (let i = 0; i < 500; i++) await jobs.appendEvent(job.id, 'status', { i }, clock.now());
+    const part = (id: string) => printSource({ id, kind: 'part', v: 1, slots: { m: {} }, parts: [{ geo: 'box', mat: 'm', s: [1, 1, 1], at: [0, 0.5, 0] }] });
+    for (const id of ['a-part', 'b-part', 'c-part', 'd-part']) await h.execute(new McpSaveDraftCommand(job.id, id, part(id), 'm'));
+    await expect(h.execute(new McpSaveDraftCommand(job.id, 'e-part', part('e-part'), 'm'))).rejects.toMatchObject({ errorCode: 'job_scope' });
   });
 });

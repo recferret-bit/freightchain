@@ -21,6 +21,11 @@ const COMMON = ['when', 'ifSlot', 'tag', 'note'];
 const ORDERS = ['XYZ', 'YXZ', 'ZXY', 'XZY', 'YZX', 'ZYX'];
 const TOP_KEYS = ['id', 'kind', 'v', 'label', 'note', 'anchor', 'params', 'slots', 'consts', 'vars', 'debris', 'parts'];
 
+/** a part this far from the origin, or a model this large, is not a roadside mesh – the drive loop would build it for every player */
+export const MAX_EXTENT_M = 80;
+/** min/max/enum corners plus the all-min and all-max runs. More than this is refused instead of silently skipped. */
+export const MAX_CORNERS = 96;
+
 export function validateEntity(entity, { lookup = () => null } = {}) {
   const errors = [], warnings = [], err = (p, m) => errors.push(`${p}: ${m}`), warn = (p, m) => warnings.push(`${p}: ${m}`);
   if (!entity || typeof entity !== 'object' || Array.isArray(entity)) return { ok: false, errors: ['the file must export an object'], warnings, measures: null };
@@ -31,12 +36,14 @@ export function validateEntity(entity, { lookup = () => null } = {}) {
   const ros = rosterOf(entity.id);
   if (ros && ros.kind !== entity.kind) err('kind', `'${entity.id}' is a ${ros.kind} in the game (roster.js) – its kind cannot change`);
   const runs = cornerArgs(entity), slotsGiven = slotSet(entity);
+  if (runs.length > MAX_CORNERS) err('params', `more than ${MAX_CORNERS} corners to check – fewer ranged params or a shorter enum`);
   let measures = null;
   for (const args of runs) {
     let parts;
     try { parts = toParts(prog, args, { slots: slotsGiven }); } catch (e) { err(`params ${JSON.stringify(args)}`, e.message); continue; }
     const m = measure(parts);
     if (!m.finite) err(`params ${JSON.stringify(args)}`, 'a size, position or angle is not a finite number (NaN / Infinity)');
+    if (m.meshes && overExtent(m)) err(`params ${JSON.stringify(args)}`, `a part is bigger than ${MAX_EXTENT_M} m or sits more than ${MAX_EXTENT_M} m from the origin`);
     for (const p of parts) if (p.t === 'mesh' && p.s.some(v => v <= 0)) { err(`params ${JSON.stringify(args)}`, `a ${p.tag ?? p.geo} part has a size ≤ 0 (${p.s.join(' × ')})`); break; }
     if (!measures) measures = m;
     coupling(entity, ros, parts, m, args, err, warn);
@@ -137,19 +144,28 @@ function part(p, at, err, e, depth) {
   else if (type === 'group' || type === 'for') err(`${at}.do`, 'a list of parts');
 }
 
-/* the params the validator runs with: defaults, then each ranged param at its min and its max; vehicles at their real size */
+/* defaults, each ranged param at its own min and max, then EVERY ranged param at min together and at max together.
+   One axis at a time misses `1 / (h + s - 12)` when each max is safe alone. Vehicles stay at their real size. */
 function cornerArgs(e) {
   const base = {};
   const def = e.kind === 'vehicle' ? VEHICLES[e.id] : null;
   if (def) Object.assign(base, { len: def.len, w: def.w, h: def.h });
-  const runs = [base];
+  const runs = [base], hi = { ...base }, lo = { ...base };
+  let span = false;
   for (const [k, p] of Object.entries(e.params ?? {})) {
     if (def && ['len', 'w', 'h'].includes(k)) continue;
     if (p.enum) for (const v of p.enum) runs.push({ ...base, [k]: v });
-    else { if (p.min != null) runs.push({ ...base, [k]: p.min }); if (p.max != null) runs.push({ ...base, [k]: p.max }); }
+    else {
+      if (p.min != null) { runs.push({ ...base, [k]: p.min }); lo[k] = p.min; span = true; }
+      if (p.max != null) { runs.push({ ...base, [k]: p.max }); hi[k] = p.max; span = true; }
+    }
     if ((p.type ?? 'num') === 'bool') runs.push({ ...base, [k]: !p.default });
   }
-  return runs.slice(0, 40);
+  if (span) runs.push(lo, hi);
+  return runs;
+}
+function overExtent(m) {
+  return m.size.some(v => !(v >= 0) || v > MAX_EXTENT_M) || m.bounds.some(v => !(Math.abs(v) <= MAX_EXTENT_M));
 }
 function slotSet(e) {
   if (e.kind === 'landmark') return Object.fromEntries(LANDMARK_SLOTS.map(s => [s, 1]));

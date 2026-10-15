@@ -1,3 +1,4 @@
+import { guardBundle } from '../../shared/entity/bundle.js';
 import { compileEntity } from '../../shared/entity/plan.js';
 import { ENTITIES_BASE } from '../hosts.js';
 
@@ -50,7 +51,10 @@ let fresh = false;
 export function loadEntities() {
   return (loading ??= (async () => {
     if (bakedOnly()) { setEntities(await baked(), 'seed'); return rev; }
-    try { const b = await fetchBundle(local(page.hostname) ? 1 : 4, fresh); setEntities(b.entities, b.rev); }
+    try {
+      const b = await fetchBundle(local(page.hostname) ? 1 : 4, fresh);
+      setEntities(guardBundle(b.entities, await baked()), b.rev);   // a published config the validator refuses falls back to the seed
+    }
     catch (e) {
       if (!local(page.hostname)) { modelsUnavailable(e); throw e; }
       console.info(`[entities] no bundle from the API (${e.message}) – drawing the seed models (client/shared/entity/seed/)`);

@@ -28,7 +28,7 @@ export class McpJobGuard implements CanActivate {
     const claims = typeof raw === 'string' && raw ? await this.tokens.verify(raw) : null;
     if (!claims || !this.env.editorWallets.has(claims.wallet)) throw new NotFoundError('not found');
     const job = await this.jobs.find(claims.jobId);
-    if (!job || job.status !== 'running' || job.wallet !== claims.wallet) throw new NotFoundError('not found');
+    if (!job || job.status !== 'running' || job.wallet !== claims.wallet || (job.entityId ?? null) !== (claims.entityId ?? null)) throw new NotFoundError('not found');
     request.job = claims;
     request.player = { wallet: claims.wallet };
     return true;

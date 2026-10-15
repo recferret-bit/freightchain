@@ -8,8 +8,26 @@ import { HttpBackend } from './backend.js';
    Every request needs `Authorization: Bearer $EDITOR_MCP_TOKEN` (the app's), and the tools act for the job named by `x-fc-job`
    (the app's short-lived capability token – the MCP passes it back to the app untouched; it never sees a wallet key or an AI key).
      EDITOR_MCP_PORT (3100) · EDITOR_MCP_TOKEN (required, ≥ 24 chars) · FC_APP_URL (http://app:3000) */
-const PORT = +(process.env.EDITOR_MCP_PORT ?? 3100), TOKEN = process.env.EDITOR_MCP_TOKEN ?? '', APP = process.env.FC_APP_URL ?? 'http://app:3000';
+const PORT = +(process.env.EDITOR_MCP_PORT ?? 3100), TOKEN = process.env.EDITOR_MCP_TOKEN ?? '', RPS = Math.max(1, +(process.env.EDITOR_MCP_RPS ?? 40) || 40);
+function appOrigin(raw) {
+  let u;
+  try { u = new URL(raw); } catch { console.error('FC_APP_URL is not a URL'); process.exit(2); }
+  const host = u.hostname;
+  if ((u.protocol !== 'http:' && u.protocol !== 'https:') || u.username || u.password || host === '169.254.169.254' || host === 'metadata.google.internal' || host === '0.0.0.0') {
+    console.error('FC_APP_URL must be http(s) with no credentials, and not a metadata address'); process.exit(2);
+  }
+  return u.origin;
+}
+const APP = appOrigin(process.env.FC_APP_URL ?? 'http://app:3000');
 if (TOKEN.length < 24) { console.error('EDITOR_MCP_TOKEN must be set (24+ characters)'); process.exit(2); }
+const hits = new Map();
+function allowed(ip) {
+  const now = Date.now(); let b = hits.get(ip);
+  if (!b || now - b.t >= 1000) { b = { t: now, n: 0 }; hits.set(ip, b); }
+  b.n += 1;
+  if (hits.size > 10000) hits.clear();
+  return b.n <= RPS;
+}
 const authed = h => { const want = Buffer.from(`Bearer ${TOKEN}`), got = Buffer.from(String(h ?? '')); return got.length === want.length && timingSafeEqual(got, want); };
 class HttpError extends Error { constructor(status, message) { super(message); this.status = status; } }
 const body = req => new Promise((res, rej) => {
@@ -25,6 +43,7 @@ const log = (msg, extra = {}) => console.log(JSON.stringify({ msg, ...extra }));
 const http = createServer(async (req, res) => {
   try {
     if (req.url === '/health') return send(res, 200, { ok: true });
+    if (!allowed(req.socket.remoteAddress ?? 'unknown')) return send(res, 429, { error: 'rate limited' });
     if (!authed(req.headers.authorization)) return send(res, 401, { error: 'unauthorized' });
     if (req.url === '/spec' && req.method === 'POST') { const b = await body(req); return send(res, 200, specVerdict(b?.phrase ?? '')); }   // the bridge's precheck, before any AI tokens
     if (req.url !== '/mcp') return send(res, 404, { error: 'not found' });

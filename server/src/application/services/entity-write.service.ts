@@ -36,21 +36,22 @@ export class EntityWriteService {
     private readonly clock: ClockPort,
   ) {}
 
-  async saveDraft(input: DraftInput): Promise<RevisionDto> {
+  async saveDraft(input: DraftInput, tx?: TransactionHandle): Promise<RevisionDto> {
     const heads = await this.catalog.heads();
     const { config, source, warnings } = checkEntitySource(input.source, input.entityId, (id) => heads.get(id)?.config);
     const seed = this.catalog.seedOf(input.entityId), now = this.clock.now();
     const hash = this.hasher.sha256Hex(source);
-    const { revision, row } = await this.transactions.run(async (tx) => {
-      await this.entities.ensure({ id: input.entityId, kind: config.kind, label: config.label ?? null, headRevisionId: null, publishedRevisionId: null, version: 0, createdBy: seed ? SEED_AUTHOR : input.author, createdAt: now, updatedAt: now }, tx);
-      const row = await this.locked(input.entityId, tx);
+    const run = async (db: TransactionHandle) => {
+      await this.entities.ensure({ id: input.entityId, kind: config.kind, label: config.label ?? null, headRevisionId: null, publishedRevisionId: null, version: 0, createdBy: seed ? SEED_AUTHOR : input.author, createdAt: now, updatedAt: now }, db);
+      const row = await this.locked(input.entityId, db);
       assertSameKind(row, config, seed);
       this.assertBase(row, input.baseRevisionId);
-      const parentId = row.headRevisionId ?? (seed ? (await this.append(row.id, { source: seedSource(seed), config: seed, author: SEED_AUTHOR, message: 'the code\'s model (seed)', parentId: null, jobId: null }, now, tx)).id : null);
-      const revision = await this.append(row.id, { source, config, author: input.author, message: input.message, parentId, jobId: input.jobId ?? null, hash }, now, tx);
-      await this.entities.setPointers(row.id, { headRevisionId: revision.id }, now, tx);
+      const parentId = row.headRevisionId ?? (seed ? (await this.append(row.id, { source: seedSource(seed), config: seed, author: SEED_AUTHOR, message: 'the code\'s model (seed)', parentId: null, jobId: null }, now, db)).id : null);
+      const revision = await this.append(row.id, { source, config, author: input.author, message: input.message, parentId, jobId: input.jobId ?? null, hash }, now, db);
+      await this.entities.setPointers(row.id, { headRevisionId: revision.id }, now, db);
       return { revision, row: { ...row, headRevisionId: revision.id } };
-    });
+    };
+    const { revision, row } = tx ? await run(tx) : await this.transactions.run(run);
     return { ...revisionDto(revision, row, null, true), warnings };
   }
 

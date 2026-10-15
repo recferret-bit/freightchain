@@ -53,6 +53,9 @@ export class EnvService {
   get cookieDomain(): string | undefined { return this.env.COOKIE_DOMAIN; }
   /** the player session cookie's name: host-only `__Host-fc_session` in production (pentest H7-B), `fc_session` elsewhere */
   get sessionCookie(): string { return this.isProduction ? '__Host-fc_session' : 'fc_session'; }
+  /** storybook editor session: `__Host-` in production (no Domain, Path=/), `fc_editor` on Path /api/editor otherwise */
+  get editorCookie(): string { return this.isProduction ? '__Host-fc_editor' : 'fc_editor'; }
+  get editorCookiePath(): string { return this.isProduction ? '/' : '/api/editor'; }
   /** exact browser origins (scheme + host) that may call the API with the session cookie; empty = CORS off (single origin) */
   get corsOrigins(): string[] { return this.env.CORS_ORIGINS.split(',').map((o) => o.trim().replace(/\/$/, '')).filter((o) => o.length > 0); }
   get trustProxy(): number { return this.env.TRUST_PROXY ?? 0; }
@@ -76,6 +79,11 @@ export class EnvService {
   get editorFakeLlm(): boolean { return this.env.EDITOR_FAKE_LLM === '1' && !this.isProduction; }
   get throttleEntitiesLimit(): number { return this.env.THROTTLE_ENTITIES_LIMIT; }
   get throttleEditorLimit(): number { return this.env.THROTTLE_EDITOR_LIMIT; }
+  get throttleAuthRps(): number { return this.env.THROTTLE_AUTH_RPS; }
+  get throttleEntitiesRps(): number { return this.env.THROTTLE_ENTITIES_RPS; }
+  get throttleEditorRps(): number { return this.env.THROTTLE_EDITOR_RPS; }
+  get throttleMcpLimit(): number { return this.env.THROTTLE_MCP_LIMIT; }
+  get throttleMcpRps(): number { return this.env.THROTTLE_MCP_RPS; }
   get freeRideSeconds(): number { return this.env.FREE_RIDE_SECONDS; }
   get hbMinIntervalMs(): number { return this.env.HB_MIN_INTERVAL_MS; }
   get hbTimeoutMs(): number { return this.env.HB_TIMEOUT_MS; }

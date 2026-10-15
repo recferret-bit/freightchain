@@ -14,16 +14,21 @@ export class MemoryEditorJobRepository extends EditorJobRepositoryPort {
     return [...this.db.editorJobs.values()].filter((j) => (!wallet || j.wallet === wallet) && (!entityId || j.entityId === entityId))
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || (a.id < b.id ? 1 : -1)).slice(0, limit).map((j) => ({ ...j }));
   }
-  async update(id: string, patch: Partial<EditorJobRecord>, from?: readonly JobStatus[]): Promise<boolean> {
+  async update(id: string, patch: Partial<EditorJobRecord>, from?: readonly JobStatus[], _tx?: unknown): Promise<boolean> {
     const j = this.db.editorJobs.get(id); if (!j || (from && !from.includes(j.status))) return false;
     Object.assign(j, patch); return true;
   }
   async addUsage(id: string, tokensIn: number, tokensOut: number): Promise<void> { const j = this.db.editorJobs.get(id); if (j) { j.tokensIn += tokensIn; j.tokensOut += tokensOut; } }
-  async appendEvent(jobId: string, type: JobEventType, payload: Record<string, unknown>, at: Date): Promise<JobEventRecord> {
+  async lock(): Promise<void> { /* the Postgres row lock; memory runs one call at a time in these tests */ }
+  async appendEvent(jobId: string, type: JobEventType, payload: Record<string, unknown>, at: Date, _tx?: unknown): Promise<JobEventRecord> {
     const list = this.db.editorJobEvents.get(jobId) ?? [], e = { jobId, seq: list.length + 1, type, payload: structuredClone(payload), at };
     list.push(e); this.db.editorJobEvents.set(jobId, list); return e;
   }
   async events(jobId: string, after: number, limit: number): Promise<JobEventRecord[]> { return (this.db.editorJobEvents.get(jobId) ?? []).filter((e) => e.seq > after).slice(0, limit).map((e) => structuredClone(e)); }
+  async createdIds(jobId: string): Promise<string[]> {
+    const ids = (this.db.editorJobEvents.get(jobId) ?? []).filter((e) => e.type === 'draft').map((e) => (typeof e.payload['entityId'] === 'string' ? e.payload['entityId'] : ''));
+    return [...new Set(ids.filter((id) => id.length > 0))];
+  }
   async countSince(wallet: string, since: Date): Promise<number> { return [...this.db.editorJobs.values()].filter((j) => j.wallet === wallet && j.createdAt >= since).length; }
   async open(): Promise<EditorJobRecord[]> { return [...this.db.editorJobs.values()].filter((j) => j.status === 'queued' || j.status === 'running').map((j) => ({ ...j })); }
 }

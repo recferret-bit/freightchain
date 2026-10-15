@@ -5,6 +5,21 @@ import { isIpRule } from './ip-rules.js';
 /** `KEY=` in a .env file arrives as an empty string – treat it as "not set". */
 const optional = <T extends z.ZodTypeAny>(schema: T) => z.preprocess((v) => (v === '' ? undefined : v), schema.optional());
 
+const MCP_HOSTS = new Set(['mcp', '127.0.0.1', 'localhost']);
+const MCP_BLOCKED = new Set(['169.254.169.254', 'metadata.google.internal', '0.0.0.0']);
+/** production EDITOR_MCP_URL: the internal MCP only, no userinfo, so the bearer and job token cannot be pointed at another host */
+function mcpUrlIssue(raw: string): string | null {
+  try {
+    const u = new URL(raw);
+    if ((u.protocol !== 'http:' && u.protocol !== 'https:') || u.username || u.password || MCP_BLOCKED.has(u.hostname) || !MCP_HOSTS.has(u.hostname)) {
+      return 'EDITOR_MCP_URL in production must be http(s)://mcp, 127.0.0.1 or localhost, with no credentials';
+    }
+  } catch {
+    return 'EDITOR_MCP_URL is not a URL';
+  }
+  return null;
+}
+
 export const envSchema = z
   .object({
     PORT: z.coerce.number().int().positive().default(3000),
@@ -25,6 +40,11 @@ export const envSchema = z
     THROTTLE_PROMO_LIMIT: z.coerce.number().int().positive().default(30),
     THROTTLE_ENTITIES_LIMIT: z.coerce.number().int().positive().default(120), // GET /api/entities/* per IP per minute (the game loads the bundle once per page)
     THROTTLE_EDITOR_LIMIT: z.coerce.number().int().positive().default(240), // /api/editor/* per editor wallet (else per IP) per minute
+    THROTTLE_AUTH_RPS: z.coerce.number().int().positive().default(5), // /api/auth/* and /api/editor/auth/* per IP per second
+    THROTTLE_ENTITIES_RPS: z.coerce.number().int().positive().default(5), // /api/entities/* per IP per second (nginx fc_entities is the same)
+    THROTTLE_EDITOR_RPS: z.coerce.number().int().positive().default(10), // /api/editor/* per IP per second (nginx fc_editor is the same)
+    THROTTLE_MCP_LIMIT: z.coerce.number().int().positive().default(600), // /api/editor/mcp/* per verified job per minute
+    THROTTLE_MCP_RPS: z.coerce.number().int().positive().default(20), // /api/editor/mcp/* per verified job per second
     FREE_RIDE_SECONDS: z.coerce.number().positive().default(180),
     HB_MIN_INTERVAL_MS: z.coerce.number().int().min(0).default(1000),
     HB_TIMEOUT_MS: z.coerce.number().int().min(5000).default(150_000), // no heartbeat for this long = the tab is gone: off the live feed, its next heartbeat would fail it, the stale-ride sweeper ends it (failed · heartbeat lost)
@@ -145,6 +165,10 @@ export const envSchema = z
       if (!env.TREASURY_PUBKEY) ctx.addIssue({ code: 'custom', path: ['TREASURY_PUBKEY'], message: 'TREASURY_PUBKEY must be set in production' });
       // behind a reverse proxy req.ip is the proxy's: rate limits per IP would put every rider in one bucket. Make the deploy say how many hops to trust (0 = none).
       if (env.TRUST_PROXY === undefined) ctx.addIssue({ code: 'custom', path: ['TRUST_PROXY'], message: 'TRUST_PROXY must be set in production (number of reverse-proxy hops; 0 if none)' });
+      if (env.EDITOR_MCP_TOKEN) {
+        const mcp = mcpUrlIssue(env.EDITOR_MCP_URL);
+        if (mcp) ctx.addIssue({ code: 'custom', path: ['EDITOR_MCP_URL'], message: mcp });
+      }
     }
   });
 

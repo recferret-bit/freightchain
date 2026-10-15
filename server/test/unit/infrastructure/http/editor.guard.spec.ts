@@ -25,6 +25,7 @@ describe('EditorGuard', () => {
     const { request, ctx } = ctxFor('fc_editor=ed');
     expect(await guard(['ED']).canActivate(ctx)).toBe(true);
     expect(request.player).toEqual({ wallet: 'ED' });
+    expect(await guard(['ED']).canActivate(ctxFor('fc_editor=forged; fc_editor=ed').ctx)).toBe(true);
   });
 
   it('404 for everyone else: no session, a player or admin cookie, a forged one, a wallet taken off the list', async () => {

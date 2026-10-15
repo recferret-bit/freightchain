@@ -1,4 +1,5 @@
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
+import { assertPublishable } from '../../../../domain/entities/entity.js';
 import type { PublishedDto } from '../../../../domain/entities/entity.dto.js';
 import { NotFoundError } from '../../../../domain/shared/errors.js';
 import { AdminActionRepositoryPort } from '../../../ports/admin/admin-action.repository.port.js';
@@ -35,6 +36,8 @@ export class PublishRevisionHandler implements ICommandHandler<PublishRevisionCo
     const proof = await this.proofs.prove(wallet, { action: 'entity_publish', entityId, revisionId, seq: r.seq }, signature, 'editor');
     const now = this.clock.now();
     await this.transactions.run(async (tx) => {
+      await this.entities.lockPublish(tx);   // the other publish commits before we read, so the pair is checked together
+      assertPublishable(r.config, (await this.entities.published(tx)).map((p) => p.config));
       const row = await this.entities.lock(entityId, tx);
       if (!row) throw new NotFoundError('no such entity', 'entity_not_found');
       await this.entities.setPointers(entityId, { publishedRevisionId: revisionId }, now, tx);

@@ -4,7 +4,7 @@ import { EditorTokenPort } from '../../../application/ports/editor/editor-token.
 import { ForbiddenError, NotFoundError } from '../../../domain/shared/errors.js';
 import { EnvService } from '../../config/env.service.js';
 import { ipAllowlist } from '../../config/ip-rules.js';
-import { editorWallet } from '../session-cookie.js';
+import { EDITOR_COOKIE, editorWallet } from '../session-cookie.js';
 import type { RequestWithPlayer } from '../types/http-request.js';
 
 /** Mutating editor calls must carry this header: a cross-site form or a link cannot set it (CSRF). */
@@ -41,7 +41,7 @@ export class EditorGuard implements CanActivate {
     if (editorHost && hostOf(request) !== editorHost) throw new NotFoundError('not found');
     if (!this.ipAllowed(request.ip)) throw new NotFoundError('not found');
     const isPublic = this.reflector.getAllAndOverride<boolean>(EDITOR_PUBLIC, [context.getHandler(), context.getClass()]) === true;
-    const wallet = isPublic ? null : await editorWallet(request, this.tokens);
+    const wallet = isPublic ? null : await editorWallet(request, this.tokens, this.env.editorCookie || EDITOR_COOKIE);
     if (!isPublic && (!wallet || !this.env.editorWallets.has(wallet))) throw new NotFoundError('not found');
     if (!SAFE_METHODS.has(request.method) && request.headers[EDITOR_HEADER] !== '1') throw new ForbiddenError(`editor changes need the ${EDITOR_HEADER} header`);
     if (wallet) request.player = { wallet };

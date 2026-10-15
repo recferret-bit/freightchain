@@ -15,7 +15,7 @@ describe('editor cookie interceptors', () => {
     const { calls, ctx } = responseSpy(), expiresAt = new Date(Date.UTC(2036, 0, 1));
     const body = await lastValueFrom(new SetEditorCookieInterceptor({ isProduction: true } as EnvService).intercept(ctx, handlerOf({ editor: { wallet: 'W', expiresAt: expiresAt.getTime() }, session: { token: 'tok', expiresAt } }) as never));
     expect(body).toEqual({ wallet: 'W', expiresAt: expiresAt.getTime() });
-    expect(calls).toEqual([{ method: 'cookie', args: ['fc_editor', 'tok', { httpOnly: true, sameSite: 'strict', secure: true, expires: expiresAt, path: '/api/editor' }] }]);
+    expect(calls).toEqual([{ method: 'cookie', args: ['__Host-fc_editor', 'tok', { httpOnly: true, sameSite: 'strict', secure: true, expires: expiresAt, path: '/' }] }]);
   });
 
   it('sign-out clears it with the same attributes', async () => {

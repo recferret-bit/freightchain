@@ -10,9 +10,9 @@ const PAGE = 200;
 export class GetEditorJobEventsHandler implements IQueryHandler<GetEditorJobEventsQuery, JobEventsDto> {
   constructor(private readonly jobs: EditorJobRepositoryPort) {}
 
-  async execute({ jobId, after }: GetEditorJobEventsQuery): Promise<JobEventsDto> {
+  async execute({ wallet, jobId, after }: GetEditorJobEventsQuery): Promise<JobEventsDto> {
     const job = await this.jobs.find(jobId);
-    if (!job) throw new NotFoundError('no such job', 'job_not_found');
+    if (!job || job.wallet !== wallet) throw new NotFoundError('no such job', 'job_not_found');
     return { status: job.status, events: (await this.jobs.events(jobId, after, PAGE)).map(eventDto) };
   }
 }

@@ -54,7 +54,7 @@ Publishing is the ONLY path that changes what players draw.
 - `rev` is the first 16 hex characters of a sha256 over the sorted `id:hash` pairs. Seed hashes come from the printed seed.
 - After a publish in this process it is rebuilt at once. Otherwise it is rechecked at most every `BUNDLE_RECHECK_MS` (10 s) with one cheap query (`publishedStamp`: count plus max `publishedAt`), so other processes converge.
 - The controller adds `Cache-Control: public, max-age=60, stale-while-revalidate=600`. Express's weak ETag answers a 304.
-- Throttle bucket `entities` (`THROTTLE_ENTITIES_LIMIT`, per IP). The `default` bucket skips it.
+- Throttle buckets `entities` (`THROTTLE_ENTITIES_LIMIT`, per minute) and `entities-rps` (`THROTTLE_ENTITIES_RPS`, per second), both per IP. The `default` bucket skips it. With `REDIS_URL` the counters are in Redis.
 - nginx adds `fc_entities` limit_req, `fc_conn` and a 30 s microcache. The files are `deploy/nginx/fc-limits.conf` and the snippet in `remote/setup.sh`.
 
 ## Editor sign-in and guard
@@ -62,7 +62,7 @@ Publishing is the ONLY path that changes what players draw.
 The routes mirror the admin ones: `auth/nonce` → `auth/verify` → cookie, plus `auth/logout` and `me`.
 - `RequestEditorChallengeHandler` and `VerifyEditorSignInHandler` use challenge key `editor:<wallet>` and the statement "EDITOR sign-in…". A wallet not in `EDITOR_WALLETS` gets 404. A sign-in is audited as `editor.signin`.
 - `JoseEditorTokenSigner` signs tokens with audience `editor` and its own key: `EDITOR_JWT_SECRET`, else derived from `JWT_SECRET`. The TTL is `EDITOR_SESSION_TTL_MINUTES`.
-- The cookie is `fc_editor`: httpOnly, SameSite=Strict, `Path=/api/editor`, no Domain (`editor-cookie.interceptor.ts`).
+- The cookie is `fc_editor`: httpOnly, SameSite=Strict, `Path=/api/editor`, no Domain (`editor-cookie.interceptor.ts`). Production uses `__Host-fc_editor` with `Path=/` and `Secure`, so a sibling cannot plant one.
 
 `EditorGuard` checks, in order, and answers 404 on every failure except the CSRF header (403):
 1. Host = `storybook.<COOKIE_DOMAIN>` (`EnvService.editorHost`; any host when `COOKIE_DOMAIN` is unset – production refuses to boot without it once `EDITOR_WALLETS` or `ADMIN_WALLETS` is set). It reads `Host`, never `X-Forwarded-Host`.
@@ -70,7 +70,7 @@ The routes mirror the admin ones: `auth/nonce` → `auth/verify` → cookie, plu
 3. The `fc_editor` wallet is still in `EDITOR_WALLETS`.
 4. `X-FC-Editor: 1` is present on changes.
 
-Throttle bucket `editor` (`THROTTLE_EDITOR_LIMIT`) counts per editor wallet, else per IP. The sign-in also counts in `auth`.
+Throttle bucket `editor` (`THROTTLE_EDITOR_LIMIT`) counts per editor wallet, else per IP, per minute. `editor-rps` (`THROTTLE_EDITOR_RPS`) counts per IP per second. The sign-in also counts in `auth` and `auth-rps`.
 
 `OriginGuard` 404s every other API path on the storybook host, whatever the method. That is the second wall behind nginx (pentest H7). Storybook is treated like the admin host (pentest M4): `browserCors` sends no CORS headers there, and `OriginGuard` takes changes only from storybook itself – an allowlisted sibling (the apex, ride.*) is the same SITE, so the SameSite=Strict cookie would ride along.
 
@@ -117,7 +117,7 @@ Provider errors are mapped by the SDKs' error classes to a sentence; a key never
 **MCP callbacks** (`EditorMcpHttpController`, `McpJobGuard`):
 - The guard wants a valid job token of a RUNNING job whose wallet is still listed.
 - A request with `X-Forwarded-For` or `X-Real-IP` (that is, through nginx) is a 404. So is every other refusal.
-- They have their own throttle bucket `mcp` per job; `default` and `editor` skip them.
+- They have their own throttle buckets `mcp` (per minute) and `mcp-rps` (per second), per verified job. An unverified token shares one bucket. `default` and `editor` skip them.
 - `McpSaveDraftHandler`:
   - `mayWrite` (domain/editor/editor-job.ts): a job opened on an entity writes that entity and at most 4 NEW `part` entities; a job without an entity only creates NEW entities (at most 4) and revises the ones it created (their head is its own draft). Anything else is 403 `job_scope` – the model never decides what it may write.
   - The draft goes through `EntityWriteService` on the current head, authored by the job's wallet, with `jobId`.

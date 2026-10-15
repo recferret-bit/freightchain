@@ -1,4 +1,4 @@
-import type { EditorJobRecord } from '../../src/domain/editor/editor-job.js';
+import { EDITOR_TOOLS, type EditorJobRecord } from '../../src/domain/editor/editor-job.js';
 import type { ProviderId, ProviderInfo } from '../../src/domain/editor/llm-providers.js';
 import { LlmProviderPort, type LlmOpenOptions, type LlmSession, type LlmToolResult, type LlmTurn } from '../../src/application/ports/editor/llm-provider.port.js';
 import { McpClientPort, type McpSession, type McpToolResult, type SpecVerdict } from '../../src/application/ports/editor/mcp-client.port.js';
@@ -33,7 +33,7 @@ export class ScriptedMcp extends McpClientPort {
   closed = 0;
   configured = true;
   verdict: SpecVerdict = { verdict: 'not_a_spec' };
-  tools = [{ name: 'save_draft', description: '', inputSchema: {} }, { name: 'check_entity', description: '', inputSchema: {} }];
+  tools = EDITOR_TOOLS.map((name) => ({ name, description: '', inputSchema: {} }));
   constructor(public results: Record<string, McpToolResult> = {}) { super(); }
   async spec(): Promise<SpecVerdict> { return this.verdict; }
   async connect(token: string): Promise<McpSession> {

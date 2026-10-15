@@ -1,3 +1,3 @@
 export class GetEditorJobQuery {
-  constructor(public readonly jobId: string) {}
+  constructor(public readonly wallet: string, public readonly jobId: string) {}
 }

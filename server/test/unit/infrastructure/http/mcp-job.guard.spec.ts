@@ -35,5 +35,7 @@ describe('McpJobGuard', () => {
     await no(await setup('running', []), { 'x-fc-job': 'good' });
     await no(await setup(), { 'x-fc-job': 'good', 'x-forwarded-for': '1.2.3.4' });
     await no(await setup(), { 'x-fc-job': 'good', 'x-real-ip': '1.2.3.4' });
+    const mismatched = new McpJobGuard(new (class extends Tokens { override async verify() { return { jobId: J, wallet: 'ED', entityId: 'rock' }; } })(), (await (async () => { const db = new MemoryDb(), jobs = new MemoryEditorJobRepository(db); await jobs.insert({ id: J, wallet: 'ED', prompt: 'p', provider: 'fake', model: 'scripted', entityId: 'cactus', baseRevisionId: null, resultRevisionId: null, status: 'running', error: null, tokensIn: 0, tokensOut: 0, createdAt: new Date(0), startedAt: null, finishedAt: null }); return jobs; })()), { editorWallets: new Set(['ED']) } as unknown as EnvService);
+    await no(mismatched, { 'x-fc-job': 'good' });
   });
 });

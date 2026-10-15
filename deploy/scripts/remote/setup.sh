@@ -142,7 +142,18 @@ fi
 # storybook.<apex> (the model viewer) is its own site file, so it can be added to a server that already has the main site; certbot --expand below adds its TLS block.
 SB=/etc/nginx/sites-available/freightchain-storybook
 if [ -f "$SB" ]; then
-  say "nginx site $SB exists – left as it is"
+  if grep -q 'zone=fc_editor' "$SB"; then
+    say "nginx site $SB exists – left as it is"
+  else
+    cp "$SB" "$SB.bak-editor"
+    awk '{ print } /location[[:space:]]+\^~[[:space:]]+\/api\/editor\/[[:space:]]*\{/ { print "        limit_req zone=fc_editor burst=40 nodelay;"; print "        limit_conn fc_conn 20;" }' "$SB.bak-editor" > "$SB"
+    if grep -q 'zone=fc_editor' "$SB" && nginx -t 2>/dev/null; then
+      systemctl reload nginx; rm -f "$SB.bak-editor"; say "editor per-IP rate limit added to $SB and nginx reloaded"
+    else
+      mv "$SB.bak-editor" "$SB"; nginx -t || true
+      fail "storybook vhost has no fc_editor limit and it could not be inserted – its location ^~ /api/editor/ block is missing. Rewrite $SB from deploy/nginx/storybook.conf.template (docs/agents/deploy.md) and re-run setup"
+    fi
+  fi
 else
   [ -f "$DEPLOY_PATH/state/storybook.conf.template" ] || fail "the storybook nginx template was not uploaded"
   sed -e "s/__ROOT__/$DOMAIN/g" -e "s/__PORT__/$APP_PORT/g" "$DEPLOY_PATH/state/storybook.conf.template" > "$SB"

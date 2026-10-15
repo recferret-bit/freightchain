@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync, writeFileSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { REPO, SEED } from './paths.js';
@@ -46,7 +46,11 @@ export class FileBackend {
     const v = core.validateEntity(config, { lookup: x => (x === id ? config : others.get(x) ?? null) }); if (!v.ok) { const e = new Error('the entity is not valid'); e.errors = v.errors; e.warnings = v.warnings; throw e; }
     const old = this.files().find(x => x.id === id);
     if (old && old.kind !== config.kind) throw new Error(`'${id}' is a ${old.kind}; its kind cannot change`);
-    const path = join(this.dir, KINDS_DIR[config.kind], `${id}.js`), fresh = !existsSync(path);
+    const kindDir = KINDS_DIR[config.kind];
+    if (!kindDir) throw new Error('bad kind');
+    const path = resolve(this.dir, kindDir, `${id}.js`), root = resolve(this.dir) + sep;
+    if (!path.startsWith(root)) throw new Error('bad path');
+    const fresh = !existsSync(path);
     writeFileSync(path, source.endsWith('\n') ? source : source + '\n');
     if (fresh && this.dir === SEED) execFileSync(process.execPath, [join(REPO, 'client', 'tools', 'entity-seed-index.mjs')], { stdio: 'ignore' });   // the repo's own seed list
     return { id: `file:${id}`, entityId: id, seq: null, message, path };

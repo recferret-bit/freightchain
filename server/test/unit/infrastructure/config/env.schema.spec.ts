@@ -86,7 +86,7 @@ describe('validateEnv – paid tickets (all optional until the workstreams need 
 
   it('EDITOR_WALLETS are base58 addresses and EDITOR_IP_ALLOWLIST IPs / CIDRs; both default to empty', () => {
     const base = { DATABASE_URL: 'postgresql://x/y' };
-    expect(validateEnv(base)).toMatchObject({ EDITOR_WALLETS: '', EDITOR_IP_ALLOWLIST: '', EDITOR_SESSION_TTL_MINUTES: 240, THROTTLE_ENTITIES_LIMIT: 120, THROTTLE_EDITOR_LIMIT: 240 });
+    expect(validateEnv(base)).toMatchObject({ EDITOR_WALLETS: '', EDITOR_IP_ALLOWLIST: '', EDITOR_SESSION_TTL_MINUTES: 240, THROTTLE_ENTITIES_LIMIT: 120, THROTTLE_EDITOR_LIMIT: 240, THROTTLE_ENTITIES_RPS: 5, THROTTLE_EDITOR_RPS: 10, THROTTLE_AUTH_RPS: 5, THROTTLE_MCP_LIMIT: 600, THROTTLE_MCP_RPS: 20 });
     expect(() => validateEnv({ ...base, EDITOR_WALLETS: 'not-a-wallet' })).toThrow(/EDITOR_WALLETS/);
     expect(() => validateEnv({ ...base, EDITOR_IP_ALLOWLIST: '10.0.0.0/8, nonsense' })).toThrow(/EDITOR_IP_ALLOWLIST.*nonsense/);
     expect(validateEnv({ ...base, EDITOR_IP_ALLOWLIST: '10.0.0.0/8, ::1' }).EDITOR_IP_ALLOWLIST).toBe('10.0.0.0/8, ::1');
@@ -107,6 +107,9 @@ describe('validateEnv – paid tickets (all optional until the workstreams need 
     expect(() => validateEnv({ ...prod, EDITOR_WALLETS: w })).toThrow(/COOKIE_DOMAIN/);
     expect(() => validateEnv({ ...prod, ADMIN_WALLETS: w })).toThrow(/COOKIE_DOMAIN/);
     expect(validateEnv({ ...prod, EDITOR_WALLETS: w, COOKIE_DOMAIN: 'freightchain.fun' }).EDITOR_WALLETS).toBe(w);
+    const token = 'x'.repeat(24);
+    expect(() => validateEnv({ ...prod, EDITOR_WALLETS: w, COOKIE_DOMAIN: 'freightchain.fun', EDITOR_MCP_TOKEN: token, EDITOR_MCP_URL: 'http://169.254.169.254' })).toThrow(/EDITOR_MCP_URL/);
+    expect(validateEnv({ ...prod, EDITOR_WALLETS: w, COOKIE_DOMAIN: 'freightchain.fun', EDITOR_MCP_TOKEN: token, EDITOR_MCP_URL: 'http://mcp:3100' }).EDITOR_MCP_URL).toBe('http://mcp:3100');
     expect(validateEnv(prod).NODE_ENV).toBe('production');
   });
 });

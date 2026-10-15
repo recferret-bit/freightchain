@@ -45,6 +45,19 @@ test('the spec gate over HTTP; a real MCP client lists the 7 tools and calls one
   await client.close();
 });
 
+test('EDITOR_MCP_RPS limits a caller; a metadata FC_APP_URL refuses to start', async () => {
+  const p = await freePort();
+  const child = spawn(process.execPath, [HTTP], { env: { ...process.env, EDITOR_MCP_PORT: String(p), EDITOR_MCP_TOKEN: TOKEN, EDITOR_MCP_RPS: '2', FC_APP_URL: 'http://127.0.0.1:9' }, stdio: ['ignore', 'pipe', 'inherit'] });
+  await new Promise(r => child.stdout.on('data', d => { if (String(d).includes('listening')) r(); }));
+  const one = () => fetch(`http://127.0.0.1:${p}/spec`, { method: 'POST', headers: { authorization: `Bearer ${TOKEN}`, 'content-type': 'application/json' }, body: '{"phrase":"x"}' });
+  const statuses = [];
+  for (let i = 0; i < 3; i++) statuses.push((await one()).status);
+  assert.deepEqual(statuses, [200, 200, 429]);
+  child.kill();
+  const bad = spawnSync(process.execPath, [HTTP], { env: { ...process.env, EDITOR_MCP_TOKEN: TOKEN, FC_APP_URL: 'http://169.254.169.254/' }, encoding: 'utf8' });
+  assert.equal(bad.status, 2);
+});
+
 test('a short EDITOR_MCP_TOKEN refuses to start', () => {
   const r = spawnSync(process.execPath, [HTTP], { env: { ...process.env, EDITOR_MCP_TOKEN: 'short' }, encoding: 'utf8' });
   assert.equal(r.status, 2);

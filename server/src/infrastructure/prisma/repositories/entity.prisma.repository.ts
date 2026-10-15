@@ -86,8 +86,12 @@ export class EntityPrismaRepository extends EntityRepositoryPort {
     return this.pointed('headRevisionId');
   }
 
-  async published(): Promise<RevisionRecord[]> {
-    return this.pointed('publishedRevisionId');
+  async published(tx?: TransactionHandle): Promise<RevisionRecord[]> {
+    return this.pointed('publishedRevisionId', tx);
+  }
+
+  async lockPublish(tx: TransactionHandle): Promise<void> {
+    await clientFor(this.prisma, tx).$executeRaw`SELECT pg_advisory_xact_lock(hashtext('entity-publish'))`;
   }
 
   async publishedStamp(): Promise<string> {
@@ -95,10 +99,11 @@ export class EntityPrismaRepository extends EntityRepositoryPort {
     return `${agg._count._all}:${agg._max.publishedAt?.toISOString() ?? '-'}`;
   }
 
-  private async pointed(column: 'headRevisionId' | 'publishedRevisionId'): Promise<RevisionRecord[]> {
-    const rows = await this.prisma.entity.findMany({ where: { [column]: { not: null } }, select: { headRevisionId: true, publishedRevisionId: true } });
+  private async pointed(column: 'headRevisionId' | 'publishedRevisionId', tx?: TransactionHandle): Promise<RevisionRecord[]> {
+    const db = clientFor(this.prisma, tx);
+    const rows = await db.entity.findMany({ where: { [column]: { not: null } }, select: { headRevisionId: true, publishedRevisionId: true } });
     const ids = rows.map((r) => r[column]).filter((v): v is string => !!v);
     if (!ids.length) return [];
-    return (await this.prisma.entityRevision.findMany({ where: { id: { in: ids } } })).map(toRevision);
+    return (await db.entityRevision.findMany({ where: { id: { in: ids } } })).map(toRevision);
   }
 }

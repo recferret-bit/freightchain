@@ -4,9 +4,12 @@ import { map, type Observable } from 'rxjs';
 import type { LogoutResultDto } from '../../../application/use-cases/auth/logout/logout.command.js';
 import type { EditorSessionDto, EditorSignInResultDto } from '../../../application/use-cases/editor/verify-editor-signin/verify-editor-signin.command.js';
 import { EnvService } from '../../config/env.service.js';
-import { EDITOR_COOKIE, EDITOR_COOKIE_PATH } from '../session-cookie.js';
+import { EDITOR_COOKIE, EDITOR_COOKIE_PATH, HOST_EDITOR_COOKIE, HOST_EDITOR_COOKIE_PATH } from '../session-cookie.js';
 
-/** Editor sign-in: the editor token becomes the fc_editor cookie – httpOnly, no Domain (storybook.<apex> only), Path /api/editor, SameSite=Strict, expiring with the token. */
+const cookieName = (env: EnvService): string => env.editorCookie ?? (env.isProduction ? HOST_EDITOR_COOKIE : EDITOR_COOKIE);
+const cookiePath = (env: EnvService): string => env.editorCookiePath ?? (env.isProduction ? HOST_EDITOR_COOKIE_PATH : EDITOR_COOKIE_PATH);
+
+/** Editor sign-in: the token becomes the editor cookie – httpOnly, no Domain, SameSite=Strict. Production uses `__Host-fc_editor` (Path=/, Secure). */
 @Injectable()
 export class SetEditorCookieInterceptor implements NestInterceptor<EditorSignInResultDto, EditorSessionDto> {
   constructor(private readonly env: EnvService) {}
@@ -15,7 +18,7 @@ export class SetEditorCookieInterceptor implements NestInterceptor<EditorSignInR
     const response = context.switchToHttp().getResponse<Response>();
     return next.handle().pipe(
       map(({ editor, session }) => {
-        response.cookie(EDITOR_COOKIE, session.token, { httpOnly: true, sameSite: 'strict', secure: this.env.isProduction, expires: session.expiresAt, path: EDITOR_COOKIE_PATH });
+        response.cookie(cookieName(this.env), session.token, { httpOnly: true, sameSite: 'strict', secure: this.env.isProduction, expires: session.expiresAt, path: cookiePath(this.env) });
         return editor;
       }),
     );
@@ -31,7 +34,7 @@ export class ClearEditorCookieInterceptor implements NestInterceptor<LogoutResul
     const response = context.switchToHttp().getResponse<Response>();
     return next.handle().pipe(
       map((result) => {
-        response.clearCookie(EDITOR_COOKIE, { httpOnly: true, sameSite: 'strict', secure: this.env.isProduction, path: EDITOR_COOKIE_PATH });
+        response.clearCookie(cookieName(this.env), { httpOnly: true, sameSite: 'strict', secure: this.env.isProduction, path: cookiePath(this.env) });
         return result;
       }),
     );

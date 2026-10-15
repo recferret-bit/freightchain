@@ -24,8 +24,10 @@ export abstract class EntityRepositoryPort {
   abstract seqs(ids: readonly string[]): Promise<Map<string, number>>;
   /** every entity's HEAD revision (the validator's lookup, the editor's list) */
   abstract heads(): Promise<RevisionRecord[]>;
-  /** every PUBLISHED revision (the game's bundle) */
-  abstract published(): Promise<RevisionRecord[]>;
+  /** every PUBLISHED revision (the game's bundle). Pass `tx` to read on the connection that holds `lockPublish`. */
+  abstract published(tx?: TransactionHandle): Promise<RevisionRecord[]>;
+  /** one lock for the whole catalogue, so two publishes cannot each miss the other's commit */
+  abstract lockPublish(tx: TransactionHandle): Promise<void>;
   /** a cheap fingerprint of what is published (changes whenever a publish happens anywhere) */
   abstract publishedStamp(): Promise<string>;
 }

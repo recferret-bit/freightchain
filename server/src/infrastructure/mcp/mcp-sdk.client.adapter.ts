@@ -6,6 +6,19 @@ import { McpClientPort, type McpSession, type McpToolResult, type SpecVerdict } 
 import { ServiceUnavailableError } from '../../domain/shared/errors.js';
 import { EnvService } from '../config/env.service.js';
 
+const MCP_HOSTS = new Set(['mcp', '127.0.0.1', 'localhost']);
+const MCP_BLOCKED = new Set(['169.254.169.254', 'metadata.google.internal', '0.0.0.0']);
+
+/** the MCP origin the bridge may call. Production is the internal service only, so a job token cannot be sent to another host. */
+export function mcpBaseUrl(raw: string, production: boolean): URL {
+  let u: URL;
+  try { u = new URL(raw); } catch { throw new ServiceUnavailableError('EDITOR_MCP_URL is not a URL'); }
+  if ((u.protocol !== 'http:' && u.protocol !== 'https:') || u.username || u.password || MCP_BLOCKED.has(u.hostname) || (production && !MCP_HOSTS.has(u.hostname))) {
+    throw new ServiceUnavailableError('EDITOR_MCP_URL host is not allowed');
+  }
+  return new URL(u.origin);
+}
+
 /* The entity MCP (mcp/src/http.js, EDITOR_MCP_URL): Streamable HTTP, stateless. Every request carries `Authorization: Bearer EDITOR_MCP_TOKEN` and the
    job's capability token (`x-fc-job`), which the MCP hands back to /api/editor/mcp/* untouched. Tools are listed sorted by name (a stable prompt-cache prefix). */
 
@@ -22,7 +35,7 @@ export class McpSdkClientAdapter extends McpClientPort {
   async connect(jobToken: string): Promise<McpSession> {
     const token = this.requireToken();
     const client = new Client({ name: 'freightchain-editor-bridge', version: '1.0.0' });
-    const transport = new StreamableHTTPClientTransport(new URL(`${this.env.editorMcpUrl}/mcp`), { requestInit: { headers: { authorization: `Bearer ${token}`, 'x-fc-job': jobToken } } });
+    const transport = new StreamableHTTPClientTransport(new URL(`${mcpBaseUrl(this.env.editorMcpUrl, this.env.isProduction).origin}/mcp`), { requestInit: { headers: { authorization: `Bearer ${token}`, 'x-fc-job': jobToken } } });
     try { await client.connect(transport); } catch { throw new ServiceUnavailableError('the entity MCP is not reachable'); }
     return {
       listTools: async (signal): Promise<LlmTool[]> => (await client.listTools(undefined, { signal })).tools.map((t) => ({ name: t.name, description: t.description ?? '', inputSchema: t.inputSchema as Record<string, unknown> })).sort((a, b) => (a.name < b.name ? -1 : 1)),
@@ -39,7 +52,7 @@ export class McpSdkClientAdapter extends McpClientPort {
     const token = this.requireToken();
     let r: Response;
     try {
-      r = await fetch(`${this.env.editorMcpUrl}/spec`, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ phrase }), signal: AbortSignal.timeout(10_000) });
+      r = await fetch(`${mcpBaseUrl(this.env.editorMcpUrl, this.env.isProduction).origin}/spec`, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ phrase }), signal: AbortSignal.timeout(10_000) });
     } catch { throw new ServiceUnavailableError('the entity MCP is not reachable'); }
     if (!r.ok) throw new ServiceUnavailableError(`the entity MCP answered ${r.status}`);
     return (await r.json()) as SpecVerdict;

@@ -8,7 +8,7 @@ Bodies are JSON. Errors are `application/problem+json` and carry `code`. A rejec
 
 | route | answer |
 |---|---|
-| `GET /api/entities/bundle` | `{ rev, entities: EntityConfig[] }`: the code's seed (`client/shared/entity/seed/`) with every **published** DB revision on top (the DB wins per id). `rev` is a short hash of the content. `Cache-Control: public, max-age=60, stale-while-revalidate=600`, weak ETag, 304 on `If-None-Match`. Throttle bucket `entities`, per IP (`THROTTLE_ENTITIES_LIMIT`). Built once per publish and held in memory, so no request reaches the DB. |
+| `GET /api/entities/bundle` | `{ rev, entities: EntityConfig[] }`: the code's seed (`client/shared/entity/seed/`) with every **published** DB revision on top (the DB wins per id). `rev` is a short hash of the content. `Cache-Control: public, max-age=60, stale-while-revalidate=600`, weak ETag, 304 on `If-None-Match`. Throttle buckets `entities` (per minute) and `entities-rps` (per second), per IP. Built once per publish and held in memory, so no request reaches the DB. |
 
 ## Editor (`/api/editor/*`, `EditorGuard`)
 

@@ -8,9 +8,9 @@ import { GetEditorJobQuery } from './get-editor-job.query.js';
 export class GetEditorJobHandler implements IQueryHandler<GetEditorJobQuery, EditorJobDto> {
   constructor(private readonly jobs: EditorJobRepositoryPort) {}
 
-  async execute({ jobId }: GetEditorJobQuery): Promise<EditorJobDto> {
+  async execute({ wallet, jobId }: GetEditorJobQuery): Promise<EditorJobDto> {
     const job = await this.jobs.find(jobId);
-    if (!job) throw new NotFoundError('no such job', 'job_not_found');
+    if (!job || job.wallet !== wallet) throw new NotFoundError('no such job', 'job_not_found');
     return jobDto(job);
   }
 }

@@ -3,7 +3,7 @@ import type { AddressInfo } from 'node:net';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { z } from 'zod';
-import { McpSdkClientAdapter, toolText } from '../../../../src/infrastructure/mcp/mcp-sdk.client.adapter.js';
+import { McpSdkClientAdapter, mcpBaseUrl, toolText } from '../../../../src/infrastructure/mcp/mcp-sdk.client.adapter.js';
 import type { EnvService } from '../../../../src/infrastructure/config/env.service.js';
 import { ServiceUnavailableError } from '../../../../src/domain/shared/errors.js';
 
@@ -58,5 +58,8 @@ describe('McpSdkClientAdapter', () => {
     await expect(adapter('w'.repeat(30)).spec('x')).rejects.toBeInstanceOf(ServiceUnavailableError);
     await expect(new McpSdkClientAdapter({ editorMcpToken: TOKEN, editorMcpUrl: 'http://127.0.0.1:1' } as unknown as EnvService).connect('j')).rejects.toBeInstanceOf(ServiceUnavailableError);
     expect(toolText({ content: [{ type: 'text', text: 'a' }, { type: 'image' }, { type: 'text', text: 'b' }] })).toEqual({ text: 'a\nb', isError: false });
+    expect(() => mcpBaseUrl('http://169.254.169.254/', false)).toThrow(ServiceUnavailableError);
+    expect(() => mcpBaseUrl('http://evil.example/mcp', true)).toThrow(ServiceUnavailableError);
+    expect(mcpBaseUrl('http://mcp:3100/ignored', true).origin).toBe('http://mcp:3100');
   });
 });

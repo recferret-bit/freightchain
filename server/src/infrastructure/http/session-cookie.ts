@@ -10,15 +10,26 @@ export const HOST_SESSION_COOKIE = '__Host-fc_session';
 /** The admin session: its own cookie – host-only (admin.<apex>), path /api/admin, SameSite=Strict, short (admin-cookie.interceptor.ts). */
 export const ADMIN_COOKIE = 'fc_admin';
 export const ADMIN_COOKIE_PATH = '/api/admin';
-/** The 3D model editor's session: host-only (storybook.<apex>), path /api/editor, SameSite=Strict (editor-cookie.interceptor.ts). */
+/** The 3D model editor's session outside production: host-only, path /api/editor, SameSite=Strict. */
 export const EDITOR_COOKIE = 'fc_editor';
 export const EDITOR_COOKIE_PATH = '/api/editor';
+/** Production (pentest H7-B, same rule as the player cookie): `__Host-` cannot be set with Domain, so a sibling cannot plant it. Path must be `/`. */
+export const HOST_EDITOR_COOKIE = '__Host-fc_editor';
+export const HOST_EDITOR_COOKIE_PATH = '/';
 
 export function readCookie(header: string | undefined, name: string): string | undefined {
-  return header
-    ?.split(/;\s*/)
-    .map((part) => part.split('='))
-    .find(([key]) => key === name)?.[1];
+  return cookieValues(header, name)[0];
+}
+
+/** every value of `name`, in header order – a planted cookie must not hide a later one that verifies */
+export function cookieValues(header: string | undefined, name: string): string[] {
+  if (!header) return [];
+  const out: string[] = [];
+  for (const part of header.split(/;\s*/)) {
+    const i = part.indexOf('=');
+    if (i > 0 && part.slice(0, i) === name) out.push(part.slice(i + 1));
+  }
+  return out;
 }
 
 const VERIFIED = Symbol('freight.sessionWallet');
@@ -41,8 +52,11 @@ export function adminWallet(request: { headers: { cookie?: string } }, tokens: A
   return token ? tokens.verify(token) : Promise.resolve(null);
 }
 
-/** The wallet of the request's EDITOR cookie (an editor token, never a player or admin session), or null. */
-export function editorWallet(request: { headers: { cookie?: string } }, tokens: EditorTokenPort): Promise<string | null> {
-  const token = readCookie(request.headers.cookie, EDITOR_COOKIE);
-  return token ? tokens.verify(token) : Promise.resolve(null);
+/** The wallet of the request's EDITOR cookie, or null. Every value of that name is tried, so a forged one listed first does not hide a real one. */
+export async function editorWallet(request: { headers: { cookie?: string } }, tokens: EditorTokenPort, name: string = EDITOR_COOKIE): Promise<string | null> {
+  for (const token of cookieValues(request.headers.cookie, name)) {
+    const wallet = await tokens.verify(token);
+    if (wallet) return wallet;
+  }
+  return null;
 }

@@ -2,6 +2,7 @@ import request from 'supertest';
 import type { Server } from 'node:http';
 import { McpClientPort, type McpSession, type McpToolResult, type SpecVerdict } from '../../src/application/ports/editor/mcp-client.port.js';
 import type { LlmTool } from '../../src/application/ports/editor/llm-provider.port.js';
+import { EDITOR_TOOLS } from '../../src/domain/editor/editor-job.js';
 import { parseSource, validateEntity, type EntityConfig } from '../../src/domain/shared/entity.js';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { join } from 'node:path';
@@ -40,7 +41,7 @@ export class TestMcpClient extends McpClientPort {
   async connect(jobToken: string): Promise<McpSession> {
     const app = () => request(this.server());
     const get = async (path: string) => { const r = await app().get(`/api/editor/mcp/${path}`).set('x-fc-job', jobToken); if (r.status !== 200) throw Object.assign(new Error(r.body?.detail ?? `HTTP ${r.status}`), { status: r.status }); return r.body as unknown; };
-    const tools: LlmTool[] = ['check_entity', 'get_entity', 'list_entities', 'save_draft'].map((name) => ({ name, description: name, inputSchema: { type: 'object' } }));
+    const tools: LlmTool[] = EDITOR_TOOLS.map((name) => ({ name, description: name, inputSchema: { type: 'object' } }));
     return {
       listTools: async () => tools,
       getPrompt: async (args) => `You edit Freight Chain entities.${args.entityId ? ` Entity: ${args.entityId}.` : ''}`,
@@ -57,6 +58,9 @@ export class TestMcpClient extends McpClientPort {
             const v = validateEntity(config, { lookup: (id) => heads[id] ?? null });
             return json({ ok: v.ok, id: config.id, errors: v.errors, warnings: v.warnings });
           }
+          if (name === 'get_format') return { text: 'format', isError: false };
+          if (name === 'diff_entity') return json({ removed: [], added: [] });
+          if (name === 'validate_spec') return json({ verdict: 'not_a_spec' });
           if (name === 'save_draft') {
             const r = await app().post(`/api/editor/mcp/entities/${String(args['id'])}/drafts`).set('x-fc-job', jobToken).send({ source: args['source'], message: args['message'] });
             return r.status === 200 ? json({ saved: true, revisionId: r.body.id, entityId: r.body.entityId, seq: r.body.seq }) : fail({ error: `not saved: ${r.body?.detail ?? r.status}`, errors: r.body?.errors ?? [], status: r.status });

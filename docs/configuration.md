@@ -75,6 +75,8 @@ Change one with the signed admin API (`GET /api/admin/settings`, then the challe
 | `TRUST_PROXY` | – (**required in prod**) | Reverse-proxy hops. Production nginx = `1` (the deploy check insists). Wrong value = per-IP rate limits wrong |
 | `THROTTLE_LIMIT` / `THROTTLE_AUTH_LIMIT` / `THROTTLE_PROMO_LIMIT` | `600` / `30` / `30` | Requests per minute per wallet-or-IP; the second applies to `/api/auth/*` and `/api/editor/auth/*` (per IP), the third to `POST /api/promo/redeem` (per IP – code guessing; wallets are free to make) |
 | `THROTTLE_ENTITIES_LIMIT` / `THROTTLE_EDITOR_LIMIT` | `120` / `240` | Per minute: `/api/entities/*` (the 3D model bundle) per IP; `/api/editor/*` per editor wallet, else per IP. `THROTTLE_LIMIT` skips both paths |
+| `THROTTLE_AUTH_RPS` / `THROTTLE_ENTITIES_RPS` / `THROTTLE_EDITOR_RPS` | `5` / `5` / `10` | Per second, per IP, on sign-in, the bundle and the editor. When `REDIS_URL` is set every throttle bucket (these and the per-minute ones) is stored in Redis |
+| `THROTTLE_MCP_LIMIT` / `THROTTLE_MCP_RPS` | `600` / `20` | `/api/editor/mcp/*` per verified job, per minute and per second. An unverified token shares one bucket |
 
 ### Game rules & economy
 

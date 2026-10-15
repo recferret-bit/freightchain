@@ -16,10 +16,10 @@ describe('EditorJobsHttpController', () => {
     await c.create(me, createJobBodySchema.parse({ prompt: ' taller ', entityId: 'cactus', baseRevisionId: R, provider: 'anthropic' }));
     expect(commands.last()).toEqual(new CreateEditorJobCommand(W, 'taller', 'cactus', R, 'anthropic', undefined));
     await c.create(me, createJobBodySchema.parse({ prompt: 'a crate' })); expect(commands.last()).toEqual(new CreateEditorJobCommand(W, 'a crate', null, undefined, undefined, undefined));
-    await c.list({ entityId: 'cactus' }); expect(queries.last()).toEqual(new ListEditorJobsQuery('cactus'));
-    await c.list({}); expect(queries.last()).toEqual(new ListEditorJobsQuery(null));
-    await c.job({ id: J }); expect(queries.last()).toEqual(new GetEditorJobQuery(J));
-    await c.events({ id: J }, jobEventsQuerySchema.parse({ after: '4' })); expect(queries.last()).toEqual(new GetEditorJobEventsQuery(J, 4));
+    await c.list(me, { entityId: 'cactus' }); expect(queries.last()).toEqual(new ListEditorJobsQuery(W, 'cactus'));
+    await c.list(me, {}); expect(queries.last()).toEqual(new ListEditorJobsQuery(W, null));
+    await c.job(me, { id: J }); expect(queries.last()).toEqual(new GetEditorJobQuery(W, J));
+    await c.events(me, { id: J }, jobEventsQuerySchema.parse({ after: '4' })); expect(queries.last()).toEqual(new GetEditorJobEventsQuery(W, J, 4));
     await c.cancel(me, { id: J }); expect(commands.last()).toEqual(new CancelEditorJobCommand(W, J));
   });
 

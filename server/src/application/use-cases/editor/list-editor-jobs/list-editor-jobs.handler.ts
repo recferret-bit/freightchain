@@ -7,7 +7,7 @@ import { ListEditorJobsQuery } from './list-editor-jobs.query.js';
 export class ListEditorJobsHandler implements IQueryHandler<ListEditorJobsQuery, EditorJobDto[]> {
   constructor(private readonly jobs: EditorJobRepositoryPort) {}
 
-  async execute({ entityId }: ListEditorJobsQuery): Promise<EditorJobDto[]> {
-    return (await this.jobs.list({ ...(entityId ? { entityId } : {}), limit: 50 })).map(jobDto);
+  async execute({ wallet, entityId }: ListEditorJobsQuery): Promise<EditorJobDto[]> {
+    return (await this.jobs.list({ wallet, ...(entityId ? { entityId } : {}), limit: 50 })).map(jobDto);
   }
 }
