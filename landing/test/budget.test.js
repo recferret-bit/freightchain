@@ -14,7 +14,7 @@ const KB = 1024;
 test('JS: the eager bundle is small, nothing in dist/assets is large', { skip: !has }, () => {
   const js = files.filter(f => f.endsWith('.js') && !/\/pitchdeck-/.test(f));   // the pitch deck's own script is on its own line below
   for (const f of js) assert.ok(statSync(f).size <= 34 * KB, `${f} ${statSync(f).size} B > 34 kB`);
-  assert.ok(js.reduce((a, f) => a + gz(f), 0) <= 61 * KB, 'all JS together ≤ 61 kB gzipped (incl. the lazy live-dash chunks)');   // 40 → 44 on Oct 11: the cab radio's eleven stations (client/js/sim/radio.js, ~5.7 kB gz) ride in the lazy dash chunk; the eager entry is unchanged; 50 → 55 on Oct 12: the UNDER THE HOOD canvas scenes (src/chain-scenes.js, ~4.6 kB gz), lazy as well; 55 → 59 on Oct 13: Wallet Standard discovery (client/site/wallet-standard.js, ~1.9 kB gz, eager – wallets must hear app-ready) + the wallet picker (~1.6 kB gz, lazy); 59 → 61 on Oct 13: mobile play restriction & spectator toast
+  assert.ok(js.reduce((a, f) => a + gz(f), 0) <= 62 * KB, 'all JS together ≤ 62 kB gzipped (incl. the lazy live-dash chunks)');   // 40 → 44 on Oct 11: the cab radio's eleven stations (client/js/sim/radio.js, ~5.7 kB gz) ride in the lazy dash chunk; the eager entry is unchanged; 50 → 55 on Oct 12: the UNDER THE HOOD canvas scenes (src/chain-scenes.js, ~4.6 kB gz), lazy as well; 55 → 59 on Oct 13: Wallet Standard discovery (client/site/wallet-standard.js, ~1.9 kB gz, eager – wallets must hear app-ready) + the wallet picker (~1.6 kB gz, lazy); 59 → 61 on Oct 13: mobile play restriction & spectator toast; 61 → 62 on Oct 15: the footer's pitch deck link (PITCHDECK_BASE in hosts.js)
 });
 
 test('CSS ≤ 14 kB gzipped (landing + whitepaper), HTML ≤ 15 kB gzipped (landing) / ≤ 34 kB (the whitepaper, a long read)', { skip: !has }, () => {
@@ -30,7 +30,7 @@ test('media: no single image over 120 kB, all images together ≤ 600 kB; the la
   assert.ok(media.reduce((a, f) => a + statSync(f).size, 0) <= 600 * KB);
 });
 
-test('the pitch deck (pitchdeck.<apex>): each image ≤ 120 kB, all of them ≤ 900 kB, its clip ≤ 1.5 MB, its CSS ≤ 9 kB gz and JS ≤ 15 kB gz, no network of its own', { skip: !has }, () => {   // Oct 14: own line, the deck's ten screenshots would blow the landing's 600 kB
+test('the pitch deck (pitchdeck.<apex>): each image ≤ 120 kB, all of them ≤ 900 kB, its clip ≤ 1.5 MB, its CSS ≤ 10 kB gz and JS ≤ 19 kB gz, no network of its own', { skip: !has }, () => {   // Oct 14: own line, the deck's ten screenshots would blow the landing's 600 kB
   const imgs = files.filter(f => f.includes('/media/pitchdeck/') && !f.endsWith('.mp4'));
   assert.ok(imgs.length >= 8);   // the deck's screenshots (9 after the roadmap shot left with the old Next slide)
   for (const f of imgs) assert.ok(statSync(f).size <= 120 * KB, `${f} ${statSync(f).size} B`);
@@ -38,8 +38,8 @@ test('the pitch deck (pitchdeck.<apex>): each image ≤ 120 kB, all of them ≤ 
   for (const f of files.filter(f => f.includes('/media/pitchdeck/') && f.endsWith('.mp4'))) assert.ok(statSync(f).size <= 1.5 * 1024 * KB, `${f} ${statSync(f).size} B`);
   const html = readFileSync(join(dist, 'pitchdeck.html'), 'utf8'), css = html.match(/href="(\/assets\/pitchdeck-[\w-]+\.css)"/)?.[1], js = html.match(/src="(\/assets\/pitchdeck-[\w-]+\.js)"/)?.[1];
   assert.ok(css && js, 'the deck links its own hashed css + js');
-  assert.ok(gz(join(dist, css)) <= 9 * KB, `deck CSS ${gz(join(dist, css))} B gz`);
-  assert.ok(gz(join(dist, js)) <= 15 * KB, `deck JS ${gz(join(dist, js))} B gz`);   // Oct 15: 8 → 11 → 14 kB (the plan slide's lanes + the chain slide's copy)  ·  8 → 11 kB (floating cards, ticker, odometer, the 70/20/10 chain, the chain slide's six cards + 31 badge names); CSS 6 → 7.5 kB
+  assert.ok(gz(join(dist, css)) <= 10 * KB, `deck CSS ${gz(join(dist, css))} B gz`);   // Oct 15: 9 → 10 kB (go to market: the truck's lanes, obstacles and ▲ ▼)
+  assert.ok(gz(join(dist, js)) <= 19 * KB, `deck JS ${gz(join(dist, js))} B gz`);   // Oct 15: 17 → 19 kB (the truck honks; obstacles + lane changes)  ·  15 → 17 kB (go to market as six exit signs + the truck, slide 3's coins and slide 4's secret tiers)  ·  8 → 11 → 14 kB (the plan slide's lanes + the chain slide's copy)  ·  8 → 11 kB (floating cards, ticker, odometer, the 70/20/10 chain, the chain slide's six cards + 31 badge names); CSS 6 → 7.5 kB
   assert.doesNotMatch(readFileSync(join(dist, js), 'utf8'), /fetch\(|XMLHttpRequest|sendBeacon|WebSocket/, 'the deck makes no request of its own');
   assert.doesNotMatch(html, /https?:\/\/(?!freightchain\.fun)/, 'no third-party host in the page');
 });

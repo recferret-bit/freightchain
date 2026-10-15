@@ -142,6 +142,7 @@ On 13 Oct twelve AI auditors from four vendors attacked six surfaces in pairs, b
 | 14 Oct | Watch: one X post after a locked pledge | A sponsor can share who they backed | Next deploy |
 | 14 Oct | Sound: WAV and mp3 checks pinned; a late sample stays audible | No silent effect after a long ride | Next deploy |
 | 14 Oct | Traction: this README's scoreboard refreshed from live social and PostHog reads | Reviewers see current numbers | README |
+| 14–15 Oct | Pitch deck: eight slides on `pitchdeck.freightchain.fun`, a third page of the landing build that makes no request; the landing footer links it. The slides are playable: donations drop SOL coins that roll and stack, Web3 adoption pulls them in and pays out fiat, the FREE / 1 H / 4 H / 8 H tiers unhang secret tiers, the 70 / 20 / 10 split opens on hover, six chain cards explain why and how, the plan is a four-month Gantt, and go-to-market is six highway exits (co-founder, advertising, tournaments we fund, streamer deals, paid community creations, HONK listing) with a truck that dodges obstacles, honks, speeds to light speed near the token exit and mines HONK on the way | One link shows the product, the money and the plan, and a viewer can poke the economy instead of reading it | Branch `pitchdeck-host`. Not deployed |
 
 ## Contents
 
@@ -172,7 +173,7 @@ On 13 Oct twelve AI auditors from four vendors attacked six surfaces in pairs, b
 | Whitepaper | [whitepaper.freightchain.fun](https://whitepaper.freightchain.fun) | Rules, escrow, validation, streams, risks |
 | Game | [ride.freightchain.fun/play.html](https://ride.freightchain.fun/play.html) | The truck. A ride id comes from the lobby. Bare `play.html` is a guest run |
 | Ride receipt | `freightchain.fun/r/:id` | Live or finished ride, explorer link, X card. Open one from [REPLAYS](https://freightchain.fun/lobby.html#replays) |
-| Pitch deck | [pitchdeck.freightchain.fun](https://pitchdeck.freightchain.fun) | The slides. ← → to move, F full screen, N the script |
+| Pitch deck | [pitchdeck.freightchain.fun](https://pitchdeck.freightchain.fun) | Eight playable slides. ← → to move, F full screen. On branch `pitchdeck-host`, live from its deploy |
 | Model viewer | [storybook.freightchain.fun](https://storybook.freightchain.fun) | The meshes, no API |
 | API | [api.freightchain.fun/api/health](https://api.freightchain.fun/api/health) | JSON under `/api/`. Anything else on that host 404s |
 | Admin | [admin.freightchain.fun](https://admin.freightchain.fun) | HTTP basic auth, then a second wallet sign-in |

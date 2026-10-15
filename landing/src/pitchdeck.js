@@ -50,7 +50,7 @@ const MONTHS = [['NOV', 'M1 · 2026'], ['DEC', 'M2'], ['JAN', 'M3 · 2027'], ['F
 const PLAN = [
   { k: 'MAINNET', sub: 'once the audit clears', c: '#14f195', from: 2, to: 2, t: 'Beta launch', n: 'capped pools first',
     more: 'Real SOL pools, capped at first. Same program, same proofs.' },
-  { k: 'LOAD · PENTEST · AUDIT', sub: 'break it, then prove it', c: '#ffcf5a', from: 1, to: 2, t: 'Load test → pentest fixes → audit', n: 'server + escrow program',
+  { k: 'LOAD · AUDIT', sub: 'load test, pentest, audit', c: '#ffcf5a', from: 1, to: 2, t: 'Load test → pentest fixes → audit', n: 'server + escrow program',
     more: 'Load-test the API and the replay worker, close every pentest finding, then a third-party audit of the escrow program.' },
   { k: 'COMMUNITY', sub: 'players and streamers', c: '#b98cff', from: 1, to: 4, t: 'Streamers · Discord · weekly challenges', n: 'build in public, every week',
     more: 'People before money: streamer partnerships, a Discord and weekly challenges, so the first pools already have an audience.' },
@@ -58,7 +58,7 @@ const PLAN = [
     more: 'An SPL mint: 100M cap, 2M to the pool, 98M earned by rides.' },
   { k: 'PAID EVENTS', sub: 'backed by us', c: '#ff5a4d', from: 2, to: 4, t: 'Funded prize pools · streamer cups', n: 'we seed the pool',
     more: 'We fund the prizes: marketing rides and streamer cups, so a pool never opens empty and the stream has a reason to exist.' },
-  { k: 'COMMUNITY CONTENT', sub: 'made by players', c: '#ff9ad5', from: 3, to: 4, t: 'AI-built mods via MCP · storybook', n: 'vehicles, props, landmarks',
+  { k: 'AI MODS', sub: 'community-made content', c: '#ff9ad5', from: 3, to: 4, t: 'AI-built mods via MCP · storybook', n: 'vehicles, props, landmarks',
     more: 'Players describe a vehicle, prop or landmark to an AI; an MCP server builds it in the storybook.' },
   { k: 'NEW GAME MODES', sub: 'then modding', c: '#6fb0ff', from: 3, to: 4, t: 'New modes, same rails', n: 'same road, same verification',
     more: 'New ways to drive on the same seeded road and the same verification stack. Modding comes after the modes.' },
@@ -67,11 +67,28 @@ const PLAN = [
 /* the storybook sneak peek: real screenshots of the model viewer (client/viewer.html#<id>) – shown one after another while the card is hovered / tapped */
 const STORY = [['storybook.webp', 'car'], ['storybook-truck.webp', 'truck'], ['storybook-police.webp', 'police car'], ['storybook-fire.webp', 'fire truck'], ['storybook-diner.webp', 'roadside diner'], ['storybook-truckstop.webp', 'truck stop'], ['storybook-cactus.webp', 'desert cactus']];
 
+/* slide 8 – go to market as six highway exits, in the order they come up (the months match the plan slide); `more` is the back of the sign (hover / tap) */
+const EXITS = [
+  { t: 'Co-driver wanted', s: 'a co-founder: growth, partners, community', when: 'NOW',
+    more: 'Built solo so far. The next leg needs a second seat: growth, partnerships and the community, while I keep the game and the chain.' },
+  { t: 'Billboards', s: 'advertising, cut from real rides', when: 'NOV',
+    more: 'Paid ads on X, YouTube and Twitch, cut from real gameplay by our own promo pipeline. No stock footage: the road is the ad.' },
+  { t: 'Streamers on CB', s: 'streamer agreements', when: 'NOV',
+    more: 'Paid deals with streamers to drive on stream. Their chat donates night and sinkholes, and every stream stays a replayable ad.' },
+  { t: 'We pay the pool', s: 'tournaments funded by us', when: 'DEC',
+    more: 'Marketing rides and streamer cups: we put up the prize through the escrow\'s sponsor(). Free to enter, real SOL to win, refunded to us if it fails.' },
+  { t: 'Creator garage', s: 'paid access to community creations', when: 'JAN',
+    more: 'Players build trucks, props and landmarks with AI over MCP in the storybook. Others pay to unlock them; the creator gets a cut.' },
+  { t: 'HONK listing', s: 'the token, listed', when: 'FEB', sol: true,
+    more: 'After the audit and mainnet: HONK on chain, then a DEX listing. 100M cap, earned only by verified distance.' },
+];
+/* the truck that drives to the exit you look at: a side view facing right (trailer, red cab with an exhaust stack, four wheels with a spoke each, so they visibly turn) */
+const TRUCK = `<svg viewBox="0 0 184 74" aria-hidden="true"><rect x="2" y="6" width="118" height="46" rx="5" fill="#ece6d3"/><text x="61" y="35" text-anchor="middle" font-family="Anton,Impact,sans-serif" font-size="15" fill="#050505" letter-spacing="1">FREIGHT CHAIN</text><rect x="127" y="0" width="5" height="17" rx="2" fill="#9a9a9a"/><path d="M124 54V22a7 7 0 0 1 7-7h23l22 22v17z" fill="#ff3b2f"/><path d="M154 20h-19v15h33z" fill="#bfe6ff"/><rect x="0" y="52" width="178" height="6" rx="2" fill="#2b2b2b"/>${[22, 48, 140, 164].map(x => `<g class="wh"><circle cx="${x}" cy="60" r="10" fill="#111" stroke="#777" stroke-width="3"/><path d="M${x} 52v16" stroke="#777" stroke-width="2"/></g>`).join('')}</svg>`;
+
 const SLIDES = [
   { layout: 'wall', id: 'product',
     html: `
       <div class="copy">
-        <div class="brand"><img src="/icons/icon-192.png" alt=""><span>FREIGHT CHAIN</span></div>
         <div class="lbl">00 · The product</div>
         <h1>Freight Chain<small>Competitive · GameFi</small></h1>
         ${pts(['<b>Site</b> · landing, lobby, whitepaper', '<b>Streams</b> · live watch + replays', '<b>Analytics</b> · PostHog funnels', '<b>Solana</b> · devnet escrow, no token', '<b>Details</b> · gearbox, cold engine, night', '<b>Passion</b> · built solo, shipped fast'])}
@@ -104,8 +121,6 @@ const SLIDES = [
       </div>
       <div class="vis">
         ${clip('promo-clip.mp4', 'v-main')}
-        <button type="button" class="donate" aria-label="Donate SOL to the driver"><span class="sol">◎</span> DONATE</button>
-        <div class="coins" aria-hidden="true">${'<i>◎</i>'.repeat(6)}</div>
         <div class="badge live"><i class="dot"></i>LIVE · NO WALLET TO WATCH</div>
       </div>` },
 
@@ -172,21 +187,16 @@ const SLIDES = [
         <div class="bar" style="--c:${l.c};--i:${i};grid-row:${i + 2};grid-column:${l.from + 1} / ${l.to + 2}"><b>${l.t}</b><small>${l.n}</small><p>${l.more}</p></div>`).join('')}
       </div>` },
 
-  { layout: 'end gtm', id: 'market',
+  { layout: 'gtm', id: 'market',
     html: `
       <div class="copy">
-        <div class="lbl">07 · Go to market</div>
-        <h1>Go to<br>market</h1>
-        <ol class="road">
-          <li><b>01</b>Community and polishing</li>
-          <li><b>02</b>Funded marketing rides</li>
-          <li><b>03</b>Streamers collaboration</li>
-          <li><b>04</b>10% fees</li>
-          <li><b>05</b>No token</li>
-        </ol>
+        <div><div class="lbl">07 · Go to market</div><h1>Six exits <em>to market.</em></h1></div>
+        <p class="gfine">Revenue · 10 % of every pool + a cut of the creator garage<br>A plan, not a promise · the audit gates mainnet, mainnet gates the token</p>
       </div>
-      <div class="vis">
-        ${shot('landing-market.webp', 'v-main', 'Go to market load board')}
+      <div class="exits">
+        <div class="row">${EXITS.map((x, i) => `<div class="exit${x.sol ? ' sol' : ''}" style="--i:${i}"><div class="sign"><div class="f"><span class="tab">EXIT ${i + 1}</span><b>${x.t}</b><small>${x.s}</small><em><i>↗</i>${x.when}</em></div><div class="bk"><span class="tab">EXIT ${i + 1}</span><p>${x.more}</p></div></div><i class="post"></i><i class="post"></i></div>`).join('')}</div>
+        <div class="hwy"><i class="lane"></i><canvas class="warp" aria-hidden="true"></canvas><div class="truck" title="Honk">${TRUCK}</div><span class="honks">HONK MINED <b>0</b> / 100,000,000 CAP</span></div>
+        <div class="lanes-ctl"><button type="button" class="ln up" aria-label="Change to the far lane">▲</button><button type="button" class="ln dn" aria-label="Change to the near lane">▼</button></div>
       </div>` },
 ];
 
@@ -232,15 +242,6 @@ const deck = document.getElementById('deck');
 deck.innerHTML = SLIDES.map((s, i) => `<section class="slide L-${s.layout.split(' ').join(' L-')}" id="s-${s.id}" data-i="${i}">${s.html}</section>`).join('');
 
 const slides = [...deck.children];
-
-/* slide 2: the DONATE button – the live card feels the weight of SOL. Pressed (mouse: hovered), the card sinks slowly under it, coins drop in; released, it rises back slowly with a little give. */
-const dn = deck.querySelector('.donate'), dv = dn?.closest('.vis');
-if (dn) {
-  const weigh = on => dv.classList.toggle('weigh', on);
-  dn.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') weigh(true); });
-  dn.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') weigh(false); });
-  dn.addEventListener('click', e => { e.stopPropagation(); if (e.pointerType !== 'mouse') weigh(!dv.classList.contains('weigh')); });   // a tap toggles; the slide does not turn
-}
 
 /* the AI + MCP sneak-peek card: while it is hovered or tapped open, it steps through the storybook objects every 1.5 s (a hard swap under a white flash), the name tag swaps with them; a click steps once more */
 const pk = deck.querySelector('.peek-card');
@@ -414,7 +415,7 @@ fxVis.forEach(v => {
   v.parentElement.addEventListener('pointerleave', () => setTilt(v, 0, 0));
 });
 /* everything interactive (the cards, slide 0's tags, the LIVE badge, the Merkle canvas, the 70 / 20 / 10 blocks, the FREE / 1 H / 4 H / 8 H ladder) gives a tiny, tweened shake at random intervals while its slide is showing – a quiet "touch me". It animates the individual `rotate` property, so it never fights the float / lean / zoom transforms. */
-const nudgeables = [...deck.querySelectorAll('.fx .shot, .fx .badge, .fx canvas.glyph, .L-wall .tags span, .split > div, .ladder li, .cards5 .cc, .pts li.don, .pts li.adopt')];
+const nudgeables = [...deck.querySelectorAll('.fx .shot, .fx .badge, .fx canvas.glyph, .L-wall .tags span, .split > div, .ladder li, .cards5 .cc, .pts li.don, .pts li.adopt, .exits .exit')];
 const canShake = el => !tkReduced && document.visibilityState === 'visible' && !!el.closest('.slide.on') && !el.matches(':hover,.hot,.drag')
   && ![...(el.closest('.split')?.classList ?? [])].some(c => c.startsWith('s-'));   // not while it is being used
 function shakeLater(el) {
@@ -430,9 +431,12 @@ nudgeables.forEach(shakeLater);
 
 /* slide 3's DONATIONS bullet: a click is a mock donation – a toast with a real effect price (client/js/live-effects.js) and a handful of SOL coins from above the stage.
    The coins stay: discs under gravity that bounce, roll and pile up on the stage floor between its walls, over every slide (at most COIN_MAX, the oldest go first). */
-const DONATE = [['TIP', 0.01], ['NIGHT', 0.02], ['DAY', 0.02], ['POTHOLES', 0.02], ['TRENCH', 0.03], ['SINKHOLE', 0.05]];
+/* the real SOL price: a snapshot, not a feed – the deck makes no request of its own. CoinGecko $104.24 / Binance $104.47 on Oct 15 2026; ~$104.3. Update the number (and the date) before presenting if the market has moved. */
+const SOL_USD = 104.3;
+const usd = v => `$${v.toFixed(2)}`;
+const DONATE = [['TIP', 0.15], ['NIGHT', 0.25], ['DAY', 0.25], ['POTHOLES', 0.4], ['TRENCH', 0.6], ['SINKHOLE', 1]];   // 0.15 … 1 SOL a donation (a show, not the game's own effect prices)
 const COIN_MAX = 120, G = 2600, FLOOR = 1075, CEIL = 40, E_FLOOR = .45, E_COIN = .3;   // G in stage px/s²; the floor sits on the progress bar, the ceiling under the ticker
-const CARD_SEL = '.slide.on :is(.shot, .badge, .cc, .ladder li, .split > div, .tags span)';   // what the coins bounce off on the showing slide
+const CARD_SEL = '.slide.on :is(.shot, .badge, .cc, .ladder li, .split > div, .tags span, .exit .sign)';   // what the coins bounce off on the showing slide
 const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz', b58 = n => Array.from({ length: n }, () => B58[Math.floor(Math.random() * 58)]).join('');
 const coinCv = document.createElement('canvas'), cctx = coinCv.getContext('2d'), coins = [], sucking = [];   // sucking = coins on their way into Web3 adoption (adopt())
 coinCv.id = 'coins'; coinCv.setAttribute('aria-hidden', 'true'); stage.insertBefore(coinCv, pager);
@@ -468,6 +472,7 @@ function collide(p, q) {   // two discs, mass ∝ area (a held one is immovable)
 }
 /* the showing slide's cards as boxes in stage px, read once a frame (they float, lean, lift and get dragged): centre, half size and tilt from the element's own transform, its corner radius */
 let boxes = [], boxTouch = false;
+const weighed = [];   // the page-3 card and banner: spring bodies that sag under the SOL lying on them (see weighBodies)
 function readBoxes() {
   const s = stage.getBoundingClientRect();
   boxes = [...deck.querySelectorAll(CARD_SEL)].map(el => {
@@ -475,7 +480,7 @@ function readBoxes() {
     if (!w || !h || !r.width) return null;
     const m = cs.transform === 'none' ? null : new window.DOMMatrixReadOnly(cs.transform), th = m ? Math.atan2(m.b, m.a) : 0, co = Math.cos(th), si = Math.sin(th);
     const k = r.width / scale / (w * Math.abs(co) + h * Math.abs(si));   // its own scale (a lifted card is bigger)
-    return { x: (r.left + r.width / 2 - s.left) / scale, y: (r.top + r.height / 2 - s.top) / scale, hw: w * k / 2, hh: h * k / 2, co, si, rad: Math.min(parseFloat(cs.borderTopLeftRadius) || 0, w / 2, h / 2) * k };
+    return { el, x: (r.left + r.width / 2 - s.left) / scale, y: (r.top + r.height / 2 - s.top) / scale, hw: w * k / 2, hh: h * k / 2, co, si, rad: Math.min(parseFloat(cs.borderTopLeftRadius) || 0, w / 2, h / 2) * k };
   }).filter(Boolean);
 }
 function hitBox(c, b) {   // a disc against a tilted rounded box: into the box's frame, the closest point on the inner box, out along the normal, bounce
@@ -489,6 +494,7 @@ function hitBox(c, b) {   // a disc against a tilted rounded box: into the box's
   c.x += wx * pen; c.y += wy * pen;
   if (vn < 0) { const e = vn < -90 ? E_FLOOR : 0; c.vx -= (1 + e) * vn * wx; c.vy -= (1 + e) * vn * wy; }
   c.touch = true; boxTouch = true;
+  if (b.el._p && wy < -.5) b.el._p.load += (1 + 8 * (c.v ?? 0)) / 4;   // a coin lying on top of a weighed card: its weight (heavier for more SOL); /4 = the frame's 4 substeps
 }
 function bounds(c, h) {
   if (c.y - c.r >= CEIL) c.in = true;   // the ceiling only once a coin has dropped in: they are born above it
@@ -499,7 +505,7 @@ function bounds(c, h) {
 }
 function coinTick(t) {
   const dt = Math.min(1 / 30, (t - coinT) / 1000 || 1 / 60), h = dt / 4; coinT = t;
-  readBoxes(); boxTouch = false;
+  readBoxes(); boxTouch = false; for (const p of weighed) p.load = 0;
   if (suckOn) suckStep(t);
   for (let s = 0; s < 4; s++) {   // 4 substeps a frame, 4 collision passes each: enough for a stable pile of ~120
     for (const c of coins) { if (c === held) { c.vx = Math.max(-4000, Math.min(4000, (hx - c.x) * 20)); c.vy = Math.max(-4000, Math.min(4000, (hy - c.y) * 20)); } else c.vy += G * h; c.x += c.vx * h; c.y += c.vy * h; c.a += c.w * h; c.touch = false; }
@@ -544,11 +550,21 @@ const pop = (cls, html, x, y, ms = 2400) => {   // a one-shot stage element (aut
 };
 const toast = (big, small) => pop('sol-toast', `<b>${big}</b><span>${small}</span>`, 760 + Math.random() * 820, 150 + Math.random() * 520);
 const shakeScreen = () => { if (!tkReduced) stage.animate({ translate: ['0 0', '-4px 2px', '3px -3px', '-2px 2px', '1px -1px', '0 0'] }, { duration: 320, easing: 'ease-out' }); };   // a very small jolt: the `translate` property, so fit()'s transform is untouched
+/* the Donations bullet feels the weight of the SOL: every donation drops one more notch (6 px, up to four) on a slow 1.4 s tween; a notch lifts again every 2.4 s, so it creeps back up on its own */
+const donLi = deck.querySelector('#s-insight .pts li.don');
+let donWeight = 0, donLift = 0;
+function weigh() {
+  if (!donLi || tkReduced) return;
+  donWeight = Math.min(4, donWeight + 1); donLi.style.translate = `0 ${donWeight * 6}px`;
+  clearInterval(donLift); donLift = setInterval(() => { donWeight = Math.max(0, donWeight - 1); donLi.style.translate = donWeight ? `0 ${donWeight * 6}px` : ''; if (!donWeight) clearInterval(donLift); }, 2400);
+}
 function donate() {
+  weigh();
   const [what, sol] = DONATE[Math.floor(Math.random() * DONATE.length)];
-  toast(`+${sol.toFixed(2)} SOL`, `${what} · ${b58(4)}…${b58(4)}`); shakeScreen();
+  toast(`+${sol.toFixed(2)} SOL`, `${what} · ${usd(sol * SOL_USD)} · ${b58(4)}…${b58(4)}`); shakeScreen();
   if (tkReduced) return;
-  for (let i = 5 + Math.floor(Math.random() * 5); i > 0; i--) coins.push({ x: 120 + Math.random() * 1680, y: -60 - Math.random() * 520, vx: (Math.random() - .5) * 260, vy: Math.random() * 200, r: 18 + Math.random() * 12, a: Math.random() * 6.3, w: (Math.random() - .5) * 8 });
+  const nCoins = 5 + Math.floor(Math.random() * 5);
+  for (let i = nCoins; i > 0; i--) coins.push({ v: sol / nCoins, x: 120 + Math.random() * 1680, y: -60 - Math.random() * 520, vx: (Math.random() - .5) * 260, vy: Math.random() * 200, r: 18 + Math.random() * 12, a: Math.random() * 6.3, w: (Math.random() - .5) * 8 });
   coins.splice(0, Math.max(0, coins.length - COIN_MAX));
   coinStill = 0; coinRaf ||= requestAnimationFrame(coinTick);
 }
@@ -556,13 +572,13 @@ function donate() {
 /* slide 3's "Web3 adoption" bullet: a click pulls every coin into it, one by one (nearest first) – each curves in, speeding up, shrinks to 0.1 and fades as it arrives,
    and pays out a little fiat: a "+$" and a bill pop out of the bullet, which gulps. A total toast once the stage is empty. */
 const SUCK_MS = 1100, SUCK_FLY = .7;   // a coin's whole tween; the share of it spent flying (the rest: shrinking and fading at the bullet)
-let suckOn = false, suckNext = 0, suckEvery = 200, suckUsd = 0, suckN = 0;
+let suckOn = false, suckNext = 0, suckEvery = 200, suckUsd = 0, suckSol = 0;
 const sinkAt = () => { const r = deck.querySelector('.pts li.adopt .sink').getBoundingClientRect(), s = stage.getBoundingClientRect(); return [(r.left + r.width / 2 - s.left) / scale, (r.top + r.height / 2 - s.top) / scale]; };
 function adopt() {
   if (suckOn) return;
   if (!coins.length) { toast('NO SOL YET', 'CLICK DONATIONS FIRST'); return; }
-  if (tkReduced) { const n = coins.length; coins.length = 0; drawCoins(); toast(`+$${(n * 3.14).toFixed(2)}`, `${n} SOL ADOPTED`); return; }
-  suckOn = true; suckNext = 0; suckUsd = 0; suckN = 0; suckEvery = Math.max(90, Math.min(260, 9000 / coins.length));   // the whole pile in about 9 s, never faster than 90 ms a coin
+  if (tkReduced) { const sol = coins.reduce((a, c) => a + c.v, 0); coins.length = 0; drawCoins(); toast(`+${usd(sol * SOL_USD)}`, `${sol.toFixed(2)} SOL ADOPTED · @ ${usd(SOL_USD)}`); return; }
+  suckOn = true; suckNext = 0; suckUsd = 0; suckSol = 0; suckEvery = Math.max(90, Math.min(260, 9000 / coins.length));   // the whole pile in about 9 s, never faster than 90 ms a coin
   coinStill = 0; coinRaf ||= requestAnimationFrame(coinTick);
 }
 function suckStep(t) {
@@ -580,33 +596,155 @@ function suckStep(t) {
     if (m < 1) s.sc = 1 - .4 * e;
     else {
       const q = (p - SUCK_FLY) / (1 - SUCK_FLY); s.sc = .6 - .5 * q; s.al = 1 - q;
-      if (!s.got) { s.got = true; payOut(tx, ty, li); }
+      if (!s.got) { s.got = true; payOut(tx, ty, li, c.v); }
     }
     if (p >= 1) sucking.splice(i, 1);
   }
-  if (!coins.length && !sucking.length) { suckOn = false; toast(`+$${suckUsd.toFixed(2)}`, `${suckN} SOL · WEB3 ADOPTED`); }
+  if (!coins.length && !sucking.length) { suckOn = false; toast(`+${usd(suckUsd)}`, `${suckSol.toFixed(2)} SOL · ADOPTED @ ${usd(SOL_USD)}`); }
 }
 /* slide 4's FREE / 1 H / 4 H / 8 H are buttons: a click hangs the secret tier under THAT tier on a chain link, its text scrambling before it settles on ???;
-   another click on the tier takes it back up; a click on a secret tile scrambles it again */
+   another click on the tier plays that backwards (the text scrambles out, the tile swings back up); a click on a secret tile scrambles it again */
 const SCRAMBLE = '#%&@$?<>/\\█▓▒░';
-function scramble(el, final, ms) {
-  const t0 = performance.now(), step = t => {
+function scramble(el, final, ms, out = false) {   // in: letters lock in left to right; out: they come loose right to left (the text is put back once it is gone)
+  const t0 = performance.now(), run = el.dataset.run = String(t0), n = final.length, glyph = () => SCRAMBLE[Math.floor(Math.random() * SCRAMBLE.length)];
+  const step = t => {
+    if (el.dataset.run !== run) return;   // a newer scramble took over (a quick re-click)
     const p = (t - t0) / ms;
-    el.textContent = p >= 1 ? final : [...final].map((ch, i) => (p > (i + 1) / (final.length + 1) ? ch : SCRAMBLE[Math.floor(Math.random() * SCRAMBLE.length)])).join('');   // letters lock in left to right
-    if (p < 1) requestAnimationFrame(step);
+    el.textContent = p >= 1 ? final : [...final].map((ch, i) => ((out ? p <= (n - i) / (n + 1) : p > (i + 1) / (n + 1)) ? ch : glyph())).join('');
+    if (p < 1) requestAnimationFrame(step); else if (out) el.textContent = final;
   };
   requestAnimationFrame(step);
 }
-const scrambleTile = li => { scramble(li.querySelector('b'), '???', 700); scramble(li.querySelector('span'), 'secret', 900); };
+const scrambleTile = (li, out = false) => { scramble(li.querySelector('b'), '???', out ? 450 : 700, out); scramble(li.querySelector('span'), 'secret', out ? 550 : 900, out); };
+/* slide 8: the truck drives to the exit under the pointer (or a tapped one) – turning to face the way it goes, wheels spinning while it moves; it waits under EXIT 1 */
+const exitsEl = deck.querySelector('.exits');
+if (exitsEl) {
+  const truck = exitsEl.querySelector('.truck'), exits = [...exitsEl.querySelectorAll('.exit')];
+  const TW = 236;   // the truck's box in the near lane (CSS) – positions are always of this box; the far lane draws it narrower, centred in it
+  let tx = 0;
+  const driveTo = ex => {
+    const x = ex.offsetLeft + ex.offsetWidth / 2 - TW / 2;
+    if (Math.abs(x - tx) < 1) return;
+    truck.classList.toggle('back', x < tx); truck.classList.add('go'); tx = x; truck.style.setProperty('--tx', `${x}px`);
+  };
+  truck.addEventListener('transitionend', e => { if (e.propertyName === 'transform') truck.classList.remove('go', 'back'); });
+  exits.forEach(ex => ex.addEventListener('pointerenter', () => driveTo(ex)));
+  const park = () => { truck.style.transition = 'none'; tx = exits[0].offsetLeft + exits[0].offsetWidth / 2 - TW / 2; truck.style.setProperty('--tx', `${tx}px`); void truck.offsetWidth; truck.style.transition = ''; };   // under EXIT 1, snapped (no drive)
+  requestAnimationFrame(park);
+  /* the truck HONKS when hovered or tapped: a two-tone air horn synthesized with Web Audio (no file, no request; browsers only let it sound after a click on the page), the cab hops,
+     a comic HONK! and sound rings burst from it, the stack puffs, the HONK sign hears it – and any SOL coins near the cab are blown into the air */
+  let honks = 0, lastHonk = 0, actx = null;
+  const horn = click => {
+    try {
+      actx ??= new (window.AudioContext || window.webkitAudioContext)();
+      if (actx.state !== 'running') { if (!click) return; actx.resume(); }   // a hover before any click stays silent (notes queued on a suspended context would all play at once later)
+      const t = actx.currentTime, f = actx.createBiquadFilter(), g = actx.createGain();
+      f.type = 'lowpass'; f.frequency.value = 1700; f.connect(g).connect(actx.destination);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.12, t + .03); g.gain.setValueAtTime(.12, t + .45); g.gain.exponentialRampToValueAtTime(.001, t + .75);
+      for (const hz of [277, 349, 415]) { const o = actx.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(hz * .93, t); o.frequency.linearRampToValueAtTime(hz, t + .07); o.connect(f); o.start(t); o.stop(t + .78); }   // the air valve opening: each tone slides up into pitch
+    } catch { /* no audio: the show goes on */ }
+  };
+  const honk = click => {
+    const now = performance.now(); if (now - lastHonk < 700) return; lastHonk = now;
+    horn(click);
+    if (tkReduced) return;
+    const svg = truck.querySelector('svg'), hwy = truck.parentElement, x = tx + truck.offsetWidth * .9, y = hwy.offsetTop + truck.offsetTop + truck.offsetHeight * .3;
+    svg.animate({ transform: ['none', 'translateY(-16px) rotate(-3deg)', 'none', 'translateY(-5px)', 'none'] }, { duration: 560, easing: 'ease-out' });
+    const fx = document.createElement('div'); fx.className = 'honk'; fx.style.left = `${x}px`; fx.style.top = `${y}px`;
+    fx.innerHTML = `<b>${Math.random() < .25 ? 'HONK HONK!' : 'HONK!'}</b>${[0, 1, 2].map(k => `<i style="animation-delay:${k * .12}s"></i><em style="animation-delay:${k * .1}s;left:${-58 + (k % 2 ? 8 : -4 * k)}px"></em>`).join('')}`;   // author-made text only; rings and puffs one after another
+    exitsEl.append(fx); setTimeout(() => fx.remove(), 1300);
+    exitsEl.querySelector('.exit.sol')?.animate({ rotate: ['0deg', '-3deg', '2.5deg', '-1.5deg', '0deg'] }, { duration: 600, easing: 'ease-out' });
+    const s = stage.getBoundingClientRect(), r = truck.getBoundingClientRect(), X = (r.left + r.width * .9 - s.left) / scale, Y = (r.top - s.top) / scale;
+    let hit = false;
+    for (const c of coins) { const dx = c.x - X, dy = c.y - Y, d = Math.hypot(dx, dy) || 1; if (d < 520) { const k = (1 - d / 520) * 1700; c.vx += dx / d * k; c.vy += dy / d * k - 900 * (1 - d / 520); hit = true; } }
+    if (hit) { coinStill = 0; coinRaf ||= requestAnimationFrame(coinTick); }
+  };
+  /* rare obstacles – a sinkhole, a cone, a barrier – ride the road at the lane markings' speed in one of two lanes (the far one higher and smaller); one ahead in the truck's lane
+     lights the ▲ ▼ buttons (the one out of it filled); a press or ↑ / ↓ swerves the truck into the other lane (a tween with a tilt, the wheels faster); a miss is a jolt and a tiny screen shake */
+  const OB = ['hole', 'cone', 'barrier'], V = 172, hwy = truck.parentElement, ctl = exitsEl.querySelector('.lanes-ctl'), obs = [];   // V = the lane markings' 86 px per 0.5 s
+  let lane = 0, gap = 0, lastT = 0, wasOn = false, mineT = 0;
+  /* driving mines HONK, as the spec has it (earned by distance): the truck honks and a HONK coin pops off it and arcs into the counter on the road – every 5 s under EXIT 1,
+     a second less under each exit on, every 0.5 s under the last (the faster road) */
+  const MINE_EVERY = 5, counter = hwy.querySelector('.honks'), cnum = counter.querySelector('b');
+  const mine = () => {
+    const c = document.createElement('i'), x0 = tx + truck.offsetWidth * .35, y0 = hwy.offsetTop + truck.offsetTop - (lane ? 40 : 0), x1 = counter.offsetLeft + cnum.offsetLeft + cnum.offsetWidth / 2, y1 = hwy.offsetTop + counter.offsetTop + 10;
+    honk(false);   // the horn, the hop, the HONK! burst (it sounds only once the page has had a click)
+    c.className = 'mint'; c.textContent = 'H'; exitsEl.append(c);
+    c.animate({ translate: [`${x0}px ${y0}px`, `${(x0 + x1) / 2}px ${Math.min(y0, y1) - 170}px`, `${x1}px ${y1}px`], scale: [.3, 1.25, .55] }, { duration: 1150, easing: 'cubic-bezier(.4,0,.3,1)', fill: 'forwards' }).onfinish = () => {
+      c.remove(); counter.classList.add('on'); cnum.textContent = (++honks).toLocaleString('en-US'); counter.animate({ scale: [1, 1.14, 1] }, { duration: 320 });
+    };
+  };   // gap = road (px) still to roll before the next obstacle: spaced by distance, so a slow frame rate never bunches them
+  const swerve = to => { if (to === lane) return; lane = to; truck.classList.toggle('up', !!lane); truck.classList.add('swerve'); setTimeout(() => truck.classList.remove('swerve'), 480); };
+  ctl.addEventListener('click', e => { const b = e.target.closest('.ln'); if (b) swerve(b.classList.contains('up') ? 1 : 0); });
+  addEventListener('keydown', e => { if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && exitsEl.closest('.slide.on')) { e.preventDefault(); swerve(e.key === 'ArrowUp' ? 1 : 0); } });
+  /* the closer the truck is to the last exit (HONK listing), the faster the road: up to SPEED_MAX × – light-speed streaks, tunnel lamps and the light at the end of the tunnel
+     fade in on the .warp canvas with it, and at that exit the road is clear (no new obstacles, the ones on it fade away). Hits are judged on what is DRAWN – the truck's
+     and the obstacle's boxes on screen, in the lane the truck visibly is in – so a lane change or a drive to an exit only counts once the truck is really there. */
+  const SPEED_MAX = 4.5, lanes = hwy.querySelector('.lane'), warp = hwy.querySelector('.warp'), wctx = warp.getContext('2d'), sv = truck.querySelector('svg');
+  const streaks = Array.from({ length: 46 }, () => ({ x: Math.random() * 1.2, y: Math.random(), l: .4 + Math.random(), s: .7 + Math.random() * .8 }));
+  let laneX = 0, lampX = 0, fShown = 0;
+  const cx = el => { const r = el.getBoundingClientRect(); return r.left + r.width / 2; };
+  const drawWarp = (k, f, dt) => {
+    const W = hwy.clientWidth, H = hwy.clientHeight;
+    if (warp.width !== W || warp.height !== H) { warp.width = W; warp.height = H; }
+    wctx.clearRect(0, 0, W, H);
+    if (k <= 0) return;
+    const glow = wctx.createRadialGradient(W, H / 2, 0, W, H / 2, W * .55); glow.addColorStop(0, `rgba(20,241,149,${.4 * k})`); glow.addColorStop(1, 'rgba(20,241,149,0)');
+    wctx.fillStyle = glow; wctx.fillRect(0, 0, W, H);   // the light at the end of the tunnel
+    lampX = (lampX + V * f * 1.6 * dt) % 140; wctx.fillStyle = `rgba(255,207,90,${.85 * k})`;
+    for (let x = W - lampX; x > -80; x -= 140) { wctx.fillRect(x, 2, 24 + 46 * k, 3); wctx.fillRect(x, H - 5, 24 + 46 * k, 3); }   // tunnel lamps along both edges
+    for (const p of streaks) {   // light-speed streaks, longer the faster
+      p.x -= p.s * f * dt * .32; if (p.x < -.3) { p.x = 1.05; p.y = Math.random(); }
+      const len = 30 + 280 * k * p.l, x = p.x * W, y = 6 + p.y * (H - 12), g = wctx.createLinearGradient(x, 0, x + len, 0);
+      g.addColorStop(0, `rgba(153,69,255,${.95 * k})`); g.addColorStop(1, 'rgba(20,241,149,0)'); wctx.fillStyle = g; wctx.fillRect(x, y, len, 2);
+    }
+  };
+  const roadTick = t => {
+    requestAnimationFrame(roadTick);
+    const dt = Math.min(.1, (t - lastT) / 1000) || 0, on = !!exitsEl.closest('.slide.on'); lastT = t;
+    if (on && !wasOn) {   // every visit starts like the first: the truck under EXIT 1 in the near lane, no flipped sign, the honk counter back at zero (the entrance then plays again)
+      lane = 0; truck.classList.remove('up', 'go', 'back', 'swerve'); park();
+      exits.forEach(e => e.classList.remove('hot')); honks = 0; mineT = 0; counter.classList.remove('on'); cnum.textContent = '0'; exitsEl.querySelectorAll('.mint').forEach(m => m.remove());
+    }
+    wasOn = on;
+    if (!on || tkReduced) { obs.splice(0).forEach(o => o.el.remove()); ctl.classList.remove('warn', 'to-up', 'to-dn'); gap = V * 6; return; }   // a visit opens with 6 s of clear road
+    const tr = sv.getBoundingClientRect(), p = Math.max(0, Math.min(1, (tr.left + tr.width / 2 - cx(exits[0])) / (cx(exits[5]) - cx(exits[0])))), f = 1 + (SPEED_MAX - 1) * p * p, k = Math.max(0, (p - .3) / .7), atEnd = p > .88 || (p > .5 && Math.abs(tx - (exits[5].offsetLeft + exits[5].offsetWidth / 2 - TW / 2)) < 2);   // at, or well on the way to, the last exit
+    laneX = (laneX + V * f * dt) % 86; lanes.style.backgroundPosition = `${-laneX}px 0`;   // the markings: 86 px a dash
+    if (Math.abs(f - fShown) > .25) { fShown = f; truck.style.setProperty('--f', f.toFixed(2)); }   // wheel speed + glow, in steps (a running animation's duration jumps when changed)
+    truck.style.setProperty('--k', k.toFixed(2)); drawWarp(k, f, dt);
+    const near = Math.round(p * 5), every = near === 5 ? .5 : MINE_EVERY - near;   // the exit the truck is under: 5, 4, 3, 2, 1, 0.5 s
+    if ((mineT += dt) >= every) { mineT = 0; mine(); }   // reset, not carried over: a shorter interval never fires a burst
+    if (!atEnd && (gap -= V * f * dt) <= 0) {   // rare: one every 6–15 s of road (at speed, more often in time) – never at the last exit
+      const el = document.createElement('i'), l = +(Math.random() < .5); el.className = `ob ${OB[Math.floor(Math.random() * 3)]}${l ? ' far' : ''}`; hwy.append(el);
+      obs.push({ el, l, x: hwy.clientWidth + 60, hit: false }); gap = V * (6 + Math.random() * 9);
+    }
+    const vl = +(parseFloat(window.getComputedStyle(truck).translate.split(' ')[1]) < -20), tl = tr.left + tr.width * .05, tf = tr.right - tr.width * .07;   // the lane it is visibly in; its drawn body, less the bumpers' air
+    let warn = false, free = true;
+    for (let i = obs.length - 1; i >= 0; i--) {
+      const o = obs[i]; o.x -= V * f * dt; o.el.style.translate = `${o.x.toFixed(1)}px -50%`;
+      if (atEnd && !o.hit) { o.hit = true; o.el.classList.add('gone'); }   // the last exit: the road clears
+      const r = o.el.getBoundingClientRect(), ol = r.left + r.width * .12, orr = r.right - r.width * .12;
+      if (!o.hit && o.l !== lane && orr > tl - 90 * scale && ol < tf + 260 * scale) free = false;   // the other lane is not a way out right now
+      if (!o.hit && o.l === lane && ol > tf) warn ||= ol - tf < 640 * scale * f ** .5;   // about 3.5 s ahead at 1×, a bit further at speed
+      if (!o.hit && o.l === vl && ol <= tf && orr >= tl) { o.hit = true; o.el.classList.add('hit'); sv.animate({ transform: ['none', 'translate(-6px,-10px) rotate(-4deg)', 'translate(4px,0) rotate(2deg)', 'none'] }, { duration: 420, easing: 'ease-out' }); shakeScreen(); }
+      if (o.x < -140) { o.el.remove(); obs.splice(i, 1); }
+    }
+    ctl.classList.toggle('warn', warn); ctl.classList.toggle('to-up', warn && free && !lane); ctl.classList.toggle('to-dn', warn && free && !!lane);   // the way out is filled only when it is clear
+  };
+  requestAnimationFrame(roadTick);
+  truck.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') honk(false); });
+  truck.addEventListener('click', e => { e.stopPropagation(); honk(true); });   // a tap is a honk, never a page turn
+}
 function ladderClick(li) {
   li.animate({ scale: [1, .92, 1.06, 1] }, { duration: 300, easing: 'ease-out' });
   if (li.closest('.secret')) { if (!tkReduced) scrambleTile(li); return; }
   const row = li.closest('.ladder'), tile = li.closest('.ladders').querySelectorAll('.secret li')[[...row.children].indexOf(li)];   // the secret under the tier that was clicked
-  if (tile.classList.toggle('open') && !tkReduced) setTimeout(() => scrambleTile(tile), 120);
+  const open = tile.classList.toggle('open');
+  if (!tkReduced) { if (open) setTimeout(() => scrambleTile(tile), 120); else scrambleTile(tile, true); }   // going: the scramble runs backwards, done before the fade
 }
-function payOut(x, y, li) {   // one coin in: "+$", a bill thrown up and out, the bullet gulps
-  const usd = 1 + Math.random() * 8; suckUsd += usd; suckN++;
-  const a = pop('usd', `+$${usd.toFixed(2)}`, x + (Math.random() - .5) * 60, y - 10);
+function payOut(x, y, li, sol) {   // one coin in: its real value at the SOL price as "+$", a bill thrown up and out, the bullet gulps
+  const dollars = sol * SOL_USD; suckUsd += dollars; suckSol += sol;
+  const a = pop('usd', `+${usd(dollars)}`, x + (Math.random() - .5) * 60, y - 10);
   a.style.setProperty('--dx', `${(Math.random() - .5) * 90}px`);
   const b = pop('bill', '💵', x, y);
   b.style.setProperty('--dx', `${(Math.random() - .5) * 420}px`); b.style.setProperty('--dy', `${-120 - Math.random() * 200}px`); b.style.setProperty('--rot', `${(Math.random() - .5) * 720}deg`);
@@ -648,6 +786,25 @@ const badge = document.querySelector('.fx .badge'), bd = { x: 0, y: 0 };
 let mouse = null;
 addEventListener('pointermove', e => { mouse = e.pointerType === 'touch' ? null : [e.clientX, e.clientY]; });
 document.documentElement.addEventListener('pointerleave', () => { mouse = null; });
+/* SOL on the page-3 card and the LIVE banner: the coins resting on top load them, and each is a spring that RESISTS – it sags until the spring pushes back as hard as the SOL pushes down (a banner is light, the card is stiff), rings a little, and with the coins gone (adopted) it springs back home. Enough SOL pushes either one all the way down to the ground. */
+const clipCard = deck.querySelector('#s-insight .shot.clip');
+for (const [el, k, f] of [[badge, 8, 1500], [clipCard, 18, 2300]]) if (el) { el._p = { el, y: 0, vy: 0, load: 0, sm: 0, k, f, ground: 0 }; weighed.push(el._p); }
+function weighBodies() {
+  const nowT = performance.now(), dt = Math.min(.04, (nowT - (weighBodies.t ?? nowT)) / 1000); weighBodies.t = nowT;
+  const empty = !coins.length && !sucking.length;
+  for (const p of weighed) {
+    if (empty) p.load = 0;
+    p.sm += (p.load - p.sm) * Math.min(1, (p.load > p.sm ? 8 : 1.1) * dt);   // the weight builds fast and lingers (~1 s): a coin rolling off must not make the card flicker, the SOL's weight is felt for a moment after
+    if (!p.ground || p.y === 0) { const r = p.el.getBoundingClientRect(), sr = stage.getBoundingClientRect(); p.ground = Math.max(0, FLOOR - 14 - ((r.bottom - sr.top) / scale - p.y - (p.el === badge ? bd.y : 0))); }
+    const c = 2 * Math.sqrt(p.k) * .42;   // under-damped: a little bounce when the weight comes and goes
+    const a = (tkReduced ? 0 : p.sm * p.f) - p.k * p.y - c * p.vy;
+    p.vy += a * dt; p.y += p.vy * dt;
+    if (p.y > p.ground) { p.y = p.ground; if (p.vy > 0) p.vy = -p.vy * .2; }   // the ground
+    if (p.y < 0) { p.y = 0; if (p.vy < 0) p.vy *= -.15; }
+    if (Math.abs(p.y) < .05 && Math.abs(p.vy) < .5 && !p.sm) { p.y = 0; p.vy = 0; }
+    if (p.el !== badge) p.el.style.setProperty('--wy', `${p.y.toFixed(1)}px`);
+  }
+}
 function badgeTick() {
   let tx = 0, ty = 0;
   if (badge && mouse && badge.closest('.slide.on')) {
@@ -656,28 +813,30 @@ function badgeTick() {
     if (dist < R) { const push = 80 * (1 - dist / R) ** 1.2; tx = Math.min(32, dx / dist * push); ty = dy / dist * push; }   // rightwards is capped: the stage edge is just there
   }
   bd.x += (tx - bd.x) * .14; bd.y += (ty - bd.y) * .14;
-  badge?.style.setProperty('--bx', `${bd.x.toFixed(1)}px`); badge?.style.setProperty('--by', `${bd.y.toFixed(1)}px`);
+  weighBodies();
+  badge?.style.setProperty('--bx', `${bd.x.toFixed(1)}px`); badge?.style.setProperty('--by', `${(bd.y + (badge._p?.y ?? 0)).toFixed(1)}px`);
   requestAnimationFrame(badgeTick);
 }
 if (badge) requestAnimationFrame(badgeTick);
 
 addEventListener('pointerdown', e => { if (!e.target.closest('.fx .shot')) moved = false; }, true);   // a drag that ended off a card must not swallow the next click
 addEventListener('click', e => {
-  if (e.target.closest('.split, .donate')) return;   // the bar's own click handler (a tap opens / closes a block)
+  if (e.target.closest('.split')) return;   // the bar's own click handler (a tap opens / closes a block)
   if (e.target.closest('#ticker')) { tkHold = performance.now() + 1400; return; }   // a click on the header slows it for a moment instead of turning the page
   if (e.target.closest('.pts li.don')) { donate(); return; }   // slide 3: a mock donation, not a page turn
   if (e.target.closest('.pts li.adopt')) { adopt(); return; }   // slide 3: the coins go into Web3 adoption
   if (e.target.closest('.ladder li')) { ladderClick(e.target.closest('.ladder li')); return; }   // slide 4: the tiers are buttons
-  const card = e.target.closest('.fx .shot, .fx .badge, .fx canvas.glyph, .L-wall .tags span, .cards5 .cc, .plan .bar');
+  const card = e.target.closest('.fx .shot, .fx .badge, .fx canvas.glyph, .L-wall .tags span, .cards5 .cc, .plan .bar, .exits .exit');
   if (card) {
     if (moved) { moved = false; return; }   // the end of a drag is not a tap
     if (card.classList.contains('badge')) { card.classList.remove('pop'); void card.offsetWidth; card.classList.add('pop'); }   // a tween bump on every click
     const on = card.classList.toggle('hot'); (card.closest('.vis') ?? card.parentElement).querySelectorAll('.hot').forEach(c => { if (c !== card && on) c.classList.remove('hot'); });
     return;
   }
-  if (e.target.closest('a,button')) return;
-  show(cur + (e.clientX > innerWidth / 3 ? 1 : -1));
+  // a click or tap anywhere else does NOT turn the page – only the arrows in the bottom bar (and the keys / a swipe) do
 });
+addEventListener('click', e => { const g = e.target.closest('#help [data-go]'); if (g) { flashTip(+g.dataset.go > 0 ? 'go-r' : 'go-l'); show(cur + +g.dataset.go); } });
+addEventListener('keydown', e => { if ((e.key === 'Enter') && e.target.matches?.('#help [data-go]')) e.target.click(); });
 
 /* phones: a swipe turns the page, the tip says "swipe", a portrait screen is asked to turn sideways, and the gyro tilts the screens */
 const touch = matchMedia('(hover: none) and (pointer: coarse)').matches;
