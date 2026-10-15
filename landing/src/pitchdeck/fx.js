@@ -149,9 +149,11 @@ export function initSplit() {
     clearTimeout(intent); intent = setTimeout(() => expand(i), 140);   // a short intent delay: sweeping the pointer across the bar does not fire it
   }));
   split.addEventListener('pointerleave', e => { clearTimeout(intent); if (e.pointerType === 'mouse' && open >= 0) collapse(); });
+  let by = 'mouse';
+  split.addEventListener('pointerdown', e => { by = e.pointerType; }, { passive: true });   // the click's own pointerType can't be trusted: iOS Safari reports a tap's click as 'mouse', so a second tap never closed it
   split.addEventListener('click', e => {   // a tap: open the block, or close again (a mouse is already driven by hover)
     const i = blocks.indexOf(e.target.closest('.split > div'));
-    if (open >= 0) { if (e.pointerType !== 'mouse') collapse(); } else if (i >= 0) expand(i);
+    if (open >= 0) { if (by !== 'mouse') collapse(); } else if (i >= 0) expand(i);
   });
 }
 
