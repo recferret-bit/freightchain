@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = rel => readFileSync(join(root, rel), 'utf8');
+const whole = existsSync(join(root, '../server/src/domain/analytics/client-events.ts'));   // the Docker image's landing stage has only landing/: the cross-tree checks run in the repo
 
 test('the pitch deck has its own web manifest: a home-screen shortcut opens the deck, not the lobby', () => {
   assert.match(read('pitchdeck.html'), /<link rel="manifest" href="\/media\/pitchdeck\/pitchdeck\.webmanifest">/);
@@ -15,7 +16,7 @@ test('the pitch deck has its own web manifest: a home-screen shortcut opens the 
   assert.equal(m.display, 'standalone');
 });
 
-test('every pitch deck analytics event is on the server allowlist, with the properties it sends', () => {
+test('every pitch deck analytics event is on the server allowlist, with the properties it sends', { skip: !whole }, () => {
   const ts = read('../server/src/domain/analytics/client-events.ts');
   const sent = [...(read('src/pitchdeck/stats.js') + read('src/main.js')).matchAll(/track\('(pitchdeck_[a-z_]+)', \{([^}]*)\}/g)];
   assert.ok(sent.length >= 4);
@@ -26,7 +27,7 @@ test('every pitch deck analytics event is on the server allowlist, with the prop
   }
 });
 
-test('the deck sends anonymously (no session cookie) and reports its web vitals', () => {
+test('the deck sends anonymously (no session cookie) and reports its web vitals', { skip: !whole }, () => {
   const stats = read('src/pitchdeck/stats.js');
   assert.match(stats, /configure\(\{ credentials: 'omit' \}\)/);
   assert.match(stats, /reportWebVitals\('pitchdeck'\)/);
