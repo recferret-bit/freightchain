@@ -38,9 +38,9 @@ test('every local /media file the page names exists in public/', () => {
 });
 
 test('no orphan media: every file in public/media is used by the page or the scripts', () => {
-  const src = html + main + readFileSync(join(root, 'src/dash-scenes.js'), 'utf8') + readFileSync(join(root, 'whitepaper.html'), 'utf8');   // the whitepaper reuses the dash card shots
+  const src = html + main + readFileSync(join(root, 'src/dash-scenes.js'), 'utf8') + readFileSync(join(root, 'whitepaper.html'), 'utf8') + readFileSync(join(root, 'pitchdeck.html'), 'utf8') + ['src/pitchdeck.js', ...readdirSync(join(root, 'src/pitchdeck')).map(f => `src/pitchdeck/${f}`)].map(f => readFileSync(join(root, f), 'utf8')).join('');   // the whitepaper reuses the dash card shots; the pitch deck reuses the hero clip and names its own /media/pitchdeck files
   const walk = d => readdirSync(d).flatMap(n => statSync(join(d, n)).isDirectory() ? walk(join(d, n)).map(x => `${n}/${x}`) : [n]);
-  assert.deepEqual(walk(join(root, 'public/media')).filter(f => !src.includes(`/media/${f}`)), []);
+  assert.deepEqual(walk(join(root, 'public/media')).filter(f => !src.includes(`/media/${f}`) && !(f.startsWith('pitchdeck/') && src.includes(f.slice('pitchdeck/'.length)))), []);   // the deck builds its paths from A = '/media/pitchdeck/'
 });
 
 test('every <img> has alt, intrinsic size and an async decode hint (no layout shift)', () => {
@@ -83,6 +83,7 @@ test('class names do not collide with the page-level layout classes (.dot.top on
 test('split hosts: the game link goes through GAME_BASE and nothing calls a bare /api path', () => {
   assert.match(main, /STORYBOOK_BASE/); assert.match(html, /id="storybook-link"/, 'footer links to the model viewer');
   assert.match(main, /WHITEPAPER_BASE/); assert.match(html, /id="whitepaper-link"/, 'footer links to the whitepaper');
+  assert.match(main, /PITCHDECK_BASE/); assert.match(html, /id="pitchdeck-link"/, 'footer links to the pitch deck');
   assert.match(main, /GAME_BASE/); assert.doesNotMatch(main, /\/play\.html'/, 'no hard-coded /play.html in a JS string');
   for (const f of ['src/main.js', 'src/dash-live.js']) assert.doesNotMatch(readFileSync(join(root, f), 'utf8'), /fetch\(|XMLHttpRequest/, `${f}: API calls go through client/site/wallet.js (API_BASE)`);
 });

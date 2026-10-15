@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs ON THE SERVER (piped over ssh by deploy/scripts/setup.sh). First-time, idempotent:
-#   /srv/freightchain/{releases,backups,state}  ·  nginx sites for the names (apex, ride., api. | storybook. | whitepaper. | admin.)  ·  a Let's Encrypt certificate.
+#   /srv/freightchain/{releases,backups,state}  ·  nginx sites for the names (apex, ride., api. | storybook. | whitepaper. | pitchdeck. | admin.)  ·  a Let's Encrypt certificate.
 # Touches nothing else: other nginx sites, ufw and the other containers are left as they are.
 set -euo pipefail
 for kv in "$@"; do export "$kv"; done
@@ -17,7 +17,7 @@ chmod 700 "$DEPLOY_PATH/backups" "$DEPLOY_PATH/state"
 say "folders ready under $DEPLOY_PATH"
 
 # The landing's hero loop (/media/hero-preview.mp4, ~2.2 MB, fetched lazily after `load`) and the game's sound effects (/audio/sfx/*.mp3, ~75 kB, fetched in the background): nginx caches them and answers Range requests itself, so the app is hit once per release.
-# The same snippet carries the two search redirects (marker fc-seo): ride.<apex>/ → the apex, <apex>/whitepaper.html → whitepaper.<apex>/.
+# The same snippet carries the two search redirects (marker fc-seo): ride.<apex>/ → the apex, <apex>/whitepaper.html → whitepaper.<apex>/, <apex>/pitchdeck.html → pitchdeck.<apex>/.
 # Two managed files (rewritten on every setup) + ONE include line in the apex/ride. server blocks – added to an already installed site too (certbot's 443 copy included), idempotent, undone if nginx -t fails.
 mkdir -p /var/cache/nginx/freightchain_media /etc/nginx/snippets /etc/nginx/conf.d
 cat > /etc/nginx/conf.d/freightchain-media.conf <<'CONF'
@@ -59,6 +59,7 @@ location = / {
     proxy_read_timeout 60s;
 }
 location = /whitepaper.html { return 301 https://whitepaper.$DOMAIN/\$is_args\$args; }
+location = /pitchdeck.html { return 301 https://pitchdeck.$DOMAIN/\$is_args\$args; }
 CONF
 if nginx -t 2>/dev/null; then systemctl reload nginx; rm -f /etc/nginx/snippets/freightchain-media.conf.bak; say "media cache + snippet written (mp4 loop + game sound effects), nginx reloaded"
 else
@@ -115,6 +116,19 @@ else
   say "nginx site for whitepaper.$DOMAIN installed and reloaded"
 fi
 
+# pitchdeck.<apex> (the pitch deck page) is its own site file too; same pattern.
+PD=/etc/nginx/sites-available/freightchain-pitchdeck
+if [ -f "$PD" ]; then
+  say "nginx site $PD exists – left as it is"
+else
+  [ -f "$DEPLOY_PATH/state/pitchdeck.conf.template" ] || fail "the pitchdeck nginx template was not uploaded"
+  sed -e "s/__ROOT__/$DOMAIN/g" -e "s/__PORT__/$APP_PORT/g" "$DEPLOY_PATH/state/pitchdeck.conf.template" > "$PD"
+  ln -sfn "$PD" /etc/nginx/sites-enabled/freightchain-pitchdeck
+  if ! nginx -t 2>/dev/null; then rm -f /etc/nginx/sites-enabled/freightchain-pitchdeck "$PD"; nginx -t || true; fail "nginx rejected the pitchdeck site – removed it again; nothing changed"; fi
+  systemctl reload nginx
+  say "nginx site for pitchdeck.$DOMAIN installed and reloaded"
+fi
+
 # admin.<apex> (the admin page, basic auth) is its own site file too; the deploy writes its password file before this runs (nginx would answer 500 without it).
 AD=/etc/nginx/sites-available/freightchain-admin
 if [ -f "$AD" ]; then
@@ -145,7 +159,7 @@ else
   say "WARNING: the www nginx template was not uploaded – no www redirect"
 fi
 
-NAMES="$DOMAIN ride.$DOMAIN api.$DOMAIN storybook.$DOMAIN whitepaper.$DOMAIN admin.$DOMAIN${WWW_NAME:+ $WWW_NAME}"
+NAMES="$DOMAIN ride.$DOMAIN api.$DOMAIN storybook.$DOMAIN whitepaper.$DOMAIN pitchdeck.$DOMAIN admin.$DOMAIN${WWW_NAME:+ $WWW_NAME}"
 COVERED=1
 if [ -f "/etc/letsencrypt/live/$DOMAIN/cert.pem" ]; then
   for n in $NAMES; do openssl x509 -in "/etc/letsencrypt/live/$DOMAIN/cert.pem" -noout -ext subjectAltName 2>/dev/null | grep -q "DNS:$n\b" || COVERED=0; done
