@@ -1,7 +1,7 @@
 /* What every part of the deck shares: the stage, its scale, the showing slide, one animation-frame loop, and a few small helpers. */
 
 export const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-export const view = { scale: 1, w: 1920, cur: -1 };   // scale: stage px → screen px (fit()); w: the stage's width (1920, wider on a screen wider than 16:9); cur: the showing slide
+export const view = { scale: 1, w: 1920, h: 1080, cur: -1 };   // scale: stage px → screen px (fit()); w: the stage's width (1920, wider on a screen wider than 16:9); cur: the showing slide
 export const stage = document.getElementById('stage'), deck = document.getElementById('deck');
 
 /** restart a one-shot CSS animation: drop the class, force a style flush, put it back */

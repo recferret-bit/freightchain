@@ -5,9 +5,10 @@ import { DONATE, SOL_USD } from './data.js';
 import { reduced, view, stage, deck, toStage, slideOf, everyFrame, pop, toast, shakeScreen } from './core.js';
 
 const usd = v => `$${v.toFixed(2)}`;
-const COIN_MAX = matchMedia('(pointer: coarse)').matches ? 60 : 120, G = 2600, FLOOR = 1075, CEIL = 40, E_FLOOR = .45, E_COIN = .3;   // a phone keeps half the pile; G in stage px/s²; the floor sits on the progress bar, the ceiling under the ticker
+const COIN_MAX = matchMedia('(pointer: coarse)').matches ? 60 : 120, G = 2600, CEIL = 40, E_FLOOR = .45, E_COIN = .3;   // a phone keeps half the pile; G in stage px/s²; the floor (floor()) sits on the progress bar, the ceiling under the ticker
 const CARD_SEL = ':is(.shot, .badge, .cc, .ladder li, .split > div, .tags span, .exit .sign)';   // what the coins bounce off on the showing slide
 const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz', b58 = n => Array.from({ length: n }, () => B58[Math.floor(Math.random() * 58)]).join('');
+const floor = () => view.h - 5;
 const coins = [], sucking = [];   // sucking = coins on their way into Web3 adoption
 const coinCv = document.createElement('canvas'), cctx = coinCv.getContext('2d');
 const sprite = (() => {   // one 128 px sprite: the Solana mark on a dark face inside a purple→green rim, a soft highlight on top
@@ -46,7 +47,7 @@ function drawCoins(all = false) {
   dirty = x1 > x0 ? [Math.floor(x0), Math.floor(y0), Math.ceil(x1), Math.ceil(y1)] : null;
 }
 const coinFit = () => { coinK = Math.min(2, Math.min(2, devicePixelRatio) * view.scale);   // at most 2 canvas px per screen px: a 3× phone would push 2.25× the pixels for no visible gain
-  coinCv.width = Math.round(view.w * coinK); coinCv.height = Math.round(1080 * coinK); drawCoins(true); };   // backing store at screen resolution, drawn in stage px
+  coinCv.width = Math.round(view.w * coinK); coinCv.height = Math.round(view.h * coinK); drawCoins(true); };   // backing store at screen resolution, drawn in stage px
 
 function collide(p, q) {   // two discs, mass ∝ area (a held one is immovable): push apart, then a restitution impulse along the normal
   const dx = q.x - p.x, dy = q.y - p.y, rr = p.r + q.r, d2 = dx * dx + dy * dy;
@@ -86,7 +87,7 @@ function hitBox(c, b) {   // a disc against a tilted rounded box: into the box's
 function bounds(c, h) {
   if (c.y - c.r >= CEIL) c.in = true;   // the ceiling only once a coin has dropped in: they are born above it
   if (c.in && c.y - c.r < CEIL) { c.y = CEIL + c.r; if (c.vy < 0) c.vy = -c.vy * E_FLOOR; }
-  if (c.y + c.r > FLOOR) { c.y = FLOOR - c.r; if (c.vy > 0) c.vy = c.vy > 90 ? -c.vy * E_FLOOR : 0; c.touch = true; }   // a slow landing stops dead: no endless micro-bounce
+  if (c.y + c.r > floor()) { c.y = floor() - c.r; if (c.vy > 0) c.vy = c.vy > 90 ? -c.vy * E_FLOOR : 0; c.touch = true; }   // a slow landing stops dead: no endless micro-bounce
   if (c.x - c.r < 0) { c.x = c.r; if (c.vx < 0) c.vx = -c.vx * E_FLOOR; } else if (c.x + c.r > view.w) { c.x = view.w - c.r; if (c.vx > 0) c.vx = -c.vx * E_FLOOR; }
   if (c.touch) { c.vx *= 1 - .5 * h; c.w += (c.vx / c.r - c.w) * Math.min(1, 10 * h); } else c.w *= 1 - .3 * h;   // touching something it rolls (spin = v / r) and slowly loses speed; in the air it keeps its spin
 }
@@ -195,7 +196,7 @@ function weighBodies(nowT) {
     if (empty) p.load = 0;
     if (empty && !p.y && !p.vy && !p.sm) continue;   // at rest: no reads, no writes
     p.sm += (p.load - p.sm) * Math.min(1, (p.load > p.sm ? 8 : 1.1) * dt);   // the weight builds fast and lingers (~1 s): a coin rolling off must not make the card flicker
-    if (p.ground == null) { const r = p.el.getBoundingClientRect(), [, bottom] = toStage(0, r.bottom); p.ground = Math.max(0, FLOOR - 14 - (bottom - p.y - (p.el === badge ? bd.y : 0))); }   // read once per weighing, not per frame
+    if (p.ground == null) { const r = p.el.getBoundingClientRect(), [, bottom] = toStage(0, r.bottom); p.ground = Math.max(0, floor() - 14 - (bottom - p.y - (p.el === badge ? bd.y : 0))); }   // read once per weighing, not per frame
     const c = 2 * Math.sqrt(p.k) * .42;   // under-damped: a little bounce when the weight comes and goes
     const a = (reduced ? 0 : p.sm * p.f) - p.k * p.y - c * p.vy;
     p.vy += a * dt; p.y += p.vy * dt;
