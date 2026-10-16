@@ -1,6 +1,6 @@
 # Referrals – detail
 
-Agent reference (see AGENTS.md). Read this before changing invites, the referral pot, or the donation share.
+Agent reference (see AGENTS.md). Read this before changing invites, the referral pot, or the donation share. The product write-up is `docs/features/referral/README.md`.
 
 ## In short
 
