@@ -160,7 +160,7 @@ h1 em{font-style:normal;color:var(--accent)}
 /* phones (script adds body.touch): the tip says swipe, safe areas, and the portrait "turn your phone" cover */
 #help .t{display:none}
 .touch #help .k{display:none}
-.touch #help{padding:7px 16px;transition:opacity .8s,visibility 0s}
+.touch #help{display:none}
 .touch #help.quiet{opacity:0!important;visibility:hidden;animation:none;transition:opacity .8s,visibility 0s .8s}
 .touch #help .t{display:inline}
 #help{bottom:max(14px,env(safe-area-inset-bottom))}
