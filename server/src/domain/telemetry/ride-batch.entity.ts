@@ -87,7 +87,7 @@ export class RideBatch {
     if (body.traffic && (body.traffic.length > TRAFFIC_MAX_FRAMES || JSON.stringify(body.traffic).length > TRAFFIC_MAX_BYTES)) body = { ...body, traffic: undefined };   // dropped, never refused
     return new RideBatch({
       rideId, seq: body.seq, prevHash: body.prevHash, hash: body.hash, hashOk: body.hash !== null && body.hash === serverHash, serverHash,
-      t0: body.t0, t1: body.t1, samples: body.samples.length, inputs: body.inputs.length, bytes, body, summary: summariseBatch(body.seq, body.t0, body.t1, body.samples, body.inputs, plan, prefix), receivedAt: now,
+      t0: body.t0, t1: body.t1, samples: body.samples.length, inputs: body.inputs.length, bytes, body, summary: summariseBatch(body.seq, body.t0, body.t1, body.samples, body.inputs, plan, prefix, true), receivedAt: now,
     });
   }
 

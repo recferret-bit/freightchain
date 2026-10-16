@@ -12,5 +12,6 @@ export abstract class ReplayQueuePort {
   abstract dequeueBatch(limit: number): Promise<ReplayQueueJob[]>;
   abstract acknowledge(rideId: string, replayId: string): Promise<void>;
   abstract release(job: ReplayQueueJob, error: string): Promise<void>;
+  abstract isInFlight(rideId: string): Promise<boolean>;
   abstract depth(): Promise<number>;
 }

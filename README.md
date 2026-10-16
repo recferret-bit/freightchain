@@ -125,9 +125,11 @@ The production replay worker was restarting at the read-only check. Its explicit
 - [The road](#the-road)
 - [Money](#money)
 - [Sites](#sites)
+- [Technical](#technical)
 - [Repository](#repository)
 - [Skills](#skills)
 - [Run it](#run-it)
+- [3D entity editor and AI generation](#3d-entity-editor-and-ai-generation)
 - [Tests](#tests)
 
 ## Open the site
@@ -427,6 +429,91 @@ Layers point inward. Domain code does not read the clock or the environment. Tim
 Running totals (rides, time, kilometres, crashes, donations) count every started ride that ended. Free and paid are counted apart. Reads are cached for 15 seconds. [`docs/statistics.md`](docs/statistics.md)
 
 The intro clip is real gameplay, 14.8 seconds, with the in-game synth: [`media/out/video/intro/intro.mp4`](media/out/video/intro/intro.mp4).
+
+## Technical
+
+### Backend (`server/`)
+
+The backend is a strict native-ESM TypeScript service built on **NestJS 12**, **Prisma 6**, **PostgreSQL 17**, and **Redis 7**, structured around **Clean Architecture**, **Hexagonal Ports & Adapters**, and **CQRS**. Every architectural boundary, HTTP contract rule, line-count cap (`≤ 500` lines per file), and test-pyramid requirement is enforced at test time by source-level audits in [`server/test/architecture/`](server/test/architecture). Full specification: [`docs/backend-architecture.md`](docs/backend-architecture.md).
+
+#### Architecture & Layers
+
+Dependencies point strictly inward (`presentation → application → domain ← infrastructure`):
+
+```mermaid
+flowchart TB
+  subgraph Presentation["presentation/ · Thin HTTP Controllers & Zod DTOs"]
+    ctrl["Controllers (@ZodBody / @ZodQuery / @ZodParams)"]
+  end
+  subgraph Application["application/ · CQRS Use-Cases, Services & Abstract Ports"]
+    bus["CommandBus / QueryBus Handlers"]
+    svc["Orchestration Services (Verdict, Settlement, Stats, Attestation…)"]
+    ports["Abstract *Port Tokens (Repositories, Clock, Cache, Chain, Queue…)"]
+  end
+  subgraph Domain["domain/ · Pure TypeScript Aggregates, Value Rules & Simulation"]
+    ent["Rich Entities (Ride, Player, Pool, RideTicket, Pledge, RideBatch, RideVerdict…)"]
+    sim["Shared Kernel (@freightchain/shared) · ReplayEngine · Traffic & Road Rules"]
+  end
+  subgraph Infrastructure["infrastructure/ · Concrete Adapters, Schedulers & Persistence"]
+    prisma["Prisma 6 Repositories & Mappers (10 PG Schemas)"]
+    redis["Redis 7 (Cache, Throttler, Replay Queue, Presence, Ops Logs, Locks)"]
+    chain["Solana RPC · Anchor Codecs · Bubblegum v2 cNFT · SNS"]
+    sched["Background Schedulers & Dedicated Workers (replay:worker, editor:worker)"]
+  end
+
+  ctrl --> bus
+  bus --> svc
+  bus --> ent
+  bus --> ports
+  svc --> ent
+  svc --> sim
+  svc --> ports
+  prisma -. implements .-> ports
+  redis -. implements .-> ports
+  chain -. implements .-> ports
+  sched --> bus
+  sched --> svc
+```
+
+| Layer | Path | Responsibility & Boundaries |
+| --- | --- | --- |
+| **Domain** | [`server/src/domain/`](server/src/domain) | Pure TypeScript with zero framework, database, or I/O imports (`domain` + `bs58` + `@freightchain/shared` only). Encapsulates aggregate entities with private state (`Ride`, `Player`, `Pool`, `RideTicket`, `Pledge`, `RideBatch`, `RideVerdict`, `RideReplay`, `PromoCode`), deterministic road/obstacle/physics/traffic rules, Merkle trees, and typed `DomainError`s. |
+| **Application** | [`server/src/application/`](server/src/application) | Defines `abstract class *Port` DI tokens (`application/ports/`), CQRS command and query handlers (`application/use-cases/`), and cross-aggregate application services (`VerdictService`, `TicketSettlementService`, `PoolRegistryService`, `AttestationService`, `HonkMintService`, `StatsService`, `AchievementService`, `EditorJobRunnerService`). Never imports Prisma, Redis, or Solana SDKs. |
+| **Infrastructure** | [`server/src/infrastructure/`](server/src/infrastructure) | Implements every port: Prisma repositories and domain-to-row mappers (`infrastructure/prisma/`), Redis adapters (`infrastructure/cache/`, `infrastructure/live/`, `infrastructure/verdict/`), Solana RPC and program codecs (`infrastructure/solana/`), SPL Name Service (`infrastructure/sns/`), `jose` JWT tokens and `tweetnacl` Ed25519 verifiers (`infrastructure/auth/`), PostHog EU batching (`infrastructure/analytics/`), HTTP guards/interceptors/filters (`infrastructure/http/`), and background schedulers (`infrastructure/scheduling/`). |
+| **Presentation** | [`server/src/presentation/`](server/src/presentation) | Thin controllers and Zod request schemas. Controllers never touch `@Req()` / `@Res()`, never throw Nest `HttpException`s, and never execute business logic directly—every route dispatches a single Command or Query to the bus and returns a typed DTO. |
+
+#### Tools & Technology Stack
+
+| Category | Tools & Libraries | Role in the Backend |
+| --- | --- | --- |
+| **Runtime & Framework** | Node.js (native ESM), TypeScript 6 (`strict`), NestJS 12 (`@nestjs/core`, `@nestjs/cqrs`, `@nestjs/throttler`), Express | Modular dependency injection, CQRS command/query bus, per-route and per-wallet/IP rate limiting, and HTTP pipeline. |
+| **Database & Schemas** | PostgreSQL 17, Prisma 6 (multi-file schema), hand-reviewed forward-only SQL migrations | Partitioned into 10 bounded-context PostgreSQL schemas: `player`, `ride`, `economy`, `achievement`, `telemetry`, `verdict`, `admin`, `live`, `stats`, and `asset`. Zero schema drift enforced against `prisma/migrations/`. |
+| **Cache, Queues & Coordination** | Redis 7 (`ioredis`) | Shared rate-limit counters (`RedisThrottlerStorage`), asynchronous replay verification queue (`RedisReplayQueueAdapter`), atomic Lua-scripted spectator and site presence (`RedisSitePresenceAdapter`, `RedisViewerPresenceAdapter`), distributed scheduler leases (`SET NX PX`), and cluster-wide admin log ring (`fc:ops:logs`). |
+| **Validation, Auth & Wire Contract** | Zod 3, `jose` (`HS256`), `tweetnacl`, `bs58`, RFC 9457 `application/problem+json` | `@ZodBody` / `@ZodQuery` / `@ZodParams` validation, surface-isolated `HttpOnly` JWT cookies (`fc_session`, `fc_admin`, `fc_editor`), CAIP-122 `solana:signIn` verification, wallet-signed admin/publish proofs, and `ProblemDetailsFilter` with `X-Request-Id` tracing. |
+| **Blockchain & Shared Kernel** | `@solana/web3.js`, `@solana/spl-token`, Metaplex Umi + Bubblegum v2, `@freightchain/shared` | Anchor escrow pool codecs and event polling, HONK token emission/burn verification, soulbound compressed NFT achievement minting, `.sol` reverse/forward resolution, and deterministic road/physics/traffic simulation shared with the browser client. |
+| **AI Model Editor & MCP** | `@anthropic-ai/sdk`, `openai`, `@modelcontextprotocol/sdk` | Dedicated 5-slot `editor:worker` driving LLM tool-use loops against the isolated `mcp/` Streamable HTTP server with short-lived per-job capability tokens. |
+| **Testing & Linting** | Vitest 4, Supertest, `oxlint --type-aware`, Prettier | Unit, architecture, migration, in-memory HTTP scenario, and real PostgreSQL integration + concurrency suites (`freightchain_test`). |
+
+#### Core Engineering Patterns
+
+- **Hexagonal Determinism (`ClockPort`, `EntropyPort`, `EnvService`)**: Domain and application code never call `Date.now()`, `new Date()`, `Math.random()`, or `process.env`. Wall-clock time comes exclusively from `ClockPort`, IDs/nonces/seeds from `EntropyPort`, and validated configuration from `EnvService`. Unit and HTTP scenario suites advance time deterministically via `FakeClock` without sleeping.
+- **Strict Pessimistic Lock Ordering & Optimistic Concurrency**: Every wallet operation on rides, free credits, tickets, payments, or pledges runs inside one interactive PostgreSQL transaction under `SELECT … FOR UPDATE` on the `Player` row (`findByWalletForUpdate`). Cross-entity mutations obey a strict lock hierarchy (**`Player` → `Pool` → `RideTicket` / `Pledge`**) to eliminate deadlocks. Concurrent state transitions on `Ride`, `Player`, `Pool`, `RideTicket`, and `RideVerdict` enforce optimistic `version` checks with automatic retry (`withVersionRetry`), while live stream effects serialize per ride via transaction-scoped advisory locks (`pg_advisory_xact_lock`).
+- **Stateless Horizontal Scaling**:
+  - **Cluster-Wide Presence & Ops Logs**: Live site visitors and stream spectators are tracked in Redis sorted sets via single-roundtrip Lua scripts (`ZADD` + `ZREMRANGEBYSCORE` + `ZCARD` + `PEXPIRE`) with automatic circuit-breaker fallback to in-memory adapters if Redis is unreachable. Structured operational logs mirror to a bounded Redis ring so `/api/admin/logs` returns cluster-wide entries across all replicas.
+  - **Distributed Scheduler & Signer Leases**: Background loops (`ProgramWatcher`, `PoolCrankScheduler`, `PoolPayoutScheduler`, `AchievementMintScheduler`, `DailyFreeRideScheduler`, `StaleRideScheduler`, `TelemetryRetentionScheduler`) and `AttestationService` acquire atomic Redis locks (`CachePort.tryLock` / `releaseLock`) before polling RPCs, sweeping tables, or signing on-chain transactions.
+  - **Deduplicated Worker Queues**: Replay verification jobs coordinate between `app` and `replay:worker` replicas via `RedisReplayQueueAdapter` with in-flight claim tracking (`isInFlight`) and idempotent `expectedPendingReplayId` checks so a completed replay is never re-simulated twice.
+  - **Bounded Hot-Path Caches**: Immutable seed-derived `RoadPlan` obstacle chunks (`MAX_CACHED_CHUNKS = 4096`), decompressed `RideBatch` payloads (256-entry LRU in `RideBatchMapper`), and `.sol` SNS lookups (24 h hit / 30 min miss) are cached in bounded structures to keep `/api/watch/:id`, `/api/live`, and `/api/rides/:id/batches` off the CPU and event loop.
+- **Architectural Self-Auditing (`server/test/architecture/`)**: Automated specs parse the TypeScript AST/source to verify that layers never leak imports, every port is bound in `InfrastructureModule`, every route uses `@Zod*` decorators and dispatches through the CQRS bus, every ride-ending path updates `StatsService` under the player lock, and every controller, handler, service, guard, interceptor, filter, and repository has its corresponding unit and PostgreSQL integration spec.
+
+#### Core Backend Features
+
+1. **Wallet Authentication & Multi-Surface Access Control**: One-prompt Wallet Standard `solana:signIn` (CAIP-122) and legacy `signMessage` fallback backed by atomic single-use nonces (`DELETE … RETURNING`). Separate cookies, secrets, and host/origin guards isolate player sessions (`fc_session`), admin sessions (`fc_admin` on `admin.<domain>` + per-action Ed25519 `AdminProof` signatures), and 3D editor sessions (`fc_editor` on `storybook.<domain>`).
+2. **Ride Lifecycle & Server-Controlled World**: Manages free levels (`EASY`, `MEDIUM`, `HARD`), lazy + midnight UTC free-ride refills, and paid shifts (`1h`, `4h`, `8h`). The server assigns the ride seed (provably derived from on-chain `SlotHashes` for pools), route, and start hour, and serves the canonical obstacle plan (`GET /api/watch/:id/road`).
+3. **Telemetry Ingestion, Anti-Cheat & 10 Hz Replay Engine**: Accepts gzip-compressed, SHA-256 hash-chained 10 Hz telemetry batches (`POST /api/rides/:id/batches`) and computes RFC 6962 Merkle roots over accepted batches. Validates admission bounds, hole damage, off-road tolerances, human input timing, and required frame-level traffic proof (`trafficVersion=1`), then executes full 10 Hz physics and traffic reconstruction in `ReplayEngine` using `@freightchain/shared`.
+4. **On-Chain Escrow Mirror, Tickets, Pledges & Solana Actions**: `ProgramWatcher`, webhook ingestion, and `FinalityService` mirror on-chain pool accounts and settle ticket purchases and per-km sponsor pledges with fork/drop safety. Exposes Solana Pay QR transactions and CORS-enabled Solana Actions / Blinks (`/actions.json`, `/api/actions/*`), plus automated cranking (`PoolCrankScheduler`) and Merkle-root/attestation prize settlement (`PoolPayoutScheduler`).
+5. **HONK Tokenomics, Garage & Promo Codes**: Credits capped HONK checkpoints on verified paid finishes (`HonkMintService`), verifies on-chain HONK burns for cab visuals, persists all-or-nothing 9-slot Garage loadouts, and processes scheduled/capped promo codes.
+6. **Live Spectating, Replays, Donations & Cached Statistics**: Serves ~25 s delayed live streams and multi-speed replays (`1×`, `4×`, `16×`) from incremental batch cursors, rate-limited CB chat, driver mutes, Solana Pay tips, advisory-locked spectator road/weather/time effects, and 15 s cached global/player/daily statistics.
+7. **Soulbound Badge cNFTs & 3D Entity Editor**: Evaluates 34 achievement tiers across 9 ladders and mints soulbound Metaplex Bubblegum v2 compressed NFTs after a review delay (`AchievementMintScheduler`). Serves ETag-cached 3D entity bundles (`/api/entities/bundle`), append-only entity revisions, wallet-signed publishing, and PostgreSQL-queued AI generation jobs (`EditorJobRunnerService`).
 
 ## Repository
 

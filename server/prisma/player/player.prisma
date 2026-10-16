@@ -22,6 +22,7 @@ model Player {
   driverPledges  Pledge[] @relation("DriverPledges")
 
   @@index([createdAt]) // the admin PLAYERS list: newest first
+  @@index([freeDay]) // the midnight daily free-ride grant
   @@schema("player")
 }
 

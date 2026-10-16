@@ -1,6 +1,7 @@
-import { Injectable, Logger, type OnApplicationBootstrap, type OnApplicationShutdown } from '@nestjs/common';
+import { Injectable, Logger, Optional, type OnApplicationBootstrap, type OnApplicationShutdown } from '@nestjs/common';
 import { CommandBus } from '@nestjs/cqrs';
 import { PoolChainPort } from '../../application/ports/economy/pool-chain.port.js';
+import { CachePort } from '../../application/ports/shared/cache.port.js';
 import { PollProgramCommand, type PollProgramResultDto } from '../../application/use-cases/chain/poll-program/poll-program.command.js';
 import { SyncPoolsCommand, type SyncPoolsResultDto } from '../../application/use-cases/chain/sync-pools/sync-pools.command.js';
 import { SECOND_MS } from '../../domain/shared/time.js';
@@ -9,6 +10,8 @@ import { EnvService } from '../config/env.service.js';
 /** a burst of websocket notifications (one per transaction) becomes one poll */
 export const LOGS_DEBOUNCE_MS = SECOND_MS;
 export const POOL_SYNC_MS = 60 * SECOND_MS;
+const POLL_LOCK_KEY = 'sched:program-poll';
+const SYNC_LOCK_KEY = 'sched:program-sync';
 
 /**
  * The program-log watcher (docs/agents/escrow.md), registered in AppModule only – the admin CLI boots the application layer without timers or sockets.
@@ -34,6 +37,7 @@ export class ProgramWatcher implements OnApplicationBootstrap, OnApplicationShut
     private readonly commands: CommandBus,
     private readonly chain: PoolChainPort,
     private readonly env: EnvService,
+    @Optional() private readonly cache?: CachePort,
   ) {}
 
   /** WATCH_INTERVAL_MS > 0 AND the ticket program is what money goes through (PAYMENT_MODE=program): in transfer mode there is no program to watch –
@@ -86,10 +90,13 @@ export class ProgramWatcher implements OnApplicationBootstrap, OnApplicationShut
     if (this.syncing || this.stopped) return;
     this.syncing = true;
     try {
-      const r = await this.commands.execute<SyncPoolsCommand, SyncPoolsResultDto>(new SyncPoolsCommand());
-      for (const d of r.drifted) this.log.warn(`pool ${d.poolId} drifted from its account (the chain wins): ${d.changes.join(', ')}`);
-      if (r.missing.length) this.log.debug(`pools not on chain: ${r.missing.join(', ')}`);
+      if (!this.cache || await this.cache.tryLock(SYNC_LOCK_KEY, Math.floor(POOL_SYNC_MS * 0.8))) {
+        const r = await this.commands.execute<SyncPoolsCommand, SyncPoolsResultDto>(new SyncPoolsCommand());
+        for (const d of r.drifted) this.log.warn(`pool ${d.poolId} drifted from its account (the chain wins): ${d.changes.join(', ')}`);
+        if (r.missing.length) this.log.debug(`pools not on chain: ${r.missing.join(', ')}`);
+      }
     } catch (error) {
+      await this.cache?.releaseLock(SYNC_LOCK_KEY);
       this.log.error(`pool sync failed: ${message(error)}`);
     } finally {
       this.syncing = false;
@@ -99,6 +106,7 @@ export class ProgramWatcher implements OnApplicationBootstrap, OnApplicationShut
   }
 
   private async pollOnce(): Promise<void> {
+    if (this.cache && !(await this.cache.tryLock(POLL_LOCK_KEY, Math.max(500, Math.min(10_000, Math.floor(this.env.watchIntervalMs * 0.8)))))) return;
     try {
       const r = await this.commands.execute<PollProgramCommand, PollProgramResultDto>(new PollProgramCommand());
       if (r.settled || r.finality.finalized || r.finality.dropped) {
@@ -107,6 +115,8 @@ export class ProgramWatcher implements OnApplicationBootstrap, OnApplicationShut
       for (const e of r.errors) this.log.error(`program transaction ${e.signature} passed over: ${e.message}`);
     } catch (error) {
       this.log.error(`program poll failed: ${message(error)}`);
+    } finally {
+      await this.cache?.releaseLock(POLL_LOCK_KEY);
     }
   }
 

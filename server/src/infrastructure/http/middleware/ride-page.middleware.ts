@@ -7,6 +7,9 @@ import type { EnvService } from '../../config/env.service.js';
 const RIDE_PAGE_ROUTE = /^\/r\/([a-zA-Z0-9_-]{1,64})$/;
 let cachedTemplate: string | null = null;
 
+const escapeHtml = (s: string): string =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
 export function ridePageMiddleware(prisma: PrismaService | null, env: EnvService): (req: Request, res: Response, next: NextFunction) => void {
   const clientDir = env?.clientDir ?? '';
   const rHtmlPath = clientDir ? join(clientDir, 'r.html') : '';
@@ -35,7 +38,7 @@ export function ridePageMiddleware(prisma: PrismaService | null, env: EnvService
     prisma.ride
       .findUnique({
         where: { id: rideId },
-        include: { payment: true, verdict: true },
+        select: { lastS: true, route: true, wallet: true, status: true, tier: true, verdict: { select: { status: true } } },
       })
       .then((ride) => {
         if (!ride) {
@@ -66,16 +69,18 @@ export function ridePageMiddleware(prisma: PrismaService | null, env: EnvService
         }
 
         const origin = env?.appOrigin || `https://${env?.appDomain ?? 'freightchain.fun'}`;
-        const canonical = `${origin}/r/${rideId}`;
+        const safeCanonical = escapeHtml(`${origin}/r/${rideId}`);
+        const safeTitle = escapeHtml(title);
+        const safeDesc = escapeHtml(desc);
 
-        let html = template
-          .replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`)
-          .replace(/<link rel="canonical"[^>]*>/, `<link rel="canonical" href="${canonical}">`)
-          .replace(/<meta property="og:url" content="[^"]*"/, `<meta property="og:url" content="${canonical}"`)   // X / Discord / Telegram name the shared ride, not the template's /r/
-          .replace(/<meta property="og:title" content="[^"]*"/, `<meta property="og:title" content="${title}"`)
-          .replace(/<meta property="og:description" content="[^"]*"/, `<meta property="og:description" content="${desc}"`)
-          .replace(/<meta name="twitter:title" content="[^"]*"/, `<meta name="twitter:title" content="${title}"`)
-          .replace(/<meta name="twitter:description" content="[^"]*"/, `<meta name="twitter:description" content="${desc}"`);
+        const html = template
+          .replace(/<title>[^<]*<\/title>/, () => `<title>${safeTitle}</title>`)
+          .replace(/<link rel="canonical"[^>]*>/, () => `<link rel="canonical" href="${safeCanonical}">`)
+          .replace(/<meta property="og:url" content="[^"]*"/, () => `<meta property="og:url" content="${safeCanonical}"`)
+          .replace(/<meta property="og:title" content="[^"]*"/, () => `<meta property="og:title" content="${safeTitle}"`)
+          .replace(/<meta property="og:description" content="[^"]*"/, () => `<meta property="og:description" content="${safeDesc}"`)
+          .replace(/<meta name="twitter:title" content="[^"]*"/, () => `<meta property="og:title" content="${safeTitle}"`)
+          .replace(/<meta name="twitter:description" content="[^"]*"/, () => `<meta name="twitter:description" content="${safeDesc}"`);
 
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         res.send(html);

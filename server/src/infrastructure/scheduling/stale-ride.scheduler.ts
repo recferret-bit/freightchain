@@ -1,10 +1,13 @@
-import { Injectable, Logger, type OnApplicationBootstrap, type OnApplicationShutdown } from '@nestjs/common';
+import { Injectable, Logger, Optional, type OnApplicationBootstrap, type OnApplicationShutdown } from '@nestjs/common';
 import { CommandBus } from '@nestjs/cqrs';
 import { SweepStaleRidesCommand, type SweepStaleRidesResultDto } from '../../application/use-cases/rides/sweep-stale-rides/sweep-stale-rides.command.js';
 import { RulesConfigPort } from '../../application/ports/config/rules-config.port.js';
+import { CachePort } from '../../application/ports/shared/cache.port.js';
+
+const LOCK_KEY = 'sched:stale-rides';
 
 /** Runs SweepStaleRidesCommand on boot and then every min(30 s, HB_TIMEOUT_MS / 3) – an abandoned ride (silent for the timeout) is ended within one interval after.
-    A plain timer and an idempotent command (same shape as TelemetryRetentionScheduler); AppModule only – the admin CLI boots without timers. */
+    Coordinated across replicas via CachePort.tryLock when Redis is configured; AppModule only – the admin CLI boots without timers. */
 @Injectable()
 export class StaleRideScheduler implements OnApplicationBootstrap, OnApplicationShutdown {
   private readonly log = new Logger(StaleRideScheduler.name);
@@ -14,6 +17,7 @@ export class StaleRideScheduler implements OnApplicationBootstrap, OnApplication
   constructor(
     private readonly commands: CommandBus,
     private readonly rules: RulesConfigPort,
+    @Optional() private readonly cache?: CachePort,
   ) {}
 
   get intervalMs(): number { return Math.min(30_000, Math.floor(this.rules.get().hbTimeoutMs / 3)); }
@@ -29,11 +33,15 @@ export class StaleRideScheduler implements OnApplicationBootstrap, OnApplication
   }
 
   async run(): Promise<void> {
-    try {
-      const { ended } = (await this.commands.execute(new SweepStaleRidesCommand())) as SweepStaleRidesResultDto;
-      if (ended > 0) this.log.log({ event: 'stale-sweep', msg: `ended ${ended} ride(s) whose tab vanished (failed · heartbeat lost)`, ended });
-    } catch (error) {
-      this.log.error(`stale ride sweep failed: ${error instanceof Error ? error.message : String(error)}`);
+    const ttl = Math.max(1000, Math.floor(this.intervalMs * 0.8));
+    if (!this.cache || await this.cache.tryLock(LOCK_KEY, ttl)) {
+      try {
+        const { ended } = (await this.commands.execute(new SweepStaleRidesCommand())) as SweepStaleRidesResultDto;
+        if (ended > 0) this.log.log({ event: 'stale-sweep', msg: `ended ${ended} ride(s) whose tab vanished (failed · heartbeat lost)`, ended });
+      } catch (error) {
+        await this.cache?.releaseLock(LOCK_KEY);
+        this.log.error(`stale ride sweep failed: ${error instanceof Error ? error.message : String(error)}`);
+      }
     }
     if (this.stopped) return;
     this.timer = setTimeout(() => void this.run(), this.intervalMs);

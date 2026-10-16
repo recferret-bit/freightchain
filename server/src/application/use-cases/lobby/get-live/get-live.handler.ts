@@ -26,13 +26,14 @@ export class GetLiveHandler implements IQueryHandler<GetLiveQuery, LiveFeedDto> 
 
   async execute({ visitor, page, source, wallet, leave }: GetLiveQuery = new GetLiveQuery()): Promise<LiveFeedDto> {
     const now = this.clock.now();
-    if (visitor && leave) this.presence.leave(source, visitor);   // a closing page's beacon
-    else if (visitor && PAGES.has(page)) this.presence.seen(source, visitor, page, wallet, now);
-    const [rows, upcoming, finished, totals] = await Promise.all([
+    if (visitor && leave) await this.presence.leave(source, visitor);   // a closing page's beacon
+    else if (visitor && PAGES.has(page)) await this.presence.seen(source, visitor, page, wallet, now);
+    const [rows, upcoming, finished, totals, site, watching] = await Promise.all([
       this.rideQuery.live(new Date(now.getTime() - this.rules.get().hbTimeoutMs), LIVE_FEED_LIMIT),
       this.rideQuery.upcoming(UPCOMING_LIMIT), this.rideQuery.finished(FINISHED_LIMIT), this.stats.global(),
+      this.presence.snapshot(now), this.viewers.watching(now),
     ]);
-    const site = this.presence.snapshot(now), watching = this.viewers.watching(now);
+    const viewerCounts = await Promise.all(rows.map((r) => this.viewers.count(r.id, now)));
     const players = new Set([...site.wallets, ...rows.map((r) => r.wallet)]);
     return {
       now: now.getTime(),
@@ -40,7 +41,7 @@ export class GetLiveHandler implements IQueryHandler<GetLiveQuery, LiveFeedDto> 
       recent: finished.map((r) => ({ id: r.id, wallet: r.wallet, tier: r.tier, route: r.route, status: r.status, distance: Math.round(r.lastS), endedAt: r.endedAt?.getTime() ?? null })),
       totals: { shifts: totals.ridesCompleted, rides: totals.rides, ridesFree: totals.ridesFree, ridesPaid: totals.ridesPaid, metres: totals.metres, seconds: totals.seconds, drivers: totals.drivers, crashes: totals.crashes, donations: totals.donations },
       online: { total: site.visitors + watching + rows.length, browsing: site.visitors, watching, driving: rows.length, players: players.size },
-      rides: rows.map((r) => {
+      rides: rows.map((r, idx) => {
         const sinceBeat = Math.round((now.getTime() - r.lastHbAt.getTime()) / 1000);
         return {
           id: r.id, wallet: r.wallet, tier: r.tier, route: r.route, timeScale: r.timeScale, paused: r.paused,
@@ -48,7 +49,7 @@ export class GetLiveHandler implements IQueryHandler<GetLiveQuery, LiveFeedDto> 
           distance: Math.round(r.lastS), completeDist: r.completeDist,
           progress: Math.min(1, r.lastS / r.completeDist),
           sinceBeat, startedAt: r.startedAt.getTime(),
-          viewers: this.viewers.count(r.id, now), signal: r.paused ? 'paused' as const : sinceBeat > WEAK_SIGNAL_SECONDS ? 'weak' as const : 'live' as const,
+          viewers: viewerCounts[idx] ?? 0, signal: r.paused ? 'paused' as const : sinceBeat > WEAK_SIGNAL_SECONDS ? 'weak' as const : 'live' as const,
         };
       }),
     };

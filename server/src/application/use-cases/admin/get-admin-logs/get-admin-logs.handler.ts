@@ -9,6 +9,6 @@ export class GetAdminLogsHandler implements IQueryHandler<GetAdminLogsQuery, Adm
   constructor(private readonly logs: LogBufferPort) {}
 
   async execute({ filter }: GetAdminLogsQuery): Promise<AdminLogsDto> {
-    return { entries: this.logs.recent(filter) };
+    return { entries: await this.logs.recent(filter) };
   }
 }

@@ -36,6 +36,7 @@ export class RidePrismaRepository extends RideRepositoryPort {
     const rows = await clientFor(this.prisma, tx).ride.findMany({
       where: { wallet, tier: { not: 'free' }, OR: [{ status: { in: ['awaiting_payment', 'created'] } }, { status: 'expired', createdAt: { gt: since } }] },
       orderBy: NEWEST_FIRST,
+      take: 20,
     });
     const rides = rows.map((row) => RideMapper.toDomain(row)).sort((a, b) => Number(b.status === RideStatus.Created) - Number(a.status === RideStatus.Created)); // a paid ride first
     return rides[0] ?? null;
@@ -71,6 +72,7 @@ export class RidePrismaRepository extends RideRepositoryPort {
         },
       },
       orderBy: [{ lastS: 'desc' }, { driveSeconds: 'asc' }],
+      take: 1,
     });
     return rows[0] ? RideMapper.toDomain(rows[0]) : null;
   }

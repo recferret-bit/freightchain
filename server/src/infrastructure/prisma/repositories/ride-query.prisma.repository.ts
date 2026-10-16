@@ -73,19 +73,20 @@ export class RideQueryPrismaRepository extends RideQueryPort {
 
   async finished(limit: number): Promise<FinishedRideRow[]> {
     const rows = await this.prisma.ride.findMany({
-      where: { status: { in: ['completed', 'abandoned', 'failed'] }, startedAt: { not: null } },
-      orderBy: [{ endedAt: { sort: 'desc', nulls: 'last' } }, { seq: 'desc' }],
+      where: { status: { in: ['completed', 'abandoned', 'failed'] }, startedAt: { not: null }, endedAt: { not: null } },
+      orderBy: [{ endedAt: 'desc' }, { seq: 'desc' }],
       take: limit,
     });
     return rows.map((r) => ({ id: r.id, wallet: r.wallet, tier: r.tier, route: r.route, status: r.status, lastS: r.lastS, endedAt: r.endedAt }));
   }
 
-  /** Two queries: one aggregate over the started rides, and the completed rides themselves (few per wallet) for the per-ride achievement facts. */
+  /** Aggregate over the started rides, the completed rides themselves (few per wallet) for the per-ride achievement facts, and HONK counts. */
   async summary(wallet: string, opts: { skipRejected?: boolean } = {}): Promise<RideSummary> {
-    const [started, done, honk] = await Promise.all([
+    const [started, done, honkMints, honkFinishes] = await Promise.all([
       this.prisma.ride.aggregate({ where: { wallet, startedAt: { not: null } }, _count: { _all: true }, _sum: { lastS: true } }),
       this.prisma.ride.findMany({ where: { wallet, status: 'completed' }, select: { tier: true, trip: true, assist: true, lastS: true, hull: true, route: true, nightSeconds: true, driveSeconds: true, verdict: { select: { status: true, reasons: true } } } }),
-      this.prisma.honkMint.findMany({ where: { wallet, amount: { gt: 0 } }, select: { band100: true } }),
+      this.prisma.honkMint.count({ where: { wallet, amount: { gt: 0 } } }),
+      this.prisma.honkMint.count({ where: { wallet, amount: { gt: 0 }, band100: true } }),
     ]);
     // the badges' rides: a ride the verdict rejected (achievements.ts badgeRejected) earns no completion badge and its metres don't count – its START still
     // does (starting is not a judged fact). Verdicts are only ever on completed rides, so the rejected ones are a part of `done` and come off the metres.
@@ -99,7 +100,7 @@ export class RideQueryPrismaRepository extends RideQueryPort {
         siberiaShifts: fair.filter((r) => r.route === SIBERIA).length,
         freeUnassisted: fair.filter((r) => r.tier === 'free' && !r.assist).length,
         completedFreeLevels: completedLevels(fair),
-        honkMints: honk.length, honkFinishes: honk.filter((m) => m.band100).length,
+        honkMints, honkFinishes,
       },
     };
   }
@@ -146,7 +147,7 @@ export class RideQueryPrismaRepository extends RideQueryPort {
     const planned = (await this.prisma.poolPayout.findMany({ distinct: ['poolId'], select: { poolId: true } })).map((p) => p.poolId);
     const rows = await this.prisma.ride.findMany({
       where: { status: 'completed', ...byVerdict, ...(f.since ? { endedAt: { gte: f.since } } : {}), ...(planned.length ? { OR: [{ poolId: null }, { poolId: { notIn: planned } }] } : {}) },
-      orderBy: [{ endedAt: 'asc' }, { seq: 'asc' }], take: f.limit, include: { verdict: { select: { status: true } } },
+      orderBy: [{ endedAt: 'asc' }, { seq: 'asc' }], take: limitOf(f.limit), include: { verdict: { select: { status: true } } },
     });
     return rows.map((r) => ({ id: r.id, verdict: r.verdict?.status ?? null }));
   }
@@ -161,7 +162,7 @@ export class RideQueryPrismaRepository extends RideQueryPort {
 
   private paidWhere(match: Prisma.Sql, verifiedOnly: boolean): Prisma.Sql {
     const verified = verifiedOnly
-      ? Prisma.sql`AND EXISTS (SELECT 1 FROM "verdict"."RideVerdict" v WHERE v."rideId" = r.id AND v.status::text = 'verified')`
+      ? Prisma.sql`AND EXISTS (SELECT 1 FROM "verdict"."RideVerdict" v WHERE v."rideId" = r.id AND v.status = 'verified'::"verdict"."VerdictStatus")`
       : Prisma.empty;
     return Prisma.sql`${match} ${verified}`;
   }
@@ -171,7 +172,7 @@ export class RideQueryPrismaRepository extends RideQueryPort {
     return Prisma.sql`
       SELECT r.wallet AS wallet, SUM(r."lastS")::float8 AS distance, SUM(r."driveSeconds")::float8 AS seconds, COUNT(*)::int AS rides, MIN(r."endedAt") AS first_end,
              (ARRAY_AGG(r.hull ORDER BY r."lastS" DESC, r."endedAt" DESC NULLS LAST, r.seq DESC))[1]::float8 AS hull
-      FROM "ride"."Ride" r WHERE r.status::text = 'completed' AND ${where} GROUP BY r.wallet`;
+      FROM "ride"."Ride" r WHERE r.status = 'completed'::"ride"."RideStatus" AND ${where} GROUP BY r.wallet`;
   }
 
   private async ranked(where: Prisma.Sql, sort: LeaderboardSort, offset: number, limit: number, cap: number): Promise<LeaderboardPage> {
@@ -187,6 +188,8 @@ export class RideQueryPrismaRepository extends RideQueryPort {
     return { rows: [], total: num(count?.total) };
   }
 }
+
+const limitOf = (n: number) => n;
 
 interface RawRank { wallet: string; distance: unknown; seconds: unknown; rides: unknown; hull: unknown; rank: unknown; total?: unknown }
 const num = (v: unknown) => { const n = typeof v === 'number' ? v : Number(v); return Number.isFinite(n) ? n : 0; };

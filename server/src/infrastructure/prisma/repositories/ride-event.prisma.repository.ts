@@ -62,8 +62,8 @@ export class RideEventPrismaRepository extends RideEventRepositoryPort {
     return count === 1;
   }
 
-  async listAfter(rideId: string, afterId: number, limit: number): Promise<RideEvent[]> {
-    const rows = await this.prisma.rideEvent.findMany({ where: { rideId, id: { gt: afterId } }, orderBy: { id: 'asc' }, take: limit });
+  async listAfter(rideId: string, afterId: number, limit: number, tx?: TransactionHandle): Promise<RideEvent[]> {
+    const rows = await clientFor(this.prisma, tx).rideEvent.findMany({ where: { rideId, id: { gt: afterId } }, orderBy: { id: 'asc' }, take: limit });
     return rows.map((row) => RideEventMapper.toDomain(row));
   }
 

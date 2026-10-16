@@ -65,8 +65,8 @@ const round = (v: number, p = 100) => Math.round(v * p) / p;
 
 /** Measure one batch; `plan` = the ride's road rebuilt from its seed (null: the world facts are not measured), `prefix` = the previous batch's samples
     (its tail is measured with this batch, so a pass across the cut is measured – world-facts.ts). */
-export function summariseBatch(seq: number, t0: number, t1: number, samples: readonly (readonly number[])[], inputs: readonly InputEvent[], plan: RoadPlan | null = null, prefix: readonly (readonly number[])[] = []): BatchSummary {
-  const unsafe = unsafeSamples(seq, t1, samples, prefix);
+export function summariseBatch(seq: number, t0: number, t1: number, samples: readonly (readonly number[])[], inputs: readonly InputEvent[], plan: RoadPlan | null = null, prefix: readonly (readonly number[])[] = [], skipSafetyCheck = false): BatchSummary {
+  const unsafe = skipSafetyCheck ? null : unsafeSamples(seq, t1, samples, prefix);
   const out: BatchSummary = { v: SUMMARY_VERSION, samples: samples.length, first: null, last: null, maxSpeed: 0, worstStep: null, fault: null, inputs: inputs.map((e) => [e[0], e[1], e[2]]), world: plan && !unsafe ? measureWorld(samples, plan, prefix) : null };
   if (unsafe) { out.fault = { code: 'bad-sample', detail: unsafe }; return out; }
   let prev: readonly number[] | null = null, gap = 0, ds = 0, vdt = 0, firstV = 0, gasEdges: number | null = 0, gasWas = false, dupT = 0, bucket = Number.NaN;

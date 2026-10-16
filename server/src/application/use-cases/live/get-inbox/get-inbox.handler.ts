@@ -25,9 +25,9 @@ export class GetInboxHandler implements IQueryHandler<GetInboxQuery, InboxDto> {
   async execute({ wallet, rideId, after }: GetInboxQuery): Promise<InboxDto> {
     const ride = await this.lookup.require(rideId, wallet);
     const now = this.clock.now();
-    const [events, totals, muted] = await Promise.all([this.events.listAfter(ride.id, after, FEED_PAGE), this.events.totals(ride.id), this.mutes.list(ride.id)]);
+    const [events, totals, muted, viewers] = await Promise.all([this.events.listAfter(ride.id, after, FEED_PAGE), this.events.totals(ride.id), this.mutes.list(ride.id), this.viewers.count(ride.id, now)]);
     return {
-      now: now.getTime(), events: withoutMuted(events.map(toRideEventDto), muted), totals, viewers: this.viewers.count(ride.id, now),
+      now: now.getTime(), events: withoutMuted(events.map(toRideEventDto), muted), totals, viewers,
       features: liveFeatures(this.rules.get().live, ride), muted: [...muted],
     };
   }

@@ -1,7 +1,7 @@
 import type { EffectId } from '../live/live-rules.js';
 import type { RideEvent } from '../live/ride-event.entity.js';
 import type { Ride } from '../rides/ride.entity.js';
-import { RoadPlan, type PlannedHole } from '../road/road-plan.js';
+import { roadPlanFor, type PlannedHole } from '../road/road-plan.js';
 import { AXLES, HOLE_REF_SPEED, HOLE_TYPES, OFFROAD_FAIL_SECONDS, WHEEL, holeDamage, type HoleTypeId } from '../road/road-rules.js';
 import type { RideBatch } from '../telemetry/ride-batch.entity.js';
 import { unsafeSamples } from '../telemetry/sample-safety.js';
@@ -101,7 +101,7 @@ export class ReplayEngine {
     };
 
     const rideFacts = { rideId: ride.id, driveSeconds: ride.driveSeconds, distance: ride.distance };
-    const plan = RoadPlan.forSeed(ride.seed, ride.trip);
+    const plan = roadPlanFor(ride.seed, ride.trip);
     for (const r of checkChain(rideFacts, facts)) {
       addFlag({ code: r.code, category: 'recording', severity: r.severity, detail: r.detail, atSecond: null, atMetre: null, evidence: null });
     }
@@ -147,6 +147,8 @@ export class ReplayEngine {
         });
         continue;
       }
+      // Snow and clear move the cab. They are not holes and they do not move the clock.
+      if (ev.effect === 'snow' || ev.effect === 'clear') continue;
       const holeType = EFFECT_TO_HOLE[ev.effect];
       if (holeType) {
         liveEventsCorrelated++;

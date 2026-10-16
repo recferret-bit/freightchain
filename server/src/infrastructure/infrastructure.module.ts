@@ -111,8 +111,10 @@ import { MemoryCacheAdapter } from './cache/memory-cache.adapter.js';
 import { RedisCacheAdapter } from './cache/redis-cache.adapter.js';
 import { RateLimitStorage, RedisThrottlerStorage } from './http/redis-throttler.storage.js';
 import { MemoryViewerPresenceAdapter } from './live/viewer-presence.memory.adapter.js';
+import { RedisViewerPresenceAdapter } from './live/viewer-presence.redis.adapter.js';
 import { SitePresencePort } from '../application/ports/live/site-presence.port.js';
 import { MemorySitePresenceAdapter } from './live/site-presence.memory.adapter.js';
+import { RedisSitePresenceAdapter } from './live/site-presence.redis.adapter.js';
 import { NameServicePort } from '../application/ports/sns/name-service.port.js';
 import { SnsNameServiceAdapter } from './sns/sns-name-service.adapter.js';
 import { RideReplayRepositoryPort } from '../application/ports/verdict/ride-replay.repository.port.js';
@@ -191,8 +193,8 @@ const ports: Provider[] = [
   { provide: ChainEventRepositoryPort, useClass: ChainEventPrismaRepository },
   { provide: ChainCursorRepositoryPort, useClass: ChainCursorPrismaRepository },
   { provide: RideEventRepositoryPort, useClass: RideEventPrismaRepository },
-  { provide: ViewerPresencePort, useClass: MemoryViewerPresenceAdapter },
-  { provide: SitePresencePort, useClass: MemorySitePresenceAdapter },
+  { provide: ViewerPresencePort, inject: [EnvService, ClockPort], useFactory: (env: EnvService, clock: ClockPort): ViewerPresencePort => (env.redisUrl ? new RedisViewerPresenceAdapter(env.redisUrl, clock) : new MemoryViewerPresenceAdapter()) },
+  { provide: SitePresencePort, inject: [EnvService, ClockPort], useFactory: (env: EnvService, clock: ClockPort): SitePresencePort => (env.redisUrl ? new RedisSitePresenceAdapter(env.redisUrl, clock) : new MemorySitePresenceAdapter()) },
   { provide: RideMuteRepositoryPort, useClass: RideMutePrismaRepository },
   { provide: DonationOrderRepositoryPort, useClass: DonationOrderPrismaRepository },
   { provide: AnalyticsPort, useClass: PostHogAnalyticsAdapter },

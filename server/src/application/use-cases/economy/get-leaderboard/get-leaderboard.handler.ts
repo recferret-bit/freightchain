@@ -33,8 +33,10 @@ export class GetLeaderboardHandler implements IQueryHandler<GetLeaderboardQuery,
     const tier = query.board === 'free' ? null : query.tier;
     const trip = level === null ? null : FREE_LEVELS[level].trip;
     const offset = (query.page - 1) * LEADERBOARD_PAGE;
-    const page = await this.rideQuery.leaderboard(query.board, query.board === 'round' ? round.id : null, verifiedOnly, trip, tier, query.sort, offset, LEADERBOARD_PAGE, LEADERBOARD_SIZE);
-    const standing = query.wallet ? await this.standing(query.wallet, round.id, verifiedOnly) : null;
+    const [page, standing] = await Promise.all([
+      this.rideQuery.leaderboard(query.board, query.board === 'round' ? round.id : null, verifiedOnly, trip, tier, query.sort, offset, LEADERBOARD_PAGE, LEADERBOARD_SIZE),
+      query.wallet ? this.standing(query.wallet, round.id, verifiedOnly) : Promise.resolve(null),
+    ]);
     const me = query.wallet ? await this.me(query, round.id, verifiedOnly, trip, tier, standing) : null;
     const wallets = page.rows.map((r) => r.wallet);
     const snsMap = this.nameService ? await this.nameService.reverseBatch(wallets) : null;
