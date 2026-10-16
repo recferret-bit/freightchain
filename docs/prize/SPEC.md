@@ -36,7 +36,7 @@ Ordering the configured tier spends it (`Ride.weeklyGrant`, price 0, status crea
 
 **TEN4: no.** Wallets are free, 18+ is a checkbox, and a client can spoof geo if the edge does not strip those headers. An automatic weekly mint would be an emission faucet. Purchased rides and admin ticket-promo rides still mint TEN4. Ride-promo codes do not. The USDC board is the free prize path.
 
-Anti-sybil, as built: one grant per wallet per week, not cumulative, guests excluded, 18+ and prize geo required to receive it and to start it ranked. Still open: a person can open many wallets and enter the USDC board once per wallet per week. Board attention marks, the 10-participant floor, and KYC before a payout stay. Counsel should say whether that is an acceptable free method of entry.
+Anti-sybil, as built: one grant per wallet per week, not cumulative, guests excluded, 18+ and prize geo required to receive it and to start it ranked. A person can still open many wallets and enter the USDC board once per wallet per week. The layered plan (fingerprint, telemetry clusters, on-chain funding, proof of personhood on the grant, KYC only before payout) is `docs/roadmap/anti-sybil.md`. It is not built. Board attention marks, the 10-participant floor, and KYC before a payout stay. Counsel should say whether the grant is an acceptable free method of entry until that plan exists.
 
 ## Score
 
@@ -95,7 +95,8 @@ Eight weeks from `SEASON_EPOCH` (`2026-10-12`). Week 8 is the live final (`seaso
 ## Not built
 
 - One weekly seed per tier. Ranked rides still use the ride's own seed.
-- A sanctions vendor, a KYC vendor, and the USDC send. Payout on the board stays false until KYC exists.
+- A sanctions vendor, a KYC vendor, and the USDC send. Payout on the board stays false until KYC exists. The planned checks are `docs/roadmap/anti-sybil.md`.
+- Proof of personhood on the weekly granted ticket, browser fingerprinting, cross-wallet telemetry clusters, and on-chain funding clusters. Not built.
 - An admin editor for the geo lists and the base step. The lists are env overrides.
 - Corrections as a tie-break. The column is not measured.
 - Sponsored routes, charity weeks, and the grand-final broadcast.
