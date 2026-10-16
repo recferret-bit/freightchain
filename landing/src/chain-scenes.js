@@ -158,17 +158,28 @@ export function startChainScenes(cards) {
     cv.width = W * 2; cv.height = H * 2; cv.setAttribute('role', 'img'); cv.setAttribute('aria-label', img.alt); img.replaceWith(cv);
     live.push({ card, cv, ctx, draw: make(), on: false });
   }
-  const io = new IntersectionObserver(es => { for (const e of es) live.find(s => s.cv === e.target).on = e.isIntersecting; });
-  live.forEach(s => io.observe(s.cv));
   const turned = matchMedia('(hover:hover)').matches ? '.flip,:hover,:focus-within' : '.flip,:focus-within';   // a phone keeps :hover on the last tapped card – it would freeze once flipped back
+  const faceUp = s => s.on && !s.card.matches(turned);
+  let raf = 0;
   const frame = ms => {
+    raf = 0;
+    if (document.hidden) return;
+    let drew = false;
     for (const s of live) {
-      if (!s.on || s.card.matches(turned)) continue;   // off screen or turned over: nothing to see
+      if (!faceUp(s)) continue;   // off screen or turned over: nothing to see
+      drew = true;
       const w = Math.round(s.cv.clientWidth * Math.min(3, devicePixelRatio || 1));
       if (w && s.cv.width !== w) { s.cv.width = w; s.cv.height = Math.round((w * H) / W); }
       drawScene(s.ctx, s.draw, ms / 1000, s.cv.width / W);
     }
-    requestAnimationFrame(frame);
+    if (drew) raf = requestAnimationFrame(frame);   // no face-up card on screen: the loop stops
   };
-  requestAnimationFrame(frame);
+  const kick = () => { if (!raf && !document.hidden && live.some(faceUp)) raf = requestAnimationFrame(frame); };
+  const io = new IntersectionObserver(es => { for (const e of es) live.find(s => s.cv === e.target).on = e.isIntersecting; kick(); });
+  live.forEach(s => {
+    io.observe(s.cv);
+    for (const type of ['pointerover', 'pointerout', 'focusin', 'focusout', 'click']) s.card.addEventListener(type, kick);
+  });
+  document.addEventListener('visibilitychange', kick);
+  kick();
 }

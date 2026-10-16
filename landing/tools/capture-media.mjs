@@ -1,6 +1,6 @@
 // Re-captures the landing's in-game media from a running server (default http://localhost:3111 – `BASE=…` to change):
 //   public/media/cards/*.webp – the dash crops (rects from src/dash-scenes.js) = the posters / colour source under the live cards, 2× pixels
-//   public/media/sky/*.webp   – the same Route 66 spot at dawn / day / dusk / night for the "realtime daytime" collage
+//   public/media/sky/*.webp   – the same Route 66 spot at dawn / day / dusk / night for the "realtime daytime" collage, 1080×372 (1×; the strip is at most 320 px tall)
 //   public/media/{day,night,hero-poster}.webp – the hero cab (1280×633), with the CB and the ON CHAIN strip filled from mocked stream + pool data
 // ONLY=hero skips the cards and the sky. Headless Chrome via the client's CDP harness; the game is driven through window.__game.
 // Run `npm run build` afterwards – Vite copies public/ into dist/.
@@ -41,6 +41,7 @@ await ev(`{ clearInterval(window.__hold); __game.selectTheme('siberia', false); 
 await clip('cards/lamps.webp', rect('lamps'));
 // 6 · the four times of day, same spot on Route 66, windscreen only
 await ev(`{ clearInterval(window.__hold); __game.selectTheme('route66', false); const g=__game; let s0=g.net.Sm+140; while (g.net.near(s0-150, s0+260).length) s0+=40; g.st.s=s0; g.st.d=2.4; g.st.v=0; document.getElementById('toast').style.display='none'; window.__hold=setInterval(()=>{ g.st.v=0; g.st.d=2.4; g.st.psi=0; g.st.gear=0; g.st.engineOn=true; g.st.keyOn=true; g.st.rpm=620; },50) }`); 
+await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 633, deviceScaleFactor: 1, mobile: false }); await sleep(200);   // the cards above are 2×; the collage is not
 for (const ph of ['dawn', 'day', 'dusk', 'night']) { await ev(`__game.setPhase('${ph}', true, false)`); if (ph === 'night') { await ev('__game.dn.head=true'); } await sleep(2500); await clip(`sky/${ph}.webp`, { x: 100, y: 16, width: 1080, height: 372 }); }
 }
 // Hero stills: the current cab, plus the driver's CB and the ticket ride's ON CHAIN strip. The numbers are a fixture

@@ -29,6 +29,7 @@ const avatar = w => el('i', { class: 'av', style: `background:hsl(${hue(w)} 60% 
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const S = { pool: null, live: null, board: null, skew: 0, me: null };
+let poolCds = [];   // .pool .cd nodes; paintPool rebuilds them, the 1 s clock must not query every tick
 const now = () => Date.now() + S.skew;
 
 /* ───── odometer-ish counters: tween the displayed number towards the real one ───── */
@@ -87,7 +88,7 @@ function paintBoardsLive() {
 
 function paintPool() {
   const box = $('poolbox'), p = S.pool;
-  if (!p) { box.replaceChildren(el('span', { class: 'dim' }, 'Prize pool unavailable right now.')); return; }
+  if (!p) { box.replaceChildren(el('span', { class: 'dim' }, 'Prize pool unavailable right now.')); poolCds = []; return; }
   const s = p.split, parts = [s.grand, s.top20, s.nextSeed, s.fees], total = parts.reduce((x, y) => x + y, 0), pct = total ? parts.map(x => (x / total) * 100) : [50, 20, 20, 10];
   const part = (cls, label, l) => el('span', { class: cls }, `${label} `, el('b', {}, `${sol(l)} SOL`));
   const esc = p.pools?.length ? p.pools.reduce((a, x) => a + x.vaultLamports, 0) : null;
@@ -100,6 +101,7 @@ function paintPool() {
       el('div', { class: 'legend' }, part('s-grand', '50% grand prize · accrued', s.grand), part('s-top', '20% top 20 · by distance', s.top20), part('s-seed', '20% seeds next week', s.nextSeed), part('s-fees', '10% platform', s.fees)),
       el('div', { class: 'meta' }, el('span', {}, el('b', {}, 'Free rides and practice are open'), ' · paid shifts are marked soon')),
       el('div', { class: 'dim' }, 'Integer lamports, floored shares, remainder to fees. This round is accounted. It is not paid out.'));
+    poolCds = [...box.querySelectorAll('.cd')];
     return;
   }
   box.replaceChildren(
@@ -110,6 +112,7 @@ function paintPool() {
     el('div', { class: 'legend' }, part('s-grand', '50% grand prize · accrued', s.grand), part('s-top', '20% top 20 · by distance', s.top20), part('s-seed', '20% seeds next week', s.nextSeed), part('s-fees', '10% platform', s.fees)),
     el('div', { class: 'meta' }, el('span', {}, el('b', {}, p.entries), ` paid ${p.entries === 1 ? 'entry' : 'entries'}`), el('span', {}, 'closes in ', el('b', { class: 'cd' }, left(p.round.endsAt - now()))), el('span', {}, s.carry ? ['carried from last week: ', el('b', {}, `${sol(s.carry)} SOL`)] : 'first round – nothing carried yet')),
     el('div', { class: 'dim' }, 'Integer lamports, floored shares, remainder to fees. This round is accounted. It is not paid out.'));
+  poolCds = [...box.querySelectorAll('.cd')];
 }
 
 function paintTiers(t) {   // a tier sold through a pool: the ticket price is the pool's (fixed in lamports on chain); an on-sale tier without one: the legacy USD quote; an off-sale tier: soon
@@ -180,6 +183,7 @@ function paintBoards() {
 /* ───── ticker ───── */
 /* live streams: any ride on the road (or its replay once it ended) plays on the game's watch page – play.html?watch=<id> on the game's host */
 const watchUrl = id => `${GAME_BASE}/play.html?watch=${encodeURIComponent(id)}`;
+let tickerKey = '';
 function paintTicker() {
   const l = S.live, p = S.pool, items = [];   // a string, or [text, href] for a line that opens the watch page
   if (l) for (const r of l.rides.filter(r => r.tier !== 'free').slice(0, 4)) items.push([`● LIVE · ${short(r.wallet)} on ${r.route ? ROUTE[r.route] ?? r.route : 'the road'} · ${km(r.distance)} km · ▶ watch`, watchUrl(r.id)]);
@@ -191,8 +195,14 @@ function paintTicker() {
     if (l.upcoming.length) items.push(`${plural(l.upcoming.length, 'paid shift')} waiting to start`);
   }
   if (!items.length) items.push('Dispatch is quiet. Connect a wallet, take a free ride, be the first line on this ticker.');
+  const key = items.map(t => (Array.isArray(t) ? `${t[1]}\t${t[0]}` : t)).join('\n');
+  if (key === tickerKey) return;   // a fresh DOM restarts the loop; the 20 s refresh would rewind it
+  tickerKey = key;
   const nodes = items.map(t => (Array.isArray(t) ? el('a', { href: t[1], tabindex: '-1' }, t[0]) : el('span', {}, t)));   // tabindex -1: the ticker is aria-hidden; the LIVE NOW board carries the same links for keyboards / screen readers
-  $('ticker').replaceChildren(...nodes, ...nodes.map(n => n.cloneNode(true)));   // doubled so the -50% translate loops seamlessly
+  const tk = $('ticker');
+  tk.replaceChildren(...nodes, ...nodes.map(n => n.cloneNode(true)));   // doubled so one half-width translate loops seamlessly
+  const shift = tk.scrollWidth / 2;   // px, not -50%: iOS uses the screen width for a % translate of this absolute strip
+  if (shift > 1) { tk.style.setProperty('--shift', `-${Math.round(shift)}px`); tk.style.animationDuration = `${(shift / 110).toFixed(1)}s`; }   // ~110 px/s, the speed a wide screen already had
 }
 
 /* ───── data ───── */
@@ -208,17 +218,34 @@ async function refreshBoard() { refreshWinners(); S.board = await api('leaderboa
 
 /* ───── hero video: never on the critical path ─────
    The slideshow (WebP posters) is the hero. A gameplay loop – `data-src` on #hero-video, empty = none – is fetched only AFTER the page has loaded and the browser is idle, never on
-   data-saver / reduced motion / phones, and it fades in over the slideshow once it is actually playing; if it errors, the slideshow simply stays. */
+   data-saver / reduced motion (a phone included: the stills' slow zoom read as a frozen video), and the slides cover it until it is actually playing; if it errors, the slideshow stays. */
 const heroVideo = $('hero-video');
+function moreSlides() {   // the day still is the only hero image until the video will not play
+  const box = $('slides');
+  if (box.children.length > 1) return;
+  for (const src of ['/media/hero-poster.webp', '/media/night.webp']) box.append(el('img', { width: '1280', height: '633', decoding: 'async', alt: '', src }));
+}
 function loadHeroVideo() {
   const src = heroVideo.dataset.src;
-  if (!src || reduced || navigator.connection?.saveData || matchMedia('(max-width: 700px)').matches) return;
-  heroVideo.addEventListener('playing', () => { track('hero_video_started'); heroVideo.classList.add('on'); $('slides').classList.add('off'); }, { once: true });
-  heroVideo.addEventListener('error', () => { track('hero_video_failed'); heroVideo.removeAttribute('src'); }, { once: true });
+  if (!src || reduced || navigator.connection?.saveData) { moreSlides(); return; }
+  heroVideo.muted = true; heroVideo.playsInline = true; heroVideo.autoplay = true;   // iOS will not start the loop unless these are set before src, even with the markup's muted playsinline
+  heroVideo.addEventListener('playing', () => { track('hero_video_started'); const slides = $('slides'); slides.classList.add('off'); for (const img of slides.children) img.style.animation = 'none'; }, { once: true });   // the hidden zoom kept compositing, and iOS then advanced the video slowly too
+  heroVideo.addEventListener('error', () => { track('hero_video_failed'); heroVideo.removeAttribute('src'); moreSlides(); }, { once: true });
   heroVideo.src = src; heroVideo.play().catch(() => {});
 }
 const whenIdle = window.requestIdleCallback ?? (f => setTimeout(f, 1200));
 if (document.readyState === 'complete') whenIdle(loadHeroVideo, { timeout: 4000 }); else addEventListener('load', () => whenIdle(loadHeroVideo, { timeout: 4000 }), { once: true });
+
+/* pitch-deck band: one slide in the HTML. The next file is fetched when it is about to show, not with the hero. */
+const shots = [...document.querySelectorAll('.deck-shot img')];
+if (shots.length > 1 && !reduced) {
+  let i = 0; shots[0].classList.add('on');
+  setInterval(() => {
+    const n = shots[(i + 1) % shots.length];
+    if (!n.getAttribute('src')) n.src = n.dataset.src;
+    shots[i].classList.remove('on'); i = (i + 1) % shots.length; shots[i].classList.add('on');
+  }, 4000);
+}
 
 /* ───── demo dialog ───── */
 (() => {
@@ -296,7 +323,7 @@ addEventListener('pageshow', e => { if (!e.persisted) return; for (const c of do
 /* their drawings come alive as canvas scenes (chain-scenes.js, a lazy chunk) when the grid gets near; reduced motion keeps the still SVGs */
 const ocGrid = document.querySelector('.oc-grid');
 if (ocGrid && !reduced) {
-  const cio = new IntersectionObserver(es => { if (!es.some(e => e.isIntersecting)) return; cio.disconnect(); import('./chain-scenes.js').then(m => m.startChainScenes(ocGrid.querySelectorAll('.oc'))).catch(e => console.warn('chain scenes unavailable', e)); }, { rootMargin: '600px' });
+  const cio = new IntersectionObserver(es => { if (!es.some(e => e.isIntersecting)) return; cio.disconnect(); import('./chain-scenes.js').then(m => m.startChainScenes(ocGrid.querySelectorAll('.oc'))).catch(e => console.warn('chain scenes unavailable', e)); }, { rootMargin: '120px' });
   cio.observe(ocGrid);
 }
 
@@ -424,7 +451,7 @@ playTop.onclick = async () => {
     location.href = `${GAME_BASE}/play.html?offline=1`;
   }
 };
-track('landing_viewed', { surface: 'landing' });   // once per load, not on the 10 s refresh, and not after /api/pool
+track('landing_viewed', { surface: 'landing' });   // once per load, not on the 20 s refresh, and not after /api/pool
 if (linkCode) track('promo_invite_viewed', { code: CODE_SHAPE.test(codeOf(linkCode)) ? codeOf(linkCode) : null });   // an invite link was opened
 api('me', undefined, { report: false }).then(me => { track('session_restored', { surface: 'landing', wallet: me.wallet, ...(me.demo ? { is_demo: true } : {}) }); paintSession(me); }, () => {});   // signed in already: no forced redirect – the pool is the point of this page. Anonymous 401 stays a quiet GET.
 
@@ -445,7 +472,7 @@ for (const card of document.querySelectorAll('.card3d')) {
 /* the cards render with the game's own cockpit code once they are near the viewport (the PNGs above stay as the fallback and the colour source) */
 const liveCards = [...document.querySelectorAll('.card3d[data-live]')];
 if (liveCards.length) {
-  const lio = new IntersectionObserver(es => { if (!es.some(e => e.isIntersecting)) return; lio.disconnect(); import('./dash-live.js').then(m => m.startLiveDash(liveCards)).catch(e => console.warn('live dash cards unavailable', e)); }, { rootMargin: '600px' });
+  const lio = new IntersectionObserver(es => { if (!es.some(e => e.isIntersecting)) return; lio.disconnect(); import('./dash-live.js').then(m => m.startLiveDash(liveCards, null, { lazy: true })).catch(e => console.warn('live dash cards unavailable', e)); }, { rootMargin: '120px' });
   lio.observe($('cards'));
 }
 
@@ -468,8 +495,8 @@ document.querySelectorAll('section[id]').forEach(s => so.observe(s));
 refresh();
 api('tiers', undefined, { report: false }).then(paintTiers, () => { $('tiers').replaceChildren(el('tbody', {}, el('tr', {}, el('td', { class: 'dim' }, 'Prices unavailable right now.')))); });
 refreshBoard();
-setInterval(() => { if (!document.hidden) refresh(); }, 10000);
+setInterval(() => { if (!document.hidden) refresh(); }, 20000);   // pool + live + replays; the numbers are not a ticker that needs 10 s
 leaveOnClose(() => `${API_BASE}/api/${livePath('landing')}&leave=1`);
 setInterval(() => { if (!document.hidden) refreshBoard(); }, 30000);
-setInterval(() => { if (document.hidden) return; $('lb-clock').textContent = new Date(now()).toISOString().slice(11, 19); if (!S.pool) return; const t = left(S.pool.round.endsAt - now()); $('hero-cd').textContent = t; document.querySelectorAll('.pool .cd').forEach(c => { c.textContent = t; }); }, 1000);
+setInterval(() => { if (document.hidden) return; $('lb-clock').textContent = new Date(now()).toISOString().slice(11, 19); if (!S.pool) return; const t = left(S.pool.round.endsAt - now()); $('hero-cd').textContent = t; for (const c of poolCds) c.textContent = t; }, 1000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });

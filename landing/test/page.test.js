@@ -43,8 +43,14 @@ test('no orphan media: every file in public/media is used by the page or the scr
   assert.deepEqual(walk(join(root, 'public/media')).filter(f => !src.includes(`/media/${f}`) && !(f.startsWith('pitchdeck/') && src.includes(f.slice('pitchdeck/'.length)))), []);   // the deck builds its paths from A = '/media/pitchdeck/'
 });
 
-test('every <img> has alt, intrinsic size and an async decode hint (no layout shift)', () => {
-  for (const tag of html.match(/<img [^>]*>/g)) { assert.match(tag, /\balt="/, tag); assert.match(tag, /\bwidth="\d+"/, tag); assert.match(tag, /\bheight="\d+"/, tag); assert.match(tag, /decoding="async"/, tag); }
+test('every <img> has alt and an intrinsic size; every image but the LCP hero still decodes async', () => {
+  const tags = html.match(/<img [^>]*>/g);
+  for (const tag of tags) {
+    assert.match(tag, /\balt="/, tag); assert.match(tag, /\bwidth="\d+"/, tag); assert.match(tag, /\bheight="\d+"/, tag);
+    if (/fetchpriority="high"/.test(tag)) assert.doesNotMatch(tag, /decoding=/, `${tag}: the LCP image is not decoding=async`);
+    else assert.match(tag, /decoding="async"/, tag);
+  }
+  assert.equal(tags.filter(t => /fetchpriority="high"/.test(t)).length, 1);
 });
 
 test('raster images are WebP (the only JPEG is the og:image link preview)', () => {
@@ -94,8 +100,17 @@ test('hero video is off the critical path: no src, no autoplay, preload none, lo
   const tag = html.match(/<video id="hero-video"[^>]*>/)[0];
   assert.match(tag, /data-src="\/media\/hero-preview\.mp4"/); assert.match(tag, /preload="none"/); assert.doesNotMatch(tag, /\ssrc=|autoplay|poster=/);
   assert.match(main, /requestIdleCallback/); assert.match(main, /addEventListener\('load'/); assert.match(main, /saveData/);
+  assert.doesNotMatch(main, /max-width:\s*700px/, 'a phone plays the hero loop too (the stills read as a frozen video)');
+  assert.match(main, /heroVideo\.playsInline = true/, 'iOS needs playsInline set before src');
   assert.equal((main.match(/heroVideo\.src = /g) ?? []).length, 1, 'the src is assigned in exactly one place (loadHeroVideo)');
+  const slides = html.match(/<div class="slides" id="slides">([\s\S]*?)<\/div>/)[1];
+  assert.equal((slides.match(/<img\b/g) ?? []).length, 1, 'only the day still is in the hero; the other two load if the video will not play');
+  assert.match(main, /\/media\/hero-poster\.webp/); assert.match(main, /\/media\/night\.webp/);
   assert.match(html, /<div id="demo-frame">/); assert.doesNotMatch(html, /<iframe|<video id="demo/, 'the demo player is created on click, never in the markup'); assert.doesNotMatch(main, /youtube-nocookie|\/embed\//, 'no third-party embed in the demo dialog');
+  const css = readFileSync(join(root, 'src/style.css'), 'utf8');
+  assert.match(css, /translateX\(var\(--shift,-50%\)\)/, 'the ticker distance is a measured length, not a % of the screen');
+  assert.match(css, /@media \(hover:hover\)\{\.ticker:hover \.tk\{animation-play-state:paused\}\}/);
+  assert.match(main, /--shift/);
 });
 
 test('sign-in: redirect + session UI go through SITE_BASE, the wallet chip exists, errors are shown not thrown', () => {

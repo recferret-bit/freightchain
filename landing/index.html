@@ -31,6 +31,7 @@
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <link rel="manifest" href="/manifest.webmanifest">
+<link rel="preconnect" href="https://api.freightchain.fun" crossorigin="use-credentials">
 <noscript><style>.rv{opacity:1;transform:none}</style></noscript>
 <link rel="stylesheet" href="/src/style.css">
 </head>
@@ -57,7 +58,7 @@
 <section class="hero" id="ride">
   <div class="bg">
     <video id="hero-video" data-src="/media/hero-preview.mp4" muted loop playsinline preload="none" aria-hidden="true" tabindex="-1"></video>
-    <div class="slides" id="slides"><img width="1280" height="633" decoding="async" fetchpriority="high" src="/media/day.webp" alt=""><img width="1280" height="633" decoding="async" fetchpriority="low" src="/media/hero-poster.webp" alt=""><img width="1280" height="633" decoding="async" fetchpriority="low" src="/media/night.webp" alt=""></div>
+    <div class="slides" id="slides"><img width="1280" height="633" fetchpriority="high" src="/media/day.webp" alt=""></div>
     <div class="shade"></div>
   </div>
   <div class="hero-in">
@@ -86,10 +87,10 @@
 <aside class="deck-band" aria-labelledby="deck-h">
   <a class="deck-in rv" id="pitchdeck-band" href="https://pitchdeck.freightchain.fun/">
     <span class="deck-shot" aria-hidden="true">
-      <img width="800" height="450" decoding="async" loading="lazy" src="/media/pitchdeck/slide-product.webp" alt="">
-      <img width="800" height="450" decoding="async" loading="lazy" src="/media/pitchdeck/slide-game.webp" alt="">
-      <img width="800" height="450" decoding="async" loading="lazy" src="/media/pitchdeck/slide-money.webp" alt="">
-      <img width="800" height="450" decoding="async" loading="lazy" src="/media/pitchdeck/slide-plan.webp" alt="">
+      <img width="800" height="450" decoding="async" src="/media/pitchdeck/slide-product.webp" alt="">
+      <img width="800" height="450" decoding="async" alt="" data-src="/media/pitchdeck/slide-game.webp">
+      <img width="800" height="450" decoding="async" alt="" data-src="/media/pitchdeck/slide-money.webp">
+      <img width="800" height="450" decoding="async" alt="" data-src="/media/pitchdeck/slide-plan.webp">
     </span>
     <div class="deck-copy">
       <span class="eyebrow">PITCH DECK</span>
@@ -153,10 +154,10 @@
   <div class="daytime rv">
     <h3 class="sub">THE SUN KEEPS MOVING</h3>
     <div class="collage">
-      <figure><img width="2160" height="744" decoding="async" src="/media/sky/dawn.webp" alt="Route 66 at dawn" loading="lazy"><figcaption>DAWN</figcaption></figure>
-      <figure><img width="2160" height="744" decoding="async" src="/media/sky/day.webp" alt="Route 66 by day" loading="lazy"><figcaption>DAY</figcaption></figure>
-      <figure><img width="2160" height="744" decoding="async" src="/media/sky/dusk.webp" alt="Route 66 at dusk" loading="lazy"><figcaption>DUSK</figcaption></figure>
-      <figure><img width="2160" height="744" decoding="async" src="/media/sky/night.webp" alt="Route 66 at night, headlights on" loading="lazy"><figcaption>NIGHT</figcaption></figure>
+      <figure><img width="1080" height="372" decoding="async" src="/media/sky/dawn.webp" alt="Route 66 at dawn" loading="lazy"><figcaption>DAWN</figcaption></figure>
+      <figure><img width="1080" height="372" decoding="async" src="/media/sky/day.webp" alt="Route 66 by day" loading="lazy"><figcaption>DAY</figcaption></figure>
+      <figure><img width="1080" height="372" decoding="async" src="/media/sky/dusk.webp" alt="Route 66 at dusk" loading="lazy"><figcaption>DUSK</figcaption></figure>
+      <figure><img width="1080" height="372" decoding="async" src="/media/sky/night.webp" alt="Route 66 at night, headlights on" loading="lazy"><figcaption>NIGHT</figcaption></figure>
     </div>
     <p class="lead">The sun moves while you drive – dawn, dusk and night are real time of day, and they change what you can see and how you have to drive.</p>
   </div>
@@ -344,7 +345,7 @@
 
           <tr class="leg"><th colspan="3">LEG 4 · MAINNET <small>Dec 2026</small></th><td class="stamp"><span class="st later">BOOKED</span></td></tr>
           <tr class="later"><td class="box">☐</td><td>Legals with a gaming and crypto lawyer: skill prizes – top 3 by verified distance, no draw –, terms, privacy policy, regions blocked where needed</td><td class="note">the gate</td><td></td></tr>
-          <tr class="later"><td class="box">☐</td><td>Penetration test by an outside firm: the API, sessions, the admin zone, the anti-cheat; every finding fixed and retested</td><td class="note">security</td><td></td></tr>
+          <tr class="later"><td class="box">☐</td><td>Security check by an outside firm: the API, sessions, the admin zone, the anti-cheat; every finding fixed and retested</td><td class="note">security</td><td></td></tr>
           <tr class="later"><td class="box">☐</td><td>Program review on the published verifiable build; admin and treasury keys off the laptop</td><td class="note">security</td><td></td></tr>
           <tr class="later"><td class="box">☐</td><td>Load test repeated on the mainnet release candidate before the first real pool opens</td><td class="note">capacity</td><td></td></tr>
           <tr class="later"><td class="box">☐</td><td>Mainnet pools with published rules; the first prizes in real SOL</td><td class="note">Dec 2026</td><td></td></tr>
